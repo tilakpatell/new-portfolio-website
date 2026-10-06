@@ -18,6 +18,8 @@ import { ATHELAS, BRAND, FIRE, MARK, MARK_LINES, READINGS, RIDE, SIDE, newBrand,
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './weathertop.css';
+import '../../../../styles/lazy/middleearth.css';
+import GuideCue from '../../../guide/GuideCue';
 
 // Weathertop, the third town on the road: walk up the hill of Amon Sûl at
 // dusk as Frodo, and play the night there as the films tell it. The land
@@ -1065,7 +1067,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         </div>
       )}
 
-      {gl === 'on' && walking && !hud.moved && !here && !F && <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}</p>}
+      {gl === 'on' && walking && !hud.moved && !here && !F && <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}<GuideCue touch={touch} /></p>}
 
       {node && <Convo title={CONVO_TITLE[hud.talking] ?? 'Weathertop'} name={SPEAKERS[node.who] ?? ''} node={node} touch={touch} onPick={(i) => talkOnward(i)} onNext={() => talkOnward()} />}
 

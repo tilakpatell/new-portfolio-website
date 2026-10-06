@@ -1,0 +1,84 @@
+/* Split out of styles/extras.css so it loads with the components that use it
+   (each imports it), not with every page. */
+.trench-screen { position: relative; aspect-ratio: 16 / 9; max-height: 72vh; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: #05060b; outline: none; }
+.trench-screen:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
+.trench-canvas { position: relative; z-index: 1; display: block; width: 100%; height: 100%; cursor: crosshair; }
+.trench-gl { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.4s ease; }
+.trench-gl[data-on] { opacity: 1; }
+.trench-touch { position: absolute; z-index: 2; right: 12px; bottom: 12px; display: flex; gap: 10px; }
+.trench-touch-btn { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(10, 12, 20, 0.55); color: #fff; font: 600 0.8rem/1 var(--font-mono); -webkit-tap-highlight-color: transparent; }
+.trench-touch-btn[aria-pressed='true'] { border-color: var(--saber); color: var(--saber); }
+.trench-touch-fire { width: 64px; height: 64px; background: color-mix(in srgb, #c0392b 70%, transparent); border-color: rgba(255, 180, 160, 0.6); }
+.trench-touch-btn:disabled { opacity: 0.4; }
+/* the keys, for a keyboard: shown under the in-game buttons where there's a mouse */
+.trench-key { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .trench-touch-btn { grid-auto-flow: row; gap: 2px; align-content: center; }
+  .trench-key { display: block; font: 500 0.55rem/1 var(--font-mono); letter-spacing: 0.04em; opacity: 0.75; text-transform: uppercase; }
+}
+.trench-overlay { position: absolute; z-index: 2; inset: 0; display: grid; place-content: center; justify-items: center; padding: 1.5rem; text-align: center; background: rgba(5, 6, 11, 0.62); }
+@media (max-width: 640px) {
+  .trench-touch { left: 12px; }
+  .trench-touch-laser { order: 3; margin-left: auto; }
+}
+.trench-touch-laser { width: 60px; height: 60px; border-color: rgba(255, 120, 100, 0.65); color: #ffb3a6; touch-action: none; user-select: none; -webkit-user-select: none; }
+.trench-levels { display: inline-flex; gap: 0.35rem; padding: 0.25rem; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 999px; background: rgba(5, 6, 11, 0.5); }
+.trench-levels button { display: grid; min-height: 40px; min-width: 5.5rem; padding: 0.3rem 0.9rem; border-radius: 999px; color: rgba(255, 255, 255, 0.82); font: 600 0.8rem/1.1 var(--font-mono); }
+.trench-levels button[aria-pressed='true'] { background: #ffd28c; color: #1a1305; }
+.trench-levels small { font-size: 0.65rem; opacity: 0.75; }
+@media (max-width: 480px) { .trench-levels button { min-width: 0; padding-inline: 0.6rem; } .trench-overlay .text-sm { font-size: 0.78rem; } }
+.ds-gone { transform-box: fill-box; transform-origin: center; animation: ds-gone 1.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+@media (prefers-reduced-motion: reduce) { .ds-gone { animation: none; opacity: 0; } }
+.ds-arrive { transform-box: fill-box; transform-origin: center; animation: ds-arrive 1.1s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.planet-in { animation: planet-in 0.8s ease backwards; }
+.ds-stage { position: relative; }
+@media (max-width: 639px) { .ds-stage { margin-inline: calc(-1 * var(--gutter-l)) calc(-1 * var(--gutter-r)); } }
+
+/* the Battle of Yavin */
+.battle-card { margin-top: 1.75rem; padding: 1rem 1.1rem 1.1rem; border: 1px solid rgba(255, 179, 71, 0.4); border-radius: 14px; background: rgba(255, 179, 71, 0.06); }
+/* phones: the scene runs edge to edge so the station is as big as it can be */
+.battle-clock { font-family: var(--font-mono); font-size: 1.6rem; font-variant-numeric: tabular-nums; color: #ffb347; }
+.battle-bar { margin-top: 0.6rem; height: 4px; overflow: hidden; border-radius: 999px; background: rgba(255, 255, 255, 0.1); }
+.battle-bar span { display: block; height: 100%; background: #ffb347; transform-origin: left; transition: transform 0.25s linear; }
+.ds-ending { display: flex; align-items: center; gap: 1rem; margin: 1.5rem 0 0; padding: 0.9rem 1.1rem; border-left: 3px solid; border-radius: 4px; }
+.rebel-medal { width: 48px; height: 66px; flex: none; animation: medal-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.6s backwards; }
+@keyframes medal-in { from { opacity: 0; transform: translateY(-18px) rotate(-8deg); } to { opacity: 1; transform: none; } }
+/* the Empire's ending: a red shadow closes in, then lifts */
+.empire-shade { background: radial-gradient(ellipse at center, transparent 30%, rgba(150, 8, 16, 0.55) 100%); opacity: 0; animation: empire-shade 3.2s ease forwards; }
+/* the Rebels' ending: three X-wings fly past */
+.rebel-flypast { height: 64px; overflow: hidden; }
+.rebel-xwing { position: absolute; left: 0; width: 64px; height: 32px; top: calc(var(--i) * 16px); transform: translateX(-90px); animation: flypast 2.6s cubic-bezier(0.45, 0, 0.3, 1) calc(1.1s + var(--i) * 0.22s) forwards; }
+
+/* the technical readout: a cutaway with numbered parts */
+.readout-drawing { position: relative; width: 100%; max-width: 480px; margin-inline: auto; border: 1px solid rgba(120, 170, 255, 0.25); border-radius: 12px; background: #06101f; }
+.readout-marks { position: absolute; inset: 0; }
+.readout-mark { position: absolute; display: grid; place-items: center; width: 28px; height: 28px; translate: -50% -50%; border-radius: 999px; border: 1.5px solid #ffb347; background: #05060b; color: #ffb347; font-family: var(--font-mono); font-size: 0.75rem; transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease; }
+.readout-mark:hover { box-shadow: 0 0 0 4px rgba(255, 179, 71, 0.22); }
+.readout-mark[aria-pressed='true'] { background: #ffb347; color: #05060b; box-shadow: 0 0 0 5px rgba(255, 179, 71, 0.25); }
+.readout-mark:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
+@media (pointer: coarse) { .readout-mark { width: 34px; height: 34px; font-size: 0.8rem; } }
+.readout-list { display: grid; gap: 0.25rem; }
+.readout-item { display: grid; grid-template-columns: 2rem minmax(0, 1fr); align-items: center; gap: 0.75rem; width: 100%; padding: 0.6rem 0.5rem; border-radius: 10px; text-align: left; transition: background-color 0.15s ease; }
+.readout-item:hover { background: rgba(255, 255, 255, 0.05); }
+.readout-item:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.readout-num-chip { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 999px; border: 1px solid #ffb347; color: #ffb347; font-family: var(--font-mono); font-size: 0.75rem; }
+.readout-panel { padding: 1.1rem 1.2rem 1.25rem; border: 1px solid rgba(141, 255, 107, 0.35); border-radius: 14px; background: rgba(6, 10, 16, 0.94); }
+.readout-back { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.6rem 0.3rem 0.4rem; border-radius: 999px; font-size: 0.875rem; color: var(--text); }
+.readout-back:hover { background: rgba(255, 255, 255, 0.06); }
+.readout-back:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .rebel-medal { animation: none; } }
+.ds-ring-big { animation-duration: 2.2s; }
+  /* a taller screen on phones, so the trench has room */
+@media (max-width: 639px) {
+  .trench-screen { aspect-ratio: 4 / 3; }
+}
+@media (max-width: 519px) { .trench-screen { aspect-ratio: 1 / 1; } }
+/* the Death Star hero in WebGL: the whole hero's backdrop, edge to edge,
+   fading into the page at the bottom; the SVG keeps only its label */
+.ds-gl { position: absolute; top: 0; bottom: 0; left: 50%; width: 100vw; transform: translateX(-50%); pointer-events: none; -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 80%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0, #000 80%, transparent 100%); }
+.ds-gl canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.8s ease; }
+.ds-gl canvas[data-on] { opacity: 1; }
+.ds-hero > :not(.ds-gl) { position: relative; z-index: 1; }
+.ds-stage[data-gl] > svg > :not(text) { visibility: hidden; } /* 3D on its way or on: never the SVG first */
+.ds-stage[data-gl]:not([data-gl='on']) > svg { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) { .ds-gl canvas { transition: none; } }

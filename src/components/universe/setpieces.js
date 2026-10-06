@@ -10,19 +10,31 @@
 // - A comet: a bright head in a glowing coma, a straight blue ion tail and a
 //   broader, curving dust tail, both streaming away from the sun, crossing
 //   the sky well away from you.
+// - A solar flare: the nearest star swells and blazes over a few seconds,
+//   then a shell of light runs out from it across the map, through you (the
+//   scene takes the shields and scrambles the HUD as it passes: `arrives`).
+// - A rift: a tear in space ahead of you and off to one side, a swirling
+//   tunnel of blue-white light that opens, holds for a while and closes. Fly
+//   into it and the scene takes you out of it somewhere else on the map.
 //
 // createSetPieces(parent, { small }) → { destroyer(ship) → { hangar } | null, leave(),
-//   portals(points), comet(ship), update(dt, t, camera) → busy, dispose() }
+//   portals(points), comet(ship), flare(star, ship) → { arrives } | null,
+//   rift(ship) → boolean, riftAt, riftInside(ship), closeRift(),
+//   update(dt, t, camera) → busy, dispose() }
 // Everything is in `parent`'s space (the map's).
 
 import * as THREE from 'three';
 import { createFleet } from './glbFleet';
 import { forward } from './ship';
+import { RIFT_R, riftSpot } from './nav';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
 
 const STAR_DESTROYER = 16; // map units long
 const STAY = 55; // seconds it stays before jumping away
 const JUMP = 0.7; // seconds to come out of (or go into) hyperspace
+const FLARE_RISE = 3; // seconds the star swells before the shell leaves it
+const FLARE_SPEED = 150; // map units a second the shell runs out at
+const RIFT = { r: RIFT_R, open: 0.6, life: 20 }; // its radius (nav.js picks where it opens), how long it takes to open (and close), and how long it holds
 
 const PORTAL_FRAG = `
 uniform float uT;
@@ -35,6 +47,19 @@ void main() {
   gl_FragColor = vec4(c.rgb * 1.6, c.a);
 }`;
 const UV_VERT = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
+
+// the rift: the portal's swirl, its greens turned blue-white and hotter
+const RIFT_FRAG = `
+uniform float uT;
+uniform float uOpen;
+varying vec2 vUv;
+${SWIRL_GLSL}
+void main() {
+  vec4 c = portal((vUv * 2.0 - 1.0) * 1.22, uT, uOpen, 11.0);
+  if (c.a < 0.004) discard;
+  vec3 col = vec3(c.g * 0.55 + c.r * 0.3, c.g * 0.8, c.g * 1.25 + c.b * 0.4) * 1.5;
+  gl_FragColor = vec4(col, c.a);
+}`;
 
 // the comet's tails: a long strip that turns to face the camera about its
 // own length, bright at the head, fading and widening along it, the edges
@@ -162,6 +187,24 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
   parent.add(comet);
   const flight = { age: 0, life: 0, from: new THREE.Vector3(), vel: new THREE.Vector3() };
 
+  // the flare: the star's glare, and the shell running out from it
+  const flareGlow = new THREE.Sprite(keep(new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(1, 1, 1), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })));
+  flareGlow.visible = false;
+  parent.add(flareGlow);
+  const flareShell = new THREE.Mesh(keep(new THREE.SphereGeometry(1, small ? 32 : 48, small ? 20 : 32)), keep(new THREE.MeshBasicMaterial({ color: new THREE.Color(1, 1, 1), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })));
+  flareShell.visible = false;
+  flareShell.frustumCulled = false;
+  parent.add(flareShell);
+  const fl = { age: -1, star: null, arrives: 0, reach: 0 };
+
+  // the rift
+  const riftMat = keep(new THREE.ShaderMaterial({ vertexShader: UV_VERT, fragmentShader: RIFT_FRAG, uniforms: { uT: { value: 0 }, uOpen: { value: 0 } }, transparent: true, premultipliedAlpha: true, depthWrite: false, side: THREE.DoubleSide }));
+  const rift = new THREE.Mesh(portalGeo, riftMat);
+  rift.visible = false;
+  rift.userData.age = -1;
+  parent.add(rift);
+  const riftOpen = (age) => (age < RIFT.open ? age / RIFT.open : age < RIFT.life - RIFT.open ? 1 : Math.max(0, (RIFT.life - age) / RIFT.open));
+
   const q = new THREE.Quaternion();
   const cam = new THREE.Vector3();
   const tmp = new THREE.Vector3();
@@ -222,6 +265,58 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
         m.userData.age = 0;
         m.visible = true;
       });
+    },
+
+    // the star flares: its glare swells for FLARE_RISE seconds, then a shell
+    // of light runs out from it at FLARE_SPEED. Returns when the shell
+    // reaches the ship (seconds from now), or null while one's still going
+    flare(star, ship) {
+      if (fl.age >= 0) return null;
+      const dist = Math.hypot(ship.x - star.at[0], ship.y - star.at[1], ship.z - star.at[2]);
+      fl.star = star;
+      fl.arrives = Math.max(FLARE_RISE, FLARE_RISE + (dist - star.r) / FLARE_SPEED);
+      fl.reach = Math.max(dist * 1.3, star.r * 6);
+      fl.age = 0;
+      const c = new THREE.Color(star.color);
+      flareGlow.material.color.copy(c).multiplyScalar(2.5);
+      flareGlow.position.set(...star.at);
+      flareGlow.material.opacity = 0;
+      flareGlow.visible = true;
+      flareShell.material.color.copy(c).multiplyScalar(1.6);
+      flareShell.material.opacity = 0;
+      flareShell.position.set(...star.at);
+      flareShell.visible = false;
+      return { arrives: fl.arrives };
+    },
+    get flareGoing() {
+      return fl.age >= 0;
+    },
+
+    // a rift tears open ahead of you and to one side, at your height, if
+    // there's room for it clear of anything solid; false if not (or if one's
+    // already open)
+    rift(ship) {
+      if (rift.userData.age >= 0) return false;
+      const spot = riftSpot(ship);
+      if (!spot) return false;
+      rift.position.set(...spot);
+      rift.userData.age = 0;
+      rift.scale.setScalar(0.01);
+      rift.visible = true;
+      return true;
+    },
+    // where the rift is while it's open, or null
+    get riftAt() {
+      return rift.visible && rift.userData.age >= 0 ? rift.position : null;
+    },
+    // the ship's in it (it's open enough, and the ship's inside its ring)
+    riftInside(ship) {
+      if (!rift.visible || riftOpen(rift.userData.age) < 0.9) return false;
+      return Math.hypot(ship.x - rift.position.x, ship.y - rift.position.y, ship.z - rift.position.z) < RIFT.r * 0.8;
+    },
+    // close it now (the ship's been through)
+    closeRift() {
+      if (rift.visible) rift.userData.age = Math.max(rift.userData.age, RIFT.life - RIFT.open);
     },
 
     // a comet across the sky, well away from you, crossing your view
@@ -293,6 +388,46 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
         m.scale.setScalar(1.3 * (0.3 + 0.7 * open));
         face(m, camera);
         if (a > 2.1) m.visible = false;
+      }
+
+      if (fl.age >= 0) {
+        busy = true;
+        fl.age += dt;
+        const age = fl.age;
+        const star = fl.star;
+        if (age < FLARE_RISE) {
+          const k = age / FLARE_RISE;
+          flareGlow.scale.setScalar(star.r * (1.2 + 2.3 * k * k) * 2);
+          flareGlow.material.opacity = Math.min(1, age / 0.6);
+        } else {
+          flareGlow.material.opacity = Math.exp(-(age - FLARE_RISE) * 0.8);
+          flareGlow.scale.setScalar(star.r * 3.5 * 2);
+          const radius = star.r + (age - FLARE_RISE) * FLARE_SPEED;
+          if (radius >= fl.reach) {
+            fl.age = -1;
+            flareGlow.visible = false;
+            flareShell.visible = false;
+          } else {
+            flareShell.visible = true;
+            flareShell.scale.setScalar(radius);
+            flareShell.material.opacity = 0.22 * (1 - radius / fl.reach);
+          }
+        }
+      }
+
+      if (rift.visible) {
+        busy = true;
+        rift.userData.age += dt;
+        const age = rift.userData.age;
+        const open = riftOpen(age);
+        riftMat.uniforms.uOpen.value = open;
+        riftMat.uniforms.uT.value = t;
+        rift.scale.setScalar(RIFT.r * 2 * (0.3 + 0.7 * open));
+        face(rift, camera);
+        if (age > RIFT.life) {
+          rift.visible = false;
+          rift.userData.age = -1;
+        }
       }
 
       if (comet.visible) {

@@ -9,6 +9,7 @@ import { openPalette } from '../lib/palette';
 import { setSound, soundOn } from '../lib/audio';
 import { COUNTRY_COUNT, PLACES } from '../data/places';
 import { education, profile, skills } from '../data/profile';
+import { DESTINATIONS, findDestination } from '../components/universe/nav';
 import { roles, fmtShortRange, fmtMonth } from '../data/roles';
 import { projects } from '../data/projects';
 import { useDocumentTitle } from '../lib/hooks';
@@ -80,6 +81,8 @@ const HELP = [
   L('  contact          email, GitHub, LinkedIn', 'out', 19),
   L('  resume           open the interactive résumé  (resume pdf downloads it)', 'out', 19),
   L('  places           everywhere I have travelled', 'out', 19),
+  L('  universe         everywhere on the universe map: stations, worlds, wonders, star systems', 'out', 19),
+  L('  fly <place>      open the universe map there   (try: fly aurelia, fly hoth, fly avengers)', 'out', 19),
   L('  github           live stats from the GitHub API', 'out', 19),
   L('  achievements     what you have unlocked', 'out', 19),
   L('  clear            clear the screen', 'out', 19),
@@ -410,7 +413,7 @@ export default function Terminal() {
       ls: () => [L('  about.txt  experience/  projects/  resume.pdf  deathstar.plans')],
       neofetch: () => [
         BLANK,
-        ...box(['tilakpatell.com', 'React 18 · Vite · Tailwind', `theme: ${THEMES[active].company}`, `uptime: ${Math.round((Date.now() - started.current) / 1000)}s`], boxWidth()),
+        ...box(['tilakpatell.com', 'React 19 · Vite · Tailwind', `theme: ${THEMES[active].company}`, `uptime: ${Math.round((Date.now() - started.current) / 1000)}s`], boxWidth()),
       ],
       order66: () => {
         unlock('order66');
@@ -427,6 +430,24 @@ export default function Terminal() {
       deathstar: () => {
         setTimeout(() => navigate('/deathstar'), 500);
         return [L('  Retrieving the Death Star plans…', 'ok')];
+      },
+      universe: () => [
+        BLANK,
+        L(`  THE UNIVERSE MAP: ${DESTINATIONS.length} places`, 'head'),
+        ...DESTINATIONS.map((d) => L(`  ${pad(d.via ? d.id.slice(4) : d.id, 14)}${pad(d.type, 26)}${d.name}`)),
+        BLANK,
+        L("  Go: 'fly <place>' (by id or name), or 'map' for the whole thing", 'dim'),
+      ],
+      map: () => {
+        setTimeout(() => navigate('/universe'), 400);
+        return [L('  Opening the universe map…', 'ok')];
+      },
+      fly: (arg) => {
+        if (!arg) return [L("  fly where? Try 'universe' for the list.", 'err')];
+        const d = findDestination(arg);
+        if (!d) return [L(`  ${arg}: nowhere on the map. Try 'universe' for the list.`, 'err')];
+        setTimeout(() => navigate(d.via ? d.to : `/universe/${d.id}`), 400);
+        return [L(`  ${d.via ? 'Through the gate to' : 'Setting course for'} ${d.name} (${d.type.toLowerCase()})…`, 'ok')];
       },
       galaxy: (arg) => {
         // galaxy hoth: straight there, out of hyperspace
@@ -564,10 +585,13 @@ export default function Terminal() {
       const next = cursor - 1;
       setCursor(Math.max(-1, next));
       setInput(next >= 0 ? history[history.length - 1 - next] : '');
-    } else if (e.key === 'Tab') {
-      e.preventDefault();
+    } else if (e.key === 'Tab' && !e.shiftKey && input.trim()) {
+      // completes a command; with nothing to complete (or Shift+Tab) it moves
+      // focus, as Tab does everywhere else, so a keyboard can leave the terminal
       const names = [...Object.keys(commands()), 'clear', 'echo', 'history', 'cat', 'open'];
       const hits = names.filter((n) => n.startsWith(input.toLowerCase()) && n !== input.toLowerCase());
+      if (!hits.length) return;
+      e.preventDefault();
       if (hits.length === 1) setInput(`${hits[0]} `);
       else if (hits.length > 1) print([L(`${PROMPT} ${input}`, 'cmd'), L(`  ${hits.sort().join('  ')}`, 'dim')]);
     } else if (e.key === 'l' && e.ctrlKey) {

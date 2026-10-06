@@ -18,6 +18,8 @@ import { FLY, PLANK, SIDE, TROLL, WATCHER, grab, newDash, newFlight, newPlank, n
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './moria.css';
+import '../../../../styles/lazy/middleearth.css';
+import GuideCue from '../../../guide/GuideCue';
 
 // Moria, the fifth town on the road: the Doors of Durin by moonlight, the
 // long dark, Balin's tomb, the cave troll, and the Bridge of Khazad-dûm.
@@ -896,7 +898,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           </button>
         </div>
       )}
-      {gl === 'on' && walking && !hud.moved && !here && <p className="shire-hint">{touch ? 'Drag the stick to walk. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}</p>}
+      {gl === 'on' && walking && !hud.moved && !here && <p className="shire-hint">{touch ? 'Drag the stick to walk. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}<GuideCue touch={touch} /></p>}
 
       {node && <Convo title="Moria" name={SPEAKERS[node.who] ?? ''} node={node} touch={touch} onPick={(i) => talkOnward(i)} onNext={() => talkOnward()} />}
 

@@ -26,6 +26,7 @@ import Ticket from './Ticket';
 import View3D from './View3D';
 import { BreakStation, BuildStation, CookStation, PackStation } from './Stations';
 import { buzz, useKeys } from './keys';
+import '../../../styles/lazy/albuquerque.css';
 
 // Walt's Metherria: a Papa's Freezeria for the show's blue, in 3D. Customers
 // come to the hatch through the shift with an order each. Take it, then

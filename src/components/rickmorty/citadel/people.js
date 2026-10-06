@@ -7,6 +7,8 @@
 
 import * as THREE from 'three';
 import { createMeshyCast } from '../portal/meshyCast';
+import { defaultLook } from '../wardrobe/looks';
+import { bodyAsset, bodyKind, dress, withWardrobe } from '../wardrobe/wear';
 import { CAST, CROWD_LOOPS, RICK, castFor } from './layout';
 
 // kind → the model and how tall it stands, in metres
@@ -67,9 +69,16 @@ function along(loop, lengths, total, s) {
 
 // places: { council: [{ x, y, z, face }], workers: [...] } in their rooms'
 // own frames; parents: the concourse and the two rooms
-export async function createPeople({ outdoors, factory, council, places, tier = 'high' }) {
-  const meshy = createMeshyCast({ kinds: KINDS, rigged: RIGGED, cull: true });
-  await Promise.all([meshy.load(null, SITTERS, { clips: ['idle', 'walk', 'run', 'sit'] }), meshy.load(null, ASSETS, { clips: ['idle', 'walk', 'run'] })]);
+// look: the wardrobe's Rick (looks.js), the one you walk about as
+export async function createPeople({ outdoors, factory, council, places, tier = 'high', look = null }) {
+  const meshy = createMeshyCast(withWardrobe({ kinds: KINDS, rigged: RIGGED, cull: true }));
+  let rickLook = look ?? defaultLook('rick');
+  const loads = new Map(); // (a body's model, loaded once)
+  const need = (asset, clips) => {
+    if (!loads.has(asset)) loads.set(asset, meshy.load(null, [asset], { clips }));
+    return loads.get(asset);
+  };
+  await Promise.all([...SITTERS.map((a) => need(a, ['idle', 'walk', 'run', 'sit'])), ...ASSETS.map((a) => need(a, ['idle', 'walk', 'run'])), need(bodyAsset(rickLook), ['idle', 'walk', 'run', 'sit'])]);
 
   const all = [];
   const make = (kind, parent, variant = 0) => {
@@ -90,7 +99,9 @@ export async function createPeople({ outdoors, factory, council, places, tier = 
     f.sitting = true;
   };
 
-  const rick = make('rick', outdoors);
+  // Rick C-137, as the wardrobe has him
+  let rick = make(bodyKind(rickLook), outdoors) ?? make('rick', outdoors);
+  let undress = dress(rick, rickLook);
   const cast = new Map();
   for (const c of CAST) {
     const f = make(c.kind, outdoors);
@@ -252,5 +263,49 @@ export async function createPeople({ outdoors, factory, council, places, tier = 
     meshy.dispose();
   };
 
-  return { rick, cast, mortys, cops, council: councilFigs, workers, crowd, update, headOf, dispose };
+  // a new look from the wardrobe: Rick made again in it, where he was
+  const setRick = async (next) => {
+    if (!next || JSON.stringify(next) === JSON.stringify(rickLook)) return;
+    rickLook = next;
+    await need(bodyAsset(next), ['idle', 'walk', 'run', 'sit']);
+    if (rickLook !== next) return;
+    const fresh = make(bodyKind(next), outdoors);
+    if (!fresh) return;
+    undress();
+    if (rick) {
+      fresh.group.position.copy(rick.group.position);
+      fresh.group.rotation.copy(rick.group.rotation);
+      fresh.group.visible = rick.group.visible;
+      rick.group.removeFromParent();
+      all.splice(all.indexOf(rick), 1);
+    }
+    rick = fresh;
+    undress = dress(rick, next);
+  };
+
+  // a Rick for someone else online here (the scene's ghosts): not one of the
+  // cast, and posed by `step(t, move)` (0 still … 1 running); its mesh and
+  // materials are the cast's to dispose, not the ghost's
+  const other = (kind = 'rick') => {
+    const f = meshy.make(kind);
+    if (!f) return null;
+    return { f, step: (t, move) => animate(f, t, move, null), stop: () => f.mixer?.stopAllAction() };
+  };
+
+  return {
+    get rick() {
+      return rick;
+    },
+    other,
+    setRick,
+    cast,
+    mortys,
+    cops,
+    council: councilFigs,
+    workers,
+    crowd,
+    update,
+    headOf,
+    dispose,
+  };
 }

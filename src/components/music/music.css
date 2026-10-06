@@ -72,6 +72,7 @@
 .raga-list button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 .raga-list-name { font-weight: 600; font-size: 0.95rem; }
 .raga-list-meta { font-size: 0.75rem; opacity: 0.72; }
+.raga-list button[aria-pressed='true'] .raga-list-meta { opacity: 0.92; }
 .raga-card { padding: 1.25rem 1.35rem; }
 .raga-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.55rem 1rem; margin-top: 1rem; align-items: center; }
 .raga-facts dt { font-size: 0.8rem; color: var(--muted); }

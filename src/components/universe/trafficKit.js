@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { sharpen } from '../../lib/three/textures';
 
 const { PI, sin, cos, hypot } = Math;
 
@@ -285,7 +286,7 @@ export function canvasTexture(size, draw) {
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = THREE.RepeatWrapping;
   t.wrapT = THREE.RepeatWrapping;
-  t.anisotropy = 4;
+  sharpen(t);
   return t;
 }
 export const grey = (v) => {

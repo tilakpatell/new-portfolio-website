@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import '../../styles/lazy/avengers.css';
 
 // Tony Stark's arc reactor, the triangle one from Iron Man 2, inside a HUD.
 // `power` 0–3 brightens the core; `blast` (a counter) fires a repulsor ring.

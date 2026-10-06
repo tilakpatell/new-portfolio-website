@@ -16,6 +16,7 @@
 // online/protocol.js sends what's fitted (only ids from here are believed).
 
 import { PAINTS, STOCK, isOpen as paintOpen, parsePaint } from './paint';
+import { statsOfBuild } from './shipyard/build';
 
 export { STOCK };
 export const LOADOUT_KEY = 'tp-universe-loadout';
@@ -161,14 +162,20 @@ const fitted = (loadout) => PARTS_SLOTS.map((slot) => partById(slot, loadout[slo
 // How much power a loadout draws, and how much its parts weigh.
 export const powerOf = (loadout) => fitted(loadout).reduce((n, p) => n + p.power, 0);
 export const massOf = (loadout) => fitted(loadout).reduce((n, p) => n + p.mass, 0);
-export const fits = (kind, loadout) => powerOf(loadout) <= (PLANT[kind] ?? 0);
+// A garage build (shipyard/build.js) flown in place of the ship's own hull
+// brings its own plant, and its modules draw from it too.
+export const capacityOf = (kind, build = null) => (build ? statsOfBuild(build).plant : (PLANT[kind] ?? 0));
+const buildDraw = (build) => (build ? statsOfBuild(build).power : 0);
+export const fits = (kind, loadout, build = null) => powerOf(loadout) + buildDraw(build) <= capacityOf(kind, build);
 
 // What a loadout does to the ship, as multipliers on how it flies as it
 // comes (1 each, for the factory's): { boost, accel, cruise, agility, level }
 // for ship.js's tune, { cadence, punch, bolt } for the guns, { armor, regen,
 // delay } for the shields, and its mass, power and the plant's capacity.
-export function statsOf(kind, loadout = STOCK_LOADOUT) {
-  const s = { boost: 1, accel: 1, cruise: 1, agility: 1, level: 1, cadence: 1, punch: 1, bolt: 1, armor: 1, regen: 1, delay: 5 };
+// On a garage build, the build's own numbers are what it does as it comes.
+export function statsOf(kind, loadout = STOCK_LOADOUT, build = null) {
+  const own = build ? statsOfBuild(build) : null;
+  const s = { boost: own?.boost ?? 1, accel: own?.accel ?? 1, cruise: own?.cruise ?? 1, agility: own?.agility ?? 1, level: own?.level ?? 1, cadence: 1, punch: 1, bolt: 1, armor: 1, regen: 1, delay: 5 };
   for (const p of fitted(loadout)) {
     for (const k of ['boost', 'accel', 'cruise', 'agility', 'level']) s[k] += p[k] ?? 0;
     for (const k of ['cadence', 'armor', 'regen']) s[k] *= p[k] ?? 1;
@@ -176,19 +183,19 @@ export function statsOf(kind, loadout = STOCK_LOADOUT) {
     s.bolt = Math.max(s.bolt, p.bolt ?? 1);
     s.delay = Math.min(s.delay, p.delay ?? 5);
   }
-  const mass = massOf(loadout);
+  const mass = massOf(loadout) + (own?.mass ?? 0);
   s.agility /= 1 + MASS_K * mass;
-  return { ...s, mass, power: powerOf(loadout), capacity: PLANT[kind] ?? 0 };
+  return { ...s, mass, power: powerOf(loadout) + (own?.power ?? 0), capacity: capacityOf(kind, build) };
 }
 
 // The loadout a ship flies with: what was fitted to it, each part only
 // while it's still open, and, should it ever need more power than the ship
 // makes, parts coming off (the hungriest first) until it doesn't.
-export function loadoutOf(saved, ship, unlocked = []) {
+export function loadoutOf(saved, ship, unlocked = [], build = null) {
   if (!ship) return { ...STOCK_LOADOUT };
   const l = readLoadout(saved?.[ship]);
   for (const slot of SLOTS) if (!isOpen(partById(slot, l[slot]), unlocked)) l[slot] = STOCK;
-  while (!fits(ship, l)) {
+  while (!fits(ship, l, build)) {
     const hungriest = PARTS_SLOTS.filter((slot) => l[slot] !== STOCK).sort((a, b) => partById(b, l[b]).power - partById(a, l[a]).power)[0];
     if (!hungriest) break;
     l[hungriest] = STOCK;
@@ -196,15 +203,24 @@ export function loadoutOf(saved, ship, unlocked = []) {
   return l;
 }
 
+// The parts fitted (as saved) that the ship flies without: the ones the
+// plant can't run (or not earned), for the hangar to say so.
+export const droppedParts = (saved, flown) => PARTS_SLOTS.filter((slot) => saved?.[slot] && saved[slot] !== STOCK && flown[slot] !== saved[slot]).map((slot) => partById(slot, saved[slot]));
+
+// What to keep after fitting a part: the saved loadout with it in (not the
+// one flown, which a smaller plant may have taken parts off: a bigger one
+// gets them back).
+export const fitInto = (saved, slot, id) => ({ ...readLoadout(saved), [slot]: id });
+
 // Fitting a part: the new loadout, or why it won't go: 'locked' (not
 // earned yet) or 'power' (the ship can't run it with what else is fitted;
 // `short` says by how many MW).
-export function equip(kind, loadout, slot, id, unlocked = []) {
+export function equip(kind, loadout, slot, id, unlocked = [], build = null) {
   const p = partById(slot, parsePart(slot, id));
   if (!p) return { ok: false, reason: 'unknown', loadout };
   if (!isOpen(p, unlocked)) return { ok: false, reason: 'locked', loadout };
   const next = { ...loadout, [slot]: p.id };
-  if (!fits(kind, next)) return { ok: false, reason: 'power', short: powerOf(next) - (PLANT[kind] ?? 0), loadout };
+  if (!fits(kind, next, build)) return { ok: false, reason: 'power', short: powerOf(next) + buildDraw(build) - capacityOf(kind, build), loadout };
   return { ok: true, loadout: next };
 }
 
@@ -242,8 +258,8 @@ const BEST = (() => {
   walk(0, { ...STOCK_LOADOUT });
   return best;
 })();
-export function readout(kind, loadout) {
-  return Object.entries(measures(statsOf(kind, loadout))).map(([id, value]) => ({ id, value, bar: Math.min(1, value / BEST[id]), change: Math.round((value - 1) * 100) }));
+export function readout(kind, loadout, build = null) {
+  return Object.entries(measures(statsOf(kind, loadout, build))).map(([id, value]) => ({ id, value, bar: Math.min(1, value / BEST[id]), change: Math.round((value - 1) * 100) }));
 }
 // What a part does, in words, for the hangar's list: ['Boost +25%', …].
 const pct = (v) => `${v > 0 ? '+' : '−'}${Math.round(Math.abs(v) * 100)}%`;

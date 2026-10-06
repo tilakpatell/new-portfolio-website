@@ -8,10 +8,12 @@ export const WORLDS = UNIVERSES.filter((u) => u.world).flatMap((u) => [{ to: u.t
 // What each world downloads when it opens (models, textures, skies,
 // sound), in MB, measured on a phone-sized screen and rounded up: a phone
 // asks before loading the heavy ones (WorldGate, lib/device's worldCheck).
+// A world on the world runtime (src/runtime) says the same in its module's
+// `mb` (its test checks they agree).
 export const WORLD_MB = {
   '/caribbean': 16, // Dead Man's Tide's ships and sea creatures
   '/invincible': 4, // the three HD figures and the city's three skies
-  '/cybertron': 18, // Roll out's cast, scanned ground, rocks and sky, the statues, and Optimus's transformation
+  '/cybertron': 36, // Iacon at war's robots, Metroplex and the city's kit (the world at the top), and below it Roll out's cast, scanned ground, rocks and sky, the statues, and Optimus's transformation
   '/avengers': 11, // the walkable compound's sky, scanned ground and trees, Spider-Man and the people from Sketchfab (each building's game more as you go in)
   '/c-137': 15, // about: the Smiths' street, the house, the school and Blips and Chitz, the Smiths and the cruiser; Portal panic's cast; the Citadel inside, its cast, the Council and the crowd's light copies (partly added up from the files)
   '/albuquerque': 15, // the town's buildings, cars, the RV and the cast, and Metherria's cast and lab

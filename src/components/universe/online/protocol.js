@@ -16,7 +16,9 @@
 //
 // The wire, by action:
 //   hi    { n: name, k: ship kind or null, p: its paint job, o: its parts
-//           (outfit.js), c: kills, w: where on the site }  on joining, and on any change
+//           (outfit.js), b: its garage build (shipyard/build.js's ids) or
+//           none, l: [Rick's look, Morty's] (wardrobe/looks.js's ids) or
+//           none, c: kills, w: where on the site }  on joining, and on any change
 //   pose  [x, y, z, heading, pitch, bank, speed, vy, flags, shields]  ten times a second while flying
 //         (flags: hidden, boosting, and safe: just back, your hits don't count)
 //   shot  [x, y, z, vx, vy, vz, w?]                      a bolt fired (for drawing it); w: the
@@ -42,6 +44,8 @@
 import { parseShip } from '../crews';
 import { FOOT, METRE } from '../foot';
 import { readOutfit } from '../outfit';
+import { readBuildWire } from '../shipyard/build';
+import { WHO, defaultLook, readLookWire } from '../../rickmorty/wardrobe/looks';
 import { byId } from '../universes';
 import { KINDS as HUNTERS } from '../../galaxy/hunted';
 import { fromAngles, slerp, toAngles } from '../orient';
@@ -77,13 +81,24 @@ export const FLAG = { hidden: 1, boost: 2, safe: 4 };
 const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
-// a hello: { name, kind, loadout, kills, where }, or null if it isn't one
-// (a loadout is only ever outfit.js's ids, never a colour or a shape: the
-// factory's for anything else, or from a pilot whose site is older than
-// the hangar)
+// a hello: { name, kind, loadout, build, looks, kills, where }, or null if it
+// isn't one (a loadout is only ever outfit.js's ids, never a colour or a
+// shape: the factory's for anything else, or from a pilot whose site is
+// older than the hangar; a build only ever shipyard/parts.js's modules, or
+// null, the stock ship)
 export function readHello(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
-  return { name: cleanName(data.n) ?? 'Pilot', kind: parseShip(data.k), loadout: readOutfit(data.o, data.p), kills: Math.floor(num(data.c, 0, 9999) ?? 0), where: cleanWhere(data.w) };
+  return { name: cleanName(data.n) ?? 'Pilot', kind: parseShip(data.k), loadout: readOutfit(data.o, data.p), build: readBuildWire(data.b), looks: readLooksWire(data.l), kills: Math.floor(num(data.c, 0, 9999) ?? 0), where: cleanWhere(data.w) };
+}
+
+// their Rick's and Morty's looks, or null (none sent, or nothing that could
+// be one); one that can't be read is as the show has him
+function readLooksWire(data) {
+  if (!Array.isArray(data) || data.length !== WHO.length) return null;
+  const out = Object.fromEntries(WHO.map((who, i) => [who, readLookWire(who, data[i])]));
+  if (WHO.every((who) => !out[who])) return null;
+  for (const who of WHO) out[who] ??= defaultLook(who);
+  return out;
 }
 
 export const writeCursor = (x, y, touch = false) => [Math.round(x), Math.round(y), touch ? 1 : 0];
@@ -269,7 +284,8 @@ export function readFoot(data) {
 export const WALK_MS = 100;
 const RIDES_SEEN = ['landspeeder', 'speederbike', 'tauntaun', 'kaadu', 'bantha']; // galaxy/surface/rides.js's
 const r2 = (v) => Math.round((v || 0) * 100) / 100;
-const writeStroller = (w) => (w ? [w.who, r2(w.x), r2(w.y), r2(w.z), r2(wrap(w.yaw || 0)), r2(w.speed)] : null);
+// (the gun up, 0…1, last: an older reader stops at the speed)
+const writeStroller = (w) => (w ? [w.who, r2(w.x), r2(w.y), r2(w.z), r2(wrap(w.yaw || 0)), r2(w.speed), Math.round((w.aim || 0) * 100) / 100] : null);
 export function writeWalk(w) {
   if (!w) return { w: null };
   return { w: w.world, k: w.kind, a: writeStroller(w.lead), b: writeStroller(w.mate), r: w.ride ?? null };
@@ -279,7 +295,7 @@ const readStroller = (data) => {
   const [x, y, z] = [num(data[1], -10000, 10000), num(data[2], -3000, 3000), num(data[3], -10000, 10000)];
   const yaw = num(data[4], -7, 7);
   if (x === null || y === null || z === null || yaw === null) return null;
-  return { who: data[0], x, y, z, yaw: wrap(yaw), speed: num(data[5], -80, 80) ?? 0 };
+  return { who: data[0], x, y, z, yaw: wrap(yaw), speed: num(data[5], -80, 80) ?? 0, aim: num(data[6], 0, 1) ?? 0 };
 };
 // a crew down on a world as it came in: { world, kind, lead, mate, ride },
 // { off: true } (back in their ship), or null if it isn't one

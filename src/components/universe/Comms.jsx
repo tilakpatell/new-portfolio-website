@@ -1,7 +1,7 @@
 import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { linesFor } from './crews';
 import { playClip } from '../../lib/clips';
-import { alarmSound, arrivalSound, boomSound, boostSound, bumpSound, crashSound, drySound, enemyFireSound, fallSound, fireSound, flybySound, hitSound, interdictSound, jumpSound, launchSound, popSound, portalSound, respawnSound, shieldSound, speak, switchSound } from './sounds';
+import { alarmSound, arrivalSound, boomSound, boostSound, bumpSound, crashSound, drySound, enemyFireSound, fallSound, fireSound, flareSound, flybySound, gunSound, hitSound, impactSound, interdictSound, jumpSound, launchSound, popSound, portalSound, respawnSound, riftSound, shieldSound, speak, switchSound } from './sounds';
 import Face from './Faces';
 
 // The ship's comms: what the crew says as you fly, one line at a time with
@@ -159,8 +159,13 @@ export default function Comms({ crew, reduced, control }) {
           said.current.add('idle');
           say(linesFor(crew, 'idle'));
         } else if (e.type === 'fire') {
-          if (e.weapon === 'heavy') launchSound(crew?.id);
+          // on foot, the gun in hand (yours, or your crewmate's further off); in the ship, its guns
+          if (e.gun) {
+            if (soundOnce(e.soft ? 'mateFire' : 'fire', 90, now)) gunSound(e.gun, { soft: e.soft });
+          } else if (e.weapon === 'heavy') launchSound(crew?.id);
           else if (soundOnce('fire', 150, now)) fireSound(crew?.id);
+        } else if (e.type === 'impact') {
+          if (soundOnce('impact', 70, now)) impactSound(e.near);
         } else if (e.type === 'weapon') {
           switchSound();
         } else if (e.type === 'dry') {
@@ -212,8 +217,10 @@ export default function Comms({ crew, reduced, control }) {
           say(linesFor(crew, e.type), { urgent: true });
         } else if (e.type === 'event') {
           if (e.id === 'destroyer') jumpSound();
+          else if (e.id === 'flare') flareSound();
+          else if (e.id === 'rift') riftSound();
           if (e.id === 'leave') jumpSound(true);
-          else say(linesFor(crew, 'event', e.id), { urgent: e.id !== 'convoy' && e.id !== 'comet' });
+          else say(linesFor(crew, 'event', e.id, e.sub), { urgent: e.id !== 'convoy' && e.id !== 'comet' });
         } else if (e.type === 'foot') {
           // on foot: down onto a planet and out, the squads, and back in
           if (e.id === 'kill') {

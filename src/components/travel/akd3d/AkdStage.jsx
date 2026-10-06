@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { PHOTOS } from '../../../data/photos';
 import { useScene } from '../../../lib/three/useScene';
 import './akd3d.css';
+import '../../../styles/lazy/travel.css';
 
 const load = () => import('./scene');
 

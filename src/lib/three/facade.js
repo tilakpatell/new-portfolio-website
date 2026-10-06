@@ -10,7 +10,11 @@ import * as THREE from 'three';
 // what a building's walls are (its style's first number)
 export const KIND = { glass: 0, stone: 1, brick: 2 };
 
-export function facadeMaterial(uniforms = { uNight: { value: 0 } }) {
+// `space`: 'world' (the walls drawn from where they are in the world) or
+// 'local' (from where they are in the field's own space: towers in a group
+// scaled or tilted, as a planet's landing stands them)
+export function facadeMaterial(uniforms = { uNight: { value: 0 } }, { space = 'world' } = {}) {
+  const local = space === 'local';
   const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0 });
   m.onBeforeCompile = (shader) => {
     shader.uniforms.uNight = uniforms.uNight;
@@ -20,9 +24,9 @@ export function facadeMaterial(uniforms = { uNight: { value: 0 } }) {
         '#include <project_vertex>',
         `#include <project_vertex>
         {
-          mat4 im = modelMatrix;
+          mat4 im = ${local ? 'mat4(1.0)' : 'modelMatrix'};
           #ifdef USE_INSTANCING
-            im = modelMatrix * instanceMatrix;
+            im = ${local ? 'instanceMatrix' : 'modelMatrix * instanceMatrix'};
           #endif
           vCity = (im * vec4(transformed, 1.0)).xyz;
           vCityN = normalize(mat3(im) * objectNormal);
@@ -103,7 +107,7 @@ export function facadeMaterial(uniforms = { uNight: { value: 0 } }) {
         }`,
       );
   };
-  m.customProgramCacheKey = () => 'tm-facade';
+  m.customProgramCacheKey = () => (local ? 'tm-facade-local' : 'tm-facade');
   return m;
 }
 

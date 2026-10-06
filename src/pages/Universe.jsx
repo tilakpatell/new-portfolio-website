@@ -5,12 +5,14 @@ import { audioContext } from '../lib/audio';
 import { byId } from '../components/universe/universes';
 import { parseId } from '../components/universe/layout';
 import { beyondPlan, crashPlan, enterPlan } from '../components/universe/flight';
-import { beyondOf } from '../components/universe/deep';
-import { DRIVE_KEY, parseDrive } from '../components/universe/nav';
+import { beyondOf, parseWonder } from '../components/universe/deep';
+import { DRIVE_KEY, destinationById, distanceTo, parseDrive, tourFrom } from '../components/universe/nav';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
-import { LOADOUT_KEY, equip, loadoutOf, readLoadouts } from '../components/universe/outfit';
+import { LOADOUT_KEY, droppedParts, equip, fitInto, loadoutOf, readLoadouts } from '../components/universe/outfit';
+import { GARAGE_KEY, HULL_KEY, readHulls } from '../components/universe/shipyard/build';
 import { useAchievements } from '../components/Achievements';
-import { START_KEY } from './Front';
+import { saveStart } from '../lib/view';
+import { useView } from '../components/ViewSwitch';
 import { portalSound } from '../components/universe/sounds';
 import UniverseMap from '../components/universe/UniverseMap';
 import UniversePanel from '../components/universe/UniversePanel';
@@ -19,6 +21,8 @@ import StartChoice from '../components/universe/StartChoice';
 import Rain from '../components/universe/Rain';
 import NavMap from '../components/universe/NavMap';
 import Online from '../components/universe/online/Online';
+import Wardrobe from '../components/rickmorty/wardrobe/Wardrobe';
+import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
 import { useOnline } from '../components/universe/online/useOnline';
 
 const PORTAL = '#97ce4c';
@@ -42,26 +46,55 @@ export default function Universe({ ask = false }) {
   const atRoot = useLocation().pathname === '/';
   useDocumentTitle(atRoot ? null : 'The universe'); // the front door keeps the site's own title
   const navigate = useNavigate();
-  const selected = parseId(useParams().id);
+  const param = useParams().id;
+  const selected = parseId(param);
   const universe = byId(selected);
+  // a link out to a wonder (/universe/aurelia): the ship starts parked beside it, and the panel shows it
+  const wonder = parseWonder(param);
+  const wonderDest = wonder ? destinationById(wonder) : null;
   const reduced = useReducedMotion();
   const map = useRef({ live: false, dive: () => 0, escape: () => false, whole: () => false, travel: () => false, where: () => null }); // the 3D map, while it's drawing
   const comms = useRef(null);
   const [ship, setShip] = useState(() => parseShip(local.get(SHIP_KEY)));
   const crew = crewById(ship);
   const online = useOnline(); // (OnlineProvider, above the pages: the link stays up off the map)
-  const { setKind, setLoadout } = online;
+  const { setKind, setLoadout, setBuild: tellBuild } = online;
   useEffect(() => setKind(ship), [setKind, ship]);
   // what each ship's fitted with in the hangar (kept between visits): the
   // paint job and parts it flies with, while they're still earned
   const { unlocked, unlock } = useAchievements();
   const [loadouts, setLoadouts] = useState(() => readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)));
-  const loadout = useMemo(() => loadoutOf(loadouts, ship, unlocked), [loadouts, ship, unlocked]);
+  // and the hull each crew flies: its stock ship, or a garage build from the
+  // hangar's shipyard (shipyard/build.js), kept between visits
+  const [hulls, setHulls] = useState(() => readHulls(local.get(HULL_KEY), CREWS.map((c) => c.id)));
+  const build = (ship && hulls[ship]) || null;
+  // and each crew's last garage build, flown or not, to go back to from stock
+  const [garage, setGarage] = useState(() => readHulls(local.get(GARAGE_KEY), CREWS.map((c) => c.id)));
+  const setBuild = (b) => {
+    if (!ship) return;
+    const next = { ...hulls, [ship]: b };
+    setHulls(next);
+    local.set(HULL_KEY, next);
+    if (b) {
+      const kept = { ...garage, [ship]: b };
+      setGarage(kept);
+      local.set(GARAGE_KEY, kept);
+    }
+  };
+  const loadout = useMemo(() => loadoutOf(loadouts, ship, unlocked, build), [loadouts, ship, unlocked, build]);
+  const dropped = useMemo(() => (ship ? droppedParts(loadouts[ship], loadout) : []), [loadouts, ship, loadout]); // (what the plant can't run)
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
+  useEffect(() => tellBuild?.(build), [tellBuild, build]);
   const [hangar, setHangar] = useState(false);
+  // the wardrobe, from the hangar: how the cruiser's Rick and Morty look
+  const [looks, setLook] = useLooks();
+  const [wardrobe, setWardrobe] = useState(false);
+  const closeWardrobe = useCallback(() => setWardrobe(false), []);
   // the nav map, and the drive picked on it (kept between visits)
   const [charting, setCharting] = useState(false);
   const [drive, setDriveState] = useState(() => parseDrive(local.get(DRIVE_KEY)));
+  const driveRef = useRef(drive); // (for the tour's later legs: the drive as it is then)
+  driveRef.current = drive;
   const setDrive = (d) => {
     const next = parseDrive(d);
     setDriveState(next);
@@ -69,9 +102,9 @@ export default function Universe({ ask = false }) {
   };
   const jumped = useRef(false); // the crew's had their say about a jump this visit
   const fit = (slot, id) => {
-    const r = equip(ship, loadout, slot, id, unlocked);
+    const r = equip(ship, loadout, slot, id, unlocked, build);
     if (r.ok) {
-      const next = { ...loadouts, [ship]: r.loadout };
+      const next = { ...loadouts, [ship]: fitInto(loadouts[ship], slot, r.loadout[slot]) }; // (what the plant took off is kept, for a bigger one)
       setLoadouts(next);
       local.set(LOADOUT_KEY, next);
     }
@@ -87,17 +120,48 @@ export default function Universe({ ask = false }) {
   };
   const timer = useRef(0);
   useEffect(() => () => clearTimeout(timer.current), []);
+  // a trip on through the gate: to a star system picked on the nav map, the
+  // ship flies to the gate, and when it parks there the page goes on in
+  const onward = useRef(null); // { via, to }
+  // the grand tour (nav.js's tourFrom): every place in turn, the crew talking
+  const tour = useRef(null); // { ids, i, timer }
+  const [touring, setTouring] = useState(null); // { i, n, next } for the pill
+  const stopTour = useCallback(() => {
+    if (!tour.current) return;
+    clearTimeout(tour.current.timer);
+    tour.current = null;
+    setTouring(null);
+  }, []);
+  useEffect(() => () => clearTimeout(tour.current?.timer), []);
 
   // out of the cockpit's launch (App's intro, or ⌘K's replay): flying the
-  // ship it was, with no question first
+  // ship it was, with no question first. Sat down in the cockpit with no
+  // ship yet (a first visit), that one's made under it as you sit there
+  // (tp:board, again if you change seats), so the flash comes out on a
+  // ship that's ready; a replay keeps the ship it's flying until the flash.
+  const boarding = useRef(false);
+  const flyingNow = useRef(ship);
+  flyingNow.current = ship;
   useEffect(() => {
     const arrive = (e) => {
+      boarding.current = false;
       const id = parseShip(e.detail?.ship);
       if (id) setShip(id);
       setAsking(false);
     };
+    const board = (e) => {
+      const id = parseShip(e.detail?.ship);
+      if (!id || (flyingNow.current && !boarding.current)) return;
+      boarding.current = true;
+      setShip(id);
+      setAsking(false);
+    };
     window.addEventListener('tp:arrive', arrive);
-    return () => window.removeEventListener('tp:arrive', arrive);
+    window.addEventListener('tp:board', board);
+    return () => {
+      window.removeEventListener('tp:arrive', arrive);
+      window.removeEventListener('tp:board', board);
+    };
   }, []);
 
   const select = useCallback((id) => navigate(id ? `/universe/${id}` : '/universe', { replace: true }), [navigate]);
@@ -108,13 +172,15 @@ export default function Universe({ ask = false }) {
     local.set(SHIP_KEY, id);
   };
 
-  // into a place: the selected one (Enter, E), or a station whose sign was clicked
-  const go = (u) => {
+  // into a place: the selected one (Enter, E), or a station whose sign was
+  // clicked (`to`: somewhere inside it to go on to, a star system through the gate)
+  const go = (u, to = u?.to) => {
     if (!u || leaving) return;
     setCharting(false);
+    stopTour();
     const plan = enterPlan(u, { reduced, three: map.current.live, ship });
     if (plan.mode === 'now') {
-      navigate(u.to);
+      navigate(to);
       return;
     }
     audioContext(); // inside the press, so the way out can sound
@@ -124,9 +190,15 @@ export default function Universe({ ask = false }) {
       map.current.dive(u.id);
     }
     setLeaving({ id: u.id, mode: plan.mode });
-    timer.current = setTimeout(() => navigate(u.to), plan.delay);
+    timer.current = setTimeout(() => navigate(to), plan.delay);
   };
   const enter = () => go(universe);
+  // the nav map's "straight in" for a system: the gate's jump, then the system
+  const enterDest = (id) => {
+    const d = destinationById(id);
+    if (d?.via) go(byId(d.via), d.to);
+    else go(byId(id));
+  };
 
   // flown into a planet or a station too fast: once the crash has played,
   // on into its page, the screen washing out in its colour (true tells the
@@ -154,11 +226,11 @@ export default function Universe({ ask = false }) {
 
   // the front door's choice: fly, or the home page; kept if asked to
   const start = (where, remember) => {
-    if (remember) local.set(START_KEY, where);
+    if (remember) saveStart(where);
     if (where === 'home') navigate('/home');
     else setAsking(false);
   };
-  const startOn = (where) => local.set(START_KEY, where);
+  const { switchTo } = useView();
 
   const whole = () => {
     if (!map.current.whole()) select(null);
@@ -168,6 +240,38 @@ export default function Universe({ ask = false }) {
   // own jump plays over the map: the scene has the ship out at the place
   // under its flash), through a gate, or something for the crew to say
   const onEvent = (e) => {
+    // a trip ended: on through the gate, or the tour's next leg
+    if (e.type === 'arrived' || e.type === 'jumped') {
+      const done = e.type === 'jumped' || e.done;
+      // the trip on through the gate: only an arrival at the gate goes on; any other trip ending forgets it
+      const on = onward.current;
+      if (on) {
+        onward.current = null;
+        if (e.id === on.via && done) go(byId(on.via), on.to);
+      }
+      const t = tour.current;
+      if (t && e.id === t.ids[t.i]) {
+        if (!done) stopTour();
+        else if (t.i + 1 >= t.ids.length) {
+          unlock('grandtour');
+          stopTour();
+        } else {
+          const next = t.ids[t.i + 1];
+          setTouring({ i: t.i + 1, n: t.ids.length, next: destinationById(next)?.name ?? next });
+          t.timer = setTimeout(() => {
+            if (tour.current !== t) return;
+            // (still parked where it arrived? a pilot who flew off in the meantime has the stick)
+            const w = map.current.where?.();
+            if (!w?.ship || (distanceTo(w.ship, t.ids[t.i]) ?? Infinity) > 80) return stopTour();
+            t.i += 1;
+            if (!travel(next, driveRef.current, { tour: true })) stopTour();
+          }, 6000);
+        }
+      }
+    } else if (e.type === 'crash' || e.type === 'destroyed' || e.type === 'rifted') {
+      onward.current = null;
+      stopTour();
+    }
     if (e.type === 'map') setCharting((o) => !o);
     else if (e.type === 'jump') {
       window.dispatchEvent(new Event('tp:hyperspace'));
@@ -179,21 +283,49 @@ export default function Universe({ ask = false }) {
     else if (e.type === 'siege' && e.what === 'down' && e.mine) {
       unlock('citadelfall'); // (you helped bring it down)
       comms.current?.handle(e);
-    } else comms.current?.handle(e);
+    } else if (e.type === 'rifted') unlock('rifted'); // (the crew's line comes as an event of its own)
+    else {
+      if (e.type === 'kill' && e.hunter && (e.kind === 'slave1' || e.kind === 'phoenixperson')) unlock('wanted'); // (a bounty hunter shot down: not Slave I going by as traffic)
+      comms.current?.handle(e);
+    }
   };
 
   // off from the nav map: with a ship, it flies (or jumps) there, and a
   // station or a world is picked too, so the panel shows it; without one
   // (or with the 3D off), the camera takes you to a station or a world
-  const travel = (id, d) => {
+  // (true if the ship's flying there; false with no ship or the 3D off, when the camera goes instead)
+  const travel = (id, d, { tour: onTour = false } = {}) => {
     setDrive(d);
     setCharting(false);
     audioContext(); // inside the press, so the jump and the engine can sound
+    if (!onTour) stopTour();
+    const dest = destinationById(id);
+    const flies = Boolean(ship && map.current.live);
+    // a star system: to the gate, and on through it once the ship's parked there (the camera: just the gate)
+    onward.current = dest?.via && flies ? { via: dest.via, to: dest.to } : null;
+    if (dest?.via) id = dest.via;
     const u = byId(id);
-    if (ship && map.current.live) {
-      map.current.travel(id, d);
+    if (flies) {
+      const going = map.current.travel(id, d);
       select(u ? id : null); // (a wonder has no card: the panel goes back to the map's)
-    } else if (u) select(id);
+      if (!going) onward.current = null;
+      return going;
+    }
+    if (u) select(id);
+    return false;
+  };
+  // the grand tour: every station, world and wonder from here, nearest first
+  // (not the one you're parked at: that's seen)
+  const startTour = () => {
+    const w = map.current.where?.();
+    if (!w?.ship || !ship) return;
+    const ids = tourFrom(w.ship).filter((id) => (distanceTo(w.ship, id) ?? Infinity) > 60);
+    if (!ids.length) return;
+    stopTour();
+    const t = { ids, i: 0, timer: 0 };
+    tour.current = t;
+    if (!travel(ids[0], drive, { tour: true })) return stopTour();
+    setTouring({ i: 0, n: ids.length, next: destinationById(ids[0])?.name ?? ids[0] });
   };
 
   // Escape: back from the map view or the autopilot first, then out of the
@@ -203,6 +335,13 @@ export default function Universe({ ask = false }) {
     const onKey = (e) => {
       if (e.key !== 'Escape' || e.defaultPrevented || leaving) return;
       if (document.querySelector('[aria-modal="true"]')) return;
+      if (tour.current) {
+        // the tour first, and the trip it was on: the ship stays where it is
+        e.preventDefault();
+        stopTour();
+        map.current.escape();
+        return;
+      }
       if (map.current.escape()) {
         e.preventDefault();
         return;
@@ -213,7 +352,7 @@ export default function Universe({ ask = false }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [leaving, selected, select]);
+  }, [leaving, selected, select, stopTour]);
 
   const accent = universe ? { '--accent': universe.accent, '--accent-text': universe.accent, '--btn-bg': universe.accent } : undefined;
   const fade = leaving?.mode === 'portal' ? PORTAL : leaving?.mode === 'beyond' ? '#000' : leaving?.mode === 'dive' || leaving?.mode === 'crash' ? byId(leaving.id).palette.base : undefined;
@@ -233,6 +372,14 @@ export default function Universe({ ask = false }) {
         ship={ship}
         shipName={crew?.ship ?? ''}
         loadout={loadout}
+        build={build}
+        lastBuild={(ship && garage[ship]) || null}
+        dropped={dropped}
+        onBuild={ship ? setBuild : null}
+        onCrew={() => {
+          setHangar(false);
+          setWardrobe(true);
+        }}
         onFit={ship ? fit : null}
         hangar={hangar}
         onHangar={setHangar}
@@ -243,11 +390,25 @@ export default function Universe({ ask = false }) {
         onMap={() => setCharting((o) => !o)}
         onLand={enter}
         onCrash={crashInto}
+        startAt={wonder}
       />
+      {touring && !leaving && (
+        <div className="universe-tour" role="status">
+          <span>
+            Touring, {touring.i + 1} of {touring.n}: next {touring.next}
+          </span>
+          <button type="button" onClick={stopTour}>
+            Stop <kbd>Esc</kbd>
+          </button>
+        </div>
+      )}
       {crew && <Comms control={comms} crew={crew} reduced={reduced} />}
+      <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} who="rick" returnTo=".universe-hangar-btn" />
       {!asking && !leaving && <Online online={online} ship={ship} />}
       <UniversePanel
         universe={universe}
+        wonder={wonderDest}
+        onFly={ship ? (id) => travel(id, drive) : null}
         onSelect={select}
         onEnter={enter}
         onWhole={whole}
@@ -256,7 +417,7 @@ export default function Universe({ ask = false }) {
         loadout={loadout}
         onShip={pickShip}
         onHangar={() => setHangar(true)}
-        onStartOn={startOn}
+        onClassic={() => switchTo('classic')}
         tucked={tucked}
         onTuck={tuck}
         onNav={() => setCharting(true)}
@@ -268,8 +429,9 @@ export default function Universe({ ask = false }) {
           onDrive={setDrive}
           selected={selected}
           live={map.current.live}
-          onTravel={travel}
-          onEnter={(id) => go(byId(id))}
+          onTravel={(id, d) => travel(id, d)}
+          onEnter={enterDest}
+          onTour={startTour}
           onWhole={() => {
             setCharting(false);
             whole();

@@ -10,7 +10,8 @@
 
 import * as THREE from 'three';
 import { merge } from '../kit';
-import { BALES, FORKLIFT, HOOP, RACKS, WAREHOUSE, WH_STAIRS } from './layout';
+import { BALES, FORKLIFT, HOOP, RACKS, WAREHOUSE, WH_PROPS, WH_STAIRS } from './layout';
+import { sharpen } from '../../../lib/three/textures';
 
 const H = 6.2; // to the roof's trusses
 
@@ -39,7 +40,7 @@ function floorTex() {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.anisotropy = 4;
+  sharpen(t);
   return t;
 }
 function signTex(lines, bg, fg, w = 512, h = 256) {
@@ -194,6 +195,7 @@ export function buildWarehouse(kit) {
 
   // ── the racks: blue uprights, orange beams, paper on every level ──
   const boxes = [];
+  const slots = []; // where a pallet stands: [x, y, z, turn]
   {
     const blue = [];
     const orange = [];
@@ -217,12 +219,14 @@ export function buildWarehouse(kit) {
           orange.push(g);
         }
         decks.push(new THREE.BoxGeometry(r.w - 0.1, 0.03, r.d - 0.1).translate(r.x, y + 0.13, r.z));
-        // pallets of paper, a few gaps
+        // pallets of paper, a few gaps: a wooden pallet, cases stacked on it
         for (let i = 0; i < bays * 2; i++) {
           if ((i * 5 + Math.round(y * 3)) % 7 === 3) continue;
           const o = -len / 2 + 0.7 + i * ((len - 1.4) / Math.max(1, bays * 2 - 1));
+          slots.push([along ? r.x + o : r.x, y + 0.145, along ? r.z : r.z + o, along ? 0 : Math.PI / 2]);
+          const high = 2 + ((i * 3 + Math.round(y)) % 2); // two cases high, or three
           for (let k = 0; k < 2; k++)
-            for (let l = 0; l < 3; l++) boxes.push([along ? r.x + o + (k - 0.5) * 0.46 : r.x + (k - 0.5) * 0.32 * 2, y + 0.15 + l * 0.27, along ? r.z + (k - 0.5) * 0.32 : r.z + o + (l % 2 ? 0.05 : 0), along ? 0 : Math.PI / 2]);
+            for (let l = 0; l < high; l++) boxes.push([along ? r.x + o + (k - 0.5) * 0.46 : r.x + (k - 0.5) * 0.32 * 2, y + 0.285 + l * 0.27, along ? r.z + (k - 0.5) * 0.32 : r.z + o + (l % 2 ? 0.05 : 0), along ? 0 : Math.PI / 2]);
         }
       }
     }
@@ -252,6 +256,102 @@ export function buildWarehouse(kit) {
     inst.castShadow = true;
     inst.receiveShadow = true;
     group.add(inst);
+  }
+
+  // ── pallets: a deck of boards on three runners, under every load and
+  // stacked empty by the dock (one instanced draw) ──
+  const palletGeo = (() => {
+    const parts = [];
+    for (let i = 0; i < 5; i++) parts.push(new THREE.BoxGeometry(1.0, 0.022, 0.13).translate(0, 0.129, -0.36 + i * 0.18));
+    for (let i = 0; i < 3; i++) parts.push(new THREE.BoxGeometry(1.0, 0.022, 0.13).translate(0, 0.011, -0.36 + i * 0.36));
+    for (const x of [-0.44, 0, 0.44]) parts.push(new THREE.BoxGeometry(0.1, 0.096, 0.85).translate(x, 0.07, 0));
+    return keep(merge(parts));
+  })();
+  {
+    const stack = WH_PROPS.pallets;
+    for (let i = 0; i < 7; i++) slots.push([stack.x + Math.sin(i * 2.1) * 0.03, -0.0 + i * 0.141, stack.z + Math.cos(i * 1.3) * 0.03, stack.turn + (i % 2) * 0.04 - Math.PI / 2]);
+    const inst = new THREE.InstancedMesh(palletGeo, mat({ color: 0xa47d52, roughness: 0.9 }), slots.length);
+    const m4 = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const up = new THREE.Vector3(0, 1, 0);
+    const one = new THREE.Vector3(1, 1, 1);
+    const v = new THREE.Vector3();
+    slots.forEach(([x, y, z, r], i) => inst.setMatrixAt(i, m4.compose(v.set(x, y, z), q.setFromAxisAngle(up, r), one)));
+    inst.castShadow = true;
+    inst.receiveShadow = true;
+    group.add(inst);
+  }
+  // ── the floor's odds and ends (layout's WH_PROPS) ──
+  {
+    const P = WH_PROPS;
+    const yellow = mat({ color: 0xf2c21a, roughness: 0.5 });
+    const black = mat({ color: 0x1b1c1e, roughness: 0.6 });
+    const steel = mat({ color: 0x7d8186, roughness: 0.4, metalness: 0.7 });
+    // bollards at the dock doors, yellow with a black band
+    for (const [x, z] of P.bollards) {
+      mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.05, 16), yellow, x, 0.525, z);
+      mesh(new THREE.CylinderGeometry(0.102, 0.102, 0.08, 16), black, x, 0.85, z).castShadow = false;
+      mesh(new THREE.SphereGeometry(0.1, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), yellow, x, 1.05, z);
+    }
+    // traffic cones
+    const orange = mat({ color: 0xf26a1b, roughness: 0.55 });
+    const white = mat({ color: 0xf2f2ee, roughness: 0.5 });
+    for (const [x, z] of P.cones) {
+      mesh(new THREE.BoxGeometry(0.36, 0.03, 0.36), orange, x, 0.015, z);
+      mesh(new THREE.CylinderGeometry(0.025, 0.13, 0.62, 18), orange, x, 0.34, z);
+      mesh(new THREE.CylinderGeometry(0.07, 0.093, 0.09, 18), white, x, 0.4, z).castShadow = false;
+    }
+    // the pallet jack: forks, its wheels and the handle up
+    {
+      const j = new THREE.Group();
+      j.position.set(P.jack.x, 0, P.jack.z);
+      j.rotation.y = P.jack.turn;
+      group.add(j);
+      const red = mat({ color: 0xb8222a, roughness: 0.45, metalness: 0.3 });
+      for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(1.15, 0.06, 0.16), red, -0.1, 0.05, s * 0.2, j);
+      mesh(new THREE.BoxGeometry(0.3, 0.32, 0.56), red, 0.55, 0.2, 0, j);
+      mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 10), steel, 0.55, 0.55, 0, j);
+      const handle = mesh(new THREE.BoxGeometry(0.04, 1.0, 0.04), black, 0.7, 0.95, 0, j);
+      handle.rotation.z = -0.18;
+      mesh(new THREE.TorusGeometry(0.12, 0.02, 8, 16), black, 0.8, 1.45, 0, j).rotation.y = Math.PI / 2;
+      for (const s of [-1, 1]) mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.06, 14).rotateX(Math.PI / 2), black, 0.55, 0.09, s * 0.16, j);
+    }
+    // the workbench: a top on legs, a pegboard of tools, a radio and a coffee can of screws
+    {
+      const b = P.bench;
+      const wood = mat({ color: 0x8a6a46, roughness: 0.8 });
+      mesh(new THREE.BoxGeometry(b.w, 0.05, b.d), wood, b.x, 0.92, b.z);
+      mesh(new THREE.BoxGeometry(b.w - 0.1, 0.03, b.d - 0.1), wood, b.x, 0.25, b.z).castShadow = false;
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) mesh(new THREE.BoxGeometry(0.06, 0.92, 0.06), steel, b.x + sx * (b.w / 2 - 0.06), 0.46, b.z + sz * (b.d / 2 - 0.06));
+      mesh(new THREE.BoxGeometry(b.w, 0.8, 0.02), mat({ color: 0xc9b48a, roughness: 0.9 }), b.x, 1.48, z0 + 0.13).castShadow = false; // the pegboard, under the accident sign
+      const tools = [
+        [-1.0, 1.75, 0.04, 0.45, steel],
+        [-0.8, 1.7, 0.18, 0.05, mat({ color: 0xb8222a, roughness: 0.4 })],
+        [-0.55, 1.8, 0.05, 0.32, black],
+        [-0.3, 1.6, 0.22, 0.04, steel],
+        [0.0, 1.78, 0.03, 0.4, mat({ color: 0xd9b01a, roughness: 0.5 })],
+        [0.3, 1.65, 0.3, 0.3, black],
+        [0.75, 1.75, 0.06, 0.35, steel],
+      ];
+      for (const [dx, y, w, h, m] of tools) mesh(new THREE.BoxGeometry(w, h, 0.03), m, b.x + dx, y - 0.2, z0 + 0.16).castShadow = false;
+      mesh(new THREE.BoxGeometry(0.34, 0.2, 0.12), black, b.x + 0.7, 1.05, b.z); // the radio
+      mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.13, 14), steel, b.x - 0.8, 1.01, b.z + 0.1);
+      mesh(new THREE.BoxGeometry(0.5, 0.18, 0.25), mat({ color: 0xb8222a, roughness: 0.4, metalness: 0.3 }), b.x - 0.2, 1.04, b.z - 0.05); // the toolbox
+    }
+    // a trash barrel by the stairs
+    {
+      const blue = mat({ color: 0x2c5a8a, roughness: 0.6, metalness: 0.2 });
+      mesh(new THREE.CylinderGeometry(P.barrel.r, P.barrel.r * 0.95, 0.9, 20), blue, P.barrel.x, 0.45, P.barrel.z);
+      for (const y of [0.3, 0.6]) mesh(new THREE.TorusGeometry(P.barrel.r + 0.005, 0.012, 6, 24).rotateX(Math.PI / 2), blue, P.barrel.x, y, P.barrel.z).castShadow = false;
+    }
+    // the time clock and its card rack, by the stairs
+    {
+      const wx = x0 + 0.13;
+      mesh(new THREE.BoxGeometry(0.12, 0.3, 0.25), mat({ color: 0xd8d6cf, roughness: 0.5 }), wx, 1.45, -6.4);
+      mesh(new THREE.BoxGeometry(0.01, 0.1, 0.16), mat({ color: 0x1b1c1e, roughness: 0.3 }), wx + 0.065, 1.52, -6.4).castShadow = false;
+      mesh(new THREE.BoxGeometry(0.05, 0.6, 0.4), mat({ color: 0x55585c, roughness: 0.4, metalness: 0.6 }), wx, 1.4, -5.8);
+      for (let i = 0; i < 6; i++) mesh(new THREE.BoxGeometry(0.01, 0.16, 0.08), white, wx + 0.035, 1.6 - Math.floor(i / 3) * 0.2, -5.93 + (i % 3) * 0.13).castShadow = false;
+    }
   }
 
   // ── the forklift: yellow, its mast up front, forks down ──

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ThinkMark from '../components/invincible/thinkmark/ThinkMark';
+import InvWorld from '../components/invincible/world/InvWorld';
 import Viewer from '../components/invincible/viewer/Viewer';
 import ModelCredits from '../components/ModelCredits';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
@@ -103,15 +104,17 @@ export default function Invincible() {
     <div className="inv-page relative" data-shake={shake || undefined}>
       <div className="inv-dots" aria-hidden="true" />
 
-      <section className="shell relative z-10 pb-10 pt-[calc(var(--nav-h)+28px)] md:pb-14" aria-labelledby="inv-title">
+      <InvWorld />
+
+      <section className="shell relative z-10 pb-10 pt-10 md:pb-14 md:pt-14" aria-labelledby="inv-title">
         <div className="inv-hero">
-          <button type="button" className="inv-card" style={{ '--card': episode.bg }} data-ep={episode.n} onClick={() => (sound('drum'), setEp((i) => (i + 1) % EPISODES.length))} aria-label={`The title card, episode ${episode.n}: ${episode.title}. Press for the next episode.`}>
+          <button type="button" className="inv-card" style={{ '--card': episode.bg }} data-ep={episode.n} onClick={() => (sound('drum'), setEp((i) => (i + 1) % EPISODES.length))} aria-label={`Invincible, episode ${episode.n} · ${episode.title}. Next episode`}>
             <span className="inv-card-word" aria-hidden="true">
               INVINCIBLE
-            </span>
+            </span>{' '}
             <span className="inv-card-ep" aria-hidden="true">
               Episode {episode.n} · {episode.title}
-            </span>
+            </span>{' '}
             <span className="inv-card-hint" aria-hidden="true">
               Next episode
             </span>

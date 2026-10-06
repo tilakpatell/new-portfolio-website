@@ -141,6 +141,45 @@ export function offset(w, d, s, R) {
   return { n: unit(rotate(w.n, axis, a)), f: unit(flat(rotate(w.f, axis, a), unit(rotate(w.n, axis, a)))) };
 }
 
+// ── A landing's things (landings/), round where the ship comes down ──
+// A thing at (x, z) metres on a flat frame laid at `frame` ({ n, f }: the
+// spot, and the way it faces), three.js's way round (+z ahead, +x to its
+// left, n × f, and up out of the ground), put on the sphere: where it
+// stands, and which way its own +z faces (`yaw`, turned as three.js turns
+// a thing about its up: +z round toward +x)
+export function place(frame, x, z, R, yaw = 0) {
+  const o = offset(frame, z * METRE, -x * METRE, R);
+  return { n: o.n, f: yaw ? unit(rotate(o.f, o.n, yaw)) : o.f };
+}
+
+// A thing's solids, in its own frame in metres (a builder's: { circle: [x,
+// z, r] } or { box: [x, z, hw, hd, yaw?] }), as circles along the ground
+// round where it stands (`spot`, as place gives): what walk() goes round. A
+// box is a row of circles down its length, each as wide as it is.
+export function solidsOn(spot, solids, R) {
+  const out = [];
+  const at = (x, z, r) => out.push({ n: place(spot, x, z, R).n, r: r * METRE });
+  for (const s of solids ?? []) {
+    if (s.circle) at(...s.circle);
+    else if (s.box) {
+      const [x, z, hw, hd, yaw = 0] = s.box;
+      const long = Math.max(hw, hd);
+      const r = Math.max(Math.min(hw, hd), 0.3);
+      const c = Math.cos(yaw);
+      const sn = Math.sin(yaw);
+      // down its long side (its x or its z, turned by its yaw)
+      const [ax, az] = hw >= hd ? [c, -sn] : [sn, c];
+      const reach = Math.max(0, long - r);
+      const count = Math.min(24, Math.max(1, Math.ceil(reach / r) + 1));
+      for (let i = 0; i < count; i++) {
+        const t = count > 1 ? -reach + (2 * reach * i) / (count - 1) : 0;
+        at(x + ax * t, z + az * t, r);
+      }
+    }
+  }
+  return out;
+}
+
 // the distance along the ground between two people (or spots), map units
 export const apart = (a, b, R) => Math.acos(clamp(dot(a.n, b.n), -1, 1)) * R;
 
@@ -235,16 +274,19 @@ function troopsFrom(rand, w, R, count, dist, kinds) {
     const spot = offset(w, Math.cos(a) * d, Math.sin(a) * d, R);
     const kind = kinds[Math.floor(rand() * kinds.length)];
     const facing = facingAlong(spot.n, add(w.n, spot.n, -1)); // toward the player
-    out.push({ id: nextId++, kind, ...person(spot.n, facing), hp: TROOPS[kind].hp, cool: 1 + rand() * 1.5, hold: TROOPS[kind].range[0] + rand() * (TROOPS[kind].range[1] - TROOPS[kind].range[0]), alive: true, dead: 0, swing: 0 });
+    out.push({ id: nextId++, kind, ...person(spot.n, facing), hp: TROOPS[kind].hp, cool: 1 + rand() * 1.5, hold: TROOPS[kind].range[0] + rand() * (TROOPS[kind].range[1] - TROOPS[kind].range[0]), alive: true, dead: 0, swing: 0, aim: 0 });
   }
   return out;
 }
 
 // One step for a squad: each goes at the nearest of `targets` ([{ id, n,
 // h }], the player and whoever's with them), stops at its distance and
-// fires (or, without a gun, closes in and hits). Returns { troops, shots,
-// hits }: shots are new bolts ({ from, dir, owner: 'troop', kind }), hits
-// are blows landed ({ target, damage }).
+// fires (or, without a gun, closes in and hits). One with a gun brings it
+// up as a target comes within reach (`aim`, 0…1: up in a quarter of a
+// second, down in half of one once they've gone), for the drawing to read.
+// Returns { troops, shots, hits }: shots are new bolts ({ from, dir, owner:
+// 'troop', kind, damage, by (the trooper), range (to what it's aimed at) }),
+// hits are blows landed ({ target, damage }).
 export function march(troops, targets, dt, R, rand, obstacles = []) {
   const shots = [];
   const hits = [];
@@ -270,6 +312,8 @@ export function march(troops, targets, dt, R, rand, obstacles = []) {
     const move = bd > hold ? 1 : bd < hold * 0.6 ? -0.6 : 0;
     const strafe = bd <= hold && spec.fire ? Math.sin(t.id * 1.7 + (t.swing += dt) * 0.9) * 0.8 : 0;
     const next = walk(t, { move, strafe, turn, speed: move > 0 ? spec.speed : FOOT.back }, dt, R, obstacles);
+    const engaged = Boolean(spec.fire) && bd <= hold * 1.5;
+    const aim = clamp((t.aim ?? 0) + (engaged ? dt / 0.25 : -dt / 0.6), 0, 1);
     let cool = t.cool - dt;
     if (cool <= 0 && aimed) {
       if (spec.fire && bd <= hold * 1.4) {
@@ -277,13 +321,13 @@ export function march(troops, targets, dt, R, rand, obstacles = []) {
         const from = add(at(next, R), next.n, spec.tall * 0.62);
         const to = add(at(best, R), best.n, METRE * 1.1);
         const dir = unit(add(add(to, from, -1), [rand() - 0.5, rand() - 0.5, rand() - 0.5], spec.spread * apart(t, best, R)));
-        shots.push({ from, dir, owner: 'troop', kind: t.kind, damage: spec.damage });
+        shots.push({ from, dir, owner: 'troop', kind: t.kind, damage: spec.damage, by: t.id, range: len(add(to, from, -1)) });
       } else if (!spec.fire && bd <= spec.range[1] * METRE + FOOT.radius) {
         cool = 1.1;
         hits.push({ target: best.id, damage: spec.damage, from: t.id });
       }
     }
-    return { ...next, cool: Math.max(cool, -0.5), swing: t.swing };
+    return { ...next, cool: Math.max(cool, -0.5), swing: t.swing, aim };
   });
   return { troops: out, shots, hits };
 }

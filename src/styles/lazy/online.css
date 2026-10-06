@@ -1,0 +1,16 @@
+/* Split out of styles/extras.css so it loads with the components that use it
+   (each imports it), not with every page. */
+/* A thumbnail of the sheet, used on the home page */
+.resume-thumb { position: relative; overflow: hidden; height: 260px; border-radius: calc(var(--r-card) - 4px); background: var(--surface-2); }
+.resume-thumb-inner { position: absolute; left: 50%; top: 18px; width: 880px; transform-origin: top center; pointer-events: none; }
+.resume-thumb::after { content: ''; position: absolute; inset: auto 0 0; height: 45%; background: linear-gradient(to bottom, transparent, var(--surface-2)); }
+.gh-panel { --heat: var(--accent); }
+[data-theme='github'] .gh-panel { --heat: #1a7f37; }
+html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
+.gh-scroll:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 6px; }
+.gh-scroll { overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; padding-bottom: 4px; }
+.gh-svg { display: block; width: 100%; min-width: 620px; height: auto; }
+.gh-label { font-family: var(--font-mono); font-size: 9px; fill: var(--muted); }
+.gh-cell { stroke: color-mix(in srgb, var(--text) 6%, transparent); stroke-width: 1; }
+.gh-langbar { display: flex; height: 8px; gap: 2px; overflow: hidden; border-radius: 999px; }
+.gh-langbar span { display: block; height: 100%; }

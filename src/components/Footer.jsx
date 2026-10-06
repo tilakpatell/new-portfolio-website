@@ -1,9 +1,10 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { RiGithubFill, RiLinkedinBoxFill, RiMailLine } from 'react-icons/ri';
 import { profile } from '../data/profile';
 import { restartSite } from '../lib/restart';
 import Wordmark, { AurebeshLine } from './Wordmark';
 import { useOnceVisible } from './ui';
+import { byPath } from './universe/universes';
 
 // Marvel rules: there's always a scene after the credits.
 function PostCredits() {
@@ -20,6 +21,8 @@ function PostCredits() {
 }
 
 export default function Footer() {
+  // this page's place on the universe map (a station for the site's own pages, a planet for a world)
+  const here = byPath(useLocation().pathname);
   return (
     <footer className="relative z-10 border-t border-line bg-deep">
       <div className="shell flex flex-col gap-10 py-12 md:flex-row md:items-end md:justify-between">
@@ -40,6 +43,12 @@ export default function Footer() {
           <Link className="text-body hover:text-ink" to="/terminal">Terminal</Link>
           <Link className="text-body hover:text-ink" to="/resume">Résumé</Link>
           <Link className="text-body hover:text-ink" to="/deathstar" title="Classified">DS-1 plans</Link>
+          {here && (
+            <Link className="text-body hover:text-ink" to={`/universe/${here.id}`} title={`${here.world ?? here.label} on the universe map`}>
+              This page on the map
+            </Link>
+          )}
+          <Link className="text-body hover:text-ink" to="/changes" title="The ship’s log: what the site’s autopilot changed">What’s changed</Link>
           <button type="button" className="text-left text-body hover:text-ink" onClick={restartSite} title="The welcome, the crawl and the cockpit again">
             Start over
           </button>

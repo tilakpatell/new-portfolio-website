@@ -15,13 +15,12 @@
 // The cruiser's floor is y = 0, its nose down −z; units are metres.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { createMeshyCast } from '../../rickmorty/portal/meshyCast';
 import { toonify } from '../../rickmorty/portal/toon';
 import { SWIRL_GLSL } from '../../rickmorty/swirl';
 import { glowSprite, rng, roundedBox, screen, tubeAlong } from '../kit';
 import { clamp01, smooth } from '../timeline';
+import { gltfLoader } from '../../../lib/three/gltf';
 
 const INK = 0x1b1424;
 const EYE = [-0.36, 1.42, 0.38];
@@ -296,8 +295,7 @@ function duskSky() {
 }
 
 // a model from a folder, or null
-const loader = new GLTFLoader();
-loader.setMeshoptDecoder(MeshoptDecoder);
+const loader = gltfLoader();
 const loadModel = (url) => loader.loadAsync(url).then((g) => g.scene).catch(() => null);
 
 export async function build({ rich, coarse }) {

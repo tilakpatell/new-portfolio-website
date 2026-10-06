@@ -5,9 +5,9 @@
 // material of the right colour, a model to an empty group.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { gltfLoader } from '../../../lib/three/gltf';
+import { loadTexture, sharpen, sharpenMaterial, warm } from '../../../lib/three/textures';
 import { IMPOSTORS, MODELS, SKIES, TEXTURES } from './catalog';
 
 const BASE = `${import.meta.env?.BASE_URL ?? '/'}hq/`;
@@ -17,8 +17,9 @@ const once = (key, make) => {
   return cache.get(key);
 };
 
-const textureLoader = new THREE.TextureLoader();
-const loadImage = (url) => new Promise((resolve, reject) => textureLoader.load(url, resolve, undefined, reject));
+// (decoded off the main thread where the browser can, as sharp at a slant
+// as the device's tier allows; the colour space is set by whoever asked)
+const loadImage = (url) => loadTexture(url, { color: undefined });
 
 // Roughly the colour of each set, for when its files can't be had.
 const FALLBACK = {
@@ -45,10 +46,7 @@ export function loadSet(name, { small = false } = {}) {
         loadImage(`${BASE}tex/${name}/arm${suffix}.jpg`),
       ]);
       map.colorSpace = THREE.SRGBColorSpace;
-      for (const t of [map, normalMap, arm]) {
-        t.wrapS = t.wrapT = THREE.RepeatWrapping;
-        t.anisotropy = 8;
-      }
+      for (const t of [map, normalMap, arm]) sharpen(t, { wrap: true });
       return { map, normalMap, arm, alpha: spec.alpha };
     } catch {
       return null;
@@ -120,27 +118,16 @@ export function loadSky(name, { background = true } = {}) {
   return Promise.all([hdr, background && meta.sky ? skyPhoto(name) : null]).then(([h, photo]) => ({ hdr: h, background: photo, meta }));
 }
 
-let gltfLoader = null;
-const loader = () => {
-  if (!gltfLoader) {
-    gltfLoader = new GLTFLoader();
-    gltfLoader.setMeshoptDecoder(MeshoptDecoder);
-  }
-  return gltfLoader;
-};
-
 // A model, as loaded (shared: clone it before placing it).
 export function loadModel(name) {
   return once(`model:${name}`, async () => {
     try {
-      const gltf = await loader().loadAsync(`${BASE}models/${name}.glb`);
+      const gltf = await gltfLoader().loadAsync(`${BASE}models/${name}.glb`);
       gltf.scene.traverse((o) => {
         if (o.isMesh) {
           o.castShadow = true;
           o.receiveShadow = true;
-          for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
-            if (m.map) m.map.anisotropy = 8;
-          }
+          for (const m of Array.isArray(o.material) ? o.material : [o.material]) sharpenMaterial(m);
         }
       });
       return gltf.scene;
@@ -208,7 +195,7 @@ export function loadImpostor(name) {
     try {
       const [map, normalMap] = await Promise.all([loadImage(`${BASE}impostors/${name}/color.webp`), loadImage(`${BASE}impostors/${name}/normal.png`)]);
       map.colorSpace = THREE.SRGBColorSpace;
-      for (const t of [map, normalMap]) t.anisotropy = 4;
+      for (const t of [map, normalMap]) sharpen(t);
       return { ...meta, map, normalMap };
     } catch {
       return null;
@@ -218,5 +205,11 @@ export function loadImpostor(name) {
 
 // Start loading what a game needs while it's still being built.
 // (`backgrounds: false` for a game whose skies only light it)
-export const preload = ({ sets = [], skies = [], models = [], impostors = [], small = false, backgrounds = true } = {}) =>
-  Promise.all([...sets.map((s) => loadSet(s, { small })), ...skies.map((s) => loadSky(s, { background: backgrounds })), ...models.map(loadModel), ...impostors.map(loadImpostor)]);
+// With a `renderer`, everything that came is uploaded to the graphics chip
+// over the next idle moments (lib/three/textures' warm), so the first frames
+// of the game don't each stop for a texture.
+export const preload = ({ sets = [], skies = [], models = [], impostors = [], small = false, backgrounds = true, renderer = null } = {}) =>
+  Promise.all([...sets.map((s) => loadSet(s, { small })), ...skies.map((s) => loadSky(s, { background: backgrounds })), ...models.map(loadModel), ...impostors.map(loadImpostor)]).then((loaded) => {
+    if (renderer) warm(renderer, loaded.filter(Boolean), { idle: true });
+    return loaded;
+  });

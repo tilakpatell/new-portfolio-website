@@ -12,12 +12,16 @@ import * as THREE from 'three';
 import { createStage } from '../../../lib/stage3d';
 import { device } from '../../../lib/device';
 import { createFx } from '../../middleearth/shire/fx';
+import { createGhosts } from '../../middleearth/towns/ghosts';
 import { loadKit } from '../kit';
 import { CAST as STAFF_HEIGHTS, loadPeople } from '../people';
 import { makeProps } from '../props';
 import { buildSet } from './set';
 import { buildWarehouse } from './warehouse';
 import { buildOutside } from './outside';
+import { buildContactShade } from './ao';
+import { bakeStatic } from './batch';
+import { amblePaths } from './paths';
 import { CEILING, CAST, COLLIDERS, DWIGHT_BACK, ERIN_BREAK, FIRE_BIN, PANIC, WALLS, inWarehouse, seatOf, spot } from './layout';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -68,7 +72,7 @@ function clearance(from, to) {
 export async function createOfficeWorld(canvas, { onLost } = {}) {
   const tier = device().tier;
   const soft = tier === 'low';
-  const stage = createStage(canvas, { soft, shadows: tier === 'high', fov: 58, near: 0.05, far: 80, bloom: { strength: 0.32, radius: 0.35, threshold: 0.92 }, onLost });
+  const stage = createStage(canvas, { soft, shadows: tier === 'high', fov: 58, near: 0.05, far: 170, exposure: 0.94, bloom: { strength: 0.22, radius: 0.5, threshold: 1.6 }, onLost });
   // the show's look: fluorescent, a touch green and flat, with a little grain
   stage.grade({ contrast: 0.02, saturation: 0.92, vignette: 0.22, grain: 0.022, shadow: [0.0, 0.01, 0.006], high: [0.012, 0.012, 0.0] });
   const { scene, camera, renderer } = stage;
@@ -93,7 +97,16 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     stage.dispose();
     throw e;
   }
-  scene.add(set.group, wh.group, out.group);
+  // the soft dark where things meet the floor and the walls meet both
+  const shade = buildContactShade();
+  scene.add(set.group, wh.group, out.group, shade.group);
+  // everything that stays put, merged by material a patch of floor at a time
+  const baked = [
+    bakeStatic(set.group, { keep: [set.stapler, set.jelloOnDesk, set.carried, set.pot, set.fireGlow, set.flicker?.mesh], shadowMin: 0.45 }),
+    bakeStatic(wh.group, { keep: [wh.ball], shadowMin: 0.45 }),
+    bakeStatic(out.group, { cell: 40 }),
+  ];
+  if (import.meta.env.DEV) console.info('office: baked', baked.map((b) => `${b.before}→${b.after}`).join(' '));
   const LAMPS = [...set.lights, ...wh.lights];
   const ballHome = wh.ball.position.clone();
 
@@ -106,7 +119,7 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   }
   const hemi = new THREE.HemisphereLight(0xf6f8ff, 0x6a6458, 1.15);
   const key = new THREE.DirectionalLight(0xf3f6ff, 1.1);
-  key.position.set(4, 14, 6);
+  key.position.set(1.5, 14, 2.5); // nearly overhead, as under a grid of troffers
   key.target.position.set(0, 0, 0);
   if (tier === 'high') {
     key.castShadow = true;
@@ -124,10 +137,13 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   const day = new THREE.DirectionalLight(0xfff4e2, 0.35);
   day.position.set(-6, 5, -10);
   scene.add(hemi, key, key.target, day);
+  // the troffers nearest Jim, as lights: each a wide cone straight down
+  // from the fixture, so it pools on the desks and the carpet and leaves the
+  // ceiling tiles round it alone (a point light there burnt them white)
   const POOL = tier === 'high' ? 6 : tier === 'mid' ? 4 : 2;
   const pool = Array.from({ length: POOL }, () => {
-    const l = new THREE.PointLight(0xf4f6ff, 0, 7, 1.4);
-    scene.add(l);
+    const l = new THREE.SpotLight(0xf4f6ff, 0, 9, 1.18, 0.85, 2);
+    scene.add(l, l.target);
     return l;
   });
   const alarm = new THREE.PointLight(0xff3a2a, 0, 30, 1.2);
@@ -183,8 +199,59 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
       poll();
     }),
   ]);
+  // others online here (OfficeWorld's useTravellers), as the Middle-earth
+  // towns and the Avengers compound show theirs: each a pale, shimmering Jim
+  // from another branch, with their name over him. Nothing here bumps into
+  // them, and they can't touch your jobs, nor you theirs.
+  const ghosts = createGhosts({
+    make: () => {
+      const p = cast?.person('jim', { pose: 'stand', shadows: false });
+      const group = new THREE.Group();
+      if (!p) {
+        // (Jim's model not to hand: a plain shape of him)
+        group.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 1.3, 4, 10).translate(0, 0.86, 0), new THREE.MeshStandardMaterial()));
+        return { group, top: 1.75 };
+      }
+      p.group.rotation.y = Math.PI / 2; // (a ghost's face, like Jim's, is measured from +x; a figure faces +z)
+      group.add(p.group);
+      // (his mesh and its materials are the cast's, shared with the real Jim: not the ghost's to dispose)
+      return { group, top: 1.9, person: p, shared: true, dispose: () => {} };
+    },
+    animate: (f, t, p, dt) => {
+      if (!f.person) return;
+      f.person.walk(p.moving, Math.max(0.6, (p.speed ?? 1.4) / 2.3));
+      f.person.update(t, dt);
+      f.person.group.position.y = f.person.bob();
+    },
+    tag: 0.3,
+    halo: 0.8,
+  });
+  scene.add(ghosts.group);
+
   // the runners in the fire drill: these get up and go
   const RUNNERS = ['michael', 'angela', 'kevin', 'oscar', 'andy', 'phyllis', 'stanley', 'dwight'];
+  // the coworkers who get up now and then (layout's AMBLES, their ways
+  // round the desks found once, ./paths.js)
+  const WALK = 1.05; // an office's stroll, m/s
+  const ambles = amblePaths()
+    .filter((a) => a.path)
+    .map((a) => {
+      const len = a.path.reduce((n, p, i) => (i ? n + Math.hypot(p.x - a.path[i - 1].x, p.z - a.path[i - 1].z) : 0), 0);
+      return { ...a, len, walk: len / WALK, back: [...a.path].reverse() };
+    });
+
+  // ── where to go next: a marker over each, bobbing, and a ring on the floor ──
+  const markers = Array.from({ length: 4 }, () => {
+    const g = new THREE.Group();
+    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.11, 0), new THREE.MeshStandardMaterial({ color: 0x9cc8ff, emissive: 0x4a9bff, emissiveIntensity: 2.6, roughness: 0.3, metalness: 0.1 }));
+    gem.scale.y = 1.55;
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.42, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x7fb4ff, transparent: true, opacity: 0.5, depthWrite: false, toneMapped: false }));
+    ring.renderOrder = 2;
+    g.add(gem, ring);
+    g.visible = false;
+    scene.add(g);
+    return { g, gem, ring };
+  });
 
   const A = { t: 0, cam: { at: V(0, 2, 6), look: V(0, 1.4, 0) }, mode: null, shake: 0, suggest: null, nearAt: -1, near: [], fire: 0, smokeAt: 0 };
   const tmp = V(0, 0, 0);
@@ -226,8 +293,11 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   const render = (s, ms) => {
     const dt = Math.min(0.05, ms / 1000);
     A.t += dt;
+    if (import.meta.env.DEV && s.warp) A.t += s.warp; // (a dev hook: skip the clock ahead)
     const t = A.t;
     const h = s.jim;
+
+    ghosts.update(s.travellers ?? [], t, dt);
 
     // ── Jim ──
     if (jim) {
@@ -316,6 +386,34 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
         if (p && !(id === 'dwight' && s.dwight === 'back') && !(id === 'erin' && s.erinBreak)) p.group.visible = false;
       }
     }
+    // the amblers: up from the desk, along their way, a moment there, back
+    // and sat down again (not in the fire drill: then everyone runs)
+    if (!s.fire)
+      for (const a of ambles) {
+        const cyc = (t + a.offset) % a.every;
+        const sit = a.every - (a.walk * 2 + a.wait);
+        if (cyc < sit || (s.dwight !== 'desk' && a.who === 'dwight')) {
+          if (standing.get(a.who) && !RUNNERS.includes(a.who)) standing.get(a.who).group.visible = false;
+          continue;
+        }
+        const p = stand(a.who);
+        if (!p) continue;
+        away.add(a.who);
+        const k = cyc - sit;
+        let at;
+        let walking = true;
+        if (k < a.walk) at = along(a.path, k / a.walk);
+        else if (k < a.walk + a.wait) {
+          const end = a.path[a.path.length - 1];
+          at = { x: end.x, z: end.z, face: a.face };
+          walking = false;
+        } else at = along(a.back, (k - a.walk - a.wait) / a.walk);
+        place(p, at.x, at.z, at.face, walking, 0.8);
+        p.look(Math.hypot(at.x - h.x, at.z - h.z) < 2.6 ? head.set(h.x, 1.55, h.z) : null);
+        p.update(t, dt);
+        s.runners?.push({ x: at.x, z: at.z });
+        s.ambling?.push({ id: a.who, x: at.x, z: at.z });
+      }
     // the seated: in their chairs unless they're up; heads turning to Jim
     // when he's close
     head.set(h.x, 1.55, h.z);
@@ -346,12 +444,39 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     if (s.ballAt?.spin) wh.ball.rotation.z += dt * 9;
     const red = s.fire ? 0.5 + 0.5 * Math.sin(t * 7) : 0;
     A.fire += ((s.fire ? 1 : 0) - A.fire) * Math.min(1, dt * 2);
+    // the markers over where to go next: the nearest three on Jim's floor,
+    // not over where he already is (the corner map shows them all)
+    const next = (s.markers ?? [])
+      .filter((at) => (at.x > 25) === (h.x > 25) && Math.hypot(at.x - h.x, at.z - h.z) > 1.3)
+      .sort((a, b) => Math.hypot(a.x - h.x, a.z - h.z) - Math.hypot(b.x - h.x, b.z - h.z))
+      .slice(0, 3);
+    markers.forEach((m, i) => {
+      const at = next[i];
+      const show = !!at;
+      m.g.visible = !!show;
+      if (!show) return;
+      m.g.position.set(at.x, 0, at.z);
+      m.gem.position.y = 2.05 + Math.sin(t * 2.2 + i) * 0.07;
+      m.gem.rotation.y = t * 1.4 + i;
+      const pulse = (t * 0.8 + i * 0.3) % 1;
+      m.ring.scale.setScalar(0.8 + pulse * 0.5);
+      m.ring.material.opacity = 0.55 * (1 - pulse);
+      m.ring.position.y = 0.015;
+    });
+    // the annex's tired tube: steady, then a stutter now and then
+    let flick = 1;
+    if (set.flicker) {
+      const c = t % 9.3;
+      flick = c < 0.9 ? (Math.sin(c * 61) * Math.sin(c * 23) > -0.1 ? 1 : 0.08) : c < 1.2 ? 0.35 : 1;
+      set.flicker.material.emissiveIntensity = 2.4 * flick;
+    }
     pool.forEach((l, i) => {
       const v = A.near[i];
       if (!v) return (l.intensity = 0);
-      l.position.set(v[0], v[1], v[2]);
-      l.intensity = (down ? 26 : 3.2) * (1 - A.fire * 0.4);
-      l.distance = down ? 14 : 7;
+      l.position.set(v[0], v[1] + 0.15, v[2]);
+      l.target.position.set(v[0], 0, v[2]);
+      l.intensity = (down ? 60 : 9) * (1 - A.fire * 0.4) * (set.flicker && v === set.lights[set.flicker.index] ? flick : 1);
+      l.distance = down ? 16 : 9;
       return undefined;
     });
     alarm.intensity = A.fire * red * 60;
@@ -412,7 +537,16 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
       A.shake = Math.max(0, A.shake - dt * 0.8);
     }
     camera.lookAt(A.cam.look);
+    // upstairs or down: the office and the warehouse with its lot can't see
+    // each other, so only the one the camera's on is drawn (and the lot's
+    // horizon, which would otherwise run through the office, stays outside)
+    const below = camera.position.x > 25;
+    set.group.visible = !below;
+    wh.group.visible = below;
+    out.group.visible = below;
 
+    set.windows.step(t);
+    out.step(t);
     fx.step(dt, t, { night: 0, day: 1 });
     renderer.info.reset();
     stage.render(ms);
@@ -465,6 +599,7 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
 
   return {
     scene: import.meta.env.DEV ? scene : null,
+    renderer: import.meta.env.DEV ? renderer : null,
     render,
     fx: fxEvent,
     screenOf,
@@ -484,10 +619,13 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     },
     dispose() {
       gone = true;
+      ghosts.dispose();
       fx.dispose?.();
       set.dispose();
       wh.dispose();
       out.dispose();
+      shade.dispose();
+      for (const b of baked) b.dispose();
       props.dispose();
       loading.then((c) => c?.dispose());
       kit.dispose();

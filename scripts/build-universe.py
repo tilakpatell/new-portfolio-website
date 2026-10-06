@@ -9,7 +9,9 @@ these prompts, task ids in brackets:
   breakingbad   a cream 1980s motorhome with a faded brown stripe            [01a10822-251d-75cb-a368-0d3ac9faae3e]
 
 (the music planet's sitar was one of these too; it's now Amagi_Arts's model
-from Sketchfab, public/models/sketchfab/sitar.glb: scripts/sketchfab-batch.mjs)
+from Sketchfab, public/models/sketchfab/sitar.glb: scripts/sketchfab-batch.mjs;
+and Cybertron's Optimus and Megatron were too: they're High Moon's now, from
+scripts/sketchfab-cybertron.mjs, public/models/cybertron/*-orbit.glb)
 
 and these, made by the site owner with Meshy (100k triangles and a 2048 px
 texture each as they came), cut to what they're seen at:
@@ -18,8 +20,6 @@ texture each as they came), cut to what they're seen at:
                  public/models/meshy/, cut down for a crowd): 5k, 256 px
   slave1         Boba Fett's Slave I, a bounty hunter who comes by: 34k, 512 px
   venator        a Republic attack cruiser circling the Death Star: 14k, 1024 px
-  optimus        Optimus Prime, on Cybertron's orbit: 8k, 512 px
-  megatron       Megatron, across the orbit from him (200k as it came): 8k, 512 px
   mario          Mario, standing on the Game Boy world: 8k, 512 px
   piranha        a Piranha Plant in its pipe, on the same world: 6k, 512 px
 
@@ -83,8 +83,6 @@ OPTIONS = {
     'xwing-traffic': (256, 0.05),
     'slave1': (512, 0.08),  # stops at about 34k: its texture seams won't come down further (one at a time, so it's fine)
     'venator': (1024, 0.08),
-    'optimus': (512, 0.08),
-    'megatron': (512, 0.04),
     'mario': (512, 0.08),
     'piranha': (512, 0.06),
 }

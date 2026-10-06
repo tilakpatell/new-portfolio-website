@@ -157,6 +157,7 @@ export const CREWS = [
     },
     // shooting one down
     kill: {
+      phoenixperson: [['rick', 'Sorry, Birdperson. Again. We’ll get you rebuilt. Again.']],
       any: [
         ['morty', 'Oh geez, Rick, I hit one!'],
         ['rick', 'Relax, Morty. It’s the Federation. Nobody’s gonna miss ’em.'],
@@ -186,6 +187,11 @@ export const CREWS = [
     },
     // hunters after you (hunters.js), by who they are
     hunted: {
+      phoenix: [
+        ['rick', 'Phoenixperson. Great. The Federation turned my best friend into a drone with a grudge.'],
+        ['morty', 'Can we talk to him, Rick?'],
+        ['rick', 'He talks in bullets now, Morty.'],
+      ],
       federation: [
         ['morty', 'Rick! The Federation’s on our tail!'],
         ['rick', 'Course they are, Morty. I’m the most wanted man in the galaxy. Shoot back!'],
@@ -239,6 +245,28 @@ export const CREWS = [
     ],
     // the director's set pieces (director.js), and going out into deep space
     events: {
+      // friends on your wing in a long fight (wingmen.js), and going again
+      wingmen: [
+        ['birdperson', 'Rick. I am here to assist. It is what friends do.'],
+        ['rick', 'Birdperson! Thank God. I mean, took you long enough.'],
+      ],
+      wingmenGone: [
+        ['birdperson', 'Our work here is done. Goodbye, old friend.'],
+        ['morty', 'Bye, Birdperson!'],
+      ],
+      // someone else's fight out ahead (skirmishes.js): seen, won with your help, lost
+      skirmish: [
+        ['morty', 'Rick, there’s a fight up ahead! Is that Birdperson?'],
+        ['rick', 'Federation goons on a family saucer. Go help him, Morty. Or don’t. I’m not your dad.'],
+      ],
+      skirmishThanks: [
+        ['birdperson', 'Thank you, Rick. The family is safe.'],
+        ['rick', 'Yeah, yeah. Don’t make it weird.'],
+      ],
+      skirmishLost: [
+        ['morty', 'Oh no, Rick, they got them.'],
+        ['rick', 'That’s the galaxy, Morty. Cold, and full of jerks.'],
+      ],
       distress: [
         ['comms', 'Mayday, mayday! Gromflomites! Anybody!'],
         ['morty', 'Rick, that family’s in trouble!'],
@@ -277,9 +305,52 @@ export const CREWS = [
         ['morty', 'Rick, this is way too fast!'],
         ['rick', 'It’s exactly fast enough, Morty. Hold on to something that isn’t me.'],
       ],
+      meteors: [
+        ['morty', 'Rick! Rocks! A lot of rocks!'],
+        ['rick', 'Meteor stream, Morty. Shoot the big ones, dodge the rest, don’t cry about it.'],
+      ],
+      // the director's other happenings: a star flaring, a rift (and going
+      // through one), something enormous passing (the Cromulon), a shot into it
+      flare: [
+        ['morty', 'Rick, the sun’s doing something! It’s getting brighter!'],
+        ['rick', 'Solar flare, Morty. Coronal mass ejection. Brace for the shockwave and don’t touch anything.'],
+      ],
+      rift: [
+        ['morty', 'Rick, there’s a hole in space! Right there!'],
+        ['rick', 'A rift, Morty. Dimensional tear. Fly into it and we come out somewhere else. Or don’t. Your call, for once.'],
+      ],
+      rifted: [
+        ['morty', 'Where are we, Rick? Where did it put us?'],
+        ['rick', 'Somewhere else, Morty. That’s what rifts do. Check the map if you care.'],
+      ],
+      leviathan: [
+        ['comms', 'SHOW ME WHAT YOU GOT!'],
+        ['morty', 'Oh no. Oh no, Rick, it’s a Cromulon!'],
+        ['rick', 'Keep flying, Morty. We are not doing a musical number today.'],
+      ],
+      leviathanHit: [
+        ['morty', 'Rick, I shot the giant head!'],
+        ['rick', 'Yeah, that’ll show it. Great plan, Morty. Really great.'],
+      ],
     },
     // the first time you come up on one of deep space's wonders (deep.js)
     wonders: {
+      lantern: [
+        ['morty', 'Rick, that star’s blinking at us!'],
+        ['rick', 'Pulsar, Morty. A dead star spinning a thousand times a second. Get close and it cooks you. Don’t get close.'],
+      ],
+      twins: [
+        ['morty', 'Two suns, Rick! Like in that movie!'],
+        ['rick', 'Binary star, Morty. Every system’s got one. It’s not special. Okay, the gas bridge is a little special.'],
+      ],
+      wanderer: [
+        ['morty', 'It’s so dark out here, Rick. Where’s its sun?'],
+        ['rick', 'It doesn’t have one, Morty. A rogue planet. Kicked out of its system. I relate.'],
+      ],
+      graveyard: [
+        ['morty', 'Rick… those are all dead ships.'],
+        ['rick', 'Ship graveyard round a white dwarf, Morty. Somebody’s bad day, times a thousand. Don’t touch anything.'],
+      ],
       citadel: [
         ['morty', 'The Citadel of Ricks!'],
         ['rick', 'A whole city of me, Morty. Worst place in the multiverse.'],
@@ -533,6 +604,10 @@ export const CREWS = [
       ],
     },
     hunted: {
+      fett: [
+        ['r2', '[A Firespray on an attack run. Boba Fett.]'],
+        ['luke', 'A bounty hunter. Stay with me, Artoo. He only has to miss once.'],
+      ],
       empire: [
         ['comms', 'Red Five, you’ve got TIEs on your tail!'],
         ['luke', 'I see them! Hang on, Artoo!'],
@@ -582,6 +657,28 @@ export const CREWS = [
       ['comms', 'Great shot, kid. That was one in a million.'],
     ],
     events: {
+      // friends on your wing in a long fight (wingmen.js), and going again
+      wingmen: [
+        ['comms', 'Red Two here, Luke. Coming in on your wing!'],
+        ['luke', 'Wedge! Good to see you. Watch yourself, they’re quick.'],
+      ],
+      wingmenGone: [
+        ['comms', 'Red Two, breaking off. Good flying, Luke.'],
+        ['r2', '[a cheerful whistle]'],
+      ],
+      // someone else's fight out ahead (skirmishes.js): seen, won with your help, lost
+      skirmish: [
+        ['r2', '[an alarmed whistle]'],
+        ['luke', 'TIEs on one of our transports, dead ahead. Its escort’s holding them off. Let’s help.'],
+      ],
+      skirmishThanks: [
+        ['comms', 'Thanks for the assist, Red Five. We’re clear.'],
+        ['luke', 'Glad we could help. May the Force be with you.'],
+      ],
+      skirmishLost: [
+        ['luke', 'We were too late. Artoo, log it.'],
+        ['r2', '[a low, sad warble]'],
+      ],
       destroyer: [
         ['r2', '[a frantic warble]'],
         ['luke', 'Star Destroyer, right on top of us! They’re launching fighters!'],
@@ -623,8 +720,44 @@ export const CREWS = [
         ['luke', 'I’ve never had her going this fast!'],
         ['r2', '[a frantic string of beeps]'],
       ],
+      meteors: [
+        ['r2', '[Meteor stream ahead. Recommend evasive action.]'],
+        ['luke', 'I see them, Artoo. Just like Beggar’s Canyon.'],
+      ],
+      // the director's other happenings: a star flaring, a rift (and going
+      // through one), something enormous passing (purrgil), a shot into it
+      flare: [
+        ['r2', '[Solar flare. Shockwave inbound.]'],
+        ['luke', 'I see it, Artoo. Hang on, it’s going to rattle us.'],
+      ],
+      rift: [
+        ['luke', 'Artoo, what is that? Space is… tearing.'],
+        ['r2', '[A rift. Unknown exit. Entering it is your decision.]'],
+      ],
+      rifted: [
+        ['luke', 'Artoo, where are we?'],
+        ['r2', '[Recalculating. Somewhere new. Nav computer updated.]'],
+      ],
+      leviathan: [
+        ['luke', 'Artoo, look at the size of them. Purrgil. I’ve only heard stories.'],
+        ['r2', '[Purrgil pod. Hold your course. Let them pass.]'],
+      ],
+      leviathanHit: [['r2', '[Do not shoot the purrgil. They did nothing to you.]']],
     },
     wonders: {
+      lantern: [
+        ['r2', '[Warning: pulsar. Radiation past the safe line.]'],
+        ['luke', 'I see it, Artoo. We’re keeping our distance.'],
+      ],
+      twins: [['luke', 'Two suns. For a second there I thought I was home.']],
+      wanderer: [
+        ['luke', 'A planet with no sun. It’s so dark.'],
+        ['r2', '[A rogue planet. Surface temperature: very low.]'],
+      ],
+      graveyard: [
+        ['luke', 'Look at them all. A whole fleet, just… drifting.'],
+        ['r2', '[A low, sad whistle.]'],
+      ],
       citadel: [
         ['luke', 'A whole city out here, full of… the same old man?'],
         ['r2', '[a confused warble]'],
@@ -864,6 +997,10 @@ export const CREWS = [
       ],
     },
     hunted: {
+      fett: [
+        ['han', 'Fett. Of course it’s Fett. Chewie, punch it!'],
+        ['chewie', '[A furious roar.]'],
+      ],
       empire: [
         ['han', 'Imperials on our tail. Chewie, get us some speed!'],
         ['chewie', '[a worried roar]'],
@@ -912,6 +1049,30 @@ export const CREWS = [
       ['chewie', '[a triumphant roar]'],
     ],
     events: {
+      // friends on your wing in a long fight (wingmen.js), and going again
+      wingmen: [
+        ['comms', 'Falcon, this is Rogue Squadron. Thought you could use a hand.'],
+        ['han', 'I had it under control. But sure, come on in.'],
+        ['chewie', '[an approving roar]'],
+      ],
+      wingmenGone: [
+        ['comms', 'Rogue Squadron out. Try to stay out of trouble, Solo.'],
+        ['han', 'No promises.'],
+      ],
+      // someone else's fight out ahead (skirmishes.js): seen, won with your help, lost
+      skirmish: [
+        ['han', 'Somebody’s getting jumped up ahead. Rebels, by the look of it.'],
+        ['chewie', '[an urgent growl]'],
+        ['han', 'Yeah, yeah. We’re going.'],
+      ],
+      skirmishThanks: [
+        ['comms', 'Falcon, we owe you one. Drinks are on us.'],
+        ['han', 'I’m holding you to that.'],
+      ],
+      skirmishLost: [
+        ['han', 'Didn’t make it. Shame.'],
+        ['chewie', '[a mournful moan]'],
+      ],
       destroyer: [
         ['han', 'Star Destroyer! Why is it always a Star Destroyer?'],
         ['chewie', '[an alarmed roar]'],
@@ -952,8 +1113,39 @@ export const CREWS = [
         ['han', 'Pushing her past what she was built for. Just how I like it.'],
         ['chewie', '[a doubtful growl]'],
       ],
+      meteors: [
+        ['chewie', '[A roar: rocks ahead!]'],
+        ['han', 'I see them. Never tell me the odds, Chewie.'],
+      ],
+      // the director's other happenings: a star flaring, a rift (and going
+      // through one), something enormous passing (purrgil), a shot into it
+      flare: [
+        ['han', 'Chewie, that star’s about to blow its top. Hold on to something.'],
+        ['chewie', '[A roar: the shockwave is coming.]'],
+      ],
+      rift: [
+        ['han', 'Well, that’s new. A hole in space, right in front of us.'],
+        ['chewie', '[A worried growl: should we go in?]'],
+        ['han', 'I’ve flown through worse. Probably.'],
+      ],
+      rifted: [
+        ['han', 'See? Told you. We’re… somewhere.'],
+        ['chewie', '[A long, unimpressed groan.]'],
+      ],
+      leviathan: [
+        ['chewie', '[An awed howl: purrgil!]'],
+        ['han', 'Purrgil. Easy, Chewie. They jump to lightspeed on their own. Let’s not give them a reason.'],
+      ],
+      leviathanHit: [['han', 'Don’t shoot the whales, Chewie. We don’t need that kind of trouble.']],
     },
     wonders: {
+      lantern: [['han', 'Pulsar. Chewie, give it a wide berth. I like my hair.']],
+      twins: [['han', 'Two suns. Reminds me of a job on Tatooine I’d rather forget.']],
+      wanderer: [['han', 'A planet out here on its own, no sun. Good place to hide, bad place to live.']],
+      graveyard: [
+        ['chewie', '[A low, uneasy growl.]'],
+        ['han', 'Yeah. I see them. Ships don’t end up like that by accident, Chewie.'],
+      ],
       citadel: [['han', 'A station full of the same crazy old guy. I’ve seen worse cantinas.']],
       maw: [['han', 'Black hole. Even the Falcon can’t outrun that.']],
       aurelia: [['han', 'Big planet. Probably full of smugglers.']],
@@ -1193,6 +1385,7 @@ export const CREWS = [
       ],
     },
     kill: {
+      phoenixperson: [['jesse', 'Yo, I shot the robot bird. Was that bad? That felt bad.']],
       any: [
         ['jesse', 'Yeah! Got one! That’s sick!'],
         ['walt', 'We don’t celebrate in the middle of the job, Jesse.'],
@@ -1216,6 +1409,14 @@ export const CREWS = [
     },
     // hunted by whoever's out (the RV is wanted in both universes)
     hunted: {
+      fett: [
+        ['jesse', 'Mr. White, that ship’s got a bounty hunter in it!'],
+        ['walt', 'Then he’s made a very poor career decision.'],
+      ],
+      phoenix: [
+        ['jesse', 'Is that a bird? Is that a robot bird?'],
+        ['walt', 'Whatever it is, Jesse, it’s armed. Shoot it before it finishes deciding.'],
+      ],
       empire: [
         ['jesse', 'Mr. White! Those bug zappers are shooting at us!'],
         ['walt', 'Then shoot back, Jesse.'],
@@ -1268,6 +1469,40 @@ export const CREWS = [
       ['walt', 'Say my name.', 'sayMyName'],
     ],
     events: {
+      // friends on your wing in a long fight (wingmen.js), and going again:
+      // whoever's out here, from either universe
+      wingmen: {
+        xwing: [
+          ['comms', 'Unidentified, uh, camper van. This is Rogue Squadron. We’ve got your back.'],
+          ['jesse', 'Yo, Mr. White, the Star Wars guys are helping us!'],
+          ['walt', 'Allies, Jesse. Every empire needs them.'],
+        ],
+        birdperson: [
+          ['comms', 'I am Birdperson. I will defend your flying house.'],
+          ['jesse', 'Yo, there’s a bird dude out there with a laser!'],
+        ],
+      },
+      wingmenGone: [
+        ['jesse', 'Later, yo! Thanks!'],
+        ['walt', 'We were never here.'],
+      ],
+      // someone else's fight out ahead (skirmishes.js): seen, won with your
+      // help, lost; whoever's out here, from either universe
+      skirmish: {
+        starwars: [
+          ['jesse', 'Yo, Mr. White, there’s a whole space battle up there!'],
+          ['walt', 'Not our fight, Jesse. Although.'],
+        ],
+        rickmorty: [
+          ['jesse', 'Yo, that bird dude is fighting the space cops!'],
+          ['walt', 'The Federation. Never trust a government that big.'],
+        ],
+      },
+      skirmishThanks: [
+        ['comms', 'Thank you, strange flying camper!'],
+        ['jesse', 'Yeah, science!'],
+      ],
+      skirmishLost: [['walt', 'We were never here, Jesse.']],
       distress: [
         ['comms', 'Mayday! Anybody! We’re under attack!'],
         ['jesse', 'Mr. White, we gotta help them!'],
@@ -1305,8 +1540,54 @@ export const CREWS = [
         ['jesse', 'This is insane, yo! Everything’s a blur!'],
         ['walt', 'Seatbelt, Jesse.'],
       ],
+      meteors: [
+        ['jesse', 'Yo, Mr. White, rocks! Big ones!'],
+        ['walt', 'A meteor stream, Jesse. Shoot what you can’t steer round.'],
+      ],
+      // the director's other happenings: a star flaring, a rift (and going
+      // through one), something enormous passing (purrgil or a Cromulon), a shot into it
+      flare: [
+        ['jesse', 'Mr. White, the sun’s flaring! Is that bad?'],
+        ['walt', 'A coronal mass ejection, Jesse. Charged particles. The shields will take it. Mostly.'],
+      ],
+      rift: [
+        ['jesse', 'Yo, is that a hole in space? That’s a hole in space.'],
+        ['walt', 'A rift. If we fly into it, we come out somewhere else. I’m not sure I want to know where.'],
+      ],
+      rifted: [
+        ['jesse', 'Where are we, Mr. White?'],
+        ['walt', 'Somewhere else, Jesse. Check the map.'],
+      ],
+      leviathan: {
+        purrgil: [
+          ['jesse', 'Mr. White. Space whales. Actual space whales.'],
+          ['walt', 'Purrgil, Jesse. Let them by. We don’t want to be in their way when they jump.'],
+        ],
+        cromulon: [
+          ['comms', 'SHOW ME WHAT YOU GOT!'],
+          ['jesse', 'What does it want, Mr. White? What have we got?'],
+          ['walt', 'Nothing it wants, Jesse. Keep flying.'],
+        ],
+      },
+      leviathanHit: [['walt', 'Jesse. Stop shooting the enormous thing.']],
     },
     wonders: {
+      lantern: [
+        ['jesse', 'Yo, Mr. White, that star’s flashing.'],
+        ['walt', 'A pulsar, Jesse. A neutron star. A teaspoon of it weighs more than a mountain. We are not stopping.'],
+      ],
+      twins: [
+        ['jesse', 'Two suns, Mr. White!'],
+        ['walt', 'A binary pair. The smaller one is pulling gas off the larger. Chemistry, Jesse, on a scale you can see.'],
+      ],
+      wanderer: [
+        ['jesse', 'Where’s the sun for this one?'],
+        ['walt', 'There isn’t one. A rogue planet. It left, Jesse. Some things do.'],
+      ],
+      graveyard: [
+        ['jesse', 'Mr. White. Those are wrecks. Like, hundreds.'],
+        ['walt', 'A graveyard round a dead star. Whatever happened here, Jesse, it happened fast.'],
+      ],
       citadel: [
         ['jesse', 'A whole city of the same old dude?'],
         ['walt', 'Imagine their supply chain.'],
@@ -1430,7 +1711,8 @@ export const parseShip = (id) => (typeof id === 'string' && BY_ID.has(id) ? id :
 // 'arrive' at a place, 'traffic' going
 // past (by kind), a 'kill' (by kind, or any), 'hunted' (by who: the
 // faction, or 'ace'), an 'event' (by the director's id) or a 'wonder' (by
-// its id), 'interdicted' (hunters cut the pulse drive), 'crashInto' (by
+// its id; an event's lines may be keyed by `sub`, what came: a leviathan's
+// kind), 'interdicted' (hunters cut the pulse drive), 'crashInto' (by
 // what: 'star', 'giant', 'citadel'; the plain crash lines otherwise), or
 // something on 'foot' (by what: 'land', 'out', 'squad', 'kill' (`sub`: by
 // kind, or any), 'hurt', 'down', 'up', 'cleared', 'swap' (`sub`: who's
@@ -1442,13 +1724,17 @@ export function linesFor(crew, event, id, sub) {
   if (event === 'kill') return crew.kill?.[id] ?? crew.kill?.any ?? null;
   if (event === 'hunted') return crew.hunted?.[id] ?? null;
   if (event === 'crashInto') return crew.crashInto?.[id] ?? crew.crash ?? null;
-  if (event === 'event') return crew.events?.[id] ?? null;
+  if (event === 'event') {
+    const f = crew.events?.[id];
+    if (!f) return null;
+    return Array.isArray(f) ? f : (f[sub] ?? f.any ?? Object.values(f)[0] ?? null);
+  }
   if (event === 'siege') return crew.siege?.[id] ?? null;
   if (event === 'wonder') return crew.wonders?.[id] ?? null;
   if (event === 'foot') {
     const f = crew.foot?.[id];
     if (!f) return null;
-    return Array.isArray(f) ? f : (f[sub] ?? f.any ?? null);
+    return Array.isArray(f) ? f : (f[sub] ?? f.any ?? Object.values(f)[0] ?? null);
   }
   return crew[event] ?? null;
 }

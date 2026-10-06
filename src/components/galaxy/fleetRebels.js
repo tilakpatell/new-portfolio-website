@@ -13,6 +13,10 @@
 // superstructure that widens toward the stern, the command tower at the back
 // with its bridge and twin sensor globes, and thirteen blue engines in two
 // rows across the stern.
+// interdictor: an Immobilizer 418 Interdictor cruiser, a Star Destroyer's
+// wedge at a third the length with its four gravity-well projector globes
+// standing off its flanks on pylons, each in the violet glow of its field
+// (interdiction.js: the trap for a ship that keeps jumping).
 // deathstar2: the second Death Star, half built: a plated grey sphere with
 // its equatorial trench, the superlaser's dish sunk into the northern
 // hemisphere, and a ragged, stepped bite out of its upper right where the
@@ -382,6 +386,109 @@ function executor(k) {
     blink('a', pulse(t, 3, 0, 0.5) ? 1 : 0.35);
     blink('b', pulse(t, 3, 0.5, 0.5) ? 1 : 0.35);
     blink('bow', pulse(t, 1.5, 0, 0.12) ? 1 : 0.1);
+  });
+}
+
+// ── Immobilizer 418 Interdictor cruiser ──
+
+// The Empire's trap for a ship that keeps slipping into hyperspace: a Star
+// Destroyer's wedge at a third the length, with four gravity-well projector
+// globes standing off its flanks on pylons (two a side), each ringed with
+// the violet glow of its field, which the scene pulses ('well').
+function interdictor(k) {
+  const L = [];
+  const HULL = '#9ca1a8';
+  const DECK = '#8b9097';
+  const DARK = '#24282e';
+  const W0 = 0.34;
+  const sec = (z) => {
+    const w = W0 * (0.5 - z);
+    const f = w / W0;
+    const [s, hU, hs, hL, b, tr, lip, tin] = [0.04, 0.05, 0.012, 0.042, 0.055, 0.016, 0.008, 0.0035].map((v) => v * f);
+    return {
+      z,
+      pts: [[w, -lip], [w - tr, -tin], [w - tr, tin], [w, lip], [s, hU], [s, hU + hs], [-s, hU + hs], [-s, hU], [-w, lip], [-w + tr, tin], [-w + tr, -tin], [-w, -lip], [-b, -hL], [b, -hL]],
+    };
+  };
+  L.push(part(loft([sec(-0.5), sec(0), sec(0.45), sec(0.497)]), { color: HULL }));
+  // the trench round it
+  const band = (z) => {
+    const w = W0 * (0.5 - z);
+    const f = w / W0;
+    const x = w - 0.016 * f * 0.45;
+    return { z, pts: [[x, -0.0028 * f], [x, 0.0028 * f], [-x, 0.0028 * f], [-x, -0.0028 * f]] };
+  };
+  L.push(part(loft([band(-0.499), band(0.49)]), { to: 'metal', color: DARK }));
+  // the decks stepping up astern, each with a sloped front
+  const deck = (zf, wf, wb, top) =>
+    loft([
+      { z: -0.497, pts: [[wb, 0], [wb * 0.93, top], [-wb * 0.93, top], [-wb, 0]] },
+      { z: zf - 0.03, pts: [[wf, 0], [wf * 0.93, top], [-wf * 0.93, top], [-wf, 0]] },
+      { z: zf, pts: [[wf * 0.9, 0], [wf * 0.8, top - 0.014], [-wf * 0.8, top - 0.014], [-wf * 0.9, 0]] },
+    ]);
+  const decks = [
+    [0.08, 0.06, 0.2, 0.078],
+    [-0.1, 0.055, 0.15, 0.098],
+    [-0.26, 0.05, 0.1, 0.118],
+  ];
+  decks.forEach(([zf, wf, wb, top], i) => L.push(part(deck(zf, wf, wb, top), { color: i % 2 ? DECK : HULL })));
+  // the tower: a neck, the bridge across its top, the shield domes on that
+  L.push(part(loft([{ z: -0.45, pts: box8(0.05, 0.075, 0.008, 0.15) }, { z: -0.39, pts: box8(0.044, 0.075, 0.008, 0.15) }]), { color: HULL }));
+  L.push(part(loft([{ z: -0.465, pts: box8(0.16, 0.028, 0.006, 0.195) }, { z: -0.4, pts: box8(0.16, 0.028, 0.006, 0.195) }, { z: -0.385, pts: box8(0.14, 0.015, 0.004, 0.19) }]), { color: DECK }));
+  for (const sx of [-1, 1]) {
+    L.push(part(new THREE.CylinderGeometry(0.007, 0.009, 0.014, 8), { at: [sx * 0.052, 0.213, -0.435], color: HULL }));
+    L.push(ball(0.017, [sx * 0.052, 0.227, -0.435], 1, { to: 'metal', color: '#c4c8ce' }, 14));
+  }
+  L.push(part(new THREE.BoxGeometry(0.12, 0.004, 0.003), { at: [0, 0.192, -0.3865], rot: [0.5, 0, 0], to: 'glow', color: [1.5, 1.45, 1.3] }));
+  // the gravity-well projectors: four globes off the flanks on short
+  // pylons, two a side, each in the violet ring of its field
+  const GLOBE = 0.068;
+  for (const sx of [-1, 1]) {
+    for (const z of [-0.2, 0.06]) {
+      const w = W0 * (0.5 - z);
+      const x = sx * (w * 0.62);
+      const y = 0.062 * (0.5 - z) + GLOBE * 0.55;
+      L.push(rod([sx * w * 0.3, 0.03 * (0.5 - z), z], [x, y - GLOBE * 0.6, z], 0.012, 0.016, { to: 'metal', color: '#6c7179' }, 8));
+      L.push(part(new THREE.CylinderGeometry(GLOBE * 0.55, GLOBE * 0.7, GLOBE * 0.5, 12), { at: [x, y - GLOBE * 0.75, z], to: 'metal', color: '#5a5f66' }));
+      L.push(ball(GLOBE, [x, y, z], 1, { to: 'metal', color: '#aab0b8' }, 20));
+      // the field's glow: a band round its middle and a bright eye on top
+      L.push(part(new THREE.TorusGeometry(GLOBE * 1.04, GLOBE * 0.09, 6, 28).rotateX(PI / 2), { at: [x, y, z], to: 'glow', color: [1.6, 1.0, 4.6], mark: 'well' }));
+      L.push(part(new THREE.TorusGeometry(GLOBE * 1.04, GLOBE * 0.06, 6, 28), { at: [x, y, z], to: 'glow', color: [1.2, 0.8, 3.8], mark: 'well' }));
+      L.push(ball(GLOBE * 0.22, [x, y + GLOBE * 0.98, z], 1, { to: 'glow', color: [2.4, 1.6, 6.4], mark: 'well' }, 8));
+    }
+  }
+  // the engines: three great ones and two smaller
+  for (const [x, y, r] of [
+    [0, 0.012, 0.034],
+    [0.085, 0.006, 0.028],
+    [-0.085, 0.006, 0.028],
+    [0.045, 0.082, 0.013],
+    [-0.045, 0.082, 0.013],
+  ]) {
+    L.push(part(turned([[r * 0.8, -0.488], [r * 0.8, -0.503], [r, -0.51], [r * 1.14, -0.5], [r * 1.14, -0.49]], 16), { at: [x, y, 0], to: 'metal', color: '#4b5057' }));
+    L.push(part(new THREE.CircleGeometry(r * 0.8, 16), { at: [x, y, -0.502], rot: [0, PI, 0], to: 'glow', color: [1.0, 2.5, 6.6] }));
+  }
+  // greebles on the decks, and the hangar underneath
+  for (let i = 0; i < 36; i++) {
+    const [zf, , wb, top] = decks[Math.floor(k.rand() * decks.length)];
+    const z = zf - 0.03 + (-0.49 - zf + 0.03) * k.rand();
+    const w = wb * 0.8 * k.rand() * (k.rand() < 0.5 ? -1 : 1);
+    const [sx, sy, sz] = [0.008 + 0.02 * k.rand(), 0.004 + 0.01 * k.rand(), 0.008 + 0.026 * k.rand()];
+    L.push(part(new THREE.BoxGeometry(sx, sy, sz), { at: [w, top + sy / 2, z], to: 'metal', color: k.rand() < 0.5 ? '#6c7179' : '#8e939a' }));
+  }
+  L.push(part(new THREE.BoxGeometry(0.05, 0.003, 0.11), { at: [0, -0.026, -0.06], to: 'metal', color: '#1e2126' }));
+  // running lights down the edges
+  for (let i = 0; i < 12; i++) {
+    const z = -0.44 + i * 0.075;
+    const w = W0 * (0.5 - z);
+    for (const sx of [-1, 1]) L.push(part(new THREE.BoxGeometry(0.0025, 0.0025, 0.005), { at: [sx * (w + 0.0006), 0.009 * (0.5 - z) + 0.003, z], to: 'glow', color: [2.6, 2.4, 2], mark: i % 2 ? 'a' : 'b' }));
+  }
+  const mats = materials(k, { plating: { min: 8, base: 214, spread: 22, seam: 0.55, detail: 0.4 }, paint: { metalness: 0.3, roughness: 0.52 }, density: 7 });
+  return finish(k, L, mats, (t, blink) => {
+    blink('a', pulse(t, 3, 0, 0.5) ? 1 : 0.35);
+    blink('b', pulse(t, 3, 0.5, 0.5) ? 1 : 0.35);
+    // the wells' glow breathing, the four together
+    blink('well', 0.55 + 0.45 * (0.5 + 0.5 * sin(t * 3.4)));
   });
 }
 
@@ -938,7 +1045,7 @@ function uwing(k) {
   return finish(k, L, mats);
 }
 
-export const FLEET = { moncal, nebulon, awing, ywing, bwing, uwing, executor, hammerhead, deathstar2, gate, cloudcity };
+export const FLEET = { moncal, nebulon, awing, ywing, bwing, uwing, executor, interdictor, hammerhead, deathstar2, gate, cloudcity };
 export const INFO = {
   moncal: { name: 'Mon Calamari cruiser', meters: 1200, side: 'rebel' },
   nebulon: { name: 'Nebulon-B frigate', meters: 300, side: 'rebel' },
@@ -947,6 +1054,7 @@ export const INFO = {
   bwing: { name: 'B-wing', meters: 16.9, side: 'rebel' },
   uwing: { name: 'U-wing', meters: 25, side: 'rebel' },
   executor: { name: 'Super Star Destroyer', meters: 19000, side: 'empire' },
+  interdictor: { name: 'Interdictor cruiser', meters: 600, side: 'empire' },
   hammerhead: { name: 'Hammerhead corvette', meters: 315, side: 'rebel' },
   deathstar2: { name: 'Death Star II', meters: 160000, side: 'empire' },
   gate: { name: 'Scarif Shield Gate', meters: 1700, side: 'empire' },

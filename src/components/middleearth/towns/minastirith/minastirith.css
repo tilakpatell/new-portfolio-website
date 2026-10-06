@@ -1,0 +1,49 @@
+/* Minas Tirith: the Shire's HUD (../../shire/shire.css) in the white and
+   black-and-silver of Gondor, with the beacon's fire for warnings; the
+   panels for the ride, the beacon and the siege. */
+
+.minas-world { --shire-glass: rgba(14, 16, 22, 0.8); --shire-glass-hi: rgba(16, 18, 26, 0.94); --shire-gold: #e8e4d8; }
+.minas-stage { background: linear-gradient(180deg, #6a8cc0 0%, #e6dccb 60%, #6a7a4a 100%); }
+.minas-stage[data-zone='hall'] { background: radial-gradient(ellipse at 50% 30%, #1c1e24 0%, #06070a 72%); }
+.minas-stage[data-zone='walls'] { background: linear-gradient(180deg, #0a0505 0%, #5a1a0a 60%, #120604 100%); }
+.minas-stage[data-zone='beacon'] { background: linear-gradient(180deg, #18224a 0%, #d0784a 62%, #2a2030 100%); }
+.minas-stage .shire-loading { color: #f4f0e6; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6); }
+.minas-stage[data-mode='talk'] .shire-canvas, .minas-stage[data-mode='ride'] .shire-canvas, .minas-stage[data-mode='sneak'] .shire-canvas, .minas-stage[data-mode='siege'] .shire-canvas, .minas-stage[data-mode='chain'] .shire-canvas, .minas-stage[data-mode='end'] .shire-canvas { cursor: default; touch-action: none; }
+
+.minas-game { top: clamp(0.7rem, 2vw, 1.2rem); bottom: auto; left: 50%; transform: translateX(-50%); width: min(27rem, calc(100% - 1.4rem)); }
+.minas-game[data-look], .minas-game[data-dread] { border-color: rgba(255, 120, 40, 0.85); animation: shire-tempt 0.4s ease-in-out infinite alternate; }
+.minas-game[data-stir] { border-color: rgba(255, 170, 90, 0.6); }
+.minas-big { min-width: 5.5rem; touch-action: none; user-select: none; -webkit-user-select: none; }
+.minas-big[data-next] { background: rgba(255, 196, 110, 0.22); border-color: rgba(255, 210, 140, 0.8); }
+
+/* the seven gates, as seven pips */
+.minas-gates { display: flex; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
+.minas-gates li { flex: 1; height: 0.45rem; border-radius: 999px; background: rgba(255, 255, 255, 0.14); }
+.minas-gates li[data-passed] { background: linear-gradient(90deg, #d8d4c8, #fffaf0); box-shadow: 0 0 8px rgba(255, 250, 230, 0.6); }
+
+/* the ledge: the rocks, the pile, the guard at the end, and you */
+.minas-ledge { position: relative; height: 2.6rem; border-radius: 0.5rem; background: linear-gradient(180deg, transparent 62%, rgba(255, 255, 255, 0.12) 62%); }
+.minas-ledge > span { position: absolute; transform: translateX(-50%); }
+.minas-ledge-rock { bottom: 38%; width: 0.9rem; height: 0.8rem; border-radius: 40% 50% 20% 30%; background: #8a8478; }
+.minas-ledge-pile { bottom: 38%; width: 1.1rem; height: 1.8rem; clip-path: polygon(50% 0, 100% 100%, 0 100%); background: #8a5a32; }
+.minas-ledge-guard { right: 0; bottom: 38%; width: 0.6rem; height: 1.1rem; border-radius: 0.3rem 0.3rem 0 0; background: #2a2a30; transform: none; }
+.minas-ledge-guard[data-look] { box-shadow: -14px 0 18px rgba(255, 150, 60, 0.6); background: #ff9a48; }
+.minas-ledge-you { width: 0.55rem; height: 0.8rem; margin-bottom: 1rem; border-radius: 0.3rem 0.3rem 0 0; background: #f4f0e6; box-shadow: 0 0 8px rgba(255, 255, 255, 0.6); transition: left 0.08s linear; }
+
+/* the range across the field: the towers coming on, and where the engines are laid */
+.minas-range { position: relative; height: 1.6rem; border-radius: 999px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.16), rgba(120, 30, 10, 0.3)); overflow: hidden; }
+.minas-range > span { position: absolute; top: 50%; transform: translate(-50%, -50%); }
+.minas-range-tower { width: 0.55rem; height: 1.1rem; border-radius: 0.15rem; background: #3a2416; border: 1px solid #c86a2a; transition: left 0.1s linear; }
+.minas-range-aim { width: 3px; height: 1.6rem; background: rgba(255, 255, 255, 0.4); }
+.minas-range-aim[data-loaded] { background: #ffd27a; box-shadow: 0 0 10px #ffc860; }
+.minas-range-wall { left: 0.4rem; transform: translateY(-50%) !important; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; }
+
+.minas-chain { position: absolute; left: 50%; bottom: clamp(1rem, 4vw, 2.2rem); transform: translateX(-50%); margin: 0; padding: 0.55rem 1rem; border-radius: 999px; background: rgba(8, 10, 18, 0.6); color: #fff2dc; font-family: 'Cinzel', serif; letter-spacing: 0.04em; text-align: center; animation: minas-fade-in 1.2s ease both; }
+@keyframes minas-fade-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+.minas-end { left: 50%; transform: translateX(-50%); width: min(32rem, calc(100% - 1.4rem)); text-align: center; justify-items: center; }
+
+@media (max-width: 639px) {
+  .minas-stage[data-game] .shire-hud-top { display: none; }
+  .minas-game { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); top: 0.7rem; bottom: auto; }
+  .minas-end { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); }
+}

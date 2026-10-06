@@ -12,9 +12,10 @@
 // SkeletonUtils so each has bones of its own.
 //
 // loadGLTF(url, { loader }) → Promise<GLTF | null>
-//   The loader is a GLTFLoader with the meshopt decoder, made the first time
-//   it's wanted (a test hands in a stand-in with just loadAsync(url); the cache
-//   is by url alone, so whichever loader asks first is the one that loads it).
+//   The loader is the site's (gltf.js: meshopt, and KTX2 when a file needs it;
+//   a test hands in a stand-in with just loadAsync(url); the cache is by url
+//   alone, so whichever loader asks first is the one that loads it). Its maps
+//   are sharpened once, on the original, as the copies share them.
 //   A load that fails resolves null and isn't kept, so a later call tries again.
 // cloneScene(gltf) → Object3D
 // gltfStats() → { requests, parses }: loadGLTF calls and loads actually started
@@ -22,23 +23,23 @@
 // clearGLTFCache(): forgets everything, and the counts. For tests only: a
 //   page keeps what it loaded.
 
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { gltfLoader } from './gltf';
+import { sharpenTree } from './textures';
 
 const cache = new Map(); // url → Promise<GLTF | null>
 const stats = { requests: 0, parses: 0 };
-let shared = null; // the loader made when none is handed in, kept for the next one
-
-const defaultLoader = () => (shared ??= new GLTFLoader().setMeshoptDecoder(MeshoptDecoder));
 
 export function loadGLTF(url, { loader } = {}) {
   if (import.meta.env.DEV) stats.requests++;
   if (cache.has(url)) return cache.get(url);
   if (import.meta.env.DEV) stats.parses++;
   const p = Promise.resolve()
-    .then(() => (loader ?? defaultLoader()).loadAsync(url))
-    .then((gltf) => gltf ?? null)
+    .then(() => (loader ?? gltfLoader()).loadAsync(url))
+    .then((gltf) => {
+      if (gltf?.scene) sharpenTree(gltf.scene);
+      return gltf ?? null;
+    })
     .catch(() => null)
     .then((gltf) => {
       // (a failure is forgotten, unless the cache was cleared and refilled meanwhile)

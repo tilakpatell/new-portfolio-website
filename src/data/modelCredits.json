@@ -100,6 +100,419 @@
       "galaxy"
     ]
   },
+  "cybertron-arcee": {
+    "title": "Arcee TFP Rigged",
+    "author": "Blender user Srikanth M",
+    "authorUrl": "https://sketchfab.com/Ani-sri",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/arcee-tfp-rigged-26956dff2a7e41bf8b4c4e5a5b6af58b",
+    "where": "cybertron",
+    "as": "Arcee (Transformers: Prime)",
+    "file": "/models/cybertron/arcee.glb"
+  },
+  "cybertron-barricade": {
+    "title": "Transformers: War For Cybetron Barricade",
+    "author": "WKAC",
+    "authorUrl": "https://sketchfab.com/WKAC",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-war-for-cybetron-barricade-b7a7056e4e4646e1a145987b0a4bafa5",
+    "where": "cybertron",
+    "as": "Barricade (War for Cybertron), and his change to a car and back",
+    "file": "/models/cybertron/barricade.glb"
+  },
+  "cybertron-bulkhead": {
+    "title": "Bulkhead Rigged TFP",
+    "author": "Blender user Srikanth M",
+    "authorUrl": "https://sketchfab.com/Ani-sri",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/bulkhead-rigged-tfp-518f2ef8efaa426592e9e22e81768a3d",
+    "where": "cybertron",
+    "as": "Bulkhead (Transformers: Prime)",
+    "file": "/models/cybertron/bulkhead.glb"
+  },
+  "cybertron-bulkhead-car": {
+    "title": "Bulkhead Rigged TFP",
+    "author": "Blender user Srikanth M",
+    "authorUrl": "https://sketchfab.com/Ani-sri",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/bulkhead-rigged-tfp-518f2ef8efaa426592e9e22e81768a3d",
+    "where": "cybertron",
+    "as": "Bulkhead's truck (Transformers: Prime)",
+    "file": "/models/cybertron/bulkhead-car.glb"
+  },
+  "cybertron-bumblebee-car-tfp": {
+    "title": "Transformers Prime Bumblebee Vehicle Mode",
+    "author": "Pipogame",
+    "authorUrl": "https://sketchfab.com/joseclaudio162001",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-prime-bumblebee-vehicle-mode-bb60cf1d49cc4856abc9116e5ea239e7",
+    "where": "cybertron",
+    "as": "Bumblebee's car (Transformers: Prime)",
+    "file": "/models/cybertron/bumblebee-car-tfp.glb"
+  },
+  "cybertron-bumblebee-car-wfc": {
+    "title": "War For CyberTron: Bumble Bee Vehicle",
+    "author": "masoudnayab",
+    "authorUrl": "https://sketchfab.com/masoudnayab",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/war-for-cybertron-bumble-bee-vehicle-39c486035c7e4ebab8126244ebd29242",
+    "where": "cybertron",
+    "as": "Bumblebee's Cybertronian car (War for Cybertron)",
+    "file": "/models/cybertron/bumblebee-car-wfc.glb"
+  },
+  "cybertron-bumblebee-tfp": {
+    "title": "Transformers Prime Bumblebee",
+    "author": "Pipogame",
+    "authorUrl": "https://sketchfab.com/joseclaudio162001",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-prime-bumblebee-8b56f3daed3b4c3a8d8ecec663031fe1",
+    "where": "cybertron",
+    "as": "Bumblebee (Transformers: Prime)",
+    "file": "/models/cybertron/bumblebee-tfp.glb"
+  },
+  "cybertron-bumblebee-wfc": {
+    "title": "Transformers: War For Cybertron Bumblebee",
+    "author": "WKAC",
+    "authorUrl": "https://sketchfab.com/WKAC",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-war-for-cybertron-bumblebee-538ff8ba697c46618bedf6f4f8d511bd",
+    "where": "cybertron",
+    "as": "Bumblebee (War for Cybertron)",
+    "file": "/models/cybertron/bumblebee-wfc.glb"
+  },
+  "cybertron-cybertruck": {
+    "title": "Fall of CyberTron: Optimus Prime CyberTruck",
+    "author": "masoudnayab",
+    "authorUrl": "https://sketchfab.com/masoudnayab",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/fall-of-cybertron-optimus-prime-cybertruck-c7c10850cb60418d98c99eca2cb790ff",
+    "where": "cybertron",
+    "as": "Optimus's Cybertronian truck (Fall of Cybertron), his alt mode in Iacon",
+    "file": "/models/cybertron/cybertruck.glb"
+  },
+  "cybertron-dreadwing-jet": {
+    "title": "transformers prime dreadwing jet model 3d",
+    "author": "Josuez5",
+    "authorUrl": "https://sketchfab.com/Josuez5",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-prime-dreadwing-jet-model-3d-ee47da73cf6e4ccab484f726db7f3592",
+    "where": "cybertron",
+    "as": "Dreadwing's jet (Transformers: Prime), flying over Jasper",
+    "file": "/models/cybertron/dreadwing-jet.glb"
+  },
+  "cybertron-energon": {
+    "title": "Glowing crystals",
+    "author": "SusanKing",
+    "authorUrl": "https://sketchfab.com/krolzuzannapl",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/glowing-crystals-1c2e277c8c6b4c379ae55099c3122db1",
+    "where": "cybertron",
+    "as": "the energon crystals",
+    "file": "/models/cybertron/energon.glb"
+  },
+  "cybertron-grimlock": {
+    "title": "Transformers Fall Of Cybertron Grimlock",
+    "author": "hafid.quispe",
+    "authorUrl": "https://sketchfab.com/hafid.quispe",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-grimlock-f6f6af8ab56b49aba821e4cd7e37d108",
+    "where": "cybertron",
+    "as": "Grimlock (Fall of Cybertron)",
+    "file": "/models/cybertron/grimlock.glb"
+  },
+  "cybertron-jazz": {
+    "title": "War for Cybertron: Jazz",
+    "author": "masoudnayab",
+    "authorUrl": "https://sketchfab.com/masoudnayab",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/war-for-cybertron-jazz-0db393eeea54496b853d8024d44f45b1",
+    "where": "cybertron",
+    "as": "Jazz (War for Cybertron)",
+    "file": "/models/cybertron/jazz.glb"
+  },
+  "cybertron-jetfire": {
+    "title": "transformers fall of cybertron Jetfire",
+    "author": "hafid.quispe",
+    "authorUrl": "https://sketchfab.com/hafid.quispe",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-jetfire-4e61515eca0b4c10b963fb67b0fa8243",
+    "where": "cybertron",
+    "as": "Jetfire (Fall of Cybertron)",
+    "file": "/models/cybertron/jetfire.glb"
+  },
+  "cybertron-jetfire-jet": {
+    "title": "transformers fall of cybertron Jetfire",
+    "author": "hafid.quispe",
+    "authorUrl": "https://sketchfab.com/hafid.quispe",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-jetfire-4e61515eca0b4c10b963fb67b0fa8243",
+    "where": "cybertron",
+    "as": "Jetfire's jet mode (Fall of Cybertron), flying over Iacon",
+    "file": "/models/cybertron/jetfire-jet.glb"
+  },
+  "cybertron-leaper": {
+    "title": "Transformers Fall Of Cybertron Soldiers",
+    "author": "hafid.quispe",
+    "authorUrl": "https://sketchfab.com/hafid.quispe",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-soldiers-636d65ae58a441078cccb53756440190",
+    "where": "cybertron",
+    "as": "the Decepticon leapers (Fall of Cybertron)",
+    "file": "/models/cybertron/leaper.glb"
+  },
+  "cybertron-matrix": {
+    "title": "Transformers Fall Of Cybertron The Matriz",
+    "author": "hafid.quispe",
+    "authorUrl": "https://sketchfab.com/hafid.quispe",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-the-matriz-935368cbc67b4639a1bbeecebd4281cc",
+    "where": "cybertron",
+    "as": "the Matrix of Leadership (Fall of Cybertron)",
+    "file": "/models/cybertron/matrix.glb"
+  },
+  "cybertron-megatron-foc": {
+    "title": "Transformers: Fall of Cybertron Megatron",
+    "author": "WKAC",
+    "authorUrl": "https://sketchfab.com/WKAC",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-megatron-25ab3faed0344431a6c08652dd1a828b",
+    "where": "cybertron",
+    "as": "Megatron (Fall of Cybertron), and his change to a tank and back",
+    "file": "/models/cybertron/megatron-foc.glb"
+  },
+  "cybertron-megatron-orbit": {
+    "title": "Transformers: Fall of Cybertron Megatron",
+    "author": "WKAC",
+    "authorUrl": "https://sketchfab.com/WKAC",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-megatron-25ab3faed0344431a6c08652dd1a828b",
+    "where": "cybertron",
+    "also": [
+      "universe"
+    ],
+    "as": "Megatron (Fall of Cybertron), across Cybertron's orbit from him",
+    "file": "/models/cybertron/megatron-orbit.glb"
+  },
+  "cybertron-megatron-tfp": {
+    "title": "(RIGGED) Megatron (TRANSFORMERS: Prime)",
+    "author": "shamus",
+    "authorUrl": "https://sketchfab.com/consistent_models",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/rigged-megatron-transformers-prime-edaf84f0f99043619d80f9c95ba32ee4",
+    "where": "cybertron",
+    "as": "Megatron (Transformers: Prime)",
+    "file": "/models/cybertron/megatron-tfp.glb"
+  },
+  "cybertron-metroplex": {
+    "title": "Fall of CyberTron: Metroplex",
+    "author": "masoudnayab",
+    "authorUrl": "https://sketchfab.com/masoudnayab",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/fall-of-cybertron-metroplex-8b9864031eff48c4bab046aec29203e2",
+    "where": "cybertron",
+    "as": "Metroplex (Fall of Cybertron), on the skyline",
+    "file": "/models/cybertron/metroplex.glb"
+  },
+  "cybertron-optimus-orbit": {
+    "title": "Transformers: War For Cybertron Optimus Prime",
+    "author": "WKAC",
+    "authorUrl": "https://sketchfab.com/WKAC",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-war-for-cybertron-optimus-prime-5b4d634974c240f9988ac985f3ff4c0b",
+    "where": "cybertron",
+    "also": [
+      "universe"
+    ],
+    "as": "Optimus Prime (War for Cybertron), on Cybertron's orbit in the universe map",
+    "file": "/models/cybertron/optimus-orbit.glb"
+  },
+  "cybertron-optimus-tfp": {
+    "title": "TFP Game Optimus Prime",
+    "author": "PRIZMA",
+    "authorUrl": "https://sketchfab.com/PRIZMA",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/tfp-game-optimus-prime-d4c02597e39541518293a95a4afeadfe",
+    "where": "cybertron",
+    "as": "Optimus Prime (Transformers: Prime), whom you play on Earth",
+    "file": "/models/cybertron/optimus-tfp.glb"
+  },
+  "cybertron-optimus-wfc": {
+    "title": "Transformers: War For Cybertron Optimus Prime",
+    "author": "WKAC",
+    "authorUrl": "https://sketchfab.com/WKAC",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-war-for-cybertron-optimus-prime-5b4d634974c240f9988ac985f3ff4c0b",
+    "where": "cybertron",
+    "as": "Optimus Prime (War for Cybertron), whom you play in Iacon",
+    "file": "/models/cybertron/optimus-wfc.glb"
+  },
+  "cybertron-predaking": {
+    "title": "PREDAKING-TRANSFORMERS PRIME",
+    "author": "shamus",
+    "authorUrl": "https://sketchfab.com/consistent_models",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/predaking-transformers-prime-af924859c131440cb5b06f915949f892",
+    "where": "cybertron",
+    "as": "Predaking (Transformers: Prime), flying over Jasper",
+    "file": "/models/cybertron/predaking.glb"
+  },
+  "cybertron-ratchet": {
+    "title": "Ratchet Transformers Prime",
+    "author": "Scorpion4241",
+    "authorUrl": "https://sketchfab.com/Scorpion4241",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/ratchet-transformers-prime-7c87433e653245eb9c286ad7d39050e3",
+    "where": "cybertron",
+    "as": "Ratchet (Transformers: Prime)",
+    "file": "/models/cybertron/ratchet.glb"
+  },
+  "cybertron-shockwave-foc": {
+    "title": "Shockwave  (transformers fall off cybertron)",
+    "author": "+\"/",
+    "authorUrl": "https://sketchfab.com/juancadriveros09",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/shockwave-transformers-fall-off-cybertron-1f085604064043279e5a42ea9269fe8e",
+    "where": "cybertron",
+    "as": "Shockwave (Fall of Cybertron)",
+    "file": "/models/cybertron/shockwave-foc.glb"
+  },
+  "cybertron-sniper": {
+    "title": "Transformers Fall Of Cybertron Soldiers",
+    "author": "hafid.quispe",
+    "authorUrl": "https://sketchfab.com/hafid.quispe",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-soldiers-636d65ae58a441078cccb53756440190",
+    "where": "cybertron",
+    "as": "the Decepticon snipers (Fall of Cybertron)",
+    "file": "/models/cybertron/sniper.glb"
+  },
+  "cybertron-soundwave-foc": {
+    "title": "Transformers: Fall of Cybertron Soundwave",
+    "author": "WKAC",
+    "authorUrl": "https://sketchfab.com/WKAC",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-soundwave-6a0c0fa440954d6da747cdd050a2d1ab",
+    "where": "cybertron",
+    "as": "Soundwave (Fall of Cybertron), watching from a roof",
+    "file": "/models/cybertron/soundwave-foc.glb"
+  },
+  "cybertron-soundwave-tfp": {
+    "title": "SOUNDWAVE TFP (fanmodel) rigged",
+    "author": "Tami_Taoli",
+    "authorUrl": "https://sketchfab.com/Taminatorhator",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/soundwave-tfp-fanmodel-rigged-c72b2a731d2f4bdfa41a99586c877627",
+    "where": "cybertron",
+    "as": "Soundwave (Transformers: Prime)",
+    "file": "/models/cybertron/soundwave-tfp.glb"
+  },
+  "cybertron-space-bridge": {
+    "title": "Transformers Alliance Space Bridge",
+    "author": "OrangeSauceu",
+    "authorUrl": "https://sketchfab.com/orangesauceu",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-alliance-space-bridge-28d9d78cf1bd490b8b9472a7eca8400b",
+    "where": "cybertron",
+    "as": "the space bridge",
+    "file": "/models/cybertron/space-bridge.glb"
+  },
+  "cybertron-trooper": {
+    "title": "Transformers Fall Of Cybertron Soldiers",
+    "author": "hafid.quispe",
+    "authorUrl": "https://sketchfab.com/hafid.quispe",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-soldiers-636d65ae58a441078cccb53756440190",
+    "where": "cybertron",
+    "as": "the Decepticon troopers (Fall of Cybertron)",
+    "file": "/models/cybertron/trooper.glb"
+  },
+  "cybertron-truck-tfp": {
+    "title": "Optimus Prime TFP Truck",
+    "author": "w3ndy23",
+    "authorUrl": "https://sketchfab.com/w3ndy23",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/optimus-prime-tfp-truck-e75947aff6ad40b498c9f77eb76d06ef",
+    "where": "cybertron",
+    "as": "Optimus's truck (Transformers: Prime)",
+    "file": "/models/cybertron/truck-tfp.glb"
+  },
+  "cybertron-trypticon": {
+    "title": "Trypticon",
+    "author": "PCIXOPAT",
+    "authorUrl": "https://sketchfab.com/PCIXOPAT",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/trypticon-cb7483d786fa4fd7a487d33428b48366",
+    "where": "cybertron",
+    "as": "Trypticon (Fall of Cybertron), far off",
+    "file": "/models/cybertron/trypticon.glb"
+  },
+  "cybertron-vehicon": {
+    "title": "Vehicon",
+    "author": "Blender user Srikanth M",
+    "authorUrl": "https://sketchfab.com/Ani-sri",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/vehicon-74294a7573974039a3431411934b3b08",
+    "where": "cybertron",
+    "as": "the Vehicons (Transformers: Prime)",
+    "file": "/models/cybertron/vehicon.glb"
+  },
+  "cybertron-wheeljack-car": {
+    "title": "Fall of CyberTron: Wheel Jack Vehicle",
+    "author": "masoudnayab",
+    "authorUrl": "https://sketchfab.com/masoudnayab",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/fall-of-cybertron-wheel-jack-vehicle-f446eac2bc664d2eae82c5aedabd4c06",
+    "where": "cybertron",
+    "as": "Wheeljack's car (Fall of Cybertron), parked in Iacon",
+    "file": "/models/cybertron/wheeljack-car.glb"
+  },
+  "cybertron-zeta-prime": {
+    "title": "War For CyberTron: Zeta Prime",
+    "author": "masoudnayab",
+    "authorUrl": "https://sketchfab.com/masoudnayab",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/war-for-cybertron-zeta-prime-cd3ac403e72142ffb73d43632d3de9bb",
+    "where": "cybertron",
+    "as": "Zeta Prime (War for Cybertron)",
+    "file": "/models/cybertron/zeta-prime.glb"
+  },
   "death-star": {
     "title": "Death Star - Star Wars",
     "author": "Quiznos323",
@@ -1231,6 +1644,17 @@
     "as": "the Death Star’s trench",
     "file": "/models/universe/trench.glb"
   },
+  "wardrobe-portalgun": {
+    "title": "Portal Gun from The Rick and Morty show",
+    "author": "Bob.Ho",
+    "authorUrl": "https://sketchfab.com/Bob.Ho",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/portal-gun-from-the-rick-and-morty-show-c5f7b4a950de4002b448ac65c6b0207b",
+    "where": "c-137",
+    "as": "Rick’s portal gun, in the wardrobe",
+    "file": "/models/wardrobe/portalgun.glb"
+  },
   "xwing-hd": {
     "title": "High Poly X-Wing Fighter",
     "author": "charles.woods",
@@ -1242,6 +1666,22 @@
     "as": "the X-wing you fly",
     "also": [
       "galaxy"
+    ]
+  },
+  "wardrobe-portalgun": {
+    "title": "Portal Gun from The Rick and Morty show",
+    "author": "Bob.Ho",
+    "authorUrl": "https://sketchfab.com/Bob.Ho",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/portal-gun-from-the-rick-and-morty-show-c5f7b4a950de4002b448ac65c6b0207b",
+    "where": "c-137",
+    "as": "Rick’s portal gun, in the wardrobe",
+    "file": "/models/wardrobe/portalgun.glb",
+    "also": [
+      "universe",
+      "galaxy",
+      "galaxy-surface"
     ]
   }
 }

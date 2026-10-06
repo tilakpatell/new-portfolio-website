@@ -20,15 +20,17 @@
 // buildPlanet(u, T) → { id, radius, group, update(t, camera), setState, mount }
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
+import { gltfLoader } from '../../lib/three/gltf';
+import { loadTexture } from '../../lib/three/textures';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
 import { globeData } from '../travel/globe3d/data';
 import { facing, fit, glowMat, orbit, paint, rng, rounded, tiled } from './kit';
 import { STATIONS } from './stations';
 import { buildGateway } from '../galaxy/gateway';
+import { SIDES, cybertronSkin } from '../cybertron/skin';
+import { createWar, warZones } from '../cybertron/war';
 
 const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the scene's key light
 
@@ -36,19 +38,17 @@ const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the scene's ke
 
 const BASE = '/textures/universe/';
 const PLANET_MAPS = ['music', 'middleearth', 'transformers', 'marvel', 'breakingbad', 'office', 'rickmorty', 'earth', 'earth-clouds', 'earth-night', 'invincible', 'invincible-clouds', 'invincible-night', 'sun', 'sky'];
-const FIXED = ['middleearth-glow', 'rickmorty-glow', 'transformers-glow', 'invincible-glow'];
-const DATA = ['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'cybertron-normal', 'middleearth-normal', 'breakingbad-normal', 'invincible-normal', 'earth-rough'];
+const FIXED = ['middleearth-glow', 'rickmorty-glow', 'invincible-glow'];
+const DATA = ['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-normal-sm', 'transformers-glow-sm', 'middleearth-normal', 'breakingbad-normal', 'invincible-normal', 'earth-rough'];
 const COLOUR = ['plates', 'hull'];
 
 export async function loadTextures({ small = false } = {}) {
-  const loader = new THREE.TextureLoader();
   const T = { small }; // (and whether this is a phone, for the builders)
   const get = async (name, file, colour) => {
     try {
-      const t = await loader.loadAsync(BASE + file);
-      t.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
-      t.anisotropy = 8;
-      T[name] = t;
+      // (decoded off the main thread, as sharp as the device's tier allows,
+      // and shared with any other scene that wants the same map)
+      T[name] = await loadTexture(BASE + file, { color: colour });
     } catch {
       /* missing: whoever wanted it does without */
     }
@@ -126,7 +126,11 @@ function airGlow(mat, color, { night = null } = {}) {
     uNight: { value: night },
   };
   mat.userData.air = u;
-  mat.onBeforeCompile = (shader) => {
+  // (after any hook the planet's builder gave it, such as Cybertron's skin)
+  const prev = mat.onBeforeCompile;
+  const prevKey = mat.customProgramCacheKey;
+  mat.onBeforeCompile = (shader, renderer) => {
+    prev?.call(mat, shader, renderer);
     Object.assign(shader.uniforms, u);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\nuniform vec3 uRimColor;\nuniform float uRimStrength;\nuniform vec3 uSunW;\nuniform sampler2D uNight;`)
@@ -142,7 +146,7 @@ function airGlow(mat, color, { night = null } = {}) {
         }`,
       );
   };
-  mat.customProgramCacheKey = () => (night ? 'air-night' : 'air');
+  mat.customProgramCacheKey = () => `${night ? 'air-night' : 'air'}${prevKey ? `-${prevKey.call(mat)}` : ''}`;
   return mat;
 }
 
@@ -328,23 +332,36 @@ const BUILDERS = {
 
   transformers(p, { u, T }) {
     const r = u.size;
-    p.body.material = new THREE.MeshStandardMaterial({
+    // built over from pole to pole (scripts/build-cybertron-planet.mjs):
+    // tiers of plating, chasms with energon running in them, the city-states'
+    // discs, the Sea of Rust, the war's fires; cybertron/skin.js colours the
+    // energon, lights the cities on the night side and carries the plating
+    // on in the shader up close, where the maps run out
+    const mat = new THREE.MeshStandardMaterial({
       map: T.transformers ?? null,
       color: T.transformers ? '#ffffff' : u.palette.base,
-      normalMap: tiled(T['cybertron-normal'], 24, 12),
-      normalScale: new THREE.Vector2(0.8, 0.8),
-      // the seams between its plates run with energon: violet-blue, bright
-      // enough to bloom, and pulsing slowly as if the planet breathes
-      emissive: '#7f6bff',
-      emissiveMap: T['transformers-glow'] ?? null,
-      emissiveIntensity: T['transformers-glow'] ? 3.2 : 0,
-      roughness: 0.5,
-      metalness: 0.6,
+      normalMap: T['transformers-normal-sm'] ?? null,
+      normalScale: new THREE.Vector2(1.1, 1.1),
+      roughness: 0.55,
+      metalness: 0.45,
     });
-    const cyber = p.body.material;
-    p.tick.push((t) => {
-      if (T['transformers-glow']) cyber.emissiveIntensity = 2.4 + 1.4 * (0.5 + 0.5 * Math.sin(t * 0.9)) ** 2;
-    });
+    p.body.material = mat;
+    if (T.transformers && T['transformers-glow-sm']) {
+      const skin = cybertronSkin(mat, { glow: T['transformers-glow-sm'], sun: LIGHT });
+      // the energon breathes, and turns from the Autobots' blue to the
+      // Decepticons' violet and back as the war goes one way and the other
+      const blue = SIDES.autobot.energon;
+      const violet = SIDES.decepticon.energon;
+      p.tick.push((t) => {
+        skin.uTime.value = t;
+        skin.uEnergon.value.copy(blue).lerp(violet, 0.5 + 0.5 * Math.sin(t * 0.05));
+      });
+      // and the war, a few fireballs at a time out of the burning fronts
+      // (cybertron/war.js: one draw, turning with the planet)
+      const battle = createWar({ radius: r, zones: warZones(T['transformers-glow-sm']), count: T.small ? 3 : 5, flares: 1, small: true, light: false });
+      p.body.add(battle.group);
+      p.tick.push((t, camera) => battle.update(t, camera, 0.85));
+    }
     // Optimus Prime and Megatron on one orbit, a little apart, facing off as
     // they go round
     const R = r * 1.55;
@@ -1169,8 +1186,8 @@ export function loadModel(url) {
 // in data/modelCredits.json)
 const MODELS = [
   ['music', '/models/sketchfab/sitar.glb'],
-  ['transformers', '/models/universe/optimus.glb'],
-  ['transformers', '/models/universe/megatron.glb', 'rival'],
+  ['transformers', '/models/cybertron/optimus-orbit.glb'], // War for Cybertron's, as Cybertron's own world has him
+  ['transformers', '/models/cybertron/megatron-orbit.glb', 'rival'], // and Fall of Cybertron's
   ['marvel', '/models/universe/marvel.glb'],
   ['breakingbad', '/models/universe/breakingbad.glb'],
   ['rickmorty', '/games/meshy/saucer.glb'], // the classic cruiser, as on the C-137 page
@@ -1186,7 +1203,7 @@ const MODELS = [
 // Load the models one by one, handing each over as it arrives; a model that
 // fails is skipped.
 export function loadModels(onModel) {
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const loader = gltfLoader();
   return Promise.all(
     MODELS.map(([id, url, spot]) =>
       loader

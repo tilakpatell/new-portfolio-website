@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ACHIEVEMENTS } from '../Achievements';
 import { CREWS } from './crews';
+import { STOCK_BUILD, rollBuild, statsOfBuild } from './shipyard/build';
 import {
   FASTEST,
   PARTS,
@@ -9,7 +10,10 @@ import {
   SLOTS,
   STOCK,
   STOCK_LOADOUT,
+  capacityOf,
+  droppedParts,
   equip,
+  fitInto,
   fits,
   isOpen,
   loadoutOf,
@@ -179,5 +183,64 @@ describe('fitting and keeping', () => {
     expect(readOutfit(JSON.parse(JSON.stringify(writeOutfit(l))), 'aws')).toEqual(l);
     expect(readOutfit(null)).toEqual(STOCK_LOADOUT);
     expect(readOutfit(['<script>', 7, 'fusion'], '#fff')).toEqual({ ...STOCK_LOADOUT, guns: 'fusion' });
+  });
+});
+
+describe('on a garage build', () => {
+  const needle = { ...STOCK_BUILD, hull: 'needle' };
+  it('flies on the build’s own numbers, under the parts', () => {
+    const b = rollBuild(7, Object.keys(ACHIEVEMENTS));
+    const own = statsOfBuild(b);
+    const s = statsOf('rv', STOCK_LOADOUT, b);
+    expect(s.agility).toBeCloseTo(own.agility / (1 + 0.03 * own.mass), 6);
+    expect(s.boost).toBeCloseTo(own.boost, 6);
+    expect(s.capacity).toBe(own.plant);
+    expect(s.power).toBe(own.power);
+    const boosted = statsOf('rv', { ...STOCK_LOADOUT, booster: 'srb' }, b);
+    expect(boosted.boost).toBeCloseTo(own.boost + 0.25, 6);
+  });
+
+  it('runs on the build’s plant, not the ship’s', () => {
+    expect(capacityOf('rv', needle)).toBe(6);
+    expect(capacityOf('rv', null)).toBe(PLANT.rv);
+    expect(capacityOf('falcon')).toBe(PLANT.falcon);
+  });
+
+  it('takes parts off, hungriest first, when the build can’t power them', () => {
+    const all = Object.keys(ACHIEVEMENTS);
+    const heavy = { ...STOCK_LOADOUT, booster: 'portal', guns: 'fusion', shields: 'fastcharge' }; // (8 MW)
+    expect(loadoutOf({ falcon: heavy }, 'falcon', all)).toEqual(heavy); // (the Falcon's 9 MW runs it all)
+    const l = loadoutOf({ falcon: heavy }, 'falcon', all, needle); // (needle: 6 MW, its twin cans draw 1)
+    expect(powerOf(l) + statsOfBuild(needle).power).toBeLessThanOrEqual(6);
+    expect(l.booster).toBe(STOCK); // (portal: 3 MW, the hungriest)
+    expect(loadoutOf({ rv: heavy }, 'rv', all, { ...STOCK_BUILD, hull: 'hauler' })).toEqual(heavy); // (the hauler's 10 MW does, on the RV)
+  });
+
+  it('says how much power is short against the build', () => {
+    const all = Object.keys(ACHIEVEMENTS);
+    expect(equip('falcon', { ...STOCK_LOADOUT, guns: 'fusion' }, 'booster', 'portal', all).ok).toBe(true);
+    const r = equip('falcon', { ...STOCK_LOADOUT, guns: 'fusion' }, 'booster', 'portal', all, needle);
+    expect(r).toMatchObject({ ok: false, reason: 'power', short: 1 }); // (3 + 3 + 1 against 6)
+    expect(equip('falcon', STOCK_LOADOUT, 'booster', 'portal', all, needle).ok).toBe(true);
+  });
+});
+
+describe('what a smaller plant takes off', () => {
+  const all = Object.keys(ACHIEVEMENTS);
+  const heavy = { ...STOCK_LOADOUT, booster: 'portal', guns: 'fusion', shields: 'fastcharge' };
+  const needle = { ...STOCK_BUILD, hull: 'needle' };
+
+  it('names the parts fitted that the ship flies without', () => {
+    const flown = loadoutOf({ falcon: heavy }, 'falcon', all, needle);
+    expect(droppedParts(heavy, flown).map((p) => p.id)).toEqual(['portal']);
+    expect(droppedParts(heavy, heavy)).toEqual([]);
+  });
+
+  it('keeps them in what’s saved when something else is fitted, so a bigger plant gets them back', () => {
+    const r = equip('falcon', loadoutOf({ falcon: heavy }, 'falcon', all, needle), 'paint', 'sith', all, needle);
+    expect(r.ok).toBe(true);
+    const saved = fitInto(heavy, 'paint', r.loadout.paint);
+    expect(saved).toEqual({ ...heavy, paint: 'sith' });
+    expect(loadoutOf({ falcon: saved }, 'falcon', all, { ...STOCK_BUILD, hull: 'hauler' }).booster).toBe('portal');
   });
 });

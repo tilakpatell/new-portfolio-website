@@ -483,6 +483,12 @@ function hall(K) {
     bk.add(K.mats.cushion, new THREE.BoxGeometry(1.2, 0.08, 0.86), { p: [x, y + 0.6, z + 0.18] });
   }
 
+  // a pale lamp hanging on a long chain before the throne
+  const lamp = V3(THRONE.x, 7, THRONE.z + 3);
+  bk.add(mats.iron, new THREE.CylinderGeometry(0.02, 0.02, HALL_H + 4 - lamp.y, 4), { p: [lamp.x, (HALL_H + 4 + lamp.y) / 2, lamp.z] });
+  bk.add(mats.iron, lathe([[0.04, -0.5], [0.3, -0.3], [0.36, 0.1], [0.2, 0.4], [0.03, 0.55]], 8), { p: [lamp.x, lamp.y, lamp.z] });
+  bk.add(mats.lampGlow, new THREE.SphereGeometry(0.24, 14, 10), { p: [lamp.x, lamp.y, lamp.z] });
+
   // braziers: iron bowls on tripods, glowing
   const fires = [];
   for (const [x, z] of BRAZIERS) {
@@ -495,7 +501,7 @@ function hall(K) {
     fires.push(V3(x, 1.38, z));
   }
   bk.build(g, { shadow: false, receive: true });
-  return { group: g, windows, fires };
+  return { group: g, windows, fires, lamp };
 }
 
 // ── the palantír on its pillar ──
@@ -712,11 +718,102 @@ function library(K) {
 }
 
 // ── the tower ──
-// Orthanc from outside: four piers of many-sided stone welded together,
-// blades of stone running up them, rising from a stepped plinth to the
-// top, where they part into four horns; the pinnacle's floor between them,
-// and the shut hatch the stair comes up through. Hidden from inside the
-// shaft (`shell`), where only the top shows.
+// Orthanc from outside, as the films built it: four great piers welded
+// into one, each a many-sided blade of black stone, fluted, with a knife
+// edge running up its outer face; deep clefts between them, where the
+// windows are; their feet flaring out like roots onto a stepped plinth,
+// the long stair climbing to the door in the south cleft, and high up
+// Saruman's balcony. At the top the piers part and go on up as four horns,
+// curving out like claws, with lesser spikes between; the pinnacle's floor
+// in the middle of them, and the shut hatch the stair comes up through.
+// Hidden from inside the shaft (`shell`), where only the top shows.
+
+// a pier's cross-section: its knife edge out along +u, fluted down its
+// sides, flatter where it's welded to the core (-u)
+const PIER = (() => {
+  const half = [
+    [1, 0],
+    [0.86, 0.13],
+    [0.8, 0.24],
+    [0.66, 0.33],
+    [0.6, 0.45],
+    [0.44, 0.55],
+    [0.36, 0.67],
+    [0.16, 0.76],
+    [-0.08, 0.8],
+    [-0.34, 0.7],
+    [-0.52, 0.46],
+    [-0.6, 0.2],
+  ];
+  return [...half, [-0.62, 0], ...half.slice(1).reverse().map(([u, v]) => [u, -v])];
+})();
+// A loft of the pier's section up through `rings` ({ y, rc, s }: its middle
+// `rc` out from the axis along angle `a`, its size `s`), flat-faced, so the
+// facets catch the light. The last ring of a horn closes to a point.
+function loftPier(a, rings, section = PIER) {
+  const ca = Math.cos(a);
+  const sa = Math.sin(a);
+  const pts = rings.map(({ y, rc, s, dv = 0 }) => section.map(([u, v]) => [ca * (rc + u * s) - sa * (v * s + dv), y, sa * (rc + u * s) + ca * (v * s + dv)]));
+  const pos = [];
+  const n = section.length;
+  for (let j = 0; j < rings.length - 1; j++) {
+    for (let i = 0; i < n; i++) {
+      const a0 = pts[j][i];
+      const a1 = pts[j][(i + 1) % n];
+      const b0 = pts[j + 1][i];
+      const b1 = pts[j + 1][(i + 1) % n];
+      pos.push(...a0, ...b0, ...a1, ...a1, ...b0, ...b1);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+// the piers' size and how far out their middles stand, by height: leaning
+// in as they rise, and flaring at the foot like roots
+const PLINTH = 4.8;
+const pierAt = (y) => {
+  const k = Math.max(0, Math.min(1, (y - PLINTH) / (TOWER_H - PLINTH)));
+  const root = Math.exp(-(y - PLINTH) / 6.5);
+  return { y, rc: 9.4 + (6.4 - 9.4) * k + 5.2 * root, s: (7 + (3.9 - 7) * k) * (1 + 0.5 * root) };
+};
+
+// the horns, the blades beside them and the spikes between: their size
+// and how far out, by height (shared with insideTop, for the camera)
+const HORN = 21;
+const BLADE = { off: 0.42, y0: TOWER_H - 12, h: 16 };
+const SPIKE = { y0: TOWER_H - 3, h: 11 };
+const hornAt = (y) => {
+  const t = Math.max(0, Math.min(1, (y - TOWER_H) / HORN));
+  // out like a claw, then up to a point, leaning back in at the tip
+  return { rc: 6.4 + 7.2 * t - 4.4 * t * t, s: 4.1 * Math.pow(1 - t, 1.1) + 0.02 };
+};
+const bladeAt = (y) => {
+  const k = Math.max(0, Math.min(1, (y - BLADE.y0) / BLADE.h));
+  return { rc: 7.2 + k * 2.8 + k * k * 1.6, s: 1.5 * Math.pow(1 - k, 1.2) + 0.02 };
+};
+const spikeAt = (y) => {
+  const k = Math.max(0, Math.min(1, (y - SPIKE.y0) / SPIKE.h));
+  return { rc: 5.6 + k * 1.2, s: 1.7 * Math.pow(1 - k, 1.3) + 0.02 };
+};
+const HORN_A = HORNS.map(([hx, hz]) => Math.atan2(hz, hx));
+// Is (x, y, z), in the tower's own frame, inside a horn, a blade or a
+// spike (give or take `m`)? So the camera on the pinnacle can keep out.
+export function insideTop(x, y, z, m = 0.4) {
+  const within = (a, { rc, s }) => {
+    const du = x * Math.cos(a) + z * Math.sin(a) - rc;
+    const dv = -x * Math.sin(a) + z * Math.cos(a);
+    return du > -0.62 * s - m && du < s + m && Math.abs(dv) < 0.8 * s + m;
+  };
+  for (const a of HORN_A) {
+    if (y < TOWER_H + HORN && within(a, hornAt(y))) return true;
+    if (y > BLADE.y0 && y < BLADE.y0 + BLADE.h && (within(a - BLADE.off, bladeAt(y)) || within(a + BLADE.off, bladeAt(y)))) return true;
+  }
+  if (y > SPIKE.y0 && y < SPIKE.y0 + SPIKE.h) for (let i = 0; i < 4; i++) if (within((i * Math.PI) / 2, spikeAt(y))) return true;
+  return false;
+}
+
 function tower(K) {
   const { mats } = K;
   const g = new THREE.Group();
@@ -726,69 +823,133 @@ function tower(K) {
   g.add(shell, top);
   const bk = parts();
   const H = TOWER_H;
-  // the plinth, in steps
-  for (let i = 0; i < 4; i++) bk.add(mats.towerStone, flat(new THREE.CylinderGeometry(19 - i * 2.2, 20 - i * 2.2, 1.6, 8).rotateY(Math.PI / 8)), { p: [0, 0.8 + i * 1.6, 0], uv: 0.08 });
-  // the piers, leaning in a little as they rise
-  const pier = (a, r0, r1, rad0, rad1, y0, y1) => {
-    const c0 = [Math.cos(a) * r0, Math.sin(a) * r0];
-    const c1 = [Math.cos(a) * r1, Math.sin(a) * r1];
-    const geo = new THREE.CylinderGeometry(rad1, rad0, y1 - y0, 7, 6);
-    const p = geo.attributes.position;
+  const angles = HORNS.map(([hx, hz]) => Math.atan2(hz, hx));
+  // the plinth, in three great steps, and the stair up it from the south
+  for (let i = 0; i < 3; i++) bk.add(mats.towerStone, flat(new THREE.CylinderGeometry(29 - i * 2.6, 30 - i * 2.6, PLINTH / 3, 8).rotateY(Math.PI / 8)), { p: [0, PLINTH / 6 + (i * PLINTH) / 3, 0], uv: 0.08 });
+  for (let i = 0; i < 14; i++) bk.add(mats.towerStone, new THREE.BoxGeometry(7.4 - i * 0.12, 0.42, 1.2), { p: [0, 0.21 + i * 0.36, 36.6 - i * 0.9], uv: 0.3 });
+  // its cheeks, either side of the stair
+  for (const sx of [-1, 1]) bk.add(mats.towerStone, flat(new THREE.CylinderGeometry(0.01, 0.9, 13, 3).rotateX(Math.PI / 2 - 0.36)), { p: [sx * 4.2, 2.4, 30.5], uv: 0.2 });
+
+  // the four piers, root to top
+  const shaftRings = [];
+  for (let y = PLINTH; y < H; y += y < 22 ? 1.6 : 6) shaftRings.push(pierAt(y));
+  shaftRings.push(pierAt(H));
+  for (const a of angles) bk.add(mats.towerStone, flat(loftPier(a, shaftRings)), { uv: 0.08 });
+  // the core between them, its faces in the clefts, flaring at the foot with them
+  {
+    const core = new THREE.CylinderGeometry(1, 1, 1, 8, 24, true);
+    const p = core.attributes.position;
     for (let i = 0; i < p.count; i++) {
-      const k = (p.getY(i) + (y1 - y0) / 2) / (y1 - y0);
-      p.setX(i, p.getX(i) + c0[0] + (c1[0] - c0[0]) * k);
-      p.setZ(i, p.getZ(i) + c0[1] + (c1[1] - c0[1]) * k);
+      const y = PLINTH + (p.getY(i) + 0.5) * (H - 0.6 - PLINTH);
+      const { rc, s } = pierAt(y);
+      const apothem = rc * 0.86 + s * 0.06;
+      const r = apothem / Math.cos(Math.PI / 8);
+      p.setXYZ(i, p.getX(i) * r, y, p.getZ(i) * r);
     }
-    geo.translate(0, (y0 + y1) / 2, 0);
-    return flat(geo);
-  };
-  for (const [hx, hz] of HORNS) {
-    const a = Math.atan2(hz, hx);
-    bk.add(mats.towerStone, pier(a, 7.2, PIN.horns, 7.6, 3.4, 6, H), { uv: 0.08 });
-    // blades running up the pier's outer face, standing out of it
-    for (const off of [-0.8, 0, 0.8]) {
-      const b = a + off;
-      const geo = new THREE.BoxGeometry(0.7, 1, 1.2, 1, 8, 1);
-      const p = geo.attributes.position;
-      for (let i = 0; i < p.count; i++) {
-        const k = p.getY(i) + 0.5;
-        const y = 8 + k * (H - 16);
-        const f = (y - 6) / (H - 6);
-        const cr = 7.2 + (PIN.horns - 7.2) * f;
-        const pr = 7.6 + (3.4 - 7.6) * f;
-        const rr = pr + 0.25 + p.getZ(i) * (1 - k * 0.5);
-        const x = p.getX(i) * (1 - k * 0.4);
-        p.setXYZ(i, Math.cos(a) * cr + Math.cos(b) * rr - Math.sin(b) * x, y, Math.sin(a) * cr + Math.sin(b) * rr + Math.cos(b) * x);
-      }
-      bk.add(mats.towerStone, flat(geo), { uv: 0.08 });
-    }
+    bk.add(mats.towerStone, flat(core.rotateY(Math.PI / 8)), { uv: 0.08 });
   }
-  // the core between them
-  bk.add(mats.towerStone, flat(new THREE.CylinderGeometry(7.6, 13, H - 6, 8, 4).rotateY(Math.PI / 8)), { p: [0, 6 + (H - 6) / 2 - 0.4, 0], uv: 0.08 });
-  // the great stair up to the door, and the door, on the south
-  for (let i = 0; i < 10; i++) bk.add(mats.towerStone, new THREE.BoxGeometry(5, 0.4, 1.1), { p: [0, 0.2 + i * 0.4 + 6.4 - 0.2, 21.5 - i * 0.8 - 4], uv: 0.3 });
-  bk.add(mats.void, new THREE.PlaneGeometry(3.4, 9), { p: [0, 15, 12.15] });
-  // windows: dark slits, lit faintly from within
-  for (let i = 0; i < 18; i++) {
-    const a = (i / 18) * TAU + 0.2;
-    const y = 20 + ((i * 37) % 80);
-    const rr = 7.6 + (13 - 7.6) * (1 - (y - 6) / (H - 6)) + 2.4;
-    const geo = new THREE.PlaneGeometry(0.6, 2.4).rotateY(-a + Math.PI / 2);
-    bk.add(i % 3 ? mats.void : mats.slitGlow, geo, { p: [Math.cos(a) * rr, y, Math.sin(a) * rr] });
+  // buttresses in the clefts at the foot, east, west and north: knife-edged
+  // fins down onto the plinth (the south cleft has the door)
+  for (const a of [0, Math.PI, -Math.PI / 2]) {
+    const fin = [
+      { y: PLINTH, rc: 15.5, s: 4.6 },
+      { y: PLINTH + 5, rc: 12, s: 3.4 },
+      { y: PLINTH + 12, rc: 9.6, s: 2.2 },
+      { y: PLINTH + 22, rc: 8.4, s: 0.6 },
+    ];
+    bk.add(mats.towerStone, flat(loftPier(a, fin)), { uv: 0.08 });
+  }
+  // the door, in the south cleft at the head of the stair: a pointed arch,
+  // deep in a frame of black stone
+  {
+    const { shape } = lancet(4.4, 7.4, 0.95);
+    const apo = (y) => pierAt(y).rc * 0.86 + pierAt(y).s * 0.06;
+    const z = apo(PLINTH + 5) + 0.25;
+    bk.add(mats.void, new THREE.ShapeGeometry(shape, 8), { p: [0, PLINTH, z] });
+    const frame = archFrame(7.4, 13.5, 4.4, 10.6, 0.95);
+    bk.add(mats.towerStone, flat(new THREE.ExtrudeGeometry(frame, { depth: 1.6, bevelEnabled: false, curveSegments: 8 })), { p: [0, PLINTH, z - 0.6], uv: 0.15 });
+  }
+  // Saruman's balcony, high on the south face: a half-round ledge on
+  // brackets like claws, and a pointed door behind it
+  {
+    const y = 76;
+    const { rc, s } = pierAt(y);
+    const z = rc * 0.86 + s * 0.06;
+    const ledge = new THREE.CylinderGeometry(3.4, 3.4, 0.7, 12, 1, false, -Math.PI / 2, Math.PI);
+    bk.add(mats.towerStone, flat(ledge), { p: [0, y, z], uv: 0.2 });
+    for (const dx of [-2.2, 0, 2.2]) bk.add(mats.towerStone, flat(new THREE.ConeGeometry(0.5, 4.6, 4).rotateX(-Math.PI / 2 - 0.62)), { p: [dx, y - 2, z + 1.4], uv: 0.2 });
+    const { shape } = lancet(2, 3.2, 0.95);
+    bk.add(mats.slitGlow, new THREE.ShapeGeometry(shape, 8), { p: [0, y + 0.36, z + 0.05] });
+    for (const dx of [-3.2, 3.2]) bk.add(mats.towerStone, new THREE.BoxGeometry(0.25, 1.1, 0.25), { p: [dx * 0.94, y + 0.9, z + 0.9], uv: 0.3 });
+  }
+  // windows: tall narrow lancets up the clefts, a few lit from within
+  {
+    const rows = [
+      [0, 28],
+      [Math.PI, 36],
+      [-Math.PI / 2, 44],
+      [0, 54],
+      [Math.PI / 2, 60],
+      [Math.PI, 66],
+      [-Math.PI / 2, 72],
+      [0, 84],
+      [Math.PI, 92],
+      [Math.PI / 2, 96],
+      [-Math.PI / 2, 100],
+    ];
+    rows.forEach(([a, y], i) => {
+      const { rc, s } = pierAt(y);
+      const r = rc * 0.86 + s * 0.06 + 0.06;
+      const { shape } = lancet(0.9, 3.6, 0.95);
+      const geo = new THREE.ShapeGeometry(shape, 6).rotateY(Math.PI / 2 - a);
+      bk.add(i % 4 === 1 ? mats.slitGlow : mats.void, geo, { p: [Math.cos(a) * r, y, Math.sin(a) * r] });
+    });
+    // and a ring of them round the upper chambers, under the top
+    for (let i = 0; i < 4; i++) {
+      const a = (i * Math.PI) / 2;
+      for (const dy of [0, 6.5]) {
+        const y = 104 + dy;
+        const { rc, s } = pierAt(y);
+        const r = rc * 0.86 + s * 0.06 + 0.06;
+        const { shape } = lancet(0.8, 2.6, 0.95);
+        bk.add((i + dy) % 3 === 0 ? mats.slitGlow : mats.void, new THREE.ShapeGeometry(shape, 6).rotateY(Math.PI / 2 - a), { p: [Math.cos(a) * r, y, Math.sin(a) * r] });
+      }
+    }
   }
   bk.build(shell, { shadow: false, receive: false });
 
-  // the top: the horns, the floor between them, the hatch
+  // the top: the horns, the lesser spikes, the floor between them, the hatch
   const tk = parts();
-  for (const [hx, hz] of HORNS) {
-    const a = Math.atan2(hz, hx);
-    const out = (r, y) => [Math.cos(a) * r, y, Math.sin(a) * r];
-    tk.add(mats.towerStone, flat(tube([out(PIN.horns, H - 6), out(PIN.horns + 0.3, H + 4), out(PIN.horns + 1.4, H + 11), out(PIN.horns + 3.4, H + 16.5)], 2.6, 0.05, { seg: 12, radial: 6 })), { uv: 0.2 });
-    // a smaller blade on its outside
-    tk.add(mats.towerStone, flat(tube([out(PIN.horns + 2, H - 10), out(PIN.horns + 2.6, H), out(PIN.horns + 4.2, H + 6)], 1.1, 0.04, { seg: 8, radial: 5 })), { uv: 0.2 });
+  for (const a of angles) {
+    const rings = [];
+    for (let i = 0; i <= 16; i++) {
+      const y = H - 6 + (i / 16) * (HORN + 6);
+      rings.push({ y, ...hornAt(y) });
+    }
+    tk.add(mats.towerStone, flat(loftPier(a, rings)), { uv: 0.2 });
+    // a lesser blade on each side of the horn, curving out
+    for (const side of [-1, 1]) {
+      const b = a + side * BLADE.off;
+      const r2 = [];
+      for (let i = 0; i <= 8; i++) {
+        const y = BLADE.y0 + (i / 8) * BLADE.h;
+        r2.push({ y, ...bladeAt(y) });
+      }
+      tk.add(mats.towerStone, flat(loftPier(b, r2)), { uv: 0.2 });
+    }
   }
-  tk.add(mats.towerStone, flat(new THREE.CylinderGeometry(PIN.r + 1.6, PIN.r + 3.2, 6, 8, 1).rotateY(Math.PI / 8)), { p: [0, H - 3, 0], uv: 0.2 });
-  tk.add(mats.pinFloor, new THREE.CircleGeometry(PIN.r + 1.6, 8, Math.PI / 8).rotateX(-Math.PI / 2), { p: [0, H + 0.01, 0], uv: 0.35 });
+  // the spikes between the horns, over the clefts
+  for (let i = 0; i < 4; i++) {
+    const a = (i * Math.PI) / 2;
+    const rings = [];
+    for (let j = 0; j <= 8; j++) {
+      const y = SPIKE.y0 + (j / 8) * SPIKE.h;
+      rings.push({ y, ...spikeAt(y) });
+    }
+    tk.add(mats.towerStone, flat(loftPier(a, rings)), { uv: 0.2 });
+  }
+  tk.add(mats.towerStone, flat(new THREE.CylinderGeometry(PIN.r + 2.2, PIN.r + 3, 4, 8, 1).rotateY(Math.PI / 8)), { p: [0, H - 2, 0], uv: 0.2 });
+  tk.add(mats.pinFloor, new THREE.CircleGeometry(PIN.r + 2.2, 8, Math.PI / 8).rotateX(-Math.PI / 2), { p: [0, H + 0.01, 0], uv: 0.35 });
   // the hatch the stair comes up through, shut and barred
   tk.add(mats.iron, new THREE.BoxGeometry(1.3, 0.06, 1.3), { p: [0, H + 0.03, STAIR.r] });
   for (const dz of [-0.35, 0.35]) tk.add(mats.iron, new THREE.BoxGeometry(1.4, 0.08, 0.1), { p: [0, H + 0.06, STAIR.r + dz] });
@@ -1033,6 +1194,7 @@ export function createOrthancKit(renderer) {
     page: M({ color: 0xd8ccb0, roughness: 0.9, side: THREE.DoubleSide }),
     parchment: M({ color: 0x9a8662, roughness: 0.95, side: THREE.DoubleSide }),
     lanternGlow: new THREE.MeshBasicMaterial({ color: hot(0xffa850, 1.8) }),
+    lampGlow: new THREE.MeshBasicMaterial({ color: hot(0xdfe8ff, 1.6) }),
     wax: M({ color: 0xf0e6cc, roughness: 0.6, emissive: hot(0xffc890, 0.15) }),
     jar: M({ color: 0x7a4a2a, roughness: 0.55 }),
     towerStone: M({ map: tex.stone, normalMap: tex.stoneN, color: 0x9a9ca8, roughness: 0.3, metalness: 0.35, envMap: stormEnv, envMapIntensity: 1.5 }),
@@ -1047,6 +1209,22 @@ export function createOrthancKit(renderer) {
     mothGlow: new THREE.SpriteMaterial({ map: kit.tex.glow, color: hot(0xdfe6ff, 0.5), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
     flameCard: new THREE.SpriteMaterial({ map: kit.tex.flame, color: hot(0xffb070, 1.6), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
   };
+  // Orthanc's black stone is glassy: its knife edges and facets catch the
+  // storm's grey light at a slant, and the pits' fire from below, low down
+  mats.towerStone.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vTowerY;').replace('#include <project_vertex>', '#include <project_vertex>\nvTowerY = (modelMatrix * vec4(transformed, 1.0)).y;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vTowerY;').replace(
+      '#include <emissivemap_fragment>',
+      `#include <emissivemap_fragment>
+      vec3 towerUp = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+      float towerFacing = dot(normal, towerUp);
+      float towerRim = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 3.0);
+      // (on the walls and the edges, not the tops of the steps)
+      totalEmissiveRadiance += vec3(0.26, 0.3, 0.38) * towerRim * (0.45 + 0.55 * max(0.0, towerFacing + 0.3)) * (1.0 - smoothstep(0.55, 0.9, towerFacing));
+      totalEmissiveRadiance += vec3(0.55, 0.16, 0.04) * max(0.0, -towerFacing) * exp(-vTowerY / 34.0) * 0.9;`,
+    );
+  };
+  mats.towerStone.customProgramCacheKey = () => 'orthanc-tower-stone';
   for (const [k, m] of Object.entries(mats)) if (!m.name) m.name = k;
   const K = { mats, tex, renderer };
   const memo = new Map();

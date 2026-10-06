@@ -5,12 +5,11 @@
 // compressed geometry is used exactly as it came.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { gltfLoader } from './three/gltf';
+import { sharpenMaterial } from './three/textures';
 
 export function createModels({ base = '/games/models' } = {}) {
-  const loader = new GLTFLoader();
-  loader.setMeshoptDecoder(MeshoptDecoder);
+  const loader = gltfLoader();
   const cache = new Map();
   const owned = [];
 
@@ -30,6 +29,7 @@ export function createModels({ base = '/games/models' } = {}) {
             const parts = [];
             root.traverse((o) => {
               if (!o.isMesh) return;
+              sharpenMaterial(o.material);
               parts.push({ geometry: o.geometry, material: o.material, base: centre.clone().multiply(o.matrixWorld) });
               owned.push(o.geometry, o.material);
             });

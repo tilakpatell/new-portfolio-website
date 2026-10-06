@@ -6,22 +6,14 @@ import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hook
 import { readPad, typing } from '../../games/pad';
 import { Stick } from '../towns/TownHud';
 import { keyDown, keyUp } from '../towns/keys';
-import { PONY } from './levels/pony';
-import { AMON_HEN } from './levels/amonhen';
-import { CORMALLEN } from './levels/cormallen';
-import { ITHILIEN } from './levels/ithilien';
-import { LORIEN } from './levels/lorien';
-import { MORIA } from './levels/moria';
-import { PARTY } from './levels/party';
-import { RIVENDELL } from './levels/rivendell';
-import { TOWER } from './levels/tower';
-import { WEATHERTOP } from './levels/weathertop';
+import { LEVELS, bestKey } from './levels';
 import { cleanCode, makeCode } from './protocol';
 import { movePlayer, newPlayer, newRush, starsFor, starsOf, stepRush } from './rules';
 import { COLOURS, NAMES } from './cast';
 import { sound } from './sounds';
 import '../shire/shire.css';
 import './rush.css';
+import '../../../styles/lazy/middleearth.css';
 
 // The rush: a busy kitchen for one to four hobbits, Overcooked-style (the
 // rules in ./rules.js, the drawing in ./scene.js, a level from ./levels,
@@ -30,8 +22,7 @@ import './rush.css';
 // shouting, and the controls (keys, a gamepad, or a stick and buttons on a
 // touch screen).
 
-const BEST = (id) => `tp-rush-best-${id}`;
-const LEVELS = { pony: PONY, rivendell: RIVENDELL, moria: MORIA, lorien: LORIEN, amonhen: AMON_HEN, party: PARTY, weathertop: WEATHERTOP, ithilien: ITHILIEN, tower: TOWER, cormallen: CORMALLEN };
+const BEST = bestKey; // where a kitchen's best coins are kept (./levels)
 const GRAB = new Set(['KeyE', 'Space', 'Enter']);
 const WORK = new Set(['KeyF', 'KeyQ']);
 const NO_HOST_MS = 15000; // a room with no host answering by now: say so
@@ -42,7 +33,7 @@ const relay = () => (import.meta.env.DEV && typeof window !== 'undefined' && win
 const inviteLink = (level, code) => `${window.location.origin}${window.location.pathname}#/middle-earth/${level.town}?rush=${code}`;
 
 export default function Rush({ level: which = 'pony' }) {
-  const level = typeof which === 'string' ? (LEVELS[which] ?? PONY) : which;
+  const level = typeof which === 'string' ? (LEVELS[which] ?? LEVELS.pony) : which;
   const three = use3D();
   const { search } = useLocation();
   const invite = cleanCode(new URLSearchParams(search).get('rush'));

@@ -6,11 +6,13 @@
 // behind them, all in the map's space.
 //
 // The people: Rick, Morty and the Federation's troops are the Portal panic
-// cast (rickmorty/portal/meshyCast.js), with their own clips; Walt, Jesse
-// and Chewie are the site's Meshy figures (Albuquerque's, the cockpits'),
-// walking and running on Rick's clips (one skeleton for every Meshy figure);
-// Han, Luke and Artoo, who have no figures, are built here from shapes. Each
-// holds the gun they'd carry, raised to fire.
+// cast (rickmorty/portal/meshyCast.js), with their own clips; Walt, Jesse,
+// Chewie, Han and Luke are the site's Meshy figures (Albuquerque's, the
+// cockpits', the galaxy's: scripts/meshy-galaxy.mjs), walking and running on
+// Rick's clips (one skeleton for every Meshy figure); Artoo, who has no
+// figure here, is built from shapes (and anyone whose model won't load). Each
+// holds the gun they'd carry (gunplay.js: built in code, set in the hand,
+// brought up and aimed with the arms, chest and head, kicking when fired).
 //
 // The ground: the planets are drawn as spheres with a map, which up close is
 // a blur. Round where you are, a patch of ground takes over: the same map,
@@ -32,20 +34,36 @@
 // another dimension: their dimension's code on the tag (dimensionOf, from
 // their pilot) and a tint of its own. crew() is yours, for sending.
 //
-// createFoot({ map, emit, reduced, small, planetOf }) → { phase, begin(...),
+// Each planet's own ground, sky and things round where you come down are
+// its landing's (landings/: the Shire on Middle-earth's, the desert and the
+// RV on Breaking Bad's, the Smiths' street on C-137's), and the place's name
+// comes up as you land (an 'arrive' event).
+//
+// createFoot({ map, emit, reduced, small, planetOf, renderer, warm }) → { phase, begin(...),
 //   update(dt, t, input), view(dt) → camera, fire(), cycle(), swap(),
 //   board(), look(dx, dy), first(), aimPoint(), info(), crew(),
 //   guests(list), end(), dispose() }
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { gltfLoader } from '../../lib/three/gltf';
+import { sharpen } from '../../lib/three/textures';
 import { createMeshyCast } from '../rickmorty/portal/meshyCast';
+import { LOOK_KEY, readLooks } from '../rickmorty/wardrobe/looks';
+import { bodyAsset, bodyKind, dress, withWardrobe } from '../rickmorty/wardrobe/wear';
+import { local } from '../../lib/hooks';
 import { smoothNormals } from '../cockpit/crew';
+import { GUNS, buildGun, createGunplay } from './gunplay';
+import { createGunFx } from './gunfx';
+import { createLocomotion, fallTurn } from './locomotion';
+import { frameFrom, spring } from '../../lib/three/ik';
 import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, bolt as makeBolt, byTrench, facingAlong, fly as flyBolt, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
 import { TRENCH_MODEL, trenchOf } from './deep';
 import { POSITIONS } from './layout';
 import { byId } from './universes';
+import { landingOf } from './landings/landings';
+import { styleOf } from './landings/ground';
+import { createSky } from './landings/sky';
+import { furnish, furnished } from './landings/furnish';
 
 const V = THREE.Vector3;
 const arr = (v) => [v.x, v.y, v.z];
@@ -57,14 +75,15 @@ const ease = (k) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
 
 // who steps out of each ship: the one you play first, and who comes along
 // (tall in metres; src: a Portal panic figure, a model of the site's, or
-// one built here; the gun they carry, and the colour of its bolts)
+// one built here; the gun they carry (gunplay.js's GUNS), and the colour of
+// its bolts)
 export const PARTY = {
   cruiser: [
     { id: 'rick', name: 'Rick', tall: 1.88, src: { meshy: 'rick' }, gun: 'portal', bolt: '#8dff5a' },
     { id: 'morty', name: 'Morty', tall: 1.6, src: { meshy: 'morty' }, gun: 'laser', bolt: '#8dff5a' },
   ],
   rv: [
-    { id: 'walt', name: 'Walt', tall: 1.79, src: { url: '/models/albuquerque/walt.glb' }, gun: 'pistol', bolt: '#ffd36b' },
+    { id: 'walt', name: 'Walt', tall: 1.79, src: { url: '/models/albuquerque/walt.glb' }, gun: 'revolver', bolt: '#ffd36b' },
     { id: 'jesse', name: 'Jesse', tall: 1.73, src: { url: '/models/albuquerque/jesse.glb' }, gun: 'pistol', bolt: '#ffd36b' },
   ],
   falcon: [
@@ -72,7 +91,7 @@ export const PARTY = {
     { id: 'han', name: 'Han', tall: 1.85, src: { url: '/models/galaxy/crew/han.glb' }, gun: 'blaster', bolt: '#ff4a3d' },
   ],
   xwing: [
-    { id: 'luke', name: 'Luke', tall: 1.72, src: { built: 'luke' }, gun: 'blaster', bolt: '#ff3b30' },
+    { id: 'luke', name: 'Luke', tall: 1.72, src: { url: '/models/galaxy/crew/luke.glb' }, gun: 'blaster', bolt: '#ff3b30' },
     { id: 'artoo', name: 'Artoo', tall: 1.09, src: { built: 'artoo' }, gun: null, bolt: null },
   ],
 };
@@ -95,14 +114,7 @@ const CAM = { dist: 3.4, up: 0.55, pitch: [-0.25, 0.75], look: 1.6 }; // metres,
 
 // ── Loading the people ──
 
-let loader = null;
-const getLoader = () => {
-  if (!loader) {
-    loader = new GLTFLoader();
-    loader.setMeshoptDecoder(MeshoptDecoder);
-  }
-  return loader;
-};
+const getLoader = () => gltfLoader();
 
 // Rick's clips, for every Meshy figure without its own: the bones' turns,
 // and the hips' height scaled to the figure's (no other bone's length)
@@ -172,7 +184,11 @@ function blend(act, move) {
 }
 
 // a rigged figure: { model (feet on y = 0, facing +z, `tall` metres in map
-// units), bones, update(dt, move), dispose }
+// units), bones, update(dt, move, motion?), after(dt, motion, frame), loco,
+// dispose }. With `motion` (locomotion.js: how fast it's going which way,
+// turning, in the air, hit, going down) its clips are paced to the ground
+// and posed on top by `after`, once it's placed; without, they play at the
+// old pace (the galaxy's worlds, until they hand it over too).
 function rigged(model, clips, tall, owned) {
   const bones = {};
   model.traverse((o) => {
@@ -198,13 +214,19 @@ function rigged(model, clips, tall, owned) {
     a.time = Math.random() * clip.duration;
     act[name] = a;
   }
+  const loco = createLocomotion({ model, bones }, { mixer, act, root: model, unit: METRE });
   return {
     model,
     bones,
-    update(dt, move) {
-      blend(act, move);
+    loco,
+    mixer,
+    act,
+    update(dt, move, motion) {
+      if (motion) loco.update(dt, { move, ...motion });
+      else blend(act, move);
       mixer.update(dt);
     },
+    after: (dt, motion, frame) => loco.after(dt, motion, frame),
     dispose() {
       mixer.stopAllAction();
       for (const o of owned) o?.dispose?.();
@@ -212,25 +234,47 @@ function rigged(model, clips, tall, owned) {
   };
 }
 
-async function loadModel(spec, cast) {
+// the wardrobe's look for the cruiser's Rick or Morty (as kept, or as given)
+const WEARS = new Set(['rick', 'morty']);
+const HAND_GUNS = { portalgun: 'portal', laserpistol: 'laser' }; // the wardrobe's hand gear that's a gun on foot
+async function loadModel(spec, cast, looks = null) {
   if (spec.src.meshy) {
-    const c = cast.make(spec.src.meshy);
+    const look = WEARS.has(spec.src.meshy) ? (looks ?? readLooks(local.get(LOOK_KEY)))[spec.src.meshy] : null;
+    let c = null;
+    if (look) {
+      const asset = bodyAsset(look);
+      if (asset !== spec.src.meshy) await cast.load(null, [asset]).catch(() => {});
+      c = cast.make(bodyKind(look));
+    }
+    c ??= cast.make(spec.src.meshy);
     if (!c) return null;
+    // (on foot they carry a gun of their own, gunplay.js's: the look's
+    // portal gun or laser pistol is that gun, held and fired; anything else
+    // in the hand stays in the wardrobe)
+    const gun = HAND_GUNS[look?.gear?.hand] ?? null;
+    const undress = look ? dress(c, spec.gun ? { ...look, gear: { ...look.gear, hand: 'none' } } : look) : () => {};
     // the cast stands c.height tall in its own units: to metres, in map units
     c.group.scale.setScalar((spec.tall * METRE) / c.height);
     const bones = {};
     c.group.traverse((o) => {
       if (o.isBone) bones[o.name] = o;
     });
+    const loco = c.mixer ? createLocomotion({ model: c.group, bones }, { mixer: c.mixer, act: c.act, root: c.group, unit: METRE }) : null;
     return {
       model: c.group,
       bones,
-      update(dt, move) {
+      loco,
+      mixer: c.mixer ?? null,
+      act: c.act ?? null,
+      update(dt, move, motion) {
         if (!c.mixer) return;
-        blend(c.act, move);
+        if (motion) loco.update(dt, { move, ...motion });
+        else blend(c.act, move);
         c.mixer.update(dt);
       },
-      dispose() {},
+      after: (dt, motion, frame) => loco?.after(dt, motion, frame),
+      gun,
+      dispose: undress,
     };
   }
   if (spec.src.url) {
@@ -330,7 +374,9 @@ function built(spec) {
       },
     };
   }
-  // a person: legs, a body, arms that swing, a head
+  // a person: legs, a body, arms that swing, a head; the groups named as
+  // Meshy's bones are (Spine, Head, RightArm, RightForeArm, RightHand…) so
+  // gunplay.js poses them the same way
   const look =
     spec.src.built === 'luke'
       ? { suit: '#e8742a', top: '#e8742a', legs: '#e8742a', boots: '#2a2622', skin: '#f0c7a5', hair: '#e9edf2', helmet: true, vest: '#f2f2ee' }
@@ -357,66 +403,87 @@ function built(spec) {
     model.add(hip);
     legs.push({ hip, knee });
   }
+  // the upper body turns at the waist
+  const WAIST = 0.58;
+  const spine = new THREE.Group();
+  spine.name = 'Spine';
+  spine.position.y = WAIST;
+  model.add(spine);
   const torso = new THREE.Mesh(geo(new THREE.CapsuleGeometry(0.13, 0.22, 4, 12)), mat(look.top));
-  torso.position.y = 0.72;
+  torso.position.y = 0.72 - WAIST;
   torso.scale.set(1, 1, 0.72);
-  model.add(torso);
+  spine.add(torso);
   const vest = new THREE.Mesh(geo(new THREE.CapsuleGeometry(0.135, 0.16, 4, 12)), mat(look.vest));
-  vest.position.y = 0.75;
+  vest.position.y = 0.75 - WAIST;
   vest.scale.set(1.02, 1, 0.76);
-  if (spec.src.built === 'han') model.add(vest);
-  else {
-    // Luke's harness: a white vest over the flight suit
-    vest.scale.set(1.03, 0.75, 0.77);
-    model.add(vest);
-  }
+  if (spec.src.built !== 'han') vest.scale.set(1.03, 0.75, 0.77); // Luke's harness: a white vest over the flight suit
+  spine.add(vest);
+  const headG = new THREE.Group();
+  headG.name = 'Head';
+  headG.position.y = 0.99 - WAIST;
+  spine.add(headG);
   const head = new THREE.Mesh(geo(new THREE.SphereGeometry(0.095, 16, 12)), mat(look.skin));
-  head.position.y = 0.99;
-  model.add(head);
+  headG.add(head);
   const hair = new THREE.Mesh(geo(new THREE.SphereGeometry(look.helmet ? 0.112 : 0.1, 16, 10, 0, Math.PI * 2, 0, look.helmet ? Math.PI * 0.62 : Math.PI * 0.45)), mat(look.hair, look.helmet ? { roughness: 0.4 } : {}));
-  hair.position.set(0, 1.0, look.helmet ? 0 : -0.012);
-  model.add(hair);
+  hair.position.set(0, 0.01, look.helmet ? 0 : -0.012);
+  headG.add(hair);
   if (look.helmet) {
     const visor = new THREE.Mesh(geo(new THREE.BoxGeometry(0.15, 0.035, 0.03)), mat('#2a3340', { roughness: 0.2, metalness: 0.5 }));
-    visor.position.set(0, 1.05, 0.1);
-    model.add(visor);
+    visor.position.set(0, 0.06, 0.1);
+    headG.add(visor);
   }
   const arms = [];
-  for (const x of [-0.165, 0.165]) {
+  for (const [x, side] of [
+    [-0.165, 'Right'], // (facing +z, the figure's right is −x)
+    [0.165, 'Left'],
+  ]) {
     const shoulder = new THREE.Group();
-    shoulder.position.set(x, 0.9, 0);
-    const upper = limb(0.042, 0.17, mat(look.suit));
-    shoulder.add(upper);
+    shoulder.name = `${side}Arm`;
+    shoulder.position.set(x, 0.9 - WAIST, 0);
+    shoulder.add(limb(0.042, 0.17, mat(look.suit)));
     const elbow = new THREE.Group();
+    elbow.name = `${side}ForeArm`;
     elbow.position.y = -0.23;
     elbow.add(limb(0.038, 0.15, mat(look.suit)));
+    const wrist = new THREE.Group();
+    wrist.name = `${side}Hand`;
+    wrist.position.y = -0.19;
     const hand = new THREE.Mesh(geo(new THREE.SphereGeometry(0.04, 10, 8)), mat(look.skin));
-    hand.position.y = -0.22;
-    elbow.add(hand);
+    hand.position.y = -0.03;
+    wrist.add(hand);
+    elbow.add(wrist);
     shoulder.add(elbow);
-    model.add(shoulder);
-    arms.push({ shoulder, elbow, hand });
+    spine.add(shoulder);
+    arms.push({ shoulder, elbow, wrist, hand });
   }
   model.scale.setScalar(s / 1.1);
+  const bones = { Hips: model, Spine: spine, Head: headG, RightArm: arms[0].shoulder, RightForeArm: arms[0].elbow, RightHand: arms[0].wrist, LeftArm: arms[1].shoulder, LeftForeArm: arms[1].elbow, LeftHand: arms[1].wrist };
   let phase = 0;
   return {
     model,
-    bones: {},
-    // the right hand, and the arm to raise it with
+    bones,
+    built: true,
+    // the right hand
     hand: arms[0].hand,
-    arm: arms[0],
-    update(dt, move, aim = 0) {
+    update(dt, move) {
       phase += dt * (3 + move * 7);
       const swing = Math.sin(phase) * (0.15 + move * 0.55) * Math.min(1, move * 6);
-      legs[0].hip.rotation.x = swing;
-      legs[1].hip.rotation.x = -swing;
-      legs[0].knee.rotation.x = Math.max(0, -Math.sin(phase + 0.6)) * move * 0.9;
-      legs[1].knee.rotation.x = Math.max(0, Math.sin(phase + 0.6)) * move * 0.9;
-      arms[1].shoulder.rotation.x = swing * 0.8;
-      // the gun arm: swinging, or up and out in front to fire
-      arms[0].shoulder.rotation.x = -swing * 0.8 * (1 - aim) - aim * 1.45;
-      arms[0].elbow.rotation.x = -0.25 * (1 - aim) - 0.1 * aim;
-      torso.position.y = 0.72 + Math.abs(Math.sin(phase)) * 0.012 * move;
+      // (every turn set whole, each frame: gunplay.js and locomotion.js turn
+      // these groups too, and a turn left over would add up)
+      legs[0].hip.rotation.set(swing, 0, 0);
+      legs[1].hip.rotation.set(-swing, 0, 0);
+      legs[0].knee.rotation.set(Math.max(0, -Math.sin(phase + 0.6)) * move * 0.9, 0, 0);
+      legs[1].knee.rotation.set(Math.max(0, Math.sin(phase + 0.6)) * move * 0.9, 0, 0);
+      spine.rotation.set(0, 0, 0);
+      headG.rotation.set(0, 0, 0);
+      // the arms swing against the legs (gunplay.js brings the gun arm up over this)
+      arms[0].shoulder.rotation.set(-swing * 0.8, 0, 0);
+      arms[1].shoulder.rotation.set(swing * 0.8, 0, 0);
+      arms[0].elbow.rotation.set(-0.25, 0, 0);
+      arms[1].elbow.rotation.set(-0.25, 0, 0);
+      arms[0].wrist.rotation.set(0, 0, 0);
+      arms[1].wrist.rotation.set(0, 0, 0);
+      torso.position.y = 0.72 - WAIST + Math.abs(Math.sin(phase)) * 0.012 * move;
     },
     dispose() {
       for (const o of owned) o.dispose();
@@ -424,77 +491,70 @@ function built(spec) {
   };
 }
 
-// ── Guns ──
+// ── Your hands, out of your own eyes ──
 
-function gunMesh(kind, owned) {
-  const g = new THREE.Group();
-  const mat = (c, extra) => {
-    const m = std(c, extra);
+// what each of the crew's forearms and hands look like from behind the gun:
+// a sleeve (or bare skin, or fur) and a hand (or a glove)
+const VIEW_ARMS = {
+  rick: { sleeve: '#e6e9ea', cuff: '#9fd2e6', hand: '#f0d8c8' }, // the lab coat over the blue shirt
+  morty: { sleeve: null, hand: '#f4d1b4' }, // bare arms under the T-shirt
+  walt: { sleeve: '#d9c12a', hand: '#1a1a1c' }, // the yellow suit, black gloves
+  jesse: { sleeve: '#a8331f', hand: '#e6b590' }, // the red hoodie
+  chewie: { sleeve: '#7b5428', hand: '#5c3f24', fur: true },
+  han: { sleeve: '#efede6', hand: '#dfae88' },
+  luke: { sleeve: '#e8742a', hand: '#2a2622' }, // the flight suit and gloves
+};
+// The forearms and hands for a gun seen out of your own eyes, built in the
+// gun's frame (metres; +z its muzzle, +y its sights, −x its right) so they
+// move with it: the gun hand round the grip, its forearm going back and
+// down out of the view to the right; and the other hand on the foregrip of
+// a long gun or cupping the gun hand on a pistol, its arm out to the left.
+function viewArms(gun, spec, look, owned) {
+  const mat = (c, extra = {}) => {
+    const m = new THREE.MeshStandardMaterial({ color: c, roughness: look.fur ? 0.95 : 0.78, metalness: 0, ...extra });
     owned.push(m);
     return m;
   };
-  const box = (w, h, d, m, x = 0, y = 0, z = 0) => {
-    const geo = new THREE.BoxGeometry(w, h, d);
+  const skin = mat(look.hand);
+  const sleeve = look.sleeve ? mat(look.sleeve) : skin;
+  const cuff = look.cuff ? mat(look.cuff) : null;
+  const add = (geo, m, at, toward = null) => {
     owned.push(geo);
     const o = new THREE.Mesh(geo, m);
-    o.position.set(x, y, z);
-    g.add(o);
+    o.position.set(...at);
+    if (toward) o.quaternion.setFromUnitVectors(new V(0, 1, 0), new V(...toward).normalize());
+    o.castShadow = false;
+    o.frustumCulled = false;
+    gun.add(o);
     return o;
   };
-  const tube = (r, l, m, x = 0, y = 0, z = 0) => {
-    const geo = new THREE.CylinderGeometry(r, r, l, 10).rotateX(Math.PI / 2);
-    owned.push(geo);
-    const o = new THREE.Mesh(geo, m);
-    o.position.set(x, y, z);
-    g.add(o);
-    return o;
+  // a hand: a fist round a grip at `at` (the knuckles to `side`, + its left)
+  const fist = (at, side, wide = 1) => {
+    const f = add(new THREE.SphereGeometry(0.042, 12, 10).scale(0.9 * wide, 1.25, 1.05), skin, at);
+    add(new THREE.CapsuleGeometry(0.012, 0.035, 4, 8), skin, [at[0] + side * 0.028, at[1] + 0.03, at[2] + 0.02], [0, 0.4, 1]); // the thumb, along the gun
+    return f;
   };
-  // in metres, the muzzle toward +z
-  if (kind === 'portal') {
-    const grey = mat('#b9c2c9', { metalness: 0.4, roughness: 0.4 });
-    box(0.07, 0.08, 0.2, grey, 0, 0, 0.05);
-    tube(0.025, 0.12, grey, 0, 0.015, 0.2);
-    tube(0.022, 0.12, mat('#47ff3d', { emissive: new THREE.Color('#3dff32'), emissiveIntensity: 2.5 }), 0, 0.06, 0.03);
-    box(0.04, 0.1, 0.05, grey, 0, -0.07, -0.02);
-  } else if (kind === 'bowcaster') {
-    const wood = mat('#6b4a2b');
-    const metal = mat('#8a8f96', { metalness: 0.6, roughness: 0.4 });
-    box(0.06, 0.07, 0.62, wood, 0, 0, 0.12);
-    box(0.5, 0.03, 0.03, metal, 0, 0.04, 0.32);
-    tube(0.02, 0.3, metal, 0, 0.04, 0.3);
-    box(0.04, 0.12, 0.06, wood, 0, -0.08, -0.06);
-  } else {
-    const black = mat('#1d1f22', { metalness: 0.5, roughness: 0.45 });
-    const long = kind === 'blaster' ? 0.26 : kind === 'laser' ? 0.22 : 0.18;
-    box(0.035, 0.05, long, black, 0, 0, long / 2 - 0.03);
-    box(0.03, 0.09, 0.045, black, 0, -0.06, -0.01);
-    if (kind === 'blaster') tube(0.016, 0.1, black, 0, 0.035, 0.08); // the scope
-    if (kind === 'laser') tube(0.012, 0.06, mat('#8dff5a', { emissive: new THREE.Color('#8dff5a'), emissiveIntensity: 2 }), 0, 0.03, 0.12);
+  // a forearm from the wrist at `from`, back the way `back` points, out of the view
+  const forearm = (from, back) => {
+    const d = new V(...back).normalize();
+    const len = 0.32;
+    const mid = new V(...from).addScaledVector(d, len / 2 + 0.03);
+    add(new THREE.CapsuleGeometry(look.fur ? 0.05 : 0.04, len, 6, 12), sleeve, mid.toArray(), d.toArray());
+    if (cuff) add(new THREE.CylinderGeometry(0.036, 0.036, 0.03, 12), cuff, new V(...from).addScaledVector(d, 0.04).toArray(), d.toArray());
+    else if (!look.sleeve) add(new THREE.CapsuleGeometry(0.034, 0.05, 4, 10), skin, new V(...from).addScaledVector(d, 0.04).toArray(), d.toArray()); // a wrist
+  };
+  // the gun hand, round the grip (just under the gun's origin), its arm back, down and out right
+  fist([0, -0.03, -0.01], 1);
+  forearm([-0.005, -0.06, -0.04], [-0.35, -0.55, -1]);
+  if (spec.hands === 2 && gun.getObjectByName('foregrip')) {
+    const fg = gun.getObjectByName('foregrip').position;
+    fist([fg.x, fg.y - 0.015, fg.z], -1, 1.05);
+    forearm([fg.x + 0.01, fg.y - 0.05, fg.z - 0.03], [0.55, -0.6, -1]);
+  } else if (spec.support) {
+    // cupping the gun hand from below and the left
+    fist([0.03, -0.06, 0.0], -1, 0.95);
+    forearm([0.04, -0.09, -0.02], [0.6, -0.55, -1]);
   }
-  g.scale.setScalar(METRE);
-  return g;
-}
-
-// The arm up and out toward `dir` (world): the upper arm turned so it points
-// there, then the forearm, `w` of the way (0 leaves the clip's own pose)
-const qa = new THREE.Quaternion();
-const qb = new THREE.Quaternion();
-const qp = new THREE.Quaternion();
-const va = new V();
-const vb = new V();
-function pointBone(bone, child, dir, w) {
-  if (!bone || !child || w <= 0) return;
-  bone.updateWorldMatrix(true, true);
-  bone.getWorldPosition(va);
-  child.getWorldPosition(vb);
-  const now = vb.sub(va).normalize();
-  qa.setFromUnitVectors(now, dir);
-  bone.getWorldQuaternion(qb);
-  qb.premultiply(qa); // the bone's turn in the world, once pointed
-  bone.parent.getWorldQuaternion(qp).invert();
-  qb.premultiply(qp); // and in its parent's
-  bone.quaternion.slerp(qb, w);
-  bone.updateWorldMatrix(false, true);
 }
 
 // ── The ground round you ──
@@ -552,7 +612,7 @@ function noiseTexture() {
   noiseTex.magFilter = THREE.LinearFilter;
   noiseTex.minFilter = THREE.LinearMipmapLinearFilter;
   noiseTex.generateMipmaps = true;
-  noiseTex.anisotropy = 8;
+  sharpen(noiseTex);
   noiseTex.needsUpdate = true;
   return noiseTex;
 }
@@ -677,7 +737,7 @@ function platingTexture() {
   plateTex.magFilter = THREE.LinearFilter;
   plateTex.minFilter = THREE.LinearMipmapLinearFilter;
   plateTex.generateMipmaps = true;
-  plateTex.anisotropy = 8;
+  sharpen(plateTex);
   plateTex.needsUpdate = true;
   return plateTex;
 }
@@ -698,10 +758,12 @@ const PATCH = { radius: 110 * METRE, rings: 46, segs: 72, lift: 0.025 * METRE, t
 const HULL_PATCH = { ...PATCH, radius: 900 * METRE, rings: 64, segs: 96, tile: 32 };
 
 // `trench`: the trench's rim (footScene's band: { half, home, arc }), if the
-// ground stops at one
-function createGround(planet, u, R, trench = null) {
+// ground stops at one; `look`: a landing's ground (landings.js: its style
+// and colours), the planet's own up close
+function createGround(planet, u, R, trench = null, look = null) {
   const plated = Boolean(u.plated);
   const P = plated ? HULL_PATCH : PATCH;
+  const style = plated ? null : styleOf(look);
   const g = new THREE.BufferGeometry();
   const count = (P.rings + 1) * P.segs;
   const pos = new Float32Array(count * 3);
@@ -737,17 +799,29 @@ function createGround(planet, u, R, trench = null) {
     uBand: { value: trench ? Math.sin(trench.half / R) : 0 },
     uHome: { value: trench?.home ?? 0 },
     uArc: { value: trench?.arc ?? Math.PI },
+    // a landing's colours, how many metres its bump map's uv is, the time (for a glow that pulses)
+    uA: { value: new THREE.Color(look?.colors?.[0] ?? '#808080') },
+    uB: { value: new THREE.Color(look?.colors?.[1] ?? '#808080') },
+    uC: { value: new THREE.Color(look?.colors?.[2] ?? '#808080') },
+    uMetres: { value: P.tile / (style?.repeat ?? 1) },
+    uTime: { value: 0 },
   };
+  let bump = plated || style?.bump === 'plating' ? platingTexture() : noiseTexture();
+  if (style?.repeat) {
+    bump = bump.clone();
+    bump.repeat.setScalar(style.repeat);
+    bump.needsUpdate = true;
+  }
   const mat = plated
-    ? new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.62, metalness: 0.35, bumpMap: platingTexture(), bumpScale: 2.2, envMapIntensity: 0.5 })
-    : new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.96, metalness: 0, bumpMap: noiseTexture(), bumpScale: 1.6, envMapIntensity: 0.35 });
+    ? new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.62, metalness: 0.35, bumpMap: bump, bumpScale: 2.2, envMapIntensity: 0.5 })
+    : new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: style?.roughness ?? 0.96, metalness: style?.metalness ?? 0, bumpMap: bump, bumpScale: style?.bumpScale ?? 1.6, envMapIntensity: 0.35 });
   mat.onBeforeCompile = (s) => {
     Object.assign(s.uniforms, uniforms);
     s.vertexShader = s.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float aEdge;\nvarying vec3 vDir;\nvarying float vEdge;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvDir = normalize(position);\nvEdge = aEdge;');
     s.fragmentShader = s.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform sampler2D uPlanet;\nuniform float uHasMap;\nuniform mat3 uToBody;\nuniform vec3 uTint;\nuniform float uBand;\nuniform float uHome;\nuniform float uArc;\nvarying vec3 vDir;\nvarying float vEdge;')
+      .replace('#include <common>', '#include <common>\nuniform sampler2D uPlanet;\nuniform float uHasMap;\nuniform mat3 uToBody;\nuniform vec3 uTint;\nuniform float uBand;\nuniform float uHome;\nuniform float uArc;\nuniform vec3 uA;\nuniform vec3 uB;\nuniform vec3 uC;\nuniform float uMetres;\nuniform float uTime;\nvarying vec3 vDir;\nvarying float vEdge;')
       .replace(
         '#include <clipping_planes_fragment>',
         `#include <clipping_planes_fragment>
@@ -771,7 +845,14 @@ function createGround(planet, u, R, trench = null) {
               ? `// the plating, out to the patch's edge (its far side's past the horizon)
           ${PLATE_DETAIL}
           diffuseColor.rgb *= base * detail;`
-              : `// grit, stones and patches over it, fading out toward the patch's edge
+              : style
+                ? `// the landing's own ground (landings/ground.js), the planet's map toward the patch's edge
+          vec2 m = vBumpMapUv * uMetres;
+          vec3 near = vec3(1.0);
+          ${style.bump === 'plating' ? 'vec4 pl = texture2D(bumpMap, vBumpMapUv);\n          float blocks = texture2D(bumpMap, vBumpMapUv * 0.137 + 0.29).g;' : 'float n1 = texture2D(bumpMap, vBumpMapUv).r;\n          float n2 = texture2D(bumpMap, vBumpMapUv * 7.31 + 0.37).r;\n          float n3 = texture2D(bumpMap, vBumpMapUv * 0.117 + 0.71).r;'}
+          ${style.glsl}
+          diffuseColor.rgb *= mix(near, base, smoothstep(0.8, 1.0, vEdge));`
+                : `// grit, stones and patches over it, fading out toward the patch's edge
           float n1 = texture2D(bumpMap, vBumpMapUv).r;
           float n2 = texture2D(bumpMap, vBumpMapUv * 7.31 + 0.37).r;
           float n3 = texture2D(bumpMap, vBumpMapUv * 0.117 + 0.71).r;
@@ -780,9 +861,9 @@ function createGround(planet, u, R, trench = null) {
           }
         }`,
       )
-      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>${plated ? PLATE_GLOW : ''}`);
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>${plated ? PLATE_GLOW : style?.glow ? `\n{${style.glow}\n}` : ''}`);
   };
-  mat.customProgramCacheKey = () => (plated ? 'foot-ground-plated' : 'foot-ground');
+  mat.customProgramCacheKey = () => (plated ? 'foot-ground-plated' : style ? `foot-ground-${look.style}` : 'foot-ground');
   const mesh = new THREE.Mesh(g, mat);
   mesh.frustumCulled = false;
   mesh.renderOrder = -1;
@@ -839,9 +920,13 @@ function createGround(planet, u, R, trench = null) {
     sync(toBody) {
       uniforms.uToBody.value.copy(toBody);
     },
+    tick(t) {
+      uniforms.uTime.value = t;
+    },
     dispose() {
       g.dispose();
       mat.dispose();
+      if (bump !== noiseTex && bump !== plateTex) bump.dispose();
     },
   };
 }
@@ -1136,7 +1221,7 @@ const blobMat = () => new THREE.MeshBasicMaterial({ map: blobTexture(), transpar
 
 // ── The whole of it ──
 
-export function createFoot({ map, emit, reduced = false, small = false, planetOf }) {
+export function createFoot({ map, emit, reduced = false, small = false, planetOf, renderer = null, warm = null }) {
   const root = new THREE.Group(); // at the planet's middle, in the map
   root.name = 'foot';
   root.visible = false;
@@ -1151,20 +1236,86 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   const owned = [];
   const rand = Math.random;
 
-  // bolts in flight and their glows
-  const boltGeo = new THREE.CylinderGeometry(0.035 * METRE, 0.035 * METRE, 0.9 * METRE, 6).rotateX(Math.PI / 2);
+  // bolts in flight: a white-hot core in a sleeve of the shot's colour,
+  // its head where the bolt is and its length trailing behind (grown out
+  // of the muzzle over the first of its flight, so it never pokes out of
+  // the back of the gun)
+  const BOLT_LEN = 0.9 * METRE;
+  const boltGeo = new THREE.CylinderGeometry(0.03 * METRE, 0.03 * METRE, BOLT_LEN, 6).rotateX(Math.PI / 2).translate(0, 0, -BOLT_LEN / 2);
+  const sleeveGeo = new THREE.CylinderGeometry(0.055 * METRE, 0.04 * METRE, BOLT_LEN * 1.1, 8).rotateX(Math.PI / 2).translate(0, 0, -BOLT_LEN * 0.55);
   const boltMats = new Map();
   const boltMat = (color) => {
-    if (!boltMats.has(color)) boltMats.set(color, new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(4), toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    if (!boltMats.has(color)) {
+      const c = new THREE.Color(color);
+      boltMats.set(color, {
+        core: new THREE.MeshBasicMaterial({ color: c.clone().lerp(new THREE.Color('#ffffff'), 0.55).multiplyScalar(4), toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }),
+        sleeve: new THREE.MeshBasicMaterial({ color: c.clone().multiplyScalar(1.4), toneMapped: false, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }),
+      });
+    }
     return boltMats.get(color);
   };
   const boltPool = Array.from({ length: 40 }, () => {
-    const m = new THREE.Mesh(boltGeo, boltMat('#ffffff'));
+    const mats = boltMat('#ffffff');
+    const m = new THREE.Mesh(boltGeo, mats.core);
+    const sleeve = new THREE.Mesh(sleeveGeo, mats.sleeve);
+    sleeve.frustumCulled = false;
+    m.add(sleeve);
     m.visible = false;
     m.frustumCulled = false;
     root.add(m);
     return m;
   });
+  const paintBolt = (mesh, color) => {
+    const mats = boltMat(color);
+    mesh.material = mats.core;
+    mesh.children[0].material = mats.sleeve;
+    mesh.scale.set(1, 1, 0.02);
+  };
+
+  // what a shot does round the gun and where it lands (gunfx.js), in the
+  // planet's space; and a light that flares with each muzzle flash, kept in
+  // the map from the start and dark between shots, so the scene's count of
+  // lights never changes and nothing recompiles when it fires (not on a
+  // phone, nor with motion turned down)
+  const flare = small || reduced ? null : new THREE.PointLight('#ffd36b', 0, 7 * METRE, 2);
+  if (flare) {
+    flare.userData.peak = 2.5 * METRE * METRE; // (about the key light's brightness, a metre off)
+    map.add(flare);
+  }
+  const groundN = new V();
+  const fx = createGunFx({
+    parent: root,
+    unit: METRE,
+    ground: (p) => {
+      const l = p.length() || 1;
+      return { h: l - S.R, n: groundN.copy(p).divideScalar(l) };
+    },
+    light: flare && { obj: flare, place: (p) => flare.position.copy(p).add(S.c) },
+  });
+
+  // out of your own eyes (V): your gun in your hands at the bottom right of
+  // the view, swaying as you walk, lagging a little behind a turn, coming up
+  // onto the target as you shoot and kicking when it fires; the shot leaves
+  // its muzzle. A copy of the gun your figure holds (that's hidden then)
+  let vm = null; // { gun, kind, who, owned, muzzle, eject, look, bob }
+  const viewGun = (kind, who) => {
+    if (vm?.kind === kind && vm.who === who) return vm;
+    if (vm) {
+      vm.gun.removeFromParent();
+      for (const o of vm.owned) o.dispose?.();
+    }
+    const owned = [];
+    const gun = buildGun(kind, owned);
+    viewArms(gun, GUNS[kind], VIEW_ARMS[who] ?? VIEW_ARMS.han, owned);
+    gun.scale.setScalar(METRE);
+    gun.visible = false;
+    gun.traverse((o) => {
+      if (o.isMesh) o.frustumCulled = false;
+    });
+    root.add(gun);
+    vm = { gun, kind, who, owned, muzzle: gun.getObjectByName('muzzle'), eject: gun.getObjectByName('eject'), look: null, bob: 0 };
+    return vm;
+  };
   // the flash of a hit
   const puffTex = (() => {
     const c = document.createElement('canvas');
@@ -1250,10 +1401,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     cleared: true,
     cool: 0,
     mateCool: 1,
-    aim: 0, // the gun arm up, 1 fading to 0
+    aim: 0, // the gun up, 1 fading to 0 after a shot
     mateAim: 0,
+    mateTarget: null, // the trooper the mate's gun is on
+    knock: null, // which way the last shot that hit you was going
     lock: null, // the trooper the shot goes at
-    cam: { pos: null, look: null, pitch: 0.18, first: false },
+    cam: { pos: null, look: null, pitch: 0.18, first: false, kick: { x: 0, v: 0 } },
     done: null,
   };
 
@@ -1303,7 +1456,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   let loading = null;
   const load = (kind) => {
     const specs = PARTY[kind] ?? PARTY.rv;
-    cast = createMeshyCast();
+    cast = createMeshyCast(withWardrobe()); // (the wardrobe's bodies too, for the cruiser's two)
     const needCast = [...new Set([...specs.filter((s) => s.src.meshy).map((s) => s.src.meshy), 'gromflomite', 'cop', 'gazorpian'])];
     const castReady = cast.load(null, needCast).catch(() => {});
     loading = (async () => {
@@ -1316,32 +1469,36 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         group.add(f.model);
         group.visible = false;
         root.add(group);
-        let gun = null;
-        if (spec.gun) {
-          gun = gunMesh(spec.gun, owned);
-          gun.visible = false;
-          root.add(gun);
-        }
-        return { spec, fig: f, group, gun };
+        const gp = spec.gun ? createGunplay(f, f.gun ?? spec.gun, { unit: METRE, who: f.built ? 'built' : spec.id }) : null;
+        return { spec, fig: f, group, gp };
       });
     })();
     return loading;
   };
 
+  // the Federation's guns: the Gromflomites' carbine, the cop's pistol (the gazorpian has hands)
+  const TROOP_GUN = { gromflomite: 'rifle', cop: 'coppistol' };
   const troopFig = (t) => {
     let got = troopFigs.get(t.id);
     if (got) return got;
     const c = cast?.make(t.kind);
     const group = new THREE.Group();
+    let fig = null;
+    let b = null;
+    let loco = null;
     if (c) {
       c.group.scale.setScalar(TROOPS[t.kind].tall / c.height);
+      fig = { model: c.group };
+      if (c.mixer) loco = createLocomotion(fig, { mixer: c.mixer, act: c.act, root: c.group, unit: METRE }); // (measured before it's placed)
       group.add(c.group);
     } else {
-      const b = built({ tall: TROOPS[t.kind].tall / METRE, src: { built: 'han' } });
+      b = built({ tall: TROOPS[t.kind].tall / METRE, src: { built: 'han' } });
       group.add(b.model);
+      fig = b;
     }
     root.add(group);
-    got = { c, group };
+    const gp = TROOP_GUN[t.kind] ? createGunplay(fig, TROOP_GUN[t.kind], { unit: METRE, who: b ? 'built' : null }) : null;
+    got = { c, b, group, gp, loco, prevF: null };
     troopFigs.set(t.id, got);
     return got;
   };
@@ -1349,44 +1506,75 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const got = troopFigs.get(id);
     if (!got) return;
     root.remove(got.group);
+    got.gp?.dispose();
+    got.b?.dispose();
     troopFigs.delete(id);
+  };
+
+  // how fast someone's turning, from the way they faced last frame (rad/s, + to the left)
+  const turnRate = (holder, w, dt) => {
+    const was = holder.prevF;
+    holder.prevF = w.f;
+    if (!was || dt <= 0) return 0;
+    return Math.atan2(vec.dot(vec.cross(was, w.f), w.n), vec.dot(was, w.f)) / dt;
+  };
+  // the way along the ground a shot pushed someone (their back, if nothing did)
+  const pushOf = (w, knock) => {
+    const d = knock ? vec.add(knock, w.n, -vec.dot(knock, w.n)) : vec.scale(w.f, -1);
+    return new V(...(vec.len(d) > 1e-6 ? vec.unit(d) : vec.scale(w.f, -1)));
   };
 
   // ── the gun: where its muzzle is, pointed where the shot goes ──
   const tmp = new V();
   const invMap = new THREE.Matrix4();
-  // (bones are in the world: back into the map's space)
+  // (bones are in the world: back into the map's space, and the other way)
   const toMap = (v) => v.applyMatrix4(invMap);
-  // the gun hand, in the map's space
+  const dirToWorld = (v) => v.transformDirection(map.matrixWorld);
+  // the gun hand, in the map's space (for a figure holding nothing)
   const handAt = (p, out) => {
     const hand = p.fig.bones?.RightHand ?? p.fig.hand ?? null;
     if (hand) return toMap(hand.getWorldPosition(out));
     return out.set(...at(p.w, S.R)).add(S.c).addScaledVector(new V(...p.w.n), p.spec.tall * METRE * 0.62);
   };
-
-  const shoot = (p, dir, owner, damage, aimWeight) => {
-    const from = new V();
-    if (p.gun?.visible) toMap(p.gun.getWorldPosition(from));
-    else handAt(p, from);
-    from.sub(S.c).addScaledVector(dir, 0.35 * METRE);
-    const b = makeBolt(arr(from), arr(dir), owner, damage);
-    const mesh = boltPool.find((m) => !m.visible) ?? boltPool[0];
-    mesh.material = boltMat(p.spec.bolt ?? '#ffffff');
-    mesh.visible = true;
-    S.bolts = S.bolts.filter((o) => o.mesh !== mesh);
-    S.bolts.push({ b, mesh });
-    puff(arr(from), p.spec.bolt ?? '#ffffff', 0.5);
-    return aimWeight;
+  // where a shot from p goes: a trooper's chest (the lock's), or straight ahead (the planet's space)
+  const shotAt = (p, target) => {
+    if (target) return new V(...vec.add(at(target, S.R), target.n, TROOPS[target.kind].tall * 0.55));
+    return new V(...vec.add(vec.add(at(p.w, S.R), p.w.n, p.spec.tall * METRE * 0.62), p.w.f, 40 * METRE));
   };
-
-  // the direction of a shot from p: at the lock's chest, or straight ahead
+  // the line from p's shoulder to the mark, for aiming the gun
   const shotDir = (p, target) => {
     const from = vec.add(at(p.w, S.R), p.w.n, p.spec.tall * METRE * 0.62);
-    if (target) {
-      const to = vec.add(at(target, S.R), target.n, TROOPS[target.kind].tall * 0.55);
-      return new V(...vec.unit(vec.add(to, from, -1)));
+    return shotAt(p, target).sub(new V(...from)).normalize();
+  };
+
+  // a shot by p at `target` (a trooper, or null for straight ahead): the
+  // gun kicks and the bolt leaves its muzzle for the mark
+  const shoot = (p, target, owner, damage, jitter = 0, mark = null) => {
+    let r = p.gp?.fire();
+    // out of your own eyes: from the gun you can see
+    if (owner === 'me' && vm?.gun.visible && vm.muzzle) {
+      vm.gun.updateWorldMatrix(true, true);
+      r = { muzzle: vm.muzzle.getWorldPosition(new V()), eject: vm.eject?.getWorldPosition(new V()) ?? null, gun: vm.gun };
     }
-    return new V(...vec.unit(vec.add(p.w.f, p.w.n, 0.02)));
+    const from = r ? toMap(r.muzzle).sub(S.c) : handAt(p, new V()).sub(S.c).addScaledVector(shotDir(p, target), 0.35 * METRE);
+    const dir = (mark ? mark.clone() : shotAt(p, target)).sub(from).normalize();
+    if (jitter) dir.add(new V((rand() - 0.5) * jitter, (rand() - 0.5) * jitter, (rand() - 0.5) * jitter)).normalize();
+    const b = makeBolt(arr(from), arr(dir), owner, damage);
+    const mesh = boltPool.find((m) => !m.visible) ?? boltPool[0];
+    paintBolt(mesh, p.spec.bolt ?? '#ffffff');
+    mesh.visible = true;
+    S.bolts = S.bolts.filter((o) => o.mesh !== mesh);
+    const near = owner === 'me' && S.cam.first;
+    S.bolts.push({ b, mesh, color: p.spec.bolt ?? '#ffffff', flown: 0, hide: near ? 1.6 * METRE : 0 });
+    if (near) mesh.visible = false;
+    // the flash at the muzzle, the smoke after a powder gun's, its brass out of the port
+    if (r) {
+      const gun = p.gp.spec;
+      fx.flash(from, dir, gun.flash);
+      const up = new V(...vec.unit(arr(from)));
+      if (gun.smoke && !near) fx.smoke(from, dir, gun.smoke);
+      if (gun.casing && r.eject) fx.casing(toMap(r.eject).sub(S.c), new V(-1, 0, 0).transformDirection(r.gun.matrixWorld).transformDirection(invMap).addScaledVector(dir, -0.3).normalize(), up);
+    } else puff(arr(from), p.spec.bolt ?? '#ffffff', 0.5);
   };
 
   // ── begin: down onto the planet `id` from where the ship is ──
@@ -1442,14 +1630,22 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     planet.hold?.(true);
     if (planet.air) planet.air.visible = false;
     // the ground, the rocks and the air (a station's hull, its blocks and
-    // none; and a trench's walls)
-    ground = createGround(planet, u, S.R, S.band);
+    // none; and a trench's walls); or the planet's own landing: its ground,
+    // its sky and its things, laid out from where the first ship down here
+    // came down (a friend's, if you're coming down beside them)
+    const landing = u.plated ? null : landingOf(id);
+    ground = createGround(planet, u, S.R, S.band, landing?.ground);
     ground.follow(n);
     root.add(ground.mesh);
-    rocks = u.plated ? createHullBits(n, S.R, u, small, S.band, clear) : createRocks(n, S.R, u, small);
+    if (landing && furnished(id)) {
+      const anchor = near ? { n: near.n, f: near.f } : S.spot;
+      const f = furnish({ id, landing, frame: anchor, R: S.R, small, renderer, warm });
+      rocks = { mesh: f.group, solids: f.solids, spots: f.spots, update: f.update, dispose: f.dispose };
+    } else rocks = u.plated ? createHullBits(n, S.R, u, small, S.band, clear) : createRocks(n, S.R, u, small);
     root.add(rocks.mesh);
-    haze = u.airless ? null : createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
+    haze = u.airless ? null : landing?.sky ? createSky(landing.sky, u.rim ?? u.swatch ?? '#8ab4ff') : createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
     if (haze) root.add(haze.mesh);
+    if (landing) emit({ type: 'foot', id: 'arrive', title: landing.title, sub: landing.sub });
     sides = S.band ? createTrenchSides(n, S.R, S.band) : null;
     if (sides) root.add(sides.mesh);
     // (a station's own model goes once the camera's low enough that the
@@ -1463,8 +1659,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       if (S.id !== id || !S.phase) {
         for (const o of p) {
           root.remove(o.group);
+          o.gp?.dispose();
           o.fig.dispose?.();
-          if (o.gun) root.remove(o.gun);
         }
         return;
       }
@@ -1533,6 +1729,21 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
 
   const troopsAlive = () => S.troops.filter((t) => t.alive);
 
+  // the nearest of the landing's spots you're within reach of (a door, someone to talk to)
+  const nearSpot = () => {
+    if (!S.me || !rocks?.spots?.length) return null;
+    let best = null;
+    let bd = Infinity;
+    for (const s of rocks.spots) {
+      const d = apart(S.me, s, S.R);
+      if (d <= s.r && d < bd) {
+        bd = d;
+        best = s;
+      }
+    }
+    return best;
+  };
+
   // ── other pilots' crews, down here too ──
   const guests = new Map(); // pilot id → { name, ally, dim, walkers: [{ who, spec, fig, group, gun, label, w, to, alt }] }
   const tagTexture = (text, colour) => {
@@ -1589,28 +1800,24 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   };
   const guestWalker = (g, who, alt) => {
     const spec = SPEC[who];
-    const wk = { who, spec, fig: null, group: new THREE.Group(), gun: null, label: null, w: null, to: null, alt, own: [] };
+    const wk = { who, spec, fig: null, group: new THREE.Group(), gp: null, label: null, w: null, to: null, alt, own: [] };
     wk.group.visible = false;
     root.add(wk.group);
     (async () => {
       if (spec.src.meshy) await cast?.load(null, [spec.src.meshy]).catch(() => {});
-      const fig = (cast && (await loadModel(spec, cast).catch(() => null))) ?? built({ ...spec, src: { built: spec.id === 'artoo' ? 'artoo' : 'han' } });
+      const fig = (cast && (await loadModel(spec, cast, g.looks ?? readLooks(null)).catch(() => null))) ?? built({ ...spec, src: { built: spec.id === 'artoo' ? 'artoo' : 'han' } }); // (in their own looks: the show's, if they've sent none)
       if (!guests.has(g.id) || !g.walkers.includes(wk)) return fig.dispose?.();
       wk.fig = fig;
       wk.group.add(fig.model);
       if (wk.alt) otherDimension(fig.model, g.dim.hue, wk.own);
-      if (spec.gun) {
-        wk.gun = gunMesh(spec.gun, wk.own);
-        wk.gun.visible = false;
-        root.add(wk.gun);
-      }
+      if (spec.gun) wk.gp = createGunplay(fig, fig.gun ?? spec.gun, { unit: METRE, who: fig.built ? 'built' : spec.id });
     })();
     return wk;
   };
   const dropWalker = (g, wk, i) => {
     root.remove(wk.group);
+    wk.gp?.dispose();
     wk.fig?.dispose?.();
-    if (wk.gun) root.remove(wk.gun);
     if (wk.label) dropTag(wk.label);
     for (const o of wk.own) o?.dispose?.();
     dropShadow(`guest:${g.id}:${i}`);
@@ -1640,6 +1847,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       }
       g.name = o.name;
       g.ally = o.ally;
+      g.looks = o.looks ?? null; // (how they dress their Rick and Morty)
       g.ship = { n: o.foot.ship.n, r: 0.62 * 0.26 * (PARKED[o.foot.kind] ?? 1) * 0.55 };
       [o.foot.lead, o.foot.mate].forEach((to, i) => {
         let wk = g.walkers[i];
@@ -1684,19 +1892,13 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         wk.group.visible = show;
         if (show) {
           stand(wk.group, w);
-          wk.fig.update(dt, Math.min(1, Math.abs(w.speed) / FOOT.run + Math.abs(w.side) / FOOT.run), w.aim);
+          const frame = { forward: dirToWorld(new V(...w.f)), up: dirToWorld(new V(...w.n)) };
+          const motion = { speed: w.speed ?? 0, side: w.side ?? 0, turn: turnRate(wk, w, dt), air: (w.h ?? 0) / METRE };
+          wk.fig.update(dt, Math.min(1, Math.abs(w.speed) / FOOT.run + Math.abs(w.side) / FOOT.run), motion);
           wk.group.updateMatrixWorld(true);
-          if (wk.gun) {
-            wk.gun.visible = true;
-            handAt({ fig: wk.fig, w, spec: wk.spec }, tmp);
-            wk.gun.position.copy(tmp).sub(S.c);
-            const n = new V(...w.n);
-            const f = new V(...w.f);
-            const look = w.aim > 0.05 ? f : f.clone().addScaledVector(n, -0.55).normalize();
-            basis.lookAt(new V(), look, n);
-            wk.gun.quaternion.setFromRotationMatrix(basis);
-            wk.gun.rotateY(Math.PI);
-          }
+          wk.fig.after?.(dt, motion, frame);
+          // their gun as they said: up and along the way they face, or down
+          wk.gp?.set(dt, { aim: w.aim, forward: frame.forward, up: frame.up });
         }
         shadow(`guest:${g.id}:${i}`, w, wk.spec.tall * 0.55).visible = show;
         // the tag over their head, near enough to read
@@ -1733,6 +1935,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       }
       ground.sync(m3.transpose());
     }
+    ground?.tick(S.clock);
+    rocks?.update?.(S.clock, dt);
 
     if (S.phase === 'land') {
       const k = Math.min(1, S.t / LAND.down);
@@ -1774,10 +1978,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         S[key] = walk(w, { move: 0.8, turn: turnToward(w, vec.add(door.n, w.n, -1), 4) }, dt, S.R);
       }
       if (S.t > LAND.board) {
-        for (const p of party ?? []) {
-          p.group.visible = false;
-          if (p.gun) p.gun.visible = false;
-        }
+        for (const p of party ?? []) p.group.visible = false;
         for (const [key, m] of blobs) if (key.startsWith('party')) m.visible = false;
         S.phase = 'lift';
         S.t = 0;
@@ -1791,6 +1992,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     drawTroops(dt, t);
     guestsFrame(dt);
     moveBolts(dt);
+    fx.update(dt);
+    spring(S.cam.kick, dt, 240, 22);
     for (const s of puffs) {
       if (!s.visible) continue;
       s.userData.age += dt / 0.35;
@@ -1827,17 +2030,15 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       else turn = turnToward(S.mate, S.me.f, 2);
       S.mate = walk(S.mate, { move, turn, run }, dt, S.R, obstacles());
       S.mateCool -= dt;
-      if (near && mate?.spec.gun && S.mateCool <= 0 && apart(S.mate, near, S.R) < 26 * METRE) {
+      // the one they're on: gun up at it while it's near enough, a shot now and then
+      S.mateTarget = near && apart(S.mate, near, S.R) < 30 * METRE ? near : null;
+      if (S.mateTarget && mate?.spec.gun) S.mateAim = 1;
+      if (near && mate?.spec.gun && S.mateCool <= 0 && apart(S.mate, near, S.R) < 26 * METRE && (mate.gp?.aim ?? 1) > 0.6) {
         S.mateCool = 0.9 + rand() * 0.9;
-        const dir = shotDir({ w: S.mate, spec: mate.spec }, near);
-        dir.x += (rand() - 0.5) * 0.06;
-        dir.y += (rand() - 0.5) * 0.06;
-        dir.z += (rand() - 0.5) * 0.06;
-        shoot(mate, dir.normalize(), 'mate', 1);
-        S.mateAim = 1;
-        emit({ type: 'fire', soft: true });
+        shoot(mate, near, 'mate', 1, 0.06);
+        emit({ type: 'fire', soft: true, gun: mate.spec.gun });
       }
-    }
+    } else S.mateTarget = null;
     // the Federation: a squad now and then, once the last is dealt with
     if (S.cleared && S.clock > S.nextSquad) {
       const kinds = S.squads < 1 ? ['gromflomite'] : S.squads < 3 ? ['gromflomite', 'gromflomite', 'cop'] : ['gromflomite', 'cop', 'cop', 'gazorpian'];
@@ -1852,12 +2053,22 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     S.troops = r.troops.filter((o) => o.alive || o.dead < 4);
     for (const id of [...troopFigs.keys()]) if (!S.troops.find((o) => o.id === id)) dropTroop(id);
     for (const s of r.shots) {
-      const b = makeBolt(s.from, s.dir, 'troop', s.damage);
+      // from the gun's muzzle, if the trooper's holding one (re-aimed at the same mark)
+      let from = s.from;
+      let dir = s.dir;
+      const got = troopFigs.get(s.by);
+      const f = got?.group.visible ? got.gp?.fire() : null;
+      if (f) {
+        from = arr(toMap(f.muzzle).sub(S.c));
+        dir = vec.unit(vec.add(vec.add(s.from, s.dir, s.range), from, -1));
+        fx.flash(new V(...from), new V(...dir), got.gp.spec.flash);
+      }
+      const b = makeBolt(from, dir, 'troop', s.damage);
       const mesh = boltPool.find((m) => !m.visible) ?? boltPool[0];
-      mesh.material = boltMat(TROOP_BOLT);
+      paintBolt(mesh, TROOP_BOLT);
       mesh.visible = true;
       S.bolts = S.bolts.filter((o) => o.mesh !== mesh);
-      S.bolts.push({ b, mesh });
+      S.bolts.push({ b, mesh, color: TROOP_BOLT, flown: 0 });
       emit({ type: 'shot' });
     }
     for (const h of r.hits) if (h.target === 'me') hurt(h.damage);
@@ -1869,13 +2080,15 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // health comes back once out of trouble a while
     if (S.clock - S.hitAt > 4 && S.health < FOOT.health) S.health = Math.min(FOOT.health, S.health + FOOT.heal * dt);
     S.cool -= dt;
-    S.aim = Math.max(0, S.aim - dt / 0.9);
-    S.mateAim = Math.max(0, S.mateAim - dt / 0.9);
+    // the gun stays up a while after the last shot, longer with a lock still there
+    S.aim = Math.max(0, S.aim - dt / (S.lock ? 6 : 2.5));
+    S.mateAim = Math.max(0, S.mateAim - dt / 2.5);
     if (me && !me.spec.gun) S.aim = 0;
   };
 
-  const hurt = (damage) => {
+  const hurt = (damage, knock = null) => {
     if (S.phase !== 'walk') return;
+    S.knock = knock;
     S.health = Math.max(0, S.health - damage);
     S.hitAt = S.clock;
     emit({ type: 'foot', id: 'hurt', damage });
@@ -1903,12 +2116,28 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       o.b = r.bolt;
       if (r.hit || o.b.life <= 0) {
         o.mesh.visible = false;
-        if (r.hit) puff(o.b.p, r.hit === 'ground' ? '#ffcf8a' : mine ? '#ffffff' : TROOP_BOLT, r.hit === 'ground' ? 0.7 : 1.2);
+        if (r.hit) {
+          puff(o.b.p, r.hit === 'ground' ? '#ffcf8a' : o.color ?? '#ffffff', r.hit === 'ground' ? 0.7 : 1.2);
+          const along = tmp.set(...o.b.v).normalize();
+          if (r.hit === 'ground') {
+            // on the ground: where it went in, sparks off it and a burn
+            const n = new V(...vec.unit(o.b.p));
+            const spot = n.clone().multiplyScalar(S.R);
+            fx.sparks(spot, n.clone().addScaledVector(along, 0.6).normalize(), o.color ?? '#ffd0a0', 12);
+            fx.scorch(spot, n);
+          } else fx.sparks(new V(...o.b.p), along.clone().negate(), o.color ?? '#ffd0a0', 9); // off whoever it hit, back the way it came
+          // how near you: for the sound of it
+          if (S.me) {
+            const d = vec.len(vec.add(o.b.p, at(S.me, S.R), -1)) / METRE;
+            if (d < 40) emit({ type: 'impact', near: Math.max(0.15, 1 - d / 40) });
+          }
+        }
         if (typeof r.hit === 'number') {
           const t = S.troops.find((x) => x.id === r.hit);
           if (t?.alive) {
             t.hp -= o.b.damage;
             t.hitAt = S.clock;
+            t.knock = vec.unit(o.b.v); // which way the shot pushed them
             if (t.hp <= 0) {
               t.alive = false;
               t.dead = 0;
@@ -1916,11 +2145,15 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
               emit({ type: 'foot', id: 'kill', kind: t.kind, by: o.b.owner });
             }
           }
-        } else if (r.hit === 'me') hurt(o.b.damage);
+        } else if (r.hit === 'me') hurt(o.b.damage, vec.unit(o.b.v));
         continue;
       }
       o.mesh.position.set(...o.b.p);
       o.mesh.quaternion.setFromUnitVectors(new V(0, 0, 1), tmp.set(...o.b.v).normalize());
+      // grown out of the muzzle to its full length
+      o.flown += vec.len(o.b.v) * dt;
+      o.mesh.scale.z = Math.min(1, Math.max(0.02, (o.flown - o.hide) / BOLT_LEN));
+      if (o.hide && !o.mesh.visible && o.flown > o.hide) o.mesh.visible = true;
       keep.push(o);
     }
     S.bolts = keep;
@@ -1938,35 +2171,34 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       p.group.visible = show && !(i === S.lead && S.cam.first);
       stand(p.group, w);
       shadow(`party${i}`, w, p.spec.tall * 0.55).visible = show;
-      // knocked down: over on their back a moment
-      if (i === S.lead && S.phase === 'down') {
-        const k = smooth(0, 0.5, S.t) * (1 - smooth(LAND.fall - 0.5, LAND.fall, S.t));
-        p.group.rotateX(-k * 1.45);
+      const n = new V(...w.n);
+      const frame = { forward: dirToWorld(new V(...w.f)), up: dirToWorld(n.clone()) };
+      const mine = i === S.lead;
+      // knocked down: the knees go and over onto their back, then up again
+      let down = 0;
+      if (mine && S.phase === 'down') {
+        down = Math.min(1, S.t / 0.95) * (1 - smooth(LAND.fall - 0.7, LAND.fall, S.t));
+        p.group.quaternion.premultiply(fallTurn(down, pushOf(w, S.knock), n));
+        p.group.position.addScaledVector(n, p.spec.tall * METRE * 0.05 * smooth(0.5, 1, down));
       }
       const move = Math.min(1, Math.abs(w.speed) / FOOT.run + Math.abs(w.side) / FOOT.run);
-      const aim = i === S.lead ? S.aim : S.mateAim;
-      p.fig.update(dt, move, aim);
+      const hurt = mine ? Math.max(0, 1 - (S.clock - S.hitAt) / 0.35) : 0;
+      const motion = { speed: w.speed, side: w.side, turn: turnRate(p, w, dt), air: (w.h ?? 0) / METRE, hurt, knock: 0.5, down };
+      p.fig.update(dt, move, motion);
       p.group.updateMatrixWorld(true);
-      // the gun arm up, toward the shot
-      if (p.fig.bones?.RightArm && aim > 0) {
-        const dir = shotDir(p, i === S.lead ? S.troops.find((o) => o.id === S.lock && o.alive) : null);
-        dir.transformDirection(map.matrixWorld);
-        pointBone(p.fig.bones.RightArm, p.fig.bones.RightForeArm, dir, Math.min(1, aim * 1.6));
-        pointBone(p.fig.bones.RightForeArm, p.fig.bones.RightHand, dir, Math.min(1, aim * 1.6));
+      p.fig.after?.(dt, motion, frame);
+      const drop = p.fig.loco?.drop ?? 0;
+      if (drop > 1e-7 && !down) {
+        p.group.position.addScaledVector(n, -drop);
+        p.group.updateMatrixWorld(true);
       }
-      if (p.gun) {
-        p.gun.visible = p.group.visible;
-        if (p.gun.visible) {
-          handAt(p, tmp);
-          p.gun.position.copy(tmp).sub(S.c);
-          // along the arm while it's down, along the shot while it's up
-          const n = new V(...w.n);
-          const f = new V(...w.f);
-          const look = aim > 0.05 ? shotDir(p, i === S.lead ? S.troops.find((o) => o.id === S.lock && o.alive) : null) : f.clone().addScaledVector(n, -0.55).normalize();
-          basis.lookAt(new V(), look, n);
-          p.gun.quaternion.setFromRotationMatrix(basis);
-          p.gun.rotateY(Math.PI); // (lookAt points −z; the guns are built along +z)
-        }
+      // the gun: up at the lock (or the trooper the mate's after) while
+      // there's shooting, the head on it before that, down otherwise
+      if (p.gp) {
+        const mine = i === S.lead;
+        const target = mine ? S.troops.find((o) => o.id === S.lock && o.alive) : S.mateTarget;
+        const aim = mine ? S.aim : S.mateAim;
+        p.gp.set(dt, { aim: down ? 0 : aim, look: target && !down ? Math.max(aim, 0.8) : aim, dir: target ? dirToWorld(shotDir(p, target)) : null, forward: frame.forward, up: frame.up, move });
       }
     });
   };
@@ -1977,17 +2209,45 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       const got = troopFig(tr);
       stand(got.group, tr);
       shadow(`troop${tr.id}`, tr, (TROOPS[tr.kind].tall / METRE) * 0.5).visible = tr.alive || tr.dead < 2.4;
+      const n = new V(...tr.n);
+      const frame = { forward: dirToWorld(new V(...tr.f)), up: dirToWorld(n.clone()) };
       if (!tr.alive) {
-        // down they go, over sideways, and into the ground after a while
-        const k = smooth(0, 0.45, tr.dead);
-        got.group.rotateZ((tr.fallSide ?? 1) * k * 1.5);
-        got.group.position.addScaledVector(new V(...tr.n), -smooth(2.4, 4, tr.dead) * TROOPS[tr.kind].tall * 0.5);
-        got.c?.update?.(t, 0, 0);
+        // down they go: the knees, then over the way the shot pushed them,
+        // the gun out of their hand, and into the ground after a while
+        const k = Math.min(1, tr.dead / 0.95);
+        const tall = TROOPS[tr.kind].tall;
+        got.group.quaternion.premultiply(fallTurn(k, pushOf(tr, tr.knock), n));
+        got.group.position.addScaledVector(n, tall * 0.05 * smooth(0.5, 1, k) - smooth(2.4, 4, tr.dead) * tall * 0.5);
+        if (got.loco) {
+          got.loco.update(dt, { move: 0, down: k });
+          got.c.mixer.update(dt);
+          got.group.updateMatrixWorld(true);
+          got.loco.after(dt, { down: k }, frame);
+        } else got.c?.update?.(t, 0, 0);
+        if (got.gp && !got.dropped && k > 0.3) {
+          got.dropped = true;
+          const g = got.gp.drop();
+          if (g) fx.toss(g, pushOf(tr, tr.knock).multiplyScalar(1.2 * METRE).addScaledVector(n, 1.4 * METRE));
+        }
         continue;
       }
       const move = Math.min(1, Math.abs(tr.speed) / (TROOPS[tr.kind].speed * 1.2) + Math.abs(tr.side) / FOOT.run);
-      const hit = tr.hitAt ? Math.max(0, 1 - (S.clock - tr.hitAt) / 0.25) : 0;
-      got.c?.update?.(t, move, hit);
+      const hit = tr.hitAt ? Math.max(0, 1 - (S.clock - tr.hitAt) / 0.35) : 0;
+      const motion = { speed: tr.speed, side: tr.side, turn: turnRate(got, tr, dt), hurt: hit, knock: tr.knock ? Math.sign(vec.dot(tr.knock, rightOf(tr))) || 1 : 0.4 };
+      if (got.loco) {
+        got.loco.update(dt, { move, ...motion });
+        got.c.mixer.update(dt);
+        got.group.updateMatrixWorld(true);
+        got.loco.after(dt, motion, frame);
+      } else if (got.c) got.c.update(t, move, hit);
+      else got.b?.update(dt, move);
+      if (got.gp) {
+        // its gun up at whichever of you is nearer, as the rules say
+        got.group.updateMatrixWorld(true);
+        const who = S.me && (!S.mate || apart(tr, S.me, S.R) <= apart(tr, S.mate, S.R)) ? S.me : S.mate;
+        const dir = who ? new V(...vec.unit(vec.add(vec.add(at(who, S.R), who.n, METRE * 1.1), vec.add(at(tr, S.R), tr.n, TROOPS[tr.kind].tall * 0.62), -1))) : null;
+        got.gp.set(dt, { aim: tr.aim ?? 0, dir: dir && dirToWorld(dir), forward: frame.forward, up: frame.up, move });
+      }
     }
   };
 
@@ -2007,6 +2267,53 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     m.group.quaternion.copy(S.from.q).slerp(level, smooth(0.3, 1, k));
     m.group.scale.setScalar((PARKED[S.kind] ?? 1) + (1 - (PARKED[S.kind] ?? 1)) * smooth(0, 0.6, k));
     if (k >= 1) S.done = { x: m.group.position.x, y: m.group.position.y, z: m.group.position.z, heading };
+  };
+
+  // the gun in your hands, out of your own eyes (in the planet's space, from the eased camera)
+  const vmF = new V();
+  const vmR = new V();
+  const vmU = new V();
+  const vmQ = new THREE.Quaternion();
+  const VM_CONE = 0.3; // radians
+  const placeViewGun = (dt) => {
+    const me = meP();
+    const on = Boolean(S.cam.first && S.phase === 'walk' && me?.spec.gun && S.cam.pos);
+    if (!on) {
+      if (vm) vm.gun.visible = false;
+      return;
+    }
+    const v = viewGun(me.spec.gun, me.spec.id);
+    const pos = S.cam.pos.clone().sub(S.c);
+    vmF.copy(S.cam.look).sub(S.cam.pos).normalize();
+    vmU.copy(S.cam.up).addScaledVector(vmF, -S.cam.up.dot(vmF)).normalize();
+    vmR.crossVectors(vmF, vmU).normalize();
+    // what it's pointed at: the lock's chest while there's shooting, else a little low ahead
+    const lock = S.troops.find((o) => o.id === S.lock && o.alive);
+    const up = Math.min(1, S.aim * 1.4);
+    const mark = lock && up > 0.05 ? new V(...vec.add(at(lock, S.R), lock.n, TROOPS[lock.kind].tall * 0.55)) : pos.clone().addScaledVector(vmF, 20 * METRE).addScaledVector(vmU, -(1 - up) * 6 * METRE).addScaledVector(vmR, -(1 - up) * 2.5 * METRE);
+    // held: lower and further right at ease, up toward the middle of the view to shoot
+    const k = S.cam.kick.x;
+    v.bob += dt * (2 + Math.min(1, Math.abs(S.me.speed) / FOOT.run) * 9);
+    const walking = Math.min(1, Math.abs(S.me.speed) / FOOT.walk);
+    const long = GUNS[me.spec.gun]?.stock;
+    // (a long gun lower and further out to the side: its stock's at your
+    // shoulder, its scope and a bowcaster's bow well under your eye)
+    const hold = new V()
+      .copy(pos)
+      .addScaledVector(vmF, ((long ? 0.36 : 0.5) - up * 0.03 - k * 0.035) * METRE)
+      .addScaledVector(vmR, ((long ? 0.27 : 0.25) - up * 0.05 + Math.sin(v.bob) * 0.008 * walking) * METRE)
+      .addScaledVector(vmU, ((long ? -0.4 : -0.26) + up * 0.05 + Math.abs(Math.cos(v.bob)) * 0.01 * walking) * METRE);
+    v.gun.position.copy(hold);
+    const dir = mark.sub(hold).normalize();
+    // never pointed out of the view: within a few degrees of where you're looking
+    const off = dir.angleTo(vmF);
+    if (off > VM_CONE) dir.lerp(vmF, 1 - VM_CONE / off).normalize();
+    if (!v.look || reduced) v.look = dir.clone();
+    else v.look.lerp(dir, 1 - Math.exp(-dt * 16)).normalize(); // (a moment behind a turn)
+    frameFrom(v.look, vmU, vmQ);
+    v.gun.quaternion.copy(vmQ);
+    v.gun.rotateX(-k * 0.12); // the kick, muzzle up
+    v.gun.visible = true;
   };
 
   // ── the camera: behind you, over your shoulder (or out of your eyes) ──
@@ -2049,6 +2356,13 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       }
       out.up.copy(n);
     }
+    // your own shot kicks the view up a touch (more out of your own eyes)
+    const kick = S.cam.kick.x;
+    if (Math.abs(kick) > 1e-4 && S.me) {
+      const k = (S.cam.first ? 1.6 : 1) * METRE;
+      out.look.addScaledVector(out.up, kick * 0.35 * k);
+      out.pos.addScaledVector(out.up, kick * 0.05 * k);
+    }
     // never under the ground
     const rel = out.pos.clone().sub(S.c);
     const minR = S.R + 0.35 * METRE;
@@ -2060,6 +2374,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       S.cam.look.lerp(out.look, k);
       S.cam.up.lerp(out.up, k).normalize();
     } else S.cam = { ...S.cam, pos: out.pos.clone(), look: out.look.clone(), up: out.up.clone() };
+    placeViewGun(dt);
     // a station's own model: not while the camera's down by the ground
     const body = planetOf[S.id]?.body;
     if (body && S.hideBody) body.visible = S.bodyShown && S.cam.pos.distanceTo(S.c) - S.R > S.hideBody;
@@ -2079,6 +2394,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     get debug() {
       return import.meta.env.DEV ? S : null;
     },
+    // (development: the landing's doors and people, scripts/door-check.mjs)
+    get spots() {
+      return import.meta.env.DEV ? (rocks?.spots ?? []) : null;
+    },
     get id() {
       return S.id;
     },
@@ -2091,18 +2410,30 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       const k = smooth(-0.25, 0.35, vec.dot(S.me?.n ?? S.spot.n, arr(light)));
       // (only down in the air: gone by the time you're well up)
       const high = S.cam.pos ? S.cam.pos.distanceTo(S.c) - S.R : 0;
-      haze.mat.uniforms.uDay.value = (0.12 + 0.88 * k) * (1 - smooth(20 * METRE, 300 * METRE, high));
+      haze.mat.uniforms.uDay.value = (haze.set ? k : 0.12 + 0.88 * k) * (1 - smooth(20 * METRE, 300 * METRE, high));
+      haze.set?.({ sun: light });
     },
-    // F: a shot at the lock, or straight ahead
+    // F: a shot at the lock, or straight ahead; the gun it was (gunplay.js's kind), or false
     fire() {
       if (S.phase !== 'walk' || S.cool > 0) return false;
       const me = meP();
       if (!me?.spec.gun) return false;
       S.cool = me.spec.gun === 'bowcaster' ? 0.55 : 0.28;
-      const target = S.troops.find((o) => o.id === S.lock && o.alive) ?? null;
-      shoot(me, shotDir({ w: S.me, spec: me.spec }, target), 'me', me.spec.gun === 'bowcaster' ? 2 : 1);
+      let target = S.troops.find((o) => o.id === S.lock && o.alive) ?? null;
+      let mark = null;
+      if (S.cam.first && S.cam.pos) {
+        // out of your own eyes, the shot goes where you're looking, unless the lock's near it
+        const look = S.cam.look.clone().sub(S.cam.pos).normalize();
+        const to = target && new V(...vec.add(at(target, S.R), target.n, TROOPS[target.kind].tall * 0.55)).add(S.c).sub(S.cam.pos).normalize();
+        if (!to || to.angleTo(look) > 0.12) {
+          target = null;
+          mark = S.cam.pos.clone().sub(S.c).addScaledVector(look, 40 * METRE);
+        }
+      }
+      shoot(me, target, 'me', me.spec.gun === 'bowcaster' ? 2 : 1, 0, mark);
       S.aim = 1;
-      return true;
+      if (!reduced) S.cam.kick.v += GUNS[me.spec.gun]?.kick.up ?? 1.5;
+      return me.spec.gun;
     },
     // T: the next trooper round
     cycle() {
@@ -2143,13 +2474,19 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       S.cam.first = !S.cam.first;
       return S.cam.first;
     },
+    // a door you're at (a landing's: G there goes into the planet's page): { id, label } or null
+    door() {
+      const s = S.phase === 'walk' ? nearSpot() : null;
+      return s?.label ? { id: S.id, label: s.label } : null;
+    },
     // the targeting, for the HUD: what the gun's on, where it's pointed, the
-    // way back to the ship, the health
+    // way back to the ship, the health; and anything here that answers you
     info() {
       if (!S.phase || !S.me) return null;
       const me = meP();
       const lock = S.troops.find((o) => o.id === S.lock && o.alive) ?? null;
       const chest = (w, tall) => new V(...vec.add(at(w, S.R), w.n, tall * 0.55)).add(S.c);
+      const spot = nearSpot();
       return {
         aim: chest(S.me, (me?.spec.tall ?? 1.8) * METRE).addScaledVector(new V(...S.me.f), 14 * METRE),
         lock: lock && { id: lock.id, kind: lock.kind, at: chest(lock, TROOPS[lock.kind].tall / 1), size: TROOPS[lock.kind].tall, dist: apart(S.me, lock, S.R) / METRE },
@@ -2160,6 +2497,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         mate: mateP()?.spec.name ?? null,
         troops: troopsAlive().map((o) => ({ id: o.id, at: chest(o, TROOPS[o.kind].tall) })),
         first: S.cam.first,
+        near: spot && { label: spot.label, say: spot.say },
       };
     },
     // your crew as the other pilots see them (protocol.js's writeFoot):
@@ -2204,8 +2542,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       S.band = null;
       for (const p of party ?? []) {
         root.remove(p.group);
+        p.gp?.dispose();
         p.fig.dispose?.();
-        if (p.gun) root.remove(p.gun);
       }
       party = null;
       for (const g of [...guests.values()]) dropGuest(g);
@@ -2213,6 +2551,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       for (const key of [...blobs.keys()]) dropShadow(key);
       for (const o of S.bolts) o.mesh.visible = false;
       S.bolts = [];
+      fx.clear();
+      if (vm) vm.gun.visible = false;
       for (const x of [ground, rocks, haze, sides]) {
         if (!x) continue;
         root.remove(x.mesh);
@@ -2234,8 +2574,15 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     dispose() {
       this.end();
       boltGeo.dispose();
+      sleeveGeo.dispose();
+      fx.dispose();
+      flare?.removeFromParent();
+      if (vm) for (const o of vm.owned) o.dispose?.();
       shadowMat.dispose();
-      for (const m of boltMats.values()) m.dispose();
+      for (const m of boltMats.values()) {
+        m.core.dispose();
+        m.sleeve.dispose();
+      }
       puffTex.dispose();
       for (const s of puffs) s.material.dispose();
       map.remove(root);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACTIONS, FIGHT, HUNTER_KINDS, LOSE, blocked, clearOf, createHunt, entryPoint, packPlan, shipVelocity, slotsFor, turnRate, turnToward } from './hunterRules';
+import { FACTIONS, FIGHT, HUNTER_KINDS, LOSE, NAMES, blocked, clearOf, createHunt, entryPoint, fightSpeed, hitRadius, packPlan, shipVelocity, slotsFor, turnRate, turnRateAt, turnToward } from './hunterRules';
 import { KINDS as GALAXY_KINDS, FACTIONS as GALAXY_FACTIONS } from '../galaxy/hunted';
 
 // a seeded random, so a fight is the same every time
@@ -85,6 +85,27 @@ describe('who comes', () => {
   });
 });
 
+describe('a bounty hunter', () => {
+  it('comes alone, tough and quick, for either universe', () => {
+    expect(packPlan(FACTIONS.fett, { size: 1, rand: seeded() })).toEqual(['slave1']);
+    expect(packPlan(FACTIONS.phoenix, { size: 1, rand: seeded() })).toEqual(['phoenixperson']);
+    expect(FACTIONS.fett.family).toBe('starwars');
+    expect(FACTIONS.phoenix.family).toBe('rickmorty');
+    for (const kind of ['slave1', 'phoenixperson']) {
+      expect(HUNTER_KINDS[kind].hp).toBeGreaterThanOrEqual(5);
+      expect(HUNTER_KINDS[kind].speed).toBeGreaterThan(20); // (faster than you boost: no outrunning one)
+      expect(NAMES[kind]).toBeTruthy();
+    }
+    // and Slave I lands shots, and takes its six hits
+    const seen = fight({ faction: 'fett', opts: { size: 1 }, seconds: 60 });
+    expect(seen.shots).toBeGreaterThan(5);
+    const h = seen.hunt.live[0];
+    const through = () => seen.hunt.hit({ x: h.pos.x - 3, y: h.pos.y, z: h.pos.z }, { x: h.pos.x + 3, y: h.pos.y, z: h.pos.z }, 1);
+    for (let i = 0; i < 5; i++) expect(through()?.down).toBeFalsy();
+    expect(through()?.down).toBe(true);
+  });
+});
+
 describe('where they come in', () => {
   const moon = { id: 'moon', at: [0, 0, 30], r: 9 };
   it('comes in behind you, ahead of you or out of portals, and never inside anything solid', () => {
@@ -161,6 +182,142 @@ describe('what they know of you', () => {
     expect(blocked({ x: -20, y: 0, z: 0 }, { x: 20, y: 0, z: 0 }, moon)).toBe(true);
     expect(blocked({ x: -20, y: 6, z: 0 }, { x: 20, y: 6, z: 0 }, moon)).toBe(false);
     expect(blocked({ x: -20, y: 0, z: 0 }, { x: -10, y: 0, z: 0 }, moon)).toBe(false); // (it stops short of it)
+  });
+});
+
+describe('the pace of a fight', () => {
+  const tie = HUNTER_KINDS.tie;
+  const interceptor = HUNTER_KINDS.interceptor;
+  it('flies the fight at a little over your speed, never under its floor nor over its top', () => {
+    // at cruise, close in: near you, not its top
+    expect(fightSpeed(tie, 5.5, 8)).toBeLessThan(11);
+    expect(fightSpeed(tie, 5.5, 8)).toBeGreaterThan(5.5);
+    // sitting still: the floor
+    expect(fightSpeed(tie, 0, 8)).toBeCloseTo(tie.speed * FIGHT.floor, 9);
+    // boosting at 20: a TIE flat out (you can outrun one), an interceptor with you
+    expect(fightSpeed(tie, 20, 8)).toBe(tie.speed);
+    expect(fightSpeed(interceptor, 20, 8)).toBeGreaterThan(20);
+    expect(fightSpeed(interceptor, 20, 8)).toBeLessThanOrEqual(interceptor.speed);
+    // far off, it comes in flat out whatever you're doing; between, in between
+    expect(fightSpeed(tie, 0, FIGHT.closeFrom + 5)).toBe(tie.speed);
+    const mid = fightSpeed(tie, 0, (FIGHT.engageAt + FIGHT.closeFrom) / 2);
+    expect(mid).toBeGreaterThan(tie.speed * FIGHT.floor);
+    expect(mid).toBeLessThan(tie.speed);
+  });
+
+  it('turns a little quicker than you at the fight’s speed, and less at its top', () => {
+    for (const type of Object.values(HUNTER_KINDS)) {
+      expect(turnRate(type)).toBeGreaterThan(2);
+      expect(turnRate(type)).toBeLessThan(3.3);
+      expect(turnRateAt(type, type.speed * FIGHT.floor)).toBeCloseTo(turnRate(type), 9);
+      expect(turnRateAt(type, type.speed)).toBeCloseTo(turnRate(type) * (1 - FIGHT.stiff), 9);
+      expect(turnRateAt(type, type.speed * 2)).toBeCloseTo(turnRate(type) * (1 - FIGHT.stiff), 9);
+    }
+  });
+
+  it('is flown at your pace: at cruise, the ones coming at you are slow enough to follow, and still shoot', () => {
+    const near = { run: [0, 0], set: [0, 0] };
+    let fastestRun = 0;
+    let shots = 0;
+    for (const seed of [7, 12]) {
+      const seen = fight({
+        seed,
+        seconds: 50,
+        fly: (s) => ({ ...s, speed: 5.5, heading: s.heading + 0.3 * DT }),
+        each: (hunt, s, t) => {
+          if (t < 6) return; // (in from where they came)
+          for (const h of hunt.live) {
+            if (apart(h.pos, s) > FIGHT.engageAt) continue;
+            const v = Math.hypot(h.vel.x, h.vel.y, h.vel.z);
+            const k = h.mode === 'set' ? 'set' : 'run';
+            near[k][0] += v;
+            near[k][1] += 1;
+            if (k === 'run') fastestRun = Math.max(fastestRun, v);
+          }
+        },
+      });
+      shots += seen.shots;
+    }
+    expect(near.run[1]).toBeGreaterThan(200);
+    expect(near.run[0] / near.run[1]).toBeLessThan(10); // (on a run at you: near your own speed)
+    expect(fastestRun).toBeLessThan(HUNTER_KINDS.tie.speed * 0.8);
+    expect(near.set[0] / near.set[1]).toBeLessThan(13); // (swinging out past you: quicker, but not flat out)
+    expect(shots).toBeGreaterThan(40);
+  });
+
+  it('gets out ahead of you to turn in: a run starts in front of you, even while you turn', () => {
+    let runs = 0;
+    let ahead = 0;
+    for (const seed of [3, 9, 20]) {
+      const mode = new Map();
+      fight({
+        seed,
+        seconds: 60,
+        fly: (s) => ({ ...s, speed: 5.5, heading: s.heading + 0.3 * DT }),
+        each: (hunt, s) => {
+          for (const h of hunt.live) {
+            if (mode.get(h.id) === 'set' && h.mode === 'run') {
+              runs += 1;
+              if ((h.pos.x - s.x) * -Math.sin(s.heading) + (h.pos.z - s.z) * -Math.cos(s.heading) > 0) ahead += 1;
+            }
+            mode.set(h.id, h.mode);
+          }
+        },
+      });
+    }
+    expect(runs).toBeGreaterThan(60);
+    expect(ahead / runs).toBeGreaterThan(0.85);
+  });
+
+  it('opens up with you when you boost: the pack keeps pace, an interceptor faster than a TIE', () => {
+    // a fight at cruise, then the boost: the same pack, near you, before and after
+    const cruise = [0, 0];
+    const boost = [0, 0];
+    let tie = 0;
+    let fast = 0;
+    fight({
+      seconds: 24,
+      opts: { size: 4, ace: false },
+      fly: (s, t) => ({ ...s, speed: t < 10 ? 5.5 : 20 }),
+      each: (hunt, s, t) => {
+        for (const h of hunt.live) {
+          if (apart(h.pos, s) > 45 || h.mode === 'tail') continue;
+          const v = Math.hypot(h.vel.x, h.vel.y, h.vel.z);
+          if (t > 4 && t < 10) {
+            cruise[0] += v;
+            cruise[1] += 1;
+          }
+          if (t > 13) {
+            boost[0] += v;
+            boost[1] += 1;
+            if (h.kind === 'tie') tie = Math.max(tie, v);
+            else fast = Math.max(fast, v);
+          }
+        }
+      },
+    });
+    expect(cruise[1]).toBeGreaterThan(100);
+    expect(boost[1]).toBeGreaterThan(100);
+    expect(boost[0] / boost[1]).toBeGreaterThan(cruise[0] / cruise[1] + 5); // (they open up with you)
+    expect(tie).toBeGreaterThan(15);
+    expect(tie).toBeLessThanOrEqual(HUNTER_KINDS.tie.speed + 1e-6);
+    if (fast > 0) expect(fast).toBeGreaterThan(tie);
+  });
+
+  it('flies after prey at its floor, not flat out', () => {
+    const hunt = createHunt({ rand: seeded(5) });
+    const prey = { at: { x: 0, y: 0, z: -12 }, dir: (out) => ((out[0] = 0), (out[1] = 0), (out[2] = -1)), alive: () => true };
+    let s = start();
+    hunt.pack('bugs', s, { prey, size: 2 });
+    let fastest = 0;
+    for (let t = 0; t < 20; t += DT) {
+      s = move(s);
+      hunt.update(DT, s);
+      if (t < 6) continue;
+      for (const h of hunt.live) if (Math.hypot(h.pos.x - prey.at.x, h.pos.y - prey.at.y, h.pos.z - prey.at.z) < FIGHT.engageAt) fastest = Math.max(fastest, Math.hypot(h.vel.x, h.vel.y, h.vel.z));
+    }
+    expect(fastest).toBeGreaterThan(0);
+    expect(fastest).toBeLessThan(HUNTER_KINDS.gromflomite.speed * 0.75);
   });
 });
 
@@ -269,6 +426,24 @@ describe('a fight', () => {
     expect(seen.hunt.count).toBe(0); // (out of sight, and gone)
   });
 
+  it('leave() sends them all off without a moment’s vanishing, gone once well away from whoever’s looking', () => {
+    const hunt = createHunt({ rand: seeded(3) });
+    const you = start();
+    hunt.pack('empire', you, { size: 3, ace: false });
+    for (let t = 0; t < 3; t += DT) hunt.update(DT, you);
+    hunt.leave();
+    hunt.update(DT, you);
+    expect(hunt.count).toBe(3); // (still there)
+    expect(hunt.active).toBe(false);
+    expect(hunt.targets).toHaveLength(0); // (nothing for the guns: they're leaving)
+    let shots = 0;
+    let t = 0;
+    for (; t < 60 && hunt.count; t += DT) for (const e of hunt.update(DT, you)) if (e.type === 'shot') shots += 1;
+    expect(shots).toBe(0);
+    expect(hunt.count).toBe(0);
+    expect(t).toBeGreaterThan(2);
+  });
+
   it('all leave when you stop flying', () => {
     const hunt = createHunt({ rand: seeded() });
     hunt.pack('federation', start(), { size: 3 });
@@ -350,6 +525,16 @@ describe('shooting them', () => {
     expect(through(tie)).toMatchObject({ kind: expect.stringMatching(/tie|interceptor/), down: true });
     expect(hunt.update(DT, start()).map((e) => e.type)).toContain('cleared');
     expect(hunt.active).toBe(false);
+  });
+
+  it('counts a shot passing within its hit radius, and not one just outside it', () => {
+    const hunt = createHunt({ rand: seeded(4) });
+    const [h] = hunt.pack('empire', start(), { size: 1, ace: false });
+    const r = hitRadius(h.type);
+    expect(r).toBeGreaterThan(h.type.size);
+    const past = (off) => hunt.hit({ x: h.pos.x - 3, y: h.pos.y + off, z: h.pos.z }, { x: h.pos.x + 3, y: h.pos.y + off, z: h.pos.z }, 1);
+    expect(past(r + 0.02)).toBeNull();
+    expect(past(r - 0.02)).toMatchObject({ down: true });
   });
 
   it('takes a hit told to it by number (another pilot’s shot), and nothing for one it doesn’t have', () => {

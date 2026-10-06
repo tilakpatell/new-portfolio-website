@@ -14,9 +14,7 @@ export default function Portrait({ className = '' }) {
             width={p.width}
             height={p.height}
             alt={p.alt}
-            // React 18 only passes the attribute through in lowercase.
-            // eslint-disable-next-line react/no-unknown-property
-            fetchpriority="high"
+            fetchPriority="high"
             decoding="async"
             className="h-full w-full object-cover"
           />

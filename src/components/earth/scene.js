@@ -3,27 +3,34 @@
 // Marble's city lights on the night side, the sun glinting off the sea, a
 // shell of clouds that casts its shadows on the ground, an atmosphere that's
 // a blue rim from orbit and a sky from low down, the stars behind, a beacon
-// at every place in the passport, and the plane (a 737, repainted) with its
+// at every place in the passport, the other pilots online as pale planes
+// with a glow and their name (the same size on the screen from anywhere),
+// and the plane (a 737, repainted) with its
 // lights and contrails. The sun is where it really is now.
 //
 // It draws what the component hands it every frame (the flight from
 // ./rules.js, where the camera is in its dive from orbit, which places are
-// stamped) and decides nothing.
+// stamped, the trail) and decides nothing.
 //
-// createEarth(canvas, { onLost, small }) returns { render(state, ms),
-// screenOf(v), pick(ndcX, ndcY), resize, dispose, lost, ready }.
+// createEarth(renderer, { small, lost }) returns { render(state, ms),
+// screenOf(v), pick(ndcX, ndcY), resize, warm(state), dispose, ready }. The
+// renderer is the world runtime's (src/runtime); `lost` says if its context
+// has gone; resize is told the canvas's CSS size (the runtime sizes the
+// renderer itself).
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
-import { createRenderer, disposeTree, precompile } from '../../lib/three/renderer';
+import { disposeTree, precompile } from '../../lib/three/renderer';
+import { gltfLoader } from '../../lib/three/gltf';
+import { loadTexture, sharpenMaterial } from '../../lib/three/textures';
 import { device } from '../../lib/device';
-import { HOME_V, STAMPS, cross, unit } from './rules';
+import { CLOUD_ALT, HOME_V, STAMPS, TRAIL as LOG, cross, placeById, routeArc, unit, unpackPose } from './rules';
 
 const BASE = '/textures/earth/';
-const CLOUDS_UP = 0.0065; // the cloud shell's height over the ground
+const CLOUDS_UP = CLOUD_ALT; // the cloud shell's height over the ground (the plane can get under it)
 const AIR = 1.085; // the top of the atmosphere
 const PLANE = 0.0075; // the plane's length, in Earth radii (a toy: you'd never see a real one from up here)
+const TRAIL_UP = 0.004; // the trail flown is drawn this far under where the plane was (about 25 km)
+const ROUTE_UP = 0.008; // the routes to the places stamped
 
 const v3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
 
@@ -144,8 +151,11 @@ void main() {
   float light = smoothstep(-0.12, 0.25, sunUp) * (0.55 + 0.6 * max(sunUp, 0.0)) + 0.008;
   float dusk = smoothstep(-0.15, 0.05, sunUp) * (1.0 - smoothstep(0.05, 0.35, sunUp));
   vec3 col = mix(vec3(1.0), vec3(1.0, 0.68, 0.45), dusk * 0.7) * light;
+  float facing = dot(N, V);
   // from far off, their edges against space thin out
-  a *= mix(1.0, 0.75, pow(1.0 - max(dot(N, V), 0.0), 3.0));
+  a *= mix(1.0, 0.75, pow(1.0 - max(facing, 0.0), 3.0));
+  // seen from underneath, in their own shade
+  col *= mix(1.0, 0.62, smoothstep(0.0, -0.2, facing));
   gl_FragColor = vec4(col, a * 0.94);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
@@ -258,14 +268,40 @@ function paperPlane() {
   return g;
 }
 
-export function createEarth(canvas, { onLost, small = false } = {}) {
+// a name on a card, as a sprite that stays the same size on the screen
+function nameSprite(name, h = 0.028) {
+  const c = document.createElement('canvas');
+  const g = c.getContext('2d');
+  const font = '600 30px system-ui, sans-serif';
+  g.font = font;
+  const w = Math.ceil(g.measureText(name).width) + 28;
+  c.width = w;
+  c.height = 44;
+  g.font = font;
+  g.fillStyle = 'rgba(6, 14, 28, 0.7)';
+  g.beginPath();
+  g.roundRect(0, 0, w, 44, 12);
+  g.fill();
+  g.fillStyle = '#e6eeff';
+  g.textBaseline = 'middle';
+  g.fillText(name, 14, 23);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false, sizeAttenuation: false, opacity: 0 }));
+  sp.scale.set((w / 44) * h, h, 1);
+  sp.center.set(0.5, -0.9);
+  sp.renderOrder = 6;
+  return sp;
+}
+
+export function createEarth(renderer, { small = false, lost = () => false } = {}) {
   const tier = device().tier;
-  const gl = createRenderer(canvas, { alpha: false, antialias: true, ratio: 2, toneMapping: THREE.ACESFilmicToneMapping, exposure: 1.05, onLost });
-  const { renderer } = gl;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.setClearColor(0x000000, 1);
   const big = !small && tier === 'high' && renderer.capabilities.maxTextureSize >= 8192;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.0005, 80);
-  const loader = new THREE.TextureLoader();
   const blank = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
   blank.needsUpdate = true;
   const flat = new THREE.DataTexture(new Uint8Array([128, 128, 128, 255]), 1, 1);
@@ -273,10 +309,10 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
   const sunDir = new THREE.Vector3(0, 0, 1);
 
   // the maps: the day side first (the world waits for it), the rest as they come
+  // (decoded off the main thread, as sharp as the device's tier allows, and
+  // shared with the universe map where they want the same file)
   const tex = (name, colour) =>
-    loader.loadAsync(`${BASE}${name}${big ? '' : '-sm'}.webp`).then((t) => {
-      t.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
-      t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+    loadTexture(`${BASE}${name}${big ? '' : '-sm'}.webp`, { renderer, color: colour }).then((t) => {
       t.wrapS = THREE.RepeatWrapping;
       return t;
     });
@@ -317,7 +353,7 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
   const globe = new THREE.Mesh(new THREE.SphereGeometry(1, seg[0], seg[1]), new THREE.ShaderMaterial({ vertexShader: GLOBE_VERT, fragmentShader: GLOBE_FRAG, uniforms: globeU }));
   scene.add(globe);
   const cloudU = { tClouds: { value: blank }, uSun: { value: sunDir }, uCloud: globeU.uCloud };
-  const cloudMat = new THREE.ShaderMaterial({ vertexShader: GLOBE_VERT, fragmentShader: CLOUD_FRAG, uniforms: cloudU, transparent: true, depthWrite: false });
+  const cloudMat = new THREE.ShaderMaterial({ vertexShader: GLOBE_VERT, fragmentShader: CLOUD_FRAG, uniforms: cloudU, transparent: true, depthWrite: false, side: THREE.DoubleSide });
   cloudMat.visible = false;
   const clouds = new THREE.Mesh(new THREE.SphereGeometry(1 + CLOUDS_UP, seg[0], seg[1]), cloudMat);
   clouds.renderOrder = 2;
@@ -327,10 +363,8 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
   scene.add(air);
 
   // the stars (the universe map's Milky Way), faint
-  loader
-    .loadAsync(`/textures/universe/sky${big ? '' : '-sm'}.webp`)
+  loadTexture(`/textures/universe/sky${big ? '' : '-sm'}.webp`, { renderer, color: true })
     .then((t) => {
-      t.colorSpace = THREE.SRGBColorSpace;
       t.mapping = THREE.EquirectangularReflectionMapping;
       owned.push(t);
       scene.background = t;
@@ -370,6 +404,31 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
   const STAMPED = new THREE.Color('#ffd27a');
   const OPEN = new THREE.Color('#5cb8ff');
 
+  // ── the flight log ──
+  // the trail flown, as a line just over the ground: the component keeps
+  // the points (rules' logTrail) and bumps `trailV` when they change
+  const trailPos = new Float32Array(LOG.max * 3);
+  const trailGeo = new THREE.BufferGeometry();
+  trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3).setUsage(THREE.DynamicDrawUsage));
+  trailGeo.setDrawRange(0, 0);
+  const trailLine = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: '#8fd3ff', transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending }));
+  trailLine.frustumCulled = false;
+  trailLine.renderOrder = 3;
+  scene.add(trailLine);
+  let trailSeen = -1;
+  // the route home to each place stamped, along the great circle, in gold
+  const routes = new Map();
+  const routeMat = new THREE.LineBasicMaterial({ color: '#ffd27a', transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending });
+  const route = (id) => {
+    const s = placeById(id);
+    if (!s) return;
+    const pts = routeArc(HOME_V, s.v, 64).map((v) => v3(v).multiplyScalar(1 + ROUTE_UP));
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), routeMat);
+    line.renderOrder = 3;
+    scene.add(line);
+    routes.set(id, line);
+  };
+
   // ── the plane ──
   const plane = new THREE.Group(); // placed and turned each frame
   const body = new THREE.Group(); // banks and pitches inside it
@@ -379,8 +438,7 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
   body.add(model);
   scene.add(plane);
   let gone = false;
-  new GLTFLoader()
-    .setMeshoptDecoder(MeshoptDecoder)
+  gltfLoader()
     .loadAsync('/models/sketchfab/earth-plane.glb')
     .then((g) => {
       if (gone) return disposeTree(g.scene);
@@ -388,7 +446,7 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
         if (!o.isMesh) return;
         const mats = Array.isArray(o.material) ? o.material : [o.material];
         for (const m of mats) {
-          if (m.map) m.map.anisotropy = 4;
+          sharpenMaterial(m, { renderer });
           if ('roughness' in m) m.roughness = Math.min(m.roughness, 0.5);
         }
       });
@@ -440,12 +498,99 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
     return { x, pos, geo, mat, mesh, pts: [], acc: 0 };
   });
 
+  // ── the other pilots ──
+  // each a pale plane with a glow and a name that keep their size on the
+  // screen, eased towards where they said they were, gone when they are
+  const ghostMat = new THREE.MeshStandardMaterial({ color: 0xcfe0ff, emissive: 0x6a8cff, emissiveIntensity: 0.8, roughness: 0.5, transparent: true, opacity: 0, depthWrite: false });
+  const ghosts = new Map();
+  const makeGhost = (p) => {
+    const g = new THREE.Group();
+    const body = new THREE.Group();
+    body.scale.setScalar(PLANE);
+    const model = paperPlane();
+    const old = new Set();
+    model.traverse((o) => {
+      if (!o.isMesh) return;
+      old.add(o.material);
+      o.material = ghostMat;
+    });
+    for (const m of old) m.dispose();
+    body.add(model);
+    const dot = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: new THREE.Color('#8fd3ff'), blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, transparent: true, sizeAttenuation: false, opacity: 0 }));
+    dot.scale.set(0.03, 0.03, 1);
+    dot.renderOrder = 6;
+    const tag = nameSprite(p.name);
+    g.add(body, dot, tag);
+    scene.add(g);
+    const at = unpackPose(p);
+    return { g, body, dot, tag, name: p.name, p: v3(at.p), h: v3(at.h), alt: at.alt, fade: 0 };
+  };
+  const dropGhost = (id, gh) => {
+    scene.remove(gh.g);
+    gh.tag.material.map.dispose();
+    gh.tag.material.dispose();
+    gh.dot.material.dispose();
+    gh.g.traverse((o) => o.geometry?.dispose());
+    ghosts.delete(id);
+  };
+  const gBasis = new THREE.Matrix4();
+  const updateGhosts = (list, dt) => {
+    const here = new Set();
+    const k = 1 - Math.exp(-dt * 6);
+    for (const p of list) {
+      here.add(p.id);
+      let gh = ghosts.get(p.id);
+      if (!gh) {
+        gh = makeGhost(p);
+        ghosts.set(p.id, gh);
+      }
+      if (gh.name !== p.name) {
+        gh.g.remove(gh.tag);
+        gh.tag.material.map.dispose();
+        gh.tag.material.dispose();
+        gh.tag = nameSprite(p.name);
+        gh.g.add(gh.tag);
+        gh.name = p.name;
+      }
+      const at = unpackPose(p);
+      const tp = v3(at.p);
+      // a long way off (a jump): straight there
+      if (gh.p.angleTo(tp) > 0.2) {
+        gh.p.copy(tp);
+        gh.h.copy(v3(at.h));
+        gh.alt = at.alt;
+      }
+      gh.p.lerp(tp, k).normalize();
+      gh.h.lerp(v3(at.h), k);
+      gh.h.addScaledVector(gh.p, -gh.h.dot(gh.p)).normalize();
+      gh.alt += (at.alt - gh.alt) * k;
+      const want = p.inside ? 0 : 1;
+      gh.fade += (want - gh.fade) * Math.min(1, dt * 3);
+      gBasis.makeBasis(gh.p.clone().cross(gh.h).normalize(), gh.p, gh.h);
+      gh.g.position.copy(gh.p).multiplyScalar(1 + gh.alt);
+      gh.body.quaternion.setFromRotationMatrix(gBasis);
+      gh.dot.material.opacity = 0.85 * gh.fade;
+      gh.tag.material.opacity = 0.95 * gh.fade;
+      gh.g.visible = gh.fade > 0.02;
+    }
+    for (const [id, gh] of ghosts) {
+      if (here.has(id)) continue;
+      gh.fade -= dt * 2;
+      gh.dot.material.opacity = 0.85 * Math.max(0, gh.fade);
+      gh.tag.material.opacity = Math.max(0, gh.fade);
+      if (gh.fade <= 0) dropGhost(id, gh);
+    }
+    // (one material for every ghost plane: as pale as the most faded-in of them)
+    let top = 0;
+    for (const gh of ghosts.values()) top = Math.max(top, gh.fade);
+    ghostMat.opacity = 0.5 * top;
+  };
+
   // ── sizes ──
   const size = { w: 1, h: 1 };
   const resize = (w, h) => {
     size.w = Math.max(1, w);
     size.h = Math.max(1, h);
-    gl.setSize(size.w, size.h);
     camera.aspect = size.w / size.h;
     camera.updateProjectionMatrix();
   };
@@ -462,23 +607,40 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
   let disposed = false;
   let warmed = false;
 
-  // where the chase camera wants to be, behind and above the plane
-  const chase = (f, out) => {
+  // where the chase camera wants to be: behind and above the plane, swung
+  // round it by the look (yaw to either side, pitch up and down); or, in
+  // the cockpit, at the nose looking ahead, banking with the wings
+  const chase = (f, out, look = null, cockpit = false) => {
     const p = v3(f.p);
     const h = v3(f.h);
     const r = 1 + f.alt;
     out.plane = p.clone().multiplyScalar(r);
-    out.pos = out.plane.clone().addScaledVector(h, -0.03).addScaledVector(p, 0.0105);
-    out.look = out.plane.clone().addScaledVector(h, 0.022).addScaledVector(p, 0.002);
-    out.up = p.clone().applyAxisAngle(h, -f.turn * 0.18);
+    if (cockpit) {
+      out.pos = out.plane.clone().addScaledVector(h, 0.0045).addScaledVector(p, 0.0012);
+      out.look = out.plane.clone().addScaledVector(h, 0.06).addScaledVector(p, 0.0012 + 0.003 * (f.climb ?? 0));
+      out.up = p.clone().applyAxisAngle(h, -(f.turn * 0.6 + (f.roll ?? 0)));
+      return out;
+    }
+    const yaw = look?.yaw ?? 0;
+    const pitch = look?.pitch ?? 0;
+    const right = h.clone().cross(p).normalize();
+    // the way back from the plane, swung round by the yaw and tipped by the pitch
+    const back = h.clone().multiplyScalar(-Math.cos(yaw)).addScaledVector(right, Math.sin(yaw));
+    // (under the cloud deck the camera comes down with the plane, so the
+    // clouds go by overhead instead of hiding it)
+    const base = Math.min(0.0105, Math.max(0.0015, CLOUD_ALT - 0.0008 - f.alt));
+    const lift = base + 0.03 * Math.sin(pitch) + 0.012 * (1 - Math.cos(yaw));
+    out.pos = out.plane.clone().addScaledVector(back, 0.03 * Math.cos(pitch)).addScaledVector(p, lift);
+    out.look = out.plane.clone().addScaledVector(h, 0.022 * Math.max(0, Math.cos(yaw))).addScaledVector(p, 0.002);
+    out.up = p.clone().applyAxisAngle(h, -f.turn * 0.18 * Math.cos(yaw));
     return out;
   };
   const chaseNow = {};
 
   const render = (state, ms = 16) => {
-    if (disposed || gl.lost) return;
+    if (disposed || lost()) return;
     const dt = Math.min(0.05, ms / 1000);
-    const { flight: f, sun: s, view, stamped, orbit } = state;
+    const { flight: f, sun: s, view, stamped, orbit, trail = null, trailV = 0, look = null, cockpit = false, travellers = null } = state;
     const t = performance.now() / 1000;
     sunDir.set(s[0], s[1], s[2]);
     sun.position.copy(sunDir).multiplyScalar(40);
@@ -492,14 +654,16 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
     basis.makeBasis(v3(unit(cross(f.p, f.h))), p, h);
     plane.position.copy(p).multiplyScalar(1 + f.alt);
     plane.quaternion.setFromRotationMatrix(basis);
-    q.setFromAxisAngle(Z, f.turn * 0.6);
+    q.setFromAxisAngle(Z, f.turn * 0.6 + (f.roll ?? 0));
     qb.setFromAxisAngle(X, -f.climb * 0.22);
     body.quaternion.copy(q).multiply(qb);
     nav[2].visible = t % 1.2 < 0.07; // the strobe
     const lightUp = Math.max(0, p.dot(sunDir));
 
-    // the camera: orbit, the dive between, or the chase
-    chase(f, chaseNow);
+    // the camera: orbit, the dive between, or the chase (or the cockpit)
+    const inside = cockpit && view >= 1;
+    chase(f, chaseNow, look, inside);
+    body.visible = !inside;
     const k = view; // 0 orbit … 1 chase
     const orbitPos = v3(orbit).multiplyScalar(3.1);
     // in a dive the camera comes in along the way, then swings in behind
@@ -513,8 +677,8 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
     const target = tmp.copy(chaseNow.look).multiplyScalar(Math.pow(e, 0.6));
     const up = tmp2.set(0, 1, 0).lerp(chaseNow.up, e).normalize();
     if (k >= 1) {
-      // the chase: follow smoothly
-      const a = pose.ready ? 1 - Math.exp(-9 * dt) : 1;
+      // the chase: follow smoothly (the cockpit at once, or the nose would lag)
+      const a = pose.ready && !inside ? 1 - Math.exp(-9 * dt) : 1;
       pose.pos.lerp(chaseNow.pos, a);
       pose.look.lerp(chaseNow.look, a);
       pose.up.lerp(chaseNow.up, a).normalize();
@@ -531,7 +695,7 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
     const height = camera.position.length() - 1;
     camera.near = Math.max(0.00025, Math.min(0.2, height * 0.04));
     camera.far = 80;
-    camera.fov = 50 - 8 * k;
+    camera.fov = inside ? 58 : 50 - 8 * k;
     camera.updateProjectionMatrix();
     // no stars by day, inside the air
     const inAir = 1 - THREE.MathUtils.smoothstep(height, 0.06, 0.13);
@@ -551,6 +715,25 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
       b.g.scale.setScalar(1 + (1 - k) * 0.8);
     }
 
+    // the flight log: the trail as it grows, and a route for each new stamp
+    if (trail && trailV !== trailSeen) {
+      trailSeen = trailV;
+      const n = Math.min(trail.length, LOG.max);
+      for (let i = 0; i < n; i++) {
+        const pt = trail[trail.length - n + i];
+        const r = 1 + Math.max(0.002, (pt[3] ?? 0.01) - TRAIL_UP);
+        trailPos[i * 3] = pt[0] * r;
+        trailPos[i * 3 + 1] = pt[1] * r;
+        trailPos[i * 3 + 2] = pt[2] * r;
+      }
+      trailGeo.setDrawRange(0, n);
+      trailGeo.attributes.position.needsUpdate = true;
+    }
+    for (const id of stamped) if (!routes.has(id)) route(id);
+    trailLine.material.opacity = 0.45 + 0.3 * (1 - k);
+    routeMat.opacity = 0.35 + 0.3 * (1 - k);
+    updateGhosts(travellers ?? [], dt);
+
     // contrails: a point dropped behind each engine every little while
     for (const tr of trails) {
       tr.acc += dt;
@@ -568,7 +751,7 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
       }
       tr.geo.attributes.position.needsUpdate = true;
       tr.mat.uniforms.uLight.value = 0.08 + 0.92 * Math.min(1, lightUp * 3);
-      tr.mesh.visible = k > 0.6;
+      tr.mesh.visible = k > 0.6 && !inside;
     }
 
     renderer.render(scene, camera);
@@ -600,9 +783,6 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
   };
 
   return {
-    get lost() {
-      return gl.lost;
-    },
     ready,
     render,
     resize,
@@ -617,12 +797,13 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
     dispose() {
       disposed = true;
       gone = true;
+      for (const [id, gh] of ghosts) dropGhost(id, gh);
+      ghostMat.dispose();
       disposeTree(scene);
       for (const t of owned) t.dispose();
       glow.dispose();
       blank.dispose();
       flat.dispose();
-      gl.dispose();
     },
   };
 }

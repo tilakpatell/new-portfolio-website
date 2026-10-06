@@ -1,4 +1,5 @@
 import { forwardRef } from 'react';
+import '../../../styles/lazy/middleearth.css';
 
 // The HUD parts a walkable town shares (the Shire's look: its shire-*
 // classes, ../shire/shire.css): the list of things to do, a speech bubble,

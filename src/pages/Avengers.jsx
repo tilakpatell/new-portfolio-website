@@ -17,6 +17,7 @@ import { useFun } from '../fun/FunProvider';
 import { audioContext } from '../lib/audio';
 import { jumpTo } from '../lib/anchors';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
+import '../styles/lazy/avengers.css';
 
 const sfx = () => import('../lib/sfx');
 
