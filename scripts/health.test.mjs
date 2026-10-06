@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeContext, metric } from './health/context.mjs';
 import bigFiles, { CEILING, WARN } from './health/big-files.mjs';
+import boundaryBreaks, { worlds } from './health/boundary-breaks.mjs';
 import cycles from './health/cycles.mjs';
 import { graph, resolve, uncomment } from './health/graph.mjs';
 import lintDisables from './health/lint-disables.mjs';
@@ -54,9 +55,18 @@ describe('the import graph, on a fixture tree', () => {
     const gctx = await makeContext(GRAPH);
     const g = await graph(gctx);
     expect(g.edges.map((e) => `${e.from} -> ${e.to}`)).toEqual([
+      'src/App.jsx -> src/pages/P.jsx',
       'src/a.js -> src/b.js',
       'src/b.js -> src/c.js',
       'src/c.js -> src/a.js',
+      'src/components/alpha/scene.js -> src/components/beta/index.js',
+      'src/components/alpha/scene.js -> src/components/beta/props.js',
+      'src/components/alpha/scene.js -> src/components/beta/shared/kit.js',
+      'src/components/alpha/scene.js -> src/components/beta/sub/index.js',
+      'src/components/alpha/scene.js -> src/components/x/thing.js',
+      'src/components/beta/index.js -> src/components/beta/props.js',
+      'src/components/beta/scene.js -> src/components/beta/props.js',
+      'src/components/worlds/registry.js -> src/components/beta/props.js',
       'src/d.js -> src/e/index.js',
       'src/e/index.js -> src/i.js',
       'src/f.jsx -> src/f.css',
@@ -68,6 +78,8 @@ describe('the import graph, on a fixture tree', () => {
       'src/j.js -> src/i.js',
       'src/j.js -> src/k.js',
       'src/k.js -> src/j.js',
+      'src/lib/bad.js -> src/components/x/thing.js',
+      'src/pages/P.test.jsx -> src/pages/P.jsx',
       'src/t.js -> src/t.test.js',
       'src/t.test.js -> src/t.js',
     ]);
@@ -104,6 +116,29 @@ describe('the import graph, on a fixture tree', () => {
     const m = await cycles(await makeContext(GRAPH));
     expect(m).toMatchObject({ id: 'cycles', value: 2, unit: 'cycles', better: 'lower' });
     expect(m.detail).toEqual([{ file: 'src/j.js → src/k.js', n: 2 }, { file: 'src/a.js → src/b.js → src/c.js', n: 3 }]);
+  });
+
+  it('a world is a folder under src/components with a scene.js or a *World.jsx at any depth, less the ones listed', async () => {
+    const g = await graph(await makeContext(GRAPH));
+    const found = worlds(g.files);
+    expect(['alpha', 'beta', 'worlds', 'x'].filter((f) => found.has(f))).toEqual(['alpha', 'beta']);
+    const named = worlds(['src/components/gamma/deep/GammaWorld.jsx', 'src/components/cockpit/scene.js', 'src/components/Nav.jsx']);
+    expect(named.has('gamma')).toBe(true);
+    expect(named.has('cockpit')).toBe(false);
+    expect(named.has('caribbean')).toBe(true);
+  });
+
+  it('boundary-breaks counts each import across a line RULES.md draws, once, with the rule it breaks', async () => {
+    const m = await boundaryBreaks(await makeContext(GRAPH));
+    expect(m).toMatchObject({ id: 'boundary-breaks', value: 3, unit: 'imports', better: 'lower' });
+    // and no break: alpha through beta's index.js and shared/, alpha taking x's
+    // piece, worlds/ reaching into beta, App.jsx mounting a page, a page's test
+    // importing its page
+    expect(m.detail).toEqual([
+      { file: 'src/components/alpha/scene.js → src/components/beta/props.js', n: 1, note: 'worlds are islands' },
+      { file: 'src/components/alpha/scene.js → src/components/beta/sub/index.js', n: 1, note: 'worlds are islands' },
+      { file: 'src/lib/bad.js → src/components/x/thing.js', n: 1, note: 'lib knows no page' },
+    ]);
   });
 });
 
