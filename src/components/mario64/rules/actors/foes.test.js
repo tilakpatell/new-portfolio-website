@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createKit } from '../../courses/shapes';
-import { makeWorld } from '../collide';
+import { makeWorld, rest } from '../collide';
 import { newMario, stepMario } from '../mario';
 import { interact, newScene, pressB, stepActors } from './index';
 
@@ -17,6 +17,7 @@ function frame(g, inp = input()) {
   const i = { ...inp };
   if (i.bp && pressB(g)) i.bp = false;
   stepMario(g.mario, i, g.world);
+  rest(g.world);
   stepActors(g);
   interact(g);
 }
@@ -153,6 +154,17 @@ describe('the Chain Chomp', () => {
     frames(g, 300);
     expect(g.actors.some((a) => a.type === 'gate')).toBe(false);
     expect(events(g, 'smash')).toHaveLength(1);
+  });
+
+  it('only hurts when it bites: resting, it just pushes Mario off', () => {
+    const g = scene(newMario({ x: 0, y: 0, z: 0 }));
+    g.spawn({ type: 'post', id: 'post', x: 0, y: 0, z: -700 });
+    const c = g.spawn({ type: 'chomp', post: 'post', gate: 'gate', x: 0, y: 0, z: 100 });
+    c.state = 'idle';
+    c.next = 999;
+    frames(g, 5);
+    expect(g.mario.health).toBe(8);
+    expect(Math.hypot(g.mario.pos.x - c.pos.x, g.mario.pos.z - c.pos.z)).toBeGreaterThan(150);
   });
 
   it('lunges at Mario near its post, and hurts', () => {

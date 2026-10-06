@@ -207,9 +207,10 @@ function land(m, inp, w) {
   return false;
 }
 
-// Sliding down a slope (the original's update_sliding): pulled downhill by
-// 7 (8 on slippery floors) times the slope, losing 2% a frame; on a slide,
-// the stick steers a little. A jumps out of it.
+// Sliding down a slope (the original's update_sliding): while the floor is
+// too steep, pulled downhill by 7 (8 on slippery floors) times the slope,
+// losing 2% a frame; on a slide, the stick steers a little. Once the floor
+// is gentle he slows quickly and is his own again. A jumps out of it.
 function sliding(m, inp, w) {
   if (inp.ap) {
     inp.ap = false;
@@ -221,12 +222,14 @@ function sliding(m, inp, w) {
     m.slideZ = m.fwd * Math.cos(m.yaw);
   }
   const n = m.floor?.n ?? [0, 1, 0];
-  const accel = m.floor?.kind === 'slippery' ? 8 : 7;
-  m.slideX = (m.slideX + accel * n[0]) * 0.98;
-  m.slideZ = (m.slideZ + accel * n[2]) * 0.98;
-  if (!steep(m)) {
-    m.slideX *= 0.85;
-    m.slideZ *= 0.85;
+  const pulled = steep(m);
+  if (pulled) {
+    const accel = m.floor?.kind === 'slippery' ? 8 : 7;
+    m.slideX = (m.slideX + accel * n[0]) * 0.98;
+    m.slideZ = (m.slideZ + accel * n[2]) * 0.98;
+  } else {
+    m.slideX *= 0.8;
+    m.slideZ *= 0.8;
   }
   let sp = Math.hypot(m.slideX, m.slideZ);
   if (m.action === 'buttslide' && m.mag > 0 && sp > 1) {
@@ -253,7 +256,14 @@ function sliding(m, inp, w) {
     return false;
   }
   if (r === 'wall') m.slideX = m.slideZ = m.fwd = 0;
-  if (!steep(m) && sp < 2) setAction(m, 'idle');
+  if (!steep(m) && m.fwd < 6) setAction(m, m.fwd > 1 ? 'stop' : 'idle');
+  return false;
+}
+
+// holding a star up (the game moves him on)
+function dance(m) {
+  m.vel.x = m.vel.z = 0;
+  m.fwd = 0;
   return false;
 }
 
@@ -263,4 +273,4 @@ function dead(m) {
   return false;
 }
 
-export const GROUND = { idle, walk, stop, skid, crouch, crawl, crouchslide, punch, land, slide: sliding, buttslide: sliding, dead };
+export const GROUND = { idle, walk, stop, skid, crouch, crawl, crouchslide, punch, land, slide: sliding, buttslide: sliding, dance, dead };

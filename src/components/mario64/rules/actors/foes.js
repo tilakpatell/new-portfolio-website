@@ -231,7 +231,7 @@ const king = {
     if (a.state === 'defeated') {
       if (a.t - a.since === 60) {
         a.alive = false;
-        g.spawn({ type: 'star', index: a.def.star, x: ar.x, y: ar.y + 200, z: ar.z, appear: true });
+        g.spawn({ type: 'star', index: a.def.star, x: ar.x, y: ar.y + 30, z: ar.z, appear: true });
         tell(g, 'appear', { index: a.def.star });
       }
       return;
@@ -335,7 +335,7 @@ const chomp = {
       return;
     }
     fall(a, g);
-    const near = Math.hypot(m.pos.x - px, m.pos.z - pz) < CHAIN + 400;
+    const near = Math.hypot(m.pos.x - px, m.pos.z - pz) < CHAIN + 600;
     if (a.state === 'idle') {
       if (a.grounded && a.t % 20 === 0) a.vel.y = 18;
       if (--a.next <= 0 && near) {
@@ -355,7 +355,7 @@ const chomp = {
       a.pos.z += Math.cos(a.yaw) * 10;
       if (distTo(a, px, pz) < 400) {
         a.state = 'idle';
-        a.next = 75;
+        a.next = 120;
       }
     }
     // the chain holds it
@@ -365,9 +365,21 @@ const chomp = {
       a.pos.z = pz + ((a.pos.z - pz) / d) * CHAIN;
     }
   },
+  // its bite hurts; at rest it's only a great iron ball to bump into
   touch(a, g) {
     if (a.state === 'free' || a.state === 'gone') return;
-    hurt(g.mario, 3, a.pos.x, a.pos.z);
+    const m = g.mario;
+    if (a.state === 'lunge') {
+      hurt(m, 2, a.pos.x, a.pos.z);
+      return;
+    }
+    const dx = m.pos.x - a.pos.x, dz = m.pos.z - a.pos.z;
+    const d = Math.hypot(dx, dz) || 1;
+    const need = a.r + 40;
+    if (d < need) {
+      m.pos.x = a.pos.x + (dx / d) * need;
+      m.pos.z = a.pos.z + (dz / d) * need;
+    }
   },
 };
 // a cage of bars round a star: solid until the Chomp smashes it
@@ -415,7 +427,7 @@ const ironball = {
   make(a) {
     a.leg = 0;
   },
-  step(a, g) {
+  step(a) {
     const path = a.def.path;
     let left = a.def.speed;
     while (left > 0 && a.leg < path.length - 1) {

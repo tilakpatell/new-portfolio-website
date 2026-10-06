@@ -308,6 +308,12 @@ export function moveDynamic(c, m) {
   }
 }
 
+// After whoever rides the colliders has been carried: their moves so far are
+// spent, so a collider that moved once carries a rider once.
+export function rest(w) {
+  for (const c of w.dynamic) c.prev = c.m.slice();
+}
+
 export function removeDynamic(w, c) {
   const i = w.dynamic.indexOf(c);
   if (i >= 0) w.dynamic.splice(i, 1);

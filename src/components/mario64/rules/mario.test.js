@@ -53,7 +53,7 @@ describe('Mario on the ground', () => {
     const w = flat();
     const m = newMario({ x: 0, y: 0, z: 0, yaw: 0 });
     let top = 0;
-    run(m, w, (i) => {
+    run(m, w, () => {
       top = Math.max(top, m.fwd);
       return up;
     }, 120);
@@ -96,7 +96,7 @@ describe('Mario on the ground', () => {
     });
     const m = newMario({ x: 0, y: 0, z: 0, yaw: 0 });
     const seen = new Set();
-    run(m, w, (i) => {
+    run(m, w, () => {
       seen.add(m.action);
       return up;
     }, 60);
@@ -137,7 +137,7 @@ describe('Mario on the ground', () => {
     });
     const m = newMario({ x: -4000, y: 0, z: -4000, yaw: Math.PI / 4 });
     const seen = new Set();
-    run(m, w, (i) => {
+    run(m, w, () => {
       seen.add(m.action);
       return input({ sx: -Math.SQRT1_2, sy: Math.SQRT1_2 });
     }, 200);
@@ -306,6 +306,22 @@ describe('Mario on slopes and lava, hurt, and in water', () => {
     run(m, w, input(), 20);
     expect(['slide', 'freefall', 'land']).toContain(m.action);
     expect(m.pos.z).toBeLessThan(-100);
+  });
+
+  it('stops sliding, and is his own again, once the ground is gentle', () => {
+    // a steep drop onto a long 6° grade going the same way
+    const w = worldFrom((k) => {
+      k.ramp({ x: 0, y: -2000, z: 0, w: 4000, d: 20000, h: 2000, mat: 'g', yaw: Math.PI });
+      k.ramp({ x: 0, y: 0, z: -10600, w: 4000, d: 1200, h: 1500, mat: 'g', yaw: Math.PI });
+    });
+    const m = newMario({ x: 0, y: 1500, z: -10200, yaw: 0 });
+    const seen = new Set();
+    run(m, w, () => {
+      seen.add(m.action);
+      return input();
+    }, 400);
+    expect(seen.has('slide')).toBe(true);
+    expect(['idle', 'stop', 'walk']).toContain(m.action);
   });
 
   it('slides down a slippery 20° slope, but stands on a rough 60° one', () => {

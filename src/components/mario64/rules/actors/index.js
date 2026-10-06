@@ -8,7 +8,7 @@
 // What happened goes onto g.out as events for the game.
 //
 // newScene({ world, mario, save, area }) → g; g.spawn(def) → actor;
-// stepActors(g); interact(g); useB(g) → whether B was used on something.
+// stepActors(g); interact(g); tryTalk(g) → whether B was used on something.
 
 import { FOES } from './foes';
 import { OBJECTS } from './objects';
@@ -100,7 +100,7 @@ export function interact(g) {
 }
 
 // B in front of something to read or talk to: that, instead of a punch
-export function useB(g) {
+export function tryTalk(g) {
   const m = g.mario;
   if (m.airborne) return false;
   for (const a of g.actors) {
@@ -138,6 +138,6 @@ export function tryGrab(g) {
 }
 
 // what B does before it's a punch: read, talk, or pick up
-export const pressB = (g) => useB(g) || tryGrab(g);
+export const pressB = (g) => tryTalk(g) || tryGrab(g);
 
 export const tell = (g, type, data) => g.out.push(data ? { type, ...data } : { type });

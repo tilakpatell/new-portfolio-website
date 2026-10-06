@@ -90,7 +90,7 @@ const PILLARS = [
   { x: 3150, z: 1950, top: 400, s: 500 },
   { x: 3700, z: 1700, top: 600, s: 500 },
   { x: 4250, z: 1450, top: 800, s: 500 },
-  { x: 4750, z: 1050, top: 1000, s: 700 },
+  { x: 4900, z: 900, top: 1000, s: 700 },
 ];
 const TOWER = { x: 4200, z: -3500, top: 380, s: 600 }; // a double jump's height
 const POST = { x: -3800, z: 1800 };

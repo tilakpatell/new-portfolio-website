@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createKit } from '../../courses/shapes';
 import { makeWorld } from '../collide';
 import { newMario } from '../mario';
-import { interact, newScene, stepActors, useB } from './index';
+import { interact, newScene, stepActors, tryTalk } from './index';
 
 const floor = () => {
   const k = createKit();
@@ -64,11 +64,11 @@ describe('stars, signs, doors and paintings', () => {
   it('reads a sign on B, instead of punching', () => {
     const g = scene();
     g.spawn({ type: 'sign', text: 'Hello', x: 0, y: 0, z: 100 });
-    expect(useB(g)).toBe(true);
+    expect(tryTalk(g)).toBe(true);
     expect(g.out).toContainEqual(expect.objectContaining({ type: 'dialog', text: 'Hello' }));
     const far = scene();
     far.spawn({ type: 'sign', text: 'Hello', x: 0, y: 0, z: 900 });
-    expect(useB(far)).toBe(false);
+    expect(tryTalk(far)).toBe(false);
   });
 
   it('keeps a star door shut, saying how many stars it needs, with too few', () => {
