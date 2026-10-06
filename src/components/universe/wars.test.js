@@ -76,4 +76,17 @@ describe('the wars', () => {
     const words = JSON.stringify(WARS.starwars).toLowerCase();
     for (const banned of ['first order', 'resistance', 'starkiller', 'kylo', 'snoke', 'rey ', 'exegol', 'jakku', 'crait', 'finalizer', 'supremacy']) expect(words.includes(banned), banned).toBe(false);
   });
+
+  it('fights Rick and Morty’s war at its real places: out from the Citadel to the Federation’s Earth, C-137', () => {
+    const w = WARS.rickmorty;
+    expect(w.ready).toBe(true);
+    const citadel = WONDERS.find((o) => o.id === 'citadel');
+    const [first, last] = [w.sectors[0], w.sectors[w.sectors.length - 1]];
+    expect(first.id).toBe('citadel');
+    expect(Math.hypot(...first.at.map((v, i) => v - citadel.at[i]))).toBeLessThan(reachOf(citadel) + 700);
+    expect(last.id).toBe('c137');
+    expect(Math.hypot(...last.at.map((v, i) => v - POSITIONS.rickmorty[i]))).toBeLessThan(900);
+    // (the Council's end is the Citadel's, the Federation's the Earth it took)
+    expect(w.sides.map((s) => s.id)).toEqual(['council', 'federation']);
+  });
 });

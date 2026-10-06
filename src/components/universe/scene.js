@@ -834,7 +834,7 @@ export async function create(canvas, ctx) {
   const npcs = hunters ? createNpcs(map, { fleet, memory: npcMemory }) : null; // (the named characters: npcRules.js's brains)
   // the crew's war (front.js): its front out in deep space, a battle there
   // to fly into (the Star Wars crews' war is fought in the galaxy far, far
-  // away instead: galaxy/gcw.js; the others' are still to come). Made for the crew's side, again if the crew changes; its
+  // away instead: galaxy/gcw.js; Rick and Morty's is here). Made for the crew's side, again if the crew changes; its
   // ships are the galaxy's models (galaxy/models.js), loaded once the
   // front's in sight. Not with reduced motion (nor are the hunters)
   let front = null;

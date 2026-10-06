@@ -2652,5 +2652,23 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "war/councildread": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11388-ae48-7231-b635-f34bfb86d546",
+    "name": "the Council of Ricks’ dreadnought, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "war/fedbattleship": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1138a-4688-7063-a551-a86f6b2cc42d",
+    "name": "the Galactic Federation’s battleship, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }
