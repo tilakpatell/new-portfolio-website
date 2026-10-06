@@ -56,6 +56,21 @@ describe('following a picture closely', () => {
     expect(cmd.join(' ')).toContain('--model pixal3d --fov 52');
     expect(command('trelliscpp', 'a.png', 'b.glb').join(' ')).not.toContain('pixal3d');
   });
+  it('stands up what Pixal3D writes Z up: a figure lying face to the sky comes out standing, facing forward', async () => {
+    const { Document, getBounds } = await import('@gltf-transform/core');
+    const { upright } = await import('./upright.mjs');
+    const doc = new Document();
+    // lying along Z, head at -Z (z -0.9), the nose up at +Y
+    const pos = doc.createAccessor().setType('VEC3').setArray(new Float32Array([0, 0, -0.9, 0, 0.1, -0.8, 0.2, 0, 0.9]));
+    const prim = doc.createPrimitive().setAttribute('POSITION', pos);
+    doc.createScene().addChild(doc.createNode().setMesh(doc.createMesh().addPrimitive(prim)));
+    await upright(doc);
+    const p = prim.getAttribute('POSITION').getArray();
+    expect([...p.slice(0, 3)].map((v) => +v.toFixed(5))).toEqual([0, 0.9, 0]); // the head up
+    expect([...p.slice(3, 6)].map((v) => +v.toFixed(5))).toEqual([0, 0.8, 0.1]); // the nose forward (+Z)
+    const { min, max } = getBounds(doc.getRoot().listScenes()[0]);
+    expect(+(max[1] - min[1]).toFixed(5)).toBe(1.8);
+  });
 });
 
 describe('preparing a picture of your own', () => {
