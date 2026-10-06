@@ -117,6 +117,20 @@ function tower(s, i, parts, strips) {
   }
 }
 
+// A soft round glow, for eyes and lamps seen from far off
+function glowTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  r.addColorStop(0, 'rgba(255,255,255,1)');
+  r.addColorStop(0.25, 'rgba(255,255,255,0.6)');
+  r.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = r;
+  g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+
 // The Autobots' mark, painted once on a canvas, to glow over the Hall's door
 function insignia(color) {
   const c = document.createElement('canvas');
@@ -309,6 +323,57 @@ export async function buildStage(area, { tier = 'high' } = {}) {
   city.receiveShadow = true;
   group.add(city);
 
+  // the megastructures beyond the city: rings stepping up round a spire,
+  // radial fins between them, every rim lit (amber where the war has got
+  // to it); out past the fog, which would only make them shadows, so they
+  // stand dark against the burning sky with their rims glowing
+  const far = [];
+  const rims = { cool: [], hot: [] };
+  for (const [n, m] of (S.skyline ?? []).entries()) {
+    const seed = hash(n * 4.1 + 0.3);
+    let y = 0;
+    for (let t = 0; t < m.tiers; t++) {
+      const r = m.r * (1 - t / (m.tiers + 0.6));
+      const h = m.r * (0.12 + 0.05 * hash(n + t * 1.9));
+      far.push(drum(m.x, m.z, r, r * 0.94, y, y + h, 64, seed));
+      // the rim, as a ring of short strips
+      const list = hash(n * 7 + t) < m.war ? rims.hot : rims.cool;
+      const rr = r * 0.94 + 0.6;
+      for (let k = 0; k < 48; k++) {
+        const a0 = (k / 48) * Math.PI * 2;
+        const a1 = ((k + 1) / 48) * Math.PI * 2;
+        list.push([m.x + Math.cos(a0) * rr, m.z + Math.sin(a0) * rr, m.x + Math.cos(a1) * rr, m.z + Math.sin(a1) * rr, y + h - 1.5, 2.2, 1.6]);
+      }
+      // fins between this ring and the next, all round
+      if (t < m.tiers - 1)
+        for (let f = 0; f < 12; f++) {
+          const a = (f / 12) * Math.PI * 2 + seed;
+          const r2 = m.r * (1 - (t + 1) / (m.tiers + 0.6));
+          far.push(wedge(m.x + Math.cos(a) * r * 0.97, m.z + Math.sin(a) * r * 0.97, m.x + Math.cos(a) * r2 * 0.95, m.z + Math.sin(a) * r2 * 0.95, h * 1.6, 6, seed, y + h));
+        }
+      y += h;
+    }
+    // the spire, and its light
+    far.push(drum(m.x, m.z, m.r * 0.08, 2, y, y + m.r * 0.9, 8, seed));
+    rims.cool.push([m.x, m.z, m.x + 0.01, m.z, y + m.r * 0.9 - 6, 5, 6]);
+  }
+  if (far.length) {
+    const farMat = keep(platedMaterial({ lights: 'slits', windows: 0.12, base: '#1a1e26', alt: '#232934', trim: '#3a4250', panel: [24, 14], glow: 1.6, metalness: 0.6, roughness: 0.6 }));
+    farMat.fog = false;
+    const skyline = new THREE.Mesh(keep(merged(far)), farMat);
+    group.add(skyline);
+    for (const [list, color, k] of [
+      [rims.cool, ENERGON, 2.2],
+      [rims.hot, '#ff8a2a', 2.6],
+    ]) {
+      const m = makeStrips(list, color, k);
+      if (!m) continue;
+      m.material.fog = false;
+      keep(m.material);
+      group.add(m);
+    }
+  }
+
   // light along the towers' edges, the setbacks, the barricades' tops
   const edges = makeStrips(strips, ENERGON, 1.6);
   if (edges) group.add(edges) && keep(edges.material);
@@ -390,7 +455,11 @@ export async function buildStage(area, { tier = 'high' } = {}) {
     group.add(e);
   });
 
-  // Metroplex on the skyline, Trypticon far off
+  const glowMat = keep(new THREE.SpriteMaterial({ map: keep(glowTexture()), color: new THREE.Color(ENERGON).multiplyScalar(3), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false, toneMapped: false }));
+  // Metroplex on the skyline, Trypticon far off. Metroplex sleeps till
+  // Jetfire's beacons wake him: then his eyes and his chest light, he turns
+  // to look over the city, and a searchlight sweeps from his head
+  const metroplex = { model: null, eyes: null, beam: null, woke: -1, at: S.metroplex };
   for (const [kind, at] of [
     ['metroplex', S.metroplex],
     ['trypticon', S.trypticon],
@@ -399,6 +468,33 @@ export async function buildStage(area, { tier = 'high' } = {}) {
       m.position.set(at.x, 0, at.z);
       m.rotation.y = at.yaw;
       group.add(m);
+      if (kind !== 'metroplex') return;
+      metroplex.model = m;
+      // (where his head and chest are, from his size: he faces along his yaw)
+      const box = new THREE.Box3().setFromObject(m);
+      const h = box.max.y - box.min.y;
+      const front = Math.min(box.max.x - box.min.x, box.max.z - box.min.z) * 0.32;
+      const eyes = new THREE.Group();
+      for (const [y, x, s] of [
+        [0.9, -0.035, 0.05],
+        [0.9, 0.035, 0.05],
+        [0.66, 0, 0.16],
+      ]) {
+        const glow = new THREE.Sprite(keep(glowMat.clone()));
+        glow.position.set(x * h, y * h, front);
+        glow.scale.setScalar(s * h);
+        eyes.add(glow);
+      }
+      m.add(eyes);
+      eyes.scale.setScalar(1 / m.scale.x); // (the model's own scale undone: these are in metres)
+      eyes.visible = false;
+      metroplex.eyes = eyes;
+      const beam = new THREE.Mesh(beamGeo, beamMat);
+      beam.position.set(at.x + Math.sin(at.yaw) * front, h * 0.9, at.z + Math.cos(at.yaw) * front);
+      beam.scale.set(3, 2.4, 3);
+      beam.visible = false;
+      group.add(beam);
+      metroplex.beam = beam;
     });
   }
 
@@ -453,8 +549,22 @@ export async function buildStage(area, { tier = 'high' } = {}) {
 
   return {
     group,
-    update(t) {
+    update(t, dt, camera, sim) {
       sky.userData.uniforms.uTime.value = t;
+      // Metroplex, woken: at once if he already was when you came, slowly
+      // the moment it happens
+      const awake = sim?.missions?.done?.includes('wake-metroplex');
+      if (awake && metroplex.model) {
+        metroplex.woke = metroplex.woke < 0 ? (sim.clock < 1 ? 1 : 0) : Math.min(1, metroplex.woke + (dt ?? 1 / 60) / 7);
+        const k = metroplex.woke * metroplex.woke * (3 - 2 * metroplex.woke);
+        metroplex.model.rotation.y = metroplex.at.yaw + 0.22 * k + Math.sin(t * 0.07) * 0.03 * k;
+        metroplex.eyes.visible = true;
+        metroplex.eyes.children.forEach((g, i) => (g.material.opacity = Math.min(1, k * (i < 2 ? 1.6 : 1)) * (0.85 + 0.15 * Math.sin(t * 2 + i))));
+        metroplex.beam.visible = k > 0.3;
+        const a = t * 0.18;
+        // (tipped down from his head over the city, sweeping across it)
+        metroplex.beam.rotation.set(1.72 + 0.06 * Math.sin(a * 0.8), metroplex.model.rotation.y + 0.45 * Math.sin(a), 0, 'YXZ');
+      }
       fires.update(t);
       portalU.uTime.value = t;
       fireLights.forEach((l, k) => (l.intensity = 700 + 300 * Math.sin(t * 9 + k) * Math.sin(t * 5.3 + k * 2)));

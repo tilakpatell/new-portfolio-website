@@ -4,7 +4,7 @@ import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
 import { readPad, typing } from '../../games/pad';
-import { keyDown, keyUp, moveOf } from '../towns/keys';
+import { keyDown, keyUp, moveOf, ownButton } from '../towns/keys';
 import { Travellers } from '../towns/TownHud';
 import { useTravellers } from '../towns/useTravellers';
 import {
@@ -383,7 +383,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           audioContext();
           return;
         }
-        if ((k === 'e' || k === 'E' || k === 'Enter') && s.near && !(e.target instanceof HTMLButtonElement)) {
+        if ((k === 'e' || k === 'E' || k === 'Enter') && s.near && !ownButton(e, box.current)) {
           e.preventDefault();
           enter(s.near);
         } else if (k === 'r' || k === 'R') putRing(!s.wearing);
@@ -404,14 +404,14 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         setHud((h) => ({ ...h, colour: s.colour }));
         return;
       }
-      if ((k === ' ' || k === 'Enter' || k === 'e' || k === 'E') && !(e.target instanceof HTMLButtonElement)) {
+      if ((k === ' ' || k === 'Enter' || k === 'e' || k === 'E') && !ownButton(e, box.current)) {
         e.preventDefault();
         act();
       }
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, [live, near, enter, leave, act, putRing]);
+  }, [box, live, near, enter, leave, act, putRing]);
 
   // ── every frame ──
   useFrameLoop((ms) => {

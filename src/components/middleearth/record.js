@@ -4,6 +4,7 @@
 // stars they come to, alone). Pure, so the map hub can show it and the
 // tests can check it.
 import { CHAPTERS } from './chapters';
+import { HIDDEN } from './hidden';
 import { levelOf } from './rush/levels';
 
 // the achievement each chapter's side game wins
@@ -19,6 +20,24 @@ export const SIDE_SEALS = {
   'cirith-ungol': { seal: 'notacrumb', name: 'Crumbs on Sam’s cloak' },
   mordor: { seal: 'remembertheshire', name: 'Do you remember the Shire?' },
 };
+
+// the places off the road (./hidden.js): the seal for finding each, and
+// the one for seeing it through
+export const HIDDEN_SEALS = {
+  orthanc: { found: 'orthanc', end: 'windlord' },
+  'minas-tirith': { found: 'minastirith', end: 'kingreturns' },
+  edoras: { found: 'edoras', end: 'rohanwillanswer' },
+};
+// The places off the road, as far as they're known: one not found yet is
+// counted but not named, so the record gives nothing away.
+export function offRoad(unlocked = []) {
+  const have = new Set(unlocked);
+  return HIDDEN.map((h) => {
+    const s = HIDDEN_SEALS[h.id] ?? {};
+    const found = have.has(s.found);
+    return { id: h.id, name: found ? h.name : null, found, done: found && have.has(s.end) };
+  });
+}
 
 // how many stars `coins` come to in a kitchen played alone (its own marks)
 export const kitchenStars = (level, coins) => (level && Number.isFinite(coins) ? level.stars.filter((c) => coins >= c).length : 0);
@@ -38,10 +57,13 @@ export function chapterRecord(chapter, { unlocked = [], best = () => null } = {}
 // The whole road, and its totals.
 export function roadRecord(opts = {}) {
   const chapters = CHAPTERS.map((c) => chapterRecord(c, opts));
+  const hidden = offRoad(opts.unlocked);
   const sum = (f) => chapters.reduce((a, c) => a + f(c), 0);
   return {
     chapters,
+    hidden,
     totals: {
+      hidden: { found: hidden.filter((h) => h.found).length, total: hidden.length },
       seals: { won: sum((c) => c.seals.won), total: sum((c) => c.seals.total) },
       sides: { won: sum((c) => (c.side?.won ? 1 : 0)), total: sum((c) => (c.side ? 1 : 0)) },
       stars: { won: sum((c) => c.kitchen?.stars ?? 0), total: sum((c) => (c.kitchen ? c.kitchen.marks.length : 0)) },

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MISSIONS, missionById } from './areas';
+import { segmentClear } from './rules';
 import { createSim } from './sim';
 
 const still = { moveX: 0, moveZ: 0, run: false, jump: false, throttle: 0, steer: 0, boost: false, fire: false, transform: false, use: false, aimYaw: 0, aimPitch: 0 };
@@ -163,8 +164,14 @@ describe('the world, played', () => {
           expect(e, `${active.id}: someone to fight`).toBeTruthy();
           expect(target.x).toBeCloseTo(e.x);
           robot();
-          Object.assign(e, { hp: 1, x: p().x, z: p().z + 30, y: p().y });
-          for (let k = 0; k < 60 && !e.dead; k++) tick(sim, { fire: true, aimYaw: 0, aimPitch: -0.05 }, 1 / 30);
+          // (brought round in front of him, somewhere open he can see)
+          e.hp = 1;
+          const spot = Array.from({ length: 16 }, (_, k) => (k * Math.PI) / 8)
+            .flatMap((a) => [26, 16, 40].map((r) => [p().x + Math.sin(a) * r, p().z + Math.cos(a) * r]))
+            .find(([x, z]) => Math.abs(sim.world.floorAt(x, z, 50, 60) - p().y) < 1.5 && segmentClear(sim.world, p().x, p().y + 6, p().z, x, p().y + 3.5, z));
+          expect(spot, `${active.id}: somewhere to fight ${e.kind}`).toBeTruthy();
+          Object.assign(e, { x: spot[0], z: spot[1], y: sim.world.floorAt(spot[0], spot[1], 50, 60) });
+          for (let k = 0; k < 60 && !e.dead; k++) tick(sim, { fire: true, aimYaw: Math.atan2(e.x - p().x, e.z - p().z), aimPitch: -0.05 }, 1 / 30);
         } else goTo(sim, target.x, target.z); // reach, collect, drive: where it points
       }
       expect(sim.missions.done, m.id).toContain(m.id);

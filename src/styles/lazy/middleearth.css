@@ -255,6 +255,10 @@ html[data-mode='dark'] .me-hub { --me-veil: rgba(10, 7, 5, 0.78); --me-ink: #f1e
 .me-record-side[data-on], .me-record-kitchen b[data-on] { opacity: 1; color: #c9a95a; text-shadow: 0 0 6px rgba(240, 192, 64, 0.5); }
 .me-record-kitchen { display: flex; align-items: center; gap: 0.1rem; }
 .me-record-kitchen small { margin-left: 0.45rem; font-size: 0.72rem; color: var(--me-ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.me-record-hidden { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 1.2rem; margin: 0; padding: 0.2rem 0 0; list-style: none; }
+.me-record-hidden::before { content: 'Off the road'; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--me-ink-soft); }
+.me-record-hidden li[data-done] .me-record-name::after { content: ' ✦'; color: var(--me-wax); }
+.me-record-unknown { display: inline-grid; place-items: center; width: 1.4rem; height: 1.4rem; border: 1.5px dashed color-mix(in srgb, var(--me-ink) 40%, transparent); border-radius: 50%; font: 600 0.78rem/1 'Cinzel', Georgia, serif; color: var(--me-ink-soft); }
 @media (max-width: 639px) { .me-record-kitchen small { display: none; } .me-record { padding: 0.75rem 0.8rem 0.8rem; } }
 .me-travellers { border-color: rgba(154, 184, 255, 0.55); }
 .me-travellers[data-on] { cursor: default; }

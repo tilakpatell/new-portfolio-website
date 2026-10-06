@@ -8,7 +8,7 @@ import { Convo, QuestList, Stick, Travellers } from '../TownHud';
 import { useTravellers } from '../useTravellers';
 import { SideList } from '../SideList';
 import { readSide, recordSide } from '../side';
-import { keyDown, keyUp, moveOf } from '../keys';
+import { keyDown, keyUp, moveOf, ownButton } from '../keys';
 import { newTalk, talkNode, talkOn } from '../talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { newWatchers, stepWatchers } from '../watchers';
@@ -394,7 +394,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     const down = (e) => {
       if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
       const k = e.key;
-      const onButton = e.target instanceof HTMLButtonElement;
+      const onButton = ownButton(e, box.current);
       if (s.talk) {
         if (/^[1-4]$/.test(k)) {
           e.preventDefault();
@@ -436,7 +436,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, [live, talkOnward, doAct, doStab, doDodge, doBrush, leaveCrumbs, startCrumbs]);
+  }, [box, live, talkOnward, doAct, doStab, doDodge, doBrush, leaveCrumbs, startCrumbs]);
 
   // ── every frame ──
   useFrameLoop((ms) => {

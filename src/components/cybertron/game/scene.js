@@ -18,7 +18,7 @@ import { createPost } from '../../universe/post';
 import { makeFigure, makeThing } from './bots';
 import { bake, centresOf, cluster, makeTransformer } from './chunks';
 import { createEffects } from './effects';
-import { MEGATRON, TRANSFORM } from './rules';
+import { FORMS, TRANSFORM } from './rules';
 
 const STAGES = {
   iacon: () => import('./stage/iacon'),
@@ -64,6 +64,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
   let areaId = null;
   let people = new Map(); // id → figure
   const foes = new Map(); // id → { figure, boomed }
+  const matrixModel = { object: null, loading: null }; // (the Matrix, once a mission puts it down)
   const player = { root: new THREE.Group(), robot: null, vehicle: null, forms: { robot: null, vehicle: null }, change: null, kinds: null };
   scene.add(player.root);
   // the mission's beacon: a column of light where you're meant to go
@@ -95,7 +96,9 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       f.dispose();
     }
     people = new Map();
+    // (one still loading is let go when it comes: foeFor's own check)
     for (const { figure } of foes.values()) {
+      if (!figure) continue;
       scene.remove(figure.group);
       figure.dispose();
     }
@@ -350,17 +353,20 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       if (!f) continue;
       f.group.position.set(e.x, e.y, e.z);
       f.group.rotation.y = e.yaw;
-      // Megatron as his own model changes: its clip, robot to tank and back
+      // Megatron or Barricade as his own model changes: its clip, robot to
+      // vehicle and back
       const change = f.spec?.clips?.toVehicle && f.hold ? f.spec.clips : null;
-      if (change && (e.shift > 0 || e.form === 'tank')) {
-        const [a, b] = e.form === 'tank' ? change.toVehicle : change.toRobot;
-        const k = e.shift > 0 ? 1 - e.shift / (e.form === 'tank' ? MEGATRON.shift : MEGATRON.back) : 1;
+      const F = FORMS[e.kind];
+      const alt = F && e.form === F.alt;
+      if (change && F && (e.shift > 0 || alt)) {
+        const [a, b] = alt ? change.toVehicle : change.toRobot;
+        const k = e.shift > 0 ? 1 - e.shift / (alt ? F.shift : F.back) : 1;
         f.hold(change.transform, e.shift > 0 ? a + (b - a) * k : change.vehicle);
         if (e.shift > 0 && Math.random() < dt * 14) effects.spark(e.x + (Math.random() - 0.5) * 8, e.y + Math.random() * e.h * 1.4, e.z + (Math.random() - 0.5) * 8);
         f.update(dt);
         if (e.dead && !entry.boomed) {
           entry.boomed = true;
-          effects.boom(e.x, e.y + e.h * 0.4, e.z, 16);
+          effects.boom(e.x, e.y + e.h * 0.4, e.z, e.boss ? 16 : 9);
         }
         f.group.visible = !e.dead || (e.gone ?? 0) < 3;
         continue;
@@ -386,16 +392,45 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
     }
     // the fighting's light, and energon lying about
     effects.bolts(sim.shots);
+    const lying = sim.pickups.filter((k) => !k.mission || k.mission === sim.missions.active);
     effects.pickups(
-      sim.pickups.filter((k) => !k.mission || k.mission === sim.missions.active),
+      lying.filter((k) => k.kind !== 'matrix'),
       clock,
     );
+    // the Matrix of Leadership, its own model, turning and glowing where it lies
+    const matrix = lying.find((k) => k.kind === 'matrix' && !k.taken);
+    if (matrix && !matrixModel.loading) {
+      matrixModel.loading = makeThing('matrix').then((m) => {
+        m.traverse((o) => {
+          if (!o.isMesh || !o.material) return;
+          o.material = o.material.clone();
+          o.material.emissive = new THREE.Color('#7fd8ff');
+          o.material.emissiveIntensity = 1.3;
+        });
+        const light = new THREE.PointLight('#9fe4ff', 900, 60, 2);
+        light.position.y = 1;
+        m.add(light);
+        m.scale.multiplyScalar(3.6);
+        matrixModel.object = m;
+        scene.add(m);
+      });
+    }
+    if (matrixModel.object) {
+      matrixModel.object.visible = !!matrix;
+      if (matrix) {
+        matrixModel.object.position.set(matrix.x, (matrix.y ?? 0) + 3.4 + Math.sin(clock * 1.8) * 0.3, matrix.z);
+        matrixModel.object.rotation.y = clock * 1.2;
+      }
+    }
     effects.update(dt);
     // where the mission wants you
     const hud = view.hud;
     beacon.visible = !!hud?.target;
     if (hud?.target) {
       beacon.position.set(hud.target.x, sim.world.floorAt(hud.target.x, hud.target.z, 200, 300), hud.target.z);
+      // (over a Decepticon, a thin shaft from above his head, not round him)
+      beacon.scale.set(hud.target.foe ? 0.3 : 1, 1, hud.target.foe ? 0.3 : 1);
+      if (hud.target.foe) beacon.position.y += 14;
       beaconMat.opacity = 0.22 + 0.12 * Math.sin(clock * 3);
     }
     const m = hud?.drive;
@@ -410,7 +445,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       });
       gates.instanceMatrix.needsUpdate = true;
     }
-    stage?.update(clock, dt, camera);
+    stage?.update(clock, dt, camera, sim);
     placeCamera(sim, view, dt);
     const sharp = pace.frame(now);
     if (sharp !== null) post.sharpness = sharp;

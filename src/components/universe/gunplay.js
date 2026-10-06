@@ -31,6 +31,7 @@
 
 import * as THREE from 'three';
 import { frameFrom, palmFrame, reach, rotateWorld, setWorldQuaternion, spring } from '../../lib/three/ik';
+import { gripMorphs, ungrip } from './grip';
 
 const V = THREE.Vector3;
 const Q = THREE.Quaternion;
@@ -119,7 +120,7 @@ export const GUNS = {
       k.tube(0.0105, 0.1, m.black, [0.012, 0.094, 0.06]); // the scope, on the left
       k.box(0.006, 0.018, 0.012, m.black, [0.008, 0.08, 0.03]);
       k.box(0.006, 0.018, 0.012, m.black, [0.008, 0.08, 0.09]);
-      k.box(0.024, 0.09, 0.03, m.brown, [0, -0.028, -0.012], [0.3, 0, 0]); // the broomhandle grip
+      k.box(0.024, 0.09, 0.03, m.brown, [0, -0.028, -0.012], [0.3, 0, 0]).name = 'grip'; // the broomhandle grip
       k.box(0.018, 0.016, 0.04, m.steel, [0, 0.016, 0.02]); // the trigger housing
       k.box(0.004, 0.024, 0.016, m.steel, [0, 0.006, 0.03], [0.25, 0, 0]); // the trigger
       k.box(0.004, 0.03, 0.006, m.steel, [0, 0.082, -0.002]); // the hammer
@@ -151,7 +152,7 @@ export const GUNS = {
       k.tube(0.008, 0.02, green, [0, 0.05, 0.15]);
       k.box(0.004, 0.012, 0.08, green, [0.017, 0.05, 0.05]); // the light down each side
       k.box(0.004, 0.012, 0.08, green, [-0.017, 0.05, 0.05]);
-      k.box(0.026, 0.08, 0.03, m.grey, [0, -0.02, -0.005], [0.28, 0, 0]); // the grip
+      k.box(0.026, 0.08, 0.03, m.grey, [0, -0.02, -0.005], [0.28, 0, 0]).name = 'grip'; // the grip
       k.box(0.016, 0.014, 0.04, m.grey, [0, 0.018, 0.025]); // the trigger housing
       k.box(0.004, 0.02, 0.012, m.black, [0, 0.01, 0.035], [0.3, 0, 0]);
       k.point('muzzle', [0, 0.05, 0.165]);
@@ -186,7 +187,7 @@ export const GUNS = {
         // the prongs, round the bulb
         k.box(0.008, 0.008, 0.05, m.steel, [Math.cos(a) * 0.026, 0.045 + Math.sin(a) * 0.026, 0.15], [0, 0, 0]);
       }
-      k.box(0.03, 0.085, 0.034, m.grey, [0, -0.03, -0.01], [0.26, 0, 0]); // the grip
+      k.box(0.03, 0.085, 0.034, m.grey, [0, -0.03, -0.01], [0.26, 0, 0]).name = 'grip'; // the grip
       k.box(0.004, 0.02, 0.012, m.black, [0, 0.0, 0.03], [0.3, 0, 0]); // the trigger
       k.box(0.012, 0.012, 0.02, m.glow('#ff4a4a', 1.5), [0.02, 0.075, -0.02]); // the red button
       k.point('muzzle', [0, 0.045, 0.172]);
@@ -215,7 +216,7 @@ export const GUNS = {
       k.box(0.012, 0.012, 0.055, m.gunmetal, [0, 0.038, 0.098]); // the ejector-rod shroud under it
       k.box(0.004, 0.012, 0.004, m.gunmetal, [0, 0.062, 0.12]); // the front sight
       k.box(0.006, 0.02, 0.014, m.gunmetal, [0, 0.062, 0.014], [-0.6, 0, 0]); // the hammer
-      k.box(0.026, 0.07, 0.03, m.black, [0, -0.02, 0.005], [0.32, 0, 0]); // the grip
+      k.box(0.026, 0.07, 0.03, m.black, [0, -0.02, 0.005], [0.32, 0, 0]).name = 'grip'; // the grip
       k.ring(0.014, 0.0025, m.gunmetal, [0, 0.014, 0.038], [0, Math.PI / 2, 0]); // the trigger guard
       k.box(0.004, 0.018, 0.01, m.gunmetal, [0, 0.016, 0.04], [0.25, 0, 0]); // the trigger
       k.point('muzzle', [0, 0.052, 0.128]);
@@ -242,7 +243,7 @@ export const GUNS = {
       k.tube(0.0065, 0.012, m.steel, [0, 0.064, 0.148]); // the barrel's end
       k.box(0.006, 0.006, 0.006, m.black, [0, 0.08, 0.14]); // the sights
       k.box(0.012, 0.006, 0.006, m.black, [0, 0.08, -0.02]);
-      k.box(0.026, 0.08, 0.032, m.black, [0, -0.02, 0.005], [0.3, 0, 0]); // the grip
+      k.box(0.026, 0.08, 0.032, m.black, [0, -0.02, 0.005], [0.3, 0, 0]).name = 'grip'; // the grip
       k.box(0.026, 0.008, 0.034, m.black, [0, -0.062, -0.006], [0.3, 0, 0]); // the magazine's base
       k.box(0.02, 0.004, 0.034, m.black, [0, 0.018, 0.05]); // the trigger guard
       k.box(0.004, 0.02, 0.012, m.steel, [0, 0.028, 0.045], [0.3, 0, 0]); // the trigger
@@ -280,12 +281,14 @@ export const GUNS = {
       k.tube(0.013, 0.14, m.black, [0, 0.14, 0.1]); // the scope
       k.box(0.008, 0.02, 0.014, m.black, [0, 0.125, 0.05]);
       k.box(0.008, 0.02, 0.014, m.black, [0, 0.125, 0.15]);
-      k.box(0.04, 0.1, 0.045, m.wood, [0, -0.04, -0.01], [0.3, 0, 0]); // the grip
+      k.box(0.04, 0.1, 0.045, m.wood, [0, -0.04, -0.01], [0.3, 0, 0]).name = 'grip'; // the grip
       k.box(0.03, 0.006, 0.05, m.steel, [0, 0.004, 0.04]); // the trigger guard
       k.box(0.006, 0.026, 0.012, m.steel, [0, 0.015, 0.04], [0.3, 0, 0]);
       k.point('muzzle', [0, 0.098, 0.455]);
       k.point('foregrip', [0, 0.0, 0.19]);
+      k.point('fore', [0, 0.04, 0.19]); // the other hand's grip: round the stock, from below
     },
+    fore: { r: 0.045, axis: 'dir' },
   },
   // the Federation's blaster carbine: a squared olive receiver, a long
   // barrel shroud, a folding stock, a blue light where the charge sits
@@ -312,13 +315,15 @@ export const GUNS = {
       k.box(0.03, 0.012, 0.08, blue, [0, 0.03, 0.04]); // the charge light
       k.box(0.03, 0.05, 0.22, m.olive, [0, 0.03, -0.2], [0, 0, 0]); // the stock
       k.box(0.04, 0.09, 0.05, m.black, [0, 0.0, -0.3]); // its butt
-      k.box(0.03, 0.09, 0.035, m.black, [0, -0.035, -0.01], [0.28, 0, 0]); // the grip
+      k.box(0.03, 0.09, 0.035, m.black, [0, -0.035, -0.01], [0.28, 0, 0]).name = 'grip'; // the grip
       k.box(0.03, 0.07, 0.04, m.black, [0, -0.01, 0.2]); // the foregrip
       k.box(0.024, 0.006, 0.05, m.steel, [0, 0.0, 0.04]); // the trigger guard
       k.box(0.004, 0.024, 0.012, m.steel, [0, 0.012, 0.04], [0.3, 0, 0]);
       k.point('muzzle', [0, 0.055, 0.49]);
       k.point('foregrip', [0, -0.035, 0.2]);
+      k.point('fore', [0, -0.01, 0.2]); // the other hand's grip: round the foregrip, upright
     },
+    fore: { r: 0.022, axis: 'up' },
   },
   // the Citadel cop's service pistol: a heavy navy-blue blaster pistol
   coppistol: {
@@ -341,7 +346,7 @@ export const GUNS = {
       k.tube(0.009, 0.03, m.gunmetal, [0, 0.062, 0.15]); // the barrel
       k.box(0.004, 0.01, 0.06, blue, [0.016, 0.062, 0.06]); // the lights
       k.box(0.004, 0.01, 0.06, blue, [-0.016, 0.062, 0.06]);
-      k.box(0.028, 0.08, 0.034, m.black, [0, -0.02, 0.0], [0.3, 0, 0]); // the grip
+      k.box(0.028, 0.08, 0.034, m.black, [0, -0.02, 0.0], [0.3, 0, 0]).name = 'grip'; // the grip
       k.box(0.02, 0.004, 0.034, m.black, [0, 0.016, 0.045]); // the trigger guard
       k.box(0.004, 0.02, 0.012, m.steel, [0, 0.026, 0.04], [0.3, 0, 0]);
       k.point('muzzle', [0, 0.062, 0.168]);
@@ -421,7 +426,9 @@ function handPoints(root, hand) {
 // fixes by who's holding: a hand whose geometry says the wrong thing, or a
 // figure built from shapes ('built': its hand groups hang straight down
 // −y, the thumb forward). along, thumb: in the hand's space; grip: the
-// palm's middle, metres from the wrist along the fingers
+// palm's middle, metres from the wrist along the fingers; curl: false to
+// leave the fingers as they are, or { knuckle } (the share of the hand's
+// length out to the knuckles) where its shape fools the measuring
 export const GRIP_FIX = {
   built: { along: [0, -1, 0], thumb: [0, 0, 1], grip: 0.045 },
 };
@@ -456,6 +463,9 @@ const PITCH_MAX = 0.6;
 const HEAD_MAX = 1.35; // and the head, all told
 const RECOIL = { k: 160, c: 13 }; // the spring the gun kicks on
 const EASE = { chest: 0.3, head: 0.45 }; // radians from the facing, at the most, at ease
+const CUP = 0.04; // metres from a pistol's grip to the other hand's fingers cupping the gun hand's
+const LOOSE = 0.3; // how far a hand with nothing in it closes
+const FREE = { r: 0.03, at: 0.5 }; // the free hand of a one-handed gun: loosely closed, as a hand at rest is
 const _a = new V();
 const _b = new V();
 const _c = new V();
@@ -530,7 +540,7 @@ function measureHand(root, hand, hips, left, fix, unit) {
   const handScale = hand.getWorldScale(new V()).x || 1;
   const toLocal = (metres) => (metres * unit) / handScale;
   const out = { along: new V(0, 1, 0), thumb: new V(0, 0, 1), mean: new V(0, toLocal(0.085), 0) };
-  if (fix) {
+  if (fix?.along) {
     out.along.set(...fix.along);
     out.thumb.set(...fix.thumb);
     out.mean.copy(out.along).multiplyScalar(toLocal(fix.grip ?? 0.085));
@@ -574,9 +584,30 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
   const rest = new Map(); // bone → its forward and up in its own frame, from the bind pose
 
   // measured once, in the bind pose: the hands, the arms' reach, where the chest and head face
+  // (a curl left on from before would be measured as the hand's own shape)
+  ungrip(root);
+  const gripBox = gun.getObjectByName('grip');
+  const girth = gripBox?.geometry.parameters; // (round a box: the circle of the same perimeter)
+  const gripR = girth ? (girth.width + girth.depth) / Math.PI : 0.018;
   const m = inBindPose(root, () => {
     const R = measureHand(root, hand, bones.Hips, false, fix, unit);
     const L = left ? measureHand(root, bones.LeftHand, bones.Hips, true, fix, unit) : null;
+    const free = !left && bones.LeftHand ? measureHand(root, bones.LeftHand, bones.Hips, true, fix, unit) : null;
+    // the fingers closed round the grip (and the other hand's round the
+    // fore-end, or the gun hand; or, with nothing to hold, half closed)
+    const knuckle = fix?.curl?.knuckle;
+    const curl =
+      fix?.curl === false || fix?.along
+        ? null
+        : gripMorphs(
+            root,
+            [
+              { bone: hand, frame: R, side: 'R', radius: R.toLocal(gripR), knuckle },
+              L && { bone: bones.LeftHand, frame: L, side: 'L', radius: L.toLocal(spec.fore?.r ?? CUP), knuckle },
+              free && { bone: bones.LeftHand, frame: free, side: 'L', radius: free.toLocal(FREE.r), knuckle },
+            ],
+            knuckle ? `${kind}:${who}` : kind,
+          );
     const forward = new V(0, 0, 1).transformDirection(root.matrixWorld).normalize();
     const upW = new V(0, 1, 0).transformDirection(root.matrixWorld).normalize();
     for (const b of [look, bones.Head]) {
@@ -585,7 +616,7 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
       rest.set(b, { f: forward.clone().applyQuaternion(inv), u: upW.clone().applyQuaternion(inv) });
     }
     const len = (a, b, c) => a.getWorldPosition(new V()).distanceTo(b.getWorldPosition(new V())) + b.getWorldPosition(new V()).distanceTo(c.getWorldPosition(new V()));
-    return { R, L, armLen: len(bones.RightArm, bones.RightForeArm, hand), armLenL: left ? len(bones.LeftArm, bones.LeftForeArm, bones.LeftHand) : 0 };
+    return { R, L, curl, armLen: len(bones.RightArm, bones.RightForeArm, hand), armLenL: left ? len(bones.LeftArm, bones.LeftForeArm, bones.LeftHand) : 0 };
   });
   const armLen = m.armLen;
 
@@ -594,12 +625,23 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
   gun.scale.setScalar(unit / handScale);
   const gripQ = frameFrom(m.R.along, m.R.thumb).multiply(new Q().setFromAxisAngle(new V(1, 0, 0), -spec.pitch));
   gun.quaternion.copy(gripQ);
-  gun.position.copy(m.R.mean).addScaledVector(m.R.normal, m.R.toLocal(fix ? 0 : 0.018)); // (where the fingers close, a little out from the palm)
+  const curl = m.curl;
+  if (curl?.shape.R) {
+    // the grip's middle on the curl's centre: the fingers close round it
+    gun.position
+      .copy(gripBox?.position ?? new V())
+      .multiplyScalar(unit / handScale)
+      .applyQuaternion(gripQ)
+      .negate()
+      .add(curl.shape.R.centre);
+  } else gun.position.copy(m.R.mean).addScaledVector(m.R.normal, m.R.toLocal(fix?.along ? 0 : 0.018)); // (where the fingers close, a little out from the palm)
   hand.add(gun);
+  // where the other hand's grip is, in its own space: what it closes round goes there
+  const leftAt = m.L ? (curl?.shape.L?.centre.clone() ?? m.L.mean.clone().addScaledVector(m.L.normal, m.L.toLocal(0.012 + (spec.fore?.r ?? CUP)))) : null;
   const gripInv = gripQ.clone().invert();
   const leftInv = m.L ? frameFrom(m.L.along, m.L.thumb).invert() : null;
   const muzzle = gun.getObjectByName('muzzle');
-  const foregrip = gun.getObjectByName('foregrip');
+  const fore = gun.getObjectByName('fore');
   const eject = gun.getObjectByName('eject');
 
   // what this turned last frame, and what it was before: a figure without
@@ -636,6 +678,8 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
     dir: null, // the line of fire, eased
     back: { x: 0, v: 0 }, // recoil, metres back and radians up
     up: { x: 0, v: 0 },
+    curlR: 0, // how closed each hand is (0 as sculpted, 1 round its grip)
+    curlL: 0,
   };
 
   const set = (dt, pose) => {
@@ -716,27 +760,46 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
       if (left) {
         gun.updateWorldMatrix(true, true);
         const across = _b.crossVectors(dir, up).normalize(); // the gun's right
-        // the other hand: under the foregrip, palm up and fingers round it;
-        // or (a pistol) on the grip's left, fingers wrapped over the gun
-        // hand's, thumb along the frame
-        // (a pistol's: the heel of the hand against the grip's left side, so
-        // its wrist sits beside the gun hand's, a little lower and ahead)
+        // the other hand, closed round what it holds: a long gun's fore-end
+        // (under a stock, palm up and the fingers round to the right; an
+        // upright foregrip, the palm on its left and the fingers round its
+        // front), or a pistol's gun hand (the palm against the grip's left
+        // side over the gun hand's fingertips, its fingers round the front
+        // of them, the knuckles lined up with the grip). Its turn first,
+        // then the wrist where that puts the grip's middle on what it holds.
+        const anchor = _c;
         let fingers;
-        let wrist;
-        if (foregrip) {
-          fingers = new V().copy(across).addScaledVector(up, 0.3).normalize();
-          wrist = foregrip.getWorldPosition(new V()).addScaledVector(up, -0.015 * unit).addScaledVector(fingers, -(m.L.palm || 0.08 * unit));
+        let axis;
+        if (fore) {
+          fore.getWorldPosition(anchor);
+          if (spec.fore.axis === 'up') {
+            axis = _d.set(0, 1, 0).transformDirection(gun.matrixWorld);
+            fingers = new V().copy(dir).addScaledVector(across, 0.15).normalize();
+          } else {
+            axis = _d.copy(dir);
+            fingers = new V().copy(across).addScaledVector(up, 0.3).normalize();
+          }
         } else {
-          fingers = new V().copy(dir).multiplyScalar(0.55).addScaledVector(across, 0.65).addScaledVector(up, -0.5).normalize();
-          wrist = hand.getWorldPosition(new V()).addScaledVector(across, -0.05 * unit).addScaledVector(up, -0.03 * unit).addScaledVector(dir, 0.02 * unit);
+          (gripBox ?? gun).getWorldPosition(anchor);
+          axis = _d.set(0, 1, 0).transformDirection((gripBox ?? gun).matrixWorld);
+          fingers = new V().copy(dir).addScaledVector(up, -0.35).addScaledVector(across, 0.2).normalize();
         }
+        frameFrom(fingers, axis, _q);
+        _q.multiply(leftInv);
+        const wrist = _e.copy(leftAt).multiplyScalar(bones.LeftHand.getWorldScale(_s).x).applyQuaternion(_q).negate().add(anchor);
         const poleL = new V().addScaledVector(up, -1).addScaledVector(across, -0.6).addScaledVector(dir, -0.1).normalize();
         reach(bones.LeftArm, bones.LeftForeArm, bones.LeftHand, wrist, poleL, aim);
-        leftMiss = bones.LeftHand.getWorldPosition(_e).distanceTo(wrist) / unit;
-        frameFrom(fingers, dir, _q);
-        _q.multiply(leftInv);
+        leftMiss = bones.LeftHand.getWorldPosition(_t).distanceTo(wrist) / unit;
         setWorldQuaternion(bones.LeftHand, _q, aim);
       }
+    }
+    // the fingers: the gun hand's closed on the grip while it has it, the
+    // other's closing on its hold as the gun comes up
+    if (curl) {
+      const k = 1 - Math.exp(-dt * 18);
+      st.curlR += ((gun.parent === hand ? 1 : LOOSE) - st.curlR) * k;
+      st.curlL += ((left ? LOOSE + (1 - LOOSE) * aim : FREE.at) - st.curlL) * k;
+      curl.set({ R: st.curlR, L: st.curlL });
     }
     gun.updateWorldMatrix(true, true);
     remember();
@@ -749,6 +812,7 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
     head: bones.Head ? facing(bones.Head, forward, up) : null,
     leftMiss,
     palmL: m.L?.palm ?? null,
+    curl: curl ? { R: st.curlR, L: st.curlL, shape: curl.shape } : null,
   });
 
   return {
@@ -778,6 +842,7 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
       return gun;
     },
     dispose() {
+      curl?.dispose();
       gun.removeFromParent();
       for (const o of owned) o.dispose?.();
       owned.length = 0;

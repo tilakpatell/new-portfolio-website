@@ -162,7 +162,10 @@ export const IACON = {
     [-60, -260],
     [60, -350],
     [-300, -150],
-  ].map(([x, z], i) => ({ id: `iacon-energon-${i}`, kind: 'energon', x, y: x === -300 ? 1 : 0, z })),
+  ]
+    .map(([x, z], i) => ({ id: `iacon-energon-${i}`, kind: 'energon', x, y: x === -300 ? 1 : 0, z }))
+    // the Matrix of Leadership, on the Hall's steps while its mission's on
+    .concat([{ id: 'iacon-matrix', kind: 'matrix', x: 0, y: 0, z: -336, mission: 'matrix' }]),
   exits: [{ id: 'space-bridge', x: PAD.x, z: PAD.z, r: 10, to: 'base', at: 'bridge', label: 'Space bridge to Earth' }],
   missions: [
     {
@@ -175,7 +178,7 @@ export const IACON = {
         { type: 'reach', at: { x: 0, z: 300, r: 45 }, text: 'Get to the barricades' },
         { type: 'clear', count: 4, spawn: wave(4, 395), text: 'Hold the gate: the first wave' },
         { type: 'clear', count: 4, spawn: wave(4, 400, 90), text: 'Hold the gate: the second wave' },
-        { type: 'clear', count: 5, spawn: wave(5, 400, 110), text: 'Hold the gate: the last wave' },
+        { type: 'clear', count: 5, spawn: [...wave(4, 400, 110), { kind: 'barricade', x: 0, z: 425 }], text: 'Hold the gate: the last wave, and Barricade' },
         { type: 'talk', target: 'grimlock', text: 'Tell Grimlock the gate is held' },
       ],
     },
@@ -216,6 +219,21 @@ export const IACON = {
         { type: 'talk', target: 'zeta', text: 'Tell Zeta Prime the bridge is safe' },
       ],
     },
+    {
+      id: 'matrix',
+      title: 'The Matrix of Leadership',
+      giver: 'zeta',
+      requires: ['defend-pad'],
+      achievement: 'cyMatrix',
+      say: 'Megatron is gone, but Shockwave slipped into the Hall while we fought. He is after the Matrix of Leadership. Optimus, it must not leave Iacon.',
+      steps: [
+        { type: 'talk', target: 'zeta', text: 'Talk to Zeta Prime' },
+        { type: 'reach', at: { x: 0, z: -330, r: 34 }, text: 'Get to the Hall of Records' },
+        { type: 'defeat', target: 'shockwave', spawn: [{ kind: 'shockwave', id: 'shockwave', x: 30, z: -340 }], text: 'Stop Shockwave' },
+        { type: 'collect', kind: 'matrix', count: 1, text: 'Take up the Matrix' },
+        { type: 'talk', target: 'zeta', text: 'Bring the Matrix to Zeta Prime' },
+      ],
+    },
   ],
   look: {
     sky: 'iacon',
@@ -245,6 +263,19 @@ export const IACON = {
       [-120, -190],
       [260, -230],
     ],
-    parked: [{ kind: 'wheeljack-car', x: 70, z: -210, yaw: 2.6 }],
+    parked: [
+      { kind: 'wheeljack-car', x: 70, z: -210, yaw: 2.6 },
+      { kind: 'bumblebee-car-wfc', x: 132, z: -252, yaw: 0.5 },
+    ],
+    // the megastructures beyond the city, as the planet shows them from
+    // orbit: rings stepping up round a spire, lit at their rims, some
+    // burning (where they are, how wide, how many rings)
+    skyline: [
+      { x: -820, z: -620, r: 300, tiers: 5, war: 0.7 },
+      { x: 760, z: 820, r: 260, tiers: 4, war: 0.4 },
+      { x: -900, z: 260, r: 180, tiers: 4, war: 0 },
+      { x: 240, z: -1050, r: 340, tiers: 6, war: 1 },
+      { x: 980, z: -760, r: 150, tiers: 3, war: 0.2 },
+    ],
   },
 };
