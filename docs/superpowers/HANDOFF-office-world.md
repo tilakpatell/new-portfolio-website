@@ -93,10 +93,9 @@ The user asked to "improve the Office world and really make it super super nice 
 - SwiftShader draws the lot slowly, so give it time (or snap).
 
 ### Next ideas
-- Still the weakest:
+- Still the weakest (the stairwell was rebuilt after this list: the floor had covered its opening):
   - the people's faces and clothes (the cast's GLBs)
   - the break room's layout
-  - the stairwell (a flight into a dark box)
 - Signs could share one atlas (each is a draw).
 - More amblers, or ones who talk to each other.
 - A real get-up/sit-down animation instead of the swap.
