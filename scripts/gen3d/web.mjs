@@ -4,7 +4,7 @@
 // and credited in public/games/credits.json. Refuses to ship a model over its
 // budget or over 1 MB.
 //
-//   node scripts/gen3d/web.mjs RAW.glb NAME --tris 16000 --tex 1024 --what "an X-wing starfighter"
+//   node scripts/gen3d/web.mjs RAW.glb NAME --tris 24000 --tex 1024 --what "an X-wing starfighter" [--across-seams]
 //   webReady(doc, { tris, tex }) → { before, after }   (the transform, on a gltf-transform Document)
 
 import { NodeIO } from '@gltf-transform/core';
@@ -25,25 +25,47 @@ export async function io() {
   return new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
 }
 
-export async function webReady(doc, { tris, tex }) {
+export async function webReady(doc, { tris, tex, acrossSeams = false }) {
   const { default: sharp } = await import('sharp'); // only when a model is made: the budget check needs no native module
   const before = triangles(doc);
-  await doc.transform(
-    dequantize(),
-    weld(),
-    simplify({ simplifier: MeshoptSimplifier, ratio: Math.min(1, tris / before), error: 0.01, lockBorder: false }),
-    dedup(),
-    prune(),
-    textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [tex, tex], quality: 85 }),
-    meshopt({ encoder: MeshoptEncoder, level: 'high' }),
-  );
+  await doc.transform(dequantize(), weld());
+  // a generated mesh carries far more detail than a Meshy one: the simplifier
+  // stops at its error bound, so the bound loosens a step at a time until the
+  // budget is met (meshy-import's 0.01 first)
+  for (const error of [0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 1]) {
+    const now = triangles(doc);
+    if (now <= tris * 1.05) break;
+    await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: Math.min(1, tris / now), error, lockBorder: false }));
+    console.log(`simplify error ${error}: ${Math.round(now)} → ${Math.round(triangles(doc))} triangles`);
+  }
+  // across UV seams only when asked: it reaches any budget, but smears the texture at the seams
+  if (acrossSeams && triangles(doc) > tris * 1.05) await doc.transform(permissive(tris));
+  await doc.transform(dedup(), prune(), textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [tex, tex], quality: 85 }), meshopt({ encoder: MeshoptEncoder, level: 'high' }));
   return { before, after: triangles(doc) };
 }
 
-export async function publish(raw, name, { tris, tex, what, engine = 'TRELLIS.2' }) {
+// What a generated mesh's UV seams block (an atlas of thousands of charts
+// locks their edges): meshoptimizer's own simplify, allowed to collapse
+// across seams, straight on each primitive's indices.
+export const permissive = (tris) => async (doc) => {
+  const total = triangles(doc);
+  for (const mesh of doc.getRoot().listMeshes()) {
+    for (const prim of mesh.listPrimitives()) {
+      const idx = prim.getIndices();
+      const pos = prim.getAttribute('POSITION');
+      if (!idx || !pos) continue;
+      const share = idx.getCount() / 3 / total;
+      const [out] = MeshoptSimplifier.simplify(new Uint32Array(idx.getArray()), pos.getArray(), 3, Math.round(tris * share) * 3, 1, ['Permissive']);
+      idx.setArray(out);
+    }
+  }
+  console.log(`simplify across seams: ${Math.round(total)} → ${Math.round(triangles(doc))} triangles`);
+};
+
+export async function publish(raw, name, { tris, tex, what, engine = 'TRELLIS.2', acrossSeams = false }) {
   const nio = await io();
   const doc = await nio.read(raw);
-  const { before, after } = await webReady(doc, { tris, tex });
+  const { before, after } = await webReady(doc, { tris, tex, acrossSeams });
   const bytes = (await nio.writeBinary(doc)).byteLength;
   const problems = check({ tris, after, bytes });
   if (problems.length) throw new Error(`${name}: ${problems.join('; ')}`);
@@ -63,7 +85,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const i = args.indexOf(`--${n}`);
     return i >= 0 ? args.splice(i, 2)[1] : d;
   };
-  const opts = { tris: Number(flag('tris', 16000)), tex: Number(flag('tex', 1024)), what: flag('what', ''), engine: flag('engine', 'TRELLIS.2') };
+  const opts = { tris: Number(flag('tris', 16000)), tex: Number(flag('tex', 1024)), what: flag('what', ''), engine: flag('engine', 'TRELLIS.2'), acrossSeams: args.includes('--across-seams') };
   const [raw, name] = args;
   if (!raw || !name) throw new Error('usage: node scripts/gen3d/web.mjs RAW.glb NAME [--tris N] [--tex N] [--what "…"]');
   const r = await publish(resolve(raw), name, opts);

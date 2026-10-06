@@ -40,3 +40,10 @@ describe('the web budget', () => {
     expect(problems[1]).toMatch(/1300 KB, over 1024 KB/);
   });
 });
+
+describe('concept pictures', () => {
+  it('ask for one object on white, the way the 3D model wants it', async () => {
+    const { prompt } = await import('./picture.mjs');
+    expect(prompt('an X-wing')).toMatch(/^an X-wing, .*white background.*no text/);
+  });
+});
