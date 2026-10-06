@@ -10,6 +10,8 @@
 //                                 by the second (what an aoMap does), and what
 //                                 is left in the dark is tinted the world's
 //                                 shade, so a shadow goes warm, not grey.
+//   standIn(material, bake)       a thing that moves dims in the floor's
+//                                 baked shade where it stands.
 //   bounce(material, opts)        the lower, downward faces of anything are
 //                                 tinted toward the floor's colour, as light
 //                                 thrown up off the ground would: nothing
@@ -101,7 +103,7 @@ const SUN_LINE = 'getDirectionalLightInfo( directionalLight, directLight );';
 // where three works out each directional light. Each part says whether it
 // found the line it looks for (another three version may move one), and a
 // part that didn't is left out.
-export function floorShadowShader({ vertexShader, fragmentShader }, { areas = 1 } = {}, chunks = THREE.ShaderChunk) {
+export function floorShadowShader({ vertexShader, fragmentShader }, { areas = 1, mover = false } = {}, chunks = THREE.ShaderChunk) {
   const n = Math.max(1, Math.floor(areas));
   const vs = groundVertex(vertexShader);
   // (the masks' samplers are indexed by a number, never a variable: GLSL ES
@@ -139,7 +141,7 @@ vec2 gRead(vec3 p) {
     `#include <clipping_planes_fragment>
     vec2 gV = gRead(vGroundPos);
     float gSun = gV.x;
-    float gSky = mix(0.35, 1.0, gV.y);`,
+    float gSky = ${mover ? 'mix(0.7, 1.0, gV.y)' : 'mix(0.35, 1.0, gV.y)'};`,
   );
   if (sun && fs.includes('#include <lights_fragment_begin>')) {
     fs = fs.replace('#include <lights_fragment_begin>', sun);
@@ -150,7 +152,7 @@ vec2 gRead(vec3 p) {
     fs = fs.replace('#include <aomap_fragment>', '#include <aomap_fragment>\n\treflectedLight.indirectDiffuse *= gSky;\n\treflectedLight.indirectSpecular *= gSky;');
     swapped.sky = true;
   }
-  if (fs.includes('#include <opaque_fragment>')) {
+  if (!mover && fs.includes('#include <opaque_fragment>')) {
     // What's left in the shade, the sky's light (bluish, the shadows would
     // read grey by it), warmed toward the shade's hue and a little dimmed, by
     // as much as the sun and the sky are kept off a point: at the darkest it
@@ -223,6 +225,34 @@ export function floorShadow(material, bake) {
   return material;
 }
 
+// A thing that moves, standing in the floor's baked light: the sun's light
+// on it is cut by the mask's sun under each of its points, the way a shadow
+// map would have it walk into a building's shadow, and the sky's a little
+// (a figure standing in an alley is lit by less of the sky, not by none of
+// it). No tint: the floor's warm shade is the floor's. It reads the same
+// masks as the floor (the same uniform objects, so a bake landing reaches
+// both), but not a static thing: a wall would read its own footprint, the
+// darkest place there is.
+export function standIn(material, bake) {
+  if (!material || !bake?.areas?.length || material.userData?.standIn) return material;
+  const f = floorUniforms(bake);
+  const uniforms = { uMask: f.uMask, uMaskRect: f.uMaskRect, uMaskMix: f.uMaskMix, uShadeTint: { value: new THREE.Color(1, 1, 1) }, uShadeMix: { value: 0 } };
+  const areas = bake.areas.length;
+  const before = material.onBeforeCompile;
+  material.onBeforeCompile = (sh, r) => {
+    before?.call(material, sh, r);
+    Object.assign(sh.uniforms, uniforms);
+    const out = floorShadowShader(sh, { areas, mover: true });
+    sh.vertexShader = out.vertexShader;
+    sh.fragmentShader = out.fragmentShader;
+  };
+  const key = material.customProgramCacheKey;
+  material.customProgramCacheKey = () => `${key ? key.call(material) : ''}|standIn:${areas}`;
+  material.userData.standIn = uniforms;
+  material.needsUpdate = true;
+  return material;
+}
+
 // The masks' blend for a time of day (once a frame, for every floor material).
 // `sun` is how much of the floor's light the sun gives now, 0 to 1: the
 // shade's tint follows it, so a sun just up, which hardly lights the street,
@@ -272,13 +302,29 @@ export const BOUNCE = { height: 1.75, strength: 0.5, angleOffset: 0.6 };
 // toward the floor's. `base`: the floor is each instance's own origin (an
 // instanced flock standing about on ground of different heights) rather
 // than the one height in uBounceFloor.
-export function bounceShader({ vertexShader, fragmentShader }, { base = false } = {}) {
+export function bounceShader({ vertexShader, fragmentShader }, { base = false, mask = false } = {}) {
   const vs = groundVertex(vertexShader, { normal: true, base });
   const decl = ['uniform vec3 uBounceColor;', 'uniform float uBounceFloor, uBounceHeight, uBounceStrength, uBounceOffset;'];
+  if (mask) {
+    // the floor's height under a point, from a mask baked on arrival (G and
+    // B, lib/three/grounding-bake's packHeight); outside it, or where it saw
+    // no floor, the one height
+    decl.push(`uniform sampler2D uBounceMask;
+uniform vec4 uBounceRect;
+uniform vec2 uBounceRange;
+float gFloor(vec3 p) {
+  vec2 uv = (p.xz - uBounceRect.xy) * uBounceRect.zw;
+  if (uv.x <= 0.0 || uv.y <= 0.0 || uv.x >= 1.0 || uv.y >= 1.0) return uBounceFloor;
+  vec4 m = texture2D(uBounceMask, uv);
+  float v = m.g * 65280.0 + m.b * 255.0;
+  if (v < 0.5) return uBounceFloor;
+  return uBounceRange.x + (v - 1.0) / 65534.0 * (uBounceRange.y - uBounceRange.x);
+}`);
+  }
   if (!fragmentShader.includes('varying vec3 vGroundPos;')) decl.unshift('varying vec3 vGroundPos;');
   decl.unshift('varying vec3 vGroundN;');
   if (base) decl.unshift('varying float vGroundBase;');
-  const floor = base ? 'vGroundBase + uBounceFloor' : 'uBounceFloor';
+  const floor = base ? 'vGroundBase + uBounceFloor' : mask ? 'gFloor(vGroundPos)' : 'uBounceFloor';
   const found = fragmentShader.includes('#include <opaque_fragment>');
   const fs = fragmentShader.replace('#include <common>', `#include <common>\n${decl.join('\n')}`).replace(
     '#include <opaque_fragment>',
@@ -297,9 +343,10 @@ export function bounceShader({ vertexShader, fragmentShader }, { base = false } 
 // with the time of day); `floor` the height of the floor under the thing, or
 // 'instance' for an instanced flock, each on its own (its origin is its
 // foot). Returns the material; its uniforms are on userData.bounce.
-export function bounce(material, { color, height = BOUNCE.height, strength = BOUNCE.strength, angleOffset = BOUNCE.angleOffset, floor = 0 } = {}) {
+export function bounce(material, { color, height = BOUNCE.height, strength = BOUNCE.strength, angleOffset = BOUNCE.angleOffset, floor = 0, mask = null } = {}) {
   if (!material || material.userData?.bounce) return material;
   const base = floor === 'instance';
+  const area = !base && mask?.areas?.[0];
   const uniforms = {
     uBounceColor: { value: color?.isColor ? color : new THREE.Color(color ?? 0xb08a5a) },
     uBounceFloor: { value: base ? 0 : Number(floor) || 0 },
@@ -307,16 +354,24 @@ export function bounce(material, { color, height = BOUNCE.height, strength = BOU
     uBounceStrength: { value: strength },
     uBounceOffset: { value: angleOffset },
   };
+  if (area) {
+    const [lo, hi] = mask.range ?? [0, 1];
+    Object.assign(uniforms, {
+      uBounceMask: { value: area.texture },
+      uBounceRect: { value: new THREE.Vector4(area.x0, area.z0, 1 / area.w, 1 / area.d) },
+      uBounceRange: { value: new THREE.Vector2(lo, hi) },
+    });
+  }
   const before = material.onBeforeCompile;
   material.onBeforeCompile = (sh, r) => {
     before?.call(material, sh, r);
     Object.assign(sh.uniforms, uniforms);
-    const out = bounceShader(sh, { base });
+    const out = bounceShader(sh, { base, mask: Boolean(area) });
     sh.vertexShader = out.vertexShader;
     sh.fragmentShader = out.fragmentShader;
   };
   const key = material.customProgramCacheKey;
-  material.customProgramCacheKey = () => `${key ? key.call(material) : ''}|bounce:${base ? 1 : 0}`;
+  material.customProgramCacheKey = () => `${key ? key.call(material) : ''}|bounce:${base ? 1 : 0}${area ? ':mask' : ''}`;
   material.userData.bounce = uniforms;
   material.needsUpdate = true;
   return material;

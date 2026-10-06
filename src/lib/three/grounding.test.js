@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { SHADE_TINT, blobPlacement, bounceShader, floorShadow, floorShadowShader, maskWeights, setFloorTime, shadeTint } from './grounding';
+import { SHADE_TINT, blobPlacement, bounce, bounceShader, floorShadow, floorShadowShader, maskWeights, setFloorTime, shadeTint, standIn } from './grounding';
 
 // three's chunks as this version has them (the line the rewrite looks for)
 const CHUNKS = {
@@ -253,5 +253,48 @@ describe('the floor’s shade through the day', () => {
     setFloorTime(b, 0.5);
     expect(u.uShadeMix.value).toBeCloseTo(SHADE_TINT.mix, 9);
     expect(u.uMaskMix.value.toArray()).toEqual([1, 2, 0]);
+  });
+});
+
+describe('the bounce off a floor of any height', () => {
+  it('reads the floor\'s height under each point from the baked mask, else the one height it was given', () => {
+    const out = bounceShader(SHADER, { mask: true });
+    expect(out.fragmentShader).toContain('uniform sampler2D uBounceMask;');
+    expect(out.fragmentShader).toContain('uniform vec4 uBounceRect;');
+    expect(out.fragmentShader).toContain('uniform vec2 uBounceRange;');
+    expect(out.fragmentShader).toContain('gFloor(vGroundPos)');
+    // (no floor baked there: G and B both 0, and the uniform height stands)
+    expect(out.fragmentShader).toMatch(/v < 0\.5\)\s*return uBounceFloor;/);
+  });
+
+  it('takes the mask\'s texture, place and range as uniforms', () => {
+    const mask = { areas: [{ texture: new THREE.Texture(), x0: -10, z0: -20, w: 40, d: 50 }], range: [-2, 8] };
+    const m = bounce(new THREE.MeshStandardMaterial(), { color: 0x808080, mask });
+    const u = m.userData.bounce;
+    expect(u.uBounceMask.value).toBe(mask.areas[0].texture);
+    expect(u.uBounceRect.value.toArray()).toEqual([-10, -20, 1 / 40, 1 / 50]);
+    expect(u.uBounceRange.value.toArray()).toEqual([-2, 8]);
+    expect(m.customProgramCacheKey()).toContain('bounce:0:mask');
+  });
+});
+
+describe('a mover standing in the baked shade', () => {
+  it('has the sun cut and the sky dimmed less than the floor, with no tint of its own', () => {
+    const out = floorShadowShader(SHADER, { areas: 1, mover: true }, CHUNKS);
+    expect(out.swapped.sun).toBe(true);
+    expect(out.swapped.shade).toBe(false);
+    expect(out.fragmentShader).toContain('mix(0.7, 1.0, gV.y)');
+    expect(out.fragmentShader).not.toContain('uShadeTint, uShadeMix');
+  });
+
+  it('marks its material, with a program of its own', () => {
+    const bake = { areas: [{ texture: new THREE.Texture(), x0: 0, z0: 0, w: 10, d: 10 }], times: [{ tod: 0.5, channel: 0 }] };
+    const m = standIn(new THREE.MeshStandardMaterial(), bake);
+    expect(m.userData.standIn).toBeTruthy();
+    expect(m.customProgramCacheKey()).toContain('standIn:1');
+    // (the floor of the same bake keeps its own uniforms: a mover doesn't take its tint)
+    const f = floorShadow(new THREE.MeshStandardMaterial(), bake);
+    expect(f.userData.floorShadow).not.toBe(m.userData.standIn);
+    expect(m.userData.standIn.uMask).toBe(f.userData.floorShadow.uMask);
   });
 });

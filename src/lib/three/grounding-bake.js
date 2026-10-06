@@ -489,7 +489,11 @@ export async function bakeFloorMask(renderer, scene, { area, size = 1024, floor,
 
 // the sum of the passes, a little softened (a 3 × 3 tent: the shadow maps'
 // texels are hard-edged), as R the sun and A the sky; G and B the floor's
-// height (packHeight); where there's no floor, full light and no height
+// height (packHeight); where there's no floor, full light and no height.
+// Turned over top to bottom: the floor was drawn with the area's z0 edge at
+// the top of the picture, and a texture's v = 0 is its bottom row, where the
+// floor's shader looks for z0 (the offline masks are turned over by being
+// read back and saved as images).
 const RESOLVE_FRAG = /* glsl */ `
 uniform sampler2D uAcc;
 uniform sampler2D uPos;
@@ -497,13 +501,14 @@ uniform vec2 uTexel;
 uniform vec2 uRange;
 varying vec2 vUv;
 void main() {
+  vec2 q = vec2(vUv.x, 1.0 - vUv.y);
   vec4 s = vec4(0.0);
   for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
     float k = (2.0 - abs(float(i))) * (2.0 - abs(float(j)));
-    s += k * texture2D(uAcc, vUv + vec2(float(i), float(j)) * uTexel);
+    s += k * texture2D(uAcc, q + vec2(float(i), float(j)) * uTexel);
   }
   s /= 16.0;
-  vec4 p = texture2D(uPos, vUv);
+  vec4 p = texture2D(uPos, q);
   if (p.w < 0.5) { gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); return; }
   float t = clamp((p.y - uRange.x) / max(uRange.y - uRange.x, 1e-4), 0.0, 1.0);
   float v = 1.0 + floor(t * 65534.0 + 0.5);
