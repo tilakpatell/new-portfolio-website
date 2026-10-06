@@ -15,7 +15,7 @@ import { HERD, calmHerd, newHerd, stepHerd, stillHerding } from './daycare';
 import { BOOTH, CAST, COLLIDERS, COUNCIL_DOOR, CORE, ESCAPE_START, FACTORY_DOOR, HANGAR_WALLS, KIOSKS, PEN, PLANTERS, RICK, ROUNDS, SPOTS, WALLS, WORLD, castFor, crowdColliders, spot, validAt } from './layout';
 import { CONVOS, COPS, QUESTS, SEAL, SPEAKERS, citadelProgress, moodOf } from './story';
 import { HUNT, leaveHunt, newHunt, stepHunt } from './locos';
-import { BLOCKS as TOWN_BLOCKS, CAST as TOWN_CAST, COLLIDERS as TOWN_COLLIDERS, COP, EXIT as TOWN_EXIT, MORTYTOWN, START as TOWN_START, WALKS as TOWN_WALKS, WALLS as TOWN_WALLS } from './mortytown';
+import { BLOCKS as TOWN_BLOCKS, CAST as TOWN_CAST, COLLIDERS as TOWN_COLLIDERS, COP, EXIT as TOWN_EXIT, MORTYTOWN, START as TOWN_START, WALKS as TOWN_WALKS, WALLS as TOWN_WALLS, validTownAt } from './mortytown';
 import { LINE, dropLayer, newLine, stepLine } from './wafers';
 import '../../middleearth/shire/shire.css';
 import '../../middleearth/towns/bree/bree.css';
@@ -114,7 +114,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     // (left in Mortytown: back by the lift, and down it once the world's up)
     const down = saved?.where === 'mortytown' && moodOf(done) !== 'red';
     const h = newWalker(down ? LIFT_AT : validAt(saved, done));
-    sim.current = { where: 'concourse', autoDown: down, hunt: newHunt(1), townSeen: false, h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.32, dragAt: -1e9, mode: 'walk', room: null, beat: null, talking: null, talk: null, herd: calmHerd(), line: newLine(), laid: null, watchers: newWatchers(ROUNDS), chased: false, near: null, person: null, canvassed: new Set(), escapeT: null, frame: 0, moved: false, t: 0, air: null, siren: null, padBefore: null, edgeAt: -9, fresh: !saved && done.length === 0, seed: 2 };
+    sim.current = { where: 'concourse', autoDown: down, townAt: down ? saved : null, hunt: newHunt(1), townSeen: false, h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.32, dragAt: -1e9, mode: 'walk', room: null, beat: null, talking: null, talk: null, herd: calmHerd(), line: newLine(), laid: null, watchers: newWatchers(ROUNDS), chased: false, near: null, person: null, canvassed: new Set(), escapeT: null, frame: 0, moved: false, t: 0, air: null, siren: null, padBefore: null, edgeAt: -9, fresh: !saved && done.length === 0, seed: 2 };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -304,7 +304,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       }
       ss.where = 'mortytown';
       ss.mode = 'walk';
-      ss.h = newWalker(TOWN_START);
+      // (back where you were down there, after a reload; else out of the lift)
+      ss.h = newWalker(ss.townAt ? validTownAt(ss.townAt) : TOWN_START);
+      ss.townAt = null;
       ss.yaw = behindYaw(ss.h.face);
       ss.dragAt = ss.t;
       if (ss.hunt.state === 'won') ss.hunt = newHunt(ss.seed++);

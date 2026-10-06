@@ -974,10 +974,12 @@ export async function buildDistrict(renderer, { tier = 'high' } = {}) {
     }
   }
 
+  // hazard stripes, at the lift and the gate
+  const stripes = mat(toon(0xffffff, { map: tex(paintStripes(k)) }));
+
   // ── the lift up to the concourse, at the west end ──
   {
     const x = LIFT.x;
-    const stripes = mat(toon(0xffffff, { map: tex(paintStripes(k)) }));
     box(LIFT.w, 4, LIFT.d, M.dark, x, 2, LIFT.z);
     for (const e of [-1, 1]) box(0.4, 4.4, 0.4, stripes, x + 1.05, 2.2, LIFT.z + e * 1.9);
     box(0.4, 0.5, 4.2, stripes, x + 1.05, 4.4, LIFT.z);
@@ -1002,7 +1004,6 @@ export async function buildDistrict(renderer, { tier = 'high' } = {}) {
   // ── the east end: a blast gate, shut, and a bridge over it ──
   {
     const x = MORTYTOWN.x1;
-    const stripes = mat(toon(0xffffff, { map: tex(paintStripes(k)) }));
     box(0.8, 12, 20, M.trim, x + 0.4, 6, 0);
     box(0.3, 9, 13, M.metal, x - 0.1, 4.5, 0);
     box(0.32, 1.2, 13, stripes, x - 0.12, 0.6, 0);

@@ -1867,29 +1867,37 @@ export function buildDeepSpace({ small = false } = {}) {
     // standing in until it's loaded: as wide as the built one's dome across
     // its middle, turned so its arms lie along deep.js's CITADEL_PARTS (which
     // the siege and the ship's collisions use), its disc where the dome's is.
-    loadGLTF('/models/c137/rm/citadel-exterior.glb')
-      .then((gltf) => {
-        if (!gltf?.scene || !g.parent) return;
-        const model = cloneScene(gltf);
-        model.traverse((o) => {
-          if (!o.isMesh) return;
-          const map = o.material.map ?? null;
-          o.material = new THREE.MeshLambertMaterial({ map, emissive: map ? 0xffffff : 0x000000, emissiveMap: map, emissiveIntensity: 0.32 });
-          owned.push(o.material);
-        });
-        const box = new THREE.Box3().setFromObject(model);
-        const size = box.getSize(new THREE.Vector3());
-        // (its saucers' rims are its widest; its disc is 0.55 of that, the
-        // dome's 12.5 across its middle; the disc is 0.6 of the way up it)
-        const kk = (2 * 22.7 * k) / Math.max(size.x, size.z);
-        model.scale.setScalar(kk);
-        model.position.set(0, -(box.min.y + size.y * 0.6) * kk, 0);
-        model.rotation.y = -0.25;
-        g.add(model);
-        hull.visible = false;
-        dome.visible = false;
-      })
-      .catch((e) => import.meta.env.DEV && console.error('citadel model', e));
+    // (fetched only once you come within a few thousand units of it)
+    let fetched = false;
+    const fetchModel = () =>
+      loadGLTF('/models/c137/rm/citadel-exterior.glb')
+        .then((gltf) => {
+          if (!gltf?.scene || !g.parent) return;
+          const model = cloneScene(gltf);
+          model.traverse((o) => {
+            if (!o.isMesh) return;
+            const map = o.material.map ?? null;
+            o.material = new THREE.MeshLambertMaterial({ map, emissive: map ? 0xffffff : 0x000000, emissiveMap: map, emissiveIntensity: 0.32 });
+            owned.push(o.material);
+          });
+          const box = new THREE.Box3().setFromObject(model);
+          const size = box.getSize(new THREE.Vector3());
+          // (its saucers' rims are its widest; its disc is 0.55 of that, the
+          // dome's 12.5 across its middle; the disc is 0.6 of the way up it)
+          const kk = (2 * 22.7 * k) / Math.max(size.x, size.z);
+          model.scale.setScalar(kk);
+          model.position.set(0, -(box.min.y + size.y * 0.6) * kk, 0);
+          model.rotation.y = -0.25;
+          g.add(model);
+          hull.visible = false;
+          dome.visible = false;
+        })
+        .catch((e) => import.meta.env.DEV && console.error('citadel model', e));
+    ticks.push((t, dt, cam) => {
+      if (fetched || !cam || hypot(cam.x - w.at[0], cam.y - w.at[1], cam.z - w.at[2]) > 3000) return;
+      fetched = true;
+      fetchModel();
+    });
     // the warm haze it hangs in, as the show paints its sky: a soft glow
     // that always faces you, behind and round it
     const haze = mesh(
