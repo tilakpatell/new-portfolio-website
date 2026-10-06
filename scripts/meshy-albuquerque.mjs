@@ -112,7 +112,14 @@ const HD = {
   jesseHd: { ...ASSETS.jesse, from: 'jesse', poly: 40000, paint: '4k', tex: 2048 },
   jesseLabHd: { ...ASSETS.jesseLab, from: 'jesseLab', poly: 40000, paint: '4k', tex: 2048 },
 };
-Object.assign(ASSETS, HD);
+// Jesse in his hoodie again, from a concept image of his own: the first
+// one's "boyish face" came out wide-eyed with a cartoon grin. His beanie
+// isn't in it: it's the wardrobe's (gear.js), worn by default and taken off
+// there. Made by name (`images jessePinkHd`, and so on), not with `hd`.
+const JESSE_AGAIN = {
+  jessePinkHd: { out: 'albuquerque/jesse.glb', kind: 'person', poly: 40000, paint: '4k', tex: 2048, height: 1.73, prompt: 'A lean, wiry man in his mid-twenties with a narrow face, natural-sized eyes, very short light brown buzzed hair, light stubble along his jaw and a small tuft of beard under his lower lip, a relaxed lopsided half-smile with his lips closed and a laid-back, slightly cocky look; in a baggy burnt-orange hoodie, baggy dark blue jeans and white high-top sneakers.' },
+};
+Object.assign(ASSETS, HD, JESSE_AGAIN);
 
 const key = process.env.MESHY_API_KEY;
 const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
