@@ -3,6 +3,7 @@ import { COUNTRY_COUNT } from '../../data/places';
 import { countWord } from '../travel/PlacesExplorer';
 import { audioContext } from '../../lib/audio';
 import './office.css';
+import '../../styles/lazy/office.css';
 
 // Dwight checks the facts: half about me, half about the branch, eight a
 // round, shuffled. F says fact, X says false, Enter moves on. Dwight's
@@ -69,7 +70,7 @@ const readBest = () => {
   }
 };
 
-export default function FactCheck() {
+export default function FactCheck({ onDone } = {}) {
   const [deck, setDeck] = useState(deal);
   const [i, setI] = useState(0);
   const [answer, setAnswer] = useState(null); // the visitor's pick for this one
@@ -98,6 +99,7 @@ export default function FactCheck() {
     audioContext(); // in the click, so the verdict can be heard
     // the last one: Michael takes the score well, or very badly
     if (i === deck.length - 1) {
+      onDone?.(score);
       import('../../lib/clips').then((c) => c.playClip(score >= PER_ROUND - 2 ? 'thankYou' : 'noGod'));
       if (score > best) {
         setBest(score);

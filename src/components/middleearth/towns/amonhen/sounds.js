@@ -211,3 +211,34 @@ export function splash(k = 1) {
   hiss(ac, out, t, { type: 'bandpass', f: 900, q: 0.7, gain: 0.25 * k, attack: 0.01, length: 0.6, sweep: 300 });
   hiss(ac, out, t + 0.05, { type: 'highpass', f: 3000, gain: 0.08 * k, attack: 0.02, length: 0.8 });
 }
+
+// ── ducks and drakes ──
+// a stone thrown: the arm's whip
+export function whip() {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime + 0.01;
+  hiss(ac, out, t, { type: 'bandpass', f: 1400, q: 1.2, gain: 0.1, attack: 0.03, length: 0.22, sweep: 600 });
+}
+// the stone meeting the water: a light skip (k gets smaller as it slows),
+// or the plop as it sinks
+export function skip(k = 1, sinks = false) {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime + 0.005;
+  if (sinks) {
+    tone(ac, out, t, { f: 380, to: 140, gain: 0.12, attack: 0.003, length: 0.18 });
+    hiss(ac, out, t, { type: 'bandpass', f: 800, q: 1, gain: 0.12, attack: 0.005, length: 0.3, sweep: 300 });
+    return;
+  }
+  tone(ac, out, t, { f: 900 + k * 500, to: 600 + k * 300, gain: 0.05 + k * 0.05, attack: 0.002, length: 0.07 });
+  hiss(ac, out, t, { type: 'highpass', f: 2500, gain: 0.05 + k * 0.06, attack: 0.002, length: 0.12 });
+}
+// Pippin and Merry, cheering
+export function cheer() {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime + 0.02;
+  for (let i = 0; i < 2; i++) tone(ac, out, t + i * 0.18, { type: 'triangle', f: 520 + i * 130, to: 720 + i * 130, gain: 0.05, attack: 0.02, length: 0.3 });
+  hiss(ac, out, t, { type: 'bandpass', f: 1100, q: 0.6, gain: 0.06, attack: 0.05, length: 0.7 });
+}

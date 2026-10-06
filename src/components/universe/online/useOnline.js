@@ -1,4 +1,6 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { HULL_KEY, readHulls } from '../shipyard/build';
+import { LOOK_KEY, readLooks } from '../../rickmorty/wardrobe/looks';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { local } from '../../../lib/hooks';
 import { cleanName, randomCallsign } from './names';
 import { LOADOUT_KEY, STOCK_LOADOUT, readLoadouts } from '../outfit';
@@ -17,7 +19,9 @@ import { LOADOUT_KEY, STOCK_LOADOUT, readLoadouts } from '../outfit';
 // so no one's left waiting on a ghost and your connection isn't kept open
 // for nothing, and joins again when you're back. Live pointers off the map
 // (Presence.jsx: yours to them, theirs to you) can be turned off, and that's
-// remembered.
+// remembered, and they're never drawn over a walkable world (enterWorld(),
+// from ../../middleearth/towns/useTravellers.js), where the others are
+// there in person.
 
 const ONLINE_KEY = 'tp-universe-online'; // 'on' once you've gone online
 const NAME_KEY = 'tp-universe-callsign';
@@ -37,14 +41,34 @@ export function useOnlineState(where) {
   const [kind, setKind] = useState(() => (typeof local.get(SHIP_KEY) === 'string' ? local.get(SHIP_KEY) : null));
   // (as it was last fitted; the universe page says what it flies with now)
   const [loadout, setLoadout] = useState(() => (kind && readLoadouts(local.get(LOADOUT_KEY), [kind])[kind]) || STOCK_LOADOUT);
+  // and the hull it flies: its garage build (shipyard/), or null for its stock ship
+  const [build, setBuild] = useState(() => (kind && readHulls(local.get(HULL_KEY), [kind])[kind]) || null);
+  // and how its Rick and Morty are dressed (the wardrobe's, wherever it's changed)
+  const [looks, setLooks] = useState(() => readLooks(local.get(LOOK_KEY)));
+  useEffect(() => {
+    const on = (e) => setLooks(readLooks(e.detail));
+    window.addEventListener('tp:looks', on);
+    return () => window.removeEventListener('tp:looks', on);
+  }, []);
   const [client, setClient] = useState(null);
   const [room, setRoom] = useState(OFF);
   const [feed, setFeed] = useState([]);
   const [attempt, setAttempt] = useState(0); // a retry makes a fresh link
   const [away, setAway] = useState(false); // the tab's been in the background a while
   const [pointers, setPointers] = useState(() => local.get(POINTERS_KEY) !== 'off');
-  const latest = useRef({ name, kind, loadout, where });
-  latest.current = { name, kind, loadout, where };
+  const [worlds, setWorlds] = useState(0); // walkable worlds up (each with its own room of travellers)
+  // a world's up: → done() once it's gone
+  const enterWorld = useCallback(() => {
+    setWorlds((n) => n + 1);
+    let gone = false;
+    return () => {
+      if (gone) return;
+      gone = true;
+      setWorlds((n) => n - 1);
+    };
+  }, []);
+  const latest = useRef({ name, kind, loadout, build, looks, where });
+  latest.current = { name, kind, loadout, build, looks, where };
 
   // gone from the tab a while: out of the room; back: in again
   useEffect(() => {
@@ -112,8 +136,8 @@ export function useOnlineState(where) {
   }, [on, attempt, away]);
 
   useEffect(() => {
-    client?.setProfile({ name, kind, loadout, where });
-  }, [client, name, kind, loadout, where]);
+    client?.setProfile({ name, kind, loadout, build, looks, where });
+  }, [client, name, kind, loadout, build, looks, where]);
 
   const keepName = (callsign) => {
     const next = cleanName(callsign) ?? name ?? randomCallsign();
@@ -130,8 +154,11 @@ export function useOnlineState(where) {
     room,
     feed,
     pointers, // live pointers off the map, yours and theirs
+    inWorld: worlds > 0, // in a walkable world, where the others walk about instead
+    enterWorld,
     setKind, // the universe page says which ship you fly
     setLoadout, // and what's fitted to it
+    setBuild, // and the hull it is: a garage build, or null
     suggest: () => name ?? randomCallsign(),
     goOnline(callsign) {
       keepName(callsign);

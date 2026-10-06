@@ -23,13 +23,15 @@ export { behindYaw, cameraMove } from '../../middleearth/towns/walker';
 // ── the areas ──
 
 export const AREAS = {
-  street: { x0: -60, x1: 60, z0: -40, z1: 40 },
+  // (out to the hedges: the suburb's houses on along the road, and the yards behind)
+  street: { x0: -150, x1: 150, z0: -55, z1: 55 },
   annex: { x0: 370, x1: 430, z0: -22, z1: 22 },
   // the Smith house, ground floor: the plan's rooms (PLAN) fill all of it but the
   // outside corner south-west
   house: { x0: -312, x1: -288, z0: -8, z1: 8.5 },
   upstairs: { x0: -306, x1: -294.7, z0: 394, z1: 410.3 },
-  garage: { x0: -306, x1: -294, z0: 94, z1: 106 },
+  // (one car wide, as the show draws it: 7.2 m across, 8 m deep)
+  garage: { x0: -303.6, x1: -296.4, z0: 98, z1: 106 },
   school: { x0: -308, x1: -292, z0: 194, z1: 206 },
   arcade: { x0: -310, x1: -290, z0: 292, z1: 308 },
   // Rick's clone lab, under the garage floor, and Morty's Mind Blowers through its east door
@@ -97,12 +99,25 @@ export const NEIGHBOURS = [
 ].map(([x, z], i) => ({ id: `${z < 0 ? 'n' : 's'}${i % 3}`, x, z, w: 12, d: 10, h: LOOKS[i] === 'diner' ? 4.2 : 5.5, roof: LOOKS[i] === 'diner' ? 6.6 : 8, tint: TINTS[i], look: LOOKS[i], roofTint: ROOF_TINTS[i] }));
 export const DINER = NEIGHBOURS.find((n) => n.look === 'diner');
 export const BUILDINGS = [HOUSE, GARAGE, SCHOOL, ...NEIGHBOURS];
+// The houses on along the road past the street's own, both sides, out to the
+// hedges at its ends: solid, and drawn as the neighbours are
+export const OUTSKIRTS = [68, 91, 114, 137].flatMap((d, i) =>
+  [-1, 1].flatMap((sx) => [-1, 1].map((sz) => ({ id: `out-${sx < 0 ? 'w' : 'e'}${sz < 0 ? 'n' : 's'}${i}`, x: sx * d, z: sz * 20, w: 12, d: 10, h: 5.5, roof: 8, look: (i + sx + sz) % 4 ? 'colonial' : 'ranch' }))),
+);
 
 // the driveway runs from the garage door to the sidewalk; the cruiser parks on it, nose south
 export const DRIVEWAY = { x0: -23, x1: -15, z0: -14, z1: -7 };
 export const BOARD = { x: -19, z: -10.5, yaw: 0 };
 // the red-brick front walk, from the porch step (and the front door) to the sidewalk
 export const FRONT_WALK = { x0: -7.8, x1: -6.6, z0: -17.4, z1: -7 };
+// The concrete stoop at the front door, raised off the lawn on a brick face,
+// the width of the porch over it, and its two steps down to the front walk:
+// things Morty stands on (their `top`), walks up, and jumps off the edges of.
+export const STOOP = [
+  { id: 'stoop', x: -7.2, z: -17.1, w: 3, d: 1.4, top: 0.45 },
+  { id: 'stoop-step1', x: -7.2, z: -16.2, w: 1.6, d: 0.4, top: 0.3 },
+  { id: 'stoop-step2', x: -7.2, z: -15.8, w: 1.6, d: 0.4, top: 0.15 },
+];
 
 // on the sidewalk at the foot of the front walk, looking up at the house
 export const START = { area: 'street', x: -8, z: -6, face: Math.PI / 2 };
@@ -136,13 +151,14 @@ const ARCADE_DOOR = { x: 400, z: -3.4 };
 const DINER_DOOR = { x: DINER.x, z: DINER.z + DINER.d / 2 + 0.6 };
 // where you come out by a door: `across` and `along` metres from it, facing straight away from it
 const beside = (door, across, along) => ({ x: door.x + across, z: door.z + along, face: Math.atan2(-along, across) });
-// The hatch in the garage lab's floor, 1.2 m square, in the alcove between the plumbus factory and the
-// Portal panic cabinet (off the bench, the doors, the portal and the shelves). Nothing stands over it
-// and it is floor to walk on: the link is what takes Morty down it.
-export const HATCH = { x: -303.8, z: 101, w: 1.2, d: 1.2 };
-// The President's portal: a steel frame against the garage's south wall in
-// its east corner, facing in; lit once he's put it there (`needs`).
-export const GOV_PORTAL = { x: -296, z: 105.6 };
+// The hatch in the garage lab's floor, 1.2 m square, in the corner opposite
+// the door to the kitchen, as the show has it: the south-west, by the garage
+// door and past the Portal panic cabinet. Nothing stands over it and it is
+// floor to walk on: the link is what takes Morty down it.
+export const HATCH = { x: -302.85, z: 104.85, w: 1.2, d: 1.2 };
+// The President's portal: a steel frame against the garage's east wall by
+// the garage door, facing in (west); lit once he's put it there (`needs`).
+export const GOV_PORTAL = { x: -296.55, z: 104.3 };
 const into = (room) => ({ x: ROOM_X, z: AREAS[room].z1 - 2, face: FACE_N });
 const exit = (room, to, arrive) => ({ id: `${room}-exit`, area: room, x: ROOM_X, z: AREAS[room].z1 - 0.6, r: 0.9, kind: 'exit', to, label: 'Back outside', arrive });
 
@@ -158,21 +174,22 @@ export const LINKS = [
   exit('school', 'street', beside(SCHOOL_DOOR, 0, -2.4)),
   exit('arcade', 'annex', beside(ARCADE_DOOR, 0, 2.4)),
   // the kitchen's west wall and the garage lab's east side
-  { id: 'kitchen-garage', area: 'house', x: -311.6, z: 1.1, r: 0.9, kind: 'door', to: 'garage', label: 'Rick’s garage', arrive: { x: -296.8, z: 97.5, face: Math.PI } },
-  { id: 'garage-kitchen', area: 'garage', x: -294.8, z: 97.5, r: 0.9, kind: 'door', to: 'house', label: 'The kitchen', arrive: { x: -309.4, z: 1.1, face: 0 } },
+  { id: 'kitchen-garage', area: 'house', x: -311.6, z: 1.1, r: 0.9, kind: 'door', to: 'garage', label: 'Rick’s garage', arrive: { x: -298.1, z: 100.2, face: Math.PI } },
+  { id: 'garage-kitchen', area: 'garage', x: -296.85, z: 100.2, r: 0.9, kind: 'door', to: 'house', label: 'The kitchen', arrive: { x: -309.4, z: 1.1, face: 0 } },
   { id: 'stairs-up', area: 'house', x: -295.1, z: 2.6, r: 0.9, kind: 'stairs', to: 'upstairs', label: 'Upstairs', arrive: { x: -303, z: 402, face: FACE_N } },
   { id: 'stairs-down', area: 'upstairs', x: -303, z: 403.4, r: 0.9, kind: 'stairs', to: 'house', label: 'Downstairs', arrive: { x: -296.9, z: 0.6, face: FACE_N } },
-  { id: 'garage-portal', area: 'garage', x: -294.8, z: 100, r: 1.4, kind: 'portal', to: 'annex', label: 'Through the portal', arrive: { x: 400, z: 9, face: FACE_N } },
-  { id: 'annex-portal', area: 'annex', x: 400, z: 13, r: 1.4, kind: 'portal', to: 'garage', label: 'Back to the garage', arrive: { x: -296.8, z: 100, face: Math.PI } },
+  // (the portal swirls on the garage's west wall, past the end of the bench)
+  { id: 'garage-portal', area: 'garage', x: -303, z: 101.4, r: 1.4, kind: 'portal', to: 'annex', label: 'Through the portal', arrive: { x: 400, z: 9, face: FACE_N } },
+  { id: 'annex-portal', area: 'annex', x: 400, z: 13, r: 1.4, kind: 'portal', to: 'garage', label: 'Back to the garage', arrive: { x: -301.2, z: 101.4, face: 0 } },
   // down the hatch to the foot of the ladder, and up it to beside the hatch
   { id: 'garage-hatch', area: 'garage', x: HATCH.x, z: HATCH.z, r: 0.9, kind: 'hatch', to: 'basement', label: 'Down the hatch', arrive: into('basement') },
-  { id: 'basement-ladder', area: 'basement', x: ROOM_X, z: AREAS.basement.z1 - 0.6, r: 0.9, kind: 'hatch', to: 'garage', label: 'Up the ladder', arrive: beside(HATCH, 1.7, 0) },
+  { id: 'basement-ladder', area: 'basement', x: ROOM_X, z: AREAS.basement.z1 - 0.6, r: 0.9, kind: 'hatch', to: 'garage', label: 'Up the ladder', arrive: beside(HATCH, 1.25, -0.95) },
   // the clone lab's east door, on to Morty's Mind Blowers, and back
   { id: 'basement-mind', area: 'basement', x: -291.9, z: 505.6, r: 0.9, kind: 'door', to: 'mindblowers', label: 'Morty’s Mind Blowers', arrive: into('mindblowers') },
   { id: 'mind-door', area: 'mindblowers', x: ROOM_X, z: AREAS.mindblowers.z1 - 0.6, r: 0.9, kind: 'door', to: 'basement', label: 'Rick’s clone lab', arrive: { x: -293.5, z: 505.6, face: Math.PI } },
   // the President's portal to the Oval Office (shut till he's met), and its way back
-  { id: 'garage-oval', area: 'garage', x: GOV_PORTAL.x, z: GOV_PORTAL.z - 1.2, r: 1.2, kind: 'portal', to: 'oval', label: 'The Oval Office', needs: 'president', arrive: { x: ROOM_X, z: AREAS.oval.z1 - 2.7, face: FACE_N } },
-  { id: 'oval-portal', area: 'oval', x: ROOM_X, z: AREAS.oval.z1 - 0.6, r: 1.4, kind: 'portal', to: 'garage', label: 'Back to the garage', arrive: { x: GOV_PORTAL.x, z: GOV_PORTAL.z - 2.8, face: FACE_N } },
+  { id: 'garage-oval', area: 'garage', x: GOV_PORTAL.x - 1.2, z: GOV_PORTAL.z, r: 1.2, kind: 'portal', to: 'oval', label: 'The Oval Office', needs: 'president', arrive: { x: ROOM_X, z: AREAS.oval.z1 - 2.7, face: FACE_N } },
+  { id: 'oval-portal', area: 'oval', x: ROOM_X, z: AREAS.oval.z1 - 0.6, r: 1.4, kind: 'portal', to: 'garage', label: 'Back to the garage', arrive: beside({ x: GOV_PORTAL.x - 1.2, z: GOV_PORTAL.z }, -1.25, -0.85) },
   // Shoney's
   { id: 'diner-door', area: 'street', ...DINER_DOOR, r: 1.6, kind: 'door', to: 'diner', label: 'Shoney’s', arrive: into('diner') },
   exit('diner', 'street', beside(DINER_DOOR, 0, 2.4)),
@@ -255,7 +272,7 @@ const LANDINGS = LINKS.filter((l) => l.to === 'street').map((l) => l.arrive);
 
 function treeFits(x, z) {
   if (!inArea('street', x, z, -2) || Math.abs(z - ROAD.z) < VERGE + 0.5) return false;
-  if (BUILDINGS.some((b) => edgeDist(b, x, z) < 2)) return false;
+  if ([...BUILDINGS, ...OUTSKIRTS].some((b) => edgeDist(b, x, z) < 2)) return false;
   if (rectDist(DRIVEWAY.x0, DRIVEWAY.x1, DRIVEWAY.z0, DRIVEWAY.z1, x, z) < 2) return false;
   if (LINKS.some((l) => l.area === 'street' && Math.hypot(x - l.x, z - l.z) < 2.5)) return false;
   if (LANDINGS.some((a) => Math.hypot(x - a.x, z - a.z) < 2.5)) return false;
@@ -456,13 +473,18 @@ export const FURNITURE = [
   item('chair-morty', 'chair', 'upstairs', -297.6, 395.4, 0.5, 0.5, 0.9, N),
   item('bed-master', 'bed', 'upstairs', -295.8, 405.3, 1.8, 2.2, 0.6, W),
   item('dresser-master', 'dresser', 'upstairs', -302.15, 406.5, 2, 0.5, 0.9, E),
-  // Rick's garage lab
-  item('workbench', 'workbench', 'garage', -300, 94.6, 8, 1.2, 1),
-  item('shelf-garage', 'shelf', 'garage', -305.5, 96, 3, 1, 1.9, E),
-  item('plumbus', 'machine', 'garage', -305.75, 99, 2, 0.5, 1.6, E),
-  item('portalpanic', 'arcade', 'garage', -305.75, 103, 1.4, 0.5, 1.8, E),
-  // the washer and dryer, side by side by the garage door
-  item('laundry', 'laundry', 'garage', -304.6, 105.3, 1.4, 0.6, 1.1, N),
+  // Rick's garage lab, as the show lays it out: the bench along the back
+  // wall and round the corner in an L, the washer and dryer beside it, the
+  // plumbus factory in the corner by the kitchen door; the wire shelving
+  // past that door; the long worktable in the middle; the Portal panic
+  // cabinet on the west wall, before the hatch
+  item('workbench', 'workbench', 'garage', -301.9, 98.375, 3.4, 0.75, 0.95),
+  item('bench-arm', 'workbench', 'garage', -303.275, 99.475, 1.45, 0.65, 0.95, E),
+  item('laundry', 'laundry', 'garage', -299.3, 98.33, 1.4, 0.66, 1.1),
+  item('plumbus', 'machine', 'garage', -297.45, 98.3, 1.8, 0.55, 1.6),
+  item('shelf-garage', 'shelf', 'garage', -296.65, 102.2, 1.8, 0.5, 1.9, W),
+  item('worktable', 'worktable', 'garage', -299.9, 102.4, 2.2, 0.9, 0.92),
+  item('portalpanic', 'arcade', 'garage', -303.225, 103.1, 0.8, 0.75, 1.8, E),
   // Mr. Goldenfold's classroom: the chalkboard, his desk, six desks for the class
   item('chalkboard', 'chalkboard', 'school', -300, 194.1, 6, 0.2, 1.3),
   item('goldenfold-desk', 'goldenfold-desk', 'school', -300, 195.4, 3, 1.2, 0.8),
@@ -472,8 +494,8 @@ export const FURNITURE = [
   item('cabinet1', 'arcade', 'arcade', -309.5, 297, 1.4, 1, 1.8, E),
   item('cabinet2', 'arcade', 'arcade', -290.5, 300, 1.4, 1, 1.8, W),
   item('cabinet3', 'arcade', 'arcade', -309.5, 303, 1.4, 1, 1.8, E),
-  // the President's portal, against the south wall in the east corner, facing in
-  item('govportal', 'govportal', 'garage', GOV_PORTAL.x, GOV_PORTAL.z, 1.8, 0.3, 2.5, N),
+  // the President's portal, against the garage's east wall by the garage door, facing in
+  item('govportal', 'govportal', 'garage', GOV_PORTAL.x, GOV_PORTAL.z, 1.8, 0.3, 2.5, W),
   // Rick's clone lab: the clone machine in the middle of the back, curved
   // desks down both sides (two lengths each, stepped to the round wall), and
   // the ladder up on the south wall (its foot is the way up, and where the hatch puts Morty)
@@ -525,7 +547,7 @@ export const PEOPLE = [
   { id: 'jerry', area: 'house', x: -301.6, z: -3.5, face: 0, sits: true },
   { id: 'beth', area: 'house', x: -310.95, z: -3.4, face: Math.PI },
   { id: 'summer', area: 'upstairs', x: -302.4, z: 396.9, face: -Math.PI / 2 },
-  { id: 'rick', area: 'garage', x: -302, z: 95.55, face: Math.PI / 2 },
+  { id: 'rick', area: 'garage', x: -301.9, z: 99.15, face: Math.PI / 2 },
   { id: 'teacher', area: 'school', x: -300, z: 194.5, face: -Math.PI / 2 },
   // the motorcade, on the sidewalk by the limo, looking west along it to the Smiths'
   { id: 'president', area: 'street', x: LIMO.x - 1, z: -6.1, face: Math.PI, until: 'president' },
@@ -539,6 +561,13 @@ export const PEOPLE = [
   { id: 'general1', who: 'general', area: 'oval', x: -303.2, z: 696.8, face: S },
   { id: 'general2', who: 'general', area: 'oval', x: -296.8, z: 696.8, face: S },
   // Shoney's: the agent on the aisle end of the middle booth's north bench, facing the door
+  // Harry Herpson High: the principal at the front by the board, and the class at their desks
+  { id: 'principal', area: 'school', x: -303.4, z: 196.2, face: S },
+  { id: 'jessica', area: 'school', x: -295.9, z: 199.25, face: Math.PI / 2, sits: true },
+  { id: 'brad', area: 'school', x: -294.9, z: 201.25, face: Math.PI / 2, sits: true },
+  { id: 'tammy', area: 'school', x: -304.1, z: 199.25, face: Math.PI / 2, sits: true },
+  { id: 'ethan', area: 'school', x: -305.1, z: 201.25, face: Math.PI / 2, sits: true },
+  { id: 'tinyrick', area: 'school', x: -304.1, z: 203.25, face: Math.PI / 2, sits: true },
   { id: 'dineragent', who: 'fedagent', area: 'diner', x: -305.6, z: 797.35, face: S, sits: true },
 ];
 // Is it there, with `done` done? (left out: everyone is)
@@ -547,11 +576,12 @@ export const peopleIn = (area, done) => PEOPLE.filter((p) => p.area === area && 
 
 // ── what's in the way ──
 
-const box = (id, x, z, w, d, turn = 0) => ({ id, kind: 'box', x, z, w, d, turn });
+// (`top`: how high it is, for what Morty can climb or jump onto; left out, it's too tall to)
+const box = (id, x, z, w, d, turn = 0, top = null) => ({ id, kind: 'box', x, z, w, d, turn, ...(top != null && { top }) });
 const slab = (id, x0, x1, z0, z1) => box(id, (x0 + x1) / 2, (z0 + z1) / 2, x1 - x0, z1 - z0);
 const circle = (id, x, z, r) => ({ id, kind: 'circle', x, z, r });
 const furnished = (area) => [
-  ...FURNITURE.filter((f) => f.area === area).map((f) => box(f.id, f.x, f.z, f.w, f.d, f.turn)),
+  ...FURNITURE.filter((f) => f.area === area).map((f) => box(f.id, f.x, f.z, f.w, f.d, f.turn, f.h)),
   ...PEOPLE.filter((p) => p.area === area && !p.sits).map((p) => circle(p.id, p.x, p.z, PERSON)),
 ];
 // the President's motorcade: the limo and the two beside it, in the way till he's met
@@ -563,6 +593,8 @@ export const COLLIDERS = {
     ...BUILDINGS.filter((b) => b !== HOUSE && b !== SCHOOL).map((b) => box(b.id, b.x, b.z, b.w, b.d)),
     ...HOUSE_PARTS.map((p) => box(`house-${p.id}`, p.x, p.z, p.w, p.d)),
     ...SCHOOL_PARTS.map((p) => box(`school-${p.id}`, p.x, p.z, p.w, p.d)),
+    ...OUTSKIRTS.map((b) => box(b.id, b.x, b.z, b.w, b.d)),
+    ...STOOP.map((p) => box(p.id, p.x, p.z, p.w, p.d, 0, p.top)),
     ...TREES.map((t, i) => circle(`tree${i}`, t.x, t.z, trunk(t))),
     ...DECOR.map(decorCollider),
     ...PEOPLE.filter((p) => p.area === 'street' && !p.until).map((p) => circle(p.id, p.x, p.z, PERSON)),
@@ -612,11 +644,18 @@ export const HOTSPOTS = [
   spot('butter', 'house', -302.6, 0.8, 'The butter robot', 'Switch on'),
   spot('summer', 'upstairs', -302.4, 397.2, 'Summer', 'Talk'),
   spot('mortyroom', 'upstairs', -297.2, 397, 'Morty’s room', 'Look round'),
-  spot('rick', 'garage', -302, 95.6, 'Rick', 'Talk'),
-  spot('meeseeks', 'garage', -297.5, 95.6, 'Mr. Meeseeks box', 'Press'),
-  spot('plumbus', 'garage', -305.2, 99, 'The plumbus factory', 'Watch'),
-  spot('portalpanic', 'garage', -305.2, 103, 'Portal panic cabinet', 'Play'),
+  spot('rick', 'garage', -301.9, 99.2, 'Rick', 'Talk'),
+  spot('meeseeks', 'garage', -301.4, 102.4, 'Mr. Meeseeks box', 'Press'),
+  spot('plumbus', 'garage', -297.45, 99, 'The plumbus factory', 'Watch'),
+  spot('portalpanic', 'garage', -302.45, 103.1, 'Portal panic cabinet', 'Play'),
   spot('quiz', 'school', -300, 196.4, 'Mr. Goldenfold’s pop quiz', 'Sit the quiz'),
+  // the principal, and the class from the aisle beside their desks
+  spot('principal', 'school', -303.4, 196.55, 'Principal Vagina', 'Talk'),
+  spot('jessica', 'school', -296.9, 199.25, 'Jessica', 'Talk'),
+  spot('brad', 'school', -296.9, 201.25, 'Brad', 'Talk'),
+  spot('tammy', 'school', -303.1, 199.25, 'Tammy', 'Talk'),
+  spot('ethan', 'school', -303.1, 201.25, 'Ethan', 'Talk'),
+  spot('tinyrick', 'school', -303.1, 203.25, 'Tiny Rick', 'Talk'),
   spot('roy', 'arcade', -300, 293.6, 'Roy: A Life Well Lived', 'Put the headset on'),
   spot('cabinet1', 'arcade', -308.4, 297, 'Arcade cabinet', 'Play'),
   spot('cabinet2', 'arcade', -291.6, 300, 'Arcade cabinet', 'Play'),
@@ -645,46 +684,115 @@ export const nearHotspot = (area, x, z, done) => nearest(done ? HOTSPOTS.filter(
 
 // ── walking ──
 
-export const MORTY = { radius: 0.4, walk: 3.6, run: 7, accel: 18, turn: 12 };
-export const newMorty = (at = START) => ({ x: at.x, z: at.z, face: at.face ?? 0, vx: 0, vz: 0, speed: 0, running: false, edge: false });
+// `step`: as high as he walks up without jumping; `jump`, how fast he leaves
+// the ground (m/s) and `gravity` brings him down; `height`, to the top of his hair
+export const MORTY = { radius: 0.4, walk: 3.6, run: 7, accel: 18, turn: 12, step: 0.3, jump: 5.4, gravity: 18, height: 1.6 };
+export const newMorty = (at = START) => ({ x: at.x, z: at.z, face: at.face ?? 0, vx: 0, vz: 0, speed: 0, running: false, edge: false, y: 0, vy: 0, air: false });
+// as high as he gets onto anything: the top of a jump, and a step over it
+export const CLIMB = MORTY.step + MORTY.jump ** 2 / (2 * MORTY.gravity);
+// each area's ceiling (in the rooms, as ./interiors draws them; outside, the sky)
+export const CEILING = { street: Infinity, annex: Infinity, house: 2.6, upstairs: 2.6, garage: 2.9, school: 2.9, arcade: 8, basement: 4.4, mindblowers: 3.6, oval: 3.4, diner: 3 };
 
-// Morty can't stand within a body's width of the edge of where he is
-const walkerFor = (area, extra = []) =>
-  makeWalker({ radius: 1e4, colliders: [...collidersIn(area), ...extra], walls: wallsIn(area), blocked: (x, z) => !inArea(area, x, z, -MORTY.radius), body: MORTY });
-const WALKERS = Object.fromEntries(Object.keys(AREAS).map((id) => [id, walkerFor(id)]));
-const MOTORCADE_WALKER = walkerFor('street', MOTORCADE);
-// and one for the street with the cruiser parked in it, kept while it stays put
-let parked = { x: NaN, z: NaN, motorcade: false, walker: null };
+// What Morty can stand on in an area: what's low enough to get onto, with
+// room for him under the ceiling once he's up. Everything else is solid,
+// however high he jumps.
+const standable = (area, c) => c.top != null && c.top <= CLIMB + 1e-9 && c.top + MORTY.height <= CEILING[area] + 1e-9;
+const LOW = Object.fromEntries(Object.keys(AREAS).map((id) => [id, collidersIn(id).filter((c) => standable(id, c))]));
+const TOPS = Object.fromEntries(Object.keys(LOW).map((id) => [id, [...new Set(LOW[id].map((c) => c.top))].sort((a, b) => a - b)]));
+// what's in his way wherever he stands or jumps: the colliders he can't get onto
+export const solidIn = (area, opts) => collidersIn(area, opts).filter((c) => !standable(area, c));
 
-// One step of walking. `move` is where the visitor wants to go, already turned
-// to the world (the camera does that): { x, z } up to length 1, and `run`.
-// `cruiser` is where the cruiser is parked, if it is: it stands in the street;
-// `motorcade`, whether the President's limo and his people stand there too.
-export function stepMorty(m, move, dt, area, { cruiser, motorcade = false } = {}) {
-  let walker = WALKERS[area];
-  if (area === 'street' && cruiser) {
-    if (parked.x !== cruiser.x || parked.z !== cruiser.z || parked.motorcade !== motorcade)
-      parked = { x: cruiser.x, z: cruiser.z, motorcade, walker: walkerFor('street', [circle('cruiser', cruiser.x, cruiser.z, CRUISER.radius), ...(motorcade ? MOTORCADE : [])]) };
-    walker = parked.walker;
-  } else if (area === 'street' && motorcade) walker = MOTORCADE_WALKER;
-  return walker.step(m, move, dt);
+// Is (x, z) over collider c, a little way in from its edge or out past it?
+function over(c, x, z, m) {
+  if (c.kind === 'circle') return Math.hypot(x - c.x, z - c.z) < c.r + m;
+  const t = c.turn || 0;
+  const dx = x - c.x;
+  const dz = z - c.z;
+  const lx = dx * Math.cos(t) - dz * Math.sin(t);
+  const lz = dx * Math.sin(t) + dz * Math.cos(t);
+  return Math.abs(lx) < c.w / 2 + m && Math.abs(lz) < c.d / 2 + m;
+}
+// What he'd stand on at (x, z), at height y: the floor, or the top of the
+// highest thing under him that he's up on (or can step up onto)
+export function supportAt(area, x, z, y = 0) {
+  let s = 0;
+  for (const c of LOW[area]) if (c.top > s && c.top <= y + MORTY.step + 1e-6 && over(c, x, z, MORTY.radius * 0.25)) s = c.top;
+  return s;
 }
 
-// Over the open hatch in the garage floor (it's open whenever he's this near):
+// Morty can't stand within a body's width of the edge of where he is. At a
+// height, what's low enough under him is no longer in his way.
+const walkerFor = (area, extra = [], reach = 0) =>
+  makeWalker({ radius: 1e4, colliders: [...collidersIn(area), ...extra].filter((c) => !(standable(area, c) && c.top <= reach)), walls: wallsIn(area), blocked: (x, z) => !inArea(area, x, z, -MORTY.radius), body: MORTY });
+// kept by area, how many of its tops he's above, the motorcade, and where the cruiser's parked
+const WALKERS = new Map();
+function walkerAt(area, y, cruiser, motorcade) {
+  const reach = y + MORTY.step + 1e-6;
+  const tops = TOPS[area];
+  let n = 0;
+  while (n < tops.length && tops[n] <= reach) n++;
+  const street = area === 'street';
+  const key = `${area}|${n}|${street && motorcade ? 1 : 0}|${street && cruiser ? `${cruiser.x},${cruiser.z}` : ''}`;
+  let w = WALKERS.get(key);
+  if (!w) {
+    if (WALKERS.size > 64) WALKERS.clear();
+    const extra = street ? [...(cruiser ? [circle('cruiser', cruiser.x, cruiser.z, CRUISER.radius)] : []), ...(motorcade ? MOTORCADE : [])] : [];
+    w = walkerFor(area, extra, n ? tops[n - 1] : -1);
+    WALKERS.set(key, w);
+  }
+  return w;
+}
+
+// One step of walking. `move` is where the visitor wants to go, already turned
+// to the world (the camera does that): { x, z } up to length 1, `run`, and
+// `jump` (on his feet, he jumps). `cruiser` is where the cruiser is parked, if
+// it is: it stands in the street; `motorcade`, whether the President's limo
+// and his people stand there too. He walks up what's a step high, falls off
+// edges, lands on what's under him, and a ceiling stops his head.
+export function stepMorty(m, move, dt, area, { cruiser, motorcade = false } = {}) {
+  const y0 = m.y ?? 0;
+  const n = walkerAt(area, y0, cruiser, motorcade).step(m, move, dt);
+  let y = y0;
+  let vy = m.vy ?? 0;
+  const ground = supportAt(area, n.x, n.z, y0);
+  // on his feet (or a step below where he's going): up onto it, and off again if he jumps
+  if (y <= ground + 1e-3 && vy <= 0) {
+    y = ground;
+    vy = move.jump ? MORTY.jump : 0;
+  }
+  if (vy !== 0 || y > ground) {
+    vy -= MORTY.gravity * dt;
+    y += vy * dt;
+    if (y <= ground) {
+      y = ground;
+      vy = 0;
+    }
+    const head = CEILING[area] - MORTY.height;
+    if (y > head) {
+      y = head;
+      vy = Math.min(vy, 0);
+    }
+  }
+  return { ...n, y, vy, air: y > ground + 1e-3 };
+}
+
+// Over the open hatch in the garage floor (it's open whenever he's this near), on his feet:
 // the way down, as if he'd taken it
-export const dropAt = (area, x, z) => (area === 'garage' && Math.abs(x - HATCH.x) < HATCH.w / 2 - 0.15 && Math.abs(z - HATCH.z) < HATCH.d / 2 - 0.15 ? LINKS.find((l) => l.id === 'garage-hatch') : null);
+export const dropAt = (area, x, z, y = 0) => (area === 'garage' && y < 0.2 && Math.abs(x - HATCH.x) < HATCH.w / 2 - 0.15 && Math.abs(z - HATCH.z) < HATCH.d / 2 - 0.15 ? LINKS.find((l) => l.id === 'garage-hatch') : null);
 
 // ── the cruiser ──
 
-export const CRUISER = { radius: 1.7, hover: 1.2, top: 22, accel: 9, turn: 1.8, climb: 8, ceiling: 40 };
-const EDGE = 2; // it keeps this far in from the street's edge
+export const CRUISER = { radius: 1.7, hover: 1.2, top: 22, accel: 9, turn: 1.8, climb: 8, ceiling: 120 };
+// where it flies: well past the hedges, over the suburb (it lands only in the street)
+export const FLY = { x0: -400, x1: 400, z0: -260, z1: 260 };
+const EDGE = 2; // it keeps this far in from the edge of where it flies
 const BANK = 0.45; // how far it leans, at most
 
 export const newCruiser = () => ({ x: BOARD.x, z: BOARD.z, y: CRUISER.hover, yaw: BOARD.yaw, speed: 0, vy: 0, bank: 0 });
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // what it flies over: each building's footprint, the school's as its parts (flat roofs at their own heights)
-const ROOFS = [...BUILDINGS.filter((b) => b !== SCHOOL), ...SCHOOL_PARTS.map((p) => ({ ...p, roof: p.h }))];
+const ROOFS = [...BUILDINGS.filter((b) => b !== SCHOOL), ...OUTSKIRTS, ...SCHOOL_PARTS.map((p) => ({ ...p, roof: p.h }))];
 // the buildings it is over: their footprints, and the cruiser's own width round
 const under = (x, z) => ROOFS.filter((b) => Math.abs(x - b.x) <= b.w / 2 + CRUISER.radius && Math.abs(z - b.z) <= b.d / 2 + CRUISER.radius);
 
@@ -698,7 +806,7 @@ export function stepCruiser(c, { throttle = 0, steer = 0, lift = 0 } = {}, dt) {
   const turn = clamp(steer, -1, 1);
   const yaw = c.yaw + turn * CRUISER.turn * dt;
   let speed = c.speed + clamp(clamp(throttle, -1, 1) * CRUISER.top - c.speed, -CRUISER.accel * dt, CRUISER.accel * dt);
-  const s = AREAS.street;
+  const s = FLY;
   const goX = Math.sin(yaw) * speed * dt;
   const goZ = Math.cos(yaw) * speed * dt;
   const x = clamp(c.x + goX, s.x0 + EDGE, s.x1 - EDGE);
@@ -765,15 +873,15 @@ export function exitCruiser(c, { motorcade = false } = {}) {
 export const TASKS = [
   { id: 'cable', name: 'Watch interdimensional cable', hint: 'Go into the Smith house and put interdimensional cable on the TV.' },
   { id: 'butter', name: 'The butter robot', hint: 'Switch on the butter robot at the Smiths’ breakfast table.' },
-  { id: 'meeseeks', name: 'Summon a Meeseeks', hint: 'Press the Meeseeks box on Rick’s workbench, in the garage.' },
+  { id: 'meeseeks', name: 'Summon a Meeseeks', hint: 'Press the Meeseeks box on the worktable in Rick’s garage.' },
   { id: 'plumbus', name: 'See a plumbus made', hint: 'Watch the plumbus factory in Rick’s garage.' },
   { id: 'portalpanic', name: 'Play Portal panic', hint: 'Play the Portal panic cabinet in Rick’s garage.' },
   { id: 'quiz', name: 'Pass the pop quiz', hint: 'Sit Mr. Goldenfold’s pop quiz at Harry Herpson High, and get seven right.' },
   { id: 'fly', name: 'Fly the cruiser', hint: 'Board Rick’s space cruiser in the driveway and take it up over the neighbourhood.' },
   { id: 'president', name: 'Meet the President', hint: 'The President’s limo is parked outside the Smith house, and he wants Rick.' },
-  { id: 'oval', name: 'Visit the Oval Office', hint: 'Take the President’s portal in the corner of Rick’s garage.' },
+  { id: 'oval', name: 'Visit the Oval Office', hint: 'Take the President’s portal by the garage door in Rick’s garage.' },
   { id: 'diner', name: 'Have breakfast at Shoney’s', hint: 'A Federation agent is waiting in a booth at Shoney’s, up the street from the Smiths’.' },
-  { id: 'portal', name: 'Go through the portal', hint: 'Step through the portal at the back of Rick’s garage.' },
+  { id: 'portal', name: 'Go through the portal', hint: 'Step through the portal on the west wall of Rick’s garage.' },
   { id: 'basement', name: 'Find Rick’s secret lab', hint: 'There’s a hatch in the garage floor.' },
   { id: 'mindblowers', name: 'Watch Morty’s Mind Blowers', hint: 'Through the door in Rick’s clone lab, sit in the chair.' },
   { id: 'roy', name: 'Play Roy', hint: 'Find Blips and Chitz on the other side of the portal, and put the headset on at the Roy cabinet.' },

@@ -144,12 +144,32 @@ export const RIVER_Y = -2.1;
 const circle = (id, x, z, r, o = {}) => ({ id, kind: 'circle', x, z, r, ...o });
 const box = (id, b, o = {}) => ({ id, kind: 'box', x: b.x, z: b.z, w: b.w, d: b.d, turn: b.turn || 0, ...o });
 
+// ── on the side: Legolas's targets ──
+// A mark by the path west of the city where you stand to shoot, and five
+// painted boards on their stands among the mallorns north of it: each
+// [how far off, which way (degrees east of north), how high its middle].
+export const BUTTS = { x: -17, z: -3.4, face: Math.PI / 2 };
+export const BOARDS = [
+  [11, 45, 1.3],
+  [15, -6, 1.6],
+  [19, -39, 1.4],
+  [23, 3, 1.8],
+  [31, 54, 1.5],
+].map(([d, deg, up], id) => {
+  const a = (deg * Math.PI) / 180;
+  const x = BUTTS.x + Math.sin(a) * d;
+  const z = BUTTS.z - Math.cos(a) * d;
+  // `face` turns the board's front to the mark
+  return { id, x, z, up, r: 0.55, face: Math.atan2(-(BUTTS.z - z), BUTTS.x - x) };
+});
+
 export const COLLIDERS = [
   circle('tree', TREE.x, TREE.z, TREE.r + 1.3, { top: 60 }),
   ...CITY.map((c, i) => circle(`city${i}`, c.x, c.z, c.r + 0.3, { top: 40 })),
   ...MALLORNS.map(([x, z, r], i) => circle(`mallorn${i}`, x, z, r + 0.3, { top: 40 })),
   circle('mirror', MIRROR.x, MIRROR.z, 0.95, { low: true, top: 1.1 }),
   box('table', TABLE, { low: true, top: 0.9 }),
+  ...BOARDS.map((b) => circle(`board${b.id}`, b.x, b.z, 0.45, { low: true, top: 2.4 })),
 ];
 // the wood's edges: the stream, the river, and the trees thick past north
 // and south
@@ -167,6 +187,16 @@ export const SPOTS = [
   { id: 'table', x: TABLE.x - 1.6, z: TABLE.z, r: 2.4, quest: 'gifts' },
   { id: 'boats', x: LANDING.x - 1, z: LANDING.z, r: 3, quest: 'argonath' },
 ];
+
+// The targets as the archery's rules see them (./rules.js newRange): where
+// the arrow leaves the bow, the boards' middles, the trunks it can stick
+// in, and the ground.
+export const RANGE = {
+  from: { x: BUTTS.x, y: groundHeight(BUTTS.x, BUTTS.z) + 1.05, z: BUTTS.z },
+  targets: BOARDS.map((b) => ({ x: b.x, y: groundHeight(b.x, b.z) + b.up, z: b.z, r: b.r })),
+  trunks: COLLIDERS.filter((c) => c.kind === 'circle' && !c.low).map((c) => ({ x: c.x, z: c.z, r: c.r - 0.3 })),
+  ground: groundHeight,
+};
 
 export const castFor = (next) => CAST.filter((c) => !c.while || c.while.includes(next));
 

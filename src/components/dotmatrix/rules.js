@@ -21,18 +21,18 @@
 //   = path         : grass, one up ! grass, two up  % grass, three up
 //   T tree         Y tree, one up  o boulder        O stepping stone
 //   # stone wall   H house         G the Game Boy   P pipe
-//   B the dock     s a sign
+//   B the dock     s a sign        L the lighthouse M the windmill, three up
 export const MAP = [
   '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~', // 0
   '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~', // 1
-  '~~~~~~~~~~~~~~~~~~~~~~~~,,,,,,,~~~~~~~~~~~~~,,,~', // 2
+  '~~~~~~~~~~~~~~~~~~~~~~~~,,,,,,,~~~~~~~~~~~~~,,L~', // 2
   '~~~~~~~~~~~~~~~~~,,,,,,,,..T..,,,,~~~~~~~~~,,.,~', // 3
   '~~~~~~~~~~~~~~,,,T...T....T.....,,,~~~~~~~~~,,,~', // 4
   '~~~~~~~~~~~~Y::...T....T..........,,~~~~~~O~~~~~', // 5
   '~~~~~~~~~~~!!::..T...............T.,~~~~O~~~~~~~', // 6
   '~~~~~~~~~%%!!!::........T..........,,~O~~~~~~~~~', // 7
   '~~~~~~~~%%%%%!!::...T.........s.....,~~~~~~~~~~~', // 8
-  '~~~~~~~!%%%%%%!Y:...............T...,,~~~~~~~~~~', // 9
+  '~~~~~~~!M%%%%%!Y:...............T...,,~~~~~~~~~~', // 9
   '~~~~~~!!!%%%%!!::.==============.....,,~~~~~~~~~', // 10
   '~~~~~~Y:!!!!!!!::.==============......,,~~~~~~~~', // 11
   '~~~~~~,::!!!!!:::.=====GGGG=====.......,~~~~~~~~', // 12
@@ -90,6 +90,8 @@ const LEGEND = {
   P: { kind: 'pipe', ground: 0, top: 1.25 },
   B: { kind: 'dock', ground: SEA, top: 0 },
   s: { kind: 'sign', ground: 0, top: 1.1 },
+  L: { kind: 'lighthouse', ground: 0, top: 4.6 },
+  M: { kind: 'mill', ground: 3, top: 7 },
 };
 export const legend = (c) => LEGEND[c] ?? LEGEND['~'];
 
@@ -244,6 +246,83 @@ export const SIGNS = [
   { id: 'pipes', ix: 33, iz: 29, title: 'The pipe garden', text: 'Stand on a pipe and its plant stays down. One of these pipes goes somewhere.' },
   { id: 'tower', ix: 30, iz: 8, title: 'Block Drop tower', text: 'Every piece landed just right. One step up at a time, all the way round.' },
 ];
+
+// The villagers: four islanders who walk a short beat each and stop to talk
+// when you come up to them, each with a hint or two about where the
+// cartridges are, and a last word once you've found the whole set.
+export const TALK_R = 1.6; // they stop and turn to face you from this close
+export const VILLAGERS = [
+  {
+    id: 'nana',
+    name: 'Nana',
+    from: [18.5, 25.5],
+    to: [24.5, 25.5],
+    speed: 0.9,
+    dwell: 1.6,
+    lines: [
+      'Welcome, dear. Eight cartridges on this island, they say, and every one of them something he built.',
+      'The lad next door keeps climbing onto my roof. Says he left something up there. Use the boulder, if you must.',
+      'There’s a plateau up west, three steps high. You can’t jump two at once, so take them one at a time.',
+    ],
+    done: 'All eight? Well, aren’t you something. Put the kettle on.',
+  },
+  {
+    id: 'fisher',
+    name: 'The fisher',
+    from: [20.5, 34.5],
+    to: [25.5, 34.5],
+    speed: 0.8,
+    dwell: 2.2,
+    lines: [
+      'Three stepping stones out to the islet, off the north-east shore. Not one of them where you’d want it.',
+      'Fall in and the sea puts you back where you were. It’s that sort of sea.',
+      'The snake in the pen never stops. Wait for the gap and go in at the west wall.',
+    ],
+    done: 'The whole set. I’ll tell the gulls.',
+  },
+  {
+    id: 'gardener',
+    name: 'The gardener',
+    from: [31.5, 32.5],
+    to: [40.5, 32.5],
+    speed: 1.0,
+    dwell: 1.4,
+    lines: [
+      'Stand on a pipe and the plant in it stays down. Sulks, I reckon.',
+      'The one in the middle has a cartridge sitting on it. Jump across between bites.',
+      'One of the pipes by the road isn’t for plants. Stand on it and press B.',
+    ],
+    done: 'You found the one up on the cloud? Even I haven’t been up there.',
+  },
+  {
+    id: 'kid',
+    name: 'The kid',
+    from: [18.5, 18.5],
+    to: [24.5, 18.5],
+    speed: 1.3,
+    dwell: 0.9,
+    lines: [
+      'The big one in the square plays three games. I can’t reach the buttons.',
+      'There’s a cartridge in the long grass out west, but the walkers are there. Jump on them, don’t walk into them.',
+      'Block Drop tower, north-east. One step up at a time, all the way round.',
+    ],
+    done: 'You got them ALL? Can I have a go on the Game Boy now?',
+  },
+];
+const VILLAGER = Object.fromEntries(VILLAGERS.map((v) => [v.id, v]));
+export const HEART_EVERY = 15; // coins picked up between hearts back
+
+// The camera: how far it stands from the hero (the wheel, a pinch, + and -,
+// or a pad's triggers change it), and how steeply it looks down from there
+// (less, the closer it comes, so a close view is more over his shoulder).
+export const ZOOM = { min: 7, start: 12.5, max: 20 };
+export const zoomTo = (dist, k) => Math.max(ZOOM.min, Math.min(ZOOM.max, dist * k));
+export const pitchFor = (dist) => 0.68 + (dist - ZOOM.start) * 0.018;
+
+// Where the hero is, for the other islanders online (the towns' rooms,
+// middleearth/towns/travellers.js): the island's own coordinates, how fast
+// he's going and how high he stands.
+export const islanderStep = (h) => ({ x: h.x, z: h.z, face: h.face, speed: h.moving ?? 0, y: Math.max(0, h.y) });
 
 // ── the columns ──
 
@@ -492,6 +571,55 @@ export function walkerAt(w, t) {
   return { x: ax + (bx - ax) * k, y: 0, z: az + (bz - az) * k, face: Math.atan2((bx - ax) * dir, (bz - az) * dir) };
 }
 
+// Each villager's state: where along the beat (s, from `from`), which way,
+// how long still to wait at an end, where they are and which way they face.
+export const newFolk = () =>
+  Object.fromEntries(
+    VILLAGERS.map((v, i) => {
+      const k = ((i * 0.37) % 1) * 0.8;
+      return [v.id, { s: k * Math.hypot(v.to[0] - v.from[0], v.to[1] - v.from[1]), dir: 1, wait: 0, x: v.from[0] + (v.to[0] - v.from[0]) * k, z: v.from[1] + (v.to[1] - v.from[1]) * k, face: Math.atan2(v.to[0] - v.from[0], v.to[1] - v.from[1]), stopped: false }];
+    }),
+  );
+
+// One step of a villager: stopped, facing the hero, while he's within TALK_R;
+// otherwise there and back along the beat, waiting `dwell` at each end.
+export function stepVillager(v, f, dt, hero) {
+  const dx = hero.x - f.x;
+  const dz = hero.z - f.z;
+  if (Math.hypot(dx, dz) < TALK_R && (hero.y ?? 0) < 1.2) {
+    f.stopped = true;
+    const target = Math.atan2(dx, dz);
+    let d = target - f.face;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    f.face += d * (1 - Math.exp(-10 * dt));
+    return f;
+  }
+  f.stopped = false;
+  const len = Math.hypot(v.to[0] - v.from[0], v.to[1] - v.from[1]);
+  if (f.wait > 0) {
+    f.wait = Math.max(0, f.wait - dt);
+  } else {
+    f.s += f.dir * v.speed * dt;
+    if (f.s >= len) {
+      f.s = len;
+      f.dir = -1;
+      f.wait = v.dwell;
+    } else if (f.s <= 0) {
+      f.s = 0;
+      f.dir = 1;
+      f.wait = v.dwell;
+    }
+    const k = f.s / len;
+    f.x = v.from[0] + (v.to[0] - v.from[0]) * k;
+    f.z = v.from[1] + (v.to[1] - v.from[1]) * k;
+  }
+  const target = Math.atan2((v.to[0] - v.from[0]) * f.dir, (v.to[1] - v.from[1]) * f.dir);
+  let d = target - f.face;
+  d = Math.atan2(Math.sin(d), Math.cos(d));
+  f.face += d * (1 - Math.exp(-10 * dt));
+  return f;
+}
+
 // the snake: where each segment is at time t, head first
 const loopLen = SNAKE.loop.reduce((n, p, i) => {
   const q = SNAKE.loop[(i + 1) % SNAKE.loop.length];
@@ -549,8 +677,21 @@ export function newGame({ found = [] } = {}) {
     used: new Set(), // "?" blocks already bumped
     flat: {}, // walker id → when it went flat
     plants: Object.fromEntries(PIPES.filter((p) => p.plant).map((p, i) => [p.id, newPlant(i * 0.3)])),
+    folk: newFolk(),
+    said: {}, // villager id → how many lines heard
     gone: false, // in a pipe
   };
+}
+
+// What a villager says next: their lines in turn, round again, or their last
+// word once every cartridge is found. Or null, for nobody.
+export function talk(g, id) {
+  const v = VILLAGER[id];
+  if (!v) return null;
+  if (g.found.size === CARTRIDGES.length) return { name: v.name, text: v.done };
+  const n = g.said[id] ?? 0;
+  g.said[id] = n + 1;
+  return { name: v.name, text: v.lines[n % v.lines.length] };
 }
 
 const flatDist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -584,6 +725,15 @@ export function nearAction(g) {
   if (h.x > f.x0 && h.x < f.x1 && h.z > f.z0 && h.z < f.z1 && h.y < 0.5) return { kind: 'gameboy', id: 'gameboy' };
   let best = null;
   let bd = 1.25;
+  for (const v of VILLAGERS) {
+    const p = g.folk[v.id];
+    const d = Math.hypot(h.x - p.x, h.z - p.z);
+    if (d < bd && h.y < 1.2) {
+      bd = d;
+      best = { kind: 'talk', id: v.id };
+    }
+  }
+  if (best) return best;
   for (const s of SIGNS) {
     const d = Math.hypot(h.x - (s.ix + 0.5), h.z - (s.iz + 0.5));
     if (d < bd && h.y < 1.2) {
@@ -624,6 +774,7 @@ export function step(g, input, dt) {
     return ev;
   }
   g.hurt = Math.max(0, g.hurt - dt);
+  const coinsBefore = g.coins.size; // (a "?" block's coin counts too)
   const still = { x: 0, z: 0, jump: false, jumped: false };
   for (const e of moveHero(h, g.hurt > HERO.hurt - 0.35 ? still : input, dt)) {
     if (e.type === 'bump' && e.block && !g.used.has(e.block)) {
@@ -654,6 +805,15 @@ export function step(g, input, dt) {
       ev.push({ type: 'coin', id: c.id });
     }
   }
+  // every so many coins, a heart back; and the last one of all
+  if (g.coins.size !== coinsBefore) {
+    if (Math.floor(g.coins.size / HEART_EVERY) > Math.floor(coinsBefore / HEART_EVERY) && g.hearts < HERO.hearts) {
+      g.hearts += 1;
+      ev.push({ type: 'coinheart' });
+    }
+    if (g.coins.size === COINS.length + BLOCKS.filter((b) => !b.heart).length) ev.push({ type: 'allcoins' });
+  }
+  for (const v of VILLAGERS) stepVillager(v, g.folk[v.id], dt, h);
   for (const c of CARTRIDGES) {
     if (g.found.has(c.id)) continue;
     const [x, y, z] = c.at;

@@ -8,6 +8,7 @@ import { local, prefersReducedMotion, useFrameLoop } from '../../../lib/hooks';
 import { audioContext } from '../../../lib/audio';
 import { BITE, DIRS, LEVEL_COUNT, LEVELS, act, biteTargets, cloneState, guardAt, laserOn, newLevel, parseLevel, pathTo, solveLevel } from './rules';
 import './widow.css';
+import '../../../styles/lazy/avengers.css';
 
 const load = () => import('./scene');
 const sfx = () => import('../../../lib/sfx');

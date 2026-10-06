@@ -13,11 +13,14 @@
 // first time the nose comes onto another system's star), and the moments the
 // systems play out (the Death Star's tractor beam and its hangar at
 // Alderaan, Hoth's ion cannon and the transports getting away, the
-// superlaser over Scarif and its shield, Starkiller Base drinking its sun,
-// the second Death Star's shield at Endor, a Star Destroyer arriving).
-// `hunted` and `kill` are the galaxy's own hunters (galaxy/hunted.js): the
-// Separatists' droids, the First Order's TIEs and the Sith Eternal's.
-// galaxyCrew lays all this over a crew's own lines.
+// superlaser over Scarif and its shield, the second Death Star's shield at
+// Endor, a Star Destroyer arriving, and the hyperdrive coming back once
+// you're clear of an Interdictor's gravity well). `interdicted` is the
+// Interdictor pulling you out of hyperspace (interdiction.js), over the
+// universe map's own interdiction line. `hunted` and `kill` are the galaxy's
+// own hunters (galaxy/hunted.js): the Separatists' droids, and the Imperial
+// remnant's TIEs over the New Republic's worlds (shot down, they're TIEs:
+// the crews' own lines). galaxyCrew lays all this over a crew's own lines.
 
 export const GALAXY_LINES = {
   cruiser: {
@@ -82,26 +85,21 @@ export const GALAXY_LINES = {
         ['morty', 'A beach planet! Rick, can we stop? Please?'],
         ['rick', 'Scarif, Morty. Lovely beaches. Historically terrible survival rate.'],
       ],
-      jakku: [
-        ['morty', 'Rick, there’s a crashed Star Destroyer in the sand!'],
-        ['rick', 'Jakku, Morty. The galaxy’s junkyard. Somebody left the Millennium Falcon here under a tarp.'],
+      nevarro: [
+        ['morty', 'Rick, it’s all lava and black rock, and everybody’s wearing a helmet!'],
+        ['rick', 'Nevarro, Morty. Bounty hunter town. Don’t make eye contact. Not that they’ve got eyes, it’s all visor.'],
       ],
-      crait: [
-        ['morty', 'Rick, the ground’s white, but it goes red where you touch it!'],
-        ['rick', 'Salt on red rock, Morty. A guy held off a whole army here without even showing up.'],
+      mandalore: [
+        ['morty', 'Rick, the whole planet’s made of glass!'],
+        ['rick', 'The Empire glassed it, Morty. And they still won’t take their helmets off down there. Respect, honestly.'],
       ],
-      starkiller: [
-        ['morty', 'Rick, that planet’s got a giant trench cut all the way round it!'],
-        ['rick', 'Starkiller Base, Morty. It’s a Death Star, but bigger. That was the whole pitch.'],
+      lothal: [
+        ['morty', 'Aw, Rick, look! A little cat thing in the grass!'],
+        ['rick', 'Loth-cat, Morty. Don’t. It bites, and the wolves round here are the size of a car.'],
       ],
-      exegol: [
-        ['morty', 'Rick, it’s all lightning and Star Destroyers and creepy chanting!'],
-        ['rick', 'Exegol, Morty. Somehow, Palpatine returned. Don’t ask how. Nobody knows.'],
-      ],
-      ahchto: [
-        ['morty', 'Aww, Rick, look at the little bird things!'],
-        ['rick', 'Porgs, Morty. Basically merchandise with wings.'],
-        ['morty', 'And why is that old man milking a walrus?'],
+      sorgan: [
+        ['morty', 'It’s so peaceful, Rick. Just forests and little ponds.'],
+        ['rick', 'Krill farms, Morty. Peaceful till the raiders show up with a walker. Then it’s Seven Samurai.'],
       ],
     },
     events: {
@@ -129,14 +127,6 @@ export const GALAXY_LINES = {
         ['morty', 'Rick! The Death Star just shot the planet!'],
         ['rick', 'One reactor, Morty. That’s the Empire going easy. Let’s not stick around for full power.'],
       ],
-      'starkiller-charge': [
-        ['morty', 'Rick, the sun’s going dark! Something’s drinking it!'],
-        ['rick', 'Starkiller’s charging, Morty. It eats a whole sun to fire once. Real efficient.'],
-      ],
-      'starkiller-fire': [
-        ['morty', 'Rick! It fired! Those were whole planets, Rick!'],
-        ['rick', 'That was the Hosnian system, Morty. And they still built a weak spot into this thing.'],
-      ],
       'shield-down': [
         ['comms', 'The shield is down! Commence attack on the Death Star’s main reactor.'],
         ['morty', 'They did it, Rick! The teddy bears did it!'],
@@ -160,19 +150,23 @@ export const GALAXY_LINES = {
         ['morty', 'Rick! A giant triangle just came out of nowhere!'],
         ['rick', 'Star Destroyer, Morty. A mile of Imperial overcompensation. Keep your head down.'],
       ],
+      wellclear: [
+        ['rick', 'Well’s gone, Morty. Hyperdrive’s back. Let’s not get counted again.'],
+        ['morty', 'C-can we take the slow way for a bit?'],
+      ],
     },
+    interdicted: [
+      ['morty', 'Rick! We fell out of hyperspace! Why did we fall out of hyperspace?!'],
+      ['rick', 'Interdictor, Morty. Gravity wells. Somebody counted our jumps. Shoot the somebody.'],
+    ],
     hunted: {
       separatists: [
         ['morty', 'Rick, droid fighters! A whole swarm of ’em!'],
         ['rick', 'Vulture droids, Morty. Cheap, dumb, and they come in bulk. Shoot!'],
       ],
-      firstorder: [
-        ['morty', 'Rick, TIE fighters! The shiny new kind!'],
-        ['rick', 'First Order, Morty. The Empire’s reboot. Same helmets, worse ideas. Shoot back!'],
-      ],
-      sith: [
-        ['morty', 'Rick, red TIEs! They’re coming out of the lightning!'],
-        ['rick', 'Sith fighters, Morty. Space goths. Shoot ’em before they start monologuing.'],
+      remnant: [
+        ['morty', 'Rick, TIE fighters! I thought the Empire lost!'],
+        ['rick', 'It did, Morty. These are the leftovers. Same TIEs, smaller budget. Shoot!'],
       ],
     },
     kill: {
@@ -183,10 +177,6 @@ export const GALAXY_LINES = {
       trifighter: [
         ['rick', 'Riggity riggity wrecked, son!', 'riggity'],
         ['morty', 'It had three arms, Rick! Three!'],
-      ],
-      tiefo: [
-        ['morty', 'I got one! A First Order one!'],
-        ['rick', 'New paint job, same TIE, Morty. Pops just the same.'],
       ],
     },
   },
@@ -253,26 +243,21 @@ export const GALAXY_LINES = {
         ['luke', 'Scarif. This is where they stole the Death Star plans. The plans you carried, Artoo.'],
         ['r2', '[a slow, solemn whistle]'],
       ],
-      jakku: [
-        ['luke', 'More desert. I don’t like sand, Artoo. It’s coarse, and it gets everywhere.'],
-        ['r2', '[a startled beep: he’s heard that somewhere before]'],
+      nevarro: [
+        ['luke', 'Nevarro. Lava, ash and a whole guild of bounty hunters. Keep your head down, Artoo.'],
+        ['r2', '[a nervous warble: every hunter in the sector is down there]'],
       ],
-      crait: [
-        ['luke', 'An old Rebel base on the salt. I feel like I’ll be needed here one day, Artoo.'],
-        ['r2', '[a puzzled warble]'],
+      mandalore: [
+        ['luke', 'Mandalore. The whole surface is glass. The Empire did this, Artoo.'],
+        ['r2', '[a low, mournful whistle: there were cities under domes here once]'],
       ],
-      starkiller: [
-        ['luke', 'This was Ilum. The Jedi came here for the crystals in their lightsabers.'],
-        ['r2', '[an angry, rising whistle: and look what they did to it]'],
+      lothal: [
+        ['luke', 'Lothal. Grass and rock spires as far as you can see. There was a Jedi here, Artoo. I can feel it.'],
+        ['r2', '[a curious warble at something cat-shaped in the grass]'],
       ],
-      exegol: [
-        ['luke', 'Exegol. The dark side’s so strong here I can hardly breathe.'],
-        ['r2', '[a frightened, wavering whistle]'],
-      ],
-      ahchto: [
-        ['luke', 'An island at the end of the galaxy. A good place to disappear.'],
-        ['comms', 'Help me, Obi-Wan Kenobi. You’re my only hope.', 'helpMeObiWan'],
-        ['luke', 'Artoo. That was a cheap move.'],
+      sorgan: [
+        ['luke', 'Sorgan. Forests, ponds, a little village. Somewhere you could hide a child.'],
+        ['r2', '[a knowing beep: he knows a desert where someone did]'],
       ],
     },
     events: {
@@ -303,14 +288,6 @@ export const GALAXY_LINES = {
         ['luke', 'The Death Star! It’s firing on its own base!'],
         ['r2', '[a horrified shriek]'],
       ],
-      'starkiller-charge': [
-        ['luke', 'The star’s going dark. That planet is drinking it in!'],
-        ['r2', '[a frightened, rising whistle]'],
-      ],
-      'starkiller-fire': [
-        ['luke', 'It fired through hyperspace. Artoo… I felt every one of them.'],
-        ['r2', '[a long, low, mournful whistle]'],
-      ],
       'shield-down': [
         ['comms', 'The shield is down! Commence attack on the Death Star’s main reactor.'],
         ['luke', 'They did it! Come on, Artoo!'],
@@ -333,19 +310,23 @@ export const GALAXY_LINES = {
         ['r2', '[a frantic warble]'],
         ['luke', 'Star Destroyer, coming out of lightspeed right on top of us!'],
       ],
+      wellclear: [
+        ['luke', 'We’re clear of the well. The hyperdrive’s back!'],
+        ['r2', '[a relieved whistle: he’s plotting a quieter route]'],
+      ],
     },
+    interdicted: [
+      ['r2', '[a panicked shriek]'],
+      ['luke', 'We’ve been pulled out of hyperspace! An Interdictor: its gravity well’s got us!'],
+    ],
     hunted: {
       separatists: [
         ['luke', 'Droid starfighters? I thought those went out with the Clone Wars!'],
         ['r2', '[an indignant whistle: he’s fought these before]'],
       ],
-      firstorder: [
-        ['luke', 'TIEs, but not the Empire’s. Whoever they are, they’re not friendly!'],
-        ['r2', '[an urgent warble]'],
-      ],
-      sith: [
-        ['luke', 'Red TIEs. I can feel the dark side on them.'],
-        ['r2', '[a frightened shriek]', 'r2Scream'],
+      remnant: [
+        ['luke', 'TIEs! The Emperor’s gone, and they’re still out here.'],
+        ['r2', '[an urgent warble: some people don’t know when it’s over]'],
       ],
     },
     kill: {
@@ -356,10 +337,6 @@ export const GALAXY_LINES = {
       trifighter: [
         ['luke', 'Tri-fighter down! Those take some stopping.'],
         ['r2', '[a triumphant whistle]', 'r2Whistle'],
-      ],
-      tiefo: [
-        ['luke', 'Got him! New TIEs, same blind spot.'],
-        ['r2', '[a delighted whoop]'],
       ],
     },
   },
@@ -424,27 +401,21 @@ export const GALAXY_LINES = {
         ['han', 'A shield over the whole planet, and one gate. Even I wouldn’t smuggle in here.'],
         ['chewie', '[a solemn rumble: some brave people did]'],
       ],
-      jakku: [
-        ['han', 'Jakku. If anybody ever leaves the Falcon on this junk pile, you come and find her.'],
-        ['chewie', '[a solemn roar: he promises]'],
+      nevarro: [
+        ['han', 'Nevarro. Half the bounty hunters in the Outer Rim drink here, and I owe the other half.'],
+        ['chewie', '[a warning growl: keep the engines warm]'],
       ],
-      crait: [
-        ['comms', 'They hate that ship!'],
-        ['han', 'Everybody hates this ship. Their mistake.'],
-        ['chewie', '[a proud roar]'],
+      mandalore: [
+        ['han', 'Mandalore. Never met a Mandalorian who didn’t shoot first.'],
+        ['chewie', '[a pointed grunt: he’d know all about shooting first]'],
       ],
-      starkiller: [
-        ['han', 'So, it’s big.'],
-        ['chewie', '[a worried growl: he has a bad feeling about this one]'],
-        ['han', 'Relax. There’s always a way to blow these things up.'],
+      lothal: [
+        ['han', 'Lothal. Grass, Imperial factories, and a rebel cell that gave the Empire a lot of grief, I hear.'],
+        ['chewie', '[an approving roar: his kind of people]'],
       ],
-      exegol: [
-        ['han', 'Exegol. Hokey religions and ancient weapons, and a whole fleet of ’em.'],
-        ['chewie', '[a defiant roar: Lando’s bringing friends]'],
-      ],
-      ahchto: [
-        ['han', 'Islands, rain, and a bunch of little birds staring at me.'],
-        ['chewie', '[a guilty rumble: he definitely did not roast a porg here]'],
+      sorgan: [
+        ['han', 'Sorgan. Quiet little backwater. Just where I’d park if somebody was after me.'],
+        ['chewie', '[a knowing rumble: somebody always is]'],
       ],
     },
     events: {
@@ -475,14 +446,6 @@ export const GALAXY_LINES = {
         ['chewie', '[a horrified roar]'],
         ['han', 'That’s the Empire. Not even their own people are safe.'],
       ],
-      'starkiller-charge': [
-        ['han', 'It’s sucking the sun dry. When the light’s gone, it fires.'],
-        ['chewie', '[an urgent roar: then let’s not be here when it does]'],
-      ],
-      'starkiller-fire': [
-        ['han', 'The whole Hosnian system. In one shot.'],
-        ['chewie', '[a long, grieving howl]'],
-      ],
       'shield-down': [
         ['comms', 'The shield is down! Commence attack on the Death Star’s main reactor.'],
         ['han', 'That’s our cue. Not a scratch on her this time, Chewie.'],
@@ -506,19 +469,24 @@ export const GALAXY_LINES = {
         ['han', 'Came out of lightspeed way too close. Somebody’s admiral is in trouble.'],
         ['chewie', '[a nervous growl]'],
       ],
+      wellclear: [
+        ['han', 'Out of the well. Hyperdrive’s back. Told you she could do it.'],
+        ['chewie', '[a long, relieved groan]'],
+      ],
     },
+    interdicted: [
+      ['han', 'That’s an Interdictor! They yanked us right out of hyperspace!'],
+      ['chewie', '[a furious roar]'],
+      ['han', 'Somebody’s been counting our jumps. Hold on.'],
+    ],
     hunted: {
       separatists: [
         ['han', 'Droid fighters? What year is it?'],
         ['chewie', '[an angry roar: he fought these on Kashyyyk]'],
       ],
-      firstorder: [
-        ['han', 'TIEs on our tail. Good. They hate this ship.'],
+      remnant: [
+        ['han', 'TIEs? The Empire’s finished. Somebody forgot to tell these guys.'],
         ['chewie', '[a defiant roar]'],
-      ],
-      sith: [
-        ['chewie', '[an alarmed roar: red TIEs, out of the storm]'],
-        ['han', 'I got a bad feeling about this.', 'badFeelingHan'],
       ],
     },
     kill: {
@@ -529,10 +497,6 @@ export const GALAXY_LINES = {
       trifighter: [
         ['han', 'That one took a few. She’s still got it.'],
         ['chewie', '[a triumphant roar]', 'chewieRoar'],
-      ],
-      tiefo: [
-        ['han', 'Ha! Told you they hate this ship.'],
-        ['chewie', '[laughs]', 'chewieLaugh'],
       ],
     },
   },
@@ -599,26 +563,21 @@ export const GALAXY_LINES = {
         ['jesse', 'Yo, a beach planet! Can we stop, Mr. White? Like, for an hour?'],
         ['walt', 'It’s an Imperial records vault with a shield over the whole planet, Jesse. We are not stopping.'],
       ],
-      jakku: [
-        ['jesse', 'Yo, there’s a crashed spaceship the size of a city out there in the sand.'],
-        ['walt', 'Scavengers, Jesse. Lock the RV. Out here, anything that isn’t moving becomes parts.'],
+      nevarro: [
+        ['jesse', 'Yo, everybody here’s got a helmet and a blaster. Like, everybody.'],
+        ['walt', 'A guild of hunters, Jesse, paid by the head. Keep your hood up and your mouth shut.'],
       ],
-      crait: [
-        ['jesse', 'Yo, the ground’s white on top and red underneath. That’s crazy.'],
-        ['walt', 'Salt on a red mineral, Jesse. Could be cinnabar. Mercury. You remember what mercury can do.'],
-        ['jesse', 'The fake crystal that blew up Tuco’s office? Sick!'],
+      mandalore: [
+        ['jesse', 'Yo, the whole planet’s glass. Like, sand that got cooked.'],
+        ['walt', 'Trinitite, Jesse. They left the same glass in the New Mexico desert in 1945.'],
       ],
-      starkiller: [
-        ['jesse', 'Yo, they turned a whole planet into a gun?'],
-        ['walt', 'And they power it by eating a sun, Jesse. That’s not chemistry. That’s ego.'],
+      lothal: [
+        ['jesse', 'Yo, grass for miles, and those rocks sticking up like giant fingers. It’s kinda beautiful.'],
+        ['walt', 'The Empire built factories here, Jesse. They took a beautiful place and made it a supply chain.'],
       ],
-      exegol: [
-        ['walt', 'Somehow, Palpatine returned, Jesse. A man who simply refuses to stay dead.'],
-        ['jesse', 'He can’t keep getting away with it!', 'gettingAway'],
-      ],
-      ahchto: [
-        ['jesse', 'Yo, look at the little bird dudes! So cute!'],
-        ['walt', 'A Jedi came here to hide from everything he’d done, Jesse. I had a cabin in New Hampshire.'],
+      sorgan: [
+        ['jesse', 'Yo, a little farm village by a pond. Mr. White, can we just… live here?'],
+        ['walt', 'Krill, Jesse. A small, honest product. It never lasts. Somebody always comes for the farm.'],
       ],
     },
     events: {
@@ -648,14 +607,6 @@ export const GALAXY_LINES = {
         ['jesse', 'Yo! They just shot their own base! Their own people!'],
         ['walt', 'Covering their tracks, Jesse. When the lab’s compromised, you burn the lab.'],
       ],
-      'starkiller-charge': [
-        ['jesse', 'Yo, the sun is like, draining into that planet!'],
-        ['walt', 'It’s charging, Jesse. A battery the size of a planet. Horrifying. But elegant.'],
-      ],
-      'starkiller-fire': [
-        ['jesse', 'Mr. White… it just blew up a bunch of planets. With people on them.'],
-        ['walt', 'I know, Jesse. No one should have that kind of power.'],
-      ],
       'shield-down': [
         ['comms', 'The shield is down! Commence attack on the Death Star’s main reactor.'],
         ['jesse', 'The force field’s down! Mr. White, we can go in!'],
@@ -678,20 +629,23 @@ export const GALAXY_LINES = {
         ['jesse', 'Yo, a giant triangle just showed up out of nowhere!'],
         ['walt', 'A Star Destroyer, Jesse. The DEA of this galaxy. Don’t speed.'],
       ],
+      wellclear: [
+        ['walt', 'We’re clear of the well, Jesse. The drive will take.'],
+        ['jesse', 'Can we, like, not do that again for a while?'],
+      ],
     },
+    interdicted: [
+      ['jesse', 'Yo, the stretchy stars stopped! Why’d the stretchy stars stop?!'],
+      ['walt', 'An Interdictor, Jesse. A gravity well. Somebody has been counting our jumps.'],
+    ],
     hunted: {
       separatists: [
         ['jesse', 'Yo, robot bird things! They’re shooting at us!'],
         ['walt', 'Automated, Jesse. No judgment, no imagination. We out-think them.'],
       ],
-      firstorder: [
-        ['jesse', 'Yo, these bug zappers are all shiny and new!'],
-        ['walt', 'A new regime, Jesse. Same product, better packaging. Shoot back.'],
-      ],
-      sith: [
-        ['jesse', 'Mr. White, red TIE things everywhere! We are in so much danger!'],
-        ['walt', 'I am not in danger, Skyler. I am the danger.', 'theDanger'],
-        ['jesse', 'Did you just call me Skyler?'],
+      remnant: [
+        ['jesse', 'Yo, bug zappers again! I thought the bad guys lost!'],
+        ['walt', 'An empire never dies all at once, Jesse. The remnants are the dangerous part.'],
       ],
     },
     kill: {
@@ -702,10 +656,6 @@ export const GALAXY_LINES = {
       trifighter: [
         ['jesse', 'Yeah, Mr. White! Yeah, science!', 'yeahScience'],
         ['walt', 'Three hits for three arms, Jesse. Persistence.'],
-      ],
-      tiefo: [
-        ['jesse', 'Yo, I tagged a shiny one!'],
-        ['walt', 'New regime, Jesse. Same weak points.'],
       ],
     },
   },
@@ -725,5 +675,6 @@ export function galaxyCrew(crew) {
     events: { ...crew.events, ...g.events },
     hunted: { ...crew.hunted, ...g.hunted },
     kill: { ...crew.kill, ...g.kill },
+    interdicted: g.interdicted ?? crew.interdicted,
   };
 }

@@ -28,6 +28,9 @@
 }
 .universe-tag[data-on] { display: flex; }
 .universe-tag[data-ally] { color: #8dffad; }
+/* just back from being shot down: can't be hit yet */
+.universe-tag[data-safe] { opacity: 0.55; }
+.universe-tag[data-safe] > b::after { content: ' · shielded'; font-weight: 400; }
 .universe-tag > b { font-weight: 500; }
 .universe-tag > i {
   display: none;

@@ -47,6 +47,13 @@ import {
   areaAt,
   canLand,
   collidersIn,
+  solidIn,
+  supportAt,
+  CLIMB,
+  CEILING,
+  STOOP,
+  FLY,
+  OUTSKIRTS,
   dropAt,
   exitCruiser,
   floorAt,
@@ -77,7 +84,8 @@ const street = [...BUILDINGS];
 const free = (area, x, z, rad = MORTY.radius, opts) => {
   if (!inArea(area, x, z, -rad)) return false;
   if (wallsIn(area).some((w) => segDist(x, z, w) < 1e-6)) return false;
-  const [px, pz] = pushOut(x, z, rad, collidersIn(area, opts), wallsIn(area));
+  // (what's low enough to get up onto is somewhere to stand)
+  const [px, pz] = pushOut(x, z, rad, solidIn(area, opts), wallsIn(area));
   return Math.hypot(px - x, pz - z) < 1e-6;
 };
 
@@ -192,10 +200,10 @@ describe('C-137: the areas', () => {
   it('knows the rooms from the outdoors, and pads in and out of an area', () => {
     expect(ROOM_IDS).toEqual(['house', 'upstairs', 'garage', 'school', 'arcade', 'basement', 'mindblowers', 'oval', 'diner']);
     expect(OUTDOOR).toEqual(['street', 'annex']);
-    expect(inArea('street', 60, 0)).toBe(true);
-    expect(inArea('street', 60.1, 0)).toBe(false);
-    expect(inArea('street', 60, 0, -0.4)).toBe(false);
-    expect(inArea('street', 60.3, 0, 0.4)).toBe(true);
+    expect(inArea('street', 150, 0)).toBe(true);
+    expect(inArea('street', 150.1, 0)).toBe(false);
+    expect(inArea('street', 150, 0, -0.4)).toBe(false);
+    expect(inArea('street', 150.3, 0, 0.4)).toBe(true);
   });
 });
 
@@ -562,15 +570,16 @@ describe('C-137: the furniture', () => {
   it('makes each piece a box in the way, where it stands, turned as it is drawn', () => {
     for (const f of FURNITURE) {
       const c = collidersIn(f.area).find((o) => o.id === f.id);
-      expect(c, f.id).toMatchObject({ kind: 'box', x: f.x, z: f.z, w: f.w, d: f.d, turn: f.turn });
+      expect(c, f.id).toMatchObject({ kind: 'box', x: f.x, z: f.z, w: f.w, d: f.d, turn: f.turn, top: f.h });
     }
-    // a turned piece is in the way along its turned sides: the couch is long on z, facing the TV
+    // a turned piece is in the way (of his feet, on the floor) along its turned sides: the couch is long on z, facing the TV
     const couch = FURNITURE.find((f) => f.id === 'couch');
+    const onFloor = (x, z) => Math.hypot(...((p) => [p[0] - x, p[1] - z])(pushOut(x, z, MORTY.radius, collidersIn('house'), wallsIn('house')))) < 1e-6;
     expect(Math.abs(Math.sin(couch.turn))).toBeCloseTo(1, 6);
-    expect(free('house', couch.x, couch.z - couch.w / 2 + 0.05)).toBe(false);
-    expect(free('house', couch.x, couch.z - couch.w / 2 - MORTY.radius - 0.05)).toBe(true);
-    expect(free('house', couch.x, couch.z - couch.w / 2 - MORTY.radius + 0.05)).toBe(false);
-    expect(free('house', couch.x + couch.d / 2 + MORTY.radius - 0.05, couch.z)).toBe(false);
+    expect(onFloor(couch.x, couch.z - couch.w / 2 + 0.05)).toBe(false);
+    expect(onFloor(couch.x, couch.z - couch.w / 2 - MORTY.radius - 0.05)).toBe(true);
+    expect(onFloor(couch.x, couch.z - couch.w / 2 - MORTY.radius + 0.05)).toBe(false);
+    expect(onFloor(couch.x + couch.d / 2 + MORTY.radius - 0.05, couch.z)).toBe(false);
   });
 
   it('keeps every piece of furniture clear of the walls inside the house: none stands on a wall line', () => {
@@ -1021,10 +1030,11 @@ describe('C-137: walking about as Morty', () => {
   });
 
   it('keeps to its own area: the edge of the street, and the walls of a room', () => {
-    const west = walk(newMorty(), { x: -1, z: 0, run: true }, 20);
+    const west = walk(newMorty(), { x: -1, z: 0, run: true }, 30);
     expect(west.x).toBeCloseTo(AREAS.street.x0 + MORTY.radius, 1);
     const arrive = link('garage-door').arrive;
-    const east = walk(newMorty(arrive), { x: 1, z: 0, run: true }, 6, 'garage');
+    // (east down the clear lane between the washer and the worktable, to the kitchen door's wall)
+    const east = walk(newMorty({ x: arrive.x, z: 100.9 }), { x: 1, z: 0, run: true }, 6, 'garage');
     expect(east.x).toBeCloseTo(AREAS.garage.x1 - MORTY.radius, 1);
     const south = walk(newMorty(arrive), { x: 0, z: 1, run: true }, 3, 'garage');
     expect(south.z).toBeCloseTo(AREAS.garage.z1 - MORTY.radius, 1);
@@ -1134,8 +1144,8 @@ describe('C-137: doors, exits and portals', () => {
     expect(link('garage-kitchen')).toMatchObject({ area: 'garage', r: 0.9, to: 'house', kind: 'door' });
     expect(link('stairs-up')).toMatchObject({ area: 'house', x: -295.1, z: 2.6, to: 'upstairs' });
     expect(link('stairs-down')).toMatchObject({ area: 'upstairs', x: -303, z: 403.4, to: 'house' });
-    expect(link('garage-portal')).toMatchObject({ area: 'garage', x: -294.8, z: 100, to: 'annex', kind: 'portal', label: 'Through the portal', arrive: { x: 400, z: 9 } });
-    expect(link('annex-portal')).toMatchObject({ area: 'annex', x: 400, z: 13, to: 'garage', kind: 'portal', label: 'Back to the garage', arrive: { x: -296.8, z: 100, face: Math.PI } });
+    expect(link('garage-portal')).toMatchObject({ area: 'garage', x: -303, z: 101.4, to: 'annex', kind: 'portal', label: 'Through the portal', arrive: { x: 400, z: 9 } });
+    expect(link('annex-portal')).toMatchObject({ area: 'annex', x: 400, z: 13, to: 'garage', kind: 'portal', label: 'Back to the garage', arrive: { x: -301.2, z: 101.4, face: 0 } });
     for (const id of ['garage', 'school', 'arcade']) expect(link(`${id}-exit`)).toMatchObject({ area: id, kind: 'exit', label: 'Back outside' });
     for (const l of LINKS) expect(['door', 'exit', 'portal', 'stairs', 'hatch'], l.id).toContain(l.kind);
   });
@@ -1242,7 +1252,7 @@ describe('C-137: doors, exits and portals', () => {
     expect(nearLink('street', door.x + 1.7, door.z)).toBe(null);
     expect(nearLink('street', START.x, START.z)).toBe(null);
     expect(nearLink('house', door.x, door.z)).toBe(null);
-    expect(nearLink('garage', -295.4, 101).id).toBe('garage-portal');
+    expect(nearLink('garage', -302.4, 101.4).id).toBe('garage-portal');
     expect(nearLink('house', -297.6, 3).id).toBe('front');
     expect(nearLink('house', -295.1, 2.6).id).toBe('stairs-up');
   });
@@ -1294,6 +1304,12 @@ describe('C-137: the things to touch', () => {
       'plumbus',
       'portalpanic',
       'quiz',
+      'principal',
+      'jessica',
+      'brad',
+      'tammy',
+      'ethan',
+      'tinyrick',
       'roy',
       'cabinet1',
       'cabinet2',
@@ -1319,10 +1335,10 @@ describe('C-137: the things to touch', () => {
     expect(at('butter')).toMatchObject({ area: 'house', label: 'The butter robot', verb: 'Switch on' });
     expect(at('summer')).toMatchObject({ area: 'upstairs', label: 'Summer', verb: 'Talk' });
     expect(at('mortyroom')).toMatchObject({ area: 'upstairs', label: 'Morty’s room', verb: 'Look round' });
-    expect(at('rick')).toMatchObject({ area: 'garage', x: -302, z: 95.6, label: 'Rick', verb: 'Talk' });
-    expect(at('meeseeks')).toMatchObject({ area: 'garage', x: -297.5, z: 95.6, label: 'Mr. Meeseeks box', verb: 'Press' });
-    expect(at('plumbus')).toMatchObject({ area: 'garage', x: -305.2, z: 99, label: 'The plumbus factory', verb: 'Watch' });
-    expect(at('portalpanic')).toMatchObject({ area: 'garage', x: -305.2, z: 103, label: 'Portal panic cabinet', verb: 'Play' });
+    expect(at('rick')).toMatchObject({ area: 'garage', x: -301.9, z: 99.2, label: 'Rick', verb: 'Talk' });
+    expect(at('meeseeks')).toMatchObject({ area: 'garage', x: -301.4, z: 102.4, label: 'Mr. Meeseeks box', verb: 'Press' });
+    expect(at('plumbus')).toMatchObject({ area: 'garage', x: -297.45, z: 99, label: 'The plumbus factory', verb: 'Watch' });
+    expect(at('portalpanic')).toMatchObject({ area: 'garage', x: -302.45, z: 103.1, label: 'Portal panic cabinet', verb: 'Play' });
     expect(at('quiz')).toMatchObject({ area: 'school', x: -300, z: 196.4, label: 'Mr. Goldenfold’s pop quiz', verb: 'Sit the quiz' });
     expect(at('roy')).toMatchObject({ area: 'arcade', x: -300, z: 293.6, label: 'Roy: A Life Well Lived', verb: 'Put the headset on' });
     for (const id of ['cabinet1', 'cabinet2', 'cabinet3']) expect(at(id)).toMatchObject({ area: 'arcade', verb: 'Play', r: 1.4 });
@@ -1545,12 +1561,13 @@ describe('C-137: the President, the Federation, the Oval Office and Shoney’s',
     expect(agents.some((a) => Math.abs(a.x - DINER.x) < DINER.w / 2 && a.z < 0)).toBe(true);
   });
 
-  it('puts the President’s portal in the garage’s south-east corner, facing in, lit only once he’s met', () => {
-    expect(piece('govportal')).toMatchObject({ area: 'garage', kind: 'govportal', x: GOV_PORTAL.x, z: GOV_PORTAL.z, turn: Math.PI });
-    expect(GOV_PORTAL.x).toBeGreaterThan(-300);
+  it('puts the President’s portal on the garage’s east wall by the garage door, facing in, lit only once he’s met', () => {
+    expect(piece('govportal')).toMatchObject({ area: 'garage', kind: 'govportal', x: GOV_PORTAL.x, z: GOV_PORTAL.z, turn: -Math.PI / 2 });
+    expect(GOV_PORTAL.x).toBeGreaterThan(AREAS.garage.x1 - 0.3);
     expect(GOV_PORTAL.z).toBeGreaterThan(104);
     const p = link('garage-oval');
-    expect(p.z).toBeLessThan(GOV_PORTAL.z);
+    expect(p.x).toBeLessThan(GOV_PORTAL.x - 1);
+    expect(p.z).toBe(GOV_PORTAL.z);
     expect(canWalk('garage', link('garage-door').arrive, p, p.r - 0.1)).toBe(true);
   });
 
@@ -1599,11 +1616,13 @@ describe('C-137: the people', () => {
   const HOTSPOT_OF = { jerry: 'jerry', beth: 'beth', summer: 'summer', rick: 'rick', teacher: 'quiz' };
   // the people behind a desk, across it from their hotspot
   const ACROSS = ['teacher', 'ovalpresident'];
+  // (the class, sat at their desks, are talked to from the aisle beside them)
+  const CLASS = ['jessica', 'brad', 'tammy', 'ethan', 'tinyrick'];
   const hotspotOf = (p) => HOTSPOT_OF[p.id] ?? p.id;
 
   it('has Jerry, Beth, Summer, Rick and the teacher, each in their own room, and the visitors in theirs', () => {
-    expect(PEOPLE.map((p) => p.id)).toEqual(['jerry', 'beth', 'summer', 'rick', 'teacher', 'president', 'secretservice', 'agent1', 'agent2', 'agent3', 'ovalpresident', 'general1', 'general2', 'dineragent']);
-    expect(PEOPLE.map((p) => p.area)).toEqual(['house', 'house', 'upstairs', 'garage', 'school', 'street', 'street', 'street', 'street', 'street', 'oval', 'oval', 'oval', 'diner']);
+    expect(PEOPLE.map((p) => p.id)).toEqual(['jerry', 'beth', 'summer', 'rick', 'teacher', 'president', 'secretservice', 'agent1', 'agent2', 'agent3', 'ovalpresident', 'general1', 'general2', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick', 'dineragent']);
+    expect(PEOPLE.map((p) => p.area)).toEqual(['house', 'house', 'upstairs', 'garage', 'school', 'street', 'street', 'street', 'street', 'street', 'oval', 'oval', 'oval', 'school', 'school', 'school', 'school', 'school', 'school', 'diner']);
     // each new one says which model they are, where it's not their id
     for (const p of PEOPLE.filter((o) => o.who)) expect(['president', 'fedagent', 'general', 'secretservice'], p.id).toContain(p.who);
     const room = (id) => PLAN.find((r) => r.id === id);
@@ -1621,7 +1640,7 @@ describe('C-137: the people', () => {
     expect(Math.cos(at('jerry').face)).toBeCloseTo(1, 6);
     const desk = FURNITURE.find((f) => f.id === 'goldenfold-desk');
     expect(at('teacher').z).toBeLessThan(desk.z - desk.d / 2);
-    expect(PEOPLE.filter((p) => p.sits).map((p) => p.id)).toEqual(['jerry', 'dineragent']);
+    expect(PEOPLE.filter((p) => p.sits).map((p) => p.id)).toEqual(['jerry', ...CLASS, 'dineragent']);
   });
 
   it('puts each one at the hotspot that talks to them: just behind it, or Jerry on the couch', () => {
@@ -1631,8 +1650,8 @@ describe('C-137: the people', () => {
       expect(h.area, p.id).toBe(p.area);
       expect(h.until, p.id).toBe(p.until);
       // the teacher and the President are across their desks from theirs, with the whole desk between
-      expect(Math.hypot(p.x - h.x, p.z - h.z), p.id).toBeLessThan(ACROSS.includes(p.id) ? 2.2 : 0.4);
-      expect(nearHotspot(p.area, p.x, p.z)?.id, p.id).toBe(ACROSS.includes(p.id) ? undefined : h.id);
+      expect(Math.hypot(p.x - h.x, p.z - h.z), p.id).toBeLessThan(ACROSS.includes(p.id) || CLASS.includes(p.id) ? 2.2 : 0.4);
+      if (!CLASS.includes(p.id)) expect(nearHotspot(p.area, p.x, p.z)?.id, p.id).toBe(ACROSS.includes(p.id) ? undefined : h.id);
     }
   });
 
@@ -1667,9 +1686,11 @@ describe('C-137: the cruiser', () => {
     expect(newCruiser()).toEqual({ x: BOARD.x, z: BOARD.z, y: CRUISER.hover, yaw: BOARD.yaw, speed: 0, vy: 0, bank: 0 });
   });
 
-  it('reaches its top speed under full throttle, and never leaves the street', () => {
-    const inside = (c) => expect(inArea('street', c.x, c.z, -2 + 1e-9)).toBe(true);
-    // along the whole length of the road, from the west end, with room to get there
+  it('reaches its top speed under full throttle, and never leaves where it flies (well past the street)', () => {
+    const inside = (c) => expect(c.x >= FLY.x0 + 2 - 1e-9 && c.x <= FLY.x1 - 2 + 1e-9 && c.z >= FLY.z0 + 2 - 1e-9 && c.z <= FLY.z1 - 2 + 1e-9).toBe(true);
+    expect(FLY.x1).toBeGreaterThan(AREAS.street.x1 + 100);
+    expect(FLY.z1).toBeGreaterThan(AREAS.street.z1 + 100);
+    // along the road, from the west end, with room to get there
     let c = fly({ ...newCruiser(), x: -57, z: 0, yaw: Math.PI / 2 }, { throttle: 1, steer: 0, lift: 0 }, 5, inside);
     expect(Math.abs(c.speed - CRUISER.top)).toBeLessThanOrEqual(1);
     // and out in every direction from the driveway, into the edge and past it
@@ -1679,9 +1700,9 @@ describe('C-137: the cruiser', () => {
     }
   });
 
-  it('slows to nothing when nosed into the edge of the street, and slides on along it when it only skims it', () => {
-    const edge = AREAS.street.x1 - 2;
-    const head = fly({ ...newCruiser(), x: 50, z: 0, yaw: Math.PI / 2 }, { throttle: 1 }, 4);
+  it('slows to nothing when nosed into the edge of where it flies, and slides on along it when it only skims it', () => {
+    const edge = FLY.x1 - 2;
+    const head = fly({ ...newCruiser(), x: edge - 8, z: 0, yaw: Math.PI / 2 }, { throttle: 1 }, 4);
     expect(head.x).toBeCloseTo(edge, 6);
     expect(head.z).toBeCloseTo(0, 6);
     expect(head.speed).toBeLessThan(0.5);
@@ -1695,8 +1716,8 @@ describe('C-137: the cruiser', () => {
     const free = fly({ ...newCruiser(), x: -57, z: 0, yaw: Math.PI / 2, speed: 10 }, { throttle: 1 }, 1);
     expect(free.speed).toBeCloseTo(10 + CRUISER.accel, 0);
     // the same at the other edges
-    expect(fly({ ...newCruiser(), z: 30, yaw: 0 }, { throttle: 1 }, 3).speed).toBeLessThan(0.5);
-    expect(fly({ ...newCruiser(), x: -50, z: 0, yaw: -Math.PI / 2 }, { throttle: 1 }, 3).speed).toBeLessThan(0.5);
+    expect(fly({ ...newCruiser(), z: FLY.z1 - 10, yaw: 0 }, { throttle: 1 }, 3).speed).toBeLessThan(0.5);
+    expect(fly({ ...newCruiser(), x: FLY.x0 + 10, z: 0, yaw: -Math.PI / 2 }, { throttle: 1 }, 3).speed).toBeLessThan(0.5);
   });
 
   it('speeds up and slows down at its own pace, and can go back', () => {
@@ -1734,13 +1755,14 @@ describe('C-137: the cruiser', () => {
   });
 
   it('climbs under lift and stops at the ceiling', () => {
-    const c = fly(newCruiser(), { lift: 1 }, 10);
+    const c = fly(newCruiser(), { lift: 1 }, 20);
     expect(c.y).toBeCloseTo(CRUISER.ceiling, 6);
+    expect(CRUISER.ceiling).toBeGreaterThanOrEqual(100);
     const a = fly(newCruiser(), { lift: 1 }, 1);
     expect(a.y).toBeGreaterThan(CRUISER.hover + 3);
     expect(a.y).toBeLessThan(CRUISER.hover + CRUISER.climb + 0.01);
     // and it comes back down, but not below its hover
-    const down = fly(c, { lift: -1 }, 12);
+    const down = fly(c, { lift: -1 }, 20);
     expect(down.y).toBeCloseTo(CRUISER.hover, 6);
   });
 
@@ -1783,7 +1805,8 @@ describe('C-137: the cruiser', () => {
     for (const b of [HOUSE, GARAGE, SCHOOL, ...NEIGHBOURS]) expect(canLand({ ...newCruiser(), x: b.x, z: b.z, y: b.roof + 2 }), b.id).toBe(false);
     expect(canLand({ ...newCruiser(), x: HOUSE.x, z: HOUSE.z + HOUSE.d / 2 + CRUISER.radius - 0.1 })).toBe(false);
     expect(canLand({ ...newCruiser(), x: -30, z: 0 })).toBe(true);
-    expect(canLand({ ...newCruiser(), x: 100, z: 0 })).toBe(false);
+    expect(canLand({ ...newCruiser(), x: 200, z: 0 })).toBe(false);
+    for (const o of OUTSKIRTS) expect(canLand({ ...newCruiser(), x: o.x, z: o.z, y: o.roof + 2 }), o.id).toBe(false);
   });
 
   it('never lands in a fenced back yard', () => {
@@ -1999,3 +2022,107 @@ describe('C-137: the pop quiz', () => {
     expect(grade(undefined)).toMatchObject({ right: 0, pass: false });
   });
 });
+
+describe('C-137: jumping', () => {
+  // a jump (on the first step only), then `seconds` more of `move`
+  const hop = (m, move, seconds, area = 'street', opts) => {
+    m = stepMorty(m, { ...move, jump: true }, DT, area, opts);
+    return walk(m, move, seconds, area, opts);
+  };
+  const at = (area, x, z) => newMorty({ x, z, face: 0 });
+  const thing = (id) => FURNITURE.find((f) => f.id === id);
+
+  it('goes up and comes down where he stood, about 0.8 m at the top', () => {
+    let m = stepMorty(newMorty(), { jump: true }, DT, 'street');
+    expect(m.air).toBe(true);
+    let top = 0;
+    for (let t = 0; t < 1.5; t += DT) {
+      m = stepMorty(m, {}, DT, 'street');
+      top = Math.max(top, m.y);
+    }
+    expect(top).toBeGreaterThan(0.7);
+    expect(top).toBeLessThan(0.9);
+    expect(m).toMatchObject({ x: START.x, z: START.z, y: 0, vy: 0, air: false });
+    expect(CLIMB).toBeCloseTo(MORTY.step + top, 1);
+  });
+
+  it('jumps only from his feet', () => {
+    let m = stepMorty(newMorty(), { jump: true }, DT, 'street');
+    m = walk(m, {}, 0.2, 'street');
+    const vy = m.vy;
+    m = stepMorty(m, { jump: true }, DT, 'street');
+    expect(m.vy).toBeLessThan(vy);
+  });
+
+  it('walks up the stoop’s steps to the front door, and jumps off its side to the lawn', () => {
+    const [stoop] = STOOP;
+    let m = walk(at('street', -7.2, -14.6), { x: 0, z: -1 }, 3);
+    expect(m.y).toBe(stoop.top);
+    expect(m.z).toBeLessThan(stoop.z);
+    expect(nearLink('street', m.x, m.z).id).toBe('house-door');
+    // off the side: down to the lawn
+    m = walk(m, { x: 1, z: 0 }, 0.9);
+    expect(m.x).toBeGreaterThan(stoop.x + stoop.w / 2);
+    expect(m.y).toBe(0);
+    // and back up it only by jumping
+    const blocked = walk(m, { x: -1, z: 0 }, 1);
+    expect(blocked.x).toBeGreaterThan(stoop.x + stoop.w / 2);
+    expect(blocked.y).toBe(0);
+    const up = hop(m, { x: -1, z: 0 }, 0.7);
+    expect(up.y).toBe(stoop.top);
+    expect(up.x).toBeLessThan(stoop.x + stoop.w / 2);
+  });
+
+  it('jumps up onto the kitchen counter, the couch and Morty’s bed, and walks off them', () => {
+    const counter = thing('counter');
+    let m = hop(at('house', counter.x + 1.3, counter.z), { x: -1, z: 0 }, 1, 'house');
+    expect(m.y).toBe(counter.h);
+    expect(m.x).toBeLessThan(counter.x + counter.d / 2);
+    m = walk(m, { x: 1, z: 0 }, 1, 'house');
+    expect(m.y).toBe(0);
+    const couch = thing('couch');
+    expect(hop(at('house', couch.x + 1.4, couch.z - 1), { x: -1, z: 0 }, 0.45, 'house').y).toBe(couch.h);
+    const bed = thing('bed-morty');
+    expect(hop(at('upstairs', bed.x - bed.d / 2 - 0.6, bed.z), { x: 1, z: 0 }, 0.45, 'upstairs').y).toBe(bed.h);
+    // walking into them, he doesn't climb them
+    expect(walk(at('house', counter.x + 1.3, counter.z), { x: -1, z: 0 }, 1, 'house').y).toBe(0);
+  });
+
+  it('can’t get onto anything taller than a jump, or with no room under the ceiling', () => {
+    const fridge = thing('fridge');
+    expect(fridge.h).toBeGreaterThan(CLIMB);
+    const m = hop(at('house', fridge.x, fridge.z + 1.4), { x: 0, z: -1 }, 1, 'house');
+    expect(m.y).toBe(0);
+    expect(m.z).toBeGreaterThan(fridge.z + fridge.d / 2);
+    for (const c of solidIn('house')) expect(c.top == null || c.top > CLIMB || c.top + MORTY.height > CEILING.house, c.id).toBe(true);
+  });
+
+  it('never puts his head through a ceiling', () => {
+    const counter = thing('counter');
+    let m = hop(at('house', counter.x + 1.3, counter.z), { x: -1, z: 0 }, 1, 'house');
+    let top = 0;
+    m = stepMorty(m, { jump: true }, DT, 'house');
+    for (let t = 0; t < 1; t += DT) {
+      m = stepMorty(m, {}, DT, 'house');
+      top = Math.max(top, m.y);
+    }
+    expect(top + MORTY.height).toBeLessThanOrEqual(CEILING.house + 1e-9);
+    expect(m.y).toBe(counter.h);
+  });
+
+  it('stands on the highest thing under him, and the floor elsewhere', () => {
+    const [stoop, step1, step2] = STOOP;
+    expect(supportAt('street', stoop.x, stoop.z, stoop.top)).toBe(stoop.top);
+    expect(supportAt('street', step2.x, step2.z + 0.1, 0)).toBe(step2.top);
+    // too high to step up onto from the lawn
+    expect(supportAt('street', stoop.x, stoop.z, 0)).toBe(0);
+    expect(supportAt('street', step1.x, step1.z, step2.top)).toBe(step1.top);
+    expect(supportAt('street', START.x, START.z, 0)).toBe(0);
+  });
+
+  it('only drops down the hatch on his feet', () => {
+    expect(dropAt('garage', HATCH.x, HATCH.z, 0)?.id).toBe('garage-hatch');
+    expect(dropAt('garage', HATCH.x, HATCH.z, 0.5)).toBe(null);
+  });
+});
+

@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import PageTitle from '../components/PageTitle';
+import { Link } from 'react-router-dom';
 import { RiArrowDownLine } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
 import Photo from '../components/Photo';
@@ -14,9 +15,11 @@ import { CONTINENT_COUNT, COUNTRY_COUNT, HOME, HOME_CITY, PLACES, distanceKm } f
 import { PHOTOS } from '../data/photos';
 import { useSectionThemes } from '../theme/ThemeProvider';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
+import { usePageParams } from '../lib/page';
 import { jumpTo } from '../lib/anchors';
 import Egg from '../components/Egg';
 import Mist from '../components/mist/Mist';
+import '../styles/lazy/travel.css';
 
 const num = new Intl.NumberFormat('en-US');
 const away = PLACES.filter((p) => !p.home);
@@ -44,9 +47,9 @@ const Hero = memo(function Hero() {
       <div className="hero-mist -z-10" aria-hidden="true" />
       <div className="shell relative flex min-h-[clamp(560px,90svh,940px)] flex-col justify-end pb-[clamp(7rem,20vh,12rem)] pt-[calc(var(--nav-h)+48px)]">
         <p className="eyebrow hero-in !text-white/85">Travel</p>
-        <h1 id="travel-hero-title" className="display hero-in mt-5 max-w-4xl text-[clamp(3.2rem,1.2rem+7vw,7.4rem)] !text-white" style={{ '--d': '80ms' }}>
+        <PageTitle id="travel-hero-title" className="display hero-in mt-5 max-w-4xl text-[clamp(3.2rem,1.2rem+7vw,7.4rem)] !text-white" style={{ '--d': '80ms' }}>
           Places I’ve been
-        </h1>
+        </PageTitle>
         <p className="lead hero-in mt-6 max-w-[34rem] !text-[clamp(1.1rem,1rem+0.45vw,1.3rem)] !text-white/90" style={{ '--d': '160ms' }}>
           {countWord(COUNTRY_COUNT)} countries and the Caribbean so far, with a soft spot for mountains and lakes.
         </p>
@@ -125,27 +128,29 @@ const Facts = memo(function Facts() {
 
 export default function Travel() {
   useDocumentTitle('Travel');
-  useSectionThemes();
   const page = useRef(null);
-  const [params] = useSearchParams();
-  const [selected, setSelected] = useState(() => (PLACES.some((p) => p.id === params.get('place')) ? params.get('place') : null));
+  useSectionThemes(page);
+  const [params] = usePageParams();
+  const place = params.get('place');
+  const section = params.get('section');
+  const [selected, setSelected] = useState(() => (PLACES.some((p) => p.id === place) ? place : null));
 
   // Deep links from the command palette: /travel?place=is flies to Iceland.
+  // (On the place itself, not the params: in the feed the address comes back
+  // with the page, and that mustn't fly there again.)
   useEffect(() => {
-    const id = params.get('place');
-    if (!PLACES.some((p) => p.id === id)) return undefined;
-    setSelected(id);
+    if (!PLACES.some((p) => p.id === place)) return undefined;
+    setSelected(place);
     const t = setTimeout(() => document.getElementById('globe')?.scrollIntoView({ block: 'start' }), 300);
     return () => clearTimeout(t);
-  }, [params]);
+  }, [place]);
 
   // /travel?section=heritage opens at that section (the hero's temple icon)
   useEffect(() => {
-    const id = params.get('section');
-    if (!id) return undefined;
-    const t = setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: 'start' }), 350);
+    if (!section) return undefined;
+    const t = setTimeout(() => document.getElementById(section)?.scrollIntoView({ block: 'start' }), 350);
     return () => clearTimeout(t);
-  }, [params]);
+  }, [section]);
 
   const flyTo = useCallback((id) => {
     setSelected(id);

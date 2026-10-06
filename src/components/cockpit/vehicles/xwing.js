@@ -15,6 +15,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { blinkers, consoleMaps, consoleMat, glassMat, glowSprite, plated, platingMaps, rng, roundedBox, screen, tubeAlong } from '../kit';
 import { hyperspace, planet, sky } from '../space';
 import { clamp01, smooth } from '../timeline';
+import { loadTexture } from '../../../lib/three/textures';
 
 const EYE = [0, 1.02, 0.18];
 const SNAP = 1950; // ms into the launch: the stars stretched, the tunnel
@@ -405,15 +406,8 @@ export async function build({ rich, coarse, renderer }) {
   const space = sky({ seed: 23, nebula: ['#1d2c55', '#3a2350'], band: [-0.4, 1, 0.3] });
   outside.add(space.group);
   const small = coarse || Math.min(window.innerWidth, window.innerHeight) < 600;
-  const load = (n) =>
-    new THREE.TextureLoader()
-      .loadAsync(`/textures/universe/${n}${small && n !== 'starwars-glow' ? '-sm' : ''}.webp`)
-      .then((t) => {
-        t.colorSpace = THREE.SRGBColorSpace;
-        t.anisotropy = 4;
-        return t;
-      })
-      .catch(() => null);
+  // (decoded off the main thread, and shared with the universe map's planets)
+  const load = (n) => loadTexture(`/textures/universe/${n}${small && n !== 'starwars-glow' ? '-sm' : ''}.webp`, { color: true }).catch(() => null);
   const [yavinTex, dsTex, dsGlow] = await Promise.all([load('music'), load('starwars'), load('starwars-glow')]);
   const yavin = planet({ map: yavinTex, radius: 1100, sun: [0.8, 0.5, 0.3], atmosphere: '#ffb070', strength: 0.9, tint: 0xffe2c4 });
   yavin.group.position.set(-700, -1150, -2100);

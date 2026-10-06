@@ -1,5 +1,6 @@
 import { createContext, lazy, Suspense, useContext, useEffect, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import PageTitle from '../components/PageTitle';
+import { Link, useParams } from 'react-router-dom';
 import { RiFileTextLine, RiMovie2Line } from 'react-icons/ri';
 import Dundies from '../components/experience/Dundies';
 import RoleBanner from '../components/experience/RoleBanner';
@@ -10,12 +11,14 @@ import Motif from '../components/Motifs';
 import CompanyLogo from '../components/CompanyLogo';
 import AwsLogoAnimated from '../components/AwsLogoAnimated';
 import { Chips, Reveal, Saber, useFitTitle, Waypoint } from '../components/ui';
+import '../styles/lazy/experience.css';
 
 const OpeningCrawl = lazy(() => import('../components/experience/OpeningCrawl'));
 import { roles, fmtRange, fmtMonth, monthIndex, nowMonth, roleLink, TRACKS } from '../data/roles';
 import { THEMES } from '../theme/themes';
 import { useSectionThemes } from '../theme/ThemeProvider';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
+import { usePageParams } from '../lib/page';
 import Egg from '../components/Egg';
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
@@ -81,9 +84,9 @@ function CurrentRole({ role, onCrawl }) {
           <div className="hero-logo-card">
             {role.id === 'aws' ? <AwsLogoAnimated className="block h-auto w-full" /> : <CompanyLogo id={role.id} className="h-full w-full border-0" />}
           </div>
-          <h1 id={`${role.id}-title`} className="display hero-in mt-8 text-[clamp(2.4rem,1.3rem+4.4vw,5.2rem)]" style={{ '--d': '120ms' }}>
+          <PageTitle id={`${role.id}-title`} className="display hero-in mt-8 text-[clamp(2.4rem,1.3rem+4.4vw,5.2rem)]" style={{ '--d': '120ms' }}>
             {role.company}
-          </h1>
+          </PageTitle>
           <p className="stretch-semi hero-in mt-4 max-w-3xl text-[clamp(1.2rem,1rem+0.8vw,1.65rem)] font-semibold leading-snug text-ink" style={{ '--d': '200ms' }}>
             {role.title}
           </p>
@@ -228,7 +231,7 @@ function Timeline() {
 export default function Experience() {
   // /experience/aws (and the older /experience?role=aws) opens on that role
   const { roleId } = useParams();
-  const [params, setParams] = useSearchParams();
+  const [params, setParams] = usePageParams();
   const linked = roles.find((r) => r.id === (roleId || params.get('role')));
   useDocumentTitle(linked ? `${linked.company} · Experience` : 'Experience');
   const page = useRef(null);
@@ -241,7 +244,7 @@ export default function Experience() {
     setParams(next, { replace: true });
   };
 
-  useSectionThemes();
+  useSectionThemes(page);
 
   useEffect(() => {
     const id = linked?.id;

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { DAMAGE, FLOOD, GUARD, NAME_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, randomCallsign, readCursor, readFoot, readHello, readHit, readPose, readShot, sample, writeCursor, writeFoot, writePose, writeShot } from './protocol';
+import { DAMAGE_MAX, FLAG, FLOOD, GUARD, NAME_MAX, PACK_MAX, PUNCH_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, randomCallsign, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, sample, writeCursor, writeFoot, writePack, writePose, writeShot } from './protocol';
 import { STOCK_LOADOUT, writeOutfit } from '../outfit';
+import { STOCK_BUILD, writeBuild } from '../shipyard/build';
+import { defaultLook, readLook, writeLook } from '../../rickmorty/wardrobe/looks';
 
 describe('cleanName', () => {
   it('keeps an ordinary name', () => {
@@ -40,11 +42,11 @@ describe('randomCallsign', () => {
 
 describe('readHello', () => {
   it('reads a hello and cleans it', () => {
-    expect(readHello({ n: ' Ace ', k: 'xwing', c: 3, w: '/middle-earth' })).toEqual({ name: 'Ace', kind: 'xwing', loadout: STOCK_LOADOUT, kills: 3, where: '/middle-earth' });
+    expect(readHello({ n: ' Ace ', k: 'xwing', c: 3, w: '/middle-earth' })).toEqual({ name: 'Ace', kind: 'xwing', loadout: STOCK_LOADOUT, build: null, looks: null, kills: 3, where: '/middle-earth' });
   });
   it('drops an unknown ship and bad kills', () => {
-    expect(readHello({ n: 'A', k: '<img>', c: -5, w: 'javascript:alert(1)' })).toEqual({ name: 'A', kind: null, loadout: STOCK_LOADOUT, kills: 0, where: null });
-    expect(readHello({ n: '', k: null, c: 'lots' })).toEqual({ name: 'Pilot', kind: null, loadout: STOCK_LOADOUT, kills: 0, where: null });
+    expect(readHello({ n: 'A', k: '<img>', c: -5, w: 'javascript:alert(1)' })).toEqual({ name: 'A', kind: null, loadout: STOCK_LOADOUT, build: null, looks: null, kills: 0, where: null });
+    expect(readHello({ n: '', k: null, c: 'lots' })).toEqual({ name: 'Pilot', kind: null, loadout: STOCK_LOADOUT, build: null, looks: null, kills: 0, where: null });
   });
   it('reads the paint job and parts fitted, and only ones it knows', () => {
     const l = { ...STOCK_LOADOUT, paint: 'sith', booster: 'portal', guns: 'fusion', fins: 'fins' };
@@ -52,6 +54,28 @@ describe('readHello', () => {
     // a colour, a shape, a part in the wrong slot or too many: none of it's believed
     expect(readHello({ n: 'A', k: 'falcon', p: '#ff0000', o: ['fusion', { r: 1 }, '<b>', 'portal', 'fins', 'srb', 'srb'] }).loadout).toEqual({ ...STOCK_LOADOUT, fins: 'fins' });
     expect(readHello({ n: 'A', k: 'falcon', p: 'aws', o: 'srb' }).loadout).toEqual({ ...STOCK_LOADOUT, paint: 'aws' });
+  });
+  it('reads the garage build flown, as ids it knows, and nothing else', () => {
+    const b = { ...STOCK_BUILD, hull: 'hauler', wings: 'delta', engines: 'quad' };
+    const { seed, ...ids } = b; // eslint-disable-line no-unused-vars
+    expect(readHello({ n: 'A', k: 'rv', b: writeBuild(b) }).build).toEqual(ids);
+    for (const junk of [[[1]], 'x'.repeat(500), 7, { hull: 'dart' }, ['dart', 'bubble', 'swept', 'twincans', 'fin', '<img>'], null]) {
+      const h = readHello({ n: 'A', k: 'rv', b: junk });
+      expect(h.build).toBeNull();
+      expect(h.kind).toBe('rv');
+    }
+  });
+  it('reads the looks of their Rick and Morty, by the wardrobe’s ids alone', () => {
+    const rick = readLook('rick', { body: 'cowboyrick', colors: { outer: 'unitypurple' }, gear: { face: 'shades', hand: 'portalgun' } });
+    const morty = readLook('morty', { body: 'evilmorty', gear: { head: 'crown' } });
+    expect(readHello({ n: 'A', k: 'cruiser', l: [writeLook(rick), writeLook(morty)] }).looks).toEqual({ rick, morty });
+    // one of them garbage: that one as the show has him
+    expect(readHello({ n: 'A', k: 'cruiser', l: [writeLook(rick), [[1]]] }).looks).toEqual({ rick, morty: defaultLook('morty') });
+    for (const junk of [7, 'x'.repeat(400), [[1, 2, 3], [{}]], [], null]) {
+      const h = readHello({ n: 'A', k: 'cruiser', l: junk });
+      expect(h.looks).toBeNull();
+      expect(h.kind).toBe('cruiser');
+    }
   });
   it('is null for anything that is not an object', () => {
     expect(readHello(null)).toBeNull();
@@ -149,7 +173,12 @@ describe('cursors', () => {
 describe('shots', () => {
   it('round-trips', () => {
     const s = readShot(writeShot({ x: 1, y: 2, z: 3 }, [0, 0, -20]));
-    expect(s).toEqual({ p: [1, 2, 3], v: [0, 0, -20] });
+    expect(s).toEqual({ p: [1, 2, 3], v: [0, 0, -20], w: 0 });
+  });
+  it('carries the weapon, and reads an unknown one as the blaster', () => {
+    expect(readShot(writeShot({ x: 1, y: 2, z: 3 }, [0, 0, -20], 2)).w).toBe(2);
+    expect(readShot([1, 2, 3, 0, 0, -20, 7]).w).toBe(0);
+    expect(readShot([1, 2, 3, 0, 0, -20, 'x']).w).toBe(0);
   });
   it('refuses one from far off where the pilot was, or impossibly fast', () => {
     expect(readShot([50, 0, 0, 0, 0, -20], { x: 0, y: 0, z: 0 })).toBeNull();
@@ -160,7 +189,7 @@ describe('shots', () => {
 
 describe('hits', () => {
   it('caps the damage', () => {
-    expect(readHit({ d: 999 })).toBe(DAMAGE);
+    expect(readHit({ d: 999 })).toBe(DAMAGE_MAX);
     expect(readHit({ d: -1 })).toBeNull();
     expect(readHit({})).toBeNull();
   });
@@ -191,6 +220,78 @@ describe('hits', () => {
   });
   it('ignores hits while you are not flying', () => {
     expect(hitCounts(peer(), null, 1200)).toBe(false);
+  });
+});
+
+describe('safe pilots', () => {
+  it('says on the pose when a pilot is just back, and carries it to where they are drawn', () => {
+    const s = { x: 1, y: 2, z: 3, heading: 0.5, pitch: 0, bank: 0, speed: 4, vy: 0 };
+    expect(readPose(writePose(s, FLAG.safe | FLAG.boost)).safe).toBe(true);
+    expect(readPose(writePose(s, FLAG.boost)).safe).toBe(false);
+    const snaps = [
+      { ...readPose(writePose(s, 0)), at: 0 },
+      { ...readPose(writePose({ ...s, x: 2 }, FLAG.safe)), at: 100 },
+    ];
+    expect(sample(snaps, 190).safe).toBe(true); // (between the two: the newer's word)
+    expect(sample(snaps, 300).safe).toBe(true); // (and past it)
+  });
+});
+
+describe('the hunters after a pilot', () => {
+  const wire = [
+    [7, 'tie', 10.123456, -2, 30, 19.04, 0, -1.26, 1],
+    [8, 'tieadvanced', 12, 0, 31, 0, 0, 26, 4],
+  ];
+  it('round-trips, rounded, through the wire as JSON', () => {
+    const got = readPack(JSON.parse(JSON.stringify(writePack(wire))));
+    expect(got).toEqual([
+      { id: 7, kind: 'tie', x: 10.12, y: -2, z: 30, vx: 19, vy: 0, vz: -1.3, hp: 1 },
+      { id: 8, kind: 'tieadvanced', x: 12, y: 0, z: 31, vx: 0, vy: 0, vz: 26, hp: 4 },
+    ]);
+    expect(readPack([])).toEqual([]); // (they're gone)
+  });
+  it('knows the galaxy’s hunters too', () => {
+    expect(readPack([[1, 'vulture', 0, 0, 0, 0, 0, 0, 1]])).toHaveLength(1);
+  });
+  it('sends and takes no more than it should', () => {
+    const many = Array.from({ length: 20 }, (_, i) => [i + 1, 'tie', i, 0, 0, 0, 0, 0, 1]);
+    expect(writePack(many)).toHaveLength(PACK_MAX);
+    expect(readPack(many)).toHaveLength(PACK_MAX);
+  });
+  it('refuses junk, leaves out what it does not know, and clamps the rest', () => {
+    expect(readPack(null)).toBeNull();
+    expect(readPack({ 0: wire[0] })).toBeNull();
+    const got = readPack([
+      [1, 'deathstar', 0, 0, 0, 0, 0, 0, 1], // no such hunter
+      [2, '__proto__', 0, 0, 0, 0, 0, 0, 1],
+      [3, 'tie', NaN, 0, 0, 0, 0, 0, 1],
+      [4.5, 'tie', 0, 0, 0, 0, 0, 0, 1],
+      'tie',
+      [5, 'tie', 1e9, 0, 0, 1e9, 'fast', 0, 1e9],
+      [5, 'tie', 0, 0, 0, 0, 0, 0, 1], // the same one twice
+    ]);
+    expect(got).toEqual([{ id: 5, kind: 'tie', x: 7500, y: 0, z: 0, vx: 80, vy: 0, vz: 0, hp: 99 }]);
+  });
+  it('reads a hit on one, capped at what a bolt can be worth', () => {
+    expect(readHunterHit({ i: 7, d: 1 })).toEqual({ id: 7, damage: 1 });
+    expect(readHunterHit({ i: 7, d: 50 })).toEqual({ id: 7, damage: PUNCH_MAX });
+    expect(readHunterHit({ i: 7, d: 2.9 })).toEqual({ id: 7, damage: 2 });
+    for (const bad of [null, {}, { i: 7 }, { i: 7, d: 0 }, { i: 7, d: 0.01 }, { i: 7, d: -1 }, { i: 'x', d: 1 }, { i: 1.5, d: 1 }]) expect(readHunterHit(bad)).toBeNull();
+  });
+  it('believes a hit on one of yours only from a pilot who just fired, close to it', () => {
+    const at = { x: 0, y: 0, z: 0 };
+    const peer = { blocked: false, shotAt: 900, pose: { x: 10, y: 0, z: 0 } };
+    expect(hunterHitCounts(peer, at, 1000)).toBe(true);
+    expect(hunterHitCounts({ ...peer, blocked: true }, at, 1000)).toBe(false);
+    expect(hunterHitCounts({ ...peer, shotAt: 1000 - GUARD.shotWindow - 1 }, at, 1000)).toBe(false);
+    expect(hunterHitCounts({ ...peer, pose: { x: GUARD.reach - 1, y: 0, z: 0 } }, at, 1000)).toBe(true);
+    expect(hunterHitCounts({ ...peer, pose: { x: GUARD.reach + 1, y: 0, z: 0 } }, at, 1000)).toBe(false);
+    expect(hunterHitCounts({ ...peer, pose: null }, at, 1000)).toBe(false);
+    expect(hunterHitCounts(peer, null, 1000)).toBe(false);
+  });
+  it('has a share of messages for both', () => {
+    expect(RATES.pack).toBeTruthy();
+    expect(RATES.hhit).toBeTruthy();
   });
 });
 
@@ -275,5 +376,37 @@ describe('sample', () => {
     expect(s.z).toBeCloseTo(-2.5); // heading 0 is −z; 250 ms at most
     expect(sample([moving], STALE_MS + 1)).toBeNull();
     expect(sample([], 0)).toBeNull();
+  });
+});
+
+describe('down on a world in the galaxy', () => {
+  it('sends where the crew are, and reads it back', async () => {
+    const { readWalk, writeWalk } = await import('./protocol');
+    const sent = writeWalk({ world: 'tatooine', kind: 'xwing', lead: { who: 'luke', x: 12.345, y: 3.2, z: -40.1, yaw: 1.2, speed: 3.3 }, mate: { who: 'artoo', x: 11, y: 3.1, z: -41, yaw: 1.1, speed: 3 }, ride: 'landspeeder' });
+    const got = readWalk(JSON.parse(JSON.stringify(sent)));
+    expect(got.world).toBe('tatooine');
+    expect(got.kind).toBe('xwing');
+    expect(got.lead).toMatchObject({ who: 'luke', x: 12.35, y: 3.2, z: -40.1, yaw: 1.2 });
+    expect(got.mate.who).toBe('artoo');
+    expect(got.ride).toBe('landspeeder');
+    expect(readWalk(writeWalk(null))).toEqual({ off: true });
+  });
+
+  it('says how far the lead’s gun is up, and an older pilot’s message (without it) reads as down', async () => {
+    const { readWalk, writeWalk } = await import('./protocol');
+    const got = readWalk(JSON.parse(JSON.stringify(writeWalk({ world: 'hoth', kind: 'falcon', lead: { who: 'han', x: 1, y: 2, z: 3, yaw: 0, speed: 0, aim: 0.734 }, mate: null }))));
+    expect(got.lead.aim).toBeCloseTo(0.73, 2);
+    expect(readWalk({ w: 'hoth', a: ['han', 1, 2, 3, 0, 0] }).lead.aim).toBe(0);
+    expect(readWalk({ w: 'hoth', a: ['han', 1, 2, 3, 0, 0, 7] }).lead.aim).toBe(1); // (held to its range)
+    expect(readWalk({ w: 'hoth', a: ['han', 1, 2, 3, 0, 0, 'up'] }).lead.aim).toBe(0);
+  });
+
+  it('turns away what isn’t a crew on a world', async () => {
+    const { readWalk } = await import('./protocol');
+    expect(readWalk(null)).toBeNull();
+    expect(readWalk({ w: 'tatooine', a: ['vader', 0, 0, 0, 0, 0] })).toBeNull();
+    expect(readWalk({ w: '../etc', a: ['luke', 0, 0, 0, 0, 0] })).toBeNull();
+    expect(readWalk({ w: 'tatooine', a: ['luke', 'x', 0, 0, 0, 0] })).toBeNull();
+    expect(readWalk({ w: 'tatooine', a: ['luke', 1, 2, 3, 0, 0], r: 'deathstar' }).ride).toBeNull();
   });
 });

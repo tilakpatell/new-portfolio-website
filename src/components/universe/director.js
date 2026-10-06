@@ -14,12 +14,23 @@
 // - convoy: a line of freighters under escort goes by
 // - comet: a comet crosses the sky
 // - supernova: a star blows, far out, the flash seen from anywhere
+// - flare: the nearest star flares, and its shockwave reaches you a few
+//   seconds later (the shields take a knock, the HUD scrambles)
+// - rift: a rift tears open ahead of you; fly into it and it takes you
+//   somewhere else on the map (nav.js's riftExit)
+// - leviathan: something enormous passes: a pod of purrgil (Star Wars) or
+//   a Cromulon with something to say (Rick and Morty)
+// - meteors: a stream of rocks crosses your path (meteors.js): shoot them
+//   or steer round them
+// - bounty: a bounty hunter comes for you alone, tough and quick (Boba Fett
+//   in Slave I, or Phoenixperson: hunterRules.js)
 // Nothing happens in the first while, or while something else is going on;
 // then one comes along every minute or two, sooner the more trouble you've
 // been making (heat: what you've shot down lately), and never the same
-// thing twice running.
+// thing twice running. While your shields are low (`calm`), nobody new comes
+// after you: what happens then is one of the sights.
 //
-// createDirector({ rand }) → { update(dt, { family, heat, busy }) → event id or null, soon(id) }
+// createDirector({ rand }) → { update(dt, { family, heat, busy, travelling, calm }) → event id or null, soon(id) }
 
 export const EVENTS = {
   hunt: { families: ['starwars', 'rickmorty', 'both'], weight: 3, heat: 1 },
@@ -29,6 +40,11 @@ export const EVENTS = {
   convoy: { families: ['starwars', 'rickmorty', 'both'], weight: 1.3, heat: 0 },
   comet: { families: ['starwars', 'rickmorty', 'both'], weight: 0.9, heat: 0 },
   supernova: { families: ['starwars', 'rickmorty', 'both'], weight: 0.8, heat: 0 },
+  flare: { families: ['starwars', 'rickmorty', 'both'], weight: 0.9, heat: 0 },
+  rift: { families: ['starwars', 'rickmorty', 'both'], weight: 1.1, heat: 0 },
+  leviathan: { families: ['starwars', 'rickmorty', 'both'], weight: 1.0, heat: 0 },
+  meteors: { families: ['starwars', 'rickmorty', 'both'], weight: 1.2, heat: 0 },
+  bounty: { families: ['starwars', 'rickmorty', 'both'], weight: 1.0, heat: 0.8 },
 };
 export const PACE = { first: [30, 50], gap: [45, 85] }; // seconds before the first, and between the rest
 
@@ -43,8 +59,9 @@ export function createDirector({ rand = Math.random } = {}) {
     // heat: 0 and up; busy: something's already going on (hunters after
     // you, a crash playing out), so not now; travelling: out in the open at
     // speed, between places, where things come sooner and more of them are
-    // hunters (an ambush on the way)
-    update(dt, { family, heat = 0, busy = false, travelling = false }) {
+    // hunters (an ambush on the way); calm: your shields are low, so
+    // nothing that comes after you (the hunts wait till they're back)
+    update(dt, { family, heat = 0, busy = false, travelling = false, calm = false }) {
       if (!family) return null;
       clock += dt;
       if (busy) {
@@ -61,7 +78,8 @@ export function createDirector({ rand = Math.random } = {}) {
       // travelling, the wait runs down faster
       if (travelling) nextAt -= dt * 1.2;
       if (clock < nextAt) return null;
-      const choices = Object.entries(EVENTS).filter(([id, e]) => e.families.includes(family) && id !== last);
+      const choices = Object.entries(EVENTS).filter(([id, e]) => e.families.includes(family) && id !== last && !(calm && e.heat > 0));
+      if (!choices.length) return null;
       const weight = (e) => e.weight * (1 + e.heat * Math.min(heat, 6) * 0.5) * (travelling && e.heat > 0 ? 2 : 1);
       let r = rand() * choices.reduce((s, [, e]) => s + weight(e), 0);
       let id = choices[choices.length - 1][0];

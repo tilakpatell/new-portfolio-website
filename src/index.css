@@ -19,7 +19,7 @@
   --text-body: #232f3e;
   --muted: #545b64;
   --accent: #ff9900;
-  --accent-text: #c45500;
+  --accent-text: #b84f00; /* Smile Orange, dark enough for text on every surface (4.5:1) */
   --btn-bg: #ff9900;
   --btn-ink: #0f1111;
   --nav-bg: #232f3e;
@@ -875,4 +875,7 @@ html[data-mode='dark'] .aws-logo .aws-letters { fill: #ffffff; }
     scroll-behavior: auto !important;
   }
   .reveal:not([data-in='true']) { opacity: 1; transform: none; }
+  /* cut short, the toast's animation would end on its faded-out last frame:
+     it just shows, for as long as it's up */
+  .toast { animation: none !important; }
 }

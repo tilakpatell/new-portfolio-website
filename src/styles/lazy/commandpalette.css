@@ -1,0 +1,21 @@
+/* Split out of styles/extras.css so it loads with the components that use it
+   (each imports it), not with every page. */
+/* No backdrop blur: blurring the whole page is slow without a GPU. */
+.palette-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 10vh 16px 16px;
+  background: rgba(6, 8, 10, 0.5);
+  animation: fade-in 0.15s ease;
+}
+.palette-input { flex: 1; min-width: 0; height: 58px; border: 0; background: transparent; color: var(--text); font-size: 1rem; outline: none; }
+.palette-input::placeholder { color: var(--muted); }
+.palette-list { max-height: min(60vh, 470px); overflow-y: auto; overscroll-behavior: contain; padding: 6px; }
+.palette-group { padding: 10px 10px 4px; font-size: 0.75rem; font-weight: 600; color: var(--muted); }
+.palette-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.7rem; border-radius: 8px; cursor: pointer; font-size: 0.9375rem; }
+.palette-item[aria-selected='true'] { background: var(--surface-2); box-shadow: inset 2px 0 0 var(--accent); }
+.palette-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; padding: 0.6rem 1rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--muted); }

@@ -121,4 +121,34 @@ export const CONVOS = {
   },
 };
 
+// ── on the side ──
+// Ducks and drakes: skipping stones on the lake with Merry and Pippin.
+// Nothing the story needs, there whenever the woods are quiet. Its own
+// record is kept apart from the story's (../side.js), and its star is an
+// achievement of its own, not one of the chapter's seals.
+export const SIDE = {
+  id: 'skipping',
+  name: 'Ducks and drakes',
+  where: 'The shore south of the boats',
+  blurb: 'Skip stones over Nen Hithoel with Merry and Pippin. Pippin says his best is seven.',
+  locked: 'Not with the Uruk-hai in the woods.',
+  seal: 'ducksanddrakes',
+};
+// what Merry and Pippin say, as { who, say }
+export const SKIPPING_SAYS = {
+  start: { who: 'pippin', say: '“Ducks and drakes! Flat ones are best. Keep it low over the water, but not dead flat, and throw it hard. I got seven once. Seven!”' },
+  merry: { who: 'merry', say: '“He got four. The rest were ducks.”' },
+  steep: { who: 'pippin', say: '“Plop! Too steep. That one’s gone to see the fishes.”' },
+  weak: { who: 'merry', say: '“You have to actually throw it, Frodo.”' },
+  few: (n) => ({ who: 'merry', say: n === 1 ? '“One. It’s a start.”' : `“${n}. Not bad, for a Baggins.”` }),
+  fair: (n) => ({ who: 'pippin', say: `“${n}! Nearly as good as me.”` }),
+  same: { who: 'pippin', say: '“Seven. That’s… the same as me. That doesn’t count.”' },
+  beat: (n) => ({ who: 'pippin', say: `“${n}! Merry, did you see that? ${n}!” Merry: “I saw. You’ve been beaten, Pip.”` }),
+  again: (n) => ({ who: 'merry', say: `“${n} again! Pippin’s gone very quiet.”` }),
+  flat: { who: 'pippin', say: '“Here, try this one. Flat as a biscuit.”' },
+  lumpy: { who: 'merry', say: '“That’s more of a potato than a stone.”' },
+};
+// how flat a stone is, in words
+export const stoneWord = (flat) => (flat > 0.9 ? 'flat as a biscuit' : flat > 0.75 ? 'flattish' : 'a bit lumpy');
+
 export const SPEAKERS = { boromir: 'Boromir', aragorn: 'Aragorn', sam: 'Samwise Gamgee', frodo: 'Frodo', merry: 'Merry Brandybuck', pippin: 'Pippin Took', narrator: '' };

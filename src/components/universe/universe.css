@@ -160,7 +160,14 @@
 .universe-tuck:hover { color: var(--text); background: rgb(255 255 255 / 0.06); }
 .universe-tuck:focus-visible,
 .universe-untuck:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
-.universe-panel[data-tucked] { overflow: hidden; padding: 0; }
+.universe-panel[data-tucked] { display: flex; overflow: hidden; padding: 0; }
+/* the guide's "?", beside the hide button (the corner one would sit over the panel) */
+.universe-guide { margin: -0.55rem 0 0.25rem 0.25rem; }
+.universe-guide-tucked { display: grid; flex: none; place-items: center; width: 48px; border-left: 1px solid var(--border); color: var(--muted); transition: color 0.15s, background-color 0.15s; }
+.universe-guide-tucked:hover { color: var(--text); background: rgb(255 255 255 / 0.06); }
+.universe-guide-tucked:focus-visible { outline: 2px solid var(--accent-text); outline-offset: -2px; }
+body:has(.universe-panel) .guide-btn { display: none; }
+body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); right: auto; bottom: auto; left: 50%; translate: -50% 0; }
 .universe-untuck {
   display: flex;
   align-items: center;
@@ -310,6 +317,97 @@
   translate: 0 calc(var(--alt, 0) * -75px);
   filter: drop-shadow(0 0 4px rgb(255 255 255 / 0.35));
 }
+/* the weapon readout (weapons.js): its name, the heavy rounds left, the keys */
+.universe-arms {
+  position: absolute;
+  left: 16px;
+  top: calc(50% + var(--nav-h, 68px) / 2 + 132px);
+  display: grid;
+  gap: 5px;
+  width: 150px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-family: var(--font-mono);
+}
+.universe-arms[data-on] { opacity: 1; }
+.universe-arms-name {
+  color: #fff;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 0.8);
+}
+.universe-arms[data-weapon='heavy'] .universe-arms-name { color: #ffc070; }
+.universe-arms[data-weapon='spread'] .universe-arms-name { color: #9fd8ff; }
+.universe-arms-rack { display: flex; gap: 4px; }
+.universe-arms-pip {
+  position: relative;
+  width: 18px;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgb(255 255 255 / 0.14);
+}
+.universe-arms-pip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #ffb347;
+  box-shadow: 0 0 6px #ffb347;
+  transform-origin: left;
+  transform: scaleX(var(--fill, 0));
+}
+.universe-arms-pip[data-full]::after { transform: none; }
+.universe-arms-keys { color: rgb(255 255 255 / 0.5); font-size: 0.55rem; }
+.universe-arms-keys kbd { font: inherit; padding: 0 3px; border: 1px solid rgb(255 255 255 / 0.25); border-radius: 3px; }
+/* the Citadel's siege (siege.js), while you're near it */
+.universe-siege {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--nav-h, 68px) + 16px);
+  display: grid;
+  gap: 2px;
+  max-width: min(440px, calc(100% - var(--panel-w, 0px) - 40px));
+  padding: 8px 14px;
+  border: 1px solid rgb(93 255 176 / 0.35);
+  border-radius: 10px;
+  background: rgb(3 8 10 / 0.7);
+  color: var(--text, #e8eefc);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  text-align: center;
+  pointer-events: none;
+  translate: calc(-50% - var(--panel-w, 0px) / 2) 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.universe-siege[data-on] { opacity: 1; }
+.universe-siege b { color: #5dffb0; font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; }
+.universe-siege[data-phase='core'] { border-color: rgb(255 140 70 / 0.5); }
+.universe-siege[data-phase='core'] b { color: #ffb347; }
+.universe-siege[data-phase='down'] { border-color: rgb(255 90 60 / 0.5); }
+.universe-siege[data-phase='down'] b { color: #ff7a5a; }
+/* the phone's weapon button */
+.universe-weapon {
+  position: absolute;
+  z-index: 1;
+  right: calc(var(--panel-w) + 124px);
+  bottom: 104px;
+  display: none;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border: 1.5px solid rgb(255 179 71 / 0.5);
+  border-radius: 50%;
+  background: rgb(3 4 10 / 0.55);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  touch-action: none;
+  user-select: none;
+}
+.universe-weapon:active { background: rgb(255 179 71 / 0.25); }
 /* the shields: a slim bar under the height gauge, while there's trouble */
 .universe-shield {
   position: absolute;
@@ -355,6 +453,41 @@
    moves them each frame (data-on: shown; data-off: it's off the screen, so
    it's an arrow at the edge, turned --a toward it; data-hot: the nose is
    near enough the lead that a shot bends onto it; data-hit: a shot landed) */
+/* the grand tour's pill: where it's up to, and the way to stop it */
+.universe-tour {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 92px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 8px 14px;
+  border-radius: 999px;
+  background: rgb(6 10 22 / 0.78);
+  border: 1px solid rgb(159 216 255 / 0.25);
+  color: #dfe8f6;
+  font: 500 12px/1.2 var(--font-mono);
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+}
+.universe-tour button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgb(159 216 255 / 0.12);
+  color: inherit;
+  border: 0;
+  cursor: pointer;
+}
+.universe-tour kbd { font: inherit; opacity: 0.7; }
+@media (max-width: 767px) {
+  .universe-tour { top: auto; bottom: 120px; max-width: calc(100% - 32px); }
+}
+
 .universe-hud {
   --hot: #ff6a52;
   --nav: var(--engine, #e8eefc);
@@ -374,6 +507,16 @@
   will-change: transform;
 }
 .universe-hud > span[data-on] { opacity: 1; }
+/* scrambled: a flare's shockwave through the ship (a jitter, and a flicker) */
+.universe-hud[data-static] > span[data-on] { animation: universe-static 90ms steps(2) infinite; }
+@keyframes universe-static {
+  0% { opacity: 1; margin-left: 0; }
+  50% { opacity: 0.35; margin-left: 3px; }
+  100% { opacity: 0.8; margin-left: -2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .universe-hud[data-static] > span[data-on] { animation: none; opacity: 0.6; }
+}
 .universe-reticle {
   width: 24px;
   height: 24px;
@@ -657,18 +800,64 @@
   text-align: center;
 }
 @media (pointer: coarse) { .universe-prompt::before { content: none; } }
-.universe-hint {
+.universe-prompt[data-say]::before { content: none; }
+.universe-prompt[data-say] { font-style: italic; }
+/* the place's name, as you come down on a planet */
+.universe-arrive {
   position: absolute;
   left: 50%;
-  bottom: 24px;
+  top: 27%;
   translate: calc(-50% - (var(--panel-w) + 24px) / 2) 0;
+  max-width: min(36rem, calc(100% - var(--panel-w) - 64px));
+  text-align: center;
+  pointer-events: none;
+  animation: universe-arrive 6.5s ease both;
+}
+.universe-arrive-title {
   margin: 0;
-  padding: 0.5rem 0.85rem;
-  border-radius: 999px;
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: clamp(1.6rem, 4vw, 2.8rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  text-shadow: 0 2px 18px rgb(0 0 0 / 0.65), 0 0 2px rgb(0 0 0 / 0.8);
+}
+.universe-arrive-sub {
+  margin: 0.4rem 0 0;
+  color: rgb(255 255 255 / 0.86);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 10px rgb(0 0 0 / 0.75);
+}
+@keyframes universe-arrive {
+  0% { opacity: 0; transform: translateY(6px); }
+  12% { opacity: 1; transform: none; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .universe-arrive { animation: none; }
+}
+
+.universe-hint {
+  /* across the map's open part, clear of the buttons in its corners: it wraps
+     rather than running off the left edge (it's longer than a laptop's map) */
+  position: absolute;
+  left: 184px;
+  right: calc(var(--panel-w) + 36px);
+  bottom: 24px;
+  max-width: 760px;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 0.5rem 0.95rem;
+  border-radius: 14px;
   background: rgb(3 4 10 / 0.7);
   color: var(--muted);
   font-size: 0.78rem;
-  white-space: nowrap;
+  line-height: 1.75;
+  text-align: center;
   pointer-events: none;
 }
 .universe-hint kbd,
@@ -689,8 +878,10 @@
 @media (pointer: coarse) {
   .universe-boost,
   .universe-fire,
+  .universe-weapon,
   .universe-view,
   .universe-out { display: grid; }
+  .universe-arms-keys { display: none; }
   .universe-climbs { display: flex; }
   .universe-hint-keys,
   .universe-keys-board { display: none; }
@@ -955,11 +1146,11 @@
 .universe-hangar-cells i { flex: 1; height: 8px; border-radius: 2px; background: rgb(255 255 255 / 0.12); }
 .universe-hangar-cells i[data-on] { background: var(--engine, #e8eefc); box-shadow: 0 0 6px color-mix(in srgb, var(--engine, #e8eefc) 60%, transparent); }
 .universe-hangar-power[data-full] .universe-hangar-num { color: #ffb35c; }
-.universe-hangar-slots { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; overflow: hidden; }
+.universe-hangar-slots { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; overflow: hidden; }
 .universe-hangar-slots button { min-height: 32px; color: var(--muted); font-size: 0.76rem; transition: background-color 0.15s, color 0.15s; }
-.universe-hangar-slots button:nth-child(3n + 2),
-.universe-hangar-slots button:nth-child(3n + 3) { border-left: 1px solid rgb(255 255 255 / 0.2); }
-.universe-hangar-slots button:nth-child(n + 4) { border-top: 1px solid rgb(255 255 255 / 0.2); }
+.universe-hangar-slots button:not(:nth-child(4n + 1)) { border-left: 1px solid rgb(255 255 255 / 0.2); }
+.universe-hangar-slots button:nth-child(n + 5) { border-top: 1px solid rgb(255 255 255 / 0.2); }
+.universe-hangar-slots button:disabled { opacity: 0.4; }
 .universe-hangar-slots button:hover { color: var(--text); }
 .universe-hangar-slots button[aria-pressed='true'] { background: color-mix(in srgb, var(--engine, #e8eefc) 22%, transparent); color: var(--text); }
 .universe-hangar-paints { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 6px; }
@@ -1000,6 +1191,41 @@
 .universe-hangar-paint:focus-visible,
 .universe-hangar-part:focus-visible,
 .universe-hangar-slots button:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
+/* the cruiser's crew: to the wardrobe */
+.universe-hangar-crew { justify-self: start; min-height: 32px; padding: 0 0.8rem; border: 1px solid rgb(255 255 255 / 0.24); border-radius: 999px; color: var(--text); font-size: 0.76rem; font-weight: 600; transition: border-color 0.15s, background-color 0.15s; }
+.universe-hangar-crew:hover { border-color: #97ce4c; background: rgb(151 206 76 / 0.14); }
+.universe-hangar-crew:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
+/* the shipyard: the hull switch, the roll, the code, a row of modules a slot */
+.universe-yard { display: grid; gap: 0.6rem; }
+.universe-yard-hull { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; overflow: hidden; }
+.universe-yard-hull button { min-height: 34px; color: var(--muted); font-size: 0.8rem; font-weight: 500; transition: background-color 0.15s, color 0.15s; }
+.universe-yard-hull button + button { border-left: 1px solid rgb(255 255 255 / 0.2); }
+.universe-yard-hull button[aria-pressed='true'] { background: color-mix(in srgb, var(--engine, #e8eefc) 22%, transparent); color: var(--text); }
+.universe-yard-blurb { margin: 0; color: var(--muted); font-size: 0.76rem; line-height: 1.45; }
+.universe-yard-tools { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem; }
+.universe-yard-roll { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 34px; padding: 0 0.85rem; border: 1px solid var(--engine, #e8eefc); border-radius: 8px; color: var(--text); font-size: 0.8rem; font-weight: 600; background: color-mix(in srgb, var(--engine, #e8eefc) 16%, transparent); transition: background-color 0.15s; }
+.universe-yard-roll:hover { background: color-mix(in srgb, var(--engine, #e8eefc) 28%, transparent); }
+.universe-yard-code { min-height: 34px; padding: 0 0.7rem; border: 1px dashed rgb(255 255 255 / 0.28); border-radius: 8px; color: var(--muted); font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.04em; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.universe-yard-code:hover { color: var(--text); border-color: rgb(255 255 255 / 0.45); }
+.universe-yard-paste { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }
+.universe-yard-paste input { min-width: 0; min-height: 32px; padding: 0 0.6rem; border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; background: rgb(255 255 255 / 0.04); color: var(--text); font-family: var(--font-mono); font-size: 0.74rem; }
+.universe-yard-paste input:focus { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
+.universe-yard-paste button { min-height: 32px; padding: 0 0.8rem; border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; color: var(--text); font-size: 0.76rem; }
+.universe-yard-paste button:disabled { opacity: 0.4; }
+.universe-yard-slot { display: grid; gap: 0.3rem; }
+.universe-yard-slot h3 { margin: 0; color: var(--muted); font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+.universe-yard-mods { display: flex; flex-wrap: wrap; gap: 5px; }
+.universe-yard-mod { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 30px; padding: 0 0.65rem; border: 1px solid rgb(255 255 255 / 0.16); border-radius: 999px; color: var(--text); font-size: 0.76rem; transition: border-color 0.15s, background-color 0.15s; }
+.universe-yard-cost { color: var(--muted); font-family: var(--font-mono); font-size: 0.64rem; font-variant-numeric: tabular-nums; }
+.universe-hangar-dropped { margin: 0; padding: 0.45rem 0.6rem; border: 1px solid rgb(255 179 92 / 0.45); border-radius: 8px; background: rgb(255 179 92 / 0.1); color: #ffd3a1; font-size: 0.74rem; line-height: 1.35; }
+.universe-yard-mod:hover { border-color: rgb(255 255 255 / 0.36); background: rgb(255 255 255 / 0.05); }
+.universe-yard-mod[aria-pressed='true'] { border-color: var(--engine, #e8eefc); background: color-mix(in srgb, var(--engine, #e8eefc) 18%, transparent); }
+.universe-yard-mod[aria-disabled] { opacity: 0.55; }
+.universe-yard-hull button:focus-visible,
+.universe-yard-roll:focus-visible,
+.universe-yard-code:focus-visible,
+.universe-yard-mod:focus-visible,
+.universe-yard-paste button:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
 .universe-hangar-note { min-height: 2.6em; margin: 0; color: var(--muted); font-size: 0.74rem; line-height: 1.35; }
 .universe-hangar-stats { display: grid; gap: 0.35rem; margin: 0; }
 .universe-hangar-stat { display: grid; grid-template-columns: 8.2rem 1fr; align-items: center; gap: 0.6rem; }
@@ -1033,6 +1259,9 @@
   .universe-loading { right: 0; bottom: var(--sheet-h); }
   .universe-boost { right: 16px; bottom: calc(var(--sheet-h) + 16px); }
   .universe-fire { right: 104px; bottom: calc(var(--sheet-h) + 22px); }
+  .universe-weapon { right: 110px; bottom: calc(var(--sheet-h) + 96px); }
+  .universe-arms { left: 10px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2 + 104px); width: 110px; }
+  .universe-siege { translate: -50% 0; max-width: calc(100% - 32px); }
   .universe-view { right: 184px; bottom: calc(var(--sheet-h) + 27px); }
   .universe-out { right: 248px; bottom: calc(var(--sheet-h) + 27px); }
   .universe-prompt { bottom: calc(var(--sheet-h) + 64px); translate: -50% 0; }
@@ -1046,6 +1275,7 @@
   .universe-shield { left: 10px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2 + 72px); width: 76px; }
   /* (wrapped, above the buttons, clear of the settings button on the left and
      the climb and dive ones on the right) */
+  .universe-arrive { left: 16px; right: 16px; top: calc(var(--nav-h, 68px) + 24px); translate: none; max-width: none; }
   .universe-hint { left: 116px; right: 96px; bottom: calc(var(--sheet-h) + 92px); translate: none; border-radius: 12px; white-space: normal; line-height: 1.4; }
   .universe-settings-btn { left: 12px; bottom: calc(var(--sheet-h) + 66px); }
   .universe-settings { left: 12px; bottom: calc(var(--sheet-h) + 120px); width: min(312px, calc(100% - 24px)); max-height: calc(100% - var(--sheet-h) - var(--nav-h, 68px) - 136px); }
@@ -1098,3 +1328,4 @@
 .start-buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.4rem; }
 .start-remember { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 1.1rem; color: var(--muted); font-size: 0.82rem; cursor: pointer; }
 .start-remember input { width: 16px; height: 16px; accent-color: var(--accent-text); }
+.start-note { margin-top: 0.85rem; color: var(--muted); font-size: 0.78rem; line-height: 1.5; }

@@ -1,8 +1,11 @@
-// Albuquerque, the world, in 3D: the desert valley at golden hour, the
-// Sandias catching the light to the east, Central Avenue and 4th Street,
-// Walt's street, and the places the shows happen, each with its sign (the
-// title cards' periodic-table tile) and a marker where you pull up. Walt's
-// Aztek, Hank's SUV and the buildings are Meshy models made for the site
+// Albuquerque, the world, in 3D: the city in its desert valley at golden
+// hour, the Sandias catching the light to the east. Its streets (./roads.js)
+// and everything on its blocks and along them (./city.js: downtown's towers,
+// Central's shops and motels, the houses, the warehouses, the trees, the
+// lamps and lights), its traffic and parked cars (./vehicles.js), Walt's
+// street, and the places the shows happen, each with its sign (the title
+// cards' periodic-table tile) and a marker where you pull up. Walt's Aztek,
+// Hank's SUV and the shows' buildings are Meshy models made for the site
 // (scripts/meshy-albuquerque.mjs); any that don't load stand in as shapes.
 //
 //
@@ -28,8 +31,6 @@
 // towns' travellers.js list()).
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -47,10 +48,15 @@ import { createGhosts } from '../../middleearth/towns/ghosts';
 import { splitWord } from '../elements';
 import { ABQ } from '../wardrobe';
 import { TOWN_MODELS, createTown } from './buildings';
+import { createCity } from './city';
 import { createBalloons, createCrystals, createNightLights, createPizza, createSmoke, createTumbleweeds, glowTexture } from './life';
-import { COLLIDERS, HOUSES, LANDMARKS, PLACES, ROADS, TIMES, WASH, WORLD_RADIUS, groundHeight } from './rules';
+import { createStreets } from './roads';
+import { CITY, GRID, HOUSES, LANDMARKS, PLACES, RAIL, ROADS, TIMES, WASH, WORLD_RADIUS, collidersNear, groundHeight, onRoad, surfaceHeight } from './rules';
 import { createSky, lightAt } from './sky';
-import { asphaltMaps, createMountains, dirtMaps, groundMaterial } from './terrain';
+import { createMountains, groundMaterial } from './terrain';
+import { createFleet, paintFor } from './vehicles';
+import { gltfLoader } from '../../../lib/three/gltf';
+import { sharpen } from '../../../lib/three/textures';
 
 // Models from Sketchfab (CC Attribution, credited in public/cc0/README.md; scripts/sketchfab-import.mjs
 // brings them to web size): the RV, Saul's car, the water tank, the train's tank cars, cacti, a
@@ -210,6 +216,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   const { renderer, scene, camera } = stage;
   // far enough for the sky dome and the Sandias
   camera.far = 2600;
+  camera.near = 0.4; // (nothing's nearer than that, and the depth's sharper for it)
   camera.updateProjectionMatrix();
   scene.background = new THREE.Color(0x0a0f1c);
   scene.fog = new THREE.Fog(0xe9c9a0, 170, 1500);
@@ -259,7 +266,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   const sun = new THREE.DirectionalLight(0xffd6a0, 2.7);
   sun.castShadow = true;
   sun.shadow.mapSize.set(Math.min(fit.shadowMap, 2048), Math.min(fit.shadowMap, 2048));
-  Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 260 });
+  Object.assign(sun.shadow.camera, { left: -58, right: 58, top: 58, bottom: -58, near: 1, far: 320 });
   sun.shadow.bias = -0.0005;
   sun.shadow.normalBias = 0.04;
   scene.add(sun, sun.target);
@@ -289,67 +296,24 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   // ── the mountains: the Sandias to the east, mesas in front of the rest ──
   scene.add(own(createMountains()).group);
 
-  // ── the roads ──
-  const size = mobile ? 256 : 512;
-  const asphalt = asphaltMaps(size, aniso);
-  const dirt = dirtMaps(size, aniso);
-  own(...Object.values(asphalt), ...Object.values(dirt));
-  const roadMat = own(new THREE.MeshStandardMaterial({ ...asphalt, roughness: 1, normalScale: new THREE.Vector2(0.9, 0.9) }));
-  const dirtMat = own(new THREE.MeshStandardMaterial({ ...dirt, roughness: 1 }));
-  const lineMat = own(new THREE.MeshStandardMaterial({ color: 0xf0c330, roughness: 0.6, emissive: 0x2a1f00 }));
-  const edgeMat = own(new THREE.MeshStandardMaterial({ color: 0xeeeeea, roughness: 0.6 }));
-  const dashes = [];
-  ROADS.forEach((r, i) => {
-    const len = Math.hypot(r.b.x - r.a.x, r.b.z - r.a.z);
-    const yaw = Math.atan2(r.b.x - r.a.x, r.b.z - r.a.z);
-    const mid = { x: (r.a.x + r.b.x) / 2, z: (r.a.z + r.b.z) / 2 };
-    const geo = own(new THREE.PlaneGeometry(r.w, len + r.w));
-    geo.rotateX(-Math.PI / 2);
-    const uv = geo.attributes.uv;
-    // asphalt repeats every 7 m; the dirt's two ruts run the track's length
-    for (let k = 0; k < uv.count; k++) uv.setXY(k, r.dirt ? uv.getX(k) : uv.getX(k) * (r.w / 7), uv.getY(k) * ((len + r.w) / 7));
-    const mesh = new THREE.Mesh(geo, r.dirt ? dirtMat : roadMat);
-    mesh.position.set(mid.x, 0.02 + i * 0.004, mid.z);
-    mesh.rotation.y = yaw;
-    mesh.receiveShadow = true;
-    scene.add(mesh);
-    if (r.dirt) return;
-    // the lines: a solid double yellow down Central, dashes elsewhere, white edges
-    for (let s = -len / 2 + 4; s < len / 2 - 4; s += r.id === 'central' ? 6 : 9) dashes.push({ x: mid.x + Math.sin(yaw) * s, z: mid.z + Math.cos(yaw) * s, yaw, y: 0.045 + i * 0.004, solid: r.id === 'central' });
-    for (const side of [-1, 1]) {
-      const e = new THREE.Mesh(own(new THREE.PlaneGeometry(0.18, len)), edgeMat);
-      e.rotation.set(-Math.PI / 2, 0, -yaw);
-      e.position.set(mid.x + Math.cos(yaw) * side * (r.w / 2 - 0.5), 0.045 + i * 0.004, mid.z - Math.sin(yaw) * side * (r.w / 2 - 0.5));
-      scene.add(e);
-    }
-  });
-  {
-    const dashGeo = own(new THREE.PlaneGeometry(0.22, 3));
-    dashGeo.rotateX(-Math.PI / 2);
-    const n = dashes.reduce((k, d) => k + (d.solid ? 2 : 1), 0);
-    const inst = new THREE.InstancedMesh(dashGeo, lineMat, n);
-    const o = new THREE.Object3D();
-    let k = 0;
-    for (const d of dashes)
-      for (const off of d.solid ? [-0.2, 0.2] : [0]) {
-        o.position.set(d.x + Math.cos(d.yaw) * off, d.y, d.z - Math.sin(d.yaw) * off);
-        o.rotation.set(0, d.yaw, 0);
-        o.scale.set(1, 1, d.solid ? 2.05 : 1);
-        o.updateMatrix();
-        inst.setMatrixAt(k++, o.matrix);
-      }
-    scene.add(inst);
-  }
+  // ── the streets, the sidewalks and the blocks, and the city on them ──
+  const streets = own(createStreets({ ground: ground.material, aniso, small: mobile }));
+  scene.add(streets.object);
+  const city = own(createCity({ noise: sky.noise, small: mobile }));
+  scene.add(city.object);
 
   // ── the desert: creosote, yucca, cholla and rocks, never on a road or in a building ──
+  const cityEdge = { x: GRID.xs.at(-1) + 10, z: GRID.zs.at(-1) + 10 };
   const clear = (x, z, pad) => {
+    if (Math.abs(x) < cityEdge.x + pad && Math.abs(z) < cityEdge.z + pad) return false;
+    if (Math.abs(z - RAIL.z) < 5 + pad) return false;
     for (const r of ROADS) {
       const dx = r.b.x - r.a.x;
       const dz = r.b.z - r.a.z;
       const t = Math.max(0, Math.min(1, ((x - r.a.x) * dx + (z - r.a.z) * dz) / (dx * dx + dz * dz)));
       if (Math.hypot(x - (r.a.x + t * dx), z - (r.a.z + t * dz)) < r.w / 2 + pad) return false;
     }
-    for (const c of COLLIDERS) if (Math.abs(x - c.x) < c.w / 2 + pad + 2 && Math.abs(z - c.z) < c.d / 2 + pad + 2) return false;
+    for (const c of collidersNear(x, z)) if (Math.abs(x - c.x) < c.w / 2 + pad + 2 && Math.abs(z - c.z) < c.d / 2 + pad + 2) return false;
     for (const p of PLACES) if (Math.hypot(x - p.door.x, z - p.door.z) < p.radius + 2) return false;
     return true;
   };
@@ -425,47 +389,8 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     scatter(rock, own(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, flatShading: true })), mobile ? 120 : 240, { pad: 1, scale: [0.5, 2.2], tint: [new THREE.Color(0x9a7a5a), new THREE.Color(0xc0a07a)] });
   }
 
-  // ── power poles and wires down Central, street lights down 4th ──
-  const lampHeads = [];
-  {
-    const poleGeo = own(mergeGeometries([new THREE.CylinderGeometry(0.14, 0.2, 9, 6).translate(0, 4.5, 0), new THREE.BoxGeometry(2.4, 0.16, 0.16).translate(0, 8.4, 0)]));
-    const xs = [];
-    for (let x = -184; x <= 184; x += 28) xs.push(x);
-    const poles = new THREE.InstancedMesh(poleGeo, own(new THREE.MeshStandardMaterial({ color: 0x6b5440, roughness: 0.9 })), xs.length);
-    const o = new THREE.Object3D();
-    xs.forEach((x, i) => {
-      o.position.set(x, 0, -9.5);
-      o.updateMatrix();
-      poles.setMatrixAt(i, o.matrix);
-    });
-    poles.castShadow = true;
-    scene.add(poles);
-    const wire = [];
-    for (let i = 0; i + 1 < xs.length; i++)
-      for (const off of [-1.05, 0, 1.05])
-        for (let s = 0; s < 8; s++) {
-          const a = s / 8;
-          const b = (s + 1) / 8;
-          const y = (t) => 8.5 - Math.sin(t * Math.PI) * 0.9;
-          wire.push(xs[i] + (xs[i + 1] - xs[i]) * a, y(a), -9.5 + off, xs[i] + (xs[i + 1] - xs[i]) * b, y(b), -9.5 + off);
-        }
-    const wg = own(new THREE.BufferGeometry());
-    wg.setAttribute('position', new THREE.Float32BufferAttribute(wire, 3));
-    scene.add(new THREE.LineSegments(wg, own(new THREE.LineBasicMaterial({ color: 0x2b2420 }))));
-    const lampGeo = own(mergeGeometries([new THREE.CylinderGeometry(0.1, 0.14, 7, 6).translate(0, 3.5, 0), new THREE.BoxGeometry(0.16, 0.16, 1.8).translate(0, 7, 0.9)]));
-    const lamps = [];
-    for (let z = -140; z <= 140; z += 30) if (Math.abs(z) > 10) lamps.push({ x: 6.2, z, yaw: -Math.PI / 2 });
-    const lampInst = new THREE.InstancedMesh(lampGeo, own(new THREE.MeshStandardMaterial({ color: 0x7c8085, roughness: 0.5, metalness: 0.6 })), lamps.length);
-    lamps.forEach((l, i) => {
-      o.position.set(l.x, 0, l.z);
-      o.rotation.set(0, l.yaw, 0);
-      o.updateMatrix();
-      lampInst.setMatrixAt(i, o.matrix);
-    });
-    lampInst.castShadow = true;
-    scene.add(lampInst);
-    for (const l of lamps) lampHeads.push({ x: l.x - 1.75, y: 6.85, z: l.z });
-  }
+  // (the street lamps are the city's)
+  const lampHeads = city.lamps;
 
   // ── the edge of the world: a ranch fence all the way round, where you can see it ──
   {
@@ -506,7 +431,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     c.height = 512;
     const tex = own(new THREE.CanvasTexture(c));
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 4;
+    sharpen(tex);
     const face = own(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.25 }));
     const sign = new THREE.Group();
     const board = new THREE.Mesh(own(new THREE.PlaneGeometry(5.2, 2.6)), face);
@@ -519,9 +444,23 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       sign.add(post);
     }
     sign.add(board, back);
-    // beside the drive, facing the road the way the building does
-    const right = { x: Math.cos(p.yaw), z: -Math.sin(p.yaw) };
-    sign.position.set(p.door.x + right.x * (p.radius + 1.5) - Math.sin(p.yaw) * 2, 0, p.door.z + right.z * (p.radius + 1.5) - Math.cos(p.yaw) * 2);
+    // on the sidewalk in front, to one side of the door, facing the road the
+    // way the building does: from the door toward the building till it's
+    // off the road, then a little further, then along the kerb
+    {
+      const tl = Math.hypot(p.at.x - p.door.x, p.at.z - p.door.z) || 1;
+      const tx = (p.at.x - p.door.x) / tl;
+      const tz = (p.at.z - p.door.z) / tl;
+      let sx = p.door.x;
+      let sz = p.door.z;
+      for (let k = 0; k < 120 && onRoad(sx, sz); k++) {
+        sx += tx * 0.25;
+        sz += tz * 0.25;
+      }
+      sx += tx * 1.4 - tz * (p.radius - 1);
+      sz += tz * 1.4 + tx * (p.radius - 1);
+      sign.position.set(sx, surfaceHeight(sx, sz), sz);
+    }
     sign.rotation.y = p.yaw;
     sign.traverse((o) => o.isMesh && (o.castShadow = true));
     scene.add(sign);
@@ -617,7 +556,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   };
 
   // ── the models ──
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const loader = gltfLoader();
   const names = ['aztek', 'suv', ...new Set([...PLACES, ...LANDMARKS].map((p) => p.model)), 'house', ...Object.values(TOWN_MODELS), 'tank', 'cactus', 'tumbleweed', 'bucket'];
   const [loaded, cloudTex] = await Promise.all([
     Promise.all(names.map((n) => loader.loadAsync(MODEL(n)).then((g) => [n, g.scene], () => [n, null]))).then(Object.fromEntries),
@@ -650,7 +589,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   const placed = {};
   for (const p of [...PLACES, ...LANDMARKS]) {
     const b = make(p.model);
-    b.position.set(p.at.x, 0, p.at.z);
+    b.position.set(p.at.x, surfaceHeight(p.at.x, p.at.z), p.at.z);
     b.rotation.y = p.yaw;
     scene.add(b);
     placed[p.id] = b;
@@ -683,7 +622,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       const parent = new THREE.Matrix4();
       mesh.updateWorldMatrix(true, false);
       HOUSES.forEach((h, i) => {
-        o.position.set(h.at.x, 0, h.at.z);
+        o.position.set(h.at.x, GRID.kerb, h.at.z);
         o.rotation.set(0, h.yaw + (FACING.house ?? 0), 0);
         o.scale.setScalar(0.82);
         o.updateMatrix();
@@ -695,7 +634,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     } else
       for (const h of HOUSES) {
         const b = standIn('house');
-        b.position.set(h.at.x, 0, h.at.z);
+        b.position.set(h.at.x, GRID.kerb, h.at.z);
         b.rotation.y = h.yaw;
         b.scale.setScalar(0.8);
         scene.add(b);
@@ -717,10 +656,14 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     return s;
   });
   scene.add(hank);
+  // the town's traffic and the cars parked about it (Hank's is his own model)
+  const fleet = own(createFleet({ parked: CITY.parked.map((p) => ({ ...p, y: GRID.kerb })), max: mobile ? 8 : 14, shadows: !mobile }));
+  scene.add(fleet.object);
+  const moving = [];
   // the other drivers: Walt's Aztek again (its geometry and materials, under
   // the ghosts' own), rocking a little on its springs as it goes
   const ghosts = createGhosts({
-    height: groundHeight,
+    height: surfaceHeight,
     make: () => {
       const g = new THREE.Group();
       const m = loaded.aztek ? loaded.aztek.clone(true) : standIn('aztek');
@@ -762,13 +705,13 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   if (!mobile && fit.bloom > 0) {
     const P = Math.PI;
     const WHERE = [
-      ['jesse', -146, 124.5, P],
-      ['saul', -55, 10.6, P],
-      ['gus', 66, -9.8, 0],
-      ['mike', 146, -15.5, 0.3],
-      ['badger', -63.5, -12.5, 0.3],
-      ['pete', -62.2, -13.4, -0.5],
-      ['tuco', 12.6, -58, -P / 2],
+      ['jesse', -336, 124.6, P],
+      ['saul', -84.5, 12.4, P],
+      ['gus', 84, -13.2, 0],
+      ['mike', 146, -15.6, 0.3],
+      ['badger', -83.5, -13.6, 0.3],
+      ['pete', -82.2, -14.4, -0.5],
+      ['tuco', 11.4, 150, -P / 2],
     ];
     loadPeople(WHERE.map(([id]) => ABQ[id]))
       .then((got) => {
@@ -777,7 +720,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
         for (const [id, x, z, yaw] of WHERE) {
           const p = got.person(ABQ[id], { pose: 'stand', idle: true });
           if (!p) continue;
-          p.group.position.set(x, 0, z);
+          p.group.position.set(x, surfaceHeight(x, z), z);
           p.group.rotation.y = yaw;
           scene.add(p.group);
           cast.push(p);
@@ -788,7 +731,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
 
   // ── what moves and glows ──
   const balloons = own(createBalloons({ count: mobile ? 16 : 34 }));
-  const weeds = own(createTumbleweeds({ count: mobile ? 4 : 7, model: loaded.tumbleweed ? dressModel(loaded.tumbleweed, 'tumbleweed') : null }));
+  const weeds = own(createTumbleweeds({ count: mobile ? 4 : 7, radius: 340, height: groundHeight, model: loaded.tumbleweed ? dressModel(loaded.tumbleweed, 'tumbleweed') : null }));
   // cacti from the pack: each of its nine as its own flock, stood upright on its base
   if (loaded.cactus) {
     loaded.cactus.updateMatrixWorld(true);
@@ -811,7 +754,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     createNightLights({
       glow,
       lamps: lampHeads,
-      pools: [...lampHeads.map((l) => ({ x: l.x, z: l.z, r: 11 })), ...doors, ...LANDMARKS.map((l) => ({ x: l.at.x, z: l.at.z - 9, r: 12, color: 0x7ab8ff }))],
+      pools: [...lampHeads.map((l) => ({ x: l.x, z: l.z, r: 9 })), ...doors, ...LANDMARKS.map((l) => ({ x: l.at.x, z: l.at.z - 9, r: 12, color: 0x7ab8ff }))],
     }),
   );
   scene.add(balloons.object, weeds.object, crystals.object, night.object);
@@ -906,8 +849,10 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   let orbit = 0;
   let aurora = 0;
   let auroraTo = 0;
+  let peek = null; // (dev only: a fixed camera for the QA scripts)
 
   // the light for the time of day, on everything that takes it
+  const skyCols = { top: new THREE.Color(), low: new THREE.Color(), ground: new THREE.Color() };
   function applyLight() {
     lightAt(tod, L);
     sky.uniforms.uSun.value.copy(L.sun);
@@ -922,6 +867,10 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     renderer.toneMappingExposure = L.exposure;
     const dark = L.night;
     night.update(dark);
+    fleet.update(dark);
+    skyCols.top.copy(L.hemiSky);
+    skyCols.low.copy(L.fog);
+    skyCols.ground.copy(L.hemiGround);
     beams.intensity = dark * 70;
     lampMat.opacity = dark * 0.7;
     for (const p of PLACES) {
@@ -976,16 +925,25 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     if (!still) weeds.update(dt, clock);
     crystals.update(dt, clock, L.night);
     town.update(dt, still ? 0 : clock, L.night);
+    city.update(state.t ?? clock, L.night, skyCols);
+    // the traffic (all but Hank, who's his own model), on the street or a kerb up
+    moving.length = 0;
+    for (const t of state.traffic ?? []) {
+      if (t.route) continue;
+      t.paint ??= paintFor(t.tint, t.type);
+      moving.push({ x: t.x, y: groundHeight(t.x, t.z), z: t.z, yaw: t.yaw, type: t.type, paint: t.paint });
+    }
+    fleet.set(moving);
     if (!still) for (const p of cast) p.update(clock, dt);
     smoke?.update(still ? 0 : dt, 0.3 + 0.7 * L.day);
     tailMat.opacity = 0.16 + L.night * 0.34 + ((state.throttle ?? 0) < -0.1 || state.handbrake ? 0.5 : 0);
-    // the car: where it is, its weight thrown out of the turn and back on the throttle
-    const gy = groundHeight(c.x, c.z);
+    // the car: where it is (a kerb up, on a block), its weight thrown out of the turn and back on the throttle
+    const gy = surfaceHeight(c.x, c.z);
     const sn = Math.sin(c.yaw);
     const cs = Math.cos(c.yaw);
-    // nose up a dune and down the other side, and leaning across a slope
-    const slope = Math.atan2(groundHeight(c.x + sn * 1.4, c.z + cs * 1.4) - groundHeight(c.x - sn * 1.4, c.z - cs * 1.4), 2.8);
-    const lean = Math.atan2(groundHeight(c.x + cs * 0.9, c.z - sn * 0.9) - groundHeight(c.x - cs * 0.9, c.z + sn * 0.9), 1.8);
+    // nose up a dune (or a kerb) and down the other side, and leaning across a slope
+    const slope = Math.atan2(surfaceHeight(c.x + sn * 1.4, c.z + cs * 1.4) - surfaceHeight(c.x - sn * 1.4, c.z - cs * 1.4), 2.8);
+    const lean = Math.atan2(surfaceHeight(c.x + cs * 0.9, c.z - sn * 0.9) - surfaceHeight(c.x - cs * 0.9, c.z + sn * 0.9), 1.8);
     car.position.set(c.x, gy, c.z);
     car.rotation.set(-slope, c.yaw, -lean, 'YXZ');
     ghosts.update(state.travellers ?? [], clock, dt);
@@ -1002,7 +960,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     body.rotation.set(THREE.MathUtils.clamp(pitch, -0.05, 0.05), 0, THREE.MathUtils.clamp(roll, -0.11, 0.11));
     body.position.y = Math.abs(c.speed) > 1 && !state.onRoad ? Math.sin(clock * 22) * 0.025 : 0;
     // Hank, and his lights when he's on you
-    hank.position.set(state.hank.x, 0, state.hank.z);
+    hank.position.set(state.hank.x, groundHeight(state.hank.x, state.hank.z), state.hank.z);
     hank.rotation.y = state.hank.yaw;
     const flash = state.heat > 0.25 ? state.heat : 0;
     siren.forEach((s, i) => (s.material.opacity = flash * (Math.sin(clock * 14 + i * Math.PI) > 0 ? 1 : 0.15)));
@@ -1132,11 +1090,12 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     }
     camera.position.copy(camPos);
     // never under a dune, and never inside a building: come in towards the car until it's out
-    camera.position.y = Math.max(camera.position.y, groundHeight(camPos.x, camPos.z) + 1.6);
+    camera.position.y = Math.max(camera.position.y, surfaceHeight(camPos.x, camPos.z) + 1.6);
     for (let n = 0; n < 8; n++) {
       const px = camera.position.x;
       const pz = camera.position.z;
-      if (!COLLIDERS.some((b) => Math.abs(px - b.x) < b.w / 2 + 0.6 && Math.abs(pz - b.z) < b.d / 2 + 0.6)) break;
+      // (the buildings: not a parked car or a yard wall, which it can see over)
+      if (!collidersNear(px, pz).some((b) => !b.kind && (b.h === undefined || b.h > camera.position.y - 0.5) && Math.abs(px - b.x) < b.w / 2 + 0.6 && Math.abs(pz - b.z) < b.d / 2 + 0.6)) break;
       camera.position.x += (c.x - px) * 0.22;
       camera.position.z += (c.z - pz) * 0.22;
       camera.position.y += 0.9;
@@ -1147,6 +1106,11 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       shake = Math.max(0, shake - dt * 2.5);
     }
     camera.lookAt(camLook);
+    // (the QA scripts' own view, if they've asked for one)
+    if (peek) {
+      camera.position.set(...peek.at);
+      camera.lookAt(...peek.look);
+    }
     const fovWant = 58 + Math.min(1, going / 24) * 8;
     if (Math.abs(fovWant - fov) > 0.05) {
       fov += (fovWant - fov) * Math.min(1, dt * 3);
@@ -1216,6 +1180,9 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     },
     footprints,
     townFits: town.fits,
+    // (for the QA scripts: what's drawn, to count, and a camera of their own)
+    scene: import.meta.env.DEV ? scene : null,
+    peek: import.meta.env.DEV ? (at, look) => (peek = at ? { at, look } : null) : () => {},
     resize: stage.resize,
     info: stage.info,
     project: stage.project,

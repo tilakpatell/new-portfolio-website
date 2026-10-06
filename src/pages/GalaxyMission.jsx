@@ -1,9 +1,10 @@
 import { lazy, Suspense, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { RiArrowLeftLine, RiArrowRightLine, RiFilmLine, RiPlayFill } from 'react-icons/ri';
+import { RiArrowDownLine, RiArrowLeftLine, RiArrowRightLine, RiFilmLine, RiPlayFill } from 'react-icons/ri';
 import { useDocumentTitle } from '../lib/hooks';
 import { audioContext } from '../lib/audio';
 import { FILMS, SYSTEMS, eraById, eraOf, filmLabel, parseSystem, systemById, yearLabel } from '../components/galaxy/systems';
+import { canLand } from '../components/galaxy/surface/sites';
 import { CRAWLS } from '../components/galaxy/crawls';
 import '../components/galaxy/galaxy.css';
 import '../components/galaxy/mission.css';
@@ -57,7 +58,7 @@ export default function GalaxyMission() {
             <div className="mt-6 flex flex-wrap gap-3">
               {live ? (
                 <Link to={g.to} className="btn btn-primary">
-                  Fly it now <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
+                  {g.go ?? 'Fly it now'} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
                 </Link>
               ) : (
                 <span className="mission-soon" role="status">
@@ -75,6 +76,11 @@ export default function GalaxyMission() {
                 >
                   <RiFilmLine className="h-4 w-4" aria-hidden="true" /> Play its opening crawl
                 </button>
+              )}
+              {canLand(sys.id) && (
+                <Link to={`/galaxy/${sys.id}/surface`} className="btn btn-ghost">
+                  <RiArrowDownLine className="h-4 w-4" aria-hidden="true" /> Land on {sys.id === 'bespin' ? 'Cloud City' : sys.name} and look round
+                </Link>
               )}
               <button type="button" className="btn btn-ghost" onClick={() => navigate(`/galaxy/${sys.id}`)}>
                 <RiPlayFill className="h-4 w-4" aria-hidden="true" /> Fly to {sys.name} meanwhile

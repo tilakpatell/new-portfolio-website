@@ -1,7 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link as RouterLink } from 'react-router-dom';
-import { RiArrowDownLine, RiArrowLeftLine, RiArrowUpLine, RiCheckLine, RiCloseLine, RiListCheck2 } from 'react-icons/ri';
+import { RiArrowDownLine, RiArrowLeftLine, RiArrowUpLine, RiCheckLine, RiCloseLine, RiListCheck2, RiShirtLine } from 'react-icons/ri';
 import '@fontsource/luckiest-guy/400.css';
 import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
@@ -60,7 +60,11 @@ import {
 } from './rules';
 import { newFedShip, newShipVoice, onTail, shipSays, stepFedShip } from './ship';
 import { setShipVoice, shipVoiceOn, speak, stopSpeaking } from './shipVoice';
+import Wardrobe from '../wardrobe/Wardrobe';
+import { useLooks } from '../wardrobe/useLooks';
 import './world.css';
+import GuideCue from '../../guide/GuideCue';
+import { useTravellers } from '../../middleearth/towns/useTravellers';
 
 // Dimension C-137, the world: walk about the Smiths' street as Morty, go into
 // the house, Rick's garage and Harry Herpson High, fly Rick's space cruiser
@@ -107,7 +111,7 @@ const CANT_LAND = 'Can’t land here. Slow right down over open ground, clear of
 const PLACES = {
   cable: { title: 'Interdimensional cable', where: 'The Smiths’ living room', task: 'cable' },
   butter: { title: 'The butter robot', where: 'The breakfast table', task: 'butter' },
-  meeseeks: { title: 'Mr. Meeseeks box', where: 'Rick’s workbench', task: 'meeseeks' },
+  meeseeks: { title: 'Mr. Meeseeks box', where: 'Rick’s worktable', task: 'meeseeks' },
   plumbus: { title: 'The plumbus factory', where: 'Rick’s garage', task: 'plumbus' },
   portalpanic: { title: 'Portal panic', where: 'The cabinet in Rick’s garage', task: 'portalpanic' },
   quiz: { title: 'Mr. Goldenfold’s pop quiz', where: 'Harry Herpson High' },
@@ -132,6 +136,12 @@ const SAY = {
   general1: { who: 'A general', text: 'Don’t touch the phone, son. The red one. Or the other one.' },
   general2: { who: 'A general', text: 'Your grandfather is a national security risk and a national treasure. We haven’t decided which.' },
   dineragent: { who: 'Federation agent', text: 'Sit, Morty. The coffee’s a hologram. The questions aren’t. Where does your grandfather keep the portal gun formula?' },
+  principal: { who: 'Principal Vagina', text: 'Morty. Hall pass? No? I’m too tired to care. Go learn something, or at least look like it.' },
+  jessica: { who: 'Jessica', text: 'Oh, hey Morty. Did you do the homework? I tried, but my pen ran out halfway through number one.' },
+  brad: { who: 'Brad', text: 'Sup, Smith. You’re in my seat. Kidding. Nobody wants to sit there.' },
+  tammy: { who: 'Tammy', text: 'Morty! Is Summer here? Tell her I’ve got news. Huge news. Nothing to do with birds.' },
+  ethan: { who: 'Ethan', text: 'Is this the maths class? Every class feels like the maths class.' },
+  tinyrick: { who: 'Tiny Rick', text: 'Tiny Rick! Totally a normal teenager, Morty. Let’s go to the prom and rock out. Help me.' },
   cabinet1: { who: 'Space Mortyball', text: 'Out of order. Everyone’s queueing for Roy anyway.' },
   cabinet2: { who: 'Plumbus Smash', text: 'Somebody’s high score is all nines, and the stick is sticky.' },
   cabinet3: { who: 'Cronenberg Crush', text: 'You lose a life before you’ve found the button.' },
@@ -212,6 +222,7 @@ const newSim = () => ({
   keys: new Set(),
   stick: { x: 0, y: 0 },
   lift: 0,
+  jump: false, // asked to jump (Space, or the jump button), till the next step takes it
   near: null,
   moved: false,
   fading: false,
@@ -347,8 +358,14 @@ function Toast({ toast }) {
   );
 }
 
+// others online (middleearth/towns/useTravellers), as Mortys from other
+// dimensions, in the street or whichever room you're in (each its own area:
+// the rooms are built out to some 400 m from the street, hence the reach)
+const ROOM = { bound: 820, motion: true };
+
 function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) {
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
+  const trav = useTravellers('c137', gl === 'on', ROOM);
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.35 });
   const canvas = useRef(null);
   const map = useRef(null);
@@ -364,6 +381,17 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
   const [list, setList] = useState(false);
   const listRef = useRef(list);
   listRef.current = list;
+  // the wardrobe: how Morty looks here (and Rick, wherever he turns up)
+  const [looks, setLook] = useLooks();
+  const looksRef = useRef(looks);
+  looksRef.current = looks;
+  const [wardrobe, setWardrobe] = useState(false);
+  const wardrobeRef = useRef(wardrobe);
+  wardrobeRef.current = wardrobe;
+  const closeWardrobe = useCallback(() => setWardrobe(false), []);
+  useEffect(() => {
+    api.current?.setLooks?.(looks);
+  }, [api, looks]);
   const chip = useRef(null);
   const listBox = useRef(null);
   // closing the list: if the focus was in it, back to the chip that opened it
@@ -553,7 +581,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     import('./scene')
       .then(({ createRmWorld }) => {
         if (dead || !canvas.current) return null;
-        return createRmWorld(canvas.current, { onLost: () => !dead && setGl('lost') });
+        return createRmWorld(canvas.current, { onLost: () => !dead && setGl('lost'), looks: looksRef.current });
       })
       .then((a) => {
         if (!a) return;
@@ -563,6 +591,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
         }
         api.current = a;
         a.act?.('arcade', 'setBoard', readBest());
+        a.setLooks?.(looksRef.current); // (a look picked while it loaded)
         if (import.meta.env.DEV) {
           // for the QA scripts: where everyone is, E, and a jump to anywhere
           const s = sim.current;
@@ -606,14 +635,22 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     if (!live) return undefined;
     const s = sim.current;
     const down = (e) => {
-      if (typing(e.target)) return;
+      if (typing(e.target) || wardrobeRef.current) return; // (the wardrobe's open over him: he stands still)
       const onButton = e.target instanceof HTMLButtonElement || e.target instanceof HTMLAnchorElement;
+      // C: the wardrobe, on foot (flying, it's the cruiser's way down)
+      if (e.code === 'KeyC' && !s.flying && !e.metaKey && !e.ctrlKey && !e.altKey && !e.repeat) {
+        e.preventDefault();
+        s.keys.clear();
+        setWardrobe(true);
+        return;
+      }
       const m = keyDown(s.keys, e);
       const f = e.metaKey || e.ctrlKey || e.altKey ? null : FLY_KEYS[e.code];
       if (f) s.keys.add(f);
       if (m || f) {
-        // (Space is the cruiser's climb; walking, it's the page's)
-        if (m !== 'run' && !(m === 'space' && (onButton || !s.flying))) e.preventDefault();
+        // (Space is the cruiser's climb; walking, Morty's jump)
+        if (m !== 'run' && !(m === 'space' && onButton)) e.preventDefault();
+        if (m === 'space' && !onButton && !s.flying && !e.repeat) s.jump = true;
         audioContext();
         return;
       }
@@ -624,6 +661,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       } else if (e.key === 'm' || e.key === 'M') {
         if (listRef.current) closeList();
         else setList(true);
+
       } else if (e.key === 'Escape' && listRef.current) closeList();
     };
     const up = (e) => {
@@ -650,9 +688,10 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     const dt = Math.min(0.05, ms / 1000);
     s.t += dt;
     const k = s.keys;
-    const pad = readPad();
+    const raw = readPad();
     const before = s.padBefore;
-    s.padBefore = pad ?? {};
+    s.padBefore = raw ?? {};
+    const pad = wardrobeRef.current ? null : raw; // (the wardrobe's open over him: the pad's for it)
     const pressed = (b) => pad?.[b] && !before[b];
     if (pressed('a')) fns.current.act();
     if (pressed('b') && listRef.current) closeList();
@@ -715,10 +754,11 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       if (s.fading) fwd = side = 0;
       const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
       const mv = cameraMove(s.yaw, clamp1(fwd), clamp1(side));
-      s.m = stepMorty(s.m, { x: mv.x, z: mv.z, run }, dt, s.area, s.area === 'street' ? { cruiser: { x: s.c.x, z: s.c.z }, motorcade: !doneRef.current.includes('president') } : undefined);
+      s.m = stepMorty(s.m, { x: mv.x, z: mv.z, run, jump: s.jump && !s.fading }, dt, s.area, s.area === 'street' ? { cruiser: { x: s.c.x, z: s.c.z }, motorcade: !doneRef.current.includes('president') } : undefined);
+      s.jump = false;
       if (Math.hypot(mv.x, mv.z) > 0.1) s.moved = true;
       // out over the open hatch: down it
-      const drop = s.fading ? null : dropAt(s.area, s.m.x, s.m.z);
+      const drop = s.fading ? null : dropAt(s.area, s.m.x, s.m.z, s.m.y);
       if (drop) go(drop);
       // up out of the Mind Blowers chair: the memories stop; sat, they go on
       if (s.mind && (s.area !== 'mindblowers' || Math.hypot(s.m.x - s.mind.x, s.m.z - s.mind.z) > CHAIR_R)) {
@@ -763,8 +803,13 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       else shipTalk(s.shipNext.event);
     }
 
+    // others online: where you are to them (on foot, in the street or a room:
+    // only those in the same one see you), and where they are
+    const tv = trav.ref.current;
+    tv?.pose(s.m, { inside: Boolean(s.flying), area: s.area });
+
     try {
-      a.render({ area: s.area, morty: s.m, flying: s.flying, cruiser: s.c, camYaw: s.yaw, camPitch: s.pitch, near: s.view, done: doneRef.current, fed: s.fed }, ms);
+      a.render({ area: s.area, morty: s.m, flying: s.flying, cruiser: s.c, camYaw: s.yaw, camPitch: s.pitch, near: s.view, done: doneRef.current, fed: s.fed, travellers: tv ? tv.list() : null }, ms);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
       a.dispose();
@@ -848,6 +893,11 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
   };
   // up and down, held, while flying
+  const onJump = (e) => {
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    sim.current.jump = true;
+    audioContext();
+  };
   const onLift = (dir) => (e) => {
     const s = sim.current;
     if (e.type === 'pointerdown') {
@@ -913,8 +963,15 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
             </b>
             {!touch && <kbd>M</kbd>}
           </button>
+          <button type="button" className="rm-chip" onClick={() => setWardrobe(true)} aria-haspopup="dialog" aria-label="Wardrobe: how Morty and Rick look">
+            <RiShirtLine aria-hidden="true" />
+            <span>Wardrobe</span>
+            {!touch && <kbd>C</kbd>}
+          </button>
+          <OtherMortys trav={trav} />
         </div>
       </div>
+      <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} who="morty" />
 
       <Toast toast={toast} />
       {shipLine && hud.area === 'street' && (
@@ -951,7 +1008,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       )}
 
       {gl === 'on' && !here && !hud.flying && !hud.moved && (
-        <p className="rm-hint">{touch ? 'Drag the stick to walk; push it all the way to run. Swipe sideways to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E uses things, M lists what to do.'}</p>
+        <p className="rm-hint">{touch ? 'Drag the stick to walk; push it all the way to run; the arrow jumps. Swipe sideways to look round.' : 'W A S D or the arrows to walk, Shift to run, Space to jump. Drag to look round. E uses things, M lists what to do.'}<GuideCue touch={touch} /></p>
       )}
       {gl === 'on' && hud.flying && !here && (
         <p className="rm-hint rm-keys">
@@ -988,6 +1045,13 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
               <span />
             </div>
             <div className="rm-pad">
+              {!hud.flying && (
+                <div className="rm-lift">
+                  <button type="button" aria-label="Jump" onPointerDown={onJump} onContextMenu={(e) => e.preventDefault()}>
+                    <RiArrowUpLine aria-hidden="true" />
+                  </button>
+                </div>
+              )}
               {hud.flying && (
                 <div className="rm-lift">
                   <button type="button" aria-label="Climb" onPointerDown={onLift(1)} onPointerUp={onLift(0)} onPointerCancel={onLift(0)} onLostPointerCapture={onLift(0)} onContextMenu={(e) => e.preventDefault()}>
@@ -1243,7 +1307,7 @@ function drawMap(c, s, goal, t) {
 // ── without 3D: the places as cards ──
 const CARDS = [
   { id: 'house', name: 'The Smith house', blurb: 'Jerry’s on the couch with the TV on, and Rick left something at the breakfast table.', items: ['cable', 'butter'] },
-  { id: 'garage', name: 'Rick’s garage', blurb: 'The workbench, the plumbus machine, a Portal panic cabinet, a portal on the wall, and a hatch in the floor down to Rick’s secret lab.', items: ['meeseeks', 'plumbus', 'portalpanic'] },
+  { id: 'garage', name: 'Rick’s garage', blurb: 'One car wide: the workbench, the worktable, the plumbus machine, a Portal panic cabinet, a portal on the wall, and a hatch in the floor down to Rick’s secret lab.', items: ['meeseeks', 'plumbus', 'portalpanic'] },
   { id: 'school', name: 'Harry Herpson High', blurb: 'Mr. Goldenfold has a pop quiz on the board. Seven right is a pass.', items: ['quiz'] },
   { id: 'arcade', name: 'Blips and Chitz', blurb: 'The arcade on the far side of the portal, and the game everyone queues for.', items: ['roy'] },
 ];
@@ -1404,5 +1468,23 @@ function Place({ id, onClose, onQuiz, onRoy }) {
       </div>
     </div>,
     document.body,
+  );
+}
+
+// Others online in the street: how many, or a way to see them (going online
+// is the site's own switch, with your callsign, as on the universe map).
+function OtherMortys({ trav }) {
+  if (!trav.available) return null;
+  if (!trav.on)
+    return (
+      <button type="button" className="rm-chip" onClick={trav.join} title="Go online, and see everyone else in the street as a Morty from another dimension">
+        <span>See other Mortys</span>
+      </button>
+    );
+  return (
+    <span className="rm-chip" title="Everyone else online in the street shows as a Morty from another dimension: they can’t touch your things to do, nor you theirs">
+      <b>{trav.count}</b>
+      <span>{trav.count === 1 ? 'other Morty' : 'other Mortys'} here</span>
+    </span>
   );
 }

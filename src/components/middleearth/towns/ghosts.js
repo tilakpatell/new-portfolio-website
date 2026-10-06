@@ -90,7 +90,7 @@ export function createGhosts({ height = () => 0, make: build = () => makePerson(
     tag.position.y = (f.top ?? 1.6) + tagSize * 0.85;
     root.add(f.group, halo, tag);
     group.add(root);
-    return { f, mat, root, halo, tag, name: p.name, x: p.x, z: p.z, y: 0, face: p.face, fade: 0 };
+    return { f, mat, root, halo, tag, name: p.name, x: p.x, z: p.z, y: p.y ?? 0, face: p.face, fade: 0 }; // (first seen up high: there at once, not rising from the ground)
   };
 
   const drop = (id, g) => {
@@ -132,6 +132,7 @@ export function createGhosts({ height = () => 0, make: build = () => makePerson(
         if (Math.hypot(p.x - g.x, p.z - g.z) > snap) {
           g.x = p.x;
           g.z = p.z;
+          g.y = p.y ?? 0;
         }
         g.x += (p.x - g.x) * k;
         g.z += (p.z - g.z) * k;
@@ -141,6 +142,8 @@ export function createGhosts({ height = () => 0, make: build = () => makePerson(
         g.y += ((p.y ?? 0) - g.y) * k;
         g.root.position.set(g.x, height(g.x, g.z), g.z);
         g.f.group.position.y = g.y;
+        // the name goes up with them (a swinger's, a flyer's), the ring of light stays on the ground
+        g.tag.position.y = g.y + (g.f.top ?? 1.6) + tagSize * 0.85;
         g.f.group.rotation.y = g.face;
         animate(g.f, t + g.x, p, dt);
         const shimmer = 0.85 + Math.sin(t * 2.6 + g.x) * 0.08 + Math.sin(t * 7.1 + g.z) * 0.04;

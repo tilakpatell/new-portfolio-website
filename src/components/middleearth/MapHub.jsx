@@ -2,11 +2,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAchievements } from '../Achievements';
 import ModelCredits from '../ModelCredits';
+import { local, storage } from '../../lib/hooks';
 import { CHAPTERS } from './chapters';
+import { hidden as hiddenPlace, hiddenAt } from './hidden';
+import { roadRecord } from './record';
+import { bestKey } from './rush/levels';
 import { useTravellers } from './towns/useTravellers';
+import '../../styles/lazy/middleearth.css';
+
+// the map is part of a page you scroll: the page's pointers stay on it
+const MAP_ROOM = { pointers: true };
 
 // how far from a place on the sheet (800 across) a click still means it
 const REACH = 44;
+
+const RECORD_OPEN = 'tp-me-record'; // the road so far, left open this visit
 
 // A wax seal, for a place whose trials are won.
 function Seal({ title }) {
@@ -37,7 +47,7 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
   const heard = useRef(null);
   const touch = useMemo(() => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches, []);
   // other travellers online on the map, as ghosts from other worlds (towns/useTravellers)
-  const trav = useTravellers('map', !hidden);
+  const trav = useTravellers('map', !hidden, MAP_ROOM);
   const travRef = trav.ref;
 
   const place = useCallback(() => {
@@ -133,6 +143,12 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
     }
     return best;
   };
+  // and on the flat map, a click right on a hidden place's name (./hidden.js)
+  const secret = (x, y) => {
+    if (api.current?.tap) return null;
+    const p = api.current?.unproject?.(x, y);
+    return p ? hiddenAt(p.x, p.y) : null;
+  };
   const [area, setArea] = useState(null);
   // once the visitor starts to move about, the heading steps out of the way
   const [roam, setRoam] = useState(false);
@@ -156,7 +172,7 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
       if (e.pointerType !== 'mouse') return;
       const hit = a?.tap?.(e.clientX, e.clientY);
       const id = hit?.who ? null : hit?.at ? nearest(hit.at) : nearest(e.clientX, e.clientY);
-      e.currentTarget.dataset.who = hit?.who ? 'true' : '';
+      e.currentTarget.dataset.who = hit?.who || (!hit && secret(e.clientX, e.clientY)) ? 'true' : '';
       if (id !== area) {
         setArea(id);
         onHover(id);
@@ -203,7 +219,11 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
     if (drag.current.moved <= 6) {
       // a tap: someone to talk to, a place to go, or ground to walk to
       const hit = a?.tap?.(e.clientX, e.clientY);
+      // a hidden place (the tower at Isengard): no pin, no label, just itself
+      if (hit?.who && hiddenPlace(hit.who)) return onGo(hit.who);
       if (hit?.who) return a.say(hit.who);
+      const found = !hit && secret(e.clientX, e.clientY);
+      if (found) return onGo(found.id);
       // on a place: go there (and in); anywhere else: walk there
       const id = hit?.at ? nearest(hit.at) : nearest(e.clientX, e.clientY);
       if (id) return onGo(id);
@@ -289,6 +309,18 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
   const won = (c) => c.seals.length > 0 && c.seals.every((s) => unlocked.includes(s));
   const here = CHAPTERS.find((c) => c.id === near);
   const live = Boolean(api.current?.tap);
+  // the road so far: every chapter's seals, its game on the side, and its
+  // kitchen's best (./record.js), under the route when asked for
+  const [record, setRecord] = useState(() => Boolean(storage.get(RECORD_OPEN, false)));
+  const toggleRecord = () => {
+    setRecord((v) => {
+      storage.set(RECORD_OPEN, !v);
+      return !v;
+    });
+  };
+  // (a kitchen's best is read from the browser when the panel opens: it
+  // can only have changed on a kitchen's page, never here)
+  const road = useMemo(() => (record ? roadRecord({ unlocked, best: (id) => local.get(bestKey(id), null) }) : null), [record, unlocked]);
 
   return (
     <div className="me-hub" data-leaving={leaving || undefined} data-hidden={hidden || undefined} data-roam={roam || undefined}>
@@ -393,11 +425,90 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
               Find Frodo
             </button>
           )}
+          <button type="button" className="btn btn-ghost btn-sm me-record-btn" data-on={record || undefined} aria-expanded={record} aria-controls="me-record" onClick={toggleRecord}>
+            The road so far
+          </button>
           <Link to="/" className="btn btn-ghost btn-sm">
             Back to the site
           </Link>
         </div>
+        {road && <RoadSoFar road={road} onGo={onGo} onClose={toggleRecord} />}
       </nav>
     </div>
+  );
+}
+
+// The road so far: each chapter with its seals (filled as they're won), its
+// game on the side (a star once won) and its kitchen's stars and best coins.
+function RoadSoFar({ road, onGo, onClose }) {
+  const t = road.totals;
+  return (
+    <aside id="me-record" className="me-record" aria-label="The road so far">
+      <div className="me-record-head">
+        <p className="eyebrow">The road so far</p>
+        <p className="me-record-totals">
+          <span>
+            <b>{t.seals.won}</b> of {t.seals.total} seals
+          </span>
+          <span>
+            <b>{t.sides.won}</b> of {t.sides.total} on the side
+          </span>
+          <span>
+            <b>{t.stars.won}</b> of {t.stars.total} kitchen stars
+          </span>
+          <span>
+            <b>{t.hidden.found}</b> of {t.hidden.total} off the road
+          </span>
+        </p>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
+          Close
+        </button>
+      </div>
+      <ol className="me-record-list">
+        {road.chapters.map((c) => (
+          <li key={c.id} data-won={c.won || undefined}>
+            <button type="button" className="me-record-name" onClick={() => onGo(c.id)}>
+              {c.name}
+            </button>
+            <span className="me-record-seals" role="img" aria-label={`${c.seals.won} of ${c.seals.total} seals`} title={`${c.seals.won} of ${c.seals.total} seals`}>
+              {Array.from({ length: c.seals.total }, (_, i) => (
+                <i key={i} data-on={i < c.seals.won || undefined} />
+              ))}
+            </span>
+            {c.side && (
+              <span className="me-record-side" data-on={c.side.won || undefined} role="img" aria-label={`${c.side.name}: ${c.side.won ? 'won' : 'not yet'}`} title={`On the side: ${c.side.name}${c.side.won ? ', won' : ''}`}>
+                ★
+              </span>
+            )}
+            {c.kitchen && (
+              <span className="me-record-kitchen" role="img" aria-label={`${c.kitchen.name}: ${c.kitchen.stars} of 3 stars, best ${c.kitchen.best} coins`} title={`${c.kitchen.name}: stars at ${c.kitchen.marks.join(', ')} coins`}>
+                {[0, 1, 2].map((i) => (
+                  <b key={i} data-on={i < c.kitchen.stars || undefined}>
+                    ★
+                  </b>
+                ))}
+                <small>{c.kitchen.best > 0 ? `${c.kitchen.best} coins` : 'not yet cooked'}</small>
+              </span>
+            )}
+          </li>
+        ))}
+      </ol>
+      {/* the places off the road: named once found, a question mark till then */}
+      <ul className="me-record-hidden" aria-label="Off the road">
+        {road.hidden.map((h) => (
+          <li key={h.id} data-found={h.found || undefined} data-done={h.done || undefined}>
+            {h.found ? (
+              <button type="button" className="me-record-name" onClick={() => onGo(h.id)}>
+                {h.name}
+              </button>
+            ) : (
+              <span className="me-record-unknown" title="Somewhere off the road. Look closely at the map.">
+                ?
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </aside>
   );
 }

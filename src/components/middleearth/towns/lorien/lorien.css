@@ -9,6 +9,7 @@
 .lorien-stage[data-sky='dawn'] { background: linear-gradient(180deg, #8aa8c8 0%, #f2ead8 58%, #5a5a3a 60%, #2a2a1a 100%); }
 .lorien-stage .shire-loading { color: #3a2e10; }
 .lorien-stage[data-mode='talk'] .shire-canvas, .lorien-stage[data-mode='climb'] .shire-canvas, .lorien-stage[data-mode='mirror'] .shire-canvas, .lorien-stage[data-mode='river'] .shire-canvas, .lorien-stage[data-mode='table'] .shire-canvas, .lorien-stage[data-mode='end'] .shire-canvas { cursor: default; touch-action: none; }
+.lorien-stage[data-mode='archery'] .shire-canvas { cursor: crosshair; touch-action: none; }
 
 /* a game's panel, up top in the middle */
 .lorien-game { top: clamp(0.7rem, 2vw, 1.2rem); bottom: auto; left: 50%; transform: translateX(-50%); width: min(26rem, calc(100% - 1.4rem)); }
@@ -23,11 +24,29 @@
 .lorien-gifts { display: grid; gap: 0.4rem; margin: 0.4rem 0 0.6rem; }
 .lorien-gifts .btn { justify-content: flex-start; text-align: left; }
 
+/* on the side, Legolas's targets: the sight on the arrow's line (where
+   it would go if it didn't fall), and the panel low on the left */
+.lorien-sight { position: absolute; left: 0; top: 0; z-index: 2; opacity: 0; width: 2.6rem; height: 2.6rem; margin: -1.3rem 0 0 -1.3rem; border: 1.5px solid rgba(248, 240, 200, 0.7); border-radius: 50%; pointer-events: none; transition: border-color 0.2s ease, width 0.2s ease, height 0.2s ease, margin 0.2s ease; }
+.lorien-sight span { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: #fff4c8; box-shadow: 0 0 6px rgba(255, 220, 120, 0.9); }
+.lorien-sight::before, .lorien-sight::after { content: ''; position: absolute; background: rgba(248, 240, 200, 0.7); }
+.lorien-sight::before { left: 50%; top: -0.5rem; bottom: -0.5rem; width: 1px; margin-left: -0.5px; -webkit-mask: linear-gradient(#000 0 30%, transparent 30% 70%, #000 70%); mask: linear-gradient(#000 0 30%, transparent 30% 70%, #000 70%); }
+.lorien-sight::after { top: 50%; left: -0.5rem; right: -0.5rem; height: 1px; margin-top: -0.5px; -webkit-mask: linear-gradient(90deg, #000 0 30%, transparent 30% 70%, #000 70%); mask: linear-gradient(90deg, #000 0 30%, transparent 30% 70%, #000 70%); }
+.lorien-sight[data-drawn] { width: 2.1rem; height: 2.1rem; margin: -1.05rem 0 0 -1.05rem; border-color: #f6d36a; }
+.lorien-sight[data-shake] { border-color: #ff8a4a; }
+.lorien-archery { width: min(23rem, calc(100% - 1.4rem)); }
+.lorien-archery .shire-panel-say b { color: var(--shire-gold); font-weight: 700; }
+.lorien-archery .shire-panel-stats { flex-wrap: wrap; gap: 0.4rem 1rem; }
+.lorien-archery .shire-meter { width: 100%; box-sizing: border-box; }
+.lorien-meter-draw span { background: linear-gradient(90deg, #c8b070, #f6e6a0); }
+.lorien-meter-draw[data-tired] span { background: linear-gradient(90deg, #f0a040, #ff5a2a); }
+.lorien-wind i { display: inline-block; font-style: normal; color: var(--shire-gold); transition: transform 0.4s ease; }
+
 /* the end: past the Kings */
 .lorien-end { left: 50%; transform: translateX(-50%); width: min(28rem, calc(100% - 1.4rem)); text-align: center; justify-items: center; }
 
 @media (max-width: 639px) {
   .lorien-stage[data-game] .shire-hud-top { display: none; }
+  .lorien-archery .shire-panel-help { display: none; }
   .lorien-game { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); top: 0.7rem; }
   .lorien-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
 }

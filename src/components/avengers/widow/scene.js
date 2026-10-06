@@ -267,7 +267,7 @@ export async function create(canvas, { onLost, onSlow, tier } = {}) {
   const engine = createEngine(canvas, { exposure: 1.2, fov: FOV, near: 0.5, far: 300, bloom: { strength: 0.65, radius: 0.55, threshold: 0.9 }, onLost, onSlow, tier });
   const { scene, camera } = engine;
   const small = engine.small;
-  await preload({ sets: ['concrete-floor', 'concrete-worn', 'sci-panels', 'painted-metal', 'steel-plate', 'brushed-steel', 'carbon', 'plywood'], skies: ['hall'], models: ['extinguisher'], small });
+  await preload({ sets: ['concrete-floor', 'concrete-worn', 'sci-panels', 'painted-metal', 'steel-plate', 'brushed-steel', 'carbon', 'plywood'], skies: ['hall'], models: ['extinguisher'], small, renderer: engine.renderer });
   // overhead strip lighting: a cool key straight down, a little from the south-west
   await engine.setSky('hall', { background: false, envIntensity: 0.7, sunDir: [-0.35, 1, 0.5], sunIntensity: 2.6, sunColor: [0.9, 0.94, 1], fill: 0.18 });
   // a soft light from the camera's side, so faces turned to it aren't black

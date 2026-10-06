@@ -87,10 +87,12 @@ const ROAD = STOPS.map((s) => {
 // turned by `turn`, and `stretch` times taller than it came (a toy's
 // proportions: the built places are all taller than they are wide).
 // Resolves to its mesh, or null if it doesn't come.
-const loaders = () => Promise.all([import('three/examples/jsm/loaders/GLTFLoader.js'), import('three/examples/jsm/libs/meshopt_decoder.module.js')]);
+// (the site's shared loader, fetched only when a model is wanted, so the
+// map's own chunk stays without it)
+const loaders = () => import('../../lib/three/gltf');
 function placeModel(name, material, { height, width, turn = 0, stretch = 1 }) {
   return loaders()
-    .then(([{ GLTFLoader }, { MeshoptDecoder }]) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(`/models/sketchfab/${name}.glb`))
+    .then(({ gltfLoader }) => gltfLoader().loadAsync(`/models/sketchfab/${name}.glb`))
     .then((gltf) => {
       let mesh = null;
       gltf.scene.updateMatrixWorld(true);
@@ -280,23 +282,41 @@ export function buildDiorama(scene, { soft = false, reduced = false, models = tr
     put(g, new THREE.IcosahedronGeometry(1.25, 1), mat(0xf2c64a), 0, 2.9, 0);
     put(g, new THREE.CylinderGeometry(0.9, 0.9, 0.08, 14), mat(0xe9dcc0), 0, 2.1, 0); // a flet
   }
-  // Isengard: Orthanc, black, in its ring
+  // Isengard: Orthanc, black, in its ring. The tower itself can be clicked,
+  // for whoever thinks to (the way in: ./hidden.js); its ring can't.
+  const orthanc = new THREE.Group();
+  orthanc.userData.who = 'orthanc';
   {
     const g = at(world, 378, 362);
     const ring = put(g, new THREE.TorusGeometry(1.3, 0.14, 6, 24), mat(0x4a4642), 0, 0.12, 0);
     ring.rotation.x = Math.PI / 2;
-    const built = [put(g, new THREE.CylinderGeometry(0.28, 0.42, 3, 6), black, 0, 1.5, 0)];
+    g.add(orthanc);
+    const built = [put(orthanc, new THREE.CylinderGeometry(0.28, 0.42, 3, 6), black, 0, 1.5, 0)];
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2;
-      const h = put(g, new THREE.ConeGeometry(0.1, 0.7, 4), black, Math.cos(a) * 0.2, 3.25, Math.sin(a) * 0.2);
+      const h = put(orthanc, new THREE.ConeGeometry(0.1, 0.7, 4), black, Math.cos(a) * 0.2, 3.25, Math.sin(a) * 0.2);
       h.rotation.set(Math.sin(a) * 0.3, 0, -Math.cos(a) * 0.3);
       built.push(h);
     }
-    takeOver(g, built, 'orthanc', orthancStone, { height: 3.9 });
+    // a little fatter than the tower, and never drawn, so a click near it counts
+    const reach = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 4, 8), new THREE.MeshBasicMaterial());
+    reach.position.y = 2;
+    reach.visible = false;
+    orthanc.add(reach);
+    takeOver(orthanc, built, 'orthanc', orthancStone, { height: 3.9 });
   }
-  // Edoras: the golden hall on its hill
+  // Edoras: the golden hall on its hill. It can be clicked too (the way in:
+  // ./hidden.js).
+  let edoras;
   {
     const g = at(world, 418, 410);
+    g.userData.who = 'edoras';
+    edoras = g;
+    // a little wider than the hill, and never drawn, so a click near it counts
+    const reach = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.7, 2.4, 10), new THREE.MeshBasicMaterial());
+    reach.position.y = 1.1;
+    reach.visible = false;
+    g.add(reach);
     const hill = put(g, new THREE.ConeGeometry(1.5, 1.1, 10), mat(0x9ab05a), 0, 0.55, 0);
     hill.scale.y = 1;
     put(g, new THREE.BoxGeometry(0.9, 0.38, 0.5), mat(0x9a6a3a), 0, 1.25, 0);
@@ -304,10 +324,19 @@ export function buildDiorama(scene, { soft = false, reduced = false, models = tr
     r.rotation.y = Math.PI / 4;
     r.scale.set(1.2, 1, 0.65);
   }
-  // Minas Tirith: seven white tiers and the tower
+  // Minas Tirith: seven white tiers and the tower. The city itself can be
+  // clicked too, for whoever thinks to (the way in: ./hidden.js).
   let banner;
+  let minasTirith;
   {
     const g = at(world, 520, 444);
+    g.userData.who = 'minas-tirith';
+    minasTirith = g;
+    // a little wider than the city, and never drawn, so a click near it counts
+    const reach = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 2.1, 4, 10), new THREE.MeshBasicMaterial());
+    reach.position.y = 1.8;
+    reach.visible = false;
+    g.add(reach);
     const built = [];
     for (let i = 0; i < 7; i++) built.push(put(g, new THREE.CylinderGeometry(1.6 - i * 0.2, 1.65 - i * 0.2, 0.32, 20), whiteStone, 0, 0.16 + i * 0.32, -i * 0.08));
     built.push(put(g, new THREE.CylinderGeometry(0.12, 0.16, 1.4, 8), whiteStone, 0, 2.9, -0.56));
@@ -449,7 +478,7 @@ export function buildDiorama(scene, { soft = false, reduced = false, models = tr
   scene.add(fire.mesh, bombs.mesh, smoke.mesh, wisps.mesh, motes.mesh);
 
   // ── Frodo and Sam, and the people they meet ──
-  const roots = []; // what a tap can land on
+  const roots = [orthanc, minasTirith, edoras]; // what a tap can land on
   const tag = (group, id) => {
     group.userData.who = id;
     roots.push(group);

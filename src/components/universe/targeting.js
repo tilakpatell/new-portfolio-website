@@ -10,7 +10,12 @@
 // within the wider AIM.hold (a dogfight swings about), dropping once it's
 // been outside that for AIM.lose seconds (AIM.loseManual for one picked by
 // hand: T, Shift+T or a tap). When its target goes down the guns move
-// straight on to the next one inside the hold, so a fight flows. The lead
+// straight on to the next one inside the hold, so a fight flows; and a lock
+// the guns picked themselves gives way when its target has sat wide of the
+// nose (outside the pick-up cone) or out of the bolts' reach for AIM.swap
+// seconds while another is squarely ahead: they don't stay on one flying
+// off while the next comes down your throat. (One picked by hand never
+// gives way like that.) The lead
 // point is where a bolt fired now meets the target, allowing for its speed
 // and the bolt's (the bolts are quick, well over twice the fastest hunter,
 // so the lead stays a modest angle off); the pip sits there, and a shot
@@ -21,15 +26,32 @@
 // with both the bolt and the target moving (sweptHit), so nothing fast
 // slips between two frames.
 //
+// And the nose follows the lock (trackNudge): with a lead point inside
+// AIM.trackCone, the stick gets a nudge toward it, at most AIM.trackMax of
+// full stick, growing with the angle off (AIM.trackGain), fading to nothing
+// at the cone's edge, in the ship's own frame (a target above a ship rolled
+// on its side is a turn), and giving way to the pilot's own stick as far as
+// it pushes the other way at all; the visitor's lock-tracking setting
+// scales it.
+// The fighters' pace is hunterRules.js's (they fly the fight at a little
+// over your speed), so between the two a fight can be followed.
+//
 // Points are { x, y, z } (the ship, a Vector3) or [x, y, z] (the map's
 // places), in the map's own space.
 
+import { conj, fromAngles, rotate } from './orient';
+
 export const AIM = {
   range: 60, // map units: nothing further out can be locked
-  cone: 0.38, // radians off the nose to pick a target up (about 22°)
-  hold: 0.8, // radians: a lock holds out to here (about 46°)
-  lose: 1.2, // seconds outside the hold cone (or out of range) before it drops
+  cone: 0.5, // radians off the nose to pick a target up (about 29°)
+  hold: 1.05, // radians: a lock holds out to here (about 60°)
+  lose: 2, // seconds outside the hold cone (or out of range) before it drops
   loseManual: 4, // the same, for a lock picked by hand
+  swap: 0.8, // seconds a lock the guns picked may sit wide of the nose, or out of reach, before they take another that's squarely ahead
+  trackCone: 0.7, // radians off the nose within which the nose follows the lock (about 40°)
+  trackGain: 3, // how quickly the nudge grows with the angle off (full at a third of a radian)
+  trackMax: 0.5, // of full stick, at most: the pilot's own stick always wins
+  trackDead: 0.02, // a push the other way smaller than this is a resting hand, not a push
   threat: 0.25, // how much nearer the nose one coming at you counts (of the pick-up score)
   assist: 0.14, // radians: inside this, a shot bends fully onto the lead point (about 8°)
   assistEdge: 0.36, // radians: beyond this, no help at all
@@ -68,8 +90,9 @@ export function bearing(s, p) {
   return { dist, off: angleBetween(nose(s), [d[0] / dist, d[1] / dist, d[2] / dist]) };
 }
 
-// The lock, one step on: `lock` is { id, out, manual? } (out: seconds its
-// target has been outside the hold cone; manual: picked by hand) or null;
+// The lock, one step on: `lock` is { id, out, manual?, wide? } (out: seconds
+// its target has been outside the hold cone; manual: picked by hand; wide:
+// seconds it's been held but outside the pick-up cone or out of reach) or null;
 // `candidates` are { id, at, vel, size, threat? } (hunters.targets; threat
 // 0 to 1, how much it's coming at you). Returns the new lock, or null. With
 // `cycle` (true or 1, or −1 the other way), moves on to the next candidate
@@ -93,27 +116,40 @@ export function track(s, candidates, lock, dt, { cycle = false } = {}) {
       return { id: next.c.id, out: 0, manual: true };
     }
   }
+  // the best to pick up inside `cone`: nearest the nose, nearer counting
+  // for a little and one coming at you for more
+  const pick = (cone, not = null) => {
+    let best = null;
+    let score = Infinity;
+    for (const e of seen) {
+      if (e === not || e.off > cone || e.dist > AIM.range) continue;
+      const k = e.off / AIM.cone + 0.35 * (e.dist / AIM.range) - AIM.threat * clamp(e.c.threat || 0, 0, 1);
+      if (k < score) {
+        score = k;
+        best = e;
+      }
+    }
+    return best;
+  };
   if (current) {
     const keep = (out) => (lock.manual ? { id: lock.id, out, manual: true } : { id: lock.id, out });
-    if (held(current)) return keep(0);
+    if (held(current)) {
+      if (lock.manual) return keep(0);
+      // held, but wide of the nose or out of reach: after a moment of that,
+      // the guns take one that's squarely ahead, if there is one
+      const astray = current.off > AIM.cone || current.dist > AIM.range;
+      if (!astray) return keep(0);
+      const wide = (lock.wide || 0) + dt;
+      const next = wide >= AIM.swap ? pick(AIM.cone, current) : null;
+      return next ? { id: next.c.id, out: 0 } : { id: lock.id, out: 0, wide };
+    }
     // slipping away: a moment's grace before it lets go
     const out = lock.out + dt;
     if (out < (lock.manual ? AIM.loseManual : AIM.lose)) return keep(out);
   }
-  // a fresh one: nearest the nose, nearer counting for a little and one
-  // coming at you for more. Its target just gone (shot down), the guns look
-  // as wide as the hold for the next, so the fight goes on
-  const cone = lock && !current ? AIM.hold : AIM.cone;
-  let best = null;
-  let score = Infinity;
-  for (const e of seen) {
-    if (e.off > cone || e.dist > AIM.range) continue;
-    const k = e.off / AIM.cone + 0.35 * (e.dist / AIM.range) - AIM.threat * clamp(e.c.threat || 0, 0, 1);
-    if (k < score) {
-      score = k;
-      best = e;
-    }
-  }
+  // a fresh one. Its target just gone (shot down), the guns look as wide as
+  // the hold for the next, so the fight goes on
+  const best = pick(lock && !current ? AIM.hold : AIM.cone);
   return best ? { id: best.c.id, out: 0 } : null;
 }
 
@@ -169,6 +205,39 @@ export function assist(dir, want, strength = 1) {
   if (k >= 1) return [...want];
   if (k <= 0) return [...dir];
   return unit([dir[0] + (want[0] - dir[0]) * k, dir[1] + (want[1] - dir[1]) * k, dir[2] + (want[2] - dir[2]) * k]);
+}
+
+// The nudge the stick gets toward a lock's lead point (`lead`: { x, y, z }
+// or [x, y, z]), in the ship's own frame: { turn, climb }, each −1…1 (turn
+// right and climb positive), at most AIM.trackMax of full stick, growing
+// with the angle off (AIM.trackGain) and fading to nothing at AIM.trackCone;
+// `strength` is the visitor's setting (0: none). `stick` is what the pilot
+// is asking for already ({ turn, climb }): on an axis where they push the
+// other way, the nudge lets go.
+export function trackNudge(s, lead, strength = 1, stick = null) {
+  const none = { turn: 0, climb: 0 };
+  if (!(strength > 0) || !lead) return none;
+  const d = dirTo(s, lead);
+  const q = fromAngles(s.heading || 0, s.pitch || 0, s.bank || 0);
+  const [x, y, z] = rotate(conj(q), d); // in the ship's frame: nose −z, up +y, right +x
+  const off = Math.acos(clamp(-z, -1, 1));
+  if (off >= AIM.trackCone || off < 1e-9) return none;
+  const edge = 1 - clamp((off - AIM.trackCone * 0.6) / (AIM.trackCone * 0.4), 0, 1);
+  const k = AIM.trackMax * strength * edge;
+  const yaw = Math.atan2(x, -z);
+  const pitch = Math.asin(clamp(y, -1, 1));
+  let turn = clamp(yaw * AIM.trackGain, -1, 1) * k;
+  let climb = clamp(pitch * AIM.trackGain, -1, 1) * k;
+  if (stick) {
+    // (any push the other way and it lets go on that axis: a nudge that
+    // outweighed a light push would turn the ship against the pilot's hand)
+    const against = (n, v) => (n * (v || 0) < 0 && Math.abs(v) > AIM.trackDead ? 0 : n);
+    turn = against(turn, stick.turn);
+    climb = against(climb, stick.climb);
+  }
+  if (Math.abs(turn) < 1e-12) turn = 0;
+  if (Math.abs(climb) < 1e-12) climb = 0;
+  return { turn, climb };
 }
 
 // a direction as the ship's own angles: the heading that points along it

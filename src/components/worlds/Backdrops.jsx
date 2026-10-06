@@ -1,3 +1,4 @@
+import '../../styles/lazy/worlds.css';
 // Background art for the fan worlds, drawn in SVG so it takes each theme's
 // colours and costs nothing to load: Middle-earth's Misty Mountains (the Shire's
 // hills by day, Mordor by fire) and the skyline of Cybertron.

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import PageTitle from '../components/PageTitle';
 import { RiCheckLine, RiDownloadLine, RiFileCopyLine, RiGithubFill, RiLinkedinBoxFill, RiMailLine, RiArrowRightUpLine } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
 import { Waypoint } from '../components/ui';
@@ -6,9 +7,11 @@ import { useAchievements } from '../components/Achievements';
 import { education, profile } from '../data/profile';
 import { fmtMonth } from '../data/roles';
 import { useDocumentTitle } from '../lib/hooks';
+import { checkMessage, firstInvalid } from '../lib/contact';
 import { useFun } from '../fun/FunProvider';
 import { AurebeshLine } from '../components/Wordmark';
 import Egg from '../components/Egg';
+import PaperPlane from '../components/contact/PaperPlane';
 
 function CopyEmail() {
   const [copied, setCopied] = useState(false);
@@ -35,23 +38,23 @@ function MessageForm() {
   const [errors, setErrors] = useState({});
   const [opened, setOpened] = useState(false);
 
-  const validate = () => {
-    const e = {};
-    if (!form.name.trim()) e.name = 'Enter your name.';
-    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Check the email address. It looks incomplete.';
-    if (form.message.trim().length < 10) e.message = 'Write a little more: at least 10 characters.';
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
-
   const submit = (ev) => {
     ev.preventDefault();
-    if (!validate()) return;
+    const e = checkMessage(form);
+    setErrors(e);
+    // (to the first field that's wrong, where its message is read out with it)
+    const first = firstInvalid(e);
+    if (first) {
+      ev.currentTarget.elements.namedItem(first)?.focus();
+      return;
+    }
     if (/that'?s what she said|\btwss\b/i.test(form.message)) twss();
     const subject = form.subject.trim() || `Hello from ${form.name.trim()}`;
     const body = `${form.message.trim()}\n\n- ${form.name.trim()}${form.email.trim() ? ` (${form.email.trim()})` : ''}`;
     window.location.href = `mailto:${profile.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     setOpened(true);
+    // the paper airplane by the heading takes off with it
+    window.dispatchEvent(new Event('tp:memo-sent'));
   };
 
   const field = (name) => ({
@@ -149,7 +152,7 @@ export default function Contact() {
         <div className="relative">
           <Waypoint top="0.6rem" />
           <p className="eyebrow">Contact</p>
-          <h1 className="display mt-6 text-[clamp(3rem,1.6rem+6vw,6.2rem)]">Let’s talk.</h1>
+          <PageTitle className="display mt-6 text-[clamp(3rem,1.6rem+6vw,6.2rem)]">Let’s talk.</PageTitle>
           <p className="mt-3 text-sm text-muted">
             <AurebeshLine>Let’s talk.</AurebeshLine>
           </p>
@@ -158,6 +161,7 @@ export default function Contact() {
             {fmtMonth(education.graduation)} with a {education.degree} from {education.school}.
           </p>
         </div>
+        <PaperPlane />
       </header>
 
       <section className="shell relative z-10 pb-28" aria-label="Ways to reach me">

@@ -16,7 +16,7 @@
 
 import * as THREE from 'three';
 import { farTree } from '../../middleearth/towns/bake';
-import { AREAS, DECOR, DINER, DRIVEWAY, FENCES, FRONT_WALK, NEIGHBOURS, ROAD, SCHOOL, TREES } from './rules';
+import { AREAS, DECOR, DINER, DRIVEWAY, FENCES, FRONT_WALK, NEIGHBOURS, OUTSKIRTS, ROAD, SCHOOL, STOOP, TREES } from './rules';
 import { at, batch, mergeParts, rng, speckle } from './kit';
 import { buildingMaterials, flagpole, marquee, neighbourHouses, school, smithHouse } from './buildings';
 import { STREET_SKY, makeSky } from './sky';
@@ -111,6 +111,11 @@ export async function buildStreet(kit) {
   // the front walk, edged in red brick, from the porch step to the sidewalk
   pad(FRONT_WALK.x0, FRONT_WALK.x1, FRONT_WALK.z0, FRONT_WALK.z1, 0.035);
   for (const x of [FRONT_WALK.x0 - 0.08, FRONT_WALK.x1 + 0.08]) b.add(BOX, m.brick, at(x, 0.04, (FRONT_WALK.z0 + FRONT_WALK.z1) / 2, 0, 0.16, 0.08, FRONT_WALK.z1 - FRONT_WALK.z0));
+  // the stoop at the front door and its two steps: red brick under a concrete top
+  for (const p of STOOP) {
+    b.add(BOX, m.brick, at(p.x, (p.top - 0.06) / 2, p.z, 0, p.w - 0.04, p.top - 0.06, p.d - 0.04));
+    flat.add(BOX, slab, at(p.x, p.top - 0.03, p.z, 0, p.w, 0.06, p.d));
+  }
 
   // ── the Smith house and the school ──
   const bushes = [];
@@ -139,6 +144,27 @@ export async function buildStreet(kit) {
   // (Shoney's has its sign there, and a parking lot for a driveway: ./buildings.js)
   const drives = NEIGHBOURS.filter((n) => n !== DINER).map((n) => ({ x: DECOR.find((d) => d.id === `mailbox-${n.id}`).x - 2.1, z: n.z, s: Math.sign(n.z) }));
   const houses = NEIGHBOURS.filter((n) => n !== DINER).map((n) => ({ x: n.x, z: n.z, turn: n.z < 0 ? 0 : Math.PI, look: n.look, tint: n.tint, roofTint: n.roofTint, id: n.id }));
+  // the houses on along the road, solid in the rules, each with its drive
+  for (const o of OUTSKIRTS) {
+    houses.push({ x: o.x, z: o.z, turn: o.z < 0 ? 0 : Math.PI, look: o.look, tint: pick(TINTS), roofTint: pick(ROOFS), id: o.id });
+    drives.push({ x: o.x - 7.8, z: o.z, s: Math.sign(o.z) });
+  }
+  // the street's edge: a hedge all round (gaps for the road and sidewalks,
+  // closed off there with striped barriers), so nothing stops Morty unseen
+  const A = AREAS.street;
+  const hedge = mats.toon(0x3d8a3a);
+  const barrier = mats.toon(0xd8302a);
+  const hx = (A.x1 - A.x0) / 2;
+  for (const s of [-1, 1]) b.add(BOX, hedge, at(0, 0.65, s * (A.z1 + 0.6), 0, A.x1 - A.x0 + 2.4, 1.3, 1.2));
+  for (const s of [-1, 1])
+    for (const t of [-1, 1]) {
+      const z0 = t < 0 ? A.z0 - 1.2 : WALK + 0.2;
+      const z1 = t < 0 ? -WALK - 0.2 : A.z1 + 1.2;
+      b.add(BOX, hedge, at(s * (hx + 0.6), 0.65, (z0 + z1) / 2, 0, 1.2, 1.3, z1 - z0));
+      // the barrier across the road and its sidewalk, red and white
+      for (let z = -WALK; z < WALK; z += 1) b.add(BOX, (Math.round(z) & 1) ? m.white : barrier, at(s * (hx + 0.5), 0.9, z + 0.5, 0, 0.12, 0.3, 1));
+      for (const z of [-WALK + 0.3, 0, WALK - 0.3]) b.add(BOX, m.white, at(s * (hx + 0.5), 0.45, z, 0, 0.1, 0.9, 0.1));
+    }
   const suburb = [];
   let k = 0;
   for (let x = AREAS.street.x1 + 8; x < plan.side; x += 21 + r() * 4, k++)

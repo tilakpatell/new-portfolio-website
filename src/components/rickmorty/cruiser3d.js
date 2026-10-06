@@ -10,6 +10,10 @@
 
 import * as THREE from 'three';
 import { createMeshyCast } from './portal/meshyCast';
+import { inkHull } from '../../lib/three/ink';
+import { local } from '../../lib/hooks';
+import { LOOK_KEY, readLooks } from './wardrobe/looks';
+import { bodyAsset, bodyKind, dress, withWardrobe } from './wardrobe/wear';
 import { pixelRatio } from '../../lib/device';
 import { precompile, quiet, releaseContext } from '../../lib/three/renderer';
 
@@ -39,7 +43,11 @@ export function glassDome(body) {
     glassY = min.y + (max.y - min.y) * GLASS;
     const m = o.material.clone();
     m.transparent = true;
-    m.onBeforeCompile = (s) => {
+    // (on top of what its material already does to its shaders: its rim of light)
+    const before = o.material.onBeforeCompile;
+    const key = o.material.customProgramCacheKey;
+    m.onBeforeCompile = (s, r) => {
+      before?.call(m, s, r);
       s.vertexShader = s.vertexShader.replace('void main() {', 'varying float vGlassY;\nvoid main() {\nvGlassY = position.y;');
       // see-through face on, thicker towards its edges, so it reads as a bubble
       s.fragmentShader = s.fragmentShader
@@ -59,57 +67,11 @@ export function glassDome(body) {
           }`,
         );
     };
-    m.customProgramCacheKey = () => `glass-${glassY}`;
+    m.customProgramCacheKey = () => `${key.call(o.material)}|glass-${glassY}`;
     o.material = m;
     o.userData.glass = m;
   });
   return glassY;
-}
-
-// an ink line round a mesh, skinned or not: its back faces drawn flat,
-// pushed out along the normals once posed, in view space (so `width` is in
-// the scene's units whatever scale the model or its skeleton has)
-// (none above `clipY`, in the mesh's own units: the cruiser's glass)
-function inkHull(root, width, clipY = null) {
-  const mat = new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide });
-  mat.onBeforeCompile = (s) => {
-    s.vertexShader = s.vertexShader
-      .replace('void main() {', 'varying float vInkY;\nvoid main() {')
-      .replace(
-        '#include <project_vertex>',
-        `#include <project_vertex>
-        {
-          vInkY = position.y;
-          #ifdef USE_SKINNING
-            vec3 inkN = normalize(transformedNormal);
-          #else
-            vec3 inkN = normalize(normalMatrix * normal);
-          #endif
-          mvPosition.xyz += inkN * ${width.toFixed(4)};
-          gl_Position = projectionMatrix * mvPosition;
-        }`,
-      );
-    s.fragmentShader = s.fragmentShader.replace('void main() {', `varying float vInkY;\nvoid main() {\n${clipY == null ? '' : `if (vInkY > ${clipY.toFixed(5)}) discard;`}`);
-  };
-  const meshes = [];
-  root.traverse((o) => {
-    if (o.isMesh && !o.userData.ink) meshes.push(o);
-  });
-  for (const o of meshes) {
-    let h;
-    if (o.isSkinnedMesh) {
-      h = new THREE.SkinnedMesh(o.geometry, mat);
-      h.bind(o.skeleton, o.bindMatrix);
-      h.bindMode = o.bindMode;
-    } else h = new THREE.Mesh(o.geometry, mat);
-    h.userData.ink = true;
-    h.frustumCulled = false;
-    h.position.copy(o.position);
-    h.quaternion.copy(o.quaternion);
-    h.scale.copy(o.scale);
-    o.parent.add(h);
-  }
-  return mat;
 }
 
 // a soft round glow, for the thruster
@@ -135,10 +97,13 @@ function glowTexture() {
 // cruiser. `ink` scales the outline's width, which is in the scene's units:
 // a scene that draws the cruiser smaller passes its scale. update(t) breathes
 // the crew and flickers the glow. Null if the saucer won't load.
-export async function buildCruiser({ ink = 1 } = {}) {
-  const cast = createMeshyCast();
+// `looks`: the wardrobe's (wardrobe/looks.js), as kept if none are given:
+// Rick and Morty in their seats as you've dressed them.
+export async function buildCruiser({ ink = 1, looks = readLooks(local.get(LOOK_KEY)) } = {}) {
+  const cast = createMeshyCast(withWardrobe());
   // the walk only to turn the seated clip to face ahead (see meshyCast)
-  await cast.load(null, ['saucer', 'rick', 'morty'], { clips: ['sit', 'walk'] });
+  const have = new Set(['saucer', 'rick', 'morty', bodyAsset(looks.rick), bodyAsset(looks.morty)]); // (the models loaded: a cast loads one again if asked)
+  await cast.load(null, [...have], { clips: ['sit', 'walk'] });
   const body = cast.prop('saucer', TALL);
   if (!body) {
     cast.dispose();
@@ -148,22 +113,38 @@ export async function buildCruiser({ ink = 1 } = {}) {
   const hull = new THREE.Group();
   hull.position.y = -TALL / 2;
   hull.add(body);
-  // Rick at the wheel, Morty beside him, sat looking ahead
-  const crew = [];
-  for (const kind of ['rick', 'morty']) {
-    const c = cast.make(kind);
-    if (!c) continue;
+  // Rick at the wheel, Morty beside him, sat looking ahead, as the wardrobe
+  // has them: each { c (the figure), look, off (takes his look and ink off) }
+  const seats = {};
+  const seat = (kind, look) => {
+    const c = cast.make(bodyKind(look)) ?? cast.make(kind);
+    if (!c) return null;
     const [tall, x] = CREW[kind];
     c.group.scale.setScalar(tall / c.height);
     c.group.position.set(x, CREW.y, CREW.z);
     for (const [n, a] of Object.entries(c.act ?? {})) a.setEffectiveWeight(n === 'sit' ? 1 : 0);
+    const undress = dress(c, look);
     c.group.traverse((o) => (o.userData.noPaint = true)); // (a paint job on the universe map's cruiser is the hull's, not theirs)
+    const inkMat = inkHull(c.group, 0.026 * ink, { color: INK });
     hull.add(c.group);
-    crew.push(c);
-  }
+    return {
+      c,
+      look,
+      off() {
+        undress();
+        inkMat.dispose();
+        c.group.removeFromParent();
+      },
+    };
+  };
+  for (const kind of ['rick', 'morty']) seats[kind] = seat(kind, looks[kind]);
+  const crew = () => Object.values(seats).filter(Boolean).map((s) => s.c);
+  let seatedOn = true;
+  let gone = false;
+  let latest = looks; // (the newest looks asked for: an older ask still loading gives way)
   // the dome is glass: everything above the rim, in the mesh's own units
   const glassY = glassDome(body);
-  const inks = [inkHull(body, 0.036 * ink, glassY), ...crew.map((c) => inkHull(c.group, 0.026 * ink))];
+  const hullInk = inkHull(body, 0.036 * ink, { clipY: glassY, color: INK });
   // the exhaust cans' glow
   const glowTex = glowTexture();
   const glowMat = new THREE.SpriteMaterial({ map: glowTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
@@ -186,10 +167,31 @@ export async function buildCruiser({ ink = 1 } = {}) {
     },
     // Rick and Morty in their seats (false: they've got out)
     seated(on) {
-      for (const c of crew) c.group.visible = on;
+      seatedOn = on;
+      for (const c of crew()) c.group.visible = on;
+    },
+    // the wardrobe's new looks: whoever's changed is sat down again in his,
+    // the cruiser and the other one as they are (a new body's model loaded
+    // first; nothing else is)
+    async setLooks(next) {
+      latest = next;
+      for (const kind of ['rick', 'morty']) {
+        const look = next?.[kind];
+        const was = seats[kind];
+        if (!look || (was && JSON.stringify(was.look) === JSON.stringify(look))) continue;
+        const asset = bodyAsset(look);
+        if (!have.has(asset)) {
+          await cast.load(null, [asset], { clips: ['sit', 'walk'] }).catch(() => {});
+          have.add(asset);
+        }
+        if (gone || next !== latest) return;
+        was?.off();
+        seats[kind] = seat(kind, look);
+        if (seats[kind]) seats[kind].c.group.visible = seatedOn;
+      }
     },
     update(t) {
-      for (const c of crew) {
+      for (const c of crew()) {
         c.mixer?.update(c.last == null ? 0 : Math.min(0.1, Math.max(0, t - c.last)));
         c.last = t;
       }
@@ -197,8 +199,10 @@ export async function buildCruiser({ ink = 1 } = {}) {
       glows.forEach((g, i) => g.scale.setScalar(0.7 + Math.sin(t * 13 + i * 2) * 0.06));
     },
     dispose() {
+      gone = true;
+      for (const s of Object.values(seats)) s?.off();
       cast.dispose();
-      for (const m of inks) m.dispose();
+      hullInk.dispose();
       body.traverse((o) => o.userData.glass?.dispose());
       glowTex.dispose();
       glowMat.dispose();

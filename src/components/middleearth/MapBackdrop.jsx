@@ -3,6 +3,7 @@ import { use3D } from '../../lib/gpu';
 import { settle } from '../../lib/settle';
 import { opened } from './opening';
 import { SHEET } from './mapData';
+import '../../styles/lazy/middleearth.css';
 
 // The map of Middle-earth behind the whole page. With a graphics chip it is
 // in WebGL (./MapBackdrop3D.js): the sheet on a table, a camera gliding over

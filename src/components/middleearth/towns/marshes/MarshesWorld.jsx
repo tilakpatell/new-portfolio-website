@@ -5,19 +5,23 @@ import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
 import { readPad, typing } from '../../../games/pad';
 import { Convo, QuestList, Stick, Travellers } from '../TownHud';
+import { SideList } from '../SideList';
+import { readSide, recordSide } from '../side';
 import { useTravellers } from '../useTravellers';
-import { keyDown, keyUp, moveOf } from '../keys';
+import { keyDown, keyUp, moveOf, ownButton } from '../keys';
 import { nearest } from '../story';
 import { newTalk, talkNode, talkOn } from '../talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { newWatchers, stepWatchers } from '../watchers';
 import { newLead, stepLead } from '../lorien/rules';
-import { BED, EMYN_COLLIDERS, EMYN_START, EMYN_WALLS, GATE_COLLIDERS, GATE_WALLS, LIGHTS, LOOKOUT, MARSH_PATH, MARSH_START, SCOUT_ROUNDS, SLOPE_START, SPOTS, inMarsh, validAt } from './layout';
-import { CONVOS, QUESTS, SEAL, SPEAKERS, marshesProgress } from './story';
-import { CREEP, ROPE, SCOUTS, newCreep, newDescent, newFell, newLure, pounce, stepCreep, stepDescent, stepFell, stepLure } from './rules';
+import { BED, EMYN_COLLIDERS, EMYN_START, EMYN_WALLS, GATE_COLLIDERS, GATE_WALLS, LIGHTS, LOOKOUT, MARSH_PATH, MARSH_START, POOL_BANK, SCOUT_ROUNDS, SLOPE_START, SPOTS, inMarsh, validAt } from './layout';
+import { CONVOS, QUESTS, SEAL, SIDE, SPEAKERS, WAY_SAYS, marshesProgress } from './story';
+import { CREEP, ROPE, SCOUTS, WAY, hopWay, newCreep, newDescent, newFell, newLure, newWay, pounce, stepCreep, stepDescent, stepFell, stepLure, stepWay } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './marshes.css';
+import '../../../../styles/lazy/middleearth.css';
+import GuideCue from '../../../guide/GuideCue';
 
 // The Emyn Muil, the Dead Marshes and the Black Gate: the eighth stretch
 // of the road, Frodo and Sam alone with Gollum. The places are in
@@ -27,6 +31,10 @@ import './marshes.css';
 
 const DONE = 'tp-marshes-done';
 const AT = 'tp-marshes-at';
+// Sméagol's safe way, on the side: { won, best } (best: fewest slips)
+const SIDE_KEY = 'tp-marshes-side';
+// where the firm ground runs out of the marshes, east, onto the ash
+const MARSH_END = MARSH_PATH[MARSH_PATH.length - 1];
 const sounds = () => import('./sounds');
 const walkers = {
   emyn: makeWalker({ radius: 400, colliders: EMYN_COLLIDERS, walls: EMYN_WALLS }),
@@ -45,6 +53,7 @@ const SHOTS = {
 const PROMPT = {
   rope: { name: 'The cliff', act: 'Down the rope' },
   bed: { name: 'Sam, asleep', act: 'Lie down' },
+  pool: { name: 'Sméagol’s safe way', act: 'Follow Sméagol' },
 };
 
 export default function MarshesWorld({ onLeave }) {
@@ -68,15 +77,28 @@ export default function MarshesWorld({ onLeave }) {
     },
     [unlock],
   );
+  // the safe way on the side: kept apart from the story's progress
+  const [side, setSide] = useState(() => readSide(local.get(SIDE_KEY, null)));
+  const recordGo = useCallback(
+    (go) => {
+      setSide((was) => {
+        const { won, best } = recordSide(was, go, { low: true });
+        local.set(SIDE_KEY, { won, best });
+        return { won, best };
+      });
+      if (go.won) unlock(SIDE.seal);
+    },
+    [unlock],
+  );
   const world = three.on && gl !== 'failed' && gl !== 'lost';
   return (
     <section className="shire-world marshes-world" aria-labelledby="marshes-title" data-mode={world ? '3d' : 'cards'}>
-      {world ? <World prog={prog} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
+      {world ? <World prog={prog} complete={complete} side={side} recordGo={recordGo} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
     </section>
   );
 }
 
-function World({ prog, complete, gl, setGl, onLeave }) {
+function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
   const trav = useTravellers('dead-marshes', gl === 'on');
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
@@ -87,7 +109,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     const zone = prog.finished ? 'gate' : prog.zone;
     const at = validAt(local.get(AT, null), zone);
     const h = newWalker(at);
-    sim.current = { zone, h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.34, dragAt: -1e9, mode: 'walk', talking: null, talk: null, near: null, frame: 0, moved: false, t: 0, stepT: 0, air: null, padBefore: null, descent: null, creep: null, lead: null, lure: null, fell: null, faced: false, scouts: null, hide: 0, cKey: false, busy: false, steer: 0, lower: 0, still: 0 };
+    sim.current = { zone, h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.34, dragAt: -1e9, mode: 'walk', talking: null, talk: null, near: null, frame: 0, moved: false, t: 0, stepT: 0, air: null, padBefore: null, descent: null, creep: null, lead: null, lure: null, fell: null, faced: false, scouts: null, hide: 0, cKey: false, busy: false, steer: 0, lower: 0, still: 0, way: null, said: null, safeN: 0 };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -233,6 +255,49 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     s.scouts = newWatchers(SCOUT_ROUNDS);
   }, [toZone]);
 
+  // Sméagol's safe way across a pool
+  const startWay = useCallback(() => {
+    const s = sim.current;
+    s.mode = 'way';
+    s.way = newWay(Math.floor(Math.random() * 1000) + 1);
+    s.h = newWalker(POOL_BANK);
+    s.said = WAY_SAYS.start;
+    s.safeN = 0;
+    sounds().then((x) => x.gollum(0.4));
+  }, []);
+  const leaveWay = useCallback(() => {
+    const s = sim.current;
+    if (s.mode !== 'way') return;
+    s.mode = 'walk';
+    s.way = null;
+    s.h = newWalker({ x: POOL_BANK.x, z: POOL_BANK.z + 0.8, face: 0 });
+    s.yaw = behindYaw(0);
+    s.dragAt = s.t;
+  }, []);
+  // a hop: -1 to the left, 0 straight on, 1 to the right
+  const hop = useCallback(
+    (dir) => {
+      const s = sim.current;
+      if (s.mode !== 'way' || !s.way) return;
+      const r = hopWay(s.way, dir);
+      if (r === 'safe') {
+        sounds().then((x) => x.squelch(1));
+        s.safeN += 1;
+        if (s.safeN % 2 === 0) s.said = WAY_SAYS.safe[(s.safeN / 2 - 1) % WAY_SAYS.safe.length];
+      } else if (r === 'sank') {
+        sounds().then((x) => x.sink());
+        api.current?.fx('sank');
+        s.said = s.way.sankAt?.lit ? WAY_SAYS.lit : WAY_SAYS.sank;
+      } else if (r === 'across') {
+        sounds().then((x) => x.squelch(1));
+        api.current?.fx('across');
+        s.said = WAY_SAYS.won(s.way.slips);
+        recordGo({ won: true, score: s.way.slips });
+      }
+    },
+    [recordGo],
+  );
+
   const enter = useCallback(
     (id) => {
       audioContext();
@@ -241,10 +306,10 @@ function World({ prog, complete, gl, setGl, onLeave }) {
       else if (id === 'bed') {
         s.h = newWalker({ x: BED.x - 0.9, z: BED.z, face: BED.face });
         startCreep();
-      }
+      } else if (id === 'pool') startWay();
       setList(false);
     },
-    [startRope, startCreep],
+    [startRope, startCreep, startWay],
   );
 
   const talkOnward = useCallback(
@@ -347,7 +412,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     const down = (e) => {
       if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
       const k = e.key;
-      const onButton = e.target instanceof HTMLButtonElement;
+      const onButton = ownButton(e, box.current);
       if (s.talk) {
         if (/^[1-4]$/.test(k)) {
           e.preventDefault();
@@ -362,6 +427,13 @@ function World({ prog, complete, gl, setGl, onLeave }) {
         e.preventDefault();
         audioContext();
       }
+      if (s.mode === 'way') {
+        const m = moveOf(e);
+        if (!e.repeat && (m === 'left' || m === 'up' || m === 'right')) hop(m === 'left' ? -1 : m === 'right' ? 1 : 0);
+        else if (k === 'Escape') leaveWay();
+        else if ((k === 'r' || k === 'R') && s.way?.state === 'across') startWay();
+        return;
+      }
       if ((k === ' ' || k === 'e' || k === 'E' || k === 'Enter') && !onButton && !e.repeat) {
         if (s.mode === 'creep' || (s.mode === 'walk' && s.near)) {
           e.preventDefault();
@@ -371,7 +443,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, [live, talkOnward, doAct]);
+  }, [box, live, talkOnward, doAct, hop, leaveWay, startWay]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
@@ -531,6 +603,28 @@ function World({ prog, complete, gl, setGl, onLeave }) {
       }
       if (Math.hypot(s.h.x - LOOKOUT.x, s.h.z - LOOKOUT.z) < LOOKOUT.r) startTalk('gate');
     }
+    // Sméagol's safe way
+    if (s.mode === 'way' && s.way) {
+      if (pad) {
+        if (pressed('left')) hop(-1);
+        else if (pressed('right')) hop(1);
+        else if (pressed('up') || pressed('a')) hop(0);
+      }
+      for (const e of stepWay(s.way, dt)) {
+        if (e.type === 'gollum') sounds().then((x) => x.squelch(0.5));
+        else if (e.type === 'shown') s.said = WAY_SAYS.shown;
+        else if (e.type === 'again') {
+          s.said = WAY_SAYS.again;
+          s.safeN = 0;
+        }
+      }
+    }
+    // back across the marshes after, and out of them east onto the ash
+    if (s.mode === 'walk' && s.zone === 'marsh' && !s.lead && p.done.includes('marsh') && s.h.x > MARSH_END[0] - 1.5) {
+      if (p.next === 'gate') startGate();
+      else toZone('gate', SLOPE_START);
+      say('Out of the marshes, and onto the ash. Ahead, the Black Gate.', false);
+    }
     // coming back to the Gate part
     if (s.mode === 'walk' && p.next === 'gate' && s.zone === 'gate' && !s.scouts) startGate();
     if (s.mode === 'walk' && p.next === 'marsh' && !s.lead) startMarsh(0);
@@ -542,6 +636,8 @@ function World({ prog, complete, gl, setGl, onLeave }) {
       const sp = nearest(SPOTS, s.h.x, s.h.z);
       if (sp && sp.quest === p.next) spotHere = sp.id;
     }
+    // on the side, Sméagol's safe way, once you've crossed with him
+    if (s.mode === 'walk' && s.zone === 'marsh' && !s.lead && p.done.includes(SIDE.needs) && Math.hypot(s.h.x - POOL_BANK.x, s.h.z - POOL_BANK.z) < 2.4) spotHere = 'pool';
     s.near = spotHere;
 
     const markers = s.zone === 'gate' && s.scouts ? [LOOKOUT] : s.zone === 'emyn' && p.next === 'smeagol' ? SPOTS : [];
@@ -560,7 +656,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
           hiding,
           travellers: tv ? tv.list() : null,
           talking: s.talking,
-          speaker: node?.who ?? null,
+          speaker: node?.who ?? (s.mode === 'way' ? 'gollum' : null),
           line: s.talk?.at ?? null,
           camShot: s.mode === 'talk' && SHOTS[s.talking] ? { id: s.talking, ...SHOTS[s.talking] } : null,
           descent: d,
@@ -570,6 +666,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
           fell: s.fell ? { phase: s.fell.phase, phaseT: s.fell.phaseT } : null,
           scouts: s.scouts?.list ?? null,
           gateOpen: s.talking === 'gate' && ['open', 'go', 'no'].includes(s.talk?.at),
+          way: s.mode === 'way' ? s.way : null,
           markers,
           stepT: s.stepT,
           camYaw: s.yaw,
@@ -588,10 +685,11 @@ function World({ prog, complete, gl, setGl, onLeave }) {
       return;
     }
 
-    const key = [s.zone, s.mode, s.near, s.moved, s.talking, s.talk?.at, hiding, d ? Math.round(d.y) : '', d?.knocks, c ? Math.round(c.d * 2) : '', c?.phase, s.lure ? Math.round(s.lure.k * 20) : '', s.fell?.phase, s.lead?.waiting, s.scouts?.list.some((w) => w.mode === 'alert' || w.mode === 'chase'), p.done.length].join('|');
+    const w = s.mode === 'way' ? s.way : null;
+    const key = [w ? [w.phase, w.row, w.slips, w.state, s.said].join(',') : '', s.zone, s.mode, s.near, s.moved, s.talking, s.talk?.at, hiding, d ? Math.round(d.y) : '', d?.knocks, c ? Math.round(c.d * 2) : '', c?.phase, s.lure ? Math.round(s.lure.k * 20) : '', s.fell?.phase, s.lead?.waiting, s.scouts?.list.some((w) => w.mode === 'alert' || w.mode === 'chase'), p.done.length].join('|');
     if (key !== hudKey.current) {
       hudKey.current = key;
-      setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, hiding, rope: d ? { y: d.y, knocks: d.knocks } : null, creep: c ? { d: c.d, phase: c.phase } : null, lure: s.lure?.k ?? 0, fell: s.fell?.phase ?? null, leading: Boolean(s.lead), hunted: Boolean(s.scouts?.list.some((w) => w.mode === 'alert' || w.mode === 'chase')) });
+      setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, hiding, rope: d ? { y: d.y, knocks: d.knocks } : null, creep: c ? { d: c.d, phase: c.phase } : null, lure: s.lure?.k ?? 0, fell: s.fell?.phase ?? null, leading: Boolean(s.lead), hunted: Boolean(s.scouts?.list.some((x) => x.mode === 'alert' || x.mode === 'chase')), way: w ? { phase: w.phase, row: w.row, slips: w.slips, state: w.state, say: s.said } : null });
     }
     if (++s.frame % 120 === 0 && s.mode === 'walk' && !s.lead) local.set(AT, { zone: s.zone, x: s.h.x, z: s.h.z, face: s.h.face });
   }, live);
@@ -651,6 +749,11 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     onLostPointerCapture: () => (sim.current[name] = 0),
     onContextMenu: (e) => e.preventDefault(),
   });
+  const sideTask = { ...SIDE, open: prog.done.includes(SIDE.needs), done: side.won, best: side.best != null ? WAY_SAYS.best(side.best) : null };
+  const goSide = () => {
+    toZone('marsh', { x: POOL_BANK.x, z: POOL_BANK.z + 1.2, face: Math.PI / 2 });
+    setList(false);
+  };
   const travel = (q) => {
     if (q.id === 'smeagol') toZone('emyn', EMYN_START);
     else if (q.id === 'marsh') startMarsh(0);
@@ -664,10 +767,11 @@ function World({ prog, complete, gl, setGl, onLeave }) {
   const walking = mode === 'walk';
   const convo = hud.talking ? CONVOS[hud.talking] : null;
   const node = convo && hud.line ? convo.nodes[hud.line] : convo ? convo.nodes[convo.start] : null;
-  const objective = hud.leading ? (hud.fell === 'warn' || hud.fell === 'over' ? 'Nazgûl! Get down, and stay down (hold C or Space).' : 'Follow Gollum on the firm ground. Don’t follow the lights.') : hud.zone === 'gate' && !prog.finished ? 'Along the slope to the lookout, east. Hold C under the cloak when the scouts look.' : prog.objective;
+  const W = mode === 'way' ? hud.way : null;
+  const objective = hud.zone === 'marsh' && !hud.leading && prog.done.includes('marsh') ? 'The marshes, crossed once already. Out of them east, onto the ash, to the Black Gate.' : hud.leading ? (hud.fell === 'warn' || hud.fell === 'over' ? 'Nazgûl! Get down, and stay down (hold C or Space).' : 'Follow Gollum on the firm ground. Don’t follow the lights.') : hud.zone === 'gate' && !prog.finished ? 'Along the slope to the lookout, east. Hold C under the cloak when the scouts look.' : prog.objective;
   const showHide = walking && (hud.zone === 'marsh' || hud.zone === 'gate') && touch;
   return (
-    <div ref={box} className="shire-stage marshes-stage" data-touch={touch || undefined} data-mode={mode} data-zone={hud.zone ?? sim.current.zone} data-game={['rope', 'creep'].includes(mode) || hud.leading || undefined} data-hiding={hud.hiding || undefined}>
+    <div ref={box} className="shire-stage marshes-stage" data-touch={touch || undefined} data-mode={mode} data-zone={hud.zone ?? sim.current.zone} data-game={['rope', 'creep', 'way'].includes(mode) || hud.leading || undefined} data-hiding={hud.hiding || undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="The Emyn Muil, the Dead Marshes and the Black Gate in 3D: razor rock in a storm, black pools with lights in them, and the Gate of Mordor" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">Into the Emyn Muil…</p>}
 
@@ -708,7 +812,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
           </button>
         </div>
       )}
-      {gl === 'on' && walking && !hud.moved && !here && !hud.leading && <p className="shire-hint">{touch ? 'Drag the stick to walk. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}</p>}
+      {gl === 'on' && walking && !hud.moved && !here && !hud.leading && <p className="shire-hint">{touch ? 'Drag the stick to walk. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}<GuideCue touch={touch} /></p>}
 
       {node && <Convo title={hud.zone === 'marsh' ? 'The Dead Marshes' : hud.zone === 'gate' ? 'The Black Gate' : 'The Emyn Muil'} name={SPEAKERS[node.who] ?? ''} node={node} touch={touch} onPick={(i) => talkOnward(i)} onNext={() => talkOnward()} />}
 
@@ -778,6 +882,53 @@ function World({ prog, complete, gl, setGl, onLeave }) {
           </button>
         </div>
       )}
+      {W && (
+        <div className="shire-panel marshes-game marshes-way" role="group" aria-label="Sméagol’s safe way" data-sunk={W.phase === 'sunk' || undefined} data-show={W.phase === 'show' || undefined}>
+          <p className="shire-panel-title">{W.phase === 'show' ? 'Watch Sméagol’s feet…' : W.phase === 'sunk' ? 'In among the faces!' : W.state === 'across' ? 'Across!' : 'Sméagol’s safe way'}</p>
+          {W.say && (
+            <p className="shire-panel-say" aria-live="polite">
+              <b>Gollum:</b> {W.say}
+            </p>
+          )}
+          <p className="shire-panel-stats">
+            <span>
+              Row <b>{Math.max(0, W.row + 1)}</b> of {WAY.rows}
+            </span>
+            <span>
+              Slips <b>{W.slips}</b>
+            </span>
+          </p>
+          {W.phase === 'show' ? null : W.state === 'across' ? (
+            <div className="shire-panel-row">
+              <button type="button" className="btn btn-primary btn-sm" onClick={startWay}>
+                Again {!touch && <kbd>R</kbd>}
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={leaveWay}>
+                Back to the path
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="shire-panel-row marshes-hops">
+                {[
+                  [-1, '↖', 'Hop left', 'A'],
+                  [0, '↑', 'Hop straight on', 'W'],
+                  [1, '↗', 'Hop right', 'D'],
+                ].map(([dir, arrow, label, key]) => (
+                  <button key={dir} type="button" className="btn btn-ghost btn-sm marshes-big" aria-label={label} disabled={W.phase !== 'play'} onPointerDown={(e) => (e.preventDefault(), hop(dir))} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), hop(dir))}>
+                    {arrow} {!touch && <kbd>{key}</kbd>}
+                  </button>
+                ))}
+              </div>
+              <div className="shire-panel-row">
+                <button type="button" className="btn btn-ghost btn-sm" onClick={leaveWay}>
+                  Back to the path {!touch && <kbd>Esc</kbd>}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
       {mode === 'end' && (
         <div className="shire-panel marshes-end" role="dialog" aria-label="Another way">
           <p className="shire-panel-title">There is another way</p>
@@ -793,7 +944,11 @@ function World({ prog, complete, gl, setGl, onLeave }) {
         </div>
       )}
       {walking && touch && <Stick onStick={onStick} />}
-      {list && <QuestList title="Things to do" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && q.id !== 'rope' && sim.current.mode === 'walk'} />}
+      {list && (
+        <QuestList title="Things to do" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && q.id !== 'rope' && sim.current.mode === 'walk'}>
+          <SideList tasks={[sideTask]} onGo={goSide} canGo={(t) => t.open && sim.current.mode === 'walk' && !sim.current.lead} />
+        </QuestList>
+      )}
     </div>
   );
 }

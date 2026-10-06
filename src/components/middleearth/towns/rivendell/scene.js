@@ -154,6 +154,19 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
   const house = place(kit.house(), HOUSE, padY('house'));
   const colonnade = place(kit.colonnade(), COLONNADE, padY('colonnade'));
   const pavilion = place(kit.pavilion(), PAVILION, padY('pavilion'));
+  // on the side: Bilbo's riddle candle, on the desk in front of him, burning
+  // down as each riddle waits for its answer
+  const riddleCandle = (() => {
+    const g = new THREE.Group();
+    const wax = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.028, 1, 10).translate(0, 0.5, 0), new THREE.MeshStandardMaterial({ color: 0xf2e8cc, roughness: 0.6 }));
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.06, 8).translate(0, 0.03, 0), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 1.9, 0.7) }));
+    g.add(wax, flame);
+    pavilion.group.updateMatrixWorld(true);
+    g.position.copy(pavilion.desk).add(V(0.06, 0, -0.32)).applyMatrix4(pavilion.group.matrixWorld);
+    g.visible = false;
+    scene.add(g);
+    return { g, wax, flame };
+  })();
   const court = place(kit.court(), COURT, padY('court'));
   place(kit.gate(), GATE);
   place(kit.bridge(BRIDGE.len), { x: BRIDGE.x, z: BRIDGE.z, turn: 0 }, BRIDGE.y0);
@@ -475,7 +488,7 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
         if (s.reach.state === 'lunge') p.head.rotation.z = Math.sin(t * 30) * 0.06;
         continue;
       }
-      pose(p, t + c.x, { moving: false, talk: s.talk === c.id || s.speaker === c.id ? 1 : 0 });
+      pose(p, t + c.x, { moving: false, talk: s.talk === c.id || s.speaker === c.id || (c.id === 'bilbo' && s.mode === 'riddles') ? 1 : 0 });
       if (p.seated) sit(p);
     }
     // the Nine: about the valley until they join, then behind you
@@ -550,12 +563,24 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
       hereRing.scale.setScalar(1 + Math.sin(t * 4) * 0.06);
     }
 
+    // Bilbo's riddle candle, as far burnt down as the riddle's gone
+    riddleCandle.g.visible = s.mode === 'riddles';
+    if (riddleCandle.g.visible) {
+      const k = s.riddles?.state === 'ask' ? s.riddles.candle : 0;
+      const h = 0.03 + 0.16 * k;
+      riddleCandle.wax.scale.y = h;
+      riddleCandle.flame.position.y = h;
+      riddleCandle.flame.visible = k > 0;
+      riddleCandle.flame.scale.set(1, 0.85 + Math.sin(t * 17) * 0.12 + Math.sin(t * 29) * 0.08, 1);
+    }
+
     // ── the lamps, at dusk; the room's sunlight ──
     if (inside) lights.push([roomAt(room.sun), warm, 14, 12]);
     else {
       const lit = A.night;
       if (lit > 0.05) for (const l of lampAt) lights.push([l, warm, 5 * lit, 10]);
       if (s.mode === 'bilbo') lights.push([toWorld(pavilion, pavilion.desk).add(V(0, 1.2, 0)), warm, 4, 6]);
+      if (s.mode === 'riddles') lights.push([riddleCandle.g.position.clone().add(V(0, 0.3, 0)), warm, 1.5 + 3 * (s.riddles?.candle ?? 0), 5]);
     }
     if (s.mode === 'council' && A.eye > 0.3) lights.push([ring.group.position.clone().add(V(0, 0.6, 0)), new THREE.Color(1, 0.4, 0.1), A.eye * 4, 6]);
     pool.forEach((l, i) => {
@@ -606,7 +631,7 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
       const at = shards.group.position;
       camAt = tmp.copy(at).add(V(0, 1.8, 2.6));
       camLook = look.copy(at).add(V(0, 0.2, 0));
-    } else if (s.mode === 'bilbo') {
+    } else if (s.mode === 'bilbo' || s.mode === 'riddles') {
       // in front of him, across the desk (he faces the pavilion's +x)
       camAt = tmp.copy(toWorld(pavilion, V(2.2, 2.1, -0.4)));
       camLook = look.copy(toWorld(pavilion, V(-0.4, 1.3, -1)));

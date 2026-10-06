@@ -1,7 +1,8 @@
 // Rivendell's games, as rules with no drawing, so they can be tested: the
 // shards of Narsil laid back in order, the Council's argument and the
 // moment to stand, Bilbo's hand and the Ring, and the Nine falling in
-// behind you. ./RivendellWorld.jsx steps them; ./scene.js draws them.
+// behind you; and on the side, riddles with Bilbo. ./RivendellWorld.jsx
+// steps them; ./scene.js draws them.
 
 // a small seeded random, so a shuffle or a lunge is the same each test
 export function seeded(seed = 1) {
@@ -178,4 +179,81 @@ export function followAt(p, n) {
   }
   const end = p.trail.at(-1);
   return end ? { x: end.x, z: end.z, face: 0 } : null;
+}
+
+// ── On the side: riddles with Bilbo ──
+// Bilbo, by the fire in his pavilion, has a riddle or two left over from a
+// game he once played in the dark under the Misty Mountains (he tells them
+// his own way now). Answer each before his candle burns down: a wrong
+// answer, or the candle out, counts against you, and two of those and he's
+// won. Get through five with no more than one against you and you've beaten
+// him. It's on the side: the story never waits on it.
+export const RIDDLE = { ask: 5, lose: 2, candle: 16 };
+// the task, for the list
+export const SIDE = { id: 'riddles', name: 'Riddles in the dark', where: 'Bilbo’s pavilion', blurb: 'Bilbo has a riddle or two left over from the Misty Mountains. Answer five before his candle burns down.', seal: 'riddlesinthedark' };
+// each with its answer first, then three it isn't
+export const RIDDLES = [
+  { id: 'mountain', q: 'My roots are hidden under the land, I’m taller than the trees that stand; I climb for ever into the sky, and never grow an inch. What am I?', a: ['A mountain', 'An oak', 'A tower', 'A cloud'] },
+  { id: 'teeth', q: 'Thirty white horses on a red hill: first they champ, then they stamp, then they stand still.', a: ['Teeth', 'Snowflakes', 'Sheep on a hillside', 'Candles on a cake'] },
+  { id: 'wind', q: 'I’ve no mouth, and yet I howl; no wings, and yet I fly; no teeth, and yet I bite. What am I?', a: ['The wind', 'A ghost', 'A wolf', 'A bat'] },
+  { id: 'dark', q: 'The more of me there is, the less you see. I fill a cave to the brim, and I run from a single candle.', a: ['The dark', 'Smoke', 'Fog', 'Water'] },
+  { id: 'egg', q: 'No hinge, no lid, no key, no seam; and yet inside, a golden gleam.', a: ['An egg', 'A dragon’s hoard', 'A locked chest', 'An acorn'] },
+  { id: 'fish', q: 'It wears a coat of mail but never goes to war; it drinks all day and never thirsts; it lives, and never draws a breath.', a: ['A fish', 'A knight', 'A frog', 'A river'] },
+  { id: 'time', q: 'It eats the iron and gnaws the stone, wears the mountain down to the bone, brings down kings and ruins towns, and no one ever sees it come.', a: ['Time', 'Rust', 'A dragon', 'Rain'] },
+  { id: 'hole', q: 'A round green door, a garden gate, a pantry full, and never late for second breakfast. Where am I?', a: ['In a hobbit-hole', 'In an inn', 'In a mill', 'In a barn'] },
+];
+
+// A game of riddles: which ones, in what order, and each one's answers
+// shuffled, all from `seed`.
+const shuffle = (list, rand) => {
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  return list;
+};
+export function newRiddles(seed = 11) {
+  const rand = seeded(seed);
+  const order = shuffle(RIDDLES.map((_, i) => i), rand).slice(0, RIDDLE.ask);
+  const game = { rand, order, at: 0, right: 0, wrong: 0, candle: 1, opts: [], state: 'ask' };
+  shuffleOpts(game);
+  return game;
+}
+function shuffleOpts(g) {
+  g.opts = shuffle([0, 1, 2, 3], g.rand);
+}
+// the riddle being asked, and its answers in the order they're shown
+export function asked(g) {
+  const r = RIDDLES[g.order[g.at]];
+  return r ? { ...r, shown: g.opts.map((i) => r.a[i]) } : null;
+}
+function settle(g, ok) {
+  if (ok) g.right += 1;
+  else g.wrong += 1;
+  if (g.wrong >= RIDDLE.lose) g.state = 'lost';
+  else if (g.at + 1 >= g.order.length) g.state = 'won';
+  else {
+    g.at += 1;
+    g.candle = 1;
+    shuffleOpts(g);
+  }
+}
+// Answer with the i-th of the answers shown: 'right' or 'wrong', or null
+// if the game's over.
+export function answer(g, i) {
+  if (g.state !== 'ask') return null;
+  const ok = g.opts[i] === 0;
+  settle(g, ok);
+  return ok ? 'right' : 'wrong';
+}
+// The candle burns: an event { type: 'out' } if it goes out on a riddle
+// (that counts against you), then 'won' or 'lost' if that ends it.
+export function stepRiddles(g, dt) {
+  if (g.state !== 'ask') return [];
+  g.candle = Math.max(0, g.candle - dt / RIDDLE.candle);
+  if (g.candle > 0) return [];
+  settle(g, false);
+  const ev = [{ type: 'out' }];
+  if (g.state !== 'ask') ev.push({ type: g.state });
+  return ev;
 }

@@ -32,3 +32,13 @@
   .riv-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
   .riv-shard { height: 2.6rem; }
 }
+
+/* on the side: riddles with Bilbo, by his candle */
+.riv-riddles { width: min(30rem, calc(100% - 1.4rem)); }
+.riv-riddle { font-family: 'Cinzel', Georgia, serif; font-style: italic; line-height: 1.45; }
+.riv-meter-candle .shire-meter-bar span { background: linear-gradient(90deg, #ff9a2a, #ffe6a0); }
+.riv-meter-candle .shire-meter-time { min-width: auto; font-size: 0.66rem; letter-spacing: 0.02em; }
+.riv-answers { grid-template-columns: 1fr 1fr; }
+@media (max-width: 639px) {
+  .riv-answers { grid-template-columns: 1fr; }
+}

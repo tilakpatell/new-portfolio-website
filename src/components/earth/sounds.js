@@ -1,14 +1,20 @@
 // Earth's sounds, synthesised: the engines (a rumble, the fan's hum and a
 // thin whine, rising with the throttle), the two-note chime a cabin plays
 // when the seatbelt sign goes off, the thump of a passport stamp, and the
-// rush of air on the way down from orbit. All through the site's master
-// volume (lib/audio).
+// rush of air on the way down from orbit. All through the module's bus on
+// the site's master volume (lib/audio).
 
 import { audioContext, output } from '../../lib/audio';
 
+// the world runtime's bus for this module (a gain into the master, faded
+// out when the world goes), or the master itself
+let bus = null;
+export function setBus(gain) {
+  bus = gain ?? null;
+}
 const ready = () => {
   const ac = audioContext();
-  const out = output();
+  const out = bus ?? output();
   return ac && out ? [ac, out] : [null, null];
 };
 
@@ -140,6 +146,28 @@ export function stamp() {
 }
 
 // the rush of air, coming down out of space or going back up
+// a barrel roll: the air swelling past the cabin and dying away again
+export function roll() {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime;
+  const s = ac.createBufferSource();
+  s.buffer = noise(ac);
+  const f = ac.createBiquadFilter();
+  f.type = 'bandpass';
+  f.Q.value = 0.8;
+  f.frequency.setValueAtTime(300, t);
+  f.frequency.exponentialRampToValueAtTime(1400, t + 0.5);
+  f.frequency.exponentialRampToValueAtTime(260, t + 1.1);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.5, t + 0.45);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 1.15);
+  s.connect(f).connect(g).connect(out);
+  s.start(t, Math.random());
+  s.stop(t + 1.2);
+}
+
 export function rush(seconds = 2.6) {
   const [ac, out] = ready();
   if (!ac) return;

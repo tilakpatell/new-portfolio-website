@@ -11,6 +11,7 @@ import { STONES } from '../../interests/stones';
 import { audioContext } from '../../../lib/audio';
 import { hasEarned } from '../hq/stones';
 import { placeById } from './rules';
+import '../../../styles/lazy/avengers.css';
 
 // A building's game (or Spider-Man's, at the gate), open over the page: what the place is, the game itself
 // (each keeps its own 3D, and its old toy for a browser without it), and the

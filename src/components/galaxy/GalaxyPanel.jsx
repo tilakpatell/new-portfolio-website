@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { RiArrowRightLine, RiCompass3Line, RiPlayFill, RiRocket2Line, RiSideBarFill, RiSideBarLine } from 'react-icons/ri';
+import { RiArrowDownLine, RiArrowRightLine, RiCompass3Line, RiPlayFill, RiRocket2Line, RiSideBarFill, RiSideBarLine } from 'react-icons/ri';
 import { playClip } from '../../lib/clips';
 import { audioContext } from '../../lib/audio';
 import { CREWS, crewById } from '../universe/crews';
 import Face from '../universe/Faces';
 import ModelCredits from '../ModelCredits';
+import GuideLink from '../guide/GuideLink';
 import { FILMS, eraById, eraOf, filmLabel, filmsOf, goalsOf, systemById, yearLabel } from './systems';
 
 // Beside the galaxy (a bottom sheet on a phone): the system you're in, as
@@ -60,7 +61,7 @@ function Mission({ system }) {
       <div className="mt-3 flex flex-wrap gap-2">
         {live ? (
           <Link to={g.to} className="btn btn-primary">
-            Fly it now <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
+            {g.go ?? 'Fly it now'} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
           </Link>
         ) : null}
         <Link to={`/galaxy/${system.id}/mission`} className={live ? 'btn btn-ghost' : 'btn btn-primary'}>
@@ -71,7 +72,7 @@ function Mission({ system }) {
   );
 }
 
-export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onLeave, onBoard, tucked, onTuck, jumping }) {
+export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onLeave, onBoard, onLand, tucked, onTuck, jumping, held = null, balked = false }) {
   const crew = crewById(ship);
   const panel = useRef(null);
   const refocus = useRef(false);
@@ -87,18 +88,20 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
   const era = eraById(eraOf(system));
   const goals = goalsOf(system);
   const toward = jumping ? systemById(jumping.to) : null;
+  const short = held ? (systemById(held.to) ?? system) : null; // (where the Interdictor pulled you out short of)
 
   if (tucked) {
     return (
       <aside ref={panel} className="universe-panel galaxy-panel" aria-label={system.name} data-tucked="">
         <button type="button" className="universe-untuck" onClick={() => toggle(false)} aria-expanded="false">
-          <span className="eyebrow truncate" style={{ color: system.accent }}>
-            {toward ? `Jumping to ${toward.name}…` : system.name}
+          <span className="eyebrow truncate" style={{ color: short && !toward ? '#ff8a80' : system.accent }}>
+            {toward ? `Jumping to ${toward.name}…` : short ? 'Interdicted!' : system.name}
           </span>
           <span className="universe-untuck-say">
             <RiSideBarLine className="h-4 w-4" aria-hidden="true" /> Show the panel
           </span>
         </button>
+        <GuideLink className="universe-guide-tucked" />
       </aside>
     );
   }
@@ -109,10 +112,22 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
       <button type="button" className="universe-tuck" onClick={() => toggle(true)} aria-expanded="true" aria-label="Hide the panel" title="Hide the panel">
         <RiSideBarFill className="h-4 w-4" aria-hidden="true" />
       </button>
+      <GuideLink className="universe-tuck universe-guide" />
       <p className="eyebrow">A galaxy far, far away</p>
       {toward && (
         <p className="galaxy-jumping" role="status">
           {jumping.phase === 'align' ? 'Coming round onto the bearing for' : 'Jumping to lightspeed:'} <b>{toward.name}</b>
+        </p>
+      )}
+      {short && !toward && (
+        <p className="galaxy-jumping" data-held="" data-balked={balked || undefined} role="alert">
+          <b>Interdicted.</b> An Imperial Interdictor pulled you out of hyperspace short of {short.name}. Its gravity well holds you: no jump till you’re clear of it. Shoot its fighters down, or run for the edge of the well.
+          {balked && (
+            <>
+              {' '}
+              <b>The hyperdrive won’t take.</b>
+            </>
+          )}
         </p>
       )}
       <h2 className="universe-title galaxy-title">{system.name}</h2>
@@ -131,7 +146,12 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <button type="button" className="btn btn-primary" onClick={onMap}>
+        {crew && onLand && (
+          <button type="button" className="btn btn-primary" onClick={onLand}>
+            <RiArrowDownLine className="h-4 w-4" aria-hidden="true" /> Land on {system.id === 'bespin' ? 'Cloud City' : system.name}
+          </button>
+        )}
+        <button type="button" className={crew && onLand ? 'btn btn-ghost' : 'btn btn-primary'} onClick={onMap}>
           <RiCompass3Line className="h-4 w-4" aria-hidden="true" /> Plot a course
         </button>
         {goals

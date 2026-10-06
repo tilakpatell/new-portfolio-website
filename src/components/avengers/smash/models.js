@@ -10,6 +10,7 @@ import { hot } from '../hq/engine';
 import { pbr } from '../hq/assets';
 import { rng } from '../hq/rng';
 import { PartBuilder, canvasTexture, rbox, taper } from '../hq/kit/shapes';
+import { sharpen } from '../../../lib/three/textures';
 
 // The avenue, in metres. The roadway runs from -half to half (three lanes in
 // the middle, a parking lane each side of the edge lines), then 5 m of
@@ -467,7 +468,7 @@ export function facadeAtlas({ size = 1024 } = {}) {
   const tex = (c, srgb) => {
     const t = new THREE.CanvasTexture(c);
     if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-    t.anisotropy = 8;
+    sharpen(t);
     return t;
   };
   return { map: tex(canvases.c, true), emissiveMap: tex(canvases.e, true), roughnessMap: tex(canvases.r, false), size };

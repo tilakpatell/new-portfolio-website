@@ -1,0 +1,83 @@
+/* Split out of styles/extras.css so it loads with the components that use it
+   (each imports it), not with every page. */
+.seg-wrap > button { min-width: 44px; justify-content: center; }
+
+.music-tuning { display: grid; gap: 1.75rem; padding: 1.25rem; }
+@media (min-width: 1024px) { .music-tuning { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) minmax(0, 0.9fr); align-items: start; padding: 1.5rem 1.75rem; } }
+.music-hero-photo { aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--r-photo); background: var(--surface-2); }
+.music-photo { aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--r-photo); background: var(--surface-2); }
+.music-photo-wide { aspect-ratio: 16 / 10; }
+
+/* sargam notation: dots for the octave, a line under komal, a tick over tivra Ma */
+.swara { position: relative; display: inline-block; line-height: 1; padding: 0.3em 0 0.32em; }
+.swara[data-oct='-1']::after,
+.swara[data-oct='1']::before { content: ''; position: absolute; left: 50%; width: 3.5px; height: 3.5px; margin-left: -1.75px; border-radius: 999px; background: currentColor; }
+.swara[data-oct='-1']::after { bottom: -0.05em; }
+.swara[data-oct='1']::before { top: -0.05em; }
+.swara[data-mark='komal'] > span:first-child { text-decoration: underline; text-underline-offset: 0.18em; text-decoration-thickness: 1.5px; }
+.swara[data-mark='ati'] > span:first-child { text-decoration: underline double; text-underline-offset: 0.16em; text-decoration-thickness: 1px; }
+.swara[data-mark='tivra'] > span:first-child::before { content: ''; position: absolute; left: 50%; top: -0.12em; width: 1.5px; height: 0.42em; background: currentColor; }
+
+/* the sitar neck */
+.sitar-neck { position: relative; }
+.sitar-neck-svg { display: block; width: 100%; height: auto; touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; border-radius: 12px; outline: none; }
+.sitar-neck-svg:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 4px; }
+.sn-slot { fill: transparent; transition: fill 0.2s ease; }
+.sn-slot[data-lit] { fill: rgba(255, 210, 122, 0.16); }
+.sn-tarab { stroke: #f2d79b; stroke-width: 0.8; fill: none; opacity: 0.16; }
+.sn-tarab[data-ring] { animation: tarab-ring 2.6s ease-out; }
+@keyframes tarab-ring { 0% { opacity: 1; filter: drop-shadow(0 0 2px #ffd27a); } 100% { opacity: 0.16; } }
+.sn-labels { position: relative; height: 2.4rem; margin-top: 0.25rem; }
+.sn-labels > span { position: absolute; top: 0.2rem; translate: -50% 0; font-size: clamp(0.68rem, 0.55rem + 0.5vw, 0.9rem); font-weight: 600; color: var(--muted); transition: color 0.15s ease; }
+.sn-labels > span[data-lit] { color: var(--accent-text); }
+/* upright on phones: the neck down the middle, the note names beside it */
+.sitar-neck[data-vertical] { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; }
+.sitar-neck[data-vertical] .sitar-neck-svg { grid-column: 2; width: auto; height: min(66vh, 620px); }
+.sitar-neck[data-vertical] .sn-labels { grid-column: 3; height: auto; margin: 0 0 0 0.75rem; }
+.sitar-neck[data-vertical] .sn-labels > span { top: 0; left: 0; translate: 0 -50%; font-size: 0.95rem; }
+
+/* the tanpura's strings */
+.tanpura-board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; align-items: end; padding: 1.25rem 1rem 1rem; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); }
+.tanpura-string { display: grid; justify-items: center; gap: 0.35rem; text-align: center; }
+.tanpura-wire { display: block; width: 2px; height: 150px; border-radius: 2px; background: linear-gradient(to bottom, color-mix(in srgb, var(--text) 30%, transparent), color-mix(in srgb, var(--text) 55%, transparent)); transform-origin: 50% 50%; }
+.tanpura-string[data-lit] .tanpura-wire { background: var(--accent); box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent); animation: tanpura-shiver 1.1s cubic-bezier(0.2, 0.6, 0.3, 1); }
+@keyframes tanpura-shiver { 0% { transform: scaleX(3.2); } 20% { transform: scaleX(1.6); } 100% { transform: scaleX(1); } }
+
+/* the harmonium keyboard */
+.harmonium-keys { position: relative; display: grid; grid-template-columns: repeat(var(--whites), minmax(0, 1fr)); height: clamp(150px, 22vw, 210px); padding: 10px 10px 12px; border-radius: 14px; background: linear-gradient(#5a3418, #3a210f); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.08); touch-action: none; user-select: none; -webkit-user-select: none; outline: none; }
+.harmonium-keys:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
+.hk-white { position: relative; margin: 0 1px; border-radius: 0 0 6px 6px; background: linear-gradient(#fdfbf4, #ece3cc); color: #4a3a22; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.08); }
+.hk-black { position: absolute; top: 10px; z-index: 1; width: calc((100% - 20px) / var(--whites) * 0.62); height: 58%; translate: calc(-50% + 10px) 0; border-radius: 0 0 5px 5px; background: linear-gradient(#2a2420, #12100e); color: #e9dcc0; font-size: 0.62rem; }
+.hk[data-raga] > .swara::after { content: none; }
+.hk-black[data-raga]::after { bottom: 1.6rem; }
+.hk-black[data-sa] { color: #ffd27a; }
+.hk-white[data-down] { background: linear-gradient(#efe4c8, #dccfa9); box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.08); }
+.hk-black[data-down] { background: linear-gradient(#3b332c, #1d1915); }
+
+/* the tabla */
+.tabla-play { outline: none; border-radius: var(--r-card); }
+.tabla-play:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 4px; }
+.tabla-pad { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-height: 48px; padding: 0 0.75rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); touch-action: manipulation; transition: background-color 0.12s ease, border-color 0.12s ease; }
+.tabla-pad:hover { border-color: var(--border-strong); }
+.tabla-pad:active { background: var(--surface-2); }
+.tabla-pad:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.taal-grid { display: grid; grid-template-columns: repeat(var(--beats), minmax(0, 1fr)); gap: 0.4rem; }
+.taal-beat { position: relative; display: grid; gap: 0.15rem; justify-items: center; padding: 1.15rem 0.2rem 0.5rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); transition: background-color 0.08s linear, border-color 0.08s linear; }
+.taal-beat[data-vibhag] { border-left: 2px solid var(--border-strong); }
+.taal-beat[data-now] { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); border-color: var(--accent); }
+.taal-beat[data-sam][data-now] { background: color-mix(in srgb, var(--accent) 34%, var(--surface)); }
+.taal-mark { position: absolute; top: 0.25rem; left: 0.4rem; font-family: var(--font-mono); font-size: 0.7rem; color: var(--accent-text); }
+.taal-bol { font-size: 0.85rem; font-weight: 600; color: var(--text); text-align: center; }
+.taal-n { font-family: var(--font-mono); font-size: 0.62rem; color: var(--muted); }
+@media (max-width: 639px) { .tabla-pad { justify-content: center; } .tabla-pad .palette-kbd { display: none; } }
+
+/* the floating tanpura control */
+.drone-pill { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 45; display: flex; align-items: center; gap: 0.6rem; padding: 0.4rem 0.4rem 0.4rem 0.9rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text); box-shadow: 0 14px 34px -18px color-mix(in srgb, var(--text) 50%, transparent); animation: menu-in 0.2s ease both; }
+.drone-pill-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--border-strong); }
+.drone-pill-dot[data-on] { background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
+.drone-pill-btn { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: var(--btn-bg); color: var(--btn-ink); }
+.drone-pill-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+@media (max-width: 639px) { .drone-pill-raga { display: none; } }
+
+/* Still in styles/extras.css too; repeated here because this file loads after it */
+@media (prefers-reduced-motion: reduce) { .tanpura-string[data-lit] .tanpura-wire, .tb-struck, .drone-pill { animation: none; } }

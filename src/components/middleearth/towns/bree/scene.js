@@ -642,7 +642,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     outdoors.visible = !inside;
     inn.group.visible = inside;
     if (inside) {
-      const c = inn.update(s.beat ?? 'room', t, dt, { stepT: s.stepT, pour: s.pour, ringOn: s.wearing });
+      const c = inn.update(s.beat ?? 'room', t, dt, { stepT: s.stepT, pour: s.pour, ringOn: s.wearing, song: s.song, dawn: s.sky === 'dawn' });
       camAt = c.at;
       camLook = c.look;
     } else if (s.mode === 'talk' && s.talking === 'gate') {

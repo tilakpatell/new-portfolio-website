@@ -7,6 +7,12 @@ import { keyDown, keyUp } from '../../middleearth/towns/keys';
 import { SWARA_NAME, bolLabel, onHarmoniumNote, onSitarChikari, onSitarPluck, onTablaBol, onTanpuraPluck, swaraOf } from '../engine';
 import { INSTRUMENTS, PITCH, START, moveFor, nearInstrument, standFor, stickMove, walker } from './layout';
 import './world.css';
+import '../../../styles/lazy/music.css';
+import GuideCue from '../../guide/GuideCue';
+import { useTravellers } from '../../middleearth/towns/useTravellers';
+
+// others online in the courtyard (middleearth/towns/useTravellers), as lamps
+const ROOM = { bound: 80, motion: true };
 
 // The music planet: land in a courtyard at dusk and walk about it, first
 // person. The instruments lie on a rug before a sandstone chhatri; walk up to
@@ -26,6 +32,7 @@ export default function MusicWorld({ panel }) {
   const three = use3D();
   const touch = useMediaQuery('(pointer: coarse)');
   const [gl, setGl] = useState('loading'); // loading | on | failed | lost
+  const trav = useTravellers('music', gl === 'on', ROOM);
   const [models, setModels] = useState(false);
   const [near, setNear] = useState(null);
   const [open, setOpen] = useState(null);
@@ -145,7 +152,10 @@ export default function MusicWorld({ panel }) {
       s.near = n;
       setNear(n);
     }
-    a.render({ x: s.h.x, z: s.h.z, yaw: s.yaw, pitch: s.pitch, bob: s.bob }, ms);
+    // others online: where you are to them, and where they are
+    const tv = trav.ref.current;
+    tv?.pose({ x: s.h.x, z: s.h.z, face: s.yaw, speed: Math.hypot(s.h.vx ?? 0, s.h.vz ?? 0) });
+    a.render({ x: s.h.x, z: s.h.z, yaw: s.yaw, pitch: s.pitch, bob: s.bob, travellers: tv ? tv.list() : null }, ms);
   }, live);
 
   // ── keys ──
@@ -274,13 +284,16 @@ export default function MusicWorld({ panel }) {
             <p className="mw-eyebrow">The music planet</p>
             <h2 className="mw-title">A courtyard at dusk</h2>
             {gl === 'on' && !moved && !open && (
-              <p className="mw-help">{touch ? 'The stick walks, a swipe across turns. Walk up to an instrument to play it.' : 'Click the courtyard, then W A S D to walk, ← → to turn, drag to look. Walk up to an instrument and press E.'}</p>
+              <p className="mw-help">{touch ? 'The stick walks, a swipe across turns. Walk up to an instrument to play it.' : 'Click the courtyard, then W A S D to walk, ← → to turn, drag to look. Walk up to an instrument and press E.'}<GuideCue touch={touch} /></p>
             )}
             {gl === 'on' && !models && <p className="mw-help">Bringing in the instruments…</p>}
           </div>
-          <button type="button" className="mw-chip" onClick={toRoom}>
-            The music room ↓
-          </button>
+          <div className="mw-chips">
+            <Listeners trav={trav} />
+            <button type="button" className="mw-chip" onClick={toRoom}>
+              The music room ↓
+            </button>
+          </div>
         </div>
 
         {near && !open && (
@@ -325,5 +338,22 @@ export default function MusicWorld({ panel }) {
         ))}
       </div>
     </div>
+  );
+}
+
+// Others online in the courtyard: how many, or a way to see them (going
+// online is the site's own switch, with your callsign, as on the universe map).
+function Listeners({ trav }) {
+  if (!trav.available) return null;
+  if (!trav.on)
+    return (
+      <button type="button" className="mw-chip" onClick={trav.join} title="Go online, and see everyone else in the courtyard as a lamp with their name over it">
+        See other listeners
+      </button>
+    );
+  return (
+    <span className="mw-chip" title="Everyone else online in the courtyard shows as a floating lamp: they hear their own instruments, you yours">
+      <b>{trav.count}</b> {trav.count === 1 ? 'listener' : 'listeners'} here
+    </span>
   );
 }

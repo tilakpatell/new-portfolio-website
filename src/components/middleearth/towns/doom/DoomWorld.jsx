@@ -4,16 +4,21 @@ import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
 import { readPad, typing } from '../../../games/pad';
-import { Convo, QuestList, Stick } from '../TownHud';
-import { keyDown, keyUp, moveOf } from '../keys';
+import { Convo, QuestList, Stick, Travellers } from '../TownHud';
+import { useTravellers } from '../useTravellers';
+import { SideList } from '../SideList';
+import { readSide, recordSide } from '../side';
+import { keyDown, keyUp, moveOf, ownButton } from '../keys';
 import { newTalk, talkNode, talkOn } from '../talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { CROSS, CROSS_COLLIDERS, CROSS_START, CROSS_WALLS, FOOT, covered, validAt } from './layout';
-import { CONVOS, QUESTS, SEAL, SPEAKERS, doomProgress } from './story';
-import { CARRY, FLIGHT, HANG, MARCH, carryStep, newCarry, newFlight, newHang, newMarch, newSearch, stepCarry, stepFlight, stepHang, stepMarch, stepSearch } from './rules';
+import { CONVOS, QUESTS, REMEMBER_SAYS, SEAL, SIDE, SPEAKERS, doomProgress } from './story';
+import { CARRY, FLIGHT, HANG, MARCH, RECALL, SHIRE, carryStep, newCarry, newFlight, newHang, newMarch, newRecall, newSearch, recall, stepCarry, stepFlight, stepHang, stepMarch, stepRecall, stepSearch, telling } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './doom.css';
+import '../../../../styles/lazy/middleearth.css';
+import GuideCue from '../../../guide/GuideCue';
 
 // Mordor and Mount Doom, the end of the road: the orc column, across
 // Gorgoroth under the Eye, Sam carrying Frodo up the mountain, the Crack of
@@ -24,6 +29,8 @@ import './doom.css';
 
 const DONE = 'tp-doom-done';
 const AT = 'tp-doom-at';
+// do you remember the Shire, on the side: { won, best } (best: fewest slips)
+const SIDE_KEY = 'tp-doom-side';
 const sounds = () => import('./sounds');
 const walker = makeWalker({ radius: 300, centre: [(CROSS.west + CROSS.east) / 2, (CROSS.north + CROSS.south) / 2], colliders: CROSS_COLLIDERS, walls: CROSS_WALLS });
 const PROMPT = {
@@ -32,6 +39,9 @@ const PROMPT = {
   crack: { name: 'The door in the mountain', act: 'Go in' },
   eagles: { name: 'The mountain is falling', act: 'Out to the rock' },
 };
+
+// how many things of the Shire Frodo has said back so far, all together
+const remembered = (r) => (r.state === 'remembered' ? RECALL.length : r.round > RECALL.first ? r.round - 1 : 0);
 
 export default function DoomWorld({ onLeave }) {
   const three = use3D();
@@ -54,15 +64,31 @@ export default function DoomWorld({ onLeave }) {
     },
     [unlock],
   );
+  // remembering the Shire, on the side: kept apart from the story's progress
+  const [side, setSide] = useState(() => readSide(local.get(SIDE_KEY, null)));
+  const recordGo = useCallback(
+    (go) => {
+      setSide((was) => {
+        const { won, best } = recordSide(was, go, { low: true });
+        local.set(SIDE_KEY, { won, best });
+        return { won, best };
+      });
+      if (go.won) unlock(SIDE.seal);
+    },
+    [unlock],
+  );
   const world = three.on && gl !== 'failed' && gl !== 'lost';
   return (
     <section className="shire-world doom-world" aria-labelledby="doom-title" data-mode={world ? '3d' : 'cards'}>
-      {world ? <World prog={prog} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
+      {world ? <World prog={prog} complete={complete} side={side} recordGo={recordGo} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
     </section>
   );
 }
 
-function World({ prog, complete, gl, setGl, onLeave }) {
+function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
+  // other travellers online crossing Gorgoroth, as ghosts (../useTravellers);
+  // the crossing is some 760 m west of the mountain, the world's middle
+  const trav = useTravellers('doom', gl === 'on', { bound: 800 });
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   const canvas = useRef(null);
@@ -72,7 +98,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     const zone = prog.zone;
     const at = validAt(local.get(AT, null));
     const h = newWalker(at);
-    sim.current = { zone, h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.34, dragAt: -1e9, mode: prog.finished ? 'end' : 'walk', talking: null, talk: null, near: null, frame: 0, moved: false, t: 0, stepT: 0, air: null, padBefore: null, march: null, search: null, carry: null, hang: null, flight: null, busy: false, push: 0, steer: 0, reach: 0, foot: 0, erupt: prog.done.includes('crack') ? 1 : 0, saw: false };
+    sim.current = { zone, h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.34, dragAt: -1e9, mode: prog.finished ? 'end' : 'walk', talking: null, talk: null, near: null, frame: 0, moved: false, t: 0, stepT: 0, air: null, padBefore: null, march: null, search: null, carry: null, hang: null, flight: null, busy: false, push: 0, steer: 0, reach: 0, foot: 0, erupt: prog.done.includes('crack') ? 1 : 0, saw: false, recall: null, from: null, said: null };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -227,6 +253,52 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     sounds().then((x) => x.eagle());
   }, [place]);
 
+  // do you remember the Shire? Resting at the mountain's foot
+  const startRemember = useCallback(() => {
+    const s = sim.current;
+    audioContext();
+    if (s.mode !== 'remember') s.from = { zone: s.zone, mode: s.mode };
+    place('plain');
+    s.mode = 'remember';
+    s.recall = newRecall(Math.floor(Math.random() * 1000) + 1);
+    s.said = REMEMBER_SAYS.start;
+    setList(false);
+  }, [place]);
+  const leaveRemember = useCallback(() => {
+    const s = sim.current;
+    if (s.mode !== 'remember') return;
+    const from = s.from ?? { zone: 'slope', mode: 'walk' };
+    s.recall = null;
+    s.from = null;
+    place(from.zone);
+    s.mode = from.mode === 'end' ? 'end' : 'walk';
+  }, [place]);
+  // Frodo says one back: i is the thing of the Shire (SHIRE)
+  const sayBack = useCallback(
+    (i) => {
+      const s = sim.current;
+      const r = s.recall;
+      if (s.mode !== 'remember' || !r || !SHIRE[i]) return;
+      const res = recall(r, SHIRE[i].id);
+      if (!res) return;
+      if (res === 'wrong') {
+        sounds().then((x) => x.forget());
+        s.said = REMEMBER_SAYS.wrong;
+        return;
+      }
+      sounds().then((x) => x.memory(i));
+      api.current?.fx('recall');
+      if (res === 'right') s.said = REMEMBER_SAYS.right;
+      else if (res === 'round') s.said = REMEMBER_SAYS.round(r.round - 1);
+      else if (res === 'remembered') {
+        s.said = REMEMBER_SAYS.won(r.slips);
+        sounds().then((x) => x.done());
+        recordGo({ won: true, score: r.slips });
+      }
+    },
+    [recordGo],
+  );
+
   const enter = useCallback(
     (id) => {
       audioContext();
@@ -332,7 +404,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     const down = (e) => {
       if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
       const k = e.key;
-      const onButton = e.target instanceof HTMLButtonElement;
+      const onButton = ownButton(e, box.current);
       if (s.talk) {
         if (/^[1-4]$/.test(k)) {
           e.preventDefault();
@@ -346,6 +418,14 @@ function World({ prog, complete, gl, setGl, onLeave }) {
       if (moveOf(e) && s.mode !== 'end') {
         e.preventDefault();
         audioContext();
+      }
+      if (s.mode === 'remember') {
+        if (/^[1-8]$/.test(k) && !e.repeat) {
+          e.preventDefault();
+          sayBack(Number(k) - 1);
+        } else if (k === 'Escape') leaveRemember();
+        else if ((k === 'r' || k === 'R') && s.recall?.state === 'remembered') startRemember();
+        return;
       }
       if (s.mode === 'carry' && !e.repeat) {
         if (['a', 'A', 'ArrowLeft'].includes(k)) doStep('left');
@@ -361,7 +441,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, [live, talkOnward, doAct, doStep]);
+  }, [box, live, talkOnward, doAct, doStep, sayBack, leaveRemember, startRemember]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
@@ -507,6 +587,17 @@ function World({ prog, complete, gl, setGl, onLeave }) {
       }
     }
 
+    // remembering the Shire: Sam telling, Frodo saying back
+    if (s.mode === 'remember' && s.recall) {
+      for (const e of stepRecall(s.recall, dt)) {
+        if (e.type === 'tell') {
+          const i = SHIRE.findIndex((x) => x.id === e.id);
+          sounds().then((x) => x.memory(i, 0.8));
+          s.said = { who: 'sam', say: SHIRE[i].say };
+        } else if (e.type === 'ask') s.said = REMEMBER_SAYS.ask(s.recall.round);
+      }
+    }
+
     // what's here
     s.near = s.mode === 'walk' && !s.search && PROMPT[p.next] ? p.next : null;
     if (s.mode === 'walk' && p.next === 'gorgoroth' && !s.search) startCross();
@@ -517,6 +608,10 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     const c = s.carry;
     const g = s.hang;
     const f = s.flight;
+    // other travellers online: where you are to them (crossing the plain;
+    // the column, the mountain and the fire are yours alone), and where they are
+    const tv = trav.ref.current;
+    tv?.pose(s.h, { inside: !(s.mode === 'walk' && s.search) });
     try {
       a.render(
         {
@@ -525,9 +620,10 @@ function World({ prog, complete, gl, setGl, onLeave }) {
           next: p.next,
           done: p.done,
           hobbit: s.h,
+          travellers: tv ? tv.list() : null,
           hidden: Boolean(s.hidden),
           talking: s.talking,
-          speaker: node?.who ?? null,
+          speaker: node?.who ?? (s.mode === 'remember' ? (s.said?.who ?? null) : null),
           line: s.talk?.at ?? null,
           march: m ? { s: m.s, off: m.off, pace: m.pace, t: m.t } : null,
           search: se ? { x: se.x, z: se.z, seen: se.seen } : null,
@@ -535,6 +631,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
           hang: g ? { grip: g.grip, arm: g.arm, phase: g.phase } : null,
           flight: f ? { s: f.s, lat: f.lat, stunT: f.stunT } : null,
           erupt: s.erupt,
+          remember: s.mode === 'remember' && s.recall ? { k: (remembered(s.recall) + (s.recall.phase === 'ask' ? s.recall.said / s.recall.round : 0)) / RECALL.length } : null,
           stepT: s.stepT,
           camYaw: s.yaw,
           camPitch: s.pitch,
@@ -552,10 +649,11 @@ function World({ prog, complete, gl, setGl, onLeave }) {
       return;
     }
 
-    const key = [s.zone, s.mode, s.near, s.moved, s.talking, s.talk?.at, m ? Math.round(m.off * 4) : '', m?.pace, m?.lashes, se ? Math.round(se.seen * 10) : '', s.hidden, c ? Math.round(c.s) : '', c ? c.tremorT > 0 : '', c?.last, g ? Math.round(g.grip * 20) : '', g ? Math.round(g.arm * 20) : '', g?.phase, f ? Math.round(f.s / 4) : '', f?.hits, p.done.length].join('|');
+    const rc = s.mode === 'remember' ? s.recall : null;
+    const key = [rc ? [rc.phase, rc.round, rc.said, rc.slips, rc.state, telling(rc), s.said?.say].join(',') : '', s.zone, s.mode, s.near, s.moved, s.talking, s.talk?.at, m ? Math.round(m.off * 4) : '', m?.pace, m?.lashes, se ? Math.round(se.seen * 10) : '', s.hidden, c ? Math.round(c.s) : '', c ? c.tremorT > 0 : '', c?.last, g ? Math.round(g.grip * 20) : '', g ? Math.round(g.arm * 20) : '', g?.phase, f ? Math.round(f.s / 4) : '', f?.hits, p.done.length].join('|');
     if (key !== hudKey.current) {
       hudKey.current = key;
-      setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, hidden: Boolean(s.hidden), march: m ? { off: m.off, pace: m.pace, lashes: m.lashes, t: m.t } : null, search: se ? { seen: se.seen } : null, carry: c ? { s: c.s, tremor: c.tremorT > 0, last: c.last } : null, hang: g ? { grip: g.grip, arm: g.arm, phase: g.phase } : null, flight: f ? { s: f.s, hits: f.hits } : null });
+      setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, hidden: Boolean(s.hidden), march: m ? { off: m.off, pace: m.pace, lashes: m.lashes, t: m.t } : null, search: se ? { seen: se.seen } : null, carry: c ? { s: c.s, tremor: c.tremorT > 0, last: c.last } : null, hang: g ? { grip: g.grip, arm: g.arm, phase: g.phase } : null, flight: f ? { s: f.s, hits: f.hits } : null, recall: rc ? { phase: rc.phase, round: rc.round, said: rc.said, slips: rc.slips, state: rc.state, telling: telling(rc), say: s.said } : null });
     }
     if (++s.frame % 120 === 0 && s.mode === 'walk' && s.search) local.set(AT, { zone: 'plain', x: s.h.x, z: s.h.z, face: s.h.face });
   }, live);
@@ -624,6 +722,8 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     setList(false);
   };
 
+  const sideTask = { ...SIDE, open: prog.done.includes(SIDE.needs), done: side.won, best: side.best != null ? REMEMBER_SAYS.best(side.best) : null };
+  const sideHere = sideTask.open && (hud.mode === 'walk' || hud.mode === 'end') && !hud.search;
   const here = hud.near ? PROMPT[hud.near] : null;
   const mode = hud.mode;
   const walking = mode === 'walk';
@@ -635,9 +735,10 @@ function World({ prog, complete, gl, setGl, onLeave }) {
   const Ca = hud.carry;
   const Ha = hud.hang;
   const Fl = hud.flight;
+  const Re = mode === 'remember' ? hud.recall : null;
   const crossing = walking && Boolean(hud.search);
   return (
-    <div ref={box} className="shire-stage doom-stage" data-touch={touch || undefined} data-mode={mode} data-zone={zone} data-game={['march', 'carry', 'hang', 'flight'].includes(mode) || crossing || undefined}>
+    <div ref={box} className="shire-stage doom-stage" data-touch={touch || undefined} data-mode={mode} data-zone={zone} data-game={['march', 'carry', 'hang', 'flight', 'remember'].includes(mode) || crossing || undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Mordor in 3D: the plain of Gorgoroth under the Eye, Mount Doom, and the fire inside it" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">Into Mordor…</p>}
 
@@ -655,6 +756,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
             <button type="button" className="shire-chip" onClick={() => setList((v) => !v)} aria-expanded={list}>
               <b>{prog.done.length}</b> of {QUESTS.length} done {!touch && <kbd>M</kbd>}
             </button>
+            <Travellers trav={trav} />
           </div>
         </div>
       )}
@@ -675,9 +777,55 @@ function World({ prog, complete, gl, setGl, onLeave }) {
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
             {here.act} {!touch && <kbd>E</kbd>}
           </button>
+          {sideHere && prog.next === 'carry' && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={startRemember}>
+              On the side: {SIDE.name}
+            </button>
+          )}
         </div>
       )}
-      {gl === 'on' && crossing && !hud.moved && <p className="shire-hint">{touch ? 'Drag the stick to walk. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. M for the list.'}</p>}
+      {Re && (
+        <div className="shire-panel doom-game doom-remember" role="group" aria-label={SIDE.name} data-wrong={Re.phase === 'wrong' || undefined}>
+          <p className="shire-panel-title">{SIDE.name}</p>
+          {Re.say && (
+            <p className="shire-panel-say" aria-live="polite">
+              <b>{SPEAKERS[Re.say.who]}:</b> {Re.say.say}
+            </p>
+          )}
+          <div className="doom-shire" role="group" aria-label="Things of the Shire">
+            {SHIRE.map((m, i) => (
+              <button key={m.id} type="button" className="btn btn-ghost btn-sm doom-memory" data-memory={m.id} data-lit={Re.telling === m.id || undefined} disabled={Re.phase !== 'ask'} onClick={() => sayBack(i)}>
+                <i aria-hidden="true" />
+                {!touch && <kbd>{i + 1}</kbd>} {m.name}
+              </button>
+            ))}
+          </div>
+          <p className="shire-panel-stats">
+            <span>
+              Remembered <b>{remembered(Re)}</b> of {RECALL.length}
+            </span>
+            {Re.phase === 'ask' && (
+              <span>
+                Said back <b>{Re.said}</b> of {Re.round}
+              </span>
+            )}
+            <span>
+              Slips <b>{Re.slips}</b>
+            </span>
+          </p>
+          <div className="shire-panel-row">
+            {Re.state === 'remembered' && (
+              <button type="button" className="btn btn-primary btn-sm" onClick={startRemember}>
+                Again {!touch && <kbd>R</kbd>}
+              </button>
+            )}
+            <button type="button" className="btn btn-ghost btn-sm" onClick={leaveRemember}>
+              {Re.state === 'remembered' ? 'Back' : 'Stop'} {!touch && <kbd>Esc</kbd>}
+            </button>
+          </div>
+        </div>
+      )}
+      {gl === 'on' && crossing && !hud.moved && <p className="shire-hint">{touch ? 'Drag the stick to walk. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. M for the list.'}<GuideCue touch={touch} /></p>}
 
       {node && <Convo title={title} name={SPEAKERS[node.who] ?? ''} node={node} touch={touch} onPick={(i) => talkOnward(i)} onNext={() => talkOnward()} />}
 
@@ -805,10 +953,19 @@ function World({ prog, complete, gl, setGl, onLeave }) {
               Back across Gorgoroth
             </button>
           </div>
+          {sideHere && (
+            <button type="button" className="btn btn-ghost btn-sm doom-side-go" onClick={startRemember}>
+              On the side: {SIDE.name}
+            </button>
+          )}
         </div>
       )}
       {crossing && touch && <Stick onStick={onStick} />}
-      {list && <QuestList title="Things to do" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && (sim.current.mode === 'walk' || sim.current.mode === 'end')} />}
+      {list && (
+        <QuestList title="Things to do" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && (sim.current.mode === 'walk' || sim.current.mode === 'end')}>
+          <SideList tasks={[sideTask]} onGo={startRemember} canGo={(t) => t.open && (sim.current.mode === 'walk' || sim.current.mode === 'end')} />
+        </QuestList>
+      )}
     </div>
   );
 }

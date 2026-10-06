@@ -4,11 +4,13 @@ import { local, useDocumentTitle, useReducedMotion } from '../lib/hooks';
 import { audioContext } from '../lib/audio';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
 import { LOADOUT_KEY, loadoutOf, readLoadouts } from '../components/universe/outfit';
+import { HULL_KEY, readHulls } from '../components/universe/shipyard/build';
 import { useAchievements } from '../components/Achievements';
 import Comms from '../components/universe/Comms';
 import Online from '../components/universe/online/Online';
 import { useOnline } from '../components/universe/online/useOnline';
 import { FIRST, parseSystem, systemById } from '../components/galaxy/systems';
+import { canLand } from '../components/galaxy/surface/sites';
 import { galaxyCrew } from '../components/galaxy/lines';
 import GalaxyView from '../components/galaxy/GalaxyView';
 import GalaxyPanel from '../components/galaxy/GalaxyPanel';
@@ -23,8 +25,8 @@ const INTRO_KEY = 'tp-galaxy-intro'; // (session) the "long time ago" seen this 
 // A galaxy far, far away: the Star Wars galaxy as a universe of its own,
 // inside the universe map (the Star Wars planet there jumps you here). You
 // fly the same ship, the same way, one star system at a time (Tatooine,
-// Hoth, Endor, Yavin, Coruscant, Naboo… nineteen of them), and jump to
-// lightspeed between them from the galaxy map (HoloMap.jsx, M). The URL is
+// Hoth, Endor, Yavin, Coruscant, Naboo, Nevarro… eighteen of them), and jump
+// to lightspeed between them from the galaxy map (HoloMap.jsx, M). The URL is
 // the system you're in (/galaxy/hoth), swapped in place as you arrive, so a
 // link drops you out of hyperspace there, and a link to another system
 // while you're here sends you jumping to it. Each system's card (the
@@ -44,15 +46,22 @@ export default function Galaxy() {
   const [ship, setShip] = useState(() => parseShip(local.get(SHIP_KEY)));
   const crew = crewById(ship);
   const online = useOnline();
-  const { setKind, setLoadout } = online;
+  const { setKind, setLoadout, setBuild: tellBuild } = online;
   useEffect(() => setKind(ship), [setKind, ship]);
   // the ship as it's fitted in the universe map's hangar: its paint and parts
-  const { unlocked } = useAchievements();
-  const loadout = useMemo(() => loadoutOf(readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)), ship, unlocked), [ship, unlocked]);
+  const { unlocked, unlock } = useAchievements();
+  // and the hull it flies: stock, or its garage build from the hangar's shipyard
+  const build = useMemo(() => (ship && readHulls(local.get(HULL_KEY), CREWS.map((c) => c.id))[ship]) || null, [ship]);
+  const loadout = useMemo(() => loadoutOf(readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)), ship, unlocked, build), [ship, unlocked, build]);
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
+  useEffect(() => tellBuild?.(build), [tellBuild, build]);
   const [at, setAt] = useState(null); // what in the system you're at (its planet, the Death Star…)
   const [mapOpen, setMapOpen] = useState(false);
   const [jumping, setJumping] = useState(null); // { to, phase } while a jump's on
+  const [held, setHeld] = useState(null); // { to } while an Interdictor's gravity well holds you (galaxy/interdiction.js)
+  const [balked, setBalked] = useState(false); // the hyperdrive asked for under the hold, for a moment
+  const balk = useRef(0);
+  useEffect(() => () => clearTimeout(balk.current), []);
   const [leaving, setLeaving] = useState(null); // { to } once you're on your way out of the page
   const [tucked, setTucked] = useState(() => local.get(PANEL_KEY) === 'tucked');
   const [intro, setIntro] = useState(() => {
@@ -97,15 +106,25 @@ export default function Galaxy() {
     local.set(SHIP_KEY, id);
   };
 
-  // out of the page: the screen fades, and on
+  // out of the page: the screen fades, and on (down through the air, glowing,
+  // when it's onto the planet)
   const leave = useCallback(
-    (to, { jump = false } = {}) => {
+    (to, { jump = false, land = false } = {}) => {
       if (leaving) return;
-      setLeaving({ to });
+      setLeaving({ to, land });
       if (jump) window.dispatchEvent(new Event('tp:hyperspace'));
-      timer.current = setTimeout(() => navigate(to), jump ? 1250 : 650);
+      timer.current = setTimeout(() => navigate(to), jump ? 1250 : land ? 1500 : 650);
     },
     [leaving, navigate],
+  );
+  // down onto the planet you're at
+  const land = useCallback(
+    (id) => {
+      if (!canLand(id)) return;
+      audioContext();
+      leave(`/galaxy/${id}/surface`, { land: true });
+    },
+    [leave],
   );
 
   // what the scene says: to the comms, and to the page
@@ -120,8 +139,29 @@ export default function Galaxy() {
         return;
       }
       if (e.type === 'jump') {
+        // asked for under the Interdictor's hold: the panel says why not
+        if (e.phase === 'held') {
+          setBalked(true);
+          clearTimeout(balk.current);
+          balk.current = setTimeout(() => setBalked(false), 3000);
+          return;
+        }
         setJumping(e.phase === 'cancel' ? null : { to: e.to, phase: e.phase });
         if (e.phase === 'spool') comms.current?.handle({ type: 'event', id: 'jump' });
+        return;
+      }
+      if (e.type === 'interdicted') {
+        setHeld({ to: e.to });
+        comms.current?.handle(e);
+        return;
+      }
+      // clear of the Interdictor's well: the drive's back (a crash ends the hold too, but earns nothing)
+      if (e.type === 'wellclear') {
+        setHeld(null);
+        setBalked(false);
+        if (e.why === 'crash') return;
+        unlock('interdicted');
+        comms.current?.handle({ type: 'event', id: 'wellclear' });
         return;
       }
       if (e.type === 'tractor') {
@@ -135,12 +175,13 @@ export default function Galaxy() {
       if (e.type === 'action') {
         const s = systemById(current);
         if (e.id === 'deathstar') leave('/deathstar');
+        else if ((e.id === 'planet' || e.id === 'cloudcity') && canLand(s.id)) land(s.id);
         else if (e.id === 'planet' || e.id === 'cloudcity') navigate(s.game.status === 'live' && s.game.to ? s.game.to : `/galaxy/${s.id}/mission`);
         return;
       }
       comms.current?.handle(e);
     },
-    [current, leave, navigate],
+    [current, leave, navigate, land, unlock],
   );
   const onArrive = useCallback(
     (id) => {
@@ -181,10 +222,10 @@ export default function Galaxy() {
   // (every system's colour is light, readable on the dark page: so dark on a button)
   const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };
   return (
-    <div className="dark-scope universe-page galaxy-page" style={accent} data-tucked={tucked ? '' : undefined} data-card="" data-leaving={leaving ? 'fade' : undefined} data-jumping={jumping?.phase}>
+    <div className="dark-scope universe-page galaxy-page" style={accent} data-tucked={tucked ? '' : undefined} data-card="" data-leaving={leaving ? (leaving.land ? 'land' : 'fade') : undefined} data-jumping={jumping?.phase} data-held={held ? '' : undefined}>
       <h1 className="sr-only">A galaxy far, far away: {sys.name}</h1>
       <p className="sr-only" aria-live="polite">
-        {jumping ? `Jumping to ${systemById(jumping.to)?.name ?? 'lightspeed'}` : `In the ${sys.system ?? sys.name} system`}
+        {jumping ? `Jumping to ${systemById(jumping.to)?.name ?? 'lightspeed'}` : held ? `Interdicted short of ${systemById(held.to)?.name ?? sys.name}: an Imperial Interdictor's gravity well holds you` : `In the ${sys.system ?? sys.name} system`}
       </p>
       <GalaxyView
         system={wanted}
@@ -192,6 +233,7 @@ export default function Galaxy() {
         handle={view}
         ship={ship}
         loadout={loadout}
+        build={build}
         net={online.client}
         frozen={Boolean(leaving) || intro}
         onEvent={onEvent}
@@ -211,9 +253,12 @@ export default function Galaxy() {
         onGo={(id) => view.current.goTo(id)}
         onLeave={() => leave('/universe/starwars', { jump: true })}
         onBoard={(path) => leave(path)}
+        onLand={canLand(sys.id) ? () => land(sys.id) : null}
         tucked={tucked}
         onTuck={tuck}
         jumping={jumping}
+        held={held}
+        balked={balked}
       />
       {mapOpen && <HoloMap current={current} online={online} onJump={jumpTo} onClose={() => setMapOpen(false)} onLeave={() => leave('/universe/starwars', { jump: true })} />}
       {intro && (
@@ -228,6 +273,12 @@ export default function Galaxy() {
           }}
         />
       )}
+      {ship && !leaving && !jumping && at && (at === 'planet' || at === 'cloudcity') && canLand(current) && (
+        <button type="button" className="galaxy-land" onClick={() => land(current)}>
+          <kbd>E</kbd> Land on {at === 'cloudcity' ? 'Cloud City' : sys.name}
+        </button>
+      )}
+      {leaving?.land && <div className="galaxy-entry" aria-hidden="true" />}
       <div className="universe-fade" aria-hidden="true" style={{ background: '#000' }} />
     </div>
   );

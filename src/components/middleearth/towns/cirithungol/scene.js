@@ -2,8 +2,9 @@
 // city glowing across its valley and the host pouring over its bridge; the
 // endless stairs up the black cliff; Shelob's tunnels, dark but for the
 // phial, and the pass beyond where Sam fights her; and the courtyard of
-// the orcs' Tower by torchlight. Made in code (./props.js, ../ground.js),
-// so nothing is downloaded.
+// the orcs' Tower by torchlight. And on the side, the night on the stair:
+// Sam asleep under his cloak, and Gollum's crumbs on it. Made in code
+// (./props.js, ../ground.js), so nothing is downloaded.
 //
 // The four places are drawn apart in one scene, and only the one you're
 // in is shown. It draws what the component hands it and decides nothing.
@@ -24,9 +25,10 @@ import { createFx } from '../../shire/fx';
 import { makeTerrain } from '../ground';
 import { makeFolk } from '../bree/props';
 import { createGollum } from '../marshes/props';
+import { createGhosts } from '../ghosts';
 import { createCirithKit } from './props';
 import { BRAWL, BRIDGE, CITY_YAW, COURT, HIDE, LAIR_OUT, MORGUL_ROAD, PASS, TOWER_DOOR, TOWER_PILLARS, TUNNELS, roughHeight, stairAt } from './layout';
-import { STAIRS } from './rules';
+import { CRUMBS, STAIRS, cloakLift } from './rules';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -211,6 +213,36 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
     zones.stairs.add(deep);
   }
   const greenBelow = V(40, -40, 160);
+  // on the side, the night on the stair: Sam's cloak over his legs as he
+  // sleeps against the rock on the shelf at the top (./props.js stairs()),
+  // the lembas crumbs Gollum dusted on it, and your hand over it (CRUMBS:
+  // u across, v out from the rock)
+  const [cx, cy, cz] = stairAt(STAIRS.len);
+  const CLOAK = V(cx + 1.6, cy + 0.02, cz + 0.25);
+  const cloakMesh = (() => {
+    const g = new THREE.PlaneGeometry(CRUMBS.w + 0.16, CRUMBS.d + 0.12, 28, 20).rotateX(-Math.PI / 2);
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) p.setY(i, cloakLift(p.getX(i), p.getZ(i)) - 0.012 * Math.max(0, Math.abs(p.getX(i)) * 2 - CRUMBS.w + 0.1));
+    g.computeVertexNormals();
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x55604c, roughness: 0.95, side: THREE.DoubleSide }));
+    m.position.copy(CLOAK);
+    m.visible = false;
+    zones.stairs.add(m);
+    return m;
+  })();
+  // (the cloak, the crumbs and the ring sit in zones.stairs, which is already at AT.stairs)
+  const crumbGeo = new THREE.IcosahedronGeometry(0.011, 0);
+  const crumbMat = new THREE.MeshStandardMaterial({ color: 0xf2e4b4, roughness: 0.8, emissive: 0x3a3220 });
+  const crumbs = Array.from({ length: CRUMBS.n }, () => {
+    const m = new THREE.Mesh(crumbGeo, crumbMat);
+    m.visible = false;
+    zones.stairs.add(m);
+    return m;
+  });
+  const handRing = new THREE.Mesh(new THREE.RingGeometry(CRUMBS.reach * 0.8, CRUMBS.reach, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xcdbb8a, transparent: true, opacity: 0.5, depthWrite: false, depthTest: false }));
+  handRing.renderOrder = 3;
+  handRing.visible = false;
+  zones.stairs.add(handRing);
 
   // ── Shelob's lair, and the pass ──
   const tunnels = kit.tunnels(TUNNELS, { r: 1.6 });
@@ -258,6 +290,11 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
     zones.tower.add(o.group);
     return o;
   });
+  // other travellers, online, from other worlds (../ghosts.js), in whichever
+  // zone you're walking (the courtyard's ground and the tunnels' are flat;
+  // only those in the same zone are listed)
+  const ghosts = createGhosts();
+  zones.tower.add(ghosts.group);
 
   // ── people ──
   const blobGeo = new THREE.CircleGeometry(0.42, 20).rotateX(-Math.PI / 2);
@@ -314,6 +351,7 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
   const phialCol = new THREE.Color(0xd8ecff);
   const torchCol = new THREE.Color(0xff8a40);
   const greenCol = new THREE.Color(0x6aff9a);
+  const dawnCol = new THREE.Color(0xc8d4e8);
   const hostM = new THREE.Matrix4();
   const hostQ = new THREE.Quaternion();
   const hostE = new THREE.Euler();
@@ -446,8 +484,47 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
       A.beam = 0;
     }
 
+    // ── the night on the stair, on the side ──
+    const cr = zone === 'stairs' && s.mode === 'crumbs' ? s.crumbs : null;
+    cloakMesh.visible = Boolean(cr);
+    handRing.visible = Boolean(cr && cr.state === 'on');
+    crumbs.forEach((m, i) => {
+      const c = cr?.crumbs[i];
+      m.visible = Boolean(c && !c.gone);
+      if (!m.visible) return;
+      m.position.set(CLOAK.x + c.u, CLOAK.y + cloakLift(c.u, c.v) + 0.006, CLOAK.z + c.v);
+      m.scale.setScalar(c.size);
+      m.rotation.set(c.turn, c.turn * 2, 0);
+    });
+    if (cr) {
+      handRing.position.set(CLOAK.x + cr.hand.u, CLOAK.y + cloakLift(cr.hand.u, cr.hand.v) + 0.015, CLOAK.z + cr.hand.v);
+      handRing.material.opacity = 0.35 + 0.15 * Math.sin(t * 5);
+      // Sam asleep against the rock, the cloak over his legs
+      // (pose first: it straightens the legs, and sit bends them)
+      stand(sam, 'stairs', CLOAK.x - 0.05, CLOAK.y, CLOAK.z - CRUMBS.d / 2 - 0.05, -Math.PI / 2);
+      pose(sam, t * 0.3, { moving: false });
+      sit(sam, true);
+      sam.head.rotation.z = 0.35 + Math.sin(t * 0.8) * 0.03;
+      // Frodo asleep by him, stirring as the light comes
+      const stir = Math.max(0, 1 - (t - (A.stirAt ?? -9)) / 1.4);
+      stand(frodo, 'stairs', CLOAK.x + CRUMBS.w / 2 + 0.55, CLOAK.y, CLOAK.z - 0.3, -Math.PI / 2 - 0.4);
+      pose(frodo, t * 0.3 + 2, { moving: false });
+      sit(frodo, true);
+      frodo.head.rotation.z = -0.4 + Math.sin(t * 9) * 0.12 * stir;
+      frodo.group.rotation.z = 0.1 * stir * Math.sin(t * 6);
+      // Gollum, a few steps up, watching
+      gollum.group.visible = true;
+      wpos('stairs', CLOAK.x - CRUMBS.w / 2 - 0.9, CLOAK.y + 0.15, CLOAK.z - 0.35, gollum.group.position);
+      gollum.group.rotation.set(0, -0.3, 0);
+      gollum.animate?.(t, { pose: 'crouch', speed: 0, look: Math.sin(t * 1.3) * 0.25 });
+      // the grey before dawn coming, and a little of it on the cloak
+      const k = Math.min(1, (cr.t + cr.late) / CRUMBS.time);
+      lights.push([V(CLOAK.x + 0.4, CLOAK.y + 1.9, CLOAK.z + 1.4).add(AT.stairs), dawnCol, 1.3 + k * 2.5, 7]);
+      lights.push([greenBelow.clone().add(AT.stairs), greenCol, 40, 260]);
+    }
+
     // ── the stairs ──
-    if (zone === 'stairs') {
+    if (zone === 'stairs' && !cr) {
       const c = s.climb;
       const top = s.mode === 'talk' && s.talking === 'lembas';
       const at = top ? STAIRS.len : (c?.s ?? 0);
@@ -594,6 +671,9 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
         embers.emit(p.x + R(0.15), p.y + 0.3, p.z + R(0.15), R(0.3), 0.8 + Math.random(), R(0.3), 1.6, 0.05, 0.02, 1);
       }
     }
+    // other travellers, walking the courtyard or the tunnels
+    if (ghosts.group.parent !== zones[zone]) zones[zone].add(ghosts.group);
+    ghosts.update(zone === 'tower' || zone === 'lair' ? (s.travellers ?? []) : [], t, dt);
     embers.step(dt);
     A.hit = Math.max(0, A.hit - dt * 2);
     fx.step(dt, t, { night: 1, day: 0 });
@@ -629,6 +709,10 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
       camAt = wpos('vale', HIDE.x - Math.sin(a) * 5 + 2, valeHeight(HIDE.x, HIDE.z) + 3.2, HIDE.z - Math.cos(a) * 5, tmp);
       // up to the beam once it goes up
       camLook = wpos('vale', BRIDGE.x, 14 + A.beam * 40, BRIDGE.z + 30, look);
+    } else if (zone === 'stairs' && s.mode === 'crumbs') {
+      // looking down at the cloak from over Sam's knees
+      camAt = tmp.copy(CLOAK).add(AT.stairs).add(V(0.12, 1.3, 0.92));
+      camLook = look.copy(CLOAK).add(AT.stairs).add(V(0, 0.02, -0.02));
     } else if (zone === 'stairs') {
       const fp = frodo.group.position;
       if (s.mode === 'talk') {
@@ -724,7 +808,7 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
     stage.render(ms / fast);
   };
 
-  const fxEvent = (type) => {
+  const fxEvent = (type, id) => {
     if (type === 'pause') A.shake = Math.max(A.shake, 0.12);
     else if (type === 'stood') A.shake = 0.2;
     else if (type === 'slip') A.shake = 0.35;
@@ -737,6 +821,19 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
       A.stab = 1;
       A.shake = Math.max(A.shake, 0.12);
     } else if (type === 'dodge') A.dodge = 1;
+    else if (type === 'brush' && id) fx.pop(tmp2.set(CLOAK.x + id.u, CLOAK.y + 0.08, CLOAK.z + id.v).add(AT.stairs), 'white', 2 + id.got * 2, 0.3);
+    else if (type === 'stir') A.stirAt = A.t;
+  };
+  // where on Sam's cloak a point on the screen is, as { u, v }, or null
+  const ray = new THREE.Raycaster();
+  const plane = new THREE.Plane(V(0, 1, 0), 0);
+  const cloakAt = (x, y) => {
+    const { w, h: hh } = stage.size;
+    ray.setFromCamera({ x: (x / w) * 2 - 1, y: -(y / hh) * 2 + 1 }, camera);
+    plane.constant = -(CLOAK.y + AT.stairs.y + 0.06);
+    const hit = ray.ray.intersectPlane(plane, tmp2);
+    if (!hit) return null;
+    return { u: hit.x - CLOAK.x - AT.stairs.x, v: hit.z - CLOAK.z - AT.stairs.z };
   };
 
   return {
@@ -744,6 +841,7 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
     render,
     fx: fxEvent,
     screenOf: () => null,
+    cloakAt,
     resize: stage.resize,
     get info() {
       const i = renderer.info;
@@ -756,6 +854,7 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
       return null;
     },
     dispose() {
+      ghosts.dispose();
       disposeTree(scene);
       stage.dispose();
     },

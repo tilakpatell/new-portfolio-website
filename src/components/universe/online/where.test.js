@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { UNIVERSE, cleanWhere, isFlight, placeName, whereOf } from './where';
+import { UNIVERSE, cleanWhere, isFlight, ownCorner, placeName, whereOf } from './where';
 
 describe('whereOf', () => {
-  it('keeps one place for the map, Middle-earth and the experience page', () => {
+  it('keeps one place for the map and the experience page', () => {
     expect(whereOf('/')).toBe(UNIVERSE);
     expect(whereOf('/universe/marvel')).toBe(UNIVERSE);
-    expect(whereOf('/middle-earth/moria')).toBe('/middle-earth');
     expect(whereOf('/experience/aws')).toBe('/experience');
     expect(whereOf('/deathstar')).toBe('/deathstar');
+  });
+  it('keeps each of Middle-earth\'s chapters a place of its own, and the map another', () => {
+    expect(whereOf('/middle-earth')).toBe('/middle-earth');
+    expect(whereOf('/middle-earth/moria')).toBe('/middle-earth/moria');
+    expect(whereOf('/middle-earth/bree/')).toBe('/middle-earth/bree');
+    expect(whereOf('/middle-earth/bree/extra')).toBe('/middle-earth/bree');
   });
   it('keeps each of the galaxy\'s systems a place of its own', () => {
     expect(whereOf('/galaxy/hoth')).toBe('/galaxy/hoth');
@@ -23,6 +28,17 @@ describe('isFlight', () => {
     expect(isFlight('/galaxy/endor/mission')).toBe(false);
     expect(isFlight('/deathstar')).toBe(false);
     expect(isFlight(null)).toBe(false);
+  });
+});
+
+describe('ownCorner', () => {
+  it('is where the page draws the roster itself: in flight, and down on a world in the galaxy', () => {
+    expect(ownCorner(UNIVERSE)).toBe(true);
+    expect(ownCorner('/galaxy/hoth')).toBe(true);
+    expect(ownCorner('/galaxy/hoth/surface')).toBe(true);
+    expect(ownCorner('/galaxy/hoth/mission')).toBe(false);
+    expect(ownCorner('/middle-earth/bree')).toBe(false);
+    expect(ownCorner(null)).toBe(false);
   });
 });
 
@@ -47,8 +63,18 @@ describe('placeName', () => {
     expect(placeName('/scranton')).toBeTruthy();
     expect(placeName(null)).toBe('somewhere');
     expect(placeName('/galaxy')).toBe('a galaxy far, far away');
-    expect(placeName('/galaxy/ahchto')).toBe('Ahch-To');
+    expect(placeName('/galaxy/mandalore')).toBe('Mandalore');
     expect(placeName('/galaxy/hoth/mission')).toBe('the Hoth briefing');
+    expect(placeName('/galaxy/hoth/surface')).toBe('down on Hoth');
     expect(placeName('/galaxy/nowhere')).toBe('Galaxy');
+  });
+  it('names Middle-earth\'s chapters, the hidden ones too', () => {
+    expect(placeName('/middle-earth/bree')).toBe('Bree');
+    expect(placeName('/middle-earth/shire')).toBe('The Shire');
+    expect(placeName('/middle-earth/orthanc')).toBe('Orthanc');
+    expect(placeName('/middle-earth/nowhere')).toBe('Middle-earth');
+  });
+  it('names the Citadel', () => {
+    expect(placeName('/c-137/citadel')).toBe('the Citadel');
   });
 });

@@ -20,40 +20,41 @@
 // buildPlanet(u, T) → { id, radius, group, update(t, camera), setState, mount }
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
+import { gltfLoader } from '../../lib/three/gltf';
+import { loadTexture } from '../../lib/three/textures';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
 import { globeData } from '../travel/globe3d/data';
 import { facing, fit, glowMat, orbit, paint, rng, rounded, tiled } from './kit';
 import { STATIONS } from './stations';
 import { buildGateway } from '../galaxy/gateway';
+import { SIDES, cybertronSkin } from '../cybertron/skin';
+import { createWar, warZones } from '../cybertron/war';
 
 const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the scene's key light
 
 // ── Textures ──
 
 const BASE = '/textures/universe/';
-const PLANET_MAPS = ['music', 'middleearth', 'transformers', 'marvel', 'breakingbad', 'office', 'rickmorty', 'earth', 'earth-clouds', 'earth-night', 'sun', 'sky'];
-const FIXED = ['middleearth-glow', 'rickmorty-glow', 'transformers-glow'];
-const DATA = ['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'cybertron-normal', 'middleearth-normal', 'breakingbad-normal', 'earth-rough'];
+const PLANET_MAPS = ['music', 'middleearth', 'transformers', 'marvel', 'breakingbad', 'office', 'rickmorty', 'earth', 'earth-clouds', 'earth-night', 'invincible', 'invincible-clouds', 'invincible-night', 'sun', 'sky'];
+const FIXED = ['middleearth-glow', 'rickmorty-glow', 'invincible-glow'];
+const DATA = ['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-normal-sm', 'transformers-glow-sm', 'middleearth-normal', 'breakingbad-normal', 'invincible-normal', 'earth-rough'];
 const COLOUR = ['plates', 'hull'];
 
 export async function loadTextures({ small = false } = {}) {
-  const loader = new THREE.TextureLoader();
   const T = { small }; // (and whether this is a phone, for the builders)
   const get = async (name, file, colour) => {
     try {
-      const t = await loader.loadAsync(BASE + file);
-      t.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
-      t.anisotropy = 8;
-      T[name] = t;
+      // (decoded off the main thread, as sharp as the device's tier allows,
+      // and shared with any other scene that wants the same map)
+      T[name] = await loadTexture(BASE + file, { color: colour });
     } catch {
       /* missing: whoever wanted it does without */
     }
   };
   await Promise.all([
-    ...PLANET_MAPS.map((n) => get(n, `${n}${small ? '-sm' : ''}.webp`, n !== 'earth-clouds')),
+    ...PLANET_MAPS.map((n) => get(n, `${n}${small ? '-sm' : ''}.webp`, !n.endsWith('-clouds'))),
     ...FIXED.map((n) => get(n, `${n}.webp`, true)),
     ...DATA.map((n) => get(n, `${n}.webp`, false)),
     ...COLOUR.map((n) => get(n, `${n}.webp`, true)),
@@ -125,7 +126,11 @@ function airGlow(mat, color, { night = null } = {}) {
     uNight: { value: night },
   };
   mat.userData.air = u;
-  mat.onBeforeCompile = (shader) => {
+  // (after any hook the planet's builder gave it, such as Cybertron's skin)
+  const prev = mat.onBeforeCompile;
+  const prevKey = mat.customProgramCacheKey;
+  mat.onBeforeCompile = (shader, renderer) => {
+    prev?.call(mat, shader, renderer);
     Object.assign(shader.uniforms, u);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\nuniform vec3 uRimColor;\nuniform float uRimStrength;\nuniform vec3 uSunW;\nuniform sampler2D uNight;`)
@@ -141,7 +146,7 @@ function airGlow(mat, color, { night = null } = {}) {
         }`,
       );
   };
-  mat.customProgramCacheKey = () => (night ? 'air-night' : 'air');
+  mat.customProgramCacheKey = () => `${night ? 'air-night' : 'air'}${prevKey ? `-${prevKey.call(mat)}` : ''}`;
   return mat;
 }
 
@@ -327,23 +332,36 @@ const BUILDERS = {
 
   transformers(p, { u, T }) {
     const r = u.size;
-    p.body.material = new THREE.MeshStandardMaterial({
+    // built over from pole to pole (scripts/build-cybertron-planet.mjs):
+    // tiers of plating, chasms with energon running in them, the city-states'
+    // discs, the Sea of Rust, the war's fires; cybertron/skin.js colours the
+    // energon, lights the cities on the night side and carries the plating
+    // on in the shader up close, where the maps run out
+    const mat = new THREE.MeshStandardMaterial({
       map: T.transformers ?? null,
       color: T.transformers ? '#ffffff' : u.palette.base,
-      normalMap: tiled(T['cybertron-normal'], 24, 12),
-      normalScale: new THREE.Vector2(0.8, 0.8),
-      // the seams between its plates run with energon: violet-blue, bright
-      // enough to bloom, and pulsing slowly as if the planet breathes
-      emissive: '#7f6bff',
-      emissiveMap: T['transformers-glow'] ?? null,
-      emissiveIntensity: T['transformers-glow'] ? 3.2 : 0,
-      roughness: 0.5,
-      metalness: 0.6,
+      normalMap: T['transformers-normal-sm'] ?? null,
+      normalScale: new THREE.Vector2(1.1, 1.1),
+      roughness: 0.55,
+      metalness: 0.45,
     });
-    const cyber = p.body.material;
-    p.tick.push((t) => {
-      if (T['transformers-glow']) cyber.emissiveIntensity = 2.4 + 1.4 * (0.5 + 0.5 * Math.sin(t * 0.9)) ** 2;
-    });
+    p.body.material = mat;
+    if (T.transformers && T['transformers-glow-sm']) {
+      const skin = cybertronSkin(mat, { glow: T['transformers-glow-sm'], sun: LIGHT });
+      // the energon breathes, and turns from the Autobots' blue to the
+      // Decepticons' violet and back as the war goes one way and the other
+      const blue = SIDES.autobot.energon;
+      const violet = SIDES.decepticon.energon;
+      p.tick.push((t) => {
+        skin.uTime.value = t;
+        skin.uEnergon.value.copy(blue).lerp(violet, 0.5 + 0.5 * Math.sin(t * 0.05));
+      });
+      // and the war, a few fireballs at a time out of the burning fronts
+      // (cybertron/war.js: one draw, turning with the planet)
+      const battle = createWar({ radius: r, zones: warZones(T['transformers-glow-sm']), count: T.small ? 3 : 5, flares: 1, small: true, light: false });
+      p.body.add(battle.group);
+      p.tick.push((t, camera) => battle.update(t, camera, 0.85));
+    }
     // Optimus Prime and Megatron on one orbit, a little apart, facing off as
     // they go round
     const R = r * 1.55;
@@ -746,66 +764,271 @@ const BUILDERS = {
     p.slot = { holder: o.holder, size: r * 0.9, turn: [0.1, -Math.PI / 2, 0] }; // her bow is −x: along the orbit
   },
 
-  invincible(p, { u }) {
+  invincible(p, { u, T }) {
     const r = u.size;
     const P = u.palette;
     const rand = rng('invincible');
-    // Viltrum: rust and ochre, dark old sea beds, bands of high cloud
-    const map = paint(
+    if (T.invincible) {
+      // a war-worn world (scripts/build-invincible-planet.mjs): rust plateaus
+      // over dark old sea beds, ridges, craters thrown wide, and long rifts
+      // still molten along their floors; cities light its night side, and
+      // high dust streams round it in bands
+      const mat = new THREE.MeshStandardMaterial({
+        map: T.invincible,
+        normalMap: T['invincible-normal'] ?? null,
+        normalScale: new THREE.Vector2(1.35, 1.35),
+        emissive: '#ffffff',
+        emissiveMap: T['invincible-glow'] ?? null,
+        emissiveIntensity: T['invincible-glow'] ? 2.4 : 0,
+        roughness: 0.92,
+      });
+      p.body.material = mat;
+      p.night = T['invincible-night'] ?? null;
+      // the rifts breathe, slowly
+      if (T['invincible-glow']) p.tick.push((t) => (mat.emissiveIntensity = 2 + 1.2 * (0.5 + 0.5 * Math.sin(t * 1.1)) ** 2));
+      if (T['invincible-clouds']) {
+        const dust = new THREE.Mesh(
+          new THREE.SphereGeometry(r * 1.016, T.small ? 44 : 64, T.small ? 28 : 40),
+          new THREE.MeshStandardMaterial({ color: '#f3d4b4', alphaMap: T['invincible-clouds'], transparent: true, depthWrite: false, roughness: 1 }),
+        );
+        p.group.add(dust);
+        p.tick.push((t) => (dust.rotation.y = t * 0.065));
+      }
+    } else {
+      // (without the maps: painted here, rust and ochre, dark old sea beds, bands of high cloud)
+      const map = paint(
+        (g, w, h) => {
+          const ground = g.createLinearGradient(0, 0, 0, h);
+          ground.addColorStop(0, P.dark);
+          ground.addColorStop(0.3, P.base);
+          ground.addColorStop(0.7, P.base);
+          ground.addColorStop(1, P.dark);
+          g.fillStyle = ground;
+          g.fillRect(0, 0, w, h);
+          const blob = (x, y, rx, ry, fill) => {
+            for (const dx of [0, -w, w]) {
+              g.beginPath();
+              g.ellipse(x + dx, y, rx, ry, 0, 0, Math.PI * 2);
+              g.fillStyle = fill;
+              g.fill();
+            }
+          };
+          for (let i = 0; i < 90; i++) blob(rand() * w, h * (0.12 + rand() * 0.76), 10 + rand() * 60, 6 + rand() * 26, `rgba(40, 10, 6, ${(0.12 + rand() * 0.25).toFixed(3)})`);
+          for (let i = 0; i < 120; i++) blob(rand() * w, h * (0.1 + rand() * 0.8), 4 + rand() * 30, 3 + rand() * 12, `rgba(230, 160, 90, ${(0.08 + rand() * 0.2).toFixed(3)})`);
+        },
+        1024,
+        512,
+      );
+      p.body.material = new THREE.MeshStandardMaterial({ map, roughness: 0.85 });
+    }
+
+    // a soft glow, for the flyers' heads and the shockwaves
+    const soft = paint(
       (g, w, h) => {
-        const ground = g.createLinearGradient(0, 0, 0, h);
-        ground.addColorStop(0, P.dark);
-        ground.addColorStop(0.3, P.base);
-        ground.addColorStop(0.7, P.base);
-        ground.addColorStop(1, P.dark);
-        g.fillStyle = ground;
-        g.fillRect(0, 0, w, h);
-        const blob = (x, y, rx, ry, fill) => {
-          for (const dx of [0, -w, w]) {
-            g.beginPath();
-            g.ellipse(x + dx, y, rx, ry, 0, 0, Math.PI * 2);
-            g.fillStyle = fill;
-            g.fill();
-          }
-        };
-        for (let i = 0; i < 90; i++) blob(rand() * w, h * (0.12 + rand() * 0.76), 10 + rand() * 60, 6 + rand() * 26, `rgba(40, 10, 6, ${(0.12 + rand() * 0.25).toFixed(3)})`);
-        for (let i = 0; i < 120; i++) blob(rand() * w, h * (0.1 + rand() * 0.8), 4 + rand() * 30, 3 + rand() * 12, `rgba(230, 160, 90, ${(0.08 + rand() * 0.2).toFixed(3)})`);
-        for (let i = 0; i < 26; i++) {
-          const y = rand() * h;
-          g.fillStyle = `rgba(255, 238, 220, ${(0.05 + rand() * 0.1).toFixed(3)})`;
-          g.fillRect(0, y, w, 2 + rand() * 9);
-        }
-      },
-      1024,
-      512,
-    );
-    p.body.material = new THREE.MeshStandardMaterial({ map, roughness: 0.85 });
-    // two flyers round it, each trailing light: the son in yellow and blue, the father in white and red
-    const fade = paint(
-      (g, w, h) => {
-        const k = g.createLinearGradient(0, 0, w, 0);
-        k.addColorStop(0, '#ffffff');
-        k.addColorStop(1, '#000000');
+        const k = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+        k.addColorStop(0, 'rgba(255,255,255,1)');
+        k.addColorStop(0.2, 'rgba(255,255,255,0.6)');
+        k.addColorStop(0.55, 'rgba(255,255,255,0.12)');
+        k.addColorStop(1, 'rgba(255,255,255,0)');
         g.fillStyle = k;
         g.fillRect(0, 0, w, h);
       },
       128,
+      128,
+    );
+    // a trail's fade, bright at the head
+    const fade = paint(
+      (g, w, h) => {
+        const k = g.createLinearGradient(0, 0, w, 0);
+        k.addColorStop(0, '#ffffff');
+        k.addColorStop(0.25, '#9a9a9a');
+        k.addColorStop(1, '#000000');
+        g.fillStyle = k;
+        g.fillRect(0, 0, w, h);
+      },
+      256,
       4,
     );
-    const flyer = (head, tail, { radius, tilt, yaw, speed, phase }) => {
+
+    // ── a debris belt: what's left of something that was hit very hard ──
+    {
+      const rock = new THREE.DodecahedronGeometry(1, 0);
+      const pos = rock.attributes.position;
+      for (let i = 0; i < pos.count; i++) pos.setXYZ(i, pos.getX(i) * (0.75 + 0.5 * Math.abs(Math.sin(i * 1.7))), pos.getY(i) * (0.6 + 0.3 * Math.abs(Math.cos(i * 2.3))), pos.getZ(i) * (0.8 + 0.4 * Math.abs(Math.sin(i * 0.9))));
+      rock.computeVertexNormals();
+      const N = T.small ? 70 : 150;
+      const rocks = new THREE.InstancedMesh(rock, new THREE.MeshStandardMaterial({ color: '#8a5a44', roughness: 0.95, flatShading: true }), N);
+      const belt = new THREE.Group();
+      belt.rotation.set(0.42, 0, -0.16);
+      belt.add(rocks);
+      p.group.add(belt);
+      const bits = Array.from({ length: N }, () => {
+        const a = rand() * Math.PI * 2;
+        const rad = r * (1.48 + rand() * 0.34 + (rand() < 0.15 ? rand() * 0.2 : 0));
+        return { a, rad, y: (rand() - 0.5) * r * 0.05, s: r * (0.006 + rand() ** 3 * 0.03), spin: (rand() - 0.5) * 2, ax: rand() * 6, w: 0.05 + rand() * 0.04 };
+      });
+      const c = new THREE.Color();
+      bits.forEach((b, i) => rocks.setColorAt(i, c.set(rand() < 0.2 ? '#5a3a30' : rand() < 0.5 ? '#9a6a50' : '#7a4a38')));
+      const m = new THREE.Matrix4();
+      const q = new THREE.Quaternion();
+      const e = new THREE.Euler();
+      const at = new THREE.Vector3();
+      const sc = new THREE.Vector3();
+      const place = (t) => {
+        bits.forEach((b, i) => {
+          const a = b.a + t * b.w;
+          at.set(Math.cos(a) * b.rad, b.y, Math.sin(a) * b.rad);
+          q.setFromEuler(e.set(b.ax + t * b.spin, b.ax * 2 + t * b.spin * 0.7, 0));
+          rocks.setMatrixAt(i, m.compose(at, q, sc.setScalar(b.s)));
+        });
+        rocks.instanceMatrix.needsUpdate = true;
+      };
+      place(0);
+      p.tick.push(place);
+      // and the dust it's grinding into, a faint band
+      const IN = r * 1.42;
+      const OUT = r * 1.9;
+      const bands = paint(
+        (g, w, h) => {
+          g.clearRect(0, 0, w, h);
+          for (let x = 0; x < w; x++) {
+            const k = x / w;
+            const a = Math.sin(k * Math.PI) ** 1.4 * (0.45 + 0.55 * Math.abs(Math.sin(k * 23 + Math.sin(k * 7) * 2)));
+            g.fillStyle = `rgba(220, 150, 110, ${(a * 0.55).toFixed(3)})`;
+            g.fillRect(x, 0, 1, h);
+          }
+        },
+        512,
+        4,
+      );
+      const disc = new THREE.RingGeometry(IN, OUT, 128, 1);
+      const dp = disc.attributes.position;
+      const uv = disc.attributes.uv;
+      for (let i = 0; i < dp.count; i++) uv.setXY(i, (Math.hypot(dp.getX(i), dp.getY(i)) - IN) / (OUT - IN), 0.5);
+      const dust = new THREE.Mesh(disc, new THREE.MeshBasicMaterial({ map: bands, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide }));
+      dust.rotation.x = -Math.PI / 2;
+      belt.add(dust);
+    }
+
+    // ── a moon, broken: cracks of light through it, and pieces drifting off its side ──
+    {
+      const o = orbit(p.group, { radius: r * 2.15, tilt: -0.22, yaw: 0.9, speed: 0.07, phase: 1.3 });
+      p.orbits.push(o);
+      const mr = r * 0.17;
+      const geo = new THREE.IcosahedronGeometry(mr, T.small ? 3 : 4);
+      const gp = geo.attributes.position;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < gp.count; i++) {
+        v.fromBufferAttribute(gp, i).normalize();
+        // pocked, and flattened where the piece came off (+x)
+        const pock = 1 + 0.035 * Math.sin(v.x * 17 + v.y * 9) * Math.sin(v.z * 13 - v.y * 7) - 0.05 * Math.max(0, Math.sin(v.x * 29) * Math.sin(v.y * 31) * Math.sin(v.z * 23));
+        const cut = v.x > 0.55 ? 1 - (v.x - 0.55) * 0.9 : 1;
+        v.multiplyScalar(mr * pock * cut);
+        gp.setXYZ(i, v.x, v.y, v.z);
+      }
+      geo.computeVertexNormals();
+      const cracks = paint(
+        (g, w, h) => {
+          g.fillStyle = '#000';
+          g.fillRect(0, 0, w, h);
+          g.lineCap = 'round';
+          // from the broken side (u ≈ 0.5 faces +x), jagged lines running out round it
+          for (let i = 0; i < 16; i++) {
+            let x = w * (0.5 + (rand() - 0.5) * 0.08);
+            let y = h * (0.3 + rand() * 0.4);
+            g.strokeStyle = `rgba(255, ${100 + rand() * 80}, 40, ${(0.5 + rand() * 0.5).toFixed(2)})`;
+            g.lineWidth = 1 + rand() * 2.5;
+            g.beginPath();
+            g.moveTo(x, y);
+            const dir = rand() < 0.5 ? -1 : 1;
+            for (let k = 0; k < 9; k++) {
+              x += dir * (8 + rand() * 22);
+              y += (rand() - 0.5) * 26;
+              g.lineTo(x, y);
+            }
+            g.stroke();
+          }
+        },
+        512,
+        256,
+      );
+      const moon = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: '#8f7f74', roughness: 1, emissive: '#ffffff', emissiveMap: cracks, emissiveIntensity: 1.6 }));
+      o.holder.add(moon);
+      const chunks = [];
+      const shard = new THREE.DodecahedronGeometry(1, 0);
+      const chunkMat = new THREE.MeshStandardMaterial({ color: '#7f6f64', roughness: 1, flatShading: true });
+      for (let i = 0; i < 6; i++) {
+        const c = new THREE.Mesh(shard, chunkMat);
+        const s = mr * (0.12 + rand() * 0.22);
+        c.scale.set(s, s * (0.6 + rand() * 0.5), s * (0.8 + rand() * 0.4));
+        o.holder.add(c);
+        chunks.push({ c, dir: new THREE.Vector3(1, (rand() - 0.5) * 1.2, (rand() - 0.5) * 1.2).normalize(), d: mr * (1.15 + rand() * 0.9), ph: rand() * 6, spin: (rand() - 0.5) * 0.8 });
+      }
+      p.tick.push((t) => {
+        moon.rotation.y = t * 0.05;
+        for (const k of chunks) {
+          // out, and back a little, as if still coming apart
+          k.c.position.copy(k.dir).multiplyScalar(k.d * (1 + 0.08 * Math.sin(t * 0.3 + k.ph)));
+          k.c.rotation.set(k.ph + t * k.spin, k.ph * 2 + t * k.spin * 0.6, 0);
+        }
+      });
+    }
+
+    // ── two flyers round it, each trailing light, now and then breaking the
+    // sound barrier in a ring: one in yellow and blue, one in white and red ──
+    const q = new THREE.Quaternion();
+    const flyer = (head, tail, { radius, tilt, yaw, speed, phase, boom }) => {
       const o = orbit(p.group, { radius, tilt, yaw, speed, phase });
       p.orbits.push(o);
-      const dot = new THREE.Mesh(new THREE.SphereGeometry(r * 0.03, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(head).multiplyScalar(2.2), toneMapped: false }));
-      o.holder.add(dot);
-      // the trail: an arc of the orbit just behind, fading
-      const trail = new THREE.Mesh(
-        new THREE.TorusGeometry(radius, r * 0.011, 6, 48, 1.1).rotateX(Math.PI / 2),
-        new THREE.MeshBasicMaterial({ color: new THREE.Color(tail).multiplyScalar(1.8), alphaMap: fade, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }),
-      );
-      o.pivot.add(trail);
+      const core = new THREE.Mesh(new THREE.SphereGeometry(r * 0.022, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(head).multiplyScalar(2.6), toneMapped: false }));
+      o.holder.add(core);
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: soft, color: new THREE.Color(head).multiplyScalar(1.6), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+      halo.scale.setScalar(r * 0.2);
+      o.holder.add(halo);
+      // the trail: a tube along the orbit just behind, tapering and fading
+      const ARC = 1.7;
+      const pts = Array.from({ length: 41 }, (_, i) => {
+        const b = -(i / 40) * ARC;
+        return new THREE.Vector3(Math.cos(b) * radius, 0, -Math.sin(b) * radius);
+      });
+      const path = new THREE.CatmullRomCurve3(pts);
+      const tube = (width) => {
+        const g = new THREE.TubeGeometry(path, 80, width, 8, false);
+        // (each ring of the tube drawn in toward its centre, more the further back)
+        const tp = g.attributes.position;
+        const at = new THREE.Vector3();
+        for (let i = 0; i <= 80; i++) {
+          const k = i / 80;
+          path.getPointAt(k, at);
+          const taper = (1 - k) ** 1.3;
+          for (let j = 0; j <= 8; j++) {
+            const n = i * 9 + j;
+            tp.setXYZ(n, at.x + (tp.getX(n) - at.x) * taper, at.y + (tp.getY(n) - at.y) * taper, at.z + (tp.getZ(n) - at.z) * taper);
+          }
+        }
+        return g;
+      };
+      const trailMat = (c, k) => new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), alphaMap: fade, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
+      o.pivot.add(new THREE.Mesh(tube(r * 0.024), trailMat(tail, 1.2)), new THREE.Mesh(tube(r * 0.008), trailMat(head, 2)));
+      // the shockwave: a ring that bursts out from the head and fades
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.82, 1, 48), new THREE.MeshBasicMaterial({ color: new THREE.Color(head).lerp(new THREE.Color('#ffffff'), 0.5).multiplyScalar(1.8), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false }));
+      o.holder.add(ring);
+      p.tick.push((t, camera) => {
+        halo.material.opacity = 0.75 + 0.25 * Math.sin(t * 9 + phase);
+        const k = ((t + boom) % 6.5) / 0.9; // every six and a half seconds, for nine tenths of one
+        const on = k < 1;
+        ring.visible = on;
+        if (!on) return;
+        ring.scale.setScalar(r * (0.03 + 0.4 * (1 - (1 - k) ** 2)));
+        ring.material.opacity = (1 - k) ** 1.5 * 0.9;
+        if (camera) {
+          ring.parent.getWorldQuaternion(q);
+          ring.quaternion.copy(q.invert()).multiply(camera.quaternion);
+        }
+      });
     };
-    flyer('#ffd23a', '#3aa0ff', { radius: r * 1.32, tilt: 0.35, yaw: 0.4, speed: 0.55, phase: 0 });
-    flyer('#ffffff', '#ff3a2a', { radius: r * 1.42, tilt: -0.25, yaw: 1.9, speed: 0.48, phase: 2.1 });
+    flyer('#ffd23a', '#3aa0ff', { radius: r * 1.3, tilt: 0.35, yaw: 0.4, speed: 0.55, phase: 0, boom: 0 });
+    flyer('#ffffff', '#ff3a2a', { radius: r * 1.4, tilt: -0.25, yaw: 1.9, speed: 0.48, phase: 2.1, boom: 3.2 });
   },
 
   travel(p, { u, T }) {
@@ -952,13 +1175,10 @@ export function buildPlanet(u, T = {}) {
   };
 }
 
-// One model, or null if it doesn't load.
+// One model, or null if it doesn't load: a copy of the page's one parse of it
+// (gltfCache.js), its materials its own, its geometry and textures shared.
 export function loadModel(url) {
-  return new GLTFLoader()
-    .setMeshoptDecoder(MeshoptDecoder)
-    .loadAsync(url)
-    .then((g) => g.scene)
-    .catch(() => null);
+  return loadGLTF(url).then((g) => g && cloneScene(g));
 }
 
 // [planet, model, and which of its spots, if not its own]. The sitar is
@@ -966,8 +1186,8 @@ export function loadModel(url) {
 // in data/modelCredits.json)
 const MODELS = [
   ['music', '/models/sketchfab/sitar.glb'],
-  ['transformers', '/models/universe/optimus.glb'],
-  ['transformers', '/models/universe/megatron.glb', 'rival'],
+  ['transformers', '/models/cybertron/optimus-orbit.glb'], // War for Cybertron's, as Cybertron's own world has him
+  ['transformers', '/models/cybertron/megatron-orbit.glb', 'rival'], // and Fall of Cybertron's
   ['marvel', '/models/universe/marvel.glb'],
   ['breakingbad', '/models/universe/breakingbad.glb'],
   ['rickmorty', '/games/meshy/saucer.glb'], // the classic cruiser, as on the C-137 page
@@ -983,7 +1203,7 @@ const MODELS = [
 // Load the models one by one, handing each over as it arrives; a model that
 // fails is skipped.
 export function loadModels(onModel) {
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const loader = gltfLoader();
   return Promise.all(
     MODELS.map(([id, url, spot]) =>
       loader

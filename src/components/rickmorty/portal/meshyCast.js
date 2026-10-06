@@ -6,10 +6,11 @@
 // update(t, move, hit), which ./cast.js's animate() hands it to.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { toon } from './toon';
+import { rimToon } from '../../../lib/three/ink';
+import { gltfLoader } from '../../../lib/three/gltf';
+import { sharpenMaterial } from '../../../lib/three/textures';
 
 // Meshy's textures carry their own shading, so the light steps stay lighter
 // than the shapes' (a third of the way down at most, not two thirds)
@@ -22,7 +23,16 @@ const lightRamp = () => {
   ramp.needsUpdate = true;
   return ramp;
 };
-const paint = (map, extra = {}) => toon(0xffffff, { map, gradientMap: lightRamp(), ...extra });
+// and a soft rim of cool light round their edges, which lifts them off the
+// street and the sky as the show's back light does; their textures kept
+// sharp at a glancing angle
+const RIM = { color: 0xdff6ff, power: 3, strength: 0.3 };
+const lit = (m) => {
+  sharpenMaterial(m);
+  return rimToon(m, RIM);
+};
+const flat = (map, extra = {}) => toon(0xffffff, { map, gradientMap: lightRamp(), ...extra });
+const paint = (map, extra = {}) => lit(flat(map, extra));
 
 export const BASE = '/games/meshy';
 
@@ -51,15 +61,23 @@ export const MESHY = {
   fedagent: { a: 'fedagent', h: 1.9 },
   general: { a: 'general', h: 1.82 },
   secretservice: { a: 'secretservice', h: 1.84 },
+  goldenfold: { a: 'goldenfold', h: 1.8 },
+  principal: { a: 'principal', h: 1.7 },
+  jessica: { a: 'jessica', h: 1.62 },
+  brad: { a: 'brad', h: 1.85 },
+  tammy: { a: 'tammy', h: 1.62 },
+  ethan: { a: 'ethan', h: 1.72 },
+  tinyrick: { a: 'tinyrick', h: 1.6 },
 };
-const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice']);
-const C137_PEOPLE = new Set(['summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice']);
+export const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick']);
+const SCHOOL = ['goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick'];
+const C137_PEOPLE = new Set(['summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', ...SCHOOL]);
 // and the set pieces round the arenas (the C-137 Smiths load with their own world)
 export const MESHY_ASSETS = [...new Set(Object.values(MESHY).map((m) => m.a).filter((a) => !C137_PEOPLE.has(a))), 'cruiser', 'garage'];
 
 // a Morty clone's shirt: the yellow of Morty's texture swapped for another colour
 function shirted(map, shirt) {
-  const m = paint(map);
+  const m = flat(map);
   m.userData.shirt = { value: new THREE.Color(shirt) };
   m.onBeforeCompile = (s) => {
     s.uniforms.shirt = m.userData.shirt;
@@ -72,7 +90,7 @@ function shirted(map, shirt) {
       }`).replace('void main() {', 'uniform vec3 shirt;\nvoid main() {');
   };
   m.customProgramCacheKey = () => 'shirted';
-  return m;
+  return lit(m);
 }
 
 // A skinned mesh's bounds don't follow its pose, so it's drawn whether
@@ -93,8 +111,7 @@ export function cullWithin(mesh, frame, height) {
 // Citadel's, rickmorty/citadel/people.js); Portal panic's by default.
 // `cull`: figures out of view aren't drawn (a world with a lot of them)
 export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false } = {}) {
-  const loader = new GLTFLoader();
-  loader.setMeshoptDecoder(MeshoptDecoder);
+  const loader = gltfLoader();
   const assets = new Map(); // name → { scene, height, offset, clips }
   const owned = [];
 

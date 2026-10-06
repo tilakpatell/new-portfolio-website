@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AIM, aimAngles, assist, assistAmount, bearing, dirTo, edgeOf, intercept, nose, onScreen, sweptHit, track } from './targeting';
+import { AIM, trackNudge, aimAngles, assist, assistAmount, bearing, dirTo, edgeOf, intercept, nose, onScreen, sweptHit, track } from './targeting';
 
 const ship = { x: 0, y: 0, z: 0, heading: 0, pitch: 0, speed: 0 }; // nose along −z
 const hunter = (id, at, vel = [0, 0, 0]) => ({ id, at, vel, size: 0.3 });
@@ -42,7 +42,8 @@ describe('the lock', () => {
     const lock = track(ship, [hunter('a', [0, 0, -20])], null, 1 / 60);
     // out past the pick-up cone but inside the hold: kept
     const swung = hunter('a', [20 * Math.sin(0.6), 0, -20 * Math.cos(0.6)]);
-    expect(track(ship, [swung], lock, 1 / 60)).toEqual({ id: 'a', out: 0 });
+    expect(track(ship, [swung], lock, 1 / 60)).toMatchObject({ id: 'a', out: 0 });
+    expect(follow(ship, [swung], lock, 3)?.id).toBe('a'); // (for as long as there's nothing better ahead)
     expect(track(ship, [swung], null, 1 / 60)).toBeNull(); // (it would not be picked up from there)
     // behind: a moment's grace, then gone
     const behind = hunter('a', [0, 0, 20]);
@@ -85,6 +86,24 @@ describe('the lock', () => {
     expect(track(ship, [next], lock, 1 / 60)?.id).toBe('b');
     // (a fresh look from nothing would not have picked it up)
     expect(track(ship, [next], null, 1 / 60)).toBeNull();
+  });
+
+  it('gives up one that has swung wide for another squarely ahead, after a moment', () => {
+    const lock = track(ship, [hunter('a', [0, 0, -20])], null, 1 / 60);
+    const swung = hunter('a', [20 * Math.sin(0.6), 0, -20 * Math.cos(0.6)]); // inside the hold, off the nose
+    const ahead = hunter('b', [0.5, 0, -12]);
+    // not at once (a dogfight swings about)
+    expect(follow(ship, [swung, ahead], lock, AIM.swap * 0.5)?.id).toBe('a');
+    expect(follow(ship, [swung, ahead], lock, AIM.swap + 0.1)).toEqual({ id: 'b', out: 0 });
+    // and the same for one that's flown out of the bolts' reach, dead ahead
+    const far = hunter('a', [0, 0, -(AIM.range + 8)]);
+    expect(follow(ship, [far, ahead], lock, AIM.swap + 0.1)?.id).toBe('b');
+    // back onto the nose in time: the moment starts over
+    const nearly = follow(ship, [swung, ahead], lock, AIM.swap * 0.8);
+    const back = track(ship, [hunter('a', [0, 0, -20]), ahead], nearly, 1 / 60);
+    expect(back).toEqual({ id: 'a', out: 0 });
+    // one picked by hand stays, whatever else is ahead
+    expect(follow(ship, [swung, ahead], { id: 'a', out: 0, manual: true }, 3)).toEqual({ id: 'a', out: 0, manual: true });
   });
 
   it('holds a lock picked by hand for longer before letting it go', () => {
@@ -243,3 +262,73 @@ describe('a hit', () => {
   });
 });
 
+
+describe('the nose following the lock', () => {
+  const s = { x: 0, y: 0, z: 0, heading: 0, pitch: 0, bank: 0, speed: 5 };
+  it('nudges the stick toward a target off to the right, and up toward one above', () => {
+    const right = trackNudge(s, [3, 0, -20]);
+    expect(right.turn).toBeGreaterThan(0.05);
+    expect(Math.abs(right.climb)).toBeLessThan(1e-6);
+    const up = trackNudge(s, [0, 3, -20]);
+    expect(up.climb).toBeGreaterThan(0.05);
+    expect(Math.abs(up.turn)).toBeLessThan(1e-6);
+    const left = trackNudge(s, [-3, -3, -20]);
+    expect(left.turn).toBeLessThan(0);
+    expect(left.climb).toBeLessThan(0);
+  });
+
+  it('is never more than its share of the stick, and grows with the angle off', () => {
+    const near = trackNudge(s, [0.5, 0, -20]);
+    const far = trackNudge(s, [4, 0, -20]);
+    expect(far.turn).toBeGreaterThan(near.turn);
+    expect(far.turn).toBeLessThanOrEqual(AIM.trackMax + 1e-9);
+    // well off (past where the gain saturates, inside where it fades): the cap, and no more
+    const off = (AIM.trackCone * 0.6 + 1 / AIM.trackGain) / 2;
+    expect(1 / AIM.trackGain).toBeLessThan(AIM.trackCone * 0.6); // (the test's angle is in the flat part)
+    const capped = trackNudge(s, [Math.tan(off) * 20, 0, -20]);
+    expect(capped.turn).toBeCloseTo(AIM.trackMax, 9);
+    expect(trackNudge(s, [Math.tan(off) * 20, 0, -20], 1.6).turn).toBeCloseTo(AIM.trackMax * 1.6, 9);
+    expect(trackNudge(s, [0, 0, -20])).toEqual({ turn: 0, climb: 0 });
+  });
+
+  it('lets go past the cone, and fades toward its edge', () => {
+    const inside = trackNudge(s, [Math.tan(AIM.trackCone * 0.5) * 20, 0, -20]);
+    const edge = trackNudge(s, [Math.tan(AIM.trackCone * 0.95) * 20, 0, -20]);
+    expect(inside.turn).toBeGreaterThan(edge.turn);
+    expect(edge.turn).toBeGreaterThan(0);
+    expect(trackNudge(s, [Math.tan(AIM.trackCone * 1.2) * 20, 0, -20])).toEqual({ turn: 0, climb: 0 });
+    expect(trackNudge(s, [0, 0, 20])).toEqual({ turn: 0, climb: 0 }); // (behind)
+  });
+
+  it('follows the setting: none when off, more when strong', () => {
+    expect(trackNudge(s, [3, 0, -20], 0)).toEqual({ turn: 0, climb: 0 });
+    expect(trackNudge(s, [1, 0, -20], 1.6).turn).toBeGreaterThan(trackNudge(s, [1, 0, -20], 1).turn);
+  });
+
+  it('works in the ship’s own frame: rolled on its side, a target above is a turn, not a climb', () => {
+    const rolled = { ...s, bank: Math.PI / 2 }; // rolled right: its up points right
+    const n = trackNudge(rolled, [0, 3, -20]);
+    expect(Math.abs(n.climb)).toBeLessThan(1e-6);
+    expect(n.turn).toBeLessThan(-0.05); // (the ship's left is up, now)
+    const climbing = { ...s, pitch: 0.5 };
+    const ahead = trackNudge(climbing, [0, Math.sin(0.5) * 20, -Math.cos(0.5) * 20]);
+    expect(Math.abs(ahead.turn) + Math.abs(ahead.climb)).toBeLessThan(1e-6);
+  });
+
+  it('lets go for the pilot pushing the other way, however lightly, and not for one pushing with it', () => {
+    const n = trackNudge(s, [3, 1, -20]);
+    const against = trackNudge(s, [3, 1, -20], 1, { turn: -1, climb: 0 });
+    expect(against.turn).toBe(0);
+    expect(against.climb).toBe(n.climb);
+    // a light push the other way is still the pilot's: the ship never turns against it
+    for (const push of [-0.05, -0.2, -0.5]) {
+      const light = trackNudge(s, [3, 1, -20], 1.6, { turn: push, climb: push });
+      expect(light).toEqual({ turn: 0, climb: 0 });
+      expect(push + light.turn).toBeLessThan(0);
+    }
+    // a hand resting a hair off centre isn't a push
+    expect(trackNudge(s, [3, 1, -20], 1, { turn: -0.01, climb: 0.01 })).toEqual(n);
+    const withIt = trackNudge(s, [3, 1, -20], 1, { turn: 1, climb: 1 });
+    expect(withIt).toEqual(n);
+  });
+});

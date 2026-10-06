@@ -3,7 +3,7 @@ import { linesFor } from './crews';
 import { playClip, playFile } from '../../lib/clips';
 import { useMouth } from '../../lib/mouth';
 import { preloadVoiced, voicedSrc } from '../../lib/voiced';
-import { alarmSound, arrivalSound, boostSound, bumpSound, crashSound, enemyFireSound, fallSound, fireSound, flybySound, hitSound, interdictSound, jumpSound, popSound, portalSound, respawnSound, speak } from './sounds';
+import { alarmSound, arrivalSound, boomSound, boostSound, bumpSound, crashSound, drySound, enemyFireSound, fallSound, fireSound, flareSound, flybySound, gunSound, hitSound, impactSound, interdictSound, jumpSound, launchSound, popSound, portalSound, respawnSound, riftSound, shieldSound, speak, switchSound } from './sounds';
 import Face from './Faces';
 
 // The ship's comms: what the crew says as you fly, one line at a time with
@@ -23,7 +23,7 @@ import Face from './Faces';
 // deep space's wonders all get theirs too. Shots are just sound.
 // The page hands events over through `control.current.handle(event)`.
 
-const GAP = { boost: 25000, bump: 12000, edge: 20000, crash: 15000, pulled: 20000, traffic: 18000, kill: 9000, hit: 14000, hunted: 8000 }; // ms before the same kind of line again
+const GAP = { boost: 25000, bump: 12000, edge: 20000, crash: 15000, pulled: 20000, traffic: 18000, kill: 9000, hit: 14000, hunted: 8000, shielded: 15000, deflect: 10000, dry: 8000, closed: 6000 }; // ms before the same kind of line again
 const COMMS = { name: 'On the comms', color: '#9fb0d0', voice: null }; // a voice on the radio that isn't the crew's
 
 export default function Comms({ crew, reduced, control }) {
@@ -170,7 +170,40 @@ export default function Comms({ crew, reduced, control }) {
           said.current.add('idle');
           say(linesFor(crew, 'idle'));
         } else if (e.type === 'fire') {
-          if (soundOnce('fire', 150, now)) fireSound(crew?.id);
+          // on foot, the gun in hand (yours, or your crewmate's further off); in the ship, its guns
+          if (e.gun) {
+            if (soundOnce(e.soft ? 'mateFire' : 'fire', 90, now)) gunSound(e.gun, { soft: e.soft });
+          } else if (e.weapon === 'heavy') launchSound(crew?.id);
+          else if (soundOnce('fire', 150, now)) fireSound(crew?.id);
+        } else if (e.type === 'impact') {
+          if (soundOnce('impact', 70, now)) impactSound(e.near);
+        } else if (e.type === 'weapon') {
+          switchSound();
+        } else if (e.type === 'dry') {
+          if (soundOnce('dry', 300, now)) drySound();
+          if (often('dry', now)) say(linesFor(crew, 'siege', 'dry'));
+        } else if (e.type === 'boom') {
+          if (soundOnce('boom', 120, now)) boomSound(e.big);
+        } else if (e.type === 'siege') {
+          // the Citadel's siege (siege.js), as it goes
+          if (e.what === 'shielded') {
+            if (soundOnce('shield', 200, now)) shieldSound();
+            if (often('shielded', now)) say(linesFor(crew, 'siege', 'shielded'));
+          } else if (e.what === 'deflected') {
+            if (soundOnce('shield', 200, now)) shieldSound();
+            if (often('deflect', now)) say(linesFor(crew, 'siege', 'deflect'), { urgent: true });
+          } else if (e.what === 'gen') {
+            if (e.near) boomSound(true);
+            say(linesFor(crew, 'siege', e.left === 0 ? 'shield' : 'gen'), { urgent: true });
+          } else if (e.what === 'down') {
+            if (e.near) crashSound();
+            say(linesFor(crew, 'siege', 'down'), { urgent: true });
+          } else if (e.what === 'rebuilt') {
+            if (e.near) portalSound();
+            say(linesFor(crew, 'siege', 'rebuilt'));
+          } else if (e.what === 'closed') {
+            if (often('closed', now)) say(linesFor(crew, 'siege', 'closed'), { urgent: true });
+          }
         } else if (e.type === 'interdicted') {
           interdictSound();
           say(linesFor(crew, 'interdicted'), { urgent: true });
@@ -195,8 +228,10 @@ export default function Comms({ crew, reduced, control }) {
           say(linesFor(crew, e.type), { urgent: true });
         } else if (e.type === 'event') {
           if (e.id === 'destroyer') jumpSound();
+          else if (e.id === 'flare') flareSound();
+          else if (e.id === 'rift') riftSound();
           if (e.id === 'leave') jumpSound(true);
-          else say(linesFor(crew, 'event', e.id), { urgent: e.id !== 'convoy' && e.id !== 'comet' });
+          else say(linesFor(crew, 'event', e.id, e.sub), { urgent: e.id !== 'convoy' && e.id !== 'comet' });
         } else if (e.type === 'foot') {
           // on foot: down onto a planet and out, the squads, and back in
           if (e.id === 'kill') {

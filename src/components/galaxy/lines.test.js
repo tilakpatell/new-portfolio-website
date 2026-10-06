@@ -5,14 +5,14 @@ import { CRAWLS } from './crawls';
 import { GALAXY_LINES, galaxyCrew } from './lines';
 import { FILMS, SYSTEMS } from './systems';
 
-const EVENTS = ['jump', 'course', 'tractor', 'boarded', 'ion', 'superlaser', 'starkiller-charge', 'starkiller-fire', 'shield-down', 'shield-up', 'scarif-shield', 'escaped', 'destroyer'];
-const HUNTED = ['separatists', 'firstorder', 'sith'];
-const KILLS = ['vulture', 'trifighter', 'tiefo'];
+const EVENTS = ['jump', 'course', 'tractor', 'boarded', 'ion', 'superlaser', 'shield-down', 'shield-up', 'scarif-shield', 'escaped', 'destroyer', 'wellclear'];
+const HUNTED = ['separatists', 'remnant'];
+const KILLS = ['vulture', 'trifighter'];
 const sorted = (a) => [...a].sort();
 const words = (p) => p.split(/\s+/).filter(Boolean).length;
 
 // every exchange a crew has in the galaxy, named for the test's messages
-const exchanges = (id) => ['arrive', 'events', 'hunted', 'kill'].flatMap((group) => Object.entries(GALAXY_LINES[id][group]).map(([key, ex]) => [`${id} ${group} ${key}`, ex]));
+const exchanges = (id) => [...['arrive', 'events', 'hunted', 'kill'].flatMap((group) => Object.entries(GALAXY_LINES[id][group]).map(([key, ex]) => [`${id} ${group} ${key}`, ex])), [`${id} interdicted`, GALAXY_LINES[id].interdicted]];
 
 describe('the crews in the galaxy', () => {
   it('are the four crews of the universe map', () => {
@@ -29,6 +29,8 @@ describe('the crews in the galaxy', () => {
       expect(sorted(Object.keys(g.events)), crew.id).toEqual(sorted(EVENTS));
       expect(sorted(Object.keys(g.hunted)), crew.id).toEqual(sorted(HUNTED));
       expect(sorted(Object.keys(g.kill)), crew.id).toEqual(sorted(KILLS));
+      // and for the Interdictor pulling them out of hyperspace
+      expect(Array.isArray(g.interdicted), crew.id).toBe(true);
     }
   });
 
@@ -81,11 +83,14 @@ describe('galaxyCrew', () => {
       for (const s of SYSTEMS) expect(linesFor(flying, 'arrive', s.id), `${crew.id} ${s.id}`).toBe(g.arrive[s.id]);
       // the galaxy's events, hunters and kills, over the crew's own
       for (const id of EVENTS) expect(linesFor(flying, 'event', id), `${crew.id} ${id}`).toBe(g.events[id]);
-      for (const [id, ex] of Object.entries(crew.events ?? {})) if (!EVENTS.includes(id)) expect(linesFor(flying, 'event', id), `${crew.id} ${id}`).toBe(ex);
+      for (const id of Object.keys(crew.events ?? {})) if (!EVENTS.includes(id)) expect(linesFor(flying, 'event', id), `${crew.id} ${id}`).toBe(linesFor(crew, 'event', id)); // (what the crew would say: an event's lines may be keyed by what came)
       for (const id of HUNTED) expect(linesFor(flying, 'hunted', id)).toBe(g.hunted[id]);
       for (const [id, ex] of Object.entries(crew.hunted)) expect(linesFor(flying, 'hunted', id), `${crew.id} hunted ${id}`).toBe(ex);
       for (const id of KILLS) expect(linesFor(flying, 'kill', id)).toBe(g.kill[id]);
       expect(linesFor(flying, 'kill', 'any')).toBe(crew.kill.any);
+      // and the Interdictor's own words over the universe map's
+      expect(linesFor(flying, 'interdicted')).toBe(g.interdicted);
+      expect(crew.interdicted).not.toBe(g.interdicted);
       expect(linesFor(flying, 'kill', 'nothing-like-it')).toBe(crew.kill.any);
     }
   });
@@ -118,7 +123,9 @@ describe('the crawls', () => {
     for (const s of SYSTEMS) {
       const c = CRAWLS[s.id];
       const film = FILMS[s.game.film];
-      expect(c.episode, s.id).toBe(film.episode ? `Episode ${film.episode}` : 'A Star Wars Story');
+      // (a show's: its title and the chapter)
+      if (film.show) expect(c.episode, s.id).toMatch(new RegExp(`^${film.title}, (Chapter|Part) [A-Z0-9]`));
+      else expect(c.episode, s.id).toBe(film.episode ? `Episode ${film.episode}` : 'A Star Wars Story');
       expect(c.title, s.id).toBe(s.game.title);
       expect(c.paragraphs, s.id).toHaveLength(3);
       for (const p of c.paragraphs) {

@@ -8,6 +8,7 @@ import Gif from '../Gif';
 import OfficeTour3D from './OfficeTour3D';
 import './office.css';
 import { DOORS, FLOOR, GLASS, LABELS, LIFT, LOBBY, STAFF, SUPPLIES, WALLS_INNER, WALLS_INNER_2, WALLS_OUTER } from './layout';
+import '../../styles/lazy/office.css';
 
 const sfx = () => import('../../lib/sfx');
 const clip = (id) => import('../../lib/clips').then((c) => c.playClip(id));
@@ -253,7 +254,8 @@ export default function OfficeFloor({ say = (t) => t }) {
               className="office-mark"
               style={{ left: `${(s.x / 940) * 100}%`, top: `${(s.y / 520) * 100}%` }}
               aria-pressed={sel === s.id}
-              aria-label={`${s.name}, ${s.role}`}
+              // (named first with the initials it shows, for voice control)
+              aria-label={`${s.name.split(' ').map((w) => w[0]).join('')}, ${s.name}, ${s.role}`}
               // on a phone the desks are too close to tap: the names below do it
               aria-hidden={phone || undefined}
               tabIndex={phone ? -1 : undefined}

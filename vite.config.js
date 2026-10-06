@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import { configDefaults } from 'vitest/config'
 import { rmSync } from 'node:fs'
 import { resolve } from 'node:path'
+import iconsApart from './scripts/icons-apart.mjs'
+import prerender from './scripts/prerender.mjs'
 
 // The crews' lines made in their voices (scripts/voices) are for this
 // machine's dev server and a signed-in server only: whatever is in
@@ -23,11 +25,17 @@ function keepVoicedOut() {
 }
 
 export default defineConfig({
-  plugins: [react(), keepVoicedOut()],
+  // each react-icons icon a module of its own, so the entry chunk carries
+  // only the icons the nav and footer draw (scripts/icons-apart.mjs)
+  // and after a build, a page of its own for each route, for links shared
+  // and search (scripts/prerender.mjs)
+  plugins: [iconsApart(), react(), prerender(), keepVoicedOut()],
+  // (the icons' modules import react-icons' own GenIcon: bundled up front in dev)
+  optimizeDeps: { include: ['react-icons/lib'] },
   base: '/',
-  // the skills (.claude and .agents) and the other branches' worktrees under
-  // .claude bring their own tests
-  test: { exclude: [...configDefaults.exclude, '.claude/**', '.agents/**'] },
+  // the skills and the other branches' worktrees under .claude, and the
+  // scratch checkouts under lab/, bring their own tests
+  test: { exclude: [...configDefaults.exclude, '.claude/**', '.agents/**', 'lab/**'] },
   build: {
     rolldownOptions: {
       output: {

@@ -9,12 +9,13 @@
 // update(beat, …) poses everyone for the beat and says where the camera
 // goes: bar (Butterbur, at the counter), room (the whole room), pints (the
 // tap and a glass under it), slip (Frodo jumps up and the Ring flies),
-// strider (the corner).
+// strider (the corner), and on the side song (Frodo up on the hobbits'
+// table, singing, and the room clapping along).
 
 import * as THREE from 'three';
 import { hot } from '../../../../lib/stage3d';
 import { pose } from '../../mapFigures';
-import { makePerson, sit } from '../../shire/people';
+import { calm, dance, makePerson, sit } from '../../shire/people';
 import { B, barrelParts, beam, benchParts, cyl, cylX, lathe, parts, roundBox, squareWindow } from '../../shire/props';
 import { POUR } from './pints';
 import { makeFolk } from './props';
@@ -201,16 +202,20 @@ export function buildInn(renderer, { kit }) {
     pints: [V3(2.25, 1.62, -1.62), V3(1.8, 1.36, -2.56)],
     slip: [V3(3.6, 0.7, 4.0), V3(HOBBITS.x - 0.8, 1.2, HOBBITS.z + 0.9)],
     strider: [V3(4.3, 1.48, -1.4), V3(CORNER.x + 0.12, 1.42, CORNER.z - 0.22)],
+    song: [V3(-1.7, 2.0, 4.25), V3(HOBBITS.x + 0.1, 1.8, HOBBITS.z - 0.3)],
   };
   const homeAll = () => {
     for (const f of Object.values(people)) {
       f.group.position.copy(f.home.at);
       f.group.rotation.set(0, f.home.face, 0);
       if (f.sitting !== f.home.seated) sit(f, f.home.seated);
+      calm(f);
     }
   };
 
-  // s: { stepT (s into the beat), pour, ringOn (it's on his finger), ringOff }
+  // s: { stepT (s into the beat), pour, ringOn (it's on his finger), ringOff,
+  // song (seconds into the song, and the beat's length), dawn (Strider's gone
+  // out to the East Gate) }
   const update = (beat, t, dt, s = {}) => {
     homeAll();
     const f = people.frodo;
@@ -252,14 +257,33 @@ export function buildInn(renderer, { kit }) {
       // Frodo at the end of his table, looking up at him
       f.group.position.set(CORNER.x + 0.55, 0, CORNER.z + 1.65);
       f.group.rotation.y = 1.81;
+    } else if (beat === 'song') {
+      // up on the hobbits' table, facing the room
+      f.group.position.set(HOBBITS.x - 0.2, 0.96, HOBBITS.z);
+      f.group.rotation.y = -2.6;
     }
     // everyone breathing, Butterbur busy, the Bree-landers chatting
     for (const [id, p] of Object.entries(people)) {
       if (p.sitting) {
-        pose(p, t + id.length, { moving: false, talk: id.startsWith('folk') && Math.sin(t * 0.7 + id.length) > 0.4 ? 1 : 0 });
+        pose(p, t + id.length, { moving: false, talk: id.startsWith('folk') && (beat === 'song' || Math.sin(t * 0.7 + id.length) > 0.4) ? 1 : 0 });
         sit(p, true);
       } else pose(p, t + id.length, { moving: false, talk: (id === 'butterbur' && (beat === 'bar' || beat === 'ask')) || (id === 'pippin' && beat === 'slip') ? 1 : 0, wave: id === 'pippin' && beat === 'slip' ? 0.8 : 0 });
     }
+    if (beat === 'song') {
+      // Frodo hops on every beat; the hobbits clap on the off-beats
+      const st = s.song?.t ?? 0;
+      const per = s.song?.beat ?? 0.54;
+      dance(f, (st / per) * (Math.PI * 2) / 7 - 0.22, 0);
+      for (const id of ['sam', 'merry', 'pippin']) {
+        const p = people[id];
+        // hands out in front, and together on the beat
+        const k = Math.abs(Math.cos((st / per) * Math.PI)) ** 3;
+        p.arms[0].rotation.x = -(0.3 + 0.6 * k);
+        p.arms[1].rotation.x = 0.3 + 0.6 * k;
+        p.arms[0].rotation.z = p.arms[1].rotation.z = 0.9;
+      }
+    }
+    strider.group.visible = !s.dawn;
     // Strider watches the hobbits' table, or Frodo when he comes over
     const watching = beat === 'strider' || beat === 'slip' ? f.group.position.clone().add(INN).add(V3(0, 1.1, 0)) : world(V3(HOBBITS.x, 1.1, HOBBITS.z), V3());
     strider.update(t, { watch: watching, close: beat === 'strider' });

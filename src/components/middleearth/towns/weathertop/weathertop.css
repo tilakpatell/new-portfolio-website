@@ -1,5 +1,6 @@
 /* Weathertop: the Shire's HUD (../../shire/shire.css) at dusk and by night,
-   with the panels for the fire, the brand, the kingsfoil and the ride. */
+   with the panels for the fire, the brand, the kingsfoil and the ride, and
+   on the side the stone with Gandalf's mark. */
 
 .wt-world { --shire-glass: rgba(14, 16, 26, 0.78); --shire-glass-hi: rgba(16, 18, 28, 0.92); }
 .wt-stage { background: linear-gradient(180deg, #1c2a4a 0%, #d88a5a 58%, #3a3428 60%, #1a1812 100%); }
@@ -48,4 +49,15 @@
   .wt-game { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); top: 0.7rem; }
   .wt-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
   .wt-radar { width: 3.8rem; height: 3.8rem; }
+}
+
+/* on the side: the stone's face, to scrape the lichen off */
+.wt-mark { left: 50%; transform: translateX(-50%); width: min(24rem, calc(100% - 1.4rem)); justify-items: center; text-align: center; }
+.wt-mark .shire-meter { width: 100%; box-sizing: border-box; }
+.wt-stone { display: block; width: min(20rem, 100%); height: auto; aspect-ratio: 300 / 180; border-radius: 6px 10px 8px 12px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.4); cursor: grab; touch-action: none; }
+.wt-stone:active { cursor: grabbing; }
+.wt-mark .town-choices { width: 100%; text-align: left; }
+.wt-stage[data-mode='mark'] .shire-canvas { cursor: default; touch-action: none; }
+@media (max-width: 639px) {
+  .wt-mark { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
 }

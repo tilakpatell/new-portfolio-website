@@ -1,5 +1,6 @@
 import Photo from '../Photo';
 import { useOnceVisible } from '../ui';
+import '../../styles/lazy/experience.css';
 
 // A wide photograph for each role, in the same misty treatment as the travel
 // page: data-centre racks for AWS, F-35s for RTX, headphones for Bose, laser
@@ -13,7 +14,7 @@ export default function RoleBanner({ role, className = '' }) {
       <span className="role-banner-shade" aria-hidden="true" />
       {role === 'bose' && (
         <figcaption className="role-banner-chip">
-          <button type="button" className="role-banner-play" onClick={() => import('../../lib/clips').then((c) => c.playClip('vader'))} aria-label="Play: No, I am your father">
+          <button type="button" className="role-banner-play" onClick={() => import('../../lib/clips').then((c) => c.playClip('vader'))} aria-label="Now playing: “No, I am your father.” Play it">
             <span className="eq" aria-hidden="true">
               <i />
               <i />
