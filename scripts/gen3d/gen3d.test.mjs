@@ -64,3 +64,18 @@ describe('preparing a picture of your own', () => {
     expect(frame(100, 100, 0)).toEqual([100, 0, 0]);
   });
 });
+
+describe('the picture models', () => {
+  it('give FLUX its two text encoders and Z-Image its one', async () => {
+    const { SDCPP, command, ready } = await import('./picture.mjs');
+    if (!ready('zimage')) return; // stable-diffusion.cpp isn't set up here
+    const z = command('a drone', 'o.png', { model: 'zimage' }).join(' ');
+    expect(z).toContain(`--llm ${SDCPP.zimage.llm}`);
+    expect(z).toContain('--steps 8');
+    if (!ready('flux')) return;
+    const f = command('a drone', 'o.png', { model: 'flux' }).join(' ');
+    expect(f).toContain('--clip_l');
+    expect(f).toContain('--t5xxl');
+    expect(f).toContain('--steps 4');
+  });
+});
