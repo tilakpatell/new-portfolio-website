@@ -1,7 +1,7 @@
 import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { linesFor } from './crews';
 import { playClip } from '../../lib/clips';
-import { alarmSound, arrivalSound, boomSound, boostSound, bumpSound, crashSound, drySound, enemyFireSound, fallSound, fireSound, flareSound, flybySound, hitSound, interdictSound, jumpSound, launchSound, popSound, portalSound, respawnSound, riftSound, shieldSound, speak, switchSound } from './sounds';
+import { alarmSound, arrivalSound, boomSound, boostSound, bumpSound, crashSound, drySound, enemyFireSound, fallSound, fireSound, flareSound, flybySound, gunSound, hitSound, impactSound, interdictSound, jumpSound, launchSound, popSound, portalSound, respawnSound, riftSound, shieldSound, speak, switchSound } from './sounds';
 import Face from './Faces';
 
 // The ship's comms: what the crew says as you fly, one line at a time with
@@ -159,8 +159,13 @@ export default function Comms({ crew, reduced, control }) {
           said.current.add('idle');
           say(linesFor(crew, 'idle'));
         } else if (e.type === 'fire') {
-          if (e.weapon === 'heavy') launchSound(crew?.id);
+          // on foot, the gun in hand (yours, or your crewmate's further off); in the ship, its guns
+          if (e.gun) {
+            if (soundOnce(e.soft ? 'mateFire' : 'fire', 90, now)) gunSound(e.gun, { soft: e.soft });
+          } else if (e.weapon === 'heavy') launchSound(crew?.id);
           else if (soundOnce('fire', 150, now)) fireSound(crew?.id);
+        } else if (e.type === 'impact') {
+          if (soundOnce('impact', 70, now)) impactSound(e.near);
         } else if (e.type === 'weapon') {
           switchSound();
         } else if (e.type === 'dry') {
