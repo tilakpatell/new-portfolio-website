@@ -519,6 +519,8 @@ Assets, with their ceilings if generated (H 55 ×2, R 47 ×4, PH 44):
 
 The place: the ship's hall (white and blue panels, the holo-table with Rick's mess as a stain, the beacon on a plinth, the team's portraits), the six standing about (`vance` at the table, `supernova`, `alanrails`, `millionants`, `crocubot`, `noobnoob` with a mop), the ship model seen through the hall's window on its pad; the trial: a door hotspot `saw` opens the three rooms as cards over the world (`DimensionDial`'s overlay style), each pick drawn in the hall (the levers, the riddle on a screen, the button). Lines for each; Noob-Noob laughs at Rick's. Task `vindicators` “Get through Rick’s rooms”. Achievement `vindicators`. Steps as Task 1.2; shot `vindicators`; README; commit “C-137: the Vindicators, and Rick’s rooms”; PR; merge.
 
+> Phase 5 is done on `claude/rm-multiverse-phase5` (`docs/superpowers/HANDOFF-rm-phase5.md`). Where it differs from the plan: Rick's three rooms are the swapped levers, a riddle and the button (no Israel riddle); the ship is a hologram over the holo-table, not seen through a window.
+
 ---
 
 ## Phase 6: vehicles, the Story Train, the fortress, the Rick and Morty system (a ceiling of 474 credits, ≈ 570)
