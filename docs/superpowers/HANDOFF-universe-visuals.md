@@ -54,6 +54,14 @@ Scorecard (the spec’s “Where things stand” table is the before): fill in t
   - *Cloud shadows find the cloud layer by its texture* (`styleFor` names it; `buildPlanet` looks for the mesh wearing it), so each builder keeps its own cloud mesh. Their shadow is read where the clouds have turned to over the ground, each frame.
   - *The ground’s detail is a 256 noise tile made in code*, not a texture file, faded in from three radii to 1.3, worked out for the nearest two planets only (the rest are given 1e9).
   - *The high sets*: the Caribbean and Invincible get 2048 relief (`-hq`); Cybertron’s relief was already 2048 as its standard file, with a 1024 `-sm`, so its map entry is renamed from `transformers-normal-sm` to `transformers-normal` and gets the 2048 on high and up.
+- **Checkpoint 4:**
+  - *C-137 keeps a glint*: the spec turns its specular off, but checkpoint 3 gave its seas a roughness map to catch the sun. The cel light draws that as the show draws a highlight: a flat spot where the ground is glossy (roughness under 0.5), edged like the bands. Its reflections (three’s indirect specular) are off; the sky’s light on it stays.
+  - *The bands’ soft edge comes from the normal*, `length(fwidth(normal)) × 2`, worked out once before three’s light loop, rather than `fwidth(n·l)` per light. Past the terminator it’s night, as on every other planet: the 0.45 band runs from 0.15 down to it.
+  - *Dot Matrix’s dither cells are two page pixels*, not one, so the Game Boy’s pixels still read from the overview; `post.ratio` (the ratio the frame is drawn at, after the pace) sizes them on every tier. It keeps its old halo as the hover’s glow, with the one-pixel outline inside it.
+  - *No mottle on the flat worlds*: checkpoint 3’s close-up detail is off for C-137 and Dot Matrix.
+  - *Cybertron’s energon takes half the key’s colour*, normalised: a full multiply turned its blue to teal under the home sun.
+  - *The Office’s `-hq` relief was already there*; it becomes a `MeshPhysicalMaterial` (sheen 0.6 in `#f3ecd8`, sheen roughness 0.8, roughness 1 over its map).
+  - *`VARIANTS` is a function*, `variants(planets)`, the set of program variants the planets’ own hooks make, tested in `planets.test.js` (`lib/three/precompile.test.js` mustn’t import a component): 14 with every map loaded, pinned at 24 or fewer.
 
 ## Checking it
 
