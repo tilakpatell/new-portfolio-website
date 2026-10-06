@@ -35,6 +35,7 @@
 import { readBuildWire, writeBuild } from '../../universe/shipyard/build';
 import * as THREE from 'three';
 import { disposeTree, precompile, singlePass } from '../../../lib/three/renderer';
+import { dropTransmission } from '../../../lib/three/glass';
 import { device } from '../../../lib/device';
 import { createPost } from '../../universe/post';
 import { SHIP_MODELS, buildShip, LENGTH } from '../../universe/shipModels';
@@ -64,6 +65,7 @@ import { RIDES } from './rides';
 import { createPeers } from './peers';
 import { createSounds } from './sounds';
 import { createActivity } from './activity';
+import { snapToTexel } from './shadow';
 import { createBlaster } from './blaster';
 import { feed, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
@@ -105,7 +107,7 @@ export async function create(canvas, ctx) {
   // ── The renderer, the camera, the light ──
   // (the runtime's: shared with whatever world comes next, so its shadows go back as they were at dispose)
   const { renderer } = rt.gfx;
-  const shadows = { enabled: renderer.shadowMap.enabled, type: renderer.shadowMap.type };
+  const shadowMapWas = { enabled: renderer.shadowMap.enabled, type: renderer.shadowMap.type };
   renderer.shadowMap.enabled = !small;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   const scene = new THREE.Scene();
@@ -125,12 +127,19 @@ export async function create(canvas, ctx) {
     const sc = sun.shadow.camera;
     sc.left = sc.bottom = -42;
     sc.right = sc.top = 42;
+    // (SHADOW below says the same, for the snapping)
     sc.near = 1;
     sc.far = 600;
     sun.shadow.bias = -0.0004;
     sun.shadow.normalBias = 0.05;
   }
   scene.add(sun, sun.target);
+  // the shadow camera's right and up (it looks down the sun's way, up as three
+  // turns it), for its focus to be snapped to whole texels along them (shadow.js)
+  const SHADOW = { extent: 42, map: 2048 };
+  const shadowFrame = new THREE.Matrix4().lookAt(sunDir, new V(), new V(0, 1, 0));
+  const shadowRight = new V().setFromMatrixColumn(shadowFrame, 0);
+  const shadowUp = new V().setFromMatrixColumn(shadowFrame, 1);
   const second = sky.sunDirs[1] ? new THREE.DirectionalLight(site.sky.suns[1].color, site.light.second ?? 1) : null;
   if (second) {
     second.position.copy(sky.sunDirs[1]).multiplyScalar(300);
@@ -202,8 +211,11 @@ export async function create(canvas, ctx) {
   // ── The places you go into (zones): built high over the world, out of
   // sight, each with its own lamps ──
   for (const z of site.zones) placer.put({ kind: z.inside.build, at: [z.origin[0], z.origin[2]], y: z.origin[1], abs: true, model: false, opts: z.inside.opts });
+  // (hidden outdoors: a light with nothing to light still costs every pixel of
+  // every lit thing, and four of them a good deal; the warm-up compiles both ways)
   const lamps = Array.from({ length: 4 }, () => {
     const l = new THREE.PointLight('#ffffff', 0, 30, 1.6);
+    l.visible = false;
     scene.add(l);
     return l;
   });
@@ -364,7 +376,7 @@ export async function create(canvas, ctx) {
     // a garage build is whole as it is
   } else if (SHIP_MODELS[shipKind]) {
     loadModel(SHIP_MODELS[shipKind])
-      .then((m) => m && warm(ship.dress ? ship.dress(m) : m).then(() => m))
+      .then((m) => m && (dropTransmission(m), warm(ship.dress ? ship.dress(m) : m).then(() => m))) // (the Falcon's glass, without its extra pass)
       .then((m) => {
         if (!m) return;
         if (disposed || !ship.mount(m)) disposeTree(m);
@@ -809,6 +821,7 @@ export async function create(canvas, ctx) {
   };
 
   // ── Going in and out ──
+  let shadows = sun.castShadow; // (outdoors: the tier's, until lowerQuality)
   const outdoors = { sun: sun.intensity, second: second?.intensity ?? 0, sky: hemi.color.clone(), ground: hemi.groundColor.clone(), ambient: hemi.intensity, fog: scene.fog.color.clone(), density: scene.fog.density, env: scene.environmentIntensity };
   function lighting(z) {
     const L = z?.inside.light;
@@ -823,9 +836,13 @@ export async function create(canvas, ctx) {
     sky.mesh.visible = !z;
     if (weather) weather.group.visible = !z;
     if (water) water.mesh.visible = !z;
+    // (indoors, the room's lamps and no sun to cast a shadow; outdoors, the sun's
+    // shadow unless the frame rate has had it off, lowerQuality)
+    sun.castShadow = !z && shadows;
     lamps.forEach((l, i) => {
       const d = z?.inside.lamps?.[i];
       l.intensity = d ? d[4] : 0;
+      l.visible = Boolean(d);
       if (d) {
         l.position.set(z.origin[0] + d[0], z.origin[1] + d[1], z.origin[2] + d[2]);
         l.color.set(d[3]);
@@ -1535,12 +1552,19 @@ export async function create(canvas, ctx) {
     hemi.intensity = (site.light.ambient ?? 0.9) + k * (site.lightning.strength ?? 2.5);
   }
 
+  const snapped = new V();
   function draw(now) {
     const t = state.t;
     // the sun (and its shadows) follow you about
+    // (snapped to whole texels of the shadow map along its right and up, so the
+    // shadows don't crawl as you walk: shadow.js)
     const focus = me().st;
-    sun.position.set(focus.x, focus.y, focus.z).addScaledVector(sunDir, 300);
-    sun.target.position.set(focus.x, focus.y, focus.z);
+    snapped.set(focus.x, focus.y, focus.z);
+    const [sr, su] = snapToTexel(snapped.dot(shadowRight), snapped.dot(shadowUp), SHADOW.extent, SHADOW.map);
+    const along = snapped.dot(sunDir);
+    snapped.copy(sunDir).multiplyScalar(along).addScaledVector(shadowRight, sr).addScaledVector(shadowUp, su);
+    sun.position.copy(snapped).addScaledVector(sunDir, 300);
+    sun.target.position.copy(snapped);
     sky.update(camera, t, flash.k);
     water?.update(t);
     weather?.update(t, camera, world.heightAt, size.h);
@@ -1558,7 +1582,18 @@ export async function create(canvas, ctx) {
     // (the scouts' way is planned round the trees, so once they're down)
     if (!disposed) chase?.begin();
     if (!disposed) beginMission();
-    await warm(scene).catch(() => {});
+    // (both ways the lights can be, so a door doesn't stall on new shaders: the
+    // lamps lit and the sun's shadow off, as in a room, then as outdoors)
+    const inside = Boolean(state.zone);
+    if (site.zones.length && !disposed) {
+      for (const l of lamps) l.visible = true;
+      sun.castShadow = false;
+      await warm(scene).catch(() => {});
+      for (const l of lamps) l.visible = false;
+      sun.castShadow = shadows;
+      if (inside) lighting(state.zone);
+    }
+    if (!disposed) await warm(scene).catch(() => {});
   })();
   emit({ type: 'phase', phase: state.phase });
 
@@ -1580,6 +1615,13 @@ export async function create(canvas, ctx) {
     },
     setVisible(on) {
       shown = on;
+    },
+    // still slow at the lowest sharpness (the watchdog, useScene): no sun shadow,
+    // and the post without its bloom (the grade kept, so the colours stay right)
+    lowerQuality() {
+      shadows = false;
+      sun.castShadow = false;
+      post.lite();
     },
     // from the page's touch controls
     input: {
@@ -1736,7 +1778,7 @@ export async function create(canvas, ctx) {
       kit.dispose();
       disposeTree(scene);
       post.dispose();
-      Object.assign(renderer.shadowMap, shadows);
+      Object.assign(renderer.shadowMap, shadowMapWas);
       canvas.removeAttribute('aria-hidden');
     },
   };

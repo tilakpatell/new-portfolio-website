@@ -21,6 +21,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 import { gltfLoader } from '../../lib/three/gltf';
 import { loadTexture } from '../../lib/three/textures';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
@@ -1174,12 +1175,10 @@ export function buildPlanet(u, T = {}) {
   };
 }
 
-// One model, or null if it doesn't load.
+// One model, or null if it doesn't load: a copy of the page's one parse of it
+// (gltfCache.js), its materials its own, its geometry and textures shared.
 export function loadModel(url) {
-  return gltfLoader()
-    .loadAsync(url)
-    .then((g) => g.scene)
-    .catch(() => null);
+  return loadGLTF(url).then((g) => g && cloneScene(g));
 }
 
 // [planet, model, and which of its spots, if not its own]. The sitar is
