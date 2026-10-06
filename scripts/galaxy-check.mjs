@@ -8,6 +8,12 @@
 //   OUT=/tmp/shots node scripts/galaxy-check.mjs space endor,coruscant
 //   OUT=/tmp/shots node scripts/galaxy-check.mjs surface tatooine,hoth
 //   QUALITY=mid … (the device tier: ?quality=), SHIP=falcon …, JSON=1 …
+//   BUDGET=lab/baseline/surface-high.json …: each world held to the planets
+//     overhaul's budget (docs/superpowers/specs/2026-10-06-planets-overhaul-
+//     design.md): draw calls and triangles no more than that run's +10%,
+//     never over 600 calls or 2.5M triangles, its models (every .glb it
+//     fetched) no more than 40 MB; a line per world, and exit 1 on a breach
+//     (BUDGET_SCALE=0.5 tightens it, to see it fail)
 // Headless Chromium draws in software (SwiftShader), slowly: the frame times
 // only mean something compared with another run on the same machine, the
 // counts mean the same anywhere. So that two runs see the same thing, the
@@ -15,7 +21,7 @@
 // clock) and its random numbers are seeded (where the ship starts), unless
 // LIVE=1.
 import { chromium } from 'playwright-core';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const [mode = 'space', list = 'tatooine'] = process.argv.slice(2);
 const out = process.env.OUT ?? '.';
@@ -51,6 +57,13 @@ for (const id of list.split(',')) {
     });
   }
   const page = await ctx.newPage();
+  // what its models weigh: every .glb it fetched (a fresh context: nothing cached)
+  let glbBytes = 0;
+  page.on('requestfinished', async (req) => {
+    if (!/\.glb(\?|$)/.test(req.url())) return;
+    const sizes = await req.sizes().catch(() => null);
+    glbBytes += sizes?.responseBodySize ?? 0;
+  });
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
@@ -130,7 +143,7 @@ for (const id of list.split(',')) {
   );
   const name = `${mode}-${id}-${quality}`;
   await page.screenshot({ path: `${out}/${name}.png`, timeout: 120000 });
-  results.push({ id, loaded: +loaded.toFixed(1), ...stats, errors: errors.slice(0, 5) });
+  results.push({ id, loaded: +loaded.toFixed(1), ...stats, glbMB: +(glbBytes / 1e6).toFixed(1), errors: errors.slice(0, 5) });
   console.log(`${id.padEnd(10)} calls ${String(stats.calls).padStart(4)}  tris ${String(stats.triangles).padStart(7)}  geo ${String(stats.geometries).padStart(4)}  tex ${String(stats.textures).padStart(3)}  prog ${String(stats.programs).padStart(3)}  frame p50 ${stats.p50} p95 ${stats.p95} ms  load ${loaded.toFixed(1)} s${errors.length ? `  errors ${errors.length}` : ''}`);
   await ctx.close();
 }
@@ -138,4 +151,18 @@ await browser.close();
 if (process.env.JSON) writeFileSync(`${out}/${mode}-${quality}.json`, JSON.stringify(results, null, 2));
 const bad = results.filter((r) => r.error || r.errors?.length);
 for (const r of bad) console.log('problem', r.id, r.error ?? '', r.errors);
-process.exitCode = bad.length ? 1 : 0;
+if (process.env.BUDGET) {
+  const base = JSON.parse(readFileSync(process.env.BUDGET, 'utf8'));
+  const k = Number(process.env.BUDGET_SCALE ?? 1);
+  for (const r of results) {
+    if (r.error) continue;
+    const b = base.find((x) => x.id === r.id);
+    const calls = Math.min(600, (b?.calls ?? 600) * 1.1) * k;
+    const tris = Math.min(2.5e6, (b?.triangles ?? 2.5e6) * 1.1) * k;
+    const mb = 40 * k;
+    const over = [r.calls > calls && `calls ${r.calls} > ${Math.round(calls)}`, r.triangles > tris && `tris ${r.triangles} > ${Math.round(tris)}`, r.glbMB > mb && `models ${r.glbMB} MB > ${mb}`].filter(Boolean);
+    console.log(`budget ${r.id.padEnd(10)} calls ${r.calls}/${Math.round(calls)}  tris ${r.triangles}/${Math.round(tris)}  models ${r.glbMB}/${mb} MB  ${over.length ? `FAIL (${over.join(', ')})` : 'pass'}`);
+    if (over.length) process.exitCode = 1;
+  }
+}
+if (bad.length) process.exitCode = 1;
