@@ -3174,8 +3174,8 @@ export async function create(canvas, ctx) {
     const info = onFoot() ? foot.info() : null;
     if (props.frozen) text = '';
     else if (state.note && wall() < state.note.until && !onFoot()) text = state.note.text;
-    else if (info && foot.phase === 'walk' && info.ship.near) text = `Get back in ${SHIP_NAMES[state.kind]?.replace(/^The /, 'the ') ?? 'the ship'}`;
     else if (info && foot.phase === 'walk' && info.near?.label) text = `Into ${info.near.label}`;
+    else if (info && foot.phase === 'walk' && info.ship.near) text = `Get back in ${SHIP_NAMES[state.kind]?.replace(/^The /, 'the ') ?? 'the ship'}`;
     else if (info && foot.phase === 'walk' && info.near?.say) {
       text = `${info.near.say.name}: “${info.near.say.line}”`;
       say = true;
@@ -3483,7 +3483,8 @@ export async function create(canvas, ctx) {
       e.preventDefault();
       heard();
       if (onFoot()) {
-        if (!foot.board()) intoDoor() || emit({ type: 'foot', id: 'far' });
+        // (a door you're at first: a big ship's reach can take in one near it)
+        if (!intoDoor() && !foot.board()) emit({ type: 'foot', id: 'far' });
       } else startFoot();
       return;
     }
@@ -3929,7 +3930,8 @@ export async function create(canvas, ctx) {
     out() {
       heard();
       if (onFoot()) {
-        if (!foot.board()) intoDoor() || emit({ type: 'foot', id: 'far' });
+        // (a door you're at first: a big ship's reach can take in one near it)
+        if (!intoDoor() && !foot.board()) emit({ type: 'foot', id: 'far' });
       } else startFoot();
     },
     // the phone's Switch button, on foot: play the other one
