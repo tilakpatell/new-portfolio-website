@@ -474,7 +474,10 @@
   },
   "spacebeth": {
     "image": "01a1102a-4e5e-7290-94f4-694ac8c9c5f1",
-    "model": "01a1111e-f029-74bd-bade-e394bed5de12"
+    "model": "01a1111e-f029-74bd-bade-e394bed5de12",
+    "rig": "01a11143-4ef3-7122-aef5-6d5149cc9487",
+    "idle": "01a11143-f0e5-7658-b983-13126b3fae3b",
+    "sit": "01a11144-48ec-7054-93a1-976bdac8ac87"
   },
   "rickprime": {
     "image": "01a1102a-4e5c-71c6-bb70-43d272045f61",
@@ -482,7 +485,9 @@
       "file": "round3/rickprime.png",
       "flip": true
     },
-    "model": "01a1111e-f036-76cf-84a2-4c359456d67a"
+    "model": "01a1111e-f036-76cf-84a2-4c359456d67a",
+    "rig": "01a11143-4efd-704e-927a-30122467a516",
+    "idle": "01a11143-f0e7-739f-be32-441f23c2bad1"
   },
   "snuffles": {
     "image": "01a1102b-d992-72df-aaec-00208403af21",
@@ -490,13 +495,17 @@
   },
   "drwong": {
     "image": "01a1102a-4e60-7734-be99-0199244e0470",
-    "model": "01a1111e-f02a-70b1-865b-1f63b13c84ff"
+    "model": "01a1111e-f02a-70b1-865b-1f63b13c84ff",
+    "rig": "01a11143-4ef5-74a4-9ab4-9d2f66cd9918",
+    "idle": "01a11143-f0e7-7263-a084-c091089abcb4",
+    "sit": "01a11144-48e5-75b1-820c-c03d563996b7"
   },
   "nancy": {
-    "image": "01a11128-dfdf-7772-9999-f29c2e151d46"
+    "image": "01a11128-dfdf-7772-9999-f29c2e151d46",
+    "model": "01a1113b-026c-777d-86f1-d85c2512bfe3"
   },
   "tricia": {
-    "image": "01a11128-dfe7-713f-a114-475dab0b7bc6"
+    "image": "01a1113a-83a1-734f-b6a4-a49565edb4f4"
   },
   "diane": {
     "image": "01a11012-f983-72d6-9cdb-b92f71ac9fad",
@@ -512,15 +521,19 @@
   },
   "sleepygary": {
     "image": "01a1102a-b96a-738e-ba36-cbd4ebfaf6ef",
-    "model": "01a1111e-f029-775a-a386-46077dd56b90"
+    "model": "01a1111e-f029-775a-a386-46077dd56b90",
+    "rig": "01a11143-4efc-73f5-a12c-6f92ee16b3c6",
+    "idle": "01a11143-f0ea-73da-b259-b08be6737e05"
   },
   "hamurai": {
     "image": "01a1102b-3610-76e1-aa6c-feee191b28b0",
-    "model": "01a11121-705b-72c8-840d-a85e8a5a0b78"
+    "model": "01a11121-705b-72c8-840d-a85e8a5a0b78",
+    "rig": "01a11143-a3b4-73a3-bcd5-6939ab4f5ee9",
+    "idle": "01a11144-1c09-7499-9461-a6d510727e49"
   },
   "amishcyborg": {
     "image": "01a1102b-49a8-7361-991e-62688f5ae7b9",
-    "model": "01a11121-8413-7793-8fff-f2400499917f"
+    "model": "01a1113f-d7c2-73c5-adec-547bddac8b3b"
   },
   "mrbeauregard": {
     "image": "01a11013-5f3f-7712-bd8b-97ca8a50f2bf",
@@ -529,7 +542,8 @@
     "idle": "01a11128-b31d-70f0-9336-1f3c8329330d"
   },
   "cousinnicky": {
-    "image": "01a11128-dfe0-729d-9fb8-262d46053939"
+    "image": "01a11128-dfe0-729d-9fb8-262d46053939",
+    "model": "01a1113b-0276-72b7-b763-ea7f3fc23e67"
   },
   "frankenstein": {
     "image": "01a11013-b574-7313-86cf-42254ebafe13",
@@ -542,7 +556,7 @@
     "model": "01a1102d-5053-7788-b95e-d7472e7406f0"
   },
   "ghostinajar": {
-    "image": "01a11128-dfdf-7770-a5e2-d63bdde9bb2c"
+    "image": "01a1113a-83a0-71d4-b701-00fb395aee16"
   },
   "photographyraptor": {
     "image": "01a11014-428c-74d9-bbb8-63a620f8ed6f",
@@ -574,7 +588,7 @@
   },
   "gotron": {
     "image": "01a1102c-8429-71ea-9a86-cc046a75f3c7",
-    "model": "01a11124-2a6d-7352-864f-ad74120729f8"
+    "model": "01a1113f-d7bd-76b1-bfed-3c8a30412a35"
   },
   "zigerion-ship": {
     "image": "01a11002-6f5e-726a-b88c-fb8d3ce902aa",
