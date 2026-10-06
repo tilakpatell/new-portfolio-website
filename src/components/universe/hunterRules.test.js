@@ -522,7 +522,8 @@ describe('shooting them', () => {
     expect(hunt.hit({ x: ace.pos.x - 3, y: ace.pos.y, z: ace.pos.z }, { x: ace.pos.x + 3, y: ace.pos.y, z: ace.pos.z }, 3)).toMatchObject({ down: false });
     expect(through(ace)).toMatchObject({ down: true, at: { x: ace.pos.x, y: ace.pos.y, z: ace.pos.z } });
     expect(hunt.count).toBe(1);
-    expect(through(tie)).toMatchObject({ kind: expect.stringMatching(/tie|interceptor/), down: true });
+    // (whatever the other is, a TIE, an interceptor or a bomber: a hit worth all it has downs it)
+    expect(hunt.hit({ x: tie.pos.x - 3, y: tie.pos.y, z: tie.pos.z }, { x: tie.pos.x + 3, y: tie.pos.y, z: tie.pos.z }, tie.hp)).toMatchObject({ kind: tie.kind, down: true });
     expect(hunt.update(DT, start()).map((e) => e.type)).toContain('cleared');
     expect(hunt.active).toBe(false);
   });
@@ -541,10 +542,11 @@ describe('shooting them', () => {
     const hunt = createHunt({ rand: seeded() });
     const [a, b] = hunt.pack('federation', start(), { size: 2 });
     expect(hunt.damage(999)).toBeNull();
-    expect(hunt.damage(a.id, 1)).toMatchObject({ id: a.id, kind: 'patrol', down: false });
+    // (a patrol fighter or a gunship: either takes more than one)
+    expect(hunt.damage(a.id, a.hp - 1)).toMatchObject({ id: a.id, kind: a.kind, down: false });
     expect(hunt.damage(a.id, 1)).toMatchObject({ down: true });
     expect(hunt.damage(a.id, 1)).toBeNull(); // (it's gone)
-    expect(hunt.wire()).toEqual([[b.id, 'patrol', b.pos.x, b.pos.y, b.pos.z, b.vel.x, b.vel.y, b.vel.z, 2]]);
+    expect(hunt.wire()).toEqual([[b.id, b.kind, b.pos.x, b.pos.y, b.pos.z, b.vel.x, b.vel.y, b.vel.z, b.type.hp]]);
   });
 
   it('gives the guns everyone in the fight, the ones on a run as threats', () => {

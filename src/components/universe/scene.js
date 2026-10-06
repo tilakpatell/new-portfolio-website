@@ -772,7 +772,8 @@ export async function create(canvas, ctx) {
   fleet.prepare = (o) => warm(o); // (the fleet's models too: none is made before the first frame)
   // who comes after you, what the director sets going, and its set pieces
   // (none of it with reduced motion)
-  const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: factionsOf(null), kinds: kindsOf(null) }); // (every side's: another pilot's hunters, whoever they are)
+  const FACTIONS_ALL = factionsOf(null);
+  const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: FACTIONS_ALL, kinds: kindsOf(null) }); // (every side's: another pilot's hunters, whoever they are)
   const wingmen = hunters ? createWingmen(map, { fleet, solids: SOLIDS }) : null; // (friends in a long fight)
   const skirmishes = hunters ? createSkirmishes(map, { fleet, solids: SOLIDS }) : null; // (someone else's fight, out ahead)
   let hunts = 0; // packs the director has sent this visit (the first is a small one)
@@ -2539,7 +2540,9 @@ export async function create(canvas, ctx) {
   // what the hunters report
   const onHunters = (e) => {
     if (e.type === 'hunted') {
-      if (!e.prey) emit({ type: 'hunted', faction: e.faction, ace: e.kinds.includes('tieadvanced') });
+      // (ace: the kind of the faction's ace, when it came along, for its own line)
+      const ace = FACTIONS_ALL[e.faction]?.ace;
+      if (!e.prey) emit({ type: 'hunted', faction: e.faction, ace: ace && e.kinds.includes(ace) ? ace : null });
       // dropped in ahead of you on the way somewhere: they hold the pulse
       // drive down while they're on you (a jolt as it cuts)
       if (e.interdict && !state.interdicted && state.ship) {
@@ -2567,11 +2570,11 @@ export async function create(canvas, ctx) {
     }
     else if (e.type === 'escaped' || e.type === 'cleared') {
       emit(e.rescued ? { type: 'event', id: 'rescued' } : e);
-      // the Star Destroyer's fighters gone: it jumps away
+      // the Star Destroyer's fighters gone: it jumps away (and the roadblock's helicopter climbs off)
       if (pieces.destroyerHere && !hunters.active) {
         pieces.leave();
         emit({ type: 'event', id: 'leave' });
-      }
+      } else if (pieces.chopperHere && !hunters.active) pieces.leave();
     }
   };
 
@@ -2591,9 +2594,10 @@ export async function create(canvas, ctx) {
     else if (id === 'roadblock') {
       // the DEA across your bows: in ahead, and holding you there
       hunters.pack('dea', ship, { ahead: true, interdict: true, ace: Math.random() < 0.5, ...strength });
+      pieces.roadblock(ship); // (and a helicopter over it, its searchlight on you)
       emit({ type: 'event', id: 'roadblock' });
     } else if (id === 'destroyer') {
-      const d = pieces.destroyer(ship);
+      const d = pieces.destroyer(ship, side.capitalShip);
       if (!d) return;
       emit({ type: 'event', id: 'destroyer' });
       // its fighters launch a moment after it's here
