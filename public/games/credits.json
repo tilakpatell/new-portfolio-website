@@ -2076,5 +2076,13 @@
       "Tilak Patel, with Microsoft TRELLIS.2"
     ],
     "license": "Generated for this site; TRELLIS.2 is MIT"
+  },
+  "gen3d/rm-campaignmorty": {
+    "source": "https://github.com/microsoft/TRELLIS.2",
+    "name": "the campaign manager Morty (Rick and Morty), made for this site with Pixal3D (trellis.cpp), baked in Blender on the site owner's machine (scripts/gen3d)",
+    "authors": [
+      "Tilak Patel, with Microsoft TRELLIS.2"
+    ],
+    "license": "Generated for this site; TRELLIS.2 is MIT"
   }
 }
