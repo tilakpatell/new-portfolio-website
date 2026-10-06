@@ -282,6 +282,10 @@ def main():
 
     cents = pick.refine(seeds, {w: [(np.array(g["vp"]), g["end"] - g["start"]) for _, g in pool[w]] for w in voices})
 
+    # each voice's centroid, to judge a reference by how like the speaker its lines come out
+    kept_cents = json.loads((GRAB / "centroids.json").read_text(encoding="utf-8")) if (GRAB / "centroids.json").exists() else {}
+    kept_cents.update({w: [round(x, 5) for x in c.tolist()] for w, c in cents.items()})
+    (GRAB / "centroids.json").write_text(json.dumps(kept_cents), encoding="utf-8")
     report = ["# The crews' references", "", "Made by `python scripts/voices/grab.py`. Listen to the candidates in `cache/grab/listen/<who>/`; put a wrong source or segment in the voice's `exclude` in sources.json, or choose your own with `--pick who=source@start`.", ""]
     for w in wanted:
         report += [f"## {w}", ""]

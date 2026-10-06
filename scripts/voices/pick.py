@@ -122,6 +122,12 @@ def pure(sims, sim, floor=0.2, share=0.45):
     return min(sims, default=sim) >= max(floor, share * sim)
 
 
+def too_long(seconds, text):
+    """Whether a take has run on far past its line (slower than take_score's slowest pace, and then
+    some): not worth hearing out, and a minute of audio is more than the voiceprint model can hold."""
+    return seconds > len(normal(text).split()) / 0.8 + 3
+
+
 def take_score(wer, sim, utmos, wps):
     """How good a take of a line is, or None when it isn't usable: wrong words
     (WER over a third) or a pace no one talks at (words per second)."""

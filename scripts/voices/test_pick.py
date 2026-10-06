@@ -6,7 +6,7 @@ import unittest
 
 import numpy as np
 
-from pick import choose, excluded, identify, normal, pure, quoted, refine, segment_score, stretches, take_score, uncensor, usable, utterances, video_id, windows
+from pick import choose, excluded, identify, normal, pure, quoted, refine, segment_score, stretches, take_score, too_long, uncensor, usable, utterances, video_id, windows
 
 
 def words(text, start=0.0, each=0.3, pauses=None):
@@ -108,6 +108,11 @@ class Scores(unittest.TestCase):
     def test_a_take_at_the_wrong_pace_is_rejected(self):
         self.assertIsNone(take_score(wer=0.0, sim=0.7, utmos=3.5, wps=9.0))
         self.assertIsNone(take_score(wer=0.0, sim=0.7, utmos=3.5, wps=0.5))
+
+    def test_a_take_that_runs_on_is_too_long(self):
+        self.assertTrue(too_long(60.0, "A black hole, Jesse."))
+        self.assertFalse(too_long(2.5, "A black hole, Jesse."))
+        self.assertFalse(too_long(8.0, "A binary pair. The smaller one is pulling gas off the larger. Chemistry, Jesse, on a scale you can see."))
 
     def test_a_good_take_scores(self):
         self.assertGreater(take_score(wer=0.0, sim=0.7, utmos=3.5, wps=2.5), take_score(wer=0.1, sim=0.7, utmos=3.5, wps=2.5))

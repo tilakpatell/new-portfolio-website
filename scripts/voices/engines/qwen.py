@@ -15,7 +15,10 @@ def load(jobs):
         if voice["wav"] not in prompts:
             prompts[voice["wav"]] = m.create_voice_clone_prompt(ref_audio=voice["wav"], ref_text=voice["text"])
         seed_all(seeds[0])  # one seed for the batch: its takes still differ, each sampled on its own
-        wavs, sr = m.generate_voice_clone(text=texts, language=["English"] * len(texts), voice_clone_prompt=prompts[voice["wav"]] * len(texts))
+        # at most twice as long as the longest line could take (12 codec frames a second), so a
+        # take that won't stop can't run on for its full 2048 frames
+        frames = int(12 * (max(len(t.split()) for t in texts) / 1.2 + 4))
+        wavs, sr = m.generate_voice_clone(text=texts, language=["English"] * len(texts), voice_clone_prompt=prompts[voice["wav"]] * len(texts), max_new_tokens=frames)
         return [(w, sr) for w in wavs]
 
     def say(voice, text, seed):

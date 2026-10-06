@@ -1,7 +1,12 @@
 {
   "rick": {
     "show": "rick-and-morty",
-    "clips": ["public/audio/clips/riggity-wrecked-son.mp3", "public/audio/clips/im-in.mp3", "public/audio/clips/pickle-rick.mp3", "public/audio/clips/wubba-lubba-dub-dub.mp3"],
+    "clips": [
+      "public/audio/clips/riggity-wrecked-son.mp3",
+      "public/audio/clips/im-in.mp3",
+      "public/audio/clips/pickle-rick.mp3",
+      "public/audio/clips/wubba-lubba-dub-dub.mp3"
+    ],
     "quotes": [
       "I turned myself into a pickle",
       "Your boos mean nothing, I've seen what makes you cheer",
@@ -20,7 +25,11 @@
       "Rick and Morty Rick to live is to risk it all scene",
       "Rick and Morty Rick Sanchez best monologue season 1"
     ],
-    "avoid": ["season 7", "season 8", "cardoni"]
+    "avoid": [
+      "season 7",
+      "season 8",
+      "cardoni"
+    ]
   },
   "morty": {
     "show": "rick-and-morty",
@@ -40,11 +49,17 @@
       "Rick and Morty Morty speech to Rick season 2",
       "Rick and Morty Morty freaks out scene"
     ],
-    "avoid": ["evil morty", "season 7", "season 8"]
+    "avoid": [
+      "evil morty",
+      "season 7",
+      "season 8"
+    ]
   },
   "luke": {
     "show": "star-wars",
-    "clips": ["public/audio/clips/bad-feeling-luke.mp3"],
+    "clips": [
+      "public/audio/clips/bad-feeling-luke.mp3"
+    ],
     "quotes": [
       "I was going into Tosche Station to pick up some power converters",
       "I'm Luke Skywalker, I'm here to rescue you",
@@ -62,11 +77,24 @@
       "Return of the Jedi Luke Jabba free us or die scene",
       "Return of the Jedi Luke I feel the good in you Vader scene"
     ],
-    "avoid": ["last jedi", "force awakens", "rise of skywalker", "mandalorian", "boba fett", "joker", "sequel"]
+    "avoid": [
+      "last jedi",
+      "force awakens",
+      "rise of skywalker",
+      "mandalorian",
+      "boba fett",
+      "joker",
+      "sequel"
+    ]
   },
   "han": {
     "show": "star-wars",
-    "clips": ["public/audio/clips/dont-get-cocky.mp3", "public/audio/clips/never-tell-me-the-odds.mp3", "public/audio/clips/bad-feeling-han.mp3", "public/audio/clips/may-the-force-be-with-you.mp3"],
+    "clips": [
+      "public/audio/clips/dont-get-cocky.mp3",
+      "public/audio/clips/never-tell-me-the-odds.mp3",
+      "public/audio/clips/bad-feeling-han.mp3",
+      "public/audio/clips/may-the-force-be-with-you.mp3"
+    ],
     "quotes": [
       "Hokey religions and ancient weapons are no match for a good blaster at your side",
       "It's the ship that made the Kessel Run in less than twelve parsecs",
@@ -75,7 +103,11 @@
       "I ain't in this for your revolution",
       "You like me because I'm a scoundrel",
       "Boring conversation anyway",
-      "Here's where the fun begins"
+      "Here's where the fun begins",
+      "Then I'll see you in hell",
+      "Laugh it up, fuzzball",
+      "Why you slimy, double-crossing, no-good swindler",
+      "Uh, everything's under control. Situation normal"
     ],
     "search": [
       "Star Wars Han Solo Kessel Run twelve parsecs cantina scene",
@@ -83,13 +115,33 @@
       "Star Wars Han Solo I'm in it for the money scene",
       "Empire Strikes Back Han Solo Leia scoundrel scene",
       "Star Wars Han Solo boring conversation anyway scene",
-      "Empire Strikes Back Han Solo never tell me the odds asteroid scene"
+      "Empire Strikes Back Han Solo never tell me the odds asteroid scene",
+      "Empire Strikes Back Han Solo Hoth then I'll see you in hell scene",
+      "Empire Strikes Back Han and Leia Millennium Falcon repairs scene",
+      "Empire Strikes Back Han Solo and Lando Cloud City scene",
+      "Return of the Jedi Han Solo Endor bunker scene",
+      "Star Wars 1977 Han Solo detention block it's a bad situation scene",
+      "Return of the Jedi Han Solo rescued from carbonite scene"
     ],
-    "avoid": ["force awakens", "solo: a star wars story", "solo a star wars story", "alden", "ehrenreich", "indiana jones", "blade runner", "air force one"]
+    "avoid": [
+      "force awakens",
+      "solo: a star wars story",
+      "solo a star wars story",
+      "alden",
+      "ehrenreich",
+      "indiana jones",
+      "blade runner",
+      "air force one"
+    ]
   },
   "walt": {
     "show": "breaking-bad",
-    "clips": ["public/audio/clips/walter-hartwell-white.mp3", "public/audio/clips/i-am-the-danger.mp3", "public/audio/clips/one-who-knocks.mp3", "public/audio/clips/killed-gus-fring.mp3"],
+    "clips": [
+      "public/audio/clips/walter-hartwell-white.mp3",
+      "public/audio/clips/i-am-the-danger.mp3",
+      "public/audio/clips/one-who-knocks.mp3",
+      "public/audio/clips/killed-gus-fring.mp3"
+    ],
     "quotes": [
       "I am the one who knocks",
       "I am not in danger, Skyler, I am the danger",
@@ -108,11 +160,19 @@
       "Breaking Bad Walter White stay out of my territory scene",
       "Breaking Bad Walter White confession tape scene"
     ],
-    "avoid": ["malcolm", "cranston interview"]
+    "avoid": [
+      "malcolm",
+      "cranston interview"
+    ]
   },
   "jesse": {
     "show": "breaking-bad",
-    "clips": ["public/audio/clips/yeah-science.mp3", "public/audio/clips/private-domicile.mp3", "public/audio/clips/cant-keep-getting-away.mp3", "public/audio/clips/jesse-ringtone.mp3"],
+    "clips": [
+      "public/audio/clips/yeah-science.mp3",
+      "public/audio/clips/private-domicile.mp3",
+      "public/audio/clips/cant-keep-getting-away.mp3",
+      "public/audio/clips/jesse-ringtone.mp3"
+    ],
     "quotes": [
       "Yeah, science",
       "This is my own private domicile and I will not be harassed",
@@ -129,7 +189,10 @@
       "Breaking Bad Jesse Pinkman yeah magnets scene",
       "Breaking Bad Jesse Pinkman best moments"
     ],
-    "avoid": ["aaron paul interview", "bojack"]
+    "avoid": [
+      "aaron paul interview",
+      "bojack"
+    ]
   },
   "hank": {
     "show": "breaking-bad",
@@ -149,6 +212,9 @@
       "Breaking Bad Hank Schrader Ozymandias smartest guy scene",
       "Breaking Bad Hank Schrader best moments"
     ],
-    "avoid": ["dean norris interview", "under the dome"]
+    "avoid": [
+      "dean norris interview",
+      "under the dome"
+    ]
   }
 }

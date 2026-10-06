@@ -116,11 +116,14 @@ class Judge:
         if key in self.known:
             return self.known[key]
         wav = read(take)
-        heard = self.j.hear(wav)
-        spans = self.j.speech(wav)
-        talk = spans[-1][1] - spans[0][0] if spans else len(wav) / self.j.SR
-        d = {"take": key, "heard": heard, "wer": round(self.j.wer(text, heard), 3), "sim": round(float(self.j.voiceprint(wav) @ self.prints[who]), 3), "utmos": self.j.naturalness(wav), "wps": round(len(pick.normal(text).split()) / max(talk, 0.1), 2), "speech": [spans[0][0], spans[-1][1]] if spans else None}
-        d["score"] = pick.take_score(d["wer"], d["sim"], d["utmos"], d["wps"])
+        if pick.too_long(len(wav) / self.j.SR, text):  # ran on: fails without being heard out
+            d = {"take": key, "heard": "", "wer": 1.0, "sim": 0.0, "utmos": 0.0, "wps": 0.0, "speech": None, "score": None}
+        else:
+            heard = self.j.hear(wav)
+            spans = self.j.speech(wav)
+            talk = spans[-1][1] - spans[0][0] if spans else len(wav) / self.j.SR
+            d = {"take": key, "heard": heard, "wer": round(self.j.wer(text, heard), 3), "sim": round(float(self.j.voiceprint(wav) @ self.prints[who]), 3), "utmos": self.j.naturalness(wav), "wps": round(len(pick.normal(text).split()) / max(talk, 0.1), 2), "speech": [spans[0][0], spans[-1][1]] if spans else None}
+            d["score"] = pick.take_score(d["wer"], d["sim"], d["utmos"], d["wps"])
         self.known[key] = d
         TAKES.mkdir(parents=True, exist_ok=True)
         with open(self.file, "a", encoding="utf-8") as f:
