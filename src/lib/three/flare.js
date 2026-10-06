@@ -159,13 +159,21 @@ export function createFlare({ colour = '#ffd6a8', strength = 1, small = false } 
       group.visible = weight > 0.002;
       if (!group.visible) return;
       if (c) tint.set(c);
-      // just past the near plane, in front of everything, so a size in the
-      // frame's half-heights is that times the half-height there
+      // just past the near plane, in front of everything; placed through the
+      // camera's own projection, which can be shifted (a view offset, leaving
+      // room for a panel): a point straight ahead lands at (−P8, −P9) in the
+      // frame, and a point at `ndc` is (ndc + P8) d / P0 across at depth d
       const d = camera.near * 1.5;
-      const half = Math.tan((camera.fov * Math.PI) / 360) * d;
+      const P = camera.projectionMatrix.elements;
+      const halfX = d / P[0];
+      const half = d / P[5];
+      const [cx, cy] = [-P[8], -P[9]];
       for (const s of sprites) {
         const { along, size, sw, sh, k } = s.userData;
-        s.position.set(ndc[0] * along * half * camera.aspect, ndc[1] * along * half, -d);
+        // (along the line from the star through the frame's middle)
+        const nx = cx + (ndc[0] - cx) * along;
+        const ny = cy + (ndc[1] - cy) * along;
+        s.position.set((nx + P[8]) * halfX, (ny + P[9]) * half, -d);
         s.scale.set(size * half * 2 * sw, size * half * 2 * sh, 1);
         s.material.color.copy(tint);
         s.material.opacity = weight * strength * k;

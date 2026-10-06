@@ -3709,7 +3709,8 @@ export async function create(canvas, ctx) {
         if (s) shipSolid.at = [s.x, s.y, s.z];
         const hidden = occluded({ from: map.worldToLocal(eyeAt).toArray(), to: SUN.at, solids: flareSolids });
         share = sunShareOf({ ndc, size }) * (1 - hidden);
-        weight = post.flareOn ? flareWeight({ ndc, occluded: hidden, size }) : 0;
+        // (half as strong over the map, which is a chart, not a place you're in)
+        weight = post.flareOn ? flareWeight({ ndc, occluded: hidden, size }) * (flying() && state.view !== 'map' ? 1 : 0.5) : 0;
       }
     }
     sunFlare?.set({ ndc, weight, camera });
