@@ -181,6 +181,7 @@ export const ACHIEVEMENTS = {
   speederchase: { name: 'Fast and low', desc: 'Caught every scout trooper before the bunker on Endor' },
   starmapride: { name: 'The way to Ezra', desc: 'Raced the spires to the old tower on Lothal and kept the star map' },
   dagobahraise: { name: 'Size matters not', desc: 'Ran Dagobah’s swamp with Yoda on your back, faced the cave and raised the X-wing' },
+  galacticassault: { name: 'Galactic assault', desc: 'Won a battle for the command posts on Hoth or Geonosis' },
   tosche: { name: 'Power converters', desc: 'Picked up power converters at Tosche Station' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
   // Dunder Mifflin Scranton, the world (office/world)

@@ -75,6 +75,8 @@ import { WALK, createSolids, groundAt, ride, rider, turnToward, walk, walker } f
 import { rng } from './noise';
 import { endRun, missionOf, newRun, tickRun } from './missions';
 import { createChaseMission } from './missions/chaseScene';
+import { createAssaultMission } from './missions/assaultScene';
+import { RULES as ASSAULT } from './missions/assault';
 import { groundWorld } from '../../../lib/three/groundwork';
 
 const V = THREE.Vector3;
@@ -227,7 +229,8 @@ export async function create(canvas, ctx) {
 
   // ── Things to do: the quest you're on, out in the world, and the blaster ──
   const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent });
-  const blaster = createBlaster({ parent: scene, world });
+  // (a battle fills the air with bolts: room for them)
+  const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' ? 72 : undefined });
   // what a shot does round the gun and where it lands (universe/gunfx.js),
   // and a light that flares with each muzzle flash: in the scene from the
   // start and dark between shots, so the count of lights never changes and
@@ -511,6 +514,10 @@ export async function create(canvas, ctx) {
     kick: { x: 0, v: 0 }, // the view's kick on a shot
     zone: null, // the place you're in, if you've gone into one
     outside: null, // where you were before you went in
+    // a battle (missions/assault.js): off the field while you choose a side
+    // ('choose') or you're down ('down'), and how long you've been down
+    off: mission?.kind === 'assault' ? 'choose' : null,
+    fallen: 0,
   };
   const camPos = new V();
   const camLook = new V();
@@ -670,7 +677,7 @@ export async function create(canvas, ctx) {
   const target = () => {
     const p = me().st;
     if (state.phase === 'ride') return state.riding.state.speed < 7 && !chaseOn() ? { kind: 'dismount', text: `Get off ${state.riding.spec.name}` } : null;
-    if (state.phase !== 'walk') return null;
+    if (state.phase !== 'walk' || state.off) return null;
     // a quest's thing to do here
     const step = state.quest && questOf(state.quest.id)?.steps[state.quest.step];
     if (step?.type === 'use' && Math.hypot(p.x - step.at[0], p.z - step.at[1]) < (step.r ?? 3)) return { kind: 'use', id: step.id, text: step.prompt ?? 'Use' };
@@ -936,6 +943,35 @@ export async function create(canvas, ctx) {
   const chaseOn = () => Boolean(chase && !chase.view()?.result);
   let chaseViewAt = -1;
 
+  // ── A battle (missions/assault.js): two armies and the posts, drawn and run here ──
+  const assault = mission?.kind === 'assault' ? createAssaultMission({ parent: scene, world, blaster, mission, emit, say, sounds, kit, warm, tier: small ? 'mid' : tier, reduced }) : null;
+  const assaultOn = () => Boolean(assault?.running());
+  // what your blaster can hit, and what a hit does: the battle's soldiers while it's on, the quests' targets otherwise
+  const shootable = () => (assaultOn() ? assault.targets : activity.targets);
+  const struck = (hit) => {
+    if (!hit.target) return;
+    if (assaultOn()) assault.hit(hit.target, ASSAULT.yours);
+    else activity.hit(hit.target, 1);
+  };
+  // a side chosen, and onto the field at one of its posts (from the HUD, or the dev hooks)
+  function chooseSide(id) {
+    assault?.chooseSide(id);
+    ctx.invalidate();
+  }
+  function deployAt(id) {
+    const at = assault?.deploy(id);
+    if (!at) return;
+    leaveZone();
+    putAt(me().st, at.x, at.z, at.yaw);
+    state.cam.yaw = at.yaw;
+    camInit = false;
+    state.off = null;
+    state.fallen = 0;
+    state.health = 100;
+    emit({ type: 'health', value: 100 });
+    ctx.invalidate();
+  }
+
   // ── A quest mission (missions/index.js): the quest engine runs it, this
   // keeps its clock and says how it ended ──
   let run = null;
@@ -978,7 +1014,7 @@ export async function create(canvas, ctx) {
       emit({ type: 'fire' });
       return;
     }
-    if (state.phase !== 'walk') return;
+    if (state.phase !== 'walk' || state.off) return;
     state.firedAt = state.t;
     camera.getWorldDirection(camDir);
     p.yaw = Math.atan2(camDir.x, camDir.z);
@@ -993,8 +1029,8 @@ export async function create(canvas, ctx) {
       state.shot = { from, dir: camDir.clone() };
       return;
     }
-    const hit = blaster.fire(from, camDir, activity.targets, me().spec.bolt ?? '#ff3b30');
-    if (hit.target) activity.hit(hit.target, 1);
+    const hit = blaster.fire(from, camDir, shootable(), me().spec.bolt ?? '#ff3b30');
+    struck(hit);
     landed(hit, camDir);
     sounds.blast?.();
     emit({ type: 'fire' });
@@ -1007,8 +1043,8 @@ export async function create(canvas, ctx) {
     const p = me();
     if (!o || !p.gp) return;
     const r = p.gp.fire();
-    const hit = blaster.fire(o.from, o.dir, activity.targets, p.spec.bolt ?? '#ff3b30', undefined, r.muzzle);
-    if (hit.target) activity.hit(hit.target, 1);
+    const hit = blaster.fire(o.from, o.dir, shootable(), p.spec.bolt ?? '#ff3b30', undefined, r.muzzle);
+    struck(hit);
     const spec = p.gp.spec;
     const out = hit.at.clone().sub(r.muzzle).normalize();
     fx.flash(r.muzzle, out, spec.flash);
@@ -1048,6 +1084,14 @@ export async function create(canvas, ctx) {
     state.shake = Math.min(1, state.shake + 0.3);
     emit({ type: 'health', value: state.health });
     if (state.health > 0) return;
+    // in a battle: down where you fell, and the HUD asks where to deploy
+    if (assaultOn() && !state.off) {
+      state.off = 'down';
+      state.fallen = 0.001;
+      assault.youDown();
+      emit({ type: 'down' });
+      return;
+    }
     if (chaseOn()) {
       state.health = 100;
       emit({ type: 'health', value: 100 });
@@ -1083,6 +1127,7 @@ export async function create(canvas, ctx) {
 
   function input() {
     const k = state.keys;
+    if (state.off) return { x: 0, y: 0, run: false, heading: state.cam.yaw };
     let x = (k.right ? 1 : 0) - (k.left ? 1 : 0) + state.stick.x;
     let y = (k.up ? 1 : 0) - (k.down ? 1 : 0) + state.stick.y;
     const m = Math.hypot(x, y);
@@ -1234,6 +1279,11 @@ export async function create(canvas, ctx) {
         pp.fig?.update(dt, 0);
       } else {
         pp.holder.rotation.set(0, st.yaw, 0);
+        // (down in a battle: tipped over where you fell)
+        if (i === lead && state.fallen > 0) {
+          state.fallen += dt;
+          pp.holder.rotation.x = -Math.min(Math.PI / 2, state.fallen * 5);
+        }
         // going which way, how fast, turning, off the ground (locomotion.js
         // works in the universe map's units: METRE to the metre)
         fwdV.set(Math.sin(st.yaw), 0, Math.cos(st.yaw));
@@ -1399,6 +1449,12 @@ export async function create(canvas, ctx) {
           setStyle(m, 'opacity', '0');
           continue;
         }
+      } else if (id === 'quest' && assaultOn()) {
+        at = assault.target(p.x, p.z);
+        if (!at || state.off) {
+          setStyle(m, 'opacity', '0');
+          continue;
+        }
       } else if (id === 'quest') {
         const q = state.quest && questOf(state.quest.id);
         const step = q?.steps[state.quest.step];
@@ -1484,6 +1540,15 @@ export async function create(canvas, ctx) {
         emit({ type: 'mission', view: chase.view() });
       }
     }
+    // the battle: on with it, and their bolts at you
+    if (assault && state.phase === 'walk') {
+      const { atYou } = assault.update(dt, state.off ? null : me().st);
+      for (const s of atYou) blaster.enemy(s.from, new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, s.color, s.damage);
+      if (state.t - chaseViewAt > 0.1) {
+        chaseViewAt = state.t;
+        emit({ type: 'mission', view: assault.view() });
+      }
+    }
     // a quest mission's clock
     if (runOn() && (state.phase === 'walk' || state.phase === 'ride')) {
       run = tickRun(run, dt);
@@ -1514,7 +1579,7 @@ export async function create(canvas, ctx) {
           hurt(s.damage);
         } else blaster.enemy(s.from, new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, '#ff4a3d', s.damage);
       }
-    const hit = blaster.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null);
+    const hit = blaster.update(dt, (state.phase === 'walk' || state.phase === 'ride') && !state.off ? me().st : null);
     if (hit) hurt(hit);
     if (state.health < 100 && state.t - state.hurtAt > 4) {
       state.health = Math.min(100, state.health + dt * 12);
@@ -1531,7 +1596,7 @@ export async function create(canvas, ctx) {
         scene.add(m.sprite);
         givers.push(m);
       }
-      const on = q && !state.quest && a.fig;
+      const on = q && !state.quest && a.fig && !a.hidden;
       m.sprite.visible = Boolean(on);
       if (on) m.sprite.position.set(a.b.x, a.holder.position.y + (a.fig.tall ?? 1.8) * (a.spec.scale ?? 1) + 0.6 + Math.sin(state.t * 3) * 0.08, a.b.z);
     }
@@ -1669,6 +1734,11 @@ export async function create(canvas, ctx) {
     }
     // (the scouts' way is planned round the trees, so once they're down)
     if (!disposed) chase?.begin();
+    if (!disposed && assault) {
+      // (the world's own troopers out of the way of the battle's)
+      life.hideKinds(mission.hideLife ?? []);
+      assault.begin();
+    }
     if (!disposed) beginMission();
     // (both ways the lights can be, so a door doesn't stall on new shaders: the
     // lamps lit and the sun's shadow off, as in a room, then as outdoors)
@@ -1741,8 +1811,24 @@ export async function create(canvas, ctx) {
         state.tracked = id;
         if (!q.giver && !q.place && !state.quest) beginQuest(q);
       },
+      // a side for the battle, and onto the field at one of its posts
+      side: chooseSide,
+      deploy: deployAt,
       // a mission again, from the start, on the bike
       restart() {
+        if (assault) {
+          // a battle again: back where you chose a side, the field cleared
+          leaveZone();
+          putAt(me().st, mission.start[0], mission.start[1], mission.yaw);
+          state.cam.yaw = mission.yaw;
+          camInit = false;
+          state.off = 'choose';
+          state.fallen = 0;
+          state.health = 100;
+          emit({ type: 'health', value: 100 });
+          assault.restart();
+          return;
+        }
         if (!chase && !run) return;
         const p = me().st;
         leaveZone();
@@ -1791,7 +1877,7 @@ export async function create(canvas, ctx) {
     },
     // back to the ship and up, from anywhere outdoors on foot: true once the climb's begun
     takeOff() {
-      if (state.zone || state.phase !== 'walk') return false;
+      if (state.zone || state.phase !== 'walk' || state.off) return false;
       return board();
     },
     // (for tests: the world moved on without drawing it, in steps)
@@ -1801,9 +1887,17 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: finish the chase, 'win' or 'lose')
-    missionDo(how) {
+    missionDo(how, arg) {
       if (!import.meta.env.DEV) return null;
       if (how === 'audit') return chase?.audit() ?? null;
+      if (assault) {
+        // (a battle: 'side' and 'deploy' as the HUD does them, 'win' or 'lose' to end it)
+        if (how === 'side') chooseSide(arg);
+        else if (how === 'deploy') deployAt(arg);
+        else if (how === 'win' || how === 'lose') assault.force(how);
+        ctx.invalidate();
+        return assault.view();
+      }
       if (run) {
         // (a quest mission: 'win', 'lose', or 'skip' the step you're on)
         if (how === 'win') endMission('won');
@@ -1859,7 +1953,7 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health, mission: chase?.view() ?? run }),
+    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run }),
     dispose() {
       disposed = true;
       lit?.dispose();
@@ -1876,6 +1970,7 @@ export async function create(canvas, ctx) {
       peers.dispose();
       activity.dispose();
       chase?.dispose();
+      assault?.dispose();
       blaster.dispose();
       markMat.map.dispose();
       markMat.dispose();

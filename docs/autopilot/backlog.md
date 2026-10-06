@@ -31,7 +31,7 @@ The measurements and the plan are the other sessions' `docs/research/2026-10-05-
 ## Features (last, and only as whole slices)
 
 - [ ] **C-137: side roads off the main street**, and a gym and hallway for the school (`docs/superpowers/HANDOFF-c137.md`, "Ideas for later"). Morty's walk animation should pause in the air.
-- [ ] **Galaxy missions still briefings.** `docs/superpowers/specs/2026-10-05-galaxy-games-design.md`: one mission a run, the smallest first, with its rules tested.
+- [ ] **Galaxy missions still briefings.** `docs/superpowers/specs/2026-10-05-galaxy-games-design.md`: one mission a run, the smallest first, with its rules tested. (Hoth's and Geonosis's are the galactic assaults now: `docs/superpowers/HANDOFF-galactic-assault.md` has what's left on those, a map a run: Kashyyyk's beach, Endor's bunker, Scarif's.)
 
 ## Done
 

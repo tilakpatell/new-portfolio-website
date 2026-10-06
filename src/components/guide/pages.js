@@ -158,11 +158,12 @@ export const PAGES = {
     ],
     tips: [
       ['The places', 'The compass names the places from the films until you’ve found them, with what the crew have to say about each.'],
+      ['Galactic assault', 'On Hoth and Geonosis, a battle for the command posts (from the system’s mission page). Pick a side and a post to deploy at; stand in a post with more of yours than theirs and it turns; take every post of the phase and the next begins. Down, you deploy again for one of your side’s reinforcements.'],
       ['Leaving', 'Get back in the ship (E by it, or Back to orbit) to take off.'],
     ],
   },
   '/galaxy/mission': {
-    tips: [['The briefing', 'Each system’s mission opens with its own crawl. The trench run and boarding the Death Star play now; the rest are games still being built.']],
+    tips: [['The briefing', 'Each system’s mission opens with its own crawl. The trench run, boarding the Death Star, Endor’s chase, Lothal’s star map, Dagobah’s swamp and the battles of Hoth and Geonosis play now; the rest are games still being built.']],
   },
   '/deathstar': {
     keys: [

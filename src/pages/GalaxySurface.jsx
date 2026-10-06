@@ -20,6 +20,7 @@ import galaxyModule from '../components/galaxy/module';
 import { FOUND_KEY, LAUNCH_KEY, QUESTS_KEY, readDone, readFound } from '../components/galaxy/travel';
 import { runtime } from '../runtime';
 import ChaseHud from '../components/galaxy/surface/ChaseHud';
+import AssaultHud from '../components/galaxy/surface/AssaultHud';
 import { missionOf } from '../components/galaxy/surface/missions';
 import ModelCredits from '../components/ModelCredits';
 import { wornFiles } from '../components/rickmorty/wardrobe/looks';
@@ -244,6 +245,8 @@ export default function GalaxySurface() {
         later('toast', 3500, () => setToast(null));
       } else if (e.type === 'health') setHealth(e.value);
       else if (e.type === 'down') {
+        // (in a battle the HUD's deploy card says it)
+        if (mission?.kind === 'assault') return;
         setToast((t) => ({ title: 'Knocked down', text: 'Back on your feet. Try that again.', n: (t?.n ?? 0) + 1 }));
         later('toast', 3500, () => setToast(null));
       } else if (e.type === 'zone') {
@@ -258,7 +261,7 @@ export default function GalaxySurface() {
       else if (e.type === 'mission') {
         for (const f of chaseFeed.current) f(e.view);
         const v = e.view;
-        const shown = v ? `${v.phase}|${v.count}|${v.left}|${v.result ? 1 : 0}` : '';
+        const shown = v ? (v.key ?? `${v.phase}|${v.count}|${v.left}|${v.result ? 1 : 0}`) : '';
         if (shown !== chaseShown.current) {
           chaseShown.current = shown;
           setChase(v);
@@ -353,9 +356,10 @@ export default function GalaxySurface() {
       </div>
 
       {/* the quest you're on, and the things to do here */}
-      {mission && <ChaseHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onAgain={() => view.current?.input?.('restart')} onBack={takeOff} />}
+      {mission && mission.kind !== 'assault' && <ChaseHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onAgain={() => view.current?.input?.('restart')} onBack={takeOff} />}
+      {mission?.kind === 'assault' && <AssaultHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onSide={(id) => view.current?.input?.('side', id)} onDeploy={(id) => view.current?.input?.('deploy', id)} onAgain={() => view.current?.input?.('restart')} onBack={goUp} />}
 
-      {phase !== 'landing' && site.quests.length > 0 && !(mission?.kind === 'chase' && chase && !chase.result) && (
+      {phase !== 'landing' && site.quests.length > 0 && !((mission?.kind === 'chase' || mission?.kind === 'assault') && chase && !chase.result) && (
         <div className="surface-quest">
           {quest ? (
             <>
@@ -397,7 +401,7 @@ export default function GalaxySurface() {
           <span style={{ width: `${health}%` }} />
         </div>
       )}
-      {(((aiming || quest?.shoot) && phase === 'walk') || (mission?.kind === 'chase' && chase && !chase.result && phase === 'ride')) && <span className="surface-crosshair" aria-hidden="true" />}
+      {(((aiming || quest?.shoot) && phase === 'walk') || (mission?.kind === 'chase' && chase && !chase.result && phase === 'ride') || (mission?.kind === 'assault' && chase?.phase === 'run' && chase.you?.up && phase === 'walk')) && <span className="surface-crosshair" aria-hidden="true" />}
       <div className="surface-door" aria-hidden="true" style={{ opacity: fade }} />
       {prompt && phase !== 'landing' && phase !== 'leaving' && (
         <p className="surface-prompt" role="status">

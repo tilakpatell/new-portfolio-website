@@ -21,7 +21,7 @@ export const CRAWLS = {
     paragraphs: [
       'It is a dark time for the Rebellion. An Imperial probe droid has found Echo Base, the Rebels’ secret stronghold on the remote ice world of Hoth, and Darth Vader’s Death Squadron has come out of lightspeed to crush it.',
       'The Imperial fleet cannot fire through the base’s energy shield. Instead, General Veers is leading a column of armored walkers across the snow to destroy the shield generator, while the Rebel transports slip past the blockade one by one.',
-      'Blasters cannot pierce a walker’s armor. Now Rogue Group, flying snowspeeders, must hold back the Imperial advance long enough for the last transports to escape, with nothing but harpoons, tow cables and nerve…',
+      'Blasters cannot pierce a walker’s armor, but the troops coming in behind them can be fought. Now the Rebel soldiers in the trenches must hold the line, the ion cannon and the door of Echo Base itself, post by post, long enough for the last transports to escape…',
     ],
   },
   endor: {
@@ -116,11 +116,11 @@ export const CRAWLS = {
   },
   geonosis: {
     episode: 'Episode II',
-    title: 'Seismic Charges',
+    title: 'The Battle of Geonosis',
     paragraphs: [
-      'A clone army has been found. On the storm world of Kamino, Obi-Wan Kenobi has learned that the bounty hunter Jango Fett is the template for the Republic’s secret clones, and the man who hired Senator Amidala’s assassin.',
-      'Jango Fett has fled with his son, Boba, aboard his starship, Slave I. Obi-Wan has followed in his Jedi starfighter, tracking a homing beacon he fixed to its hull, to Geonosis, a ringed red world of droid foundries.',
-      'But Jango knows he is being followed. Now Obi-Wan must chase Slave I into the asteroid ring, through laser fire and seismic charges, and make the bounty hunter believe he has won…',
+      'War has come to the Republic. On the red world of Geonosis, Count Dooku and the Separatist leaders have gathered their droid armies in secret, and three prisoners stand chained in the execution arena before a roaring crowd.',
+      'Two hundred Jedi have fought their way into the arena and been surrounded. But Master Yoda has come with the clone army of Kamino, and Republic gunships are dropping onto the plain outside as the Separatists’ core ships prepare to flee.',
+      'Now the first battle of the Clone Wars is joined. The clones must take the forward command post and the ridge, then the arena gate, then the arena floor itself, while the battle droids hold each as long as they can, and the galaxy will never be the same…',
     ],
   },
   scarif: {
