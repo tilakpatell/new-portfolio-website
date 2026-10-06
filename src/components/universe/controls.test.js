@@ -83,3 +83,11 @@ describe('the keys', () => {
     expect(keyAxes({ pitchDown: true }, inv).climb).toBe(1);
   });
 });
+
+describe('a drag as a stick', () => {
+  it('steers on a phone or a tablet, and not on a laptop or a desktop', async () => {
+    const { dragSteers } = await import('./controls');
+    expect(dragSteers({ fine: false })).toBe(true); // a finger first: the drag is the stick
+    expect(dragSteers({ fine: true })).toBe(false); // a mouse or a trackpad first: the keys fly it
+  });
+});

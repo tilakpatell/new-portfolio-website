@@ -149,6 +149,7 @@ import { BUILT_KINDS, buildTraffic } from './trafficModels';
 import { entrySound, lockSound, shipEngine, wellSound } from './sounds';
 import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track, trackNudge } from './targeting';
 import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyAxes, stickInput } from './controls';
+import { dragSteers } from './controls';
 import { byId } from './universes';
 import { createPilots } from './online/pilots';
 import { arsenalOf, createArmory, fan, steer } from './weapons';
@@ -4558,6 +4559,7 @@ export async function create(canvas, ctx) {
   document.addEventListener('visibilitychange', onHidden);
 
   // ── Pointer: a click picks a planet; a drag turns the map, or steers ──
+  const steersByDrag = dragSteers();
   const local = (e) => {
     const r = canvas.getBoundingClientRect();
     return [e.clientX - r.left, e.clientY - r.top];
@@ -4584,7 +4586,8 @@ export async function create(canvas, ctx) {
         d.lastX = x;
         d.lastY = y;
       } else if (flying()) {
-        // a stick wherever the press began
+        // a stick wherever the press began (not on a laptop: dragSteers)
+        if (!steersByDrag) return;
         if (!state.stick) takeover();
         state.stick = { id: e.pointerId, x: d.x, y: d.y, dx: x - d.x, dy: y - d.y, on: true, pointer: e.pointerType };
         placeStick();

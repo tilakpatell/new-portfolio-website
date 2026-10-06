@@ -83,6 +83,7 @@ import { loadModel } from '../universe/planets';
 import { lockSound, shipEngine } from '../universe/sounds';
 import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track, trackNudge } from '../universe/targeting';
 import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyAxes, stickInput } from '../universe/controls';
+import { dragSteers } from '../universe/controls';
 import { createPilots } from '../universe/online/pilots';
 import { paintById } from '../universe/paint';
 import { FASTEST, STOCK_LOADOUT, readLoadout, statsOf } from '../universe/outfit';
@@ -1961,6 +1962,8 @@ export async function create(canvas, ctx) {
     ctx.invalidate();
     return true;
   };
+  // (on a laptop a drag doesn't steer: dragSteers in universe/controls.js)
+  const steersByDrag = dragSteers();
   const onDown = (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (state.drag || props.frozen) return;
@@ -1975,7 +1978,7 @@ export async function create(canvas, ctx) {
     if (!d || d.id !== e.pointerId) return;
     const [x, y] = localXY(e);
     d.moved = Math.max(d.moved, Math.hypot(x - d.x, y - d.y));
-    if (d.moved < DRAG || !flying()) return;
+    if (d.moved < DRAG || !flying() || !steersByDrag) return;
     if (!state.stick) takeover();
     state.stick = { id: e.pointerId, x: d.x, y: d.y, dx: x - d.x, dy: y - d.y, on: true, pointer: e.pointerType };
     placeStick();
