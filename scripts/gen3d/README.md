@@ -60,6 +60,27 @@ issue, which it closes. A failure is commented and labelled `gen3d:failed`;
 fix the issue and remove the label to try again. Wiring the model into a
 scene is a separate change.
 
+**Always give it a picture.** A prompt only works for designs FLUX knows
+(an X-wing, a TIE); for anything else (a CR90, a particular building, a
+character) attach a picture: three-quarter view, the whole thing in frame,
+plain background if you can. A model the site already has is remade from
+its own render (`remake.mjs`), which keeps its shape and adds the detail;
+that only helps when the old shape was right.
+
+### Keeping it running on the desktop
+
+It's registered to start at logon through the Startup folder (a scheduled
+task needs an administrator; this doesn't):
+`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\gen3d-runner.vbs`
+runs `%LOCALAPPDATA%\gen3d\runner.cmd` hidden, which sets
+`GEN3D_RUNNER_ROOT` to the runner's checkout (`<repo>-gen3d`, its own
+`node_modules` from `npm ci --ignore-scripts`) and `CHROME` to Edge, and
+restarts the runner if it ever stops; its log is
+`%LOCALAPPDATA%\gen3d\runner.log`. The runner takes each job on a fresh
+`origin/main`, so a merged change to these scripts is picked up by the next
+job. To stop it: end the `node` process from `runner.cmd`, or delete the
+`.vbs`.
+
 ## The engines
 
 Two run the same model, Microsoft's TRELLIS.2-4B (MIT), from a single image:
@@ -172,6 +193,11 @@ The GPU is shared with `scripts/voices`: check `nvidia-smi` before a run.
   simplifier stops at the seams (~25k triangles for a 300k mesh) and crossing
   them smears the texture. 24k triangles at 1536² is under 900 KB and looks
   the part; the Blender bake is the way below that.
+- **Remakes help fighters, not greebled hulls.** From its own render a
+  TIE interceptor or an X-wing comes back with real panel detail; a Star
+  Destroyer or a Venator comes back a smooth blob with its greebles gone,
+  worse than the Sketchfab original. Big-feature shapes only, and judge the
+  sheet before replacing anything.
 - **Both engines, in order of use:** `trelliscpp` (f16 GGUF, ~2–4 minutes a
   model at res 1024 on the RTX 5090) does everything here. The reference
   `trellis2` is built in WSL but its image encoder (`facebook/dinov3`) is a
