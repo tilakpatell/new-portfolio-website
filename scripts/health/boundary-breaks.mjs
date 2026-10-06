@@ -49,22 +49,27 @@ export const RULES = [
 export default async function boundaryBreaks(ctx) {
   const g = await graph(ctx);
   const known = worlds(g.files);
-  const detail = [];
+  // Every row is 1, so worst first is the rules' order: lib's and the
+  // runtime's breaks lead, and the 25-row cap keeps them. Within a rule the
+  // graph's order stands, by path
+  const byRule = RULES.map(() => []);
   for (const { from, to } of g.edges) {
     // a test goes beside its file (RULES.md), so importing it crosses nothing
     if (g.isTest(from) && dirname(from) === dirname(to)) continue;
-    const rule = RULES.find((r) => {
+    const i = RULES.findIndex((r) => {
       const a = from.match(r.from);
       const b = to.match(r.to);
       return a && b && !r.unless?.(a[1], b[1], to, known);
     });
-    if (rule) detail.push({ file: `${from} → ${to}`, n: 1, note: rule.why });
+    if (i >= 0) byRule[i].push({ file: `${from} → ${to}`, n: 1, note: RULES[i].why });
   }
+  const detail = byRule.flat();
   return metric({
     id: 'boundary-breaks',
     label: 'imports across a line docs/health/RULES.md draws',
     unit: 'imports',
     value: detail.length,
     detail,
+    ordered: true,
   });
 }

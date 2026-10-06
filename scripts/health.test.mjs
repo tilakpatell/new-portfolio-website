@@ -133,11 +133,12 @@ describe('the import graph, on a fixture tree', () => {
     expect(m).toMatchObject({ id: 'boundary-breaks', value: 3, unit: 'imports', better: 'lower' });
     // and no break: alpha through beta's index.js and shared/, alpha taking x's
     // piece, worlds/ reaching into beta, App.jsx mounting a page, a page's test
-    // importing its page
+    // importing its page. Rows go in the rules' order, then by path: every
+    // row is 1, and lib's break must lead the cap, not wait behind the worlds'
     expect(m.detail).toEqual([
+      { file: 'src/lib/bad.js → src/components/x/thing.js', n: 1, note: 'lib knows no page' },
       { file: 'src/components/alpha/scene.js → src/components/beta/props.js', n: 1, note: 'worlds are islands' },
       { file: 'src/components/alpha/scene.js → src/components/beta/sub/index.js', n: 1, note: 'worlds are islands' },
-      { file: 'src/lib/bad.js → src/components/x/thing.js', n: 1, note: 'lib knows no page' },
     ]);
   });
 });
