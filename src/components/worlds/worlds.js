@@ -23,6 +23,7 @@ export const WORLD_MB = {
   '/middle-earth': 1, // drawn in code too, but for two places on the map (under a tenth of an MB)
   '/music': 7, // the music planet's courtyard: its instruments, chhatri, lamps and gaddi (Meshy models), sandstone, a dusk sky
   '/dot-matrix': 1, // drawn in code
+  '/dot-matrix/64': 5, // the castle's and Bob-omb Ridge's texture sets at phone size and two skies (Mario and the cast are drawn in code)
   '/earth': 2, // NASA's globe at phone size, the stars and the plane
 };
 

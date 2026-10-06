@@ -28,6 +28,7 @@ export const GUIDES = {
   '/c-137': { title: 'Dimension C-137', nudge: true },
   '/c-137/citadel': { title: 'The Citadel of Ricks', nudge: true },
   '/dot-matrix': { title: 'Dot Matrix', nudge: true },
+  '/dot-matrix/64': { title: 'Super Mario 64', nudge: true },
   '/earth': { title: 'Earth', nudge: true },
   '/music': { title: 'The music room', nudge: true },
 };

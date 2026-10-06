@@ -1,0 +1,127 @@
+// Mario: his state and the action machine that runs him, one frame at a
+// time at 30 frames a second, in the original's units and numbers. Each
+// action is a function in ./moves (ground.js, air.js, water.js, carry.js)
+// that reads the input, moves him through ./physics.js and may hand over to
+// another action, which then runs in the same frame, as the original does.
+// What happened (jumps, landings, punches, hurts…) comes back as events for
+// the sounds and the game.
+//
+// newMario({ x, y, z, yaw }) → m; stepMario(m, inp, world) → events, where
+// inp = { sx, sy (the stick, −1…1, up is +), a, ap, b, bp, z, zp (held and
+// pressed), walk, camYaw }.
+
+import { findFloor, waterAt } from './collide';
+import { AIR, burn } from './moves/air';
+import { GROUND } from './moves/ground';
+import { CARRY } from './moves/carry';
+import { WATER, WATER_ACTIONS, enterWater } from './moves/water';
+import { MAX_HEALTH, die, ride, setAction } from './physics';
+import { wrapAngle } from './vec';
+
+export { MAX_HEALTH };
+export { airStep, die, groundStep, heal, hurt, setAction } from './physics';
+
+export const START_LIVES = 4;
+
+export function newMario({ x, y, z, yaw = 0 }) {
+  return {
+    pos: { x, y, z },
+    vel: { x: 0, y: 0, z: 0 },
+    fwd: 0,
+    yaw,
+    action: 'idle',
+    prev: 'idle',
+    arg: 0,
+    t: 0,
+    health: MAX_HEALTH,
+    lives: START_LIVES,
+    coins: 0,
+    air: MAX_HEALTH,
+    floor: null,
+    floorY: y,
+    wall: null,
+    held: null,
+    invuln: 0,
+    peakY: y,
+    chain: { n: 0, t: 99 },
+    mag: 0,
+    iyaw: yaw,
+    events: [],
+    cutJump: false,
+    airborne: false,
+    attack: null,
+    placed: false,
+  };
+}
+
+// the stick, as how hard (0…1) and which way in the world, seen from the camera
+export function intent(inp, camYaw) {
+  let mag = Math.min(1, Math.hypot(inp.sx, inp.sy));
+  if (mag < 0.05) return { mag: 0, yaw: camYaw };
+  if (inp.walk) mag *= 0.5;
+  return { mag, yaw: wrapAngle(camYaw + Math.atan2(-inp.sx, inp.sy)) };
+}
+
+const ACTIONS = { ...GROUND, ...AIR, ...WATER, ...CARRY };
+export const ACTION_NAMES = Object.keys(ACTIONS);
+
+// at the start: on the floor below if there is one close, falling otherwise
+function place(m, w) {
+  m.placed = true;
+  const f = findFloor(w, m.pos.x, m.pos.y, m.pos.z);
+  if (f && m.pos.y - f.y < 4) {
+    m.pos.y = f.y;
+    m.floor = f.surf;
+    m.floorY = f.y;
+    return;
+  }
+  m.airborne = true;
+  setAction(m, 'freefall');
+}
+
+export function stepMario(m, input, w) {
+  m.events = [];
+  m.prevY = m.pos.y;
+  m.prevVy = m.vel.y;
+  m.prevAir = m.airborne;
+  const inp = { ...input };
+  if (!m.placed) place(m, w);
+  const it = intent(inp, inp.camYaw ?? 0);
+  m.mag = it.mag;
+  m.iyaw = it.yaw;
+  if (m.invuln > 0) m.invuln--;
+  m.chain.t++;
+  m.attack = null;
+  ride(m);
+  // an action that hands over runs the next one in the same frame (a few at most)
+  for (let i = 0; i < 4; i++) {
+    const fn = ACTIONS[m.action];
+    if (!fn) throw new Error(`no action ${m.action}`);
+    if (!fn(m, inp, w)) break;
+  }
+  hazards(m, w);
+  m.t++;
+  return m.events;
+}
+
+const AIR_RATE = 1 / 30; // a wedge of air a second, and of health once it's gone
+
+// what the course does to him after he moves: water, lava, the death plane
+function hazards(m, w) {
+  if (m.action === 'dead') return;
+  if (m.pos.y < w.deathY) return die(m);
+  m.water = waterAt(w, m.pos.x, m.pos.z);
+  const swimming = WATER_ACTIONS.has(m.action);
+  if (!swimming && m.pos.y < m.water - 100) enterWater(m);
+  if (m.action === 'swim' && m.pos.y < m.water - 81) {
+    m.air = Math.max(0, m.air - AIR_RATE);
+    if (m.air === 0) {
+      m.health = Math.max(0, m.health - AIR_RATE);
+      if (m.health === 0) return die(m);
+    }
+  } else m.air = Math.min(MAX_HEALTH, m.air + AIR_RATE * 4);
+  if (m.airborne || WATER_ACTIONS.has(m.action) || !m.floor) return;
+  if (m.floor.kind === 'lava' && m.action !== 'burn') burn(m);
+  else if (m.floor.kind === 'death') die(m);
+  if (m.health <= 0) die(m);
+}

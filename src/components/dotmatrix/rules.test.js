@@ -11,6 +11,8 @@ import {
   HEART_EVERY,
   HERO,
   MAP,
+  N64,
+  N64_CART,
   PEN,
   PIPES,
   SIGNS,
@@ -71,7 +73,7 @@ describe('Dot Matrix: the island', () => {
     for (const row of MAP) expect(row).toHaveLength(W);
     expect(H).toBe(MAP.length);
     for (const row of MAP) for (const c of row) expect(legend(c), c).toBe(legend(c)); // (and no unknown letters:)
-    const known = new Set([...'~,."=:!%TYoO#HGPBsLM']);
+    const known = new Set([...'~,."=:!%TYoO#HGNPBsLM']);
     for (const row of MAP) for (const c of row) expect(known.has(c), c).toBe(true);
   });
 
@@ -107,6 +109,7 @@ describe('Dot Matrix: the island', () => {
     const ids = CARTRIDGES.map((c) => c.id).sort();
     expect(ids).toEqual(projects.map((p) => p.id).filter((id) => id !== 'gameboy-emulator').sort());
     expect(MAP.join('').split('G')).toHaveLength(1 + (GAMEBOY.x1 - GAMEBOY.x0) * (GAMEBOY.z1 - GAMEBOY.z0));
+    expect(MAP.join('').split('N')).toHaveLength(1 + (N64.x1 - N64.x0) * (N64.z1 - N64.z0));
   });
 
   it('puts every cartridge, coin and sign where it can be stood by', () => {
@@ -455,6 +458,23 @@ describe('Dot Matrix: the B button', () => {
   it('plays the Game Boy from in front of it', () => {
     const g = newGame();
     g.hero = at(25, 0, 15);
+    expect(nearAction(g)).toEqual({ kind: 'gameboy', id: 'gameboy' });
+  });
+
+  it('plays the N64 from in front of it, and you can climb it and its cartridge', () => {
+    const g = newGame();
+    g.hero = at((N64.x0 + N64.x1) / 2, 0, N64.z1 + 1);
+    expect(nearAction(g)).toEqual({ kind: 'n64', id: 'n64' });
+    // not from on top of it
+    g.hero = at((N64.x0 + N64.x1) / 2, N64.top, N64.z1 - 0.5);
+    expect(nearAction(g)).toBeNull();
+    // the console's a jump up, and the cartridge another from there
+    expect(floorAt(N64.x0 + 0.5, N64.z0 + 0.5)).toBe(N64.top);
+    expect(floorAt(N64_CART.x0 + 0.5, N64_CART.z0 + 0.5)).toBe(N64_CART.top);
+    expect(N64.top).toBeLessThan((HERO.jump * HERO.jump) / (2 * HERO.gravity));
+    expect(N64_CART.top - N64.top).toBeLessThan((HERO.jump * HERO.jump) / (2 * HERO.gravity));
+    // and it's not in the Game Boy's way
+    g.hero = at(GAMEBOY.front.x1 - 0.1, 0, 15);
     expect(nearAction(g)).toEqual({ kind: 'gameboy', id: 'gameboy' });
   });
 
