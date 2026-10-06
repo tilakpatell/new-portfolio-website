@@ -221,6 +221,50 @@ describe('a squad', () => {
   });
 });
 
+describe('a probe droid', () => {
+  const me = { id: 'me', ...person([0, 1, 0], [0, 0, -1]) };
+  it('keeps its distance, never fires nor charges, and calls a squad in once it has had you in sight a while', () => {
+    const rand = seeded(11);
+    let troops = squad(rand, me, R, { count: 1, kinds: ['probe'] });
+    const calls = [];
+    let shots = 0;
+    let hits = 0;
+    let firstCall = null;
+    let near = Infinity;
+    for (let t = 0; t < 40; t += 1 / 30) {
+      const r = march(troops, [me], 1 / 30, R, rand);
+      troops = r.troops;
+      shots += r.shots.length;
+      hits += r.hits.length;
+      for (const c of r.calls) {
+        calls.push(c);
+        firstCall ??= t;
+      }
+      near = Math.min(near, apart(troops[0], me, R));
+    }
+    expect(shots).toBe(0);
+    expect(hits).toBe(0);
+    expect(near).toBeGreaterThan(TROOPS.probe.range[0] * METRE * 0.6);
+    expect(calls).toEqual([expect.objectContaining({ by: troops[0].id })]);
+    expect(firstCall).toBeGreaterThan(TROOPS.probe.calls);
+    // and the troops that aren't probes never call
+    let plain = squad(rand, me, R, { count: 2, kinds: ['stormtrooper'] });
+    for (let t = 0; t < 30; t += 1 / 30) {
+      const r = march(plain, [me], 1 / 30, R, rand);
+      plain = r.troops;
+      expect(r.calls).toHaveLength(0);
+    }
+  });
+
+  it('knows every side’s troops: Star Wars’, Evil Morty’s guard and Jack’s crew too', () => {
+    for (const k of ['stormtrooper', 'scout', 'probe', 'mortyguard', 'jackscrew']) {
+      expect(TROOPS[k], k).toBeTruthy();
+      expect(TROOPS[k].range[0], k).toBeLessThan(TROOPS[k].range[1]);
+    }
+    expect(TROOPS.scout.speed).toBeGreaterThan(TROOPS.stormtrooper.speed);
+  });
+});
+
 describe('a bolt', () => {
   it('flies straight, and hits whoever it passes close to first', () => {
     const from = [0, R + METRE, 0];

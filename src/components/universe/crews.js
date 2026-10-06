@@ -68,6 +68,10 @@ export const CREWS = [
           ['rick', 'A Federation cop, Morty. Different rules.'],
         ],
         gazorpian: [['morty', 'The big one went down! The big one went down!']],
+        mortyguard: [
+          ['morty', 'Rick, I just shot… a me. In a yellow shirt.'],
+          ['rick', 'Evil Morty’s guard, Morty. Infinite Mortys. Don’t get sentimental.'],
+        ],
         any: [['rick', 'Wubba lubba dub dub!', 'wubba']],
       },
       hurt: [
@@ -553,7 +557,21 @@ export const CREWS = [
         ['r2', '[a frantic scream of beeps]'],
         ['luke', 'I see them, Artoo. Stay behind me.'],
       ],
+      // a probe droid's called them in (foot.js: a troop that `calls`)
+      called: [
+        ['r2', '[an urgent string of beeps: the probe droid’s signalling]'],
+        ['luke', 'It’s called them in. Here they come.'],
+      ],
       kill: {
+        stormtrooper: [['luke', 'Stormtrooper down!']],
+        scout: [
+          ['luke', 'Got the scout!'],
+          ['r2', '[a cheerful whistle]'],
+        ],
+        probe: [
+          ['luke', 'The probe droid’s down. Did it get a signal off?'],
+          ['r2', '[a worried warble]'],
+        ],
         gromflomite: [['luke', 'One of the bugs is down, Artoo!']],
         cop: [['r2', '[beeps: that one was a policeman. Of a sort.]']],
         gazorpian: [
@@ -1009,10 +1027,20 @@ export const CREWS = [
       ],
       out: [['han', 'Smells like the back end of a bantha. I love it.']],
       squad: [
-        ['han', 'Bugs with blasters. I’ve got a bad feeling about this.'],
+        ['han', 'Stormtroopers. I’ve got a bad feeling about this.'],
         ['chewie', '[a roar: let them come]'],
       ],
+      called: [
+        ['han', 'That probe droid just called in its friends. Chewie, take it out next time.'],
+        ['chewie', '[an annoyed growl]'],
+      ],
       kill: {
+        stormtrooper: [['han', 'Bucket-head down.']],
+        scout: [['han', 'Scout trooper. Fast, but not that fast.']],
+        probe: [
+          ['han', 'It’s a probe droid. Was. Chewie, they know we’re here now.'],
+          ['chewie', '[a doubtful growl]'],
+        ],
         gromflomite: [['han', 'Bug’s down. Pass me another.']],
         cop: [['han', 'A cop? Chewie, we were never here.']],
         gazorpian: [
@@ -1458,6 +1486,10 @@ export const CREWS = [
           ['walt', 'On another planet, Jesse. There’s no jurisdiction.'],
         ],
         cartel: [['jesse', 'Cartel guy’s down! Yeah!']],
+        jackscrew: [
+          ['jesse', 'That’s one of Uncle Jack’s guys, yo!'],
+          ['walt', 'Good.'],
+        ],
         gromflomite: [['jesse', 'Bug spray, yo!']],
         cop: [['walt', 'A cop, Jesse. That’s the second-worst thing you can shoot.']],
         gazorpian: [
