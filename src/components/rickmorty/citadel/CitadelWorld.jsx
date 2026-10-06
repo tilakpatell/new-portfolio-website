@@ -4,7 +4,8 @@ import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery, usePageVisible } from '../../../lib/hooks';
 import { readPad, typing } from '../../games/pad';
-import { Bubble, Convo, QuestList, Stick } from '../../middleearth/towns/TownHud';
+import { Bubble, Convo, QuestList, Stick, Travellers } from '../../middleearth/towns/TownHud';
+import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { keyDown, keyUp, moveOf } from '../../middleearth/towns/keys';
 import { drawMap } from '../../middleearth/towns/map';
 import { nearest } from '../../middleearth/towns/story';
@@ -80,6 +81,9 @@ export default function CitadelWorld({ onLeave }) {
 }
 
 function World({ prog, done, complete, gl, setGl, onLeave }) {
+  // other visitors online on the concourse, as ghosts (middleearth/towns/useTravellers),
+  // with how fast each goes, for the walk or the run
+  const trav = useTravellers('citadel', gl === 'on', { motion: true });
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   const canvas = useRef(null);
@@ -645,10 +649,17 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
             : [spot('ballot')]
           : ['daycare', 'factory', 'council'].filter((q) => !has(q)).map((q) => spot(q));
 
+    // other visitors online: where you are to them, and where they are. In
+    // a room (an area of its own) or getting away in the cruiser, you're
+    // out of their sight
+    const tv = trav.ref.current;
+    tv?.pose(s.h, { inside: s.mode === 'inside' || s.mode === 'escape', area: s.mode === 'inside' ? s.room : null });
+
     try {
       a.render(
         {
           rick: s.h,
+          travellers: tv ? tv.list() : null,
           mood: p.mood,
           mode: s.mode,
           room: s.room,
@@ -784,6 +795,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
             <button type="button" className="shire-chip" onClick={() => setWardrobe(true)} aria-haspopup="dialog">
               Wardrobe {!touch && <kbd>C</kbd>}
             </button>
+            <Travellers trav={trav} />
             {herding && (
               <div className="shire-meter" role="meter" aria-label="Mortys back in the pen" aria-valuemin={0} aria-valuemax={HERD.count} aria-valuenow={hud.herd.penned}>
                 <span className="shire-meter-label">Mortys</span>

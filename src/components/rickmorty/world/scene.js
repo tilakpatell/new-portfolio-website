@@ -14,7 +14,8 @@
 // info() }, where state is
 // { area, morty: { x, z, face, speed, running }, flying, cruiser: { x, z, y,
 // yaw, speed, bank }, camYaw, camPitch, near: { link, hotspot }, done, fed:
-// { x, y, z, yaw, mode } (the Federation's patrol ship, as ./ship.js flies it) }.
+// { x, y, z, yaw, mode } (the Federation's patrol ship, as ./ship.js flies it),
+// travellers (the other visitors online in the area, or null) }.
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../lib/stage3d';
@@ -38,6 +39,7 @@ import { buildMindBlowers } from './interiors/mindblowers';
 import { buildOval } from './interiors/oval';
 import { buildDiner } from './interiors/diner';
 import { gltfLoader } from '../../../lib/three/gltf';
+import { createGhosts } from '../../middleearth/towns/ghosts';
 
 export { kitMaterials };
 
@@ -188,6 +190,48 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   scene.add(cruiser);
   const cruiserShadow = fx.blob(2.1);
 
+  // other visitors online, about the same area in their own worlds, as
+  // holograms (as the Middle-earth towns show theirs: ../../middleearth/towns):
+  // each a pale Morty with their name over him, or, while they fly (`ride`,
+  // in what they send), Rick's cruiser. Nothing here touches them.
+  const ghosts = createGhosts({
+    // (on the asphalt, a kerb lower)
+    height: (x, z) => (shown === 'street' && Math.abs(z - ROAD.z) < ROAD.w / 2 ? ROAD_Y : 0),
+    make: () => {
+      const meshy = cast.make('morty');
+      const walker = meshy ?? standInMorty();
+      // (a stand-in's own shapes and paint go with it; a model's are shared)
+      const own = [];
+      if (!meshy) walker.group.traverse((o) => o.isMesh && own.push(o.geometry, o.material));
+      walker.group.scale.setScalar(MORTY_H / (walker.height ?? MORTY_H));
+      const body = new THREE.Group();
+      body.rotation.y = Math.PI / 2; // (figures face +z; a ghost's face, like Morty's, is measured from +x)
+      body.add(walker.group);
+      // the cruiser, nose to +z and centred on its height as the real one is
+      // (without its model, he flies as himself)
+      const ship = cast.prop('saucer', SAUCER);
+      if (ship) {
+        ship.position.y = 0.15 - SAUCER / 2;
+        ship.visible = false;
+        body.add(ship);
+      }
+      const group = new THREE.Group();
+      group.add(body);
+      return { group, top: MORTY_H, walker, ship, clock: Math.random() * 9, shared: true, dispose: () => own.forEach((o) => o.dispose()) };
+    },
+    animate: (f, t, p, dt) => {
+      const flying = p.ride && !!f.ship;
+      f.walker.group.visible = !flying;
+      if (f.ship) f.ship.visible = flying;
+      f.top = flying ? SAUCER / 2 + 0.4 : MORTY_H;
+      if (flying) return;
+      f.clock += dt;
+      f.walker.update?.(f.clock, clamp((p.speed ?? 0) / MORTY.run, 0, 1), 0);
+    },
+    snap: 14, // (the cruiser goes 22 m/s)
+  });
+  scene.add(ghosts.group);
+
   // the doors' rings and where a hotspot is
   for (const l of LINKS) fx.markAt(l.id, l.x, l.area === 'street' && Math.abs(l.z) < ROAD.w / 2 ? ROAD_Y : 0, l.z).userData.area = l.area;
   const marks = [...fx.marks];
@@ -279,7 +323,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       return false;
     }
     for (const [k, a] of Object.entries(areas)) a.group.visible = k === id;
-    unInked[id] ??= [fx.group, ...glows, ...(areas[id].noInk ?? [])];
+    unInked[id] ??= [fx.group, ghosts.group, ...glows, ...(areas[id].noInk ?? [])];
     const L = areas[id].light ?? (OUTDOOR.includes(id) ? ANNEX_LIGHT : ROOM_LIGHT);
     sun.color.set(L.sun[0]);
     sun.intensity = L.sun[1];
@@ -375,6 +419,8 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       cruiserShadow.material.opacity = clamp(0.4 - (hy - 1.4) / 60, 0.08, 0.4);
     } else cruiserShadow.visible = false;
     parked.on = !!c && outdoors && !state.flying;
+    // other visitors here
+    ghosts.update(state.travellers ?? [], t, dt);
     if (parked.on) {
       parked.x = c.x;
       parked.z = c.z;
@@ -539,6 +585,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       ink.dispose(); // (the composer doesn't free its passes)
       glowMat.dispose();
       saucer?.traverse((o) => o.userData.glass?.dispose());
+      ghosts.dispose();
       cast.dispose();
       mats.dispose();
       stage.dispose();

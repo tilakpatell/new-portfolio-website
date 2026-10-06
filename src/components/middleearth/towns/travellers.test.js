@@ -31,7 +31,7 @@ const settle = () => new Promise((r) => setTimeout(r, 0));
 
 describe('steps', () => {
   it('go and come back, kept in bounds', () => {
-    expect(readStep(writeStep({ x: 3.456, z: -2, face: 1, speed: 3 }, { ring: true }))).toEqual({ x: 3.46, z: -2, face: 1, moving: true, inside: false, ring: true });
+    expect(readStep(writeStep({ x: 3.456, z: -2, face: 1, speed: 3 }, { ring: true }))).toEqual({ x: 3.46, z: -2, face: 1, moving: true, inside: false, ring: true, ride: false });
     expect(readStep([1e9, 0, 0], 50).x).toBe(50);
     expect(readStep(['a', 0, 0])).toBe(null);
   });
@@ -150,6 +150,13 @@ describe('travellers', () => {
     expect(b.list()).toHaveLength(1);
     a.leave();
     b.leave();
+  });
+});
+
+describe('steps riding something', () => {
+  it('say so (a car, a ship, a cruiser in the air), apart from the Ring', () => {
+    expect(readStep(writeStep({ x: 0, z: 0, face: 0 }, { ride: true }))).toMatchObject({ ride: true, ring: false, inside: false });
+    expect(readStep(writeStep({ x: 0, z: 0, face: 0 }, { ring: true }))).toMatchObject({ ride: false, ring: true });
   });
 });
 

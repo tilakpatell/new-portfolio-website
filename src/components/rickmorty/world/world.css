@@ -82,6 +82,9 @@
 .rm-chip:hover { background: rgba(43, 32, 56, 0.95); }
 .rm-chip:active, .rm-btn:active, .rm-act:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--rm-ink); }
 .rm-chip:focus-visible, .rm-btn:focus-visible, .rm-act:focus-visible, .rm-back:focus-visible, .rm-icon-btn:focus-visible, .rm-card-btn:focus-visible { outline: 3px solid var(--rm-gold); outline-offset: 2px; }
+/* the visitors online here: a count, not a button */
+.rm-visitors[data-on] { margin: 0; cursor: default; }
+.rm-visitors[data-on]:hover { background: var(--rm-glass); }
 
 /* toasts: something done, someone talking (a speech bubble), a no */
 .rm-toast { position: absolute; top: clamp(5.5rem, 17%, 9rem); left: 50%; z-index: 4; display: flex; align-items: flex-start; gap: 0.6rem; width: max-content; max-width: min(30rem, calc(100% - 2rem)); padding: 0.65rem 0.95rem; border: 2px solid var(--rm-ink); border-radius: 12px; background: var(--rm-glass); color: #fff; box-shadow: 0 4px 0 rgba(27, 20, 36, 0.6); transform: translateX(-50%); animation: rm-toast 4.4s ease both; }

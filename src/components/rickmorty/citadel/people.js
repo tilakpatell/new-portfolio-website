@@ -288,6 +288,8 @@ export async function createPeople({ outdoors, factory, council, places, tier = 
       return rick;
     },
     setRick,
+    // a figure of a kind, of its own and in nothing (the visitors' ghosts, ./scene.js)
+    figure: (kind) => meshy.make(kind),
     cast,
     mortys,
     cops,
