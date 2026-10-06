@@ -432,8 +432,10 @@ export const SYSTEMS = [
       film: 'esb',
       role: 'Luke Skywalker, in training',
       pitch: 'Run the swamp with Yoda on your back, then raise your X-wing out of the bog with the Force. Size matters not.',
-      how: 'Hold steady to lift: the more you doubt (the more you wobble), the deeper it sinks.',
-      status: 'soon',
+      how: 'Keep to the dry ground and the run is quicker; the water slows you. In the cave, what you meet is what you took in with you. Then reach out for the ship.',
+      status: 'live',
+      to: '/galaxy/dagobah/surface?mission=raise',
+      go: 'Walk it now',
     },
   },
   {
