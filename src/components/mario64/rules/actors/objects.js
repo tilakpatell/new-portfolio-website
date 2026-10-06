@@ -136,8 +136,8 @@ const DOOR_W = 260, DOOR_H = 380, DOOR_D = 40;
 function doorBox(a) {
   const c = Math.cos(a.yaw), s = Math.sin(a.yaw);
   const P = (lx, ly, lz) => [a.pos.x + lx * c + lz * s, a.pos.y + ly, a.pos.z - lx * s + lz * c];
-  const hw = DOOR_W / 2, hd = DOOR_D / 2;
-  const v = [P(-hw, 0, -hd), P(hw, 0, -hd), P(hw, 0, hd), P(-hw, 0, hd), P(-hw, DOOR_H, -hd), P(hw, DOOR_H, -hd), P(hw, DOOR_H, hd), P(-hw, DOOR_H, hd)];
+  const hw = (a.def.w ?? DOOR_W) / 2, hd = DOOR_D / 2, H = a.def.dh ?? DOOR_H;
+  const v = [P(-hw, 0, -hd), P(hw, 0, -hd), P(hw, 0, hd), P(-hw, 0, hd), P(-hw, H, -hd), P(hw, H, -hd), P(hw, H, hd), P(-hw, H, hd)];
   const quads = [
     [4, 7, 6, 5],
     [0, 4, 5, 1],
