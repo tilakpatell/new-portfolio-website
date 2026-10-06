@@ -20,7 +20,7 @@ import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { gltfLoader } from '../../../lib/three/gltf';
 import { sharpenMaterial } from '../../../lib/three/textures';
-import { SURFACE_MODELS, surfaceUrl } from './catalog';
+import { SURFACE_MODELS, surfaceLodUrl, surfaceUrl } from './catalog';
 import { PROPS, SCATTER } from './props';
 
 const getLoader = () => gltfLoader();
@@ -101,18 +101,17 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     o.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
     o.scale.setScalar(spec.scale ?? 1);
     group.add(o);
-    const yaw = spec.yaw ?? 0;
-    const k = spec.scale ?? 1;
-    if (spec.solid !== false) for (const s of made.solids ?? []) addSolid(world, s, at, yaw, k, null);
-    // its floors, turned and scaled with it
-    for (const f of made.floors ?? []) {
-      const c = Math.cos(yaw);
-      const sn = Math.sin(yaw);
-      world.floors.push({ ...f, x: at[0] + (f.x * c + f.z * sn) * k, z: at[2] + (-f.x * sn + f.z * c) * k, y: at[1] + f.y * k, r: f.r != null ? f.r * k : undefined, hw: f.hw != null ? f.hw * k : undefined, hd: f.hd != null ? f.hd * k : undefined, yaw: f.r != null ? undefined : (f.yaw ?? 0) + yaw });
-    }
-    if (made.update) updates.push(made.update);
-    if (made.signal) signals.push(made.signal);
+    applyBuilt(made, spec, at, world, { updates, signals, object: true });
     return o;
+  };
+  // a built one's walls and floors only, under its model (its meshes thrown
+  // away: the model is drawn in its place)
+  const builtSolids = (spec, at) => {
+    const make = PROPS[spec.kind];
+    if (!make) return;
+    const made = make(kit, spec.opts ?? {});
+    applyBuilt(made, spec, at, world, { updates, signals, object: false });
+    made.object.traverse((o) => o.geometry?.dispose());
   };
 
   // a model's own footprint, from its box: a circle for something small, a
@@ -150,8 +149,21 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             o.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
             o.scale.setScalar(spec.scale ?? 1);
             group.add(o);
-            footprint(o, spec, at);
-            return warm(o).then(() => o);
+            const entry = SURFACE_MODELS[spec.kind];
+            if (entry.solids === 'built') builtSolids(spec, at);
+            else footprint(o, spec, at);
+            if (!entry.lod) return warm(o).then(() => o);
+            // far off, its light model (fetched after the full one: the
+            // first view doesn't wait for it)
+            const lod = withLod(o, null, radiusOf(gltf) * (spec.scale ?? 1));
+            group.add(lod);
+            loadGlb(surfaceLodUrl(spec.kind)).then((low) => {
+              if (dead || !low) return;
+              const l = cloneModel(low);
+              addLowLevel(lod, l, radiusOf(gltf) * (spec.scale ?? 1));
+              warm(l);
+            });
+            return warm(o).then(() => lod);
           })
           .catch(() => null);
         pending.push(p);
@@ -221,6 +233,59 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
       group.removeFromParent();
     },
   };
+}
+
+// Far away, a model's light copy (<kind>.lod1.glb: a quarter of its
+// triangles, its maps half the size). The switch is three times its radius
+// out, and never nearer than 60 m.
+export const lodDistance = (radius) => Math.max(60, 3 * radius);
+// a THREE.LOD in the model's place: its position, turn and scale move up
+// to the LOD, so either level is drawn in the same spot (`low` now, or
+// later with addLowLevel)
+export function withLod(full, low, radius) {
+  const lod = new THREE.LOD();
+  lod.name = full.name;
+  lod.position.copy(full.position);
+  lod.quaternion.copy(full.quaternion);
+  lod.scale.copy(full.scale);
+  full.parent?.remove(full);
+  full.position.set(0, 0, 0);
+  full.quaternion.identity();
+  full.scale.set(1, 1, 1);
+  lod.addLevel(full, 0);
+  if (low) addLowLevel(lod, low, radius);
+  return lod;
+}
+export function addLowLevel(lod, low, radius) {
+  low.position.set(0, 0, 0);
+  low.quaternion.identity();
+  low.scale.set(1, 1, 1);
+  lod.addLevel(low, lodDistance(radius));
+}
+// a model's radius (its bounding sphere's, measured once)
+function radiusOf(gltf) {
+  const root = gltf.scene;
+  if (root.userData.radius == null) root.userData.radius = new THREE.Box3().setFromObject(root).getBoundingSphere(new THREE.Sphere()).radius;
+  return root.userData.radius;
+}
+
+// What a built thing (props/*.js: { object, solids, floors, update, signal })
+// adds to the world, set where it stands (`at`), turned by spec.yaw and
+// scaled by spec.scale: its walls (unless spec.solid is false) and the floors
+// you walk on, and, when its own meshes are drawn (`object`), its moving
+// parts (an update each frame, an answer to signals).
+export function applyBuilt(made, spec, at, world, { updates, signals, object }) {
+  const yaw = spec.yaw ?? 0;
+  const k = spec.scale ?? 1;
+  if (spec.solid !== false) for (const s of made.solids ?? []) addSolid(world, s, at, yaw, k, null);
+  const c = Math.cos(yaw);
+  const sn = Math.sin(yaw);
+  for (const f of made.floors ?? []) {
+    world.floors.push({ ...f, x: at[0] + (f.x * c + f.z * sn) * k, z: at[2] + (-f.x * sn + f.z * c) * k, y: at[1] + f.y * k, r: f.r != null ? f.r * k : undefined, hw: f.hw != null ? f.hw * k : undefined, hd: f.hd != null ? f.hd * k : undefined, yaw: f.r != null ? undefined : (f.yaw ?? 0) + yaw });
+  }
+  if (!object) return;
+  if (made.update) updates.push(made.update);
+  if (made.signal) signals.push(made.signal);
 }
 
 // a built prop's meshes as instancing parts (for scattering a built kind)
