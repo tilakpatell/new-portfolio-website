@@ -30,7 +30,7 @@ import '../components/galaxy/galaxy.css';
 import '../components/galaxy/surface/surface.css';
 
 const LANDED_KEY = 'tp-galaxy-landed'; // the worlds you've set foot on
-const CLIMB_BEFORE = 2400; // ms of the climb out before space is asked for (the ship well up by the time it's ready)
+const CLIMB_BEFORE = 3400; // ms of the climb out before space is asked for (the ship shooting up by the time the glare's over it)
 const EXIT_GLARE = 900; // ms the sky's glare takes to cover the climb (the route changes under it, never before)
 export const MISSIONS_KEY = 'tp-galaxy-missions'; // { 'system/id': { t, stars } }: your best at each mission played down on a world
 
@@ -50,6 +50,8 @@ export default function GalaxySurface() {
   // come down from space, flown (the galaxy's page handed its world over to
   // this one before the route changed): the air's glow going as you come out of it
   const [entry] = useState(() => runtime().current?.module === surfaceModule);
+  // (the way back up: the galaxy page's code comes ahead, so the route changes under the glare at once)
+  useEffect(() => void import('./Galaxy').catch(() => {}), []);
   const id = parseSystem(useParams().system);
   const site = useMemo(() => (id ? siteOf(id) : null), [id]);
   const sys = systemById(id);

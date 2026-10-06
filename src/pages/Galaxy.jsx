@@ -164,9 +164,11 @@ export default function Galaxy() {
     },
     [navigate, ship, loadout, build, online.client, reduced],
   );
-  // near a planet you can land on: the surface's code comes ahead
+  // near a planet you can land on: the surface's code, and its page's, come ahead
   useEffect(() => {
-    if ((at === 'planet' || at === 'cloudcity') && canLand(current)) prefetchSurface();
+    if (!(at === 'planet' || at === 'cloudcity') || !canLand(current)) return;
+    prefetchSurface();
+    import('./GalaxySurface').catch(() => {});
   }, [at, current]);
 
   // what the scene says: to the comms, and to the page

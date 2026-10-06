@@ -58,6 +58,8 @@ await page.waitForTimeout(2500);
 await step('diving-deep');
 await page.waitForFunction(() => window.location.hash.includes('/surface'), null, { timeout: 300000 });
 await step('handed-down');
+await page.waitForTimeout(2500);
+await step('handed-down-later');
 // out of the ship: Space skips the landing (once it's 0.6 s of game time in), then the walk
 const phase = () => page.evaluate(() => document.querySelector('.surface-page')?.dataset.phase ?? null);
 for (let i = 0; i < 60 && (await phase()) === 'landing'; i++) {
@@ -73,6 +75,8 @@ await page.waitForTimeout(1500);
 await step('climbing');
 await page.waitForFunction(() => /#\/galaxy\/[a-z]+$/.test(window.location.hash), null, { timeout: 300000 });
 await step('handed-up');
+await page.waitForTimeout(2500);
+await step('handed-up-later');
 await page.waitForTimeout(2000);
 await step('space-again');
 
