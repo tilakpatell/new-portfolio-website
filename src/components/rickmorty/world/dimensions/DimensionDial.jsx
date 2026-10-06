@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 
 // The portal gun's dial, opened at its stand in Rick's garage: every place
 // the garage portal can open on, the one it's set to marked. Arrows to move,
-// Enter (or a click) to dial, Esc to close.
-export default function DimensionDial({ open, items, value, onPick, onClose }) {
+// Enter (or a click) to dial, Esc to close. (The Vindicators' ship asks
+// Rick's rooms in it too: `title`, `lead` (the room's question), `foot`.)
+export default function DimensionDial({ open, items, value, onPick, onClose, title = 'Pick a dimension', lead = null, foot = '↑ ↓ to turn the dial, Enter to set it, Esc to put the gun down', label = 'The portal gun’s dial' }) {
   const [i, setI] = useState(0);
   const list = useRef(null);
   useEffect(() => {
@@ -28,24 +29,25 @@ export default function DimensionDial({ open, items, value, onPick, onClose }) {
   }, [i]);
   if (!open) return null;
   return (
-    <div className="rm-dial" role="dialog" aria-label="The portal gun’s dial">
+    <div className="rm-dial-box" role="dialog" aria-label={label}>
       <div className="rm-dial-head">
-        <span>Pick a dimension</span>
+        <span>{title}</span>
         <button type="button" className="rm-dial-x" onClick={onClose} aria-label="Close">
           ×
         </button>
       </div>
+      {lead && <p className="rm-dial-lead">{lead}</p>}
       <ul ref={list} className="rm-dial-list">
         {items.map((d, n) => (
           <li key={d.id}>
             <button type="button" className="rm-dial-row" data-on={n === i || undefined} data-set={d.id === value || undefined} onMouseEnter={() => setI(n)} onClick={() => onPick(d.id)}>
               <b>{d.name}</b>
-              <span>{d.note}</span>
+              {d.note && <span>{d.note}</span>}
             </button>
           </li>
         ))}
       </ul>
-      <p className="rm-dial-foot">↑ ↓ to turn the dial, Enter to set it, Esc to put the gun down</p>
+      <p className="rm-dial-foot">{foot}</p>
     </div>
   );
 }

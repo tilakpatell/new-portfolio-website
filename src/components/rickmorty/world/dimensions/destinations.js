@@ -30,7 +30,9 @@ export const GARAGE_BACK = { x: -301.2, z: 101.4, face: 0 };
 // name). `escape`: a place left in a hurry: once its `spot` is used (with its
 // `after` spot used first on this visit, else that spot says `before`),
 // getting home through the portal inside `s` seconds is `task` done.
-function place(i, { id, name, note, kind, deep, wide, sky, ceiling, people = [], extras = [], spots = [], solids = [], tasks = [], say = {}, done = {}, unlock = {}, acts = {}, escape = null, kinds = [] }) {
+// `goal`: the hotspot the map points to for the place's thing to do, where
+// no talk or escape says (the Vindicators' door to Rick's rooms).
+function place(i, { id, name, note, kind, deep, wide, sky, ceiling, people = [], extras = [], spots = [], solids = [], tasks = [], say = {}, done = {}, unlock = {}, acts = {}, escape = null, goal = null, kinds = [] }) {
   const area = destArea(i, deep, wide);
   const cx = DEST_X;
   const cz = destZ(i);
@@ -60,6 +62,7 @@ function place(i, { id, name, note, kind, deep, wide, sky, ceiling, people = [],
     unlock,
     acts,
     escape,
+    goal,
     kinds,
   };
 }
@@ -564,6 +567,51 @@ export const DESTINATIONS = [
     done: { gearhead: 'gearworld' },
     unlock: { gearhead: 'gearworld' },
     kinds: ['gearhead', 'gearperson-a', 'gearperson-b'],
+  }),
+  place(12, {
+    id: 'vindicators',
+    name: 'The Vindicators’ ship',
+    note: 'The morning after Rick got drunk on the Vindicators’ ship. He left them a gauntlet of rooms.',
+    kind: 'room',
+    deep: 20,
+    wide: 24,
+    ceiling: 6,
+    people: [
+      { id: 'vance', dx: -2.6, dz: -5.4, face: S },
+      { id: 'supernova', dx: 2.8, dz: -5.6, face: S },
+      { id: 'alanrails', dx: -7.8, dz: 0.6, face: E },
+      { id: 'millionants', dx: 7.8, dz: -0.6, face: W },
+      { id: 'crocubot', dx: 6.6, dz: -6.8, face: S + 0.4 },
+      { id: 'noobnoob', dx: -5.8, dz: 4.2, face: E },
+    ],
+    spots: [
+      { id: 'vance', dx: -2.6, dz: -4.2, label: 'Vance Maximus', verb: 'Talk' },
+      { id: 'supernova', dx: 2.8, dz: -4.4, label: 'Supernova', verb: 'Talk' },
+      { id: 'alanrails', dx: -7.8, dz: 0.6, label: 'Alan Rails', verb: 'Talk' },
+      { id: 'millionants', dx: 7.8, dz: -0.6, label: 'Million Ants', verb: 'Talk' },
+      { id: 'crocubot', dx: 6.6, dz: -6.8, label: 'Crocubot', verb: 'Talk' },
+      { id: 'noobnoob', dx: -5.8, dz: 4.2, label: 'Noob-Noob', verb: 'Talk' },
+      { id: 'saw', dx: -10.6, dz: -6, label: 'Rick’s rooms', verb: 'Go in', kind: 'trial' },
+      { id: 'holotable', dx: 0, dz: 0.6, label: 'The holo-table', verb: 'Look', r: 1.6 },
+      { id: 'beacon', dx: 9, dz: -8, label: 'The beacon', verb: 'Look' },
+    ],
+    solids: [
+      { id: 'holotable', dx: 0, dz: -1.4, r: 1.9 },
+      { id: 'beacon', dx: 9.6, dz: -9, r: 0.6 },
+    ],
+    tasks: [{ id: 'vindicators', name: 'Get through Rick’s rooms', hint: 'Dial the Vindicators’ ship on the portal gun, and go through the door to the rooms Rick left them.' }],
+    say: {
+      vance: { who: 'Vance Maximus', text: 'Rick’s passed out and he’s rigged the ship with traps. Typical. We’re the Vindicators, kid. We’ll handle this.' },
+      supernova: { who: 'Supernova', text: 'Your grandfather is a disgusting drunk. He was right about Vance, though.' },
+      alanrails: { who: 'Alan Rails', text: 'My ghost trains can tunnel through solid rock. They can’t tunnel through whatever Rick did to those doors.' },
+      millionants: { who: 'Million Ants', text: 'We are Million Ants. All million of us are very tired of Rick.' },
+      crocubot: { who: 'Crocubot', text: 'Half crocodile, half robot. All of me is done with this.' },
+      noobnoob: { who: 'Noob-Noob', text: 'Ha! Rick’s the best. Did you see what he did to the holo-table? Classic. I’ve been mopping it all morning.' },
+      holotable: { who: null, text: 'The holo-table. Rick did something on it last night that nobody will describe. It smells of lemon now. Noob-Noob’s work.' },
+      beacon: { who: null, text: 'The Vindicators’ beacon. When it lights, they assemble. It lit for this.' },
+    },
+    goal: 'saw',
+    kinds: ['vance', 'supernova', 'alanrails', 'millionants', 'crocubot', 'noobnoob', 'vindicators-ship'],
   }),
 ];
 
