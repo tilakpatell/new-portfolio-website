@@ -19,7 +19,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Logger, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { meshopt, prune, simplify, textureCompress, weld } from '@gltf-transform/functions';
+import { compactPrimitive, dequantize, meshopt, prune, simplify, textureCompress, weld } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 
@@ -44,6 +44,22 @@ export function triangles(doc) {
   return n;
 }
 
+// every primitive's triangles cut to `keep` of them, by meshoptimizer's
+// sloppy simplifier (positions only)
+function sloppy(doc, keep) {
+  for (const mesh of doc.getRoot().listMeshes())
+    for (const p of mesh.listPrimitives()) {
+      const idx = p.getIndices();
+      const pos = p.getAttribute('POSITION');
+      if (!idx || !pos || p.getMode() !== 4) continue;
+      const indices = Uint32Array.from(idx.getArray());
+      const target = Math.max(3, Math.floor((indices.length * keep) / 3) * 3);
+      const [out] = MeshoptSimplifier.simplifySloppy(indices, Float32Array.from(pos.getArray()), 3, null, target, 0.02);
+      idx.setArray(pos.getCount() > 65535 ? out : Uint16Array.from(out));
+      compactPrimitive(p); // (the vertices no triangle uses any more, dropped)
+    }
+}
+
 // one model's light copy: `from` → `to`; resolves to { tris, low, bytes }
 // or null when the model is under the line
 export async function makeLod(from, to, { ratio = 0.25, error = 0.05, over = LOD_OVER } = {}) {
@@ -57,9 +73,17 @@ export async function makeLod(from, to, { ratio = 0.25, error = 0.05, over = LOD
   await doc.transform(weld(), simplify({ simplifier: MeshoptSimplifier, ratio, error, lockBorder: false }), prune());
   if (size > 128) await doc.transform(textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [size / 2, size / 2], quality: 80 }));
   await doc.transform(meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
-  const low = triangles(doc);
-  // (a model the simplifier can't take far, all seams and small parts,
-  // isn't worth a second download)
+  let low = triangles(doc);
+  // (a model the careful simplifier can't take far, all UV seams as the
+  // generated ones are, is cut down sloppily: topology ignored, seams and
+  // all, which three times its radius away nobody sees)
+  if (low > WORTH * tris) {
+    await doc.transform(dequantize());
+    sloppy(doc, (ratio * tris) / low);
+    await doc.transform(prune());
+    low = triangles(doc);
+  }
+  // (one that still won't come down isn't worth a second download)
   if (low > WORTH * tris) return { tris, low, bytes: 0, skipped: true };
   await node.write(to, doc);
   return { tris, low, bytes: statSync(to).size };

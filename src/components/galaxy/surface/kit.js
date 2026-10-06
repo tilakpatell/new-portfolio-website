@@ -50,7 +50,7 @@ function grimeTexture(seed = 7) {
 // { map, normalMap, arm } textures, or a promise of them
 const scanned = new Map();
 const SCAN_BASE = '/cc0/galaxy';
-function loadScan(role) {
+export function loadScan(role) {
   if (!scanned.has(role)) {
     const loader = new THREE.TextureLoader();
     const get = (file, srgb) =>
@@ -87,6 +87,8 @@ const LOOKS = {
 // a role's repeats a metre (the scan's real size; the stand-in's own where
 // there's no scan)
 export const densityOf = (role, fallback) => (SCANS[role]?.metres ? 1 / SCANS[role].metres : fallback);
+// a role's scan's size in metres, and the brightness its detail map is centred on
+export const scanOf = (role) => SCANS[role] ?? null;
 
 export function createKit({ seed = 11, scans = true } = {}) {
   const owned = [];

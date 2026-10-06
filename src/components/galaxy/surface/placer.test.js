@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
-import { applyBuilt, lodDistance, withLod } from './placer';
+import { applyBuilt, lodDistance, usesModel, withLod } from './placer';
 
 const fakeWorld = () => ({ solids: { box: vi.fn(), circle: vi.fn() }, floors: [] });
 const made = () => ({ object: new THREE.Group(), solids: [{ box: [0, 0, 4, 2] }], floors: [{ x: 3, z: 0, y: 1, hw: 2, hd: 2 }], update: () => {}, signal: () => {} });
@@ -51,5 +51,15 @@ describe('far away, the light model', () => {
   it('has one level till the light one comes', () => {
     const lod = withLod(new THREE.Group(), null, 20);
     expect(lod.levels).toHaveLength(1);
+  });
+});
+
+describe('which things are their model', () => {
+  it('draws a styled kind as its model only in the styles it is of', () => {
+    // (theed's model is a domed hall: its towers stay built)
+    expect(usesModel({ kind: 'theed', opts: { style: 'hall' } })).toBe(true);
+    expect(usesModel({ kind: 'theed', opts: { style: 'tower' } })).toBe(false);
+    expect(usesModel({ kind: 'theed', opts: { style: 'hall' }, model: false })).toBe(false);
+    expect(usesModel({ kind: 'nothingatall' })).toBe(false);
   });
 });

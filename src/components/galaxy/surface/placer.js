@@ -20,7 +20,10 @@ import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { gltfLoader } from '../../../lib/three/gltf';
 import { sharpenMaterial } from '../../../lib/three/textures';
+import { detailLevel } from '../../../lib/detail';
 import { SURFACE_MODELS, surfaceLodUrl, surfaceUrl } from './catalog';
+import { withDetail } from './detail';
+import { loadScan, scanOf } from './kit';
 import { PROPS, SCATTER } from './props';
 
 const getLoader = () => gltfLoader();
@@ -39,6 +42,28 @@ export function loadGlb(url) {
   return cache.get(url);
 }
 export const hasModel = (kind) => Boolean(SURFACE_MODELS[kind]);
+// whether a placed thing is drawn as its kind's model: there is one, it
+// wasn't asked to be built (model: false), and (an entry with `styles`) it's
+// one of the styles the model is of (Theed's halls, not its towers)
+export const usesModel = (spec) => hasModel(spec.kind) && spec.model !== false && (!SURFACE_MODELS[spec.kind].styles || SURFACE_MODELS[spec.kind].styles.includes(spec.opts?.style));
+
+// A kind's model, and (its catalogue entry's `detail`: a scan's role) the
+// scan laid over it up close (detail.js), on every tier but the lowest;
+// resolves to the gltf, or null when it won't load
+export function loadModel(kind, url = surfaceUrl(kind)) {
+  const role = SURFACE_MODELS[kind]?.detail;
+  const scan = role && detailLevel() !== 'low' ? loadScan(role) : null;
+  return Promise.all([loadGlb(url), scan]).then(([gltf, got]) => {
+    if (gltf && got && !gltf.scene.userData.detailed) {
+      const { metres = 2 } = scanOf(role) ?? {};
+      gltf.scene.traverse((o) => {
+        if (o.isMesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) withDetail(m, got, { metres, ...SURFACE_MODELS[kind].detailLook });
+      });
+      gltf.scene.userData.detailed = true;
+    }
+    return gltf;
+  });
+}
 
 // the model, ready to place: shadows on, its maps sharp at a slant
 function prepared(gltf) {
@@ -139,8 +164,8 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     // one thing; resolves to its object (or null)
     put(spec) {
       const at = spot(spec);
-      if (hasModel(spec.kind) && spec.model !== false) {
-        const p = loadGlb(surfaceUrl(spec.kind))
+      if (usesModel(spec)) {
+        const p = loadModel(spec.kind)
           .then((gltf) => {
             if (dead) return null;
             if (!gltf) return build(spec, at);
@@ -157,7 +182,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             // first view doesn't wait for it)
             const lod = withLod(o, null, radiusOf(gltf) * (spec.scale ?? 1));
             group.add(lod);
-            loadGlb(surfaceLodUrl(spec.kind)).then((low) => {
+            loadModel(spec.kind, surfaceLodUrl(spec.kind)).then((low) => {
               if (dead || !low) return;
               const l = cloneModel(low);
               addLowLevel(lod, l, radiusOf(gltf) * (spec.scale ?? 1));
@@ -191,7 +216,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
         if (solid && radius) for (const x of mats) world.solids.circle(x.at[0], x.at[2], radius * x.s);
       };
       if (model && hasModel(kind)) {
-        const p = loadGlb(surfaceUrl(kind)).then((gltf) => {
+        const p = loadModel(kind).then((gltf) => {
           if (dead) return null;
           if (!gltf) {
             const made = SCATTER[kind]?.(kit, opts);
