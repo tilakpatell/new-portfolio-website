@@ -45,9 +45,9 @@ export function claudeCode() {
       try {
         probe = runClaude(cli, ['-p', 'Reply with the word OK.', '--model', 'haiku', '--max-turns', '1', '--output-format', 'text'], 60000);
       } catch (e) {
-        probe = `${e.stdout ?? ''}${e.stderr ?? ''}${e.message}`; // it exits non-zero when not logged in
+        probe = `${e.stdout ?? ''}${e.stderr ?? ''}` || 'no output'; // it exits non-zero when not logged in (its message would quote the prompt's own OK)
       }
-      if (!/\bOK\b/.test(probe)) {
+      if (!/^\s*OK\b/i.test(probe)) {
         console.warn(/not logged in/i.test(probe) ? 'Claude Code is here but not logged in (run `claude`, then /login, once); judging with Qwen3-VL' : `Claude Code did not answer (${probe.trim().slice(0, 120)}); judging with Qwen3-VL`);
         cli = null;
       }
