@@ -21,6 +21,7 @@ import {
   HOUSE,
   HOUSE_GARAGE,
   HOUSE_PARTS,
+  HOUSE_SPOTS,
   INNER_WALLS,
   LIMO,
   LINKS,
@@ -1670,6 +1671,82 @@ describe('C-137: the people', () => {
     const rick = PEOPLE.find((p) => p.id === 'rick');
     const m = walk(newMorty({ x: rick.x, z: rick.z + 3, face: Math.PI / 2 }), { x: 0, z: -1 }, 3, 'garage');
     expect(m.z).toBeCloseTo(rick.z + 0.3 + MORTY.radius, 1);
+  });
+});
+
+describe('C-137: Total Rickall’s floor', () => {
+  const living = PLAN.find((r) => r.id === 'living');
+  const room = (id) => PLAN.find((r) => r.id === id);
+  // is a circle of `rad` at (x, z) clear of the house's walls and of everything
+  // in the way of feet there (the dog's bed and the coffee table too), and of `more`?
+  const clearOf = (x, z, rad, more = []) => {
+    const [px, pz] = pushOut(x, z, rad, [...collidersIn('house'), ...more], wallsIn('house'));
+    return Math.hypot(px - x, pz - z) < 1e-6;
+  };
+  const at = (s) => `${s.x}, ${s.z}`;
+
+  it('has a spot for each of the fourteen in the living room, its floor clear of the furniture, the walls and the next spot’s', () => {
+    expect(HOUSE_SPOTS.length).toBeGreaterThanOrEqual(14);
+    for (const s of HOUSE_SPOTS) {
+      // (a person is 0.3 round, as PEOPLE stand)
+      expect(s.r, at(s)).toBeGreaterThanOrEqual(0.3);
+      expect(s.x - s.r >= living.x0 && s.x + s.r <= living.x1 && s.z - s.r >= living.z0 && s.z + s.r <= living.z1, at(s)).toBe(true);
+      expect(clearOf(s.x, s.z, s.r), at(s)).toBe(true);
+      for (const o of HOUSE_SPOTS) if (o !== s) expect(Math.hypot(o.x - s.x, o.z - s.z), `${at(s)} and ${at(o)}`).toBeGreaterThanOrEqual(s.r + o.r - 1e-9);
+    }
+    // two out on the open floor, with room for the Photography Raptor's tail and Mrs. Refrigerator's arms
+    const roomiest = HOUSE_SPOTS.map((s) => s.r).sort((a, b) => b - a);
+    expect(roomiest[0]).toBeGreaterThanOrEqual(0.9);
+    expect(roomiest[1]).toBeGreaterThanOrEqual(0.65);
+  });
+
+  it('keeps them out of the doorways and off the front of the bookcase', () => {
+    const band = 0.8;
+    let doors = 0;
+    for (const [a, b] of DOORS.house.filter((pair) => pair.includes('living'))) {
+      const line = shared(room(a), room(b));
+      for (const [from, to] of gapsAt(INNER_WALLS.house, line)) {
+        doors++;
+        const zone = line.axis === 'x' ? { x0: line.at - band, x1: line.at + band, z0: from, z1: to } : { x0: from, x1: to, z0: line.at - band, z1: line.at + band };
+        for (const s of HOUSE_SPOTS) expect(Math.hypot(Math.max(zone.x0 - s.x, 0, s.x - zone.x1), Math.max(zone.z0 - s.z, 0, s.z - zone.z1)), `${at(s)} in the ${a} / ${b} door`).toBeGreaterThanOrEqual(s.r);
+      }
+    }
+    expect(doors).toBe(3);
+    // where Morty stands to reach its shelves
+    const shelf = FURNITURE.find((f) => f.id === 'bookcase-living');
+    const out = shelf.d / 2 + MORTY.radius + 0.05;
+    const front = { x: shelf.x + Math.sin(shelf.turn) * out, z: shelf.z + Math.cos(shelf.turn) * out };
+    expect(clearOf(front.x, front.z, MORTY.radius)).toBe(true);
+    for (const s of HOUSE_SPOTS) expect(Math.hypot(front.x - s.x, front.z - s.z), at(s)).toBeGreaterThanOrEqual(s.r + MORTY.radius);
+  });
+
+  it('turns each one to face into the room', () => {
+    const mid = centre(living);
+    for (const s of HOUSE_SPOTS) expect(Math.cos(s.face) * (mid.x - s.x) - Math.sin(s.face) * (mid.z - s.z), at(s)).toBeGreaterThan(0.9 * Math.hypot(mid.x - s.x, mid.z - s.z));
+  });
+
+  it('leaves Morty a way in from the dining room and up to each of them, with someone as big as the spot allows on every one', () => {
+    const crowd = HOUSE_SPOTS.map((s, i) => ({ kind: 'circle', id: `spot${i}`, x: s.x, z: s.z, r: s.r }));
+    const S = 0.1;
+    // from the arch to the dining room, over tenth-of-a-metre squares of the living room's floor
+    const a = { x: -303.7, z: -2 };
+    const ok = (x, z) => inRoom(living, x, z) && inArea('house', x, z, -MORTY.radius) && clearOf(x, z, MORTY.radius, crowd);
+    expect(ok(a.x, a.z)).toBe(true);
+    const seen = new Set(['0,0']);
+    const queue = [[0, 0]];
+    const cells = [];
+    while (queue.length) {
+      const [i, j] = queue.shift();
+      cells.push({ x: a.x + i * S, z: a.z + j * S });
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const k = `${i + di},${j + dj}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        if (ok(a.x + (i + di) * S, a.z + (j + dj) * S)) queue.push([i + di, j + dj]);
+      }
+    }
+    // near enough to look each of them in the eye: within a little over a metre of them
+    for (const s of HOUSE_SPOTS) expect(Math.min(...cells.map((c) => Math.hypot(c.x - s.x, c.z - s.z))), at(s)).toBeLessThanOrEqual(s.r + 1.2);
   });
 });
 

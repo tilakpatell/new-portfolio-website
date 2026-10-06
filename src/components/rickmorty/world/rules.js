@@ -574,6 +574,32 @@ export const PEOPLE = [
 export const present = (o, done) => !done || !o.until || !done.includes(o.until);
 export const peopleIn = (area, done) => PEOPLE.filter((p) => p.area === area && present(p, done));
 
+// ── Total Rickall's floor ──
+
+// Where Total Rickall's crowd stands in the living room (./interiors/rickall.js
+// says who goes where): six along the north wall before the sliding door, two
+// by the west wall south of the kitchen door, one by the east wall north of
+// the TV, three along the south wall from the couch to the TV, and two out on
+// the open floor, the only ones with room for the Photography Raptor's tail
+// or Mrs. Refrigerator's arms. `r` is the floor each has round it, clear of
+// the furniture, the walls, a body's width of each doorway and the next one's,
+// so whoever fits it never stands in anything or anyone. The bookcase's front
+// is left free, to get at its shelves, and so is a way from the dining room
+// up to every one of them. Each faces the middle of the room.
+const LIVING = PLAN.find((r) => r.id === 'living');
+const floorSpot = (x, z, r) => ({ x, z, r, face: Math.atan2(z - (LIVING.z0 + LIVING.z1) / 2, (LIVING.x0 + LIVING.x1) / 2 - x) });
+export const HOUSE_SPOTS = [
+  ...[-303.55, -302.63, -301.71, -300.79, -299.87, -298.95].map((x) => floorSpot(x, -7.55, 0.4)),
+  floorSpot(-306.2, -3.45, 0.35),
+  floorSpot(-306.2, -2.5, 0.35),
+  floorSpot(-297.5, -5.45, 0.4),
+  floorSpot(-300.5, -2.5, 0.4),
+  floorSpot(-299.5, -2.45, 0.3),
+  floorSpot(-298.5, -2.55, 0.4),
+  floorSpot(-304, -5.6, 0.9),
+  floorSpot(-303.9, -3.4, 0.65),
+];
+
 // ── what's in the way ──
 
 // (`top`: how high it is, for what Morty can climb or jump onto; left out, it's too tall to)
