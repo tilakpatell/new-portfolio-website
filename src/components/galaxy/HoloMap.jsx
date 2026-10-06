@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { RiCloseLine, RiRocket2Fill, RiArrowGoBackLine } from 'react-icons/ri';
+import { contested, holders, loadWar } from '../universe/war';
+import { WARS } from '../universe/wars';
 import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKNOWN, edgeAt, eraById, eraOf, erasOf, filmLabel, filmShort, gridAt, jumpSeconds, lightYears, systemById, yearLabel } from './systems';
 
 // The galaxy map, the way a holotable shows it: the galaxy's disc (its
@@ -112,6 +114,18 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave }) {
   const box = useRef(null);
   const close = useRef(null);
   const picked = pick ? systemById(pick) : null;
+  // the fleet war (universe/war.js): who holds the systems it's fought over,
+  // as this visitor's battles at the front have left it
+  const war = useMemo(() => {
+    const w = WARS.starwars;
+    let state;
+    try {
+      state = loadWar(window.localStorage, w);
+    } catch {
+      return null;
+    }
+    return { held: holders(w, state), front: w.sectors[contested(state)]?.id, colours: w.sides.map((o) => o.colour), names: w.sides.map((o) => o.short), name: w.name };
+  }, []);
 
   useEffect(() => {
     const c = canvas.current;
@@ -225,10 +239,16 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave }) {
                 </span>
               ))}
             </div>
+            {/* the war's sides, for the rings round the systems they hold */}
+            {war && (
+              <p className="holomap-war">
+                {war.name}: <i style={{ '--held': war.colours[0] }} /> {war.names[0]} <i style={{ '--held': war.colours[1] }} /> {war.names[1]}
+              </p>
+            )}
             {/* the systems */}
             <ul className="holomap-systems" aria-label="Star systems">
               {SYSTEMS.map((s) => (
-                <li key={s.id} style={{ left: pct(s.pos[0]), top: pct(s.pos[1]), '--c': s.accent }} data-dim={!lit(s) || undefined} data-side={LEFT.has(s.id) ? 'left' : undefined}>
+                <li key={s.id} style={{ left: pct(s.pos[0]), top: pct(s.pos[1]), '--c': s.accent, '--held': war && s.id in war.held ? war.colours[war.held[s.id]] : undefined }} data-dim={!lit(s) || undefined} data-side={LEFT.has(s.id) ? 'left' : undefined} data-held={war && s.id in war.held ? war.held[s.id] : undefined} data-front={war?.front === s.id || undefined}>
                   <button type="button" className="holomap-system" aria-pressed={pick === s.id} aria-current={s.id === current ? 'location' : undefined} onClick={() => choose(s.id)} onDoubleClick={() => s.id !== current && onJump(s.id)}>
                     <span className="holomap-dot" aria-hidden="true" />
                     <span className="holomap-name">{s.name}</span>
