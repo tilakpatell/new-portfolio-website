@@ -60,7 +60,7 @@ function soundOf(e) {
 export default {
   id: 'mario64',
   shading: 'glsl',
-  mb: 40,
+  mb: 5,
   label: 'Super Mario 64, a fan tribute: Mario at Peach’s castle',
   async create(rt, props = {}) {
     const renderer = rt.gfx.renderer;
