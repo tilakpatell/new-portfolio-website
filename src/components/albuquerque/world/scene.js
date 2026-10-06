@@ -199,6 +199,12 @@ function paintIcon(g, open, glyph) {
 }
 const GLYPH = { home: 'W', rv: 'Me', saul: 'Sa', pollos: 'Po', superlab: 'Bl', casa: 'Ti' };
 
+// The glow on bright things (UnrealBloomPass): its strength by day (times the
+// device's fit), how much of it goes after dark, its radius, the threshold
+// and how soft the edge over it is, the weight of each blur level (the
+// widest last, and least), and the brightest a pixel counts for.
+const BLOOM = { strength: 0.32, night: 0.4, radius: 0.3, threshold: 1.05, soft: 0.35, levels: [1, 0.65, 0.35, 0.12, 0.04], clamp: 4 };
+
 // ── shapes standing in for a model that didn't load ──
 function standIn(name) {
   const g = new THREE.Group();
@@ -224,11 +230,21 @@ function standIn(name) {
 }
 
 export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
-  const fit = budget();
+  // (a graphics chip the site counts as middling, an integrated laptop one,
+  // gets the middle row here, however strong the rest of the device is: the
+  // town's a lot to draw)
+  const dev = device();
+  const fit = budget(dev.detail === 'mid' && dev.tier === 'high' ? 'mid' : undefined);
   let post = null;
   const stage = createStage(canvas, {
     onLost,
     fov: 58,
+    // (the composer's target smooths the edges; and a CSS pixel needn't be
+    // more than one and a half of the device's, here: the town's a lot of
+    // pixels to fill, and steps down a little sooner if it can't keep up)
+    antialias: !(fit.bloom > 0),
+    maxRatio: 1.5,
+    slowMs: 30,
     // frames running long: the stage has already dropped sharpness or shadows; the glow goes next
     onSlow: (step) => {
       if (step >= 2 && post) post.bloom.enabled = false;
@@ -259,11 +275,22 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
 
   // ── the picture: bright things bloom, then a warm grade (amber in the
   // highlights, teal in the shadows, the way the shows are timed) ──
+  // The bloom is for what's really bright (a sign's neon, the sun off glass),
+  // not every lit window: a high, soft threshold, a tight radius (its widest
+  // levels were most of the glow, a haze over the whole night), glints held
+  // down so one doesn't flare into a blob, and drawn at half the screen.
+  // Only the scene's own target is multisampled: the composer's second is a
+  // copy, and smoothing it again is three resolves a frame for nothing.
   if (fit.bloom > 0) {
-    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: fit.samples });
+    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: Math.min(fit.samples, 2) });
     const composer = new EffectComposer(renderer, target);
+    composer.renderTarget2.samples = 0;
     composer.addPass(new RenderPass(scene, camera));
-    const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.42 * fit.bloom + 0.12, 0.6, 0.92);
+    const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), BLOOM.strength * fit.bloom + 0.1, BLOOM.radius, BLOOM.threshold);
+    bloom.highPassUniforms.smoothWidth.value = BLOOM.soft;
+    bloom.compositeMaterial.uniforms.bloomFactors.value = BLOOM.levels;
+    bloom.materialHighPassFilter.fragmentShader = bloom.materialHighPassFilter.fragmentShader.replace('vec4 texel = texture2D( tDiffuse, vUv );', `vec4 texel = min( texture2D( tDiffuse, vUv ), vec4( ${BLOOM.clamp.toFixed(1)} ) );`);
+    bloom.materialHighPassFilter.needsUpdate = true;
     composer.addPass(bloom);
     composer.addPass(new OutputPass());
     const grade = new ShaderPass(GRADE);
@@ -281,7 +308,8 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     stage.onResize = (w, h, ratio) => {
       composer.setPixelRatio(ratio);
       composer.setSize(w, h);
-      bloom.resolution.set(w / 2, h / 2);
+      // (after the composer's, which sizes it to the device's pixels)
+      bloom.setSize(Math.round(w / 2), Math.round(h / 2));
       grade.uniforms.uAspect.value = w / h;
     };
   }
@@ -326,6 +354,9 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     groundGeo.computeVertexNormals();
   }
   const ground = new THREE.Mesh(groundGeo, own(groundMaterial({ noise: sky.noise, roads: ROADS, bump: fit.bloom > 0 && !mobile })));
+  // (drawn after what stands on it, so its shader, the dearest here, only
+  // runs where the floor's seen, not under every street and building)
+  ground.renderOrder = 1;
   scene.add(ground);
 
   // ── the mountains: the Sandias to the east, mesas in front of the rest ──
@@ -737,7 +768,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   beams.position.set(0, 1.1, 1.6);
   beams.target.position.set(0, 0.2, 16);
   car.add(beams, beams.target);
-  const lampMat = own(new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(0xfff1d0).multiplyScalar(4), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+  const lampMat = own(new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(0xfff1d0).multiplyScalar(2), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
   const tailMat = own(new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(0xff2a1a).multiplyScalar(3), transparent: true, opacity: 0.25, depthWrite: false, blending: THREE.AdditiveBlending }));
   for (const [x, z, m, sc] of [[-0.7, 2.25, lampMat, 0.8], [0.7, 2.25, lampMat, 0.8], [-0.72, -2.2, tailMat, 0.6], [0.72, -2.2, tailMat, 0.6]]) {
     const sp = new THREE.Sprite(m);
@@ -945,14 +976,16 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     skyCols.top.copy(L.hemiSky);
     skyCols.low.copy(L.fog);
     skyCols.ground.copy(L.hemiGround);
-    beams.intensity = dark * 70;
+    beams.intensity = dark * 28; // (enough to see the road by, not to flare off every window)
     lampMat.opacity = dark * 0.7;
     for (const p of PLACES) {
       const s = signs[p.id];
-      s.face.emissiveIntensity = 0.22 + dark * 1.5;
-      s.neon.color.copy(s.hue).multiplyScalar(dark * 5);
+      // (the lettering lit enough to read, under the bloom; the neon round it just over)
+      s.face.emissiveIntensity = 0.25 + dark * 0.55;
+      s.neon.color.copy(s.hue).multiplyScalar(dark * 1.8);
     }
-    if (post) post.bloom.strength = (0.42 * fit.bloom + 0.12) * (1 + dark * 0.9);
+    // (gentler after dark, when there's far more that's bright, not stronger)
+    if (post) post.bloom.strength = (BLOOM.strength * fit.bloom + 0.1) * (1 - BLOOM.night * dark);
   }
   applyLight();
 
@@ -995,7 +1028,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     aurora += (auroraTo - aurora) * Math.min(1, dt * 0.5);
     sky.uniforms.uAurora.value = aurora;
     const dawn = Math.max(0, 1 - Math.abs(L.sun.y) / 0.3); // a low sun, or none: the burners show
-    balloons.update(still ? 0 : clock, Math.min(1, dawn * 0.6 + L.night));
+    balloons.update(still ? 0 : clock, Math.min(1, dawn * 0.6 + L.night * 0.35));
     if (!still) weeds.update(dt, clock);
     crystals.update(dt, clock, L.night);
     town.update(dt, still ? 0 : clock, L.night);
@@ -1139,7 +1172,9 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     const back = mobile ? 11 : 9.5;
     want.set(c.x - fwd.x * back, gy + (mobile ? 5.2 : 4.4) + Math.max(0, c.speed) * 0.04, c.z - fwd.z * back);
     const lead = THREE.MathUtils.clamp((c.yawRate ?? 0) * 1.4, -2.2, 2.2) * Math.min(1, going / 8);
-    look.set(c.x + fwd.x * 5 + Math.cos(c.yaw) * lead, gy + 2.3, c.z + fwd.z * 5 - Math.sin(c.yaw) * lead); // a little up, for the sky
+    // (further ahead the faster you go, so a corner's seen in time to take it)
+    const ahead = 5 + Math.max(0, c.speed) * 0.4;
+    look.set(c.x + fwd.x * ahead + Math.cos(c.yaw) * lead, gy + 2.3, c.z + fwd.z * ahead - Math.sin(c.yaw) * lead); // a little up, for the sky
     if (intro < 1) {
       intro = Math.min(1, intro + dt / 2.8);
       const k = intro * intro * (3 - 2 * intro);
@@ -1159,9 +1194,10 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
         want.set(c.x + Math.sin(a) * 24, gy + 7 + wander * 5, c.z + Math.cos(a) * 24);
         look.set(c.x, gy + 2.2 + wander * 3, c.z);
       } else orbit = 0;
-      const k = 1 - Math.exp(-dt * (wander > 0 ? 0.9 : 4 * follow));
+      // (kept close behind at speed: trailing back, it showed the road late)
+      const k = 1 - Math.exp(-dt * (wander > 0 ? 0.9 : 6 * follow));
       camPos.lerp(want, k);
-      camLook.lerp(look, 1 - Math.exp(-dt * (wander > 0 ? 1.5 : 8 * follow)));
+      camLook.lerp(look, 1 - Math.exp(-dt * (wander > 0 ? 1.5 : 10 * follow)));
     }
     camera.position.copy(camPos);
     // never under a dune, and never inside a building: come in towards the car until it's out
@@ -1208,6 +1244,17 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     sky.mesh.position.copy(camera.position);
     renderer.info.reset();
     stage.render(ms);
+  }
+
+  // the shaders of what only shows later (the night's lamps and pools, a
+  // delivery's drop, the unlock beam, the car wash's water) built now, while
+  // the page is still loading, not as a stall the first time dark falls
+  {
+    const later = [night.object, drop, beamMesh, water];
+    const was = later.map((o) => o.visible);
+    for (const o of later) o.visible = true;
+    await stage.precompile().catch(() => {});
+    later.forEach((o, i) => (o.visible = was[i]));
   }
 
   return {
