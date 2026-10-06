@@ -434,6 +434,7 @@ Archivo, Bebas Neue, Cinzel, Cinzel Decorative, Courier Prime, JetBrains Mono, L
 ## Data and imagery
 
 - **Earth's globe:** NASA Earth Observatory's Blue Marble Next Generation, Black Marble 2016, cloud and GEBCO images (public domain).
+- **The universe map's planets, sun and Milky Way:** [Solar System Scope](https://www.solarsystemscope.com/textures/)'s maps (CC BY 4.0), recoloured for Music's and Marvel's gas giants and laid under the Death Star's plates. The other fandoms' planets (Middle-earth from Tolkien's own map, New Mexico, the Caribbean, C-137, the Office's crumpled letterhead) are made in code by `scripts/build-fandom-planets.mjs`.
 - **The Travel page's dotted globe:** Natural Earth's 1:50m country outlines (public domain), via [world-atlas](https://github.com/topojson/world-atlas).
 - **The GitHub snapshot on the home page:** GitHub's public API, read at build time.
 
