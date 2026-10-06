@@ -155,7 +155,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
   const hama = add(folk.person('hama'));
   const doorGuards = DOOR_GUARDS.map((g, i) => ({ ...g, f: add(folk.person('rider', { n: i })) }));
   const men = Array.from({ length: 8 }, (_, i) => add(folk.person('henchman', { n: i })));
-  const feasters = Array.from({ length: 6 }, (_, i) => add(folk.person('rider', { n: 10 + i })));
+  const feasters = Array.from({ length: 6 }, (_, i) => add(folk.person('rider', { n: 10 + i, helm: false, spear: false, shield: false })));
   const tankards = [folk.tankard(), folk.tankard()];
   gimli.arms[1].add(tankards[0]);
   gimliBare.arms[1].add(tankards[0].clone());
@@ -180,10 +180,13 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
     return h;
   });
   // the host of Rohan, in a great block, moving out at dawn
+  const hostKit = folk.host();
   const host = (() => {
-    const { geometry, material } = folk.host();
-    const n = Math.round(1400 * many);
+    const { geometry, material } = hostKit;
+    const n = Math.min(hostKit.count ?? 1400, Math.round(1400 * many));
     const m = new THREE.InstancedMesh(geometry, material, n);
+    // a banner over every seventh rider, riding and waving with him
+    const flags = new THREE.InstancedMesh(hostKit.banner.geometry, hostKit.banner.material, Math.ceil(n / 7));
     const o = new THREE.Object3D();
     const rnd = makeNoise(17);
     const cols = Math.ceil(Math.sqrt(n * 2.2));
@@ -194,8 +197,11 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
       o.rotation.set(0, rnd(i, 3) * 0.08, 0);
       o.updateMatrix();
       m.setMatrixAt(i, o.matrix);
+      if (i % 7 === 3) flags.setMatrixAt((i - 3) / 7, o.matrix);
     }
-    m.frustumCulled = false;
+    flags.count = Math.floor((n - 4) / 7) + 1;
+    m.frustumCulled = flags.frustumCulled = false;
+    m.add(flags);
     m.visible = false;
     scene.add(m);
     return m;
@@ -386,7 +392,8 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
         });
         host.visible = true;
         const back = musterAt(Math.max(0, ms - 18));
-        host.position.set(back.x, groundAt(back.x, back.z) + Math.abs(Math.sin(t * 9)) * 0.15 * (s.musterV ?? 0), back.z);
+        host.position.set(back.x, groundAt(back.x, back.z), back.z);
+        hostKit.ride?.(s.musterV ?? 0);
         if ((s.musterV ?? 0) > 0.2 && Math.random() < dt * 40 * many) dust.emit(back.x - Math.random() * 60, groundAt(back.x, back.z) + 0.5, back.z + R(40), R(1), 1 + Math.random(), R(1), 2.5, 2, 6, 0.5);
       }
       // the lamps of the town, after dusk
@@ -415,7 +422,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
       pose(k, t, { talk: s.speaker === 'theoden' ? 1 : 0 });
       sit(k, true);
       if (king0) {
-        k.body.rotation.z = -0.35;
+        k.body.rotation.z = -0.1;
         stand(grima, 'hall', GRIMA.x, GRIMA.z, GRIMA.face, DAIS.h);
         pose(grima, t, { talk: s.speaker === 'grima' ? 1 : 0 });
         stand(eowyn, 'hall', -2.4, -17.6, -Math.PI / 2, DAIS.h);
