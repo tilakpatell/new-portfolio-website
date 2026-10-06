@@ -23,6 +23,7 @@ import { sit } from '../../shire/people';
 import { makeSky } from '../../shire/sky';
 import { createFx } from '../../shire/fx';
 import { makeTerrain } from '../ground';
+import { FIGURE, groundTown } from '../grounded';
 import { createGhosts } from '../ghosts';
 import { gallop } from '../weathertop/props';
 import { createMinasKit } from './props';
@@ -224,6 +225,10 @@ export function createMinasWorld(canvas, { onLost } = {}) {
   zones.city.add(land);
   const city = kit.city();
   zones.city.add(city.group);
+  // the streets and the court are the city's floor too, with the land: its
+  // light is baked on them (../grounded.js)
+  const streets = [];
+  city.group.traverse((o) => o.isMesh && (o.material === kit.mats.paving || o.material === kit.mats.court) && streets.push(o));
   const ledge = kit.ledge();
   zones.city.add(ledge.group);
   zones.city.add(kit.shadow().group);
@@ -312,14 +317,11 @@ export function createMinasWorld(canvas, { onLost } = {}) {
   zones.city.add(rangeLine);
 
   // ── people ──
-  const blobGeo = new THREE.CircleGeometry(0.46, 20).rotateX(-Math.PI / 2);
-  const blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false });
+  // (each stands on a soft blob slid away from the sun, and dims in the
+  // baked shade: ../grounded.js)
+  const movers = [];
   const blob = (f) => {
-    const b = new THREE.Mesh(blobGeo, blobMat);
-    b.position.y = 0.03;
-    b.renderOrder = 1;
-    f.group.add(b);
-    f.blob = b;
+    movers.push({ object: f.group, size: [FIGURE * 1.1, FIGURE * 1.1] });
     f.group.visible = false;
     scene.add(f.group);
     return f;
@@ -1054,6 +1056,7 @@ export function createMinasWorld(canvas, { onLost } = {}) {
       shadow: moodKey === 'walls' ? [0.05, 0.01, 0] : [0, 0, 0.01],
       high: moodKey === 'day' ? [0.02, 0.015, 0] : [0, 0, 0],
     });
+    ground.update();
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -1080,8 +1083,12 @@ export function createMinasWorld(canvas, { onLost } = {}) {
     } else if (type === 'door') A.shake = Math.max(A.shake, 0.06);
   };
 
+  // ── the floor's light, baked when the town is first drawn ──
+  const ground = groundTown({ renderer, scene, terrain: [land, ...streets], outdoors: zones.city, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: WALL_R[0] + 25, shade: 0x34302a });
+
   return {
-    scene: import.meta.env.DEV ? scene : null,
+    ground: import.meta.env.DEV ? ground : null, // for the QA scripts
+    scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
     resize: stage.resize,
@@ -1093,6 +1100,7 @@ export function createMinasWorld(canvas, { onLost } = {}) {
       return stage.lost;
     },
     dispose() {
+      ground.dispose();
       clearThings();
       ghosts.dispose();
       disposeTree(scene);

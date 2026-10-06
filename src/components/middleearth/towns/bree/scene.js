@@ -23,6 +23,7 @@ import { createFx } from '../../shire/fx';
 import { bake, farTree } from '../bake';
 import { createGhosts } from '../ghosts';
 import { makePuddles, makeTerrain, makeTufts } from '../ground';
+import { FIGURE, groundTown } from '../grounded';
 import { makeRain } from '../rain';
 import { createWraithKit } from '../wraiths';
 import { createBreeKit, makeFolk } from './props';
@@ -146,7 +147,8 @@ export function createBreeWorld(canvas, { onLost } = {}) {
   const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water: puddles.material, stage, moods: MOODS });
 
   // ── the ground ──
-  outdoors.add(makeTerrain(renderer, { size: WORLD.edge * 2, seg: tier === 'high' ? 210 : tier === 'mid' ? 150 : 100, height, paint, blades: 0.22 }));
+  const terrain = makeTerrain(renderer, { size: WORLD.edge * 2, seg: tier === 'high' ? 210 : tier === 'mid' ? 150 : 100, height, paint, blades: 0.22 });
+  outdoors.add(terrain);
   const wind = { uWind: { value: 0 } };
   outdoors.add(makeTufts(Math.round(9000 * many), { radius: 62, height, growable, seed: 41 }, wind));
 
@@ -257,17 +259,11 @@ export function createBreeWorld(canvas, { onLost } = {}) {
   outdoors.add(bake(statics, [gates.west.group, gates.east.group]));
 
   // ── the people ──
-  const blobGeo = new THREE.CircleGeometry(0.42, 20).rotateX(-Math.PI / 2);
-  const blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.32, depthWrite: false });
+  // (each stands on a soft blob slid away from the sun, and dims in the
+  // baked shade: ../grounded.js)
+  const movers = [];
   const blob = (f, s = 1) => {
-    f.group.traverse((o) => {
-      if (o.isMesh) o.castShadow = false;
-    });
-    const b = new THREE.Mesh(blobGeo, blobMat);
-    b.position.y = 0.04;
-    b.scale.setScalar(s);
-    b.renderOrder = 1;
-    f.group.add(b);
+    movers.push({ object: f.group, size: [FIGURE * s, FIGURE * s] });
     return f;
   };
   const frodo = blob(makeFolk('frodo'));
@@ -708,6 +704,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     rain.update(camera, t, inside ? 0 : wet, frodo.group.position);
     sun.position.copy(frodo.group.position).addScaledVector(sunDir, 70);
     sun.target.position.copy(frodo.group.position);
+    ground.update();
     renderer.info.reset();
     stage.render(ms / fast); // (the real frame time, however fast the QA runs the clock)
   };
@@ -738,7 +735,11 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     return { x: (p.x * 0.5 + 0.5) * w, y: (-p.y * 0.5 + 0.5) * hh };
   };
 
+  // ── the floor's light, baked when the town is first drawn ──
+  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height, people: movers, skip: [sky.dome, ghosts.group, puddles.mesh], tier, radius: WORLD.radius + 10, shade: 0x262a30 });
+
   return {
+    ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
@@ -756,6 +757,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
       return A.suggest ?? null;
     },
     dispose() {
+      ground.dispose();
       ghosts.dispose();
       disposeTree(inn.group);
       stage.dispose();

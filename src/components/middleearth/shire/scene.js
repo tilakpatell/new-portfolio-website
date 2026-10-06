@@ -20,6 +20,7 @@ import { pose } from '../mapFigures';
 import { createShireKit } from './props';
 import { loadDoorLeaf } from './models';
 import { instances, makeFlowers, makeGrass, makeTerrain, makeWater, swaying } from './ground';
+import { FIGURE, groundTown } from '../towns/grounded';
 import { makeAtmosphere, makeSky } from './sky';
 import { createFx } from './fx';
 import { calm, dance, makePerson, sit } from './people';
@@ -106,7 +107,8 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water: water.material, stage });
 
   // ── the ground ──
-  outdoors.add(makeTerrain(renderer, { seg: tier === 'high' ? 220 : tier === 'mid' ? 160 : 110 }));
+  const terrain = makeTerrain(renderer, { seg: tier === 'high' ? 220 : tier === 'mid' ? 160 : 110 });
+  outdoors.add(terrain);
   const wind = { uWind: { value: 0 } };
   outdoors.add(makeGrass(Math.round(21000 * many), wind));
 
@@ -381,21 +383,11 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const riderLight = new THREE.PointLight(0x8aa4ff, 0, 14, 1.6);
   riderLight.position.set(-1.2, 4.2, 1.5);
   rider.group.add(riderLight);
-  // everyone who moves about, for culling by distance. Only Frodo casts a
-  // real shadow; the rest stand on a soft dark blot, which is one draw
-  // instead of a dozen more in the shadow pass
+  // everyone who moves about, for culling by distance. Frodo and the rest
+  // stand on soft blobs slid away from the sun, all of them one draw, and dim
+  // in the baked shade (../towns/grounded.js): no shadow pass
   const crowd = [...Object.values(people), gandalf, lobelia, ...guests, ...sheep];
-  const blobGeo = new THREE.CircleGeometry(0.42, 20).rotateX(-Math.PI / 2);
-  const blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.26, depthWrite: false });
-  for (const f of [...crowd, ...dogs]) {
-    f.group.traverse((o) => {
-      if (o.isMesh) o.castShadow = false;
-    });
-    const blob = new THREE.Mesh(blobGeo, blobMat);
-    blob.position.y = 0.04;
-    blob.renderOrder = 1;
-    f.group.add(blob);
-  }
+  const movers = [frodo, ...crowd, ...dogs].map((f) => ({ object: f.group, size: [FIGURE, FIGURE] }));
 
   // ── markers: where there's something to do ──
   const markerMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 1.9, 0.7) });
@@ -757,7 +749,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     const focus = s.mode === 'inside' ? INSIDE : s.mode === 'show' ? tmp2.set(20, 0, -14) : frodo.group.position;
     sun.target.position.copy(focus);
     sun.position.copy(focus).addScaledVector(sunDir, 70);
-    sun.castShadow = renderer.shadowMap.enabled && s.mode !== 'inside';
+    ground.update();
     renderer.info.reset();
     stage.render(ms);
   };
@@ -831,7 +823,11 @@ export function createShireWorld(canvas, { onLost } = {}) {
     return { x: (p.x * 0.5 + 0.5) * w, y: (-p.y * 0.5 + 0.5) * hh };
   };
 
+  // ── the floor's light, baked when the Shire is first drawn outdoors ──
+  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height: groundY, people: movers, skip: [sky.dome, ghosts.group, water.group], tier, radius: WORLD.radius + 10, shade: 0x2c3018 });
+
   return {
+    ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
@@ -848,6 +844,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     },
     dispose() {
       gone = true;
+      ground.dispose();
       ghosts.dispose();
       stage.dispose();
     },
