@@ -14,6 +14,9 @@
 //   setVisible?(on)          its box came on or went off screen
 //   update?(props)           new props from the page
 //   lowerQuality?()          still slow at the lowest sharpness: simplify
+//   warmUp?(timeLeft) → bool draw everything once, out of sight, a slice at
+//                            a time (made while the page is covered: see
+//                            `covered` below); true once it's done
 //   dispose()
 //   ready?                   a promise: its shaders are compiled (see
 //                            lib/three/renderer's precompile); the first
@@ -34,8 +37,19 @@ const READY_WAIT = 4000; // ms at most a scene's `ready` holds back its first fr
 
 // Something full screen over the whole page (the opening crawl, the cockpit)
 // sets html[data-covered]: scenes underneath stay made but draw nothing until
-// it's gone (App sends tp:uncover then).
+// it's gone (App sends tp:uncover then). One made meanwhile warms up, out of
+// sight, a slice at a time while the page is idle (its warmUp), so its first
+// frame as it's uncovered (the cockpit's flash, for the universe) doesn't
+// stop to send everything to the graphics chip.
 const covered = () => typeof document !== 'undefined' && 'covered' in document.documentElement.dataset;
+// fn(timeLeft) when the page has a moment; timeLeft() is the ms it can spare
+const whenIdle = (fn) => {
+  if (typeof requestIdleCallback === 'function') return requestIdleCallback((deadline) => fn(() => deadline.timeRemaining()), { timeout: 500 });
+  return setTimeout(() => {
+    const t = performance.now();
+    fn(() => Math.max(0, 12 - (performance.now() - t)));
+  }, 50);
+};
 
 export function useScene(load, { enabled = true, props, id = 'scene', near: nearMargin = '100% 0px 100% 0px' } = {}) {
   const wrap = useRef(null);
@@ -182,6 +196,19 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
           view.current = v;
           v.setVisible?.(visible.current);
           setStatus('ready');
+          if (v.warmUp && covered()) {
+            const slice = (timeLeft) => {
+              if (dead || view.current !== v || !covered()) return;
+              let done = true;
+              try {
+                done = v.warmUp(timeLeft) !== false;
+              } catch (err) {
+                if (import.meta.env.DEV) console.warn(`[${id}] warm-up failed`, err);
+              }
+              if (!done) whenIdle(slice);
+            };
+            whenIdle(slice);
+          }
           L.kick();
         } catch (err) {
           if (import.meta.env.DEV) console.error(`[${id}] 3D failed`, err);

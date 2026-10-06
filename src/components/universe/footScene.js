@@ -806,7 +806,7 @@ function createGround(planet, u, R, trench = null, look = null) {
           vec3 near = vec3(1.0);
           ${style.bump === 'plating' ? 'vec4 pl = texture2D(bumpMap, vBumpMapUv);\n          float blocks = texture2D(bumpMap, vBumpMapUv * 0.137 + 0.29).g;' : 'float n1 = texture2D(bumpMap, vBumpMapUv).r;\n          float n2 = texture2D(bumpMap, vBumpMapUv * 7.31 + 0.37).r;\n          float n3 = texture2D(bumpMap, vBumpMapUv * 0.117 + 0.71).r;'}
           ${style.glsl}
-          diffuseColor.rgb *= mix(near, base, smoothstep(0.35, 1.0, vEdge));`
+          diffuseColor.rgb *= mix(near, base, smoothstep(0.8, 1.0, vEdge));`
                 : `// grit, stones and patches over it, fading out toward the patch's edge
           float n1 = texture2D(bumpMap, vBumpMapUv).r;
           float n2 = texture2D(bumpMap, vBumpMapUv * 7.31 + 0.37).r;
@@ -816,7 +816,7 @@ function createGround(planet, u, R, trench = null, look = null) {
           }
         }`,
       )
-      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>${plated ? PLATE_GLOW : style?.glow ? `{${style.glow}\n}` : ''}`);
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>${plated ? PLATE_GLOW : style?.glow ? `\n{${style.glow}\n}` : ''}`);
   };
   mat.customProgramCacheKey = () => (plated ? 'foot-ground-plated' : style ? `foot-ground-${look.style}` : 'foot-ground');
   const mesh = new THREE.Mesh(g, mat);
@@ -1688,6 +1688,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       }
       g.name = o.name;
       g.ally = o.ally;
+      g.looks = o.looks ?? null; // (how they dress their Rick and Morty)
       g.ship = { n: o.foot.ship.n, r: 0.62 * 0.26 * (PARKED[o.foot.kind] ?? 1) * 0.55 };
       [o.foot.lead, o.foot.mate].forEach((to, i) => {
         let wk = g.walkers[i];

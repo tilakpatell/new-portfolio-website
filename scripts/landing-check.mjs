@@ -1,4 +1,4 @@
-/* global window, document */
+/* global window */
 // A browser check of the planet landings (universe/landings/). With the dev
 // server up (npx vite --port 5173):
 //   OUT=/tmp/shots node scripts/landing-check.mjs [planet ...] [--ship falcon] [--phone]
@@ -54,13 +54,15 @@ for (const id of planets) {
   await page.waitForTimeout(2500);
   const landed = await page.evaluate(() => window.__universeDebug.startFoot());
   console.log(landed ? 'ok  ' : 'FAIL', id, 'landing');
+  const card = await page.waitForSelector('.universe-arrive-title', { timeout: 15000 }).then((el) => el.textContent(), () => null);
+  console.log(card ? 'ok  ' : 'FAIL', id, `title card: ${card}`);
   await page.waitForTimeout(2500);
   await shot(`${id}-1-down`);
   await page.waitForFunction(() => window.__universeDebug.foot.phase === 'walk', null, { timeout: 120000, polling: 500 }).catch(async () => console.log('FAIL', id, 'crew never out:', await page.evaluate(() => window.__universeDebug.foot.phase)));
   await page.waitForTimeout(6000);
   await shot(`${id}-2-out`);
-  const info = await page.evaluate(() => ({ ...window.__universe(), arrive: document.querySelector('.universe-arrive-title')?.textContent ?? null }));
-  console.log(`     ${id}: ${info.calls} calls, ${Math.round(info.triangles / 1000)}k triangles, card: ${info.arrive}`);
+  const info = await page.evaluate(() => window.__universe());
+  console.log(`     ${id}: ${info.calls} calls, ${Math.round(info.triangles / 1000)}k triangles`);
   // look round: turn on the spot a third, twice
   for (const k of [1, 2]) {
     await page.evaluate(() => window.__universeDebug.foot.look(330, 0));

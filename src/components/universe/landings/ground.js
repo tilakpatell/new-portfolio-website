@@ -67,14 +67,15 @@ export const STYLES = {
     glsl: `
       near = mix(uA, uB, n3) * (0.78 + 0.42 * n2);
       near *= 1.0 - (1.0 - smoothstep(0.0, 0.012, abs(n1 - 0.5))) * 0.45;
-      float bay = step(abs(fract(m.x / 3.0) - 0.5) * 3.0, 0.07) * step(fract(m.y / 14.0), 0.38);
+      // (bays painted in a lot here and there, not everywhere)
+      float bay = step(abs(fract(m.x / 3.0) - 0.5) * 3.0, 0.07) * step(fract(m.y / 14.0), 0.38) * step(0.62, n3);
       near = mix(near, uC, bay * 0.85);`,
   },
   // plating: panels in two metals, the seams and vents glowing the third
   // colour (energon, on Cybertron), pulsing slowly
   plating: {
     bump: 'plating',
-    repeat: 0.36,
+    repeat: 0.7,
     bumpScale: 2.0,
     roughness: 0.5,
     metalness: 0.45,
