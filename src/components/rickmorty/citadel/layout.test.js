@@ -50,6 +50,15 @@ describe('the Citadel’s concourse', () => {
   it('lets the crowd walk its loops without walking through anything', () => {
     for (const loop of CROWD_LOOPS) for (const [a, b] of legs(loop)) expect(legClear(a, b, 0.4), `${a} → ${b}`).toBe(true);
   });
+  it('walks the crowd clear of the places to stop', () => {
+    const near = (s, [a, b]) => {
+      const dx = b[0] - a[0];
+      const dz = b[1] - a[1];
+      const t = Math.max(0, Math.min(1, ((s.x - a[0]) * dx + (s.z - a[1]) * dz) / (dx * dx + dz * dz)));
+      return Math.hypot(s.x - a[0] - t * dx, s.z - a[1] - t * dz);
+    };
+    for (const loop of CROWD_LOOPS) for (const leg of legs(loop)) for (const s of SPOTS) expect(near(s, leg), `${leg[0]} → ${leg[1]} by ${s.id}`).toBeGreaterThan(s.r + 0.4);
+  });
   it('can reach every spot from the portal', () => {
     for (const s of SPOTS) expect(reachable(START, s), s.id).toBe(true);
   });

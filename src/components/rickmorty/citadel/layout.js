@@ -39,6 +39,8 @@ export const DOORS = {
   council: { x: 0, z: -40 },
   hangar: { x: 27.6, z: 27.6, w: 7 },
   portal: { x: 0, z: 38.6 },
+  // the lift down to Mortytown (./mortytown.js), across from the hangar
+  mortytown: { x: -27.6, z: 27.6, w: 7 },
 };
 
 // Candidate Morty's booth, in the north-west, facing the core
@@ -117,6 +119,7 @@ export const SPOTS = [
   { id: 'ballot', x: -19.4, z: -19.4, r: 2.2 },
   { id: 'hangar', x: 25.4, z: 25.4, r: 2.2 },
   { id: 'portal', x: 0, z: 35, r: 2.2 },
+  { id: 'mortytown', x: -25.4, z: 25.4, r: 2.2 },
 ];
 export const spot = (id) => SPOTS.find((s) => s.id === id);
 
@@ -144,7 +147,7 @@ export const CROWD_LOOPS = [
   ring(12.5, 14),
   [[25, -10], [31, -10], [31, 8], [25, 8]],
   [[-10, -27], [10, -27], [10, -31], [-10, -31]],
-  [[-26, 12], [-14, 21], [-20, 28], [-30, 19]],
+  [[-26, 12], [-14, 21], [-17, 27], [-30, 18]],
 ];
 
 // The Cop Ricks' rounds on red alert: round the core, the east side, the
