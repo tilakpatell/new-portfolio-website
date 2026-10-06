@@ -84,3 +84,18 @@ The owner's note: the worlds looked empty even where the textures were good. One
 - The scans fade at 90 m: past that the ground is the shader's own noise. A second, coarser repeat (the way `lib/three/surface.js`'s antiTile does) would carry the grain further without the repeat showing.
 - The space view's planets read soft from orbit (procedural noise per pixel, `bodies.js`): a normal or a finer octave for the near view.
 - Switching system or mission by editing the URL's hash while on a surface leaves the old world drawn until the new one is in; go through the galaxy and it's fine.
+
+## Heroes, the lightsaber and the enemies that fight back (6 October 2026, the PR after the grounds)
+
+### Done
+- **Who you play as** (`galaxy/heroes.js`, pure and tested; `surface/HeroPanel.jsx` offers it from the corner button with your name on it; kept under `tp-galaxy-hero`): Luke, Leia, Han, Chewie, Ahsoka, Boba Fett, each a rigged figure the site already had (`public/models/galaxy/crew/`, all on the crew's skeleton). The hero walks in the lead of the party (`scene.js` reads `ctx.hero` through `heroSpec`), the ship's own crewmate stays your mate; `peers.js` knows the heroes too, so other pilots see who you are. The view remounts on a change (its key carries the choice).
+- **The lightsaber** is a gun kind (`universe/gunplay.js`'s `saber`: the hilt along the fist, the blade out of the thumb side, `blade: true`), so the grip and arm that hold a blaster hold it and the lit stance is gunplay's aimed one. `surface/saber.js` poses over that after `gp.set`: three strokes that chain into a combo (F), the block (hold C: bolts that come from inside the blade's cone bounce off it, `blaster.js`'s `deflect`), the throw (R: out and back on a raised cosine, spinning flat, hitting what it passes). The rules (`saberRules.js`: the strokes' arcs, the combo window, the arc hit, the throw's path, the block's cone) are pure and tested. Blade colour and hilt (five styles: Skywalker, Luke's own, Ahsoka's curved white, a curved fencer's, the Temple guard's gold) are the player's. Sounds: a hum while it's lit, the snap-hiss, the stroke's sweep, the clash (`sounds.js`'s `saber`).
+- **Enemies that do more than stand and shoot** (`surface/hostiles.js`, pure and tested; `activity.js` runs them): bursts (`hostile.burst`: stormtroopers in the docking bay, snowtroopers), strafing round you (`hostile.strafe`: Nevarro's death troopers, Sorgan's mercenaries), a shield that soaks hits and flashes where it's struck (`hostile.shield`: droidekas on Kashyyyk's beach and Naboo's plains), a blade that turns your strokes (`hostile.parry`: the Vader vision on Dagobah, now a duellist who comes for you). Tuskens charge.
+
+### Left
+- The other pilots' sabers stay dark: `peers.js` mirrors only `aim`; send `lit` and the colour with the walk packet and light theirs.
+- A two-handed grip for the saber (the left hand under the right on the hilt) would read more like Luke's; gunplay's `support` cups the gun hand, which is close but not it.
+- The lowered carry holds the hilt out forward from the fist (gunplay's muzzle-down carry, the hilt being along +y); a saber-specific carry (hilt hanging, point down) is a small special case in `gunplay.js`'s `set`.
+- Enemy sabers are only a parry chance and a melee swipe; a visible blade on the vision (a `saber` gunplay on the actor) would sell it.
+- Checked headless on Tatooine (swings, block, throw and catch, the panel) and in the tests; not yet on a phone's touch buttons (Throw and Block appear for a saber hero).
+
