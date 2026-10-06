@@ -25,11 +25,29 @@
 
 import * as THREE from 'three';
 import { createFleet } from './glbFleet';
-import { forward } from './ship';
+import { SOLIDS, forward } from './ship';
 import { RIFT_R, riftSpot } from './nav';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
 
-const STAR_DESTROYER = 16; // map units long
+export const STAR_DESTROYER = 16; // map units long
+
+// Where a Star Destroyer drops in by a ship ({ x, y, z, heading }): 28 ahead
+// and 10 off to `side` (1 or −1), broadside on, a little below; but never
+// inside anything solid (parked at a station, 28 ahead is its middle): the
+// other side, then further aside, until it's clear of every solid by more
+// than its own half-length. [x, y, z] in the map's space.
+export function destroyerSpot(ship, side, solids = SOLIDS) {
+  const [fx, fz] = forward(ship.heading);
+  const at = (aside, s) => [ship.x + fx * 28 - fz * s * aside, ship.y - 0.5, ship.z + fz * 28 + fx * s * aside];
+  const clear = (p) => solids.every((o) => Math.hypot(p[0] - o.at[0], p[1] - o.at[1], p[2] - o.at[2]) > o.r + STAR_DESTROYER * 0.6);
+  for (const aside of [10, 30, 60]) {
+    for (const s of [side, -side]) {
+      const p = at(aside, s);
+      if (clear(p)) return p;
+    }
+  }
+  return at(10, side);
+}
 const STAY = 55; // seconds it stays before jumping away
 const JUMP = 0.7; // seconds to come out of (or go into) hyperspace
 const FLARE_RISE = 3; // seconds the star swells before the shell leaves it
@@ -231,9 +249,8 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
         sd.group.visible = false;
         parent.add(sd.group);
       }
-      const [fx, fz] = forward(ship.heading);
       const side = Math.random() < 0.5 ? -1 : 1;
-      piece.at.set(ship.x + fx * 28 - fz * side * 10, ship.y - 0.5, ship.z + fz * 28 + fx * side * 10);
+      piece.at.set(...destroyerSpot(ship, side));
       // crossing your path, slowly
       piece.heading = ship.heading + side * (Math.PI / 2 + 0.3);
       const [dx, dz] = forward(piece.heading);

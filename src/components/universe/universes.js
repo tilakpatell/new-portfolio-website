@@ -20,10 +20,14 @@
 //   sign     a station's big sign: its name, and a line under it
 //   palette  the colours it's painted in
 
+import { HOME_SCALE } from './scale';
+
 // how much bigger than its size number each kind is drawn, in map units:
 // the planets huge against the ship (0.26 long: a hundred and more of it
-// across, as far-off worlds are), the stations a good deal less so
-const STATION = 7;
+// across, as far-off worlds are), the stations less so but still dwarfing
+// it (80 to 97 ship lengths across, scale.js's HOME_SCALE), and smaller
+// than any world
+const STATION = 7 * HOME_SCALE;
 const PLANET = 28;
 
 const CORE = [
