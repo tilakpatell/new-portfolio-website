@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import '@fontsource/press-start-2p/400.css';
 import { useAchievements } from '../Achievements';
@@ -17,13 +18,15 @@ import GuideCue from '../guide/GuideCue';
 // Dot Matrix, the world: walk and jump about a Game Boy island in its four
 // greens, find the eight cartridges (each one a project of mine), and play
 // the giant Game Boy in the square, which is the real console from the
-// emulator's project page. The rules are in ./rules.js, the drawing in
+// emulator's project page, or the giant N64 beside it, which is the Mario 64
+// tribute (../mario64/), full screen over the island. The rules are in ./rules.js, the drawing in
 // ./scene.js and ./dither.js; this is the keys, the HUD and the talking.
 // Everyone else online on the island shows as a pale ghost with their name
 // over them (the Middle-earth towns' travellers, in a room of its own).
 // Without 3D, the cartridges are a list and the Game Boy plays on its own.
 
 const GameBoyStage = lazy(() => import('../../stages/GameBoyStage'));
+const Mario64 = lazy(() => import('../mario64/Mario64'));
 const sounds = () => import('./sounds');
 const PALETTE = 'tp-dmg-palette';
 const MUSIC = 'tp-dmg-music';
@@ -96,6 +99,7 @@ function World({ gl, setGl }) {
   const [shown, setShown] = useState(0); // letters of the dialog typed so far
   const [list, setList] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [n64, setN64] = useState(false);
   const [banner, setBanner] = useState(null);
   const [moved, setMoved] = useState(false);
   const dialogRef = useRef(null);
@@ -197,7 +201,8 @@ function World({ gl, setGl }) {
     if (el) PALETTES[palette].shades.forEach((c, i) => el.style.setProperty(`--dm-${i}`, c));
   }, [palette, gl]);
 
-  const live = gl === 'on' && inView && !playing;
+  // (the island stops drawing while a console is being played)
+  const live = gl === 'on' && inView && !playing && !n64;
 
   // the tune: once you've pressed something, while the world's on screen
   const startMusic = useCallback(() => {
@@ -266,6 +271,19 @@ function World({ gl, setGl }) {
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
   }, [playing]);
+
+  // the N64 fills the screen, and the page under it holds still; the game
+  // takes Esc itself (it pauses, and leaves from its title or pause menu)
+  const closeN64 = useCallback(() => setN64(false), []);
+  useEffect(() => {
+    if (!n64) return undefined;
+    const html = document.documentElement;
+    const was = html.style.overflow;
+    html.style.overflow = 'hidden';
+    return () => {
+      html.style.overflow = was;
+    };
+  }, [n64]);
 
   // drag the world to turn the camera; two fingers pinch to zoom
   const drag = useRef(null);
@@ -354,6 +372,10 @@ function World({ gl, setGl }) {
     } else if (near.kind === 'gameboy') {
       s.keys.clear();
       setPlaying(true);
+    } else if (near.kind === 'n64') {
+      s.keys.clear();
+      s.stick = { x: 0, y: 0 };
+      setN64(true);
     } else if (near.kind === 'pipe') {
       s.warp = { id: near.id, t: 0, done: false };
       api.current?.fx('warp', { dir: -1 });
@@ -536,7 +558,7 @@ function World({ gl, setGl }) {
   }, live);
 
   const p = progress(sim.current.g);
-  const prompt = hud.near && !dialog ? { sign: 'Read', talk: 'Talk', gameboy: 'Play the Game Boy', pipe: 'Go down the pipe' }[hud.near.kind] : null;
+  const prompt = hud.near && !dialog ? { sign: 'Read', talk: 'Talk', gameboy: 'Play the Game Boy', n64: 'Play the N64', pipe: 'Go down the pipe' }[hud.near.kind] : null;
 
   return (
     <div ref={box}>
@@ -704,6 +726,14 @@ function World({ gl, setGl }) {
           </div>
         )}
       </div>
+      {/* (on the page's body: the island's section is a layer under the nav) */}
+      {n64 &&
+        createPortal(
+          <Suspense fallback={<div className="dm-n64-wait" role="status">Switching on…</div>}>
+            <Mario64 mode="overlay" onExit={closeN64} />
+          </Suspense>,
+          document.body,
+        )}
     </div>
   );
 }
