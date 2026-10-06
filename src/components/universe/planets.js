@@ -30,34 +30,42 @@ import { STATIONS } from './stations';
 import { buildGateway } from '../galaxy/gateway';
 import { SIDES, cybertronSkin } from '../cybertron/skin';
 import { createWar, warZones } from '../cybertron/war';
+import { ringGeometry } from '../middleearth/ringShape';
 
 const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the scene's key light
 
 // ── Textures ──
 
 const BASE = '/textures/universe/';
-const PLANET_MAPS = ['music', 'middleearth', 'transformers', 'marvel', 'breakingbad', 'office', 'rickmorty', 'earth', 'earth-clouds', 'earth-night', 'invincible', 'invincible-clouds', 'invincible-night', 'sun', 'sky'];
-const FIXED = ['middleearth-glow', 'rickmorty-glow', 'invincible-glow'];
-const DATA = ['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-normal-sm', 'transformers-glow-sm', 'middleearth-normal', 'breakingbad-normal', 'invincible-normal', 'earth-rough'];
-const COLOUR = ['plates', 'hull'];
+// Each map: whether it has a half-size copy for phones (`sm`) and whether
+// it's a colour (sRGB) or data (normals, roughness, a cloud's alpha). The
+// fandoms' own maps are baked by scripts/build-fandom-planets.mjs (Middle-earth,
+// …) or scripts/build-universe-textures.py (the rest), Cybertron's and
+// Invincible's by their own scripts.
+const MAPS = {
+  // colour, with a phone copy
+  ...Object.fromEntries(['music', 'middleearth', 'middleearth-night', 'middleearth-clouds', 'transformers', 'marvel', 'breakingbad', 'office', 'rickmorty', 'earth', 'earth-night', 'invincible', 'invincible-night', 'sun', 'sky'].map((n) => [n, { sm: true, colour: true }])),
+  // data, with a phone copy
+  ...Object.fromEntries(['middleearth-normal', 'earth-clouds', 'invincible-clouds'].map((n) => [n, { sm: true, colour: false }])),
+  // colour, one size
+  ...Object.fromEntries(['middleearth-glow', 'rickmorty-glow', 'invincible-glow', 'plates', 'hull'].map((n) => [n, { sm: false, colour: true }])),
+  // data, one size
+  ...Object.fromEntries(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-normal-sm', 'transformers-glow-sm', 'middleearth-rough', 'breakingbad-normal', 'invincible-normal', 'earth-rough'].map((n) => [n, { sm: false, colour: false }])),
+};
 
 export async function loadTextures({ small = false } = {}) {
   const T = { small }; // (and whether this is a phone, for the builders)
-  const get = async (name, file, colour) => {
-    try {
-      // (decoded off the main thread, as sharp as the device's tier allows,
-      // and shared with any other scene that wants the same map)
-      T[name] = await loadTexture(BASE + file, { color: colour });
-    } catch {
-      /* missing: whoever wanted it does without */
-    }
-  };
-  await Promise.all([
-    ...PLANET_MAPS.map((n) => get(n, `${n}${small ? '-sm' : ''}.webp`, !n.endsWith('-clouds'))),
-    ...FIXED.map((n) => get(n, `${n}.webp`, true)),
-    ...DATA.map((n) => get(n, `${n}.webp`, false)),
-    ...COLOUR.map((n) => get(n, `${n}.webp`, true)),
-  ]);
+  await Promise.all(
+    Object.entries(MAPS).map(async ([name, { sm, colour }]) => {
+      try {
+        // (decoded off the main thread, as sharp as the device's tier allows,
+        // and shared with any other scene that wants the same map)
+        T[name] = await loadTexture(`${BASE}${name}${sm && small ? '-sm' : ''}.webp`, { color: colour });
+      } catch {
+        /* missing: whoever wanted it does without */
+      }
+    }),
+  );
   return T;
 }
 
@@ -199,6 +207,139 @@ function bigSign(u) {
   return mesh;
 }
 
+// A line of letters in the Elvish hand, as the Ring's inscription is
+// written: a run of tengwar, stems with bows (some rising above the line,
+// some falling below), the looped lambe and the curved silmë, the hooked
+// rómen and óre, with the vowels as marks over them (dots, accents,
+// curls), in words with gaps between: white on black, painted into the
+// band of v [b0, b1] (the texture is flipped: v = 1 is the top row).
+function tengwar(g, w, h, b0, b1, rand) {
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, w, h);
+  const mid = (1 - b1) * h + ((b1 - b0) * h) / 2;
+  const x = (b1 - b0) * h * 0.19; // the letters' body
+  g.strokeStyle = '#fff';
+  g.fillStyle = '#fff';
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  g.lineWidth = x * 0.13;
+  g.shadowColor = '#fff';
+  g.shadowBlur = x * 0.3;
+  const base = mid + x * 0.5;
+  const top = base - x;
+  const path = (fn) => {
+    g.beginPath();
+    fn();
+    g.stroke();
+  };
+  // each letter draws at `at` and says how wide it was
+  const LETTERS = [
+    // tinco, parma, calma, quesse: a stem and one bow, the stem up or down
+    (at, k) => {
+      const up = k < 0.5 ? x * 0.95 : 0;
+      const down = k >= 0.5 ? x * 0.95 : 0;
+      path(() => {
+        g.moveTo(at, top - up);
+        g.lineTo(at, base + down);
+      });
+      path(() => {
+        g.moveTo(at, top + x * 0.05);
+        g.bezierCurveTo(at + x * 0.75, top - x * 0.1, at + x * 0.75, base + x * 0.1, at + x * 0.05, base);
+      });
+      return x * 0.75;
+    },
+    // ando, umbar: two bows
+    (at, k) => {
+      path(() => {
+        g.moveTo(at, top - (k < 0.4 ? x * 0.95 : 0));
+        g.lineTo(at, base + (k >= 0.4 ? x * 0.95 : 0));
+      });
+      for (const dx of [0, x * 0.45]) {
+        path(() => {
+          g.moveTo(at + dx, top + x * 0.05);
+          g.bezierCurveTo(at + dx + x * 0.62, top - x * 0.1, at + dx + x * 0.62, base + x * 0.1, at + dx + x * 0.05, base);
+        });
+      }
+      return x * 1.15;
+    },
+    // lambe: a loop open below, its tail curling up
+    (at) => {
+      path(() => {
+        g.moveTo(at, base);
+        g.bezierCurveTo(at - x * 0.05, top - x * 0.2, at + x * 0.85, top - x * 0.2, at + x * 0.75, base - x * 0.15);
+        g.quadraticCurveTo(at + x * 0.7, base + x * 0.1, at + x * 0.95, base - x * 0.05);
+      });
+      return x * 0.95;
+    },
+    // silmë: an s-curve
+    (at) => {
+      path(() => {
+        g.moveTo(at + x * 0.6, top + x * 0.1);
+        g.bezierCurveTo(at - x * 0.1, top - x * 0.1, at - x * 0.1, mid, at + x * 0.3, mid + x * 0.05);
+        g.bezierCurveTo(at + x * 0.75, mid + x * 0.1, at + x * 0.7, base + x * 0.2, at, base - x * 0.05);
+      });
+      return x * 0.7;
+    },
+    // rómen and óre: a hook
+    (at, k) => {
+      path(() => {
+        if (k < 0.5) {
+          g.moveTo(at, base);
+          g.lineTo(at, top + x * 0.25);
+          g.bezierCurveTo(at, top - x * 0.15, at + x * 0.55, top - x * 0.15, at + x * 0.55, top + x * 0.3);
+        } else {
+          g.moveTo(at, top);
+          g.bezierCurveTo(at + x * 0.7, top, at + x * 0.7, base, at + x * 0.2, base);
+          g.lineTo(at + x * 0.1, base + x * 0.35);
+        }
+      });
+      return x * 0.62;
+    },
+  ];
+  const WEIGHTS = [0.36, 0.14, 0.2, 0.14, 0.16];
+  const pick = () => {
+    let k = rand();
+    for (let i = 0; i < WEIGHTS.length; i++) if ((k -= WEIGHTS[i]) <= 0) return i;
+    return 0;
+  };
+  let at = x * 0.6;
+  let inWord = 0;
+  while (at < w - x * 1.8) {
+    const width = LETTERS[pick()](at, rand());
+    // a vowel's mark above: a dot (or three), an accent or a curl
+    const t = rand();
+    const tx = at + width * 0.45;
+    const ty = top - x * 0.45;
+    if (t < 0.2) {
+      g.beginPath();
+      g.arc(tx, ty, x * 0.08, 0, Math.PI * 2);
+      g.fill();
+    } else if (t < 0.3) {
+      for (const [dx, dy] of [[-0.15, 0.05], [0.15, 0.05], [0, -0.15]]) {
+        g.beginPath();
+        g.arc(tx + dx * x, ty + dy * x, x * 0.065, 0, Math.PI * 2);
+        g.fill();
+      }
+    } else if (t < 0.48) {
+      path(() => {
+        g.moveTo(tx - x * 0.08, ty + x * 0.12);
+        g.lineTo(tx + x * 0.14, ty - x * 0.14);
+      });
+    } else if (t < 0.62) {
+      path(() => {
+        g.moveTo(tx - x * 0.28, ty + x * 0.05);
+        g.bezierCurveTo(tx - x * 0.1, ty - x * 0.22, tx + x * 0.05, ty + x * 0.22, tx + x * 0.28, ty - x * 0.05);
+      });
+    }
+    at += width + x * 0.3;
+    inWord++;
+    if (inWord > 2 + rand() * 5) {
+      at += x * 0.85;
+      inWord = 0;
+    }
+  }
+}
+
 // ── The fandoms ──
 
 const BUILDERS = {
@@ -286,40 +427,42 @@ const BUILDERS = {
 
   middleearth(p, { u, T }) {
     const r = u.size;
+    // Tolkien's map from orbit (scripts/planets/middleearth.mjs): Lindon and
+    // the Gulf of Lhûn, the Misty and White Mountains, Mirkwood, Rohan's
+    // grass, the Anduin to the Bay of Belfalas, Mordor's black walls round
+    // Gorgoroth with Orodruin alight, the Sea of Rhûn, Harad's sands; the
+    // sea catches the sun, the cities light the night side, and Mordor's
+    // smoke hangs over the Black Land
     p.body.material = new THREE.MeshStandardMaterial({
       map: T.middleearth ?? null,
       color: T.middleearth ? '#ffffff' : u.palette.base,
       normalMap: T['middleearth-normal'] ?? null,
-      normalScale: new THREE.Vector2(1.1, 1.1),
+      normalScale: new THREE.Vector2(1, 1),
+      roughnessMap: T['middleearth-rough'] ?? null,
+      roughness: 1,
+      metalness: 0,
       emissive: '#ffffff',
       emissiveMap: T['middleearth-glow'] ?? null,
-      emissiveIntensity: T['middleearth-glow'] ? 1.4 : 0,
-      roughness: 0.95,
+      emissiveIntensity: T['middleearth-glow'] ? 2.2 : 0,
     });
-    // the One Ring, its inscription lit
-    const rand = rng('ring');
-    const words = paint(
-      (g, w, h) => {
-        g.fillStyle = '#000';
-        g.fillRect(0, 0, w, h);
-        g.strokeStyle = '#ffd9a0';
-        g.lineWidth = 1.4;
-        g.lineCap = 'round';
-        for (const y0 of [h * 0.1, h * 0.9]) {
-          for (let x = 4; x < w - 6; x += 7) {
-            g.beginPath();
-            g.moveTo(x, y0 + 3);
-            g.quadraticCurveTo(x + 2 + rand() * 3, y0 - 4 - rand() * 2, x + 5, y0 + (rand() - 0.5) * 3);
-            if (rand() < 0.4) g.arc(x + 3, y0 + 2, 1.6, 0, Math.PI * 2);
-            g.stroke();
-          }
-        }
-      },
-      512,
-      32,
-    );
-    const ringMat = new THREE.MeshStandardMaterial({ color: '#e0a83a', metalness: 1, roughness: 0.22, emissive: '#ff6a12', emissiveMap: words, emissiveIntensity: 0.9 });
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 0.26, r * 0.06, 20, 72), ringMat);
+    p.night = T['middleearth-night'] ?? null;
+    if (T['middleearth-clouds']) {
+      // on the body, so the pall stays over Mordor; it sways a little, as weather
+      const sky = new THREE.Mesh(
+        new THREE.SphereGeometry(r * 1.01, T.small ? 44 : 72, T.small ? 28 : 48),
+        new THREE.MeshStandardMaterial({ map: T['middleearth-clouds'], transparent: true, depthWrite: false, roughness: 1, metalness: 0 }),
+      );
+      p.body.add(sky);
+      p.tick.push((t) => (sky.rotation.y = Math.sin(t * 0.021) * 0.035));
+    }
+    // the One Ring: the plain band the Ring page turns (middleearth/ringShape.js),
+    // with its inscription burning round the outside in one line of
+    // Elvish letters, as it shows in the fire
+    const { geo: band, band: [b0, b1] } = ringGeometry(160);
+    const words = paint((g, w, h) => tengwar(g, w, h, b0, b1, rng('ring')), 2048, 256);
+    const ringMat = new THREE.MeshStandardMaterial({ color: '#e6a53e', metalness: 1, roughness: 0.2, emissive: '#ff5a12', emissiveMap: words, emissiveIntensity: 1.1 });
+    const ring = new THREE.Mesh(band, ringMat);
+    ring.scale.setScalar(r * 0.24);
     const o = orbit(p.group, { radius: r * 1.55, tilt: 0.42, speed: 0.22, phase: 4 });
     o.holder.add(ring);
     p.orbits.push(o);
