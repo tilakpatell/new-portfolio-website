@@ -14,10 +14,12 @@
 //
 // The catalogue is src/components/cybertron/game/catalog.js (the game reads
 // it too). An entry: { uid, as, metres, along, yaw, up, tris, tex, maps,
-// gain, drop, colours, rig, node, file, role, era }, as in sketchfab-surface.mjs,
-// plus `node` (a RegExp source: keep only the scene's nodes whose name, or
-// an ancestor's, matches, for a file that holds several robots side by
-// side) and what the game wants to know (file, role, era).
+// gain, drop, colours, rig, node, pose, also, file, role, era }, as in
+// sketchfab-surface.mjs, plus `node` (a RegExp source: keep only the scene's
+// nodes whose name, or an ancestor's, matches, for a file that holds several
+// robots side by side), `pose` (a still model from a rigged one: its bones as
+// its first clip has them that many seconds in), `also` (other pages that
+// show it, for its credit) and what the game wants to know (file, role, era).
 //
 //   NODE_USE_ENV_PROXY=1 node scripts/sketchfab-cybertron.mjs [kind …]
 //       the catalogue's models (all, or those named), with their credits
@@ -71,7 +73,7 @@ async function download(kind, uid) {
 }
 
 // who made it, from the model's public page
-async function credit(kind, uid, as) {
+async function credit(kind, uid, as, also) {
   const m = await json(`${API}/${uid}`);
   const license = LICENCES[m.license?.slug];
   if (!license) throw new Error(`${kind}: its licence (${m.license?.label}) isn't one the site can use`);
@@ -83,6 +85,7 @@ async function credit(kind, uid, as) {
     licenseUrl: m.license.url,
     source: m.viewerUrl,
     where: 'cybertron',
+    ...(also ? { also } : {}),
     as,
     file: `/models/cybertron/${kind}.glb`,
   };
@@ -111,6 +114,46 @@ function invert4(m) {
   return o;
 }
 
+// The bones set as the model's first clip has them `at` seconds in (a still
+// model taken from a rigged one: the High Moon robots' rest is a T, their
+// clips stand them as the games did), for unskinned() to bake.
+const posed = (at) => (doc) => {
+  const clip = doc.getRoot().listAnimations()[0];
+  if (at == null || !clip) return;
+  for (const ch of clip.listChannels()) {
+    const node = ch.getTargetNode();
+    const sampler = ch.getSampler();
+    const prop = ch.getTargetPath();
+    if (!node || !sampler || !['translation', 'rotation', 'scale', 'weights'].includes(prop)) continue;
+    const times = sampler.getInput().getArray();
+    const out = sampler.getOutput();
+    // (a morph's weights: one number a key for each of its targets)
+    const size = prop === 'weights' ? (node.getMesh()?.listPrimitives()[0]?.listTargets().length ?? 0) : out.getElementSize();
+    if (!size) continue;
+    // (a cubic spline keeps an in-tangent, the value and an out-tangent per key)
+    const cubic = sampler.getInterpolation() === 'CUBICSPLINE';
+    const value = (i) => (prop === 'weights' ? Array.from({ length: size }, (_, j) => out.getScalar((cubic ? i * 3 + 1 : i) * size + j)) : out.getElement(cubic ? i * 3 + 1 : i, []));
+    let i = 0;
+    while (i < times.length - 1 && times[i + 1] <= at) i++;
+    const a = value(i);
+    const b = value(Math.min(i + 1, times.length - 1));
+    const span = times[i + 1] - times[i];
+    const k = sampler.getInterpolation() === 'STEP' || !(span > 0) ? 0 : Math.min(1, Math.max(0, (at - times[i]) / span));
+    // (a rotation: the shorter way round, normalised after)
+    const sign = prop === 'rotation' && a.reduce((s, x, j) => s + x * b[j], 0) < 0 ? -1 : 1;
+    let v = a.map((x, j) => x + (sign * b[j] - x) * k);
+    if (prop === 'rotation') {
+      const l = Math.hypot(...v) || 1;
+      v = v.map((x) => x / l);
+    }
+    if (size !== v.length) continue;
+    if (prop === 'translation') node.setTranslation(v);
+    else if (prop === 'rotation') node.setRotation(v);
+    else if (prop === 'scale') node.setScale(v);
+    else node.setWeights(v);
+  }
+};
+
 // A model that never moves, held in a skeleton anyway: each skinned part
 // baked as its bones hold it, back into its own node's frame, a plain mesh
 // after (as scripts/sketchfab-galaxy.mjs does); its animations go too.
@@ -120,6 +163,43 @@ const unskinned = () => (doc) => {
   for (const a of root.listAnimations()) {
     for (const s of a.listSamplers()) s.dispose();
     a.dispose();
+  }
+  // (morph targets first, as a renderer would: each part as its weights blend it)
+  for (const node of root.listNodes()) {
+    const mesh = node.getMesh();
+    if (!mesh) continue;
+    const weights = node.getWeights().length ? node.getWeights() : mesh.getWeights();
+    for (const prim of mesh.listPrimitives()) {
+      const targets = prim.listTargets();
+      for (const semantic of ['POSITION', 'NORMAL']) {
+        const base = prim.getAttribute(semantic);
+        if (!base || !targets.length) continue;
+        const A = new Float32Array(base.getCount() * 3);
+        const v = [];
+        const d = [];
+        for (let i = 0; i < base.getCount(); i++) {
+          base.getElement(i, v);
+          targets.forEach((t, k) => {
+            const delta = t.getAttribute(semantic);
+            if (!weights[k] || !delta) return;
+            delta.getElement(i, d);
+            for (let r = 0; r < 3; r++) v[r] += weights[k] * d[r];
+          });
+          if (semantic === 'NORMAL') {
+            const l = Math.hypot(...v) || 1;
+            for (let r = 0; r < 3; r++) v[r] /= l;
+          }
+          A.set(v, i * 3);
+        }
+        prim.setAttribute(semantic, doc.createAccessor().setType('VEC3').setArray(A).setBuffer(base.getBuffer()));
+      }
+      for (const t of targets) {
+        prim.removeTarget(t);
+        t.dispose();
+      }
+    }
+    mesh.setWeights([]);
+    node.setWeights([]);
   }
   for (const node of root.listNodes()) {
     const skin = node.getSkin();
@@ -166,6 +246,35 @@ const unskinned = () => (doc) => {
     }
     node.setSkin(null);
   }
+};
+
+// What a pose hides, gone: a High Moon robot keeps its vehicle's panels
+// folded to a point inside it while it stands (and a part with no size
+// spoils the file's compression and its bounds)
+const unseen = () => (doc) => {
+  const spans = [];
+  for (const node of doc.getRoot().listNodes()) {
+    const m = node.getMesh();
+    if (!m) continue;
+    for (const prim of m.listPrimitives()) {
+      const pos = prim.getAttribute('POSITION');
+      const lo = [Infinity, Infinity, Infinity];
+      const hi = [-Infinity, -Infinity, -Infinity];
+      const p = [];
+      for (let i = 0; i < pos.getCount(); i++) {
+        pos.getElement(i, p);
+        for (let r = 0; r < 3; r++) {
+          lo[r] = Math.min(lo[r], p[r]);
+          hi[r] = Math.max(hi[r], p[r]);
+        }
+      }
+      const s = node.getWorldMatrix();
+      const scale = Math.max(Math.hypot(s[0], s[1], s[2]), Math.hypot(s[4], s[5], s[6]), Math.hypot(s[8], s[9], s[10]));
+      spans.push([prim, Math.max(...hi.map((x, r) => x - lo[r])) * scale]);
+    }
+  }
+  const most = Math.max(0, ...spans.map(([, s]) => s));
+  for (const [prim, s] of spans) if (!(s > most * 1e-3)) prim.dispose();
 };
 
 // Its materials made for daylight on a world: nothing more than half metal
@@ -343,7 +452,7 @@ async function bring(io, kind, spec) {
   // (a rig's clips with the keyframes that change nothing taken out: a
   // High Moon robot's transformation is thousands of them)
   if (spec.rig) await doc.transform(dequantize(), dedup(), metalRough(), relit(spec), prune(), bareWhereUntextured(), weld(), resample({ tolerance: 1e-4 }));
-  else await doc.transform(dequantize(), unskinned(), dedup(), metalRough(), relit(spec), prune(), bareWhereUntextured(), weld(), flatten(), join({ keepNamed: false }), weld());
+  else await doc.transform(dequantize(), posed(spec.pose), unskinned(), unseen(), dedup(), metalRough(), relit(spec), prune(), bareWhereUntextured(), weld(), flatten(), join({ keepNamed: false }), weld());
   await doc.transform(simplified(spec.tris));
   await doc.transform(grounded(spec));
   // (a still model: its turn and scale baked into its parts)
@@ -437,7 +546,7 @@ async function main() {
   for (const kind of args.length ? args : Object.keys(MODELS)) {
     const spec = MODELS[kind];
     await bring(io, kind, { ...spec, drop: typeof spec.drop === 'string' ? new RegExp(spec.drop, 'i') : spec.drop });
-    credits[`cybertron-${kind}`] = await credit(kind, spec.uid, spec.as);
+    credits[`cybertron-${kind}`] = await credit(kind, spec.uid, spec.as, spec.also);
   }
   const sorted = Object.fromEntries(Object.keys(credits).sort().map((k) => [k, credits[k]]));
   await writeFile(CREDITS, `${JSON.stringify(sorted, null, 2)}\n`);
