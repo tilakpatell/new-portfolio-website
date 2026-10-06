@@ -299,9 +299,8 @@ export const SITES = {
     scatter: [
       { kind: 'nabootree', n: 80, within: [50, 600], scale: [0.7, 1.4], flat: 0.9 },
       // (the Lake Country round Varykino, as the film's Lake Como villa: dark
-      // cypress spindles about the terraces, broad trees down to the water)
-      { kind: 'cypress', n: 30, around: [372, 330], within: [28, 80], scale: [0.8, 1.25], flat: 0.8, opts: { seed: 13, h: 16 } },
-      { kind: 'nabootree', n: 8, around: [372, 330], within: [40, 95], scale: [0.8, 1.2], flat: 0.85 },
+      // cypress spindles about the terraces)
+      { kind: 'cypress', n: 34, around: [372, 330], within: [28, 85], scale: [0.8, 1.25], flat: 0.8, opts: { seed: 13, h: 16 } },
       { kind: 'rock', n: 50, within: [40, 560], scale: [0.6, 2.4], opts: { color: '#8e8a78', sharp: 0.3 } },
     ],
     life: [
