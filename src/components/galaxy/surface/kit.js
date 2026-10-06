@@ -231,6 +231,44 @@ function broadLeafTexture(seed = 9) {
   return keepCoverage(t);
 }
 
+// moss and vines hanging, alpha-cut, from the top edge down: a dozen wavy
+// strands of different lengths, ragged at their ends (Dagobah's trees,
+// draped; the creepers on the temples)
+function strandTexture(seed = 10) {
+  const r = rng(seed);
+  const t = canvasTexture(256, (c, n) => {
+    c.clearRect(0, 0, n, n);
+    c.lineCap = 'round';
+    for (let i = 0; i < 14; i++) {
+      const x0 = n * (0.08 + r() * 0.84);
+      const len = n * (0.35 + r() * 0.62);
+      const w = 3 + r() * 5;
+      const v = 170 + r() * 70;
+      c.strokeStyle = `rgb(${v * 0.92},${v},${v * 0.86})`;
+      c.lineWidth = w;
+      c.beginPath();
+      c.moveTo(x0, 0);
+      for (let y = 0; y < len; y += 8) {
+        const k = y / len;
+        c.lineTo(x0 + Math.sin(y * 0.045 + i) * 6 * k, y);
+        c.lineWidth = w * (1 - k * 0.6);
+      }
+      c.stroke();
+      // (wisps off it, toward the end)
+      for (let j = 0; j < 5; j++) {
+        const y = len * (0.4 + r() * 0.55);
+        c.lineWidth = 1.5;
+        c.beginPath();
+        c.moveTo(x0, y);
+        c.lineTo(x0 + (r() - 0.5) * 14, y + 8 + r() * 14);
+        c.stroke();
+      }
+    }
+  });
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return keepCoverage(t);
+}
+
 // A cut-out texture's mip levels made by hand, each level's alpha scaled so
 // as much of it is over the cut as at full size: far-off foliage stays as
 // thick as near (left to the graphics chip, averaging thins it away)
@@ -357,6 +395,9 @@ export function createKit({ seed = 11, scans = true } = {}) {
     // (the smooth solid middle of a crown the leaf cards sit on, so the
     // light doesn't pour through it)
     crown: std({ roughness: 0.85 }, 1),
+    // (moss and vines hanging; a reed's or a grass's blades, two-sided)
+    strands: std({ roughness: 0.9, side: THREE.DoubleSide, map: own(strandTexture(seed + 4)), alphaTest: 0.3, alphaToCoverage: true }, 1),
+    blades: std({ roughness: 0.85, side: THREE.DoubleSide }, 1),
     dark: std({ roughness: 0.55, metalness: 0.2 }, 1),
     glass: own(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.08, metalness: 0.3, transparent: true, opacity: 0.55 })),
     glow: own(new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false })),
@@ -371,6 +412,8 @@ export function createKit({ seed = 11, scans = true } = {}) {
     ['crown', 'tree'],
     ['fronds', 'shrub'],
     ['broadleaf', 'shrub'],
+    ['strands', 'shrub'],
+    ['blades', 'shrub'],
   ]) {
     wrapLighting(mats[name], { wrap: 0.45, backScatter: 0.35 });
     if (mats[name].side === THREE.DoubleSide) faceless(mats[name]);

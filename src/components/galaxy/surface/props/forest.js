@@ -322,66 +322,104 @@ function fernParts({ seed = 3, color = '#4a7430', n = 9, len = 1.3 } = {}) {
   return { parts };
 }
 
-// a Dagobah gnarltree: a squat twisted trunk on arching roots, its limbs
-// writhing out, moss hanging from them, a thin grey-green crown
-function gnarlParts({ seed = 4, bark = '#4c463a', moss = '#7d8a5a', leaf = '#46522e', h = 9, roots = 6 } = {}) {
+// Moss hanging from a limb at `at`, `len` long: two cards crossed, the
+// strand texture on them (kit.mats.strands), lit as the tree is round it
+function hanging(at, len, { w = 1.2, color = '#6e735a', turn = 0 } = {}) {
+  const out = [];
+  for (const a of [0, PI / 2]) {
+    const g = new THREE.PlaneGeometry(w, len, 1, 3).translate(0, -len / 2, 0).rotateY(turn + a).translate(...at);
+    out.push(part(upNormals(g, { keep: 0.5 }), { color, to: 'strands', uv: true, shade: (x, y) => 0.65 + 0.35 * smooth(at[1] - len, at[1], y) }));
+  }
+  return out;
+}
+
+// a Dagobah gnarltree, as the film's are (ESB's swamp set): no leafy crown,
+// a trunk of strands braided round each other, rising from a tangle of
+// roots arching out of the water, its limbs writhing out and down, draped
+// in long curtains of grey-green moss; pale where the roots' tops catch
+// the light. `lo`: fewer limbs and curtains (far off, in the fog).
+function gnarlParts({ seed = 4, bark = '#4c463a', moss = '#6e735a', h = 14, roots = 8, lo = false } = {}) {
   const rand = rng(seed);
   const parts = [];
   const B = { color: bark, to: 'bark' };
-  // the roots, arching up out of the water to the trunk
-  const base = 2.2 + rand();
+  const pale = { color: new THREE.Color(bark).lerp(new THREE.Color('#a2a6a8'), 0.35), to: 'bark' };
+  // the roots, arching up out of the water to the trunk, a little sinuous
+  const base = 2.4 + rand() * 0.8;
   for (let i = 0; i < roots; i++) {
-    const a = (i / roots) * TAU + rand() * 0.6;
-    const out = 3.2 + rand() * 2.2;
+    const a = (i / roots) * TAU + rand() * 0.5;
+    const out = 3.5 + rand() * 2.5;
+    const wob = (rand() - 0.5) * 0.5;
     const pts = [
-      [cos(a) * 0.5, base, sin(a) * 0.5],
-      [cos(a) * out * 0.45, base + 0.5, sin(a) * out * 0.45],
-      [cos(a + 0.2) * out * 0.8, base * 0.6, sin(a + 0.2) * out * 0.8],
-      [cos(a + 0.3) * out, -0.4, sin(a + 0.3) * out],
+      [cos(a) * 0.45, base + 0.4, sin(a) * 0.45],
+      [cos(a + wob) * out * 0.35, base + 0.7, sin(a + wob) * out * 0.35],
+      [cos(a - wob) * out * 0.65, base * 0.75, sin(a - wob) * out * 0.65],
+      [cos(a + wob * 0.5) * out * 0.88, base * 0.3, sin(a + wob * 0.5) * out * 0.88],
+      [cos(a) * out, -0.5, sin(a) * out],
     ];
-    for (let j = 0; j < 3; j++) parts.push(rod(pts[j], pts[j + 1], 0.42 - j * 0.1, 0.32 - j * 0.1, B, 6));
+    for (let j = 0; j < 4; j++) parts.push(rod(pts[j], pts[j + 1], 0.32 - j * 0.05, 0.26 - j * 0.05, j < 2 ? pale : B, 6));
   }
-  // the trunk, twisting up
-  let at = [0, base - 0.3, 0];
-  const steps = 4;
-  for (let i = 0; i < steps; i++) {
-    const next = [at[0] + (rand() - 0.5) * 1.4, at[1] + (h - base) / steps, at[2] + (rand() - 0.5) * 1.4];
-    parts.push(rod(at, next, 1.0 - i * 0.14, 0.86 - i * 0.14, B, 7));
-    parts.push(part(new THREE.SphereGeometry(0.9 - i * 0.14, 6, 4), { at: next, color: bark, to: 'bark' }));
-    at = next;
+  // the trunk: three strands twisting round each other up to where it splits
+  const split = h * 0.62;
+  const steps = 6;
+  const twist = 1.6 + rand() * 1.2;
+  let top = [0, split, 0];
+  for (let k = 0; k < 3; k++) {
+    let p = null;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const a = (k / 3) * TAU + twist * t * TAU * 0.5;
+      const rr = 0.42 * (1 - t * 0.35);
+      const lean = [(rand() - 0.5) * 0.25, (rand() - 0.5) * 0.25];
+      const q = [cos(a) * rr + lean[0] * t, base - 0.2 + (split - base + 0.2) * t, sin(a) * rr + lean[1] * t];
+      if (p) parts.push(rod(p, q, 0.36 - t * 0.08, 0.34 - t * 0.08, B, 6));
+      p = q;
+    }
+    top = p;
   }
-  const top = at;
-  // the limbs, writhing out, moss hanging off them, a tuft of leaves at each end
-  const limbs = 4 + Math.floor(rand() * 2);
+  top = [top[0] * 0.3, split, top[2] * 0.3];
+  // the limbs, writhing out and drooping, moss hanging all along them
+  const limbs = lo ? 3 : 5 + Math.floor(rand() * 2);
   for (let i = 0; i < limbs; i++) {
     const a = (i / limbs) * TAU + rand() * 0.8;
-    let p = [top[0], top[1] - rand() * 2, top[2]];
-    const reach = 3.5 + rand() * 3;
+    let p = [top[0], top[1] + (rand() - 0.3) * h * 0.25, top[2]];
+    const reach = 4 + rand() * 4;
     for (let j = 0; j < 3; j++) {
-      const q = [p[0] + cos(a + (rand() - 0.5) * 0.9) * reach * 0.4, p[1] + (j === 0 ? 1.2 : rand() * 1.4 - 0.3), p[2] + sin(a + (rand() - 0.5) * 0.9) * reach * 0.4];
-      parts.push(rod(p, q, 0.42 - j * 0.12, 0.3 - j * 0.1, B, 5));
-      // moss, hanging
-      if (rand() < 0.8) {
-        const l = 1.2 + rand() * 2.4;
-        parts.push(part(new THREE.ConeGeometry(0.22 + rand() * 0.15, l, 4), { at: [q[0], q[1] - l / 2, q[2]], rot: [PI, rand() * PI, 0], color: moss, to: 'crown' }));
+      const q = [p[0] + cos(a + (rand() - 0.5) * 0.9) * reach * 0.38, p[1] + (j === 0 ? 1.4 + rand() : rand() * 1.2 - 0.6), p[2] + sin(a + (rand() - 0.5) * 0.9) * reach * 0.38];
+      parts.push(rod(p, q, 0.3 - j * 0.07, 0.22 - j * 0.06, B, 5));
+      // (the curtains: long, two or three to a stretch of limb)
+      const n = lo ? 1 : 2 + Math.floor(rand() * 2);
+      for (let m = 0; m < n; m++) {
+        const f = (m + 0.5) / n;
+        const at = [p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f, p[2] + (q[2] - p[2]) * f];
+        parts.push(...hanging(at, 2 + rand() * 4.5, { w: 0.9 + rand() * 0.8, color: new THREE.Color(moss).offsetHSL(0, 0, (rand() - 0.5) * 0.1), turn: rand() * PI }));
       }
       p = q;
     }
-    const s = 2.4 + rand() * 1.6;
-    parts.push(...canopy([p[0], p[1] + 0.3, p[2]], s, { flat: 0.45, color: new THREE.Color(leaf).offsetHSL(0, 0, (rand() - 0.5) * 0.08), seed: seed * 13 + i, density: 0.5 }));
   }
   return { parts };
 }
 
-// reeds and swamp grass: a clump of thin blades
-function reedParts({ seed = 5, color = '#6a7444', n = 12, h = 1.6 } = {}) {
+// reeds and swamp grass: a clump of blades (kit.mats.blades), each a
+// tapering strip leaning out and bending over, dark at the water and
+// paler at the tip
+function reedParts({ seed = 5, color = '#6a7444', n = 14, h = 1.6 } = {}) {
   const rand = rng(seed);
   const parts = [];
   for (let i = 0; i < n; i++) {
     const a = rand() * TAU;
-    const d = rand() * 0.5;
+    const d = rand() * 0.45;
     const l = h * (0.5 + rand() * 0.7);
-    parts.push(part(new THREE.ConeGeometry(0.035, l, 3), { at: [cos(a) * d, l / 2, sin(a) * d], rot: [(rand() - 0.5) * 0.5, 0, (rand() - 0.5) * 0.5], color: new THREE.Color(color).offsetHSL(0, 0, (rand() - 0.5) * 0.12), to: 'leaf' }));
+    const w = 0.05 + rand() * 0.04;
+    const g = new THREE.PlaneGeometry(w, l, 1, 3).translate(0, l / 2, 0);
+    const p = g.attributes.position;
+    const bend = 0.15 + rand() * 0.35;
+    for (let k = 0; k < p.count; k++) {
+      const t = p.getY(k) / l;
+      p.setX(k, p.getX(k) * (1 - t * 0.85));
+      p.setZ(k, bend * l * t * t);
+    }
+    g.computeVertexNormals();
+    parts.push(part(upNormals(g, { keep: 0.5 }), { at: [cos(a) * d, 0, sin(a) * d], rot: [(rand() - 0.5) * 0.3, rand() * TAU, 0], color: new THREE.Color(color).offsetHSL(0, 0, (rand() - 0.5) * 0.12), to: 'blades', shade: (x, y) => 0.55 + 0.45 * smooth(0, h, y) }));
   }
   return { parts };
 }

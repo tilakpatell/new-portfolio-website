@@ -535,7 +535,9 @@ export const SITES = {
     },
     fog: { color: '#97a28c', density: 0.0105 },
     light: { sun: 1.3, sky: '#c4ceb4', ground: '#3a4028', ambient: 1.05 },
-    water: { level: 0, color: '#3e4a32', deep: '#161c12', kind: 'swamp' },
+    // (the swamp's water as filmed: black where it's deep, the mist's own
+    // grey where it catches it)
+    water: { level: 0, color: '#4a5650', deep: '#141a16', kind: 'swamp' },
     dust: '#5a5a40',
     edge: 'The mist closes in. Your lamp barely reaches your feet. Best go back.',
     ground: { detail: 'mud', detailLook: { color: 0.8, normal: 0.8 },
@@ -547,11 +549,12 @@ export const SITES = {
         { type: 'hills', scale: 38, height: 1.8 },
       ],
       palette: {
-        low: '#3a3824',
-        high: '#4c5630',
+        // (mud, brown-grey, wet at the water; moss in patches)
+        low: '#3c3629',
+        high: '#4a4535',
         rock: '#4a4436',
-        accent: '#5a6834',
-        deep: '#2a2a1c',
+        accent: '#4c5232',
+        deep: '#26221a',
         hLow: 0,
         hHigh: 1.8,
         rockAt: 0.55,
@@ -560,7 +563,7 @@ export const SITES = {
         wet: { level: 0, band: 0.5, color: '#22241a' },
       },
     },
-    weather: [{ kind: 'motes', count: 1000, color: '#d8e8a0' }],
+    weather: [{ kind: 'motes', count: 1000, color: '#fff2d0' }],
     land: { at: [0, 0], yaw: -0.5, h: 0.7 },
     lines: {
       out: {
@@ -677,12 +680,14 @@ export const SITES = {
     things: grove(31, 46, 30, 190, ['dagocypress', 'dagocypress', 'dagoroots'], [0.7, 1.25]).filter(({ at: [x, z] }) => [[-90, 60, 30], [40, 74, 34], [-70, -120, 30], [100, -60, 32], [-26, -46, 24], [130, 110, 30], [0, 0, 26]].every(([px, pz, r]) => Math.hypot(x - px, z - pz) > r)),
     scatter: [
       // great cypresses on their roots, mangrove roots standing in the bog
-      { kind: 'dagocypress', n: 60, within: [24, 560], scale: [0.7, 1.2], dry: false, sink: 0.6, solid: 1.2 },
+      // (the great trees few and far, shapes in the mist; the gnarled ones
+      // close in all round, crowded, as the film's are)
+      { kind: 'dagocypress', n: 18, within: [60, 560], scale: [0.7, 1.2], dry: false, sink: 0.6, solid: 1.2 },
       { kind: 'dagoroots', n: 40, within: [10, 420], scale: [0.8, 1.6], dry: false, sink: 0.4, solid: 0.5 },
-      { kind: 'gnarltree', n: 30, within: [24, 560], scale: [0.8, 1.5], dry: false, opts: { seed: 1 } },
-      { kind: 'gnarltree', n: 40, within: [24, 560], scale: [0.7, 1.3], dry: false, opts: { seed: 2, bark: '#55503f', leaf: '#3e4a2a', roots: 5 } },
-      { kind: 'gnarltree', n: 70, within: [560, 1000], scale: [1.0, 1.6], dry: false, solid: false, opts: { seed: 3 } },
-      { kind: 'reeds', n: 700, within: [5, 420], scale: [0.7, 1.6], solid: false, dry: false, clear: -10, opts: { seed: 4 } },
+      { kind: 'gnarltree', n: 70, within: [18, 320], scale: [0.8, 1.4], dry: false, opts: { seed: 1 } },
+      { kind: 'gnarltree', n: 60, within: [18, 420], scale: [0.7, 1.3], dry: false, opts: { seed: 2, bark: '#55503f', moss: '#5e6450', roots: 6 } },
+      { kind: 'gnarltree', n: 40, within: [420, 900], scale: [1.0, 1.6], dry: false, solid: false, opts: { seed: 3, lo: true } },
+      { kind: 'reeds', n: 700, within: [5, 420], scale: [0.7, 1.6], solid: false, dry: false, clear: -10, opts: { seed: 4, color: '#5a5c44' } },
       { kind: 'fungus', n: 220, within: [5, 420], scale: [0.8, 2], solid: false, clear: -8, opts: { seed: 5 } },
       { kind: 'fern', n: 200, within: [5, 420], scale: [0.7, 1.4], solid: false, clear: -8, opts: { seed: 6, color: '#474931' } },
       { kind: 'log', n: 36, within: [20, 460], scale: [0.7, 1.3], solid: false, dry: false, opts: { seed: 7, bark: '#4c463a', moss: '#5a6a34' } },
