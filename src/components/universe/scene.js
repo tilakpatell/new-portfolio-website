@@ -3822,6 +3822,8 @@ export async function create(canvas, ctx) {
     ambient.intensity = 1;
     // (the styles that read the light or the screen: Cybertron's seams, Dot Matrix's dither)
     for (const p of planets) p.light(key.color, post.ratio);
+    // and your ship's edges catch the fill's light, so it stands off the dark (livery.js)
+    state.model?.rim({ colour: fill.color, dir: lightNow.fill });
   };
 
   function render(ms, now) {
