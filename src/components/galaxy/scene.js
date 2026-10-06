@@ -182,7 +182,7 @@ export async function create(canvas, ctx) {
   const ambient = new THREE.AmbientLight('#9fb0d8', 0.32);
   scene.add(ambient);
 
-  const sky = createSky({ small });
+  const sky = createSky({ small, renderer });
   scene.add(sky.group);
   const jumpFx = createJump({ small });
   camera.add(jumpFx.group);
@@ -289,6 +289,7 @@ export async function create(canvas, ctx) {
     state.world = null;
     state.sys = sys;
     sky.setSystem(sys);
+    sky.bake(); // (its galaxy drawn once, for as long as you're here)
     const world = buildSystem(sys, { models, bolts, flashes, small, ratio: ratioSeen });
     world.setDetail(detail);
     scene.add(world.group);
