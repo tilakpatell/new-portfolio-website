@@ -69,7 +69,7 @@ import { createActivity } from './activity';
 import { snapToTexel } from './shadow';
 import { createShadowPhase } from './near';
 import { createBlaster } from './blaster';
-import { feed, start as startQuest, stepTarget, stepText } from './quests';
+import { feed, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, ride, rider, turnToward, walk, walker } from './walker';
 import { rng } from './noise';
@@ -804,7 +804,9 @@ export async function create(canvas, ctx) {
     if (!tg) return;
     if (tg.kind === 'talk') {
       const spec = tg.actor.spec;
-      const q = spec.quest && questOf(spec.quest);
+      // (what they offer now: their next quest not done, or their last, done)
+      const offered = nextQuest(spec, state.done) ?? questsOf(spec).at(-1);
+      const q = offered && questOf(offered);
       const step = state.quest && questOf(state.quest.id)?.steps[state.quest.step];
       if (q && !state.done.has(q.id) && !state.quest) beginQuest(q);
       else if (step?.type === 'talk' && step.actor === spec.id) questEvent({ type: 'talk', actor: spec.id });
@@ -1399,7 +1401,7 @@ export async function create(canvas, ctx) {
       } else if (id === 'quest') {
         const q = state.quest && questOf(state.quest.id);
         const step = q?.steps[state.quest.step];
-        const giver = !step && state.tracked ? life.actors.find((x) => x.spec.quest === state.tracked) : null;
+        const giver = !step && state.tracked ? life.actors.find((x) => questsOf(x.spec).includes(state.tracked)) : null;
         at = step ? (doorFor(step) ?? stepTarget(step, state.quest, actorAt)) : giver ? (giver.spec.zone && state.zone?.id !== giver.spec.zone ? site.zones.find((z) => z.id === giver.spec.zone)?.door.at : [giver.b.x, giver.b.z]) : null;
         if (!at || state.zone) {
           setStyle(m, 'opacity', '0');
@@ -1519,8 +1521,8 @@ export async function create(canvas, ctx) {
     }
     // the marks over whoever has a quest to give
     for (const a of life.actors) {
-      const q = a.spec.quest;
-      if (!q) continue;
+      if (!a.spec.quest) continue;
+      const q = nextQuest(a.spec, state.done);
       let m = givers.find((g) => g.a === a);
       if (!m) {
         m = { a, sprite: new THREE.Sprite(markMat) };
@@ -1528,7 +1530,7 @@ export async function create(canvas, ctx) {
         scene.add(m.sprite);
         givers.push(m);
       }
-      const on = !state.done.has(q) && !state.quest && a.fig;
+      const on = q && !state.quest && a.fig;
       m.sprite.visible = Boolean(on);
       if (on) m.sprite.position.set(a.b.x, a.holder.position.y + (a.fig.tall ?? 1.8) * (a.spec.scale ?? 1) + 0.6 + Math.sin(state.t * 3) * 0.08, a.b.z);
     }
