@@ -14,6 +14,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { gen3dUrl } from '../../lib/three/gen3d';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { TRENCH, portZ } from './trench';
 import { precompile, precompilePasses, quiet } from '../../lib/three/renderer';
@@ -483,7 +484,7 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   // doesn't stall a frame
   let disposed = false;
   gltfLoader()
-    .loadAsync('/models/gen3d/x-wing.glb')
+    .loadAsync(gen3dUrl('x-wing')) // the cut for this device's detail level
     .then(async ({ scene: model }) => {
       if (disposed || lost) return disposeModel(model);
       await precompile(renderer, model, camera, scene, composer.readBuffer); // (drawn through the composer)

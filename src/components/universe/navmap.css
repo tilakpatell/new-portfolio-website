@@ -296,3 +296,16 @@
   .navmap-ship-halo,
   .navmap-place[aria-current='location'] .navmap-dot { animation: none; }
 }
+
+/* the crew's war (front.js): its line of sectors, and the front */
+.navmap-war-line { fill: none; stroke: rgb(255 255 255 / 0.25); stroke-width: 2; stroke-dasharray: 4 4; }
+.navmap-war-sector { stroke: rgb(0 0 0 / 0.6); stroke-width: 1.5; }
+.navmap-war-front { fill: none; stroke: #ffb347; stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: navmap-front 1.6s ease-in-out infinite; }
+@keyframes navmap-front {
+  50% { scale: 1.35; opacity: 0.4; }
+}
+.navmap-frontbtn .navmap-name { color: #ffb347; }
+.navmap-places > li[data-kind='front'] .navmap-place { translate: calc(-100% - 10px) -50%; }
+@media (prefers-reduced-motion: reduce) {
+  .navmap-war-front { animation: none; }
+}

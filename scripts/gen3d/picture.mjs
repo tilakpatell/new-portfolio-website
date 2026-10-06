@@ -53,7 +53,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const i = args.indexOf(`--${n}`);
     return i >= 0 ? args.splice(i, 2)[1] : d;
   };
-  const opts = { seed: Number(flag('seed', 42)), size: Number(flag('size', 1024)), steps: flag('steps') && Number(flag('steps')), model: flag('model', ready('flux') ? 'flux' : 'zimage') };
+  const opts = { seed: Number(flag('seed', 42)), size: Number(flag('size', 1024)), steps: (() => { const s = flag('steps'); return s && Number(s); })(), model: flag('model', ready('flux') ? 'flux' : 'zimage') };
   const [subject, out] = args;
   if (!subject || !out) throw new Error('usage: node scripts/gen3d/picture.mjs "subject" OUT.png [--seed N] [--size N] [--steps N]');
   const r = await picture(subject, resolve(out), opts);

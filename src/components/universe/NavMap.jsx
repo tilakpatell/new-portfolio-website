@@ -308,6 +308,18 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                   if (d.type === 'Star') return <circle key={d.id} cx={x} cy={y} r={r} className="navmap-system" style={{ color: d.color }} opacity={dim ? 0.35 : 1} />;
                   return null;
                 })}
+              {/* the crew's war (front.js): its sectors in a line, each in the colour of the side
+                  that holds it, and the front where they meet, a battle going on there */}
+              {view === 'all' && now?.front && (
+                <g className="navmap-war">
+                  <polyline points={now.front.sectors.map((sec) => P(sec.at).join(',')).join(' ')} className="navmap-war-line" />
+                  {now.front.sectors.map((sec, i) => {
+                    const [x, y] = P(sec.at);
+                    return <circle key={sec.id} cx={x} cy={y} r={i === now.front.contested ? 7 : 4.5} fill={now.front.colours[sec.owner]} className="navmap-war-sector" />;
+                  })}
+                  <circle cx={P(now.front.at)[0]} cy={P(now.front.at)[1]} r="14" className="navmap-war-front" />
+                </g>
+              )}
               {/* the course: where it's going (and how), or to the place picked */}
               {shipAt && course && (
                 <line x1={shipAt[0]} y1={shipAt[1]} x2={P(course.at)[0]} y2={P(course.at)[1]} className="navmap-course" data-drive={goingTo && course === goingTo ? now.going.drive : 'plot'} />
@@ -356,6 +368,14 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                   </li>
                 );
               })}
+              {/* the war's front: to the left of its dot (the wonders round it have their names to the right) */}
+              {view === 'all' && now?.front && (
+                <li style={{ ...pct(P(now.front.at)), '--c': '#ffb347' }} data-kind="front" data-side="left">
+                  <button type="button" className="navmap-place navmap-frontbtn" disabled={!canFly} onClick={() => onTravel('front', drive)} title={canFly ? `${driveById(fallsBack ? 'super' : drive).verb} to the front` : 'Pick a ship to fly to the front'}>
+                    <span className="navmap-name">The front · {now.front.name}</span>
+                  </button>
+                </li>
+              )}
             </ul>
             {view === 'home' && (
               <button type="button" className="navmap-out" onClick={() => setView('all')}>

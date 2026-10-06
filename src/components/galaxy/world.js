@@ -32,6 +32,7 @@ import { createTrench } from '../universe/trench';
 import { trenchBand } from '../universe/deep';
 import { STATION_NAMES, reachOf } from './systems';
 import { LASER } from './fx';
+import { HULLS } from '../universe/wars';
 
 const TAU = Math.PI * 2;
 const SPIN = TAU / 900; // a planet turns once in fifteen minutes
@@ -58,19 +59,7 @@ function seeded(text) {
 }
 
 // How each big ship fills its box, for flying into: spheres along its
-// length, [z (−0.5 the stern … 0.5 the bow), radius], as shares of its length
-// (its biggest side). Thin enough that the space beside a hull is open.
-const HULLS = {
-  destroyer: [[-0.4, 0.09], [-0.24, 0.085], [-0.08, 0.075], [0.08, 0.06], [0.24, 0.045], [0.38, 0.03]],
-  executor: [[-0.45, 0.04], [-0.36, 0.035], [-0.27, 0.032], [-0.18, 0.03], [-0.09, 0.028], [0, 0.026], [0.09, 0.024], [0.18, 0.021], [0.27, 0.018], [0.36, 0.014], [0.44, 0.01]],
-  venator: [[-0.4, 0.085], [-0.22, 0.08], [-0.04, 0.07], [0.14, 0.055], [0.32, 0.035]],
-  acclamator: [[-0.36, 0.11], [-0.12, 0.1], [0.12, 0.08], [0.34, 0.05]],
-  munificent: [[-0.36, 0.08], [-0.12, 0.08], [0.12, 0.08], [0.36, 0.1]],
-  moncal: [[-0.38, 0.12], [-0.14, 0.13], [0.1, 0.12], [0.34, 0.09]],
-  nebulon: [[-0.38, 0.07], [-0.1, 0.05], [0.18, 0.08], [0.38, 0.07]],
-  corvette: [[-0.36, 0.1], [-0.1, 0.06], [0.14, 0.06], [0.36, 0.12]],
-  hammerhead: [[-0.36, 0.08], [-0.06, 0.05], [0.24, 0.05], [0.42, 0.1]],
-};
+// length (universe/wars.js's HULLS, shared with the fleet war's battles).
 const ROUND = { coreship: 0.48, deathstar2: 0.47 };
 
 // the way a holder turns to point its nose (+z) along `dir`, its top toward `up`
