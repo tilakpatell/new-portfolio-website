@@ -16,6 +16,12 @@
 //   detail  a scan (kit.js's roles: 'stone', 'adobe', 'metal'…) laid over
 //           it up close (detail.js); detailLook: withDetail's options
 export const MODELS = {
+  // Tatooine: the Lars homestead's domed hut, its arched door and the
+  // machinery against its walls (from a still of it at sunset)
+  homestead: { made: 'meshy', as: 'the Lars homestead', metres: 9, along: 'x', detail: 'adobe' },
+  // Tatooine: Jabba's palace, the keep, the watchtower and the rock it
+  // stands on (the owner's model, retextured; its gate is built)
+  palace: { made: 'meshy', as: 'Jabba’s palace', metres: 115, along: 'x', lod: true, detail: 'adobe', solids: 'built' },
   // Naboo: Theed's domed halls (from a concept image of one, which the
   // owner chose); its towers stay built
   theed: { made: 'meshy', as: "Theed's domed halls", metres: 35, along: 'x', hero: true, lod: true, styles: ['hall', 'rotunda'], detail: 'stone' },
@@ -24,10 +30,6 @@ export const MODELS = {
   // built one had decks and doors, they stay under the model (solids: 'built')
   // Yavin 4: the Great Temple, its hangar and tiers still walkable
   massassi: { made: 'meshy', lod: true, as: 'the Great Temple of Massassi', metres: 96, along: 'x', hero: true, solids: 'built' },
-  // Tatooine: Jabba's palace (its gate and the court inside stay)
-  palace: { made: 'meshy', lod: true, as: "Jabba's palace", metres: 115, along: 'x', hero: true, solids: 'built' },
-  // Tatooine: the Lars homestead's entrance dome
-  homestead: { made: 'meshy', as: 'the Lars homestead', metres: 7.5, along: 'x', solids: 'built' },
   // Endor: an Ewok hut (the village's, on their decks, scaled to each)
   ewokhut: { made: 'meshy', as: 'the Ewok huts', metres: 4, along: 'x' },
   // Naboo: Theed's royal palace on the cliff (its courtyard stays)

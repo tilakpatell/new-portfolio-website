@@ -28,5 +28,11 @@
       "image": "01a10f88-c58f-71fb-8bbe-01f366826cfa",
       "model": "01a10f8a-e8df-751e-890c-cf29de78aa83"
     }
+  },
+  "homestead": {
+    "lift": [
+      "01a10fc6-c624-740a-a90e-d63c6f5ee3ad"
+    ],
+    "model": "01a10fc8-f0a1-7095-b758-5a591ee0021b"
   }
 }

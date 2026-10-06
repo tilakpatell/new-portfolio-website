@@ -63,3 +63,13 @@ describe('the worlds’ conversations, said in their speakers’ voices', () => 
     expect(played).toHaveLength(2);
   });
 });
+
+describe('lines that are only an aside', () => {
+  it('say nothing of what’s in brackets (the beeps, the gestures)', async () => {
+    const { spoken, voiceOf } = await import('./voiced');
+    expect(spoken('(A run of beeps and whirs: he says the kids are at school.)')).toBe('');
+    expect(spoken('Hulk smash! (He grins.)')).toBe('Hulk smash!');
+    expect(voiceOf('bot')).toBeNull();
+    expect(voiceOf('bee')).toBeNull();
+  });
+});

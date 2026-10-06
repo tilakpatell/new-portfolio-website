@@ -484,6 +484,24 @@ function stopFrom(s, park, far, space = SPACE, od = 1) {
   return Math.sqrt(v2);
 }
 
+// The stick that points the nose along `dir` (a unit vector, the map's
+// axes): the turn and the tip it's off by in the ship's own frame (with a
+// touch of damping, so their inertia doesn't swing it past), and the roll
+// back upright. The autopilot steers with it, and so does anything else
+// that flies the ship somewhere for a while (entry.js's descent into a
+// planet's air).
+export function stickToward(s, dir) {
+  const q = fromAngles(s.heading, s.pitch || 0, s.bank || 0);
+  const b = rotate(conj(q), dir);
+  const yaw = Math.atan2(-b[0], -b[2]); // > 0: off to the left
+  const tip = Math.atan2(b[1], Math.sqrt(b[0] * b[0] + b[2] * b[2])); // > 0: above the nose
+  return {
+    turn: clamp(-yaw * 2.5 + (s.rate || 0) * 0.1, -1, 1),
+    climb: clamp(tip * 2.5 - (s.tipRate || 0) * 0.1, -1, 1),
+    roll: clamp(-(s.bank || 0) * 1.5 * Math.cos(s.pitch || 0), -1, 1),
+  };
+}
+
 // Flying itself to a universe (or a wonder out in deep space): the input for
 // this step, and whether it's there (parked, facing it, level with it,
 // upright). It points the nose the way it wants to go with the stick, as a
@@ -507,27 +525,12 @@ export function autopilot(s, id, park = GOALS[id] && parkAt(id, [s.x, s.z]), spa
   // go here: the home system's floor and ceiling are near)
   const ceil = space.ceilingAt(s.x, s.z) - 2;
   const ty = clamp(park.y ?? SHIP.height, -ceil, ceil) - s.y;
-  // the stick that points the nose along `dir` (a unit vector, the map's
-  // axes): the turn and the tip it's off by in the ship's own frame (with a
-  // touch of damping, so their inertia doesn't swing it past), and the roll
-  // back upright
-  const q = fromAngles(s.heading, s.pitch || 0, s.bank || 0);
-  const stick = (dir) => {
-    const b = rotate(conj(q), dir);
-    const yaw = Math.atan2(-b[0], -b[2]); // > 0: off to the left
-    const tip = Math.atan2(b[1], Math.sqrt(b[0] * b[0] + b[2] * b[2])); // > 0: above the nose
-    return {
-      turn: clamp(-yaw * 2.5 + (s.rate || 0) * 0.1, -1, 1),
-      climb: clamp(tip * 2.5 - (s.tipRate || 0) * 0.1, -1, 1),
-      roll: clamp(-(s.bank || 0) * 1.5 * Math.cos(s.pitch || 0), -1, 1),
-    };
-  };
   if (dist < 0.4 && Math.abs(ty) < 0.4) {
     // there: stop, level off and turn to face it (nudged up or down the last little bit)
     const face = wrap(park.heading - s.heading);
     const [fx, fz] = forward(park.heading);
     const done = Math.abs(face) < 0.08 && Math.abs(s.speed) < 0.25 && Math.abs(ty) < 0.25 && Math.abs(s.vy || 0) < 0.3 && Math.abs(s.pitch || 0) < 0.1 && Math.abs(s.bank || 0) < 0.1;
-    return { input: { throttle: 0, ...stick([fx, 0, fz]), hover: clamp(ty * 3 - (s.vy || 0), -1, 1) }, done };
+    return { input: { throttle: 0, ...stickToward(s, [fx, 0, fz]), hover: clamp(ty * 3 - (s.vy || 0), -1, 1) }, done };
   }
   // toward the parking spot, steering round anything the straight line
   // would clip (further ahead the faster it goes, and harder the closer it
@@ -592,7 +595,7 @@ export function autopilot(s, id, park = GOALS[id] && parkAt(id, [s.x, s.z]), spa
   const hl = Math.hypot(dx, dz) || 1;
   const rise = clamp(Math.atan2(ty * 2.5 - (s.vy || 0) * 0.4, Math.max(dist, 1)), -1.2, 1.2);
   const dir = [(dx / hl) * Math.cos(rise), Math.sin(rise), (dz / hl) * Math.cos(rise)];
-  const nose = rotate(q, NOSE);
+  const nose = rotate(fromAngles(s.heading, s.pitch || 0, s.bank || 0), NOSE);
   const off = Math.acos(clamp(nose[0] * dir[0] + nose[1] * dir[1] + nose[2] * dir[2], -1, 1));
   // no faster than it can brake from by the stop (gently, over the last
   // bit); slow for sharp turns, and hard for anything dead ahead within
@@ -608,5 +611,5 @@ export function autopilot(s, id, park = GOALS[id] && parkAt(id, [s.x, s.z]), spa
   // nothing's dead ahead
   const boost = !danger && top > SHIP.cruise && off < 0.25;
   const throttle = clamp(top / (boost ? limit : SHIP.cruise), 0.12, 1);
-  return { input: { throttle, ...stick(dir), boost, ...(od > 1 ? { overdrive: od } : {}) }, done: false };
+  return { input: { throttle, ...stickToward(s, dir), boost, ...(od > 1 ? { overdrive: od } : {}) }, done: false };
 }

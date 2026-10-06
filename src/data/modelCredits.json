@@ -1083,6 +1083,160 @@
       "galaxy"
     ]
   },
+  "m64-bobomb": {
+    "title": "Bob-Omb",
+    "author": "Zambur",
+    "authorUrl": "https://sketchfab.com/Zambur",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/bob-omb-35b12aa67da04119bf30fbd7ce11367d",
+    "where": "mario64",
+    "as": "the Bob-ombs",
+    "file": "/models/mario64/bobomb.glb"
+  },
+  "m64-chandelier": {
+    "title": "Chandelier",
+    "author": "Faheem Yusuf",
+    "authorUrl": "https://sketchfab.com/FameProductions",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/chandelier-66b536be170d42d7a8aac5992977ec11",
+    "where": "mario64",
+    "as": "the castle’s chandeliers",
+    "file": "/models/mario64/chandelier.glb"
+  },
+  "m64-chomp": {
+    "title": "Chain Chomp",
+    "author": "victor.uceta",
+    "authorUrl": "https://sketchfab.com/victor.uceta",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/chain-chomp-8612429a08864078b98d7b7a938fe46a",
+    "where": "mario64",
+    "as": "the Chain Chomp",
+    "file": "/models/mario64/chomp.glb"
+  },
+  "m64-coin": {
+    "title": "Coin (Super Mario Bros)",
+    "author": "Yanez Designs",
+    "authorUrl": "https://sketchfab.com/Yanez-Designs",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/coin-super-mario-bros-dbf9945cc49340c0a50f57338a3786ab",
+    "where": "mario64",
+    "as": "the coins",
+    "file": "/models/mario64/coin.glb"
+  },
+  "m64-goomba": {
+    "title": "Goomba",
+    "author": "KangaroOz 3D",
+    "authorUrl": "https://sketchfab.com/KangaroOz-3D",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/goomba-c2cebdfd58b1471f9da8cc555c9ca47f",
+    "where": "mario64",
+    "as": "the Goombas",
+    "file": "/models/mario64/goomba.glb"
+  },
+  "m64-king": {
+    "title": "Fan Made King Bomb Omb",
+    "author": "The Widder Star",
+    "authorUrl": "https://sketchfab.com/thewidderstar",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/fan-made-king-bomb-omb-c7d0446bf68d401e871f64f503978788",
+    "where": "mario64",
+    "as": "King Bob-omb",
+    "file": "/models/mario64/king.glb"
+  },
+  "m64-mario": {
+    "title": "mario",
+    "author": "themarik",
+    "authorUrl": "https://sketchfab.com/themarik",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/mario-bc65c57fe1b9472db828226d6ba98e82",
+    "where": "mario64",
+    "as": "Mario, whom you play",
+    "file": "/models/mario64/mario.glb"
+  },
+  "m64-oneup": {
+    "title": "1-Up Mushrooms (Super Mario Bros)",
+    "author": "Yanez Designs",
+    "authorUrl": "https://sketchfab.com/Yanez-Designs",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/1-up-mushrooms-super-mario-bros-6ba27a7f3460472d9c2356a0582d50c9",
+    "where": "mario64",
+    "as": "the 1-Up Mushrooms",
+    "file": "/models/mario64/oneup.glb"
+  },
+  "m64-pine": {
+    "title": "Pine Tree – Low Poly Stylized Tree",
+    "author": "Jimmy Johansson",
+    "authorUrl": "https://sketchfab.com/Jimmy_Johansson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/pine-tree-low-poly-stylized-tree-071914806126487b9f5067693b39f335",
+    "where": "mario64",
+    "as": "the pines",
+    "file": "/models/mario64/pine.glb"
+  },
+  "m64-rock": {
+    "title": "Stylized Rock",
+    "author": "Jaspreet Singh",
+    "authorUrl": "https://sketchfab.com/gurjasstudios",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/stylized-rock-f0309cd2e4a347c3996cd7d887cd2d4a",
+    "where": "mario64",
+    "as": "the boulders",
+    "file": "/models/mario64/rock.glb"
+  },
+  "m64-sign": {
+    "title": "Stylized Wooden Sign",
+    "author": "FrieDev",
+    "authorUrl": "https://sketchfab.com/FrieDev",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/stylized-wooden-sign-7556d3e7237749eda5ee876736e5c601",
+    "where": "mario64",
+    "as": "the signs",
+    "file": "/models/mario64/sign.glb"
+  },
+  "m64-star": {
+    "title": "Power Star",
+    "author": "SuperLock45",
+    "authorUrl": "https://sketchfab.com/SuperLock45",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/power-star-bab82082f27e45deb17b9e04183c974d",
+    "where": "mario64",
+    "as": "the Power Stars",
+    "file": "/models/mario64/star.glb"
+  },
+  "m64-toad": {
+    "title": "Toad (Super Mario Bros)",
+    "author": "Yanez Designs",
+    "authorUrl": "https://sketchfab.com/Yanez-Designs",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/toad-super-mario-bros-e1f9d2953e044729b5dfb9763e492b81",
+    "where": "mario64",
+    "as": "Toad, in the castle",
+    "file": "/models/mario64/toad.glb"
+  },
+  "m64-tree": {
+    "title": "SM64 Tree",
+    "author": "PerriSapo84",
+    "authorUrl": "https://sketchfab.com/PerriSapo84",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/sm64-tree-0ff16e2954c54972bcb9794f31199d28",
+    "where": "mario64",
+    "as": "the trees, after Super Mario 64’s own",
+    "file": "/models/mario64/tree.glb"
+  },
   "minas-tirith": {
     "title": "Minas Tirith Remake",
     "author": "Mitro123",
@@ -1359,6 +1513,20 @@
       "galaxy"
     ]
   },
+  "surface-barrels": {
+    "title": "Star-wars Barrel",
+    "author": "michael50",
+    "authorUrl": "https://sketchfab.com/michael50",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-barrel-10b2191029b44f81a6dfe08955a7ff5d",
+    "where": "galaxy-surface",
+    "as": "the barrels",
+    "file": "/models/galaxy/surface/barrels.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-battledroid": {
     "title": "Star Wars B1 Battle Droid",
     "author": "tegnemaskin",
@@ -1383,6 +1551,20 @@
     "where": "galaxy-surface",
     "as": "Baze Malbus",
     "file": "/models/galaxy/surface/baze.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-benhut": {
+    "title": "Poor Desert House",
+    "author": "Fjordreig",
+    "authorUrl": "https://sketchfab.com/Fjordreig",
+    "license": "CC-BY-NC-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
+    "source": "https://sketchfab.com/3d-models/poor-desert-house-64310fbd9b1640cdbf04f5f12ad58ba2",
+    "where": "galaxy-surface",
+    "as": "Ben Kenobi’s hut",
+    "file": "/models/galaxy/surface/benhut.glb",
     "also": [
       "galaxy"
     ]
@@ -1479,7 +1661,7 @@
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/star-wars-crate-cooler-m-3444fba1f62a45abb905fd71da1a4331",
     "where": "galaxy-surface",
-    "as": "the cargo coolers",
+    "as": "the supply coolers",
     "file": "/models/galaxy/surface/cooler.glb",
     "also": [
       "galaxy"
@@ -1583,6 +1765,20 @@
       "galaxy"
     ]
   },
+  "surface-dockingbay": {
+    "title": "Star Wars Tatooine Star Port Prop.",
+    "author": "HammerWorks",
+    "authorUrl": "https://sketchfab.com/HammerWorks",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-tatooine-star-port-prop-20863d782fb34a02871cef941ecb0aca",
+    "where": "galaxy-surface",
+    "as": "the docking bays",
+    "file": "/models/galaxy/surface/dockingbay.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-droideka": {
     "title": "Star Wars Battlefront - Droideka",
     "author": "S🅾️Meme star wars",
@@ -1635,6 +1831,20 @@
     "where": "galaxy-surface",
     "as": "the eopies",
     "file": "/models/galaxy/surface/eopie.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-escapepod": {
+    "title": "Star Wars Escape Pod",
+    "author": "LarsH.",
+    "authorUrl": "https://sketchfab.com/LarsH.",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-escape-pod-744b53ababd640c089b9db03b02c968d",
+    "where": "galaxy-surface",
+    "as": "the escape pod",
+    "file": "/models/galaxy/surface/escapepod.glb",
     "also": [
       "galaxy"
     ]
@@ -1779,6 +1989,20 @@
       "galaxy"
     ]
   },
+  "surface-hothgenerator": {
+    "title": "Star Wars Shield Generator",
+    "author": "floris05janssen",
+    "authorUrl": "https://sketchfab.com/floris05janssen",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-shield-generator-802f9af203c340af9f2674db95735dbd",
+    "where": "galaxy-surface",
+    "as": "the shield generator",
+    "file": "/models/galaxy/surface/hothgenerator.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-ig11": {
     "title": "IG-88",
     "author": "Mind Mulch for The Masses",
@@ -1789,6 +2013,20 @@
     "where": "galaxy-surface",
     "as": "IG-11",
     "file": "/models/galaxy/surface/ig11.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-impcrate": {
+    "title": "Star Wars Imperial Crate",
+    "author": "Ioana Oprisan",
+    "authorUrl": "https://sketchfab.com/ioanaoprisan",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-imperial-crate-c148bb00b7ba4c838fb2697aae9c009f",
+    "where": "galaxy-surface",
+    "as": "the Imperial cargo crates",
+    "file": "/models/galaxy/surface/impcrate.glb",
     "also": [
       "galaxy"
     ]
@@ -1891,6 +2129,20 @@
       "galaxy"
     ]
   },
+  "surface-krayt": {
+    "title": "NHM Blue Whale 6k",
+    "author": "Thomas Flynn",
+    "authorUrl": "https://sketchfab.com/nebulousflynn",
+    "license": "CC-BY-NC-SA-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "source": "https://sketchfab.com/3d-models/nhm-blue-whale-6k-018b2c21e4534f34aa9deb55141407b3",
+    "where": "galaxy-surface",
+    "as": "the krayt dragon’s bones",
+    "file": "/models/galaxy/surface/krayt.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-kuiil": {
     "title": "Kuiil",
     "author": "ThisIsntAPerson",
@@ -1957,6 +2209,104 @@
     "where": "galaxy-surface",
     "as": "the lava rocks of Nevarro",
     "file": "/models/galaxy/surface/lavarock.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-longcrate": {
+    "title": "Star Wars Crate [ Free ]",
+    "author": "Losss",
+    "authorUrl": "https://sketchfab.com/lossgraph",
+    "license": "CC-BY-SA-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-sa/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-crate-free-33158565f8424faf989a886e972900ad",
+    "where": "galaxy-surface",
+    "as": "the long cargo cases",
+    "file": "/models/galaxy/surface/longcrate.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-mosarch": {
+    "title": "Tattoine Buildings Kitbash",
+    "author": "chuckcg",
+    "authorUrl": "https://sketchfab.com/chuckcg",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/tattoine-buildings-kitbash-b5a2140fa2264bac8a4b6de3693272b6",
+    "where": "galaxy-surface",
+    "as": "the arches of Mos Eisley",
+    "file": "/models/galaxy/surface/mosarch.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-mosblock": {
+    "title": "Batiment style Moss Esley",
+    "author": "michael50",
+    "authorUrl": "https://sketchfab.com/michael50",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/batiment-style-moss-esley-e5c41d421d284ffea6fa82516a0a35e5",
+    "where": "galaxy-surface",
+    "as": "the blocks of Mos Eisley",
+    "file": "/models/galaxy/surface/mosblock.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-moshouse": {
+    "title": "Tattoine Buildings Kitbash",
+    "author": "chuckcg",
+    "authorUrl": "https://sketchfab.com/chuckcg",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/tattoine-buildings-kitbash-b5a2140fa2264bac8a4b6de3693272b6",
+    "where": "galaxy-surface",
+    "as": "the houses of Mos Eisley",
+    "file": "/models/galaxy/surface/moshouse.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-moshut": {
+    "title": "Tattoine Buildings Kitbash",
+    "author": "chuckcg",
+    "authorUrl": "https://sketchfab.com/chuckcg",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/tattoine-buildings-kitbash-b5a2140fa2264bac8a4b6de3693272b6",
+    "where": "galaxy-surface",
+    "as": "the huts of Mos Eisley",
+    "file": "/models/galaxy/surface/moshut.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-mosspire": {
+    "title": "Tattoine Buildings Kitbash",
+    "author": "chuckcg",
+    "authorUrl": "https://sketchfab.com/chuckcg",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/tattoine-buildings-kitbash-b5a2140fa2264bac8a4b6de3693272b6",
+    "where": "galaxy-surface",
+    "as": "the spires of Mos Eisley",
+    "file": "/models/galaxy/surface/mosspire.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-mostower": {
+    "title": "Tattoine Buildings Kitbash",
+    "author": "chuckcg",
+    "authorUrl": "https://sketchfab.com/chuckcg",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/tattoine-buildings-kitbash-b5a2140fa2264bac8a4b6de3693272b6",
+    "where": "galaxy-surface",
+    "as": "the towers of Mos Eisley",
+    "file": "/models/galaxy/surface/mostower.glb",
     "also": [
       "galaxy"
     ]
@@ -2129,6 +2479,20 @@
       "galaxy"
     ]
   },
+  "surface-rustycrate": {
+    "title": "Star Wars Rusty Old Metal Crate",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-rusty-old-metal-crate-9fd17f87069b459d913352fef61ab2d3",
+    "where": "galaxy-surface",
+    "as": "the rusted crates",
+    "file": "/models/galaxy/surface/rustycrate.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-sailbarge": {
     "title": "The Khetanna (Jabba's party barge) diecast",
     "author": "dandruffkielbasa",
@@ -2158,14 +2522,14 @@
     ]
   },
   "surface-sandcrawler": {
-    "title": "Star Wars Sandcrawler (exterior)",
-    "author": "tegnemaskin",
-    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "title": "Sandcrawler",
+    "author": "sviatoslav.tereshchenko",
+    "authorUrl": "https://sketchfab.com/sviatoslav.tereshchenko",
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-wars-sandcrawler-exterior-b0d602dd705240638d09500054d67d66",
+    "source": "https://sketchfab.com/3d-models/sandcrawler-af4b4facdc504e5fac8a96abf4bb770d",
     "where": "galaxy-surface",
-    "as": "the sandcrawler",
+    "as": "the Jawa sandcrawler",
     "file": "/models/galaxy/surface/sandcrawler.glb",
     "also": [
       "galaxy"
@@ -2293,6 +2657,20 @@
     "where": "galaxy-surface",
     "as": "the speeder trucks",
     "file": "/models/galaxy/surface/speedertruck.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-stall": {
+    "title": "Tattoine Buildings Kitbash",
+    "author": "chuckcg",
+    "authorUrl": "https://sketchfab.com/chuckcg",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/tattoine-buildings-kitbash-b5a2140fa2264bac8a4b6de3693272b6",
+    "where": "galaxy-surface",
+    "as": "the market stalls",
+    "file": "/models/galaxy/surface/stall.glb",
     "also": [
       "galaxy"
     ]

@@ -81,10 +81,12 @@ export const SITES = {
   mandalore: {
     place: 'The glassed plains of Mandalore',
     line: 'The Empire turned the surface to glass. Under it, the Living Waters still run.',
-    sky: sky('#5a4a78', '#c8a8c8', '#f0d8ff'),
-    fog: { color: '#a890b0', density: 0.0014 },
-    light: { sun: 2.2, sky: '#c0a8d8', ground: '#4a3a4a', ambient: 0.75 },
-    ground: { seed: 33, wind: 0.8, layers: [{ type: 'swell', scale: 420, height: 6 }, { type: 'mesas', scale: 500, height: 30, cover: 0.25, cliff: 0.05 }, { type: 'mountains', from: 650, to: 3000, height: 400, scale: 1200 }], palette: palette('#6a6070', '#8a8090', '#3a3240', '#a8d0e0', { mark: '#4a4050' }) },
+    // (as the show has it: an overcast grey-blue sky going to a pale sand
+    // haze at the horizon, pale grey-beige sand, dark glassed rock; no purple)
+    sky: sky('#7f93a3', '#c9c4b4', '#f4f1e8', { hazeColor: '#d2cbb4', below: '#8a8678', clouds: { cover: 0.55, color: '#e8e8e4', shade: '#8e9696', scale: 0.6, speed: 0.004 } }),
+    fog: { color: '#bdb8aa', density: 0.0014 },
+    light: { sun: 2.4, sky: '#b9c4cc', ground: '#8a8476', ambient: 0.8 },
+    ground: { seed: 33, wind: 0.8, layers: [{ type: 'swell', scale: 420, height: 6 }, { type: 'mesas', scale: 500, height: 30, cover: 0.25, cliff: 0.05 }, { type: 'mountains', from: 650, to: 3000, height: 400, scale: 1200 }], palette: palette('#b9ab8e', '#d0c6b2', '#3a4344', '#5f6a66', { deep: '#4a4f4c', mark: '#7a7466' }) },
     weather: [{ kind: 'sand', count: 700 }],
     land: { at: [0, 0], yaw: 2.2 },
     places: [

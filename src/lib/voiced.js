@@ -45,7 +45,7 @@ export async function voicedSrc(who, text) {
 // Council are Ricks; Evil Morty is a Morty), and the ones with no voice at
 // all: whoever narrates, a caller, a voice on the wind, the beeps and roars.
 const SAME_VOICE = { strider: 'aragorn', councila: 'rick', councilb: 'rick', councilc: 'rick', evilmorty: 'morty', president: 'morty' };
-const NO_VOICE = new Set(['narrator', 'voice', 'caller', 'r2', 'artoo', 'chewie', 'nazgul', 'orc', 'comms']);
+const NO_VOICE = new Set(['narrator', 'voice', 'caller', 'r2', 'artoo', 'chewie', 'nazgul', 'orc', 'comms', 'bot', 'bee', 'bumblebee']);
 
 // The voice a speaker's lines are made in, or null.
 export function voiceOf(who) {
@@ -54,11 +54,13 @@ export function voiceOf(who) {
 }
 
 // What of a line is said aloud: the parts in quotes, where a line mixes
-// them with narration (“Frodo?” You back away.); otherwise all of it.
+// them with narration (“Frodo?” You back away.); otherwise all of it; never
+// what's in brackets.
 // scripts/voices/export-lines.mjs makes the line from this.
 export function spoken(text) {
   const quoted = [...text.matchAll(/“([^”]+)”/g)].map((m) => m[1].trim());
-  return quoted.length ? quoted.join(' ') : text.trim();
+  const said = quoted.length ? quoted.join(' ') : text;
+  return said.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim(); // not the asides in brackets: (Beeps.)
 }
 
 let current = null;

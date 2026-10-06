@@ -14,7 +14,7 @@
 //
 // The catalogue is src/components/cybertron/game/catalog.js (the game reads
 // it too). An entry: { uid, as, metres, along, yaw, up, tris, tex, maps,
-// gain, drop, colours, rig, node, pose, also, skinnedOnly, file, role, era }, as in
+// gain, drop, colours, rig, node, pose, also, skinnedOnly, fbx, file, role, era }, as in
 // sketchfab-surface.mjs, plus `node` (a RegExp source: keep only the scene's
 // nodes whose name, or an ancestor's, matches, for a file that holds several
 // robots side by side), `pose` (a still model from a rigged one: its bones as
@@ -32,6 +32,10 @@
 //
 // The downloads stay out of the repo, in /tmp/sketchfab-cybertron/ (fetched
 // once, kept for the next run).
+//
+// The same pipeline brings in the Mario 64 tribute's cast with --world
+// mario64: its catalogue is src/components/mario64/models/catalog.js, its
+// models go to public/models/mario64/, and its credits are m64-<kind>.
 
 import { Logger, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -42,10 +46,21 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, join as path } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { unzipSync } from 'three/examples/jsm/libs/fflate.module.js';
+import { fbxToGlb } from './fbx-to-glb.mjs';
 
 const ROOT = path(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = path(ROOT, 'public', 'models', 'cybertron');
-const CATALOG = path(ROOT, 'src', 'components', 'cybertron', 'game', 'catalog.js');
+// each world's catalogue, where its models go, and its credits' prefix
+const WORLDS = {
+  cybertron: { dir: 'cybertron', catalog: ['cybertron', 'game', 'catalog.js'], prefix: 'cybertron' },
+  mario64: { dir: 'mario64', catalog: ['mario64', 'models', 'catalog.js'], prefix: 'm64' },
+};
+const worldArg = process.argv.indexOf('--world');
+const WORLD = worldArg < 0 ? 'cybertron' : process.argv.splice(worldArg, 2)[1];
+if (!WORLDS[WORLD]) throw new Error(`--world ${WORLD}? (${Object.keys(WORLDS).join(', ')})`);
+const { dir: DIR, prefix: PREFIX } = WORLDS[WORLD];
+const OUT = path(ROOT, 'public', 'models', DIR);
+const CATALOG = path(ROOT, 'src', 'components', ...WORLDS[WORLD].catalog);
 const CREDITS = path(ROOT, 'src', 'data', 'modelCredits.json');
 const CACHE = '/tmp/sketchfab-cybertron';
 const API = 'https://api.sketchfab.com/v3/models';
@@ -53,22 +68,47 @@ const API = 'https://api.sketchfab.com/v3/models';
 const token = process.env.SKETCHFAB_API_TOKEN;
 const LICENCES = { by: 'CC-BY-4.0', 'by-sa': 'CC-BY-SA-4.0', 'by-nc': 'CC-BY-NC-4.0', 'by-nc-sa': 'CC-BY-NC-SA-4.0' };
 
+// (Sketchfab says 429 to a run of downloads: wait and ask again, longer each time)
 const json = async (url, headers = {}) => {
-  const r = await fetch(url, { headers });
-  if (!r.ok) throw new Error(`${url}: ${r.status}`);
-  return r.json();
+  for (let wait = 15; ; wait *= 2) {
+    const r = await fetch(url, { headers });
+    if (r.ok) return r.json();
+    if (r.status !== 429 || wait > 240) throw new Error(`${url}: ${r.status}`);
+    console.log(`(Sketchfab asks for a pause: ${wait} s)`);
+    await new Promise((done) => setTimeout(done, wait * 1000));
+  }
 };
 
-// the download, fetched once
-async function download(kind, uid) {
-  const file = path(CACHE, `${uid}.glb`);
+// the download, fetched once. `fbx`: the upload's own file instead of
+// Sketchfab's glTF of it (when that came out wrong), as { maps } for
+// scripts/fbx-to-glb.mjs: unpacked under scripts/.cache/ (the dev server
+// serves it to the converter) and converted there.
+async function download(kind, uid, fbx = null) {
+  const file = path(CACHE, fbx ? `${uid}-fbx.glb` : `${uid}.glb`);
   if (existsSync(file)) return file;
   if (!token) throw new Error('SKETCHFAB_API_TOKEN is not set');
-  const { glb } = await json(`${API}/${uid}/download`, { Authorization: `Token ${token}` });
-  if (!glb?.url) throw new Error(`${kind}: no .glb to download`);
-  const r = await fetch(glb.url);
+  const formats = await json(`${API}/${uid}/download`, { Authorization: `Token ${token}` });
+  const want = fbx ? formats.source : formats.glb;
+  if (!want?.url) throw new Error(`${kind}: no ${fbx ? 'source file' : '.glb'} to download`);
+  const r = await fetch(want.url);
   if (!r.ok) throw new Error(`${kind}: download ${r.status}`);
-  await writeFile(file, Buffer.from(await r.arrayBuffer()));
+  const bytes = new Uint8Array(await r.arrayBuffer());
+  if (!fbx) {
+    await writeFile(file, bytes);
+    return file;
+  }
+  const dir = path(ROOT, 'scripts', '.cache', 'sketchfab-source', uid);
+  await mkdir(dir, { recursive: true });
+  let model = null;
+  // (every file flat in one folder: the converter finds the textures by name)
+  for (const [name, data] of Object.entries(unzipSync(bytes))) {
+    if (name.endsWith('/')) continue;
+    const flat = path(dir, name.split('/').pop());
+    await writeFile(flat, data);
+    if (/\.fbx$/i.test(name)) model = flat;
+  }
+  if (!model) throw new Error(`${kind}: no .fbx in its source file`);
+  await fbxToGlb(model, file, fbx);
   return file;
 }
 
@@ -84,10 +124,10 @@ async function credit(kind, uid, as, also) {
     license,
     licenseUrl: m.license.url,
     source: m.viewerUrl,
-    where: 'cybertron',
+    where: WORLD,
     ...(also ? { also } : {}),
     as,
-    file: `/models/cybertron/${kind}.glb`,
+    file: `/models/${DIR}/${kind}.glb`,
   };
 }
 
@@ -433,7 +473,7 @@ const dims = (doc) => {
 };
 
 async function bring(io, kind, spec) {
-  const src = await download(kind, spec.uid);
+  const src = await download(kind, spec.uid, spec.fbx);
   const doc = await io.read(src);
   doc.setLogger(new Logger(Logger.Verbosity.ERROR));
   const root = doc.getRoot();
@@ -454,7 +494,9 @@ async function bring(io, kind, spec) {
   for (const mesh of root.listMeshes()) for (const prim of mesh.listPrimitives()) if (prim.getMode() !== 4) prim.dispose();
   // (a rig's clips with the keyframes that change nothing taken out: a
   // High Moon robot's transformation is thousands of them)
-  if (spec.rig) await doc.transform(dequantize(), dedup(), metalRough(), relit(spec), prune(), bareWhereUntextured(), weld(), resample({ tolerance: 1e-4 }));
+  // (a converted .fbx comes as a primitive for every run of one material:
+  // each mesh's runs of a material as one draw)
+  if (spec.rig) await doc.transform(dequantize(), dedup(), metalRough(), relit(spec), prune(), bareWhereUntextured(), weld(), resample({ tolerance: 1e-4 }), ...(spec.fbx ? [join({ keepMeshes: true, keepNamed: false })] : []));
   else await doc.transform(dequantize(), posed(spec.pose), unskinned(), unseen(), dedup(), metalRough(), relit(spec), prune(), bareWhereUntextured(), weld(), flatten(), join({ keepNamed: false }), weld());
   await doc.transform(simplified(spec.tris));
   await doc.transform(grounded(spec));
@@ -544,12 +586,12 @@ async function main() {
     return bring(io, named, spec);
   }
   const { MODELS } = await import(pathToFileURL(CATALOG).href);
-  for (const k of args) if (!MODELS[k]) throw new Error(`no ${k} in game/catalog.js`);
+  for (const k of args) if (!MODELS[k]) throw new Error(`no ${k} in ${WORLDS[WORLD].catalog.join('/')}`);
   const credits = JSON.parse(await readFile(CREDITS, 'utf8'));
   for (const kind of args.length ? args : Object.keys(MODELS)) {
     const spec = MODELS[kind];
     await bring(io, kind, { ...spec, drop: typeof spec.drop === 'string' ? new RegExp(spec.drop, 'i') : spec.drop });
-    credits[`cybertron-${kind}`] = await credit(kind, spec.uid, spec.as, spec.also);
+    credits[`${PREFIX}-${kind}`] = await credit(kind, spec.uid, spec.as, spec.also);
   }
   const sorted = Object.fromEntries(Object.keys(credits).sort().map((k) => [k, credits[k]]));
   await writeFile(CREDITS, `${JSON.stringify(sorted, null, 2)}\n`);

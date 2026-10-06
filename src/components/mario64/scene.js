@@ -8,6 +8,9 @@
 // blast of a Bob-omb). The rules are in game units; this draws in metres
 // (units × S).
 //
+// Mario, the cast and the props are the models of ./models/catalog.js, loaded
+// before the first area is built, or the code-made ones where they can't be.
+//
 // createScene(renderer, { small }) → { setArea(id) → Promise, sync(g, alpha),
 //   render(), resize(w, h), setLook(name), fx(type, at), dispose() }
 
@@ -15,7 +18,9 @@ import * as THREE from 'three';
 import { loadSet, loadSky } from '../avengers/hq/assets';
 import { AREAS, SCALE, buildArea } from './courses/index';
 import { makeLook } from './looks';
+import { hdTemplate, loadHd } from './models/hd';
 import { makeActor, makeMario, makeProp } from './models/index';
+import { makeHdMario } from './models/mario-hd';
 import { canvasTexture } from './models/common';
 import { poseFor } from './pose';
 import { MATS } from './textures';
@@ -237,7 +242,8 @@ export function createScene(renderer, { small = false } = {}) {
   const fxGroup = new THREE.Group();
   scene.add(world, props, cast, fxGroup);
 
-  const mario = makeMario();
+  // the code-made Mario until the loaded one is here (setArea waits for it)
+  let mario = makeMario();
   scene.add(mario.root);
   const blobTex = blobTexture();
   const blobMat = new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, color: blobTex ? '#ffffff' : '#000000', opacity: blobTex ? 1 : 0.3 });
@@ -270,6 +276,13 @@ export function createScene(renderer, { small = false } = {}) {
 
   async function setArea(id) {
     const area = AREAS[id];
+    // the loaded models first (once): the cast and props are made with them
+    await loadHd();
+    if (!mario.figure && hdTemplate('mario')) {
+      scene.remove(mario.root);
+      mario = makeHdMario(hdTemplate('mario'));
+      scene.add(mario.root);
+    }
     const { built } = buildArea(id);
     const meshes = [];
     for (const [key, data] of built.meshes) {
@@ -459,6 +472,10 @@ export function createScene(renderer, { small = false } = {}) {
   return {
     scene,
     camera,
+    // (Mario's model, for the browser checks)
+    get mario() {
+      return mario;
+    },
     setArea,
     sync,
     fx,
@@ -476,6 +493,7 @@ export function createScene(renderer, { small = false } = {}) {
       clear(world);
       clear(props);
       clear(cast);
+      mario.dispose?.();
       look.dispose();
       pmrem.dispose();
       scene.environment?.dispose?.();

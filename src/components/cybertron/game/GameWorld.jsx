@@ -8,6 +8,7 @@ import { useAchievements } from '../../Achievements';
 import { AREAS } from './areas';
 import { createSim } from './sim';
 import { createSounds } from './sounds';
+import { useVoiced } from '../../../lib/useVoiced';
 import './game.css';
 
 // Cybertron, the world: Iacon at war, and Team Prime's base and Jasper on
@@ -72,6 +73,7 @@ function World({ gl, setGl, side }) {
   // (in development, #…?autoplay starts it playing, for screenshots)
   const [playing, setPlaying] = useState(() => import.meta.env.DEV && typeof location !== 'undefined' && location.hash.includes('autoplay'));
   const [hud, setHud] = useState(() => sim.current.hud());
+  useVoiced(hud.talk?.id, hud.talk?.line); // in their own voice where it's been made (lib/voiced.js)
   const hudKey = useRef('');
   const playingSide = sideOf(sim.current.area.id);
   // (the crosshair's tick when a shot lands, the screen's red edge when hit:

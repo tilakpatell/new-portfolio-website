@@ -24,6 +24,7 @@ The measurements and the plan are the other sessions' `docs/research/2026-10-05-
 
 ## Graphics (then)
 
+- [ ] **The universe map’s visual upgrade**, as a lane of its own: `docs/superpowers/specs/2026-10-06-universe-visual-upgrade-design.md`, plan `docs/superpowers/plans/2026-10-06-universe-visual-upgrade.md`, hand-off `docs/superpowers/HANDOFF-universe-visuals.md`. Nine checkpoints, each its own PR with before/after shots at fixed poses and renderer counts. Not for the autopilot: it belongs to the session the owner started for it; tick it here when the hand-off’s table is all merged.
 - [ ] **Flat surfaces that should have relief.** Audit one world for materials with a colour map but no normal map, or painted surfaces where a CC0 scan would read better (`npm run cc0` fetches Poly Haven and ambientCG sets; `src/lib/cc0.js` loads them). One world a run. Done: before/after screenshots at the same spot.
 - [ ] **Model credits and the hangar's HD ships.** `docs/superpowers/HANDOFF-universe-map.md`: a crewed cruiser (`rickmorty/cruiser3d.js`) the universe could fly; new voice clips through `lib/clips.js`. Only if the models and clips are already in the repo.
 

@@ -7,9 +7,6 @@
 // touched. (The script's header has what each field means; `anim`, for a
 // model kept rigged, names its clips: { idle, walk, run }.)
 export const MODELS = {
-  // ── Tatooine ──
-  // a Jawa sandcrawler, the whole hull (its treads and the ramp)
-  sandcrawler: { uid: 'b0d602dd705240638d09500054d67d66', lod: true, as: 'the sandcrawler', metres: 36, along: 'max', yaw: 0, tris: 40000, tex: 512, maps: 256 },
   eopie: { uid: '029de9e7d0264119bbc4cbff45b8ed04', as: 'the eopies', metres: 2.5, yaw: 0, tris: 8000, tex: 512 },
   ronto: { uid: 'abf77799b3334497a320cda4380c9741', as: 'the rontos', metres: 4.2, yaw: 0, tris: 10000, tex: 512 },
   // a Sullustan, for the cantina's crowd
@@ -19,8 +16,6 @@ export const MODELS = {
   // ── Hoth ──
   // the Rebels' crates on Hoth
   hothcrate: { uid: 'a45e657ce3094078b708ea180da8daba', as: 'the Rebel crates', metres: 1.4, along: 'max', yaw: 0, tris: 3000, tex: 512 },
-  // a GR-75 medium transport, waiting to lift off
-  gr75: { uid: '071b158d02c044ee9b431aeb28b85b6a', lod: true, as: 'the GR-75 transports', metres: 90, along: 'z', yaw: 0, tris: 30000, tex: 1024, maps: 512 },
   // ── Endor ──
   // an Ithorian in Rebel fatigues, rigged
   ithorian: { uid: 'ca01590e107a45aa9dd9c4386ccfe094', as: 'the Ithorian Rebel', metres: 2.2, yaw: 0, tris: 8000, tex: 512, rig: true },
@@ -58,6 +53,5 @@ export const MODELS = {
   cratecube: { uid: 'd66fe8b5014b45b0ac313293a171b272', as: 'the Imperial cargo cubes', metres: 1.2, along: 'max', yaw: 0, tris: 3000, tex: 512 },
   // a barrel, a cooler and a bevelled crate: anyone's cargo
   barrel: { uid: '8646c0930a6c43bea75cbdf34812e3d2', as: 'the barrels', metres: 1.1, yaw: 0, tris: 3000, tex: 512 },
-  cooler: { uid: '3444fba1f62a45abb905fd71da1a4331', as: 'the cargo coolers', metres: 0.9, yaw: 0, tris: 3000, tex: 512 },
   bevelcrate: { uid: '4bd794e931414a79bdacc83e439da6d4', as: 'the bevelled crates', metres: 0.7, yaw: 0, tris: 2500, tex: 512 },
 };
