@@ -4,7 +4,7 @@
 // ship's kept inside (a wall is a bump, and hurts), to a chamber at its far
 // end with the reactor in it and room to turn round, and back out.
 //
-// Pure, tested: tunnelPath(seed, { length, turns, bend, steps }) → { pts,
+// Pure, tested: tunnelPath(seed, { length, turns, bend, steps, ctrl }) → { pts,
 // tans, cum, length } in the tunnel's own frame (the mouth at the origin,
 // in along +z); nearestOn(path, p) → { s, off, at, tan }; keepIn({ path,
 // radius, chamber }, p, margin) → { p, bumped, where: 'tube' | 'chamber' |
@@ -43,7 +43,8 @@ function catmull(ctrl, steps) {
   return out;
 }
 
-export function tunnelPath(seed, { length = 60, turns = 3, bend = 0.5, steps = 72 } = {}) {
+export function tunnelPath(seed, { length = 60, turns = 3, bend = 0.5, steps = 72, ctrl: given = null } = {}) {
+  if (given) return pathThrough(given, steps);
   const rand = seeded(`tunnel-${seed}`);
   const gap = length / (turns + 1);
   const ctrl = [
@@ -60,8 +61,13 @@ export function tunnelPath(seed, { length = 60, turns = 3, bend = 0.5, steps = 7
     y = Math.max(-0.7 * bend * gap, Math.min(0.7 * bend * gap, y + (rand() - 0.5) * 0.5 * bend * gap));
     ctrl.push([x, y, z]);
   }
+  return pathThrough(ctrl, steps);
+}
+
+// (the path through given controls: a Star Destroyer's hangar shaft is laid by hand)
+function pathThrough(ctrl, steps) {
   const pts = catmull(ctrl, steps);
-  pts[0] = [0, 0, 0];
+  pts[0] = [...ctrl[0]];
   const cum = [0];
   for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + len(sub(pts[i], pts[i - 1])));
   const tans = pts.map((_, i) => unit(sub(pts[Math.min(pts.length - 1, i + 1)], pts[Math.max(0, i - (i === pts.length - 1 ? 1 : 0))])));

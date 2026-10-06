@@ -154,6 +154,53 @@ export const GALAXY_LINES = {
         ['rick', 'Well’s gone, Morty. Hyperdrive’s back. Let’s not get counted again.'],
         ['morty', 'C-can we take the slow way for a bit?'],
       ],
+      // the Galactic Civil War's set pieces (warpieces/)
+      'gcw-shieldgen': [
+        ['comms', 'The shield is down! Commence attack on the Death Star’s main reactor.'],
+        ['morty', 'We blew up the shield thing, Rick! We’re the teddy bears now!'],
+      ],
+      'gcw-superlaser': [
+        ['morty', 'Rick! The Death Star just shot one of our cruisers! It’s gone!'],
+        ['rick', 'It’s operational, Morty. Classic trap. Stay off its sight lines.'],
+      ],
+      'gcw-run': [
+        ['rick', 'In we go, Morty. Tight tunnel, big reactor, zero insurance.'],
+        ['morty', 'Rick, the walls are like a foot from the wings!'],
+      ],
+      'gcw-reactor': [
+        ['rick', 'Reactor’s cooked! Out, out, out! Floor it, Morty, metaphorically!'],
+        ['morty', 'Which way is out, Rick?!'],
+      ],
+      'gcw-ds2': [
+        ['morty', 'We did it, Rick! The whole Death Star just went up!'],
+        ['rick', 'Second one, Morty. You’d think they’d learn. Spoiler: never.'],
+      ],
+      'gcw-executor': [
+        ['morty', 'Rick, the giant one’s going straight into the Death Star!'],
+        ['rick', 'Bridge goes, the whole thing goes. Nineteen kilometres of bad steering.'],
+      ],
+      'gcw-hangar': [
+        ['rick', 'We’re in its hangar, Morty. Every ship’s got a soft middle.'],
+        ['morty', 'Rick, there are stormtroopers waving at us!'],
+      ],
+      'gcw-isd': [
+        ['morty', 'It’s breaking in half, Rick! A whole Star Destroyer!'],
+        ['rick', 'From the inside, Morty. That’s how you know you did it right.'],
+      ],
+      'gcw-ram': [
+        ['morty', 'Rick, that little ship’s ramming the Star Destroyer!'],
+        ['rick', 'Hammerhead, Morty. Physics doesn’t care how big you are. Watch.'],
+      ],
+      'gcw-gate': [
+        ['comms', 'The shield gate is down! Transmit the plans!'],
+        ['morty', 'They pushed a Star Destroyer into the other one, Rick!'],
+        ['rick', 'Best use of a Star Destroyer I’ve ever seen, Morty.'],
+      ],
+      'gcw-evacuated': [
+        ['comms', 'The last transport’s away. Echo Base is clear.'],
+        ['morty', 'They all made it, Rick!'],
+        ['rick', 'Mostly. That’s a win in a war, Morty. Mostly.'],
+      ],
     },
     interdicted: [
       ['morty', 'Rick! We fell out of hyperspace! Why did we fall out of hyperspace?!'],
@@ -314,6 +361,51 @@ export const GALAXY_LINES = {
         ['luke', 'We’re clear of the well. The hyperdrive’s back!'],
         ['r2', '[a relieved whistle: he’s plotting a quieter route]'],
       ],
+      // the Galactic Civil War's set pieces (warpieces/)
+      'gcw-shieldgen': [
+        ['comms', 'The shield is down! Commence attack on the Death Star’s main reactor.'],
+        ['luke', 'We got the generator! Artoo, the shield’s down!'],
+      ],
+      'gcw-superlaser': [
+        ['r2', '[A cruiser’s gone: the Death Star fired.]'],
+        ['luke', 'That blast came from the Death Star! That thing’s operational!'],
+      ],
+      'gcw-run': [
+        ['luke', 'We’re going in. Artoo, keep an eye on the walls.'],
+        ['r2', '[a tense, steady beep]'],
+      ],
+      'gcw-reactor': [
+        ['luke', 'The reactor’s hit! Get us out of here, Artoo!'],
+        ['r2', '[a frantic string of beeps: the way out is lit]'],
+      ],
+      'gcw-ds2': [
+        ['luke', 'It’s gone. The Death Star’s gone.'],
+        ['r2', '[a long, triumphant whistle]'],
+      ],
+      'gcw-executor': [
+        ['r2', '[The Executor’s lost its bridge. It’s falling.]'],
+        ['luke', 'It’s heading straight for the Death Star!'],
+      ],
+      'gcw-hangar': [
+        ['luke', 'Into the hangar, Artoo. The reactor’s up this shaft.'],
+        ['r2', '[a worried warble]'],
+      ],
+      'gcw-isd': [
+        ['luke', 'She’s breaking up! We got her from the inside!'],
+        ['r2', '[a delighted trill]'],
+      ],
+      'gcw-ram': [
+        ['r2', '[The Hammerhead is pushing the Star Destroyer.]'],
+        ['luke', 'They’re ramming it into the other one!'],
+      ],
+      'gcw-gate': [
+        ['comms', 'The shield gate is down! Transmit the plans!'],
+        ['luke', 'The plans are away, Artoo. They made it count.'],
+      ],
+      'gcw-evacuated': [
+        ['comms', 'The last transport’s away. Echo Base is clear.'],
+        ['luke', 'They’re clear. Let’s get out of here too, Artoo.'],
+      ],
     },
     interdicted: [
       ['r2', '[a panicked shriek]'],
@@ -472,6 +564,51 @@ export const GALAXY_LINES = {
       wellclear: [
         ['han', 'Out of the well. Hyperdrive’s back. Told you she could do it.'],
         ['chewie', '[a long, relieved groan]'],
+      ],
+      // the Galactic Civil War's set pieces (warpieces/)
+      'gcw-shieldgen': [
+        ['comms', 'The shield is down! Commence attack on the Death Star’s main reactor.'],
+        ['han', 'Shield’s down. Hear that, Chewie? We’re going in.'],
+      ],
+      'gcw-superlaser': [
+        ['chewie', '[an alarmed roar: a cruiser just vanished]'],
+        ['han', 'That thing’s operational. Stay close to their Star Destroyers. They won’t fire on their own.'],
+      ],
+      'gcw-run': [
+        ['han', 'Tight squeeze. I’ve flown worse. Don’t ask where.'],
+        ['chewie', '[a nervous growl]'],
+      ],
+      'gcw-reactor': [
+        ['han', 'That’s it! Now punch it, Chewie, punch it!'],
+        ['chewie', '[a roar, and the engines scream]'],
+      ],
+      'gcw-ds2': [
+        ['han', 'Woo-hoo! Told you we’d make it out.'],
+        ['chewie', '[a long, joyful howl]'],
+      ],
+      'gcw-executor': [
+        ['chewie', '[an amazed roar]'],
+        ['han', 'The big one just flew into the Death Star. That’s gotta hurt.'],
+      ],
+      'gcw-hangar': [
+        ['han', 'Into their hangar. Bold. Stupid. My two favourite things.'],
+        ['chewie', '[a doubtful groan]'],
+      ],
+      'gcw-isd': [
+        ['han', 'She’s coming apart! Never tell me the odds.'],
+        ['chewie', '[a triumphant roar]'],
+      ],
+      'gcw-ram': [
+        ['han', 'That Hammerhead’s shoving a Star Destroyer around. I like their style.'],
+        ['chewie', '[an impressed growl]'],
+      ],
+      'gcw-gate': [
+        ['comms', 'The shield gate is down! Transmit the plans!'],
+        ['han', 'Two Star Destroyers through the front door. That’s one way to knock.'],
+      ],
+      'gcw-evacuated': [
+        ['comms', 'The last transport’s away. Echo Base is clear.'],
+        ['han', 'Everybody’s out. Our turn, Chewie. Let’s go.'],
       ],
     },
     interdicted: [
@@ -632,6 +769,51 @@ export const GALAXY_LINES = {
       wellclear: [
         ['walt', 'We’re clear of the well, Jesse. The drive will take.'],
         ['jesse', 'Can we, like, not do that again for a while?'],
+      ],
+      // the Galactic Civil War's set pieces (warpieces/)
+      'gcw-shieldgen': [
+        ['comms', 'The shield is down! Commence attack on the Death Star’s main reactor.'],
+        ['jesse', 'Yeah, science! We totally fried their shield, Mr. White!'],
+      ],
+      'gcw-superlaser': [
+        ['jesse', 'Yo, the Death Star just vaporised one of our ships!'],
+        ['walt', 'It’s fully armed, Jesse. Keep moving. A moving target lives.'],
+      ],
+      'gcw-run': [
+        ['walt', 'We go in, we hit the reactor, we leave. Clean. Professional.'],
+        ['jesse', 'This tunnel is way too small for an RV, Mr. White!'],
+      ],
+      'gcw-reactor': [
+        ['walt', 'The reactor is compromised. Jesse, drive. Now!'],
+        ['jesse', 'Going, going, going!'],
+      ],
+      'gcw-ds2': [
+        ['jesse', 'Mr. White, we blew up a Death Star! In an RV!'],
+        ['walt', 'I am the one who knocks, Jesse. Twice, apparently.'],
+      ],
+      'gcw-executor': [
+        ['jesse', 'Yo, the giant ship just nosedived into the Death Star!'],
+        ['walt', 'Lose the head, and the body follows. Remember that.'],
+      ],
+      'gcw-hangar': [
+        ['walt', 'Into the hangar. Every operation has a loading dock, Jesse.'],
+        ['jesse', 'This is so not a good idea.'],
+      ],
+      'gcw-isd': [
+        ['jesse', 'It’s falling apart, Mr. White! We did that!'],
+        ['walt', 'Purity of execution, Jesse.'],
+      ],
+      'gcw-ram': [
+        ['jesse', 'That little ship is pushing the huge one! That’s insane!'],
+        ['walt', 'Leverage, Jesse. Apply force at the right point.'],
+      ],
+      'gcw-gate': [
+        ['comms', 'The shield gate is down! Transmit the plans!'],
+        ['walt', 'Two Star Destroyers, one gate. Elegant.'],
+      ],
+      'gcw-evacuated': [
+        ['comms', 'The last transport’s away. Echo Base is clear.'],
+        ['jesse', 'They got out! Can we get out now too?'],
       ],
     },
     interdicted: [
