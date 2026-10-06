@@ -10,10 +10,11 @@
 // inp = { sx, sy (the stick, −1…1, up is +), a, ap, b, bp, z, zp (held and
 // pressed), walk, camYaw }.
 
-import { findFloor } from './collide';
-import { AIR } from './moves/air';
+import { findFloor, waterAt } from './collide';
+import { AIR, burn } from './moves/air';
 import { GROUND } from './moves/ground';
-import { MAX_HEALTH, ride, setAction } from './physics';
+import { WATER, WATER_ACTIONS, enterWater } from './moves/water';
+import { MAX_HEALTH, die, ride, setAction } from './physics';
 import { wrapAngle } from './vec';
 
 export { MAX_HEALTH };
@@ -60,7 +61,7 @@ export function intent(inp, camYaw) {
   return { mag, yaw: wrapAngle(camYaw + Math.atan2(-inp.sx, inp.sy)) };
 }
 
-const ACTIONS = { ...GROUND, ...AIR };
+const ACTIONS = { ...GROUND, ...AIR, ...WATER };
 export const ACTION_NAMES = Object.keys(ACTIONS);
 
 // at the start: on the floor below if there is one close, falling otherwise
@@ -94,6 +95,29 @@ export function stepMario(m, input, w) {
     if (!fn) throw new Error(`no action ${m.action}`);
     if (!fn(m, inp, w)) break;
   }
+  hazards(m, w);
   m.t++;
   return m.events;
+}
+
+const AIR_RATE = 1 / 30; // a wedge of air a second, and of health once it's gone
+
+// what the course does to him after he moves: water, lava, the death plane
+function hazards(m, w) {
+  if (m.action === 'dead') return;
+  if (m.pos.y < w.deathY) return die(m);
+  m.water = waterAt(w, m.pos.x, m.pos.z);
+  const swimming = WATER_ACTIONS.has(m.action);
+  if (!swimming && m.pos.y < m.water - 100) enterWater(m);
+  if (m.action === 'swim' && m.pos.y < m.water - 81) {
+    m.air = Math.max(0, m.air - AIR_RATE);
+    if (m.air === 0) {
+      m.health = Math.max(0, m.health - AIR_RATE);
+      if (m.health === 0) return die(m);
+    }
+  } else m.air = Math.min(MAX_HEALTH, m.air + AIR_RATE * 4);
+  if (m.airborne || WATER_ACTIONS.has(m.action) || !m.floor) return;
+  if (m.floor.kind === 'lava' && m.action !== 'burn') burn(m);
+  else if (m.floor.kind === 'death') die(m);
+  if (m.health <= 0) die(m);
 }

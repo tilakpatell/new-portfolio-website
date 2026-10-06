@@ -9,7 +9,7 @@
 // so whoever stands on one can be carried with it. Water is boxes with a
 // surface level. Units are the original's (Mario is 160 tall).
 //
-// makeWorld(tris: Float32Array, 9 numbers a triangle, kinds: [string], { water })
+// makeWorld(tris: Float32Array, 9 numbers a triangle, kinds: [string], { water, deathY })
 //   → world; findFloor, findCeil, pushWalls, waterAt, raycast; addDynamic,
 //   moveDynamic, removeDynamic.
 
@@ -59,7 +59,7 @@ function cellsFor(s, fn) {
   for (let cx = x0; cx <= x1; cx++) for (let cz = z0; cz <= z1; cz++) fn(cellKey(cx, cz));
 }
 
-export function makeWorld(tris, kinds, { water = [] } = {}) {
+export function makeWorld(tris, kinds, { water = [], deathY = -Infinity } = {}) {
   const grid = new Map();
   const all = [];
   for (let i = 0, o = 0; o + 9 <= tris.length; i++, o += 9) {
@@ -72,7 +72,7 @@ export function makeWorld(tris, kinds, { water = [] } = {}) {
       c[s.type].push(s);
     });
   }
-  return { grid, all, dynamic: [], water: water.map((w) => ({ ...w })) };
+  return { grid, all, dynamic: [], water: water.map((w) => ({ ...w })), deathY };
 }
 
 const EMPTY = { floor: [], ceil: [], wall: [] };

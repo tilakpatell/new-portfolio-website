@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { createKit } from '../courses/shapes';
 import { makeWorld } from './collide';
-import { intent, newMario, stepMario } from './mario';
+import { hurt, intent, newMario, stepMario } from './mario';
 
-const worldFrom = (build) => {
+const worldFrom = (build, opts = {}) => {
   const k = createKit();
   build(k);
   const o = k.done();
-  return makeWorld(o.tris, o.kinds, { water: o.water ?? [] });
+  return makeWorld(o.tris, o.kinds, opts);
 };
 const flat = (more = () => {}) =>
   worldFrom((k) => {
@@ -286,5 +286,112 @@ describe('Mario in the air', () => {
     expect(m.action).toBe('idle');
     expect(m.pos.y).toBeCloseTo(300);
     expect(m.pos.z).toBeGreaterThan(200);
+  });
+});
+
+// ─── Slopes, lava, hurt, water ──────────────────────────────────────────────
+describe('Mario on slopes and lava, hurt, and in water', () => {
+  // a ramp rising along +z at the given angle, its middle at the origin
+  const slope = (deg, kind) =>
+    worldFrom((k) => {
+      k.box({ x: 0, y: -2100, z: 0, w: 40000, h: 100, d: 40000, mat: 'g' });
+      const d = 4000;
+      const h = Math.tan((deg * Math.PI) / 180) * d;
+      k.ramp({ x: 0, y: -h / 2, z: 0, w: 4000, d, h, mat: 'g', kind });
+    });
+
+  it('slides down a 50° default slope', () => {
+    const w = slope(50);
+    const m = newMario({ x: 0, y: 1, z: 0, yaw: 0 });
+    run(m, w, input(), 20);
+    expect(['slide', 'freefall', 'land']).toContain(m.action);
+    expect(m.pos.z).toBeLessThan(-100);
+  });
+
+  it('slides down a slippery 20° slope, but stands on a rough 60° one', () => {
+    const icy = slope(20, 'slippery');
+    const a = newMario({ x: 0, y: 1, z: 0, yaw: 0 });
+    run(a, icy, input(), 20);
+    expect(a.action).toBe('buttslide');
+    expect(a.pos.z).toBeLessThan(-50);
+    const rough = slope(60, 'rough');
+    const b = newMario({ x: 0, y: 1, z: 0, yaw: 0 });
+    run(b, rough, input(), 20);
+    expect(b.action).toBe('idle');
+    expect(b.pos.z).toBeCloseTo(0);
+  });
+
+  it('burns 3 wedges on lava and is thrown up', () => {
+    const w = worldFrom((k) => k.box({ x: 0, y: -100, z: 0, w: 4000, h: 100, d: 4000, mat: 'lava', topKind: 'lava' }));
+    const m = newMario({ x: 0, y: 0, z: 0, yaw: 0 });
+    const ev = run(m, w, input(), 2);
+    expect(ev.some((e) => e.type === 'burn')).toBe(true);
+    expect(m.health).toBe(5);
+    expect(m.action).toBe('burn');
+    expect(m.pos.y).toBeGreaterThan(50);
+  });
+
+  it('is knocked back by a hurt from the front, and dies at 0 health', () => {
+    const w = flat();
+    const m = newMario({ x: 0, y: 0, z: 0, yaw: 0 });
+    run(m, w, input(), 1);
+    hurt(m, 1, 0, 100);
+    expect(m.action).toBe('knockback');
+    run(m, w, input(), 10);
+    expect(m.pos.z).toBeLessThan(-50);
+    m.invuln = 0;
+    hurt(m, 7);
+    expect(m.health).toBe(0);
+    expect(m.events.some((e) => e.type === 'dead')).toBe(true);
+    expect(m.action).toBe('dead');
+  });
+
+  it('dies below the world\'s death plane', () => {
+    const w = worldFrom((k) => k.box({ x: 0, y: -100, z: 0, w: 400, h: 100, d: 400, mat: 'g' }), { deathY: -1000 });
+    const m = newMario({ x: 2000, y: 0, z: 0, yaw: 0 });
+    const ev = run(m, w, input(), 60);
+    expect(ev.some((e) => e.type === 'dead')).toBe(true);
+  });
+
+  const pool = () =>
+    worldFrom(
+      (k) => {
+        k.box({ x: 0, y: -2100, z: 0, w: 8000, h: 100, d: 8000, mat: 'g' });
+      },
+      { water: [{ x0: -4000, z0: -4000, x1: 4000, z1: 4000, y: 0 }] },
+    );
+
+  it('swims once more than 100 under the surface, with a splash', () => {
+    const w = pool();
+    const m = newMario({ x: 0, y: 300, z: 0, yaw: 0 });
+    const ev = [];
+    for (let i = 0; i < 120 && m.action !== 'swim'; i++) ev.push(...stepMario(m, input(), w));
+    expect(m.action).toBe('swim');
+    expect(m.pos.y).toBeLessThan(-100);
+    expect(ev.some((e) => e.type === 'splash')).toBe(true);
+  });
+
+  it('strokes on A, and climbs with the stick pulled back', () => {
+    const w = pool();
+    const m = newMario({ x: 0, y: -1000, z: 0, yaw: 0 });
+    run(m, w, input(), 1);
+    expect(m.action).toBe('swim');
+    const y = m.pos.y;
+    const ev = run(m, w, (i) => input({ sy: -1, a: true, ap: i % 10 === 0 }), 30);
+    expect(ev.some((e) => e.type === 'stroke')).toBe(true);
+    expect(m.pos.y).toBeGreaterThan(y + 100);
+  });
+
+  it('runs out of air under water, and gets it back at the surface', () => {
+    const w = pool();
+    const m = newMario({ x: 0, y: -1500, z: 0, yaw: 0 });
+    run(m, w, input(), 60);
+    expect(m.air).toBeGreaterThan(5.5);
+    expect(m.air).toBeLessThan(6.5);
+    until(m, w, (i) => input({ sy: -1, a: true, ap: i % 8 === 0 }), ['surface'], 400);
+    expect(m.action).toBe('surface');
+    const air = m.air;
+    run(m, w, input(), 30);
+    expect(m.air).toBeGreaterThan(air);
   });
 });

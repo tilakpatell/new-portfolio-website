@@ -40,8 +40,22 @@ function move(m, w) {
   return r;
 }
 
-// what every standing or moving action answers first: a jump, a punch
+// too steep to stand on, for this floor's kind: slippery floors slide past
+// about 11°, ordinary ones past about 45°, rough ones never
+export function steep(m) {
+  const f = m.floor;
+  if (!f || m.airborne) return false;
+  const ny = f.n[1];
+  if (f.kind === 'slippery') return ny < 0.98;
+  if (f.kind === 'rough') return false;
+  return ny < 0.7;
+}
+const slideOf = (m) => (m.floor?.kind === 'slippery' ? 'buttslide' : 'slide');
+
+// what every standing or moving action answers first: a slope too steep, a
+// jump, a punch
 function common(m, inp) {
+  if (steep(m)) return setAction(m, slideOf(m));
   if (inp.ap) {
     inp.ap = false;
     takeOff(m, nextJump(m));
@@ -120,6 +134,7 @@ function skid(m, inp, w) {
 }
 
 function crouch(m, inp, w) {
+  if (steep(m)) return setAction(m, slideOf(m));
   if (inp.ap) {
     inp.ap = false;
     takeOff(m, 'backflip');
@@ -133,6 +148,7 @@ function crouch(m, inp, w) {
 }
 
 function crawl(m, inp, w) {
+  if (steep(m)) return setAction(m, slideOf(m));
   if (!inp.z) return setAction(m, m.mag > 0 ? 'walk' : 'idle');
   if (m.mag === 0) return setAction(m, 'crouch');
   if (inp.ap) {
@@ -191,4 +207,60 @@ function land(m, inp, w) {
   return false;
 }
 
-export const GROUND = { idle, walk, stop, skid, crouch, crawl, crouchslide, punch, land };
+// Sliding down a slope (the original's update_sliding): pulled downhill by
+// 7 (8 on slippery floors) times the slope, losing 2% a frame; on a slide,
+// the stick steers a little. A jumps out of it.
+function sliding(m, inp, w) {
+  if (inp.ap) {
+    inp.ap = false;
+    takeOff(m, 'jump');
+    return true;
+  }
+  if (m.t === 0) {
+    m.slideX = m.fwd * Math.sin(m.yaw);
+    m.slideZ = m.fwd * Math.cos(m.yaw);
+  }
+  const n = m.floor?.n ?? [0, 1, 0];
+  const accel = m.floor?.kind === 'slippery' ? 8 : 7;
+  m.slideX = (m.slideX + accel * n[0]) * 0.98;
+  m.slideZ = (m.slideZ + accel * n[2]) * 0.98;
+  if (!steep(m)) {
+    m.slideX *= 0.85;
+    m.slideZ *= 0.85;
+  }
+  let sp = Math.hypot(m.slideX, m.slideZ);
+  if (m.action === 'buttslide' && m.mag > 0 && sp > 1) {
+    const dir = turnToward(Math.atan2(m.slideX, m.slideZ), m.iyaw, 0.04 * m.mag);
+    m.slideX = sp * Math.sin(dir);
+    m.slideZ = sp * Math.cos(dir);
+  }
+  if (sp > 100) {
+    m.slideX *= 100 / sp;
+    m.slideZ *= 100 / sp;
+    sp = 100;
+  }
+  if (sp > 1) m.yaw = Math.atan2(m.slideX, m.slideZ);
+  m.fwd = sp;
+  m.vel.x = m.slideX;
+  m.vel.z = m.slideZ;
+  m.vel.y = 0;
+  const r = groundStep(m, w);
+  m.peakY = m.pos.y;
+  if (r === 'left') {
+    toFreefall(m);
+    m.vel.x = m.slideX;
+    m.vel.z = m.slideZ;
+    return false;
+  }
+  if (r === 'wall') m.slideX = m.slideZ = m.fwd = 0;
+  if (!steep(m) && sp < 2) setAction(m, 'idle');
+  return false;
+}
+
+function dead(m) {
+  m.vel.x = m.vel.y = m.vel.z = 0;
+  m.fwd = 0;
+  return false;
+}
+
+export const GROUND = { idle, walk, stop, skid, crouch, crawl, crouchslide, punch, land, slide: sliding, buttslide: sliding, dead };

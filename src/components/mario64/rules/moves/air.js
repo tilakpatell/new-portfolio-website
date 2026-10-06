@@ -267,4 +267,32 @@ function climb(m, inp, w) {
   return false;
 }
 
-export const AIR = { jump, double, triple, backflip, sideflip, longjump, wallkick, freefall, rollout, jumpkick, dive, knockback, airhit, pound, poundland, bellyslide, ledge, climb };
+// Off lava: 3 wedges (unless still blinking) and a leap of 84; he can steer
+// a little, and lands into whatever is there, lava again included.
+export function burn(m) {
+  if (m.invuln === 0) {
+    m.health = Math.max(0, m.health - 3);
+    m.invuln = 30;
+  }
+  emit(m, 'burn');
+  m.airborne = true;
+  m.vel.y = 84;
+  m.peakY = m.pos.y;
+  m.held = null;
+  setAction(m, 'burn');
+}
+
+function burning(m, inp, w) {
+  airControl(m, { drag: 24 });
+  const r = airStep(m, w);
+  if (r === 'landed') {
+    m.airborne = false;
+    m.vel.y = 0;
+    m.peakY = m.pos.y;
+    return setAction(m, 'land');
+  }
+  return false;
+}
+
+export const AIR = {
+  burn: burning, jump, double, triple, backflip, sideflip, longjump, wallkick, freefall, rollout, jumpkick, dive, knockback, airhit, pound, poundland, bellyslide, ledge, climb };

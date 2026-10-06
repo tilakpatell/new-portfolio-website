@@ -105,10 +105,7 @@ function airQuarter(m, w, p, ledge) {
   const c = findCeil(w, p.x, (f ? f.y : p.y) + 80, p.z);
   const ceilY = c ? c.y : Infinity;
   if (!f) {
-    if (p.y <= m.floorY) {
-      m.pos.y = m.floorY;
-      return 'landed';
-    }
+    // nothing below: no going sideways out of the world, but down he goes
     m.pos.y = p.y;
     return 'wall';
   }
