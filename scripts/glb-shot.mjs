@@ -20,10 +20,10 @@ const CHROME = process.env.CHROME ?? '/opt/pw-browsers/chromium-1194/chrome-linu
 const W = 640;
 const H = 480;
 
-export async function shoot(file, views = ['three', 'close'], { bg, w = W, h = H } = {}) {
+export async function shoot(file, views = ['three', 'close'], { bg, look, w = W, h = H } = {}) {
   const rel = relative(ROOT, file).split('\\').join('/');
   const url = `/${rel.startsWith('public/') ? rel.slice('public/'.length) : rel}`;
-  const extra = bg ? `&bg=${bg}` : ''; // bg=ffffff: a reference picture for scripts/gen3d
+  const extra = `${bg ? `&bg=${bg}` : ''}${look ? `&look=${look}` : ''}`; // bg=ffffff: a reference picture for scripts/gen3d; look=toon: as the game draws it
   const browser = await chromium.launch({ executablePath: CHROME, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   try {
     const page = await browser.newPage({ viewport: { width: w * views.length, height: h } });

@@ -349,7 +349,7 @@ export default function GalaxySurface() {
       <h1 className="sr-only">
         {sys.name}: {site.place}
       </h1>
-      <SurfaceView key={`${mission?.id ?? 'explore'}:${hero.id}:${hero.color}:${hero.hilt}`} system={id} mission={mission?.id ?? null} ship={ship} hero={hero} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
+      <SurfaceView key={`${mission?.id ?? 'explore'}:${hero.id}:${hero.color}:${hero.hilt}:${hero.stance}:${hero.gun}:${(hero.mods ?? []).join()}:${(hero.perks ?? []).join()}`} system={id} mission={mission?.id ?? null} ship={ship} hero={hero} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
 
       {/* where you are, and how much of it you've found */}
       <div className="surface-where">

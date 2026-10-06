@@ -13,7 +13,7 @@
 // fitted in the hangar (outfit.js), bolted on by modules.js.
 //
 // buildShip(kind, textures, { build }) → { group, setThrottle(0…1),
-//   paint(paint), outfit(loadout) → modules, modules, engines, drive(dt,
+//   paint(paint), rim({ colour, dir }), outfit(loadout) → modules, modules, engines, drive(dt,
 //   motion), dress(model, { clone }), mount(model, extra), update(t),
 //   dispose() }
 // With a build (shipyard/build.js), the ship is that garage build, put
@@ -25,6 +25,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { seg as segments } from '../../lib/detail';
+import { SHIP_PROFILE, tune } from '../../lib/three/gltf';
 import { sharpenMaterial } from '../../lib/three/textures';
 import { tiled } from './kit';
 import { createLivery } from './livery';
@@ -197,8 +198,11 @@ const LIGHTS = { xwing: /EngineGlow/ };
 // on the stand-in's, so the parts and the exhaust are where they should be
 const SHIFT = { falcon: [0, 0, -0.047] };
 // how its paint takes the light: these come glossier than painted metal
-// should, from their own maps, so those go
-const FINISH = { xwing: { metalnessMap: null, roughnessMap: null, metalness: 0.15, roughness: 0.72 }, falcon: { metalness: 0.15, roughness: 1 } };
+// should, from their own maps, so those go, for the paint of the ship
+// profile (lib/three/gltf: a satin at its roughest, a tenth metallic; the
+// Falcon's was clay at roughness 1)
+const PAINT = { metalness: SHIP_PROFILE.metalness.paint, roughness: SHIP_PROFILE.roughness[1] };
+const FINISH = { xwing: { metalnessMap: null, roughnessMap: null, ...PAINT }, falcon: PAINT };
 // a model's hull in its finish (before its shaders are made: a map gone is a different shader)
 const finish = (kind, model) =>
   FINISH[kind] &&
@@ -288,6 +292,10 @@ export function buildShip(kind, T = {}, { build = null } = {}) {
     drive(dt, motion) {
       modules?.update(dt, motion);
     },
+    // the light on its edges from the stars that aren't its key (livery.js), each frame
+    rim(light) {
+      livery.rim(light);
+    },
     // a paint job (paint.js), or the factory's
     paint(p) {
       coat = p?.hull ? p : null;
@@ -327,14 +335,14 @@ export function buildShip(kind, T = {}, { build = null } = {}) {
       holder.add(model);
       holder.scale.setScalar(BUILT / Math.max(dims.x, dims.z, 1e-6));
       holder.rotation.y = NOSE[kind] ?? ship.nose ?? 0; // turned so its nose points along −z
-      // painted metal: a little of the space round it reflects in the hull,
-      // its maps sharp at a grazing angle (the chase camera's)
+      // paint over metal (lib/three/gltf's SHIP_PROFILE: the paint a satin a
+      // tenth metallic, the parts named as metal 0.65), the space round it
+      // in the hull, its maps sharp at a grazing angle (the chase camera's)
       model.traverse((o) => {
         if (!o.isMesh) return;
         for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
-          if ('metalness' in m && !m.userData.finished) m.metalness = 0.22; // (unless it has its own finish)
-          if ('roughness' in m && !m.userData.finished) m.roughness = Math.min(Math.max(m.roughness ?? 1, 0.42), 0.68);
-          if ('envMapIntensity' in m) m.envMapIntensity = 0.9;
+          if (!m.userData.finished) tune(m, SHIP_PROFILE); // (unless it has its own finish)
+          else if ('envMapIntensity' in m) m.envMapIntensity = SHIP_PROFILE.envMapIntensity;
           sharpenMaterial(m);
           if (m.emissive && (m.emissiveMap || LIGHTS[kind]?.test(m.name)) && !lights.includes(m)) lights.push(m);
         }

@@ -203,7 +203,7 @@ export const MISSIONS = {
             lines: [['Yoda', 'Run, you will. Through the swamp. Quickly, quickly!']],
           },
           { type: 'reach', at: [-70, -120], r: 9, text: 'Go into the cave: Yoda waits outside', start: [{ carry: null }], lines: [['Yoda', 'Into the cave, go. What is in there, you bring with you.']] },
-          { type: 'shoot', tag: 'vision', n: 1, text: 'Face what’s inside', lines: [[null, '(A figure in black steps out of the dark.)']], spawn: { kind: 'vader', at: [-66, -114], hp: 4, leash: 14, roam: 2, tag: 'vision', hostile: { range: 14, chase: 1.8, melee: true, reach: 2.6, every: 1.6, damage: 14, delay: 1, parry: 0.6 } } },
+          { type: 'shoot', tag: 'vision', n: 1, text: 'Face what’s inside', lines: [[null, '(A figure in black steps out of the dark.)']], spawn: { kind: 'vader', at: [-66, -114], hp: 4, leash: 14, roam: 2, tag: 'vision', hostile: { range: 14, chase: 1.8, melee: true, reach: 2.6, every: 1.6, damage: 14, delay: 1, parry: 0.75, guard: 3, blade: { color: '#ff3b3b' } } } },
           {
             type: 'use',
             id: 'raise',

@@ -32,10 +32,11 @@
 // tail). While hunters are on you (`fight`), the ordinary ships near you run
 // for it: faster, and weaving.
 //
-// createTraffic(parent, { small }) → { setCrew(id), update(dt, t, ship, { fight }) → events,
+// createTraffic(parent, { small, engines }) → { setCrew(id), update(dt, t, ship, { fight }) → events,
 //   hit(from, to) → hit or null, convoy(ship, side), distress(ship, side) → the one in
 //   distress (an Object3D) or null, clear(), dispose() }
-// Points are in `parent`'s space (the map's).
+// Points are in `parent`'s space (the map's). `engines` (engines.js), when
+// given, lights each ship's engines, brighter as it runs from a fight.
 
 import * as THREE from 'three';
 import { createFleet } from './glbFleet';
@@ -148,7 +149,7 @@ const stationBy = (ship) => {
   return gap < DEEP.near ? best : null;
 };
 
-export function createTraffic(parent, { small = false, fleet = createFleet() } = {}) {
+export function createTraffic(parent, { small = false, fleet = createFleet(), engines = null } = {}) {
   const rand = Math.random;
   const MAX = small ? 8 : 18; // groups at once
   const pool = {}; // kind → models not in use
@@ -171,10 +172,16 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
   };
   const take = (kind) => {
     // a built stand-in waiting in the pool gives way once the model is here
-    if (fleet.loaded(kind) && pool[kind]?.length && !pool[kind][pool[kind].length - 1].model) for (const m of pool[kind].splice(0)) m.dispose();
+    if (fleet.loaded(kind) && pool[kind]?.length && !pool[kind][pool[kind].length - 1].model) for (const m of pool[kind].splice(0)) drop(m);
     const model = pool[kind]?.pop() ?? fleet.make(kind);
     model.fit ??= 1 / Math.max(model.size?.x ?? 1, model.size?.y ?? 1, model.size?.z ?? 1); // to its biggest dimension
+    // (its engines, once: lit while it's out, nothing while it's in the pool)
+    if (engines && !model.engine) model.engine = engines.add(kind, model.group, { size: model.size });
     return model;
+  };
+  const drop = (model) => {
+    engines?.remove(model.engine);
+    model.dispose();
   };
   const give = (kind, model) => {
     model.group.removeFromParent();
@@ -298,6 +305,8 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
       gr.position.addScaledVector(lift, Math.sin(g.weave + m.phase) * m.size * weave);
       gr.scale.setScalar(m.size * m.model.fit * Math.max(1e-3, grow));
       gr.quaternion.copy(turn);
+      // (its engines a little harder running from a fight; easing off to land)
+      if (m.model.engine) engines.set(m.model.engine, { throttle: (g.dock ? 0.3 : 0.45) + 0.45 * g.flee, boost: 0 });
       // rolled into the peel (most of the way through it), and a jink while running
       const lean = (m.roll ? m.roll * Math.sin(apart * Math.PI) : 0) + g.flee * 0.35 * Math.sin(t * 2.1 + m.phase);
       if (lean) gr.quaternion.multiply(bank.setFromAxisAngle(Z, lean));
@@ -471,7 +480,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
 
     dispose() {
       while (live.length) end(live[0]);
-      for (const list of Object.values(pool)) for (const m of list) m.dispose();
+      for (const list of Object.values(pool)) for (const m of list) drop(m);
     },
   };
 }

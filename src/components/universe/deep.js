@@ -155,18 +155,21 @@ export function reachOf(w) {
 // A black hole is solid out past its shadow, where the light bends round
 // it, and it swallows: nothing bounces off it, whatever the speed (ship.js)
 const solid = (id, at, r, swallow = false) => ({ id, at, r, reach: r * 1.4, deep: true, ...(swallow ? { swallow } : {}) });
-// The Citadel reaches past its great dome: its four domes out on their
-// arms, the blades hanging under it and the crystal under them, as
-// deepspace.js draws it for a radius of 18 ([x, y, z, r] in those units)
+// The Citadel reaches past its great dome: its four saucers out on level
+// arms a quarter turn apart, the hull under it and the crystal under that,
+// as its model is (public/models/c137/rm/citadel-exterior.glb, which
+// deepspace.js fits to a radius of 18: the dome 12.5 across its middle, the
+// saucers 20.9 out) ([x, y, z, r] in those units). The first four are where
+// the siege's generators stand (siege.js).
 export const CITADEL_PARTS = [
-  [21.3, -2.2, 5.4, 6.4],
-  [-7.4, 6.2, 17.5, 5],
-  [-22, -3, -6.8, 6.8],
-  [2.7, 0.9, -17.8, 4.8],
-  [0.2, -15, 0.3, 5],
-  [0.3, -23, 0.2, 1.6],
-  [0.3, -27.5, 0.2, 1.4],
-  [0.3, -32, 0.2, 1.2],
+  [20.25, -0.4, 5.17, 3.2],
+  [-5.17, -0.4, 20.25, 3.2],
+  [-20.25, -0.4, -5.17, 3.2],
+  [5.17, -0.4, -20.25, 3.2],
+  [0, -5, 0, 6.5],
+  [0, -9.5, 0, 3.6],
+  [0, -12.5, 0, 2.4],
+  [0, -14.5, 0, 1.2],
 ];
 // (each a part of it: hitting one is hitting the Citadel, and none is
 // somewhere of its own to fly to)

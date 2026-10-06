@@ -19,7 +19,8 @@
 //   (Scarif's shield, 0..1); anything else is ignored
 
 import * as THREE from 'three';
-import { SHELL_FRAG, SHELL_VERT, SHIELD_FRAG, SHIELD_VERT, SURFACE_VERT, surfaceFrag } from './bodyShaders';
+import { SHIELD_FRAG, SHIELD_VERT, SURFACE_VERT, surfaceFrag } from './bodyShaders';
+import { createAtmosphere } from '../../lib/three/atmosphere';
 
 // each family's colour slots (uPal, in order) and params (uP0, uP1)
 export const FAMILIES = {
@@ -268,11 +269,11 @@ export function buildBody(look, { r = 40, small = false } = {}) {
 
   let reach = r;
   if (atmo) {
-    const shellGeo = new THREE.SphereGeometry(r * atmo.top, moon || small ? 48 : 96, moon || small ? 32 : 64);
-    const shellMat = new THREE.ShaderMaterial({ vertexShader: SHELL_VERT, fragmentShader: SHELL_FRAG, uniforms: { ...shared, uInner: { value: Math.cos(Math.PI / hs) } }, side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
-    const shell = new THREE.Mesh(shellGeo, shellMat);
-    group.add(shell);
-    made.push(shellGeo, shellMat);
+    // (lib/three's shell, the universe map's planets' too, reading this
+    // body's own sun and air: its uniforms are the surface's)
+    const shell = createAtmosphere({ radius: r, top: atmo.top, segments: moon || small ? [48, 32] : [96, 64], inner: Math.cos(Math.PI / hs), uniforms: shared });
+    group.add(shell.mesh);
+    made.push(shell);
     reach = r * atmo.top;
   }
 

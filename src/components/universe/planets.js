@@ -18,7 +18,7 @@
 //
 // loadTextures({ small }) → the textures (any that fail are just missing)
 // mapFile(name, level) → the file for a planet map at lib/detail's level
-// buildPlanet(u, T, { sun, key }) → { id, radius, group, sun, update(t, camera), setState, mount }
+// buildPlanet(u, T, { sun, tier, key }) → { id, radius, group, sun, air, setAir, update(t, camera), setState, mount }
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -29,9 +29,11 @@ import { detailLevel } from '../../lib/detail';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
 import { globeData } from '../travel/globe3d/data';
 import { facing, fit, glowMat, orbit, paint, rng, rounded, tiled } from './kit';
+import { tileFbm } from '../../lib/texture';
 import { STATIONS } from './stations';
 import { buildGateway } from '../galaxy/gateway';
 import { SIDES, cybertronSkin } from '../cybertron/skin';
+import { createAtmosphere } from '../../lib/three/atmosphere';
 import { createWar, warZones } from '../cybertron/war';
 import { ringGeometry } from '../middleearth/ringShape';
 import { bossMug, elementTile, glowingGems, shardCluster } from './props';
@@ -51,15 +53,18 @@ const BASE = '/textures/universe/';
 // Breaking Bad, the Caribbean, C-137, the Office, Music, Marvel) at all
 // three sizes; Earth's, the sun's and the sky's by
 // scripts/build-universe-textures.py (--hq for the -hq set); Cybertron's and
-// Invincible's by their own scripts, with no -hq yet.
+// Invincible's by their own scripts (Invincible's relief with an -hq;
+// Cybertron's is 2048 on high and up, 1024 below).
 const map = (names, opts) => names.map((n) => [n, opts]);
 const MAPS = Object.fromEntries([
   ...map(['music', 'middleearth', 'middleearth-clouds', 'marvel', 'breakingbad', 'caribbean', 'office', 'rickmorty', 'rickmorty-clouds', 'earth', 'earth-night', 'sun', 'sky'], { sm: true, hq: true, colour: true }),
   ...map(['middleearth-normal', 'office-normal', 'breakingbad-normal', 'caribbean-clouds', 'earth-clouds'], { sm: true, hq: true, colour: false }),
+  ...map(['caribbean-normal', 'invincible-normal'], { sm: false, hq: true, colour: false }),
+  ...map(['transformers-normal'], { sm: true, hq: false, colour: false }),
   ...map(['middleearth-night', 'breakingbad-night', 'transformers', 'invincible', 'invincible-night'], { sm: true, hq: false, colour: true }),
   ...map(['breakingbad-clouds', 'invincible-clouds'], { sm: true, hq: false, colour: false }),
   ...map(['middleearth-glow', 'caribbean-night', 'rickmorty-glow', 'invincible-glow', 'plates', 'hull'], { sm: false, hq: false, colour: true }),
-  ...map(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-normal-sm', 'transformers-glow-sm', 'middleearth-rough', 'office-rough', 'breakingbad-rough', 'caribbean-normal', 'caribbean-rough', 'invincible-normal', 'earth-rough'], { sm: false, hq: false, colour: false }),
+  ...map(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-glow-sm', 'middleearth-rough', 'office-rough', 'breakingbad-rough', 'caribbean-rough', 'earth-rough', 'rickmorty-rough', 'invincible-rough'], { sm: false, hq: false, colour: false }),
 ]);
 
 export const MAP_NAMES = Object.keys(MAPS);
@@ -152,29 +157,24 @@ function halo(radius, color, seg, light = LIGHT) {
 }
 
 // The glow on a planet's own rim, in its material, and (for Earth) its
-// cities' lights on the night side: both follow the sun. Given the scene's
-// key light (`key`, its direction in world space, shared by every planet),
-// the planet's own sun takes the key's place in its lighting: the key is
-// aimed from the star that lights the camera's spot, right for the ship and
-// what's round it, but a planet across the map sees its star from another
-// side, so its terminator and its air agree wherever it's seen from.
-function airGlow(mat, color, { night = null, sun = LIGHT, key = null } = {}) {
+// cities' lights on the night side: both follow the sun.
+function airGlow(mat, color, { night = null, sun = LIGHT } = {}) {
   const u = {
     uRimColor: { value: new THREE.Color(color) },
     uRimStrength: { value: RIM.idle * 0.8 },
     uSunW: { value: sun },
     uNight: { value: night },
-    ...(key ? { uKeyW: key } : {}),
   };
   mat.userData.air = u;
   // (after any hook the planet's builder gave it, such as Cybertron's skin)
   const prev = mat.onBeforeCompile;
-  const prevKey = mat.customProgramCacheKey;
+  // (a key someone set, not three's default, which is the hook's own source)
+  const prevKey = Object.hasOwn(mat, 'customProgramCacheKey') ? mat.customProgramCacheKey : null;
   mat.onBeforeCompile = (shader, renderer) => {
     prev?.call(mat, shader, renderer);
     Object.assign(shader.uniforms, u);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\nuniform vec3 uRimColor;\nuniform float uRimStrength;\nuniform vec3 uSunW;\nuniform sampler2D uNight;${key ? '\nuniform vec3 uKeyW;' : ''}`)
+      .replace('#include <common>', `#include <common>\nuniform vec3 uRimColor;\nuniform float uRimStrength;\nuniform vec3 uSunW;\nuniform sampler2D uNight;`)
       .replace(
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
@@ -188,19 +188,8 @@ function airGlow(mat, color, { night = null, sun = LIGHT, key = null } = {}) {
           ${night ? 'totalEmissiveRadiance += texture2D(uNight, vMapUv).rgb * 1.5 * smoothstep(0.12, -0.3, day);' : ''}
         }`,
       );
-    // (the key is found by its direction, whatever order the lights are in;
-    // the fill and any other light are left as they are)
-    if (key)
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <lights_fragment_begin>',
-        THREE.ShaderChunk.lights_fragment_begin.replace(
-          'getDirectionalLightInfo( directionalLight, directLight );',
-          `getDirectionalLightInfo( directionalLight, directLight );
-          if ( dot( directLight.direction, normalize( ( viewMatrix * vec4( uKeyW, 0.0 ) ).xyz ) ) > 0.9999 ) directLight.direction = normalize( ( viewMatrix * vec4( uSunW, 0.0 ) ).xyz );`,
-        ),
-      );
   };
-  mat.customProgramCacheKey = () => `${night ? 'air-night' : 'air'}${key ? '-sun' : ''}${prevKey ? `-${prevKey.call(mat)}` : ''}`;
+  mat.customProgramCacheKey = () => `${night ? 'air-night' : 'air'}${prevKey ? `-${prevKey.call(mat)}` : ''}`;
   return mat;
 }
 
@@ -529,7 +518,7 @@ const BUILDERS = {
     const mat = new THREE.MeshStandardMaterial({
       map: T.transformers ?? null,
       color: T.transformers ? '#ffffff' : u.palette.base,
-      normalMap: T['transformers-normal-sm'] ?? null,
+      normalMap: T['transformers-normal'] ?? null,
       normalScale: new THREE.Vector2(1.1, 1.1),
       roughness: 0.55,
       metalness: 0.45,
@@ -537,6 +526,8 @@ const BUILDERS = {
     p.body.material = mat;
     if (T.transformers && T['transformers-glow-sm']) {
       const skin = cybertronSkin(mat, { glow: T['transformers-glow-sm'], sun: p.sun });
+      // (its seams glow a little in the colour of the light it's in: the scene's key)
+      p.keyColour = skin.uKeyColour.value;
       // the energon breathes, and turns from the Autobots' blue to the
       // Decepticons' violet and back as the war goes one way and the other
       const blue = SIDES.autobot.energon;
@@ -703,14 +694,19 @@ const BUILDERS = {
     const r = u.size;
     // a sheet of Dunder Mifflin's letterhead crumpled into a ball, the paper
     // that gets thrown at the bin (scripts/planets/office.mjs): flat facets
-    // with sharp creases, the memo's print running on across the folds
-    p.body.material = new THREE.MeshStandardMaterial({
+    // with sharp creases, the memo's print running on across the folds; lit
+    // as paper: a sheen in its own colour, so its fibre shows under a
+    // grazing light (the creases toward the terminator)
+    p.body.material = new THREE.MeshPhysicalMaterial({
       map: T.office ?? null,
       color: T.office ? '#f2eee4' : u.palette.base, // paper, not snow: a little warm and a little grey
       normalMap: T['office-normal'] ?? tiled(T['paper-normal'], 4, 2),
       normalScale: new THREE.Vector2(1, 1),
       roughnessMap: T['office-rough'] ?? null,
-      roughness: T['office-rough'] ? 1 : 0.95,
+      roughness: 1,
+      sheen: 0.6,
+      sheenColor: '#f3ecd8',
+      sheenRoughness: 0.8,
     });
     // and its outline a crumpled ball's: the sphere cut by a scatter of flat
     // planes a little inside it, so it has facets and corners (never out
@@ -768,13 +764,17 @@ const BUILDERS = {
       emissive: '#ffffff',
       emissiveMap: T['rickmorty-glow'] ?? null,
       emissiveIntensity: T['rickmorty-glow'] ? 1.3 : 0,
-      roughness: 0.85,
+      // (the seas glossy, so they catch the sun: scripts/planets/rickmorty.mjs)
+      roughnessMap: T['rickmorty-rough'] ?? null,
+      roughness: T['rickmorty-rough'] ? 1 : 0.85,
       metalness: 0,
     });
+    // lit as the show lights it: in flat bands, its limb inked (celShade)
+    celShade(p.body.material);
     if (T['rickmorty-clouds']) {
       const sky = new THREE.Mesh(
         new THREE.SphereGeometry(r * 1.012, T.small ? 44 : 64, T.small ? 28 : 40),
-        new THREE.MeshStandardMaterial({ map: T['rickmorty-clouds'], transparent: true, depthWrite: false, roughness: 1, metalness: 0 }),
+        celShade(new THREE.MeshStandardMaterial({ map: T['rickmorty-clouds'], transparent: true, depthWrite: false, roughness: 1, metalness: 0 }), { ink: 0 }),
       );
       p.group.add(sky);
       p.tick.push((t) => (sky.rotation.y = t * 0.05));
@@ -877,6 +877,10 @@ const BUILDERS = {
     map.minFilter = THREE.NearestMipmapLinearFilter;
     map.anisotropy = 1;
     p.body.material = new THREE.MeshStandardMaterial({ map, roughness: 0.85, metalness: 0 });
+    // lit as a Game Boy would light it: the four greens, dithered (ditherShade),
+    // the ground, its clouds and its mountains alike, sized by one ratio
+    p.dpr = { value: 1 };
+    ditherShade(p.body.material, { palette: GREENS, dpr: p.dpr, outline: true });
     // pixel clouds, drifting a little faster than the ground
     const clouds = paint(
       (g) => {
@@ -899,6 +903,7 @@ const BUILDERS = {
     );
     clouds.magFilter = THREE.NearestFilter;
     const cloudShell = new THREE.Mesh(new THREE.SphereGeometry(r * 1.025, 64, 40), new THREE.MeshStandardMaterial({ map: clouds, transparent: true, depthWrite: false, roughness: 1, alphaTest: 0.5 }));
+    ditherShade(cloudShell.material, { palette: GREENS, dpr: p.dpr });
     p.group.add(cloudShell);
     p.tick.push((t) => (cloudShell.rotation.y = t * 0.09));
     // blocky mountains: a few voxels standing up where the land is highest
@@ -911,6 +916,7 @@ const BUILDERS = {
     }
     const c = r * 0.05;
     const blocks = new THREE.InstancedMesh(new THREE.BoxGeometry(c, c, c), new THREE.MeshStandardMaterial({ roughness: 0.75 }), peaks.length * 2);
+    ditherShade(blocks.material, { palette: GREENS, dpr: p.dpr });
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const up = new THREE.Vector3(0, 1, 0);
@@ -1043,7 +1049,9 @@ const BUILDERS = {
         emissive: '#ffffff',
         emissiveMap: T['invincible-glow'] ?? null,
         emissiveIntensity: T['invincible-glow'] ? 2.4 : 0,
-        roughness: 0.92,
+        // (the old sea beds glossy: scripts/build-invincible-planet.mjs)
+        roughnessMap: T['invincible-rough'] ?? null,
+        roughness: T['invincible-rough'] ? 1 : 0.92,
       });
       p.body.material = mat;
       p.night = T['invincible-night'] ?? null;
@@ -1337,7 +1345,213 @@ const BUILDERS = {
   ...STATIONS,
 };
 
-export function buildPlanet(u, T = {}, { sun = null, key = null } = {}) {
+// A world seen from across the map stands its own sun in for the key: the
+// scene's key light (`key`, its direction in world space, shared by every
+// planet) is aimed from the star that lights the camera's spot, right for
+// the ship and what's round it, but a world across the map sees its star
+// from another side, so its ground would be shaded from the wrong side
+// while its air and rim face its own. The key is found by its direction,
+// whatever order the lights are in; the fill and any other light are left
+// as they are. Last of the hooks, so a hook before it that marks three's
+// light loop (celShade) still finds it.
+function keyHook(mat, key, sun) {
+  const prev = mat.onBeforeCompile;
+  const prevKey = Object.hasOwn(mat, 'customProgramCacheKey') ? mat.customProgramCacheKey : null;
+  mat.onBeforeCompile = (shader, renderer) => {
+    prev?.call(mat, shader, renderer);
+    shader.uniforms.uKeyW = key;
+    shader.uniforms.uKeySunW ??= { value: sun };
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uKeyW;\nuniform vec3 uKeySunW;').replace(
+      '#include <lights_fragment_begin>',
+      THREE.ShaderChunk.lights_fragment_begin.replace(
+        'getDirectionalLightInfo( directionalLight, directLight );',
+        `getDirectionalLightInfo( directionalLight, directLight );
+        if ( dot( directLight.direction, normalize( ( viewMatrix * vec4( uKeyW, 0.0 ) ).xyz ) ) > 0.9999 ) directLight.direction = normalize( ( viewMatrix * vec4( uKeySunW, 0.0 ) ).xyz );`,
+      ),
+    );
+  };
+  mat.customProgramCacheKey = () => `sun${prevKey ? `-${prevKey.call(mat)}` : ''}`;
+}
+
+// What a planet's ground is given beyond its own maps (groundHooks): its
+// cloud layer's texture, and whether that's an alpha map (read from its
+// green) or a picture (read from its alpha); its roughness map; and whether
+// the ground comes up in detail as you come in (not on low, not a station).
+const CLOUDS = { middleearth: ['middleearth-clouds', false], breakingbad: ['breakingbad-clouds', true], rickmorty: ['rickmorty-clouds', false], caribbean: ['caribbean-clouds', true], invincible: ['invincible-clouds', true], travel: ['earth-clouds', true] };
+const ROUGH = { travel: 'earth-rough' };
+// (drawn in flat colour, cel or dithered: a mottle would undo it)
+const FLAT = new Set(['rickmorty', 'gaming']);
+export function styleFor(u, T = {}, { tier = 'high' } = {}) {
+  const [name, alpha] = CLOUDS[u.id] ?? [null, false];
+  return { clouds: (name && tier !== 'low' && T[name]) || null, alpha, rough: T[ROUGH[u.id] ?? `${u.id}-rough`] ?? null, detail: u.kind !== 'core' && !u.portal && !FLAT.has(u.id) && tier !== 'low' };
+}
+
+// A fine noise tile, made once, for the ground's detail coming up close
+let detailTex = null;
+function detailTile() {
+  if (detailTex) return detailTex;
+  const N = 256;
+  const f = tileFbm(7, { base: 4, octaves: 5 });
+  const data = new Uint8Array(N * N * 4);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) data.fill(Math.round(f(x / N, y / N) * 255), (y * N + x) * 4, (y * N + x) * 4 + 4);
+  detailTex = new THREE.DataTexture(data, N, N);
+  detailTex.wrapS = detailTex.wrapT = THREE.RepeatWrapping;
+  detailTex.magFilter = THREE.LinearFilter;
+  detailTex.minFilter = THREE.LinearMipmapLinearFilter;
+  detailTex.generateMipmaps = true;
+  detailTex.needsUpdate = true;
+  return detailTex;
+}
+
+// The ground's hooks, after airGlow's (and any the builder gave it), each
+// with its own part of the cache key: the clouds' shadows on it (darkening
+// the ground by up to 0.55 under them, their texture read where they've
+// turned to over it), the ground's own detail fading in from three radii
+// to 1.3 (so it mottles rather than blurs as you come in), and a floor on
+// how glossy it can be (0.22: a sea's glint, not a white disc).
+function groundHooks(mat, { clouds, alpha, detail, rough }) {
+  if (!clouds && !detail && !rough) return null;
+  const u = {
+    uClouds: { value: clouds },
+    uCloudAlpha: { value: alpha ? 1 : 0 },
+    uCloudTurn: { value: 0 },
+    uDetail: { value: detail ? detailTile() : null },
+    uCamDist: { value: 1e9 },
+    uCloudOn: { value: 1 }, // (0 from the pace's step 3: no new shader)
+  };
+  mat.userData.ground = u;
+  const prev = mat.onBeforeCompile;
+  // (a key someone set, not three's default, which is the hook's own source)
+  const prevKey = Object.hasOwn(mat, 'customProgramCacheKey') ? mat.customProgramCacheKey : null;
+  mat.onBeforeCompile = (shader, renderer) => {
+    prev?.call(mat, shader, renderer);
+    Object.assign(shader.uniforms, u);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\nuniform sampler2D uClouds;\nuniform float uCloudAlpha;\nuniform float uCloudTurn;\nuniform sampler2D uDetail;\nuniform float uCamDist;\nuniform float uCloudOn;`)
+      .replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+        #ifdef USE_MAP
+        ${clouds ? '{ vec4 cl = texture2D(uClouds, vec2(vMapUv.x - uCloudTurn, vMapUv.y)); diffuseColor.rgb *= 1.0 - 0.55 * uCloudOn * mix(cl.a, cl.g, uCloudAlpha); }' : ''}
+        ${detail ? '{ float k = smoothstep(3.0, 1.3, uCamDist); diffuseColor.rgb *= mix(1.0, 0.82 + 0.36 * texture2D(uDetail, vMapUv * vec2(96.0, 48.0)).r, k); }' : ''}
+        #endif`,
+      )
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>\n${rough ? 'roughnessFactor = max(roughnessFactor, 0.22);' : ''}`);
+  };
+  const parts = [clouds && 'clouds', detail && 'detail', rough && 'rough'].filter(Boolean).join('-');
+  mat.customProgramCacheKey = () => `${parts}${prevKey ? `-${prevKey.call(mat)}` : ''}`;
+  return u;
+}
+
+// C-137 as the show draws it: the direct light in three flat bands (full
+// above 0.55 of n·l, 0.72 down to 0.15, 0.45 to the terminator, night past
+// it), each edge two pixels soft (from how fast the normal turns on the
+// screen) so it doesn't crawl as the planet turns; no specular but a flat
+// glint where it's glossy (its seas), as the show draws one; and, with `ink`,
+// its limb inked: darkened by pow(1 − n·v, ink) × 0.8, so it's outlined like
+// everything else in the show. Composes after any hook already on it.
+export function celShade(mat, { bands = [0.55, 0.15], levels = [1, 0.72, 0.45], ink = 8 } = {}) {
+  const f = (v) => v.toFixed(3);
+  const prev = mat.onBeforeCompile;
+  const prevKey = Object.hasOwn(mat, 'customProgramCacheKey') ? mat.customProgramCacheKey : null;
+  mat.onBeforeCompile = (shader, renderer) => {
+    prev?.call(mat, shader, renderer);
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <lights_physical_pars_fragment>',
+        `#include <lights_physical_pars_fragment>
+        float celEdge;
+        void RE_Direct_Cel(const in IncidentLight directLight, const in vec3 geometryPosition, const in vec3 geometryNormal, const in vec3 geometryViewDir, const in vec3 geometryClearcoatNormal, const in PhysicalMaterial material, inout ReflectedLight reflectedLight) {
+          float ndl = dot(geometryNormal, directLight.direction);
+          float lit = ${f(levels[2])} * smoothstep(-celEdge, celEdge, ndl);
+          lit = mix(lit, ${f(levels[1])}, smoothstep(${f(bands[1])} - celEdge, ${f(bands[1])} + celEdge, ndl));
+          lit = mix(lit, ${f(levels[0])}, smoothstep(${f(bands[0])} - celEdge, ${f(bands[0])} + celEdge, ndl));
+          reflectedLight.directDiffuse += lit * directLight.color * BRDF_Lambert(material.diffuseContribution);
+          float gloss = 1.0 - smoothstep(0.3, 0.6, material.roughness);
+          float h = dot(geometryNormal, normalize(directLight.direction + geometryViewDir));
+          reflectedLight.directSpecular += directLight.color * 0.35 * gloss * smoothstep(0.985 - celEdge, 0.985 + celEdge, h) * step(0.0, ndl);
+        }
+        // (the sky's light on it stays, flat; its reflection goes)
+        void RE_IndirectSpecular_Cel(const in vec3 radiance, const in vec3 irradiance, const in vec3 clearcoatRadiance, const in vec3 geometryPosition, const in vec3 geometryNormal, const in vec3 geometryViewDir, const in vec3 geometryClearcoatNormal, const in PhysicalMaterial material, inout ReflectedLight reflectedLight) {
+          reflectedLight.indirectDiffuse += material.diffuseContribution * irradiance * RECIPROCAL_PI;
+        }
+        #undef RE_Direct
+        #define RE_Direct RE_Direct_Cel
+        #undef RE_IndirectSpecular
+        #define RE_IndirectSpecular RE_IndirectSpecular_Cel`,
+      )
+      .replace('#include <lights_fragment_begin>', 'celEdge = max(length(fwidth(normal)), 1e-4) * 2.0;\n#include <lights_fragment_begin>')
+      .replace('#include <opaque_fragment>', `${ink ? `outgoingLight *= 1.0 - 0.8 * pow(1.0 - saturate(dot(nonPerturbedNormal, normalize(vViewPosition))), ${f(ink)});` : ''}\n#include <opaque_fragment>`);
+  };
+  mat.customProgramCacheKey = () => `cel${ink ? `-ink${ink}` : ''}${prevKey ? `-${prevKey.call(mat)}` : ''}`;
+  return mat;
+}
+
+// Dot Matrix as a Game Boy shows it: each pixel one of the four greens,
+// picked by its own tone (the nearest of the four) stepped down by how lit
+// it is against a 4 × 4 ordered dither, so the terminator is a Bayer pattern.
+// The dither's cells are two of the page's pixels (gl_FragCoord over the
+// ratio it's drawn at, `dpr`, a uniform the scene sets), so they're the same
+// size on every screen and every pace step. With `outline`, the limb's last
+// pixel in the lightest green, the screen's own edge to the world.
+const BAYER = '0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0';
+// (how lit a pixel in the full sun is, against its own colour: the key's
+// strength over π, with the sky's; read in whichever of its colours it has
+// most of, so an orange star on its greens isn't taken for a dim one)
+const DITHER_FULL = 0.75;
+export function ditherShade(mat, { palette, dpr = { value: 1 }, outline = false } = {}) {
+  const u = { uPalette: { value: palette.map((c) => new THREE.Color(c)) }, uDpr: dpr };
+  const prev = mat.onBeforeCompile;
+  const prevKey = Object.hasOwn(mat, 'customProgramCacheKey') ? mat.customProgramCacheKey : null;
+  mat.onBeforeCompile = (shader, renderer) => {
+    prev?.call(mat, shader, renderer);
+    Object.assign(shader.uniforms, u);
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uPalette[4];\nuniform float uDpr;').replace(
+      '#include <opaque_fragment>',
+      `{
+        const float bayer[16] = float[16](${BAYER});
+        float own = 0.0;
+        float best = 1e9;
+        for (int i = 0; i < 4; i++) {
+          float d = distance(diffuseColor.rgb, uPalette[i]);
+          if (d < best) { best = d; own = float(i); }
+        }
+        vec3 has = step(vec3(0.02), diffuseColor.rgb);
+        vec3 by = outgoingLight / max(diffuseColor.rgb, vec3(1e-3)) * has;
+        float lit = clamp(max(by.r, max(by.g, by.b)) / ${DITHER_FULL.toFixed(2)}, 0.0, 1.0);
+        vec2 cell = mod(floor(gl_FragCoord.xy / (uDpr * 2.0)), 4.0);
+        float th = (bayer[int(cell.x) + int(cell.y) * 4] + 0.5) / 16.0;
+        int tone = int(clamp(floor(own * lit + th), 0.0, 3.0));
+        outgoingLight = uPalette[tone] * ${DITHER_FULL.toFixed(2)};
+        ${outline ? 'float nv = dot(nonPerturbedNormal, normalize(vViewPosition));\n        if (nv < fwidth(nv) * 1.5) outgoingLight = uPalette[3] * ' + DITHER_FULL.toFixed(2) + ';' : ''}
+      }
+      #include <opaque_fragment>`,
+    );
+  };
+  mat.customProgramCacheKey = () => `dither${outline ? '-outline' : ''}${prevKey ? `-${prevKey.call(mat)}` : ''}`;
+  mat.userData.dither = u;
+  return u;
+}
+
+// The shader variants the planets' own hooks make (the air's rim, the
+// ground's, the styles'): each one a program the warm-up compiles before the
+// first frame, so a count to keep an eye on. A variant is the material's kind,
+// its hooks' key and which of its maps it has (each changes the program).
+const SLOTS = ['map', 'normalMap', 'roughnessMap', 'emissiveMap', 'alphaMap', 'metalnessMap'];
+export function variants(planets) {
+  const out = new Set();
+  for (const p of planets) {
+    p.group.traverse((o) => {
+      for (const m of [].concat(o.material ?? [])) {
+        if (!Object.hasOwn(m, 'customProgramCacheKey')) continue;
+        out.add([m.type, m.customProgramCacheKey(), SLOTS.map((s) => (m[s] ? 1 : 0)).join(''), o.isInstancedMesh ? 'instanced' : '', m.transparent ? 'blend' : ''].join('|'));
+      }
+    });
+  }
+  return out;
+}
+
+export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null } = {}) {
   const core = u.kind === 'core';
   // the way to the star that lights it, in the world's axes (lighting.js's
   // sunFor, turned with the map by the scene each frame): one vector its
@@ -1350,11 +1564,37 @@ export function buildPlanet(u, T = {}, { sun = null, key = null } = {}) {
   const body = new THREE.Mesh(new THREE.SphereGeometry(u.size, seg[0], seg[1]), new THREE.MeshStandardMaterial({ color: u.palette.base, roughness: 1 }));
   spinner.add(body);
   // a planet has air round it in its colour; a station's sign does that job
-  const air = core || u.airless ? null : halo(u.size, u.rim ?? u.swatch, seg, sunW); // (a station has no air round it)
-  if (air) group.add(air);
+  // a planet has air round it in its colour: the old halo, and where it says
+  // what its air is (universes.js), a real one on high and mid, marched
+  // through (lib/three/atmosphere.js: 8 steps on high, 5 on mid, its sun the
+  // planet's own vector); the halo kept for low and for the pace's last
+  // steps (setAir), only one of them shown
+  const haloMesh = core || u.airless ? null : halo(u.size, u.rim ?? u.swatch, seg, sunW); // (a station has no air round it)
+  const shell =
+    haloMesh && u.air && tier !== 'low'
+      ? createAtmosphere({ radius: u.size, top: u.air.top, colour: u.air.colour, density: u.air.density, sunset: u.air.sunset, segments: T.small ? [64, 40] : [96, 64], steps: tier === 'high' || tier === 'ultra' ? 8 : 5, inner: Math.cos(Math.PI / seg[1]), flat: Boolean(u.air.flat), uniforms: { uSunDir: { value: [sunW, new THREE.Vector3(0, 1, 0)] } } })
+      : null;
+  if (shell) shell.mesh.renderOrder = 2;
+  let air = shell ? shell.mesh : haloMesh;
+  if (haloMesh) group.add(haloMesh);
+  if (shell) {
+    group.add(shell.mesh);
+    haloMesh.visible = false;
+  }
   const p = { group, body, orbits: [], tick: [], focus: [], slot: null, onSelect: null, sun: sunW };
   BUILDERS[u.id]?.(p, { u, T });
-  if (!core && p.body.material?.isMeshStandardMaterial) airGlow(p.body.material, u.rim ?? u.swatch, { night: p.night, sun: sunW, key });
+  if (!core && p.body.material?.isMeshStandardMaterial) airGlow(p.body.material, u.rim ?? u.swatch, { night: p.night, sun: sunW });
+  // the clouds' shadows, the ground's detail and a sea's glint (groundHooks),
+  // the cloud layer found by its texture, wherever its builder put it
+  const style = styleFor(u, T, { tier });
+  let cloudMesh = null;
+  if (style.clouds) group.traverse((o) => (cloudMesh ??= o.isMesh && (o.material?.map === style.clouds || o.material?.alphaMap === style.clouds) ? o : null));
+  const ground = !core && p.body.material?.isMeshStandardMaterial ? groundHooks(p.body.material, { ...style, clouds: cloudMesh ? style.clouds : null }) : null;
+  if (key && !core && p.body.material?.isMeshStandardMaterial) keyHook(p.body.material, key, sunW);
+  // (with real air round it, the air draws the limb: the rim in its ground goes)
+  const rimGlow = () => p.body.material?.userData?.air;
+  if (shell && rimGlow()) rimGlow().uRimStrength.value = 0;
+  const centre = new THREE.Vector3();
   // a station's big sign, over it
   const sign = u.sign ? bigSign(u) : null;
   if (sign) {
@@ -1364,6 +1604,7 @@ export function buildPlanet(u, T = {}, { sun = null, key = null } = {}) {
   const spin = core ? 0 : 0.05 + rng(`${u.id}-spin`)() * 0.05;
   let turn0 = body.rotation.y;
   let held = null; // the turn it's held at, while someone stands on it
+  let level = 0; // the pace's step
   let selected = false;
   let t0 = 0;
 
@@ -1375,7 +1616,42 @@ export function buildPlanet(u, T = {}, { sun = null, key = null } = {}) {
     // what a crash lays its shockwave on (a station's is hidden: none)
     surface: core ? null : body,
     body,
-    air,
+    get air() {
+      return air;
+    },
+    // how far off the camera is, in the planet's radii (the scene, for the
+    // nearest two: the ground's detail comes up from three)
+    near(d) {
+      if (ground) ground.uCamDist.value = level >= 2 ? 1e9 : d;
+    },
+    // the pace's step (lib/three/pace), as the spec's effects table has it:
+    // the ground's detail goes at 2, the clouds' shadows and the real air
+    // (for the halo) at 3, all back as it comes down again
+    setLevel(l) {
+      level = l;
+      if (ground) {
+        ground.uCloudOn.value = l >= 3 ? 0 : 1;
+        if (l >= 2) ground.uCamDist.value = 1e9;
+      }
+      this.setAir(l >= 3 ? 'halo' : 'shell');
+    },
+    // each frame, the scene's key light's colour and the ratio the frame is
+    // drawn at: Cybertron's seams glow in the one (normalised: a tint, not a
+    // dimming), Dot Matrix's dither is sized by the other
+    light(colour, ratio) {
+      if (p.dpr) p.dpr.value = ratio;
+      if (p.keyColour) p.keyColour.copy(colour).multiplyScalar(1 / Math.max(colour.r, colour.g, colour.b, 1e-3));
+    },
+    // the real air or the old halo (the pace's last steps): 'shell' | 'halo'
+    setAir(which) {
+      if (!shell) return;
+      const on = which === 'shell';
+      shell.mesh.visible = on;
+      haloMesh.visible = !on;
+      air = on ? shell.mesh : haloMesh;
+      const g = rimGlow();
+      if (g) g.uRimStrength.value = on ? 0 : RIM.idle * 0.8;
+    },
     sun: sunW,
     // held still (true) while the crew walk about on it, and turning on
     // from there once they're gone
@@ -1398,15 +1674,21 @@ export function buildPlanet(u, T = {}, { sun = null, key = null } = {}) {
     update(t, camera, live = true) {
       t0 = t;
       body.rotation.y = held ?? turn0 + t * spin;
+      // (the air's march is about the planet's middle, in the world: it moves with the map)
+      if (shell?.mesh.visible) shell.update(group.getWorldPosition(centre));
+      // (where the clouds have turned to over the ground: on the ground, or turning on their own)
+      if (ground && cloudMesh) ground.uCloudTurn.value = (cloudMesh.rotation.y - (cloudMesh.parent === body ? 0 : body.rotation.y)) / (Math.PI * 2);
       for (const o of p.orbits) o.set(t);
       if (live) for (const fn of p.tick) fn(t, camera);
     },
     // `dim`: somewhere else is picked, so this station's sign steps back
     setState({ hover, selected: sel, dim = false }) {
       const k = hover ? RIM.hover : sel ? RIM.selected : RIM.idle;
-      if (air) air.material.uniforms.uStrength.value = k;
+      if (haloMesh) haloMesh.material.uniforms.uStrength.value = k;
+      // (the real air brightens a little less: it's the whole limb)
+      shell?.set({ strength: 1 + (k - RIM.idle) * 0.6 });
       const glow = body.material?.userData?.air;
-      if (glow) glow.uRimStrength.value = k * 0.8;
+      if (glow) glow.uRimStrength.value = shell && air === shell.mesh ? 0 : k * 0.8;
       if (sel && !selected) p.onSelect?.(t0);
       if (sel !== selected) for (const fn of p.focus) fn(sel);
       selected = sel;

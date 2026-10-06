@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { tune, usesBasisu } from './gltf';
+import * as THREE from 'three';
+import { SHIP_PROFILE, tune, tuneTree, usesBasisu } from './gltf';
 
 // a GLB with the given JSON chunk
 function glb(json) {
@@ -60,5 +61,28 @@ describe('clamping a generator’s defaults', () => {
     expect(tune(m)).toBe(m);
     expect(m.roughness).toBe(0.1);
     expect(tune(null)).toBe(null);
+  });
+});
+
+describe('the hero ships’ finish', () => {
+  it('the ship profile clamps a clay export into paint and metal', () => {
+    const hull = new THREE.MeshStandardMaterial({ name: 'hull', roughness: 1, metalness: 1 });
+    const trim = new THREE.MeshStandardMaterial({ name: 'metal_trim', roughness: 0.1, metalness: 0 });
+    const root = new THREE.Group();
+    root.add(new THREE.Mesh(new THREE.BoxGeometry(), hull), new THREE.Mesh(new THREE.BoxGeometry(), [trim, hull]));
+    tuneTree(root, SHIP_PROFILE);
+    expect(hull.roughness).toBe(0.72);
+    expect(hull.metalness).toBe(0.1);
+    expect(trim.roughness).toBe(0.42);
+    expect(trim.metalness).toBe(0.65);
+    expect(hull.envMapIntensity).toBe(1.3);
+    expect(trim.envMapIntensity).toBe(1.3);
+  });
+
+  it('keeps a single metalness for things not named metal, as before', () => {
+    const plastic = tune({ name: 'body', metalness: 1 }, { metalness: 0.2 });
+    const chrome = tune({ name: 'chrome', metalness: 1 }, { metalness: 0.2 });
+    expect(plastic.metalness).toBe(0.2);
+    expect(chrome.metalness).toBe(1);
   });
 });

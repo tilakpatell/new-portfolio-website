@@ -423,6 +423,17 @@ describe('down on a world in the galaxy', () => {
     expect(readWalk({ w: 'hoth', a: ['han', 1, 2, 3, 0, 0, 'up'] }).lead.aim).toBe(0);
   });
 
+  it('says what is in the lead’s hand: a hero’s gun, or a lit saber with its colour and stance', async () => {
+    const { readWalk, writeWalk } = await import('./protocol');
+    const sent = writeWalk({ world: 'hoth', kind: 'xwing', lead: { who: 'ahsoka', x: 1, y: 2, z: 3, yaw: 0, speed: 0, aim: 1, arms: { gun: 'saber', lit: true, color: '#f4f8ff', stance: 'dual', swing: true } }, mate: { who: 'han', x: 1, y: 2, z: 3, yaw: 0, speed: 0, arms: { gun: 'shotgun' } } });
+    const got = readWalk(JSON.parse(JSON.stringify(sent)));
+    expect(got.lead.arms).toEqual({ gun: 'saber', lit: true, color: '#f4f8ff', stance: 'dual', swing: true });
+    expect(got.mate.arms).toEqual({ gun: 'shotgun', lit: false, color: '#4aa8ff', stance: 'single', swing: false });
+    expect(readWalk({ w: 'hoth', a: ['han', 1, 2, 3, 0, 0, 0] }).lead.arms).toBeNull(); // (an older pilot)
+    expect(readWalk({ w: 'hoth', a: ['han', 1, 2, 3, 0, 0, 0, ['rocket', 1]] }).lead.arms).toBeNull(); // (no such gun)
+    expect(readWalk({ w: 'hoth', a: ['leia', 1, 2, 3, 0, 0, 0, ['saber', 1, 'javascript:', 'nope', 1]] }).lead.arms).toEqual({ gun: 'saber', lit: true, color: '#4aa8ff', stance: 'single', swing: true });
+  });
+
   it('turns away what isn’t a crew on a world', async () => {
     const { readWalk } = await import('./protocol');
     expect(readWalk(null)).toBeNull();
