@@ -14,6 +14,7 @@
 // screenOf(kind, id), resize, dispose, lost, info }.
 
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
 import { device } from '../../../../lib/device';
 import { fbm, makeNoise, smooth } from '../../../../lib/paint';
@@ -21,6 +22,7 @@ import { pose } from '../../mapFigures';
 import { EMBER, FIRE as FLAME, createParticles } from '../../kit';
 import { instances } from '../../shire/ground';
 import { LOOKS } from '../../shire/people';
+import { tube } from '../../shire/props';
 import { makeAtmosphere, makeSky } from '../../shire/sky';
 import { createFx } from '../../shire/fx';
 import { createGhosts } from '../ghosts';
@@ -160,6 +162,129 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
     const rocks = GATE_ROCKS.map(([x, z, s], i) => ({ x, z, y: gateHeight(x, z) - 0.2, s, turn: i * 2.1 }));
     zones.gate.add(instances(kit.rubble(5), mats.rubble ?? mats.stone, rocks, { shadow: false }));
   }
+  // the shore's own clutter: stones of every size fallen from the cliff and
+  // washed up by the lake, reeds along the water, dead trees past the ends
+  // of the shore, and mist lying on the lake
+  {
+    const rnd = makeNoise(71);
+    const stone = (() => {
+      const g = new THREE.IcosahedronGeometry(1, 1);
+      const p = g.attributes.position;
+      for (let i = 0; i < p.count; i++) {
+        const k = 0.72 + rnd(p.getX(i) * 3.1, p.getY(i) * 2.7 + p.getZ(i) * 1.9) * 0.5;
+        p.setXYZ(i, p.getX(i) * k, p.getY(i) * k * 0.62, p.getZ(i) * k);
+      }
+      return g.toNonIndexed();
+    })();
+    stone.computeVertexNormals();
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x6a706a, roughness: 0.92, flatShading: true });
+    const list = [];
+    for (let i = 0; list.length < Math.round(230 * Math.max(0.4, many)) && i < 4000; i++) {
+      const x = GATE.west + 1 + ((i * 7.13 + rnd(i, 1) * 9) % (GATE.east - GATE.west - 2));
+      const z = GATE.cliff + 1 + ((i * 3.71 + rnd(i, 2) * 5) % (GATE.shore - GATE.cliff + 1.5));
+      // keep the apron before the Doors, and the way to them, clear
+      if (Math.hypot(x / 1.4, z - GATE.cliff - 3) < 5.2 || (Math.abs(x) < 2.6 && z < GATE.shore - 1)) continue;
+      const big = rnd(i, 3) > 0.86;
+      // more of them under the cliff, and along the water
+      const s = big ? 0.3 + rnd(i, 4) * 0.35 : 0.04 + rnd(i, 4) * rnd(i, 16) * 0.2;
+      const nearEdge = z < GATE.cliff + 3 || z > GATE.shore - 2.5;
+      if (!nearEdge && (big || rnd(i, 5) > 0.7)) continue;
+      list.push({ x, z, s });
+    }
+    const m = new THREE.InstancedMesh(stone, stoneMat, list.length);
+    const o = new THREE.Object3D();
+    list.forEach((q, i) => {
+      o.position.set(q.x, gateHeight(q.x, q.z) - q.s * 0.25, q.z);
+      o.rotation.set(rnd(i, 6) * 0.6, rnd(i, 7) * 6.28, rnd(i, 8) * 0.6);
+      o.scale.set(q.s * (1 + rnd(i, 9) * 0.5), q.s, q.s);
+      o.updateMatrix();
+      m.setMatrixAt(i, o.matrix);
+      m.setColorAt(i, new THREE.Color().setHSL(0.3, 0.04, 0.32 + rnd(i, 10) * 0.16));
+    });
+    zones.gate.add(m);
+    // reeds in clumps along the water's edge, and out into the shallows
+    const blade = (() => {
+      const geos = [];
+      for (let b = 0; b < 9; b++) {
+        const a = (b / 9) * Math.PI * 2;
+        const h = 0.7 + (b % 3) * 0.28;
+        const g = new THREE.PlaneGeometry(0.035, h, 1, 3).translate(0, h / 2, 0);
+        const p = g.attributes.position;
+        for (let i = 0; i < p.count; i++) {
+          const k = p.getY(i) / h;
+          p.setX(i, p.getX(i) * (1 - k * 0.9) + k * k * 0.12 * Math.cos(a));
+          p.setZ(i, k * k * 0.12 * Math.sin(a));
+        }
+        g.rotateY(a).translate(Math.cos(a) * 0.09, 0, Math.sin(a) * 0.09);
+        geos.push(g);
+      }
+      const merged = mergeGeometries(geos);
+      geos.forEach((g) => g.dispose());
+      return merged;
+    })();
+    const reedMat = new THREE.MeshStandardMaterial({ color: 0x4a5236, roughness: 0.9, side: THREE.DoubleSide });
+    const reeds = [];
+    for (let i = 0; i < Math.round(70 * Math.max(0.4, many)); i++) {
+      const x = GATE.west - 4 + ((i * 11.7 + rnd(i, 11) * 6) % (GATE.east - GATE.west + 8));
+      const z = GATE.shore - 0.6 + rnd(i, 12) * 2.6;
+      if (Math.abs(x) < 3) continue;
+      reeds.push({ x, z, s: 0.7 + rnd(i, 13) * 0.6 });
+    }
+    const rm = new THREE.InstancedMesh(blade, reedMat, reeds.length);
+    reeds.forEach((q, i) => {
+      o.position.set(q.x, Math.max(LAKE_Y - 0.25, gateHeight(q.x, q.z) - 0.05), q.z);
+      o.rotation.set(0, rnd(i, 14) * 6.28, 0);
+      o.scale.set(q.s, q.s * (0.8 + rnd(i, 15) * 0.5), q.s);
+      o.updateMatrix();
+      rm.setMatrixAt(i, o.matrix);
+    });
+    zones.gate.add(rm);
+    // dead trees, grey and bare, past the ends of the shore
+    const bark = new THREE.MeshStandardMaterial({ color: 0x4a4640, roughness: 0.95 });
+    for (const [x, z, s, seed] of [
+      [-29, -7, 1.1, 3],
+      [-31, 1, 0.8, 5],
+      [25, -9, 1.2, 7],
+      [27.5, 0.5, 0.9, 9],
+    ]) {
+      const r = makeNoise(seed);
+      const geos = [tube([[0, -0.4, 0], [0.2, 2.2 * s, 0.1], [-0.1, 4.2 * s, 0.3], [0.3, 5.6 * s, 0]], 0.32 * s, 0.06, { seg: 10, radial: 7, gnarl: 0.3, seed })];
+      for (let b = 0; b < 4; b++) {
+        const y = (2 + b * 0.9) * s;
+        const a = b * 2.3 + r(b, 1) * 0.8;
+        const len = (1.6 - b * 0.22) * s;
+        geos.push(tube([[0, y, 0], [Math.cos(a) * len * 0.5, y + 0.5 * s, Math.sin(a) * len * 0.5], [Math.cos(a) * len, y + 1.1 * s + r(b, 2) * 0.4, Math.sin(a) * len]], 0.1 * s, 0.015, { seg: 6, radial: 5, gnarl: 0.4, seed: seed + b }));
+      }
+      const g = mergeGeometries(geos.map((q) => (q.index ? q.toNonIndexed() : q)));
+      const tree = new THREE.Mesh(g, bark);
+      tree.position.set(x, gateHeight(x, z) - 0.2, z);
+      tree.rotation.y = seed;
+      zones.gate.add(tree);
+    }
+  }
+  // mist lying on the lake, drifting slowly along the shore
+  const mist = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const x = c.getContext('2d');
+    const grad = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255,255,255,0.9)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0.35)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = grad;
+    x.fillRect(0, 0, 64, 64);
+    const tex = new THREE.CanvasTexture(c);
+    const list = [];
+    for (let i = 0; i < Math.round(18 * Math.max(0.5, many)); i++) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: 0x9aaccc, transparent: true, opacity: 0.12 + (i % 4) * 0.03, depthWrite: false, fog: true }));
+      sp.scale.set(10 + (i % 5) * 3, 1.6 + (i % 3) * 0.6, 1);
+      sp.position.set(-40 + i * 5.1, LAKE_Y + 0.5 + (i % 3) * 0.35, GATE.shore + 3 + (i % 5) * 3.2);
+      zones.gate.add(sp);
+      list.push({ sp, v: 0.25 + (i % 3) * 0.12 });
+    }
+    return list;
+  })();
+
   // the Watcher's arms, waiting under the water, and the marks where they'll fall
   const watcher = kit.watcher();
   const tentacles = Array.from({ length: 5 }, (_, i) => {
@@ -436,6 +561,12 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       } else frodo.arms[0].rotation.x = 0;
     }
     ghosts.update(zone === 'gate' ? (s.travellers ?? []) : [], t, dt, { ringOn: Boolean(s.wearing) });
+    if (zone === 'gate') {
+      for (const m of mist) {
+        m.sp.position.x += m.v * dt;
+        if (m.sp.position.x > 46) m.sp.position.x -= 92;
+      }
+    }
 
     // ── who's about ──
     for (const c of CAST) {
