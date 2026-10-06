@@ -220,7 +220,7 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
       // (a glow's size in map units: the canvas's height over the view's height a unit off)
       const high = typeof window !== 'undefined' ? window.innerHeight : 800;
       glows.end(camera?.isPerspectiveCamera ? high / (2 * Math.tan((camera.fov * Math.PI) / 360)) : 600);
-      bolts.sync(battle.bolts, colourOf);
+      bolts.sync(battle.bolts, colourOf, camLocal);
       flashes.update(dt, camera);
       shield.update(dt, t);
       fires.update(dt, t);

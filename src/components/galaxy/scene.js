@@ -21,6 +21,11 @@
 // system you're in (/galaxy/hoth), and a link to another sends you jumping
 // there.
 //
+// The Galactic Civil War (gcw.js) is on: at a system it's being fought over,
+// its battle's there as you drop in (warfront.js: battles.js lays it out at
+// the planet, universe/battle.js fights it), and you're in it, on the
+// Rebellion's side; what you do there counts in the war, shared online.
+//
 // Out there: hunters by who holds the system (galaxy/hunted.js through
 // universe/hunters.js), now and then a Star Destroyer dropping out of
 // hyperspace to launch its TIEs at you (universe/setpieces.js), traffic
@@ -88,6 +93,7 @@ import { createJump } from './hyperspace';
 import { DIVE, LAUNCH_KEY, diveAt, planDive } from './travel';
 import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, interdictorPlace } from './interdiction';
 import { createInterdictor } from './interdictor';
+import { createWarFront } from './warfront';
 import { createBolts, createFlashes } from './fx';
 import { buildSystem } from './world';
 import { AHEAD, FACTIONS, KINDS, NAMES } from './hunted';
@@ -222,6 +228,10 @@ export async function create(canvas, ctx) {
     store: { get: () => window.sessionStorage.getItem(JUMPS_KEY), set: (v) => (v === null ? window.sessionStorage.removeItem(JUMPS_KEY) : window.sessionStorage.setItem(JUMPS_KEY, v)) },
   });
   const interdictor = reduced ? null : createInterdictor(scene, { models, small });
+  // the war's battle in this system, if it's being fought over (and the clipping
+  // planes a broken flagship's halves are cut with)
+  renderer.localClippingEnabled = true;
+  const war = reduced ? null : createWarFront(scene, { models, small, reduced, tier, emit: (e) => emit(e), onSolids: () => respace() });
 
   // your guns
   const boltGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.6, 6).rotateX(Math.PI / 2);
@@ -334,7 +344,8 @@ export async function create(canvas, ctx) {
     world.setDetail(detail);
     scene.add(world.group);
     state.world = world;
-    state.space = makeSpace(world.solids);
+    war?.enter(sys, world);
+    respace();
     // the suns' light
     world.sunLights.forEach((s, i) => {
       keys[i].color.copy(s.color);
@@ -354,6 +365,12 @@ export async function create(canvas, ctx) {
     models.want(['destroyer', 'corvette', 'xwing', 'interceptor', ...(wantsDeathStar(sys) ? ['deathstar'] : [])]);
     return warm(world.group);
   };
+  // what the ship flies through: the system's solids, and the war's capital ships' hulls while its battle's on
+  function respace() {
+    if (!state.world) return;
+    const extra = war?.solids ?? [];
+    state.space = makeSpace(extra.length ? [...state.world.solids, ...extra] : state.world.solids);
+  }
   // the system's sky drawn into its cube (once, for as long as you're here), and what its metal reflects
   const dressSystem = (sys) => {
     sky.bake();
@@ -823,6 +840,20 @@ export async function create(canvas, ctx) {
         }
         continue;
       }
+      // the war's battle: its fighters, its objectives, its capital ships' hulls
+      const wh = war?.hit(shotFrom, b.position, d.punch ?? 1);
+      if (wh) {
+        b.visible = false;
+        const ship = !wh.sub && !wh.capital && !wh.shield;
+        landed({ at: new THREE.Vector3(wh.at.x, wh.at.y, wh.at.z), size: ship ? wh.size : 0.15, down: ship && wh.down }, popDir.set(-d.v[0], 3, -d.v[2]).normalize());
+        state.hitMark = 1;
+        if (ship && wh.down) {
+          emit({ type: 'kill', kind: wh.kind });
+          state.heat += 1;
+          if (!reduced) state.shake = Math.max(state.shake, 0.2);
+        }
+        continue;
+      }
       // another pilot, or one of the hunters after them (it's theirs, so they're told)
       const ph = pilots.hit(shotFrom, b.position, d.punch ?? 1);
       if (ph) {
@@ -1268,9 +1299,11 @@ export async function create(canvas, ctx) {
 
     // the guns: the lock, the lead, whether a shot would bend onto it
     let cands = hunters?.targets ?? NO_TARGETS;
-    if (pilots.count) {
+    const warCands = war?.targets ?? NO_TARGETS;
+    if (pilots.count || warCands.length) {
       candBuf.length = 0;
       for (const c of cands) candBuf.push(c);
+      for (const c of warCands) candBuf.push(c);
       for (const c of pilots.targets) candBuf.push(c);
       cands = candBuf;
     }
@@ -1282,7 +1315,7 @@ export async function create(canvas, ctx) {
     // (the nose follows only a lock on a hunter, one picked by hand, or one
     // being shot at: not a passing pilot or a part of the Citadel the guns
     // happened on)
-    state.trackable = Boolean(tgt && (hunters?.targets.includes(tgt) || state.lock?.manual || performance.now() - state.lastShot < TRACK_AFTER_SHOT));
+    state.trackable = Boolean(tgt && (hunters?.targets.includes(tgt) || warCands.includes(tgt) || state.lock?.manual || performance.now() - state.lastShot < TRACK_AFTER_SHOT));
     if (tgt && tgt.id !== was && state.shown && !document.hidden) lockSound();
     state.lead = tgt ? intercept(ship, AIM.bolt + Math.max(0, ship.speed), tgt.at, tgt.vel) : null;
     state.hot = Boolean(state.lead && state.lead.t <= AIM.life && assistAmount(nose(ship), dirTo(ship, state.lead), controls().assist) >= 1);
@@ -1345,6 +1378,11 @@ export async function create(canvas, ctx) {
     if (hunters) for (const e of hunters.update(dt, t, live)) onHunters(e);
     let busy = pieces ? pieces.update(dt, t, camera) : false;
     if (interdictor) busy = interdictor.update(dt, t) || busy;
+    if (war) {
+      const w = war.update(dt, t, camera, live);
+      if (w.hurt && live) hurt(w.hurt);
+      busy = w.busy || busy;
+    }
     if (live) {
       if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen);
       if (state.shield > 70) state.lowSaid = false;
@@ -1352,7 +1390,8 @@ export async function create(canvas, ctx) {
       // now and then, whoever holds the system comes for you; the Empire (and
       // what's left of it) sometimes brings a Star Destroyer to launch them
       const faction = state.sys?.faction;
-      if (hunters && faction && state.flown && !hunters.active && !pieces?.destroyerHere && !state.held) {
+      // (not in the middle of the war's battle: it's busy enough)
+      if (hunters && faction && state.flown && !hunters.active && !pieces?.destroyerHere && !state.held && !war?.battle) {
         if (state.shield >= 50) state.nextHunt -= dt * (1 + state.heat * 0.4); // (not while your shields are low)
         if (state.nextHunt <= 0) {
           state.nextHunt = 50 + Math.random() * 45;
@@ -1503,6 +1542,7 @@ export async function create(canvas, ctx) {
     if (on && h.threats.length) {
       threatList.length = 0;
       for (const c of hunters?.targets ?? NO_TARGETS) if (c.threat && c.id !== tgt?.id) threatList.push(c);
+      for (const c of war?.targets ?? NO_TARGETS) if (c.threat && c.id !== tgt?.id) threatList.push(c);
       // (and a pilot whose shots have been landing on you)
       if (pilots.count) for (const c of pilots.targets) if (c.threat && c.id !== tgt?.id) threatList.push(c);
       threatList.sort((a, b) => apart(a.at.x, a.at.y, a.at.z, s.x, s.y, s.z) - apart(b.at.x, b.at.y, b.at.z, s.x, s.y, s.z));
@@ -1548,6 +1588,10 @@ export async function create(canvas, ctx) {
 
   // ── Being online ──
   const onNet = (e) => {
+    if (e.type === 'war' || e.type === 'fight') {
+      war?.onNet(e);
+      return;
+    }
     if (e.type === 'hit') hurt(e.damage, e.from);
     else if (e.type === 'hunterHit') {
       // another pilot's bolt into one of the hunters after you
@@ -1571,6 +1615,7 @@ export async function create(canvas, ctx) {
     netOff?.();
     net = client ?? null;
     netOff = net?.on(onNet) ?? null;
+    war?.setNet(net);
   };
 
   // the hunters a system's side meets, made ahead (a pack arriving shouldn't stall a frame)
@@ -2009,6 +2054,7 @@ export async function create(canvas, ctx) {
       lock: state.lock?.id ?? null,
       goals: state.world?.goals.map((g) => g.id),
       solids: state.space?.solids.length,
+      war: war?.info ?? null,
     });
     // the ship put at `pose` (x, y, z, heading, pitch, bank), stopped, and the camera there behind it as it would be after
     // an arrival, not still easing to it: a check then sees the same view, however many frames it took to get there
@@ -2023,7 +2069,7 @@ export async function create(canvas, ctx) {
       state.shake = 0;
       ctx.invalidate();
     };
-    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, pin, interdiction, interdictor };
+    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, pin, interdiction, interdictor, war };
     window.__gltfStats = gltfStats; // { requests, parses }: the models asked for, and the files fetched and parsed for them
   }
 
@@ -2147,6 +2193,7 @@ export async function create(canvas, ctx) {
       crashFx.dispose();
       pops.dispose();
       hunters?.dispose();
+      war?.dispose();
       pieces?.dispose();
       interdictor?.dispose();
       netOff?.();
