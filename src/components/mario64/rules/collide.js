@@ -162,12 +162,14 @@ const tmp = [0, 0, 0];
 const near = [0, 0, 0];
 
 // Pushes pos (its point offsetY up) out of every wall within radius; returns
-// the last wall that pushed, or null.
-export function pushWalls(w, pos, offsetY, radius) {
+// the last wall that pushed, or null. A wall whose top is no more than
+// stepUp above pos is a step to walk up, not a wall (on the ground).
+export function pushWalls(w, pos, offsetY, radius, stepUp = -Infinity) {
   let hit = null;
   const py = pos.y + offsetY;
+  const low = pos.y + stepUp;
   eachNear(w, pos.x, pos.z, 'wall', (s) => {
-    if (py < s.minY || py > s.maxY) return;
+    if (py < s.minY || py > s.maxY || s.maxY <= low) return;
     const [nx, ny, nz] = s.n;
     const off = nx * pos.x + ny * py + nz * pos.z + s.d;
     if (off < -radius || off > radius) return;

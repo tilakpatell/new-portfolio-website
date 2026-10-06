@@ -79,6 +79,14 @@ describe('walls', () => {
     expect(p.z).toBe(-60);
   });
 
+  it('skips a wall whose top is below ignoreBelow (a step to walk up)', () => {
+    const w = world(wallFacingZ(-500, 500, 0, 70, 0));
+    const p = { x: 0, y: 0, z: 30 };
+    expect(pushWalls(w, p, 30, 24, 78)).toBeNull();
+    expect(p.z).toBe(30);
+    expect(pushWalls(w, p, 30, 50)).not.toBeNull();
+  });
+
   it('ignores a wall above or below the check height', () => {
     const w = world(wallFacingZ(-500, 500, 300, 600, 0));
     const p = { x: 0, y: 0, z: 30 };
