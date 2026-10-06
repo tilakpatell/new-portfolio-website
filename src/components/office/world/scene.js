@@ -70,7 +70,7 @@ function clearance(from, to) {
 export async function createOfficeWorld(canvas, { onLost } = {}) {
   const tier = device().tier;
   const soft = tier === 'low';
-  const stage = createStage(canvas, { soft, shadows: tier === 'high', fov: 58, near: 0.05, far: 80, exposure: 0.94, bloom: { strength: 0.28, radius: 0.55, threshold: 1.6 }, onLost });
+  const stage = createStage(canvas, { soft, shadows: tier === 'high', fov: 58, near: 0.05, far: 170, exposure: 0.94, bloom: { strength: 0.28, radius: 0.55, threshold: 1.6 }, onLost });
   // the show's look: fluorescent, a touch green and flat, with a little grain
   stage.grade({ contrast: 0.02, saturation: 0.92, vignette: 0.22, grain: 0.022, shadow: [0.0, 0.01, 0.006], high: [0.012, 0.012, 0.0] });
   const { scene, camera, renderer } = stage;
@@ -427,8 +427,16 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
       A.shake = Math.max(0, A.shake - dt * 0.8);
     }
     camera.lookAt(A.cam.look);
+    // upstairs or down: the office and the warehouse with its lot can't see
+    // each other, so only the one the camera's on is drawn (and the lot's
+    // horizon, which would otherwise run through the office, stays outside)
+    const below = camera.position.x > 25;
+    set.group.visible = !below;
+    wh.group.visible = below;
+    out.group.visible = below;
 
     set.windows.step(t);
+    out.step(t);
     fx.step(dt, t, { night: 0, day: 1 });
     renderer.info.reset();
     stage.render(ms);
