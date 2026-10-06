@@ -13,6 +13,7 @@
 import { findFloor, waterAt } from './collide';
 import { AIR, burn } from './moves/air';
 import { GROUND } from './moves/ground';
+import { CARRY } from './moves/carry';
 import { WATER, WATER_ACTIONS, enterWater } from './moves/water';
 import { MAX_HEALTH, die, ride, setAction } from './physics';
 import { wrapAngle } from './vec';
@@ -61,7 +62,7 @@ export function intent(inp, camYaw) {
   return { mag, yaw: wrapAngle(camYaw + Math.atan2(-inp.sx, inp.sy)) };
 }
 
-const ACTIONS = { ...GROUND, ...AIR, ...WATER };
+const ACTIONS = { ...GROUND, ...AIR, ...WATER, ...CARRY };
 export const ACTION_NAMES = Object.keys(ACTIONS);
 
 // at the start: on the floor below if there is one close, falling otherwise
@@ -80,6 +81,9 @@ function place(m, w) {
 
 export function stepMario(m, input, w) {
   m.events = [];
+  m.prevY = m.pos.y;
+  m.prevVy = m.vel.y;
+  m.prevAir = m.airborne;
   const inp = { ...input };
   if (!m.placed) place(m, w);
   const it = intent(inp, inp.camYaw ?? 0);

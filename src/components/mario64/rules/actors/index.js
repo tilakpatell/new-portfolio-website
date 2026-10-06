@@ -70,10 +70,13 @@ function overlaps(m, a, extra = 0) {
   return m.pos.y < a.pos.y + a.h && m.pos.y + MARIO_H > a.pos.y;
 }
 
+// (where he was at the start of the frame: a fast fall crosses a Goomba's
+// top within one)
 export function howMet(m, a) {
   const mid = a.pos.y + a.h / 2;
-  if ((m.action === 'pound' || (m.action === 'poundland' && m.t <= 1)) && m.pos.y >= mid - 20) return 'pound';
-  if (m.airborne && m.vel.y < 0 && m.pos.y >= mid) return 'stomp';
+  const y = m.prevY ?? m.pos.y;
+  if ((m.action === 'pound' || (m.action === 'poundland' && m.t <= 1)) && y >= mid - 20) return 'pound';
+  if ((m.prevAir ?? m.airborne) && (m.prevVy ?? m.vel.y) < 0 && y >= mid) return 'stomp';
   if (m.attack) return 'attack';
   return 'touch';
 }
@@ -109,5 +112,32 @@ export function useB(g) {
   }
   return false;
 }
+
+// B beside something holdable (from behind, for the king): picked up
+const BUSY = new Set(['held', 'thrown', 'gone', 'flat', 'knocked', 'stunned', 'defeated', 'return']);
+const CAN_GRAB = new Set(['idle', 'walk', 'stop', 'land', 'crouch', 'skid']);
+export function tryGrab(g) {
+  const m = g.mario;
+  if (m.airborne || m.held || !CAN_GRAB.has(m.action)) return false;
+  for (const a of g.actors) {
+    const T = TYPES[a.type];
+    if (!a.alive || !T.holdable || BUSY.has(a.state)) continue;
+    if (flatDist(m, a) > MARIO_R + a.r + 80 || Math.abs(a.pos.y - m.pos.y) > 150) continue;
+    if (T.grabbable ? !T.grabbable(a, g) : !inFront(m, a, Math.PI / 2.5)) continue;
+    a.state = 'held';
+    a.heavy = Boolean(T.heavy);
+    m.held = a;
+    m.fwd = 0;
+    m.prev = m.action;
+    m.action = 'pickup';
+    m.t = 0;
+    tell(g, 'grab', { type: a.type });
+    return true;
+  }
+  return false;
+}
+
+// what B does before it's a punch: read, talk, or pick up
+export const pressB = (g) => useB(g) || tryGrab(g);
 
 export const tell = (g, type, data) => g.out.push(data ? { type, ...data } : { type });

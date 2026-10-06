@@ -68,6 +68,9 @@ const LAUNCH = {
   jumpkick(m) {
     if (m.vel.y < 20) m.vel.y = 20;
   },
+  holdjump(m) {
+    m.vel.y = m.held?.heavy ? 22 : 40;
+  },
 };
 
 export function takeOff(m, kind) {

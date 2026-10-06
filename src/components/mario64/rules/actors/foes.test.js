@@ -1,0 +1,180 @@
+import { describe, expect, it } from 'vitest';
+import { createKit } from '../../courses/shapes';
+import { makeWorld } from '../collide';
+import { newMario, stepMario } from '../mario';
+import { interact, newScene, pressB, stepActors } from './index';
+
+const floor = () => {
+  const k = createKit();
+  k.box({ x: 0, y: -100, z: 0, w: 40000, h: 100, d: 40000, mat: 'g' });
+  const o = k.done();
+  return makeWorld(o.tris, o.kinds, { deathY: -3000 });
+};
+const input = (o = {}) => ({ sx: 0, sy: 0, a: false, ap: false, b: false, bp: false, z: false, zp: false, walk: false, camYaw: 0, ...o });
+const scene = (mario = newMario({ x: 0, y: 0, z: -3000 })) => newScene({ world: floor(), mario, save: { stars: {} }, area: {} });
+// one frame of the course: B on something first, then Mario, then the rest
+function frame(g, inp = input()) {
+  const i = { ...inp };
+  if (i.bp && pressB(g)) i.bp = false;
+  stepMario(g.mario, i, g.world);
+  stepActors(g);
+  interact(g);
+}
+const frames = (g, n, inp) => {
+  for (let i = 0; i < n; i++) frame(g, typeof inp === 'function' ? inp(i) : inp);
+};
+const events = (g, type) => g.out.filter((e) => e.type === type);
+
+describe('Goombas', () => {
+  it('are squashed by a stomp, bouncing Mario up, and leave a coin', () => {
+    const g = scene(newMario({ x: 0, y: 400, z: 0 }));
+    g.spawn({ type: 'goomba', x: 0, y: 0, z: 0 });
+    let bounced = false;
+    for (let i = 0; i < 30; i++) {
+      frame(g);
+      if (g.mario.vel.y > 20 && g.mario.action === 'jump') bounced = true;
+    }
+    expect(bounced).toBe(true);
+    expect(events(g, 'stomp')).toHaveLength(1);
+    expect(g.mario.health).toBe(8);
+    expect(g.actors.some((a) => a.type === 'goomba')).toBe(false);
+    // the coin it left (or Mario, who picked it up)
+    expect(g.actors.some((a) => a.type === 'coin') || g.mario.coins > 0).toBe(true);
+  });
+
+  it('hurt Mario when they walk into him', () => {
+    const g = scene(newMario({ x: 0, y: 0, z: 0 }));
+    g.spawn({ type: 'goomba', x: 0, y: 0, z: 300 });
+    frames(g, 60);
+    expect(g.mario.health).toBeLessThan(8);
+  });
+});
+
+describe('Bob-ombs', () => {
+  it('explode 120 frames after their fuse is lit', () => {
+    const g = scene(newMario({ x: 0, y: 0, z: 0 }));
+    g.spawn({ type: 'bobomb', x: 0, y: 0, z: 450 });
+    frame(g);
+    const b = g.actors.find((a) => a.type === 'bobomb');
+    expect(b.state).toBe('lit');
+    g.mario.pos.z = -12000;
+    let at = -1;
+    for (let i = 0; i < 200 && at < 0; i++) {
+      frame(g);
+      if (events(g, 'explode').length) at = i;
+    }
+    expect(at).toBeGreaterThan(110);
+    expect(at).toBeLessThan(125);
+  });
+
+  it('can be picked up and thrown, and explode where they land', () => {
+    const g = scene(newMario({ x: 0, y: 0, z: 0 }));
+    g.spawn({ type: 'bobomb', x: 0, y: 0, z: 120 });
+    frame(g, input({ bp: true, b: true }));
+    expect(g.mario.held?.type).toBe('bobomb');
+    frames(g, 8);
+    frame(g, input({ bp: true, b: true }));
+    frames(g, 60);
+    expect(g.mario.held).toBeNull();
+    const boom = events(g, 'explode')[0];
+    expect(boom).toBeDefined();
+    expect(boom.z).toBeGreaterThan(400);
+  });
+});
+
+describe('King Bob-omb', () => {
+  const arena = { x: 0, y: 0, z: 0, r: 3000 };
+  const behind = (g, king) => {
+    g.mario.pos.x = king.pos.x - Math.sin(king.yaw) * 260;
+    g.mario.pos.z = king.pos.z - Math.cos(king.yaw) * 260;
+    g.mario.pos.y = king.pos.y;
+    g.mario.yaw = king.yaw;
+  };
+
+  it('is picked up from behind, but not from in front', () => {
+    const g = scene(newMario({ x: 0, y: 0, z: 400, yaw: Math.PI }));
+    const king = g.spawn({ type: 'king', x: 0, y: 0, z: 0, yaw: 0, arena, star: 0 });
+    king.state = 'walk';
+    frame(g, input({ bp: true, b: true }));
+    expect(g.mario.held).toBeNull();
+    const g2 = scene();
+    const k2 = g2.spawn({ type: 'king', x: 0, y: 0, z: 0, yaw: 0, arena, star: 0 });
+    k2.state = 'walk';
+    frame(g2);
+    behind(g2, k2);
+    frame(g2, input({ bp: true, b: true }));
+    expect(g2.mario.held).toBe(k2);
+  });
+
+  it('gives up his star after three throws onto the summit', () => {
+    const g = scene();
+    const king = g.spawn({ type: 'king', x: 0, y: 0, z: 0, yaw: 0, arena, star: 0 });
+    king.state = 'walk';
+    for (let round = 0; round < 3; round++) {
+      for (let i = 0; i < 200 && !['walk', 'wait'].includes(king.state); i++) frame(g);
+      king.yaw = 0;
+      behind(g, king);
+      g.mario.invuln = 0;
+      g.mario.action = 'idle';
+      frame(g, input({ bp: true, b: true }));
+      expect(g.mario.held).toBe(king);
+      frames(g, 8);
+      frame(g, input({ bp: true, b: true }));
+      frames(g, 50);
+    }
+    frames(g, 120);
+    expect(events(g, 'hit')).toHaveLength(3);
+    const star = g.actors.find((a) => a.type === 'star');
+    expect(star?.index).toBe(0);
+  });
+});
+
+describe('the Chain Chomp', () => {
+  it('breaks free after three pounds on its post, smashing the gate to its star', () => {
+    const g = scene(newMario({ x: 0, y: 600, z: 0 }));
+    g.spawn({ type: 'post', id: 'post', x: 0, y: 0, z: 0 });
+    g.spawn({ type: 'chomp', post: 'post', gate: 'gate', x: 600, y: 0, z: 0 });
+    g.spawn({ type: 'gate', id: 'gate', x: 3000, y: 0, z: 0, star: 2 });
+    expect(g.actors.find((a) => a.type === 'star')?.index).toBe(2);
+    for (let i = 0; i < 3; i++) {
+      g.mario.pos = { x: 0, y: 600, z: 0 };
+      g.mario.action = 'freefall';
+      g.mario.airborne = true;
+      g.mario.vel = { x: 0, y: 0, z: 0 };
+      g.mario.fwd = 0;
+      g.mario.invuln = 999;
+      frame(g);
+      frame(g, input({ z: true, zp: true }));
+      for (let j = 0; j < 60 && g.mario.action !== 'poundland'; j++) frame(g);
+      frames(g, 4);
+    }
+    const chomp = g.actors.find((a) => a.type === 'chomp');
+    expect(chomp.state).toBe('free');
+    frames(g, 300);
+    expect(g.actors.some((a) => a.type === 'gate')).toBe(false);
+    expect(events(g, 'smash')).toHaveLength(1);
+  });
+
+  it('lunges at Mario near its post, and hurts', () => {
+    const g = scene(newMario({ x: 0, y: 0, z: 700 }));
+    g.spawn({ type: 'post', id: 'post', x: 0, y: 0, z: 0 });
+    g.spawn({ type: 'chomp', post: 'post', gate: 'gate', x: 0, y: 0, z: -300 });
+    frames(g, 150);
+    expect(g.mario.health).toBeLessThan(8);
+  });
+});
+
+describe('iron balls', () => {
+  it('roll along their path and hurt on touch', () => {
+    const g = scene(newMario({ x: 0, y: 0, z: 2000 }));
+    g.spawn({ type: 'ballspawner', path: [[0, 0, 0], [0, 0, 4000]], every: 180 });
+    frames(g, 3);
+    const ball = g.actors.find((a) => a.type === 'ironball');
+    expect(ball).toBeDefined();
+    const z0 = ball.pos.z;
+    frames(g, 20);
+    expect(ball.pos.z).toBeGreaterThan(z0 + 200);
+    frames(g, 120);
+    expect(g.mario.health).toBeLessThan(8);
+  });
+});
