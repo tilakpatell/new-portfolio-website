@@ -38,7 +38,10 @@ export function hillHeight(x, z) {
   let h = HILL.top * (1 - smooth(HILL.plateau, HILL.foot, r) ** 0.6);
   // the plain: a long roll to it, and the mountains away south
   h += (fbm(noise, x * 0.008, z * 0.008, { octaves: 3 }) - 0.5) * 6 * smooth(HILL.foot - 6, HILL.foot + 40, r);
-  h += smooth(260, 900, z) * 420 * (0.6 + fbm(noise, x * 0.003, z * 0.003, { octaves: 4 }) * 0.8);
+  // (ridged, so the foothills read as hills and not one smooth wall; the
+  // White Mountains themselves stand behind them, ./props.js)
+  const m = smooth(420, 1300, z);
+  if (m > 0) h += m * (60 + 220 * (1 - Math.abs(fbm(noise, x * 0.004, z * 0.004, { octaves: 4 }) * 2 - 1)) ** 1.5);
   return h;
 }
 export const STOCKADE = { r: HILL.foot + 4, gate: 0, gateW: 7 };
@@ -66,7 +69,7 @@ export const DOOR_GUARDS = [
   { x: 15, z: 4.2, face: 0 },
 ];
 // the terrace, at night: where you watch the mountains for the beacon
-export const WATCH = { x: 20, z: 0, face: 0 };
+export const WATCH = { x: 21, z: 0, face: 0 };
 
 // ── the town ──
 // Thatched halls of wood on the slopes, gables to the road, seeded; none on
@@ -165,7 +168,7 @@ export const SHADOWS = [
   [6.2, 12],
 ];
 // at the feast: Gimli's place and Legolas's, across the end of a table
-export const FEAST = { gimli: { x: 5.2, z: 9.6, face: Math.PI / 2 }, legolas: { x: 5.2, z: 7.4, face: -Math.PI / 2 }, r: 3 };
+export const FEAST = { gimli: { x: 5.45, z: 7.5, face: 0 }, legolas: { x: 7.65, z: 7.5, face: Math.PI }, r: 3 };
 export const HALL_WALLS = [
   [-HALL.w / 2, HALL.z0, HALL.w / 2, HALL.z0, 0.3],
   [-HALL.w / 2, HALL.z0, -HALL.w / 2, HALL.z1, 0.3],

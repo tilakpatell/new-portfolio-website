@@ -2935,12 +2935,12 @@ function peaksOf(K) {
   {
     const n = makeNoise(741);
     const way = [
-      [-4200, 1300],
-      [-2000, 1650],
-      [0, 1750],
-      [1500, 1650],
-      [2800, 1450],
-      [4200, 1200],
+      [-4200, 2100],
+      [-2000, 2400],
+      [0, 2500],
+      [1500, 2400],
+      [2800, 2200],
+      [4200, 1900],
     ];
     const path = [];
     for (let k = 0; k < way.length - 1; k++) {
@@ -2949,7 +2949,7 @@ function peaksOf(K) {
       const steps = Math.ceil(Math.hypot(bx - ax, bz - az) / 30);
       for (let s = 0; s < steps; s++) path.push([mix(ax, bx, s / steps), mix(az, bz, s / steps) + (fbm(n, path.length * 0.02, 1.5, { octaves: 3 }) - 0.5) * 260]);
     }
-    const rg = ridgeGeometry(path, (i) => 760 + Math.pow(ridge(n, i * 0.045, 4.4, { octaves: 4 }), 2.4) * 900 + fbm(n, i * 0.3, 9.1, { octaves: 3 }) * 120, { wide: 700, seed: 743, snow: 640 });
+    const rg = ridgeGeometry(path, (i) => 420 + Math.pow(ridge(n, i * 0.045, 4.4, { octaves: 4 }), 2.2) * 620 + fbm(n, i * 0.3, 9.1, { octaves: 3 }) * 90, { wide: 700, seed: 743, snow: 520 });
     rg.deleteAttribute('uv');
     geos.push(rg.toNonIndexed());
   }
