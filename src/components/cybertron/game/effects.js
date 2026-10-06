@@ -117,9 +117,11 @@ export function createEffects(scene, { tier = 'high' } = {}) {
   return {
     // every shot in flight, a bolt each
     bolts(shots) {
-      const n = Math.min(MAX_BOLTS, shots.length);
+      // (a ram's hit is a shot nobody sees)
+      const seen = shots.filter((sh) => !sh.ram);
+      const n = Math.min(MAX_BOLTS, seen.length);
       for (let i = 0; i < n; i++) {
-        const sh = shots[i];
+        const sh = seen[i];
         dir.set(sh.vx, sh.vy, sh.vz);
         const speed = dir.length() || 1;
         dir.divideScalar(speed);

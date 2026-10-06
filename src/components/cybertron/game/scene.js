@@ -18,7 +18,7 @@ import { createPost } from '../../universe/post';
 import { makeFigure, makeThing } from './bots';
 import { bake, centresOf, cluster, makeTransformer } from './chunks';
 import { createEffects } from './effects';
-import { MEGATRON, TRANSFORM } from './rules';
+import { FORMS, TRANSFORM } from './rules';
 
 const STAGES = {
   iacon: () => import('./stage/iacon'),
@@ -350,17 +350,20 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       if (!f) continue;
       f.group.position.set(e.x, e.y, e.z);
       f.group.rotation.y = e.yaw;
-      // Megatron as his own model changes: its clip, robot to tank and back
+      // Megatron or Barricade as his own model changes: its clip, robot to
+      // vehicle and back
       const change = f.spec?.clips?.toVehicle && f.hold ? f.spec.clips : null;
-      if (change && (e.shift > 0 || e.form === 'tank')) {
-        const [a, b] = e.form === 'tank' ? change.toVehicle : change.toRobot;
-        const k = e.shift > 0 ? 1 - e.shift / (e.form === 'tank' ? MEGATRON.shift : MEGATRON.back) : 1;
+      const F = FORMS[e.kind];
+      const alt = F && e.form === F.alt;
+      if (change && F && (e.shift > 0 || alt)) {
+        const [a, b] = alt ? change.toVehicle : change.toRobot;
+        const k = e.shift > 0 ? 1 - e.shift / (alt ? F.shift : F.back) : 1;
         f.hold(change.transform, e.shift > 0 ? a + (b - a) * k : change.vehicle);
         if (e.shift > 0 && Math.random() < dt * 14) effects.spark(e.x + (Math.random() - 0.5) * 8, e.y + Math.random() * e.h * 1.4, e.z + (Math.random() - 0.5) * 8);
         f.update(dt);
         if (e.dead && !entry.boomed) {
           entry.boomed = true;
-          effects.boom(e.x, e.y + e.h * 0.4, e.z, 16);
+          effects.boom(e.x, e.y + e.h * 0.4, e.z, e.boss ? 16 : 9);
         }
         f.group.visible = !e.dead || (e.gone ?? 0) < 3;
         continue;
@@ -410,7 +413,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       });
       gates.instanceMatrix.needsUpdate = true;
     }
-    stage?.update(clock, dt, camera);
+    stage?.update(clock, dt, camera, sim);
     placeCamera(sim, view, dt);
     const sharp = pace.frame(now);
     if (sharp !== null) post.sharpness = sharp;

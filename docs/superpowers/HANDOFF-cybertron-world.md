@@ -44,14 +44,26 @@ The owner's asks:
   - Collars and crowns on the towers.
   - Slit lights (`platedMaterial({ lights: 'slits' })`).
   - Every outdoor area's metal is lit by a PMREM of its own sky.
-- **Phones**: while playing, the world takes the whole screen. The touch
+- **Phones** (PR #243): while playing, the world takes the whole screen. The touch
   buttons fit their labels. The guide's `?` and the scroll saber hide.
+- **Metroplex and Barricade**:
+  - When the beacons are driven, Metroplex wakes on the skyline: his eyes
+    and chest light up, he turns toward the city, and a searchlight sweeps
+    from his head.
+  - Barricade joins the gate's last wave. He changes into his car on his
+    own clip (robot→car 4.15–5.8 s, car→robot 14.2–16 s) and rams.
+  - Every Decepticon who changes now uses one table, `rules.js` `FORMS`.
+    To add another, give it an entry there and `clips.toVehicle` /
+    `vehicle` / `toRobot` in `catalog.js`. Find the clip's times from a
+    contact sheet of its frames (a gitignored `lab/sheet.html` taking
+    `file@time@yaw`).
 
 ## Checking it
 - Dev only: `#/cybertron?quality=high&autoplay` starts playing.
 - `window.__CY__.go('base' | 'jasper' | 'iacon')` crosses to an area.
   `window.__CY__.sim` is the sim: move `sim.player`, push enemies, or set
-  a mission.
+  a mission. The camera follows `window.__CY__.ctl.current.view` (`yaw`,
+  `pitch`), not the player's yaw.
 - Under the headless software renderer, a frame takes about a second.
   After teleporting the player, wait 20–30 s before a screenshot, because
   the chase camera eases in.
@@ -60,12 +72,6 @@ The owner's asks:
 - **Out of scope in the spec, still open**:
   - Playing as Megatron (the Decepticon side), and Kaon.
   - Online players in the world (`useTravellers`, as Avengers HQ does).
-- Barricade isn't in the fight yet. `catalog.js` has him, with his
-  transformation clip, but `sim.js`'s `MODEL` doesn't use him. He could
-  change and drive at you the way Megatron does. His clip's
-  timings would need finding the same way: render a contact sheet of
-  frames (a gitignored `lab/sheet.html` taking `file@time@yaw`) and read
-  off where the change starts and ends.
 - Prime's Optimus stands with his upper arms a little out, because his
   shoulder armour is broad. A per-model `stand` pose in `catalog.js` would
   fix it if it bothers anyone.
@@ -73,5 +79,3 @@ The owner's asks:
   - pipes and conduits between the towers
   - a few huge ring structures, as on the planet
   - the deck's trenches
-- Waking Metroplex finishes the mission, but Metroplex doesn't move on the
-  skyline. A slow turn of his head, or lights coming on, would sell it.

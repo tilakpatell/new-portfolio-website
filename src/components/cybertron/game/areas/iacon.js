@@ -175,7 +175,7 @@ export const IACON = {
         { type: 'reach', at: { x: 0, z: 300, r: 45 }, text: 'Get to the barricades' },
         { type: 'clear', count: 4, spawn: wave(4, 395), text: 'Hold the gate: the first wave' },
         { type: 'clear', count: 4, spawn: wave(4, 400, 90), text: 'Hold the gate: the second wave' },
-        { type: 'clear', count: 5, spawn: wave(5, 400, 110), text: 'Hold the gate: the last wave' },
+        { type: 'clear', count: 5, spawn: [...wave(4, 400, 110), { kind: 'barricade', x: 0, z: 425 }], text: 'Hold the gate: the last wave, and Barricade' },
         { type: 'talk', target: 'grimlock', text: 'Tell Grimlock the gate is held' },
       ],
     },
@@ -246,5 +246,15 @@ export const IACON = {
       [260, -230],
     ],
     parked: [{ kind: 'wheeljack-car', x: 70, z: -210, yaw: 2.6 }],
+    // the megastructures beyond the city, as the planet shows them from
+    // orbit: rings stepping up round a spire, lit at their rims, some
+    // burning (where they are, how wide, how many rings)
+    skyline: [
+      { x: -820, z: -620, r: 300, tiers: 5, war: 0.7 },
+      { x: 760, z: 820, r: 260, tiers: 4, war: 0.4 },
+      { x: -900, z: 260, r: 180, tiers: 4, war: 0 },
+      { x: 240, z: -1050, r: 340, tiers: 6, war: 1 },
+      { x: 980, z: -760, r: 150, tiers: 3, war: 0.2 },
+    ],
   },
 };

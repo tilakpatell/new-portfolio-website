@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BARRICADE,
   ENEMY_KINDS,
   MEGATRON,
   ROBOT,
@@ -300,6 +301,32 @@ describe('the Decepticons', () => {
     expect(shells).toBeGreaterThan(0);
     expect(m.form).toBe('robot');
     expect(m.h).toBe(ENEMY_KINDS.megatron.h);
+  });
+
+  it('Barricade turns into his car, rams Optimus once a pass, and turns back', () => {
+    const world = buildWorld({ ...AREA, solids: [] });
+    const p = newPlayer(AREA);
+    settle(p, world);
+    const b = newEnemy('barricade', 0, 60, { id: 'bar' });
+    b.span = BARRICADE.robot;
+    const seen = [];
+    let rams = 0;
+    let fastest = 0;
+    for (let t = 0; t < BARRICADE.shift + BARRICADE.car + BARRICADE.back + 0.5; t += 1 / 60) {
+      p.hp = p.maxHp;
+      const x = b.x;
+      const z = b.z;
+      const r = stepEnemies([b], p, 1 / 60, world, rand);
+      seen.push(...r.events.filter((e) => e.type === 'enemyShift').map((e) => e.to));
+      rams += r.shots.filter((s) => s.ram).length;
+      if (b.form === 'car' && !b.shift) fastest = Math.max(fastest, Math.hypot(b.x - x, b.z - z) * 60);
+    }
+    expect(seen).toEqual(['car', 'robot']);
+    expect(fastest).toBeGreaterThan(BARRICADE.speed * 0.9);
+    // (5.5 s at 26 m/s, from 60 m off: through him a few times, each once)
+    expect(rams).toBeGreaterThan(0);
+    expect(rams).toBeLessThan(6);
+    expect(b.h).toBe(ENEMY_KINDS.barricade.h);
   });
 
   it('Megatron stands still and holds fire while he changes', () => {
