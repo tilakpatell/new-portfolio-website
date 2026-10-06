@@ -1,6 +1,6 @@
 {
   "date": "2026-10-06",
-  "sha": "07b523e3",
+  "sha": "9d33e2b",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -13,7 +13,7 @@
         },
         {
           "file": "src/components/universe/scene.js",
-          "n": 4263
+          "n": 4262
         },
         {
           "file": "src/components/middleearth/towns/rivendell/props.js",
@@ -53,7 +53,7 @@
         },
         {
           "file": "src/components/universe/footScene.js",
-          "n": 2790
+          "n": 2792
         },
         {
           "file": "src/components/middleearth/towns/lorien/props.js",
@@ -88,16 +88,16 @@
           "n": 1908
         },
         {
+          "file": "src/components/universe/crews.js",
+          "n": 1819
+        },
+        {
           "file": "src/components/middleearth/towns/edoras/folk.js",
           "n": 1772
         },
         {
           "file": "src/components/galaxy/surface/props/forest.js",
           "n": 1767
-        },
-        {
-          "file": "src/components/universe/crews.js",
-          "n": 1749
         },
         {
           "file": "src/components/galaxy/surface/props/core.js",

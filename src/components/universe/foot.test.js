@@ -262,6 +262,8 @@ describe('a probe droid', () => {
       expect(TROOPS[k].range[0], k).toBeLessThan(TROOPS[k].range[1]);
     }
     expect(TROOPS.scout.speed).toBeGreaterThan(TROOPS.stormtrooper.speed);
+    // and every troop has a name for the lock (not its kind's id)
+    for (const [k, t] of Object.entries(TROOPS)) expect(t.name, k).toMatch(/^[A-Z][^_]*$/);
   });
 });
 
