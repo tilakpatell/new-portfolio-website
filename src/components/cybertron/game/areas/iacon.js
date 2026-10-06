@@ -222,6 +222,7 @@ export const IACON = {
     fog: ['#0b1220', 120, 1100],
     sun: { dir: [-0.4, 0.55, -0.6], color: '#9fb8ff', intensity: 1.4 },
     ambient: ['#2a3550', 0.55],
+    env: 0.12,
     exposure: 1.05,
     bloom: 0.9,
   },

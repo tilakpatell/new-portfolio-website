@@ -75,6 +75,7 @@ export const JASPER = {
     fog: ['#d9b48a', 300, 1600],
     sun: { dir: [0.5, 0.8, 0.35], color: '#fff1d6', intensity: 3.2 },
     ambient: ['#b8a68e', 0.6],
+    env: 0.7,
     exposure: 1.0,
     bloom: 0.4,
   },

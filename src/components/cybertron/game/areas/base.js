@@ -134,6 +134,7 @@ export const BASE = {
     fog: ['#0d1614', 80, 260],
     sun: { dir: [0.2, 1, 0.3], color: '#d8f0e8', intensity: 0.9 },
     ambient: ['#5a7a74', 0.7],
+    env: 0.55,
     exposure: 1.0,
     bloom: 0.7,
   },

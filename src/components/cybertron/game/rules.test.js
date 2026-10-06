@@ -21,7 +21,7 @@ import {
   stepPickups,
   stepPlayer,
   stepShots,
-  useNear,
+  nearby,
 } from './rules';
 
 // a little test yard: a tall wall at x = 10, a low platform at x = -10
@@ -297,17 +297,17 @@ describe('pickups and using things', () => {
   it('talks to someone close, on foot only', () => {
     const world = buildWorld(AREA);
     const p = newPlayer(AREA);
-    expect(useNear(p, AREA)).toEqual(expect.objectContaining({ type: 'talk', id: 'bee' }));
+    expect(nearby(p, AREA)).toEqual(expect.objectContaining({ type: 'talk', id: 'bee' }));
     settle(p, world);
     stepPlayer(p, { ...still, transform: true }, 1 / 60, world);
     run(p, {}, TRANSFORM.time + 0.1, world);
-    expect(useNear(p, AREA)).toBe(null);
+    expect(nearby(p, AREA)).toBe(null);
   });
 
   it('drives into an exit', () => {
     const p = newPlayer(AREA, { x: 0, z: -48, yaw: 0 });
     p.mode = 'vehicle';
-    expect(useNear(p, AREA)).toEqual(expect.objectContaining({ type: 'exit', id: 'bridge' }));
+    expect(nearby(p, AREA)).toEqual(expect.objectContaining({ type: 'exit', id: 'bridge' }));
   });
 });
 

@@ -617,7 +617,7 @@ export function stepPickups(pickups, p) {
 
 // What there is to do close by: someone to talk to (on foot), or a bridge to
 // go through (on foot, or driven into)
-export function useNear(p, area, state = {}) {
+export function nearby(p, area, state = {}) {
   if (p.dead || p.shifting) return null;
   for (const x of area.exits ?? []) {
     const d = Math.hypot(x.x - p.x, x.z - p.z);
