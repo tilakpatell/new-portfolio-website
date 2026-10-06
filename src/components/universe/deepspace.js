@@ -52,7 +52,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { DEEP, WONDERS, planetAt, reachOf } from './deep';
+import { DEEP, WONDERS, binaryAt, planetAt, reachOf } from './deep';
 import { TILT } from './maw';
 import { rng } from './kit';
 import { NOISE_GLSL } from './sun';
@@ -60,7 +60,7 @@ import { PULSAR_FRAG } from './supernova';
 import { parts } from './kit';
 import { buildTraffic } from './trafficModels';
 import { sharpen } from '../../lib/three/textures';
-import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
+import { citadelModel } from './citadelModel';
 import { BILLBOARD_VERT, CITADEL_FRAG, CITADEL_GLASS_FRAG, CITADEL_VERT, DISK_FRAG, DISK_VERT, GLOW_FRAG, HALO_FRAG, HALO_VERT, JET_FRAG, JET_VERT, LABEL_FRAG, LABEL_VERT, PHOTON_FRAG, PHOTON_VERT, PORTAL_FRAG, PUFF_FRAG, PUFF_VERT, RING_FRAG, RING_VERT, SKY_FRAG, SKY_VERT, SPARK_FRAG, SPARK_VERT, STAR_FRAG, WORLD_FRAG, WORLD_VERT } from './deepspaceShaders';
 
 const { PI, sin, cos, hypot, max, min } = Math;
@@ -1040,42 +1040,14 @@ export function buildDeepSpace({ small = false } = {}) {
     const glassGeo = mergeGeometries(glass.map((d) => d.toNonIndexed()));
     for (const d of glass) d.dispose();
     const dome = mesh(glassGeo, shader(CITADEL_VERT, CITADEL_GLASS_FRAG, { uLight: homeW, uLightColor: { value: HOME_LIGHT }, uK: { value: k } }, { transparent: true, depthWrite: false, side: THREE.DoubleSide }), g, 1);
-    // The Citadel as modelled for the site (Meshy, Phase 3 of the Rick and
-    // Morty multiverse: the show's brass disc and teal dome, four arms out
-    // to glass saucers, the crystal hanging under it), the built one above
-    // standing in until it's loaded: as wide as the built one's dome across
-    // its middle, turned so its arms lie along deep.js's CITADEL_PARTS (which
-    // the siege and the ship's collisions use), its disc where the dome's is.
-    // (fetched only once you come within a few thousand units of it)
+    // the Citadel as modelled for the site (citadelModel.js) takes over from
+    // the built one once it's loaded, fetched only when you come within a few
+    // thousand units of it
     let fetched = false;
-    const fetchModel = () =>
-      loadGLTF('/models/c137/rm/citadel-exterior.glb')
-        .then((gltf) => {
-          if (!gltf?.scene || !g.parent) return;
-          const model = cloneScene(gltf);
-          model.traverse((o) => {
-            if (!o.isMesh) return;
-            const map = o.material.map ?? null;
-            o.material = new THREE.MeshLambertMaterial({ map, emissive: map ? 0xffffff : 0x000000, emissiveMap: map, emissiveIntensity: 0.32 });
-            owned.push(o.material);
-          });
-          const box = new THREE.Box3().setFromObject(model);
-          const size = box.getSize(new THREE.Vector3());
-          // (its saucers' rims are its widest; its disc is 0.55 of that, the
-          // dome's 12.5 across its middle; the disc is 0.6 of the way up it)
-          const kk = (2 * 22.7 * k) / Math.max(size.x, size.z);
-          model.scale.setScalar(kk);
-          model.position.set(0, -(box.min.y + size.y * 0.6) * kk, 0);
-          model.rotation.y = -0.25;
-          g.add(model);
-          hull.visible = false;
-          dome.visible = false;
-        })
-        .catch((e) => import.meta.env.DEV && console.error('citadel model', e));
     ticks.push((t, dt, cam) => {
       if (fetched || !cam || hypot(cam.x - w.at[0], cam.y - w.at[1], cam.z - w.at[2]) > 3000) return;
       fetched = true;
-      fetchModel();
+      citadelModel(g, k, owned).then((ok) => ok && (hull.visible = dome.visible = false));
     });
     // the warm haze it hangs in, as the show paints its sky: a soft glow
     // that always faces you, behind and round it
@@ -1152,15 +1124,18 @@ export function buildDeepSpace({ small = false } = {}) {
     const g = place(w);
     const light = { value: new THREE.Vector3() };
     lightOf.set(w.id, light);
+    // (the two going round each other: deep.js's binaryAt, the same clock
+    // that moves their solids, so the bridge of gas turns with them)
     const suns = [
-      { r: w.r, color: w.color, at: [0, 0, 0], seed: 4.2 },
-      { r: w.pair.r, color: w.pair.color, at: [w.pair.apart, 0, 0], seed: 6.6 },
+      { r: w.r, color: w.color, which: 'a', seed: 4.2 },
+      { r: w.pair.r, color: w.pair.color, which: 'b', seed: 6.6 },
     ];
+    const holders = [];
     for (const sn of suns) {
       const c = new THREE.Color(sn.color);
       const holder = new THREE.Group();
-      holder.position.set(...sn.at);
       g.add(holder);
+      holders.push([holder, sn.which]);
       const surface = mesh(new THREE.SphereGeometry(sn.r, seg(72, 44), seg(48, 28)), shader(WORLD_VERT, STAR_FRAG, { uColor: { value: c }, uSeed: { value: sn.seed } }), holder);
       const reach = 11;
       facingQuad(sn.r * reach, GLOW_FRAG, { uR: { value: sn.r }, uColor: { value: c }, uSeed: { value: sn.r }, uReach: { value: reach } }, holder);
@@ -1168,11 +1143,21 @@ export function buildDeepSpace({ small = false } = {}) {
     }
     const bridgeMat = shader(UV_VERT, BRIDGE_FRAG, { uColor: { value: new THREE.Color(w.color).lerp(new THREE.Color(w.pair.color), 0.4) } }, { ...additive, side: THREE.DoubleSide });
     const bridgeGeo = new THREE.PlaneGeometry(w.pair.apart * 0.98, w.r * 1.6);
+    const bridge = new THREE.Group();
+    g.add(bridge);
     for (const roll of [0, PI / 2]) {
-      const m = mesh(bridgeGeo, bridgeMat, g, 2);
-      m.position.set(w.pair.apart / 2, 0, 0);
+      const m = mesh(bridgeGeo, bridgeMat, bridge, 2);
       m.rotation.x = roll;
     }
+    const orbit = (t) => {
+      const at = binaryAt(w, t);
+      for (const [holder, which] of holders) holder.position.set(at[which][0] - w.at[0], at[which][1] - w.at[1], at[which][2] - w.at[2]);
+      // (midway between the two, along the line through them)
+      bridge.position.set((at.a[0] + at.b[0]) / 2 - w.at[0], 0, (at.a[2] + at.b[2]) / 2 - w.at[2]);
+      bridge.rotation.y = -Math.atan2(at.b[2] - at.a[2], at.b[0] - at.a[0]);
+    };
+    orbit(0);
+    ticks.push(orbit);
   };
 
   // ── a rogue planet ──
