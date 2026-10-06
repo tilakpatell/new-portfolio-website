@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makeContext } from './health/context.mjs';
+import { makeContext, metric } from './health/context.mjs';
 import bigFiles, { CEILING, WARN } from './health/big-files.mjs';
+import cycles from './health/cycles.mjs';
+import { graph, resolve } from './health/graph.mjs';
 import lintDisables from './health/lint-disables.mjs';
 import todoNotes from './health/todo-notes.mjs';
 import { check, describe as words, ratchet } from './health/ratchet.mjs';
@@ -29,6 +32,76 @@ describe('the measure, on a fixture tree', () => {
     const m = await todoNotes(ctx);
     expect(m.value).toBe(2);
     expect(m.detail).toEqual([{ file: 'src/world/small.js', n: 2 }]);
+  });
+});
+
+describe('the import graph, on a fixture tree', () => {
+  const GRAPH = fileURLToPath(new URL('./health/fixtures/graph/', import.meta.url));
+  const at = (p) => join(GRAPH, 'src', p);
+
+  it('resolves a folder, a missing extension, a query, a glob and nothing for a package', async () => {
+    expect(await resolve('./e', at('d.js'))).toEqual([at('e/index.js')]);
+    expect(await resolve('./g', at('f.jsx'))).toEqual([at('g.jsx')]);
+    expect(await resolve('../i', at('e/index.js'))).toEqual([at('i.js')]);
+    expect(await resolve('./i.js?raw', at('h.js'))).toEqual([at('i.js')]);
+    expect(await resolve('./data/*.json', at('h.js'))).toEqual([at('data/one.json'), at('data/two.json')]);
+    expect(await resolve('./data/**/*.json', at('h.js'))).toEqual([at('data/deep/three.json'), at('data/one.json'), at('data/two.json')]);
+    expect(await resolve('react', at('i.js'))).toEqual([]);
+    expect(await resolve('./nowhere', at('i.js'))).toEqual([]);
+  });
+
+  it('has an edge for every relative import, a test file\'s among them, and is built once a run', async () => {
+    const gctx = await makeContext(GRAPH);
+    const g = await graph(gctx);
+    expect(g.edges.map((e) => `${e.from} -> ${e.to}`)).toEqual([
+      'src/a.js -> src/b.js',
+      'src/b.js -> src/c.js',
+      'src/c.js -> src/a.js',
+      'src/d.js -> src/e/index.js',
+      'src/e/index.js -> src/i.js',
+      'src/f.jsx -> src/f.css',
+      'src/f.jsx -> src/g.jsx',
+      'src/h.js -> src/data/deep/three.json',
+      'src/h.js -> src/data/one.json',
+      'src/h.js -> src/data/two.json',
+      'src/h.js -> src/i.js',
+      'src/j.js -> src/k.js',
+      'src/k.js -> src/j.js',
+      'src/t.js -> src/t.test.js',
+      'src/t.test.js -> src/t.js',
+    ]);
+    expect(g.files).toContain('src/t.test.js');
+    expect(g.isTest('src/t.test.js')).toBe(true);
+    expect(g.isTest('src/t.js')).toBe(false);
+    expect(await graph(gctx)).toBe(g);
+  });
+
+  it('finds each cycle once, shortest first, from its alphabetically first file, tests left out', async () => {
+    const g = await graph(await makeContext(GRAPH));
+    expect(g.cycles()).toEqual([['src/j.js', 'src/k.js'], ['src/a.js', 'src/b.js', 'src/c.js']]);
+  });
+
+  it('cycles counts them, a row each, in the graph\'s order', async () => {
+    const m = await cycles(await makeContext(GRAPH));
+    expect(m).toMatchObject({ id: 'cycles', value: 2, unit: 'cycles', better: 'lower' });
+    expect(m.detail).toEqual([{ file: 'src/j.js → src/k.js', n: 2 }, { file: 'src/a.js → src/b.js → src/c.js', n: 3 }]);
+  });
+});
+
+describe('metric()', () => {
+  const detail = [{ file: 'a.js', n: 1 }, { file: 'b.js', n: 3 }, { file: 'c.js', n: 2 }];
+  const thirty = Array.from({ length: 30 }, (_, n) => ({ file: `${n}.js`, n }));
+
+  it('sorts the detail worst first and keeps 25 rows', () => {
+    expect(metric({ id: 'x', detail }).detail.map((d) => d.file)).toEqual(['b.js', 'c.js', 'a.js']);
+    expect(metric({ id: 'x', detail: thirty }).detail.map((d) => d.n)).toEqual([...Array(30).keys()].reverse().slice(0, 25));
+  });
+
+  it('keeps the order of a caller whose detail is already worst first, still 25 rows at most', () => {
+    const m = metric({ id: 'x', detail, ordered: true });
+    expect(m.detail.map((d) => d.file)).toEqual(['a.js', 'b.js', 'c.js']);
+    expect(m).not.toHaveProperty('ordered');
+    expect(metric({ id: 'x', detail: thirty, ordered: true }).detail.map((d) => d.n)).toEqual([...Array(25).keys()]);
   });
 });
 
