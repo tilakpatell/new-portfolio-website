@@ -101,8 +101,8 @@ export function build({ renderer, exhibits, doc }) {
   nebula.frustumCulled = false;
   scene.add(nebula);
 
-  scene.add(new THREE.HemisphereLight(0xff8a6a, 0x200608, 0.55));
-  const key = new THREE.DirectionalLight(0xffc89a, 1.6);
+  scene.add(new THREE.HemisphereLight(0xff8a6a, 0x200608, 0.38));
+  const key = new THREE.DirectionalLight(0xffc89a, 1.15);
   key.position.set(30, 50, 24);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -150,7 +150,7 @@ export function build({ renderer, exhibits, doc }) {
   // the exhibits
   const marble = keep(new THREE.MeshStandardMaterial({ color: 0xf1ece4, roughness: 0.28 }));
   const glass = keep(new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.02, metalness: 0, transparent: true, opacity: 0.12, envMapIntensity: 2.5, depthWrite: false, side: THREE.DoubleSide }));
-  const ringGlow = keep(new THREE.MeshBasicMaterial({ color: 0xffa040, toneMapped: false, transparent: true, opacity: 0.7 }));
+  const ringGlow = keep(new THREE.MeshBasicMaterial({ color: 0xc87a30, toneMapped: false, transparent: true, opacity: 0.5 }));
   const beamGeo = keep(new THREE.CylinderGeometry(0.5, 1.6, 7, 32, 1, true));
   const pickables = [];
   const poses = [];
@@ -212,7 +212,7 @@ export function build({ renderer, exhibits, doc }) {
     // the plaque, on a brass lectern in front
     const tex = keep(await plaqueTexture({ wing: ex.wing, title: ex.title, number: center ? 'Exhibit Zero' : `Exhibit ${String(i).padStart(2, '0')}` }));
     const lectern = new THREE.Mesh(keep(new RoundedBoxGeometry(1.9, 1.0, 0.08, 2, 0.03)), gold);
-    const plaque = new THREE.Mesh(plaqueGeo, keep(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4, metalness: 0.3, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.35 })));
+    const plaque = new THREE.Mesh(plaqueGeo, keep(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4, metalness: 0.3, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.18 })));
     const stand = new THREE.Group();
     stand.add(lectern);
     plaque.position.z = 0.045;
@@ -224,7 +224,7 @@ export function build({ renderer, exhibits, doc }) {
     stand.rotation.x = -0.55;
     g.add(stand);
     // light from above: a soft beam, and a glowing ring on the floor
-    const beam = new THREE.Mesh(beamGeo, keep(new THREE.ShaderMaterial({ vertexShader: BEAM_VS, fragmentShader: BEAM_FS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { color: { value: new THREE.Color(0xffc070) }, strength: { value: center ? 0.5 : 0.32 } } })));
+    const beam = new THREE.Mesh(beamGeo, keep(new THREE.ShaderMaterial({ vertexShader: BEAM_VS, fragmentShader: BEAM_FS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { color: { value: new THREE.Color(0xffc070) }, strength: { value: center ? 0.26 : 0.16 } } })));
     beam.scale.setScalar(s);
     beam.position.y = ph + 3.5 * s;
     g.add(beam);
@@ -245,7 +245,7 @@ export function build({ renderer, exhibits, doc }) {
     scene.add(g);
   };
 
-  const center = new THREE.PointLight(0xffc070, 40, 26, 1.6);
+  const center = new THREE.PointLight(0xffc070, 14, 26, 1.6);
   center.position.set(0, 7, 0);
   scene.add(center);
 
@@ -305,7 +305,7 @@ export function build({ renderer, exhibits, doc }) {
   const sheet = buildDocument({ doc });
   sheet.group.position.copy(DOC_AT);
   scene.add(sheet.group);
-  const docGlow = new THREE.PointLight(0xffd8a0, 30, 40, 1.4);
+  const docGlow = new THREE.PointLight(0xffd8a0, 9, 40, 1.4);
   docGlow.position.set(0, DOC_AT.y, DOC_AT.z + 10);
   scene.add(docGlow);
 
@@ -330,8 +330,9 @@ export function build({ renderer, exhibits, doc }) {
     pages: sheet.pages,
     lineAt: (hit) => sheet.lineAt(hit),
     setLineHover: (i) => sheet.setHover(i),
+    markExhibit: (x) => sheet.mark(x),
     // in front of the pages, far enough back to read all three
-    docPose: () => ({ target: DOC_AT.clone(), camera: DOC_AT.clone().add(new THREE.Vector3(0, 0.5, DOC_SIZE.h * 1.55)) }),
+    docPose: () => ({ target: DOC_AT.clone(), camera: DOC_AT.clone().add(new THREE.Vector3(0, 0.4, DOC_SIZE.h * 1.22)) }),
     setHover(i) {
       hover = i;
     },

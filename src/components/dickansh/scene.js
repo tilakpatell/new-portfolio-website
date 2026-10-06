@@ -28,6 +28,7 @@ import { build as buildGateway } from './gateway';
 import { build as buildUniverse } from './universe';
 
 const WARP = 2.3; // seconds, into the portal
+const BLOOM = 0.32; // the glow's strength, only over what's brighter than white
 const ARRIVE = 1.6; // seconds of the field of view settling after it
 const VIEWS = {
   gate: { target: new THREE.Vector3(0, 3.6, 0), yaw: 0, pitch: 0.1, dist: 22, yawMax: 1.05, pitchMin: 0.0, pitchMax: 0.55, distMin: 8, distMax: 36 },
@@ -36,7 +37,7 @@ const VIEWS = {
 const angleTo = (from, to) => from + Math.atan2(Math.sin(to - from), Math.cos(to - from));
 
 export async function create(canvas, ctx) {
-  const gl = createRenderer(canvas, { alpha: false, ratio: 2, toneMapping: THREE.ACESFilmicToneMapping, exposure: 1.05, onLost: ctx.onLost, onSlow: ctx.onSlow });
+  const gl = createRenderer(canvas, { alpha: false, ratio: 2, toneMapping: THREE.ACESFilmicToneMapping, exposure: 0.88, onLost: ctx.onLost, onSlow: ctx.onSlow });
   const { renderer } = gl;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -60,7 +61,7 @@ export async function create(canvas, ctx) {
   const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 2000);
   const composer = new EffectComposer(renderer);
   const pass = new RenderPass(gate.scene, camera);
-  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.6, 0.5, 1.0);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), BLOOM, 0.4, 1.4);
   composer.addPass(pass);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
@@ -90,6 +91,8 @@ export async function create(canvas, ctx) {
   const focus = (i) => {
     if (mode !== 'universe') return;
     focused = i;
+    // its lines picked out on the list, Word's highlighter yellow
+    uni.markExhibit(typeof i === 'number' ? i : -1);
     if (i === -1) {
       goal.target.copy(VIEWS.universe.target);
       goal.dist = VIEWS.universe.dist;
@@ -230,6 +233,7 @@ export async function create(canvas, ctx) {
   el.addEventListener('wheel', onWheel, { passive: false });
 
   let lowered = false;
+  let frames = 0;
   // the universe's shaders and textures go up to the chip while you're still at the gate
   uni.ready.then(() => renderer.compileAsync?.(uni.scene, camera)).catch(() => {});
 
@@ -239,11 +243,21 @@ export async function create(canvas, ctx) {
     leave,
     focus,
     readList: () => focus('doc'),
+    // the camera straight to where it's easing to (for the QA scripts' screenshots)
+    snap() {
+      Object.assign(cam, { yaw: goal.yaw, pitch: goal.pitch, dist: goal.dist });
+      cam.target.copy(goal.target);
+      arrive = 0;
+    },
     get mode() {
       return mode;
     },
     get focused() {
       return focused;
+    },
+    // frames drawn so far (for the QA scripts: wait on frames, not the clock)
+    get frames() {
+      return frames;
     },
     resize(w, h) {
       size.w = w;
@@ -298,7 +312,7 @@ export async function create(canvas, ctx) {
         camera.fov = 50 + (ctx.reduced ? 0 : e * 55);
         camera.updateProjectionMatrix();
         gate.setPower(e);
-        bloom.strength = 0.6 + e * e * 2.5;
+        bloom.strength = BLOOM + e * e * 1.6;
         if (u >= 1) arriveInUniverse();
       } else {
         place();
@@ -307,10 +321,11 @@ export async function create(canvas, ctx) {
           const u = 1 - arrive / ARRIVE;
           camera.fov = 105 - easeInOut(u) * 55;
           camera.updateProjectionMatrix();
-          bloom.strength = 0.6 + (1 - u) * 2.5;
-        } else bloom.strength = 0.6;
+          bloom.strength = BLOOM + (1 - u) * 1.6;
+        } else bloom.strength = BLOOM;
       }
       composer.render(dt);
+      frames += 1;
       gl.watch(now);
       return true;
     },

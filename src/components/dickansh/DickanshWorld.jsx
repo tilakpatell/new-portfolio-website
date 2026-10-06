@@ -110,7 +110,7 @@ export default function DickanshWorld({ museum }) {
           {mode === 'universe' && (
             <>
               <div className="dk-hud-bottom">
-                <p className="dk-hint">{hint}</p>
+                {!ex && <p className="dk-hint">{hint}</p>}
                 <div className="dk-nav">
                   <button type="button" className="dk-icon" aria-label="Previous exhibit" onClick={() => go((at < 0 ? 1 : at) - 1)}>
                     <RiArrowLeftSLine aria-hidden="true" />
