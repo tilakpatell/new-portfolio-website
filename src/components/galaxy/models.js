@@ -17,6 +17,7 @@
 
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { gen3dUrl } from '../../lib/three/gen3d';
 import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 import { GLB } from '../universe/glbFleet';
 import { BUILT_KINDS } from '../universe/trafficModels';
@@ -57,6 +58,11 @@ export const MODELS = {
   nubian: { url: '/models/galaxy/nubian.glb', nose: 0 },
   razorcrest: { url: '/models/galaxy/surface/razorcrest.glb', nose: 0 }, // (the one the surfaces fly)
 };
+// the ones made again here at full quality (scripts/gen3d, remade from these
+// models' own renders): kind → the made model's name, loaded in this device's cut
+export const MADE = { xwing: 'x-wing', interceptor: 'tie-interceptor' };
+for (const [kind, name] of Object.entries(MADE)) if (MODELS[kind]) MODELS[kind] = { ...MODELS[kind], url: gen3dUrl(name) };
+
 const BUILT = new Set([...BUILT_KINDS, ...GALAXY_KINDS]);
 
 // a kind with no built version of its own flies as another's till its model

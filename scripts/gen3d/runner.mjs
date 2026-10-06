@@ -89,6 +89,7 @@ const mainRepo = () => resolve(git(REPO, 'rev-parse', '--path-format=absolute', 
 
 // The runner's own checkout of the repository, beside the main one, made once; node_modules shared with this checkout.
 export function workspace(root = process.env.GEN3D_RUNNER_ROOT ?? `${mainRepo()}-gen3d`) {
+  if (resolve(root) === REPO) return root; // run from its own checkout (the scheduled task does): nothing to make
   if (!existsSync(join(root, '.git'))) {
     git(REPO, 'fetch', '-q', 'origin', 'main');
     git(REPO, 'worktree', 'add', '--detach', root, 'origin/main');

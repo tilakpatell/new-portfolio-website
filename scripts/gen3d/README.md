@@ -14,8 +14,8 @@ node scripts/gen3d/make.mjs x-wing --prompt "an X-wing starfighter" --what "an X
 node scripts/gen3d/prepare.mjs photo.jpg cache/xwing.png               # your picture trimmed, squared, 1024 (what the model expects)
 node scripts/gen3d/picture.mjs "an X-wing starfighter" cache/xwing.png  # or a concept image from words
 node scripts/gen3d/generate.mjs cache/xwing.png cache/raw/xwing.glb [--faithful]   # image → raw textured GLB, ~300k triangles
-node scripts/gen3d/bake.mjs cache/raw/xwing.glb cache/xwing-low.glb --faces 24000  # the high mesh baked onto a low one (Blender)
-node scripts/gen3d/web.mjs cache/xwing-low.glb x-wing --tris 24000 --tex 2048 --what "an X-wing starfighter"
+node scripts/gen3d/bake.mjs cache/raw/xwing.glb cache/xwing-low.glb --faces 60000  # the high mesh baked onto a low one (Blender)
+node scripts/gen3d/web.mjs cache/xwing-low.glb x-wing --tris 60000 --tex 2048 --what "an X-wing starfighter"
 node scripts/gen3d/judge.mjs cache/xwing.png cache/raw/xwing.glb public/models/gen3d/x-wing.glb   # four views each, side by side
 ```
 
@@ -34,7 +34,7 @@ the seams let it (~25k triangles).
 `web.mjs` writes `public/models/gen3d/<name>.glb` (welded, simplified to the
 triangle budget, WebP textures, meshopt: the same steps as
 `scripts/meshy-import.mjs`) and credits it in `public/games/credits.json`.
-It refuses a model over its budget or over 1 MB. Everything else lands in
+It refuses a model over its budget or over 4 MB. Everything else lands in
 `scripts/gen3d/cache/` (git-ignored).
 
 ## From your phone
@@ -47,7 +47,7 @@ line, all optional but one of `prompt`/`what`/`image`:
 what: a TIE fighter                 (for the credit; the prompt if there is none)
 prompt: a TIE fighter, grey, …      (FLUX draws the concept picture)
 image: (attach a picture, or a URL) (the picture to follow; Pixal3D unless faithful: no)
-faces: 24000  tex: 2048  seed: 42  res: 1024  fov: 49  engine: trelliscpp|trellis2
+faces: 60000  tex: 2048  seed: 42  res: 1024  fov: 49  engine: trelliscpp|trellis2
 faithful: no  bake: no
 ```
 
@@ -59,6 +59,27 @@ with the judging sheet (committed under `docs/gen3d/`) and comments on the
 issue, which it closes. A failure is commented and labelled `gen3d:failed`;
 fix the issue and remove the label to try again. Wiring the model into a
 scene is a separate change.
+
+**Always give it a picture.** A prompt only works for designs FLUX knows
+(an X-wing, a TIE); for anything else (a CR90, a particular building, a
+character) attach a picture: three-quarter view, the whole thing in frame,
+plain background if you can. A model the site already has is remade from
+its own render (`remake.mjs`), which keeps its shape and adds the detail;
+that only helps when the old shape was right.
+
+### Keeping it running on the desktop
+
+It's registered to start at logon through the Startup folder (a scheduled
+task needs an administrator; this doesn't):
+`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\gen3d-runner.vbs`
+runs `%LOCALAPPDATA%\gen3d\runner.cmd` hidden, which sets
+`GEN3D_RUNNER_ROOT` to the runner's checkout (`<repo>-gen3d`, its own
+`node_modules` from `npm ci --ignore-scripts`) and `CHROME` to Edge, and
+restarts the runner if it ever stops; its log is
+`%LOCALAPPDATA%\gen3d\runner.log`. The runner takes each job on a fresh
+`origin/main`, so a merged change to these scripts is picked up by the next
+job. To stop it: end the `node` process from `runner.cmd`, or delete the
+`.vbs`.
 
 ## The engines
 
@@ -172,6 +193,11 @@ The GPU is shared with `scripts/voices`: check `nvidia-smi` before a run.
   simplifier stops at the seams (~25k triangles for a 300k mesh) and crossing
   them smears the texture. 24k triangles at 1536² is under 900 KB and looks
   the part; the Blender bake is the way below that.
+- **Remakes help fighters, not greebled hulls.** From its own render a
+  TIE interceptor or an X-wing comes back with real panel detail; a Star
+  Destroyer or a Venator comes back a smooth blob with its greebles gone,
+  worse than the Sketchfab original. Big-feature shapes only, and judge the
+  sheet before replacing anything.
 - **Both engines, in order of use:** `trelliscpp` (f16 GGUF, ~2–4 minutes a
   model at res 1024 on the RTX 5090) does everything here. The reference
   `trellis2` is built in WSL but its image encoder (`facebook/dinov3`) is a
