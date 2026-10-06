@@ -286,9 +286,9 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               </div>
               <p ref={prompt} className="universe-prompt" aria-live="polite" />
               {/* (hidden until the crew are down on a planet with a world: the scene says when, and what it's called) */}
-              <button ref={enterBtn} type="button" className="universe-enter" hidden onClick={() => view.current?.enter?.()}>
-                <span className="universe-enter-label" />
-                <kbd className="universe-enter-key" aria-hidden="true">
+              <button ref={enterBtn} type="button" className="universe-wayin" hidden onClick={() => view.current?.enter?.()}>
+                <span className="universe-wayin-label" />
+                <kbd className="universe-wayin-key" aria-hidden="true">
                   Enter
                 </kbd>
               </button>

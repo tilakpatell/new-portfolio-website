@@ -3340,7 +3340,7 @@ export async function create(canvas, ctx) {
     if (label === enterWas) return;
     enterWas = label;
     el.hidden = !label;
-    const text = el.querySelector('.universe-enter-label');
+    const text = el.querySelector('.universe-wayin-label');
     if (text) text.textContent = label;
   };
   // the line over the map: what G does here

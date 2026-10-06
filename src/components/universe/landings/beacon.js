@@ -27,8 +27,9 @@ uniform float glow;
 varying float vUp;
 varying float vFacing;
 void main() {
-  float a = pow(1.0 - vUp, 1.6) * pow(vFacing, 1.4) * glow;
-  gl_FragColor = vec4(color, a);
+  float a = pow(1.0 - vUp, 1.3) * (0.35 + 0.65 * pow(vFacing, 1.4)) * glow;
+  // (whiter down its middle, so it reads on bright sand as well as on a dark sky)
+  gl_FragColor = vec4(mix(color, vec3(1.0), 0.35 * pow(vFacing, 4.0)), a);
 }`;
 
 // the label: white on the night's dark, edged in the glow, on a canvas of
@@ -68,21 +69,21 @@ function labelTexture(text, color) {
   return { tex, aspect: w / h };
 }
 
-export function createBeacon({ label, color = '#7fe3ff', tall = 9, small = false, reduced = false } = {}) {
+export function createBeacon({ label, color = '#7fe3ff', tall = 5, small = false, reduced = false } = {}) {
   const object = new THREE.Group();
   object.name = 'beacon';
   const glow = new THREE.Color(color);
 
   const column = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.55, 0.9, tall * 2.2, 24, 1, true).translate(0, tall * 1.1, 0),
+    new THREE.CylinderGeometry(0.4, 0.7, tall * 2.4, 24, 1, true).translate(0, tall * 1.2, 0),
     new THREE.ShaderMaterial({
-      uniforms: { color: { value: glow }, glow: { value: 0.75 } },
+      uniforms: { color: { value: glow }, glow: { value: 0.8 } },
       vertexShader: COLUMN_V,
       fragmentShader: COLUMN_F,
       transparent: true,
       depthWrite: false,
       side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending,
+      // (not added: light added to bright sand is lost in it)
       toneMapped: false,
     }),
   );
@@ -104,7 +105,7 @@ export function createBeacon({ label, color = '#7fe3ff', tall = 9, small = false
 
   const { tex, aspect } = labelTexture(label, `#${glow.getHexString()}`);
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false, toneMapped: false }));
-  const high = 1.25; // metres: big enough to read from the ship, thirty-odd metres off
+  const high = 1.5; // metres: big enough to read from the ship, thirty-odd metres off
   sprite.scale.set(high * aspect, high, 1);
   sprite.position.y = tall;
   sprite.renderOrder = 3; // (over the column, and never hidden behind the door it marks)
@@ -116,7 +117,7 @@ export function createBeacon({ label, color = '#7fe3ff', tall = 9, small = false
       if (reduced) return;
       // a slow breath, so it reads as a sign and not a part of the scenery
       const k = 0.5 + 0.5 * Math.sin(t * 2.2);
-      column.material.uniforms.glow.value = 0.6 + 0.25 * k;
+      column.material.uniforms.glow.value = 0.65 + 0.25 * k;
       if (ring) {
         const s = 1 + 0.35 * ((t * 0.6) % 1);
         ring.scale.set(s, 1, s);

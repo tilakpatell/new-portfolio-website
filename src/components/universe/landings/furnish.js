@@ -252,7 +252,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
       spots.push({ n: at, r: (t.door?.reach ?? (t.door?.at ? 3 : (t.r ?? 0) + 3)) * METRE, label: t.door?.label ?? null, say: t.say ?? null });
     }
     // (high enough to clear what it marks: a camper van's roof, a compound's wall)
-    if (beacon && t === landing.things[beacon.thing]) await putBeacon(t.door.at ? place(spot, t.door.at[0], t.door.at[1], R) : spot, Math.min(14, Math.max(7, (t.r ?? 0) * 0.6 + 5)));
+    if (beacon && t === landing.things[beacon.thing]) await putBeacon(t.door.at ? place(spot, t.door.at[0], t.door.at[1], R) : spot, Math.min(12, Math.max(4.5, (t.r ?? 0) * 0.45 + 2.5)));
   };
 
   const scatter = async (planet, entry, rand) => {
@@ -315,7 +315,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
       if (beacon && beacon.thing === null) {
         const spot = place(frame, beacon.at[0], beacon.at[1], R);
         spots.push({ n: spot.n, r: beacon.reach * METRE, label: beacon.door, say: null });
-        await putBeacon(spot, 7);
+        await putBeacon(spot, 4.5);
       }
       await Promise.all([...things.map((t) => thing(planet, t).catch(oops(t.kind))), ...(landing.scatter ?? []).map((e, i) => scatter(planet, e, rng(seedOf(id) + i * 7919)).catch(oops(e.kind)))]);
     })
