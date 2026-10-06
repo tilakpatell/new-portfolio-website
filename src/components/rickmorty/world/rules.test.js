@@ -1314,6 +1314,7 @@ describe('C-137: the things to touch', () => {
       'meeseeks',
       'plumbus',
       'portalpanic',
+      'dial',
       'quiz',
       'principal',
       'jessica',

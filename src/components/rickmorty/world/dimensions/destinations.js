@@ -26,7 +26,7 @@ export const GARAGE_BACK = { x: -301.2, z: 101.4, face: 0 };
 
 // A place: its row `i`, its box, and everything in it in metres from its
 // middle (dx east, dz south), turned into the world's coordinates here.
-function place(i, { id, name, note, kind, deep, wide, sky, ceiling, people = [], spots = [], solids = [], tasks = [], say = {}, done = {}, unlock = {}, kinds = [] }) {
+function place(i, { id, name, note, kind, deep, wide, sky, ceiling, people = [], extras = [], spots = [], solids = [], tasks = [], say = {}, done = {}, unlock = {}, kinds = [] }) {
   const area = destArea(i, deep, wide);
   const cx = DEST_X;
   const cz = destZ(i);
@@ -45,6 +45,8 @@ function place(i, { id, name, note, kind, deep, wide, sky, ceiling, people = [],
     arrive: { x: cx, z: area.z1 - (kind === 'room' ? 4.6 : 7), face: N },
     back: { x: cx, z: area.z1 - (kind === 'room' ? 1.6 : 4) },
     people: people.map((p) => ({ ...w(p), area: id })),
+    // the crowd: copies of the Meshy figures made for it, standing about ({ kind, dx, dz, face })
+    extras: extras.map((e) => w(e)),
     hotspots: spots.map((s) => ({ r: 1.4, ...w(s), area: id })),
     // what can't be walked through: { id, dx, dz, w, d } boxes and { id, dx, dz, r } posts
     solids: solids.map((s) => w(s)),
@@ -222,6 +224,17 @@ export const DESTINATIONS = [
       { id: 'receptionist', who: 'rick', dx: 6.5, dz: 2.2, face: S },
       { id: 'jerrytv', who: 'jerry-cardigan', dx: -2, dz: -5, face: N },
     ],
+    extras: [
+      { kind: 'jerry-robe', dx: -8.5, dz: -3.5, face: 0 },
+      { kind: 'jerry-golf', dx: 2, dz: -1.6, face: W },
+      { kind: 'jerry-tux', dx: -5, dz: 1.5, face: 0.6 },
+      { kind: 'jerry-track', dx: 8.5, dz: -1.5, face: W },
+      { kind: 'jerry-gown', dx: -8.4, dz: -0.6, face: -0.4 },
+      { kind: 'jerry-golf', dx: 0.5, dz: 2.5, face: -2.2 },
+      { kind: 'jerry-robe', dx: 8.6, dz: -6.4, face: 2.6 },
+      { kind: 'jerry-tux', dx: -4.4, dz: -6.2, face: -1.2 },
+      { kind: 'jerry-track', dx: 1.6, dz: -6.4, face: 1.2 },
+    ],
     spots: [
       { id: 'jerryreal', dx: -6.5, dz: 4.5, label: 'A Jerry by the door', verb: 'Talk' },
       { id: 'receptionist', dx: 6.5, dz: 4.1, label: 'The Rick on the desk', verb: 'Talk' },
@@ -258,6 +271,14 @@ export const DESTINATIONS = [
     wide: 70,
     sky: { top: 0x1c2350, mid: 0x7a4a7a, low: 0xf2a070, sun: 0xffd2a0, clouds: 1, moons: 1 },
     people: [{ id: 'arthricia', dx: 3, dz: -1, face: S }],
+    extras: [
+      { kind: 'magdalian-a', dx: -6, dz: 2, face: 0.4 },
+      { kind: 'magdalian-b', dx: 9, dz: -5, face: 2.6 },
+      { kind: 'magdalian-c', dx: -14, dz: -2, face: -0.3 },
+      { kind: 'magdalian-a', dx: 13, dz: 3, face: 3.4 },
+      { kind: 'magdalian-b', dx: -3, dz: -9, face: -1.6 },
+      { kind: 'magdalian-c', dx: 7, dz: 7, face: 1.9 },
+    ],
     spots: [
       { id: 'arthricia', dx: 3, dz: -1, label: 'Arthricia', verb: 'Talk' },
       { id: 'siren', dx: -11, dz: -12, label: 'The purge siren', verb: 'Pull' },
@@ -289,6 +310,13 @@ export const DESTINATIONS = [
     people: [
       { id: 'flippynips', dx: 0, dz: -12, face: S },
       { id: 'scroopy', dx: 11, dz: -2, face: W },
+    ],
+    extras: [
+      { kind: 'plutonian-a', dx: -4, dz: -5, face: N },
+      { kind: 'plutonian-b', dx: 3.5, dz: -4.5, face: N },
+      { kind: 'plutonian-a', dx: 1, dz: -3.2, face: N },
+      { kind: 'plutonian-b', dx: -7.5, dz: -3, face: 1.2 },
+      { kind: 'plutonian-a', dx: 7, dz: -6, face: 2.2 },
     ],
     spots: [
       { id: 'flippynips', dx: 0, dz: -12, label: 'King Flippy Nips', verb: 'Talk' },
@@ -322,6 +350,12 @@ export const DESTINATIONS = [
     wide: 70,
     sky: { top: 0x6a4a2a, mid: 0xc98a4a, low: 0xf2d39a, sun: 0xfff0c8, clouds: 1, moons: 0 },
     people: [{ id: 'gearhead', dx: -7, dz: -7.2, face: S }],
+    extras: [
+      { kind: 'gearperson-a', dx: 3, dz: -2, face: 2.4 },
+      { kind: 'gearperson-b', dx: 12, dz: 2, face: W },
+      { kind: 'gearperson-a', dx: -14, dz: 2, face: 0.3 },
+      { kind: 'gearperson-b', dx: 5, dz: 6, face: -2 },
+    ],
     spots: [
       { id: 'gearhead', dx: -7, dz: -7.2, label: 'Gearhead', verb: 'Talk' },
       { id: 'cogs', dx: 9, dz: -8, label: 'The city’s gears', verb: 'Look', r: 2.5 },

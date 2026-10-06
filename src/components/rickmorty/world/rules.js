@@ -696,7 +696,7 @@ export const COLLIDERS = {
   diner: furnished('diner'),
   wong: furnished('wong'),
   // each destination's buildings and fittings, and its people
-  ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, [...d.solids.map((o) => (o.r ? circle(o.id, o.x, o.z, o.r) : box(o.id, o.x, o.z, o.w, o.d))), ...d.people.map((o) => circle(o.id, o.x, o.z, PERSON))]])),
+  ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, [...d.solids.map((o) => (o.r ? circle(o.id, o.x, o.z, o.r) : box(o.id, o.x, o.z, o.w, o.d))), ...d.people.map((o) => circle(o.id, o.x, o.z, PERSON)), ...d.extras.map((o, n) => circle(`${d.id}-extra-${n}`, o.x, o.z, PERSON))]])),
 };
 // Walls: the street's fences, the house's inner walls and the low banister up
 // the stairs' open side, and the balcony's low railing on its south edge. A
@@ -739,6 +739,8 @@ export const HOTSPOTS = [
   spot('meeseeks', 'garage', -301.4, 102.4, 'Mr. Meeseeks box', 'Press'),
   spot('plumbus', 'garage', -297.45, 99, 'The plumbus factory', 'Watch'),
   spot('portalpanic', 'garage', -302.45, 103.1, 'Portal panic cabinet', 'Play'),
+  // Rick's portal gun, on the bench's arm by the portal: its dial sets where the portal opens (./dimensions/destinations.js)
+  spot('dial', 'garage', -302.55, 100.15, 'The portal gun: pick a dimension', 'Dial'),
   spot('quiz', 'school', -300, 196.4, 'Mr. Goldenfold’s pop quiz', 'Sit the quiz'),
   // the principal, and the class from the aisle beside their desks
   spot('principal', 'school', -303.4, 196.55, 'Principal Vagina', 'Talk'),
