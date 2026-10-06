@@ -8,7 +8,7 @@
 
 import * as THREE from 'three';
 import { createRenderer, precompile } from '../../lib/three/renderer';
-import { T, clamp, darkAt, ease, exposureAt, flashAt, speedAt } from './timeline';
+import { T, clamp, darkAt, ease, exposureAt, flashAt, holdStart, speedAt } from './timeline';
 
 const SEG = 10; // segments along a streak, so the swirl can bend it
 const DEPTH = 80; // how deep the field is (world units)
@@ -307,6 +307,7 @@ export function run(canvas, { entry = false, onPeak, onDone, onFail, uncover }) 
     if (failed || gl.lost) return;
     // timed from the first frame actually drawn, so a slow start skips nothing
     if (!start) start = now - (entry ? T.drift : 0);
+    start = holdStart(now, start); // (held in the tunnel while the galaxy builds its next system: timeline.js)
     const t = now - start;
     const dt = last ? Math.min(0.05, (now - last) / 1000) : 0.016;
     last = now;
