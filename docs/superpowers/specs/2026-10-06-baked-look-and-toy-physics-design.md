@@ -401,3 +401,54 @@ match the lit buildings beside them in a side-by-side at each time.
   `shaders/matcap/fragment.glsl`, `Materials/FloorShadow.js` in `brunosimon/folio-2019`.
 - One pull request per step, each merged on its own; branch from `main`; run the autopilot
   check with `--shots` for the ship's log if the autopilot's protocol applies.
+
+## Implementation notes (Step 1, as built)
+
+What changed from the text above, and why. Measured in headless Chromium with SwiftShader
+(`scripts/abq-qa.mjs`, `mid` tier, a fixed 60 Hz clock, draws and triangles counted at the GL
+calls so every pass is included), at Walt's drive, back to back in one session:
+
+| | before Step 1 | after |
+| --- | --- | --- |
+| frame (noon / golden) | 2198 / 2297 ms | 1891 / 1923 ms |
+| draw calls | 163–169 | 107–109 |
+| triangles | 1.47M | 0.79M |
+
+SwiftShader's absolute times are not a GPU's, and they drift between runs (an earlier pair
+read about 1690 ms before and 1313–1607 ms after); the comparison is only fair within a
+session. The shadow pass's share is gone: about a third of the draws and nearly half of the
+triangles.
+
+- **Masks at 1024², not 2048².** The city is baked at 2048² (208 passes, about 90 s in
+  SwiftShader) and shipped at 1024² by a 2 × 2 box average: 2048² lossless WebP of these soft
+  gradients is 1.95 MB, over the 1.3 MB cap, and the averaged 1024² is smoother than one baked
+  at 1024². City 848 KB, rv 30 KB, arches 74–89 KB: about 1.04 MB in all. `WORLD_MB` was not
+  raised (main is changing `worlds.js` elsewhere; the masks fit within the existing estimate's
+  rounding).
+- **Two extra no-sun times** (0.245 and 0.76, channel 3, the sky term only) so the sun's
+  shadows fade in as it rises and out as it sets instead of jumping from the night picture.
+- **Dawn is baked at 0.29, not 0.262.** At 0.262 the sun is 3.9° up and every shadow is
+  fifteen times its caster's height: the dawn mask covered nearly the whole town, and since
+  the blend toward noon starts from it, mid-morning stood in dusk. 0.29 puts the sun at
+  12.8°, the same height as golden hour's 0.71; the clock's "Dawn" (0.262) now reads a blend
+  of the no-sun picture and that one, which is what a sun on the horizon looks like anyway.
+- **The shade tint is a hue, not a second darkening.** The spec's
+  `mix(uShade * c, c, 0.4 + 0.6 · lit)` multiplies a shadow by about 0.42 on every channel
+  (`#5a3420` is so dark that mixing toward it is just grey), on top of the sun and sky the
+  masks already cut. As built, a shadow is multiplied by
+  `mix(1, shade / luminance(shade) · 0.75, 0.4 · (1 − lit))`: the shade's hue at a little under
+  the brightness it falls on (`SHADE_MIX` 0.4 in `grounding.js`). What's left in a shadow is
+  the blue sky's light, and this turns it back warm brown. Tuned from the four screenshots.
+- **The building shell needed 17 vertex attributes** (WebGL's floor is 16), so SwiftShader
+  drew no city buildings at all: `aCorner` duplicated `position` and went; lift, out, cornice
+  and drop are packed into one `vec4 aBend` (`city.js`).
+- **Parked cars get no blob**: they never move, so they are in the masks.
+- **Blobs** draw premultiplied over a multiply (`floor × mix(1, shade, a)`), at
+  `renderOrder −1` (straight after the floor, so dust over a blob isn't darkened by it), and
+  are slid by the moon at half strength when the sun is below 0.08.
+- **`renderer.info.autoReset` is off** and reset once a frame, so `api.info()` counts every
+  pass of the composer, not just the last.
+- **A data-saving phone on the `low` tier skips the masks** (and so its floor has no shadows),
+  as the spec allowed.
+- **The bake** lives in `lib/three/grounding-bake.js`, loaded only through the dev-only
+  `api.bake`, so it never reaches a production chunk.

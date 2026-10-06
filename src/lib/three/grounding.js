@@ -123,6 +123,12 @@ uniform sampler2D uMask[${n}];
 uniform vec4 uMaskRect[${n}];
 uniform vec3 uMaskMix;
 uniform vec3 uShade;
+uniform float uShadeMix;
+// the shade's hue at a little under the brightness it falls on: what's left
+// in a shadow is the sky's light, which is blue, and this turns it back
+// warm without darkening it a second time (the sun and the sky are already
+// cut by the masks)
+vec3 gShadeTint() { return uShade * (0.75 / max(dot(uShade, vec3(0.2126, 0.7152, 0.0722)), 1e-4)); }
 float gPick(vec4 m, float c) { return c < 0.5 ? m.r : c < 1.5 ? m.g : c < 2.5 ? m.b : 1.0; }
 // the sun's and the sky's share of a point on the floor (1 and 1 outside every mask)
 vec2 gRead(vec3 p) {
@@ -150,11 +156,16 @@ vec2 gRead(vec3 p) {
     swapped.sky = true;
   }
   if (fs.includes('#include <opaque_fragment>')) {
-    fs = fs.replace('#include <opaque_fragment>', 'outgoingLight = mix(uShade * outgoingLight, outgoingLight, 0.4 + 0.6 * min(gSun, gV.y));\n#include <opaque_fragment>');
+    fs = fs.replace('#include <opaque_fragment>', 'outgoingLight *= mix(vec3(1.0), gShadeTint(), uShadeMix * (1.0 - min(gSun, gV.y)));\n#include <opaque_fragment>');
     swapped.shade = true;
   }
   return { vertexShader: vs, fragmentShader: fs, swapped };
 }
+
+// How far a floor in full shadow goes toward the shade's hue (0 none, 1 all
+// the way): enough that a shadow reads warm brown, not the grey-blue the sky
+// alone would leave it.
+export const SHADE_MIX = 0.4;
 
 // The uniforms every floor material of one bake shares, so a frame sets the
 // time once for all of them.
@@ -168,6 +179,7 @@ function floorUniforms(bake) {
       uMaskRect: { value: bake.areas.map((a) => new THREE.Vector4(a.x0, a.z0, 1 / a.w, 1 / a.d)) },
       uMaskMix: { value: new THREE.Vector3(3, 3, 0) },
       uShade: { value: shade },
+      uShadeMix: { value: bake.shadeMix ?? SHADE_MIX },
     };
     shared.set(bake, u);
   }

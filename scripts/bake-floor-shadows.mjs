@@ -39,7 +39,7 @@ const AREAS = [
 // sun's shadows come in as it rises and go as it sets.
 const TIMES = [
   { tod: 0.245, channel: 3 },
-  { tod: 0.262, channel: 0, name: 'dawn' },
+  { tod: 0.29, channel: 0, name: 'dawn' },
   { tod: 0.5, channel: 1, name: 'noon' },
   { tod: 0.71, channel: 2, name: 'golden' },
   { tod: 0.76, channel: 3 },

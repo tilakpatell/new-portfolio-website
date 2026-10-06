@@ -25,7 +25,9 @@ describe('the floor read from its masks', () => {
     expect(out.swapped).toEqual({ sun: true, sky: true, shade: true });
     expect(out.fragmentShader).toContain('getDirectionalLightInfo( directionalLight, directLight );\n\t\tdirectLight.color *= gSun;');
     expect(out.fragmentShader).toContain('reflectedLight.indirectDiffuse *= gSky;');
-    expect(out.fragmentShader).toContain('mix(uShade * outgoingLight, outgoingLight, 0.4 + 0.6 * min(gSun, gV.y))');
+    expect(out.fragmentShader).toContain('outgoingLight *= mix(vec3(1.0), gShadeTint(), uShadeMix * (1.0 - min(gSun, gV.y)));');
+    // (a hue at about the brightness it falls on, not a second darkening)
+    expect(out.fragmentShader).toContain('vec3 gShadeTint()');
     expect(out.fragmentShader).not.toContain('#include <lights_fragment_begin>');
     // (the material's own occlusion map, if any, still applies first)
     expect(out.fragmentShader).toContain('#include <aomap_fragment>');
