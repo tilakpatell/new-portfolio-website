@@ -46,6 +46,8 @@ export const VIEWS = {
   rickall: { area: 'house', at: [-305.7, -7.1, -0.5], game: 23 },
   // on the sidewalk at the foot of the front walk, the house and the garage ahead
   street: { area: 'street', at: [-8, -4, N] },
+  // just in from Dr. Wong's door: the couch, the low table, and her in her armchair beyond
+  wong: { area: 'wong', at: [-300, 902.6, N], cam: [0, 0.35] },
 };
 
 const names = process.argv.slice(2);
@@ -100,6 +102,8 @@ for (const name of names.length ? names : Object.keys(VIEWS)) {
   const f0 = await page.evaluate(() => window.__C137__.sim.frame);
   await page.waitForFunction((f) => window.__C137__.sim.frame >= f, f0 + FRAMES, { timeout: 120000, polling: 100 });
   await page.waitForFunction(() => getComputedStyle(document.querySelector('.rm-fade')).opacity === '0', null, { timeout: 10000 });
+  // (a room built on the way in, a lazy one, shows a moment after the hook says it's ready)
+  await page.waitForTimeout(1500);
   await page.locator('.rm-world-canvas').screenshot({ path: `${OUT}/${name}.png`, timeout: 120000 });
   console.log(`${OUT}/${name}.png`);
 }

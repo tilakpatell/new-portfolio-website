@@ -41,8 +41,10 @@ export const AREAS = {
   oval: { x0: -308, x1: -292, z0: 694, z1: 706 },
   // Shoney's, inside
   diner: { x0: -307, x1: -293, z0: 794, z1: 804 },
+  // Dr. Wong's office, through its door in the house next to Shoney's
+  wong: { x0: -305, x1: -295, z0: 894, z1: 904 },
 };
-export const ROOM_IDS = ['house', 'upstairs', 'garage', 'school', 'arcade', 'basement', 'mindblowers', 'oval', 'diner'];
+export const ROOM_IDS = ['house', 'upstairs', 'garage', 'school', 'arcade', 'basement', 'mindblowers', 'oval', 'diner', 'wong'];
 export const OUTDOOR = ['street', 'annex'];
 
 // `pad` grows the area (shrinks it, below zero) all round
@@ -149,6 +151,9 @@ const GARAGE_DOOR = { x: -19, z: -13.4 };
 const SCHOOL_DOOR = { x: 40, z: 14.4 };
 const ARCADE_DOOR = { x: 400, z: -3.4 };
 const DINER_DOOR = { x: DINER.x, z: DINER.z + DINER.d / 2 + 0.6 };
+// Dr. Wong's practice: in the ranch house west of Shoney's, its door where Shoney's is on Shoney's
+export const WONG_HOUSE = NEIGHBOURS.find((n) => n.z < 0 && n.x < DINER.x && n.x > DINER.x - 30);
+const WONG_DOOR = { x: WONG_HOUSE.x, z: WONG_HOUSE.z + WONG_HOUSE.d / 2 + 0.6 };
 // where you come out by a door: `across` and `along` metres from it, facing straight away from it
 const beside = (door, across, along) => ({ x: door.x + across, z: door.z + along, face: Math.atan2(-along, across) });
 // The hatch in the garage lab's floor, 1.2 m square, in the corner opposite
@@ -193,6 +198,9 @@ export const LINKS = [
   // Shoney's
   { id: 'diner-door', area: 'street', ...DINER_DOOR, r: 1.6, kind: 'door', to: 'diner', label: 'Shoney’s', arrive: into('diner') },
   exit('diner', 'street', beside(DINER_DOOR, 0, 2.4)),
+  // Dr. Wong's office
+  { id: 'wong-door', area: 'street', ...WONG_DOOR, r: 1.6, kind: 'door', to: 'wong', label: 'Dr. Wong’s office', arrive: into('wong') },
+  exit('wong', 'street', beside(WONG_DOOR, 0, 2.4)),
 ];
 // A link with `needs` stays shut until that thing's done
 export const linkOpen = (l, done = []) => !l.needs || done.includes(l.needs);
@@ -328,6 +336,7 @@ export const PLAN = [
   // the Oval Office, and Shoney's
   room('office', 'oval', 'The Oval Office', -308, -292, 694, 706, 0xd9c79a),
   room('shoneys', 'diner', 'Shoney’s', -307, -293, 794, 804, 0xe8e2d2),
+  room('wongoffice', 'wong', 'Dr. Wong’s office', -305, -295, 894, 904, 0x9a8a72),
 ];
 
 // The round rooms: an ellipse in the area, `a` across x and `b` along z from
@@ -485,6 +494,8 @@ export const FURNITURE = [
   item('shelf-garage', 'shelf', 'garage', -296.65, 102.2, 1.8, 0.5, 1.9, W),
   item('worktable', 'worktable', 'garage', -299.9, 102.4, 2.2, 0.9, 0.92),
   item('portalpanic', 'arcade', 'garage', -303.225, 103.1, 0.8, 0.75, 1.8, E),
+  // Space Beth's stool, at the worktable's east end (she's back, and sits in on Rick's work)
+  item('stool-garage', 'stool', 'garage', -298.35, 102.4, 0.42, 0.42, 0.5),
   // Mr. Goldenfold's classroom: the chalkboard, his desk, six desks for the class
   item('chalkboard', 'chalkboard', 'school', -300, 194.1, 6, 0.2, 1.3),
   item('goldenfold-desk', 'goldenfold-desk', 'school', -300, 195.4, 3, 1.2, 0.8),
@@ -530,6 +541,16 @@ export const FURNITURE = [
   ]),
   item('diner-counter', 'diner-counter', 'diner', -293.6, 798.5, 6, 0.7, 1.05, W),
   ...[796.3, 797.8, 799.3, 800.8].map((z, i) => item(`stool${i + 1}`, 'stool', 'diner', -294.6, z, 0.45, 0.45, 0.75)),
+  // Dr. Wong's office, as "Pickle Rick" has it: her armchair at the north with
+  // a side table by it, the family's couch facing her across a low table, a
+  // second chair at the west, a tall plant in the corner, her desk by the wall
+  item('wong-armchair', 'armchair', 'wong', -300, 895.9, 0.95, 0.95, 0.95),
+  item('wong-side', 'side-table', 'wong', -301.25, 895.7, 0.5, 0.5, 0.6),
+  item('wong-table', 'coffee-table', 'wong', -300, 898.3, 1.2, 0.6, 0.4),
+  item('wong-couch', 'couch', 'wong', -300, 900.2, 2.6, 0.95, 0.85, N),
+  item('wong-chair', 'armchair', 'wong', -303.6, 898.2, 0.9, 0.9, 0.95, E),
+  item('wong-plant', 'plant', 'wong', -304.3, 894.7, 0.6, 0.6, 1.6),
+  item('wong-desk', 'desk', 'wong', -296.4, 894.5, 1.6, 0.7, 0.75),
 ];
 
 // ── the people ──
@@ -569,6 +590,17 @@ export const PEOPLE = [
   { id: 'ethan', area: 'school', x: -305.1, z: 201.25, face: Math.PI / 2, sits: true },
   { id: 'tinyrick', area: 'school', x: -304.1, z: 203.25, face: Math.PI / 2, sits: true },
   { id: 'dineragent', who: 'fedagent', area: 'diner', x: -305.6, z: 797.35, face: S, sits: true },
+  // Phase 2 of the multiverse: Mr. Poopybutthole on the couch's north end by
+  // Jerry; Space Beth on her stool in the garage; Nancy and Tricia on Summer's
+  // bed, sleeping over; Diane, a hologram in the clone lab (`holo`: drawn, never
+  // in the way); Dr. Wong in her armchair. Each is a Meshy figure that loads
+  // when its room is first walked into, and is left out if it won't.
+  { id: 'poopybutthole', area: 'house', x: -301.6, z: -4.6, face: 0, sits: true },
+  { id: 'spacebeth', area: 'garage', x: -298.35, z: 102.4, face: Math.PI, sits: true },
+  { id: 'nancy', area: 'upstairs', x: -305.25, z: 397.85, face: S, sits: true },
+  { id: 'tricia', area: 'upstairs', x: -304.35, z: 397.85, face: S, sits: true },
+  { id: 'diane', area: 'basement', x: -303.6, z: 504.6, face: -Math.PI / 4, holo: true },
+  { id: 'drwong', area: 'wong', x: -300, z: 895.9, face: S, sits: true },
 ];
 // Is it there, with `done` done? (left out: everyone is)
 export const present = (o, done) => !done || !o.until || !done.includes(o.until);
@@ -608,7 +640,7 @@ const slab = (id, x0, x1, z0, z1) => box(id, (x0 + x1) / 2, (z0 + z1) / 2, x1 - 
 const circle = (id, x, z, r) => ({ id, kind: 'circle', x, z, r });
 const furnished = (area) => [
   ...FURNITURE.filter((f) => f.area === area).map((f) => box(f.id, f.x, f.z, f.w, f.d, f.turn, f.h)),
-  ...PEOPLE.filter((p) => p.area === area && !p.sits).map((p) => circle(p.id, p.x, p.z, PERSON)),
+  ...PEOPLE.filter((p) => p.area === area && !p.sits && !p.holo).map((p) => circle(p.id, p.x, p.z, PERSON)),
 ];
 // the President's motorcade: the limo and the two beside it, in the way till he's met
 export const MOTORCADE = [box('limo', LIMO.x, LIMO.z, LIMO.w, LIMO.d, LIMO.turn), ...PEOPLE.filter((p) => p.until === 'president').map((p) => circle(p.id, p.x, p.z, PERSON))];
@@ -637,6 +669,7 @@ export const COLLIDERS = {
   mindblowers: furnished('mindblowers'),
   oval: furnished('oval'),
   diner: furnished('diner'),
+  wong: furnished('wong'),
 };
 // Walls: the street's fences, the house's inner walls and the low banister up
 // the stairs' open side, and the balcony's low railing on its south edge. A
@@ -653,6 +686,7 @@ export const WALLS = {
   mindblowers: ringWalls(RINGS.mindblowers),
   oval: ringWalls(RINGS.oval),
   diner: [],
+  wong: [],
 };
 // The parked cruiser is not here: it moves, so whoever walks passes it in.
 // Nor is the motorcade (`motorcade`: with it, as it stands till the President's met).
@@ -707,6 +741,15 @@ export const HOTSPOTS = [
   spot('general2', 'oval', -296.8, 697.1, 'A general', 'Talk'),
   // Shoney's: the agent in his booth
   spot('dineragent', 'diner', -305.6, 797.35, 'Federation agent', 'Sit down'),
+  // Phase 2's people (each sitter's where they sit, as Jerry's is), Snuffles
+  // asleep on his dog bed in the living room, and Dr. Wong in her armchair
+  spot('poopybutthole', 'house', -301.6, -4.6, 'Mr. Poopybutthole', 'Talk'),
+  spot('snuffles', 'house', -304.6, -6.85, 'Snuffles', 'Look'),
+  spot('spacebeth', 'garage', -298.35, 102.4, 'Space Beth', 'Talk'),
+  spot('nancy', 'upstairs', -305.25, 397.85, 'Nancy', 'Talk'),
+  spot('tricia', 'upstairs', -304.35, 397.85, 'Tricia', 'Talk'),
+  spot('diane', 'basement', -303.35, 504.35, 'Diane', 'Look'),
+  spot('therapy', 'wong', -300, 895.9, 'Dr. Wong', 'Family therapy'),
 ];
 // (`done`: a hotspot whose `until` is done is gone; left out, they all count)
 export const nearHotspot = (area, x, z, done) => nearest(done ? HOTSPOTS.filter((h) => present(h, done)) : HOTSPOTS, area, x, z);
@@ -721,7 +764,7 @@ export const newMorty = (at = START, mode = null) => ({ x: at.x, z: at.z, face: 
 // as high as he gets onto anything: the top of a jump, and a step over it
 export const CLIMB = MORTY.step + MORTY.jump ** 2 / (2 * MORTY.gravity);
 // each area's ceiling (in the rooms, as ./interiors draws them; outside, the sky)
-export const CEILING = { street: Infinity, annex: Infinity, house: 2.6, upstairs: 2.6, garage: 2.9, school: 2.9, arcade: 8, basement: 4.4, mindblowers: 3.6, oval: 3.4, diner: 3 };
+export const CEILING = { street: Infinity, annex: Infinity, house: 2.6, upstairs: 2.6, garage: 2.9, school: 2.9, arcade: 8, basement: 4.4, mindblowers: 3.6, oval: 3.4, diner: 3, wong: 2.8 };
 
 // What Morty can stand on in an area: what's low enough to get onto, with
 // room for him under the ceiling once he's up. Everything else is solid,
@@ -935,6 +978,7 @@ export const TASKS = [
   { id: 'roy', name: 'Play Roy', hint: 'Find Blips and Chitz on the other side of the portal, and put the headset on at the Roy cabinet.' },
   { id: 'roy55', name: 'Outlive Morty’s 55', hint: 'Play Roy again and live past Morty’s 55.' },
   { id: 'rickall', name: 'Survive Total Rickall', hint: 'There’s an egg on the Smiths’ living-room bookcase that nobody remembers buying.' },
+  { id: 'wong', name: 'Go to family therapy', hint: 'Dr. Wong’s office is in the house next to Shoney’s, up the street. Rick says it’s for Jerry.' },
 ];
 
 // ── Morty's Mind Blowers ──

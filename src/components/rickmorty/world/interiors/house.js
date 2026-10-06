@@ -18,7 +18,7 @@ import { AREAS, FURNITURE, INNER_WALLS, PEOPLE, RUGS } from '../rules';
 import { toon } from '../../portal/toon';
 import { at, mergeParts, rng } from '../kit';
 import { ceilingLights, DOOR_H, doorAt, doorway, floors, framed, grainOf, innerWalls, lathe, makeRoom, roomAt, TAU, tiledPaint, tintedCeilings, wallLine, win, windowIn, windowView } from './shell';
-import { facingAhead, needCast, person, sitting } from './people';
+import { facingAhead, needCast, onEntry, person, seatOwn, sitting } from './people';
 import { BROWN, CREAM, HEIGHTS, HOUSE_LIGHT, INNER, LOOKS, TRIM, WOOD_FLOOR, butterRobot, carpet, computer, desk, deskLamp, dresser, shelf, tvStand, bed, woodFloor } from './furniture';
 import { armchair, BOOKS_LIVING, bookcase, chair, clock, coffeeTable, couch, counter, curtains, diningTable, dogBed, fridge, nookTable, onCounter, P, pendant, plant, sconce, sink, stove } from './smiths';
 import { houseCells } from './smithpaint';
@@ -208,6 +208,27 @@ export async function buildHouse(kit) {
   // the butter robot on the table by its hotspot
   butterRobot(R, -302.6, 0.765, 0.8, -Math.PI / 2 + 0.3);
 
+  // ── the rest of the family (the multiverse's Phase 2) ──
+  // Mr. Poopybutthole on the couch's north end by Jerry, in his own sat clip,
+  // and Snuffles asleep on his dog bed: fetched the first time Morty's in the
+  // house, so the world's first download doesn't carry them, and left out if
+  // they won't load. Mr. Poopybutthole leaves the couch while Total Rickall's
+  // on: he's in the game.
+  let poopy = null;
+  onEntry(R, () => {
+    seatOwn(R, 'poopybutthole', P0('poopybutthole'), { h: FAMILY_H.poopybutthole, seatY: COUCH_HIPS }).then((f) => (poopy = f));
+    const dog = FURNITURE.find((f) => f.id === 'dog-bed');
+    Promise.resolve(kit.need ? kit.need(['snuffles'], { clips: [] }) : kit.cast.load(null, ['snuffles']))
+      .then(() => {
+        const g = kit.cast.prop?.('snuffles', FAMILY_H.snuffles);
+        if (!g) return;
+        g.position.set(dog.x, dog.h * 0.55, dog.z);
+        g.rotation.y = -0.5;
+        R.group.add(g);
+      })
+      .catch(() => {});
+  });
+
   // ── Total Rickall ──
   // The egg on the bookcase's shelf, hatched while it's on; then the crowd
   // (./rickall3d.js, fetched the first time the egg hatches, with whoever's
@@ -224,6 +245,7 @@ export async function buildHouse(kit) {
     egg.update(t, on);
     b.group.visible = !on;
     j.group.visible = !on;
+    if (poopy) poopy.group.visible = !on;
     crowd?.update(t, dt, state);
   });
   const room = R.build({ light: HOUSE_LIGHT, grain });
@@ -512,6 +534,10 @@ function pictures(R) {
 
 // how far Jerry sits back from where he stands, and how low (the sat clip turns his bones only)
 const JERRY_SIT = { back: 0.12, y: -0.45 };
+// the multiverse's people drawn as the Smiths are, a tenth over life (Jerry's
+// 1.78 m is drawn 1.95), and the height of the hips of someone on the couch
+const FAMILY_H = { poopybutthole: 1.65, snuffles: 0.5 };
+const COUCH_HIPS = 0.52;
 // the open doorways between the rooms (each a little in from the walls' ends), and the rise of each one's arch
 const HOUSE_DOORWAYS = [
   [[-306.7, -5.88], [-306.7, -4.32], 0.5],

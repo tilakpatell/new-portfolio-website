@@ -87,14 +87,25 @@ export const MESHY = {
   tinkles: { a: 'tinkles', h: 0.8 },
   babywizard: { a: 'babywizard', h: 0.7 },
   mrsrefrigerator: { a: 'mrsrefrigerator', h: 1.8 },
+  // the rest of the family's, in their places (rickmorty/world/rules.js's
+  // PEOPLE): each loads when its room is first walked into; Snuffles is a
+  // prop, asleep on his dog bed
+  spacebeth: { a: 'spacebeth', h: 1.68 },
+  drwong: { a: 'drwong', h: 1.72 },
+  nancy: { a: 'nancy', h: 1.6 },
+  tricia: { a: 'tricia', h: 1.62 },
+  diane: { a: 'diane', h: 1.68 },
+  snuffles: { a: 'snuffles', h: 0.45 },
 };
 const RICKALL_FIGURES = ['pencilvester', 'sleepygary', 'hamurai', 'amishcyborg', 'mrbeauregard', 'cousinnicky', 'frankenstein', 'poopybutthole'];
 const RICKALL_PROPS = ['reversegiraffe', 'ghostinajar', 'photographyraptor', 'tinkles', 'babywizard', 'mrsrefrigerator'];
-export const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick', ...RICKALL_FIGURES]);
+const FAMILY_FIGURES = ['spacebeth', 'drwong', 'nancy', 'tricia', 'diane'];
+const FAMILY_PROPS = ['snuffles'];
+export const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick', ...RICKALL_FIGURES, ...FAMILY_FIGURES]);
 // the models not in the cast's own folder, by name: where they are
-export const FOLDERS = Object.fromEntries(RICKALL_PROPS.map((a) => [a, '/models/c137/rm']));
+export const FOLDERS = Object.fromEntries([...RICKALL_PROPS, ...FAMILY_PROPS].map((a) => [a, '/models/c137/rm']));
 const SCHOOL = ['goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick'];
-const C137_PEOPLE = new Set(['summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', ...SCHOOL, ...RICKALL_FIGURES, ...RICKALL_PROPS]);
+const C137_PEOPLE = new Set(['summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', ...SCHOOL, ...RICKALL_FIGURES, ...RICKALL_PROPS, ...FAMILY_FIGURES, ...FAMILY_PROPS]);
 // and the set pieces round the arenas (the C-137 world's people load with their own world)
 export const MESHY_ASSETS = [...new Set(Object.values(MESHY).map((m) => m.a).filter((a) => !C137_PEOPLE.has(a))), 'cruiser', 'garage'];
 

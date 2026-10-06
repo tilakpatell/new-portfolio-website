@@ -30,6 +30,7 @@ import {
   MORTY,
   MOTORCADE,
   NEIGHBOURS,
+  WONG_HOUSE,
   OUTDOOR,
   PEOPLE,
   PLAN,
@@ -117,8 +118,8 @@ function flood(area, a, stop = () => false, opts) {
 const canWalk = (area, a, b, r, opts) => flood(area, a, (x, z) => Math.hypot(x - b.x, z - b.z) < r, opts).hit;
 const inRoom = (r, x, z) => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1;
 // where a room is first walked into, and out of
-const WAY_IN = { house: 'house-door', upstairs: 'stairs-up', garage: 'garage-door', school: 'school-door', arcade: 'arcade-door', basement: 'garage-hatch', mindblowers: 'basement-mind', oval: 'garage-oval', diner: 'diner-door' };
-const WAY_OUT = { house: 'front', upstairs: 'stairs-down', garage: 'garage-exit', school: 'school-exit', arcade: 'arcade-exit', basement: 'basement-ladder', mindblowers: 'mind-door', oval: 'oval-portal', diner: 'diner-exit' };
+const WAY_IN = { house: 'house-door', upstairs: 'stairs-up', garage: 'garage-door', school: 'school-door', arcade: 'arcade-door', basement: 'garage-hatch', mindblowers: 'basement-mind', oval: 'garage-oval', diner: 'diner-door', wong: 'wong-door' };
+const WAY_OUT = { house: 'front', upstairs: 'stairs-down', garage: 'garage-exit', school: 'school-exit', arcade: 'arcade-exit', basement: 'basement-ladder', mindblowers: 'mind-door', oval: 'oval-portal', diner: 'diner-exit', wong: 'wong-exit' };
 // where Morty first stands in an area (the street's from the start)
 const startOf = (area) => (area === 'street' ? START : link(WAY_IN[area]).arrive);
 // the doorways between the rooms of the plan, by pair
@@ -199,7 +200,7 @@ describe('C-137: the areas', () => {
   });
 
   it('knows the rooms from the outdoors, and pads in and out of an area', () => {
-    expect(ROOM_IDS).toEqual(['house', 'upstairs', 'garage', 'school', 'arcade', 'basement', 'mindblowers', 'oval', 'diner']);
+    expect(ROOM_IDS).toEqual(['house', 'upstairs', 'garage', 'school', 'arcade', 'basement', 'mindblowers', 'oval', 'diner', 'wong']);
     expect(OUTDOOR).toEqual(['street', 'annex']);
     expect(inArea('street', 150, 0)).toBe(true);
     expect(inArea('street', 150.1, 0)).toBe(false);
@@ -791,7 +792,7 @@ describe('C-137: the Smith house, room by room', () => {
   it('has the ground floor and the first floor as areas, with the rooms of the plan', () => {
     expect(AREAS.house).toEqual({ x0: -312, x1: -288, z0: -8, z1: 8.5 });
     expect(AREAS.upstairs).toEqual({ x0: -306, x1: -294.7, z0: 394, z1: 410.3 });
-    expect(PLAN.map((r) => r.id)).toEqual(['kitchen', 'living', 'den', 'dining', 'entry', 'hall', 'stairs', 'rickroom', 'summer', 'morty', 'upHall', 'master', 'balcony', 'stairTop', 'clonelab', 'mind', 'office', 'shoneys']);
+    expect(PLAN.map((r) => r.id)).toEqual(['kitchen', 'living', 'den', 'dining', 'entry', 'hall', 'stairs', 'rickroom', 'summer', 'morty', 'upHall', 'master', 'balcony', 'stairTop', 'clonelab', 'mind', 'office', 'shoneys', 'wongoffice']);
     const room = (id) => PLAN.find((r) => r.id === id);
     expect(room('kitchen')).toMatchObject({ area: 'house', name: 'The kitchen', x0: -312, x1: -306.7, z0: -8, z1: 3.4 });
     expect(room('living')).toMatchObject({ x0: -306.7, x1: -296.9, z0: -8, z1: -1.9 });
@@ -1127,6 +1128,8 @@ describe('C-137: doors, exits and portals', () => {
       'school-exit',
       'stairs-down',
       'stairs-up',
+      'wong-door',
+      'wong-exit',
     ]);
     expect(link('diner-door')).toMatchObject({ area: 'street', x: 46, z: -14.4, r: 1.6, to: 'diner', kind: 'door', label: 'Shoney’s' });
     expect(link('diner-exit')).toMatchObject({ area: 'diner', to: 'street', kind: 'exit', label: 'Back outside' });
@@ -1163,7 +1166,7 @@ describe('C-137: doors, exits and portals', () => {
 
   it('never lands you inside the parked cruiser, wherever you come out into the street', () => {
     const landings = LINKS.filter((l) => l.to === 'street');
-    expect(landings.map((l) => l.id).sort()).toEqual(['diner-exit', 'front', 'garage-exit', 'school-exit']);
+    expect(landings.map((l) => l.id).sort()).toEqual(['diner-exit', 'front', 'garage-exit', 'school-exit', 'wong-exit']);
     for (const l of landings) expect(Math.hypot(l.arrive.x - BOARD.x, l.arrive.z - BOARD.z), l.id).toBeGreaterThanOrEqual(CRUISER.radius + MORTY.radius + 0.3);
   });
 
@@ -1180,7 +1183,7 @@ describe('C-137: doors, exits and portals', () => {
 
   it('gives every door from outside an exit back, arriving a little way outside it', () => {
     const doors = LINKS.filter((l) => l.kind === 'door' && OUTDOOR.includes(l.area));
-    expect(doors.map((d) => d.id).sort()).toEqual(['arcade-door', 'diner-door', 'garage-door', 'house-door', 'school-door']);
+    expect(doors.map((d) => d.id).sort()).toEqual(['arcade-door', 'diner-door', 'garage-door', 'house-door', 'school-door', 'wong-door']);
     for (const door of doors) {
       const exit = LINKS.find((l) => l.kind === 'exit' && l.area === door.to);
       expect(exit, door.id).toBeTruthy();
@@ -1329,6 +1332,13 @@ describe('C-137: the things to touch', () => {
       'general1',
       'general2',
       'dineragent',
+      'poopybutthole',
+      'snuffles',
+      'spacebeth',
+      'nancy',
+      'tricia',
+      'diane',
+      'therapy',
     ]);
     const at = (id) => HOTSPOTS.find((h) => h.id === id);
     expect(at('cable')).toMatchObject({ area: 'house', r: 1.4, label: 'Watch interdimensional cable', verb: 'Watch' });
@@ -1367,9 +1377,10 @@ describe('C-137: the things to touch', () => {
     expect(inRoom(room('morty'), at('mortyroom').x, at('mortyroom').z)).toBe(true);
   });
 
-  it('puts every hotspot in front of what it is for, not inside it, but for the two that sit on a piece', () => {
-    // Jerry is on the couch and the butter robot is on the dining table
-    const on = { jerry: 'couch', butter: 'table', dineragent: 'booth2n' };
+  it('puts every hotspot in front of what it is for, not inside it, but for the ones that sit on a piece', () => {
+    // Jerry is on the couch and the butter robot is on the dining table; and
+    // Phase 2's sitters, each on what they sit on
+    const on = { jerry: 'couch', butter: 'table', dineragent: 'booth2n', poopybutthole: 'couch', spacebeth: 'stool-garage', nancy: 'bed-summer', tricia: 'bed-summer', therapy: 'wong-armchair' };
     for (const h of HOTSPOTS) {
       const inside = FURNITURE.filter((f) => f.area === h.area && pieceDist(f, h.x, h.z) < 1e-9).map((f) => f.id);
       expect(inside, h.id).toEqual(on[h.id] ? [on[h.id]] : []);
@@ -1508,6 +1519,44 @@ describe('C-137: Rick’s clone lab, under the garage, and Morty’s Mind Blower
   });
 });
 
+describe('C-137: the multiverse’s Phase 2, in the house, the garage, upstairs, the clone lab and Dr. Wong’s office', () => {
+  const at = (id) => PEOPLE.find((p) => p.id === id);
+  const piece = (id) => FURNITURE.find((f) => f.id === id);
+  it('opens Dr. Wong’s office in the house west of Shoney’s, with its own way back out', () => {
+    expect(WONG_HOUSE).toBe(NEIGHBOURS.find((n) => n.x === 24 && n.z === -20));
+    expect(WONG_HOUSE).not.toBe(DINER);
+    const door = link('wong-door');
+    expect(door).toMatchObject({ area: 'street', x: WONG_HOUSE.x, z: WONG_HOUSE.z + WONG_HOUSE.d / 2 + 0.6, to: 'wong', kind: 'door', label: 'Dr. Wong’s office' });
+    expect(link('wong-exit')).toMatchObject({ area: 'wong', to: 'street', kind: 'exit' });
+    // the exit's arrival is on the street, outside the door, clear of it
+    const out = link('wong-exit').arrive;
+    expect(Math.hypot(out.x - door.x, out.z - door.z)).toBeGreaterThan(door.r);
+    expect(free('street', out.x, out.z)).toBe(true);
+  });
+  it('furnishes the office as the show does, with Dr. Wong in her armchair facing the couch', () => {
+    const kinds = FURNITURE.filter((f) => f.area === 'wong').map((f) => f.kind);
+    expect(kinds).toEqual(['armchair', 'side-table', 'coffee-table', 'couch', 'armchair', 'plant', 'desk']);
+    expect(at('drwong')).toMatchObject({ area: 'wong', sits: true });
+    expect(pieceDist(piece('wong-armchair'), at('drwong').x, at('drwong').z)).toBe(0);
+    // she looks across the table at the couch
+    expect(piece('wong-couch').z).toBeGreaterThan(piece('wong-table').z);
+    expect(piece('wong-table').z).toBeGreaterThan(at('drwong').z);
+    expect(-Math.sin(at('drwong').face)).toBeCloseTo(1, 6);
+  });
+  it('sits each of Phase 2’s sitters on something, and keeps the hologram out of the way', () => {
+    const on = { poopybutthole: 'couch', spacebeth: 'stool-garage', nancy: 'bed-summer', tricia: 'bed-summer', drwong: 'wong-armchair' };
+    for (const [id, seat] of Object.entries(on)) {
+      expect(at(id).sits, id).toBe(true);
+      expect(pieceDist(piece(seat), at(id).x, at(id).z), id).toBe(0);
+    }
+    // Mr. Poopybutthole shares the couch with Jerry, not his seat
+    expect(Math.abs(at('poopybutthole').z - at('jerry').z)).toBeGreaterThan(0.9);
+    expect(at('diane')).toMatchObject({ area: 'basement', holo: true });
+    expect(collidersIn('basement').find((c) => c.id === 'diane')).toBeUndefined();
+    expect(free('basement', at('diane').x, at('diane').z, 0.05)).toBe(true);
+  });
+});
+
 describe('C-137: the President, the Federation, the Oval Office and Shoney’s', () => {
   const piece = (id) => FURNITURE.find((f) => f.id === id);
   const spot = (id) => HOTSPOTS.find((h) => h.id === id);
@@ -1602,7 +1651,7 @@ describe('C-137: the President, the Federation, the Oval Office and Shoney’s',
     expect(tables.map((f) => f.id)).toEqual(['booth1', 'booth2', 'booth3']);
     expect(FURNITURE.filter((f) => f.kind === 'booth')).toHaveLength(6);
     for (const t of tables) expect(t.x, t.id).toBeLessThan(-305);
-    expect(FURNITURE.filter((f) => f.kind === 'stool')).toHaveLength(4);
+    expect(FURNITURE.filter((f) => f.kind === 'stool' && f.area === 'diner')).toHaveLength(4);
     expect(piece('diner-counter').x).toBeGreaterThan(-294.5);
     const agent = person('dineragent');
     expect(agent).toMatchObject({ who: 'fedagent', area: 'diner', sits: true });
@@ -1615,7 +1664,7 @@ describe('C-137: the President, the Federation, the Oval Office and Shoney’s',
 
 describe('C-137: the people', () => {
   // whose hotspot each is
-  const HOTSPOT_OF = { jerry: 'jerry', beth: 'beth', summer: 'summer', rick: 'rick', teacher: 'quiz' };
+  const HOTSPOT_OF = { jerry: 'jerry', beth: 'beth', summer: 'summer', rick: 'rick', teacher: 'quiz', drwong: 'therapy' };
   // the people behind a desk, across it from their hotspot
   const ACROSS = ['teacher', 'ovalpresident'];
   // (the class, sat at their desks, are talked to from the aisle beside them)
@@ -1623,8 +1672,8 @@ describe('C-137: the people', () => {
   const hotspotOf = (p) => HOTSPOT_OF[p.id] ?? p.id;
 
   it('has Jerry, Beth, Summer, Rick and the teacher, each in their own room, and the visitors in theirs', () => {
-    expect(PEOPLE.map((p) => p.id)).toEqual(['jerry', 'beth', 'summer', 'rick', 'teacher', 'president', 'secretservice', 'agent1', 'agent2', 'agent3', 'ovalpresident', 'general1', 'general2', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick', 'dineragent']);
-    expect(PEOPLE.map((p) => p.area)).toEqual(['house', 'house', 'upstairs', 'garage', 'school', 'street', 'street', 'street', 'street', 'street', 'oval', 'oval', 'oval', 'school', 'school', 'school', 'school', 'school', 'school', 'diner']);
+    expect(PEOPLE.map((p) => p.id)).toEqual(['jerry', 'beth', 'summer', 'rick', 'teacher', 'president', 'secretservice', 'agent1', 'agent2', 'agent3', 'ovalpresident', 'general1', 'general2', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick', 'dineragent', 'poopybutthole', 'spacebeth', 'nancy', 'tricia', 'diane', 'drwong']);
+    expect(PEOPLE.map((p) => p.area)).toEqual(['house', 'house', 'upstairs', 'garage', 'school', 'street', 'street', 'street', 'street', 'street', 'oval', 'oval', 'oval', 'school', 'school', 'school', 'school', 'school', 'school', 'diner', 'house', 'garage', 'upstairs', 'upstairs', 'basement', 'wong']);
     // each new one says which model they are, where it's not their id
     for (const p of PEOPLE.filter((o) => o.who)) expect(['president', 'fedagent', 'general', 'secretservice'], p.id).toContain(p.who);
     const room = (id) => PLAN.find((r) => r.id === id);
@@ -1642,7 +1691,7 @@ describe('C-137: the people', () => {
     expect(Math.cos(at('jerry').face)).toBeCloseTo(1, 6);
     const desk = FURNITURE.find((f) => f.id === 'goldenfold-desk');
     expect(at('teacher').z).toBeLessThan(desk.z - desk.d / 2);
-    expect(PEOPLE.filter((p) => p.sits).map((p) => p.id)).toEqual(['jerry', ...CLASS, 'dineragent']);
+    expect(PEOPLE.filter((p) => p.sits).map((p) => p.id)).toEqual(['jerry', ...CLASS, 'dineragent', 'poopybutthole', 'spacebeth', 'nancy', 'tricia', 'drwong']);
   });
 
   it('puts each one at the hotspot that talks to them: just behind it, or Jerry on the couch', () => {
@@ -1660,7 +1709,8 @@ describe('C-137: the people', () => {
   it('makes each who stands a small round thing in the way, clear of the furniture, and Jerry none', () => {
     for (const p of PEOPLE) {
       const c = collidersIn(p.area, { motorcade: true }).find((o) => o.id === p.id);
-      if (p.sits) {
+      // (and a hologram, Diane, is in nobody's way)
+      if (p.sits || p.holo) {
         expect(c, p.id).toBeUndefined();
         continue;
       }
@@ -1966,7 +2016,7 @@ describe('C-137: the cruiser', () => {
   const BODY = CRUISER.radius + MORTY.radius;
 
   it('never sets down where Morty comes out of a door, nor on a door', () => {
-    expect(DOORS.map((l) => l.id).sort()).toEqual(['diner-door', 'garage-door', 'house-door', 'school-door']);
+    expect(DOORS.map((l) => l.id).sort()).toEqual(['diner-door', 'garage-door', 'house-door', 'school-door', 'wong-door']);
     for (const a of ARRIVALS) expect(canLand({ ...newCruiser(), x: a.x, z: a.z }), a.id).toBe(false);
     for (const l of DOORS) expect(canLand({ ...newCruiser(), x: l.x, z: l.z + Math.sign(-l.z) * (l.r - 0.1) }), l.id).toBe(false);
     // the ones the review found: over the house's way out, and hard by the garage's and the school's doors
@@ -2064,8 +2114,8 @@ describe('C-137: the cruiser', () => {
 });
 
 describe('C-137: what there is to do', () => {
-  it('lists the sixteen things, in order, each with a name and a hint', () => {
-    expect(TASKS.map((t) => t.id)).toEqual(['cable', 'butter', 'meeseeks', 'plumbus', 'portalpanic', 'quiz', 'fly', 'president', 'oval', 'diner', 'portal', 'basement', 'mindblowers', 'roy', 'roy55', 'rickall']);
+  it('lists the seventeen things, in order, each with a name and a hint', () => {
+    expect(TASKS.map((t) => t.id)).toEqual(['cable', 'butter', 'meeseeks', 'plumbus', 'portalpanic', 'quiz', 'fly', 'president', 'oval', 'diner', 'portal', 'basement', 'mindblowers', 'roy', 'roy55', 'rickall', 'wong']);
     // meeting the President comes before his office, which his portal needs
     expect(TASKS.findIndex((t) => t.id === 'president')).toBeLessThan(TASKS.findIndex((t) => t.id === 'oval'));
     expect(TASKS.find((t) => t.id === 'basement')).toEqual({ id: 'basement', name: 'Find Rick’s secret lab', hint: 'There’s a hatch in the garage floor.' });
@@ -2079,7 +2129,7 @@ describe('C-137: what there is to do', () => {
 
   it('starts at the cable, and moves on as things are done, in whatever order', () => {
     const p = progress([]);
-    expect(p).toMatchObject({ done: [], count: 0, total: 16 });
+    expect(p).toMatchObject({ done: [], count: 0, total: 17 });
     expect(p.next.id).toBe('cable');
     expect(p.objective).toBe(TASKS[0].hint);
     expect(progress().next.id).toBe('cable');
@@ -2094,8 +2144,8 @@ describe('C-137: what there is to do', () => {
 
   it('says so when it is all done', () => {
     const p = progress(TASKS.map((t) => t.id));
-    expect(p.count).toBe(16);
-    expect(p.total).toBe(16);
+    expect(p.count).toBe(17);
+    expect(p.total).toBe(17);
     expect(p.next).toBe(null);
     expect(p.objective).toBe('Everything’s done. Wubba lubba dub dub.');
   });

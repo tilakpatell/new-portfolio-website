@@ -69,7 +69,7 @@ export const AREA_BUILDERS = { street: buildStreet, house: buildHouse, upstairs:
 // alien street through the garage's portal now, the multiverse's places as
 // they come. ensureArea(id) builds one (RmWorld waits on it behind the
 // portal's swirl).
-export const LAZY = { annex: () => import('./annex').then((m) => m.buildAnnex) };
+export const LAZY = { annex: () => import('./annex').then((m) => m.buildAnnex), wong: () => import('./interiors/wong').then((m) => m.buildWong) };
 
 // The cruiser's headlights, which are its eyes (the saucer's, in the hull's
 // frame: its nose is +z): where each is, and how far round it looks out

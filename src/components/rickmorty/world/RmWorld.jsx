@@ -148,6 +148,14 @@ const SAY = {
   cabinet1: { who: 'Space Mortyball', text: 'Out of order. Everyone’s queueing for Roy anyway.' },
   cabinet2: { who: 'Plumbus Smash', text: 'Somebody’s high score is all nines, and the stick is sticky.' },
   cabinet3: { who: 'Cronenberg Crush', text: 'You lose a life before you’ve found the button.' },
+  // Phase 2 of the multiverse: the rest of the family, and family therapy
+  poopybutthole: { who: 'Mr. Poopybutthole', text: 'Ooh wee! Morty, sit down, sit down. Jerry’s telling me about his apples again.' },
+  snuffles: { who: null, text: 'Snuffles, asleep on his bed. Don’t give him the helmet.' },
+  spacebeth: { who: 'Space Beth', text: 'I’m back for a bit. Dad’s showing me the bench. Don’t ask which of us is the clone, Morty. Nobody knows.' },
+  nancy: { who: 'Nancy', text: 'It’s a sleepover, Morty. Summer said you’d knock first. You didn’t knock.' },
+  tricia: { who: 'Tricia', text: 'Hi, Morty. We’re doing face masks. You can stay if you don’t talk.' },
+  diane: { who: null, text: 'Diane, as Rick keeps her: a hologram over the clone lab’s floor, smiling at nobody. He doesn’t say her name.' },
+  therapy: { who: 'Dr. Wong', text: 'Sit down, Morty. Your grandfather told me this was for Jerry. It isn’t. We have fifty minutes.' },
 };
 const AREA_NAME = {
   street: 'The Smiths’ street',
@@ -161,11 +169,14 @@ const AREA_NAME = {
   mindblowers: 'Morty’s Mind Blowers',
   oval: 'The Oval Office',
   diner: 'Shoney’s',
+  wong: 'Dr. Wong’s office',
 };
 // a place's name inside a sentence ('The alien street' → 'the alien street')
 const inLine = (name) => name.replace(/^The /, 'the ');
 // what talking to someone does, beyond what they say: a thing to do, done
-const TALK_DONE = { president: 'president', dineragent: 'diner' };
+const TALK_DONE = { president: 'president', dineragent: 'diner', therapy: 'wong' };
+// and the achievements a talk earns
+const TALK_UNLOCK = { therapy: 'wong' };
 // a memory's run in the Mind Blowers chair, and how far Morty can stray from the chair before it stops
 const MEMORY_S = 5.5;
 // Total Rickall: how long a memory of someone stays up over them, and how
@@ -190,15 +201,15 @@ const BOARD_R = 2.7; // how near the cruiser's middle Morty can get in from
 
 // Where the next thing to do is, for the map's marker: the area and the spot
 // in it, and from anywhere else, the way towards it.
-const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'], president: ['street', 'spot:president'], oval: ['garage', 'link:garage-oval'], diner: ['street', 'link:diner-door'], mindblowers: ['mindblowers', 'spot:chair'], rickall: ['house', 'spot:egg'] };
+const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'], president: ['street', 'spot:president'], oval: ['garage', 'link:garage-oval'], diner: ['street', 'link:diner-door'], mindblowers: ['mindblowers', 'spot:chair'], rickall: ['house', 'spot:egg'], wong: ['street', 'link:wong-door'] };
 const WAY = {
-  street: { house: 'house-door', upstairs: 'house-door', garage: 'garage-door', basement: 'garage-door', mindblowers: 'garage-door', oval: 'garage-door', school: 'school-door', diner: 'diner-door', annex: 'garage-door', arcade: 'garage-door' },
-  house: { street: 'front', upstairs: 'stairs-up', garage: 'kitchen-garage', basement: 'kitchen-garage', mindblowers: 'kitchen-garage', oval: 'kitchen-garage', school: 'front', diner: 'front', annex: 'kitchen-garage', arcade: 'kitchen-garage' },
-  garage: { street: 'garage-exit', house: 'garage-kitchen', upstairs: 'garage-kitchen', basement: 'garage-hatch', mindblowers: 'garage-hatch', oval: 'garage-oval', school: 'garage-exit', diner: 'garage-exit', annex: 'garage-portal', arcade: 'garage-portal' },
+  street: { house: 'house-door', upstairs: 'house-door', garage: 'garage-door', basement: 'garage-door', mindblowers: 'garage-door', oval: 'garage-door', school: 'school-door', diner: 'diner-door', wong: 'wong-door', annex: 'garage-door', arcade: 'garage-door' },
+  house: { street: 'front', upstairs: 'stairs-up', garage: 'kitchen-garage', basement: 'kitchen-garage', mindblowers: 'kitchen-garage', oval: 'kitchen-garage', school: 'front', diner: 'front', wong: 'front', annex: 'kitchen-garage', arcade: 'kitchen-garage' },
+  garage: { street: 'garage-exit', house: 'garage-kitchen', upstairs: 'garage-kitchen', basement: 'garage-hatch', mindblowers: 'garage-hatch', oval: 'garage-oval', school: 'garage-exit', diner: 'garage-exit', wong: 'garage-exit', annex: 'garage-portal', arcade: 'garage-portal' },
   basement: { mindblowers: 'basement-mind' },
   annex: { arcade: 'arcade-door' },
 };
-const OUT = { upstairs: 'stairs-down', school: 'school-exit', annex: 'annex-portal', arcade: 'arcade-exit', basement: 'basement-ladder', mindblowers: 'mind-door', oval: 'oval-portal', diner: 'diner-exit' };
+const OUT = { upstairs: 'stairs-down', school: 'school-exit', annex: 'annex-portal', arcade: 'arcade-exit', basement: 'basement-ladder', mindblowers: 'mind-door', oval: 'oval-portal', diner: 'diner-exit', wong: 'wong-exit' };
 function goalOf(next, s) {
   if (!next || s.flying) return null;
   const [to, key] = GOAL[next.id];
@@ -719,8 +730,9 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       say({ kind: 'say', ...SAY[n.id] });
       // (done once they've had their say: the President gets in his car then)
       if (TALK_DONE[n.id]) later(() => complete(TALK_DONE[n.id]), TALK_MS);
+      if (TALK_UNLOCK[n.id]) later(() => unlock(TALK_UNLOCK[n.id]), TALK_MS);
     }
-  }, [api, go, board, openPlace, say, complete, playMemory, shipTalk, later, startRickall, tellRickall]);
+  }, [api, go, board, openPlace, say, complete, unlock, playMemory, shipTalk, later, startRickall, tellRickall]);
   const fns = useRef({});
   fns.current = { act, go, shoot: shootRickall, stop: stopRickall, start: startRickall, end: endRickall };
 

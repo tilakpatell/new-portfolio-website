@@ -61,6 +61,7 @@ export const ACHIEVEMENTS = {
   offthegrid: { name: 'Off the grid', desc: 'Took Roy off the grid, like Rick' },
   goldstar: { name: 'Gold star', desc: 'Passed Mr. Goldenfold’s pop quiz' },
   rickall: { name: 'Total Rickall', desc: 'Shot every memory parasite in the Smiths’ living room, and nobody real' },
+  wong: { name: 'Family therapy', desc: 'Sat on Dr. Wong’s couch. Rick says it was for Jerry' },
   collector: { name: 'Collector', desc: 'Found every hidden easter egg' },
   mellon: { name: 'Speak, friend', desc: 'Said the word that opens the Doors of Durin' },
   balrog: { name: 'You shall not pass', desc: 'Held the Bridge of Khazad-dûm' },
