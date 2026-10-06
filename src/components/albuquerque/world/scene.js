@@ -17,6 +17,15 @@
 // Sky crystals, the lamps, the RV's smoke, the pizza on Walt's roof) in
 // ./life.js. Bright things bloom, and the picture is graded warm.
 //
+// Nothing here casts a shadow in real time. The floor (the desert, the
+// streets, the sidewalks, the car parks) reads masks baked offline from the
+// city's own geometry (scripts/bake-floor-shadows.mjs, lib/three/grounding):
+// the sun's shadows at dawn, noon and golden hour, softened at their edges,
+// and the sky's, which darkens the foot of every wall and the gap between two
+// buildings; what moves stands on a soft blob slid away from the sun; and the
+// lower faces of everything take a little of the ground's colour. The shadow
+// pass that used to draw the city a second time every frame is gone.
+//
 // Other drivers online in Albuquerque at the same time drive about in yours
 // as ghosts from another world: a pale Aztek each, lit at the edges, their
 // name over it and a ring of light under it (the Middle-earth towns' ghosts,
@@ -40,7 +49,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { loadPeople } from '../../office/people';
 import { createStage } from '../../office/stage3d';
-import { budget } from '../../../lib/device';
+import { budget, device } from '../../../lib/device';
 import { loadTexture } from '../../../lib/hdri';
 import { prefersReducedMotion } from '../../../lib/hooks';
 import { GRADE } from '../../../lib/stage3d';
@@ -52,10 +61,11 @@ import { createCity } from './city';
 import { createBalloons, createCrystals, createNightLights, createPizza, createSmoke, createTumbleweeds, glowTexture } from './life';
 import { createStreets } from './roads';
 import { CITY, GRID, HOUSES, LANDMARKS, PLACES, RAIL, ROADS, TIMES, WASH, WORLD_RADIUS, collidersNear, groundHeight, onRoad, surfaceHeight } from './rules';
-import { createSky, lightAt } from './sky';
+import { createSky, lightAt, sunAt } from './sky';
 import { createMountains, groundMaterial } from './terrain';
-import { createFleet, paintFor } from './vehicles';
+import { createFleet, footprint, paintFor } from './vehicles';
 import { gltfLoader } from '../../../lib/three/gltf';
+import { bounce, createBlobShadows, floorShadow, loadFloorShadow, setFloorTime } from '../../../lib/three/grounding';
 import { sharpen } from '../../../lib/three/textures';
 
 // Models from Sketchfab (CC Attribution, credited in public/cc0/README.md; scripts/sketchfab-import.mjs
@@ -67,6 +77,16 @@ const MODEL = (name) => (SKETCHFAB[name] ? `/models/sketchfab/${SKETCHFAB[name]}
 export const FACING = { aztek: Math.PI / 2, rv: 0, suv: Math.PI / 2, house: -Math.PI / 2, pollos: -Math.PI / 2, laundry: 0, casa: 0, office: 0, carwash: 0 };
 const DAY = 480; // seconds for the sun to go all the way round
 const NEON = { home: 0xfff0c0, rv: 0x8cff6a, saul: 0xffd23a, pollos: 0xff5a3a, superlab: 0x52c8ff, casa: 0xff8ad0 };
+// The floor's baked shadows, and the colour every shadow here goes: the
+// sand's own deep warm brown, darker, never grey.
+const SHADOW_DIR = `${import.meta.env.BASE_URL}albuquerque/shadow`;
+export const SHADE = 0x5a3420;
+// the blobs under what moves, [across, along] in metres (wider than the car:
+// the pool fades out past its edges)
+const AZTEK_BLOB = [3.2, 5];
+const HANK_BLOB = [3.3, 5.4];
+const PERSON_BLOB = [1.1, 1.1];
+const FREIGHT_BLOB = [3.6, 14.2];
 
 // a seeded random, so the desert's the same every visit
 const seeded = (seed) => () => {
@@ -197,7 +217,6 @@ function standIn(name) {
     carwash: () => (box(18, 4.4, 9, 0xf2f2f0), box(18.2, 0.5, 9.2, 0x2e6fb5, 0, 4.4)),
   }[name];
   s?.();
-  g.traverse((o) => o.isMesh && (o.castShadow = o.receiveShadow = true));
   return g;
 }
 
@@ -214,6 +233,10 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     },
   });
   const { renderer, scene, camera } = stage;
+  // (no shadow pass: the floor's shadows are baked, see the top)
+  renderer.shadowMap.enabled = false;
+  // what's drawn in a frame, every pass of it counted (api.info), not just the last
+  renderer.info.autoReset = false;
   // far enough for the sky dome and the Sandias
   camera.far = 2600;
   camera.near = 0.4; // (nothing's nearer than that, and the depth's sharper for it)
@@ -264,12 +287,22 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   const hemi = new THREE.HemisphereLight(0xb7d3f0, 0xb08a5a, 0.95);
   scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffd6a0, 2.7);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(Math.min(fit.shadowMap, 2048), Math.min(fit.shadowMap, 2048));
-  Object.assign(sun.shadow.camera, { left: -58, right: 58, top: 58, bottom: -58, near: 1, far: 320 });
-  sun.shadow.bias = -0.0005;
-  sun.shadow.normalBias = 0.04;
   scene.add(sun, sun.target);
+  // the floor's colour now, thrown back up onto the lower faces of everything
+  // (lib/three/grounding's bounce): the hemisphere's ground colour, by the time of day
+  const bounceColor = new THREE.Color(0xb08a5a);
+  const bounced = new Set();
+  // every lit material under `root` gets the bounce once: `floor` the height
+  // it stands on, or each instance its own where it's an instanced flock
+  const bounceAll = (root, floor) =>
+    root.traverse((o) => {
+      if (!o.isMesh) return;
+      for (const m of [].concat(o.material)) {
+        if (!m || bounced.has(m) || m.isMeshBasicMaterial || m.isShaderMaterial || !('roughness' in m || m.isMeshLambertMaterial)) continue;
+        bounced.add(m);
+        bounce(m, { color: bounceColor, floor: floor ?? (o.isInstancedMesh ? 'instance' : 0) });
+      }
+    });
 
   // ── the sky, through the whole day ──
   const sky = own(createSky({ radius: 1300 }));
@@ -290,17 +323,18 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     groundGeo.computeVertexNormals();
   }
   const ground = new THREE.Mesh(groundGeo, own(groundMaterial({ noise: sky.noise, roads: ROADS, bump: fit.bloom > 0 && !mobile })));
-  ground.receiveShadow = true;
   scene.add(ground);
 
   // ── the mountains: the Sandias to the east, mesas in front of the rest ──
-  scene.add(own(createMountains()).group);
+  const mountains = own(createMountains());
+  scene.add(mountains.group);
 
   // ── the streets, the sidewalks and the blocks, and the city on them ──
   const streets = own(createStreets({ ground: ground.material, aniso, small: mobile }));
   scene.add(streets.object);
-  const city = own(createCity({ noise: sky.noise, small: mobile }));
+  const city = own(createCity({ noise: sky.noise }));
   scene.add(city.object);
+  bounceAll(city.object, GRID.kerb);
 
   // ── the desert: creosote, yucca, cholla and rocks, never on a road or in a building ──
   const cityEdge = { x: GRID.xs.at(-1) + 10, z: GRID.zs.at(-1) + 10 };
@@ -338,8 +372,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       k++;
     }
     inst.count = k;
-    inst.castShadow = true;
-    inst.receiveShadow = true;
+    bounceAll(inst);
     scene.add(inst);
     return inst;
   };
@@ -411,7 +444,6 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       posts.setMatrixAt(i, o.matrix);
       for (const h of [0.55, 1.0, 1.45]) wire.push(x0, y0 + h, z0, (x0 + x1) / 2, (y0 + y1) / 2 + h - 0.07, (z0 + z1) / 2, (x0 + x1) / 2, (y0 + y1) / 2 + h - 0.07, (z0 + z1) / 2, x1, y1 + h, z1);
     }
-    posts.castShadow = true;
     posts.frustumCulled = false;
     const wg = own(new THREE.BufferGeometry());
     wg.setAttribute('position', new THREE.Float32BufferAttribute(wire, 3));
@@ -462,7 +494,6 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       sign.position.set(sx, surfaceHeight(sx, sz), sz);
     }
     sign.rotation.y = p.yaw;
-    sign.traverse((o) => o.isMesh && (o.castShadow = true));
     scene.add(sign);
     // a frame of neon round the board, lit after dark
     const neon = own(new THREE.MeshBasicMaterial({ color: 0x000000 }));
@@ -558,18 +589,21 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   // ── the models ──
   const loader = gltfLoader();
   const names = ['aztek', 'suv', ...new Set([...PLACES, ...LANDMARKS].map((p) => p.model)), 'house', ...Object.values(TOWN_MODELS), 'tank', 'cactus', 'tumbleweed', 'bucket'];
-  const [loaded, cloudTex] = await Promise.all([
+  // (the floor's masks come with the models; a phone saving data on the low
+  // tier goes without them, and its floor without their shadows)
+  const lean = device().saveData && device().tier === 'low';
+  const [loaded, cloudTex, floorBake] = await Promise.all([
     Promise.all(names.map((n) => loader.loadAsync(MODEL(n)).then((g) => [n, g.scene], () => [n, null]))).then(Object.fromEntries),
     loadTexture('cloud.webp').catch(() => null),
+    lean ? null : loadFloorShadow(SHADOW_DIR, { renderer, shade: SHADE }),
   ]);
   cloud = cloudTex;
   if (cloud) for (const d of dust) d.s.material.map = cloud;
-  const dressModel = (o, name) => {
+  // (`floor`: the height it stands on, for the bounce off it)
+  const dressModel = (o, name, floor = GRID.kerb) => {
     const own3 = !SKETCHFAB[name]; // the site's own Meshy models are matte; a Sketchfab one keeps the materials it came with
     o.traverse((m) => {
       if (!m.isMesh) return;
-      m.castShadow = true;
-      m.receiveShadow = true;
       if (m.material.map) m.material.map.anisotropy = aniso;
       if (own3) {
         m.material.roughness = 0.85;
@@ -577,18 +611,20 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       } else if (m.material.metalness > 0.2) m.material.metalness = 0.2; // under an open sky, bare metal has only the sky to show
       owned.push(m.geometry, m.material, ...(m.material.map ? [m.material.map] : []));
     });
+    bounceAll(o, floor);
     return o;
   };
-  const make = (name) => {
+  const make = (name, floor) => {
     const g = new THREE.Group();
-    const m = loaded[name] ? dressModel(loaded[name], name) : standIn(name);
+    const m = loaded[name] ? dressModel(loaded[name], name, floor) : standIn(name);
+    if (!loaded[name]) bounceAll(m, floor ?? GRID.kerb);
     m.rotation.y = FACING[name] ?? 0;
     g.add(m);
     return g;
   };
   const placed = {};
   for (const p of [...PLACES, ...LANDMARKS]) {
-    const b = make(p.model);
+    const b = make(p.model, surfaceHeight(p.at.x, p.at.z));
     b.position.set(p.at.x, surfaceHeight(p.at.x, p.at.z), p.at.z);
     b.rotation.y = p.yaw;
     scene.add(b);
@@ -608,10 +644,11 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       aniso,
       small: mobile,
       models: Object.fromEntries(Object.entries(TOWN_MODELS).map(([id, name]) => [id, loaded[name] ? dressModel(loaded[name], name) : null])),
-      tankCar: loaded.tank ? dressModel(loaded.tank, 'tank') : null,
+      tankCar: loaded.tank ? dressModel(loaded.tank, 'tank', 0.1) : null,
     }),
   );
   scene.add(town.object);
+  bounceAll(town.object, GRID.kerb);
   // the neighbours: Walt's house again, turned and tinted, as one draw
   {
     let mesh = null;
@@ -628,8 +665,6 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
         o.updateMatrix();
         inst.setMatrixAt(i, parent.multiplyMatrices(o.matrix, mesh.matrixWorld));
       });
-      inst.castShadow = true;
-      inst.receiveShadow = true;
       scene.add(inst);
     } else
       for (const h of HOUSES) {
@@ -642,11 +677,14 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   }
   // Walt's Aztek, which leans as it goes, and Hank's SUV with its lights
   const car = new THREE.Group();
-  const body = make('aztek');
+  const body = make('aztek', 0);
   car.add(body);
   scene.add(car);
+  // (the Aztek's floor goes where it goes: its bounce follows it, per frame)
+  const carBounce = new Set();
+  body.traverse((o) => o.isMesh && [].concat(o.material).forEach((m) => m?.userData.bounce && carBounce.add(m.userData.bounce.uBounceFloor)));
   const hank = new THREE.Group();
-  hank.add(make('suv'));
+  hank.add(make('suv', 0));
   const siren = ['#ff2a2a', '#2a6bff'].map((c, i) => {
     const s = new THREE.Sprite(own(new THREE.SpriteMaterial({ color: c, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })));
     s.material.color.multiplyScalar(3);
@@ -657,9 +695,18 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   });
   scene.add(hank);
   // the town's traffic and the cars parked about it (Hank's is his own model)
-  const fleet = own(createFleet({ parked: CITY.parked.map((p) => ({ ...p, y: GRID.kerb })), max: mobile ? 8 : 14, shadows: !mobile }));
+  const fleet = own(createFleet({ parked: CITY.parked.map((p) => ({ ...p, y: GRID.kerb })), max: mobile ? 8 : 14 }));
   scene.add(fleet.object);
+  bounceAll(fleet.object);
   const moving = [];
+  const carSizes = new Map(); // a kind's blob, by its type
+  const blobOf = (type) => {
+    if (!carSizes.has(type)) {
+      const [w, l] = footprint(type);
+      carSizes.set(type, [w + 1.3, l + 0.6]);
+    }
+    return carSizes.get(type);
+  };
   // the other drivers: Walt's Aztek again (its geometry and materials, under
   // the ghosts' own), rocking a little on its springs as it goes
   const ghosts = createGhosts({
@@ -758,6 +805,16 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     }),
   );
   scene.add(balloons.object, weeds.object, crystals.object, night.object);
+
+  // ── grounding: the floor's baked shadows, and a blob under what moves ──
+  const floors = [ground.material, ...streets.floors, ...town.floors];
+  if (floorBake) {
+    for (const m of floors) floorShadow(m, floorBake);
+    owned.push(floorBake);
+  }
+  const blobs = own(createBlobShadows({ color: SHADE, max: 96, ground: surfaceHeight }));
+  scene.add(blobs.mesh);
+  let baking = false; // (dev: the floor's shadows being baked, api.bake; nothing else draws meanwhile)
   let roof = null; // where on Walt's roof the pizza lies, and which way the slope faces
   const rv = PLACES.find((p) => p.id === 'rv');
   const smoke = cloud ? own(createSmoke({ x: rv.at.x + 0.6, y: 3.3, z: rv.at.z, map: cloud })) : null;
@@ -802,7 +859,6 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   const dropRing = new THREE.Mesh(own(new THREE.RingGeometry(5.2, 5.9, 48).rotateX(-Math.PI / 2)), own(new THREE.MeshBasicMaterial({ color: 0x58ff8a, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide })));
   dropRing.position.y = 0.12;
   const crate = new THREE.Mesh(own(new THREE.BoxGeometry(1.1, 0.8, 0.8)), own(new THREE.MeshStandardMaterial({ color: 0x8a6a3c, roughness: 0.9 })));
-  crate.castShadow = true;
   // (with the model, what's waiting at the drop is a bucket of Los Pollos Hermanos' finest)
   if (loaded.bucket) {
     const b = dressModel(loaded.bucket, 'bucket');
@@ -855,6 +911,11 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   const skyCols = { top: new THREE.Color(), low: new THREE.Color(), ground: new THREE.Color() };
   function applyLight() {
     lightAt(tod, L);
+    setFloorTime(floorBake, tod);
+    bounceColor.copy(L.hemiGround);
+    // the blobs lie away from the sun while it's well up, from the moon (and fainter) when it isn't
+    if (L.sun.y > 0.08) blobs.setSun(L.sun, 1);
+    else blobs.setSun(L.moon, 0.5);
     sky.uniforms.uSun.value.copy(L.sun);
     sky.uniforms.uMoon.value.copy(L.moon);
     sun.color.copy(L.keyColor);
@@ -903,7 +964,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   }
 
   function render(state, ms = 16) {
-    if (stage.lost) return;
+    if (stage.lost || baking) return;
     const dt = Math.min(0.05, ms / 1000);
     clock += dt;
     const c = state.car;
@@ -946,6 +1007,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     const lean = Math.atan2(surfaceHeight(c.x + cs * 0.9, c.z - sn * 0.9) - surfaceHeight(c.x - cs * 0.9, c.z + sn * 0.9), 1.8);
     car.position.set(c.x, gy, c.z);
     car.rotation.set(-slope, c.yaw, -lean, 'YXZ');
+    for (const u of carBounce) u.value = gy;
     ghosts.update(state.travellers ?? [], clock, dt);
     const accel = (c.speed - lastSpeed) / Math.max(dt, 1e-3);
     lastSpeed = c.speed;
@@ -1117,10 +1179,21 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
     }
-    // the sun's shadows follow the car
+    // the sun (or the moon) shines from where it is
     sun.target.position.set(c.x, gy, c.z);
     sun.position.copy(sun.target.position).addScaledVector(L.key, 160);
+    // a blob under everything that moves: the Aztek, Hank, the traffic, the
+    // cast, the tumbleweeds (by how high they've hopped) and the freight's cars
+    blobs.clear();
+    let nb = 0;
+    blobs.set(nb++, c, 0, 0, AZTEK_BLOB, c.yaw);
+    blobs.set(nb++, state.hank, 0, 0, HANK_BLOB, state.hank.yaw);
+    for (const t of moving) blobs.set(nb++, t, 0, 0, blobOf(t.type), t.yaw);
+    for (const p of cast) blobs.set(nb++, p.group.position, 0, 0, PERSON_BLOB, 0);
+    for (const w of weeds.weeds) blobs.set(nb++, w.w.position, w.w.position.y - groundHeight(w.x, w.z) - 0.62 * w.s, 0, [1.4 * w.s, 1.4 * w.s], 0);
+    for (const t of town.train) if (t.visible) blobs.set(nb++, t.position, 0, 0, FREIGHT_BLOB, Math.PI / 2);
     sky.mesh.position.copy(camera.position);
+    renderer.info.reset();
     stage.render(ms);
   }
 
@@ -1183,6 +1256,27 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     // (for the QA scripts: what's drawn, to count, and a camera of their own)
     scene: import.meta.env.DEV ? scene : null,
     peek: import.meta.env.DEV ? (at, look) => (peek = at ? { at, look } : null) : () => {},
+    // (dev: the floor's shadow masks for one area, rendered through this scene
+    // with everything that moves put away: scripts/bake-floor-shadows.mjs)
+    bake: import.meta.env.DEV
+      ? async ({ area, size = 1024, times, sunSamples, skySamples }) => {
+          const { bakeFloorMask, bytesToDataUrl } = await import('../../../lib/three/grounding-bake');
+          const away = [car, hank, ghosts.group, blobs.mesh, marks, balloons.object, weeds.object, crystals.object, night.object, drop, water, beamMesh, sky.mesh, mountains.group, ...Object.values(markers).flatMap((m) => [m.ring, m.icon]), ...town.train, ...cast.map((p) => p.group)];
+          const shown = away.map((o) => o.visible);
+          baking = true;
+          away.forEach((o) => (o.visible = false));
+          fleet.set([]);
+          try {
+            const floorMeshes = [ground, streets.object];
+            town.object.traverse((o) => o.isMesh && town.floors.includes(o.material) && floorMeshes.push(o));
+            const out = await bakeFloorMask(renderer, scene, { area, size, floor: floorMeshes, casters: [scene], times, sunAt: (t) => sunAt(t), sunSamples, skySamples, onProgress: (p) => console.info(`bake ${p.done}/${p.of} ${(p.ms / 1000).toFixed(0)}s`) });
+            return { width: out.width, height: out.height, ms: out.ms, passes: out.passes, url: bytesToDataUrl(out.data) };
+          } finally {
+            away.forEach((o, i) => (o.visible = shown[i]));
+            baking = false;
+          }
+        }
+      : undefined,
     resize: stage.resize,
     info: stage.info,
     project: stage.project,

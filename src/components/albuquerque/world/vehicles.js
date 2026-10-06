@@ -8,7 +8,8 @@
 // createFleet({ parked, max }) → { object, set(cars), update(night), dispose }:
 // `parked` are plan.js's parked cars (placed once), `max` how many moving
 // cars there can be of each kind; set() places the moving ones each frame
-// ({ x, y, z, yaw, type, tint, brake }).
+// ({ x, y, z, yaw, type, tint, brake }). footprint(type) is a kind's size on
+// the ground, [width, length] in metres (for the blob under a moving one).
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -209,7 +210,14 @@ function fleetMaterial(uniforms) {
   return m;
 }
 
-export function createFleet({ parked = [], max = 8, shadows = true } = {}) {
+// A kind's size on the ground, [width, length], by its CAR_TYPES index.
+export function footprint(type) {
+  const k = KINDS[CAR_TYPES[type]] ?? KINDS.sedan;
+  const zs = k.profile.map(([z]) => z);
+  return [k.width, Math.max(...zs) - Math.min(...zs)];
+}
+
+export function createFleet({ parked = [], max = 8 } = {}) {
   const uniforms = { uNight: { value: 0 } };
   const material = fleetMaterial(uniforms);
   const group = new THREE.Group();
@@ -217,8 +225,6 @@ export function createFleet({ parked = [], max = 8, shadows = true } = {}) {
     const geo = build(name);
     const still = parked.filter((p) => p.type === type);
     const mesh = new THREE.InstancedMesh(geo, material, still.length + max);
-    mesh.castShadow = shadows;
-    mesh.receiveShadow = true;
     mesh.frustumCulled = false;
     const o = new THREE.Object3D();
     const c = new THREE.Color();

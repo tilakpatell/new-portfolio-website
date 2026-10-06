@@ -17,7 +17,7 @@
 // shelters on Central, fire hydrants, fountains, and the power line out
 // along Route 66.
 //
-// createCity({ noise, aniso, small }) → { object, lamps, update(t, night, sky), dispose }
+// createCity({ noise }) → { object, lamps, update(t, night, sky), dispose }
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -90,13 +90,15 @@ function shellGeometry() {
   // the roof
   quad([V([-0.5, 1, 0.5], { out: -0.32 }), V([0.5, 1, 0.5], { out: -0.32 }), V([0.5, 1, -0.5], { out: -0.32 }), V([-0.5, 1, -0.5], { out: -0.32 })], [0, 1, 0], 3);
   const g = new THREE.BufferGeometry();
+  // (the position is the corner, and the four ways it bends are one vec4:
+  // as a second copy of the corner and four attributes of their own, the
+  // shell asked for more than the 16 attributes a graphics chip has, and a
+  // chip that counted them all drew no buildings at all)
+  const bend = new Float32Array(lift.length * 4);
+  lift.forEach((_, i) => bend.set([lift[i], out[i], cor[i], drop[i]], i * 4));
   g.setAttribute('position', new THREE.Float32BufferAttribute(corner, 3));
   g.setAttribute('normal', new THREE.Float32BufferAttribute(normal, 3));
-  g.setAttribute('aCorner', new THREE.Float32BufferAttribute(corner, 3));
-  g.setAttribute('aLift', new THREE.Float32BufferAttribute(lift, 1));
-  g.setAttribute('aOut', new THREE.Float32BufferAttribute(out, 1));
-  g.setAttribute('aCor', new THREE.Float32BufferAttribute(cor, 1));
-  g.setAttribute('aDrop', new THREE.Float32BufferAttribute(drop, 1));
+  g.setAttribute('aBend', new THREE.BufferAttribute(bend, 4));
   g.setAttribute('aPart', new THREE.Float32BufferAttribute(part, 1));
   return g;
 }
@@ -110,8 +112,8 @@ function facadeMaterial(uniforms) {
       .replace(
         '#include <common>',
         `#include <common>
-        attribute vec3 aCorner;
-        attribute float aLift, aOut, aCor, aDrop, aPart;
+        attribute vec4 aBend; // lift, out, cornice, drop
+        attribute float aPart;
         attribute vec3 aSize;
         attribute vec4 aStyle;
         attribute vec4 aShape;
@@ -129,11 +131,11 @@ function facadeMaterial(uniforms) {
       )
       .replace(
         '#include <begin_vertex>',
-        `float cOut = aOut + aCor * aShape.y;
+        `float cOut = aBend.y + aBend.z * aShape.y;
         vec3 transformed = vec3(
-          aCorner.x * aSize.x + sign(aCorner.x) * cOut,
-          aCorner.y * aSize.y + aLift * aShape.x - aDrop * step(0.001, aShape.y),
-          aCorner.z * aSize.z + sign(aCorner.z) * cOut);
+          position.x * aSize.x + sign(position.x) * cOut,
+          position.y * aSize.y + aBend.x * aShape.x - aBend.w * step(0.001, aShape.y),
+          position.z * aSize.z + sign(position.z) * cOut);
         vLocal = transformed;
         vLN = normal;
         vSize = aSize;
@@ -344,16 +346,17 @@ function facadeMaterial(uniforms) {
   return m;
 }
 
-// The depth material for the shells' shadows (the same sizing, nothing else).
+// The depth material for the shells' shadows (the same sizing, nothing
+// else): what the floor masks are baked with (lib/three/grounding-bake).
 function shellDepth() {
   const m = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
   m.onBeforeCompile = (sh) => {
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec3 aCorner;\nattribute float aLift, aOut, aCor, aDrop;\nattribute vec3 aSize;\nattribute vec4 aShape;')
+      .replace('#include <common>', '#include <common>\nattribute vec4 aBend;\nattribute vec3 aSize;\nattribute vec4 aShape;')
       .replace(
         '#include <begin_vertex>',
-        `float cOut = aOut + aCor * aShape.y;
-        vec3 transformed = vec3(aCorner.x * aSize.x + sign(aCorner.x) * cOut, aCorner.y * aSize.y + aLift * aShape.x - aDrop * step(0.001, aShape.y), aCorner.z * aSize.z + sign(aCorner.z) * cOut);`,
+        `float cOut = aBend.y + aBend.z * aShape.y;
+        vec3 transformed = vec3(position.x * aSize.x + sign(position.x) * cOut, position.y * aSize.y + aBend.x * aShape.x - aBend.w * step(0.001, aShape.y), position.z * aSize.z + sign(position.z) * cOut);`,
       );
   };
   m.customProgramCacheKey = () => 'abq-facade-depth';
@@ -431,7 +434,7 @@ function atlasPlanes(at, list, { emissive = 0.15, double = true } = {}) {
 }
 
 // instanced copies of one geometry, each { x, y, z, yaw, sx, sy, sz, color }
-function many(geo, mat, list, { shadow = true, receive = true } = {}) {
+function many(geo, mat, list) {
   const inst = new THREE.InstancedMesh(geo, mat, Math.max(1, list.length));
   const o = new THREE.Object3D();
   const c = new THREE.Color();
@@ -444,14 +447,12 @@ function many(geo, mat, list, { shadow = true, receive = true } = {}) {
     if (p.color !== undefined) inst.setColorAt(i, c.set(p.color));
   });
   inst.count = list.length;
-  inst.castShadow = shadow;
-  inst.receiveShadow = receive;
   return inst;
 }
 
 const tint = (hex, k) => new THREE.Color(hex).multiplyScalar(k).getHex();
 
-export function createCity({ noise, small = false } = {}) {
+export function createCity({ noise } = {}) {
   const root = new THREE.Group();
   const owned = [];
   const own = (x) => (owned.push(x), x);
@@ -585,7 +586,7 @@ export function createCity({ noise, small = false } = {}) {
         }
       }
     }
-    root.add(many(geo, mat, list, { shadow: !small }));
+    root.add(many(geo, mat, list));
   }
 
   // ── the shops' signs and awnings ──
@@ -637,7 +638,6 @@ export function createCity({ noise, small = false } = {}) {
     }
     const p = atlasPlanes(signs, boards, { double: false });
     owned.push(p.mat, p.geo);
-    p.mesh.castShadow = false;
     root.add(p.mesh);
     // a sign's glow is turned up after dark (update)
     lit.push({ m: p.mat, base: 0.12, k: 2.2 });
@@ -781,7 +781,7 @@ export function createCity({ noise, small = false } = {}) {
     root.add(many(own(new THREE.CylinderGeometry(0.14, 0.18, 6.2, 8).translate(0, 3.1, 0)), steel, mast));
     root.add(many(own(new THREE.BoxGeometry(1, 1, 1)), steel, arm));
     root.add(many(own(new THREE.BoxGeometry(0.44, 1.2, 0.34)), own(new THREE.MeshStandardMaterial({ color: 0xc9a227, roughness: 0.6 })), head));
-    lampMesh = many(own(new THREE.CircleGeometry(0.13, 12)), own(new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false })), lamps, { shadow: false, receive: false });
+    lampMesh = many(own(new THREE.CircleGeometry(0.13, 12)), own(new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false })), lamps);
     root.add(lampMesh);
   }
 
@@ -832,8 +832,8 @@ export function createCity({ noise, small = false } = {}) {
         faces.push({ x: x - fx * 0.05, y: K + 2.25, z: z - fz * 0.05, yaw: Math.atan2(-fx, -fz) });
       }
     }
-    root.add(many(own(new THREE.CylinderGeometry(0.035, 0.035, 2.3, 5).translate(0, 1.15, 0)), steel, posts, { shadow: false }));
-    root.add(many(own(new THREE.CircleGeometry(0.38, 8).rotateZ(Math.PI / 8)), own(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5, side: THREE.DoubleSide })), faces, { shadow: false }));
+    root.add(many(own(new THREE.CylinderGeometry(0.035, 0.035, 2.3, 5).translate(0, 1.15, 0)), steel, posts));
+    root.add(many(own(new THREE.CircleGeometry(0.38, 8).rotateZ(Math.PI / 8)), own(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5, side: THREE.DoubleSide })), faces));
   }
 
   // the street names, a blade for each street at every corner
@@ -873,7 +873,7 @@ export function createCity({ noise, small = false } = {}) {
         blades.push({ x, y: K + 3.32, z, yaw: Math.PI / 2 + flip, w: 1.9, h: 0.24, cell: names.indexOf(roadOf(n.ns).name) });
       }
     }
-    root.add(many(own(new THREE.CylinderGeometry(0.04, 0.045, 3.4, 5).translate(0, 1.7, 0)), steel, posts, { shadow: false }));
+    root.add(many(own(new THREE.CylinderGeometry(0.04, 0.045, 3.4, 5).translate(0, 1.7, 0)), steel, posts));
     const p = atlasPlanes(at, blades, { double: false });
     owned.push(p.mat, p.geo);
     root.add(p.mesh);
@@ -898,7 +898,7 @@ export function createCity({ noise, small = false } = {}) {
     const hyd = [];
     for (const b of CITY.blocks) for (const [x, z] of [[b.kerb.x0 + 0.6, b.kerb.z0 + 1.6], [b.kerb.x1 - 0.6, b.kerb.z1 - 1.6]]) hyd.push({ x, y: K, z });
     const hg = own(mergeGeometries([new THREE.CylinderGeometry(0.15, 0.18, 0.62, 8).translate(0, 0.31, 0), new THREE.SphereGeometry(0.15, 8, 6).translate(0, 0.62, 0), new THREE.CylinderGeometry(0.06, 0.06, 0.42, 6).rotateZ(Math.PI / 2).translate(0, 0.42, 0)]));
-    root.add(many(hg, own(new THREE.MeshStandardMaterial({ color: 0xe0b520, roughness: 0.5 })), hyd, { shadow: false }));
+    root.add(many(hg, own(new THREE.MeshStandardMaterial({ color: 0xe0b520, roughness: 0.5 })), hyd));
   }
 
   // fountains in the plazas
@@ -915,7 +915,6 @@ export function createCity({ noise, small = false } = {}) {
     column.position.y = 0.8;
     const bowl = new THREE.Mesh(own(new THREE.CylinderGeometry(1.2, 0.35, 0.4, 16)), stone);
     bowl.position.y = 1.7;
-    for (const m of [rim, lip, column, bowl]) m.castShadow = m.receiveShadow = true;
     g.add(rim, lip, water, column, bowl);
     g.position.set(f.x, K, f.z);
     root.add(g);
