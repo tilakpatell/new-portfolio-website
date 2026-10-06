@@ -12,7 +12,8 @@
 // flashes first: fly in and shoot (the hunters can be locked on to and hit,
 // skirmish.targets and skirmish.hit) and it's over sooner. When the hunters
 // are gone the freighter and what's left of its escort go on their way;
-// when the freighter's gone the hunters do.
+// when the freighter's gone the hunters do, each removed once it's well
+// away from you.
 //
 // createSkirmish({ rand, factions, kinds, solids }) → { start({ at, heading,
 //   faction, escort, ship }), update(dt) → events, hit(from, to, damage),
@@ -42,7 +43,6 @@ export const SKIRMISH = {
   hitR: 0.45, // how near an escort a shot must pass
   preroll: 4, // seconds it's been going before you see it
   linger: 14, // seconds the freighter is about once it's over, going
-  ghost: 70, // how fast where it was runs off, once it's shot down (out of the hunters' reach in a moment)
   freighterR: 0.6, // how near it a laser must pass to hit it (it's bigger than a fighter)
   longest: 75, // seconds, at most: then the freighter jumps away, and the hunters lose it
 };
@@ -50,11 +50,12 @@ export const SKIRMISH = {
 const between = (rand, [a, b]) => a + rand() * (b - a);
 
 export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds = HUNTER_KINDS, solids = [] } = {}) {
-  const hunt = createHunt({ rand, factions, kinds, solids, lasers: 20 });
+  const hunt = createHunt({ rand, factions, kinds, solids, lasers: 20, firstId: 1e6 }); // (numbered apart from your own hunters: the lock follows a number)
   const wing = createWing({ rand, bolts: 12, solids });
   const shots = Array.from({ length: 10 }, () => ({ on: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, faction: null }));
   // the freighter, as the hunt sees "you": where it is and the way it goes
-  const freighter = { x: 0, y: 0, z: 0, heading: 0, pitch: 0, speed: 0, vy: 0, hp: 0, alive: false, ghost: false, leaving: 0, kind: null, faction: null, on: false };
+  const freighter = { x: 0, y: 0, z: 0, heading: 0, pitch: 0, speed: 0, vy: 0, hp: 0, alive: false, leaving: 0, kind: null, faction: null, on: false };
+  const stay = { x: 0, y: 0, z: 0, heading: 0, pitch: 0, speed: 0, vy: 0 }; // (where it was, once it's gone, when nobody's looking)
   const escortHp = new Map();
   const cool = new Map(); // a hunter's seconds to its next shot at an escort
   const events = [];
@@ -63,7 +64,15 @@ export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds 
   let clock = 0;
   const was = []; // where each laser was, before the frame
 
-  const step = (dt) => {
+  // the freighter gone (shot down, or jumped away): the hunters give up and
+  // fly off, each removed once well away from whoever's looking
+  const lost = () => {
+    freighter.alive = false;
+    Object.assign(stay, { x: freighter.x, y: freighter.y, z: freighter.z });
+    hunt.leave();
+  };
+
+  const step = (dt, viewer = null) => {
     const out = [];
     if (!freighter.on) return out;
     const f = freighter;
@@ -73,8 +82,6 @@ export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds 
         f.leaving += dt;
         f.speed = Math.min(SKIRMISH.away, f.speed + dt * 2);
       } else f.heading += SKIRMISH.circle * dt;
-    } else if (f.ghost) f.speed = SKIRMISH.ghost; // (shot down: where they'd go after it runs off, and they give up and peel away, not vanish)
-    if (f.alive || f.ghost) {
       f.x += -Math.sin(f.heading) * f.speed * dt;
       f.z += -Math.cos(f.heading) * f.speed * dt;
     }
@@ -83,8 +90,7 @@ export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds 
     // portal), and the hunters, having lost it, peel off
     if (!over && f.alive && clock > SKIRMISH.longest) {
       over = true;
-      f.alive = false;
-      f.ghost = true;
+      lost();
       out.push({ type: 'over', winner: 'jumped', at: { x: f.x, y: f.y, z: f.z } });
     }
     // the hunters' fight, with the freighter as their prey ("you" to them).
@@ -99,8 +105,10 @@ export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds 
     });
     const before = { x: f.x - -Math.sin(f.heading) * f.speed * dt, y: f.y, z: f.z - -Math.cos(f.heading) * f.speed * dt };
     let struck = 0;
-    for (const e of hunt.update(dt, f.alive || f.ghost ? f : null)) if (e.type === 'laser') struck += 1;
-    if (f.alive) {
+    // (once it's gone, the hunt's "you" is whoever's looking, so they're
+    // removed out of their sight; its lasers still in flight hit nothing)
+    for (const e of hunt.update(dt, f.alive ? f : (viewer ?? stay))) if (e.type === 'laser' && f.alive) struck += 1;
+    if (f.alive && !over) {
       hunt.lasers.forEach((m, i) => {
         if (!m.on || !was[i].on) return;
         if (sweptHit(was[i], m, before, f, SKIRMISH.freighterR) === null) return;
@@ -108,11 +116,10 @@ export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds 
         struck += 1;
       });
     }
-    if (f.alive && struck) {
+    if (f.alive && !over && struck) {
       f.hp -= struck;
       if (f.hp <= 0) {
-        f.alive = false;
-        f.ghost = true;
+        lost();
         out.push({ type: 'down', side: 'freighter', at: { x: f.x, y: f.y, z: f.z }, kind: f.kind });
       }
     }
@@ -192,10 +199,8 @@ export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds 
       out.push({ type: 'over', winner: 'enemy', at: { x: f.x, y: f.y, z: f.z } });
     }
     if (over && f.alive && f.leaving > SKIRMISH.linger) f.alive = false;
-    if (over && !f.alive && !hunt.count && !wing.active) {
-      f.on = false;
-      f.ghost = false;
-    }
+    // all of it gone, and nothing still flying: over
+    if (over && !f.alive && !hunt.count && !wing.active && !hunt.lasers.some((m) => m.on) && !shots.some((m) => m.on) && !wing.bolts.some((b) => b.on)) f.on = false;
     return out;
   };
 
@@ -218,7 +223,7 @@ export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds 
       for (const m of shots) m.on = false;
       over = false;
       clock = 0;
-      Object.assign(freighter, { x: at.x, y: at.y, z: at.z, heading, pitch: 0, speed: SKIRMISH.speed, vy: 0, hp: SKIRMISH.hp, alive: true, ghost: false, leaving: 0, kind: civil, faction, on: true });
+      Object.assign(freighter, { x: at.x, y: at.y, z: at.z, heading, pitch: 0, speed: SKIRMISH.speed, vy: 0, hp: SKIRMISH.hp, alive: true, leaving: 0, kind: civil, faction, on: true });
       const n = size ?? Math.round(between(rand, SKIRMISH.pack));
       hunt.pack(faction, freighter, { size: n, ace: false, ahead: true });
       wing.join(escort, freighter, SKIRMISH.escort, { back: 3 });
@@ -228,9 +233,11 @@ export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds 
       return true;
     },
 
-    update(dt) {
+    // `viewer`: where you are ({ x, y, z }), or null: once the freighter's
+    // gone its hunters are removed only once well away from you
+    update(dt, viewer = null) {
       events.length = 0;
-      events.push(...step(dt));
+      events.push(...step(dt, viewer));
       return events;
     },
 
@@ -263,7 +270,6 @@ export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds 
       for (const m of shots) m.on = false;
       freighter.on = false;
       freighter.alive = false;
-      freighter.ghost = false;
       over = false;
     },
   };

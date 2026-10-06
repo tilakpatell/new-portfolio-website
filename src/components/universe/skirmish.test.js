@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SKIRMISH, createSkirmish } from './skirmish';
+import { createHunt } from './hunterRules';
 
 // a seeded random, so a skirmish is the same every time
 const seeded = (seed = 7) => () => {
@@ -79,27 +80,88 @@ describe('a skirmish', () => {
     expect(sk.hit({ x: 900, y: 0, z: 0 }, { x: 903, y: 0, z: 0 })).toBeNull();
   });
 
-  it('sends the hunters off when the freighter goes down, flying away rather than vanishing', () => {
+  it('sends the hunters off when the freighter goes down, each gone only once well away from you', () => {
     const sk = createSkirmish({ rand: seeded(4) });
     sk.start({ at, faction: 'empire', escort: 'xwing' });
     // no escort, and a freighter on its last legs
     sk.wing.clear();
     sk.freighter.hp = 1;
+    const viewer = { x: 0, y: 0, z: 6 }; // (you, watching from close by)
     let downAt = null;
     let countThen = 0;
     const events = [];
-    for (let t = 0; t < 90; t += DT) {
-      for (const e of sk.update(DT)) events.push(e);
+    const lastSeen = new Map();
+    for (let t = 0; t < 120; t += DT) {
+      for (const h of sk.hunt.live) lastSeen.set(h.id, { ...h.pos });
+      const before = new Set(sk.hunt.live.map((h) => h.id));
+      for (const e of sk.update(DT, viewer)) events.push(e);
       if (downAt === null && !sk.freighter.alive) {
         downAt = t;
         countThen = sk.hunt.count;
       }
+      // any hunter gone this frame, after the freighter: well away from you
+      if (downAt !== null) for (const id of before) if (!sk.hunt.live.some((h) => h.id === id)) expect(Math.hypot(lastSeen.get(id).x - viewer.x, lastSeen.get(id).y - viewer.y, lastSeen.get(id).z - viewer.z)).toBeGreaterThan(100);
     }
     expect(events.find((e) => e.type === 'down' && e.side === 'freighter')).toBeTruthy();
     expect(events.filter((e) => e.type === 'over').map((e) => e.winner)).toEqual(['enemy']);
     expect(countThen).toBeGreaterThan(0); // (not gone in the same moment)
     expect(sk.hunt.count).toBe(0);
     expect(sk.active).toBe(false);
+  });
+
+  it('numbers its hunters apart from yours, so the lock never mixes them up', () => {
+    const yours = createHunt({ rand: seeded(1) });
+    yours.pack('empire', { x: 0, y: 0, z: 0, heading: 0, pitch: 0, speed: 0 }, { size: 4, ace: false });
+    const sk = createSkirmish({ rand: seeded(1) });
+    sk.start({ at, faction: 'empire', escort: 'xwing' });
+    const mine = new Set(yours.targets.map((o) => o.id));
+    expect(sk.targets.length).toBeGreaterThan(0);
+    for (const o of sk.targets) expect(mine.has(o.id)).toBe(false);
+  });
+
+  it('never loses the freighter once the escort has won, to a laser still in flight', () => {
+    for (const seed of [2, 3, 4, 5]) {
+      const sk = createSkirmish({ rand: seeded(seed) });
+      sk.start({ at, faction: 'empire', escort: 'xwing' });
+      sk.freighter.hp = 1;
+      // a laser on its way to the freighter, then every hunter shot down
+      const f = sk.freighter;
+      const m = sk.hunt.lasers[0];
+      Object.assign(m, { on: true, x: f.x + 3, y: f.y, z: f.z, vx: -30, vy: 0, vz: 0, life: 1, at: 'you', faction: 'empire' });
+      sk.update(1 / 120);
+      for (const h of [...sk.hunt.live]) sk.hit({ x: h.pos.x - 3, y: h.pos.y, z: h.pos.z }, { x: h.pos.x + 3, y: h.pos.y, z: h.pos.z }, 10);
+      const events = [];
+      for (let t = 0; t < 3; t += DT) events.push(...sk.update(DT));
+      expect(events.map((e) => `${e.type}:${e.side ?? e.winner}`), `seed ${seed}`).toEqual(['over:escort']);
+      expect(f.alive).toBe(true);
+    }
+  });
+
+  it('waits for its last shot to land before it ends, and leaves nothing in the air', () => {
+    const sk = createSkirmish({ rand: seeded(7) });
+    sk.start({ at, faction: 'empire', escort: 'xwing' });
+    sk.wing.clear();
+    for (const h of [...sk.hunt.live]) sk.hit({ x: h.pos.x - 3, y: h.pos.y, z: h.pos.z }, { x: h.pos.x + 3, y: h.pos.y, z: h.pos.z }, 10);
+    // the freighter on its way, nearly out of sight, and a shot still out
+    let t = 0;
+    for (; t < SKIRMISH.linger - 0.5; t += DT) sk.update(DT);
+    Object.assign(sk.shots[0], { on: true, x: 500, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 3, faction: 'empire' });
+    let endedWith = null;
+    for (let k = 0; k < 6 && endedWith === null; k += DT) {
+      sk.update(DT);
+      if (!sk.active) endedWith = sk.shots.some((m) => m.on);
+    }
+    expect(endedWith).toBe(false);
+  });
+
+  it('leaves nothing in the air when it ends', () => {
+    for (const seed of [3, 4, 5, 6]) {
+      const seen = play(seed, 200);
+      expect(seen.sk.active).toBe(false);
+      expect(seen.sk.hunt.lasers.some((m) => m.on)).toBe(false);
+      expect(seen.sk.shots.some((m) => m.on)).toBe(false);
+      expect(seen.sk.wing.bolts.some((b) => b.on)).toBe(false);
+    }
   });
 
   it('keeps the freighter going round, then on its way once it is over', () => {

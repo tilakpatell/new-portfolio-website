@@ -39,6 +39,8 @@ export function createSkirmishes(parent, { fleet = createFleet(), solids = [] } 
   const shotBeams = beamsFor(sk.shots);
   const boltBeams = beamsFor(sk.wing.bolts);
   let escortKind = 'xwing';
+  let drawn = false; // (something of it was drawn last frame)
+  const NONE = [];
 
   const take = (kind) => {
     if (fleet.loaded(kind) && pool[kind]?.length && !pool[kind][pool[kind].length - 1].model) for (const m of pool[kind].splice(0)) m.dispose();
@@ -119,13 +121,19 @@ export function createSkirmishes(parent, { fleet = createFleet(), solids = [] } 
       return sk.start(opts);
     },
 
-    update(dt, t) {
+    // `viewer`: where you are (the ship), or null
+    update(dt, t, viewer = null) {
       if (!sk.active) {
-        if (shown.size) sync(t);
-        return [];
+        if (shown.size || drawn) {
+          sync(t);
+          for (const m of [...laserBeams, ...shotBeams, ...boltBeams]) m.visible = false;
+          drawn = false;
+        }
+        return NONE;
       }
-      const events = sk.update(dt);
+      const events = sk.update(dt, viewer);
       sync(t);
+      drawn = true;
       return events;
     },
 

@@ -2616,7 +2616,7 @@ export async function create(canvas, ctx) {
         later.push({ at: state.clock + 1.5, run: () => emit({ type: 'event', id: 'skirmish', sub: family }) });
       }
     }
-    for (const e of skirmishes.update(dt, t)) {
+    for (const e of skirmishes.update(dt, t, live)) {
       if (e.type === 'down') pops.hit({ point: new THREE.Vector3(e.at.x, e.at.y, e.at.z), normal: popDir.set(0, 1, 0), radius: e.side === 'freighter' ? 2.4 : 0.6 });
       else if (e.type === 'over' && live) {
         if (e.winner === 'escort' && state.skirmishHelped > 0) emit({ type: 'event', id: 'skirmishThanks' });
