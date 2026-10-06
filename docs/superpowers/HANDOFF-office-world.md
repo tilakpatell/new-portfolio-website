@@ -99,3 +99,26 @@ The user asked to "improve the Office world and really make it super super nice 
 - Signs could share one atlas (each is a draw).
 - More amblers, or ones who talk to each other.
 - A real get-up/sit-down animation instead of the swap.
+
+## Accuracy and speed (2026-10-06)
+
+Checked against 21 photos from visits to the real set (Flickr, CC, via Openverse: the reception desk, Jim's, Dwight's, Creed's, Kelly's, Toby's and Ryan's desks, the accountants, the annex, the break room, the warehouse, the lot) and RoomSketcher's plan.
+
+### Accuracy
+- `windows.js`: the outside windows have white one-inch mini-blinds (every window on the set does), not vertical vanes: open, raised half way, or shut.
+- `paint.js` `screens`: the "Intra-Office Digital Hub" desktop redrawn from the photos (blue tab, logo, the four blue-bulleted links, XP taskbar). Every desk in the world shows it, as on the set.
+- `paint.js` `nameplate`: black inserts with white letters in a silver holder (Michael's in capitals with his title, Ryan's in a serif with none); reception's grey "RECEPTION" plate on the counter.
+- Reception: the jelly beans in a cut-glass bowl, not a jar.
+- `kit.js` phone: the Cisco's silver-grey body, charcoal handset.
+- Break room: a black glass-front snack machine and a blue soda machine; grey stacking chairs on chrome sleds at the white tables.
+- Filing cabinets: green-and-white storage boxes along the top.
+- Warehouse: the green safety sign ("This department has worked 0 days without a lost time accident"). Outside: the "Deliveries / Dock 1 / Dock 2 / Will Call" sign by the dock doors, and the park's sign as a charcoal cabinet with tenant panels (Vance Refrigeration in blue, Dunder Mifflin).
+
+### Speed
+- `people.js` `cull` option (the office world passes it): a person's skinned mesh had `frustumCulled = false`, so all seventeen were drawn, and drawn into the shadow map, every frame wherever the camera looked. With `cull` they get a bounding sphere from the bind pose (×1.4 for a cheer) and are culled. Other worlds are unchanged.
+- `scene.js`: the shadow camera's box follows the camera (24 m, centred 8 m ahead, moved in whole texels), not the whole floor: fewer casters and sharper shadows. Downstairs it stays over the office.
+- Seated people out of view (as of the last frame) skip their animation; only those within 5 m of the camera's focus cast shadows (checked every 0.4 s).
+- Camera clearance tests only the walls and furniture near its line.
+- Boxes (ream boxes, storage boxes) are one material each (`kit.js` `plainFaces`), so they batch.
+- Measured in headless Chromium (draws / triangles a frame, high tier): bullpen 351/700k → 282/530k, kitchen 312/589k → 248/310k, annex 257/569k → 174/180k, warehouse 145/97k → 139/76k. Mid tier annex 135/228k → 118/64k. Script work a frame (GPU stubbed): 0.47 → 0.27 ms (bullpen), 0.66 → 0.21 ms (Michael's office).
+- New shot views in `scripts/office-shots.mjs`: `counter2`, `docksign`, `parksign`, `safety`, `monitor`.

@@ -61,6 +61,43 @@ function signTex(lines, bg, fg, w = 512, h = 256) {
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
+// the safety record, as on the set's warehouse wall: a green sign, the
+// safety cross in its ring, and the count of days in a white slot (zero)
+function safetyTex() {
+  const c = document.createElement('canvas');
+  c.width = 384;
+  c.height = 320;
+  const x = c.getContext('2d');
+  x.fillStyle = '#1e6b3a';
+  x.fillRect(0, 0, 384, 320);
+  x.strokeStyle = '#f2f2ec';
+  x.lineWidth = 5;
+  x.strokeRect(8, 8, 368, 304);
+  x.beginPath();
+  x.arc(64, 70, 40, 0, Math.PI * 2);
+  x.stroke();
+  x.fillStyle = '#f2f2ec';
+  x.fillRect(56, 42, 16, 56);
+  x.fillRect(36, 62, 56, 16);
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  x.font = 'bold 30px Arial, Helvetica, sans-serif';
+  x.fillText('THIS', 238, 46);
+  x.fillText('DEPARTMENT', 238, 80);
+  x.font = 'bold 24px Arial, Helvetica, sans-serif';
+  x.fillText('HAS WORKED', 192, 128);
+  x.fillRect(132, 148, 120, 66);
+  x.fillStyle = '#b3122a';
+  x.font = 'bold 60px Arial, Helvetica, sans-serif';
+  x.fillText('0', 192, 183);
+  x.fillStyle = '#f2f2ec';
+  x.font = 'bold 22px Arial, Helvetica, sans-serif';
+  x.fillText('DAYS WITHOUT A', 192, 244);
+  x.fillText('LOST TIME ACCIDENT', 192, 276);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
 export function buildWarehouse(kit) {
   const group = new THREE.Group();
   const own = [];
@@ -378,14 +415,15 @@ export function buildWarehouse(kit) {
     mesh(new THREE.SphereGeometry(0.07, 10, 8), mat({ color: 0xff8a2a, emissive: 0xff7a1a, emissiveIntensity: 1.2 }), 0, 2.33, -0.4, f).castShadow = false;
   }
 
-  // ── signs: "Days without an accident", the warehouse's own name, the stairs ──
+  // ── signs: the safety record (the green one on the set's warehouse wall),
+  // the warehouse's own name, the stairs ──
   const sign = (tex, w, h, x, y, z, face) => {
     const m = mesh(new THREE.PlaneGeometry(w, h), mat({ map: keep(tex), roughness: 0.6 }), x, y, z);
     m.rotation.y = face;
     m.castShadow = false;
     return m;
   };
-  sign(signTex([['DAYS WITHOUT', 36], ['AN ACCIDENT', 36], ['0', 96]], '#f4f2ec', '#b3122a', 384, 320), 1.1, 0.92, x0 + 4, 2.4, z0 + 0.12, 0);
+  sign(safetyTex(), 1.1, 0.92, x0 + 4, 2.4, z0 + 0.12, 0);
   sign(signTex([['DUNDER MIFFLIN', 60], ['WAREHOUSE · SCRANTON', 30]], '#1f4e8c', '#ffffff', 768, 220), 4.2, 1.2, cx, 3.9, z0 + 0.12, 0);
   sign(signTex([['SAFETY FIRST', 52], ['Forklift crossing', 30]], '#f2c230', '#1b1b1b', 512, 200), 1.3, 0.5, x1 - 4.2, 2.6, z1 - 0.12, Math.PI);
   sign(signTex([['UP TO THE OFFICE', 40], ['Suite 200', 28]], '#2b2e33', '#f4f2ec', 512, 180), 1.2, 0.42, WH_STAIRS.x - 1.2, 2.4, z0 + 0.12, 0);
