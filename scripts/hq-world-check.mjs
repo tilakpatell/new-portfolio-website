@@ -4,7 +4,16 @@
 //   OUT=/tmp/shots node scripts/hq-world-check.mjs [shot …]
 // It opens /avengers, waits for the compound, and frames it from the places
 // the QA cares about (dev hook window.__HQWORLD__: `sim.h` is where he is,
-// `sim.yaw`/`sim.pitch` the camera). Headless Chrome draws in software, slowly.
+// `sim.yaw`/`sim.pitch` the camera). Headless Chrome draws in software, slowly
+// (and with 32 texture units where a desktop GPU has 16: UNITS checks that).
+// Env: Q (quality), W, H, DPR; HUD=1 keeps the HUD; WHERE=1 says where the
+// camera is and what's under the middle of the screen; ALPHA=1 reads the
+// frame's alpha back (under 1, the page shows through the canvas);
+// SWEEP=x,z (PITCH=a,b) turns the camera round him, with NAN=1 scanning each
+// view's HDR frame for NaN, infinite and blinding pixels instead; SPIN=n
+// turns it over time as the frame-rate watchdog steps the tier down;
+// BEAM=1 (ONLY=i, PROBE=x,y;…) puts the camera beside each door's beam;
+// UNITS=1 lists each shader's texture units.
 import { chromium } from 'playwright-core';
 
 const out = process.env.OUT ?? '.';

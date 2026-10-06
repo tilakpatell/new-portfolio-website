@@ -151,6 +151,27 @@ function weathered(mat, { foot = 1.5, streaks = 0.12, panel = null } = {}) {
   return mat;
 }
 
+// Dry concrete and asphalt as matte as they are: the scans' roughness maps
+// average 0.5 to 0.8, times the material's own, and a drive or a roof toward
+// the sun went white with glare. The map now only varies it between `lo`
+// and the material's roughness.
+function matte(mat, lo = 0.82) {
+  const before = mat.onBeforeCompile;
+  mat.onBeforeCompile = (sh, r) => {
+    before?.call(mat, sh, r);
+    sh.fragmentShader = sh.fragmentShader.replace(
+      '#include <roughnessmap_fragment>',
+      `float roughnessFactor = roughness;
+      #ifdef USE_ROUGHNESSMAP
+        roughnessFactor *= mix(${lo.toFixed(2)}, 1.0, texture2D(roughnessMap, vRoughnessMapUv).g);
+      #endif`,
+    );
+  };
+  const key = mat.customProgramCacheKey?.() ?? '';
+  mat.customProgramCacheKey = () => `${key}|matte:${lo}`;
+  return mat;
+}
+
 // The ground darkened round the foot of each building, softly, over a few
 // metres (after cloudy: its world position): what the sky's light can't get
 // into. `ao` is groundShade()'s.
@@ -529,7 +550,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     roadMat.customProgramCacheKey = () => 'road-slabs';
   }
   for (const t of [roadMat.normalMap, roadMat.roughnessMap]) if (t) t.repeat.set(1 / 4, 1 / 4);
-  grounded(roadMat, shade);
+  roadMat.roughness = 1;
+  matte(grounded(roadMat, shade));
   const kerbMat = grounded(cloudy(new THREE.MeshStandardMaterial({ color: 0x8c918a, roughness: 0.9 }), 'kerb'), shade);
   const roadGeos = [];
   const kerbGeos = [];
@@ -577,7 +599,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const grey = cloudy(new THREE.MeshPhysicalMaterial({ color: 0xbcc4cd, roughness: 0.4, metalness: 0.15, clearcoat: 0.3, clearcoatRoughness: 0.35, normalMap: panels(1.6, 1.6), normalScale: new THREE.Vector2(0.6, 0.6) }), 'grey');
   weathered(grey, { streaks: 0.08, panel: [1.6, 1.6] });
   // the roofs, somewhere to stand now: weathered concrete, its slabs' seams in it
-  const roofMat = cloudy(await pbr('concrete-worn', { repeat: [1 / 4, 1 / 4], small, roughness: 0.95, metalness: 0, color: 0xc4c7c6, normalScale: 0.8 }), 'roof');
+  const roofMat = matte(cloudy(await pbr('concrete-worn', { repeat: [1 / 4, 1 / 4], small, roughness: 0.95, metalness: 0, color: 0xc4c7c6, normalScale: 0.8 }), 'roof'));
   const darkMetal = cloudy(new THREE.MeshStandardMaterial({ color: 0x2f3640, roughness: 0.45, metalness: 0.8 }), 'dark');
   const red = cloudy(new THREE.MeshStandardMaterial({ color: 0xb8332c, roughness: 0.55, metalness: 0.2 }), 'red');
   const earth = cloudy(await pbr('rock', { repeat: [1 / 4, 1 / 4], small: true, roughness: 1, metalness: 0, color: 0x9a8a66 }), 'earth');
@@ -768,7 +790,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   }
 
   // the landing pad: a low slab, its markings
-  const apronTop = await pbr('asphalt', { repeat: [1 / 5, 1 / 5], small, roughness: 0.85, metalness: 0, color: 0x6a7076 });
+  const apronTop = await pbr('asphalt', { repeat: [1 / 5, 1 / 5], small, roughness: 1, metalness: 0, color: 0x6a7076 });
   add(prismWalls(APRON, 0, 0.06, 1, SC), cloudy(grey.clone(), 'grey'));
   add(prismTop(APRON, 0.06, 1, SC), grounded(antiTile(cloudy(apronTop, 'apron'), { frequency: 0.06, detail: { texture: grain, scale: 2.2, strength: 0.25, range: 24 } }), shade));
   {
