@@ -45,12 +45,115 @@ describe('the sun a planet is lit from', () => {
     vi.stubGlobal('document', { createElement: () => canvas });
     const { buildPlanet } = await import('./planets');
     const { byId } = await import('./universes');
-    const p = buildPlanet(byId('middleearth'), {}, { sun: [0, 0, 1] });
+    // (the halo, as on low; the real air's sun is the same vector: below)
+    const p = buildPlanet(byId('middleearth'), {}, { sun: [0, 0, 1], tier: 'low' });
     expect(p.air.material.uniforms.uLight.value.toArray()).toEqual([0, 0, 1]);
     expect(p.body.material.userData.air.uSunW.value.toArray()).toEqual([0, 0, 1]);
     // (one vector the scene turns with the map, the air and the rim reading the same)
     expect(p.sun).toBe(p.air.material.uniforms.uLight.value);
     expect(p.sun).toBe(p.body.material.userData.air.uSunW.value);
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('the air round a planet', () => {
+  const stub = () => {
+    const gradient = { addColorStop() {} };
+    const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+  };
+  it('a planet with air wears the shell on high and mid, the halo on low', async () => {
+    stub();
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    const high = buildPlanet(byId('middleearth'), {}, { sun: [0, 0, 1], tier: 'high' });
+    expect(high.air.material.fragmentShader).toContain('inscatter');
+    expect(high.air.material.defines.STEPS).toBe(8);
+    expect(buildPlanet(byId('middleearth'), {}, { sun: [0, 0, 1], tier: 'mid' }).air.material.defines.STEPS).toBe(5);
+    const low = buildPlanet(byId('middleearth'), {}, { sun: [0, 0, 1], tier: 'low' });
+    expect(low.air.material.fragmentShader).not.toContain('inscatter');
+    // (its sun the planet's own vector, turned with the map)
+    expect(high.air.material.uniforms.uSunDir.value[0]).toBe(high.sun);
+    // and back to the halo when the pace steps right down
+    high.setAir('halo');
+    expect(high.air.material.fragmentShader).not.toContain('inscatter');
+    high.setAir('shell');
+    expect(high.air.material.fragmentShader).toContain('inscatter');
+    vi.unstubAllGlobals();
+  });
+
+  it('a world with no air keeps its halo, whatever the tier', async () => {
+    stub();
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    expect(buildPlanet(byId('office'), {}, { tier: 'high' }).air.material.fragmentShader).not.toContain('inscatter');
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('the ground: clouds’ shadows, seas and detail', () => {
+  const stub = () => {
+    const gradient = { addColorStop() {} };
+    const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+  };
+  it('planets without clouds or a roughness map get none of those hooks', async () => {
+    stub();
+    const { buildPlanet, styleFor } = await import('./planets');
+    const { byId } = await import('./universes');
+    expect(styleFor(byId('office'), {})).toMatchObject({ clouds: null, rough: null, detail: true });
+    expect(styleFor(byId('office'), {}, { tier: 'low' }).detail).toBe(false);
+    expect(styleFor(byId('home'), {}).detail).toBe(false);
+    const key = buildPlanet(byId('gaming'), {}).body.material.customProgramCacheKey();
+    expect(key).not.toContain('clouds');
+    expect(key).toContain('detail');
+    vi.unstubAllGlobals();
+  });
+
+  it('a planet with a cloud layer shadows its ground, the layer found by its texture', async () => {
+    stub();
+    const THREE = await import('three');
+    const { buildPlanet, styleFor } = await import('./planets');
+    const { byId } = await import('./universes');
+    const clouds = new THREE.Texture();
+    const T = { 'caribbean-clouds': clouds, caribbean: new THREE.Texture(), 'caribbean-rough': new THREE.Texture() };
+    expect(styleFor(byId('caribbean'), T)).toMatchObject({ clouds, alpha: true });
+    const p = buildPlanet(byId('caribbean'), T);
+    const key = p.body.material.customProgramCacheKey();
+    expect(key).toContain('clouds');
+    expect(key).toContain('rough');
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('the ground follows the pace', () => {
+  it('drops its detail at step 2 and its clouds’ shadows and air at step 3, and brings them back', async () => {
+    const gradient = { addColorStop() {} };
+    const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+    const THREE = await import('three');
+    const { buildPlanet, styleFor } = await import('./planets');
+    const { byId } = await import('./universes');
+    const T = { 'caribbean-clouds': new THREE.Texture(), caribbean: new THREE.Texture() };
+    // (no clouds' shadows at all on low)
+    expect(styleFor(byId('caribbean'), T, { tier: 'low' }).clouds).toBeNull();
+    const p = buildPlanet(byId('caribbean'), T, { tier: 'high' });
+    const g = p.body.material.userData.ground;
+    p.near(1.5);
+    expect(g.uCamDist.value).toBe(1.5);
+    p.setLevel(2);
+    expect(g.uCamDist.value).toBe(1e9);
+    p.near(1.5);
+    expect(g.uCamDist.value).toBe(1e9);
+    expect(g.uCloudOn.value).toBe(1);
+    p.setLevel(3);
+    expect(g.uCloudOn.value).toBe(0);
+    expect(p.air.material.fragmentShader).not.toContain('inscatter');
+    p.setLevel(0);
+    p.near(1.5);
+    expect(g.uCamDist.value).toBe(1.5);
+    expect(g.uCloudOn.value).toBe(1);
+    expect(p.air.material.fragmentShader).toContain('inscatter');
     vi.unstubAllGlobals();
   });
 });

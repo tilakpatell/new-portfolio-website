@@ -15,8 +15,8 @@ The design is `docs/superpowers/specs/2026-10-06-universe-visual-upgrade-design.
 |---|---|---|---|---|
 | 0 | Poses and a baseline | #302 (poses, check script); #328 (baseline) | done | `lab/universe/baseline/{high,mid,low}.json` and 30 shots, taken on `main` at e4fcc10e after the scale changes: high calls 49–150, triangles 0.14–1.32 M; mid calls 49–148, triangles 0.14–1.14 M; low calls 49–146, triangles 0.14–1.14 M |
 | 1 | The render, finished | #336 | done | Against the baseline, `high`: calls +0 to +2 a pose, triangles at or under it (overview 150 → 150, 1.20 → 1.17 M; falcon-sun 141 → 142); `mid` and `low` within +4 calls and +0 % triangles (traffic and the station’s turn move a pose’s calls by ±2 from run to run; `mid` maw’s −120 k triangles is the Falcon’s model still loading, `low` station’s −37 calls its wheel turned). Contrast at maw on `high` 85.1 → 95.5. Smoke green on `/universe`, `/galaxy/hoth`, `/galaxy/tatooine/surface` |
-| 2 | One light | this PR | done | Against the baseline, every tier: calls −1 to +3 a pose, triangles +0 % but mid overview +2.8 % (the landing’s and the Maw’s on mid and low move with what has loaded: see below). Every world lit at 2.35 by its own star; the light turns as you fly from one star to the next; arrivals and a world picked on the map face its day side. Contrast at caribbean 87.3 → 103.5 and middleearth-limb 124.8 → 132.1 on `high`; Dot Matrix 135.5 → 114.1 under Ember’s orange (checkpoint 4 reads its light in its own colours). Smoke green |
-| 3 | Air, clouds, seas, ground | | not started | |
+| 2 | One light | #381 | done | Against the baseline, every tier: calls −1 to +3 a pose, triangles +0 % but mid overview +2.8 % (the landing’s and the Maw’s on mid and low move with what has loaded: see below). Every world lit at 2.35 by its own star; the light turns as you fly from one star to the next; arrivals and a world picked on the map face its day side. Contrast at caribbean 87.3 → 103.5 and middleearth-limb 124.8 → 132.1 on `high`; Dot Matrix 135.5 → 114.1 under Ember’s orange (checkpoint 4 reads its light in its own colours). Smoke green |
+| 3 | Air, clouds, seas, ground | this PR | done | Against the baseline, every tier: calls −6 to +3 a pose, triangles +3.3 % at most (C-137 on `high`: the real air’s shell over the halo); the landing moves with what has loaded. The fandoms’ worlds wear real air on `high` and `mid` (a blue-white limb toward the sun, warm at the terminator, gone at night), the clouds shade the ground, seas glint (the Caribbean shows both of the Twins), and the ground comes up in detail close in; four new baked maps (793 KB). Smoke green |
 | 4 | The styles in the light | | not started | |
 | 5 | The hero ship | | not started | |
 | 6 | Rock | | not started | |
@@ -31,7 +31,7 @@ Scorecard (the spec’s “Where things stand” table is the before): fill in t
 | Hero (the ship) | 1.5 | | |
 | Enemies and traffic | 2 | | |
 | World | 2 | | |
-| Materials | 1.5 | | |
+| Materials | 1.5 | 2.5 (checkpoint 3) | Real single-scatter air round the fandoms’ worlds in place of a flat tinted rim; the clouds cast shadows; seas glossy (C-137’s and Invincible’s roughness maps, a floor of 0.22); the ground comes up in detail close in; 2048 relief on `ultra` for the Caribbean and Invincible |
 | Lighting and render | 2 | 3 (checkpoint 2) | Checkpoint 2: the key and the fill come from the stars that light the camera, in their colours (orange by Ember, the Twins’ two suns turning), every world lit at full by its own star; two flares and one exposure for two suns; metal reflects the key star. Checkpoint 1 (2.5): | The dark gradients dithered with blue noise (no banding at 8 bits); the bloom sized to the page, capped at 640 on its long side; the home sun glares in the lens (one draw) and is hidden by what crosses it; the exposure eases into the dark and stops down into the sun. Contrast at maw 85.1 → 95.5 on `high`, at overview 77 → 89.3 |
 | VFX | 2 | | |
 | Performance evidence | 2 | 2.5 (checkpoint 0) | Ten fixed poses on three tiers, a committed baseline, and every checkpoint’s counts against it (`scripts/universe-check.mjs`) |
@@ -62,6 +62,12 @@ Scorecard (the spec’s “Where things stand” table is the before): fill in t
   - *The reflections’ glow* (`post.js`’s `spaceEnvironment`, now with `{ light, colour }`) is made again only when the key star changes, at the key’s direction and in half its colour (a PMREM is a few ms: never every frame). In the home system it stays where the map always had it.
   - *Day sides without `focusPose`*: a world picked on the map is turned to by `dayYaw`, and `focusPose` looks along the map’s yaw, so it needed no change; `parkAt` scores the day side for the fandoms’ worlds and `startAt` prefers it, and a jump parks through `parkAt` (pinned in `nav.test.js`).
   - *The galaxy’s flares are not in*: `galaxy/scene.js` has its own sun sprites and no `pace`, and belongs to the galaxy’s lane (`HANDOFF-galaxy-upgrade.md`); `createFlare` is in `lib/three` for it.
+- **Checkpoint 3:**
+  - *The shell is shared, not copied*: `galaxy/bodyShaders.js` re-exports `ATMO`, `SHELL_VERT`, `SHELL_FRAG` and `NOISE` from `lib/three`, and `galaxy/bodies.js` makes its shells with `createAtmosphere`, passing its body’s uniforms so the ground and the air read one sun. Two options the galaxy didn’t need: `inner` (where the ground starts: a faceted sphere’s inscribed radius, so no ring of air shows through the facets) and `uStrength` (the hover).
+  - *The ground’s rim goes when the air shows*, rather than a ground-side haze term: the shell already marches the haze in front of the limb, and the two together doubled it. On `low` and at the pace’s step 3 the halo and the rim come back together (`setAir`).
+  - *Cloud shadows find the cloud layer by its texture* (`styleFor` names it; `buildPlanet` looks for the mesh wearing it), so each builder keeps its own cloud mesh. Their shadow is read where the clouds have turned to over the ground, each frame.
+  - *The ground’s detail is a 256 noise tile made in code*, not a texture file, faded in from three radii to 1.3, worked out for the nearest two planets only (the rest are given 1e9).
+  - *The high sets*: the Caribbean and Invincible get 2048 relief (`-hq`); Cybertron’s relief was already 2048 as its standard file, with a 1024 `-sm`, so its map entry is renamed from `transformers-normal-sm` to `transformers-normal` and gets the 2048 on high and up.
 
 ## Checking it
 

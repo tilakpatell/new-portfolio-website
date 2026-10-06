@@ -18,7 +18,7 @@
 //
 // loadTextures({ small }) → the textures (any that fail are just missing)
 // mapFile(name, level) → the file for a planet map at lib/detail's level
-// buildPlanet(u, T, { sun }) → { id, radius, group, sun, update(t, camera), setState, mount }
+// buildPlanet(u, T, { sun, tier }) → { id, radius, group, sun, air, setAir, update(t, camera), setState, mount }
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -29,9 +29,11 @@ import { detailLevel } from '../../lib/detail';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
 import { globeData } from '../travel/globe3d/data';
 import { facing, fit, glowMat, orbit, paint, rng, rounded, tiled } from './kit';
+import { tileFbm } from '../../lib/texture';
 import { STATIONS } from './stations';
 import { buildGateway } from '../galaxy/gateway';
 import { SIDES, cybertronSkin } from '../cybertron/skin';
+import { createAtmosphere } from '../../lib/three/atmosphere';
 import { createWar, warZones } from '../cybertron/war';
 import { ringGeometry } from '../middleearth/ringShape';
 import { bossMug, elementTile, glowingGems, shardCluster } from './props';
@@ -51,15 +53,18 @@ const BASE = '/textures/universe/';
 // Breaking Bad, the Caribbean, C-137, the Office, Music, Marvel) at all
 // three sizes; Earth's, the sun's and the sky's by
 // scripts/build-universe-textures.py (--hq for the -hq set); Cybertron's and
-// Invincible's by their own scripts, with no -hq yet.
+// Invincible's by their own scripts (Invincible's relief with an -hq;
+// Cybertron's is 2048 on high and up, 1024 below).
 const map = (names, opts) => names.map((n) => [n, opts]);
 const MAPS = Object.fromEntries([
   ...map(['music', 'middleearth', 'middleearth-clouds', 'marvel', 'breakingbad', 'caribbean', 'office', 'rickmorty', 'rickmorty-clouds', 'earth', 'earth-night', 'sun', 'sky'], { sm: true, hq: true, colour: true }),
   ...map(['middleearth-normal', 'office-normal', 'breakingbad-normal', 'caribbean-clouds', 'earth-clouds'], { sm: true, hq: true, colour: false }),
+  ...map(['caribbean-normal', 'invincible-normal'], { sm: false, hq: true, colour: false }),
+  ...map(['transformers-normal'], { sm: true, hq: false, colour: false }),
   ...map(['middleearth-night', 'breakingbad-night', 'transformers', 'invincible', 'invincible-night'], { sm: true, hq: false, colour: true }),
   ...map(['breakingbad-clouds', 'invincible-clouds'], { sm: true, hq: false, colour: false }),
   ...map(['middleearth-glow', 'caribbean-night', 'rickmorty-glow', 'invincible-glow', 'plates', 'hull'], { sm: false, hq: false, colour: true }),
-  ...map(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-normal-sm', 'transformers-glow-sm', 'middleearth-rough', 'office-rough', 'breakingbad-rough', 'caribbean-normal', 'caribbean-rough', 'invincible-normal', 'earth-rough'], { sm: false, hq: false, colour: false }),
+  ...map(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-glow-sm', 'middleearth-rough', 'office-rough', 'breakingbad-rough', 'caribbean-rough', 'earth-rough', 'rickmorty-rough', 'invincible-rough'], { sm: false, hq: false, colour: false }),
 ]);
 
 export const MAP_NAMES = Object.keys(MAPS);
@@ -163,7 +168,8 @@ function airGlow(mat, color, { night = null, sun = LIGHT } = {}) {
   mat.userData.air = u;
   // (after any hook the planet's builder gave it, such as Cybertron's skin)
   const prev = mat.onBeforeCompile;
-  const prevKey = mat.customProgramCacheKey;
+  // (a key someone set, not three's default, which is the hook's own source)
+  const prevKey = Object.hasOwn(mat, 'customProgramCacheKey') ? mat.customProgramCacheKey : null;
   mat.onBeforeCompile = (shader, renderer) => {
     prev?.call(mat, shader, renderer);
     Object.assign(shader.uniforms, u);
@@ -512,7 +518,7 @@ const BUILDERS = {
     const mat = new THREE.MeshStandardMaterial({
       map: T.transformers ?? null,
       color: T.transformers ? '#ffffff' : u.palette.base,
-      normalMap: T['transformers-normal-sm'] ?? null,
+      normalMap: T['transformers-normal'] ?? null,
       normalScale: new THREE.Vector2(1.1, 1.1),
       roughness: 0.55,
       metalness: 0.45,
@@ -751,7 +757,9 @@ const BUILDERS = {
       emissive: '#ffffff',
       emissiveMap: T['rickmorty-glow'] ?? null,
       emissiveIntensity: T['rickmorty-glow'] ? 1.3 : 0,
-      roughness: 0.85,
+      // (the seas glossy, so they catch the sun: scripts/planets/rickmorty.mjs)
+      roughnessMap: T['rickmorty-rough'] ?? null,
+      roughness: T['rickmorty-rough'] ? 1 : 0.85,
       metalness: 0,
     });
     if (T['rickmorty-clouds']) {
@@ -1026,7 +1034,9 @@ const BUILDERS = {
         emissive: '#ffffff',
         emissiveMap: T['invincible-glow'] ?? null,
         emissiveIntensity: T['invincible-glow'] ? 2.4 : 0,
-        roughness: 0.92,
+        // (the old sea beds glossy: scripts/build-invincible-planet.mjs)
+        roughnessMap: T['invincible-rough'] ?? null,
+        roughness: T['invincible-rough'] ? 1 : 0.92,
       });
       p.body.material = mat;
       p.night = T['invincible-night'] ?? null;
@@ -1320,7 +1330,75 @@ const BUILDERS = {
   ...STATIONS,
 };
 
-export function buildPlanet(u, T = {}, { sun = null } = {}) {
+// What a planet's ground is given beyond its own maps (groundHooks): its
+// cloud layer's texture, and whether that's an alpha map (read from its
+// green) or a picture (read from its alpha); its roughness map; and whether
+// the ground comes up in detail as you come in (not on low, not a station).
+const CLOUDS = { middleearth: ['middleearth-clouds', false], breakingbad: ['breakingbad-clouds', true], rickmorty: ['rickmorty-clouds', false], caribbean: ['caribbean-clouds', true], invincible: ['invincible-clouds', true], travel: ['earth-clouds', true] };
+const ROUGH = { travel: 'earth-rough' };
+export function styleFor(u, T = {}, { tier = 'high' } = {}) {
+  const [name, alpha] = CLOUDS[u.id] ?? [null, false];
+  return { clouds: (name && tier !== 'low' && T[name]) || null, alpha, rough: T[ROUGH[u.id] ?? `${u.id}-rough`] ?? null, detail: u.kind !== 'core' && !u.portal && tier !== 'low' };
+}
+
+// A fine noise tile, made once, for the ground's detail coming up close
+let detailTex = null;
+function detailTile() {
+  if (detailTex) return detailTex;
+  const N = 256;
+  const f = tileFbm(7, { base: 4, octaves: 5 });
+  const data = new Uint8Array(N * N * 4);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) data.fill(Math.round(f(x / N, y / N) * 255), (y * N + x) * 4, (y * N + x) * 4 + 4);
+  detailTex = new THREE.DataTexture(data, N, N);
+  detailTex.wrapS = detailTex.wrapT = THREE.RepeatWrapping;
+  detailTex.magFilter = THREE.LinearFilter;
+  detailTex.minFilter = THREE.LinearMipmapLinearFilter;
+  detailTex.generateMipmaps = true;
+  detailTex.needsUpdate = true;
+  return detailTex;
+}
+
+// The ground's hooks, after airGlow's (and any the builder gave it), each
+// with its own part of the cache key: the clouds' shadows on it (darkening
+// the ground by up to 0.55 under them, their texture read where they've
+// turned to over it), the ground's own detail fading in from three radii
+// to 1.3 (so it mottles rather than blurs as you come in), and a floor on
+// how glossy it can be (0.22: a sea's glint, not a white disc).
+function groundHooks(mat, { clouds, alpha, detail, rough }) {
+  if (!clouds && !detail && !rough) return null;
+  const u = {
+    uClouds: { value: clouds },
+    uCloudAlpha: { value: alpha ? 1 : 0 },
+    uCloudTurn: { value: 0 },
+    uDetail: { value: detail ? detailTile() : null },
+    uCamDist: { value: 1e9 },
+    uCloudOn: { value: 1 }, // (0 from the pace's step 3: no new shader)
+  };
+  mat.userData.ground = u;
+  const prev = mat.onBeforeCompile;
+  // (a key someone set, not three's default, which is the hook's own source)
+  const prevKey = Object.hasOwn(mat, 'customProgramCacheKey') ? mat.customProgramCacheKey : null;
+  mat.onBeforeCompile = (shader, renderer) => {
+    prev?.call(mat, shader, renderer);
+    Object.assign(shader.uniforms, u);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\nuniform sampler2D uClouds;\nuniform float uCloudAlpha;\nuniform float uCloudTurn;\nuniform sampler2D uDetail;\nuniform float uCamDist;\nuniform float uCloudOn;`)
+      .replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+        #ifdef USE_MAP
+        ${clouds ? '{ vec4 cl = texture2D(uClouds, vec2(vMapUv.x - uCloudTurn, vMapUv.y)); diffuseColor.rgb *= 1.0 - 0.55 * uCloudOn * mix(cl.a, cl.g, uCloudAlpha); }' : ''}
+        ${detail ? '{ float k = smoothstep(3.0, 1.3, uCamDist); diffuseColor.rgb *= mix(1.0, 0.82 + 0.36 * texture2D(uDetail, vMapUv * vec2(96.0, 48.0)).r, k); }' : ''}
+        #endif`,
+      )
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>\n${rough ? 'roughnessFactor = max(roughnessFactor, 0.22);' : ''}`);
+  };
+  const parts = [clouds && 'clouds', detail && 'detail', rough && 'rough'].filter(Boolean).join('-');
+  mat.customProgramCacheKey = () => `${parts}${prevKey ? `-${prevKey.call(mat)}` : ''}`;
+  return u;
+}
+
+export function buildPlanet(u, T = {}, { sun = null, tier = 'high' } = {}) {
   const core = u.kind === 'core';
   // the way to the star that lights it, in the world's axes (lighting.js's
   // sunFor, turned with the map by the scene each frame): one vector its
@@ -1333,11 +1411,36 @@ export function buildPlanet(u, T = {}, { sun = null } = {}) {
   const body = new THREE.Mesh(new THREE.SphereGeometry(u.size, seg[0], seg[1]), new THREE.MeshStandardMaterial({ color: u.palette.base, roughness: 1 }));
   spinner.add(body);
   // a planet has air round it in its colour; a station's sign does that job
-  const air = core || u.airless ? null : halo(u.size, u.rim ?? u.swatch, seg, sunW); // (a station has no air round it)
-  if (air) group.add(air);
+  // a planet has air round it in its colour: the old halo, and where it says
+  // what its air is (universes.js), a real one on high and mid, marched
+  // through (lib/three/atmosphere.js: 8 steps on high, 5 on mid, its sun the
+  // planet's own vector); the halo kept for low and for the pace's last
+  // steps (setAir), only one of them shown
+  const haloMesh = core || u.airless ? null : halo(u.size, u.rim ?? u.swatch, seg, sunW); // (a station has no air round it)
+  const shell =
+    haloMesh && u.air && tier !== 'low'
+      ? createAtmosphere({ radius: u.size, top: u.air.top, colour: u.air.colour, density: u.air.density, sunset: u.air.sunset, segments: T.small ? [64, 40] : [96, 64], steps: tier === 'high' || tier === 'ultra' ? 8 : 5, inner: Math.cos(Math.PI / seg[1]), uniforms: { uSunDir: { value: [sunW, new THREE.Vector3(0, 1, 0)] } } })
+      : null;
+  if (shell) shell.mesh.renderOrder = 2;
+  let air = shell ? shell.mesh : haloMesh;
+  if (haloMesh) group.add(haloMesh);
+  if (shell) {
+    group.add(shell.mesh);
+    haloMesh.visible = false;
+  }
   const p = { group, body, orbits: [], tick: [], focus: [], slot: null, onSelect: null, sun: sunW };
   BUILDERS[u.id]?.(p, { u, T });
   if (!core && p.body.material?.isMeshStandardMaterial) airGlow(p.body.material, u.rim ?? u.swatch, { night: p.night, sun: sunW });
+  // the clouds' shadows, the ground's detail and a sea's glint (groundHooks),
+  // the cloud layer found by its texture, wherever its builder put it
+  const style = styleFor(u, T, { tier });
+  let cloudMesh = null;
+  if (style.clouds) group.traverse((o) => (cloudMesh ??= o.isMesh && (o.material?.map === style.clouds || o.material?.alphaMap === style.clouds) ? o : null));
+  const ground = !core && p.body.material?.isMeshStandardMaterial ? groundHooks(p.body.material, { ...style, clouds: cloudMesh ? style.clouds : null }) : null;
+  // (with real air round it, the air draws the limb: the rim in its ground goes)
+  const rimGlow = () => p.body.material?.userData?.air;
+  if (shell && rimGlow()) rimGlow().uRimStrength.value = 0;
+  const centre = new THREE.Vector3();
   // a station's big sign, over it
   const sign = u.sign ? bigSign(u) : null;
   if (sign) {
@@ -1347,6 +1450,7 @@ export function buildPlanet(u, T = {}, { sun = null } = {}) {
   const spin = core ? 0 : 0.05 + rng(`${u.id}-spin`)() * 0.05;
   let turn0 = body.rotation.y;
   let held = null; // the turn it's held at, while someone stands on it
+  let level = 0; // the pace's step
   let selected = false;
   let t0 = 0;
 
@@ -1358,7 +1462,35 @@ export function buildPlanet(u, T = {}, { sun = null } = {}) {
     // what a crash lays its shockwave on (a station's is hidden: none)
     surface: core ? null : body,
     body,
-    air,
+    get air() {
+      return air;
+    },
+    // how far off the camera is, in the planet's radii (the scene, for the
+    // nearest two: the ground's detail comes up from three)
+    near(d) {
+      if (ground) ground.uCamDist.value = level >= 2 ? 1e9 : d;
+    },
+    // the pace's step (lib/three/pace), as the spec's effects table has it:
+    // the ground's detail goes at 2, the clouds' shadows and the real air
+    // (for the halo) at 3, all back as it comes down again
+    setLevel(l) {
+      level = l;
+      if (ground) {
+        ground.uCloudOn.value = l >= 3 ? 0 : 1;
+        if (l >= 2) ground.uCamDist.value = 1e9;
+      }
+      this.setAir(l >= 3 ? 'halo' : 'shell');
+    },
+    // the real air or the old halo (the pace's last steps): 'shell' | 'halo'
+    setAir(which) {
+      if (!shell) return;
+      const on = which === 'shell';
+      shell.mesh.visible = on;
+      haloMesh.visible = !on;
+      air = on ? shell.mesh : haloMesh;
+      const g = rimGlow();
+      if (g) g.uRimStrength.value = on ? 0 : RIM.idle * 0.8;
+    },
     sun: sunW,
     // held still (true) while the crew walk about on it, and turning on
     // from there once they're gone
@@ -1381,15 +1513,21 @@ export function buildPlanet(u, T = {}, { sun = null } = {}) {
     update(t, camera, live = true) {
       t0 = t;
       body.rotation.y = held ?? turn0 + t * spin;
+      // (the air's march is about the planet's middle, in the world: it moves with the map)
+      if (shell?.mesh.visible) shell.update(group.getWorldPosition(centre));
+      // (where the clouds have turned to over the ground: on the ground, or turning on their own)
+      if (ground && cloudMesh) ground.uCloudTurn.value = (cloudMesh.rotation.y - (cloudMesh.parent === body ? 0 : body.rotation.y)) / (Math.PI * 2);
       for (const o of p.orbits) o.set(t);
       if (live) for (const fn of p.tick) fn(t, camera);
     },
     // `dim`: somewhere else is picked, so this station's sign steps back
     setState({ hover, selected: sel, dim = false }) {
       const k = hover ? RIM.hover : sel ? RIM.selected : RIM.idle;
-      if (air) air.material.uniforms.uStrength.value = k;
+      if (haloMesh) haloMesh.material.uniforms.uStrength.value = k;
+      // (the real air brightens a little less: it's the whole limb)
+      shell?.set({ strength: 1 + (k - RIM.idle) * 0.6 });
       const glow = body.material?.userData?.air;
-      if (glow) glow.uRimStrength.value = k * 0.8;
+      if (glow) glow.uRimStrength.value = shell && air === shell.mesh ? 0 : k * 0.8;
       if (sel && !selected) p.onSelect?.(t0);
       if (sel !== selected) for (const fn of p.focus) fn(sel);
       selected = sel;
