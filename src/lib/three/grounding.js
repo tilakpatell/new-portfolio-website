@@ -138,7 +138,11 @@ vec2 gRead(vec3 p) {
 }
 `;
   const lights = chunks.lights_fragment_begin;
-  const sun = typeof lights === 'string' && lights.includes(SUN_LINE) ? lights.replace(SUN_LINE, `${SUN_LINE}\n\t\tdirectLight.color *= gSun;`) : null;
+  // (a mover in shade keeps some of the sun: a figure that goes black in a
+  // hill's shadow at dusk is lost to the player, and a shadow map wouldn't
+  // have caught all of it either, its own lit side facing the sky)
+  const cut = mover ? 'mix(0.45, 1.0, gSun)' : 'gSun';
+  const sun = typeof lights === 'string' && lights.includes(SUN_LINE) ? lights.replace(SUN_LINE, `${SUN_LINE}\n\t\tdirectLight.color *= ${cut};`) : null;
   const swapped = { sun: false, sky: false, shade: false };
   let fs = fragmentShader.replace('#include <common>', `#include <common>\n${pars}`).replace(
     '#include <clipping_planes_fragment>',

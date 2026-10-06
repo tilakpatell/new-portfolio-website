@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { BAKE_TIERS, bakeFloorTexture, bakeable, castersTop, heightFromPixels, holdForBake, liftSun, packHeight, unpackHeight } from './grounding-bake';
+import { BAKE_LIFT, BAKE_TIERS, bakeFloorTexture, bakeable, castersTop, heightFromPixels, holdForBake, liftSun, packHeight, unpackHeight } from './grounding-bake';
 
 const DEG = Math.PI / 180;
 const elevation = (d) => Math.asin(d.y / d.length()) / DEG;
@@ -151,5 +151,11 @@ describe('how high what casts stands', () => {
     scene.add(new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshStandardMaterial()));
     scene.updateMatrixWorld(true);
     expect(castersTop([scene], 10000, 0)).toBeCloseTo(120, 0);
+  });
+});
+
+describe('a low sun, for a bake on arrival', () => {
+  it('is baked at least 20 degrees up, so a dusk town isn\'t drowned in one hill\'s shadow', () => {
+    expect(BAKE_LIFT).toBe(20);
   });
 });

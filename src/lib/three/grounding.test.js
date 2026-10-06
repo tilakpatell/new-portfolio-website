@@ -283,6 +283,8 @@ describe('a mover standing in the baked shade', () => {
     const out = floorShadowShader(SHADER, { areas: 1, mover: true }, CHUNKS);
     expect(out.swapped.sun).toBe(true);
     expect(out.swapped.shade).toBe(false);
+    // (a figure in shade keeps some of the sun: it reads as shaded, not erased)
+    expect(out.fragmentShader).toContain('directLight.color *= mix(0.45, 1.0, gSun);');
     expect(out.fragmentShader).toContain('mix(0.7, 1.0, gV.y)');
     expect(out.fragmentShader).not.toContain('uShadeTint, uShadeMix');
     // (not below the floor's lowest point or well over its highest: an interior far off)

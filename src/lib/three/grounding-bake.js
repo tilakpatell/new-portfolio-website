@@ -139,6 +139,11 @@ const nextPaint = () => new Promise((r) => (typeof requestAnimationFrame === 'fu
 // The mask's size, how many directions about the sun and over the sky, and
 // the shadow map each is drawn with. A phone gets a coarser, noisier bake in
 // a fraction of the passes; the picture it gives is the same kind.
+// How high a low sun is baked, at least (liftSun), in degrees: a dusk sun's
+// shadows run five times as long as what throws them, and one hill would
+// drown a town in them. Bruno Simon's folio has its sun at about 46°.
+export const BAKE_LIFT = 20;
+
 export const BAKE_TIERS = {
   high: { size: 1024, sun: 40, sky: 40, shadow: 2048 },
   mid: { size: 512, sun: 24, sky: 24, shadow: 2048 },
@@ -571,7 +576,7 @@ export function castersTop(casters, radius, low) {
 // where it can't be done (no float pictures on this GPU, or anything going
 // wrong): the world then stands as it is. `pixels` is the mask read back
 // (heightFromPixels).
-export async function bakeFloorTexture(renderer, scene, { area, floor = [], casters = [], skip = [], sun, size = BAKE_TIERS.mid.size, sunSamples = BAKE_TIERS.mid.sun, skySamples = BAKE_TIERS.mid.sky, shadowSize = BAKE_TIERS.mid.shadow, cone = 4 * DEG, lift = 12, top = null, range = null, chunk = 6, signal = null } = {}) {
+export async function bakeFloorTexture(renderer, scene, { area, floor = [], casters = [], skip = [], sun, size = BAKE_TIERS.mid.size, sunSamples = BAKE_TIERS.mid.sun, skySamples = BAKE_TIERS.mid.sky, shadowSize = BAKE_TIERS.mid.shadow, cone = 4 * DEG, lift = BAKE_LIFT, top = null, range = null, chunk = 6, signal = null } = {}) {
   if (!renderer?.extensions?.has?.('EXT_color_buffer_float') || !area || !floor.length) return null;
   let baker = null;
   let out = null;
