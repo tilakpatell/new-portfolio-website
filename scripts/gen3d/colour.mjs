@@ -35,14 +35,17 @@ export async function matchColour(doc, oldDoc) {
   const from = (await bright(sharp, mat)).value;
   const ws = await Promise.all(olds.map((m) => bright(sharp, m)));
   const to = ws.reduce((s, w) => s + w.value * w.weight, 0) / ws.reduce((s, w) => s + w.weight, 0);
-  const scale = Math.min(3, Math.max(0.5, to / Math.max(0.01, from)));
+  // a tone curve, not a multiply: in^e maps the 75th percentile onto the old one's and never clips a red into salmon
+  const e = Math.min(3, Math.max(1 / 3, Math.log(Math.max(0.02, to)) / Math.log(Math.max(0.02, Math.min(0.98, from)))));
+  const scale = e;
   const tex = mat.getBaseColorTexture();
   if (tex) {
     const img = sharp(Buffer.from(tex.getImage()));
     const { format } = await img.metadata();
-    const out = await img.linear([scale, scale, scale], [0, 0, 0]).toFormat(format === 'webp' ? 'webp' : 'png', { quality: 90 }).toBuffer();
+    const curved = e < 1 ? img.gamma(1.0, 1 / e) : img.gamma(e, 1.0); // sharp's gamma(a, b): in^a, then ^(1/b)
+    const out = await curved.toFormat(format === 'webp' ? 'webp' : 'png', { quality: 90 }).toBuffer();
     tex.setImage(new Uint8Array(out));
-  } else mat.setBaseColorFactor([...mat.getBaseColorFactor().slice(0, 3).map((v) => Math.min(1, v * scale)), 1]);
+  } else mat.setBaseColorFactor([...mat.getBaseColorFactor().slice(0, 3).map((v) => v ** e), 1]);
   return { from, to, scale };
 }
 
@@ -56,5 +59,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const doc = await nio.read(resolve(newFile));
   const r = await matchColour(doc, await nio.read(resolve(oldFile)));
   await nio.write(resolve(out), doc);
-  console.log(r ? `brightness ×${r.scale.toFixed(2)} (${r.from.toFixed(2)} → ${r.to.toFixed(2)}) → ${out}` : 'nothing to match');
+  console.log(r ? `tone curve ^${r.scale.toFixed(2)} (${r.from.toFixed(2)} → ${r.to.toFixed(2)}) → ${out}` : 'nothing to match');
 }
