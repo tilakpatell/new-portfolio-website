@@ -245,7 +245,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
   for (const k of COLOURS) cur[k] = new THREE.Color(MOODS.day[k]);
   for (const k of NUMBERS) cur[k] = MOODS.day[k];
   const sunDir = V(...MOODS.day.sun).normalize();
-  const A = { t: 0, cam: { at: V(260, 20, 0), look: V(0, 20, 0) }, mode: '', first: true, fov: 50, mood: '', shake: 0, flash: 0, bashT: 0, beacon: 0, roll: 0 };
+  const A = { t: 0, cam: { at: V(260, 20, 0), look: V(0, 20, 0) }, mode: '', first: true, fov: 50, mood: '', day: 1, shake: 0, flash: 0, bashT: 0, beacon: 0, roll: 0 };
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -315,6 +315,9 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
     scene.fog.far = cur.fogFar;
     renderer.toneMappingExposure = cur.exposure;
     const night = moodKey === 'night' ? 1 : moodKey === 'evening' ? 0.4 : 0;
+    // (the gold reflects a daytime sky: dim it after dark, and indoors)
+    A.day += ((moodKey === 'hall' ? 0.35 : 1 - night * 0.8) - A.day) * ease;
+    kit.daylight?.(A.day);
     hideAll();
     A.flash = Math.max(0, A.flash - dt * 1.5);
     A.bashT = Math.max(0, A.bashT - dt * 4);

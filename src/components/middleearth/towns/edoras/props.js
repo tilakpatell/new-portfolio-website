@@ -424,16 +424,19 @@ function earthCanvas(S, seed = 41) {
 function turfCanvas(S, seed = 51) {
   const n = makeNoise(seed);
   const sn = stretchNoise(seed + 1);
+  const cells = makeCells(seed + 2);
   const field = new Float32Array(S * S);
   const c = paintPixels(makeCanvas(S), (u, v, out, x, y) => {
     const blade = sfbm(sn, u * 96, v * 12, 96, 12, 3);
     const clump = fbm(n, u * 6, v * 6, { period: 6, octaves: 4 });
     const dry = smooth(0.5, 0.75, fbm(n, u * 3 + 7, v * 3, { period: 3, octaves: 3 }));
     const t = clamp01(0.45 + (blade - 0.5) * 0.9 + (clump - 0.5) * 0.5);
-    out[0] = mix(mix(52, 118, t), mix(116, 178, t), dry * 0.6);
-    out[1] = mix(mix(80, 140, t), mix(108, 160, t), dry * 0.6);
-    out[2] = mix(mix(30, 62, t), mix(56, 86, t), dry * 0.6);
-    field[y * S + x] = blade * 0.6 + clump * 0.4;
+    const fk = cells(u * 40, v * 40, 40);
+    const fleck = fk.id > 0.86 ? 1 - smooth(0.08, 0.2, fk.f1) : 0;
+    out[0] = mix(mix(mix(52, 118, t), mix(116, 178, t), dry * 0.6), 236, fleck);
+    out[1] = mix(mix(mix(80, 140, t), mix(108, 160, t), dry * 0.6), 238, fleck);
+    out[2] = mix(mix(mix(30, 62, t), mix(56, 86, t), dry * 0.6), 228, fleck);
+    field[y * S + x] = blade * 0.6 + clump * 0.4 + fleck * 0.3;
   });
   return { c, field };
 }
@@ -755,13 +758,14 @@ function hallFloorCanvas(S) {
   const { c, field } = planksCanvas(S, { seed: 91, boards: 6, light: [118, 92, 64], dark: [54, 40, 28], silver: 0.1 });
   const g = c.getContext('2d');
   const r = rng(93);
-  for (let i = 0; i < 900; i++) {
+  for (let i = 0; i < 1600; i++) {
     const x = r() * S;
     const y = r() * S;
     const a = r() * TAU;
-    const l = S * (0.012 + r() * 0.03);
-    g.strokeStyle = r() < 0.5 ? 'rgba(206, 170, 92, 0.75)' : 'rgba(160, 128, 64, 0.65)';
-    g.lineWidth = S * (0.002 + r() * 0.003);
+    const l = S * (0.008 + r() * 0.022);
+    const k = r();
+    g.strokeStyle = k < 0.4 ? 'rgba(196, 164, 92, 0.42)' : k < 0.8 ? 'rgba(150, 120, 64, 0.38)' : 'rgba(220, 190, 120, 0.5)';
+    g.lineWidth = S * (0.0012 + r() * 0.0018);
     g.beginPath();
     g.moveTo(x, y);
     g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l);
@@ -1106,7 +1110,8 @@ function windBanner(mat, U) {
         '#include <begin_vertex>',
         `#include <begin_vertex>
         transformed += ${A} * bw;
-        transformed -= ${W} * abs(bw) * 0.35;
+        transformed -= ${W} * abs(bw) * 0.4;
+        transformed.y += sin(bs1 * 0.8 + 1.3 + position.y * 0.6) * bk * aWave.z * 0.35 * gust;
         transformed.y -= bk * bk * aWave.w * 0.07 * (1.25 - gust);`,
       );
   };
@@ -1343,7 +1348,7 @@ function brazier(bk, mats, x, y, z, h = 1.0) {
 }
 // A banner's pole (a wooden staff with a gold knob), and the banner's place
 // at its top: pushed onto `list` for bannerMesh.
-function bannerPole(bk, mats, list, x, y, z, h, { len = 4.2, tall = 1.6, amp = 0.32 } = {}) {
+function bannerPole(bk, mats, list, x, y, z, h, { len = 4.2, tall = 1.6, amp = 0.55 } = {}) {
   bk.add(mats.beam, new THREE.CylinderGeometry(0.07, 0.1, h, 6), { p: [x, y + h / 2, z] });
   bk.add(mats.gold, new THREE.SphereGeometry(0.13, 8, 6), { p: [x, y + h + 0.08, z] });
   list.push({ x, y: y + h - 0.2, z, len, tall, amp, phase: list.length * 1.93 });
@@ -1922,7 +1927,7 @@ function meduseld(bk, K, lamps, banners) {
   bk.add(mats.stone, box(1.4, 0.5, 2 * DW + 1.6), { p: [WX1 + 0.6, F - 0.25 + 0.01, 0], uv: 0.5 });
   // torches either side of the doors, and the banner on the roof
   for (const s of [-1, 1]) lamps.push(bracketTorch(bk, mats, WX1 + 0.05, F + 2.9, s * 3.6, 0));
-  bannerPole(bk, mats, banners, WX1 - 0.6, RIDGE + 0.3, 0, 6.2, { len: 5.2, tall: 1.9, amp: 0.4 });
+  bannerPole(bk, mats, banners, WX1 - 0.6, RIDGE + 0.3, 0, 6.2, { len: 5.2, tall: 1.9, amp: 0.65 });
 }
 
 // ── the town's houses ──
@@ -1968,7 +1973,7 @@ function house(bk, K, h, i) {
     // a course of stone just out of the ground; where the slope falls away
     // the boards come down to it
     const fb = gMin - 0.5;
-    const ft = Math.max(gMin + 0.45, F + 0.2);
+    const ft = F - gMin > 0.7 ? gMin + 0.45 : F + 0.2;
     bk.add(mats.stone, box(D + 0.4, ft - fb, W + 0.4), { p: [0, (ft + fb) / 2, 0], uv: 0.45, color: 0x958d80 });
     if (F - gMin > 0.7) bk.add(mats.timber, box(D - 0.06, F - gMin - 0.3, W - 0.06), { p: [0, (F + gMin + 0.4) / 2, 0], uv: 1 / 2.4, color: 0x8a8076 });
     // the walls and their frame
@@ -2400,8 +2405,10 @@ function hallInside(K) {
     for (const [sh, sd] of [
       [h * 0.66, 0.42],
       [h * 0.33, 0.84],
-    ])
-      bk.add(mats.hallBeam, box(w * 0.7, sh, sd), { p: [x, sh / 2, z + d / 2 + sd / 2], uv: 0.5 });
+    ]) {
+      bk.add(mats.hallWood, box(w * 0.7, sh, sd), { p: [x, sh / 2, z + d / 2 + sd / 2], uv: 1 / 1.6, color: 0x9a8a7a });
+      bk.add(mats.goldIn, box(w * 0.7 + 0.02, 0.05, 0.05), { p: [x, sh - 0.025, z + d / 2 + sd + 0.005] });
+    }
     bk.add(mats.fur, new THREE.BoxGeometry(2.6, 0.05, 1.8), { p: [x, h + 0.025, z + 0.5] });
   }
   {
@@ -2411,19 +2418,25 @@ function hallInside(K) {
     bk.add(mats.hallBeam, box(1.1, 0.4, 0.9), { p: [x, y + 0.34, z + 0.05], uv: 0.5 });
     bk.add(mats.fur, box(1.0, 0.1, 0.84), { p: [x, y + 0.59, z + 0.05] });
     // the high back, carved, the sun on it, two gold horses crowning it
-    const back = new THREE.BoxGeometry(1.2, 2.5, 0.18);
+    const back = new THREE.BoxGeometry(1.3, 3.0, 0.2);
     const uv = back.attributes.uv;
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 0.4, 0.17 + uv.getY(i) * 0.64);
-    bk.add(mats.carveIn, back, { p: [x, y + 1.6, z - 0.42] });
-    bk.add(mats.goldIn, new THREE.RingGeometry(0.26, 0.36, 24), { p: [x, y + 2.35, z - 0.32] });
-    bk.add(mats.goldIn, new THREE.CircleGeometry(0.12, 16), { p: [x, y + 2.35, z - 0.32] });
-    bk.add(mats.goldIn, box(1.3, 0.1, 0.22), { p: [x, y + 2.86, z - 0.42] });
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 0.42, 0.17 + uv.getY(i) * 0.64);
+    bk.add(mats.carveIn, back, { p: [x, y + 1.85, z - 0.42] });
+    bk.add(mats.goldIn, new THREE.RingGeometry(0.3, 0.42, 24), { p: [x, y + 2.7, z - 0.31] });
+    bk.add(mats.goldIn, new THREE.CircleGeometry(0.14, 16), { p: [x, y + 2.7, z - 0.31] });
+    for (let i = 0; i < 12; i++) {
+      const an = (i / 12) * TAU;
+      bk.add(mats.goldIn, box(0.04, 0.16, 0.03), { p: [x + Math.sin(an) * 0.22, y + 2.7 + Math.cos(an) * 0.22, z - 0.31], r: [0, 0, -an] });
+    }
+    bk.add(mats.goldIn, box(1.42, 0.1, 0.26), { p: [x, y + 3.38, z - 0.42] });
+    bk.add(mats.hallBeam, slabOf([[-0.72, 0], [0.72, 0], [0, 0.62]], 0.2), { p: [x, y + 3.43, z - 0.52], uv: 0.5 });
+    bk.add(mats.goldIn, new THREE.SphereGeometry(0.09, 8, 6), { p: [x, y + 4.1, z - 0.42] });
     for (const s of [-1, 1]) {
-      bk.add(mats.hallBeam, new THREE.CylinderGeometry(0.07, 0.08, 3.1, 8), { p: [x + s * 0.62, y + 1.55, z - 0.42] });
-      bk.add(mats.goldIn, new THREE.SphereGeometry(0.1, 8, 6), { p: [x + s * 0.62, y + 3.12, z - 0.42] });
-      const hg = K.head.clone().scale(0.5, 0.5, 0.9);
+      bk.add(mats.hallBeam, new THREE.CylinderGeometry(0.075, 0.085, 3.5, 8), { p: [x + s * 0.68, y + 1.75, z - 0.42] });
+      bk.add(mats.goldIn, new THREE.SphereGeometry(0.11, 8, 6), { p: [x + s * 0.68, y + 3.54, z - 0.42] });
+      const hg = K.head.clone().scale(0.55, 0.55, 0.9);
       hg.rotateY(s > 0 ? 0 : Math.PI);
-      hg.translate(x + s * 0.26, y + 2.9, z - 0.42);
+      hg.translate(x + s * 0.72, y + 3.6, z - 0.42);
       bk.add(mats.goldIn, hg);
       // the arms, ending in horses' heads looking down the hall
       bk.add(mats.hallBeam, box(0.12, 0.42, 0.12), { p: [x + s * 0.6, y + 0.75, z + 0.38], uv: 0.5 });
@@ -2495,6 +2508,16 @@ function hallInside(K) {
   hang(2, -X + 0.06, 2.5, 2.2, 3.3, 1.4, Math.PI / 2);
   hang(1, 0, Z0 + 0.06, 3.2, 4.8, 3.6, 0);
   hang(2, X - 0.06, 12.5, 2.2, 3.3, 1.4, -Math.PI / 2);
+  for (const z of [-10, 0, 10]) {
+    for (const s of [-1, 1]) {
+      const pg = new THREE.PlaneGeometry(1.3, 2.5);
+      const uv = pg.attributes.uv;
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, (1 + 0.08 + uv.getX(i) * 0.84) / 3, 0.18 + uv.getY(i) * 0.78);
+      pg.rotateY(s > 0 ? -Math.PI / 2 : Math.PI / 2);
+      bk.add(mats.tapestry, pg, { p: [s * 6.4, WH - 0.62 - 1.25, z + 0.3] });
+      bk.add(mats.goldIn, new THREE.CylinderGeometry(0.03, 0.03, 1.5, 6).rotateX(Math.PI / 2), { p: [s * 6.4, WH - 0.6, z + 0.3] });
+    }
+  }
   const shields = [
     [-1, -17.5],
     [1, -17.5],
@@ -2547,39 +2570,43 @@ function hallInside(K) {
 
 // ── the barrows ──
 
-// One white flower of simbelmynë, or a few together: six-petalled stars on
-// thin stems, coloured in their vertices (white, a gold eye, green stems).
-function flowerGeometry(n = 3, r = 0.055, seed = 1) {
+// White flowers of simbelmynë, a few together: each a six-pointed star (two
+// triangles) with a gold eye, on a thin stem, coloured in its vertices.
+function flowerGeometry(n = 5, r = 0.055, seed = 1) {
   const rr = rng(seed);
   const pos = [];
   const col = [];
   const nor = [];
-  const tri = (a, b, c, ca, cb = ca, cc = ca, up = true) => {
-    pos.push(...a, ...b, ...c);
-    col.push(...ca, ...cb, ...cc);
-    for (let k = 0; k < 3; k++) nor.push(0, up ? 1 : 0, up ? 0 : 1);
-  };
   const W = [0.97, 0.98, 0.95];
-  const Y = [0.95, 0.86, 0.5];
+  const Y = [0.95, 0.88, 0.55];
   const G = [0.26, 0.4, 0.16];
   for (let i = 0; i < n; i++) {
     const a = (i / n) * TAU + rr();
-    const d = i ? 0.04 + rr() * 0.05 : 0;
+    const d = i ? 0.05 + rr() * 0.08 : 0;
     const x = Math.cos(a) * d;
     const z = Math.sin(a) * d;
-    const h = 0.12 + rr() * 0.12;
-    const ss = 0.75 + rr() * 0.4;
-    tri([x - 0.006, 0, z], [x + 0.006, 0, z], [x, h, z], G, G, G, false);
-    tri([x, 0, z - 0.006], [x, 0, z + 0.006], [x, h, z], G, G, G, false);
-    const tilt = 0.25;
-    for (let k = 0; k < 6; k++) {
-      const p0 = (k / 6) * TAU + a;
-      const p1 = p0 + TAU / 12;
-      const p2 = p0 + TAU / 6;
-      const rim = (pp, rad, dy) => [x + Math.cos(pp) * rad * ss, h + dy, z + Math.sin(pp) * rad * ss];
-      tri([x, h - 0.01, z], rim(p1, r, tilt * r), rim(p0, r * 0.45, tilt * r * 0.4), Y, W, W);
-      tri([x, h - 0.01, z], rim(p2, r * 0.45, tilt * r * 0.4), rim(p1, r, tilt * r), Y, W, W);
+    const h = 0.1 + rr() * 0.14;
+    const ss = r * (0.75 + rr() * 0.45);
+    const lean = (rr() - 0.5) * 0.06;
+    pos.push(x - 0.007, 0, z, x + 0.007, 0, z, x + lean, h, z);
+    col.push(...G, ...G, ...G);
+    nor.push(0, 0, 1, 0, 0, 1, 0, 0, 1);
+    const tx = x + lean;
+    for (const off of [0, Math.PI / 3]) {
+      const p = [0, 1, 2].map((k) => {
+        const an = a + off + (k * TAU) / 3;
+        return [tx + Math.cos(an) * ss, h + 0.004 * k, z + Math.sin(an) * ss];
+      });
+      // wound to face up: corners going clockwise seen from above
+      pos.push(...p[0], ...p[2], ...p[1]);
+      col.push(...W, ...W, ...W);
+      nor.push(0, 1, 0, 0, 1, 0, 0, 1, 0);
     }
+    // the eye
+    const e = ss * 0.32;
+    pos.push(tx + e, h + 0.006, z, tx - e * 0.5, h + 0.006, z - e * 0.87, tx - e * 0.5, h + 0.006, z + e * 0.87);
+    col.push(...Y, ...Y, ...Y);
+    nor.push(0, 1, 0, 0, 1, 0, 0, 1, 0);
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -2597,7 +2624,7 @@ function tuftGeometry() {
   const mid = [0.4, 0.5, 0.18];
   const tip = [0.62, 0.64, 0.3];
   const r = rng(5);
-  for (let b = 0; b < 9; b++) {
+  for (let b = 0; b < 7; b++) {
     const a = r() * TAU;
     const ox = (r() - 0.5) * 0.12;
     const oz = (r() - 0.5) * 0.12;
@@ -2665,7 +2692,7 @@ function barrowsOf(K) {
   const q = new THREE.Quaternion();
   const sc = V3();
   const place = [];
-  const per = Math.round(300 * Q.flowers);
+  const per = Math.round(420 * Q.flowers);
   for (const b of BARROWS) {
     for (let k = 0; k < per; k++) {
       const a = r() * TAU;
@@ -2677,7 +2704,7 @@ function barrowsOf(K) {
       place.push([x, groundAt(x, z) - 0.015, z, r() * TAU, 0.8 + r() * 0.5]);
     }
   }
-  const fl = new THREE.InstancedMesh(flowerGeometry(3, 0.055, 3), mats.flower, place.length);
+  const fl = new THREE.InstancedMesh(flowerGeometry(5, 0.05, 3), mats.flower, place.length);
   place.forEach(([x, y, z, a, s], i) => {
     q.setFromAxisAngle(UP, a);
     m.compose(V3(x, y, z), q, sc.set(s, s, s));
@@ -2689,7 +2716,7 @@ function barrowsOf(K) {
   g.add(fl);
   // long grass on the mounds, leaning in the wind
   const tufts = [];
-  const tn = Math.round(260 * Q.tufts);
+  const tn = Math.round(200 * Q.tufts);
   for (const b of BARROWS) {
     for (let k = 0; k < tn; k++) {
       const a = r() * TAU;
@@ -2713,12 +2740,14 @@ function barrowsOf(K) {
   tm.name = 'barrow-grass';
   g.add(tm);
   // the clusters to gather: thick and bright, a little glowing, each its own
-  const cg = flowerGeometry(5, 0.085, 9);
+  const cg = flowerGeometry(7, 0.08, 9);
   const flowers = FLOWERS.map((f, i) => {
     const fg = new THREE.Group();
     fg.name = `flowers-${i}`;
+    const gy = groundAt(f.x, f.z);
+    fg.position.set(f.x, gy, f.z);
     const cr = rng(900 + i);
-    const N = 34;
+    const N = 40;
     const im = new THREE.InstancedMesh(cg, mats.flowerGlow, N);
     for (let k = 0; k < N; k++) {
       const a = cr() * TAU;
@@ -2727,7 +2756,7 @@ function barrowsOf(K) {
       const z = f.z + Math.sin(a) * d;
       const s = 0.9 + cr() * 0.5;
       q.setFromAxisAngle(UP, cr() * TAU);
-      m.compose(V3(x, groundAt(x, z) - 0.02, z), q, sc.set(s, s, s));
+      m.compose(V3(x - f.x, groundAt(x, z) - 0.02 - gy, z - f.z), q, sc.set(s, s, s));
       im.setMatrixAt(k, m);
     }
     im.instanceMatrix.needsUpdate = true;
@@ -2744,15 +2773,17 @@ function barrowsOf(K) {
 
 // A mountain: a square of ground around (px, pz) raised into a massif by
 // ridged noise under a falling-off cone, so it has spurs, gullies and
-// lesser tops round the main one; scaled so its highest point is Y, and
-// sunk below the plain at its edges. Snow on the heights and down the
-// gullies, rock between. Vertex coloured; returns where its summit is.
+// lesser tops round the main one, the main one exactly at (px, pz) (the
+// beacon's place, on its bearing from the terrace); scaled so that summit
+// is Y, and sunk below the plain at its edges. Snow on the heights and down
+// the gullies, rock between. Vertex coloured; returns where its summit is.
 function peakGeometry(px, pz, Y, seed, N = 40) {
   const n = makeNoise(seed);
   const R = Y * 1.9;
   const H = [];
   let top = 0;
   let ti = 0;
+  N += N % 2;
   for (let j = 0; j <= N; j++) {
     for (let i = 0; i <= N; i++) {
       const dx = (i / N - 0.5) * 2 * R;
@@ -2761,14 +2792,16 @@ function peakGeometry(px, pz, Y, seed, N = 40) {
       const r = Math.hypot(dx, dz) / R + warp;
       const cone = Math.pow(Math.max(0, 1 - r), 1.35);
       const m = ridge(n, dx / (R * 0.35) + 3, dz / (R * 0.35) + 7, { octaves: 5 });
-      const h = cone * (0.55 + 0.6 * m * m);
-      H.push(h);
-      if (h > top) {
-        top = h;
-        ti = H.length - 1;
-      }
+      const core = Math.pow(Math.max(0, 1 - Math.hypot(dx, dz) / (R * 0.4)), 1.6);
+      H.push(cone * (0.5 + 0.55 * m * m) + core * 0.45);
     }
   }
+  // the summit, in the middle, standing a little above all the rest
+  const mid = (N / 2) * (N + 1) + N / 2;
+  for (const h of H) top = Math.max(top, h);
+  top *= 1.05;
+  H[mid] = top;
+  ti = mid;
   const rows = [];
   const uvs = [];
   const cols = [];
@@ -2784,7 +2817,7 @@ function peakGeometry(px, pz, Y, seed, N = 40) {
       uv.push([0, 0]);
       const lump = n(i * 0.31 + 5, j * 0.31);
       const steep = Math.abs(H[k] - (H[k + 1] ?? H[k])) + Math.abs(H[k] - (H[k + N + 1] ?? H[k]));
-      const snow = smooth(0.58, 0.7, t + (lump - 0.5) * 0.18) * (1 - smooth(0.05, 0.11, steep * (N / 10)) * 0.7);
+      const snow = smooth(0.5, 0.64, t + (lump - 0.5) * 0.18) * (1 - smooth(0.06, 0.13, steep * (N / 10)) * 0.6);
       const rock = 0.2 + lump * 0.08 + (1 - t) * 0.05;
       col.push([mix(rock, 0.88, snow), mix(rock * 0.96, 0.9, snow), mix(rock * 0.9, 0.96, snow)]);
     }
@@ -2986,7 +3019,7 @@ export function createEdorasKit(renderer, { tier = 'high' } = {}) {
     beam: M({ map: tex.planks, normalMap: tex.planksN, normalScale: V2(0.7), color: 0x7a6656, roughness: 0.82 }),
     logs: M({ map: tex.log, normalMap: tex.logN, normalScale: V2(1.1), roughness: 0.92 }),
     thatch: M({ map: tex.thatch, normalMap: tex.thatchN, normalScale: V2(1.3), vertexColors: true, roughness: 0.96 }),
-    goldThatch: M({ map: tex.thatch, normalMap: tex.thatchN, normalScale: V2(1.1), color: 0xf6c450, vertexColors: true, metalness: 0.5, roughness: 0.4, envMap: tex.skyEnv, envMapIntensity: 1.15 }),
+    goldThatch: M({ map: tex.thatch, normalMap: tex.thatchN, normalScale: V2(1.1), color: 0xe6b448, vertexColors: true, metalness: 0.55, roughness: 0.55, envMap: tex.skyEnv, envMapIntensity: 1.0 }),
     gold: M({ color: 0xc8901e, metalness: 0.95, roughness: 0.32, envMap: tex.skyEnv, envMapIntensity: 1.15 }),
     stone: M({ map: tex.stone, normalMap: tex.stoneN, normalScale: V2(0.9), vertexColors: true, roughness: 0.9 }),
     paving: M({ map: tex.flags, normalMap: tex.flagsN, normalScale: V2(0.8), roughness: 0.88 }),
@@ -3030,6 +3063,7 @@ export function createEdorasKit(renderer, { tier = 'high' } = {}) {
   windGrass(mats.tuft, U, 0.5);
   for (const [k, m] of Object.entries(mats)) if (!m.name) m.name = k;
   const K = { mats, tex, renderer, Q, head: horseHeadGeo() };
+  const shiny = ['goldThatch', 'gold', 'water', 'door', 'carve'].map((k) => [mats[k], mats[k].envMapIntensity]);
   return {
     mats,
     tex,
@@ -3037,6 +3071,11 @@ export function createEdorasKit(renderer, { tier = 'high' } = {}) {
       U.uTime.value = t;
       tex.waterN.offset.set(t * 0.05, -t * 0.12);
       tex.fall.offset.y = t * 0.9;
+    },
+    // how much daylight the sky gives what shines outside (1 by day, ~0.2 at
+    // night), so the gold doesn't glow in the dark
+    daylight: (k = 1) => {
+      for (const [m, base] of shiny) m.envMapIntensity = base * k;
     },
     town: () => townOf(K),
     hall: () => hallInside(K),
