@@ -360,7 +360,7 @@ export default function GalaxySurface() {
       {mission?.kind === 'assault' && <AssaultHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onSide={(id) => view.current?.input?.('side', id)} onDeploy={(id) => view.current?.input?.('deploy', id)} onAgain={() => view.current?.input?.('restart')} onBack={goUp} />}
 
       {phase !== 'landing' && site.quests.length > 0 && !((mission?.kind === 'chase' || mission?.kind === 'assault') && chase && !chase.result) && (
-        <div className="surface-quest">
+        <div className={quest ? 'surface-quest surface-quest-on' : 'surface-quest'}>
           {quest ? (
             <>
               <p className="surface-quest-name">{quest.name}</p>

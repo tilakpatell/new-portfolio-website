@@ -10,6 +10,8 @@ import { PROPS } from '../props';
 import { siteOf } from '../sites';
 import { REACH, makeHeight } from '../terrain';
 import { createSolids } from '../walker';
+import { SYSTEMS } from '../../systems';
+import { ACHIEVEMENTS } from '../../../Achievements';
 
 describe('missions played as quests', () => {
   it('reads how a quest went from what the quest engine said', () => {
@@ -82,6 +84,73 @@ describe('missions played as quests', () => {
         const site = siteOf(m.system);
         const h = makeHeight(site.ground);
         expect(h(...m.start), `${m.id} start`).toBeGreaterThan((site.water?.level ?? -Infinity) + 0.2);
+      }
+  });
+
+  it('runs Beggar’s Canyon both ways in a landspeeder, from the canyon’s mouth', () => {
+    const m = missionOf('tatooine', 'canyonrun');
+    expect(m?.kind).toBe('quest');
+    expect(m.ride).toBe('landspeeder');
+    const site = siteOf('tatooine');
+    const canyon = site.places.find((p) => p.id === 'canyon');
+    const [down, up] = m.quest.steps;
+    expect(down.type).toBe('race');
+    expect(up.type).toBe('race');
+    expect(down.gates.length).toBeGreaterThanOrEqual(6);
+    expect(up.gates).toEqual([...down.gates].reverse());
+    // the gates run down the canyon's own pits
+    for (const g of down.gates) expect(site.ground.pits.some((q) => Math.hypot(q.at[0] - g[0], q.at[1] - g[1]) < 12), `gate ${g}`).toBe(true);
+    expect(Math.hypot(m.start[0] - down.gates[0][0], m.start[1] - down.gates[0][1])).toBeLessThan(60);
+    expect(Math.hypot(canyon.at[0] - down.gates[0][0], canyon.at[1] - down.gates[0][1])).toBeLessThan(200);
+  });
+
+  it('runs Hoth’s first transport from its ramp to the ion cannon, on foot', () => {
+    const m = missionOf('hoth', 'transport');
+    expect(m?.kind).toBe('quest');
+    expect(m.ride).toBeFalsy();
+    const site = siteOf('hoth');
+    const transport = site.things_all.find((t) => t.kind === 'gr75');
+    const cannon = site.places.find((p) => p.id === 'ioncannon');
+    const near = (a, b, r) => Math.hypot(a[0] - b[0], a[1] - b[1]) < r;
+    expect(near(m.start, transport.at, 60)).toBe(true);
+    expect(m.quest.steps[0].type).toBe('use');
+    expect(near(m.quest.steps[0].at, transport.at, 40)).toBe(true);
+    expect(m.quest.steps.some((s) => s.type === 'shoot' && s.spawn.kind === 'snowtrooper')).toBe(true);
+    const last = m.quest.steps.at(-1);
+    expect(last.type).toBe('use');
+    expect(near(last.at, cannon.at, cannon.r)).toBe(true);
+    expect(last.end.some((e) => e.signal === 'fire')).toBe(true);
+    // (and the run there is against the clock)
+    expect(m.quest.steps.find((s) => s.type === 'reach').time).toBeGreaterThan(0);
+  });
+
+  it('holds Sorgan’s village against the raiders and their walker, then tells Omera', () => {
+    const m = missionOf('sorgan', 'sanctuary');
+    expect(m?.kind).toBe('quest');
+    expect(m.ride).toBeFalsy();
+    const site = siteOf('sorgan');
+    const village = site.places.find((p) => p.id === 'village');
+    const near = (a, b, r) => Math.hypot(a[0] - b[0], a[1] - b[1]) < r;
+    expect(near(m.start, village.at, village.r)).toBe(true);
+    const [raiders, walker, talk] = m.quest.steps;
+    expect(raiders.type).toBe('shoot');
+    expect(raiders.spawn.n).toBe(6);
+    expect(near(raiders.spawn.at, village.at, 120)).toBe(true);
+    expect(walker.spawn.kind).toBe('atst');
+    expect(walker.time).toBeGreaterThan(0);
+    expect(talk.type).toBe('talk');
+    expect(site.life.some((a) => a.id === talk.actor)).toBe(true);
+  });
+
+  it('gives every mission a live link from its system’s briefing', () => {
+    for (const [system, list] of Object.entries(MISSIONS))
+      for (const m of Object.values(list)) {
+        const sys = SYSTEMS.find((s) => s.id === system);
+        expect(sys.game.status, `${system} ${m.id}`).toBe('live');
+        // (the briefing's own game, or another mission it carries beside it: game.also)
+        const links = [sys.game.to, ...(sys.game.also ?? []).map((a) => a.to)];
+        expect(links, `${system} ${m.id}`).toContain(`/galaxy/${system}/surface?mission=${m.id}`);
+        if (m.achievement) expect(ACHIEVEMENTS[m.achievement], `${m.id} achievement`).toBeTruthy();
       }
   });
 

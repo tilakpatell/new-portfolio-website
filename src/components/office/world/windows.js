@@ -6,10 +6,12 @@
 // grass verge, the park's low buildings and a tree line, the hills round
 // the valley and an overcast sky. Bright enough that the bloom just touches it.
 //
-// The vertical blinds are real vanes (one instanced draw for every window),
-// open, half open or drawn back, and the glass fronts of Michael's office,
-// the conference room and Darryl's have horizontal slats tilted open, the
-// conference room's raised to sill height and a half.
+// The blinds are white one-inch mini-blinds, as on the set (photos from the
+// set's tours show them in every outside window, never vertical vanes): real
+// slats, one instanced draw for every window and glass front, open, half
+// raised or shut, and the glass fronts of Michael's office, the conference
+// room and Darryl's tilted open, the conference room's raised to sill
+// height and a half.
 //
 // buildWindows({ windows, panes, T }) → { group, dispose() }
 //   windows  [{ a: {x, z}, b: {x, z}, room: +1 | -1 }] on the outside walls
@@ -300,7 +302,7 @@ export function buildWindows({ windows, panes, T }) {
     return o;
   };
   // how the blinds hang in each window, in turn
-  const MODES = ['open', 'half', 'open', 'drawn', 'open', 'half', 'open', 'drawn', 'half', 'open'];
+  const MODES = ['open', 'half', 'open', 'shut', 'open', 'half', 'open', 'shut', 'half', 'open'];
   windows.forEach(({ a, b, room }, wi) => {
     const vertical = Math.abs(a.x - b.x) < 1e-6;
     const len = vertical ? Math.abs(b.z - a.z) : Math.abs(b.x - a.x);
@@ -332,17 +334,17 @@ export function buildWindows({ windows, panes, T }) {
       add(new THREE.BoxGeometry(0.05, VIEW_H, 0.045), frameMat, ...at(along, face + 0.022, VIEW_Y), rotY).castShadow = false;
     }
     add(new THREE.BoxGeometry(len, 0.03, 0.04), frameMat, ...at(0, face + 0.02, VIEW_Y - 0.12), rotY).castShadow = false; // the transom
-    // the blinds: a headrail, and 9 cm vanes 8 cm apart
+    // the blinds: a headrail, and 2.5 cm slats 2.2 cm apart, tilted open,
+    // raised half way, or let down and shut; raised ones stacked under the rail
     const mode = MODES[wi % MODES.length];
-    add(new THREE.BoxGeometry(len + 0.04, 0.05, 0.07), sillMat, ...at(0, face + 0.11, 2.31), rotY).castShadow = false;
-    const n = Math.floor(len / 0.08);
-    const turn = mode === 'open' ? 1.3 : mode === 'half' ? 0.95 : 1.48;
-    for (let i = 0; i < n; i++) {
-      // drawn back: bunched up at one end
-      const along = mode === 'drawn' ? len / 2 - 0.06 - i * 0.012 * (0.5 + (i % 3) * 0.1) : -len / 2 + 0.04 + i * 0.08;
-      const sway = Math.sin(i * 1.7 + wi) * 0.04;
-      vanes.push({ p: at(along, face + 0.11, 1.52), rotY: rotY + turn + sway });
-    }
+    add(new THREE.BoxGeometry(len + 0.04, 0.05, 0.07), sillMat, ...at(0, face + 0.07, 2.31), rotY).castShadow = false;
+    const top = 2.27;
+    const bottom = mode === 'half' ? VIEW_Y + 0.05 : VIEW_Y - VIEW_H / 2 + 0.03;
+    const tilt = mode === 'open' ? 1.05 : mode === 'half' ? 0.7 : 0.12;
+    const rot = vertical ? Math.PI / 2 : 0;
+    for (let y = top - 0.03; y > bottom; y -= 0.022) vanes.push({ p: at(0, face + 0.07, y), len: len - 0.04, rotY: rot, tilt: tilt + Math.sin(y * 31 + wi) * 0.03 });
+    if (mode === 'half') for (let k = 0; k < 14; k++) vanes.push({ p: at(0, face + 0.07, top - 0.02 - k * 0.004), len: len - 0.04, rotY: rot, tilt: 0 });
+    add(new THREE.BoxGeometry(len - 0.04, 0.012, 0.03), sillMat, ...at(0, face + 0.07, bottom - 0.01), rotY).castShadow = false; // the bottom rail
   });
   // every pane of glass, one draw
   if (glassParts.length) {
@@ -391,13 +393,13 @@ export function buildWindows({ windows, panes, T }) {
   const m4 = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const e = new THREE.Euler();
-  const one = new THREE.Vector3(1, 1, 1);
   const v = new THREE.Vector3();
   if (vanes.length) {
-    const geo = keep(new THREE.BoxGeometry(0.089, 1.5, 0.0025));
+    const geo = keep(new THREE.BoxGeometry(1, 0.0022, 0.025));
     const inst = new THREE.InstancedMesh(geo, vaneMat, vanes.length);
-    vanes.forEach((vn, i) => inst.setMatrixAt(i, m4.compose(v.set(...vn.p), q.setFromEuler(e.set(0, vn.rotY, 0)), one)));
-    inst.castShadow = true;
+    const s = new THREE.Vector3();
+    vanes.forEach((vn, i) => inst.setMatrixAt(i, m4.compose(v.set(...vn.p), q.setFromEuler(e.set(vn.tilt, vn.rotY, 0, 'YXZ')), s.set(vn.len, 1, 1))));
+    inst.castShadow = false; // (a shadow of a thousand slats: the light's from above, through the ceiling)
     inst.receiveShadow = true;
     group.add(inst);
   }
@@ -406,7 +408,7 @@ export function buildWindows({ windows, panes, T }) {
     const inst = new THREE.InstancedMesh(geo, vaneMat, slats.length);
     const s = new THREE.Vector3();
     slats.forEach((sl, i) => inst.setMatrixAt(i, m4.compose(v.set(sl.x, sl.y, sl.z), q.setFromEuler(e.set(sl.tilt, sl.rotY, 0, 'YXZ')), s.set(sl.len, 1, 1))));
-    inst.castShadow = true;
+    inst.castShadow = false;
     inst.receiveShadow = true;
     group.add(inst);
   }

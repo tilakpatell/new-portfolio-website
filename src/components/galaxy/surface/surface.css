@@ -503,6 +503,25 @@
 .chase-bunker[data-close] span { background: #ff6a4a; animation: chase-warn 0.5s ease-in-out infinite alternate; }
 @keyframes chase-warn { to { opacity: 0.5; } }
 .chase-bunker-label { margin: 0.35rem 0 0; font-size: 0.7rem; color: rgba(242, 239, 232, 0.7); }
+/* a quest mission: the clock up top, and the banner it opens on */
+.chase-hud-quest { min-width: 240px; top: calc(var(--nav-h, 64px) + 124px); } /* (under where you are, which a mission keeps) */
+.surface-quest-on { top: calc(var(--nav-h, 64px) + 92px); } /* (a tracked quest's lines, clear of the corner's credits) */
+.chase-par { font-size: 0.74rem; color: rgba(242, 239, 232, 0.72); }
+.chase-start {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 38%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  animation: chase-start 4s ease-out both;
+}
+.chase-start-kicker { margin: 0; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5em; text-transform: uppercase; color: var(--accent); text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7); }
+.chase-start-title { margin: 0.3rem 0 0; font-size: clamp(1.8rem, 5vw, 3rem); font-weight: 650; letter-spacing: 0.03em; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.65); }
+.chase-start-text { margin: 0.5rem 0 0; font-size: 0.95rem; color: rgba(242, 239, 232, 0.85); text-shadow: 0 1px 12px rgba(0, 0, 0, 0.7); }
+@keyframes chase-start { from { opacity: 0; transform: translate(-50%, -40%); } 12% { opacity: 1; transform: translate(-50%, -50%); } 78% { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .chase-start { animation: none; } }
 .chase-result {
   position: absolute;
   z-index: 3;

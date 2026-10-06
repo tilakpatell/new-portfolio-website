@@ -25,14 +25,16 @@ import { amblePaths } from './paths';
 import { CEILING, CAST, COLLIDERS, DWIGHT_BACK, ERIN_BREAK, FIRE_BIN, PANIC, WALLS, inWarehouse, seatOf, spot } from './layout';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const SHADOW_R = 12; // half the shadows' box (m)
+const NEAR_SHADOW = 5; // the seated cast shadows within this of the camera's focus (m)
 
 // ── the camera keeps inside the walls and under the ceiling ──
 const BLOCKERS = COLLIDERS.filter((c) => c.top).map((c) => ({ ...c }));
 function boxDist(b, x, z) {
   return Math.max(Math.abs(x - b.x) - b.w / 2, Math.abs(z - b.z) - b.d / 2);
 }
-function segHits(ax, az, bx, bz) {
-  for (const [x0, z0, x1, z1] of WALLS) {
+function segHits(walls, ax, az, bx, bz) {
+  for (const [x0, z0, x1, z1] of walls) {
     const d1 = (bx - ax) * (z0 - az) - (bz - az) * (x0 - ax);
     const d2 = (bx - ax) * (z1 - az) - (bz - az) * (x1 - ax);
     const d3 = (x1 - x0) * (az - z0) - (z1 - z0) * (ax - x0);
@@ -41,8 +43,8 @@ function segHits(ax, az, bx, bz) {
   }
   return false;
 }
-function nearWall(x, z, pad) {
-  for (const [x0, z0, x1, z1] of WALLS) {
+function nearWall(walls, x, z, pad) {
+  for (const [x0, z0, x1, z1] of walls) {
     const dx = x1 - x0;
     const dz = z1 - z0;
     const t = Math.max(0, Math.min(1, ((x - x0) * dx + (z - z0) * dz) / (dx * dx + dz * dz || 1)));
@@ -50,9 +52,26 @@ function nearWall(x, z, pad) {
   }
   return false;
 }
+// the walls and the furniture near a line from `from` to `to` (only those can stop it)
+const nearWalls = [];
+const nearBlockers = [];
+function gather(from, to, pad) {
+  const x0 = Math.min(from.x, to.x) - pad;
+  const x1 = Math.max(from.x, to.x) + pad;
+  const z0 = Math.min(from.z, to.z) - pad;
+  const z1 = Math.max(from.z, to.z) + pad;
+  nearWalls.length = 0;
+  nearBlockers.length = 0;
+  for (const w of WALLS) if (Math.max(w[0], w[2]) >= x0 && Math.min(w[0], w[2]) <= x1 && Math.max(w[1], w[3]) >= z0 && Math.min(w[1], w[3]) <= z1) nearWalls.push(w);
+  for (const c of BLOCKERS) {
+    const r = c.kind === 'circle' ? c.r : Math.hypot(c.w, c.d) / 2;
+    if (c.x + r >= x0 && c.x - r <= x1 && c.z + r >= z0 && c.z - r <= z1) nearBlockers.push(c);
+  }
+}
 // how far from `from` to `to` the camera can go, as a fraction
 function clearance(from, to) {
   const N = 14;
+  gather(from, to, 0.5);
   let px = from.x;
   let pz = from.z;
   for (let i = 1; i <= N; i++) {
@@ -60,8 +79,8 @@ function clearance(from, to) {
     const x = from.x + (to.x - from.x) * k;
     const y = from.y + (to.y - from.y) * k;
     const z = from.z + (to.z - from.z) * k;
-    let bad = y > CEILING - 0.18 || segHits(px, pz, x, z) || nearWall(x, z, 0.22);
-    if (!bad) for (const c of BLOCKERS) if (y < c.top + 0.1 && (c.kind === 'circle' ? Math.hypot(x - c.x, z - c.z) < c.r + 0.18 : boxDist(c, x, z) < 0.18)) bad = true;
+    let bad = y > CEILING - 0.18 || segHits(nearWalls, px, pz, x, z) || nearWall(nearWalls, x, z, 0.22);
+    if (!bad) for (const c of nearBlockers) if (y < c.top + 0.1 && (c.kind === 'circle' ? Math.hypot(x - c.x, z - c.z) < c.r + 0.18 : boxDist(c, x, z) < 0.18)) bad = true;
     if (bad) return Math.max(0.12, (i - 1) / N);
     px = x;
     pz = z;
@@ -124,16 +143,35 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   if (tier === 'high') {
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
+    // (a box round what the camera sees, following it: see `follow` below)
     const c = key.shadow.camera;
-    c.left = -18;
-    c.right = 18;
-    c.top = 12;
-    c.bottom = -12;
+    c.left = -SHADOW_R;
+    c.right = SHADOW_R;
+    c.top = SHADOW_R;
+    c.bottom = -SHADOW_R;
     c.near = 1;
     c.far = 40;
     key.shadow.bias = -0.0005;
     key.shadow.normalBias = 0.03;
   }
+  // The shadows' box follows the camera: 24 m across, centred 8 m ahead of
+  // it, its centre moved only in whole texels of the shadow map (so the
+  // edges don't crawl as you walk). A smaller box than the whole floor: fewer
+  // things drawn into it each frame, and sharper shadows.
+  const KEY_OFF = key.position.clone();
+  const kz = KEY_OFF.clone().normalize();
+  const kx = new THREE.Vector3(0, 1, 0).cross(kz).normalize();
+  const ky = kz.clone().cross(kx);
+  const texel = (2 * SHADOW_R) / 2048;
+  const centre = new THREE.Vector3();
+  const follow = (cx, cz) => {
+    centre.set(cx, 0, cz);
+    const u = Math.round(centre.dot(kx) / texel) * texel - centre.dot(kx);
+    const v = Math.round(centre.dot(ky) / texel) * texel - centre.dot(ky);
+    centre.addScaledVector(kx, u).addScaledVector(ky, v);
+    key.target.position.copy(centre);
+    key.position.copy(centre).add(KEY_OFF);
+  };
   const day = new THREE.DirectionalLight(0xfff4e2, 0.35);
   day.position.set(-6, 5, -10);
   scene.add(hemi, key, key.target, day);
@@ -164,16 +202,22 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   const SIT_TYPING = new Set(['dwight', 'oscar', 'angela', 'kelly', 'ryan', 'toby', 'andy', 'erin']);
   const sitDown = (id) => {
     const seat = set.seats.get(id);
-    const p = cast?.person(id, { pose: 'sit', typing: SIT_TYPING.has(id), idle: !SIT_TYPING.has(id), shadows: tier === 'high', keys: id === 'erin' ? 0.4 : 0.49 });
+    const p = cast?.person(id, { pose: 'sit', typing: SIT_TYPING.has(id), idle: !SIT_TYPING.has(id), shadows: tier === 'high', keys: id === 'erin' ? 0.4 : 0.49, cull: true });
     if (!seat || !p) return;
     p.group.position.copy(seat.chair.position);
     p.group.rotation.y = seat.chair.rotation.y;
     seat.group.add(p.group);
+    // where they are, for leaving them be while they're out of view, and
+    // their meshes, for their shadows
+    p.group.updateWorldMatrix(true, false);
+    p.seen = new THREE.Sphere(p.group.getWorldPosition(V(0, 0, 0)).add(V(0, 0.8, 0)), 1.2);
+    p.casters = [];
+    p.group.traverse((o) => o.isMesh && o.castShadow && p.casters.push(o));
     seated.set(id, p);
   };
   const stand = (id) => {
     if (standing.has(id)) return standing.get(id);
-    const p = cast?.person(id, { pose: 'stand', idle: true, shadows: tier === 'high' });
+    const p = cast?.person(id, { pose: 'stand', idle: true, shadows: tier === 'high', cull: true });
     if (!p) return null;
     p.group.visible = false;
     scene.add(p.group);
@@ -186,7 +230,7 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     cast = c;
     if (gone) return;
     if (id === 'jim') {
-      jim = c.person('jim', { pose: 'stand', idle: true, shadows: tier === 'high' });
+      jim = c.person('jim', { pose: 'stand', idle: true, shadows: tier === 'high', cull: true });
       if (jim) scene.add(jim.group);
     } else sitDown(id);
   });
@@ -205,7 +249,7 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   // them, and they can't touch your jobs, nor you theirs.
   const ghosts = createGhosts({
     make: () => {
-      const p = cast?.person('jim', { pose: 'stand', shadows: false });
+      const p = cast?.person('jim', { pose: 'stand', shadows: false, cull: true });
       const group = new THREE.Group();
       if (!p) {
         // (Jim's model not to hand: a plain shape of him)
@@ -254,7 +298,8 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     return { g, gem, ring };
   });
 
-  const A = { t: 0, cam: { at: V(0, 2, 6), look: V(0, 1.4, 0) }, mode: null, shake: 0, suggest: null, nearAt: -1, near: [], fire: 0, smokeAt: 0 };
+  const A = { t: 0, cam: { at: V(0, 2, 6), look: V(0, 1.4, 0) }, mode: null, shake: 0, suggest: null, nearAt: -1, near: [], fire: 0, smokeAt: 0, castAt: -1, focus: V(0, 0, 0), view: new THREE.Frustum() };
+  const viewMat = new THREE.Matrix4();
   const tmp = V(0, 0, 0);
   const tmp2 = V(0, 0, 0);
   const look = V(0, 0, 0);
@@ -417,10 +462,19 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
       }
     // the seated: in their chairs unless they're up; heads turning to Jim
     // when he's close
+    // (out of view, as of the last frame, they're left as they were; only
+    // those near what the camera's on cast shadows)
     head.set(h.x, 1.55, h.z);
+    const shadowsNow = tier === 'high' && t - A.castAt > 0.4;
+    if (shadowsNow) A.castAt = t;
     for (const [id, p] of seated) {
       p.group.visible = !away.has(id);
       if (!p.group.visible) continue;
+      if (shadowsNow) {
+        const near = Math.hypot(p.seen.center.x - A.focus.x, p.seen.center.z - A.focus.z) < NEAR_SHADOW;
+        for (const m of p.casters) m.castShadow = near;
+      }
+      if (!A.view.intersectsSphere(p.seen) && s.wave !== id) continue;
       const c = CAST.find((x) => x.id === id);
       const close = c && Math.hypot(c.x - h.x, c.z - h.z) < 3.2;
       p.look(close || s.talkTo === id ? head : null);
@@ -538,6 +592,20 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
       A.shake = Math.max(0, A.shake - dt * 0.8);
     }
     camera.lookAt(A.cam.look);
+    // what the camera sees, for the next frame's people; the shadows' box
+    // ahead of it (upstairs: downstairs the light has no shadows to give)
+    camera.updateMatrixWorld();
+    A.view.setFromProjectionMatrix(viewMat.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+    {
+      const fx = A.cam.look.x - camera.position.x;
+      const fz = A.cam.look.z - camera.position.z;
+      const fl = Math.hypot(fx, fz) || 1;
+      A.focus.set(camera.position.x + (fx / fl) * 3.4, 0, camera.position.z + (fz / fl) * 3.4);
+      if (tier === 'high') {
+        if (camera.position.x < 25) follow(camera.position.x + (fx / fl) * 8, camera.position.z + (fz / fl) * 8);
+        else follow(0, 0); // (kept over the office, clear of the warehouse's roof)
+      }
+    }
     // upstairs or down: the office and the warehouse with its lot can't see
     // each other, so only the one the camera's on is drawn (and the lot's
     // horizon, which would otherwise run through the office, stays outside)

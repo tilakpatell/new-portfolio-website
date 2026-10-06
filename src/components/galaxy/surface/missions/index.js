@@ -219,6 +219,178 @@ export const MISSIONS = {
     },
   },
 };
+
+// Beggar's Canyon's gates, the way the Tatooine site lays its pits (sites/desert.js's CANYON)
+const CANYON = [[470, 112], [488, 62], [482, 18], [500, -26], [492, -70], [472, -112], [482, -152], [462, -198]];
+const hostile = (range, every, damage, extra = {}) => ({ range, every, damage, spread: 0.06, ...extra });
+
+MISSIONS.tatooine = {
+  canyonrun: {
+    id: 'canyonrun',
+    system: 'tatooine',
+    kind: 'quest',
+    name: 'The Canyon Run',
+    ride: 'landspeeder',
+    start: [452, 158],
+    yaw: 2.77, // (toward the canyon's mouth)
+    stars: [62, 84],
+    achievement: 'canyonmission',
+    ends: {
+      won: 'Both runs, clean',
+      lost: 'The canyon wins',
+      why: { time: 'Too slow through the gates: Biggs would have been home by now.', down: 'The speeder’s in pieces at the foot of the Stone Needle.' },
+    },
+    lines: {
+      start: {
+        xwing: [['luke', 'Down the canyon, round the Needle, and straight back up. Biggs did it in thirty.'], ['r2', '(An alarmed whistle.)']],
+        falcon: [['han', 'A canyon, a speeder and a clock. Fine. Don’t scratch it.'], ['chewie', '(A dubious growl.)']],
+        cruiser: [['rick', 'Teenagers racing through a canyon, Morty. That’s how your grandma and I met.'], ['morty', 'Th-that’s not true, Rick.']],
+        rv: [['jesse', 'Yo, this is like street racing but with cliffs.'], ['walt', 'Then don’t hit the cliffs, Jesse.']],
+      },
+      won: {
+        xwing: [['luke', 'Under thirty, both ways! Wait till Biggs hears.'], ['r2', '(A triumphant trill.)']],
+        falcon: [['han', 'Not bad, kid. Not bad at all.'], ['chewie', '(A pleased roar.)']],
+        cruiser: [['rick', 'Clean run, Morty. Nobody died. Low bar, but we cleared it.']],
+        rv: [['jesse', 'Yeah! Science!'], ['walt', 'That was… acceptable.']],
+      },
+      lost: {
+        xwing: [['luke', 'Too slow. Camie’s never going to let me hear the end of this.']],
+        falcon: [['han', 'Again. And this time, lean into it.']],
+        cruiser: [['morty', 'We lost, Rick.'], ['rick', 'We got data, Morty. Go again.']],
+        rv: [['walt', 'Again. From the top.']],
+      },
+    },
+    quest: {
+      id: 'mission-canyonrun',
+      name: 'The Canyon Run',
+      steps: [
+        { type: 'race', ride: 'landspeeder', gates: CANYON, r: 11, time: 34, text: 'Run Beggar’s Canyon, north to south', lines: [[null, 'Through every gate, round the Stone Needle, out the far end. Go!']] },
+        { type: 'race', ride: 'landspeeder', gates: [...CANYON].reverse(), r: 11, time: 34, text: 'Turn round, and run it back up', lines: [[null, 'Now back the way you came. Faster.']] },
+      ],
+    },
+  },
+};
+
+MISSIONS.hoth = {
+  transport: {
+    id: 'transport',
+    system: 'hoth',
+    kind: 'quest',
+    name: 'The First Transport',
+    ride: null, // (on foot, from the transport to the ion cannon)
+    start: [-238, 36],
+    yaw: -0.85, // (toward the cargo by the transport's ramp)
+    stars: [140, 190],
+    achievement: 'firsttransport',
+    ends: {
+      won: 'The first transport is away',
+      lost: 'The transport didn’t make it',
+      why: { time: 'The Star Destroyer was waiting when the transport came up: the ion cannon fired too late.', down: 'The snowtroopers got to you first, and the cannon never fired.' },
+    },
+    lines: {
+      start: {
+        xwing: [['luke', 'The Empire’s here. Get that transport loaded and get to the ion cannon, fast!'], ['r2', '(An urgent, rising whistle.)']],
+        falcon: [['han', 'They’re coming in. Load it, run for the cannon, don’t stop.'], ['chewie', '(A roar, already lifting a crate.)']],
+        cruiser: [['rick', 'Big ship, big gun, one guy on foot. Classic logistics, Morty.'], ['morty', 'Why am I always the one running, Rick?']],
+        rv: [['walt', 'Crates first. Then the cannon. Move.'], ['jesse', 'Yo, it is way too cold for this.']],
+      },
+      won: {
+        xwing: [['luke', 'The first transport is away!'], ['r2', '(A jubilant warble.)']],
+        falcon: [['han', 'One down. Plenty more to go.'], ['chewie', '(A triumphant roar.)']],
+        cruiser: [['rick', 'Transport’s out, Morty. Round of applause for the guy with the frozen legs.']],
+        rv: [['walt', 'Clean. Now let’s get warm.'], ['jesse', 'Yeah, science!']],
+      },
+      lost: {
+        xwing: [['luke', 'We were too slow. Again.']],
+        falcon: [['han', 'Great. Now the whole fleet knows. Go again.']],
+        cruiser: [['morty', 'They got the transport, Rick.'], ['rick', 'Then we go again, Morty, and this time run.']],
+        rv: [['walt', 'Again. Faster.']],
+      },
+    },
+    quest: {
+      id: 'mission-transport',
+      name: 'The First Transport',
+      steps: [
+        { type: 'use', id: 'cargo', at: [-252, 52], r: 3.2, prompt: 'Load the last crates', text: 'Get the last of the cargo aboard' },
+        {
+          type: 'shoot',
+          tag: 'snowtroops',
+          n: 4,
+          text: 'Hold off the snowtroopers coming over the ridge',
+          lines: [['Loadmaster', 'Snowtroopers! Keep them off the ramp till she’s up!']],
+          spawn: { kind: 'snowtrooper', n: 4, at: [-190, 110], spread: 12, roam: 5, hp: 2, tag: 'snowtroops', hostile: hostile(44, 2.2, 8, { chase: 2.2, delay: 1.5 }) },
+        },
+        { type: 'reach', at: [-30, 316], r: 7, time: 110, text: 'Run for the ion cannon', lines: [['Loadmaster', 'She’s lifting! Get to the ion cannon, quick!']] },
+        { type: 'use', id: 'fire', at: [-30, 317], r: 4, prompt: 'Fire the ion cannon', text: 'Fire on the Star Destroyer', end: [{ signal: 'fire' }, { shake: 0.6 }] },
+      ],
+    },
+  },
+};
+
+MISSIONS.sorgan = {
+  sanctuary: {
+    id: 'sanctuary',
+    system: 'sorgan',
+    kind: 'quest',
+    name: 'Sanctuary',
+    ride: null, // (on foot, at the village)
+    start: [168, 96],
+    yaw: -2.1, // (toward the trees the raiders come out of)
+    stars: [95, 140],
+    achievement: 'sanctuary',
+    ends: {
+      won: 'The village is safe',
+      lost: 'The raiders took the harvest',
+      why: { time: 'Too slow: the AT-ST reached the huts.', down: 'The walker’s cannon found you in the open.' },
+    },
+    lines: {
+      start: {
+        xwing: [['luke', 'Raiders in the trees, and a walker behind them. Hold the village.'], ['r2', '(A determined toot.)']],
+        falcon: [['han', 'Here they come. Keep them off the huts, then we deal with the big one.'], ['chewie', '(A battle roar.)']],
+        cruiser: [['rick', 'Space farmers, space raiders, space walker. Hold the line, Morty.'], ['morty', 'Why do I have to hold the line?']],
+        rv: [['walt', 'They come out of the trees. We meet them there.'], ['jesse', 'Yo, there’s a walker. A WALKER, Mr. White.']],
+      },
+      won: {
+        xwing: [['luke', 'It’s down. The village is safe.'], ['r2', '(A relieved whistle.)']],
+        falcon: [['han', 'That’s the last of them. Nice shooting.'], ['chewie', '(A pleased rumble.)']],
+        cruiser: [['rick', 'Walker down, Morty. The krill are safe. Whatever krill are.']],
+        rv: [['walt', 'Clean. The village stands.'], ['jesse', 'We saved the shrimp, yo!']],
+      },
+      lost: {
+        xwing: [['luke', 'They got through. We go again.']],
+        falcon: [['han', 'Walker got to the huts. Again, and this time shoot the cockpit.']],
+        cruiser: [['morty', 'It stepped on a hut, Rick!'], ['rick', 'Huts can be rebuilt, Morty. Go again.']],
+        rv: [['walt', 'Again. Aim for the cockpit.']],
+      },
+    },
+    quest: {
+      id: 'mission-sanctuary',
+      name: 'Sanctuary',
+      steps: [
+        {
+          type: 'shoot',
+          tag: 'raidparty',
+          n: 6,
+          text: 'Drive off the Klatooinian raiders',
+          lines: [['Omera', 'They’re here! Everyone, into the huts!']],
+          spawn: { kind: 'aqualish', n: 6, at: [112, 66], spread: 14, roam: 6, hp: 2, tag: 'raidparty', hostile: hostile(42, 2.4, 8, { chase: 2.4, delay: 1 }) },
+        },
+        {
+          type: 'shoot',
+          tag: 'raidwalker',
+          n: 1,
+          time: 120,
+          text: 'Bring down the AT-ST before it reaches the huts',
+          lines: [[null, '(The trees split. An AT-ST steps out of them.)']],
+          spawn: { kind: 'atst', at: [96, 48], hp: 16, roam: 10, speed: 1.2, tag: 'raidwalker', hostile: hostile(60, 2, 12) },
+        },
+        { type: 'talk', actor: 'omera', text: 'Tell Omera the village is safe' },
+      ],
+    },
+  },
+};
+
+// (the galactic assaults, a map a world, in with the rest)
 for (const [system, m] of Object.entries(ASSAULTS)) (MISSIONS[system] ??= {})[m.id] = m;
 
 export const missionOf = (system, id) => MISSIONS[system]?.[id] ?? null;
