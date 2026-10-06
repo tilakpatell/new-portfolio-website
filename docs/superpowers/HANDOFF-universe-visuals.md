@@ -76,6 +76,12 @@ Scorecard (the spec’s “Where things stand” table is the before): fill in t
   - *Cybertron’s energon takes half the key’s colour*, normalised: a full multiply turned its blue to teal under the home sun.
   - *The Office’s `-hq` relief was already there*; it becomes a `MeshPhysicalMaterial` (sheen 0.6 in `#f3ecd8`, sheen roughness 0.8, roughness 1 over its map).
   - *`VARIANTS` is a function*, `variants(planets)`, the set of program variants the planets’ own hooks make, tested in `planets.test.js` (`lib/three/precompile.test.js` mustn’t import a component): 14 with every map loaded, pinned at 24 or fewer.
+- **Checkpoint 5:**
+  - *The profile is applied where the model is mounted*, which already walked its materials, not in `dress`: the values change no shader. `tune` takes `metalness: { metal, paint }` now; the ships name their metal by a list of their own (trim, engines, guns, pipes), since `tune`’s default counts `hull` and `plate` as metal and on a ship they’re painted.
+  - *The Falcon’s hull was clay*: its own finish (`FINISH`) had roughness 1. It’s the profile’s paint now (0.72, a tenth metallic), and the X-wing’s too.
+  - *No `anisotropy = 8` was left* in `hulls.js` or `trafficKit.js`: they already sharpen through `lib/three/textures`.
+  - *The rim is 0.5, not 0.35*: against the sun (falcon-sun, the station) 0.35 hardly showed on the hull’s dark side.
+  - *`buildShip`’s `engines` stay what they were* (where the plumes leave, which `modules.js` reads): the scene adds the hero ship to the shared engines with `HERO_ENGINES` (BUILT units), and the traffic’s and hunters’ are `ENGINES` as shares of each model’s box, since their models come in different units. Every engine burns 0.35 of its colour idle to 1.5 boosting, so a parked ship isn’t a beacon; the Falcon’s three are 0.035 across. A balloon, a Meeseeks and Birdperson have none.
 
 ## Checking it
 
