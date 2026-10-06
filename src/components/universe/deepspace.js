@@ -61,6 +61,7 @@ import { PULSAR_FRAG } from './supernova';
 import { parts } from './kit';
 import { buildTraffic } from './trafficModels';
 import { sharpen } from '../../lib/three/textures';
+import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 
 const { PI, sin, cos, hypot, max, min } = Math;
 const TAU = PI * 2;
@@ -1789,13 +1790,9 @@ export function buildDeepSpace({ small = false } = {}) {
       [7.4, -4.5],
     ].map(([x, y]) => new THREE.Vector2(x * k, y * k));
     add(new THREE.LatheGeometry(under, seg(40, 24)), 0);
-    // the arms, out to four smaller domes: one higher than the rest, as the show has it
-    const ARMS = [
-      { a: 0.25, len: 22, R: 5.6, H: 2.6, rise: -1.6 },
-      { a: 0.25 + PI / 2 + 0.15, len: 19, R: 4.4, H: 2.1, rise: 6.5 },
-      { a: 0.25 + PI + 0.05, len: 23, R: 6, H: 2.8, rise: -2.4 },
-      { a: 0.25 + PI * 1.5 - 0.1, len: 18, R: 4.2, H: 2, rise: 1.2 },
-    ];
+    // the arms, out to four smaller domes, level and a quarter turn apart,
+    // as the model has them (deep.js's CITADEL_PARTS)
+    const ARMS = [0, 1, 2, 3].map((i) => ({ a: 0.25 + (i * PI) / 2, len: 20.9, R: 3.2, H: 1.5, rise: 0.25 }));
     for (const arm of ARMS) {
       const dir = new THREE.Vector3(Math.cos(arm.a), 0, Math.sin(arm.a));
       const from = dir.clone().multiplyScalar(11.4).setY(-0.6);
@@ -1832,12 +1829,12 @@ export function buildDeepSpace({ small = false } = {}) {
     // the towers hanging under it, a cluster of tall tapered blades with cyan
     // strips down them, and the crystal hanging lowest
     const BLADES = [
-      [0, 0, 15, 1.5],
-      [2.6, 0.4, 12, 1.2],
-      [-2.2, 1.6, 13.5, 1.15],
-      [0.6, -2.6, 11, 1.1],
-      [-1.6, -1.9, 9.5, 1],
-      [1.9, 2.3, 10, 0.95],
+      [0, 0, 7.5, 1.5],
+      [2.6, 0.4, 6, 1.2],
+      [-2.2, 1.6, 6.8, 1.15],
+      [0.6, -2.6, 5.5, 1.1],
+      [-1.6, -1.9, 4.8, 1],
+      [1.9, 2.3, 5, 0.95],
     ];
     for (const [bx, bz, h, wd] of BLADES) {
       const geo = new THREE.CylinderGeometry(wd * k, wd * 0.35 * k, h * k, 5);
@@ -1848,7 +1845,7 @@ export function buildDeepSpace({ small = false } = {}) {
       const sz = bz + Math.sin(a) * wd * 0.72;
       add(new THREE.BoxGeometry(0.16 * k, h * 0.82 * k, 0.16 * k).translate(sx * k, (-6 - h * 0.45) * k, sz * k), 3);
     }
-    add(new THREE.ConeGeometry(0.75 * k, 13 * k, 6).rotateX(PI).translate(0.3 * k, -27.5 * k, 0.2 * k), 6);
+    add(new THREE.ConeGeometry(0.75 * k, 3.5 * k, 6).rotateX(PI).translate(0, -13.2 * k, 0), 6);
     // masts with beacons round the great dome's rim
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * TAU + 0.6;
@@ -1860,10 +1857,39 @@ export function buildDeepSpace({ small = false } = {}) {
     }
     const geo = mergeGeometries(pieces);
     for (const p of pieces) p.dispose();
-    mesh(geo, shader(CITADEL_VERT, CITADEL_FRAG, { uLight: homeW, uLightColor: { value: HOME_LIGHT }, uK: { value: k } }), g);
+    const hull = mesh(geo, shader(CITADEL_VERT, CITADEL_FRAG, { uLight: homeW, uLightColor: { value: HOME_LIGHT }, uK: { value: k } }), g);
     const glassGeo = mergeGeometries(glass.map((d) => d.toNonIndexed()));
     for (const d of glass) d.dispose();
-    mesh(glassGeo, shader(CITADEL_VERT, CITADEL_GLASS_FRAG, { uLight: homeW, uLightColor: { value: HOME_LIGHT }, uK: { value: k } }, { transparent: true, depthWrite: false, side: THREE.DoubleSide }), g, 1);
+    const dome = mesh(glassGeo, shader(CITADEL_VERT, CITADEL_GLASS_FRAG, { uLight: homeW, uLightColor: { value: HOME_LIGHT }, uK: { value: k } }, { transparent: true, depthWrite: false, side: THREE.DoubleSide }), g, 1);
+    // The Citadel as modelled for the site (Meshy, Phase 3 of the Rick and
+    // Morty multiverse: the show's brass disc and teal dome, four arms out
+    // to glass saucers, the crystal hanging under it), the built one above
+    // standing in until it's loaded: as wide as the built one's dome across
+    // its middle, turned so its arms lie along deep.js's CITADEL_PARTS (which
+    // the siege and the ship's collisions use), its disc where the dome's is.
+    loadGLTF('/models/c137/rm/citadel-exterior.glb')
+      .then((gltf) => {
+        if (!gltf?.scene || !g.parent) return;
+        const model = cloneScene(gltf);
+        model.traverse((o) => {
+          if (!o.isMesh) return;
+          const map = o.material.map ?? null;
+          o.material = new THREE.MeshLambertMaterial({ map, emissive: map ? 0xffffff : 0x000000, emissiveMap: map, emissiveIntensity: 0.32 });
+          owned.push(o.material);
+        });
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        // (its saucers' rims are its widest; its disc is 0.55 of that, the
+        // dome's 12.5 across its middle; the disc is 0.6 of the way up it)
+        const kk = (2 * 22.7 * k) / Math.max(size.x, size.z);
+        model.scale.setScalar(kk);
+        model.position.set(0, -(box.min.y + size.y * 0.6) * kk, 0);
+        model.rotation.y = -0.25;
+        g.add(model);
+        hull.visible = false;
+        dome.visible = false;
+      })
+      .catch((e) => import.meta.env.DEV && console.error('citadel model', e));
     // the warm haze it hangs in, as the show paints its sky: a soft glow
     // that always faces you, behind and round it
     const haze = mesh(
