@@ -1,6 +1,6 @@
 # Credits
 
-[tilakpatell.com](https://tilakpatell.com) is built on a lot of other people's work: 178 3D models from 109 artists on Sketchfab, 125 free scans, skies and kit pieces, 61 photos, open fonts and public data. Thank you, all of you.
+[tilakpatell.com](https://tilakpatell.com) is built on a lot of other people's work: 178 3D models from 109 artists on Sketchfab, 136 free scans, skies and kit pieces, 61 photos, open fonts and public data. Thank you, all of you.
 
 > **Made something here and I've missed you, got your name wrong, or you'd like it taken down?** Message me at [tilakny@gmail.com](mailto:tilakny@gmail.com) or [LinkedIn](https://www.linkedin.com/in/tilakpatell) and I'll fix it straight away, or open a pull request.
 
@@ -257,10 +257,10 @@ Each one is its artist's, used under the Creative Commons licence it's published
 
 ## Scans, skies and kits (CC0)
 
-Public domain, so no credit is needed, but they deserve it. From [Poly Haven](https://polyhaven.com) (Amal Kumar, Charlotte Baglioni, Dario Barresi, Dimitrios Savva, Greg Zaal, GurJas Studios, James Ray Cock, Jarod Guest, Jenelle van Heerden, John Hutcheson, Jorge Camacho, Josh Dean, Kless Gyzen, MP, Rico Cilliers, Rob Tuytel, Sergej Majboroda, UM JOORIN, Ulan Cabanilla, Yann Kervran), [ambientCG](https://ambientcg.com) and [Kenney](https://kenney.nl), whose kits make up *Portal panic* and more (38 pieces). The lists by game are in [`public/games/credits.json`](public/games/credits.json), [`public/hq/CREDITS.md`](public/hq/CREDITS.md) and [`public/cc0/README.md`](public/cc0/README.md).
+Public domain, so no credit is needed, but they deserve it. From [Poly Haven](https://polyhaven.com) (Amal Kumar, Charlotte Baglioni, Dario Barresi, Dimitrios Savva, Greg Zaal, GurJas Studios, James Ray Cock, Jarod Guest, Jenelle van Heerden, John Hutcheson, Jorge Camacho, Josh Dean, Kless Gyzen, MP, Rico Cilliers, Rob Tuytel, Sergej Majboroda, UM JOORIN, Ulan Cabanilla, Yann Kervran, eye-candy.xyz), [ambientCG](https://ambientcg.com) and [Kenney](https://kenney.nl), whose kits make up *Portal panic* and more (38 pieces). The lists by game are in [`public/games/credits.json`](public/games/credits.json), [`public/hq/CREDITS.md`](public/hq/CREDITS.md) and [`public/cc0/README.md`](public/cc0/README.md).
 
 <details>
-<summary>All 87 scans and skies</summary>
+<summary>All 98 scans and skies</summary>
 
 | Asset | From | By |
 | --- | --- | --- |
@@ -271,6 +271,7 @@ Public domain, so no credit is needed, but they deserve it. From [Poly Haven](ht
 | [Facade013](https://ambientcg.com/view?id=Facade013) | ambientCG | ambientCG |
 | [Facade018B](https://ambientcg.com/view?id=Facade018B) | ambientCG | ambientCG |
 | [Facade020B](https://ambientcg.com/view?id=Facade020B) | ambientCG | ambientCG |
+| [m64-carpet (texture, Super Mario 64)](https://ambientcg.com/a/Carpet013) | ambientCG | ambientCG |
 | [painted-metal (texture, Avengers HQ)](https://ambientcg.com/a/PaintedMetal004) | ambientCG | ambientCG |
 | [sci-panels (texture, Avengers HQ)](https://ambientcg.com/a/MetalPlates001) | ambientCG | ambientCG |
 | [Abandoned Tank Farm 05](https://polyhaven.com/a/abandoned_tank_farm_05) | Poly Haven | Sergej Majboroda |
@@ -316,6 +317,16 @@ Public domain, so no credit is needed, but they deserve it. From [Poly Haven](ht
 | [Kloppenheim 07 (Pure Sky)](https://polyhaven.com/a/kloppenheim_07_puresky) | Poly Haven | Greg Zaal, Jarod Guest |
 | [lamp (model, Avengers HQ)](https://polyhaven.com/a/street_lamp_01) | Poly Haven | Josh Dean |
 | [leather (texture, Avengers HQ)](https://polyhaven.com/a/brown_leather) | Poly Haven | Rob Tuytel |
+| [m64-castle (texture, Super Mario 64)](https://polyhaven.com/a/castle_brick_02_white) | Poly Haven | Rob Tuytel |
+| [m64-cliff (texture, Super Mario 64)](https://polyhaven.com/a/rock_face) | Poly Haven | Greg Zaal, Dario Barresi |
+| [m64-cobble (texture, Super Mario 64)](https://polyhaven.com/a/cobblestone_floor_04) | Poly Haven | Rob Tuytel |
+| [m64-dirt (texture, Super Mario 64)](https://polyhaven.com/a/dirt) | Poly Haven | Charlotte Baglioni |
+| [m64-marble (texture, Super Mario 64)](https://polyhaven.com/a/marble_tiles) | Poly Haven | Charlotte Baglioni |
+| [m64-path (texture, Super Mario 64)](https://polyhaven.com/a/stony_dirt_path) | Poly Haven | eye-candy.xyz |
+| [m64-plaster (texture, Super Mario 64)](https://polyhaven.com/a/painted_plaster_wall) | Poly Haven | Amal Kumar |
+| [m64-roof (texture, Super Mario 64)](https://polyhaven.com/a/red_slate_roof_tiles_01) | Poly Haven | Rob Tuytel |
+| [m64-stone (texture, Super Mario 64)](https://polyhaven.com/a/castle_wall_slates) | Poly Haven | Rob Tuytel |
+| [m64-woodfloor (texture, Super Mario 64)](https://polyhaven.com/a/wood_floor) | Poly Haven | Dimitrios Savva |
 | [Metal Plate](https://polyhaven.com/a/metal_plate) | Poly Haven | Rob Tuytel |
 | [Metal Plate 02](https://polyhaven.com/a/metal_plate_02) | Poly Haven | Rob Tuytel |
 | [Metal Trash Can](https://polyhaven.com/a/metal_trash_can) | Poly Haven | GurJas Studios |
