@@ -46,11 +46,11 @@ const MAPS = {
   // colour, with a phone copy
   ...Object.fromEntries(['music', 'middleearth', 'middleearth-night', 'middleearth-clouds', 'transformers', 'marvel', 'breakingbad', 'breakingbad-night', 'caribbean', 'rickmorty-clouds', 'office', 'rickmorty', 'earth', 'earth-night', 'invincible', 'invincible-night', 'sun', 'sky'].map((n) => [n, { sm: true, colour: true }])),
   // data, with a phone copy
-  ...Object.fromEntries(['middleearth-normal', 'breakingbad-normal', 'breakingbad-clouds', 'caribbean-clouds', 'earth-clouds', 'invincible-clouds'].map((n) => [n, { sm: true, colour: false }])),
+  ...Object.fromEntries(['middleearth-normal', 'office-normal', 'breakingbad-normal', 'breakingbad-clouds', 'caribbean-clouds', 'earth-clouds', 'invincible-clouds'].map((n) => [n, { sm: true, colour: false }])),
   // colour, one size
   ...Object.fromEntries(['middleearth-glow', 'caribbean-night', 'rickmorty-glow', 'invincible-glow', 'plates', 'hull'].map((n) => [n, { sm: false, colour: true }])),
   // data, one size
-  ...Object.fromEntries(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-normal-sm', 'transformers-glow-sm', 'middleearth-rough', 'breakingbad-rough', 'caribbean-normal', 'caribbean-rough', 'invincible-normal', 'earth-rough'].map((n) => [n, { sm: false, colour: false }])),
+  ...Object.fromEntries(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-normal-sm', 'transformers-glow-sm', 'middleearth-rough', 'office-rough', 'breakingbad-rough', 'caribbean-normal', 'caribbean-rough', 'invincible-normal', 'earth-rough'].map((n) => [n, { sm: false, colour: false }])),
 };
 
 export async function loadTextures({ small = false } = {}) {
@@ -650,13 +650,52 @@ const BUILDERS = {
 
   office(p, { u, T }) {
     const r = u.size;
+    // a sheet of Dunder Mifflin's letterhead crumpled into a ball, the paper
+    // that gets thrown at the bin (scripts/planets/office.mjs): flat facets
+    // with sharp creases, the memo's print running on across the folds
     p.body.material = new THREE.MeshStandardMaterial({
       map: T.office ?? null,
-      color: T.office ? '#ebe6da' : u.palette.base, // paper, not snow: a little warm and a little grey
-      normalMap: tiled(T['paper-normal'], 4, 2),
-      normalScale: new THREE.Vector2(1.1, 1.1),
-      roughness: 0.95,
+      color: T.office ? '#f2eee4' : u.palette.base, // paper, not snow: a little warm and a little grey
+      normalMap: T['office-normal'] ?? tiled(T['paper-normal'], 4, 2),
+      normalScale: new THREE.Vector2(1, 1),
+      roughnessMap: T['office-rough'] ?? null,
+      roughness: T['office-rough'] ? 1 : 0.95,
     });
+    // and its outline a crumpled ball's: the sphere cut by a scatter of flat
+    // planes a little inside it, so it has facets and corners (never out
+    // past the sphere, which the halo and a crash's shockwave are sized to)
+    const [ws, hs] = T.small ? [64, 44] : [112, 72];
+    const geo = new THREE.SphereGeometry(r, ws, hs);
+    const rand = rng('crumple');
+    const cuts = Array.from({ length: 90 }, () => {
+      const z = rand() * 2 - 1;
+      const a = rand() * Math.PI * 2;
+      const s = Math.sqrt(1 - z * z);
+      return [Math.cos(a) * s, z, Math.sin(a) * s, 0.955 + rand() * 0.04];
+    });
+    const pos = geo.attributes.position;
+    const d = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      d.fromBufferAttribute(pos, i).normalize();
+      let k = 1;
+      for (const [x, y, z, h] of cuts) {
+        const c = d.x * x + d.y * y + d.z * z;
+        if (c > h) k = Math.min(k, h / c);
+      }
+      pos.setXYZ(i, d.x * r * k, d.y * r * k, d.z * r * k);
+    }
+    geo.computeVertexNormals();
+    // (the seam's two copies of each vertex share one normal, so no line shows down it)
+    const nrm = geo.attributes.normal;
+    for (let row = 0; row <= hs; row++) {
+      const a = row * (ws + 1);
+      const b = a + ws;
+      d.set(nrm.getX(a) + nrm.getX(b), nrm.getY(a) + nrm.getY(b), nrm.getZ(a) + nrm.getZ(b)).normalize();
+      nrm.setXYZ(a, d.x, d.y, d.z);
+      nrm.setXYZ(b, d.x, d.y, d.z);
+    }
+    p.body.geometry.dispose();
+    p.body.geometry = geo;
     // the mug
     const label = paint(
       (g, w, h) => {

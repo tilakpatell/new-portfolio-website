@@ -127,13 +127,13 @@ export function cells(seed, count) {
     const [a, b] = key(pts[i * 3], pts[i * 3 + 1], pts[i * 3 + 2]);
     buckets[a * B * 2 + b].push(i);
   }
-  return (x, y, z) => {
+  const fn = (x, y, z) => {
     const [a, b] = key(x, y, z);
     let f1 = 9;
     let f2 = 9;
     let id = -1;
-    const span = 1 + Math.ceil(1 / Math.max(0.15, Math.sqrt(1 - y * y))); // wider near the poles
-    for (let da = -1; da <= 1; da++) {
+    const span = 2 + Math.ceil(1.5 / Math.max(0.1, Math.sqrt(1 - y * y))); // wider near the poles
+    for (let da = -2; da <= 2; da++) {
       const aa = a + da;
       if (aa < 0 || aa >= B) continue;
       for (let db = -span; db <= span; db++) {
@@ -153,6 +153,8 @@ export function cells(seed, count) {
     }
     return { f1: Math.sqrt(f1), f2: Math.sqrt(f2), id };
   };
+  fn.points = pts; // (each cell's middle, as x, y, z runs)
+  return fn;
 }
 
 // ── maths ──
