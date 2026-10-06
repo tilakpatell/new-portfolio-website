@@ -8,6 +8,8 @@ import re
 from difflib import SequenceMatcher
 from itertools import combinations
 
+import numpy as np
+
 # A reference longer than this F5-TTS cuts, leaving its transcript describing
 # audio it no longer has; the other engines are happy with it too.
 LONGEST = 11.5
@@ -40,6 +42,33 @@ def utterances(words, gap=0.35, shortest=1.2, longest=LONGEST):
             if end - start + 1e-6 >= shortest:
                 out.append((start, end, " ".join(w[0] for w in piece)))
     return out
+
+
+def windows(spans, total, longest=28.0):
+    """Where to cut a long recording so Whisper hears it a window at a time:
+    [(start, end), ...] covering 0..total, none longer than `longest` seconds,
+    cut in the silences between the speech `spans` [(start, end), ...] where it can."""
+    gaps = [(e + s) / 2 for (_, e), (s, _) in zip(spans, spans[1:])]
+    cuts = [0.0]
+    while total - cuts[-1] > longest:
+        fits = [g for g in gaps if cuts[-1] < g <= cuts[-1] + longest]
+        cuts.append(max(fits) if fits else cuts[-1] + longest)
+    return list(zip(cuts, cuts[1:] + [total]))
+
+
+# Whisper stars out swearing ("f***"), but a clone's transcript has to say
+# what the audio says, and a take's words are checked against the line's.
+SWEARS = {("f", 3): "uck", ("s", 3): "hit", ("b", 4): "itch", ("a", 2): "ss", ("d", 3): "ick"}
+
+
+def uncensor(text):
+    """Whisper's starred-out swearing written out again."""
+
+    def back(m):
+        rest = SWEARS.get((m[1].lower(), len(m[2])))
+        return m[1] + rest + m[3] if rest else m[0]
+
+    return re.sub(r"\b([A-Za-z])(\*{2,})([A-Za-z']*)", back, text)
 
 
 def normal(text):
@@ -80,6 +109,68 @@ def take_score(wer, sim, utmos, wps):
     if wer > 0.34 or not 0.8 <= wps <= 6.0:
         return None
     return sim + 0.15 * (utmos - 3) - 1.5 * wer
+
+
+def centre(prints):
+    """The voiceprint at the middle of several, as a unit vector."""
+    m = np.mean(prints, axis=0)
+    return m / np.linalg.norm(m)
+
+
+def identify(vp, who, centroids):
+    """(similarity, margin): how like `who` a voiceprint is, and by how much more
+    than like the nearest other voice."""
+    sim = float(vp @ centroids[who])
+    return sim, sim - max((float(vp @ c) for w, c in centroids.items() if w != who), default=0.0)
+
+
+def refine(seeds, pool, rounds=2, top=8, shortest=2.0):
+    """Each voice's voiceprint centroid, from a few sure examples (`seeds`: the
+    site's clips of them and segments saying their known quotes) grown with the
+    `top` candidates from their `pool` [(voiceprint, seconds), ...] most like
+    them and more like them than anyone else. Voices with no seed are left out:
+    better no reference than somebody else's."""
+    cents = {w: centre(s) for w, s in seeds.items() if len(s)}
+    for _ in range(rounds):
+        new = {}
+        for who in cents:
+            ranked = sorted(((identify(v, who, cents), v) for v, secs in pool.get(who, []) if secs >= shortest), key=lambda x: -x[0][0])
+            new[who] = centre(list(seeds[who]) + [v for (_, margin), v in ranked if margin > 0][:top])
+        cents = new
+    return cents
+
+
+# Titles that mean someone other than the character is talking: reactions,
+# parodies, toys, impressions, made-up voices, people talking about the show.
+AVOID = [r"\breact", r"\blego\b", r"\bparody\b", r"\bai\b", r"\bfan ?made\b", r"\bimpression", r"\bvoice actor\b", r"\binterview\b", r"\bpodcast\b", r"\bexplained\b", r"\bbehind the scenes\b", r"\bremix\b", r"\bcover\b", r"\bsings?\b", r"\bdubbed\b", r"\bfandub", r"\bfortnite\b"]
+# Longer than this it's a compilation or a whole episode: slow to clean and full of other voices
+LONGEST_SOURCE = 480
+
+
+def video_id(url):
+    """A YouTube video's id, from its URL or as given, or None."""
+    m = re.search(r"(?:v=|youtu\.be/|shorts/|embed/)([\w-]{11})", url) or re.fullmatch(r"([\w-]{11})", url)
+    return m[1] if m else None
+
+
+def usable(title, seconds, avoid):
+    """Whether a search result is worth fetching: not a reaction, parody or the
+    like (nor anything in `avoid`), and not longer than LONGEST_SOURCE."""
+    if seconds is not None and seconds > LONGEST_SOURCE:
+        return False
+    t = title.lower()
+    return not any(re.search(a, t) for a in AVOID) and not any(a.lower() in t for a in avoid)
+
+
+def excluded(source, start, rules):
+    """Whether a segment is ruled out by sources.json's "exclude": a source's id
+    (with or without its "yt-"), or "id@start" for one segment of it."""
+    bare = source.removeprefix("yt-")
+    for r in rules:
+        name, _, at = r.partition("@")
+        if name.removeprefix("yt-") == bare and (not at or abs(float(at) - start) < 0.05):
+            return True
+    return False
 
 
 def choose(segments, longest=LONGEST, enough=7.0, most=3):

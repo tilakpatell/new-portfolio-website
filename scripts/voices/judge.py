@@ -26,22 +26,32 @@ HALF = torch.float16 if DEVICE == "cuda" else torch.float32
 def _whisper():
     from transformers import pipeline
 
-    return pipeline("automatic-speech-recognition", model="openai/whisper-large-v3", torch_dtype=HALF, device=DEVICE)
+    return pipeline("automatic-speech-recognition", model="openai/whisper-large-v3", dtype=HALF, device=DEVICE)
 
 
 def hear(wav, words=False):
     """What's said: the text, or (text, [(word, start, end), ...]) with each word's time in seconds."""
+    from pick import uncensor, windows
+
     asr = _whisper()
     if len(wav) < SR * 0.3:
         return ("", []) if words else ""
     kw = {"generate_kwargs": {"language": "en", "task": "transcribe"}}
-    if len(wav) > SR * 30:
-        kw["chunk_length_s"] = 30
-    if words:
-        out = asr({"raw": wav, "sampling_rate": SR}, return_timestamps="word", **kw)
-        ws = [(c["text"].strip(), c["timestamp"][0], c["timestamp"][1]) for c in out.get("chunks", [])]
-        return out["text"].strip(), [(w, a, b if b is not None else a) for w, a, b in ws if w and a is not None]
-    return asr({"raw": wav, "sampling_rate": SR}, **kw)["text"].strip()
+    if not words:
+        if len(wav) > SR * 30:
+            kw["chunk_length_s"], kw["batch_size"] = 30, 8
+        return uncensor(asr({"raw": wav, "sampling_rate": SR}, **kw)["text"].strip())
+    # Word times a window of at most 28 seconds at a time, cut where nobody's
+    # talking: the pipeline's own chunking held 40 GB for a two-minute scene.
+    texts, ws = [], []
+    for a, b in windows(speech(wav), len(wav) / SR):
+        out = asr({"raw": wav[int(a * SR) : int(b * SR)], "sampling_rate": SR}, return_timestamps="word", **kw)
+        texts.append(uncensor(out["text"].strip()))
+        for c in out.get("chunks", []):
+            s, e = c["timestamp"]
+            if c["text"].strip() and s is not None:
+                ws.append((uncensor(c["text"].strip()), a + s, a + (e if e is not None else s)))
+    return " ".join(t for t in texts if t), ws
 
 
 def plain(text):
@@ -93,11 +103,6 @@ def voiceprint(wav):
     with torch.inference_mode():
         e = _sv()(torch.from_numpy(np.ascontiguousarray(wav)).float().unsqueeze(0).to(DEVICE)).squeeze().float()
     return (e / e.norm()).cpu().numpy()
-
-
-def centre(prints):
-    m = np.mean(prints, axis=0)
-    return m / np.linalg.norm(m)
 
 
 def cleanliness(wav):

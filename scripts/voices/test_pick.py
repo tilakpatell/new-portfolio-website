@@ -4,7 +4,9 @@ python -m unittest discover -s scripts/voices -p "test_*.py"
 
 import unittest
 
-from pick import choose, normal, quoted, segment_score, take_score, utterances
+import numpy as np
+
+from pick import choose, excluded, identify, normal, quoted, refine, segment_score, take_score, uncensor, usable, utterances, video_id, windows
 
 
 def words(text, start=0.0, each=0.3, pauses=None):
@@ -38,7 +40,33 @@ class Utterances(unittest.TestCase):
         self.assertEqual(" ".join(t for _, _, t in got), text.strip())
 
 
+class Windows(unittest.TestCase):
+    def test_short_audio_is_one_window(self):
+        self.assertEqual(windows([(1.0, 5.0)], 12.0), [(0.0, 12.0)])
+
+    def test_cuts_fall_between_speech(self):
+        spans = [(0.5, 10.0), (11.0, 20.0), (21.0, 27.0), (29.0, 40.0)]
+        got = windows(spans, 45.0, longest=28.0)
+        self.assertEqual(got[0][0], 0.0)
+        self.assertEqual(got[-1][1], 45.0)
+        self.assertTrue(all(b - a <= 28.0 for a, b in got))
+        for (_, b), (a, _) in zip(got, got[1:]):
+            self.assertEqual(a, b)
+            self.assertFalse(any(s < b < e for s, e in spans), f"cut at {b} is inside speech")
+
+    def test_one_long_run_is_cut_anyway(self):
+        got = windows([(0.0, 70.0)], 70.0, longest=28.0)
+        self.assertTrue(all(b - a <= 28.0 for a, b in got))
+        self.assertEqual((got[0][0], got[-1][1]), (0.0, 70.0))
+
+
 class Quotes(unittest.TestCase):
+    def test_uncensor(self):
+        self.assertEqual(uncensor("You can go f*** yourself."), "You can go fuck yourself.")
+        self.assertEqual(uncensor("F***ing magnets, b****!"), "Fucking magnets, bitch!")
+        self.assertEqual(uncensor("Holy s***, it's 5 * 3"), "Holy shit, it's 5 * 3")
+        self.assertEqual(uncensor("q*** stays"), "q*** stays")
+
     def test_normal(self):
         self.assertEqual(normal("Nobody exists — on purpose, Morty!"), "nobody exists on purpose morty")
 
@@ -92,6 +120,69 @@ class Choose(unittest.TestCase):
 
     def test_nothing_to_choose_from(self):
         self.assertEqual(choose([]), [])
+
+
+def unit(v):
+    v = np.asarray(v, dtype=float)
+    return v / np.linalg.norm(v)
+
+
+class Speakers(unittest.TestCase):
+    def setUp(self):
+        rng = np.random.default_rng(7)
+        self.rick, self.morty = unit(rng.normal(size=32)), unit(rng.normal(size=32))
+        self.near = lambda c, k: [unit(c + rng.normal(scale=0.35, size=32)) for _ in range(k)]
+
+    def test_margin_is_over_the_nearest_other_voice(self):
+        sim, margin = identify(self.rick, "rick", {"rick": self.rick, "morty": self.morty})
+        self.assertAlmostEqual(sim, 1.0)
+        self.assertAlmostEqual(margin, 1.0 - float(self.rick @ self.morty))
+
+    def test_refining_moves_towards_the_speaker_and_not_the_other(self):
+        seed = unit(self.morty + 1.2 * unit(np.ones(32)))  # one poor clip of Morty
+        pool = {"morty": [(v, 3.0) for v in self.near(self.morty, 12) + self.near(self.rick, 12)],
+                "rick": [(v, 3.0) for v in self.near(self.rick, 12)]}
+        got = refine({"morty": [seed], "rick": [self.rick]}, pool)
+        self.assertGreater(float(got["morty"] @ self.morty), float(seed @ self.morty))
+        self.assertLess(float(got["morty"] @ self.rick), 0.5)
+
+    def test_a_voice_with_no_seed_has_no_centroid(self):
+        got = refine({"morty": [], "rick": [self.rick]}, {"morty": [], "rick": []})
+        self.assertNotIn("morty", got)
+
+
+class Sources(unittest.TestCase):
+    def test_video_ids(self):
+        self.assertEqual(video_id("https://www.youtube.com/watch?v=r1yYJBzf1VQ&t=3s"), "r1yYJBzf1VQ")
+        self.assertEqual(video_id("https://youtu.be/r1yYJBzf1VQ"), "r1yYJBzf1VQ")
+        self.assertEqual(video_id("r1yYJBzf1VQ"), "r1yYJBzf1VQ")
+        self.assertIsNone(video_id("https://example.com/clip.mp3"))
+
+    def test_a_reaction_or_a_sequel_is_no_source(self):
+        self.assertFalse(usable("Luke Skywalker REACTION | The Last Jedi", 200, ["last jedi"]))
+        self.assertFalse(usable("Star Wars LEGO Luke", 200, []))
+
+    def test_too_long_or_unknown_length_is_no_source(self):
+        self.assertFalse(usable("Hank Schrader best moments", 1800, []))
+        self.assertTrue(usable("Hank Schrader best moments", None, []))
+        self.assertTrue(usable("Breaking Bad - Jesus Christ Marie! They're Minerals!", 42, []))
+
+    def test_a_catchphrase_is_not_a_dub(self):
+        self.assertTrue(usable("Rick and Morty - Wubba Lubba Dub Dub scene", 60, []))
+        self.assertFalse(usable("Rick and Morty Spanish dubbed", 60, []))
+        self.assertFalse(usable("Morty fandub", 60, []))
+
+    def test_ai_in_a_word_is_not_an_ai_voice(self):
+        self.assertTrue(usable("Han Solo said it again", 60, []))
+        self.assertFalse(usable("Han Solo AI voice sings", 60, []))
+
+    def test_excluded(self):
+        rules = ["yt-abc", "yt-def@12.3", "ghi"]
+        self.assertTrue(excluded("yt-abc", 40.0, rules))
+        self.assertTrue(excluded("yt-def", 12.31, rules))
+        self.assertFalse(excluded("yt-def", 20.0, rules))
+        self.assertTrue(excluded("yt-ghi", 1.0, rules))
+        self.assertFalse(excluded("clip-im-in", 0.0, rules))
 
 
 if __name__ == "__main__":

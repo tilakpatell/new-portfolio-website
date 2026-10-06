@@ -1,0 +1,154 @@
+{
+  "rick": {
+    "show": "rick-and-morty",
+    "clips": ["public/audio/clips/riggity-wrecked-son.mp3", "public/audio/clips/im-in.mp3", "public/audio/clips/pickle-rick.mp3", "public/audio/clips/wubba-lubba-dub-dub.mp3"],
+    "quotes": [
+      "I turned myself into a pickle",
+      "Your boos mean nothing, I've seen what makes you cheer",
+      "Weddings are basically funerals with cake",
+      "What people call love is just a chemical reaction that compels animals to breed",
+      "Sometimes science is more art than science",
+      "To live is to risk it all",
+      "Wubba lubba dub dub",
+      "Nighttime makes up half of all time"
+    ],
+    "search": [
+      "Rick and Morty Rick explains love is a chemical reaction scene",
+      "Rick and Morty your boos mean nothing scene",
+      "Rick and Morty weddings are funerals with cake Rick speech",
+      "Rick and Morty Pickle Rick full scene season 3",
+      "Rick and Morty Rick to live is to risk it all scene",
+      "Rick and Morty Rick Sanchez best monologue season 1"
+    ],
+    "avoid": ["season 7", "season 8", "cardoni"]
+  },
+  "morty": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Nobody exists on purpose, nobody belongs anywhere, everybody's gonna die, come watch TV",
+      "Aw geez Rick",
+      "Oh man, Rick",
+      "I'm not gonna go to school",
+      "You don't get to tell me what to do",
+      "I'm Morty, I'm fourteen"
+    ],
+    "search": [
+      "Rick and Morty nobody exists on purpose Morty scene",
+      "Rick and Morty Morty yells at Rick scene",
+      "Rick and Morty Morty best moments season 1",
+      "Rick and Morty Morty speech to Rick season 2",
+      "Rick and Morty Morty freaks out scene"
+    ],
+    "avoid": ["evil morty", "season 7", "season 8"]
+  },
+  "luke": {
+    "show": "star-wars",
+    "clips": ["public/audio/clips/bad-feeling-luke.mp3"],
+    "quotes": [
+      "I was going into Tosche Station to pick up some power converters",
+      "I'm Luke Skywalker, I'm here to rescue you",
+      "I'll never turn to the dark side",
+      "I am a Jedi, like my father before me",
+      "I don't believe it",
+      "Free us or die",
+      "I feel the good in you, the conflict"
+    ],
+    "search": [
+      "Star Wars 1977 Luke Tosche Station power converters scene",
+      "Star Wars Luke I'm Luke Skywalker I'm here to rescue you scene",
+      "Return of the Jedi Luke I am a Jedi like my father before me scene",
+      "Empire Strikes Back Luke and Yoda I don't believe it scene",
+      "Return of the Jedi Luke Jabba free us or die scene",
+      "Return of the Jedi Luke I feel the good in you Vader scene"
+    ],
+    "avoid": ["last jedi", "force awakens", "rise of skywalker", "mandalorian", "boba fett", "joker", "sequel"]
+  },
+  "han": {
+    "show": "star-wars",
+    "clips": ["public/audio/clips/dont-get-cocky.mp3", "public/audio/clips/never-tell-me-the-odds.mp3", "public/audio/clips/bad-feeling-han.mp3", "public/audio/clips/may-the-force-be-with-you.mp3"],
+    "quotes": [
+      "Hokey religions and ancient weapons are no match for a good blaster at your side",
+      "It's the ship that made the Kessel Run in less than twelve parsecs",
+      "Never tell me the odds",
+      "Laugh it up, fuzzball",
+      "I ain't in this for your revolution",
+      "You like me because I'm a scoundrel",
+      "Boring conversation anyway",
+      "Here's where the fun begins"
+    ],
+    "search": [
+      "Star Wars Han Solo Kessel Run twelve parsecs cantina scene",
+      "Star Wars Han Solo hokey religions and ancient weapons scene",
+      "Star Wars Han Solo I'm in it for the money scene",
+      "Empire Strikes Back Han Solo Leia scoundrel scene",
+      "Star Wars Han Solo boring conversation anyway scene",
+      "Empire Strikes Back Han Solo never tell me the odds asteroid scene"
+    ],
+    "avoid": ["force awakens", "solo: a star wars story", "solo a star wars story", "alden", "ehrenreich", "indiana jones", "blade runner", "air force one"]
+  },
+  "walt": {
+    "show": "breaking-bad",
+    "clips": ["public/audio/clips/walter-hartwell-white.mp3", "public/audio/clips/i-am-the-danger.mp3", "public/audio/clips/one-who-knocks.mp3", "public/audio/clips/killed-gus-fring.mp3"],
+    "quotes": [
+      "I am the one who knocks",
+      "I am not in danger, Skyler, I am the danger",
+      "Chemistry is the study of change",
+      "I did it for me, I liked it, I was good at it",
+      "I'm in the empire business",
+      "Stay out of my territory",
+      "My name is Walter Hartwell White",
+      "Jesse, we need to cook"
+    ],
+    "search": [
+      "Breaking Bad Walter White chemistry is the study of change classroom scene",
+      "Breaking Bad Walter White I am the one who knocks full scene",
+      "Breaking Bad Walter White I did it for me scene",
+      "Breaking Bad Walter White empire business scene",
+      "Breaking Bad Walter White stay out of my territory scene",
+      "Breaking Bad Walter White confession tape scene"
+    ],
+    "avoid": ["malcolm", "cranston interview"]
+  },
+  "jesse": {
+    "show": "breaking-bad",
+    "clips": ["public/audio/clips/yeah-science.mp3", "public/audio/clips/private-domicile.mp3", "public/audio/clips/cant-keep-getting-away.mp3", "public/audio/clips/jesse-ringtone.mp3"],
+    "quotes": [
+      "Yeah, science",
+      "This is my own private domicile and I will not be harassed",
+      "He can't keep getting away with it",
+      "I made a box",
+      "Yeah, magnets",
+      "Yo, Mr. White",
+      "Representing the ABQ"
+    ],
+    "search": [
+      "Breaking Bad Jesse Pinkman woodshop box speech NA meeting scene",
+      "Breaking Bad Jesse Pinkman yeah science scene",
+      "Breaking Bad Jesse Pinkman private domicile scene",
+      "Breaking Bad Jesse Pinkman yeah magnets scene",
+      "Breaking Bad Jesse Pinkman best moments"
+    ],
+    "avoid": ["aaron paul interview", "bojack"]
+  },
+  "hank": {
+    "show": "breaking-bad",
+    "clips": [],
+    "quotes": [
+      "Jesus Christ Marie, they're minerals",
+      "My name is ASAC Schrader and you can go",
+      "It was you, all along it was you",
+      "You're the smartest guy I ever met",
+      "They're minerals",
+      "I don't know who you are, I don't even know who I'm talking to"
+    ],
+    "search": [
+      "Breaking Bad Hank Schrader they're minerals Marie scene",
+      "Breaking Bad Hank confronts Walt in the garage scene",
+      "Breaking Bad Hank Schrader my name is ASAC Schrader scene",
+      "Breaking Bad Hank Schrader Ozymandias smartest guy scene",
+      "Breaking Bad Hank Schrader best moments"
+    ],
+    "avoid": ["dean norris interview", "under the dome"]
+  }
+}
