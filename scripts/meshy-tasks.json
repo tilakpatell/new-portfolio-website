@@ -471,5 +471,83 @@
   "saucer-hd": {
     "image": "01a10862-d30e-758a-8f1f-fadcb55a0fda",
     "model": "01a10e50-eadc-741f-a4e6-f020b943a078"
+  },
+  "spacebeth": {
+    "image": "01a10ffe-9dbf-741b-abe3-95b5ccccffa2"
+  },
+  "rickprime": {
+    "image": "01a10ffe-9dad-708d-8e4f-9b8a40cca3ee"
+  },
+  "snuffles": {
+    "image": "01a10ffe-9dad-708b-838d-7a645d20cb91"
+  },
+  "drwong": {
+    "image": "01a10ffe-9db1-752f-8db5-306eb2036daa"
+  },
+  "nancy": {
+    "image": "01a10ffe-e3bb-7592-adec-5d41c866f647"
+  },
+  "tricia": {
+    "image": "01a10fff-2d45-7452-81d5-04c4d9a9b772"
+  },
+  "diane": {
+    "image": "01a10fff-6690-75a2-b6a4-14fd605fb57b"
+  },
+  "pencilvester": {
+    "image": "01a10fff-a61a-770c-a5bd-a247701b067b"
+  },
+  "sleepygary": {
+    "image": "01a10fff-a873-732b-9485-75fa299dbe4d"
+  },
+  "hamurai": {
+    "image": "01a10fff-c2cd-71a8-a1e4-58754fbdaea1"
+  },
+  "amishcyborg": {
+    "image": "01a11000-0db5-77de-94d8-0861b06075fd"
+  },
+  "mrbeauregard": {
+    "image": "01a11000-15b4-7532-9f88-270a0600dea1"
+  },
+  "cousinnicky": {
+    "image": "01a11000-4cb6-7243-9f57-64df045d290b"
+  },
+  "frankenstein": {
+    "image": "01a11000-8928-7522-9993-ce010fee26bc"
+  },
+  "reversegiraffe": {
+    "image": "01a11000-bd6a-7548-ac44-9b5b1197c78c"
+  },
+  "ghostinajar": {
+    "image": "01a11000-f482-732f-82b9-aa8877d2ac2c"
+  },
+  "photographyraptor": {
+    "image": "01a11001-22bc-766a-82bd-1cca60f0332e"
+  },
+  "tinkles": {
+    "image": "01a11001-67d3-77ca-bafa-9b11d0ea189d"
+  },
+  "babywizard": {
+    "image": "01a11001-5e48-726d-aec6-162097e5d34c"
+  },
+  "mrsrefrigerator": {
+    "image": "01a11001-6878-73f1-b38b-527e678d52ae"
+  },
+  "spacebeth-ship": {
+    "image": "01a11001-75ec-7087-97ce-0726e06bc807"
+  },
+  "jerry-ship": {
+    "image": "01a11001-cd6d-7251-bae9-0e71ad479555"
+  },
+  "gotron-ferret": {
+    "image": "01a11001-eca3-74dc-8fe4-3e55a8f26e83"
+  },
+  "gotron": {
+    "image": "01a11002-1e12-7057-a667-8725800e8030"
+  },
+  "zigerion-ship": {
+    "image": "01a11002-6f5e-726a-b88c-fb8d3ce902aa"
+  },
+  "storytrain": {
+    "image": "01a11002-aa26-727a-b443-4e6048862ed1"
   }
 }
