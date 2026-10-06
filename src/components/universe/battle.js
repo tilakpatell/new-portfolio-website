@@ -28,8 +28,17 @@
 //   defender wins when the attacker's flagship goes, when the attacker's out
 //   of tickets and fighters, or when the clock runs out.
 //
-// createBattle({ war, attacker, at, axis, perSide, rand }) → battle:
-//   { teams, capitals, fighters, bolts, phase, clock, over, you, defender,
+// In the galaxy (galaxy/warfront.js) a battle is sized to its ships (`lines`,
+// `radius`), kept off its planet and out of a Death Star's shield (`avoid`:
+// spheres its fighters steer clear of), on the clock every pilot shares
+// (`clock` its length, `elapsed` how far in it is already), with the damage
+// other pilots did to its objectives counted (`shared(id)` → theirs) and
+// yours told (`onMine(id, damage)`), and a defender that can't run out of
+// tickets (`tickets: false`: holding out to the end is how it wins).
+//
+// createBattle({ war, attacker, at, axis, perSide, rand, lines, radius,
+//   avoid, clock, elapsed, shared, onMine, tickets }) → battle:
+//   { teams, capitals, fighters, bolts, phase, clock, over, you, defender, lines, radius, length,
 //   attacker, setYou(team | null), update(dt, you) → events, hit(from, to,
 //   damage) → hit | null, fire(team, from, dir, kind, target), targets,
 //   info, end(winner) }
@@ -64,6 +73,10 @@ export const BATTLE = {
     torpedo: { speed: 18, life: 4, damage: 9 },
   },
 };
+
+// how wide each capital ship is, as a share of its length (for laying a line out)
+export const WIDTH = { destroyer: 0.58, executor: 0.26, interdictor: 0.58, moncal: 0.32, nebulon: 0.28, corvette: 0.3, hammerhead: 0.3, lightcruiser: 0.36, gozanti: 0.62, transport: 0.32, councildread: 0.4, fedbattleship: 0.4, gearship: 0.5, saucer: 1, federation: 0.4, hauler: 0.5, superlab: 0.45, madrigal: 0.5, pestvan: 0.5, hacienda: 0.5, pollostruck: 0.5, pickup: 0.5 };
+const widthOf = (c) => (WIDTH[c.kind] ?? 0.4) * c.size;
 
 const TIERS = { high: 32, mid: 20, low: 10 };
 export const perSide = (tier) => TIERS[tier] ?? 20;
@@ -113,7 +126,7 @@ const pick = (list, rand) => {
   return list[list.length - 1];
 };
 
-export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0], perSide: n = 20, rand = Math.random }) {
+export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0], perSide: n = 20, rand = Math.random, lines = BATTLE.lines, radius = BATTLE.radius, avoid = [], clock = BATTLE.clock, elapsed = 0, shared = null, onMine = null, tickets = true }) {
   const defender = 1 - attacker;
   const C = v3(...at);
   const A = norm(v3(axis[0], 0, axis[1])); // from the first side's line to the second's
@@ -129,7 +142,10 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     fighters: [],
     bolts: Array.from({ length: 320 }, () => ({ on: false, team: 0, kind: 'laser', x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, damage: 0, target: null })),
     phase: 1,
-    clock: 0,
+    clock: elapsed,
+    length: clock,
+    lines,
+    radius,
     over: null,
     attacker,
     defender,
@@ -141,13 +157,21 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   const place = (cap, l, o = v3()) => set(o, cap.pos.x + (cap.right.x * l[0] + cap.up.x * l[1] + cap.fwd.x * l[2]) * cap.size, cap.pos.y + (cap.right.y * l[0] + cap.up.y * l[1] + cap.fwd.y * l[2]) * cap.size, cap.pos.z + (cap.right.z * l[0] + cap.up.z * l[1] + cap.fwd.z * l[2]) * cap.size);
   b.teams.forEach(({ side }, team) => {
     const dir = team === 0 ? 1 : -1; // the way to the other side
-    const line = v3(C.x - A.x * BATTLE.lines * dir, C.y, C.z - A.z * BATTLE.lines * dir);
+    const line = v3(C.x - A.x * lines * dir, C.y, C.z - A.z * lines * dir);
     let flank = 0;
+    // how far out each side of the line is taken, so far (the flagship's half, and a gap)
+    const edge = [widthOf(side.capitals[0]) / 2 + 6, widthOf(side.capitals[0]) / 2 + 6];
     side.capitals.forEach((c, i) => {
       const flag = c.role === 'flagship';
-      // the flagship in the middle of the line, the escorts out to each side and a little forward
-      const out = flag ? 0 : (flank % 2 ? -1 : 1) * (side.capitals[0].size * 0.55 + 6 + Math.floor(flank / 2) * 14);
-      if (!flag) flank += 1;
+      // the flagship in the middle of the line, the escorts out to each side by their widths, a little forward
+      let out = 0;
+      if (!flag) {
+        const k = flank % 2;
+        const w = widthOf(c);
+        out = (k ? -1 : 1) * (edge[k] + w / 2);
+        edge[k] += w + 6;
+        flank += 1;
+      }
       const fwd = v3(A.x * dir, 0, A.z * dir);
       const cap = {
         id: nextId++,
@@ -172,7 +196,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       cap.reach = c.size * 0.55;
       cap.turrets = (TURRETS[c.kind] ?? []).map((l) => ({ at: place(cap, l), turbo: between([0.5, 3.5]), flak: between([0, 0.6]) }));
       if (flag && team === defender)
-        cap.subs = (SUBSYSTEMS[c.kind] ?? []).map((s, k) => ({ id: s.id, num: 3e6 + k, kind: s.kind, phase: s.phase, pos: place(cap, s.at), r: Math.max(0.6, s.r * c.size), hp: s.hp, hpMax: s.hp, alive: true, cap }));
+        cap.subs = (SUBSYSTEMS[c.kind] ?? []).map((s, k) => ({ id: s.id, num: 3e6 + k, kind: s.kind, phase: s.phase, pos: place(cap, s.at), r: Math.max(0.6, s.r * c.size), hp: s.hp, hpMax: s.hp, dealt: 0, alive: true, cap }));
       b.capitals.push(cap);
     });
   });
@@ -183,12 +207,18 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   const spawn = (f, first) => {
     const dir = f.team === 0 ? 1 : -1;
     const home = flagOf(f.team);
-    const lineX = C.x - A.x * BATTLE.lines * dir;
-    const lineZ = C.z - A.z * BATTLE.lines * dir;
+    const lineX = C.x - A.x * lines * dir;
+    const lineZ = C.z - A.z * lines * dir;
     // in front of its own line (launched, or out of hyperspace), further out to begin with
     const ahead = first ? 22 + rand() * 50 : 22 + rand() * 14;
     const across = (rand() - 0.5) * (first ? 90 : 60);
     set(f.pos, lineX + A.x * dir * ahead + S.x * across, (home?.pos.y ?? C.y) + (rand() - 0.5) * 24, lineZ + A.z * dir * ahead + S.z * across);
+    // (never in among what it's to keep out of: out to its edge)
+    for (const o of avoid) {
+      set(f.away, f.pos.x - o.c.x, f.pos.y - o.c.y, f.pos.z - o.c.z);
+      const d = len(f.away);
+      if (d < o.r + 6) set(f.pos, o.c.x + (f.away.x / (d || 1)) * (o.r + 6), o.c.y + (f.away.y / (d || 1)) * (o.r + 6) + (d ? 0 : o.r + 6), o.c.z + (f.away.z / (d || 1)) * (o.r + 6));
+    }
     copy(f.prev, f.pos);
     norm(set(f.fwd, A.x * dir + (rand() - 0.5) * 0.4, (rand() - 0.5) * 0.2, A.z * dir + (rand() - 0.5) * 0.4));
     f.speed = f.type.speed;
@@ -288,14 +318,25 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     return best;
   };
   // a hit on an objective: only those of the phase, and only once the shield's down for the rest
+  // (its hp: what it started with, less what's been dealt it here and what other pilots did: shared)
+  const subHp = (s) => s.hpMax - s.dealt - (shared ? shared(s.id) : 0);
   const subHit = (s, dmg, mine, out) => {
     if (s.phase !== b.phase) return false;
-    s.hp -= dmg;
-    if (s.hp <= 0) {
-      s.hp = 0;
-      out.push(subDown(s, mine));
-    }
+    s.dealt += dmg;
+    if (mine) onMine?.(s.id, dmg);
+    s.hp = Math.max(0, subHp(s));
+    if (s.hp <= 0) out.push(subDown(s, mine));
     return true;
+  };
+  // what other pilots have done, as it's heard of
+  const sharedSubs = (out) => {
+    if (!shared) return;
+    for (const cap of b.capitals)
+      for (const s of cap.subs) {
+        if (!s.alive) continue;
+        s.hp = Math.max(0, subHp(s));
+        if (s.hp <= 0 && s.phase <= b.phase) out.push(subDown(s, false));
+      }
   };
 
   // ── you ──
@@ -306,7 +347,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   };
 
   // ── choosing what to go after ──
-  const youIn = () => b.you.alive && b.you.team !== null && dist2(b.you.pos, C) < (BATTLE.radius * 1.4) ** 2;
+  const youIn = () => b.you.alive && b.you.team !== null && dist2(b.you.pos, C) < (radius * 1.4) ** 2;
   const bomberTarget = (f) => {
     const enemy = 1 - f.team;
     if (f.team === attacker) {
@@ -411,8 +452,21 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
         }
       }
     }
+    // clear of the planet, a Death Star's shield…
+    // (looking a second and a half ahead; nothing it's after counts for more)
+    for (const o of avoid) {
+      set(tmp, f.pos.x + f.vel.x * 1.5 - o.c.x, f.pos.y + f.vel.y * 1.5 - o.c.y, f.pos.z + f.vel.z * 1.5 - o.c.z);
+      const d = len(tmp);
+      const room = o.r + 12;
+      if (d < room) {
+        const push = 2 + ((room - d) / 12) * 10;
+        want.x += (tmp.x / (d || 1)) * push;
+        want.y += (tmp.y / (d || 1)) * push;
+        want.z += (tmp.z / (d || 1)) * push;
+      }
+    }
     // back into the fight at its edge
-    const out = Math.sqrt(dist2(f.pos, C)) - BATTLE.radius;
+    const out = Math.sqrt(dist2(f.pos, C)) - radius;
     if (out > 0) {
       set(tmp, C.x - f.pos.x, C.y - f.pos.y, C.z - f.pos.z);
       norm(tmp);
@@ -582,12 +636,14 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   // ── the phases and the end ──
   const checkPhase = (out) => {
     const flag = flagOf(defender);
-    if (!flag || b.phase > 3) return;
-    if (flag.subs.some((s) => s.phase === b.phase && s.alive)) return;
-    b.phase += 1;
-    if (b.phase === 2) out.push({ type: 'shield', down: true });
-    if (b.phase <= 3) out.push({ type: 'phase', phase: b.phase });
-    else flag.dying = BATTLE.dying;
+    if (!flag) return;
+    // (other pilots may have taken more than one phase's down since the last frame)
+    while (b.phase <= 3 && !flag.subs.some((s) => s.phase === b.phase && s.alive)) {
+      b.phase += 1;
+      if (b.phase === 2) out.push({ type: 'shield', down: true });
+      if (b.phase <= 3) out.push({ type: 'phase', phase: b.phase });
+      else if (flag.dying <= 0) flag.dying = BATTLE.dying;
+    }
   };
   const finish = (winner, why, out) => {
     if (b.over) return;
@@ -632,12 +688,13 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     }
     if (!b.over) for (const cap of b.capitals) fireBatteries(cap, dt);
     moveBolts(dt, out);
+    if (!b.over) sharedSubs(out);
     checkPhase(out);
     ageCapitals(dt, out);
     if (!b.over) {
       const t = b.teams[attacker];
-      if (t.tickets <= 0 && !b.fighters.some((f) => f.alive && f.team === attacker)) finish(defender, 'tickets', out);
-      else if (b.clock >= BATTLE.clock) finish(defender, 'clock', out);
+      if (tickets && t.tickets <= 0 && !b.fighters.some((f) => f.alive && f.team === attacker)) finish(defender, 'tickets', out);
+      else if (b.clock >= clock) finish(defender, 'clock', out);
     }
     return out;
   };
@@ -707,7 +764,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       return {
         phase: b.phase,
         clock: +b.clock.toFixed(1),
-        left: Math.max(0, BATTLE.clock - b.clock),
+        left: Math.max(0, clock - b.clock),
         tickets: b.teams.map((t) => t.tickets),
         fighters: [0, 1].map((team) => b.fighters.filter((f) => f.alive && f.team === team).length),
         objectives: (flag?.subs ?? []).map((s) => ({ id: s.id, kind: s.kind, phase: s.phase, hp: s.hp / s.hpMax })),

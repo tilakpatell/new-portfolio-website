@@ -307,6 +307,25 @@ describe('createClient', () => {
     expect(seen.b.filter((e) => e.type === 'siege')).toHaveLength(1);
   });
 
+  it('passes the galaxy’s war along from anywhere, and a battle’s only to pilots in the same place', async () => {
+    const { a, b, seen } = await pair();
+    const msg = { e: 'c2', m: { 'hoth:5': 3 }, t: { 'hoth:5': 3 } };
+    a.setProfile({ where: '/galaxy/hoth' });
+    a.war(msg);
+    expect(seen.b.filter((e) => e.type === 'war')).toHaveLength(1);
+    expect(seen.b.find((e) => e.type === 'war').msg).toEqual(msg);
+    const fight = { e: 'c2.hoth.5', m: { 'gen-port': 8 }, t: { 'gen-port': 8 } };
+    a.fight(fight);
+    expect(seen.b.filter((e) => e.type === 'fight')).toHaveLength(0);
+    b.setProfile({ where: '/galaxy/hoth' });
+    a.fight(fight);
+    expect(seen.b.filter((e) => e.type === 'fight')).toHaveLength(1);
+    a.war({ e: 'c2', m: { 'Bad Key': 1 }, t: {} });
+    a.fight({ e: 'c2.hoth.5', m: [], t: {} });
+    expect(seen.b.filter((e) => e.type === 'war')).toHaveLength(1);
+    expect(seen.b.filter((e) => e.type === 'fight')).toHaveLength(1);
+  });
+
   it('a hit from someone somewhere else does nothing (another of the galaxy\'s systems)', async () => {
     const { a, b, seen } = await pair();
     a.setProfile({ where: '/galaxy/hoth' });
