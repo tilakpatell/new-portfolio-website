@@ -694,6 +694,17 @@ function collide3(py, x, y, z) {
 // super-hero's, and a spider's jump (about a metre and three quarters)
 export const HERO = { walk: 2.8, run: 9.5, accel: 15, turn: 11, jump: 8.4, gravity: 21, air: 0.35 };
 
+// Which of his clips for how fast he's going, given the one playing: each
+// change a little past the line it's at, so speeding up or easing off across
+// it doesn't flick from one clip to the other and back every frame
+export function gaitFor(playing, speed) {
+  const line = (HERO.walk + HERO.run) / 2.2;
+  if (speed < (playing === 'idle' ? 0.5 : 0.3)) return 'idle';
+  if (playing === 'run') return speed < line - 0.5 ? 'walk' : 'run';
+  if (playing === 'walk') return speed > line + 0.5 ? 'run' : 'walk';
+  return speed < line ? 'walk' : 'run';
+}
+
 // ── swinging, and climbing ──
 // Engineered from how Insomniac describe their web-swinging and how the
 // open re-creations of it work (docs/research/2026-10-05-web-swinging.md):

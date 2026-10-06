@@ -38,7 +38,7 @@ import { createFlags, createRings, staticGrounds } from './grounds';
 import { createPacks } from './packs';
 import { createGrass } from './grass';
 import { createGhosts } from '../../middleearth/towns/ghosts';
-import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, SUIT, TRICK, V, aimWeb, camRoom, findPerch, floorAt, nearestEdge, photoView, samplePath, swingArc, swingPose, treeHeight } from './rules';
+import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, SUIT, TRICK, V, aimWeb, camRoom, findPerch, floorAt, gaitFor, nearestEdge, photoView, samplePath, swingArc, swingPose, treeHeight } from './rules';
 
 const SC = { s: S, v: V };
 // a plan point (x east, y south, z up, in units) in the world
@@ -994,12 +994,10 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       }
     } else if (air) d.play(rising ? 'run' : 'walk', { speed: 0.6 });
     else {
-      // (a little either side of each line, so a speed on it doesn't flick
-      // between two clips frame to frame)
-      const idle = d.playing === 'idle' ? 0.45 : 0.3;
-      const run = ((HERO.walk + HERO.run) / 2.2) * (d.playing === 'run' ? 0.88 : 1.08);
-      if (speed < idle) d.play('idle');
-      else if (speed < run) d.play('walk', { speed: Math.max(0.6, Math.min(2.2, speed / MOVES.speeds.walk)) });
+      // each clip paced to his speed, so his feet keep to the ground
+      const gait = gaitFor(d.playing, speed);
+      if (gait === 'idle') d.play('idle');
+      else if (gait === 'walk') d.play('walk', { speed: Math.max(0.6, Math.min(2.2, speed / MOVES.speeds.walk)) });
       else d.play('run', { speed: Math.max(0.8, Math.min(2.4, speed / MOVES.speeds.run)) });
     }
   };

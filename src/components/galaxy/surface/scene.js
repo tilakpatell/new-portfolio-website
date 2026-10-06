@@ -67,8 +67,9 @@ import { createPeers } from './peers';
 import { createSounds } from './sounds';
 import { createActivity } from './activity';
 import { snapToTexel } from './shadow';
+import { createShadowPhase } from './near';
 import { createBlaster } from './blaster';
-import { feed, start as startQuest, stepTarget, stepText } from './quests';
+import { feed, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, ride, rider, turnToward, walk, walker } from './walker';
 import { rng } from './noise';
@@ -186,7 +187,9 @@ export async function create(canvas, ctx) {
 
   // ── What's on it ──
   const kit = createKit({ seed: 31 });
-  const placer = createPlacer({ parent: scene, kit, world, warm });
+  // (the scatter casts its shadow only near you: near.js)
+  const shadowPhase = sun.castShadow ? createShadowPhase(scene, sun) : null;
+  const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null });
   for (const t of site.things_all) placer.put(t);
   const r = rng(site.ground.seed ?? 1);
   const avoid = [...site.places.map((p) => ({ at: p.at, r: p.flat?.r ?? p.r * 0.6 })), { at: site.land.at, r: 30 }];
@@ -207,11 +210,11 @@ export async function create(canvas, ctx) {
     }
     placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true });
   }
-  const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit });
+  const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density });
 
   // ── The places you go into (zones): built high over the world, out of
   // sight, each with its own lamps ──
-  for (const z of site.zones) placer.put({ kind: z.inside.build, at: [z.origin[0], z.origin[2]], y: z.origin[1], abs: true, model: false, opts: z.inside.opts });
+  for (const z of site.zones) placer.put({ kind: z.inside.build, at: [z.origin[0], z.origin[2]], y: z.origin[1], abs: true, model: false, opts: z.inside.opts, zone: true });
   // (hidden outdoors: a light with nothing to light still costs every pixel of
   // every lit thing, and four of them a good deal; the warm-up compiles both ways)
   const lamps = Array.from({ length: 4 }, () => {
@@ -801,7 +804,9 @@ export async function create(canvas, ctx) {
     if (!tg) return;
     if (tg.kind === 'talk') {
       const spec = tg.actor.spec;
-      const q = spec.quest && questOf(spec.quest);
+      // (what they offer now: their next quest not done, or their last, done)
+      const offered = nextQuest(spec, state.done) ?? questsOf(spec).at(-1);
+      const q = offered && questOf(offered);
       const step = state.quest && questOf(state.quest.id)?.steps[state.quest.step];
       if (q && !state.done.has(q.id) && !state.quest) beginQuest(q);
       else if (step?.type === 'talk' && step.actor === spec.id) questEvent({ type: 'talk', actor: spec.id });
@@ -863,6 +868,11 @@ export async function create(canvas, ctx) {
     sky.mesh.visible = !z;
     if (weather) weather.group.visible = !z;
     if (water) water.mesh.visible = !z;
+    // (inside, the world outside isn't drawn, and outside, no room is)
+    ground.visible = !z;
+    if (water?.glow) water.glow.visible = !z;
+    placer.setZone(Boolean(z));
+    life.setZone(Boolean(z));
     // (indoors, the room's lamps and no sun to cast a shadow; outdoors, the sun's
     // shadow unless the frame rate has had it off, lowerQuality)
     sun.castShadow = !z && shadows;
@@ -1358,31 +1368,43 @@ export async function create(canvas, ctx) {
   // the compass: each place's mark slid along the bar to its bearing
   let compassW = 0;
   let compassT = 0;
+  // (the page told only what's changed: a style written is a style the
+  // browser works out again)
+  const styled = new WeakMap();
+  const setStyle = (m, key, v) => {
+    let had = styled.get(m);
+    if (!had) styled.set(m, (had = {}));
+    if (had[key] === v) return;
+    had[key] = v;
+    m.style[key] = v;
+  };
+  let compassMarks = [];
   function compass() {
     const el = props.compass?.current;
     if (!el) return;
     if (!compassW || state.t - compassT > 2) {
       compassW = el.clientWidth;
       compassT = state.t;
+      compassMarks = [...el.querySelectorAll('[data-id]')];
     }
     const p = me().st;
     const span = Math.PI * 0.75; // the bar's half-width, in radians
-    for (const m of el.querySelectorAll('[data-id]')) {
+    for (const m of compassMarks) {
       const id = m.dataset.id;
       let at;
       if (id === 'quest' && chase && chaseOn()) {
         at = chase.target(p.x, p.z);
         if (!at) {
-          m.style.opacity = '0';
+          setStyle(m, 'opacity', '0');
           continue;
         }
       } else if (id === 'quest') {
         const q = state.quest && questOf(state.quest.id);
         const step = q?.steps[state.quest.step];
-        const giver = !step && state.tracked ? life.actors.find((x) => x.spec.quest === state.tracked) : null;
+        const giver = !step && state.tracked ? life.actors.find((x) => questsOf(x.spec).includes(state.tracked)) : null;
         at = step ? (doorFor(step) ?? stepTarget(step, state.quest, actorAt)) : giver ? (giver.spec.zone && state.zone?.id !== giver.spec.zone ? site.zones.find((z) => z.id === giver.spec.zone)?.door.at : [giver.b.x, giver.b.z]) : null;
         if (!at || state.zone) {
-          m.style.opacity = '0';
+          setStyle(m, 'opacity', '0');
           continue;
         }
       } else if (id === 'ship') at = landAt;
@@ -1395,8 +1417,8 @@ export async function create(canvas, ctx) {
       const a = wrap(Math.atan2(at[0] - p.x, at[1] - p.z) - state.cam.yaw);
       const x = (-a / span) * 0.5 * compassW;
       const on = Math.abs(a) < span;
-      m.style.transform = `translateX(${x.toFixed(1)}px)`;
-      m.style.opacity = on ? String(1 - (Math.abs(a) / span) ** 3) : '0';
+      setStyle(m, 'transform', `translateX(${x.toFixed(1)}px)`);
+      setStyle(m, 'opacity', on ? (1 - (Math.abs(a) / span) ** 3).toFixed(2) : '0');
       const d = m.querySelector('.d');
       if (d && (state.t * 4) % 1 < 0.3) d.textContent = `${Math.round(Math.hypot(at[0] - p.x, at[1] - p.z))} m`;
     }
@@ -1499,8 +1521,8 @@ export async function create(canvas, ctx) {
     }
     // the marks over whoever has a quest to give
     for (const a of life.actors) {
-      const q = a.spec.quest;
-      if (!q) continue;
+      if (!a.spec.quest) continue;
+      const q = nextQuest(a.spec, state.done);
       let m = givers.find((g) => g.a === a);
       if (!m) {
         m = { a, sprite: new THREE.Sprite(markMat) };
@@ -1508,7 +1530,7 @@ export async function create(canvas, ctx) {
         scene.add(m.sprite);
         givers.push(m);
       }
-      const on = !state.done.has(q) && !state.quest && a.fig;
+      const on = q && !state.quest && a.fig;
       m.sprite.visible = Boolean(on);
       if (on) m.sprite.position.set(a.b.x, a.holder.position.y + (a.fig.tall ?? 1.8) * (a.spec.scale ?? 1) + 0.6 + Math.sin(state.t * 3) * 0.08, a.b.z);
     }
@@ -1520,8 +1542,8 @@ export async function create(canvas, ctx) {
     fx.update(dt);
     spring(state.kick, dt, 240, 22);
     state.aim = Math.max(0, state.aim - dt / 2.5);
-    life.update(dt, state.phase === 'walk' ? me().st : null);
-    placer.update(t, dt);
+    life.update(dt, state.phase === 'walk' ? me().st : null, state.phase === 'walk' || state.phase === 'ride' ? me().st : camera.position);
+    placer.update(t, dt, me().st);
     stepDust(dt);
     storm(dt);
     online(dt);
@@ -1781,6 +1803,12 @@ export async function create(canvas, ctx) {
       props = { ...props, net: { ...net, walk() {} } };
     },
     // (for tests: put you somewhere, facing somewhere)
+    // (dev: into a zone by its id, or out of the one you're in)
+    zone(id = null) {
+      const z = id && site.zones.find((o) => o.id === id);
+      if (z) enterZone(z);
+      else leaveZone();
+    },
     teleport(x, z, yaw = null) {
       if (!import.meta.env.DEV) return;
       const p = me().st;
@@ -1816,6 +1844,7 @@ export async function create(canvas, ctx) {
       markMat.dispose();
       life.dispose();
       placer.dispose();
+      shadowPhase?.dispose();
       for (const p of people) {
         p.gp?.dispose();
         p.fig?.dispose?.();
