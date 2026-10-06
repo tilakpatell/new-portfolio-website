@@ -517,6 +517,9 @@ export async function create(canvas, ctx) {
   fill.position.set(0.7, -0.4, -0.3).multiplyScalar(50);
   const ambient = new THREE.AmbientLight('#b8c4ff', 0.4);
   scene.add(key, fill, ambient);
+  // the key's direction in world space, shared with every planet, which
+  // puts its own sun in the key's place (planets.js's keyHook)
+  const keyW = { value: LIGHT.clone() };
 
   let seed = 7;
   const rand = () => {
@@ -691,7 +694,7 @@ export async function create(canvas, ctx) {
   // axes; turned with the map into the world's each frame: lights())
   const sunInMap = Object.fromEntries(ORDER.map((id) => [id, sunFor(id)]));
   const planets = ORDER.map((id) => {
-    const p = buildPlanet(byId(id), T, { sun: new THREE.Vector3(...sunInMap[id]), tier });
+    const p = buildPlanet(byId(id), T, { sun: new THREE.Vector3(...sunInMap[id]), tier, key: keyW });
     p.group.position.set(...POSITIONS[id]);
     map.add(p.group);
     return p;
@@ -4067,6 +4070,7 @@ export async function create(canvas, ctx) {
     toward(lightNow.key, lightTo.set(...l.key.dir).negate().applyAxisAngle(Y_AXIS, state.yaw), k).normalize();
     toward(lightNow.fill, lightTo.set(...l.fill.dir).negate().applyAxisAngle(Y_AXIS, state.yaw), k).normalize();
     key.position.copy(lightNow.key).multiplyScalar(50);
+    keyW.value.copy(lightNow.key);
     fill.position.copy(lightNow.fill).multiplyScalar(50);
     tint(key.color, lightColour.setRGB(...l.key.colour), k);
     tint(fill.color, lightColour.setRGB(...l.fill.colour), k);

@@ -260,3 +260,37 @@ describe('the ground follows the pace', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('a world seen from across the map', () => {
+  const stub = () => {
+    const gradient = { addColorStop() {} };
+    const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+  };
+  const compile = async (id, key) => {
+    stub();
+    const THREE = await import('three');
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    const p = buildPlanet(byId(id), {}, { sun: [0, 0, 1], key });
+    const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
+    p.body.material.onBeforeCompile(shader);
+    return { p, shader };
+  };
+  it('is shaded from its own sun, not the key’s, once it is told the key', async () => {
+    const THREE = await import('three');
+    const key = { value: new THREE.Vector3(0, 1, 0) };
+    const { p, shader } = await compile('middleearth', key);
+    expect(shader.uniforms.uKeyW).toBe(key);
+    expect(shader.uniforms.uKeySunW.value).toBe(p.body.material.userData.air.uSunW.value); // (the one vector the map turns)
+    expect(shader.fragmentShader).toMatch(/directLight\.direction = normalize\( \( viewMatrix \* vec4\( uKeySunW/);
+    expect(shader.fragmentShader).not.toMatch(/#include <lights_fragment_begin>/);
+    expect(p.body.material.customProgramCacheKey()).toMatch(/^sun-/);
+  });
+  it('keeps C-137’s bands: its mark on three’s light loop survives the swap', async () => {
+    const THREE = await import('three');
+    const { shader } = await compile('rickmorty', { value: new THREE.Vector3(0, 1, 0) });
+    expect(shader.fragmentShader).toMatch(/celEdge = max\(length\(fwidth\(normal\)\), 1e-4\) \* 2\.0;/);
+    expect(shader.fragmentShader).toMatch(/uKeySunW/);
+  });
+});
