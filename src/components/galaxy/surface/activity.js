@@ -28,6 +28,9 @@ import { stepTarget } from './quests';
 import { rng } from './noise';
 import { absorb, startBurst, stepBurst, strafeStep } from './hostiles';
 import { buildGun } from '../../universe/gunplay';
+import { createPortalFx, meshyJoints } from '../../../lib/three/portalFx';
+import { createGadgetFx } from '../../../lib/three/gadgetFx';
+import { SHOW_KILLS } from './weaponRules';
 import { dress } from './saber';
 
 const BEAM_VERT = `
@@ -168,10 +171,14 @@ function healthBar() {
   };
 }
 
-export function createActivity({ parent, world, warm = (o) => Promise.resolve(o), color = '#ffd36a', kit = null }) {
+export function createActivity({ parent, world, warm = (o) => Promise.resolve(o), color = '#ffd36a', kit = null, onShow = null }) {
   const group = new THREE.Group();
   group.name = 'activity';
   parent.add(group);
+  // Rick's guns' kills: through a portal, frozen and shattered, shrunk and
+  // popped (onShow(how, event) for the sounds of them)
+  const pfx = createPortalFx({ parent: group });
+  const gfx = createGadgetFx({ parent: group });
   const marker = beam(color);
   marker.visible = false;
   group.add(marker);
@@ -192,6 +199,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     });
   const clearStep = () => {
     for (const t of targets) {
+      t.show?.dispose();
       t.bar?.dispose();
       t.saber?.owned.forEach((o) => o.dispose?.());
     }
@@ -317,7 +325,12 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     get targets() {
       return targets.filter((t) => !t.down && t.fig);
     },
-    hit(t, damage = 1, { breaks = false } = {}) {
+    // `how`: the gun (a kill by one of SHOW_KILLS plays its show), `push` the way the shot went
+    hit(t, damage = 1, { breaks = false, how = null, push = null } = {}) {
+      if (SHOW_KILLS.includes(how) && t.hp - damage <= 0 && !t.down && t.fig) {
+        t.how = how;
+        t.push = push?.clone() ?? null;
+      }
       if (t.shield > 0 && breaks) {
         // (a heavy stroke, or a blast: the shield goes at once, and the rest lands)
         t.shield = 0;
@@ -417,6 +430,29 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       // targets: about their business, or going down
       for (const t of targets) {
         const b = t.b;
+        if (t.down && t.how) {
+          // the show owns the figure from the moment it starts
+          t.down += dt;
+          if (!t.show) {
+            const tall = (t.fig.tall ?? 1.8) * (t.spec.scale ?? 1);
+            const up = new THREE.Vector3(0, 1, 0);
+            const push = t.push ?? new THREE.Vector3(Math.sin(b.yaw), 0, Math.cos(b.yaw)).negate();
+            const on = (ev) => onShow?.(t.how, ev);
+            if (t.saber) t.saber.arm.visible = false;
+            if (t.bubble) t.bubble.visible = false;
+            if (t.bar) t.bar.sprite.visible = false;
+            if (t.how === 'freeze') t.show = gfx.freeze({ root: t.holder, tall, up, push, on });
+            else if (t.how === 'shrink') t.show = gfx.shrink({ root: t.holder, tall, up, on });
+            else t.show = pfx.swallow({ root: t.holder, tall, up, push, joints: meshyJoints(t.holder, 1, tall), on });
+            t.holder.userData.show = t.show; // (for the QA scripts: the show's handle)
+            onShow?.(t.how, 'hit');
+          }
+          if (t.down > 0.3 && !t.counted) {
+            t.counted = true;
+            events.push({ type: 'kill', tag: t.tag });
+          }
+          continue;
+        }
         if (t.down) {
           t.down += dt;
           t.holder.rotation.x = Math.min(Math.PI / 2, t.down * 4) * -1;
@@ -544,6 +580,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           t.bubble.material.opacity = 0.1 + f.flash * 1.6 + 0.03 * Math.sin(time * 9 + t.home[0]);
         }
       }
+      pfx.update(dt);
+      gfx.update(dt);
       return events;
     },
     // the hostile ones ready to fire at you this frame
@@ -582,6 +620,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     dispose() {
       dead = true;
       clearStep();
+      pfx.dispose();
+      gfx.dispose();
       group.removeFromParent();
     },
   };
