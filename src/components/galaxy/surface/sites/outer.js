@@ -73,7 +73,7 @@ export const SITES = {
     ],
     quests: [
       { id: 'puck', name: 'The bounty puck', giver: 'greef', intro: [['Greef Karga', 'A puck for you: the client wants an asset from the Imperial base. Alive. Questions are extra.']], steps: [{ type: 'reach', at: [-260, 160], r: 40, text: 'Go to the Imperial base' }, { type: 'shoot', tag: 'basetroops', n: 6, text: 'Get past the guards', spawn: troops('basetroops', 6, [-260, 160]) }, { type: 'collect', item: 'asset', n: 1, spots: [[-252, 166]], text: 'Collect the asset' }, { type: 'talk', zone: 'cantina', actor: 'greef', text: 'Take it to Greef Karga' }], done: [['Greef Karga', 'The client is pleased. Here: camtono of beskar. Don’t spend it all at once.']] },
-      { id: 'protect', name: 'This is the Way', giver: 'mando', intro: [['The Mandalorian', 'Death troopers. They’ve tracked the kid here. Help me hold them off.']], steps: [{ type: 'shoot', tag: 'death', n: 5, text: 'Protect the Child from the death troopers', spawn: { ...troops('death', 5, [90, -210], 'deathtrooper'), hostile: hostile(45, 1.8, 10) } }], done: [['The Mandalorian', 'This is the Way.']] },
+      { id: 'protect', name: 'This is the Way', giver: 'mando', intro: [['The Mandalorian', 'Death troopers. They’ve tracked the kid here. Help me hold them off.']], steps: [{ type: 'shoot', tag: 'death', n: 5, text: 'Protect the Child from the death troopers', spawn: { ...troops('death', 5, [90, -210], 'deathtrooper'), hostile: { ...hostile(45, 2.6, 7), burst: { n: 3, gap: 0.1 }, strafe: { speed: 2.6, every: 2.2, keep: 14 } } } }], done: [['The Mandalorian', 'This is the Way.']] },
     ],
     flyovers: [{ kind: 'tie', n: 2, metres: 7, alt: 90, speed: 100, every: 50 }],
   },

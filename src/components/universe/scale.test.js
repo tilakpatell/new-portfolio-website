@@ -7,7 +7,8 @@ import { TYPES } from './traffic';
 import { STAR_DESTROYER } from './setpieces';
 import { poseFor } from './poses';
 import { UNIVERSES } from './universes';
-import { WONDERS } from './deep';
+import { WONDERS, reachOf } from './deep';
+import { PHONE } from './phone';
 
 const stations = PLANETS.filter((p) => UNIVERSES.find((u) => u.id === p.id).kind === 'core');
 const worlds = PLANETS.filter((p) => {
@@ -38,6 +39,40 @@ describe('the home system against the ships (scale.js)', () => {
     const stars = WONDERS.filter((w) => w.kind === 'star');
     expect(stars.length).toBeGreaterThan(0);
     for (const s of stars) expect(s.r, s.id).toBeGreaterThan(biggestWorld);
+  });
+
+  it('draws the great things of deep space bigger than any world', () => {
+    const biggestWorld = Math.max(...worlds.map((w) => w.r));
+    const big = (id, r) => expect(r, id).toBeGreaterThan(biggestWorld * 1.2);
+    for (const w of WONDERS) {
+      if (w.kind === 'star' || w.kind === 'gas-giant' || w.kind === 'ice-giant' || w.kind === 'nebula') big(w.id, w.r);
+      if (w.kind === 'binary') {
+        big(w.id, w.r);
+        big(`${w.id}'s second sun`, w.pair.r);
+        expect(w.pair.apart, w.id).toBeGreaterThan(w.r + w.pair.r); // (two suns, not one inside the other)
+      }
+      // a black hole's shadow, the black sphere you see, and its disk round it
+      if (w.kind === 'black-hole') {
+        big(w.id, w.r);
+        expect(w.disk, w.id).toBeGreaterThan(4 * w.r);
+      }
+      // a pulsar and a white dwarf are small stars, as they are: their glare
+      // and their field of wrecks still reach further than any world
+      if (w.kind === 'pulsar' || w.kind === 'graveyard') big(w.id, reachOf(w));
+    }
+    big('the Star Wars gate', UNIVERSES.find((u) => u.portal).size);
+  });
+
+  it('keeps a star bigger than its own planets, and the Citadel bigger than any station', () => {
+    for (const w of WONDERS.filter((x) => x.kind === 'star')) for (const p of w.planets) expect(p.r, w.id).toBeLessThan(w.r / 2);
+    const citadel = WONDERS.find((w) => w.kind === 'citadel');
+    for (const s of stations) expect(citadel.r).toBeGreaterThan(3 * s.r);
+  });
+
+  it('keeps the phone out past the belt (the way to Dickansh’s world) bigger than a station', () => {
+    const home = stations.find((s) => s.id === 'home');
+    // (its height as phone.js measures it, 1.15 of its scale each way; phone.test.js keeps it under the ceiling)
+    expect(2 * PHONE.scale * 1.15).toBeGreaterThan(2 * home.r);
   });
 
   it('draws every station far bigger than the ship, and the sun bigger again', () => {

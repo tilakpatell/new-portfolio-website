@@ -4,6 +4,8 @@ import { useAchievements } from '../Achievements';
 import { READOUT_LABEL, SLOTS, SLOT_LABEL, STOCK, isOpen, partEffects, partsFor, powerOf, readout, statsOf } from './outfit';
 import { BUILD_SLOTS, BUILD_SLOT_LABEL, isModuleOpen, modulesFor } from './shipyard/parts';
 import { STOCK_BUILD, buildCode, parseBuildCode, rollBuild } from './shipyard/build';
+import { castOfCrew } from '../rickmorty/wardrobe/looks';
+import { crewById } from './crews';
 
 // The hangar, from the button in the map's corner (or H): the ship you're
 // flying, fitted out the way a space sim's outfitting screen does it. A tab
@@ -153,9 +155,9 @@ export default function Hangar({ ship, shipName, loadout, build = null, lastBuil
             </button>
           </header>
 
-          {onCrew && ship === 'cruiser' && (
+          {onCrew && castOfCrew(ship) && (
             <button type="button" className="universe-hangar-crew" onClick={onCrew} aria-haspopup="dialog">
-              Dress Rick and Morty
+              Dress {crewById(ship)?.label}
             </button>
           )}
 
