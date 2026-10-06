@@ -310,7 +310,8 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
       if (auto && !stats.started) {
         if (floor.every((f) => shown(f))) bake();
       }
-      else if (follow && !job && stats.baked && floor.every((f) => shown(f)) && shouldRebake(bakedDir, sunDir)) bake();
+      // (a sky-only bake doesn't care where the sun is)
+      else if (follow && !keepShadows && !job && stats.baked && floor.every((f) => shown(f)) && shouldRebake(bakedDir, sunDir)) bake();
       blobs.clear();
       // (one zone of several: its blobs only while it's the one shown, and
       // only for who's in it)
