@@ -1676,7 +1676,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     root.add(ground.mesh);
     if (landing && furnished(id)) {
       const anchor = near ? { n: near.n, f: near.f } : S.spot;
-      const f = furnish({ id, landing, frame: anchor, R: S.R, small, renderer, warm });
+      const f = furnish({ id, landing, frame: anchor, R: S.R, small, reduced, renderer, warm });
       rocks = { mesh: f.group, solids: f.solids, spots: f.spots, update: f.update, dispose: f.dispose };
     } else rocks = u.plated ? createHullBits(n, S.R, u, small, S.band, clear) : createRocks(n, S.R, u, small);
     root.add(rocks.mesh);

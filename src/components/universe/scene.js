@@ -139,6 +139,7 @@ import { CORE, GENS, citadelGeometry, createSiege, segmentSphere } from './siege
 import { createCitadelSiege } from './citadelSiege';
 import { STALE_MS } from './online/protocol';
 import { createFoot } from './footScene';
+import { wayIn } from './landings/wayin';
 import { ENTRY, LANDABLE, airTop, entering } from './entry';
 
 const STARS = 1800; // the near ones, over the Milky Way's own
@@ -3322,6 +3323,26 @@ export async function create(canvas, ctx) {
     props.onOpen?.(d.id);
     return true;
   };
+  // the way into the planet's world while the crew are down on it (wayin.js):
+  // the HUD's button and Enter, there the whole time, not only at the door
+  const wayInNow = () => (onFoot() ? wayIn({ id: foot.id, phase: foot.phase, frozen: props.frozen, crashing: Boolean(state.crash) }) : null);
+  const intoWorld = () => {
+    const w = wayInNow();
+    if (!w) return false;
+    props.onOpen?.(w.id);
+    return true;
+  };
+  let enterWas = null;
+  const placeEnter = () => {
+    const el = props.enter?.current;
+    if (!el) return;
+    const label = wayInNow()?.label ?? '';
+    if (label === enterWas) return;
+    enterWas = label;
+    el.hidden = !label;
+    const text = el.querySelector('.universe-enter-label');
+    if (text) text.textContent = label;
+  };
   // the line over the map: what G does here
   let promptWas = null;
   const placePrompt = () => {
@@ -3578,6 +3599,7 @@ export async function create(canvas, ctx) {
     const piloting = pilots.update(dt, now, net, { project: toScreen, tags: props.tags?.current ?? null, locked: state.lockTarget?.peer ?? null, footOn: onFoot() ? foot.id : null });
     placeHud();
     placePrompt();
+    placeEnter();
     // the sky and the far stars stay round the camera, wherever it flies;
     // the dust rides with it too, and shows while you fly (more, the faster)
     // (only the map's own turn is wanted here: the drawing brings everything
@@ -3736,7 +3758,7 @@ export async function create(canvas, ctx) {
   };
   // the keys on foot: walking (W A S D, Q E to step sideways), Shift to
   // run, Space to jump, F to fire, T the next trooper, X to play the other
-  // one, V out of your own eyes, Enter into the planet's page
+  // one, V out of your own eyes, Enter into the planet's world (wayin.js)
   const footKey = (e, key, onControl) => {
     if (key === 'f') {
       e.preventDefault();
@@ -3758,6 +3780,11 @@ export async function create(canvas, ctx) {
     if (key === 'v') {
       e.preventDefault();
       foot.first();
+      return;
+    }
+    if (key === 'enter' && !onControl && intoWorld()) {
+      e.preventDefault();
+      heard();
       return;
     }
     if (key === 'enter' && !onControl && state.at) {
@@ -4127,6 +4154,11 @@ export async function create(canvas, ctx) {
       heard();
       // (a door you're at first: a big ship's reach can take in one near it)
       if (onFoot() && !intoDoor() && !foot.board()) emit({ type: 'foot', id: 'far' });
+    },
+    // the HUD's “Enter Albuquerque” button: into the world you're down on
+    enter() {
+      heard();
+      intoWorld();
     },
     // the phone's Switch button, on foot: play the other one
     swap() {
