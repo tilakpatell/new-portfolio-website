@@ -2034,5 +2034,14 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rickprime": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11158-24f4-7081-9f6a-9ddaa3eab615",
+    "name": "rickprime, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }
