@@ -31,6 +31,7 @@ import { STATIONS } from './stations';
 import { buildGateway } from '../galaxy/gateway';
 import { SIDES, cybertronSkin } from '../cybertron/skin';
 import { createWar, warZones } from '../cybertron/war';
+import { AIR } from './entry';
 
 const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the scene's key light
 
@@ -68,7 +69,9 @@ export async function loadTextures({ small = false } = {}) {
 // halo just outside its edge (the back of a slightly bigger sphere, fading
 // out from the limb) and a glow on the surface's own rim (added to the
 // planet's material, below), so it's one extra draw a planet as before.
-const HALO = 1.2; // the halo's reach, as a share of the planet's radius
+// the halo's reach, as a share of the planet's radius: the air's top, which
+// the ship flies down into to land (entry.js), so what glows is what it goes into
+const HALO = AIR;
 const HALO_VERT = `
 uniform vec3 uLight;
 varying vec3 vN;
