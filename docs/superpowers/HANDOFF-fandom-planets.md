@@ -16,7 +16,7 @@ The planets outside the Star Wars galaxy, as the universe map shows them from sp
 
 ## Left
 
-1. **Texture memory.** Every planet's maps load up front (`loadTextures`). On the high tier that's now 13 maps at 2048 (about 145 MB with mipmaps) where there were 3. Phones and the other tiers get the 1024 copies. Night lights, glow and Breaking Bad's clouds are already down to 1024. If the budget bites, load each planet's maps only as it comes near. That means `buildPlanet` taking a lazy getter and swapping the material's maps in when they arrive.
+1. **Texture memory.** Every planet's maps load up front (`loadTextures`). On the high tier that's now 13 maps at 2048 (about 145 MB with mipmaps) for planets that had none at 2048 before. Phones and the other tiers get the 1024 copies. Night lights, glow and Breaking Bad's clouds are already down to 1024. If the budget bites, load each planet's maps only as it comes near. That means `buildPlanet` taking a lazy getter and swapping the material's maps in when they arrive.
 2. **Harad's made-up ranges.** At parking distance they read as smooth sausages (`RANGES` in `middleearth-geo.mjs`). They'd look better as broken ridges, for example two or three offset strokes each.
 3. **Mordor's walls.** The polygon in `LANDS.mordor` is nearly square. A few more points along Ephel Dúath's bend would round it.
 4. **The landings.** Each planet's ground on foot (`universe/landings/`) still uses its own styles. Matching them to the new maps would be its own lane: Middle-earth's landing biome by where the ship sets down, and so on.
