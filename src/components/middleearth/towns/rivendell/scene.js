@@ -24,6 +24,7 @@ import { createFx } from '../../shire/fx';
 import { bake, farTree } from '../bake';
 import { createGhosts } from '../ghosts';
 import { makeTerrain, makeTufts } from '../ground';
+import { FIGURE, groundTown } from '../grounded';
 import { makeFolk } from '../bree/props';
 import { createRivendellKit } from './props';
 import { BRIDGE, CAST, COLLIDERS, COLONNADE, COMPANIONS, COURT, FALLS, GATE, GORGE, HOUSE, INSIDE, LAMPS, PAVILION, SEATS, SPOTS, TREES, WORLD, boxDist, height, padY, pathAmount, riverX } from './layout';
@@ -135,7 +136,8 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
     const ends = Math.abs(z - BRIDGE.z) < 2.2 && Math.abs(Math.abs(x - BRIDGE.x) - BRIDGE.len / 2 - 0.7) < 1.6 ? 1 : 0;
     return height(x, z) - 0.2 * Math.max(court, ends);
   };
-  valley.add(makeTerrain(renderer, { size: WORLD.edge * 2, seg: tier === 'high' ? 240 : tier === 'mid' ? 170 : 110, height: under, paint, blades: 0.2 }));
+  const terrain = makeTerrain(renderer, { size: WORLD.edge * 2, seg: tier === 'high' ? 240 : tier === 'mid' ? 170 : 110, height: under, paint, blades: 0.2 });
+  valley.add(terrain);
   const wind = { uWind: { value: 0 } };
   valley.add(makeTufts(Math.round(9000 * many), { radius: WORLD.radius + 4, height, growable, seed: 71, base: 0x4a5a26, tip: 0xb8a052, hue: [0.12, 0.06] }, wind));
 
@@ -282,8 +284,13 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
     n += 1;
   }
   const woodMat = new THREE.MeshLambertMaterial({ vertexColors: true });
-  valley.add(instances(farTree({ leaf: [0xd8902a, 0xe8b040, 0xb8541e], trunk: 0x6a5a4a }), woodMat, woods[0], { shadow: false }));
-  valley.add(instances(farTree({ leaf: [0xe8c050, 0xd8a838, 0xc89030], trunk: 0xd8d0c0 }), woodMat, woods[1], { shadow: false }));
+  // (the far woods in matcaps made from the valley's own light: seen only in
+  // passing, one texture fetch and no lights for each: ../grounded.js)
+  const farWoods = [
+    instances(farTree({ leaf: [0xd8902a, 0xe8b040, 0xb8541e], trunk: 0x6a5a4a }), woodMat, woods[0], { shadow: false }),
+    instances(farTree({ leaf: [0xe8c050, 0xd8a838, 0xc89030], trunk: 0xd8d0c0 }), woodMat, woods[1], { shadow: false }),
+  ];
+  valley.add(...farWoods);
   const leaves = [];
   for (const [x, z] of TREES)
     for (let k = 0; k < 4; k++) {
@@ -303,14 +310,11 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
   const roomAt = (v) => v.clone().add(V(INSIDE.x, INSIDE.y, INSIDE.z));
 
   // ── people ──
-  const blobGeo = new THREE.CircleGeometry(0.42, 20).rotateX(-Math.PI / 2);
-  const blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false });
+  // (each stands on a soft blob slid away from the sun, and dims in the
+  // baked shade: ../grounded.js)
+  const movers = [];
   const blob = (f, s = 1) => {
-    const b = new THREE.Mesh(blobGeo, blobMat);
-    b.position.y = 0.04;
-    b.scale.setScalar(s);
-    b.renderOrder = 1;
-    f.group.add(b);
+    movers.push({ object: f.group, size: [FIGURE * s, FIGURE * s] });
     return f;
   };
   const frodo = blob(folk('frodo'));
@@ -695,6 +699,7 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
     sky.dome.position.copy(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 90);
     sun.target.position.copy(camera.position);
+    ground.update();
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -727,7 +732,11 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
     return p ? p.group.position.clone().add(V(0, 1.7, 0)).toArray() : null;
   };
 
+  // ── the floor's light, baked when the town is first drawn ──
+  const ground = groundTown({ renderer, scene, terrain, outdoors: valley, sun, height: under, people: movers, skip: [sky.dome, ghosts.group], tier, radius: WORLD.radius + 10, shade: 0x3a2a1c, matcap: farWoods });
+
   return {
+    ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
@@ -746,6 +755,7 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
       return A.suggest ?? null;
     },
     dispose() {
+      ground.dispose();
       clearTimeout(A.axeTimer);
       ghosts.dispose();
       disposeTree(scene);

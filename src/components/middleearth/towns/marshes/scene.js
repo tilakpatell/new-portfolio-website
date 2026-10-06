@@ -23,6 +23,7 @@ import { makeAtmosphere, makeSky } from '../../shire/sky';
 import { createFx } from '../../shire/fx';
 import { createGhosts } from '../ghosts';
 import { makeTerrain } from '../ground';
+import { FIGURE, groundTown } from '../grounded';
 import { makeFolk } from '../bree/props';
 import { createMarshesKit } from './props';
 import { BED, BOULDERS, EMYN, GATE_AT, ISLAND, LIGHTS, LOOKOUT, MARSH_PATH, MARSH_Y, POOL as SAFE, POOL_BANK, ROAD, SNAGS, SPIKES, emynHeight, marshHeight, slopeHeight, toPath, tussockAt } from './layout';
@@ -106,7 +107,8 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
   const rockMat = mats.rock ?? new THREE.MeshLambertMaterial({ vertexColors: true });
 
   // ── the Emyn Muil ──
-  zones.emyn.add(makeTerrain(renderer, { size: 120, seg: tier === 'high' ? 140 : 90, height: emynHeight, paint: paints.emyn, blades: 0 }));
+  const emynLand = makeTerrain(renderer, { size: 120, seg: tier === 'high' ? 140 : 90, height: emynHeight, paint: paints.emyn, blades: 0 });
+  zones.emyn.add(emynLand);
   const cliff = kit.cliff({ w: 60, h: EMYN.top, outcrops: ROPE.outcrops });
   cliff.group.position.set(0, emynHeight(0, EMYN.cliff), EMYN.cliff);
   zones.emyn.add(cliff.group);
@@ -145,7 +147,8 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
   scene.add(fallingRain.mesh);
 
   // ── the Dead Marshes ──
-  zones.marsh.add(makeTerrain(renderer, { size: 220, seg: tier === 'high' ? 200 : 130, height: marshHeight, paint: paints.marsh, blades: 0.1 }));
+  const marshLand = makeTerrain(renderer, { size: 220, seg: tier === 'high' ? 200 : 130, height: marshHeight, paint: paints.marsh, blades: 0.1 });
+  zones.marsh.add(marshLand);
   const marshMat = new THREE.ShaderMaterial({
     uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uTime: { value: 0 } }]),
     fog: true,
@@ -290,7 +293,8 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
   scene.add(mist.mesh);
 
   // ── before the Gate ──
-  zones.gate.add(makeTerrain(renderer, { size: 440, seg: tier === 'high' ? 180 : 120, height: slopeHeight, paint: paints.gate, blades: 0 }));
+  const gateLand = makeTerrain(renderer, { size: 440, seg: tier === 'high' ? 180 : 120, height: slopeHeight, paint: paints.gate, blades: 0 });
+  zones.gate.add(gateLand);
   zones.gate.add(instances(kit.ashRock(4), rockMat, BOULDERS.map(([x, z, r], i) => ({ x, z, y: slopeHeight(x, z) - 0.3, s: r, turn: i * 1.3 })), { shadow: false }));
   const gate = kit.blackGate();
   gate.group.position.set(GATE_AT.x, slopeHeight(GATE_AT.x, GATE_AT.z) - 2, GATE_AT.z);
@@ -349,12 +353,17 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
   scene.add(ash.mesh);
 
   // ── people ──
+  // (outdoors, each stands on a soft blob slid away from the sun, and dims in
+  // the baked shade, ../grounded.js; the circle under each is kept for the
+  // zones indoors, and hidden while a blob is drawn)
+  const movers = [];
   const blobGeo = new THREE.CircleGeometry(0.42, 20).rotateX(-Math.PI / 2);
   const blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false });
   const blob = (f) => {
     const b = new THREE.Mesh(blobGeo, blobMat);
     b.position.y = 0.04;
     b.renderOrder = 1;
+    movers.push({ object: f.group, size: [FIGURE, FIGURE], contact: b });
     f.group.add(b);
     return f;
   };
@@ -803,6 +812,7 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
     sky.dome.position.copy(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
     sun.target.position.copy(camera.position);
+    for (const g of grounds) g.update();
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -823,8 +833,16 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
     } else if (type === 'across') fx.pop(tmp2.copy(frodo.group.position).add(V(0, 1.2, 0)), 'gold', 14, 1);
   };
 
+  // ── the floor's light, baked in each zone outdoors when it's first shown ──
+  const grounds = [
+    groundTown({ renderer, scene, terrain: emynLand, outdoors: zones.emyn, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x22261e, clip: true }),
+    groundTown({ renderer, scene, terrain: marshLand, outdoors: zones.marsh, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x22261e, clip: true }),
+    groundTown({ renderer, scene, terrain: gateLand, outdoors: zones.gate, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x22261e, clip: true }),
+  ];
+
   return {
-    scene: import.meta.env.DEV ? scene : null,
+    ground: import.meta.env.DEV ? grounds[0] : null, // for the QA scripts
+    scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
     screenOf: () => null,
@@ -840,6 +858,7 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
       return null;
     },
     dispose() {
+      for (const g of grounds) g.dispose();
       ghosts.dispose();
       disposeTree(scene);
       stage.dispose();

@@ -38,6 +38,7 @@ import { createFlags, createRings, staticGrounds } from './grounds';
 import { createPacks } from './packs';
 import { createGrass } from './grass';
 import { createGhosts } from '../../middleearth/towns/ghosts';
+import { groundWorld } from '../../../lib/three/groundwork';
 import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, SUIT, TRICK, V, aimWeb, camRoom, findPerch, floorAt, gaitFor, nearestEdge, photoView, samplePath, swingArc, swingPose, treeHeight } from './rules';
 
 const SC = { s: S, v: V };
@@ -296,6 +297,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const floor = new THREE.Mesh(floorGeo, floorMat);
   floor.receiveShadow = true;
   scene.add(floor);
+  const flats = [floor]; // what the compound's light is baked on (the ground, the lawn, the roads, the apron, what's painted on them)
+  let ground = null; // (the floor light, made once the compound stands: below)
 
   // the lawn, mown in stripes
   const lawnMat = cloudy(await pbr('grass', { repeat: [1 / 3.2, 1 / 3.2], small, roughness: 1, metalness: 0, color: 0x9fbf72, normalScale: 0.9 }), 'lawn');
@@ -319,6 +322,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const lawn = new THREE.Mesh(flatShape(LAWN, 0, 1, SC), lawnMat);
   lawn.receiveShadow = true;
   scene.add(lawn);
+  flats.push(lawn);
 
   // grass blades on the lawn round him (./grass.js), lit and striped as the
   // lawn is; fewer on a phone, none on the lowest tier
@@ -415,6 +419,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const kerbs = new THREE.Mesh(mergeGeometries(kerbGeos), kerbMat);
   roads.receiveShadow = kerbs.receiveShadow = true;
   scene.add(kerbs, roads);
+  flats.push(kerbs, roads);
 
   // what's painted on the ground: the helipad, the track, the range, the car park
   for (const [box, px] of [
@@ -430,6 +435,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     m.receiveShadow = true;
     m.renderOrder = 1;
     scene.add(m);
+    flats.push(m);
   }
 
   // ── the buildings ──
@@ -637,13 +643,15 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // the landing pad: a low slab, its markings
   const apronTop = await pbr('asphalt', { repeat: [1 / 5, 1 / 5], small, roughness: 0.85, metalness: 0, color: 0x6a7076 });
   add(prismWalls(APRON, 0, 0.06, 1, SC), cloudy(grey.clone(), 'grey'));
-  add(prismTop(APRON, 0.06, 1, SC), antiTile(cloudy(apronTop, 'apron'), { frequency: 0.06, detail: { texture: grain, scale: 2.2, strength: 0.25, range: 24 } }));
+  const apronMat = antiTile(cloudy(apronTop, 'apron'), { frequency: 0.06, detail: { texture: grain, scale: 2.2, strength: 0.25, range: 24 } });
+  add(prismTop(APRON, 0.06, 1, SC), apronMat);
   {
     const b2 = [-1, 66, 38, 99];
     const g = new THREE.PlaneGeometry(39 * S, 33 * S).rotateX(-Math.PI / 2).translate(18.5 * S, 0.06 * V + 0.03, 82.5 * S);
     const m = new THREE.Mesh(g, cloudy(new THREE.MeshStandardMaterial({ map: apronMarks(b2, small ? 512 : 1024), transparent: true, roughness: 0.7, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }), 'apronmarks'));
     m.receiveShadow = true;
     scene.add(m);
+    flats.push(m);
   }
 
   // ── a door into each game: glass in a dark frame, a lit lintel in the game's
@@ -701,11 +709,14 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     const mid = P3(60, 52);
     const m4m = new THREE.Matrix4();
     const qm = new THREE.Quaternion();
+    // (the masts' plinths in the kerbs' concrete, but their own material: the
+    // kerbs' is the floor's, and reads the baked floor light where it is)
+    const plinth = cloudy(new THREE.MeshStandardMaterial({ color: 0x8c918a, roughness: 0.9 }), 'kerb');
     for (const m of MASTS) {
       // facing the middle of the lawn
       const yaw = Math.atan2(mid.x - m.x, mid.z - m.z);
       const at = (geo) => geo.applyMatrix4(m4m.compose(new THREE.Vector3(m.x, 0, m.z), qm.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw), new THREE.Vector3(1, 1, 1)));
-      add(at(new THREE.CylinderGeometry(0.85, 1, 0.5, 20).translate(0, 0.25, 0)), kerbMat);
+      add(at(new THREE.CylinderGeometry(0.85, 1, 0.5, 20).translate(0, 0.25, 0)), plinth);
       add(at(new THREE.CylinderGeometry(0.42, 0.42, 0.25, 12).translate(0, 0.6, 0)), steel);
       add(at(new THREE.CylinderGeometry(0.12, 0.28, MAST_H, 12).translate(0, MAST_H / 2, 0)), steel);
       add(at(new THREE.BoxGeometry(0.45, 0.8, 0.28).translate(0, 1.2, -0.38)), housing); // the switch cabinet
@@ -1145,6 +1156,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     m.root.visible = true;
     p.h.root.visible = false;
     p.model = m;
+    ground?.track(m.root, p.c.style === 'hulk' ? [1.7, 1.7] : [0.9, 0.9]);
   };
   (async () => {
     for (const p of Object.values(people).filter((x) => MODEL_OF[x.c.style]).sort((a, b) => (a.c.style === 'hulk') - (b.c.style === 'hulk'))) {
@@ -1737,6 +1749,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     sun.target.updateMatrixWorld();
 
     vfx.update(dt, camera, engine.size.h);
+    ground?.update();
     engine.render();
   };
 
@@ -1818,8 +1831,31 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // a first frame's worth of state, for the shaders to compile against
   placeJet(6, 1 / 60);
 
+  // ── the compound's floor light, baked once it all stands (after Bruno
+  // Simon's folio: lib/three/groundwork): every building's, tree's and
+  // mast's soft shadow and the sky's occlusion on the ground, the lawn and
+  // the roads, their feet darkened, a bounce off the grass on everything, a
+  // soft blob under whoever walks it, and no shadow pass (which was a whole
+  // second render of the compound round the hero, at 16 pixels a metre) ──
+  scene.traverse((o) => o.isMesh && o.material === apronMat && flats.push(o));
+  ground = groundWorld({
+    renderer,
+    scene,
+    floor: flats,
+    area: { x0: -64, z0: -84, w: 312, d: 280 },
+    sun,
+    skip: [ghosts.group, ...(vfx.group ? [vfx.group] : [])],
+    movers: [{ object: hero, size: [0.9, 0.9] }, ...Object.values(people).map((p) => ({ object: p.h.root, size: [0.9, 0.9] }))],
+    shade: 0x2a3420,
+    bounce: { color: 0x6f7a52 },
+    height: floorAt,
+    tier: engine.tier,
+    auto: true,
+  });
+
   return {
     engine,
+    ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx,
@@ -1838,6 +1874,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     },
     dispose() {
       gone = true;
+      ground?.dispose();
       for (const p of Object.values(people)) p.model?.dispose();
       ghosts.dispose();
       moves?.dispose();

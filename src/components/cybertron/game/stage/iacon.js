@@ -403,6 +403,7 @@ export async function buildStage(area, { tier = 'high' } = {}) {
 
   return {
     group,
+    floor: [ground], // what the area's light is baked on (lib/three/groundwork)
     update(t, dt, camera, sim) {
       sky.userData.uniforms.uTime.value = t;
       // Metroplex, woken: at once if he already was when you came, slowly

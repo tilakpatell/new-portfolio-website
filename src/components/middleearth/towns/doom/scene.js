@@ -22,6 +22,7 @@ import { LOOKS, sit } from '../../shire/people';
 import { makeSky } from '../../shire/sky';
 import { createFx } from '../../shire/fx';
 import { makeTerrain } from '../ground';
+import { FIGURE, groundTown } from '../grounded';
 import { makeFolk } from '../bree/props';
 import { createGhosts } from '../ghosts';
 import { createDoomKit } from './props';
@@ -114,10 +115,12 @@ export function createDoomWorld(canvas, { onLost } = {}) {
   const rockMat = mats.rock ?? new THREE.MeshLambertMaterial({ vertexColors: true });
 
   // ── the plain ──
+  let plainLand = null;
   {
     const ground = makeTerrain(renderer, { size: PLAIN.size, seg: tier === 'high' ? 200 : 120, height: (x, z) => groundHeight(x + PLAIN.x, z + PLAIN.z), paint: (x, z, h, out) => paint(x + PLAIN.x, z + PLAIN.z, h, out), blades: 0 });
     ground.position.set(PLAIN.x, 0, PLAIN.z);
     world.add(ground);
+    plainLand = ground;
     // and out to the horizon
     const far = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x241a16 }));
     far.position.y = -1.2;
@@ -221,12 +224,17 @@ export function createDoomWorld(canvas, { onLost } = {}) {
   scene.add(ring.group);
 
   // ── people ──
+  // (outdoors, each stands on a soft blob slid away from the sun, and dims in
+  // the baked shade, ../grounded.js; the circle under each is kept for the
+  // zones indoors, and hidden while a blob is drawn)
+  const movers = [];
   const blobGeo = new THREE.CircleGeometry(0.42, 20).rotateX(-Math.PI / 2);
   const blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false });
   const blob = (f) => {
     const b = new THREE.Mesh(blobGeo, blobMat);
     b.position.y = 0.04;
     b.renderOrder = 1;
+    movers.push({ object: f.group, size: [FIGURE, FIGURE], contact: b });
     f.group.add(b);
     f.blob = b;
     return f;
@@ -763,6 +771,7 @@ export function createDoomWorld(canvas, { onLost } = {}) {
     sun.target.position.copy(camera.position);
     const seen = s.search?.seen ?? 0;
     stage.grade({ saturation: 0.95 - seen * 0.4, contrast: 0.12 + seen * 0.15, vignette: 0.3 + seen * 0.4, grain: 0.02, shadow: [0.03, 0.01, 0.0], high: [0.06 + seen * 0.1, 0.02, 0] });
+    for (const g of grounds) g.update();
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -783,8 +792,14 @@ export function createDoomWorld(canvas, { onLost } = {}) {
     }
   };
 
+  // ── the floor's light, baked in each zone outdoors when it's first shown ──
+  const grounds = [
+    groundTown({ renderer, scene, terrain: plainLand, outdoors: world, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x2a1a14, clip: true }),
+  ];
+
   return {
-    scene: import.meta.env.DEV ? scene : null,
+    ground: import.meta.env.DEV ? grounds[0] : null, // for the QA scripts
+    scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
     screenOf: () => null,
@@ -800,6 +815,7 @@ export function createDoomWorld(canvas, { onLost } = {}) {
       return null;
     },
     dispose() {
+      for (const g of grounds) g.dispose();
       ghosts.dispose();
       disposeTree(scene);
       stage.dispose();
