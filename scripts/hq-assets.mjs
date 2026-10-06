@@ -20,6 +20,7 @@
 import { mkdir, readFile, writeFile, stat, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -61,8 +62,8 @@ const json = async (url) => {
   return res.json();
 };
 
-const cachePath = (...parts) => new URL(parts.join('/'), CACHE).pathname;
-const outPath = (...parts) => new URL(parts.join('/'), OUT).pathname;
+const cachePath = (...parts) => fileURLToPath(new URL(parts.join('/'), CACHE));
+const outPath = (...parts) => fileURLToPath(new URL(parts.join('/'), OUT));
 const ensureDir = (p) => mkdir(p, { recursive: true });
 
 // The nearest Poly Haven resolution at or above `size` pixels.
@@ -508,7 +509,7 @@ const keepOnly = (obj, names) => Object.fromEntries(Object.entries(obj).filter((
 const T = keepOnly(catalog.textures, Object.keys(manifest.textures ?? {}));
 const S = keepOnly(catalog.skies, Object.keys(manifest.skies ?? {}));
 const M = keepOnly(catalog.models, Object.keys(manifest.models ?? {}));
-await ensureDir(new URL('.', CATALOG).pathname);
+await ensureDir(fileURLToPath(new URL('.', CATALOG)));
 // the impostors are written by scripts/hq-impostors.mjs: keep them
 let impostors = '';
 try {

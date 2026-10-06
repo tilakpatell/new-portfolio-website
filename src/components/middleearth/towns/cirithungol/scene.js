@@ -23,6 +23,7 @@ import { LOOKS, sit } from '../../shire/people';
 import { makeSky } from '../../shire/sky';
 import { createFx } from '../../shire/fx';
 import { makeTerrain } from '../ground';
+import { FIGURE, groundTown } from '../grounded';
 import { makeFolk } from '../bree/props';
 import { createGollum } from '../marshes/props';
 import { createGhosts } from '../ghosts';
@@ -166,7 +167,8 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
   const rockGeo = (seed) => kit.rock?.(seed) ?? new THREE.DodecahedronGeometry(1, 0);
 
   // ── the Morgul vale ──
-  zones.vale.add(makeTerrain(renderer, { size: 640, seg: tier === 'high' ? 200 : 120, height: valeHeight, paint: paints.vale, blades: 0 }));
+  const valeLand = makeTerrain(renderer, { size: 640, seg: tier === 'high' ? 200 : 120, height: valeHeight, paint: paints.vale, blades: 0 });
+  zones.vale.add(valeLand);
   const morgul = kit.morgul();
   // the bridge runs out from the gate along the kit's +z; here, north
   morgul.group.position.set(BRIDGE.x, 0, BRIDGE.z + BRIDGE.len / 2);
@@ -247,12 +249,14 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
   // ── Shelob's lair, and the pass ──
   const tunnels = kit.tunnels(TUNNELS, { r: 1.6 });
   zones.lair.add(tunnels.group);
+  let passLand = null;
   {
     const cx = PASS.x + 8;
     const cz = PASS.z;
     const pass = makeTerrain(renderer, { size: 70, seg: tier === 'high' ? 90 : 60, height: (x, z) => passHeight(x + cx, z + cz), paint: (x, z, h, out) => paints.pass(x + cx, z + cz, h, out), blades: 0 });
     pass.position.set(cx, 0, cz);
     zones.lair.add(pass);
+    passLand = pass;
     const rocks = [];
     for (let i = 0; i < 14; i++) {
       const x = 84 + i * 3.1;
@@ -297,12 +301,17 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
   zones.tower.add(ghosts.group);
 
   // ── people ──
+  // (outdoors, each stands on a soft blob slid away from the sun, and dims in
+  // the baked shade, ../grounded.js; the circle under each is kept for the
+  // zones indoors, and hidden while a blob is drawn)
+  const movers = [];
   const blobGeo = new THREE.CircleGeometry(0.42, 20).rotateX(-Math.PI / 2);
   const blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false });
   const blob = (f) => {
     const b = new THREE.Mesh(blobGeo, blobMat);
     b.position.y = 0.04;
     b.renderOrder = 1;
+    movers.push({ object: f.group, size: [FIGURE, FIGURE], contact: b });
     f.group.add(b);
     return f;
   };
@@ -804,6 +813,7 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
     sun.target.position.copy(camera.position);
     stage.grade({ saturation: zone === 'lair' ? 0.75 : 0.9, contrast: 0.12, vignette: zone === 'lair' && lead === frodo ? 0.55 : 0.32, grain: 0.02 });
+    for (const g of grounds) g.update();
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -836,8 +846,15 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
     return { u: hit.x - CLOAK.x - AT.stairs.x, v: hit.z - CLOAK.z - AT.stairs.z };
   };
 
+  // ── the floor's light, baked in each zone outdoors when it's first shown ──
+  const grounds = [
+    groundTown({ renderer, scene, terrain: valeLand, outdoors: zones.vale, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x1e2420, clip: true }),
+    groundTown({ renderer, scene, terrain: passLand, outdoors: zones.lair, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x1e2420, clip: true }),
+  ];
+
   return {
-    scene: import.meta.env.DEV ? scene : null,
+    ground: import.meta.env.DEV ? grounds[0] : null, // for the QA scripts
+    scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
     screenOf: () => null,
@@ -854,6 +871,7 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
       return null;
     },
     dispose() {
+      for (const g of grounds) g.dispose();
       ghosts.dispose();
       disposeTree(scene);
       stage.dispose();

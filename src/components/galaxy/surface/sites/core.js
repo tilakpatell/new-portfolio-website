@@ -938,16 +938,17 @@ export const SITES = {
       // AT-TEs out on the plain, and a third gunship coming in
       { kind: 'atte', at: [140, 60], yaw: 2.0, model: false },
       { kind: 'laat', at: [80, 140], yaw: 2.2, y: 24, solid: false },
-      // the hive spires along the horizon, too big to scatter
-      { kind: 'hive', at: [-620, 120], opts: { h: 160, seed: 11 }, solid: false },
-      { kind: 'hive', at: [-560, -420], opts: { h: 120, seed: 12 }, solid: false },
-      { kind: 'hive', at: [380, 560], opts: { h: 140, seed: 13 }, solid: false },
-      { kind: 'hive', at: [650, 300], opts: { h: 110, seed: 14 }, solid: false },
-      { kind: 'hive', at: [-200, 640], opts: { h: 130, seed: 15 }, solid: false },
-      { kind: 'hive', at: [180, -640], opts: { h: 150, seed: 16 }, solid: false },
-      { kind: 'hive', at: [-120, 140], opts: { h: 45, seed: 17 } },
-      { kind: 'hive', at: [140, -120], opts: { h: 38, seed: 18 } },
-      { kind: 'hive', at: [-160, -60], opts: { h: 52, seed: 19 } },
+      // the hives along the horizon (and three nearer), too big to scatter:
+      // the hive model (a mesa with its spires), scaled to each one's height
+      { kind: 'geohive', at: [-620, 120], yaw: 1.74, scale: 1.07, sink: 4.3, solid: false },
+      { kind: 'geohive', at: [-560, -420], yaw: 3.04, scale: 0.8, sink: 3.2, solid: false },
+      { kind: 'geohive', at: [380, 560], yaw: 4.34, scale: 0.93, sink: 3.7, solid: false },
+      { kind: 'geohive', at: [650, 300], yaw: 5.64, scale: 0.73, sink: 2.9, solid: false },
+      { kind: 'geohive', at: [-200, 640], yaw: 0.66, scale: 0.87, sink: 3.5, solid: false },
+      { kind: 'geohive', at: [180, -640], yaw: 1.96, scale: 1, sink: 4, solid: false },
+      { kind: 'geohive', at: [-120, 140], yaw: 3.26, scale: 0.3, sink: 1.2 },
+      { kind: 'geohive', at: [140, -120], yaw: 4.56, scale: 0.25, sink: 1 },
+      { kind: 'geohive', at: [-160, -60], yaw: 5.86, scale: 0.35, sink: 1.4 },
     ],
     scatter: [
       { kind: 'spire', n: 90, within: [70, 900], scale: [0.35, 1.2], stretch: [0.7, 1.4] },

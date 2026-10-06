@@ -1,208 +1,341 @@
 #!/usr/bin/env python3
 """The crews' unrecorded lines, made in their own voices.
 
-Clones each speaker's voice from clips the site already has (refs.json) with
-F5-TTS and says every line in scripts/voices/lines.json with it, into
-public/audio/voiced/<who>/<id>.mp3, plus the manifest.json the site looks
-lines up in (src/lib/voiced.js). That folder is git-ignored: the lines stay on
-this machine, or wherever you serve them from behind the sign-in, and never
-go out with the public repository or the GitHub Pages build.
+Each line in scripts/voices/lines.json is said several times (takes) by the
+voice's engine (refs.json), cloning from the reference grab.py built
+(refs/<who>.wav and its transcript). The judge listens to every take (what
+Whisper hears against what was meant, how like the reference it sounds, how
+natural) and the best one becomes public/audio/voiced/<who>/<id>.mp3; a line
+none of whose takes pass gets a second round with twice as many. The
+manifest.json the site looks lines up in (src/lib/voiced.js) is kept up to
+date as it goes; commit the folder and they go out with the site.
 
-    npm run voices:lines                          list the lines (again after editing any)
-    python scripts/voices/generate.py --check     build the references, show what was heard
-    python scripts/voices/generate.py --limit 10  try a few
-    python scripts/voices/generate.py             make everything that's missing
+    npm run voices:lines                            list the lines (again after editing any)
+    python scripts/voices/grab.py                   build the references
+    python scripts/voices/generate.py --check       show the references and engines
+    python scripts/voices/generate.py --bakeoff 6   try every engine on 6 lines a voice
+    python scripts/voices/generate.py --limit 10    make a few
+    python scripts/voices/generate.py               make everything that's missing
 
-Setup is in README.md beside this file.
+Takes and their scores are cached in scripts/voices/cache/takes/, so a rerun
+picks up where it stopped; cache/takes/report.md lists the lines whose best
+take still didn't pass. Setup is in README.md beside this file.
 """
 
 import argparse
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-HERE = ROOT / "scripts" / "voices"
-OUT = ROOT / "public" / "audio" / "voiced"
-CACHE = HERE / "cache"
-REFS = HERE / "refs"
-AUDIO = {".wav", ".mp3", ".m4a", ".flac", ".ogg"}
-# F5-TTS cuts a reference longer than 12 seconds, which would leave its
-# transcript describing audio it no longer has
-MAX_REF = 11.0
+import engines
+import pick
+from common import CACHE, HERE, OUT, REFS, ROOT, console, ffmpeg, read, run, speakable
+
+TAKES = CACHE / "takes"
+ROUNDS = 2  # a line with no passing take gets another round, with twice the takes
 
 
-def ffmpeg_path(given):
-    path = given or os.environ.get("FFMPEG") or shutil.which("ffmpeg")
-    if not path or not Path(path).exists() and not shutil.which(path):
-        sys.exit("ffmpeg isn't on the PATH: install it, or pass --ffmpeg C:/path/to/ffmpeg.exe")
-    # F5-TTS's silence trimming (pydub) looks for it on the PATH too
-    os.environ["PATH"] = str(Path(path).resolve().parent) + os.pathsep + os.environ.get("PATH", "")
-    return path
-
-
-def run(cmd):
-    r = subprocess.run([str(c) for c in cmd], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, errors="replace")
-    if r.returncode:
-        raise RuntimeError(f"{Path(str(cmd[0])).name} failed:\n{r.stderr[-1500:]}")
-
-
-def duration(ff, f):
-    """Seconds long, from what ffmpeg says about the file (ffprobe may not be there)."""
-    r = subprocess.run([ff, "-hide_banner", "-i", str(f)], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, errors="replace")
-    m = re.search(r"Duration: (\d+):(\d+):([\d.]+)", r.stderr)
-    return int(m[1]) * 3600 + int(m[2]) * 60 + float(m[3]) if m else 0.0
-
-
-def isolate_voice(f):
-    """The voice alone, without the score or sound effects under it (demucs)."""
-    out = CACHE / "demucs" / "htdemucs" / f.stem / "vocals.wav"
-    if not out.exists():
-        try:
-            run([sys.executable, "-m", "demucs", "--two-stems=vocals", "-o", CACHE / "demucs", f])
-        except RuntimeError as e:
-            sys.exit(f"--clean needs demucs (pip install demucs):\n{e}")
-    return out
-
-
-def reference(who, cfg, ff, clean):
-    """One reference recording for a speaker, at most MAX_REF long, and the file its transcript goes in.
-    Your own scripts/voices/refs/<who>.wav (or .mp3, ...) wins over the clips in refs.json."""
-    own = next((p for p in sorted(REFS.glob(f"{who}.*")) if p.suffix.lower() in AUDIO), None)
-    sources = [own] if own else [ROOT / c for c in cfg.get("clips", [])]
-    for s in sources:
-        if not s.exists():
-            print(f"  ({who}: {s.relative_to(ROOT)} isn't there, going without it)")
-    picked, total = [], 0.0
-    for s in (s for s in sources if s.exists()):
-        d = duration(ff, s) + 0.3
-        if picked and total + d > MAX_REF:
+def references(cfg, only):
+    """{who: {"wav", "text", "speed"}} for each voice with a reference: grab.py's, or your own refs/<who>.wav."""
+    found = {}
+    for who in sorted(cfg):
+        if only and who not in only:
             continue
-        picked.append(s)
-        total += d
-    if not picked:
-        return None, None
-    CACHE.mkdir(parents=True, exist_ok=True)
-    wav, meta, txt = CACHE / f"ref-{who}.wav", CACHE / f"ref-{who}.json", CACHE / f"ref-{who}.txt"
-    key = json.dumps({"from": [[str(p.relative_to(ROOT)), p.stat().st_size] for p in picked], "clean": clean})
-    if wav.exists() and meta.exists() and meta.read_text(encoding="utf-8") == key:
-        return wav, txt
-    inputs = [isolate_voice(p) if clean else p for p in picked]
-    cmd = [ff, "-y", "-hide_banner"]
-    for i in inputs:
-        cmd += ["-i", i]
-    chains = "".join(f"[{n}:a]aresample=24000,aformat=channel_layouts=mono,apad=pad_dur=0.3[a{n}];" for n in range(len(inputs)))
-    joined = "".join(f"[a{n}]" for n in range(len(inputs))) + f"concat=n={len(inputs)}:v=0:a=1,atrim=0:{MAX_REF}[out]"
-    run(cmd + ["-filter_complex", chains + joined, "-map", "[out]", wav])
-    meta.write_text(key, encoding="utf-8")
-    txt.unlink(missing_ok=True)  # a new reference has to be heard again
-    return wav, txt
+        wav, txt = REFS / f"{who}.wav", REFS / f"{who}.txt"
+        if not wav.exists():
+            print(f"{who}: no reference yet: python scripts/voices/grab.py --only {who}  (or put 5 to 11 seconds of them at refs/{who}.wav)")
+            continue
+        if not txt.exists() or not txt.read_text(encoding="utf-8").strip():
+            import judge
+
+            txt.write_text(judge.hear(read(wav)) + "\n", encoding="utf-8")
+        found[who] = {"wav": str(wav), "text": txt.read_text(encoding="utf-8").strip(), "speed": float(cfg[who].get("speed", 1.0))}
+    return found
 
 
-def heard(f5, wav, txt):
-    """What's said in the reference: Whisper's transcript the first time, then the saved (and maybe corrected) one."""
-    if txt.exists() and txt.read_text(encoding="utf-8").strip():
-        return txt.read_text(encoding="utf-8").strip()
-    text = f5.transcribe(str(wav)).strip()
-    txt.write_text(text + "\n", encoding="utf-8")
-    return text
+def engines_for(who, cfg, override):
+    """The engines a voice's lines are made with: refs.json's "engine" (one, or a list, every line then
+    keeping the best take of them all), or --engine; failing those, the first set up here."""
+    want = [override] if override else cfg.get(who, {}).get("engine") or []
+    want = [want] if isinstance(want, str) else list(want)
+    have = [e for e in want if e in engines.ENGINES and engines.python(e)]
+    for e in want:
+        if e not in have:
+            print(f"{who}: {e} isn't set up here (engines/README.md)")
+    if have:
+        return have
+    for e in engines.PREFERENCE:
+        if engines.python(e):
+            return [e]
+    sys.exit("No TTS engine is set up here: see scripts/voices/engines/README.md")
 
 
-def speakable(text):
-    """A line as the model should read it: no bracketed asides, plain punctuation."""
-    t = re.sub(r"\[[^\]]*\]", "", text)
-    for a, b in (("…", "..."), ("—", ", "), ("–", ", "), ("’", "'"), ("‘", "'"), ("“", '"'), ("”", '"')):
-        t = t.replace(a, b)
-    return re.sub(r"\s+", " ", t).strip(" ,")
+def take_path(engine, line, k):
+    return TAKES / engine / line["who"] / f"{line['id']}.{k}.wav"
+
+
+def seed(line, k):
+    """A take's seed: a line comes out the same way each time, until it's made again (its salt)."""
+    return (int(line["id"], 16) + 7919 * k + 104729 * line.get("salt", 0)) % 2**31
+
+
+def redo(line, engine, judge, salts):
+    """New takes for a line: the old ones and their scores gone, and a new salt so they come out differently."""
+    for p in (TAKES / engine / line["who"]).glob(f"{line['id']}.*.wav"):
+        judge.forget(p)
+        p.unlink()
+    salts[line["id"]] = salts.get(line["id"], 0) + 1
+
+
+class Judge:
+    """Scores takes (pick.take_score) and remembers every score in cache/takes/scores.jsonl."""
+
+    def __init__(self, voices):
+        import judge
+
+        self.j = judge
+        self.prints = {who: judge.voiceprint(read(v["wav"])) for who, v in voices.items()}
+        self.file = TAKES / "scores.jsonl"
+        self.known = {}
+        if self.file.exists():
+            for line in self.file.read_text(encoding="utf-8").splitlines():
+                d = json.loads(line)
+                d["score"] = pick.take_score(d["wer"], d["sim"], d["utmos"], d["wps"])  # by today's rules
+                self.known[d["take"]] = d
+
+    def forget(self, take):
+        self.known.pop(str(Path(take).relative_to(TAKES)), None)
+
+    def __call__(self, who, text, take):
+        key = str(Path(take).relative_to(TAKES))
+        if key in self.known:
+            return self.known[key]
+        wav = read(take)
+        if pick.too_long(len(wav) / self.j.SR, text):  # ran on: fails without being heard out
+            d = {"take": key, "heard": "", "wer": 1.0, "sim": 0.0, "utmos": 0.0, "wps": 0.0, "speech": None, "score": None}
+        else:
+            heard = self.j.hear(wav)
+            spans = self.j.speech(wav)
+            talk = spans[-1][1] - spans[0][0] if spans else len(wav) / self.j.SR
+            d = {"take": key, "heard": heard, "wer": round(self.j.wer(text, heard), 3), "sim": round(float(self.j.voiceprint(wav) @ self.prints[who]), 3), "utmos": self.j.naturalness(wav), "wps": round(len(pick.normal(text).split()) / max(talk, 0.1), 2), "speech": [spans[0][0], spans[-1][1]] if spans else None}
+            d["score"] = pick.take_score(d["wer"], d["sim"], d["utmos"], d["wps"])
+        self.known[key] = d
+        TAKES.mkdir(parents=True, exist_ok=True)
+        with open(self.file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(d) + "\n")
+        return d
+
+
+def best(scores):
+    """(the best take's score, whether it passed): the highest scoring that passed, else the one with the fewest wrong words."""
+    passed = [d for d in scores if d["score"] is not None]
+    if passed:
+        return max(passed, key=lambda d: d["score"]), True
+    return (min(scores, key=lambda d: (d["wer"], -d["sim"])) if scores else None), False
+
+
+def make(engine, lines, voices, judge, takes, done):
+    """Every line through `engine`, `takes` takes each (and a second round for the ones that don't pass);
+    done(line, score, passed) as each line is decided, while the worker goes on with the rest."""
+    pending = {l["id"]: l for l in lines}
+    first = 0
+    for rnd in range(ROUNDS):
+        count = takes * 2**rnd
+        ks = range(first, first + count)
+        first += count
+        mine = {lid: [take_path(engine, l, k) for k in range(first)] for lid, l in pending.items()}
+        items = [{"who": l["who"], "text": speakable(l["text"]), "out": str(take_path(engine, l, k)), "seed": seed(l, k)} for l in pending.values() for k in ks]
+        if not items:
+            return
+        got = {lid: {} for lid in pending}  # take -> score, or None when the engine failed it
+        owner = {str(take_path(engine, l, k)): l for l in pending.values() for k in range(first)}
+
+        def arrive(path, score):
+            l = owner[path]
+            got[l["id"]][path] = score
+            if l["id"] in pending and len(got[l["id"]]) == len(mine[l["id"]]):
+                d, ok = best([s for s in got[l["id"]].values() if s])
+                if ok or rnd == ROUNDS - 1:
+                    done(l, d, ok)
+                    del pending[l["id"]]
+
+        for path, l in list(owner.items()):
+            if Path(path).exists():
+                arrive(path, judge(l["who"], speakable(l["text"]), path))
+        need = [it for it in items if not Path(it["out"]).exists()]
+        if need:
+            TAKES.mkdir(parents=True, exist_ok=True)
+            jobs = TAKES / f"jobs-{engine}.json"
+            jobs.write_text(json.dumps({"voices": voices, "items": need}), encoding="utf-8")
+            worker = engines.start(engine, jobs, TAKES / f"{engine}.log")
+            for out in worker.stdout:
+                status, path, why = (out.rstrip("\n").split("\t") + ["", ""])[:3]
+                if status == "ok" and path in owner:
+                    arrive(path, judge(owner[path]["who"], speakable(owner[path]["text"]), path))
+                elif status == "fail" and path in owner:
+                    print(f"  ({engine} couldn't make {Path(path).name}: {why})")
+                    arrive(path, None)
+            if worker.wait():
+                print(f"  ({engine} stopped early, exit {worker.returncode}: see {(TAKES / f'{engine}.log').relative_to(ROOT)})")
+        for lid, l in list(pending.items()):  # whatever the worker never made counts as failed
+            for path in mine[lid]:
+                if str(path) not in got[lid]:
+                    arrive(str(path), None)
+        if not pending:
+            return
+
+
+def make_all(lines, engines_of, voices, judge, takes, done):
+    """Every line through each of its voice's engines (make), then done(line, score, passed) once,
+    with the best take of them all, as soon as the line's last engine has decided it."""
+    waiting = {l["id"]: set(engines_of[l["who"]]) for l in lines}
+    got = {l["id"]: [] for l in lines}
+    for engine in sorted({e for es in engines_of.values() for e in es}):
+
+        def one(l, d, ok, engine=engine):
+            got[l["id"]] += [d] if d else []
+            waiting[l["id"]].discard(engine)
+            if not waiting[l["id"]]:
+                done(l, *best(got[l["id"]]))
+
+        make(engine, [l for l in lines if engine in engines_of[l["who"]]], voices, judge, takes, one)
+
+
+def loudness(f):
+    """ffmpeg loudnorm's measurement of a file, for the second (linear) pass."""
+    r = subprocess.run([ffmpeg(), "-hide_banner", "-i", str(f), "-af", "loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json", "-f", "null", "-"], capture_output=True, text=True, errors="replace")
+    m = re.search(r"\{[^{}]*\"input_i\"[^{}]*\}", r.stderr)
+    return json.loads(m[0]) if m else None
+
+
+def publish(take, span, mp3):
+    """A take as the site's mp3: trimmed to the speech, at -16 LUFS, mono."""
+    import soundfile as sf
+
+    wav, sr = sf.read(str(take), dtype="float32")
+    if span:
+        wav = wav[max(0, int((span[0] - 0.05) * sr)) : int((span[1] + 0.2) * sr)]
+    tmp = CACHE / "publish.wav"
+    sf.write(str(tmp), wav, sr, subtype="PCM_16")
+    m = loudness(tmp)
+    norm = f"loudnorm=I=-16:TP=-1.5:LRA=11:measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true" if m and m["input_i"] != "-inf" else "loudnorm=I=-16:TP=-1.5"
+    mp3.parent.mkdir(parents=True, exist_ok=True)
+    run([ffmpeg(), "-y", "-hide_banner", "-i", tmp, "-af", f"highpass=f=60,{norm}", "-ac", "1", "-ar", str(48000 if sr >= 44100 else 24000), "-b:a", "96k" if sr >= 44100 else "64k", mp3])
 
 
 def main():
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # the lines' curly quotes, on a Windows console
+    console()
+    ffmpeg()
     ap = argparse.ArgumentParser(description="Make the crews' unrecorded lines in their own voices.")
     ap.add_argument("--only", help="just these speakers, comma-separated (walt,jesse)")
     ap.add_argument("--limit", type=int, help="make at most this many lines, to try it out")
-    ap.add_argument("--check", action="store_true", help="build the references, show what was heard in each, and stop")
+    ap.add_argument("--takes", type=int, default=4, help="takes of each line to choose from (a line none pass gets twice as many more)")
+    ap.add_argument("--engine", choices=engines.ENGINES, help="use this engine for every voice (default: refs.json's per voice)")
     ap.add_argument("--force", action="store_true", help="make lines again even if they're already there")
-    ap.add_argument("--clean", action="store_true", help="take the music and effects out of the reference clips first (pip install demucs)")
-    ap.add_argument("--device", help="cuda, mps or cpu (default: the fastest there is)")
-    ap.add_argument("--nfe", type=int, default=32, help="quality steps: fewer is faster (16 for a quick pass), more is a little better")
-    ap.add_argument("--ffmpeg", help="ffmpeg's path, if it isn't on the PATH")
+    ap.add_argument("--again", action="store_true", help="choose every line again from its takes, making any missing (after giving a voice another engine)")
+    ap.add_argument("--check", action="store_true", help="show each voice's reference and engine, and stop")
+    ap.add_argument("--bakeoff", type=int, metavar="N", help="try every engine set up here on N lines a voice, score them, and stop")
     args = ap.parse_args()
 
-    ff = ffmpeg_path(args.ffmpeg)
     lines_file = HERE / "lines.json"
     if not lines_file.exists():
         sys.exit("No scripts/voices/lines.json yet: run  npm run voices:lines  first")
     lines = json.loads(lines_file.read_text(encoding="utf-8"))
-    cfgs = json.loads((HERE / "refs.json").read_text(encoding="utf-8"))
+    cfg = json.loads((HERE / "refs.json").read_text(encoding="utf-8"))
     only = set(args.only.split(",")) if args.only else None
-
-    try:
-        from f5_tts.api import F5TTS
-    except ImportError:
-        sys.exit("F5-TTS isn't installed: see scripts/voices/README.md")
-    f5 = F5TTS(device=args.device) if args.device else F5TTS()
-    print(f"F5-TTS on {f5.device}\n")
-
-    voices = {}
-    for who in sorted({l["who"] for l in lines}):
-        if only and who not in only:
-            continue
-        wav, txt = reference(who, cfgs.get(who, {}), ff, args.clean)
-        if not wav:
-            print(f"{who}: no reference yet. Put 5 to 11 seconds of them talking, with no music, at scripts/voices/refs/{who}.wav")
-            continue
-        text = heard(f5, wav, txt)
-        voices[who] = (wav, text, float(cfgs.get(who, {}).get("speed", 1.0)))
-        print(f"{who}: {duration(ff, wav):.1f}s reference, heard “{text}”")
-    if args.check:
-        print("\nA wrong transcript makes worse lines: fix it in scripts/voices/cache/ref-<who>.txt (it's used as written).")
+    voices = references(cfg, only)
+    if not voices:
         return
+    engines_of = {who: engines_for(who, cfg, args.engine) for who in voices}
+    for who, v in voices.items():
+        print(f"{who}: {' + '.join(engines_of[who])}, reference {Path(v['wav']).name} saying “{v['text']}”")
+    if args.check:
+        print(f"\nEngines set up here: {', '.join(engines.available())}. A wrong transcript makes worse lines: fix it in refs/<who>.txt (it's used as written).")
+        return
+
+    judge = Judge(voices)
+    if args.bakeoff:
+        return bakeoff(lines, voices, judge, args.bakeoff, args.takes)
 
     def mp3(l):
         return OUT / l["who"] / f"{l['id']}.mp3"
 
     def write_manifest():
         made = {l["id"]: f"{l['who']}/{l['id']}.mp3" for l in lines if mp3(l).exists()}
+        OUT.mkdir(parents=True, exist_ok=True)
         tmp = OUT / "manifest.json.tmp"
         tmp.write_text(json.dumps({"version": 1, "lines": made}, indent=0), encoding="utf-8")
         os.replace(tmp, OUT / "manifest.json")
 
-    todo = [l for l in lines if l["who"] in voices and (args.force or not mp3(l).exists())]
+    todo = [l for l in lines if l["who"] in voices and (args.force or args.again or not mp3(l).exists())]
     if args.limit:
         todo = todo[: args.limit]
-    OUT.mkdir(parents=True, exist_ok=True)
-    print(f"\nMaking {len(todo)} lines into public/audio/voiced/")
-    tmp = CACHE / "line.wav"
-    started = time.time()
-    for n, l in enumerate(todo, 1):
-        wav, ref_text, speed = voices[l["who"]]
-        f5.infer(
-            ref_file=str(wav),
-            ref_text=ref_text,
-            gen_text=speakable(l["text"]),
-            file_wave=str(tmp),
-            remove_silence=True,
-            seed=int(l["id"], 16) % 2**31,  # the same line comes out the same way each time
-            nfe_step=args.nfe,
-            speed=speed,
-            show_info=lambda *a, **k: None,
-            progress=None,
-        )
-        mp3(l).parent.mkdir(parents=True, exist_ok=True)
-        run([ff, "-y", "-hide_banner", "-i", tmp, "-af", "highpass=f=60,loudnorm=I=-16:TP=-1.5", "-ac", "1", "-ar", "24000", "-b:a", "64k", mp3(l)])
-        if n % 10 == 0:
+    # a line that was made (it's in the manifest) but whose mp3 is gone was deleted to be made again,
+    # so it gets new takes, not its old best one back; --force makes every line again
+    salts_file = TAKES / "salts.json"
+    salts = json.loads(salts_file.read_text(encoding="utf-8")) if salts_file.exists() else {}
+    listed = json.loads((OUT / "manifest.json").read_text(encoding="utf-8")).get("lines", {}) if (OUT / "manifest.json").exists() else {}
+    for l in todo:
+        if args.force or (l["id"] in listed and not mp3(l).exists()):
+            for e in engines_of[l["who"]]:
+                redo(l, e, judge, salts)
+        l["salt"] = salts.get(l["id"], 0)
+    TAKES.mkdir(parents=True, exist_ok=True)
+    salts_file.write_text(json.dumps(salts), encoding="utf-8")
+    print(f"\nMaking {len(todo)} lines into public/audio/voiced/, {args.takes} takes each")
+    started, made, doubtful = time.time(), [], []
+
+    def done(l, d, ok):
+        if d:
+            publish(TAKES / d["take"], d["speech"], mp3(l))
+        made.append(l)
+        if not ok:
+            doubtful.append((l, d))
+        left = (time.time() - started) / len(made) * (len(todo) - len(made))
+        said = f"sim {d['sim']:.2f} wer {d['wer']:.2f} mos {d['utmos']:.1f}" if d else "no take"
+        print(f"[{len(made)}/{len(todo)}, ~{left / 60:.0f} min left] {l['who']}: {l['text']}  ({said}{'' if ok else ', DOUBTFUL'})")
+        if len(made) % 20 == 0:
             write_manifest()
-        left = (time.time() - started) / n * (len(todo) - n)
-        print(f"[{n}/{len(todo)}, ~{left / 60:.0f} min left] {l['who']}: {l['text']}")
+
+    make_all(todo, engines_of, voices, judge, args.takes, done)
     write_manifest()
-    print("\nDone. npm run dev and fly: the crews speak these where they have no clip.")
+    report = ["# Lines whose best take didn't pass", "", "Listen, then delete the mp3 and run again (it makes new takes), or fix the line.", "", "| who | line | heard | wer | sim |", "|---|---|---|---|---|"]
+    report += [f"| {l['who']} | {l['text']} | {d['heard'] if d else '-'} | {d['wer'] if d else '-'} | {d['sim'] if d else '-'} |" for l, d in doubtful]
+    TAKES.mkdir(parents=True, exist_ok=True)
+    (TAKES / "report.md").write_text("\n".join(report) + "\n", encoding="utf-8")
+    print(f"\nDone: {len(made)} lines, {len(doubtful)} doubtful (cache/takes/report.md). npm run dev and fly: the crews speak these where they have no clip.")
+
+
+def bakeoff(lines, voices, judge, n, takes):
+    """The same few lines a voice through every engine set up here: which sounds most like them, says the words, and sounds natural."""
+    sample = []
+    for who in voices:
+        mine = [l for l in lines if l["who"] == who]
+        sample += [mine[i * len(mine) // n] for i in range(min(n, len(mine)))]
+    results = {}
+    for engine in engines.available():
+        print(f"\n{engine}")
+        got = results.setdefault(engine, {})
+        make(engine, sample, voices, judge, takes, lambda l, d, ok: got.setdefault(l["who"], []).append((d, ok)))
+    table = {}
+    print("\n| voice | engine | passed | sim | wer | UTMOS | quality |\n|---|---|---|---|---|---|---|")
+    for who in voices:
+        for engine, got in results.items():
+            rows = got.get(who, [])
+            ds = [d for d, _ in rows if d]
+            if not ds:
+                continue
+            quality = sum(d["score"] if ok else -0.5 for d, ok in rows) / len(rows)
+            table.setdefault(who, {})[engine] = {"passed": sum(ok for _, ok in rows) / len(rows), "sim": sum(d["sim"] for d in ds) / len(ds), "wer": sum(d["wer"] for d in ds) / len(ds), "utmos": sum(d["utmos"] for d in ds) / len(ds), "quality": quality}
+            t = table[who][engine]
+            print(f"| {who} | {engine} | {t['passed']:.0%} | {t['sim']:.3f} | {t['wer']:.3f} | {t['utmos']:.2f} | {t['quality']:.3f} |")
+    winners = {who: max(t, key=lambda e: t[e]["quality"]) for who, t in table.items()}
+    (CACHE / "bakeoff.json").write_text(json.dumps({"table": table, "winners": winners}, indent=1), encoding="utf-8")
+    print(f"\nBest per voice: {', '.join(f'{w} {e}' for w, e in winners.items())}. Put them in refs.json as \"engine\" (cache/bakeoff.json has the numbers); the takes made here are kept for the real run.")
 
 
 if __name__ == "__main__":
