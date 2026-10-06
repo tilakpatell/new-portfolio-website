@@ -4,7 +4,7 @@
 //
 // The fandoms' planets are out here too, far apart (layout.js), and between
 // them it's open: the ship's boost becomes a pulse drive, the ceiling lifts
-// from the home system's 70 to DEEP.ceiling, and the edge of the map is
+// from the home system's 100 to DEEP.ceiling, and the edge of the map is
 // DEEP.edge away. Near any place (the home system, a planet, a wonder) the
 // drive drops back to the boost, so you arrive at flying speed. Among the
 // planets are the wonders: a ringed gas giant and an ice giant, two other
@@ -93,7 +93,7 @@ export const WONDERS = [
   },
   { id: 'veil', kind: 'nebula', name: 'The Veil', at: [-2230, 505, 4725], r: 700, colors: ['#5b3fd1', '#d14f9a', '#3fb7d1'], solid: false },
   { id: 'cradle', kind: 'nebula', name: 'The Cradle', at: [4995, -505, 2230], r: 600, colors: ['#2f9e6b', '#c9d14f', '#2f6e9e'], solid: false },
-  { id: 'citadel', kind: 'citadel', name: 'The Citadel', at: [1755, -135, -4660], r: 45, crew: 'rickmorty', world: 'rickmorty', page: '/c-137/citadel' },
+  { id: 'citadel', kind: 'citadel', name: 'The Citadel', at: [1755, -135, -4660], r: 60, crew: 'rickmorty', world: 'rickmorty', page: '/c-137/citadel' }, // (as big as the biggest world: scale.js)
   { id: 'lantern', kind: 'pulsar', name: 'The Lantern', at: [-6200, 300, 2600], r: 12, color: '#bfe0ff' },
   { id: 'twins', kind: 'binary', name: 'The Twins', at: [6100, -220, -1500], r: 60, color: '#ffd27a', pair: { r: 42, color: '#f4f6ff', apart: 230 } },
   { id: 'wanderer', kind: 'rogue', name: 'The Wanderer', at: [-900, -700, -6600], r: 55, ring: true, color: '#7fd8c8', colors: ['#1a2238', '#3a4a70', '#7fd8c8'] }, // (color: its auroras, for the chart and its name; colors: its rock, its accent, its auroras)

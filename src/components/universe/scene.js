@@ -97,7 +97,7 @@ import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePa
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
-import { BELT, ORDER, POSITIONS, REACH, RIM, SUN } from './layout';
+import { BELT, ORDER, POSITIONS, REACH, RIM, RING, SUN } from './layout';
 import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
@@ -664,10 +664,10 @@ export async function create(canvas, ctx) {
   // the sun in the middle, warming the stations round it
   const sun = buildSun(T);
   map.add(sun.group);
-  // (its reach and strength grown with the home system, scale.js: a light
-  // falling off as distance^1.4, scaled by HOME_SPREAD in both, lights every
-  // station and rock just as it did before the system grew)
-  const sunLight = new THREE.PointLight('#ffd6a8', 890 * HOME_SPREAD ** 1.4, 320 * HOME_SPREAD, 1.4);
+  // (its strength grown with the ring, so a light falling off as
+  // distance^1.4 is as bright on the stations as it was at the first ring,
+  // 85 out; its reach with the home system, scale.js, past the belt)
+  const sunLight = new THREE.PointLight('#ffd6a8', 890 * (RING / 85) ** 1.4, 320 * HOME_SPREAD, 1.4);
   map.add(sunLight);
 
   const planets = ORDER.map((id) => {

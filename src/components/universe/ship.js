@@ -78,8 +78,9 @@ export const SHIP = {
   height: 0.3, // above a planet's middle, where it parks
   lift: 7, // how quickly it's eased back in from past the ceiling or the floor
   hover: 1.5, // map units a second the autopilot can nudge it up or down, parking
-  ceiling: 70, // how far above or below the disc it can go (the big ships' lanes start at 75)
+  ceiling: 100, // how far above or below the disc it can go (the big ships' lanes start at 105; the sun's 75 across leaves room to fly over it)
   crash: 2.4, // flying into something faster than this is a crash, not a bump
+  approach: 11, // its cruise coming in to a world to land, throttle all the way (approachAt): under what a landing allows, entry.js's ENTRY.fast
 };
 // super speed: how many times the pulse drive's speed, at most
 export const OVERDRIVE = 3;
@@ -102,6 +103,26 @@ export const PLANETS = ORDER.map((id) => {
   return band ? { ...place, band } : place;
 });
 const PLANET = Object.fromEntries(PLANETS.map((p) => [p.id, p]));
+
+// How much of the approach speed (SHIP.approach) its cruise has at (x, y, z),
+// 0 … 1: all of it from where it parks at a world with air to land in, on
+// in, fading out a little further off. The worlds are drawn big (scale.js)
+// and parked at past their moons, so at its cruise the last of the way in
+// took eight seconds; at the approach it's under five, and flying into the air is
+// still a landing.
+const LANDS = PLANETS.filter((p) => {
+  const u = byId(p.id);
+  return u.kind !== 'core' && !u.portal && !u.airless;
+});
+export function approachAt(x, y, z) {
+  let k = 0;
+  for (const p of LANDS) {
+    const d = Math.sqrt((x - p.at[0]) ** 2 + (y - p.at[1]) ** 2 + (z - p.at[2]) ** 2);
+    const t = clamp((d - (p.reach + PARK + 6)) / 30, 0, 1);
+    k = Math.max(k, 1 - t * t * (3 - 2 * t));
+  }
+  return k;
+}
 // what the ship can't fly through: every planet and station, the sun, and
 // the wonders out in deep space
 export const SOLIDS = [...PLANETS, { id: 'sun', at: SUN.at, r: SUN.r, reach: SUN.r * 1.4 }, ...DEEP_SOLIDS];
@@ -220,7 +241,8 @@ export function parkAt(id, from = [0, HOME_RADIUS]) {
     let clear = Infinity;
     for (const o of SOLIDS) if (o !== p) clear = Math.min(clear, Math.sqrt((x - o.at[0]) ** 2 + (z - o.at[2]) ** 2) - o.reach);
     const inMap = Math.sqrt(x * x + z * z) < MAP_RADIUS + 30;
-    const score = dx * ax + dz * az + (clear > ORBIT_IN + 0.2 ? 4 : clear) + (inMap ? 2 : 0);
+    // (clear of the others: up to 4, less the less clear it is; a spot not quite clear never outscores one that is)
+    const score = dx * ax + dz * az + (4 * Math.min(clear, ORBIT_IN + 0.2)) / (ORBIT_IN + 0.2) + (inMap ? 2 : 0);
     if (!best || score > best.score) best = { score, x, z, heading: headingTo(-dx, -dz) };
   }
   return { x: best.x, y: p.at[1] + (deep ? 0 : SHIP.height), z: best.z, heading: best.heading };
@@ -282,7 +304,7 @@ export function spawn(id, start = HOME_EDGE) {
 // drive, and how hard the brakes and coasting bite there; what's solid and
 // where the autopilot can go). Another map brings its own, the same shape
 // (the galaxy's star systems: galaxy/space.js), to step() and autopilot().
-export const SPACE = { edge: EDGE, ceilingAt, openness, driveAt, homeAt, boostAt, brakeAt, coastAt, solids: SOLIDS, goals: GOALS };
+export const SPACE = { edge: EDGE, ceilingAt, openness, driveAt, homeAt, boostAt, brakeAt, coastAt, approachAt, solids: SOLIDS, goals: GOALS };
 
 // One step of `dt` seconds. Returns the new ship and what happened on the
 // way: { type: 'bump', id, hard }, { type: 'crash', id, at: [x, y, z],
@@ -314,7 +336,9 @@ export function step(s, input, dt, solids = SOLIDS, space = SPACE) {
   const odV = overdriveAt(open, od);
   const odK = odV * odV;
   const limit = input.interdicted ? boost : space.boostAt(s.x, s.y, s.z, boost) * odV;
-  const top = input.boost && throttle > 0 ? limit : cruise;
+  // (the approach to a world only with the throttle all the way on: part throttle is the cruise's share, as anywhere)
+  const near = space.approachAt ? space.approachAt(s.x, s.y, s.z) * clamp((throttle - 0.75) / 0.25, 0, 1) : 0;
+  const top = input.boost && throttle > 0 ? limit : cruise + Math.max(0, SHIP.approach - cruise) * near;
   const want = throttle > 0 ? throttle * top : throttle * SHIP.reverse;
   const faster = Math.abs(want) > Math.abs(s.speed) && Math.sign(want) !== -Math.sign(s.speed);
   // past what the boost allows where it is now (coming up on a place at pulse
@@ -327,7 +351,7 @@ export function step(s, input, dt, solids = SOLIDS, space = SPACE) {
   // (boosting toward more than the boost, the pulse drive pushes from the
   // start, all of it once it's a third of the way open: a hop between two
   // stations gets going straight away)
-  else if (faster) accel = (input.boost ? (SHIP.accel * 1.8 * (1 + 2 * space.homeAt(s.x, s.z)) + (want > boost + 1 ? SHIP.pulseAccel * Math.min(1, open * 3) : 0)) * odK : SHIP.accel) * accelK;
+  else if (faster) accel = (input.boost ? (SHIP.accel * 1.8 * (1 + 2 * space.homeAt(s.x, s.z)) + (want > boost + 1 ? SHIP.pulseAccel * Math.min(1, open * 3) : 0)) * odK : SHIP.accel * (1 + near)) * accelK; // (and up to the approach quicker)
   const speed = s.speed + clamp((over ? Math.min(want, limit) : want) - s.speed, -accel * dt, accel * dt);
 
   // the turns, about the ship's own axes, each toward the rate the stick

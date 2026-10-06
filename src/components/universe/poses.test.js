@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BELT, POSITIONS, REACH, SUN } from './layout';
 import { MAW } from './maw';
+import { SHIP } from './ship';
 import { POSE_NAMES, poseFor } from './poses';
 
 const sub = (a, b) => a.map((v, i) => v - b[i]);
@@ -66,9 +67,9 @@ describe('the fixed poses', () => {
     const toSun = norm(sub(SUN.at, p.eye));
     expect(dot(toShip, toSun)).toBeGreaterThan(0.97);
     expect(len(sub(p.eye, p.at))).toBeLessThan(2);
-    // clear of the belt's rocks (above them, inside the ring), looking down a little
-    expect(Math.hypot(p.at[0], p.at[2])).toBeLessThan(BELT.inner);
-    expect(p.at[1]).toBeGreaterThan(BELT.height);
+    // clear of the belt's rocks (well above them), under the ceiling, looking down a little
+    expect(p.at[1]).toBeGreaterThan(BELT.height * 2);
+    expect(p.at[1]).toBeLessThan(SHIP.ceiling - 5);
     expect(p.eye[1]).toBeGreaterThan(p.at[1]);
   });
 

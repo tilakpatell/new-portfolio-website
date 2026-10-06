@@ -83,12 +83,14 @@ describe('the home system against the ships (scale.js)', () => {
     expect(SUN.r).toBeGreaterThan(3.5 * biggest);
   });
 
+  // (0.16 when the map was first drawn, 0.09 by 2026-10-05, 0.16 to 0.18 now
+  // the ring's out past the bigger sun's glow)
   it('gives the stations room, but not so much they shrink to specks across it', () => {
     // each station against the gap to the next one round the ring
     const ring = stations.map((s) => ({ ...s, a: Math.atan2(s.at[2], s.at[0]) })).sort((a, b) => a.a - b.a);
     ring.forEach((s, i) => {
       const next = ring[(i + 1) % ring.length];
-      expect((2 * s.r) / flat(s.at, next.at)).toBeGreaterThan(0.17);
+      expect((2 * s.r) / flat(s.at, next.at)).toBeGreaterThan(0.15);
     });
   });
 
@@ -98,20 +100,22 @@ describe('the home system against the ships (scale.js)', () => {
     expect(SUN.r).toBeLessThan(SHIP.ceiling - 20);
   });
 
-  it('keeps the sun’s corona and light where the stations sit in it', () => {
+  it('keeps the stations out of the brightest of the sun’s glow, and the sun bigger than any world', () => {
     const ring = flat(POSITIONS.home, SUN.at);
-    expect(ring / SUN.r).toBeCloseTo(85 / 32, 2);
+    expect(ring / SUN.r).toBeGreaterThan(1.8); // (sun.js's corona: 0.10 of its brightest out there)
+    expect(SUN.r).toBeGreaterThan(1.2 * Math.max(...worlds.map((w) => w.r)));
   });
 
   // (parking backs off with a station's size, so the parked view gains least:
-  // the next station along was 0.55 of the ship on screen at the old scale)
+  // the next station along was 0.55 of the ship on screen at the old scale,
+  // 0.97 with the stations grown, 0.87 with the ring out past the bigger sun)
   it('from parked at a station, the next one along looks about as big as the ship', () => {
     const p = poseFor('station');
     const ship = LENGTH / Math.hypot(...p.at.map((v, i) => v - p.eye[i]));
     const others = stations.filter((s) => s.id !== 'home');
     const nearest = others.reduce((a, b) => (flat(a.at, p.eye) < flat(b.at, p.eye) ? a : b));
     const station = 2 * Math.atan(nearest.r / Math.hypot(...nearest.at.map((v, i) => v - p.eye[i])));
-    expect(station / ship).toBeGreaterThan(0.9);
+    expect(station / ship).toBeGreaterThan(0.85);
   });
 
   it('no ship out-sizes a station: not the traffic’s Star Destroyer, nor the set piece’s', () => {
