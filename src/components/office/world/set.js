@@ -14,7 +14,7 @@
 
 import * as THREE from 'three';
 import { merge } from '../kit';
-import { CEILING, COPIER, COOLER, DOORS, FILES, FIRE_BIN, FRIDGE, LEAVES, P, PANES, PLANTS, RECEPTION, ROOMS, SEATS, SHELVES, SOLID, STAIRWELL, U, VENDING, rect } from './layout';
+import { CEILING, COPIER, COOLER, DOORS, FILES, FIRE_BIN, FRIDGE, LEAVES, P, PANES, roomAt, PLANTS, RECEPTION, ROOMS, SEATS, SHELVES, SOLID, STAIRWELL, U, VENDING, rect } from './layout';
 import { BREAK_TABLES, CONFERENCE_TABLE, KITCHEN_COUNTER, KITCHEN_TABLE, STAFF } from '../layout';
 import { buildWindows } from './windows';
 import { TILE_X, buildFixtures } from './fixtures';
@@ -287,6 +287,9 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
   add(fixtures.group);
   const lights = [];
   const troffers = fixtures.plan.troffers;
+  // one tube in the annex is on its way out
+  const flickerAt = troffers.findIndex(([x, z]) => roomAt(x, z) === 'annex' && z > 0);
+  let flicker = null;
   {
     const frameGeo = keep(new THREE.BoxGeometry(1.2, 0.04, 0.6));
     const glowGeo = keep(new THREE.PlaneGeometry(1.12, 0.52).rotateX(Math.PI / 2));
@@ -296,12 +299,20 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     troffers.forEach(([x, z], i) => {
       m4.makeTranslation(x, CEILING - 0.02, z);
       frames.setMatrixAt(i, m4);
-      m4.makeTranslation(x, CEILING - 0.045, z);
+      // (the annex's tired tube is drawn on its own, below, so it can flicker)
+      if (i === flickerAt) m4.makeScale(0, 0, 0);
+      else m4.makeTranslation(x, CEILING - 0.045, z);
       glows.setMatrixAt(i, m4);
     });
     add(frames);
     add(glows);
     for (const [x, z] of troffers) lights.push([x, CEILING - 0.2, z]);
+    if (flickerAt >= 0) {
+      const [x, z] = troffers[flickerAt];
+      flicker = { index: flickerAt, material: mat({ color: 0xffffff, emissive: 0xf2f6ff, emissiveIntensity: 2.4, roughness: 1 }) };
+      flicker.mesh = mesh(glowGeo, flicker.material, x, CEILING - 0.045, z);
+      flicker.mesh.castShadow = flicker.mesh.receiveShadow = false;
+    }
   }
 
   // ── walls: the cream drywall, full height, a dark skirting at their feet ──
@@ -905,6 +916,7 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     },
     fireGlow,
     windows,
+    flicker,
     dispose() {
       windows.dispose();
       fixtures.dispose();
