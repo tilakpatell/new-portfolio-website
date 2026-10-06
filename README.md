@@ -247,6 +247,8 @@ For the details of each subsystem, see [`docs/architecture.md`](docs/architectur
 
 Every push to `main` triggers [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). It installs dependencies with `npm ci`, then lints, runs the tests and builds, and deploys `dist/` to GitHub Pages at the custom domain in `public/CNAME`. A failing lint or test stops the deploy.
 
+The site's routes are hash routes (`/#/projects/x`), and what follows the `#` never reaches a server, so every build also writes a page of its own for each route (`dist/projects/x/index.html`: `scripts/prerender.mjs`) with that page's title, description, preview card and canonical address, and a first line that moves the visitor onto the app's own address. A link like `tilakpatell.com/projects/gameboy-emulator` shows its own card wherever it's shared, and `sitemap.xml` lists them all.
+
 A deploy replaces every file in `/assets` (they're named by hash), so a page that's already open, or an `index.html` a cache still holds, can ask for files that are gone; behind the intro, that used to surface only at the cut to the universe, as "This page didn't load". A page that hits one reloads from the new build (`src/lib/stale.js`, through `ErrorBoundary`), past any cached `index.html`, playing the intro again if it was partway through; it won't reload twice within a minute, so an outage can't loop.
 
 > **Working with Claude Code?** Agent skills live in `.claude/skills` (their sources are pinned in `skills-lock.json`). Lint and tests skip them.
