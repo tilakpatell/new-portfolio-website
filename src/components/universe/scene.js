@@ -124,7 +124,7 @@ import { createBeacons } from './beacons';
 import { PHONE, createPhone } from './phone';
 import { SUPERNOVA_SITES, createSupernovae } from './supernova';
 import { DEEP, WONDERS, moveBinaries, nearestStar, openness, reachOf, wonderById } from './deep';
-import { dayYaw, lightAt, sunFor } from './lighting';
+import { KEY as KEY_FULL, STARS as LIT_STARS, dayYaw, lightAt, sunFor } from './lighting';
 import { createCrash } from './crash';
 import { createInfall } from './infall';
 import { DISK_N, MAW, captured, fallAt, plungeAt, pullAt, startFall } from './maw';
@@ -627,7 +627,7 @@ export async function create(canvas, ctx) {
   const T = await loadTextures({ small });
 
   // what metal reflects, and the passes after the scene (post.js)
-  const env = spaceEnvironment(renderer, T.sky);
+  let env = spaceEnvironment(renderer, T.sky);
   scene.environment = env.texture;
   const post = createPost(renderer, scene, camera, { small });
 
@@ -3688,43 +3688,58 @@ export async function create(canvas, ctx) {
   const pace = createPace();
 
   // The finish (post.js): grain and the edges' aberration with the boost's
-  // rush and a hit; the home sun's glare in the lens (lib/three/flare),
-  // hidden by whatever's between the eye and it, the ship too, and gone at
+  // rush and a hit; the glare in the lens (lib/three/flare) of the two stars
+  // that light you (lighting.js's key and fill, where the fill is a star: two
+  // suns, two flares), each hidden by whatever's between the eye and it, the
+  // ship too, as strong as the star's light is where you are, and gone at
   // the pace's step 2 or on a low tier; and the exposure easing with how
-  // much of the frame the sun fills (lib/three/exposure). Not on foot: the
+  // much of the frame they fill (lib/three/exposure). Not on foot: the
   // landing has its own sky.
-  const sunFlare = tier === 'low' ? null : createFlare({ colour: '#ffd6a8', small });
-  if (sunFlare) camera.add(sunFlare.group);
+  const flares = tier === 'low' ? [] : [createFlare({ small }), createFlare({ small })];
+  for (const f of flares) camera.add(f.group);
+  const starOf = Object.fromEntries(LIT_STARS.map((st) => [st.id, st]));
   const shipSolid = { at: [0, 0, 0], r: 0 };
-  const flareSolids = [...SOLIDS.filter((o) => o.id !== 'sun'), shipSolid];
-  const sunAt = new THREE.Vector3();
+  // (what can hide each star: everything but the star itself, made once a star)
+  const hiders = new Map();
+  const hidersOf = (id) => {
+    if (!hiders.has(id)) hiders.set(id, [...SOLIDS.filter((o) => o.id !== id), shipSolid]);
+    return hiders.get(id);
+  };
+  const starAt = new THREE.Vector3();
   const eyeAt = new THREE.Vector3();
   const halfTan = () => Math.tan((camera.fov * Math.PI) / 360);
   let exposure = 1;
   const finish = (dt) => {
     post.grain(grainFor({ rush: state.streak, reduced }));
     post.aberration(aberrationFor({ rush: state.streak, hit: state.hurt, tier }));
-    let ndc = [0, 0];
-    let weight = 0;
     let share = 0;
-    if (!onFoot()) {
-      map.localToWorld(sunAt.set(...SUN.at));
-      camera.getWorldPosition(eyeAt);
-      const dist = sunAt.distanceTo(eyeAt);
-      sunAt.project(camera);
-      if (sunAt.z < 1) {
-        ndc = [sunAt.x, sunAt.y];
-        const size = SUN.r / Math.max(dist, SUN.r) / halfTan();
-        const s = state.ship;
-        shipSolid.r = s ? LENGTH * 0.45 : 0;
-        if (s) shipSolid.at = [s.x, s.y, s.z];
-        const hidden = occluded({ from: map.worldToLocal(eyeAt).toArray(), to: SUN.at, solids: flareSolids });
-        share = sunShareOf({ ndc, size }) * (1 - hidden);
-        // (half as strong over the map, which is a chart, not a place you're in)
-        weight = post.flareOn ? flareWeight({ ndc, occluded: hidden, size }) * (flying() && state.view !== 'map' ? 1 : 0.5) : 0;
+    const s = state.ship;
+    shipSolid.r = s ? LENGTH * 0.45 : 0;
+    if (s) shipSolid.at = [s.x, s.y, s.z];
+    camera.getWorldPosition(eyeAt);
+    const eye = map.worldToLocal(eyeAt.clone()).toArray();
+    [litBy.key, litBy.fill].forEach((light, i) => {
+      const star = light && starOf[light.id];
+      let ndc = [0, 0];
+      let weight = 0;
+      if (star && !onFoot()) {
+        map.localToWorld(starAt.set(...star.at));
+        const dist = starAt.distanceTo(eyeAt);
+        starAt.project(camera);
+        if (starAt.z < 1) {
+          ndc = [starAt.x, starAt.y];
+          const size = star.r / Math.max(dist, star.r) / halfTan();
+          const hidden = occluded({ from: eye, to: star.at, solids: hidersOf(star.id) });
+          // (as strong as its light is here: a far star a glint, not a glare)
+          const k = Math.min(1, light.strength / KEY_FULL);
+          share += sunShareOf({ ndc, size }) * (1 - hidden) * k;
+          // (half as strong over the map, which is a chart, not a place you're in)
+          weight = post.flareOn ? flareWeight({ ndc, occluded: hidden, size }) * k * (flying() && state.view !== 'map' ? 1 : 0.5) : 0;
+        }
       }
-    }
-    sunFlare?.set({ ndc, weight, camera });
+      flares[i]?.set({ ndc, weight, colour: star?.colour ?? null, camera });
+    });
+    share = Math.min(1, share);
     exposure = exposureFor({ sunShare: share, darkShare: 1 - share, last: exposure, dt, reduced });
     post.exposure(onFoot() ? 1 : exposure);
   };
@@ -3737,6 +3752,9 @@ export async function create(canvas, ctx) {
   // A supernova's flash is a star while it burns. All at once on the first
   // frame and under reduced motion.
   const lightNow = { key: new THREE.Vector3().copy(LIGHT), fill: new THREE.Vector3(0.7, -0.4, -0.3).normalize(), first: true };
+  // (what lit the last frame: the flares are drawn for its key and fill)
+  let litBy = { key: null, fill: null };
+  let envStar = null; // (the star the reflections' glow was made for)
   const lightTo = new THREE.Vector3();
   const footSun = new THREE.Vector3(); // (the landed planet's, for the crew's day: its own vector, kept)
   const lightColour = new THREE.Color();
@@ -3759,6 +3777,17 @@ export async function create(canvas, ctx) {
     const nv = novae.nova();
     const nova = nv && nv.k > 0.05 ? { at: nv.at.toArray ? nv.at.toArray() : nv.at, colour: '#ffffff', strength: 3 * nv.k } : null;
     const l = lightAt(camLocal.toArray(), { nova });
+    litBy = l;
+    // what metal reflects made again round the new key when the star that
+    // lights you changes (a few ms, and only crossing from one star's
+    // neighbourhood to another's): its glow where the star is, in its colour
+    if (l.key.id !== envStar && !lightNow.first) {
+      envStar = l.key.id;
+      const next = spaceEnvironment(renderer, T.sky, { light: lightTo.set(...l.key.dir).negate().applyAxisAngle(Y_AXIS, state.yaw), colour: l.key.colour });
+      scene.environment = next.texture;
+      env.dispose();
+      env = next;
+    } else if (lightNow.first) envStar = l.key.id;
     const k = lightNow.first || reduced ? Infinity : 2 * dt;
     lightNow.first = false;
     // (the way toward each light, in the world's axes: back along the way its light goes)
@@ -4746,7 +4775,7 @@ export async function create(canvas, ctx) {
       burst.clear();
       burst.dispose();
       traffic?.dispose();
-      sunFlare?.dispose();
+      for (const f of flares) f.dispose();
       disposeTree(scene);
       post.dispose();
       env.dispose();
