@@ -180,3 +180,4 @@ html[data-mode='dark'] .dm-shelf li[data-got] .dm-shelf-tag { color: #9bbc0f; }
 .dm-name { position: absolute; left: 0; top: 0; padding: 2px 5px 3px; border: 2px solid var(--dm-0); background: var(--dm-3); color: var(--dm-0); font: 0.5rem/1.2 var(--dm-font); white-space: nowrap; opacity: 0; will-change: transform; }
 .dm-chip-online { border-style: dashed; }
 .dm-chip-online b { font-weight: inherit; }
+.dm-n64-wait { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: #10203f; color: #fff; font: 600 1rem/1.4 system-ui, sans-serif; }

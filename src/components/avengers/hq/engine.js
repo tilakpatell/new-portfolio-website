@@ -77,14 +77,33 @@ export function createEngine(canvas, opts = {}) {
   const renderPass = new RenderPass(scene, camera);
   composer.addPass(renderPass);
   const bloomPass = bloom ? new UnrealBloomPass(new THREE.Vector2(256, 256), bloom.strength, bloom.radius, bloom.threshold) : null;
+  // `knee`: how far past the threshold the glow takes to come in fully. The
+  // pass's own 0.01 is a switch: a big surface lit to just about the
+  // threshold (a white wall in the sun) glowed whole or not at all as the
+  // view turned, a box of light popping on and off.
+  if (bloomPass) bloomPass.highPassUniforms.smoothWidth.value = bloom.knee ?? 0.01;
   if (bloomPass) composer.addPass(bloomPass);
-  composer.addPass(new OutputPass());
+  // The canvas opaque, whatever alpha the frame ends with. three.js makes
+  // every context with alpha and only clears to 1, so where a pass wrote
+  // less (the trees' alpha-to-coverage edges, and on some Windows drivers
+  // whole trees) the page behind showed through: its painted sky, and a
+  // flat green ground over the bottom of the screen.
+  const output = new OutputPass();
+  output.material.fragmentShader = output.material.fragmentShader.replace(/}\s*$/, '  gl_FragColor.a = 1.0;\n}');
+  composer.addPass(output);
 
   let size = { w: 1, h: 1 };
+  let fitted = '';
   const resize = (w, h) => {
     size = { w: Math.max(1, Math.round(w)), h: Math.max(1, Math.round(h)) };
     // the screen's ratio, under the tier's, and inside what the chip can hold
     const ratio = fitRatio(size.w, size.h, Math.min(tier.dpr, window.devicePixelRatio || 1), { side, pixels: tier.pixels });
+    // (setting a canvas's size clears it, even to the size it was, and a
+    // cleared canvas that's shown before the next frame is see-through:
+    // only when something changed)
+    const key = `${size.w}x${size.h}@${ratio}:${tierName}`;
+    if (key === fitted) return;
+    fitted = key;
     renderer.setPixelRatio(ratio);
     renderer.setSize(size.w, size.h, false);
     composer.setPixelRatio(ratio);
@@ -136,10 +155,13 @@ export function createEngine(canvas, opts = {}) {
     if (avg < 22) return;
     const next = ORDER[ORDER.indexOf(tierName) + 1];
     if (next) {
-      setTier(next);
+      // (at the start of the next frame, not now: it resizes the canvas,
+      // which clears the frame just drawn before it's shown)
+      stepTo = next;
       perf.grace = 60;
     } else if (avg > 34) onSlow?.();
   };
+  let stepTo = null;
 
   // Light the scene from a sky. `sun` scales the key light (the sky's own sun
   // direction and colour, if it has one); `fill` the hemisphere fill.
@@ -196,6 +218,7 @@ export function createEngine(canvas, opts = {}) {
   const setCamera = (cam) => {
     view = cam;
     renderPass.camera = cam;
+    fitted = ''; // (the new camera's aspect)
     resize(size.w, size.h);
   };
 
@@ -206,6 +229,10 @@ export function createEngine(canvas, opts = {}) {
     const now = performance.now();
     const ms = now - last;
     last = now;
+    if (stepTo) {
+      setTier(stepTo);
+      stepTo = null;
+    }
     renderer.info.reset();
     composer.render();
     // One long gap is the loop coming back (the game was scrolled away, or the

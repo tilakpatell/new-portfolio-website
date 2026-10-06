@@ -63,7 +63,9 @@ for (const file of ['public/games/credits.json', 'public/games/caribbean/credits
   for (const a of Object.values(await json(file))) if (/CC0/.test(a.license)) cc0.push({ name: a.name, source: a.source, by: a.authors.join(', ') });
 }
 for (const [, kind, name, from, url, by] of (await read('public/hq/CREDITS.md')).matchAll(/^\| (\w+) \| ([^|]+) \| \[([^\]]+)\]\(([^)]+)\) \| ([^|]+) \|$/gm)) {
-  cc0.push({ name: `${name.trim()} (${kind.toLowerCase()}, Avengers HQ)`, source: url, by: by.trim(), from });
+  // (the same pipeline makes the Mario 64 tribute's sets, named m64-)
+  const where = name.trim().startsWith('m64-') ? 'Super Mario 64' : 'Avengers HQ';
+  cc0.push({ name: `${name.trim()} (${kind.toLowerCase()}, ${where})`, source: url, by: by.trim(), from });
 }
 const site = (url) => (/polyhaven/.test(url) ? 'Poly Haven' : /ambientcg/.test(url) ? 'ambientCG' : /kenney/.test(url) ? 'Kenney' : new URL(url).hostname);
 const cc0Unique = [...new Map(cc0.map((a) => [`${a.source}|${a.name}`, a])).values()];

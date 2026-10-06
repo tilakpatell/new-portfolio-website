@@ -238,9 +238,16 @@ export function groundPaint([x0, y0, x1, y1], px = 4096) {
       rr(98 + k, 46 + k, 28 - 2 * k, 16 - 2 * k, 8 - k);
       x.stroke();
     }
-    x.fillStyle = '#6f9c4b';
+    x.fillStyle = '#5f8a3f';
     rr(99.7, 47.7, 24.6, 12.6, 6.3);
     x.fill();
+    // the infield mown in bands across, a lighter and a darker green, as a pitch is
+    x.save();
+    rr(99.7, 47.7, 24.6, 12.6, 6.3);
+    x.clip();
+    x.fillStyle = 'rgba(214, 236, 170, 0.13)';
+    for (let bx = 99.7; bx < 124.3; bx += 2.4) x.fillRect(bx, 47.7, 1.2, 12.6);
+    x.restore();
     x.strokeStyle = 'rgba(255,255,255,0.7)';
     x.lineWidth = 0.12;
     rr(103.5, 50.6, 17, 6.8, 0.2);
@@ -280,8 +287,46 @@ export function groundPaint([x0, y0, x1, y1], px = 4096) {
       x.stroke();
     }
     x.restore();
+    grain(x, px, ph);
   });
   return { tex, size: [px, ph] };
+}
+
+// Fine grain over whatever's painted on a canvas (and nothing where it's
+// clear): the turf's blades, the track's rubber, the concrete's aggregate,
+// so painted ground isn't a flat sheet of colour up close.
+function grain(x, w, h) {
+  const n = document.createElement('canvas');
+  n.width = n.height = 128;
+  const g = n.getContext('2d');
+  const img = g.createImageData(128, 128);
+  let s = 11;
+  const r = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = r();
+    const dark = v < 0.5;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = dark ? 0 : 255;
+    img.data[i + 3] = Math.round(Math.abs(v - 0.5) * 2 * 46);
+  }
+  g.putImageData(img, 0, 0);
+  x.save();
+  x.globalCompositeOperation = 'source-atop';
+  x.fillStyle = x.createPattern(n, 'repeat');
+  x.fillRect(0, 0, w, h);
+  // and a slower mottle over it, a few metres across
+  x.globalAlpha = 0.5;
+  for (let i = 0; i < 90; i++) {
+    const cx = r() * w;
+    const cy = r() * h;
+    const rad = (0.03 + r() * 0.06) * Math.max(w, h);
+    const rg = x.createRadialGradient(cx, cy, 0, cx, cy, rad);
+    const c = r() < 0.5 ? '0,0,0' : '255,250,230';
+    rg.addColorStop(0, `rgba(${c},0.07)`);
+    rg.addColorStop(1, `rgba(${c},0)`);
+    x.fillStyle = rg;
+    x.fillRect(cx - rad, cy - rad, rad * 2, rad * 2);
+  }
+  x.restore();
 }
 
 // The landing pad's markings: two yellow circles with an H, a dashed line.
