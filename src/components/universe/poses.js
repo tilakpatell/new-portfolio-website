@@ -29,7 +29,7 @@ export const POSES = {
   // in the belt, along it, rocks round the ship
   belt: { ring: (BELT.inner + BELT.outer) / 2, angle: 2.2, back: 1.6, rise: 0.35 },
   // as the README's hero: the Maw off to the right, outside its pull
-  maw: { out: MAW.reach * 1.35, aside: 0.36, back: 1.6, rise: 0.55 },
+  maw: { out: MAW.reach * 1.35, aside: 0.36, back: 1.6, rise: 0.22 },
   'landing-middleearth': { planet: 'middleearth', dist: 1.6, off: 0, foot: 'middleearth' },
   // parked at the Home station as the autopilot parks, from the overview's
   // side: the home system up close, and how big it is against the ship
