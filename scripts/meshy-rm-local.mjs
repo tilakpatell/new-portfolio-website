@@ -22,10 +22,17 @@
 //   node --env-file=.env.local scripts/meshy-rm-local.mjs <step> [name … | phase2 | phase6]
 //
 // Steps, in order: claim (free), images (9 credits), models (30, heroes 35),
-// rig (5, rigged only), anim (an idle clip, 3), sit (3), fetch (free:
-// download and compress), balance. `reroll <step> <name …>` forgets a step's
-// task (and everything made from it), so the next run of that step pays for
-// it again. Concept images and model thumbnails go to lab/meshy/rm/.
+// look (free: the model as Meshy made it, for judging before the rig), rig
+// (5, rigged only), anim (an idle clip, 3), sit (3), fetch (free: download
+// and compress), balance. `reroll <step> <name …>` forgets a step's task (and
+// everything made from it), so the next run of that step pays for it again.
+// `use <name> <png in lab/meshy/rm/> [flip]` makes the model from that
+// picture instead of the latest concept: an earlier concept that was better,
+// or one mirrored. The image model often draws a lopsided character the
+// wrong way round (Space Beth's shaved side, the Amish Cyborg's metal half),
+// and when every part is mirrored alike, flipping the picture is surer than
+// drawing it again. Concept images, thumbnails and looks go to
+// lab/meshy/rm/ (earlier rounds' concepts in round1/ and so on).
 // MESHY_API_KEY comes from .env.local (git ignores it); it is never printed.
 
 import { NodeIO } from '@gltf-transform/core';
@@ -97,12 +104,14 @@ const PHASE6 = {
   'zigerion-ship': { rig: false, hero: true, prompt: `The Zigerion mothership from Rick and Morty: a huge dark green spaceship shaped like a dumbbell, two giant thick disc-shaped hulls side by side joined by a short boxy central hull, each disc rimmed with large glowing lime-green crescent windows and a ringed hub on its outer face with spiky barrels sticking out, teal light strips all over the hull, a flat top deck with a low boxy deckhouse and tall thin antenna spires tipped with red lights, a stepped underside ending in hanging spires. ${PROP}` }, // (confirm against the sheet "Zigerions")
   storytrain: { rig: false, hero: true, prompt: `The Story Train from Rick and Morty: a long streamlined science-fiction locomotive in gold, amber and copper, its nose sweeping forward and down from the cab roof to a low rounded point, a tall ridged cream prow running down the middle of the sloping nose from just under the windscreen to the tip, a small red-rimmed round lamp at the top of the prow just under the windscreen, a pale cab windscreen on top, one big glowing round headlamp set in a gold ring on each flank of the engine just behind the nose and no other headlamps, a low copper slatted cowcatcher, dark red spoked wheels underneath, hauling exactly three passenger carriages, the first dark red, the second brown and the third black, with warm lit windows and glowing gold couplings, no text. ${PROP}` },
 };
+// the small props, whose textures the plan keeps to 1024 pixels
+const SMALL = new Set(['snuffles', 'ghostinajar', 'tinkles', 'babywizard']);
 export const ASSETS = {};
 for (const [phase, set] of [
   [2, PHASE2],
   [6, PHASE6],
 ]) {
-  for (const [n, a] of Object.entries(set)) ASSETS[n] = { phase, rig: true, poly: a.hero ? 40000 : 30000, tex: 2048, ...a };
+  for (const [n, a] of Object.entries(set)) ASSETS[n] = { phase, rig: true, poly: a.hero ? 40000 : 30000, tex: SMALL.has(n) ? 1024 : 2048, ...a };
 }
 
 const key = process.env.MESHY_API_KEY;
@@ -187,7 +196,16 @@ async function squeeze(from, to, { tex = 0, clip = false } = {}) {
 }
 
 // what each step leaves, in order: rerolling one forgets it and those after
-const CHAIN = ['image', 'model', 'rig', 'idle', 'sit'];
+const CHAIN = ['image', 'use', 'model', 'rig', 'idle', 'sit'];
+
+// the picture `use` chose (mirrored left to right if asked), as a data URI
+// Meshy takes in place of the image task
+async function picked(n) {
+  const { file, flip } = tasks[n].use;
+  const img = sharp(join(REVIEW, file));
+  const png = await (flip ? img.flop() : img).png().toBuffer();
+  return `data:image/png;base64,${png.toString('base64')}`;
+}
 const LEAVES = { images: 'image', models: 'model', rig: 'rig', anim: 'idle', sit: 'sit' };
 
 const steps = {
@@ -216,7 +234,7 @@ const steps = {
       if (!tasks[n]?.image) throw new Error('no image yet');
       if (!tasks[n].model) {
         const { result } = await api('POST', '/v1/image-to-3d', {
-          input_task_id: tasks[n].image,
+          ...(tasks[n].use ? { image_url: await picked(n) } : { input_task_id: tasks[n].image }),
           ai_model: 'latest',
           should_texture: true,
           enable_pbr: false,
@@ -330,6 +348,26 @@ const steps = {
     await put(creditsFile, credits);
     if (done.length) await mark(done, 'done');
   },
+  // the model as Meshy made it, untouched, for judging from all round
+  // (scripts/glb-shot.mjs) before paying for the rig
+  async look(names) {
+    for (const n of names) {
+      if (!tasks[n]?.model) {
+        console.error(`! ${n}: no model yet`);
+        continue;
+      }
+      const t = await api('GET', `/v1/image-to-3d/${tasks[n].model}`);
+      await download(t.model_urls.glb, join(REVIEW, `${n}-model.glb`));
+      console.log(`look     ${n.padEnd(18)} lab/meshy/rm/${n}-model.glb`);
+    }
+  },
+  async use([n, file, how]) {
+    if (!file || !existsSync(join(REVIEW, file))) throw new Error(`use <name> <png in lab/meshy/rm/> [flip]`);
+    if (tasks[n]?.model) throw new Error(`${n} already has a model: reroll models ${n} first`);
+    tasks[n] = { ...tasks[n], use: { file, flip: how === 'flip' } };
+    await save();
+    console.log(`use      ${n.padEnd(18)} its model will be made from ${file}${how === 'flip' ? ', mirrored' : ''}`);
+  },
   async balance() {},
 };
 
@@ -338,6 +376,11 @@ async function main() {
   const [step, ...rest] = process.argv.slice(2);
   const forget = step === 'reroll' ? rest.shift() : null;
   if (!steps[step] && !forget) throw new Error(`step: ${Object.keys(steps).join(' | ')} | reroll <step> <name …>`);
+  if (step === 'use') {
+    if (!ASSETS[rest[0]]) throw new Error(`unknown asset ${rest[0]}`);
+    tasks = await json(TASKS);
+    return steps.use(rest);
+  }
   // a phase's name stands for its assets
   const names = (rest.length ? rest : Object.keys(ASSETS)).flatMap((n) => (/^phase\d$/.test(n) ? Object.keys(ASSETS).filter((k) => ASSETS[k].phase === Number(n.slice(5))) : [n]));
   for (const n of names) if (!ASSETS[n]) throw new Error(`unknown asset ${n}`);

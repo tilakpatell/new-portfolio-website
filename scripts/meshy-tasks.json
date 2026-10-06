@@ -473,81 +473,84 @@
     "model": "01a10e50-eadc-741f-a4e6-f020b943a078"
   },
   "spacebeth": {
-    "image": "01a10ffe-9dbf-741b-abe3-95b5ccccffa2"
+    "image": "01a11012-8f6f-73a1-8c5a-f69f59020c9e"
   },
   "rickprime": {
-    "image": "01a10ffe-9dad-708d-8e4f-9b8a40cca3ee"
+    "image": "01a11012-8f65-73d8-ab61-f8cefafabae9"
   },
   "snuffles": {
-    "image": "01a10ffe-9dad-708b-838d-7a645d20cb91"
+    "image": "01a11013-c978-70f0-bbf1-948b81bccd46"
   },
   "drwong": {
-    "image": "01a10ffe-9db1-752f-8db5-306eb2036daa"
+    "image": "01a11012-8f6f-739f-b3aa-96cb51fcddad"
   },
   "nancy": {
-    "image": "01a10ffe-e3bb-7592-adec-5d41c866f647"
+    "image": "01a11012-8f6c-757a-b21e-2e34cfdf5fe7"
   },
   "tricia": {
-    "image": "01a10fff-2d45-7452-81d5-04c4d9a9b772"
+    "image": "01a11012-e5c7-7314-b1c2-9b24836bde4e"
   },
   "diane": {
-    "image": "01a10fff-6690-75a2-b6a4-14fd605fb57b"
+    "image": "01a11012-f983-72d6-9cdb-b92f71ac9fad"
   },
   "pencilvester": {
-    "image": "01a10fff-a61a-770c-a5bd-a247701b067b"
+    "image": "01a10fff-a61a-770c-a5bd-a247701b067b",
+    "model": "01a11016-2b33-7000-9544-b6e91213ab25"
   },
   "sleepygary": {
-    "image": "01a10fff-a873-732b-9485-75fa299dbe4d"
+    "image": "01a11013-37b2-74f7-a587-6ca6be943e42"
   },
   "hamurai": {
-    "image": "01a10fff-c2cd-71a8-a1e4-58754fbdaea1"
+    "image": "01a11013-3961-709e-a477-26c6a2a2e1ee"
   },
   "amishcyborg": {
-    "image": "01a11000-0db5-77de-94d8-0861b06075fd"
+    "image": "01a11013-4cdd-721b-965c-d4150b9c5af5"
   },
   "mrbeauregard": {
-    "image": "01a11000-15b4-7532-9f88-270a0600dea1"
+    "image": "01a11013-5f3f-7712-bd8b-97ca8a50f2bf"
   },
   "cousinnicky": {
-    "image": "01a11000-4cb6-7243-9f57-64df045d290b"
+    "image": "01a11013-b575-763f-9a43-39f9ccaad4c4"
   },
   "frankenstein": {
-    "image": "01a11000-8928-7522-9993-ce010fee26bc"
+    "image": "01a11013-b574-7313-86cf-42254ebafe13"
   },
   "reversegiraffe": {
-    "image": "01a11000-bd6a-7548-ac44-9b5b1197c78c"
+    "image": "01a11014-1c79-77e8-a1f9-2b44c18bb8e2"
   },
   "ghostinajar": {
-    "image": "01a11000-f482-732f-82b9-aa8877d2ac2c"
+    "image": "01a11000-f482-732f-82b9-aa8877d2ac2c",
+    "model": "01a11016-2b33-70e5-99af-21a4f287c1ee"
   },
   "photographyraptor": {
-    "image": "01a11001-22bc-766a-82bd-1cca60f0332e"
+    "image": "01a11014-428c-74d9-bbb8-63a620f8ed6f"
   },
   "tinkles": {
-    "image": "01a11001-67d3-77ca-bafa-9b11d0ea189d"
+    "image": "01a11014-a96e-76e5-8727-d1028bc4e375"
   },
   "babywizard": {
-    "image": "01a11001-5e48-726d-aec6-162097e5d34c"
+    "image": "01a11014-cf52-7208-8462-34456bb41288"
   },
   "mrsrefrigerator": {
-    "image": "01a11001-6878-73f1-b38b-527e678d52ae"
+    "image": "01a11014-fab0-7507-a0f8-ca433335e969"
   },
   "spacebeth-ship": {
-    "image": "01a11001-75ec-7087-97ce-0726e06bc807"
+    "image": "01a11015-069e-7635-8ed2-0f57c53f8dca"
   },
   "jerry-ship": {
-    "image": "01a11001-cd6d-7251-bae9-0e71ad479555"
+    "image": "01a11015-440b-75f7-b9f0-4d58156d79ce"
   },
   "gotron-ferret": {
-    "image": "01a11001-eca3-74dc-8fe4-3e55a8f26e83"
+    "image": "01a11015-47ca-7115-b0b8-848845b2b3dc"
   },
   "gotron": {
-    "image": "01a11002-1e12-7057-a667-8725800e8030"
+    "image": "01a11015-afbb-7683-8c8d-f100c8e33ff8"
   },
   "zigerion-ship": {
-    "image": "01a11002-6f5e-726a-b88c-fb8d3ce902aa"
+    "image": "01a11002-6f5e-726a-b88c-fb8d3ce902aa",
+    "model": "01a11016-2b42-70d2-832c-a7575c6a2b9c"
   },
   "storytrain": {
-    "image": "01a11002-aa26-727a-b443-4e6048862ed1"
+    "image": "01a11015-c0e7-73ee-963b-800501fe12b5"
   }
 }
