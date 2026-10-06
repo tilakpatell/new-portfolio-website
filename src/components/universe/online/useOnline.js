@@ -43,7 +43,7 @@ export function useOnlineState(where) {
   const [loadout, setLoadout] = useState(() => (kind && readLoadouts(local.get(LOADOUT_KEY), [kind])[kind]) || STOCK_LOADOUT);
   // and the hull it flies: its garage build (shipyard/), or null for its stock ship
   const [build, setBuild] = useState(() => (kind && readHulls(local.get(HULL_KEY), [kind])[kind]) || null);
-  // and how its Rick and Morty are dressed (the wardrobe's, wherever it's changed)
+  // and how its Rick and Morty, or its Walt and Jesse, are dressed (the wardrobe’s, wherever it’s changed)
   const [looks, setLooks] = useState(() => readLooks(local.get(LOOK_KEY)));
   useEffect(() => {
     const on = (e) => setLooks(readLooks(e.detail));

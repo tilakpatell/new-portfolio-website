@@ -5,7 +5,7 @@
 // planet's own seed, so it's the same for every pilot who lands there; a
 // pilot coming down beside a friend is handed the friend's frame.
 //
-// furnish({ id, landing, frame, R, small, renderer, warm }) →
+// furnish({ id, landing, frame, R, small, reduced, renderer, warm }) →
 //   { group, solids, spots, update(t, dt), ready, dispose() }
 //   group  in the planet's space (footScene's root: its middle at the origin)
 //   solids grows as things arrive ([{ n, r }])
@@ -13,6 +13,9 @@
 //          (G there opens the planet's page) or a line to say ([{ n, r,
 //          label?, say? }], r how near you have to be, map units)
 //   ready  a promise, once everything that's coming has come
+//
+// The landing's door has a beacon over it (./beacon.js: the way into the
+// planet's world, seen from the ship); a landing with no door is given one.
 //
 // A planet's file exports PROPS (things: (kit, opts) → { object, solids?,
 // update? }, or a promise of one), SCATTER ((kit, opts) → { parts, radius }),
@@ -27,6 +30,9 @@ import { rng } from '../../galaxy/surface/noise';
 import { METRE, facingAlong, place, solidsOn, vec } from '../foot';
 import { SCATTER_MAX, scatterSpots, seedOf } from './landings';
 import { createModels } from './models';
+import { beaconOf } from './wayin';
+import { createBeacon } from './beacon';
+import { byId } from '../universes';
 
 // each planet's builders, loaded when you land there
 const PLANETS = {
@@ -177,7 +183,7 @@ function partsOf(object) {
   return out;
 }
 
-export function furnish({ id, landing, frame, R, small = false, renderer = null, warm = null }) {
+export function furnish({ id, landing, frame, R, small = false, reduced = false, renderer = null, warm = null }) {
   const group = new THREE.Group();
   group.name = `landing-${id}`;
   const solids = [];
@@ -211,6 +217,17 @@ export function furnish({ id, landing, frame, R, small = false, renderer = null,
     return place({ n: s.n, f }, 0, 0, R, t.yaw ?? 0);
   };
 
+  // the beacon over the way in (wayin.js), stood at a spot on the ground
+  const beacon = beaconOf(id, landing);
+  const putBeacon = async (spot, tall) => {
+    const made = createBeacon({ label: beacon.label, color: byId(id)?.palette?.glow, tall, small, reduced });
+    const o = made.object;
+    o.matrixAutoUpdate = false;
+    standMatrix(spot, R, 0, METRE, o.matrix);
+    o.matrixWorldNeedsUpdate = true;
+    if (await add(o)) updates.push(made.update);
+  };
+
   const thing = async (planet, t) => {
     const spec = specs[t.kind];
     let made = null;
@@ -234,6 +251,8 @@ export function furnish({ id, landing, frame, R, small = false, renderer = null,
       const at = t.door?.at ? place(spot, t.door.at[0], t.door.at[1], R).n : spot.n;
       spots.push({ n: at, r: (t.door?.reach ?? (t.door?.at ? 3 : (t.r ?? 0) + 3)) * METRE, label: t.door?.label ?? null, say: t.say ?? null });
     }
+    // (high enough to clear what it marks: a camper van's roof, a compound's wall)
+    if (beacon && t === landing.things[beacon.thing]) await putBeacon(t.door.at ? place(spot, t.door.at[0], t.door.at[1], R) : spot, Math.min(12, Math.max(4.5, (t.r ?? 0) * 0.45 + 2.5)));
   };
 
   const scatter = async (planet, entry, rand) => {
@@ -292,6 +311,12 @@ export function furnish({ id, landing, frame, R, small = false, renderer = null,
       // place; `small` only thins the scatter. Each scatter its own seed, so
       // the layout doesn't hang on which model loads first)
       const things = landing.things ?? [];
+      // (a landing with no door: one of its own, under the beacon)
+      if (beacon && beacon.thing === null) {
+        const spot = place(frame, beacon.at[0], beacon.at[1], R);
+        spots.push({ n: spot.n, r: beacon.reach * METRE, label: beacon.door, say: null });
+        await putBeacon(spot, 4.5);
+      }
       await Promise.all([...things.map((t) => thing(planet, t).catch(oops(t.kind))), ...(landing.scatter ?? []).map((e, i) => scatter(planet, e, rng(seedOf(id) + i * 7919)).catch(oops(e.kind)))]);
     })
     .catch(oops(id));

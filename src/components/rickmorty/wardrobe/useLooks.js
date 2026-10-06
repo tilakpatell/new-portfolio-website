@@ -7,8 +7,9 @@ const EVENT = 'tp:looks';
 // The wardrobe's looks, kept between visits (looks.js's LOOK_KEY), and the
 // same in every part of the page at once: a change anywhere is told to the
 // rest ('tp:looks'), so the world, the Citadel and the hangar dress their
-// Rick and Morty the moment the wardrobe does.
-// → [looks ({ rick, morty }), setLook(who, look)]
+// Rick and Morty (and the RV’s seats, the crews on foot and Albuquerque
+// their Walt and Jesse) the moment the wardrobe does.
+// → [looks ({ rick, morty, walt, jesse }), setLook(who, look)]
 export function useLooks() {
   const [looks, setLooks] = useState(() => readLooks(local.get(LOOK_KEY)));
   const now = useRef(looks);
