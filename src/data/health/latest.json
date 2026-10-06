@@ -1,6 +1,6 @@
 {
   "date": "2026-10-06",
-  "sha": "b639619e",
+  "sha": "657b74fb",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -9,7 +9,7 @@
       "detail": [
         {
           "file": "src/components/universe/scene.js",
-          "n": 4642
+          "n": 4728
         },
         {
           "file": "src/components/middleearth/towns/moria/props.js",
@@ -53,7 +53,7 @@
         },
         {
           "file": "src/components/universe/footScene.js",
-          "n": 2901
+          "n": 2925
         },
         {
           "file": "src/components/middleearth/towns/lorien/props.js",
@@ -65,7 +65,7 @@
         },
         {
           "file": "src/components/galaxy/surface/scene.js",
-          "n": 2539
+          "n": 2558
         },
         {
           "file": "src/components/universe/crews.js",
@@ -92,16 +92,16 @@
           "n": 1903
         },
         {
+          "file": "src/components/galaxy/surface/props/forest.js",
+          "n": 1898
+        },
+        {
           "file": "src/components/middleearth/towns/edoras/folk.js",
           "n": 1772
         },
         {
-          "file": "src/components/galaxy/surface/props/forest.js",
-          "n": 1767
-        },
-        {
           "file": "src/components/galaxy/surface/props/core.js",
-          "n": 1699
+          "n": 1705
         },
         {
           "file": "src/lib/sfx.js",

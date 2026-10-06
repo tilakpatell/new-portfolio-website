@@ -26,7 +26,7 @@ import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 import { gltfLoader } from '../../lib/three/gltf';
 import { loadTexture } from '../../lib/three/textures';
 import { detailLevel } from '../../lib/detail';
-import { SWIRL_GLSL } from '../rickmorty/swirl';
+import { SWIRL_GLSL } from '../../lib/three/swirl';
 import { globeData } from '../travel/globe3d/data';
 import { facing, fit, glowMat, orbit, paint, rng, rounded, tiled } from './kit';
 import { STATIONS } from './stations';

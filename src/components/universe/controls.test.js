@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CONTROLS, DEFAULTS, STICK, keyAxes, readControls, stickInput } from './controls';
+import { CONTROLS, DEFAULTS, STICK, keyAxes, readControls, stickInput, keyFlies } from './controls';
 
 describe('the flying settings', () => {
   it('start as they come, and come back that way from anything unreadable', () => {
@@ -81,5 +81,29 @@ describe('the keys', () => {
     const inv = { ...DEFAULTS, invert: true };
     expect(keyAxes({ pitchUp: true }, inv).climb).toBe(-1);
     expect(keyAxes({ pitchDown: true }, inv).climb).toBe(1);
+  });
+});
+
+describe('keyFlies', () => {
+  const el = (tagName, extra = {}) => ({ tagName, ...extra });
+  it('flies from the page itself and from a button', () => {
+    expect(keyFlies(null, 'arrowup')).toBe(true);
+    expect(keyFlies(el('BODY'), ' ')).toBe(true);
+    expect(keyFlies(el('BUTTON'), 'arrowleft')).toBe(true);
+    expect(keyFlies(el('BUTTON'), 'enter')).toBe(true);
+  });
+  it('leaves typing alone', () => {
+    expect(keyFlies(el('INPUT', { type: 'text' }), 'arrowleft')).toBe(false);
+    expect(keyFlies(el('INPUT', { type: 'range' }), 'arrowleft')).toBe(false);
+    expect(keyFlies(el('TEXTAREA'), 'w')).toBe(false);
+    expect(keyFlies(el('SELECT'), 'arrowdown')).toBe(false);
+    expect(keyFlies(el('DIV', { isContentEditable: true }), 'w')).toBe(false);
+  });
+  it('lets the arrows fly past a focused checkbox, but not Space', () => {
+    const box = el('INPUT', { type: 'checkbox' });
+    expect(keyFlies(box, 'arrowup')).toBe(true);
+    expect(keyFlies(box, 'arrowleft')).toBe(true);
+    expect(keyFlies(box, ' ')).toBe(false);
+    expect(keyFlies(box, 'w')).toBe(false);
   });
 });

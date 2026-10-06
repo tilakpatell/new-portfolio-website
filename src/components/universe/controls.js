@@ -67,3 +67,18 @@ export function keyAxes(keys, c) {
     roll,
   };
 }
+
+// Whether a key pressed with `el` focused is the ship's to fly with, or the
+// element's own: typing goes to a text box, a list or anything editable;
+// a checkbox (the settings' switches) keeps Space and Enter, but the arrows
+// fly on (they do nothing on a checkbox, and with the invert switch focused
+// the ship had stopped steering); a button's keys are the scene's to sort
+// out (Enter is the button's; the arrows and Space fly)
+export function keyFlies(el, key) {
+  const tag = el?.tagName;
+  if (!tag) return true;
+  if (el.isContentEditable) return false;
+  if (tag === 'TEXTAREA' || tag === 'SELECT') return false;
+  if (tag === 'INPUT') return el.type === 'checkbox' && /^arrow/.test(key);
+  return true;
+}

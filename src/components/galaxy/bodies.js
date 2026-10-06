@@ -278,9 +278,10 @@ export function buildBody(look, { r = 40, small = false } = {}) {
   }
 
   let shield = null;
+  let lastT = null; // (update's last clock, for how long since)
   if (L.shield) {
     const shieldGeo = new THREE.SphereGeometry(r * SHIELD_R, small ? 64 : 96, small ? 48 : 64);
-    const shieldMat = new THREE.ShaderMaterial({ vertexShader: SHIELD_VERT, fragmentShader: SHIELD_FRAG, uniforms: { uShield: { value: 0 }, uTime: shared.uTime }, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
+    const shieldMat = new THREE.ShaderMaterial({ vertexShader: SHIELD_VERT, fragmentShader: SHIELD_FRAG, uniforms: { uShield: { value: 0 }, uTime: shared.uTime, uHit: { value: 0 }, uHitAt: { value: new THREE.Vector3(0, 1, 0) } }, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
     shield = new THREE.Mesh(shieldGeo, shieldMat);
     shield.visible = false;
     group.add(shield);
@@ -295,7 +296,10 @@ export function buildBody(look, { r = 40, small = false } = {}) {
     reach,
     // (the camera needn't be passed: the shaders know where it is)
     update(t) {
+      const dt = lastT === null ? 0 : Math.max(0, Math.min(0.1, t - lastT));
+      lastT = t;
       shared.uTime.value = t;
+      if (shield && shield.material.uniforms.uHit.value > 0) shield.material.uniforms.uHit.value = Math.max(0, shield.material.uniforms.uHit.value - dt * 1.1); // (a bump's flash dies away in about a second)
       group.updateWorldMatrix(true, false);
       shared.uCenter.value.setFromMatrixPosition(group.matrixWorld);
       shared.uRot.value.setFromMatrix4(group.matrixWorld);
@@ -318,6 +322,20 @@ export function buildBody(look, { r = 40, small = false } = {}) {
         shield.material.uniforms.uShield.value = v;
         shield.visible = v > 0.001;
       }
+    },
+    // a ship's bump into the shield at `point` (world space): a flash there
+    // and a ring out across the shell, dying away over the next second.
+    // False on a body with no shield
+    hit(point) {
+      if (!shield) return false;
+      group.updateWorldMatrix(true, false);
+      shield.material.uniforms.uHitAt.value.copy(point).applyMatrix4(group.matrixWorld.clone().invert()).normalize();
+      shield.material.uniforms.uHit.value = 1;
+      return true;
+    },
+    // (how far the last bump's flash has to go, 0 for none: for checking)
+    get hitLeft() {
+      return shield ? shield.material.uniforms.uHit.value : 0;
     },
     dispose() {
       for (const m of made) m.dispose();

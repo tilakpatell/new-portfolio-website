@@ -2,6 +2,8 @@
    .universe-page, its panel, its HUD), with the galaxy's own bits here. */
 
 .galaxy-page[data-leaving='fade'] .universe-fade { opacity: 1; transition: opacity 0.6s ease-in; }
+/* flown into the planet: the crash, then the screen washes out in the system's colour on the way down to its surface */
+.galaxy-page[data-leaving='crash'] .universe-fade { opacity: 1; transition: opacity 0.6s cubic-bezier(0.55, 0, 1, 0.45); }
 .galaxy-page:is([data-jumping='spool'], [data-jumping='tunnel']) .universe-labels { opacity: 0; transition-duration: 0.2s; }
 
 /* the galaxy on the world runtime: its box, and the one canvas moved into it */

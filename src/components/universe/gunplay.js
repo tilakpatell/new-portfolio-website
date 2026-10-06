@@ -1106,6 +1106,7 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
 
   return {
     gun,
+    kind,
     spec,
     bones,
     armLen,
