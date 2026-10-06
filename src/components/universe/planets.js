@@ -44,7 +44,7 @@ const BASE = '/textures/universe/';
 // Invincible's by their own scripts.
 const MAPS = {
   // colour, with a phone copy
-  ...Object.fromEntries(['music', 'middleearth', 'middleearth-night', 'middleearth-clouds', 'transformers', 'marvel', 'breakingbad', 'breakingbad-night', 'caribbean', 'office', 'rickmorty', 'earth', 'earth-night', 'invincible', 'invincible-night', 'sun', 'sky'].map((n) => [n, { sm: true, colour: true }])),
+  ...Object.fromEntries(['music', 'middleearth', 'middleearth-night', 'middleearth-clouds', 'transformers', 'marvel', 'breakingbad', 'breakingbad-night', 'caribbean', 'rickmorty-clouds', 'office', 'rickmorty', 'earth', 'earth-night', 'invincible', 'invincible-night', 'sun', 'sky'].map((n) => [n, { sm: true, colour: true }])),
   // data, with a phone copy
   ...Object.fromEntries(['middleearth-normal', 'breakingbad-normal', 'breakingbad-clouds', 'caribbean-clouds', 'earth-clouds', 'invincible-clouds'].map((n) => [n, { sm: true, colour: false }])),
   // colour, one size
@@ -691,14 +691,27 @@ const BUILDERS = {
 
   rickmorty(p, { u, T }) {
     const r = u.size;
+    // an alien world as the show draws one (scripts/planets/rickmorty.mjs):
+    // flat colour in cel steps, inked round every shape, teal seas, purple
+    // lands, pink deserts, lime jungle, lakes of glowing ooze, cartoon
+    // craters, and the show's inked puffs of cloud going over
     p.body.material = new THREE.MeshStandardMaterial({
       map: T.rickmorty ?? null,
       color: T.rickmorty ? '#ffffff' : u.palette.base,
       emissive: '#ffffff',
       emissiveMap: T['rickmorty-glow'] ?? null,
-      emissiveIntensity: T['rickmorty-glow'] ? 1 : 0,
-      roughness: 1,
+      emissiveIntensity: T['rickmorty-glow'] ? 1.3 : 0,
+      roughness: 0.85,
+      metalness: 0,
     });
+    if (T['rickmorty-clouds']) {
+      const sky = new THREE.Mesh(
+        new THREE.SphereGeometry(r * 1.012, T.small ? 44 : 64, T.small ? 28 : 40),
+        new THREE.MeshStandardMaterial({ map: T['rickmorty-clouds'], transparent: true, depthWrite: false, roughness: 1, metalness: 0 }),
+      );
+      p.group.add(sky);
+      p.tick.push((t) => (sky.rotation.y = t * 0.05));
+    }
     // a portal hangs on the cruiser's orbit, so it flies through it
     const o = orbit(p.group, { radius: r * 1.55, tilt: 0.36, speed: 0.24, phase: 1 });
     const portalMat = new THREE.ShaderMaterial({
