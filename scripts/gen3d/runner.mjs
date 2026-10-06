@@ -138,7 +138,7 @@ export async function runJob(job, root, log = console.log) {
       env: { ...process.env, CHROME: process.env.CHROME ?? EDGE, BASE: `http://127.0.0.1:${PORT}` },
       maxBuffer: 64 * 1024 * 1024,
     });
-    const stats = out.split('\n').filter((l) => /triangles|baked|raw model|concept/.test(l)).join('\n');
+    const stats = out.split('\n').filter((l) => l.startsWith(`[${job.name}]`)).join('\n'); // make.mjs's own lines, not the engines' chatter
     const sheet = join(cache, 'sheet.png');
     const files = [`public/models/gen3d/${job.name}.glb`, 'public/games/credits.json'];
     if (existsSync(sheet)) {
