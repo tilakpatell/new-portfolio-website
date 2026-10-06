@@ -43,4 +43,11 @@ describe('the 3D models that are other people’s', () => {
       }
     }
   });
+
+  it('worn in the wardrobe are credited wherever the crew wear them too', () => {
+    // (the cruiser's seats in the universe and the galaxy; out of the ship on a planet)
+    const worn = Object.entries(CREDITS).filter(([, m]) => m.file?.startsWith('/models/wardrobe/'));
+    expect(worn.length).toBeGreaterThan(0);
+    for (const [name, m] of worn) expect(m.also ?? [], name).toEqual(expect.arrayContaining(['universe', 'galaxy', 'galaxy-surface']));
+  });
 });

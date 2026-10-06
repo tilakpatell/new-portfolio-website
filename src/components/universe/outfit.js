@@ -203,6 +203,15 @@ export function loadoutOf(saved, ship, unlocked = [], build = null) {
   return l;
 }
 
+// The parts fitted (as saved) that the ship flies without: the ones the
+// plant can't run (or not earned), for the hangar to say so.
+export const droppedParts = (saved, flown) => PARTS_SLOTS.filter((slot) => saved?.[slot] && saved[slot] !== STOCK && flown[slot] !== saved[slot]).map((slot) => partById(slot, saved[slot]));
+
+// What to keep after fitting a part: the saved loadout with it in (not the
+// one flown, which a smaller plant may have taken parts off: a bigger one
+// gets them back).
+export const fitInto = (saved, slot, id) => ({ ...readLoadout(saved), [slot]: id });
+
 // Fitting a part: the new loadout, or why it won't go: 'locked' (not
 // earned yet) or 'power' (the ship can't run it with what else is fitted;
 // `short` says by how many MW).

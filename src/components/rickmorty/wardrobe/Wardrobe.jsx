@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import ModelCredits from '../../ModelCredits';
 import { useReducedMotion } from '../../../lib/hooks';
+import { focusBack, wrapFocus } from '../../../lib/focus';
 import { BODIES, GEAR, GEAR_SLOTS, SWATCHES, WHO, bodyOf, defaultLook, readLook } from './looks';
 import '@fontsource/luckiest-guy/400.css';
 import './wardrobe.css';
@@ -12,12 +13,14 @@ import './wardrobe.css';
 // colour for each part of it that takes one, and gear for his head, his face
 // and his hand. Every change is kept at once (useLooks), and Reset puts him
 // back as the show has him. Modal: Escape, the close button or the backdrop
-// puts it away.
+// puts it away; Tab stays inside while it's open, and focus goes back after
+// (to `returnTo`, a selector, when what opened it has gone).
 
 const SLOT_LABEL = { head: 'On his head', face: 'On his face', hand: 'In his hand' };
 const NAME = { rick: 'Rick', morty: 'Morty' };
+const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export default function Wardrobe({ open, onClose, looks, onLook, who: start = 'morty' }) {
+export default function Wardrobe({ open, onClose, looks, onLook, who: start = 'morty', returnTo = null }) {
   const id = useId();
   const reduced = useReducedMotion();
   const [who, setWho] = useState(start);
@@ -26,6 +29,8 @@ export default function Wardrobe({ open, onClose, looks, onLook, who: start = 'm
   const panel = useRef(null);
   const look = looks[who];
   const body = bodyOf(who, look.body);
+  const latest = useRef(look); // (for the turntable, made after a wait)
+  latest.current = look;
 
   useEffect(() => {
     if (open) setWho(start);
@@ -38,38 +43,44 @@ export default function Wardrobe({ open, onClose, looks, onLook, who: start = 'm
     import('./preview').then(({ createWardrobePreview }) => {
       if (gone || !canvas.current) return;
       preview.current = createWardrobePreview(canvas.current, { reduced });
-      preview.current?.show(looks[who]);
+      preview.current?.show(latest.current);
     });
     return () => {
       gone = true;
       preview.current?.dispose();
       preview.current = null;
     };
-    // (made once a time it's opened; the look is shown by the effect below)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // (made once a time it's opened, showing the look as it is by then; changes after are the effect below's)
   }, [open, reduced]);
   useEffect(() => {
     preview.current?.show(look);
   }, [look]);
 
-  // Escape closes it; focus goes in, and back where it was after
+  // Escape closes it; Tab goes round inside it; focus goes in, and back
+  // where it was after
   useEffect(() => {
     if (!open) return undefined;
-    const was = document.activeElement;
+    const was = document.activeElement === document.body ? null : document.activeElement;
     panel.current?.querySelector('.rm-wardrobe-tabs [aria-pressed="true"]')?.focus({ preventScroll: true }); // (whose wardrobe it is)
     const onKey = (e) => {
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
         onClose();
+      } else if (e.key === 'Tab' && panel.current) {
+        const to = wrapFocus([...panel.current.querySelectorAll(FOCUSABLE)], document.activeElement, e.shiftKey);
+        if (to) {
+          e.preventDefault();
+          to.focus();
+        }
       }
     };
     window.addEventListener('keydown', onKey, true);
     return () => {
       window.removeEventListener('keydown', onKey, true);
-      was?.focus?.({ preventScroll: true });
+      focusBack(was, () => returnTo && document.querySelector(returnTo));
     };
-  }, [open, onClose]);
+  }, [open, onClose, returnTo]);
 
   if (!open) return null;
   const set = (patch) => onLook(who, readLook(who, { ...look, ...patch }));

@@ -81,7 +81,7 @@ export const GEAR = {
   ],
   hand: [
     { id: 'none', name: 'Nothing', bone: null },
-    { id: 'portalgun', name: 'Portal gun', bone: 'RightHand' },
+    { id: 'portalgun', name: 'Portal gun', bone: 'RightHand', file: '/models/wardrobe/portalgun.glb' }, // (someone else's model: see modelCredits.json)
     { id: 'plumbus', name: 'Plumbus', bone: 'RightHand' },
     { id: 'laserpistol', name: 'Laser pistol', bone: 'RightHand' },
   ],
@@ -91,6 +91,8 @@ const SWATCH = new Map(SWATCHES.map((s) => [s.id, s]));
 export const swatchById = (id) => SWATCH.get(id) ?? null;
 export const bodyOf = (who, id) => BODIES[who]?.find((b) => b.id === id) ?? null;
 export const gearById = (slot, id) => GEAR[slot]?.find((g) => g.id === id) ?? null;
+// the model files a pair of looks wears, for the credits of what's on screen
+export const wornFiles = (looks) => [...new Set(WHO.flatMap((who) => GEAR_SLOTS.map((slot) => gearById(slot, looks[who]?.gear[slot])?.file).filter(Boolean)))];
 
 const isObject = (v) => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 

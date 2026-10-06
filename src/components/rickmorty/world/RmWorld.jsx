@@ -681,9 +681,10 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     const dt = Math.min(0.05, ms / 1000);
     s.t += dt;
     const k = s.keys;
-    const pad = readPad();
+    const raw = readPad();
     const before = s.padBefore;
-    s.padBefore = pad ?? {};
+    s.padBefore = raw ?? {};
+    const pad = wardrobeRef.current ? null : raw; // (the wardrobe's open over him: the pad's for it)
     const pressed = (b) => pad?.[b] && !before[b];
     if (pressed('a')) fns.current.act();
     if (pressed('b') && listRef.current) closeList();
