@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { MAP_NAMES, mapFile } from './planets';
 
 describe('the planet maps by detail level', () => {
@@ -34,5 +34,23 @@ describe('the fandoms’ baked maps', () => {
     const missing = [];
     for (const level of ['low', 'mid', 'high', 'ultra']) for (const name of MAP_NAMES) if (!existsSync(resolve(dir, mapFile(name, level)))) missing.push(mapFile(name, level));
     expect([...new Set(missing)]).toEqual([]);
+  });
+});
+
+describe('the sun a planet is lit from', () => {
+  it('a planet takes the sun it is given, its air and its rim both', async () => {
+    // (the builders paint on canvases: a canvas that takes every call and draws nothing)
+    const gradient = { addColorStop() {} };
+    const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    const p = buildPlanet(byId('middleearth'), {}, { sun: [0, 0, 1] });
+    expect(p.air.material.uniforms.uLight.value.toArray()).toEqual([0, 0, 1]);
+    expect(p.body.material.userData.air.uSunW.value.toArray()).toEqual([0, 0, 1]);
+    // (one vector the scene turns with the map, the air and the rim reading the same)
+    expect(p.sun).toBe(p.air.material.uniforms.uLight.value);
+    expect(p.sun).toBe(p.body.material.userData.air.uSunW.value);
+    vi.unstubAllGlobals();
   });
 });
