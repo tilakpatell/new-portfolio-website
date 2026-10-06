@@ -516,3 +516,26 @@
   pointer-events: none;
 }
 @keyframes galaxy-entry-note { to { opacity: 0.8; } }
+
+/* the fleet war (universe/war.js): a ring round each system in the colour of
+   the side that holds it, a pulse at the front, and the sides under the map */
+.holomap-systems li[data-held] .holomap-dot { outline: 2px solid var(--held); outline-offset: 3px; }
+.holomap-systems li[data-front] .holomap-dot { animation: holomap-front 1.4s ease-in-out infinite; }
+@keyframes holomap-front {
+  50% { outline-offset: 6px; outline-color: #ffb347; }
+}
+.holomap-war {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  z-index: 1;
+  margin: 0;
+  color: var(--muted, #9aa6c0);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+}
+.holomap-war i { display: inline-block; width: 8px; height: 8px; margin: 0 2px 0 8px; border-radius: 50%; border: 2px solid var(--held); }
+@media (prefers-reduced-motion: reduce) {
+  .holomap-systems li[data-front] .holomap-dot { animation: none; }
+}

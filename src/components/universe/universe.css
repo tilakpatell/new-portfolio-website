@@ -214,6 +214,21 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
 .universe-credit { margin: 1.5rem 0 0; color: var(--muted); font-size: 0.7rem; line-height: 1.5; }
 .universe-credit a { text-decoration: underline; text-underline-offset: 2px; }
 .universe-models { margin-top: 0.6rem; }
+/* the ways out (UniversePanel's Exits), held at the foot of the panel as it
+   scrolls: flush with its edges, the panel's padding taken back */
+.universe-exits {
+  position: sticky;
+  bottom: -1.25rem;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.25rem;
+  margin: 1.25rem -1.25rem -1.25rem;
+  padding: 0.15rem 1.25rem env(safe-area-inset-bottom, 0px);
+  border-top: 1px solid var(--border);
+  background: rgb(6 8 16);
+}
+.universe-exits .universe-back { min-height: 44px; margin: 0; }
 .universe-models ul { display: grid; gap: 0.35rem; margin: 0.5rem 0 0; padding: 0 3.25rem 0 0; list-style: none; } /* clear of the guide's button in the corner */
 .universe-enter { width: 100%; justify-content: center; }
 .universe-card { margin: 0; padding: 0; list-style: none; }

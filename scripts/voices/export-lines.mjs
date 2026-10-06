@@ -102,7 +102,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const towns = readdirSync(join(root, 'src/components/middleearth/towns'), { withFileTypes: true })
     .filter((d) => d.isDirectory() && existsSync(join(root, 'src/components/middleearth/towns', d.name, 'story.js')))
     .map((d) => `src/components/middleearth/towns/${d.name}/story.js`);
-  const worlds = await Promise.all([...towns, 'src/components/office/world/story.js', 'src/components/rickmorty/citadel/story.js'].map(load));
+  const worlds = await Promise.all([...towns, 'src/components/office/world/story.js', 'src/components/rickmorty/citadel/story.js', 'src/components/rickmorty/citadel/shouts.js'].map(load));
   const voiced = await load('src/lib/voiced.js');
   // and the worlds' people in their own formats: the Avengers compound's cast, Cybertron's bots and missions, Metherria's customers
   const [{ CAST }, { AREAS, MISSIONS: CYBERTRON }, { CUSTOMERS }] = await Promise.all([

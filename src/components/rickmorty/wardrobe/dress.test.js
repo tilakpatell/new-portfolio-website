@@ -23,6 +23,8 @@ describe('zones', () => {
     expect([...g.attributes.zone.array]).toEqual([0, 1, 3, 4]);
     // and how much of it the hips and legs move, for a line that follows the skin’s (a waist)
     expect([...g.attributes.lower.array].map((x) => +x.toFixed(2))).toEqual([0, 0, 0.6, 1]);
+    // and how much the head and neck move it, for one that follows the skin’s round the neck (a collar)
+    expect([...g.attributes.upper.array].map((x) => +x.toFixed(2))).toEqual([0.7, 0.1, 0, 0]);
   });
 });
 
@@ -91,6 +93,22 @@ describe('regions', () => {
     expect(at('outer').y).toBeLessThanOrEqual(0.5);
     expect(at('legs').x).toBeGreaterThanOrEqual(0.5);
     expect(at('shoes').x).toBeLessThan(0); // (open: anywhere)
+  });
+
+  it('turns Mr. White’s and Heisenberg’s collars to their jackets where the head stops moving them, not a triangle at a time', () => {
+    for (const body of ['mrwhite', 'heisenberg']) {
+      const u = regionUniforms(body, {});
+      const at = (r) => u.upper[u.order.indexOf(r)];
+      const zones = (r) => u.zones[u.order.indexOf(r)];
+      // (the collar and the jacket share the head's and the torso's zones, and split by `upper` alone)
+      expect(zones('inner') & 0b11, body).toBe(0b11);
+      expect(zones('outer') & 0b11, body).toBe(0b11);
+      // (round the middle, a little over each other: no gap between for the suit's own yellow to show through)
+      expect(at('inner').x, body).toBeGreaterThan(0.35);
+      expect(at('outer').y, body).toBeLessThan(0.65);
+      expect(at('inner').x, body).toBeLessThan(at('outer').y);
+      expect(at('legs').x, body).toBeLessThan(0); // (open: anywhere)
+    }
   });
 
   it('keys each material’s program on its body, so two bodies never share one', () => {
