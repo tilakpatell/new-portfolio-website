@@ -179,7 +179,7 @@ The front door (`/`) is a map of the whole site as places in space: the portfoli
 | `H` | The hangar: paint and parts for the ship you're flying |
 | `G` | On foot: through a door, or back into the ship (to land, fly down into a planet's air) |
 | `M` | The nav map: everywhere on one chart. Pick a place and a drive (hyperspeed, a jump; super speed, 3× the pulse drive; or cruise), with the trip time for each. The galaxy's star systems are on it too (the ship flies to the gate and on through), every place has a link that opens the map right there, and Tour takes you round everything in turn |
-| `J` | Jump to the place picked at hyperspeed |
+| `J` | Jump to the place picked at hyperspeed. Each crew goes its own way: the X-wing and the Falcon to lightspeed, Rick's cruiser through a portal, Walt and Jesse's RV crystallising into Blue Sky and shattering out of it at the other end |
 
 To land on a planet, fly down into its air: the glow round it. Come in at a normal speed and you're taken in, the way the galaxy's worlds come down: the hull burning as it hits the air, the planet's own sky coming up round you, through the clouds, and out over the planet's landing, where the ship sets down and the crew step out. Come in boosting and there's no landing: it's a crash, and the crash takes you into the planet's world as it always has.
 

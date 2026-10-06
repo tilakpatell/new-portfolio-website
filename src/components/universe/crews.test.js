@@ -8,6 +8,12 @@ describe('the crews', () => {
     expect(CREWS.map((c) => c.id)).toEqual(['cruiser', 'xwing', 'falcon', 'rv']);
   });
 
+  it('each cross the map their own way: the Star Wars ships on the jump to lightspeed, the cruiser through a portal, the RV as Blue Sky', async () => {
+    const { JUMP_STYLES, jumpStyle } = await import('../jumps/styles');
+    expect(CREWS.map((c) => jumpStyle(c.jump))).toEqual(['portal', 'hyper', 'hyper', 'bluesky']);
+    for (const c of CREWS) if (c.jump) expect(JUMP_STYLES).toContain(c.jump);
+  });
+
   it('have something to say everywhere, and only their own crew says it', () => {
     for (const crew of CREWS) {
       const all = [...['launch', 'boost', 'bump', 'edge', 'crash', 'pulled', 'swallowed'].map((e) => linesFor(crew, e)), ...ORDER.map((id) => linesFor(crew, 'arrive', id)), linesFor(crew, 'kill', 'any')];
