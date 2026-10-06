@@ -9,6 +9,7 @@ Everything here is credited on the page that uses it too. This file is made by `
 ## Contents
 
 - [3D models from Sketchfab](#3d-models-from-sketchfab)
+- [Models used with permission](#models-used-with-permission)
 - [Scans, skies and kits (CC0)](#scans-skies-and-kits-cc0)
 - [Photos](#photos)
 - [Fonts](#fonts)
@@ -193,7 +194,7 @@ Each one is its artist's, used under the Creative Commons licence it's published
 | [Arcee TFP Rigged](https://sketchfab.com/3d-models/arcee-tfp-rigged-26956dff2a7e41bf8b4c4e5a5b6af58b) | [Blender user Srikanth M](https://sketchfab.com/Ani-sri) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | Arcee (Transformers: Prime) |
 | [Bulkhead Rigged TFP](https://sketchfab.com/3d-models/bulkhead-rigged-tfp-518f2ef8efaa426592e9e22e81768a3d) | [Blender user Srikanth M](https://sketchfab.com/Ani-sri) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | Bulkhead (Transformers: Prime) |
 | [Bulkhead Rigged TFP](https://sketchfab.com/3d-models/bulkhead-rigged-tfp-518f2ef8efaa426592e9e22e81768a3d) | [Blender user Srikanth M](https://sketchfab.com/Ani-sri) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | Bulkhead's truck (Transformers: Prime) |
-| [Bumblebee - Optimus Prime Transform Animation](https://sketchfab.com/models/35f9cb09b1b248c7bd6b12912ac8cd3a) | [dioiiiii2](https://sketchfab.com/dioiiiii2) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Optimus's truck, his robot, and the whole change between them, on the Cybertron page |
+| [Bumblebee - Optimus Prime Transform Animation](https://sketchfab.com/models/35f9cb09b1b248c7bd6b12912ac8cd3a) | [dioiiiii2](https://sketchfab.com/dioiiiii2) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Optimus's truck, his robot, and the whole change between them, on the Cybertron page. |
 | [Fall of CyberTron: Metroplex](https://sketchfab.com/3d-models/fall-of-cybertron-metroplex-8b9864031eff48c4bab046aec29203e2) | [masoudnayab](https://sketchfab.com/masoudnayab) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | Metroplex (Fall of Cybertron), on the skyline |
 | [Fall of CyberTron: Optimus Prime CyberTruck](https://sketchfab.com/3d-models/fall-of-cybertron-optimus-prime-cybertruck-c7c10850cb60418d98c99eca2cb790ff) | [masoudnayab](https://sketchfab.com/masoudnayab) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | Optimus's Cybertronian truck (Fall of Cybertron), his alt mode in Iacon |
 | [Fall of CyberTron: Wheel Jack Vehicle](https://sketchfab.com/3d-models/fall-of-cybertron-wheel-jack-vehicle-f446eac2bc664d2eae82c5aedabd4c06) | [masoudnayab](https://sketchfab.com/masoudnayab) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | Wheeljack's car (Fall of Cybertron), parked in Iacon |
@@ -252,13 +253,13 @@ Each one is its artist's, used under the Creative Commons licence it's published
 
 | Model | Artist | Licence | On the site |
 | --- | --- | --- | --- |
-| [Cactus \| Pack](https://sketchfab.com/models/588596f1601d48e6ad4cb24b31c3f33c) | [yadrogames](https://sketchfab.com/yadrogames) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The desert's cacti |
-| [Fleetwood Bounder - Breaking Bad](https://sketchfab.com/models/85ea7208651a47f6a3b2924dadaeb955) | [Zack_Hawley](https://sketchfab.com/Zack_Hawley) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The RV out past To'hajiilee |
-| [LosPollosHermanos bucket](https://sketchfab.com/models/d9bbe6d4a7e54d87bb51d518bad2c7c8) | [Batuhan13](https://sketchfab.com/Batuhan13) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | What's waiting at a delivery's drop |
-| [Railway tank](https://sketchfab.com/models/c87b96181fd249ae8de1ac14575ec475) | [dmitriev_nd](https://sketchfab.com/dmitriev_nd) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The freight train's tank cars |
-| [Suzuki Esteem 1998 (Saul Goodman version)](https://sketchfab.com/models/72f36689982a4066b4382a7c2b5ecaa4) | [temp0.crazy](https://sketchfab.com/temp0.crazy) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Parked beside Saul's office |
-| [Tumbleweed](https://sketchfab.com/models/e9fa341c64fe4626b5d5b0052b0c0b64) | [biggreenorange](https://sketchfab.com/biggreenorange) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Tumbleweed |
-| [water tower](https://sketchfab.com/models/1c2f86dc8f794c85a91706d401d104db) | [Lora_o](https://sketchfab.com/Lora_o) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The water tank out by one of the drops |
+| [Cactus \| Pack](https://sketchfab.com/models/588596f1601d48e6ad4cb24b31c3f33c) | [yadrogames](https://sketchfab.com/yadrogames) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The desert's cacti. |
+| [Fleetwood Bounder - Breaking Bad](https://sketchfab.com/models/85ea7208651a47f6a3b2924dadaeb955) | [Zack_Hawley](https://sketchfab.com/Zack_Hawley) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The RV out past To'hajiilee. |
+| [LosPollosHermanos bucket](https://sketchfab.com/models/d9bbe6d4a7e54d87bb51d518bad2c7c8) | [Batuhan13](https://sketchfab.com/Batuhan13) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | What's waiting at a delivery's drop. |
+| [Railway tank](https://sketchfab.com/models/c87b96181fd249ae8de1ac14575ec475) | [dmitriev_nd](https://sketchfab.com/dmitriev_nd) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The freight train's tank cars. |
+| [Suzuki Esteem 1998 (Saul Goodman version)](https://sketchfab.com/models/72f36689982a4066b4382a7c2b5ecaa4) | [temp0.crazy](https://sketchfab.com/temp0.crazy) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Parked beside Saul's office. |
+| [Tumbleweed](https://sketchfab.com/models/e9fa341c64fe4626b5d5b0052b0c0b64) | [biggreenorange](https://sketchfab.com/biggreenorange) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |  |
+| [water tower](https://sketchfab.com/models/1c2f86dc8f794c85a91706d401d104db) | [Lora_o](https://sketchfab.com/Lora_o) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The water tank out by one of the drops. |
 
 ### Middle-earth
 
@@ -298,6 +299,15 @@ Each one is its artist's, used under the Creative Commons licence it's published
 | [Nandi](https://sketchfab.com/3d-models/nandi-2760803f9fb743d99a29b1b86c03e345) | [Francesco Coldesina](https://sketchfab.com/topfrank2013) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | Nandi, watching the gate |
 | [South Indian Temple - Modular Kit](https://sketchfab.com/3d-models/south-indian-temple-modular-kit-25f0176668004faa98ec351e04e58920) | [rSquare](https://sketchfab.com/rSquare) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | the temple compound behind the gateway |
 | [Temple arch-3DView](https://sketchfab.com/3d-models/temple-arch-3dview-a724b52dd9004fc892c59b1b5f5ec1eb) | [Er.B.Nijithkumar](https://sketchfab.com/nijithkumar99) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | the arch the portal opens in |
+
+## Models used with permission
+
+From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm.
+
+| Model | Author | On the site |
+| --- | --- | --- |
+| [Battlefront 2 Remaster: all_inf_snowtrooper](https://www.moddb.com/mods/hd-graphics-mod) | [Harrisonfog](https://www.moddb.com/members/harrisonfog) | the Rebel troopers on Hoth |
+| [Battlefront 2 Remaster: imp_inf_snowtrooper](https://www.moddb.com/mods/hd-graphics-mod) | [Harrisonfog](https://www.moddb.com/members/harrisonfog) | the snowtroopers |
 
 ## Scans, skies and kits (CC0)
 

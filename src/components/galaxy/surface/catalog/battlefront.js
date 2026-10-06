@@ -12,4 +12,6 @@
 //
 // Fields as in desert.js; `made: 'battlefront'` marks where it came from.
 export const MODELS = {
+  snowtrooper: { made: 'battlefront', as: 'the snowtroopers', metres: 1.83, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  hothtrooper: { made: 'battlefront', as: 'the Rebel troopers on Hoth', metres: 1.78, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
 };

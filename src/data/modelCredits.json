@@ -2003,6 +2003,21 @@
       "galaxy"
     ]
   },
+  "surface-hothtrooper": {
+    "title": "Battlefront 2 Remaster: all_inf_snowtrooper",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
+    "where": "galaxy-surface",
+    "as": "the Rebel troopers on Hoth",
+    "file": "/models/galaxy/surface/hothtrooper.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
+  },
   "surface-ig11": {
     "title": "IG-88",
     "author": "Mind Mulch for The Masses",
@@ -2578,18 +2593,19 @@
     ]
   },
   "surface-snowtrooper": {
-    "title": "Snowtrooper [ Texture in a Mega Link ]",
-    "author": "mrpanini.yt",
-    "authorUrl": "https://sketchfab.com/mrpanini.yt",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/snowtrooper-texture-in-a-mega-link-8cad640402844e489d1080f5400ec667",
+    "title": "Battlefront 2 Remaster: imp_inf_snowtrooper",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
     "where": "galaxy-surface",
     "as": "the snowtroopers",
     "file": "/models/galaxy/surface/snowtrooper.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-solarsailer": {
     "title": "Dooku's Solar Saier",
