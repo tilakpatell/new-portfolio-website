@@ -42,4 +42,5 @@ public/audio/voiced/
 scripts/voices/cache/
 scripts/voices/refs/
 scripts/voices/lines.json
+scripts/voices/**/__pycache__/
 .scratch/
