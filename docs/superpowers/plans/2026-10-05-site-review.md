@@ -21,8 +21,8 @@ Work from this session lands as pull requests, one concern each, and ticks its l
 ## Core pages: accessibility
 
 - [x] The Terminal swallows Tab and Shift+Tab always: a keyboard trap (WCAG 2.1.2). Swallow Tab only when a completion applies; let Shift+Tab and Escape leave.
-- [ ] The phone menu (portalled) doesn't move focus in, return it to the button, or make the page behind inert.
-- [ ] The Résumé's tabs: no roving tabindex, arrows change the view but not the focus.
+- [x] The phone menu (portalled) doesn't move focus in, return it to the button, or make the page behind inert.
+- [x] The Résumé's tabs: no roving tabindex, arrows change the view but not the focus.
 - [ ] Six `<h1>`s in one feed document. The pages off the address could render their title as `h2` (`usePageActive`).
 - [ ] Contact's form doesn't move focus to the first invalid field.
 
