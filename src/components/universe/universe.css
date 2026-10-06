@@ -134,7 +134,9 @@
   z-index: 2;
   top: calc(var(--nav-h) + 12px);
   right: 12px;
-  bottom: 12px;
+  /* as tall as what it holds (a short card left half the panel empty), the
+     page's height at most, and it scrolls */
+  max-height: calc(100% - var(--nav-h) - 24px);
   width: var(--panel-w);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -174,7 +176,6 @@
 .universe-guide-tucked:hover { color: var(--text); background: rgb(255 255 255 / 0.06); }
 .universe-guide-tucked:focus-visible { outline: 2px solid var(--accent-text); outline-offset: -2px; }
 body:has(.universe-panel) .guide-btn { display: none; }
-body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); right: auto; bottom: auto; left: 50%; translate: -50% 0; }
 .universe-untuck {
   display: flex;
   align-items: center;
@@ -211,6 +212,7 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
 }
 .universe-back:hover { color: var(--text); }
 .universe-back { text-align: left; }
+.universe-back.universe-guide-all { margin: 0.6rem 0 0; }
 .universe-credit { margin: 1.5rem 0 0; color: var(--muted); font-size: 0.7rem; line-height: 1.5; }
 .universe-credit a { text-decoration: underline; text-underline-offset: 2px; }
 .universe-models { margin-top: 0.6rem; }
@@ -942,6 +944,11 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
 }
 .universe-hint-touch,
 .universe-keys-touch { display: none; }
+/* the first flying hint says what the open panel's keys already do: on a
+   desktop it shows only with the panel put away or a place's card in it */
+@media (min-width: 768px) and (pointer: fine) {
+  .universe-page:not([data-tucked], [data-card]) .universe-hint-fly { display: none; }
+}
 @media (pointer: coarse) {
   .universe-boost,
   .universe-fire,
@@ -956,6 +963,35 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
   .universe-keys-touch { display: list-item; }
 }
 .universe-keys { display: grid; gap: 0.45rem; margin: 0; padding: 0; list-style: none; font-size: 0.85rem; }
+/* the keys to get going, two to a row (UniversePanel's KEYMAP); a line for
+   touch screens instead, where the buttons are on the map */
+.universe-keymap { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem; margin: 1.25rem 0 0; font-size: 0.8rem; }
+.universe-keymap > div { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.universe-keymap dt { display: flex; flex: none; gap: 3px; }
+.universe-keymap dd { margin: 0; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.universe-keymap kbd {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 0.35em;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  line-height: 1.6;
+  text-align: center;
+}
+.universe-keymap-touch { display: none; margin-bottom: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.5; }
+@media (pointer: coarse) {
+  .universe-keymap { display: none; }
+  .universe-keymap-touch { display: block; }
+}
+/* the credits, folded away under the panel's own content */
+.universe-credits { margin-top: 1.25rem; }
+.universe-credits > summary { width: fit-content; color: var(--muted); font-family: var(--font-mono); font-size: 0.7rem; cursor: pointer; }
+.universe-credits > summary:hover { color: var(--text); }
+.universe-credits > summary:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 4px; }
+.universe-credits[open] > .universe-credit:first-of-type { margin-top: 0.75rem; }
 
 /* the ships to pick */
 .universe-ships { display: grid; gap: 0.6rem; margin-top: 1rem; }
@@ -1332,7 +1368,8 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
   .universe-boost { right: 16px; bottom: calc(var(--sheet-h) + 16px); }
   .universe-fire { right: 104px; bottom: calc(var(--sheet-h) + 22px); }
   .universe-weapon { right: 110px; bottom: calc(var(--sheet-h) + 96px); }
-  .universe-arms { left: 10px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2 + 104px); width: 110px; }
+  /* (above the settings and hangar buttons, which reach 110px over the sheet: halfway down the map it sat under them) */
+  .universe-arms { left: 10px; top: auto; bottom: calc(var(--sheet-h) + 120px); width: 110px; }
   .universe-siege { translate: -50% 0; max-width: calc(100% - 32px); }
   .universe-view { right: 184px; bottom: calc(var(--sheet-h) + 27px); }
   .universe-out { right: 248px; bottom: calc(var(--sheet-h) + 27px); }
@@ -1347,7 +1384,7 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
   .universe-climbs { right: 26px; bottom: calc(var(--sheet-h) + 104px); }
   .universe-alt { left: 12px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2); height: 120px; margin-top: -60px; }
   .universe-alt-mark { translate: 0 calc(var(--alt, 0) * -60px); }
-  .universe-shield { left: 10px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2 + 72px); width: 76px; }
+  .universe-shield { left: 10px; top: auto; bottom: calc(var(--sheet-h) + 160px); width: 76px; }
   /* (wrapped, above the buttons, clear of the settings button on the left and
      the climb and dive ones on the right) */
   .universe-arrive { left: 16px; right: 16px; top: calc(var(--nav-h, 68px) + 24px); translate: none; max-width: none; }

@@ -373,7 +373,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 </p>
               )}
               {!flown && !onFoot && (
-                <p className="universe-hint">
+                <p className="universe-hint universe-hint-fly">
                   <span className="universe-hint-keys">
                     <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer (loop right over), <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>R</kbd> weapons, <kbd>T</kbd> target, <kbd>V</kbd> cockpit, fly down into a planet’s air to land, <kbd>H</kbd> hangar, <kbd>O</kbd> settings
                     <GuideCue />
