@@ -5,7 +5,7 @@ import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
 import { readPad, typing } from '../../../games/pad';
 import { Convo, QuestList, Stick, Travellers } from '../TownHud';
-import { keyDown, keyUp, moveOf } from '../keys';
+import { keyDown, keyUp, moveOf, ownButton } from '../keys';
 import { newTalk, talkNode, talkOn } from '../talk';
 import { useTravellers } from '../useTravellers';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
@@ -396,7 +396,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
     const down = (e) => {
       if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
       const k = e.key;
-      const onButton = e.target instanceof HTMLButtonElement;
+      const onButton = ownButton(e, box.current);
       if (s.talk) {
         if (/^[1-4]$/.test(k)) {
           e.preventDefault();
@@ -435,7 +435,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, [live, talkOnward, doAct, doBlock, doPush, doLeap]);
+  }, [box, live, talkOnward, doAct, doBlock, doPush, doLeap]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
