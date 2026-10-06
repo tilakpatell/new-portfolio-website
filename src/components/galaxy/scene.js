@@ -107,6 +107,10 @@ import { aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
 import { asking } from './asking';
 import { arrival, courseTo, jumpSeconds, kindsIn, lightYears, starAhead, systemById, wantsDeathStar } from './systems';
 
+// the picture softer than the universe map's: less glow round what's bright
+// (and only what's brighter), and the boost's rush a lighter smear
+const LOOK = { bloom: { strength: 0.5, radius: 0.45, threshold: 2 }, rush: 0.45 };
+
 const BOLTS = 16;
 const CADENCE = { xwing: 0.12, falcon: 0.16, cruiser: 0.19, rv: 0.2 };
 const BOLT_COLOR = { falcon: '#ff4a3d', xwing: '#ff3b30', cruiser: '#9df06b', rv: '#5cc8ff' };
@@ -205,7 +209,7 @@ export async function create(canvas, ctx) {
   const tier = device().tier;
   const small = tier !== 'high' || Math.min(window.innerWidth, window.innerHeight) < 600;
   const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
-  const post = createPost(renderer, scene, camera, { small });
+  const post = createPost(renderer, scene, camera, { small, look: LOOK });
   const warm = (root, cam = camera, target = scene) => precompile(renderer, singlePass(root), cam, target, post.on ? post.composer.readBuffer : undefined);
 
   // light: each sun from its way, and a little ambient

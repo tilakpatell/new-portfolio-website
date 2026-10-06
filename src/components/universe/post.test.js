@@ -106,3 +106,24 @@ describe('the finished render', () => {
     expect(bloomOf(post)).toBe(bloom);
   });
 });
+
+describe('a softer look (the galaxy’s)', () => {
+  it('takes its own bloom, and flares from it', () => {
+    const post = createPost(renderer(), new THREE.Scene(), new THREE.PerspectiveCamera(), { look: { bloom: { strength: 0.5, threshold: 2.1 } } });
+    const bloom = bloomOf(post);
+    expect(bloom.strength).toBeCloseTo(0.5);
+    expect(bloom.threshold).toBeCloseTo(2.1);
+    expect(bloom.radius).toBeCloseTo(0.55); // (what it's not given stays)
+    post.flare(2);
+    expect(bloom.strength).toBeCloseTo(1);
+  });
+
+  it('smears less in the rush', () => {
+    const post = createPost(renderer(), new THREE.Scene(), new THREE.PerspectiveCamera(), { look: { rush: 0.4 } });
+    post.rush(1);
+    expect(gradeOf(post).uniforms.uRush.value).toBeCloseTo(0.4);
+    const plain = createPost(renderer(), new THREE.Scene(), new THREE.PerspectiveCamera());
+    plain.rush(1);
+    expect(gradeOf(plain).uniforms.uRush.value).toBeCloseTo(1);
+  });
+});

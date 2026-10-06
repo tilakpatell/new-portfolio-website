@@ -182,11 +182,14 @@ const FINAL = {
         lin.b = scene(uv - off).b * shadow;
       }
       if (uRush > 0.001) {
-        // a few taps back toward the ship, more smeared the further out
+        // a few taps back toward the ship, more smeared the further out; each
+        // pixel's taps a little apart from its neighbours' (the blue noise), so
+        // the smear's a blur and not rings of the picture over itself
         vec2 d = uv - uCenter;
         float k = uRush * smoothstep(0.1, 0.75, length(d * vec2(uAspect, 1.0)));
+        float j = noise(vec2(5.0, 11.0)) - 0.5;
         vec3 acc = lin;
-        for (int i = 1; i <= 5; i++) acc += scene(uv - d * (k * 0.011 * float(i)));
+        for (int i = 1; i <= 5; i++) acc += scene(uv - d * (k * 0.011 * (float(i) + j)));
         lin = acc / 6.0;
       }
       lin *= uExposure;
@@ -208,7 +211,12 @@ const FINAL = {
     }`,
 };
 
-export function createPost(renderer, scene, camera, { small = false } = {}) {
+// look: a softer picture than the map's, for a scene that wants one (the
+// galaxy's): { bloom: { strength, radius, threshold } (any of them, over
+// BLOOM's), rush: how much of the boost's smear it takes (0…1) }
+export function createPost(renderer, scene, camera, { small = false, look = {} } = {}) {
+  const glowOf = { ...BLOOM, ...look.bloom };
+  const rushK = look.rush ?? 1;
   // multisampled below a pixel ratio of about 2; at 2 the pixels are too
   // small for jagged edges to show, and on a half-float target four samples
   // a pixel cost more than the rest of the frame put together. (With its
@@ -223,7 +231,7 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
   over.clearDepth = true;
   over.enabled = false;
   composer.addPass(over);
-  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), BLOOM.strength, BLOOM.radius, BLOOM.threshold);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), glowOf.strength, glowOf.radius, glowOf.threshold);
   // its first step (picking out what's bright enough to glow) reads through finite()
   const bright = bloom.materialHighPassFilter;
   const read = 'vec4 texel = texture2D( tDiffuse, vUv );';
@@ -313,11 +321,11 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
     },
     // bloom's strength, for a moment's flare (a boost, an arrival)
     flare(k) {
-      if (glow) bloom.strength = BLOOM.strength * k;
+      if (glow) bloom.strength = glowOf.strength * k;
     },
     // the boost's rush, 0…1, out from (x, y) on the canvas (0…1, y up)
     rush(k, x = 0.5, y = 0.5) {
-      grade.uniforms.uRush.value = k;
+      grade.uniforms.uRush.value = k * rushK;
       grade.uniforms.uCenter.value.set(x, y);
     },
     // a laser hit's red flash, 0…1
