@@ -64,6 +64,26 @@ describe('preparing a picture of your own', () => {
     expect(frame(840, 400, 0.08)).toEqual([1000, 80, 300]);
     expect(frame(100, 100, 0)).toEqual([100, 0, 0]);
   });
+  it('fits a subject bigger than the size it makes, scaled down into the square', async () => {
+    const { prepare } = await import('./prepare.mjs');
+    const { default: sharp } = await import('sharp');
+    const { mkdtempSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const dir = mkdtempSync(join(tmpdir(), 'gen3d-'));
+    // a dark figure 60×110 on white, taller than the 64 asked for (a portrait concept's figure, 1154 tall, at 1024)
+    const figure = await sharp({ create: { width: 60, height: 110, channels: 3, background: '#203040' } }).png().toBuffer();
+    const given = join(dir, 'given.png');
+    await sharp({ create: { width: 100, height: 140, channels: 3, background: '#ffffff' } }).composite([{ input: figure, left: 20, top: 15 }]).png().toFile(given);
+    const out = join(dir, 'out.png');
+    await prepare(given, out, { size: 64, room: 0.1 });
+    const { data, info } = await sharp(out).raw().toBuffer({ resolveWithObject: true });
+    expect([info.width, info.height]).toEqual([64, 64]);
+    const at = (x, y) => data[(y * info.width + x) * info.channels];
+    expect(at(32, 32)).toBeLessThan(80); // the figure, in the middle
+    expect(at(32, 2)).toBeGreaterThan(240); // room above it
+    expect(at(32, 61)).toBeGreaterThan(240); // and below
+  });
 });
 
 describe('the picture models', () => {
