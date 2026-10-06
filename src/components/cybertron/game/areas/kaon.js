@@ -3,8 +3,8 @@
 // the great avenue with its spire over everything, the pits (Kaon's arena,
 // where Megatron fought before the war) in the middle of the city, and the
 // dark-energon refinery to the east. Megatron's campaign is played here:
-// Soundwave, Shockwave, Barricade and a trooper captain give the orders;
-// the Autobots' raiders (Bumblebee's and Jazz's kind) and, at the last,
+// Soundwave, Shockwave, Barricade and Starscream give the orders;
+// the Autobots' raiders (Ironhide, Warpath, Ratchet, Bumblebee, Jazz) and, at the last,
 // Zeta Prime himself are the enemy.
 //
 // As data, the way areas/iacon.js is: rules.js reads its solids, people,
@@ -108,7 +108,7 @@ export const KAON = {
   spawns: { start: { x: 0, z: -230, yaw: 0 } },
   solids,
   // who plays the enemy here: the Autobots
-  foes: { autobot: ['bumblebee-wfc', 'jazz'], zeta: ['zeta-prime'], trooper: ['bumblebee-wfc', 'jazz'] },
+  foes: { autobot: ['ironhide-foc', 'warpath-foc', 'ratchet-foc', 'bumblebee-wfc', 'jazz'], zeta: ['zeta-prime'], trooper: ['ironhide-foc', 'ratchet-foc', 'jazz'] },
   people: [
     {
       id: 'soundwave',
@@ -138,13 +138,13 @@ export const KAON = {
       lines: ['Autobot runners got into the refinery district. Get in your tank and run them down, Lord Megatron.', 'Fast is the only way to catch an Autobot.'],
     },
     {
-      id: 'captain',
-      kind: 'trooper',
-      name: 'Trooper captain',
+      id: 'starscream',
+      kind: 'starscream-foc',
+      name: 'Starscream',
       x: -20,
       z: -150,
       yaw: 0.5,
-      lines: ['Zeta Prime has come to Kaon himself, my lord. He means to take the fortress.', 'The troops will follow you to the gate.'],
+      lines: ['Zeta Prime has come to Kaon himself, Lord Megatron. He means to take the fortress. I would, of course, hold the skies.', 'The seekers are yours to command. For now.'],
     },
   ],
   exits: [],
@@ -204,16 +204,16 @@ export const KAON = {
     {
       id: 'kaon-zeta',
       title: "Zeta Prime's last stand",
-      giver: 'captain',
+      giver: 'starscream',
       requires: ['kaon-pits', 'kaon-dark', 'kaon-run'],
       achievement: 'cyZeta',
-      say: 'Zeta Prime has come to Kaon himself, my lord. He means to take the fortress.',
+      say: 'Zeta Prime has come to Kaon himself, Lord Megatron. He means to take the fortress. I would, of course, hold the skies.',
       steps: [
-        { type: 'talk', target: 'captain', text: 'Talk to the trooper captain' },
+        { type: 'talk', target: 'starscream', text: 'Talk to Starscream on the avenue' },
         { type: 'reach', at: { x: 0, z: -40, r: 40 }, text: 'Meet the Autobots on the avenue' },
         { type: 'clear', count: 6, spawn: ring(6, 40, { x: 0, z: 40 }), text: "Break Zeta Prime's guard" },
         { type: 'defeat', target: 'zeta', spawn: [{ kind: 'zeta', id: 'zeta', x: 0, z: 70 }], text: 'Defeat Zeta Prime' },
-        { type: 'talk', target: 'captain', text: 'Kaon is yours: back to the captain' },
+        { type: 'talk', target: 'starscream', text: 'Kaon is yours: back to Starscream' },
       ],
     },
   ],
@@ -235,6 +235,7 @@ export const KAON = {
     refinery: REFINERY,
     beacons: RUN_GATES,
     trypticon: { x: -1150, z: -500, yaw: 0.8 },
+    flyovers: ['skywarp-jet', 'thundercracker-jet'], // (the seekers, circling)
     skyline: [
       { x: -820, z: 640, r: 300, tiers: 5, war: 0.8 },
       { x: 760, z: -820, r: 260, tiers: 4, war: 0.6 },

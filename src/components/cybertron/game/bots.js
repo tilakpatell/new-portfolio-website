@@ -349,7 +349,7 @@ export async function makeFigure(kind, { shadows = false } = {}) {
     group.add(standIn(kind));
     f = stillFigure(kind, spec ?? { metres: 7 }, group, []);
     f.standIn = true;
-  } else if (!spec.rig && ROBOTS.has(spec.role)) {
+  } else if (!spec.rig && !spec.still && ROBOTS.has(spec.role)) {
     // one piece, no skeleton: given one (autorig.js), then posed like the rest
     try {
       if (!rigged.has(kind)) rigged.set(kind, autorig(loaded.scene));

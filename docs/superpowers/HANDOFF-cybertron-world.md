@@ -71,6 +71,24 @@ The owner's asks:
 - A Decepticon's mission beacon is a thin shaft over his head now, not a
   column round him.
 
+- **Kaon and Megatron** (PR #252): a city, four missions and a side to
+  pick on the start screen. Megatron changes on his own clip. Optimus's
+  gun is held right; shots leave the muzzle. Hit marker, damage edge,
+  camera jolts, a key light over the hero.
+- **More of Fall of Cybertron's cast**: Starscream (Kaon, who gives the
+  Zeta Prime mission), Skywarp's and Thundercracker's jets over Kaon,
+  Ironhide, Warpath and Ratchet among Kaon's raiders, and Ultra Magnus
+  in Iacon. They're hafid.quispe's Sketchfab uploads, each holding a
+  robot and its vehicle in one file. The import script splits them by
+  node, and `skinnedOnly` drops the other form's loose parts. The High
+  Moon robots keep their rigs. Ultra Magnus is `still`, because the
+  auto-rig can't read his arm guns.
+- `/tmp`-style search: `results.tsv` from the Sketchfab API (licence,
+  faces, texture size). The same uploader also has Fall of Cybertron's
+  Sideswipe, Skywarp and Thundercracker robots, Hound, Perceptor, Sludge,
+  Snarl, Swoop and the Combaticons. flotick64 has the whole Fall of
+  Cybertron multiplayer roster with vehicle forms, if more are wanted.
+
 ## Checking it
 - Dev only: `#/cybertron?quality=high&autoplay` starts playing.
 - `window.__CY__.go('base' | 'jasper' | 'iacon')` crosses to an area.
