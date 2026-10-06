@@ -116,6 +116,7 @@ import { createSetPieces } from './setpieces';
 import { createLeviathans } from './leviathans';
 import { createMeteors } from './meteors';
 import { DEBRIS_DRIFT, buildDeepSpace } from './deepspace';
+import { ROCK_RELIEF } from '../../lib/three/rock';
 import { ROCK_HIT, boxOf, nearBox, nearRing, rockDamage, rockGrid, sweep, toBelt } from './rockHits';
 import { createFront } from './front';
 import { createModels as createBattleModels } from '../galaxy/models';
@@ -3832,6 +3833,8 @@ export async function create(canvas, ctx) {
     if (sharp !== null) {
       post.sharpness = sharp;
       post.setLevel(pace.level);
+      // (the rocks' relief flat from the pace's step 3, and back: lib/three/rock)
+      ROCK_RELIEF.value = pace.level >= 3 ? 0 : 1;
       // (the planets' real air goes for their old halo at the pace's step 3, and comes back)
       for (const p of planets) p.setAir(pace.level >= 3 ? 'halo' : 'shell');
     }

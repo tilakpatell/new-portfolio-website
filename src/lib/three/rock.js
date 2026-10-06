@@ -10,6 +10,8 @@
 // rockMaterial({ tier, scale }) → a MeshStandardMaterial in two tones (the
 //   instance's colour and its pits')
 //   (`scale`: how many pits across a rock a unit wide, times four)
+// ROCK_RELIEF: { value: 1 }, every rock's relief at once (the pace's step 3
+//   sets it to 0: the pits go flat, no shader is made again)
 // rockHook(material, { tier, scale }) → the material: the same pits
 //   on a rock material of your own, after any hook already on it (deep
 //   space's tumbling streams)
@@ -107,10 +109,13 @@ const FRAG_PARS = /* glsl */ `
 varying vec3 vRockObj;
 varying float vRockSize;
 uniform float uRockScale;
+uniform float uRockRelief;
 ${NOISE}
 float rockPits(vec3 p) {
   return noise(p * uRockScale) * 0.7 + noise(p * uRockScale * 2.7 + 11.0) * 0.3;
 }`;
+
+export const ROCK_RELIEF = { value: 1 };
 
 export function rockMaterial({ tier = 'high', scale = 1 } = {}) {
   return rockHook(new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0.05, flatShading: true, envMapIntensity: 0.4 }), { tier, scale });
@@ -120,7 +125,7 @@ export function rockHook(mat, { tier = 'high', scale = 1 } = {}) {
   if (tier === 'low') return mat;
   // (the pits shade it: its faces needn't be flat to read as rock)
   mat.flatShading = false;
-  const u = { uRockScale: { value: 4 * scale }, uSeed: { value: new THREE.Vector3(17, 3, 41) } };
+  const u = { uRockScale: { value: 4 * scale }, uSeed: { value: new THREE.Vector3(17, 3, 41) }, uRockRelief: ROCK_RELIEF };
   mat.userData.rock = u;
   const prev = Object.hasOwn(mat, 'onBeforeCompile') ? mat.onBeforeCompile : null;
   const prevKey = Object.hasOwn(mat, 'customProgramCacheKey') ? mat.customProgramCacheKey : null;
@@ -138,7 +143,7 @@ export function rockHook(mat, { tier = 'high', scale = 1 } = {}) {
         `#include <color_fragment>
         float rockH = rockPits(vRockObj);
         float rockPit = smoothstep(0.05, -0.45, rockH);
-        float rockShow = smoothstep(0.6, 0.2, length(fwidth(vRockObj)) * uRockScale);
+        float rockShow = smoothstep(0.6, 0.2, length(fwidth(vRockObj)) * uRockScale) * uRockRelief;
         diffuseColor.rgb *= 1.0 - 0.45 * rockPit * (0.4 + 0.6 * rockShow);`,
       )
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = min(1.0, roughnessFactor + 0.05 * rockPit);')
