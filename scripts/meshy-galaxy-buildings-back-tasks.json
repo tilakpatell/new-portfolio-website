@@ -1,0 +1,32 @@
+{
+  "nevarroarch": {
+    "lift": [
+      "01a10fda-6687-7767-b601-3cfceb45f7d4"
+    ],
+    "model": "01a10fe2-e135-73f5-be00-a11e52dd6038"
+  },
+  "nevarrodome": {
+    "lift": [
+      "01a10fdb-4652-7034-a091-4d361bc84184"
+    ],
+    "model": "01a10fe2-e524-70b0-905c-38eb21b70a12"
+  },
+  "lothtemple": {
+    "lift": [
+      "01a10fdc-bc99-7315-bf5b-b20f33e1d929"
+    ],
+    "model": "01a10fe2-e842-739a-a252-6015bd388de4"
+  },
+  "lothdome": {
+    "lift": [
+      "01a10fde-cbe3-752b-8175-0fcae8c949e2"
+    ],
+    "model": "01a10fe2-eb8d-77a6-bea7-0a6b23341fa7"
+  },
+  "sundaridome": {
+    "lift": [
+      "01a10fe0-2ed9-7758-a505-11def1f0ad7d"
+    ],
+    "model": "01a10fe2-ef5f-756a-a5a2-30543ad97472"
+  }
+}
