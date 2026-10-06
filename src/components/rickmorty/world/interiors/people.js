@@ -79,6 +79,89 @@ export function facingAhead(c, clip) {
   return own;
 }
 
+// ── the multiverse's people (rules.js's PEOPLE from Phase 2 on) ──
+//
+// Each is a Meshy figure that loads the first time its room is walked into,
+// so the world's first download doesn't carry them, and is left out if it
+// won't load: never a person in shapes for these (the plan's rule).
+
+// fn, once, the first frame Morty is in this room (only the room he's in ticks)
+export function onEntry(R, fn) {
+  let asked = false;
+  R.tick(() => {
+    if (asked) return;
+    asked = true;
+    fn();
+  });
+}
+
+// the figure for `kind` with `clips`, loaded (or not: null) within `wait` ms
+async function figure(R, kind, clips, wait = 15000) {
+  const kit = R.kit;
+  try {
+    const need = kit.need ? kit.need([kind], { clips }) : kit.cast.load(null, [kind], { clips });
+    await Promise.race([need, new Promise((done) => setTimeout(done, wait))]);
+  } catch {
+    return null;
+  }
+  return kit.cast?.make?.(kind) ?? null;
+}
+
+// One of them sat in their own sat clip (Meshy made each one's): `h` tall,
+// facing `face`, hips on the seat at (x, seatY, z). The clip carries each body
+// its own way (a short-legged one sits lower and further back), so where its
+// hips land is measured at the clip's first frame and the figure moved to put
+// them on the seat. Null if it won't load, or has no sat clip.
+export async function seatOwn(R, kind, { x, z, face }, { h, seatY }) {
+  const c = await figure(R, kind, ['idle', 'walk', 'sit']);
+  const sit = c?.act?.sit;
+  if (!sit) return null;
+  for (const a of Object.values(c.act)) a.setEffectiveWeight(a === sit ? 1 : 0);
+  sit.time = 0;
+  c.group.scale.setScalar(h / c.height);
+  c.group.rotation.y = face + Math.PI / 2;
+  c.mixer.update(0);
+  c.group.updateMatrixWorld(true);
+  const hips = c.group.getObjectByName('Hips');
+  const at = hips ? hips.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3();
+  c.group.position.set(x - at.x, seatY - at.y, z - at.z);
+  R.group.add(c.group);
+  let last = null;
+  R.tick((t) => {
+    c.mixer.update(last == null ? 0 : Math.min(0.1, t - last));
+    last = t;
+  });
+  return { group: c.group, cast: c };
+}
+
+// One of them as a hologram, standing in their idle: see-through cyan over
+// their own colours, flickering a little, drawn without the ink (a projection
+// has no outline). `flat` is a group of the room's that the ink leaves alone.
+export async function hologram(R, kind, { x, z, face }, { h, flat }) {
+  const c = await figure(R, kind, ['idle', 'walk']);
+  if (!c) return null;
+  c.group.scale.setScalar(h / c.height);
+  c.group.position.set(x, 0.04, z);
+  c.group.rotation.y = face + Math.PI / 2;
+  const mats = [];
+  c.group.traverse((o) => {
+    if (!o.isMesh) return;
+    const m = R.own(new THREE.MeshBasicMaterial({ map: o.material.map ?? null, color: 0x7ff0ff, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+    o.material = m;
+    o.castShadow = false;
+    o.receiveShadow = false;
+    mats.push(m);
+  });
+  flat.add(c.group);
+  R.tick((t) => {
+    c.update(t, 0, 0);
+    // (a flicker now and then, as a projection has)
+    const flick = Math.sin(t * 23) > 0.96 ? 0.25 : 0;
+    for (const m of mats) m.opacity = 0.5 + Math.sin(t * 2.2) * 0.06 - flick;
+  });
+  return { group: c.group, cast: c };
+}
+
 // A person in shapes, the show's way (a big round head, dot eyes), merged
 // into one mesh: { h, skin, shirt, pants, shoes, hair, style, moustache,
 // coat, sleeves, belt }. Faces +z; stands on y = 0.
