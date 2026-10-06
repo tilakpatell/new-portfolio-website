@@ -58,6 +58,9 @@ export const MODELS = {
   n1: { url: '/models/galaxy/n1.glb', nose: 0 },
   nubian: { url: '/models/galaxy/nubian.glb', nose: 0 },
   razorcrest: { url: '/models/galaxy/surface/razorcrest.glb', nose: 0 }, // (the one the surfaces fly)
+  // the universe map's wars' flagships (scripts/meshy-war.mjs, from the shows' own pictures)
+  councildread: { url: '/models/universe/war/councildread.glb', nose: Math.PI / 2 },
+  fedbattleship: { url: '/models/universe/war/fedbattleship.glb', nose: 0 },
 };
 // the ones made again here at full quality (scripts/gen3d, remade from these
 // models' own renders): kind → the made model's name, loaded in this device's cut
@@ -90,7 +93,8 @@ const BUILT = new Set([...BUILT_KINDS, ...GALAXY_KINDS]);
 // loads (else its slot would be empty, and the ship would pop in): the
 // Venator as a Star Destroyer, Slave I and the Falcon as a freighter, the TIE
 // bomber as a TIE, Gideon's cruiser as a Star Destroyer, the Gozanti and the
-// Ghost as freighters, the Invisible Hand as a Munificent. The Death Star has
+// Ghost as freighters, the Invisible Hand as a Munificent, the wars'
+// flagships as a cruiser of their side. The Death Star has
 // none here: the world puts a sphere of its own in its place.
 export const STAND_IN = {
   venator: 'destroyer',
@@ -101,6 +105,8 @@ export const STAND_IN = {
   gozanti: 'freighter',
   providence: 'munificent',
   ghost: 'freighter',
+  councildread: 'councilship',
+  fedbattleship: 'fedcruiser',
 };
 
 // Far off, a ship is its LOD (scripts/galaxy-lod.mjs: one mesh of a few
