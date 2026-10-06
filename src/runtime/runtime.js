@@ -11,7 +11,7 @@
 //   events, now, gpu, override, visible }) → rt
 // rt: { gfx, input, quality, saves, assets, audio, events, host, status,
 //   current, loading, on(fn), invalidate(), resize(w, h), setVisible(on), lost(),
-//   mount(module, props, host) → shown, handover(module, props, host, { fade, held }) → shown,
+//   mount(module, props, host) → shown, handover(module, props, host, { fade, held, after }) → shown,
 //   adopt(module, host), unmount(), dispose() }
 // (`shown`: true once the module's world is the one drawing; false when it
 // failed, or something newer was asked for meanwhile)
@@ -26,6 +26,7 @@ const READY_WAIT = 4000; // ms at most a world's `ready` holds back its first fr
 const MAX_DT = 0.05; // s: a tab coming back doesn't leap
 const HOLD_MAX = 3000; // ms at most a held cover waits for the next page to adopt its world
 const SNAP_WAIT = 250; // ms at most a handover waits for the old world's last frame (none comes off screen)
+const AFTER_MAX = 15000; // ms at most a handover waits on `after` once the new world is made
 
 export function createEvents() {
   const by = new Map();
@@ -318,8 +319,10 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     },
     // `held`: the cover stays up until the page that shows the new world
     // adopts it (rt.adopt, HOLD_MAX at most), for a handover the route
-    // changes after
-    async handover(module, props = {}, host, { fade = 600, held = false } = {}) {
+    // changes after. `after`: a promise the old world's last moment waits
+    // on once the new one is made (a dive flown to its end while the next
+    // world was built behind it), AFTER_MAX at most.
+    async handover(module, props = {}, host, { fade = 600, held = false, after = null } = {}) {
       if (!current) return this.mount(module, { ...props, from: null }, host);
       const mod = validateModule(module);
       const token = ++seq;
@@ -338,6 +341,13 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       try {
         const world = await build(mod, { ...props, from }, host, token);
         if (!world) return false;
+        if (after) {
+          await settle(after, AFTER_MAX);
+          if (token !== seq) {
+            world.dispose();
+            return false;
+          }
+        }
         // the old world's last frame, kept over the new one while it fades
         await cover();
         if (token !== seq) {

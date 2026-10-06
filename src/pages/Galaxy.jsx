@@ -25,6 +25,7 @@ import '../components/galaxy/galaxy.css';
 const LAST_KEY = 'tp-galaxy-system'; // the system you were last in
 const PANEL_KEY = 'tp-galaxy-panel'; // 'tucked' once the panel's been put away
 const INTRO_KEY = 'tp-galaxy-intro'; // (session) the "long time ago" seen this visit
+const DIVE_MAX = 4000; // ms at most the landing waits for the dive's end
 
 // A galaxy far, far away: the Star Wars galaxy as a universe of its own,
 // inside the universe map (the Star Wars planet there jumps you here). You
@@ -125,44 +126,40 @@ export default function Galaxy() {
     [leaving, navigate],
   );
   // Down onto the planet you're at, flown: the ship dives on it, the air
-  // glows round it, and as the dive ends ('dove') the runtime hands over to
-  // the surface's world (made while the old one still draws), and the
-  // route follows. Without the 3D flying (or a dive it can't make), the old
-  // way: the glow, then the surface's page.
-  const landing = useRef(null);
-  const land = useCallback(
-    (id) => {
-      if (!canLand(id) || leaving) return;
-      audioContext();
-      prefetchSurface();
-      if (!view.current.live || !view.current.dive()) {
-        leave(`/galaxy/${id}/surface`, { land: true });
-        return;
-      }
-      landing.current = id;
-      setLeaving({ to: `/galaxy/${id}/surface`, land: true, dive: true });
-    },
-    [leave, leaving],
-  );
+  // glows round it, and the runtime hands over to the surface's world,
+  // built behind the dive and taking over as it ends ('dove'); then the
+  // route follows. Without the 3D flying (or a dive it can't make), the
+  // old way: the glow, then the surface's page.
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true; // (set here, not at first render: React's second run of an effect in development cleans up and comes back)
     return () => void (alive.current = false);
   }, []);
-  const handOver = useCallback(
+  const dove = useRef(null); // resolves the dive's end
+  const land = useCallback(
     (id) => {
+      if (!canLand(id) || leaving) return;
+      audioContext();
+      prefetchSurface();
       const to = `/galaxy/${id}/surface`;
-      const host = view.current.host?.();
-      if (!host) return navigate(to);
+      const host = view.current.live ? view.current.host?.() : null;
+      if (!host || !view.current.dive()) {
+        leave(to, { land: true });
+        return;
+      }
+      setLeaving({ to, land: true, dive: true });
+      const after = new Promise((r) => (dove.current = r));
+      timer.current = setTimeout(() => dove.current?.(), DIVE_MAX); // (a dive that never ends still lands)
       runtime()
-        .handover(surfaceModule, surfaceProps(id, { ship, loadout, build, net: online.client, reduced }), host, { fade: 900, held: true })
+        .handover(surfaceModule, surfaceProps(id, { ship, loadout, build, net: online.client, reduced }), host, { fade: 900, held: true, after })
         .catch(() => false)
+        .then(() => after)
         .then(() => {
           if (!alive.current) return; // (gone elsewhere meanwhile: not this page's to steer)
           navigate(to); // (not handed over: the page makes its own)
         });
     },
-    [navigate, ship, loadout, build, online.client, reduced],
+    [leave, leaving, navigate, ship, loadout, build, online.client, reduced],
   );
   // near a planet you can land on: the surface's code, and its page's, come ahead
   useEffect(() => {
@@ -175,8 +172,8 @@ export default function Galaxy() {
   const onEvent = useCallback(
     (e) => {
       if (e.type === 'dove') {
-        if (landing.current) handOver(landing.current);
-        landing.current = null;
+        dove.current?.();
+        dove.current = null;
         return;
       }
       if (e.type === 'map') {
@@ -230,7 +227,7 @@ export default function Galaxy() {
       }
       comms.current?.handle(e);
     },
-    [current, leave, navigate, land, unlock, handOver],
+    [current, leave, navigate, land, unlock],
   );
   const onArrive = useCallback(
     (id) => {

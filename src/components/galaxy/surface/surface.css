@@ -242,7 +242,8 @@
   0% { opacity: 1; }
   100% { opacity: 0; }
 }
-/* up and out: the sky's glare coming over the climb (the galaxy's page takes it off: galaxy.css .galaxy-exit) */
+/* up and out: the sky's glare coming over the climb, from 2.5 s in (the ship lifting till then) to
+   the 3.4 s space takes over at (GalaxySurface.jsx CLIMB; the galaxy's page takes it off: galaxy.css .galaxy-exit) */
 .surface-exit {
   position: absolute;
   z-index: 4;
@@ -252,7 +253,7 @@
     radial-gradient(ellipse 70% 55% at 50% 40%, #fff, transparent 70%),
     #dceeff;
   opacity: 0;
-  animation: surface-exit 0.9s ease-in forwards;
+  animation: surface-exit 0.9s ease-in 2.5s forwards;
 }
 @keyframes surface-exit {
   to { opacity: 1; }

@@ -227,6 +227,30 @@ describe('createRuntime', () => {
     expect(next.draw).toHaveBeenCalledTimes(1);
   });
 
+  it('a handover with `after` keeps the old world drawing until that is done, then takes the cover', async () => {
+    const { rt, loop } = make();
+    const old = fakeWorld({ wants: () => true });
+    await rt.mount({ id: 'old', create: () => old }, {}, fakeHost());
+    loop.tick(0);
+    let done;
+    const after = new Promise((r) => (done = r));
+    const next = fakeWorld({ wants: () => true });
+    const p = rt.handover({ id: 'next', create: () => next }, {}, fakeHost(), { fade: 600, after });
+    await settled();
+    loop.tick(100);
+    loop.tick(200);
+    expect(old.draw).toHaveBeenCalledTimes(3); // made, and still the old world's moment
+    expect(rt.gfx.snapshot).not.toHaveBeenCalled();
+    done();
+    await settled();
+    loop.tick(300); // the cover
+    expect(rt.gfx.snapshot).toHaveBeenCalledTimes(1);
+    expect(await p).toBe(true);
+    loop.tick(400);
+    expect(next.draw).toHaveBeenCalledTimes(1);
+    expect(old.draw).toHaveBeenCalledTimes(4);
+  });
+
   it('a handoff that throws still hands over with from null', async () => {
     const { rt } = make();
     const old = fakeWorld({ handoff: () => { throw new Error('no'); } });

@@ -30,8 +30,7 @@ import '../components/galaxy/galaxy.css';
 import '../components/galaxy/surface/surface.css';
 
 const LANDED_KEY = 'tp-galaxy-landed'; // the worlds you've set foot on
-const CLIMB_BEFORE = 3400; // ms of the climb out before space is asked for (the ship shooting up by the time the glare's over it)
-const EXIT_GLARE = 900; // ms the sky's glare takes to cover the climb (the route changes under it, never before)
+const CLIMB = 3400; // ms of the climb out seen before space takes over: the ship lifting, then shooting up under the sky's glare (surface.css .surface-exit rises from 2.5 s to here)
 export const MISSIONS_KEY = 'tp-galaxy-missions'; // { 'system/id': { t, stars } }: your best at each mission played down on a world
 
 const readBests = () => {
@@ -120,11 +119,11 @@ export default function GalaxySurface() {
 
   // Back up to the system. From the link as from E at the ship, the climb
   // out comes first (the scene's leaving phase). With the 3D on it's flown:
-  // as the ship climbs, the runtime hands over to the galaxy's world (made
-  // with the ship climbing off this planet: LAUNCH_KEY) under the sky's
-  // glare, and the route follows with the glare still on (pages/Galaxy.jsx
-  // takes it off). Without, or when the world can't, the screen goes and
-  // the system's page comes.
+  // the galaxy's world (made with the ship climbing off this planet:
+  // LAUNCH_KEY) is built behind the climb and takes over CLIMB ms in, under
+  // the sky's glare, the route following with the glare still on
+  // (pages/Galaxy.jsx takes it off). Without, or when the world can't, the
+  // screen goes and the system's page comes.
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true; // (set here, not at first render: React's second run of an effect in development cleans up and comes back)
@@ -153,14 +152,17 @@ export default function GalaxySurface() {
     setLeaving('fly');
     markLaunch();
     const props = { system: id, reduced, ship, loadout, build, controls: readControls(local.get(CONTROLS_KEY)), net: online.client, frozen: false };
-    const handed = runtime()
-      .handover(galaxyModule, props, host, { fade: 1000, held: true })
-      .catch(() => false);
-    const glare = new Promise((r) => later('glare', EXIT_GLARE, r));
-    Promise.all([handed, glare]).then(() => {
-      if (!alive.current) return; // (gone elsewhere meanwhile: not this page's to steer)
-      navigate(`/galaxy/${id}`); // (not handed over: the page makes its own)
-    });
+    const climb = new Promise((r) => later('climb', reduced ? 300 : CLIMB, r));
+    runtime()
+      .handover(galaxyModule, props, host, { fade: 1000, held: true, after: climb })
+      .catch(() => false)
+      .then((ok) => {
+        if (!alive.current) return; // (gone elsewhere meanwhile: not this page's to steer)
+        if (ok) return navigate(`/galaxy/${id}`);
+        // not handed over: the old way, and the page makes its own
+        setLeaving(true);
+        later('leave', 700, () => navigate(`/galaxy/${id}`));
+      });
   }, [goUp, id, navigate, reduced, ship, loadout, build, online.client]); // eslint-disable-line react-hooks/exhaustive-deps
   const takeOff = useCallback(() => {
     if (leavingRef.current) return;
@@ -182,7 +184,7 @@ export default function GalaxySurface() {
         }
         if (e.phase === 'leaving') {
           comms.current?.handle({ type: 'event', id: 'surface:leave' });
-          later('fly', CLIMB_BEFORE, flyOut);
+          flyOut();
         }
         if (e.phase === 'ride') comms.current?.handle({ type: 'event', id: `surface:ride` });
       } else if (e.type === 'prompt') setPrompt(e.text);
