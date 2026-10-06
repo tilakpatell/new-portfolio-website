@@ -4,6 +4,9 @@ import { CREWS } from './crews';
 import { TROOPS } from './foot';
 import { BUILT_KINDS } from './trafficModels';
 import { GLB } from './glbFleet';
+import { GUNS } from './gunplay';
+import { MESHY } from '../rickmorty/portal/meshyCast';
+import { existsSync } from 'node:fs';
 
 const seeded = (seed = 7) => () => {
   seed = (seed * 16807) % 2147483647;
@@ -62,6 +65,25 @@ describe('the sides', () => {
         expect(t.gun === null || typeof t.gun === 'string', `${s.id} troop ${k}`).toBe(true);
       }
       for (let n = 0; n < 6; n++) for (const k of squadKinds(s, n)) expect(s.troops[k], `${s.id} squad ${n} ${k}`).toBeTruthy();
+    }
+  });
+
+  it('send each side’s own troops on the ground, with real guns and figures that can be drawn', () => {
+    const own = { starwars: ['stormtrooper', 'scout', 'probe'], rickmorty: ['gromflomite', 'cop', 'gazorpian', 'mortyguard'], breakingbad: ['dea', 'cartel', 'jackscrew'] };
+    for (const s of Object.values(SIDES)) {
+      expect(Object.keys(s.troops).sort(), s.id).toEqual(own[s.id].sort());
+      const seen = new Set();
+      for (let n = 0; n < 6; n++) for (const k of squadKinds(s, n)) seen.add(k);
+      expect([...seen].sort(), `${s.id} squads`).toEqual(own[s.id].sort());
+      for (const [k, t] of Object.entries(s.troops)) {
+        if (t.gun) expect(GUNS[t.gun], `${s.id} ${k} gun`).toBeTruthy();
+        const f = t.figure ?? { meshy: k };
+        if (f.meshy) expect(MESHY[f.meshy], `${s.id} ${k} meshy`).toBeTruthy();
+        if (f.url) expect(existsSync(`public${f.url}`), `${s.id} ${k} ${f.url}`).toBe(true);
+        if (f.built) expect(['stormtrooper', 'scout', 'probe', 'jackscrew'], `${s.id} ${k} built`).toContain(f.built);
+        // (one that calls a squad in carries nothing)
+        if (TROOPS[k].calls) expect(t.gun, k).toBeNull();
+      }
     }
   });
 

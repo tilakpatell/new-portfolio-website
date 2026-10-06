@@ -45,15 +45,17 @@ Lanes B and C are left).
   beater, Gus's Volvo, the DEA helicopter over the roadblock, a Madrigal
   freighter as the capital ship). Every side has a capital ship now.
 
+- Lane B3, troops per side: stormtroopers, scout troopers and a probe
+  droid that calls a squad in (Star Wars, built); Evil Morty's guard (the
+  cast's Morty in yellow) with the Federation's; the DEA in Hank's figure,
+  the cartel in Tuco's, Jack's crew built (Breaking Bad).
+
 ## Left (in order; the plan has the detail)
 
-1. **Lane B3, troops per side**: stormtroopers and scouts for Star Wars,
-   Evil Morty's guard, Albuquerque's figures (`public/models/albuquerque/`:
-   check they're on the Meshy skeleton) for the DEA and the cartel.
-2. **Lane C, NPCs with brains**: `npcRules.js`, the five brains, the
+1. **Lane C, NPCs with brains**: `npcRules.js`, the five brains, the
    registry (`universe/npcs/`), Saul, Mike, Fett, Birdperson, Squanchy and
    Evil Morty as characters with lines and relations.
-3. The car builders are first drafts (`fleetBreakingbad.js`): the wings'
+2. The car builders are first drafts (`fleetBreakingbad.js`): the wings'
    fins and the glass bands could be better shaped; a pass with the
    threejs-aaa-graphics-builder skill would help.
 
@@ -72,6 +74,8 @@ Lanes B and C are left).
   `/src/components/universe/trafficModels.js` and lays out `buildTraffic(kind)`
   for each kind asked for (this session's was `ships.local.html?kinds=…&view=three|side|top`,
   kept out of git with `.git/info/exclude`; not committed).
+- The troops: land on a planet and walk out (or `startFoot` from
+  `window.__universeDebug`); the first squad comes in thirty-odd seconds.
 - A capital ship or the helicopter: `director.soon('destroyer')` (any
   crew), `director.soon('roadblock')` (the RV).
 - A trait in the browser: `hunters.pack('dea', state.ship, { size: 3, ace: true })`
