@@ -9,6 +9,7 @@ import { useDocumentTitle } from '../lib/hooks';
 import { useFun } from '../fun/FunProvider';
 import { AurebeshLine } from '../components/Wordmark';
 import Egg from '../components/Egg';
+import PaperPlane from '../components/contact/PaperPlane';
 
 function CopyEmail() {
   const [copied, setCopied] = useState(false);
@@ -52,6 +53,8 @@ function MessageForm() {
     const body = `${form.message.trim()}\n\n- ${form.name.trim()}${form.email.trim() ? ` (${form.email.trim()})` : ''}`;
     window.location.href = `mailto:${profile.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     setOpened(true);
+    // the paper airplane by the heading takes off with it
+    window.dispatchEvent(new Event('tp:memo-sent'));
   };
 
   const field = (name) => ({
@@ -158,6 +161,7 @@ export default function Contact() {
             {fmtMonth(education.graduation)} with a {education.degree} from {education.school}.
           </p>
         </div>
+        <PaperPlane />
       </header>
 
       <section className="shell relative z-10 pb-28" aria-label="Ways to reach me">

@@ -58,7 +58,7 @@ export default function GalaxyMission() {
             <div className="mt-6 flex flex-wrap gap-3">
               {live ? (
                 <Link to={g.to} className="btn btn-primary">
-                  Fly it now <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
+                  {g.go ?? 'Fly it now'} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
                 </Link>
               ) : (
                 <span className="mission-soon" role="status">

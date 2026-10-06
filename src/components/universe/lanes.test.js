@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bezier, clearance, flybyLane, laneBetween, laneLength, meteorLane, tangent } from './lanes';
+import { bezier, clearance, dockScale, dockable, flybyLane, laneBetween, laneDock, laneLength, meteorLane, tangent } from './lanes';
 import { SHIP, parkAt, spawn } from './ship';
 import { MAP_RADIUS, ORDER } from './layout';
 
@@ -195,5 +195,63 @@ describe('a meteor stream', () => {
       }
     }
     expect(made).toBeGreaterThan(ships.length * 3);
+  });
+});
+
+describe('coming in to land, and launching', () => {
+  it('knows where a ship can land: a planet, a station, a giant; not a star, the black hole, a nebula, the Citadel or a gate', async () => {
+    const { PLACES } = await import('./deep');
+    const kinds = Object.fromEntries(PLACES.map((p) => [p.id, dockable(p)]));
+    expect(kinds.maw).toBe(false);
+    expect(kinds.ember).toBe(false);
+    expect(kinds.veil).toBe(false);
+    expect(kinds.aurelia).toBe(true);
+    expect(kinds.citadel).toBe(false); // (its solid is far rounder than the station drawn)
+    expect(kinds.starwars).toBe(false); // (a gate, flown through)
+    expect(PLACES.filter((p) => p.kind === 'planet' && p.id !== 'starwars').every((p) => dockable(p))).toBe(true);
+    expect(dockable({ id: 'x', at: [0, 0, 0], reach: 5 })).toBe(true); // (a planet, as it comes)
+  });
+
+  it('ends on the place, high on one side of it, from well out, clear of everything else, and launches the other way', async () => {
+    const { PLACES } = await import('./deep');
+    const { SOLIDS } = await import('./ship');
+    let made = 0;
+    for (const place of PLACES.filter(dockable)) {
+      const body = SOLIDS.find((o) => o.id === place.id)?.r ?? place.reach * 0.5;
+      const others = SOLIDS.filter((o) => o.id !== place.id && !o.id.startsWith(`${place.id}-`));
+      const rand = seeded(40 + made);
+      for (let n = 0; n < 6; n++) {
+        const out = n % 2 === 1;
+        const pts = laneDock(place, rand, { out });
+        if (!pts) continue;
+        made++;
+        const [start, end] = out ? [pts[2], pts[0]] : [pts[0], pts[2]];
+        const dist = (p) => Math.hypot(p[0] - place.at[0], p[1] - place.at[1], p[2] - place.at[2]);
+        expect(dist(end), `${place.id} ${n}: on the body`).toBeLessThan(body * 1.1);
+        expect(dist(end), `${place.id} ${n}: not inside it`).toBeGreaterThan(body * 0.99);
+        expect(Math.abs(end[1] - place.at[1]), `${place.id} ${n}: high on one side`).toBeGreaterThan(body * 0.4);
+        expect(dist(start), `${place.id} ${n}: from well out`).toBeGreaterThan(place.reach + 7);
+        expect(clearance(pts, others), `${place.id} ${n}: clear of the rest`).toBeGreaterThan(0.5);
+        // clear of the place itself until the last stretch (the first, launching)
+        for (let i = 0; i <= 20; i++) {
+          const k = out ? 0.35 + (i / 20) * 0.65 : (i / 20) * 0.65;
+          expect(dist(bezier(pts, k)), `${place.id} ${n}: clear till the end`).toBeGreaterThan(body + 0.2);
+        }
+      }
+    }
+    expect(made).toBeGreaterThan(PLACES.filter(dockable).length * 3);
+    expect(laneDock(PLACES.find((p) => p.id === 'maw'), seeded(1))).toBeNull();
+  });
+
+  it('shrinks a ship into the place over the last stretch, and grows one out of it over the first', () => {
+    expect(dockScale('in', 0)).toBe(1);
+    expect(dockScale('in', 0.5)).toBe(1);
+    expect(dockScale('in', 0.95)).toBeGreaterThan(0);
+    expect(dockScale('in', 0.95)).toBeLessThan(1);
+    expect(dockScale('in', 1)).toBe(0);
+    expect(dockScale('out', 0)).toBe(0);
+    expect(dockScale('out', 0.05)).toBeGreaterThan(0);
+    expect(dockScale('out', 0.5)).toBe(1);
+    expect(dockScale(null, 0.99)).toBe(1);
   });
 });

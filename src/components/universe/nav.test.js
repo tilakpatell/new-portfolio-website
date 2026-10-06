@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHART_VIEWS, DESTINATIONS, DRIVES, HYPER, chartAt, chartHeading, destinationById, distanceTo, findDestinations, formatDistance, formatTime, hyperState, onChart, parkFor, parseDrive, riftExit, riftSpot, tripTime } from './nav';
+import { CHART_VIEWS, DESTINATIONS, DRIVES, HYPER, KINDS, chartAt, chartHeading, destinationById, distanceTo, findDestinations, formatDistance, formatTime, hyperState, onChart, findDestination, goalOf, parkFor, parseDrive, riftExit, riftSpot, tourFrom, tripTime, TOUR_IDS } from './nav';
 import { GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, inTrench, orbiting, spawn, startAt, step } from './ship';
 import { ORDER } from './layout';
 import { WONDERS } from './deep';
@@ -36,14 +36,15 @@ describe('where there is to go', () => {
     expect(new Set(ids).size).toBe(ids.length);
     for (const id of [...ORDER, ...WONDERS.map((w) => w.id)]) expect(ids, id).toContain(id);
     for (const d of DESTINATIONS) {
-      expect(GOALS[d.id], d.id).toBeTruthy();
+      expect(GOALS[goalOf(d.id)], d.id).toBeTruthy(); // (a system's trip goes to the gate)
       expect(d.name, d.id).toBeTruthy();
       expect(d.about, d.id).toBeTruthy();
       expect(d.color, d.id).toMatch(/^#[0-9a-f]{6}$/i);
-      expect(['station', 'world', 'wonder']).toContain(d.kind);
+      expect(['station', 'world', 'wonder', 'system']).toContain(d.kind);
     }
     expect(DESTINATIONS.filter((d) => d.kind === 'station').map((d) => d.id)).toEqual(stations);
     expect(DESTINATIONS.filter((d) => d.kind === 'world').map((d) => d.id)).toEqual(worlds);
+    expect(DESTINATIONS.filter((d) => d.kind === 'wonder').map((d) => d.id)).toEqual(WONDERS.map((w) => w.id));
     // a world has its page; a wonder has none
     expect(destinationById('marvel').to).toBe('/avengers');
     expect(destinationById('aurelia').to).toBeNull();
@@ -234,5 +235,68 @@ describe('a rift', () => {
     }
     expect(seen.has('aurelia')).toBe(true);
     expect(seen.has('home')).toBe(true);
+  });
+});
+
+describe('the galaxy’s systems, through the gate', () => {
+  it('lists every system once, after the wonders, reached through the Star Wars gate', async () => {
+    const { SYSTEM_NAMES } = await import('../galaxy/names');
+    const systems = DESTINATIONS.filter((d) => d.kind === 'system');
+    expect(systems.map((d) => d.id).sort()).toEqual(Object.keys(SYSTEM_NAMES).map((id) => `sys:${id}`).sort());
+    for (const d of systems) {
+      expect(d.via).toBe('starwars');
+      expect(d.to).toBe(`/galaxy/${d.id.slice(4)}`);
+      expect(d.name).toBe(SYSTEM_NAMES[d.id.slice(4)]);
+      expect(d.at).toEqual(destinationById('starwars').at);
+      expect(d.about).toContain(d.name);
+    }
+    const ids = DESTINATIONS.map((d) => d.id);
+    expect(ids.indexOf('sys:hoth')).toBeGreaterThan(ids.indexOf('citadel'));
+    expect(findDestinations('system', 'hoth').map((d) => d.id)).toEqual(['sys:hoth']);
+    expect(KINDS.map((k) => k.id)).toContain('system');
+  });
+
+  it('goes to the gate for a system: the same trip, the same distance, the same parking', () => {
+    const s = spawn(null);
+    expect(goalOf('sys:hoth')).toBe('starwars');
+    expect(goalOf('marvel')).toBe('marvel');
+    expect(tripTime(s, 'sys:hoth', 'super')).toBe(tripTime(s, 'starwars', 'super'));
+    expect(distanceTo(s, 'sys:hoth')).toBe(distanceTo(s, 'starwars'));
+    expect(parkFor('sys:hoth', [0, 0])).toEqual(parkFor('starwars', [0, 0]));
+  });
+});
+
+describe('finding a place by name', () => {
+  it('takes an id first, then the first match by name, fandom or kind', () => {
+    expect(findDestination('hoth')?.id).toBe('sys:hoth');
+    expect(findDestination('marvel')?.id).toBe('marvel');
+    expect(findDestination('Avengers HQ')?.id).toBe('marvel');
+    expect(findDestination('  the maw ')?.id).toBe('maw');
+    expect(findDestination('nebula')?.id).toBe('veil');
+    expect(findDestination('nope')).toBeNull();
+    expect(findDestination('')).toBeNull();
+    // (never a prototype's key: the lookup is not a plain object's)
+    for (const bad of ['__proto__', 'constructor', 'toString', 'hasOwnProperty']) {
+      expect(findDestination(bad), bad).toBeNull();
+      expect(destinationById(bad), bad).toBeNull();
+      expect(goalOf(bad), bad).toBe(bad);
+    }
+  });
+});
+
+describe('the grand tour', () => {
+  it('visits every station, world and wonder once, nearest first, from wherever you are', () => {
+    const s = spawn(null);
+    const tour = tourFrom(s);
+    expect(new Set(tour).size).toBe(tour.length);
+    expect(tour.sort()).toEqual([...TOUR_IDS].sort());
+    const first = tourFrom(s)[0];
+    const nearest = TOUR_IDS.reduce((a, b) => (distanceTo(s, a) <= distanceTo(s, b) ? a : b));
+    expect(first).toBe(nearest);
+    expect(TOUR_IDS.some((id) => id.startsWith('sys:'))).toBe(false);
+    // from out by the Maw, the Maw's neighbours come first and home comes later
+    const far = { ...parkFor('maw', [0, 0]), y: 0, speed: 0 };
+    const t2 = tourFrom(far);
+    expect(t2.indexOf('home')).toBeGreaterThan(3);
   });
 });

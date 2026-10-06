@@ -1,0 +1,61 @@
+import { describe, expect, it } from 'vitest';
+import * as THREE from 'three';
+import { BODIES, SWATCHES, WHO } from './looks';
+import { KEYS, MAX_REGIONS, addZones, recolor, regionUniforms, zoneOf } from './dress';
+
+describe('zones', () => {
+  it('sorts the Meshy skeleton’s bones into head, torso and arms, legs and feet', () => {
+    expect(['neck', 'Head', 'head_end', 'headfront'].map(zoneOf)).toEqual([0, 0, 0, 0]);
+    expect(['Spine', 'Spine01', 'Spine02', 'LeftShoulder', 'RightArm', 'RightForeArm'].map(zoneOf)).toEqual([1, 1, 1, 1, 1, 1]);
+    expect(['LeftHand', 'RightHand'].map(zoneOf)).toEqual([5, 5]); // (skin: no region takes them)
+    expect(['Hips', 'LeftUpLeg', 'RightUpLeg'].map(zoneOf)).toEqual([2, 2, 2]);
+    expect(['LeftLeg', 'RightLeg'].map(zoneOf)).toEqual([3, 3]); // (the shins: boots, apart from a coat's tails)
+    expect(['LeftFoot', 'RightToeBase'].map(zoneOf)).toEqual([4, 4]);
+  });
+
+  it('gives each vertex the zone of the bone that moves it most', () => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(12), 3));
+    // bones: 0 Head, 1 Spine, 2 LeftLeg, 3 LeftFoot
+    g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute([0, 1, 0, 0, 1, 0, 0, 0, 2, 1, 0, 0, 3, 2, 0, 0], 4));
+    g.setAttribute('skinWeight', new THREE.Float32BufferAttribute([0.7, 0.3, 0, 0, 0.9, 0.1, 0, 0, 0.6, 0.4, 0, 0, 0.55, 0.45, 0, 0], 4));
+    addZones(g, ['Head', 'Spine', 'LeftLeg', 'LeftFoot']);
+    expect([...g.attributes.zone.array]).toEqual([0, 1, 3, 4]);
+  });
+});
+
+describe('regions', () => {
+  it('has a colour key for every region of every body', () => {
+    for (const who of WHO) {
+      for (const b of BODIES[who]) {
+        expect(Object.keys(b.regions).length).toBeLessThanOrEqual(MAX_REGIONS);
+        for (const r of Object.keys(b.regions)) {
+          const k = KEYS[b.id]?.[r];
+          expect(k, `${b.id} ${r}`).toBeDefined();
+          expect(k.zones.length).toBeGreaterThan(0);
+          for (const range of [k.sat, k.val]) expect(range[0]).toBeLessThan(range[1]);
+        }
+      }
+    }
+  });
+
+  it('turns a look’s colours into the shader’s numbers, its body’s own fixes where nothing’s picked', () => {
+    const portal = SWATCHES.find((s) => s.id === 'portalgreen');
+    const u = regionUniforms('morty', { inner: 'portalgreen' });
+    const i = u.order.indexOf('inner');
+    expect(u.on[i]).toBe(1);
+    expect(u.swatch[i].getHexString(THREE.NoColorSpace)).toBe(portal.hex.slice(1)); // (sRGB numbers, as the windows are)
+    expect(u.on.filter(Boolean)).toHaveLength(1);
+    // Rick's coat comes out white even untouched (the HD texture's grey patches, flattened)
+    const r = regionUniforms('rick', {});
+    expect(r.on[r.order.indexOf('outer')]).toBe(1);
+    expect(regionUniforms('rick', {}).order).toHaveLength(MAX_REGIONS);
+  });
+
+  it('keys each material’s program on its body, so two bodies never share one', () => {
+    const a = recolor(new THREE.MeshToonMaterial(), 'rick', {});
+    const b = recolor(new THREE.MeshToonMaterial(), 'morty', {});
+    expect(a.customProgramCacheKey()).not.toBe(b.customProgramCacheKey());
+    expect(a.userData.regions).toBeDefined();
+  });
+});
