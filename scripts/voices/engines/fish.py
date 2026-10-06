@@ -2,7 +2,13 @@
 Linux only: it runs under WSL from a fish-speech checkout (README.md here), reading
 and writing the Windows side's files through /mnt."""
 
+import os
+
 from worker import seed_all, serve, wsl_path
+
+# torch.compile makes it several times faster, but Triton needs the Python headers
+# (python3-dev): set FISH_COMPILE=1 where they're installed
+COMPILE = os.environ.get("FISH_COMPILE") == "1"
 
 
 def load(jobs):
@@ -12,9 +18,9 @@ def load(jobs):
     from fish_speech.models.text2semantic.inference import launch_thread_safe_queue
     from fish_speech.utils.schema import ServeReferenceAudio, ServeTTSRequest
 
-    queue = launch_thread_safe_queue(checkpoint_path="checkpoints/s2-pro", device="cuda", precision=torch.bfloat16, compile=True)
+    queue = launch_thread_safe_queue(checkpoint_path="checkpoints/s2-pro", device="cuda", precision=torch.bfloat16, compile=COMPILE)
     decoder = load_decoder(config_name="modded_dac_vq", checkpoint_path="checkpoints/s2-pro/codec.pth", device="cuda")
-    engine = TTSInferenceEngine(llama_queue=queue, decoder_model=decoder, precision=torch.bfloat16, compile=True)
+    engine = TTSInferenceEngine(llama_queue=queue, decoder_model=decoder, precision=torch.bfloat16, compile=COMPILE)
     refs = {}
 
     def say(voice, text, seed):

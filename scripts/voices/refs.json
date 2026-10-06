@@ -2,8 +2,8 @@
   "rick": {"engine": "qwen"},
   "morty": {"engine": "qwen"},
   "luke": {"engine": "qwen"},
-  "han": {"engine": "qwen"},
+  "han": {"engine": ["qwen", "fish"]},
   "walt": {"engine": "qwen"},
   "jesse": {"engine": "qwen"},
-  "hank": {"engine": "qwen"}
+  "hank": {"engine": ["qwen", "fish"]}
 }
