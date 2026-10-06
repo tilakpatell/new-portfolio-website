@@ -1,10 +1,11 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { AREAS, buildArea } from './courses/index';
 import { MATS, setUrl } from './textures';
 
-const PUBLIC = join(process.cwd(), 'public');
+const PUBLIC = fileURLToPath(new URL('../../../public/', import.meta.url));
 
 describe('the material table', () => {
   const used = new Set();
