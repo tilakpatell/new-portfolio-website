@@ -179,8 +179,8 @@ export const LANDINGS = {
     ground: { style: 'plating', colors: ['#3e4350', '#2a2e37', '#7fd8ff'] },
     sky: { zenith: '#170f2e', horizon: '#6a4c8a', sun: '#d8c8ff', space: 0.5 },
     models: {
-      optimus: { url: '/models/universe/optimus.glb', tall: 9.4 },
-      megatron: { url: '/models/universe/megatron.glb', tall: 10 },
+      optimus: { url: '/models/cybertron/optimus-orbit.glb', tall: 9.4 },
+      megatron: { url: '/models/cybertron/megatron-orbit.glb', tall: 10.5 },
     },
     things: [
       { kind: 'optimus', at: [-22, 30], r: 3 },

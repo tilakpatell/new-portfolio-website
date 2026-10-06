@@ -36,6 +36,10 @@ export const MODELS = {
   'matrix': { uid: '935368cbc67b4639a1bbeecebd4281cc', as: 'the Matrix of Leadership (Fall of Cybertron)', metres: 0.9, along: 'max', tris: 4000, tex: 512, file: '/models/cybertron/matrix.glb', role: 'prop', era: 'foc' },
   'energon': { uid: '1c2e277c8c6b4c379ae55099c3122db1', as: 'the energon crystals', metres: 2.2, tris: 2000, tex: 512, file: '/models/cybertron/energon.glb', role: 'prop', era: 'foc' },
   'wheeljack-car': { uid: 'f446eac2bc664d2eae82c5aedabd4c06', as: 'Wheeljack\'s car (Fall of Cybertron), parked in Iacon', metres: 5.6, along: 'max', tris: 15000, tex: 1024, file: '/models/cybertron/wheeljack-car.glb', role: 'vehicle', era: 'foc' },
+  // (the two of them small and still, for the universe map: on Cybertron's
+  // orbit, and standing on its plating when you land)
+  'optimus-orbit': { uid: '5b4d634974c240f9988ac985f3ff4c0b', as: 'Optimus Prime (War for Cybertron), on Cybertron\'s orbit in the universe map', metres: 9.5, tris: 9000, tex: 512, maps: 256, drop: 'ButterflyAxe', pose: 0, also: ['universe'], file: '/models/cybertron/optimus-orbit.glb', role: 'prop', era: 'wfc' },
+  'megatron-orbit': { uid: '25ab3faed0344431a6c08652dd1a828b', as: 'Megatron (Fall of Cybertron), across Cybertron\'s orbit from him', metres: 10.5, tris: 9000, tex: 256, maps: 128, pose: 0, also: ['universe'], file: '/models/cybertron/megatron-orbit.glb', role: 'prop', era: 'foc' },
   // Team Prime's base and Jasper: Transformers: Prime
   'optimus-tfp': { uid: 'd4c02597e39541518293a95a4afeadfe', as: 'Optimus Prime (Transformers: Prime), whom you play on Earth', metres: 9.5, tris: 12000, tex: 1024, file: '/models/cybertron/optimus-tfp.glb', role: 'player', era: 'tfp' },
   'truck-tfp': { uid: 'e75947aff6ad40b498c9f77eb76d06ef', as: 'Optimus\'s truck (Transformers: Prime)', metres: 8.5, along: 'max', tris: 25000, tex: 1024, file: '/models/cybertron/truck-tfp.glb', role: 'vehicle', era: 'tfp' },

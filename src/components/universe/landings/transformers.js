@@ -1,6 +1,7 @@
 // Down on Cybertron: the plating outside Iacon, the energon in its seams.
-// Optimus Prime and Megatron stand over it as the planet's own models do in
-// orbit (universe/optimus.glb, megatron.glb: landings.js names them); here
+// Optimus Prime and Megatron stand over it, War for Cybertron's and Fall of
+// Cybertron's as they are in orbit (cybertron/optimus-orbit.glb,
+// megatron-orbit.glb: landings.js names them); here
 // are the rest: towers on the skyline in Kaon's tiers (cybertron/rollout/
 // kaon.js's megastructures), a gate in its style to walk under, energon
 // crystals growing out of the cracks, and wreckage strewn about.
