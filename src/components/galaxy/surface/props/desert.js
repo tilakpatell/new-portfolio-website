@@ -104,7 +104,7 @@ export const PROPS = {
   // the low wall round the homestead's courtyard pit (beside the hut: put
   // where the hut is, turned with it)
   homesteadring(k, { pit = 9 } = {}) {
-    return { object: k.build([part(ring(pit + 0.4, 0.35, 48), { at: [0, -0.1, -pit - 4], color: ADOBE_DARK, to: 'adobe' })], { name: 'homesteadring' }) };
+    return { object: k.build([part(ring(pit + 0.4, 0.35, 48), { at: [0, -0.1, -pit - 6], color: ADOBE_DARK, to: 'adobe' })], { name: 'homesteadring' }) };
   },
 
   // a Jawa sandcrawler, 36 m long, rusted, on its treads

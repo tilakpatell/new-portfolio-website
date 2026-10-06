@@ -82,9 +82,10 @@ export function loadModel(kind, url = surfaceUrl(kind)) {
       gltf.scene.userData.tinted = true;
     }
     if (gltf && got && !gltf.scene.userData.detailed) {
-      const { metres = 2 } = scanOf(role) ?? {};
+      // (the scan's real size, and the brightness its detail map is centred on)
+      const { metres = 2, mean = 0.8 } = scanOf(role) ?? {};
       gltf.scene.traverse((o) => {
-        if (o.isMesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) withDetail(m, got, { metres, ...SURFACE_MODELS[kind].detailLook });
+        if (o.isMesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) withDetail(m, got, { metres, mean, ...SURFACE_MODELS[kind].detailLook });
       });
       gltf.scene.userData.detailed = true;
     }

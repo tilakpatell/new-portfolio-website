@@ -8,7 +8,8 @@
     ],
     "license": "CC0 1.0",
     "metres": 2,
-    "arm": true
+    "arm": true,
+    "mean": 0.82
   },
   "stone": {
     "source": "https://polyhaven.com/a/large_sandstone_blocks_01",
@@ -19,7 +20,8 @@
     ],
     "license": "CC0 1.0",
     "metres": 3,
-    "arm": true
+    "arm": true,
+    "mean": 0.8
   },
   "metal": {
     "source": "https://polyhaven.com/a/metal_plate_02",
@@ -30,7 +32,8 @@
     ],
     "license": "CC0 1.0",
     "metres": 2,
-    "arm": true
+    "arm": true,
+    "mean": 0.78
   },
   "paint": {
     "source": "https://polyhaven.com/a/blue_metal_plate",
@@ -41,7 +44,8 @@
     ],
     "license": "CC0 1.0",
     "metres": 2.5,
-    "arm": true
+    "arm": true,
+    "mean": 0.86
   },
   "bark": {
     "source": "https://polyhaven.com/a/bark_brown_02",
@@ -52,7 +56,8 @@
     ],
     "license": "CC0 1.0",
     "metres": 0.9999990463256836,
-    "arm": true
+    "arm": true,
+    "mean": 0.78
   },
   "wood": {
     "source": "https://polyhaven.com/a/weathered_planks",
@@ -64,7 +69,8 @@
     ],
     "license": "CC0 1.0",
     "metres": 2,
-    "arm": true
+    "arm": true,
+    "mean": 0.8
   },
   "concrete": {
     "source": "https://polyhaven.com/a/concrete_wall_008",
@@ -76,7 +82,8 @@
     ],
     "license": "CC0 1.0",
     "metres": 2.7100000381469727,
-    "arm": true
+    "arm": true,
+    "mean": 0.84
   },
   "rock": {
     "source": "https://polyhaven.com/a/rock_face",
@@ -88,6 +95,7 @@
     ],
     "license": "CC0 1.0",
     "metres": 2.380000114440918,
-    "arm": true
+    "arm": true,
+    "mean": 0.8
   }
 }
