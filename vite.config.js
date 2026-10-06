@@ -15,7 +15,7 @@ export default defineConfig({
   base: '/',
   // the skills and the other branches' worktrees under .claude, and the
   // scratch checkouts under lab/, bring their own tests
-  test: { exclude: [...configDefaults.exclude, '.claude/**', '.agents/**', 'lab/**'] },
+  test: { exclude: [...configDefaults.exclude, '.claude/**', '.agents/**', 'lab/**', 'scripts/health/fixtures/**'] },
   build: {
     rolldownOptions: {
       output: {
