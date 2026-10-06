@@ -5,7 +5,7 @@
 //   node scripts/gen3d/make.mjs x-wing --image photo.png --faithful --what "an X-wing starfighter"
 //   node scripts/gen3d/make.mjs x-wing --prompt "an X-wing starfighter" --what "an X-wing starfighter"
 //   node scripts/gen3d/make.mjs x-wing --image front.png --left left.png --back back.png --what "…"   (several sides: Hunyuan3D multi-view)
-//   options: --faces 120000 --tex 4096 (the bake, the top cut; the other two cuts come from it) --match OLD.glb --seed 42 --res 1024 --fov 49 --engine trelliscpp|trellis2 --no-bake
+//   options: --candidates 4 (concept pictures to choose from) --no-judge --faces 120000 --tex 4096 (the bake, the top cut; the other two cuts come from it) --match OLD.glb --seed 42 --res 1024 --fov 49 --engine trelliscpp|trellis2 --no-bake
 //
 // Everything on the way lands in scripts/gen3d/cache/<name>/; the result in
 // public/models/gen3d/<name>.glb, credited in public/games/credits.json.
@@ -18,6 +18,7 @@ import { generate, pixal3dReady } from './generate.mjs';
 import { sheet } from './judge.mjs';
 import { picture } from './picture.mjs';
 import { prepare } from './prepare.mjs';
+import { ready as vlmReady } from './vlm.mjs';
 import { TIERS } from './budget.mjs';
 import { publish } from './web.mjs';
 
@@ -26,7 +27,7 @@ const CACHE = join(HERE, 'cache');
 
 // `image` is one picture (the front), or several sides { front, left, back, right }:
 // with more than one, Hunyuan3D's multi-view engine is used
-export async function make(name, { image, prompt, what, faces = TIERS.hq.faces, tex = TIERS.hq.tex, seed = 42, res = 1024, fov, engine, faithful = typeof image === 'string', noBake = false, match }) {
+export async function make(name, { image, prompt, what, faces = TIERS.hq.faces, tex = TIERS.hq.tex, seed = 42, res = 1024, fov, engine, faithful = typeof image === 'string', noBake = false, match, candidates = 4, judge = true, retries = 1 }) {
   const dir = join(CACHE, name);
   mkdirSync(dir, { recursive: true });
   const log = (m) => console.log(`[${name}] ${m}`);
@@ -44,8 +45,21 @@ export async function make(name, { image, prompt, what, faces = TIERS.hq.faces, 
     copyFileSync(image, join(dir, 'given.png'));
     await prepare(image, source); // trimmed, squared, 1024: the frame the model expects
   } else if (prompt) {
-    const r = await picture(prompt, source, { seed });
-    log(`concept picture in ${r.seconds.toFixed(0)}s`);
+    // several concept pictures, and the model's eyes (vlm.mjs) pick the one most like the thing
+    const n = vlmReady() ? candidates : 1;
+    const files = [];
+    for (let i = 0; i < n; i++) {
+      const file = n === 1 ? source : join(dir, `concept-${i + 1}.png`);
+      const r = await picture(prompt, file, { seed: seed + i });
+      files.push(file);
+      log(`concept picture ${i + 1}/${n} in ${r.seconds.toFixed(0)}s`);
+    }
+    if (n > 1) {
+      const { pick } = await import('./vlm.mjs');
+      const p = await pick(what ?? prompt, files);
+      copyFileSync(files[p.best], source);
+      log(`picked concept ${p.best + 1}: ${p.scores.map((s) => s.score).join(' ')} of 10${p.scores[p.best].problems.length ? ` (${p.scores[p.best].problems.join('; ')})` : ''}`);
+    }
   } else throw new Error('--image or --prompt');
   if (faithful && !pixal3dReady()) {
     log('Pixal3D weights are not here, so TRELLIS.2 (README.md says how to add them)');
@@ -67,6 +81,19 @@ export async function make(name, { image, prompt, what, faces = TIERS.hq.faces, 
     const out = join(dir, 'sheet.png');
     await sheet(out, [raw, w.cuts?.hq?.out ?? w.out]);
     log(`judge: ${out}`);
+    // the model's eyes on the sheet: a miss is made again, once, with the next seed (and the next-best concept)
+    if (judge && vlmReady()) {
+      const { judge: look } = await import('./vlm.mjs');
+      const v = await look(what ?? prompt ?? name, out);
+      log(`verdict: ${v.score}/10${v.problems.length ? ` — ${v.problems.join('; ')}` : ''}${v.ok ? '' : ` — ${v.fix}`}`);
+      // only Claude's verdict gates: Qwen3-VL-8B misjudges a right model often enough that its say is a note, not a veto
+      const { which } = await import('./vlm.mjs');
+      if (!v.ok && retries > 0 && which() === 'claude') {
+        log(`not good enough: once more with seed ${seed + 1}`);
+        return make(name, { image, prompt, what, faces, tex, seed: seed + 1, res, fov, engine, faithful, noBake, match, candidates, judge, retries: retries - 1 });
+      }
+      return { source, raw, low, out: w.out, verdict: v };
+    }
   }
   return { source, raw, low, out: w.out };
 }
@@ -83,9 +110,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   };
   const faithful = on('faithful');
   const noBake = on('no-bake');
+  const judge = !on('no-judge');
   const [image, match, fov, left, back, right] = [flag('image'), flag('match'), flag('fov'), flag('left'), flag('back'), flag('right')];
   const sides = Object.fromEntries(Object.entries({ left, back, right }).filter(([, p]) => p).map(([k, p]) => [k, resolve(p)]));
-  const opts = { image: image && (Object.keys(sides).length ? { front: resolve(image), ...sides } : resolve(image)), prompt: flag('prompt'), what: flag('what'), faces: Number(flag('faces', TIERS.hq.faces)), tex: Number(flag('tex', TIERS.hq.tex)), match: match && resolve(match), seed: Number(flag('seed', 42)), res: Number(flag('res', 1024)), fov: fov && Number(fov), engine: flag('engine'), noBake };
+  const opts = { image: image && (Object.keys(sides).length ? { front: resolve(image), ...sides } : resolve(image)), prompt: flag('prompt'), what: flag('what'), faces: Number(flag('faces', TIERS.hq.faces)), tex: Number(flag('tex', TIERS.hq.tex)), match: match && resolve(match), seed: Number(flag('seed', 42)), res: Number(flag('res', 1024)), fov: fov && Number(fov), engine: flag('engine'), noBake, judge, candidates: Number(flag('candidates', 4)) };
   const [name] = args;
   const usage = 'usage: node scripts/gen3d/make.mjs NAME (--image FRONT [--left L --back B --right R] | --prompt "…") [--faithful] [--what "…"] [--faces N] [--tex N]';
   if (!name || !(opts.image || opts.prompt)) throw new Error(usage);
