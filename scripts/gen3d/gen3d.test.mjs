@@ -1,4 +1,3 @@
-import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { check } from './budget.mjs';
@@ -36,10 +35,10 @@ describe('the web budget', () => {
     expect(check({ tris: 16000, after: 15900, bytes: 400 * 1024 })).toEqual([]);
   });
   it('refuses one over budget, naming each problem', () => {
-    const problems = check({ tris: 16000, after: 24000, bytes: 1300 * 1024 });
+    const problems = check({ tris: 16000, after: 24000, bytes: 4200 * 1024 });
     expect(problems).toHaveLength(2);
     expect(problems[0]).toMatch(/24000 triangles, over the budget of 16000/);
-    expect(problems[1]).toMatch(/1300 KB, over 1024 KB/);
+    expect(problems[1]).toMatch(/4200 KB, over 4096 KB/);
   });
 });
 
@@ -95,9 +94,9 @@ describe('baking in Blender', () => {
     const cmd = command('C:/m/raw.glb', 'C:/m/low.glb', { where: { kind: 'wsl', exe: '/home/me/blender/blender-4.5.9-linux-x64/blender' } });
     expect(cmd.slice(0, 4)).toEqual(['wsl.exe', '-d', 'Ubuntu-24.04', '-e']);
     const run = cmd.at(-1);
-    // (bake.py as WSL sees it: /mnt/c/… from a checkout on a Windows drive,
-    // its own path as it is from one on Linux, as CI's is)
-    const script = wslPath(join(dirname(fileURLToPath(import.meta.url)), 'bake.py'));
+    // (bake.py's own path, as WSL sees it: /mnt/c/… where the repo is on a
+    // Windows drive, as it is when this runs for real; as it is anywhere else)
+    const script = wslPath(fileURLToPath(new URL('./bake.py', import.meta.url)));
     expect(run).toContain(`'/home/me/blender/blender-4.5.9-linux-x64/blender' '--background' '--python' '${script}'`);
     expect(run).toContain("'/mnt/c/m/raw.glb' '/mnt/c/m/low.glb' '--faces' '24000' '--tex' '2048'");
     expect(run).toMatch(/^export LD_LIBRARY_PATH=~\/miniforge3\/envs\/x11libs\/lib/);

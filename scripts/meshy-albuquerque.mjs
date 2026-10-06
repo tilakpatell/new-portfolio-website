@@ -8,7 +8,11 @@
 // (metherria/ for the props, albuquerque/ for the people). The output is
 // committed, so the site never calls Meshy.
 //
-//   node --env-file=.env.local scripts/meshy-albuquerque.mjs <step> [name …]
+//   node --env-file=.env.local scripts/meshy-albuquerque.mjs <step> [name … | hd]
+//
+// `hd`: Walt and Jesse (in his hoodie, and in hazmat yellow) again at about
+// 40,000 faces and 2k textures, from their own concept images, over the
+// originals.
 //
 // Steps, in order: images (9 credits each), models (30), rig (5, people
 // only), fetch (free). Each task's id is kept in
@@ -28,6 +32,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mendCollapsed } from './meshy-mend.mjs';
 import { reatlas } from './reatlas.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -89,6 +94,32 @@ export const ASSETS = {
   diner: { out: 'albuquerque/world/diner.glb', kind: 'world', poly: 10000, size: 16, prompt: 'A classic American roadside family diner: a single-storey building with big plate-glass windows all round, cream walls with a red stripe, a flat roof with a red edge, a glass double door, and a blank rectangular sign standing on the roof.' },
   hankHouse: { out: 'albuquerque/world/hank-house.glb', kind: 'world', poly: 12000, size: 16, prompt: 'A large single-storey Southwestern Pueblo Revival house: brown adobe stucco walls with rounded corners, a flat roof with wooden beam ends sticking out, a purple front door, a covered porch on wooden posts, a two-car garage and a gravel yard with desert plants.' },
 };
+
+// The HD set: Walt and Jesse made again from their own concept images
+// (`from` lends its image, so none is paid for twice), at about 40,000
+// faces, and written over the 12,000-face originals (the same `out`), so
+// everything that draws them gets them. Meshy paints a 4k texture for what
+// a 2k one costs (`paint`), and it's brought down to the 2k it ships at
+// (`tex`): the loader halves it again on a phone, and again on a weak
+// device (lib/detail's model maps). `ultra` is Meshy's finer geometry pass
+// (5 credits more), which gave Walt a clean goatee, his glasses and a hard
+// brow. Each was made both ways, and the other kept in the tasks file
+// (waltHdStandard, jesseHdUltra, jesseLabHdUltra), free to fetch: the finer
+// pass gave the Jesse in his hoodie a pink cartoon nose, and the Jesse in
+// hazmat a thin yellow line across his cheek once on the new atlas.
+const HD = {
+  waltHd: { ...ASSETS.walt, from: 'walt', poly: 40000, paint: '4k', tex: 2048, ultra: true },
+  jesseHd: { ...ASSETS.jesse, from: 'jesse', poly: 40000, paint: '4k', tex: 2048 },
+  jesseLabHd: { ...ASSETS.jesseLab, from: 'jesseLab', poly: 40000, paint: '4k', tex: 2048 },
+};
+// Jesse in his hoodie again, from a concept image of his own: the first
+// one's "boyish face" came out wide-eyed with a cartoon grin. His beanie
+// isn't in it: it's the wardrobe's (gear.js), worn by default and taken off
+// there. Made by name (`images jessePinkHd`, and so on), not with `hd`.
+const JESSE_AGAIN = {
+  jessePinkHd: { out: 'albuquerque/jesse.glb', kind: 'person', poly: 40000, paint: '4k', tex: 2048, height: 1.73, prompt: 'A lean, wiry man in his mid-twenties with a narrow face, natural-sized eyes, very short light brown buzzed hair, light stubble along his jaw and a small tuft of beard under his lower lip, a relaxed lopsided half-smile with his lips closed and a laid-back, slightly cocky look; in a baggy burnt-orange hoodie, baggy dark blue jeans and white high-top sneakers.' },
+};
+Object.assign(ASSETS, HD, JESSE_AGAIN);
 
 const key = process.env.MESHY_API_KEY;
 const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
@@ -203,7 +234,7 @@ function placeHammer(ps, size) {
   return { matrix };
 }
 
-const TEX = 1024; // a texture's size, as shipped
+const TEX = 1024; // a texture's size, as shipped (unless the asset says: `tex`)
 // A building or a car: standing on y = 0, centred, its longest side `size`
 // (which way it faces is the world's business: see albuquerque/world).
 function placeWorld(ps, size) {
@@ -236,14 +267,20 @@ async function bake(from, to, a) {
   // a person without the clip they were rigged with (the browser poses
   // them), on a new atlas the size of the texture they ship with
   const person = a.kind === 'person';
+  const tex = a.tex ?? TEX;
+  let mended = 0;
   if (person) {
     for (const clip of doc.getRoot().listAnimations()) {
       for (const part of [...clip.listChannels(), ...clip.listSamplers()]) part.dispose();
       clip.dispose();
     }
-    await reatlas(doc, TEX, { apart: true });
+    await reatlas(doc, tex, { apart: true });
+    // (the few small charts the packing laid down to nothing take their
+    // colour from beside them: scripts/meshy-mend.mjs)
+    const prim = doc.getRoot().listMeshes()[0].listPrimitives()[0];
+    mended = mendCollapsed(prim.getIndices().getArray(), prim.getAttribute('TEXCOORD_0').getArray(), prim.getAttribute('POSITION').getArray(), tex);
   }
-  await doc.transform(dedup(), prune(), textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [TEX, TEX] }), meshopt({ encoder: MeshoptEncoder, level: person ? 'high' : 'medium' }));
+  await doc.transform(dedup(), prune(), textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [tex, tex] }), meshopt({ encoder: MeshoptEncoder, level: person ? 'high' : 'medium' }));
   await mkdir(dirname(to), { recursive: true });
   await io.write(to, doc);
   const prims = doc
@@ -252,11 +289,12 @@ async function bake(from, to, a) {
     .flatMap((m) => m.listPrimitives());
   const tris = prims.reduce((n, p) => n + (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3, 0);
   const verts = prims.reduce((n, p) => n + p.getAttribute('POSITION').getCount(), 0);
-  return { ...placed, tris, verts };
+  return { ...placed, tris, verts, mended };
 }
 
 const steps = {
   async images(names, s) {
+    names = names.filter((n) => !ASSETS[n].from); // (an HD one has its original's)
     for (const n of names) {
       s[n] ??= {};
       if (!s[n].image) {
@@ -274,6 +312,11 @@ const steps = {
   },
   async models(names, s) {
     for (const n of names) {
+      const from = ASSETS[n].from;
+      if (!s[n]?.image && from && s[from]?.image) {
+        s[n] = { ...s[n], image: s[from].image };
+        await save(s);
+      }
       if (!s[n]?.image) throw new Error(`${n}: no image yet`);
       if (!s[n].model) {
         const { result } = await api('POST', '/v1/image-to-3d', {
@@ -284,7 +327,8 @@ const steps = {
           should_remesh: true,
           topology: 'triangle',
           target_polycount: ASSETS[n].poly,
-          texture_resolution: '2k',
+          texture_resolution: ASSETS[n].paint ?? '2k',
+          ...(ASSETS[n].ultra ? { geometry_resolution: '2k' } : {}),
           ...(ASSETS[n].kind === 'person' ? { pose_mode: 'a-pose' } : {}),
           target_formats: ['glb'],
           enable_thumbnail: true,
@@ -323,8 +367,8 @@ const steps = {
         if (!s[n]?.rig) throw new Error(`${n}: not rigged yet`);
         const raw = join(tmp, `${s[n].rig}-${n}.glb`);
         if (!existsSync(raw)) await download((await api('GET', `/v1/rigging/${s[n].rig}`)).result.rigged_character_glb_url, raw);
-        const { tris, verts } = await bake(raw, join(OUT, a.out), a);
-        console.log(`fetch    ${n.padEnd(10)} ${a.out}, ${tris} triangles, ${verts} vertices`);
+        const { tris, verts, mended } = await bake(raw, join(OUT, a.out), a);
+        console.log(`fetch    ${n.padEnd(10)} ${a.out}, ${tris} triangles, ${verts} vertices${mended ? `, ${mended} mended` : ''}`);
         continue;
       }
       if (!s[n]?.model) throw new Error(`${n}: no model yet`);
@@ -340,7 +384,8 @@ async function main() {
   if (!key) throw new Error('Set MESHY_API_KEY in .env.local and run with node --env-file=.env.local.');
   const [step, ...only] = process.argv.slice(2);
   if (!steps[step]) throw new Error(`step: ${Object.keys(steps).join(' | ')}`);
-  const names = only.length ? only : Object.keys(ASSETS);
+  // (`hd` stands for the HD set)
+  const names = only.length ? only.flatMap((n) => (n === 'hd' ? Object.keys(HD) : [n])) : Object.keys(ASSETS);
   for (const n of names) if (!ASSETS[n]) throw new Error(`unknown asset ${n}`);
   const s = await load();
   await steps[step](names, s);
