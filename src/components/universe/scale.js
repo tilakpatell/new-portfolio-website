@@ -17,10 +17,21 @@
 // the smallest world, and the sun under the ship's ceiling (scale.test.js
 // checks both). Rerun ship.test.js and nav.test.js on any change: the
 // autopilot's hops, and the super-speed trip home, fly through this system.
+//
+// WORLD_SCALE: the same for the fandoms' planets, so the sizes stay in
+// order with the stations grown: a ship, a station (84 to 97 ship lengths),
+// a world (about four times a station across: 360 to 450 ship lengths), a
+// deep-space star bigger again. Only the planets' radius grows: where they
+// sit (layout.js), the Star Wars gate (its own size), the people on foot
+// (foot.js's METRE) and the ship stay as they were; on foot the ground is
+// the planet itself, so it just curves away more gently. A world must stay
+// smaller than every deep-space star (scale.test.js).
+//
 // (No imports: everything sized by it imports this, never the other way.
-// universes.js writes HOME_SCALE out as a number instead, so the prerender
-// can load it in Node; scale.test.js keeps the two the same.)
+// universes.js writes HOME_SCALE and WORLD_SCALE out as numbers instead, so
+// the prerender can load it in Node; scale.test.js keeps them the same.)
 
 export const LENGTH = 0.26;
 export const HOME_SCALE = 3;
 export const HOME_SPREAD = Math.cbrt(HOME_SCALE);
+export const WORLD_SCALE = 3;
