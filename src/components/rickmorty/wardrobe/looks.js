@@ -43,7 +43,8 @@ const WALT = '/models/albuquerque/walt.glb';
 
 // each body: { id, name, asset (meshyCast’s: a name of Portal panic’s cast,
 // or a whole path), h (metres), regions: { region: its name on this body },
-// hat (it has one of its own: no head gear), wears (gear it always has on) }
+// hat (it has one of its own: no head gear), wears (gear it always has on),
+// starts (gear its owner's look starts with, and can take off: Jesse's beanie) }
 export const BODIES = {
   rick: [
     { id: 'rick', name: 'Rick C-137', asset: 'rick', h: 1.85, regions: { outer: 'Lab coat', inner: 'Shirt', legs: 'Trousers', hair: 'Hair' } },
@@ -71,7 +72,7 @@ export const BODIES = {
     { id: 'heisenberg', name: 'Heisenberg', asset: WALT, h: 1.79, hat: true, wears: { head: 'porkpie' }, regions: { outer: 'Jacket', inner: 'Shirt', legs: 'Trousers', shoes: 'Shoes' } },
   ],
   jesse: [
-    { id: 'jesse', name: 'Jesse Pinkman', asset: '/models/albuquerque/jesse.glb', h: 1.73, regions: { outer: 'Hoodie', legs: 'Jeans', hair: 'Hair', shoes: 'Trainers' } },
+    { id: 'jesse', name: 'Jesse Pinkman', asset: '/models/albuquerque/jesse.glb', h: 1.73, starts: { head: 'jessebeanie' }, regions: { outer: 'Hoodie', legs: 'Jeans', hair: 'Hair', shoes: 'Trainers' } },
     { id: 'jesselab', name: 'Jesse in hazmat', asset: '/models/albuquerque/jesse-lab.glb', h: 1.73, regions: { outer: 'Hazmat suit', inner: 'Gloves', hair: 'Hair' } },
   ],
 };
@@ -177,7 +178,7 @@ export const wornFiles = (looks) => [...new Set(EVERYONE.flatMap((who) => GEAR_S
 
 const isObject = (v) => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 
-export const defaultLook = (who) => ({ body: BODIES[who][0].id, colors: {}, gear: { head: 'none', face: 'none', hand: 'none' } });
+export const defaultLook = (who) => ({ body: BODIES[who][0].id, colors: {}, gear: { head: 'none', face: 'none', hand: 'none', ...BODIES[who][0].starts } });
 
 // A look from storage (or anything): the body if it's one of his, the
 // colours its regions take from his cast’s swatches, the gear his cast has

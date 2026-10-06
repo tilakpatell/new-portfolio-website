@@ -50,6 +50,19 @@ const cyl = (r0, r1, h, seg = 32, open = false) => new THREE.CylinderGeometry(r1
 const ball = (r, w = 24, h = 16) => new THREE.SphereGeometry(r, w, h);
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 const ALONG = [Math.PI / 2, 0, 0]; // (a cylinder along z)
+// knit ribs: a round geometry's surface pushed in and out round its axis
+// (y), `n` ribs, `amp` of its radius deep
+function ribbed(geo, n, amp) {
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i);
+    const z = p.getZ(i);
+    const k = 1 + amp * Math.cos(n * Math.atan2(x, z));
+    p.setXYZ(i, x * k, p.getY(i), z * k);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
 
 const BUILD = {
   // ── on the head ──
@@ -202,26 +215,45 @@ const BUILD = {
     });
   },
   jessebeanie() {
-    // a plain knit one pulled down to the ears, its cuff turned up, ribbed
-    const ribs = [];
-    for (let i = 0; i < 4; i++) ribs.push([new THREE.TorusGeometry(0.468, 0.012, 6, 48), [0, -0.33 + i * 0.04, 0], [Math.PI / 2, 0, 0], [1, 1.06, 1]]);
-    return piece({
-      '#45464b': [[new THREE.SphereGeometry(0.45, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2), [0, -0.2, 0], [0, 0, 0], [1, 0.86, 1.06]]], // (a dome, open below: a whole ball’s front would come down over a narrow face)
-      '#38393d': [[cyl(0.462, 0.462, 0.17, 40), [0, -0.27, 0], [0, 0, 0], [1, 1, 1.06]], ...ribs],
+    // his: a charcoal knit pulled snug over the skull and worn a little back,
+    // ribbed all the way up, its cuff turned up and ribbed finer
+    const crown = ribbed(new THREE.SphereGeometry(0.46, 72, 28, 0, Math.PI * 2, 0, Math.PI * 0.53), 34, 0.022);
+    const cuff = ribbed(new THREE.CylinderGeometry(0.476, 0.468, 0.14, 96, 1, true), 56, 0.026);
+    const g = piece({
+      '#3b3c42': [[crown, [0, -0.24, 0], [0, 0, 0], [1, 0.84, 1.08]]],
+      '#2f3035': [[cuff, [0, -0.29, 0], [0, 0, 0], [1, 1, 1.08]]],
     });
+    g.traverse((o) => o.isMesh && (o.material.side = THREE.DoubleSide)); // (the cuff is open: its inside shows from below)
+    g.rotation.x = -0.14; // (worn back: the cuff high on the forehead, low on the nape)
+    const holder = new THREE.Group();
+    holder.add(g);
+    return holder;
   },
   glasses(e = EYES.rick) {
-    // thin dark rims, oblong, a bridge, arms back to the ears
-    const rim = [];
-    const w = e.size * 1.25;
-    const h = e.size * 0.8;
-    for (const sx of [-1, 1]) {
-      const cx = sx * e.spread;
-      for (const [x, y, rw, rh] of [[cx, h, w * 2 + 0.02, 0.016], [cx, -h, w * 2 + 0.02, 0.016], [cx - w, 0, 0.016, h * 2], [cx + w, 0, 0.016, h * 2]]) rim.push([box(rw, rh, 0.018), [x, y, 0.03]]);
-      rim.push([box(0.016, 0.018, 0.42), [sx * Math.max(0.29, e.spread + w + 0.02), h * 0.7, -0.18]]);
-    }
-    rim.push([box(Math.max(0.02, e.spread * 2 - w * 2), 0.014, 0.016), [0, h * 0.4, 0.035]]);
-    return piece({ '#2a221d': rim });
+    // thin dark rims round soft oblong lenses, each turned a little to wrap
+    // round the face, a bridge over the nose, and arms back to the ears
+    const w = e.size * 1.3;
+    const h = e.size * 0.85;
+    const r = Math.min(w, h) * 0.45;
+    const lens = (sx) => {
+      const shape = new THREE.Shape();
+      shape.moveTo(-w + r, -h);
+      shape.lineTo(w - r, -h);
+      shape.quadraticCurveTo(w, -h, w, -h + r);
+      shape.lineTo(w, h - r);
+      shape.quadraticCurveTo(w, h, w - r, h);
+      shape.lineTo(-w + r, h);
+      shape.quadraticCurveTo(-w, h, -w, h - r);
+      shape.lineTo(-w, -h + r);
+      shape.quadraticCurveTo(-w, -h, -w + r, -h);
+      const pts = shape.getSpacedPoints(48).map((q) => new THREE.Vector3(q.x, q.y, 0));
+      const tube = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 64, 0.012, 6, true);
+      return [tube, [sx * e.spread, 0, 0.03], [0, sx * -0.2, 0]];
+    };
+    const hinge = (sx) => sx * (e.spread + w * Math.cos(0.2));
+    const arm = (sx) => new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(hinge(sx), h * 0.55, 0.03 - w * Math.sin(0.2)), new THREE.Vector3(sx * Math.max(0.3, e.spread + w + 0.06), h * 0.5, -0.2), new THREE.Vector3(sx * Math.max(0.31, e.spread + w + 0.07), h * 0.2, -0.42)]), 16, 0.01, 5);
+    const bridge = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(-(e.spread - w), h * 0.35, 0.03), new THREE.Vector3(0, h * 0.55, 0.05), new THREE.Vector3(e.spread - w, h * 0.35, 0.03)]), 12, 0.011, 5);
+    return piece({ '#2a221d': [lens(-1), lens(1), [arm(-1)], [arm(1)], [bridge]] });
   },
   respirator() {
     // the cook’s half mask: a grey rubber cup over the nose and mouth, a
