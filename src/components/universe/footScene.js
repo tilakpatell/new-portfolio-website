@@ -58,6 +58,7 @@ import { GUNS, buildGun, createGunplay } from './gunplay';
 import { createGunFx } from './gunfx';
 import { createLocomotion, fallTurn } from './locomotion';
 import { createPortalFx, meshyJoints } from '../../lib/three/portalFx';
+import { createGadgetFx } from '../../lib/three/gadgetFx';
 import { frameFrom, spring } from '../../lib/three/ik';
 import { SIDES, sideFor, squadKinds } from './sides';
 import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, bolt as makeBolt, byTrench, facingAlong, flat, fly as flyBolt, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
@@ -102,6 +103,9 @@ export const PARTY = {
   ],
 };
 const TROOP_BOLT = '#62c8ff';
+// Rick's gadgets: B on foot goes round them, the one carrying the portal gun
+export const GADGETS = ['portal', 'freeze', 'shrink'];
+const GADGET_NAMES = { portal: 'Portal gun', freeze: 'Freeze ray', shrink: 'Shrink ray' };
 const SPEC = Object.fromEntries(Object.values(PARTY).flat().map((s) => [s.id, s])); // everyone, by id
 const GUEST_FAR = 90; // metres: no tag on someone further off than this
 
@@ -1372,6 +1376,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   // the portal gun's kills (lib/three/portalFx.js): a trooper it downs is
   // pulled through a portal that opens behind them and shut in two
   const pfx = createPortalFx({ parent: root });
+  // and his other two guns' (lib/three/gadgetFx.js): frozen and shattered, shrunk and popped
+  const gfx = createGadgetFx({ parent: root });
 
   // out of your own eyes (V): your gun in your hands at the bottom right of
   // the view, swaying as you walk, lagging a little behind a turn, coming up
@@ -1675,11 +1681,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     if (jitter) dir.add(new V((rand() - 0.5) * jitter, (rand() - 0.5) * jitter, (rand() - 0.5) * jitter)).normalize();
     const b = makeBolt(arr(from), arr(dir), owner, damage);
     const mesh = boltPool.find((m) => !m.visible) ?? boltPool[0];
-    paintBolt(mesh, p.spec.bolt ?? '#ffffff');
+    const color = GUNS[gunOf(p)]?.bolt ?? p.spec.bolt ?? '#ffffff';
+    paintBolt(mesh, color);
     mesh.visible = true;
     S.bolts = S.bolts.filter((o) => o.mesh !== mesh);
     const near = owner === 'me' && S.cam.first;
-    S.bolts.push({ b, mesh, color: p.spec.bolt ?? '#ffffff', flown: 0, hide: near ? 1.6 * METRE : 0, gun: p.gp?.kind ?? p.spec.gun ?? null });
+    S.bolts.push({ b, mesh, color, flown: 0, hide: near ? 1.6 * METRE : 0, gun: gunOf(p) });
     if (near) mesh.visible = false;
     // the flash at the muzzle, the smoke after a powder gun's, its brass out of the port
     if (r) {
@@ -1688,8 +1695,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       const up = new V(...vec.unit(arr(from)));
       if (gun.smoke && !near) fx.smoke(from, dir, gun.smoke);
       if (gun.casing && r.eject) fx.casing(toMap(r.eject).sub(S.c), new V(-1, 0, 0).transformDirection(r.gun.matrixWorld).transformDirection(invMap).addScaledVector(dir, -0.3).normalize(), up);
-    } else puff(arr(from), p.spec.bolt ?? '#ffffff', 0.5);
+    } else puff(arr(from), color, 0.5);
   };
+  // what a shot of p's does: a gadget's more than a blaster's (gunplay.js's GUNS)
+  const damageOf = (p) => GUNS[gunOf(p)]?.damage ?? (gunOf(p) === 'bowcaster' ? 2 : 1);
 
   // ── begin: down onto the planet `id` from where the ship is ──
   // where to come down beside a friend's ship already down (`near`, its { n,
@@ -1971,6 +1980,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
 
   // who you're playing, and who's with you (the swap changes which is which)
   const meP = () => party?.[S.lead] ?? null;
+  const gunOf = (p) => p?.gp?.kind ?? p?.spec.gun ?? null; // (what p has in hand: Rick's gadget, as B left it)
   const mateP = () => party?.[1 - S.lead] ?? null;
 
   // (the other pilots' ships down here too)
@@ -2245,6 +2255,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     moveBolts(dt);
     fx.update(dt);
     pfx.update(dt);
+    gfx.update(dt);
     spring(S.cam.kick, dt, 240, 22);
     for (const s of puffs) {
       if (!s.visible) continue;
@@ -2287,8 +2298,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       if (S.mateTarget && mate?.spec.gun) S.mateAim = 1;
       if (near && mate?.spec.gun && S.mateCool <= 0 && apart(S.mate, near, S.R) < 26 * METRE && (mate.gp?.aim ?? 1) > 0.6) {
         S.mateCool = 0.9 + rand() * 0.9;
-        shoot(mate, near, 'mate', 1, 0.06);
-        emit({ type: 'fire', soft: true, gun: mate.spec.gun });
+        shoot(mate, near, 'mate', damageOf(mate), 0.06);
+        emit({ type: 'fire', soft: true, gun: gunOf(mate) });
       }
     } else S.mateTarget = null;
     // the side's troops (sides.js: the Federation's, or the DEA and the cartel): a squad now and then, once the last is dealt with
@@ -2404,7 +2415,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
               t.alive = false;
               t.dead = 0;
               t.fallSide = rand() < 0.5 ? -1 : 1;
-              t.how = o.gun === 'portal' ? 'portal' : null; // (the portal gun's kills go through a portal: drawTroops)
+              t.how = GADGETS.includes(o.gun) ? o.gun : null; // (Rick's guns' kills: through a portal, frozen, shrunk: drawTroops)
               emit({ type: 'foot', id: 'kill', kind: t.kind, by: o.b.owner, how: t.how });
             }
           }
@@ -2471,16 +2482,22 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     for (const tr of S.troops) {
       const got = troopFig(tr);
       const n = new V(...tr.n);
-      if (!tr.alive && tr.how === 'portal') {
-        // through the portal: the swallow owns where they are from the
-        // moment they go, the gun out of their hand first
+      if (!tr.alive && tr.how) {
+        // through the portal (the gun out of their hand first), frozen
+        // and shattered, or shrunk and popped (the gun goes with them):
+        // the effect owns where they are from the moment they go
         if (!got.swallow) {
           stand(got.group, tr);
           const tall = TROOPS[tr.kind].tall;
-          got.swallow = pfx.swallow({ root: got.group, tall, up: n, push: pushOf(tr, tr.knock), joints: meshyJoints(got.group, 1, 1.8), on: (ev) => emit({ type: 'foot', id: 'portal', ev }) });
-          got.dropped = true;
-          const g = got.gp?.drop();
-          if (g) fx.toss(g, pushOf(tr, tr.knock).multiplyScalar(-0.8 * METRE).addScaledVector(n, 1.6 * METRE));
+          const on = (ev) => emit({ type: 'foot', id: tr.how, ev });
+          if (tr.how === 'freeze') got.swallow = gfx.freeze({ root: got.group, tall, up: n, push: pushOf(tr, tr.knock), on });
+          else if (tr.how === 'shrink') got.swallow = gfx.shrink({ root: got.group, tall, up: n, on });
+          else {
+            got.swallow = pfx.swallow({ root: got.group, tall, up: n, push: pushOf(tr, tr.knock), joints: meshyJoints(got.group, 1, 1.8), on });
+            got.dropped = true;
+            const g = got.gp?.drop();
+            if (g) fx.toss(g, pushOf(tr, tr.knock).multiplyScalar(-0.8 * METRE).addScaledVector(n, 1.6 * METRE));
+          }
         }
         shadow(`troop${tr.id}`, tr, (TROOPS[tr.kind].tall / METRE) * 0.5).visible = false;
         continue;
@@ -2563,7 +2580,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       if (vm) vm.gun.visible = false;
       return;
     }
-    const v = viewGun(me.spec.gun, me.spec.id);
+    const v = viewGun(gunOf(me), me.spec.id);
     const pos = S.cam.pos.clone().sub(S.c);
     vmF.copy(S.cam.look).sub(S.cam.pos).normalize();
     vmU.copy(S.cam.up).addScaledVector(vmF, -S.cam.up.dot(vmF)).normalize();
@@ -2576,7 +2593,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const k = S.cam.kick.x;
     v.bob += dt * (2 + Math.min(1, Math.abs(S.me.speed) / FOOT.run) * 9);
     const walking = Math.min(1, Math.abs(S.me.speed) / FOOT.walk);
-    const long = GUNS[me.spec.gun]?.stock;
+    const long = GUNS[gunOf(me)]?.stock;
     // (a long gun lower and further out to the side: its stock's at your
     // shoulder, its scope and a bowcaster's bow well under your eye)
     const hold = new V()
@@ -2733,10 +2750,20 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
           mark = S.cam.pos.clone().sub(S.c).addScaledVector(look, 40 * METRE);
         }
       }
-      shoot(me, target, 'me', me.spec.gun === 'bowcaster' ? 2 : 1, 0, mark);
+      shoot(me, target, 'me', damageOf(me), 0, mark);
       S.aim = 1;
-      if (!reduced) S.cam.kick.v += GUNS[me.spec.gun]?.kick.up ?? 1.5;
-      return me.spec.gun;
+      if (!reduced) S.cam.kick.v += GUNS[gunOf(me)]?.kick.up ?? 1.5;
+      return gunOf(me);
+    },
+    // B: Rick's next gadget (GADGETS), or the one named, if it's Rick you're playing; its kind, or false
+    gadget(kind = null) {
+      const me = meP();
+      if (S.phase !== 'walk' || !me?.gp || !GADGETS.includes(me.spec.gun)) return false;
+      const next = GADGETS.includes(kind) ? kind : GADGETS[(GADGETS.indexOf(gunOf(me)) + 1) % GADGETS.length];
+      me.gp.dispose();
+      me.gp = createGunplay(me.fig, next, { unit: METRE, who: me.fig.built ? 'built' : me.spec.id });
+      S.gadgetAt = S.clock;
+      return next;
     },
     // T: the next trooper round
     cycle() {
@@ -2801,6 +2828,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         troops: troopsAlive().map((o) => ({ id: o.id, at: chest(o, TROOPS[o.kind].tall) })),
         first: S.cam.first,
         near: spot && { label: spot.label, say: spot.say },
+        // Rick's gadget in hand, and its name on the HUD for a moment after B
+        gadget: me && GADGETS.includes(me.spec.gun) ? { kind: gunOf(me), name: GADGET_NAMES[gunOf(me)], fresh: S.gadgetAt != null && S.clock - S.gadgetAt < 1.8 } : null,
       };
     },
     // your crew as the other pilots see them (protocol.js's writeFoot):
@@ -2901,6 +2930,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       sleeveGeo.dispose();
       fx.dispose();
       pfx.dispose();
+      gfx.dispose();
       flare?.removeFromParent();
       if (vm) for (const o of vm.owned) o.dispose?.();
       shadowMat.dispose();

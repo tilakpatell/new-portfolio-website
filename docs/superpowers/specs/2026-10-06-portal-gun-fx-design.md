@@ -84,6 +84,9 @@ Work goes up as branches and pull requests, merged to main as each lands.
    gun kind, `activity.js` plays the same effects on its targets.
 4. The planets' detail layer.
 
+Landed: 1 (#400), 2 (`claude/rick-gadgets`: the freeze ray and the shrink
+ray, `lib/three/gadgetFx.js`; shots in `docs/superpowers/shots/`).
+
 Each: `npx eslint .`, `npx vitest run`, `npx vite build`,
 `node scripts/health.mjs --check --skip build`, a browser check through the
 dev server, then the PR and the merge.
