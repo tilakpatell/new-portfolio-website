@@ -1640,7 +1640,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     if (landing && furnished(id)) {
       const anchor = near ? { n: near.n, f: near.f } : S.spot;
       const f = furnish({ id, landing, frame: anchor, R: S.R, small, renderer, warm });
-      rocks = { mesh: f.group, solids: f.solids, update: f.update, dispose: f.dispose };
+      rocks = { mesh: f.group, solids: f.solids, spots: f.spots, update: f.update, dispose: f.dispose };
     } else rocks = u.plated ? createHullBits(n, S.R, u, small, S.band, clear) : createRocks(n, S.R, u, small);
     root.add(rocks.mesh);
     haze = u.airless ? null : landing?.sky ? createSky(landing.sky, u.rim ?? u.swatch ?? '#8ab4ff') : createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
@@ -1728,6 +1728,21 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   const obstacles = () => [shipObstacle(), ...(rocks?.solids ?? []), ...[...guests.values()].flatMap((g) => (g.ship ? [g.ship] : [])), ...(S.band ? [{ band: S.band }] : [])];
 
   const troopsAlive = () => S.troops.filter((t) => t.alive);
+
+  // the nearest of the landing's spots you're within reach of (a door, someone to talk to)
+  const nearSpot = () => {
+    if (!S.me || !rocks?.spots?.length) return null;
+    let best = null;
+    let bd = Infinity;
+    for (const s of rocks.spots) {
+      const d = apart(S.me, s, S.R);
+      if (d <= s.r && d < bd) {
+        bd = d;
+        best = s;
+      }
+    }
+    return best;
+  };
 
   // ── other pilots' crews, down here too ──
   const guests = new Map(); // pilot id → { name, ally, dim, walkers: [{ who, spec, fig, group, gun, label, w, to, alt }] }
@@ -2379,6 +2394,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     get debug() {
       return import.meta.env.DEV ? S : null;
     },
+    // (development: the landing's doors and people, scripts/door-check.mjs)
+    get spots() {
+      return import.meta.env.DEV ? (rocks?.spots ?? []) : null;
+    },
     get id() {
       return S.id;
     },
@@ -2455,13 +2474,19 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       S.cam.first = !S.cam.first;
       return S.cam.first;
     },
+    // a door you're at (a landing's: G there goes into the planet's page): { id, label } or null
+    door() {
+      const s = S.phase === 'walk' ? nearSpot() : null;
+      return s?.label ? { id: S.id, label: s.label } : null;
+    },
     // the targeting, for the HUD: what the gun's on, where it's pointed, the
-    // way back to the ship, the health
+    // way back to the ship, the health; and anything here that answers you
     info() {
       if (!S.phase || !S.me) return null;
       const me = meP();
       const lock = S.troops.find((o) => o.id === S.lock && o.alive) ?? null;
       const chest = (w, tall) => new V(...vec.add(at(w, S.R), w.n, tall * 0.55)).add(S.c);
+      const spot = nearSpot();
       return {
         aim: chest(S.me, (me?.spec.tall ?? 1.8) * METRE).addScaledVector(new V(...S.me.f), 14 * METRE),
         lock: lock && { id: lock.id, kind: lock.kind, at: chest(lock, TROOPS[lock.kind].tall / 1), size: TROOPS[lock.kind].tall, dist: apart(S.me, lock, S.R) / METRE },
@@ -2472,6 +2497,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         mate: mateP()?.spec.name ?? null,
         troops: troopsAlive().map((o) => ({ id: o.id, at: chest(o, TROOPS[o.kind].tall) })),
         first: S.cam.first,
+        near: spot && { label: spot.label, say: spot.say },
       };
     },
     // your crew as the other pilots see them (protocol.js's writeFoot):

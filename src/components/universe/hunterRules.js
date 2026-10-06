@@ -302,11 +302,11 @@ export function blocked(a, b, solids) {
 
 // (`factions` and `kinds` are these, unless another map brings its own: the
 // galaxy's Separatists and the Imperial remnant, galaxy/hunted.js)
-export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KINDS = HUNTER_KINDS, solids = [], lasers: laserCount = 28 } = {}) {
+export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KINDS = HUNTER_KINDS, solids = [], lasers: laserCount = 28, firstId = 1 } = {}) {
   const allSolids = typeof solids === 'function' ? solids : () => solids;
   const live = []; // hunters in flight
   const packs = []; // { faction, members, lost, said, … }
-  let nextId = 1; // each hunter's own number, for the lock to follow
+  let nextId = firstId; // each hunter's own number, for the lock to follow (another hunt, a skirmish's, numbers its own from elsewhere)
   const lasers = Array.from({ length: laserCount }, () => ({ on: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, at: null, faction: null }));
   const events = [];
   const targets = []; // what the guns can lock on to (reused)
@@ -852,6 +852,17 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
       const h = live.find((o) => o.id === id);
       if (!h || !h.alive || h.pack.gone) return null;
       return wound(h, n);
+    },
+
+    // every pack gives up and flies off (what they were after is gone), each
+    // one removed once it's well away from `ship` as update is given it
+    leave() {
+      for (const p of packs) {
+        if (p.gone) continue;
+        p.gone = true;
+        p.fade = 0;
+        for (const h of p.members) release(h);
+      }
     },
 
     // everyone gone at once (you were shot down, or changed ship)
