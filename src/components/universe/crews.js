@@ -57,10 +57,17 @@ export const CREWS = [
         ['rick', 'Fresh air, Morty! Well, air. Probably air.'],
         ['morty', 'It smells like feet, Rick.'],
       ],
-      squad: [
-        ['morty', 'Rick! Federation guys, over the hill!'],
-        ['rick', 'Gromflomites, Morty. Shoot the bugs.'],
-      ],
+      // (by who most of them are: footScene.js says)
+      squad: {
+        any: [
+          ['morty', 'Rick! Federation guys, over the hill!'],
+          ['rick', 'Gromflomites, Morty. Shoot the bugs.'],
+        ],
+        mortyguard: [
+          ['morty', 'Rick, those guys coming over the hill are… all me. In yellow.'],
+          ['rick', 'Evil Morty’s guard, Morty. Don’t hesitate. They won’t.'],
+        ],
+      },
       kill: {
         gromflomite: [['rick', 'Bug splat! Ha!']],
         cop: [

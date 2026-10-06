@@ -2314,10 +2314,13 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     if (S.cleared && S.clock > S.nextSquad) {
       const kinds = squadKinds(sideFor(S.kind) ?? SIDES.rickmorty, S.squads);
       const count = Math.min(5, 2 + S.squads + Math.floor(rand() * 2));
-      S.troops = [...S.troops.filter((o) => o.alive || o.dead < 3), ...squad(rand, S.me, S.R, { count, kinds, band: S.band })];
+      const fresh = squad(rand, S.me, S.R, { count, kinds, band: S.band });
+      S.troops = [...S.troops.filter((o) => o.alive || o.dead < 3), ...fresh];
       S.squads++;
       S.cleared = false;
-      emit({ type: 'foot', id: 'squad' });
+      // (who most of them are, for the crew's word on it: a squad of Mortys isn't a squad of bugs)
+      const most = fresh.reduce((m, t) => ((m[t.kind] = (m[t.kind] ?? 0) + 1), m), {});
+      emit({ type: 'foot', id: 'squad', who: Object.keys(most).sort((a, b) => most[b] - most[a])[0] });
     }
     const targets = [{ id: 'me', n: S.me.n, h: S.me.h }, ...(S.mate ? [{ id: 'mate', n: S.mate.n, h: S.mate.h }] : [])];
     const r = march(S.troops, targets, dt, S.R, rand, obstacles());
