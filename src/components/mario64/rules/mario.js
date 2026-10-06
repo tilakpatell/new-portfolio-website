@@ -13,12 +13,12 @@
 import { findFloor } from './collide';
 import { AIR } from './moves/air';
 import { GROUND } from './moves/ground';
-import { emit, ride, setAction } from './physics';
+import { MAX_HEALTH, ride, setAction } from './physics';
 import { wrapAngle } from './vec';
 
-export { airStep, groundStep, setAction } from './physics';
+export { MAX_HEALTH };
+export { airStep, die, groundStep, heal, hurt, setAction } from './physics';
 
-export const MAX_HEALTH = 8;
 export const START_LIVES = 4;
 
 export function newMario({ x, y, z, yaw = 0 }) {
@@ -96,33 +96,4 @@ export function stepMario(m, input, w) {
   }
   m.t++;
   return m.events;
-}
-
-export function hurt(m, wedges, fromX, fromZ) {
-  if (m.invuln > 0 || wedges <= 0 || m.action === 'dead') return false;
-  m.health = Math.max(0, m.health - wedges);
-  m.invuln = 60;
-  emit(m, 'hurt', { wedges });
-  if (fromX != null) {
-    // face what hit him, and be knocked back from it
-    m.yaw = Math.atan2(fromX - m.pos.x, fromZ - m.pos.z);
-    m.fwd = -16;
-    m.vel.y = 30;
-    m.airborne = true;
-    setAction(m, 'knockback');
-  }
-  if (m.health <= 0) die(m);
-  return true;
-}
-
-export function die(m) {
-  if (m.action === 'dead') return;
-  m.health = 0;
-  m.airborne = false;
-  setAction(m, 'dead');
-  emit(m, 'dead');
-}
-
-export function heal(m, wedges) {
-  m.health = Math.min(MAX_HEALTH, m.health + wedges);
 }

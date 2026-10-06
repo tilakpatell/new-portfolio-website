@@ -8,6 +8,7 @@ import { FLOOR_UP, carried, findCeil, findFloor, pushWalls } from './collide';
 import { angleDiff } from './vec';
 
 export const HEIGHT = 160;
+export const MAX_HEALTH = 8;
 export const GRAV = 4;
 export const TERMINAL = 75;
 
@@ -193,4 +194,39 @@ export function ride(m) {
   // turned with it too
   const turn = Math.atan2(c.m[2], c.m[0]) - Math.atan2(c.prev[2], c.prev[0]);
   m.yaw += turn;
+}
+
+export function die(m) {
+  if (m.action === 'dead') return;
+  m.health = 0;
+  m.airborne = false;
+  m.held = null;
+  setAction(m, 'dead');
+  emit(m, 'dead');
+}
+
+// Takes wedges of health; from a point (fromX, fromZ), he faces it and is
+// knocked back from it. Not while blinking from the last hurt.
+export function hurt(m, wedges, fromX, fromZ) {
+  if (m.invuln > 0 || wedges <= 0 || m.action === 'dead') return false;
+  m.health = Math.max(0, m.health - wedges);
+  m.invuln = 60;
+  emit(m, 'hurt', { wedges });
+  if (m.health <= 0) {
+    die(m);
+    return true;
+  }
+  if (fromX != null) {
+    m.yaw = Math.atan2(fromX - m.pos.x, fromZ - m.pos.z);
+    m.fwd = -16;
+    m.vel.y = 30;
+    m.airborne = true;
+    m.held = null;
+    setAction(m, 'knockback');
+  }
+  return true;
+}
+
+export function heal(m, wedges) {
+  m.health = Math.min(MAX_HEALTH, m.health + wedges);
 }
