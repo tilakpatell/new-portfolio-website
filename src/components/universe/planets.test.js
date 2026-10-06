@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { MAP_NAMES, buildPlanet, mapFile } from './planets';
 import { byId } from './universes';
@@ -39,20 +39,25 @@ describe('the fandoms’ baked maps', () => {
   });
 });
 
-describe('a planet’s light', () => {
-  it('takes the sun it is given: the air, the rim and the night side all face it', () => {
-    const p = buildPlanet(byId('rickmorty'), {}, { sun: [0, 0, 1] });
+describe('the sun a planet is lit from', () => {
+  it('a planet takes the sun it is given, its air and its rim both', async () => {
+    // (the builders paint on canvases: a canvas that takes every call and draws nothing)
+    const gradient = { addColorStop() {} };
+    const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    const p = buildPlanet(byId('middleearth'), {}, { sun: [0, 0, 1] });
     expect(p.air.material.uniforms.uLight.value.toArray()).toEqual([0, 0, 1]);
     expect(p.body.material.userData.air.uSunW.value.toArray()).toEqual([0, 0, 1]);
+    // (one vector the scene turns with the map, the air and the rim reading the same)
+    expect(p.sun).toBe(p.air.material.uniforms.uLight.value);
+    expect(p.sun).toBe(p.body.material.userData.air.uSunW.value);
+    vi.unstubAllGlobals();
   });
-  it('turns its sun with the map', () => {
-    const p = buildPlanet(byId('rickmorty'), {}, { sun: [0, 0, 1] });
-    p.turn(Math.PI / 2);
-    const s = p.body.material.userData.air.uSunW.value;
-    expect(s.x).toBeCloseTo(1, 6);
-    expect(s.z).toBeCloseTo(0, 6);
-    expect(p.air.material.uniforms.uLight.value).toBe(s); // (one vector for both)
-  });
+});
+
+describe('a planet seen from across the map', () => {
   it('draws its terminator toward its own sun, not the key’s, once it is told the key', () => {
     const key = { value: new THREE.Vector3(0, 1, 0) };
     const p = buildPlanet(byId('rickmorty'), {}, { sun: [0, 0, 1], key });
@@ -63,9 +68,5 @@ describe('a planet’s light', () => {
     expect(shader.fragmentShader).toMatch(/directLight\.direction = normalize\( \( viewMatrix \* vec4\( uSunW/);
     expect(shader.fragmentShader).not.toMatch(/#include <lights_fragment_begin>/);
     expect(mat.customProgramCacheKey()).toMatch(/sun/);
-  });
-  it('a sun defaults to the old key light when none is given', () => {
-    const p = buildPlanet(byId('rickmorty'));
-    expect(p.air.material.uniforms.uLight.value.length()).toBeCloseTo(1, 6);
   });
 });

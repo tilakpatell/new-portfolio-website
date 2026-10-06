@@ -96,13 +96,12 @@ import { audioContext } from '../../lib/audio';
 import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePasses, revealAll, singlePass, texturesUnder, uploadTexture, uploadTextures } from '../../lib/three/renderer';
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
-import { DIVE_MS, FOV, cover, cameraFrom, focusPose, frontYaw as frontYawOf, overviewPose, poseAt, startFlight, worldPos } from './flight';
+import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
 import { BELT, ORDER, POSITIONS, REACH, RIM, RING, SUN } from './layout';
 import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
-import { LIGHT as ENV_LIGHT, aberrationFor, createPost, spaceEnvironment } from './post';
-import { lightAt, sunFor } from './lighting';
+import { aberrationFor, createPost, spaceEnvironment } from './post';
 import { grainFor } from '../../lib/three/noise';
 import { createFlare, flareWeight, occluded } from '../../lib/three/flare';
 import { exposureFor, sunShareOf } from '../../lib/three/exposure';
@@ -125,6 +124,7 @@ import { createBeacons } from './beacons';
 import { PHONE, createPhone } from './phone';
 import { SUPERNOVA_SITES, createSupernovae } from './supernova';
 import { DEEP, WONDERS, moveBinaries, nearestStar, openness, reachOf, wonderById } from './deep';
+import { KEY as KEY_FULL, STARS as LIT_STARS, dayYaw, lightAt, sunFor } from './lighting';
 import { createCrash } from './crash';
 import { createInfall } from './infall';
 import { DISK_N, MAW, captured, fallAt, plungeAt, pullAt, startFall } from './maw';
@@ -203,7 +203,7 @@ const INTERDICT = 40; // seconds, at most, that a pack holds the pulse drive dow
 const STREAK_SPEED = 36; // the streaks' speed tops out here: faster they'd be a wall
 const TURN = 0.0042; // radians of map per px dragged
 const DRAG = 6; // px a press may move and still be a click
-const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the landings' sun (on foot: footScene.js), upper left
+const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // key light, upper left
 
 // (Battlefront's: W and S the throttle, A and D the roll, the arrows the
 // nose, as a stick: controls.js's keyAxes)
@@ -500,9 +500,10 @@ export async function create(canvas, ctx) {
   canvas.setAttribute('aria-hidden', 'true');
   canvas.style.cursor = 'grab';
 
-  // light: a key from the star that lights where the camera is, a fill
-  // from the next or the sky, a little ambient (lighting.js; relight(),
-  // each frame, moves them; until then, the old key from the upper left)
+  // light: a key from the star that lights where you are, a fill from the
+  // second (or a cool one from the far side), a little ambient (lighting.js;
+  // set each frame by lights(), below). Until the first frame, the map's old
+  // key from the upper left.
   const key = new THREE.DirectionalLight('#fff8f0', 2.35);
   key.position.copy(LIGHT).multiplyScalar(50);
   const fill = new THREE.DirectionalLight('#8ea2ff', 0.45);
@@ -629,8 +630,7 @@ export async function create(canvas, ctx) {
   const T = await loadTextures({ small });
 
   // what metal reflects, and the passes after the scene (post.js)
-  // (made again in a new star's colour when the key's star changes: relight())
-  let env = spaceEnvironment(renderer, T.sky, { colour: lightAt([0, 0, 300]).key.colour }); // (the home sun's)
+  let env = spaceEnvironment(renderer, T.sky);
   scene.environment = env.texture;
   const post = createPost(renderer, scene, camera, { small });
 
@@ -683,8 +683,11 @@ export async function create(canvas, ctx) {
   const sunLight = new THREE.PointLight('#ffd6a8', 890 * (RING / 85) ** 1.4, 320 * HOME_SPREAD, 1.4);
   map.add(sunLight);
 
+  // each planet lit from its own star (lighting.js's sunFor, in the map's
+  // axes; turned with the map into the world's each frame: lights())
+  const sunInMap = Object.fromEntries(ORDER.map((id) => [id, sunFor(id)]));
   const planets = ORDER.map((id) => {
-    const p = buildPlanet(byId(id), T, { sun: sunFor(id), key: keyW });
+    const p = buildPlanet(byId(id), T, { sun: new THREE.Vector3(...sunInMap[id]), key: keyW });
     p.group.position.set(...POSITIONS[id]);
     map.add(p.group);
     return p;
@@ -1098,9 +1101,18 @@ export async function create(canvas, ctx) {
     const [wx, wz] = rotate(s.x * 0.55, s.z * 0.55);
     return { target: [wx, s.y * 0.5, wz], dist: clamp(r * 1.25, 700 * HOME_SPREAD, 7000), pitch: 0.62 };
   };
-  // the turn of the map that brings a place round to the front (flight.js:
-  // a station nearest the camera, a planet with its day side to it)
-  const frontYaw = (id) => frontYawOf(id, state.yaw);
+  // the turn of the map that brings a place round to the front, nearest the
+  // camera, with nothing between (the rest of the ring to its sides); a
+  // station comes round a little past the front, so the sun in the middle
+  // sits off to the left of it rather than right behind
+  const frontYaw = (id) => {
+    const [x, , z] = POSITIONS[id];
+    const u = byId(id);
+    // (a world: round so its sun's behind the camera, and it's seen lit, not
+    // as a black disc; lighting.js)
+    const a = u.kind !== 'core' && !u.portal ? dayYaw(sunInMap[id]) : Math.atan2(z, x) - Math.PI / 2 + (u.kind === 'core' ? 0.62 : 0);
+    return state.yaw + Math.atan2(Math.sin(a - state.yaw), Math.cos(a - state.yaw));
+  };
 
   // where the camera's going: with no ship, a pose (flight.js); flying, a view
   const goal = () => (state.sel ? focusPose(state.sel, state.yaw, size, state.rect) : state.overview);
@@ -3424,7 +3436,7 @@ export async function create(canvas, ctx) {
     const down = guestsOnFoot(performance.now()).filter((g) => g.foot.planet === id);
     const friend = down.find((g) => g.ally) ?? down[0] ?? null;
     const near = friend && { ...friend.foot.ship, kind: friend.foot.kind };
-    if (!foot.begin({ id, ship: state.ship, model: state.model, kind: state.kind, light: lightInMap().toArray(), near, entry })) return false;
+    if (!foot.begin({ id, ship: state.ship, model: state.model, kind: state.kind, light: sunInMap[id] ?? lightInMap().toArray(), near, entry })) return false;
     dropAuto();
     state.hotSaid = null;
     if (entry) {
@@ -3497,7 +3509,7 @@ export async function create(canvas, ctx) {
     m.park?.(foot.phase !== 'land' && foot.phase !== 'lift');
     updatePlumes(dt, t, foot.phase === 'land' || foot.phase === 'lift' ? 0.25 : 0);
     engine?.set({ speed: foot.phase === 'land' || foot.phase === 'lift' ? SHIP.cruise * 0.6 : 0, boost: false, on: state.shown && !props.frozen && !document.hidden && (foot.phase === 'land' || foot.phase === 'lift') });
-    foot.day(lightInMap());
+    foot.day(sunInMap[foot.id] ? footSun.set(...sunInMap[foot.id]) : lightInMap());
     // on the way in through the air: shaken by the burn and the clouds (not
     // with reduced motion), the roar as loud as the burn
     const entry = foot.entry();
@@ -3626,119 +3638,120 @@ export async function create(canvas, ctx) {
   const pace = createPace();
 
   // The finish (post.js): grain and the edges' aberration with the boost's
-  // rush and a hit; the home sun's glare in the lens (lib/three/flare),
-  // hidden by whatever's between the eye and it, the ship too, and gone at
+  // rush and a hit; the glare in the lens (lib/three/flare) of the two stars
+  // that light you (lighting.js's key and fill, where the fill is a star: two
+  // suns, two flares), each hidden by whatever's between the eye and it, the
+  // ship too, as strong as the star's light is where you are, and gone at
   // the pace's step 2 or on a low tier; and the exposure easing with how
-  // much of the frame the sun fills (lib/three/exposure). Not on foot: the
+  // much of the frame they fill (lib/three/exposure). Not on foot: the
   // landing has its own sky.
-  const sunFlare = tier === 'low' ? null : createFlare({ colour: '#ffd6a8', small });
-  if (sunFlare) camera.add(sunFlare.group);
+  const flares = tier === 'low' ? [] : [createFlare({ small }), createFlare({ small })];
+  for (const f of flares) camera.add(f.group);
+  const starOf = Object.fromEntries(LIT_STARS.map((st) => [st.id, st]));
   const shipSolid = { at: [0, 0, 0], r: 0 };
-  // the glare is the key star's (relight(): the home sun at home, Ember by
-  // Ember), hidden by everything solid but the star itself
-  let flareStar = { id: 'sun', at: SUN.at, r: SUN.r, colour: '#ffd6a8' };
-  const solidsBut = (id) => [...SOLIDS.filter((o) => o.id !== id && o.id !== `${id}-2`), shipSolid];
-  let flareSolids = solidsBut('sun');
-  const sunAt = new THREE.Vector3();
+  // (what can hide each star: everything but the star itself, made once a star)
+  const hiders = new Map();
+  const hidersOf = (id) => {
+    if (!hiders.has(id)) hiders.set(id, [...SOLIDS.filter((o) => o.id !== id), shipSolid]);
+    return hiders.get(id);
+  };
+  const starAt = new THREE.Vector3();
   const eyeAt = new THREE.Vector3();
   const halfTan = () => Math.tan((camera.fov * Math.PI) / 360);
   let exposure = 1;
-
-  // One light (lighting.js): the key from the star that lights where the
-  // camera is, the fill from the next star or the sky, the ambient tinted by
-  // a nebula you're in; eased at 2 a second (a jump between stars turns the
-  // light over, never snaps it), and turned with the map. The key's
-  // direction is kept in the map's space, so a drag of the map turns the
-  // light with it at once; the sky's fill stays where it was on the screen.
-  // Each planet's own sun turns with the map too (planets.js: the key
-  // stands in for it in its lighting). The environment's glow is made again
-  // in a new key star's colour (a frame's work, only when the star changes)
-  // and turned each frame to where the key is.
-  const keyMap = LIGHT.clone().applyAxisAngle(Y_AXIS, -state.yaw);
-  const fillDir = new THREE.Vector3().copy(fill.position).normalize();
-  const lightAim = new THREE.Vector3();
-  const lightTurn = new THREE.Quaternion();
-  const lightNone = new THREE.Quaternion();
-  const lightColour = new THREE.Color();
-  const eyeMap = new THREE.Vector3();
-  let keyStar = 'sun';
-  let lit = false; // (the first frame takes the light as it is, eased from then on)
-  let litFoot = false; // (and stepping out or back in takes it at once)
-  // (on foot the landing keeps the old key from the upper left, which its
-  // sky and its day are made for: footScene.js, lightInMap())
-  const homeLight = lightAt([0, 0, 0]);
-  const footLight = { star: null, source: null, key: { dir: null, colour: new THREE.Color('#fff8f0').toArray(), strength: 2.35 }, fill: homeLight.fill, ambient: homeLight.ambient };
-  const relight = (dt, t, nova) => {
-    camera.getWorldPosition(eyeMap);
-    map.worldToLocal(eyeMap);
-    const flash = nova && nova.k > 0.05 ? { at: nova.at.toArray(), colour: '#ffffff', strength: 3 * nova.k, reach: 3000 } : null;
-    let l = lightAt(eyeMap.toArray(), { now: t, nova: flash });
-    const walking = onFoot();
-    if (walking) l = { ...footLight, key: { ...footLight.key, dir: lightInMap().negate().toArray() } };
-    const k = !lit || reduced || walking !== litFoot ? 1 : 1 - Math.exp(-dt * 2);
-    lit = true;
-    litFoot = walking;
-    // the key: toward its star, turned part way there from where it was
-    lightAim.set(-l.key.dir[0], -l.key.dir[1], -l.key.dir[2]);
-    lightTurn.setFromUnitVectors(keyMap, lightAim);
-    keyMap.applyQuaternion(lightNone.identity().slerp(lightTurn, k)).normalize();
-    key.position.copy(keyMap).applyAxisAngle(Y_AXIS, state.yaw).multiplyScalar(50);
-    key.color.lerp(lightColour.setRGB(...l.key.colour), k);
-    key.intensity += (l.key.strength - key.intensity) * k;
-    keyW.value.copy(key.position).normalize();
-    // the fill: a second star where it is in the map; the sky's, fixed on the screen
-    lightAim.set(-l.fill.dir[0], -l.fill.dir[1], -l.fill.dir[2]);
-    if (!l.fill.sky) lightAim.applyAxisAngle(Y_AXIS, state.yaw);
-    lightTurn.setFromUnitVectors(fillDir, lightAim);
-    fillDir.applyQuaternion(lightNone.identity().slerp(lightTurn, k)).normalize();
-    fill.position.copy(fillDir).multiplyScalar(50);
-    fill.color.lerp(lightColour.setRGB(...l.fill.colour), k);
-    fill.intensity += (l.fill.strength - fill.intensity) * k;
-    ambient.color.lerp(lightColour.setRGB(...l.ambient.colour), k);
-    ambient.intensity += (l.ambient.strength - ambient.intensity) * k;
-    for (const p of planets) p.turn(state.yaw);
-    if (l.source && l.source.id !== 'nova') {
-      if (l.source.id !== flareStar.id) flareSolids = solidsBut(l.source.id);
-      flareStar = l.source;
-    }
-    if (l.star && l.star !== keyStar && l.star !== 'nova') {
-      keyStar = l.star;
-      const next = spaceEnvironment(renderer, T.sky, { colour: l.key.colour });
-      scene.environment = next.texture;
-      env.dispose();
-      env = next;
-    }
-    // (on foot, the environment as made: its glow where the old key is)
-    if (walking) scene.environmentRotation.set(0, 0, 0);
-    else scene.environmentRotation.setFromQuaternion(lightTurn.setFromUnitVectors(ENV_LIGHT, keyW.value));
-  };
-
   const finish = (dt) => {
     post.grain(grainFor({ rush: state.streak, reduced }));
     post.aberration(aberrationFor({ rush: state.streak, hit: state.hurt, tier }));
-    let ndc = [0, 0];
-    let weight = 0;
     let share = 0;
-    if (!onFoot()) {
-      map.localToWorld(sunAt.set(...flareStar.at));
-      camera.getWorldPosition(eyeAt);
-      const dist = sunAt.distanceTo(eyeAt);
-      sunAt.project(camera);
-      if (sunAt.z < 1) {
-        ndc = [sunAt.x, sunAt.y];
-        const size = flareStar.r / Math.max(dist, flareStar.r) / halfTan();
-        const s = state.ship;
-        shipSolid.r = s ? LENGTH * 0.45 : 0;
-        if (s) shipSolid.at = [s.x, s.y, s.z];
-        const hidden = occluded({ from: map.worldToLocal(eyeAt).toArray(), to: flareStar.at, solids: flareSolids });
-        share = sunShareOf({ ndc, size }) * (1 - hidden);
-        // (half as strong over the map, which is a chart, not a place you're in)
-        weight = post.flareOn ? flareWeight({ ndc, occluded: hidden, size }) * (flying() && state.view !== 'map' ? 1 : 0.5) : 0;
+    const s = state.ship;
+    shipSolid.r = s ? LENGTH * 0.45 : 0;
+    if (s) shipSolid.at = [s.x, s.y, s.z];
+    camera.getWorldPosition(eyeAt);
+    const eye = map.worldToLocal(eyeAt.clone()).toArray();
+    [litBy.key, litBy.fill].forEach((light, i) => {
+      const star = light && starOf[light.id];
+      let ndc = [0, 0];
+      let weight = 0;
+      if (star && !onFoot()) {
+        map.localToWorld(starAt.set(...star.at));
+        const dist = starAt.distanceTo(eyeAt);
+        starAt.project(camera);
+        if (starAt.z < 1) {
+          ndc = [starAt.x, starAt.y];
+          const size = star.r / Math.max(dist, star.r) / halfTan();
+          const hidden = occluded({ from: eye, to: star.at, solids: hidersOf(star.id) });
+          // (as strong as its light is here: a far star a glint, not a glare)
+          const k = Math.min(1, light.strength / KEY_FULL);
+          share += sunShareOf({ ndc, size }) * (1 - hidden) * k;
+          // (half as strong over the map, which is a chart, not a place you're in)
+          weight = post.flareOn ? flareWeight({ ndc, occluded: hidden, size }) * k * (flying() && state.view !== 'map' ? 1 : 0.5) : 0;
+        }
       }
-    }
-    sunFlare?.set({ ndc, weight, colour: flareStar.colour, camera });
+      flares[i]?.set({ ndc, weight, colour: star?.colour ?? null, camera });
+    });
+    share = Math.min(1, share);
     exposure = exposureFor({ sunShare: share, darkShare: 1 - share, last: exposure, dt, reduced });
     post.exposure(onFoot() ? 1 : exposure);
+  };
+
+  // The scene's lights from the stars (lighting.js), at where the camera is:
+  // the key and the fill turned to come from the stars that light it, each
+  // eased (2 a second on each part of the way and the colour, so flying
+  // from the home sun to Ember the light turns orange over the trip), the
+  // ambient tinted in a nebula; and every planet's sun turned with the map.
+  // A supernova's flash is a star while it burns. All at once on the first
+  // frame and under reduced motion.
+  const lightNow = { key: new THREE.Vector3().copy(LIGHT), fill: new THREE.Vector3(0.7, -0.4, -0.3).normalize(), first: true };
+  // (what lit the last frame: the flares are drawn for its key and fill)
+  let litBy = { key: null, fill: null };
+  let envStar = null; // (the star the reflections' glow was made for)
+  const lightTo = new THREE.Vector3();
+  const footSun = new THREE.Vector3(); // (the landed planet's, for the crew's day: its own vector, kept)
+  const lightColour = new THREE.Color();
+  const toward = (v, to, k) => {
+    v.x += Math.max(-k, Math.min(k, to.x - v.x));
+    v.y += Math.max(-k, Math.min(k, to.y - v.y));
+    v.z += Math.max(-k, Math.min(k, to.z - v.z));
+    return v;
+  };
+  const tint = (c, to, k) => {
+    c.r += Math.max(-k, Math.min(k, to.r - c.r));
+    c.g += Math.max(-k, Math.min(k, to.g - c.g));
+    c.b += Math.max(-k, Math.min(k, to.b - c.b));
+  };
+  const lights = (dt) => {
+    for (const p of planets) {
+      const s = sunInMap[p.id];
+      p.sun.set(s[0], s[1], s[2]).applyAxisAngle(Y_AXIS, state.yaw);
+    }
+    const nv = novae.nova();
+    const nova = nv && nv.k > 0.05 ? { at: nv.at.toArray ? nv.at.toArray() : nv.at, colour: '#ffffff', strength: 3 * nv.k } : null;
+    const l = lightAt(camLocal.toArray(), { nova });
+    litBy = l;
+    // what metal reflects made again round the new key when the star that
+    // lights you changes (a few ms, and only crossing from one star's
+    // neighbourhood to another's): its glow where the star is, in its colour
+    if (l.key.id !== envStar && !lightNow.first) {
+      envStar = l.key.id;
+      const next = spaceEnvironment(renderer, T.sky, { light: lightTo.set(...l.key.dir).negate().applyAxisAngle(Y_AXIS, state.yaw), colour: l.key.colour });
+      scene.environment = next.texture;
+      env.dispose();
+      env = next;
+    } else if (lightNow.first) envStar = l.key.id;
+    const k = lightNow.first || reduced ? Infinity : 2 * dt;
+    lightNow.first = false;
+    // (the way toward each light, in the world's axes: back along the way its light goes)
+    toward(lightNow.key, lightTo.set(...l.key.dir).negate().applyAxisAngle(Y_AXIS, state.yaw), k).normalize();
+    toward(lightNow.fill, lightTo.set(...l.fill.dir).negate().applyAxisAngle(Y_AXIS, state.yaw), k).normalize();
+    key.position.copy(lightNow.key).multiplyScalar(50);
+    keyW.value.copy(lightNow.key); // (each planet stands its own sun in for it: planets.js)
+    fill.position.copy(lightNow.fill).multiplyScalar(50);
+    tint(key.color, lightColour.setRGB(...l.key.colour), k);
+    tint(fill.color, lightColour.setRGB(...l.fill.colour), k);
+    key.intensity += Math.max(-k, Math.min(k, l.key.strength - key.intensity));
+    fill.intensity += Math.max(-k, Math.min(k, l.fill.strength - fill.intensity));
+    ambient.color.setRGB(...l.ambient);
+    ambient.intensity = 1;
   };
 
   function render(ms, now) {
@@ -3918,7 +3931,6 @@ export async function create(canvas, ctx) {
     const novaBusy = novae.update(t, dt, camera);
     const nova = novaBusy ? novae.nova() : null;
     if (nova && nova.k > 0.6 && !reduced) state.flare = Math.max(state.flare, 1 + nova.k * 0.6);
-    relight(dt, t, nova);
     if (!reduced && flying() && state.view === 'cockpit' && state.streak > 0.001) {
       // from the pilot's seat: out from the middle of the view
       post.rush(state.streak * 0.8, (state.rect.x + state.rect.w / 2) / size.w, 1 - (state.rect.y + state.rect.h / 2) / size.h);
@@ -3970,6 +3982,7 @@ export async function create(canvas, ctx) {
     // inside it up to date, once)
     map.updateWorldMatrix(true, false);
     map.worldToLocal(camLocal.copy(camera.position));
+    lights(dt);
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
     // the Citadel's siege: rebuilt or patched up when it's time, what's left
     // of it drawn, and your word on it out to everyone (soon after a hit of
@@ -4708,7 +4721,7 @@ export async function create(canvas, ctx) {
       burst.clear();
       burst.dispose();
       traffic?.dispose();
-      sunFlare?.dispose();
+      for (const f of flares) f.dispose();
       disposeTree(scene);
       post.dispose();
       env.dispose();

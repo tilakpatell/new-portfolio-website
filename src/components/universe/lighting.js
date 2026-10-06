@@ -1,172 +1,138 @@
-// Which star lights a thing on the universe map, from where, in what colour
-// and how strongly: plain numbers, no drawing (the scene moves its lights
-// to the answer, the planets take their sun from it).
+// Which star lights a point on the universe map, as plain numbers (the scene
+// turns them into its lights; tested in Node).
 //
-// - STARS: every star that lights what's near it, each { id, at, colour,
-//   strength, reach }: the home sun, and deep space's (deep.js's WONDERS:
-//   Ember, Halcyon, the Twins' two suns, the Lantern, the Graveyard's white
-//   dwarf). A binary's two suns carry `binary` and `part` ('a' or 'b') and
-//   are where binaryAt puts them at the scene's clock.
-// - weightOf(star, point, now): how much a star counts at a point: its
-//   strength over the distance squared, no nearer than its own radius, cut
-//   softly to nothing between its reach and half as far again.
-// - lightAt(point, { now, nova }) → { star, source, key, fill, ambient }: the
-//   heaviest star is the key (`dir` the way its light travels, from the star
-//   toward the point; `colour` linear rgb; `strength`), the second the fill
-//   where it counts for a tenth of the first, else the sky's cool fill
-//   (`sky: true`, a fixed direction the scene keeps on the screen, not the
-//   map). The key's colour is mixed by the two stars' weights, so flying
-//   from one star to the next turns the light over rather than snapping it.
-//   `nova` ({ at, colour, strength }) is one more star while it burns.
-//   `source` is the key's star itself ({ id, at, r, colour }: where its
-//   glare goes in the lens), null out past every star's reach.
-// - sunFor(planetId) → the unit direction from a planet toward the star
-//   that lights it (the fandoms' worlds all go round the home sun).
-// - daySideApproach(at, sunDir, radius, from) → where to arrive at a
-//   planet: on its sunlit side, nearest the way you came.
+// Every star is a light: the home sun, the suns out in deep space, both of
+// the Twins (going round each other: their solids' positions, which
+// deep.js's moveBinaries keeps up to date), the pulsar and the white dwarf,
+// each with a colour, a strength and a reach. A star's weight at a point is
+// its strength over the square of the distance (no more than at its own
+// surface), cut off softly between its reach and half again. The heaviest
+// is the key light, coming from that star; the second, if it counts for a
+// tenth of the first, the fill; else a cool fill from the far side of the
+// key and below, as the map always had one. Deep space between the stars is never black: the key
+// is floored. Inside a nebula the ambient takes a quarter of its colour.
 //
-// Everything is in the map's own space (the scene turns it with the map).
+// STARS → [{ id, at, r, colour, strength, reach }]
+// weightOf(star, point) → its weight there
+// lightAt(point, { stars, nova }) → { key, fill: { id, dir (from the star
+//   toward the point, unit), colour (linear [r, g, b]), strength }, ambient }
+//   (`nova`, { at, colour, strength } while one burns, is one more star)
+// sunFor(id, { positions, stars }) → the unit direction from a planet toward
+//   the star that lights it
+// daySideApproach(at, sunDir, radius, from, { dist }) → a point `dist`
+//   radii from `at` on the side facing `sunDir`, as near the way `from` is
+//   as it can be: arrivals see a lit world, not a black disc
+// dayYaw(sunDir) → the turn of the map (about its up axis, as the scene's
+//   map.rotation.y) that brings `sunDir` round to point at the camera, which
+//   looks from +z: a world picked on the map is seen from its day side
+
 import { POSITIONS, SUN } from './layout';
-import { WONDERS, binaryAt } from './deep';
+import { DEEP_SOLIDS, WONDERS } from './deep';
 
-const KEY = 2.35; // the key's strength in the home sun's full light (the scene's key before)
-const FLOOR = 0.9; // and never less: deep space is dark, never black
-const SKY_FILL = { dir: norm([-0.7, 0.4, 0.3]), colour: '#8ea2ff', strength: 0.45 }; // from below right, as before
-const AMBIENT = { colour: '#b8c4ff', strength: 0.4 };
-const WHITE_MIX = 0.6; // a star's light is its colour most of the way to white (deepspace.js's own stars do much the same)
+const solidAt = (id) => DEEP_SOLIDS.find((o) => o.id === id)?.at;
 
-const wonder = (id) => WONDERS.find((w) => w.id === id);
-const starsOf = (kind) => WONDERS.filter((w) => w.kind === kind);
-
-// The home sun reaches every fandom's world (the furthest is under 5,700
-// out) and fades past the rim of the map; deep space's stars light their own
-// planets (out to 520) and fade well before the nearest fandom's world, so
-// each of those is lit by the home sun alone.
+// (the reaches are the map's since it was scaled up, scale.js: the worlds
+// lie 2000 to 5700 out from the home sun, the deep stars among them)
 export const STARS = [
-  { id: 'sun', at: SUN.at, r: SUN.r, colour: '#ffd6a8', strength: 1, reach: 6000 },
-  ...starsOf('star').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: w.color, strength: 0.8, reach: 1000 })),
-  ...starsOf('binary').flatMap((w) => [
-    { id: w.id, at: w.at, r: w.r, colour: w.color, strength: 0.5, reach: 1000, binary: w.id, part: 'a' },
-    { id: `${w.id}-2`, at: w.at, r: w.pair.r, colour: w.pair.color, strength: 0.5, reach: 1000, binary: w.id, part: 'b' },
+  { id: 'sun', at: SUN.at, r: SUN.r, colour: '#ffd6a8', strength: 1, reach: 9000 },
+  ...WONDERS.filter((w) => w.kind === 'star').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: w.color, strength: 0.8, reach: 7000 })),
+  ...WONDERS.filter((w) => w.kind === 'binary').flatMap((w) => [
+    { id: w.id, at: solidAt(w.id) ?? w.at, r: w.r, colour: w.color, strength: 0.5, reach: 7000 },
+    { id: `${w.id}-2`, at: solidAt(`${w.id}-2`) ?? w.at, r: w.pair.r, colour: w.pair.color, strength: 0.5, reach: 7000 },
   ]),
-  ...starsOf('pulsar').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: '#cfe6ff', strength: 0.3, reach: 900 })),
-  ...starsOf('graveyard').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: w.color, strength: 0.25, reach: 700 })),
+  ...WONDERS.filter((w) => w.kind === 'pulsar').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: '#cfe6ff', strength: 0.3, reach: 3000 })),
+  ...WONDERS.filter((w) => w.kind === 'graveyard').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: w.color, strength: 0.25, reach: 2500 })),
 ];
-const NEBULAE = starsOf('nebula');
+const HOME = STARS[0];
+const NEBULAE = WONDERS.filter((w) => w.kind === 'nebula');
 
-// the home sun's weight where its light is full: at the furthest fandom's world
-const FULL = 5800;
+export const KEY = 2.35; // the key light's strength in the home system, as the map was always lit
+const FLOOR = 0.9; // and its least, out between the stars
+const FILL = { colour: '#8ea2ff', strength: 0.45 };
+const AMBIENT = { colour: '#b8c4ff', strength: 0.4 };
 
-function norm(a) {
-  const l = Math.hypot(a[0], a[1], a[2]) || 1;
-  return [a[0] / l, a[1] / l, a[2] / l];
-}
-const smoothstep = (e0, e1, x) => {
-  const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+const smooth = (a, b, x) => {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
 };
-// '#rrggbb' → linear rgb (the renderer's working space)
-const toLinear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-function linear(hex, mix = 0) {
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const len = (a) => Math.hypot(a[0], a[1], a[2]);
+const unit = (a) => {
+  const l = len(a) || 1;
+  return [a[0] / l, a[1] / l, a[2] / l];
+};
+// '#rrggbb' → linear [r, g, b]
+const linear = (hex) => {
   const n = parseInt(hex.slice(1), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => toLinear(v / 255 + (1 - v / 255) * mix));
-}
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => {
+    const v = c / 255;
+    return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  });
+};
 
-const starAt = (s, now) => (s.binary ? binaryAt(wonder(s.binary), now)[s.part] : s.at);
-
-export function weightOf(star, point, now = 0) {
-  const at = starAt(star, now);
-  const d2 = (point[0] - at[0]) ** 2 + (point[1] - at[1]) ** 2 + (point[2] - at[2]) ** 2;
+export function weightOf(star, point) {
+  const d = len(sub(point, star.at));
   const r = star.r ?? 1;
-  return (star.strength / Math.max(d2, r * r)) * smoothstep(star.reach * 1.5, star.reach, Math.sqrt(d2));
+  return (star.strength / Math.max(d * d, r * r)) * smooth(star.reach * 1.5, star.reach, d);
 }
-const REF = weightOf(STARS[0], [FULL, 0, 0]);
+// (the home sun's weight 6000 out, past the farthest world: where the key is
+// still at its full strength, so every world is lit as brightly as the map
+// always lit them, in its own star's colour and from its way; only out past
+// the stars does the light fall toward the floor)
+export const FULL_AT = 6000;
+const FULL = weightOf(HOME, [FULL_AT, 0, 0]);
 
-// the two heaviest stars at a point, each { star, at, w }
-function heaviest(point, stars, now, nova) {
-  let one = null;
-  let two = null;
-  const all = nova ? [...stars, { id: 'nova', at: nova.at, r: 1, colour: nova.colour, strength: nova.strength, reach: nova.reach ?? 2000 }] : stars;
-  for (const star of all) {
-    const w = weightOf(star, point, now);
-    if (w <= 0) continue;
-    const e = { star, at: starAt(star, now), w };
-    if (!one || w > one.w) {
-      two = one;
-      one = e;
-    } else if (!two || w > two.w) two = e;
-  }
-  return { one, two };
+// the stars by weight at a point, heaviest first; past every star's reach, by
+// the square of the distance alone, so there's always a nearest
+function ranked(point, stars) {
+  let list = stars.map((s) => ({ s, w: weightOf(s, point) })).filter((x) => x.w > 0);
+  if (!list.length) list = stars.map((s) => ({ s, w: s.strength / Math.max(1, len(sub(point, s.at)) ** 2), uncut: true }));
+  return list.sort((a, b) => b.w - a.w);
 }
 
-const from = (at, point) => norm([point[0] - at[0], point[1] - at[1], point[2] - at[2]]);
-
-export function lightAt(point, { stars = STARS, now = 0, nova = null } = {}) {
-  const { one, two } = heaviest(point, stars, now, nova);
-  if (!one) {
-    // out past every star's reach: the floor, from the home sun's side
-    return { star: null, source: null, key: { dir: from(SUN.at, point), colour: linear(STARS[0].colour, WHITE_MIX), strength: FLOOR }, fill: sky(), ambient: ambientAt(point) };
-  }
-  // the key's colour mixed with the runner-up's by weight: equal where the
-  // two weigh the same, all the heavier's where the other is nothing
-  const share = two ? two.w / (one.w + two.w) : 0;
-  const a = linear(one.star.colour, WHITE_MIX);
-  const b = two ? linear(two.star.colour, WHITE_MIX) : a;
-  const colour = a.map((v, i) => v + (b[i] - v) * share);
-  const strength = Math.min(KEY, Math.max(FLOOR, (KEY * one.w) / REF));
-  const key = { dir: from(one.at, point), colour, strength };
+export function lightAt(point, { stars = STARS, nova = null } = {}) {
+  const all = nova ? [...stars, { id: 'nova', at: nova.at, r: 1, colour: nova.colour, strength: nova.strength, reach: 4000 }] : stars;
+  const [first, second] = ranked(point, all);
+  const key = {
+    id: first.s.id,
+    dir: unit(sub(point, first.s.at)),
+    colour: linear(first.s.colour),
+    strength: first.uncut ? FLOOR : Math.max(FLOOR, KEY * Math.min(1, first.w / FULL)),
+  };
   const fill =
-    two && two.w > one.w * 0.1
-      ? { dir: from(two.at, point), colour: linear(two.star.colour, WHITE_MIX), strength: Math.min(strength, Math.max(SKY_FILL.strength, (strength * two.w) / one.w)), sky: false }
-      : sky();
-  return { star: one.star.id, source: { id: one.star.id, at: one.at, r: one.star.r, colour: one.star.colour }, key, fill, ambient: ambientAt(point) };
-}
-
-function sky() {
-  return { dir: [...SKY_FILL.dir], colour: linear(SKY_FILL.colour), strength: SKY_FILL.strength, sky: true };
-}
-
-// the sky's own light, a quarter of the way to a nebula's colour inside it
-function ambientAt(point) {
-  const colour = linear(AMBIENT.colour);
-  for (const n of NEBULAE) {
-    const d = Math.hypot(point[0] - n.at[0], point[1] - n.at[1], point[2] - n.at[2]);
-    const k = 0.25 * smoothstep(n.r * 2, n.r, d);
-    if (k <= 0) continue;
-    const tint = linear(n.colors[0]);
-    for (let i = 0; i < 3; i++) colour[i] += (tint[i] - colour[i]) * k;
+    second && !second.uncut && second.w > first.w * 0.1
+      ? { id: second.s.id, dir: unit(sub(point, second.s.at)), colour: linear(second.s.colour), strength: Math.min(1.2, Math.max(FILL.strength, KEY * Math.min(1, second.w / FULL) * 0.5)) }
+      : // (else the map's cool fill: from the far side of the key, and from below)
+        { id: null, dir: unit([-key.dir[0], 0.6 - key.dir[1] * 0.5, -key.dir[2]]), colour: linear(FILL.colour), strength: FILL.strength };
+  // the ambient, a quarter of the way toward the colour of a nebula you're in
+  let ambient = linear(AMBIENT.colour).map((c) => c * AMBIENT.strength);
+  const neb = NEBULAE.find((w) => len(sub(point, w.at)) < w.r);
+  if (neb) {
+    const tint = linear(neb.colors[0]);
+    ambient = ambient.map((c, i) => c * 0.75 + tint[i] * AMBIENT.strength * 0.25);
   }
-  return { colour, strength: AMBIENT.strength };
+  return { key, fill, ambient };
 }
 
-export function sunFor(planetId, { positions = POSITIONS, stars = STARS, now = 0 } = {}) {
-  const p = positions[planetId];
-  const { one } = heaviest(p, stars, now, null);
-  const at = one ? one.at : SUN.at;
-  return norm([at[0] - p[0], at[1] - p[1], at[2] - p[2]]);
+export function sunFor(id, { positions = POSITIONS, stars = STARS } = {}) {
+  const p = positions[id];
+  const [first] = ranked(p, stars);
+  return unit(sub(first.s.at, p));
 }
 
-// The way in to a planet: `dist` radii out from its middle, the direction
-// you came from if that's well onto the day side, else round past the
-// terminator on the nearest side to a sun 30° up the sky (so the planet
-// shows more than a half moon), never straight down the line from behind.
-const DAY = 0.5; // sin 30°
+export const dayYaw = (sun) => Math.atan2(-sun[0], sun[2]);
+
 export function daySideApproach(at, sunDir, radius, from, { dist = 2.2 } = {}) {
-  const s = norm(sunDir);
-  let d = norm([from[0] - at[0], from[1] - at[1], from[2] - at[2]]);
-  const k = d[0] * s[0] + d[1] * s[1] + d[2] * s[2];
-  if (k < DAY) {
-    // the part of the way you came across the sun's line…
-    let side = [d[0] - s[0] * k, d[1] - s[1] * k, d[2] - s[2] * k];
-    if (Math.hypot(...side) < 1e-6) {
-      // (straight behind: any way round, level if it can be)
-      side = Math.abs(s[1]) < 0.9 ? [-s[2], 0, s[0]] : [1, 0, 0];
-    }
-    side = norm(side);
-    const c = Math.sqrt(1 - DAY * DAY);
-    // …turned 30° into the day
-    d = norm([side[0] * c + s[0] * DAY, side[1] * c + s[1] * DAY, side[2] * c + s[2] * DAY]);
+  const s = unit(sunDir);
+  const v = sub(from, at);
+  let d = unit(v);
+  const day = d[0] * s[0] + d[1] * s[1] + d[2] * s[2];
+  if (day < 0) {
+    // round to the rim of the day side, the nearest point of it to the way you came
+    const k = v[0] * s[0] + v[1] * s[1] + v[2] * s[2];
+    const rim = [v[0] - s[0] * k, v[1] - s[1] * k, v[2] - s[2] * k];
+    // (straight from behind: any way round will do; level, if it can be)
+    d = len(rim) > 1e-6 * (len(v) || 1) ? unit(rim) : unit(Math.abs(s[1]) < 0.9 ? [-s[2], 0, s[0]] : [1, 0, 0]);
   }
-  const r = radius * dist;
-  return [at[0] + d[0] * r, at[1] + d[1] * r, at[2] + d[2] * r];
+  return [at[0] + d[0] * dist * radius, at[1] + d[1] * dist * radius, at[2] + d[2] * dist * radius];
 }

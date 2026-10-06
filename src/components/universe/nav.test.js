@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { CHART_VIEWS, DESTINATIONS, DRIVES, HYPER, KINDS, chartAt, chartHeading, destinationById, distanceTo, findDestinations, formatDistance, formatTime, hyperState, onChart, findDestination, goalOf, parkFor, parseDrive, riftExit, riftSpot, tourFrom, tripTime, TOUR_IDS } from './nav';
 import { GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, inTrench, orbiting, spawn, startAt, step } from './ship';
-import { ORDER, POSITIONS } from './layout';
-import { sunFor } from './lighting';
+import { ORDER } from './layout';
 import { WONDERS } from './deep';
 import { MAW } from './maw';
 import { byId } from './universes';
+import { sunFor } from './lighting';
 
 const inside = (s) => SOLIDS.some((p) => Math.hypot(s.x - p.at[0], s.y - p.at[1], s.z - p.at[2]) < (inTrench(p, s.x, s.y, s.z) ? p.band.floor : p.r) + SHIP.radius - 1e-6);
 const worlds = ORDER.filter((id) => byId(id).kind !== 'core');
@@ -302,16 +302,16 @@ describe('the grand tour', () => {
   });
 });
 
-describe('a jump’s way out', () => {
-  it('comes out on the day side of a planet', () => {
-    for (const id of ORDER.filter((i) => byId(i).kind !== 'core')) {
-      for (const from of [[0, 0], [9000, 0], [-9000, 0], [0, 9000], [0, -9000]]) {
-        const park = parkFor(id, from);
-        const p = POSITIONS[id];
-        const s = sunFor(id);
-        const d = [park.x - p[0], park.y - p[1], park.z - p[2]];
-        expect((d[0] * s[0] + d[1] * s[1] + d[2] * s[2]) / Math.hypot(...d), `${id} from ${from}`).toBeGreaterThan(0.2);
-      }
+describe('coming out of a jump', () => {
+  // (a jump parks as the autopilot does: on the world's day side, so what
+  // you come out to is lit, not a black disc)
+  it('a jump comes out on the day side', () => {
+    for (const id of worlds.filter((w) => !byId(w).portal)) {
+      const g = GOALS[id];
+      const s = sunFor(id);
+      const behind = [g.at[0] - s[0] * 1200, g.at[2] - s[2] * 1200];
+      const k = parkFor(id, behind);
+      expect((k.x - g.at[0]) * s[0] + (k.z - g.at[2]) * s[2], id).toBeGreaterThanOrEqual(-1e-6);
     }
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ORDER, REACH } from './layout';
-import { beyondPlan, cameraFrom, cover, crashPlan, enterPlan, focusPose, frontYaw, overviewPose, poseAt, project, startFlight, worldPos } from './flight';
+import { beyondPlan, cover, crashPlan, enterPlan, focusPose, overviewPose, poseAt, project, startFlight, worldPos } from './flight';
 import { byId } from './universes';
 
 const gap = (a, b) => Math.hypot(a.target[0] - b.target[0], a.target[1] - b.target[1], a.target[2] - b.target[2]) + Math.abs(Math.log(a.dist / b.dist)) + Math.abs(a.pitch - b.pitch);
@@ -116,33 +116,5 @@ describe('the black hole', () => {
   it('goes on through to its far side once the fall and the crew’s last words have had their time, or at once without motion', () => {
     expect(beyondPlan({ reduced: false })).toEqual({ mode: 'beyond', delay: 4000 });
     expect(beyondPlan({ reduced: true })).toEqual({ mode: 'beyond', delay: 0 });
-  });
-});
-
-describe('a place brought round to the front', () => {
-  const size = { w: 1440, h: 900 };
-  const rect = cover({ w: 1440, h: 900, panel: 400, top: 64 });
-  it('turns a planet so the camera looks at its day side', () => {
-    for (const id of ORDER.filter((i) => byId(i).kind !== 'core')) {
-      for (const yaw of [0, 2, -3]) {
-        const to = frontYaw(id, yaw);
-        expect(Math.abs(to - yaw), id).toBeLessThanOrEqual(Math.PI + 1e-9); // (the short way round)
-        const pose = focusPose(id, to, size, rect);
-        const eye = cameraFrom(pose).position;
-        const at = pose.target;
-        const look = [eye[0] - at[0], eye[1] - at[1], eye[2] - at[2]];
-        // (the sun's at the map's middle, which the turn doesn't move)
-        const sun = [-at[0], -at[1], -at[2]];
-        const cos = (look[0] * sun[0] + look[1] * sun[1] + look[2] * sun[2]) / (Math.hypot(...look) * Math.hypot(...sun));
-        expect(cos, `${id} at ${yaw}`).toBeGreaterThan(0.6);
-        expect(cos, `${id} at ${yaw}: not flat on, a terminator shows`).toBeLessThan(0.98);
-      }
-    }
-  });
-  it('brings a station round to the front, a little past it, as before', () => {
-    for (const id of ORDER.filter((i) => byId(i).kind === 'core')) {
-      const [x, , z] = worldPos(id, frontYaw(id, 0));
-      expect(Math.atan2(z, x), id).toBeCloseTo(Math.PI / 2 - 0.62, 6);
-    }
   });
 });

@@ -92,23 +92,6 @@ export function overviewPose(size, rect) {
   return pose;
 }
 
-// The turn of the map that brings a place round to the front (yaw: the
-// map's turn now; the answer is the nearest turn to it that does). A
-// station comes round a little past the front, nearest the camera, so the
-// sun in the middle sits off to the left of it rather than right behind. A
-// planet goes round the other way, to the far side of the sun, so the
-// camera, between the two, looks at its day side (lighting.js: the fandoms'
-// worlds are lit by the home sun), turned a little off the sun's line so
-// its terminator shows; nothing's between, the home system being behind
-// the camera.
-const FRONT_STATION = 0.62;
-const FRONT_PLANET = 0.45;
-export function frontYaw(id, yaw) {
-  const [x, , z] = POSITIONS[id];
-  const a = byId(id)?.kind === 'core' ? Math.atan2(z, x) - Math.PI / 2 + FRONT_STATION : Math.atan2(z, x) + Math.PI / 2 + FRONT_PLANET;
-  return yaw + Math.atan2(Math.sin(a - yaw), Math.cos(a - yaw));
-}
-
 // One place, centred in the open area at about half its size (a station a
 // little closer and from a little higher, so it fills the view and the sun
 // behind it drops away).

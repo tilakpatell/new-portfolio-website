@@ -48,6 +48,9 @@ for (let i = 0; i < 4 && (await page.evaluate(() => window.__surface?.()?.phase)
   await page.waitForTimeout(2000);
 }
 console.log('phase', await page.evaluate(() => window.__surface?.()?.phase));
+// (the floor's light baked, if the world has one: a shot before it lands is
+// the world without its shadows; one with no ground runs out the clock)
+await page.waitForFunction(() => Boolean(window.__surfaceScene?.api?.ground?.stats?.baked), null, { timeout: Number(process.env.BAKE_WAIT ?? 150000), polling: 1000 }).catch(() => {});
 for (const v of views) {
   const [x, z, dist = 40, deg = 0, label] = v.split(',');
   const a = (Number(deg) * Math.PI) / 180;

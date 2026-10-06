@@ -4,6 +4,7 @@
 //
 //   node scripts/universe-check.mjs [--quality high|mid|low|all] [--poses a,b]
 //     [--out lab/universe/<tier>] [--baseline] [--url http://127.0.0.1:5173] [--chromium /path]
+//     [--frames 20] (how many frames are timed: fewer in a container that draws in software, where a frame takes seconds)
 //
 // It starts the dev server (the poses are a DEV hook, `window.__universe().pose`,
 // which a production build leaves out) unless --url names one, opens
@@ -41,6 +42,7 @@ for (let i = 0; i < argv.length; i++) {
 const list = (s) => (typeof s === 'string' ? s.split(',').map((x) => x.trim()).filter(Boolean) : []);
 const tiers = !args.quality || args.quality === 'all' ? TIERS : list(args.quality);
 const poses = list(args.poses).length ? list(args.poses) : POSES;
+const FRAMES = Math.max(3, Number(args.frames) || 20);
 for (const t of tiers) if (!TIERS.includes(t)) throw new Error(`no tier ${t} (high, mid, low or all)`);
 for (const p of poses) if (!POSES.includes(p)) throw new Error(`no pose ${p} (${POSES.join(', ')})`);
 const outFor = (tier) => (args.baseline ? join(ROOT, 'lab/universe/baseline', tier) : args.out && tiers.length === 1 ? join(ROOT, args.out) : join(ROOT, 'lab/universe', tier));
@@ -162,7 +164,7 @@ for (const tier of tiers) {
       await page.evaluate((n) => window.__universe().pose(n), name);
       // the grain moves frame to frame; the shots and their metrics shouldn't (post.js: checkpoint 1)
       await page.evaluate(() => window.__universeDebug.post?.grain?.(0));
-      const numbers = await page.evaluate(async () => {
+      const numbers = await page.evaluate(async (n) => {
         const { renderer } = window.__universeDebug;
         const u = window.__universe();
         // one whole frame's count, every pass in it (the renderer otherwise resets at each render())
@@ -172,17 +174,17 @@ for (const tier of tiers) {
         await u.frames(1);
         const { calls, triangles } = renderer.info.render;
         renderer.info.autoReset = auto;
-        // twenty frames, each one drawn (held still, the scene would otherwise rest)
+        // twenty frames (or --frames), each one drawn (held still, the scene would otherwise rest)
         const times = [];
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < n; i++) {
           const t = performance.now();
           await u.frames(1);
           times.push(performance.now() - t);
         }
         const sorted = [...times].sort((a, b) => a - b);
         const r1 = (v) => Number(v.toFixed(1));
-        return { calls, triangles, frameMs: r1(times.reduce((s, v) => s + v, 0) / times.length), frameMsMedian: r1(sorted[10]), memory: { ...renderer.info.memory } };
-      });
+        return { calls, triangles, frameMs: r1(times.reduce((s, v) => s + v, 0) / times.length), frameMsMedian: r1(sorted[Math.floor(n / 2)]), memory: { ...renderer.info.memory } };
+      }, FRAMES);
       // the picture alone: the page's bar, panel and HUD hidden (they'd be
       // half the shot, and in its metrics), the map's canvas the biggest one
       await page.evaluate(() => {

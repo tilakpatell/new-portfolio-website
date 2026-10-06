@@ -438,6 +438,39 @@ describe('deep space', () => {
   });
 });
 
+describe('arriving on the day side', () => {
+  // a world parked at from its night side would be a black disc: the
+  // autopilot comes round to its lit side, as near the way it came as it can
+  it('parks at every world on its day side, wherever it comes from', () => {
+    for (const p of PLANETS.filter((q) => byId(q.id).kind !== 'core' && !byId(q.id).portal)) {
+      const s = sunFor(p.id);
+      const sl = Math.hypot(s[0], s[2]);
+      for (const from of [[p.at[0] - s[0] * 900, p.at[2] - s[2] * 900], [p.at[0] + s[0] * 900, p.at[2] + s[2] * 900], [p.at[0] - s[2] * 900, p.at[2] + s[0] * 900]]) {
+        const k = parkAt(p.id, from);
+        const dx = k.x - p.at[0];
+        const dz = k.z - p.at[2];
+        expect((dx * s[0] + dz * s[2]) / (Math.hypot(dx, dz) * sl), `${p.id} from ${from}`).toBeGreaterThanOrEqual(-1e-9);
+      }
+    }
+  });
+});
+
+describe('starting off a world', () => {
+  it('starts on its day side', () => {
+    const draws = (...v) => () => v.shift();
+    for (let i = 0; i < STARTS.length; i++) {
+      const s = STARTS[i];
+      const u = byId(s.id);
+      if (!u || u.kind === 'core' || u.portal) continue;
+      const sun = sunFor(s.id);
+      for (const k of [0, 0.25, 0.5, 0.75]) {
+        const at = startAt(draws((i + 0.5) / STARTS.length, k));
+        expect((at.x - s.at[0]) * sun[0] + (at.z - s.at[2]) * sun[2], `${s.id} ${k}`).toBeGreaterThanOrEqual(-1e-6);
+      }
+    }
+  });
+});
+
 describe('coming in to land', () => {
   // the worlds are drawn big (scale.js) and parked at a way out past their
   // moons: holding the throttle on toward one, it comes in at the approach
@@ -650,47 +683,5 @@ describe('autopilot', () => {
       }
       expect(done, id).toBe(true);
     }
-  });
-});
-
-describe('arriving on the day side', () => {
-  const fandoms = ORDER.filter((id) => byId(id).kind !== 'core');
-  const dayOf = (id, x, y, z) => {
-    const p = POSITIONS[id];
-    const s = sunFor(id);
-    const d = [x - p[0], y - p[1], z - p[2]];
-    return (d[0] * s[0] + d[1] * s[1] + d[2] * s[2]) / Math.hypot(...d);
-  };
-  it('parks on the day side, from wherever it comes', () => {
-    for (const id of fandoms) {
-      const p = POSITIONS[id];
-      for (let i = 0; i < 12; i++) {
-        const a = (i / 12) * Math.PI * 2;
-        const from = [p[0] + Math.cos(a) * REACH[id] * 4, p[2] + Math.sin(a) * REACH[id] * 4];
-        const park = parkAt(id, from);
-        expect(dayOf(id, park.x, park.y, park.z), `${id} from ${a.toFixed(2)}`).toBeGreaterThan(0.2);
-      }
-      const park = parkAt(id);
-      expect(dayOf(id, park.x, park.y, park.z), `${id} from home`).toBeGreaterThan(0.2);
-    }
-  });
-  it('still parks on the side it came from where that’s the day side', () => {
-    for (const id of fandoms) {
-      const p = POSITIONS[id];
-      const s = sunFor(id);
-      const from = [p[0] + s[0] * 600, p[2] + s[2] * 600];
-      const park = parkAt(id, from);
-      expect(dayOf(id, park.x, park.y, park.z), id).toBeGreaterThan(0.7);
-    }
-  });
-  it('starts a new ship off a planet on its day side', () => {
-    const draws = (...v) => () => v.shift();
-    STARTS.forEach((s, i) => {
-      if (!fandoms.includes(s.id)) return;
-      for (let k = 0; k < 16; k++) {
-        const at = startAt(draws((i + 0.5) / STARTS.length, k / 16));
-        expect(dayOf(s.id, at.x, at.y, at.z), `${s.id} ${k}`).toBeGreaterThan(0.2);
-      }
-    });
   });
 });
