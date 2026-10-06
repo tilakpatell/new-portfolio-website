@@ -1934,6 +1934,7 @@ export async function create(canvas, ctx) {
   // the heavy rounds: steered onto what they were locked on to, and off
   // with a bang at the first thing they meet (or right by their target)
   const toTarget = [0, 0, 0];
+  const missileTo = new THREE.Vector3();
   const boom = (m, point, big = false) => {
     m.visible = false;
     pops.hit({ point, normal: popDir.set(-m.userData.v[0], 3, -m.userData.v[2]).normalize(), radius: big ? 1.6 : 1 });
@@ -1972,7 +1973,11 @@ export async function create(canvas, ctx) {
       const { heading, pitch } = aimAngles([d.v[0], d.v[1], d.v[2]]);
       m.rotation.set(pitch, heading, 0);
       // right by its target: straight into it (a step to its middle meets it)
-      const to = tg?.at && tg.at.distanceTo(m.position) < (tg.size ?? 0.3) + 0.35 && tg.siegePart === undefined ? tg.at : m.position;
+      // (a hunter's `at` is a plain { x, y, z }, not a Vector3: the distance
+      // worked out by hand, and the point copied into one, since what's
+      // tested against it next wants a Vector3)
+      const near = tg?.at && tg.siegePart === undefined && Math.hypot(tg.at.x - m.position.x, tg.at.y - m.position.y, tg.at.z - m.position.z) < (tg.size ?? 0.3) + 0.35;
+      const to = near ? missileTo.set(tg.at.x, tg.at.y, tg.at.z) : m.position;
       const hh = hunters?.hit(shotFrom, to, d.punch) ?? farHit(shotFrom, to, d.punch);
       if (hh) {
         if (hh.down) {
@@ -2589,7 +2594,7 @@ export async function create(canvas, ctx) {
   // after you, out ahead of you: a freighter under attack and its escort
   // fighting the attackers off. Fly in and help; the crew have a word when
   // it starts, and the freighter's crew thank you if you did
-  const SKIRMISH_EVERY = [80, 150]; // seconds between them
+  const SKIRMISH_EVERY = [110, 180]; // seconds between them
   const SIDES = {
     starwars: { faction: 'empire', escort: 'xwing', civil: 'transport' },
     rickmorty: { faction: 'federation', escort: 'birdperson', civil: 'saucer' },
@@ -2607,17 +2612,20 @@ export async function create(canvas, ctx) {
     return null;
   };
   const farFight = (dt, t, live) => {
-    if (!skirmishes.active && live && state.clock > state.skirmishAt && !hunters.active && !pieces.destroyerHere && !leviathans.busy && !meteors.count && state.view !== 'map' && Math.abs(live.speed) < SHIP.pulse * 0.2) {
+    if (!skirmishes.active && live && state.clock > state.skirmishAt && !hunters.count && !pieces.destroyerHere && !leviathans.busy && !meteors.count && state.view !== 'map' && Math.abs(live.speed) < SHIP.pulse * 0.2) {
       state.skirmishAt = state.clock + SKIRMISH_EVERY[0] + Math.random() * (SKIRMISH_EVERY[1] - SKIRMISH_EVERY[0]);
       const family = FAMILY[state.kind] === 'both' ? either() : FAMILY[state.kind];
       const at = family && skirmishSpot(live);
       if (at && skirmishes.start({ at, heading: Math.random() * Math.PI * 2, ...SIDES[family] })) {
         state.skirmishHelped = 0;
+        state.skirmishFamily = family;
         later.push({ at: state.clock + 1.5, run: () => emit({ type: 'event', id: 'skirmish', sub: family }) });
       }
     }
     for (const e of skirmishes.update(dt, t, live)) {
       if (e.type === 'down') pops.hit({ point: new THREE.Vector3(e.at.x, e.at.y, e.at.z), normal: popDir.set(0, 1, 0), radius: e.side === 'freighter' ? 2.4 : 0.6 });
+      // the freighter jumping away (to lightspeed, or through a portal)
+      if (e.type === 'away' || (e.type === 'over' && e.winner === 'jumped')) crashFx.arrive({ point: new THREE.Vector3(e.at.x, e.at.y, e.at.z), kind: state.skirmishFamily === 'rickmorty' ? 'cruiser' : 'xwing', heading: e.heading ?? 0 });
       else if (e.type === 'over' && live) {
         if (e.winner === 'escort' && state.skirmishHelped > 0) emit({ type: 'event', id: 'skirmishThanks' });
         else if (e.winner === 'enemy' && state.skirmishHelped > 0) emit({ type: 'event', id: 'skirmishLost' });
@@ -3001,7 +3009,8 @@ export async function create(canvas, ctx) {
     const siegeCands = siegeTargets(ship);
     // (the rocks only while nobody's after you: a hunter's the thing to lock on to)
     const rocks = meteors.count && !hunters?.active ? meteors.targets : [];
-    const farCands = skirmishes?.active ? skirmishes.targets : [];
+    // (someone else's fight's hunters, while nothing's after you: yours come first)
+    const farCands = skirmishes?.active && !hunters?.active ? skirmishes.targets : [];
     const cands = pilots.count || siegeCands.length || rocks.length || farCands.length ? [...(hunters?.targets ?? []), ...farCands, ...pilots.targets, ...siegeCands, ...rocks] : (hunters?.targets ?? []);
     const was = state.lock?.id ?? null;
     state.lock = cands.length || state.lock ? track(ship, cands, state.lock, dt, { cycle: state.cycle }) : null;

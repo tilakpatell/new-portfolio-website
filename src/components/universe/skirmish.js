@@ -19,8 +19,10 @@
 //   faction, escort, ship }), update(dt) → events, hit(from, to, damage),
 //   targets, hunt, wing, freighter, shots, active, clear() }
 // Events: { type: 'down', side: 'enemy' | 'escort' | 'freighter', at, kind },
-// { type: 'over', winner: 'escort' | 'enemy' | 'jumped', at? }. A skirmish
-// that drags on (SKIRMISH.longest) ends with the freighter jumping away.
+// { type: 'over', winner: 'escort' | 'enemy' | 'jumped', at? } and { type:
+// 'away', at, heading } (the freighter, on its way after it's won, jumps).
+// A skirmish that drags on (SKIRMISH.longest) ends with the freighter
+// jumping away.
 
 import { FACTIONS, HUNTER_KINDS, createHunt } from './hunterRules';
 import { sweptHit } from './targeting';
@@ -44,6 +46,7 @@ export const SKIRMISH = {
   preroll: 4, // seconds it's been going before you see it
   linger: 14, // seconds the freighter is about once it's over, going
   freighterR: 0.6, // how near it a laser must pass to hit it (it's bigger than a fighter)
+  clear: 6, // past anything solid's surface, the nearest it goes before it jumps away
   longest: 75, // seconds, at most: then the freighter jumps away, and the hunters lose it
 };
 
@@ -56,6 +59,8 @@ export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds 
   // the freighter, as the hunt sees "you": where it is and the way it goes
   const freighter = { x: 0, y: 0, z: 0, heading: 0, pitch: 0, speed: 0, vy: 0, hp: 0, alive: false, leaving: 0, kind: null, faction: null, on: false };
   const stay = { x: 0, y: 0, z: 0, heading: 0, pitch: 0, speed: 0, vy: 0 }; // (where it was, once it's gone, when nobody's looking)
+  const allSolids = typeof solids === 'function' ? solids : () => solids;
+  const near = []; // the solids near this one
   const escortHp = new Map();
   const cool = new Map(); // a hunter's seconds to its next shot at an escort
   const events = [];
@@ -84,6 +89,12 @@ export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds 
       } else f.heading += SKIRMISH.circle * dt;
       f.x += -Math.sin(f.heading) * f.speed * dt;
       f.z += -Math.cos(f.heading) * f.speed * dt;
+      // on its way, it jumps once it's been about long enough, or before it
+      // would meet anything solid (nothing steers it round one)
+      if (over && (f.leaving > SKIRMISH.linger || near.some((o) => Math.hypot(f.x - o.at[0], f.y - o.at[1], f.z - o.at[2]) < o.r + SKIRMISH.clear))) {
+        f.alive = false;
+        out.push({ type: 'away', at: { x: f.x, y: f.y, z: f.z }, heading: f.heading });
+      }
     }
     clock += dt;
     // too long: the freighter jumps away (to lightspeed, or through a
@@ -198,7 +209,6 @@ export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds 
       over = true;
       out.push({ type: 'over', winner: 'enemy', at: { x: f.x, y: f.y, z: f.z } });
     }
-    if (over && f.alive && f.leaving > SKIRMISH.linger) f.alive = false;
     // all of it gone, and nothing still flying: over
     if (over && !f.alive && !hunt.count && !wing.active && !hunt.lasers.some((m) => m.on) && !shots.some((m) => m.on) && !wing.bolts.some((b) => b.on)) f.on = false;
     return out;
@@ -223,6 +233,9 @@ export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds 
       for (const m of shots) m.on = false;
       over = false;
       clock = 0;
+      // (the solids near it: it goes no more than 130 or so from here)
+      near.length = 0;
+      for (const o of allSolids()) if (Math.hypot(at.x - o.at[0], at.y - o.at[1], at.z - o.at[2]) < o.r + 200) near.push(o);
       Object.assign(freighter, { x: at.x, y: at.y, z: at.z, heading, pitch: 0, speed: SKIRMISH.speed, vy: 0, hp: SKIRMISH.hp, alive: true, leaving: 0, kind: civil, faction, on: true });
       const n = size ?? Math.round(between(rand, SKIRMISH.pack));
       hunt.pack(faction, freighter, { size: n, ace: false, ahead: true });

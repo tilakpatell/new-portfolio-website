@@ -195,6 +195,35 @@ describe('a skirmish', () => {
     expect(sk.hunt.count).toBe(0);
   });
 
+  it('jumps away once it’s been about a while after winning, or before it would meet a planet', () => {
+    // nothing in the way: it goes on a while, then jumps
+    let sk = createSkirmish({ rand: seeded(2) });
+    sk.start({ at, heading: 0, faction: 'empire', escort: 'xwing' });
+    for (const h of [...sk.hunt.live]) sk.hit({ x: h.pos.x - 3, y: h.pos.y, z: h.pos.z }, { x: h.pos.x + 3, y: h.pos.y, z: h.pos.z }, 10);
+    let away = null;
+    for (let t = 0; t < SKIRMISH.linger + 2 && !away; t += DT) away = sk.update(DT).find((e) => e.type === 'away') ?? null;
+    expect(away).toBeTruthy();
+    expect(sk.freighter.alive).toBe(false);
+    // a planet right where it's heading: it jumps short of it
+    const probe = createSkirmish({ rand: seeded(2) });
+    probe.start({ at, heading: 0, faction: 'empire', escort: 'xwing' });
+    for (const h of [...probe.hunt.live]) probe.hit({ x: h.pos.x - 3, y: h.pos.y, z: h.pos.z }, { x: h.pos.x + 3, y: h.pos.y, z: h.pos.z }, 10);
+    probe.update(DT);
+    const f = probe.freighter;
+    const planet = { id: 'p', at: [f.x - Math.sin(f.heading) * 40, f.y, f.z - Math.cos(f.heading) * 40], r: 20 };
+    sk = createSkirmish({ rand: seeded(2), solids: [planet] });
+    sk.start({ at, heading: 0, faction: 'empire', escort: 'xwing' });
+    for (const h of [...sk.hunt.live]) sk.hit({ x: h.pos.x - 3, y: h.pos.y, z: h.pos.z }, { x: h.pos.x + 3, y: h.pos.y, z: h.pos.z }, 10);
+    let closest = Infinity;
+    away = null;
+    for (let t = 0; t < SKIRMISH.linger + 2 && !away; t += DT) {
+      away = sk.update(DT).find((e) => e.type === 'away') ?? null;
+      if (sk.freighter.alive) closest = Math.min(closest, Math.hypot(sk.freighter.x - planet.at[0], sk.freighter.y - planet.at[1], sk.freighter.z - planet.at[2]) - planet.r);
+    }
+    expect(away).toBeTruthy();
+    expect(closest).toBeGreaterThan(0);
+  });
+
   it('clears at once', () => {
     const sk = createSkirmish({ rand: seeded(1) });
     sk.start({ at, faction: 'empire', escort: 'xwing' });
