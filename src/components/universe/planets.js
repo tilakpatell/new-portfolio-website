@@ -44,13 +44,13 @@ const BASE = '/textures/universe/';
 // Invincible's by their own scripts.
 const MAPS = {
   // colour, with a phone copy
-  ...Object.fromEntries(['music', 'middleearth', 'middleearth-night', 'middleearth-clouds', 'transformers', 'marvel', 'breakingbad', 'breakingbad-night', 'office', 'rickmorty', 'earth', 'earth-night', 'invincible', 'invincible-night', 'sun', 'sky'].map((n) => [n, { sm: true, colour: true }])),
+  ...Object.fromEntries(['music', 'middleearth', 'middleearth-night', 'middleearth-clouds', 'transformers', 'marvel', 'breakingbad', 'breakingbad-night', 'caribbean', 'office', 'rickmorty', 'earth', 'earth-night', 'invincible', 'invincible-night', 'sun', 'sky'].map((n) => [n, { sm: true, colour: true }])),
   // data, with a phone copy
-  ...Object.fromEntries(['middleearth-normal', 'breakingbad-normal', 'breakingbad-clouds', 'earth-clouds', 'invincible-clouds'].map((n) => [n, { sm: true, colour: false }])),
+  ...Object.fromEntries(['middleearth-normal', 'breakingbad-normal', 'breakingbad-clouds', 'caribbean-clouds', 'earth-clouds', 'invincible-clouds'].map((n) => [n, { sm: true, colour: false }])),
   // colour, one size
-  ...Object.fromEntries(['middleearth-glow', 'rickmorty-glow', 'invincible-glow', 'plates', 'hull'].map((n) => [n, { sm: false, colour: true }])),
+  ...Object.fromEntries(['middleearth-glow', 'caribbean-night', 'rickmorty-glow', 'invincible-glow', 'plates', 'hull'].map((n) => [n, { sm: false, colour: true }])),
   // data, one size
-  ...Object.fromEntries(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-normal-sm', 'transformers-glow-sm', 'middleearth-rough', 'breakingbad-rough', 'invincible-normal', 'earth-rough'].map((n) => [n, { sm: false, colour: false }])),
+  ...Object.fromEntries(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-normal-sm', 'transformers-glow-sm', 'middleearth-rough', 'breakingbad-rough', 'caribbean-normal', 'caribbean-rough', 'invincible-normal', 'earth-rough'].map((n) => [n, { sm: false, colour: false }])),
 };
 
 export async function loadTextures({ small = false } = {}) {
@@ -874,13 +874,37 @@ const BUILDERS = {
 
   },
 
-  caribbean(p, { u }) {
+  caribbean(p, { u, T }) {
     const r = u.size;
     const P = u.palette;
     const rand = rng('caribbean');
-    // a world that is nearly all sea: deep water, turquoise shallows round
-    // small islands of sand and green, and a little cloud
-    const map = paint(
+    if (T.caribbean) {
+      // a world of warm sea (scripts/planets/caribbean.mjs): the deep, the
+      // banks' turquoise shallows with surf on their edges, island arcs,
+      // jungle islands ringed with white sand, Tortuga shaped as its name,
+      // Davy Jones's maelstrom; the sea catches the sun, the ports' lanterns
+      // light the night, and the trade-wind cloud and a hurricane go over
+      p.body.material = new THREE.MeshStandardMaterial({
+        map: T.caribbean,
+        normalMap: T['caribbean-normal'] ?? null,
+        normalScale: new THREE.Vector2(1.2, 1.2),
+        roughnessMap: T['caribbean-rough'] ?? null,
+        roughness: 1,
+        metalness: 0,
+      });
+      p.night = T['caribbean-night'] ?? null;
+      if (T['caribbean-clouds']) {
+        const sky = new THREE.Mesh(
+          new THREE.SphereGeometry(r * 1.01, T.small ? 44 : 64, T.small ? 28 : 40),
+          new THREE.MeshStandardMaterial({ color: '#ffffff', alphaMap: T['caribbean-clouds'], transparent: true, depthWrite: false, roughness: 1 }),
+        );
+        p.group.add(sky);
+        p.tick.push((t) => (sky.rotation.y = t * 0.07));
+      }
+    }
+    // (without the maps: painted here, a world that is nearly all sea: deep
+    // water, turquoise shallows round small islands of sand and green)
+    const map = T.caribbean ? null : paint(
       (g, w, h) => {
         const sea = g.createLinearGradient(0, 0, 0, h);
         sea.addColorStop(0, '#0a4a55');
@@ -916,7 +940,7 @@ const BUILDERS = {
       1024,
       512,
     );
-    p.body.material = new THREE.MeshStandardMaterial({ map, roughness: 0.6 });
+    if (map) p.body.material = new THREE.MeshStandardMaterial({ map, roughness: 0.6 });
     // the black galleon sails round it
     const o = orbit(p.group, { radius: r * 1.5, tilt: 0.22, speed: 0.2, phase: 0.7 });
     p.orbits.push(o);

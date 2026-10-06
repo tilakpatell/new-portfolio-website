@@ -6,7 +6,7 @@
 //   node scripts/build-fandom-planets.mjs               every planet
 //   node scripts/build-fandom-planets.mjs middleearth   just the ones named
 
-const ALL = ['middleearth', 'breakingbad'];
+const ALL = ['middleearth', 'breakingbad', 'caribbean'];
 const want = process.argv.slice(2).length ? process.argv.slice(2) : ALL;
 for (const id of want) {
   if (!ALL.includes(id)) throw new Error(`no baker for ${id} (there are: ${ALL.join(', ')})`);
