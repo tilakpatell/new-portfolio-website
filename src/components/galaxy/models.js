@@ -54,6 +54,19 @@ const BUILT = new Set([...BUILT_KINDS, ...GALAXY_KINDS]);
 // Death Star has none here: the world puts a sphere of its own in its place.
 export const STAND_IN = { venator: 'destroyer', slave1: 'freighter', falcon: 'freighter' };
 
+// Far off, a ship is its LOD (scripts/galaxy-lod.mjs: one mesh of a few
+// thousand triangles, its look baked into vertex colours), and farther still
+// nothing (the engine glow keeps it a glint): past LOD_NEAR times its size, and
+// LOD_FAR times. Tinted and skinned slots keep the full model at every range.
+export const LOD_NEAR = 45;
+export const LOD_FAR = 900;
+export const lodUrl = (kind) => (MODELS[kind] && kind !== 'deathstar' ? `/models/galaxy/lod/${kind}.glb` : null);
+export const lodLevels = (size) => [
+  [0, 'full'],
+  [LOD_NEAR * size, 'lod'],
+  [LOD_FAR * size, 'none'],
+];
+
 // the models the hunters fly (universe/glbFleet.js flies them, the
 // universe's TIEs and the galaxy's droids, each built until it's here)
 export const HUNTER_GLB = {
@@ -89,7 +102,19 @@ function normalise(root, nose = 0) {
   holder.add(turn);
   turn.position.copy(box.getCenter(new THREE.Vector3())).multiplyScalar(-1);
   holder.scale.setScalar(k);
-  return { holder, size: size.multiplyScalar(k) };
+  return { holder, size: size.multiplyScalar(k), fit: { nose, centre: turn.position.clone().negate(), k } };
+}
+
+// another model of the same thing (its LOD) put where `fit` put the first
+function fitLike(root, { nose, centre, k }) {
+  const turn = new THREE.Group();
+  turn.rotation.y = nose;
+  turn.position.copy(centre).negate();
+  turn.add(root);
+  const holder = new THREE.Group();
+  holder.add(turn);
+  holder.scale.setScalar(k);
+  return holder;
 }
 
 // a copy in another paint (a slot's `tint`), darker or coloured
@@ -115,8 +140,13 @@ function tinted(root, color) {
 const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 1000 }) : setTimeout(fn, 0));
 const unidle = (id) => (typeof requestIdleCallback === 'function' ? cancelIdleCallback(id) : clearTimeout(id));
 
-export function createModels({ prepare = null } = {}) {
-  const loaded = new Map(); // kind → { holder, size } (a loaded model, normalised)
+// (`load` is the page's one parse of a file, gltfCache.js; a test hands in its own)
+export function createModels({ prepare = null, load: fetchModel = loadGLTF } = {}) {
+  const loaded = new Map(); // kind → { holder, size, fit } (a loaded model, normalised)
+  const lods = new Map(); // kind → the LOD's scene, in the shared material
+  const lodReady = new Map(); // kind → its holder, fitted like the full model and warmed
+  const lodLoading = new Set();
+  const lodMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.3 });
   const loading = new Map(); // kind → Promise
   const built = new Map(); // kind → { model (buildGalaxyShip's), holder, size }
   const slots = [];
@@ -130,7 +160,8 @@ export function createModels({ prepare = null } = {}) {
     if (!def || loading.has(kind)) return loading.get(kind);
     // (the parse is the page's, shared with the fleets and the planets' models: this
     // works on a copy of it, which tune and normalise change as they like)
-    const p = loadGLTF(def.url)
+    loadLod(kind);
+    const p = fetchModel(def.url)
       .then((gltf) => (gltf && !dead ? cloneScene(gltf) : null))
       .then(async (root) => {
         if (!root) return;
@@ -142,10 +173,43 @@ export function createModels({ prepare = null } = {}) {
         if (dead) return;
         loaded.set(kind, n);
         for (const s of slots) if (s.kind === kind && !s.real) fill(s);
+        fitLod(kind);
       })
       .catch(() => {});
     loading.set(kind, p);
     return p;
+  };
+
+  // the kind's LOD: its normals worked out (the file has none) and the one
+  // material for them all, then fitted once the full model's here too
+  const loadLod = (kind) => {
+    const url = lodUrl(kind);
+    if (!url || lodLoading.has(kind)) return;
+    lodLoading.add(kind);
+    fetchModel(url)
+      .then((gltf) => {
+        if (!gltf || dead) return;
+        const root = gltf.scene.clone(true); // (the geometry the cache's; the material swapped on this copy only)
+        root.traverse((o) => {
+          if (!o.isMesh) return;
+          if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+          o.material = lodMaterial;
+        });
+        lods.set(kind, root);
+        fitLod(kind);
+      })
+      .catch(() => {});
+  };
+  const fitLod = async (kind) => {
+    const full = loaded.get(kind);
+    const far = lods.get(kind);
+    if (!full || !far || full.skinned || lodReady.has(kind)) return;
+    const holder = fitLike(far, full.fit);
+    lodReady.set(kind, null); // (being warmed)
+    if (prepare) await prepare(holder);
+    if (dead) return;
+    lodReady.set(kind, holder);
+    for (const s of slots) if (s.kind === kind && s.real && !s.lod && !s.tint) fill(s);
   };
 
   const template = (kind) => {
@@ -186,10 +250,21 @@ export function createModels({ prepare = null } = {}) {
     const src = real ?? template(s.kind) ?? template(STAND_IN[s.kind]);
     if (!src) return;
     if (s.model) s.inner.remove(s.model);
-    const copy = src.skinned ? cloneSkinned(src.holder) : src.holder.clone(true);
+    let copy = src.skinned ? cloneSkinned(src.holder) : src.holder.clone(true);
     if (s.tint) owned.push(...tinted(copy, s.tint));
+    // (the loaded model near, its LOD farther, nothing past that)
+    const far = real && !s.tint && !real.skinned ? lodReady.get(s.kind) : null;
+    if (far) {
+      const lod = new THREE.LOD();
+      const [[near], [mid], [end]] = lodLevels(s.size);
+      lod.addLevel(copy, near);
+      lod.addLevel(far.clone(true), mid);
+      lod.addLevel(new THREE.Object3D(), end);
+      copy = lod;
+    }
     s.model = copy;
     s.real = Boolean(real);
+    s.lod = Boolean(far);
     s.ready = true;
     s.inner.add(copy);
     if (prepare && !real) {
@@ -205,7 +280,7 @@ export function createModels({ prepare = null } = {}) {
       const inner = new THREE.Group();
       inner.scale.setScalar(size);
       holder.add(inner);
-      const s = { kind, size, holder, inner, model: null, real: false, ready: false, tint };
+      const s = { kind, size, holder, inner, model: null, real: false, lod: false, ready: false, tint };
       slots.push(s);
       if (MODELS[kind]) load(kind);
       fill(s);
@@ -266,6 +341,10 @@ export function createModels({ prepare = null } = {}) {
         });
       }
       loaded.clear();
+      for (const l of lods.values()) l.traverse((o) => o.isMesh && o.geometry.dispose());
+      lods.clear();
+      lodReady.clear();
+      lodMaterial.dispose();
       for (const m of owned) m.dispose();
     },
   };
