@@ -102,20 +102,25 @@ export default function Resume() {
 
       <div className="resume-toolbar mt-10">
         <div className="resume-tabs" role="tablist" aria-label="Résumé view">
-          {VIEWS.map((v) => (
+          {VIEWS.map((v, i) => (
             <button
               key={v.id}
+              id={`resume-tab-${v.id}`}
               type="button"
               role="tab"
               aria-selected={view === v.id}
               aria-controls="resume-panel"
+              tabIndex={view === v.id ? 0 : -1}
               className="resume-tab"
               onClick={() => update({ view: v.id === 'pdf' ? 'pdf' : null })}
               onKeyDown={(e) => {
-                if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-                  e.preventDefault();
-                  update({ view: view === 'pdf' ? null : 'pdf' });
-                }
+                // the arrows (and Home, End) go to the other view, and focus goes with them
+                const to = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: VIEWS.length - 1 }[e.key];
+                if (to === undefined) return;
+                e.preventDefault();
+                const next = VIEWS[(to + VIEWS.length) % VIEWS.length];
+                update({ view: next.id === 'pdf' ? 'pdf' : null });
+                document.getElementById(`resume-tab-${next.id}`)?.focus();
               }}
             >
               {v.label}
@@ -145,7 +150,7 @@ export default function Resume() {
         )}
       </div>
 
-      <div id="resume-panel" role="tabpanel" className="mt-6">
+      <div id="resume-panel" role="tabpanel" aria-labelledby={`resume-tab-${view}`} className="mt-6">
         {view === 'pdf' ? <PdfView /> : <ResumeSheet active={active} onToggle={toggle} />}
       </div>
     </div>

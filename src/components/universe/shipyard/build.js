@@ -12,6 +12,7 @@
 import { BUILD_SLOTS, isModuleOpen, moduleById, modulesFor } from './parts';
 
 export const HULL_KEY = 'tp-universe-hull';
+export const GARAGE_KEY = 'tp-universe-garage'; // (each crew's last garage build, flown or not)
 
 export const STOCK_BUILD = Object.freeze({ ...Object.fromEntries(BUILD_SLOTS.map((slot) => [slot, modulesFor(slot)[0].id])), seed: 1 });
 

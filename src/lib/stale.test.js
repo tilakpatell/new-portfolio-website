@@ -50,6 +50,13 @@ describe('reloading for the new build', () => {
     expect(mayReload(storage({ [STALE_KEY]: '1' }), 1000 + RETRY_AFTER + 1)).toBe(true);
   });
 
+  it("doesn't reload while the browser is offline (it would only swap the page for the offline screen), and keeps its turn", () => {
+    const s = storage();
+    expect(mayReload(s, 1000, false)).toBe(false);
+    expect(s.get(STALE_KEY)).toBeUndefined();
+    expect(mayReload(s, 2000, true)).toBe(true);
+  });
+
   it("doesn't reload when it can't keep count", () => {
     expect(mayReload(null, 1000)).toBe(false);
     const broken = {

@@ -22,6 +22,7 @@ import { budget, device } from '../../../lib/device';
 import { createPace } from '../../../lib/three/pace';
 import { InkPass, toon, toonify } from '../portal/toon';
 import { createMeshyCast } from '../portal/meshyCast';
+import { createGhosts } from '../../middleearth/towns/ghosts';
 import { defaultLook } from '../wardrobe/looks';
 import { bodyAsset, bodyKind, dress, withWardrobe } from '../wardrobe/wear';
 import { CANS, CREW, TALL, glassDome } from '../cruiser3d';
@@ -153,6 +154,29 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   scene.add(morty.group);
   let undress = dress(morty, look);
   const mortyShadow = fx.blob(0.55);
+
+  // others online in the street (RmWorld's useTravellers), as the Middle-earth
+  // towns and the Avengers compound show theirs: each a Morty from another
+  // dimension, pale and shimmering, with their name over him. Out in the
+  // street only (indoors and up in the cruiser they're not shown), and
+  // nothing here touches them, nor they anything here.
+  const ghosts = createGhosts({
+    height: (x, z) => (Math.abs(z - ROAD.z) < ROAD.w / 2 ? ROAD_Y : 0),
+    make: () => {
+      const c = cast.make('morty');
+      const fig = c ?? standInMorty();
+      fig.group.scale.setScalar(MORTY_H / (fig.height ?? MORTY_H));
+      fig.group.rotation.y = Math.PI / 2; // (a ghost's face, like Morty's, is measured from +x; a figure faces +z)
+      const group = new THREE.Group();
+      group.add(fig.group);
+      // (a Meshy Morty's mesh and materials are the cast's: not the ghost's to dispose)
+      return c ? { group, top: MORTY_H, morty: c, shared: true, dispose: () => c.mixer?.stopAllAction() } : { group, top: MORTY_H, morty: fig };
+    },
+    animate: (f, t, p) => f.morty.update?.(t, clamp((p.speed ?? (p.moving ? MORTY.walk : 0)) / MORTY.run, 0, 1), 0),
+    tag: 0.34,
+    halo: 0.9,
+  });
+  scene.add(ghosts.group);
 
   const cruiser = new THREE.Group();
   cruiser.rotation.order = 'YXZ';
@@ -341,6 +365,8 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     standY = jump ? stand : standY + (stand - standY) * Math.min(1, dt * 6);
     mortyY = groundY + (m.y ?? 0);
     eyeY = groundY + standY;
+    ghosts.group.visible = outdoors;
+    ghosts.update(state.travellers ?? [], t, dt);
     morty.group.visible = !state.flying;
     morty.group.position.set(m.x, mortyY, m.z);
     morty.group.rotation.y = (m.face ?? 0) + Math.PI / 2;
@@ -533,6 +559,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     dispose() {
       if (stage.disposed) return;
       for (const a of Object.values(areas)) a.dispose?.();
+      ghosts.dispose();
       // models a builder never put in the scene
       for (const o of models.values()) if (o && !o.parent) disposeTree(o);
       fx.dispose();

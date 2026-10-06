@@ -315,6 +315,21 @@ export const COLLIDERS = [
   ...LEAVES.map((l) => ({ kind: 'box', x: l.x, z: l.z, w: l.w, d: l.d, turn: 0, top: 2.1 })),
 ];
 
+// Who gets up from their desk now and then, where to, and how often:
+// Meredith for coffee, Kevin to the jelly beans on reception's counter, Oscar to the copier,
+// Angela to check on her yogurt, Creed into the supply room, Phyllis to
+// the microwave. (to: where they stand, `face` the walker's way: 0 east,
+// π/2 north; every: seconds between trips; offset: when in that the first
+// one starts; wait: how long they stand there)
+export const AMBLES = [
+  { who: 'meredith', to: { x: 1.9, z: -1.72, face: Math.PI / 2 }, every: 80, offset: 12, wait: 9 },
+  { who: 'kevin', to: { x: -9.0, z: -3.15, face: -Math.PI / 2 }, every: 96, offset: 44, wait: 8 },
+  { who: 'oscar', to: { x: 0.6, z: -2.95, face: Math.PI / 2 }, every: 72, offset: 28, wait: 7 },
+  { who: 'angela', to: { x: 3.93, z: -1.62, face: Math.PI / 2 }, every: 110, offset: 70, wait: 6 },
+  { who: 'creed', to: { x: -7.5, z: 6.0, face: -Math.PI / 2 }, every: 124, offset: 56, wait: 10 },
+  { who: 'phyllis', to: { x: 3.05, z: -1.72, face: Math.PI / 2 }, every: 104, offset: 90, wait: 8 },
+];
+
 // Jim's body: an office's walk, not a hobbit's
 export const JIM = { radius: 0.28, walk: 2.3, run: 4.4, accel: 14, turn: 10 };
 // the whole floor sits inside this disc (walls do the real work)

@@ -1,0 +1,18 @@
+/* The world runtime's box, its canvas and the snapshot that fades out at a handover. */
+.world-host {
+  position: relative;
+  overflow: hidden;
+}
+.world-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.world-snapshot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
