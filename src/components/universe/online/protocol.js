@@ -246,7 +246,7 @@ export function hunterHitCounts(peer, at, now) {
 // ground, both in the map's axes, so it's the same spot for everyone
 // whatever turn their planet was held at when they landed)
 export const FOOT_MS = 100; // how often it goes out, while they're down
-export const WALKERS = ['rick', 'morty', 'walt', 'jesse', 'chewie', 'han', 'luke', 'artoo']; // footScene.js's PARTY
+export const WALKERS = ['rick', 'morty', 'walt', 'jesse', 'chewie', 'han', 'luke', 'artoo', 'leia', 'ahsoka', 'bobafett']; // footScene.js's PARTY, and galaxy/heroes.js's heroes
 const r5 = (v) => Math.round((v || 0) * 1e5) / 1e5;
 const writeWalker = (w) => (w ? [w.who, ...w.n.map(r5), ...w.f.map(r5), r5(w.h), r5(w.speed), r5(w.side), Math.round((w.aim || 0) * 100) / 100] : null);
 
@@ -305,13 +305,23 @@ export function readFoot(data) {
 
 // ── Down on a world in the galaxy (galaxy/surface/scene.js) ──
 // where a pilot's crew are, in that world's own metres: { world, kind,
-// lead, mate, ride }, each walker [who, x, y, z, yaw, speed], ride the
-// kind they're on (or null); or null once they've taken off again
+// lead, mate, ride }, each walker [who, x, y, z, yaw, speed, aim, arms],
+// ride the kind they're on (or null); or null once they've taken off
+// again. `arms` (newer pilots; older readers stop before it) is what's in
+// the hand: [gun kind, lit (a saber: 0 | 1), blade colour (#rrggbb), stance,
+// swinging (0 | 1)]
 export const WALK_MS = 100;
 const RIDES_SEEN = ['landspeeder', 'speederbike', 'tauntaun', 'kaadu', 'bantha']; // galaxy/surface/rides.js's
 const r2 = (v) => Math.round((v || 0) * 100) / 100;
-// (the gun up, 0…1, last: an older reader stops at the speed)
-const writeStroller = (w) => (w ? [w.who, r2(w.x), r2(w.y), r2(w.z), r2(wrap(w.yaw || 0)), r2(w.speed), Math.round((w.aim || 0) * 100) / 100] : null);
+// (the gun up, 0…1, then the arms: an older reader stops at the speed)
+export const ARMS_GUNS = ['blaster', 'laser', 'portal', 'revolver', 'pistol', 'bowcaster', 'rifle', 'coppistol', 'saber', 'a280', 'dlt19', 'ee3', 'westar', 'shotgun', 'sniper', 'smg']; // universe/gunplay.js's GUNS
+const STANCES_SEEN = ['single', 'double', 'dual', 'heavy']; // galaxy/surface/combatRules.js's
+const writeArms = (a) => (a && ARMS_GUNS.includes(a.gun) ? [a.gun, a.lit ? 1 : 0, typeof a.color === 'string' ? a.color.slice(0, 7) : '', STANCES_SEEN.includes(a.stance) ? a.stance : 'single', a.swing ? 1 : 0] : null);
+const writeStroller = (w) => (w ? [w.who, r2(w.x), r2(w.y), r2(w.z), r2(wrap(w.yaw || 0)), r2(w.speed), Math.round((w.aim || 0) * 100) / 100, ...(w.arms ? [writeArms(w.arms)] : [])] : null);
+const readArms = (a) => {
+  if (!Array.isArray(a) || !ARMS_GUNS.includes(a[0])) return null;
+  return { gun: a[0], lit: a[1] === 1, color: typeof a[2] === 'string' && /^#[0-9a-fA-F]{6}$/.test(a[2]) ? a[2] : '#4aa8ff', stance: STANCES_SEEN.includes(a[3]) ? a[3] : 'single', swing: a[4] === 1 };
+};
 export function writeWalk(w) {
   if (!w) return { w: null };
   return { w: w.world, k: w.kind, a: writeStroller(w.lead), b: writeStroller(w.mate), r: w.ride ?? null };
@@ -321,7 +331,7 @@ const readStroller = (data) => {
   const [x, y, z] = [num(data[1], -10000, 10000), num(data[2], -3000, 3000), num(data[3], -10000, 10000)];
   const yaw = num(data[4], -7, 7);
   if (x === null || y === null || z === null || yaw === null) return null;
-  return { who: data[0], x, y, z, yaw: wrap(yaw), speed: num(data[5], -80, 80) ?? 0, aim: num(data[6], 0, 1) ?? 0 };
+  return { who: data[0], x, y, z, yaw: wrap(yaw), speed: num(data[5], -80, 80) ?? 0, aim: num(data[6], 0, 1) ?? 0, arms: readArms(data[7]) };
 };
 // a crew down on a world as it came in: { world, kind, lead, mate, ride },
 // { off: true } (back in their ship), or null if it isn't one

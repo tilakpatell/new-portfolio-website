@@ -36,6 +36,7 @@ These merged together in one PR (the branch `claude/sharp-carson-h9c6mp`):
 3. **Tasks 12–14,** as written in the plan: surface sharing, surface CPU, and surface bugs.
 4. **Task 15: the evidence write-up.**
 5. **Phase 2.** It has its own plan and goes in its own PR.
+6. **Explosions and flares from the universe map.** `src/lib/three/explosions.js` (a pooled fireball, shards and ring: `createExplosions({ parent, small }).burst(at, size, tint)`, `update(dt)`, `setMode('pop')` from the pace's step 2) and `src/lib/three/flare.js` (`createFlare`, one draw a sun) are shared, for `galaxy/fx.js` and `galaxy/scene.js`'s suns to call in this lane when it wants them (`HANDOFF-universe-visuals.md`, checkpoints 1 and 7).
 
 When the world-runtime branch (`claude/world-runtime-galaxy`) lands, the galaxy and surface scenes draw on the runtime's shared renderer. After that, don't call `createRenderer` in them, and put back in `dispose` anything you set on the renderer, such as `shadowMap` or `toneMapping`.
 

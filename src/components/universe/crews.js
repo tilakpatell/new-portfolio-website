@@ -477,6 +477,20 @@ export const CREWS = [
         ['morty', 'Rick, that’s a huge Federation ship! It just came out of nowhere!'],
         ['rick', 'Cruiser, Morty. Gunships coming out the bottom. This is why I hate bureaucracy.'],
       ],
+      // the NX-5 Planet Remover over the planet you're at (remover.js): it
+      // comes, it fires (or doesn't), it goes
+      remover: [
+        ['morty', 'Rick, what’s that thing? It’s pointing at the planet!'],
+        ['rick', 'That’s a planet remover, Morty. It removes planets. Shoot the big glowy end before it’s done charging.'],
+      ],
+      removerFired: [
+        ['morty', 'Oh geez, Rick, the planet! It’s just… gone!'],
+        ['rick', 'It’ll be back in a minute, Morty. The Federation can’t even remove a planet right.'],
+      ],
+      removerDown: [
+        ['morty', 'We got it, Rick! We stopped a planet remover!'],
+        ['rick', 'Yeah, yeah. Put it on the fridge, Morty.'],
+      ],
       distress: [
         ['comms', 'Mayday, mayday! Gromflomites! Anybody!'],
         ['morty', 'Rick, that family’s in trouble!'],

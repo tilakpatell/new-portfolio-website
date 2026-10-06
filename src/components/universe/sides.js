@@ -134,7 +134,7 @@ const RICKMORTY = {
   convoy: { escort: 'patrol' },
   distress: { civil: 'saucer', pirates: 'bugs' },
   skirmish: { faction: 'federation', escort: 'birdperson', civil: 'saucer' },
-  pieces: ['council', 'destroyer'],
+  pieces: ['council', 'destroyer', 'remover'],
   law: 'federation',
   capital: 'fedfleet',
   capitalShip: 'fedcruiser',

@@ -30,9 +30,11 @@
 // Unchecked, the blur smears one bad pixel into blocks of black across the
 // screen, bigger at each of its levels.
 //
-// spaceEnvironment(renderer, sky) is what shiny things reflect: the Milky
-// Way, brought up, with the key light's glow where the key light is and a
-// cool fill opposite, so metal catches the same light the scene is lit by.
+// spaceEnvironment(renderer, sky, { light, colour }) is what shiny things
+// reflect: the Milky Way, brought up, with the key light's glow where the
+// key light is (`light`, the way toward it; `colour`, its star's, linear
+// [r, g, b]) and a cool fill opposite, so metal catches the same light the
+// scene is lit by.
 //
 // overlay(scene, camera) draws a second scene over the first with its own
 // depth, before the bloom (the cockpit, from the pilot's seat, so its frame
@@ -254,6 +256,12 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
     },
     // (for making its passes' shaders before the first frame)
     composer,
+    // the pixel ratio the scene is drawn at now: the renderer's, softened
+    // by the pace (for what's sized in the page's own pixels, like a dither)
+    get ratio() {
+      const full = renderer.getPixelRatio();
+      return on ? Math.min(full, Math.max(SOFTEST, full * sharp)) : full;
+    },
     // how sharp to draw, 0…1 of the renderer's pixel ratio (lib/three/pace)
     get sharpness() {
       return sharp;
@@ -369,7 +377,7 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
   };
 }
 
-export function spaceEnvironment(renderer, sky) {
+export function spaceEnvironment(renderer, sky, { light = LIGHT, colour = null } = {}) {
   const env = new THREE.Scene();
   const made = [];
   const add = (geo, mat, pos) => {
@@ -382,7 +390,10 @@ export function spaceEnvironment(renderer, sky) {
     new THREE.SphereGeometry(10, 48, 24),
     sky ? new THREE.MeshBasicMaterial({ map: sky, side: THREE.BackSide, color: new THREE.Color(3, 3, 3.4) }) : new THREE.MeshBasicMaterial({ color: '#0b0f1c', side: THREE.BackSide }),
   );
-  add(new THREE.SphereGeometry(1.5, 24, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(9, 8.2, 7.2) }), LIGHT.clone().multiplyScalar(7));
+  // (a star's colour as a tint, half way: its brightest channel kept at the white's)
+  const hot = new THREE.Color(9, 8.2, 7.2);
+  if (colour) hot.multiply(new THREE.Color(...colour.map((c) => 0.5 + (0.5 * c) / Math.max(...colour, 1e-3))));
+  add(new THREE.SphereGeometry(1.5, 24, 12), new THREE.MeshBasicMaterial({ color: hot }), light.clone().normalize().multiplyScalar(7));
   add(new THREE.SphereGeometry(2.2, 24, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.35, 0.45, 1.1) }), FILL.clone().multiplyScalar(7));
   const pmrem = new THREE.PMREMGenerator(renderer);
   const rt = pmrem.fromScene(env, 0.02);

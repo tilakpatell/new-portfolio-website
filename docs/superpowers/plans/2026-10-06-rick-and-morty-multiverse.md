@@ -363,8 +363,8 @@ Assets, with their ceilings if generated (R 47 ×6, C 33 ×5, PH 44 ×4 = 623):
   nx5: { rig: false, hero: true, prompt: `The NX-5 Planet Remover from Rick and Morty, a Galactic Federation capital ship: a huge long dark green armoured warship with a flat wide hull, a ring of five enormous laser cannon barrels at the front, rows of green lights along its sides, a raised command tower near the stern, big engine blocks at the back glowing green. ${PROP}` }, // (confirm the cannon layout against the sheet "NX-5 Planet Remover")
 ```
 
-- [ ] **Sheets and scout** (Task 1.1, Steps 1–2), before any concept: for each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. The prompts above are used only when no candidate passes. The Citadel from space and the NX-5 are credited `where: 'universe'` (the map shows them).
-- [ ] The rest as Task 1.1 (Steps 3–7) for what the scout didn't find; `scripts/crowd.mjs` gains the five crowd names and, posed on their idles, `bigmorty`, `slickmorty`, `rickd3`, `simplerick`, `evilrick` (so the Citadel's crowd has them too). Commit “Rick and Morty: Phase 3’s figures (Mortytown’s Mortys, Rick D. Sanchez III, Simple Rick, Evil Rick), the Citadel from space and the NX-5”.
+- [x] **Sheets and scout** (Task 1.1, Steps 1–2), before any concept: for each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. The prompts above are used only when no candidate passes. The Citadel from space and the NX-5 are credited `where: 'universe'` (the map shows them).
+- [x] The rest as Task 1.1 (Steps 3–7) for what the scout didn't find; `scripts/crowd.mjs` gains the five crowd names and, posed on their idles, `bigmorty`, `slickmorty`, `rickd3`, `simplerick`, `evilrick` (so the Citadel's crowd has them too). Commit “Rick and Morty: Phase 3’s figures (Mortytown’s Mortys, Rick D. Sanchez III, Simple Rick, Evil Rick), the Citadel from space and the NX-5”.
 
 ### Task 3.2: Mortytown’s layout (pure)
 
@@ -375,8 +375,8 @@ Assets, with their ceilings if generated (R 47 ×6, C 33 ×5, PH 44 ×4 = 623):
 **Interfaces:**
 - Produces: `MORTYTOWN = { x0: -60, x1: 60, z0: -30, z1: 30 }` (a district of its own, entered through the door: a second `world` for `CitadelWorld.jsx`'s walker, `at` kept as `tp-citadel-at` with `district: 'mortytown'`), `BLOCKS` (low buildings as boxes), `COLLIDERS`, `WALLS`, `HIDES: [{ id: 'loco-a' | 'loco-b' | 'loco-c', x, z, face }]` (three hiding spots, each behind cover from the street's centre: `sightClear` false from `(0, 0)`), `COP = { x: 40, z: 0 }` (Cop Morty's spot by Morty Mart), `CAST` (`bigmorty` at the club door, `slickmorty` on a corner, `rickd3` and `simplerick` by the factory's back door, `evilrick` walking a loop, `campaignmorty` by a poster), `START = { x: -50, z: 0, face: 0 }`, `inMortytown(x, z)`.
 
-- [ ] **Step 1:** Tests mirroring `layout.test.js`'s `clear`/`reachable`: `START`, every `CAST` member, every `HIDES` spot and `COP` are clear and reachable from `START`; each hide is not in sight of `(0, 0)` but is in sight from within 6 m; the door `mortytown` is on the concourse and clear.
-- [ ] **Step 2:** Run → FAIL; write; → PASS. **Commit** “Citadel: Mortytown’s layout”.
+- [x] **Step 1:** Tests mirroring `layout.test.js`'s `clear`/`reachable`: `START`, every `CAST` member, every `HIDES` spot and `COP` are clear and reachable from `START`; each hide is not in sight of `(0, 0)` but is in sight from within 6 m; the door `mortytown` is on the concourse and clear.
+- [x] **Step 2:** Run → FAIL; write; → PASS. **Commit** “Citadel: Mortytown’s layout”.
 
 ### Task 3.3: The Locos quest (pure) and the district drawn
 
@@ -384,16 +384,16 @@ Assets, with their ceilings if generated (R 47 ×6, C 33 ×5, PH 44 ×4 = 623):
 - Modify: `src/components/rickmorty/citadel/story.js` (`QUESTS` + `{ id: 'locos', name: 'The Mortytown Locos', where: 'Mortytown', needs: 'daycare', go: 'Morty Mart’s been robbed. The Locos are hiding somewhere in Mortytown. Find all three and walk each one to Cop Morty.' }`, `SEAL.locos`), `story.test.js` (the order: `locos` opens after `daycare`; `citadelProgress` counts it; `mood` unchanged by it)
 - Create: `src/components/rickmorty/citadel/locos.js`, `locos.test.js` (`newHunt(seed)`, `stepHunt(hunt, rick, dt, { push })`: a found Loco (Rick within 2.5 m and in sight) follows him at walking pace; delivered when within 3 m of `COP`; events `found`, `delivered`, `won`), `src/components/rickmorty/citadel/district.js` (the builder: the Kenney `station-*` props recoloured, the two Meshy buildings fitted to their `BLOCKS`, the Morty Mart's broken window, posters, the crowd on `CROWD_LOOPS` of the district, the sky the city's under the dome), `CitadelWorld.jsx` (the door takes you down; the HUD's objective; the walker's world swapped: `makeWalker({ radius: null, box: MORTYTOWN, colliders, walls })` or the box as walls), `people.js` (the new kinds), `Achievements.jsx` (`locos`).
 
-- [ ] **Step 1:** Story and hunt tests → FAIL → write → PASS.
-- [ ] **Step 2:** The district and the door; browser: go down, find the three, deliver, come back up; `lab`-style shot script for the Citadel (`scripts/citadel-shots.mjs` on `window.__CITADEL__`, as Task 0.6) → `docs/superpowers/shots/2026-10-06-rm-mortytown.webp`.
-- [ ] **Step 3: Commit** “Citadel: Mortytown, and the Locos”.
+- [x] **Step 1:** Story and hunt tests → FAIL → write → PASS.
+- [x] **Step 2:** The district and the door; browser: go down, find the three, deliver, come back up; `lab`-style shot script for the Citadel (`scripts/citadel-shots.mjs` on `window.__CITADEL__`, as Task 0.6) → `docs/superpowers/shots/2026-10-06-rm-mortytown.webp`.
+- [x] **Step 3: Commit** “Citadel: Mortytown, and the Locos”.
 
 ### Task 3.4: The Citadel from space, as a model
 
 **Files:** `src/components/universe/deep.js:138-156` (nothing: `CITADEL_PARTS` stay), the Citadel's drawing in `src/components/universe/scene.js` (`grep -n citadel src/components/universe/scene.js`) takes `/models/c137/rm/citadel-exterior.glb` through `glbFleet.js`'s loader, fitted to `r * 1.9` across its arms, the code-built one standing in until it loads; the siege's wreckage keeps using the parts.
 
-- [ ] **Step 1:** Load and fit; the siege (`universe/siege.js`, `citadelSiege.js`) still works: the generators sit where `CITADEL_PARTS` put them, marked on the model. Browser: fly to it, siege it; shot `citadel-space`.
-- [ ] **Step 2: Commit** “Universe: the Citadel of Ricks from space, as a model”.
+- [x] **Step 1:** Load and fit; the siege (`universe/siege.js`, `citadelSiege.js`) still works: the generators sit where `CITADEL_PARTS` put them, marked on the model. Browser: fly to it, siege it; shot `citadel-space`.
+- [x] **Step 2: Commit** “Universe: the Citadel of Ricks from space, as a model”.
 
 ### Task 3.5: The NX-5 Planet Remover (pure rules, then the event)
 
@@ -404,9 +404,11 @@ Assets, with their ceilings if generated (R 47 ×6, C 33 ×5, PH 44 ×4 = 623):
 **Interfaces:**
 - Produces: `REMOVER = { arrive: 6, charge: 40, hp: 12, shares: true }`; `newRemover(planet, at, seed) → { phase: 'arriving' | 'charging' | 'fired' | 'destroyed', t, hp, planet }`; `hitRemover(r, damage) → 'hit' | 'destroyed' | null`; `stepRemover(r, dt) → 'fired' | 'left' | null`; `removedUntil(planet) → time` (shared through `siege.js`'s share table so every browser agrees; a planet “removed” is drawn dark and cracked for 60 s and its landing is refused with a card, foot mode untouched).
 
-- [ ] **Step 1:** Tests: the phases in order with the times; damage from two pilots' shares adds up; `fired` once; hitting after `destroyed` returns null; `removedUntil` is 60 s after `fired`; a pilot already landed stays landed (`refuseLanding(planet)` only).
-- [ ] **Step 2:** Rules → PASS; the event drawn (the model drops out of warp as the Star Destroyer does, the array glows up over `charge`, the beam, the crack); the crews' lines (Rick: “That’s a planet remover, Morty. It removes planets.”); browser; shot `nx5`.
-- [ ] **Step 3:** README, architecture. **Commit** “Universe: the Federation’s NX-5 Planet Remover”; PR; merge.
+- [x] **Step 1:** Tests: the phases in order with the times; damage from two pilots' shares adds up; `fired` once; hitting after `destroyed` returns null; `removedUntil` is 60 s after `fired`; a pilot already landed stays landed (`refuseLanding(planet)` only).
+- [x] **Step 2:** Rules → PASS; the event drawn (the model drops out of warp as the Star Destroyer does, the array glows up over `charge`, the beam, the crack); the crews' lines (Rick: “That’s a planet remover, Morty. It removes planets.”); browser; shot `nx5`.
+- [x] **Step 3:** README, architecture. **Commit** “Universe: the Federation’s NX-5 Planet Remover”; PR; merge.
+
+> Phase 3 is done on `claude/rm-multiverse-phase3`. Every asset was made through the gate (nothing on Sketchfab or Meshy's community passed; the prompts above were rewritten from the wiki's stills, `scripts/meshy-rm-local.mjs` holds the ones used). Where it differs from the plan: the Locos are rigged, not crowd figures (the hunt walks them); there are four hides and a hunt picks three; Cop Morty stands at (35.4, 7.6) on the pavement with Cop Rick; the Locos quest is listed last and needs the day care; Mortytown is drawn in the Citadel's own scene far under the concourse; the Citadel's model replaces the built one once it's loaded and `CITADEL_PARTS` follow it (level arms, a quarter turn apart); the NX-5 is local to the pilot like the Star Destroyer, its damage kept per pilot as the siege's but not carried online, with 36 punches, not 12. Shots: `docs/superpowers/shots/2026-10-06-rm-phase3-*.webp`.
 
 ---
 

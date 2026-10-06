@@ -167,8 +167,8 @@ export const PAGES = {
       },
     ],
     tips: [
-      ['Play as', 'The button with your name on it, top right: pick who you play as (Luke, Leia, Han, Chewie, Ahsoka, Boba Fett); for a Jedi the blade’s colour, the hilt and the stance (single, double, dual, crossguard); for the rest the gun (the galaxy’s and others’) and two mods on it.'],
-      ['The fight', 'Enemies show their health over their heads; the one you’re squared up to is named at the bottom, and your strokes step in to them. Blocking spends your guard: broken, you stagger. Guns heat up; vent early or ride the lock.'],
+      ['Play as', 'The button with your name on it, top right: pick who you play as (Luke, Leia, Han, Chewie, Ahsoka, Boba Fett); for a Jedi the blade’s colour, the hilt and the stance (single, double, dual, crossguard); for the rest the gun (the galaxy’s and others’) and two mods on it; and three perks for anyone, Battlefront’s star cards in spirit.'],
+      ['The fight', 'Enemies show their health over their heads; the one you’re squared up to wears a ring and is named at the bottom, and your strokes step in to them. Blocking spends your guard: broken, you stagger. A duellist’s guard is the white line over his health: his blade turns your strokes until it breaks. Guns heat up; vent early or ride the lock.'],
       ['The places', 'The compass names the places from the films until you’ve found them, with what the crew have to say about each.'],
       ['Galactic assault', 'On Hoth and Geonosis, a battle for the command posts (from the system’s mission page). Pick a side and a post to deploy at; stand in a post with more of yours than theirs and it turns; take every post of the phase and the next begins. Down, you deploy again for one of your side’s reinforcements.'],
       ['Leaving', 'Get back in the ship (E by it, or Back to orbit) to take off.'],

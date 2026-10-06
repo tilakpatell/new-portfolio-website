@@ -162,6 +162,8 @@ export function createSky(site) {
     mesh,
     sunDirs,
     suns,
+    // (the dome's own uniforms: the fog reads them, skyfog.js)
+    uniforms,
     update(camera, t, flash = 0) {
       mesh.position.copy(camera.position);
       uniforms.uTime.value = t;

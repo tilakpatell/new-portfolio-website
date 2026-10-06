@@ -56,9 +56,12 @@ import { siteOf } from './sites';
 import { heightGrid, makeHeight } from './terrain';
 import { createMarks, groundMaterial, groundMesh } from './ground';
 import { createSky } from './sky';
+import { createSkyFog } from './skyfog';
 import { createWater } from './water';
 import { createWeather } from './weather';
 import { createKit } from './kit';
+import { createGrass } from './grass';
+import { floorShadow } from '../../../lib/three/grounding';
 import { PROPS } from './props';
 import { createPlacer } from './placer';
 import { createActors, modelFigure } from './actors';
@@ -70,10 +73,10 @@ import { snapToTexel } from './shadow';
 import { createShadowPhase } from './near';
 import { createBlaster } from './blaster';
 import { createSaber } from './saber';
-import { parries } from './hostiles';
 import { DODGE, FORCE, GUARD, HEAVY, PARRY, dodgeStep, forceAt, guardHit, guardStep, hitStop, lungeTo, parried, pushVelocity } from './combatRules';
 import { heatShot, heatStep, spreadAt, vent, ventSpot, withMods } from './weaponRules';
 import { heroSpec } from '../heroes';
+import { perkEffects } from '../perks';
 import { feed, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, ride, rider, turnToward, walk, walker } from './walker';
@@ -130,9 +133,15 @@ export async function create(canvas, ctx) {
   scene.add(camera);
   canvas.setAttribute('aria-hidden', 'true');
   const post = createPost(renderer, scene, camera, { small });
-  const warm = (root) => precompile(renderer, singlePass(root), camera, scene, post.on ? post.composer.readBuffer : undefined);
+  // (fogged in the sky's colour before its shaders are made, so they're made once)
+  const warm = (root) => {
+    skyFog.scene(root);
+    return precompile(renderer, singlePass(root), camera, scene, post.on ? post.composer.readBuffer : undefined);
+  };
 
   const sky = createSky(site);
+  // (the fog the sky's colour that way: everything fogged with it, as it's put in the world)
+  const skyFog = createSkyFog(sky, THREE.ShaderChunk);
   scene.add(sky.mesh);
   const sunDir = sky.sunDirs[0] ?? new V(0.3, 0.8, 0.4).normalize();
   const sun = new THREE.DirectionalLight(site.sky.suns?.[0]?.color ?? '#ffffff', site.light.sun ?? 3);
@@ -223,6 +232,8 @@ export async function create(canvas, ctx) {
     }
     placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true });
   }
+  // (the grass round you: blades on the land, where the site grows it)
+  const grass = site.grass && !site.noGround ? createGrass(scene, { grid, site, small, time: kit.wind }) : null;
   const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density });
 
   // ── The places you go into (zones): built high over the world, out of
@@ -426,6 +437,8 @@ export async function create(canvas, ctx) {
   // ship's own crew otherwise, and the one of them you aren't stays your mate)
   const crewOf = PARTY[shipKind] ?? PARTY.xwing;
   const hero = ctx.hero ? heroSpec(ctx.hero) : null;
+  const perks = perkEffects(hero?.perks ?? []); // (galaxy/perks.js: the multipliers the hero's perks give)
+  const guardMax = GUARD.max * perks.guard;
   const party = hero ? [hero, crewOf[0].id === hero.id ? crewOf[1] : crewOf[1].id === hero.id ? crewOf[0] : crewOf[1]] : crewOf;
   const out = new V(Math.cos(site.land.yaw), 0, -Math.sin(site.land.yaw)); // the ship's right
   // (a mission on foot starts you at its start, facing its way)
@@ -476,6 +489,9 @@ export async function create(canvas, ctx) {
           if (p.spec.saber && p.gp) p.saber = createSaber(p.gp, { color: p.spec.saber.color, hilt: p.spec.saber.hilt, stance: p.spec.saber.stance, parent: scene, sound: (what) => sounds.saber?.(what) ?? sounds.combat?.(what) });
           // the gun's numbers (weaponRules.js), with the mods they picked
           p.weapon = withMods(fig.gun ?? p.spec.gun, p.spec.mods ?? []);
+          p.weapon.heat *= perks.heat;
+          p.weapon.cool *= perks.cool;
+          p.weapon.every *= perks.cycle;
         }
         await warm(p.holder);
       }),
@@ -518,7 +534,7 @@ export async function create(canvas, ctx) {
     secondQueued: false,
     saberAt: -99, // when the saber last did something (it goes out after SABER_IDLE)
     // ── the fight (combatRules.js, weaponRules.js) ──
-    guard: { value: GUARD.max, hitAt: null, brokenAt: null }, // what blocking spends
+    guard: { value: guardMax, hitAt: null, brokenAt: null }, // what blocking spends
     blockAt: null, // when C went down (a swipe just after is parried)
     pressAt: null, // when F went down with a saber (held, it's the heavy stroke)
     dodge: null, // { t0, dx, dz }
@@ -934,6 +950,7 @@ export async function create(canvas, ctx) {
     hemi.intensity = z ? (L?.ambient ?? 0.4) : outdoors.ambient;
     scene.fog.color.set(L?.fog ?? outdoors.fog);
     scene.fog.density = z ? (L?.density ?? 0.02) : outdoors.density;
+    skyFog.indoors(Boolean(z));
     scene.environmentIntensity = z ? 0.15 : outdoors.env;
     sky.mesh.visible = !z;
     if (weather) weather.group.visible = !z;
@@ -1018,7 +1035,7 @@ export async function create(canvas, ctx) {
     else {
       const t = hit.target;
       const was = t.hp;
-      activity.hit(t, damage, { breaks });
+      activity.hit(t, dealt(damage), { breaks });
       const killed = was > 0 && t.hp <= 0;
       emit({ type: 'hit', kill: killed });
       sounds.combat?.(killed ? 'kill' : 'hit');
@@ -1026,6 +1043,7 @@ export async function create(canvas, ctx) {
     }
   };
   const weapon = () => me().weapon ?? withMods(me().spec.gun ?? 'blaster', me().spec.mods ?? []);
+  const dealt = (n) => Math.max(1, Math.round(n * perks.damage));
   // the eyes' line, scattered by the weapon (tighter down the sights)
   const scatter = (dir, w) => {
     const sp = spreadAt(w, state.ads);
@@ -1162,7 +1180,7 @@ export async function create(canvas, ctx) {
     if (t && !t.down) {
       const q = t.holder.position;
       p.st.yaw = Math.atan2(q.x - p.st.x, q.z - p.st.z);
-      const d = lungeTo(p.st, { x: q.x, z: q.z, r: 0.5 }, p.saber.stance);
+      const d = lungeTo(p.st, { x: q.x, z: q.z, r: 0.5 }, { ...p.saber.stance, lunge: p.saber.stance.lunge * perks.lunge });
       if (d > 0) state.lunge = { t0: state.t, dur: Math.min(0.2, sw.dur * 0.4), dx: Math.sin(p.st.yaw) * d, dz: Math.cos(p.st.yaw) * d };
     }
   }
@@ -1180,7 +1198,7 @@ export async function create(canvas, ctx) {
   // the dodge (X): a roll the way you're going (back, if you're still),
   // nothing landing through its first moments
   function dodge() {
-    if (state.phase !== 'walk' || state.dodge || state.t - state.dodgedAt < DODGE.cool || state.off) return;
+    if (state.phase !== 'walk' || state.dodge || state.t - state.dodgedAt < DODGE.cool * perks.dodge || state.off) return;
     const inp = input();
     const p = me().st;
     let dx = Math.sin(inp.heading) * inp.y + Math.cos(inp.heading) * inp.x;
@@ -1214,6 +1232,31 @@ export async function create(canvas, ctx) {
     me().holder.rotation.x = -Math.PI * 2 * k * (d.dx * Math.sin(p.yaw) + d.dz * Math.cos(p.yaw) >= 0 ? 1 : -1);
     return at.safe;
   }
+  // the ring over the one you're squared up to: a thin additive ring at
+  // their chest, facing you, breathing; in your blade's (or bolt's) colour
+  const lockRing = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.5, 40), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, side: THREE.DoubleSide, toneMapped: false }));
+  lockRing.visible = false;
+  lockRing.renderOrder = 6;
+  scene.add(lockRing);
+  const lockTicks = new THREE.Mesh(new THREE.RingGeometry(0.56, 0.62, 4, 1), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, side: THREE.DoubleSide, toneMapped: false }));
+  lockRing.add(lockTicks);
+  function stepLockRing(dt) {
+    const t = state.lock;
+    if (!t || t.down || state.phase !== 'walk') {
+      lockRing.visible = false;
+      return;
+    }
+    lockRing.visible = true;
+    const q = t.holder.position;
+    const tall = (t.fig?.tall ?? 1.6) * (t.spec?.scale ?? 1);
+    lockRing.position.set(q.x, q.y + tall * 0.55, q.z);
+    lockRing.lookAt(camera.position);
+    const breath = 1 + 0.06 * Math.sin(state.t * 5);
+    lockRing.scale.setScalar(Math.max(0.6, tall * 0.5) * breath);
+    lockTicks.rotation.z += dt * 0.8;
+    lockRing.material.color.set(me().spec.bolt ?? '#ffffff');
+    lockTicks.material.color.copy(lockRing.material.color);
+  }
   // the one your strokes home on: the nearest in front, within LOCK
   function pickLock() {
     const p = me().st;
@@ -1245,7 +1288,7 @@ export async function create(canvas, ctx) {
     if (p.saber) {
       const kind = slot === 'power' ? 'push' : 'pull';
       const f = FORCE[kind];
-      state.cool[slot] = state.t + f.cool;
+      state.cool[slot] = state.t + f.cool * perks.cooldown;
       state.saberAt = state.t;
       state.aim = 1;
       state.aimDir.copy(camDir);
@@ -1273,7 +1316,7 @@ export async function create(canvas, ctx) {
     }
     if (slot === 'power') {
       // the detonator: thrown in an arc, blowing after its fuse (or when it lands)
-      state.cool.power = state.t + DETONATOR.cool;
+      state.cool.power = state.t + DETONATOR.cool * perks.cooldown;
       const m = new THREE.Mesh(bombGeo, bombMat);
       m.position.set(p.st.x, p.st.y + 1.4, p.st.z).addScaledVector(camDir, 0.6);
       scene.add(m);
@@ -1284,7 +1327,7 @@ export async function create(canvas, ctx) {
       return;
     }
     // the overcharge: no heat, white bolts, a harder hit for a while
-    state.cool.second = state.t + OVERCHARGE.cool;
+    state.cool.second = state.t + OVERCHARGE.cool * perks.cooldown;
     state.overcharge = state.t + OVERCHARGE.dur;
     state.heat = { value: 0, locked: false, lockedAt: null };
     sounds.combat?.('perfect');
@@ -1351,19 +1394,25 @@ export async function create(canvas, ctx) {
   // the blade through one of them: their blade turns it (sparks, a clash)
   // or it lands
   function saberHit(t, damage, at, { heavy = false, thrown = false } = {}) {
-    // (a heavy stroke, or one on a staggered foe, can't be parried)
-    const parriedByThem = !heavy && !thrown && t.stagger <= 0 && !t.knock && parries(t.hostile, Math.random());
-    fx.sparks(at, UP, parriedByThem ? '#ffffff' : (me().spec.bolt ?? '#ffffff'), parriedByThem ? 16 : heavy ? 22 : 10);
+    // their blade on yours: turned while their guard holds (each turned
+    // stroke drains it, a heavy one breaks it and they reel)
+    const turn = thrown ? { parried: false, broke: false } : activity.parry(t, { heavy });
+    fx.sparks(at, UP, turn.parried ? '#ffffff' : (me().spec.bolt ?? '#ffffff'), turn.parried ? 16 : heavy ? 22 : 10);
     sounds.saber?.('clash');
-    if (parriedByThem) {
+    if (turn.broke) {
+      sounds.combat?.('parry');
+      emit({ type: 'parry', theirs: true });
+      state.hitstop = Math.max(state.hitstop, 0.1);
+    }
+    if (turn.parried) {
       t.flinch = 0.2;
-      // their blade on yours: your guard takes some of it
+      // your guard takes some of it
       state.guard = guardHit(state.guard, 12, state.t);
       state.hitstop = Math.max(state.hitstop, 0.04);
       return;
     }
     const was = t.hp;
-    activity.hit(t, damage, { breaks: heavy });
+    activity.hit(t, dealt(damage), { breaks: heavy });
     if (heavy) activity.stagger(t, 1.2);
     const killed = was > 0 && t.hp <= 0;
     emit({ type: 'hit', kill: killed });
@@ -1385,7 +1434,7 @@ export async function create(canvas, ctx) {
     }
     // the guard: regrowing, or staggered while it's broken
     const wasBroken = state.guard.brokenAt != null;
-    state.guard = guardStep(state.guard, dt, state.t);
+    state.guard = guardStep(state.guard, dt, state.t, guardMax);
     if (!wasBroken && state.guard.brokenAt != null) {
       sounds.combat?.('broken');
       state.shake = Math.min(1, state.shake + 0.5);
@@ -1424,14 +1473,14 @@ export async function create(canvas, ctx) {
       saber: Boolean(p.saber),
       stance: p.saber ? p.saber.stance.name : null,
       weapon: w ? w.name : null,
-      guard: p.saber ? state.guard.value / GUARD.max : null,
+      guard: p.saber ? state.guard.value / guardMax : null,
       broken: state.guard.brokenAt != null,
       heat: w ? state.heat.value : null,
       locked: state.heat.locked,
       vent: w ? ventSpot(state.heat, state.t) : null,
       hot: state.t < state.overcharge,
-      cool: { power: Math.max(0, state.cool.power - state.t), second: Math.max(0, state.cool.second - state.t), dodge: Math.max(0, state.dodgedAt + DODGE.cool - state.t) },
-      cools: { power: p.saber ? FORCE.push.cool : DETONATOR.cool, second: p.saber ? FORCE.pull.cool : OVERCHARGE.cool, dodge: DODGE.cool },
+      cool: { power: Math.max(0, state.cool.power - state.t), second: Math.max(0, state.cool.second - state.t), dodge: Math.max(0, state.dodgedAt + DODGE.cool * perks.dodge - state.t) },
+      cools: { power: (p.saber ? FORCE.push.cool : DETONATOR.cool) * perks.cooldown, second: (p.saber ? FORCE.pull.cool : OVERCHARGE.cool) * perks.cooldown, dodge: DODGE.cool * perks.dodge },
       lock: lock ? { name: lock.spec.kind, hp: Math.max(0, lock.hp), max: lock.spec.hp ?? 1, shield: lock.shield } : null,
       ads: state.ads,
     });
@@ -1487,7 +1536,7 @@ export async function create(canvas, ctx) {
     }
   }
   function hurt(n) {
-    state.health = Math.max(0, state.health - n);
+    state.health = Math.max(0, state.health - n * perks.hurt);
     state.hurtAt = state.t;
     state.shake = Math.min(1, state.shake + 0.3);
     emit({ type: 'health', value: state.health });
@@ -1969,6 +2018,7 @@ export async function create(canvas, ctx) {
       state.lock = null;
       emit({ type: 'lock', name: null });
     }
+    stepLockRing(dt);
     stepHud();
     // the chase: on with it, and a shove when you ride into one
     if (chase && (state.phase === 'walk' || state.phase === 'ride')) {
@@ -2009,10 +2059,10 @@ export async function create(canvas, ctx) {
     }
     for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: actorAt, door: doorFor })) questEvent(ev);
     if (state.phase === 'walk' || state.phase === 'ride')
-      for (const s of activity.shooters(dt, me().st)) {
+      for (const s of activity.shooters(dt, me().st, state.t)) {
         const blade = me().saber?.deflecting(s.from) ?? false;
         if (state.safe) continue; // (through the dodge's first moments nothing lands)
-        if (s.melee && blade && parried(state.blockAt, state.t)) {
+        if (s.melee && blade && parried(state.blockAt, state.t, PARRY.window * perks.parry)) {
           // the block went up just as their swipe came: a parry, and they reel from it
           const p = me().st;
           fx.sparks(new V(p.x, p.y + 1.2, p.z), UP, '#ffffff', 26);
@@ -2055,11 +2105,11 @@ export async function create(canvas, ctx) {
       sounds.saber?.('deflect');
       state.saberAt = state.t;
       // (each bolt turned costs a little guard)
-      if (me().saber) state.guard = guardHit(state.guard, 7 * me().saber.stance.cost, state.t);
+      if (me().saber) state.guard = guardHit(state.guard, 7 * me().saber.stance.cost * perks.deflect, state.t);
     });
     if (hit) hurt(hit);
     if (state.health < 100 && state.t - state.hurtAt > 4) {
-      state.health = Math.min(100, state.health + dt * 12);
+      state.health = Math.min(100, state.health + dt * 12 * perks.regen);
       if (Math.round(state.health) % 10 === 0) emit({ type: 'health', value: Math.round(state.health) });
     }
     // the marks over whoever has a quest to give
@@ -2087,6 +2137,8 @@ export async function create(canvas, ctx) {
     state.aim = Math.max(0, state.aim - dt / 2.5);
     life.update(dt, state.phase === 'walk' ? me().st : null, state.phase === 'walk' || state.phase === 'ride' ? me().st : camera.position);
     placer.update(t, dt, me().st);
+    if (!reduced) kit.tick(dt);
+    grass?.update(me().st.x, me().st.z, me().st.x, me().st.z);
     stepDust(dt);
     storm(dt);
     online(dt);
@@ -2125,7 +2177,7 @@ export async function create(canvas, ctx) {
     const net = props.net;
     if (!net) return;
     const out = state.phase === 'walk' || state.phase === 'ride' || state.phase === 'out';
-    const w = (p) => ({ who: p.spec.id, x: p.st.x, y: p.st.y, z: p.st.z, yaw: p.st.yaw, speed: state.phase === 'ride' && p === me() ? state.riding.state.speed : p.st.speed, aim: p === me() ? state.aim : 0 });
+    const w = (p) => ({ who: p.spec.id, x: p.st.x, y: p.st.y, z: p.st.z, yaw: p.st.yaw, speed: state.phase === 'ride' && p === me() ? state.riding.state.speed : p.st.speed, aim: p === me() ? state.aim : 0, arms: p.spec.gun ? { gun: p.spec.gun, lit: Boolean(p.saber?.lit), color: p.spec.saber?.color ?? '', stance: p.spec.saber?.stance ?? 'single', swing: Boolean(p.saber?.swinging) } : null });
     net.walk?.(out ? { world: site.id, kind: shipKind, lead: w(me()), mate: w(other()), ride: state.riding?.kind ?? null } : null);
     peers.update(net, site.id, dt);
   }
@@ -2159,6 +2211,8 @@ export async function create(canvas, ctx) {
     sun.position.copy(snapped).addScaledVector(sunDir, 300);
     sun.target.position.copy(snapped);
     sky.update(camera, t, flash.k);
+    // (whatever's come into the world since, fogged in the sky's colour before it's drawn)
+    skyFog.scene(scene);
     water?.update(t);
     weather?.update(t, camera, world.heightAt, size.h);
     compass();
@@ -2201,13 +2255,15 @@ export async function create(canvas, ctx) {
         area: { x0: landAt[0] - R, z0: landAt[1] - R, w: R * 2, d: R * 2 },
         sun,
         // (what moves isn't baked: the folk and beasts about, the speeders)
-        skip: [sky.mesh, water?.mesh, water?.glow, weather?.group, weather?.mesh, camera, life.group, ...rides.map((x) => x.holder)].filter(Boolean),
+        skip: [sky.mesh, water?.mesh, water?.glow, weather?.group, weather?.mesh, camera, life.group, grass?.mesh, ...rides.map((x) => x.holder)].filter(Boolean),
         movers: [...people.map((p) => ({ object: p.holder, size: [0.8, 0.8] })), ...life.actors.filter((a) => a.holder).map((a) => ({ object: a.holder, size: [1, 1] })), ...rides.map((x) => ({ object: x.holder, size: [1.4, 2.6] }))],
         shade: site.light.shade ?? site.light.ground ?? '#3a3028',
         height: world.heightAt,
         tier: small ? 'low' : 'mid',
         auto: true,
       });
+      // (the grass in the floor's shadows: read where each blade stands)
+      if (grass) floorShadow(grass.mesh.material, lit.mask);
     }
     // (the scouts' way is planned round the trees, so once they're down)
     if (!disposed) chase?.begin();
@@ -2442,12 +2498,16 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name } : null, guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length }),
+    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name } : null, guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length }),
     dispose() {
       disposed = true;
       lit?.dispose();
       for (const p of people) p.saber?.dispose();
       for (const b of state.bombs) scene.remove(b.m);
+      lockRing.geometry.dispose();
+      lockRing.material.dispose();
+      lockTicks.geometry.dispose();
+      lockTicks.material.dispose();
       bombGeo.dispose();
       bombMat.dispose();
       window.removeEventListener('keydown', keyDown);
@@ -2470,6 +2530,7 @@ export async function create(canvas, ctx) {
       markMat.dispose();
       life.dispose();
       placer.dispose();
+      grass?.dispose();
       shadowPhase?.dispose();
       for (const p of people) {
         p.gp?.dispose();

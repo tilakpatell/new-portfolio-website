@@ -42,6 +42,8 @@ describe('the director', () => {
       for (const id of ['hunt', 'distress', 'convoy', 'bounty', 'leviathan']) expect(kinds.has(id), `${side.id} ${id}`).toBe(true);
       // (every side has a capital ship now: a Star Destroyer, a Federation cruiser, a Madrigal freighter)
       expect(kinds.has('destroyer'), side.id).toBe(true);
+      // (and the Federation's NX-5 Planet Remover, Rick's universe's alone)
+      expect(kinds.has('remover'), side.id).toBe(side.id === 'rickmorty');
       if (side.id === 'starwars') expect(!kinds.has('council') && !kinds.has('roadblock')).toBe(true);
       else if (side.id === 'rickmorty') expect(kinds.has('council') && !kinds.has('roadblock')).toBe(true);
       else expect(kinds.has('roadblock') && !kinds.has('council')).toBe(true);
