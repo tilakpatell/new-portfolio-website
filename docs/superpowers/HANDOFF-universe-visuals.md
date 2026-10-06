@@ -42,6 +42,18 @@ Scorecard (the spec’s “Where things stand” table is the before): fill in t
   - *The aberration is a uniform, not a `#define`*: setting it to 0 at pace step 3 costs nothing, where switching a define would recompile the pass mid-flight. Two extra reads a pixel while it’s on.
   - *The flare is the home sun’s only*; the galaxy’s suns and the second star (Task 2.1’s) are for checkpoint 2, which brings `lighting.js`. The galaxy has no `lib/three/pace` of its own, so `post.setLevel` isn’t called there.
 - **The Twins go round each other** (the owner’s ask, in checkpoint 1’s PR): `deep.js`’s `binaryAt(w, t)` and `moveBinaries(t)`; the place is the point they go round, and their solids move with them each frame on the scene’s clock.
+- **Checkpoint 2:**
+  - *The Twins’ two suns are lit from where they are now*: their `STARS` entries share the solids’ `at` arrays, which `moveBinaries` moves, so the key and the fill turn as they go round each other.
+  - *The flares go to the key and the fill*, where the fill is a star (the plan’s “two heaviest”): two flares, each as strong as its star’s light is where you are (`key.strength / 2.35`), so a far star is a glint and not a glare, and one exposure from both. The cool fill that comes from no star has no flare.
+  - *The reflections’ glow* (`post.js`’s `spaceEnvironment`, now with `{ light, colour }`) is made again only when the key star changes, at the key’s direction and in half its colour (a PMREM is a few ms: never every frame). In the home system it stays where the map always had it.
+  - *Day sides without `focusPose`*: a world picked on the map is turned to by `dayYaw`, and `focusPose` looks along the map’s yaw, so it needed no change; `parkAt` scores the day side for the fandoms’ worlds and `startAt` prefers it, and a jump parks through `parkAt` (pinned in `nav.test.js`).
+  - *The galaxy’s flares are not in*: `galaxy/scene.js` has its own sun sprites and no `pace`, and belongs to the galaxy’s lane (`HANDOFF-galaxy-upgrade.md`); `createFlare` is in `lib/three` for it.
+- **Checkpoint 3:**
+  - *The shell is shared, not copied*: `galaxy/bodyShaders.js` re-exports `ATMO`, `SHELL_VERT`, `SHELL_FRAG` and `NOISE` from `lib/three`, and `galaxy/bodies.js` makes its shells with `createAtmosphere`, passing its body’s uniforms so the ground and the air read one sun. Two options the galaxy didn’t need: `inner` (where the ground starts: a faceted sphere’s inscribed radius, so no ring of air shows through the facets) and `uStrength` (the hover).
+  - *The ground’s rim goes when the air shows*, rather than a ground-side haze term: the shell already marches the haze in front of the limb, and the two together doubled it. On `low` and at the pace’s step 3 the halo and the rim come back together (`setAir`).
+  - *Cloud shadows find the cloud layer by its texture* (`styleFor` names it; `buildPlanet` looks for the mesh wearing it), so each builder keeps its own cloud mesh. Their shadow is read where the clouds have turned to over the ground, each frame.
+  - *The ground’s detail is a 256 noise tile made in code*, not a texture file, faded in from three radii to 1.3, worked out for the nearest two planets only (the rest are given 1e9).
+  - *The high sets*: the Caribbean and Invincible get 2048 relief (`-hq`); Cybertron’s relief was already 2048 as its standard file, with a 1024 `-sm`, so its map entry is renamed from `transformers-normal-sm` to `transformers-normal` and gets the 2048 on high and up.
 
 ## Checking it
 
