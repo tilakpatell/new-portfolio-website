@@ -20,4 +20,14 @@ describe('where the Star Destroyer drops in', () => {
       for (const side of [-1, 1]) expect(clear(destroyerSpot({ ...p, y: p.y }, side)), `${id} ${side}`).toBe(true);
     }
   });
+
+  it('keeps clear of whatever solids it is given, not the universe map\'s', () => {
+    // a galaxy system: its planet at the middle, the ship just off it
+    const planet = { id: 'planet', at: [0, 0, 0], r: 40 };
+    const ship = { x: 0, y: 14, z: 90, heading: 0 }; // facing −z: 28 ahead is 62 out, inside the planet's half-length margin
+    for (const side of [-1, 1]) {
+      const p = destroyerSpot(ship, side, [planet]);
+      expect(Math.hypot(p[0], p[1], p[2])).toBeGreaterThan(planet.r + STAR_DESTROYER * 0.6);
+    }
+  });
 });

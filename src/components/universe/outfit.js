@@ -185,7 +185,8 @@ export function statsOf(kind, loadout = STOCK_LOADOUT, build = null) {
   }
   const mass = massOf(loadout) + (own?.mass ?? 0);
   s.agility /= 1 + MASS_K * mass;
-  return { ...s, mass, power: powerOf(loadout) + (own?.power ?? 0), capacity: capacityOf(kind, build) };
+  // (rounded: halves and tenths of a tonne summed came out as 4.199999999999999 t)
+  return { ...s, mass: Math.round(mass * 100) / 100, power: powerOf(loadout) + (own?.power ?? 0), capacity: capacityOf(kind, build) };
 }
 
 // The loadout a ship flies with: what was fitted to it, each part only

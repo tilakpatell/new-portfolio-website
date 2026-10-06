@@ -148,7 +148,7 @@ import { readLooks } from '../rickmorty/wardrobe/looks';
 import { BUILT_KINDS, buildTraffic } from './trafficModels';
 import { entrySound, lockSound, shipEngine, wellSound } from './sounds';
 import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track, trackNudge } from './targeting';
-import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyAxes, stickInput } from './controls';
+import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyAxes, keyFlies, stickInput } from './controls';
 import { byId } from './universes';
 import { createPilots } from './online/pilots';
 import { arsenalOf, createArmory, fan, steer } from './weapons';
@@ -219,7 +219,6 @@ const KEYS = { w: 'up', s: 'down', a: 'a', d: 'd', arrowleft: 'left', arrowright
 const FOOT_KEYS = { ...KEYS, a: 'left', d: 'right', arrowup: 'up', arrowdown: 'down', ' ': 'jump', shift: 'boost', q: 'strafeL', e: 'strafeR', f: null };
 const FOOT_FOV = 56; // the lens on foot: a person's, wider than the chase's
 const SHIP_NAMES = { rv: 'The RV', cruiser: 'The cruiser', xwing: 'The X-wing', falcon: 'The Falcon' };
-const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ']);
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const TRACK_AFTER_SHOT = 1500; // ms: a lock the guns picked is followed this long after a shot at it
@@ -4389,10 +4388,15 @@ export async function create(canvas, ctx) {
   const onKeyDown = (e) => {
     if (!flying() || props.frozen || e.metaKey || e.ctrlKey || e.altKey) return;
     const el = e.target;
-    if (el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
-    if (document.querySelector('[aria-modal="true"]')) return;
     const key = e.key.toLowerCase();
-    // on a button or link, the arrows, Space and Enter are its own
+    if (!keyFlies(el, key)) return;
+    if (document.querySelector('[aria-modal="true"]')) return;
+    // on a button or link, Enter is its own. The arrows and Space fly anyway
+    // (a click on a panel or HUD button leaves the focus on it, and the
+    // hangar, the settings and the nav map hand it back to their button: the
+    // arrows stopped steering and Space opened the hangar again), unless the
+    // control took them itself (preventDefault: the planet labels, the
+    // guide's tabs); taken here, Space's keydown is prevented, so no click
     const onControl = el instanceof HTMLElement && el !== document.body && el.closest('button, a, [role="button"], [tabindex]:not([tabindex="-1"])');
     if ((key === 'g' || key === 'e' || (key === 'enter' && !onControl)) && state.phoneNear && !onFoot() && !state.landable && !state.at) {
       // at the phone: it asks for its password
@@ -4474,7 +4478,7 @@ export async function create(canvas, ctx) {
       return;
     }
     const k = KEYS[key];
-    if (!k || (onControl && ARROWS.has(key))) return;
+    if (!k || e.defaultPrevented) return;
     e.preventDefault();
     heard();
     if (k !== 'boost') takeover();
@@ -4519,7 +4523,7 @@ export async function create(canvas, ctx) {
       return;
     }
     const k = FOOT_KEYS[key];
-    if (!k || (onControl && ARROWS.has(key))) return;
+    if (!k || e.defaultPrevented) return;
     e.preventDefault();
     held.add(key);
     state.keys[k] = true;
@@ -4886,6 +4890,7 @@ export async function create(canvas, ctx) {
     // seen there, as before
     warmUp: tier === 'low' ? undefined : warmUp,
     update(next) {
+      const picked = props.selected ?? null; // (the page's pick, as it last said)
       props = next;
       if ((next.ship ?? null) !== state.kind) {
         state.loadout = readLoadout(next.loadout); // (a new ship comes fitted as it was left)
@@ -4895,7 +4900,12 @@ export async function create(canvas, ctx) {
       setBuild(next.build ?? null);
       setLoadout(next.loadout);
       setNet(next.net);
-      select(next.selected ?? null);
+      // the page's pick, only when it changes. The router moves the address
+      // in a transition, so a render that comes first (the HUD's, as the
+      // ship leaves a planet and can no longer land) still carries the old
+      // pick: taken as a new one, it sent the ship straight back to the
+      // planet it was leaving, by hyperspeed after a jump there
+      if ((next.selected ?? null) !== picked) select(next.selected ?? null);
       if (next.frozen) {
         endDrag();
         held.clear();

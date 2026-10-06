@@ -54,12 +54,14 @@
 // shield, hud, tags, labels (refs, as the universe map's), stars (a ref:
 // the other systems' names, by id, moved over their stars), frozen,
 // onArrive(id, from) (a jump's come out at a system), onAt(goal id or null),
-// onBoard(path) (into the Death Star), onEvent(e) (for the comms and the
+// onBoard(path) (into the Death Star), onCrash(systemId) → bool (into the
+// planet: the page takes you down to its surface, or says no), onEvent(e) (for the comms and the
 // page; { type: 'aim', id } as the nose comes onto a star or off it).
 
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { capturePointer } from '../../lib/pointer';
+import { keyFlies } from '../universe/controls';
 import { local as remembered } from '../../lib/hooks';
 import { plan as cockpitPlan } from '../cockpit/timeline';
 import { freeKit } from '../cockpit/kit';
@@ -99,6 +101,8 @@ import { createWarFront } from './warfront';
 import { createBolts, createFlashes } from './fx';
 import { buildSystem } from './world';
 import { AHEAD, FACTIONS, KINDS, NAMES } from './hunted';
+import { createRoam } from './roam';
+import { pick as pickFaction } from '../universe/sides';
 import { aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
 import { asking } from './asking';
 import { arrival, courseTo, jumpSeconds, kindsIn, lightYears, starAhead, systemById, wantsDeathStar } from './systems';
@@ -131,7 +135,6 @@ const CRASH = { impact: 0.32, back: 2.6, done: 3.2 };
 const JUMP = { align: 4.5, spool: (JUMP_T.jump + 50) / 1000, exit: 1.1 };
 const IDLE = 40000;
 const KEYS = { w: 'up', s: 'down', a: 'a', d: 'd', arrowleft: 'left', arrowright: 'right', arrowup: 'pitchUp', arrowdown: 'pitchDown', ' ': 'boost', shift: 'boost', f: 'fire' };
-const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ']);
 const DRAG = 6;
 const NO_TARGETS = Object.freeze([]); // (when there are no hunters to lock on to, the same empty list every time)
 
@@ -227,7 +230,8 @@ export async function create(canvas, ctx) {
   fleet.prepare = (o) => warm(o);
   const hunters = reduced ? null : createHunters(scene, { small, fleet, factions: FACTIONS, kinds: KINDS, solids: () => state.space?.solids ?? [] });
   let hunts = 0; // packs sent this visit (the first is a small one)
-  const pieces = reduced ? null : createSetPieces(scene, { small, fleet });
+  const roam = createRoam(); // what happens while you roam: the director on the system's side
+  const pieces = reduced ? null : createSetPieces(scene, { small, fleet, solids: () => state.space?.solids ?? [] }); // (clear of this system's planet, not the universe map's)
   // the Empire's count of your jumps, and the Interdictor waiting on the one that's due
   const interdiction = createInterdiction({
     store: { get: () => window.sessionStorage.getItem(JUMPS_KEY), set: (v) => (v === null ? window.sessionStorage.removeItem(JUMPS_KEY) : window.sessionStorage.setItem(JUMPS_KEY, v)) },
@@ -289,7 +293,6 @@ export async function create(canvas, ctx) {
     hurt: 0,
     lowSaid: false,
     heat: 0,
-    nextHunt: 35 + Math.random() * 25, // seconds of flying till they come
     jump: null, // { to, from, phase, age, dir, dur }
     aim: null, // { id, angle }: the star the nose is on, if it's on one
     courseSaid: false,
@@ -305,6 +308,7 @@ export async function create(canvas, ctx) {
     bias: [0, 0, 0],
     pull: 0, // the tractor beam's hold on you
     pullSaid: false,
+    shieldSaid: -1e9, // (the clock when the crew last had their say on Scarif's shield)
     held: null, // { at, hangar, since, pack, to, faction } while an Interdictor's gravity well holds you (interdiction.js)
     heldSaid: -1e9,
     flare: 1,
@@ -364,7 +368,6 @@ export async function create(canvas, ctx) {
     state.lock = null;
     state.pull = 0;
     state.pullSaid = false;
-    state.nextHunt = 30 + Math.random() * 30;
     state.held = null;
     interdictor?.hide();
     models.want(['destroyer', 'corvette', 'xwing', 'interceptor', ...(wantsDeathStar(sys) ? ['deathstar'] : [])]);
@@ -951,6 +954,10 @@ export async function create(canvas, ctx) {
       if (c.board) {
         c.through = true;
         props.onBoard?.(c.board);
+      } else if (c.planet && props.onCrash?.(state.sys?.id ?? null)) {
+        // into the planet: on down to its surface (the page says whether
+        // there is one to go to; if not, back out of hyperspace as before)
+        c.through = true;
       }
     }
     if (c.through) return true;
@@ -1164,7 +1171,10 @@ export async function create(canvas, ctx) {
         // out: off the new system's planet, on the side you came in from;
         // or, pulled out by the Interdictor's well, a long way short of it
         const a = bitten ? dropPoint(arrival(j.to, j.from)) : arrival(j.to, j.from);
-        state.ship = { ...spawn(null, a), speed: 46 };
+        // (no faster than the drive allows where it comes out: near a planet
+        // that's under 46, and the ship was braked to a near stop in a
+        // fraction of a second while the streaks still played)
+        state.ship = { ...spawn(null, a), speed: Math.min(46, state.space.boostAt(a.x, a.y, a.z)) };
         camQOn = false;
         state.world.group.visible = true;
         j.phase = 'exit';
@@ -1256,11 +1266,20 @@ export async function create(canvas, ctx) {
       const gate = state.world.gate;
       const through = gate && apart(ship.x, ship.y, ship.z, gate.at.x, gate.at.y, gate.at.z) < gate.hole + 2;
       if (!through && (r - sh.r) * (r0 - sh.r) < 0) {
-        const k = (r0 > sh.r ? sh.r + 0.3 : sh.r - 0.3) / r;
-        ship = { ...ship, x: ship.x * k, y: ship.y * k, z: ship.z * k, speed: -ship.speed * 0.3 };
+        // thrown back off it: the shell lit where it was hit (a flash and a
+        // ring out across it: bodies.js), the ship shaken and kicked back
+        // the way it came, and the crew on it (once, then again a while on)
+        const k = (r0 > sh.r ? sh.r + 0.8 : sh.r - 0.8) / r;
+        ship = { ...ship, x: ship.x * k, y: ship.y * k, z: ship.z * k, speed: -ship.speed * 0.45 };
+        state.world.body?.hit?.(tractorPull.set(ship.x, ship.y, ship.z).multiplyScalar(sh.r / Math.hypot(ship.x, ship.y, ship.z)));
+        if (!reduced) {
+          state.shake = Math.max(state.shake, 0.7);
+          state.kick = Math.max(state.kick, 0.6);
+          state.flare = Math.max(state.flare, 1.4);
+        }
         emit({ type: 'bump', id: 'shield', hard: true });
-        if (!state.shieldSaid) {
-          state.shieldSaid = true;
+        if (state.clock - state.shieldSaid > 45) {
+          state.shieldSaid = state.clock;
           emit({ type: 'event', id: 'scarif-shield' });
         }
       }
@@ -1366,7 +1385,9 @@ export async function create(canvas, ctx) {
   // ── What goes on round you ──
   const onHunters = (e) => {
     if (e.type === 'hunted') {
-      if (!e.prey) emit({ type: 'hunted', faction: e.faction, ace: e.kinds.includes('tieadvanced') });
+      // (ace: the kind of the faction's ace, when it came along, for its own line)
+      const ace = FACTIONS[e.faction]?.ace;
+      if (!e.prey) emit({ type: 'hunted', faction: e.faction, ace: ace && e.kinds.includes(ace) ? ace : null });
     } else if (e.type === 'laser') hurt(e.damage);
     else if (e.type === 'shot') emit(e);
     else if (e.type === 'escaped' || e.type === 'cleared') {
@@ -1375,6 +1396,39 @@ export async function create(canvas, ctx) {
     }
   };
   const later = [];
+  // on the way somewhere (out in the open at speed), a pack comes in ahead of you
+  const travelling = (s) => state.space.openness(s.x, s.y, s.z) > 0.5 && Math.abs(s.speed) > 30;
+  // the director's events, played out (the universe map's `happen`, for
+  // what the galaxy plays so far: roamRules.js's ROAM_EVENTS)
+  const happen = (id, ship) => {
+    const side = roam.side(state.sys);
+    if (!side || !hunters) return;
+    const ambush = travelling(ship) ? { ahead: true } : {};
+    const strength = { heat: state.heat, first: hunts === 0 };
+    if (id === 'hunt') {
+      const who = pickFaction(side, 'hunt');
+      if (!who) return;
+      hunts += 1;
+      hunters.pack(who, ship, { ...ambush, ...strength });
+    } else if (id === 'destroyer') {
+      if (!pieces || !side.capitalShip) return;
+      const d = pieces.destroyer(ship, side.capitalShip);
+      if (!d) return;
+      emit({ type: 'event', id: 'destroyer' });
+      // its fighters launch a moment after it's here
+      const who = pickFaction(side, 'capital') ?? pickFaction(side, 'hunt') ?? 'empire';
+      later.push({ at: state.clock + 2.4, run: () => state.ship && !state.crash && !state.jump && hunters.pack(who, state.ship, { from: d.hangar, size: 3, ace: Math.random() < 0.35 }) });
+    } else if (id === 'bounty') {
+      // one hunter, tough and quick: Boba Fett in Slave I (its model, once
+      // it's here: Vader stands in till then), IG-88, Bossk or Dengar
+      const who = pickFaction(side, 'bounty');
+      if (!who) return;
+      if (who === 'fett' && !fleet.loaded('slave1')) {
+        fleet.want(['slave1']);
+        hunters.pack('empire', ship, { size: 1, ace: true, ...ambush });
+      } else hunters.pack(who, ship, { size: 1, ace: false, ...ambush });
+    }
+  };
   const adventure = (dt, t) => {
     state.clock += dt;
     const live = flying() && !state.crash && !state.jump && !props.frozen ? state.ship : null;
@@ -1396,23 +1450,14 @@ export async function create(canvas, ctx) {
       if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen);
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
-      // now and then, whoever holds the system comes for you; the Empire (and
-      // what's left of it) sometimes brings a Star Destroyer to launch them
-      const faction = state.sys?.faction;
+      // now and then something happens: the director, run on the system's
+      // side (roam.js: whoever holds the system comes for you, the Empire
+      // brings a Star Destroyer to launch them, a bounty hunter finds you)
       // (not in the middle of the war's battle: it's busy enough)
-      if (hunters && faction && state.flown && !hunters.active && !pieces?.destroyerHere && !state.held && !war?.battle) {
-        if (state.shield >= 50) state.nextHunt -= dt * (1 + state.heat * 0.4); // (not while your shields are low)
-        if (state.nextHunt <= 0) {
-          state.nextHunt = 50 + Math.random() * 45;
-          const travelling = state.space.openness(live.x, live.y, live.z) > 0.5 && Math.abs(live.speed) > 30;
-          if ((faction === 'empire' || faction === 'remnant') && pieces && Math.random() < 0.3) {
-            const d = pieces.destroyer(live);
-            if (d) {
-              emit({ type: 'event', id: 'destroyer' });
-              later.push({ at: state.clock + 2.4, run: () => state.ship && !state.crash && !state.jump && hunters.pack(faction, state.ship, { from: d.hangar, size: 3, ace: faction === 'empire' && Math.random() < 0.35 }) });
-            }
-          } else hunters.pack(faction, live, { ahead: travelling, heat: state.heat, first: hunts++ === 0 });
-        }
+      if (hunters && state.flown) {
+        const busyHere = hunters.active || Boolean(pieces?.destroyerHere) || Boolean(state.held) || Boolean(war?.battle) || state.view === 'map';
+        const id = roam.update(dt, { sys: state.sys, heat: state.heat, busy: busyHere, travelling: travelling(live), calm: state.shield < 50 });
+        if (id) happen(id, live);
       }
       // the Interdictor's hold: its TIEs launch a moment after it's here, and
       // it lets go once they're gone, once you're out past the well, or once
@@ -1426,7 +1471,6 @@ export async function create(canvas, ctx) {
         const why = holdLifts({ since: h.since, now: state.clock, pack: h.pack, inWell: inWell(live, h.at) });
         if (why) {
           state.held = null;
-          state.nextHunt = 50 + Math.random() * 45;
           emit({ type: 'wellclear', why });
         }
       }
@@ -1848,12 +1892,13 @@ export async function create(canvas, ctx) {
   };
 
   // ── Keys ──
+  const held = new Set(); // the flight keys down now
   const onKeyDown = (e) => {
     if (!flying() || props.frozen || e.metaKey || e.ctrlKey || e.altKey) return;
     const el = e.target;
-    if (el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
-    if (document.querySelector('[aria-modal="true"]')) return;
     const key = e.key.toLowerCase();
+    if (!keyFlies(el, key)) return;
+    if (document.querySelector('[aria-modal="true"]')) return;
     const onControl = el instanceof HTMLElement && el !== document.body && el.closest('button, a, [role="button"], [tabindex]:not([tabindex="-1"])');
     if (key === 'm') {
       e.preventDefault();
@@ -1895,18 +1940,29 @@ export async function create(canvas, ctx) {
       return;
     }
     const k = KEYS[key];
-    if (!k || (onControl && ARROWS.has(key))) return;
+    // (the arrows and Space fly even with a button focused, as on the universe
+    // map, unless the control took them itself; Enter is the button's)
+    if (!k || e.defaultPrevented) return;
     e.preventDefault();
     heard();
     if (k !== 'boost') takeover();
+    held.add(key);
     state.keys[k] = true;
     ctx.invalidate();
   };
+  // (two keys to one control, Space and Shift to the boost: letting go of
+  // one mustn't let go of the other's hold)
   const onKeyUp = (e) => {
-    const k = KEYS[e.key.toLowerCase()];
-    if (k) state.keys[k] = false;
+    const key = e.key.toLowerCase();
+    held.delete(key);
+    const k = KEYS[key];
+    if (!k) return;
+    let still = false;
+    for (const h of held) if (KEYS[h] === k) still = true;
+    state.keys[k] = still;
   };
   const onBlur = () => {
+    held.clear();
     state.keys = {};
     state.boostBtn = false;
     state.climbBtn = 0;
@@ -2108,6 +2164,7 @@ export async function create(canvas, ctx) {
       else if (ask.act === 'jump') startJump(next.system, 'link');
       if (next.frozen) {
         endDrag();
+        held.clear();
         state.keys = {};
         engine?.set({ speed: 0, on: false });
       }
