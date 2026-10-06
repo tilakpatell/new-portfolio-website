@@ -24,7 +24,7 @@ describe('the floor read from its masks', () => {
   it('cuts the sun, the sky and tints the dark, each where three works it out', () => {
     const out = floorShadowShader(SHADER, { areas: 2 }, CHUNKS);
     expect(out.swapped).toEqual({ sun: true, sky: true, shade: true });
-    expect(out.fragmentShader).toContain('getDirectionalLightInfo( directionalLight, directLight );\n\t\tdirectLight.color *= gSun;');
+    expect(out.fragmentShader).toContain('getDirectionalLightInfo( directionalLight, directLight );\n\t\tdirectLight.color *= mix(uSunFloor, 1.0, gSun);');
     expect(out.fragmentShader).toContain('reflectedLight.indirectDiffuse *= gSky;');
     expect(out.fragmentShader).toContain('outgoingLight *= mix(vec3(1.0), uShadeTint, uShadeMix * (1.0 - min(gSun, gV.y)));');
     expect(out.fragmentShader).toContain('uniform vec3 uShadeTint;');

@@ -73,7 +73,10 @@ import { useTravellers } from '../../middleearth/towns/useTravellers';
 // this is the controls, the camera's yaw, the HUD, the doors and the things to
 // do. Each toy opens over the page (the page's own components, the pop quiz,
 // Roy); close it and you're back in the room. Without 3D, the places are
-// cards that open the same things.
+// cards that open the same things. The egg on the living room's bookcase
+// starts Total Rickall there (./interiors/rickall.js, loaded then): Morty
+// kept in the room with the crowd, a crosshair, E for a memory of whoever's
+// in it, F or a click to shoot them, and a card for how it ended.
 
 const Roy = lazy(() => import('./roy/Roy').catch(() => ({ default: RoyDown })));
 const sound = (name) =>
@@ -145,6 +148,14 @@ const SAY = {
   cabinet1: { who: 'Space Mortyball', text: 'Out of order. Everyone’s queueing for Roy anyway.' },
   cabinet2: { who: 'Plumbus Smash', text: 'Somebody’s high score is all nines, and the stick is sticky.' },
   cabinet3: { who: 'Cronenberg Crush', text: 'You lose a life before you’ve found the button.' },
+  // Phase 2 of the multiverse: the rest of the family, and family therapy
+  poopybutthole: { who: 'Mr. Poopybutthole', text: 'Ooh wee! Morty, sit down, sit down. Jerry’s telling me about his apples again.' },
+  snuffles: { who: null, text: 'Snuffles, asleep on his bed. Don’t give him the helmet.' },
+  spacebeth: { who: 'Space Beth', text: 'I’m back for a bit. Dad’s showing me the bench. Don’t ask which of us is the clone, Morty. Nobody knows.' },
+  nancy: { who: 'Nancy', text: 'It’s a sleepover, Morty. Summer said you’d knock first. You didn’t knock.' },
+  tricia: { who: 'Tricia', text: 'Hi, Morty. We’re doing face masks. You can stay if you don’t talk.' },
+  diane: { who: null, text: 'Diane, as Rick keeps her: a hologram over the clone lab’s floor, smiling at nobody. He doesn’t say her name.' },
+  therapy: { who: 'Dr. Wong', text: 'Sit down, Morty. Your grandfather told me this was for Jerry. It isn’t. We have fifty minutes.' },
 };
 const AREA_NAME = {
   street: 'The Smiths’ street',
@@ -158,11 +169,21 @@ const AREA_NAME = {
   mindblowers: 'Morty’s Mind Blowers',
   oval: 'The Oval Office',
   diner: 'Shoney’s',
+  wong: 'Dr. Wong’s office',
 };
+// a place's name inside a sentence ('The alien street' → 'the alien street')
+const inLine = (name) => name.replace(/^The /, 'the ');
 // what talking to someone does, beyond what they say: a thing to do, done
-const TALK_DONE = { president: 'president', dineragent: 'diner' };
+const TALK_DONE = { president: 'president', dineragent: 'diner', therapy: 'wong' };
+// and the achievements a talk earns
+const TALK_UNLOCK = { therapy: 'wong' };
 // a memory's run in the Mind Blowers chair, and how far Morty can stray from the chair before it stops
 const MEMORY_S = 5.5;
+// Total Rickall: how long a memory of someone stays up over them, and how
+// little a click may drag the view and still be a shot (px, ms)
+const RECALL_MS = 9000;
+const CLICK = { px: 6, ms: 400 };
+const NO_HATCH = 'The egg won’t hatch. Give it a moment, then try again.';
 const TALK_MS = 3200; // how long someone talks before what they've said counts
 const SHIP_WAIT = 6; // how long the cruiser keeps a line it was about to say, in seconds
 const CHAIR_R = 1.2;
@@ -180,15 +201,15 @@ const BOARD_R = 2.7; // how near the cruiser's middle Morty can get in from
 
 // Where the next thing to do is, for the map's marker: the area and the spot
 // in it, and from anywhere else, the way towards it.
-const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'], president: ['street', 'spot:president'], oval: ['garage', 'link:garage-oval'], diner: ['street', 'link:diner-door'], mindblowers: ['mindblowers', 'spot:chair'] };
+const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'], president: ['street', 'spot:president'], oval: ['garage', 'link:garage-oval'], diner: ['street', 'link:diner-door'], mindblowers: ['mindblowers', 'spot:chair'], rickall: ['house', 'spot:egg'], wong: ['street', 'link:wong-door'] };
 const WAY = {
-  street: { house: 'house-door', upstairs: 'house-door', garage: 'garage-door', basement: 'garage-door', mindblowers: 'garage-door', oval: 'garage-door', school: 'school-door', diner: 'diner-door', annex: 'garage-door', arcade: 'garage-door' },
-  house: { street: 'front', upstairs: 'stairs-up', garage: 'kitchen-garage', basement: 'kitchen-garage', mindblowers: 'kitchen-garage', oval: 'kitchen-garage', school: 'front', diner: 'front', annex: 'kitchen-garage', arcade: 'kitchen-garage' },
-  garage: { street: 'garage-exit', house: 'garage-kitchen', upstairs: 'garage-kitchen', basement: 'garage-hatch', mindblowers: 'garage-hatch', oval: 'garage-oval', school: 'garage-exit', diner: 'garage-exit', annex: 'garage-portal', arcade: 'garage-portal' },
+  street: { house: 'house-door', upstairs: 'house-door', garage: 'garage-door', basement: 'garage-door', mindblowers: 'garage-door', oval: 'garage-door', school: 'school-door', diner: 'diner-door', wong: 'wong-door', annex: 'garage-door', arcade: 'garage-door' },
+  house: { street: 'front', upstairs: 'stairs-up', garage: 'kitchen-garage', basement: 'kitchen-garage', mindblowers: 'kitchen-garage', oval: 'kitchen-garage', school: 'front', diner: 'front', wong: 'front', annex: 'kitchen-garage', arcade: 'kitchen-garage' },
+  garage: { street: 'garage-exit', house: 'garage-kitchen', upstairs: 'garage-kitchen', basement: 'garage-hatch', mindblowers: 'garage-hatch', oval: 'garage-oval', school: 'garage-exit', diner: 'garage-exit', wong: 'garage-exit', annex: 'garage-portal', arcade: 'garage-portal' },
   basement: { mindblowers: 'basement-mind' },
   annex: { arcade: 'arcade-door' },
 };
-const OUT = { upstairs: 'stairs-down', school: 'school-exit', annex: 'annex-portal', arcade: 'arcade-exit', basement: 'basement-ladder', mindblowers: 'mind-door', oval: 'oval-portal', diner: 'diner-exit' };
+const OUT = { upstairs: 'stairs-down', school: 'school-exit', annex: 'annex-portal', arcade: 'arcade-exit', basement: 'basement-ladder', mindblowers: 'mind-door', oval: 'oval-portal', diner: 'diner-exit', wong: 'wong-exit' };
 function goalOf(next, s) {
   if (!next || s.flying) return null;
   const [to, key] = GOAL[next.id];
@@ -200,6 +221,15 @@ function goalOf(next, s) {
   const id = WAY[s.area]?.[to] ?? OUT[s.area];
   return PROMPT[`link:${id}`]?.link ?? null;
 }
+
+// who's standing in Total Rickall, for Morty to walk round (made again when someone's shot)
+const crowdOf = (run) => {
+  if (run.crowdN !== run.game.shot.length) {
+    run.crowdN = run.game.shot.length;
+    run.crowd = run.game.people.filter((p) => !run.game.shot.includes(p.id)).map(({ id, x, z, r }) => ({ id, x, z, r }));
+  }
+  return run.crowd;
+};
 
 const PITCH = 0.17; // the walking camera's lift, as the scene has it
 const FADE_MS = 260;
@@ -238,6 +268,12 @@ const newSim = () => ({
   shipNext: null,
   fed: newFedShip(),
   mind: null,
+  // Total Rickall, while it's on: { phase ('hatching', 'on', 'over'), seed,
+  // game (./interiors/rickall.js's), aim (who's in the sights), hide (who's
+  // right at his shoulder, out of the picture), told (the memory up over
+  // someone), end (how it ended), crowd (who's standing, for Morty to walk
+  // round) }
+  rickall: null,
 });
 
 export default function RmWorld() {
@@ -323,7 +359,7 @@ export default function RmWorld() {
   return (
     <section className="rm-world" aria-labelledby="rm-world-title" data-mode={world ? '3d' : 'cards'}>
       {world ? (
-        <World api={api} done={done} open={open} openPlace={openPlace} complete={complete} gl={gl} setGl={setGl} toast={toast} say={say} />
+        <World api={api} done={done} open={open} openPlace={openPlace} complete={complete} unlock={unlock} gl={gl} setGl={setGl} toast={toast} say={say} />
       ) : (
         <Cards done={done} openPlace={openPlace} three={three} gl={gl} toast={toast} retry={() => setGl('loading')} />
       )}
@@ -363,12 +399,13 @@ function Toast({ toast }) {
 // the rooms are built out to some 400 m from the street, hence the reach)
 const ROOM = { bound: 820, motion: true };
 
-function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) {
+function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast, say }) {
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const trav = useTravellers('c137', gl === 'on', ROOM);
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.35 });
   const canvas = useRef(null);
   const map = useRef(null);
+  const brand = useRef(null); // (the title and what to do: Total Rickall's memory card keeps off it)
   const sim = useRef(null);
   if (!sim.current) sim.current = newSim();
   const prog = progress(done);
@@ -401,6 +438,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     if (inside) chip.current?.focus({ preventScroll: true });
   }, []);
   const [fade, setFade] = useState(null); // null, or the kind of link being gone through
+  const [opening, setOpening] = useState(null); // the place a portal's waiting on while it loads
   const [shipLine, setShipLine] = useState(null); // what the cruiser last said, captioned
   const [memory, setMemory] = useState(null); // the memory playing in the Mind Blowers chair
   // the cruiser says something, if it's the time for it (./ship.js decides)
@@ -458,10 +496,119 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     };
   }, []);
 
+  // ── Total Rickall ──
+  // The egg picked up: the rules fetched (the first time), the room chosen
+  // and everyone in it loaded, Morty kept in the living room meanwhile; one
+  // whose model won't load is left out and the room chosen again without
+  // them, and Morty is never in it (he's the one looking). Then the crosshair,
+  // E for a memory of whoever's in it, F or a click to shoot them, till it
+  // ends (a card) or he stops (Esc, or the button).
+  const rkRules = useRef(null);
+  const [game, setGame] = useState(null); // what the HUD shows of it: { phase, left, secs, aim, told, end }
+  const gameKey = useRef('');
+  const recall = useRef(null); // the memory card, moved over whoever it's about each frame
+  const stopRickall = useCallback(() => {
+    const s = sim.current;
+    if (!s.rickall) return;
+    s.rickall = null;
+    s.m = { ...s.m, mode: null };
+    s.pitch = PITCH;
+    s.keys.clear();
+    gameKey.current = '';
+    setGame(null);
+  }, []);
+  const startRickall = useCallback(
+    async (seed = Math.floor(Math.random() * 1e9) + 1) => {
+      const s = sim.current;
+      const w = api.current;
+      if (!w || s.area !== 'house' || s.rickall?.phase === 'hatching') return false;
+      const run = { phase: 'hatching', seed, game: null, aim: null, hide: [], told: null, end: null, crowd: [], crowdN: -1 };
+      s.rickall = run;
+      s.m = { ...s.m, mode: 'rickall' };
+      s.keys.clear();
+      sound('splat');
+      try {
+        rkRules.current ??= await import('./interiors/rickall');
+        const { newRickall } = rkRules.current;
+        let absent = ['morty'];
+        let g = null;
+        for (let i = 0; i < 8 && !g; i++) {
+          const next = newRickall(seed, { absent });
+          const ids = next.people.map((p) => p.id);
+          const ok = (await w.act('house', 'rickall', ids)) ?? [];
+          if (s.rickall !== run || api.current !== w) return false; // (stopped, or the world gone, meanwhile)
+          const missing = ids.filter((id) => !ok.includes(id));
+          if (missing.length) absent = [...absent, ...missing];
+          else g = next;
+        }
+        if (!g?.people.some((p) => p.parasite)) throw new Error('nobody to play with');
+        run.game = g;
+        run.phase = 'on';
+        // Morty back at the egg, turned to the room, the camera behind him:
+        // nobody's put where he's standing, and the crowd's in front of him
+        const at = rkRules.current.MORTY_AT;
+        s.m = newMorty(at, 'rickall');
+        s.yaw = behindYaw(at.face);
+        s.pitch = PITCH;
+        s.dragAt = -1e9;
+        sound('portalHop');
+        return true;
+      } catch (err) {
+        if (import.meta.env.DEV) console.warn('C-137: Total Rickall', err);
+        if (s.rickall === run) {
+          stopRickall();
+          say({ kind: 'note', bad: true, text: NO_HATCH });
+        }
+        return false;
+      }
+    },
+    [api, say, stopRickall],
+  );
+  // how it ended: a card, and if it's won, the thing to do done
+  const endRickall = useCallback(
+    (run) => {
+      run.phase = 'over';
+      run.told = null;
+      run.end = rkRules.current.ending(run.game);
+      if (run.end.kind === 'won') {
+        complete('rickall');
+        unlock('rickall');
+      } else sound(run.end.kind === 'out' ? 'powerDown' : 'ouch');
+    },
+    [complete, unlock],
+  );
+  // F, or a click: a shot at whoever's in the sights (a zap at nobody, if nobody is)
+  const shootRickall = useCallback(() => {
+    const run = sim.current.rickall;
+    if (run?.phase !== 'on') return;
+    audioContext();
+    sound('zap');
+    const p = run.aim && run.game.people.find((o) => o.id === run.aim);
+    const hit = p ? rkRules.current.shoot(run.game, p.id) : null;
+    if (!hit) return;
+    api.current?.fx('shot', { x: p.x, y: p.h * 0.6, z: p.z, parasite: p.parasite });
+    if (run.told?.id === p.id) run.told = null;
+    if (hit === 'parasite') sound('splat');
+    else endRickall(run);
+  }, [api, endRickall]);
+  // E: what Morty remembers of whoever's in the sights, the next memory of them each time
+  const tellRickall = useCallback(() => {
+    const run = sim.current.rickall;
+    if (run?.phase !== 'on' || !run.aim) return;
+    const r = rkRules.current.tell(run.game, run.aim);
+    if (!r) return;
+    const p = run.game.people.find((o) => o.id === run.aim);
+    run.told = { id: p.id, name: p.name, text: r.memory.text, n: (run.told?.n ?? 0) + 1, at: performance.now() };
+    sound('seed');
+  }, []);
+
   // ── what E does ──
   // through a door, up the stairs or through the portal: a fade to black (or
   // green), and out the other side, the camera behind him; down the hatch or
-  // up the ladder, a slower one, the lid clanking
+  // up the ladder, a slower one, the lid clanking. A place not built yet (one
+  // that loads when it's first entered) starts loading as the fade begins,
+  // and the swirl holds till it's there; if the page is left, or the world
+  // lost, meanwhile, the trip's off and what loaded is let go.
   const go = useCallback(
     (l) => {
       const s = sim.current;
@@ -472,7 +619,20 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       setFade(l.kind === 'portal' ? 'portal' : climb ? (l.to === 'basement' ? 'down' : 'up') : 'door');
       if (l.kind === 'portal') sound('portalOpen');
       else if (climb) sound('splat');
-      later(() => {
+      const w = api.current;
+      const loading = w && !w.hasArea(l.to) ? w.ensureArea(l.to) : null;
+      later(async () => {
+        if (loading) {
+          if (l.kind === 'portal') setOpening(AREA_NAME[l.to] ?? null);
+          await loading.catch(() => {});
+          setOpening(null);
+          if (api.current !== w || !w.hasArea(l.to)) {
+            s.fading = false;
+            setFade(null);
+            return;
+          }
+        }
+        stopRickall(); // (a trip anywhere is the end of Total Rickall)
         s.area = l.to;
         s.m = newMorty(l.arrive);
         // out of a portal, the camera stands off to one side, so the swirl
@@ -495,7 +655,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
         setFade(null);
       }, climb ? CLIMB_MS : FADE_MS);
     },
-    [api, complete, later],
+    [api, complete, later, stopRickall],
   );
   const board = useCallback(() => {
     const s = sim.current;
@@ -531,6 +691,11 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     const s = sim.current;
     if (!api.current || s.fading || s.landing) return;
     audioContext();
+    // (in Total Rickall, E is a memory of whoever's in the sights)
+    if (s.rickall) {
+      tellRickall();
+      return;
+    }
     if (s.flying) {
       if (canLand(s.c, { motorcade: !doneRef.current.includes('president') })) {
         // straight down from here: no drift into a roof's edge on the way
@@ -548,6 +713,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     if (!n) return;
     if (n.kind === 'link') go(n.link);
     else if (n.kind === 'cruiser') board();
+    else if (n.spot?.kind === 'rickall') startRickall();
     else if (PLACES[n.id]) {
       s.keys.clear();
       openPlace(n.id);
@@ -564,10 +730,11 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       say({ kind: 'say', ...SAY[n.id] });
       // (done once they've had their say: the President gets in his car then)
       if (TALK_DONE[n.id]) later(() => complete(TALK_DONE[n.id]), TALK_MS);
+      if (TALK_UNLOCK[n.id]) later(() => unlock(TALK_UNLOCK[n.id]), TALK_MS);
     }
-  }, [api, go, board, openPlace, say, complete, playMemory, shipTalk, later]);
+  }, [api, go, board, openPlace, say, complete, unlock, playMemory, shipTalk, later, startRickall, tellRickall]);
   const fns = useRef({});
-  fns.current = { act };
+  fns.current = { act, go, shoot: shootRickall, stop: stopRickall, start: startRickall, end: endRickall };
 
   // ── the world: made once, kept while something's open over it ──
   useEffect(() => {
@@ -593,22 +760,83 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
         a.act?.('arcade', 'setBoard', readBest());
         a.setLooks?.(looksRef.current); // (a look picked while it loaded)
         if (import.meta.env.DEV) {
-          // for the QA scripts: where everyone is, E, and a jump to anywhere
+          // for the QA scripts (scripts/c137-shots.mjs): where everyone is, E,
+          // a jump to anywhere, and a trip anywhere the way a door makes it
           const s = sim.current;
+          const land = () => {
+            if (s.flying) s.c = { ...s.c, y: CRUISER.hover, vy: 0, speed: 0, bank: 0 };
+            s.flying = false;
+            s.landing = false;
+          };
+          const warp = (area, x, z, face = Math.PI / 2) => {
+            land();
+            s.area = area;
+            s.m = newMorty({ x, z, face }, s.m.mode); // (in Total Rickall, still in the living room)
+            s.yaw = behindYaw(face);
+            s.keys.clear();
+          };
           window.__C137__ = Object.assign(window.__C137__ ?? {}, {
             api: a,
             sim: s,
             act: () => fns.current.act(),
             complete,
-            warp(area, x, z, face = Math.PI / 2) {
-              if (s.flying) s.c = { ...s.c, y: CRUISER.hover, vy: 0, speed: 0, bank: 0 };
-              s.area = area;
-              s.flying = false;
-              s.landing = false;
-              s.m = newMorty({ x, z, face });
-              s.yaw = behindYaw(face);
-              s.keys.clear();
+            warp,
+            // Total Rickall, with `seed` (by the egg first, if he isn't in the
+            // house): resolves true once it's on. Then lookAt(id) stands Morty
+            // in front of someone with them in the sights, as a player would,
+            // and shoot() is F. (sim.rickall has the game.)
+            rickall(seed = 1) {
+              if (s.area !== 'house') warp('house', -305.1, -6.5, 0);
+              return fns.current.start(seed);
             },
+            // (from the room's middle side of them first, then round either
+            // way, the first place he can stand with them in the sights)
+            lookAt(id, back = 1.3) {
+              const R = rkRules.current;
+              const run = s.rickall;
+              const p = run?.game?.people.find((o) => o.id === id);
+              if (!p || !R) return false;
+              const mid = { x: -301.8, z: -4.95 }; // (the living room's middle)
+              const toward = Math.atan2(mid.z - p.z, mid.x - p.x);
+              for (const turn of [0, 0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.6, -1.6, 2.2, -2.2, Math.PI]) {
+                const a = toward + turn;
+                const at = { x: p.x + Math.cos(a) * (p.r + back), z: p.z + Math.sin(a) * (p.r + back) };
+                const m = newMorty({ ...at, face: Math.atan2(-(p.z - at.z), p.x - at.x) }, 'rickall');
+                const stood = stepMorty(m, { x: 0, z: 0 }, 1 / 60, 'house', { crowd: crowdOf(run) });
+                if (Math.hypot(stood.x - at.x, stood.z - at.z) > 0.01) continue;
+                let yaw = s.yaw;
+                for (let i = 0; i < 4; i++) {
+                  const o = R.sight(m, yaw);
+                  yaw = Math.atan2(-(p.x - o.x), -(p.z - o.z));
+                }
+                const o = R.sight(m, yaw);
+                const pitch = Math.atan2(o.y - p.h * 0.6, Math.hypot(p.x - o.x, p.z - o.z)) + R.SIGHT.level - R.SIGHT.tip;
+                if (R.aimAt(run.game, R.sight(m, yaw, pitch)) !== id) continue;
+                s.m = m;
+                s.yaw = yaw;
+                s.pitch = pitch;
+                s.dragAt = s.t;
+                s.keys.clear();
+                return true;
+              }
+              return false;
+            },
+            shoot: () => fns.current.shoot(),
+            stopRickall: () => fns.current.stop(),
+            // through a door that isn't there: the fade, a place that loads
+            // when it's entered built first, and Morty out at (x, z) facing
+            // `face`, the camera behind him. False if he's already on his way
+            // somewhere.
+            goto(area, x, z, face = Math.PI / 2) {
+              if (!AREAS[area]) throw new Error(`C-137: no area ${area}`);
+              if (s.fading) return false;
+              land();
+              fns.current.go({ id: 'goto', area: s.area, kind: 'door', to: area, label: '', arrive: { x, z, face } });
+              return true;
+            },
+            // true once he's there and nothing's still loading: the place, and
+            // whoever's in it
+            ready: () => api.current === a && !a.lost && !s.fading && a.hasArea(s.area) && a.loading() === 0,
           });
         }
         fit();
@@ -644,6 +872,19 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
         s.keys.clear();
         setWardrobe(true);
         return;
+      }
+      // Total Rickall: F shoots; Esc stops it (once the list's shut)
+      if (s.rickall && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (e.code === 'KeyF') {
+          e.preventDefault();
+          if (!e.repeat) fns.current.shoot();
+          return;
+        }
+        if (e.key === 'Escape' && !listRef.current) {
+          e.preventDefault();
+          fns.current.stop();
+          return;
+        }
       }
       const m = keyDown(s.keys, e);
       const f = e.metaKey || e.ctrlKey || e.altKey ? null : FLY_KEYS[e.code];
@@ -695,6 +936,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     const pad = wardrobeRef.current ? null : raw; // (the wardrobe's open over him: the pad's for it)
     const pressed = (b) => pad?.[b] && !before[b];
     if (pressed('a')) fns.current.act();
+    if (pressed('x') && s.rickall) fns.current.shoot();
     if (pressed('b') && listRef.current) closeList();
     if (pressed('y')) {
       if (listRef.current) closeList();
@@ -755,9 +997,14 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       if (s.fading) fwd = side = 0;
       const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
       const mv = cameraMove(s.yaw, clamp1(fwd), clamp1(side));
-      s.m = stepMorty(s.m, { x: mv.x, z: mv.z, run, jump: s.jump && !s.fading }, dt, s.area, s.area === 'street' ? { cruiser: { x: s.c.x, z: s.c.z }, motorcade: !doneRef.current.includes('president') } : undefined);
+      s.m = stepMorty(s.m, { x: mv.x, z: mv.z, run, jump: s.jump && !s.fading }, dt, s.area, s.area === 'street' ? { cruiser: { x: s.c.x, z: s.c.z }, motorcade: !doneRef.current.includes('president') } : s.rickall?.game ? { crowd: crowdOf(s.rickall) } : undefined);
       s.jump = false;
       if (Math.hypot(mv.x, mv.z) > 0.1) s.moved = true;
+      // in Total Rickall, stood still, he turns to face the way he's aiming
+      if (s.rickall?.game && s.m.speed < 0.5) {
+        const d = Math.atan2(Math.cos(s.yaw), -Math.sin(s.yaw)) - s.m.face;
+        s.m.face += Math.atan2(Math.sin(d), Math.cos(d)) * Math.min(1, dt * 10);
+      }
       // out over the open hatch: down it
       const drop = s.fading ? null : dropAt(s.area, s.m.x, s.m.z, s.m.y);
       if (drop) go(drop);
@@ -788,7 +1035,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     const motorcade = !doneRef.current.includes('president');
     s.motorcade = motorcade;
     if (s.flying) near = !s.landing && canLand(s.c, { motorcade }) ? 'land' : null;
-    else if (!s.fading) {
+    else if (!s.fading && !s.rickall) {
       const l = nearLink(s.area, s.m.x, s.m.z, doneRef.current);
       const h = l ? null : nearHotspot(s.area, s.m.x, s.m.z, doneRef.current);
       near = l ? `link:${l.id}` : h ? `spot:${h.id}` : s.area === 'street' && Math.hypot(s.m.x - s.c.x, s.m.z - s.c.z) < BOARD_R ? 'cruiser' : null;
@@ -809,14 +1056,78 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     const tv = trav.ref.current;
     tv?.pose(s.m, { inside: Boolean(s.flying), area: s.area });
 
+    // Total Rickall: off, if he's somehow out of the house; the clock; the
+    // line the camera's put on, how far back along it, and who's too close
+    // to it to be seen; and who's in the sights along it
+    let sightLine = null;
+    if (s.rickall && (s.area !== 'house' || s.flying)) fns.current.stop();
+    const run = s.rickall;
+    if (run?.game) {
+      const R = rkRules.current;
+      if (run.phase === 'on' && R.stepRickall(run.game, dt)) fns.current.end(run);
+      sightLine = R.sight(s.m, s.yaw, s.pitch);
+      const v = R.view(run.game, sightLine);
+      sightLine.back = v.back;
+      run.hide = v.hide;
+      run.aim = run.phase === 'on' ? R.aimAt(run.game, sightLine) : null;
+      if (run.told && (performance.now() - run.told.at > RECALL_MS || run.game.shot.includes(run.told.id))) run.told = null;
+    }
+
     try {
-      a.render({ area: s.area, morty: s.m, flying: s.flying, cruiser: s.c, camYaw: s.yaw, camPitch: s.pitch, near: s.view, done: doneRef.current, fed: s.fed, travellers: tv ? tv.list() : null }, ms);
+      a.render(
+        {
+          area: s.area,
+          morty: s.m,
+          flying: s.flying,
+          cruiser: s.c,
+          camYaw: s.yaw,
+          camPitch: s.pitch,
+          near: s.view,
+          done: doneRef.current,
+          fed: s.fed,
+          travellers: tv ? tv.list() : null,
+          sight: sightLine,
+          rickall: run?.game ? { game: run.game, aim: run.aim, hide: run.hide } : null,
+        },
+        ms,
+      );
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
       a.dispose();
       api.current = null;
       setGl('failed');
       return;
+    }
+
+    // its HUD, when what it shows changes, and the memory card over whoever it's about
+    if (run || gameKey.current) {
+      const R = rkRules.current; // (there once there's a game)
+      const left = run?.game ? R.parasitesLeft(run.game) : 0;
+      const secs = run?.game ? Math.max(0, Math.ceil(R.RICKALL.time - run.game.t)) : 0;
+      const aim = run?.aim ? run.game.people.find((p) => p.id === run.aim) : null;
+      const gkey = run ? `${run.phase}|${left}|${secs}|${aim?.id}|${run.told?.n}|${run.end?.kind}` : '';
+      if (gkey !== gameKey.current) {
+        gameKey.current = gkey;
+        setGame(run ? { phase: run.phase, left, secs, aim: aim ? { id: aim.id, name: aim.name } : null, told: run.told, end: run.end } : null);
+      }
+      const el = recall.current;
+      const p = run?.told && run.game.people.find((o) => o.id === run.told.id);
+      const at = p ? a.project(p.x, p.h + 0.3, p.z) : null;
+      if (el) {
+        el.style.visibility = at ? 'visible' : 'hidden';
+        if (at) {
+          // (kept on screen, and below the title and the map if it'd be over them)
+          const c = canvas.current.getBoundingClientRect();
+          const half = el.offsetWidth / 2;
+          const x = Math.max(half + 12, Math.min(c.width - half - 12, at.x));
+          let top = Math.max(12, at.y - el.offsetHeight);
+          for (const box of [brand.current, map.current?.parentElement]) {
+            const r = box?.getBoundingClientRect();
+            if (r && x - half < r.right - c.left && x + half > r.left - c.left && top < r.bottom - c.top) top = r.bottom - c.top + 10;
+          }
+          el.style.transform = `translate(${x.toFixed(1)}px, ${(top + el.offsetHeight).toFixed(1)}px) translate(-50%, -100%)`;
+        }
+      }
     }
 
     // the HUD, when what it shows changes
@@ -842,14 +1153,15 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     stickEl.current?.style.setProperty('--sy', '0px');
   }, [open]);
 
-  // ── the pointer: drag the view round ──
+  // ── the pointer: drag the view round (and in Total Rickall, up and down
+  // too, and a click that doesn't drag it is a shot) ──
   const drag = useRef(null);
   const onPointer = (e) => {
     const s = sim.current;
     if (e.type === 'pointerdown') {
       audioContext();
       if (e.pointerType === 'mouse' && e.button !== 0) return;
-      drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId, x0: e.clientX, y0: e.clientY, at: performance.now() };
       e.currentTarget.setPointerCapture?.(e.pointerId);
       return;
     }
@@ -861,13 +1173,14 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
         return;
       }
       s.yaw -= (e.clientX - d.x) * 0.0065;
-      s.pitch = Math.max(-0.1, Math.min(0.95, s.pitch + (e.clientY - d.y) * (e.pointerType === 'mouse' ? 0.004 : 0)));
+      s.pitch = Math.max(-0.1, Math.min(0.95, s.pitch + (e.clientY - d.y) * (e.pointerType === 'mouse' || s.rickall ? 0.004 : 0)));
       d.x = e.clientX;
       d.y = e.clientY;
       s.dragAt = s.t;
       return;
     }
     drag.current = null;
+    if (e.type === 'pointerup' && s.rickall && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < CLICK.px && performance.now() - d.at < CLICK.ms) fns.current.shoot();
   };
 
   // the touch stick: drag from where the thumb goes down
@@ -926,6 +1239,12 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
         onContextMenu={(e) => e.preventDefault()}
       />
       <div className="rm-fade" data-on={fade || undefined} data-kind={fade ?? undefined} aria-hidden="true" />
+      {opening && (
+        <div className="rm-loading rm-opening" role="status">
+          <span className="rm-swirl" aria-hidden="true" />
+          <p>Opening a portal to {inLine(opening)}…</p>
+        </div>
+      )}
       {gl === 'loading' && (
         <div className="rm-loading" role="status">
           <span className="rm-swirl" aria-hidden="true" />
@@ -934,12 +1253,24 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       )}
 
       <div className="rm-hud rm-hud-top">
-        <div className="rm-brand">
+        <div ref={brand} className="rm-brand">
           <Title />
-          <p className="rm-objective" aria-live="polite">
-            <span className="rm-swirl rm-swirl-sm" aria-hidden="true" />
-            <span>{prog.objective}</span>
-          </p>
+          {game ? (
+            <p className="rm-objective rm-rickall-status" aria-live="polite">
+              <span className="rm-swirl rm-swirl-sm" aria-hidden="true" />
+              <span>{game.phase === 'hatching' ? 'The egg’s hatching…' : game.phase === 'over' ? 'Total Rickall' : `Total Rickall: ${game.left} ${game.left === 1 ? 'parasite' : 'parasites'} left`}</span>
+              {game.phase === 'on' && (
+                <b className="rm-rickall-clock" aria-hidden="true">
+                  {Math.floor(game.secs / 60)}:{String(game.secs % 60).padStart(2, '0')}
+                </b>
+              )}
+            </p>
+          ) : (
+            <p className="rm-objective" aria-live="polite">
+              <span className="rm-swirl rm-swirl-sm" aria-hidden="true" />
+              <span>{prog.objective}</span>
+            </p>
+          )}
           {hud.flying && (
             <p className="rm-flightstats" aria-live="off">
               <span>
@@ -956,6 +1287,13 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
             <canvas ref={map} width={MAP_W * MAP_PX} height={MAP_H * MAP_PX} aria-hidden="true" />
             <figcaption>{placeName}</figcaption>
           </figure>
+          {game && (
+            <button type="button" className="rm-chip rm-chip-stop" onClick={stopRickall} aria-label="Stop the game">
+              <RiCloseLine aria-hidden="true" />
+              <span>Stop the game</span>
+              {!touch && <kbd>Esc</kbd>}
+            </button>
+          )}
           <button ref={chip} type="button" className="rm-chip" onClick={() => setList((v) => !v)} aria-expanded={list} aria-controls="rm-list" aria-label={`Things to do, ${prog.count} of ${prog.total} done`}>
             <RiListCheck2 aria-hidden="true" />
             <span>Things to do</span>
@@ -1008,7 +1346,41 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
         </div>
       )}
 
-      {gl === 'on' && !here && !hud.flying && !hud.moved && (
+      {/* Total Rickall: the crosshair, whoever's in it, what's remembered of them, how it ended */}
+      {gl === 'on' && game?.phase === 'on' && <div className="rm-crosshair" data-on={game.aim ? true : undefined} aria-hidden="true" />}
+      {gl === 'on' && game?.told && (
+        <div ref={recall} className="rm-recall" role="status" key={game.told.n}>
+          <p className="rm-recall-head">
+            What you remember of <b>{game.told.name}</b>
+          </p>
+          <p className="rm-recall-text">{game.told.text}</p>
+        </div>
+      )}
+      {gl === 'on' && game?.phase === 'on' && game.aim && (
+        <div className="rm-prompt" data-kind="aim">
+          <p className="rm-prompt-name">{game.aim.name}</p>
+          {!touch && (
+            <div className="rm-prompt-acts">
+              <button type="button" className="rm-btn rm-btn-ghost" onClick={tellRickall}>
+                Remember <kbd>E</kbd>
+              </button>
+              <button type="button" className="rm-btn rm-btn-shoot" onClick={shootRickall}>
+                Shoot <kbd>F</kbd>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {gl === 'on' && game?.phase === 'on' && !game.aim && (
+        <p className="rm-hint">
+          {touch
+            ? 'Turn till someone’s in the crosshair, then Remember, or Shoot. A parasite only ever leaves good memories.'
+            : 'Turn till someone’s in the crosshair: E for what you remember of them, F or a click to shoot. A parasite only ever leaves good memories.'}
+        </p>
+      )}
+      {gl === 'on' && game?.end && <Ending end={game.end} onAgain={() => startRickall()} onLeave={stopRickall} />}
+
+      {gl === 'on' && !here && !game && !hud.flying && !hud.moved && (
         <p className="rm-hint">{touch ? 'Drag the stick to walk; push it all the way to run; the arrow jumps. Swipe sideways to look round.' : 'W A S D or the arrows to walk, Shift to run, Space to jump. Drag to look round. E uses things, M lists what to do.'}<GuideCue touch={touch} /></p>
       )}
       {gl === 'on' && hud.flying && !here && (
@@ -1063,9 +1435,20 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
                   </button>
                 </div>
               )}
-              <button type="button" className="rm-act" data-idle={!here || undefined} onClick={act}>
-                {here ? here.verb : hud.flying ? 'Land' : 'Use'}
-              </button>
+              {game ? (
+                <>
+                  <button type="button" className="rm-act rm-act-alt" data-idle={!game.aim || undefined} onClick={tellRickall}>
+                    Remember
+                  </button>
+                  <button type="button" className="rm-act rm-act-shoot" data-idle={!game.aim || undefined} onClick={shootRickall}>
+                    Shoot
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="rm-act" data-idle={!here || undefined} onClick={act}>
+                  {here ? here.verb : hud.flying ? 'Land' : 'Use'}
+                </button>
+              )}
             </div>
           </>
         ) : (
@@ -1128,6 +1511,34 @@ function ThingsToDo({ box, prog, done, onClose }) {
       <RouterLink to="/" className="rm-list-back">
         <RiArrowLeftLine aria-hidden="true" /> Back to the site
       </RouterLink>
+    </div>
+  );
+}
+
+// How Total Rickall ended, on a card over the room: again, or leave it there
+// (the focus on again, so Enter plays again)
+function Ending({ end, onAgain, onLeave }) {
+  const again = useRef(null);
+  useEffect(() => {
+    again.current?.focus({ preventScroll: true });
+  }, []);
+  return (
+    <div className="rm-ending" data-kind={end.kind} role="dialog" aria-labelledby="rm-ending-title" aria-describedby="rm-ending-line">
+      <p className="rm-ending-where">Total Rickall</p>
+      <h3 id="rm-ending-title" className="rm-ending-title">
+        {end.title}
+      </h3>
+      <p id="rm-ending-line" className="rm-ending-line">
+        {end.line}
+      </p>
+      <div className="rm-ending-acts">
+        <button ref={again} type="button" className="rm-btn" onClick={onAgain}>
+          Play again
+        </button>
+        <button type="button" className="rm-btn rm-btn-ghost" onClick={onLeave}>
+          Leave it there
+        </button>
+      </div>
     </div>
   );
 }

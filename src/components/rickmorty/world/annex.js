@@ -16,7 +16,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { hot } from '../../../lib/stage3d';
 import { ARCADE, AREAS, LINKS } from './rules';
 import { at, batch, coloured, fitModel, glowMaterial, logoText, neonCopy, paint, rng, speckle } from './kit';
-import { makeSky } from './sky';
+import { ANNEX_LIGHT, ANNEX_SKY, makeSky } from './sky';
 
 const A = AREAS.annex;
 const MX = (A.x0 + A.x1) / 2; // 400
@@ -33,9 +33,6 @@ const PLAN = {
   mid: { ball: [14, 10], dome: [20, 10], cyl: 12, seg: 28, rocks: 16, skyline: 24, flyers: 4, locals: false },
   low: { ball: [10, 7], dome: [16, 8], cyl: 10, seg: 20, rocks: 10, skyline: 14, flyers: 3, locals: false },
 };
-// a magenta dusk; the light and the fog to go with it
-export const ANNEX_SKY = { top: 0x2b0f55, mid: 0x9b3fae, low: 0xff9bc8, sun: 0xffe6b0, clouds: 0, moons: 0 };
-export const ANNEX_LIGHT = { sun: [0xffd2ec, 1.75], hemi: [0xd0a8ff, 0x4a2a66, 1.35], fog: [0xa465c4, 50, 260] };
 const PAL = { purple: 0x7b4bc4, violet: 0x5a2f99, teal: 0x23b5a8, sea: 0x3fd6c1, pink: 0xff6fc0, rose: 0xe2559c, orange: 0xff9a3c, lime: 0x9fe04a, cream: 0xf2e2c4, dark: 0x2a1745 };
 const LIT = [0xffe27a, 0x7af5ff, 0xff8ae0, 0xb6ff6a];
 

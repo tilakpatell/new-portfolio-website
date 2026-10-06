@@ -1597,7 +1597,9 @@ function spiralStair(K, { r = 2.4, rise = 18, turns = 1.25, start = 0, lamps = t
 // A fern for instancing, about a metre across: a dozen fronds arching up
 // and out from the middle and drooping at their tips, each a stalk with
 // leaflets either side that shorten towards its tip, pale green, dark at
-// the heart, a few touched with gold. Faces up, lit from either side.
+// the heart, a few touched with gold. Each leaflet is wound both ways with
+// its normal up, so it lights like the ground from either side on a
+// single-sided material (double-sided, a leaflet seen from behind lit black).
 function fernGeo(seed = 1) {
   const r = rng(seed * 23 + 5);
   const pos = [];
@@ -1631,11 +1633,13 @@ function fernGeo(seed = 1) {
         const my = (p0[1] + p1[1]) / 2;
         const mz = (p0[2] + p1[2]) / 2;
         const tip = [mx - dz * side * len + dx * len * 0.35, my - len * 0.3, mz + dx * side * len + dz * len * 0.35];
-        for (const v of [p0, p1, tip]) {
-          pos.push(...v);
-          const k = v === tip ? 1.15 : 1;
-          col.push(c.r * k, c.g * k, c.b * k);
-          nor.push(dx * 0.25, 0.95, dz * 0.25);
+        for (const face of [[p0, p1, tip], [p0, tip, p1]]) {
+          for (const v of face) {
+            pos.push(...v);
+            const k = v === tip ? 1.15 : 1;
+            col.push(c.r * k, c.g * k, c.b * k);
+            nor.push(dx * 0.25, 0.95, dz * 0.25);
+          }
         }
       }
     }
@@ -2714,7 +2718,7 @@ export function createLorienKit(renderer) {
     paleStone: M({ map: pale.map, normalMap: pale.normalMap, color: 0xf4f2ec, roughness: 0.62 }),
     // the forest floor and what grows on it
     earth: M({ map: K.tex.leaves, normalMap: K.tex.leavesN, vertexColors: true, roughness: 1 }),
-    fern: M({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.8 }),
+    fern: M({ vertexColors: true, roughness: 0.8 }),
     litter: M({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.8 }),
     petal: M({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.6, emissive: C(0xffffff), emissiveIntensity: 0.12 }),
     // the fountains' water

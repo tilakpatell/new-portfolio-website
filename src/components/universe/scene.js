@@ -97,7 +97,8 @@ import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePa
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
-import { ORDER, POSITIONS, REACH, RIM, SUN } from './layout';
+import { BELT, ORDER, POSITIONS, REACH, RIM, SUN } from './layout';
+import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
 import { createPost, spaceEnvironment } from './post';
@@ -110,7 +111,8 @@ import { createDirector } from './director';
 import { createSetPieces } from './setpieces';
 import { createLeviathans } from './leviathans';
 import { createMeteors } from './meteors';
-import { buildDeepSpace } from './deepspace';
+import { DEBRIS_DRIFT, buildDeepSpace } from './deepspace';
+import { ROCK_HIT, boxOf, nearBox, nearRing, rockDamage, rockGrid, sweep, toBelt } from './rockHits';
 import { createTrench } from './trench';
 import { createBeacons } from './beacons';
 import { PHONE, createPhone } from './phone';
@@ -141,6 +143,7 @@ import { createCitadelSiege } from './citadelSiege';
 import { STALE_MS } from './online/protocol';
 import { createFoot } from './footScene';
 import { ENTRY, LANDABLE, airTop, entering } from './entry';
+import { poseFor } from './poses';
 
 const STARS = 1800; // the near ones, over the Milky Way's own
 const STARS_LOW = 700;
@@ -505,7 +508,9 @@ export async function create(canvas, ctx) {
   const rings = orbits();
   map.add(rings);
   // the asteroid belt, and dust round the camera to feel the speed by (belt.js)
-  const belt = createBelt({ small: (window.matchMedia?.('(pointer: coarse)').matches ?? false) || Math.min(window.innerWidth, window.innerHeight) < 600 });
+  // (more rocks for the wider band the home system grew to, scale.js: not
+  // the band's whole growth in area, so the triangles grow less than it)
+  const belt = createBelt({ small: (window.matchMedia?.('(pointer: coarse)').matches ?? false) || Math.min(window.innerWidth, window.innerHeight) < 600, count: Math.round(3200 * HOME_SPREAD) });
   map.add(belt.group);
   // and the rim: a ring of ice right round the edge of the map (layout.js's RIM)
   const rim = createBelt({ small: Math.min(window.innerWidth, window.innerHeight) < 600, band: RIM, seed: 2049, tones: ['#c9d8e8', '#9fb4c8', '#dfe8f2', '#8ea0b4'], scale: 14, spin: 0.0012, count: 700 });
@@ -629,6 +634,17 @@ export async function create(canvas, ctx) {
   // deep space, out past the home system: its wonders, and the trench run
   // round the Death Star's middle
   const deep = buildDeepSpace({ small });
+  // what the ship can hit among the rocks (rockHits.js): the belt, the rim
+  // and the debris streams, each from the same rocks its mesh draws. A rock
+  // the ship's smashed is gone a while (`smashed`: field → index → when it's back)
+  const BELT_SPIN = 0.006;
+  const RIM_SPIN = 0.0012;
+  const rockFields = [
+    { id: 'belt', grid: rockGrid(belt.rocks), ring: BELT, spin: BELT_SPIN, field: belt },
+    { id: 'rim', grid: rockGrid(rim.rocks, 60), ring: RIM, spin: RIM_SPIN, field: rim },
+    { id: 'debris', grid: rockGrid(deep.debris.rocks, 20), box: boxOf(deep.debris.rocks), field: deep.debris },
+  ];
+  const smashed = new Map(rockFields.map((f) => [f.id, new Map()]));
   map.add(deep.group);
   const trenches = PLANETS.filter((p) => p.trench).map((p) => createTrench({ at: p.at, r: p.r, trench: p.trench }, { small }));
   for (const tr of trenches) map.add(tr.group);
@@ -645,7 +661,10 @@ export async function create(canvas, ctx) {
   // the sun in the middle, warming the stations round it
   const sun = buildSun(T);
   map.add(sun.group);
-  const sunLight = new THREE.PointLight('#ffd6a8', 890, 320, 1.4);
+  // (its reach and strength grown with the home system, scale.js: a light
+  // falling off as distance^1.4, scaled by HOME_SPREAD in both, lights every
+  // station and rock just as it did before the system grew)
+  const sunLight = new THREE.PointLight('#ffd6a8', 890 * HOME_SPREAD ** 1.4, 320 * HOME_SPREAD, 1.4);
   map.add(sunLight);
 
   const planets = ORDER.map((id) => {
@@ -861,6 +880,7 @@ export async function create(canvas, ctx) {
     // the guns (targeting.js)
     lock: null, // { id, out }: the hunter they're locked on to
     lockTarget: null, // and what it is this frame: { id, at, vel, size, kind }
+    held: null, // (development: one of poses.js's fixed poses, the ship and the map held still to be measured; its camera's view, or null for the whole map)
     lead: null, // where to shoot to hit it: { x, y, z, t }
     hot: false, // the nose is near enough the lead that a shot bends onto it
     cycle: 0, // T was pressed: on to the next target (1), or Shift+T, back one (−1)
@@ -1032,7 +1052,7 @@ export async function create(canvas, ctx) {
     const r = s ? Math.hypot(s.x, s.z) : 0;
     if (!state.overview || r < DEEP.system) return state.overview;
     const [wx, wz] = rotate(s.x * 0.55, s.z * 0.55);
-    return { target: [wx, s.y * 0.5, wz], dist: clamp(r * 1.25, 700, 7000), pitch: 0.62 };
+    return { target: [wx, s.y * 0.5, wz], dist: clamp(r * 1.25, 700 * HOME_SPREAD, 7000), pitch: 0.62 };
   };
   // the turn of the map that brings a place round to the front, nearest the
   // camera, with nothing between (the rest of the ring to its sides); a
@@ -1047,6 +1067,7 @@ export async function create(canvas, ctx) {
   // where the camera's going: with no ship, a pose (flight.js); flying, a view
   const goal = () => (state.sel ? focusPose(state.sel, state.yaw, size, state.rect) : state.overview);
   const flightView = () => {
+    if (state.held?.view) return state.held.view;
     const whole = state.view === 'map' ? mapPose() : null;
     if (whole) return viewOfPose(whole);
     if (state.crash && !state.crash.back) return viewOfPose(crashPose());
@@ -2397,6 +2418,77 @@ export async function create(canvas, ctx) {
     if (state.shield <= 0) startDestroyed(by);
   };
 
+  // The ship's way this frame, from `from` to `to`, swept against the rock
+  // fields it comes near (each in its own frame: the belt and the rim turn,
+  // the streams drift). The first rock it meets is smashed (gone a while);
+  // at the boost or under that's a bump, faster it's off the shields, more
+  // the faster and the bigger the rock, and the ship's knocked back down
+  // under the pulse drive.
+  let rockCool = -1e9;
+  let rockSaidAt = -1e9;
+  const rockMap = new THREE.Vector3();
+  const rockShip = new THREE.Vector3();
+  const rocksHit = (from, to, t) => {
+    for (const f of rockFields) {
+      const gone = smashed.get(f.id);
+      for (const [i, back] of gone) {
+        if (state.clock < back) continue;
+        gone.delete(i);
+        f.field.show(i);
+      }
+    }
+    if (state.clock < rockCool || Math.abs(to.speed) < 2) return;
+    let hit = null;
+    for (const f of rockFields) {
+      let a;
+      let b;
+      if (f.ring) {
+        if (!nearRing(from, to, f.ring)) continue;
+        a = toBelt(from, t * f.spin);
+        b = toBelt(to, t * f.spin);
+      } else {
+        const d = DEBRIS_DRIFT(t);
+        a = { x: from.x - d.x, y: from.y - d.y, z: from.z - d.z };
+        b = { x: to.x - d.x, y: to.y - d.y, z: to.z - d.z };
+        if (!nearBox(a, b, f.box)) continue;
+      }
+      const h = sweep(f.grid, a, b, SHIP.radius, smashed.get(f.id));
+      if (h && (!hit || h.t < hit.t)) hit = { ...h, f };
+    }
+    if (!hit) return;
+    const { f } = hit;
+    const o = f.grid.rocks[hit.i];
+    f.field.hide(hit.i);
+    smashed.get(f.id).set(hit.i, state.clock + ROCK_HIT.gone);
+    rockCool = state.clock + ROCK_HIT.cool;
+    // where the rock is on the map, and the ship as it met it
+    if (f.ring) {
+      const m = toBelt(o, -t * f.spin);
+      rockMap.set(m.x, m.y, m.z);
+    } else {
+      const d = DEBRIS_DRIFT(t);
+      rockMap.set(o.x + d.x, o.y + d.y, o.z + d.z);
+    }
+    rockShip.set(from.x + (to.x - from.x) * hit.t, from.y + (to.y - from.y) * hit.t, from.z + (to.z - from.z) * hit.t);
+    pops.hit({ point: rockMap.clone(), normal: popDir.copy(rockShip).sub(rockMap).normalize(), radius: o.r * 1.6 });
+    const speed = Math.abs(to.speed);
+    const damage = rockDamage(speed, o.r);
+    if (damage <= 0) {
+      emit({ type: 'bump', id: 'rock', hard: false });
+      return;
+    }
+    if (state.clock >= state.safeUntil) hurt(damage);
+    if (!state.ship || state.crash) return;
+    if (!reduced) state.shake = Math.max(state.shake, 0.9);
+    state.flare = Math.max(state.flare, 1.6);
+    state.ship = { ...state.ship, speed: Math.sign(state.ship.speed || 1) * Math.max(SHIP.boost, speed * ROCK_HIT.slow) };
+    state.note = { text: `Hit a rock at speed: shields −${Math.round(damage)}`, until: wall() + 2.5 };
+    if (state.clock - rockSaidAt > 8) {
+      rockSaidAt = state.clock;
+      emit({ type: 'event', id: 'rock' });
+    }
+  };
+
   // what the link to the other pilots reports: their hits on you, and
   // someone going down (a pop where they were; yours, if it was your shot)
   const onNet = (e) => {
@@ -2711,7 +2803,7 @@ export async function create(canvas, ctx) {
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
-        const id = director.update(dt, { side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || leviathans.busy || meteors.count > 0 || state.view === 'map' || Boolean(props.charting), travelling: travelling(live), calm: state.shield < 50 });
+        const id = director.update(dt, { side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || leviathans.busy || meteors.count > 0 || state.view === 'map' || Boolean(props.charting) || Boolean(state.held), travelling: travelling(live), calm: state.shield < 50 });
         if (id) happen(id, live);
         // the drive comes back once they're off you (or have had their go)
         if (state.interdicted && (!hunters.active || state.clock - state.interdictAt > INTERDICT)) state.interdicted = false;
@@ -3000,12 +3092,17 @@ export async function create(canvas, ctx) {
     }
     input.interdicted = state.interdicted;
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
+    const before = state.ship;
     const { ship: stepped, events } = step(state.ship, input, dt, siegeSt.down ? SOLIDS_OPEN : SOLIDS);
     // the Maw's pull (maw.js): drawn in, and carried round with its disk
     const g = pullAt(stepped.x, stepped.y, stepped.z);
     const ship = g ? { ...stepped, x: stepped.x + g.v[0] * dt, y: stepped.y + g.v[1] * dt, z: stepped.z + g.v[2] * dt } : stepped;
-    state.ship = ship;
-    state.pull = g?.k ?? 0;
+    // (held at a pose: still, and out of the Maw's pull, so every frame measured is the same picture)
+    if (!state.held) state.ship = ship;
+    state.pull = state.held ? 0 : (g?.k ?? 0);
+    // into a rock (rockHits.js): a bump at the boost or under, the shields
+    // past it
+    if (!state.jump && !state.held) rocksHit(before, ship, t);
     for (const e of events) {
       // into a gate (the way into a galaxy far, far away): not a crash nor a
       // bump, but through (the page jumps you to lightspeed)
@@ -3997,9 +4094,60 @@ export async function create(canvas, ctx) {
     return true;
   };
 
+  // (development: the ship and the camera put at one of poses.js's fixed
+  // poses and held there, nothing coming for it, so every measure of the
+  // map is of the same picture: scripts/universe-check.mjs. Resolves after
+  // two drawn frames; a landing pose, once the crew are out.)
+  const frames = (n) => new Promise((done) => {
+    const tick = () => (n-- <= 0 ? done() : (ctx.invalidate(), requestAnimationFrame(tick)));
+    tick();
+  });
+  const holdPose = async (name) => {
+    const p = poseFor(name);
+    if (!p) throw new Error(`[universe] no pose ${name}`);
+    if (!state.ship || onFoot() || state.crash || state.dive) throw new Error('[universe] a pose needs the ship flying (reload for another after a landing)');
+    dropAuto();
+    state.yawTo = null;
+    state.vel = 0;
+    state.blend = null;
+    state.lock = null;
+    state.lockTarget = null;
+    state.streak = 0;
+    state.boosting = false;
+    hunters?.clear();
+    meteors.clear();
+    burst.clear();
+    const [x, y, z] = p.at;
+    state.ship = { ...state.ship, x, y, z, heading: p.heading, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, edge: false };
+    // (the map turned the way the ship faces, as arriveAt does, so the
+    // key light falls the same way every time, not wherever the turn's ease got to)
+    state.yaw = -p.heading;
+    camQOn = false;
+    state.view = p.view === 'map' ? 'map' : 'chase';
+    let view = null;
+    if (p.eye) {
+      // looking from the eye at `look`, but the view's distance no further
+      // than the ship (the near plane follows it: applyView's lens)
+      const eye = new THREE.Vector3(...p.eye);
+      const look = new THREE.Vector3(...p.look);
+      const quat = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(eye, look, Y_AXIS));
+      const dist = Math.min(eye.distanceTo(look), eye.distanceTo(new THREE.Vector3(x, y, z)));
+      view = { target: eye.clone().addScaledVector(look.sub(eye).normalize(), dist), quat, dist };
+    }
+    state.held = { name, view };
+    await frames(2);
+    if (p.foot) {
+      if (!startFoot({ id: p.foot })) throw new Error(`[universe] couldn't land on ${p.foot}`);
+      const t0 = performance.now();
+      while (foot.phase !== 'walk' && performance.now() - t0 < 300000) await frames(1);
+      await frames(2);
+    }
+    return { name, at: p.at, view: state.view, foot: foot.phase ?? null };
+  };
+
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, director, pieces, leviathans, meteors, fleet, novae, pilots, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, director, pieces, leviathans, meteors, fleet, novae, pilots, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -4034,6 +4182,9 @@ export async function create(canvas, ctx) {
       foot: foot.phase && { phase: foot.phase, id: foot.id, ...(({ health, who, mate, troops, first }) => ({ health, who, mate, troops: troops.length, first }))(foot.info() ?? { troops: [] }), guests: foot.guestInfo(), spot: foot.crew()?.ship.n ?? null, entry: foot.entry() },
       landable: state.landable,
       last,
+      held: state.held?.name ?? null,
+      pose: holdPose,
+      frames, // (resolves after n more frames, each one drawn)
     });
   }
 

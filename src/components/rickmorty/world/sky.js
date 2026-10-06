@@ -7,6 +7,10 @@
 import * as THREE from 'three';
 
 export const STREET_SKY = { top: 0x3f9be0, mid: 0x86cbf2, low: 0xd8f3fb, sun: 0xfff6d8, clouds: 1, moons: 0 };
+// the alien street's magenta dusk, and the light and the fog to go with it
+// (here rather than in ./annex.js, which loads only when it's first entered)
+export const ANNEX_SKY = { top: 0x2b0f55, mid: 0x9b3fae, low: 0xff9bc8, sun: 0xffe6b0, clouds: 0, moons: 0 };
+export const ANNEX_LIGHT = { sun: [0xffd2ec, 1.75], hemi: [0xd0a8ff, 0x4a2a66, 1.35], fog: [0xa465c4, 50, 260] };
 
 // where the afternoon sun is: the sky draws it there and ./scene.js lights from there
 export const SUN_DIR = new THREE.Vector3(-0.55, 0.72, 0.5).normalize();
