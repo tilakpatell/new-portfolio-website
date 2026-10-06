@@ -15,8 +15,10 @@ export const SITES = {
       clouds: { cover: 0.62, color: '#5a2a1e', shade: '#1e100c', scale: 0.7, speed: 0.006, sharp: 0.8 },
       stars: 0,
     },
-    fog: { color: '#5e2414', density: 0.0012 },
-    light: { sun: 2.4, sky: '#9a5640', ground: '#6a240c', ambient: 0.85 },
+    // (the film's Mustafar: black rock and ash, lit red only where the lava
+    // and the burning sky reach it: the sky's light dimmer, less red)
+    fog: { color: '#4a1c12', density: 0.0012 },
+    light: { sun: 2.4, sky: '#6e4a44', ground: '#40180c', ambient: 0.7 },
     dust: '#2a2220',
     edge: 'Nothing out there but more lava. Better turn back before your boots melt.',
     ground: { detail: 'ash', detailLook: { color: 0.8, normal: 0.8 },
@@ -33,8 +35,8 @@ export const SITES = {
         { type: 'island', at: [-390, 80], r: 75, height: 32, core: 0.78, ragged: 0.12 },
       ],
       palette: {
-        low: '#3a322e',
-        high: '#564a43',
+        low: '#2c2624',
+        high: '#403634',
         rock: '#191515',
         accent: '#5a3424',
         deep: '#221c1a',
