@@ -695,7 +695,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         const ls = LINES[person];
         let line = ls[n % ls.length];
         if (person === 'kevin' && !doneRef.current.includes('chili') && s.carry !== 'chili') line = 'Jim. Jim. My chili’s at the lift. Can you bring it to the kitchen? Careful. It’s my thing.';
-        if (person === 'erin' && !doneRef.current.includes('phones')) line = 'Jim, could you cover the phones for a minute? Please? I really, really need a break.';
+        if (person === 'erin' && !doneRef.current.includes('phones')) line = 'Jim, could you cover the phones for a minute? Please? I really need a break.';
         if (person === 'michael' && progRef.current.quests.find((q) => q.id === 'dundies')?.open && !doneRef.current.includes('dundies')) line = 'Jim! Get in here. Step into my office. Not you, Toby.';
         setBubble({ id: person, name: NAMES[person], line });
         s.wave = n === 0 ? person : null;

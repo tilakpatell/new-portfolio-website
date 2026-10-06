@@ -341,7 +341,7 @@ export const CREWS = [
       ],
       twins: [
         ['morty', 'Two suns, Rick! Like in that movie!'],
-        ['rick', 'Binary star, Morty. Every system’s got one. It’s not special. Okay, the gas bridge is a little special.'],
+        ['rick', 'Binary star, Morty. Every system’s got one. Not special. Okay, the gas bridge is a little special.'],
       ],
       wanderer: [
         ['morty', 'It’s so dark out here, Rick. Where’s its sun?'],
@@ -409,7 +409,7 @@ export const CREWS = [
       ],
       music: [
         ['rick', 'Indian classical music, Morty. Ragas older than most galaxies.'],
-        ['morty', 'It’s, uh, it’s actually really relaxing, Rick.'],
+        ['morty', 'It’s, uh, it’s actually relaxing, Rick.'],
       ],
       middleearth: [
         ['morty', 'There’s a volcano with a giant eye over it, Rick!'],
@@ -449,7 +449,7 @@ export const CREWS = [
         ['rick', 'The Caribbean, Morty. Pirates. It’s just crime with better hats.'],
       ],
       invincible: [
-        ['morty', 'Rick, a guy in a cape just flew past us. Really fast.'],
+        ['morty', 'Rick, a guy in a cape just flew past us. Fast.'],
         ['rick', 'Viltrumites, Morty. Don’t make eye contact. Don’t make any contact.'],
       ],
     },
@@ -1339,7 +1339,7 @@ export const CREWS = [
       ['walt', 'That was a rounding error, Jesse.'],
     ],
     crash: [
-      ['jesse', 'Mr. White! We hit a planet! The RV is totally totalled!'],
+      ['jesse', 'Mr. White! We hit a planet! The RV is totalled!'],
       ['walt', 'Relax, Jesse. I’ve rebuilt this RV before.'],
     ],
     pulled: [
@@ -1695,7 +1695,7 @@ export const CREWS = [
         ['walt', 'Smugglers with a dress code, Jesse.'],
       ],
       invincible: [
-        ['jesse', 'Yo, that dude just flew through a building. Like, through it.'],
+        ['jesse', 'Yo, that dude just flew through a building.'],
         ['walt', 'Then we do not owe him money, Jesse. Keep it that way.'],
       ],
     },
