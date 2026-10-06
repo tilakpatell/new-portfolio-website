@@ -132,10 +132,14 @@ export function createBlaster({ parent, world, pool = POOL }) {
       dir.z += (Math.random() - 0.5) * spread * 2;
       const b = shoot(f, dir.normalize(), color, true, null);
       b.damage = damage;
+      b.deflect = false;
       b.target = to.clone();
+      return b;
     },
     // on with them; returns how hard you were hit this frame
-    update(dt, you) {
+    // (`deflect(at)`: a bolt marked `deflect` that reaches you is turned
+    // back off the blade instead, up and away, and this hears of it)
+    update(dt, you, deflect = null) {
       const last = scratch[0];
       const now = scratch[1];
       const body = scratch[2];
@@ -158,8 +162,22 @@ export function createBlaster({ parent, world, pool = POOL }) {
           now[1] = p.y;
           now[2] = p.z;
           if (sweptHit(last, now, body, 0.55)) {
-            hurt += b.damage ?? 8;
-            b.life = 0;
+            if (b.deflect) {
+              b.deflect = false;
+              b.theirs = false;
+              b.v.negate();
+              b.v.x += (Math.random() - 0.5) * SPEED * 0.5;
+              b.v.y += (0.2 + Math.random() * 0.5) * SPEED;
+              b.v.z += (Math.random() - 0.5) * SPEED * 0.5;
+              b.v.setLength(SPEED);
+              b.m.lookAt(p.clone().add(b.v));
+              b.life = 0.5;
+              flash(p);
+              deflect?.(p);
+            } else {
+              hurt += b.damage ?? 8;
+              b.life = 0;
+            }
           }
         }
         if (b.life <= 0) {

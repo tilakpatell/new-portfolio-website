@@ -13,6 +13,7 @@
 // A step's spawn: { kind, n, at, spread, roam, speed, hp, tag, scale,
 // model, still, face, y, level (the height it's on, where there are
 // floors over floors: a pit under a throne room), leash, hostile: { range, every, spread, damage,
+// burst, strafe, shield, parry (hostiles.js's: bursts of fire, circling you, a shield that soaks hits, a blade that turns your swings),
 // delay (before its first shot), chase (m/s: it comes for you), melee,
 // reach (how close it has to be to hit) } }
 
@@ -24,6 +25,7 @@ import { PROPS } from './props';
 import { groundAt, turnToward } from './walker';
 import { stepTarget } from './quests';
 import { rng } from './noise';
+import { absorb, startBurst, stepBurst, strafeStep } from './hostiles';
 
 const BEAM_VERT = `
 varying vec2 vUv;
@@ -213,8 +215,18 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           const holder = new THREE.Group();
           holder.visible = false;
           group.add(holder);
-          const t = { tag: s.tag ?? step.tag, holder, fig: null, b: { x: home[0], z: home[1], yaw: s.face ?? r() * 6.28, to: null, wait: r() * 2 }, home, hp: s.hp ?? 1, hostile: s.hostile ?? null, down: 0, spec: s, cool: s.hostile?.delay ?? 1 + r() * 2, flinch: 0 };
+          const t = { tag: s.tag ?? step.tag, holder, fig: null, b: { x: home[0], z: home[1], yaw: s.face ?? r() * 6.28, to: null, wait: r() * 2 }, home, hp: s.hp ?? 1, hostile: s.hostile ?? null, down: 0, spec: s, cool: s.hostile?.delay ?? 1 + r() * 2, flinch: 0, shield: s.hostile?.shield ?? 0, burst: null, bubble: null };
           targets.push(t);
+          if (t.shield) {
+            // its shield: a bubble round it, bright for a moment where it's hit
+            const bubble = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 12), new THREE.MeshBasicMaterial({ color: '#7fd0ff', transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+            const tall = (s.tall ?? 1.8) * (s.scale ?? 1);
+            bubble.position.y = tall * 0.5;
+            bubble.scale.setScalar(tall * 0.75);
+            bubble.userData.flash = 0;
+            holder.add(bubble);
+            t.bubble = bubble;
+          }
           figure(s.kind, s).then((fig) => {
             if (!fig || dead || !holder.parent) return;
             fig.model.scale.multiplyScalar(s.scale ?? 1);
@@ -242,6 +254,15 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       return targets.filter((t) => !t.down && t.fig);
     },
     hit(t, damage = 1) {
+      if (t.shield > 0) {
+        const after = absorb(t, damage);
+        t.shield = after.shield;
+        t.hp = after.hp;
+        if (t.bubble) t.bubble.userData.flash = 0.35;
+        if (!t.shield && t.bubble) t.bubble.visible = false;
+        if (t.hp <= 0 && !t.down) t.down = 0.001;
+        return;
+      }
       t.hp -= damage;
       t.flinch = 0.25;
       if (t.hp <= 0 && !t.down) t.down = 0.001;
@@ -316,6 +337,16 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
               moving = 1;
             }
           }
+        } else if (near && t.hostile.strafe) {
+          // one that circles you (a death trooper), firing as it goes
+          const next = strafeStep(b, you, t.hostile, dt, time);
+          const leash = s.leash ?? (s.roam ?? 8) + 10;
+          if (Math.hypot(next.x - t.home[0], next.z - t.home[1]) < leash) {
+            b.x = next.x;
+            b.z = next.z;
+            moving = 1;
+          }
+          b.yaw = turnToward(b.yaw, next.yaw, dt * 4);
         } else if (near) {
           // a hostile one turns on you
           b.yaw = turnToward(b.yaw, Math.atan2(you.x - b.x, you.z - b.z), dt * 3);
@@ -349,6 +380,11 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           t.holder.rotation.z = Math.sin(t.flinch * 60) * t.flinch * 0.3;
         } else t.holder.rotation.z = 0;
         t.fig?.update(dt, moving || (b.to && !near) ? 0.6 : 0);
+        if (t.bubble?.visible) {
+          const f = t.bubble.userData;
+          f.flash = Math.max(0, f.flash - dt);
+          t.bubble.material.opacity = 0.1 + f.flash * 1.6 + 0.03 * Math.sin(time * 9 + t.home[0]);
+        }
       }
       return events;
     },
@@ -362,12 +398,22 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           if (t.hostile.melee) t.cool = Math.max(t.cool, 0.4);
           continue;
         }
+        const shot = () => ({ from: [t.b.x, t.holder.position.y + 1.4, t.b.z], spread: t.hostile.spread ?? 0.06, damage: t.hostile.damage ?? 8, who: t });
+        // the rest of a burst, as its shots fall due
+        if (t.burst) {
+          for (let i = stepBurst(t.burst, dt, t.hostile.burst.gap); i > 0; i--) out.push(shot());
+          if (t.burst.left <= 0) t.burst = null;
+        }
         t.cool -= dt;
         if (t.cool > 0) continue;
         t.cool = t.hostile.every * (0.7 + r() * 0.6);
-        // in arm's reach, a swipe (a rancor's), or a shot from where it stands
-        if (t.hostile.melee) out.push({ melee: true, damage: t.hostile.damage ?? 25, from: [t.b.x, t.holder.position.y, t.b.z] });
-        else out.push({ from: [t.b.x, t.holder.position.y + 1.4, t.b.z], spread: t.hostile.spread ?? 0.06, damage: t.hostile.damage ?? 8 });
+        // in arm's reach, a swipe (a rancor's, a blade's), or a shot from where it stands
+        if (t.hostile.melee) out.push({ melee: true, damage: t.hostile.damage ?? 25, from: [t.b.x, t.holder.position.y, t.b.z], who: t });
+        else if (t.hostile.burst) {
+          t.burst = startBurst(t.hostile);
+          out.push(shot());
+          t.burst.left--;
+        } else out.push(shot());
       }
       return out;
     },

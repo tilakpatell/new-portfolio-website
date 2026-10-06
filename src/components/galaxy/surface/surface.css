@@ -697,3 +697,48 @@
 @media (prefers-reduced-motion: reduce) {
   .assault-ring p, .assault-feed li, .assault-card { animation: none; }
 }
+
+/* who you play as, and your lightsaber (HeroPanel.jsx) */
+.surface-heroes { top: calc(var(--nav-h, 64px) + 56px); max-height: calc(100svh - var(--nav-h, 64px) - 100px); }
+.surface-hero-cards, .surface-hilts { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.4rem; }
+.surface-hero-cards { grid-template-columns: repeat(2, 1fr); }
+.surface-hero, .surface-hilt {
+  width: 100%;
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  cursor: pointer;
+}
+.surface-hero:hover, .surface-hilt:hover { border-color: rgba(255, 255, 255, 0.4); }
+.surface-hero.is-picked, .surface-hilt.is-picked { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.surface-hero-name { font-weight: 700; font-size: 0.82rem; }
+.surface-hero-arm { font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.surface-hero-blurb { font-size: 0.72rem; line-height: 1.35; color: rgba(242, 239, 232, 0.7); }
+.surface-saber { margin-top: 0.8rem; }
+.surface-swatches { display: flex; gap: 0.45rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+.surface-list .surface-swatch {
+  display: block;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: radial-gradient(circle, #fff 0 22%, var(--blade) 38%, color-mix(in srgb, var(--blade) 35%, transparent) 70%, transparent 100%);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--blade) 70%, transparent);
+  cursor: pointer;
+}
+.surface-list .surface-swatch.is-picked { border-color: #fff; }
+.surface-hero-keys { margin: 0.7rem 0 0; font-size: 0.72rem; line-height: 1.4; color: rgba(242, 239, 232, 0.7); }
+.surface-hero-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.9rem; }
+.surface-list .surface-hero-actions button { width: auto; display: inline-block; }
+.surface-hero-play { border-color: var(--accent); color: var(--accent); }
+.surface-hero-play:disabled { opacity: 0.45; cursor: default; }
+.surface-btn-throw { border-color: #9fd0ff; color: #cfe6ff; }
+.surface-btn-block { border-color: #ffe08a; color: #ffeec0; }
+.surface-buttons-saber { grid-template-columns: repeat(3, 60px); }
+.surface-buttons-saber .surface-btn { width: 60px; height: 60px; }

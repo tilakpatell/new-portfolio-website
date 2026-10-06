@@ -33,6 +33,7 @@ The measurements and the plan are the other sessions' `docs/research/2026-10-05-
 - [ ] **C-137: side roads off the main street**, and a gym and hallway for the school (`docs/superpowers/HANDOFF-c137.md`, "Ideas for later"). Morty's walk animation should pause in the air.
 - [ ] **Galaxy grounds past 90 m.** `docs/superpowers/HANDOFF-galaxy-surfaces.md`, "The grounds…› Left": a second coarser repeat of the ground scan so the grain carries to the horizon without the repeat showing. Done: a before/after at 150 m.
 - [ ] **Galaxy surfaces: what the filled-worlds PR left.** `docs/superpowers/HANDOFF-galaxy-surfaces.md`, "The filled worlds › Left": Echo Base's hangar face, Endor's 6.5M triangles at the landing. One item a run.
+- [ ] **Galaxy heroes: what the saber PR left.** `docs/superpowers/HANDOFF-galaxy-surfaces.md`, "Heroes, the lightsaber… › Left": other pilots' blades lit online, a two-handed grip, a hanging carry for the hilt, a visible blade on the Dagobah vision. One item a run.
 - [ ] **Galaxy missions still briefings.** `docs/superpowers/specs/2026-10-05-galaxy-games-design.md`: one mission a run, the smallest first, with its rules tested. (Hoth's and Geonosis's ground battles are the galactic assaults: `docs/superpowers/HANDOFF-galactic-assault.md` has what's left on those, a map a run: Kashyyyk's beach, Endor's bunker, Scarif's.)
 
 ## Done

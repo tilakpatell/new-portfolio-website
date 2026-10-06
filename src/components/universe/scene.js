@@ -97,7 +97,8 @@ import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePa
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
-import { ORDER, POSITIONS, REACH, RIM, SUN } from './layout';
+import { BELT, ORDER, POSITIONS, REACH, RIM, SUN } from './layout';
+import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
 import { createPost, spaceEnvironment } from './post';
@@ -105,12 +106,14 @@ import { PLANETS, SHIP, SOLIDS, autopilot, forward, headingTo, isGoal, isPlace, 
 import { HYPER, driveById, hyperState, parkFor, riftExit } from './nav';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
 import { AHEAD_OF, factionsOf, kindsOf, pick as pickFaction, sideFor, wingOf } from './sides';
+import { TROOPS } from './foot';
 import { GLB, createFleet } from './glbFleet';
 import { createDirector } from './director';
 import { createSetPieces } from './setpieces';
 import { createLeviathans } from './leviathans';
 import { createMeteors } from './meteors';
-import { buildDeepSpace } from './deepspace';
+import { DEBRIS_DRIFT, buildDeepSpace } from './deepspace';
+import { ROCK_HIT, boxOf, nearBox, nearRing, rockDamage, rockGrid, sweep, toBelt } from './rockHits';
 import { createTrench } from './trench';
 import { createBeacons } from './beacons';
 import { PHONE, createPhone } from './phone';
@@ -126,7 +129,9 @@ import { createBelt, createDust } from './belt';
 import { createTrail } from './trail';
 import { BUILT, ENGINES, SHIP_MODELS, buildShip } from './shipModels';
 import { paintById } from './paint';
-import { FASTEST, PARTS_SLOTS, STOCK_LOADOUT, readLoadout, statsOf } from './outfit';
+import { FASTEST, PARTS, PARTS_SLOTS, STOCK, STOCK_LOADOUT, readLoadout, statsOf } from './outfit';
+import { createNpcs } from './npcs';
+import { NPCS, visitorsOf } from './npcs/index';
 import { readBuildWire, writeBuild } from './shipyard/build';
 import { readLooks } from '../rickmorty/wardrobe/looks';
 import { BUILT_KINDS, buildTraffic } from './trafficModels';
@@ -140,7 +145,9 @@ import { CORE, GENS, citadelGeometry, createSiege, segmentSphere } from './siege
 import { createCitadelSiege } from './citadelSiege';
 import { STALE_MS } from './online/protocol';
 import { createFoot } from './footScene';
+import { wayIn } from './landings/wayin';
 import { ENTRY, LANDABLE, airTop, entering } from './entry';
+import { poseFor } from './poses';
 
 const STARS = 1800; // the near ones, over the Milky Way's own
 const STARS_LOW = 700;
@@ -198,7 +205,6 @@ const KEYS = { w: 'up', s: 'down', a: 'a', d: 'd', arrowleft: 'left', arrowright
 // on foot: W A S D or the arrows walk and turn, Space jumps, Shift runs, Q and E step sideways (and F fires, footKey)
 const FOOT_KEYS = { ...KEYS, a: 'left', d: 'right', arrowup: 'up', arrowdown: 'down', ' ': 'jump', shift: 'boost', q: 'strafeL', e: 'strafeR', f: null };
 const FOOT_FOV = 56; // the lens on foot: a person's, wider than the chase's
-const NAMES_ON_FOOT = { gromflomite: 'Gromflomite', cop: 'Federation cop', gazorpian: 'Gazorpian' };
 const SHIP_NAMES = { rv: 'The RV', cruiser: 'The cruiser', xwing: 'The X-wing', falcon: 'The Falcon' };
 const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ']);
 
@@ -505,7 +511,9 @@ export async function create(canvas, ctx) {
   const rings = orbits();
   map.add(rings);
   // the asteroid belt, and dust round the camera to feel the speed by (belt.js)
-  const belt = createBelt({ small: (window.matchMedia?.('(pointer: coarse)').matches ?? false) || Math.min(window.innerWidth, window.innerHeight) < 600 });
+  // (more rocks for the wider band the home system grew to, scale.js: not
+  // the band's whole growth in area, so the triangles grow less than it)
+  const belt = createBelt({ small: (window.matchMedia?.('(pointer: coarse)').matches ?? false) || Math.min(window.innerWidth, window.innerHeight) < 600, count: Math.round(3200 * HOME_SPREAD) });
   map.add(belt.group);
   // and the rim: a ring of ice right round the edge of the map (layout.js's RIM)
   const rim = createBelt({ small: Math.min(window.innerWidth, window.innerHeight) < 600, band: RIM, seed: 2049, tones: ['#c9d8e8', '#9fb4c8', '#dfe8f2', '#8ea0b4'], scale: 14, spin: 0.0012, count: 700 });
@@ -629,6 +637,17 @@ export async function create(canvas, ctx) {
   // deep space, out past the home system: its wonders, and the trench run
   // round the Death Star's middle
   const deep = buildDeepSpace({ small });
+  // what the ship can hit among the rocks (rockHits.js): the belt, the rim
+  // and the debris streams, each from the same rocks its mesh draws. A rock
+  // the ship's smashed is gone a while (`smashed`: field → index → when it's back)
+  const BELT_SPIN = 0.006;
+  const RIM_SPIN = 0.0012;
+  const rockFields = [
+    { id: 'belt', grid: rockGrid(belt.rocks), ring: BELT, spin: BELT_SPIN, field: belt },
+    { id: 'rim', grid: rockGrid(rim.rocks, 60), ring: RIM, spin: RIM_SPIN, field: rim },
+    { id: 'debris', grid: rockGrid(deep.debris.rocks, 20), box: boxOf(deep.debris.rocks), field: deep.debris },
+  ];
+  const smashed = new Map(rockFields.map((f) => [f.id, new Map()]));
   map.add(deep.group);
   const trenches = PLANETS.filter((p) => p.trench).map((p) => createTrench({ at: p.at, r: p.r, trench: p.trench }, { small }));
   for (const tr of trenches) map.add(tr.group);
@@ -645,7 +664,10 @@ export async function create(canvas, ctx) {
   // the sun in the middle, warming the stations round it
   const sun = buildSun(T);
   map.add(sun.group);
-  const sunLight = new THREE.PointLight('#ffd6a8', 890, 320, 1.4);
+  // (its reach and strength grown with the home system, scale.js: a light
+  // falling off as distance^1.4, scaled by HOME_SPREAD in both, lights every
+  // station and rock just as it did before the system grew)
+  const sunLight = new THREE.PointLight('#ffd6a8', 890 * HOME_SPREAD ** 1.4, 320 * HOME_SPREAD, 1.4);
   map.add(sunLight);
 
   const planets = ORDER.map((id) => {
@@ -753,9 +775,11 @@ export async function create(canvas, ctx) {
   fleet.prepare = (o) => warm(o); // (the fleet's models too: none is made before the first frame)
   // who comes after you, what the director sets going, and its set pieces
   // (none of it with reduced motion)
-  const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: factionsOf(null), kinds: kindsOf(null) }); // (every side's: another pilot's hunters, whoever they are)
+  const FACTIONS_ALL = factionsOf(null);
+  const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: FACTIONS_ALL, kinds: kindsOf(null) }); // (every side's: another pilot's hunters, whoever they are)
   const wingmen = hunters ? createWingmen(map, { fleet, solids: SOLIDS }) : null; // (friends in a long fight)
   const skirmishes = hunters ? createSkirmishes(map, { fleet, solids: SOLIDS }) : null; // (someone else's fight, out ahead)
+  const npcs = hunters ? createNpcs(map, { fleet }) : null; // (the named characters: npcRules.js's brains)
   let hunts = 0; // packs the director has sent this visit (the first is a small one)
   const director = createDirector();
   const pieces = createSetPieces(map, { small, fleet });
@@ -847,6 +871,8 @@ export async function create(canvas, ctx) {
     huntFor: 0, // seconds the hunters have been after you, this time
     wingAsked: false, // whether a wing's been asked for, this hunt
     skirmishAt: 50 + Math.random() * 40, // when the next skirmish may be (state.clock)
+    npcAt: 70 + Math.random() * 50, // when the next character may come by (state.clock)
+    npcLast: null, // who came by last (someone else next time)
     skirmishHelped: 0, // hunters you've hit in this one
     saw: new Set(), // the wonders out in deep space you've come up on
     phoneNear: false, // at the phone out past the belt (phone.js)
@@ -860,6 +886,7 @@ export async function create(canvas, ctx) {
     // the guns (targeting.js)
     lock: null, // { id, out }: the hunter they're locked on to
     lockTarget: null, // and what it is this frame: { id, at, vel, size, kind }
+    held: null, // (development: one of poses.js's fixed poses, the ship and the map held still to be measured; its camera's view, or null for the whole map)
     lead: null, // where to shoot to hit it: { x, y, z, t }
     hot: false, // the nose is near enough the lead that a shot bends onto it
     cycle: 0, // T was pressed: on to the next target (1), or Shift+T, back one (−1)
@@ -1031,7 +1058,7 @@ export async function create(canvas, ctx) {
     const r = s ? Math.hypot(s.x, s.z) : 0;
     if (!state.overview || r < DEEP.system) return state.overview;
     const [wx, wz] = rotate(s.x * 0.55, s.z * 0.55);
-    return { target: [wx, s.y * 0.5, wz], dist: clamp(r * 1.25, 700, 7000), pitch: 0.62 };
+    return { target: [wx, s.y * 0.5, wz], dist: clamp(r * 1.25, 700 * HOME_SPREAD, 7000), pitch: 0.62 };
   };
   // the turn of the map that brings a place round to the front, nearest the
   // camera, with nothing between (the rest of the ring to its sides); a
@@ -1046,6 +1073,7 @@ export async function create(canvas, ctx) {
   // where the camera's going: with no ship, a pose (flight.js); flying, a view
   const goal = () => (state.sel ? focusPose(state.sel, state.yaw, size, state.rect) : state.overview);
   const flightView = () => {
+    if (state.held?.view) return state.held.view;
     const whole = state.view === 'map' ? mapPose() : null;
     if (whole) return viewOfPose(whole);
     if (state.crash && !state.crash.back) return viewOfPose(crashPose());
@@ -1576,6 +1604,7 @@ export async function create(canvas, ctx) {
       meteors.clear();
       wingmen?.clear();
       skirmishes?.clear();
+      npcs?.clear();
       dropCab();
       cabWanted = null;
       if (kind && state.seat === 'cockpit') buildCab(kind);
@@ -1963,7 +1992,7 @@ export async function create(canvas, ctx) {
   // the same answer as hunters.hit's, counted as help
   const farHit = (from, to, punch) => {
     const r = skirmishes?.active ? skirmishes.hit(from, to, punch) : null;
-    if (!r) return null;
+    if (!r) return npcs?.count ? npcs.hit(from, to, punch) : null; // (or a character who's after you: Evil Morty)
     state.skirmishHelped += 1;
     return { id: r.id, kind: r.kind, at: new THREE.Vector3(r.at.x, r.at.y, r.at.z), size: r.size, down: r.down };
   };
@@ -2336,6 +2365,7 @@ export async function create(canvas, ctx) {
       meteors.clear();
       wingmen?.clear();
       skirmishes?.clear();
+      npcs?.clear();
       infall?.dispose();
       infall = createInfall(map, { color: plumeColor(), shadow: MAW.shadow, at: MAW.at });
       infall.start();
@@ -2373,6 +2403,7 @@ export async function create(canvas, ctx) {
     meteors.clear();
     wingmen?.clear();
     skirmishes?.clear();
+    npcs?.clear();
     engine?.set({ speed: 0, boost: false, on: false });
     if (by) net?.down(by); // everyone hears who got you
     emit({ type: 'destroyed' });
@@ -2394,6 +2425,77 @@ export async function create(canvas, ctx) {
       emit({ type: 'shields' });
     }
     if (state.shield <= 0) startDestroyed(by);
+  };
+
+  // The ship's way this frame, from `from` to `to`, swept against the rock
+  // fields it comes near (each in its own frame: the belt and the rim turn,
+  // the streams drift). The first rock it meets is smashed (gone a while);
+  // at the boost or under that's a bump, faster it's off the shields, more
+  // the faster and the bigger the rock, and the ship's knocked back down
+  // under the pulse drive.
+  let rockCool = -1e9;
+  let rockSaidAt = -1e9;
+  const rockMap = new THREE.Vector3();
+  const rockShip = new THREE.Vector3();
+  const rocksHit = (from, to, t) => {
+    for (const f of rockFields) {
+      const gone = smashed.get(f.id);
+      for (const [i, back] of gone) {
+        if (state.clock < back) continue;
+        gone.delete(i);
+        f.field.show(i);
+      }
+    }
+    if (state.clock < rockCool || Math.abs(to.speed) < 2) return;
+    let hit = null;
+    for (const f of rockFields) {
+      let a;
+      let b;
+      if (f.ring) {
+        if (!nearRing(from, to, f.ring)) continue;
+        a = toBelt(from, t * f.spin);
+        b = toBelt(to, t * f.spin);
+      } else {
+        const d = DEBRIS_DRIFT(t);
+        a = { x: from.x - d.x, y: from.y - d.y, z: from.z - d.z };
+        b = { x: to.x - d.x, y: to.y - d.y, z: to.z - d.z };
+        if (!nearBox(a, b, f.box)) continue;
+      }
+      const h = sweep(f.grid, a, b, SHIP.radius, smashed.get(f.id));
+      if (h && (!hit || h.t < hit.t)) hit = { ...h, f };
+    }
+    if (!hit) return;
+    const { f } = hit;
+    const o = f.grid.rocks[hit.i];
+    f.field.hide(hit.i);
+    smashed.get(f.id).set(hit.i, state.clock + ROCK_HIT.gone);
+    rockCool = state.clock + ROCK_HIT.cool;
+    // where the rock is on the map, and the ship as it met it
+    if (f.ring) {
+      const m = toBelt(o, -t * f.spin);
+      rockMap.set(m.x, m.y, m.z);
+    } else {
+      const d = DEBRIS_DRIFT(t);
+      rockMap.set(o.x + d.x, o.y + d.y, o.z + d.z);
+    }
+    rockShip.set(from.x + (to.x - from.x) * hit.t, from.y + (to.y - from.y) * hit.t, from.z + (to.z - from.z) * hit.t);
+    pops.hit({ point: rockMap.clone(), normal: popDir.copy(rockShip).sub(rockMap).normalize(), radius: o.r * 1.6 });
+    const speed = Math.abs(to.speed);
+    const damage = rockDamage(speed, o.r);
+    if (damage <= 0) {
+      emit({ type: 'bump', id: 'rock', hard: false });
+      return;
+    }
+    if (state.clock >= state.safeUntil) hurt(damage);
+    if (!state.ship || state.crash) return;
+    if (!reduced) state.shake = Math.max(state.shake, 0.9);
+    state.flare = Math.max(state.flare, 1.6);
+    state.ship = { ...state.ship, speed: Math.sign(state.ship.speed || 1) * Math.max(SHIP.boost, speed * ROCK_HIT.slow) };
+    state.note = { text: `Hit a rock at speed: shields −${Math.round(damage)}`, until: wall() + 2.5 };
+    if (state.clock - rockSaidAt > 8) {
+      rockSaidAt = state.clock;
+      emit({ type: 'event', id: 'rock' });
+    }
   };
 
   // what the link to the other pilots reports: their hits on you, and
@@ -2447,7 +2549,9 @@ export async function create(canvas, ctx) {
   // what the hunters report
   const onHunters = (e) => {
     if (e.type === 'hunted') {
-      if (!e.prey) emit({ type: 'hunted', faction: e.faction, ace: e.kinds.includes('tieadvanced') });
+      // (ace: the kind of the faction's ace, when it came along, for its own line)
+      const ace = FACTIONS_ALL[e.faction]?.ace;
+      if (!e.prey) emit({ type: 'hunted', faction: e.faction, ace: ace && e.kinds.includes(ace) ? ace : null });
       // dropped in ahead of you on the way somewhere: they hold the pulse
       // drive down while they're on you (a jolt as it cuts)
       if (e.interdict && !state.interdicted && state.ship) {
@@ -2475,11 +2579,11 @@ export async function create(canvas, ctx) {
     }
     else if (e.type === 'escaped' || e.type === 'cleared') {
       emit(e.rescued ? { type: 'event', id: 'rescued' } : e);
-      // the Star Destroyer's fighters gone: it jumps away
+      // the Star Destroyer's fighters gone: it jumps away (and the roadblock's helicopter climbs off)
       if (pieces.destroyerHere && !hunters.active) {
         pieces.leave();
         emit({ type: 'event', id: 'leave' });
-      }
+      } else if (pieces.chopperHere && !hunters.active) pieces.leave();
     }
   };
 
@@ -2499,9 +2603,10 @@ export async function create(canvas, ctx) {
     else if (id === 'roadblock') {
       // the DEA across your bows: in ahead, and holding you there
       hunters.pack('dea', ship, { ahead: true, interdict: true, ace: Math.random() < 0.5, ...strength });
+      pieces.roadblock(ship); // (and a helicopter over it, its searchlight on you)
       emit({ type: 'event', id: 'roadblock' });
     } else if (id === 'destroyer') {
-      const d = pieces.destroyer(ship);
+      const d = pieces.destroyer(ship, side.capitalShip);
       if (!d) return;
       emit({ type: 'event', id: 'destroyer' });
       // its fighters launch a moment after it's here
@@ -2643,6 +2748,56 @@ export async function create(canvas, ctx) {
     }
   };
 
+  // the named characters (npcs/index.js, npcRules.js): now and then, while
+  // nothing's after you, one of your side's comes by on their own (Saul to a
+  // station with a deal, Mike alongside with word of what's coming, Evil
+  // Morty for a duel); what they say, the crew's comms say, their shots land
+  // where they hit, and one that's the wing's or the hunt's is handed over
+  const NPC_EVERY = [100, 170]; // seconds between them
+  const STATIONS = PLANETS.map((p) => ({ id: p.id, at: { x: p.at[0], y: p.at[1], z: p.at[2] }, r: p.r }));
+  const npcWorld = { you: null, hunters: [], stations: STATIONS, solids: SOLIDS, next: null };
+  const meet = (dt, t, live) => {
+    const side = sideFor(state.kind);
+    if (live && side && !npcs.count && state.clock > state.npcAt && !hunters.count && !skirmishes?.active && !pieces.destroyerHere && !leviathans.busy && state.view !== 'map') {
+      state.npcAt = state.clock + NPC_EVERY[0] + Math.random() * (NPC_EVERY[1] - NPC_EVERY[0]);
+      const who = visitorsOf(side.id).filter((c) => c.id !== state.npcLast);
+      const npc = who[Math.floor(Math.random() * who.length)] ?? visitorsOf(side.id)[0];
+      const at = npc && skirmishSpot(live);
+      if (at) {
+        npcs.add(npc, at);
+        state.npcLast = npc.id;
+      }
+    }
+    npcWorld.you = live;
+    npcWorld.hunters = live ? hunters.targets : [];
+    // (what's coming next, picked now, only while there's someone to tell you)
+    npcWorld.next = live && npcs.live.some((m) => m.npc.brain === 'informant') ? director.foretell(side) : null;
+    for (const e of npcs.update(dt, t, npcWorld)) {
+      const id = npcs.live.find((m) => m.n === e.n)?.npc.id ?? e.id;
+      if (e.type === 'say') emit({ type: 'npc', id: e.id, key: e.key });
+      else if (e.type === 'offer') emit({ type: 'npc', id, key: 'offer', part: offerFor()?.name ?? null });
+      else if (e.type === 'tip') emit({ type: 'npc', id, key: 'tip', sub: e.next?.id ?? null });
+      else if (e.type === 'shot' && e.hit) {
+        if (e.at === 'you') hurt(e.damage);
+        else {
+          const got = hunters.damage(e.at, e.damage);
+          if (got?.down) pops.hit({ point: got.at, normal: popDir.set(0, 1, 0), radius: got.size * 1.8 });
+        }
+      } else if (e.type === 'delegate' && live) {
+        // (the wing or the hunt flies this one: Birdperson, Fett)
+        if (e.via === 'wing') wingmen?.join(e.kind, live, 1);
+        else hunters.pack(e.faction, live, { size: 1 });
+        npcs.remove(e.n);
+      }
+    }
+  };
+  // a part the hangar has that this ship hasn't got fitted (a merchant's offer)
+  const offerFor = () => {
+    const fitted = new Set(Object.values(state.loadout ?? {}));
+    const open = PARTS.filter((p) => p.id !== STOCK && !p.achievement && !fitted.has(p.id));
+    return open[Math.floor(Math.random() * open.length)] ?? null;
+  };
+
   // someone else's fight (skirmishes.js): now and then, while nothing's
   // after you, out ahead of you: a freighter under attack and its escort
   // fighting the attackers off. Fly in and help; the crew have a word when
@@ -2691,6 +2846,7 @@ export async function create(canvas, ctx) {
     if (hunters) for (const e of hunters.update(dt, t, live)) onHunters(e);
     if (wingmen) helpFrom(dt, t, live);
     if (skirmishes) farFight(dt, t, live);
+    if (npcs) meet(dt, t, live);
     let busy = pieces.update(dt, t, camera);
     busy = leviathans.update(dt, t, camera) || busy;
     if (meteors.count) {
@@ -2707,7 +2863,7 @@ export async function create(canvas, ctx) {
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
-        const id = director.update(dt, { side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || leviathans.busy || meteors.count > 0 || state.view === 'map' || Boolean(props.charting), travelling: travelling(live), calm: state.shield < 50 });
+        const id = director.update(dt, { side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || leviathans.busy || meteors.count > 0 || state.view === 'map' || Boolean(props.charting) || Boolean(state.held), travelling: travelling(live), calm: state.shield < 50 });
         if (id) happen(id, live);
         // the drive comes back once they're off you (or have had their go)
         if (state.interdicted && (!hunters.active || state.clock - state.interdictAt > INTERDICT)) state.interdicted = false;
@@ -2934,6 +3090,7 @@ export async function create(canvas, ctx) {
     meteors.clear();
     wingmen?.clear();
     skirmishes?.clear();
+    npcs?.clear();
     state.interdicted = false;
     state.safeUntil = state.clock + SAFE;
     state.flare = Math.max(state.flare, 2.4);
@@ -2961,6 +3118,7 @@ export async function create(canvas, ctx) {
       meteors.clear();
       wingmen?.clear();
       skirmishes?.clear();
+      npcs?.clear();
       state.interdicted = false;
       state.safeUntil = state.clock + SAFE;
       crashFx.arrive({ point: new THREE.Vector3(j.park.x, j.park.y, j.park.z), kind: state.kind, heading: j.park.heading });
@@ -2996,12 +3154,17 @@ export async function create(canvas, ctx) {
     }
     input.interdicted = state.interdicted;
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
+    const before = state.ship;
     const { ship: stepped, events } = step(state.ship, input, dt, siegeSt.down ? SOLIDS_OPEN : SOLIDS);
     // the Maw's pull (maw.js): drawn in, and carried round with its disk
     const g = pullAt(stepped.x, stepped.y, stepped.z);
     const ship = g ? { ...stepped, x: stepped.x + g.v[0] * dt, y: stepped.y + g.v[1] * dt, z: stepped.z + g.v[2] * dt } : stepped;
-    state.ship = ship;
-    state.pull = g?.k ?? 0;
+    // (held at a pose: still, and out of the Maw's pull, so every frame measured is the same picture)
+    if (!state.held) state.ship = ship;
+    state.pull = state.held ? 0 : (g?.k ?? 0);
+    // into a rock (rockHits.js): a bump at the boost or under, the shields
+    // past it
+    if (!state.jump && !state.held) rocksHit(before, ship, t);
     for (const e of events) {
       // into a gate (the way into a galaxy far, far away): not a crash nor a
       // bump, but through (the page jumps you to lightspeed)
@@ -3084,7 +3247,7 @@ export async function create(canvas, ctx) {
     // (the rocks only while nobody's after you: a hunter's the thing to lock on to)
     const rocks = meteors.count && !hunters?.active ? meteors.targets : [];
     // (someone else's fight's hunters, while nothing's after you: yours come first)
-    const farCands = skirmishes?.active && !hunters?.active ? skirmishes.targets : [];
+    const farCands = [...(skirmishes?.active && !hunters?.active ? skirmishes.targets : []), ...(npcs?.targets ?? [])];
     const cands = pilots.count || siegeCands.length || rocks.length || farCands.length ? [...(hunters?.targets ?? []), ...farCands, ...pilots.targets, ...siegeCands, ...rocks] : (hunters?.targets ?? []);
     const was = state.lock?.id ?? null;
     state.lock = cands.length || state.lock ? track(ship, cands, state.lock, dt, { cycle: state.cycle }) : null;
@@ -3312,7 +3475,7 @@ export async function create(canvas, ctx) {
       const px = hudAt.z > 0 ? (lock.size / (hudAt.z * tanHalf)) * (size.h / 2) * 1.6 : 0;
       placeMark(h.lock, hudAt, clamp(px, 26, 120));
       h.lock.toggleAttribute('data-hot', true);
-      setText(h, h.lockName, NAMES_ON_FOOT[lock.kind] ?? lock.kind);
+      setText(h, h.lockName, TROOPS[lock.kind]?.name ?? lock.kind);
       setText(h, h.lockDist, `${Math.round(lock.dist)} m`);
     }
     setOn(h, h.lead, false);
@@ -3332,6 +3495,26 @@ export async function create(canvas, ctx) {
     if (!d) return false;
     props.onOpen?.(d.id);
     return true;
+  };
+  // the way into the planet's world while the crew are down on it (wayin.js):
+  // the HUD's button and Enter, there the whole time, not only at the door
+  const wayInNow = () => (onFoot() ? wayIn({ id: foot.id, phase: foot.phase, frozen: props.frozen, crashing: Boolean(state.crash) }) : null);
+  const intoWorld = () => {
+    const w = wayInNow();
+    if (!w) return false;
+    props.onOpen?.(w.id);
+    return true;
+  };
+  let enterWas = null;
+  const placeEnter = () => {
+    const el = props.enter?.current;
+    if (!el) return;
+    const label = wayInNow()?.label ?? '';
+    if (label === enterWas) return;
+    enterWas = label;
+    el.hidden = !label;
+    const text = el.querySelector('.universe-wayin-label');
+    if (text) text.textContent = label;
   };
   // the line over the map: what G does here
   let promptWas = null;
@@ -3589,6 +3772,7 @@ export async function create(canvas, ctx) {
     const piloting = pilots.update(dt, now, net, { project: toScreen, tags: props.tags?.current ?? null, locked: state.lockTarget?.peer ?? null, footOn: onFoot() ? foot.id : null });
     placeHud();
     placePrompt();
+    placeEnter();
     // the sky and the far stars stay round the camera, wherever it flies;
     // the dust rides with it too, and shows while you fly (more, the faster)
     // (only the map's own turn is wanted here: the drawing brings everything
@@ -3747,7 +3931,7 @@ export async function create(canvas, ctx) {
   };
   // the keys on foot: walking (W A S D, Q E to step sideways), Shift to
   // run, Space to jump, F to fire, T the next trooper, X to play the other
-  // one, V out of your own eyes, Enter into the planet's page
+  // one, V out of your own eyes, Enter into the planet's world (wayin.js)
   const footKey = (e, key, onControl) => {
     if (key === 'f') {
       e.preventDefault();
@@ -3769,6 +3953,11 @@ export async function create(canvas, ctx) {
     if (key === 'v') {
       e.preventDefault();
       foot.first();
+      return;
+    }
+    if (key === 'enter' && !onControl && intoWorld()) {
+      e.preventDefault();
+      heard();
       return;
     }
     if (key === 'enter' && !onControl && state.at) {
@@ -3993,9 +4182,60 @@ export async function create(canvas, ctx) {
     return true;
   };
 
+  // (development: the ship and the camera put at one of poses.js's fixed
+  // poses and held there, nothing coming for it, so every measure of the
+  // map is of the same picture: scripts/universe-check.mjs. Resolves after
+  // two drawn frames; a landing pose, once the crew are out.)
+  const frames = (n) => new Promise((done) => {
+    const tick = () => (n-- <= 0 ? done() : (ctx.invalidate(), requestAnimationFrame(tick)));
+    tick();
+  });
+  const holdPose = async (name) => {
+    const p = poseFor(name);
+    if (!p) throw new Error(`[universe] no pose ${name}`);
+    if (!state.ship || onFoot() || state.crash || state.dive) throw new Error('[universe] a pose needs the ship flying (reload for another after a landing)');
+    dropAuto();
+    state.yawTo = null;
+    state.vel = 0;
+    state.blend = null;
+    state.lock = null;
+    state.lockTarget = null;
+    state.streak = 0;
+    state.boosting = false;
+    hunters?.clear();
+    meteors.clear();
+    burst.clear();
+    const [x, y, z] = p.at;
+    state.ship = { ...state.ship, x, y, z, heading: p.heading, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, edge: false };
+    // (the map turned the way the ship faces, as arriveAt does, so the
+    // key light falls the same way every time, not wherever the turn's ease got to)
+    state.yaw = -p.heading;
+    camQOn = false;
+    state.view = p.view === 'map' ? 'map' : 'chase';
+    let view = null;
+    if (p.eye) {
+      // looking from the eye at `look`, but the view's distance no further
+      // than the ship (the near plane follows it: applyView's lens)
+      const eye = new THREE.Vector3(...p.eye);
+      const look = new THREE.Vector3(...p.look);
+      const quat = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(eye, look, Y_AXIS));
+      const dist = Math.min(eye.distanceTo(look), eye.distanceTo(new THREE.Vector3(x, y, z)));
+      view = { target: eye.clone().addScaledVector(look.sub(eye).normalize(), dist), quat, dist };
+    }
+    state.held = { name, view };
+    await frames(2);
+    if (p.foot) {
+      if (!startFoot({ id: p.foot })) throw new Error(`[universe] couldn't land on ${p.foot}`);
+      const t0 = performance.now();
+      while (foot.phase !== 'walk' && performance.now() - t0 < 300000) await frames(1);
+      await frames(2);
+    }
+    return { name, at: p.at, view: state.view, foot: foot.phase ?? null };
+  };
+
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, director, pieces, leviathans, meteors, fleet, novae, pilots, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -4030,6 +4270,9 @@ export async function create(canvas, ctx) {
       foot: foot.phase && { phase: foot.phase, id: foot.id, ...(({ health, who, mate, troops, first }) => ({ health, who, mate, troops: troops.length, first }))(foot.info() ?? { troops: [] }), guests: foot.guestInfo(), spot: foot.crew()?.ship.n ?? null, entry: foot.entry() },
       landable: state.landable,
       last,
+      held: state.held?.name ?? null,
+      pose: holdPose,
+      frames, // (resolves after n more frames, each one drawn)
     });
   }
 
@@ -4138,6 +4381,11 @@ export async function create(canvas, ctx) {
       heard();
       // (a door you're at first: a big ship's reach can take in one near it)
       if (onFoot() && !intoDoor() && !foot.board()) emit({ type: 'foot', id: 'far' });
+    },
+    // the HUD's “Enter Albuquerque” button: into the world you're down on
+    enter() {
+      heard();
+      intoWorld();
     },
     // the phone's Switch button, on foot: play the other one
     swap() {
@@ -4250,6 +4498,7 @@ export async function create(canvas, ctx) {
       hunters?.dispose();
       wingmen?.dispose();
       skirmishes?.dispose();
+      npcs?.dispose();
       netOff?.();
       pilots.dispose();
       pieces.dispose();

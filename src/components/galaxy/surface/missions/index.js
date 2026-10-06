@@ -137,7 +137,7 @@ export const MISSIONS = {
             n: 6,
             text: 'Hold the tower: bring down Shin Hati’s mercenaries',
             lines: [[null, '(Engines over the grass. Mercenaries, and they want the map.)']],
-            spawn: { kind: 'mercenary', n: 6, at: [-290, 30], spread: 22, roam: 6, speed: 1.4, hp: 2, tag: 'mercs', hostile: { range: 42, every: 2.4, damage: 6, spread: 0.06, chase: 2, delay: 2 } },
+            spawn: { kind: 'mercenary', n: 6, at: [-290, 30], spread: 22, roam: 6, speed: 1.4, hp: 2, tag: 'mercs', hostile: { range: 42, every: 2.4, damage: 6, spread: 0.06, delay: 2, strafe: { speed: 2, every: 2.6, keep: 12 } } },
           },
           {
             type: 'shoot',
@@ -203,7 +203,7 @@ export const MISSIONS = {
             lines: [['Yoda', 'Run, you will. Through the swamp. Quickly, quickly!']],
           },
           { type: 'reach', at: [-70, -120], r: 9, text: 'Go into the cave: Yoda waits outside', start: [{ carry: null }], lines: [['Yoda', 'Into the cave, go. What is in there, you bring with you.']] },
-          { type: 'shoot', tag: 'vision', n: 1, text: 'Face what’s inside', lines: [[null, '(A figure in black steps out of the dark.)']], spawn: { kind: 'vader', at: [-66, -114], still: true, hp: 3, tag: 'vision', hostile: { range: 12, every: 2, damage: 10, spread: 0.06 } } },
+          { type: 'shoot', tag: 'vision', n: 1, text: 'Face what’s inside', lines: [[null, '(A figure in black steps out of the dark.)']], spawn: { kind: 'vader', at: [-66, -114], hp: 4, leash: 14, roam: 2, tag: 'vision', hostile: { range: 14, chase: 1.8, melee: true, reach: 2.6, every: 1.6, damage: 14, delay: 1, parry: 0.6 } } },
           {
             type: 'use',
             id: 'raise',
@@ -318,7 +318,7 @@ MISSIONS.hoth = {
           n: 4,
           text: 'Hold off the snowtroopers coming over the ridge',
           lines: [['Loadmaster', 'Snowtroopers! Keep them off the ramp till she’s up!']],
-          spawn: { kind: 'snowtrooper', n: 4, at: [-190, 110], spread: 12, roam: 5, hp: 2, tag: 'snowtroops', hostile: hostile(44, 2.2, 8, { chase: 2.2, delay: 1.5 }) },
+          spawn: { kind: 'snowtrooper', n: 4, at: [-190, 110], spread: 12, roam: 5, hp: 2, tag: 'snowtroops', hostile: hostile(44, 2.6, 6, { chase: 2.2, delay: 1.5, burst: { n: 2, gap: 0.14 } }) },
         },
         { type: 'reach', at: [-30, 316], r: 7, time: 110, text: 'Run for the ion cannon', lines: [['Loadmaster', 'She’s lifting! Get to the ion cannon, quick!']] },
         { type: 'use', id: 'fire', at: [-30, 317], r: 4, prompt: 'Fire the ion cannon', text: 'Fire on the Star Destroyer', end: [{ signal: 'fire' }, { shake: 0.6 }] },

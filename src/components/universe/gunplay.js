@@ -352,6 +352,64 @@ export const GUNS = {
       k.point('muzzle', [0, 0.062, 0.168]);
     },
   },
+  // a lightsaber: the hilt stands along the fist (the gun's +y, where a
+  // gun's sights go), the blade on out of the thumb side of it, so the
+  // same grip that closes on a pistol closes on this; 'muzzle' is the
+  // blade's tip. Carried lit it's held out in front, point up, a guard;
+  // surface/saber.js swings, blocks and throws it from there, and sets
+  // the blade's colour and the hilt's look ('core', 'sleeve', 'tip';
+  // 'metal', 'trim', 'emitter-*') after it's built
+  saber: {
+    blade: true, // (not a gun: it stands along +y, and nothing comes out of it)
+    hands: 1,
+    support: false,
+    stock: false,
+    pitch: 0,
+    reach: 0.5,
+    rise: -0.02,
+    lateral: 0.12,
+    kick: { back: 0, up: 0 },
+    casing: false,
+    flash: null,
+    build(g, owned) {
+      const m = mats(owned);
+      const k = kit(g, owned);
+      const metal = m.steel;
+      const trim = m.black;
+      k.drum(0.016, 0.2, metal, [0, 0, 0]).name = 'grip'; // the hilt's body, in the fist
+      k.drum(0.019, 0.02, trim, [0, -0.045, 0]).name = 'trim'; // the grip's ring
+      k.drum(0.02, 0.012, trim, [0, -0.085, 0]).name = 'trim';
+      k.drum(0.021, 0.03, trim, [0, -0.115, 0]).name = 'trim'; // the pommel
+      k.box(0.012, 0.04, 0.03, trim, [0.018, 0.02, 0]).name = 'trim'; // the switch box
+      k.drum(0.02, 0.03, metal, [0, 0.11, 0]).name = 'metal'; // the neck
+      // the emitter, three ways (one shown): a cup, a thin collar, a shroud
+      k.cone(0.02, 0.03, 0.04, metal, [0, 0.145, 0], [-Math.PI / 2, 0, 0]).name = 'emitter-cup';
+      k.drum(0.018, 0.03, metal, [0, 0.14, 0]).name = 'emitter-thin';
+      const shroud = k.drum(0.026, 0.05, metal, [0, 0.145, 0], null, 8);
+      shroud.name = 'emitter-shroud';
+      // the blade: a white-hot core in a coloured sleeve, out of the emitter
+      // (scaled along y to light and put out)
+      const blade = new THREE.Group();
+      blade.name = 'blade';
+      blade.position.y = 0.16;
+      g.add(blade);
+      const core = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.012, 1, 10), new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }));
+      core.position.y = 0.5;
+      core.name = 'core';
+      const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.026, 1.02, 10), new THREE.MeshBasicMaterial({ color: '#4aa8ff', transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+      sleeve.position.y = 0.5;
+      sleeve.name = 'sleeve';
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), core.material);
+      tip.position.y = 1;
+      tip.name = 'tip';
+      for (const o of [core, sleeve, tip]) {
+        owned.push(o.geometry);
+        blade.add(o);
+      }
+      owned.push(core.material, sleeve.material);
+      k.point('muzzle', [0, 1.16, 0]);
+    },
+  },
 };
 
 export function buildGun(kind, owned = []) {

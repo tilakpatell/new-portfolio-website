@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { BODIES, SWATCHES, WHO } from './looks';
+import { BODIES, EVERYONE, SWATCHES, swatchById } from './looks';
 import { KEYS, MAX_REGIONS, addZones, dressColors, recolor, regionUniforms, zoneOf } from './dress';
 
 describe('zones', () => {
@@ -21,12 +21,14 @@ describe('zones', () => {
     g.setAttribute('skinWeight', new THREE.Float32BufferAttribute([0.7, 0.3, 0, 0, 0.9, 0.1, 0, 0, 0.6, 0.4, 0, 0, 0.55, 0.45, 0, 0], 4));
     addZones(g, ['Head', 'Spine', 'LeftLeg', 'LeftFoot']);
     expect([...g.attributes.zone.array]).toEqual([0, 1, 3, 4]);
+    // and how much of it the hips and legs move, for a line that follows the skin’s (a waist)
+    expect([...g.attributes.lower.array].map((x) => +x.toFixed(2))).toEqual([0, 0, 0.6, 1]);
   });
 });
 
 describe('regions', () => {
-  it('has a colour key for every region of every body', () => {
-    for (const who of WHO) {
+  it('has a colour key for every region of every body, Walt’s and Jesse’s too', () => {
+    for (const who of EVERYONE) {
       for (const b of BODIES[who]) {
         expect(Object.keys(b.regions).length).toBeLessThanOrEqual(MAX_REGIONS);
         for (const r of Object.keys(b.regions)) {
@@ -50,6 +52,45 @@ describe('regions', () => {
     const r = regionUniforms('rick', {});
     expect(r.on[r.order.indexOf('outer')]).toBe(1);
     expect(regionUniforms('rick', {}).order).toHaveLength(MAX_REGIONS);
+  });
+
+  it('gives Mr. White and Heisenberg their own colours on Walt’s one figure, and hands where the suit has gloves', () => {
+    const hex = (u, r) => u.swatch[u.order.indexOf(r)].getHexString(THREE.NoColorSpace);
+    const suit = regionUniforms('walt', {});
+    expect(suit.on.filter(Boolean)).toHaveLength(0); // (as the figure comes)
+    const white = regionUniforms('mrwhite', {});
+    expect(hex(white, 'outer')).toBe(swatchById('tanjacket').hex.slice(1));
+    expect(hex(white, 'inner')).toBe(swatchById('waltgreen').hex.slice(1));
+    expect(white.order).toContain('gloves'); // (not one of his regions: nobody picks it)
+    expect(white.on[white.order.indexOf('gloves')]).toBe(1);
+    const h = regionUniforms('heisenberg', { outer: 'bluesky' });
+    expect(hex(h, 'outer')).toBe(swatchById('bluesky').hex.slice(1));
+    expect(hex(h, 'legs')).not.toBe(hex(white, 'outer'));
+    for (const id of ['walt', 'mrwhite', 'heisenberg', 'jesse', 'jesselab']) expect(regionUniforms(id, {}).order).toHaveLength(MAX_REGIONS);
+  });
+
+  it('gives Walt’s and Jesse’s triangles one zone each, so a wrist is never read as a shin', () => {
+    const compile = (m) => {
+      const s = { uniforms: {}, vertexShader: 'void main() {\n}', fragmentShader: 'void main() {\n#include <map_fragment>\n}' };
+      m.onBeforeCompile(s, null);
+      return s;
+    };
+    const bb = compile(recolor(new THREE.MeshToonMaterial(), 'jesse', {}));
+    expect(bb.vertexShader).toContain('flat varying float vZone;');
+    expect(bb.fragmentShader).toContain('flat varying float vZone;');
+    expect(bb.fragmentShader).toContain('rgLower');
+    const rm = compile(recolor(new THREE.MeshToonMaterial(), 'rick', {})); // (Rick and Morty’s keys were tuned as they blend: left so)
+    expect(rm.vertexShader).not.toContain('flat');
+    expect(rm.fragmentShader).not.toContain('flat');
+    expect(rm.fragmentShader).not.toContain('rgLower');
+  });
+
+  it('ends Mr. White’s jacket at his waist, where the hips start moving him', () => {
+    const u = regionUniforms('mrwhite', {});
+    const at = (r) => u.lower[u.order.indexOf(r)];
+    expect(at('outer').y).toBeLessThanOrEqual(0.5);
+    expect(at('legs').x).toBeGreaterThanOrEqual(0.5);
+    expect(at('shoes').x).toBeLessThan(0); // (open: anywhere)
   });
 
   it('keys each material’s program on its body, so two bodies never share one', () => {

@@ -65,7 +65,7 @@
     "meshoptimizer": "^1.3.0",
     "playwright-core": "^1.56.0",
     "postcss": "^8.5.2",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.5",
     "tailwindcss": "^3.4.17",
     "topojson-client": "^3.1.0",
     "vite": "^8.3.2",

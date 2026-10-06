@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { gltfLoader } from '../../lib/three/gltf';
 import { sharpenMaterial } from '../../lib/three/textures';
+import { retarget } from '../rickmorty/portal/clips';
 
 const BASE = '/models/cockpit';
 
@@ -28,13 +29,15 @@ export const prefetchCrew = (names) => names.forEach((n) => fetch(`${BASE}/${n}.
 //   { group, bones, update(dt), dispose() }
 // `height` is how tall it stands (metres); `hips` is where its hips go in
 // the parent's space; `face` turns it about y (Meshy's people face +z; the
-// default, π, faces them down −z, the way the cockpits look).
-export async function loadCrew(name, { clip = 'sit', height, hips = [0, 0.5, 0], face = Math.PI, rough = 0.85, smooth = true, pose = null } = {}) {
+// default, π, faces them down −z, the way the cockpits look). `file`:
+// another figure of the same person on the same skeleton (the wardrobe’s
+// Jesse in the lab’s suit, Albuquerque’s), sat on `name`’s clip.
+export async function loadCrew(name, { file = null, clip = 'sit', height, hips = [0, 0.5, 0], face = Math.PI, rough = 0.85, smooth = true, pose = null } = {}) {
   const L = getLoader();
   let gltf;
   let anim;
   try {
-    [gltf, anim] = await Promise.all([L.loadAsync(`${BASE}/${name}.glb`), clip ? L.loadAsync(`${BASE}/${name}-${clip}.glb`).catch(() => null) : null]);
+    [gltf, anim] = await Promise.all([L.loadAsync(file ?? `${BASE}/${name}.glb`), clip ? L.loadAsync(`${BASE}/${name}-${clip}.glb`).catch(() => null) : null]);
   } catch {
     return null;
   }
@@ -76,7 +79,8 @@ export async function loadCrew(name, { clip = 'sit', height, hips = [0, 0.5, 0],
   }
 
   let mixer = null;
-  const clipAnim = anim?.animations?.[0];
+  // (on another figure, the clip’s hips scaled from the ones it was made on)
+  const clipAnim = file && hipBone ? retarget(anim?.animations?.[0], hipBone.position.y, anim?.scene.getObjectByName('Hips')?.position.y ?? hipBone.position.y) : anim?.animations?.[0];
   if (clipAnim) {
     mixer = new THREE.AnimationMixer(model);
     const a = mixer.clipAction(clipAnim);

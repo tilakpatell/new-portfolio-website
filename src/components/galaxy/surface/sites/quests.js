@@ -21,7 +21,7 @@ export const EXTRA = {
       { kind: 'wookiee', id: 'tarfful', at: [-130, -24], still: true, face: 2, name: 'Tarfful', named: true, quest: 'escapepod', says: ['(A long, rumbling roar.)'] },
     ],
     quests: [
-      { id: 'beachhead', name: 'The Battle of Kashyyyk', giver: 'gree', intro: [['Commander Gree', 'Separatist droids, coming across the lagoon. Hold the beach.']], steps: [{ type: 'shoot', tag: 'lagoondroids', n: 8, text: 'Hold the beach against the droids', spawn: { kind: 'battledroid', n: 8, at: [150, 40], spread: 18, roam: 6, hp: 1, tag: 'lagoondroids', hostile: H(45, 2.4, 7) } }], done: [['Commander Gree', 'Beach is ours. Good work.']] },
+      { id: 'beachhead', name: 'The Battle of Kashyyyk', giver: 'gree', intro: [['Commander Gree', 'Separatist droids, coming across the lagoon. Hold the beach.']], steps: [{ type: 'shoot', tag: 'lagoondroids', n: 10, text: 'Hold the beach against the droids', spawn: [{ kind: 'battledroid', n: 8, at: [150, 40], spread: 18, roam: 6, hp: 1, tag: 'lagoondroids', hostile: H(45, 2.4, 7) }, { kind: 'droideka', n: 2, at: [150, 40], spread: 10, roam: 4, hp: 2, tag: 'lagoondroids', hostile: { ...H(40, 1.8, 7), shield: 3, burst: { n: 2, gap: 0.12 } } }] }], done: [['Commander Gree', 'Beach is ours. Good work.']] },
       { id: 'escapepod', name: 'A way off-world', giver: 'tarfful', intro: [['Tarfful', '(He points south, to the hidden escape pod, and growls: it needs parts.)']], steps: [{ type: 'collect', item: 'podpart', n: 3, spots: [[-110, -360], [-136, -372], [-104, -392]], text: 'Find the escape pod’s parts' }, { type: 'use', id: 'fix', at: [-120, -380], r: 4, prompt: 'Fit the parts', text: 'Fix the escape pod' }], done: [[null, '(The pod hums into life. Somewhere, a Jedi Master is going to need it.)']] },
     ],
   },
@@ -29,7 +29,7 @@ export const EXTRA = {
     life: [{ kind: 'yoda', id: 'master', at: [-80, 54], still: true, face: 2.4, name: 'Yoda', named: true, quest: ['lift', 'cave'], says: ['Do. Or do not. There is no try.'] }],
     quests: [
       { id: 'lift', name: 'Size matters not', giver: 'master', intro: [['Yoda', 'Your ship, in the swamp it is. Raise it, you will.']], steps: [{ type: 'reach', at: [40, 74], r: 12, text: 'Go to the sunken X-wing' }, { type: 'use', id: 'lift', at: [40, 74], r: 10, prompt: 'Reach out with the Force', text: 'Raise the X-wing', end: [{ signal: 'raise' }, { shake: 0.8 }, { say: [[null, '(The swamp boils. The X-wing rises out of it, dripping, and hangs there over the water.)']] }] }, { type: 'reach', at: [-80, 54], r: 6, text: 'Go back to Yoda' }], done: [['Yoda', 'Judge me by my size, do you? Hmm?']] },
-      { id: 'cave', name: 'The cave', giver: 'master', steps: [{ type: 'reach', at: [-70, -120], r: 10, text: 'Go into the cave' }, { type: 'shoot', tag: 'vision', n: 1, text: 'Face what’s inside', lines: [[null, '(A figure in black steps out of the dark.)']], spawn: { kind: 'vader', at: [-66, -114], still: true, hp: 3, tag: 'vision', hostile: H(12, 2, 10) } }], done: [['Yoda', 'Your weapons… you will not need them.']] },
+      { id: 'cave', name: 'The cave', giver: 'master', steps: [{ type: 'reach', at: [-70, -120], r: 10, text: 'Go into the cave' }, { type: 'shoot', tag: 'vision', n: 1, text: 'Face what’s inside', lines: [[null, '(A figure in black steps out of the dark.)']], spawn: { kind: 'vader', at: [-66, -114], hp: 4, leash: 14, roam: 2, tag: 'vision', hostile: { range: 14, chase: 1.8, melee: true, reach: 2.6, every: 1.6, damage: 14, delay: 1, parry: 0.6 } } }], done: [['Yoda', 'Your weapons… you will not need them.']] },
     ],
   },
   yavin: {
@@ -44,7 +44,7 @@ export const EXTRA = {
       { kind: 'villager', id: 'herder', at: [30, -2], still: true, face: 2, name: 'A kaadu herder', quest: 'kaadurace', says: ['Kaadu run faster than they look.'] },
     ],
     quests: [
-      { id: 'grassfield', name: 'The Great Grass Plains', giver: 'tarpals', intro: [['Captain Tarpals', 'Da droids are coming! Hold da line!']], steps: [{ type: 'shoot', tag: 'droidarmy', n: 10, text: 'Hold the line against the droid army', spawn: { kind: 'battledroid', n: 10, at: [400, -380], spread: 25, roam: 10, hp: 1, tag: 'droidarmy', hostile: H(45, 2.6, 7) } }], done: [['Captain Tarpals', 'Wesa free! Mesa tinks yousa savin’ da whole planet.']] },
+      { id: 'grassfield', name: 'The Great Grass Plains', giver: 'tarpals', intro: [['Captain Tarpals', 'Da droids are coming! Hold da line!']], steps: [{ type: 'shoot', tag: 'droidarmy', n: 12, text: 'Hold the line against the droid army', spawn: [{ kind: 'battledroid', n: 10, at: [400, -380], spread: 25, roam: 10, hp: 1, tag: 'droidarmy', hostile: H(45, 2.6, 7) }, { kind: 'droideka', n: 2, at: [400, -380], spread: 12, roam: 5, hp: 2, tag: 'droidarmy', hostile: { ...H(40, 1.8, 7), shield: 3, burst: { n: 2, gap: 0.12 } } }] }], done: [['Captain Tarpals', 'Wesa free! Mesa tinks yousa savin’ da whole planet.']] },
       { id: 'kaadurace', name: 'Kaadu run', giver: 'herder', steps: [{ type: 'ride', kind: 'kaadu', text: 'Get on a kaadu' }, { type: 'race', ride: 'kaadu', gates: [[60, 60], [70, 120], [-40, 200], [-130, 290]], r: 12, time: 60, text: 'Race to the falls' }], done: [[null, '(The kaadu honks, very pleased with itself.)']] },
     ],
   },

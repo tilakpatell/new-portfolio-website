@@ -40,9 +40,11 @@ describe('the director', () => {
       for (let i = 1; i < got.length; i++) expect(got[i].e).not.toBe(got[i - 1].e);
       const kinds = new Set(got.map((g) => g.e));
       for (const id of ['hunt', 'distress', 'convoy', 'bounty', 'leviathan']) expect(kinds.has(id), `${side.id} ${id}`).toBe(true);
-      if (side.id === 'starwars') expect(kinds.has('destroyer') && !kinds.has('council') && !kinds.has('roadblock')).toBe(true);
-      else if (side.id === 'rickmorty') expect(kinds.has('council') && !kinds.has('destroyer') && !kinds.has('roadblock')).toBe(true);
-      else expect(kinds.has('roadblock') && !kinds.has('council') && !kinds.has('destroyer')).toBe(true);
+      // (every side has a capital ship now: a Star Destroyer, a Federation cruiser, a Madrigal freighter)
+      expect(kinds.has('destroyer'), side.id).toBe(true);
+      if (side.id === 'starwars') expect(!kinds.has('council') && !kinds.has('roadblock')).toBe(true);
+      else if (side.id === 'rickmorty') expect(kinds.has('council') && !kinds.has('roadblock')).toBe(true);
+      else expect(kinds.has('roadblock') && !kinds.has('council')).toBe(true);
     }
   });
 
@@ -98,5 +100,22 @@ describe('the director', () => {
     const d = createDirector({ rand: seeded() });
     d.soon('rift');
     expect(d.update(0.1, { side: SIDES.rickmorty, calm: true })).toBe('rift');
+  });
+
+  it('can foretell what comes next, and then that is what comes, about when it said', () => {
+    for (const side of Object.values(SIDES)) {
+      const d = createDirector({ rand: seeded(5) });
+      run(d, 10, { side });
+      const told = d.foretell(side);
+      expect(EVENTS[told.id], side.id).toBeTruthy();
+      expect(canHave(side, EVENTS[told.id]), side.id).toBe(true);
+      expect(told.in).toBeGreaterThan(0);
+      // (asked again, the same answer)
+      expect(d.foretell(side).id).toBe(told.id);
+      const got = run(d, 200, { side });
+      expect(got[0].e, side.id).toBe(told.id);
+      expect(Math.abs(got[0].t - told.in), side.id).toBeLessThan(1);
+    }
+    expect(createDirector({ rand: seeded() }).foretell(null)).toBeNull();
   });
 });

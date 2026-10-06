@@ -50,7 +50,7 @@ import { SIDES, sideFor } from './sides';
 // fly together; weight: how often it comes up; big: high over the map, one
 // at a time; flyby: whether it comes to you; civil: an ordinary ship (a
 // convoy's, or one in distress)
-const TYPES = {
+export const TYPES = {
   freighter: { size: 0.7, speed: 7.5, crew: [1, 2], weight: 3, flyby: true, civil: true },
   transport: { size: 1.8, speed: 4.2, crew: [1, 2], weight: 2, civil: true },
   corvette: { size: 3.2, speed: 5, crew: [1, 1], weight: 1.2, civil: true },
@@ -75,6 +75,18 @@ const TYPES = {
   madrigal: { size: 1.6, speed: 3.8, crew: [1, 1], weight: 1.6, civil: true },
   pestvan: { size: 0.4, speed: 5.5, crew: [1, 1], weight: 1.6, flyby: true, civil: true },
   mikesedan: { size: 0.36, speed: 8, crew: [1, 1], weight: 0, flyby: false },
+  beater: { size: 0.36, speed: 7, crew: [1, 1], weight: 1.2, flyby: true },
+  gusvolvo: { size: 0.36, speed: 7.5, crew: [1, 1], weight: 0.6, flyby: true },
+  // a balloon from the fiesta, high and slow, one at a time
+  balloon: { size: 1.4, speed: 1.2, crew: [1, 1], weight: 0.7, civil: true, big: true },
+  // the rest of the Star Wars and Rick and Morty fighters (sides.js's traffic)
+  tiebomber: { size: 0.34, speed: 7.5, crew: [2, 3], weight: 1.4, flyby: true },
+  ywing: { size: 0.38, speed: 7.5, crew: [2, 3], weight: 1.4, flyby: true },
+  awing: { size: 0.3, speed: 12, crew: [2, 3], weight: 1.2, flyby: true },
+  gunship: { size: 0.44, speed: 7, crew: [1, 2], weight: 1.4, flyby: true },
+  mortyfighter: { size: 0.28, speed: 10, crew: [3, 5], weight: 1.4, flyby: true },
+  squanchship: { size: 0.36, speed: 8, crew: [1, 1], weight: 0.8, flyby: true },
+  poopyship: { size: 0.3, speed: 9, crew: [1, 1], weight: 0.6, flyby: true },
 };
 // whose traffic each crew meets (sides.js: the side's everyday ships and
 // its civilians, who guards a convoy, who calls for help); with no ship
