@@ -1528,18 +1528,19 @@
     ]
   },
   "surface-battledroid": {
-    "title": "Star Wars B1 Battle Droid",
-    "author": "tegnemaskin",
-    "authorUrl": "https://sketchfab.com/tegnemaskin",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-wars-b1-battle-droid-ade3a1205cce449caf91f78e595e5676",
+    "title": "Battlefront 2 Remaster: cis_inf_bdroid",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
     "where": "galaxy-surface",
     "as": "the battle droids",
     "file": "/models/galaxy/surface/battledroid.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-baze": {
     "title": "Baze Malbus",
@@ -1612,18 +1613,19 @@
     ]
   },
   "surface-clone": {
-    "title": "phase-II-clone-trooper-dc-15s-rigged",
-    "author": "Ara_my45yt",
-    "authorUrl": "https://sketchfab.com/Ara_my45yt",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/phase-ii-clone-trooper-dc-15s-rigged-8519076c1bf24bcbb352f96930a29b55",
+    "title": "Battlefront 2 Remaster: rep_inf_ep3trooper",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
     "where": "galaxy-surface",
     "as": "the clone troopers",
     "file": "/models/galaxy/surface/clone.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-clonephase1": {
     "title": "Clone trooper (Phase I) || Episode II: AOTC",
@@ -2748,18 +2750,19 @@
     ]
   },
   "surface-superdroid": {
-    "title": "Super Battle Droid B2 Animated (Training)",
-    "author": "Suvalien",
-    "authorUrl": "https://sketchfab.com/Suvalien",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/super-battle-droid-b2-animated-training-a0f947934672450bad323d6438499812",
+    "title": "Battlefront 2 Remaster: cis_inf_sbdroid",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
     "where": "galaxy-surface",
     "as": "the super battle droids",
     "file": "/models/galaxy/surface/superdroid.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-tipoca": {
     "title": "Kamino Platform Simple 1",

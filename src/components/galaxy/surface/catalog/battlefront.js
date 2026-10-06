@@ -14,4 +14,7 @@
 export const MODELS = {
   snowtrooper: { made: 'battlefront', as: 'the snowtroopers', metres: 1.83, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
   hothtrooper: { made: 'battlefront', as: 'the Rebel troopers on Hoth', metres: 1.78, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  clone: { made: 'battlefront', as: 'the clone troopers', metres: 1.83, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  battledroid: { made: 'battlefront', as: 'the battle droids', metres: 1.91, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  superdroid: { made: 'battlefront', as: 'the super battle droids', metres: 1.93, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
 };
