@@ -4,7 +4,7 @@
 // tops sheared off; and the glass the bombing left of the plains.
 
 import * as THREE from 'three';
-import { part } from '../kit';
+import { part, upright } from '../kit';
 import { rng } from '../noise';
 
 const { PI } = Math;
@@ -66,6 +66,36 @@ export const PROPS = {
     }
     return { object: k.build(parts, { name: 'sundaridome' }), solids };
   },
+};
+
+// Lothal's rock spires (Rebels): rounded fingers of banded stone standing
+// out of the grass, `h` tall, `r` across the foot, each a little bulged and
+// leaning; the layers lighter and darker up it, warm where the sun is
+// (the grain of the rock scan over them). Walls to bump into at the foot.
+PROPS.lothspire = (k, { h = 20, r = 4.6, seed = 1, color = '#a59684' } = {}) => {
+  const rand = rng(seed);
+  const rings = 20;
+  const bulge = 0.08 + rand() * 0.08;
+  const ph = rand() * 6;
+  const prof = [];
+  for (let i = 0; i <= rings; i++) {
+    const t = i / rings;
+    // (a finger: steep sides, a rounded top, swelling and pinching as it goes)
+    const w = r * (1 - 0.62 * t ** 1.7) * (1 + bulge * Math.sin(t * 9 + ph)) * Math.sqrt(Math.max(0, 1 - Math.max(0, (t - 0.86) / 0.14) ** 2));
+    prof.push([Math.max(0.05, w), t * h]);
+  }
+  const g = upright(prof, 22);
+  const lean = [(rand() - 0.5) * h * 0.12, (rand() - 0.5) * h * 0.12];
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const t = p.getY(i) / h;
+    p.setX(i, p.getX(i) + lean[0] * t * t);
+    p.setZ(i, p.getZ(i) + lean[1] * t * t);
+  }
+  g.computeVertexNormals();
+  // (the strata: bands a metre or two thick, some paler, some darker)
+  const shade = (x, y) => 0.74 + 0.16 * Math.sin(y * 0.9 + ph) + 0.1 * Math.sin(y * 2.3 + ph * 2) + 0.08 * (y / h);
+  return { object: k.build([part(g, { at: [0, -0.6, 0], color, to: 'rock', shade })], { name: 'lothspire' }), solids: [{ circle: [0, 0, r * 0.92] }] };
 };
 
 export const SCATTER = {
