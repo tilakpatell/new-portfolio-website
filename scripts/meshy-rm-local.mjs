@@ -98,6 +98,22 @@ const PHASE1 = {
   'birdperson-house': { rig: false, hero: true, prompt: `Birdperson's home on Bird World from Rick and Morty: a tall tower house of smooth tan clay grown round a twisting tree trunk, round and oval windows, small balconies, a little wooden ladder, vines hanging down, and a wide flat umbrella-shaped canopy of pale green leaves on top like an acacia tree, no people. ${BUILDING}` },
 };
 
+// The plan's Task 5.1 assets, the Vindicators, on the ~/.tilakverse.env
+// account. Put right against the wiki's stills on 6 October: Vance's
+// emblem is orange on a pale blue chest plate, Supernova's helmet is silver
+// with a crescent moon, Crocubot's tan crocodile head sticks out of a boxy
+// robot body with a small robot head of its own on top, Noob-Noob's head is
+// pale. The Sketchfab scout found none of them.
+const PHASE5 = {
+  vance: { hero: true, height: 1.85, prompt: `Vance Maximus, Renegade Starsoldier of the Vindicators from Rick and Morty: a lean man with spiky swept-up auburn-red hair, red stubble, a long chin and a cocky grin, in a fitted blue armoured battlesuit with dark blue panels and red stripes on the shoulders, a pale blue and white chest plate with an orange Vindicators emblem (a stylised V in a circle), armoured gauntlets and boots, a small jetpack on his back. ${BODY}` },
+  supernova: { hero: true, height: 1.85, prompt: `Supernova of the Vindicators from Rick and Morty: a tall slim cosmic woman with lavender-purple skin, long flowing dark purple hair, glowing pale pink eyes with no pupils, a silver helmet-tiara with a crescent moon on top holding a small glowing orb, a skin-tight dark purple bodysuit patterned like a galaxy with tiny stars and swirls, short sleeves, bare lavender arms, dark purple boots. ${BODY}` },
+  alanrails: { height: 2.0, prompt: `Alan Rails of the Vindicators from Rick and Morty: a big muscular Black man with a short black beard and a stern face, an old-fashioned grey train conductor's cap, a dirty black sleeveless greatcoat open over a dark green shirt, grey overalls with straps, grey work gloves, and a heavy glowing green chain with a train whistle hanging round his neck. ${BODY}` },
+  millionants: { height: 1.9, prompt: `Million Ants of the Vindicators from Rick and Morty: a slim humanoid figure made entirely of a swarm of tiny dark red ants packed together into the shape of a man, a rough grainy dark red-brown surface with a few ants crawling off it, two dark hollow round eyes and a small hollow mouth, no clothes. ${BODY}` },
+  crocubot: { height: 1.9, prompt: `Crocubot of the Vindicators from Rick and Morty: a cyborg crocodile standing upright, a tan-yellow crocodile head with a long toothy snout and a yellow eye sticking forward out of a boxy grey and pale blue robot body, a small grey cylindrical robot head with a red light and a camera lens on top of the body, a blue screen panel on the chest, grey robot arms and legs with round joints, one clamp hand, one scaly tan clawed arm, a short tan crocodile tail. ${BODY}` },
+  noobnoob: { height: 1.1, prompt: `Noob-Noob of the Vindicators from Rick and Morty: a small skinny man with a tall narrow bullet-shaped pale peach head, a pink superhero mask round his big eyes, a wide open happy mouth with a few teeth, a pale pink short-sleeved top with lavender shoulders, pink briefs with a small white letter n on them over pale tights, a long purple cape, dark purple boots, pale skinny arms and legs. ${BODY}` },
+  'vindicators-ship': { rig: false, hero: true, prompt: `The Vindicators' ship from Rick and Morty: a sleek superhero team's spaceship, a long white and dark blue hull with red and orange trim, swept-back wings, a domed cockpit at the front, a big circular orange Vindicators emblem on the side, twin blue-glowing engines at the back. ${PROP}` },
+};
+
 // The plan's Task 2.1 and 6.1 assets. Its prompts were checked against each
 // one's wiki page and stills on 6 October (the plan's Step 1), and all but
 // Snuffles's put right where the show differs: Rick Prime's boots and right
@@ -215,6 +231,7 @@ for (const [phase, set] of [
   [2, PHASE2],
   [3, PHASE3],
   [4, PHASE4],
+  [5, PHASE5],
   [6, PHASE6],
 ]) {
   for (const [n, a] of Object.entries(set)) ASSETS[n] = { phase, rig: !a.crowd, poly: a.crowd ? 9000 : a.hero ? 40000 : 30000, tex: a.crowd || SMALL.has(n) ? 1024 : 2048, ...a };

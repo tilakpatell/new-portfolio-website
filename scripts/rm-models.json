@@ -338,5 +338,33 @@
   "birdperson-house": {
     "status": "done",
     "by": "local"
+  },
+  "vance": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "supernova": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "alanrails": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "millionants": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "crocubot": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "noobnoob": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "vindicators-ship": {
+    "status": "claimed",
+    "by": "local"
   }
 }
