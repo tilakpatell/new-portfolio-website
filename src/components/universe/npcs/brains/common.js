@@ -5,6 +5,7 @@
 export const NPC = {
   seen: 40, // map units: inside this, the first time, it says it's seen you
   park: 3, // past a station's surface, where a merchant parks
+  station: 120, // and the furthest a station may be for it to fly there (further, it parks where it is)
   offer: 15, // a parked merchant offers you a part when you're this near
   done: 60, // and leaves once you've gone this far off again
   wary: 45, // a merchant runs from any hunter this near it

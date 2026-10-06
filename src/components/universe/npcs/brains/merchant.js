@@ -8,9 +8,10 @@ export default function merchant(npc, me, world) {
   const m = me.mind;
   if (nearest(world.hunters, me.pos).d < NPC.wary) return { leave: true };
   if (!m.park) {
-    const { it: st } = nearest(world.stations, me.pos);
-    // just off the station, on the side it came from (or where it is, with none about)
-    m.park = st ? add(st.at, unit(sub(me.pos, st.at)), st.r + NPC.park) : { ...me.pos };
+    const { it: st, d } = nearest(world.stations, me.pos);
+    // just off the station, on the side it came from (or where it is, with
+    // none near enough: out in deep space it would drive off and never be met)
+    m.park = st && d - st.r < NPC.station ? add(st.at, unit(sub(me.pos, st.at)), st.r + NPC.park) : { ...me.pos };
   }
   const you = world.you;
   if (!m.parked && apart(me.pos, m.park) < 1) m.parked = true;

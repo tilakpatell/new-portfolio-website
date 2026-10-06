@@ -65,6 +65,27 @@ describe('the brains', () => {
   });
 });
 
+describe('the order of things', () => {
+  it('says hello before its news: an offer or a tip comes after the greeting, in the same frame', () => {
+    for (const [brain, news, world] of [
+      ['informant', 'tip', () => ({ next: { id: 'hunt', in: 20 } })],
+      ['merchant', 'offer', () => ({})],
+    ]) {
+      const seen = meet(spec(brain), { at: { x: 12, y: 0, z: 0 }, seconds: 20, world });
+      const order = seen.events.map((e) => (e.type === 'say' ? e.key : e.type));
+      expect(order.indexOf('hello'), brain).toBeGreaterThanOrEqual(0);
+      expect(order.indexOf(news), brain).toBeGreaterThan(order.indexOf('hello'));
+    }
+  });
+
+  it('hands a wingman to the wing even with one it hunts about, and never flies or fires it itself', () => {
+    const hunter = { id: 9, at: { x: 5, y: 0, z: -10 }, faction: 'federation' };
+    const seen = meet(spec('wingman', { ship: 'birdperson', relations: { fears: [], hunts: ['federation'] } }), { seconds: 3, world: () => ({ hunters: [hunter] }) });
+    expect(types(seen)).toContain('delegate');
+    expect(seen.shots).toHaveLength(0);
+  });
+});
+
 describe('a merchant', () => {
   const stations = [
     { id: 'far', at: { x: 400, y: 0, z: 0 }, r: 4 },
@@ -86,6 +107,26 @@ describe('a merchant', () => {
     const offers = seen.events.filter((e) => e.type === 'offer');
     expect(offers).toHaveLength(1);
     expect(seen.says).toContain('hello');
+  });
+
+  it('parks where it is when the nearest station is too far to fly to, and still offers when you come by', () => {
+    const far = [{ id: 'far', at: { x: 900, y: 0, z: 0 }, r: 20 }];
+    let start = null;
+    let end = null;
+    const seen = meet(spec('merchant'), {
+      at: { x: 30, y: 0, z: 0 },
+      seconds: 25,
+      steer: (s, t) => (t < 8 ? s : { ...s, heading: -Math.PI / 2, speed: apart(s, { x: 30, y: 0, z: 0 }) > 6 ? 8 : 0 }),
+      world: () => ({ stations: far }),
+      each: (brains, s, out, t) => {
+        const m = brains.live[0];
+        if (!m) return;
+        start ??= { ...m.pos };
+        if (t < 8) end = { ...m.pos };
+      },
+    });
+    expect(apart(start, end)).toBeLessThan(2);
+    expect(types(seen)).toContain('offer');
   });
 
   it('runs from a fight, says so, and is gone once well away', () => {

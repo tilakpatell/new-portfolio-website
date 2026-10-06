@@ -115,6 +115,9 @@ export function createBrains({ rand = Math.random, firstId = 900001, brains = BR
             events.push({ type: 'gone', n: me.n });
             continue;
           }
+        } else if (brains[npc.brain].delegates) {
+          // (the wing or the hunt flies this one, relations and all: handed over at once)
+          intent = brains[npc.brain](npc, me, world, dt, rand) ?? {};
         } else {
           // one it hunts, near you: after it
           const { it: quarry } = you ? nearest(world.hunters, you, (h) => npc.relations?.hunts?.includes(h.faction)) : { it: null };
@@ -126,8 +129,9 @@ export function createBrains({ rand = Math.random, firstId = 900001, brains = BR
           events.push({ type: 'delegate', n: me.n, ...intent.delegate });
           continue;
         }
-        if (intent.event) events.push({ ...intent.event, n: me.n });
+        // (the greeting first, then the news: a tip or an offer after hello)
         if (intent.say) say(events, me, intent.say);
+        if (intent.event) events.push({ ...intent.event, n: me.n });
         if (intent.leave) {
           leave(events, me);
           intent = { to: null };

@@ -4,3 +4,4 @@
 export default function wingman(npc) {
   return { delegate: { via: 'wing', kind: npc.ship } };
 }
+wingman.delegates = true; // (npcRules.js hands it over before its own relations)

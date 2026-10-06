@@ -94,9 +94,12 @@ export default function Comms({ crew, reduced, control }) {
     if (queue.current.length && alive.current) run();
   };
 
-  const say = (exchange, { urgent = false } = {}) => {
+  // urgent: it cuts in, whatever's being said; after: it waits its turn
+  // behind what's being said (a character's news, after their hello)
+  const say = (exchange, { urgent = false, after = false } = {}) => {
     if (!exchange?.length) return;
-    if (urgent) queue.current = [...exchange];
+    if (after) queue.current.push(...exchange);
+    else if (urgent) queue.current = [...exchange];
     else if (busy.current) return; // something's already being said
     else queue.current = [...exchange];
     run();
@@ -248,7 +251,9 @@ export default function Comms({ crew, reduced, control }) {
           // a character on the radio (npcs/index.js): a merchant's part named in
           // its offer, an informant's word keyed by what's coming
           const lines = linesFor(crew, 'npc', e.id, e.key, e.sub);
-          if (lines) say(e.part ? lines.map(([who, text, clip]) => [who, text.replace('{part}', e.part), clip]) : lines, { urgent: e.key === 'hello' || e.key === 'tip' || e.key === 'offer' });
+          // (an offer or a tip waits for the hello it comes with to be said)
+          const news = e.key === 'tip' || e.key === 'offer';
+          if (lines) say(e.part ? lines.map(([who, text, clip]) => [who, text.replace('{part}', e.part), clip]) : lines, { urgent: e.key === 'hello', after: news });
         } else if (e.type === 'wonder') {
           const key = `wonder:${e.id}`;
           if (said.current.has(key)) return;

@@ -3,3 +3,4 @@
 export default function bounty(npc) {
   return { delegate: { via: 'hunt', faction: npc.faction } };
 }
+bounty.delegates = true; // (npcRules.js hands it over before its own relations)
