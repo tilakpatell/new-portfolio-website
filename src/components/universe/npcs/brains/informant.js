@@ -19,3 +19,4 @@ export default function informant(npc, me, world) {
   if (me.clock - m.at > NPC.tell) return { leave: true };
   return { to: spot, match };
 }
+informant.tells = true; // (it has word of what's coming: the scene asks the director while one's about)

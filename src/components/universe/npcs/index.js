@@ -7,7 +7,8 @@
 // test. Pure data, tested in npcs.test.js.
 //
 // { id, name, side, role: 'ally' | 'enemy' | 'neutral', ship, brain,
-//   faction? (a bounty hunter's: the hunt flies it), relations: { fears:
+//   faction? (a bounty hunter's: the hunt flies it; an inspector's, a
+//   nemesis's or a trickster's: who it calls in), relations: { fears:
 //   [faction…], hunts: [faction…] }, stats: { speed, accel, turn, hp, fire:
 //   [s, s], damage }, size, bolt: its shots' colour (HDR) }
 
@@ -35,12 +36,27 @@ export const NPCS = {
   // with his own lines; Lando has a part for you, if the Empire isn't about
   fett: row('fett', 'Boba Fett', 'starwars', 'enemy', 'slave1', 'bounty', { faction: 'fett', size: 0.55 }),
   lando: row('lando', 'Lando Calrissian', 'starwars', 'neutral', 'freighter', 'merchant', { fears: ['empire', 'navy'], stats: { speed: 15 }, size: 0.7, bolt: [5.5, 0.8, 0.5] }),
+  // Vader comes for you himself, in his TIE Advanced, and remembers; an
+  // Imperial customs gunboat pulls you over; Hondo Ohnaka has a toll to
+  // collect (and is off if the Empire shows up)
+  vader: row('vader', 'Darth Vader', 'starwars', 'enemy', 'tieadvanced', 'nemesis', { faction: 'empire', stats: { speed: 26, accel: 22, turn: 3.0, hp: 10, fire: [0.45, 0.8], damage: 8 }, size: 0.36, bolt: [0.5, 5.5, 0.9] }),
+  customs: row('customs', 'Imperial customs', 'starwars', 'neutral', 'gunboat', 'inspector', { faction: 'empire', stats: { speed: 20, hp: 6, fire: [0.5, 0.9] }, size: 0.42, bolt: [0.5, 5.5, 0.9] }),
+  hondo: row('hondo', 'Hondo Ohnaka', 'starwars', 'neutral', 'skiff', 'trickster', { faction: 'weequay', fears: ['empire', 'navy'], stats: { speed: 19, hp: 5, fire: [0.7, 1.2] }, size: 0.34, bolt: [6.0, 3.0, 0.6] }),
   // Rick and Morty's: Birdperson on your wing, against the Federation;
   // Squanchy with the word on what's coming; Evil Morty, circling you for
   // a duel he means to call a draw
   birdperson: row('birdperson', 'Birdperson', 'rickmorty', 'ally', 'birdperson', 'wingman', { hunts: ['federation'] }),
   squanchy: row('squanchy', 'Squanchy', 'rickmorty', 'ally', 'squanchship', 'informant', { hunts: ['federation'], fears: ['council'], stats: { speed: 22, fire: [0.7, 1.2] }, size: 0.36, bolt: [6.0, 2.5, 0.5] }),
   evilmorty: row('evilmorty', 'Evil Morty', 'rickmorty', 'enemy', 'evilmortyship', 'rival', { stats: { speed: 24, accel: 20, turn: 2.8, hp: 8, fire: [0.5, 0.9], damage: 7 }, bolt: [5.5, 4.8, 0.6] }),
+  // Tammy, the Federation's agent, comes for Rick in a gunship and
+  // remembers; Federation customs pulls you over; Jerry tags along, and
+  // panics
+  tammy: row('tammy', 'Tammy', 'rickmorty', 'enemy', 'gunship', 'nemesis', { faction: 'federation', stats: { speed: 24, accel: 21, turn: 2.9, hp: 9, fire: [0.5, 0.85], damage: 7 }, size: 0.44, bolt: [0.6, 2.2, 6.5] }),
+  fedcustoms: row('fedcustoms', 'Federation customs', 'rickmorty', 'neutral', 'patrol', 'inspector', { faction: 'federation', stats: { speed: 20, hp: 5, fire: [0.6, 1.0] }, size: 0.34, bolt: [0.6, 2.2, 6.5] }),
+  jerry: row('jerry', 'Jerry', 'rickmorty', 'ally', 'saucer', 'tagalong', { stats: { speed: 20, hp: 3 }, size: 0.45, bolt: [5, 5, 5] }),
+  // Albuquerque's: Tuco comes for you himself, and Hank pulls you over
+  tuco: row('tuco', 'Tuco Salamanca', 'breakingbad', 'enemy', 'lowrider', 'nemesis', { faction: 'cartel', stats: { speed: 26, accel: 22, turn: 3.1, hp: 8, fire: [0.4, 0.7], damage: 7 }, size: 0.34, bolt: [6.0, 4.2, 0.6] }),
+  hank: row('hank', 'Hank Schrader', 'breakingbad', 'neutral', 'suvace', 'inspector', { faction: 'dea', stats: { speed: 22, hp: 6, fire: [0.5, 0.9] }, size: 0.36, bolt: [0.8, 1.8, 6.2] }),
 };
 
 // the characters on a side (by its id), or none
