@@ -838,8 +838,9 @@ export async function create(canvas, ctx) {
 
   // ── A chase (missions/chase.js): the scouts, drawn and run here ──
   const chase = mission?.kind === 'chase' ? createChaseMission({ parent: scene, world, placer, blaster, mission, emit, say, sounds }) : null;
-  // (on until it's won or lost: no getting off the bike before then)
-  const chaseOn = () => Boolean(chase?.view() && !chase.view().result);
+  // (on from the start, before the trees are in and it's begun, until it's
+  // won or lost: no getting off the bike before then)
+  const chaseOn = () => Boolean(chase && !chase.view()?.result);
   let chaseViewAt = -1;
 
   // ── Shooting, and being shot ──
@@ -849,7 +850,7 @@ export async function create(canvas, ctx) {
     if (state.t - state.firedAt < FIRE_EVERY) return;
     // on a bike in a chase: its cannon, from the nose, where you're looking
     if (state.phase === 'ride' && chase) {
-      if (state.t - state.firedAt < BIKE_FIRE_EVERY) return;
+      if (state.t - state.firedAt < BIKE_FIRE_EVERY || !chase.running()) return;
       state.firedAt = state.t;
       camera.getWorldDirection(camDir);
       const b = state.riding.state;
@@ -1179,7 +1180,7 @@ export async function create(canvas, ctx) {
     for (const m of el.querySelectorAll('[data-id]')) {
       const id = m.dataset.id;
       let at;
-      if (id === 'quest' && chase) {
+      if (id === 'quest' && chase && chaseOn()) {
         at = chase.target(p.x, p.z);
         if (!at) {
           m.style.opacity = '0';

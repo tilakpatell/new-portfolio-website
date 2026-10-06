@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createSolids } from '../walker';
-import { aimAssist, chaseView, firstSolid, hitScout, knockYou, laneHits, newChase, planRoute, scoutAt, starsFor, stepChase } from './chase';
+import { aimAssist, chaseView, clockOf, firstSolid, hitScout, knockYou, laneHits, newChase, planRoute, scoutAt, starsFor, stepChase } from './chase';
 
 const none = createSolids();
 
@@ -118,6 +118,17 @@ describe('the chase: the scouts and how it ends', () => {
     expect(evs.filter((e) => e.type === 'down')).toEqual([]);
   });
 
+  it('leaves a downed scout heading the way it was going', () => {
+    const route = planRoute([[0, 0], [0, 500]], none); // due +z: heading 0
+    const c = started(route, { ...MISSION, scouts: 1, gaps: [100], lanes: [0], speeds: [30] });
+    for (let k = 0; k < 3; k++) hitScout(c, 0);
+    expect(c.scouts[0].down).toBe(true);
+    expect(scoutAt(c, 0).yaw).toBeCloseTo(0, 5);
+    const east = started(planRoute([[0, 0], [500, 0]], none), { ...MISSION, scouts: 1, gaps: [100], lanes: [0], speeds: [30] });
+    for (let k = 0; k < 3; k++) hitScout(east, 0);
+    expect(scoutAt(east, 0).yaw).toBeCloseTo(Math.PI / 2, 5);
+  });
+
   it('takes three hits to bring one down, and a fourth does nothing', () => {
     const c = started(long);
     expect(hitScout(c, 0)).toEqual([]);
@@ -176,7 +187,7 @@ describe('the chase: the scouts and how it ends', () => {
   it('shoves a scout you ride into, and pushes you back', () => {
     const c = started(long, { ...MISSION, scouts: 1, gaps: [100], lanes: [0], speeds: [30] });
     const p = scoutAt(c, 0);
-    const you = { x: p.x, z: p.z - 1.0, vx: 30, vz: 8 }; // alongside, on its right, steering into it
+    const you = { x: p.x, z: p.z - 1.0, vx: 30, vz: 8 }; // alongside, on its left (it's heading +x), steering into it
     const evs = stepChase(c, 0.02, { you });
     const bump = evs.find((e) => e.type === 'bump');
     expect(bump?.id).toBe(0);
@@ -232,6 +243,12 @@ describe('the chase: aiming and scoring', () => {
     expect(firstSolid(0, 5, 1, 0, solids, 90)).toBeNull();
     expect(firstSolid(0, 0, -1, 0, solids, 90)).toBeNull();
     expect(firstSolid(0, 0, 1, 0, solids, 20)).toBeNull();
+  });
+  it('reads the clock in minutes and tenths, never 60 seconds', () => {
+    expect(clockOf(0)).toBe('0:00.0');
+    expect(clockOf(9.04)).toBe('0:09.0');
+    expect(clockOf(59.96)).toBe('1:00.0');
+    expect(clockOf(75.25)).toBe('1:15.3');
   });
   it('gives stars by the time it took', () => {
     expect(starsFor(MISSION, 40)).toBe(3);

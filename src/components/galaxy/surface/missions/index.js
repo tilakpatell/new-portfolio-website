@@ -7,7 +7,7 @@
 //   start      where you start, on the bike, and `yaw`, which way you face
 //   waypoints  the scouts' way, from their camp to where they're going
 //   scouts     how many; `gaps` (metres along the way at the off), `lanes`
-//              (metres to the left of it, negative right), `speeds` (m/s)
+//              (metres to the right of it, negative left), `speeds` (m/s)
 //   hp         hits to bring one down
 //   stars      seconds: three stars under the first, two under the second
 //   lines      what your crew say, by ship's crew: at the off, at the first

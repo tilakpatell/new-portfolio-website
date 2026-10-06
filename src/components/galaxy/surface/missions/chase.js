@@ -139,7 +139,7 @@ const SHOT = { near: 4, far: 55, every: 2.4, first: 1.5, stagger: 0.6 };
 const BAND = { far: 140, close: 25, slow: 0.85, quick: 1.12 }; // rubber band: how far ahead, and what it does to their speed
 
 // A chase, ready to go: the scouts at their gaps along the route, in their
-// lanes (metres to the left of it, negative to the right), the count on.
+// lanes (metres to the right of it, negative to the left), the count on.
 export function newChase(mission, route) {
   return {
     route,
@@ -164,14 +164,15 @@ export function newChase(mission, route) {
   };
 }
 
-// where a scout is and which way it's heading (where it went down, once it has)
+// where a scout is and which way it's heading (where it went down, and the
+// way it was going, once it has). Its lane is measured along (−tz, tx): to
+// the right of the way it's going.
 export function scoutAt(chase, i) {
   const sc = chase.scouts[i];
   const p = chase.route.at(sc.s);
   const nx = -p.tz;
   const nz = p.tx;
-  const v = sc.down ? 0 : sc.speed;
-  return { x: p.x + nx * sc.off, z: p.z + nz * sc.off, yaw: Math.atan2(p.tx * v + nx * sc.vOff, p.tz * v + nz * sc.vOff), s: sc.s };
+  return { x: p.x + nx * sc.off, z: p.z + nz * sc.off, yaw: Math.atan2(p.tx * sc.speed + nx * sc.vOff, p.tz * sc.speed + nz * sc.vOff), s: sc.s };
 }
 
 const live = (chase) => chase.scouts.filter((s) => !s.down);
@@ -331,6 +332,14 @@ export function firstSolid(x, z, dx, dz, solids, range) {
       if (t >= 0 && t <= range && (best === null || t < best)) best = t;
     }
   return best;
+}
+
+// a chase's clock, as m:ss.t (rounded to the tenth first, so 59.96 s is 1:00.0, not 0:60.0)
+export function clockOf(t) {
+  const tenths = Math.round(Math.max(0, t) * 10);
+  const m = Math.floor(tenths / 600);
+  const s = (tenths - m * 600) / 10;
+  return `${m}:${s.toFixed(1).padStart(4, '0')}`;
 }
 
 // stars for a chase won in t seconds (the mission's two marks: three under the first)

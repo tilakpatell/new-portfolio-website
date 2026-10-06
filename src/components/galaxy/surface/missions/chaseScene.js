@@ -237,8 +237,10 @@ export function createChaseMission({ parent, world, placer, blaster, mission, em
       knockYou(chase);
       emit({ type: 'mission', event: { type: 'knocked' }, view: view() });
     },
-    // held: through the count, and for a moment after you're thrown off
-    stalled: () => Boolean(chase && (chase.phase === 'count' || chase.stall > 0)),
+    // held: until it's begun (the trees still coming), through the count,
+    // and for a moment after you're thrown off
+    stalled: () => !chase || chase.phase === 'count' || chase.stall > 0,
+    running: () => chase?.phase === 'run',
     // for the compass: the nearest scout still riding
     target(x, z) {
       if (!chase || chase.phase !== 'run') return null;
@@ -256,32 +258,37 @@ export function createChaseMission({ parent, world, placer, blaster, mission, em
       return best;
     },
     view,
-    // (for tests, in development: a spot `back` metres behind the nearest
-    // scout on the route, facing along it)
-    behind(back = 22) {
-      if (!chase) return null;
-      const s = chase.scouts.filter((x) => !x.down).sort((a, b) => a.s - b.s)[0];
-      if (!s) return null;
-      const p = route.at(Math.max(0, s.s - back));
-      return { x: p.x, z: p.z, yaw: Math.atan2(p.tx, p.tz) };
-    },
-    // (for tests, in development: how clear the route is of what's solid now,
-    // against how many solids there were when it was planned)
-    audit() {
-      if (!route) return null;
-      return { planned, now: world.solids.all.length, len: Math.round(route.len), laneHits: laneHits(route, mission.lanes, world.solids), downs: chase?.scouts.map((s) => s.how) };
-    },
-    // (for tests, in development: finish it either way)
-    force(how) {
-      if (!chase) return;
-      if (chase.phase === 'count') stepChase(chase, 3.1, {});
-      if (how === 'win') for (const s of chase.scouts) for (let k = 0; k < (mission.hp ?? 3); k++) handle(hitScout(chase, s.id), null);
-      else {
-        const lead = chase.scouts.filter((s) => !s.down).sort((a, b) => b.s - a.s)[0];
-        if (lead) lead.s = route.len - 0.01;
-        handle(stepChase(chase, 0.05, {}), null);
+    // (for tests, in development only: none of it ships)
+    ...(import.meta.env.DEV
+      ? {
+        // (a spot `back` metres behind the nearest
+        // scout on the route, facing along it)
+        behind(back = 22) {
+          if (!chase) return null;
+          const s = chase.scouts.filter((x) => !x.down).sort((a, b) => a.s - b.s)[0];
+          if (!s) return null;
+          const p = route.at(Math.max(0, s.s - back));
+          return { x: p.x, z: p.z, yaw: Math.atan2(p.tx, p.tz) };
+        },
+        // (how clear the route is of what's solid now,
+        // against how many solids there were when it was planned)
+        audit() {
+          if (!route) return null;
+          return { planned, now: world.solids.all.length, len: Math.round(route.len), laneHits: laneHits(route, mission.lanes, world.solids), downs: chase?.scouts.map((s) => s.how) };
+        },
+        // (finish it either way)
+        force(how) {
+          if (!chase) return;
+          if (chase.phase === 'count') stepChase(chase, 3.1, {});
+          if (how === 'win') for (const s of chase.scouts) for (let k = 0; k < (mission.hp ?? 3); k++) handle(hitScout(chase, s.id), null);
+          else {
+            const lead = chase.scouts.filter((s) => !s.down).sort((a, b) => b.s - a.s)[0];
+            if (lead) lead.s = route.len - 0.01;
+            handle(stepChase(chase, 0.05, {}), null);
+          }
+        },
       }
-    },
+      : {}),
     dispose() {
       dead = true;
       for (const s of scouts) s.fig?.dispose?.();

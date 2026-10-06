@@ -56,8 +56,24 @@ export default function GalaxySurface() {
   const [params] = useSearchParams();
   const mission = useMemo(() => missionOf(id, params.get('mission')), [id, params]);
   const missionKey = mission ? `${id}/${mission.id}` : null;
-  const [chase, setChase] = useState(null); // the scene's view of it: the count, the clock, the scouts, the result
+  // the scene's view of it, as the page needs it (how it stands, the count,
+  // the scouts left, the result: these change now and then); the clock and
+  // the leader's progress come ten times a second, and go straight to the
+  // HUD through `chaseFeed`, so the rest of the page isn't drawn again for them
+  const [chase, setChase] = useState(null);
+  const chaseFeed = useRef(new Set());
+  const chaseShown = useRef('');
   const [best, setBest] = useState(() => (missionKey ? (readBests()[missionKey] ?? null) : null));
+  const bestRef = useRef(best);
+  bestRef.current = best;
+  const [fresh, setFresh] = useState(false); // the last win was a new best
+  // another mission here (or none): its own view and best
+  useEffect(() => {
+    setChase(null);
+    chaseShown.current = '';
+    setFresh(false);
+    setBest(missionKey ? (readBests()[missionKey] ?? null) : null);
+  }, [missionKey]);
   useDocumentTitle(site ? (mission ? `${mission.name} · ${sys.name}` : `${site.place} · ${sys.name}`) : 'A galaxy far, far away');
   const reduced = useReducedMotion();
   const [ship] = useState(() => parseShip(local.get(SHIP_KEY)) ?? 'xwing');
@@ -191,12 +207,20 @@ export default function GalaxySurface() {
       } else if (e.type === 'leave') takeOff();
       else if (e.type === 'bump') comms.current?.handle({ type: 'bump', hard: e.hard });
       else if (e.type === 'mission') {
-        setChase(e.view);
+        for (const f of chaseFeed.current) f(e.view);
+        const v = e.view;
+        const shown = v ? `${v.phase}|${v.count}|${v.left}|${v.result ? 1 : 0}` : '';
+        if (shown !== chaseShown.current) {
+          chaseShown.current = shown;
+          setChase(v);
+        }
         const ev = e.event;
-        if (ev?.type === 'won' && mission && e.view?.result) {
-          const run = { t: e.view.result.t, stars: e.view.result.stars };
-          const was = readBests()[missionKey];
-          if (!was || run.t < was.t) {
+        if (ev?.type === 'won' && mission && v?.result) {
+          const run = { t: v.result.t, stars: v.result.stars };
+          const was = bestRef.current;
+          const isBest = !was || run.t < was.t;
+          setFresh(isBest);
+          if (isBest) {
             local.set(MISSIONS_KEY, { ...readBests(), [missionKey]: run });
             setBest(run);
           }
@@ -228,12 +252,12 @@ export default function GalaxySurface() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // the models on this world, for their credits (kept, so the credits aren't drawn again with every change of the page)
+  const kinds = useMemo(() => (site ? [...site.things_all, ...site.scatter, ...site.life, ...site.rides].map((t) => surfaceUrl(t.kind)) : []), [site]);
   if (!site) return <Navigate to={id ? `/galaxy/${id}` : '/galaxy'} replace />;
   const place = site.places.find((p) => p.id === here);
   const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };
   const left = site.places.filter((p) => !found.includes(p.id)).length;
-  // the models on this world, for their credits
-  const kinds = [...site.things_all, ...site.scatter, ...site.life, ...site.rides].map((t) => surfaceUrl(t.kind));
   return (
     <div className="dark-scope surface-page" style={accent} data-phase={phase} data-leaving={leaving ? '' : undefined}>
       <h1 className="sr-only">
@@ -280,9 +304,9 @@ export default function GalaxySurface() {
       </div>
 
       {/* the quest you're on, and the things to do here */}
-      {mission && <ChaseHud view={chase} mission={mission} best={best} onAgain={() => view.current?.input?.('restart')} onBack={takeOff} />}
+      {mission && <ChaseHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onAgain={() => view.current?.input?.('restart')} onBack={takeOff} />}
 
-      {phase !== 'landing' && site.quests.length > 0 && !(chase && !chase.result) && (
+      {phase !== 'landing' && site.quests.length > 0 && !(mission && chase && !chase.result) && (
         <div className="surface-quest">
           {quest ? (
             <>
@@ -322,7 +346,7 @@ export default function GalaxySurface() {
           <span style={{ width: `${health}%` }} />
         </div>
       )}
-      {(((aiming || quest?.shoot) && phase === 'walk') || (chase && !chase.result && phase === 'ride')) && <span className="surface-crosshair" aria-hidden="true" />}
+      {(((aiming || quest?.shoot) && phase === 'walk') || (mission && chase && !chase.result && phase === 'ride')) && <span className="surface-crosshair" aria-hidden="true" />}
       <div className="surface-door" aria-hidden="true" style={{ opacity: fade }} />
       {prompt && phase !== 'landing' && phase !== 'leaving' && (
         <p className="surface-prompt" role="status">
