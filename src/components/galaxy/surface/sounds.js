@@ -503,11 +503,60 @@ export function createSounds(site) {
     }
   };
 
+  // the rest of a fight: the heavy stroke's wind-up, a parry's ring, the
+  // Force's rush, a gun's vent hiss (and its lock-out buzz), a blast, and
+  // the hit marker's tick
+  const combat = (what) => {
+    if (!started) return;
+    const now = ac.currentTime;
+    const tone = (type, f0, f1, dur, gain, filter = null) => {
+      const o = ac.createOscillator();
+      o.type = type;
+      o.frequency.setValueAtTime(f0, now);
+      o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), now + dur);
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(gain, now + Math.min(0.02, dur * 0.2));
+      g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+      if (filter) {
+        const f = ac.createBiquadFilter();
+        f.type = filter.type;
+        f.frequency.value = filter.f;
+        f.Q.value = filter.q ?? 1;
+        o.connect(f).connect(g).connect(out);
+      } else o.connect(g).connect(out);
+      o.start(now);
+      o.stop(now + dur + 0.05);
+    };
+    if (what === 'heavy') tone('sawtooth', 60, 420, 0.5, 0.05, { type: 'lowpass', f: 900 });
+    else if (what === 'parry') {
+      tone('square', 3200, 400, 0.25, 0.09, { type: 'highpass', f: 1200 });
+      tone('sine', 1800, 1750, 0.5, 0.04);
+    } else if (what === 'force') {
+      tone('sawtooth', 90, 30, 0.6, 0.08, { type: 'lowpass', f: 600 });
+      tone('sawtooth', 1200, 200, 0.35, 0.04, { type: 'bandpass', f: 800, q: 2 });
+    } else if (what === 'vent') tone('sawtooth', 3000, 600, 0.4, 0.04, { type: 'bandpass', f: 2200, q: 1.5 });
+    else if (what === 'perfect') {
+      tone('sine', 900, 1800, 0.12, 0.06);
+      tone('sine', 1800, 1800, 0.2, 0.04);
+    } else if (what === 'lock') tone('square', 180, 150, 0.3, 0.035, { type: 'lowpass', f: 700 });
+    else if (what === 'boom') {
+      tone('sawtooth', 120, 25, 0.9, 0.16, { type: 'lowpass', f: 400 });
+      tone('square', 2200, 300, 0.2, 0.06, { type: 'highpass', f: 900 });
+    } else if (what === 'hit') tone('square', 2600, 2400, 0.05, 0.03, { type: 'highpass', f: 1800 });
+    else if (what === 'kill') {
+      tone('square', 1200, 2400, 0.08, 0.04, { type: 'highpass', f: 900 });
+      tone('sine', 600, 1200, 0.14, 0.03);
+    } else if (what === 'dodge') tone('sawtooth', 400, 120, 0.25, 0.03, { type: 'bandpass', f: 500, q: 1 });
+    else if (what === 'broken') tone('sawtooth', 500, 80, 0.5, 0.06, { type: 'lowpass', f: 800 });
+  };
+
   return {
     start,
     step,
     blast,
     saber,
+    combat,
     music,
     roar,
     laugh,

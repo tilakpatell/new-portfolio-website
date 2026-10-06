@@ -20,6 +20,7 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import { TIERS } from './budget.mjs';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -85,9 +86,9 @@ export function makeArgs(job, image, sides = {}) {
   return a;
 }
 
-const sh = (cmd, args, opts = {}) => execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'], ...opts }).trim();
-const gh = (...args) => sh('gh', args);
-const git = (root, ...args) => sh('git', ['-C', root, ...args]);
+export const sh = (cmd, args, opts = {}) => execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'], ...opts }).trim();
+export const gh = (...args) => sh('gh', args);
+export const git = (root, ...args) => sh('git', ['-C', root, ...args]);
 
 export function openJobs() {
   const issues = JSON.parse(gh('issue', 'list', '--label', LABEL, '--state', 'open', '--limit', '20', '--json', 'number,title,body,labels'));
@@ -95,10 +96,12 @@ export function openJobs() {
 }
 
 // The repository proper (this may be one of its worktrees).
-const mainRepo = () => resolve(git(REPO, 'rev-parse', '--path-format=absolute', '--git-common-dir'), '..');
+export const mainRepo = () => resolve(git(REPO, 'rev-parse', '--path-format=absolute', '--git-common-dir'), '..');
 
 // The runner's own checkout of the repository, beside the main one, made once; node_modules shared with this checkout.
-export function workspace(root = process.env.GEN3D_RUNNER_ROOT ?? `${mainRepo()}-gen3d`) {
+// (`suffix` names another runner's checkout, as the voices runner's -voices)
+export function workspace(root = process.env.GEN3D_RUNNER_ROOT ?? `${mainRepo()}-gen3d`, suffix = null) {
+  if (suffix && !process.env.GEN3D_RUNNER_ROOT) root = `${mainRepo()}-${suffix}`;
   if (resolve(root) === REPO) return root; // run from its own checkout (the scheduled task does): nothing to make
   if (!existsSync(join(root, '.git'))) {
     git(REPO, 'fetch', '-q', 'origin', 'main');
@@ -153,7 +156,8 @@ export async function runJob(job, root, log = console.log) {
     });
     const stats = out.split('\n').filter((l) => l.startsWith(`[${job.name}]`)).join('\n'); // make.mjs's own lines, not the engines' chatter
     const sheet = join(cache, 'sheet.png');
-    const files = [`public/models/gen3d/${job.name}.glb`, 'public/games/credits.json'];
+    // every cut of the model (budget.mjs's TIERS: .hq, plain, .lo), and the credit
+    const files = [...Object.values(TIERS).map((t) => `public/models/gen3d/${job.name}${t.suffix}.glb`).filter((f) => existsSync(join(root, f))), 'public/games/credits.json'];
     if (existsSync(sheet)) {
       mkdirSync(join(root, 'docs', 'gen3d'), { recursive: true });
       copyFileSync(sheet, join(root, 'docs', 'gen3d', `${job.name}.png`));

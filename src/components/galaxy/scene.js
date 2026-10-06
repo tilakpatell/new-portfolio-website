@@ -1384,6 +1384,12 @@ export async function create(canvas, ctx) {
     if (war) {
       const w = war.update(dt, t, camera, live);
       if (w.hurt && live) hurt(w.hurt);
+      // (a set piece's hold on the ship: kept inside a tunnel, slowed to fly it, caught in a reactor's blast)
+      if (live && state.ship && !state.crash) {
+        if (w.ship) state.ship = { ...state.ship, ...w.ship };
+        if (w.speedCap && state.ship.speed > w.speedCap) state.ship = { ...state.ship, speed: w.speedCap + (state.ship.speed - w.speedCap) * Math.exp(-dt * 6) };
+        if (w.kill) startDestroyed();
+      }
       busy = w.busy || busy;
     }
     if (live) {

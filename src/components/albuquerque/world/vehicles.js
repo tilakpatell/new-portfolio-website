@@ -202,8 +202,8 @@ function fleetMaterial(uniforms) {
       .replace(
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
-        totalEmissiveRadiance += vec3(1.0, 0.95, 0.82) * step(0.5, vGlow) * step(vGlow, 1.5) * (0.15 + uNight * 3.2);
-        totalEmissiveRadiance += vec3(1.0, 0.08, 0.05) * step(1.5, vGlow) * (0.2 + uNight * 1.8);`,
+        totalEmissiveRadiance += vec3(1.0, 0.95, 0.82) * step(0.5, vGlow) * step(vGlow, 1.5) * (0.15 + uNight * 1.4);
+        totalEmissiveRadiance += vec3(1.0, 0.08, 0.05) * step(1.5, vGlow) * (0.2 + uNight * 1.1);`,
       );
   };
   m.customProgramCacheKey = () => 'abq-fleet';
