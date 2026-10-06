@@ -101,7 +101,10 @@ import { BELT, ORDER, POSITIONS, REACH, RIM, RING, SUN } from './layout';
 import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
-import { createPost, spaceEnvironment } from './post';
+import { aberrationFor, createPost, spaceEnvironment } from './post';
+import { grainFor } from '../../lib/three/noise';
+import { createFlare, flareWeight, occluded } from '../../lib/three/flare';
+import { exposureFor, sunShareOf } from '../../lib/three/exposure';
 import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, isGoal, isPlace, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, driveById, hyperState, parkFor, riftExit } from './nav';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
@@ -120,7 +123,7 @@ import { createTrench } from './trench';
 import { createBeacons } from './beacons';
 import { PHONE, createPhone } from './phone';
 import { SUPERNOVA_SITES, createSupernovae } from './supernova';
-import { DEEP, WONDERS, nearestStar, openness, reachOf, wonderById } from './deep';
+import { DEEP, WONDERS, moveBinaries, nearestStar, openness, reachOf, wonderById } from './deep';
 import { createCrash } from './crash';
 import { createInfall } from './infall';
 import { DISK_N, MAW, captured, fallAt, plungeAt, pullAt, startFall } from './maw';
@@ -129,7 +132,7 @@ import { createWingmen } from './wingmen';
 import { createSkirmishes } from './skirmishes';
 import { createBelt, createDust } from './belt';
 import { createTrail } from './trail';
-import { BUILT, ENGINES, SHIP_MODELS, buildShip } from './shipModels';
+import { BUILT, ENGINES, LENGTH, SHIP_MODELS, buildShip } from './shipModels';
 import { paintById } from './paint';
 import { FASTEST, PARTS, PARTS_SLOTS, STOCK, STOCK_LOADOUT, readLoadout, statsOf } from './outfit';
 import { createNpcs } from './npcs';
@@ -3620,12 +3623,59 @@ export async function create(canvas, ctx) {
   // and sharp again once they don't (lib/three/pace)
   const pace = createPace();
 
+  // The finish (post.js): grain and the edges' aberration with the boost's
+  // rush and a hit; the home sun's glare in the lens (lib/three/flare),
+  // hidden by whatever's between the eye and it, the ship too, and gone at
+  // the pace's step 2 or on a low tier; and the exposure easing with how
+  // much of the frame the sun fills (lib/three/exposure). Not on foot: the
+  // landing has its own sky.
+  const sunFlare = tier === 'low' ? null : createFlare({ colour: '#ffd6a8', small });
+  if (sunFlare) camera.add(sunFlare.group);
+  const shipSolid = { at: [0, 0, 0], r: 0 };
+  const flareSolids = [...SOLIDS.filter((o) => o.id !== 'sun'), shipSolid];
+  const sunAt = new THREE.Vector3();
+  const eyeAt = new THREE.Vector3();
+  const halfTan = () => Math.tan((camera.fov * Math.PI) / 360);
+  let exposure = 1;
+  const finish = (dt) => {
+    post.grain(grainFor({ rush: state.streak, reduced }));
+    post.aberration(aberrationFor({ rush: state.streak, hit: state.hurt, tier }));
+    let ndc = [0, 0];
+    let weight = 0;
+    let share = 0;
+    if (!onFoot()) {
+      map.localToWorld(sunAt.set(...SUN.at));
+      camera.getWorldPosition(eyeAt);
+      const dist = sunAt.distanceTo(eyeAt);
+      sunAt.project(camera);
+      if (sunAt.z < 1) {
+        ndc = [sunAt.x, sunAt.y];
+        const size = SUN.r / Math.max(dist, SUN.r) / halfTan();
+        const s = state.ship;
+        shipSolid.r = s ? LENGTH * 0.45 : 0;
+        if (s) shipSolid.at = [s.x, s.y, s.z];
+        const hidden = occluded({ from: map.worldToLocal(eyeAt).toArray(), to: SUN.at, solids: flareSolids });
+        share = sunShareOf({ ndc, size }) * (1 - hidden);
+        // (half as strong over the map, which is a chart, not a place you're in)
+        weight = post.flareOn ? flareWeight({ ndc, occluded: hidden, size }) * (flying() && state.view !== 'map' ? 1 : 0.5) : 0;
+      }
+    }
+    sunFlare?.set({ ndc, weight, camera });
+    exposure = exposureFor({ sunShare: share, darkShare: 1 - share, last: exposure, dt, reduced });
+    post.exposure(onFoot() ? 1 : exposure);
+  };
+
   function render(ms, now) {
     gl.watch(now);
     const sharp = pace.frame(now);
-    if (sharp !== null) post.sharpness = sharp;
+    if (sharp !== null) {
+      post.sharpness = sharp;
+      post.setLevel(pace.level);
+    }
     const dt = ms / 1000;
     const t = reduced ? 0 : state.low ? state.tLow : (now - t0) / 1000;
+    // (the Twins' suns going round each other: their solids where they're drawn, deep.js)
+    moveBinaries(t);
     if (!state.pose && !flying()) {
       // first frame: straight onto a universe from a link; the overview
       // drifts in from a little further out (flying, it's below)
@@ -3885,6 +3935,7 @@ export async function create(canvas, ctx) {
     const showCab = Boolean(cab && cab.kind === state.kind && flying() && !onFoot() && state.view === 'cockpit' && state.cabK > 0.6 && !state.crash);
     if (showCab) cabFrame(dt, t);
     post.overlay(showCab ? cabScene : null, camIn);
+    finish(dt);
     renderer.info.reset(); // counted over the whole frame, post passes and all
     post.render(size.w, size.h);
     last = now;
@@ -4580,6 +4631,7 @@ export async function create(canvas, ctx) {
       burst.clear();
       burst.dispose();
       traffic?.dispose();
+      sunFlare?.dispose();
       disposeTree(scene);
       post.dispose();
       env.dispose();

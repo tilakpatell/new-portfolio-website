@@ -127,6 +127,39 @@ function remote() {
 
 const SPECIAL = { womprat: wompRat, remote };
 
+// A health bar over a hostile's head: a sprite with a small canvas, red
+// for what's left, blue over it for a shield, redrawn only when they change
+function healthBar() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 10;
+  const c = canvas.getContext('2d');
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false }));
+  sprite.scale.set(0.9, 0.14, 1);
+  sprite.renderOrder = 5;
+  return {
+    sprite,
+    draw(hp, shield) {
+      c.clearRect(0, 0, 64, 10);
+      c.fillStyle = 'rgba(0,0,0,0.6)';
+      c.fillRect(0, 2, 64, 6);
+      c.fillStyle = '#ff4a3d';
+      c.fillRect(1, 3, Math.round(62 * Math.max(0, Math.min(1, hp))), 4);
+      if (shield > 0) {
+        c.fillStyle = '#7fd0ff';
+        c.fillRect(1, 0, Math.round(62 * Math.min(1, shield)), 2);
+      }
+      texture.needsUpdate = true;
+    },
+    dispose() {
+      texture.dispose();
+      sprite.material.dispose();
+    },
+  };
+}
+
 export function createActivity({ parent, world, warm = (o) => Promise.resolve(o), color = '#ffd36a', kit = null }) {
   const group = new THREE.Group();
   group.name = 'activity';
@@ -150,6 +183,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       for (const mat of [m.material].flat()) mat.dispose();
     });
   const clearStep = () => {
+    for (const t of targets) t.bar?.dispose();
     for (const p of pickups) {
       p.mesh.removeFromParent();
       release(p.mesh);
@@ -215,7 +249,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           const holder = new THREE.Group();
           holder.visible = false;
           group.add(holder);
-          const t = { tag: s.tag ?? step.tag, holder, fig: null, b: { x: home[0], z: home[1], yaw: s.face ?? r() * 6.28, to: null, wait: r() * 2 }, home, hp: s.hp ?? 1, hostile: s.hostile ?? null, down: 0, spec: s, cool: s.hostile?.delay ?? 1 + r() * 2, flinch: 0, shield: s.hostile?.shield ?? 0, burst: null, bubble: null };
+          const t = { tag: s.tag ?? step.tag, holder, fig: null, b: { x: home[0], z: home[1], yaw: s.face ?? r() * 6.28, to: null, wait: r() * 2 }, home, hp: s.hp ?? 1, hostile: s.hostile ?? null, down: 0, spec: s, cool: s.hostile?.delay ?? 1 + r() * 2, flinch: 0, shield: s.hostile?.shield ?? 0, burst: null, bubble: null, stagger: 0, knock: null, bar: null, barAt: null };
           targets.push(t);
           if (t.shield) {
             // its shield: a bubble round it, bright for a moment where it's hit
@@ -253,7 +287,14 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     get targets() {
       return targets.filter((t) => !t.down && t.fig);
     },
-    hit(t, damage = 1) {
+    hit(t, damage = 1, { breaks = false } = {}) {
+      if (t.shield > 0 && breaks) {
+        // (a heavy stroke, or a blast: the shield goes at once, and the rest lands)
+        t.shield = 0;
+        if (t.bubble) t.bubble.visible = false;
+        t.stagger = Math.max(t.stagger, 1.2);
+        damage = Math.max(1, damage - 1);
+      }
       if (t.shield > 0) {
         const after = absorb(t, damage);
         t.shield = after.shield;
@@ -266,6 +307,19 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       t.hp -= damage;
       t.flinch = 0.25;
       if (t.hp <= 0 && !t.down) t.down = 0.001;
+    },
+    // shoved (the Force, a blast): off its feet along `v` ({ vx, vz, vy })
+    knock(t, v) {
+      if (t.down) return;
+      t.knock = { vx: v.vx, vz: v.vz, vy: v.vy ?? 0, y: 0 };
+      t.stagger = Math.max(t.stagger, 1.4);
+      t.burst = null;
+    },
+    // staggered: no shooting, no moving, for `secs`
+    stagger(t, secs) {
+      if (t.down) return;
+      t.stagger = Math.max(t.stagger, secs);
+      t.burst = null;
     },
     // everything tagged so, down at once (a gate dropped on it)
     kill(tag) {
@@ -322,7 +376,21 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         const dYou = you ? Math.hypot(you.x - b.x, you.z - b.z) : Infinity;
         const near = dYou < (t.hostile?.range ?? 0);
         let moving = 0;
-        if (near && t.hostile.chase) {
+        if (t.knock) {
+          // off its feet: along the shove, up and down again, slowing
+          const k = t.knock;
+          b.x += k.vx * dt;
+          b.z += k.vz * dt;
+          k.vy -= 14 * dt;
+          k.y = Math.max(0, k.y + k.vy * dt);
+          k.vx *= 1 - Math.min(1, dt * 2.5);
+          k.vz *= 1 - Math.min(1, dt * 2.5);
+          if (k.y <= 0 && k.vy < 0 && Math.hypot(k.vx, k.vz) < 0.8) t.knock = null;
+          b.yaw = you ? turnToward(b.yaw, Math.atan2(you.x - b.x, you.z - b.z), dt * 2) : b.yaw;
+        } else if (t.stagger > 0) {
+          // reeling: it stands where it is
+          t.stagger -= dt;
+        } else if (near && t.hostile.chase) {
           // one that comes for you (a rancor): after you, up to arm's
           // length, but never far from its den
           b.yaw = turnToward(b.yaw, Math.atan2(you.x - b.x, you.z - b.z), dt * 2.2);
@@ -372,8 +440,27 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           }
         }
         const hover = t.fig?.hover ?? s.y ?? 0;
-        t.holder.position.set(b.x, groundAt(world, b.x, b.z, s.level ?? Infinity) + hover + (hover ? Math.sin(time * 3 + t.home[0]) * 0.2 : 0), b.z);
+        t.holder.position.set(b.x, groundAt(world, b.x, b.z, s.level ?? Infinity) + hover + (hover ? Math.sin(time * 3 + t.home[0]) * 0.2 : 0) + (t.knock?.y ?? 0), b.z);
         t.holder.rotation.y = b.yaw;
+        // (knocked: tipped back off its feet; staggered: bent back, straightening)
+        t.holder.rotation.x = t.knock ? -0.9 : t.stagger > 0 ? -0.35 * Math.min(1, t.stagger) : 0;
+        // its health over its head, while you're near and it's been hurt
+        const hpMax = s.hp ?? 1;
+        const show = you && dYou < 45 && t.hostile && (t.hp < hpMax || t.shield > 0 || dYou < 16);
+        if (show) {
+          if (!t.bar) {
+            t.bar = healthBar();
+            t.holder.add(t.bar.sprite);
+          }
+          t.bar.sprite.visible = true;
+          const tall = (t.fig?.tall ?? 1.6) * (s.scale ?? 1);
+          t.bar.sprite.position.y = tall + 0.45;
+          const key = `${Math.max(0, t.hp)}/${hpMax}/${t.shield}`;
+          if (key !== t.barAt) {
+            t.barAt = key;
+            t.bar.draw(Math.max(0, t.hp) / hpMax, t.shield / Math.max(1, s.hostile?.shield ?? 1));
+          }
+        } else if (t.bar) t.bar.sprite.visible = false;
         // (a flinch where it's hit and doesn't go down)
         if (t.flinch > 0) {
           t.flinch -= dt;
@@ -392,7 +479,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     shooters(dt, you) {
       const out = [];
       for (const t of targets) {
-        if (t.down || !t.hostile || !t.fig || !you) continue;
+        if (t.down || !t.hostile || !t.fig || !you || t.stagger > 0 || t.knock) continue;
         const d = Math.hypot(you.x - t.b.x, you.z - t.b.z);
         if (d > (t.hostile.melee ? t.hostile.reach ?? 2 : t.hostile.range)) {
           if (t.hostile.melee) t.cool = Math.max(t.cool, 0.4);

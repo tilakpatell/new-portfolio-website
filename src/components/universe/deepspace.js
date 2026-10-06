@@ -52,7 +52,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { DEEP, WONDERS, planetAt, reachOf } from './deep';
+import { DEEP, WONDERS, binaryAt, planetAt, reachOf } from './deep';
 import { TILT } from './maw';
 import { rng } from './kit';
 import { NOISE_GLSL } from './sun';
@@ -1118,15 +1118,18 @@ export function buildDeepSpace({ small = false } = {}) {
     const g = place(w);
     const light = { value: new THREE.Vector3() };
     lightOf.set(w.id, light);
+    // (the two going round each other: deep.js's binaryAt, the same clock
+    // that moves their solids, so the bridge of gas turns with them)
     const suns = [
-      { r: w.r, color: w.color, at: [0, 0, 0], seed: 4.2 },
-      { r: w.pair.r, color: w.pair.color, at: [w.pair.apart, 0, 0], seed: 6.6 },
+      { r: w.r, color: w.color, which: 'a', seed: 4.2 },
+      { r: w.pair.r, color: w.pair.color, which: 'b', seed: 6.6 },
     ];
+    const holders = [];
     for (const sn of suns) {
       const c = new THREE.Color(sn.color);
       const holder = new THREE.Group();
-      holder.position.set(...sn.at);
       g.add(holder);
+      holders.push([holder, sn.which]);
       const surface = mesh(new THREE.SphereGeometry(sn.r, seg(72, 44), seg(48, 28)), shader(WORLD_VERT, STAR_FRAG, { uColor: { value: c }, uSeed: { value: sn.seed } }), holder);
       const reach = 11;
       facingQuad(sn.r * reach, GLOW_FRAG, { uR: { value: sn.r }, uColor: { value: c }, uSeed: { value: sn.r }, uReach: { value: reach } }, holder);
@@ -1134,11 +1137,21 @@ export function buildDeepSpace({ small = false } = {}) {
     }
     const bridgeMat = shader(UV_VERT, BRIDGE_FRAG, { uColor: { value: new THREE.Color(w.color).lerp(new THREE.Color(w.pair.color), 0.4) } }, { ...additive, side: THREE.DoubleSide });
     const bridgeGeo = new THREE.PlaneGeometry(w.pair.apart * 0.98, w.r * 1.6);
+    const bridge = new THREE.Group();
+    g.add(bridge);
     for (const roll of [0, PI / 2]) {
-      const m = mesh(bridgeGeo, bridgeMat, g, 2);
-      m.position.set(w.pair.apart / 2, 0, 0);
+      const m = mesh(bridgeGeo, bridgeMat, bridge, 2);
       m.rotation.x = roll;
     }
+    const orbit = (t) => {
+      const at = binaryAt(w, t);
+      for (const [holder, which] of holders) holder.position.set(at[which][0] - w.at[0], at[which][1] - w.at[1], at[which][2] - w.at[2]);
+      // (midway between the two, along the line through them)
+      bridge.position.set((at.a[0] + at.b[0]) / 2 - w.at[0], 0, (at.a[2] + at.b[2]) / 2 - w.at[2]);
+      bridge.rotation.y = -Math.atan2(at.b[2] - at.a[2], at.b[0] - at.a[0]);
+    };
+    orbit(0);
+    ticks.push(orbit);
   };
 
   // ── a rogue planet ──

@@ -185,8 +185,9 @@ export const DROPS = [
 export const WASH = { x: 100, z: 12.5, radius: 6, seconds: 3.2 };
 export const atWash = (x, z) => Math.hypot(x - WASH.x, z - WASH.z) < WASH.radius;
 
-// Walt's car, parked on his driveway, nose to the garage.
-export const SPAWN = { x: -95, z: -68.8, yaw: Math.PI };
+// Walt's car, parked on his driveway, side on to the garage: the first
+// press of W drives off along the drive, not into the garage door.
+export const SPAWN = { x: -95, z: -68.8, yaw: Math.PI / 2 };
 
 // ── the city on the grid ──
 
@@ -315,14 +316,14 @@ export const surfaceHeight = (x, z) => groundHeight(x, z) + (onBlock(x, z) ? GRI
 export const CAR = {
   radius: 1.7,
   top: 24,
-  dirt: 16,
-  sand: 11,
+  dirt: 18,
+  sand: 14,
   reverse: 9,
   accel: 13,
   taper: 0.5,
   brake: 28,
   coast: 3.5,
-  bog: 12,
+  bog: 8,
   handbrake: 6.5,
   wheelbase: 2.7,
   lock: 0.62,
@@ -406,7 +407,7 @@ function strike(vx, vz, nx, nz) {
   if (vn >= 0) return 0;
   const tx = vx - vn * nx;
   const tz = vz - vn * nz;
-  const keep = 1 - Math.min(0.35, 0.05 * -vn);
+  const keep = 1 - Math.min(0.2, 0.03 * -vn);
   hitV.x = tx * keep - BOUNCE * vn * nx;
   hitV.z = tz * keep - BOUNCE * vn * nz;
   return -vn;
@@ -1027,13 +1028,16 @@ export function hankAt(t) {
 }
 
 // Heat: it builds while Hank's close (faster the closer), and cools once
-// you're well clear. At the top, he pulls you over.
-export const HEAT = { near: 18, far: 30 };
-export function stepHeat(heat, dist, dt) {
+// you're well clear. At the top, he pulls you over. He only takes an
+// interest in a car with a load on board or one going past him fast: his
+// rounds pass Walt's door and Saul's, and he'd pull you over parked there.
+export const HEAT = { near: 14, far: 26, rate: 0.3, cool: 0.35, linger: 0.12, notice: 12 };
+export function stepHeat(heat, dist, dt, { speed = Infinity, load = true } = {}) {
   let h = heat;
-  if (dist < HEAT.near) h += dt * 0.45 * (1.5 - dist / HEAT.near);
-  else if (dist > HEAT.far) h -= dt * 0.25;
-  else h -= dt * 0.08;
+  const wanted = load || speed > HEAT.notice;
+  if (dist < HEAT.near && wanted) h += dt * HEAT.rate * (1.5 - dist / HEAT.near);
+  else if (dist > HEAT.far) h -= dt * HEAT.cool;
+  else h -= dt * HEAT.linger;
   h = Math.max(0, Math.min(1, h));
   return { heat: h, caught: h >= 1 };
 }
@@ -1065,7 +1069,9 @@ export function timeName(tod) {
 
 // Deliveries: get to the drop in time and the buyer pays, more for a long
 // run and for time left over; the money is the career's (Saul's office spends it).
-export const RUN = { reach: 6, pace: 12, slack: 9, far: 110 };
+// (the clock allows a pace the car keeps on the sand every drop is out in,
+// with time to find the way)
+export const RUN = { reach: 6, pace: 11, slack: 14, far: 110 };
 // A run from where the car is: the `pick`th of the drops far enough away.
 export function startRun(car, pick = 0) {
   const far = DROPS.filter((d) => Math.hypot(d.x - car.x, d.z - car.z) >= RUN.far);

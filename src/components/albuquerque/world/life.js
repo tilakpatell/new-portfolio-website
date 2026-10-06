@@ -108,7 +108,7 @@ export function createBalloons({ count = 34, seed = 9 } = {}) {
         '#include <emissivemap_fragment>',
         /* glsl */ `#include <emissivemap_fragment>
         // the burner lights the envelope from inside, brightest at the mouth
-        totalEmissiveRadiance += diffuseColor.rgb * uGlow * (0.5 + 0.5 * sin(uTime * 2.6 + vStyle * 2.1 + vA.r * 31.0)) * smoothstep(1.0, 0.05, vBUv.y) * step(-0.5, vBUv.y) * 2.4;`,
+        totalEmissiveRadiance += diffuseColor.rgb * uGlow * (0.5 + 0.5 * sin(uTime * 2.6 + vStyle * 2.1 + vA.r * 31.0)) * smoothstep(1.0, 0.05, vBUv.y) * step(-0.5, vBUv.y) * 1.6;`,
       );
   };
   material.customProgramCacheKey = () => 'abq-balloon';
@@ -262,7 +262,7 @@ export function createCrystals({ glow }) {
       mesh.instanceMatrix.needsUpdate = true;
       beams.instanceMatrix.needsUpdate = true;
       beamMat.opacity = 0.07 + 0.22 * night + 0.03 * Math.sin(clock * 2);
-      material.emissiveIntensity = 2.2 + night * 1.6 + Math.sin(clock * 3) * 0.3;
+      material.emissiveIntensity = 2.2 + night * 0.5 + Math.sin(clock * 3) * 0.3;
       if (burst < 1) {
         burst = Math.min(1, burst + dt / 0.9);
         for (let i = 0; i < N; i++) {
@@ -294,7 +294,7 @@ export function createNightLights({ lamps, pools, glow }) {
   const group = new THREE.Group();
   const sodium = new THREE.Color(0xffb35a);
   const bulbGeo = new THREE.SphereGeometry(0.2, 8, 6);
-  const bulbMat = new THREE.MeshBasicMaterial({ color: 0x000000, fog: false });
+  const bulbMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
   const bulbs = new THREE.InstancedMesh(bulbGeo, bulbMat, lamps.length);
   const o = new THREE.Object3D();
   const pos = new Float32Array(lamps.length * 3);
@@ -306,7 +306,7 @@ export function createNightLights({ lamps, pools, glow }) {
   });
   const haloGeo = new THREE.BufferGeometry();
   haloGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const haloMat = new THREE.PointsMaterial({ map: glow, color: sodium.clone(), size: 7, sizeAttenuation: true, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+  const haloMat = new THREE.PointsMaterial({ map: glow, color: sodium.clone(), size: 4, sizeAttenuation: true, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: true });
   const halos = new THREE.Points(haloGeo, haloMat);
   const poolGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
   const poolMat = new THREE.MeshBasicMaterial({ map: glow, color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -4 });
@@ -327,9 +327,11 @@ export function createNightLights({ lamps, pools, glow }) {
     update(night) {
       group.visible = night > 0.02;
       if (!group.visible) return;
-      bulbMat.color.copy(sodium).multiplyScalar(night * 7);
-      haloMat.opacity = night * 0.9;
-      poolMat.opacity = night * 0.55;
+      // (a lamp's glow, not a flare: the bloom does the rest for the near
+      // ones, and the far ones fade into the haze, as they would)
+      bulbMat.color.copy(sodium).multiplyScalar(night * 3);
+      haloMat.opacity = night * 0.4;
+      poolMat.opacity = night * 0.32;
     },
     dispose() {
       bulbGeo.dispose();
