@@ -41,3 +41,53 @@ export async function voicedSrc(who, text) {
   const file = lines[lineId(who, text)];
   return typeof file === 'string' ? `${BASE}/${file}` : null;
 }
+
+// ── the worlds' conversations ──
+// Speakers whose lines are someone else's voice (Strider is Aragorn; the
+// Council are Ricks; Evil Morty is a Morty), and the ones with no voice at
+// all: whoever narrates, a caller, a voice on the wind, the beeps and roars.
+const SAME_VOICE = { strider: 'aragorn', councila: 'rick', councilb: 'rick', councilc: 'rick', evilmorty: 'morty', president: 'morty' };
+const NO_VOICE = new Set(['narrator', 'voice', 'caller', 'r2', 'artoo', 'chewie', 'nazgul', 'orc', 'comms']);
+
+// The voice a speaker's lines are made in, or null.
+export function voiceOf(who) {
+  if (!who || NO_VOICE.has(who)) return null;
+  return SAME_VOICE[who] ?? who;
+}
+
+// What of a line is said aloud: the parts in quotes, where a line mixes
+// them with narration (“Frodo?” You back away.); otherwise all of it.
+// scripts/voices/export-lines.mjs makes the line from this.
+export function spoken(text) {
+  const quoted = [...text.matchAll(/“([^”]+)”/g)].map((m) => m[1].trim());
+  return quoted.length ? quoted.join(' ') : text.trim();
+}
+
+let current = null;
+let turn = 0;
+
+// Say a line in its speaker's voice, if it's been made; one line at a time,
+// so it stops whatever was being said. Resolves to the playing handle, or
+// null (no voice, not made, not here, or already overtaken by the next line).
+export async function sayVoiced(who, text) {
+  stopVoiced();
+  const mine = turn;
+  const voice = voiceOf(who);
+  if (!voice || !text) return null;
+  const src = await voicedSrc(voice, text);
+  if (!src || mine !== turn) return null;
+  const { playFile } = await import('./clips');
+  const h = await playFile(src, { voice: true });
+  if (mine !== turn) {
+    h?.stop();
+    return null;
+  }
+  current = h;
+  return h;
+}
+
+export function stopVoiced() {
+  turn += 1;
+  current?.stop();
+  current = null;
+}

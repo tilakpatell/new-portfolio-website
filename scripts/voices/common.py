@@ -17,6 +17,8 @@ REFS = HERE / "refs"
 AUDIO = {".wav", ".mp3", ".m4a", ".flac", ".ogg", ".opus", ".webm", ".aac"}
 # who has a voice to make (scripts/voices/export-lines.mjs keeps the same list)
 VOICED = ["rick", "morty", "luke", "han", "walt", "jesse", "hank"]
+# and the worlds' speakers with voices of their own (export-lines.mjs's WORLD_VOICED)
+WORLD_VOICED = ["gandalf", "aragorn", "sam", "frodo", "galadriel", "boromir", "pippin", "gimli", "saruman", "gollum", "elrond", "merry", "butterbur", "theoden", "legolas", "arwen", "bilbo", "hama", "haldir", "denethor", "grima", "celeborn", "michael", "jim", "erin"]
 
 _ffmpeg = None
 

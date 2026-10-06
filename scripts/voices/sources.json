@@ -216,5 +216,390 @@
       "dean norris interview",
       "under the dome"
     ]
+  },
+  "gandalf": {
+    "show": "lotr",
+    "clips": [
+      "public/audio/clips/you-shall-not-pass.mp3",
+      "public/audio/clips/fly-you-fools.mp3",
+      "public/audio/clips/wizard-is-never-late.mp3",
+      "public/audio/clips/this-foe-is-beyond-any-of-you.mp3"
+    ],
+    "quotes": [
+      "All we have to decide is what to do with the time that is given to us",
+      "Keep it secret, keep it safe",
+      "Many that live deserve death",
+      "A wizard is never late"
+    ],
+    "search": [
+      "Lord of the Rings Gandalf all we have to decide is what to do with the time scene",
+      "Fellowship of the Ring Gandalf keep it secret keep it safe scene",
+      "Gandalf many that live deserve death Moria scene"
+    ]
+  },
+  "aragorn": {
+    "show": "lotr",
+    "clips": [
+      "public/audio/clips/you-bow-to-no-one.mp3"
+    ],
+    "quotes": [
+      "A day may come when the courage of men fails",
+      "If by my life or death I can protect you, I will",
+      "You have my sword",
+      "For Frodo"
+    ],
+    "search": [
+      "Return of the King Aragorn speech at the Black Gate scene",
+      "Aragorn Strider Prancing Pony scene Fellowship of the Ring",
+      "Aragorn and Boromir death scene Fellowship"
+    ]
+  },
+  "sam": {
+    "show": "lotr",
+    "clips": [],
+    "quotes": [
+      "I can't carry it for you, but I can carry you",
+      "There's some good in this world, Mr. Frodo, and it's worth fighting for",
+      "If I take one more step, it'll be the farthest away from home I've ever been",
+      "Po-tay-toes"
+    ],
+    "search": [
+      "Two Towers Sam there's some good in this world speech scene",
+      "Return of the King Sam I can't carry it for you but I can carry you scene",
+      "Two Towers Sam po-tay-toes Gollum scene"
+    ]
+  },
+  "frodo": {
+    "show": "lotr",
+    "clips": [],
+    "quotes": [
+      "I will take the Ring to Mordor",
+      "I wish the Ring had never come to me",
+      "I can't recall the taste of food",
+      "Go home, Sam"
+    ],
+    "search": [
+      "Fellowship of the Ring Frodo I will take the ring to Mordor Council of Elrond scene",
+      "Fellowship of the Ring Frodo I wish the ring had never come to me Moria scene",
+      "Return of the King Frodo and Sam Mount Doom scene"
+    ]
+  },
+  "galadriel": {
+    "show": "lotr",
+    "clips": [
+      "public/audio/clips/the-world-is-changed.mp3",
+      "public/audio/clips/task-appointed-to-you.mp3"
+    ],
+    "quotes": [
+      "The world is changed",
+      "Even the smallest person can change the course of the future",
+      "All shall love me and despair",
+      "This task was appointed to you"
+    ],
+    "search": [
+      "Fellowship of the Ring Galadriel all shall love me and despair scene",
+      "Galadriel even the smallest person can change the course of the future scene",
+      "Fellowship of the Ring Galadriel mirror scene"
+    ]
+  },
+  "boromir": {
+    "show": "lotr",
+    "clips": [],
+    "quotes": [
+      "One does not simply walk into Mordor",
+      "It is a strange fate that we should suffer so much fear and doubt over so small a thing",
+      "They have taken the little ones",
+      "I would have followed you, my brother"
+    ],
+    "search": [
+      "Fellowship of the Ring Boromir one does not simply walk into Mordor scene",
+      "Boromir it is a strange fate so small a thing scene",
+      "Fellowship of the Ring Boromir death scene"
+    ]
+  },
+  "pippin": {
+    "show": "lotr",
+    "clips": [
+      "public/audio/clips/second-breakfast.mp3"
+    ],
+    "quotes": [
+      "What about second breakfast",
+      "I didn't think it would end this way",
+      "I offer my service, such as it is"
+    ],
+    "search": [
+      "Return of the King Pippin and Gandalf I didn't think it would end this way scene",
+      "Return of the King Pippin Denethor oath scene",
+      "Fellowship of the Ring Pippin second breakfast scene"
+    ]
+  },
+  "gimli": {
+    "show": "lotr",
+    "clips": [
+      "public/audio/clips/and-my-axe.mp3"
+    ],
+    "quotes": [
+      "Nobody tosses a dwarf",
+      "And my axe",
+      "That still only counts as one",
+      "Let them come"
+    ],
+    "search": [
+      "Lord of the Rings Gimli best moments",
+      "Two Towers Gimli Legolas counting kills Helm's Deep scene",
+      "Gimli nobody tosses a dwarf scene"
+    ]
+  },
+  "saruman": {
+    "show": "lotr",
+    "clips": [],
+    "quotes": [
+      "Against the power of Mordor there can be no victory",
+      "We must join with him, Gandalf",
+      "The age of men is over",
+      "A new power is rising"
+    ],
+    "search": [
+      "Fellowship of the Ring Saruman and Gandalf Orthanc scene",
+      "Saruman a new power is rising scene",
+      "Saruman Uruk-hai speech Isengard scene"
+    ]
+  },
+  "gollum": {
+    "show": "lotr",
+    "clips": [
+      "public/audio/clips/my-precious.mp3"
+    ],
+    "quotes": [
+      "My precious",
+      "We wants it, we needs it",
+      "Sneaky little hobbitses",
+      "Leave now and never come back"
+    ],
+    "search": [
+      "Two Towers Gollum Smeagol argument scene",
+      "Gollum leave now and never come back scene",
+      "Two Towers Gollum poor Smeagol scene"
+    ]
+  },
+  "elrond": {
+    "show": "lotr",
+    "clips": [],
+    "quotes": [
+      "Strangers from distant lands, friends of old",
+      "You have been summoned here to answer the threat of Mordor",
+      "Men are weak",
+      "Cast it into the fire"
+    ],
+    "search": [
+      "Fellowship of the Ring Council of Elrond scene",
+      "Elrond Isildur cast it into the fire scene",
+      "Return of the King Elrond gives Aragorn the sword scene"
+    ]
+  },
+  "merry": {
+    "show": "lotr",
+    "clips": [],
+    "quotes": [
+      "Shortcut to mushrooms",
+      "Pippin, I'm going to kill you",
+      "I want to help Frodo"
+    ],
+    "search": [
+      "Two Towers Merry and Pippin Treebeard scene",
+      "Fellowship of the Ring Merry shortcut to mushrooms scene",
+      "Return of the King Merry and Eowyn scene"
+    ]
+  },
+  "butterbur": {
+    "show": "lotr",
+    "clips": [],
+    "quotes": [
+      "Name of Baggins",
+      "Gandalf? Oh, yes. I remember",
+      "Haven't seen him for six months"
+    ],
+    "search": [
+      "Fellowship of the Ring Prancing Pony Butterbur scene",
+      "Fellowship of the Ring Bree Prancing Pony arrival scene"
+    ]
+  },
+  "theoden": {
+    "show": "lotr",
+    "clips": [],
+    "quotes": [
+      "Where is the horse and the rider",
+      "So it begins",
+      "What can men do against such reckless hate",
+      "Arise, arise, Riders of Théoden"
+    ],
+    "search": [
+      "Two Towers Theoden where is the horse and the rider scene",
+      "Two Towers Theoden ride out with me Helm's Deep scene",
+      "Return of the King Theoden Pelennor charge speech"
+    ]
+  },
+  "legolas": {
+    "show": "lotr",
+    "clips": [],
+    "quotes": [
+      "They're taking the hobbits to Isengard",
+      "A red sun rises, blood has been spilled this night",
+      "You would die before your stroke fell"
+    ],
+    "search": [
+      "Two Towers Legolas they're taking the hobbits to Isengard scene",
+      "Fellowship of the Ring Legolas a red sun rises scene",
+      "Lord of the Rings Legolas best scenes"
+    ]
+  },
+  "arwen": {
+    "show": "lotr",
+    "clips": [],
+    "quotes": [
+      "If you want him, come and claim him",
+      "I choose a mortal life",
+      "There is still hope",
+      "The light of the Evenstar"
+    ],
+    "search": [
+      "Fellowship of the Ring Arwen if you want him come and claim him scene",
+      "Fellowship of the Ring Arwen and Aragorn Rivendell bridge scene",
+      "Return of the King Arwen and Elrond scene"
+    ]
+  },
+  "bilbo": {
+    "show": "lotr",
+    "clips": [],
+    "quotes": [
+      "I'm going on an adventure",
+      "After all, why not? Why shouldn't I keep it",
+      "I am old, Gandalf"
+    ],
+    "search": [
+      "Fellowship of the Ring Bilbo birthday party speech scene",
+      "Fellowship of the Ring Bilbo and Gandalf Bag End ring scene"
+    ]
+  },
+  "hama": {
+    "show": "lotr",
+    "clips": [],
+    "quotes": [
+      "I cannot allow you before Théoden King so armed",
+      "By order of Gríma Wormtongue",
+      "Your staff"
+    ],
+    "search": [
+      "Two Towers Hama Golden Hall weapons Gandalf scene"
+    ]
+  },
+  "haldir": {
+    "show": "lotr",
+    "clips": [],
+    "quotes": [
+      "The dwarf breathes so loud we could have shot him in the dark",
+      "I bring word from Elrond of Rivendell",
+      "An alliance once existed between elves and men"
+    ],
+    "search": [
+      "Two Towers Haldir arrives at Helm's Deep scene",
+      "Fellowship of the Ring Haldir Lothlorien scene"
+    ]
+  },
+  "denethor": {
+    "show": "lotr",
+    "clips": [],
+    "quotes": [
+      "Abandon your posts! Flee for your lives",
+      "Go now, and die in what way seems best to you",
+      "Why do the lords of Gondor not return"
+    ],
+    "search": [
+      "Return of the King Denethor and Pippin scene",
+      "Return of the King Denethor abandon your posts scene"
+    ]
+  },
+  "grima": {
+    "show": "lotr",
+    "clips": [],
+    "quotes": [
+      "Late is the hour in which this conjurer chooses to appear",
+      "Lathspell I name him",
+      "Ill news is an ill guest"
+    ],
+    "search": [
+      "Two Towers Grima Wormtongue Eowyn scene",
+      "Two Towers Grima Wormtongue Golden Hall scene"
+    ]
+  },
+  "celeborn": {
+    "show": "lotr",
+    "clips": [],
+    "quotes": [
+      "The Enemy knows you have entered here",
+      "Rivendell has sent word"
+    ],
+    "search": [
+      "Fellowship of the Ring Celeborn and Galadriel welcome the Fellowship scene"
+    ]
+  },
+  "michael": {
+    "show": "office",
+    "clips": [
+      "public/audio/clips/boom-roasted.mp3",
+      "public/audio/clips/why-are-you-the-way-that-you-are.mp3",
+      "public/audio/clips/little-stitious.mp3",
+      "public/audio/clips/like-to-be-liked.mp3",
+      "public/audio/clips/prison-mike.mp3",
+      "public/audio/clips/dwight-you-ignorant-slut.mp3",
+      "public/audio/clips/inside-jokes.mp3"
+    ],
+    "quotes": [
+      "That's what she said",
+      "Would I rather be feared or loved",
+      "I declare bankruptcy"
+    ],
+    "search": [
+      "The Office Michael Scott best moments",
+      "The Office Michael Scott would I rather be feared or loved scene",
+      "The Office Michael Scott talking head compilation"
+    ],
+    "avoid": [
+      "steve carell interview"
+    ]
+  },
+  "jim": {
+    "show": "office",
+    "clips": [
+      "public/audio/clips/bears-beets-battlestar-galactica.mp3"
+    ],
+    "quotes": [
+      "Bears. Beets. Battlestar Galactica",
+      "Question. What kind of bear is best",
+      "Fact. Bears eat beets"
+    ],
+    "search": [
+      "The Office Jim Halpert talking head scenes",
+      "The Office Jim pranks Dwight best scenes",
+      "The Office Jim Pam gas station proposal scene"
+    ],
+    "avoid": [
+      "krasinski interview"
+    ]
+  },
+  "erin": {
+    "show": "office",
+    "clips": [],
+    "quotes": [
+      "Dunder Mifflin, this is Erin",
+      "Kelly Erin Hannon"
+    ],
+    "search": [
+      "The Office Erin Hannon best moments",
+      "The Office Erin talking head scenes"
+    ],
+    "avoid": [
+      "ellie kemper interview"
+    ]
   }
 }
