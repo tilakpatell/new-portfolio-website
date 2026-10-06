@@ -111,7 +111,7 @@ function carsStrip() {
 
 // the business park's low buildings and the trees behind them: 90 m of it,
 // 24 m tall, at 11.4 px a metre
-function parkStrip() {
+export function parkStrip() {
   const W = 1024;
   const H = 272;
   const m = W / 90;

@@ -58,7 +58,7 @@ const PILOTS = 32; // pilots kept track of, at most (each one flying sends ten b
 const HEARTBEAT_MS = 15000; // a hello this often, so a pilot sitting still isn't dropped
 const QUIET_MS = 45000; // nothing from a pilot this long: they're gone
 const ALLY_AGAIN_MS = 60000; // after you turn someone down, how long before they may ask again
-const loadRoom = () => import('./nostr').then((m) => ({ joinRoom: m.joinRoom }));
+const loadRoom = () => import('./nostr').then((m) => ({ joinRoom: m.joinAsVisitor }));
 
 export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build = null, looks = null, where = UNIVERSE, load = loadRoom, now = () => performance.now() }) {
   const self = { id: null, name: cleanName(name) ?? 'Pilot', kind, loadout: readLoadout(loadout), build: build ? readBuildWire(writeBuild(build)) : null, looks: looks ? readLooks(looks) : null, kills: 0, where };

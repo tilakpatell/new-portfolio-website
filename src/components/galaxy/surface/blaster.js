@@ -3,8 +3,9 @@
 // ground, a wall) and theirs (at you, a little off), each a streak of light
 // that flies and a flash where it lands.
 //
-// createBlaster({ parent, world }) → { fire(from, dir, color) → what it'll
-// hit ({ target, at } or null), enemy(from, to, spread), update(dt) →
+// createBlaster({ parent, world }) → { fire(from, dir, targets, color, reach)
+// → what it'll hit ({ target, at } or null; `reach`: where something solid
+// stops it first, if not its range), enemy(from, to, spread), update(dt) →
 // hits on you (damage), dispose() }
 
 import * as THREE from 'three';
@@ -60,10 +61,10 @@ export function createBlaster({ parent, world }) {
   };
 
   // the first thing along a ray: a target (a sphere round its middle) or the ground
-  const along = (from, dir, targets) => {
+  const along = (from, dir, targets, reach = RANGE) => {
     const d = dir.clone().normalize();
     let best = null;
-    let bestT = RANGE;
+    let bestT = Math.min(RANGE, reach);
     const c = new THREE.Vector3();
     for (const t of targets) {
       const tall = (t.fig?.tall ?? 1.6) * (t.spec?.scale ?? 1);
@@ -84,13 +85,13 @@ export function createBlaster({ parent, world }) {
         return { target: null, at: p };
       }
     }
-    return best ? { target: best, at: from.clone().addScaledVector(d, bestT) } : { target: null, at: from.clone().addScaledVector(d, RANGE) };
+    return best ? { target: best, at: from.clone().addScaledVector(d, bestT) } : { target: null, at: from.clone().addScaledVector(d, Math.min(RANGE, reach)) };
   };
 
   return {
     // yours: what it hits is decided now, and it flies there
-    fire(from, dir, targets, color = '#ff3b30') {
-      const hit = along(from, dir, targets);
+    fire(from, dir, targets, color = '#ff3b30', reach = RANGE) {
+      const hit = along(from, dir, targets, reach);
       shoot(from, dir, color, false, hit.at);
       return hit;
     },

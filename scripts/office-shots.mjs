@@ -22,6 +22,13 @@ export const VIEWS = {
   annex: { at: [9.3, 1.7, 3.2], look: [13, 1.0, -3] },
   warehouse: { at: [31, 2.6, -6.5], look: [44, 1.2, 3] },
   lot: { at: [57, 2.2, -12], look: [70, 1.0, 0] },
+  car: { at: [59.0, 1.4, -5.2], look: [62, 0.8, -7.8] },
+  car2: { at: [65.2, 1.3, -13.6], look: [62, 0.8, -11] },
+  carside: { at: [65.0, 1.15, -11], look: [62, 1.0, -11] },
+  carfar: { at: [68.0, 2.0, -11.2], look: [62, 0.8, -11] },
+  cartop: { at: [62.2, 7.0, -11.0], look: [62, 0, -11.01] },
+  dock: { at: [44, 2.2, -0.5], look: [53.5, 1.0, -1.0] },
+  bench: { at: [36.8, 1.7, -4.8], look: [34, 1.0, -7.8] },
   counter: { at: [2.9, 1.55, -0.75], look: [2.5, 0.6, -2.5] },
   window: { at: [-7.4, 1.65, 0.0], look: [-10, 1.25, 1.9] },
   eastwin: { at: [11.6, 1.6, 0.6], look: [14.6, 1.4, -1.7] },
@@ -67,6 +74,7 @@ for (const name of names) {
   const v = name === 'jim' ? null : VIEWS[name];
   await page.evaluate((cam) => {
     window.__OFFICE__.sim.debugCam = cam;
+    window.__OFFICE__.sim.snap = true; // (jump there: software frames are slow to ease in)
   }, v);
   await page.waitForTimeout(Number(process.env.WAIT ?? 5000));
   await page.locator('#office-world canvas').first().screenshot({ path: `${out}/${name}.png`, timeout: 180000 });
