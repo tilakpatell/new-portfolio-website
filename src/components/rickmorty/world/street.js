@@ -16,8 +16,10 @@
 
 import * as THREE from 'three';
 import { farTree } from '../../middleearth/towns/bake';
-import { AREAS, DECOR, DINER, DRIVEWAY, FENCES, FRONT_WALK, NEIGHBOURS, OUTSKIRTS, ROAD, SCHOOL, STOOP, TREES } from './rules';
-import { at, batch, mergeParts, rng, speckle } from './kit';
+import { AREAS, DECOR, DINER, DRIVEWAY, FENCES, FRONT_WALK, NEIGHBOURS, OUTSKIRTS, ROAD, SCHOOL, STOOP, TREES, VEHICLES } from './rules';
+import { at, batch, gentleRamp, mergeParts, rng, speckle } from './kit';
+import { toonify } from '../portal/toon';
+import { gltfLoader } from '../../../lib/three/gltf';
 import { buildingMaterials, flagpole, marquee, neighbourHouses, school, smithHouse } from './buildings';
 import { STREET_SKY, makeSky } from './sky';
 import { shoneys } from './shoneys';
@@ -28,6 +30,9 @@ const FAR = 1200; // how far the ground and the road go on
 export const ROAD_Y = -0.12; // the asphalt, a kerb's height under the sidewalks and lawns
 const WALK = ROAD.w / 2 + ROAD.sidewalk; // 7
 const NEAR = 140; // past this along the road the suburb is the plain design
+// how long the street stands before its vehicles are fetched (s): the world's
+// first download doesn't carry them
+const RIDES_AFTER = 3;
 // how much suburb each tier draws: trees past the street, every nth house
 // along the road out to `side` metres, and the rows behind the back yards
 const SUBURB = { high: { trees: 190, every: 1, side: 330, back: true }, mid: { trees: 80, every: 2, side: 330, back: false }, low: { trees: 40, every: 3, side: 180, back: false } };
@@ -317,6 +322,30 @@ export async function buildStreet(kit) {
   const visitors = await buildVisitors(kit, { roadY: ROAD_Y });
   group.add(visitors.group);
 
+  // ── the multiverse's vehicles (rules.js's VEHICLES) ──
+  // Space Beth's ship and Jerry's car-ship on the Smiths' lawn, the Gotron
+  // over the houses across the street and a ferret at its feet: fetched a
+  // moment after the street's first drawn (RIDES_AFTER), toon-painted as the
+  // street's other models are, each stood its height on its footprint. One
+  // that won't load is left out.
+  const rides = new THREE.Group();
+  rides.name = 'vehicles';
+  group.add(rides);
+  let ridesAt = null;
+  const loadRides = () => {
+    const loader = gltfLoader();
+    for (const v of VEHICLES) {
+      const load = loader
+        .loadAsync(`/models/c137/rm/${v.id}.glb`)
+        .then((g) => {
+          const model = toonify(g.scene, { gradientMap: gentleRamp(), aniso: kit.fit?.aniso, dispose: true });
+          rides.add(standing(model, v));
+        })
+        .catch(() => {});
+      kit.track?.(load);
+    }
+  };
+
   b.build(group);
   const ground = flat.build(group, { cast: false });
   return {
@@ -327,12 +356,38 @@ export async function buildStreet(kit) {
     noInk: [sky.dome, wires, ...visitors.noInk],
     light: STREET_LIGHT,
     update(t, dt, state, camera) {
+      ridesAt ??= t + RIDES_AFTER;
+      if (t >= ridesAt && ridesAt !== Infinity) {
+        ridesAt = Infinity;
+        loadRides();
+      }
       sky.update(t, camera);
       flag.update(t);
       visitors.update(t, dt, state);
     },
     dispose: visitors.dispose,
   };
+}
+
+// A vehicle's model stood on its footprint: turned, scaled to its height
+// (the same on every axis, so it keeps its shape), centred on (x, z) and on
+// the ground
+function standing(model, { x, z, h, turn }) {
+  const holder = new THREE.Group();
+  model.rotation.y = turn;
+  holder.add(model);
+  holder.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(holder);
+  const k = h / (box.max.y - box.min.y);
+  holder.scale.setScalar(k);
+  holder.position.set(x - ((box.min.x + box.max.x) / 2) * k, -box.min.y * k, z - ((box.min.z + box.max.z) / 2) * k);
+  holder.traverse((o) => {
+    if (o.isMesh) {
+      o.castShadow = true;
+      o.receiveShadow = true;
+    }
+  });
+  return holder;
 }
 
 // One tree of a kind (0 round, 1 tall, 2 wide) at scale 1: its trunk and

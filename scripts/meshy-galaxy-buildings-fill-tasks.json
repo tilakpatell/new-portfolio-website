@@ -59,10 +59,23 @@
     ],
     "model": "01a111b4-1000-778b-83a4-3f8299428ebf"
   },
-  "yodahut": {
+  "yodahut-first": {
+    "note": "the first Yoda hut (one lump of the painting): a white blob, turned down",
     "lift": [
       "01a111b2-7e9e-72e9-bde0-83869b8cdc49"
     ],
     "model": "01a111b3-f3a0-7569-9241-021cc3f4ddc4"
+  },
+  "senate": {
+    "lift": [
+      "01a111e3-d1b6-77a6-b61a-59909d1aee6a"
+    ],
+    "model": "01a111e9-c929-72e9-8e22-144278c002c6"
+  },
+  "yodahut": {
+    "lift": [
+      "01a111e4-a3c0-769a-b40e-b829293d51d0"
+    ],
+    "model": "01a111e9-cd52-77cd-a395-3075aa23bcc5"
   }
 }

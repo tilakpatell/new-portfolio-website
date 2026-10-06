@@ -56,7 +56,7 @@ export const SITES = {
     fog: { color: '#d9dcdb', density: 0.00055 },
     // (the second sun casts no shadow: kept soft, so the shade stays neutral as the films')
     light: { sun: 3.2, second: 0.6, sky: '#b9d2f2', ground: '#b49a7a', ambient: 0.7 },
-    ground: {
+    ground: { detail: 'sand', detailLook: { color: 0.7, normal: 0.8, metres: 6 },
       seed: 3,
       wind: 0.5,
       layers: [

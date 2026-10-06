@@ -37,7 +37,7 @@ export const SITES = {
     },
     fog: { color: '#d3e3e6', density: 0.00075 },
     light: { sun: 3.0, sky: '#b8d4f0', ground: '#6e8a4a', ambient: 0.75 },
-    ground: {
+    ground: { detail: 'grass', detailLook: { color: 0.7, normal: 0.6 },
       seed: 21,
       wind: 0.3,
       layers: [
@@ -794,7 +794,7 @@ export const SITES = {
     },
     fog: { color: '#e6b48c', density: 0.0009 },
     light: { sun: 3.0, sky: '#f0c8a8', ground: '#a0583a', ambient: 0.75 },
-    ground: {
+    ground: { detail: 'redsoil', detailLook: { color: 0.75, normal: 0.8 },
       seed: 33,
       wind: 1.1,
       layers: [

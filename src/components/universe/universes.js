@@ -22,8 +22,12 @@
 
 // how much bigger than its size number each kind is drawn, in map units:
 // the planets huge against the ship (0.26 long: a hundred and more of it
-// across, as far-off worlds are), the stations a good deal less so
-const STATION = 7;
+// across, as far-off worlds are), the stations less so but still dwarfing
+// it (80 to 97 ship lengths across), and smaller than any world. The 3 is
+// scale.js's HOME_SCALE, written out: this file has no imports, so the
+// prerender (scripts/prerender.mjs) can load it in Node as it is;
+// scale.test.js fails if the two differ.
+const STATION = 7 * 3;
 const PLANET = 28;
 
 const CORE = [

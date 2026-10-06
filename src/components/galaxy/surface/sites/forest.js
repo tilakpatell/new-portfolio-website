@@ -67,7 +67,7 @@ export const SITES = {
     light: { sun: 2.7, sky: '#d2e2d8', ground: '#4a5634', ambient: 0.8 },
     dust: '#7a6a4c',
     edge: 'The forest goes on, and on. Best not to get lost in it.',
-    ground: {
+    ground: { detail: 'needles', detailLook: { color: 0.8, normal: 0.7 },
       seed: 7,
       wind: 0.3,
       layers: [
@@ -310,7 +310,7 @@ export const SITES = {
     water: { level: 0, color: '#4f9a92', deep: '#1c4a50', kind: 'sea', foam: 0.2 },
     dust: '#bca880',
     edge: 'Beyond here the forest drops away into the Shadowlands. Even Wookiees don’t go down there.',
-    ground: {
+    ground: { detail: 'leaves', detailLook: { color: 0.7, normal: 0.7 },
       seed: 21,
       wind: -0.6,
       base: -10,
@@ -534,7 +534,7 @@ export const SITES = {
     water: { level: 0, color: '#3e4a32', deep: '#161c12', kind: 'swamp' },
     dust: '#5a5a40',
     edge: 'The mist closes in. Your lamp barely reaches your feet. Best go back.',
-    ground: {
+    ground: { detail: 'mud', detailLook: { color: 0.8, normal: 0.8 },
       seed: 5,
       wind: 0.2,
       base: -0.5,
@@ -715,7 +715,7 @@ export const SITES = {
     water: { level: -3, color: '#5a7a5a', deep: '#22382a', kind: 'swamp', waves: 1.2 },
     dust: '#8a8a60',
     edge: 'The jungle closes in. Somewhere out there are temples nobody has seen in four thousand years.',
-    ground: {
+    ground: { detail: 'leaves', detailLook: { color: 0.8, normal: 0.7 },
       seed: 14,
       wind: 0.8,
       base: 0,

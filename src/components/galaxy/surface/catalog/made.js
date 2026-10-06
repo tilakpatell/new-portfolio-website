@@ -42,6 +42,10 @@ export const MODELS = {
   citadel: { made: 'meshy', lod: true, as: 'the Citadel tower', metres: 170, along: 'y', hero: true, solids: 'built' },
   // Kashyyyk: a great wroshyr, from the picture of Kachirho's (the city tree itself stays built, for its decks)
   wroshyrgreat: { made: 'meshy', lod: true, as: 'the great wroshyrs', metres: 230, along: 'y', hero: true },
+  // Coruscant: the Senate Building's dome (its plaza stays built)
+  senate: { made: 'meshy', lod: true, as: 'the Senate Building', metres: 190, along: 'x', hero: true },
+  // Dagobah: Yoda's hut, the cluster of it
+  yodahut: { made: 'meshy', as: "Yoda's hut", metres: 10, along: 'x' },
   // Coruscant: a skyscraper of Galactic City
   corutower: { made: 'meshy', as: 'the towers of Galactic City', metres: 220, along: 'y' },
 };
