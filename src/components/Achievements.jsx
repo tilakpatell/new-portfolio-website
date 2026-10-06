@@ -75,6 +75,7 @@ export const ACHIEVEMENTS = {
   purge: { name: 'Out before the purge', desc: 'Pulled the purge siren and got back through the portal inside a minute' },
   pluto: { name: 'Pluto is a planet', desc: 'Said so from the king’s podium' },
   gearworld: { name: 'Everyone’s best friend', desc: 'Said hello to Gearhead in Gear World' },
+  vindicators: { name: 'The only one worth a damn', desc: 'Got through Rick’s rooms on the Vindicators’ ship' },
   collector: { name: 'Collector', desc: 'Found every hidden easter egg' },
   mellon: { name: 'Speak, friend', desc: 'Said the word that opens the Doors of Durin' },
   balrog: { name: 'You shall not pass', desc: 'Held the Bridge of Khazad-dûm' },

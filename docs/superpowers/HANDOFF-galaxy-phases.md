@@ -1,0 +1,113 @@
+# Handoff: the Star Wars galaxy, in phases (6 October 2026)
+
+For a session on either account, with no history. The spec is
+`docs/superpowers/specs/2026-10-06-galaxy-phases-design.md`. It holds the
+owner's ask, the Wookieepedia facts, the lanes other sessions hold and the
+phase list. Phase 1's plan is
+`docs/superpowers/plans/2026-10-06-galaxy-phase1-seas.md`. The code is the
+truth where this disagrees with it.
+
+## Done: Phase 1, seas (merged)
+
+- `surface/ocean.js` (pure, tested):
+  - `SEAS[id]` holds each world's swell, shallows, sea bed, caps, surf and
+    wash: Scarif lagoon, Kamino storm, Naboo lake, Kashyyyk surf, and
+    Dagobah and Yavin swamp, with a fallback by `water.kind`;
+  - `heightAt` is the shader's Gerstner sum, damped by depth;
+  - `bakeDepth` gives the depth plus the distance to the waterline (a
+    chamfer transform), so the surf is the same width on any slope;
+  - `discRings` and `snapCentre`.
+- `surface/water.js`: sea and swamp draw on a disc round the camera
+  (23.7k vertices on high, 7.7k on small), displaced in the vertex shader.
+  An RG depth texture (512² on high, 256² on small) drives the shading:
+  - shallows and the bed showing through;
+  - the swell standing up in the shallows;
+  - breakers 5–28 m out;
+  - wash bands running in, lace at the edge;
+  - whitecaps from the pinch;
+  - swamp scum;
+  - the sky by Fresnel, light through the crests, the sun's road.
+  Lava and cloud keep the old plane. `createWater(…, { heightAt, small, id
+  })` returns `height(x, z, t)` and `depth`, for floating things later.
+- `surface/scene.js`: two lines (the `createWater` options and
+  `water?.update(t, camera)`).
+- Measured in Chromium (Metal), at the shore spot nearest the landing,
+  before and after (`scripts/sea-shot.mjs`). Triangles went up about 47k
+  on each sea world (the disc). The frame's p50 is unchanged:
+
+  | World | Before calls / tris | After calls / tris |
+  | --- | --- | --- |
+  | Scarif | 49 / 1,231,474 | 49 / 1,278,512 |
+  | Kamino | 53 / 896,596 | 65 / 942,179 |
+  | Naboo | 79 / 564,667 | 89 / 610,586 |
+  | Kashyyyk | 43 / 745,242 | 56 / 792,293 |
+  | Dagobah | 78 / 1,123,018 | 78 / 1,170,056 |
+  | Yavin | 34 / 1,109,859 | 47 / 1,156,910 |
+
+  The extra calls on four worlds weren't traced. The sea is one draw, so
+  they are likely weather or shadow-pass variance between runs. Check them
+  with `galaxy-check.mjs` and the budget file. `lab/baseline/` isn't in
+  this checkout, so the gate wasn't run.
+- Not done: the final whole-branch review (the owner ran out of usage).
+  Read the diff once.
+
+## Next, in order (the spec's phases)
+
+1. **Phase 1 polish:**
+   - Kamino's deck is high, so its storm reads mostly from afar. Add spray
+     at the platform legs.
+   - Scarif's turquoise could be more saturated far out (the Fresnel takes
+     the pale horizon).
+   - Float things on `water.height`: Kamino's aiwhas surfacing, a bongo on
+     Lake Paonga.
+   - Keep the camera out of the water.
+2. **Phase 2, bases:**
+   - Echo Base: its glacier mouth, its ice corridors with supports, Outpost
+     Beta's ion cannon.
+   - Scarif: the Citadel, Pad 9, the shield gate, bunkers in the palms.
+   - The Great Temple's hangar, Theed's hangar and plaza, Tipoca's deck,
+     domes and discharge towers.
+   - CC0 PBR sets (Poly Haven, ambientCG) and decals. Sketchfab CC BY first
+     (`scripts/sketchfab-surface.mjs`, token in `~/.tilakverse.env`), then
+     Meshy from stills (quote the total once).
+3. **Phase 3, ground AI:** `surface/ai/`, pure and tested:
+   - perception: sight cones, line of sight through the solids, hearing;
+   - memory and search;
+   - squads with cover from the props' solids, flanking, suppression,
+     retreat, reinforcements;
+   - civilians' routines;
+   - a utility scorer on a per-frame budget.
+4. **Phase 4, the living lanes:**
+   - read `systems.js`'s `traffic`;
+   - add `ROAM_EVENTS`: convoys, distress calls, purrgil, meteors, patrols
+     in formation, pirate ambushes;
+   - a ship AI (patrol, trade, flee, pursue, escort, dogfight) on
+     `galaxy/roam.js`.
+5. **Phase 5, named NPCs:** Lando and Fett, then Wedge, Bossk, Hondo, Din
+   Djarin and Hera. Each has a ship, lines, a standing and a memory (the
+   universe map's `npcs` and `standing`).
+6. **Phase 6, open systems and journeys:** `EDGE` from 900 to about 3,000,
+   with places to find in each system, and a route finder over `LANES`.
+
+## Lanes held by others (check before touching)
+
+- `claude/galaxy-bugs`'s session: hull solids, the Death Star II, bloom
+  and chromatic aberration, ship textures and scale, weapons for every
+  crew on surfaces.
+- `claude/sharp-carson-h9c6mp` (PR #383): foliage, the F-plan
+  (`2026-10-06-foliage-landscape-design.md`).
+- #410: fleet war capitals. #371: WebGPU worlds.
+
+## Checking it
+
+- Shots and counts:
+  `OUT=<dir> TAG=after node scripts/sea-shot.mjs scarif,kamino,naboo`.
+  It starts Vite in-process (no HMR) and the cached Chromium with
+  `--use-angle=metal`, teleports to the shore nearest the landing, shoots,
+  and prints the calls, the triangles and the p50. `ROOT=<other checkout>`
+  shoots a before.
+- Tests: `npx vitest run src/components/galaxy`. Long sims elsewhere time
+  out when the machine is loaded; rerun them alone.
+- Wookieepedia: WebFetch gets 402. Use the MediaWiki API with curl
+  (`https://starwars.fandom.com/api.php?action=parse&page=<Page>&prop=wikitext&format=json`),
+  as `scripts/galaxy-refs.mjs` does.

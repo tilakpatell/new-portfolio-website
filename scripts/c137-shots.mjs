@@ -67,6 +67,7 @@ export const VIEWS = {
   purge: { area: 'purge', at: [-400, 1816, N], cam: [0, 0.2] },
   pluto: { area: 'pluto', at: [-400, 1916, N], cam: [0, 0.2] },
   gearworld: { area: 'gearworld', at: [-400, 2016, N], cam: [0, 0.2] },
+  vindicators: { area: 'vindicators', at: [-400, 2105.4, N], cam: [0, 0.3] },
 };
 
 const names = process.argv.slice(2);

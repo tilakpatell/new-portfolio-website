@@ -8,7 +8,8 @@
 // when you're down in it). Lit by its system's sun or suns.
 //
 // LOOKS: { [id]: { name, swatch, family, pal: { slot: '#rrggbb' }, p: { param: n },
-//   flags, bump, clouds, atmo, shield } }; the families and their slots and
+//   flags, bump, clouds, atmo, shield, detail ([flat, steep] ground scans up
+//   close: detailScans) } }; the families and their slots and
 //   params are FAMILIES below
 // buildBody(look, { r = 40, small = false }) → { group, radius, reach,
 //   update(t, camera), setSuns([{ dir, color }]), setDetail(k), set(name, value), dispose() }
@@ -21,6 +22,8 @@
 import * as THREE from 'three';
 import { SHIELD_FRAG, SHIELD_VERT, SURFACE_VERT, surfaceFrag } from './bodyShaders';
 import { createAtmosphere } from '../../lib/three/atmosphere';
+import { detailLevel } from '../../lib/detail';
+import { loadScan, scanOf } from './surface/kit';
 
 // each family's colour slots (uPal, in order) and params (uP0, uP1)
 export const FAMILIES = {
@@ -47,7 +50,7 @@ export const LOOKS = {
     atmo: air('#ffe0b8', 1.3, 1.04, '#ffa060', 4),
   },
   geonosis: {
-    name: 'Geonosis', swatch: '#c0613a', family: 'desert', bump: 0.026, flags: ['CRATERS'],
+    name: 'Geonosis', swatch: '#c0613a', family: 'desert', bump: 0.026, flags: ['CRATERS'], detail: ['redsoil', 'rock'],
     pal: { sand: '#c96a40', sand2: '#a9512d', rock: '#8c4024', dark: '#4a2016', salt: '#d99a6e', crest: '#da7e4e' },
     p: { dunes: 0.45, rock: -0.12, craters: 0.85, salt: 0.15, scars: 0, duneFreq: 40, canyons: 0.8, mesas: 1 },
     atmo: air('#ff9c5c', 2.2, 1.05, '#ff7040', 3),
@@ -55,7 +58,7 @@ export const LOOKS = {
   // Mandalore: glassed in the Purge, a pale crust of fused glass and ash,
   // bomb scars and craters, a poisoned lilac haze
   mandalore: {
-    name: 'Mandalore', swatch: '#a8a4b4', family: 'desert', bump: 0.02, flags: ['CRATERS', 'SCARS'],
+    name: 'Mandalore', swatch: '#a8a4b4', family: 'desert', bump: 0.02, flags: ['CRATERS', 'SCARS'], detail: ['gravel', 'rock'],
     pal: { sand: '#aaa6b4', sand2: '#8b8597', rock: '#5e5a68', dark: '#27232d', salt: '#dfe4f0', crest: '#c6c4d2' },
     p: { dunes: 0.25, rock: 0.02, craters: 0.6, salt: 0.6, scars: 1, duneFreq: 30, canyons: 0.5, mesas: 0.3 },
     clouds: sky(0.22, '#bdb4c8', 1.2, 2.8, 0.004),
@@ -71,7 +74,7 @@ export const LOOKS = {
   },
   // ── Living worlds ──
   endor: {
-    name: 'Endor', swatch: '#3f6a3a', family: 'lush', bump: 0.02,
+    name: 'Endor', swatch: '#3f6a3a', family: 'lush', bump: 0.02, detail: ['needles', 'rock'],
     pal: { deep: '#123248', shallow: '#2a6870', forest: '#2a4c26', grass: '#66763c', rock: '#5a5246', snow: '#eef2f4', beach: '#8f8460', murk: '#2a3a2a' },
     p: { sea: -0.22, forest: 1.25, mountains: 0.3, caps: 0.05, islands: 0, swamp: 0, rivers: 0, scale: 2.3 },
     clouds: sky(0.3, '#ffffff', 1.8, 5),
@@ -85,7 +88,7 @@ export const LOOKS = {
     atmo: air('#82ccbe', 2.7, 1.07),
   },
   kashyyyk: {
-    name: 'Kashyyyk', swatch: '#2e5a34', family: 'lush', bump: 0.02, flags: ['ISLANDS'],
+    name: 'Kashyyyk', swatch: '#2e5a34', family: 'lush', bump: 0.02, flags: ['ISLANDS'], detail: ['leaves', 'rock'],
     pal: { deep: '#0c2c52', shallow: '#1e6a8a', forest: '#224a20', grass: '#446832', rock: '#4a4a40', snow: '#e8eef0', beach: '#a09468', murk: '#22302a' },
     p: { sea: 0.02, forest: 1.1, mountains: 0.6, caps: 0.04, islands: 0.3, swamp: 0, rivers: 0, scale: 2.6 },
     clouds: sky(0.32, '#ffffff', 1.7, 4.8),
@@ -183,23 +186,41 @@ export const LOOKS = {
     p: { craters: 1, maria: 0.5, cracks: 0 },
   },
   'moon-ice': {
-    name: 'Ice moon', swatch: '#dfe8f0', family: 'moon', bump: 0.02,
+    name: 'Ice moon', swatch: '#dfe8f0', family: 'moon', bump: 0.02, detail: ['snow', 'rock'],
     pal: { base: '#dfe8f0', dark: '#a8bccc', bright: '#ffffff', crack: '#6a8aa8' },
     p: { craters: 0.4, maria: 0.3, cracks: 1 },
   },
   'moon-dust': {
-    name: 'Dusty moon', swatch: '#b89a72', family: 'moon', bump: 0.03,
+    name: 'Dusty moon', swatch: '#b89a72', family: 'moon', bump: 0.03, detail: ['sand', 'rock'],
     pal: { base: '#b89a72', dark: '#8a6e50', bright: '#d8c09a', crack: '#5a4a38' },
     p: { craters: 0.8, maria: 0.3, cracks: 0 },
   },
   'moon-rust': {
-    name: 'Red moon', swatch: '#9a4a30', family: 'moon', bump: 0.03,
+    name: 'Red moon', swatch: '#9a4a30', family: 'moon', bump: 0.03, detail: ['redsoil', 'rock'],
     pal: { base: '#9a4a30', dark: '#6a2e1e', bright: '#c07050', crack: '#4a1e14' },
     p: { craters: 0.8, maria: 0.4, cracks: 0 },
   },
 };
 
 const MIN_OCT = 4; // the fewest octaves of noise a ground is worked to, however little detail is asked for
+// the ground scans a world wears up close (bodyShaders.js's DETAIL;
+// public/cc0/galaxy/), [flat, steep]: by the look's own `detail`, else its
+// family's (a swamp's is mud); a gas giant has no ground
+const DETAIL_SCANS = { desert: ['sand', 'rock'], ice: ['snow', 'rock'], lush: ['grass', 'rock'], city: ['concrete', 'metal'], lava: ['ash', 'rock'], moon: ['gravel', 'rock'] };
+export const detailScans = (L) => L.detail ?? (L.family === 'lush' && L.flags?.includes('SWAMP') ? ['mud', 'rock'] : DETAIL_SCANS[L.family]) ?? null;
+const TILE = 0.45; // world units a tile of the coarser scan covers (the finer one's 6.5 times smaller)
+let blank = null; // (what the samplers read until the scans are in: plain white, and a flat normal)
+const blanks = () => {
+  if (!blank) {
+    const one = (r, g, b) => {
+      const t = new THREE.DataTexture(new Uint8Array([r, g, b, 255]), 1, 1);
+      t.needsUpdate = true;
+      return t;
+    };
+    blank = { color: one(255, 255, 255), normal: one(128, 128, 255) };
+  }
+  return blank;
+};
 const SEG = { big: [128, 96], small: [64, 48], moon: [64, 48] };
 const SHIELD_R = 1.12;
 const DUNE_DIR = new THREE.Vector3(0.62, 0.32, 0.72).normalize();
@@ -260,6 +281,28 @@ export function buildBody(look, { r = 40, small = false } = {}) {
   for (const f of L.flags ?? []) defines[f] = '';
   if (clouds) defines.CLOUDS = '';
   if (atmo) defines.ATMO = '';
+  // the scans up close: in once both are loaded (on: uDetK.w)
+  const scans = !small && typeof document !== 'undefined' && detailLevel() !== 'low' ? detailScans(L) : null;
+  if (scans?.every(scanOf)) {
+    defines.DETAIL = '';
+    const b = blanks();
+    Object.assign(uniforms, {
+      uDetA: { value: b.color },
+      uDetAN: { value: b.normal },
+      uDetB: { value: b.color },
+      uDetBN: { value: b.normal },
+      uDetMean: { value: new THREE.Vector2(...scans.map((id) => Math.pow(scanOf(id).mean ?? 0.8, 2.2))) },
+      uDetK: { value: new THREE.Vector4(r / TILE, 0.55, 0.22, 0) },
+    });
+    Promise.all(scans.map(loadScan)).then(([a, bb]) => {
+      if (!a || !bb) return;
+      uniforms.uDetA.value = a.map;
+      uniforms.uDetAN.value = a.normalMap;
+      uniforms.uDetB.value = bb.map;
+      uniforms.uDetBN.value = bb.normalMap;
+      uniforms.uDetK.value.w = 1;
+    });
+  }
 
   const geo = new THREE.SphereGeometry(r, ws, hs);
   const mat = new THREE.ShaderMaterial({ vertexShader: SURFACE_VERT, fragmentShader: surfaceFrag(L.family, FAMILIES[L.family].slots), uniforms, defines });

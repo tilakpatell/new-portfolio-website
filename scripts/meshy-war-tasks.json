@@ -1,0 +1,30 @@
+{
+  "councildread": {
+    "tried": [
+      {
+        "image": "01a1137a-a64e-7657-a9b5-7504ef6e3295",
+        "model": "01a1137c-b269-765d-9444-35f48b35cb80"
+      }
+    ],
+    "image": "01a11387-9d2a-718e-ab29-654f6f36cb0d",
+    "model": "01a11388-ae48-7231-b635-f34bfb86d546"
+  },
+  "fedbattleship": {
+    "tried": [
+      {
+        "image": "01a1137b-17b7-719a-b2b9-dd7fd4287012",
+        "model": "01a1137e-c060-768f-ba6c-906c4b80d2f3"
+      }
+    ],
+    "image": "01a11387-f4cb-755f-963c-f3741eaa6ffc",
+    "model": "01a1138a-4688-7063-a551-a86f6b2cc42d"
+  },
+  "superlab": {
+    "image": "01a1137b-9498-72ca-95ee-c9d607b0d69f",
+    "model": "01a11380-9849-74c2-b67e-af451cd8c9ea"
+  },
+  "hacienda": {
+    "image": "01a1137c-034d-73c5-9dcd-c25f7a8509e5",
+    "model": "01a11382-ad31-7624-a583-c9a2eef5fdbf"
+  }
+}

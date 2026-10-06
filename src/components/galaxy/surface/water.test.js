@@ -1,0 +1,53 @@
+import * as THREE from 'three';
+import { describe, expect, it } from 'vitest';
+import { discRings } from './ocean';
+import { createWater } from './water';
+
+const sky = { zenith: '#3a86d4', horizon: '#c6ecf2', suns: [] };
+const site = (kind, extra = {}) => ({ sky, water: { level: 0, color: '#38c6c8', deep: '#0a5a78', kind, ...extra } });
+const sun = new THREE.Vector3(0.3, 0.8, 0.2).normalize();
+// a beach: dry east of x = 100, the sea floor falling away west of it
+const beach = (x) => (x - 100) * 0.08;
+
+describe('the water', () => {
+  it('draws a sea on the disc round the camera', () => {
+    const w = createWater(site('sea'), sun, '#ffffff', { heightAt: beach, id: 'scarif' });
+    const { radii, around } = discRings({});
+    expect(w.mesh.geometry.attributes.position.count).toBe(radii.length * around);
+    expect(w.mesh.material.vertexShader).toContain('#include <fog_vertex>');
+    expect(w.mesh.material.vertexShader).toContain('gerstner(');
+    w.dispose();
+  });
+
+  it('a coarser disc on a small screen', () => {
+    const w = createWater(site('swamp'), sun, '#ffffff', { heightAt: beach, small: true, id: 'dagobah' });
+    const { radii, around } = discRings({ small: true });
+    expect(w.mesh.geometry.attributes.position.count).toBe(radii.length * around);
+    w.dispose();
+  });
+
+  it('keeps lava and cloud on their plane', () => {
+    for (const kind of ['lava', 'clouds']) {
+      const w = createWater(site(kind), sun, '#ffffff', { heightAt: beach });
+      expect(w.mesh.geometry.attributes.position.count).toBe(4);
+      w.dispose();
+    }
+  });
+
+  it('follows the camera in steps', () => {
+    const w = createWater(site('sea'), sun, '#ffffff', { heightAt: beach, id: 'scarif' });
+    w.update(1, { position: new THREE.Vector3(10.4, 30, -7.9) });
+    const c = w.mesh.material.uniforms.uCentre.value;
+    expect([c.x, c.y]).toEqual([10, -8.75]);
+    w.dispose();
+  });
+
+  it('is still on the sand and moves out at sea', () => {
+    const w = createWater(site('sea'), sun, '#ffffff', { heightAt: beach, id: 'scarif' });
+    expect(w.depth.at(300, 0)).toBe(0);
+    expect(w.height(300, 0, 3)).toBe(0);
+    const out = [0, 1, 2, 3].map((t) => w.height(-400, 20, t));
+    expect(Math.max(...out) - Math.min(...out)).toBeGreaterThan(0.1);
+    w.dispose();
+  });
+});

@@ -838,7 +838,7 @@ export async function create(canvas, ctx) {
   const npcs = hunters ? createNpcs(map, { fleet, memory: npcMemory }) : null; // (the named characters: npcRules.js's brains)
   // the crew's war (front.js): its front out in deep space, a battle there
   // to fly into (the Star Wars crews' war is fought in the galaxy far, far
-  // away instead: galaxy/gcw.js; the others' are still to come). Made for the crew's side, again if the crew changes; its
+  // away instead: galaxy/gcw.js; Rick and Morty's is here). Made for the crew's side, again if the crew changes; its
   // ships are the galaxy's models (galaxy/models.js), loaded once the
   // front's in sight. Not with reduced motion (nor are the hunters)
   let front = null;
@@ -3935,6 +3935,9 @@ export async function create(canvas, ctx) {
     else if (state.note && wall() < state.note.until && !onFoot()) {
       text = state.note.text;
       plain = true;
+    } else if (info && foot.phase === 'walk' && info.gadget?.fresh) {
+      text = `${info.gadget.name} · B for the next`;
+      plain = true;
     } else if (info && foot.phase === 'walk' && info.near?.label) text = `Into ${info.near.label}`;
     else if (info && foot.phase === 'walk' && info.ship.near) text = `Get back in ${SHIP_NAMES[state.kind]?.replace(/^The /, 'the ') ?? 'the ship'}`;
     else if (info && foot.phase === 'walk' && info.near?.say) {
@@ -4510,8 +4513,15 @@ export async function create(canvas, ctx) {
   };
   // the keys on foot: walking (W A S D, Q E to step sideways), Shift to
   // run, Space to jump, F to fire, T the next trooper, X to play the other
-  // one, V out of your own eyes, Enter into the planet's world (wayin.js)
+  // one, B Rick's next gadget, V out of your own eyes, Enter into the
+  // planet's world (wayin.js)
   const footKey = (e, key, onControl) => {
+    if (key === 'b') {
+      e.preventDefault();
+      const gun = foot.gadget();
+      if (gun) emit({ type: 'foot', id: 'gadget', gun });
+      return;
+    }
     if (key === 'f') {
       e.preventDefault();
       const gun = foot.fire();

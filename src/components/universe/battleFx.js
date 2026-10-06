@@ -235,8 +235,13 @@ export function createShield(parent) {
 }
 
 // ── the objective markers: a diamond, a name, how much is left and how far ──
-const MW = 256;
-const MH = 72;
+// (the card wide enough for 'Destroy: Shield generator' at its full size;
+// a longer name is drawn smaller to fit, not cut off at the card's edges)
+export const MARK = { w: 320, h: 72, pad: 8 };
+const MW = MARK.w;
+const MH = MARK.h;
+// the font size that fits a name `room` wide, from its width at `px`
+export const fitPx = (width, room, px = 20, min = 12) => Math.max(min, Math.min(px, Math.floor((px * room) / Math.max(width, 1))));
 export function createMarkers(parent) {
   const pool = [];
   const used = new Map(); // key → marker
@@ -250,7 +255,7 @@ export function createMarkers(parent) {
     if (tex) tex.colorSpace = THREE.SRGBColorSpace;
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false, sizeAttenuation: false, toneMapped: false }));
     sprite.center.set(0.5, 0.18);
-    sprite.scale.set(0.24, 0.0675, 1);
+    sprite.scale.set(0.24 * (MW / 256), 0.0675, 1);
     sprite.renderOrder = 10;
     sprite.frustumCulled = false;
     return { sprite, canvas, tex, sig: '' };
@@ -260,6 +265,8 @@ export function createMarkers(parent) {
     if (!g) return;
     g.clearRect(0, 0, MW, MH);
     g.font = '600 20px "JetBrains Mono", ui-monospace, monospace';
+    const px = fitPx(g.measureText(o.title).width, MW - 2 * MARK.pad);
+    if (px < 20) g.font = `600 ${px}px "JetBrains Mono", ui-monospace, monospace`;
     g.textAlign = 'center';
     g.fillStyle = o.colour;
     g.shadowColor = 'rgba(0,0,0,0.85)';

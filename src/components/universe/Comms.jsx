@@ -3,7 +3,7 @@ import { linesFor } from './crews';
 import { playClip, playFile } from '../../lib/clips';
 import { useMouth } from '../../lib/mouth';
 import { preloadVoiced, voicedSrc } from '../../lib/voiced';
-import { alarmSound, arrivalSound, boomSound, boostSound, bumpSound, crashSound, drySound, enemyFireSound, fallSound, fireSound, flareSound, flybySound, gunSound, hitSound, impactSound, interdictSound, jumpSound, launchSound, popSound, portalSound, respawnSound, riftSound, shieldSound, speak, switchSound } from './sounds';
+import { alarmSound, arrivalSound, boomSound, boostSound, bumpSound, crashSound, drySound, enemyFireSound, fallSound, fireSound, flareSound, flybySound, gadgetSound, gunSound, hitSound, impactSound, interdictSound, jumpSound, launchSound, popSound, portalSound, respawnSound, riftSound, shieldSound, speak, switchSound } from './sounds';
 import Face from './Faces';
 
 // The ship's comms: what the crew says as you fly, one line at a time with
@@ -241,8 +241,13 @@ export default function Comms({ crew, reduced, control }) {
             // the portal gun's kill: the swirl as it opens, a snap as it shuts
             if (e.ev === 'open') portalSound();
             else popSound();
+          } else if (e.id === 'freeze' || e.id === 'shrink') gadgetSound(e.id, e.ev); // (the shatter; the squeak and the pop)
+          else if (e.id === 'gadget') {
+            switchSound();
+            say(linesFor(crew, 'foot', 'gadget', e.gun), { urgent: true });
           } else if (e.id === 'kill') {
-            if (e.how !== 'portal') popSound();
+            if (e.how === 'freeze' || e.how === 'shrink') gadgetSound(e.how, 'hit');
+            else if (e.how !== 'portal') popSound();
             if (often('kill', now)) say(linesFor(crew, 'foot', 'kill', e.kind), { urgent: true });
           } else if (e.id === 'hurt') {
             if (soundOnce('hit', 120, now)) hitSound();

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link as RouterLink } from 'react-router-dom';
 import { RiArrowDownLine, RiArrowLeftLine, RiArrowUpLine, RiCheckLine, RiCloseLine, RiListCheck2, RiShirtLine } from 'react-icons/ri';
@@ -61,6 +61,7 @@ import {
 import { newFedShip, newShipVoice, onTail, shipSays, stepFedShip } from './ship';
 import { DESTINATIONS, DIAL, linkTarget, portalTarget, readDial, writeDial } from './dimensions/destinations';
 import DimensionDial from './dimensions/DimensionDial';
+import { ROOMS, newTrial, pick as pickRoom, retry as retryRooms } from './dimensions/vindicatorsRules';
 import { setShipVoice, shipVoiceOn, speak, stopSpeaking } from './shipVoice';
 import Wardrobe from '../wardrobe/Wardrobe';
 import { useLooks } from '../wardrobe/useLooks';
@@ -212,7 +213,7 @@ const BOARD_R = 2.7; // how near the cruiser's middle Morty can get in from
 
 // Where the next thing to do is, for the map's marker: the area and the spot
 // in it, and from anywhere else, the way towards it.
-const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'], president: ['street', 'spot:president'], oval: ['garage', 'link:garage-oval'], diner: ['street', 'link:diner-door'], mindblowers: ['mindblowers', 'spot:chair'], rickall: ['house', 'spot:egg'], wong: ['street', 'link:wong-door'], ...Object.fromEntries(DESTINATIONS.flatMap((d) => d.tasks.map((t) => [t.id, [d.id, `spot:${Object.keys(d.done).find((k) => d.done[k] === t.id) ?? d.escape?.after ?? d.escape?.spot}`]]))) };
+const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'], president: ['street', 'spot:president'], oval: ['garage', 'link:garage-oval'], diner: ['street', 'link:diner-door'], mindblowers: ['mindblowers', 'spot:chair'], rickall: ['house', 'spot:egg'], wong: ['street', 'link:wong-door'], ...Object.fromEntries(DESTINATIONS.flatMap((d) => d.tasks.map((t) => [t.id, [d.id, `spot:${Object.keys(d.done).find((k) => d.done[k] === t.id) ?? d.escape?.after ?? d.escape?.spot ?? d.goal}`]]))) };
 // (every destination is through the garage's portal)
 const toDest = (via) => Object.fromEntries(DESTINATIONS.map((d) => [d.id, via]));
 const WAY = {
@@ -439,8 +440,11 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
   // the portal gun's dial, open at its stand in the garage (it holds Morty still, as the wardrobe does)
   const [dialing, setDialing] = useState(false);
   const dialRef = useRef(readDial());
+  // Rick's rooms on the Vindicators' ship, asked one at a time (it holds him still too)
+  const [trial, setTrial] = useState(null);
+  const trialRef = useRef(newTrial());
   const wardrobeRef = useRef(wardrobe);
-  wardrobeRef.current = wardrobe || dialing;
+  wardrobeRef.current = wardrobe || dialing || !!trial;
   const closeWardrobe = useCallback(() => setWardrobe(false), []);
   const closeDial = useCallback(() => setDialing(false), []);
   const pickDial = useCallback(
@@ -453,6 +457,29 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     },
     [say],
   );
+  const closeTrial = useCallback(() => setTrial(null), []);
+  const pickTrial = useCallback(
+    (id) => {
+      const t = trialRef.current;
+      const r = pickRoom(t, id);
+      if (r === 'next') {
+        setTrial({ ...t });
+        say({ kind: 'note', text: 'Right. The door slides open on the next room.' });
+      } else if (r === 'lost') {
+        setTrial(null);
+        say({ kind: 'say', who: null, text: 'A trapdoor, a long slide, and you’re back in the hall. Noob-Noob is laughing. Try Rick’s rooms again.' });
+      } else if (r === 'won') {
+        setTrial(null);
+        say({ kind: 'say', who: null, text: 'A recording of Rick, very drunk: “Noob-Noob! He’s the only one of you worth a damn.” The last door opens.' });
+        complete('vindicators');
+        unlock('vindicators');
+      }
+    },
+    [say, complete, unlock],
+  );
+  // (the same list for as long as he's in one room, so the overlay keeps its place in it)
+  const room = trial?.room ?? null;
+  const trialItems = useMemo(() => (room == null ? [] : ROOMS[room].choices.map((c) => ({ id: c.id, name: c.text }))), [room]);
   useEffect(() => {
     api.current?.setLooks?.(looks);
   }, [api, looks]);
@@ -754,6 +781,12 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     if (n.kind === 'link') go(n.link);
     else if (n.kind === 'cruiser') board();
     else if (n.spot?.kind === 'rickall') startRickall();
+    else if (n.spot?.kind === 'trial') {
+      // (from the first room, however the last go ended)
+      s.keys.clear();
+      if (trialRef.current.state !== 'on') retryRooms(trialRef.current);
+      setTrial({ ...trialRef.current });
+    }
     else if (PLACES[n.id]) {
       s.keys.clear();
       openPlace(n.id);
@@ -1373,6 +1406,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       </div>
       <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} who="morty" />
       <DimensionDial open={dialing} items={DIAL} value={dialRef.current} onPick={pickDial} onClose={closeDial} />
+      <DimensionDial open={!!trial} items={trialItems} value={null} onPick={pickTrial} onClose={closeTrial} title={`Rick’s rooms · ${(trial?.room ?? 0) + 1} of ${ROOMS.length}`} lead={trial ? ROOMS[trial.room].prompt : null} foot="↑ ↓ to choose, Enter to pick, Esc to back out" label="Rick’s rooms" />
 
       <Toast toast={toast} />
       {shipLine && hud.area === 'street' && (

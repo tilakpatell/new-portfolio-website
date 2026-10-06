@@ -338,5 +338,53 @@
   "birdperson-house": {
     "status": "done",
     "by": "local"
+  },
+  "vance": {
+    "status": "done",
+    "by": "local"
+  },
+  "supernova": {
+    "status": "done",
+    "by": "local"
+  },
+  "alanrails": {
+    "status": "done",
+    "by": "local"
+  },
+  "millionants": {
+    "status": "done",
+    "by": "local"
+  },
+  "crocubot": {
+    "status": "done",
+    "by": "local"
+  },
+  "noobnoob": {
+    "status": "done",
+    "by": "local"
+  },
+  "vindicators-ship": {
+    "status": "done",
+    "by": "local"
+  },
+  "nebulon": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "zigerion-b": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "zigerion-c": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "storylord": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "ticketsguy": {
+    "status": "meshy",
+    "by": "local"
   }
 }

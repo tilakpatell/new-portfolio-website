@@ -17,6 +17,7 @@
 
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { device } from '../../lib/device';
 import { gen3dUrl } from '../../lib/three/gen3d';
 import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 import { GLB } from '../universe/glbFleet';
@@ -57,11 +58,34 @@ export const MODELS = {
   n1: { url: '/models/galaxy/n1.glb', nose: 0 },
   nubian: { url: '/models/galaxy/nubian.glb', nose: 0 },
   razorcrest: { url: '/models/galaxy/surface/razorcrest.glb', nose: 0 }, // (the one the surfaces fly)
+  // the universe map's wars' flagships (scripts/meshy-war.mjs, from the shows' own pictures)
+  councildread: { url: '/models/universe/war/councildread.glb', nose: Math.PI / 2 },
+  fedbattleship: { url: '/models/universe/war/fedbattleship.glb', nose: 0 },
 };
 // the ones made again here at full quality (scripts/gen3d, remade from these
 // models' own renders): kind → the made model's name, loaded in this device's cut
 export const MADE = { xwing: 'x-wing', interceptor: 'tie-interceptor' };
 for (const [kind, name] of Object.entries(MADE)) if (MODELS[kind]) MODELS[kind] = { ...MODELS[kind], url: gen3dUrl(name) };
+
+// The capitals' close-up cut: Daniel Andersson's Imperial II and Nebulon-B
+// (scripts/sketchfab-galaxy.mjs, `hq`), about 100k triangles with
+// 2K maps, which hold up with a fighter flying along their hulls. Only a
+// desktop with a graphics card loads them (detail high or ultra); a laptop
+// or a phone keeps the lighter ones. Each has its own far-off copy, since
+// the old one's, fitted to the new hull's box, would sit wrong on it
+// (scripts/galaxy-lod.mjs hq/<kind>). The
+// battles' subsystems, batteries and hulls (universe/wars.js) are shares of
+// the ship's length, so they hold on either cut. nose: as each comes.
+export const HQ = {
+  destroyer: { url: '/models/galaxy/hq/destroyer.glb', nose: 0 },
+  nebulon: { url: '/models/galaxy/hq/nebulon.glb', nose: 0 },
+};
+const HQ_DETAILS = new Set(['high', 'ultra']);
+export const withHq = (models, detail) =>
+  HQ_DETAILS.has(detail)
+    ? { ...models, ...Object.fromEntries(Object.entries(HQ).filter(([k]) => models[k]).map(([k, d]) => [k, { url: d.url, nose: d.nose, hq: true }])) }
+    : models;
+Object.assign(MODELS, withHq(MODELS, device().detail));
 
 const BUILT = new Set([...BUILT_KINDS, ...GALAXY_KINDS]);
 
@@ -69,7 +93,8 @@ const BUILT = new Set([...BUILT_KINDS, ...GALAXY_KINDS]);
 // loads (else its slot would be empty, and the ship would pop in): the
 // Venator as a Star Destroyer, Slave I and the Falcon as a freighter, the TIE
 // bomber as a TIE, Gideon's cruiser as a Star Destroyer, the Gozanti and the
-// Ghost as freighters, the Invisible Hand as a Munificent. The Death Star has
+// Ghost as freighters, the Invisible Hand as a Munificent, the wars'
+// flagships as a cruiser of their side. The Death Star has
 // none here: the world puts a sphere of its own in its place.
 export const STAND_IN = {
   venator: 'destroyer',
@@ -80,6 +105,8 @@ export const STAND_IN = {
   gozanti: 'freighter',
   providence: 'munificent',
   ghost: 'freighter',
+  councildread: 'councilship',
+  fedbattleship: 'fedcruiser',
 };
 
 // Far off, a ship is its LOD (scripts/galaxy-lod.mjs: one mesh of a few
@@ -88,7 +115,7 @@ export const STAND_IN = {
 // LOD_FAR times. Tinted and skinned slots keep the full model at every range.
 export const LOD_NEAR = 45;
 export const LOD_FAR = 900;
-export const lodUrl = (kind) => (MODELS[kind] && kind !== 'deathstar' ? `/models/galaxy/lod/${kind}.glb` : null);
+export const lodUrl = (kind, models = MODELS) => (models[kind] && kind !== 'deathstar' ? `/models/galaxy/lod/${models[kind].hq ? 'hq/' : ''}${kind}.glb` : null);
 export const lodLevels = (size) => [
   [0, 'full'],
   [LOD_NEAR * size, 'lod'],
