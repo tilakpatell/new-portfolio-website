@@ -44,13 +44,13 @@ const BASE = '/textures/universe/';
 // Invincible's by their own scripts.
 const MAPS = {
   // colour, with a phone copy
-  ...Object.fromEntries(['music', 'middleearth', 'middleearth-night', 'middleearth-clouds', 'transformers', 'marvel', 'breakingbad', 'office', 'rickmorty', 'earth', 'earth-night', 'invincible', 'invincible-night', 'sun', 'sky'].map((n) => [n, { sm: true, colour: true }])),
+  ...Object.fromEntries(['music', 'middleearth', 'middleearth-night', 'middleearth-clouds', 'transformers', 'marvel', 'breakingbad', 'breakingbad-night', 'office', 'rickmorty', 'earth', 'earth-night', 'invincible', 'invincible-night', 'sun', 'sky'].map((n) => [n, { sm: true, colour: true }])),
   // data, with a phone copy
-  ...Object.fromEntries(['middleearth-normal', 'earth-clouds', 'invincible-clouds'].map((n) => [n, { sm: true, colour: false }])),
+  ...Object.fromEntries(['middleearth-normal', 'breakingbad-normal', 'breakingbad-clouds', 'earth-clouds', 'invincible-clouds'].map((n) => [n, { sm: true, colour: false }])),
   // colour, one size
   ...Object.fromEntries(['middleearth-glow', 'rickmorty-glow', 'invincible-glow', 'plates', 'hull'].map((n) => [n, { sm: false, colour: true }])),
   // data, one size
-  ...Object.fromEntries(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-normal-sm', 'transformers-glow-sm', 'middleearth-rough', 'breakingbad-normal', 'invincible-normal', 'earth-rough'].map((n) => [n, { sm: false, colour: false }])),
+  ...Object.fromEntries(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-normal-sm', 'transformers-glow-sm', 'middleearth-rough', 'breakingbad-rough', 'invincible-normal', 'earth-rough'].map((n) => [n, { sm: false, colour: false }])),
 };
 
 export async function loadTextures({ small = false } = {}) {
@@ -145,9 +145,11 @@ function airGlow(mat, color, { night = null } = {}) {
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
         {
+          // (the sphere's own normal, not the relief's: a steep slope in the
+          // normal map isn't the planet's edge)
           vec3 sunV = normalize((viewMatrix * vec4(uSunW, 0.0)).xyz);
-          float day = dot(normal, sunV);
-          float rim = pow(1.0 - saturate(dot(normal, normalize(vViewPosition))), 3.0);
+          float day = dot(nonPerturbedNormal, sunV);
+          float rim = pow(1.0 - saturate(dot(nonPerturbedNormal, normalize(vViewPosition))), 3.0);
           totalEmissiveRadiance += uRimColor * rim * uRimStrength * (0.2 + 0.8 * smoothstep(-0.3, 0.6, day));
           ${night ? 'totalEmissiveRadiance += texture2D(uNight, vMapUv).rgb * 1.5 * smoothstep(0.12, -0.3, day);' : ''}
         }`,
@@ -553,13 +555,28 @@ const BUILDERS = {
 
   breakingbad(p, { u, T }) {
     const r = u.size;
+    // New Mexico's high desert (scripts/planets/breakingbad.mjs): ranges
+    // north to south, mesas in the Chinle's bands, malpais, White Sands, and
+    // the Rio Grande down the near face past Albuquerque, whose grid and
+    // interstates light up at night; thunderheads over the mountains
     p.body.material = new THREE.MeshStandardMaterial({
       map: T.breakingbad ?? null,
       color: T.breakingbad ? '#ffffff' : u.palette.base,
       normalMap: T['breakingbad-normal'] ?? null,
-      normalScale: new THREE.Vector2(1.2, 1.2),
+      normalScale: new THREE.Vector2(1.3, 1.3),
+      roughnessMap: T['breakingbad-rough'] ?? null,
       roughness: 1,
+      metalness: 0,
     });
+    p.night = T['breakingbad-night'] ?? null;
+    if (T['breakingbad-clouds']) {
+      const sky = new THREE.Mesh(
+        new THREE.SphereGeometry(r * 1.008, T.small ? 44 : 64, T.small ? 28 : 40),
+        new THREE.MeshStandardMaterial({ color: '#ffffff', alphaMap: T['breakingbad-clouds'], transparent: true, depthWrite: false, roughness: 1 }),
+      );
+      p.group.add(sky);
+      p.tick.push((t) => (sky.rotation.y = t * 0.06));
+    }
     // blue crystal moons
     const crystals = new THREE.InstancedMesh(
       new THREE.OctahedronGeometry(r * 0.07, 0),
