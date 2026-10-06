@@ -34,6 +34,14 @@ Scorecard (the spec’s “Where things stand” table is the before): fill in t
 - **The check script runs on the dev server**, not `vite preview`: the poses are a DEV hook, which a production build leaves out. Each pose gets a fresh page (a landing can’t be flown back from in a script). The page’s bar, panel and HUD are hidden before each shot, so the shot and its metrics are the map alone. Calls and triangles are counted over one whole frame (`info.autoReset` off for it).
 - **The canvas inspector** measures a live page and doesn’t export its pixel metrics, so `universe-check.mjs` has the same sums (`colorEntropyBits`, `edgeDensity`, `luminance.contrast`) on each shot.
 - **`.gitignore`**: `lab/*`, then `!lab/universe/`, `lab/universe/*`, `!lab/universe/baseline/` (git can’t re-include a file whose parent directory is ignored, so the plan’s single exception line wouldn’t work).
+- **The scale changes (#304, #309, #312, #321) came before the baseline.** The owner asked for the home system, the worlds, deep space, the home sun, the Citadel and Dickansh’s phone to be scaled into one order of sizes (`src/components/universe/scale.js`, pinned by `scale.test.js`). The baseline is taken on `main` after all of them.
+- **Checkpoint 1:**
+  - *Grain defaults off* in `post.js` (`uGrain` 0); only the universe map asks for it (`post.grain(grainFor(...))` each frame), so the galaxy and its surfaces, which draw through the same post, keep their picture. The dither is on for all three (it only hides banding).
+  - *The dither reads the noise at `gl_FragCoord`* rather than `vUv × uNoiseScale`: one texel a pixel at whatever size the pass is drawn. The tile is 64 on `high` and 32 elsewhere (made at load: about 70 ms for 64, a few for 32).
+  - *The bloom was already sized to the page*, not a fixed 256 (the spec read an older `post.js`); `bloomSize` caps its first level at 640 on the long side, a quarter the pixels on a 2560 screen, and a quarter of the frame on `small`.
+  - *The aberration is a uniform, not a `#define`*: setting it to 0 at pace step 3 costs nothing, where switching a define would recompile the pass mid-flight. Two extra reads a pixel while it’s on.
+  - *The flare is the home sun’s only*; the galaxy’s suns and the second star (Task 2.1’s) are for checkpoint 2, which brings `lighting.js`. The galaxy has no `lib/three/pace` of its own, so `post.setLevel` isn’t called there.
+- **The Twins go round each other** (the owner’s ask, in checkpoint 1’s PR): `deep.js`’s `binaryAt(w, t)` and `moveBinaries(t)`; the place is the point they go round, and their solids move with them each frame on the scene’s clock.
 
 ## Checking it
 
