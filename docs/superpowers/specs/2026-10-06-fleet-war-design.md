@@ -202,3 +202,45 @@ open.
 - In a browser: `scripts/battle-check.mjs` forces a battle and a flare
   (through `window.__universeDebug`) and takes screenshots, and they’re
   looked at. Frame time is measured at the mid tier with 64 fighters up.
+
+## Revision: battles as shared events in the universe
+
+Date: 2026-10-06, after PR B (#315) merged. The user said: “The battle is not
+a game but in the universe itself and as events. Make it robust. Make the
+battle multiplayer compatible. Make sure ship scaling is correct. A capital
+ship should be huge but planets are bigger, so our ship, then the capital
+ship, then the planet.” They approved this reading.
+
+- **No game layer.**
+  - The side picker, the Victory/Defeat card and the Battlefront ticket bar
+    all go.
+  - You're simply in the battle on your crew's side. The war's first side is
+    the crews' own: the Rebels, the Council, Gus.
+  - A one-line status, in the Citadel siege's style, says what's going on.
+    The crew's lines carry the rest.
+- **Battles are events on a shared clock.**
+  - Each war's battles start at the front on a fixed wall-clock schedule:
+    every 15 minutes, 12 of fighting and 3 of lull. The schedule is counted
+    from a weekly epoch, when the war starts again from the middle.
+  - When one starts, the crew calls it out and the nav map marks it. It's
+    seen from far off and fought within sight of it.
+- **Shared by every pilot online.**
+  - The AI's progress on the objectives is a scripted curve, seeded by the
+    battle's number. Every pilot's battle advances alike.
+  - Your damage on the objectives is shared through the Citadel siege's
+    model (`battleNet.js`). Each pilot speaks for their own share, and the
+    totals are merged and taken as the largest anyone's heard of.
+  - A battle's outcome is the same for everyone: the attacker wins if the
+    reactor falls before the fight's time is up.
+  - Outcomes the players caused are remembered and passed on, as the set of
+    battle numbers players won. The front is replayed from the week's
+    battles. A pilot who wasn't there learns of those battles from anyone
+    who was.
+  - The dogfighting itself stays each pilot's own spectacle.
+- **One scale for every ship.** `shipScale.js` (tested) puts a ship's length
+  in map units from its real one, the X-wing's 12.5 m to the ship's 0.26
+  units. That gives the Star Destroyer about 33 and the MC80 about 25.
+  - Capital ships are capped below the smallest world's diameter, and no
+    smaller than a station is to the ship.
+  - The traffic's Star Destroyer (11) and the director's (16) move to the
+    same table as the battle's.
