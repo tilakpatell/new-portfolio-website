@@ -6,6 +6,8 @@ import SEALED from '../components/dickansh/sealed.json';
 import { KEPT, unseal } from '../components/dickansh/seal';
 import DickanshWorld from '../components/dickansh/DickanshWorld';
 import PhoneLock from '../components/dickansh/PhoneLock';
+import { usePhotos } from '../components/dickansh/photos';
+import Tribute from '../components/dickansh/Tribute';
 import ModelCredits from '../components/ModelCredits';
 import { storage, useDocumentTitle } from '../lib/hooks';
 import '../components/dickansh/dickansh.css';
@@ -39,6 +41,7 @@ export default function Dickansh() {
     };
   }, []);
 
+  const photos = usePhotos(museum);
   if (checking) return <div className="dk-page dk-checking" aria-busy="true" />;
   if (!museum)
     return (
@@ -51,8 +54,8 @@ export default function Dickansh() {
     );
   return (
     <div className="dk-page">
-      <DickanshWorld museum={museum} />
-      <Catalogue museum={museum} />
+      <DickanshWorld museum={museum} photos={photos} />
+      <Catalogue museum={museum} photos={photos} />
     </div>
   );
 }
@@ -72,7 +75,7 @@ function Gate({ onOpen }) {
 }
 
 // the exhibits as a page, under the world (and all there is without 3D)
-function Catalogue({ museum }) {
+function Catalogue({ museum, photos }) {
   return (
     <section className="dk-catalogue shell" aria-labelledby="dk-catalogue-title">
       <p className="dk-eyebrow">The catalogue</p>
@@ -99,6 +102,7 @@ function Catalogue({ museum }) {
           </li>
         ))}
       </ol>
+      {museum.tribute && <Tribute tribute={museum.tribute} photos={photos} className="dk-tribute-page" />}
       <div className="dk-credits">
         <p>Film stills and posters from Dhurandhar (2025, dir. Aditya Dhar, Jio Studios and B62 Studios) and Pushpa 2: The Rule (2024, dir. Sukumar, Mythri Movie Makers), via The Movie Database, are their studios’ own, shown here as a fan’s tribute.</p>
         <ModelCredits where="dickansh" line className="mt-2" />

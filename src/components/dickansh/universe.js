@@ -16,6 +16,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { makeProp } from './props';
 import { DOC_SIZE, build as buildDocument } from './document';
+import { build as buildFriends } from './friends';
 import { barkTexture, glowTexture, heartwoodTexture, islandFloorTexture, plaqueTexture, rng } from './textures';
 
 export const RING = 17; // metres from the centre to each exhibit
@@ -90,7 +91,7 @@ function framePlane(w, h, gold) {
 
 export const DOC_AT = new THREE.Vector3(0, 9.5, -40);
 
-export function build({ renderer, exhibits, doc }) {
+export function build({ renderer, exhibits, doc, tribute }) {
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x1a0405, 0.0045);
   const r = rng(99);
@@ -101,8 +102,8 @@ export function build({ renderer, exhibits, doc }) {
   nebula.frustumCulled = false;
   scene.add(nebula);
 
-  scene.add(new THREE.HemisphereLight(0xff8a6a, 0x200608, 0.55));
-  const key = new THREE.DirectionalLight(0xffc89a, 1.6);
+  scene.add(new THREE.HemisphereLight(0xff8a6a, 0x200608, 0.38));
+  const key = new THREE.DirectionalLight(0xffc89a, 1.15);
   key.position.set(30, 50, 24);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -150,7 +151,7 @@ export function build({ renderer, exhibits, doc }) {
   // the exhibits
   const marble = keep(new THREE.MeshStandardMaterial({ color: 0xf1ece4, roughness: 0.28 }));
   const glass = keep(new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.02, metalness: 0, transparent: true, opacity: 0.12, envMapIntensity: 2.5, depthWrite: false, side: THREE.DoubleSide }));
-  const ringGlow = keep(new THREE.MeshBasicMaterial({ color: 0xffa040, toneMapped: false, transparent: true, opacity: 0.7 }));
+  const ringGlow = keep(new THREE.MeshBasicMaterial({ color: 0xc87a30, toneMapped: false, transparent: true, opacity: 0.5 }));
   const beamGeo = keep(new THREE.CylinderGeometry(0.5, 1.6, 7, 32, 1, true));
   const pickables = [];
   const poses = [];
@@ -190,7 +191,7 @@ export function build({ renderer, exhibits, doc }) {
     prop.scale.setScalar(center ? 2.1 : 1.05);
     prop.position.y = ph + 0.02;
     g.add(prop);
-    spinners.push(prop);
+    spinners[i] = prop; // (by exhibit, whichever finishes first)
     if (prop.userData.steam || ex.prop === 'cereal') steams.push({ parent: g, y: ph + 0.4 * s, sprites: [] });
     // the glass case, gold-edged
     const cw = 1.5 * s;
@@ -212,7 +213,7 @@ export function build({ renderer, exhibits, doc }) {
     // the plaque, on a brass lectern in front
     const tex = keep(await plaqueTexture({ wing: ex.wing, title: ex.title, number: center ? 'Exhibit Zero' : `Exhibit ${String(i).padStart(2, '0')}` }));
     const lectern = new THREE.Mesh(keep(new RoundedBoxGeometry(1.9, 1.0, 0.08, 2, 0.03)), gold);
-    const plaque = new THREE.Mesh(plaqueGeo, keep(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4, metalness: 0.3, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.35 })));
+    const plaque = new THREE.Mesh(plaqueGeo, keep(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4, metalness: 0.3, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.18 })));
     const stand = new THREE.Group();
     stand.add(lectern);
     plaque.position.z = 0.045;
@@ -224,7 +225,7 @@ export function build({ renderer, exhibits, doc }) {
     stand.rotation.x = -0.55;
     g.add(stand);
     // light from above: a soft beam, and a glowing ring on the floor
-    const beam = new THREE.Mesh(beamGeo, keep(new THREE.ShaderMaterial({ vertexShader: BEAM_VS, fragmentShader: BEAM_FS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { color: { value: new THREE.Color(0xffc070) }, strength: { value: center ? 0.5 : 0.32 } } })));
+    const beam = new THREE.Mesh(beamGeo, keep(new THREE.ShaderMaterial({ vertexShader: BEAM_VS, fragmentShader: BEAM_FS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { color: { value: new THREE.Color(0xffc070) }, strength: { value: center ? 0.26 : 0.16 } } })));
     beam.scale.setScalar(s);
     beam.position.y = ph + 3.5 * s;
     g.add(beam);
@@ -233,7 +234,7 @@ export function build({ renderer, exhibits, doc }) {
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = 0.02;
     g.add(ring);
-    rings.push(ring);
+    rings[i] = ring;
     g.traverse((o) => {
       if (o.isMesh) o.userData.exhibit = i;
     });
@@ -245,7 +246,7 @@ export function build({ renderer, exhibits, doc }) {
     scene.add(g);
   };
 
-  const center = new THREE.PointLight(0xffc070, 40, 26, 1.6);
+  const center = new THREE.PointLight(0xffc070, 14, 26, 1.6);
   center.position.set(0, 7, 0);
   scene.add(center);
 
@@ -305,9 +306,13 @@ export function build({ renderer, exhibits, doc }) {
   const sheet = buildDocument({ doc });
   sheet.group.position.copy(DOC_AT);
   scene.add(sheet.group);
-  const docGlow = new THREE.PointLight(0xffd8a0, 30, 40, 1.4);
+  const docGlow = new THREE.PointLight(0xffd8a0, 9, 40, 1.4);
   docGlow.position.set(0, DOC_AT.y, DOC_AT.z + 10);
   scene.add(docGlow);
+
+  // and the last stop, high over the middle: why any of it is here (./friends.js)
+  const friends = buildFriends({ tribute });
+  scene.add(friends.group);
 
   const ready = Promise.all([sheet.ready, ...exhibits.map((ex, i) => makeExhibit(ex, i))]).then(() => {
     for (const st of steams)
@@ -330,13 +335,18 @@ export function build({ renderer, exhibits, doc }) {
     pages: sheet.pages,
     lineAt: (hit) => sheet.lineAt(hit),
     setLineHover: (i) => sheet.setHover(i),
+    markExhibit: (x) => sheet.mark(x),
+    friends: () => friends.pickables,
+    friendsPose: () => friends.pose(),
+    setPhotos: (list) => friends.setPhotos(list),
     // in front of the pages, far enough back to read all three
-    docPose: () => ({ target: DOC_AT.clone(), camera: DOC_AT.clone().add(new THREE.Vector3(0, 0.5, DOC_SIZE.h * 1.55)) }),
+    docPose: () => ({ target: DOC_AT.clone(), camera: DOC_AT.clone().add(new THREE.Vector3(0, 0.4, DOC_SIZE.h * 1.22)) }),
     setHover(i) {
       hover = i;
     },
     update(dt, t) {
       nebula.material.uniforms.time.value = t;
+      friends.update(dt, t);
       ringD.rotation.y += dt * 0.018;
       ringP.rotation.y -= dt * 0.012;
       spinners.forEach((p, i) => {
@@ -371,6 +381,7 @@ export function build({ renderer, exhibits, doc }) {
     dispose() {
       for (const d of disposables) d.dispose?.();
       sheet.dispose();
+      friends.dispose();
       scene.traverse((o) => {
         if (o.isMesh && spinners.some((p) => p === o || p.getObjectById(o.id))) {
           o.geometry.dispose();

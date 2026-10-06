@@ -11,7 +11,7 @@
 // line and it lights up, click it and the camera flies to its exhibit (or a
 // line that's a link opens it).
 //
-// ctx: { el, exhibits, doc, onEvent, reduced, onLost, onSlow }. The scene tells
+// ctx: { el, exhibits, doc, tribute, photos, onEvent, reduced, onLost, onSlow }. The scene tells
 // the page: 'mode' { mode: 'gate' | 'warp' | 'universe' }, 'focus' { index }
 // (-1 for none, 'doc' for the list), 'hover' { index, line? } (-1 for
 // none; `line` the list's line under the pointer). The page calls enter(),
@@ -28,6 +28,7 @@ import { build as buildGateway } from './gateway';
 import { build as buildUniverse } from './universe';
 
 const WARP = 2.3; // seconds, into the portal
+const BLOOM = 0.32; // the glow's strength, only over what's brighter than white
 const ARRIVE = 1.6; // seconds of the field of view settling after it
 const VIEWS = {
   gate: { target: new THREE.Vector3(0, 3.6, 0), yaw: 0, pitch: 0.1, dist: 22, yawMax: 1.05, pitchMin: 0.0, pitchMax: 0.55, distMin: 8, distMax: 36 },
@@ -36,7 +37,7 @@ const VIEWS = {
 const angleTo = (from, to) => from + Math.atan2(Math.sin(to - from), Math.cos(to - from));
 
 export async function create(canvas, ctx) {
-  const gl = createRenderer(canvas, { alpha: false, ratio: 2, toneMapping: THREE.ACESFilmicToneMapping, exposure: 1.05, onLost: ctx.onLost, onSlow: ctx.onSlow });
+  const gl = createRenderer(canvas, { alpha: false, ratio: 2, toneMapping: THREE.ACESFilmicToneMapping, exposure: 0.88, onLost: ctx.onLost, onSlow: ctx.onSlow });
   const { renderer } = gl;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -51,7 +52,8 @@ export async function create(canvas, ctx) {
   still.colorSpace = THREE.SRGBColorSpace;
 
   const gate = buildGateway({ renderer, still });
-  const uni = buildUniverse({ renderer, exhibits: ctx.exhibits ?? [], doc: ctx.doc });
+  const uni = buildUniverse({ renderer, exhibits: ctx.exhibits ?? [], doc: ctx.doc, tribute: ctx.tribute });
+  if (ctx.photos) uni.setPhotos(ctx.photos);
   gate.scene.environment = env;
   gate.scene.environmentIntensity = 0.45;
   uni.scene.environment = env;
@@ -60,7 +62,7 @@ export async function create(canvas, ctx) {
   const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 2000);
   const composer = new EffectComposer(renderer);
   const pass = new RenderPass(gate.scene, camera);
-  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.6, 0.5, 1.0);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), BLOOM, 0.4, 1.4);
   composer.addPass(pass);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
@@ -90,12 +92,14 @@ export async function create(canvas, ctx) {
   const focus = (i) => {
     if (mode !== 'universe') return;
     focused = i;
+    // its lines picked out on the list, Word's highlighter yellow
+    uni.markExhibit(typeof i === 'number' ? i : -1);
     if (i === -1) {
       goal.target.copy(VIEWS.universe.target);
       goal.dist = VIEWS.universe.dist;
       goal.pitch = VIEWS.universe.pitch;
     } else {
-      const p = i === 'doc' ? uni.docPose() : uni.exhibitPose(i);
+      const p = i === 'doc' ? uni.docPose() : i === 'friends' ? uni.friendsPose() : uni.exhibitPose(i);
       const off = p.camera.clone().sub(p.target);
       goal.target.copy(p.target);
       goal.dist = off.length();
@@ -118,6 +122,7 @@ export async function create(canvas, ctx) {
     pass.scene = uni.scene;
     setView(VIEWS.universe, { yaw: 1.4, pitch: 0.75, dist: 150, target: VIEWS.universe.target });
     focused = -1;
+    hover = -1;
     tell({ type: 'mode', mode });
     tell({ type: 'focus', index: -1 });
   };
@@ -125,6 +130,11 @@ export async function create(canvas, ctx) {
     if (mode !== 'universe') return;
     mode = 'gate';
     focused = -1;
+    arrive = 0;
+    hover = -1;
+    uni.setHover(-1);
+    uni.setLineHover(-1);
+    el.style.cursor = '';
     pass.scene = gate.scene;
     gate.setPower(0);
     camera.fov = 50;
@@ -150,12 +160,13 @@ export async function create(canvas, ctx) {
     ray.setFromCamera(ndc, camera);
     if (mode === 'gate') return ray.intersectObject(gate.portal, false).length ? 0 : -1;
     if (mode !== 'universe') return { index: -1, line: null };
-    const hit = ray.intersectObjects([...uni.pickables, ...uni.pages], true)[0];
+    const hit = ray.intersectObjects([...uni.pickables, ...uni.pages, ...uni.friends()], true)[0];
     if (!hit) return { index: -1, line: null };
+    if (hit.object.userData.friend) return { index: -1, line: null, friend: true };
     if (hit.object.userData.exhibit !== undefined) return { index: hit.object.userData.exhibit, line: null };
     return { index: -1, line: uni.lineAt(hit) };
   };
-  const same = (a, b) => (typeof a === 'number' ? a === b : a?.index === b?.index && a?.line?.i === b?.line?.i);
+  const same = (a, b) => (typeof a === 'number' ? a === b : a?.index === b?.index && a?.line?.i === b?.line?.i && Boolean(a?.friend) === Boolean(b?.friend));
   const onDown = (e) => {
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 1) down = { x: e.clientX, y: e.clientY, moved: 0 };
@@ -193,10 +204,10 @@ export async function create(canvas, ctx) {
           el.style.cursor = h >= 0 ? 'pointer' : '';
           tell({ type: 'hover', index: h >= 0 ? 0 : -1 });
         } else {
-          el.style.cursor = h.index >= 0 || h.line ? 'pointer' : '';
+          el.style.cursor = h.index >= 0 || h.line || h.friend ? 'pointer' : '';
           uni.setHover(h.index);
           uni.setLineHover(h.line?.i ?? -1);
-          tell({ type: 'hover', index: h.index, line: h.line });
+          tell({ type: 'hover', index: h.index, line: h.line, friend: Boolean(h.friend) });
         }
       }
     }
@@ -212,6 +223,7 @@ export async function create(canvas, ctx) {
           // a line of the list: its link, or its exhibit
           if (h.line?.link) window.open(h.line.link, '_blank', 'noopener,noreferrer');
           else if (h.line) focus(h.line.x);
+          else if (h.friend) focus('friends');
           else focus(h.index >= 0 ? h.index : focused === 'doc' ? 'doc' : -1);
         }
       }
@@ -230,8 +242,10 @@ export async function create(canvas, ctx) {
   el.addEventListener('wheel', onWheel, { passive: false });
 
   let lowered = false;
+  let frames = 0;
   // the universe's shaders and textures go up to the chip while you're still at the gate
-  uni.ready.then(() => renderer.compileAsync?.(uni.scene, camera)).catch(() => {});
+  let disposed = false;
+  uni.ready.then(() => !disposed && renderer.compileAsync?.(uni.scene, camera)).catch(() => {});
 
   const api = {
     ready: gate.ready,
@@ -239,11 +253,24 @@ export async function create(canvas, ctx) {
     leave,
     focus,
     readList: () => focus('doc'),
+    friends: () => focus('friends'),
+    // the camera straight to where it's easing to (for the QA scripts' screenshots)
+    snap() {
+      Object.assign(cam, { yaw: goal.yaw, pitch: goal.pitch, dist: goal.dist });
+      cam.target.copy(goal.target);
+      arrive = 0;
+      camera.fov = 50;
+      camera.updateProjectionMatrix();
+    },
     get mode() {
       return mode;
     },
     get focused() {
       return focused;
+    },
+    // frames drawn so far (for the QA scripts: wait on frames, not the clock)
+    get frames() {
+      return frames;
     },
     resize(w, h) {
       size.w = w;
@@ -257,6 +284,7 @@ export async function create(canvas, ctx) {
     },
     update(props) {
       if (props?.onEvent) onEvent = props.onEvent;
+      if (props?.photos) uni.setPhotos(props.photos);
     },
     lowerQuality() {
       if (lowered) return;
@@ -298,7 +326,7 @@ export async function create(canvas, ctx) {
         camera.fov = 50 + (ctx.reduced ? 0 : e * 55);
         camera.updateProjectionMatrix();
         gate.setPower(e);
-        bloom.strength = 0.6 + e * e * 2.5;
+        bloom.strength = BLOOM + e * e * 1.6;
         if (u >= 1) arriveInUniverse();
       } else {
         place();
@@ -307,14 +335,16 @@ export async function create(canvas, ctx) {
           const u = 1 - arrive / ARRIVE;
           camera.fov = 105 - easeInOut(u) * 55;
           camera.updateProjectionMatrix();
-          bloom.strength = 0.6 + (1 - u) * 2.5;
-        } else bloom.strength = 0.6;
+          bloom.strength = BLOOM + (1 - u) * 1.6;
+        } else bloom.strength = BLOOM;
       }
       composer.render(dt);
+      frames += 1;
       gl.watch(now);
       return true;
     },
     dispose() {
+      disposed = true;
       el.removeEventListener('pointerdown', onDown);
       el.removeEventListener('pointermove', onMove);
       el.removeEventListener('pointerup', onUp);
@@ -332,5 +362,11 @@ export async function create(canvas, ctx) {
     },
   };
   if (import.meta.env.DEV && typeof window !== 'undefined') window.__dickansh = api;
+  // a scene made again (the graphics chip lost and back) starts at the gate: the page hears so
+  queueMicrotask(() => {
+    if (disposed) return;
+    tell({ type: 'mode', mode });
+    tell({ type: 'focus', index: -1 });
+  });
   return api;
 }
