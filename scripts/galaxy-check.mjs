@@ -34,7 +34,7 @@ for (const id of list.split(',')) {
     window.localStorage.setItem('tp-intro', '1');
     window.localStorage.setItem('tp-start', '"universe"');
     window.localStorage.setItem('tp-universe-ship', JSON.stringify(s));
-    window.localStorage.setItem('tp-galaxy-panel', 'tucked');
+    window.localStorage.setItem('tp-galaxy-panel', JSON.stringify('tucked'));
     window.sessionStorage.setItem('tp-galaxy-intro', '1');
   }, ship);
   if (!process.env.LIVE) {
@@ -67,6 +67,24 @@ for (const id of list.split(',')) {
   }
   const loaded = (Date.now() - t0) / 1000;
   await page.waitForTimeout(settle);
+  // (in space, the ship put in one place, the same for every run: off the
+  // planet on its sun side, facing it, stopped. The seeded randomness alone
+  // can't hold it there: three.js draws on Math.random for every object's
+  // id, so a change that makes more objects moves the ship.)
+  if (mode !== 'surface' && !process.env.LIVE) {
+    await page.waitForFunction(() => !window.__galaxy().jump, null, { timeout: 120000 }).catch(() => {});
+    await page.evaluate(() => {
+      const { state } = window.__galaxyDebug;
+      const r = state.world?.body?.radius ?? 30;
+      const sun = state.sys.suns[0].dir;
+      const l = Math.hypot(sun[0], sun[2]) || 1;
+      const [sx, sz] = [sun[0] / l, sun[2] / l];
+      const d = r * 3.2 + 26;
+      state.auto = null;
+      state.ship = { ...state.ship, x: sx * d, y: d * 0.12, z: sz * d, heading: Math.atan2(sx, sz), pitch: -Math.atan(0.12), bank: 0, speed: 0, rate: 0, tipRate: 0, rollRate: 0 };
+    });
+    await page.waitForTimeout(2500);
+  }
   // one whole frame's counts (every pass), and the frame times over 4 s
   const stats = await page.evaluate(
     (surface) =>
