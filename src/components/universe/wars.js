@@ -171,11 +171,14 @@ export const WARS = {
   rickmorty: {
     id: 'rickmorty',
     name: 'The War for the Multiverse',
-    ready: false, // (its flagships come with their models: PR D)
+    ready: true,
     sides: [council, federation],
+    // at its real places on the map: from just off the Citadel (deep.js's) to
+    // the sky over Earth C-137 (the Rick and Morty world), which the
+    // Federation took, as it did in the show
     sectors: line(
-      [2400, 120, 5200],
-      [4000, 120, 5200],
+      [1216, -135, -4464],
+      [-288, -135, -3916],
       [
         ['citadel', 'The Citadel'],
         ['birdworld', 'Bird World'],
@@ -183,7 +186,7 @@ export const WARS = {
         ['squanch', 'Planet Squanch'],
         ['unity', 'Unity’s world'],
         ['gromflom', 'Gromflom Prime'],
-        ['fedprime', 'Federation Prime'],
+        ['c137', 'Earth C-137'],
       ],
     ),
     battleName: (s) => `The fight over ${s.name}`,
