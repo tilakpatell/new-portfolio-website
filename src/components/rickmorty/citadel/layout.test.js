@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { pushOut, sightClear } from '../../middleearth/towns/walker';
-import { CAST, COLLIDERS, CROWD_LOOPS, ESCAPE_START, HANGAR_WALLS, PEN, ROUNDS, SPOTS, START, WALLS, WORLD, castFor, crowdColliders, crowdFor, inPen, spot, validAt } from './layout';
+import { CAST, COLLIDERS, CROWD_LOOPS, DOORS, ESCAPE_START, HANGAR_WALLS, PEN, ROUNDS, SPOTS, START, WALLS, WORLD, castFor, crowdColliders, crowdFor, inPen, spot, validAt } from './layout';
 
 const clear = (x, z, rad = 0.45, walls = WALLS) => {
   const [px, pz] = pushOut(x, z, rad, COLLIDERS, walls);
@@ -49,6 +49,15 @@ describe('the Citadel’s concourse', () => {
   });
   it('lets the crowd walk its loops without walking through anything', () => {
     for (const loop of CROWD_LOOPS) for (const [a, b] of legs(loop)) expect(legClear(a, b, 0.4), `${a} → ${b}`).toBe(true);
+  });
+  it('walks the crowd clear of the places to stop', () => {
+    const near = (s, [a, b]) => {
+      const dx = b[0] - a[0];
+      const dz = b[1] - a[1];
+      const t = Math.max(0, Math.min(1, ((s.x - a[0]) * dx + (s.z - a[1]) * dz) / (dx * dx + dz * dz)));
+      return Math.hypot(s.x - a[0] - t * dx, s.z - a[1] - t * dz);
+    };
+    for (const loop of CROWD_LOOPS) for (const leg of legs(loop)) for (const s of SPOTS) expect(near(s, leg), `${leg[0]} → ${leg[1]} by ${s.id}`).toBeGreaterThan(s.r + 0.4);
   });
   it('can reach every spot from the portal', () => {
     for (const s of SPOTS) expect(reachable(START, s), s.id).toBe(true);
@@ -107,6 +116,9 @@ describe('the Citadel’s concourse', () => {
 
 describe('the Citadel’s crowds', () => {
   const MOODS = ['day', 'election'];
+  it('leave the doors in the shopfronts clear', () => {
+    for (const mood of MOODS) for (const c of crowdFor(mood)) for (const [id, d] of Object.entries(DOORS)) expect(Math.hypot(c.x - d.x, c.z - d.z), `${mood} ${id} ${c.x},${c.z}`).toBeGreaterThan(4.5);
+  });
   it('stand clear of everything, of each other and of the places to stop', () => {
     for (const mood of MOODS) {
       const crowd = crowdFor(mood);

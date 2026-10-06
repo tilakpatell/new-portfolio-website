@@ -15,25 +15,25 @@ The design is `docs/superpowers/specs/2026-10-06-universe-visual-upgrade-design.
 |---|---|---|---|---|
 | 0 | Poses and a baseline | #302 (poses, check script); #328 (baseline) | done | `lab/universe/baseline/{high,mid,low}.json` and 30 shots, taken on `main` at e4fcc10e after the scale changes: high calls 49–150, triangles 0.14–1.32 M; mid calls 49–148, triangles 0.14–1.14 M; low calls 49–146, triangles 0.14–1.14 M |
 | 1 | The render, finished | #336 | done | Against the baseline, `high`: calls +0 to +2 a pose, triangles at or under it (overview 150 → 150, 1.20 → 1.17 M; falcon-sun 141 → 142); `mid` and `low` within +4 calls and +0 % triangles (traffic and the station’s turn move a pose’s calls by ±2 from run to run; `mid` maw’s −120 k triangles is the Falcon’s model still loading, `low` station’s −37 calls its wheel turned). Contrast at maw on `high` 85.1 → 95.5. Smoke green on `/universe`, `/galaxy/hoth`, `/galaxy/tatooine/surface` |
-| 2 | One light | this PR | done | Against the baseline, every tier: calls −1 to +3 a pose, triangles +0 % but mid overview +2.8 % (the landing’s and the Maw’s on mid and low move with what has loaded: see below). Every world lit at 2.35 by its own star; the light turns as you fly from one star to the next; arrivals and a world picked on the map face its day side. Contrast at caribbean 87.3 → 103.5 and middleearth-limb 124.8 → 132.1 on `high`; Dot Matrix 135.5 → 114.1 under Ember’s orange (checkpoint 4 reads its light in its own colours). Smoke green |
-| 3 | Air, clouds, seas, ground | | not started | |
-| 4 | The styles in the light | | not started | |
-| 5 | The hero ship | | not started | |
-| 6 | Rock | | not started | |
-| 7 | What burns | | not started | |
+| 2 | One light | #381 | done | Against the baseline, every tier: calls −1 to +3 a pose, triangles +0 % but mid overview +2.8 % (the landing’s and the Maw’s on mid and low move with what has loaded: see below). Every world lit at 2.35 by its own star; the light turns as you fly from one star to the next; arrivals and a world picked on the map face its day side. Contrast at caribbean 87.3 → 103.5 and middleearth-limb 124.8 → 132.1 on `high`; Dot Matrix 135.5 → 114.1 under Ember’s orange (checkpoint 4 reads its light in its own colours). Smoke green |
+| 3 | Air, clouds, seas, ground | #393 | done | Against the baseline, every tier: calls −6 to +3 a pose, triangles +3.3 % at most (C-137 on `high`: the real air’s shell over the halo); the landing moves with what has loaded. The fandoms’ worlds wear real air on `high` and `mid` (a blue-white limb toward the sun, warm at the terminator, gone at night), the clouds shade the ground, seas glint (the Caribbean shows both of the Twins), and the ground comes up in detail close in; four new baked maps (793 KB). Smoke green |
+| 4 | The styles in the light | #394 | done | Merged on the owner’s word before its own three-tier run; the end state is measured after checkpoint 8. Preview on `high`: rickmorty 57 calls, 0.223 M triangles (as checkpoint 3), gaming 58, 0.196 M (unchanged); contrast at gaming 118.8 → 140.8 (four greens dithered, read in their own colours), rickmorty 115.6 → 124.8 (cel bands, inked limb, two flat lime air bands). 14 program variants from the planets’ own hooks, pinned at 24 or fewer |
+| 5 | The hero ship | #396 | done | Merged on the owner’s word before its own three-tier run; the end state is measured after checkpoint 8. Preview on `high`: falcon-sun 141 calls, 1.262 M triangles (checkpoint 4’s 144 and 1.294 M: the HD Falcon loads either way; +1 for every engine at once), station 121, 1.330 M. The Falcon reads as paint over metal (it was clay at roughness 1), its dark side rimmed in the fill’s colour, its engines lit with the throttle |
+| 6 | Rock | #397 | done | Merged on the owner’s word before its own three-tier run; the end state is measured after checkpoint 8. Preview at belt on `high`: 83 calls (80 at the baseline: a boulder draw for the belt, one for the rim, one for every engine), 1.135 M triangles (+2.7 %: the boulders’ 180 faces). The belt, the rim, the meteors and deep space’s streams read as pitted stone on `high` and `mid`, a boulder one rock in forty |
+| 7 | What burns | this PR | done | Merged on the owner’s word before its own three-tier run; the end state is measured after checkpoint 8. A blast set off at falcon-sun (`__universe().blast`) costs three draws while it plays (148 against 145) and none after; just the pop on `low` and from the pace’s step 2. Every hunter, traffic ship, rival pilot and skirmisher shot down burns, and your own ship when it crashes on a planet |
 | 8 | The sky on foot | | not started | |
 
 Scorecard (the spec’s “Where things stand” table is the before): fill in the after per category as checkpoints land, one line of evidence each.
 
 | Category | Before | After | Evidence |
 |---|---|---|---|
-| Art direction | 2 | | |
-| Hero (the ship) | 1.5 | | |
+| Art direction | 2 | 2.5 (checkpoint 4) | The styles are in the light: C-137 in three cel bands with an inked limb and flat lime air, Dot Matrix in four greens through an ordered dither, the Office lit as paper (sheen), Cybertron’s seams in the key light’s colour |
+| Hero (the ship) | 1.5 | 2.5 (checkpoint 5) | Tuned on load as paint over metal (one profile, `SHIP_PROFILE`), rimmed by the light that isn’t the key, its engines and every other ship’s glowing with the throttle in one draw |
 | Enemies and traffic | 2 | | |
-| World | 2 | | |
-| Materials | 1.5 | | |
+| World | 2 | 2.5 (checkpoint 6) | The belt and the rim, the home system’s middle ground, are pitted stone (3D noise in each rock’s space: darker, rougher pits, lit edges) with a cratered boulder one rock in forty, in place of flat-shaded lumps |
+| Materials | 1.5 | 2.5 (checkpoint 3) | Real single-scatter air round the fandoms’ worlds in place of a flat tinted rim; the clouds cast shadows; seas glossy (C-137’s and Invincible’s roughness maps, a floor of 0.22); the ground comes up in detail close in; 2048 relief on `ultra` for the Caribbean and Invincible |
 | Lighting and render | 2 | 3 (checkpoint 2) | Checkpoint 2: the key and the fill come from the stars that light the camera, in their colours (orange by Ember, the Twins’ two suns turning), every world lit at full by its own star; two flares and one exposure for two suns; metal reflects the key star. Checkpoint 1 (2.5): | The dark gradients dithered with blue noise (no banding at 8 bits); the bloom sized to the page, capped at 640 on its long side; the home sun glares in the lens (one draw) and is hidden by what crosses it; the exposure eases into the dark and stops down into the sun. Contrast at maw 85.1 → 95.5 on `high`, at overview 77 → 89.3 |
-| VFX | 2 | | |
+| VFX | 2 | 2.5 (checkpoint 7) | What’s shot down burns: a pooled noise fireball that swells and cools white, orange, smoke in 1.4 s, 24 tumbling shards and, bigger than a fighter, a ring; your own crash goes up into its shockwave |
 | Performance evidence | 2 | 2.5 (checkpoint 0) | Ten fixed poses on three tiers, a committed baseline, and every checkpoint’s counts against it (`scripts/universe-check.mjs`) |
 
 ## Where the code differs from the plan

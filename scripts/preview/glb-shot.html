@@ -43,6 +43,28 @@
       scene.add(sun, new THREE.HemisphereLight('#bbccdd', '#332211', 0.3));
       const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(q.get('url'));
       const root = gltf.scene;
+      // &look=toon: as a Meshy figure or prop is drawn in the game
+      // (rickmorty/portal/meshyCast.js): its colour map only, on three light
+      // steps, no normal or metal maps, with a cool rim
+      if (q.get('look') === 'toon') {
+        const ramp = new THREE.DataTexture(new Uint8Array([165, 165, 165, 255, 215, 215, 215, 255, 255, 255, 255, 255]), 3, 1, THREE.RGBAFormat);
+        ramp.minFilter = ramp.magFilter = THREE.NearestFilter;
+        ramp.needsUpdate = true;
+        root.traverse((o) => {
+          if (!o.isMesh) return;
+          const m = new THREE.MeshToonMaterial({ color: 0xffffff, map: o.material.map ?? null, gradientMap: ramp });
+          if (!m.map) m.color.copy(o.material.color ?? new THREE.Color(1, 1, 1));
+          m.onBeforeCompile = (s) => {
+            s.fragmentShader = s.fragmentShader.replace(
+              '#include <opaque_fragment>',
+              'outgoingLight += vec3(0.875, 0.965, 1.0) * diffuseColor.rgb * pow(1.0 - saturate(dot(normal, normalize(vViewPosition))), 3.0) * 0.3;\n#include <opaque_fragment>',
+            );
+          };
+          o.material = m;
+        });
+        renderer.toneMapping = THREE.NoToneMapping;
+        scene.environment = null;
+      }
       scene.add(root);
       const box = new THREE.Box3().setFromObject(root);
       const size = box.getSize(new THREE.Vector3());
@@ -64,10 +86,13 @@
         rear: [[0, 0.3, -1], 1.9, [0, 0, 0]],
         back: [[-0.9, 0.5, -1.6], 1.9, [0, 0, 0]],
         top: [[0, 2, 0.01], 1.9, [0, 0, 0]],
+        // a standing figure's head, from the front and a little to the side
+        face: [[0.3, 0, 1], 0.8, [0, size.y * 0.39, 0]],
       };
       views.forEach((v, i) => {
         const [dir, far, look] = at[v] ?? at.three;
         cam.position.set(...dir).normalize().multiplyScalar(R * far);
+        if (v === 'face') cam.position.y += look[1]; // level with the head it looks at
         cam.lookAt(...look);
         renderer.setViewport(i * W, 0, W, H);
         renderer.setScissor(i * W, 0, W, H);

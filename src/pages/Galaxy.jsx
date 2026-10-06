@@ -18,6 +18,7 @@ import { runtime } from '../runtime';
 import { galaxyCrew } from '../components/galaxy/lines';
 import GalaxyView from '../components/galaxy/GalaxyView';
 import GalaxyPanel from '../components/galaxy/GalaxyPanel';
+import { holdJump } from '../components/hyperspace3d/timeline';
 import HoloMap from '../components/galaxy/HoloMap';
 import GalaxyIntro from '../components/galaxy/GalaxyIntro';
 import '../components/galaxy/galaxy.css';
@@ -168,6 +169,18 @@ export default function Galaxy() {
     import('./GalaxySurface').catch(() => {});
   }, [at, current]);
 
+  // The jump to lightspeed between systems is the site's own (App's
+  // Hyperspace, the same as the universe map's): played over the scene from
+  // the moment the ship spools up, held in its tunnel while the next system's
+  // built and the light-years flown, let go when the scene comes out of it
+  // (or the Empire's Interdictor pulls it out short).
+  const jumpHold = useRef(null);
+  const letGo = () => {
+    jumpHold.current?.();
+    jumpHold.current = null;
+  };
+  useEffect(() => letGo, []);
+
   // what the scene says: to the comms, and to the page
   const onEvent = useCallback(
     (e) => {
@@ -192,8 +205,13 @@ export default function Galaxy() {
           balk.current = setTimeout(() => setBalked(false), 3000);
           return;
         }
-        setJumping(e.phase === 'cancel' ? null : { to: e.to, phase: e.phase });
-        if (e.phase === 'spool') comms.current?.handle({ type: 'event', id: 'jump' });
+        setJumping(e.phase === 'cancel' || e.phase === 'out' ? null : { to: e.to, phase: e.phase });
+        if (e.phase === 'spool') {
+          letGo();
+          jumpHold.current = holdJump();
+          window.dispatchEvent(new Event('tp:hyperspace'));
+          comms.current?.handle({ type: 'event', id: 'jump' });
+        } else if (e.phase === 'out') letGo();
         return;
       }
       if (e.type === 'interdicted') {
