@@ -849,5 +849,57 @@
   "gearperson-b": {
     "image": "01a1132d-c024-7382-bfa2-b9be25bfc76e",
     "model": "01a11339-2d9f-7519-a6a9-a93683944cfe"
+  },
+  "krombopulos": {
+    "sketchfab": {
+      "name": "Krombopulos Rick And Morty",
+      "user": {
+        "uid": "2ac4e7b93fd34aadbdad7bd5e438d0e4",
+        "username": "elchupaanos",
+        "displayName": "ELCHUPAAANOS",
+        "account": "basic",
+        "profileUrl": "https://sketchfab.com/elchupaanos",
+        "avatar": {
+          "uid": "8d6bf00403f34797a8a311226af94001",
+          "uri": "https://api.sketchfab.com/v3/avatars/8d6bf00403f34797a8a311226af94001",
+          "images": [
+            {
+              "width": 32,
+              "height": 32,
+              "size": 2624,
+              "url": "https://media.sketchfab.com/avatars/8d6bf00403f34797a8a311226af94001/6d4eb1dfc1b943c4aa7ee06c7881ca5e.png"
+            },
+            {
+              "width": 48,
+              "height": 48,
+              "size": 5449,
+              "url": "https://media.sketchfab.com/avatars/8d6bf00403f34797a8a311226af94001/84c981e6d3dc488bbdb2719eb0dc170b.png"
+            },
+            {
+              "width": 90,
+              "height": 90,
+              "size": 16673,
+              "url": "https://media.sketchfab.com/avatars/8d6bf00403f34797a8a311226af94001/c398fdd6cadc4f688cbf402b9438a9e7.png"
+            },
+            {
+              "width": 100,
+              "height": 100,
+              "size": 20163,
+              "url": "https://media.sketchfab.com/avatars/8d6bf00403f34797a8a311226af94001/073a4f9846ef41ccb2fddfb6926f2d16.png"
+            }
+          ]
+        },
+        "uri": "https://api.sketchfab.com/v3/users/2ac4e7b93fd34aadbdad7bd5e438d0e4"
+      },
+      "license": {
+        "uri": "https://api.sketchfab.com/v3/licenses/322a749bcfa841b29dff1e8a1bb74b0b",
+        "label": "CC Attribution",
+        "fullName": "Creative Commons Attribution",
+        "requirements": "Author must be credited. Commercial use is allowed.",
+        "url": "http://creativecommons.org/licenses/by/4.0/",
+        "slug": "by"
+      },
+      "viewerUrl": "https://sketchfab.com/3d-models/krombopulos-rick-and-morty-4d65b1da2fe54c5590aa8abc7c64bf83"
+    }
   }
 }

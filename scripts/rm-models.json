@@ -298,5 +298,45 @@
   "gearperson-b": {
     "status": "done",
     "by": "local"
+  },
+  "squanchy": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "birdperson": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "phoenixperson": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "unity": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "marsha": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "mortyjr": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "krombopulos": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "zigerion": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "squanchy-house": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "birdperson-house": {
+    "status": "claimed",
+    "by": "local"
   }
 }
