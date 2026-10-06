@@ -247,6 +247,31 @@ export const GALAXY_LINES = {
         ['morty', 'Rick, TIE fighters! I thought the Empire lost!'],
         ['rick', 'It did, Morty. These are the leftovers. Same TIEs, smaller budget. Shoot!'],
       ],
+      // the outlaws (roamRules.js): what the Star Destroyer launches, the bounty hunters, the pirates
+      navy: [
+        ['morty', 'Rick, the big triangle’s opening up! Stuff’s coming out of it!'],
+        ['rick', 'Bombers and a gunboat, Morty. The Empire’s bringing the heavy stuff. Flattering, honestly.'],
+      ],
+      fett: [
+        ['morty', 'Rick, that ship’s flying sideways! Who flies sideways?!'],
+        ['rick', 'Boba Fett, Morty. Best bounty hunter in this galaxy, and somebody paid him for us. Don’t get caught.'],
+      ],
+      ig88: [
+        ['morty', 'Rick, that one’s not even talking. It’s just… coming.'],
+        ['rick', 'IG-88, Morty. An assassin droid flying an assassin ship. It doesn’t negotiate and it doesn’t blink.'],
+      ],
+      bossk: [
+        ['morty', 'Rick, there’s a lizard guy on the comms and he’s hissing at us!'],
+        ['rick', 'Bossk, Morty. Trandoshan. He hunts Wookiees for fun, so we’re a step down for him. Make him regret it.'],
+      ],
+      dengar: [
+        ['morty', 'Rick, that ship’s got a bandage on it. Like, the pilot. The pilot’s in bandages.'],
+        ['rick', 'Dengar, Morty. Half the man he used to be and twice as angry. Shoot the bandages.'],
+      ],
+      weequay: [
+        ['comms', 'Hondo Ohnaka, at your service. Your cargo, if you please.'],
+        ['rick', 'Pirates, Morty. Skiffs with guns bolted on. I respect the hustle. Shoot them anyway.'],
+      ],
     },
     kill: {
       vulture: [
@@ -483,6 +508,10 @@ export const GALAXY_LINES = {
       remnant: [
         ['luke', 'TIEs! The Emperor’s gone, and they’re still out here.'],
         ['r2', '[an urgent warble: some people don’t know when it’s over]'],
+      ],
+      weequay: [
+        ['comms', 'Hondo Ohnaka, at your service. Your cargo, if you please.'],
+        ['luke', 'Pirates. Artoo, they’re after whoever’s nearest. Let’s make it us.'],
       ],
     },
     kill: {
@@ -721,6 +750,10 @@ export const GALAXY_LINES = {
         ['han', 'TIEs? The Empire’s finished. Somebody forgot to tell these guys.'],
         ['chewie', '[a defiant roar]'],
       ],
+      weequay: [
+        ['comms', 'Hondo Ohnaka, at your service. Your cargo, if you please.'],
+        ['han', 'Hondo. I still owe him for Florrum. Chewie, let’s not pay him today.'],
+      ],
     },
     kill: {
       vulture: [
@@ -956,6 +989,31 @@ export const GALAXY_LINES = {
       remnant: [
         ['jesse', 'Yo, bug zappers again! I thought the bad guys lost!'],
         ['walt', 'An empire never dies all at once, Jesse. The remnants are the dangerous part.'],
+      ],
+      // the outlaws (roamRules.js): what the Star Destroyer launches, the bounty hunters, the pirates
+      navy: [
+        ['jesse', 'Mr. White, the big ship’s letting stuff out! Fat ones and a… a boxy one!'],
+        ['walt', 'Bombers, Jesse, and something to keep us busy while they line up. Don’t fly straight.'],
+      ],
+      fett: [
+        ['jesse', 'Yo, that one’s flying on its side! Who does that?'],
+        ['walt', 'A professional, Jesse. Someone has put a price on us. I’d like to know who, and how much.'],
+      ],
+      ig88: [
+        ['jesse', 'It’s not saying anything, Mr. White. It’s just coming straight at us.'],
+        ['walt', 'A machine, Jesse. No fear, no greed, no second thoughts. We have all three. Use them.'],
+      ],
+      bossk: [
+        ['jesse', 'There’s a lizard on the radio and it’s hissing at us, yo!'],
+        ['walt', 'Then it’s a lizard with a very poor sense of who it’s hunting.'],
+      ],
+      dengar: [
+        ['jesse', 'The guy flying that thing is wrapped in bandages, Mr. White. Like a mummy.'],
+        ['walt', 'A man who has been hurt before and kept coming, Jesse. Respect that, and shoot him down anyway.'],
+      ],
+      weequay: [
+        ['comms', 'Hondo Ohnaka, at your service. Your cargo, if you please.'],
+        ['walt', 'Pirates. Jesse, we are not carrying cargo. We are the cargo. Lose them.'],
       ],
     },
     kill: {

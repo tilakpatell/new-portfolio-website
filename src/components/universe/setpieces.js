@@ -28,7 +28,7 @@
 //   tunnel of blue-white light that opens, holds for a while and closes. Fly
 //   into it and the scene takes you out of it somewhere else on the map.
 //
-// createSetPieces(parent, { small }) → { destroyer(ship, kind) → { hangar } | null, leave(), cleared(),
+// createSetPieces(parent, { small, fleet, solids }) → { destroyer(ship, kind) → { hangar } | null, leave(), cleared(),
 //   destroyerHere, targets, hit(from, to, punch) → hit | null, drain() → events (capitalRules.js's),
 //   roadblock(ship) → boolean, chopperHere,
 //   portals(points), comet(ship), flare(star, ship) → { arrives } | null,
@@ -186,7 +186,9 @@ function tail(color, width, length) {
   return mesh;
 }
 
-export function createSetPieces(parent, { small = false, fleet = createFleet() } = {}) {
+// solids: what's solid where this flies (the map's, as it comes; a star
+// system's, in the galaxy), so a capital ship never drops in inside a planet
+export function createSetPieces(parent, { small = false, fleet = createFleet(), solids = () => SOLIDS } = {}) {
   const made = [];
   const keep = (x) => (made.push(x), x);
   const glow = keep(glowTexture());
@@ -300,7 +302,7 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
       const side = Math.random() < 0.5 ? -1 : 1;
       // crossing your path, slowly
       const heading = ship.heading + side * (Math.PI / 2 + 0.3);
-      const d = cap.arrive(kind, destroyerSpot(ship, side), heading, { len: LENGTH[kind] ?? LENGTH.destroyer, top: sdTop });
+      const d = cap.arrive(kind, destroyerSpot(ship, side, solids()), heading, { len: LENGTH[kind] ?? LENGTH.destroyer, top: sdTop });
       if (!d) return null;
       sd.group.visible = true;
       sdFlash.visible = true;

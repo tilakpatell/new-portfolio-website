@@ -120,6 +120,17 @@ describe('the director', () => {
     }
     expect(createDirector({ rand: seeded() }).foretell(null)).toBeNull();
   });
+
+  it('picks only from the events it is given, when a map brings only some', () => {
+    const events = { hunt: EVENTS.hunt, comet: EVENTS.comet };
+    const got = run(createDirector({ rand: seeded(5), events }), 6000, { side: SIDES.starwars });
+    expect(got.length).toBeGreaterThan(40);
+    for (const { e } of got) expect(['hunt', 'comet']).toContain(e);
+    // (asked for one it wasn't given, it brings nothing of the kind)
+    const d = createDirector({ rand: seeded(5), events });
+    d.soon('rift');
+    expect(run(d, 600, { side: SIDES.starwars }).map((g) => g.e)).not.toContain('rift');
+  });
 });
 
 describe('the law on your back', () => {

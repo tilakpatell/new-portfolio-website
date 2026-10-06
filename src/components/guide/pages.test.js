@@ -50,8 +50,9 @@ describe('the corner button’s side of it (routes.js)', () => {
 
   it('leaves a note only on pages that have controls to tell', () => {
     for (const [path, g] of Object.entries(GUIDES)) if (g.nudge) expect(Boolean(PAGES[path].keys || PAGES[path].touch), path).toBe(true);
-    for (const path of ['/universe', '/galaxy/surface', '/albuquerque', '/middle-earth/place']) expect(guideMeta(path).nudge, path).toBe(true);
-    for (const path of ['/home', '/terminal', '/projects']) expect(guideMeta(path).nudge, path).toBe(false);
+    for (const path of ['/galaxy/surface', '/albuquerque', '/middle-earth/place']) expect(guideMeta(path).nudge, path).toBe(true);
+    // (the universe and the galaxy: their first hint says where the controls are)
+    for (const path of ['/home', '/terminal', '/projects', '/universe', '/universe/marvel', '/galaxy/hoth']) expect(guideMeta(path).nudge, path).toBe(false);
   });
 });
 

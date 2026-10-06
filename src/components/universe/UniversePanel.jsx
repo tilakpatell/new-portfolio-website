@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { RiArrowGoBackLine, RiArrowLeftLine, RiArrowRightLine, RiCompass3Line, RiLayoutGridLine, RiRestartLine, RiSideBarFill, RiSideBarLine } from 'react-icons/ri';
+import { RiArrowGoBackLine, RiArrowLeftLine, RiArrowRightLine, RiCompass3Line, RiLayoutGridLine, RiQuestionLine, RiRestartLine, RiSideBarFill, RiSideBarLine } from 'react-icons/ri';
+import { openGuide } from '../../lib/palette';
 import { restartSite } from '../../lib/restart';
 import GuideLink from '../guide/GuideLink';
 import { CARDS } from '../interests/cards';
@@ -43,10 +44,23 @@ function Ships({ ship, onShip }) {
   );
 }
 
+// The keys to get going, as a grid; the guide (?) has all of them, and the tips
+const KEYMAP = [
+  [['W', 'S'], 'Throttle'],
+  [['A', 'D'], 'Roll'],
+  [['←', '→', '↑', '↓'], 'Steer'],
+  [['Space'], 'Boost'],
+  [['F'], 'Fire'],
+  [['M'], 'Nav map'],
+  [['V'], 'Cockpit'],
+  [['H'], 'Hangar'],
+];
+
 const and = (names) => (names.length < 2 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
 
-// What the ship's fitted with (outfit.js), and the way into the hangar
-function Fitted({ loadout, onHangar }) {
+// What the ship's fitted with (outfit.js), and the ways into the hangar
+// and to another ship
+function Fitted({ loadout, onHangar, onChange }) {
   const paint = paintById(loadout.paint);
   const parts = PARTS_SLOTS.filter((slot) => loadout[slot] !== STOCK).map((slot) => partById(slot, loadout[slot]));
   return (
@@ -58,9 +72,16 @@ function Fitted({ loadout, onHangar }) {
           {parts.length ? `, with ${and(parts.map((p) => p.name))}` : ', nothing bolted on'}
         </span>
       </p>
-      <button type="button" className="btn btn-ghost btn-sm mt-3" onClick={onHangar}>
-        Open the hangar
-      </button>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {onHangar && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onHangar}>
+            Open the hangar
+          </button>
+        )}
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onChange}>
+          Change ship
+        </button>
+      </div>
     </div>
   );
 }
@@ -201,64 +222,57 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
               You’re flying {crew.ship.replace(/^(The|An) /, (m) => m.toLowerCase())} with {crew.label}. Fly close to a station or a planet to see what’s there, or pick one by name and the ship takes
               you.
             </p>
-            {loadout && onHangar && <Fitted loadout={loadout} onHangar={onHangar} />}
-            <ul className="universe-keys mt-4">
-              <li className="universe-keys-board">
-                It flies like a Battlefront starfighter: <kbd>W</kbd> <kbd>S</kbd> for the throttle, <kbd>A</kbd> <kbd>D</kbd> to roll, <kbd>←</kbd> <kbd>→</kbd> to swing the nose and <kbd>↑</kbd> <kbd>↓</kbd> to pull it up and down. Or drag on the map like a stick
-              </li>
-              <li className="universe-keys-board">
-                Nothing stops the nose: hold <kbd>↑</kbd> to loop right over. To turn hard, roll with <kbd>A</kbd> or <kbd>D</kbd> and pull back. Let go and it rolls itself upright again
-              </li>
-              <li>The worlds are far apart: boost between them for the pulse drive, and fight your way through. Or open the nav map and let the ship take you, at hyperspeed (a jump), super speed or cruising</li>
-              <li className="universe-keys-board">
-                <kbd>Space</kbd> to boost, hold <kbd>F</kbd> to fire, <kbd>M</kbd> for the nav map, <kbd>J</kbd> to jump to the place picked
-              </li>
-              <li className="universe-keys-board">
-                <kbd>V</kbd> for the cockpit, or back behind the ship
-              </li>
-              <li>The guns lock on to whoever comes after you, nearest first: shoot at the pip ahead of them and the shots bend home. Arrows at the edge show the ones you can’t see</li>
-              <li className="universe-keys-board">
-                <kbd>T</kbd> for the next target (<kbd>Q</kbd> the one before), or click one; <kbd>E</kbd> to land or dock where you are
-              </li>
-              <li className="universe-keys-board">
-                <kbd>H</kbd> for the hangar: a paint job (more come with achievements), and boosters, thrusters, guns, shields and fins that change how it flies, as much as its power plant can run
-              </li>
-              <li className="universe-keys-touch">The wrench in the corner is the hangar: paint and parts for the ship</li>
-              <li className="universe-keys-board">
-                <kbd>O</kbd> for the flight settings: steering, pitch and roll, self-levelling (off, it stays upside down), drag sensitivity, aim assist, the camera, up and down the other way round, and <kbd>A</kbd> <kbd>D</kbd> to turn instead
-              </li>
-              <li>Out in deep space, click a wonder and the ship flies you there</li>
-              <li className="universe-keys-touch">Drag anywhere to fly, hold the arrows to pull the nose up and down (all the way over, if you like), hold Boost to go fast and Fire to shoot; View is the cockpit, and the sliders button sets how it feels</li>
-              <li className="universe-keys-touch">Tap a planet, a station or a wonder to fly there, or a hunter to lock on</li>
-            </ul>
-            <button type="button" className="btn btn-ghost btn-sm mt-5" onClick={() => setChanging(true)}>
-              Change ship
+            {loadout ? (
+              <Fitted loadout={loadout} onHangar={onHangar} onChange={() => setChanging(true)} />
+            ) : (
+              <button type="button" className="btn btn-ghost btn-sm mt-4" onClick={() => setChanging(true)}>
+                Change ship
+              </button>
+            )}
+            <dl className="universe-keymap" aria-label="Keys">
+              {KEYMAP.map(([keys, does]) => (
+                <div key={does}>
+                  <dt>
+                    {keys.map((k) => (
+                      <kbd key={k}>{k}</kbd>
+                    ))}
+                  </dt>
+                  <dd>{does}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="universe-keymap-touch mt-4">Drag anywhere to fly, or tap a place and the ship takes you. Boost, Fire and View are on the screen; the wrench is the hangar.</p>
+            <button type="button" className="universe-back universe-guide-all" onClick={openGuide}>
+              <RiQuestionLine className="h-3.5 w-3.5" aria-hidden="true" /> All the controls and tips
             </button>
           </>
         )}
-        <p className="universe-credit">
-          Planet maps and the Milky Way by{' '}
-          <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener noreferrer">
-            Solar System Scope
-          </a>{' '}
-          (CC BY 4.0), recoloured; metal and paper from{' '}
-          <a href="https://ambientcg.com" target="_blank" rel="noopener noreferrer">
-            ambientCG
-          </a>{' '}
-          (CC0).
-        </p>
-        <p className="universe-credit">
-          The worlds stand in their light the way{' '}
-          <a href="https://bruno-simon.com" target="_blank" rel="noopener noreferrer">
-            Bruno Simon
-          </a>
-          ’s folio does (
-          <a href="https://github.com/brunosimon/folio-2019" target="_blank" rel="noopener noreferrer">
-            folio-2019
-          </a>
-          , MIT): soft shadows baked into the ground, a bounce of the ground’s colour on everything, and a soft blob under whatever moves, rendered once in your browser as each world opens.
-        </p>
-        <ModelCredits where="universe" className="universe-credit universe-models" />
+        <details className="universe-credits">
+          <summary>Credits</summary>
+          <p className="universe-credit">
+            Planet maps and the Milky Way by{' '}
+            <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener noreferrer">
+              Solar System Scope
+            </a>{' '}
+            (CC BY 4.0), recoloured; metal and paper from{' '}
+            <a href="https://ambientcg.com" target="_blank" rel="noopener noreferrer">
+              ambientCG
+            </a>{' '}
+            (CC0).
+          </p>
+          <p className="universe-credit">
+            The worlds stand in their light the way{' '}
+            <a href="https://bruno-simon.com" target="_blank" rel="noopener noreferrer">
+              Bruno Simon
+            </a>
+            ’s folio does (
+            <a href="https://github.com/brunosimon/folio-2019" target="_blank" rel="noopener noreferrer">
+              folio-2019
+            </a>
+            , MIT): soft shadows baked into the ground, a bounce of the ground’s colour on everything, and a soft blob under whatever moves, rendered once in your browser as each world opens.
+          </p>
+          <ModelCredits where="universe" className="universe-credit universe-models" />
+        </details>
         <Exits onClassic={onClassic} />
       </aside>
     );
