@@ -138,6 +138,16 @@ function World({ gl, setGl }) {
     canvas.current?.focus({ preventScroll: true });
   }, [touch]);
 
+  // (the page knows, so the guide's ? keeps clear of the touch buttons)
+  useEffect(() => {
+    if (!playing) return undefined;
+    const root = document.documentElement;
+    root.dataset.playing = 'cybertron';
+    return () => {
+      if (root.dataset.playing === 'cybertron') delete root.dataset.playing;
+    };
+  }, [playing]);
+
   useEffect(() => {
     if (!playing) return undefined;
     const c = ctl.current;
@@ -314,7 +324,8 @@ function World({ gl, setGl }) {
       const snd = sounds.current;
       for (const e of events) {
         if (e.type === 'fire') snd?.blaster(true);
-        else if (e.type === 'enemyFire') snd?.blaster(false);
+        else if (e.type === 'enemyFire') e.heavy ? snd?.boom(false) : snd?.blaster(false);
+        else if (e.type === 'enemyShift') snd?.transform();
         else if (e.type === 'hit' || e.type === 'hitMe') snd?.hit();
         else if (e.type === 'kill') snd?.boom(e.boss);
         else if (e.type === 'transform') snd?.transform();
@@ -355,7 +366,7 @@ function World({ gl, setGl }) {
   const bearing = hud.target ? Math.atan2(hud.target.x - hud.px, hud.target.z - hud.pz) : null;
   const rel = bearing === null ? 0 : Math.atan2(Math.sin(bearing - (loop.current?.yaw ?? hud.yaw)), Math.cos(bearing - (loop.current?.yaw ?? hud.yaw)));
   const dist = hud.target ? Math.round(Math.hypot(hud.target.x - hud.px, hud.target.z - hud.pz)) : 0;
-  const prompt = hud.near ? (hud.near.type === 'talk' ? `E  Talk to ${hud.near.label}` : `E  ${hud.near.label}`) : null;
+  const prompt = hud.near ? (hud.near.type === 'talk' ? `E  Talk to ${hud.near.label}` : hud.near.type === 'shift' ? `Q  Transform to talk to ${hud.near.label}` : `E  ${hud.near.label}`) : null;
 
   // a phone's thumbs: a stick on the left, looking on the right
   const stickRef = useRef(null);
@@ -446,7 +457,7 @@ function World({ gl, setGl }) {
           </div>
           {hud.boss && (
             <div className="cyw-boss">
-              <p>Megatron</p>
+              <p>Megatron{hud.boss.form === 'tank' ? ' · tank' : ''}</p>
               <div className="cyw-bar">
                 <span style={{ width: `${Math.round(hud.boss.hp * 100)}%` }} />
               </div>

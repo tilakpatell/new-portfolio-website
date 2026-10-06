@@ -800,6 +800,8 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
   text-align: center;
 }
 @media (pointer: coarse) { .universe-prompt::before { content: none; } }
+.universe-prompt[data-say]::before { content: none; }
+.universe-prompt[data-say] { font-style: italic; }
 /* the place's name, as you come down on a planet */
 .universe-arrive {
   position: absolute;
@@ -1214,6 +1216,8 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
 .universe-yard-slot h3 { margin: 0; color: var(--muted); font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
 .universe-yard-mods { display: flex; flex-wrap: wrap; gap: 5px; }
 .universe-yard-mod { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 30px; padding: 0 0.65rem; border: 1px solid rgb(255 255 255 / 0.16); border-radius: 999px; color: var(--text); font-size: 0.76rem; transition: border-color 0.15s, background-color 0.15s; }
+.universe-yard-cost { color: var(--muted); font-family: var(--font-mono); font-size: 0.64rem; font-variant-numeric: tabular-nums; }
+.universe-hangar-dropped { margin: 0; padding: 0.45rem 0.6rem; border: 1px solid rgb(255 179 92 / 0.45); border-radius: 8px; background: rgb(255 179 92 / 0.1); color: #ffd3a1; font-size: 0.74rem; line-height: 1.35; }
 .universe-yard-mod:hover { border-color: rgb(255 255 255 / 0.36); background: rgb(255 255 255 / 0.05); }
 .universe-yard-mod[aria-pressed='true'] { border-color: var(--engine, #e8eefc); background: color-mix(in srgb, var(--engine, #e8eefc) 18%, transparent); }
 .universe-yard-mod[aria-disabled] { opacity: 0.55; }

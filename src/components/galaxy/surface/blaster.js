@@ -3,9 +3,10 @@
 // ground, a wall) and theirs (at you, a little off), each a streak of light
 // that flies and a flash where it lands.
 //
-// createBlaster({ parent, world }) → { fire(from, dir, targets, color, reach)
-// → what it'll hit ({ target, at } or null; `reach`: where something solid
-// stops it first, if not its range), enemy(from, to, spread), update(dt) →
+// createBlaster({ parent, world }) → { fire(from, dir, targets, color, reach,
+// muzzle) → what it'll hit ({ target, at } or null; `reach`: where something
+// solid stops it first, if not its range; `muzzle`: where the bolt leaves
+// from, if not `from`), enemy(from, to, spread), update(dt) →
 // hits on you (damage), dispose() }
 
 import * as THREE from 'three';
@@ -89,10 +90,12 @@ export function createBlaster({ parent, world }) {
   };
 
   return {
-    // yours: what it hits is decided now, and it flies there
-    fire(from, dir, targets, color = '#ff3b30', reach = RANGE) {
+    // yours: what it hits is decided now (along `dir` from `from`, your
+    // eyes' line), and it flies there, from the gun's `muzzle` if it's given
+    fire(from, dir, targets, color = '#ff3b30', reach = RANGE, muzzle = null) {
       const hit = along(from, dir, targets, reach);
-      shoot(from, dir, color, false, hit.at);
+      const start = muzzle ?? from;
+      shoot(start, muzzle ? hit.at.clone().sub(start).normalize() : dir, color, false, hit.at);
       return hit;
     },
     // theirs, at `to` (a point on you), off by `spread`

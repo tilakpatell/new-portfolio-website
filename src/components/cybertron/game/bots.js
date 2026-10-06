@@ -125,6 +125,12 @@ function stillFigure(kind, spec, scene, animations) {
       mixer.update(0);
       return a.getClip().duration;
     },
+    // back from a held clip to its idle
+    release() {
+      if (!idle || idle.isRunning()) return;
+      for (const a of actions.values()) a.stop();
+      idle.reset().play();
+    },
     update(dt) {
       clock += dt;
       const moving = state === 'walk' || state === 'run' || state === 'drive';
@@ -222,6 +228,13 @@ function riggedFigure(kind, spec, scene, animations) {
       a.time = Math.min(t, a.getClip().duration);
       mixer.update(0);
       return a.getClip().duration;
+    },
+    // back from a held clip to standing, walking and the rest
+    release() {
+      if (!held) return;
+      held = false;
+      for (const a of actions.values()) a.stop();
+      blend = 1;
     },
     update(dt) {
       clock += dt;

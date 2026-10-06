@@ -260,7 +260,26 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
   for (const id of ['hallway', 'men', 'women']) floorRect(ROOMS[id], tiles, 0.004);
   floorRect(ROOMS.closet, carpet, 0.006);
   floorRect(ROOMS.lobby, lobbyTiles, 0.002);
-  floorRect(ROOMS.stairs, mat({ color: 0x9a9a94, roughness: 0.9 }), 0.002);
+  // the stairwell's landing: concrete, round the opening the stairs go down
+  {
+    const conc = mat({ color: 0x9a9a94, roughness: 0.9 });
+    const room = rect(ROOMS.stairs);
+    const f = STAIRWELL.flight;
+    const ox0 = f.x - f.w / 2;
+    const ox1 = f.x + f.w / 2;
+    const oz0 = f.z - f.d / 2;
+    const oz1 = f.z + f.d / 2;
+    const slab = (x0, z0, x1, z1) => {
+      if (x1 - x0 < 0.01 || z1 - z0 < 0.01) return;
+      const geo = new THREE.PlaneGeometry(x1 - x0, z1 - z0);
+      geo.rotateX(-Math.PI / 2);
+      mesh(geo, conc, (x0 + x1) / 2, 0.002, (z0 + z1) / 2).castShadow = false;
+    };
+    slab(room.x, oz1, room.x + room.w, room.z + room.d); // the landing, by the door
+    slab(room.x, room.z, room.x + room.w, oz0); // behind the opening
+    slab(room.x, oz0, ox0, oz1);
+    slab(ox1, oz0, room.x + room.w, oz1);
+  }
   // the strip by the west wall the plan leaves (by accounting)
   floorRect({ x: 142, y: 238, w: 19, h: 138 }, carpet, 0.001);
 
@@ -271,7 +290,7 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
   const ceilMat = mat({ map: keep(ceilingTex()), roughness: 0.95 });
   for (const id of ['bullpen', 'michael', 'conference', 'hallway', 'men', 'women', 'annex', 'darryl', 'supplies', 'lobby', 'stairs']) {
     const m = rect(ROOMS[id]);
-    const y = id === 'stairs' ? CEILING + 1.2 : CEILING;
+    const y = CEILING;
     const geo = new THREE.PlaneGeometry(m.w, m.d);
     geo.rotateX(Math.PI / 2);
     geo.translate(m.cx, y, m.cz);
@@ -850,21 +869,87 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     add(inst);
   }
 
-  // ── the stairwell: a flight going down, its rail ──
+  // ── the stairwell: down two flights from the landing, round a half
+  // landing at the far end, into a concrete shaft; steel rails, yellow
+  // nosings, a light on the ceiling, the floor's number on the wall ──
   {
     const f = STAIRWELL.flight;
-    const steps = 9;
-    const stepMat = mat({ color: 0x8c8c86, roughness: 0.85 });
-    for (let i = 0; i < steps; i++) {
-      const depth = f.d / steps;
-      mesh(new THREE.BoxGeometry(f.w, 0.04, depth), stepMat, f.x, -0.17 * (i + 1) + 0.02, f.z - f.d / 2 + depth * (i + 0.5)).castShadow = false;
+    const ox0 = f.x - f.w / 2;
+    const ox1 = f.x + f.w / 2;
+    const oz0 = f.z - f.d / 2;
+    const oz1 = f.z + f.d / 2;
+    const half = f.d / 2; // each flight's width
+    const RISE = 0.17;
+    const TREAD = 0.29;
+    const n = Math.floor((f.w - 0.7) / TREAD); // steps in a flight
+    const conc = mat({ color: 0x8f8f8a, roughness: 0.88 });
+    const nosing = mat({ color: 0xe0b52a, roughness: 0.6 });
+    const block = mat({ color: 0xb9b5aa, roughness: 0.95 });
+    const steps = [];
+    const noses = [];
+    // the first flight: in from the landing at the near (east) end, down westward along the south half
+    for (let i = 0; i < n; i++) {
+      const x = ox1 - TREAD * (i + 0.5);
+      const top = -RISE * (i + 1);
+      steps.push(new THREE.BoxGeometry(TREAD, 0.6, half - 0.04).translate(x, top - 0.3, oz1 - half / 2));
+      noses.push(new THREE.BoxGeometry(0.05, 0.012, half - 0.06).translate(x + TREAD / 2 - 0.03, top + 0.006, oz1 - half / 2));
     }
-    // a hole going down, dark, under the flight
-    mesh(new THREE.BoxGeometry(f.w, 0.01, f.d), mat({ color: 0x1a1a1a, roughness: 1 }), f.x, -1.6, f.z).castShadow = false;
+    // the half landing at the far end, and the second flight back eastward along the north half
+    const mid = -RISE * (n + 1);
+    const landW = ox1 - TREAD * n - ox0;
+    steps.push(new THREE.BoxGeometry(landW, 0.3, f.d - 0.04).translate(ox0 + landW / 2, mid - 0.15, f.z));
+    for (let i = 0; i < n; i++) {
+      const x = ox0 + landW + TREAD * (i + 0.5);
+      const top = mid - RISE * (i + 1);
+      steps.push(new THREE.BoxGeometry(TREAD, 0.6, half - 0.04).translate(x, top - 0.3, oz0 + half / 2));
+      noses.push(new THREE.BoxGeometry(0.05, 0.012, half - 0.06).translate(x - TREAD / 2 + 0.03, top + 0.006, oz0 + half / 2));
+    }
+    mesh(keep(merge(steps)), conc);
+    mesh(keep(merge(noses)), nosing).castShadow = false;
+    // the shaft's walls, down from the landing's edge, and a dark floor far below
+    const shaft = [];
+    const deep = mid * 2 - 0.6;
+    shaft.push(new THREE.BoxGeometry(f.w, -deep, 0.1).translate(f.x, deep / 2, oz0 - 0.05));
+    shaft.push(new THREE.BoxGeometry(f.w, -deep, 0.1).translate(f.x, deep / 2, oz1 + 0.05));
+    shaft.push(new THREE.BoxGeometry(0.1, -deep, f.d).translate(ox0 - 0.05, deep / 2, f.z));
+    shaft.push(new THREE.BoxGeometry(0.1, -deep, f.d).translate(ox1 + 0.05, deep / 2, f.z));
+    mesh(keep(merge(shaft)), block).castShadow = false;
+    mesh(new THREE.BoxGeometry(f.w, 0.02, f.d), mat({ color: 0x2a2a28, roughness: 1 }), f.x, deep, f.z).castShadow = false;
+    // the wall between the flights below the landing: a low block wall
+    mesh(new THREE.BoxGeometry(f.w - landW, -mid + 0.1, 0.08), block, (ox0 + landW + ox1) / 2, mid / 2 - 0.05, f.z).castShadow = false;
+    // rails: round the opening but for the way in, and down the open side of each flight
     const rail = mat({ color: 0x3a3d42, roughness: 0.4, metalness: 0.7 });
-    mesh(new THREE.BoxGeometry(f.w + 0.1, 0.05, 0.05), rail, f.x, 0.95, f.z + f.d / 2 + 0.05);
-    mesh(new THREE.BoxGeometry(0.05, 0.05, f.d), rail, f.x - f.w / 2 - 0.05, 0.95, f.z);
-    for (let i = 0; i <= 6; i++) mesh(new THREE.BoxGeometry(0.025, 0.95, 0.025), rail, f.x - f.w / 2 + (i * f.w) / 6, 0.475, f.z + f.d / 2 + 0.05).castShadow = false;
+    const bars = [];
+    const guard = (x0, z0, x1, z1, y0 = 0, y1 = 0) => {
+      const len = Math.hypot(x1 - x0, z1 - z0, y1 - y0);
+      const g = new THREE.CylinderGeometry(0.022, 0.022, len, 8);
+      g.rotateZ(Math.PI / 2);
+      const dir = new THREE.Vector3(x1 - x0, y1 - y0, z1 - z0).normalize();
+      g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), dir));
+      g.translate((x0 + x1) / 2, 0.98 + (y0 + y1) / 2, (z0 + z1) / 2);
+      bars.push(g);
+      const posts = Math.max(1, Math.round(len / 0.9));
+      for (let i = 0; i <= posts; i++) {
+        const k = i / posts;
+        bars.push(new THREE.BoxGeometry(0.025, 0.98, 0.025).translate(x0 + (x1 - x0) * k, 0.49 + y0 + (y1 - y0) * k, z0 + (z1 - z0) * k));
+      }
+    };
+    guard(ox0, oz0 - 0.02, ox1, oz0 - 0.02); // behind the opening
+    guard(ox0 - 0.02, oz0, ox0 - 0.02, oz1); // the far end
+    guard(ox0, oz1 + 0.02, ox1, oz1 + 0.02); // along the landing
+    guard(ox1 + 0.02, oz0, ox1 + 0.02, f.z); // the near end, over the second flight
+    guard(ox1 - 0.05, f.z, ox0 + landW, f.z, -RISE, mid); // down the first flight, on its open side
+    mesh(keep(merge(bars)), rail).castShadow = false;
+    // a wrap-round light on the stairwell's high ceiling, and the floor's number
+    const light = mesh(new THREE.BoxGeometry(1.2, 0.08, 0.3), mat({ color: 0xffffff, emissive: 0xf2f6ff, emissiveIntensity: 2.4, roughness: 1 }), f.x + 1.4, CEILING - 0.04, oz1 + 1.4);
+    light.castShadow = false;
+    lights.push([f.x + 1.4, CEILING - 0.2, oz1 + 1.4]);
+    const num = keep(plateTex(['2'], { bg: '#e4d9c2', fg: '#1f4e8c', w: 256, h: 256, size: 200, font: 'Arial Black, Arial, sans-serif' }));
+    onWall(num, 0.55, 0.55, 600, 175, 1.95, N);
+    // the emergency light over the door: a box and two lamp heads
+    const em = mesh(new THREE.BoxGeometry(0.34, 0.12, 0.08), mat({ color: 0xeeede6, roughness: 0.5 }), P(703, 175).x, 2.55, P(703, 175).z - T / 2 - 0.04);
+    em.castShadow = false;
+    for (const sx of [-1, 1]) mesh(new THREE.SphereGeometry(0.045, 12, 8), mat({ color: 0xfff6dc, emissive: 0xfff2d0, emissiveIntensity: 0.6, roughness: 0.3 }), em.position.x + sx * 0.12, 2.5, em.position.z - 0.05).castShadow = false;
   }
 
   // ── the props the jobs move about ──

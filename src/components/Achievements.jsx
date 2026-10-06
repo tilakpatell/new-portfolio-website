@@ -168,6 +168,7 @@ export const ACHIEVEMENTS = {
   womprats: { name: 'Bullseye', desc: 'Bullseyed womp rats in Beggar’s Canyon' },
   canyon: { name: 'Canyon run', desc: 'Ran Beggar’s Canyon in a landspeeder against the clock' },
   speederchase: { name: 'Fast and low', desc: 'Caught every scout trooper before the bunker on Endor' },
+  starmapride: { name: 'The way to Ezra', desc: 'Raced the spires to the old tower on Lothal and kept the star map' },
   tosche: { name: 'Power converters', desc: 'Picked up power converters at Tosche Station' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
   // Dunder Mifflin Scranton, the world (office/world)

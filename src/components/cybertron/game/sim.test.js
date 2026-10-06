@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MISSIONS, missionById } from './areas';
 import { createSim } from './sim';
 
 const still = { moveX: 0, moveZ: 0, run: false, jump: false, throttle: 0, steer: 0, boost: false, fire: false, transform: false, use: false, aimYaw: 0, aimPitch: 0 };
@@ -69,6 +70,18 @@ describe('the world, played', () => {
     expect(sim.hud().target.label).toMatch(/Iacon/);
   });
 
+  it('won’t talk from the truck, and says to transform', () => {
+    const sim = createSim();
+    const bee = sim.area.people.find((p) => p.id === 'bumblebee');
+    goTo(sim, bee.x - 4, bee.z);
+    tick(sim, { transform: true }, 0.05);
+    tick(sim, {}, 1.2);
+    expect(sim.player.mode).toBe('vehicle');
+    expect(sim.hud().near).toEqual(expect.objectContaining({ type: 'shift', label: 'Bumblebee' }));
+    expect(sim.use()).toEqual([]);
+    expect(sim.missions.active).toBeFalsy();
+  });
+
   it('picks energon up and counts it', () => {
     const sim = createSim();
     const k = sim.pickups[0];
@@ -87,5 +100,76 @@ describe('the world, played', () => {
     const back = tick(sim, {}, 3.2);
     expect(back.some((e) => e.type === 'respawn')).toBe(true);
     expect(sim.player.hp).toBe(100);
+  });
+
+  // A player who does what the HUD says, start to finish: every mission in
+  // the order they open up, across the bridges, the way the page plays it
+  // (Optimus can't be hurt here; it's the missions being tested, not him)
+  it('plays every mission through by going where the HUD points', () => {
+    const sim = createSim({ rand: () => 0.5 });
+    const p = () => sim.player;
+    const near = (x, z) => goTo(sim, x - 4, z);
+    const cross = () => {
+      if (sim.exit) sim.enter(sim.exit.to, sim.exit.at);
+    };
+    const robot = () => {
+      if (p().mode === 'robot') return;
+      tick(sim, { transform: true }, 0.05);
+      tick(sim, {}, 1.2);
+    };
+    const finished = [];
+    for (const m of MISSIONS) {
+      for (let turn = 0; turn < 600 && !sim.missions.done.includes(m.id); turn++) {
+        p().hp = p().maxHp;
+        if (p().dead) tick(sim, {}, 3.2);
+        // not on yet: to whoever gives it, where they are
+        if (!sim.missions.active) {
+          robot();
+          if (sim.area.id !== m.from) {
+            const x = sim.area.exits.find((e) => e.to === m.from);
+            goTo(sim, x.x + 3, x.z);
+            sim.use();
+            cross();
+            continue;
+          }
+          const giver = sim.area.people.find((q) => q.id === m.giver);
+          near(giver.x, giver.z);
+          sim.use();
+          expect(sim.missions.active, `${m.id} from ${giver.name}`).toBe(m.id);
+          continue;
+        }
+        const active = missionById(sim.missions.active);
+        const step = active.steps[sim.missions.step];
+        const target = sim.hud().target;
+        // somewhere else, or a bridge to take: the HUD points at the bridge
+        if ((step.area ?? active.area) !== sim.area.id || step.type === 'exit') {
+          expect(target, `${active.id}: the way to ${step.area ?? active.area}`).toBeTruthy();
+          robot();
+          goTo(sim, target.x + 3, target.z);
+          sim.use();
+          cross();
+          continue;
+        }
+        if (step.type === 'talk') {
+          robot();
+          near(target.x, target.z);
+          sim.use();
+        } else if (step.type === 'transform') {
+          tick(sim, { transform: true }, 0.05);
+          tick(sim, {}, 1.2);
+        } else if (step.type === 'clear' || step.type === 'defeat') {
+          // the nearest of them, brought in front and shot down
+          const e = sim.enemies.filter((x) => !x.dead).sort((a, b) => Math.hypot(a.x - p().x, a.z - p().z) - Math.hypot(b.x - p().x, b.z - p().z))[0];
+          expect(e, `${active.id}: someone to fight`).toBeTruthy();
+          expect(target.x).toBeCloseTo(e.x);
+          robot();
+          Object.assign(e, { hp: 1, x: p().x, z: p().z + 30, y: p().y });
+          for (let k = 0; k < 60 && !e.dead; k++) tick(sim, { fire: true, aimYaw: 0, aimPitch: -0.05 }, 1 / 30);
+        } else goTo(sim, target.x, target.z); // reach, collect, drive: where it points
+      }
+      expect(sim.missions.done, m.id).toContain(m.id);
+      finished.push(m.id);
+    }
+    expect(finished).toHaveLength(MISSIONS.length);
   });
 });

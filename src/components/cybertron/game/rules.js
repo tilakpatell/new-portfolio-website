@@ -24,6 +24,12 @@ export const ENEMY_KINDS = {
   megatron: { hp: 700, speed: 5, range: 70, cooldown: 0.5, damage: 9, r: 1.8, h: 10.5, boss: true },
 };
 
+// Megatron's turns, as Fall of Cybertron has him: so long on his feet with
+// the fusion cannon, then into his tank (the change as long as his own
+// model's takes), charging about and shelling, then back. A tank is longer
+// and lower to hit, and stands still and holds its fire while it changes.
+export const MEGATRON = { robot: 12, shift: 2.1, tank: 6.5, back: 1.6, speed: 17, turn: 1.5, range: 95, cooldown: 1.5, damage: 16, shell: 0.5, r: 3, h: 5.5 };
+
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const wrap = (a) => a - TAU * Math.floor((a + Math.PI) / TAU);
 const toward = (from, to, step) => from + clamp(wrap(to - from), -step, step);
@@ -532,7 +538,7 @@ export function stepShots(shots, dt, world, targets) {
 
 export function newEnemy(kind, x, z, { id, model = null, y = 0 } = {}) {
   const k = ENEMY_KINDS[kind];
-  return { id: id ?? `${kind}-${x}-${z}`, kind, model, x, y, z, yaw: 0, hp: k.hp, maxHp: k.hp, r: k.r, h: k.h, state: 'advance', t: 0, cooldown: k.cooldown * 0.6, dir: 1, dead: false, boss: !!k.boss };
+  return { id: id ?? `${kind}-${x}-${z}`, kind, model, x, y, z, yaw: 0, hp: k.hp, maxHp: k.hp, r: k.r, h: k.h, state: 'advance', t: 0, cooldown: k.cooldown * 0.6, dir: 1, dead: false, boss: !!k.boss, form: 'robot', shift: 0, span: 0 };
 }
 
 export function hurtEnemy(e, amount) {
@@ -554,6 +560,28 @@ export function stepEnemies(enemies, player, dt, world, rand = Math.random) {
     const dx = player.x - e.x;
     const dz = player.z - e.z;
     const d = Math.hypot(dx, dz) || 1e-6;
+    // changing from one form to the other: still, and holding fire
+    if (e.shift > 0) {
+      e.shift = Math.max(0, e.shift - dt);
+      continue;
+    }
+    if (k.boss) {
+      e.span = (e.span ?? 0) + dt;
+      if (e.span >= (e.form === 'tank' ? MEGATRON.tank : MEGATRON.robot)) {
+        e.form = e.form === 'tank' ? 'robot' : 'tank';
+        e.shift = e.form === 'tank' ? MEGATRON.shift : MEGATRON.back;
+        e.span = 0;
+        e.r = e.form === 'tank' ? MEGATRON.r : k.r;
+        e.h = e.form === 'tank' ? MEGATRON.h : k.h;
+        e.state = 'shift';
+        events.push({ type: 'enemyShift', id: e.id, to: e.form });
+        continue;
+      }
+    }
+    if (e.form === 'tank') {
+      chargeAndShell(e, player, dt, world, d, shots, events, rand);
+      continue;
+    }
     e.yaw = toward(e.yaw, Math.atan2(dx, dz), 4 * dt);
     e.t += dt;
     let vx = 0;
@@ -600,6 +628,34 @@ export function stepEnemies(enemies, player, dt, world, rand = Math.random) {
   return { shots, events };
 }
 
+// Megatron's tank: straight at Optimus and on past him (it doesn't turn
+// once it's close, so it overshoots and comes round again), its cannon
+// lobbing shells that hit hard
+function chargeAndShell(e, player, dt, world, d, shots, events, rand) {
+  e.state = 'charge';
+  if (d > 16) e.yaw = toward(e.yaw, Math.atan2(player.x - e.x, player.z - e.z), MEGATRON.turn * dt);
+  e.x += Math.sin(e.yaw) * MEGATRON.speed * dt;
+  e.z += Math.cos(e.yaw) * MEGATRON.speed * dt;
+  resolve(world, e, e.r, e.h, VEHICLE.step);
+  e.y = world.floorAt(e.x, e.z, e.y + 1, VEHICLE.step);
+  e.cooldown -= dt;
+  if (e.cooldown > 0 || d > MEGATRON.range || player.dead) return;
+  e.cooldown = MEGATRON.cooldown * (0.85 + 0.3 * rand());
+  // (the shell from the cannon's muzzle, ahead of the turret)
+  const ex = e.x + Math.sin(e.yaw) * 4;
+  const ey = e.y + MEGATRON.h * 0.7;
+  const ez = e.z + Math.cos(e.yaw) * 4;
+  const px = player.x;
+  const py = player.y + (player.mode === 'vehicle' ? 1.5 : ROBOT.height * 0.5);
+  const pz = player.z;
+  if (!segmentClear(world, ex, ey, ez, px, py, pz)) return;
+  const yaw = Math.atan2(px - ex, pz - ez) + ((rand() - 0.5) * 4 * Math.PI) / 180;
+  const pitch = Math.atan2(py - ey, Math.hypot(px - ex, pz - ez));
+  const speed = SHOT.speed * MEGATRON.shell;
+  shots.push({ from: 'enemy', by: e.id, heavy: true, x: ex, y: ey, z: ez, vx: Math.sin(yaw) * Math.cos(pitch) * speed, vy: Math.sin(pitch) * speed, vz: Math.cos(yaw) * Math.cos(pitch) * speed, ttl: 2.2, damage: MEGATRON.damage });
+  events.push({ type: 'enemyFire', id: e.id, heavy: true });
+}
+
 // ── Energon, people, bridges ──
 
 export function stepPickups(pickups, p) {
@@ -623,15 +679,15 @@ export function nearby(p, area, state = {}) {
     const d = Math.hypot(x.x - p.x, x.z - p.z);
     if (d <= x.r || (p.mode === 'robot' && d <= x.r + 4)) return { type: 'exit', id: x.id, label: x.label, to: x.to };
   }
-  if (p.mode !== 'robot') return null;
   let best = null;
-  let bestD = 10;
+  // (pulled up beside someone in the truck: he gets out to talk, so say so)
+  let bestD = p.mode === 'robot' ? 10 : 14;
   for (const person of area.people ?? []) {
     if (!person.lines?.length || state.hidden?.includes(person.id)) continue;
     const d = Math.hypot(person.x - p.x, person.z - p.z);
     if (d <= bestD && Math.abs((person.y ?? 0) - p.y) < 6) {
       bestD = d;
-      best = { type: 'talk', id: person.id, label: person.name };
+      best = { type: p.mode === 'robot' ? 'talk' : 'shift', id: person.id, label: person.name };
     }
   }
   return best;

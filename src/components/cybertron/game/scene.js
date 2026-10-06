@@ -18,7 +18,7 @@ import { createPost } from '../../universe/post';
 import { makeFigure, makeThing } from './bots';
 import { bake, centresOf, cluster, makeTransformer } from './chunks';
 import { createEffects } from './effects';
-import { TRANSFORM } from './rules';
+import { MEGATRON, TRANSFORM } from './rules';
 
 const STAGES = {
   iacon: () => import('./stage/iacon'),
@@ -56,6 +56,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
   const room = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   scene.environment = room;
   scene.environmentIntensity = 0.45;
+  let skyEnv = null; // (an area's sky, as light: setArea)
   const effects = createEffects(scene, { tier });
 
   // what's in the scene for the area you're in
@@ -143,6 +144,20 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
         return;
       }
       scene.add(stage.group);
+      // the metal shines with the place's own sky (Iacon's fires low on
+      // the horizon, the desert's sun), or the room it's in, under a roof
+      let sky = null;
+      stage.group.traverse((o) => (sky ??= o.userData.sky ? o : null));
+      skyEnv?.dispose();
+      skyEnv = null;
+      if (sky) {
+        const env = new THREE.Scene();
+        const shell = new THREE.Mesh(sky.geometry, sky.material);
+        shell.scale.setScalar(0.02); // (the cube camera sees 100 m; the sky's drawn by direction)
+        env.add(shell);
+        skyEnv = pmrem.fromScene(env, 0.03).texture;
+      }
+      scene.environment = skyEnv ?? room;
       // the people of the place, standing where they stand
       const made = await Promise.all(
         area.people.map((p) =>
@@ -335,6 +350,22 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       if (!f) continue;
       f.group.position.set(e.x, e.y, e.z);
       f.group.rotation.y = e.yaw;
+      // Megatron as his own model changes: its clip, robot to tank and back
+      const change = f.spec?.clips?.toVehicle && f.hold ? f.spec.clips : null;
+      if (change && (e.shift > 0 || e.form === 'tank')) {
+        const [a, b] = e.form === 'tank' ? change.toVehicle : change.toRobot;
+        const k = e.shift > 0 ? 1 - e.shift / (e.form === 'tank' ? MEGATRON.shift : MEGATRON.back) : 1;
+        f.hold(change.transform, e.shift > 0 ? a + (b - a) * k : change.vehicle);
+        if (e.shift > 0 && Math.random() < dt * 14) effects.spark(e.x + (Math.random() - 0.5) * 8, e.y + Math.random() * e.h * 1.4, e.z + (Math.random() - 0.5) * 8);
+        f.update(dt);
+        if (e.dead && !entry.boomed) {
+          entry.boomed = true;
+          effects.boom(e.x, e.y + e.h * 0.4, e.z, 16);
+        }
+        f.group.visible = !e.dead || (e.gone ?? 0) < 3;
+        continue;
+      }
+      f.release?.();
       if (e.dead) {
         if (!entry.boomed) {
           entry.boomed = true;
@@ -422,6 +453,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       gateGeo.dispose();
       gateMat.dispose();
       room.dispose();
+      skyEnv?.dispose();
       pmrem.dispose();
       post.composer?.dispose?.();
       canvas.removeEventListener('webglcontextlost', onContextLost);

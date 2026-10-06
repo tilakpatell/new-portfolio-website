@@ -884,7 +884,9 @@ export const SYSTEMS = [
       role: 'Sabine Wren, on her speeder bike',
       pitch: 'Skip the speeches: race across the grass to the old Imperial tower, unlock the map that points the way to Ezra, and keep it out of Shin Hati’s hands.',
       how: 'Full throttle between the rock spires, then a fight for the tower with a lightsaber you haven’t practised with in years.',
-      status: 'soon',
+      status: 'live',
+      to: '/galaxy/lothal/surface?mission=starmap',
+      go: 'Ride it now',
     },
   },
   {

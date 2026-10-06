@@ -184,7 +184,7 @@ export function createSim({ area: areaId = 'iacon', spawn = 'start', done = [], 
   sim.use = () => {
     const out = [];
     const n = nearby(sim.player, sim.area);
-    if (!n) return out;
+    if (!n || n.type === 'shift') return out;
     if (n.type === 'exit') {
       const x = sim.area.exits.find((e) => e.id === n.id);
       sim.exit = { to: x.to, at: x.at };
@@ -247,6 +247,7 @@ export function createSim({ area: areaId = 'iacon', spawn = 'start', done = [], 
     }
     const count = step && (step.type === 'collect' || step.type === 'clear') ? `${missions.count}/${step.count}` : step?.type === 'drive' ? `${missions.count}/${step.gates.length}` : null;
     const offers = available({ missions: MISSIONS.filter((x) => x.from === sim.area.id) }, missions);
+    const boss = sim.enemies.find((e) => e.boss && !e.dead);
     return {
       area: sim.area.name,
       mode: sim.player.mode,
@@ -262,7 +263,7 @@ export function createSim({ area: areaId = 'iacon', spawn = 'start', done = [], 
       offers: missions.active ? [] : offers.map((o) => ({ title: o.title, giver: sim.area.people.find((q) => q.id === o.giver)?.name })),
       done: missions.done.length,
       total: MISSIONS.length,
-      boss: sim.enemies.find((e) => e.boss && !e.dead) ? { hp: sim.enemies.find((e) => e.boss).hp / ENEMY_KINDS.megatron.hp } : null,
+      boss: boss ? { hp: boss.hp / ENEMY_KINDS.megatron.hp, form: boss.form } : null,
     };
   };
 

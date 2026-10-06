@@ -98,6 +98,7 @@ export function makeSky(kind, { sun = [0.5, 0.8, 0.3], fire = '#ff6a1c' } = {}) 
   mesh.frustumCulled = false;
   mesh.renderOrder = -10;
   mesh.userData.uniforms = uniforms;
+  mesh.userData.sky = true; // (scene.js lights the metal with it)
   return mesh;
 }
 
@@ -205,8 +206,12 @@ export function makeStrips(segments, color, intensity = 3) {
 // drawn from the world position: `windows` (0…1, how many are lit on walls),
 // colours for the metal and the light. Per-object variation from the
 // vertex colour's red channel (a seed baked into the geometry).
-export function platedMaterial({ base = '#2a2f38', alt = '#3b4352', trim = '#7a8494', windows = 0.4, warm = '#ffb060', cool = '#7fd8ff', glow = 2.4, panel = [5, 4], roughness = 0.5, metalness = 0.7 } = {}) {
+// `lights`: 'windows' (a human town's, in a grid) or 'slits' (Cybertron's:
+// long thin bands along the floors, broken here and there, and a seam lit
+// top to bottom now and then).
+export function platedMaterial({ base = '#2a2f38', alt = '#3b4352', trim = '#7a8494', windows = 0.4, warm = '#ffb060', cool = '#7fd8ff', glow = 2.4, panel = [5, 4], roughness = 0.5, metalness = 0.7, lights = 'windows' } = {}) {
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness, metalness, vertexColors: true });
+  if (lights === 'slits') mat.defines = { CY_SLITS: '' };
   const u = {
     uBase: { value: new THREE.Color(base) },
     uAlt: { value: new THREE.Color(alt) },
@@ -257,18 +262,33 @@ export function platedMaterial({ base = '#2a2f38', alt = '#3b4352', trim = '#7a8
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
         {
-          // lit windows on the walls, in bands, some warm, most energon blue
           float wall = 1.0 - smoothstep(0.4, 0.6, abs(vNW.y));
+          #ifdef CY_SLITS
+          // Cybertron's lights: a thin band along a floor, running a few
+          // panels and breaking off, most energon blue, now and then amber
+          vec2 w = vec2(fuv.x / (uPanel.x * 3.0), fuv.y / 3.6);
+          vec2 wc = floor(w);
+          vec2 wf = fract(w);
+          float run = step(1.0 - uWindows, pH(wc + vColor.r * 13.0));
+          float band = smoothstep(0.44, 0.47, wf.y) * (1.0 - smoothstep(0.53, 0.56, wf.y));
+          float ends = smoothstep(0.04, 0.1, wf.x) * (1.0 - smoothstep(0.9, 0.96, wf.x));
+          // (and a seam lit floor to floor, here and there)
+          float seamLit = step(0.93, pH(vec2(cell.x, vColor.r * 5.0 + 2.0))) * (1.0 - smoothstep(0.0, 0.02, min(f.x, 1.0 - f.x)));
+          vec3 lamp = mix(uCool, uWarm, step(0.86, pH(wc + 7.0)));
+          totalEmissiveRadiance += lamp * (run * band * ends + seamLit * 0.6) * wall * uGlow * step(5.0, vPW.y) * (0.55 + 0.45 * pH(wc + 1.0));
+          #else
+          // lit windows on the walls, in bands, some warm, most cool
           vec2 w = fuv / vec2(2.6, 4.5);
           vec2 wc = floor(w);
           vec2 wf = fract(w);
           float lit = step(1.0 - uWindows, pH(wc + vColor.r * 13.0)) * step(0.25, wf.x) * step(wf.x, 0.75) * step(0.3, wf.y) * step(wf.y, 0.62);
           vec3 lamp = mix(uCool, uWarm, step(0.8, pH(wc + 7.0)));
           totalEmissiveRadiance += lamp * lit * wall * uGlow * step(4.0, vPW.y) * (0.6 + 0.4 * pH(wc + 1.0));
+          #endif
         }`,
       );
   };
-  mat.customProgramCacheKey = () => 'cy-plated';
+  mat.customProgramCacheKey = () => `cy-plated-${lights}`;
   mat.userData.plating = u;
   return mat;
 }
@@ -290,6 +310,67 @@ export function drum(x, z, rb, rt, y0, y1, sides = 24, seed = 0) {
   g.translate(x, (y0 + y1) / 2, z);
   const c = new Float32Array(g.attributes.position.count * 3).fill(seed);
   g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+  return g;
+}
+
+// A prism standing on an octagon: a box's footprint (half sizes hw, hd,
+// turned by yaw) with its corners cut off by `cut` metres, its top drawn in
+// by `taper` (1: straight up). Flat-shaded, seeded as slab() is.
+export function prism(x, z, hw, hd, y0, y1, { yaw = 0, cut = 0, taper = 1, seed = 0 } = {}) {
+  const k = Math.min(cut, hw * 0.45, hd * 0.45);
+  const ring = [[hw - k, hd], [hw, hd - k], [hw, -hd + k], [hw - k, -hd], [-hw + k, -hd], [-hw, -hd + k], [-hw, hd - k], [-hw + k, hd]];
+  const c = Math.cos(yaw);
+  const sn = Math.sin(yaw);
+  const at = (px, pz, y, s) => [x + (px * c + pz * sn) * s, y, z + (-px * sn + pz * c) * s];
+  const pos = [];
+  for (let i = 0; i < 8; i++) {
+    const [ax, az] = ring[i];
+    const [bx, bz] = ring[(i + 1) % 8];
+    const a0 = at(ax, az, y0, 1);
+    const b0 = at(bx, bz, y0, 1);
+    const a1 = at(ax, az, y1, taper);
+    const b1 = at(bx, bz, y1, taper);
+    pos.push(...a0, ...b0, ...a1, ...b0, ...b1, ...a1);
+  }
+  // the top
+  const mid = [x, y1, z];
+  for (let i = 0; i < 8; i++) {
+    const [ax, az] = ring[i];
+    const [bx, bz] = ring[(i + 1) % 8];
+    pos.push(...mid, ...at(ax, az, y1, taper), ...at(bx, bz, y1, taper));
+  }
+  return seeded(pos, seed);
+}
+
+// A buttress: a fin from the ground at (ox, oz) up to a wall at (wx, wz),
+// meeting it at height h, w thick
+// (standing on y0: a crown's fins stand on its roof)
+export function wedge(ox, oz, wx, wz, h, w, seed = 0, y0 = 0) {
+  const dx = wx - ox;
+  const dz = wz - oz;
+  const l = Math.hypot(dx, dz) || 1;
+  const px = (-dz / l) * (w / 2);
+  const pz = (dx / l) * (w / 2);
+  const A = [ox, y0, oz];
+  const B = [wx, y0, wz];
+  const C = [wx, y0 + h, wz];
+  const side = (s) => [A, B, C].map(([x, y, z]) => [x + px * s, y, z + pz * s]);
+  const [a, b, c] = side(1);
+  const [a2, b2, c2] = side(-1);
+  // its two faces, and the sloping back
+  const pos = [...a, ...b, ...c, ...a2, ...c2, ...b2, ...a, ...c, ...c2, ...a, ...c2, ...a2];
+  return seeded(pos, seed);
+}
+
+// raw triangles as a geometry the city's merge takes: flat normals, uvs
+// (unused: the plating is worked out in the world), and the seed
+function seeded(pos, seed) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  const n = pos.length / 3;
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(n * 2), 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(n * 3).fill(seed), 3));
   return g;
 }
 
