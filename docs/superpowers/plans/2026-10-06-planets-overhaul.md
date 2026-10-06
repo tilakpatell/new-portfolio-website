@@ -25,6 +25,15 @@ budget. The work is delivered in merged checkpoints.
 
 **Spec:** `docs/superpowers/specs/2026-10-06-planets-overhaul-design.md`
 
+**Lanes (agreed with the owner, 2026-10-06).** Two sessions run this plan
+at once. The front lane (`claude/sharp-carson-h9c6mp`) keeps the engine
+and goes from checkpoint 3 forwards. The back lane
+(`claude/wizardly-noether-5dlsg9`, plan
+`2026-10-06-planets-back-lane.md`) takes checkpoints 11, 10 and 9, in that
+order, and the planets as seen from space. Neither edits the other's
+worlds. Before starting a checkpoint, check `main` for the other lane's
+merges and skip anything already done.
+
 ## Global Constraints
 
 - No subagents.
