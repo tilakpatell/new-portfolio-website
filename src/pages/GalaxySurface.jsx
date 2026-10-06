@@ -17,6 +17,8 @@ import SurfaceView from '../components/galaxy/surface/SurfaceView';
 import ChaseHud from '../components/galaxy/surface/ChaseHud';
 import { missionOf } from '../components/galaxy/surface/missions';
 import ModelCredits from '../components/ModelCredits';
+import { wornFiles } from '../components/rickmorty/wardrobe/looks';
+import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
 import { openGuide } from '../lib/palette';
 import '../components/universe/universe.css';
 import '../components/galaxy/galaxy.css';
@@ -112,6 +114,7 @@ export default function GalaxySurface() {
     clearTimeout(timers.current[key]);
     timers.current[key] = setTimeout(fn, ms);
   };
+  const [looks] = useLooks(); // (how the cruiser's Rick and Morty come out, for the credits)
   const talkCrew = useMemo(() => (crew && site ? surfaceCrew(galaxyCrew(crew), site) : null), [crew, site]);
 
   const takeOff = useCallback(() => {
@@ -252,8 +255,8 @@ export default function GalaxySurface() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // the models on this world, for their credits (kept, so the credits aren't drawn again with every change of the page)
-  const kinds = useMemo(() => (site ? [...site.things_all, ...site.scatter, ...site.life, ...site.rides].map((t) => surfaceUrl(t.kind)) : []), [site]);
+  // the models on this world, for their credits, and what the cruiser's crew carry out (kept, so the credits aren't drawn again with every change of the page)
+  const kinds = useMemo(() => (site ? [...[...site.things_all, ...site.scatter, ...site.life, ...site.rides].map((t) => surfaceUrl(t.kind)), ...(ship === 'cruiser' ? wornFiles(looks) : [])] : []), [site, ship, looks]);
   if (!site) return <Navigate to={id ? `/galaxy/${id}` : '/galaxy'} replace />;
   const place = site.places.find((p) => p.id === here);
   const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };
