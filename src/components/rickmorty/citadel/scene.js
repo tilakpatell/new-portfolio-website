@@ -350,6 +350,7 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
         skip: [fxRoot, ghosts.group, ...concourse.hide],
         movers: [people.rick, ...(people.cast ?? []), ...(people.mortys ?? []), ...(people.cops ?? [])].filter((f) => f?.group).map(walker),
         shade: 0x3a3424,
+        blobOpacity: 0.55, // (the deck is pale and evenly lit: a lighter touch)
         tier,
         auto: true,
         clip: true,
