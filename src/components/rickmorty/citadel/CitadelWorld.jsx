@@ -504,10 +504,11 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     s.t += dt;
     const k = s.keys;
     const held = (name) => k.has(name);
-    const pad = readPad();
+    const raw = readPad();
     const before = s.padBefore ?? {};
+    s.padBefore = raw ?? {};
+    const pad = wardrobeRef.current ? null : raw; // (the wardrobe's open over him: the pad's for it)
     const pressed = (b) => pad?.[b] && !before[b];
-    s.padBefore = pad ?? {};
     const red = p.mood === 'red';
 
     if (s.mode === 'walk') {

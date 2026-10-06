@@ -29,7 +29,7 @@ Work from this session lands as pull requests, one concern each, and ticks its l
 ## Core pages: reach and polish
 
 - [x] Between about 900 and 1180 px (a tablet, a small laptop), Music, Terminal and the colour picker were in neither the bar nor a menu (only search found them). The menu now shows below `lg`, or whenever the bar has let go of Terminal or Music to fit. *(verified)*
-- [ ] Every shared link (`/#/projects/x`) unfurls as the home page: hash routes have one title, description and image. Prerendered per-route HTML (title, description, OG) at build time would fix shares and search; `public/sitemap.xml` lists `/` only.
+- [x] (A page per route: `scripts/prerender.mjs` writes `dist/<route>/index.html` with its own title, description, preview card and canonical address, and the sitemap lists all 55. *(verified)*) Every shared link (`/#/projects/x`) unfurls as the home page: hash routes have one title, description and image. Prerendered per-route HTML (title, description, OG) at build time would fix shares and search; `public/sitemap.xml` lists `/` only.
 - [ ] `scripts/github-snapshot.mjs` rewrites the tracked `public/github.json` on every build (its `fetchedAt`), leaving a dirty tree; and `Promise.all` drops the whole snapshot if the contributions API is down. Write only on change; `allSettled`.
 - [ ] Recruiter basics not on the site: where based, when available, open to relocation; a "last updated" on the résumé.
 

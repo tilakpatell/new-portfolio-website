@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BODIES, GEAR, GEAR_SLOTS, LOOK_KEY, REGIONS, SWATCHES, WHO, bodyOf, defaultLook, readLook, readLookWire, readLooks, writeLook } from './looks';
+import { BODIES, GEAR, GEAR_SLOTS, LOOK_KEY, REGIONS, SWATCHES, WHO, bodyOf, defaultLook, readLook, readLookWire, readLooks, wornFiles, writeLook } from './looks';
 
 describe('the wardrobe', () => {
   it('dresses Rick and Morty, each in bodies the site has rigged', () => {
@@ -69,5 +69,12 @@ describe('the wardrobe', () => {
     expect(readLookWire('morty', 'x'.repeat(400))).toBeNull();
     expect(readLookWire('morty', 7)).toBeNull();
     expect(readLookWire('morty', ['morty', { a: 1 }, null, null, null, null, 'none', 'none', 'none'])).toBeNull();
+  });
+
+  it('names the model files a pair of looks wears (for their credits)', () => {
+    expect(wornFiles(readLooks(null))).toEqual([]);
+    const armed = readLooks({ rick: { body: 'rick', gear: { hand: 'portalgun' } }, morty: { body: 'morty', gear: { hand: 'portalgun', face: 'shades' } } });
+    expect(wornFiles(armed)).toEqual(['/models/wardrobe/portalgun.glb']);
+    expect(wornFiles(readLooks({ rick: { gear: { hand: 'plumbus' } } }))).toEqual([]); // (built in code: nobody else's)
   });
 });
