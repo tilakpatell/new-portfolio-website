@@ -20,6 +20,7 @@ import { MAW, parkNear } from './maw';
 import { WONDERS, reachOf } from './deep';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
 import { byId } from './universes';
+import { LENGTH } from './scale';
 import { SYSTEM_MARKS, SYSTEM_NAMES } from '../galaxy/names';
 
 export const DRIVE_KEY = 'tp-universe-drive';
@@ -262,11 +263,10 @@ export function formatTime(t) {
   const s = Math.round(t - m * 60);
   return s ? `${m} min ${s} s` : `${m} min`;
 }
-// map units in the map's own measure: ship-lengths (the ship's 0.26 long)
-const SHIP_LENGTH = 0.26;
+// map units in the map's own measure: ship-lengths (scale.js's LENGTH)
 export function formatDistance(units) {
   if (units === null || units === undefined) return '—';
-  const n = units / SHIP_LENGTH;
+  const n = units / LENGTH;
   if (n < 1) return 'Here';
   const r = n < 1000 ? Math.round(n / 10) * 10 : Math.round(n / 100) * 100;
   return `${Math.max(10, r).toLocaleString('en-US')} ship-lengths`;

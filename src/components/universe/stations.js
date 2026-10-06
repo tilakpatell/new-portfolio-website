@@ -15,6 +15,12 @@ import { featuredProjects } from '../../data/projects';
 import { roles } from '../../data/roles';
 import { glowMat, hull, paint, parts, rng, tileRing } from './kit';
 import { sharpen } from '../../lib/three/textures';
+import { HOME_SCALE } from './scale';
+
+// The stations are drawn HOME_SCALE bigger than their first models (scale.js),
+// but their plates, windows and solar cells keep the size they had: more of
+// them, not bigger ones, so a station reads as bigger rather than nearer.
+const DETAIL = HOME_SCALE;
 
 // ── The kit the stations are built with ──
 
@@ -114,7 +120,7 @@ function flat(geo) {
 // of the map's grey; `rough` trades the roughness map for an even value (a
 // broad soft sheen, where the map's glossy patches would flare in the bloom).
 function metal(T, { which = 'plates', repeat = 2, metal = 0.5, map = true, rough = null } = {}) {
-  const m = hull(T, '#ffffff', { repeat, metal, which });
+  const m = hull(T, '#ffffff', { repeat: repeat * DETAIL, metal, which });
   if (!map) m.map = null;
   if (rough !== null) Object.assign(m, { roughnessMap: null, roughness: rough });
   m.vertexColors = true;
@@ -219,6 +225,9 @@ function solarMat(w, h, { cols, rows, split = false }) {
     w,
     h,
   );
+  // (the blanket tiled DETAIL times each way: its cells stay the size they were)
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(DETAIL, DETAIL);
   return new THREE.MeshStandardMaterial({ map, emissive: '#ffffff', emissiveMap: map, emissiveIntensity: 0.12, metalness: 0.35, roughness: 0.42 });
 }
 
@@ -322,12 +331,12 @@ export const STATIONS = {
           }
         }
       },
-      512,
+      512 * DETAIL, // (DETAIL times the windows round the ring, each the size it was)
       64,
     );
     const ringMat = hull(T, '#ffffff', { repeat: 1, which: 'plates', metal: 0.3 });
     Object.assign(ringMat, { map: skin, roughnessMap: null, roughness: 0.55 });
-    ringMat.normalMap?.repeat.set(40, 2);
+    ringMat.normalMap?.repeat.set(40 * DETAIL, 2 * DETAIL);
     Object.assign(ringMat, { emissiveMap: windows, emissiveIntensity: 2.6 });
     ringMat.emissive.set('#ffffff');
     // a torus lies in xy; turned so its tube's top (v = 0.25) is up, and flattened a little
@@ -452,7 +461,7 @@ export const STATIONS = {
     const face = faceCamera(st);
     p.tick.push((t, camera) => {
       face(t, camera, 0.5);
-      wheel.rotation.y = t * 0.1;
+      wheel.rotation.y = (t * 0.1) / DETAIL; // (its rim going round no faster than it did before it grew)
       lights.material.uniforms.uTime.value = t;
     });
   },

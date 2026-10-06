@@ -50,7 +50,7 @@ import { SIDES, sideFor } from './sides';
 // fly together; weight: how often it comes up; big: high over the map, one
 // at a time; flyby: whether it comes to you; civil: an ordinary ship (a
 // convoy's, or one in distress)
-const TYPES = {
+export const TYPES = {
   freighter: { size: 0.7, speed: 7.5, crew: [1, 2], weight: 3, flyby: true, civil: true },
   transport: { size: 1.8, speed: 4.2, crew: [1, 2], weight: 2, civil: true },
   corvette: { size: 3.2, speed: 5, crew: [1, 1], weight: 1.2, civil: true },

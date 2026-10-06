@@ -15,13 +15,14 @@
 import { BELT, HOME_RADIUS, POSITIONS, REACH, SUN } from './layout';
 import { MAW } from './maw';
 import { SHIP, parkAt } from './ship';
+import { HOME_SPREAD } from './scale';
 
 export const POSES = {
   overview: { view: 'map', at: [0, SHIP.height, HOME_RADIUS + 1.5], heading: 0 },
   // three-quarter on and from a little above, the home sun right behind it:
   // out between the stations' ring and the belt, raised `up` radians so the
   // eye looks down across the ship's top, the sun's edge in frame
-  'falcon-sun': { sunward: 110, up: 0.3, back: 1.2, side: 0.2, turn: Math.PI / 4 },
+  'falcon-sun': { sunward: 110 * HOME_SPREAD, up: 0.3, back: 1.2, side: 0.2, turn: Math.PI / 4 },
   'middleearth-limb': { planet: 'middleearth', dist: 1.75, off: 0.5 },
   rickmorty: { planet: 'rickmorty', dist: 2.4, off: 0 },
   gaming: { planet: 'gaming', dist: 2.4, off: 0 },

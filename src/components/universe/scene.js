@@ -98,6 +98,7 @@ import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
 import { BELT, ORDER, POSITIONS, REACH, RIM, SUN } from './layout';
+import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
 import { createPost, spaceEnvironment } from './post';
@@ -507,7 +508,9 @@ export async function create(canvas, ctx) {
   const rings = orbits();
   map.add(rings);
   // the asteroid belt, and dust round the camera to feel the speed by (belt.js)
-  const belt = createBelt({ small: (window.matchMedia?.('(pointer: coarse)').matches ?? false) || Math.min(window.innerWidth, window.innerHeight) < 600 });
+  // (more rocks for the wider band the home system grew to, scale.js: not
+  // the band's whole growth in area, so the triangles grow less than it)
+  const belt = createBelt({ small: (window.matchMedia?.('(pointer: coarse)').matches ?? false) || Math.min(window.innerWidth, window.innerHeight) < 600, count: Math.round(3200 * HOME_SPREAD) });
   map.add(belt.group);
   // and the rim: a ring of ice right round the edge of the map (layout.js's RIM)
   const rim = createBelt({ small: Math.min(window.innerWidth, window.innerHeight) < 600, band: RIM, seed: 2049, tones: ['#c9d8e8', '#9fb4c8', '#dfe8f2', '#8ea0b4'], scale: 14, spin: 0.0012, count: 700 });
@@ -658,7 +661,10 @@ export async function create(canvas, ctx) {
   // the sun in the middle, warming the stations round it
   const sun = buildSun(T);
   map.add(sun.group);
-  const sunLight = new THREE.PointLight('#ffd6a8', 890, 320, 1.4);
+  // (its reach and strength grown with the home system, scale.js: a light
+  // falling off as distance^1.4, scaled by HOME_SPREAD in both, lights every
+  // station and rock just as it did before the system grew)
+  const sunLight = new THREE.PointLight('#ffd6a8', 890 * HOME_SPREAD ** 1.4, 320 * HOME_SPREAD, 1.4);
   map.add(sunLight);
 
   const planets = ORDER.map((id) => {
@@ -1045,7 +1051,7 @@ export async function create(canvas, ctx) {
     const r = s ? Math.hypot(s.x, s.z) : 0;
     if (!state.overview || r < DEEP.system) return state.overview;
     const [wx, wz] = rotate(s.x * 0.55, s.z * 0.55);
-    return { target: [wx, s.y * 0.5, wz], dist: clamp(r * 1.25, 700, 7000), pitch: 0.62 };
+    return { target: [wx, s.y * 0.5, wz], dist: clamp(r * 1.25, 700 * HOME_SPREAD, 7000), pitch: 0.62 };
   };
   // the turn of the map that brings a place round to the front, nearest the
   // camera, with nothing between (the rest of the ring to its sides); a
