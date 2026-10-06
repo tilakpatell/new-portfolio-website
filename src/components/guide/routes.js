@@ -1,5 +1,8 @@
 // Which guide a page gets, what it's called, and whether its first visit
-// gets a note by the "?" button (`nudge`: it has controls worth knowing). Small
+// gets a note by the "?" button (`nudge`: it has controls worth knowing). The
+// universe and the galaxy don't: their "?" is in their own panel, their first
+// hint already says where the controls are, and the note, up top, sat over
+// the crew's line. Small
 // on purpose: the corner button needs it from the first page, while what
 // each guide says (pages.js) loads with the panel, the first time it opens.
 
@@ -12,8 +15,8 @@ export const GUIDES = {
   '/contact': { title: 'Contact' },
   '/travel': { title: 'Travel' },
   '/terminal': { title: 'The terminal' },
-  '/universe': { title: 'The universe', nudge: true },
-  '/galaxy': { title: 'A galaxy far, far away', nudge: true },
+  '/universe': { title: 'The universe' },
+  '/galaxy': { title: 'A galaxy far, far away' },
   '/galaxy/surface': { title: 'Down on the surface', nudge: true },
   '/galaxy/mission': { title: 'Mission briefing' },
   '/deathstar': { title: 'The Death Star', nudge: true },

@@ -7,7 +7,8 @@ import { FILMS, SYSTEMS } from './systems';
 
 const EVENTS = ['jump', 'course', 'tractor', 'boarded', 'ion', 'superlaser', 'shield-down', 'shield-up', 'scarif-shield', 'escaped', 'destroyer', 'wellclear', 'gcw-shieldgen', 'gcw-superlaser', 'gcw-run', 'gcw-reactor', 'gcw-ds2', 'gcw-executor', 'gcw-hangar', 'gcw-isd', 'gcw-ram', 'gcw-gate', 'gcw-evacuated', 'battle'];
 const BATTLE = ['front', 'join', 'gens', 'bridge', 'reactor', 'won', 'lost'];
-const HUNTED = ['separatists', 'remnant'];
+const HUNTED = ['separatists', 'remnant', 'weequay']; // (what every crew has a galaxy line for)
+const OUTLAWS = ['navy', 'fett', 'ig88', 'bossk', 'dengar', 'weequay']; // roamRules.js's: a line each, the crew's own or the galaxy's
 const KILLS = ['vulture', 'trifighter'];
 const sorted = (a) => [...a].sort();
 const words = (p) => p.split(/\s+/).filter(Boolean).length;
@@ -36,7 +37,8 @@ describe('the crews in the galaxy', () => {
       expect(sorted(Object.keys(g.events)), crew.id).toEqual(sorted(EVENTS));
       // and the war's battles, every moment of one
       expect(sorted(Object.keys(g.events.battle)), crew.id).toEqual(sorted(BATTLE));
-      expect(sorted(Object.keys(g.hunted)), crew.id).toEqual(sorted(HUNTED));
+      expect(Object.keys(g.hunted), crew.id).toEqual(expect.arrayContaining(HUNTED));
+      for (const who of OUTLAWS) expect(linesFor(galaxyCrew(crew), 'hunted', who), `${crew.id} hunted ${who}`).toBeTruthy();
       expect(sorted(Object.keys(g.kill)), crew.id).toEqual(sorted(KILLS));
       // and for the Interdictor pulling them out of hyperspace
       expect(Array.isArray(g.interdicted), crew.id).toBe(true);
@@ -95,7 +97,7 @@ describe('galaxyCrew', () => {
       for (const sub of BATTLE) expect(linesFor(flying, 'event', 'battle', sub), `${crew.id} battle ${sub}`).toBe(g.events.battle[sub]);
       for (const id of Object.keys(crew.events ?? {})) if (!EVENTS.includes(id)) expect(linesFor(flying, 'event', id), `${crew.id} ${id}`).toBe(linesFor(crew, 'event', id)); // (what the crew would say: an event's lines may be keyed by what came)
       for (const id of HUNTED) expect(linesFor(flying, 'hunted', id)).toBe(g.hunted[id]);
-      for (const [id, ex] of Object.entries(crew.hunted)) expect(linesFor(flying, 'hunted', id), `${crew.id} hunted ${id}`).toBe(ex);
+      for (const [id, ex] of Object.entries(crew.hunted)) expect(linesFor(flying, 'hunted', id), `${crew.id} hunted ${id}`).toBe(g.hunted[id] ?? ex); // (the galaxy's own words for a hunter where it has them)
       for (const id of KILLS) expect(linesFor(flying, 'kill', id)).toBe(g.kill[id]);
       expect(linesFor(flying, 'kill', 'any')).toBe(crew.kill.any);
       // and the Interdictor's own words over the universe map's
