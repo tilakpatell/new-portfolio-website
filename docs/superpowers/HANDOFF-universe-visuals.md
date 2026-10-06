@@ -14,7 +14,7 @@ The design is `docs/superpowers/specs/2026-10-06-universe-visual-upgrade-design.
 | # | Checkpoint | PR | Status | Evidence |
 |---|---|---|---|---|
 | 0 | Poses and a baseline | #302 (poses, check script); #328 (baseline) | done | `lab/universe/baseline/{high,mid,low}.json` and 30 shots, taken on `main` at e4fcc10e after the scale changes: high calls 49–150, triangles 0.14–1.32 M; mid calls 49–148, triangles 0.14–1.14 M; low calls 49–146, triangles 0.14–1.14 M |
-| 1 | The render, finished | this PR | done | Against the baseline, `high`: calls +0 to +2 a pose, triangles at or under it (overview 150 → 150, 1.20 → 1.17 M; falcon-sun 141 → 142); `mid` and `low` within +4 calls and +0 % triangles (traffic and the station’s turn move a pose’s calls by ±2 from run to run; `mid` maw’s −120 k triangles is the Falcon’s model still loading, `low` station’s −37 calls its wheel turned). Contrast at maw on `high` 85.1 → 95.5. Smoke green on `/universe`, `/galaxy/hoth`, `/galaxy/tatooine/surface` |
+| 1 | The render, finished | #336 | done | Against the baseline, `high`: calls +0 to +2 a pose, triangles at or under it (overview 150 → 150, 1.20 → 1.17 M; falcon-sun 141 → 142); `mid` and `low` within +4 calls and +0 % triangles (traffic and the station’s turn move a pose’s calls by ±2 from run to run; `mid` maw’s −120 k triangles is the Falcon’s model still loading, `low` station’s −37 calls its wheel turned). Contrast at maw on `high` 85.1 → 95.5. Smoke green on `/universe`, `/galaxy/hoth`, `/galaxy/tatooine/surface` |
 | 2 | One light | | not started | |
 | 3 | Air, clouds, seas, ground | | not started | |
 | 4 | The styles in the light | | not started | |
