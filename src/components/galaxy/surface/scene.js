@@ -218,12 +218,14 @@ export async function create(canvas, ctx) {
   for (const s of site.scatter) {
     const items = [];
     const [r0, r1] = s.within ?? [20, site.reach];
+    // (round the landing, or round a place: `around`)
+    const [cx, cz] = s.around ?? [0, 0];
     let tries = 0;
     while (items.length < Math.round(s.n * (small ? 0.6 : 1)) && tries++ < s.n * 20) {
       const a = r() * Math.PI * 2;
       const d = Math.sqrt(r0 * r0 + r() * (r1 * r1 - r0 * r0));
-      const x = Math.cos(a) * d;
-      const z = Math.sin(a) * d;
+      const x = cx + Math.cos(a) * d;
+      const z = cz + Math.sin(a) * d;
       if (avoid.some((v) => Math.hypot(x - v.at[0], z - v.at[1]) < v.r + (s.clear ?? 4))) continue;
       if (s.flat && grid.normalAt(x, z)[1] < s.flat) continue;
       if (world.water != null && s.dry !== false && grid.heightAt(x, z) < world.water + (s.above ?? 0.2)) continue;

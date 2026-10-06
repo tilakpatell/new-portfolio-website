@@ -563,6 +563,17 @@ function plantParts({ seed = 9, color = '#3f6a2a', n = 7, len = 1.8 } = {}) {
   return { parts };
 }
 
+// an Italian cypress (Naboo's Lake Country, as Lake Como's are): a tall
+// narrow flame of dark leaves, h tall and a fifth as wide, on a short
+// trunk; a solid core inside so it stays a dark flame far off
+function cypressParts({ h = 16, seed = 13, leaf = '#26321e', bark = '#4a3a2c' } = {}) {
+  const r = h / 10;
+  const flat = (h * 0.47) / r;
+  const parts = [part(new THREE.CylinderGeometry(r * 0.1, r * 0.16, h * 0.16, 6).translate(0, h * 0.08, 0), { color: bark, to: 'bark' })];
+  parts.push(...canopy([0, h * 0.53, 0], r * 2, { flat, color: leaf, seed, density: flat }));
+  return { parts };
+}
+
 // a bush, as Bruno Simon's are: one clump of leaf cards on a smooth core,
 // sat on the ground, `s` across (the scrub back from Scarif's beaches)
 function bushParts({ s = 2, seed = 12, color = '#46582e' } = {}) {
@@ -603,6 +614,7 @@ export const SCATTER = {
   jungletree: (k, o = {}) => ({ parts: instanced(k, jungleParts(o).parts), radius: (o.r ?? 1.1) * 1.1 }),
   plant: (k, o = {}) => ({ parts: instanced(k, plantParts(o).parts), radius: null }),
   bush: (k, o = {}) => ({ parts: instanced(k, bushParts(o).parts), radius: null }),
+  cypress: (k, o = {}) => ({ parts: instanced(k, cypressParts(o).parts), radius: 0.4 }),
   fungus: (k, o = {}) => ({ parts: instanced(k, fungusParts(o).parts), radius: null }),
   log: (k, o = {}) => ({ parts: instanced(k, logParts(o).parts), radius: null }),
 };
