@@ -1139,7 +1139,9 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     const back = mobile ? 11 : 9.5;
     want.set(c.x - fwd.x * back, gy + (mobile ? 5.2 : 4.4) + Math.max(0, c.speed) * 0.04, c.z - fwd.z * back);
     const lead = THREE.MathUtils.clamp((c.yawRate ?? 0) * 1.4, -2.2, 2.2) * Math.min(1, going / 8);
-    look.set(c.x + fwd.x * 5 + Math.cos(c.yaw) * lead, gy + 2.3, c.z + fwd.z * 5 - Math.sin(c.yaw) * lead); // a little up, for the sky
+    // (further ahead the faster you go, so a corner's seen in time to take it)
+    const ahead = 5 + Math.max(0, c.speed) * 0.4;
+    look.set(c.x + fwd.x * ahead + Math.cos(c.yaw) * lead, gy + 2.3, c.z + fwd.z * ahead - Math.sin(c.yaw) * lead); // a little up, for the sky
     if (intro < 1) {
       intro = Math.min(1, intro + dt / 2.8);
       const k = intro * intro * (3 - 2 * intro);
@@ -1159,9 +1161,10 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
         want.set(c.x + Math.sin(a) * 24, gy + 7 + wander * 5, c.z + Math.cos(a) * 24);
         look.set(c.x, gy + 2.2 + wander * 3, c.z);
       } else orbit = 0;
-      const k = 1 - Math.exp(-dt * (wander > 0 ? 0.9 : 4 * follow));
+      // (kept close behind at speed: trailing back, it showed the road late)
+      const k = 1 - Math.exp(-dt * (wander > 0 ? 0.9 : 6 * follow));
       camPos.lerp(want, k);
-      camLook.lerp(look, 1 - Math.exp(-dt * (wander > 0 ? 1.5 : 8 * follow)));
+      camLook.lerp(look, 1 - Math.exp(-dt * (wander > 0 ? 1.5 : 10 * follow)));
     }
     camera.position.copy(camPos);
     // never under a dune, and never inside a building: come in towards the car until it's out
