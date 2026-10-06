@@ -471,6 +471,41 @@ body:has(.universe-panel) .guide-btn { display: none; }
 }
 .universe-shield[data-low] .universe-shield-bar > span { background: linear-gradient(90deg, #ff4a3d, #ff9a5c); box-shadow: 0 0 8px rgb(255 90 60 / 0.7); animation: universe-shield-blink 0.6s steps(2) infinite; }
 @keyframes universe-shield-blink { 50% { opacity: 0.45; } }
+/* the gun in hand on foot, and its heat: fire too long and it locks (red, blinking) */
+.universe-gun {
+  position: absolute;
+  left: 16px;
+  bottom: 132px;
+  display: grid;
+  gap: 4px;
+  width: 120px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.universe-gun[data-on] { opacity: 1; }
+.universe-gun-name {
+  color: rgb(255 255 255 / 0.85);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.universe-gun-heat {
+  position: relative;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.15);
+}
+.universe-gun-heat > span {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #ffd36b, #ff7a3d);
+  transform-origin: left;
+  scale: var(--heat, 0) 1;
+}
+.universe-gun[data-locked] .universe-gun-heat > span { scale: 1 1; background: #ff4a3d; animation: universe-shield-blink 0.6s steps(2) infinite; }
 /* the targeting HUD: the gun line out along the nose, the lock's brackets
    round a hunter (with its name and range under), the pip where a shot
    would meet it, and the nav bracket round wherever you're going; the scene
@@ -1385,6 +1420,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
   .universe-alt { left: 12px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2); height: 120px; margin-top: -60px; }
   .universe-alt-mark { translate: 0 calc(var(--alt, 0) * -60px); }
   .universe-shield { left: 10px; top: auto; bottom: calc(var(--sheet-h) + 160px); width: 76px; }
+  .universe-gun { left: 10px; bottom: calc(var(--sheet-h) + 132px); width: 76px; }
   /* (wrapped, above the buttons, clear of the settings button on the left and
      the climb and dive ones on the right) */
   .universe-arrive { left: 16px; right: 16px; top: calc(var(--nav-h, 68px) + 24px); translate: none; max-width: none; }
@@ -1407,7 +1443,8 @@ body:has(.universe-panel) .guide-btn { display: none; }
   .universe-said { font-size: 0.85rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .universe-shield-bar > span { animation: none; }
+  .universe-shield-bar > span,
+  .universe-gun[data-locked] .universe-gun-heat > span { animation: none; }
   .universe-reticle[data-hit],
   .universe-lock[data-on] > i { animation: none; }
   .universe-threat[data-on] { animation: none; }

@@ -2968,6 +2968,22 @@ export async function create(canvas, ctx) {
     el.toggleAttribute('data-low', k < 0.35);
   };
 
+  // the gun line on foot: the gun in hand, and its heat (red and blinking, locked)
+  let gunWas = '';
+  const placeGun = () => {
+    const el = props.gun?.current;
+    if (!el) return;
+    const g = onFoot() && foot.phase === 'walk' && !props.frozen ? foot.info()?.gun : null;
+    el.toggleAttribute('data-on', Boolean(g));
+    if (!g) return;
+    if (g.name !== gunWas) {
+      gunWas = g.name;
+      el.querySelector('.universe-gun-name').textContent = g.name;
+    }
+    el.style.setProperty('--heat', g.heat.toFixed(3));
+    el.toggleAttribute('data-locked', g.locked);
+  };
+
   // friends in a long fight (wingmen.js): once a hunt has dragged on, or
   // the shields are low in one, a wing comes up from behind you (once a
   // hunt, more often than not: X-wings for Luke and Han, Birdperson for
@@ -3291,6 +3307,7 @@ export async function create(canvas, ctx) {
       props.hud?.current?.toggleAttribute('data-static', staticOn);
     }
     placeShield();
+    placeGun();
     return busy || Boolean(hunters?.count) || later.length > 0;
   };
 

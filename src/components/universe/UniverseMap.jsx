@@ -37,6 +37,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const stick = useRef(null);
   const alt = useRef(null);
   const shield = useRef(null);
+  const gun = useRef(null);
   const hud = useRef(null);
   const arms = useRef(null); // the weapon readout (weapons.js)
   const siegeEl = useRef(null); // the Citadel's siege (siege.js)
@@ -87,6 +88,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       stick,
       alt,
       shield,
+      gun,
       hud,
       arms,
       siege: siegeEl,
@@ -244,6 +246,12 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               <div ref={shield} className="universe-shield" aria-hidden="true">
                 <span className="universe-shield-label">{onFoot ? 'Health' : 'Shields'}</span>
                 <span className="universe-shield-bar">
+                  <span />
+                </span>
+              </div>
+              <div ref={gun} className="universe-gun" aria-hidden="true">
+                <span className="universe-gun-name" />
+                <span className="universe-gun-heat">
                   <span />
                 </span>
               </div>
