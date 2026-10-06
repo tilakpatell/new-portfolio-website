@@ -125,4 +125,40 @@ describe('travellers', () => {
     a.leave();
     b.leave();
   });
+
+  it('see only those in the same area of a world, each area its own ground', async () => {
+    const load = fakeRelay();
+    let t = 1000;
+    const now = () => t;
+    const a = createTravellers({ town: 'c-137', name: 'Morty', load, now });
+    const b = createTravellers({ town: 'c-137', name: 'Summer', load, now });
+    await settle();
+    await settle();
+    a.pose({ x: 1, z: 2, face: 0, speed: 0 }, { area: 'street' });
+    b.pose({ x: 5, z: 5, face: 0, speed: 0 }, { area: 'street' });
+    expect(b.list().map((p) => p.name)).toEqual(['Morty']);
+    expect(a.list().map((p) => p.name)).toEqual(['Summer']);
+    // Morty goes in: a new area goes out at once, and the street loses him
+    t += 10;
+    a.pose({ x: 1, z: 2, face: 0, speed: 0 }, { area: 'arcade' });
+    expect(b.list()).toEqual([]);
+    expect(a.list()).toEqual([]);
+    // and a world without areas sees everyone without one
+    t += 2000;
+    a.pose({ x: 1, z: 2, face: 0, speed: 0 });
+    b.pose({ x: 5, z: 5, face: 0, speed: 0 });
+    expect(b.list()).toHaveLength(1);
+    a.leave();
+    b.leave();
+  });
+});
+
+describe('steps with an area', () => {
+  it('carry it, cleaned, and leave a step without one as it was', () => {
+    expect(readStep(writeStep({ x: 1, z: 2, face: 0, speed: 0 }, { area: 'arcade' }))).toMatchObject({ x: 1, z: 2, area: 'arcade' });
+    expect(readStep(writeStep({ x: 1, z: 2, face: 0, speed: 3, y: 4 }, { motion: true, area: 'sky' }))).toMatchObject({ speed: 3, y: 4, area: 'sky' });
+    expect(readStep([0, 0, 0, 0, 0, 0, 0, '<script>'])).not.toHaveProperty('area');
+    expect(readStep([0, 0, 0, 0, 0, 0, 0, 'x'.repeat(40)])).not.toHaveProperty('area');
+    expect(writeStep({ x: 0, z: 0, face: 0 })).toHaveLength(5);
+  });
 });
