@@ -168,135 +168,135 @@
     "by": "cloud"
   },
   "stairgoblin": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "kingjellybean": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "thirstystep": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "giant": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "zeep": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "kyle": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "xenonbloom": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "poncho": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "annie": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "hepatitis": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "gonorrhoea": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "tuberculosis": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "plague": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "ecoli": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "needful": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "needful-shop": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "jerry-robe": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "jerry-golf": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "jerry-tux": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "jerry-track": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "jerry-gown": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "jerry-cardigan": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "arthricia": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "magdalian-a": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "magdalian-b": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "local"
   },
   "magdalian-c": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "flippynips": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "local"
   },
   "scroopy": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "plutonian-a": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "plutonian-b": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "gearhead": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "gearperson-a": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "gearperson-b": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   }
 }
