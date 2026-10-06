@@ -121,6 +121,9 @@
 - `foot.js` `TROOPS` rows for `stormtrooper`, `scout`, `probe` (droid: no gun, calls a squad: event `'called'`), `mortyguard`, `dea`, `cartel`, `jackscrew`.
 - Figures: Star Wars built (as Luke: `footScene.js`'s `built`), Rick and Morty's `evilmorty` wardrobe body, Breaking Bad's from `public/models/albuquerque/` (`hank.glb`, `tuco.glb`, `declan.glb`: check each is on the Meshy skeleton with `scripts/`' inspect tooling; if not, built stand-ins).
 - Lines per troop kind in each crew's `foot.kill`.
+- [x] `foot.js` rows for `stormtrooper`, `scout`, `probe` (`calls: 8`: `march` returns `calls`, once each; `footScene.js` sends a squad of the side's others and says `foot.called`), `mortyguard`, `jackscrew`; tested in `foot.test.js`.
+- [x] Figures by `side.troops[kind].figure` (`footScene.js`'s `troopLook`): `{ built }` (`LOOKS`: stormtrooper, scout, jackscrew; the probe droid its own build), `{ meshy }` (Evil Morty's guard is the cast's `mortyclone`, yellow), `{ url }` (the DEA is `hank.glb`, the cartel `tuco.glb`: all fourteen of `public/models/albuquerque/` have the Meshy skeleton's `Hips`, toes and `head_end`; loaded once a walk and copied). As built: the Star Wars crews no longer meet the Federation's troops on the ground; Jack's crew are built (there's no model of them; Declan's isn't theirs). `sides.test.js` checks each side's troops are its own, with real guns and figures that exist.
+- [x] Lines: `foot.kill` for each new kind, `foot.called` for the X-wing and the Falcon (`crews.test.js`).
 
 ## Lane C: NPCs with brains (Opus session)
 

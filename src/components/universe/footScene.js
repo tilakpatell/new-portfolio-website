@@ -47,7 +47,8 @@
 import * as THREE from 'three';
 import { gltfLoader } from '../../lib/three/gltf';
 import { sharpen } from '../../lib/three/textures';
-import { createMeshyCast } from '../rickmorty/portal/meshyCast';
+import { MESHY, createMeshyCast } from '../rickmorty/portal/meshyCast';
+import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { LOOK_KEY, readLooks } from '../rickmorty/wardrobe/looks';
 import { bodyAsset, bodyKind, dress, withWardrobe } from '../rickmorty/wardrobe/wear';
 import { local } from '../../lib/hooks';
@@ -282,11 +283,21 @@ async function loadModel(spec, cast, looks = null) {
   }
   if (spec.src.url) {
     const [gltf, clips] = await Promise.all([getLoader().loadAsync(spec.src.url), borrowClips()]);
-    const model = gltf.scene;
+    return rigScene(gltf.scene, clips, spec.tall);
+  }
+  return built(spec);
+}
+
+// A loaded Meshy figure (its scene, or a copy of one: `shared`, whose
+// geometry and materials are the original's to free) rigged with Rick's
+// clips, turned to walk the way it faces
+function rigScene(model, clips, tall, { shared = false } = {}) {
+  {
     const owned = [];
     model.traverse((o) => {
       if (!o.isMesh) return;
       o.frustumCulled = false; // a skinned mesh's bounds don't follow its pose
+      if (shared) return;
       const m = o.material;
       if (m) {
         // Meshy's colours carry their own shading: keep them matte
@@ -305,12 +316,29 @@ async function loadModel(spec, cast, looks = null) {
       const ahead = headingOf(own.walk, up);
       if (ahead != null) for (const n of ['idle', 'run']) if (own[n]) faceForward(own[n], up, ahead);
     }
-    return rigged(model, own, spec.tall, owned);
+    return rigged(model, own, tall, owned);
   }
-  return built(spec);
 }
 
 // ── People built from shapes (no figure of their own) ──
+
+// what a troop of `kind` is drawn as (sides.js's troop row's `figure`): a
+// Meshy cast kind ({ meshy }), a model of its own ({ url }: Albuquerque's),
+// or built here ({ built }); a kind with none is the cast's own kind
+export const troopLook = (kind) => Object.values(SIDES).find((s) => s.troops[kind]?.figure)?.troops[kind].figure ?? { meshy: kind };
+
+// how each built person is dressed: Luke in his flight suit, Han in his
+// shirt and vest, the Empire's troopers in white armour over black (a
+// scout's mostly black), Jack's crew in flannel and jeans and a cap.
+// harness: the vest cut short (a chest plate); closed: a helmet down over
+// the face; gloves: the hands' colour
+const LOOKS = {
+  luke: { suit: '#e8742a', top: '#e8742a', legs: '#e8742a', boots: '#2a2622', skin: '#f0c7a5', hair: '#e9edf2', helmet: true, vest: '#f2f2ee', harness: true },
+  han: { suit: '#f3f1ea', top: '#f3f1ea', legs: '#1d2a44', boots: '#2b1d14', skin: '#e9be98', hair: '#5a3a22', helmet: false, vest: '#151515' },
+  stormtrooper: { suit: '#e9ebec', top: '#1c1d20', legs: '#e9ebec', boots: '#f1f2f3', skin: '#f1f2f3', gloves: '#1c1d20', hair: '#f4f5f6', helmet: true, closed: true, visor: '#101114', vest: '#f1f2f3', harness: true },
+  scout: { suit: '#1c1d20', top: '#1c1d20', legs: '#1c1d20', boots: '#e9ebec', skin: '#f1f2f3', gloves: '#1c1d20', hair: '#f4f5f6', helmet: true, closed: true, visor: '#101114', vest: '#eceeef', harness: true },
+  jackscrew: { suit: '#7a2a22', top: '#7a2a22', legs: '#3b4a63', boots: '#3a2b1c', skin: '#e2b48e', hair: '#3a2a1c', helmet: false, vest: '#5a1f1a', cap: '#2c2f33' },
+};
 
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0, ...extra });
 function built(spec) {
@@ -326,6 +354,49 @@ function built(spec) {
   };
   const model = new THREE.Group();
   const s = spec.tall * METRE; // everything below in shares of their height
+  if (spec.src.built === 'probe') {
+    // an Imperial probe droid: a black ball with a red eye, hanging over the
+    // ground on its repulsors, a skirt of thin legs dangling under it
+    const black = mat('#18191c', { roughness: 0.45, metalness: 0.4 });
+    const grey = mat('#5b5f66', { roughness: 0.5, metalness: 0.5 });
+    const body = new THREE.Group();
+    const ball = new THREE.Mesh(geo(new THREE.SphereGeometry(0.17, 18, 14)), black);
+    body.add(ball);
+    const cap = new THREE.Mesh(geo(new THREE.CylinderGeometry(0.06, 0.1, 0.08, 12)), grey);
+    cap.position.y = 0.19;
+    body.add(cap);
+    for (let i = 0; i < 3; i++) {
+      const eye = new THREE.Mesh(geo(new THREE.SphereGeometry(0.022, 8, 6)), mat('#111', { emissive: new THREE.Color('#ff2a1a'), emissiveIntensity: 2.5 }));
+      const a = (i - 1) * 0.5;
+      eye.position.set(Math.sin(a) * 0.16, 0.05, Math.cos(a) * 0.16);
+      body.add(eye);
+    }
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const leg = new THREE.Mesh(geo(new THREE.CylinderGeometry(0.008, 0.012, 0.42, 5)), grey);
+      leg.position.set(Math.sin(a) * 0.09, -0.32, Math.cos(a) * 0.09);
+      leg.rotation.set(Math.cos(a) * 0.18, 0, -Math.sin(a) * 0.18);
+      body.add(leg);
+    }
+    body.position.y = 0.72;
+    model.add(body);
+    model.scale.setScalar(s / 0.95);
+    let t = 0;
+    return {
+      model,
+      bones: {},
+      hand: null,
+      built: true,
+      update(dt) {
+        t += dt;
+        body.position.y = 0.72 + Math.sin(t * 1.6) * 0.03; // (hanging, never still)
+        body.rotation.y = Math.sin(t * 0.5) * 0.8;
+      },
+      dispose() {
+        for (const o of owned) o.dispose();
+      },
+    };
+  }
   if (spec.src.built === 'artoo') {
     // a white barrel with blue panels, a silver dome, a leg each side and a third under him
     const white = mat('#e9edf2');
@@ -380,10 +451,7 @@ function built(spec) {
   // a person: legs, a body, arms that swing, a head; the groups named as
   // Meshy's bones are (Spine, Head, RightArm, RightForeArm, RightHand…) so
   // gunplay.js poses them the same way
-  const look =
-    spec.src.built === 'luke'
-      ? { suit: '#e8742a', top: '#e8742a', legs: '#e8742a', boots: '#2a2622', skin: '#f0c7a5', hair: '#e9edf2', helmet: true, vest: '#f2f2ee' }
-      : { suit: '#f3f1ea', top: '#f3f1ea', legs: '#1d2a44', boots: '#2b1d14', skin: '#e9be98', hair: '#5a3a22', helmet: false, vest: '#151515' };
+  const look = LOOKS[spec.src.built] ?? LOOKS.han;
   const limb = (r, l, m) => {
     const g = geo(new THREE.CapsuleGeometry(r, l, 4, 10));
     g.translate(0, -l / 2 - r * 0.5, 0); // hangs from its joint
@@ -419,21 +487,39 @@ function built(spec) {
   const vest = new THREE.Mesh(geo(new THREE.CapsuleGeometry(0.135, 0.16, 4, 12)), mat(look.vest));
   vest.position.y = 0.75 - WAIST;
   vest.scale.set(1.02, 1, 0.76);
-  if (spec.src.built !== 'han') vest.scale.set(1.03, 0.75, 0.77); // Luke's harness: a white vest over the flight suit
+  if (look.harness) vest.scale.set(1.03, 0.75, 0.77); // a short vest over the suit: Luke's harness, a trooper's chest plate
   spine.add(vest);
   const headG = new THREE.Group();
   headG.name = 'Head';
   headG.position.y = 0.99 - WAIST;
   spine.add(headG);
-  const head = new THREE.Mesh(geo(new THREE.SphereGeometry(0.095, 16, 12)), mat(look.skin));
+  const head = new THREE.Mesh(geo(new THREE.SphereGeometry(0.095, 16, 12)), mat(look.closed ? look.hair : look.skin));
   headG.add(head);
   const hair = new THREE.Mesh(geo(new THREE.SphereGeometry(look.helmet ? 0.112 : 0.1, 16, 10, 0, Math.PI * 2, 0, look.helmet ? Math.PI * 0.62 : Math.PI * 0.45)), mat(look.hair, look.helmet ? { roughness: 0.4 } : {}));
   hair.position.set(0, 0.01, look.helmet ? 0 : -0.012);
   headG.add(hair);
   if (look.helmet) {
-    const visor = new THREE.Mesh(geo(new THREE.BoxGeometry(0.15, 0.035, 0.03)), mat('#2a3340', { roughness: 0.2, metalness: 0.5 }));
+    const visor = new THREE.Mesh(geo(new THREE.BoxGeometry(0.15, 0.035, 0.03)), mat(look.visor ?? '#2a3340', { roughness: 0.2, metalness: 0.5 }));
     visor.position.set(0, 0.06, 0.1);
     headG.add(visor);
+    // a trooper's helmet comes down over the face, with its jaw and its vents
+    if (look.closed) {
+      const jaw = new THREE.Mesh(geo(new THREE.BoxGeometry(0.15, 0.07, 0.07)), mat(look.hair, { roughness: 0.4 }));
+      jaw.position.set(0, -0.045, 0.07);
+      headG.add(jaw);
+      const grille = new THREE.Mesh(geo(new THREE.BoxGeometry(0.07, 0.025, 0.012)), mat('#1a1b1e'));
+      grille.position.set(0, -0.05, 0.108);
+      headG.add(grille);
+    }
+  }
+  // a cap (Jack's crew)
+  if (look.cap) {
+    const cap = new THREE.Mesh(geo(new THREE.CylinderGeometry(0.1, 0.104, 0.05, 14)), mat(look.cap));
+    cap.position.set(0, 0.07, 0);
+    headG.add(cap);
+    const peak = new THREE.Mesh(geo(new THREE.BoxGeometry(0.15, 0.012, 0.08)), mat(look.cap));
+    peak.position.set(0, 0.05, 0.1);
+    headG.add(peak);
   }
   const arms = [];
   for (const [x, side] of [
@@ -451,7 +537,7 @@ function built(spec) {
     const wrist = new THREE.Group();
     wrist.name = `${side}Hand`;
     wrist.position.y = -0.19;
-    const hand = new THREE.Mesh(geo(new THREE.SphereGeometry(0.04, 10, 8)), mat(look.skin));
+    const hand = new THREE.Mesh(geo(new THREE.SphereGeometry(0.04, 10, 8)), mat(look.gloves ?? look.skin));
     hand.position.y = -0.03;
     wrist.add(hand);
     elbow.add(wrist);
@@ -1232,6 +1318,15 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   let cast = null;
   let party = null; // [lead, mate] once loaded: { spec, fig, group, gun, w }
   let troopFigs = new Map(); // id → { fig, group }
+  const troopModels = new Map(); // a troop's model's url → { ready: { scene, clips } once loaded } (copied for each one)
+  // (what a loaded scene's made of, freed when the walk's over)
+  const freeScene = (scene) =>
+    scene.traverse((o) => {
+      if (!o.isMesh) return;
+      o.geometry.dispose();
+      o.material?.map?.dispose();
+      o.material?.dispose();
+    });
   let ground = null;
   let rocks = null;
   let haze = null;
@@ -1469,8 +1564,25 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const specs = PARTY[kind] ?? PARTY.rv;
     cast = createMeshyCast(withWardrobe()); // (the wardrobe's bodies too, for the cruiser's two)
     // (and the side's troops, where the cast has them: the rest are built stand-ins)
-    const needCast = [...new Set([...specs.filter((s) => s.src.meshy).map((s) => s.src.meshy), ...Object.keys(sideFor(kind)?.troops ?? SIDES.rickmorty.troops)])];
+    const sideTroops = Object.keys(sideFor(kind)?.troops ?? SIDES.rickmorty.troops);
+    const needCast = [...new Set([...specs.filter((s) => s.src.meshy).map((s) => s.src.meshy), ...sideTroops.map((k) => troopLook(k).meshy).filter(Boolean).map((k) => MESHY[k]?.a ?? k)])]; // (the cast loads by asset: a Morty clone is Morty's)
     const castReady = cast.load(null, needCast).catch(() => {});
+    // (and the ones that are models of their own, Albuquerque's: loaded once, copied for each)
+    for (const k of sideTroops) {
+      const url = troopLook(k).url;
+      if (!url || troopModels.has(url)) continue;
+      const entry = { ready: null };
+      troopModels.set(url, entry);
+      Promise.all([getLoader().loadAsync(url), borrowClips()])
+        .then(([gltf, clips]) => {
+          // (the walk's over, or another's begun, while it loaded)
+          if (troopModels.get(url) !== entry) return freeScene(gltf.scene);
+          // (the first one rigged keeps the materials and smooths the normals, shared by the copies)
+          rigScene(gltf.scene, clips, 1);
+          entry.ready = { scene: gltf.scene, clips };
+        })
+        .catch(() => {});
+    }
     loading = (async () => {
       await castReady;
       const figs = await Promise.all(specs.map((s) => loadModel(s, cast).catch(() => null)));
@@ -1493,24 +1605,34 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   const troopFig = (t) => {
     let got = troopFigs.get(t.id);
     if (got) return got;
-    const c = cast?.make(t.kind);
+    const look = troopLook(t.kind);
+    const tpl = look.url ? troopModels.get(look.url)?.ready : null;
+    const c = tpl ? null : look.meshy ? cast?.make(look.meshy) : null;
     const group = new THREE.Group();
     let fig = null;
     let b = null;
     let loco = null;
-    if (c) {
+    let own = null;
+    if (tpl) {
+      // a copy of Albuquerque's model, sharing what it's made of
+      own = rigScene(cloneSkinned(tpl.scene), tpl.clips, TROOPS[t.kind].tall / METRE, { shared: true });
+      fig = own;
+      loco = own.loco;
+      group.add(own.model);
+    } else if (c) {
       c.group.scale.setScalar(TROOPS[t.kind].tall / c.height);
       fig = { model: c.group };
       if (c.mixer) loco = createLocomotion(fig, { mixer: c.mixer, act: c.act, root: c.group, unit: METRE }); // (measured before it's placed)
       group.add(c.group);
     } else {
-      b = built({ tall: TROOPS[t.kind].tall / METRE, src: { built: 'han' } });
+      // built: the side's look for it (a stormtrooper, a probe), or a stand-in until its model's here
+      b = built({ tall: TROOPS[t.kind].tall / METRE, src: { built: look.built ?? 'han' } });
       group.add(b.model);
       fig = b;
     }
     root.add(group);
     const gp = troopGun(t) ? createGunplay(fig, troopGun(t), { unit: METRE, who: b ? 'built' : null }) : null;
-    got = { c, b, group, gp, loco, prevF: null };
+    got = { c: c ?? (own && { mixer: own.mixer }), b, group, gp, loco, own, prevF: null };
     troopFigs.set(t.id, got);
     return got;
   };
@@ -1520,6 +1642,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     root.remove(got.group);
     got.gp?.dispose();
     got.b?.dispose();
+    got.own?.mixer.stopAllAction();
     troopFigs.delete(id);
   };
 
@@ -2191,10 +2314,13 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     if (S.cleared && S.clock > S.nextSquad) {
       const kinds = squadKinds(sideFor(S.kind) ?? SIDES.rickmorty, S.squads);
       const count = Math.min(5, 2 + S.squads + Math.floor(rand() * 2));
-      S.troops = [...S.troops.filter((o) => o.alive || o.dead < 3), ...squad(rand, S.me, S.R, { count, kinds, band: S.band })];
+      const fresh = squad(rand, S.me, S.R, { count, kinds, band: S.band });
+      S.troops = [...S.troops.filter((o) => o.alive || o.dead < 3), ...fresh];
       S.squads++;
       S.cleared = false;
-      emit({ type: 'foot', id: 'squad' });
+      // (who most of them are, for the crew's word on it: a squad of Mortys isn't a squad of bugs)
+      const most = fresh.reduce((m, t) => ((m[t.kind] = (m[t.kind] ?? 0) + 1), m), {});
+      emit({ type: 'foot', id: 'squad', who: Object.keys(most).sort((a, b) => most[b] - most[a])[0] });
     }
     const targets = [{ id: 'me', n: S.me.n, h: S.me.h }, ...(S.mate ? [{ id: 'mate', n: S.mate.n, h: S.mate.h }] : [])];
     const r = march(S.troops, targets, dt, S.R, rand, obstacles());
@@ -2220,6 +2346,13 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       emit({ type: 'shot' });
     }
     for (const h of r.hits) if (h.target === 'me') hurt(h.damage);
+    // a probe droid that's had you in sight a while calls them in: a squad of the side's others
+    for (const c of r.calls) {
+      const kinds = squadKinds(sideFor(S.kind) ?? SIDES.rickmorty, S.squads + 1).filter((k) => !TROOPS[k].calls);
+      S.troops = [...S.troops, ...squad(rand, S.me, S.R, { count: 3, kinds: kinds.length ? kinds : ['stormtrooper'], band: S.band })];
+      S.cleared = false;
+      emit({ type: 'foot', id: 'called', by: c.by });
+    }
     if (!S.cleared && !troopsAlive().length) {
       S.cleared = true;
       S.nextSquad = S.clock + 30 + rand() * 25;
@@ -2734,6 +2867,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       party = null;
       for (const g of [...guests.values()]) dropGuest(g);
       for (const id of [...troopFigs.keys()]) dropTroop(id);
+      for (const e of troopModels.values()) if (e.ready) freeScene(e.ready.scene);
+      troopModels.clear();
       for (const key of [...blobs.keys()]) dropShadow(key);
       for (const o of S.bolts) o.mesh.visible = false;
       S.bolts = [];
