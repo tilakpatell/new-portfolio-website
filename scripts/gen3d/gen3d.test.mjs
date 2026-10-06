@@ -47,3 +47,12 @@ describe('concept pictures', () => {
     expect(prompt('an X-wing')).toMatch(/^an X-wing, .*white background.*no text/);
   });
 });
+
+describe('following a picture closely', () => {
+  it('runs trellis.cpp with the Pixal3D weights and the camera it was taken with', () => {
+    const cmd = command('trelliscpp', 'a.png', 'b.glb', { faithful: true, fov: 52 });
+    if (!cmd) return; // trellis.cpp isn't installed here
+    expect(cmd.join(' ')).toContain('--model pixal3d --fov 52');
+    expect(command('trelliscpp', 'a.png', 'b.glb').join(' ')).not.toContain('pixal3d');
+  });
+});
