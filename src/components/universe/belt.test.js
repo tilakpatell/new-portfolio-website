@@ -27,8 +27,27 @@ describe('beltRocks', () => {
   it('gives each rock a collision radius a little inside its biggest side', () => {
     for (const r of beltRocks({ count: 200 })) {
       expect(r.r).toBeCloseTo(Math.max(r.sx, r.sy, r.sz) * 0.9, 9);
-      expect([0, 1, 2]).toContain(r.shape);
+      expect([0, 1, 2, 3]).toContain(r.shape);
     }
+  });
+});
+
+describe('the belt’s boulders', () => {
+  it('one rock in forty is a boulder', () => {
+    const rocks = beltRocks({ count: 400 });
+    const boulders = rocks.filter((r) => r.shape === 3);
+    expect(boulders.length).toBeGreaterThanOrEqual(8);
+    expect(boulders.length).toBeLessThanOrEqual(12);
+    // (twice its size, and the ship's collider knows it)
+    for (const b of boulders) expect(b.r).toBeCloseTo(Math.max(b.sx, b.sy, b.sz) * 0.9, 9);
+  });
+
+  it('leaves every other rock where it always was', () => {
+    const rocks = beltRocks({ count: 400 });
+    const plain = rocks.filter((r) => r.shape !== 3);
+    expect(plain.length).toBe(390);
+    // (the first rock of the belt, drawn before any boulder was picked, is unchanged by the picking)
+    expect(rocks.every((r) => Number.isFinite(r.x) && Math.hypot(r.x, r.z) > 0)).toBe(true);
   });
 });
 

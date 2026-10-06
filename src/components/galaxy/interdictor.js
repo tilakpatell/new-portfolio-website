@@ -15,8 +15,8 @@
 
 import * as THREE from 'three';
 import { INTERDICTION } from './interdiction';
+import { JUMP, jumpSmear } from '../universe/capitalRules';
 
-const JUMP = 0.7; // seconds to come out of (or go into) hyperspace
 const LINGER = 240; // seconds at most it stays, fighters or no
 
 // the well: a shell seen from inside or out, brightest at its rim, with the
@@ -151,22 +151,14 @@ export function createInterdictor(parent, { models, small = false } = {}) {
         piece.at.addScaledVector(piece.drift, dt);
         g.position.copy(piece.at);
         g.rotation.set(0, piece.heading + Math.PI, 0); // (its nose is +z; forward() is −z at heading 0)
-        // smeared along its line of flight while it comes out of hyperspace (or goes in)
-        let stretch = 1;
-        let shift = 0;
-        if (piece.state === 'in') {
-          const k = Math.min(1, piece.age / JUMP);
-          stretch = 1 + (1 - k) ** 3 * 14;
-          shift = -((1 - k) ** 3) * size * 4;
-          if (k >= 1) piece.state = 'here';
-        } else if (piece.state === 'here' && piece.age > LINGER) {
-          this.leave();
-        } else if (piece.state === 'out') {
-          const k = Math.min(1, piece.age / JUMP);
-          stretch = 1 + k * k * 18;
-          shift = k * k * size * 6;
-          if (k >= 1) hide();
-        }
+        // smeared along its line of flight while it comes out of hyperspace
+        // (or goes in): the nose runs in from behind and stops where the ship
+        // stops, and on the way out streaks off ahead with the stern after it
+        // (capitalRules.js's jumpSmear, the universe map's Star Destroyers' too)
+        const { stretch, shift } = jumpSmear(piece.state, piece.age / JUMP, size);
+        if (piece.state === 'in' && piece.age >= JUMP) piece.state = 'here';
+        else if (piece.state === 'here' && piece.age > LINGER) this.leave();
+        else if (piece.state === 'out' && piece.age >= JUMP) hide();
         g.scale.set(1, 1, stretch);
         g.translateZ(shift);
         well.position.copy(piece.at);

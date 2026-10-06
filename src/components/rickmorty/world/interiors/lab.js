@@ -475,6 +475,11 @@ export async function buildGarage(kit) {
   const it = (id) => FURNITURE.find((f) => f.id === id);
   bench(R, it('workbench'), glass);
   benchArm(R, it('bench-arm'));
+  // Rick's portal gun on the arm's end, by the portal: its dial picks where the portal opens
+  const arm = it('bench-arm');
+  const gun = R.frame(-303.2, 100.0, Math.PI / 2, { y: arm.h });
+  gun.box(0xd8dde2, 0, 0.03, 0, 0.3, 0.1, 0.14).box(0x9aa3ab, -0.18, 0.02, 0, 0.08, 0.12, 0.1).cyl(0xd8dde2, 0.17, 0.08, 0, 0.035, 0.12, 0, Math.PI / 2);
+  gun.glow(CYL, 0x7dff5a, 1.8, 0.02, 0.15, 0, 0, 0.1, 0.06, 0.1).glow(BALL, 0x7dff5a, 1.6, 0.25, 0.08, 0, 0, 0.05);
   chair(R, -300.85, 98.95, 0.25);
   const ld = it('laundry');
   const nw = R.fixed(ld.x, a.z0, 0);

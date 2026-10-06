@@ -19,6 +19,9 @@
 //            drawn bigger than their numbers here, by STATION and PLANET)
 //   sign     a station's big sign: its name, and a line under it
 //   palette  the colours it's painted in
+//   air      a fandom planet's atmosphere (lib/three/atmosphere.js's shell):
+//            { colour, density, top (its edge, in radii), sunset }, or null
+//            for none (the Office's paper, the Game Boy's screen)
 
 // how much bigger than its size number each kind is drawn, in map units:
 // the planets huge against the ship (0.26 long: 360 to 450 of it across)
@@ -125,6 +128,7 @@ const FANDOMS = [
   },
   {
     id: 'music',
+    air: { colour: '#ffb060', density: 1.2, top: 1.05 },
     label: 'Indian classical music',
     world: 'Music room',
     to: '/music',
@@ -135,6 +139,7 @@ const FANDOMS = [
   },
   {
     id: 'middleearth',
+    air: { colour: '#9fc4ff', density: 1.8, top: 1.05, sunset: '#ffb070' },
     label: 'The Lord of the Rings',
     world: 'Middle-earth',
     to: '/middle-earth',
@@ -145,6 +150,7 @@ const FANDOMS = [
   },
   {
     id: 'transformers',
+    air: { colour: '#a98cff', density: 0.9, top: 1.04 },
     label: 'Transformers',
     world: 'Cybertron',
     to: '/cybertron',
@@ -155,6 +161,7 @@ const FANDOMS = [
   },
   {
     id: 'marvel',
+    air: { colour: '#ffd27a', density: 1.4, top: 1.05 },
     label: 'Marvel',
     world: 'Avengers HQ',
     to: '/avengers',
@@ -165,6 +172,7 @@ const FANDOMS = [
   },
   {
     id: 'breakingbad',
+    air: { colour: '#ffd9a8', density: 1.6, top: 1.045, sunset: '#ff8a50' },
     label: 'Breaking Bad',
     world: 'Albuquerque',
     to: '/albuquerque',
@@ -175,6 +183,7 @@ const FANDOMS = [
   },
   {
     id: 'office',
+    air: null, // (paper has no air: it keeps its soft rim)
     label: 'The Office',
     world: 'Scranton',
     to: '/scranton',
@@ -186,6 +195,7 @@ const FANDOMS = [
   },
   {
     id: 'rickmorty',
+    air: { colour: '#b8ff5a', density: 2.0, top: 1.05, flat: true }, // (drawn as the show draws air: two flat bands)
     label: 'Rick and Morty',
     world: 'Dimension C-137',
     to: '/c-137',
@@ -196,6 +206,7 @@ const FANDOMS = [
   },
   {
     id: 'gaming',
+    air: null, // (a Game Boy's screen has no air: its pixel clouds and rim do)
     label: 'Gaming',
     world: 'Dot Matrix',
     place: 'Dot Matrix island',
@@ -209,6 +220,7 @@ const FANDOMS = [
   },
   {
     id: 'travel',
+    air: { colour: '#8fc1ff', density: 2.2, top: 1.05 },
     label: 'Travel',
     world: 'Earth',
     place: 'Earth',
@@ -220,6 +232,7 @@ const FANDOMS = [
   },
   {
     id: 'caribbean',
+    air: { colour: '#bfe4ff', density: 2.4, top: 1.055 },
     label: 'Pirates of the Caribbean',
     world: 'The Caribbean',
     to: '/caribbean',
@@ -230,6 +243,7 @@ const FANDOMS = [
   },
   {
     id: 'invincible',
+    air: { colour: '#ffc9a0', density: 2.8, top: 1.06 },
     label: 'Invincible',
     world: 'Invincible',
     place: 'the Graysons’ city',

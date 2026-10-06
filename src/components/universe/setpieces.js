@@ -2,11 +2,16 @@
 // aren't just traffic.
 //
 // - A capital ship drops out of hyperspace near you: it comes in long
-//   and thin, smeared along its line of flight in a flash of blue-white,
-//   and snaps to its own shape, then drifts on, its fighters launching
-//   from its belly; a while later it jumps away again, the same in reverse.
-//   Which ship is the crew's side's (sides.js's `capitalShip`): a Star
-//   Destroyer, a Federation cruiser, a Madrigal freighter.
+//   and thin, smeared along its line of flight in a flash of blue-white
+//   (its nose running in from behind to where it stops: capitalRules.js's
+//   jumpSmear), and snaps to its own shape, then drifts on, its fighters
+//   launching from its belly; a while later it jumps away again, the nose
+//   streaking off ahead and the stern after it. Which ship is the crew's
+//   side's (sides.js's `capitalShip`): a Star Destroyer, a Federation
+//   cruiser, a Madrigal freighter. It's a fight, too (capitalRules.js, the
+//   rules; this draws them): its shield parts are marked on it, blue-white,
+//   and the bridge amber once they're gone; its turbolasers' fat bolts fly
+//   at you; and with its bridge gone it lists and goes up along its length.
 // - A DEA helicopter for the roadblock (Albuquerque's): it drops in ahead of
 //   you and hangs there, nose on, its searchlight on you, while the SUVs
 //   hold you; when they're seen off (or after a while) it climbs away.
@@ -23,11 +28,12 @@
 //   tunnel of blue-white light that opens, holds for a while and closes. Fly
 //   into it and the scene takes you out of it somewhere else on the map.
 //
-// createSetPieces(parent, { small }) → { destroyer(ship, kind) → { hangar } | null, leave(),
+// createSetPieces(parent, { small }) → { destroyer(ship, kind) → { hangar } | null, leave(), cleared(),
+//   destroyerHere, targets, hit(from, to, punch) → hit | null, drain() → events (capitalRules.js's),
 //   roadblock(ship) → boolean, chopperHere,
 //   portals(points), comet(ship), flare(star, ship) → { arrives } | null,
 //   rift(ship) → boolean, riftAt, riftInside(ship), closeRift(),
-//   update(dt, t, camera) → busy, dispose() }
+//   update(dt, t, camera, ship) → busy, dispose() }
 // Everything is in `parent`'s space (the map's).
 
 import * as THREE from 'three';
@@ -36,8 +42,9 @@ import { SOLIDS, forward } from './ship';
 import { RIFT_R, riftSpot } from './nav';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
 import { createEjection } from './cme';
+import { JUMP, LENGTH, createCapital, jumpSmear } from './capitalRules';
 
-export const STAR_DESTROYER = 16; // map units long
+export const STAR_DESTROYER = LENGTH.destroyer; // map units long
 
 // Where a Star Destroyer drops in by a ship ({ x, y, z, heading }): 28 ahead
 // and 10 off to `side` (1 or −1), broadside on, a little below; but never
@@ -56,11 +63,9 @@ export function destroyerSpot(ship, side, solids = SOLIDS) {
   }
   return at(10, side);
 }
-// how long each capital ship is, in map units (a Star Destroyer's the biggest)
-const CAPITAL = { destroyer: STAR_DESTROYER, fedcruiser: 12, madrigal: 8 };
+// the capital ships' turbolaser bolts, by ship
+const BOLT_COLOR = { destroyer: [0.6, 5.5, 1.0], fedcruiser: [0.6, 2.2, 6.5], madrigal: [6.0, 1.4, 0.6] };
 const CHOPPER = { len: 1.6, ahead: 22, above: 0.4, stay: 45, climb: 6 }; // map units long; where it hangs; seconds it stays, and climbing away
-const STAY = 55; // seconds it stays before jumping away
-const JUMP = 0.7; // seconds to come out of (or go into) hyperspace
 const FLARE_RISE = 3; // seconds the star swells before the shell leaves it
 const FLARE_SPEED = 150; // map units a second the shell runs out at
 const RIFT = { r: RIFT_R, open: 0.6, life: 20 }; // its radius (nav.js picks where it opens), how long it takes to open (and close), and how long it holds
@@ -186,16 +191,45 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
   const keep = (x) => (made.push(x), x);
   const glow = keep(glowTexture());
 
-  // the Star Destroyer, built the first time it's wanted
+  // the capital ship, built the first time it's wanted; its fight is capitalRules.js's
   let sd = null;
   let sdKind = null; // (which capital ship sd is)
+  let sdTop = 0.14; // how high its top is above its middle, as a fraction of its length (its parts sit on it)
+  const cap = createCapital();
   // the roadblock's helicopter: hanging ahead of you ('here'), then climbing away ('out')
   let chopper = null;
   const hover = { state: null, age: 0, at: new THREE.Vector3(), heading: 0 };
   const sdFlash = new THREE.Sprite(keep(new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(2.4, 3.2, 5), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })));
   sdFlash.visible = false;
   parent.add(sdFlash);
-  const piece = { state: null, age: 0, heading: 0, at: new THREE.Vector3(), drift: new THREE.Vector3(), len: CAPITAL.destroyer };
+  // its parts, marked (blue-white for the shields, amber for the bridge), its bolts, and the blasts as it goes
+  const markMats = { shield: keep(new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(1.2, 2.2, 5), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })), bridge: keep(new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(5, 2.2, 0.8), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })) };
+  const marks = Array.from({ length: 3 }, () => {
+    const m = new THREE.Sprite(markMats.shield);
+    m.visible = false;
+    parent.add(m);
+    return m;
+  });
+  const boltGeo = keep(new THREE.CylinderGeometry(0.07, 0.07, 1.8, 6).rotateX(Math.PI / 2));
+  const boltMats = Object.fromEntries(Object.entries(BOLT_COLOR).map(([k, c]) => [k, keep(new THREE.MeshBasicMaterial({ color: new THREE.Color(...c), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }))]));
+  const boltMeshes = Array.from({ length: 12 }, () => {
+    const m = new THREE.Mesh(boltGeo, boltMats.destroyer);
+    m.visible = false;
+    m.frustumCulled = false;
+    parent.add(m);
+    return m;
+  });
+  const blastMat = keep(new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(5, 2.6, 1.2), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  const blasts = Array.from({ length: 8 }, () => {
+    const m = new THREE.Sprite(blastMat.clone());
+    made.push(m.material);
+    m.visible = false;
+    m.userData = { age: 0, size: 1 };
+    parent.add(m);
+    return m;
+  });
+  const capEvents = []; // what the fight did since the scene last asked (drain)
+  let endFlash = -1; // the blast as it's gone: seconds since, or −1
 
   // portals, a few at once
   const portalGeo = keep(new THREE.PlaneGeometry(1, 1));
@@ -245,7 +279,7 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
     // side, broadside on. Returns where its TIEs launch from (its belly), or
     // null if one's already here
     destroyer(ship, kind = 'destroyer') {
-      if (piece.state) return null;
+      if (cap.state) return null;
       // (the built one until the model's here; another side's ship, made again as this one)
       if (sd && ((!sd.model && fleet.loaded(kind)) || sdKind !== kind)) {
         sd.group.removeFromParent();
@@ -256,27 +290,47 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
         fleet.want([kind]);
         sd = fleet.make(kind);
         sdKind = kind;
+        // (where its top is, in its own unit frame: its parts are marked up there)
+        const box = new THREE.Box3().setFromObject(sd.group);
+        sdTop = Number.isFinite(box.max.y) && box.max.y > 0.02 ? Math.min(0.35, box.max.y) : 0.14;
         sd.group.visible = false;
+        sd.group.rotation.order = 'YXZ'; // (yaw, then its own pitch and roll: it lists as it dies)
         parent.add(sd.group);
       }
-      piece.len = CAPITAL[kind] ?? CAPITAL.destroyer;
       const side = Math.random() < 0.5 ? -1 : 1;
-      piece.at.set(...destroyerSpot(ship, side));
       // crossing your path, slowly
-      piece.heading = ship.heading + side * (Math.PI / 2 + 0.3);
-      const [dx, dz] = forward(piece.heading);
-      piece.drift.set(dx, 0, dz).multiplyScalar(1.4);
-      piece.state = 'in';
-      piece.age = 0;
+      const heading = ship.heading + side * (Math.PI / 2 + 0.3);
+      const d = cap.arrive(kind, destroyerSpot(ship, side), heading, { len: LENGTH[kind] ?? LENGTH.destroyer, top: sdTop });
+      if (!d) return null;
       sd.group.visible = true;
       sdFlash.visible = true;
-      sdFlash.position.copy(piece.at);
-      return { hangar: piece.at.clone().add(new THREE.Vector3(0, -2.2 * (piece.len / CAPITAL.destroyer), 0)), heading: piece.heading };
+      sdFlash.position.set(...cap.at);
+      return { hangar: new THREE.Vector3(...d.hangar), heading };
     },
     // and it jumps away (early: the TIEs are all down)
     leave() {
-      if (piece.state === 'here') piece.age = Math.max(piece.age, STAY);
+      cap.leave();
       if (hover.state === 'here') hover.age = Math.max(hover.age, CHOPPER.stay);
+    },
+    // its fighters are all gone: another wave, or it goes (capitalRules.js)
+    cleared() {
+      cap.cleared();
+    },
+    // what of it the guns may lock on to (its shield parts, then its bridge)
+    get targets() {
+      return cap.targets;
+    },
+    // a shot of yours from `from` to `to` (Vector3s) this frame, worth `punch`:
+    // what it hit, or null: { type, part, at (a Vector3), down, left, kind, size, id }
+    hit(from, to, punch = 1) {
+      if (!cap.here) return null;
+      const r = cap.hit([from.x, from.y, from.z], [to.x, to.y, to.z], punch);
+      if (!r) return null;
+      return { ...r, at: new THREE.Vector3(...r.at), kind: cap.kind, size: cap.len * 0.05, id: r.part ? `cap:${r.part}` : null };
+    },
+    // what the fight did since last asked (capitalRules.js's events)
+    drain() {
+      return capEvents.splice(0);
     },
     // the DEA's helicopter over the roadblock, ahead of you and facing you
     roadblock(ship) {
@@ -301,7 +355,10 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
       return comet.visible ? head.position.clone() : null;
     },
     get destroyerHere() {
-      return piece.state === 'here' || piece.state === 'in';
+      return cap.here;
+    },
+    get capital() {
+      return cap;
     },
 
     // portals opening at these points (the Council coming through)
@@ -367,50 +424,88 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
       comet.visible = true;
     },
 
-    update(dt, t, camera) {
+    // ship: yours ({ x, y, z, heading, speed }), for the capital ship's guns, or null
+    update(dt, t, camera, ship = null) {
       let busy = false;
       camera.getWorldPosition(cam);
       parent.worldToLocal(cam);
 
-      if (piece.state) {
-        busy = true;
-        piece.age += dt;
-        const g = sd.group;
-        piece.at.addScaledVector(piece.drift, dt);
-        g.position.copy(piece.at);
-        g.rotation.set(0, piece.heading + Math.PI, 0); // (its nose is +z; forward() is −z at heading 0)
-        // smeared along its line of flight while it comes out of hyperspace (or goes in)
-        let stretch = 1;
-        let shift = 0;
-        if (piece.state === 'in') {
-          const k = Math.min(1, piece.age / JUMP);
-          stretch = 1 + (1 - k) ** 3 * 14;
-          shift = -((1 - k) ** 3) * piece.len * 4;
-          if (k >= 1) piece.state = 'here';
-        } else if (piece.state === 'here' && piece.age > STAY) {
-          piece.state = 'out';
-          piece.age = 0;
+      // the capital ship: the rules move it (and fight it); this poses it
+      const was = cap.state;
+      if (cap.state && cap.update(dt, ship)) busy = true;
+      for (const e of cap.events.splice(0)) {
+        capEvents.push(e);
+        if (e.type === 'leaving') {
           sdFlash.visible = true;
-          sdFlash.position.copy(piece.at);
-        } else if (piece.state === 'out') {
-          const k = Math.min(1, piece.age / JUMP);
-          stretch = 1 + k * k * 18;
-          shift = k * k * piece.len * 6;
-          if (k >= 1) {
-            piece.state = null;
-            g.visible = false;
-          }
+          sdFlash.position.set(...cap.at);
+        } else if (e.type === 'blast') {
+          const m = blasts.find((o) => !o.visible) ?? blasts[0];
+          m.position.set(...e.at);
+          m.userData.age = 0;
+          m.userData.size = e.size;
+          m.visible = true;
+        } else if (e.type === 'dead') {
+          endFlash = 0;
+          sdFlash.visible = true;
+          sdFlash.position.set(...cap.at);
         }
-        g.scale.set(piece.len, piece.len, piece.len * stretch);
+      }
+      if (was && !cap.state && sd) sd.group.visible = false;
+      if (cap.state && sd) {
+        const g = sd.group;
+        g.position.set(...cap.at);
+        g.rotation.set(cap.pitch, cap.heading + Math.PI, cap.roll); // (its nose is +z; forward() is −z at heading 0)
+        // smeared along its line of flight while it comes out of hyperspace (or goes in)
+        const { stretch, shift } = jumpSmear(cap.state, cap.age / JUMP, cap.len);
+        g.scale.set(cap.len, cap.len, cap.len * stretch);
         g.translateZ(shift);
         sd.update(t);
-        if (sdFlash.visible) {
-          const a = piece.state === 'in' || piece.state === 'out' ? piece.age : JUMP + 1;
-          const k = a < 0.15 ? a / 0.15 : Math.exp(-(a - 0.15) * 4);
-          sdFlash.scale.setScalar(piece.len * (0.6 + k));
-          sdFlash.material.opacity = k;
-          if (a > 1.2) sdFlash.visible = false;
+      }
+      if (sdFlash.visible) {
+        const a = endFlash >= 0 ? endFlash : cap.state === 'in' || cap.state === 'out' ? cap.age : JUMP + 1;
+        const k = a < 0.15 ? a / 0.15 : Math.exp(-(a - 0.15) * (endFlash >= 0 ? 2 : 4));
+        sdFlash.scale.setScalar(cap.len * (0.6 + k) * (endFlash >= 0 ? 2.4 : 1));
+        sdFlash.material.opacity = k;
+        if (a > 1.2 && endFlash < 0) sdFlash.visible = false;
+        if (endFlash >= 0) {
+          endFlash += dt;
+          if (endFlash > 2.4) {
+            endFlash = -1;
+            sdFlash.visible = false;
+          }
         }
+      }
+      // its parts, marked while they can be hit; the bridge once the shields are gone
+      const targets = cap.targets;
+      marks.forEach((m, i) => {
+        const tg = targets[i];
+        m.visible = Boolean(tg);
+        if (!tg) return;
+        busy = true;
+        m.material = markMats[tg.id === 'cap:bridge' ? 'bridge' : 'shield'];
+        m.position.set(tg.at.x, tg.at.y, tg.at.z);
+        m.scale.setScalar(tg.size * 2.2 * (1 + 0.15 * Math.sin(t * 5 + i)));
+        m.material.opacity = 0.55 + 0.25 * Math.sin(t * 5 + i);
+      });
+      // its turbolasers' bolts
+      boltMeshes.forEach((m, i) => {
+        const b = cap.bolts[i];
+        m.visible = Boolean(b);
+        if (!b) return;
+        m.material = boltMats[cap.kind] ?? boltMats.destroyer;
+        m.position.set(b.x, b.y, b.z);
+        m.lookAt(parent.localToWorld(tmp.set(b.x + b.vx, b.y + b.vy, b.z + b.vz)));
+      });
+      // the blasts along it as it goes
+      for (const m of blasts) {
+        if (!m.visible) continue;
+        busy = true;
+        m.userData.age += dt;
+        const a = m.userData.age;
+        const k = a < 0.1 ? a / 0.1 : Math.max(0, 1 - (a - 0.1) / 0.7);
+        m.scale.setScalar(m.userData.size * (1 + a * 3));
+        m.material.opacity = k;
+        if (a > 0.8) m.visible = false;
       }
 
       if (hover.state) {
