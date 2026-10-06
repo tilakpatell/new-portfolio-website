@@ -42,6 +42,8 @@ describe('the director', () => {
       for (const id of ['hunt', 'distress', 'convoy', 'bounty', 'leviathan']) expect(kinds.has(id), `${side.id} ${id}`).toBe(true);
       // (every side has a capital ship now: a Star Destroyer, a Federation cruiser, a Madrigal freighter)
       expect(kinds.has('destroyer'), side.id).toBe(true);
+      // (and the Federation's NX-5 Planet Remover, Rick's universe's alone)
+      expect(kinds.has('remover'), side.id).toBe(side.id === 'rickmorty');
       if (side.id === 'starwars') expect(!kinds.has('council') && !kinds.has('roadblock')).toBe(true);
       else if (side.id === 'rickmorty') expect(kinds.has('council') && !kinds.has('roadblock')).toBe(true);
       else expect(kinds.has('roadblock') && !kinds.has('council')).toBe(true);
@@ -128,5 +130,17 @@ describe('the director', () => {
     const d = createDirector({ rand: seeded(5), events });
     d.soon('rift');
     expect(run(d, 600, { side: SIDES.starwars }).map((g) => g.e)).not.toContain('rift');
+  });
+});
+
+describe('the law on your back', () => {
+  it('sends more hunts after a pilot the law wants', () => {
+    const quiet = run(createDirector({ rand: seeded(21) }), 6000, { side: SIDES.starwars });
+    const wanted = run(createDirector({ rand: seeded(21) }), 6000, { side: SIDES.starwars, wanted: true });
+    const share = (got) => got.filter((g) => g.e === 'hunt' || g.e === 'destroyer' || g.e === 'bounty').length / got.length;
+    expect(share(wanted)).toBeGreaterThan(share(quiet) * 1.3);
+    // (and not while your shields are low)
+    const calm = run(createDirector({ rand: seeded(21) }), 3000, { side: SIDES.starwars, wanted: true, calm: true });
+    expect(calm.some((g) => g.e === 'hunt')).toBe(false);
   });
 });

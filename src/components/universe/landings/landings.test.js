@@ -129,3 +129,35 @@ describe('planet landings', () => {
     expect(seedOf('breakingbad')).not.toBe(seedOf('rickmorty'));
   });
 });
+
+describe('the sky on foot', () => {
+  it('every landing’s sky stays near its hand-set colours at noon, and warms toward sunset', async () => {
+    const { skyAt } = await import('./sky');
+    const THREE = await import('three');
+    const lin = (hex) => {
+      const c = new THREE.Color(hex);
+      return [c.r, c.g, c.b];
+    };
+    let checked = 0;
+    for (const u of UNIVERSES) {
+      const landing = landingOf(u.id);
+      if (!u.air || !landing?.sky) continue;
+      checked++;
+      const noon = skyAt(landing.sky, u.air, 1);
+      for (const k of ['zenith', 'horizon', 'sun']) {
+        const set = lin(landing.sky[k]);
+        noon[k].forEach((v, i) => expect(Math.abs(v - set[i]), `${u.id} ${k}`).toBeLessThanOrEqual(0.15));
+      }
+      // (low, the sun's light comes through more air, which takes out most
+      // what it scatters most: a bluer air's sun goes redder)
+      const air = lin(u.air.colour);
+      const low = skyAt(landing.sky, u.air, 0.06);
+      const redder = low.sun[0] / Math.max(low.sun[2], 1e-6) >= noon.sun[0] / Math.max(noon.sun[2], 1e-6) - 1e-9;
+      expect(redder, u.id).toBe(air[2] >= air[0]);
+    }
+    expect(checked).toBeGreaterThan(4);
+    // a planet with no air keeps its hand-set sky, whatever the hour
+    const office = landingOf('office');
+    if (office?.sky) expect(skyAt(office.sky, null, 0.1).zenith).toEqual(lin(office.sky.zenith));
+  });
+});

@@ -345,3 +345,46 @@ describe('a convoy', () => {
     }
   });
 });
+
+describe('your standing', () => {
+  it('sends the ordinary ships running from a pilot they fear, fight or no fight', () => {
+    const { traffic, fleet } = setup();
+    const ship = { ...parked };
+    let fledFeared = false;
+    let fledCalm = false;
+    for (let t = 0; t < 90; t += DT) {
+      traffic.update(DT, t, ship, { fight: false, feared: true });
+      if (traffic.groups.some((g) => g.flee > 0.5 && fleet.made.length)) fledFeared = true;
+    }
+    const calm = setup();
+    for (let t = 0; t < 90; t += DT) {
+      calm.traffic.update(DT, t, ship, { fight: false, feared: false });
+      if (calm.traffic.groups.some((g) => g.flee > 0.5)) fledCalm = true;
+    }
+    expect(fledFeared).toBe(true);
+    expect(fledCalm).toBe(false);
+  });
+
+  it('has a patrol of the law passing a wanted pilot report them, once a patrol, and never a pilot in good standing', () => {
+    const { traffic } = setup();
+    const ship = { ...parked };
+    const spotted = [];
+    let groups = 0;
+    for (let t = 0; t < 240; t += DT) {
+      if (t % 20 < DT / 2) traffic.soon('tie'); // (a patrol brought past you now and then)
+      for (const e of traffic.update(DT, t, ship, { wanted: true })) if (e.type === 'spotted') spotted.push(e);
+      groups = Math.max(groups, traffic.groups.length);
+    }
+    expect(groups).toBeGreaterThan(0);
+    expect(spotted.length).toBeGreaterThan(0);
+    for (const e of spotted) {
+      expect(e.faction).toBe('empire');
+      expect(SIDES.starwars.factions.empire.kinds.map(([k]) => k)).toContain(e.kind);
+    }
+    const clean = setup();
+    for (let t = 0; t < 240; t += DT) {
+      if (t % 20 < DT / 2) clean.traffic.soon('tie');
+      for (const e of clean.traffic.update(DT, t, ship, { wanted: false })) expect(e.type).not.toBe('spotted');
+    }
+  });
+});

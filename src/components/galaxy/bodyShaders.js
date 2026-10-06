@@ -14,96 +14,12 @@
 // Everything's in linear light: lit ground tops out ~1.0–1.4, the things
 // that glow (lava, city lights) go well past the bloom's 1.7.
 
-// ── Noise ──
-export const NOISE = /* glsl */ `
-uniform vec3 uSeed; // whole numbers: each world reads its own stretch of the noise
-// hashes of lattice points (Dave Hoskins' "hash without sine": IQ's
-// fract(x * y * z) one goes to nothing along whole planes of points, and
-// those show as streaks)
-float hash13(vec3 p) {
-  p = fract((p + uSeed) * 0.1031);
-  p += dot(p, p.zyx + 31.32);
-  return fract((p.x + p.y) * p.z);
-}
-vec3 hash33(vec3 p) {
-  p = fract((p + uSeed) * vec3(0.1031, 0.1030, 0.0973));
-  p += dot(p, p.yxz + 33.33);
-  return fract((p.xxy + p.yxx) * p.zyx);
-}
-// value noise in -1..1 and its gradient (xyz of .yzw)
-vec4 noised(vec3 x) {
-  vec3 i = floor(x);
-  vec3 w = fract(x);
-  vec3 u = w * w * w * (w * (w * 6.0 - 15.0) + 10.0);
-  vec3 du = 30.0 * w * w * (w * (w - 2.0) + 1.0);
-  float a = hash13(i);
-  float b = hash13(i + vec3(1.0, 0.0, 0.0));
-  float c = hash13(i + vec3(0.0, 1.0, 0.0));
-  float d = hash13(i + vec3(1.0, 1.0, 0.0));
-  float e = hash13(i + vec3(0.0, 0.0, 1.0));
-  float f = hash13(i + vec3(1.0, 0.0, 1.0));
-  float g = hash13(i + vec3(0.0, 1.0, 1.0));
-  float h = hash13(i + vec3(1.0, 1.0, 1.0));
-  float k1 = b - a;
-  float k2 = c - a;
-  float k3 = e - a;
-  float k4 = a - b - c + d;
-  float k5 = a - c - e + g;
-  float k6 = a - b - e + f;
-  float k7 = -a + b + c - d + e - f - g + h;
-  return vec4(-1.0 + 2.0 * (a + k1 * u.x + k2 * u.y + k3 * u.z + k4 * u.x * u.y + k5 * u.y * u.z + k6 * u.z * u.x + k7 * u.x * u.y * u.z),
-              2.0 * du * vec3(k1 + k4 * u.y + k6 * u.z + k7 * u.y * u.z, k2 + k5 * u.z + k4 * u.x + k7 * u.z * u.x, k3 + k6 * u.x + k5 * u.y + k7 * u.x * u.y));
-}
-// value noise alone (cheaper: clouds, colour variation), -1..1
-float noise(vec3 x) {
-  vec3 i = floor(x);
-  vec3 f = fract(x);
-  f = f * f * (3.0 - 2.0 * f);
-  return -1.0 + 2.0 * mix(mix(mix(hash13(i), hash13(i + vec3(1.0, 0.0, 0.0)), f.x), mix(hash13(i + vec3(0.0, 1.0, 0.0)), hash13(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
-             mix(mix(hash13(i + vec3(0.0, 0.0, 1.0)), hash13(i + vec3(1.0, 0.0, 1.0)), f.x), mix(hash13(i + vec3(0.0, 1.0, 1.0)), hash13(i + vec3(1.0, 1.0, 1.0)), f.x), f.y), f.z);
-}
-// each octave turned (so the lattice never lines up) and doubled
-const mat3 M3 = mat3(0.00, 0.80, 0.60, -0.80, 0.36, -0.48, -0.60, -0.48, 0.64);
-const mat3 M3T = mat3(0.00, -0.80, -0.60, 0.80, 0.36, -0.48, 0.60, -0.48, 0.64);
-// fbm with its gradient; n octaves, the last one faded in by its fraction
-vec4 fbmd(vec3 p, float n, float gain) {
-  float a = 0.5;
-  float v = 0.0;
-  vec3 g = vec3(0.0);
-  mat3 J = mat3(1.0);
-  for (int i = 0; i < 10; i++) {
-    float fi = float(i);
-    if (fi >= n) break;
-    float w = a * clamp(n - fi, 0.0, 1.0);
-    vec4 k = noised(p);
-    v += w * k.x;
-    g += w * (J * k.yzw);
-    p = M3 * p * 2.03;
-    J = J * M3T * 2.03;
-    a *= gain;
-  }
-  return vec4(v, g);
-}
-// two octaves of value noise turned against each other (one alone shows its
-// lattice, squared off, wherever it's cut into lines or coasts)
-vec4 noised2(vec3 p) {
-  vec4 a = noised(p);
-  vec4 b = noised(M3 * p * 1.7 + 7.3);
-  return vec4(0.8 * a.x + 0.55 * b.x, 0.8 * a.yzw + 0.55 * 1.7 * (M3T * b.yzw));
-}
-float fbm(vec3 p, float n) {
-  float a = 0.5;
-  float v = 0.0;
-  for (int i = 0; i < 10; i++) {
-    float fi = float(i);
-    if (fi >= n) break;
-    v += a * clamp(n - fi, 0.0, 1.0) * noise(p);
-    p = M3 * p * 2.03;
-    a *= 0.5;
-  }
-  return v;
-}
-`;
+// ── Noise, the atmosphere's march and its shell: lib/three (noiseGlsl.js,
+// atmosphere.js), shared with the universe map's planets ──
+import { NOISE } from '../../lib/three/noiseGlsl';
+import { ATMO, SHELL_FRAG, SHELL_VERT } from '../../lib/three/atmosphere';
+
+export { NOISE, ATMO, SHELL_FRAG, SHELL_VERT };
 
 // ── The surface: vertex shader ──
 export const SURFACE_VERT = /* glsl */ `
@@ -225,44 +141,6 @@ float cloudAt(vec3 P, float n) {
 }
 `;
 
-// the atmosphere between the eye and a point: light scattered toward the eye
-// and how much of what's behind gets through. Planet-centred, in radii.
-// uAtmoP = (shell radius, falloff, density, forward glow)
-export const ATMO = /* glsl */ `
-vec3 inscatter(vec3 ro, vec3 rd, float tMax, out float trans) {
-  trans = 1.0;
-  float Ra = uAtmoP.x;
-  float b = dot(ro, rd);
-  float c = dot(ro, ro) - Ra * Ra;
-  float disc = b * b - c;
-  if (disc <= 0.0) return vec3(0.0);
-  float sq = sqrt(disc);
-  float t0 = max(0.0, -b - sq);
-  float t1 = min(tMax, -b + sq);
-  if (t1 <= t0) return vec3(0.0);
-  float dt = (t1 - t0) / 7.0;
-  vec3 sum = vec3(0.0);
-  float od = 0.0;
-  float glow0 = pow(max(dot(rd, uSunDir[0]), 0.0), 12.0) * uAtmoP.w;
-  float glow1 = pow(max(dot(rd, uSunDir[1]), 0.0), 12.0) * uAtmoP.w;
-  for (int i = 0; i < 7; i++) {
-    vec3 p = ro + rd * (t0 + dt * (float(i) + 0.5));
-    float l = length(p);
-    float h = max(l - 1.0, 0.0) / (Ra - 1.0);
-    float dens = exp(-h * uAtmoP.y) * (1.0 - smoothstep(0.85, 1.0, h));
-    vec3 n = p / l;
-    float m0 = dot(n, uSunDir[0]);
-    float m1 = dot(n, uSunDir[1]);
-    vec3 l0 = uSunCol[0] * smoothstep(-0.14, 0.12, m0) * mix(uSunset, vec3(1.0), smoothstep(-0.06, 0.25, m0)) * (1.0 + glow0);
-    vec3 l1 = uSunCol[1] * smoothstep(-0.14, 0.12, m1) * mix(uSunset, vec3(1.0), smoothstep(-0.06, 0.25, m1)) * (1.0 + glow1);
-    sum += dens * (l0 + l1);
-    od += dens;
-  }
-  float k = dt * uAtmoP.z;
-  trans = exp(-od * k * 0.9);
-  return sum * k * uAtmo;
-}
-`;
 
 // ── The families: each a surface(P, s) filling in albedo, relief, water,
 // light of its own, clouds. P is the point on the unit sphere in the
@@ -776,43 +654,6 @@ export function surfaceFrag(family, slots) {
   return [NOISE, SURFACE_HEAD, CLOUDS, ATMO, names, FAMILIES[family], SURFACE_MAIN].join('\n');
 }
 
-// ── The atmosphere's shell: drawn from inside (back faces), so it's there
-// whether you're out in space (the glow round the limb) or down in it (the
-// sky); the ground hides the part behind the planet ──
-export const SHELL_VERT = /* glsl */ `
-varying vec3 vWorld;
-void main() {
-  vec4 w = modelMatrix * vec4(position, 1.0);
-  vWorld = w.xyz;
-  gl_Position = projectionMatrix * viewMatrix * w;
-}`;
-export const SHELL_FRAG = /* glsl */ `
-uniform float uR;
-uniform vec3 uCenter;
-uniform vec3 uSunDir[2];
-uniform vec3 uSunCol[2];
-uniform vec3 uAtmo;
-uniform vec4 uAtmoP;
-uniform vec3 uSunset;
-uniform float uInner;
-varying vec3 vWorld;
-${ATMO}
-void main() {
-  vec3 ro = (cameraPosition - uCenter) / uR;
-  vec3 rd = normalize(vWorld - cameraPosition);
-  float b = dot(ro, rd);
-  float c = dot(ro, ro) - uInner * uInner;
-  float disc = b * b - c;
-  float tMax = 1e4;
-  if (disc > 0.0) {
-    float t = -b - sqrt(disc);
-    if (t > 0.0) tMax = t;
-  }
-  float tr;
-  vec3 col = inscatter(ro, rd, tMax, tr);
-  gl_FragColor = vec4(col, 1.0);
-  #include <colorspace_fragment>
-}`;
 
 // ── Scarif's shield: a faint blue shell of hexagons, brighter edge-on ──
 export const SHIELD_VERT = /* glsl */ `

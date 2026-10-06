@@ -21,7 +21,7 @@
 // pirates on a freighter), and it shoots at that instead until you deal with
 // it, or turns on you if you shoot at it.
 //
-// createHunters(parent, { small, fleet, factions, kinds, solids }) → { pack(faction, ship, { prey, size, ace, from, ahead, interdict, heat, first }) → points,
+// createHunters(parent, { small, fleet, factions, kinds, solids, engines }) → { pack(faction, ship, { prey, size, ace, from, ahead, interdict, heat, first }) → points,
 //   update(dt, t, ship) → events,
 //   hit(from, to, damage) → hit or null, damage(id, n) → hit or null (a hit
 //   another pilot's shot made, told to you), clear(), dispose(), count,
@@ -37,7 +37,9 @@
 // you've made lately) brings more of them, and the ace more often; the
 // `first` pack of a visit is a small one.
 //
-// Events: { type: 'hunted', faction, kinds, prey, interdict }, { type: 'shot', faction }
+// Events: { type: 'hunted', faction, kinds, prey, interdict }, { type: 'shot', faction },
+// { type: 'stage', id, kind, faction, stage, of, summon } (an ace hurt into
+// its next stage: hunterRules.js's `stage`),
 // (one fired at you), { type: 'laser', damage, from } (and hit), { type:
 // 'escaped', faction } and { type: 'cleared', faction, rescued } (rescued:
 // they were after someone else, and you saw them off).
@@ -51,7 +53,7 @@ export { FACTIONS, HUNTER_KINDS, NAMES };
 
 // (`factions` and `kinds` are these, unless another map brings its own: the
 // galaxy's Separatists and the Imperial remnant, galaxy/hunted.js)
-export function createHunters(parent, { small = false, fleet = createFleet(), factions = FACTIONS, kinds = HUNTER_KINDS, solids = [] } = {}) {
+export function createHunters(parent, { small = false, fleet = createFleet(), factions = FACTIONS, kinds = HUNTER_KINDS, solids = [], engines = null } = {}) {
   const hunt = createHunt({ factions, kinds, solids, lasers: small ? 16 : 28 });
   const pool = {}; // kind → models not in use
   const shown = new Set(); // the hunters with a model out
@@ -70,11 +72,17 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
 
   const take = (kind) => {
     // a built stand-in waiting in the pool gives way once the model is here
-    if (fleet.loaded(kind) && pool[kind]?.length && !pool[kind][pool[kind].length - 1].model) for (const m of pool[kind].splice(0)) m.dispose();
+    if (fleet.loaded(kind) && pool[kind]?.length && !pool[kind][pool[kind].length - 1].model) for (const m of pool[kind].splice(0)) drop(m);
     const model = pool[kind]?.pop() ?? fleet.make(kind);
     model.fit ??= 1 / Math.max(model.size?.x ?? 1, model.size?.y ?? 1, model.size?.z ?? 1);
+    // (its engines (engines.js), once: lit while it's out)
+    if (engines && !model.engine) model.engine = engines.add(kind, model.group, { size: model.size });
     parent.add(model.group);
     return model;
+  };
+  const drop = (model) => {
+    engines?.remove(model.engine);
+    model.dispose();
   };
   const give = (h) => {
     if (!h.view) return;
@@ -88,7 +96,7 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
   const answer = (r) => {
     if (!r) return null;
     if (r.down) give(r.hunter);
-    return { id: r.id, kind: r.kind, at: new THREE.Vector3(r.at.x, r.at.y, r.at.z), size: r.size, down: r.down };
+    return { id: r.id, kind: r.kind, at: new THREE.Vector3(r.at.x, r.at.y, r.at.z), size: r.size, down: r.down, faction: r.hunter.pack.faction, prey: Boolean(r.hunter.pack.prey && !r.hunter.pack.angry) };
   };
   // something else they're after, as the rules read it: where it is, the
   // way it's pointing, and whether it's still there
@@ -135,6 +143,11 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
         g.rotateZ(-h.bank);
         g.scale.setScalar(h.type.size * h.view.fit * Math.max(0.001, h.grow));
         g.visible = !(h.hidden > 0); // (a flicker, hit: gone from sight a moment)
+        // its engines with how fast it's going, flaring past its cruising pace
+        if (h.view.engine) {
+          const k = Math.sqrt(x * x + y * y + z * z) / (h.type.speed || 8);
+          engines.set(h.view.engine, { throttle: Math.min(1, k), boost: Math.max(0, Math.min(1, (k - 0.85) * 4)) });
+        }
         h.view.update(t);
       }
       hunt.lasers.forEach((l, i) => {
@@ -182,7 +195,7 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
 
     dispose() {
       this.clear();
-      for (const list of Object.values(pool)) for (const m of list) m.dispose();
+      for (const list of Object.values(pool)) for (const m of list) drop(m);
       laserGeo.dispose();
       for (const m of Object.values(laserMats)) m.dispose();
       for (const m of beams) m.removeFromParent();

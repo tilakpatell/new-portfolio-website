@@ -17,7 +17,7 @@ const LOW = -14; // the lower city's floor, under the terrace
 const RAIL = { r: 47.5, y: 7.2 }; // the monorail's track
 const FACADES = ['#a9d6b4', '#c5e09f', '#8ccdbf', '#d9e3a6', '#9fd0c8', '#b8d8a0', '#cfe6c4', '#7fc4b4'];
 
-function rng(seed) {
+export function rng(seed) {
   let a = seed >>> 0 || 1;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -34,7 +34,7 @@ const PANES = (() => {
   const r = rng(7);
   return Array.from({ length: 24 }, () => r());
 })();
-function paintWindows() {
+export function paintWindows() {
   const c = makeCanvas(256, 256);
   const g = c.getContext('2d');
   g.fillStyle = '#ffffff';
@@ -52,7 +52,7 @@ function paintWindows() {
   return c;
 }
 // what of that glows: just the lit panes
-function paintWindowGlow() {
+export function paintWindowGlow() {
   const c = makeCanvas(256, 256);
   const g = c.getContext('2d');
   g.fillStyle = '#000';
@@ -70,7 +70,7 @@ function paintWindowGlow() {
 
 // the sky: a warm haze, brighter low down, and the great dome's lattice
 // against it, its ribs olive and its joints lit
-const SKY_FRAG = `
+export const SKY_FRAG = `
 varying vec3 vDir;
 uniform float uRed;
 void main() {

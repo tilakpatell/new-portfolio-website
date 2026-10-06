@@ -106,16 +106,59 @@ export const MESHY = {
   tricia: { a: 'tricia', h: 1.62 },
   diane: { a: 'diane', h: 1.68 },
   snuffles: { a: 'snuffles', h: 0.45 },
+  // the multiverse's destinations (rickmorty/world/dimensions/): their
+  // people, rigged; their props and creatures; the crowd's copies, as made
+  kingjellybean: { a: 'kingjellybean', h: 2.2 },
+  zeep: { a: 'zeep', h: 1.8 },
+  kyle: { a: 'kyle', h: 1.7 },
+  xenonbloom: { a: 'xenonbloom', h: 1.9 },
+  poncho: { a: 'poncho', h: 1.75 },
+  annie: { a: 'annie', h: 1.62 },
+  needful: { a: 'needful', h: 1.85 },
+  arthricia: { a: 'arthricia', h: 1.6 },
+  flippynips: { a: 'flippynips', h: 1.5 },
+  scroopy: { a: 'scroopy', h: 1.4 },
+  gearhead: { a: 'gearhead', h: 1.8 },
+  thirstystep: { a: 'thirstystep', h: 8 },
+  giant: { a: 'giant', h: 9 },
+  stairgoblin: { a: 'stairgoblin', h: 0.9 },
+  hepatitis: { a: 'hepatitis', h: 2.6 },
+  gonorrhoea: { a: 'gonorrhoea', h: 3 },
+  tuberculosis: { a: 'tuberculosis', h: 2.8 },
+  plague: { a: 'plague', h: 2.2 },
+  ecoli: { a: 'ecoli', h: 1.4 },
+  'needful-shop': { a: 'needful-shop', h: 5 },
+  ...Object.fromEntries(
+    [
+      ['jerry-robe', 1.75],
+      ['jerry-golf', 1.75],
+      ['jerry-tux', 1.75],
+      ['jerry-track', 1.75],
+      ['jerry-gown', 1.75],
+      ['jerry-cardigan', 1.8],
+      ['magdalian-a', 1.55],
+      ['magdalian-b', 1.55],
+      ['magdalian-c', 1.6],
+      ['plutonian-a', 1.35],
+      ['plutonian-b', 1.35],
+      ['gearperson-a', 1.8],
+      ['gearperson-b', 1.8],
+    ].map(([a, h]) => [a, { a, h }]),
+  ),
 };
 const RICKALL_FIGURES = ['pencilvester', 'sleepygary', 'hamurai', 'amishcyborg', 'mrbeauregard', 'cousinnicky', 'frankenstein', 'poopybutthole'];
 const RICKALL_PROPS = ['reversegiraffe', 'ghostinajar', 'photographyraptor', 'tinkles', 'babywizard', 'mrsrefrigerator'];
 const FAMILY_FIGURES = ['spacebeth', 'drwong', 'nancy', 'tricia', 'diane'];
 const FAMILY_PROPS = ['snuffles'];
-export const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick', ...RICKALL_FIGURES, ...FAMILY_FIGURES]);
+const DEST_FIGURES = ['kingjellybean', 'zeep', 'kyle', 'xenonbloom', 'poncho', 'annie', 'needful', 'arthricia', 'flippynips', 'scroopy', 'gearhead'];
+const DEST_PROPS = ['thirstystep', 'giant', 'stairgoblin', 'hepatitis', 'gonorrhoea', 'tuberculosis', 'plague', 'ecoli', 'needful-shop', 'jerry-robe', 'jerry-golf', 'jerry-tux', 'jerry-track', 'jerry-gown', 'jerry-cardigan', 'magdalian-a', 'magdalian-b', 'magdalian-c', 'plutonian-a', 'plutonian-b', 'gearperson-a', 'gearperson-b'];
+export const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick', ...RICKALL_FIGURES, ...FAMILY_FIGURES, ...DEST_FIGURES]);
 // the models not in the cast's own folder, by name: where they are
-export const FOLDERS = Object.fromEntries([...RICKALL_PROPS, ...FAMILY_PROPS].map((a) => [a, '/models/c137/rm']));
+// (and Mortytown's two shopfronts, rickmorty/citadel/district.js)
+const MORTYTOWN_PROPS = ['mortymart', 'creepymorty'];
+export const FOLDERS = Object.fromEntries([...RICKALL_PROPS, ...FAMILY_PROPS, ...MORTYTOWN_PROPS, ...DEST_PROPS].map((a) => [a, '/models/c137/rm']));
 const SCHOOL = ['goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick'];
-const C137_PEOPLE = new Set(['summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', ...SCHOOL, ...RICKALL_FIGURES, ...RICKALL_PROPS, ...FAMILY_FIGURES, ...FAMILY_PROPS]);
+const C137_PEOPLE = new Set(['summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', ...SCHOOL, ...RICKALL_FIGURES, ...RICKALL_PROPS, ...FAMILY_FIGURES, ...FAMILY_PROPS, ...DEST_FIGURES, ...DEST_PROPS]);
 // and the set pieces round the arenas (the C-137 world's people load with their own world)
 export const MESHY_ASSETS = [...new Set(Object.values(MESHY).map((m) => m.a).filter((a) => !C137_PEOPLE.has(a))), 'cruiser', 'garage'];
 
