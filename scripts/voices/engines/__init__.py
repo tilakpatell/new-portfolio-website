@@ -11,8 +11,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 # engine: the venv under ~/.venvs it runs in
 VENVS = {"voxcpm2": "voxcpm", "qwen": "qwen", "f5": "voices"}
-# the order to fall back in when a voice's engine isn't set up here (bake-off order on this project)
-PREFERENCE = ["voxcpm2", "qwen", "f5"]
+# the order to fall back in when a voice's engine isn't set up here: the bake-off's order on this
+# project (generate.py --bakeoff), Qwen3 best on every voice by the judge's score
+PREFERENCE = ["qwen", "voxcpm2", "f5"]
 
 
 def python(name):

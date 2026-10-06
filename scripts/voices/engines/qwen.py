@@ -1,4 +1,5 @@
-"""Qwen3-TTS 1.7B Base (Alibaba, 24 kHz), cloning in context from the reference and its transcript."""
+"""Qwen3-TTS 1.7B Base (Alibaba, 24 kHz), cloning in context from the reference and its transcript.
+It makes takes in batches (several lines, or several takes of one, at once): far quicker on a GPU."""
 
 from worker import seed_all, serve
 
@@ -10,13 +11,17 @@ def load(jobs):
     m = Qwen3TTSModel.from_pretrained("Qwen/Qwen3-TTS-12Hz-1.7B-Base", device_map="cuda:0" if torch.cuda.is_available() else "cpu", dtype=torch.bfloat16)
     prompts = {}
 
-    def say(voice, text, seed):
+    def many(voice, texts, seeds):
         if voice["wav"] not in prompts:
             prompts[voice["wav"]] = m.create_voice_clone_prompt(ref_audio=voice["wav"], ref_text=voice["text"])
-        seed_all(seed)
-        wavs, sr = m.generate_voice_clone(text=text, language="English", voice_clone_prompt=prompts[voice["wav"]])
-        return wavs[0], sr
+        seed_all(seeds[0])  # one seed for the batch: its takes still differ, each sampled on its own
+        wavs, sr = m.generate_voice_clone(text=texts, language=["English"] * len(texts), voice_clone_prompt=prompts[voice["wav"]] * len(texts))
+        return [(w, sr) for w in wavs]
 
+    def say(voice, text, seed):
+        return many(voice, [text], [seed])[0]
+
+    say.many, say.batch = many, 8
     return say
 
 

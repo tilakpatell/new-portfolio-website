@@ -1,9 +1,9 @@
 {
-  "rick": {},
-  "morty": {},
-  "luke": {},
-  "han": {},
-  "walt": {},
-  "jesse": {},
-  "hank": {}
+  "rick": {"engine": "qwen"},
+  "morty": {"engine": "qwen"},
+  "luke": {"engine": "qwen"},
+  "han": {"engine": "qwen"},
+  "walt": {"engine": "qwen"},
+  "jesse": {"engine": "qwen"},
+  "hank": {"engine": "qwen"}
 }

@@ -21,31 +21,48 @@ import numpy as np
 import soundfile as sf
 
 
-def serve(load):
-    """`load(jobs)` loads the model and returns say(voice, text, seed) -> (samples, rate)."""
+def serve(load, jobs_file=None):
+    """`load(jobs)` loads the model and returns say(voice, text, seed) -> (samples, rate).
+    A model that's quicker in batches gives say.many(voice, texts, seeds) -> [(samples, rate), ...]
+    too, and say.batch, the most it takes at once: it then gets the takes a voice at a time, in order."""
     for s in (sys.stdout, sys.stderr):
-        s.reconfigure(encoding="utf-8", errors="replace")
-    jobs = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+        if hasattr(s, "reconfigure"):
+            s.reconfigure(encoding="utf-8", errors="replace")
+    jobs = json.loads(Path(jobs_file or sys.argv[1]).read_text(encoding="utf-8"))
     todo = [it for it in jobs["items"] if not Path(it["out"]).exists()]
     if not todo:
         return
     say = load(jobs)
+    size = getattr(say, "batch", 1) if hasattr(say, "many") else 1
+    groups = []
     for it in todo:
-        out = Path(it["out"])
-        out.parent.mkdir(parents=True, exist_ok=True)
+        if groups and len(groups[-1]) < size and groups[-1][0]["who"] == it["who"]:
+            groups[-1].append(it)
+        else:
+            groups.append([it])
+    for group in groups:
+        voice, texts, seeds = jobs["voices"][group[0]["who"]], [it["text"] for it in group], [int(it["seed"]) for it in group]
         try:
-            wav, sr = say(jobs["voices"][it["who"]], it["text"], int(it["seed"]))
-            wav = np.asarray(wav, dtype=np.float32).squeeze()
-            if not wav.size:
-                raise RuntimeError("no audio")
-        except Exception as e:  # one bad line shouldn't stop the rest
+            made = say.many(voice, texts, seeds) if size > 1 else [say(voice, texts[0], seeds[0])]
+        except Exception as e:  # one bad line (or batch) shouldn't stop the rest
             traceback.print_exc(file=sys.stderr)
-            print(f"fail\t{out}\t{type(e).__name__}: {e}".replace("\n", " "), flush=True)
+            for it in group:
+                print(f"fail\t{it['out']}\t{type(e).__name__}: {e}".replace("\n", " "), flush=True)
             continue
-        tmp = out.with_name(out.stem + ".part.wav")
-        sf.write(str(tmp), np.clip(wav, -1, 1), int(sr), subtype="PCM_16")
-        os.replace(tmp, out)
-        print(f"ok\t{out}", flush=True)
+        for it, (wav, sr) in zip(group, made):
+            keep(Path(it["out"]), wav, sr)
+
+
+def keep(out, wav, sr):
+    wav = np.asarray(wav, dtype=np.float32).squeeze()
+    if not wav.size:
+        print(f"fail\t{out}\tRuntimeError: no audio", flush=True)
+        return
+    out.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out.with_name(out.stem + ".part.wav")
+    sf.write(str(tmp), np.clip(wav, -1, 1), int(sr), subtype="PCM_16")
+    os.replace(tmp, out)
+    print(f"ok\t{out}", flush=True)
 
 
 def seed_all(seed):
