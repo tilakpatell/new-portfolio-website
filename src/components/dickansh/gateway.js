@@ -95,9 +95,9 @@ void main() {
   vec3 col = mix(fire, other * 1.3 + fire * 0.25, see * (0.5 + 0.5 * power));
   col += vec3(1.0, 0.9, 0.7) * smoothstep(0.5, 0.0, r) * (0.6 + power * 2.0);
   // a hot rim along the stone
-  col += vec3(1.0, 0.55, 0.15) * smoothstep(-0.25, 0.0, d) * 2.2;
+  col += vec3(1.0, 0.55, 0.15) * smoothstep(-0.25, 0.0, d) * 1.2;
   float alpha = smoothstep(0.02, -0.06, d);
-  gl_FragColor = vec4(col * (0.9 + power * 0.8), alpha);
+  gl_FragColor = vec4(col * (0.75 + power * 0.7), alpha);
 }`;
 
 function catenary(a, b, sag, n) {
@@ -147,8 +147,8 @@ export function build({ renderer, still }) {
   scene.add(sky);
 
   // light: dusk, a low sun behind the gopuram's shoulder, warm bounce off the stone
-  scene.add(new THREE.HemisphereLight(0xffb48a, 0x3a1a10, 0.8));
-  const sun = new THREE.DirectionalLight(0xffa060, 2.0);
+  scene.add(new THREE.HemisphereLight(0xffb48a, 0x3a1a10, 0.6));
+  const sun = new THREE.DirectionalLight(0xffa060, 1.5);
   sun.position.set(-34, 22, -40);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -156,7 +156,7 @@ export function build({ renderer, still }) {
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.04;
   scene.add(sun);
-  const front = new THREE.DirectionalLight(0xffd2a8, 0.9);
+  const front = new THREE.DirectionalLight(0xffd2a8, 0.6);
   front.position.set(10, 14, 30);
   scene.add(front);
 
@@ -191,7 +191,7 @@ export function build({ renderer, still }) {
   const portal = new THREE.Mesh(keep(new THREE.PlaneGeometry(pw, ph)), portalMat);
   portal.position.set(0, ph / 2, 0);
   scene.add(portal);
-  const portalLight = new THREE.PointLight(0xff7a2a, 30, 22, 1.6);
+  const portalLight = new THREE.PointLight(0xff7a2a, 16, 22, 1.6);
   portalLight.position.set(0, 2.2, 1.6);
   scene.add(portalLight);
   const portalCenter = new THREE.Vector3(0, 2.1, 0);
@@ -206,7 +206,7 @@ export function build({ renderer, still }) {
     scene.add(lamp);
   }
   const lampLights = [-1, 1].map((s) => {
-    const l = new THREE.PointLight(0xffa040, 6, 9, 1.8);
+    const l = new THREE.PointLight(0xffa040, 3.5, 9, 1.8);
     l.position.set(s * 3.7, 2.3, 2.6);
     scene.add(l);
     return l;
@@ -403,7 +403,7 @@ export function build({ renderer, still }) {
     ready,
     setPower(p) {
       portalMat.uniforms.power.value = p;
-      portalLight.intensity = 30 + p * 140;
+      portalLight.intensity = 16 + p * 90;
     },
     update(dt, t) {
       sky.material.uniforms.time.value = t;
@@ -413,7 +413,7 @@ export function build({ renderer, still }) {
         const k = 1 + Math.sin(t * 13 + f.sprite.userData.seed) * 0.08 + Math.sin(t * 29 + f.sprite.userData.seed * 2) * 0.05;
         f.sprite.scale.set(f.sprite.userData.base * 0.55 * k, f.sprite.userData.base * k * 1.05, 1);
       }
-      for (const l of lampLights) l.intensity = 6 + Math.sin(t * 11 + l.position.x) * 0.8;
+      for (const l of lampLights) l.intensity = 3.5 + Math.sin(t * 11 + l.position.x) * 0.5;
       for (let i = 0; i < EMBERS; i++) {
         ep[i * 3 + 1] += ev[i] * dt;
         ep[i * 3] += Math.sin(t * 0.7 + i) * dt * 0.2;
