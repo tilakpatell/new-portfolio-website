@@ -55,6 +55,12 @@ export default function GalaxyMission() {
             </p>
             <h1 className="display mission-title">{g.title}</h1>
             <p className="lead mt-4 max-w-2xl">{g.pitch}</p>
+            {/* another mission on the same world, from the same briefing (game.also) */}
+            {g.also?.map((a) => (
+              <p key={a.id} className="mt-3 max-w-2xl text-sm text-muted">
+                <b>{a.title}.</b> {a.text}
+              </p>
+            ))}
             <div className="mt-6 flex flex-wrap gap-3">
               {live ? (
                 <Link to={g.to} className="btn btn-primary">
@@ -65,6 +71,11 @@ export default function GalaxyMission() {
                   <span aria-hidden="true" className="mission-soon-dot" /> In the hangar: coming in a future update
                 </span>
               )}
+              {g.also?.map((a) => (
+                <Link key={a.id} to={a.to} className="btn btn-primary">
+                  {a.go ?? 'Play it now'}: {a.title} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              ))}
               {story && (
                 <button
                   type="button"

@@ -31,8 +31,9 @@ const VILLAGE = (() => {
     things.push({ kind: 'ropebridge', at: [t.at[0] + dx / 2, t.at[1] + dz / 2], yaw: Math.atan2(dx, dz), opts: { len, h0: t.h, h1: next.h, sag: 0.45 } });
     // a hut on its deck, its door to the clearing, and one up top
     const out = Math.atan2(-t.at[0], -t.at[1]) + 0.9;
-    things.push({ kind: 'ewokhut', at: [t.at[0] + Math.sin(out + Math.PI) * 4.9, t.at[1] + Math.cos(out + Math.PI) * 4.9], y: t.h, yaw: out + Math.PI, solid: false, opts: { r: 1.7 } });
-    if (t.h2) things.push({ kind: 'ewokhut', at: [t.at[0] + Math.sin(out) * 3.5, t.at[1] + Math.cos(out) * 3.5], y: t.h2, yaw: out, solid: false, opts: { r: 1.3 } });
+    // (the hut model is 4 m across: scaled to the built one's radius)
+    things.push({ kind: 'ewokhut', at: [t.at[0] + Math.sin(out + Math.PI) * 4.9, t.at[1] + Math.cos(out + Math.PI) * 4.9], y: t.h, yaw: out + Math.PI, solid: false, scale: 0.85, opts: { r: 1.7 } });
+    if (t.h2) things.push({ kind: 'ewokhut', at: [t.at[0] + Math.sin(out) * 3.5, t.at[1] + Math.cos(out) * 3.5], y: t.h2, yaw: out, solid: false, scale: 0.65, opts: { r: 1.3 } });
   });
   // Ewoks pacing their decks: an arc on the far side from the hut
   const walks = trees.map((t) => {
@@ -66,7 +67,7 @@ export const SITES = {
     light: { sun: 2.7, sky: '#d2e2d8', ground: '#4a5634', ambient: 0.8 },
     dust: '#7a6a4c',
     edge: 'The forest goes on, and on. Best not to get lost in it.',
-    ground: {
+    ground: { detail: 'needles', detailLook: { color: 0.8, normal: 0.7 },
       seed: 7,
       wind: 0.3,
       layers: [
@@ -234,6 +235,16 @@ export const SITES = {
       },
     ],
     things: [
+      // where you set down: the strike team's camp among the ferns
+      { kind: 'fire', at: [12, 8] },
+      { kind: 'log', at: [16, 4], yaw: 1.1, opts: { len: 4, r: 0.35 } },
+      { kind: 'log', at: [8, 12], yaw: -0.6, opts: { len: 3.5, r: 0.3 } },
+      { kind: 'cratecube', at: [20, 12], yaw: 0.3 },
+      { kind: 'cratecube', at: [21.3, 12.4], yaw: 0.9 },
+      { kind: 'barrel', at: [19, 14], yaw: 0.5 },
+      { kind: 'cooler', at: [18, 10.4], yaw: 2.1 },
+      { kind: 'redwood', at: [-22, 24], model: false, opts: { seed: 31, h: 64, r: 2.4 } },
+      { kind: 'redwood', at: [28, -26], model: false, opts: { seed: 32, h: 58, r: 2.1 } },
       { kind: 'lightshafts', at: [0, 0], opts: { ...ENDOR_SUN, n: 8, spread: 40, seed: 5 } },
       { kind: 'lightshafts', at: [130, -110], opts: { ...ENDOR_SUN, n: 8, spread: 46, seed: 7 } },
       { kind: 'lightshafts', at: [-90, 60], opts: { ...ENDOR_SUN, n: 8, spread: 46, seed: 9 } },
@@ -256,6 +267,8 @@ export const SITES = {
       { kind: 'ewok', n: 7, at: V, spread: 6, roam: 6, speed: 0.9, name: 'Ewok', says: ['Yub nub!', 'Ee chee wa maa!', '(It dances round the fire, banging a stick on a helmet.)', '(It looks at you, then at the fire, then back at you. Thoughtfully.)', 'Gunda!'] },
       ...VILLAGE.walks.map((path, i) => ({ kind: 'ewok', n: 1, path, speed: 0.7, pause: 2.5 + i, name: 'Ewok', says: ['(It waves its spear at you from the deck.)', 'Yub yub!', '(A long, suspicious sniff.)'] })),
       { kind: 'c3po', n: 1, at: at(V, [4, -5]), still: true, face: -0.7, name: 'C-3PO', says: ['Oh my! I seem to have become something of a deity here.', '(He tells the Ewoks the whole story of the Rebellion: the Death Star, Cloud City, Han frozen in carbonite. With sound effects.)', 'It’s against my programming to impersonate a deity.', 'Oh dear. I’m afraid you’re to be the guest of honour at the banquet.'] },
+      { kind: 'rebel', n: 3, at: [14, 6], spread: 6, roam: 6, speed: 0.9, name: 'Rebel commando', says: ['Keep it down. Scouts patrol this ridge.', 'The bunker’s east. We move at dusk.', 'Nice of the locals to leave us alone. So far.'] },
+      { kind: 'ithorian', n: 1, at: [10, -2], roam: 5, speed: 0.6, name: 'Ithorian Rebel', says: ['(A slow, stereo rumble from both mouths. It sounds like a warning about the trees.)', '(It presses a leaf into your hand. For luck, perhaps.)'] },
       { kind: 'ewok', n: 1, at: [18, -16], roam: 6, speed: 0.8, name: 'Wicket', says: ['Yub nub!', '(He pokes you with his spear, then sniffs your boots.)', '(He offers you half a strange fruit. The bitten half.)'] },
       { kind: 'ewok', n: 3, at: [-140, -164], spread: 5, roam: 6, speed: 0.9, name: 'Ewok hunter', says: ['(It points at the net, very proud of it.)', 'Ee chee wa maa!'] },
       { kind: 'ewok', n: 2, at: [148, 100], spread: 5, roam: 6, speed: 0.9, name: 'Ewok', says: ['(It mimes a log swinging, and a walker going over.)', 'Yub nub!'] },
@@ -300,7 +313,7 @@ export const SITES = {
     water: { level: 0, color: '#7b8575', deep: '#3a4a40', kind: 'sea', foam: 0.2 },
     dust: '#bca880',
     edge: 'Beyond here the forest drops away into the Shadowlands. Even Wookiees don’t go down there.',
-    ground: {
+    ground: { detail: 'leaves', detailLook: { color: 0.7, normal: 0.7 },
       seed: 21,
       wind: -0.6,
       base: -10,
@@ -451,12 +464,24 @@ export const SITES = {
       },
     ],
     things: [
+      // where you set down: a clone BARC speeder and the beachhead's stores
+      { kind: 'barc', at: [14, -28], yaw: 0.8 },
+      { kind: 'cratecube', at: [-12, -48], yaw: 0.4 },
+      { kind: 'cratecube', at: [-10.7, -47.4], yaw: 1.1 },
+      { kind: 'barrel', at: [-13, -46], yaw: 0.2 },
+      { kind: 'barrel', at: [-11.8, -45.2], yaw: 1.6 },
+      { kind: 'empirecrate', at: [10, -52], yaw: 2.4 },
+      // the droids' landing, up the beach: a spider droid left burning
+      { kind: 'homingspider', at: [128, 92], yaw: 3.6, roll: 0.5, sink: 0.6, solid: { r: 3 } },
+      { kind: 'wrecksmoke', at: [128, 92], solid: false, opts: { h: 14, r: 1.0 } },
       { kind: 'karst', at: [-80, 260], opts: { w: 26, h: 18, seed: 5 } },
       { kind: 'karst', at: [120, 330], opts: { w: 20, h: 14, seed: 6 } },
       { kind: 'karst', at: [320, 250], opts: { w: 28, h: 20, seed: 7 } },
       { kind: 'karst', at: [-260, 330], opts: { w: 22, h: 15, seed: 8 } },
-      { kind: 'wroshyr', at: [60, -150], opts: { h: 120, r: 6, seed: 31 } },
-      { kind: 'wroshyr', at: [-300, -300], opts: { h: 130, r: 6.5, seed: 32 } },
+      // the great wroshyrs, as tall as the city's tree
+      { kind: 'wroshyrgreat', at: [60, -150], yaw: 0.4, sink: 2, solid: { r: 14 } },
+      { kind: 'wroshyrgreat', at: [-300, -300], yaw: 2.1, scale: 1.1, sink: 2, solid: { r: 15 } },
+      { kind: 'wroshyrgreat', at: [330, -260], yaw: 3.6, scale: 0.9, sink: 2, solid: { r: 13 } },
     ],
     scatter: [
       { kind: 'wroshyr', n: 110, within: [50, 640], scale: [0.7, 1.4], opts: { seed: 1, leaf: '#354832', bark: '#50554e' } },
@@ -473,6 +498,9 @@ export const SITES = {
       { kind: 'wookiee', n: 6, at: [40, 32], spread: 14, roam: 10, speed: 1.1, name: 'Wookiee warrior', says: ['(A battle roar that rattles your teeth.)', '(It hefts a bowcaster and points across the lagoon.)', 'Rrraaaaaaaaghhh!', '(It thumps its chest, then yours. Friendly. You think.)'] },
       { kind: 'clone', n: 5, at: [40, 30], spread: 12, roam: 8, speed: 1.2, name: 'Clone trooper', says: ['Droids coming across the lagoon, sir!', 'Hold the line!', 'The Wookiees fight like nothing I’ve ever seen.', 'Execute Order… (He stops, and listens to his helmet.) Nothing, sir. Never mind.'] },
       { kind: 'battledroid', n: 5, path: [[82, 70], [104, 62], [124, 66], [104, 72]], speed: 1.0, name: 'Battle droid', says: ['Roger, roger.', 'Uh oh.', 'Wookiees! Retreat! Uh… advance! Uh…', 'Halt! Er… we surrender?'] },
+      { kind: 'dwarfspider', n: 2, path: [[100, 80], [120, 70], [136, 80], [120, 90]], speed: 0.9, r: 1.0, name: 'Dwarf spider droid', says: ['(It clicks, and its cannon swings toward the barricades.)'] },
+      { kind: 'wookiee', n: 2, at: [6, -34], spread: 5, roam: 6, speed: 1.0, name: 'Wookiee', says: ['(It beats its chest once, and points you up the beach.)', '(A warm growl: a welcome.)'] },
+      { kind: 'clone', n: 2, at: [16, -40], spread: 4, roam: 4, speed: 1.0, name: 'Clone trooper', says: ['BARC’s fuelled, sir. The beach is that way.', 'Droids landed at the far end of the lagoon. We hold here.'] },
       { kind: 'superdroid', n: 2, path: [[90, 60], [116, 56]], speed: 0.8, name: 'Super battle droid', says: ['(It raises its wrist blasters, slowly.)', 'Surrender, Jedi scum.'] },
       { kind: 'atrt', n: 2, path: [[14, 22], [40, 16], [66, 22], [40, 16]], speed: 1.6, r: 0.8, name: 'AT-RT', says: ['(The clone rider nods down at you.) Good hunting, sir.', '(The walker clanks past, its rider scanning the lagoon.)'] },
       { kind: 'atap', n: 1, path: [[22, 44], [58, 44], [58, 36], [22, 36]], speed: 1.0, r: 2.2, name: 'AT-AP', says: ['(Its heavy cannon swings out toward the water.)'] },
@@ -510,7 +538,7 @@ export const SITES = {
     water: { level: 0, color: '#3e4a32', deep: '#161c12', kind: 'swamp' },
     dust: '#5a5a40',
     edge: 'The mist closes in. Your lamp barely reaches your feet. Best go back.',
-    ground: {
+    ground: { detail: 'mud', detailLook: { color: 0.8, normal: 0.8 },
       seed: 5,
       wind: 0.2,
       base: -0.5,
@@ -691,7 +719,7 @@ export const SITES = {
     water: { level: -3, color: '#5a7a5a', deep: '#22382a', kind: 'swamp', waves: 1.2 },
     dust: '#8a8a60',
     edge: 'The jungle closes in. Somewhere out there are temples nobody has seen in four thousand years.',
-    ground: {
+    ground: { detail: 'leaves', detailLook: { color: 0.8, normal: 0.7 },
       seed: 14,
       wind: 0.8,
       base: 0,
@@ -760,7 +788,8 @@ export const SITES = {
         things: [
           { kind: 'parked', at: [-9, -2], yaw: 0.15, opts: { kind: 'xwing', metres: 12.5 } },
           { kind: 'parked', at: [9, -4], yaw: -0.1, opts: { kind: 'xwing', metres: 12.5 } },
-          { kind: 'parked', at: [0, 12], yaw: 0.05, opts: { kind: 'ywing', metres: 16, lift: 1.0 } },
+          { kind: 'ywing', at: [0, 12], yaw: 0.05 },
+          { kind: 'yavinramp', at: [-6, -4], yaw: 1.6 },
           { kind: 'crates', at: [-14, 10] },
           { kind: 'ammocan', at: [-12.4, 8.6], yaw: 0.3 },
           { kind: 'ammocan', at: [-12.6, 7.6], yaw: 0.2 },
@@ -848,7 +877,19 @@ export const SITES = {
         ],
       },
     ],
-    things: [],
+    things: [
+      // where you set down: Gold Squadron's dispersal on the field's edge, a
+      // Y-wing under its ramp, the ground crew's gear
+      { kind: 'ywing', at: [28, -22], yaw: 2.7 },
+      { kind: 'yavinramp', at: [20, -14], yaw: 2.7 },
+      { kind: 'ammocan', at: [12, -6], yaw: 0.3 },
+      { kind: 'ammocan', at: [13.1, -5.4], yaw: 1.1 },
+      { kind: 'cratecube', at: [-14, -10], yaw: 0.6 },
+      { kind: 'barrel', at: [-12.6, -8.4], yaw: 0.2 },
+      { kind: 'welderrack', at: [-10, -14], yaw: 2.2 },
+      { kind: 'lamp', at: [-16, -2], opts: { h: 5, light: '#ffe0a0' } },
+      { kind: 'lamp', at: [16, -30], opts: { h: 5, light: '#ffe0a0' } },
+    ],
     scatter: [
       // the tall trees, vines hanging from them, then the built ones between
       { kind: 'yavintree', n: 60, within: [26, 600], scale: [0.75, 1.25], solid: 0.9 },
@@ -864,6 +905,9 @@ export const SITES = {
       { kind: 'log', n: 24, within: [30, 520], scale: [0.9, 1.5], solid: false, opts: { seed: 7, bark: '#6a6250', moss: '#4e6a2c' } },
     ],
     life: [
+      { kind: 'rebelpilot', n: 1, at: [18, -16], still: true, face: 2.4, name: 'Gold Squadron pilot', says: ['Gold Leader, standing by.', 'Y-wings take the first run at the trench. Keep the fighters off us.'] },
+      { kind: 'rebeltech', n: 2, at: [6, -12], spread: 8, roam: 8, speed: 0.9, name: 'Rebel technician', says: ['Proton torpedoes loaded. Both of them.', 'She’s old, but she flies.', 'Don’t stand under the ramp.'] },
+      { kind: 'astromech', n: 1, at: [20, -26], roam: 5, speed: 0.6, name: 'Astromech', says: ['(A low, grumbling whistle: the Y-wing’s deflector is shot again.)'] },
       { kind: 'rebel', n: 6, at: [0, -112], spread: 18, roam: 12, speed: 1.1, name: 'Rebel trooper', says: ['They got the plans out! The princess brought them herself.', 'The Death Star’s coming round the planet. Thirty minutes, they say.', 'Massassi built this place. Who they were, nobody knows.', 'May the Force be with you.'] },
       { kind: 'pilot', n: 4, at: [0, -222], spread: 8, roam: 6, speed: 1.0, name: 'X-wing pilot', says: ['Red Five standing by.', 'Look at the size of that thing!', 'Stay on target… stay on target…', 'I used to bullseye womp rats in my T-16 back home. They’re not much bigger than two metres.'] },
       { kind: 'droid', n: 3, at: [0, -216], spread: 8, roam: 6, speed: 0.6, name: 'Astromech', says: ['(A brisk, busy whistle.)', '(It plugs into a fuel line and beeps happily.)'] },

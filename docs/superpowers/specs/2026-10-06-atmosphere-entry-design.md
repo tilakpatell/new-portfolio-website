@@ -1,0 +1,59 @@
+# Atmosphere entry: fly in to land
+
+Date: 2026-10-06. Status: approved (the owner picked "the planet's landing" as where an entry comes out, and asked that the crash keep working).
+
+## What and why
+
+On the universe map, landing on a fandom planet was a key: `G` at a planet set the ship down on it (`footScene.js`), from wherever it was parked. The owner wants it flown instead: fly down into a planet's air and you're taken in, the way the galaxy's worlds come down (a re-entry glow, the sky coming up, through the clouds), and out onto the planet's own landing (`landings/`: the Shire by Bag End, the desert by the RV, the Smiths' street…), its crew stepping out as before.
+
+Flying into a planet too fast is still a crash, and the crash still takes you into the world's page (`crash.js`, `pages/Universe.jsx`'s `crashInto`). The two are told apart by speed: come in at a normal speed and the air takes you down; come in boosting and you go through the air and hit.
+
+## Decisions
+
+- **The air is the halo you see.** Every planet already draws its air as a halo out to 1.2 of its radius (`planets.js`'s `HALO`). That is the air's top (`entry.js`'s `AIR`, which `planets.js` now reads), so what you see glowing round a planet is what you fly into. Stations (`kind: 'core'`), the Star Wars gate (`portal`) and anything `airless` have no air: nothing changes for them.
+- **Fly in, at a normal speed, going down.** The entry starts the frame the ship is inside a landable planet's air, coming down through it (`ENTRY.sink`, map units a second toward the middle, at least), at no more than `ENTRY.fast` (12: over the cruise's 5.5, under the boost's 20). Skimming along the top isn't going in.
+- **Too fast is a crash, as before.** Faster than `ENTRY.fast`, nothing takes the ship: it carries on through the air into the ground and `ship.js`'s `step` reports the crash as it always has (into it faster than `SHIP.crash`). The HUD says "Too fast to land: ease off the boost" while the ship is in the air too fast. The air is 0.2 of a radius deep (3.4 map units for a planet of 17), so even at `ENTRY.fast` a frame (50 ms at most) can't carry a ship from above the air into the ground: an entry always gets its frame.
+- **No entry while something else is flying the ship.** Not on the autopilot (it parks at the planet's reach, far outside its air, but a trip past one mustn't land you), not mid-jump, mid-crash, mid-dive, on foot or with the page leaving.
+- **Out of the air on the way up.** Taking off climbs out above the air (`liftFrame` rises to `ENTRY.clear` and a little over its top) with the nose level and away from the planet (never the way the landing was heading if that's back in toward it), so flying on level never takes the ship straight back in; going back in is diving back down, on purpose. While the ship's down, its flying numbers wait at the same height over where it went in, so however the landing ends (a change of ship partway, say) it isn't left heading into the air. (An earlier draft held the planet out of reach till the ship had been out of its air; with the take-off out of it and pointing away, that hold never had anything to do, and it would have turned a quick dive back in into a crash.)
+- **No key to land.** G and the phone's Land button no longer land at all (an earlier draft had them fly the ship in on a short autopilot; the owner found any landing key beside the point). Flying in is the only way down, and the prompt at a planet reads "Fly down into the air to land on Middle-earth", with no key badge. On foot, G is what it was: a door, or back into the ship (the phone's Ship button).
+- **Where you come down: ahead of you.** The spot is along the ship's ground track from where it went in, further the faster it was going (`entrySpot`: the arc it would glide at its speed, held to `ENTRY.arc`), leaned toward the day side (at most `ENTRY.lean` radians), so you land roughly where you were heading and in daylight more often than not. Beside a friend already down there, it's beside them, as before (the path goes round the planet over the ground to get there).
+- **One continuous flight, then the landing as it was.** The entry is part of `footScene`'s `land` phase (so everything that reads `phase === 'land'`, the engine, the plumes, the hidden crew, the network, already does the right thing), with `S.entry` set while it runs. It flies the ship down a path in the planet's own frame (a point on the ground, `n`, and a height, `h`): its ground point moving along the great circle from where it went in to the spot, decelerating to a stop over it, and its height falling fast at first and levelling off at the hover height over the spot; then a short settle straight down onto it. The path never goes under the ground (tested). When it's down, `S.entry` clears and the `land` phase's own last frame holds the ship parked, waiting on the crew to load, as before.
+- **The show.** `reentry.js` draws it, in the planet's frame (in `footScene`'s `root`), from the timeline's numbers (`fxAt(t)`): the ship's bow shock (an additive sheath round its nose, white-hot to orange, flickering), streaks and sparks streaming off behind it, the camera shaking under it (`state.shake`, not with reduced motion), the sky coming up from black to the landing's own (`footScene`'s sky × `sky`), then through the cloud deck (soft sprites rushing past the camera and a white-out at the thickest), and out under the clouds over the landing. The place's name comes up as you break out of the clouds, not as you hit the air. A rumble (`sounds.js`'s `entrySound`) rises and falls with the burn.
+- **Reduced motion and phones.** With reduced motion: no shake, no rushing clouds (they fade in and out where they are), the burn's flicker held still. On `small` (phones), half the sprites and sparks. The effects are made once with the foot scene and hidden, so the first entry doesn't compile shaders mid-flight.
+- **The crash stays exactly as it was:** `crash.js`, `startCrash`, `crashInto`, the crater, the wash into the page. Only what's slow enough to land never reaches the ground to crash.
+
+## How it fits together
+
+```
+scene.js fly()
+  ├─ step(ship)                 ship.js: the flying, the crash events as ever
+  ├─ crash?  → startCrash       (unchanged)
+  └─ entering(ship, LANDABLE)    entry.js (pure, tested)
+        'enter' → startFoot({ id, entry: { n, h, vel, speed } })
+        'hot'   → the HUD note
+footScene.begin({ …, entry })
+  ├─ spot = near ? beside(near) : entrySpot(…)  entry.js
+  ├─ S.entry = { path: entryPath(…), t: 0 }     entry.js
+  └─ update(): S.entry → stepEntry (the path, the ship's turn, its scale) and
+               reentry.update(fxAt(t), …); done → land's last frame
+```
+
+## entry.js (pure, no three.js)
+
+```js
+export const AIR = 1.2;                    // the air's top, as a share of the radius
+export const ENTRY = { fast, sink, clear, arc, lean, day, glide, settle };
+export const LANDABLE;                     // ship.js's PLANETS that have air and a landing
+export const airTop = (p) => p.r * AIR;
+export function velocityOf(ship)           // [x, y, z]: the nose × speed, plus its lift
+export function entering(ship, planets) → { id, kind: 'enter' | 'hot', speed, sink, n, h, vel } | null
+export function entrySpot({ n, track, light, speed, R }) → { n, f }
+export function entryPath({ nE, hE, nS, hH, rest, R, track }) → { T, at(t) → { n, h, p, settling, done } }
+export function fxAt(t) → { burn, cloud, white, sky, shake, title }
+```
+
+
+## Testing
+
+- `entry.test.js`: a ship coming down through the air at cruise speed enters; the same at the boost doesn't (and `step` then reports a crash on hitting the ground); skimming level along the top doesn't; a station, the gate and a planet with no air are never entered; `entrySpot` is ahead along the track and leans no further than `ENTRY.lean` toward the light; `entryPath` starts where the ship went in, ends parked on the spot, never goes under the ground or back up, and stops over the spot; `fxAt` is 0 before and after, the clouds peak between the burn and the break-out.
+- In the browser (`scripts/entry-check.mjs`): fly into a planet's air at cruise and see the ship land, its name come up out under the clouds and the crew step out; take off, and see it out past the air and flying on level carry it away rather than back in; press G at a planet and see nothing happen; boost into another and see the crash take the page into its world. Screenshots of the burn, the clouds and the break-out.

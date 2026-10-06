@@ -5,6 +5,7 @@ import { MAW } from './maw';
 import { NOSE, UP, fromAngles, rotate } from './orient';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
 import { byId } from './universes';
+import { ENTRY, LANDABLE, airTop } from './entry';
 
 const fly = (s, input, seconds, solids = SOLIDS) => {
   let ship = s;
@@ -21,7 +22,10 @@ const inside = (s) => SOLIDS.some((p) => Math.hypot(s.x - p.at[0], s.y - p.at[1]
 
 describe('flying the ship', () => {
   it('speeds up to cruise, faster with boost, and coasts to a stop', () => {
-    const s = spawn(null); // in open space for this one: nothing to bump into
+    // in open space for this one, nothing to bump into, and up under the home
+    // system's ceiling, where the pulse drive's down (the start's far enough
+    // out that boosting toward Home it would otherwise still be opening)
+    const s = { ...spawn(null), y: SHIP.ceiling - 6 };
     expect(fly(s, { throttle: 1 }, 3, []).ship.speed).toBeCloseTo(SHIP.cruise, 1);
     expect(fly(s, { throttle: 1, boost: true }, 4, []).ship.speed).toBeCloseTo(SHIP.boost, 1);
     const going = fly(s, { throttle: 1 }, 3, []).ship;
@@ -82,7 +86,10 @@ describe('flying the ship', () => {
     const crash = fast.find((e) => e.type === 'crash');
     expect(crash.speed).toBeGreaterThan(SHIP.crash);
     expect(Math.hypot(...crash.normal)).toBeCloseTo(1, 6);
-    const slow = fly(at, { throttle: 0.3 }, 14).events;
+    // (long enough to reach it at 0.3 of cruise from where it parks, however big the planet's drawn)
+    const p = PLANETS.find((o) => o.id === 'marvel');
+    const gap = Math.hypot(park.x - p.at[0], park.y - p.at[1], park.z - p.at[2]) - p.r;
+    const slow = fly(at, { throttle: 0.3 }, gap / (0.3 * SHIP.cruise) + 6).events;
     expect(slow.some((e) => e.type === 'bump' && e.id === 'marvel')).toBe(true);
     expect(slow.some((e) => e.type === 'crash')).toBe(false);
   });
@@ -222,12 +229,14 @@ describe('up and down, and all the way round', () => {
   it('comes round level at the ceiling and the floor going straight at them flat out, without a word', () => {
     for (const side of [1, -1]) {
       const s = { ...level, pitch: side * (Math.PI / 2 - 0.01), speed: SHIP.boost };
-      const frames = path(s, { throttle: 1, boost: true }, 5);
+      // (long enough to get there at the boost, and round out)
+      const long = SHIP.ceiling / SHIP.boost + 2;
+      const frames = path(s, { throttle: 1, boost: true }, long);
       const ys = frames.map((f) => side * f.y);
       expect(Math.max(...ys)).toBeLessThan(SHIP.ceiling + 1);
       expect(ys.at(-1)).toBeGreaterThan(SHIP.ceiling - 2.5);
       expect(Math.abs(way(frames.at(-1), NOSE)[1])).toBeLessThan(0.1);
-      expect(fly(s, { throttle: 1, boost: true }, 5, []).events.filter((e) => e.type === 'edge')).toHaveLength(0);
+      expect(fly(s, { throttle: 1, boost: true }, long, []).events.filter((e) => e.type === 'edge')).toHaveLength(0);
     }
   });
 
@@ -428,6 +437,37 @@ describe('deep space', () => {
   });
 });
 
+describe('coming in to land', () => {
+  // the worlds are drawn big (scale.js) and parked at a way out past their
+  // moons: holding the throttle on toward one, it comes in at the approach
+  // speed, still slow enough that flying into the air is a landing
+  it('gets from where it parks at any world into its air in good time, slow enough to land', () => {
+    for (const p of LANDABLE) {
+      const k = parkAt(p.id);
+      let s = { ...spawn(null), x: k.x, y: k.y, z: k.z, heading: k.heading };
+      let t = 0;
+      for (; t < 30; t += 1 / 60) {
+        s = step(s, { throttle: 1 }, 1 / 60).ship;
+        if (Math.hypot(s.x - p.at[0], s.y - p.at[1], s.z - p.at[2]) < airTop(p)) break;
+      }
+      expect(t, p.id).toBeLessThan(5);
+      expect(s.speed, p.id).toBeLessThan(ENTRY.fast);
+      expect(s.speed, p.id).toBeGreaterThan(SHIP.cruise);
+    }
+  });
+
+  it('cruises at its cruise everywhere else, and at part throttle near a world too', () => {
+    const open = { ...spawn(null), x: 0, z: 0, y: SHIP.ceiling - 6, heading: 0 };
+    expect(step({ ...open, speed: SHIP.cruise }, { throttle: 1 }, 1 / 60).ship.speed).toBeCloseTo(SHIP.cruise, 6);
+    const p = LANDABLE[0];
+    const k = parkAt(p.id);
+    let s = { ...spawn(null), x: k.x, y: k.y, z: k.z, heading: k.heading };
+    for (let t = 0; t < 2; t += 1 / 60) s = step(s, { throttle: 0.5 }, 1 / 60).ship;
+    expect(s.speed).toBeLessThanOrEqual(0.5 * SHIP.cruise + 1e-6);
+    expect(SHIP.approach).toBeLessThan(ENTRY.fast);
+  });
+});
+
 describe('being at a universe', () => {
   it('starts parked at a linked universe, and at the edge otherwise', () => {
     for (const id of ORDER) expect(orbiting(spawn(id), null)).toBe(id);
@@ -437,8 +477,13 @@ describe('being at a universe', () => {
   it('holds on to the universe until the ship has clearly left', () => {
     const p = PLANETS[0];
     const at = parkAt(p.id);
-    const nearEdge = { x: p.at[0] + (at.x - p.at[0]) * 1.5, z: p.at[2] + (at.z - p.at[2]) * 1.5 };
+    // out along the way it parks, 12 past its reach: further than counts as
+    // arriving (ORBIT_IN), not as far as counts as leaving (ORBIT_OUT)
+    const k = (p.reach + 12) / Math.hypot(at.x - p.at[0], at.z - p.at[2]);
+    const nearEdge = { x: p.at[0] + (at.x - p.at[0]) * k, z: p.at[2] + (at.z - p.at[2]) * k };
     expect(orbiting({ ...spawn(null), ...nearEdge }, p.id)).toBe(p.id);
+    // (and coming in from outside, the same spot isn't at it yet)
+    expect(orbiting({ ...spawn(null), ...nearEdge }, null)).toBeNull();
   });
 });
 

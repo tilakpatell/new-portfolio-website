@@ -14,7 +14,11 @@ import { createElement } from 'react';
 import Face from './Face';
 import { CUSTOMERS, M } from './rules';
 import { loadPeople } from '../../office/people';
-import { ABQ, moodGesture } from '../wardrobe';
+import { ABQ, dressedAs, moodGesture } from '../wardrobe';
+import { LOOK_KEY, readLooks } from '../../rickmorty/wardrobe/looks';
+import { dressColors } from '../../rickmorty/wardrobe/dress';
+import { dress as putOn } from '../../rickmorty/wardrobe/wear';
+import { local } from '../../../lib/hooks';
 import { loadProps, PROPS, spoutOf } from './props';
 import { paintDial, paintFloor, paintHazard, paintLabel, paintPollosBox, paintSteel, paintTile, paintWood } from './paint';
 import { pixelRatio } from '../../../lib/device';
@@ -716,7 +720,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   // ── the people: customers outside the hatch, Walt at the bench, Jesse in
   // the room ── Rigged figures (office/people.js) once the cast has loaded;
   // until then, or for anyone whose figure can't be had, the cut-outs above.
-  const folks = { ready: false, people: null, at: new Map(), walt: null, jesse: null, reaction: null };
+  const folks = { ready: false, people: null, at: new Map(), walt: null, jesse: null, reaction: null, undress: [] };
   const cast = [...Object.keys(CUSTOMERS), 'walt', 'jesseLab'];
   loadPeople(cast.map((id) => ABQ[id]).filter(Boolean))
     .then((people) => {
@@ -728,6 +732,15 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
       folks.waltHead = walt.group.getObjectByName('Head');
       walt.group.rotation.y = Math.PI; // at the bench, his back to us
       folks.jesse = people.person(ABQ.jesseLab, { pose: 'stand', idle: true });
+      // both in the lab’s suits, as the universe’s wardrobe colours them;
+      // Jesse’s gear on too (Walt’s eyes are the camera’s: nothing on his
+      // head or face to see through, so his colours only, his own sleeves
+      // and hands at the bench)
+      const looks = readLooks(local.get(LOOK_KEY));
+      const mats = dressColors(walt, dressedAs('walt', looks.walt, ABQ.walt).look);
+      folks.undress.push(() => mats.forEach((m) => m.dispose()));
+      const jesse = dressedAs('jesse', looks.jesse, ABQ.jesseLab).look;
+      if (folks.jesse && jesse) folks.undress.push(putOn(folks.jesse, jesse));
       scene.add(walt.group);
       if (folks.jesse) scene.add(folks.jesse.group);
       folks.ready = true;
@@ -1145,6 +1158,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
 
   const dispose = () => {
     disposed = true;
+    for (const off of folks.undress) off();
     folks.people?.dispose();
     for (const p of Object.values(hdris)) p.then((t) => t?.dispose());
     canvas.removeEventListener('webglcontextlost', onContextLost);

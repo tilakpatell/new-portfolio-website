@@ -14,6 +14,14 @@ describe('the 3D models that are other people’s', () => {
     expect(names.length).toBeGreaterThan(0);
     for (const [name, m] of Object.entries(CREDITS)) {
       for (const key of ['title', 'author', 'as']) expect(m[key], `${name}: ${key}`).toBeTruthy();
+      if (m.license === 'permission') {
+        // one used with its author's permission (a Battlefront II remaster model, scripts/battlefront-import.mjs): the permission's wording, and where it and its author are
+        expect(m.permission, name).toMatch(/permission/i);
+        expect(m.source, name).toMatch(/^https:\/\//);
+        expect(m.authorUrl, name).toMatch(/^https:\/\//);
+        expect(m.licenseUrl, name).toMatch(/^https:\/\//);
+        continue;
+      }
       expect(m.source, name).toMatch(/^https:\/\/sketchfab\.com\/3d-models\//);
       expect(m.authorUrl, name).toMatch(/^https:\/\/sketchfab\.com\//);
       // attribution licences, share-alike and non-commercial ones too (the site sells nothing), but none that forbids changing it: they're all reduced for the web
@@ -24,7 +32,7 @@ describe('the 3D models that are other people’s', () => {
 
   it('are each in the site, and each used by a page that shows its credit', () => {
     const code = sources().join('\n');
-    const shown = { universe: 'components/universe/UniversePanel.jsx', 'middle-earth': 'components/middleearth/MapHub.jsx', invincible: 'pages/Invincible.jsx', avengers: 'pages/Avengers.jsx', earth: 'pages/Earth.jsx', galaxy: 'components/galaxy/GalaxyPanel.jsx', 'galaxy-surface': 'pages/GalaxySurface.jsx', 'c-137': 'components/rickmorty/wardrobe/Wardrobe.jsx', cybertron: 'pages/Cybertron.jsx', dickansh: 'pages/Dickansh.jsx' };
+    const shown = { universe: 'components/universe/UniversePanel.jsx', 'middle-earth': 'components/middleearth/MapHub.jsx', invincible: 'pages/Invincible.jsx', avengers: 'pages/Avengers.jsx', earth: 'pages/Earth.jsx', galaxy: 'components/galaxy/GalaxyPanel.jsx', 'galaxy-surface': 'pages/GalaxySurface.jsx', 'c-137': 'components/rickmorty/wardrobe/Wardrobe.jsx', cybertron: 'pages/Cybertron.jsx', dickansh: 'pages/Dickansh.jsx', mario64: 'pages/Mario64.jsx' };
     for (const [name, m] of Object.entries(CREDITS)) {
       // where it is: its own `file`, or under its name with the rest from Sketchfab
       const file = m.file ?? `/models/sketchfab/${name}.glb`;

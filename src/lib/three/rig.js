@@ -84,7 +84,9 @@ export const SEGMENTS = [
   ['footR', 'toeR'],
 ];
 
-function findBones(root) {
+// (`named`: a figure's own bone for a role, by name, ahead of the guesses:
+// a Rigify rig's head is a spine bone, and its 'spine' is the hips)
+function findBones(root, named = {}) {
   const all = [];
   root.traverse((o) => o.isBone && all.push(o));
   const byName = new Map();
@@ -94,6 +96,7 @@ function findBones(root) {
   }
   const bones = {};
   for (const [role, names] of Object.entries(ROLES)) bones[role] = names.map((n) => byName.get(n)).find(Boolean) ?? null;
+  for (const [role, name] of Object.entries(named)) bones[role] = byName.get(plain(name)) ?? bones[role];
   // the spine: everything between the hips and the head
   const spine = [];
   for (let b = bones.head?.parent; b && b !== bones.hips && b.isBone; b = b.parent) spine.unshift(b);
@@ -149,14 +152,15 @@ function turn(bone, worldQ) {
 
 // A copy of a loaded figure, `h` tall, its hips at its origin (so it turns
 // about its middle, as a flyer does). Options: `attach`, a pattern for
-// meshes that came unskinned and should ride on the chest (Omni-Man's cape).
-export function figure(template, { h = 1.8, attach = null } = {}) {
+// meshes that came unskinned and should ride on the chest (Omni-Man's cape);
+// `bones`, a role's bone by name for a rig the names above don't cover.
+export function figure(template, { h = 1.8, attach = null, bones: named = {} } = {}) {
   const model = cloneSkinned(template.scene);
   const holder = new THREE.Group();
   const body = new THREE.Group(); // turned by the pose (lean, roll); the holder is placed by the game
   holder.add(body);
   body.add(model);
-  const { bones, spine, all } = findBones(model);
+  const { bones, spine, all } = findBones(model, named);
   const chest = spine[spine.length - 2] ?? spine[spine.length - 1] ?? bones.hips;
   if (attach && chest) {
     const ride = [];

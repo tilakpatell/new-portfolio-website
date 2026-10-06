@@ -11,6 +11,9 @@ import { toon } from './toon';
 import { rimToon } from '../../../lib/three/ink';
 import { gltfLoader } from '../../../lib/three/gltf';
 import { sharpenMaterial } from '../../../lib/three/textures';
+import { borrowClips, faceAhead, retarget } from './clips';
+
+export { faceForward, heading } from './clips';
 
 // Meshy's textures carry their own shading, so the light steps stay lighter
 // than the shapes' (a third of the way down at most, not two thirds)
@@ -35,6 +38,13 @@ const flat = (map, extra = {}) => toon(0xffffff, { map, gradientMap: lightRamp()
 const paint = (map, extra = {}) => lit(flat(map, extra));
 
 export const BASE = '/games/meshy';
+// An asset: one of Portal panic’s cast by name (its file in BASE, or in the
+// folder FOLDERS gives it, its clips beside it), or a figure of the site’s
+// from elsewhere by its whole path (Albuquerque’s Walt and Jesse, for the
+// wardrobe), which has no clips of its own and walks on Rick’s, borrowed
+// (clips.js).
+export const assetUrl = (name) => (name.startsWith('/') ? name : `${FOLDERS[name] ?? BASE}/${name}.glb`);
+const ownClips = (name) => !name.startsWith('/');
 
 // game kind → the model, how tall it stands in the arena (world units; a
 // little over the shapes' sizes, as slim figures read smaller from above)
@@ -68,11 +78,45 @@ export const MESHY = {
   tammy: { a: 'tammy', h: 1.62 },
   ethan: { a: 'ethan', h: 1.72 },
   tinyrick: { a: 'tinyrick', h: 1.6 },
+  // Total Rickall's (rickmorty/world/interiors/rickall.js): the parasites who
+  // are rigged figures, Mr. Poopybutthole (his hat and all; he has a sat clip
+  // too, for the Smiths' couch), and the parasites who are props, which stand
+  // still and live with the C-137 world's models (FOLDERS). The ghost is
+  // Ghost in a Jar without his jar, which the living room makes.
+  pencilvester: { a: 'pencilvester', h: 1.6 },
+  sleepygary: { a: 'sleepygary', h: 1.78 },
+  hamurai: { a: 'hamurai', h: 1.8 },
+  amishcyborg: { a: 'amishcyborg', h: 1.78 },
+  mrbeauregard: { a: 'mrbeauregard', h: 1.85 },
+  cousinnicky: { a: 'cousinnicky', h: 1.8 },
+  frankenstein: { a: 'frankenstein', h: 2.1 },
+  poopybutthole: { a: 'poopybutthole', h: 1.5 },
+  reversegiraffe: { a: 'reversegiraffe', h: 2.3 },
+  ghostinajar: { a: 'ghostinajar', h: 0.45 },
+  photographyraptor: { a: 'photographyraptor', h: 1.3 },
+  tinkles: { a: 'tinkles', h: 0.8 },
+  babywizard: { a: 'babywizard', h: 0.7 },
+  mrsrefrigerator: { a: 'mrsrefrigerator', h: 1.8 },
+  // the rest of the family's, in their places (rickmorty/world/rules.js's
+  // PEOPLE): each loads when its room is first walked into; Snuffles is a
+  // prop, asleep on his dog bed
+  spacebeth: { a: 'spacebeth', h: 1.68 },
+  drwong: { a: 'drwong', h: 1.72 },
+  nancy: { a: 'nancy', h: 1.6 },
+  tricia: { a: 'tricia', h: 1.62 },
+  diane: { a: 'diane', h: 1.68 },
+  snuffles: { a: 'snuffles', h: 0.45 },
 };
-export const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick']);
+const RICKALL_FIGURES = ['pencilvester', 'sleepygary', 'hamurai', 'amishcyborg', 'mrbeauregard', 'cousinnicky', 'frankenstein', 'poopybutthole'];
+const RICKALL_PROPS = ['reversegiraffe', 'ghostinajar', 'photographyraptor', 'tinkles', 'babywizard', 'mrsrefrigerator'];
+const FAMILY_FIGURES = ['spacebeth', 'drwong', 'nancy', 'tricia', 'diane'];
+const FAMILY_PROPS = ['snuffles'];
+export const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick', ...RICKALL_FIGURES, ...FAMILY_FIGURES]);
+// the models not in the cast's own folder, by name: where they are
+export const FOLDERS = Object.fromEntries([...RICKALL_PROPS, ...FAMILY_PROPS].map((a) => [a, '/models/c137/rm']));
 const SCHOOL = ['goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick'];
-const C137_PEOPLE = new Set(['summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', ...SCHOOL]);
-// and the set pieces round the arenas (the C-137 Smiths load with their own world)
+const C137_PEOPLE = new Set(['summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', ...SCHOOL, ...RICKALL_FIGURES, ...RICKALL_PROPS, ...FAMILY_FIGURES, ...FAMILY_PROPS]);
+// and the set pieces round the arenas (the C-137 world's people load with their own world)
 export const MESHY_ASSETS = [...new Set(Object.values(MESHY).map((m) => m.a).filter((a) => !C137_PEOPLE.has(a))), 'cruiser', 'garage'];
 
 // a Morty clone's shirt: the yellow of Morty's texture swapped for another colour
@@ -109,9 +153,10 @@ export function cullWithin(mesh, frame, height) {
 
 // `kinds` and `rigged`: another game's table and its skinned models (the
 // Citadel's, rickmorty/citadel/people.js); Portal panic's by default.
-// `cull`: figures out of view aren't drawn (a world with a lot of them)
-export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false } = {}) {
-  const loader = gltfLoader();
+// `cull`: figures out of view aren’t drawn (a world with a lot of them);
+// `loader`: another GLTFLoader (a test’s)
+export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false, loader: given = null } = {}) {
+  const loader = given ?? gltfLoader();
   const assets = new Map(); // name → { scene, height, offset, clips }
   const owned = [];
 
@@ -126,7 +171,7 @@ export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false }
 
   const loadOne = async (name, want = ['idle', 'walk', 'run']) => {
     try {
-      const gltf = await loader.loadAsync(`${BASE}/${name}.glb`);
+      const gltf = await loader.loadAsync(assetUrl(name));
       const scene = gltf.scene;
       scene.traverse((o) => {
         if (!o.isMesh) return;
@@ -146,16 +191,18 @@ export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false }
       const offset = new THREE.Vector3(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2);
       const clips = {};
       if (rigged.has(name)) {
-        const got = await Promise.all(want.map((c) => clipOf(`${BASE}/${name}-${c}.glb`)));
-        want.forEach((c, i) => {
-          clips[c] = got[i];
-        });
         const hips = scene.getObjectByName('Hips');
-        if (hips?.parent && clips.walk) {
-          const up = new THREE.Vector3(0, 1, 0).applyQuaternion(hips.parent.getWorldQuaternion(new THREE.Quaternion()).invert());
-          const ahead = heading(clips.walk, up);
-          if (ahead != null) for (const [n, c] of Object.entries(clips)) if (c && n !== 'walk') faceForward(c, up, ahead);
+        if (ownClips(name)) {
+          const got = await Promise.all(want.map((c) => clipOf(`${BASE}/${name}-${c}.glb`)));
+          want.forEach((c, i) => {
+            clips[c] = got[i];
+          });
+        } else if (hips) {
+          // (Rick’s, made for his hips, scaled to this figure’s: copies, so his own stay as they are)
+          const rick = await borrowClips(want, { loader });
+          for (const c of want) clips[c] = retarget(rick[c], hips.position.y, rick[c]?.userData.hips);
         }
+        if (hips?.parent && clips.walk) faceAhead(clips, new THREE.Vector3(0, 1, 0).applyQuaternion(hips.parent.getWorldQuaternion(new THREE.Quaternion()).invert()));
       }
       assets.set(name, { scene, height: size.y, offset, clips, rigged: rigged.has(name) });
     } catch {
@@ -250,38 +297,6 @@ export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false }
   };
 
   return { load, make, prop, dispose };
-}
-
-// Meshy's idle stands turned off to one side, like a fighter's stance: turn
-// a clip's hips about the up axis (`up`, in the hips' parent's space) so its
-// mean heading matches `target` (the walk's, which faces ahead).
-const hipsTrack = (clip) => clip?.tracks.find((t) => /^hips\.quaternion$/i.test(t.name));
-export function heading(clip, up) {
-  const v = hipsTrack(clip)?.values;
-  if (!v) return null;
-  let sx = 0;
-  let sy = 0;
-  for (let i = 0; i < v.length; i += 4) {
-    // the twist about `up`: 2·atan2(q.xyz · up, q.w)
-    const a = 2 * Math.atan2(v[i] * up.x + v[i + 1] * up.y + v[i + 2] * up.z, v[i + 3]);
-    sx += Math.cos(a);
-    sy += Math.sin(a);
-  }
-  return Math.atan2(sy, sx);
-}
-export function faceForward(clip, up, target) {
-  const v = hipsTrack(clip)?.values;
-  const now = heading(clip, up);
-  if (!v || now == null) return;
-  const fix = new THREE.Quaternion().setFromAxisAngle(up, target - now);
-  const q = new THREE.Quaternion();
-  for (let i = 0; i < v.length; i += 4) {
-    q.set(v[i], v[i + 1], v[i + 2], v[i + 3]).premultiply(fix);
-    v[i] = q.x;
-    v[i + 1] = q.y;
-    v[i + 2] = q.z;
-    v[i + 3] = q.w;
-  }
 }
 
 const smooth = (a, b, x) => {

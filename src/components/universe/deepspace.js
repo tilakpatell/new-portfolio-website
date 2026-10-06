@@ -47,7 +47,7 @@
 // Lit things are lit in world space from where their light is (the home sun
 // at the map's middle, or their own star), so the map can turn under them.
 //
-// buildDeepSpace({ small }) → { group, update(t, camera, cam), lens(), dispose() }
+// buildDeepSpace({ small }) → { group, update(t, camera, cam, { names }), lens(), dispose() }
 // cam is the camera's position in the map's space (the group's own).
 
 import * as THREE from 'three';
@@ -1297,6 +1297,67 @@ void main() {
 }`;
 const UV_VERT = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
 
+// The two streams of rock between the wonders, as plain numbers (the mesh
+// and the ship's collider, rockHits.js, read the same rocks): each stream a
+// gentle S along its length, thickest in the middle, a rock now and then
+// much bigger than the rest. The draws from the seeded random are in the
+// order they always were, so the streams look as they did.
+// → [{ x, y, z, sx, sy, sz, rx, ry, rz, tone, tint, r }]
+const DEBRIS_FIELDS = [
+  { at: [1800, 60, -1500], dir: [0.62, 0.05, 0.78], len: 700, wide: 90, thick: 20 },
+  { at: [-1075, -90, 1650], dir: [0.9, 0.08, -0.42], len: 640, wide: 80, thick: 18 },
+];
+const DEBRIS_TONES = ['#5d5953', '#4a4743', '#67605a', '#544a40', '#3f3b38', '#6b5a48'];
+export function debrisRocks({ small = false } = {}) {
+  const rand = rng('deep-debris');
+  const per = small ? 160 : 420;
+  const rocks = [];
+  const norm = (v) => {
+    const l = hypot(v[0], v[1], v[2]) || 1;
+    return [v[0] / l, v[1] / l, v[2] / l];
+  };
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  for (const f of DEBRIS_FIELDS) {
+    const dir = norm(f.dir);
+    const side = norm(cross(dir, [0, 1, 0]));
+    const upv = norm(cross(side, dir));
+    for (let n = 0; n < per; n++) {
+      const along = (rand() - 0.5) * f.len;
+      const thin = 1 - Math.abs(along / (f.len / 2)) * 0.6;
+      const across = (rand() + rand() + rand() - 1.5) / 1.5;
+      const bend = sin((along / f.len) * PI * 2) * f.wide * 0.6;
+      const a = across * f.wide * thin + bend;
+      const u = (rand() - 0.5) * f.thick * thin;
+      const size = 0.3 + rand() ** 5 * 7;
+      const sx = size;
+      const sy = size * (0.7 + rand() * 0.5);
+      const sz = size * (0.8 + rand() * 0.4);
+      const rx = rand() * 6.3;
+      const ry = rand() * 6.3;
+      const rz = rand() * 6.3;
+      const tone = Math.floor(rand() * DEBRIS_TONES.length);
+      const tint = 0.85 + rand() * 0.3;
+      rocks.push({
+        x: f.at[0] + dir[0] * along + side[0] * a + upv[0] * u,
+        y: f.at[1] + dir[1] * along + side[1] * a + upv[1] * u,
+        z: f.at[2] + dir[2] * along + side[2] * a + upv[2] * u,
+        sx,
+        sy,
+        sz,
+        rx,
+        ry,
+        rz,
+        tone,
+        tint,
+        r: Math.max(sx, sy, sz) * 0.9,
+      });
+    }
+  }
+  return rocks;
+}
+// where the streams have drifted to at `t` (the whole of them together)
+export const DEBRIS_DRIFT = (t) => ({ x: sin(t * 0.004) * 6, y: sin(t * 0.003 + 1) * 1.5, z: cos(t * 0.0035) * 5 });
+
 export function buildDeepSpace({ small = false } = {}) {
   const group = new THREE.Group();
   group.name = 'deep-space';
@@ -2098,13 +2159,8 @@ export function buildDeepSpace({ small = false } = {}) {
   const debris = new THREE.Group();
   debris.name = 'deep-debris';
   group.add(debris);
+  const debrisField = { rocks: debrisRocks({ small }), hide: () => {}, show: () => {} };
   {
-    const rand = rng('deep-debris');
-    const fields = [
-      { at: [1800, 60, -1500], dir: [0.62, 0.05, 0.78], len: 700, wide: 90, thick: 20 },
-      { at: [-1075, -90, 1650], dir: [0.9, 0.08, -0.42], len: 640, wide: 80, thick: 18 },
-    ];
-    const per = small ? 160 : 420;
     const rock = new THREE.IcosahedronGeometry(1, 1);
     {
       const p = rock.attributes.position;
@@ -2141,39 +2197,32 @@ mat3 tumble(float id) {
         .replace('#include <begin_vertex>', 'vec3 transformed = tumbleM * vec3(position);');
     };
     mat.customProgramCacheKey = () => 'deep-debris';
-    const im = new THREE.InstancedMesh(own(rock), own(mat), per * fields.length);
+    const list = debrisField.rocks;
+    const im = new THREE.InstancedMesh(own(rock), own(mat), list.length);
     const mm = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const e = new THREE.Euler();
     const p = new THREE.Vector3();
     const sc = new THREE.Vector3();
     const c = new THREE.Color();
-    const TONES = ['#5d5953', '#4a4743', '#67605a', '#544a40', '#3f3b38', '#6b5a48'];
-    let i = 0;
-    for (const f of fields) {
-      const dir = new THREE.Vector3(...f.dir).normalize();
-      const side = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize();
-      const upv = new THREE.Vector3().crossVectors(side, dir).normalize();
-      for (let n = 0; n < per; n++, i++) {
-        const along = (rand() - 0.5) * f.len;
-        const thin = 1 - Math.abs(along / (f.len / 2)) * 0.6;
-        const across = (rand() + rand() + rand() - 1.5) / 1.5;
-        // a gentle S along its length, so it's a stream, not a bar
-        const bend = sin((along / f.len) * PI * 2) * f.wide * 0.6;
-        p.set(...f.at)
-          .addScaledVector(dir, along)
-          .addScaledVector(side, across * f.wide * thin + bend)
-          .addScaledVector(upv, (rand() - 0.5) * f.thick * thin);
-        const size = 0.3 + rand() ** 5 * 7;
-        sc.set(size, size * (0.7 + rand() * 0.5), size * (0.8 + rand() * 0.4));
-        q.setFromEuler(e.set(rand() * 6.3, rand() * 6.3, rand() * 6.3));
-        im.setMatrixAt(i, mm.compose(p, q, sc));
-        im.setColorAt(i, c.set(TONES[Math.floor(rand() * TONES.length)]).multiplyScalar(0.85 + rand() * 0.3));
-      }
-    }
+    const place = (i, gone = false) => {
+      const o = list[i];
+      q.setFromEuler(e.set(o.rx, o.ry, o.rz));
+      im.setMatrixAt(i, mm.compose(p.set(o.x, o.y, o.z), q, gone ? sc.setScalar(0) : sc.set(o.sx, o.sy, o.sz)));
+      im.instanceMatrix.needsUpdate = true;
+    };
+    list.forEach((o, i) => {
+      place(i);
+      im.setColorAt(i, c.set(DEBRIS_TONES[o.tone]).multiplyScalar(o.tint));
+    });
+    debrisField.hide = (i) => list[i] && place(i, true);
+    debrisField.show = (i) => list[i] && place(i);
     im.computeBoundingSphere();
     debris.add(im);
-    ticks.push((t) => debris.position.set(sin(t * 0.004) * 6, sin(t * 0.003 + 1) * 1.5, cos(t * 0.0035) * 5));
+    ticks.push((t) => {
+      const d = DEBRIS_DRIFT(t);
+      debris.position.set(d.x, d.y, d.z);
+    });
   }
 
   // ── each frame ──
@@ -2181,7 +2230,10 @@ mat3 tumble(float id) {
   let lastT = null;
   return {
     group,
-    update(t, camera, cam) {
+    debris: debrisField, // (the streams' rocks, for the ship to hit: rockHits.js)
+    // (`names` false: the wonders' names fade, the way in through a planet's
+    // air being under a sky of its own)
+    update(t, camera, cam, { names = true } = {}) {
       const dt = lastT === null ? 1 : Math.min(0.1, Math.max(0, t - lastT));
       lastT = t;
       uTime.value = t;
@@ -2195,7 +2247,7 @@ mat3 tumble(float id) {
         // names: out of the home system, and well clear of the wonder
         const out = hypot(cam.x, cam.z) > DEEP.system;
         named.forEach(({ w }, i) => {
-          const want = out && tmp.set(...w.at).distanceTo(cam) > reachOf(w) * 1.5 ? 1 : 0;
+          const want = names && out && tmp.set(...w.at).distanceTo(cam) > reachOf(w) * 1.5 ? 1 : 0;
           shown[i] += (want - shown[i]) * Math.min(1, dt * 2.5);
           if (Math.abs(shown[i] - want) < 0.002) shown[i] = want;
           alphaAttr.array[i] = shown[i];

@@ -18,7 +18,8 @@
 //   hi    { n: name, k: ship kind or null, p: its paint job, o: its parts
 //           (outfit.js), b: its garage build (shipyard/build.js's ids) or
 //           none, l: [Rick's look, Morty's] (wardrobe/looks.js's ids) or
-//           none, c: kills, w: where on the site }  on joining, and on any change
+//           none, lb: [Walt’s look, Jesse’s] or none, c: kills, w: where
+//           on the site }  on joining, and on any change
 //   pose  [x, y, z, heading, pitch, bank, speed, vy, flags, shields]  ten times a second while flying
 //         (flags: hidden, boosting, and safe: just back, your hits don't count)
 //   shot  [x, y, z, vx, vy, vz, w?]                      a bolt fired (for drawing it); w: the
@@ -45,7 +46,7 @@ import { parseShip } from '../crews';
 import { FOOT, METRE } from '../foot';
 import { readOutfit } from '../outfit';
 import { readBuildWire } from '../shipyard/build';
-import { WHO, defaultLook, readLookWire } from '../../rickmorty/wardrobe/looks';
+import { CASTS, defaultLook, readLookWire, writeLook } from '../../rickmorty/wardrobe/looks';
 import { byId } from '../universes';
 import { KINDS as HUNTERS } from '../../galaxy/hunted';
 import { fromAngles, slerp, toAngles } from '../orient';
@@ -55,7 +56,9 @@ import { cleanName } from './names';
 export { NAME_MAX, cleanName, randomCallsign } from './names';
 
 export const APP_ID = 'tilakpatel-portfolio-universe';
-export const ROOM = 'universe-v1';
+// (v2: the home system grew, scale.js; a pilot on an older build would be
+// drawn parked where its stations used to be)
+export const ROOM = 'universe-v2';
 export const POSE_MS = 100; // how often a pose goes out
 export const CURSOR_MS = 80; // and a pointer, off the map
 export const STALE_MS = 2500; // a ship with no pose this long is hidden
@@ -88,16 +91,34 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // null, the stock ship)
 export function readHello(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
-  return { name: cleanName(data.n) ?? 'Pilot', kind: parseShip(data.k), loadout: readOutfit(data.o, data.p), build: readBuildWire(data.b), looks: readLooksWire(data.l), kills: Math.floor(num(data.c, 0, 9999) ?? 0), where: cleanWhere(data.w) };
+  return { name: cleanName(data.n) ?? 'Pilot', kind: parseShip(data.k), loadout: readOutfit(data.o, data.p), build: readBuildWire(data.b), looks: readLooksWire(data), kills: Math.floor(num(data.c, 0, 9999) ?? 0), where: cleanWhere(data.w) };
 }
 
-// their Rick's and Morty's looks, or null (none sent, or nothing that could
-// be one); one that can't be read is as the show has him
+// Each cast’s pair of looks under a key of its own (Rick and Morty’s under
+// `l`, as it always was, so a pilot whose site knows only them still reads
+// theirs), and none for a pair both as the show has them (there’s nothing
+// to tell: that’s how they’re shown anyway). → { l, lb } for a hello, from
+// looks.js’s { rick, morty, walt, jesse }
+const LOOK_WIRE = { rickmorty: 'l', breakingbad: 'lb' };
+const plain = (who, look) => JSON.stringify(writeLook(look)) === JSON.stringify(writeLook(defaultLook(who)));
+export function writeLooksWire(looks) {
+  if (!looks) return {};
+  const sent = Object.entries(LOOK_WIRE).filter(([cast]) => CASTS[cast].every((who) => looks[who]) && !CASTS[cast].every((who) => plain(who, looks[who])));
+  return Object.fromEntries(sent.map(([cast, k]) => [k, CASTS[cast].map((who) => writeLook(looks[who]))]));
+}
+// their looks, cast by cast, or null (none sent, or nothing that could be
+// one); in a pair that’s read, one that can’t be is as the show has him
 function readLooksWire(data) {
-  if (!Array.isArray(data) || data.length !== WHO.length) return null;
-  const out = Object.fromEntries(WHO.map((who, i) => [who, readLookWire(who, data[i])]));
-  if (WHO.every((who) => !out[who])) return null;
-  for (const who of WHO) out[who] ??= defaultLook(who);
+  let out = null;
+  for (const [cast, k] of Object.entries(LOOK_WIRE)) {
+    const who = CASTS[cast];
+    const pair = data[k];
+    if (!Array.isArray(pair) || pair.length !== who.length) continue;
+    const got = Object.fromEntries(who.map((w, i) => [w, readLookWire(w, pair[i])]));
+    if (who.every((w) => !got[w])) continue;
+    for (const w of who) got[w] ??= defaultLook(w);
+    out = { ...out, ...got };
+  }
   return out;
 }
 

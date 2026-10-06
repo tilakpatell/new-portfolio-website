@@ -13,7 +13,9 @@
 // jello, chiliPot, spill(at), bin, update(t, mood) }
 
 import * as THREE from 'three';
-import { merge } from '../kit';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { merge, plainFaces } from '../kit';
+import { rng } from '../../../lib/texture';
 import { CEILING, COPIER, COOLER, DOORS, FILES, FIRE_BIN, FRIDGE, LEAVES, P, PANES, roomAt, PLANTS, RECEPTION, ROOMS, SEATS, SHELVES, SOLID, STAIRWELL, U, VENDING, rect } from './layout';
 import { BREAK_TABLES, CONFERENCE_TABLE, KITCHEN_COUNTER, KITCHEN_TABLE, STAFF } from '../layout';
 import { buildWindows } from './windows';
@@ -147,32 +149,96 @@ function whiteboardTex() {
   x.strokeRect(0, 0, 512, 256);
   return texOf(c);
 }
+// the break room's machines, as on the set: a black snack machine with its
+// glass front and rows of spirals, and a tall blue soda machine with its
+// column of buttons
 function vendingTex(drinks) {
   const c = canvas(256, 512);
   const x = c.getContext('2d');
-  x.fillStyle = drinks ? '#b3222b' : '#1e2329';
-  x.fillRect(0, 0, 256, 512);
-  x.fillStyle = '#0d1a22';
-  x.fillRect(16, 24, 168, 400);
-  const cols = drinks ? ['#c8102e', '#1d5bb8', '#f2c230', '#2e9b4b', '#ffffff'] : ['#e8b23a', '#c0392b', '#7d4a2a', '#f4e04d', '#3a6fb8', '#e67e22'];
-  for (let r = 0; r < 6; r++)
-    for (let k = 0; k < 4; k++) {
-      x.fillStyle = cols[(r * 4 + k) % cols.length];
-      x.fillRect(24 + k * 40, 36 + r * 64, drinks ? 26 : 32, drinks ? 46 : 36);
-      x.fillStyle = '#9aa3aa';
-      x.fillRect(22 + k * 40, 88 + r * 64, 36, 3);
-    }
-  x.fillStyle = '#c9ced3';
-  x.fillRect(196, 60, 46, 120);
-  x.fillStyle = '#20262c';
-  for (let i = 0; i < 9; i++) x.fillRect(204 + (i % 3) * 12, 72 + Math.floor(i / 3) * 16, 8, 10);
-  x.fillStyle = '#111';
-  x.fillRect(30, 440, 150, 50);
+  const r = rng(drinks ? 7 : 8);
   if (drinks) {
-    x.fillStyle = '#fff';
-    x.font = 'bold italic 40px Arial';
-    x.fillText('Ice Cold', 36, 500);
+    const g = x.createLinearGradient(0, 0, 256, 0);
+    g.addColorStop(0, '#0f3d9c');
+    g.addColorStop(0.55, '#1f63d6');
+    g.addColorStop(1, '#0d2f7a');
+    x.fillStyle = g;
+    x.fillRect(0, 0, 256, 512);
+    x.save();
+    x.translate(118, 470);
+    x.rotate(-Math.PI / 2);
+    x.fillStyle = '#ffffff';
+    x.font = 'bold italic 64px Arial, sans-serif';
+    x.fillText('Ice Cold', 0, 0);
+    x.font = 'bold 34px Arial, sans-serif';
+    x.fillText('DRINKS', 40, 46);
+    x.restore();
+    x.fillStyle = '#1b1d22';
+    x.fillRect(196, 0, 60, 512);
+    for (let i = 0; i < 9; i++) {
+      x.fillStyle = ['#e8eef7', '#f4d24a', '#e8eef7', '#d23a3a'][i % 4];
+      x.fillRect(206, 40 + i * 30, 40, 22);
+    }
+    x.fillStyle = '#9aa3aa';
+    x.fillRect(208, 330, 36, 60);
+    x.fillStyle = '#0a0b0d';
+    x.fillRect(206, 420, 40, 50);
+  } else {
+    x.fillStyle = '#16181c';
+    x.fillRect(0, 0, 256, 512);
+    x.fillStyle = '#20262c';
+    x.fillRect(14, 20, 166, 380);
+    const cols = ['#e8b23a', '#c0392b', '#f4e04d', '#3a6fb8', '#e67e22', '#2e9b4b', '#7d4a2a', '#d84f8f'];
+    for (let row = 0; row < 6; row++) {
+      for (let k = 0; k < 5; k++) {
+        x.fillStyle = cols[Math.floor(r() * cols.length)];
+        x.fillRect(22 + k * 31, 30 + row * 62, 24, 36);
+        x.fillStyle = 'rgba(255,255,255,0.25)';
+        x.fillRect(24 + k * 31, 32 + row * 62, 6, 30);
+      }
+      x.fillStyle = '#b9c0c7';
+      x.fillRect(18, 72 + row * 62, 158, 4);
+    }
+    // the glass's sheen
+    x.fillStyle = 'rgba(255,255,255,0.08)';
+    x.beginPath();
+    x.moveTo(14, 400);
+    x.lineTo(110, 20);
+    x.lineTo(150, 20);
+    x.lineTo(54, 400);
+    x.fill();
+    x.fillStyle = '#c9ced3';
+    x.fillRect(194, 40, 50, 150);
+    x.fillStyle = '#3ad16a';
+    x.fillRect(200, 48, 38, 14);
+    x.fillStyle = '#20262c';
+    for (let i = 0; i < 12; i++) x.fillRect(201 + (i % 3) * 13, 72 + Math.floor(i / 3) * 18, 9, 12);
+    x.fillStyle = '#0a0b0d';
+    x.fillRect(30, 430, 140, 48);
   }
+  return texOf(c);
+}
+// a bankers box: white card, the green panel and its label, the hand hole
+function storageTex() {
+  const c = canvas(256, 192);
+  const x = c.getContext('2d');
+  x.fillStyle = '#f3f2ec';
+  x.fillRect(0, 0, 256, 192);
+  x.fillStyle = '#2f8a4a';
+  x.beginPath();
+  x.moveTo(0, 70);
+  x.lineTo(256, 40);
+  x.lineTo(256, 192);
+  x.lineTo(0, 192);
+  x.fill();
+  x.fillStyle = '#ffffff';
+  x.font = 'bold 26px Arial, sans-serif';
+  x.fillText('STORAGE BOXES', 22, 120);
+  x.font = '12px Arial, sans-serif';
+  x.fillText('HEAVY DUTY · LETTER · LEGAL SIZE', 24, 142);
+  x.fillStyle = '#4a4a46';
+  x.beginPath();
+  x.ellipse(128, 24, 34, 9, 0, 0, Math.PI * 2);
+  x.fill();
   return texOf(c);
 }
 function boardTex() {
@@ -576,7 +642,7 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     g.add(d);
     const top = 0.76;
     const front = s.depth / 2;
-    const mon = kit.monitor(s.who === 'kevin' ? 5 : s.who === 'dwight' ? 6 : s.who === 'michael' ? 7 : s.i);
+    const mon = kit.monitor(0); // (every one on the set shows the Intra-Office Digital Hub)
     mon.position.set(0, top, -front + 0.2);
     g.add(mon);
     const blot = kit.blotter();
@@ -604,7 +670,7 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
       g.add(lamp);
     }
     if (s.who === 'michael' || s.who === 'ryan' || s.who === 'dwight') {
-      const plate = kit.nameplate(s.who === 'michael' ? 'MICHAEL SCOTT' : s.who === 'dwight' ? 'DWIGHT K. SCHRUTE' : 'Ryan Howard', s.who === 'michael' ? 'REGIONAL MANAGER' : s.who === 'dwight' ? 'ASST. TO THE REGIONAL MGR' : 'Temp');
+      const plate = kit.nameplate(s.who === 'michael' ? 'MICHAEL SCOTT' : s.who === 'dwight' ? 'DWIGHT K. SCHRUTE' : 'Ryan Howard', s.who === 'michael' ? 'REGIONAL MANAGER' : s.who === 'dwight' ? 'ASST. TO THE REGIONAL MGR' : '');
       plate.position.set(0.25, top, front - 0.06);
       g.add(plate);
     }
@@ -670,7 +736,7 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     ch.rotation.y = RECEPTION.face;
     add(ch);
     seats.set('erin', { group, chair: ch, top: 1.07 });
-    const mon = kit.monitor(1);
+    const mon = kit.monitor(0);
     mon.position.set(RECEPTION.x - 0.22, 0.76, RECEPTION.z - 0.12);
     mon.rotation.y = RECEPTION.face + Math.PI;
     add(mon);
@@ -679,10 +745,34 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     const ph = kit.phone();
     ph.position.set(RECEPTION.x + 0.35, 1.07, RECEPTION.z - 0.55);
     add(ph);
-    const jar = mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.2, 20), mat({ color: 0xe8f4ff, transparent: true, opacity: 0.45, roughness: 0.05 }), RECEPTION.x - 0.1, 1.17, RECEPTION.z - 0.85);
-    jar.castShadow = false;
-    const beans = mesh(new THREE.CylinderGeometry(0.07, 0.065, 0.14, 16), mat({ color: 0xe0503a, roughness: 0.4 }), RECEPTION.x - 0.1, 1.14, RECEPTION.z - 0.85);
-    beans.castShadow = false;
+    // the jelly beans in a cut-glass bowl, and the counter's own nameplate
+    const bowlGeo = new THREE.LatheGeometry([new THREE.Vector2(0.001, 0), new THREE.Vector2(0.05, 0.004), new THREE.Vector2(0.11, 0.05), new THREE.Vector2(0.125, 0.075), new THREE.Vector2(0.118, 0.078)], 28);
+    const bowl = mesh(bowlGeo, mat({ color: 0xeef6ff, transparent: true, opacity: 0.38, roughness: 0.04, metalness: 0, side: THREE.DoubleSide, depthWrite: false }), RECEPTION.x - 0.12, 1.075, RECEPTION.z - 1.02);
+    bowl.castShadow = false;
+    bowl.renderOrder = 2;
+    {
+      const r = rng(41);
+      const parts = [];
+      const cols = [0xe0503a, 0xf2c230, 0x3c9a3c, 0xf08ab0, 0x7a3fa0, 0xffffff, 0xff8a2a, 0x2a2a2a];
+      for (let i = 0; i < 70; i++) {
+        const a = r() * Math.PI * 2;
+        const d = Math.sqrt(r()) * 0.085;
+        const g = new THREE.SphereGeometry(0.009, 6, 4).scale(1.5, 1, 1).rotateY(r() * 3).translate(Math.cos(a) * d, 0.012 + (0.085 - d) * 0.45 + r() * 0.01, Math.sin(a) * d);
+        const col = new THREE.Color(cols[i % cols.length]);
+        const n = g.attributes.position.count;
+        const arr = new Float32Array(n * 3);
+        for (let k = 0; k < n; k++) col.toArray(arr, k * 3);
+        g.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+        parts.push(g.toNonIndexed());
+      }
+      const beans = mesh(mergeGeometries(parts, false), mat({ vertexColors: true, roughness: 0.35 }), RECEPTION.x - 0.12, 1.075, RECEPTION.z - 1.02);
+      beans.castShadow = false;
+      for (const g of parts) g.dispose();
+    }
+    const plate = kit.nameplate('RECEPTION', '', true);
+    plate.position.set(RECEPTION.x + 0.26, 1.075, RECEPTION.z - 1.02);
+    plate.rotation.y = Math.atan2(0.26, -1.02); // (facing out, across the counter)
+    add(plate);
     const p = kit.model('plant');
     p.position.set(RECEPTION.x + 0.8, 0, RECEPTION.z + 0.6);
     p.scale.multiplyScalar(0.8);
@@ -751,13 +841,26 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     cooler.rotation.y = Math.PI / 2; // facing into the room, away from the wall
     add(cooler);
     const fileMat = mat({ color: 0xc7c4bb, roughness: 0.45, metalness: 0.3 });
+    // on top, as along the set's walls: a ream box and a row of green
+    // and white storage boxes
+    const storeTex = keep(storageTex());
+    const storeMat = mat({ map: storeTex, roughness: 0.85 });
+    const storeGeo = keep(plainFaces(new THREE.BoxGeometry(0.32, 0.26, 0.4), [0, 1, 2, 3], 0.97, 0.97));
     for (const f of FILES) {
       mesh(new THREE.BoxGeometry(f.w, 1.3, f.d), fileMat, f.x, 0.65, f.z);
-      // a few paper boxes stacked on top
+      const along = f.w > f.d;
+      const len = Math.max(f.w, f.d);
       const b = kit.paperBox();
-      b.position.set(f.x, 1.3 + 0.135, f.z);
-      b.rotation.y = f.w > f.d ? 0 : Math.PI / 2;
+      b.position.set(f.x + (along ? -len / 2 + 0.24 : 0), 1.3 + 0.135, f.z + (along ? 0 : -len / 2 + 0.24));
+      b.rotation.y = along ? 0 : Math.PI / 2;
       add(b);
+      const n = Math.floor((len - 0.5) / 0.34);
+      for (let k = 0; k < n; k++) {
+        const o = -len / 2 + 0.52 + k * 0.34 + 0.16;
+        const box = mesh(storeGeo, storeMat, f.x + (along ? o : 0), 1.3 + 0.13, f.z + (along ? 0 : o));
+        box.rotation.y = along ? 0 : Math.PI / 2; // (the labelled ends out into the room)
+        box.rotation.y += (k % 2 ? 0.04 : -0.03);
+      }
     }
     PLANTS.forEach((p, k) => {
       const m = kit.model('plant');
@@ -821,20 +924,36 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
   {
     VENDING.forEach((v, k) => {
       const t = keep(vendingTex(k === 1));
-      const body = mesh(new THREE.BoxGeometry(v.w, 1.85, v.d), mat({ color: k ? 0xb3222b : 0x1e2329, roughness: 0.45 }), v.x, 0.925, v.z);
+      const body = mesh(new THREE.BoxGeometry(v.w, 1.85, v.d), mat({ color: k ? 0x15398a : 0x16181c, roughness: 0.45 }), v.x, 0.925, v.z);
       body.castShadow = true;
       const front = mesh(new THREE.PlaneGeometry(v.d * 0.96, 1.8), mat({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.35, roughness: 0.3 }), v.x + v.w / 2 + 0.005, 0.925, v.z);
       front.rotation.y = E;
       front.castShadow = false;
     });
+    // white laminate rounds on black pedestals, and grey stacking chairs on
+    // chrome sleds
+    const stack = (() => {
+      const frame = [];
+      for (const sx of [-1, 1]) {
+        frame.push(new THREE.CylinderGeometry(0.011, 0.011, 0.45, 6).translate(sx * 0.2, 0.225, 0.2));
+        frame.push(new THREE.CylinderGeometry(0.011, 0.011, 0.86, 6).translate(sx * 0.2, 0.43, -0.2));
+        frame.push(new THREE.CylinderGeometry(0.011, 0.011, 0.42, 6).rotateX(Math.PI / 2).translate(sx * 0.2, 0.01, 0));
+      }
+      const seat = [new THREE.BoxGeometry(0.44, 0.05, 0.42).translate(0, 0.46, 0), new THREE.BoxGeometry(0.42, 0.26, 0.04).rotateX(-0.1).translate(0, 0.74, -0.21)];
+      return { frame: keep(merge(frame)), seat: keep(merge(seat)) };
+    })();
+    const seatMat = mat({ color: 0x8d8a94, roughness: 0.85 });
     for (const [px, py] of BREAK_TABLES) {
       const c = W(px, py);
       mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.03, 28), kit.M.white, c.x, 0.74, c.z);
       mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.72, 10), kit.M.plasticDark, c.x, 0.36, c.z);
+      mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.03, 18), kit.M.plasticDark, c.x, 0.015, c.z);
       for (let i = 0; i < 2; i++) {
-        const ch = kit.chair();
+        const ch = new THREE.Group();
+        ch.add(new THREE.Mesh(stack.frame, kit.M.chrome), new THREE.Mesh(stack.seat, seatMat));
+        ch.traverse((o) => (o.castShadow = o.receiveShadow = true));
         const ang = i * Math.PI + 0.6;
-        ch.position.set(c.x + Math.sin(ang) * 0.82, 0, c.z + Math.cos(ang) * 0.82);
+        ch.position.set(c.x + Math.sin(ang) * 0.72, 0, c.z + Math.cos(ang) * 0.72);
         ch.rotation.y = ang + Math.PI;
         add(ch);
       }

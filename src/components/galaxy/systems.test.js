@@ -101,6 +101,11 @@ describe('the systems', () => {
       expect(['soon', 'live']).toContain(g.status);
       expect(g.objectives, s.id).toHaveLength(3);
       if (g.status === 'live') expect(g.to).toMatch(/^\//);
+      // (another mission on the same world, from the same briefing)
+      for (const a of g.also ?? []) {
+        for (const k of ['id', 'title', 'text']) expect(typeof a[k], `${s.id}.game.also.${k}`).toBe('string');
+        expect(a.to, `${s.id}.game.also.to`).toMatch(/^\//);
+      }
     }
   });
   it('says its lines with clips there are', () => {

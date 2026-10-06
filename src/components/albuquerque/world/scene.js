@@ -55,7 +55,10 @@ import { prefersReducedMotion } from '../../../lib/hooks';
 import { GRADE } from '../../../lib/stage3d';
 import { createGhosts } from '../../middleearth/towns/ghosts';
 import { splitWord } from '../elements';
-import { ABQ } from '../wardrobe';
+import { ABQ, dressedAs } from '../wardrobe';
+import { LOOK_KEY, readLooks } from '../../rickmorty/wardrobe/looks';
+import { dress } from '../../rickmorty/wardrobe/wear';
+import { local } from '../../../lib/hooks';
 import { TOWN_MODELS, createTown } from './buildings';
 import { createCity } from './city';
 import { createBalloons, createCrystals, createNightLights, createPizza, createSmoke, createTumbleweeds, glowTexture } from './life';
@@ -745,12 +748,17 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
 
   // ── the cast, out where they belong: Jesse by the RV, Saul at his door, Gus
   // outside Los Pollos, Mike at the laundry, Badger and Skinny Pete at the Dog
-  // House, Tuco at Tampico. They come once the town's up, and not on a phone. ──
+  // House, Tuco at Tampico. They come once the town’s up, and not on a phone.
+  // Jesse is as the universe’s wardrobe has him: in his hoodie or the lab’s
+  // suit, its colours and his gear on. ──
   const cast = [];
   let people = null;
   let gone = false;
+  const undress = [];
   if (!mobile && fit.bloom > 0) {
     const P = Math.PI;
+    const jesse = dressedAs('jesse', readLooks(local.get(LOOK_KEY)).jesse);
+    const specOf = (id) => (id === 'jesse' ? jesse.spec : ABQ[id]);
     const WHERE = [
       ['jesse', -336, 124.6, P],
       ['saul', -84.5, 12.4, P],
@@ -760,13 +768,14 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       ['pete', -82.2, -14.4, -0.5],
       ['tuco', 11.4, 150, -P / 2],
     ];
-    loadPeople(WHERE.map(([id]) => ABQ[id]))
+    loadPeople(WHERE.map(([id]) => specOf(id)))
       .then((got) => {
         if (gone) return got.dispose();
         people = got;
         for (const [id, x, z, yaw] of WHERE) {
-          const p = got.person(ABQ[id], { pose: 'stand', idle: true });
+          const p = got.person(specOf(id), { pose: 'stand', idle: true });
           if (!p) continue;
+          if (id === 'jesse') undress.push(dress(p, jesse.look));
           p.group.position.set(x, surfaceHeight(x, z), z);
           p.group.rotation.y = yaw;
           scene.add(p.group);
@@ -1286,6 +1295,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     project: stage.project,
     dispose() {
       gone = true;
+      for (const off of undress) off();
       people?.dispose();
       ghosts.dispose();
       for (const o of owned) o.dispose?.();

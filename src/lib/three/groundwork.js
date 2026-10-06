@@ -32,7 +32,8 @@
 // sun; `casters` what shadows the floor (the whole scene by default; movers,
 // skipped things, see-through and tiny things are left out of the bake);
 // `movers` [{ object, size: [w, d], lift, contact }] what gets a blob and stands in
-// the shade; `height(x, z)` the floor's height, for the blobs (by default the
+// the shade; `sunFloor` how much of the sun the floor keeps in full shade (0 to
+// 1: a wood's floor, which the mask's sun never reaches, would go black); `height(x, z)` the floor's height, for the blobs (by default the
 // floor's height as baked); `tier` the
 // device's (lib/device), for the bake's cost. `auto` bakes on the first
 // update (when the world has placed its sun); `follow` bakes again when the
@@ -101,7 +102,7 @@ function blankMask() {
   return t;
 }
 
-export function groundWorld({ renderer, scene, floor = [], area = null, sun = null, casters = null, skip = [], movers = [], shade = 0x3a2c22, bounce = {}, height = null, tier = 'mid', matcap = [], lights = null, blobOpacity = 0.75, auto = false, follow = true, clip = false, keepShadows = false } = {}) {
+export function groundWorld({ renderer, scene, floor = [], area = null, sun = null, casters = null, skip = [], movers = [], shade = 0x3a2c22, sunFloor = 0, bounce = {}, height = null, tier = 'mid', matcap = [], lights = null, blobOpacity = 0.75, auto = false, follow = true, clip = false, keepShadows = false } = {}) {
   const box = floorBox(floor);
   if (!area) {
     // the floor's own extent, at most 240 m a side about its middle
@@ -141,7 +142,7 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
   const blank = blankMask();
   // (keeping its own shadow pass, a world's mask is the sky's alone: channel
   // 3 reads no sun, so the sun's light is the shadow map's business)
-  const mask = { areas: [{ texture: blank, ...area }], times: [{ tod: 0.5, channel: keepShadows ? 3 : 0 }], shade: new THREE.Color(shade), range };
+  const mask = { areas: [{ texture: blank, ...area }], times: [{ tod: 0.5, channel: keepShadows ? 3 : 0 }], shade: new THREE.Color(shade), sunFloor, range };
   setFloorTime(mask, 0.5, 1);
 
   const floorMeshes = new Set();

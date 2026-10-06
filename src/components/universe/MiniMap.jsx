@@ -13,7 +13,7 @@ import './universe.css';
 const W = 600;
 const H = 300;
 const TILT = 0.42; // how flat the disc looks: the 3D overview's pitch, roughly
-// the far worlds are hundreds of units out and the stations fifteen: drawn
+// the far worlds are thousands of units out and the stations a hundred and more: drawn
 // to a square-root scale, so the home system opens up and the worlds still fit
 const K = W / 2 - 34;
 const scaled = (r) => Math.sqrt(Math.max(0, r) / MAP_RADIUS) * K;

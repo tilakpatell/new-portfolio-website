@@ -47,8 +47,10 @@
 import * as THREE from 'three';
 import { gltfLoader } from '../../lib/three/gltf';
 import { sharpen } from '../../lib/three/textures';
-import { createMeshyCast } from '../rickmorty/portal/meshyCast';
-import { LOOK_KEY, readLooks } from '../rickmorty/wardrobe/looks';
+import { MESHY, createMeshyCast } from '../rickmorty/portal/meshyCast';
+import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { RICK_HIPS, borrowClips, faceForward, heading as headingOf, retarget } from '../rickmorty/portal/clips';
+import { EVERYONE, LOOK_KEY, defaultLook, readLooks, writeLook } from '../rickmorty/wardrobe/looks';
 import { bodyAsset, bodyKind, dress, withWardrobe } from '../rickmorty/wardrobe/wear';
 import { local } from '../../lib/hooks';
 import { smoothNormals } from '../cockpit/crew';
@@ -56,7 +58,8 @@ import { GUNS, buildGun, createGunplay } from './gunplay';
 import { createGunFx } from './gunfx';
 import { createLocomotion, fallTurn } from './locomotion';
 import { frameFrom, spring } from '../../lib/three/ik';
-import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, bolt as makeBolt, byTrench, facingAlong, fly as flyBolt, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
+import { SIDES, sideFor, squadKinds } from './sides';
+import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, bolt as makeBolt, byTrench, facingAlong, flat, fly as flyBolt, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
 import { TRENCH_MODEL, trenchOf } from './deep';
 import { POSITIONS } from './layout';
 import { byId } from './universes';
@@ -64,6 +67,8 @@ import { landingOf } from './landings/landings';
 import { styleOf } from './landings/ground';
 import { createSky } from './landings/sky';
 import { furnish, furnished } from './landings/furnish';
+import { AIR, ENTRY, entryPath, entrySpot, fxAt } from './entry';
+import { createReentry } from './reentry';
 
 const V = THREE.Vector3;
 const arr = (v) => [v.x, v.y, v.z];
@@ -116,59 +121,8 @@ const CAM = { dist: 3.4, up: 0.55, pitch: [-0.25, 0.75], look: 1.6 }; // metres,
 
 const getLoader = () => gltfLoader();
 
-// Rick's clips, for every Meshy figure without its own: the bones' turns,
-// and the hips' height scaled to the figure's (no other bone's length)
-let rickClips = null;
-const borrowClips = () => {
-  if (!rickClips) {
-    rickClips = Promise.all(['idle', 'walk', 'run'].map((c) => getLoader().loadAsync(`/games/meshy/rick-${c}.glb`).then((g) => g.animations[0] ?? null, () => null))).then(([idle, walk, run]) => ({ idle, walk, run }));
-  }
-  return rickClips;
-};
-const RICK_HIPS = 90.233;
-function retarget(clip, hipsY) {
-  if (!clip) return null;
-  const k = hipsY / RICK_HIPS;
-  const tracks = [];
-  for (const tr of clip.tracks) {
-    if (/\.quaternion$/.test(tr.name)) tracks.push(tr.clone());
-    else if (/^Hips\.position$/.test(tr.name)) {
-      const t = tr.clone();
-      for (let i = 0; i < t.values.length; i++) t.values[i] *= k;
-      tracks.push(t);
-    }
-  }
-  return new THREE.AnimationClip(clip.name, clip.duration, tracks);
-}
-// Meshy's idle stands turned off to one side: turn a clip's hips about the
-// up axis so its mean heading matches the walk's (as meshyCast does)
-const hipsTrack = (clip) => clip?.tracks.find((t) => /^hips\.quaternion$/i.test(t.name));
-function headingOf(clip, up) {
-  const v = hipsTrack(clip)?.values;
-  if (!v) return null;
-  let sx = 0;
-  let sy = 0;
-  for (let i = 0; i < v.length; i += 4) {
-    const a = 2 * Math.atan2(v[i] * up.x + v[i + 1] * up.y + v[i + 2] * up.z, v[i + 3]);
-    sx += Math.cos(a);
-    sy += Math.sin(a);
-  }
-  return Math.atan2(sy, sx);
-}
-function faceForward(clip, up, target) {
-  const v = hipsTrack(clip)?.values;
-  const now = headingOf(clip, up);
-  if (!v || now == null) return;
-  const fix = new THREE.Quaternion().setFromAxisAngle(up, target - now);
-  const q = new THREE.Quaternion();
-  for (let i = 0; i < v.length; i += 4) {
-    q.set(v[i], v[i + 1], v[i + 2], v[i + 3]).premultiply(fix);
-    v[i] = q.x;
-    v[i + 1] = q.y;
-    v[i + 2] = q.z;
-    v[i + 3] = q.w;
-  }
-}
+// (Rick’s clips, for every Meshy figure without its own, are borrowed as
+// the wardrobe’s cast borrows them: rickmorty/portal/clips.js)
 
 // idle, walking and running by how fast (move 0…1)
 function blend(act, move) {
@@ -234,12 +188,15 @@ function rigged(model, clips, tall, owned) {
   };
 }
 
-// the wardrobe's look for the cruiser's Rick or Morty (as kept, or as given)
-const WEARS = new Set(['rick', 'morty']);
+// the wardrobe’s look for the cruiser’s Rick or Morty, the RV’s Walt or
+// Jesse (as kept, or as given: a pilot’s from the wire may have one cast’s
+// and not the other’s, which are then as the show has them)
+const WEARS = new Set(EVERYONE);
+const lookFor = (who, looks) => (WEARS.has(who) ? readLooks(looks ?? local.get(LOOK_KEY))[who] : null);
 const HAND_GUNS = { portalgun: 'portal', laserpistol: 'laser' }; // the wardrobe's hand gear that's a gun on foot
 async function loadModel(spec, cast, looks = null) {
   if (spec.src.meshy) {
-    const look = WEARS.has(spec.src.meshy) ? (looks ?? readLooks(local.get(LOOK_KEY)))[spec.src.meshy] : null;
+    const look = lookFor(spec.src.meshy, looks);
     let c = null;
     if (look) {
       const asset = bodyAsset(look);
@@ -279,11 +236,21 @@ async function loadModel(spec, cast, looks = null) {
   }
   if (spec.src.url) {
     const [gltf, clips] = await Promise.all([getLoader().loadAsync(spec.src.url), borrowClips()]);
-    const model = gltf.scene;
+    return rigScene(gltf.scene, clips, spec.tall);
+  }
+  return built(spec);
+}
+
+// A loaded Meshy figure (its scene, or a copy of one: `shared`, whose
+// geometry and materials are the original's to free) rigged with Rick's
+// clips, turned to walk the way it faces
+function rigScene(model, clips, tall, { shared = false } = {}) {
+  {
     const owned = [];
     model.traverse((o) => {
       if (!o.isMesh) return;
       o.frustumCulled = false; // a skinned mesh's bounds don't follow its pose
+      if (shared) return;
       const m = o.material;
       if (m) {
         // Meshy's colours carry their own shading: keep them matte
@@ -302,12 +269,50 @@ async function loadModel(spec, cast, looks = null) {
       const ahead = headingOf(own.walk, up);
       if (ahead != null) for (const n of ['idle', 'run']) if (own[n]) faceForward(own[n], up, ahead);
     }
-    return rigged(model, own, spec.tall, owned);
+    return rigged(model, own, tall, owned);
   }
-  return built(spec);
+}
+
+// Walt and Jesse: the site’s own figures, loaded as anyone’s is (above),
+// in the body their look has (Mr. White and Heisenberg are Walt’s one
+// figure, Jesse in the lab’s suit his own) and dressed in it. They keep
+// their own guns, as the cruiser’s two do: a bag of blue in the hand stays
+// in the wardrobe. Anyone else is loaded as they were.
+async function loadParty(spec, cast, looks = null) {
+  const look = spec.src.url ? lookFor(spec.id, looks) : null;
+  if (!look) return loadModel(spec, cast, looks);
+  const fig = await loadModel({ ...spec, src: { url: bodyAsset(look) } }, cast, looks);
+  // (as the show has them, there’s nothing to put on)
+  if (!fig?.model || JSON.stringify(writeLook(look)) === JSON.stringify(writeLook(defaultLook(spec.id)))) return fig;
+  const undress = dress({ group: fig.model }, spec.gun ? { ...look, gear: { ...look.gear, hand: 'none' } } : look);
+  const own = fig.dispose;
+  fig.gun = HAND_GUNS[look.gear.hand] ?? null;
+  fig.dispose = () => {
+    undress();
+    own?.();
+  };
+  return fig;
 }
 
 // ── People built from shapes (no figure of their own) ──
+
+// what a troop of `kind` is drawn as (sides.js's troop row's `figure`): a
+// Meshy cast kind ({ meshy }), a model of its own ({ url }: Albuquerque's),
+// or built here ({ built }); a kind with none is the cast's own kind
+export const troopLook = (kind) => Object.values(SIDES).find((s) => s.troops[kind]?.figure)?.troops[kind].figure ?? { meshy: kind };
+
+// how each built person is dressed: Luke in his flight suit, Han in his
+// shirt and vest, the Empire's troopers in white armour over black (a
+// scout's mostly black), Jack's crew in flannel and jeans and a cap.
+// harness: the vest cut short (a chest plate); closed: a helmet down over
+// the face; gloves: the hands' colour
+const LOOKS = {
+  luke: { suit: '#e8742a', top: '#e8742a', legs: '#e8742a', boots: '#2a2622', skin: '#f0c7a5', hair: '#e9edf2', helmet: true, vest: '#f2f2ee', harness: true },
+  han: { suit: '#f3f1ea', top: '#f3f1ea', legs: '#1d2a44', boots: '#2b1d14', skin: '#e9be98', hair: '#5a3a22', helmet: false, vest: '#151515' },
+  stormtrooper: { suit: '#e9ebec', top: '#1c1d20', legs: '#e9ebec', boots: '#f1f2f3', skin: '#f1f2f3', gloves: '#1c1d20', hair: '#f4f5f6', helmet: true, closed: true, visor: '#101114', vest: '#f1f2f3', harness: true },
+  scout: { suit: '#1c1d20', top: '#1c1d20', legs: '#1c1d20', boots: '#e9ebec', skin: '#f1f2f3', gloves: '#1c1d20', hair: '#f4f5f6', helmet: true, closed: true, visor: '#101114', vest: '#eceeef', harness: true },
+  jackscrew: { suit: '#7a2a22', top: '#7a2a22', legs: '#3b4a63', boots: '#3a2b1c', skin: '#e2b48e', hair: '#3a2a1c', helmet: false, vest: '#5a1f1a', cap: '#2c2f33' },
+};
 
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0, ...extra });
 function built(spec) {
@@ -323,6 +328,49 @@ function built(spec) {
   };
   const model = new THREE.Group();
   const s = spec.tall * METRE; // everything below in shares of their height
+  if (spec.src.built === 'probe') {
+    // an Imperial probe droid: a black ball with a red eye, hanging over the
+    // ground on its repulsors, a skirt of thin legs dangling under it
+    const black = mat('#18191c', { roughness: 0.45, metalness: 0.4 });
+    const grey = mat('#5b5f66', { roughness: 0.5, metalness: 0.5 });
+    const body = new THREE.Group();
+    const ball = new THREE.Mesh(geo(new THREE.SphereGeometry(0.17, 18, 14)), black);
+    body.add(ball);
+    const cap = new THREE.Mesh(geo(new THREE.CylinderGeometry(0.06, 0.1, 0.08, 12)), grey);
+    cap.position.y = 0.19;
+    body.add(cap);
+    for (let i = 0; i < 3; i++) {
+      const eye = new THREE.Mesh(geo(new THREE.SphereGeometry(0.022, 8, 6)), mat('#111', { emissive: new THREE.Color('#ff2a1a'), emissiveIntensity: 2.5 }));
+      const a = (i - 1) * 0.5;
+      eye.position.set(Math.sin(a) * 0.16, 0.05, Math.cos(a) * 0.16);
+      body.add(eye);
+    }
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const leg = new THREE.Mesh(geo(new THREE.CylinderGeometry(0.008, 0.012, 0.42, 5)), grey);
+      leg.position.set(Math.sin(a) * 0.09, -0.32, Math.cos(a) * 0.09);
+      leg.rotation.set(Math.cos(a) * 0.18, 0, -Math.sin(a) * 0.18);
+      body.add(leg);
+    }
+    body.position.y = 0.72;
+    model.add(body);
+    model.scale.setScalar(s / 0.95);
+    let t = 0;
+    return {
+      model,
+      bones: {},
+      hand: null,
+      built: true,
+      update(dt) {
+        t += dt;
+        body.position.y = 0.72 + Math.sin(t * 1.6) * 0.03; // (hanging, never still)
+        body.rotation.y = Math.sin(t * 0.5) * 0.8;
+      },
+      dispose() {
+        for (const o of owned) o.dispose();
+      },
+    };
+  }
   if (spec.src.built === 'artoo') {
     // a white barrel with blue panels, a silver dome, a leg each side and a third under him
     const white = mat('#e9edf2');
@@ -377,10 +425,7 @@ function built(spec) {
   // a person: legs, a body, arms that swing, a head; the groups named as
   // Meshy's bones are (Spine, Head, RightArm, RightForeArm, RightHand…) so
   // gunplay.js poses them the same way
-  const look =
-    spec.src.built === 'luke'
-      ? { suit: '#e8742a', top: '#e8742a', legs: '#e8742a', boots: '#2a2622', skin: '#f0c7a5', hair: '#e9edf2', helmet: true, vest: '#f2f2ee' }
-      : { suit: '#f3f1ea', top: '#f3f1ea', legs: '#1d2a44', boots: '#2b1d14', skin: '#e9be98', hair: '#5a3a22', helmet: false, vest: '#151515' };
+  const look = LOOKS[spec.src.built] ?? LOOKS.han;
   const limb = (r, l, m) => {
     const g = geo(new THREE.CapsuleGeometry(r, l, 4, 10));
     g.translate(0, -l / 2 - r * 0.5, 0); // hangs from its joint
@@ -416,21 +461,39 @@ function built(spec) {
   const vest = new THREE.Mesh(geo(new THREE.CapsuleGeometry(0.135, 0.16, 4, 12)), mat(look.vest));
   vest.position.y = 0.75 - WAIST;
   vest.scale.set(1.02, 1, 0.76);
-  if (spec.src.built !== 'han') vest.scale.set(1.03, 0.75, 0.77); // Luke's harness: a white vest over the flight suit
+  if (look.harness) vest.scale.set(1.03, 0.75, 0.77); // a short vest over the suit: Luke's harness, a trooper's chest plate
   spine.add(vest);
   const headG = new THREE.Group();
   headG.name = 'Head';
   headG.position.y = 0.99 - WAIST;
   spine.add(headG);
-  const head = new THREE.Mesh(geo(new THREE.SphereGeometry(0.095, 16, 12)), mat(look.skin));
+  const head = new THREE.Mesh(geo(new THREE.SphereGeometry(0.095, 16, 12)), mat(look.closed ? look.hair : look.skin));
   headG.add(head);
   const hair = new THREE.Mesh(geo(new THREE.SphereGeometry(look.helmet ? 0.112 : 0.1, 16, 10, 0, Math.PI * 2, 0, look.helmet ? Math.PI * 0.62 : Math.PI * 0.45)), mat(look.hair, look.helmet ? { roughness: 0.4 } : {}));
   hair.position.set(0, 0.01, look.helmet ? 0 : -0.012);
   headG.add(hair);
   if (look.helmet) {
-    const visor = new THREE.Mesh(geo(new THREE.BoxGeometry(0.15, 0.035, 0.03)), mat('#2a3340', { roughness: 0.2, metalness: 0.5 }));
+    const visor = new THREE.Mesh(geo(new THREE.BoxGeometry(0.15, 0.035, 0.03)), mat(look.visor ?? '#2a3340', { roughness: 0.2, metalness: 0.5 }));
     visor.position.set(0, 0.06, 0.1);
     headG.add(visor);
+    // a trooper's helmet comes down over the face, with its jaw and its vents
+    if (look.closed) {
+      const jaw = new THREE.Mesh(geo(new THREE.BoxGeometry(0.15, 0.07, 0.07)), mat(look.hair, { roughness: 0.4 }));
+      jaw.position.set(0, -0.045, 0.07);
+      headG.add(jaw);
+      const grille = new THREE.Mesh(geo(new THREE.BoxGeometry(0.07, 0.025, 0.012)), mat('#1a1b1e'));
+      grille.position.set(0, -0.05, 0.108);
+      headG.add(grille);
+    }
+  }
+  // a cap (Jack's crew)
+  if (look.cap) {
+    const cap = new THREE.Mesh(geo(new THREE.CylinderGeometry(0.1, 0.104, 0.05, 14)), mat(look.cap));
+    cap.position.set(0, 0.07, 0);
+    headG.add(cap);
+    const peak = new THREE.Mesh(geo(new THREE.BoxGeometry(0.15, 0.012, 0.08)), mat(look.cap));
+    peak.position.set(0, 0.05, 0.1);
+    headG.add(peak);
   }
   const arms = [];
   for (const [x, side] of [
@@ -448,7 +511,7 @@ function built(spec) {
     const wrist = new THREE.Group();
     wrist.name = `${side}Hand`;
     wrist.position.y = -0.19;
-    const hand = new THREE.Mesh(geo(new THREE.SphereGeometry(0.04, 10, 8)), mat(look.skin));
+    const hand = new THREE.Mesh(geo(new THREE.SphereGeometry(0.04, 10, 8)), mat(look.gloves ?? look.skin));
     hand.position.y = -0.03;
     wrist.add(hand);
     elbow.add(wrist);
@@ -1229,12 +1292,25 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   let cast = null;
   let party = null; // [lead, mate] once loaded: { spec, fig, group, gun, w }
   let troopFigs = new Map(); // id → { fig, group }
+  const troopModels = new Map(); // a troop's model's url → { ready: { scene, clips } once loaded } (copied for each one)
+  // (what a loaded scene's made of, freed when the walk's over)
+  const freeScene = (scene) =>
+    scene.traverse((o) => {
+      if (!o.isMesh) return;
+      o.geometry.dispose();
+      o.material?.map?.dispose();
+      o.material?.dispose();
+    });
   let ground = null;
   let rocks = null;
   let haze = null;
   let sides = null; // a trench's walls by you
   const owned = [];
   const rand = Math.random;
+  // the way in through the air (entry.js, reentry.js): made once and kept
+  // hidden, so the map's warm-up makes its shaders before the first entry
+  const reentry = createReentry({ small, reduced });
+  root.add(reentry.group);
 
   // bolts in flight: a white-hot core in a sleeve of the shot's colour,
   // its head where the bolt is and its length trailing behind (grown out
@@ -1384,6 +1460,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     rest: 0,
     hover: null,
     arc: null, // the way round the planet, when the spot's a long way from where the ship came in
+    // flown in through the air (entry.js): { path, t, q0, dir, glide, titled, title } while it's on its way down
+    entry: null,
+    sky: 1, // how much of the landing's sky shows: coming up from nothing as the ship comes in through the air
+    airWas: 0, // the planet's halo, as bright as it was before the ship went into it
     band: null, // a trench round its middle: { half (its rim), home, arc, deep (how far down the trench run's rim is) }
     hideBody: 0, // a station: how low the camera's to be for its own model to go (0: it stays)
     bodyShown: true,
@@ -1457,11 +1537,29 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   const load = (kind) => {
     const specs = PARTY[kind] ?? PARTY.rv;
     cast = createMeshyCast(withWardrobe()); // (the wardrobe's bodies too, for the cruiser's two)
-    const needCast = [...new Set([...specs.filter((s) => s.src.meshy).map((s) => s.src.meshy), 'gromflomite', 'cop', 'gazorpian'])];
+    // (and the side's troops, where the cast has them: the rest are built stand-ins)
+    const sideTroops = Object.keys(sideFor(kind)?.troops ?? SIDES.rickmorty.troops);
+    const needCast = [...new Set([...specs.filter((s) => s.src.meshy).map((s) => s.src.meshy), ...sideTroops.map((k) => troopLook(k).meshy).filter(Boolean).map((k) => MESHY[k]?.a ?? k)])]; // (the cast loads by asset: a Morty clone is Morty's)
     const castReady = cast.load(null, needCast).catch(() => {});
+    // (and the ones that are models of their own, Albuquerque's: loaded once, copied for each)
+    for (const k of sideTroops) {
+      const url = troopLook(k).url;
+      if (!url || troopModels.has(url)) continue;
+      const entry = { ready: null };
+      troopModels.set(url, entry);
+      Promise.all([getLoader().loadAsync(url), borrowClips()])
+        .then(([gltf, clips]) => {
+          // (the walk's over, or another's begun, while it loaded)
+          if (troopModels.get(url) !== entry) return freeScene(gltf.scene);
+          // (the first one rigged keeps the materials and smooths the normals, shared by the copies)
+          rigScene(gltf.scene, clips, 1);
+          entry.ready = { scene: gltf.scene, clips };
+        })
+        .catch(() => {});
+    }
     loading = (async () => {
       await castReady;
-      const figs = await Promise.all(specs.map((s) => loadModel(s, cast).catch(() => null)));
+      const figs = await Promise.all(specs.map((s) => loadParty(s, cast).catch(() => null)));
       return figs.map((fig, i) => {
         const spec = specs[i];
         const f = fig ?? built({ ...spec, src: { built: spec.id === 'artoo' ? 'artoo' : 'han' } });
@@ -1476,29 +1574,39 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     return loading;
   };
 
-  // the Federation's guns: the Gromflomites' carbine, the cop's pistol (the gazorpian has hands)
-  const TROOP_GUN = { gromflomite: 'rifle', cop: 'coppistol' };
+  // the troops' guns (sides.js: the Gromflomites' carbine, the cop's and the DEA's pistol; the gazorpian has hands)
+  const troopGun = (t) => sideFor(S.kind)?.troops[t.kind]?.gun ?? SIDES.rickmorty.troops[t.kind]?.gun ?? null;
   const troopFig = (t) => {
     let got = troopFigs.get(t.id);
     if (got) return got;
-    const c = cast?.make(t.kind);
+    const look = troopLook(t.kind);
+    const tpl = look.url ? troopModels.get(look.url)?.ready : null;
+    const c = tpl ? null : look.meshy ? cast?.make(look.meshy) : null;
     const group = new THREE.Group();
     let fig = null;
     let b = null;
     let loco = null;
-    if (c) {
+    let own = null;
+    if (tpl) {
+      // a copy of Albuquerque's model, sharing what it's made of
+      own = rigScene(cloneSkinned(tpl.scene), tpl.clips, TROOPS[t.kind].tall / METRE, { shared: true });
+      fig = own;
+      loco = own.loco;
+      group.add(own.model);
+    } else if (c) {
       c.group.scale.setScalar(TROOPS[t.kind].tall / c.height);
       fig = { model: c.group };
       if (c.mixer) loco = createLocomotion(fig, { mixer: c.mixer, act: c.act, root: c.group, unit: METRE }); // (measured before it's placed)
       group.add(c.group);
     } else {
-      b = built({ tall: TROOPS[t.kind].tall / METRE, src: { built: 'han' } });
+      // built: the side's look for it (a stormtrooper, a probe), or a stand-in until its model's here
+      b = built({ tall: TROOPS[t.kind].tall / METRE, src: { built: look.built ?? 'han' } });
       group.add(b.model);
       fig = b;
     }
     root.add(group);
-    const gp = TROOP_GUN[t.kind] ? createGunplay(fig, TROOP_GUN[t.kind], { unit: METRE, who: b ? 'built' : null }) : null;
-    got = { c, b, group, gp, loco, prevF: null };
+    const gp = troopGun(t) ? createGunplay(fig, troopGun(t), { unit: METRE, who: b ? 'built' : null }) : null;
+    got = { c: c ?? (own && { mixer: own.mixer }), b, group, gp, loco, own, prevF: null };
     troopFigs.set(t.id, got);
     return got;
   };
@@ -1508,6 +1616,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     root.remove(got.group);
     got.gp?.dispose();
     got.b?.dispose();
+    got.own?.mixer.stopAllAction();
     troopFigs.delete(id);
   };
 
@@ -1586,7 +1695,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const o = S.band ? offset(person(near.n, near.f), -gap * 1.6, 0, S.R) : offset(person(near.n, near.f), -2 * METRE, gap, S.R);
     return { n: o.n, f: S.band ? near.f : o.f };
   };
-  const begin = ({ id, ship, model, kind, light, near = null }) => {
+  // `entry` (entry.js's entering(), flown down into the air): where it went
+  // in ({ n, h }), how fast and which way (`vel`, `speed`); the ship's flown
+  // down to the ground from there instead of set down from where it was
+  const begin = ({ id, ship, model, kind, light, near = null, entry = null }) => {
     const planet = planetOf[id];
     const u = byId(id);
     if (!planet || !u || u.kind === 'core' || u.portal || !model) return false; // (a station, or the gate into the galaxy: nowhere to walk)
@@ -1605,19 +1717,39 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // day (by a trench: beside it, the door toward it)
     const n0 = landingSpot(from, arr(S.c), light);
     const clear = 0.62 * 0.26 * (PARKED[kind] ?? 1);
-    S.spot = near ? beside(near, kind) : S.band ? byTrench(n0, S.band, S.R, clear + 12 * METRE) : { n: n0, f: facingAlong(n0, fwd3) };
+    // (flown in through the air: ahead of where it went in, on its way)
+    const ahead = entry && !S.band ? entrySpot({ n: entry.n, track: entry.vel, light, speed: entry.speed, R: S.R }) : null;
+    S.spot = near ? beside(near, kind) : S.band ? byTrench(n0, S.band, S.R, clear + 12 * METRE) : (ahead ?? { n: n0, f: facingAlong(n0, fwd3) });
     const { n } = S.spot;
     // a long way round the planet from where the ship is: it flies round over
-    // the surface to get there, rather than through the planet
+    // the surface to get there, rather than through the planet (an entry's
+    // own path goes round over the ground already)
     const out = vec.unit(vec.add(from, arr(S.c), -1));
     const round = Math.acos(Math.min(1, Math.max(-1, vec.dot(out, n))));
-    S.arc = round > 0.6 ? { n0: out, h0: vec.len(vec.add(from, arr(S.c), -1)) - S.R, a: round } : null;
+    S.arc = !entry && round > 0.6 ? { n0: out, h0: vec.len(vec.add(from, arr(S.c), -1)) - S.R, a: round } : null;
     S.from = { p: model.group.position.clone(), q: model.group.quaternion.clone().multiply(new THREE.Quaternion().setFromEuler(model.pivot.rotation)) };
     model.pivot.rotation.set(0, 0, 0);
     model.group.quaternion.copy(S.from.q);
     const box = restOf(model);
     S.rest = -box.min.y * (PARKED[kind] ?? 1) + 0.04 * METRE;
     S.hover = vec.add(vec.scale(n, S.R + 14 * METRE + S.rest), [0, 0, 0]);
+    // down through the air on entry.js's path, onto the spot (the land
+    // phase's own last frame holds it parked there after, as before)
+    S.entry = entry
+      ? {
+          path: entryPath({ nE: entry.n, hE: entry.h, nS: n, hH: 14 * METRE + S.rest, rest: S.rest, R: S.R, track: entry.vel }),
+          t: 0,
+          q0: S.from.q.clone(),
+          dir: new V(...vec.unit(entry.vel)),
+          up: new V(...entry.n),
+          fx: null, // fxAt's numbers this frame
+          rest: null, // the ship's turn parked on the spot
+          glide: null, // the ship's turn as the glide ends, to settle from
+          titled: false,
+          title: null,
+        }
+      : null;
+    S.sky = S.entry ? 0 : 1;
     S.phase = 'land';
     S.t = 0;
     S.health = FOOT.health;
@@ -1628,7 +1760,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     S.cam.pos = null;
     // the planet holds still under you, and its air goes (you're in it)
     planet.hold?.(true);
-    if (planet.air) planet.air.visible = false;
+    if (planet.air) {
+      // (flown in, it fades as the sky comes up round the ship instead)
+      S.airWas = planet.air.material.uniforms.uStrength.value;
+      planet.air.visible = Boolean(S.entry);
+    }
     // the ground, the rocks and the air (a station's hull, its blocks and
     // none; and a trench's walls); or the planet's own landing: its ground,
     // its sky and its things, laid out from where the first ship down here
@@ -1639,14 +1775,27 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     root.add(ground.mesh);
     if (landing && furnished(id)) {
       const anchor = near ? { n: near.n, f: near.f } : S.spot;
-      const f = furnish({ id, landing, frame: anchor, R: S.R, small, renderer, warm });
+      const f = furnish({ id, landing, frame: anchor, R: S.R, small, reduced, renderer, warm });
       rocks = { mesh: f.group, solids: f.solids, spots: f.spots, update: f.update, dispose: f.dispose };
     } else rocks = u.plated ? createHullBits(n, S.R, u, small, S.band, clear) : createRocks(n, S.R, u, small);
     root.add(rocks.mesh);
+    // (flown in, the ground's out of sight till the clouds, stepEntry: its
+    // shader's made now, while it's still shown, so it isn't on the frame it
+    // first comes into view)
+    if (S.entry) {
+      warm?.(ground.mesh)?.catch?.(() => {});
+      ground.mesh.visible = rocks.mesh.visible = false;
+    }
     haze = u.airless ? null : landing?.sky ? createSky(landing.sky, u.rim ?? u.swatch ?? '#8ab4ff') : createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
     if (haze) root.add(haze.mesh);
-    if (landing) emit({ type: 'foot', id: 'arrive', title: landing.title, sub: landing.sub });
-    sides = S.band ? createTrenchSides(n, S.R, S.band) : null;
+    // (flown in, dark to start with: the entry starts in the middle of a
+    // frame, before day() has had its say, and that frame's drawn too)
+    if (haze && S.entry) haze.mat.uniforms.uDay.value = 0;
+    // the place's name: flown in, once it's out under the clouds
+    if (landing && S.entry) S.entry.title = { title: landing.title, sub: landing.sub };
+    else if (landing) emit({ type: 'foot', id: 'arrive', title: landing.title, sub: landing.sub });
+    if (S.entry) reentry.start({ cloud: landing?.sky?.horizon ?? '#e9eef4' });
+    sides =S.band ? createTrenchSides(n, S.R, S.band) : null;
     if (sides) root.add(sides.mesh);
     // (a station's own model goes once the camera's low enough that the
     // patch reaches past the horizon)
@@ -1695,6 +1844,100 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     m.group.quaternion.copy(S.from.q).slerp(shipFrame(S.spot.n, S.spot.f), smooth(0, 0.75, k));
     m.group.scale.setScalar(1 + ((PARKED[S.kind] ?? 1) - 1) * smooth(0.2, 0.9, k));
     m.pivot.rotation.set(0, 0, 0);
+  };
+
+  // ── Flown in through the air: entry.js's path, reentry.js's show ──
+  // the ship's turn along the way it's going: its nose down the path, its
+  // top as near the ground's up as that allows
+  const pathFrame = (dir, up, out) => {
+    pathUp.copy(up).addScaledVector(dir, -up.dot(dir));
+    if (pathUp.lengthSq() < 1e-8) pathUp.set(...flat([0, 1, 0], arr(dir))); // (straight down: any way round)
+    pathUp.normalize();
+    basis.makeBasis(pathRight.crossVectors(dir, pathUp), pathUp, pathBack.copy(dir).negate());
+    return out.setFromRotationMatrix(basis);
+  };
+  const pathUp = new V();
+  const pathRight = new V();
+  const pathBack = new V();
+  const entryAt = new V();
+  const entryNext = new V();
+  const entryQ = new THREE.Quaternion();
+  const entryRoll = new THREE.Quaternion();
+  const NOSE_AXIS = new V(0, 0, 1);
+  const stepEntry = (dt) => {
+    const e = S.entry;
+    const m = S.model;
+    e.t = Math.min(e.path.T, e.t + dt);
+    const a = e.path.at(e.t);
+    entryAt.set(...a.p);
+    e.up.set(...a.n);
+    // which way it's going: toward where it'll be a moment on, never looking
+    // past the glide's end into the settle (straight down: that would tip
+    // the nose over as it comes to a stop); while it settles, it keeps the
+    // way it was going
+    entryNext.set(...e.path.at(Math.min(ENTRY.glide, e.t + 0.08)).p).sub(entryAt);
+    if (!a.settling && entryNext.lengthSq() > 1e-10) e.dir.copy(entryNext).normalize();
+    e.fx = fxAt(e.t);
+    m.group.position.copy(entryAt).add(S.c);
+    m.pivot.rotation.set(0, 0, 0);
+    if (!a.settling) {
+      pathFrame(e.dir, e.up, entryQ);
+      // shaken about in the burn (not with reduced motion)
+      if (!reduced && e.fx.burn > 0) entryQ.multiply(entryRoll.setFromAxisAngle(NOSE_AXIS, (Math.sin(e.t * 23) * 0.05 + Math.sin(e.t * 9.7 + 1) * 0.04) * e.fx.burn));
+      // round from the way it was flying onto the path, at first
+      m.group.quaternion.copy(e.q0).slerp(entryQ, smooth(0, 0.6, e.t));
+      (e.glide ??= new THREE.Quaternion()).copy(m.group.quaternion);
+    } else {
+      // over the spot: down onto it, turning to sit level on the ground
+      e.rest ??= shipFrame(S.spot.n, S.spot.f);
+      m.group.quaternion.copy(e.glide ?? e.q0).slerp(e.rest, smooth(0, 0.8, (e.t - ENTRY.glide) / ENTRY.settle));
+    }
+    // grown to its parked size in the clouds, where it can't be seen to
+    // (fxAt's white-out is thickest from 0.52 to 0.74 of the glide)
+    m.group.scale.setScalar(1 + ((PARKED[S.kind] ?? 1) - 1) * smooth(0.52 * ENTRY.glide, 0.74 * ENTRY.glide, e.t));
+    // the landing itself (its ground and what stands on it) only from the
+    // thick of the clouds (fxAt's white-out peaks at 0.62 of the glide): from
+    // higher up it's a patch on the planet's own map, and it's in the clouds
+    // that the one becomes the other
+    const shown = e.t >= 0.6 * ENTRY.glide;
+    for (const x of [ground, rocks, sides]) if (x) x.mesh.visible = shown;
+    // the sky comes up round it, and the halo it flew into goes
+    S.sky = e.fx.sky;
+    const air = planetOf[S.id]?.air;
+    if (air?.visible) air.material.uniforms.uStrength.value = S.airWas * (1 - e.fx.sky);
+    // the place's name, out under the clouds
+    if (!e.titled && e.fx.title) {
+      e.titled = true;
+      if (e.title) emit({ type: 'foot', id: 'arrive', ...e.title });
+    }
+    if (!a.done) return;
+    // down: parked where the land phase leaves a ship, waiting on the crew
+    S.entry = null;
+    S.sky = 1;
+    reentry.stop();
+    if (air) {
+      // (gone while you're down, as bright as it was for when it's back:
+      // the map's hover and picking set it from here on, as before)
+      air.visible = false;
+      air.material.uniforms.uStrength.value = S.airWas;
+    }
+    S.from = { p: m.group.position.clone(), q: m.group.quaternion.clone() };
+    S.t = LAND.down;
+    placeShip(1);
+  };
+  // the show, once the camera's where it is this frame (view())
+  const entryCam = { pos: new V(), look: new V(), up: new V() };
+  const entryView = { t: 0, T: 0, fx: null }; // what entry() hands the scene
+  const spotN = new V();
+  const spotF = new V();
+  const landCam = new V();
+  const showEntry = (dt) => {
+    const e = S.entry;
+    if (!e?.fx || !S.cam.pos) return;
+    entryCam.pos.copy(S.cam.pos).sub(S.c);
+    entryCam.look.copy(S.cam.look).sub(S.c);
+    entryCam.up.copy(S.cam.up);
+    reentry.update(dt, { ship: entryAt, dir: e.dir, up: e.up, size: 0.26 * S.model.group.scale.x, cam: entryCam, fx: e.fx, t: e.t });
   };
 
   // the people out of the door: beside the ship, on its right
@@ -1805,7 +2048,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     root.add(wk.group);
     (async () => {
       if (spec.src.meshy) await cast?.load(null, [spec.src.meshy]).catch(() => {});
-      const fig = (cast && (await loadModel(spec, cast, g.looks ?? readLooks(null)).catch(() => null))) ?? built({ ...spec, src: { built: spec.id === 'artoo' ? 'artoo' : 'han' } }); // (in their own looks: the show's, if they've sent none)
+      const fig = (cast && (await loadParty(spec, cast, g.looks ?? readLooks(null)).catch(() => null))) ?? built({ ...spec, src: { built: spec.id === 'artoo' ? 'artoo' : 'han' } }); // (in their own looks: the show’s, if they’ve sent none)
       if (!guests.has(g.id) || !g.walkers.includes(wk)) return fig.dispose?.();
       wk.fig = fig;
       wk.group.add(fig.model);
@@ -1847,7 +2090,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       }
       g.name = o.name;
       g.ally = o.ally;
-      g.looks = o.looks ?? null; // (how they dress their Rick and Morty)
+      g.looks = o.looks ?? null; // (how they dress their Rick and Morty, their Walt and Jesse)
       g.ship = { n: o.foot.ship.n, r: 0.62 * 0.26 * (PARKED[o.foot.kind] ?? 1) * 0.55 };
       [o.foot.lead, o.foot.mate].forEach((to, i) => {
         let wk = g.walkers[i];
@@ -1938,7 +2181,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     ground?.tick(S.clock);
     rocks?.update?.(S.clock, dt);
 
-    if (S.phase === 'land') {
+    if (S.phase === 'land' && S.entry) {
+      stepEntry(dt);
+    } else if (S.phase === 'land') {
       const k = Math.min(1, S.t / LAND.down);
       placeShip(k);
       if (k >= 1 && party) startOut();
@@ -2039,14 +2284,17 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         emit({ type: 'fire', soft: true, gun: mate.spec.gun });
       }
     } else S.mateTarget = null;
-    // the Federation: a squad now and then, once the last is dealt with
+    // the side's troops (sides.js: the Federation's, or the DEA and the cartel): a squad now and then, once the last is dealt with
     if (S.cleared && S.clock > S.nextSquad) {
-      const kinds = S.squads < 1 ? ['gromflomite'] : S.squads < 3 ? ['gromflomite', 'gromflomite', 'cop'] : ['gromflomite', 'cop', 'cop', 'gazorpian'];
+      const kinds = squadKinds(sideFor(S.kind) ?? SIDES.rickmorty, S.squads);
       const count = Math.min(5, 2 + S.squads + Math.floor(rand() * 2));
-      S.troops = [...S.troops.filter((o) => o.alive || o.dead < 3), ...squad(rand, S.me, S.R, { count, kinds, band: S.band })];
+      const fresh = squad(rand, S.me, S.R, { count, kinds, band: S.band });
+      S.troops = [...S.troops.filter((o) => o.alive || o.dead < 3), ...fresh];
       S.squads++;
       S.cleared = false;
-      emit({ type: 'foot', id: 'squad' });
+      // (who most of them are, for the crew's word on it: a squad of Mortys isn't a squad of bugs)
+      const most = fresh.reduce((m, t) => ((m[t.kind] = (m[t.kind] ?? 0) + 1), m), {});
+      emit({ type: 'foot', id: 'squad', who: Object.keys(most).sort((a, b) => most[b] - most[a])[0] });
     }
     const targets = [{ id: 'me', n: S.me.n, h: S.me.h }, ...(S.mate ? [{ id: 'mate', n: S.mate.n, h: S.mate.h }] : [])];
     const r = march(S.troops, targets, dt, S.R, rand, obstacles());
@@ -2072,6 +2320,13 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       emit({ type: 'shot' });
     }
     for (const h of r.hits) if (h.target === 'me') hurt(h.damage);
+    // a probe droid that's had you in sight a while calls them in: a squad of the side's others
+    for (const c of r.calls) {
+      const kinds = squadKinds(sideFor(S.kind) ?? SIDES.rickmorty, S.squads + 1).filter((k) => !TROOPS[k].calls);
+      S.troops = [...S.troops, ...squad(rand, S.me, S.R, { count: 3, kinds: kinds.length ? kinds : ['stormtrooper'], band: S.band })];
+      S.cleared = false;
+      emit({ type: 'foot', id: 'called', by: c.by });
+    }
     if (!S.cleared && !troopsAlive().length) {
       S.cleared = true;
       S.nextSquad = S.clock + 30 + rand() * 25;
@@ -2256,13 +2511,17 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const k = Math.min(1, S.t / LAND.lift);
     const e = ease(k);
     const P0 = S.from.p.clone();
-    const up = new V(...vec.scale(S.spot.n, S.R + 3.2)).add(S.c);
+    // up and out of the air, and well clear of it (entry.js's ENTRY.clear)
+    const up = new V(...vec.scale(S.spot.n, S.R * AIR + ENTRY.clear + 0.6)).add(S.c);
     m.group.position.copy(P0).lerp(up, e);
     // turning level as it rises (the map's level: that's how it flies),
-    // nose the way it was facing, or else out away from the planet
+    // nose the way it was facing, or else out away from the planet: never
+    // back in toward it, where flying on level would take it straight back
+    // down into the air it's just climbed out of
     const [fx, , fz] = S.spot.f;
     const [nx, , nz] = S.spot.n;
-    const heading = Math.hypot(fx, fz) > 0.25 ? Math.atan2(-fx, -fz) : Math.atan2(-nx, -nz);
+    const facing = Math.hypot(fx, fz) > 0.25 && (fx * nx + fz * nz >= 0 || Math.hypot(nx, nz) < 0.05);
+    const heading = facing ? Math.atan2(-fx, -fz) : Math.atan2(-nx, -nz);
     const level = new THREE.Quaternion().setFromAxisAngle(new V(0, 1, 0), heading);
     m.group.quaternion.copy(S.from.q).slerp(level, smooth(0.3, 1, k));
     m.group.scale.setScalar((PARKED[S.kind] ?? 1) + (1 - (PARKED[S.kind] ?? 1)) * smooth(0, 0.6, k));
@@ -2320,7 +2579,19 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   const view = (dt) => {
     if (!S.phase) return null;
     const out = { pos: new V(), look: new V(), up: new V() };
-    if (S.phase === 'land' || S.phase === 'lift' || (S.phase === 'board' && !S.me)) {
+    if (S.phase === 'land' && S.entry) {
+      // flown in: behind it and a little above, down the way it's going,
+      // coming round onto the landing's view (below) as it settles
+      const e = S.entry;
+      const p = S.model.group.position;
+      const n = spotN.set(...S.spot.n);
+      const k = smooth(ENTRY.glide - 0.8, ENTRY.glide + ENTRY.settle * 0.6, e.t);
+      out.pos.copy(p).addScaledVector(e.dir, -1.15).addScaledVector(e.up, 0.32);
+      out.look.copy(p).addScaledVector(e.dir, 0.6);
+      out.pos.lerp(landCam.copy(p).addScaledVector(spotF.set(...S.spot.f), -1.1).addScaledVector(n, 0.45), k);
+      out.look.lerp(p, k);
+      out.up.copy(e.up).lerp(n, k).normalize();
+    } else if (S.phase === 'land' || S.phase === 'lift' || (S.phase === 'board' && !S.me)) {
       // over the ship, from behind and above, as it comes down (or goes up)
       const m = S.model.group;
       const n = new V(...S.spot.n);
@@ -2369,7 +2640,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     if (rel.length() < minR) out.pos.copy(S.c).addScaledVector(rel.normalize(), minR);
     // eased, so it follows rather than jolts
     if (S.cam.pos) {
-      const k = reduced ? 1 : 1 - Math.exp(-dt * (S.phase === 'walk' ? 12 : 3.5));
+      // (flown in, close behind: it's going a good deal faster than it lands)
+      const k = reduced ? 1 : 1 - Math.exp(-dt * (S.phase === 'walk' ? 12 : S.entry ? 10 : 3.5));
       S.cam.pos.lerp(out.pos, k);
       S.cam.look.lerp(out.look, k);
       S.cam.up.lerp(out.up, k).normalize();
@@ -2383,6 +2655,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       haze.mesh.position.copy(S.cam.pos).sub(S.c);
       haze.mat.uniforms.uUp.value.copy(S.cam.up);
     }
+    if (S.entry) showEntry(dt);
     return { pos: S.cam.pos, look: S.cam.look, up: S.cam.up };
   };
 
@@ -2410,7 +2683,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       const k = smooth(-0.25, 0.35, vec.dot(S.me?.n ?? S.spot.n, arr(light)));
       // (only down in the air: gone by the time you're well up)
       const high = S.cam.pos ? S.cam.pos.distanceTo(S.c) - S.R : 0;
-      haze.mat.uniforms.uDay.value = (haze.set ? k : 0.12 + 0.88 * k) * (1 - smooth(20 * METRE, 300 * METRE, high));
+      // (and flown in, coming up from nothing as the ship comes down through the air: S.sky)
+      haze.mat.uniforms.uDay.value = (haze.set ? k : 0.12 + 0.88 * k) * (1 - smooth(20 * METRE, 300 * METRE, high)) * S.sky;
       haze.set?.({ sun: light });
     },
     // F: a shot at the lock, or straight ahead; the gun it was (gunplay.js's kind), or false
@@ -2528,6 +2802,18 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     horizon() {
       return S.cam.pos ? { at: S.cam.pos, up: S.cam.up } : null;
     },
+    // on the way in through the air: how far along (seconds, of `T`) and
+    // the show's numbers (entry.js's fxAt), for the camera's shake and the
+    // roar; null once it's down (or if it wasn't flown in)
+    entry() {
+      const e = S.entry;
+      if (!e) return null;
+      // (one object, filled in again: the scene asks more than once a frame)
+      entryView.t = e.t;
+      entryView.T = e.path.T;
+      entryView.fx = e.fx ?? fxAt(e.t);
+      return entryView;
+    },
     // the ship's numbers to fly on from, once it's up (null until then)
     takeoff() {
       return S.done;
@@ -2536,7 +2822,14 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     end() {
       const planet = planetOf[S.id];
       planet?.hold?.(false);
-      if (planet?.air) planet.air.visible = true;
+      if (planet?.air) {
+        planet.air.visible = true;
+        // (ended partway in: as bright as it was before the ship flew into it)
+        if (S.entry) planet.air.material.uniforms.uStrength.value = S.airWas;
+      }
+      S.entry = null;
+      S.sky = 1;
+      reentry.stop();
       if (planet?.body && S.hideBody) planet.body.visible = S.bodyShown;
       S.hideBody = 0;
       S.band = null;
@@ -2548,6 +2841,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       party = null;
       for (const g of [...guests.values()]) dropGuest(g);
       for (const id of [...troopFigs.keys()]) dropTroop(id);
+      for (const e of troopModels.values()) if (e.ready) freeScene(e.ready.scene);
+      troopModels.clear();
       for (const key of [...blobs.keys()]) dropShadow(key);
       for (const o of S.bolts) o.mesh.visible = false;
       S.bolts = [];
@@ -2585,6 +2880,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       }
       puffTex.dispose();
       for (const s of puffs) s.material.dispose();
+      reentry.dispose();
       map.remove(root);
     },
   };
@@ -2600,5 +2896,5 @@ const rotateAbout = (v, k, a) => {
 
 // A crew member as a figure, for the galaxy's worlds (galaxy/surface/scene.js):
 // in map units (scale by 1 / METRE for metres); `cast` is createMeshyCast()'s,
-// for the cruiser's two
-export { loadModel as loadPartyFigure };
+// for the cruiser’s two (Walt and Jesse, in their looks too)
+export { loadParty as loadPartyFigure };

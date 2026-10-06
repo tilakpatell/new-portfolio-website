@@ -775,7 +775,7 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
   -webkit-touch-callout: none;
 }
 .universe-out:active { background: rgb(255 255 255 / 0.18); }
-/* what G does where you are: land and step out, or get back in */
+/* what G does where you are: down into a planet's air to land, a door, or back in */
 .universe-prompt {
   position: absolute;
   left: 50%;
@@ -808,7 +808,52 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
 }
 @media (pointer: coarse) { .universe-prompt::before { content: none; } }
 .universe-prompt[data-say]::before { content: none; }
+/* (a word on the HUD, or the ship on its way down: no key to press) */
+.universe-prompt[data-plain]::before { content: none; }
 .universe-prompt[data-say] { font-style: italic; }
+/* the way into the world you're down on (landings/wayin.js): there the
+   whole time the crew are out, over the line that says what G does */
+.universe-wayin {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: 116px;
+  translate: calc(-50% - (var(--panel-w) + 24px) / 2) 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  min-height: 44px;
+  padding: 0.45rem 0.6rem 0.45rem 1.1rem;
+  border: 1.5px solid var(--accent, #7fe3ff);
+  border-radius: 999px;
+  background: rgb(3 4 10 / 0.78);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent, #7fe3ff) 55%, transparent), 0 6px 22px rgb(0 0 0 / 0.45);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  cursor: pointer;
+  animation: universe-wayin-in 0.4s ease both, universe-wayin-glow 2.6s ease-in-out 0.4s infinite;
+}
+.universe-wayin[hidden] { display: none; }
+.universe-wayin:hover,
+.universe-wayin:focus-visible { background: color-mix(in srgb, var(--accent, #7fe3ff) 24%, rgb(3 4 10 / 0.86)); }
+.universe-wayin:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.universe-wayin-key {
+  padding: 0.1em 0.45em;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--text-muted, rgb(255 255 255 / 0.75));
+}
+@media (pointer: coarse) { .universe-wayin-key { display: none; } .universe-wayin { padding-right: 1.1rem; } }
+@keyframes universe-wayin-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes universe-wayin-glow { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent, #7fe3ff) 0%, transparent), 0 6px 22px rgb(0 0 0 / 0.45); } }
+@media (prefers-reduced-motion: reduce) { .universe-wayin { animation: none; } }
 /* the place's name, as you come down on a planet */
 .universe-arrive {
   position: absolute;
@@ -1272,6 +1317,9 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
   .universe-view { right: 184px; bottom: calc(var(--sheet-h) + 27px); }
   .universe-out { right: 248px; bottom: calc(var(--sheet-h) + 27px); }
   .universe-prompt { bottom: calc(var(--sheet-h) + 64px); translate: -50% 0; }
+  /* (over the prompt, and above the buttons' cluster: the weapon one, the
+     tallest, is hidden on foot, and the climb button is off to the right) */
+  .universe-wayin { bottom: calc(var(--sheet-h) + 156px); translate: -50% 0; max-width: calc(100% - 32px); }
   .universe-lock-name,
   .universe-lock-dist,
   .universe-nav-name,

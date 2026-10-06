@@ -12,13 +12,15 @@
 // `centre` [x, z] and `radius` the part of the town that's baked (the play
 // space, with room for what shadows its edge; a null radius: the floor's own
 // extent, at most 240 m a side); `clip` for one zone of a town shown a zone at
-// a time (lib/three/groundwork).
+// a time (lib/three/groundwork); `sunFloor` how much of the sun the floor
+// keeps where the mask has none (a wood: under the canopy the mask's sun is
+// nought, and a floor lit by the sky's term alone goes black).
 
 import { groundWorld } from '../../../lib/three/groundwork';
 
 export const FIGURE = 0.84; // a figure's blob, across (the circles it replaces were 0.42 in radius)
 
-export function groundTown({ renderer, scene, terrain, outdoors, sun, height, people = [], skip = [], tier = 'mid', centre = [0, 0], radius = 60, shade = 0x2e2620, matcap = [], bounce = {}, clip = false }) {
+export function groundTown({ renderer, scene, terrain, outdoors, sun, height, people = [], skip = [], tier = 'mid', centre = [0, 0], radius = 60, shade = 0x2e2620, sunFloor = 0, matcap = [], bounce = {}, clip = false }) {
   const movers = people.filter(Boolean).map((p) => (p.object ? { size: [FIGURE, FIGURE], ...p } : { object: p, size: [FIGURE, FIGURE] }));
   return groundWorld({
     renderer,
@@ -30,6 +32,7 @@ export function groundTown({ renderer, scene, terrain, outdoors, sun, height, pe
     skip,
     movers,
     shade,
+    sunFloor,
     bounce,
     height,
     tier,

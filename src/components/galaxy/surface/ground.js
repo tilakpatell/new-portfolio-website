@@ -14,10 +14,20 @@
 // wall) rock starts at; accent: how much of the accent there is (0…1) in
 // patches; ripple: { strength, scale, wind }; grain: 0…1; sparkle: 0…1
 // (snow, salt); wet: { level, color } darkening the ground near the water.
+//
+// Up close, the ground wears a photo-scanned surface (public/cc0/galaxy/,
+// kit.js's scans: sand, snow, grass, a pine floor, leaf litter, mud, ash,
+// red soil, gravel, a beach), by the site's `ground.detail` (a role) and
+// `ground.detailLook` ({ color, normal, metres, near, far }): its detail
+// colour map laid over the palette's colour and its normal map tilting the
+// light, at the scan's real size, fading out between `near` and `far`
+// metres so the far ground stays the shader's own. Not on the low tier.
 
 import * as THREE from 'three';
 import { HALF } from './terrain';
 import { noiseTexture } from './noiseTex';
+import { loadScan, scanOf } from './kit';
+import { detailLevel } from '../../../lib/detail';
 
 // (noise read from noiseTex.js's tile, at a few scales, rather than worked out)
 const NOISE = `
@@ -45,7 +55,26 @@ export function groundMaterial(site, { small = false } = {}) {
     uMarkColor: { value: col(p.mark, '#000000') },
     uHalf: { value: HALF },
     uNoise: { value: noiseTexture() },
+    // the scan underfoot: its maps, repeats a metre, how strongly its colour
+    // and its normal show, where it fades (near, far), and the linear
+    // brightness its detail map is centred on (set when it's loaded)
+    uScan: { value: null },
+    uScanN: { value: null },
+    uScanK: { value: new THREE.Vector4(0.5, 0, 0, 0.5) },
+    uScanFade: { value: new THREE.Vector2(28, 90) },
   };
+  const look = g.detailLook ?? {};
+  const scan = g.detail && !small && detailLevel() !== 'low' ? scanOf(g.detail) : null;
+  if (scan) {
+    uniforms.uScanFade.value.set(look.near ?? 28, look.far ?? 90);
+    loadScan(g.detail).then((got) => {
+      if (!got) return;
+      uniforms.uScan.value = got.map;
+      uniforms.uScanN.value = got.normalMap;
+      const metres = look.metres ?? scan.metres ?? 2;
+      uniforms.uScanK.value.set(1 / metres, look.color ?? 0.75, got.normalMap ? (look.normal ?? 0.7) : 0, Math.pow(scan.mean ?? 0.8, 2.2));
+    });
+  }
   const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: p.roughness ?? 0.94, metalness: 0 });
   mat.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
@@ -59,8 +88,9 @@ export function groundMaterial(site, { small = false } = {}) {
 varying vec3 vGround;
 varying vec3 vGroundN;
 uniform vec3 uLow, uHigh, uRock, uAccent, uDeep, uGrain, uWetColor, uMarkColor;
-uniform vec4 uHeights, uRipple, uWet;
-uniform sampler2D uMarks;
+uniform vec4 uHeights, uRipple, uWet, uScanK;
+uniform vec2 uScanFade;
+uniform sampler2D uMarks, uScan, uScanN;
 uniform float uHalf;
 ${NOISE}`,
       )
@@ -88,6 +118,13 @@ ${NOISE}`,
   // grain close up, fading out before it shimmers
   float near = 1.0 - smoothstep(30.0, 160.0, dist);
   c *= 1.0 + ((nFine - 0.5) * 0.12 + (nMid - 0.5) * 0.16) * uGrain.x * mix(0.5, 1.0, near);
+  // the scan underfoot, close up: its grain over the colour, centred on
+  // its own brightness so the palette's colour still says what the ground is
+  if (uScanK.y > 0.0) {
+    float scanNear = 1.0 - smoothstep(uScanFade.x, uScanFade.y, dist);
+    vec3 sc = texture2D(uScan, xz * uScanK.x).rgb / max(uScanK.w, 0.05);
+    c *= mix(vec3(1.0), sc, uScanK.y * scanNear);
+  }
   // where things have been
   vec2 muv = xz / (2.0 * uHalf) + 0.5;
   if (muv.x > 0.0 && muv.x < 1.0 && muv.y > 0.0 && muv.y < 1.0) c = mix(c, uMarkColor, texture2D(uMarks, muv).r);
@@ -110,6 +147,12 @@ ${NOISE}`,
   float e = 1.0 / 256.0;
   float n0 = gTex(g).a;
   tilt += vec3(gTex(g + vec2(e, 0.0)).a - n0, 0.0, gTex(g + vec2(0.0, e)).a - n0) * 2.2 * uGrain.x * fadeR;
+  // the scan's own relief, close up (its normal map laid flat on the ground)
+  if (uScanK.z > 0.0) {
+    float scanNear = 1.0 - smoothstep(uScanFade.x, uScanFade.y, dist);
+    vec3 tn = texture2D(uScanN, xz * uScanK.x).xyz * 2.0 - 1.0;
+    tilt -= vec3(tn.x, 0.0, tn.y) * uScanK.z * scanNear * flatK;
+  }
   normal = normalize(normal - (viewMatrix * vec4(tilt, 0.0)).xyz);
 }`,
       )

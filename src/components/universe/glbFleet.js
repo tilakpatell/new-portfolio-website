@@ -1,7 +1,8 @@
 // The ships that are models rather than built: the site owner's Meshy X-wing
 // and Slave I, and the Star Wars models they sent for the map: a TIE
 // interceptor, a Star Destroyer and a Corellian corvette (the Tantive IV)
-// (scripts/build-universe.py cuts them down for it). Each is loaded the
+// (scripts/build-universe.py cuts them down for it); and the galaxy's
+// Y-wing, A-wing and TIE bomber, each over a built one. Each is loaded the
 // first time it's wanted, then copied, sharing its geometry and textures,
 // for every ship of its kind; until it's come, the kind is built
 // (trafficModels.js: the X-wing, the interceptor, the Star Destroyer and the
@@ -37,6 +38,11 @@ export const GLB = {
   interceptor: { url: '/models/universe/tie-interceptor.glb', nose: 0, built: true },
   destroyer: { url: '/models/universe/star-destroyer.glb', nose: Math.PI, built: true },
   corvette: { url: '/models/universe/cr90.glb', nose: 0, built: true },
+  // the galaxy's own, in their small cuts (public/models/galaxy/lod/: a
+  // tenth of the size, and a fighter on this map is a few pixels long)
+  ywing: { url: '/models/galaxy/lod/ywing.glb', nose: 0, built: true },
+  awing: { url: '/models/galaxy/lod/awing.glb', nose: 0, built: true },
+  tiebomber: { url: '/models/galaxy/lod/tiebomber.glb', nose: 0, built: true },
 };
 
 // (`build` makes a built one: the universe's own, unless another fleet's

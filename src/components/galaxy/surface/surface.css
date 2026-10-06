@@ -503,6 +503,25 @@
 .chase-bunker[data-close] span { background: #ff6a4a; animation: chase-warn 0.5s ease-in-out infinite alternate; }
 @keyframes chase-warn { to { opacity: 0.5; } }
 .chase-bunker-label { margin: 0.35rem 0 0; font-size: 0.7rem; color: rgba(242, 239, 232, 0.7); }
+/* a quest mission: the clock up top, and the banner it opens on */
+.chase-hud-quest { min-width: 240px; top: calc(var(--nav-h, 64px) + 124px); } /* (under where you are, which a mission keeps) */
+.surface-quest-on { top: calc(var(--nav-h, 64px) + 92px); } /* (a tracked quest's lines, clear of the corner's credits) */
+.chase-par { font-size: 0.74rem; color: rgba(242, 239, 232, 0.72); }
+.chase-start {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 38%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  animation: chase-start 4s ease-out both;
+}
+.chase-start-kicker { margin: 0; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5em; text-transform: uppercase; color: var(--accent); text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7); }
+.chase-start-title { margin: 0.3rem 0 0; font-size: clamp(1.8rem, 5vw, 3rem); font-weight: 650; letter-spacing: 0.03em; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.65); }
+.chase-start-text { margin: 0.5rem 0 0; font-size: 0.95rem; color: rgba(242, 239, 232, 0.85); text-shadow: 0 1px 12px rgba(0, 0, 0, 0.7); }
+@keyframes chase-start { from { opacity: 0; transform: translate(-50%, -40%); } 12% { opacity: 1; transform: translate(-50%, -50%); } 78% { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .chase-start { animation: none; } }
 .chase-result {
   position: absolute;
   z-index: 3;
@@ -534,3 +553,192 @@
 @media (prefers-reduced-motion: reduce) {
   .chase-count, .chase-bunker[data-close] span { animation: none; }
 }
+
+/* a galactic assault (missions/assault.js): the choose and deploy cards, the phase's posts, the reinforcements, the post you're in, the feed */
+.assault-card {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - var(--nav-h, 64px) - 32px);
+  overflow: auto;
+  padding: 1.3rem 1.4rem 1.2rem;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--accent);
+  border-radius: 10px;
+  background: var(--glass);
+  backdrop-filter: blur(14px);
+  text-align: center;
+  animation: surface-found 0.5s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+.assault-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem; }
+.assault-side {
+  display: grid;
+  gap: 0.3rem;
+  padding: 1rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--side) 55%, transparent);
+  border-top: 3px solid var(--side);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--side) 10%, rgba(0, 0, 0, 0.35));
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, transform 0.15s;
+}
+.assault-side:hover, .assault-side:focus-visible { background: color-mix(in srgb, var(--side) 22%, rgba(0, 0, 0, 0.35)); transform: translateY(-2px); }
+.assault-side b { font-size: 1rem; font-weight: 650; line-height: 1.25; }
+.assault-side span { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--side); }
+.assault-posts { display: grid; gap: 0.5rem; margin: 1rem 0 0; padding: 0; list-style: none; text-align: left; }
+.assault-post {
+  display: grid;
+  grid-template-columns: 2rem 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--side);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text);
+  cursor: pointer;
+}
+.assault-post:hover:not(:disabled), .assault-post:focus-visible { border-color: var(--side); background: color-mix(in srgb, var(--side) 14%, rgba(0, 0, 0, 0.3)); }
+.assault-post:disabled { opacity: 0.45; cursor: default; }
+.assault-post i { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 6px; background: var(--side); color: #03040a; font-style: normal; font-weight: 700; }
+.assault-post b { font-weight: 600; }
+.assault-post span { font-size: 0.72rem; color: rgba(242, 239, 232, 0.65); }
+.assault-strip {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: calc(var(--nav-h, 64px) + 62px);
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  pointer-events: none;
+}
+.assault-phase { margin: 0; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(242, 239, 232, 0.85); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7); }
+.assault-chips { display: flex; gap: 8px; }
+.assault-chip {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 36px;
+  border: 1.5px solid color-mix(in srgb, var(--side) 70%, transparent);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  opacity: 0.45;
+}
+.assault-chip[data-live] { opacity: 1; }
+.assault-chip[data-mine] { box-shadow: 0 0 10px color-mix(in srgb, var(--side) 60%, transparent); }
+.assault-chip b { position: relative; z-index: 1; font-size: 0.85rem; font-weight: 700; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); }
+.assault-chip i { position: absolute; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--side) 70%, transparent); transition: height 0.15s linear; }
+.assault-tickets {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  top: calc(var(--nav-h, 64px) + 104px);
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--glass);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+.assault-tickets p { display: flex; align-items: baseline; gap: 0.5rem; margin: 0; }
+.assault-tickets p b { min-width: 2.2rem; font: 600 1.05rem/1 ui-monospace, monospace; font-variant-numeric: tabular-nums; color: var(--side); }
+.assault-tickets p span { font-size: 0.72rem; color: rgba(242, 239, 232, 0.7); }
+.assault-tickets p[data-mine] span::after { content: ' · you'; color: var(--side); }
+.assault-score { margin-top: 0.2rem !important; padding-top: 0.35rem; border-top: 1px solid var(--line); }
+.assault-score b { color: var(--text) !important; }
+.assault-ring {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 60%;
+  transform: translateX(-50%);
+  width: min(260px, 60vw);
+  text-align: center;
+  pointer-events: none;
+}
+.assault-ring p { margin: 0 0 0.3rem; font-size: 0.85rem; font-weight: 600; color: var(--side); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8); }
+.assault-ring span { display: block; height: 5px; border-radius: 3px; background: rgba(0, 0, 0, 0.5); overflow: hidden; }
+.assault-ring span i { display: block; height: 100%; background: var(--side); transition: width 0.12s linear; }
+.assault-ring[data-state='losing'] p, .assault-ring[data-state='contested'] p { animation: chase-warn 0.6s ease-in-out infinite alternate; }
+.assault-feed {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+.assault-feed li { font-size: 0.78rem; color: rgba(242, 239, 232, 0.8); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8); animation: surface-found 0.4s ease-out; }
+.assault-feed li[data-kind='kill'] { color: #ffd36a; }
+.assault-feed li[data-kind='phase'] { color: var(--accent); font-weight: 600; }
+@media (max-width: 640px) {
+  .assault-strip { top: calc(var(--nav-h, 64px) + 56px); }
+  .assault-tickets { top: calc(var(--nav-h, 64px) + 126px); padding: 0.45rem 0.6rem; }
+  .assault-feed { display: none; }
+  .assault-sides { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assault-ring p, .assault-feed li, .assault-card { animation: none; }
+}
+
+/* who you play as, and your lightsaber (HeroPanel.jsx) */
+.surface-heroes { top: calc(var(--nav-h, 64px) + 56px); max-height: calc(100svh - var(--nav-h, 64px) - 100px); }
+.surface-hero-cards, .surface-hilts { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.4rem; }
+.surface-hero-cards { grid-template-columns: repeat(2, 1fr); }
+.surface-hero, .surface-hilt {
+  width: 100%;
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  cursor: pointer;
+}
+.surface-hero:hover, .surface-hilt:hover { border-color: rgba(255, 255, 255, 0.4); }
+.surface-hero.is-picked, .surface-hilt.is-picked { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.surface-hero-name { font-weight: 700; font-size: 0.82rem; }
+.surface-hero-arm { font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.surface-hero-blurb { font-size: 0.72rem; line-height: 1.35; color: rgba(242, 239, 232, 0.7); }
+.surface-saber { margin-top: 0.8rem; }
+.surface-swatches { display: flex; gap: 0.45rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+.surface-list .surface-swatch {
+  display: block;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: radial-gradient(circle, #fff 0 22%, var(--blade) 38%, color-mix(in srgb, var(--blade) 35%, transparent) 70%, transparent 100%);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--blade) 70%, transparent);
+  cursor: pointer;
+}
+.surface-list .surface-swatch.is-picked { border-color: #fff; }
+.surface-hero-keys { margin: 0.7rem 0 0; font-size: 0.72rem; line-height: 1.4; color: rgba(242, 239, 232, 0.7); }
+.surface-hero-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.9rem; }
+.surface-list .surface-hero-actions button { width: auto; display: inline-block; }
+.surface-hero-play { border-color: var(--accent); color: var(--accent); }
+.surface-hero-play:disabled { opacity: 0.45; cursor: default; }
+.surface-btn-throw { border-color: #9fd0ff; color: #cfe6ff; }
+.surface-btn-block { border-color: #ffe08a; color: #ffeec0; }
+.surface-buttons-saber { grid-template-columns: repeat(3, 60px); }
+.surface-buttons-saber .surface-btn { width: 60px; height: 60px; }

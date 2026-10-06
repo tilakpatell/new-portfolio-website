@@ -9,10 +9,13 @@ const README = readFileSync(new URL('../../../../../public/cc0/README.md', impor
 const MB = 1024 * 1024;
 
 describe('the surface models', () => {
-  it('names each kind once, across the groups', () => {
-    const all = Object.values(GROUPS).flatMap((m) => Object.keys(m));
+  it('names each kind once, across the groups (the Battlefront group aside: a kind there takes over)', () => {
+    const all = Object.entries(GROUPS)
+      .filter(([g]) => g !== 'battlefront')
+      .flatMap(([, m]) => Object.keys(m));
     expect(new Set(all).size).toBe(all.length);
-    for (const kind of all) expect(kind, kind).toMatch(/^[a-z0-9]+$/);
+    for (const kind of [...all, ...Object.keys(GROUPS.battlefront)]) expect(kind, kind).toMatch(/^[a-z0-9]+$/);
+    for (const kind of Object.keys(GROUPS.battlefront)) expect(SURFACE_MODELS[kind].group, kind).toBe('battlefront');
   });
 
   it('has each one brought in, small enough, with what the import needs', () => {
@@ -30,7 +33,12 @@ describe('the surface models', () => {
     const made = madeKinds(README);
     for (const [kind, m] of Object.entries(SURFACE_MODELS)) {
       if (m.cluster) continue;
-      if (m.made) {
+      if (m.made === 'battlefront') {
+        // (brought in by scripts/battlefront-import.mjs: credited with its permission)
+        expect(m.uid, kind).toBeUndefined();
+        expect(CREDITS[`surface-${kind}`]?.license, `${kind}'s credit`).toBe('permission');
+        expect(CREDITS[`surface-${kind}`]?.permission, `${kind}'s permission`).toBeTruthy();
+      } else if (m.made) {
         expect(m.made, kind).toBe('meshy');
         expect(m.uid, kind).toBeUndefined();
         expect(made.has(kind), `${kind} in public/cc0/README.md`).toBe(true);

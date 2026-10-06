@@ -218,14 +218,10 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
       if (rand() < 0.86) ferns.push({ x, z, y: height(x, z), s: 0.7 + rand() * 0.8, turn: rand() * TAU });
       else rocks.push({ x, z, y: height(x, z) - 0.3, s: 0.6 + rand() * 0.9, turn: rand() * TAU });
     }
-    const green = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+    // (the fronds are wound both ways with their normals up: single-sided)
+    const green = mats.fern ?? new THREE.MeshLambertMaterial({ vertexColors: true });
     const stone = mats.stone ?? new THREE.MeshLambertMaterial({ vertexColors: true });
-    if (kit.fern) {
-      // (its normals worked out afresh: as they came, the fronds lit black)
-      const fernGeo = kit.fern(5);
-      fernGeo.computeVertexNormals();
-      land.add(instances(fernGeo, green, ferns, { shadow: false }));
-    }
+    if (kit.fern) land.add(instances(kit.fern(5), green, ferns, { shadow: false }));
     if (kit.mossRock) land.add(instances(kit.mossRock(6), stone, rocks, { shadow: false }));
     if (kit.pillar) land.add(instances(kit.pillar(7), stone, PILLARS.map(([x, z, turn]) => ({ x, z, y: height(x, z) - 0.1, turn })), { shadow: false }));
   }
@@ -686,7 +682,9 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
   };
 
   // ── the floor's light, baked when the town is first drawn ──
-  const ground = groundTown({ renderer, scene, terrain, outdoors: land, sun, height, people: movers, skip: [sky.dome, ghosts.group], tier, centre: [-25, 0], radius: 72, shade: 0x2e2a1e });
+  // (the woods keep some sun on their floor: the bake's sun never reaches it
+  // under the crowns, and by the sky's term alone it went black)
+  const ground = groundTown({ renderer, scene, terrain, outdoors: land, sun, height, people: movers, skip: [sky.dome, ghosts.group], tier, centre: [-25, 0], radius: 72, shade: 0x2e2a1e, sunFloor: 0.4 });
 
   return {
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts

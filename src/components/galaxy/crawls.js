@@ -7,21 +7,21 @@
 
 export const CRAWLS = {
   tatooine: {
-    episode: 'Episode I',
-    title: 'The Boonta Eve Classic',
+    episode: 'Episode IV',
+    title: 'The Canyon Run',
     paragraphs: [
-      'Turmoil has engulfed the Galactic Republic. The greedy Trade Federation has blockaded the peaceful planet of Naboo, and its young Queen Amidala has escaped through the blockade aboard her royal starship, guarded by two Jedi Knights.',
-      'Her damaged ship has limped to Tatooine, a desert world ruled by the Hutts, far beyond the reach of the Republic. No one there will take Republic credits for the hyperdrive parts it needs, and the Queen’s party is stranded.',
-      'Their only hope is a slave boy named Anakin Skywalker. With the parts and his own freedom riding on the race, Anakin must fly his podracer three laps of the Mos Espa circuit against the treacherous Sebulba in the BOONTA EVE CLASSIC…',
+      'It is a period of civil war, but on the desert world of Tatooine, far from the fighting, nothing much has changed. The moisture farms draw their water, the Jawas trade their scrap, and the farm boys of Anchorhead race the wastes for want of anything better to do.',
+      'In the long shadows of Beggar’s Canyon, young Luke Skywalker has heard that his friend Biggs Darklighter ran the whole canyon in under thirty seconds before leaving for the Academy. Camie has bet him he cannot do the same.',
+      'With his uncle’s landspeeder and the twin suns going down, Luke must run the canyon through every gate, round the Stone Needle and back up again against the clock, before the others at Tosche Station give up waiting for him…',
     ],
   },
   hoth: {
     episode: 'Episode V',
-    title: 'The Battle of Hoth',
+    title: 'The First Transport',
     paragraphs: [
       'It is a dark time for the Rebellion. An Imperial probe droid has found Echo Base, the Rebels’ secret stronghold on the remote ice world of Hoth, and Darth Vader’s Death Squadron has come out of lightspeed to crush it.',
-      'The Imperial fleet cannot fire through the base’s energy shield. Instead, General Veers is leading a column of armored walkers across the snow to destroy the shield generator, while the Rebel transports slip past the blockade one by one.',
-      'Blasters cannot pierce a walker’s armor. Now Rogue Group, flying snowspeeders, must hold back the Imperial advance long enough for the last transports to escape, with nothing but harpoons, tow cables and nerve…',
+      'The Imperial fleet cannot fire through the base’s energy shield, so General Veers has landed his walkers and his snowtroopers on the ice to take the shield generator by force, while the Rebels load their transports to flee the planet two at a time.',
+      'A Star Destroyer waits above the first transport’s only way out. Now the ground crew of Echo Base must get the last of the cargo aboard, hold off the snowtroopers coming over the ridge, and reach the ion cannon in time to clear the sky…',
     ],
   },
   endor: {
@@ -116,11 +116,11 @@ export const CRAWLS = {
   },
   geonosis: {
     episode: 'Episode II',
-    title: 'Seismic Charges',
+    title: 'The Battle of Geonosis',
     paragraphs: [
-      'A clone army has been found. On the storm world of Kamino, Obi-Wan Kenobi has learned that the bounty hunter Jango Fett is the template for the Republic’s secret clones, and the man who hired Senator Amidala’s assassin.',
-      'Jango Fett has fled with his son, Boba, aboard his starship, Slave I. Obi-Wan has followed in his Jedi starfighter, tracking a homing beacon he fixed to its hull, to Geonosis, a ringed red world of droid foundries.',
-      'But Jango knows he is being followed. Now Obi-Wan must chase Slave I into the asteroid ring, through laser fire and seismic charges, and make the bounty hunter believe he has won…',
+      'War has come to the Republic. On the red world of Geonosis, Count Dooku and the Separatist leaders have gathered their droid armies in secret, and three prisoners stand chained in the execution arena before a roaring crowd.',
+      'Two hundred Jedi have fought their way into the arena and been surrounded. But Master Yoda has come with the clone army of Kamino, and Republic gunships are dropping onto the plain outside as the Separatists’ core ships prepare to flee.',
+      'Now the first battle of the Clone Wars is joined. The clones must take the forward command post and the ridge, then the arena gate, then the arena floor itself, while the battle droids hold each as long as they can, and the galaxy will never be the same…',
     ],
   },
   scarif: {

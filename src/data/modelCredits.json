@@ -1083,6 +1083,160 @@
       "galaxy"
     ]
   },
+  "m64-bobomb": {
+    "title": "Bob-Omb",
+    "author": "Zambur",
+    "authorUrl": "https://sketchfab.com/Zambur",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/bob-omb-35b12aa67da04119bf30fbd7ce11367d",
+    "where": "mario64",
+    "as": "the Bob-ombs",
+    "file": "/models/mario64/bobomb.glb"
+  },
+  "m64-chandelier": {
+    "title": "Chandelier",
+    "author": "Faheem Yusuf",
+    "authorUrl": "https://sketchfab.com/FameProductions",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/chandelier-66b536be170d42d7a8aac5992977ec11",
+    "where": "mario64",
+    "as": "the castle’s chandeliers",
+    "file": "/models/mario64/chandelier.glb"
+  },
+  "m64-chomp": {
+    "title": "Chain Chomp",
+    "author": "victor.uceta",
+    "authorUrl": "https://sketchfab.com/victor.uceta",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/chain-chomp-8612429a08864078b98d7b7a938fe46a",
+    "where": "mario64",
+    "as": "the Chain Chomp",
+    "file": "/models/mario64/chomp.glb"
+  },
+  "m64-coin": {
+    "title": "Coin (Super Mario Bros)",
+    "author": "Yanez Designs",
+    "authorUrl": "https://sketchfab.com/Yanez-Designs",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/coin-super-mario-bros-dbf9945cc49340c0a50f57338a3786ab",
+    "where": "mario64",
+    "as": "the coins",
+    "file": "/models/mario64/coin.glb"
+  },
+  "m64-goomba": {
+    "title": "Goomba",
+    "author": "KangaroOz 3D",
+    "authorUrl": "https://sketchfab.com/KangaroOz-3D",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/goomba-c2cebdfd58b1471f9da8cc555c9ca47f",
+    "where": "mario64",
+    "as": "the Goombas",
+    "file": "/models/mario64/goomba.glb"
+  },
+  "m64-king": {
+    "title": "Fan Made King Bomb Omb",
+    "author": "The Widder Star",
+    "authorUrl": "https://sketchfab.com/thewidderstar",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/fan-made-king-bomb-omb-c7d0446bf68d401e871f64f503978788",
+    "where": "mario64",
+    "as": "King Bob-omb",
+    "file": "/models/mario64/king.glb"
+  },
+  "m64-mario": {
+    "title": "mario",
+    "author": "themarik",
+    "authorUrl": "https://sketchfab.com/themarik",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/mario-bc65c57fe1b9472db828226d6ba98e82",
+    "where": "mario64",
+    "as": "Mario, whom you play",
+    "file": "/models/mario64/mario.glb"
+  },
+  "m64-oneup": {
+    "title": "1-Up Mushrooms (Super Mario Bros)",
+    "author": "Yanez Designs",
+    "authorUrl": "https://sketchfab.com/Yanez-Designs",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/1-up-mushrooms-super-mario-bros-6ba27a7f3460472d9c2356a0582d50c9",
+    "where": "mario64",
+    "as": "the 1-Up Mushrooms",
+    "file": "/models/mario64/oneup.glb"
+  },
+  "m64-pine": {
+    "title": "Pine Tree – Low Poly Stylized Tree",
+    "author": "Jimmy Johansson",
+    "authorUrl": "https://sketchfab.com/Jimmy_Johansson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/pine-tree-low-poly-stylized-tree-071914806126487b9f5067693b39f335",
+    "where": "mario64",
+    "as": "the pines",
+    "file": "/models/mario64/pine.glb"
+  },
+  "m64-rock": {
+    "title": "Stylized Rock",
+    "author": "Jaspreet Singh",
+    "authorUrl": "https://sketchfab.com/gurjasstudios",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/stylized-rock-f0309cd2e4a347c3996cd7d887cd2d4a",
+    "where": "mario64",
+    "as": "the boulders",
+    "file": "/models/mario64/rock.glb"
+  },
+  "m64-sign": {
+    "title": "Stylized Wooden Sign",
+    "author": "FrieDev",
+    "authorUrl": "https://sketchfab.com/FrieDev",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/stylized-wooden-sign-7556d3e7237749eda5ee876736e5c601",
+    "where": "mario64",
+    "as": "the signs",
+    "file": "/models/mario64/sign.glb"
+  },
+  "m64-star": {
+    "title": "Power Star",
+    "author": "SuperLock45",
+    "authorUrl": "https://sketchfab.com/SuperLock45",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/power-star-bab82082f27e45deb17b9e04183c974d",
+    "where": "mario64",
+    "as": "the Power Stars",
+    "file": "/models/mario64/star.glb"
+  },
+  "m64-toad": {
+    "title": "Toad (Super Mario Bros)",
+    "author": "Yanez Designs",
+    "authorUrl": "https://sketchfab.com/Yanez-Designs",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/toad-super-mario-bros-e1f9d2953e044729b5dfb9763e492b81",
+    "where": "mario64",
+    "as": "Toad, in the castle",
+    "file": "/models/mario64/toad.glb"
+  },
+  "m64-tree": {
+    "title": "SM64 Tree",
+    "author": "PerriSapo84",
+    "authorUrl": "https://sketchfab.com/PerriSapo84",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/sm64-tree-0ff16e2954c54972bcb9794f31199d28",
+    "where": "mario64",
+    "as": "the trees, after Super Mario 64’s own",
+    "file": "/models/mario64/tree.glb"
+  },
   "minas-tirith": {
     "title": "Minas Tirith Remake",
     "author": "Mitro123",
@@ -1219,6 +1373,34 @@
       "galaxy"
     ]
   },
+  "surface-armorer": {
+    "title": "The Armorer",
+    "author": "Niumix z",
+    "authorUrl": "https://sketchfab.com/H4Z4ZEL",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/the-armorer-e3e74228d7fc41b58f36ae110f58b690",
+    "where": "galaxy-surface",
+    "as": "the Armorer",
+    "file": "/models/galaxy/surface/armorer.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-astromech": {
+    "title": "Star Wars Droid 1",
+    "author": "LarsH.",
+    "authorUrl": "https://sketchfab.com/LarsH.",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-droid-1-4d478a8e98f34c6193ee5d57817b3d9f",
+    "where": "galaxy-surface",
+    "as": "the astromech droids",
+    "file": "/models/galaxy/surface/astromech.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-atap": {
     "title": "-Star Wars- AT-AP Walker",
     "author": "ARKON MAREK",
@@ -1303,6 +1485,34 @@
       "galaxy"
     ]
   },
+  "surface-barc": {
+    "title": "-Star Wars- BARC Speeder Bike",
+    "author": "ARKON MAREK",
+    "authorUrl": "https://sketchfab.com/ARKON-83",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-barc-speeder-bike-56ff0b8c18744664aa121db5d2039eb3",
+    "where": "galaxy-surface",
+    "as": "the BARC speeders",
+    "file": "/models/galaxy/surface/barc.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-barrel": {
+    "title": "Star Wars Barrel L",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-barrel-l-8646c0930a6c43bea75cbdf34812e3d2",
+    "where": "galaxy-surface",
+    "as": "the barrels",
+    "file": "/models/galaxy/surface/barrel.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-barrels": {
     "title": "Star-wars Barrel",
     "author": "michael50",
@@ -1318,15 +1528,30 @@
     ]
   },
   "surface-battledroid": {
-    "title": "Star Wars B1 Battle Droid",
-    "author": "tegnemaskin",
-    "authorUrl": "https://sketchfab.com/tegnemaskin",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-wars-b1-battle-droid-ade3a1205cce449caf91f78e595e5676",
+    "title": "Battlefront 2 Remaster: cis_inf_bdroid",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
     "where": "galaxy-surface",
     "as": "the battle droids",
     "file": "/models/galaxy/surface/battledroid.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-baze": {
+    "title": "Baze Malbus",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/baze-malbus-e30ad72b8ef74ead9739dad571bed50f",
+    "where": "galaxy-surface",
+    "as": "Baze Malbus",
+    "file": "/models/galaxy/surface/baze.glb",
     "also": [
       "galaxy"
     ]
@@ -1341,6 +1566,20 @@
     "where": "galaxy-surface",
     "as": "Ben Kenobi’s hut",
     "file": "/models/galaxy/surface/benhut.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-bevelcrate": {
+    "title": "Star Wars Beveled Crate S",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-beveled-crate-s-4bd794e931414a79bdacc83e439da6d4",
+    "where": "galaxy-surface",
+    "as": "the bevelled crates",
+    "file": "/models/galaxy/surface/bevelcrate.glb",
     "also": [
       "galaxy"
     ]
@@ -1374,15 +1613,30 @@
     ]
   },
   "surface-clone": {
-    "title": "phase-II-clone-trooper-dc-15s-rigged",
-    "author": "Ara_my45yt",
-    "authorUrl": "https://sketchfab.com/Ara_my45yt",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/phase-ii-clone-trooper-dc-15s-rigged-8519076c1bf24bcbb352f96930a29b55",
+    "title": "Battlefront 2 Remaster: rep_inf_ep3trooper",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
     "where": "galaxy-surface",
     "as": "the clone troopers",
     "file": "/models/galaxy/surface/clone.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-clonephase1": {
+    "title": "Clone trooper (Phase I) || Episode II: AOTC",
+    "author": "RC-KOA",
+    "authorUrl": "https://sketchfab.com/RC-Koa",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/clone-trooper-phase-i-episode-ii-aotc-c64ea97f5e854920b092d1d29763c935",
+    "where": "galaxy-surface",
+    "as": "the Phase I clone troopers",
+    "file": "/models/galaxy/surface/clonephase1.glb",
     "also": [
       "galaxy"
     ]
@@ -1411,6 +1665,20 @@
     "where": "galaxy-surface",
     "as": "the supply coolers",
     "file": "/models/galaxy/surface/cooler.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-cratecube": {
+    "title": "StarWars Empire Crate Cube Big [Free download]",
+    "author": "Losss",
+    "authorUrl": "https://sketchfab.com/lossgraph",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/starwars-empire-crate-cube-big-free-download-d66fe8b5014b45b0ac313293a171b272",
+    "where": "galaxy-surface",
+    "as": "the Imperial cargo cubes",
+    "file": "/models/galaxy/surface/cratecube.glb",
     "also": [
       "galaxy"
     ]
@@ -1444,18 +1712,19 @@
     ]
   },
   "surface-deathtrooper": {
-    "title": "Death trooper || Rogue One: A Star Wars Story",
-    "author": "RC-KOA",
-    "authorUrl": "https://sketchfab.com/RC-Koa",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/death-trooper-rogue-one-a-star-wars-story-503860c8c63b419daa391f296ab874f1",
+    "title": "Battlefront 2 Remaster: imp_inf_deathtrooper",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
     "where": "galaxy-surface",
     "as": "the death troopers",
     "file": "/models/galaxy/surface/deathtrooper.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-dejarik": {
     "title": "Star Wars Dejarik",
@@ -1523,6 +1792,48 @@
     "where": "galaxy-surface",
     "as": "the droidekas",
     "file": "/models/galaxy/surface/droideka.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-dwarfspider": {
+    "title": "Dwarf Spider Droid",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/dwarf-spider-droid-4f5d54b98b744c439a14fd897b946a4e",
+    "where": "galaxy-surface",
+    "as": "the dwarf spider droids",
+    "file": "/models/galaxy/surface/dwarfspider.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-empirecrate": {
+    "title": "Star Wars Crate Empire V2 [Free]",
+    "author": "Losss",
+    "authorUrl": "https://sketchfab.com/lossgraph",
+    "license": "CC-BY-SA-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-sa/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-crate-empire-v2-free-c004b40467914c28936fce2629d140cc",
+    "where": "galaxy-surface",
+    "as": "the Imperial cargo crates",
+    "file": "/models/galaxy/surface/empirecrate.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-eopie": {
+    "title": "Eopie Star Wars",
+    "author": "michael50",
+    "authorUrl": "https://sketchfab.com/michael50",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/eopie-star-wars-029de9e7d0264119bbc4cbff45b8ed04",
+    "where": "galaxy-surface",
+    "as": "the eopies",
+    "file": "/models/galaxy/surface/eopie.glb",
     "also": [
       "galaxy"
     ]
@@ -1653,6 +1964,34 @@
       "galaxy"
     ]
   },
+  "surface-homingspider": {
+    "title": "Homing Spider Droid",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/homing-spider-droid-5b714fe3a31f42e197ec0ed0e4d27c56",
+    "where": "galaxy-surface",
+    "as": "the homing spider droids",
+    "file": "/models/galaxy/surface/homingspider.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-hothcrate": {
+    "title": "Star Wars - Battle of Hoth Crate",
+    "author": "judpro",
+    "authorUrl": "https://sketchfab.com/judpro",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-battle-of-hoth-crate-a45e657ce3094078b708ea180da8daba",
+    "where": "galaxy-surface",
+    "as": "the Rebel crates",
+    "file": "/models/galaxy/surface/hothcrate.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-hothgenerator": {
     "title": "Star Wars Shield Generator",
     "author": "floris05janssen",
@@ -1666,6 +2005,21 @@
     "also": [
       "galaxy"
     ]
+  },
+  "surface-hothtrooper": {
+    "title": "Battlefront 2 Remaster: all_inf_snowtrooper",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
+    "where": "galaxy-surface",
+    "as": "the Rebel troopers on Hoth",
+    "file": "/models/galaxy/surface/hothtrooper.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-ig11": {
     "title": "IG-88",
@@ -1691,6 +2045,20 @@
     "where": "galaxy-surface",
     "as": "the Imperial cargo crates",
     "file": "/models/galaxy/surface/impcrate.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-ithorian": {
+    "title": "Star Wars Ithorian Endor Rebel (rigged)",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-ithorian-endor-rebel-rigged-ca01590e107a45aa9dd9c4386ccfe094",
+    "where": "galaxy-surface",
+    "as": "the Ithorian Rebel",
+    "file": "/models/galaxy/surface/ithorian.glb",
     "also": [
       "galaxy"
     ]
@@ -1733,6 +2101,34 @@
     "where": "galaxy-surface",
     "as": "the Jedi Temple",
     "file": "/models/galaxy/surface/jeditemple.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-jyn": {
+    "title": "Jyn Erso",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/jyn-erso-9547a563e09e4b26bc09a3453891e086",
+    "where": "galaxy-surface",
+    "as": "Jyn Erso",
+    "file": "/models/galaxy/surface/jyn.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-k2so": {
+    "title": "K-2SO star wars droid",
+    "author": "Coconut",
+    "authorUrl": "https://sketchfab.com/tomas.anglim.811",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/k-2so-star-wars-droid-2761149238284abe8ce1bd8795c3d6b8",
+    "where": "galaxy-surface",
+    "as": "K-2SO",
+    "file": "/models/galaxy/surface/k2so.glb",
     "also": [
       "galaxy"
     ]
@@ -1933,6 +2329,20 @@
       "galaxy"
     ]
   },
+  "surface-mousedroid": {
+    "title": "Star Wars Mouse Droid",
+    "author": "LarsH.",
+    "authorUrl": "https://sketchfab.com/LarsH.",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-mouse-droid-bc78bbf16cf74d2580980e3123458348",
+    "where": "galaxy-surface",
+    "as": "the mouse droids",
+    "file": "/models/galaxy/surface/mousedroid.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-mudhorn": {
     "title": "Mudhorn",
     "author": "NexusSpeedster",
@@ -2003,6 +2413,20 @@
       "galaxy"
     ]
   },
+  "surface-r5": {
+    "title": "R5-J2 Imperial Astromech Droid",
+    "author": "Hunter Wiltse",
+    "authorUrl": "https://sketchfab.com/hunterwiltse",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/r5-j2-imperial-astromech-droid-2d1bf74e06a347449a20c8f2181aac78",
+    "where": "galaxy-surface",
+    "as": "the R5 astromechs",
+    "file": "/models/galaxy/surface/r5.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-rancor": {
     "title": "Rancor star wars",
     "author": "michael50",
@@ -2027,6 +2451,48 @@
     "where": "galaxy-surface",
     "as": "the Razor Crest",
     "file": "/models/galaxy/surface/razorcrest.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-rebelpilot": {
+    "title": "Star Wars X-wing Rebel Flight Suit (rigged)",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-x-wing-rebel-flight-suit-rigged-efa36772d0984634ac6ed8a0e95f8d14",
+    "where": "galaxy-surface",
+    "as": "the Rebel pilots",
+    "file": "/models/galaxy/surface/rebelpilot.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-rebeltech": {
+    "title": "Star Wars Rebel Technician (rigged)",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-rebel-technician-rigged-a0d4d80dad1e43d6b4ab1d78e79b2898",
+    "where": "galaxy-surface",
+    "as": "the Rebel technicians",
+    "file": "/models/galaxy/surface/rebeltech.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-ronto": {
+    "title": "Ronto Star Wars",
+    "author": "michael50",
+    "authorUrl": "https://sketchfab.com/michael50",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/ronto-star-wars-abf77799b3334497a320cda4380c9741",
+    "where": "galaxy-surface",
+    "as": "the rontos",
+    "file": "/models/galaxy/surface/ronto.glb",
     "also": [
       "galaxy"
     ]
@@ -2087,33 +2553,50 @@
       "galaxy"
     ]
   },
+  "surface-sandtrooper": {
+    "title": "Battlefront 2 Remaster: imp_inf_sandtrooper1",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
+    "where": "galaxy-surface",
+    "as": "the sandtroopers",
+    "file": "/models/galaxy/surface/sandtrooper.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
+  },
   "surface-scouttrooper": {
-    "title": "Scout Trooper",
-    "author": "malin.sandred",
-    "authorUrl": "https://sketchfab.com/malin.sandred",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/scout-trooper-bdcf732e6f374b6d87b02cd023991aae",
+    "title": "Battlefront 2 Remaster: imp_inf_scout",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
     "where": "galaxy-surface",
     "as": "the scout troopers",
     "file": "/models/galaxy/surface/scouttrooper.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-shoretrooper": {
-    "title": "Shore trooper || Rogue One: A Star Wars Story",
-    "author": "RC-KOA",
-    "authorUrl": "https://sketchfab.com/RC-Koa",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/shore-trooper-rogue-one-a-star-wars-story-67611b62211648b7805359ab148c949a",
+    "title": "Battlefront 2 Remaster: imp_inf_shoretrooper",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
     "where": "galaxy-surface",
     "as": "the shoretroopers",
     "file": "/models/galaxy/surface/shoretrooper.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-snowspeeder": {
     "title": "SnowSpeeder",
@@ -2128,6 +2611,21 @@
     "also": [
       "galaxy"
     ]
+  },
+  "surface-snowtrooper": {
+    "title": "Battlefront 2 Remaster: imp_inf_snowtrooper",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
+    "where": "galaxy-surface",
+    "as": "the snowtroopers",
+    "file": "/models/galaxy/surface/snowtrooper.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-solarsailer": {
     "title": "Dooku's Solar Saier",
@@ -2199,6 +2697,20 @@
       "galaxy"
     ]
   },
+  "surface-speedertruck": {
+    "title": "Star Wars A-A5 heavy speeder truck",
+    "author": "LarsH.",
+    "authorUrl": "https://sketchfab.com/LarsH.",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-a-a5-heavy-speeder-truck-a04c9541663044eb97ce648a385e612c",
+    "where": "galaxy-surface",
+    "as": "the speeder trucks",
+    "file": "/models/galaxy/surface/speedertruck.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-stall": {
     "title": "Tattoine Buildings Kitbash",
     "author": "chuckcg",
@@ -2228,32 +2740,48 @@
     ]
   },
   "surface-stormtrooper": {
-    "title": "Stormtrooper Walk",
-    "author": "LostBoyz2078",
-    "authorUrl": "https://sketchfab.com/LostModels2025",
-    "license": "CC-BY-NC-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
-    "source": "https://sketchfab.com/3d-models/stormtrooper-walk-dc7237f92c824cd78abc0f5bb4cb6290",
+    "title": "Battlefront 2 Remaster: imp_inf_stormtrooper",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
     "where": "galaxy-surface",
     "as": "the stormtroopers",
     "file": "/models/galaxy/surface/stormtrooper.glb",
     "also": [
       "galaxy"
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-sullustan": {
+    "title": "Sullustan Star Wars PNJ",
+    "author": "michael50",
+    "authorUrl": "https://sketchfab.com/michael50",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/sullustan-star-wars-pnj-0fae75387d2c4396858d568b9fbb19ab",
+    "where": "galaxy-surface",
+    "as": "the Sullustans",
+    "file": "/models/galaxy/surface/sullustan.glb",
+    "also": [
+      "galaxy"
     ]
   },
   "surface-superdroid": {
-    "title": "Super Battle Droid B2 Animated (Training)",
-    "author": "Suvalien",
-    "authorUrl": "https://sketchfab.com/Suvalien",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/super-battle-droid-b2-animated-training-a0f947934672450bad323d6438499812",
+    "title": "Battlefront 2 Remaster: cis_inf_sbdroid",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
     "where": "galaxy-surface",
     "as": "the super battle droids",
     "file": "/models/galaxy/surface/superdroid.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-tipoca": {
     "title": "Kamino Platform Simple 1",
@@ -2339,6 +2867,20 @@
       "galaxy"
     ]
   },
+  "surface-yavinramp": {
+    "title": "Star Wars Yavin Service Ramp",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-yavin-service-ramp-5e0619a6b994442983dd26db2c8448dc",
+    "where": "galaxy-surface",
+    "as": "the hangar service ramps",
+    "file": "/models/galaxy/surface/yavinramp.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-yavinspeeder": {
     "title": "Star Wars Yavin 4 Transport Speeder",
     "author": "tegnemaskin",
@@ -2377,6 +2919,20 @@
     "where": "galaxy-surface",
     "as": "Yoda",
     "file": "/models/galaxy/surface/yoda.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-ywing": {
+    "title": "Star Wars: Y- Wing",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-y-wing-b8bb6476b1b14ba48987c7efc7b7087a",
+    "where": "galaxy-surface",
+    "as": "the Y-wings",
+    "file": "/models/galaxy/surface/ywing.glb",
     "also": [
       "galaxy"
     ]

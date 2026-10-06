@@ -149,6 +149,33 @@ export async function modelFigure(kind) {
   };
 }
 
+// one of props/*.js's, walking: its update(t, dt, move) swings its legs
+function propFigure(kind, spec, kit) {
+  const make = PROPS[kind];
+  if (!make || !kit) return null;
+  const made = make(kit, spec.opts ?? {});
+  let t = Math.random() * 10;
+  const box = new THREE.Box3().setFromObject(made.object);
+  return {
+    model: made.object,
+    tall: box.max.y - box.min.y,
+    update(dt, move) {
+      t += dt;
+      made.update?.(t, dt, move);
+    },
+    dispose() {},
+  };
+}
+// A figure for any kind there is one of, by name: a crew model (crew.js), a
+// catalogue model walking with its clips or a bob (modelFigure), a built
+// figure (figures.js) or a humanoid prop (props/*.js, given the kit); null
+// for a kind that's none of those. `spec.model: false` builds it even where
+// there's a model.
+export async function anyFigure(kind, spec = {}, kit = null) {
+  if (spec.model === false) return buildFigure(kind) ?? propFigure(kind, spec, kit);
+  return (await crewFigure(kind)) ?? (await modelFigure(kind)) ?? buildFigure(kind) ?? propFigure(kind, spec, kit);
+}
+
 // How far off the fog has someone all but gone (97% fog, FogExp2's
 // 1 − e^−(density·d)²): past it a person isn't drawn or moved about in.
 export const fogCutoff = (density) => (density > 0 ? Math.sqrt(-Math.log(0.03)) / density : Infinity);
@@ -167,27 +194,7 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
   const actors = [];
   let dead = false;
 
-  // one of props/*.js's, walking: its update(t, dt, move) swings its legs
-  const propFigure = (kind, spec) => {
-    const make = PROPS[kind];
-    if (!make || !kit) return null;
-    const made = make(kit, spec.opts ?? {});
-    let t = Math.random() * 10;
-    const box = new THREE.Box3().setFromObject(made.object);
-    return {
-      model: made.object,
-      tall: box.max.y - box.min.y,
-      update(dt, move) {
-        t += dt;
-        made.update?.(t, dt, move);
-      },
-      dispose() {},
-    };
-  };
-  const figureOf = async (kind, spec) => {
-    if (spec.model === false) return buildFigure(kind) ?? propFigure(kind, spec);
-    return (await crewFigure(kind)) ?? (await modelFigure(kind)) ?? buildFigure(kind) ?? propFigure(kind, spec);
-  };
+  const figureOf = (kind, spec) => anyFigure(kind, spec, kit);
 
   for (const spec of life) {
     const n = spec.n ?? 1;
@@ -279,6 +286,15 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
     hide(id, hidden = true) {
       for (const a of actors)
         if (a.spec.id === id) {
+          a.hidden = hidden;
+          a.holder.visible = !hidden && !a.culled && Boolean(a.fig);
+        }
+    },
+    // everyone of some kinds gone for now (the troopers standing about a
+    // world while a battle's fought over it), or back
+    hideKinds(kinds, hidden = true) {
+      for (const a of actors)
+        if (kinds.includes(a.spec.kind)) {
           a.hidden = hidden;
           a.holder.visible = !hidden && !a.culled && Boolean(a.fig);
         }

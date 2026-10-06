@@ -1,14 +1,16 @@
 // The director: now and then, while you fly, something happens. Pure (no
 // three.js), so it's tested in Node; the scene plays each one out.
 //
-// What can happen depends on whose universe you fly in (Walt and Jesse's RV
-// is in both: it gets the hunts, distress calls, convoys and comets):
+// What can happen depends on whose universe you fly in (the crew's side,
+// sides.js: each event `needs` something of the side, or nothing):
 // - hunt: a pack of hunters comes after you (the Empire for Luke and Han,
-//   the Galactic Federation for Rick)
+//   the Galactic Federation for Rick, the DEA or the cartel for Walt)
 // - destroyer (Star Wars): a Star Destroyer drops out of hyperspace nearby
 //   and launches its TIE fighters at you
 // - council (Rick and Morty): portals open round you and the Council of
 //   Ricks comes through, in their own cruisers, for their Rick
+// - roadblock (Breaking Bad): the DEA drops in across your bows and holds
+//   you there
 // - distress: someone ordinary under attack (a Rebel transport and TIEs, a
 //   family saucer and Gromflomites), yours to save or not
 // - convoy: a line of freighters under escort goes by
@@ -23,29 +25,34 @@
 // - meteors: a stream of rocks crosses your path (meteors.js): shoot them
 //   or steer round them
 // - bounty: a bounty hunter comes for you alone, tough and quick (Boba Fett
-//   in Slave I, or Phoenixperson: hunterRules.js)
+//   in Slave I, Phoenixperson, or the Cousins: sides.js)
 // Nothing happens in the first while, or while something else is going on;
 // then one comes along every minute or two, sooner the more trouble you've
 // been making (heat: what you've shot down lately), and never the same
 // thing twice running. While your shields are low (`calm`), nobody new comes
 // after you: what happens then is one of the sights.
 //
-// createDirector({ rand }) → { update(dt, { family, heat, busy, travelling, calm }) → event id or null, soon(id) }
+// createDirector({ rand }) → { update(dt, { side, heat, busy, travelling, calm }) → event id or null, soon(id),
+//   foretell(side) → { id, in } | null (what's next, and in how long: then that's what comes) }
+// `side` is sides.js's (`has(need)` says what it can bring), or null
 
 export const EVENTS = {
-  hunt: { families: ['starwars', 'rickmorty', 'both'], weight: 3, heat: 1 },
-  destroyer: { families: ['starwars'], weight: 1.3, heat: 0.6 },
-  council: { families: ['rickmorty'], weight: 1.5, heat: 0.6 },
-  distress: { families: ['starwars', 'rickmorty', 'both'], weight: 1.2, heat: 0 },
-  convoy: { families: ['starwars', 'rickmorty', 'both'], weight: 1.3, heat: 0 },
-  comet: { families: ['starwars', 'rickmorty', 'both'], weight: 0.9, heat: 0 },
-  supernova: { families: ['starwars', 'rickmorty', 'both'], weight: 0.8, heat: 0 },
-  flare: { families: ['starwars', 'rickmorty', 'both'], weight: 0.9, heat: 0 },
-  rift: { families: ['starwars', 'rickmorty', 'both'], weight: 1.1, heat: 0 },
-  leviathan: { families: ['starwars', 'rickmorty', 'both'], weight: 1.0, heat: 0 },
-  meteors: { families: ['starwars', 'rickmorty', 'both'], weight: 1.2, heat: 0 },
-  bounty: { families: ['starwars', 'rickmorty', 'both'], weight: 1.0, heat: 0.8 },
+  hunt: { needs: 'hunt', weight: 3, heat: 1 },
+  destroyer: { needs: 'destroyer', weight: 1.3, heat: 0.6 },
+  council: { needs: 'council', weight: 1.5, heat: 0.6 },
+  roadblock: { needs: 'roadblock', weight: 1.4, heat: 0.6 },
+  distress: { needs: 'pirates', weight: 1.2, heat: 0 },
+  convoy: { needs: null, weight: 1.3, heat: 0 },
+  comet: { needs: null, weight: 0.9, heat: 0 },
+  supernova: { needs: null, weight: 0.8, heat: 0 },
+  flare: { needs: null, weight: 0.9, heat: 0 },
+  rift: { needs: null, weight: 1.1, heat: 0 },
+  leviathan: { needs: 'leviathan', weight: 1.0, heat: 0 },
+  meteors: { needs: null, weight: 1.2, heat: 0 },
+  bounty: { needs: 'bounty', weight: 1.0, heat: 0.8 },
 };
+// whether a side can have an event
+export const canHave = (side, e) => Boolean(side) && (e.needs === null || side.has(e.needs));
 export const PACE = { first: [30, 50], gap: [45, 85] }; // seconds before the first, and between the rest
 
 export function createDirector({ rand = Math.random } = {}) {
@@ -54,23 +61,35 @@ export function createDirector({ rand = Math.random } = {}) {
   let nextAt = between(PACE.first);
   let last = null;
   let forced = null;
+  let told = null; // what's been foretold (an informant's word: foretell)
+  // the next event, picked by weight (more hunts the more trouble you've
+  // made, and on the way somewhere), never the last one again
+  const choose = (side, { heat = 0, travelling = false, calm = false } = {}) => {
+    const choices = Object.entries(EVENTS).filter(([id, e]) => canHave(side, e) && id !== last && !(calm && e.heat > 0));
+    if (!choices.length) return null;
+    const weight = (e) => e.weight * (1 + e.heat * Math.min(heat, 6) * 0.5) * (travelling && e.heat > 0 ? 2 : 1);
+    let r = rand() * choices.reduce((s, [, e]) => s + weight(e), 0);
+    for (const [k, e] of choices) if ((r -= weight(e)) <= 0) return k;
+    return choices[choices.length - 1][0];
+  };
   return {
-    // family: 'starwars', 'rickmorty', 'both' or null (no ship: nothing happens);
+    // side: the crew's (no ship: null, and nothing happens);
     // heat: 0 and up; busy: something's already going on (hunters after
     // you, a crash playing out), so not now; travelling: out in the open at
     // speed, between places, where things come sooner and more of them are
     // hunters (an ambush on the way); calm: your shields are low, so
     // nothing that comes after you (the hunts wait till they're back)
-    update(dt, { family, heat = 0, busy = false, travelling = false, calm = false }) {
-      if (!family) return null;
+    update(dt, { side, heat = 0, busy = false, travelling = false, calm = false }) {
+      if (!side) return null;
       clock += dt;
       if (busy) {
         nextAt = Math.max(nextAt, clock + 12); // and a breather after it
         return null;
       }
-      if (forced && EVENTS[forced]?.families.includes(family)) {
+      if (forced && EVENTS[forced] && canHave(side, EVENTS[forced])) {
         const id = forced;
         forced = null;
+        told = null;
         last = id;
         nextAt = clock + between(PACE.gap);
         return id;
@@ -78,17 +97,10 @@ export function createDirector({ rand = Math.random } = {}) {
       // travelling, the wait runs down faster
       if (travelling) nextAt -= dt * 1.2;
       if (clock < nextAt) return null;
-      const choices = Object.entries(EVENTS).filter(([id, e]) => e.families.includes(family) && id !== last && !(calm && e.heat > 0));
-      if (!choices.length) return null;
-      const weight = (e) => e.weight * (1 + e.heat * Math.min(heat, 6) * 0.5) * (travelling && e.heat > 0 ? 2 : 1);
-      let r = rand() * choices.reduce((s, [, e]) => s + weight(e), 0);
-      let id = choices[choices.length - 1][0];
-      for (const [k, e] of choices) {
-        if ((r -= weight(e)) <= 0) {
-          id = k;
-          break;
-        }
-      }
+      // (one foretold comes as it was told, if it still can)
+      const id = told && canHave(side, EVENTS[told]) && !(calm && EVENTS[told].heat > 0) ? told : choose(side, { heat, travelling, calm });
+      told = null;
+      if (!id) return null;
       last = id;
       nextAt = clock + (between(PACE.gap) / (1 + Math.min(heat, 6) * 0.25)) * (travelling ? 0.45 : 1);
       return id;
@@ -96,6 +108,13 @@ export function createDirector({ rand = Math.random } = {}) {
     // bring an event on next (for checking from a browser)
     soon(id) {
       forced = id;
+    },
+    // what comes next, and in how many seconds (an informant tells you):
+    // picked now, so it's what comes; null without a side
+    foretell(side, opts = {}) {
+      if (!side) return null;
+      told ??= forced ?? choose(side, opts);
+      return told ? { id: told, in: Math.max(0, nextAt - clock) } : null;
     },
   };
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { TROOPS } from './foot';
 import { CREWS, crewById, linesFor, parseShip } from './crews';
 import { ORDER } from './layout';
 
@@ -45,10 +46,9 @@ describe('the crews', () => {
   });
 
   it('have a word for being hunted, the director’s events and every wonder out in deep space', async () => {
-    const { FACTIONS } = await import('./hunters');
-    const { EVENTS } = await import('./director');
+    const { EVENTS, canHave } = await import('./director');
     const { WONDERS } = await import('./deep');
-    const FAMILY = { cruiser: 'rickmorty', xwing: 'starwars', falcon: 'starwars', rv: 'both' };
+    const { sideFor } = await import('./sides');
     const said = (exchange, crew, what) => {
       expect(exchange?.length, `${crew.id}: ${what}`).toBeGreaterThan(0);
       for (const [who, text] of exchange) {
@@ -57,28 +57,40 @@ describe('the crews', () => {
       }
     };
     for (const crew of CREWS) {
-      const family = FAMILY[crew.id];
-      // hunters after you (not the pirates in a distress call: that's the event's line)
-      // (the RV, in both universes, is hunted by the Empire or the Federation)
-      for (const [id, f] of Object.entries(FACTIONS)) if ((f.family === family || (family === 'both' && id !== 'council')) && id !== 'bugs') said(linesFor(crew, 'hunted', id), crew, `hunted ${id}`);
-      if (family !== 'rickmorty') said(linesFor(crew, 'hunted', 'ace'), crew, 'hunted ace');
+      const side = sideFor(crew.id);
+      // hunters after you: every faction of the crew's side (not the pirates in a distress call: that's the event's line)
+      for (const [id, f] of Object.entries(side.factions)) if (f.role !== 'pirates') said(linesFor(crew, 'hunted', id), crew, `hunted ${id}`);
+      if (Object.values(side.factions).some((f) => f.ace)) said(linesFor(crew, 'hunted', 'ace'), crew, 'hunted ace');
       for (const event of ['hit', 'shields', 'destroyed', 'escaped', 'cleared', 'interdicted']) said(linesFor(crew, event), crew, event);
       for (const into of ['star', 'giant', 'citadel']) said(linesFor(crew, 'crashInto', into), crew, `crashInto ${into}`);
-      // the director's events (the Council's and the bounty hunters' arrivals are their hunted lines), rescuing someone, going out into deep space
-      for (const [id, e] of Object.entries(EVENTS)) if (e.families.includes(family) && id !== 'hunt' && id !== 'council' && id !== 'bounty') said(linesFor(crew, 'event', id), crew, `event ${id}`);
+      // the director's events the side can have (the Council's and the bounty hunters' arrivals are their hunted lines), rescuing someone, going out into deep space
+      for (const [id, e] of Object.entries(EVENTS)) if (canHave(side, e) && id !== 'hunt' && id !== 'council' && id !== 'bounty') said(linesFor(crew, 'event', id), crew, `event ${id}`);
       said(linesFor(crew, 'event', 'rescued'), crew, 'rescued');
       said(linesFor(crew, 'event', 'deep'), crew, 'deep');
+      // the friends who come in a long fight: each of the side's allies
+      for (const ally of Object.keys(side.allies)) said(linesFor(crew, 'event', 'wingmen', ally), crew, `wingmen ${ally}`);
+      // (each its own, not one line for whoever comes)
+      const hellos = Object.keys(side.allies).map((ally) => linesFor(crew, 'event', 'wingmen', ally));
+      expect(new Set(hellos).size, `${crew.id} wingmen`).toBe(hellos.length);
+      // each side's aces, by name where a side has more than one
+      const aces = Object.values(side.factions).flatMap((f) => (f.ace ? [f.ace] : []));
+      if (aces.length > 1) expect(new Set(aces.map((k) => linesFor(crew, 'hunted', k) ?? linesFor(crew, 'hunted', 'ace'))).size, `${crew.id} aces`).toBe(aces.length);
+      said(linesFor(crew, 'event', 'wingmenGone'), crew, 'wingmenGone');
+      said(linesFor(crew, 'event', 'skirmish', side.id), crew, 'skirmish');
       // the nav map's drives: a jump to lightspeed, and super speed
       said(linesFor(crew, 'event', 'hyperspeed'), crew, 'hyperspeed');
       said(linesFor(crew, 'event', 'overdrive'), crew, 'overdrive');
+      // a rock hit at super speed (rockHits.js)
+      said(linesFor(crew, 'event', 'rock'), crew, 'rock');
       for (const w of WONDERS) said(linesFor(crew, 'wonder', w.id), crew, `wonder ${w.id}`);
-      // the bounty hunters shot down, in flight (Slave I's line is the flyby's; Phoenixperson's is his own)
-      if (family !== 'rickmorty') expect(linesFor(crew, 'kill', 'slave1'), `${crew.id} kill slave1`).not.toBe(linesFor(crew, 'kill', 'any'));
-      if (family !== 'starwars') expect(linesFor(crew, 'kill', 'phoenixperson'), `${crew.id} kill phoenixperson`).not.toBe(linesFor(crew, 'kill', 'any'));
-      // through a rift, a shot into a leviathan, and (the RV meets both) each kind of leviathan
+      // the bounty hunters shot down, in flight (Slave I's line is the flyby's; Phoenixperson's and the Cousins' are their own)
+      for (const [, f] of Object.entries(side.factions)) if (f.role === 'bounty') for (const [k] of f.kinds) expect(linesFor(crew, 'kill', k), `${crew.id} kill ${k}`).not.toBe(linesFor(crew, 'kill', 'any'));
+      // through a rift, a shot into a leviathan, and the side's own leviathan
       said(linesFor(crew, 'event', 'rifted'), crew, 'rifted');
       said(linesFor(crew, 'event', 'leviathanHit'), crew, 'leviathanHit');
-      if (family === 'both') for (const sub of ['purrgil', 'cromulon']) said(linesFor(crew, 'event', 'leviathan', sub), crew, `leviathan ${sub}`);
+      said(linesFor(crew, 'event', 'leviathan', side.leviathan), crew, `leviathan ${side.leviathan}`);
+      // a hunter with a spotlight on you (hunterRules.js's 'spotlight' trait)
+      if (Object.values(side.kinds).some((k) => k.trait === 'spotlight')) said(linesFor(crew, 'event', 'spotlit'), crew, 'spotlit');
     }
   });
 
@@ -93,11 +105,16 @@ describe('the crews', () => {
 describe('the crews on foot', () => {
   it('have a word for each moment out of the ship, said by their own crew', async () => {
     const { PARTY } = await import('./footScene');
-    const { TROOPS } = await import('./foot');
+    const { sideFor } = await import('./sides');
     for (const crew of CREWS) {
       const all = [
         ...['land', 'out', 'squad', 'hurt', 'down', 'up', 'cleared', 'far', 'nowhere', 'in'].map((id) => linesFor(crew, 'foot', id)),
-        ...Object.keys(TROOPS).map((kind) => linesFor(crew, 'foot', 'kill', kind)),
+        // (each troop of the crew's side has its own line, not the catch-all)
+        ...Object.keys(sideFor(crew.id).troops).map((kind) => crew.foot.kill[kind]),
+        // (a squad of Evil Morty's guard isn't a squad of bugs)
+        ...(sideFor(crew.id).troops.mortyguard ? [linesFor(crew, 'foot', 'squad', 'mortyguard') !== linesFor(crew, 'foot', 'squad', 'gromflomite') ? crew.foot.squad.mortyguard : null] : []),
+        // (a probe droid that's called a squad in, where the side has one)
+        ...(Object.keys(sideFor(crew.id).troops).some((k) => TROOPS[k].calls) ? [crew.foot.called] : []),
         ...PARTY[crew.id].map((p) => linesFor(crew, 'foot', 'swap', p.id)),
         // another pilot's crew down too, and anyone's double from another dimension
         linesFor(crew, 'foot', 'friend'),
@@ -110,6 +127,22 @@ describe('the crews on foot', () => {
         for (const [who, text] of exchange) {
           expect(crew.speakers[who], `${crew.id}: ${who}`).toBeTruthy();
           expect(text.length).toBeGreaterThan(2);
+        }
+      }
+    }
+  });
+
+  it('have a word for each character of their side who comes by, and from them', async () => {
+    const { sideFor } = await import('./sides');
+    const { visitorsOf } = await import('./npcs/index');
+    for (const crew of CREWS) {
+      for (const c of visitorsOf(sideFor(crew.id).id)) {
+        for (const key of ['seen', 'hello', 'hit', 'leaving']) expect(linesFor(crew, 'npc', c.id, key), `${crew.id} ${c.id} ${key}`).toBeTruthy();
+        // a merchant names the part (Comms.jsx fills it in); an informant has a word for whatever's coming
+        if (c.brain === 'merchant') expect(linesFor(crew, 'npc', c.id, 'offer')?.some(([, text]) => text.includes('{part}')), `${crew.id} ${c.id} offer`).toBe(true);
+        if (c.brain === 'informant') {
+          expect(linesFor(crew, 'npc', c.id, 'tip', 'nothing-in-particular'), `${crew.id} ${c.id} tip`).toBeTruthy();
+          expect(linesFor(crew, 'npc', c.id, 'tip', 'hunt'), `${crew.id} ${c.id} tip hunt`).not.toBe(linesFor(crew, 'npc', c.id, 'tip', 'nothing-in-particular'));
         }
       }
     }

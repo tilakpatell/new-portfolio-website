@@ -13,7 +13,9 @@ import MODELS from '../data/modelCredits.json';
 // the photo credits; or with `line`, as one sentence for a page with no room
 // for a list. `only`: just the ones in these files (what's on screen now).
 
-const licence = (m) => m.license.replace(/^CC-/, 'CC ').replace(/-(\d)/, ' $1'); // 'CC-BY-NC-SA-4.0' → 'CC BY-NC-SA 4.0'
+const licence = (m) => (m.license === 'permission' ? 'used with permission' : m.license.replace(/^CC-/, 'CC ').replace(/-(\d)/, ' $1')); // 'CC-BY-NC-SA-4.0' → 'CC BY-NC-SA 4.0'
+// where they came from: Sketchfab, or (a Battlefront II remaster model, its author's permission) the mod
+const from = (m) => (m.license === 'permission' ? 'from the Battlefront 2 Remaster' : 'from Sketchfab');
 const upper = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const out = { target: '_blank', rel: 'noopener noreferrer' };
 
@@ -47,14 +49,14 @@ export default memo(function ModelCredits({ where, only = null, line = false, cl
         ))}
         {shared ? (
           <>
-            , from Sketchfab (
+            , {from(shared)} (
             <a href={shared.licenseUrl} {...out}>
               {licence(shared)}
             </a>
             ), reduced for the web.
           </>
         ) : (
-          ', from Sketchfab, reduced for the web.'
+          ', reduced for the web.'
         )}
       </p>
     );
@@ -76,7 +78,7 @@ export default memo(function ModelCredits({ where, only = null, line = false, cl
               {m.author}
             </a>
             ,{' '}
-            <a href={m.licenseUrl} {...out}>
+            <a href={m.licenseUrl} {...out} title={m.permission}>
               {licence(m)}
             </a>
             , reduced for the web.

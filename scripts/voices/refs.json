@@ -41,7 +41,5 @@
   "natasha": {"engine": "qwen"},
   "hulk": {"engine": "qwen"},
   "soundwave": {"engine": "qwen"},
-  "grimlock": {"engine": "qwen"},
-  "starscream": {"engine": "qwen"},
-  "jazz": {"engine": "qwen"}
+  "grimlock": {"engine": "qwen"}
 }
