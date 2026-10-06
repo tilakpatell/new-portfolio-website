@@ -326,14 +326,6 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     return true;
   };
 
-  // every shader compiled before the first frame, an area at a time (each
-  // with its own lights, which pick which shaders the materials need)
-  for (const id of Object.keys(areas)) {
-    showArea(id);
-    await stage.precompile();
-  }
-  shown = null;
-
   // ── the street's floor light, baked when it's first shown (after Bruno
   // Simon's folio: lib/three/groundwork): soft shadows and sky occlusion on
   // the lawns, the walks and the road, a bounce off the grass, a soft blob
@@ -356,6 +348,14 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
         clip: true,
       })
     : null;
+
+  // every shader compiled before the first frame, an area at a time (each
+  // with its own lights, which pick which shaders the materials need)
+  for (const id of Object.keys(areas)) {
+    showArea(id);
+    await stage.precompile();
+  }
+  shown = null;
 
   // ── each frame ──
   const pace = createPace();
