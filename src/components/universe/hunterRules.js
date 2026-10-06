@@ -873,7 +873,8 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
       targets.length = 0;
       for (const h of live) {
         if (!h.alive || h.pack.gone) continue;
-        h.target.threat = h.mode !== 'set' && !(h.pack.prey && !h.pack.angry) ? 1 : 0;
+        h.target.prey = Boolean(h.pack.prey && !h.pack.angry); // (after someone else, not you)
+        h.target.threat = h.mode !== 'set' && !h.target.prey ? 1 : 0;
         targets.push(h.target);
       }
       return targets;

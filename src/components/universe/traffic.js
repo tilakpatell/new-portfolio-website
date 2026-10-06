@@ -136,6 +136,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
   const live = []; // groups in flight
   let crew = null;
   let clock = 0;
+  let nextGroup = 1; // each group's own number (for checking)
   let nextAt = 1.5;
   let nextFlyby = 14;
   let forced = null; // a kind asked for by soon()
@@ -220,7 +221,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
       return { kind: k, size: TYPES[k].size, model, offset, peelTo, roll, phase: rand() * 10, alive: true };
     });
     const len = laneLength(pts);
-    const g = { kind, type, members, pts, len, runIn, runOut, total: len + runIn + runOut, t: 0, flyby, said: false, speed: speed ?? type.speed, event, dock, fadeIn, fadeOut, peel, flee: 0, weave: 0, k: 0, in: dirIn, out: dirOut };
+    const g = { id: nextGroup++, kind, type, members, pts, len, runIn, runOut, total: len + runIn + runOut, t: 0, flyby, said: false, speed: speed ?? type.speed, event, dock, fadeIn, fadeOut, peel, flee: 0, weave: 0, k: 0, in: dirIn, out: dirOut };
     live.push(g);
     return g;
   }
@@ -442,7 +443,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
 
     // what's flying, for checking from a browser
     get groups() {
-      return live.map((g) => ({ kind: g.kind, event: g.event, flyby: g.flyby, dock: g.dock, fade: g.fadeIn || g.fadeOut, peel: g.peel, flee: +g.flee.toFixed(2), t: +g.t.toFixed(3), alive: g.members.filter((m) => m.alive).length, offsets: g.members.map((m) => m.offset), lead: g.members.find((m) => m.alive)?.model.group.position.toArray().map((v) => +v.toFixed(2)) }));
+      return live.map((g) => ({ id: g.id, kind: g.kind, event: g.event, flyby: g.flyby, dock: g.dock, fade: g.fadeIn || g.fadeOut, peel: g.peel, flee: +g.flee.toFixed(2), t: +g.t.toFixed(3), alive: g.members.filter((m) => m.alive).length, offsets: g.members.map((m) => m.offset), peels: g.members.map((m) => m.peelTo), ships: g.members.filter((m) => m.alive).map((m) => m.model.group.position.toArray()), lead: g.members.find((m) => m.alive)?.model.group.position.toArray().map((v) => +v.toFixed(2)) }));
     },
 
     get count() {

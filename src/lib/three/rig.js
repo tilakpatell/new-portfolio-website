@@ -47,24 +47,27 @@ const plain = (n) =>
     .replace(/_\d+$/, '')
     .toLowerCase();
 
-// what each part is called, rig by rig: Meshy and Mixamo, Unreal, Character Creator
+// what each part is called, rig by rig: Meshy and Mixamo, Unreal, Character
+// Creator, High Moon Studios' Transformers (War for Cybertron, Fall of
+// Cybertron: L_Arm02_Shoulder_XB and the like) and the Transformers: Prime
+// game's (Humerus.l, Thigh.l)
 const ROLES = {
-  armL: ['leftarm', 'upperarm_l', 'l_upperarm'],
-  foreL: ['leftforearm', 'lowerarm_l', 'l_forearm'],
-  handL: ['lefthand', 'hand_l', 'l_hand'],
-  armR: ['rightarm', 'upperarm_r', 'r_upperarm'],
-  foreR: ['rightforearm', 'lowerarm_r', 'r_forearm'],
-  handR: ['righthand', 'hand_r', 'r_hand'],
-  thighL: ['leftupleg', 'thigh_l', 'l_thigh'],
-  calfL: ['leftleg', 'calf_l', 'l_calf'],
-  footL: ['leftfoot', 'foot_l', 'l_foot'],
-  toeL: ['lefttoebase', 'ball_l', 'l_toebase'],
-  thighR: ['rightupleg', 'thigh_r', 'r_thigh'],
-  calfR: ['rightleg', 'calf_r', 'r_calf'],
-  footR: ['rightfoot', 'foot_r', 'r_foot'],
-  toeR: ['righttoebase', 'ball_r', 'r_toebase'],
-  head: ['head'],
-  hips: ['hips', 'hip', 'pelvis'], // (Character Creator's hip holds both the spine and the pelvis)
+  armL: ['leftarm', 'upperarm_l', 'l_upperarm', 'l_arm02_shoulder_xb', 'humerus.l', 'bicep.l'],
+  foreL: ['leftforearm', 'lowerarm_l', 'l_forearm', 'l_arm03_elbow_xb', 'hand.l', 'arm.l'],
+  handL: ['lefthand', 'hand_l', 'l_hand', 'l_arm04_hand_xb', 'palm.l'],
+  armR: ['rightarm', 'upperarm_r', 'r_upperarm', 'r_arm02_shoulder_xb', 'humerus.r', 'bicep.r'],
+  foreR: ['rightforearm', 'lowerarm_r', 'r_forearm', 'r_arm03_elbow_xb', 'hand.r', 'arm.r'],
+  handR: ['righthand', 'hand_r', 'r_hand', 'r_arm04_hand_xb', 'palm.r'],
+  thighL: ['leftupleg', 'thigh_l', 'l_thigh', 'l_leg01_thigh_xb', 'thigh.l'],
+  calfL: ['leftleg', 'calf_l', 'l_calf', 'l_leg02_knee_xb', 'leg.l'],
+  footL: ['leftfoot', 'foot_l', 'l_foot', 'l_leg03_ankle_xb', 'foot.l'],
+  toeL: ['lefttoebase', 'ball_l', 'l_toebase', 'l_leg04_toes_xl2'],
+  thighR: ['rightupleg', 'thigh_r', 'r_thigh', 'r_leg01_thigh_xb', 'thigh.r'],
+  calfR: ['rightleg', 'calf_r', 'r_calf', 'r_leg02_knee_xb', 'leg.r'],
+  footR: ['rightfoot', 'foot_r', 'r_foot', 'r_leg03_ankle_xb', 'foot.r'],
+  toeR: ['righttoebase', 'ball_r', 'r_toebase', 'r_leg04_toes_xl2'],
+  head: ['head', 'c_spine04_head_xb'],
+  hips: ['hips', 'hip', 'pelvis', 'c_spine00_hips_xb', 'hipcon'], // (Character Creator's hip holds both the spine and the pelvis)
 };
 
 // the limbs, each a bone and the one it points at, posed in this order

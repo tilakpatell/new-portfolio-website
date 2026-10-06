@@ -20,7 +20,9 @@
 //               'spot' (left out) turns its front (+z) to the ship, false
 //               leaves it as yaw has it from the ship's heading; strip:
 //               [hw, hd], a long flat thing's half length and width (a
-//               road), kept clear of the scatter but walked over
+//               road), kept clear of the scatter but walked over; around:
+//               laid out round the landing spot itself (a skyline: its
+//               builder keeps its parts out past the things)
 //   scatter     [{ kind, n, from, to, scale: [a, b], opts?, solid? }]: many
 //               of a kind, drawn instanced, `from` to `to` metres out, clear
 //               of the things and the ship (solid: false to walk through)
@@ -143,6 +145,33 @@ export const LANDINGS = {
     sub: 'Indian classical music · dusk, and the lamps lit',
     ground: { style: 'tiles', colors: ['#d9b48a', '#c99d70', '#7a5a3c'] },
     sky: { zenith: '#1f2350', horizon: '#f2894a', sun: '#ffc27a' },
+    models: {
+      pavilion: { url: '/models/music/pavilion.glb', wide: 8 },
+      gaddi: { url: '/models/music/gaddi.glb', wide: 2.6 },
+      harmonium: { url: '/models/music/harmonium.glb', wide: 0.62 },
+      tabla: { url: '/models/music/tabla.glb', wide: 0.62 },
+      sitar: { url: '/models/music/sitar.glb', long: 1.22 },
+      tanpura: { url: '/models/music/tanpura.glb', tall: 1.4 },
+      lamp: { url: '/models/music/lamp.glb', tall: 1.25 },
+    },
+    things: [
+      { kind: 'pavilion', at: [0, 40], r: 6 },
+      { kind: 'recital', at: [0, 29], r: 1.6 },
+      { kind: 'lamp', at: [-7, 26], r: 0.4 },
+      { kind: 'lamp', at: [7, 26], r: 0.4 },
+      { kind: 'lamp', at: [-9, 40], r: 0.4 },
+      { kind: 'lamp', at: [9, 40], r: 0.4 },
+      { kind: 'fountain', at: [-32, 16], r: 3.8 },
+      { kind: 'screen', at: [36, 32], r: 10.5 },
+      { kind: 'screen', at: [-46, 40], r: 10.5 },
+      { kind: 'screen', at: [12, -46], r: 10.5 },
+    ],
+    scatter: [
+      { kind: 'tree', n: 12, from: 30, to: 100, scale: range(1) },
+      { kind: 'marigolds', n: 180, from: 5, to: 70, scale: range(1), solid: false },
+      { kind: 'petals', n: 260, from: 3, to: 40, scale: range(1), solid: false },
+      { kind: 'diyas', n: 70, from: 4, to: 45, scale: range(1), solid: false },
+    ],
   },
   transformers: {
     title: 'Cybertron',
@@ -236,21 +265,62 @@ export const LANDINGS = {
   },
   travel: {
     title: 'Earth',
-    sub: 'Travel · somewhere I’ve been',
+    sub: 'Travel · an airfield somewhere I’ve been',
     ground: { style: 'grass', colors: ['#4c7a34', '#76a04a', '#a39a7a'] },
     sky: { zenith: '#3c7fd6', horizon: '#d6e6f2', sun: '#fff6e2' },
+    models: {
+      plane: { url: '/models/sketchfab/earth-plane.glb', long: 36 },
+    },
+    things: [
+      { kind: 'airfield', at: [0, 46], r: 0, face: false, strip: [110, 16] },
+      { kind: 'signpost', at: [-14, 20], r: 0.6 },
+    ],
+    scatter: [
+      { kind: 'tree', n: 24, from: 26, to: 110, scale: range(1) },
+      { kind: 'flowers', n: 300, from: 3, to: 80, scale: range(1), solid: false },
+    ],
   },
   caribbean: {
     title: 'A Caribbean island',
     sub: 'Pirates of the Caribbean · ashore, the Pearl at anchor',
     ground: { style: 'sand', colors: ['#ecd9a6', '#dcc28a', '#b49a68'] },
     sky: { zenith: '#2a8ad8', horizon: '#d2f0f4', sun: '#fff8e0' },
+    models: {
+      ship: { url: '/games/caribbean/pearl.glb', long: 46 },
+      palm: { url: '/models/galaxy/surface/palm.glb', tall: 11 },
+      chest: { url: '/games/caribbean/chest.glb', wide: 1.1 },
+      skull: { url: '/games/caribbean/skull.glb', wide: 34 },
+    },
+    things: [
+      { kind: 'sea', at: [0, 109], r: 0, face: false, strip: [130, 75], opts: { shore: -75, deep: 150 } },
+      { kind: 'pearl', at: [-14, 82], r: 0, face: false, yaw: 1.2, solid: false },
+      { kind: 'skull', at: [50, 80], r: 0, solid: false },
+      { kind: 'rowboat', at: [-16, 26], r: 2.2, face: false, yaw: 0.3 },
+      { kind: 'chest', at: [18, 20], r: 0.8 },
+      { kind: 'cargo', at: [24, 14], r: 1.6 },
+      { kind: 'fire', at: [-24, 8], r: 1 },
+    ],
+    scatter: [
+      { kind: 'palm', n: 14, from: 24, to: 90, scale: range(1) },
+      { kind: 'shells', n: 120, from: 3, to: 34, scale: range(1), solid: false },
+    ],
   },
   invincible: {
     title: 'The Graysons’ city',
     sub: 'Invincible · after Omni-Man came through',
     ground: { style: 'asphalt', colors: ['#5d5e5c', '#6c6b68', '#c9b98a'] },
     sky: { zenith: '#3a5fa0', horizon: '#f0b07a', sun: '#ffd8a8' },
+    things: [
+      { kind: 'skyline', at: [0, 0], r: 0, face: false, around: true },
+      { kind: 'crater', at: [-8, 36], r: 11 },
+      { kind: 'wreck', at: [20, 24], r: 2.4, face: false, yaw: 0.7 },
+      { kind: 'wreck', at: [-26, 18], r: 2.4, face: false, yaw: 2.2, opts: { color: '#2f4f7a', side: true } },
+      { kind: 'wreck', at: [10, 48], r: 2.4, face: false, yaw: 1.4, opts: { color: '#c9c3b4' } },
+    ],
+    scatter: [
+      { kind: 'rubble', n: 160, from: 4, to: 60, scale: range(1.2), solid: false },
+      { kind: 'glass', n: 120, from: 3, to: 50, scale: range(1), solid: false },
+    ],
   },
 };
 

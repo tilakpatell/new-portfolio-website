@@ -48,8 +48,8 @@ Work from this session lands as pull requests, one concern each, and ticks its l
 | Cybertron | no (Roll out, Iacon) | thin | no | Iacon's rules into a tested file; Cybertron on foot |
 | Avengers HQ | yes, and swing | yes | holograms | ring 3 of the swing tour |
 | Albuquerque | drive | yes | ghost Azteks | phone cuts (canopy detail, vigas out of the shadow pass) |
-| Scranton | yes | partly (`world/story.js` untested) | no | ghosts; `story.test.js`; a new job |
-| C-137 and the Citadel | yes | yes | no | ghosts (a Rick from another dimension); Morty's walk paused in the air |
+| Scranton | yes | partly (`world/story.js` untested) | yes, as pale Jims (this session) | ghosts; `story.test.js`; a new job |
+| C-137 and the Citadel | yes | yes | yes, as Mortys and Ricks from other dimensions (this session) | ghosts (a Rick from another dimension); Morty's walk paused in the air |
 | Dot Matrix | yes | yes | no | ghosts in the four greens; a speedrun timer |
 | Earth | fly | yes | no | `day.webp`, `clouds.webp` 1.4 MB each; great-circle trails |
 | The Caribbean | sail | yes | no | ghost ships |

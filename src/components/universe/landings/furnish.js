@@ -34,6 +34,10 @@ const PLANETS = {
   gaming: () => import('./gaming.js'),
   marvel: () => import('./marvel.js'),
   office: () => import('./office.js'),
+  music: () => import('./music.js'),
+  travel: () => import('./travel.js'),
+  caribbean: () => import('./caribbean.js'),
+  invincible: () => import('./invincible.js'),
 };
 export const furnished = (id) => Boolean(PLANETS[id]);
 // (a thing that won't build is just missing; in development, say so)
