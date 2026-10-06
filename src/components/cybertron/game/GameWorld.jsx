@@ -314,7 +314,8 @@ function World({ gl, setGl }) {
       const snd = sounds.current;
       for (const e of events) {
         if (e.type === 'fire') snd?.blaster(true);
-        else if (e.type === 'enemyFire') snd?.blaster(false);
+        else if (e.type === 'enemyFire') e.heavy ? snd?.boom(false) : snd?.blaster(false);
+        else if (e.type === 'enemyShift') snd?.transform();
         else if (e.type === 'hit' || e.type === 'hitMe') snd?.hit();
         else if (e.type === 'kill') snd?.boom(e.boss);
         else if (e.type === 'transform') snd?.transform();
@@ -446,7 +447,7 @@ function World({ gl, setGl }) {
           </div>
           {hud.boss && (
             <div className="cyw-boss">
-              <p>Megatron</p>
+              <p>Megatron{hud.boss.form === 'tank' ? ' · tank' : ''}</p>
               <div className="cyw-bar">
                 <span style={{ width: `${Math.round(hud.boss.hp * 100)}%` }} />
               </div>
