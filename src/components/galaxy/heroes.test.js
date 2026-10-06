@@ -65,3 +65,12 @@ describe('the stance, the gun and the mods', () => {
     expect(JSON.parse(writeHero(readHero({ id: 'leia', gun: 'smg', mods: ['trigger'] })))).toMatchObject({ gun: 'smg', mods: ['trigger'] });
   });
 });
+
+describe('the perks', () => {
+  it('ride with the choice, three at most, nonsense dropped', () => {
+    expect(readHero({ id: 'luke', perks: ['focus', 'nope', 'nimble', 'nimble', 'survivor', 'riposte'] }).perks).toEqual(['focus', 'nimble', 'survivor']);
+    expect(readHero({ id: 'luke' }).perks).toEqual([]);
+    expect(heroSpec(readHero({ id: 'han', perks: ['heatsink'] })).perks).toEqual(['heatsink']);
+    expect(JSON.parse(writeHero(readHero({ id: 'leia', perks: ['deflector'] }))).perks).toEqual(['deflector']);
+  });
+});
