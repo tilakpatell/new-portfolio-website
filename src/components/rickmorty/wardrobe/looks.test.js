@@ -172,4 +172,13 @@ describe('the casts', () => {
     expect(l.jesse).toEqual(defaultLook('jesse'));
     expect(wornFiles(readLooks({ walt: { gear: { hand: 'bluebag' } } }))).toEqual([]); // (built in code)
   });
+
+  it('starts Jesse in his beanie, which he can take off', () => {
+    expect(defaultLook('jesse').gear).toEqual({ head: 'jessebeanie', face: 'none', hand: 'none' });
+    expect(readLook('jesse', {}).gear.head).toBe('jessebeanie');
+    expect(readLook('jesse', { gear: { head: 'none' } }).gear.head).toBe('none');
+    expect(readLookWire('jesse', writeLook(readLook('jesse', { gear: { head: 'none' } }))).gear.head).toBe('none');
+    // (only him: Walt, Rick and Morty start bare-headed)
+    for (const who of ['walt', 'rick', 'morty']) expect(defaultLook(who).gear.head, who).toBe('none');
+  });
 });

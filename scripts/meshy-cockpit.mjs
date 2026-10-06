@@ -75,7 +75,13 @@ const HD = {
   waltHd: { rig: '01a111fb-1207-74b6-90e7-1aa608e01f9f', model: '01a111f8-ed5f-73f6-b299-8c48642a2ee5', tex: 2048, clips: { idle: IDLE, sit: SIT }, as: 'walt' },
   jesseHd: { rig: '01a111c5-2005-748f-99f4-20609ad13592', model: '01a111c2-56a7-745d-9693-630a4602dbef', tex: 2048, clips: { sit: SIT }, as: 'jesse' },
 };
-Object.assign(ASSETS, HD);
+// Jesse in his hoodie made again (scripts/meshy-albuquerque.mjs's
+// jessePinkHd: his first HD face was a cartoon grin), sitting on a clip made
+// on his new skeleton; made by name, not with `hd`
+const JESSE_AGAIN = {
+  jessePinkHd: { rig: '01a1127a-169f-77fd-a431-57b33cf5170f', model: '01a11277-c6b9-71f1-875f-b6341b360483', tex: 2048, clips: { sit: SIT }, as: 'jesse' },
+};
+Object.assign(ASSETS, HD, JESSE_AGAIN);
 
 const key = process.env.MESHY_API_KEY;
 const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
