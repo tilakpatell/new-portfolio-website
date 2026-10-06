@@ -1,22 +1,24 @@
 // A lightsaber in a figure's hand, down on a world: lit and put out, swung
-// (three strokes that chain into a combo), held up to block, thrown and
-// caught. The hilt is a gun kind (universe/gunplay.js's `saber`), so the
-// same grip and arm that hold a blaster hold it, and the lit stance (held
-// out in front, point up) is gunplay's aimed one; this poses the arm over
-// that, after `gp.set`, for a stroke, the block and the throw, and reads
-// saberRules.js for where a stroke is and what it reaches. Hits go back
-// through `hit(target, damage)`; sounds through `sound(name)`.
+// in a stance's strokes that chain into a combo, a charged heavy stroke,
+// held up to block, thrown and caught. The hilt is a gun kind
+// (universe/gunplay.js's `saber`), so the same grip and arm that hold a
+// blaster hold it, and the lit stance (held out in front, point up) is
+// gunplay's aimed one; this poses the arm over that, after `gp.set`, and
+// reads combatRules.js for the stances, where a stroke is and what it
+// reaches. A double blade lights out of the pommel too; dual wield puts a
+// second hilt in the other hand. The blade leaves a trail through a
+// stroke. Hits go back through `hit(target, damage, at, { heavy })`;
+// sounds through `sound(name)`.
 //
-//   createSaber(gp, { color, hilt, parent, sound }) →
-//     { light(on), swing(now), block(on), throw(now, dir), update(dt, now,
-//       { forward, up, me, targets, hit }), deflecting(from), lit, busy, dispose() }
-//
-// `me`: { x, z, yaw } (the figure's feet and facing); `targets`: activity.js's
-// (each with a holder and a figure); `forward`, `up`: world directions.
+//   createSaber(gp, { color, hilt, stance, parent, sound }) →
+//     { light(on), swing(now, { heavy }), block(on), throw(now, dir),
+//       update(dt, now, { forward, up, me, targets, hit }), deflecting(from),
+//       lit, busy, swinging, thrown, charge (0…1 while F is held), setCharge(k), dispose() }
 
 import * as THREE from 'three';
 import { frameFrom, reach, setWorldQuaternion } from '../../../lib/three/ik';
-import { SABER, SWINGS, arcHit, deflects, nextSwing, swingPose, throwAt } from './saberRules';
+import { HEAVY, arcHit, nextSwing, stanceOf, swingPose } from './combatRules';
+import { SABER, deflects, throwAt } from './saberRules';
 
 const V = THREE.Vector3;
 const _a = new V();
@@ -27,29 +29,70 @@ const _q2 = new THREE.Quaternion();
 const LIGHT = 9; // how quick the blade comes out (per second)
 const BLOCK = { yaw: 0.3, pitch: 0.85 }; // the raised blade: up and across to the left
 const SWING_YAW = 0.55; // how far round the hand follows the blade's turn
+const TRAIL = 14; // segments of the trail behind the blade
 const radiusOf = (t) => Math.max(0.45, (t.fig?.tall ?? 1.6) * (t.spec?.scale ?? 1) * 0.35);
 
-export function createSaber(gp, { color = '#4aa8ff', hilt = null, parent = null, sound = null } = {}) {
+export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'single', parent = null, sound = null } = {}) {
   const gun = gp.gun;
-  const { RightArm: upper, RightForeArm: fore, RightHand: hand } = gp.bones;
+  const { RightArm: upper, RightForeArm: fore, RightHand: hand, LeftHand: leftHand } = gp.bones;
   const blade = gun.getObjectByName('blade');
   const sleeve = gun.getObjectByName('sleeve');
+  const core = gun.getObjectByName('core');
   const local = { pos: gun.position.clone(), quat: gun.quaternion.clone(), scale: gun.scale.clone() }; // in the hand (attach() to the world rewrites all three)
   const gripInv = gun.quaternion.clone().invert();
+  const st_ = stanceOf(stance);
   dress(gun, color, hilt);
+  // the second blade: out of the pommel (a staff), or a second hilt in the other hand
+  const blades = [blade].filter(Boolean);
+  const extra = [];
+  if (blade && stance === 'double') {
+    const b2 = blade.clone(true);
+    b2.name = 'blade2';
+    b2.rotation.z = Math.PI;
+    b2.position.y = -0.16;
+    gun.add(b2);
+    blades.push(b2);
+    extra.push(b2);
+  }
+  let gun2 = null;
+  if (blade && stance === 'dual' && leftHand) {
+    gun2 = gun.clone(true);
+    gun2.name = 'gun:saber:left';
+    // (a left hand is the right's mirror: the hilt's turn mirrored with it)
+    gun2.position.set(-local.pos.x, local.pos.y, local.pos.z);
+    gun2.quaternion.set(local.quat.x, -local.quat.y, -local.quat.z, local.quat.w);
+    gun2.scale.copy(local.scale);
+    leftHand.add(gun2);
+    const b2 = gun2.getObjectByName('blade');
+    if (b2) blades.push(b2);
+  }
+  // the trail: a ribbon from the hilt to the tip over the last few frames
+  const trailGeo = new THREE.BufferGeometry();
+  const trailPos = new Float32Array(TRAIL * 2 * 3);
+  trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+  const trailIdx = [];
+  for (let i = 0; i < TRAIL - 1; i++) trailIdx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
+  trailGeo.setIndex(trailIdx);
+  const trailMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
+  const trail = new THREE.Mesh(trailGeo, trailMat);
+  trail.frustumCulled = false;
+  trail.visible = false;
+  (parent ?? gun.parent?.parent)?.add(trail);
+  const trailPts = []; // [{ a: V, b: V }] newest first
 
   const st = {
     on: false,
     lit: 0,
-    swing: null, // { i, t0, hits }
+    swing: null, // { i, t0, hits, heavy, dur, lead, damage }
     last: null, // { i, endedAt }
     blocking: false,
     thrown: null, // { t0, from, dir, hits }
     me: null,
+    charge: 0,
   };
-  if (blade) {
-    blade.visible = false;
-    blade.scale.y = 0.001;
+  for (const b of blades) {
+    b.visible = false;
+    b.scale.y = 0.001;
   }
 
   // the arm, over gunplay's pose: the blade along `yaw` round and `pitch`
@@ -107,7 +150,7 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, parent = null,
       const p = t.holder.position;
       if (Math.hypot(p.x - gun.position.x, p.z - gun.position.z) < SABER.throw.radius + radiusOf(t) && Math.abs(p.y + 1 - gun.position.y) < 2.5) {
         th.hits.add(t);
-        hit?.(t, SABER.throw.damage, gun.position);
+        hit?.(t, SABER.throw.damage, gun.position, { thrown: true });
       }
     }
     // the arm out after it, the hand open to take it back
@@ -123,29 +166,69 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, parent = null,
     }
   };
 
+  // the trail behind the main blade: this frame's hilt-to-tip line at the
+  // front, the older ones fading behind it
+  const tipA = new V();
+  const tipB = new V();
+  const stepTrail = (swinging) => {
+    if (!blade) return;
+    if (swinging && st.lit > 0.5) {
+      blade.updateWorldMatrix(true, false);
+      tipA.set(0, 0.1, 0).applyMatrix4(blade.matrixWorld);
+      tipB.set(0, 1, 0).applyMatrix4(blade.matrixWorld);
+      trailPts.unshift({ a: tipA.clone(), b: tipB.clone() });
+      if (trailPts.length > TRAIL) trailPts.length = TRAIL;
+    } else if (trailPts.length) trailPts.pop(); // (gone in a few frames once the stroke's over)
+    trail.visible = trailPts.length > 1;
+    if (!trail.visible) return;
+    for (let i = 0; i < TRAIL; i++) {
+      const p = trailPts[Math.min(i, trailPts.length - 1)];
+      trailPos.set([p.a.x, p.a.y, p.a.z, p.b.x, p.b.y, p.b.z], i * 6);
+    }
+    trailGeo.attributes.position.needsUpdate = true;
+  };
+
   return {
+    stance: st_,
     get lit() {
       return st.lit > 0.5;
     },
     get busy() {
       return Boolean(st.swing || st.thrown);
     },
+    get swinging() {
+      return st.swing;
+    },
     get thrown() {
       return Boolean(st.thrown);
+    },
+    get charge() {
+      return st.charge;
+    },
+    setCharge(k) {
+      st.charge = Math.max(0, Math.min(1, k));
     },
     light(on) {
       if (st.on === on) return;
       st.on = on;
       sound?.(on ? 'ignite' : 'off');
     },
-    // a stroke: the next of the combo if the last just ended, else the first
-    swing(now) {
-      if (st.swing || st.thrown) return false;
+    // a stroke: the next of the combo if the last just ended, else the
+    // first; or the heavy one, charged
+    swing(now, { heavy = false } = {}) {
+      if (st.swing || st.thrown) return null;
       this.light(true);
-      const i = nextSwing(st.last, now);
-      st.swing = { i, t0: now, hits: new Set() };
-      sound?.('swing');
-      return true;
+      if (heavy) {
+        st.swing = { i: -1, t0: now, hits: new Set(), heavy: true, dur: HEAVY.dur, lead: HEAVY.lead, damage: HEAVY.damage };
+        sound?.('heavy');
+      } else {
+        const i = nextSwing(st_, st.last, now, SABER.combo);
+        const sw = st_.swings[i];
+        st.swing = { i, t0: now, hits: new Set(), heavy: false, dur: sw.dur, lead: sw.lead, damage: sw.damage };
+        sound?.('swing');
+      }
+      st.charge = 0;
+      return st.swing;
     },
     block(on) {
       if (on && !st.blocking) this.light(true);
@@ -166,45 +249,51 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, parent = null,
     },
     // whether a bolt from `from` ([x, y, z]) would meet the raised blade
     deflecting(from) {
-      return st.blocking && st.lit > 0.5 && st.me ? deflects(st.me, from, SABER.block.cone) : false;
+      return st.blocking && st.lit > 0.5 && st.me ? deflects(st.me, from, SABER.block.cone * (st_.block > 1 ? 1.2 : 1)) : false;
     },
     // after gp.set: the blade's length, the arm's pose, the throw's flight
     update(dt, now, p) {
       st.me = p.me ?? st.me;
       const want = st.on ? 1 : 0;
       st.lit += Math.sign(want - st.lit) * Math.min(Math.abs(want - st.lit), dt * LIGHT);
-      if (blade) {
-        blade.visible = st.lit > 0.01;
-        blade.scale.y = Math.max(0.001, st.lit);
-        if (sleeve) sleeve.material.opacity = 0.5 + 0.12 * Math.sin(now * 37) + 0.05 * Math.sin(now * 61);
+      const flicker = 0.5 + 0.12 * Math.sin(now * 37) + 0.05 * Math.sin(now * 61);
+      for (const b of blades) {
+        b.visible = st.lit > 0.01;
+        b.scale.y = Math.max(0.001, st.lit);
       }
+      if (sleeve) sleeve.material.opacity = flicker + st.charge * 0.35;
+      if (core) core.scale.set(1 + st.charge * 0.6, 1, 1 + st.charge * 0.6);
       if (st.thrown) {
         fly(dt, now, p, p.targets ?? [], p.hit);
+        stepTrail(false);
         return;
       }
       if (st.swing) {
-        const s = SWINGS[st.swing.i];
-        const k = (now - st.swing.t0) / s.dur;
+        const sw = st.swing;
+        const k = (now - sw.t0) / sw.dur;
         if (k >= 1) {
-          st.last = { i: st.swing.i, endedAt: now };
+          if (!sw.heavy) st.last = { i: sw.i, endedAt: now };
           st.swing = null;
         } else {
-          const { yaw, pitch } = swingPose(st.swing.i, k);
+          const { yaw, pitch } = sw.heavy ? heavyPose(k) : swingPose(st_, sw.i, k);
           pose(yaw, pitch, p, 1);
           // the blade through them, round the middle of the stroke
-          if (p.me && k > s.lead - 0.18 && k < s.lead + 0.22)
+          if (p.me && k > sw.lead - 0.18 && k < sw.lead + 0.22)
             for (const t of p.targets ?? []) {
-              if (st.swing.hits.has(t)) continue;
+              if (sw.hits.has(t)) continue;
               const q = t.holder.position;
-              if (arcHit(p.me, { x: q.x, z: q.z, r: radiusOf(t) }, SABER.reach, SABER.half)) {
-                st.swing.hits.add(t);
-                p.hit?.(t, SABER.damage, _a.set(q.x, q.y + 1.1, q.z));
+              if (arcHit(p.me, { x: q.x, z: q.z, r: radiusOf(t) }, st_.reach * (sw.heavy ? 1.1 : 1), st_.half)) {
+                sw.hits.add(t);
+                p.hit?.(t, sw.damage, _a.set(q.x, q.y + 1.1, q.z), { heavy: sw.heavy });
               }
             }
+          stepTrail(true);
           return;
         }
       }
-      if (st.blocking && st.lit > 0.05) pose(BLOCK.yaw, BLOCK.pitch, p, Math.min(1, st.lit * 2));
+      stepTrail(false);
+      if (st.charge > 0.05) pose(0.3, 1.3, p, Math.min(1, st.charge * 3)); // (wound up overhead while F is held)
+      else if (st.blocking && st.lit > 0.05) pose(BLOCK.yaw, BLOCK.pitch, p, Math.min(1, st.lit * 2));
     },
     dispose() {
       if (st.thrown && hand) {
@@ -213,9 +302,22 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, parent = null,
         gun.quaternion.copy(local.quat);
         gun.scale.copy(local.scale);
       }
+      for (const b of extra) b.removeFromParent();
+      gun2?.removeFromParent();
+      trail.removeFromParent();
+      trailGeo.dispose();
+      trailMat.dispose();
     },
   };
 }
+
+const easeH = (k) => k * k * (3 - 2 * k);
+// the heavy stroke: wound up high and brought straight down, slow at the top
+function heavyPose(k) {
+  const e = easeH(Math.max(0, Math.min(1, (k - 0.25) / 0.75)));
+  return { yaw: HEAVY.yaw[0] * (1 - e) + HEAVY.yaw[1] * e, pitch: HEAVY.pitch[0] * (1 - e) + HEAVY.pitch[1] * e };
+}
+
 
 // the blade's colour and the hilt's look, on the built hilt
 export function dress(gun, color, hilt) {

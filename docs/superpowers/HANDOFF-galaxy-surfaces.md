@@ -99,3 +99,23 @@ The owner's note: the worlds looked empty even where the textures were good. One
 - Enemy sabers are only a parry chance and a melee swipe; a visible blade on the vision (a `saber` gunplay on the actor) would sell it.
 - Checked headless on Tatooine (swings, block, throw and catch, the panel) and in the tests; not yet on a phone's touch buttons (Throw and Block appear for a saber hero).
 
+## The fight, fleshed out: stances, the guard, the Force, guns that heat (6 October 2026, the PR after the heroes)
+
+What the films' games do, borrowed: Battlefront II's block stamina, its 5.5 m dodge with a moment of safety, its heroes' abilities on cooldowns, its heat bar with the active vent and its weapon mods; Jedi: Survivor's stances and its small parry window; Movie Battles II's fast / medium / strong stance triangle and swing-blocking.
+
+### Done
+- **Pure rules, tested**: `surface/combatRules.js` (the four stances and their strokes: single, double, dual, crossguard; the heavy stroke; the guard that blocking spends and the stagger when it breaks; the parry window; the lunge that steps a stroke in; the dodge; the Force push and pull; the hit-stop) and `surface/weaponRules.js` (each gun's numbers: damage, cycle, scatter, heat and cooling, range, sights; bursts and pellets; the six mods, two at a time; the heat bar's lock and the vent's sweet spot).
+- **The saber** (`saber.js`): strokes from the stance's table, chaining in the combo window; F held is the heavy stroke (breaks shields and guards, can't be parried); a trail ribbon behind the blade through a stroke; the double stance lights a second blade out of the pommel, dual puts a second hilt in the left hand (its grip the right's, mirrored); strokes home on the enemy you're squared up to (`LOCK` in `scene.js`: nearest in front within 14 m) and step in to them (`lungeTo`).
+- **The guard and the parry** (`scene.js`): blocked bolts and swipes spend the guard; broken, you stagger for 1.6 s and can't block or swing; C pressed within 0.22 s of a swipe is a parry (sparks, "Perfect", the enemy staggered 2.2 s). X dodges (a roll, nothing landing through its first 0.3 s). G is the Force push (a cone, enemies knocked off their feet), V the pull (drawn in and staggered).
+- **Guns**: seven new builds in `gunplay.js` (A280, DLT-19, EE-3, WESTAR-34; a scattergun, a long rifle, a machine pistol), each with numbers and a sound. Heat per shot, the lock at the top, R to vent (early: empties it; locked: the sweet spot clears it, early jumps half); the right button (or the Aim button) is the sights, the camera in over the shoulder and the field narrowed by the weapon's zoom, the scatter halved. Bursts and pellets. G is a thermal detonator (an arc, a 4.5 m blast that breaks shields and shoves), V the overcharge (no heat, white bolts, a harder hit for 5 s). Each shot's damage is the weapon's, through `struck`.
+- **Enemies** (`activity.js`): health bars over their heads (a sprite, redrawn only when the numbers change), knockback (`knock`), stagger (`stagger`: no shooting, no moving, bent back), a heavy stroke or a blast breaks a shield outright.
+- **Feel**: a hit holds the frame (time at 12% for 40–90 ms), the camera shakes by the stroke, a hit marker at the crosshair (bigger and orange on a kill), a red vignette on being hurt, hit and kill ticks.
+- **HUD** (`GalaxySurface.jsx`, the `combat` event ten times a second): the lock's name and health, the guard (or the heat with the vent's marker and sweet band), the three abilities with their cooldowns sweeping; the hero panel's tabs (Hero; Lightsaber: colour, stance, hilt; Weapon: the galaxy's guns and the ones from elsewhere with their numbers, the mods). The choice adds `stance`, `gun`, `mods` under `tp-galaxy-hero`.
+
+### Left
+- Enemy sabers: the Vader vision parries by chance and swipes; a blade in his hand (a `saber` gunplay on the actor) and a guard of his own to break would make the duel.
+- Other pilots online carry their default gun and a dark saber: send `gun`, `stance` and `lit` in the walk packet.
+- The dual stance's left hilt is placed by mirroring the right's grip; check it on each rig (the crew's share one skeleton, so one look should do).
+- A lock-on reticle in the world (a ring over the locked enemy) would help on a crowded field; the HUD names them for now.
+- Battlefront's star cards (passive perks) and Jedi: Survivor's skill trees are the next layer: per-hero perks kept with the choice.
+
