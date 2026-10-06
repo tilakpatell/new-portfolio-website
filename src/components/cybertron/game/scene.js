@@ -19,6 +19,7 @@ import { makeFigure, makeThing } from './bots';
 import { bake, centresOf, cluster, makeTransformer } from './chunks';
 import { createEffects } from './effects';
 import { FORMS, TRANSFORM } from './rules';
+import { groundWorld } from '../../../lib/three/groundwork';
 
 const STAGES = {
   iacon: () => import('./stage/iacon'),
@@ -92,7 +93,14 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
   let loading = Promise.resolve();
   let generation = 0;
 
+  // each area's floor light, baked when it's built (after Bruno Simon's
+  // folio: lib/three/groundwork): the city's soft shadows and the sky's
+  // occlusion on its ground, a bounce off it, a soft blob under every robot,
+  // and no shadow pass
+  let ground = null;
   const clearArea = () => {
+    ground?.dispose();
+    ground = null;
     if (stage) {
       scene.remove(stage.group);
       stage.dispose();
@@ -160,6 +168,24 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
         return;
       }
       scene.add(stage.group);
+      if (stage.floor?.length) {
+        let key = null;
+        stage.group.traverse((o) => (key ??= o.isDirectionalLight ? o : null));
+        const B = area.bounds ?? { maxX: 200, maxZ: 200 };
+        const R = Math.max(B.maxX, B.maxZ) + 40;
+        ground = groundWorld({
+          renderer,
+          scene,
+          floor: stage.floor,
+          area: { x0: -R, z0: -R, w: R * 2, d: R * 2 },
+          sun: key,
+          casters: [stage.group],
+          movers: [{ object: player.root, size: [3.2, 3.2] }, ...[...people.values()].map((f) => ({ object: f.group, size: [3.2, 3.2] }))],
+          shade: 0x16141c,
+          tier,
+          auto: true,
+        });
+      }
       // the metal shines with the place's own sky (Iacon's fires low on
       // the horizon, the desert's sun), or the room it's in, under a roof
       let sky = null;
@@ -189,6 +215,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       for (const [id, f] of made) {
         people.set(id, f);
         scene.add(f.group);
+        ground?.track(f.group, [3.2, 3.2]);
       }
     })();
     return loading;
@@ -204,6 +231,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       entry.figure = f;
       entry.pending = false;
       scene.add(f.group);
+      ground?.track(f.group, [3.2, 3.2]);
     });
     return entry;
   };
@@ -495,6 +523,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
     placeCamera(sim, view, dt);
     const sharp = pace.frame(now);
     if (sharp !== null) post.sharpness = sharp;
+    ground?.update();
     post.render(size.w, size.h);
   };
 

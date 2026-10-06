@@ -73,6 +73,7 @@ import { WALK, createSolids, groundAt, ride, rider, turnToward, walk, walker } f
 import { rng } from './noise';
 import { endRun, missionOf, newRun, tickRun } from './missions';
 import { createChaseMission } from './missions/chaseScene';
+import { groundWorld } from '../../../lib/three/groundwork';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -1595,16 +1596,51 @@ export async function create(canvas, ctx) {
     water?.update(t);
     weather?.update(t, camera, world.heightAt, size.h);
     compass();
+    lit?.update();
     const tPost = performance.now();
     post.render(size.w, size.h);
     if (import.meta.env.DEV) state.ms = { js: Math.round(tPost - now), post: Math.round(performance.now() - tPost) };
   }
 
-  if (import.meta.env.DEV) window.__surfaceScene = { scene, post, renderer };
+  if (import.meta.env.DEV)
+    window.__surfaceScene = {
+      scene,
+      post,
+      renderer,
+      // (for the QA scripts: the land's light, once its things are down)
+      api: {
+        get ground() {
+          return lit;
+        },
+      },
+    };
 
+  // ── The land's light, baked once its things stand on it (after Bruno
+  // Simon's folio: lib/three/groundwork): every rock's, hut's and walker's
+  // soft shadow and the sky's occlusion on the ground, under whichever suns
+  // this world has, a bounce off the ground, a soft blob under you and your
+  // crewmate, and no shadow pass ──
+  let lit = null;
   // ── Ready ──
   const ready = (async () => {
     await placer.ready.catch(() => {});
+    if (!disposed && !site.noGround) {
+      const R = 170;
+      lit = groundWorld({
+        renderer,
+        scene,
+        floor: [ground],
+        area: { x0: landAt[0] - R, z0: landAt[1] - R, w: R * 2, d: R * 2 },
+        sun,
+        // (what moves isn't baked: the folk and beasts about, the speeders)
+        skip: [sky.mesh, water?.mesh, water?.glow, weather?.group, weather?.mesh, camera, life.group, ...rides.map((x) => x.holder)].filter(Boolean),
+        movers: [...people.map((p) => ({ object: p.holder, size: [0.8, 0.8] })), ...life.actors.filter((a) => a.holder).map((a) => ({ object: a.holder, size: [1, 1] })), ...rides.map((x) => ({ object: x.holder, size: [1.4, 2.6] }))],
+        shade: site.light.shade ?? site.light.ground ?? '#3a3028',
+        height: world.heightAt,
+        tier: small ? 'low' : 'mid',
+        auto: true,
+      });
+    }
     // (the scouts' way is planned round the trees, so once they're down)
     if (!disposed) chase?.begin();
     if (!disposed) beginMission();
@@ -1790,6 +1826,7 @@ export async function create(canvas, ctx) {
     debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health, mission: chase?.view() ?? run }),
     dispose() {
       disposed = true;
+      lit?.dispose();
       window.removeEventListener('keydown', keyDown);
       window.removeEventListener('keyup', keyUp);
       window.removeEventListener('blur', blur);

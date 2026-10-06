@@ -43,6 +43,7 @@ export async function buildStage(area) {
   }
   return {
     group,
+    floor: [ground], // what the area's light is baked on (lib/three/groundwork)
     update(t) {
       if (sky) sky.userData.uniforms.uTime.value = t;
     },
