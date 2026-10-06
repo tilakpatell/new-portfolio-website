@@ -121,7 +121,7 @@ import { createTrench } from './trench';
 import { createBeacons } from './beacons';
 import { PHONE, createPhone } from './phone';
 import { SUPERNOVA_SITES, createSupernovae } from './supernova';
-import { DEEP, WONDERS, nearestStar, openness, reachOf, wonderById } from './deep';
+import { DEEP, WONDERS, moveBinaries, nearestStar, openness, reachOf, wonderById } from './deep';
 import { createCrash } from './crash';
 import { createInfall } from './infall';
 import { DISK_N, MAW, captured, fallAt, plungeAt, pullAt, startFall } from './maw';
@@ -3609,6 +3609,8 @@ export async function create(canvas, ctx) {
     }
     const dt = ms / 1000;
     const t = reduced ? 0 : state.low ? state.tLow : (now - t0) / 1000;
+    // (the Twins' suns going round each other: their solids where they're drawn, deep.js)
+    moveBinaries(t);
     if (!state.pose && !flying()) {
       // first frame: straight onto a universe from a link; the overview
       // drifts in from a little further out (flying, it's below)
