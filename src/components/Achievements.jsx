@@ -41,6 +41,10 @@ export const ACHIEVEMENTS = {
   cyTeamPrime: { name: 'Team Prime', desc: 'Checked in with the whole team at the Autobot base' },
   cyEnergonMine: { name: 'Energon, liberated', desc: 'Cleared the Vehicons out of their mine outside Jasper' },
   cyMatrix: { name: 'Till all are one', desc: 'Took the Matrix of Leadership back from Shockwave in Iacon’s Hall of Records' },
+  cyKaonPits: { name: 'Gladiator', desc: 'Won three rounds in the pits of Kaon as Megatron' },
+  cyDarkEnergon: { name: 'Fuel the war machine', desc: 'Brought Shockwave eight dark energon before it burned away' },
+  cyRunThemDown: { name: 'Run them down', desc: 'Ran down the Autobots in Megatron’s tank' },
+  cyZeta: { name: 'Peace through tyranny', desc: 'Defeated Zeta Prime at the gates of Kaon' },
   cyRelic: { name: 'Iacon relic', desc: 'Dug an Iacon relic out of the Nevada desert before the Decepticons could' },
   spacebridge: { name: 'All aboard', desc: 'Brought every Decepticon up to the Nemesis through the space bridge' },
   iacon: { name: 'Archivist', desc: 'Recovered every relic in the Iacon database' },
@@ -175,6 +179,7 @@ export const ACHIEVEMENTS = {
   canyon: { name: 'Canyon run', desc: 'Ran Beggar’s Canyon in a landspeeder against the clock' },
   speederchase: { name: 'Fast and low', desc: 'Caught every scout trooper before the bunker on Endor' },
   starmapride: { name: 'The way to Ezra', desc: 'Raced the spires to the old tower on Lothal and kept the star map' },
+  dagobahraise: { name: 'Size matters not', desc: 'Ran Dagobah’s swamp with Yoda on your back, faced the cave and raised the X-wing' },
   tosche: { name: 'Power converters', desc: 'Picked up power converters at Tosche Station' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
   // Dunder Mifflin Scranton, the world (office/world)
