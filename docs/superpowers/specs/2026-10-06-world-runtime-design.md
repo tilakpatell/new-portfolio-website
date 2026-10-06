@@ -239,7 +239,7 @@ The galaxy's landing is the first use, after Earth:
 3. The page calls `rt.handover(surfaceModule, { system, from: handoff })` and `navigate` with `replace`. The surface module starts with the ship at the height, heading and time of day handed over, inside the cloud layer; the snapshot fades over 600 ms while clouds go by.
 4. Take-off is the reverse: the surface module climbs out, hands over the pose, and the galaxy module starts with the ship climbing out of the atmosphere over the planet.
 
-The universe map's `G` landing is already seamless (one scene, `footScene.js`): it stays as it is inside the universe module. The universe's gate into the galaxy becomes a handover too, once both are modules.
+The universe map's landing is already seamless (one scene: flying down into a planet's air, `entry.js`, onto its landing, `footScene.js`): it stays as it is inside the universe module. The universe's gate into the galaxy becomes a handover too, once both are modules.
 
 ## Earth, the first world
 

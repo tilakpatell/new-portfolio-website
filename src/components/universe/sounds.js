@@ -718,3 +718,97 @@ export function impactSound(near = 1) {
   burst(ac, out, { at: t, dur: 0.12, gain: 0.14 * near, type: 'bandpass', f: 2400, q: 0.9 });
   blip(ac, out, { type: 'sine', f: 110, at: t, dur: 0.1, gain: 0.08 * near, glide: 0.5 });
 }
+
+// The crackle of the plasma on the way in: two seconds of sparse clicks,
+// each a sharp tick dying away, louder or softer at random (made once, and
+// looped)
+let crackleBuf = null;
+function crackle(ac) {
+  if (crackleBuf) return crackleBuf;
+  const n = ac.sampleRate * 2;
+  crackleBuf = ac.createBuffer(1, n, ac.sampleRate);
+  const d = crackleBuf.getChannelData(0);
+  const tick = Math.round(ac.sampleRate * 0.004);
+  for (let k = 0; k < 70; k++) {
+    const at = Math.floor(Math.random() * (n - tick));
+    const level = 0.3 + Math.random() * 0.7;
+    for (let i = 0; i < tick; i++) d[at + i] += (Math.random() * 2 - 1) * level * (1 - i / tick) ** 2;
+  }
+  return crackleBuf;
+}
+
+// Into a planet's air (an entry): the roar of it, noise through a band
+// that climbs as it gets hotter, a low rumble under it, and the plasma's
+// crackle when it's at its hottest. set(k) every frame of the entry (0 … 1,
+// the burn), stop() at the end
+export function entrySound() {
+  const ac = audioContext();
+  const out = ac ? output() : null;
+  if (!ac || !out) return { set() {}, stop() {} };
+  const master = ac.createGain();
+  master.gain.value = 1;
+  master.connect(out);
+  // the roar: noise through a band, higher and brighter the hotter it is
+  const roar = ac.createBufferSource();
+  roar.buffer = noise(ac);
+  roar.loop = true;
+  const band = ac.createBiquadFilter();
+  band.type = 'bandpass';
+  band.frequency.value = 220;
+  band.Q.value = 0.7;
+  const roarG = ac.createGain();
+  roarG.gain.value = 0;
+  roar.connect(band).connect(roarG).connect(master);
+  // the rumble: the same noise, low (from elsewhere in it, so the two don't
+  // move together)
+  const rumble = ac.createBufferSource();
+  rumble.buffer = noise(ac);
+  rumble.loop = true;
+  const lp = ac.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 85;
+  lp.Q.value = 1.8;
+  const rumbleG = ac.createGain();
+  rumbleG.gain.value = 0;
+  rumble.connect(lp).connect(rumbleG).connect(master);
+  // the crackle, only near the top
+  const clicks = ac.createBufferSource();
+  clicks.buffer = crackle(ac);
+  clicks.loop = true;
+  const hp = ac.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 1800;
+  const clickG = ac.createGain();
+  clickG.gain.value = 0;
+  clicks.connect(hp).connect(clickG).connect(master);
+  const sources = [roar, rumble, clicks];
+  roar.start(0, Math.random() * 1.5);
+  rumble.start(0, Math.random() * 1.5);
+  clicks.start(0, Math.random() * 1.5);
+  let alive = true;
+  let last = -1;
+  return {
+    set(k) {
+      if (!alive) return;
+      // (only when it's changed enough to hear)
+      if (Math.abs(k - last) < 0.005) return;
+      last = k;
+      const now = ac.currentTime;
+      roarG.gain.setTargetAtTime(0.28 * k ** 1.2, now, 0.15);
+      band.frequency.setTargetAtTime(220 + 1500 * k ** 1.5, now, 0.2);
+      rumbleG.gain.setTargetAtTime(0.7 * k, now, 0.25);
+      const hot = Math.min(1, Math.max(0, (k - 0.6) / 0.4));
+      clickG.gain.setTargetAtTime(0.3 * hot * hot, now, 0.1);
+    },
+    stop() {
+      if (!alive) return;
+      alive = false;
+      const now = ac.currentTime;
+      master.gain.setTargetAtTime(0, now, 0.1);
+      for (const n of sources) n.stop(now + 0.4);
+      setTimeout(() => {
+        for (const n of [...sources, band, lp, hp, roarG, rumbleG, clickG, master]) n.disconnect();
+      }, 500);
+    },
+  };
+}

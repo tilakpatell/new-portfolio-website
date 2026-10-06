@@ -177,9 +177,11 @@ The front door (`/`) is a map of the whole site as places in space: the portfoli
 | `V` | Switch between the chase camera and the cockpit view |
 | `O` | Flight settings (steering, aim assist, lock tracking, inverted pitch and more) |
 | `H` | The hangar: paint and parts for the ship you're flying |
-| `G` | Land on the planet you're at and step out (and, on foot, get back in) |
+| `G` | On foot: through a door, or back into the ship (to land, fly down into a planet's air) |
 | `M` | The nav map: everywhere on one chart. Pick a place and a drive (hyperspeed, a jump; super speed, 3× the pulse drive; or cruise), with the trip time for each. The galaxy's star systems are on it too (the ship flies to the gate and on through), every place has a link that opens the map right there, and Tour takes you round everything in turn |
 | `J` | Jump to the place picked at hyperspeed |
+
+To land on a planet, fly down into its air: the glow round it. Come in at a normal speed and you're taken in, the way the galaxy's worlds come down: the hull burning as it hits the air, the planet's own sky coming up round you, through the clouds, and out over the planet's landing, where the ship sets down and the crew step out. Come in boosting and there's no landing: it's a crash, and the crash takes you into the planet's world as it always has.
 
 On foot, `W` `A` `S` `D` walk, `Shift` runs, `Space` jumps, `F` or a click fires, `X` switches to the other one of your crew and `V` looks out of their eyes.
 
