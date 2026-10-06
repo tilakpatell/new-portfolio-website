@@ -17,8 +17,8 @@ The design is `docs/superpowers/specs/2026-10-06-universe-visual-upgrade-design.
 | 1 | The render, finished | #336 | done | Against the baseline, `high`: calls +0 to +2 a pose, triangles at or under it (overview 150 → 150, 1.20 → 1.17 M; falcon-sun 141 → 142); `mid` and `low` within +4 calls and +0 % triangles (traffic and the station’s turn move a pose’s calls by ±2 from run to run; `mid` maw’s −120 k triangles is the Falcon’s model still loading, `low` station’s −37 calls its wheel turned). Contrast at maw on `high` 85.1 → 95.5. Smoke green on `/universe`, `/galaxy/hoth`, `/galaxy/tatooine/surface` |
 | 2 | One light | #381 | done | Against the baseline, every tier: calls −1 to +3 a pose, triangles +0 % but mid overview +2.8 % (the landing’s and the Maw’s on mid and low move with what has loaded: see below). Every world lit at 2.35 by its own star; the light turns as you fly from one star to the next; arrivals and a world picked on the map face its day side. Contrast at caribbean 87.3 → 103.5 and middleearth-limb 124.8 → 132.1 on `high`; Dot Matrix 135.5 → 114.1 under Ember’s orange (checkpoint 4 reads its light in its own colours). Smoke green |
 | 3 | Air, clouds, seas, ground | #393 | done | Against the baseline, every tier: calls −6 to +3 a pose, triangles +3.3 % at most (C-137 on `high`: the real air’s shell over the halo); the landing moves with what has loaded. The fandoms’ worlds wear real air on `high` and `mid` (a blue-white limb toward the sun, warm at the terminator, gone at night), the clouds shade the ground, seas glint (the Caribbean shows both of the Twins), and the ground comes up in detail close in; four new baked maps (793 KB). Smoke green |
-| 4 | The styles in the light | this PR | done | Merged on the owner’s word before its own three-tier run; the end state is measured after checkpoint 8. Preview on `high`: rickmorty 57 calls, 0.223 M triangles (as checkpoint 3), gaming 58, 0.196 M (unchanged); contrast at gaming 118.8 → 140.8 (four greens dithered, read in their own colours), rickmorty 115.6 → 124.8 (cel bands, inked limb, two flat lime air bands). 14 program variants from the planets’ own hooks, pinned at 24 or fewer |
-| 5 | The hero ship | | not started | |
+| 4 | The styles in the light | #394 | done | Merged on the owner’s word before its own three-tier run; the end state is measured after checkpoint 8. Preview on `high`: rickmorty 57 calls, 0.223 M triangles (as checkpoint 3), gaming 58, 0.196 M (unchanged); contrast at gaming 118.8 → 140.8 (four greens dithered, read in their own colours), rickmorty 115.6 → 124.8 (cel bands, inked limb, two flat lime air bands). 14 program variants from the planets’ own hooks, pinned at 24 or fewer |
+| 5 | The hero ship | this PR | done | Merged on the owner’s word before its own three-tier run; the end state is measured after checkpoint 8. Preview on `high`: falcon-sun 141 calls, 1.262 M triangles (checkpoint 4’s 144 and 1.294 M: the HD Falcon loads either way; +1 for every engine at once), station 121, 1.330 M. The Falcon reads as paint over metal (it was clay at roughness 1), its dark side rimmed in the fill’s colour, its engines lit with the throttle |
 | 6 | Rock | | not started | |
 | 7 | What burns | | not started | |
 | 8 | The sky on foot | | not started | |
@@ -28,7 +28,7 @@ Scorecard (the spec’s “Where things stand” table is the before): fill in t
 | Category | Before | After | Evidence |
 |---|---|---|---|
 | Art direction | 2 | 2.5 (checkpoint 4) | The styles are in the light: C-137 in three cel bands with an inked limb and flat lime air, Dot Matrix in four greens through an ordered dither, the Office lit as paper (sheen), Cybertron’s seams in the key light’s colour |
-| Hero (the ship) | 1.5 | | |
+| Hero (the ship) | 1.5 | 2.5 (checkpoint 5) | Tuned on load as paint over metal (one profile, `SHIP_PROFILE`), rimmed by the light that isn’t the key, its engines and every other ship’s glowing with the throttle in one draw |
 | Enemies and traffic | 2 | | |
 | World | 2 | | |
 | Materials | 1.5 | 2.5 (checkpoint 3) | Real single-scatter air round the fandoms’ worlds in place of a flat tinted rim; the clouds cast shadows; seas glossy (C-137’s and Invincible’s roughness maps, a floor of 0.22); the ground comes up in detail close in; 2048 relief on `ultra` for the Caribbean and Invincible |
@@ -78,6 +78,12 @@ Scorecard (the spec’s “Where things stand” table is the before): fill in t
   - *Cybertron’s energon takes half the key’s colour*, normalised: a full multiply turned its blue to teal under the home sun.
   - *The Office’s `-hq` relief was already there*; it becomes a `MeshPhysicalMaterial` (sheen 0.6 in `#f3ecd8`, sheen roughness 0.8, roughness 1 over its map).
   - *`VARIANTS` is a function*, `variants(planets)`, the set of program variants the planets’ own hooks make, tested in `planets.test.js` (`lib/three/precompile.test.js` mustn’t import a component): 14 with every map loaded, pinned at 24 or fewer.
+- **Checkpoint 5:**
+  - *The profile is applied where the model is mounted*, which already walked its materials, not in `dress`: the values change no shader. `tune` takes `metalness: { metal, paint }` now; the ships name their metal by a list of their own (trim, engines, guns, pipes), since `tune`’s default counts `hull` and `plate` as metal and on a ship they’re painted.
+  - *The Falcon’s hull was clay*: its own finish (`FINISH`) had roughness 1. It’s the profile’s paint now (0.72, a tenth metallic), and the X-wing’s too.
+  - *No `anisotropy = 8` was left* in `hulls.js` or `trafficKit.js`: they already sharpen through `lib/three/textures`.
+  - *The rim is 0.5, not 0.35*: against the sun (falcon-sun, the station) 0.35 hardly showed on the hull’s dark side.
+  - *`buildShip`’s `engines` stay what they were* (where the plumes leave, which `modules.js` reads): the scene adds the hero ship to the shared engines with `HERO_ENGINES` (BUILT units), and the traffic’s and hunters’ are `ENGINES` as shares of each model’s box, since their models come in different units. Every engine burns 0.35 of its colour idle to 1.5 boosting, so a parked ship isn’t a beacon; the Falcon’s three are 0.035 across. A balloon, a Meeseeks and Birdperson have none.
 
 ## Checking it
 
