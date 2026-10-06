@@ -624,7 +624,7 @@
   position: absolute;
   z-index: 2;
   left: 16px;
-  top: calc(var(--nav-h, 64px) + 70px);
+  top: calc(var(--nav-h, 64px) + 104px);
   display: grid;
   gap: 0.3rem;
   padding: 0.6rem 0.8rem;
@@ -671,7 +671,7 @@
 .assault-feed li[data-kind='phase'] { color: var(--accent); font-weight: 600; }
 @media (max-width: 640px) {
   .assault-strip { top: calc(var(--nav-h, 64px) + 56px); }
-  .assault-tickets { top: calc(var(--nav-h, 64px) + 118px); padding: 0.45rem 0.6rem; }
+  .assault-tickets { top: calc(var(--nav-h, 64px) + 126px); padding: 0.45rem 0.6rem; }
   .assault-feed { display: none; }
   .assault-sides { grid-template-columns: 1fr; }
 }

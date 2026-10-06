@@ -94,7 +94,7 @@
 - [x] Scene: `assault` beside `chase`; `fire()` and `shot()` aim at `assault.targets` and call `assault.hit(target, RULES.yours)` while it runs; `hurt()` at nothing left while it runs sets `state.downed`, calls `assault.youDown()`, emits `down`; `input()` is still while downed, `target()` null, your figure tips in `place()`; `input.side(id)`, `input.deploy(id)` (puts you at the post, upright, full health), `restart()`; the compass's quest mark on `assault.target`; `missionDo('win' | 'lose' | 'side' | 'deploy', arg)`; `debug().mission`; `ready` calls `assault.begin()`; `dispose` disposes it; `life.hideKinds(mission.hideLife)` at begin; the blaster's pool 72 for an assault.
 - [x] Page: `AssaultHud` for `mission.kind === 'assault'` with `onSide`, `onDeploy`, `onAgain`, `onBack`; the quest panel hidden and the crosshair up while it runs; `shown` uses `v.key`; the win keeps the best and unlocks `mission.achievement`.
 - [x] HUD: the choose card (two side cards), the deploy card (your side's posts, tickets), the live strip (phase name, a chip a post with its letter, owner colour and meter), the tickets, the post ring when you're in one, the feed, your kills; the result card (title, stars, time, kills, captures, best, Again, look round, back). Styles in `surface.css` under `.assault-*`, after the chase's.
-- [ ] Check in Chromium (dev server, `scripts/preview` style script or `scripts/autopilot-check.mjs --routes`): `/galaxy/hoth/surface?mission=assault` and Geonosis's: the cards, deploy, both armies, bolts, a post flipping, `window.__surfaceDo('missionDo', 'win')` and `'lose'` cards, Again; no console errors. Screenshots to `docs/superpowers/shots/`.
+- [x] Check in Chromium (dev server, `scripts/preview` style script or `scripts/autopilot-check.mjs --routes`): `/galaxy/hoth/surface?mission=assault` and Geonosis's: the cards, deploy, both armies, bolts, a post flipping, `window.__surfaceDo('missionDo', 'win')` and `'lose'` cards, Again; no console errors. Screenshots to `docs/superpowers/shots/`.
 - [x] `npm run lint`, `npx vitest run src/components/galaxy src/pages`: clean.
 - [x] Commit: `Galactic assault on the ground: the battle drawn, the surface scene fighting it and its HUD`.
 
@@ -106,5 +106,5 @@
 - [x] `Achievements.jsx`: `galacticassault: { name: 'Galactic assault', desc: 'Won a battle for the command posts on Hoth or Geonosis' }`.
 - [x] `guide/pages.js`: a tip on `/galaxy/surface` for the battle; `/galaxy/mission`'s tip names it.
 - [x] README (the galaxy's missions paragraph), `docs/architecture.md` (the galaxy's surface line), the backlog (a line under Features), the handoff (Done, Left, Checking it).
-- [ ] `npm run lint && npm test && npm run build && node scripts/health.mjs --check --skip build`: clean.
+- [x] `npm run lint && npm test && npm run build && node scripts/health.mjs --check --skip build`: clean.
 - [x] Commit: `The Battle of Hoth and the Battle of Geonosis go live as galactic assaults, with their words and the hand-off`.
