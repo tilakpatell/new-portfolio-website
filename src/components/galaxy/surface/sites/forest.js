@@ -895,6 +895,13 @@ export const SITES = {
       { kind: 'lamp', at: [-16, -2], opts: { h: 5, light: '#ffe0a0' } },
       { kind: 'lamp', at: [16, -30], opts: { h: 5, light: '#ffe0a0' } },
     ],
+    // the undergrowth round you, thick wherever you walk, as the jungle's
+    // floor is in the film: shrubs, broad leaves and ferns crowding in
+    patches: [
+      { kind: 'bush', spacing: 3.2, radius: 55, scale: [0.9, 2.3], cover: 0.8, opts: { seed: 14, s: 2.4, color: '#3e4e2a' } },
+      { kind: 'plant', spacing: 2.2, radius: 45, scale: [0.8, 2.1], cover: 0.65, opts: { seed: 16, color: '#50603a' } },
+      { kind: 'fern', spacing: 1.8, radius: 45, scale: [0.7, 1.8], cover: 0.65, opts: { seed: 15, n: 7, color: '#465030' } },
+    ],
     scatter: [
       // the tall trees, vines hanging from them, then the built ones between
       // (the jungle's own trees close in all round, their umbrella crowns a
@@ -903,11 +910,16 @@ export const SITES = {
       { kind: 'jungletree', n: 330, within: [22, 640], scale: [0.8, 1.4], opts: { seed: 1, leaf: '#3c4a22' } },
       { kind: 'jungletree', n: 200, within: [22, 640], scale: [0.7, 1.2], opts: { seed: 2, bark: '#7a7462', leaf: '#46522a', creepers: false } },
       { kind: 'jungletree', n: 180, within: [640, 1400], scale: [1.0, 1.6], solid: false, opts: { seed: 3, lo: true, leaf: '#3c4a22' } },
-      { kind: 'plant', n: 700, within: [6, 480], scale: [0.8, 2.0], solid: false, clear: -8, opts: { seed: 4, color: '#4a5a30' } },
-      { kind: 'fern', n: 400, within: [6, 480], scale: [0.8, 1.7], solid: false, clear: -8, opts: { seed: 5, color: '#4a5230' } },
-      // (the undergrowth near you, thick, as the jungle's floor is in the film)
-      { kind: 'fern', n: 1200, within: [4, 90], scale: [0.7, 1.6], solid: false, clear: -10, opts: { seed: 15, n: 7, color: '#465030' } },
-      { kind: 'plant', n: 500, within: [4, 90], scale: [0.7, 1.6], solid: false, clear: -10, opts: { seed: 16, color: '#50603a' } },
+      // (the jungle's middle storey: younger, slimmer trees crowded in under
+      // the great ones, close all round, so between the trunks there's
+      // always another trunk and leaves at every height, as a real
+      // rainforest has)
+      { kind: 'jungletree', n: 380, within: [16, 340], scale: [0.42, 0.75], opts: { seed: 4, h: 26, r: 1.0, bark: '#6e6a5a', leaf: '#41502a', creepers: false } },
+      // (and its shrub layer, round and leafy, Bruno Simon's bushes, out in
+      // the mist; close round you it's `patches`, which go where you go)
+      { kind: 'bush', n: 900, within: [50, 300], scale: [1.0, 2.3], solid: false, clear: -8, opts: { seed: 14, s: 2.4, color: '#3e4e2a' } },
+      { kind: 'plant', n: 600, within: [50, 480], scale: [0.8, 2.0], solid: false, clear: -8, opts: { seed: 4, color: '#4a5a30' } },
+      { kind: 'fern', n: 600, within: [50, 480], scale: [0.8, 1.7], solid: false, clear: -8, opts: { seed: 5, color: '#4a5230' } },
       { kind: 'rock', n: 50, within: [20, 560], scale: [0.6, 2.4], opts: { color: '#6a6656', sharp: 0.4 } },
       { kind: 'log', n: 24, within: [30, 520], scale: [0.9, 1.5], solid: false, opts: { seed: 7, bark: '#6a6250', moss: '#4e6a2c' } },
     ],

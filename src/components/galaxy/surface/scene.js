@@ -61,6 +61,7 @@ import { createWater } from './water';
 import { createWeather } from './weather';
 import { createKit } from './kit';
 import { createGrass } from './grass';
+import { createPatches } from './patches';
 import { floorShadow } from '../../../lib/three/grounding';
 import { PROPS } from './props';
 import { createPlacer } from './placer';
@@ -236,6 +237,8 @@ export async function create(canvas, ctx) {
   }
   // (the grass round you: blades on the land, where the site grows it)
   const grass = site.grass && !site.noGround ? createGrass(scene, { grid, site, small, time: kit.wind }) : null;
+  // (and the undergrowth round you, wherever you walk: site.patches)
+  const patches = site.patches?.length && !site.noGround ? createPatches({ parent: scene, kit, world, site, small }) : null;
   const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density });
 
   // ── The places you go into (zones): built high over the world, out of
@@ -2103,6 +2106,7 @@ export async function create(canvas, ctx) {
     placer.update(t, dt, me().st);
     if (!reduced) kit.tick(dt);
     grass?.update(me().st.x, me().st.z, me().st.x, me().st.z);
+    patches?.update(me().st.x, me().st.z);
     stepDust(dt);
     storm(dt);
     online(dt);
@@ -2219,7 +2223,7 @@ export async function create(canvas, ctx) {
         area: { x0: landAt[0] - R, z0: landAt[1] - R, w: R * 2, d: R * 2 },
         sun,
         // (what moves isn't baked: the folk and beasts about, the speeders)
-        skip: [sky.mesh, water?.mesh, water?.glow, weather?.group, weather?.mesh, camera, life.group, grass?.mesh, ...rides.map((x) => x.holder)].filter(Boolean),
+        skip: [sky.mesh, water?.mesh, water?.glow, weather?.group, weather?.mesh, camera, life.group, grass?.mesh, patches?.group, ...rides.map((x) => x.holder)].filter(Boolean),
         movers: [...people.map((p) => ({ object: p.holder, size: [0.8, 0.8] })), ...life.actors.filter((a) => a.holder).map((a) => ({ object: a.holder, size: [1, 1] })), ...rides.map((x) => ({ object: x.holder, size: [1.4, 2.6] }))],
         shade: site.light.shade ?? site.light.ground ?? '#3a3028',
         height: world.heightAt,
@@ -2491,6 +2495,7 @@ export async function create(canvas, ctx) {
       life.dispose();
       placer.dispose();
       grass?.dispose();
+      patches?.dispose();
       shadowPhase?.dispose();
       for (const p of people) {
         p.gp?.dispose();
