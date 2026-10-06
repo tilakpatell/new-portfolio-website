@@ -293,7 +293,8 @@ export async function bake() {
   await save(albedo, W, H, 3, 'middleearth', [[2048, ''], [1024, '-sm']], { quality: 88 });
   await save(normalMap(height, W, H, 1), W, H, 3, 'middleearth-normal', [[2048, ''], [1024, '-sm']], { quality: 90 });
   await save(rough, W, H, 3, 'middleearth-rough', [[1024, '']], { quality: 84 });
-  await save(night, W, H, 3, 'middleearth-night', [[2048, ''], [1024, '-sm']], { quality: 86 });
-  await save(glow, W, H, 3, 'middleearth-glow', [[2048, '']], { quality: 88 });
+  // (lights and glow are small soft points: 1024 holds them)
+  await save(night, W, H, 3, 'middleearth-night', [[1024, ''], [512, '-sm']], { quality: 86 });
+  await save(glow, W, H, 3, 'middleearth-glow', [[1024, '']], { quality: 88 });
   await save(clouds, W, H, 4, 'middleearth-clouds', [[2048, ''], [1024, '-sm']], { quality: 82, alphaQuality: 80 });
 }

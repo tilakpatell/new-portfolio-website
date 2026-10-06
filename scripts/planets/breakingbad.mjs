@@ -197,6 +197,7 @@ export async function bake() {
   await save(albedo, W, H, 3, 'breakingbad', [[2048, ''], [1024, '-sm']], { quality: 88 });
   await save(normalMap(height, W, H, 1), W, H, 3, 'breakingbad-normal', [[2048, ''], [1024, '-sm']], { quality: 90 });
   await save(rough, W, H, 3, 'breakingbad-rough', [[1024, '']], { quality: 84 });
-  await save(night, W, H, 3, 'breakingbad-night', [[2048, ''], [1024, '-sm']], { quality: 86 });
-  await save(clouds, W, H, 3, 'breakingbad-clouds', [[2048, ''], [1024, '-sm']], { quality: 80 });
+  // (the lights, and a few soft clouds: 1024 holds them)
+  await save(night, W, H, 3, 'breakingbad-night', [[1024, ''], [512, '-sm']], { quality: 86 });
+  await save(clouds, W, H, 3, 'breakingbad-clouds', [[1024, ''], [512, '-sm']], { quality: 80 });
 }
