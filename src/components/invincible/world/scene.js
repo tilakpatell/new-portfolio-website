@@ -323,8 +323,8 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       const fig = f.fig;
       const speed = p.speed ?? 0;
       // off the ground: over the land, the water or a roof (or the Moon, or Mars)
-      const land = () => Math.max(groundAt(p.x, p.z), WATER_Y) + (p.y ?? 0);
-      const air = (p.over ?? land() - surfaceAt(world, p.x, p.z, land() + 0.3).y) > 0.8;
+      const y = p.over == null ? Math.max(groundAt(p.x, p.z), WATER_Y) + (p.y ?? 0) : 0;
+      const air = (p.over ?? y - surfaceAt(world, p.x, p.z, y + 0.3).y) > 0.8;
       // which way they're going, from how the ghost itself moves (the room says how fast, not where)
       f.group.updateWorldMatrix(true, false);
       gAt.setFromMatrixPosition(f.group.matrixWorld);
@@ -332,7 +332,8 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       f.at = (f.at ?? new THREE.Vector3()).copy(gAt);
       // stood up the way that's up where they are (on the Moon, away from it), turned the way they face
       gYaw.setFromAxisAngle(Y, -f.group.rotation.y);
-      gUp.copy(!air && p.up ? gUp.fromArray(p.up) : Y);
+      if (!air && p.up) gUp.fromArray(p.up);
+      else gUp.copy(Y);
       fig.holder.position.copy(gUp).applyQuaternion(gYaw).multiplyScalar(fig.hipHeight);
       // in the air: upright when still, along the way they're going when fast (as Mark is)
       const k = air ? clamp((f.v.length() - 8) / 30, 0, 1) : 0;
@@ -348,7 +349,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     },
     tag: 0.5,
     halo: 1.3,
-    snap: 150, // (flying, they're tens of metres on between one word and the next)
+    snap: 150, // (flying, they're tens of metres on from one pose to the next)
   });
   scene.add(ghosts.group);
 
