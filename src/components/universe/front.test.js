@@ -48,7 +48,10 @@ const at = (front, d) => {
 
 describe('createFront', () => {
   it('only fights a war that’s ready (the Star Wars crews’ is in the galaxy)', () => {
-    expect(createFront(new THREE.Group(), { side: SIDES.rickmorty, models: {}, storage: memory(), emit() {} })).toBeNull();
+    const rm = createFront(new THREE.Group(), { side: SIDES.rickmorty, models: { want() {} }, storage: memory(), emit() {}, makeScene: () => ({ show() {}, hide() {}, update: () => true, dispose() {} }) });
+    expect(rm).not.toBeNull();
+    rm.dispose();
+    expect(createFront(new THREE.Group(), { side: SIDES.breakingbad, models: {}, storage: memory(), emit() {} })).toBeNull();
     expect(createFront(new THREE.Group(), { side: SIDES.starwars, models: {}, storage: memory(), emit() {} })).toBeNull();
     expect(createFront(new THREE.Group(), { side: null, models: {}, storage: memory(), emit() {} })).toBeNull();
   });

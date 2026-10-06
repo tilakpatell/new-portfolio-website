@@ -42,9 +42,9 @@ import { SHIP_MODELS, buildShip, LENGTH } from '../../universe/shipModels';
 import { loadModel } from '../../universe/planets';
 import { paintById } from '../../universe/paint';
 import { readLoadout, STOCK_LOADOUT } from '../../universe/outfit';
-import { flybySound, gunSound, impactSound, shipEngine } from '../../universe/sounds';
+import { flybySound, gadgetSound, gunSound, impactSound, popSound, portalSound, shipEngine } from '../../universe/sounds';
 import { PARTY, loadPartyFigure } from '../../universe/footScene';
-import { createGunplay } from '../../universe/gunplay';
+import { GUNS, createGunplay } from '../../universe/gunplay';
 import { createGunFx } from '../../universe/gunfx';
 import { spring } from '../../../lib/three/ik';
 import { METRE } from '../../universe/foot';
@@ -126,6 +126,8 @@ export async function create(canvas, ctx) {
   // (the runtime's: shared with whatever world comes next, so its shadows go back as they were at dispose)
   const { renderer } = rt.gfx;
   const shadowMapWas = { enabled: renderer.shadowMap.enabled, type: renderer.shadowMap.type };
+  const clipWas = renderer.localClippingEnabled;
+  renderer.localClippingEnabled = true; // (a portal kill clips the figure at the portal's plane: lib/three/portalFx.js)
   renderer.shadowMap.enabled = !small;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   const scene = new THREE.Scene();
@@ -249,7 +251,14 @@ export async function create(canvas, ctx) {
   });
 
   // ── Things to do: the quest you're on, out in the world, and the blaster ──
-  const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent });
+  // (Rick's guns' kills, heard: the portal's swirl and snap, the shatter, the squeak and the pop)
+  const showSound = (how, ev) => {
+    if (how === 'portal') {
+      if (ev === 'open') portalSound();
+      else if (ev === 'cut') popSound();
+    } else gadgetSound(how, ev);
+  };
+  const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent, onShow: showSound });
   // (a battle fills the air with bolts: room for them)
   const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' ? 72 : undefined });
   // what a shot does round the gun and where it lands (universe/gunfx.js),
@@ -1029,13 +1038,13 @@ export async function create(canvas, ctx) {
   const shootable = () => (assaultOn() ? assault.targets : activity.targets);
   // a shot that found someone: the weapon's damage (a shield breaks to a
   // blast), the hit marker, the moment's hold on a kill
-  const struck = (hit, damage = me().weapon?.damage ?? 1, { breaks = false } = {}) => {
+  const struck = (hit, damage = me().weapon?.damage ?? 1, { breaks = false, how = null, push = null } = {}) => {
     if (!hit.target) return;
     if (assaultOn()) assault.hit(hit.target, ASSAULT.yours);
     else {
       const t = hit.target;
       const was = t.hp;
-      activity.hit(t, dealt(damage), { breaks });
+      activity.hit(t, dealt(damage), { breaks, how, push });
       const killed = was > 0 && t.hp <= 0;
       emit({ type: 'hit', kill: killed });
       sounds.combat?.(killed ? 'kill' : 'hit');
@@ -1044,6 +1053,8 @@ export async function create(canvas, ctx) {
   };
   const weapon = () => me().weapon ?? withMods(me().spec.gun ?? 'blaster', me().spec.mods ?? []);
   const dealt = (n) => Math.max(1, Math.round(n * perks.damage));
+  // a bolt's colour: the gun's own (Rick's gadgets), or the hero's
+  const boltOf = (p) => GUNS[weapon().kind]?.bolt ?? p.spec.bolt ?? '#ff3b30';
   // the eyes' line, scattered by the weapon (tighter down the sights)
   const scatter = (dir, w) => {
     const sp = spreadAt(w, state.ads);
@@ -1140,8 +1151,8 @@ export async function create(canvas, ctx) {
       state.shot = { from, dir: camDir.clone() };
       return;
     }
-    const hit = blaster.fire(from, scatter(camDir, w), shootable(), me().spec.bolt ?? '#ff3b30', w.range);
-    struck(hit);
+    const hit = blaster.fire(from, scatter(camDir, w), shootable(), boltOf(me()), w.range);
+    struck(hit, undefined, { how: w.kind, push: camDir });
     landed(hit, camDir);
     sounds.blast?.();
     emit({ type: 'fire' });
@@ -1498,8 +1509,8 @@ export async function create(canvas, ctx) {
     const n = w.pellets ?? 1;
     let hit = null;
     for (let i = 0; i < n; i++) {
-      const h = blaster.fire(o.from, scatter(o.dir, w), shootable(), hot ? '#ffffff' : (p.spec.bolt ?? '#ff3b30'), w.range, r.muzzle);
-      struck(h, Math.max(1, Math.round((w.damage + (hot ? 1 : 0)) / (n > 1 ? 2 : 1))));
+      const h = blaster.fire(o.from, scatter(o.dir, w), shootable(), hot ? '#ffffff' : boltOf(p), w.range, r.muzzle);
+      struck(h, Math.max(1, Math.round((w.damage + (hot ? 1 : 0)) / (n > 1 ? 2 : 1))), { how: w.kind, push: o.dir });
       hit ??= h;
     }
     const spec = p.gp.spec;
@@ -2551,6 +2562,7 @@ export async function create(canvas, ctx) {
       disposeTree(scene);
       post.dispose();
       Object.assign(renderer.shadowMap, shadowMapWas);
+      renderer.localClippingEnabled = clipWas;
       canvas.removeAttribute('aria-hidden');
     },
   };

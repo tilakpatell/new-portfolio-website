@@ -715,10 +715,51 @@ export function gunSound(gun, { soft = false } = {}) {
     playClip('portalGun', { gain: 0.8 * k, duration: 1.4 });
     return;
   }
+  if (gun === 'freeze') {
+    // the freeze ray: a cold hiss out of the nozzle, a glassy ring over it
+    burst(ac, out, { at: t, dur: 0.32, gain: 0.12 * k, type: 'highpass', f: 5200 });
+    blip(ac, out, { type: 'sine', f: 3400, at: t, dur: 0.3, gain: 0.05 * k, glide: 0.6 });
+    blip(ac, out, { type: 'triangle', f: 5100, at: t + 0.03, dur: 0.22, gain: 0.03 * k, glide: 0.8 });
+    return;
+  }
+  if (gun === 'shrink') {
+    // the shrink ray: the old ray gun's warble, falling away
+    blip(ac, out, { type: 'sawtooth', f: 1300, at: t, dur: 0.22, gain: 0.05 * k, glide: 0.25, filter: 2600 });
+    blip(ac, out, { type: 'sine', f: 900, at: t, dur: 0.24, gain: 0.08 * k, glide: 2.2 });
+    return;
+  }
   // a laser: a bright zap falling away, a little fizz
   blip(ac, out, { type: 'sawtooth', f: 2400, at: t, dur: 0.13, gain: 0.06 * k, glide: 0.22, filter: 4200 });
   blip(ac, out, { type: 'square', f: 1600, at: t + 0.01, dur: 0.1, gain: 0.03 * k, glide: 0.3, filter: 3000 });
   burst(ac, out, { at: t, dur: 0.08, gain: 0.05 * k, type: 'highpass', f: 4000 });
+}
+
+// What Rick's gadgets do to the one they kill (lib/three/gadgetFx.js), by
+// the kill's moment: the freeze ray's 'hit' (the ice cracking over them) and
+// 'shatter'; the shrink ray's 'hit' (a falling whistle), 'squeak' and 'pop'
+export function gadgetSound(gun, ev) {
+  const ac = audioContext();
+  const out = ac ? output() : null;
+  if (!ac || !out) return;
+  const t = ac.currentTime + 0.005;
+  if (gun === 'freeze' && ev === 'hit') {
+    for (let i = 0; i < 6; i++) burst(ac, out, { at: t + i * 0.05 + Math.random() * 0.03, dur: 0.04, gain: 0.08, type: 'bandpass', f: 2500 + Math.random() * 2500, q: 4 });
+    blip(ac, out, { type: 'sine', f: 220, at: t, dur: 0.5, gain: 0.06, glide: 0.5 });
+  } else if (gun === 'freeze' && ev === 'shatter') {
+    burst(ac, out, { at: t, dur: 0.35, gain: 0.32, type: 'highpass', f: 2800 });
+    burst(ac, out, { at: t, dur: 0.15, gain: 0.2, type: 'lowpass', f: 700 });
+    // the shards landing: tinkles, scattered
+    for (let i = 0; i < 9; i++) blip(ac, out, { type: 'triangle', f: 2600 + Math.random() * 3600, at: t + 0.08 + Math.random() * 0.6, dur: 0.07, gain: 0.025, glide: 0.9 });
+  } else if (gun === 'shrink' && ev === 'hit') {
+    blip(ac, out, { type: 'sine', f: 260, at: t, dur: 0.5, gain: 0.1, glide: 7 });
+    blip(ac, out, { type: 'square', f: 130, at: t, dur: 0.45, gain: 0.02, glide: 7, filter: 2400 });
+  } else if (gun === 'shrink' && ev === 'squeak') {
+    blip(ac, out, { type: 'sine', f: 2400, at: t, dur: 0.08, gain: 0.07, glide: 1.4 });
+    blip(ac, out, { type: 'sine', f: 2900, at: t + 0.1, dur: 0.1, gain: 0.07, glide: 1.25 });
+  } else if (gun === 'shrink' && ev === 'pop') {
+    burst(ac, out, { at: t, dur: 0.05, gain: 0.22, type: 'bandpass', f: 1800, q: 1.4 });
+    blip(ac, out, { type: 'sine', f: 600, at: t, dur: 0.08, gain: 0.12, glide: 0.3 });
+  }
 }
 
 // A shot landing near you on foot: a sharp crack of something hit

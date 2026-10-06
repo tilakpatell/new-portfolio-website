@@ -171,11 +171,14 @@ export const WARS = {
   rickmorty: {
     id: 'rickmorty',
     name: 'The War for the Multiverse',
-    ready: false, // (its flagships come with their models: PR D)
+    ready: true,
     sides: [council, federation],
+    // at its real places on the map: from just off the Citadel (deep.js's) to
+    // the sky over Earth C-137 (the Rick and Morty world), which the
+    // Federation took, as it did in the show
     sectors: line(
-      [2400, 120, 5200],
-      [4000, 120, 5200],
+      [1216, -135, -4464],
+      [-288, -135, -3916],
       [
         ['citadel', 'The Citadel'],
         ['birdworld', 'Bird World'],
@@ -183,7 +186,7 @@ export const WARS = {
         ['squanch', 'Planet Squanch'],
         ['unity', 'Unity’s world'],
         ['gromflom', 'Gromflom Prime'],
-        ['fedprime', 'Federation Prime'],
+        ['c137', 'Earth C-137'],
       ],
     ),
     battleName: (s) => `The fight over ${s.name}`,
@@ -315,21 +318,28 @@ export const SUBSYSTEMS = {
     [0, 0.06, -0.395],
     [0, -0.035, -0.12],
   ),
+  // the Council's dreadnought (scripts/meshy-war.mjs, in the Citadel's look):
+  // its two teal shield domes either side of the spire, the glass dome bridge
+  // up front, the reactor under the engines (its spire stands tall of the
+  // deck, so the deck's below the middle of its box)
   councildread: flagship(
     [
-      [-0.08, 0.14, -0.2],
-      [0.08, 0.14, -0.2],
+      [-0.12, -0.06, -0.16],
+      [0.12, -0.06, -0.16],
     ],
-    [0, 0.16, 0.2],
-    [0, -0.08, -0.36],
+    [0, -0.06, 0.19],
+    [0, -0.14, -0.38],
   ),
+  // the Federation's battleship, as the show drew it: its shield generators
+  // in the engine pods either side, the bridge behind the glass up front, the
+  // reactor in the great dome at its back
   fedbattleship: flagship(
     [
-      [-0.1, 0.12, -0.28],
-      [0.1, 0.12, -0.28],
+      [-0.31, -0.05, 0.14],
+      [0.31, -0.05, 0.14],
     ],
-    [0, 0.14, 0.24],
-    [0, -0.06, -0.42],
+    [0, 0.08, 0.22],
+    [0, 0.12, -0.3],
   ),
   superlab: flagship(
     [
@@ -362,8 +372,8 @@ export const TURRETS = {
   corvette: [...flanks(0.08, 0.05, [-0.2, 0.2])],
   lightcruiser: [...flanks(0.1, 0.05, [-0.2, 0.1])],
   gozanti: [...flanks(0.1, 0.06, [-0.15, 0.15])],
-  councildread: [...flanks(0.12, 0.05, [-0.25, -0.05, 0.15])],
-  fedbattleship: [...flanks(0.14, 0.05, [-0.25, -0.05, 0.15])],
+  councildread: [...flanks(0.1, -0.08, [-0.25, -0.05, 0.15])],
+  fedbattleship: [...flanks(0.28, 0.12, [-0.2, 0.05]), [0, 0.28, -0.15]],
   gearship: [...flanks(0.12, 0.05, [-0.15, 0.15])],
   saucer: [...flanks(0.2, 0.05, [0])],
   federation: [...flanks(0.12, 0.05, [-0.15, 0.15])],
@@ -391,8 +401,8 @@ export const HULLS = {
   transport: [[-0.3, 0.12], [0, 0.13], [0.3, 0.11]],
   lightcruiser: [[-0.36, 0.1], [-0.12, 0.09], [0.12, 0.07], [0.36, 0.05]],
   gozanti: [[-0.36, 0.12], [-0.12, 0.13], [0.12, 0.12], [0.36, 0.1]],
-  councildread: [[-0.36, 0.13], [-0.12, 0.14], [0.12, 0.13], [0.36, 0.09]],
-  fedbattleship: [[-0.38, 0.12], [-0.13, 0.13], [0.12, 0.12], [0.36, 0.08]],
+  councildread: [[-0.38, 0.12], [-0.15, 0.13], [0.1, 0.08], [0.32, 0.04]],
+  fedbattleship: [[-0.28, 0.3], [0, 0.3], [0.24, 0.22], [0.42, 0.08]],
   gearship: [[-0.3, 0.16], [0, 0.18], [0.3, 0.16]],
   saucer: [[-0.2, 0.3], [0.2, 0.3]],
   federation: [[-0.36, 0.12], [-0.12, 0.12], [0.12, 0.11], [0.36, 0.08]],
