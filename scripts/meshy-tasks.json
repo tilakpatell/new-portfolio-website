@@ -504,13 +504,15 @@
     "image": "01a11128-dfdf-7772-9999-f29c2e151d46",
     "model": "01a1113b-026c-777d-86f1-d85c2512bfe3",
     "rig": "01a1114f-4b95-7423-bf39-110627b40ab2",
-    "idle": "01a1114f-e0d8-7122-bafe-83ff45f62a15"
+    "idle": "01a1114f-e0d8-7122-bafe-83ff45f62a15",
+    "sit": "01a11182-47aa-749c-9851-749f34e4f104"
   },
   "tricia": {
     "image": "01a1113a-83a1-734f-b6a4-a49565edb4f4",
     "model": "01a1114b-fc8f-76bb-829f-e94755ce9d28",
     "rig": "01a1114f-9531-73be-a49c-53a000ae4fa3",
-    "idle": "01a11150-0c03-7080-8aec-04766d18ff31"
+    "idle": "01a11150-0c03-7080-8aec-04766d18ff31",
+    "sit": "01a11182-47a7-74f4-9a38-6bb69dd47927"
   },
   "diane": {
     "image": "01a11012-f983-72d6-9cdb-b92f71ac9fad",
@@ -607,5 +609,9 @@
   "storytrain": {
     "image": "01a1102c-e19b-770c-aae4-78f324f1191d",
     "model": "01a11124-7a1a-7077-800f-55387c9afb19"
+  },
+  "poopybutthole": {
+    "image": "01a11182-88d9-77ad-aaf7-f984d8d5f632",
+    "model": "01a11184-2cb7-71ce-b9b1-c4a149401379"
   }
 }
