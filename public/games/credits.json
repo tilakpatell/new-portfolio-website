@@ -2187,5 +2187,68 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/rickd3": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11237-b189-7538-96e3-0a746a7fbf0b",
+    "name": "rickd3, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/simplerick": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11239-854c-7176-a19e-9c3afdf1629b",
+    "name": "simplerick, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/evilrick": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11239-987d-71d6-ba16-a9c0ca1c5cbd",
+    "name": "evilrick, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/bigmorty": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11237-b184-72f6-be9e-a250ef87369b",
+    "name": "bigmorty, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/slickmorty": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11237-b186-766b-87e9-60f75c6beb26",
+    "name": "slickmorty, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/supremeguard": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1123c-a2f5-76ff-aacc-74287c33dc28",
+    "name": "supremeguard, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/garmentrick": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11263-8161-70e2-a753-790c0405b416",
+    "name": "garmentrick, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }
