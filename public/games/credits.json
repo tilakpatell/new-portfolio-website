@@ -2724,5 +2724,14 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/vance": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11384-ca51-7288-b9fa-9e95287494b4",
+    "name": "vance, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }
