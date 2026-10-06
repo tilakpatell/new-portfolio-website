@@ -1,5 +1,5 @@
 /* Cybertron, the world: the canvas filling the first screen, and the HUD over it */
-.cyw { position: relative; height: calc(100svh - var(--nav-h, 0px)); min-height: 520px; margin-top: var(--nav-h, 0px); overflow: hidden; background: #05070c; color: #e9f1ff; font-family: 'Orbitron', ui-sans-serif, system-ui, sans-serif; }
+.cyw { position: relative; height: calc(100svh - var(--nav-h, 0px)); min-height: min(520px, 100svh); margin-top: var(--nav-h, 0px); overflow: hidden; background: #05070c; color: #e9f1ff; font-family: 'Orbitron', ui-sans-serif, system-ui, sans-serif; }
 .cyw-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; touch-action: none; }
 .cyw[data-playing] .cyw-canvas { cursor: crosshair; }
 .cyw-loading { position: absolute; inset: 0; display: grid; place-content: center; gap: 14px; justify-items: center; font-size: 0.85rem; letter-spacing: 0.14em; text-transform: uppercase; color: #9fd8ff; background: radial-gradient(60% 50% at 50% 50%, rgba(63, 210, 255, 0.12), transparent 70%), #05070c; }
@@ -54,10 +54,36 @@
 @keyframes cyw-fade { from { opacity: 0; } to { opacity: 1; } }
 
 .cyw-touch { position: absolute; inset: 0; pointer-events: none; }
-.cyw-stick { position: absolute; left: 18px; bottom: 60px; width: 140px; height: 140px; border-radius: 50%; border: 2px solid rgba(127, 216, 255, 0.35); background: rgba(5, 9, 18, 0.25); pointer-events: auto; touch-action: none; }
+.cyw-stick { position: absolute; left: calc(18px + env(safe-area-inset-left)); bottom: calc(60px + env(safe-area-inset-bottom)); width: 140px; height: 140px; border-radius: 50%; border: 2px solid rgba(127, 216, 255, 0.35); background: rgba(5, 9, 18, 0.25); pointer-events: auto; touch-action: none; }
 .cyw-lookpad { position: absolute; right: 0; top: 18%; bottom: 210px; width: 50%; pointer-events: auto; touch-action: none; }
-.cyw-buttons { position: absolute; right: 12px; bottom: 54px; display: grid; grid-template-columns: repeat(3, 72px); gap: 8px; pointer-events: auto; }
-.cyw-buttons button { height: 52px; border-radius: 14px; border: 1px solid rgba(127, 216, 255, 0.35); background: rgba(5, 9, 18, 0.6); color: #e9f1ff; font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; touch-action: none; }
+.cyw-buttons { position: absolute; right: calc(12px + env(safe-area-inset-right)); bottom: calc(54px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(3, 76px); gap: 8px; pointer-events: auto; }
+.cyw-buttons button { height: 52px; padding: 0 2px; border-radius: 14px; border: 1px solid rgba(127, 216, 255, 0.35); background: rgba(5, 9, 18, 0.6); color: #e9f1ff; font-size: 0.6rem; letter-spacing: 0.02em; text-transform: uppercase; white-space: nowrap; touch-action: none; }
+/* Playing, the guide's ? and the scroll saber stay out of the way of the
+   HUD and the buttons; on a phone or a tablet the world takes the whole
+   screen, over the site's bar (Stop, or the back gesture, gives the page
+   back) */
+:root[data-playing='cybertron'] :is(.guide-btn, .saber-progress) { visibility: hidden; pointer-events: none; }
+@media (pointer: coarse) {
+  :root[data-playing='cybertron'] .site-nav { visibility: hidden; }
+  :root[data-playing='cybertron'] .cyw-host { z-index: 60; } /* (the page's wrapper, over what comes after it) */
+  .cyw[data-playing] { position: fixed; inset: 0; z-index: 60; height: 100svh; min-height: 0; margin: 0; }
+  .cyw[data-playing] .cyw-mission { top: calc(10px + env(safe-area-inset-top)); left: calc(10px + env(safe-area-inset-left)); }
+  .cyw[data-playing] .cyw-stats { top: calc(10px + env(safe-area-inset-top)); right: calc(10px + env(safe-area-inset-right)); }
+  .cyw[data-playing] .cyw-bars { bottom: calc(14px + env(safe-area-inset-bottom)); left: calc(18px + env(safe-area-inset-left)); }
+}
+/* a phone held upright: the buttons in two columns, clear of the stick */
+@media (pointer: coarse) and (max-width: 440px) {
+  .cyw-buttons { grid-template-columns: repeat(2, 76px); }
+}
+/* a phone on its side: everything a little nearer the edges */
+@media (pointer: coarse) and (max-height: 500px) {
+  .cyw-stick { bottom: calc(34px + env(safe-area-inset-bottom)); width: 120px; height: 120px; }
+  .cyw-buttons { bottom: calc(30px + env(safe-area-inset-bottom)); gap: 6px; }
+  .cyw-buttons button { height: 44px; }
+  .cyw-prompt { bottom: 96px; }
+  .cyw-talk { bottom: 140px; }
+  .cyw-boss { top: 52px; }
+}
 @media (max-width: 640px) {
   .cyw-keys { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cyw-mission { left: 10px; top: 10px; max-width: 70%; }

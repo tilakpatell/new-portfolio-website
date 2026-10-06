@@ -138,6 +138,16 @@ function World({ gl, setGl }) {
     canvas.current?.focus({ preventScroll: true });
   }, [touch]);
 
+  // (the page knows, so the guide's ? keeps clear of the touch buttons)
+  useEffect(() => {
+    if (!playing) return undefined;
+    const root = document.documentElement;
+    root.dataset.playing = 'cybertron';
+    return () => {
+      if (root.dataset.playing === 'cybertron') delete root.dataset.playing;
+    };
+  }, [playing]);
+
   useEffect(() => {
     if (!playing) return undefined;
     const c = ctl.current;
