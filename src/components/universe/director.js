@@ -32,7 +32,8 @@
 // thing twice running. While your shields are low (`calm`), nobody new comes
 // after you: what happens then is one of the sights.
 //
-// createDirector({ rand }) → { update(dt, { side, heat, busy, travelling, calm }) → event id or null, soon(id) }
+// createDirector({ rand }) → { update(dt, { side, heat, busy, travelling, calm }) → event id or null, soon(id),
+//   foretell(side) → { id, in } | null (what's next, and in how long: then that's what comes) }
 // `side` is sides.js's (`has(need)` says what it can bring), or null
 
 export const EVENTS = {
@@ -60,6 +61,17 @@ export function createDirector({ rand = Math.random } = {}) {
   let nextAt = between(PACE.first);
   let last = null;
   let forced = null;
+  let told = null; // what's been foretold (an informant's word: foretell)
+  // the next event, picked by weight (more hunts the more trouble you've
+  // made, and on the way somewhere), never the last one again
+  const choose = (side, { heat = 0, travelling = false, calm = false } = {}) => {
+    const choices = Object.entries(EVENTS).filter(([id, e]) => canHave(side, e) && id !== last && !(calm && e.heat > 0));
+    if (!choices.length) return null;
+    const weight = (e) => e.weight * (1 + e.heat * Math.min(heat, 6) * 0.5) * (travelling && e.heat > 0 ? 2 : 1);
+    let r = rand() * choices.reduce((s, [, e]) => s + weight(e), 0);
+    for (const [k, e] of choices) if ((r -= weight(e)) <= 0) return k;
+    return choices[choices.length - 1][0];
+  };
   return {
     // side: the crew's (no ship: null, and nothing happens);
     // heat: 0 and up; busy: something's already going on (hunters after
@@ -77,6 +89,7 @@ export function createDirector({ rand = Math.random } = {}) {
       if (forced && EVENTS[forced] && canHave(side, EVENTS[forced])) {
         const id = forced;
         forced = null;
+        told = null;
         last = id;
         nextAt = clock + between(PACE.gap);
         return id;
@@ -84,17 +97,10 @@ export function createDirector({ rand = Math.random } = {}) {
       // travelling, the wait runs down faster
       if (travelling) nextAt -= dt * 1.2;
       if (clock < nextAt) return null;
-      const choices = Object.entries(EVENTS).filter(([id, e]) => canHave(side, e) && id !== last && !(calm && e.heat > 0));
-      if (!choices.length) return null;
-      const weight = (e) => e.weight * (1 + e.heat * Math.min(heat, 6) * 0.5) * (travelling && e.heat > 0 ? 2 : 1);
-      let r = rand() * choices.reduce((s, [, e]) => s + weight(e), 0);
-      let id = choices[choices.length - 1][0];
-      for (const [k, e] of choices) {
-        if ((r -= weight(e)) <= 0) {
-          id = k;
-          break;
-        }
-      }
+      // (one foretold comes as it was told, if it still can)
+      const id = told && canHave(side, EVENTS[told]) && !(calm && EVENTS[told].heat > 0) ? told : choose(side, { heat, travelling, calm });
+      told = null;
+      if (!id) return null;
       last = id;
       nextAt = clock + (between(PACE.gap) / (1 + Math.min(heat, 6) * 0.25)) * (travelling ? 0.45 : 1);
       return id;
@@ -102,6 +108,13 @@ export function createDirector({ rand = Math.random } = {}) {
     // bring an event on next (for checking from a browser)
     soon(id) {
       forced = id;
+    },
+    // what comes next, and in how many seconds (an informant tells you):
+    // picked now, so it's what comes; null without a side
+    foretell(side, opts = {}) {
+      if (!side) return null;
+      told ??= forced ?? choose(side, opts);
+      return told ? { id: told, in: Math.max(0, nextAt - clock) } : null;
     },
   };
 }

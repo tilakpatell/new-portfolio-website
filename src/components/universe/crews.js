@@ -259,6 +259,44 @@ export const CREWS = [
     },
     // their lasers hitting you, your shields low, shot down
     // dropped out of the pulse drive by hunters, and crashes of other kinds
+    // the named characters who come by (npcs/index.js), by what they're saying
+    npc: {
+      squanchy: {
+        seen: [['morty', 'Rick, is that… Squanchy’s ship?']],
+        hello: [
+          ['comms', 'Rick! Squanchy here! I’ve got news, and it’s not squanchy news!'],
+          ['rick', 'Spit it out, Squanchy.'],
+        ],
+        tip: {
+          council: [['comms', 'The Council’s coming for you, Rick! Portals, the lot! Get your squanch together!']],
+          hunt: [['comms', 'Federation’s on your trail, Rick. A whole pack of them. Squanch ’em good.']],
+          destroyer: [['comms', 'There’s a Federation cruiser on its way. A big one! Bigger than my last party!']],
+          bounty: [['comms', 'Somebody’s put a price on you, Rick. A big squanching price.']],
+          any: [['comms', 'Something’s coming, Rick. I can feel it in my squanch.']],
+        },
+        hit: [['comms', 'Hey! Watch where you’re squanching, Rick!']],
+        leaving: [
+          ['comms', 'Gotta squanch! Good luck, Rick!'],
+          ['morty', 'Bye, Squanchy!'],
+        ],
+      },
+      evilmorty: {
+        seen: [
+          ['morty', 'Rick, that black ship with the eye patch…'],
+          ['rick', 'Yeah. I see him, Morty.'],
+        ],
+        hello: [
+          ['comms', 'Hello, Rick. Just checking in. Seeing how the other half flies.'],
+          ['morty', 'That’s… that’s me, Rick. That’s the other me.'],
+          ['rick', 'He’s not you, Morty. Shoot him.'],
+        ],
+        hit: [['comms', 'Not bad. For a Rick who still needs a Morty.']],
+        leaving: [
+          ['comms', 'Let’s call it a draw. For now.'],
+          ['rick', 'He’ll be back, Morty. He always plans to be back.'],
+        ],
+      },
+    },
     interdicted: [
       ['morty', 'Rick! Something pulled us out of pulse!'],
       ['rick', 'Interdictor, Morty. Somebody wants a word. Shoot the word.'],
@@ -759,6 +797,22 @@ export const CREWS = [
         ['comms', 'No, I am your father.', 'vader'],
       ],
     },
+    // the named characters who come by (npcs/index.js), by what they're saying
+    npc: {
+      lando: {
+        seen: [['r2', '[a curious beep: a freighter, parked, broadcasting a hail]']],
+        hello: [
+          ['comms', 'Well, hello there. Lando Calrissian. And who might you be?'],
+          ['luke', 'Luke Skywalker. Are you… selling something?'],
+        ],
+        offer: [
+          ['comms', 'I happen to have a {part} that’d suit that X-wing. Tell your hangar Lando sent you.'],
+          ['r2', '[a sceptical warble]'],
+        ],
+        hit: [['comms', 'Hey! That’s my ship you’re shooting at, kid!']],
+        leaving: [['comms', 'This deal is getting worse all the time. Calrissian out.']],
+      },
+    },
     interdicted: [
       ['r2', '[an alarmed shriek]'],
       ['luke', 'They’ve pulled us out of the drive! Interdictor!'],
@@ -1219,6 +1273,25 @@ export const CREWS = [
         ['han', 'Bombers. Slow and stupid, Chewie. Just don’t be where the bomb goes.'],
         ['chewie', '[a doubtful growl]'],
       ],
+    },
+    // the named characters who come by (npcs/index.js), by what they're saying
+    npc: {
+      lando: {
+        seen: [
+          ['han', 'Is that who I think it is?'],
+          ['chewie', '[a wary growl]'],
+        ],
+        hello: [
+          ['comms', 'Han Solo. You’ve got a lot of guts coming out here.'],
+          ['han', 'Lando, you old pirate. I’m not here for a fight.'],
+        ],
+        offer: [
+          ['comms', 'I’ve got a {part} going cheap. For you, old buddy, almost a fair price. Hangar’s got it.'],
+          ['han', 'Almost. Right.'],
+        ],
+        hit: [['comms', 'Han! Watch it! I just had that freighter cleaned!']],
+        leaving: [['comms', 'Some other time, old buddy. Calrissian out.']],
+      },
     },
     interdicted: [
       ['han', 'Interdictor! They’ve yanked us out of the drive!'],
@@ -1711,6 +1784,45 @@ export const CREWS = [
         ['walt', 'We don’t run, Jesse. We do the math. Then we run.'],
       ],
     },
+    // the named characters who come by (npcs/index.js), by what they're saying
+    npc: {
+      saul: {
+        seen: [['jesse', 'Mr. White, is that… Saul’s Caddy? Parked? In space?']],
+        hello: [
+          ['comms', 'Walter! Jesse! Saul Goodman. I’m parked right over here. Totally legitimate business.'],
+          ['walt', 'What do you want, Saul?'],
+        ],
+        offer: [
+          ['comms', 'Fell off a truck: one {part}, never used. Hangar’s got it. We’ll call it a retainer.'],
+          ['jesse', 'Yo, that’s actually kind of sick.'],
+        ],
+        hit: [['comms', 'Hey! I’m on your side! Mostly!']],
+        leaving: [
+          ['comms', 'Okay, that’s my cue. You didn’t see me. I was never here.'],
+          ['walt', 'He never is.'],
+        ],
+      },
+      mike: {
+        seen: [['jesse', 'That’s Mike’s car. Coming right at us.']],
+        hello: [
+          ['comms', 'Walter. Keep driving. Don’t look at me.'],
+          ['walt', 'Mike. What is it?'],
+        ],
+        tip: {
+          roadblock: [['comms', 'DEA’s setting up a roadblock up ahead. You’ll want to be ready for it.']],
+          hunt: [['comms', 'You’ve got company coming. Several of them. I’d keep my eyes open.']],
+          bounty: [['comms', 'The Cousins are out looking. If you see silver, don’t shoot first. Then do.']],
+          destroyer: [['comms', 'Madrigal’s moving a freighter through. Gus’s trucks will be on it.']],
+          distress: [['comms', 'Somebody’s going to call for help soon. Jack’s boys. Your call.']],
+          any: [['comms', 'Something’s coming. I don’t know what yet. Stay sharp.']],
+        },
+        hit: [['comms', 'You’re lucky I don’t shoot back.']],
+        leaving: [
+          ['comms', 'That’s all I’ve got. No more half measures, Walter.'],
+          ['jesse', 'Bye, Mike!'],
+        ],
+      },
+    },
     interdicted: [
       ['jesse', 'Yo, the fast thing stopped! Why’d the fast thing stop?!'],
       ['walt', 'Interdiction, Jesse. Someone wants to talk. We don’t.'],
@@ -2044,7 +2156,7 @@ export const parseShip = (id) => (typeof id === 'string' && BY_ID.has(id) ? id :
 // something on 'foot' (by what: 'land', 'out', 'squad', 'kill' (`sub`: by
 // kind, or any), 'hurt', 'down', 'up', 'cleared', 'swap' (`sub`: who's
 // played now), 'far', 'nowhere' or 'in'). An exchange, or null.
-export function linesFor(crew, event, id, sub) {
+export function linesFor(crew, event, id, sub, more) {
   if (!crew) return null;
   if (event === 'arrive') return crew.arrive[id] ?? null;
   if (event === 'traffic') return crew.traffic?.[id] ?? null;
@@ -2057,6 +2169,14 @@ export function linesFor(crew, event, id, sub) {
     return Array.isArray(f) ? f : (f[sub] ?? f.any ?? Object.values(f)[0] ?? null);
   }
   if (event === 'siege') return crew.siege?.[id] ?? null;
+  if (event === 'npc') {
+    // a character's (npcs/index.js) by what they're saying: `sub` is the
+    // key ('seen', 'hello', 'offer', 'tip', 'hit', 'leaving', 'down'), and an
+    // informant's tip is keyed again by what's coming (`more`), or `any`
+    const f = crew.npc?.[id]?.[sub];
+    if (!f) return null;
+    return Array.isArray(f) ? f : (f[more] ?? f.any ?? null);
+  }
   if (event === 'wonder') return crew.wonders?.[id] ?? null;
   if (event === 'foot') {
     const f = crew.foot?.[id];
