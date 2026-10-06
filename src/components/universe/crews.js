@@ -12,12 +12,16 @@
 // planets), said the first time you reach it.
 // Artoo and Chewie don't speak Basic: their lines are what they mean, in
 // brackets, and sound like them (sounds.js).
+// `jump` is how the crew crosses the map at hyperspeed (components/jumps/
+// styles.js): the X-wing and the Falcon on the site's jump to lightspeed,
+// Rick's cruiser through a portal, the RV crystallising into Blue Sky.
 
 export const CREWS = [
   {
     id: 'cruiser',
     ship: 'The space cruiser',
     label: 'Rick and Morty',
+    jump: 'portal',
     speakers: {
       rick: { name: 'Rick', color: '#a8dcf0', voice: 'rick' },
       morty: { name: 'Morty', color: '#f5d33f', voice: 'morty' },
@@ -2010,6 +2014,7 @@ export const CREWS = [
     id: 'rv',
     ship: 'The RV',
     label: 'Walt and Jesse',
+    jump: 'bluesky',
     speakers: {
       walt: { name: 'Walt', color: '#9fd27c', voice: 'walt' },
       jesse: { name: 'Jesse', color: '#ff9d55', voice: 'jesse' },
@@ -2522,8 +2527,8 @@ export const CREWS = [
         ['walt', 'Because we can, Jesse.'],
       ],
       hyperspeed: [
-        ['jesse', 'Yo, Mr. White, the RV does lightspeed now?!'],
-        ['walt', 'Apply yourself, Jesse. It’s just physics.'],
+        ['jesse', 'Yo, Mr. White, we just turned into crystal! Blue crystal!'],
+        ['walt', 'Sublimation, Jesse. We go over as vapour and come down as product. Ninety-nine point one percent of us, anyway.'],
       ],
       overdrive: [
         ['jesse', 'This is insane, yo! Everything’s a blur!'],

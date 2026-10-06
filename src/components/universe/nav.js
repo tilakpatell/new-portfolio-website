@@ -5,9 +5,11 @@
 //
 // Three drives, picked on the nav map and kept between visits:
 //   hyper   Hyperspeed. A jump to lightspeed: the site's own jump plays over
-//           the map, and the ship comes out parked at the place, whatever
-//           the distance. It can't jump while hunters have it interdicted,
-//           and the hyperdrive takes HYPER.recharge seconds to charge again.
+//           the map (or the crew's own way across it, Rick's portal or the
+//           RV's Blue Sky: components/jumps), and the ship comes out parked
+//           at the place, whatever the distance. It can't jump while hunters
+//           have it interdicted, and the hyperdrive takes HYPER.recharge
+//           seconds to charge again.
 //   super   Super speed. The autopilot on the pulse drive pushed to
 //           OVERDRIVE times its speed (ship.js), roughly half the trip. You
 //           see the whole way and can take the stick back at any time.

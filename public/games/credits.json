@@ -2553,5 +2553,23 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/flippynips": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11340-fa28-771a-8a5c-a54f2d4d3415",
+    "name": "flippynips, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/magdalian-b": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11340-fa10-7771-8658-c6b141369bf3",
+    "name": "magdalian-b, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }
