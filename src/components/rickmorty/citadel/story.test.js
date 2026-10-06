@@ -39,18 +39,36 @@ describe('the Citadel’s story', () => {
     expect(p4.mood).toBe('red');
     expect(p4.next).toBe('citadelout');
     const p5 = citadelProgress([...THREE, 'votemorty', 'citadelout']);
-    expect(p5.finished).toBe(true);
+    expect(p5.finished).toBe(false);
+    expect(p5.next).toBe('locos');
     expect(p5.mood).toBe('day');
+    const p6 = citadelProgress([...THREE, 'votemorty', 'citadelout', 'locos']);
+    expect(p6.finished).toBe(true);
+    expect(p6.mood).toBe('day');
     expect(citadelProgress(['votemorty']).done).toEqual([]);
   });
   it('words an objective for every step, and the end', () => {
     for (const q of QUESTS) expect(q.go.length).toBeGreaterThan(20);
     expect(citadelProgress([]).objective).toBe(QUESTS[0].go);
-    expect(citadelProgress([...THREE, 'votemorty', 'citadelout']).objective).toMatch(/Portal home/);
+    expect(citadelProgress([...THREE, 'votemorty', 'citadelout', 'locos']).objective).toMatch(/Portal home/);
   });
   it('gives each quest its seal', () => {
     expect(Object.keys(SEAL)).toEqual(QUESTS.map((q) => q.id));
-    expect(Object.values(SEAL)).toEqual(['daycare', 'wafers', 'council', 'votemorty', 'citadelout']);
+    expect(Object.values(SEAL)).toEqual(['daycare', 'wafers', 'council', 'votemorty', 'citadelout', 'locos']);
+  });
+  it('opens the Locos in Mortytown after the day care, beside the rest, and never changes the mood', () => {
+    const locos = (done) => citadelProgress(done).quests.find((q) => q.id === 'locos');
+    expect(locos([]).open).toBe(false);
+    expect(locos(['daycare']).open).toBe(true);
+    expect(citadelProgress(['locos']).done).toEqual([]);
+    expect(citadelProgress(['daycare', 'locos']).done).toEqual(['daycare', 'locos']);
+    // the main story's next step goes first
+    expect(citadelProgress(['daycare', 'locos']).next).toBe('wafers');
+    expect(citadelProgress([...THREE, 'locos']).next).toBe('votemorty');
+    for (const done of [[], ['daycare'], THREE, [...THREE, 'votemorty'], [...THREE, 'votemorty', 'citadelout']]) {
+      expect(citadelProgress([...done, 'locos']).mood, done.join()).toBe(citadelProgress(done).mood);
+    }
+    expect(locos(['daycare']).where).toMatch(/Mortytown/);
   });
   it('has conversations that hang together and can be won', () => {
     for (const [name, convo] of Object.entries(CONVOS)) {

@@ -14,6 +14,7 @@
 // model, still, face, y, level (the height it's on, where there are
 // floors over floors: a pit under a throne room), leash, hostile: { range, every, spread, damage,
 // burst, strafe, shield, parry (hostiles.js's: bursts of fire, circling you, a shield that soaks hits, a blade that turns your swings),
+// blade ({ color, hilt? }: a lit saber in its hand, swung with its swipes), guard (strokes it turns before its guard breaks and it reels),
 // delay (before its first shot), chase (m/s: it comes for you), melee,
 // reach (how close it has to be to hit) } }
 
@@ -26,6 +27,8 @@ import { groundAt, turnToward } from './walker';
 import { stepTarget } from './quests';
 import { rng } from './noise';
 import { absorb, startBurst, stepBurst, strafeStep } from './hostiles';
+import { buildGun } from '../../universe/gunplay';
+import { dress } from './saber';
 
 const BEAM_VERT = `
 varying vec2 vUv;
@@ -141,7 +144,7 @@ function healthBar() {
   sprite.renderOrder = 5;
   return {
     sprite,
-    draw(hp, shield) {
+    draw(hp, shield, guard = 0) {
       c.clearRect(0, 0, 64, 10);
       c.fillStyle = 'rgba(0,0,0,0.6)';
       c.fillRect(0, 2, 64, 6);
@@ -150,6 +153,11 @@ function healthBar() {
       if (shield > 0) {
         c.fillStyle = '#7fd0ff';
         c.fillRect(1, 0, Math.round(62 * Math.min(1, shield)), 2);
+      }
+      // (a duellist's guard: white over the top, gone when it's broken)
+      if (guard > 0) {
+        c.fillStyle = '#ffffff';
+        c.fillRect(1, 0, Math.round(62 * Math.min(1, guard)), 2);
       }
       texture.needsUpdate = true;
     },
@@ -183,7 +191,10 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       for (const mat of [m.material].flat()) mat.dispose();
     });
   const clearStep = () => {
-    for (const t of targets) t.bar?.dispose();
+    for (const t of targets) {
+      t.bar?.dispose();
+      t.saber?.owned.forEach((o) => o.dispose?.());
+    }
     for (const p of pickups) {
       p.mesh.removeFromParent();
       release(p.mesh);
@@ -249,7 +260,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           const holder = new THREE.Group();
           holder.visible = false;
           group.add(holder);
-          const t = { tag: s.tag ?? step.tag, holder, fig: null, b: { x: home[0], z: home[1], yaw: s.face ?? r() * 6.28, to: null, wait: r() * 2 }, home, hp: s.hp ?? 1, hostile: s.hostile ?? null, down: 0, spec: s, cool: s.hostile?.delay ?? 1 + r() * 2, flinch: 0, shield: s.hostile?.shield ?? 0, burst: null, bubble: null, stagger: 0, knock: null, bar: null, barAt: null };
+          const t = { tag: s.tag ?? step.tag, holder, fig: null, b: { x: home[0], z: home[1], yaw: s.face ?? r() * 6.28, to: null, wait: r() * 2 }, home, hp: s.hp ?? 1, hostile: s.hostile ?? null, down: 0, spec: s, cool: s.hostile?.delay ?? 1 + r() * 2, flinch: 0, shield: s.hostile?.shield ?? 0, burst: null, bubble: null, stagger: 0, knock: null, bar: null, barAt: null, guard: s.hostile?.guard ?? 0, guardAt: -99, saber: null, swingAt: -99 };
           targets.push(t);
           if (t.shield) {
             // its shield: a bubble round it, bright for a moment where it's hit
@@ -266,6 +277,25 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
             fig.model.scale.multiplyScalar(s.scale ?? 1);
             holder.add(fig.model);
             t.fig = fig;
+            // its lightsaber: lit, in the right hand (the models aren't
+            // rigged: the hilt sits where the hand of a figure this tall is)
+            if (s.hostile?.blade) {
+              const owned = [];
+              const gun = buildGun('saber', owned);
+              dress(gun, s.hostile.blade.color ?? '#ff3b3b', s.hostile.blade.hilt ?? null);
+              const blade = gun.getObjectByName('blade');
+              if (blade) {
+                blade.visible = true;
+                blade.scale.y = 1;
+              }
+              const tall = (fig.tall ?? 1.8) * (s.scale ?? 1);
+              const arm = new THREE.Group();
+              arm.position.set(-0.19 * tall, 0.47 * tall, 0.08 * tall);
+              arm.add(gun);
+              gun.rotation.set(-0.35, 0, -0.2); // (the blade up and a little forward, held out)
+              holder.add(arm);
+              t.saber = { arm, gun, owned };
+            }
             warm(holder).then(() => (holder.visible = true));
           });
         }
@@ -307,6 +337,32 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       t.hp -= damage;
       t.flinch = 0.25;
       if (t.hp <= 0 && !t.down) t.down = 0.001;
+    },
+    // your stroke on one with a blade: turned (its parry chance, while its
+    // guard holds; each turned stroke drains the guard, a heavy one breaks
+    // it) or landing. Returns { parried, broke }
+    parry(t, { heavy = false, roll = Math.random() } = {}) {
+      const h = t.hostile;
+      if (!h?.parry || t.down || t.stagger > 0 || t.knock) return { parried: false, broke: false };
+      if (h.guard && t.guard <= 0) return { parried: false, broke: false }; // (its guard's down: everything lands)
+      if (heavy) {
+        if (h.guard) {
+          t.guard = 0;
+          t.guardAt = -99;
+          t.stagger = Math.max(t.stagger, 2);
+          return { parried: false, broke: true };
+        }
+        return { parried: false, broke: false };
+      }
+      if (roll >= h.parry) return { parried: false, broke: false };
+      if (h.guard) {
+        t.guard--;
+        if (t.guard <= 0) {
+          t.stagger = Math.max(t.stagger, 2);
+          return { parried: true, broke: true };
+        }
+      }
+      return { parried: true, broke: false };
     },
     // shoved (the Force, a blast): off its feet along `v` ({ vx, vz, vy })
     knock(t, v) {
@@ -444,6 +500,21 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         t.holder.rotation.y = b.yaw;
         // (knocked: tipped back off its feet; staggered: bent back, straightening)
         t.holder.rotation.x = t.knock ? -0.9 : t.stagger > 0 ? -0.35 * Math.min(1, t.stagger) : 0;
+        // its guard, back to full a while after it broke
+        if (t.hostile?.guard && t.guard <= 0 && t.stagger <= 0) {
+          if (t.guardAt < 0) t.guardAt = time;
+          else if (time - t.guardAt > 7) {
+            t.guard = t.hostile.guard;
+            t.guardAt = -99;
+          }
+        }
+        // its blade: up at the ready, swung across on a swipe
+        if (t.saber) {
+          const k = Math.min(1, (time - t.swingAt) / 0.4);
+          const sw = k < 1 ? Math.sin(k * Math.PI) : 0;
+          t.saber.arm.rotation.set(-0.2 - sw * 0.9, sw * -1.6, 0.25 - sw * 0.5);
+          t.saber.gun.getObjectByName('sleeve').material.opacity = 0.5 + 0.1 * Math.sin(time * 37);
+        }
         // its health over its head, while you're near and it's been hurt
         const hpMax = s.hp ?? 1;
         const show = you && dYou < 45 && t.hostile && (t.hp < hpMax || t.shield > 0 || dYou < 16);
@@ -455,10 +526,10 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           t.bar.sprite.visible = true;
           const tall = (t.fig?.tall ?? 1.6) * (s.scale ?? 1);
           t.bar.sprite.position.y = tall + 0.45;
-          const key = `${Math.max(0, t.hp)}/${hpMax}/${t.shield}`;
+          const key = `${Math.max(0, t.hp)}/${hpMax}/${t.shield}/${t.guard}`;
           if (key !== t.barAt) {
             t.barAt = key;
-            t.bar.draw(Math.max(0, t.hp) / hpMax, t.shield / Math.max(1, s.hostile?.shield ?? 1));
+            t.bar.draw(Math.max(0, t.hp) / hpMax, t.shield / Math.max(1, s.hostile?.shield ?? 1), s.hostile?.guard ? t.guard / s.hostile.guard : 0);
           }
         } else if (t.bar) t.bar.sprite.visible = false;
         // (a flinch where it's hit and doesn't go down)
@@ -476,7 +547,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       return events;
     },
     // the hostile ones ready to fire at you this frame
-    shooters(dt, you) {
+    shooters(dt, you, time = 0) {
       const out = [];
       for (const t of targets) {
         if (t.down || !t.hostile || !t.fig || !you || t.stagger > 0 || t.knock) continue;
@@ -495,7 +566,10 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         if (t.cool > 0) continue;
         t.cool = t.hostile.every * (0.7 + r() * 0.6);
         // in arm's reach, a swipe (a rancor's, a blade's), or a shot from where it stands
-        if (t.hostile.melee) out.push({ melee: true, damage: t.hostile.damage ?? 25, from: [t.b.x, t.holder.position.y, t.b.z], who: t });
+        if (t.hostile.melee) {
+          if (t.saber) t.swingAt = time;
+          out.push({ melee: true, damage: t.hostile.damage ?? 25, from: [t.b.x, t.holder.position.y, t.b.z], who: t, blade: Boolean(t.saber) });
+        }
         else if (t.hostile.burst) {
           t.burst = startBurst(t.hostile);
           out.push(shot());

@@ -157,6 +157,8 @@ import { createFoot } from './footScene';
 import { wayIn } from './landings/wayin';
 import { ENTRY, LANDABLE, airTop, entering } from './entry';
 import { poseFor } from './poses';
+import { REMOVER, hitRemover, hpLeft, landingOpen, newRemover, stepRemover } from './remover';
+import { NX5_LEN, createRemoverView } from './removerView';
 
 const STARS = 1800; // the near ones, over the Milky Way's own
 const STARS_LOW = 700;
@@ -834,6 +836,22 @@ export async function create(canvas, ctx) {
   let hunts = 0; // packs the director has sent this visit (the first is a small one)
   const director = createDirector();
   const pieces = createSetPieces(map, { small, fleet });
+  // the Federation's NX-5 Planet Remover, Rick's universe's (remover.js has
+  // the rules, removerView.js draws it): one at a time, and the planets it's
+  // removed (planet id → the clock it's back at)
+  const removerView = createRemoverView(map, { small });
+  let remover = null;
+  const removed = {};
+  const removerTarget = { id: 'nx5', at: new THREE.Vector3(), vel: new THREE.Vector3(), size: NX5_LEN * 0.12, kind: 'capital', name: 'NX-5 Planet Remover', hp: 100, hpMax: 100 };
+  // what of it the guns can lock on to: its cannon, while it's charging
+  const removerTargets = (s) => {
+    if (!remover || (remover.phase !== 'arriving' && remover.phase !== 'charging')) return [];
+    const bow = removerView.bow;
+    if (apart(s.x, s.y, s.z, bow.x, bow.y, bow.z) > 900) return [];
+    removerTarget.at.copy(bow);
+    removerTarget.hp = Math.max(1, (hpLeft(remover) / REMOVER.hp) * 100);
+    return [removerTarget];
+  };
   const leviathans = createLeviathans(map, { small }); // (purrgil, or a Cromulon)
   const meteors = createMeteors(map, { small, tier }); // (a stream of rocks across your path)
   let leviathanSaidAt = -1e9; // the crew's last word about shooting one
@@ -1912,6 +1930,36 @@ export async function create(canvas, ctx) {
   const sFrom = [0, 0, 0];
   const sTo = [0, 0, 0];
   const siegePoint = new THREE.Vector3();
+  // a shot's step (from → to) into the NX-5: where it struck, or null
+  const removerHit = (from, to, punch) => {
+    if (!remover) return null;
+    sFrom[0] = from.x;
+    sFrom[1] = from.y;
+    sFrom[2] = from.z;
+    sTo[0] = to.x;
+    sTo[1] = to.y;
+    sTo[2] = to.z;
+    let first = null;
+    for (const sp of removerView.spheres()) {
+      const k = segmentSphere(sFrom, sTo, sp.c, sp.r);
+      if (k !== null && (first === null || k < first)) first = k;
+    }
+    if (first === null) return null;
+    const ev = hitRemover(remover, punch);
+    if (!ev) return null;
+    const point = from.clone().lerp(to, first);
+    removerView.hit();
+    state.hitMark = 1;
+    pops.hit({ point, normal: popDir.copy(from).sub(to).normalize(), radius: 0.4 });
+    if (ev === 'destroyed') {
+      removerView.down();
+      pops.hit({ point: removerView.bow.clone(), normal: popDir.set(0, 1, 0), radius: NX5_LEN * 0.3 });
+      emit({ type: 'event', id: 'removerDown' });
+      state.heat += 1;
+      if (!reduced) state.shake = Math.max(state.shake, 0.9);
+    }
+    return point;
+  };
   const siegeHit = (from, to, punch, heavy) => {
     if (!citadelGeo || siegeSt.down) return null;
     if (apart(to.x, to.y, to.z, citadelMid.x, citadelMid.y, citadelMid.z) > citadelGeo.shield + 40) return null;
@@ -2029,6 +2077,11 @@ export async function create(canvas, ctx) {
       }
       // the Citadel (its shield, a generator, its core)
       if (citadelGeo && siegeHit(shotFrom, b.position, d.punch ?? 1, false)) {
+        b.visible = false;
+        continue;
+      }
+      // the NX-5
+      if (remover && removerHit(shotFrom, b.position, d.punch ?? 1)) {
         b.visible = false;
         continue;
       }
@@ -2155,6 +2208,13 @@ export async function create(canvas, ctx) {
         const at = siegeHit(shotFrom, m.position, d.punch, true);
         if (at) {
           boom(m, at.clone(), true);
+          continue;
+        }
+      }
+      if (remover) {
+        const at = removerHit(shotFrom, to, d.punch);
+        if (at) {
+          boom(m, at, true);
           continue;
         }
       }
@@ -2705,6 +2765,27 @@ export async function create(canvas, ctx) {
       emit({ type: 'event', id: 'destroyer' });
       // its fighters launch a moment after it's here
       later.push({ at: state.clock + 2.4, run: () => state.ship && !state.crash && hunters.pack(pickFaction(side, 'capital') ?? 'empire', state.ship, { from: d.hangar, size: 3, ace: Math.random() < 0.35, interdict: ambush.interdict }) });
+    } else if (id === 'remover') {
+      if (remover) return;
+      // over the planet you're at, or the nearest one near enough to see it
+      let pick = null;
+      for (const pid of ORDER) {
+        const u = byId(pid);
+        if (u.kind === 'core') continue;
+        const [px, py, pz] = POSITIONS[pid];
+        const d = apart(ship.x, ship.y, ship.z, px, py, pz);
+        if (d < u.size * 5 && (!pick || d < pick.d)) pick = { id: pid, d, size: u.size };
+      }
+      if (!pick || removed[pick.id]) return;
+      const c = new THREE.Vector3(...POSITIONS[pick.id]);
+      // beside it, round from you a little, its nose on it
+      const out = new THREE.Vector3(ship.x - c.x, 0, ship.z - c.z);
+      if (out.lengthSq() < 1e-6) out.set(1, 0, 0);
+      out.normalize().applyAxisAngle(Y_AXIS, (Math.random() < 0.5 ? -1 : 1) * 0.6);
+      const at = c.clone().addScaledVector(out, pick.size + NX5_LEN * 1.15).add(new THREE.Vector3(0, pick.size * 0.22, 0));
+      remover = newRemover(pick.id);
+      removerView.start(at, c);
+      emit({ type: 'event', id: 'remover' });
     } else if (id === 'distress') {
       const prey = traffic?.distress(ship, side);
       if (!prey) return;
@@ -2952,6 +3033,32 @@ export async function create(canvas, ctx) {
     if (skirmishes) farFight(dt, t, live);
     if (npcs) meet(dt, t, live);
     let busy = pieces.update(dt, t, camera);
+    // the NX-5: charging, firing on its planet, going up, leaving; and the
+    // planets it's removed, back when their minute's up
+    if (remover) {
+      const e = stepRemover(remover, dt);
+      if (e === 'fired') {
+        const id = remover.planet;
+        removed[id] = state.clock + REMOVER.gone;
+        removerView.fire(new THREE.Vector3(...POSITIONS[id]));
+        removerView.scar(id, planetOf[id].group, byId(id).size);
+        emit({ type: 'event', id: 'removerFired' });
+        if (!reduced) {
+          state.shake = Math.max(state.shake, 0.9);
+          state.flare = Math.max(state.flare, 1.6);
+        }
+      } else if (e === 'left') {
+        if (remover.firedAt !== null) removerView.leave();
+        remover = null;
+      }
+    }
+    for (const id of Object.keys(removed)) {
+      if (state.clock < removed[id]) continue;
+      delete removed[id];
+      removerView.unscar(id);
+    }
+    removerView.update(remover, dt, t);
+    busy = removerView.busy || busy;
     busy = leviathans.update(dt, t, camera) || busy;
     // the war's front: the battle there, while you're in sight of it
     const fr = frontFor();
@@ -2974,7 +3081,7 @@ export async function create(canvas, ctx) {
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
-        const id = director.update(dt, { side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || leviathans.busy || meteors.count > 0 || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50 });
+        const id = director.update(dt, { side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.busy || meteors.count > 0 || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50 });
         if (id) happen(id, live);
         // the drive comes back once they're off you (or have had their go)
         if (state.interdicted && (!hunters.active || state.clock - state.interdictAt > INTERDICT)) state.interdicted = false;
@@ -3296,7 +3403,14 @@ export async function create(canvas, ctx) {
     // says so. Not while the autopilot's taking it somewhere else
     if (!state.jump && !state.auto) {
       const air = entering(state.ship, LANDABLE);
-      if (air?.kind === 'enter' && startFoot({ id: air.id, entry: air })) return true;
+      // (a planet the NX-5 removed: no landing on it till it's back)
+      if (air?.kind === 'enter' && !landingOpen(removed, air.id, state.clock)) {
+        if (state.removedSaid !== air.id) {
+          state.removedSaid = air.id;
+          state.note = { text: `${placeName(air.id)} has been removed. Give it a minute.`, until: wall() + 3 };
+        }
+      } else if (air?.kind === 'enter' && startFoot({ id: air.id, entry: air })) return true;
+      if (air?.kind !== 'enter') state.removedSaid = null;
       if (air?.kind !== 'hot') state.hotSaid = null;
       else if (state.hotSaid !== air.id) {
         state.hotSaid = air.id;
@@ -3356,7 +3470,7 @@ export async function create(canvas, ctx) {
     // the guns: what they're locked on to (a tick as they pick one up),
     // where to shoot to hit it, and whether the nose is near enough to it
     // that a shot bends onto it
-    const siegeCands = siegeTargets(ship);
+    const siegeCands = [...siegeTargets(ship), ...removerTargets(ship)];
     // (the rocks only while nobody's after you: a hunter's the thing to lock on to)
     const rocks = meteors.count && !hunters?.active ? meteors.targets : [];
     // (someone else's fight's hunters, while nothing's after you: yours come first)
@@ -3463,6 +3577,10 @@ export async function create(canvas, ctx) {
     if (!flying() || onFoot() || state.crash || state.dive || props.frozen || !state.model) return false;
     if (!id) {
       emit({ type: 'foot', id: 'nowhere' });
+      return false;
+    }
+    if (!landingOpen(removed, id, state.clock)) {
+      state.note = { text: `${placeName(id)} has been removed. Give it a minute.`, until: wall() + 3 };
       return false;
     }
     handOff(entry ? 600 : 1400);
@@ -4495,7 +4613,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), remover: () => remover, removerView };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -4772,6 +4890,7 @@ export async function create(canvas, ctx) {
       netOff?.();
       pilots.dispose();
       pieces.dispose();
+      removerView.dispose();
       leviathans.dispose();
       meteors.dispose();
       fleet.dispose();

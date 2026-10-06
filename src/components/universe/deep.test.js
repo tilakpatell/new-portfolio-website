@@ -29,13 +29,14 @@ describe('deep space', () => {
     const k = w.r / 18; // (deepspace.js draws it for a radius of 18)
     const at = (x, y, z) => [w.at[0] + x * k, w.at[1] + y * k, w.at[2] + z * k];
     const solidAt = (p) => DEEP_SOLIDS.some((o) => Math.hypot(p[0] - o.at[0], p[1] - o.at[1], p[2] - o.at[2]) < o.r);
-    // the four domes out on its arms, and the crystal's tip
+    // the four saucers out on its arms, a quarter turn apart and level, as
+    // its model has them, and the crystal's tip
     for (const [x, y, z] of [
-      [21.3, -2.2, 5.4],
-      [-7.4, 6.2, 17.5],
-      [-22, -3, -6.8],
-      [2.7, 0.9, -17.8],
-      [0.3, -33, 0.2],
+      [20.25, -0.4, 5.17],
+      [-5.17, -0.4, 20.25],
+      [-20.25, -0.4, -5.17],
+      [5.17, -0.4, -20.25],
+      [0, -15, 0],
     ])
       expect(solidAt(at(x, y, z)), `${x},${y},${z}`).toBe(true);
     // between its arms, out past the great dome: open space

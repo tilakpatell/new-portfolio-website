@@ -10,10 +10,11 @@ import { crowdFor } from './layout';
 import { gltfLoader } from '../../../lib/three/gltf';
 
 const BASE = '/games/meshy/crowd';
-const RICKS = ['rick', 'cowboyrick', 'factoryrick', 'constructionrick', 'sweaterrick', 'suitrick', 'detectiverick', 'cop', 'wizardrick', 'hazmatrick', 'sheriffrick', 'retrorick', 'visorrick', 'doofusrick', 'mulletrick', 'chefrick', 'pilotrick', 'punkrick'];
-const MORTYS = ['morty', 'copmorty', 'hobbitmorty', 'beaniemorty', 'sheriffmorty', 'overallsmorty', 'maskmorty', 'glassesmorty', 'astronautmorty', 'punkmorty'];
+// (the Ricklantis Mixup's last, after the rest: a phone's few are the first ones)
+const RICKS = ['rick', 'cowboyrick', 'factoryrick', 'constructionrick', 'sweaterrick', 'suitrick', 'detectiverick', 'cop', 'wizardrick', 'hazmatrick', 'sheriffrick', 'retrorick', 'visorrick', 'doofusrick', 'mulletrick', 'chefrick', 'pilotrick', 'punkrick', 'rickd3', 'simplerick', 'evilrick', 'supremeguard', 'garmentrick'];
+const MORTYS = ['morty', 'copmorty', 'hobbitmorty', 'beaniemorty', 'sheriffmorty', 'overallsmorty', 'maskmorty', 'glassesmorty', 'astronautmorty', 'punkmorty', 'bigmorty', 'slickmorty'];
 // how tall each stands, in metres (a hat or a mohawk on top)
-const TALL = { rick: 1.85, morty: 1.5, cowboyrick: 1.97, wizardrick: 2.15, chefrick: 2.05, detectiverick: 1.92, hazmatrick: 1.9, astronautmorty: 1.5, punkmorty: 1.62, sheriffmorty: 1.6, punkrick: 1.85 };
+const TALL = { rick: 1.85, morty: 1.5, cowboyrick: 1.97, wizardrick: 2.15, chefrick: 2.05, detectiverick: 1.92, hazmatrick: 1.9, astronautmorty: 1.5, punkmorty: 1.62, sheriffmorty: 1.6, punkrick: 1.85, rickd3: 2.15, garmentrick: 1.92, bigmorty: 1.56 };
 const heightOf = (n) => TALL[n] ?? (MORTYS.includes(n) ? 1.5 : 1.85);
 // how many of each kind a device draws from
 const KINDS_BY_TIER = { high: [...RICKS, ...MORTYS], mid: [...RICKS.slice(0, 12), ...MORTYS.slice(0, 6)], low: [...RICKS.slice(0, 7), ...MORTYS.slice(0, 3)] };
