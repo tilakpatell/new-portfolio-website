@@ -90,6 +90,8 @@ export async function create(canvas, ctx) {
   const focus = (i) => {
     if (mode !== 'universe') return;
     focused = i;
+    // its lines picked out on the list, Word's highlighter yellow
+    uni.markExhibit(typeof i === 'number' ? i : -1);
     if (i === -1) {
       goal.target.copy(VIEWS.universe.target);
       goal.dist = VIEWS.universe.dist;
@@ -230,6 +232,7 @@ export async function create(canvas, ctx) {
   el.addEventListener('wheel', onWheel, { passive: false });
 
   let lowered = false;
+  let frames = 0;
   // the universe's shaders and textures go up to the chip while you're still at the gate
   uni.ready.then(() => renderer.compileAsync?.(uni.scene, camera)).catch(() => {});
 
@@ -239,11 +242,21 @@ export async function create(canvas, ctx) {
     leave,
     focus,
     readList: () => focus('doc'),
+    // the camera straight to where it's easing to (for the QA scripts' screenshots)
+    snap() {
+      Object.assign(cam, { yaw: goal.yaw, pitch: goal.pitch, dist: goal.dist });
+      cam.target.copy(goal.target);
+      arrive = 0;
+    },
     get mode() {
       return mode;
     },
     get focused() {
       return focused;
+    },
+    // frames drawn so far (for the QA scripts: wait on frames, not the clock)
+    get frames() {
+      return frames;
     },
     resize(w, h) {
       size.w = w;
@@ -311,6 +324,7 @@ export async function create(canvas, ctx) {
         } else bloom.strength = 0.6;
       }
       composer.render(dt);
+      frames += 1;
       gl.watch(now);
       return true;
     },

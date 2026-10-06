@@ -224,7 +224,7 @@ export function build({ renderer, exhibits, doc }) {
     stand.rotation.x = -0.55;
     g.add(stand);
     // light from above: a soft beam, and a glowing ring on the floor
-    const beam = new THREE.Mesh(beamGeo, keep(new THREE.ShaderMaterial({ vertexShader: BEAM_VS, fragmentShader: BEAM_FS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { color: { value: new THREE.Color(0xffc070) }, strength: { value: center ? 0.5 : 0.32 } } })));
+    const beam = new THREE.Mesh(beamGeo, keep(new THREE.ShaderMaterial({ vertexShader: BEAM_VS, fragmentShader: BEAM_FS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { color: { value: new THREE.Color(0xffc070) }, strength: { value: center ? 0.26 : 0.16 } } })));
     beam.scale.setScalar(s);
     beam.position.y = ph + 3.5 * s;
     g.add(beam);
@@ -330,8 +330,9 @@ export function build({ renderer, exhibits, doc }) {
     pages: sheet.pages,
     lineAt: (hit) => sheet.lineAt(hit),
     setLineHover: (i) => sheet.setHover(i),
+    markExhibit: (x) => sheet.mark(x),
     // in front of the pages, far enough back to read all three
-    docPose: () => ({ target: DOC_AT.clone(), camera: DOC_AT.clone().add(new THREE.Vector3(0, 0.5, DOC_SIZE.h * 1.55)) }),
+    docPose: () => ({ target: DOC_AT.clone(), camera: DOC_AT.clone().add(new THREE.Vector3(0, 0.4, DOC_SIZE.h * 1.22)) }),
     setHover(i) {
       hover = i;
     },
