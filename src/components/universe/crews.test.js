@@ -73,6 +73,8 @@ describe('the crews', () => {
       // the nav map's drives: a jump to lightspeed, and super speed
       said(linesFor(crew, 'event', 'hyperspeed'), crew, 'hyperspeed');
       said(linesFor(crew, 'event', 'overdrive'), crew, 'overdrive');
+      // a rock hit at super speed (rockHits.js)
+      said(linesFor(crew, 'event', 'rock'), crew, 'rock');
       for (const w of WONDERS) said(linesFor(crew, 'wonder', w.id), crew, `wonder ${w.id}`);
       // the bounty hunters shot down, in flight (Slave I's line is the flyby's; Phoenixperson's and the Cousins' are their own)
       for (const [, f] of Object.entries(side.factions)) if (f.role === 'bounty') for (const [k] of f.kinds) expect(linesFor(crew, 'kill', k), `${crew.id} kill ${k}`).not.toBe(linesFor(crew, 'kill', 'any'));

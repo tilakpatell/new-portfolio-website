@@ -97,7 +97,7 @@ import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePa
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
-import { ORDER, POSITIONS, REACH, RIM, SUN } from './layout';
+import { BELT, ORDER, POSITIONS, REACH, RIM, SUN } from './layout';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
 import { createPost, spaceEnvironment } from './post';
@@ -110,7 +110,8 @@ import { createDirector } from './director';
 import { createSetPieces } from './setpieces';
 import { createLeviathans } from './leviathans';
 import { createMeteors } from './meteors';
-import { buildDeepSpace } from './deepspace';
+import { DEBRIS_DRIFT, buildDeepSpace } from './deepspace';
+import { ROCK_HIT, boxOf, nearBox, nearRing, rockDamage, rockGrid, sweep, toBelt } from './rockHits';
 import { createTrench } from './trench';
 import { createBeacons } from './beacons';
 import { PHONE, createPhone } from './phone';
@@ -629,6 +630,17 @@ export async function create(canvas, ctx) {
   // deep space, out past the home system: its wonders, and the trench run
   // round the Death Star's middle
   const deep = buildDeepSpace({ small });
+  // what the ship can hit among the rocks (rockHits.js): the belt, the rim
+  // and the debris streams, each from the same rocks its mesh draws. A rock
+  // the ship's smashed is gone a while (`smashed`: field → index → when it's back)
+  const BELT_SPIN = 0.006;
+  const RIM_SPIN = 0.0012;
+  const rockFields = [
+    { id: 'belt', grid: rockGrid(belt.rocks), ring: BELT, spin: BELT_SPIN, field: belt },
+    { id: 'rim', grid: rockGrid(rim.rocks, 60), ring: RIM, spin: RIM_SPIN, field: rim },
+    { id: 'debris', grid: rockGrid(deep.debris.rocks, 20), box: boxOf(deep.debris.rocks), field: deep.debris },
+  ];
+  const smashed = new Map(rockFields.map((f) => [f.id, new Map()]));
   map.add(deep.group);
   const trenches = PLANETS.filter((p) => p.trench).map((p) => createTrench({ at: p.at, r: p.r, trench: p.trench }, { small }));
   for (const tr of trenches) map.add(tr.group);
@@ -2396,6 +2408,77 @@ export async function create(canvas, ctx) {
     if (state.shield <= 0) startDestroyed(by);
   };
 
+  // The ship's way this frame, from `from` to `to`, swept against the rock
+  // fields it comes near (each in its own frame: the belt and the rim turn,
+  // the streams drift). The first rock it meets is smashed (gone a while);
+  // at the boost or under that's a bump, faster it's off the shields, more
+  // the faster and the bigger the rock, and the ship's knocked back down
+  // under the pulse drive.
+  let rockCool = -1e9;
+  let rockSaidAt = -1e9;
+  const rockMap = new THREE.Vector3();
+  const rockShip = new THREE.Vector3();
+  const rocksHit = (from, to, t) => {
+    for (const f of rockFields) {
+      const gone = smashed.get(f.id);
+      for (const [i, back] of gone) {
+        if (state.clock < back) continue;
+        gone.delete(i);
+        f.field.show(i);
+      }
+    }
+    if (state.clock < rockCool || Math.abs(to.speed) < 2) return;
+    let hit = null;
+    for (const f of rockFields) {
+      let a;
+      let b;
+      if (f.ring) {
+        if (!nearRing(from, to, f.ring)) continue;
+        a = toBelt(from, t * f.spin);
+        b = toBelt(to, t * f.spin);
+      } else {
+        const d = DEBRIS_DRIFT(t);
+        a = { x: from.x - d.x, y: from.y - d.y, z: from.z - d.z };
+        b = { x: to.x - d.x, y: to.y - d.y, z: to.z - d.z };
+        if (!nearBox(a, b, f.box)) continue;
+      }
+      const h = sweep(f.grid, a, b, SHIP.radius, smashed.get(f.id));
+      if (h && (!hit || h.t < hit.t)) hit = { ...h, f };
+    }
+    if (!hit) return;
+    const { f } = hit;
+    const o = f.grid.rocks[hit.i];
+    f.field.hide(hit.i);
+    smashed.get(f.id).set(hit.i, state.clock + ROCK_HIT.gone);
+    rockCool = state.clock + ROCK_HIT.cool;
+    // where the rock is on the map, and the ship as it met it
+    if (f.ring) {
+      const m = toBelt(o, -t * f.spin);
+      rockMap.set(m.x, m.y, m.z);
+    } else {
+      const d = DEBRIS_DRIFT(t);
+      rockMap.set(o.x + d.x, o.y + d.y, o.z + d.z);
+    }
+    rockShip.set(from.x + (to.x - from.x) * hit.t, from.y + (to.y - from.y) * hit.t, from.z + (to.z - from.z) * hit.t);
+    pops.hit({ point: rockMap.clone(), normal: popDir.copy(rockShip).sub(rockMap).normalize(), radius: o.r * 1.6 });
+    const speed = Math.abs(to.speed);
+    const damage = rockDamage(speed, o.r);
+    if (damage <= 0) {
+      emit({ type: 'bump', id: 'rock', hard: false });
+      return;
+    }
+    if (state.clock >= state.safeUntil) hurt(damage);
+    if (!state.ship || state.crash) return;
+    if (!reduced) state.shake = Math.max(state.shake, 0.9);
+    state.flare = Math.max(state.flare, 1.6);
+    state.ship = { ...state.ship, speed: Math.sign(state.ship.speed || 1) * Math.max(SHIP.boost, speed * ROCK_HIT.slow) };
+    state.note = { text: `Hit a rock at speed: shields −${Math.round(damage)}`, until: wall() + 2.5 };
+    if (state.clock - rockSaidAt > 8) {
+      rockSaidAt = state.clock;
+      emit({ type: 'event', id: 'rock' });
+    }
+  };
+
   // what the link to the other pilots reports: their hits on you, and
   // someone going down (a pop where they were; yours, if it was your shot)
   const onNet = (e) => {
@@ -2996,12 +3079,16 @@ export async function create(canvas, ctx) {
     }
     input.interdicted = state.interdicted;
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
+    const before = state.ship;
     const { ship: stepped, events } = step(state.ship, input, dt, siegeSt.down ? SOLIDS_OPEN : SOLIDS);
     // the Maw's pull (maw.js): drawn in, and carried round with its disk
     const g = pullAt(stepped.x, stepped.y, stepped.z);
     const ship = g ? { ...stepped, x: stepped.x + g.v[0] * dt, y: stepped.y + g.v[1] * dt, z: stepped.z + g.v[2] * dt } : stepped;
     state.ship = ship;
     state.pull = g?.k ?? 0;
+    // into a rock (rockHits.js): a bump at the boost or under, the shields
+    // past it
+    if (!state.jump) rocksHit(before, ship, t);
     for (const e of events) {
       // into a gate (the way into a galaxy far, far away): not a crash nor a
       // bump, but through (the page jumps you to lightspeed)
@@ -3995,7 +4082,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, director, pieces, leviathans, meteors, fleet, novae, pilots, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, director, pieces, leviathans, meteors, fleet, novae, pilots, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
