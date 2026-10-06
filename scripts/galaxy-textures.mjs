@@ -27,7 +27,7 @@ const OUT = join(ROOT, 'public', 'cc0', 'galaxy');
 // kit role → Poly Haven id, how much of its colour to keep (0 grey … 1 all),
 // and the brightness its detail map is centred on (sRGB, 0…1)
 export const ROLES = {
-  adobe: { id: 'patterned_clay_plaster', keep: 0.25, mean: 0.82 },
+  adobe: { id: 'patterned_clay_plaster', keep: 0.1, mean: 0.82 }, // (little of its own warmth: a pale wall stays pale)
   stone: { id: 'large_sandstone_blocks_01', keep: 0.2, mean: 0.8 },
   metal: { id: 'metal_plate_02', keep: 0.1, mean: 0.78 },
   paint: { id: 'blue_metal_plate', keep: 0, mean: 0.86 },
@@ -71,7 +71,7 @@ async function role(name, spec) {
   if (arm) await sharp(arm).resize(512, 512, { fit: 'fill' }).webp({ quality: 80, effort: 6 }).toFile(join(dir, 'arm.webp'));
   // (Poly Haven's dimensions are in millimetres, the scan's width first)
   const metres = (info.dimensions?.[0] ?? 2000) / 1000;
-  return { source: `https://polyhaven.com/a/${spec.id}`, id: spec.id, name: info.name, authors: Object.keys(info.authors ?? {}), license: 'CC0 1.0', metres, arm: Boolean(arm) };
+  return { source: `https://polyhaven.com/a/${spec.id}`, id: spec.id, name: info.name, authors: Object.keys(info.authors ?? {}), license: 'CC0 1.0', metres, mean: spec.mean, arm: Boolean(arm) };
 }
 
 async function main() {

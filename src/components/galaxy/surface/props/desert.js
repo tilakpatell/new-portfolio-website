@@ -8,7 +8,7 @@ import { box, cyl, dome, part, ring, rockGeometry, rod } from '../kit';
 import { loft, trap8 } from '../../../universe/trafficKit';
 
 const { PI, cos, sin } = Math;
-const ADOBE = '#d9c4a0';
+const ADOBE = '#e2d4bf';
 const ADOBE_DARK = '#b89c76';
 
 export const PROPS = {
@@ -91,7 +91,7 @@ export const PROPS = {
   // the Lars homestead: the domed hut over the sunken courtyard (the pit's
   // the land's own, a flat below the ground; this is the hut and the ring
   // round the pit's edge)
-  homestead(k, { pit = 9 } = {}) {
+  homestead(k) {
     const parts = [
       part(cyl(3.1, 3.1, 1.2, 28), { color: ADOBE, to: 'adobe' }),
       part(dome(3.1, 2.4, 28), { at: [0, 1.2, 0], color: ADOBE, to: 'adobe' }),
@@ -99,9 +99,12 @@ export const PROPS = {
       part(box(1.0, 1.7, 0.3), { at: [0, 0, 3.6], color: '#2a2018', to: 'dark' }),
       part(cyl(0.45, 0.45, 0.6, 12), { at: [1.2, 3.1, -0.6], color: ADOBE_DARK, to: 'adobe' }),
     ];
-    // the low wall round the pit
-    parts.push(part(ring(pit + 0.4, 0.35, 48), { at: [0, -0.1, -pit - 4], color: ADOBE_DARK, to: 'adobe' }));
     return { object: k.build(parts, { name: 'homestead' }), solids: [{ circle: [0, 0, 3.1] }, { box: [0, 2.6, 0.75, 1.1, 0] }] };
+  },
+  // the low wall round the homestead's courtyard pit (beside the hut: put
+  // where the hut is, turned with it)
+  homesteadring(k, { pit = 9 } = {}) {
+    return { object: k.build([part(ring(pit + 0.4, 0.35, 48), { at: [0, -0.1, -pit - 6], color: ADOBE_DARK, to: 'adobe' })], { name: 'homesteadring' }) };
   },
 
   // a Jawa sandcrawler, 36 m long, rusted, on its treads
@@ -230,7 +233,7 @@ export const PROPS = {
       part(dome(3.8, 2.4, 24), { at: [7.5, 2.4, -2], color: ADOBE, to: 'adobe' }),
       part(box(4, 3.4, 4), { at: [0, 0, 7.2], color: ADOBE, to: 'adobe' }),
       part(new THREE.CylinderGeometry(1.2, 1.2, 0.3, 20), { at: [0, 1.4, 9.25], rot: [PI / 2, 0, 0], color: '#1e1610', to: 'dark' }),
-      part(ring(7.02, 0.18, 40), { at: [0, 3.2, 0], color: ADOBE_DARK, to: 'adobe' }),
+      part(ring(7.02, 0.18, 40), { at: [0, 3.2, 0], color: '#cdbfaa', to: 'adobe' }),
       // the vaporator-like tower on its roof
       part(cyl(0.5, 0.35, 3, 10), { at: [-2.5, 6.5, -2], color: '#8a8478', to: 'metal' }),
     ];
@@ -291,26 +294,35 @@ export const PROPS = {
   // one, the gatehouse at +z with its iron gate, and the gate's eye (a
   // droid on a stalk that asks who's knocking)
   palace(k) {
-    const stone = '#c8b08a';
+    const stone = '#bb8379';
     const parts = [
       part(cyl(40, 42, 34, 40), { color: stone, to: 'adobe' }),
       part(dome(38, 18, 40), { at: [0, 34, 0], color: stone, to: 'adobe' }),
-      part(cyl(16, 17, 70, 28), { at: [44, 0, 10], color: '#c0a882', to: 'adobe' }),
-      part(dome(16, 9, 28), { at: [44, 70, 10], color: '#c0a882', to: 'adobe' }),
+      part(cyl(16, 17, 70, 28), { at: [44, 0, 10], color: '#b47d72', to: 'adobe' }),
+      part(dome(16, 9, 28), { at: [44, 70, 10], color: '#b47d72', to: 'adobe' }),
       part(cyl(10, 12, 26, 24), { at: [-42, 0, 22], color: stone, to: 'adobe' }),
-      part(box(20, 22, 14), { at: [0, 0, 44], color: '#b89e78', to: 'adobe' }),
-      part(box(9, 12, 2), { at: [0, 0, 51], color: '#2a1e14', to: 'dark' }),
-      // the gate's ribs, and the eye over it
-      part(box(9.6, 0.6, 0.6), { at: [0, 12, 51.4], color: '#4a3a2a', to: 'metal' }),
-      rod([2.6, 9, 51.2], [2.2, 7.4, 52.6], 0.08, 0.06, { color: '#3a3a36', to: 'metal' }),
-      part(new THREE.SphereGeometry(0.32, 12, 10), { at: [2.2, 7.3, 52.7], color: '#5a5a54', to: 'metal' }),
-      part(new THREE.SphereGeometry(0.12, 8, 6), { at: [2.2, 7.3, 53.0], color: '#ff2a1a', to: 'glow' }),
     ];
-    for (let i = 0; i < 5; i++) parts.push(part(box(0.3, 12, 0.4), { at: [-3.6 + i * 1.8, 0, 52], color: '#3e3022', to: 'metal' }));
+    // (its walls as the model's are: the keep a little back of the middle,
+    // the watchtower and the small dome off to the east, the rock to the
+    // west; the gate is palacegate, in front of the keep)
     return {
       object: k.build(parts, { name: 'palace', shadows: false }),
-      solids: [{ circle: [0, 0, 41] }, { circle: [44, 10, 17] }, { circle: [-42, 22, 12] }, { box: [0, 44, 10, 7, 0] }],
+      solids: [{ circle: [1.5, -7.4, 27] }, { circle: [53, 13, 8] }, { circle: [30, 22, 8] }, { box: [-38, -2, 14, 26, 0] }],
     };
+  },
+  // Jabba's gate: the great door in its block, the ribs over it and the
+  // droid's eye on its stalk; the door's face 5 m in front of where it's put
+  palacegate(k) {
+    const parts = [
+      part(box(20, 22, 10), { at: [0, 0, 0], color: '#bb8379', to: 'adobe' }),
+      part(box(9, 12, 2), { at: [0, 0, 4.2], color: '#3e1a12', to: 'dark' }),
+      part(box(9.6, 0.6, 0.6), { at: [0, 12, 5.4], color: '#4a3a2a', to: 'metal' }),
+      rod([2.6, 9, 5.2], [2.2, 7.4, 6.6], 0.08, 0.06, { color: '#3a3a36', to: 'metal' }),
+      part(new THREE.SphereGeometry(0.32, 12, 10), { at: [2.2, 7.3, 6.7], color: '#5a5a54', to: 'metal' }),
+      part(new THREE.SphereGeometry(0.12, 8, 6), { at: [2.2, 7.3, 7.0], color: '#ff2a1a', to: 'glow' }),
+    ];
+    for (let i = 0; i < 5; i++) parts.push(part(box(0.3, 12, 0.4), { at: [-3.6 + i * 1.8, 0, 6], color: '#3e3022', to: 'metal' }));
+    return { object: k.build(parts, { name: 'palacegate' }), solids: [{ box: [0, 0, 10, 5, 0] }] };
   },
 
   // the Stone Needle: a spire of rock standing up out of a canyon floor

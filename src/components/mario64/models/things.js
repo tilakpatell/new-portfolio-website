@@ -26,14 +26,32 @@ const COIN_GEO = (() => {
   ].map(([x, y]) => new THREE.Vector2(x, y));
   return new THREE.LatheGeometry(pts, 40).rotateX(Math.PI / 2);
 })();
-function coin(a) {
+// (a loaded coin, its gold the kind's colour, one material a kind)
+const coinMats = new Map();
+function coinLook(hd, kind) {
+  hd.traverse((o) => {
+    if (!o.isMesh) return;
+    const key = `${kind}:${o.material.uuid}`;
+    if (!coinMats.has(key)) {
+      const m = o.material.clone();
+      m.color.set(COIN[kind]);
+      m.emissive?.set(COIN[kind]).multiplyScalar(0.18);
+      coinMats.set(key, m);
+    }
+    o.material = coinMats.get(key);
+    o.castShadow = false;
+  });
+  hd.position.y = -0.37;
+  return hd;
+}
+function coin(a, hd) {
   const kind = a?.def?.kind ?? 'yellow';
-  const metal = pbr(COIN[kind], { rough: 0.22, metal: 1, emissive: COIN[kind], emissiveIntensity: 0.18 });
   const root = new THREE.Group();
   const spin = new THREE.Group();
   spin.position.y = 0.5;
   root.add(spin);
-  spin.add(mesh(COIN_GEO, metal, { shadow: false }));
+  if (hd) spin.add(coinLook(hd, kind));
+  else spin.add(mesh(COIN_GEO, pbr(COIN[kind], { rough: 0.22, metal: 1, emissive: COIN[kind], emissiveIntensity: 0.18 }), { shadow: false }));
   return {
     root,
     update(_, t) {
@@ -42,8 +60,29 @@ function coin(a) {
   };
 }
 
-function star(a) {
+function star(a, hd) {
   const ghost = Boolean(a?.got);
+  if (hd) {
+    const root = new THREE.Group();
+    const spin = new THREE.Group();
+    spin.position.y = 0.85;
+    root.add(spin);
+    hd.position.y = -0.62;
+    spin.add(hd);
+    // one already got: a see-through blue ghost of itself
+    if (ghost)
+      hd.traverse((o) => {
+        if (!o.isMesh) return;
+        o.material = pbr('#9fd2ff', { rough: 0.1, metal: 0.2, transparent: true, opacity: 0.55, emissive: '#5aa8ff', emissiveIntensity: 0.4 });
+      });
+    return {
+      root,
+      update(_, t) {
+        spin.rotation.y = t * 0.09;
+        spin.position.y = 0.85 + Math.sin(t * 0.08) * 0.08;
+      },
+    };
+  }
   const gold = ghost
     ? pbr('#9fd2ff', { rough: 0.1, metal: 0.2, transparent: true, opacity: 0.55, emissive: '#5aa8ff', emissiveIntensity: 0.4 })
     : pbr('#ffd23a', { rough: 0.18, metal: 1, emissive: '#ffb000', emissiveIntensity: 0.45 });
@@ -66,7 +105,17 @@ function star(a) {
   };
 }
 
-function oneup() {
+function oneup(_, hd) {
+  if (hd) {
+    const root = new THREE.Group();
+    root.add(hd);
+    return {
+      root,
+      update(_, t) {
+        root.position.y = Math.abs(Math.sin(t * 0.15)) * 0.1;
+      },
+    };
+  }
   const spots = canvasTexture('m64-oneup', 256, 128, (g, w, h) => {
     g.fillStyle = '#29b34a';
     g.fillRect(0, 0, w, h);
@@ -93,8 +142,12 @@ function oneup() {
   };
 }
 
-function sign(a) {
+function sign(a, hd) {
   const root = new THREE.Group();
+  if (hd) {
+    root.add(hd);
+    return { root, update() {} };
+  }
   const wood = pbr('#8a5a32', { rough: 0.8 });
   root.add(mesh(cylinder(1, 1, 12), wood, { y: 0.55, sx: 0.08, sy: 1.1, sz: 0.08 }));
   const board = canvasTexture(`m64-sign-${(a?.def?.title ?? 'Sign').length}`, 256, 160, (g, w, h) => {
@@ -361,7 +414,17 @@ const CROWN = (() => {
   return mergeGeometries(parts);
 })();
 const crownMat = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.85, sheen: 0.3, sheenColor: '#9be07a' });
-function tree(p) {
+// (a loaded prop, at the prop's size)
+function hdProp(p, hd, y = 0) {
+  const root = new THREE.Group();
+  hd.position.y = y;
+  root.add(hd);
+  root.scale.setScalar(p?.s ?? 1);
+  return { root, update() {} };
+}
+
+function tree(p, hd) {
+  if (hd) return hdProp(p, hd);
   const root = new THREE.Group();
   const bark = pbr('#6a4a2e', { rough: 0.9 });
   root.add(mesh(cylinder(0.7, 1, 16), bark, { y: 1.6, sx: 0.32, sy: 3.2, sz: 0.32 }));
@@ -370,7 +433,8 @@ function tree(p) {
   return { root, update() {} };
 }
 
-function pine(p) {
+function pine(p, hd) {
+  if (hd) return hdProp(p, hd);
   const root = new THREE.Group();
   root.add(mesh(cylinder(0.7, 1, 12), pbr('#5a3a22', { rough: 0.9 }), { y: 1, sx: 0.28, sy: 2, sz: 0.28 }));
   const needles = pbr('#2b6b3a', { rough: 0.9, sheen: 0.2 });
@@ -379,7 +443,8 @@ function pine(p) {
   return { root, update() {} };
 }
 
-function rock(p) {
+function rock(p, hd) {
+  if (hd) return hdProp(p, hd, -0.9);
   const root = new THREE.Group();
   const geo = new THREE.DodecahedronGeometry(1, 2);
   const pos = geo.attributes.position;
@@ -480,7 +545,9 @@ function windowGlass() {
   return { root, update() {} };
 }
 
-function chandelier(p) {
+function chandelier(p, hd) {
+  // (it hangs from where it's placed)
+  if (hd) return hdProp(p, hd, -2.6);
   const root = new THREE.Group();
   const gold = pbr(COLORS.gold, { rough: 0.25, metal: 1 });
   root.add(mesh(cylinder(1, 1, 8), gold, { y: -1.2, sx: 0.04, sy: 2.4, sz: 0.04 }));

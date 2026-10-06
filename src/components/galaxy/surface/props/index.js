@@ -23,6 +23,7 @@ import { PROPS as forest, SCATTER as forestScatter } from './forest';
 import { PROPS as core, SCATTER as coreScatter } from './core';
 import { PROPS as edge, SCATTER as edgeScatter } from './edge';
 import { PROPS as inside } from './inside';
+import { PROPS as outer, SCATTER as outerScatter } from './outer';
 
-export const PROPS = { ...generic, ...desert, ...ice, ...forest, ...core, ...edge, ...inside };
-export const SCATTER = { ...genericScatter, ...desertScatter, ...iceScatter, ...forestScatter, ...coreScatter, ...edgeScatter };
+export const PROPS = { ...generic, ...desert, ...ice, ...forest, ...core, ...edge, ...outer, ...inside };
+export const SCATTER = { ...genericScatter, ...desertScatter, ...iceScatter, ...forestScatter, ...coreScatter, ...edgeScatter, ...outerScatter };

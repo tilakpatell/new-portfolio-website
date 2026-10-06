@@ -40,6 +40,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REFS, fetchRef } from './galaxy-refs.mjs';
 import { makeLod } from './galaxy-surface-lod.mjs';
+import { recolorDoc } from './recolor.mjs';
 import { BUILDINGS as BACK_LANE } from './meshy-galaxy-buildings-back.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -68,10 +69,26 @@ export const BUILDINGS = {
     tris: 30000,
     tex: 2048,
   },
+  // Tatooine: the Lars homestead's domed hut over its courtyard (the built
+  // one's 6 m dome and its doorway; the pit's ring stays built)
+  homestead: {
+    ref: 'File:YetAnotherTatooineSunset.jpg',
+    crop: [0.15, 0.24, 0.73, 0.72],
+    lift: 'the domed adobe hut with its arched doorway, and the machinery, pipes and crates against its walls, seen in plain midday daylight',
+    // (baked from a sunset: brought to the plaster's daylight colour)
+    recolor: [{ material: 'Material_0', to: '#938c86', amount: 1, band: [0.15, 1] }],
+    metres: 9,
+    along: 'w',
+    tris: 20000,
+    tex: 1024,
+  },
   // Tatooine: the crime lord's palace (115 m): the owner's own model, textured here
   palace: {
     from: 'citadel',
     style: 'A desert fortress palace of weathered sun-bleached sandstone and tan adobe: sand-scoured rounded walls with faint horizontal bands, a great domed main keep, a tall cylindrical watchtower with a domed cap, dark recessed doorways and slit windows, dusty and sand-drifted at its base, rough desert rock around it. Realistic, film-set quality.',
+    // (the film's rust and rosy-brown stone, not the retexture's orange)
+    recolor: [{ material: '*', to: '#9d6b60', amount: 1 }],
+    yaw: -Math.PI / 2,
     metres: 115,
     along: 'w',
     tris: 45000,
@@ -142,16 +159,26 @@ async function squeeze(from, to, a) {
   const b = getBounds(scene);
   const size = b.max.map((v, i) => v - b.min[i]);
   const k = a.metres / (a.along === 'h' ? size[1] : Math.max(size[0], size[2]));
-  const holder = doc.createNode(a.kind).setScale([k, k, k]).setTranslation([-((b.min[0] + b.max[0]) / 2) * k, -b.min[1] * k, -((b.min[2] + b.max[2]) / 2) * k]);
+  // (centred, stood on y = 0, scaled; then turned by `yaw` about its middle,
+  // its front brought round to +z)
+  const centre = doc.createNode(`${a.kind}-centred`).setScale([k, k, k]).setTranslation([-((b.min[0] + b.max[0]) / 2) * k, -b.min[1] * k, -((b.min[2] + b.max[2]) / 2) * k]);
+  const yaw = a.yaw ?? 0;
+  const holder = doc.createNode(a.kind).setRotation([0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)]).addChild(centre);
   for (const child of scene.listChildren()) {
     scene.removeChild(child);
-    holder.addChild(child);
+    centre.addChild(child);
   }
   scene.addChild(holder);
   let count = 0;
   for (const m of root.listMeshes()) for (const p of m.listPrimitives()) count += (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3;
   if (count > a.tris) await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: a.tris / count, error: 0.001 }));
-  await doc.transform(dedup(), prune(), textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [a.tex, a.tex] }), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
+  await doc.transform(dedup(), prune());
+  // (its colours to the films': a catalogue-style `recolor`, scripts/recolor.mjs)
+  if (a.recolor) {
+    await doc.transform(textureCompress({ encoder: sharp, targetFormat: 'png', slots: /baseColor/, resize: [a.tex, a.tex] }));
+    for (const r of await recolorDoc(doc, a.recolor)) console.log(`  recolor ${r.material}: ${r.from} → ${r.to}`);
+  }
+  await doc.transform(textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [a.tex, a.tex] }), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
   let tris = 0;
   for (const m of root.listMeshes()) for (const p of m.listPrimitives()) tris += (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3;
   await mkdir(dirname(to), { recursive: true });

@@ -79,6 +79,10 @@ for (const id of list.split(',')) {
     continue;
   }
   const loaded = (Date.now() - t0) / 1000;
+  // (on the surface, the floor's light baked first: the bake's passes are a
+  // one-off, not a frame anyone plays. A world with no ground, cloud-borne,
+  // has none to wait for: it runs out the clock)
+  if (mode === 'surface') await page.waitForFunction(() => Boolean(window.__surfaceScene.api?.ground?.stats?.baked), null, { timeout: Number(process.env.BAKE_WAIT ?? 150000), polling: 1000 }).catch(() => {});
   await page.waitForTimeout(settle);
   // (in space, the ship put in one place, the same for every run: off the
   // planet on its sun side, facing it, stopped. The seeded randomness alone

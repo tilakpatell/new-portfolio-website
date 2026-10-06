@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
-import { applyBuilt, lodDistance, usesModel, withLod } from './placer';
+import { applyBuilt, clusterSpecs, lodDistance, usesModel, withLod } from './placer';
 
 const fakeWorld = () => ({ solids: { box: vi.fn(), circle: vi.fn() }, floors: [] });
 const made = () => ({ object: new THREE.Group(), solids: [{ box: [0, 0, 4, 2] }], floors: [{ x: 3, z: 0, y: 1, hw: 2, hd: 2 }], update: () => {}, signal: () => {} });
@@ -61,5 +61,16 @@ describe('which things are their model', () => {
     expect(usesModel({ kind: 'theed', opts: { style: 'tower' } })).toBe(false);
     expect(usesModel({ kind: 'theed', opts: { style: 'hall' }, model: false })).toBe(false);
     expect(usesModel({ kind: 'nothingatall' })).toBe(false);
+  });
+});
+
+describe('a cluster of models', () => {
+  it('sets each member where the cluster stands, turned with it', () => {
+    const members = clusterSpecs({ kind: 'x', at: [10, 0], yaw: Math.PI / 2, scale: 2 }, [['impcrate', 1, 0, 0.3], ['barrels', 0, -1, 0, 0.5]]);
+    expect(members[0]).toMatchObject({ kind: 'impcrate', yaw: Math.PI / 2 + 0.3, scale: 2 });
+    expect(members[0].at[0]).toBeCloseTo(10);
+    expect(members[0].at[1]).toBeCloseTo(-2);
+    expect(members[1]).toMatchObject({ kind: 'barrels', y: 1 });
+    expect(members[1].at[0]).toBeCloseTo(8);
   });
 });
