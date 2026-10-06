@@ -10,7 +10,7 @@ import { readSide, recordSide } from '../side';
 import { newTalk, talkNode, talkOn } from '../talk';
 import { useTravellers } from '../useTravellers';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
-import { ARRIVE, DOORS, FLOWERS, GATE, GRAVE, HALL_COLLIDERS, HALL_EXIT, HALL_IN, HALL_WALLS, HILL_COLLIDERS, MUSTER, PEAKS, validAt, walkable } from './layout';
+import { ARRIVE, DOORS, FLOWERS, GRAVE, HALL_COLLIDERS, HALL_EXIT, HALL_IN, HALL_WALLS, HILL_COLLIDERS, MUSTER, PEAKS, validAt, walkable } from './layout';
 import { CONVOS, FOUND, QUESTS, SEAL, SIDE, SPEAKERS, edorasProgress } from './story';
 import { BRAWL, bash, drink, newBrawl, newDrink, newWatch, spot, stepBrawl, stepDrink, stepWatch, windowOf } from './rules';
 import '../../shire/shire.css';
@@ -38,8 +38,8 @@ const walkers = {
   hall: makeWalker({ radius: 60, colliders: HALL_COLLIDERS, walls: HALL_WALLS }),
 };
 // where you stand for each part of the story
-const KING_AT = { x: 1.8, z: -11.5, face: Math.PI / 2 };
-const BARROWS_AT = { x: GATE.x + 10, z: 0, face: 0 };
+const KING_AT = { x: -1.6, z: -12.4, face: Math.PI / 2 };
+const BARROWS_AT = { x: GRAVE.x + 0.6, z: 1.6, face: Math.PI / 2 };
 const OUT_AT = { x: DOORS.x + 2.6, z: 0, face: 0 };
 const PROMPT = {
   door: { name: 'The doors of Meduseld', act: 'Go up' },

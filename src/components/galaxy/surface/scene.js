@@ -17,8 +17,10 @@
 // props built in code where there aren't); its life (actors.js); what you
 // can ride (rides.js). Moving about is walker.js's.
 //
-// A scene module for lib/three/useScene: create(canvas, ctx) returns
-// { ready, resize, render, update, setVisible, input, dispose }.
+// A scene module, a world on the world runtime through ./module.js
+// (src/runtime's fromScene): create(canvas, ctx) draws with the runtime's
+// renderer (ctx.rt.gfx: the runtime sizes it and sets its sharpness) and
+// returns { ready, resize, render, update, setVisible, input, dispose }.
 // Props: system (the world's id), ship (the crew's ship: xwing, falcon…),
 // loadout (its paint), onEvent(e), compass (a ref: the compass bar, its
 // marks by data-id), found (the places already found, by id), net (the
@@ -32,10 +34,9 @@
 
 import { readBuildWire, writeBuild } from '../../universe/shipyard/build';
 import * as THREE from 'three';
-import { createRenderer, disposeTree, precompile, singlePass } from '../../../lib/three/renderer';
+import { disposeTree, precompile, singlePass } from '../../../lib/three/renderer';
 import { dropTransmission } from '../../../lib/three/glass';
 import { device } from '../../../lib/device';
-import { createPace } from '../../../lib/three/pace';
 import { createPost } from '../../universe/post';
 import { SHIP_MODELS, buildShip, LENGTH } from '../../universe/shipModels';
 import { loadModel } from '../../universe/planets';
@@ -66,8 +67,9 @@ import { createPeers } from './peers';
 import { createSounds } from './sounds';
 import { createActivity } from './activity';
 import { snapToTexel } from './shadow';
+import { createShadowPhase } from './near';
 import { createBlaster } from './blaster';
-import { feed, start as startQuest, stepTarget, stepText } from './quests';
+import { feed, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, ride, rider, turnToward, walk, walker } from './walker';
 import { rng } from './noise';
@@ -93,7 +95,7 @@ const FIRE_EVERY = 0.24; // seconds between shots
 const BIKE_FIRE_EVERY = 0.3; // (a bike's cannon: a touch slower)
 
 export async function create(canvas, ctx) {
-  const { reduced } = ctx;
+  const { reduced, rt } = ctx;
   let props = ctx;
   let disposed = false;
   const tier = device().tier;
@@ -105,9 +107,9 @@ export async function create(canvas, ctx) {
   const emit = (e) => props.onEvent?.(e);
 
   // ── The renderer, the camera, the light ──
-  // (no multisampling on the canvas: the composer's target does it already, and twice is a cost for nothing)
-  const gl = createRenderer(canvas, { ratio: 1.5, antialias: false, onLost: ctx.onLost, onSlow: ctx.onSlow });
-  const { renderer } = gl;
+  // (the runtime's: shared with whatever world comes next, so its shadows go back as they were at dispose)
+  const { renderer } = rt.gfx;
+  const shadowMapWas = { enabled: renderer.shadowMap.enabled, type: renderer.shadowMap.type };
   renderer.shadowMap.enabled = !small;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   const scene = new THREE.Scene();
@@ -185,7 +187,9 @@ export async function create(canvas, ctx) {
 
   // ── What's on it ──
   const kit = createKit({ seed: 31 });
-  const placer = createPlacer({ parent: scene, kit, world, warm });
+  // (the scatter casts its shadow only near you: near.js)
+  const shadowPhase = sun.castShadow ? createShadowPhase(scene, sun) : null;
+  const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null });
   for (const t of site.things_all) placer.put(t);
   const r = rng(site.ground.seed ?? 1);
   const avoid = [...site.places.map((p) => ({ at: p.at, r: p.flat?.r ?? p.r * 0.6 })), { at: site.land.at, r: 30 }];
@@ -206,11 +210,11 @@ export async function create(canvas, ctx) {
     }
     placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true });
   }
-  const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit });
+  const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density });
 
   // ── The places you go into (zones): built high over the world, out of
   // sight, each with its own lamps ──
-  for (const z of site.zones) placer.put({ kind: z.inside.build, at: [z.origin[0], z.origin[2]], y: z.origin[1], abs: true, model: false, opts: z.inside.opts });
+  for (const z of site.zones) placer.put({ kind: z.inside.build, at: [z.origin[0], z.origin[2]], y: z.origin[1], abs: true, model: false, opts: z.inside.opts, zone: true });
   // (hidden outdoors: a light with nothing to light still costs every pixel of
   // every lit thing, and four of them a good deal; the warm-up compiles both ways)
   const lamps = Array.from({ length: 4 }, () => {
@@ -800,7 +804,9 @@ export async function create(canvas, ctx) {
     if (!tg) return;
     if (tg.kind === 'talk') {
       const spec = tg.actor.spec;
-      const q = spec.quest && questOf(spec.quest);
+      // (what they offer now: their next quest not done, or their last, done)
+      const offered = nextQuest(spec, state.done) ?? questsOf(spec).at(-1);
+      const q = offered && questOf(offered);
       const step = state.quest && questOf(state.quest.id)?.steps[state.quest.step];
       if (q && !state.done.has(q.id) && !state.quest) beginQuest(q);
       else if (step?.type === 'talk' && step.actor === spec.id) questEvent({ type: 'talk', actor: spec.id });
@@ -832,14 +838,19 @@ export async function create(canvas, ctx) {
       state.phase = 'walk';
       state.cam.dist = CAM.dist;
       emit({ type: 'phase', phase: 'walk' });
-    } else if (tg.kind === 'board') {
-      state.phase = 'leaving';
-      state.age = 0;
-      for (const q of people) q.holder.visible = false;
-      ship.park?.(false);
-      emit({ type: 'phase', phase: 'leaving' });
-    }
+    } else if (tg.kind === 'board') board();
   };
+  // into the ship and up: the climb out (stepLeaving; the page hands over to
+  // space as it goes, and 'leave' at the end is for a page that can't)
+  function board() {
+    if (state.phase !== 'walk') return false;
+    state.phase = 'leaving';
+    state.age = 0;
+    for (const q of people) q.holder.visible = false;
+    ship.park?.(false);
+    emit({ type: 'phase', phase: 'leaving' });
+    return true;
+  }
 
   // ── Going in and out ──
   let shadows = sun.castShadow; // (outdoors: the tier's, until lowerQuality)
@@ -857,6 +868,11 @@ export async function create(canvas, ctx) {
     sky.mesh.visible = !z;
     if (weather) weather.group.visible = !z;
     if (water) water.mesh.visible = !z;
+    // (inside, the world outside isn't drawn, and outside, no room is)
+    ground.visible = !z;
+    if (water?.glow) water.glow.visible = !z;
+    placer.setZone(Boolean(z));
+    life.setZone(Boolean(z));
     // (indoors, the room's lamps and no sun to cast a shadow; outdoors, the sun's
     // shadow unless the frame rate has had it off, lowerQuality)
     sun.castShadow = !z && shadows;
@@ -1061,7 +1077,6 @@ export async function create(canvas, ctx) {
   }
 
   // ── Each frame ──
-  const pace = createPace();
   const tmp = new V();
   const flash = { k: 0 };
 
@@ -1353,31 +1368,43 @@ export async function create(canvas, ctx) {
   // the compass: each place's mark slid along the bar to its bearing
   let compassW = 0;
   let compassT = 0;
+  // (the page told only what's changed: a style written is a style the
+  // browser works out again)
+  const styled = new WeakMap();
+  const setStyle = (m, key, v) => {
+    let had = styled.get(m);
+    if (!had) styled.set(m, (had = {}));
+    if (had[key] === v) return;
+    had[key] = v;
+    m.style[key] = v;
+  };
+  let compassMarks = [];
   function compass() {
     const el = props.compass?.current;
     if (!el) return;
     if (!compassW || state.t - compassT > 2) {
       compassW = el.clientWidth;
       compassT = state.t;
+      compassMarks = [...el.querySelectorAll('[data-id]')];
     }
     const p = me().st;
     const span = Math.PI * 0.75; // the bar's half-width, in radians
-    for (const m of el.querySelectorAll('[data-id]')) {
+    for (const m of compassMarks) {
       const id = m.dataset.id;
       let at;
       if (id === 'quest' && chase && chaseOn()) {
         at = chase.target(p.x, p.z);
         if (!at) {
-          m.style.opacity = '0';
+          setStyle(m, 'opacity', '0');
           continue;
         }
       } else if (id === 'quest') {
         const q = state.quest && questOf(state.quest.id);
         const step = q?.steps[state.quest.step];
-        const giver = !step && state.tracked ? life.actors.find((x) => x.spec.quest === state.tracked) : null;
+        const giver = !step && state.tracked ? life.actors.find((x) => questsOf(x.spec).includes(state.tracked)) : null;
         at = step ? (doorFor(step) ?? stepTarget(step, state.quest, actorAt)) : giver ? (giver.spec.zone && state.zone?.id !== giver.spec.zone ? site.zones.find((z) => z.id === giver.spec.zone)?.door.at : [giver.b.x, giver.b.z]) : null;
         if (!at || state.zone) {
-          m.style.opacity = '0';
+          setStyle(m, 'opacity', '0');
           continue;
         }
       } else if (id === 'ship') at = landAt;
@@ -1390,8 +1417,8 @@ export async function create(canvas, ctx) {
       const a = wrap(Math.atan2(at[0] - p.x, at[1] - p.z) - state.cam.yaw);
       const x = (-a / span) * 0.5 * compassW;
       const on = Math.abs(a) < span;
-      m.style.transform = `translateX(${x.toFixed(1)}px)`;
-      m.style.opacity = on ? String(1 - (Math.abs(a) / span) ** 3) : '0';
+      setStyle(m, 'transform', `translateX(${x.toFixed(1)}px)`);
+      setStyle(m, 'opacity', on ? (1 - (Math.abs(a) / span) ** 3).toFixed(2) : '0');
       const d = m.querySelector('.d');
       if (d && (state.t * 4) % 1 < 0.3) d.textContent = `${Math.round(Math.hypot(at[0] - p.x, at[1] - p.z))} m`;
     }
@@ -1400,9 +1427,6 @@ export async function create(canvas, ctx) {
   const size = { w: 1, h: 1 };
   let shown = true;
   function render(ms, now) {
-    gl.watch(now);
-    const sharp = pace.frame(now);
-    if (sharp !== null) post.sharpness = sharp;
     state.frames = (state.frames ?? 0) + 1;
     tick(Math.min(0.05, ms / 1000));
     draw(now);
@@ -1497,8 +1521,8 @@ export async function create(canvas, ctx) {
     }
     // the marks over whoever has a quest to give
     for (const a of life.actors) {
-      const q = a.spec.quest;
-      if (!q) continue;
+      if (!a.spec.quest) continue;
+      const q = nextQuest(a.spec, state.done);
       let m = givers.find((g) => g.a === a);
       if (!m) {
         m = { a, sprite: new THREE.Sprite(markMat) };
@@ -1506,7 +1530,7 @@ export async function create(canvas, ctx) {
         scene.add(m.sprite);
         givers.push(m);
       }
-      const on = !state.done.has(q) && !state.quest && a.fig;
+      const on = q && !state.quest && a.fig;
       m.sprite.visible = Boolean(on);
       if (on) m.sprite.position.set(a.b.x, a.holder.position.y + (a.fig.tall ?? 1.8) * (a.spec.scale ?? 1) + 0.6 + Math.sin(state.t * 3) * 0.08, a.b.z);
     }
@@ -1518,8 +1542,8 @@ export async function create(canvas, ctx) {
     fx.update(dt);
     spring(state.kick, dt, 240, 22);
     state.aim = Math.max(0, state.aim - dt / 2.5);
-    life.update(dt, state.phase === 'walk' ? me().st : null);
-    placer.update(t, dt);
+    life.update(dt, state.phase === 'walk' ? me().st : null, state.phase === 'walk' || state.phase === 'ride' ? me().st : camera.position);
+    placer.update(t, dt, me().st);
     stepDust(dt);
     storm(dt);
     online(dt);
@@ -1604,7 +1628,9 @@ export async function create(canvas, ctx) {
 
   // ── Ready ──
   const ready = (async () => {
-    await placer.ready.catch(() => {});
+    // (the props' scanned surfaces on before their shaders are made, so
+    // they're made once)
+    await Promise.all([placer.ready.catch(() => {}), kit.ready.catch(() => {})]);
     // (the scouts' way is planned round the trees, so once they're down)
     if (!disposed) chase?.begin();
     if (!disposed) beginMission();
@@ -1628,7 +1654,6 @@ export async function create(canvas, ctx) {
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);
-      gl.setSize(size.w, size.h);
       camera.aspect = size.w / size.h;
       camera.fov = size.w < size.h ? 72 : 60;
       camera.updateProjectionMatrix();
@@ -1728,6 +1753,11 @@ export async function create(canvas, ctx) {
         announce();
       },
     },
+    // back to the ship and up, from anywhere outdoors on foot: true once the climb's begun
+    takeOff() {
+      if (state.zone || state.phase !== 'walk') return false;
+      return board();
+    },
     // (for tests: the world moved on without drawing it, in steps)
     advance(secs) {
       if (!import.meta.env.DEV) return;
@@ -1773,6 +1803,12 @@ export async function create(canvas, ctx) {
       props = { ...props, net: { ...net, walk() {} } };
     },
     // (for tests: put you somewhere, facing somewhere)
+    // (dev: into a zone by its id, or out of the one you're in)
+    zone(id = null) {
+      const z = id && site.zones.find((o) => o.id === id);
+      if (z) enterZone(z);
+      else leaveZone();
+    },
     teleport(x, z, yaw = null) {
       if (!import.meta.env.DEV) return;
       const p = me().st;
@@ -1808,6 +1844,7 @@ export async function create(canvas, ctx) {
       markMat.dispose();
       life.dispose();
       placer.dispose();
+      shadowPhase?.dispose();
       for (const p of people) {
         p.gp?.dispose();
         p.fig?.dispose?.();
@@ -1826,7 +1863,8 @@ export async function create(canvas, ctx) {
       kit.dispose();
       disposeTree(scene);
       post.dispose();
-      gl.dispose();
+      Object.assign(renderer.shadowMap, shadowMapWas);
+      canvas.removeAttribute('aria-hidden');
     },
   };
 }
