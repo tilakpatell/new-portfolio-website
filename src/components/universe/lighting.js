@@ -22,6 +22,9 @@
 // daySideApproach(at, sunDir, radius, from, { dist }) → a point `dist`
 //   radii from `at` on the side facing `sunDir`, as near the way `from` is
 //   as it can be: arrivals see a lit world, not a black disc
+// dayYaw(sunDir) → the turn of the map (about its up axis, as the scene's
+//   map.rotation.y) that brings `sunDir` round to point at the camera, which
+//   looks from +z: a world picked on the map is seen from its day side
 
 import { POSITIONS, SUN } from './layout';
 import { DEEP_SOLIDS, WONDERS } from './deep';
@@ -110,6 +113,8 @@ export function sunFor(id, { positions = POSITIONS, stars = STARS } = {}) {
   const [first] = ranked(p, stars);
   return unit(sub(first.s.at, p));
 }
+
+export const dayYaw = (sun) => Math.atan2(-sun[0], sun[2]);
 
 export function daySideApproach(at, sunDir, radius, from, { dist = 2.2 } = {}) {
   const s = unit(sunDir);

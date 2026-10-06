@@ -122,7 +122,7 @@ import { createBeacons } from './beacons';
 import { PHONE, createPhone } from './phone';
 import { SUPERNOVA_SITES, createSupernovae } from './supernova';
 import { DEEP, WONDERS, moveBinaries, nearestStar, openness, reachOf, wonderById } from './deep';
-import { lightAt, sunFor } from './lighting';
+import { dayYaw, lightAt, sunFor } from './lighting';
 import { createCrash } from './crash';
 import { createInfall } from './infall';
 import { DISK_N, MAW, captured, fallAt, plungeAt, pullAt, startFall } from './maw';
@@ -1077,7 +1077,10 @@ export async function create(canvas, ctx) {
   // sits off to the left of it rather than right behind
   const frontYaw = (id) => {
     const [x, , z] = POSITIONS[id];
-    const a = Math.atan2(z, x) - Math.PI / 2 + (byId(id).kind === 'core' ? 0.62 : 0);
+    const u = byId(id);
+    // (a world: round so its sun's behind the camera, and it's seen lit, not
+    // as a black disc; lighting.js)
+    const a = u.kind !== 'core' && !u.portal ? dayYaw(sunInMap[id]) : Math.atan2(z, x) - Math.PI / 2 + (u.kind === 'core' ? 0.62 : 0);
     return state.yaw + Math.atan2(Math.sin(a - state.yaw), Math.cos(a - state.yaw));
   };
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STARS, daySideApproach, lightAt, sunFor, weightOf } from './lighting';
+import { STARS, dayYaw, daySideApproach, lightAt, sunFor, weightOf } from './lighting';
 import { POSITIONS, SUN } from './layout';
 
 const len = (a) => Math.hypot(...a);
@@ -73,6 +73,17 @@ describe('which star lights a point', () => {
 });
 
 describe('arriving on the day side', () => {
+  it('turns the map so a world’s sun is behind the camera (which looks from +z)', () => {
+    for (const s of [[1, 0, 0], [0, 0, -1], norm([-0.3, 0.2, 0.8]), sunFor('rickmorty'), sunFor('caribbean')]) {
+      const y = dayYaw(s);
+      // (three's turn about y: x' = x cos + z sin, z' = −x sin + z cos)
+      const x = s[0] * Math.cos(y) + s[2] * Math.sin(y);
+      const z = -s[0] * Math.sin(y) + s[2] * Math.cos(y);
+      expect(x).toBeCloseTo(0, 9);
+      expect(z).toBeGreaterThan(0);
+    }
+  });
+
   const at = [0, 0, 0];
   const sun = [1, 0, 0];
   it('from the night side, comes round to the edge of the day', () => {
