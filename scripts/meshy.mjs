@@ -24,16 +24,22 @@
 // arcade, cabinet, Shoney's, the limo and the Federation's ship to
 // public/models/c137/.
 //
-//   node --env-file=.env.local scripts/meshy.mjs <step> [name … | portal | office | rollout | hq | c137 | hd]
+// The Rick and Morty multiverse's set (`rm`, below): the people, buildings
+// and ships of the places the garage's portal dials. Its figures go to
+// public/games/meshy/ beside the rest, its other things to
+// public/models/c137/rm/.
+//
+//   node --env-file=.env.local scripts/meshy.mjs <step> [name … | portal | office | rollout | hq | c137 | hd | rm]
 //
 // `hd`: Rick and Morty again at about 40,000 faces and 2k textures, from
 // their own concept images, over the originals.
 //
 // Steps, in order: images (9 credits each), models (30), rig (5), anim (an
 // idle clip, 3), sit (a seated clip, 3), fetch (free: download and
-// compress). Each task's id is kept in scripts/meshy-tasks.json, so running
-// a step again never pays twice; delete a name's entry there to make it
-// again. MESHY_API_KEY comes from .env.local (git ignores it); it is never
+// compress); and balance (free: the credits left, which every step prints
+// when it's done). Each task's id is kept in scripts/meshy-tasks.json, so
+// running a step again never pays twice; delete a name's entry there to make
+// it again. MESHY_API_KEY comes from .env.local (git ignores it); it is never
 // printed.
 
 import { NodeIO } from '@gltf-transform/core';
@@ -53,6 +59,7 @@ const OFFICE_OUT = join(ROOT, 'public', 'models', 'office', 'cast');
 const ROLLOUT_OUT = join(OUT, 'rollout');
 const HQ_OUT = join(ROOT, 'public', 'hq', 'meshy');
 const C137_OUT = join(ROOT, 'public', 'models', 'c137');
+const RM_OUT = join(C137_OUT, 'rm');
 const REVIEW = join(ROOT, 'lab', 'meshy'); // concept images, for looking at (not shipped)
 const TASKS = join(ROOT, 'scripts', 'meshy-tasks.json');
 const API = 'https://api.meshy.ai/openapi';
@@ -229,6 +236,25 @@ const HD = {
 };
 Object.assign(ASSETS, HD);
 
+// The Rick and Morty multiverse (src/components/rickmorty/world/): the
+// people, buildings and ships of the places the garage's portal dials, in
+// the show's style like the portal cast. It's filled in a phase at a time,
+// and each thing is judged against its page on the show's wiki before the
+// next step is paid for. Sketchfab and Meshy's community models are looked
+// through first: a thing is made here only when none of them is accurate.
+// A figure is rigged with its walking, running and idle clips, at about
+// 30,000 faces and 2k textures, and goes to public/games/meshy/; a thing
+// with `rig: false` goes to public/models/c137/rm/. Three flags:
+//   hero: true   seen up close: about 40,000 faces, and the model's geometry
+//                made at 2k (5 credits more)
+//   sit: true    a seated clip too (the sit step seats only these)
+//   crowd: true  only ever stands in a crowd, so it's modelled standing at
+//                ease and never rigged: the lighter image model, about 9,000
+//                faces and 1k textures, into public/games/meshy/ for
+//                scripts/crowd.mjs to bake
+const RM = {};
+for (const [n, a] of Object.entries(RM)) ASSETS[n] = { set: 'rm', poly: a.crowd ? 9000 : a.hero ? 40000 : 30000, tex: a.crowd ? 1024 : 2048, rig: !a.crowd, ...(a.crowd ? { image: 'nano-banana' } : {}), ...a };
+
 const key = process.env.MESHY_API_KEY;
 const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -341,6 +367,7 @@ const steps = {
           topology: 'triangle',
           target_polycount: a.poly,
           texture_resolution: '2k',
+          ...(a.hero ? { geometry_resolution: '2k' } : {}),
           ...(a.rig ? { pose_mode: 'a-pose' } : {}),
           target_formats: ['glb'],
           enable_thumbnail: true,
@@ -387,7 +414,7 @@ const steps = {
   // sitting in the cruiser: Chair_Sit_Idle_M from Meshy's animation library
   async sit(names, s) {
     await each(
-      names.filter((n) => ASSETS[n].rig),
+      names.filter((n) => ASSETS[n].rig && (ASSETS[n].set !== 'rm' || ASSETS[n].sit)),
       async (n) => {
         if (!s[n]?.rig) throw new Error('not rigged yet');
         if (!s[n].sit) {
@@ -415,7 +442,7 @@ const steps = {
       const a = ASSETS[n];
       const as = a.as ?? n; // (the name it's written as)
       const files = []; // [url, file, texture size, clip only, posed in the browser]
-      const out = { office: OFFICE_OUT, rollout: ROLLOUT_OUT, hq: HQ_OUT, c137: a.rig ? OUT : C137_OUT }[a.set] ?? OUT;
+      const out = { office: OFFICE_OUT, rollout: ROLLOUT_OUT, hq: HQ_OUT, c137: a.rig ? OUT : C137_OUT, rm: a.rig || a.crowd ? OUT : RM_OUT }[a.set] ?? OUT;
       if (a.rig && a.clips === false) {
         // the skinned figure on its skeleton, nothing else
         if (!s[n]?.rig) throw new Error(`${n}: rig first`);
@@ -444,7 +471,7 @@ const steps = {
       }
       if (a.set === 'rollout') fetched.add(n);
       if (a.set === 'hq') made[n] = { rig: !!a.rig, h: a.h };
-      credits[a.set === 'hq' ? `hq/meshy/${as}` : `meshy/${a.set === 'rollout' ? 'rollout/' : a.set === 'c137' && !a.rig ? 'c137/' : ''}${as}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${as}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
+      credits[a.set === 'hq' ? `hq/meshy/${as}` : `meshy/${a.set === 'rollout' ? 'rollout/' : a.set === 'c137' && !a.rig ? 'c137/' : out === RM_OUT ? 'rm/' : ''}${as}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${as}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
       console.log(`fetch    ${n.padEnd(12)} ${files.map((f) => f[1]).join(', ')}`);
     }
     await writeFile(creditsFile, `${JSON.stringify(credits, null, 2)}\n`);
@@ -458,6 +485,8 @@ const steps = {
       await writeFile(index, `${JSON.stringify(list.sort((x, y) => named(x).localeCompare(named(y))), null, 2)}\n`);
     }
   },
+  // the credits left: main prints them after every step, so there's nothing to do
+  async balance() {},
 };
 
 async function main() {
@@ -465,7 +494,7 @@ async function main() {
   const [step, ...only] = process.argv.slice(2);
   if (!steps[step]) throw new Error(`step: ${Object.keys(steps).join(' | ')}`);
   // a set's name stands for its assets
-  const sets = { portal: Object.keys(ASSETS).filter((n) => !ASSETS[n].set), office: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'office'), rollout: Object.keys(ROLLOUT), hq: Object.keys(HQ), c137: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'c137'), citadel: Object.keys(CITADEL), crowd: Object.keys(CROWD_ONLY), hd: Object.keys(HD) };
+  const sets = { portal: Object.keys(ASSETS).filter((n) => !ASSETS[n].set), office: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'office'), rollout: Object.keys(ROLLOUT), hq: Object.keys(HQ), c137: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'c137'), citadel: Object.keys(CITADEL), crowd: Object.keys(CROWD_ONLY), hd: Object.keys(HD), rm: Object.keys(RM) };
   const names = only.length ? only.flatMap((n) => sets[n] ?? [n]) : Object.keys(ASSETS);
   for (const n of names) if (!ASSETS[n]) throw new Error(`unknown asset ${n}`);
   const s = await load();

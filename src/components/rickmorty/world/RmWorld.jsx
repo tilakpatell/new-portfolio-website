@@ -159,6 +159,8 @@ const AREA_NAME = {
   oval: 'The Oval Office',
   diner: 'Shoney’s',
 };
+// a place's name inside a sentence ('The alien street' → 'the alien street')
+const inLine = (name) => name.replace(/^The /, 'the ');
 // what talking to someone does, beyond what they say: a thing to do, done
 const TALK_DONE = { president: 'president', dineragent: 'diner' };
 // a memory's run in the Mind Blowers chair, and how far Morty can stray from the chair before it stops
@@ -401,6 +403,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     if (inside) chip.current?.focus({ preventScroll: true });
   }, []);
   const [fade, setFade] = useState(null); // null, or the kind of link being gone through
+  const [opening, setOpening] = useState(null); // the place a portal's waiting on while it loads
   const [shipLine, setShipLine] = useState(null); // what the cruiser last said, captioned
   const [memory, setMemory] = useState(null); // the memory playing in the Mind Blowers chair
   // the cruiser says something, if it's the time for it (./ship.js decides)
@@ -461,7 +464,10 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
   // ── what E does ──
   // through a door, up the stairs or through the portal: a fade to black (or
   // green), and out the other side, the camera behind him; down the hatch or
-  // up the ladder, a slower one, the lid clanking
+  // up the ladder, a slower one, the lid clanking. A place not built yet (one
+  // that loads when it's first entered) starts loading as the fade begins,
+  // and the swirl holds till it's there; if the page is left, or the world
+  // lost, meanwhile, the trip's off and what loaded is let go.
   const go = useCallback(
     (l) => {
       const s = sim.current;
@@ -472,7 +478,19 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       setFade(l.kind === 'portal' ? 'portal' : climb ? (l.to === 'basement' ? 'down' : 'up') : 'door');
       if (l.kind === 'portal') sound('portalOpen');
       else if (climb) sound('splat');
-      later(() => {
+      const w = api.current;
+      const loading = w && !w.hasArea(l.to) ? w.ensureArea(l.to) : null;
+      later(async () => {
+        if (loading) {
+          if (l.kind === 'portal') setOpening(AREA_NAME[l.to] ?? null);
+          await loading.catch(() => {});
+          setOpening(null);
+          if (api.current !== w || !w.hasArea(l.to)) {
+            s.fading = false;
+            setFade(null);
+            return;
+          }
+        }
         s.area = l.to;
         s.m = newMorty(l.arrive);
         // out of a portal, the camera stands off to one side, so the swirl
@@ -926,6 +944,12 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
         onContextMenu={(e) => e.preventDefault()}
       />
       <div className="rm-fade" data-on={fade || undefined} data-kind={fade ?? undefined} aria-hidden="true" />
+      {opening && (
+        <div className="rm-loading rm-opening" role="status">
+          <span className="rm-swirl" aria-hidden="true" />
+          <p>Opening a portal to {inLine(opening)}…</p>
+        </div>
+      )}
       {gl === 'loading' && (
         <div className="rm-loading" role="status">
           <span className="rm-swirl" aria-hidden="true" />

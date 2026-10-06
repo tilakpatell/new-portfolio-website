@@ -1,5 +1,6 @@
 // Dimension C-137, the world, in WebGL: the Smiths' street (./street.js),
-// the rooms and the alien street (registered in AREA_BUILDERS below), Morty
+// the rooms (registered in AREA_BUILDERS below) and the alien street (in LAZY,
+// built the first time it's entered), Morty
 // walking about as the rigged Meshy Morty, and Rick's space cruiser, parked
 // in the driveway or flown with Morty at the wheel. Toon-shaded and inked
 // like the show (portal/toon.js), on lib/stage3d's renderer with
@@ -11,7 +12,7 @@
 //
 // createRmWorld(canvas, { onLost }) resolves to { render(state, ms),
 // resize(w, h), dispose(), lost, fx(type, data), act(area, name, ...args),
-// info() }, where state is
+// info(), ensureArea(id), hasArea(id) }, where state is
 // { area, morty: { x, z, face, speed, running }, flying, cruiser: { x, z, y,
 // yaw, speed, bank }, camYaw, camPitch, near: { link, hotspot }, done, fed:
 // { x, y, z, yaw, mode } (the Federation's patrol ship, as ./ship.js flies it) }.
@@ -30,9 +31,8 @@ import { CANS, CREW, TALL, glassDome } from '../cruiser3d';
 import { ARCADE, AREAS, BUILDINGS, CEILING, CRUISER, FURNITURE, HOTSPOTS, LINKS, MORTY, OUTDOOR, ROAD, TREES, behindYaw, supportAt, wallsIn } from './rules';
 import { gentleRamp, kitMaterials } from './kit';
 import { ROAD_Y, STREET_LIGHT, buildStreet } from './street';
-import { STREET_SKY, SUN_DIR, makeSky } from './sky';
+import { ANNEX_LIGHT, ANNEX_SKY, STREET_SKY, SUN_DIR, makeSky } from './sky';
 import { createFx, portalMaterial } from './fx';
-import { ANNEX_LIGHT, ANNEX_SKY, buildAnnex } from './annex';
 import { buildArcade } from './arcade';
 import { buildGarage, buildHouse, buildSchoolRoom, buildUpstairs } from './interiors';
 import { buildBasement } from './interiors/basement';
@@ -56,8 +56,14 @@ export { kitMaterials };
 // The kit: { renderer, models (the toon-painted GLBs by name), cast, need(names,
 // { clips }) (the cast loaded once each, however many ask), mats (kitMaterials),
 // tier, camera, fit (lib/device's budget), portal (the swirl's material) }.
-// The rooms and the annex add theirs here.
-export const AREA_BUILDERS = { street: buildStreet, house: buildHouse, upstairs: buildUpstairs, garage: buildGarage, school: buildSchoolRoom, annex: buildAnnex, arcade: buildArcade, basement: buildBasement, mindblowers: buildMindBlowers, oval: buildOval, diner: buildDiner };
+// The rooms add theirs here, and are built before the first frame.
+export const AREA_BUILDERS = { street: buildStreet, house: buildHouse, upstairs: buildUpstairs, garage: buildGarage, school: buildSchoolRoom, arcade: buildArcade, basement: buildBasement, mindblowers: buildMindBlowers, oval: buildOval, diner: buildDiner };
+// The areas built only when they're first wanted, each with its builder in a
+// chunk of its own, so the page's first download doesn't carry them: the
+// alien street through the garage's portal now, the multiverse's places as
+// they come. ensureArea(id) builds one (RmWorld waits on it behind the
+// portal's swirl).
+export const LAZY = { annex: () => import('./annex').then((m) => m.buildAnnex) };
 
 // The cruiser's headlights, which are its eyes (the saucer's, in the hull's
 // frame: its nose is +z): where each is, and how far round it looks out
@@ -130,15 +136,24 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   // ── the areas ──
   const kit = { renderer, models, cast, need, mats, tier, camera, fit, portal: portalMaterial };
   const areas = {};
-  const building = {};
+  // an area's builder (a lazy one's fetched first), and if it fails, or its
+  // chunk won't load, a plain one in its place; null if the world's been
+  // disposed meanwhile (what was built goes with it)
   const build = async (id) => {
-    const make = AREA_BUILDERS[id] ?? (OUTDOOR.includes(id) ? plainGround : plainRoom);
+    const plain = OUTDOOR.includes(id) ? plainGround : plainRoom;
+    const make = LAZY[id] ? async (k, i) => (await LAZY[id]())(k, i) : (AREA_BUILDERS[id] ?? plain);
     let a = null;
     try {
       a = await make(kit, id);
     } catch (err) {
+      if (stage.disposed) return null;
       if (import.meta.env.DEV) console.warn(`C-137: the ${id} builder failed`, err);
-      a = (OUTDOOR.includes(id) ? plainGround : plainRoom)(kit, id);
+      a = plain(kit, id);
+    }
+    if (stage.disposed) {
+      a.dispose?.();
+      disposeTree(a.group);
+      return null;
     }
     a.group.visible = false;
     scene.add(a.group);
@@ -301,7 +316,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   scene.fog = fog;
   const showArea = (id) => {
     if (!areas[id]) {
-      building[id] ??= build(id); // (a plain one, built on the way in)
+      ensureArea(id); // (a lazy one, or a plain one, built on the way in)
       return false;
     }
     for (const [k, a] of Object.entries(areas)) a.group.visible = k === id;
@@ -356,6 +371,25 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     await stage.precompile();
   }
   shown = null;
+
+  // ── an area built later ──
+  // (a lazy one, the first time it's wanted): built once, however many ask
+  // (the same promise each time), then its shaders compiled with its own
+  // light as the rest were, the area on screen put back in the same moment,
+  // so no frame is drawn in between
+  const building = {};
+  const ensureArea = (id) =>
+    (building[id] ??= areas[id]
+      ? Promise.resolve()
+      : build(id).then((a) => {
+          if (!a || stage.lost || stage.disposed) return undefined;
+          const was = shown;
+          showArea(id);
+          const compiled = stage.precompile();
+          if (was) showArea(was);
+          else shown = null;
+          return compiled;
+        }));
 
   // ── each frame ──
   const pace = createPace();
@@ -572,6 +606,8 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     resize,
     fx: fxEvent,
     setLooks,
+    ensureArea,
+    hasArea: (id) => Boolean(areas[id]),
     // an area builder's own action, if it has one (the arcade's setBoard(best)); nothing otherwise
     act(area, name, ...args) {
       const actions = areas[area]?.actions;

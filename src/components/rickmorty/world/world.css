@@ -51,6 +51,9 @@
 .rm-swirl { display: block; width: 4.5rem; height: 4.5rem; border: 3px solid var(--rm-ink); border-radius: 50%; background: radial-gradient(circle, #f4ffd8 0 12%, transparent 13%), conic-gradient(from 0deg, #2c8a2a, #9dff5a, #e9ffb0, #6fd23e, #2c8a2a, #9dff5a, #2c8a2a); box-shadow: 0 0 0 4px rgba(157, 255, 90, 0.35); animation: rm-spin 1.6s linear infinite; }
 .rm-swirl-sm { flex: none; width: 1.05rem; height: 1.05rem; margin-top: 0.1rem; border-width: 2px; box-shadow: none; animation-duration: 3s; }
 @keyframes rm-spin { to { transform: rotate(360deg); } }
+/* over the portal's swirl while the far side loads: it shows only if the wait is more than a moment */
+.rm-opening { z-index: 7; animation: rm-opening 0.25s ease 0.35s both; }
+@keyframes rm-opening { from { opacity: 0; } }
 
 /* ── the HUD: it sits over the street, and only its controls take the pointer ── */
 .rm-hud { position: absolute; left: 0; right: 0; z-index: 3; display: flex; justify-content: space-between; gap: 1rem; padding: var(--rm-pad) var(--rm-pad-r) var(--rm-pad) var(--rm-pad-l); pointer-events: none; }
