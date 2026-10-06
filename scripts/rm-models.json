@@ -106,5 +106,65 @@
   "poopybutthole": {
     "status": "done",
     "by": "local"
+  },
+  "bigmorty": {
+    "status": "claimed",
+    "by": "cloud"
+  },
+  "slickmorty": {
+    "status": "claimed",
+    "by": "cloud"
+  },
+  "campaignmorty": {
+    "status": "claimed",
+    "by": "cloud"
+  },
+  "rickd3": {
+    "status": "claimed",
+    "by": "cloud"
+  },
+  "simplerick": {
+    "status": "claimed",
+    "by": "cloud"
+  },
+  "evilrick": {
+    "status": "claimed",
+    "by": "cloud"
+  },
+  "loco-a": {
+    "status": "claimed",
+    "by": "cloud"
+  },
+  "loco-b": {
+    "status": "claimed",
+    "by": "cloud"
+  },
+  "loco-c": {
+    "status": "claimed",
+    "by": "cloud"
+  },
+  "supremeguard": {
+    "status": "claimed",
+    "by": "cloud"
+  },
+  "garmentrick": {
+    "status": "claimed",
+    "by": "cloud"
+  },
+  "mortymart": {
+    "status": "claimed",
+    "by": "cloud"
+  },
+  "creepymorty": {
+    "status": "claimed",
+    "by": "cloud"
+  },
+  "citadel-exterior": {
+    "status": "claimed",
+    "by": "cloud"
+  },
+  "nx5": {
+    "status": "claimed",
+    "by": "cloud"
   }
 }

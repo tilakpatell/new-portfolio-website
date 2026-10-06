@@ -1,7 +1,8 @@
-// Makes this session's slice of the Rick and Morty multiverse plan
+// Makes the local session's slice of the Rick and Morty multiverse plan
 // (docs/superpowers/plans/2026-10-06-rick-and-morty-multiverse.md) with
 // Meshy, the site owner's account: Phase 2's people and props (Task 2.1) and
-// Phase 6's vehicles (Task 6.1). Another session makes Phase 1 and is writing
+// Phase 6's vehicles (Task 6.1); and Phase 3's (Task 3.1), made the same way
+// by the cloud session. Another session makes Phase 1 and is writing
 // the plan's `rm` set into scripts/meshy.mjs (Task 0.2) at the same time, so
 // this is that set's pipeline for these names alone, kept apart so the two
 // never edit the same lines. Everything else is the plan's: its prompts (put
@@ -19,7 +20,7 @@
 // `claim` marks the names `claimed` (push that before any paid step), a paid
 // step marks them `meshy`, `fetch` marks them `done`.
 //
-//   node --env-file=.env.local scripts/meshy-rm-local.mjs <step> [name … | phase2 | phase6]
+//   node --env-file=.env.local scripts/meshy-rm-local.mjs <step> [name … | phase2 | phase3 | phase6]
 //
 // Steps, in order: claim (free), images (9 credits), models (30, heroes 35),
 // look (free: the model as Meshy made it, for judging before the rig), rig
@@ -57,6 +58,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'games', 'meshy');
 const RM_OUT = join(ROOT, 'public', 'models', 'c137', 'rm');
 const REVIEW = join(ROOT, 'lab', 'meshy', 'rm'); // concept images and thumbnails, for judging (not shipped)
+const FULL = join(ROOT, 'node_modules', '.cache', 'meshy-full'); // crowd-only figures, full size, for scripts/crowd.mjs
 const TASKS = join(ROOT, 'scripts', 'meshy-tasks.json');
 const LEDGER = join(ROOT, 'scripts', 'rm-models.json');
 const API = 'https://api.meshy.ai/openapi';
@@ -65,6 +67,10 @@ const API = 'https://api.meshy.ai/openapi';
 const STYLE = 'Drawn in the 2D cartoon style of the animated TV show Rick and Morty: flat cel colours, clean thick black outlines, simple rounded shapes. Plain white background, no text, no shadow.';
 const BODY = 'Full body, front view, standing straight in an A-pose with the arms held a little away from the body.';
 const PROP = 'The whole object, three-quarter front view, centred.';
+const BUILDING = 'The whole building, three-quarter front view from slightly above, centred, no people.';
+const AT_EASE = 'Full body, front view, standing at ease with the arms hanging down by the sides, empty hands, feet together.';
+const RICK = 'Rick Sanchez from Rick and Morty, a tall thin old scientist with spiky pale blue-grey hair and a unibrow';
+const MORTY = 'Morty Smith from Rick and Morty, a nervous 14-year-old boy with short brown hair and a round head';
 const CAR = 'The whole vehicle, three-quarter front view, centred, wheels on the ground.';
 
 // The plan's Task 2.1 and 6.1 assets. Its prompts were checked against each
@@ -107,14 +113,47 @@ const PHASE6 = {
   'zigerion-ship': { rig: false, hero: true, prompt: `The Zigerion mothership from Rick and Morty: a huge dark green spaceship shaped like a dumbbell, two giant thick disc-shaped hulls side by side joined by a short boxy central hull, each disc rimmed with large glowing lime-green crescent windows and a ringed hub on its outer face with spiky barrels sticking out, teal light strips all over the hull, a flat top deck with a low boxy deckhouse and tall thin antenna spires tipped with red lights, a stepped underside ending in hanging spires. ${PROP}` }, // (confirm against the sheet "Zigerions")
   storytrain: { rig: false, hero: true, prompt: `The Story Train from Rick and Morty: a long streamlined science-fiction steam locomotive in gold, amber and copper. Its front is a long, low, tapering snout like a shark's nose. It slopes steeply down from a pale curved cab windscreen to a narrow tip almost at rail level, with a small round copper buffer at the tip, and the snout is longer than it is tall, not a blunt or upright rounded face. A narrow ridged cream strip runs down the middle of the snout from just under the windscreen to the tip, with a small red-rimmed round lamp at its top. One big glowing round headlamp in a thick gold ring is set flush into each side of the engine just behind the snout, not on a stalk, and there are no other headlamps. Along each lower side, below the headlamp, runs a copper skirt with three dark rectangular slots, and there is no cowcatcher, bumper or grille across the front. Behind them are red piston cylinders and big dark red spoked driving wheels. It hauls exactly three passenger carriages, the first dark red, the second brown and the third black, with warm lit windows and glowing gold couplings, no text or numbers. Last time the picture drew a blunt, bulbous diesel-style front with a wide bumper, headlamps sticking out on stalks at the front corners and a slatted cowcatcher across the front. The snout must be long, low and pointed, and the headlamps flush on the sides. ${PROP}` },
 };
+// The plan's Task 3.1: Mortytown's people and buildings, two Ricks for the
+// Citadel's crowd, the Citadel from space and the NX-5. The plan's prompts
+// were checked against the wiki on 6 October and put right where the show
+// differs: the Locos are three tattooed Mortys in grubby T-shirts and a tank
+// top (not purple bandanas), and rigged (the quest walks them to Cop Morty);
+// the Supreme Guards wear gold armour and red capes; Garment District Rick a
+// fur-collared brown coat and no hat; the campaign manager a white
+// short-sleeved shirt, red tie and lanyard; Slick Morty a yellow T-shirt with
+// rolled sleeves; Morty Mart is a grimy slate-green shopfront under a neon
+// sign; the Citadel a brass disc with a teal dome and three arms ending in
+// saucers; the NX-5 a crimson ship with a hexagon-plated teal bulb and a
+// green ring cannon. `crowd`: only ever stands in the Citadel's crowd, so it
+// is drawn standing at ease on the lighter image model, never rigged, about
+// 9,000 faces, and kept full-size in node_modules/.cache/meshy-full/ for
+// scripts/crowd.mjs to bake.
+const PHASE3 = {
+  bigmorty: { sit: true, height: 1.5, prompt: `Big Morty from Rick and Morty: ${MORTY}, with a scowl, a dark teal-grey knitted beanie pulled down over his hair, big yellow-tinted aviator sunglasses, a thin wispy moustache, two thin gold chain necklaces, a dark magenta-pink jacket worn open over a red T-shirt, dark maroon-brown trousers and dark shoes. ${BODY}` },
+  slickmorty: { height: 1.5, prompt: `Slick Morty from Rick and Morty: ${MORTY}, with one curl of hair sticking up at the front and a thin shaved line on one side of his scalp, a plain pale yellow T-shirt with its sleeves rolled up to the shoulders, two metal dog tags on a ball chain round his neck, blue jeans and white sneakers. ${BODY}` },
+  campaignmorty: { height: 1.5, prompt: `Campaign Manager Morty from Rick and Morty: ${MORTY}, with a pleased open smile, in a white short-sleeved collared dress shirt tucked in, a long red tie, a lanyard round his neck with a white ID card hanging from it, a black belt, dark charcoal grey trousers and black shoes. ${BODY}` },
+  rickd3: { height: 1.85, prompt: `Rick D. Sanchez III from Rick and Morty: ${RICK}, dressed like a showman chocolatier: a tall purple top hat with a wide gold band, a purple tailcoat with wide lapels over a green waistcoat with gold buttons, a green shirt with a green tie, purple trousers and black shoes, empty hands. ${BODY}` },
+  simplerick: { height: 1.85, prompt: `Simple Rick from Rick and Morty: ${RICK}, with a gentle contented smile and no lab coat, in a plain pale sky-blue long-sleeved collared shirt tucked into dark navy blue trousers, a brown belt and brown shoes. ${BODY}` },
+  evilrick: { height: 1.85, prompt: `Evil Rick from Rick and Morty: ${RICK}, with a cold blank stare, dark shadowy circles under his eyes and a thin scar across his lips, in a long white lab coat open over a plain black shirt, brown trousers, a black belt and dark grey shoes. ${BODY}` },
+  'loco-a': { height: 1.5, prompt: `A Mortytown Loco from Rick and Morty, a Morty gang member: ${MORTY}, with a big dark blue-grey flame-shaped tattoo over one side of his face and forehead and three small ring tattoos beside his mouth, a grubby dark mauve-brown T-shirt, faded dark blue jeans and scuffed grey sneakers. ${BODY}` },
+  'loco-b': { height: 1.5, prompt: `A Mortytown Loco from Rick and Morty, a Morty gang member: ${MORTY}, with a small dark blue-grey swirl tattoo over one eyebrow and a few small ring tattoos on his cheek beside his mouth, a dirty off-white T-shirt, baggy dark grey jeans and scuffed white sneakers. ${BODY}` },
+  'loco-c': { height: 1.5, prompt: `A Mortytown Loco from Rick and Morty, a Morty gang member: ${MORTY}, with a small dark blue-grey swirl tattoo at one temple and small ring tattoos beside his mouth, a stained olive-grey sleeveless tank top, baggy brown cargo trousers and scuffed dark sneakers. ${BODY}` },
+  supremeguard: { crowd: true, prompt: `A Supreme Guard Rick of the Citadel from Rick and Morty: ${RICK}, a stern soldier in ornate gold armour: a gold breastplate, big rounded gold shoulder plates, gold gauntlets and gold shin guards, a long dark red cape hanging from his shoulders to his calves, dark olive trousers and dark boots. ${AT_EASE}` },
+  garmentrick: { crowd: true, prompt: `Garment District Rick from Rick and Morty: ${RICK}, but with his hair in a big rounded poofy pompadour on top, long grey sideburns and a grey moustache, in a long double-breasted brown winter coat with a thick cream fur collar and cream fur cuffs, dark trousers and dark shoes. ${AT_EASE}` },
+  mortymart: { rig: false, hero: true, prompt: `Morty Mart from Rick and Morty, a small corner convenience store in a grimy science-fiction city: a boxy single-storey shop of dark slate grey-green metal panels with rust streaks and rivets, a flat roof with pipes and a vent; across the front a long blank sign board edged with an unlit red neon tube, under it a wide shop window and an open doorway showing tall glass fridges full of green bottles inside, a curved metal air-conditioning cylinder over the door, a cyan neon bottle-shaped sign on the left corner, a green neon palm-tree sign and a small yellow neon sign in the window with no letters, torn paper posters on the wall. ${BUILDING}` },
+  creepymorty: { rig: false, hero: true, prompt: `The Creepy Morty, a seedy nightclub in the Mortytown district of the Citadel from Rick and Morty: a two-storey building of dark purple-grey metal panels with grimy streaks, a flat roof with pipes, a tall vertical blank sign board edged with pink and violet neon tubes on the front corner, a recessed doorway lit purple under a short black awning, a red velvet rope on two brass posts by the door, small round porthole windows glowing magenta, no letters anywhere. ${BUILDING}` },
+  'citadel-exterior': { rig: false, hero: true, prompt: `The Citadel of Ricks from Rick and Morty, a huge space station seen from the side and a little above: a wide flattened central disc of brass-gold and olive metal plating with rows of small lit windows, a large dome of pale teal glass on top of the disc with a tall thin spire rising from its centre, three long thin straight arms reaching out level from the disc at equal angles, each ending in a smaller flattened saucer of teal glass ringed in brass, and under the central disc a long downward-pointing tapering cluster of metal plates and fins with glowing cyan crystal panels. ${PROP}` },
+  nx5: { rig: false, hero: true, prompt: `The NX-5 Planet Remover from Rick and Morty, a Galactic Federation capital warship: a huge organic-looking battleship of dark crimson red armour, its long body reaching forward like a thick arm and ending in a huge round planet-killer cannon at the front, a ring of rounded pale green glowing pods round a big glowing green lens; behind it a spiky armoured command head with glowing orange windows; the back half of the ship is a huge rounded bulb covered in pale teal hexagonal armour plating held by dark red rib-like straps, round glowing cyan lights and red glowing orbs dotted along the hull. ${PROP}` },
+};
 // the small props, whose textures the plan keeps to 1024 pixels
 const SMALL = new Set(['snuffles', 'ghostinajar', 'tinkles', 'babywizard']);
 export const ASSETS = {};
 for (const [phase, set] of [
   [2, PHASE2],
+  [3, PHASE3],
   [6, PHASE6],
 ]) {
-  for (const [n, a] of Object.entries(set)) ASSETS[n] = { phase, rig: true, poly: a.hero ? 40000 : 30000, tex: SMALL.has(n) ? 1024 : 2048, ...a };
+  for (const [n, a] of Object.entries(set)) ASSETS[n] = { phase, rig: !a.crowd, poly: a.crowd ? 9000 : a.hero ? 40000 : 30000, tex: a.crowd || SMALL.has(n) ? 1024 : 2048, ...a };
 }
 
 const key = process.env.MESHY_API_KEY;
@@ -154,7 +193,7 @@ let tasks = null;
 const save = () => put(TASKS, tasks);
 async function mark(names, status) {
   const ledger = await json(LEDGER);
-  for (const n of names) if (ledger[n]?.status !== 'done' || status === 'done') ledger[n] = { status, by: 'local' };
+  for (const n of names) if (ledger[n]?.status !== 'done' || status === 'done') ledger[n] = { status, by: ASSETS[n]?.phase === 3 ? 'cloud' : 'local' };
   await put(LEDGER, ledger);
 }
 
@@ -404,7 +443,7 @@ const steps = {
       const a = ASSETS[n];
       tasks[n] ??= {};
       if (!tasks[n].image) {
-        const { result } = await api('POST', '/v1/text-to-image', { ai_model: 'nano-banana-pro', prompt: `${a.prompt} ${STYLE}`, ...(a.rig ? { pose_mode: 'a-pose' } : {}) });
+        const { result } = await api('POST', '/v1/text-to-image', { ai_model: a.crowd ? 'nano-banana' : 'nano-banana-pro', prompt: `${a.prompt} ${STYLE}`, ...(a.rig ? { pose_mode: 'a-pose' } : {}) });
         tasks[n].image = result;
         await save();
       }
@@ -519,14 +558,14 @@ const steps = {
         const t = await api('GET', `/v1/image-to-3d/${s.model}`);
         files.push([t.model_urls.glb, `${n}.glb`, a.tex, false]);
       }
-      const out = a.rig ? OUT : RM_OUT;
+      const out = a.rig ? OUT : a.crowd ? FULL : RM_OUT;
       await mkdir(out, { recursive: true });
       for (const [url, file, tex, clip] of files) {
         const raw = join(tmp, `${s.rig ?? s.model}-${file}`);
         if (!existsSync(raw)) await download(url, raw);
         await squeeze(raw, join(out, file), { tex, clip, ankles: clip ? false : (a.ankles ?? false), fix: clip ? null : (a.fix ?? null) });
       }
-      credits[`meshy/${a.rig ? '' : 'rm/'}${n}`] = { source: 'https://www.meshy.ai', id: s.model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
+      credits[`meshy/${a.rig || a.crowd ? '' : 'rm/'}${n}`] = { source: 'https://www.meshy.ai', id: s.model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
       done.push(n);
       console.log(`fetch    ${n.padEnd(18)} ${files.map((f) => f[1]).join(', ')}`);
     }
