@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { TROOPS } from './foot';
 import { CREWS, crewById, linesFor, parseShip } from './crews';
 import { ORDER } from './layout';
 
@@ -110,6 +111,10 @@ describe('the crews on foot', () => {
         ...['land', 'out', 'squad', 'hurt', 'down', 'up', 'cleared', 'far', 'nowhere', 'in'].map((id) => linesFor(crew, 'foot', id)),
         // (each troop of the crew's side has its own line, not the catch-all)
         ...Object.keys(sideFor(crew.id).troops).map((kind) => crew.foot.kill[kind]),
+        // (a squad of Evil Morty's guard isn't a squad of bugs)
+        ...(sideFor(crew.id).troops.mortyguard ? [linesFor(crew, 'foot', 'squad', 'mortyguard') !== linesFor(crew, 'foot', 'squad', 'gromflomite') ? crew.foot.squad.mortyguard : null] : []),
+        // (a probe droid that's called a squad in, where the side has one)
+        ...(Object.keys(sideFor(crew.id).troops).some((k) => TROOPS[k].calls) ? [crew.foot.called] : []),
         ...PARTY[crew.id].map((p) => linesFor(crew, 'foot', 'swap', p.id)),
         // another pilot's crew down too, and anyone's double from another dimension
         linesFor(crew, 'foot', 'friend'),

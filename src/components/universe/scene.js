@@ -106,6 +106,7 @@ import { PLANETS, SHIP, SOLIDS, autopilot, forward, headingTo, isGoal, isPlace, 
 import { HYPER, driveById, hyperState, parkFor, riftExit } from './nav';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
 import { AHEAD_OF, factionsOf, kindsOf, pick as pickFaction, sideFor, wingOf } from './sides';
+import { TROOPS } from './foot';
 import { GLB, createFleet } from './glbFleet';
 import { createDirector } from './director';
 import { createSetPieces } from './setpieces';
@@ -202,7 +203,6 @@ const KEYS = { w: 'up', s: 'down', a: 'a', d: 'd', arrowleft: 'left', arrowright
 // on foot: W A S D or the arrows walk and turn, Space jumps, Shift runs, Q and E step sideways (and F fires, footKey)
 const FOOT_KEYS = { ...KEYS, a: 'left', d: 'right', arrowup: 'up', arrowdown: 'down', ' ': 'jump', shift: 'boost', q: 'strafeL', e: 'strafeR', f: null };
 const FOOT_FOV = 56; // the lens on foot: a person's, wider than the chase's
-const NAMES_ON_FOOT = { gromflomite: 'Gromflomite', cop: 'Federation cop', gazorpian: 'Gazorpian' };
 const SHIP_NAMES = { rv: 'The RV', cruiser: 'The cruiser', xwing: 'The X-wing', falcon: 'The Falcon' };
 const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ']);
 
@@ -3414,7 +3414,7 @@ export async function create(canvas, ctx) {
       const px = hudAt.z > 0 ? (lock.size / (hudAt.z * tanHalf)) * (size.h / 2) * 1.6 : 0;
       placeMark(h.lock, hudAt, clamp(px, 26, 120));
       h.lock.toggleAttribute('data-hot', true);
-      setText(h, h.lockName, NAMES_ON_FOOT[lock.kind] ?? lock.kind);
+      setText(h, h.lockName, TROOPS[lock.kind]?.name ?? lock.kind);
       setText(h, h.lockDist, `${Math.round(lock.dist)} m`);
     }
     setOn(h, h.lead, false);
