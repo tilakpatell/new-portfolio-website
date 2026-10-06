@@ -24,7 +24,7 @@ import { AREAS, FURNITURE, HATCH, LINKS, PEOPLE } from '../rules';
 import { at, mergeParts, rng, speckle } from '../kit';
 import { BALL, BALL8, BOX, CYL, CYL8, DOOR_H, PLANE, TAU, casing, fitText, lathe, makeRoom, tiledPaint, tube, wallLine, win, windowView } from './shell';
 import { govPortal } from './govportal';
-import { needCast, person } from './people';
+import { needCast, onEntry, person, seatOwn } from './people';
 import { LOOKS } from './furniture';
 import { PINS, paintCells, planks } from './labpaint';
 
@@ -529,6 +529,19 @@ export async function buildGarage(kit) {
   // Rick at the bench
   const rick = PEOPLE.find((p) => p.id === 'rick');
   person(R, 'rick', { ...rick, h: 2.0, look: LOOKS.rick });
+
+  // Space Beth on a shop stool at the worktable's east end, back for a while
+  // (the multiverse's Phase 2): fetched the first time Morty's in the garage,
+  // drawn a tenth over life as the Smiths are, left out if she won't load
+  const stool = it('stool-garage');
+  R.frame(stool.x, stool.z, 0, { list: 'fixed' })
+    .cyl(0x6a4a30, 0, stool.h - 0.05, 0, stool.w / 2, 0.05)
+    .cyl(0x3a3a3e, 0, 0.18, 0, stool.w / 2 - 0.03, 0.025);
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    R.frame(stool.x, stool.z, 0, { list: 'fixed' }).cyl(0x3a3a3e, Math.cos(a) * 0.15, 0, Math.sin(a) * 0.15, 0.018, stool.h - 0.05);
+  }
+  onEntry(R, () => seatOwn(R, 'spacebeth', PEOPLE.find((p) => p.id === 'spacebeth'), { h: 1.88, seatY: stool.h + 0.07 }));
 
   return R.build({ light: { sun: [0xffe9c8, 0.42], hemi: [0xf3ecdc, 0x5e5a4a, 1.6], fog: null, background: 0x0e0b09 } });
 }

@@ -28,7 +28,11 @@ scripts/.cache/
 # contact sheets the model scripts write for looking over
 .claude/launch.json
 *.orig
-lab/
+lab/*
+# (but the universe map's baseline, which every visual change measures against: scripts/universe-check.mjs)
+!lab/universe/
+lab/universe/*
+!lab/universe/baseline/
 
 # superpowers brainstorming companion session files
 .superpowers

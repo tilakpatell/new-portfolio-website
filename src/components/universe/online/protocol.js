@@ -55,7 +55,9 @@ import { cleanName } from './names';
 export { NAME_MAX, cleanName, randomCallsign } from './names';
 
 export const APP_ID = 'tilakpatel-portfolio-universe';
-export const ROOM = 'universe-v1';
+// (v2: the home system grew, scale.js; a pilot on an older build would be
+// drawn parked where its stations used to be)
+export const ROOM = 'universe-v2';
 export const POSE_MS = 100; // how often a pose goes out
 export const CURSOR_MS = 80; // and a pointer, off the map
 export const STALE_MS = 2500; // a ship with no pose this long is hidden

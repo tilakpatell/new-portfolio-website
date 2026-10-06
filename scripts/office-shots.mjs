@@ -42,6 +42,11 @@ export const VIEWS = {
   posters: { at: [10.6, 1.6, 0.6], look: [8.6, 1.5, -1.8] },
   lift: { at: [-12.6, 1.6, -6.2], look: [-13.4, 1.4, -7.9] },
   conferencewin: { at: [-1.5, 1.6, -5.4], look: [-2.0, 1.4, -8.0] },
+  counter2: { at: [-8.6, 1.45, -4.6], look: [-9.4, 1.0, -2.6] },
+  docksign: { at: [58, 2.0, 0.6], look: [54.3, 2.1, 0] },
+  parksign: { at: [78.5, 1.7, -1], look: [84, 1.3, -1] },
+  safety: { at: [34, 1.7, -3.6], look: [34, 2.2, -8] },
+  monitor: { at: [-3.2, 1.25, -0.6], look: [-4.1, 1.05, -1.4] },
 };
 const browser = await chromium.launch({
   executablePath: process.env.CHROME ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',

@@ -1,5 +1,6 @@
 // Dimension C-137, the world, in WebGL: the Smiths' street (./street.js),
-// the rooms and the alien street (registered in AREA_BUILDERS below), Morty
+// the rooms (registered in AREA_BUILDERS below) and the alien street (in LAZY,
+// built the first time it's entered), Morty
 // walking about as the rigged Meshy Morty, and Rick's space cruiser, parked
 // in the driveway or flown with Morty at the wheel. Toon-shaded and inked
 // like the show (portal/toon.js), on lib/stage3d's renderer with
@@ -11,10 +12,14 @@
 //
 // createRmWorld(canvas, { onLost }) resolves to { render(state, ms),
 // resize(w, h), dispose(), lost, fx(type, data), act(area, name, ...args),
-// info() }, where state is
+// info(), ensureArea(id), hasArea(id), loading() (how many loads are still
+// going: an area being built, a figure being fetched), project(x, y, z) }, where state is
 // { area, morty: { x, z, face, speed, running }, flying, cruiser: { x, z, y,
 // yaw, speed, bank }, camYaw, camPitch, near: { link, hotspot }, done, fed:
-// { x, y, z, yaw, mode } (the Federation's patrol ship, as ./ship.js flies it) }.
+// { x, y, z, yaw, mode } (the Federation's patrol ship, as ./ship.js flies it),
+// and in Total Rickall sight (the line Morty aims along, ./interiors/rickall.js's
+// sight(): the camera goes on it, `back` behind its start, as that file's
+// view() has it) and rickall ({ game, aim, hide }, for the house to draw) }.
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../lib/stage3d';
@@ -30,9 +35,8 @@ import { CANS, CREW, TALL, glassDome } from '../cruiser3d';
 import { ARCADE, AREAS, BUILDINGS, CEILING, CRUISER, FURNITURE, HOTSPOTS, LINKS, MORTY, OUTDOOR, ROAD, TREES, behindYaw, supportAt, wallsIn } from './rules';
 import { gentleRamp, kitMaterials } from './kit';
 import { ROAD_Y, STREET_LIGHT, buildStreet } from './street';
-import { STREET_SKY, SUN_DIR, makeSky } from './sky';
+import { ANNEX_LIGHT, ANNEX_SKY, STREET_SKY, SUN_DIR, makeSky } from './sky';
 import { createFx, portalMaterial } from './fx';
-import { ANNEX_LIGHT, ANNEX_SKY, buildAnnex } from './annex';
 import { buildArcade } from './arcade';
 import { buildGarage, buildHouse, buildSchoolRoom, buildUpstairs } from './interiors';
 import { buildBasement } from './interiors/basement';
@@ -54,10 +58,18 @@ export { kitMaterials };
 // rules.js's AREAS and shown only while Morty is there. An area with no
 // builder gets a plain lit room (or, outdoors, plain ground under a sky).
 // The kit: { renderer, models (the toon-painted GLBs by name), cast, need(names,
-// { clips }) (the cast loaded once each, however many ask), mats (kitMaterials),
-// tier, camera, fit (lib/device's budget), portal (the swirl's material) }.
-// The rooms and the annex add theirs here.
-export const AREA_BUILDERS = { street: buildStreet, house: buildHouse, upstairs: buildUpstairs, garage: buildGarage, school: buildSchoolRoom, annex: buildAnnex, arcade: buildArcade, basement: buildBasement, mindblowers: buildMindBlowers, oval: buildOval, diner: buildDiner };
+// { clips }) (the cast loaded once each, however many ask), track(promise) (a
+// load the builder doesn't wait for, such as a figure fetched once its room is
+// up, counted in api.loading() all the same), mats (kitMaterials), tier,
+// camera, fit (lib/device's budget), portal (the swirl's material) }.
+// The rooms add theirs here, and are built before the first frame.
+export const AREA_BUILDERS = { street: buildStreet, house: buildHouse, upstairs: buildUpstairs, garage: buildGarage, school: buildSchoolRoom, arcade: buildArcade, basement: buildBasement, mindblowers: buildMindBlowers, oval: buildOval, diner: buildDiner };
+// The areas built only when they're first wanted, each with its builder in a
+// chunk of its own, so the page's first download doesn't carry them: the
+// alien street through the garage's portal now, the multiverse's places as
+// they come. ensureArea(id) builds one (RmWorld waits on it behind the
+// portal's swirl).
+export const LAZY = { annex: () => import('./annex').then((m) => m.buildAnnex), wong: () => import('./interiors/wong').then((m) => m.buildWong) };
 
 // The cruiser's headlights, which are its eyes (the saucer's, in the hull's
 // frame: its nose is +z): where each is, and how far round it looks out
@@ -78,6 +90,7 @@ const ROOM_LIGHT = { sun: [0xfff1dc, 0.7], hemi: [0xfff4e6, 0x8a7a68, 1.7], fog:
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const V = new THREE.Vector3();
+const TMP = new THREE.Vector3();
 
 // looks: the wardrobe's ({ rick, morty }): Morty's is the one he wears here
 export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
@@ -111,13 +124,22 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   const loader = gltfLoader();
   // (figures out of view aren't drawn: a skinned mesh's bounds don't follow its pose)
   const cast = createMeshyCast(withWardrobe({ cull: true })); // (any body the wardrobe has, for Morty)
+  // what's still coming (an area being built, a figure being fetched), counted
+  // so the QA scripts can wait till a place has all it loads: api.loading()
+  let loads = 0;
+  const track = (p) => {
+    loads++;
+    const done = () => loads--;
+    p.then(done, done);
+    return p;
+  };
   // each of the cast loaded once, however many builders ask, at the same time
   // or not (the clips of the first ask for a name are the ones it gets)
   const asked = new Map();
   const need = (names, { clips = ['idle', 'walk', 'run'] } = {}) =>
     Promise.all(
       names.map((n) => {
-        if (!asked.has(n)) asked.set(n, cast.load(null, [n], { clips }));
+        if (!asked.has(n)) asked.set(n, track(cast.load(null, [n], { clips })));
         return asked.get(n);
       }),
     );
@@ -128,17 +150,26 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   const models = new Map(loaded);
 
   // ── the areas ──
-  const kit = { renderer, models, cast, need, mats, tier, camera, fit, portal: portalMaterial };
+  const kit = { renderer, models, cast, need, track, mats, tier, camera, fit, portal: portalMaterial };
   const areas = {};
-  const building = {};
+  // an area's builder (a lazy one's fetched first), and if it fails, or its
+  // chunk won't load, a plain one in its place; null if the world's been
+  // disposed meanwhile (what was built goes with it)
   const build = async (id) => {
-    const make = AREA_BUILDERS[id] ?? (OUTDOOR.includes(id) ? plainGround : plainRoom);
+    const plain = OUTDOOR.includes(id) ? plainGround : plainRoom;
+    const make = LAZY[id] ? async (k, i) => (await LAZY[id]())(k, i) : (AREA_BUILDERS[id] ?? plain);
     let a = null;
     try {
       a = await make(kit, id);
     } catch (err) {
+      if (stage.disposed) return null;
       if (import.meta.env.DEV) console.warn(`C-137: the ${id} builder failed`, err);
-      a = (OUTDOOR.includes(id) ? plainGround : plainRoom)(kit, id);
+      a = plain(kit, id);
+    }
+    if (stage.disposed) {
+      a.dispose?.();
+      disposeTree(a.group);
+      return null;
     }
     a.group.visible = false;
     scene.add(a.group);
@@ -301,7 +332,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   scene.fog = fog;
   const showArea = (id) => {
     if (!areas[id]) {
-      building[id] ??= build(id); // (a plain one, built on the way in)
+      ensureArea(id); // (a lazy one, or a plain one, built on the way in)
       return false;
     }
     for (const [k, a] of Object.entries(areas)) a.group.visible = k === id;
@@ -357,6 +388,27 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   }
   shown = null;
 
+  // ── an area built later ──
+  // (a lazy one, the first time it's wanted): built once, however many ask
+  // (the same promise each time), then its shaders compiled with its own
+  // light as the rest were, the area on screen put back in the same moment,
+  // so no frame is drawn in between
+  const building = {};
+  const ensureArea = (id) =>
+    (building[id] ??= areas[id]
+      ? Promise.resolve()
+      : track(
+          build(id).then((a) => {
+            if (!a || stage.lost || stage.disposed) return undefined;
+            const was = shown;
+            showArea(id);
+            const compiled = stage.precompile();
+            if (was) showArea(was);
+            else shown = null;
+            return compiled;
+          }),
+        ));
+
   // ── each frame ──
   const pace = createPace();
   const pending = []; // effects asked for, for the next frame
@@ -367,6 +419,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   let standY = 0; // what he stands on over it, eased: the camera's level, which doesn't bob with his jumps
   let eyeY = 0;
   let craftY = CRUISER.hover;
+  let aimBack = null; // how far behind his shoulder the aiming camera is, eased out (null: not aiming)
   const render = (state, ms = 16) => {
     if (stage.lost || stage.disposed) return;
     const now = performance.now();
@@ -441,12 +494,29 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       fx.pin.userData.y = 2.3;
     }
 
-    // the camera: behind Morty at the component's yaw, or chasing the cruiser
+    // the camera: behind Morty at the component's yaw, chasing the cruiser,
+    // or (in Total Rickall) on the line he aims along, behind his shoulder,
+    // so the crosshair in the middle of the screen is on it; pulled in along
+    // it in front of anyone standing there (in at once, so it's never in
+    // them; back out gently, so it doesn't jump as he turns past them), in
+    // front of a wall or a piece of furniture, and never out of the room
+    if (!state.sight) aimBack = null;
     if (state.flying && c && outdoors) {
       const fx0 = Math.sin(c.yaw);
       const fz = Math.cos(c.yaw);
       want.at.set(c.x - fx0 * 12.5, craftY + 4.6, c.z - fz * 12.5);
       want.look.set(c.x + fx0 * 6, craftY + 0.2, c.z + fz * 6);
+    } else if (state.sight) {
+      const s = state.sight;
+      aimBack = aimBack === null || s.back < aimBack ? s.back : aimBack + (s.back - aimBack) * Math.min(1, dt * 5);
+      V.set(s.x, groundY + s.y, s.z);
+      want.look.set(V.x + s.dx * 4, V.y + s.dy * 4, V.z + s.dz * 4);
+      want.at.set(V.x - s.dx * aimBack, V.y - s.dy * aimBack, V.z - s.dz * aimBack);
+      const a = AREAS[area];
+      let k = clearance(area, V, want.at);
+      const inside = (q) => q.x > a.x0 + 0.25 && q.x < a.x1 - 0.25 && q.z > a.z0 + 0.25 && q.z < a.z1 - 0.25 && q.y < CEILING[area] - 0.2;
+      for (let i = 0; i < 12 && k > 0.05 && !inside(TMP.lerpVectors(V, want.at, k)); i++) k -= 0.08;
+      want.at.lerpVectors(V, want.at, Math.max(0.05, k));
     } else {
       const yaw = state.camYaw ?? behindYaw(m.face ?? 0);
       const pitch = clamp(state.camPitch ?? 0.17, -0.25, 1.2);
@@ -484,7 +554,8 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       if (k < 1) want.at.lerpVectors(want.look, want.at, k);
       want.at.y = Math.max(want.at.y, eyeY + 0.4);
     }
-    const ease = jump ? 1 : 1 - Math.exp(-dt * (state.flying ? 4.5 : 10));
+    // (aiming, it's kept on the line, so what's under the crosshair is what he'd hit)
+    const ease = jump || state.sight ? 1 : 1 - Math.exp(-dt * (state.flying ? 4.5 : 10));
     cam.at.lerp(want.at, ease);
     cam.look.lerp(want.look, ease);
     cam.area = area;
@@ -531,6 +602,11 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       fx.ring(cruiser.position.x, 0, cruiser.position.z, 0x9dff5a, 3.5, 0.6);
       fx.burst(cruiser.position.x, cruiser.position.y + 0.6, cruiser.position.z, 40, 3);
     } else if (type === 'land') fx.ring(cruiser.position.x, 0, cruiser.position.z, 0xf2efe6, 6, 0.9);
+    // a shot in Total Rickall: sparks where it hit, and a ring on the floor under them
+    else if (type === 'shot') {
+      fx.burst(d.x, d.y, d.z, d.parasite ? 70 : 30, d.parasite ? 3.2 : 1.6);
+      fx.ring(d.x, 0, d.z, d.parasite ? 0x9dff5a : 0xff4d5e, 2.2, 0.5);
+    }
   };
   const fxEvent = (type, d = {}) => {
     if (pending.length < 16) pending.push([type, d]);
@@ -572,6 +648,16 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     resize,
     fx: fxEvent,
     setLooks,
+    ensureArea,
+    hasArea: (id) => Boolean(areas[id]),
+    loading: () => loads,
+    // where (x, y, z) is on the canvas, in CSS pixels from its top left, as
+    // the last frame drew it; null if it's behind the camera
+    project(x, y, z) {
+      TMP.set(x, y, z).project(camera);
+      if (TMP.z > 1) return null;
+      return { x: ((TMP.x + 1) / 2) * stage.size.w, y: ((1 - TMP.y) / 2) * stage.size.h };
+    },
     // an area builder's own action, if it has one (the arcade's setBoard(best)); nothing otherwise
     act(area, name, ...args) {
       const actions = areas[area]?.actions;
