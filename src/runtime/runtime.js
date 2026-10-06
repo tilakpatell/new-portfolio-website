@@ -1,8 +1,8 @@
 // The runtime: one renderer, one loop and the services, with a world
 // module mounted on it. mount() makes a module's world and draws it in a
 // host box; handover() lets the next module take over without a cut (the
-// old world draws until the new one is ready, then its last frame fades
-// out over the new one); adopt() moves a world handed over already into
+// old world draws on, keys aside, until the new one is ready; then its last
+// frame is kept over the new one and fades out); adopt() moves a world handed over already into
 // the box of the page that shows it (its canvas and the cover with it);
 // unmount() disposes the world and keeps the canvas. The browser bits (the backend, the loop's rAF, the DOM) are
 // passed in, so this runs in Node: index.js wires the real ones.
@@ -11,8 +11,10 @@
 //   events, now, gpu, override, visible }) → rt
 // rt: { gfx, input, quality, saves, assets, audio, events, host, status,
 //   current, loading, on(fn), invalidate(), resize(w, h), setVisible(on), lost(),
-//   mount(module, props, host), handover(module, props, host, { fade, held }),
+//   mount(module, props, host) → shown, handover(module, props, host, { fade, held }) → shown,
 //   adopt(module, host), unmount(), dispose() }
+// (`shown`: true once the module's world is the one drawing; false when it
+// failed, or something newer was asked for meanwhile)
 
 import { createLoop } from '../lib/three/loop';
 import { settle } from '../lib/settle';
@@ -23,6 +25,7 @@ import { validateModule, validateWorld } from './module';
 const READY_WAIT = 4000; // ms at most a world's `ready` holds back its first frame
 const MAX_DT = 0.05; // s: a tab coming back doesn't leap
 const HOLD_MAX = 3000; // ms at most a held cover waits for the next page to adopt its world
+const SNAP_WAIT = 250; // ms at most a handover waits for the old world's last frame (none comes off screen)
 
 export function createEvents() {
   const by = new Map();
@@ -57,6 +60,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
   let shown = true; // the host on screen (setVisible)
   let snap = null; // the old world's last frame, fading out
   let takeSnap = false; // take it after the next draw
+  let snapped = null; // a handover waiting for that frame
   let timeline = null;
   let fading = false; // the cover's fade has begun
   let holding = false; // the cover waits for adopt() (a handover across a route change)
@@ -89,6 +93,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       snap?.remove();
       snap = gfx.snapshot(current.host);
       timeline = null;
+      snapped?.();
     }
     const level = quality.frame(t);
     if (level !== null) {
@@ -139,9 +144,26 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     timeline = null;
     fading = false;
     takeSnap = false;
+    snapped?.();
     holding = false;
     holdSince = null;
   };
+  // the next frame drawn, kept as the cover (taken in the frame's own task,
+  // so no preserveDrawingBuffer is needed); over after SNAP_WAIT with no
+  // cover when no frame comes (the host off screen, the tab hidden)
+  const cover = () =>
+    new Promise((resolve) => {
+      const done = () => {
+        if (snapped !== done) return;
+        snapped = null;
+        takeSnap = false;
+        resolve();
+      };
+      snapped = done;
+      takeSnap = true;
+      loop.kick();
+      setTimeout(done, SNAP_WAIT);
+    });
   const fail = () => {
     const was = current;
     current = null;
@@ -279,10 +301,11 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       setStatus('loading');
       try {
         const world = await build(mod, props, host, token);
-        if (!world) return;
+        if (!world) return false;
         making = null;
         place(world, host, mod);
         begin(module, world, host, props); // (the object the page mounted, so it can tell its own)
+        return true;
       } catch (err) {
         if (dev) console.error(`[${mod.id}] 3D failed`, err);
         if (token === seq) {
@@ -290,6 +313,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
           current = null;
           setStatus('failed');
         }
+        return false;
       }
     },
     // `held`: the cover stays up until the page that shows the new world
@@ -307,37 +331,43 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       } catch (err) {
         if (dev) console.warn(`[${old.module.id}] handoff failed`, err);
       }
-      // its next frame is kept as the cover (in the frame's own task, so no
-      // preserveDrawingBuffer is needed)
-      takeSnap = true;
-      loop.kick();
-      // (the keys are the new world's from here, bound as it's made: the old one is on its way out)
+      // (the keys are the new world's from here, bound as it's made: the old
+      // one is on its way out, but draws on until the new one is ready)
       const kept = input.bindings?.() ?? null;
       input.unbind();
       try {
         const world = await build(mod, { ...props, from }, host, token);
-        if (!world) return;
+        if (!world) return false;
+        // the old world's last frame, kept over the new one while it fades
+        await cover();
+        if (token !== seq) {
+          world.dispose();
+          return false;
+        }
         making = null;
+        if (current === old) letGo(old); // (unless a thrown frame took it already)
         current = null;
-        letGo(old);
         input.detach();
-        takeSnap = false;
         place(world, host, mod);
         begin(module, world, host, props);
         timeline = snap ? createHandover({ fade }) : null; // (nothing drawn to fade: straight in)
         fading = false;
         holding = Boolean(held && snap);
         holdSince = null;
+        return true;
       } catch (err) {
         if (dev) console.error(`[${mod.id}] 3D failed`, err);
         if (token === seq) {
           making = null;
-          // the old world stays up: better than black
+          // the old world stays up: better than black (and nothing over it)
           current = old;
           takeSnap = false;
+          snap?.remove();
+          snap = null;
           if (kept) input.bind(kept.actions, { axes: kept.axes });
           setStatus(old ? 'on' : 'failed');
         }
+        return false;
       }
     },
     // the world handed over before this page was up, into its box: the

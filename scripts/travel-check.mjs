@@ -28,7 +28,8 @@ page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 const where = (label) =>
   page.evaluate((label) => {
     const rt = window.__RUNTIME__;
-    return { label, route: window.location.hash, world: rt?.current?.module?.id ?? null, status: rt?.status, canvases: document.querySelectorAll('canvas:not(.world-snapshot)').length };
+    const surface = document.querySelector('.surface-page');
+    return { label, route: window.location.hash, world: rt?.current?.module?.id ?? null, status: rt?.status, phase: surface?.dataset.phase ?? null, canvases: document.querySelectorAll('canvas:not(.world-snapshot)').length };
   }, label);
 const shot = (name) => page.screenshot({ path: `${out}/travel-${name}.png`, timeout: 120000 }).catch(() => {});
 const log = [];
@@ -57,11 +58,19 @@ await page.waitForTimeout(2500);
 await step('diving-deep');
 await page.waitForFunction(() => window.location.hash.includes('/surface'), null, { timeout: 300000 });
 await step('handed-down');
-await page.waitForFunction(() => document.querySelector('.surface-page')?.dataset.phase && document.querySelector('.surface-page').dataset.phase !== 'landing', null, { timeout: 300000 }).catch(() => {});
+// out of the ship: Space skips the landing (once it's 0.6 s of game time in), then the walk
+const phase = () => page.evaluate(() => document.querySelector('.surface-page')?.dataset.phase ?? null);
+for (let i = 0; i < 60 && (await phase()) === 'landing'; i++) {
+  await page.keyboard.press('Space');
+  await page.waitForTimeout(3000);
+}
+await page.waitForFunction(() => document.querySelector('.surface-page')?.dataset.phase === 'walk', null, { timeout: 300000 });
 await step('surface');
 
-// up again
+// up again: the link puts you in the ship; the climb hands over to space under the glare
 await page.evaluate(() => document.querySelector('.surface-world')?.click());
+await page.waitForTimeout(1500);
+await step('climbing');
 await page.waitForFunction(() => /#\/galaxy\/[a-z]+$/.test(window.location.hash), null, { timeout: 300000 });
 await step('handed-up');
 await page.waitForTimeout(2000);
@@ -71,6 +80,12 @@ await browser.close();
 const bad = log.filter((w) => w.canvases > 1);
 if (errors.length) console.log('errors:\n' + errors.join('\n'));
 if (bad.length) console.log('more than one canvas at', bad.map((w) => w.label).join(', '));
-const worlds = log.map((w) => w.world).join(' → ');
-console.log('worlds:', worlds);
-process.exit(errors.length || bad.length ? 1 : 0);
+const at = (label) => log.find((w) => w.label === label);
+const wrong = [
+  at('handed-down')?.world !== 'galaxy-surface' && 'the dive did not hand over to the surface',
+  at('climbing')?.phase !== 'leaving' && 'the link did not start the climb',
+  at('handed-up')?.world !== 'galaxy' && 'the climb did not hand over to space',
+].filter(Boolean);
+if (wrong.length) console.log('wrong:\n' + wrong.join('\n'));
+console.log('worlds:', log.map((w) => w.world).join(' → '));
+process.exit(errors.length || bad.length || wrong.length ? 1 : 0);

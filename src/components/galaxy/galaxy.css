@@ -485,6 +485,21 @@
   100% { opacity: 1; transform: scale(1); filter: brightness(2); }
 }
 @media (prefers-reduced-motion: reduce) { .galaxy-entry { animation: none; opacity: 1; } }
+/* up from a world's surface: the sky's glare it climbed into (surface.css .surface-exit), going as space comes */
+.galaxy-exit {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 40%, #fff, transparent 70%),
+    #dceeff;
+  animation: galaxy-exit 1.3s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+@keyframes galaxy-exit {
+  to { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .galaxy-exit { animation-duration: 0.01s; } }
 .galaxy-entry-note {
   position: absolute;
   z-index: 4;

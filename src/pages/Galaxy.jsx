@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { local, useDocumentTitle, useReducedMotion } from '../lib/hooks';
 import { audioContext } from '../lib/audio';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
@@ -40,6 +40,9 @@ const INTRO_KEY = 'tp-galaxy-intro'; // (session) the "long time ago" seen this 
 export default function Galaxy() {
   const navigate = useNavigate();
   const param = parseSystem(useParams().system);
+  // up from a world's surface, flown (its page handed over): the sky's glare still on, going
+  const location = useLocation();
+  const [exit] = useState(() => Boolean(location.state?.exit));
   const [current, setCurrent] = useState(() => param ?? parseSystem(local.get(LAST_KEY)) ?? FIRST);
   const sys = systemById(current);
   useDocumentTitle(`${sys.name} · A galaxy far, far away`);
@@ -140,16 +143,20 @@ export default function Galaxy() {
     },
     [leave, leaving],
   );
+  const alive = useRef(true);
+  useEffect(() => () => void (alive.current = false), []);
   const handOver = useCallback(
     (id) => {
       const to = `/galaxy/${id}/surface`;
       const host = view.current.host?.();
-      const go = () => navigate(to, { state: { entry: true } });
-      if (!host) return go();
+      if (!host) return navigate(to);
       runtime()
         .handover(surfaceModule, surfaceProps(id, { ship, loadout, build, net: online.client, reduced }), host, { fade: 900, held: true })
-        .catch(() => {})
-        .finally(go);
+        .catch(() => false)
+        .then((ok) => {
+          if (!alive.current) return; // (gone elsewhere meanwhile: not this page's to steer)
+          navigate(to, ok ? { state: { entry: true } } : undefined); // (not handed over: the page makes its own)
+        });
     },
     [navigate, ship, loadout, build, online.client, reduced],
   );
@@ -314,6 +321,7 @@ export default function Galaxy() {
           <kbd>E</kbd> Land on {at === 'cloudcity' ? 'Cloud City' : sys.name}
         </button>
       )}
+      {exit && <div className="galaxy-exit" aria-hidden="true" />}
       {leaving?.land && <div className="galaxy-entry" aria-hidden="true" />}
       {leaving?.dive && (
         <p className="galaxy-entry-note" role="status">

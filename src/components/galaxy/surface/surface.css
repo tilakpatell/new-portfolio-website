@@ -242,6 +242,21 @@
   0% { opacity: 1; }
   100% { opacity: 0; }
 }
+/* up and out: the sky's glare coming over the climb (the galaxy's page takes it off: galaxy.css .galaxy-exit) */
+.surface-exit {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 40%, #fff, transparent 70%),
+    #dceeff;
+  opacity: 0;
+  animation: surface-exit 0.9s ease-in forwards;
+}
+@keyframes surface-exit {
+  to { opacity: 1; }
+}
 .surface-page[data-phase='landing'] :is(.surface-where, .surface-compass, .surface-corner) { opacity: 0; }
 .surface-page :is(.surface-where, .surface-compass, .surface-corner) { transition: opacity 0.8s; }
 
@@ -318,6 +333,7 @@
   .surface-prompt, .surface-talk, .surface-toast, .surface-title { animation: none; }
   .surface-fade { transition: none; }
   .surface-entry { animation-duration: 0.01s; }
+  .surface-exit { animation: none; opacity: 1; }
 }
 
 /* the crew's comms (universe/Comms.jsx): along the bottom, over the stick */

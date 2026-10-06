@@ -1020,7 +1020,7 @@ export async function create(canvas, ctx) {
   const spoolQ = new THREE.Quaternion();
   const startJump = (toId, why = 'course') => {
     const to = systemById(toId);
-    if (!to || !state.sys || to.id === state.sys.id || state.crash) return false;
+    if (!to || !state.sys || to.id === state.sys.id || state.crash || state.dive) return false;
     if (state.jump && state.jump.phase !== 'align') return false;
     // the Interdictor's well: no jump till you're clear of it
     if (state.held) {
@@ -1894,7 +1894,7 @@ export async function create(canvas, ctx) {
   const goTo = (id) => {
     const s = state.ship;
     const g = state.space?.goals[id];
-    if (!s || !g || state.crash || state.jump || props.frozen) return false;
+    if (!s || !g || state.crash || state.jump || state.dive || props.frozen) return false;
     if (state.at === id) return false;
     heard();
     state.auto = { id, park: parkBy(g, [s.x, s.y, s.z], state.space.solids) };

@@ -46,6 +46,7 @@ function make(overrides = {}) {
 const flush = async (n = 6) => {
   for (let i = 0; i < n; i++) await Promise.resolve();
 };
+const settled = () => new Promise((r) => setTimeout(r, 0)); // (every microtask run: a build that's done has asked for its cover)
 
 describe('createRuntime', () => {
   it('mounts: loading, ready after create, on after the first frame, in frame order', async () => {
@@ -163,11 +164,15 @@ describe('createRuntime', () => {
     await flush();
     expect(nextMod.create.mock.calls[0][1]).toEqual({ a: 1, from: { pose: 7 } });
     loop.tick(100);
-    expect(old.draw).toHaveBeenCalledTimes(2); // still the old world
+    expect(old.draw).toHaveBeenCalledTimes(2); // still the old world, and seen: no cover over it yet
     expect(next.draw).not.toHaveBeenCalled();
-    const snap = rt.gfx.snapshot.mock.results[0].value; // its frame, kept as the cover
+    expect(rt.gfx.snapshot).not.toHaveBeenCalled();
     readyNew();
-    await p;
+    await settled();
+    loop.tick(150); // the old world's last frame, kept as the cover
+    expect(old.draw).toHaveBeenCalledTimes(3);
+    const snap = rt.gfx.snapshot.mock.results[0].value;
+    expect(await p).toBe(true);
     expect(old.dispose).toHaveBeenCalled();
     expect(audio.fadeOut).toHaveBeenCalled();
     expect(assets.drop).toHaveBeenCalledWith('old');
@@ -181,6 +186,45 @@ describe('createRuntime', () => {
     loop.tick(900);
     expect(snap.remove).toHaveBeenCalled();
     expect(rt.status).toBe('on');
+  });
+
+  it('a handover says whether its world is the one drawing now', async () => {
+    const { rt, loop } = make();
+    await rt.mount({ id: 'old', create: () => fakeWorld() }, {}, fakeHost());
+    // something newer asked for while it was made: no
+    let readyNew;
+    const p = rt.handover({ id: 'next', create: () => fakeWorld({ ready: new Promise((r) => (readyNew = r)) }) }, {}, fakeHost());
+    await settled();
+    rt.unmount();
+    readyNew();
+    expect(await p).toBe(false);
+    expect(rt.current).toBe(null);
+    // failed: no, and the old world stays up with nothing over it
+    const old = fakeWorld({ wants: () => true });
+    expect(await rt.mount({ id: 'old', create: () => old }, {}, fakeHost())).toBe(true);
+    expect(await rt.handover({ id: 'bad', create: () => { throw new Error('no'); } }, {}, fakeHost())).toBe(false);
+    expect(rt.current.module.id).toBe('old');
+    expect(rt.gfx.snapshot).not.toHaveBeenCalled();
+    loop.tick(10);
+    expect(old.draw).toHaveBeenCalled();
+    // over: yes
+    expect(await rt.handover({ id: 'next', create: () => fakeWorld() }, {}, fakeHost())).toBe(true);
+    expect(rt.current.module.id).toBe('next');
+    expect(old.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('a handover off screen, where no frame comes, goes on without a cover after a moment', async () => {
+    let seen = false;
+    const { rt, loop } = make({ visible: () => seen });
+    await rt.mount({ id: 'old', create: () => fakeWorld() }, {}, fakeHost());
+    const next = fakeWorld({ wants: () => false });
+    const t0 = Date.now();
+    expect(await rt.handover({ id: 'next', create: () => next }, {}, fakeHost())).toBe(true);
+    expect(Date.now() - t0).toBeLessThan(1000);
+    expect(rt.gfx.snapshot).not.toHaveBeenCalled();
+    seen = true;
+    expect(loop.tick(10)).toBe(false); // (no cover to fade, a world at rest)
+    expect(next.draw).toHaveBeenCalledTimes(1);
   });
 
   it('a handoff that throws still hands over with from null', async () => {
@@ -297,6 +341,7 @@ describe('createRuntime', () => {
     loop.tick(0);
     const nextMod = { id: 'next', create: () => fakeWorld({ wants: () => true }) };
     const p = rt.handover(nextMod, {}, host1, { fade: 600, held: true });
+    await settled();
     loop.tick(16); // (the old world's last frame, kept as the cover)
     await p;
     const snap = rt.gfx.snapshot.mock.results[0].value;
@@ -325,7 +370,8 @@ describe('createRuntime', () => {
     await rt.mount({ id: 'old', create: () => fakeWorld({ wants: () => true }) }, {}, fakeHost());
     loop.tick(0);
     const p = rt.handover({ id: 'next', create: () => fakeWorld({ wants: () => true }) }, {}, fakeHost(), { fade: 600, held: true });
-    loop.tick(16);
+    await settled();
+    loop.tick(16); // (the old world's last frame, kept as the cover)
     await p;
     const snap = rt.gfx.snapshot.mock.results[0].value;
     loop.tick(100);

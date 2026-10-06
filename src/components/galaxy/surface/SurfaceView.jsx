@@ -22,7 +22,7 @@ export default function SurfaceView({ system, mission = null, ship, loadout, bui
   // the scene itself, while it's the world on the runtime
   const view = { get current() { return rt?.current?.module === surfaceModule ? rt.current.world.scene : null; } };
   useEffect(() => {
-    if (handle) handle.current = { live: on, host: () => host.current, input: (name, ...a) => view.current?.input?.[name]?.(...a), debug: () => view.current?.debug?.() };
+    if (handle) handle.current = { live: on, host: () => host.current, takeOff: () => view.current?.takeOff?.() ?? false, input: (name, ...a) => view.current?.input?.[name]?.(...a), debug: () => view.current?.debug?.() };
   }, [handle, on]); // eslint-disable-line react-hooks/exhaustive-deps
   // (for the page's own tests, in development)
   useEffect(() => {

@@ -833,14 +833,19 @@ export async function create(canvas, ctx) {
       state.phase = 'walk';
       state.cam.dist = CAM.dist;
       emit({ type: 'phase', phase: 'walk' });
-    } else if (tg.kind === 'board') {
-      state.phase = 'leaving';
-      state.age = 0;
-      for (const q of people) q.holder.visible = false;
-      ship.park?.(false);
-      emit({ type: 'phase', phase: 'leaving' });
-    }
+    } else if (tg.kind === 'board') board();
   };
+  // into the ship and up: the climb out (stepLeaving; the page hands over to
+  // space as it goes, and 'leave' at the end is for a page that can't)
+  function board() {
+    if (state.phase !== 'walk') return false;
+    state.phase = 'leaving';
+    state.age = 0;
+    for (const q of people) q.holder.visible = false;
+    ship.park?.(false);
+    emit({ type: 'phase', phase: 'leaving' });
+    return true;
+  }
 
   // ── Going in and out ──
   let shadows = sun.castShadow; // (outdoors: the tier's, until lowerQuality)
@@ -1723,6 +1728,11 @@ export async function create(canvas, ctx) {
         activity.show(null, null);
         announce();
       },
+    },
+    // back to the ship and up, from anywhere outdoors on foot: true once the climb's begun
+    takeOff() {
+      if (state.zone || state.phase !== 'walk') return false;
+      return board();
     },
     // (for tests: the world moved on without drawing it, in steps)
     advance(secs) {
