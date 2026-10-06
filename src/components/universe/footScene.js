@@ -40,7 +40,7 @@
 // comes up as you land (an 'arrive' event).
 //
 // createFoot({ map, emit, reduced, small, planetOf, renderer, warm }) → { phase, begin(...),
-//   update(dt, t, input), view(dt) → camera, fire(), cycle(), swap(),
+//   update(dt, t, input), view(dt) → camera, fire(), nextGun(kind), cycle(), swap(),
 //   board(), look(dx, dy), first(), aimPoint(), info(), crew(),
 //   guests(list), end(), dispose() }
 
@@ -59,6 +59,9 @@ import { createGunFx } from './gunfx';
 import { createLocomotion, fallTurn } from './locomotion';
 import { createPortalFx, meshyJoints } from '../../lib/three/portalFx';
 import { createGadgetFx } from '../../lib/three/gadgetFx';
+import { SHOW_KILLS, WEAPONS, heatShot, heatStep, spreadAt, withMods } from '../../lib/arms/weapons';
+import { nextGun as cycleRack, rackOf, withFirst } from '../../lib/arms/rack';
+import { ARMS_EVENT, loadRacks, saveRacks } from '../../lib/arms/store';
 import { frameFrom, spring } from '../../lib/three/ik';
 import { SIDES, sideFor, squadKinds } from './sides';
 import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, bolt as makeBolt, byTrench, facingAlong, flat, fly as flyBolt, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
@@ -103,9 +106,6 @@ export const PARTY = {
   ],
 };
 const TROOP_BOLT = '#62c8ff';
-// Rick's gadgets: B on foot goes round them, the one carrying the portal gun
-export const GADGETS = ['portal', 'freeze', 'shrink'];
-const GADGET_NAMES = { portal: 'Portal gun', freeze: 'Freeze ray', shrink: 'Shrink ray' };
 const SPEC = Object.fromEntries(Object.values(PARTY).flat().map((s) => [s.id, s])); // everyone, by id
 const GUEST_FAR = 90; // metres: no tag on someone further off than this
 
@@ -1490,6 +1490,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     squads: 0,
     cleared: true,
     cool: 0,
+    heat: { value: 0, locked: false, lockedAt: null, shotAt: null }, // the gun in hand's (weapons.js's heatShot/heatStep)
+    burst: null, // the rest of a burst still to go out: { left, next, target, mark }
+    gunAt: null, // when B last changed the gun in hand
     mateCool: 1,
     aim: 0, // the gun up, 1 fading to 0 after a shot
     mateAim: 0,
@@ -1577,7 +1580,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         group.add(f.model);
         group.visible = false;
         root.add(group);
-        const gp = spec.gun ? createGunplay(f, f.gun ?? spec.gun, { unit: METRE, who: f.built ? 'built' : spec.id }) : null;
+        const first = rackOf(loadRacks(), spec.id, spec.gun).guns[0] ?? null;
+        const gp = first ? createGunplay(f, f.gun ?? first, { unit: METRE, who: f.built ? 'built' : spec.id }) : null;
         return { spec, fig: f, group, gp };
       });
     })();
@@ -1697,8 +1701,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       if (gun.casing && r.eject) fx.casing(toMap(r.eject).sub(S.c), new V(-1, 0, 0).transformDirection(r.gun.matrixWorld).transformDirection(invMap).addScaledVector(dir, -0.3).normalize(), up);
     } else puff(arr(from), color, 0.5);
   };
-  // what a shot of p's does: a gadget's more than a blaster's (gunplay.js's GUNS)
-  const damageOf = (p) => GUNS[gunOf(p)]?.damage ?? (gunOf(p) === 'bowcaster' ? 2 : 1);
+  // what a shot of p's does (lib/arms/weapons.js: the galaxy's numbers)
+  const damageOf = (p) => weaponFor(p).damage;
 
   // ── begin: down onto the planet `id` from where the ship is ──
   // where to come down beside a friend's ship already down (`near`, its { n,
@@ -1980,7 +1984,21 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
 
   // who you're playing, and who's with you (the swap changes which is which)
   const meP = () => party?.[S.lead] ?? null;
-  const gunOf = (p) => p?.gp?.kind ?? p?.spec.gun ?? null; // (what p has in hand: Rick's gadget, as B left it)
+  const gunOf = (p) => p?.gp?.kind ?? p?.spec.gun ?? null; // (what p has in hand: the first of their rack, as B left it)
+  // the guns each of you carries (lib/arms: the same in the galaxy), and the numbers the one in hand fires by
+  const rackFor = (p) => rackOf(loadRacks(), p.spec.id, p.spec.gun);
+  const weaponFor = (p) => withMods(gunOf(p) ?? 'blaster', rackFor(p).mods);
+  // a rack changed elsewhere (the hangar's Armoury, the galaxy's hero panel): whoever's first gun it was, it's in their hand now
+  const onArms = () => {
+    for (const p of party ?? []) {
+      if (!p.gp) continue;
+      const first = rackFor(p).guns[0];
+      if (!first || first === gunOf(p)) continue;
+      p.gp.dispose();
+      p.gp = createGunplay(p.fig, first, { unit: METRE, who: p.fig.built ? 'built' : p.spec.id });
+    }
+  };
+  if (typeof window !== 'undefined') window.addEventListener(ARMS_EVENT, onArms);
   const mateP = () => party?.[1 - S.lead] ?? null;
 
   // (the other pilots' ships down here too)
@@ -2298,7 +2316,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       if (S.mateTarget && mate?.spec.gun) S.mateAim = 1;
       if (near && mate?.spec.gun && S.mateCool <= 0 && apart(S.mate, near, S.R) < 26 * METRE && (mate.gp?.aim ?? 1) > 0.6) {
         S.mateCool = 0.9 + rand() * 0.9;
-        shoot(mate, near, 'mate', damageOf(mate), 0.06);
+        shoot(mate, near, 'mate', damageOf(mate), Math.max(0.06, spreadAt(weaponFor(mate), false) * 2));
         emit({ type: 'fire', soft: true, gun: gunOf(mate) });
       }
     } else S.mateTarget = null;
@@ -2353,6 +2371,17 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // health comes back once out of trouble a while
     if (S.clock - S.hitAt > 4 && S.health < FOOT.health) S.health = Math.min(FOOT.health, S.health + FOOT.heal * dt);
     S.cool -= dt;
+    // the gun's heat (it cools, or sits out a lock), and the rest of a burst going out
+    if (me?.gp) S.heat = heatStep(S.heat, dt, weaponFor(me), S.clock);
+    if (S.burst && S.clock >= S.burst.next && me?.gp) {
+      const b = S.burst;
+      const target = S.troops.find((o) => o.id === b.target && o.alive) ?? null;
+      shoot(me, target, 'me', weaponFor(me).damage, spreadAt(weaponFor(me), Boolean(S.cam.first)) * 2, target ? null : b.mark);
+      emit({ type: 'fire', gun: gunOf(me) });
+      b.left -= 1;
+      b.next += 0.075;
+      if (b.left <= 0) S.burst = null;
+    }
     // the gun stays up a while after the last shot, longer with a lock still there
     S.aim = Math.max(0, S.aim - dt / (S.lock ? 6 : 2.5));
     S.mateAim = Math.max(0, S.mateAim - dt / 2.5);
@@ -2415,7 +2444,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
               t.alive = false;
               t.dead = 0;
               t.fallSide = rand() < 0.5 ? -1 : 1;
-              t.how = GADGETS.includes(o.gun) ? o.gun : null; // (Rick's guns' kills: through a portal, frozen, shrunk: drawTroops)
+              t.how = SHOW_KILLS.includes(o.gun) ? o.gun : null; // (Rick's guns' kills: through a portal, frozen, shrunk: drawTroops)
               emit({ type: 'foot', id: 'kill', kind: t.kind, by: o.b.owner, how: t.how });
             }
           }
@@ -2737,8 +2766,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     fire() {
       if (S.phase !== 'walk' || S.cool > 0) return false;
       const me = meP();
-      if (!me?.spec.gun) return false;
-      S.cool = me.spec.gun === 'bowcaster' ? 0.55 : 0.28;
+      if (!me?.gp) return false;
+      const w = weaponFor(me);
+      if (S.heat.locked) return false;
+      S.cool = w.every;
+      S.heat = heatShot(S.heat, w, S.clock);
       let target = S.troops.find((o) => o.id === S.lock && o.alive) ?? null;
       let mark = null;
       if (S.cam.first && S.cam.pos) {
@@ -2750,20 +2782,30 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
           mark = S.cam.pos.clone().sub(S.c).addScaledVector(look, 40 * METRE);
         }
       }
-      shoot(me, target, 'me', damageOf(me), 0, mark);
+      const n = w.pellets ?? 1;
+      for (let i = 0; i < n; i++) shoot(me, target, 'me', Math.max(1, Math.round(w.damage / (n > 1 ? 2 : 1))), spreadAt(w, Boolean(S.cam.first)) * 2, mark);
+      S.burst = w.burst > 1 ? { left: w.burst - 1, next: S.clock + 0.075, target: target?.id ?? null, mark } : null;
       S.aim = 1;
-      if (!reduced) S.cam.kick.v += GUNS[gunOf(me)]?.kick.up ?? 1.5;
+      if (!reduced) S.cam.kick.v += (GUNS[gunOf(me)]?.kick.up ?? 1.5) * (w.kick ?? 1);
       return gunOf(me);
     },
-    // B: Rick's next gadget (GADGETS), or the one named, if it's Rick you're playing; its kind, or false
-    gadget(kind = null) {
+    // B: the next gun in the rack of whoever you're playing (or the one
+    // named); the rack's kept, so it's the gun in hand in the galaxy too
+    nextGun(kind = null) {
       const me = meP();
-      if (S.phase !== 'walk' || !me?.gp || !GADGETS.includes(me.spec.gun)) return false;
-      const next = GADGETS.includes(kind) ? kind : GADGETS[(GADGETS.indexOf(gunOf(me)) + 1) % GADGETS.length];
+      if (S.phase !== 'walk' || !me?.gp) return false;
+      const rack = rackFor(me);
+      const next = kind && rack.guns.includes(kind) ? withFirst(rack, kind) : cycleRack(rack);
+      if (next === rack || next.guns[0] === gunOf(me)) return false;
+      saveRacks({ ...loadRacks(), [me.spec.id]: next });
       me.gp.dispose();
-      me.gp = createGunplay(me.fig, next, { unit: METRE, who: me.fig.built ? 'built' : me.spec.id });
-      S.gadgetAt = S.clock;
-      return next;
+      me.gp = createGunplay(me.fig, next.guns[0], { unit: METRE, who: me.fig.built ? 'built' : me.spec.id });
+      S.burst = null;
+      S.gunAt = S.clock;
+      return next.guns[0];
+    },
+    gadget(kind = null) {
+      return this.nextGun(kind);
     },
     // T: the next trooper round
     cycle() {
@@ -2828,8 +2870,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         troops: troopsAlive().map((o) => ({ id: o.id, at: chest(o, TROOPS[o.kind].tall) })),
         first: S.cam.first,
         near: spot && { label: spot.label, say: spot.say },
-        // Rick's gadget in hand, and its name on the HUD for a moment after B
-        gadget: me && GADGETS.includes(me.spec.gun) ? { kind: gunOf(me), name: GADGET_NAMES[gunOf(me)], fresh: S.gadgetAt != null && S.clock - S.gadgetAt < 1.8 } : null,
+        // the gun in hand, for the HUD's gun line: its name, its heat, and fresh for a moment after B
+        gun: me?.gp ? { kind: gunOf(me), name: WEAPONS[gunOf(me)]?.name ?? '', heat: S.heat.value, locked: S.heat.locked, fresh: S.gunAt != null && S.clock - S.gunAt < 1.8 } : null,
       };
     },
     // your crew as the other pilots see them (protocol.js's writeFoot):
@@ -2926,6 +2968,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     },
     dispose() {
       this.end();
+      if (typeof window !== 'undefined') window.removeEventListener(ARMS_EVENT, onArms);
       boltGeo.dispose();
       sleeveGeo.dispose();
       fx.dispose();
