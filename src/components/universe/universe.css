@@ -1191,7 +1191,8 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
   max-height: calc(100% - var(--nav-h, 68px) - 154px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.75rem;
   padding: 0.9rem 1rem 1rem;
   border: 1px solid color-mix(in srgb, var(--engine, #e8eefc) 35%, transparent);
@@ -1200,6 +1201,10 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
   color: var(--text);
   box-shadow: 0 18px 40px rgb(0 0 0 / 0.45);
 }
+/* (a row keeps its height and the sheet scrolls instead: as a grid held to
+   a short sheet, a phone's, it squeezed the slot tabs, clipped by their
+   rounded border, down to a line, and Build and the parts couldn't be reached) */
+.universe-hangar > * { flex: none; }
 @media (prefers-reduced-motion: no-preference) {
   .universe-hangar { animation: universe-line 0.2s ease-out; }
 }
