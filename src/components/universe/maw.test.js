@@ -63,7 +63,8 @@ describe('the Maw', () => {
   });
 
   it('starts the fall where it had the ship, and spirals it down to the edge of the shadow', () => {
-    const from = [cx + 40, cy + 18, cz - 25];
+    // (1.7 shadows out, as the Maw's own numbers are: 40, 18, −25 at a shadow of 30)
+    const from = [cx + (40 / 30) * MAW.shadow, cy + (18 / 30) * MAW.shadow, cz - (25 / 30) * MAW.shadow];
     const f = startFall(from);
     const start = fallAt(f, 0).at;
     from.forEach((v, i) => expect(start[i]).toBeCloseTo(v, 6));

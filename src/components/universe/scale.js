@@ -35,3 +35,9 @@ export const LENGTH = 0.26;
 export const HOME_SCALE = 3;
 export const HOME_SPREAD = Math.cbrt(HOME_SCALE);
 export const WORLD_SCALE = 3;
+// STAR_SCALE and HOLE_SCALE: deep space's suns (with their planets and
+// orbits) and the Maw (its shadow and disk), so each is bigger than any world
+// (deep.js). The nebulae, the gas and ice giants and the Star Wars gate
+// already are.
+export const STAR_SCALE = 2;
+export const HOLE_SCALE = 2.5;
