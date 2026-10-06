@@ -113,9 +113,20 @@ What the films' games do, borrowed: Battlefront II's block stamina, its 5.5 m do
 - **HUD** (`GalaxySurface.jsx`, the `combat` event ten times a second): the lock's name and health, the guard (or the heat with the vent's marker and sweet band), the three abilities with their cooldowns sweeping; the hero panel's tabs (Hero; Lightsaber: colour, stance, hilt; Weapon: the galaxy's guns and the ones from elsewhere with their numbers, the mods). The choice adds `stance`, `gun`, `mods` under `tp-galaxy-hero`.
 
 ### Left
-- Enemy sabers: the Vader vision parries by chance and swipes; a blade in his hand (a `saber` gunplay on the actor) and a guard of his own to break would make the duel.
-- Other pilots online carry their default gun and a dark saber: send `gun`, `stance` and `lit` in the walk packet.
 - The dual stance's left hilt is placed by mirroring the right's grip; check it on each rig (the crew's share one skeleton, so one look should do).
-- A lock-on reticle in the world (a ring over the locked enemy) would help on a crowded field; the HUD names them for now.
-- Battlefront's star cards (passive perks) and Jedi: Survivor's skill trees are the next layer: per-hero perks kept with the choice.
+- Jedi: Survivor's skill trees (perks earned, not picked) would need something to earn them with: the missions' stars, perhaps.
+
+## Duellists, pilots' arms online, the lock ring, the perks (6 October 2026, the PR after the fight)
+
+### Done
+- **A duellist** (`activity.js`): a spawn's `hostile.blade` ({ color, hilt? }) puts a lit saber in its hand (the hilt and blade from `gunplay.js`'s `saber`, dressed by `saber.js`; the models aren't rigged, so it sits where a figure that tall holds its right hand) and swings it with each swipe; `hostile.guard` (strokes) is a guard of its own: while it holds, the parry chance applies and each turned stroke drains it, a heavy stroke breaks it outright; broken, it reels for 2 s, everything lands, and the guard is back after 7 s. The white line over its health bar is the guard. `activity.parry(t, { heavy })` decides it; `scene.js`'s `saberHit` reads the answer. The Vader vision on Dagobah (the site's `cave` quest and the `raise` mission) is the first: a red blade, three strokes of guard, a 75% parry.
+- **Pilots' arms online**: the walk packet's walkers carry `arms` ([gun kind, lit, blade colour, stance, swinging], `protocol.js`, validated; older readers stop before it), and the heroes are in `WALKERS`. `peers.js` builds the other pilot's figure with the gun the packet names (made again if it changes), a saber with their colour and stance, lit as theirs is, a stroke each time the packet's `swing` comes on.
+- **The lock ring** (`scene.js`'s `stepLockRing`): a thin additive ring at the chest of the enemy you're squared up to, facing the camera, breathing, with a slow square of ticks round it, in your blade's (or bolt's) colour.
+- **Perks** (`galaxy/perks.js`, pure and tested; the panel's Perks tab; kept with the choice): eleven cards, three at a time, each a multiplier `scene.js` applies where the number is used (damage taken, the guard's size, the parry window, the lunge, heat and cooling, the cycle, the abilities' cooldowns, a turned bolt's guard cost, health regrowth, the dodge's cooldown, damage dealt). `combatRules.js`'s `guardStep` and `parried` take the perked numbers.
+
+### Left
+- More duellists: a Magnaguard on Kashyyyk, an Inquisitor on Lothal (the `inquisitor` kind isn't catalogued yet), Maul on Naboo; each a `blade` and a `guard` on a spawn.
+- The duellist's arm is a fixed pose that swings; a rigged duellist (a Meshy-rigged Vader) would let `gunplay.js` hold the saber properly.
+- Perks are picked, not earned; the missions' stars could unlock them.
+
 
