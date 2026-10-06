@@ -117,18 +117,20 @@ export function createWater(site, sunDir, sunColor, opts = {}) {
 const SEA_VERT = (waves) => `
 uniform vec2 uCentre;
 uniform sampler2D uDepth;
-uniform float uHalf, uMax, uBreakers, uLevel, uTime;
+uniform float uHalf, uMax, uReach, uBreakers, uLevel, uTime;
 varying vec3 vWorld;
 varying vec3 vNormal;
 varying float vPinch;
 varying float vDepth;
 varying float vCrest;
+varying float vShore;
 #include <fog_pars_vertex>
 ${WAVES_GLSL(waves)}
-float depthAt(vec2 p) {
+// the depth there, and how far from the waterline (open sea past the map)
+vec2 depthAt(vec2 p) {
   vec2 uv = (p + uHalf) / (2.0 * uHalf);
-  if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return uMax;
-  return texture2D(uDepth, uv).r * uMax;
+  if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return vec2(uMax, uReach);
+  return texture2D(uDepth, uv).rg * vec2(uMax, uReach);
 }
 // (ocean.js's damp: still on the sand, standing up in the shallows)
 float shoal(float d) {
@@ -137,7 +139,8 @@ float shoal(float d) {
 }
 void main() {
   vec2 p = position.xz + uCentre;
-  float depth = depthAt(p);
+  vec2 dw = depthAt(p);
+  float depth = dw.x;
   vec3 n;
   float pinch;
   vec3 d = gerstner(p, length(position.xz), shoal(depth), n, pinch);
@@ -146,6 +149,7 @@ void main() {
   vPinch = pinch;
   vDepth = depth;
   vCrest = d.y;
+  vShore = dw.y;
   vec4 mvPosition = viewMatrix * vec4(vWorld, 1.0);
   gl_Position = projectionMatrix * mvPosition;
   #include <fog_vertex>
@@ -160,6 +164,7 @@ varying vec3 vNormal;
 varying float vPinch;
 varying float vDepth;
 varying float vCrest;
+varying float vShore;
 #include <fog_pars_fragment>
 void main() {
   vec3 toEye = cameraPosition - vWorld;
@@ -185,7 +190,7 @@ void main() {
   vec3 body = mix(uDeep, uColor, 0.35 + crest * 0.4 + through * 0.8);
   float shallow = exp(-vDepth / max(uClarity, 0.1));
   body = mix(body, uShallow, smoothstep(0.02, 0.6, shallow) * 0.85);
-  body = mix(body, uBed, pow(shallow, 2.2) * 0.8);
+  body = mix(body, uBed, pow(shallow, 4.0) * 0.7);
   vec3 col = mix(body, sky, fresnel * (1.0 - shallow * 0.4));
   // the sun's road on the water
   vec3 H = normalize(uSun + V);
@@ -197,11 +202,14 @@ void main() {
   float lumpy = n1.b * 0.6 + n2.a * 0.4;
   float wet = step(0.001, vDepth);
   float caps = smoothstep(0.82, 0.55, vPinch) * smoothstep(0.42, 0.66, lumpy) * uCaps;
-  float surf = (1.0 - smoothstep(0.4, 3.0, vDepth)) * wet;
-  float breaking = surf * smoothstep(0.1, 0.6, vCrest) * uBreakers * smoothstep(0.3, 0.6, lumpy);
-  float wash = (1.0 - smoothstep(0.0, 1.6, vDepth)) * (0.5 + 0.5 * sin(vDepth * 5.0 - uTime * 1.3 + lumpy * 3.0));
-  wash = smoothstep(0.55, 0.9, wash) * uShore * wet;
-  float lace = (1.0 - smoothstep(0.0, 0.25, vDepth)) * uShore * 0.8;
+  // (by the distance from the waterline, so a gentle beach's surf is as
+  // narrow as a steep one's: breakers 5–28 m out, the wash in the last 9 m,
+  // its bands running in toward the sand, lace along the edge)
+  float surf = smoothstep(3.0, 7.0, vShore) * (1.0 - smoothstep(18.0, 30.0, vShore)) * wet;
+  float breaking = surf * smoothstep(0.05, 0.45, vCrest) * uBreakers * smoothstep(0.35, 0.62, lumpy);
+  float wash = (1.0 - smoothstep(2.0, 9.0, vShore)) * (0.5 + 0.5 * sin(vShore * 1.15 + uTime * 1.5 + lumpy * 2.5));
+  wash = smoothstep(0.62, 0.92, wash) * uShore * wet;
+  float lace = (1.0 - smoothstep(0.4, 2.2, vShore)) * uShore * 0.85 * wet;
   float foam = clamp(max(max(caps, breaking), max(wash, lace) * smoothstep(0.25, 0.55, lumpy + 0.2)), 0.0, 1.0);
   vec3 foamCol = vec3(0.86, 0.9, 0.92) * (0.55 + 0.6 * max(dot(N, uSun), 0.0));
   col = mix(col, foamCol, foam * 0.92);
@@ -242,7 +250,7 @@ function createSea(site, sunDir, sunColor, { heightAt, small = false, id } = {})
   const rings = discRings({ small });
   // (no ground to bake: all of it deep)
   const depth = bakeDepth(heightAt ?? (() => -Infinity), w.level, { half: HALF, n: small ? 256 : 512, max: 24 });
-  const depthTex = new THREE.DataTexture(depth.data, depth.n, depth.n, THREE.RedFormat, THREE.UnsignedByteType);
+  const depthTex = new THREE.DataTexture(depth.rg, depth.n, depth.n, THREE.RGFormat, THREE.UnsignedByteType);
   depthTex.magFilter = depthTex.minFilter = THREE.LinearFilter;
   depthTex.wrapS = depthTex.wrapT = THREE.ClampToEdgeWrapping;
   depthTex.colorSpace = THREE.NoColorSpace;
@@ -254,6 +262,7 @@ function createSea(site, sunDir, sunColor, { heightAt, small = false, id } = {})
       uCentre: { value: new THREE.Vector2() },
       uHalf: { value: depth.half },
       uMax: { value: depth.max },
+      uReach: { value: depth.reach },
       uLevel: { value: w.level },
       uTime: { value: 0 },
       uColor: { value: new THREE.Color(w.color) },

@@ -75,6 +75,13 @@ describe('the depth map', () => {
       expect(map.at(x, 37)).toBeCloseTo(want, 0);
     }
   });
+  it('knows how far each place is from the waterline (x = 200), whatever the slope', () => {
+    expect(map.shoreAt(150, 0)).toBeGreaterThan(44);
+    expect(map.shoreAt(150, 0)).toBeLessThan(56);
+    expect(map.shoreAt(196, 0)).toBeLessThan(9);
+    expect(map.shoreAt(260, 0)).toBe(0);
+    expect(map.shoreAt(-5000, 0)).toBe(64);
+  });
   it('is deep past its edge, and none on dry land', () => {
     expect(map.at(5000, 0)).toBe(24);
     expect(map.at(390, 0)).toBe(0);

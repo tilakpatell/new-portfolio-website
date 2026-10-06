@@ -141,38 +141,68 @@ export function heightAt(x, z, t, waves, depth = Infinity, sea = SEAS.sea) {
   return y;
 }
 
-// The depth of the water over the reach, from the ground's height: one byte
-// a texel (0 on land, `max` metres and deeper at 255), read back between
-// texel centres as the GPU reads it; deep past the edge.
-export function bakeDepth(height, level, { half = 640, n = 256, max = 24 } = {}) {
+// The depth of the water over the reach, from the ground's height, and how
+// far each place is from the waterline (so the surf and the wash are the
+// same width on a steep shore as on a flat one): a byte each a texel (depth
+// 0 on land and `max` metres or deeper at 255; the waterline's distance to
+// `reach` metres), read back between texel centres as the GPU reads them;
+// open deep sea past the edge. `rg` interleaves the two, for the texture.
+export function bakeDepth(height, level, { half = 640, n = 256, max = 24, reach = 64 } = {}) {
   const data = new Uint8Array(n * n);
   const step = (half * 2) / n;
+  const far = new Float32Array(n * n);
   for (let j = 0; j < n; j++) {
     const z = -half + (j + 0.5) * step;
     for (let i = 0; i < n; i++) {
       const d = level - height(-half + (i + 0.5) * step, z);
       data[j * n + i] = Math.round((Math.min(max, Math.max(0, d)) / max) * 255);
+      far[j * n + i] = d > 0 ? Infinity : 0;
     }
   }
-  const texel = (i, j) => data[Math.min(n - 1, Math.max(0, j)) * n + Math.min(n - 1, Math.max(0, i))];
-  return {
-    data,
-    half,
-    n,
-    max,
-    at(x, z) {
-      if (Math.abs(x) > half || Math.abs(z) > half) return max;
-      const u = (x + half) / step - 0.5;
-      const v = (z + half) / step - 0.5;
-      const i = Math.floor(u);
-      const j = Math.floor(v);
-      const fu = u - i;
-      const fv = v - j;
-      const top = texel(i, j) * (1 - fu) + texel(i + 1, j) * fu;
-      const bottom = texel(i, j + 1) * (1 - fu) + texel(i + 1, j + 1) * fu;
-      return ((top * (1 - fv) + bottom * fv) / 255) * max;
-    },
+  // (a chamfer distance, two passes: 1 along, √2 across, in texels)
+  const D = Math.SQRT2;
+  const relax = (i, j, di, dj, w) => {
+    const a = i + di;
+    const b = j + dj;
+    if (a < 0 || b < 0 || a >= n || b >= n) return;
+    const v = far[b * n + a] + w;
+    if (v < far[j * n + i]) far[j * n + i] = v;
   };
+  for (let j = 0; j < n; j++)
+    for (let i = 0; i < n; i++) {
+      relax(i, j, -1, 0, 1);
+      relax(i, j, 0, -1, 1);
+      relax(i, j, -1, -1, D);
+      relax(i, j, 1, -1, D);
+    }
+  for (let j = n - 1; j >= 0; j--)
+    for (let i = n - 1; i >= 0; i--) {
+      relax(i, j, 1, 0, 1);
+      relax(i, j, 0, 1, 1);
+      relax(i, j, 1, 1, D);
+      relax(i, j, -1, 1, D);
+    }
+  const shore = new Uint8Array(n * n);
+  const rg = new Uint8Array(n * n * 2);
+  for (let k = 0; k < n * n; k++) {
+    shore[k] = Math.round((Math.min(reach, far[k] * step) / reach) * 255);
+    rg[k * 2] = data[k];
+    rg[k * 2 + 1] = shore[k];
+  }
+  const read = (grid, x, z, top) => {
+    if (Math.abs(x) > half || Math.abs(z) > half) return top;
+    const u = (x + half) / step - 0.5;
+    const v = (z + half) / step - 0.5;
+    const i = Math.floor(u);
+    const j = Math.floor(v);
+    const fu = u - i;
+    const fv = v - j;
+    const at = (a, b) => grid[Math.min(n - 1, Math.max(0, b)) * n + Math.min(n - 1, Math.max(0, a))];
+    const upper = at(i, j) * (1 - fu) + at(i + 1, j) * fu;
+    const lower = at(i, j + 1) * (1 - fu) + at(i + 1, j + 1) * fu;
+    return ((upper * (1 - fv) + lower * fv) / 255) * top;
+  };
+  return { data, shore, rg, half, n, max, reach, at: (x, z) => read(data, x, z, max), shoreAt: (x, z) => read(shore, x, z, reach) };
 }
 
 // The disc's rings: even and fine round the camera, then each a little
