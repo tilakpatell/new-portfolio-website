@@ -155,3 +155,11 @@ describe('several sides of one thing', () => {
     expect(parseIssue({ number: 5, title: 'One', body: '![x](https://x.test/one.png)' }).views).toBeUndefined();
   });
 });
+
+describe("the model's eyes", () => {
+  it('finds the JSON in an answer wrapped in prose or a fence', async () => {
+    const { parseJson } = await import('./vlm.mjs');
+    expect(parseJson('Sure. ```json\n{"score": 7, "problems": ["the wings are too short"]}\n```')).toEqual({ score: 7, problems: ['the wings are too short'] });
+    expect(() => parseJson('no idea')).toThrow(/no JSON/);
+  });
+});

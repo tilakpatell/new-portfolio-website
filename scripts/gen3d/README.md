@@ -189,6 +189,24 @@ Z-Image-Turbo: `models\z_image_turbo-Q8_0.gguf`
 one object, front three-quarter view, plain white background, even light,
 no text.
 
+### The model's eyes (Qwen3-VL)
+
+`vlm.mjs` gives the pipeline eyes: **Claude**, through Claude Code on this
+machine (`claude -p`, on the owner's subscription, no API key: run `claude`
+once and `/login`, since the desktop app's login doesn't reach the command
+line), else Qwen3-VL-8B through llama.cpp's server, free and offline
+(`GEN3D_JUDGE=qwen` forces it). Claude is the sharper judge; Qwen is good
+enough to catch a wrong ship. Either way the pipeline can look: from a prompt, `make.mjs` draws four concept pictures and keeps the
+one it scores most like the thing; after the cut, it scores the four-view
+sheet out of 10 (`[name] verdict: …` in the log and the PR) and makes a
+miss again once with the next seed. `--no-judge` skips it; `--candidates N`
+draws more or fewer. Setup, under `%LOCALAPPDATA%\llamacpp`: `bin\` from
+[llama.cpp's Windows CUDA 13 build](https://github.com/ggml-org/llama.cpp/releases)
+(`llama-*-bin-win-cuda-13.4-x64.zip` and `cudart-*.zip`, unzipped
+together), `models\Qwen3-VL-8B-Instruct-Q8_0.gguf` and `mmproj-F16.gguf`
+from [unsloth/Qwen3-VL-8B-Instruct-GGUF](https://huggingface.co/unsloth/Qwen3-VL-8B-Instruct-GGUF).
+`node scripts/gen3d/vlm.mjs judge "a TIE fighter" sheet.png` asks it by hand.
+
 ### Judging
 
 `judge.mjs` renders through `scripts/glb-shot.mjs` (headless Chromium) and
