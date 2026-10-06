@@ -2005,3 +2005,35 @@ export function progress(earned = []) {
       : next.hint;
   return { places, next: next?.id ?? null, have, stones, portal, finished, objective, done: places.filter((p) => p.done).map((p) => p.id) };
 }
+
+// ── how he holds himself on a swing ──
+// Where he is on his arc, from the way he's going: -1 dropping into it behind
+// the anchor, 0 at the bottom, 1 up past it (the angle off straight down,
+// over 0.9 rad, kept to -1..1); 0 off a web or with no way to be going.
+export function swingArc(h) {
+  const w = h.web;
+  const hs = Math.hypot(h.vx, h.vz);
+  if (!w?.a || hs < 0.5) return 0;
+  const along = ((h.x - w.a[0]) * h.vx + (h.z - w.a[2]) * h.vz) / hs;
+  const s = Math.atan2(along, w.a[1] - h.y) / 0.9;
+  return Math.max(-1, Math.min(1, s));
+}
+
+// His pose through the arc (the figure's frame: +z ahead, +y up his web, +x
+// his left; `free` and `freeFore` are the free arm's, its x away from his
+// side): legs trailing as he drops in, knees tucked through the bottom,
+// legs thrown out ahead on the way up, leaning back, the free hand reaching
+// up for the next web.
+const SWING_KEYS = {
+  in: { free: [0.85, -0.05, -0.45], freeFore: [0.55, 0.1, -0.6], thighL: [0.06, -1, -0.32], calfL: [0.04, -1, -0.5], thighR: [-0.06, -1, -0.22], calfR: [-0.04, -1, -0.6], foot: [0, -0.5, -0.9], pitch: -0.15 },
+  low: { free: [0.95, -0.15, 0.3], freeFore: [0.7, 0.25, 0.55], thighL: [0.1, -0.35, 0.95], calfL: [0.05, -1, -0.1], thighR: [-0.1, -0.55, 0.85], calfR: [-0.05, -1, 0.05], foot: [0, -0.4, 0.9], pitch: 0.22 },
+  out: { free: [0.35, 0.55, 0.8], freeFore: [0.2, 0.6, 0.85], thighL: [0.08, -0.4, 0.92], calfL: [0.05, -0.25, 1], thighR: [-0.08, -0.6, 0.8], calfR: [-0.05, -0.5, 0.9], foot: [0, 0.25, 1], pitch: -0.18 },
+};
+export function swingPose(s) {
+  const k = Math.min(1, Math.abs(s));
+  const a = SWING_KEYS.low;
+  const b = s < 0 ? SWING_KEYS.in : SWING_KEYS.out;
+  const out = { pitch: a.pitch + (b.pitch - a.pitch) * k };
+  for (const key of Object.keys(a)) if (key !== 'pitch') out[key] = a[key].map((v, i) => v + (b[key][i] - v) * k);
+  return out;
+}
