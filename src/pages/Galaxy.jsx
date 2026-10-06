@@ -117,13 +117,26 @@ export default function Galaxy() {
   // out of the page: the screen fades, and on (down through the air, glowing,
   // when it's onto the planet)
   const leave = useCallback(
-    (to, { jump = false, land = false } = {}) => {
+    (to, { jump = false, land = false, crash = false } = {}) => {
       if (leaving) return;
-      setLeaving({ to, land });
+      setLeaving({ to, land, crash });
       if (jump) window.dispatchEvent(new Event('tp:hyperspace'));
-      timer.current = setTimeout(() => navigate(to), jump ? 1250 : land ? 1500 : 650);
+      timer.current = setTimeout(() => navigate(to), jump ? 1250 : land ? 1500 : crash ? 700 : 650);
     },
     [leaving, navigate],
+  );
+  // Flown into the planet: the crash plays, and then you're down on its
+  // surface, the screen washing out in the system's colour on the way (as
+  // the universe map does it: pages/Universe.jsx's crashInto). True when
+  // there's a surface to go down to; otherwise the scene puts you back
+  const onCrash = useCallback(
+    (id) => {
+      if (!id || !canLand(id) || leaving) return false;
+      prefetchSurface();
+      leave(`/galaxy/${id}/surface`, { crash: true });
+      return true;
+    },
+    [leave, leaving],
   );
   // Down onto the planet you're at, flown: the ship dives on it, the air
   // glows round it, and the runtime hands over to the surface's world,
@@ -268,7 +281,7 @@ export default function Galaxy() {
   // (every system's colour is light, readable on the dark page: so dark on a button)
   const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };
   return (
-    <div className="dark-scope universe-page galaxy-page" style={accent} data-tucked={tucked ? '' : undefined} data-card="" data-leaving={leaving ? (leaving.land ? 'land' : 'fade') : undefined} data-jumping={jumping?.phase} data-held={held ? '' : undefined}>
+    <div className="dark-scope universe-page galaxy-page" style={accent} data-tucked={tucked ? '' : undefined} data-card="" data-leaving={leaving ? (leaving.land ? 'land' : leaving.crash ? 'crash' : 'fade') : undefined} data-jumping={jumping?.phase} data-held={held ? '' : undefined}>
       <h1 className="sr-only">A galaxy far, far away: {sys.name}</h1>
       <p className="sr-only" aria-live="polite">
         {jumping ? `Jumping to ${systemById(jumping.to)?.name ?? 'lightspeed'}` : held ? `Interdicted short of ${systemById(held.to)?.name ?? sys.name}: an Imperial Interdictor's gravity well holds you` : `In the ${sys.system ?? sys.name} system`}
@@ -286,6 +299,7 @@ export default function Galaxy() {
         onArrive={onArrive}
         onAt={setAt}
         onBoard={onBoard}
+        onCrash={onCrash}
         onMap={() => setMapOpen(true)}
       />
       {crew && <Comms control={comms} crew={galaxyCrew(crew)} reduced={reduced} />}
@@ -331,7 +345,7 @@ export default function Galaxy() {
           Coming down through the atmosphere…
         </p>
       )}
-      <div className="universe-fade" aria-hidden="true" style={{ background: '#000' }} />
+      <div className="universe-fade" aria-hidden="true" style={{ background: leaving?.crash ? sys.accent : '#000' }} />
     </div>
   );
 }

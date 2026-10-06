@@ -829,6 +829,8 @@ void main() {
 export const SHIELD_FRAG = /* glsl */ `
 uniform float uShield;
 uniform float uTime;
+uniform float uHit; // a ship's bump into it: 1 as it lands, dying away
+uniform vec3 uHitAt; // where, on the unit sphere (object space)
 varying vec3 vObj;
 varying vec3 vWorld;
 varying vec3 vN;
@@ -859,6 +861,16 @@ void main() {
   float fres = pow(1.0 - abs(dot(normalize(vN), V)), 3.0);
   float shimmer = 0.75 + 0.25 * sin(uTime * 1.7 + dot(P, vec3(9.0, 13.0, 7.0)));
   vec3 col = vec3(0.3, 0.6, 1.0) * (0.003 + edge * (0.07 + glint) * shimmer * (0.4 + fres) + fres * 0.08 + glint * 0.03) * uShield;
+  // the bump: a flash where the ship hit, the cells round it lit up, and a
+  // ring running out from it across the shell as the flash dies
+  if (uHit > 0.001) {
+    float ang = acos(clamp(dot(P, uHitAt), -1.0, 1.0));
+    float age = 1.0 - uHit;
+    float ring = 1.0 - smoothstep(0.0, 0.05 + age * 0.08, abs(ang - age * 0.9));
+    float flash = exp(-ang * 14.0) * uHit;
+    float cells = exp(-ang * 5.0) * edge * 6.0 * uHit;
+    col += vec3(0.55, 0.8, 1.0) * (flash * 1.6 + ring * uHit * 0.9 + cells) * uShield;
+  }
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
 }`;

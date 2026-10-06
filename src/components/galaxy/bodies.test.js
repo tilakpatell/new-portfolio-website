@@ -82,6 +82,22 @@ describe('buildBody', () => {
     expect(buildBody('hoth', { r: 36 }).reach).toBeLessThan(36 * 1.1);
   });
 
+  it('lights Scarif’s shield where a ship bumps it, then lets it fade', () => {
+    const b = buildBody('scarif', { r: 32 });
+    b.set('shield', 1);
+    expect(b.hitLeft).toBe(0);
+    expect(b.hit(new THREE.Vector3(0, 0, 32 * 1.12))).toBe(true);
+    expect(b.hitLeft).toBe(1);
+    b.update(10);
+    b.update(10.05);
+    expect(b.hitLeft).toBeCloseTo(1 - 0.05 * 1.1, 5);
+    b.update(20);
+    expect(b.hitLeft).toBeCloseTo(1 - 0.15 * 1.1, 5); // (a long gap counts as a tenth of a second: a tab left in the background fades on its return)
+    for (let t = 20.05; t < 21.2; t += 0.05) b.update(t);
+    expect(b.hitLeft).toBe(0);
+    expect(buildBody('hoth', { r: 36 }).hit(new THREE.Vector3(0, 0, 40))).toBe(false);
+  });
+
   it('hands back the mesh a crash can mark', () => {
     for (const small of [false, true]) {
       const b = buildBody('hoth', { r: 20, small });

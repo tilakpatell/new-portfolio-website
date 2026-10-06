@@ -38,7 +38,7 @@ import { buildBody } from './bodies';
 import { createRocks } from './rocks';
 import { createTrench } from '../universe/trench';
 import { trenchBand } from '../universe/deep';
-import { STATION_NAMES, reachOf } from './systems';
+import { DEATHSTAR_REACH, STATION_NAMES, TRACTOR_REACH, reachOf } from './systems';
 import { LASER } from './fx';
 import { HULLS } from '../universe/wars';
 
@@ -537,14 +537,14 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
       disposers.push(() => models.drop(slot));
       const station = { id: 'deathstar', at: p.at, r, trench: { segments: 34 } };
       const band = p.trench ? trenchBand(station) : null;
-      addSolid({ id: 'deathstar', name: STATION_NAMES.deathstar, at: p.at, r, reach: r * 1.4, goal: true, board: p.board, ...(band ? { band } : {}) });
+      addSolid({ id: 'deathstar', name: STATION_NAMES.deathstar, at: p.at, r, reach: r * DEATHSTAR_REACH, goal: true, board: p.board, ...(band ? { band } : {}) });
       let trench = null;
       if (p.trench) {
         trench = createTrench(station);
         group.add(trench.group);
         disposers.push(() => trench.dispose());
       }
-      if (p.tractor) out.tractor = { at: new THREE.Vector3(...p.at), r, reach: r * 3.4, board: p.board };
+      if (p.tractor) out.tractor = { at: new THREE.Vector3(...p.at), r, reach: r * TRACTOR_REACH, board: p.board };
       ticks.push((t) => {
         stand.visible = !slot.real;
         holder.rotation.y = frac((t * 0.002) / TAU) * TAU;

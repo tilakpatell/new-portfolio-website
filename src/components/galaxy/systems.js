@@ -1109,16 +1109,34 @@ export function arrival(s, from = null, rand = Math.random) {
   az /= al;
   // spread round a little either way
   const spread = (rand() - 0.5) * 0.7;
-  const c = Math.cos(spread);
-  const n = Math.sin(spread);
-  const dx = ax * c - az * n;
-  const dz = ax * n + az * c;
   const d = r * 3.2 + 26 + rand() * 12;
-  const x = dx * d;
-  const z = dz * d;
   const y = r * 0.35 + (rand() - 0.5) * r * 0.3;
-  return { x, y, z, heading: Math.atan2(x, z) };
+  const hazards = hazardsOf(s);
+  const at = (a) => {
+    const c = Math.cos(a);
+    const n = Math.sin(a);
+    return { x: (ax * c - az * n) * d, y, z: (ax * n + az * c) * d };
+  };
+  const clear = (p) => hazards.every((h) => Math.hypot(p.x - h.at[0], p.y - h.at[1], p.z - h.at[2]) > h.r + ARRIVAL_GAP);
+  // but never inside a station or its tractor beam's reach (Alderaan's
+  // Death Star sits where the way in from the Core comes out): round the
+  // planet, a little further each way, to the nearest clear spot
+  let p = at(spread);
+  for (let k = 1; k <= 12 && !clear(p); k++) {
+    const a = at(spread + k * 0.5);
+    const b = at(spread - k * 0.5);
+    p = clear(a) ? a : b;
+  }
+  return { x: p.x, y: p.y, z: p.z, heading: Math.atan2(p.x, p.z) };
 }
+
+// What's solid round a system's planet before anything's built, as far as
+// an arrival must keep off it: its Death Star (world.js's solid, out to its
+// reach, or its tractor beam's where it has one). [{ at, r }]
+export const DEATHSTAR_REACH = 1.4; // of its radius: the solid round the Death Star
+export const TRACTOR_REACH = 3.4; // of its radius: how far out its tractor beam takes hold
+const ARRIVAL_GAP = 8; // and this much clear of that
+export const hazardsOf = (s) => s.pieces.filter((p) => p.type === 'deathstar').map((p) => ({ at: p.at, r: p.r * (p.tractor ? TRACTOR_REACH : DEATHSTAR_REACH) }));
 
 // The places in a system the autopilot can take you to (and the map names):
 // its planet (at Alderaan, where it was), and its great stations.

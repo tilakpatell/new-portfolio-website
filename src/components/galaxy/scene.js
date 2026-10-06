@@ -54,12 +54,14 @@
 // shield, hud, tags, labels (refs, as the universe map's), stars (a ref:
 // the other systems' names, by id, moved over their stars), frozen,
 // onArrive(id, from) (a jump's come out at a system), onAt(goal id or null),
-// onBoard(path) (into the Death Star), onEvent(e) (for the comms and the
+// onBoard(path) (into the Death Star), onCrash(systemId) → bool (into the
+// planet: the page takes you down to its surface, or says no), onEvent(e) (for the comms and the
 // page; { type: 'aim', id } as the nose comes onto a star or off it).
 
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { capturePointer } from '../../lib/pointer';
+import { keyFlies } from '../universe/controls';
 import { local as remembered } from '../../lib/hooks';
 import { plan as cockpitPlan } from '../cockpit/timeline';
 import { freeKit } from '../cockpit/kit';
@@ -226,7 +228,7 @@ export async function create(canvas, ctx) {
   fleet.prepare = (o) => warm(o);
   const hunters = reduced ? null : createHunters(scene, { small, fleet, factions: FACTIONS, kinds: KINDS, solids: () => state.space?.solids ?? [] });
   let hunts = 0; // packs sent this visit (the first is a small one)
-  const pieces = reduced ? null : createSetPieces(scene, { small, fleet });
+  const pieces = reduced ? null : createSetPieces(scene, { small, fleet, solids: () => state.space?.solids ?? [] }); // (clear of this system's planet, not the universe map's)
   // the Empire's count of your jumps, and the Interdictor waiting on the one that's due
   const interdiction = createInterdiction({
     store: { get: () => window.sessionStorage.getItem(JUMPS_KEY), set: (v) => (v === null ? window.sessionStorage.removeItem(JUMPS_KEY) : window.sessionStorage.setItem(JUMPS_KEY, v)) },
@@ -304,6 +306,7 @@ export async function create(canvas, ctx) {
     bias: [0, 0, 0],
     pull: 0, // the tractor beam's hold on you
     pullSaid: false,
+    shieldSaid: -1e9, // (the clock when the crew last had their say on Scarif's shield)
     held: null, // { at, hangar, since, pack, to, faction } while an Interdictor's gravity well holds you (interdiction.js)
     heldSaid: -1e9,
     flare: 1,
@@ -950,6 +953,10 @@ export async function create(canvas, ctx) {
       if (c.board) {
         c.through = true;
         props.onBoard?.(c.board);
+      } else if (c.planet && props.onCrash?.(state.sys?.id ?? null)) {
+        // into the planet: on down to its surface (the page says whether
+        // there is one to go to; if not, back out of hyperspace as before)
+        c.through = true;
       }
     }
     if (c.through) return true;
@@ -1258,11 +1265,20 @@ export async function create(canvas, ctx) {
       const gate = state.world.gate;
       const through = gate && apart(ship.x, ship.y, ship.z, gate.at.x, gate.at.y, gate.at.z) < gate.hole + 2;
       if (!through && (r - sh.r) * (r0 - sh.r) < 0) {
-        const k = (r0 > sh.r ? sh.r + 0.3 : sh.r - 0.3) / r;
-        ship = { ...ship, x: ship.x * k, y: ship.y * k, z: ship.z * k, speed: -ship.speed * 0.3 };
+        // thrown back off it: the shell lit where it was hit (a flash and a
+        // ring out across it: bodies.js), the ship shaken and kicked back
+        // the way it came, and the crew on it (once, then again a while on)
+        const k = (r0 > sh.r ? sh.r + 0.8 : sh.r - 0.8) / r;
+        ship = { ...ship, x: ship.x * k, y: ship.y * k, z: ship.z * k, speed: -ship.speed * 0.45 };
+        state.world.body?.hit?.(tractorPull.set(ship.x, ship.y, ship.z).multiplyScalar(sh.r / Math.hypot(ship.x, ship.y, ship.z)));
+        if (!reduced) {
+          state.shake = Math.max(state.shake, 0.7);
+          state.kick = Math.max(state.kick, 0.6);
+          state.flare = Math.max(state.flare, 1.4);
+        }
         emit({ type: 'bump', id: 'shield', hard: true });
-        if (!state.shieldSaid) {
-          state.shieldSaid = true;
+        if (state.clock - state.shieldSaid > 45) {
+          state.shieldSaid = state.clock;
           emit({ type: 'event', id: 'scarif-shield' });
         }
       }
@@ -1850,12 +1866,13 @@ export async function create(canvas, ctx) {
   };
 
   // ── Keys ──
+  const held = new Set(); // the flight keys down now
   const onKeyDown = (e) => {
     if (!flying() || props.frozen || e.metaKey || e.ctrlKey || e.altKey) return;
     const el = e.target;
-    if (el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
-    if (document.querySelector('[aria-modal="true"]')) return;
     const key = e.key.toLowerCase();
+    if (!keyFlies(el, key)) return;
+    if (document.querySelector('[aria-modal="true"]')) return;
     const onControl = el instanceof HTMLElement && el !== document.body && el.closest('button, a, [role="button"], [tabindex]:not([tabindex="-1"])');
     if (key === 'm') {
       e.preventDefault();
@@ -1903,14 +1920,23 @@ export async function create(canvas, ctx) {
     e.preventDefault();
     heard();
     if (k !== 'boost') takeover();
+    held.add(key);
     state.keys[k] = true;
     ctx.invalidate();
   };
+  // (two keys to one control, Space and Shift to the boost: letting go of
+  // one mustn't let go of the other's hold)
   const onKeyUp = (e) => {
-    const k = KEYS[e.key.toLowerCase()];
-    if (k) state.keys[k] = false;
+    const key = e.key.toLowerCase();
+    held.delete(key);
+    const k = KEYS[key];
+    if (!k) return;
+    let still = false;
+    for (const h of held) if (KEYS[h] === k) still = true;
+    state.keys[k] = still;
   };
   const onBlur = () => {
+    held.clear();
     state.keys = {};
     state.boostBtn = false;
     state.climbBtn = 0;
@@ -2112,6 +2138,7 @@ export async function create(canvas, ctx) {
       else if (ask.act === 'jump') startJump(next.system, 'link');
       if (next.frozen) {
         endDrag();
+        held.clear();
         state.keys = {};
         engine?.set({ speed: 0, on: false });
       }

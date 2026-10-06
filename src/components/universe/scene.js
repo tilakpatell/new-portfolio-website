@@ -143,7 +143,7 @@ import { readLooks } from '../rickmorty/wardrobe/looks';
 import { BUILT_KINDS, buildTraffic } from './trafficModels';
 import { entrySound, lockSound, shipEngine, wellSound } from './sounds';
 import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track, trackNudge } from './targeting';
-import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyAxes, stickInput } from './controls';
+import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyAxes, keyFlies, stickInput } from './controls';
 import { byId } from './universes';
 import { createPilots } from './online/pilots';
 import { arsenalOf, createArmory, fan, steer } from './weapons';
@@ -4036,9 +4036,9 @@ export async function create(canvas, ctx) {
   const onKeyDown = (e) => {
     if (!flying() || props.frozen || e.metaKey || e.ctrlKey || e.altKey) return;
     const el = e.target;
-    if (el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
-    if (document.querySelector('[aria-modal="true"]')) return;
     const key = e.key.toLowerCase();
+    if (!keyFlies(el, key)) return;
+    if (document.querySelector('[aria-modal="true"]')) return;
     // on a button or link, Enter is its own. The arrows and Space fly anyway
     // (a click on a panel or HUD button leaves the focus on it, and the
     // hangar, the settings and the nav map hand it back to their button: the

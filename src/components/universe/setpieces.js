@@ -23,7 +23,7 @@
 //   tunnel of blue-white light that opens, holds for a while and closes. Fly
 //   into it and the scene takes you out of it somewhere else on the map.
 //
-// createSetPieces(parent, { small }) → { destroyer(ship, kind) → { hangar } | null, leave(),
+// createSetPieces(parent, { small, fleet, solids }) → { destroyer(ship, kind) → { hangar } | null, leave(),
 //   roadblock(ship) → boolean, chopperHere,
 //   portals(points), comet(ship), flare(star, ship) → { arrives } | null,
 //   rift(ship) → boolean, riftAt, riftInside(ship), closeRift(),
@@ -181,7 +181,9 @@ function tail(color, width, length) {
   return mesh;
 }
 
-export function createSetPieces(parent, { small = false, fleet = createFleet() } = {}) {
+// solids: what's solid where this flies (the map's, as it comes; a star
+// system's, in the galaxy), so a capital ship never drops in inside a planet
+export function createSetPieces(parent, { small = false, fleet = createFleet(), solids = () => SOLIDS } = {}) {
   const made = [];
   const keep = (x) => (made.push(x), x);
   const glow = keep(glowTexture());
@@ -261,7 +263,7 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
       }
       piece.len = CAPITAL[kind] ?? CAPITAL.destroyer;
       const side = Math.random() < 0.5 ? -1 : 1;
-      piece.at.set(...destroyerSpot(ship, side));
+      piece.at.set(...destroyerSpot(ship, side, solids()));
       // crossing your path, slowly
       piece.heading = ship.heading + side * (Math.PI / 2 + 0.3);
       const [dx, dz] = forward(piece.heading);
