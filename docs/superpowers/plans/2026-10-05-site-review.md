@@ -43,7 +43,7 @@ Work from this session lands as pull requests, one concern each, and ticks its l
 
 | World | Walk in 3D | Rules tested | Others online | Next |
 | --- | --- | --- | --- | --- |
-| Music room | yes | yes | no | ghosts in the courtyard; a tabla theka under the sitar |
+| Music room | yes | yes | yes, as floating lamps (this session) | ghosts in the courtyard; a tabla theka under the sitar |
 | Middle-earth | yes | yes (34 files) | 9 places | ghosts at Cirith Ungol and Mount Doom; Amon Hen's kitchen mist and ducks |
 | Cybertron | no (Roll out, Iacon) | thin | no | Iacon's rules into a tested file; Cybertron on foot |
 | Avengers HQ | yes, and swing | yes | holograms | ring 3 of the swing tour |
