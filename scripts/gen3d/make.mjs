@@ -86,7 +86,9 @@ export async function make(name, { image, prompt, what, faces = TIERS.hq.faces, 
       const { judge: look } = await import('./vlm.mjs');
       const v = await look(what ?? prompt ?? name, out);
       log(`verdict: ${v.score}/10${v.problems.length ? ` — ${v.problems.join('; ')}` : ''}${v.ok ? '' : ` — ${v.fix}`}`);
-      if (!v.ok && retries > 0) {
+      // only Claude's verdict gates: Qwen3-VL-8B misjudges a right model often enough that its say is a note, not a veto
+      const { which } = await import('./vlm.mjs');
+      if (!v.ok && retries > 0 && which() === 'claude') {
         log(`not good enough: once more with seed ${seed + 1}`);
         return make(name, { image, prompt, what, faces, tex, seed: seed + 1, res, fov, engine, faithful, noBake, match, candidates, judge, retries: retries - 1 });
       }
