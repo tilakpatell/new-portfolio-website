@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { AIR, ENTRY, LANDABLE, airTop, descendInput, entering, entryPath, entrySpot, fxAt, velocityOf } from './entry';
-import { PLANETS, SHIP, headingTo, parkAt, spawn, step } from './ship';
+import { AIR, ENTRY, LANDABLE, airTop, entering, entryPath, entrySpot, fxAt, velocityOf } from './entry';
+import { PLANETS, SHIP, headingTo, spawn, step } from './ship';
 import { NOSE, fromAngles, rotate } from './orient';
 import { flat, vec } from './foot';
 import { ORDER } from './layout';
@@ -436,81 +436,5 @@ describe('fxAt', () => {
     expect(fxAt(0.74 * G).title).toBe(false);
     expect(fxAt(0.75 * G).title).toBe(true);
     expect(fxAt(0.9 * G).title).toBe(true);
-  });
-});
-
-describe('descendInput', () => {
-  it('flies a parked ship down into the air at a landing speed, without a scrape', () => {
-    for (const p of LANDABLE) {
-      let s = spawn(p.id);
-      expect(parkAt(p.id).x).toBe(s.x);
-      expect(distTo(s, p), p.id).toBeGreaterThan(airTop(p));
-      let e = null;
-      for (let i = 0; i < 300 && !e; i++) {
-        const input = descendInput(s, p);
-        expect(input).toMatchObject({ throttle: 1, boost: false });
-        const r = step(s, input, 0.05);
-        s = r.ship;
-        expect(r.events.some((ev) => ev.type === 'crash' || ev.type === 'bump'), p.id).toBe(false);
-        e = entering(s);
-        expect(e?.kind, p.id).not.toBe('hot');
-      }
-      expect(e, p.id).toMatchObject({ id: p.id, kind: 'enter' });
-    }
-  });
-
-  // (G works anywhere at the planet, so the ship can be in its air already:
-  // boosted in, eased off and levelled out, say)
-  const scraped = (events) => events.some((ev) => ev.type === 'crash' || ev.type === 'bump');
-
-  it('takes a ship already in the air on down from where it is, not back up to the top', () => {
-    for (const p of LANDABLE) {
-      // a little over the ground, and 1 to 3 under the air's top, where it's that deep
-      const heights = [0.3, ...[1, 2, 3].map((u) => airTop(p) - p.r - u)].filter((h) => h >= 0.3);
-      for (const h of heights) {
-        let s = flying(add(p.at, OUT, p.r + h), flat([0, 1, 0], OUT), SHIP.cruise);
-        expect(entering(s), `${p.id} ${h}`).toBe(null); // (level: not going in by itself)
-        let e = null;
-        for (let i = 0; i < 60 && !e; i++) {
-          const r = step(s, descendInput(s, p), 0.05);
-          s = r.ship;
-          expect(scraped(r.events), `${p.id} ${h}`).toBe(false);
-          e = entering(s);
-        }
-        expect(e, `${p.id} ${h}`).toMatchObject({ id: p.id, kind: 'enter' });
-      }
-    }
-  });
-
-  it('holds its height in the air while it slows from too fast to land, then goes in', () => {
-    for (const p of LANDABLE) {
-      for (const h of [0.5, 1.5, 2.5]) {
-        let s = flying(add(p.at, OUT, p.r + h), flat([0, 1, 0], OUT), SHIP.boost);
-        let e = null;
-        for (let i = 0; i < 100 && e?.kind !== 'enter'; i++) {
-          const r = step(s, descendInput(s, p), 0.05);
-          s = r.ship;
-          expect(scraped(r.events), `${p.id} ${h}`).toBe(false);
-          e = entering(s);
-          // (not diving on at the ground at that speed)
-          if (len(velocityOf(s)) > ENTRY.fast) expect(distTo(s, p) - p.r, `${p.id} ${h}`).toBeGreaterThan(h - 0.05);
-        }
-        expect(e, `${p.id} ${h}`).toMatchObject({ id: p.id, kind: 'enter' });
-      }
-    }
-  });
-
-  it('aims the nose down into the air, ahead of where the ship is going', () => {
-    const p = first;
-    const s = flying(add(p.at, OUT, airTop(p) + 3), flat([0, 1, 0], OUT), SHIP.cruise);
-    const input = descendInput(s, p);
-    // a little on from here, it has dipped toward the planet and kept going the way it was
-    let t = s;
-    for (let i = 0; i < 20; i++) t = step(t, descendInput(t, p), 0.05).ship;
-    const v = velocityOf(t);
-    const n = unit([t.x - p.at[0], t.y - p.at[1], t.z - p.at[2]]);
-    expect(input.climb).toBeLessThan(0); // nose down
-    expect(dot(v, n)).toBeLessThan(0); // going down
-    expect(dot(v, flat([0, 1, 0], OUT))).toBeGreaterThan(0); // still on along the way it was going
   });
 });

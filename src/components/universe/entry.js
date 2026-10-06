@@ -19,7 +19,7 @@
 
 import { facingAlong, rotate as about, vec } from './foot';
 import { NOSE, fromAngles, rotate } from './orient';
-import { PLANETS, stickToward } from './ship';
+import { PLANETS } from './ship';
 import { byId } from './universes';
 
 const { dot, cross, add, scale, len, unit } = vec;
@@ -175,37 +175,4 @@ export function fxAt(t) {
   const white = 0.85 * smooth(0.52 * G, 0.62 * G, t) * (1 - smooth(0.62 * G, 0.74 * G, t));
   const sky = smooth(0.1 * G, 0.7 * G, t);
   return { burn, cloud, white, sky, shake: Math.min(1, burn * 0.6 + cloud * 0.25), title: t >= 0.75 * G };
-}
-
-// how far on round the planet the G key's descent aims (radians), and how
-// far under the air's top, or under the ship once it's in the air (map
-// units): in at a slant, the way it's going, rather than straight down at
-// the middle
-const DIP = { ahead: 0.12, under: 0.6 };
-
-// The G key's short autopilot at a planet: the input that points the nose
-// at a point a little on from the ship along its ground track (the way its
-// nose points, sitting still) and just inside the planet's air (or, in it
-// already, just under the ship), at cruise speed, so it comes down through
-// the air at a landing speed and the entry takes it from there.
-export function descendInput(s, p) {
-  const pos = posOf(s);
-  const off = add(pos, p.at, -1);
-  const d = len(off);
-  const n = unit(off);
-  const v = velocityOf(s);
-  const track = len(v) > 1e-3 ? v : rotate(fromAngles(s.heading, s.pitch || 0, s.bank || 0), NOSE);
-  // How far out from the middle it aims. From outside the air, just under
-  // its top. Already in it (G works anywhere at the planet, so a ship that
-  // boosted in and eased off can be), just under the ship and never back up
-  // to the top: aimed there, a ship lower down levels off under it and
-  // circles with nothing to take it in. Too fast to land, no lower than
-  // that point under the top or than it already is, while the throttle
-  // brings it back to cruise: diving on at the ground at that speed is how
-  // you crash. And never under the ground.
-  const under = len(v) > ENTRY.fast ? 0 : DIP.under;
-  const r = Math.max(p.r, Math.min(airTop(p) - DIP.under, d - under));
-  const out = unit(about(n, unit(cross(n, facingAlong(n, track))), DIP.ahead));
-  const dir = unit(add(add(p.at, out, r), pos, -1));
-  return { throttle: 1, boost: false, ...stickToward(s, dir) };
 }

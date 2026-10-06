@@ -296,9 +296,9 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                   View
                 </button>
               )}
-              {(onFoot || landable) && (
+              {onFoot && (
                 <button type="button" className="universe-out" onPointerDown={(e) => (e.preventDefault(), view.current?.out?.())} onContextMenu={(e) => e.preventDefault()}>
-                  {onFoot ? 'Ship' : 'Land'}
+                  Ship
                 </button>
               )}
               {!onFoot && !landable && phoneNear && (
@@ -354,10 +354,10 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {!flown && !onFoot && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer (loop right over), <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>R</kbd> weapons, <kbd>T</kbd> target, <kbd>V</kbd> cockpit, fly down into a planet’s air to land (or <kbd>G</kbd>), <kbd>H</kbd> hangar, <kbd>O</kbd> settings
+                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer (loop right over), <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>R</kbd> weapons, <kbd>T</kbd> target, <kbd>V</kbd> cockpit, fly down into a planet’s air to land, <kbd>H</kbd> hangar, <kbd>O</kbd> settings
                     <GuideCue />
                   </span>
-                  <span className="universe-hint-touch">Drag anywhere to fly, the arrows to pull the nose up and down, hold Boost to go fast and Fire to shoot, View for the cockpit, and fly down into a planet’s air to land on it (or tap Land)<GuideCue touch /></span>
+                  <span className="universe-hint-touch">Drag anywhere to fly, the arrows to pull the nose up and down, hold Boost to go fast and Fire to shoot, View for the cockpit, and fly down into a planet’s air to land on it<GuideCue touch /></span>
                 </p>
               )}
             </>

@@ -139,7 +139,7 @@ import { CORE, GENS, citadelGeometry, createSiege, segmentSphere } from './siege
 import { createCitadelSiege } from './citadelSiege';
 import { STALE_MS } from './online/protocol';
 import { createFoot } from './footScene';
-import { ENTRY, LANDABLE, airTop, descendInput, entering } from './entry';
+import { ENTRY, LANDABLE, airTop, entering } from './entry';
 
 const STARS = 1800; // the near ones, over the Milky Way's own
 const STARS_LOW = 700;
@@ -806,7 +806,7 @@ export async function create(canvas, ctx) {
     view: 'chase', // the seat, or 'map' (the whole map, keeping the ship)
     cabK: 0, // how far into the cockpit view the camera is, 0 to 1, eased
     fovBase: FOV, // the lens, eased between the chase's and the cockpit's
-    auto: null, // { id, park, od } while it flies itself somewhere (od: super speed's overdrive, 1 cruising); { id, descend: true } taking it down into a planet's air (G)
+    auto: null, // { id, park, od } while it flies itself somewhere (od: super speed's overdrive, 1 cruising)
     hotSaid: null, // the planet whose air it's going through too fast to land, said so on the HUD
     jump: null, // { id, park, at }: a jump to lightspeed under way (out at the place at `at`, wall()'s seconds)
     hyperAt: null, // when it last jumped, wall()'s seconds (the hyperdrive charges again: nav.js)
@@ -2956,12 +2956,7 @@ export async function create(canvas, ctx) {
       emit({ type: 'jumped', id: j.id });
     }
     if (!state.jump && pieces.riftAt && pieces.riftInside(state.ship)) riftThrough();
-    // (G: down into a planet's air, nose first, at a speed it can land at;
-    // off if it's left the planet some other way)
-    const down = state.auto?.descend && state.at === state.auto.id ? LANDABLE.find((p) => p.id === state.auto.id) : null;
-    if (state.auto?.descend && !down) dropAuto();
     if (state.jump) input = { throttle: 1, boost: true }; // (spooling up: straight on, flat out)
-    else if (down) input = descendInput(state.ship, down);
     else if (state.auto) {
       const od = state.interdicted ? 1 : (state.auto.od ?? 1);
       const a = autopilot(state.ship, state.auto.id, state.auto.park, undefined, od);
@@ -3012,7 +3007,7 @@ export async function create(canvas, ctx) {
     // takes it on down onto the ground; any faster it's no landing (it goes
     // on into the ground, and that's the crash above, as ever), and the HUD
     // says so. Not while the autopilot's taking it somewhere else
-    if (!state.jump && (!state.auto || state.auto.descend)) {
+    if (!state.jump && !state.auto) {
       const air = entering(state.ship, LANDABLE);
       if (air?.kind === 'enter' && startFoot({ id: air.id, entry: air })) return true;
       if (air?.kind !== 'hot') state.hotSaid = null;
@@ -3214,24 +3209,6 @@ export async function create(canvas, ctx) {
   };
   // what a planet's landing is called, as the panel's Land button has it (Middle-earth, not The Lord of the Rings)
   const placeName = (id) => byId(id).place ?? byId(id).label;
-  // G at a planet (and the phone's Land button): the ship flies itself
-  // down into the planet's air (entry.js's descendInput, as an autopilot:
-  // any touch of the stick takes it back), and the way in takes it from there
-  const startDescent = () => {
-    if (!flying() || onFoot() || state.crash || state.dive || state.jump || props.frozen || !state.model) return false;
-    const id = state.landable;
-    if (!id || !LANDABLE.some((p) => p.id === id)) {
-      emit({ type: 'foot', id: 'nowhere' });
-      return false;
-    }
-    if (state.auto?.descend && state.auto.id === id) return true;
-    dropAuto();
-    // (where a stick already held is, so moving it takes the ship back: onMove)
-    state.auto = { id, descend: true, stick: state.stick ? [state.stick.dx, state.stick.dy] : null };
-    state.lastInput = performance.now();
-    ctx.invalidate();
-    return true;
-  };
   // up and away: flying again from where the ship rose to (out past the
   // planet's air, its nose away from it: footScene's liftFrame)
   const endFoot = (done) => {
@@ -3364,10 +3341,11 @@ export async function create(canvas, ctx) {
       text = `${info.near.say.name}: “${info.near.say.line}”`;
       say = true;
     }
-    else if (!onFoot() && state.auto?.descend) {
-      text = `Going down into ${placeName(state.auto.id)}`;
+    else if (!onFoot() && state.landable && !state.auto && Math.abs(state.ship?.speed ?? 0) < SHIP.boost && LANDABLE.some((p) => p.id === state.landable)) {
+      // (no key for it: flying in is the way down)
+      text = `Fly down into the air to land on ${placeName(state.landable)}`;
       plain = true;
-    } else if (!onFoot() && state.landable && !state.auto && Math.abs(state.ship?.speed ?? 0) < SHIP.boost && LANDABLE.some((p) => p.id === state.landable)) text = `Fly down into the air to land on ${placeName(state.landable)}`;
+    }
     else if (!onFoot() && state.phoneNear && !state.auto && !state.jump && flying()) text = 'Unlock the phone';
     if (text === promptWas) return;
     promptWas = text;
@@ -3674,14 +3652,13 @@ export async function create(canvas, ctx) {
       emit({ type: 'phone', what: 'open' });
       return;
     }
-    if (key === 'g') {
-      // out of the ship onto the planet, or back in
+    if (key === 'g' && onFoot()) {
+      // on foot: a door, or back in the ship (in it, there's no key to land:
+      // you fly down into a planet's air)
       e.preventDefault();
       heard();
-      if (onFoot()) {
-        // (a door you're at first: a big ship's reach can take in one near it)
-        if (!intoDoor() && !foot.board()) emit({ type: 'foot', id: 'far' });
-      } else startDescent();
+      // (a door you're at first: a big ship's reach can take in one near it)
+      if (!intoDoor() && !foot.board()) emit({ type: 'foot', id: 'far' });
       return;
     }
     if (onFoot()) {
@@ -3856,8 +3833,6 @@ export async function create(canvas, ctx) {
       } else if (flying()) {
         // a stick wherever the press began
         if (!state.stick) takeover();
-        // (a stick already held as G or Land took the ship down: moved since, the pilot has it back)
-        else if (state.auto?.descend && Math.hypot(x - d.x - (state.auto.stick?.[0] ?? 0), y - d.y - (state.auto.stick?.[1] ?? 0)) > DRAG * 2) takeover();
         state.stick = { id: e.pointerId, x: d.x, y: d.y, dx: x - d.x, dy: y - d.y, on: true, pointer: e.pointerType };
         placeStick();
       } else {
@@ -4009,7 +3984,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, director, pieces, leviathans, meteors, fleet, novae, pilots, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, startDescent, diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, director, pieces, leviathans, meteors, fleet, novae, pilots, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -4042,7 +4017,6 @@ export async function create(canvas, ctx) {
       lead: state.lead && { x: +state.lead.x.toFixed(2), y: +state.lead.y.toFixed(2), z: +state.lead.z.toFixed(2), t: +state.lead.t.toFixed(2), hot: state.hot },
       signs: signs.map(({ id, x0, y0, x1, y1, z }) => ({ id, x0, y0, x1, y1, z })),
       foot: foot.phase && { phase: foot.phase, id: foot.id, ...(({ health, who, mate, troops, first }) => ({ health, who, mate, troops: troops.length, first }))(foot.info() ?? { troops: [] }), guests: foot.guestInfo(), spot: foot.crew()?.ship.n ?? null, entry: foot.entry() },
-      descend: state.auto?.descend ? state.auto.id : null,
       landable: state.landable,
       last,
     });
@@ -4148,13 +4122,11 @@ export async function create(canvas, ctx) {
       if (down) fire();
       ctx.invalidate();
     },
-    // the phone's Land button (and G): down into the planet's air and in; on foot, back in
+    // the phone's Ship button (G on foot): a door, or back in the ship
     out() {
       heard();
-      if (onFoot()) {
-        // (a door you're at first: a big ship's reach can take in one near it)
-        if (!intoDoor() && !foot.board()) emit({ type: 'foot', id: 'far' });
-      } else startDescent();
+      // (a door you're at first: a big ship's reach can take in one near it)
+      if (onFoot() && !intoDoor() && !foot.board()) emit({ type: 'foot', id: 'far' });
     },
     // the phone's Switch button, on foot: play the other one
     swap() {

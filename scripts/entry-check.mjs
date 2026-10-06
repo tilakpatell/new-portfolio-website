@@ -5,7 +5,7 @@
 // It flies the ship level into a planet's air at cruise speed and checks the
 // way in takes it down (the burn, the clouds, out under them, the place's
 // name) and the crew step out; takes off and checks it climbs out past the
-// air; parks off the planet and checks G flies it in by itself; then flies
+// air; parks off the planet and checks G no longer lands it; then flies
 // into another planet at the boost and checks that's still a crash, and that
 // the crash takes the page on into that world's page. Screenshots of each
 // moment go to OUT. Headless Chromium draws in software, slowly: the waits
@@ -108,7 +108,8 @@ const away = await page.evaluate((id) => {
 }, planet);
 ok(!s.foot && away > air.dist, `${planet}: flying on level after taking off goes away from it, not back in (${away.toFixed(2)} from its middle)`);
 
-// 3. G at the planet: the ship flies itself in
+// 3. G at the planet: no landing (flying in is the only way down), and the
+// prompt says so, with no key to press
 await page.evaluate((id) => {
   const d = window.__universeDebug;
   d.diveAt(id, 0);
@@ -120,19 +121,16 @@ await page.evaluate((id) => {
   d.state.ship = { ...sh, x: c.x + (sh.x - c.x) * k, z: c.z + (sh.z - c.z) * k, speed: 0 };
 }, planet);
 await page.waitForFunction((id) => window.__universe().landable === id, planet, { timeout: 60000, polling: 100 }).catch(() => null);
-const prompt = await page.evaluate(() => document.querySelector('.universe-prompt')?.textContent ?? '');
-ok(/Fly down into the air/.test(prompt), `${planet}: the prompt says to fly down into the air (${prompt})`);
+const prompt = await page.evaluate(() => {
+  const el = document.querySelector('.universe-prompt');
+  return { text: el?.textContent ?? '', key: el ? window.getComputedStyle(el, '::before').content : '' };
+});
+ok(/Fly down into the air/.test(prompt.text) && (prompt.key === 'none' || prompt.key === 'normal'), `${planet}: the prompt says to fly down into the air, with no key (${prompt.text}; badge ${prompt.key})`);
+const clock1 = await page.evaluate(() => window.__universeDebug.state.clock);
 await page.keyboard.press('g');
-await page.waitForFunction(() => window.__universe().descend || window.__universe().foot?.entry, null, { timeout: 30000, polling: 100 }).catch(() => null);
+await page.waitForFunction((c) => window.__universeDebug.state.clock > c + 1.5, clock1, { timeout: 600000, polling: 100 }).catch(() => null);
 s = await snap();
-ok(s.descend === planet || Boolean(s.foot?.entry), `${planet}: G takes the ship down (descend ${s.descend})`);
-await page.waitForFunction(() => window.__universe().foot?.entry, null, { timeout: 600000, polling: 100 }).catch(() => null);
-s = await snap();
-ok(Boolean(s.foot?.entry) && !s.crash, `${planet}: and it goes in through the air, no crash`);
-await page.evaluate(() => window.__universeDebug.foot.end());
-await page.waitForTimeout(500);
-// (end() leaves it where it was: put it back up and flying)
-await page.evaluate((id) => window.__universeDebug.diveAt(id, 0, [0, 0, 1]), planet);
+ok(!s.foot && !s.crash && !s.auto, `${planet}: G at a planet does nothing (foot ${JSON.stringify(s.foot?.phase)}, autopilot ${JSON.stringify(s.auto)})`);
 
 // 4. Into another planet at the boost: still a crash, on into its page
 ok(await page.evaluate((id) => window.__universeDebug.diveAt(id, 20), crashInto), `${crashInto}: put just off its air at the boost`);
