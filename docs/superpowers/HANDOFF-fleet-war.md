@@ -42,17 +42,15 @@ The design is `docs/superpowers/specs/2026-10-06-fleet-war-design.md` and the pl
   - The crews have galaxy lines for all of it.
 
 - **PR C: the capitals’ close-up cut.** A desktop with a graphics card (detail high or ultra) flies Daniel Andersson’s Imperial II (84k triangles) and Nebulon-B (100k) in place of the lighter ones, each with its own far-off copy (`galaxy/models.js` `HQ`, `withHq`; `scripts/sketchfab-galaxy.mjs destroyerhq nebulonhq`; `scripts/galaxy-lod.mjs hq/destroyer hq/nebulon`). The Imperial II is imported barely metal and brightened (`metal`, `gain`), or its grey plates come out near black under one sun. Home One’s close-up cut was tried and left: the same Sketchfab model as `moncal`, it came out plainer in the battle than the 40k one. `SUBSYSTEMS`, `TURRETS` and `HULLS` are shares of the length and hold on both cuts (the shield generators’ markers sit at the domes).
+- **PR D: Rick and Morty's war.** On (`ready: true`), at its real places: seven sectors from just off the Citadel to the sky over Earth C-137, which the Federation holds, as in the show. Its flagships were made with Meshy from the show's own pictures (`scripts/meshy-war.mjs`; a still from the Rick and Morty wiki, kept in `lab/meshy/war/ref/`, lifted out by image-to-image, then image-to-3D): the Federation's battleship as the show drew it, dark green and black with red lights, and the Council's dreadnought in the Citadel's look (the Council has no warship of its own in the show). A first try from words alone came out as designs of their own and was dropped. Each stands in as `councilship`/`fedcruiser` till it loads. Their subsystems, batteries and hulls were placed from shots. Objective markers now fit their names (`battleFx.js` `fitPx`; the cards had cut "Destroy: Shield generator" off at both ends, in the galaxy too). `scripts/universe-war-check.mjs [cruiser|rv]` (starts its own Vite, real GPU) flies the front through: auto-joined on the crew's side, the phases down, the flagship broken, the war saved, the nav map's front button.
 
 ## Left, in order
 
-1. **PR D: Rick and Morty's war.**
-   - The Council's dreadnought and the Federation's battleship. Scout Sketchfab first, then Meshy.
-   - Their subsystems.
-   - `ready: true`. The war goes at its real places: the Citadel, C-137 and the Federation's.
-   - Bring back a universe browser check: the front, auto-joined.
-   - Done looks like: the check, flying the cruiser, plays a battle through.
-2. **PR E: Breaking Bad's war.** The same, for Gus's superlab barge and the cartel's hacienda.
-3. **Smaller:**
+1. **PR E: Breaking Bad's war.** As PR D, for Gus's superlab barge and Don Eladio's flying hacienda.
+   - Their models are made and paid for (`scripts/meshy-war.mjs`, task ids in `scripts/meshy-war-tasks.json`); `fetch superlab hacienda` (free) writes them to `public/models/universe/war/`. Noses from the raw shots: superlab `π/2` (thrusters at +x), hacienda `π` (thrusters at +z).
+   - Its corridor at real places: out from Albuquerque (the Breaking Bad world) toward the border.
+   - `ready: true`, subsystems from shots, then `node scripts/universe-war-check.mjs rv`.
+2. **Smaller:**
    - Voice the new lines (`npm run voices`, which needs the ElevenLabs key).
    - Measure frame time with 64 fighters on a real graphics chip.
    - Consider instancing the far fighters if it's slow.
