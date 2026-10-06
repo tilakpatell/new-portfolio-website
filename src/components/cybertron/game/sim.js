@@ -16,7 +16,7 @@ const ALL = { missions: MISSIONS }; // (feedMission looks a mission up here, whe
 
 // which model plays which enemy, by era
 const MODEL = {
-  foc: { trooper: ['trooper', 'sniper', 'leaper'], vehicon: ['trooper'], megatron: ['megatron-foc'], barricade: ['barricade'] },
+  foc: { trooper: ['trooper', 'sniper', 'leaper'], vehicon: ['trooper'], megatron: ['megatron-foc'], barricade: ['barricade'], shockwave: ['shockwave-foc'] },
   tfp: { trooper: ['vehicon'], vehicon: ['vehicon'], megatron: ['megatron-tfp'], barricade: ['vehicon'] },
 };
 
@@ -158,7 +158,7 @@ export function createSim({ area: areaId = 'iacon', spawn = 'start', done = [], 
     const live = sim.pickups.filter((k) => !k.mission || k.mission === missions.active);
     for (const id of stepPickups(live, p)) {
       const k = sim.pickups.find((x) => x.id === id);
-      p.energon += k.kind === 'relic' ? 0 : 1;
+      p.energon += k.kind === 'energon' || k.kind === 'crystal' ? 1 : 0;
       out.push({ type: 'pickup', id, kind: k.kind, x: k.x, y: k.y ?? 0, z: k.z });
       feed({ type: 'pickup', kind: k.kind, id }, out);
     }
@@ -200,7 +200,7 @@ export function createSim({ area: areaId = 'iacon', spawn = 'start', done = [], 
       if (offer) {
         startMission(missions, offer);
         out.push({ type: 'start', id: offer.id, title: offer.title });
-        said = person.lines[0];
+        said = offer.say ?? person.lines[0];
         begin(offer.steps[0]);
       }
     }
@@ -238,11 +238,11 @@ export function createSim({ area: areaId = 'iacon', spawn = 'start', done = [], 
         const p = sim.player;
         const left = sim.pickups.filter((k) => !k.taken && (!step.kind || k.kind === step.kind) && (!k.mission || k.mission === m.id));
         const best = left.sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z))[0];
-        target = best ? { x: best.x, z: best.z, label: 'Energon' } : null;
+        target = best ? { x: best.x, z: best.z, label: best.kind === 'matrix' ? 'The Matrix' : best.kind === 'relic' ? 'The relic' : 'Energon' } : null;
       } else if (step.type === 'clear' || step.type === 'defeat') {
         const p = sim.player;
         const best = sim.enemies.filter((e) => !e.dead).sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z))[0];
-        target = best ? { x: best.x, z: best.z, label: best.boss ? 'Megatron' : 'Decepticon' } : null;
+        target = best ? { x: best.x, z: best.z, label: ENEMY_KINDS[best.kind]?.name ?? 'Decepticon', foe: true } : null;
       }
     }
     const count = step && (step.type === 'collect' || step.type === 'clear') ? `${missions.count}/${step.count}` : step?.type === 'drive' ? `${missions.count}/${step.gates.length}` : null;
@@ -263,7 +263,7 @@ export function createSim({ area: areaId = 'iacon', spawn = 'start', done = [], 
       offers: missions.active ? [] : offers.map((o) => ({ title: o.title, giver: sim.area.people.find((q) => q.id === o.giver)?.name })),
       done: missions.done.length,
       total: MISSIONS.length,
-      boss: boss ? { hp: boss.hp / ENEMY_KINDS.megatron.hp, form: boss.form } : null,
+      boss: boss ? { name: ENEMY_KINDS[boss.kind].name, hp: boss.hp / ENEMY_KINDS[boss.kind].hp, form: boss.form } : null,
     };
   };
 

@@ -40,6 +40,7 @@ export const ACHIEVEMENTS = {
   cyMegatron: { name: 'One shall stand', desc: 'Drove Megatron off Iacon’s space bridge' },
   cyTeamPrime: { name: 'Team Prime', desc: 'Checked in with the whole team at the Autobot base' },
   cyEnergonMine: { name: 'Energon, liberated', desc: 'Cleared the Vehicons out of their mine outside Jasper' },
+  cyMatrix: { name: 'Till all are one', desc: 'Took the Matrix of Leadership back from Shockwave in Iacon’s Hall of Records' },
   cyRelic: { name: 'Iacon relic', desc: 'Dug an Iacon relic out of the Nevada desert before the Decepticons could' },
   spacebridge: { name: 'All aboard', desc: 'Brought every Decepticon up to the Nemesis through the space bridge' },
   iacon: { name: 'Archivist', desc: 'Recovered every relic in the Iacon database' },
