@@ -7,8 +7,11 @@ import { useOnline } from '../../universe/online/useOnline';
 // with your callsign or a new one) }. Each frame the town sends your step
 // with ref.current?.pose(h, flags) and draws ref.current?.list(). `opts`
 // go to the link (./travellers.js): `bound` for a town bigger than 200 m
-// from its middle, `motion` for one where people run and jump.
-export function useTravellers(town, up, { bound, motion } = {}) {
+// from its middle, `motion` for one where people run and jump. Anyone the
+// site's roster has blocked isn't shown (their id's the same in every room),
+// and while the world's up the site draws no page pointers over it, unless
+// it's part of a page you scroll (`pointers`, the Middle-earth map).
+export function useTravellers(town, up, { bound, motion, pointers = false } = {}) {
   const online = useOnline();
   const on = Boolean(online?.on && online.name);
   const name = online?.name ?? null;
@@ -16,6 +19,11 @@ export function useTravellers(town, up, { bound, motion } = {}) {
   const [count, setCount] = useState(0);
   const nameRef = useRef(name);
   nameRef.current = name;
+  const clientRef = useRef(null);
+  clientRef.current = online?.client ?? null;
+  const enterWorld = online?.enterWorld;
+
+  useEffect(() => (up && !pointers && enterWorld ? enterWorld() : undefined), [up, pointers, enterWorld]);
 
   useEffect(() => {
     if (!on || !up) return undefined;
@@ -25,7 +33,8 @@ export function useTravellers(town, up, { bound, motion } = {}) {
       if (gone) return;
       // (the QA scripts can hand in a room of their own, in development only)
       const relay = import.meta.env.DEV && window.__TOWN_RELAY__ ? { load: window.__TOWN_RELAY__ } : {};
-      link = createTravellers({ town, name: nameRef.current, ...(bound ? { bound } : {}), motion: Boolean(motion), ...relay });
+      const hidden = (id) => clientRef.current?.peers.get(id)?.blocked === true;
+      link = createTravellers({ town, name: nameRef.current, ...(bound ? { bound } : {}), motion: Boolean(motion), hidden, ...relay });
       ref.current = link;
     });
     // closing the tab: out of the room at once

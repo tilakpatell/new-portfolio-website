@@ -1,18 +1,24 @@
 // Where on the site a pilot is, as the other pilots see it: a page key
-// (the universe map is one place whatever's picked on it, Middle-earth's
-// places are one, and so are the roles on the experience page; each of the
-// galaxy's star systems is a place of its own, so you meet the pilots in
-// the system you're in), checked when it comes in, and named for the roster
-// ("on Middle-earth", "at Hoth").
+// (the universe map is one place whatever's picked on it, and so are the
+// roles on the experience page; each of the galaxy's star systems is a place
+// of its own, so you meet the pilots in the system you're in, and so is each
+// of Middle-earth's chapters, a world of its own to walk, apart from the map),
+// checked when it comes in, and named for the roster ("Bree", "Hoth").
 
 import { byPath } from '../universes';
 import { GALAXY, SYSTEM_NAMES, inGalaxyFlight, systemOfPath } from '../../galaxy/names';
+import { chapter } from '../../middleearth/chapters';
+import { hidden } from '../../middleearth/hidden';
 
 export const UNIVERSE = '/universe';
+const MIDDLE_EARTH = '/middle-earth';
 
 export function whereOf(pathname) {
   if (pathname === '/' || pathname.startsWith('/universe')) return UNIVERSE;
-  if (pathname.startsWith('/middle-earth')) return '/middle-earth';
+  if (pathname.startsWith(MIDDLE_EARTH)) {
+    const place = pathname.slice(MIDDLE_EARTH.length).split('/')[1];
+    return place ? `${MIDDLE_EARTH}/${place}` : MIDDLE_EARTH;
+  }
   if (pathname.startsWith('/experience')) return '/experience';
   return pathname;
 }
@@ -21,17 +27,25 @@ export function whereOf(pathname) {
 // pilots there are ships, not pointers on a page
 export const isFlight = (where) => where === UNIVERSE || inGalaxyFlight(where);
 
+// a page that draws who's online itself, in its own corner (Universe.jsx,
+// Galaxy.jsx, GalaxySurface.jsx): the site leaves it to them
+export const ownCorner = (where) => isFlight(where) || /^\/galaxy\/[a-z0-9-]+\/surface$/.test(where ?? '');
+
 // a page key as it came in, or null if it isn't one
 export function cleanWhere(raw) {
   if (typeof raw !== 'string' || raw.length > 64 || !/^\/[a-z0-9/-]*$/.test(raw)) return null;
   return raw;
 }
 
-const NAMES = { [UNIVERSE]: 'the universe', [GALAXY]: 'a galaxy far, far away', '/deathstar': 'the Death Star', '/projects': 'Projects', '/travel': 'Travel', '/resume': 'the résumé' };
+const NAMES = { [UNIVERSE]: 'the universe', [GALAXY]: 'a galaxy far, far away', '/deathstar': 'the Death Star', '/projects': 'Projects', '/travel': 'Travel', '/resume': 'the résumé', '/c-137/citadel': 'the Citadel' };
 
 export function placeName(where) {
   if (!where) return 'somewhere';
   if (NAMES[where]) return NAMES[where];
+  if (where.startsWith(`${MIDDLE_EARTH}/`)) {
+    const id = where.slice(MIDDLE_EARTH.length + 1);
+    return (chapter(id) ?? hidden(id))?.name ?? placeName(MIDDLE_EARTH);
+  }
   const sys = systemOfPath(where);
   if (sys) return inGalaxyFlight(where) ? SYSTEM_NAMES[sys] : where.endsWith('/surface') ? `down on ${SYSTEM_NAMES[sys]}` : `the ${SYSTEM_NAMES[sys]} briefing`;
   const u = byPath(where);

@@ -1,6 +1,6 @@
 import { HULL_KEY, readHulls } from '../shipyard/build';
 import { LOOK_KEY, readLooks } from '../../rickmorty/wardrobe/looks';
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { local } from '../../../lib/hooks';
 import { cleanName, randomCallsign } from './names';
 import { LOADOUT_KEY, STOCK_LOADOUT, readLoadouts } from '../outfit';
@@ -19,7 +19,9 @@ import { LOADOUT_KEY, STOCK_LOADOUT, readLoadouts } from '../outfit';
 // so no one's left waiting on a ghost and your connection isn't kept open
 // for nothing, and joins again when you're back. Live pointers off the map
 // (Presence.jsx: yours to them, theirs to you) can be turned off, and that's
-// remembered.
+// remembered, and they're never drawn over a walkable world (enterWorld(),
+// from ../../middleearth/towns/useTravellers.js), where the others are
+// there in person.
 
 const ONLINE_KEY = 'tp-universe-online'; // 'on' once you've gone online
 const NAME_KEY = 'tp-universe-callsign';
@@ -54,6 +56,17 @@ export function useOnlineState(where) {
   const [attempt, setAttempt] = useState(0); // a retry makes a fresh link
   const [away, setAway] = useState(false); // the tab's been in the background a while
   const [pointers, setPointers] = useState(() => local.get(POINTERS_KEY) !== 'off');
+  const [worlds, setWorlds] = useState(0); // walkable worlds up (each with its own room of travellers)
+  // a world's up: → done() once it's gone
+  const enterWorld = useCallback(() => {
+    setWorlds((n) => n + 1);
+    let gone = false;
+    return () => {
+      if (gone) return;
+      gone = true;
+      setWorlds((n) => n - 1);
+    };
+  }, []);
   const latest = useRef({ name, kind, loadout, build, looks, where });
   latest.current = { name, kind, loadout, build, looks, where };
 
@@ -141,6 +154,8 @@ export function useOnlineState(where) {
     room,
     feed,
     pointers, // live pointers off the map, yours and theirs
+    inWorld: worlds > 0, // in a walkable world, where the others walk about instead
+    enterWorld,
     setKind, // the universe page says which ship you fly
     setLoadout, // and what's fitted to it
     setBuild, // and the hull it is: a garage build, or null
