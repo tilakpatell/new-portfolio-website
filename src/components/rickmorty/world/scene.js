@@ -332,7 +332,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   // under Morty, and no shadow pass. The rooms keep their own light. ──
   const street = areas.street;
   const S = AREAS.street;
-  const ground = street?.floor
+  const floorLight = street?.floor
     ? groundWorld({
         renderer,
         scene,
@@ -504,7 +504,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     areas[area].update?.(t, dt, state, camera);
     if (fx.portal.visible) fx.portal.rotation.y = Math.atan2(camera.position.x - fx.portal.position.x, camera.position.z - fx.portal.position.z);
     fx.update(dt, t);
-    ground?.update();
+    floorLight?.update();
     renderer.info.reset();
     stage.render(ms);
   };
@@ -554,8 +554,8 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       fresh.group.visible = was.group.visible;
       was.group.removeFromParent();
       scene.add(fresh.group);
-      ground?.untrack(was.group);
-      ground?.track(fresh.group, [0.9, 0.9], { contact: mortyShadow });
+      floorLight?.untrack(was.group);
+      floorLight?.track(fresh.group, [0.9, 0.9], { contact: mortyShadow });
       morty = fresh;
       undress = dress(morty, l);
     }
@@ -567,7 +567,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   };
 
   const api = {
-    ground: import.meta.env.DEV ? ground : null, // for the QA scripts
+    ground: import.meta.env.DEV ? floorLight : null, // for the QA scripts
     render,
     resize,
     fx: fxEvent,
@@ -586,7 +586,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     },
     dispose() {
       if (stage.disposed) return;
-      ground?.dispose();
+      floorLight?.dispose();
       for (const a of Object.values(areas)) a.dispose?.();
       ghosts.dispose();
       // models a builder never put in the scene
