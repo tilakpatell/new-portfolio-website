@@ -50,3 +50,5 @@ scripts/voices/**/__pycache__/
 
 # what scripts/gen3d makes along the way (raw GLBs, concept images, renders)
 scripts/gen3d/cache/
+# (and the front door's payload, before and after: scripts/payload-check.mjs)
+!lab/payload/
