@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import { createStage } from '../../../lib/stage3d';
 import { device } from '../../../lib/device';
 import { createFx } from '../../middleearth/shire/fx';
+import { createGhosts } from '../../middleearth/towns/ghosts';
 import { loadKit } from '../kit';
 import { CAST as STAFF_HEIGHTS, loadPeople } from '../people';
 import { makeProps } from '../props';
@@ -197,6 +198,35 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
       poll();
     }),
   ]);
+  // others online here (OfficeWorld's useTravellers), as the Middle-earth
+  // towns and the Avengers compound show theirs: each a pale, shimmering Jim
+  // from another branch, with their name over him. Nothing here bumps into
+  // them, and they can't touch your jobs, nor you theirs.
+  const ghosts = createGhosts({
+    make: () => {
+      const p = cast?.person('jim', { pose: 'stand', shadows: false });
+      const group = new THREE.Group();
+      if (!p) {
+        // (Jim's model not to hand: a plain shape of him)
+        group.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 1.3, 4, 10).translate(0, 0.86, 0), new THREE.MeshStandardMaterial()));
+        return { group, top: 1.75 };
+      }
+      p.group.rotation.y = Math.PI / 2; // (a ghost's face, like Jim's, is measured from +x; a figure faces +z)
+      group.add(p.group);
+      // (his mesh and its materials are the cast's, shared with the real Jim: not the ghost's to dispose)
+      return { group, top: 1.9, person: p, shared: true, dispose: () => {} };
+    },
+    animate: (f, t, p, dt) => {
+      if (!f.person) return;
+      f.person.walk(p.moving, Math.max(0.6, (p.speed ?? 1.4) / 2.3));
+      f.person.update(t, dt);
+      f.person.group.position.y = f.person.bob();
+    },
+    tag: 0.3,
+    halo: 0.8,
+  });
+  scene.add(ghosts.group);
+
   // the runners in the fire drill: these get up and go
   const RUNNERS = ['michael', 'angela', 'kevin', 'oscar', 'andy', 'phyllis', 'stanley', 'dwight'];
 
@@ -242,6 +272,8 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     A.t += dt;
     const t = A.t;
     const h = s.jim;
+
+    ghosts.update(s.travellers ?? [], t, dt);
 
     // ── Jim ──
     if (jim) {
@@ -509,6 +541,7 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     },
     dispose() {
       gone = true;
+      ghosts.dispose();
       fx.dispose?.();
       set.dispose();
       wh.dispose();
