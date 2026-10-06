@@ -37,7 +37,7 @@ export const SITES = {
     light: { sun: 2.6, sky: '#9fbce6', ground: '#e6edf6', ambient: 0.9 },
     dust: '#f4f8fd',
     edge: 'Nothing out there but ice and wind, and it’s colder every night. Better turn back.',
-    ground: {
+    ground: { detail: 'snow', detailLook: { color: 0.5, normal: 0.6 },
       seed: 7,
       wind: 0.6,
       layers: [
