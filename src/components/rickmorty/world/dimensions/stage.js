@@ -76,8 +76,9 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
     return fetched.get(key);
   };
   // one of the cast at (x, z) facing `face`, `h` tall (its own height if not
-  // given), gone while `until` is done; null if it won't load
-  const make = (kind, { x, z, face = 0, h = null, y = 0, until = null, onPlace = null }) => {
+  // given), gone once `until` is done and till `after` is (`when(state)`, if
+  // given, says instead); null if it won't load
+  const make = (kind, { x, z, face = 0, h = null, y = 0, until = null, after = null, when = null, onPlace = null }) => {
     const c = kit.cast?.make?.(kind);
     if (!c) return null;
     if (h) c.group.scale.setScalar(h / c.height);
@@ -85,7 +86,8 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
     c.group.rotation.y = face + Math.PI / 2;
     R.group.add(c.group);
     R.tick((t, dt, state) => {
-      c.group.visible = !until || !state?.done?.includes(until);
+      const done = state?.done ?? [];
+      c.group.visible = when ? when(state) : (!until || !done.includes(until)) && (!after || done.includes(after));
       if (c.group.visible) c.update?.(t, 0, 0);
     });
     onPlace?.(c);
@@ -94,10 +96,11 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
   const placed = [];
   // things to place once their models are in: [kind, at] pairs (`at.onPlace(c)`: told when it's stood)
   const figure = (kind, spot) => placed.push([kind, spot]);
-  // the place's people and its crowd, from ./destinations.js
-  const people = () => {
-    for (const p of d.people) figure(p.who ?? p.id, { x: p.x, z: p.z, face: p.face, until: p.until });
-    for (const e of d.extras) figure(e.kind, { x: e.x, z: e.z, face: e.face });
+  // the place's people and its crowd, from ./destinations.js (`extras`:
+  // what the crowd stands with, as `when` for a crowd that runs off)
+  const people = ({ extras = {} } = {}) => {
+    for (const p of d.people) figure(p.who ?? p.id, { x: p.x, z: p.z, face: p.face, until: p.until, after: p.after });
+    for (const e of d.extras) figure(e.kind, { x: e.x, z: e.z, face: e.face, ...extras });
   };
 
   const done = (light, update) => {

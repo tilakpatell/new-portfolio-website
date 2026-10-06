@@ -182,8 +182,12 @@ const inLine = (name) => name.replace(/^The /, 'the ');
 const TALK_DONE = { president: 'president', dineragent: 'diner', therapy: 'wong', ...Object.assign({}, ...DESTINATIONS.map((d) => d.done)) };
 // and the achievements a talk earns
 const TALK_UNLOCK = { therapy: 'wong', ...Object.assign({}, ...DESTINATIONS.map((d) => d.unlock)) };
-// the Purge Planet: once the siren's pulled, how long to get back through the portal
-const PURGE_S = 60;
+// the places left in a hurry (./dimensions/destinations.js's `escape`), by
+// the hotspot that starts the clock: the Purge Planet's siren, Customs'
+// scanner, the wedding's toast
+const ESCAPES = Object.fromEntries(DESTINATIONS.filter((d) => d.escape).map((d) => [d.escape.spot, { ...d.escape, area: d.id }]));
+// and what using a hotspot tells its place's builder
+const ACTS = Object.assign({}, ...DESTINATIONS.map((d) => Object.fromEntries(Object.entries(d.acts).map(([spot, name]) => [spot, [d.id, name]]))));
 // a memory's run in the Mind Blowers chair, and how far Morty can stray from the chair before it stops
 const MEMORY_S = 5.5;
 // Total Rickall: how long a memory of someone stays up over them, and how
@@ -208,7 +212,7 @@ const BOARD_R = 2.7; // how near the cruiser's middle Morty can get in from
 
 // Where the next thing to do is, for the map's marker: the area and the spot
 // in it, and from anywhere else, the way towards it.
-const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'], president: ['street', 'spot:president'], oval: ['garage', 'link:garage-oval'], diner: ['street', 'link:diner-door'], mindblowers: ['mindblowers', 'spot:chair'], rickall: ['house', 'spot:egg'], wong: ['street', 'link:wong-door'], ...Object.fromEntries(DESTINATIONS.flatMap((d) => d.tasks.map((t) => [t.id, [d.id, `spot:${Object.keys(d.done).find((k) => d.done[k] === t.id) ?? 'siren'}`]]))) };
+const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'], president: ['street', 'spot:president'], oval: ['garage', 'link:garage-oval'], diner: ['street', 'link:diner-door'], mindblowers: ['mindblowers', 'spot:chair'], rickall: ['house', 'spot:egg'], wong: ['street', 'link:wong-door'], ...Object.fromEntries(DESTINATIONS.flatMap((d) => d.tasks.map((t) => [t.id, [d.id, `spot:${Object.keys(d.done).find((k) => d.done[k] === t.id) ?? d.escape?.after ?? d.escape?.spot}`]]))) };
 // (every destination is through the garage's portal)
 const toDest = (via) => Object.fromEntries(DESTINATIONS.map((d) => [d.id, via]));
 const WAY = {
@@ -678,12 +682,16 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         }
         if (l.id === 'garage-hatch') complete('basement');
         if (l.id === 'garage-oval') complete('oval');
-        // home from the Purge Planet within the minute the siren gave him
-        if (l.id === 'purge-portal' && s.purgeAt != null && s.t - s.purgeAt <= PURGE_S) {
-          complete('purge');
-          unlock('purge');
+        // home from a place left in a hurry, inside the time it gave him
+        const e = s.escape;
+        if (e && l.id === `${e.area}-portal` && s.t - e.at <= e.s) {
+          complete(e.task);
+          unlock(e.task);
         }
-        if (l.area === 'purge') s.purgeAt = null;
+        if (e?.area === l.area) s.escape = null;
+        // (what he's used is for this visit, and the place he's left settles)
+        s.used = new Set();
+        api.current?.act(l.area, 'calm');
         setFade(null);
       }, climb ? CLIMB_MS : FADE_MS);
     },
@@ -763,11 +771,16 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       dialRef.current = readDial();
       setDialing(true);
     } else if (SAY[n.id]) {
-      say({ kind: 'say', ...SAY[n.id] });
-      // the purge siren: the sky goes red, and the minute starts
-      if (n.id === 'siren' && s.purgeAt == null) {
-        s.purgeAt = s.t;
-        api.current?.act('purge', 'siren');
+      // (a place's clock starts only once what comes first is done: the
+      // scanner finds nothing on him till he's taken the seeds)
+      const e = ESCAPES[n.id];
+      const early = e?.after && !s.used?.has(e.after);
+      say({ kind: 'say', ...(early ? e.before : SAY[n.id]) });
+      (s.used ??= new Set()).add(n.id);
+      if (!early && ACTS[n.id]) api.current?.act(...ACTS[n.id]);
+      // the siren, the scanner, the toast: the clock starts for the portal home
+      if (e && !early && !s.escape) {
+        s.escape = { ...e, at: s.t };
         sound('portalOpen');
       }
       // (done once they've had their say: the President gets in his car then)
