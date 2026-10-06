@@ -47,7 +47,7 @@
 // Lit things are lit in world space from where their light is (the home sun
 // at the map's middle, or their own star), so the map can turn under them.
 //
-// buildDeepSpace({ small }) → { group, update(t, camera, cam, { names }), lens(), dispose() }
+// buildDeepSpace({ small, tier }) → { group, update(t, camera, cam, { names }), lens(), dispose() }
 // cam is the camera's position in the map's space (the group's own).
 
 import * as THREE from 'three';
@@ -60,6 +60,7 @@ import { PULSAR_FRAG } from './supernova';
 import { parts } from './kit';
 import { buildTraffic } from './trafficModels';
 import { sharpen } from '../../lib/three/textures';
+import { rockHook } from '../../lib/three/rock';
 import { BILLBOARD_VERT, CITADEL_FRAG, CITADEL_GLASS_FRAG, CITADEL_VERT, DISK_FRAG, DISK_VERT, GLOW_FRAG, HALO_FRAG, HALO_VERT, JET_FRAG, JET_VERT, LABEL_FRAG, LABEL_VERT, PHOTON_FRAG, PHOTON_VERT, PORTAL_FRAG, PUFF_FRAG, PUFF_VERT, RING_FRAG, RING_VERT, SKY_FRAG, SKY_VERT, SPARK_FRAG, SPARK_VERT, STAR_FRAG, WORLD_FRAG, WORLD_VERT } from './deepspaceShaders';
 
 const { PI, sin, cos, hypot, max, min } = Math;
@@ -537,7 +538,7 @@ export function debrisRocks({ small = false } = {}) {
 // where the streams have drifted to at `t` (the whole of them together)
 export const DEBRIS_DRIFT = (t) => ({ x: sin(t * 0.004) * 6, y: sin(t * 0.003 + 1) * 1.5, z: cos(t * 0.0035) * 5 });
 
-export function buildDeepSpace({ small = false } = {}) {
+export function buildDeepSpace({ small = false, tier = 'high' } = {}) {
   const group = new THREE.Group();
   group.name = 'deep-space';
   const owned = []; // geometries, materials and textures to free
@@ -1389,6 +1390,8 @@ mat3 tumble(float id) {
         .replace('#include <begin_vertex>', 'vec3 transformed = tumbleM * vec3(position);');
     };
     mat.customProgramCacheKey = () => 'deep-debris';
+    // (pitted stone, as the belt is, on high and mid: lib/three/rock)
+    rockHook(mat, { tier });
     const list = debrisField.rocks;
     const im = new THREE.InstancedMesh(own(rock), own(mat), list.length);
     const mm = new THREE.Matrix4();
