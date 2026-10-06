@@ -116,6 +116,7 @@ import { createSetPieces } from './setpieces';
 import { createLeviathans } from './leviathans';
 import { createMeteors } from './meteors';
 import { DEBRIS_DRIFT, buildDeepSpace } from './deepspace';
+import { ROCK_RELIEF } from '../../lib/three/rock';
 import { ROCK_HIT, boxOf, nearBox, nearRing, rockDamage, rockGrid, sweep, toBelt } from './rockHits';
 import { createFront } from './front';
 import { createModels as createBattleModels } from '../galaxy/models';
@@ -526,10 +527,10 @@ export async function create(canvas, ctx) {
   // the asteroid belt, and dust round the camera to feel the speed by (belt.js)
   // (more rocks for the wider band the home system grew to, scale.js: not
   // the band's whole growth in area, so the triangles grow less than it)
-  const belt = createBelt({ small: (window.matchMedia?.('(pointer: coarse)').matches ?? false) || Math.min(window.innerWidth, window.innerHeight) < 600, count: Math.round(3200 * HOME_SPREAD) });
+  const belt = createBelt({ small: (window.matchMedia?.('(pointer: coarse)').matches ?? false) || Math.min(window.innerWidth, window.innerHeight) < 600, count: Math.round(3200 * HOME_SPREAD), tier: device().tier });
   map.add(belt.group);
   // and the rim: a ring of ice right round the edge of the map (layout.js's RIM)
-  const rim = createBelt({ small: Math.min(window.innerWidth, window.innerHeight) < 600, band: RIM, seed: 2049, tones: ['#c9d8e8', '#9fb4c8', '#dfe8f2', '#8ea0b4'], scale: 14, spin: 0.0012, count: 700 });
+  const rim = createBelt({ small: Math.min(window.innerWidth, window.innerHeight) < 600, band: RIM, seed: 2049, tones: ['#c9d8e8', '#9fb4c8', '#dfe8f2', '#8ea0b4'], scale: 14, spin: 0.0012, count: 700, tier: device().tier });
   map.add(rim.group);
   const dust = createDust({ small: Math.min(window.innerWidth, window.innerHeight) < 600 });
   map.add(dust.points);
@@ -649,7 +650,7 @@ export async function create(canvas, ctx) {
 
   // deep space, out past the home system: its wonders, and the trench run
   // round the Death Star's middle
-  const deep = buildDeepSpace({ small });
+  const deep = buildDeepSpace({ small, tier });
   // what the ship can hit among the rocks (rockHits.js): the belt, the rim
   // and the debris streams, each from the same rocks its mesh draws. A rock
   // the ship's smashed is gone a while (`smashed`: field → index → when it's back)
@@ -845,7 +846,7 @@ export async function create(canvas, ctx) {
     return [removerTarget];
   };
   const leviathans = createLeviathans(map, { small }); // (purrgil, or a Cromulon)
-  const meteors = createMeteors(map, { small }); // (a stream of rocks across your path)
+  const meteors = createMeteors(map, { small, tier }); // (a stream of rocks across your path)
   let leviathanSaidAt = -1e9; // the crew's last word about shooting one
   const later = []; // { at, run }: what the director set going, a moment on
   // the other pilots, once online (with reduced motion too: they're people)
@@ -3897,6 +3898,8 @@ export async function create(canvas, ctx) {
     if (sharp !== null) {
       post.sharpness = sharp;
       post.setLevel(pace.level);
+      // (the rocks' relief flat from the pace's step 3, and back: lib/three/rock)
+      ROCK_RELIEF.value = pace.level >= 3 ? 0 : 1;
       // (the planets' ground detail goes at the pace's step 2, their real air for
       // the old halo and their clouds' shadows at 3, and they come back)
       for (const p of planets) p.setLevel(pace.level);
