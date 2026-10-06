@@ -1,0 +1,226 @@
+{
+  "date": "2026-10-06",
+  "sha": "0b1eceb",
+  "metrics": {
+    "big-files": {
+      "value": 30,
+      "unit": "files",
+      "label": "source files over 1500 lines",
+      "detail": [
+        {
+          "file": "src/components/middleearth/towns/moria/props.js",
+          "n": 4505
+        },
+        {
+          "file": "src/components/universe/scene.js",
+          "n": 4274
+        },
+        {
+          "file": "src/components/middleearth/towns/rivendell/props.js",
+          "n": 3861
+        },
+        {
+          "file": "src/components/middleearth/towns/doom/props.js",
+          "n": 3776
+        },
+        {
+          "file": "src/components/middleearth/towns/cirithungol/props.js",
+          "n": 3309
+        },
+        {
+          "file": "src/components/middleearth/shire/props.js",
+          "n": 3296
+        },
+        {
+          "file": "src/components/middleearth/towns/amonhen/props.js",
+          "n": 3198
+        },
+        {
+          "file": "src/components/rickmorty/world/roy/scene.js",
+          "n": 3154
+        },
+        {
+          "file": "src/components/middleearth/towns/minastirith/props.js",
+          "n": 3095
+        },
+        {
+          "file": "src/components/middleearth/towns/edoras/props.js",
+          "n": 3086
+        },
+        {
+          "file": "src/components/cockpit/vehicles/rv.js",
+          "n": 2982
+        },
+        {
+          "file": "src/components/universe/footScene.js",
+          "n": 2792
+        },
+        {
+          "file": "src/components/middleearth/towns/lorien/props.js",
+          "n": 2761
+        },
+        {
+          "file": "src/components/middleearth/towns/weathertop/props.js",
+          "n": 2640
+        },
+        {
+          "file": "src/components/middleearth/towns/marshes/props.js",
+          "n": 2315
+        },
+        {
+          "file": "src/components/universe/deepspace.js",
+          "n": 2228
+        },
+        {
+          "file": "src/components/galaxy/scene.js",
+          "n": 2172
+        },
+        {
+          "file": "src/components/avengers/world/scene.js",
+          "n": 2075
+        },
+        {
+          "file": "src/components/avengers/world/rules.js",
+          "n": 2071
+        },
+        {
+          "file": "src/components/galaxy/surface/scene.js",
+          "n": 1908
+        },
+        {
+          "file": "src/components/universe/crews.js",
+          "n": 1824
+        },
+        {
+          "file": "src/components/middleearth/towns/edoras/folk.js",
+          "n": 1772
+        },
+        {
+          "file": "src/components/galaxy/surface/props/forest.js",
+          "n": 1767
+        },
+        {
+          "file": "src/components/galaxy/surface/props/core.js",
+          "n": 1699
+        },
+        {
+          "file": "src/lib/sfx.js",
+          "n": 1681
+        }
+      ]
+    },
+    "lint-disables": {
+      "value": 54,
+      "unit": "comments",
+      "label": "eslint-disable comments",
+      "detail": [
+        {
+          "file": "src/components/earth/EarthWorld.jsx",
+          "n": 8
+        },
+        {
+          "file": "src/components/Achievements.jsx",
+          "n": 2
+        },
+        {
+          "file": "src/components/cybertron/Iacon.jsx",
+          "n": 2
+        },
+        {
+          "file": "src/components/deathstar/Planets.jsx",
+          "n": 2
+        },
+        {
+          "file": "src/components/galaxy/surface/SurfaceView.jsx",
+          "n": 2
+        },
+        {
+          "file": "src/components/travel/PlacesExplorer.jsx",
+          "n": 2
+        },
+        {
+          "file": "src/components/ui.jsx",
+          "n": 2
+        },
+        {
+          "file": "src/pages/GalaxySurface.jsx",
+          "n": 2
+        },
+        {
+          "file": "src/theme/ThemeProvider.jsx",
+          "n": 2
+        },
+        {
+          "file": "src/components/Photo.jsx",
+          "n": 1
+        },
+        {
+          "file": "src/components/ThemeTransition.jsx",
+          "n": 1
+        },
+        {
+          "file": "src/components/ViewSwitch.jsx",
+          "n": 1
+        },
+        {
+          "file": "src/components/avengers/titan/Titan.jsx",
+          "n": 1
+        },
+        {
+          "file": "src/components/avengers/widow/Infiltration.jsx",
+          "n": 1
+        },
+        {
+          "file": "src/components/avengers/world/CompoundWorld.jsx",
+          "n": 1
+        },
+        {
+          "file": "src/components/caribbean/tide/DeadMansTide.jsx",
+          "n": 1
+        },
+        {
+          "file": "src/components/cockpit/Cockpit.jsx",
+          "n": 1
+        },
+        {
+          "file": "src/components/cybertron/GroundBridge.jsx",
+          "n": 1
+        },
+        {
+          "file": "src/components/cybertron/rollout/RollOut.jsx",
+          "n": 1
+        },
+        {
+          "file": "src/components/deathstar/Trench3D.js",
+          "n": 1
+        },
+        {
+          "file": "src/components/dotmatrix/DotMatrixWorld.jsx",
+          "n": 1
+        },
+        {
+          "file": "src/components/experience/OpeningCrawl.jsx",
+          "n": 1
+        },
+        {
+          "file": "src/components/galaxy/GalaxyView.jsx",
+          "n": 1
+        },
+        {
+          "file": "src/components/interests/cards.jsx",
+          "n": 1
+        },
+        {
+          "file": "src/components/invincible/world/InvWorld.jsx",
+          "n": 1
+        }
+      ]
+    },
+    "todo-notes": {
+      "value": 0,
+      "unit": "notes",
+      "label": "TODO / FIXME / HACK notes",
+      "detail": []
+    }
+  }
+}

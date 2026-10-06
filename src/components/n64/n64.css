@@ -1,0 +1,178 @@
+/* The giant N64, switched on (./N64.jsx): the emulator's frame under a thin
+   bar, or the card that asks for a ROM. */
+.n64 {
+  --n64-red: #e52521;
+  --n64-ink: #f4f1ea;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: #0b0c10;
+  color: var(--n64-ink);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+.n64[data-mode='overlay'] {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+}
+.n64[data-mode='page'] {
+  height: calc(100svh - var(--nav-h, 64px));
+  min-height: 420px;
+}
+.n64-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem max(0.75rem, env(safe-area-inset-right)) 0.5rem max(0.75rem, env(safe-area-inset-left));
+  background: #15161c;
+  border-bottom: 1px solid #262833;
+}
+.n64-title {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.n64-status {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+.n64-gap {
+  flex: 1;
+}
+.n64-chip {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid #3a3d4b;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.n64-chip:hover,
+.n64-chip:focus-visible {
+  border-color: var(--n64-ink);
+}
+.n64-chip-main {
+  background: var(--n64-red);
+  border-color: var(--n64-red);
+  color: #fff;
+}
+.n64-frame {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: #000;
+}
+.n64-pick {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  overflow: auto;
+  background: radial-gradient(120% 90% at 50% 10%, #2a2f45 0%, #10121a 70%);
+}
+.n64-pick[data-drag] {
+  outline: 3px dashed var(--n64-red);
+  outline-offset: -12px;
+}
+.n64-card {
+  width: min(560px, 100%);
+  padding: 1.5rem;
+  border: 1px solid #2b2f40;
+  border-radius: 18px;
+  background: rgba(16, 18, 26, 0.92);
+  box-shadow: 0 30px 60px -30px #000;
+}
+.n64-kicker {
+  margin: 0;
+  color: var(--n64-red);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.n64-card h2 {
+  margin: 0.35rem 0 0.75rem;
+  color: var(--n64-ink);
+  font-size: 1.6rem;
+  line-height: 1.2;
+}
+.n64-card p {
+  margin: 0;
+  line-height: 1.55;
+}
+.n64-card code {
+  padding: 0 0.25rem;
+  border-radius: 4px;
+  background: #22263a;
+  font-size: 0.9em;
+}
+.n64-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.2rem;
+}
+.n64-btn {
+  padding: 0.65rem 1.1rem;
+  border: 0;
+  border-radius: 12px;
+  background: var(--n64-red);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.n64-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.n64-btn-ghost {
+  border: 1px solid #3a3d4b;
+  background: transparent;
+  color: inherit;
+  font-weight: 600;
+}
+.n64-drop {
+  margin-top: 0.6rem !important;
+  font-size: 0.85rem;
+  opacity: 0.6;
+}
+.n64-note {
+  margin-top: 0.9rem !important;
+  color: #ffb4a8;
+}
+.n64-note-float {
+  position: absolute;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  padding: 0.6rem 1rem;
+  border-radius: 10px;
+  background: #1c1d24;
+}
+.n64-keys {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.35rem 1rem;
+  margin: 1.2rem 0 0;
+  font-size: 0.85rem;
+}
+.n64-keys div {
+  display: flex;
+  gap: 0.5rem;
+}
+.n64-keys dt {
+  min-width: 4.5rem;
+  font-weight: 700;
+}
+.n64-keys dd {
+  margin: 0;
+  opacity: 0.8;
+}
+.n64-small {
+  margin-top: 1rem !important;
+  font-size: 0.78rem;
+  opacity: 0.6;
+}

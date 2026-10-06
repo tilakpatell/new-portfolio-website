@@ -37,7 +37,7 @@ export const SITES = {
     light: { sun: 2.6, sky: '#9fbce6', ground: '#e6edf6', ambient: 0.9 },
     dust: '#f4f8fd',
     edge: 'Nothing out there but ice and wind, and it’s colder every night. Better turn back.',
-    ground: {
+    ground: { detail: 'snow', detailLook: { color: 0.5, normal: 0.6 },
       seed: 7,
       wind: 0.6,
       layers: [
@@ -148,6 +148,8 @@ export const SITES = {
         },
         things: [
           { kind: 'hothgenerator', at: [0, 0] },
+          { kind: 'hothcrate', at: [-16, -12], yaw: 0.3 },
+          { kind: 'hothcrate', at: [-14.6, -11.2], yaw: 1.2 },
           { kind: 'turret', at: [-22, 16], yaw: -0.2 },
           { kind: 'turret', at: [22, 18], yaw: 0.3 },
         ],
@@ -252,8 +254,21 @@ export const SITES = {
       },
     ],
     things: [
+      // where you set down: the perimeter post, a snowspeeder on the snow,
+      // its crew's crates and an E-Web
+      { kind: 'snowspeeder', at: [22, -12], yaw: 1.2 },
+      { kind: 'hothcrate', at: [14, 10], yaw: 0.2 },
+      { kind: 'hothcrate', at: [15.6, 10.8], yaw: 0.9 },
+      { kind: 'hothcrate', at: [14.4, 12.2], yaw: 0.4 },
+      { kind: 'hothcrate', at: [-19, 7], yaw: 2.1 },
+      { kind: 'eweb', at: [-15, -17], yaw: 3.2 },
+      { kind: 'lamp', at: [-10, 16], opts: { h: 4, light: '#ffe2b0' } },
+      { kind: 'lamp', at: [18, 4], opts: { h: 4, light: '#ffe2b0' } },
       // a GR-75 transport, loading for the run past the blockade
       { kind: 'gr75', at: [-280, 70], yaw: 0.35 },
+      { kind: 'hothcrate', at: [-250, 48], yaw: 0.4 },
+      { kind: 'hothcrate', at: [-248.4, 49.2], yaw: 1.1 },
+      { kind: 'hothcrate', at: [-258, 94], yaw: 2.3 },
       { kind: 'crates', at: [-252, 52], opts: { color: '#8a929a' } },
       { kind: 'crates', at: [-256, 92], opts: { color: '#6a6458' } },
       // Rogue Group, flying round over the battlefield
@@ -277,6 +292,11 @@ export const SITES = {
       { kind: 'snowdrift', n: 160, within: [20, 580], scale: [1.2, 4.0], sink: 0.3 },
     ],
     life: [
+      // the perimeter post at the landing
+      { kind: 'hothtrooper', n: 3, at: [6, 4], spread: 8, roam: 8, speed: 1.1, name: 'Rebel trooper', says: ['Perimeter post three. Nothing but wind out here. So far.', 'Keep your eyes on the north ridge.', 'Echo Base is that way. Follow the markers.'] },
+      { kind: 'pilot', n: 1, at: [18, -6], still: true, face: 2.2, name: 'Rogue Group pilot', says: ['Harpoon’s armed. Tow cable’s good. Now we wait.', 'Can’t see a thing in this.'] },
+      { kind: 'tauntaun', n: 2, at: [-22, 14], spread: 4, roam: 5, speed: 0.8, r: 0.8 },
+      { kind: 'droid', n: 1, at: [12, 14], roam: 6, speed: 0.6, name: 'Astromech', says: ['(A shivering beep. It would like to go inside now.)'] },
       // the walkers, on their way in
       { kind: 'atat', model: false, n: 4, path: loop([110, 480], [200, 60], 12), speed: 2.2, r: 2.2, name: 'AT-AT', says: ['(Twenty metres up, its head swivels round toward you. Somewhere inside, General Veers is not impressed.)', '(The ground shakes with every step.)'] },
       { kind: 'snowtrooper', n: 3, path: loop([250, 360], [50, 30], 8), speed: 1.3, name: 'Snowtrooper', says: ['Imperial troops have entered the base!', 'Keep moving. The walkers are almost at the generator.', 'Halt! Identify yourself.'] },

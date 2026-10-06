@@ -1373,6 +1373,34 @@
       "galaxy"
     ]
   },
+  "surface-armorer": {
+    "title": "The Armorer",
+    "author": "Niumix z",
+    "authorUrl": "https://sketchfab.com/H4Z4ZEL",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/the-armorer-e3e74228d7fc41b58f36ae110f58b690",
+    "where": "galaxy-surface",
+    "as": "the Armorer",
+    "file": "/models/galaxy/surface/armorer.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-astromech": {
+    "title": "Star Wars Droid 1",
+    "author": "LarsH.",
+    "authorUrl": "https://sketchfab.com/LarsH.",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-droid-1-4d478a8e98f34c6193ee5d57817b3d9f",
+    "where": "galaxy-surface",
+    "as": "the astromech droids",
+    "file": "/models/galaxy/surface/astromech.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-atap": {
     "title": "-Star Wars- AT-AP Walker",
     "author": "ARKON MAREK",
@@ -1457,6 +1485,34 @@
       "galaxy"
     ]
   },
+  "surface-barc": {
+    "title": "-Star Wars- BARC Speeder Bike",
+    "author": "ARKON MAREK",
+    "authorUrl": "https://sketchfab.com/ARKON-83",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-barc-speeder-bike-56ff0b8c18744664aa121db5d2039eb3",
+    "where": "galaxy-surface",
+    "as": "the BARC speeders",
+    "file": "/models/galaxy/surface/barc.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-barrel": {
+    "title": "Star Wars Barrel L",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-barrel-l-8646c0930a6c43bea75cbdf34812e3d2",
+    "where": "galaxy-surface",
+    "as": "the barrels",
+    "file": "/models/galaxy/surface/barrel.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-barrels": {
     "title": "Star-wars Barrel",
     "author": "michael50",
@@ -1485,6 +1541,20 @@
       "galaxy"
     ]
   },
+  "surface-baze": {
+    "title": "Baze Malbus",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/baze-malbus-e30ad72b8ef74ead9739dad571bed50f",
+    "where": "galaxy-surface",
+    "as": "Baze Malbus",
+    "file": "/models/galaxy/surface/baze.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-benhut": {
     "title": "Poor Desert House",
     "author": "Fjordreig",
@@ -1495,6 +1565,20 @@
     "where": "galaxy-surface",
     "as": "Ben Kenobi’s hut",
     "file": "/models/galaxy/surface/benhut.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-bevelcrate": {
+    "title": "Star Wars Beveled Crate S",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-beveled-crate-s-4bd794e931414a79bdacc83e439da6d4",
+    "where": "galaxy-surface",
+    "as": "the bevelled crates",
+    "file": "/models/galaxy/surface/bevelcrate.glb",
     "also": [
       "galaxy"
     ]
@@ -1541,6 +1625,20 @@
       "galaxy"
     ]
   },
+  "surface-clonephase1": {
+    "title": "Clone trooper (Phase I) || Episode II: AOTC",
+    "author": "RC-KOA",
+    "authorUrl": "https://sketchfab.com/RC-Koa",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/clone-trooper-phase-i-episode-ii-aotc-c64ea97f5e854920b092d1d29763c935",
+    "where": "galaxy-surface",
+    "as": "the Phase I clone troopers",
+    "file": "/models/galaxy/surface/clonephase1.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-cloudcar": {
     "title": "Star Wars Galaxies - Twin-pod cloud car",
     "author": "Zorg_Sinister",
@@ -1565,6 +1663,20 @@
     "where": "galaxy-surface",
     "as": "the supply coolers",
     "file": "/models/galaxy/surface/cooler.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-cratecube": {
+    "title": "StarWars Empire Crate Cube Big [Free download]",
+    "author": "Losss",
+    "authorUrl": "https://sketchfab.com/lossgraph",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/starwars-empire-crate-cube-big-free-download-d66fe8b5014b45b0ac313293a171b272",
+    "where": "galaxy-surface",
+    "as": "the Imperial cargo cubes",
+    "file": "/models/galaxy/surface/cratecube.glb",
     "also": [
       "galaxy"
     ]
@@ -1677,6 +1789,48 @@
     "where": "galaxy-surface",
     "as": "the droidekas",
     "file": "/models/galaxy/surface/droideka.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-dwarfspider": {
+    "title": "Dwarf Spider Droid",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/dwarf-spider-droid-4f5d54b98b744c439a14fd897b946a4e",
+    "where": "galaxy-surface",
+    "as": "the dwarf spider droids",
+    "file": "/models/galaxy/surface/dwarfspider.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-empirecrate": {
+    "title": "Star Wars Crate Empire V2 [Free]",
+    "author": "Losss",
+    "authorUrl": "https://sketchfab.com/lossgraph",
+    "license": "CC-BY-SA-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-sa/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-crate-empire-v2-free-c004b40467914c28936fce2629d140cc",
+    "where": "galaxy-surface",
+    "as": "the Imperial cargo crates",
+    "file": "/models/galaxy/surface/empirecrate.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-eopie": {
+    "title": "Eopie Star Wars",
+    "author": "michael50",
+    "authorUrl": "https://sketchfab.com/michael50",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/eopie-star-wars-029de9e7d0264119bbc4cbff45b8ed04",
+    "where": "galaxy-surface",
+    "as": "the eopies",
+    "file": "/models/galaxy/surface/eopie.glb",
     "also": [
       "galaxy"
     ]
@@ -1807,6 +1961,34 @@
       "galaxy"
     ]
   },
+  "surface-homingspider": {
+    "title": "Homing Spider Droid",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/homing-spider-droid-5b714fe3a31f42e197ec0ed0e4d27c56",
+    "where": "galaxy-surface",
+    "as": "the homing spider droids",
+    "file": "/models/galaxy/surface/homingspider.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-hothcrate": {
+    "title": "Star Wars - Battle of Hoth Crate",
+    "author": "judpro",
+    "authorUrl": "https://sketchfab.com/judpro",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-battle-of-hoth-crate-a45e657ce3094078b708ea180da8daba",
+    "where": "galaxy-surface",
+    "as": "the Rebel crates",
+    "file": "/models/galaxy/surface/hothcrate.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-hothgenerator": {
     "title": "Star Wars Shield Generator",
     "author": "floris05janssen",
@@ -1849,6 +2031,20 @@
       "galaxy"
     ]
   },
+  "surface-ithorian": {
+    "title": "Star Wars Ithorian Endor Rebel (rigged)",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-ithorian-endor-rebel-rigged-ca01590e107a45aa9dd9c4386ccfe094",
+    "where": "galaxy-surface",
+    "as": "the Ithorian Rebel",
+    "file": "/models/galaxy/surface/ithorian.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-jabba": {
     "title": "Jabba",
     "author": "Stym",
@@ -1887,6 +2083,34 @@
     "where": "galaxy-surface",
     "as": "the Jedi Temple",
     "file": "/models/galaxy/surface/jeditemple.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-jyn": {
+    "title": "Jyn Erso",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/jyn-erso-9547a563e09e4b26bc09a3453891e086",
+    "where": "galaxy-surface",
+    "as": "Jyn Erso",
+    "file": "/models/galaxy/surface/jyn.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-k2so": {
+    "title": "K-2SO star wars droid",
+    "author": "Coconut",
+    "authorUrl": "https://sketchfab.com/tomas.anglim.811",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/k-2so-star-wars-droid-2761149238284abe8ce1bd8795c3d6b8",
+    "where": "galaxy-surface",
+    "as": "K-2SO",
+    "file": "/models/galaxy/surface/k2so.glb",
     "also": [
       "galaxy"
     ]
@@ -2087,6 +2311,20 @@
       "galaxy"
     ]
   },
+  "surface-mousedroid": {
+    "title": "Star Wars Mouse Droid",
+    "author": "LarsH.",
+    "authorUrl": "https://sketchfab.com/LarsH.",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-mouse-droid-bc78bbf16cf74d2580980e3123458348",
+    "where": "galaxy-surface",
+    "as": "the mouse droids",
+    "file": "/models/galaxy/surface/mousedroid.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-mudhorn": {
     "title": "Mudhorn",
     "author": "NexusSpeedster",
@@ -2157,6 +2395,20 @@
       "galaxy"
     ]
   },
+  "surface-r5": {
+    "title": "R5-J2 Imperial Astromech Droid",
+    "author": "Hunter Wiltse",
+    "authorUrl": "https://sketchfab.com/hunterwiltse",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/r5-j2-imperial-astromech-droid-2d1bf74e06a347449a20c8f2181aac78",
+    "where": "galaxy-surface",
+    "as": "the R5 astromechs",
+    "file": "/models/galaxy/surface/r5.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-rancor": {
     "title": "Rancor star wars",
     "author": "michael50",
@@ -2181,6 +2433,48 @@
     "where": "galaxy-surface",
     "as": "the Razor Crest",
     "file": "/models/galaxy/surface/razorcrest.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-rebelpilot": {
+    "title": "Star Wars X-wing Rebel Flight Suit (rigged)",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-x-wing-rebel-flight-suit-rigged-efa36772d0984634ac6ed8a0e95f8d14",
+    "where": "galaxy-surface",
+    "as": "the Rebel pilots",
+    "file": "/models/galaxy/surface/rebelpilot.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-rebeltech": {
+    "title": "Star Wars Rebel Technician (rigged)",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-rebel-technician-rigged-a0d4d80dad1e43d6b4ab1d78e79b2898",
+    "where": "galaxy-surface",
+    "as": "the Rebel technicians",
+    "file": "/models/galaxy/surface/rebeltech.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-ronto": {
+    "title": "Ronto Star Wars",
+    "author": "michael50",
+    "authorUrl": "https://sketchfab.com/michael50",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/ronto-star-wars-abf77799b3334497a320cda4380c9741",
+    "where": "galaxy-surface",
+    "as": "the rontos",
+    "file": "/models/galaxy/surface/ronto.glb",
     "also": [
       "galaxy"
     ]
@@ -2353,6 +2647,20 @@
       "galaxy"
     ]
   },
+  "surface-speedertruck": {
+    "title": "Star Wars A-A5 heavy speeder truck",
+    "author": "LarsH.",
+    "authorUrl": "https://sketchfab.com/LarsH.",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-a-a5-heavy-speeder-truck-a04c9541663044eb97ce648a385e612c",
+    "where": "galaxy-surface",
+    "as": "the speeder trucks",
+    "file": "/models/galaxy/surface/speedertruck.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-stall": {
     "title": "Tattoine Buildings Kitbash",
     "author": "chuckcg",
@@ -2391,6 +2699,20 @@
     "where": "galaxy-surface",
     "as": "the stormtroopers",
     "file": "/models/galaxy/surface/stormtrooper.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-sullustan": {
+    "title": "Sullustan Star Wars PNJ",
+    "author": "michael50",
+    "authorUrl": "https://sketchfab.com/michael50",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/sullustan-star-wars-pnj-0fae75387d2c4396858d568b9fbb19ab",
+    "where": "galaxy-surface",
+    "as": "the Sullustans",
+    "file": "/models/galaxy/surface/sullustan.glb",
     "also": [
       "galaxy"
     ]
@@ -2493,6 +2815,20 @@
       "galaxy"
     ]
   },
+  "surface-yavinramp": {
+    "title": "Star Wars Yavin Service Ramp",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-yavin-service-ramp-5e0619a6b994442983dd26db2c8448dc",
+    "where": "galaxy-surface",
+    "as": "the hangar service ramps",
+    "file": "/models/galaxy/surface/yavinramp.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-yavinspeeder": {
     "title": "Star Wars Yavin 4 Transport Speeder",
     "author": "tegnemaskin",
@@ -2531,6 +2867,20 @@
     "where": "galaxy-surface",
     "as": "Yoda",
     "file": "/models/galaxy/surface/yoda.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-ywing": {
+    "title": "Star Wars: Y- Wing",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-y-wing-b8bb6476b1b14ba48987c7efc7b7087a",
+    "where": "galaxy-surface",
+    "as": "the Y-wings",
+    "file": "/models/galaxy/surface/ywing.glb",
     "also": [
       "galaxy"
     ]

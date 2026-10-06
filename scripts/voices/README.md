@@ -13,6 +13,16 @@ makes along the way stays on this machine: `scripts/voices/cache/`,
 git-ignored. To serve the lines from somewhere else (behind a sign-in, say),
 build with `VITE_VOICED_BASE` set to that folder's URL path.
 
+## Whose lines
+
+The crews on the universe map, in the galaxy, the cockpit and on the
+ground, and the worlds' people: Middle-earth's towns, the Office and the
+Citadel (their conversations, through `TownHud`'s `Convo`), Metherria's
+customers, the Avengers compound and Cybertron's bots. Each says its lines
+through `useVoiced` (src/lib/useVoiced.js); `voiceOf` in src/lib/voiced.js
+says who sounds like whom and who has no voice. A voice in
+`export-lines.mjs`'s lists with no reference yet just stays quiet.
+
 ## How
 
 1. **References** (`grab.py`). For each voice it gathers candidates (the
