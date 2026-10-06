@@ -238,3 +238,36 @@ Commits `be77d32` to the branch head. The changes from the design above, and why
    file being edited remounts a world, and the old renderer's deferred `forceContextLoss`
    then kills the shared canvas. That is what lost Bree's context twice while it was being
    wired. On a frozen copy, 2 of 2 runs were clean.
+9. **Late fixes from QA:**
+   - Weathertop showed Frodo all but black in a hill's dusk shadow. A mover in baked shade
+     now keeps 45% of the sun, and the bake lifts low suns to at least 20° (`BAKE_LIFT`;
+     the folio's sun stands at about 46°).
+   - In C-137, `render()`'s own local `ground` (the road's height) shadowed the handle, and
+     the street fell back to cards. The handle is now named `floorLight`.
+   - `ground.enabled` switches the whole kit off and back on, for a same-frame A/B
+     (`ground-qa --ab`).
+
+### Measured (headless Chromium, SwiftShader)
+
+| world | tier | draw calls before → after | bake |
+| --- | --- | --- | --- |
+| Avengers compound | low | 271 → 185 (−32%) | 28 passes, 46.7 s in software |
+| the Shire (same moment, `--hold`) | mid | 439 → 357 (−19%) | 48 passes, 35.8 s in software |
+| Minas Tirith | low | 174 → 171 | 28 passes, 10.8 s |
+| the Citadel | low | 94 → 94 (now grounded at all) | 28 passes, 8.0 s |
+| C-137 street | low | 78 → 79 | 28 passes, 13.6 s |
+| music courtyard | low | 124 → 124 | 28 passes, 6.8 s |
+| Tatooine surface | low | 407 → 408 | 28 passes, 23.2 s |
+| Invincible (sky only) | low | — | 16 passes, 19.6 s |
+
+Notes on the table:
+- **What the draw calls show:** where a world had a shadow pass (the compound on every
+  tier, the towns from mid up), it's gone, and the draw count drops by its share. On the low
+  tier most worlds had none, and the kit adds one instanced blob draw.
+- **Bake times:** software WebGL is two orders of magnitude slower than a GPU. The same
+  28–48 passes are a few frames' work on a phone.
+- **Smoke:** `autopilot-check --only smoke` passes the core pages, all twelve Middle-earth
+  routes, C-137 and Cybertron. The heavy worlds it reports as "no canvas" fail the same way
+  on `main`: the world gate holds them on software WebGL. `ground-qa` (with
+  `tp-worlds=load`) shows every one of them rendering and baking with no errors.
+- **Shots:** `docs/superpowers/shots/2026-10-06-baked-*.webp`.
