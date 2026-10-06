@@ -350,7 +350,7 @@ export const LEDGE = { x: -44, y: COURT_Y + 18, z0: -14, len: 27, w: 3.2 };
 export const ledgeAt = (s) => [LEDGE.x, LEDGE.y, LEDGE.z0 - Math.max(0, Math.min(LEDGE.len, s))];
 export const COVERS = [5.5, 11.5, 17].map((s) => ({ s, r: 1.1 }));
 export const PILE = { s: 22.6, top: 4.2 };
-export const WATCH = { s: 25.8 };
+export const WATCH = { s: 26.4 };
 export const inCover = (s) => COVERS.some((c) => Math.abs(s - c.s) <= c.r);
 // the chain of beacons along the White Mountains, away north-west to Rohan:
 // Amon Dîn, Eilenach, Nardol, Erelas, Min-Rimmon, Calenhad, Halifirien
@@ -369,7 +369,7 @@ export const BEACONS = [
 // Pelennor in front, and the siege-towers coming over it. A tower `d`
 // metres out is at x = WALL_R[0] + 4 + d, in its own lane.
 export const SIEGE_AT = (() => {
-  const a = 0.12;
+  const a = 0.37;
   const [x, z] = polar(WALL_R[0] - WALL_T / 2, a);
   return { x, z, y: LEVEL_Y[0], face: 0 };
 })();
