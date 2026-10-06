@@ -54,27 +54,35 @@ for (const id of planets) {
   });
   const list = await page.evaluate(() => window.__universeDebug.foot.spots.map((s) => ({ n: s.n, label: s.label, say: s.say })));
   console.log(`     ${id}: ${list.length} spots`);
-  let opened = false;
+  let door = null;
   for (let i = 0; i < list.length; i++) {
     const near = await page.evaluate((i) => {
       const S = window.__universeDebug.foot.debug;
       const s = window.__universeDebug.foot.spots[i];
       S.me = { ...S.me, n: s.n, h: 0, vh: 0, speed: 0, side: 0 };
+      S.cam.pitch = 0.35;
       return window.__universeDebug.foot.info()?.near ?? null;
     }, i);
     await page.waitForTimeout(1500);
     const prompt = await page.evaluate(() => document.querySelector('.universe-prompt')?.textContent ?? '');
     check(Boolean(near) && Boolean(prompt), `${id}: spot ${i} answers: ${prompt || JSON.stringify(near)}`);
     await page.screenshot({ path: `${out}/${id}-door-${i}.png`, timeout: 180000 });
-    if (near?.label && !opened) {
-      opened = true;
-      const before = await page.evaluate(() => window.location.hash);
-      await page.keyboard.press('g');
-      const after = await page.waitForFunction((b) => window.location.hash !== b && window.location.hash, before, { timeout: 30000 }).then((h) => h.jsonValue(), () => null);
-      check(Boolean(after) && !after.includes('universe'), `${id}: G at ${near.label} opens ${after}`);
-      break;
-    }
+    if (near?.label && door === null) door = i;
   }
+  // back to the first door, and through it
+  if (door !== null) {
+    const label = await page.evaluate((i) => {
+      const S = window.__universeDebug.foot.debug;
+      const s = window.__universeDebug.foot.spots[i];
+      S.me = { ...S.me, n: s.n, h: 0, vh: 0, speed: 0, side: 0 };
+      return s.label;
+    }, door);
+    await page.waitForTimeout(1000);
+    const before = await page.evaluate(() => window.location.hash);
+    await page.keyboard.press('g');
+    const after = await page.waitForFunction((b) => window.location.hash !== b && window.location.hash, before, { timeout: 30000 }).then((h) => h.jsonValue(), () => null);
+    check(Boolean(after) && !after.includes('universe'), `${id}: G at ${label} opens ${after}`);
+  } else check(false, `${id}: a door`);
   await ctx.close();
 }
 console.log(problems.length ? `${problems.length} problems` : 'all ok');
