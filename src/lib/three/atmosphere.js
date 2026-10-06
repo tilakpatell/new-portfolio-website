@@ -19,6 +19,9 @@
 //   under 1); `flat`, the air in two flat bands of its colour, as a cartoon
 //   draws it (C-137's); each sun { dir (unit, toward it, world), colour (hex
 //   or linear [r, g, b]) }, the second slot black with one
+// skyColoursFor(air, sunElevation) → { zenith, horizon, sun } (linear
+//   [r, g, b]): the same air seen from its ground, looking straight up and
+//   along the horizon, with the sun `sunElevation` (its height's sine) up
 
 import * as THREE from 'three';
 
@@ -167,5 +170,86 @@ export function createAtmosphere({ radius, top = DEFAULTS.top, colour = '#000000
       geo.dispose();
       mat.dispose();
     },
+  };
+}
+
+// ── The sky from the ground, as plain numbers ──
+// The same air, marched from a camera standing on the ground: straight up,
+// and along the horizon (toward the sun and away, averaged). From down here
+// the light on its way in matters: it's thinned by the air it comes through,
+// each colour by how much the air scatters it (the air's own colour), so a
+// blue air's low sun and its horizon go warm, as the shell from space paints
+// with its sunset colour. Not in absolute units: what a landing reads is how
+// the colours move from noon (landings/sky.js).
+const SCATTER = 20; // the air's scattering per unit of density and colour, per radius
+const linearOf = (hex) => {
+  const c = new THREE.Color(hex);
+  return [c.r, c.g, c.b];
+};
+// where a ray from `o` along `d` leaves a sphere of radius `r` about the origin (or -1)
+const exitAt = (o, d, r) => {
+  const b = o[0] * d[0] + o[1] * d[1] + o[2] * d[2];
+  const c = o[0] * o[0] + o[1] * o[1] + o[2] * o[2] - r * r;
+  const disc = b * b - c;
+  return disc < 0 ? -1 : -b + Math.sqrt(disc);
+};
+const hitsGround = (o, d) => {
+  const b = o[0] * d[0] + o[1] * d[1] + o[2] * d[2];
+  const c = o[0] * o[0] + o[1] * o[1] + o[2] * o[2] - 1;
+  return b < 0 && b * b - c > 0;
+};
+
+export function skyColoursFor(air = {}, sunElevation = 1, { steps = 16 } = {}) {
+  const a = { ...DEFAULTS, ...air };
+  const beta = linearOf(a.colour ?? '#8fc1ff').map((c) => c * a.density * SCATTER);
+  const top = a.top;
+  const e = Math.max(-1, Math.min(1, sunElevation));
+  const sun = [Math.sqrt(1 - e * e), e, 0];
+  const cam = [0, 1.0005, 0];
+  const dens = (p) => {
+    const h = Math.max(0, Math.hypot(p[0], p[1], p[2]) - 1) / (top - 1);
+    const fade = h < 0.85 ? 1 : h >= 1 ? 0 : 1 - ((h - 0.85) / 0.15) ** 2 * (3 - (2 * (h - 0.85)) / 0.15);
+    return Math.exp(-h * a.falloff) * fade;
+  };
+  // how much air the light crosses from `p` to the sun (Infinity: the ground's in the way)
+  const toSun = (p) => {
+    if (hitsGround(p, sun)) return Infinity;
+    const t1 = exitAt(p, sun, top);
+    const n = 6;
+    const dt = t1 / n;
+    let od = 0;
+    for (let i = 0; i < n; i++) {
+      const t = dt * (i + 0.5);
+      od += dens([p[0] + sun[0] * t, p[1] + sun[1] * t, p[2] + sun[2] * t]) * dt;
+    }
+    return od;
+  };
+  const look = (d) => {
+    const t1 = exitAt(cam, d, top);
+    const dt = t1 / steps;
+    const out = [0, 0, 0];
+    const view = [0, 0, 0];
+    const glow = 1 + a.glow * Math.max(0, d[0] * sun[0] + d[1] * sun[1] + d[2] * sun[2]) ** 12;
+    for (let i = 0; i < steps; i++) {
+      const t = dt * (i + 0.5);
+      const p = [cam[0] + d[0] * t, cam[1] + d[1] * t, cam[2] + d[2] * t];
+      const rho = dens(p) * dt;
+      const od = toSun(p);
+      for (let k = 0; k < 3; k++) {
+        view[k] += beta[k] * rho * 0.5;
+        out[k] += od === Infinity ? 0 : beta[k] * rho * Math.exp(-beta[k] * od - view[k]) * glow;
+        view[k] += beta[k] * rho * 0.5;
+      }
+    }
+    return out;
+  };
+  const h = 0.03; // (the horizon a little above it: the ray along it never leaves the air)
+  const toward = look([Math.sqrt(1 - h * h), h, 0]);
+  const away = look([-Math.sqrt(1 - h * h), h, 0]);
+  const od = toSun(cam);
+  return {
+    zenith: look([0, 1, 0]),
+    horizon: toward.map((v, k) => (v + away[k]) / 2),
+    sun: beta.map((b) => (od === Infinity ? 0 : Math.exp(-b * od))),
   };
 }

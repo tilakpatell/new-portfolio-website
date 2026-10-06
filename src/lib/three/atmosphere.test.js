@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { ATMO, SHELL_FRAG, atmosphereParams, createAtmosphere } from './atmosphere';
+import { ATMO, SHELL_FRAG, atmosphereParams, createAtmosphere, skyColoursFor } from './atmosphere';
 import { NOISE } from './noiseGlsl';
 import * as body from '../../components/galaxy/bodyShaders';
 
@@ -51,5 +51,27 @@ describe('the atmosphere shell', () => {
   it('a flat air is two bands', () => {
     expect(createAtmosphere({ radius: 1, colour: '#b8ff5a', flat: true }).mesh.material.fragmentShader).toContain('#define FLAT');
     expect(createAtmosphere({ radius: 1, colour: '#b8ff5a' }).mesh.material.fragmentShader).not.toContain('#define FLAT');
+  });
+});
+
+describe('the sky from the ground', () => {
+  const lum = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  const middleEarth = { colour: '#8fc1ff', density: 1.8, top: 1.05 };
+  it('a clear blue air gives a blue zenith and a pale horizon at noon', () => {
+    const { zenith, horizon, sun } = skyColoursFor(middleEarth, 1);
+    expect(zenith[2]).toBeGreaterThan(zenith[0]);
+    expect(lum(horizon)).toBeGreaterThan(lum(zenith));
+    // (paler: nearer white than the zenith, its colours closer together)
+    expect(horizon[0] / horizon[2]).toBeGreaterThan(zenith[0] / zenith[2]);
+    expect(sun.every((v) => v > 0.3 && v <= 1)).toBe(true);
+  });
+
+  it('at sunset the horizon warms', () => {
+    const { horizon, sun } = skyColoursFor(middleEarth, 0.05);
+    expect(horizon[0]).toBeGreaterThan(horizon[2]);
+    expect(sun[0]).toBeGreaterThan(sun[2]);
+    // and with the sun down, the sky goes dark
+    const night = skyColoursFor(middleEarth, -0.3);
+    expect(lum(night.zenith)).toBeLessThan(lum(skyColoursFor(middleEarth, 1).zenith) * 0.05);
   });
 });
