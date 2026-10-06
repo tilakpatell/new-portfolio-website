@@ -131,6 +131,19 @@ function gait(legs, body, { rate = 0.55, swing = 0.32, fold = 0.55, bob = 0.18, 
 
 // an Endor redwood: a vast furrowed trunk on its buttress roots, its
 // branches and foliage high overhead
+// a spray of needles (kit.mats.needles), len long and w wide, its twig's foot
+// at `at`, reaching out along the ground's angle a and drooping by d
+// (radians), its card turned on its own axis by twist
+function spray(len, w, at, a, d, twist = 0, color = '#2a4224') {
+  const g = new THREE.PlaneGeometry(w, len)
+    .translate(0, len / 2, 0)
+    .rotateY(twist)
+    .rotateX(PI / 2 + d)
+    .rotateY(a)
+    .translate(at[0], at[1], at[2]);
+  return part(g, { color, to: 'needles', uv: true });
+}
+
 function redwoodParts({ h = 68, r = 2.6, seed = 1, bark = '#6a3826', leaf = '#2a4224', lo = false } = {}) {
   const rand = rng(seed);
   const prof = [
@@ -170,7 +183,12 @@ function redwoodParts({ h = 68, r = 2.6, seed = 1, bark = '#6a3826', leaf = '#2a
     const end = [cos(a) * (rr + len), y + 1.2 + rand(), sin(a) * (rr + len)];
     if (!lo) parts.push(rod([cos(a) * rr * 0.7, y - 0.8, sin(a) * rr * 0.7], end, 0.4, 0.15, { color: bark, to: 'bark' }, 5));
     const s = (1 - f) * 3 + 3.6 + rand() * 1.4;
-    parts.push(part(blob(seed * 31 + i, { lump: 0.45, detail: lo ? 0 : 1 }), { at: [end[0] * 0.8, end[1] - 0.6, end[2] * 0.8], scale: [s, s * (0.75 + rand() * 0.3), s], rot: [0, rand() * PI, 0], color: new THREE.Color(leaf).offsetHSL(0, 0, (rand() - 0.5) * 0.07), to: 'leaf' }));
+    // (the clump: needle sprays round the limb's end, drooping, and a few
+    // standing up through them for body)
+    const green = new THREE.Color(leaf).offsetHSL(0, 0, (rand() - 0.5) * 0.07);
+    const n = lo ? 3 : 6;
+    for (let j = 0; j < n; j++) parts.push(spray(s * (0.75 + rand() * 0.3), s * 0.62, [end[0] * 0.85, end[1] - 0.4, end[2] * 0.85], a + (j / n) * TAU + rand() * 0.5, 0.25 + rand() * 0.35, rand() * 0.6, green));
+    if (!lo) for (let j = 0; j < 2; j++) parts.push(spray(s * 0.7, s * 0.55, [end[0] * 0.85, end[1] - 1.2, end[2] * 0.85], a + j * PI, -1.15, PI / 2, green));
   }
   parts.push(part(blob(seed * 7, { lump: 0.3 }), { at: [0, h * 0.96, 0], scale: [3.6, 7, 3.6], color: leaf, to: 'leaf' }));
   return { parts, prof };
@@ -186,13 +204,19 @@ function spruceParts({ h = 22, seed = 2, bark = '#5a3a28', leaf = '#2a4224' } = 
     [0.05, h],
   ];
   const parts = [part(trunkGeometry(prof, { seg: 8, furrow: 0.06, ridges: 5, seed }), { color: bark, to: 'bark' })];
-  const layers = 6;
+  // whorls of branches, each a spray of needles reaching out and drooping,
+  // shorter going up; a spike of them at the top
+  const layers = 9;
   for (let i = 0; i < layers; i++) {
     const f = i / (layers - 1);
-    const y = h * (0.28 + 0.62 * f);
-    const w = (1 - f) * 3.6 + 1.2;
-    parts.push(part(new THREE.ConeGeometry(w, h * 0.22, 9, 1), { at: [0, y, 0], rot: [0, rand() * PI, 0], color: new THREE.Color(leaf).offsetHSL(0, 0, (rand() - 0.5) * 0.05), to: 'leaf' }));
+    const y = h * (0.24 + 0.7 * f);
+    const w = (1 - f) * 4 + 0.9;
+    const green = new THREE.Color(leaf).offsetHSL(0, 0, (rand() - 0.5) * 0.06);
+    const n = 7;
+    const turn = rand() * TAU;
+    for (let j = 0; j < n; j++) parts.push(spray(w, w * 0.5 + 0.4, [0, y, 0], turn + (j / n) * TAU, 0.3 + f * 0.2 + rand() * 0.15, (rand() - 0.5) * 0.5, green));
   }
+  for (let j = 0; j < 3; j++) parts.push(spray(h * 0.12, 1.1, [0, h * 0.9, 0], j * 2.1, -PI / 2 + 0.15, 0, leaf));
   return { parts };
 }
 

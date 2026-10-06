@@ -45,6 +45,59 @@ function grimeTexture(seed = 7) {
   });
 }
 
+// a spray of conifer needles on its twigs, alpha-cut (the foliage cards of
+// the forest worlds' trees: a twig up the middle, side twigs off it, short
+// needles all along them), pale, so a part's colour gives it its green
+function needleTexture(seed = 5) {
+  const r = rng(seed);
+  const t = canvasTexture(256, (c, n) => {
+    c.clearRect(0, 0, n, n);
+    c.lineCap = 'round';
+    const shade = () => {
+      const v = 190 + r() * 60;
+      return `rgb(${v * 0.92},${v},${v * 0.86})`;
+    };
+    const twig = (x0, y0, x1, y1, needle, w) => {
+      c.strokeStyle = '#9a8c78';
+      c.lineWidth = w;
+      c.beginPath();
+      c.moveTo(x0, y0);
+      c.lineTo(x1, y1);
+      c.stroke();
+      const len = Math.hypot(x1 - x0, y1 - y0);
+      const [dx, dy] = [(x1 - x0) / len, (y1 - y0) / len];
+      for (let d = 0; d < len; d += 2.2) {
+        const px = x0 + dx * d;
+        const py = y0 + dy * d;
+        const l = needle * (0.7 + r() * 0.5) * (1 - (d / len) * 0.45);
+        for (const side of [-1, 1]) {
+          const a = Math.atan2(dy, dx) + side * (0.75 + r() * 0.35);
+          c.strokeStyle = shade();
+          c.lineWidth = 1.6 + r() * 0.8;
+          c.beginPath();
+          c.moveTo(px, py);
+          c.lineTo(px + Math.cos(a) * l, py + Math.sin(a) * l);
+          c.stroke();
+        }
+      }
+    };
+    // the main twig, bottom middle to near the top, and its side twigs
+    const bend = (r() - 0.5) * 20;
+    twig(n / 2, n * 0.99, n / 2 + bend, n * 0.06, 15, 3);
+    for (let i = 0; i < 7; i++) {
+      const f = 0.15 + i * 0.11;
+      const y = n * (0.99 - f * 0.93);
+      const x = n / 2 + bend * f;
+      for (const side of [-1, 1]) {
+        const reach = n * (0.36 - f * 0.28) * (0.8 + r() * 0.4);
+        twig(x, y, x + side * reach, y - reach * (0.55 + r() * 0.3), 11, 2);
+      }
+    }
+  });
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return t;
+}
+
 // The scanned surfaces, each loaded once for the page (every world's kit
 // shares them; a new renderer uploads them again by itself): role →
 // { map, normalMap, arm } textures, or a promise of them
@@ -120,6 +173,8 @@ export function createKit({ seed = 11, scans = true } = {}) {
     cloth: std({ roughness: 1, side: THREE.DoubleSide }, 0.5),
     bark: std({ roughness: 0.95, map: grime }, 0.6, 'bark'),
     leaf: std({ roughness: 0.82, side: THREE.DoubleSide }, 0.5),
+    // (foliage cards: needles on twigs, cut out of the light behind them)
+    needles: std({ roughness: 0.85, side: THREE.DoubleSide, map: own(needleTexture(seed)), alphaTest: 0.42 }, 1),
     dark: std({ roughness: 0.55, metalness: 0.2 }, 1),
     glass: own(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.08, metalness: 0.3, transparent: true, opacity: 0.55 })),
     glow: own(new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false })),
