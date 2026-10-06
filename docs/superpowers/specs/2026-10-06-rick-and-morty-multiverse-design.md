@@ -346,16 +346,16 @@ step by step.
    `node scripts/model-scout.mjs <name> "<query>" [--rigged]`, the query
    being the asset's wiki name and “rick and morty”, `--rigged` for a
    person. It keeps only downloadable models under a licence the site can
-   use (CC0, CC BY, CC BY-SA, CC BY-NC, CC BY-NC-SA; no ND) and under
-   80,000 faces, ranks them, and writes the candidates (thumbnail, licence,
-   faces, rigged or not, the model's page) to `lab/meshy/scout/<name>/`.
+   use (CC0, CC BY, CC BY-SA, CC BY-NC, CC BY-NC-SA; no ND), ranks them,
+   and writes the candidates (thumbnail, licence, faces, rigged or not, the
+   model's page) to `lab/meshy/scout/<name>/`.
    A Sketchfab figure is judged by the same checklist as a Meshy one,
    against the reference sheet (step 1, which costs nothing and comes
-   first): the silhouette, the main colours, every garment, the face, and
-   for a person a skeleton, or a clean A- or T-pose that Meshy's rigger
-   can take. It is rejected the same way: a fan model with the wrong
-   colours, a missing garment or a melted face is a miss, however much it
-   would save. A hit is imported with
+   first): the silhouette, the main colours, every garment, the face,
+   under 80,000 faces, and for a person a skeleton, or a clean A- or
+   T-pose that Meshy's rigger can take. It is rejected the same way: a
+   fan model with the wrong colours, a missing garment or a melted face
+   is a miss, however much it would save. A hit is imported with
    `node scripts/model-scout.mjs fetch <name> <uid> <out.glb>` to the path
    the generated asset would have had, credited in
    `src/data/modelCredits.json` and recorded in
