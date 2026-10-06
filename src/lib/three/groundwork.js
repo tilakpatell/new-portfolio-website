@@ -150,7 +150,9 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
   const skipRoots = new Set(skip.filter(Boolean));
 
   // ── matcaps, where asked for (before the bounce, which goes on them too) ──
-  if (matcap.length) {
+  // (a matcap is drawn into a half-float picture: where the GPU can't, the
+  // things stay lit as they were)
+  if (matcap.length && canBake) {
     const rig = lights ?? { sun: sunLight, hemi };
     const swapped = new Map();
     for (const o of meshesUnder(matcap, new Set([...floorMeshes, ...moverRoots]))) {

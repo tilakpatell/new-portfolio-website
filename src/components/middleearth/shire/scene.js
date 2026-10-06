@@ -222,7 +222,10 @@ export function createShireWorld(canvas, { onLost } = {}) {
   // the woods on the hills round about: far off, so a few blobs of leaf will do
   const far = farTree();
   const rimList = rim.map((t) => ({ x: t.x, z: t.z, y: height(t.x, t.z) - 0.2, s: t.s * 1.1, turn: t.turn }));
-  outdoors.add(instances(far, new THREE.MeshLambertMaterial({ vertexColors: true }), rimList, { shadow: false }));
+  // (the far rim of trees in matcaps made from the Shire's own light: seen
+  // only in passing, one texture fetch and no lights for each: ../towns/grounded.js)
+  const rimTrees = instances(far, new THREE.MeshLambertMaterial({ vertexColors: true }), rimList, { shadow: false });
+  outdoors.add(rimTrees);
 
   // hedges along the lane
   const hedgeGeo = val(kit.hedge);
@@ -824,7 +827,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   };
 
   // ── the floor's light, baked when the Shire is first drawn outdoors ──
-  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height: groundY, people: movers, skip: [sky.dome, ghosts.group, water.group], tier, radius: WORLD.radius + 10, shade: 0x2c3018 });
+  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height: groundY, people: movers, skip: [sky.dome, ghosts.group, water.group], tier, radius: WORLD.radius + 10, shade: 0x2c3018, matcap: [rimTrees] });
 
   return {
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts

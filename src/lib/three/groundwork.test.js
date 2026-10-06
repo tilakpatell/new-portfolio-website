@@ -254,3 +254,19 @@ describe('a GPU that can\'t bake (no float pictures)', () => {
     expect(w.house.castShadow).toBe(true);
   });
 });
+
+describe('far things painted with matcaps', () => {
+  it('are, where the GPU can draw the matcap, and stay lit where it can\'t', () => {
+    const w = world();
+    const rim = new THREE.Mesh(new THREE.BoxGeometry(2, 6, 2), new THREE.MeshLambertMaterial({ vertexColors: true }));
+    w.scene.add(rim);
+    groundWorld({ renderer: stubRenderer(true), scene: w.scene, floor: [w.floor], area, sun: w.sun, matcap: [rim] });
+    expect(rim.material.isMeshMatcapMaterial).toBe(true);
+    expect(rim.material.vertexColors).toBe(true);
+    const w2 = world();
+    const rim2 = new THREE.Mesh(new THREE.BoxGeometry(2, 6, 2), new THREE.MeshLambertMaterial());
+    w2.scene.add(rim2);
+    groundWorld({ renderer: stubRenderer(false), scene: w2.scene, floor: [w2.floor], area, sun: w2.sun, matcap: [rim2] });
+    expect(rim2.material.isMeshLambertMaterial).toBe(true);
+  });
+});

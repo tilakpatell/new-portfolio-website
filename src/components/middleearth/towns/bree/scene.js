@@ -253,7 +253,10 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     if (Math.hypot(x - 26, z + 52) > 30 && rand() < 0.45) continue;
     rim.push({ x, z, y: height(x, z) - 0.2, s: 0.9 + rand() * 0.9, turn: rand() * 6.28 });
   }
-  outdoors.add(instances(far, new THREE.MeshLambertMaterial({ vertexColors: true }), rim, { shadow: false }));
+  // (the far rim of trees in matcaps made from the town's own light: seen
+  // only in passing, one texture fetch and no lights for each: ../grounded.js)
+  const rimTrees = instances(far, new THREE.MeshLambertMaterial({ vertexColors: true }), rim, { shadow: false });
+  outdoors.add(rimTrees);
 
   // the buildings and props that never move, merged by material
   outdoors.add(bake(statics, [gates.west.group, gates.east.group]));
@@ -736,7 +739,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
   };
 
   // ── the floor's light, baked when the town is first drawn ──
-  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height, people: movers, skip: [sky.dome, ghosts.group, puddles.mesh], tier, radius: WORLD.radius + 10, shade: 0x262a30 });
+  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height, people: movers, skip: [sky.dome, ghosts.group, puddles.mesh], tier, radius: WORLD.radius + 10, shade: 0x262a30, matcap: [rimTrees] });
 
   return {
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts

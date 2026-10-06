@@ -284,8 +284,13 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
     n += 1;
   }
   const woodMat = new THREE.MeshLambertMaterial({ vertexColors: true });
-  valley.add(instances(farTree({ leaf: [0xd8902a, 0xe8b040, 0xb8541e], trunk: 0x6a5a4a }), woodMat, woods[0], { shadow: false }));
-  valley.add(instances(farTree({ leaf: [0xe8c050, 0xd8a838, 0xc89030], trunk: 0xd8d0c0 }), woodMat, woods[1], { shadow: false }));
+  // (the far woods in matcaps made from the valley's own light: seen only in
+  // passing, one texture fetch and no lights for each: ../grounded.js)
+  const farWoods = [
+    instances(farTree({ leaf: [0xd8902a, 0xe8b040, 0xb8541e], trunk: 0x6a5a4a }), woodMat, woods[0], { shadow: false }),
+    instances(farTree({ leaf: [0xe8c050, 0xd8a838, 0xc89030], trunk: 0xd8d0c0 }), woodMat, woods[1], { shadow: false }),
+  ];
+  valley.add(...farWoods);
   const leaves = [];
   for (const [x, z] of TREES)
     for (let k = 0; k < 4; k++) {
@@ -727,7 +732,7 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
   };
 
   // ── the floor's light, baked when the town is first drawn ──
-  const ground = groundTown({ renderer, scene, terrain, outdoors: valley, sun, height: under, people: movers, skip: [sky.dome, ghosts.group], tier, radius: WORLD.radius + 10, shade: 0x3a2a1c });
+  const ground = groundTown({ renderer, scene, terrain, outdoors: valley, sun, height: under, people: movers, skip: [sky.dome, ghosts.group], tier, radius: WORLD.radius + 10, shade: 0x3a2a1c, matcap: farWoods });
 
   return {
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
