@@ -358,8 +358,10 @@ function Toast({ toast }) {
   );
 }
 
-// others online in the street (middleearth/towns/useTravellers), as Mortys from other dimensions
-const ROOM = { bound: 160, motion: true };
+// others online (middleearth/towns/useTravellers), as Mortys from other
+// dimensions, in the street or whichever room you're in (each its own area:
+// the rooms are built out to some 400 m from the street, hence the reach)
+const ROOM = { bound: 820, motion: true };
 
 function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) {
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
@@ -801,9 +803,10 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       else shipTalk(s.shipNext.event);
     }
 
-    // others online: where you are to them (in the street, on foot), and where they are
+    // others online: where you are to them (on foot, in the street or a room:
+    // only those in the same one see you), and where they are
     const tv = trav.ref.current;
-    tv?.pose(s.m, { inside: s.area !== 'street' || Boolean(s.flying) });
+    tv?.pose(s.m, { inside: Boolean(s.flying), area: s.area });
 
     try {
       a.render({ area: s.area, morty: s.m, flying: s.flying, cruiser: s.c, camYaw: s.yaw, camPitch: s.pitch, near: s.view, done: doneRef.current, fed: s.fed, travellers: tv ? tv.list() : null }, ms);

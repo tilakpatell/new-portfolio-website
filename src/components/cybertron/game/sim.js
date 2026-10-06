@@ -55,7 +55,7 @@ export function createSim({ area: areaId = 'iacon', spawn = 'start', done = [], 
     if (!step || !m || (step.area ?? m.area) !== sim.area.id) return;
     if (step.reset) for (const k of sim.pickups) if (k.kind === step.reset) k.taken = false;
     for (const [i, e] of (step.spawn ?? []).entries()) {
-      const models = MODEL[sim.area.era]?.[e.kind] ?? [e.kind];
+      const models = sim.area.foes?.[e.kind] ?? MODEL[sim.area.era]?.[e.kind] ?? [e.kind];
       const enemy = newEnemy(e.kind, e.x, e.z, { id: e.id ?? `${missions.active}-${missions.step}-${i}`, model: models[i % models.length] });
       enemy.y = sim.world.floorAt(e.x, e.z, 50, 60);
       sim.enemies.push(enemy);
@@ -119,7 +119,7 @@ export function createSim({ area: areaId = 'iacon', spawn = 'start', done = [], 
     }
     // the guns
     if (input.fire && !p.dead) {
-      const shots = fire(p, targets(), { yaw: input.aimYaw, pitch: input.aimPitch });
+      const shots = fire(p, targets(), { yaw: input.aimYaw, pitch: input.aimPitch, from: input.muzzle });
       if (shots.length) {
         sim.shots.push(...shots);
         out.push({ type: 'fire', mode: p.mode, shots });
