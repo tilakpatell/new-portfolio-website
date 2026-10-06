@@ -87,6 +87,12 @@ Scorecard (the spec’s “Where things stand” table is the before): fill in t
   - *`rockHook(material)`*: the same pits on a material that has a hook of its own (deep space’s tumbling streams: key `rock-deep-debris`); the meteors and the streams use it, the belt and the rim `rockMaterial`. Two tones (the instance’s colour and its pits’), not an option.
   - *The relief goes flat at the pace’s step 3* (the spec’s table), by one uniform every rock shares (`ROCK_RELIEF`): no shader is made again.
   - *The boulders*: one in each block of forty rocks, picked by a draw of its own so no other rock moves; twice the size (and the ship’s collider knows), an icosphere a step finer with its points shared and eight craters pressed in (180 faces). One more draw for the home belt and one for the rim.
+- **Checkpoint 7:**
+  - *The scene bursts where it pops*: a hunter, a traffic ship, a rival pilot or a skirmisher shot down comes back to the scene as a hit (`hunters.hit`, `traffic.hit`, the skirmishes’ `down` events), and the scene, which already pops it there, bursts it there too, rather than inside `hunters.js` and `skirmishes.js`. Your own crash bursts beside `crashFx.hit` in the scene (not on the sun, which swallows it), not inside `crash.js`.
+  - *2.2 times its size across*, not in radius: in radius a fighter’s fireball was ten of your ships wide.
+  - *`low` is pop from the start*, as the spec’s table has it, as well as after `lowerQuality` and from the pace’s step 2.
+  - *`__universe().blast(size, ahead)`* (DEV) sets one off in front of your ship, to see one at a pose: three draws while it plays at falcon-sun.
+  - *The galaxy’s `fx.js` is left to call it* in its own lane: a line in `HANDOFF-galaxy-upgrade.md` says where it is.
 
 ## Checking it
 
