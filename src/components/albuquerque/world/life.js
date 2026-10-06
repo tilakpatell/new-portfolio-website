@@ -169,6 +169,8 @@ export function createTumbleweeds({ count = 7, seed = 4, radius = 235, model = n
   }
   return {
     object: group,
+    // each one where it is ({ x, z, s, w }: w its group, s its size), for the blob under it
+    weeds,
     update(dt, clock) {
       for (const t of weeds) {
         t.x += t.v * dt;
@@ -405,7 +407,6 @@ export function createPizza() {
   const top = new THREE.MeshStandardMaterial({ map, roughness: 0.8 });
   const side = new THREE.MeshStandardMaterial({ color: 0xb98240, roughness: 0.9 });
   const mesh = new THREE.Mesh(geometry, [side, top, side]);
-  mesh.castShadow = true;
   return {
     object: mesh,
     dispose() {

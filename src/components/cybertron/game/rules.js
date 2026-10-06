@@ -25,6 +25,9 @@ export const ENEMY_KINDS = {
   barricade: { hp: 150, speed: 7, range: 55, cooldown: 0.9, damage: 6, r: 1.3, h: 7.2 },
   // (his cannon: slow, and it hurts)
   shockwave: { hp: 420, speed: 3.5, range: 85, cooldown: 1.7, damage: 15, r: 1.6, h: 11, boss: true, name: 'Shockwave' },
+  // (Megatron's side: the Autobots' raiders, and Zeta Prime at the last)
+  autobot: { hp: 50, speed: 7.5, range: 60, cooldown: 1.1, damage: 6, r: 1.2, h: 7 },
+  zeta: { hp: 650, speed: 4.5, range: 75, cooldown: 0.55, damage: 10, r: 1.8, h: 11, boss: true, name: 'Zeta Prime' },
 };
 
 // The Decepticons who change: so long on their feet, then into their
@@ -451,7 +454,9 @@ export function fire(p, targets, aim) {
   const fz = Math.cos(p.yaw);
   const origins = vehicle
     ? [-1.2, 1.2].map((side) => [p.x + fx * 4.5 + fz * side, p.y + 1.5, p.z + fz * 4.5 - fx * side])
-    : [[p.x + Math.sin(yaw) * 1.6 + Math.cos(yaw) * 1.4, p.y + 7.5, p.z + Math.cos(yaw) * 1.6 - Math.sin(yaw) * 1.4]];
+    : // (from the gun's muzzle, where the page knows it, else off his right
+      // shoulder: +x is his left)
+      [aim.from && Math.hypot(aim.from[0] - p.x, aim.from[2] - p.z) < 9 ? aim.from : [p.x + Math.sin(yaw) * 1.6 - Math.cos(yaw) * 1.4, p.y + 7.5, p.z + Math.cos(yaw) * 1.6 + Math.sin(yaw) * 1.4]];
   // the best target: the one nearest the line, within the cone and range
   const cone = vehicle ? SHOT.aimVehicle : SHOT.aim;
   let best = null;

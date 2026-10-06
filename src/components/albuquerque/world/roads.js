@@ -6,9 +6,10 @@
 // laid on each block: car parks with their bays painted, drives, lawns, a
 // plaza's pavers, gravel yards.
 //
-// createStreets({ ground, noise, aniso, small }) → { object, dispose }.
+// createStreets({ ground, noise, aniso, small }) → { object, floors, dispose }.
 // `ground` is the desert floor's own material: a block that's bare is the
-// same desert, a kerb's height up.
+// same desert, a kerb's height up. `floors` are the materials of everything
+// here that's floor (for the baked floor shadows, lib/three/grounding).
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -144,7 +145,6 @@ export function createStreets({ ground, aniso = 8, small = false } = {}) {
   for (const r of ROADS) {
     if (r.dirt) {
       const m = new THREE.Mesh(own(strip(r)), dirtMat);
-      m.receiveShadow = true;
       root.add(m);
       continue;
     }
@@ -159,11 +159,11 @@ export function createStreets({ ground, aniso = 8, small = false } = {}) {
     const g = own(mergeGeometries(list));
     for (const x of list) x.dispose();
     const m = new THREE.Mesh(g, mat);
-    m.receiveShadow = true;
     root.add(m);
   }
 
   // ── the lines ──
+  let markMat = null;
   const marks = []; // { x, z, yaw, w, l, c }
   const line = (x, z, yaw, w, l, c) => marks.push({ x, z, yaw, w, l, c });
   for (const r of ROADS) {
@@ -245,7 +245,7 @@ export function createStreets({ ground, aniso = 8, small = false } = {}) {
   }
   {
     const geo = own(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2));
-    const mat = own(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }));
+    const mat = (markMat = own(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 })));
     const inst = new THREE.InstancedMesh(geo, mat, marks.length);
     const o = new THREE.Object3D();
     const c = new THREE.Color();
@@ -257,7 +257,6 @@ export function createStreets({ ground, aniso = 8, small = false } = {}) {
       inst.setMatrixAt(i, o.matrix);
       inst.setColorAt(i, c.set(m.c));
     });
-    inst.receiveShadow = true;
     root.add(inst);
   }
 
@@ -304,12 +303,10 @@ export function createStreets({ ground, aniso = 8, small = false } = {}) {
     const g = own(mergeGeometries(slabs.map((s) => (s.index ? s.toNonIndexed() : s))));
     for (const s of slabs) s.dispose();
     const m = new THREE.Mesh(g, slabMat);
-    m.receiveShadow = true;
     root.add(m);
     const pg = own(mergeGeometries(pads));
     for (const s of pads) s.dispose();
     const pm = new THREE.Mesh(pg, ground);
-    pm.receiveShadow = true;
     root.add(pm);
   }
 
@@ -341,12 +338,12 @@ export function createStreets({ ground, aniso = 8, small = false } = {}) {
       if (lot) lot.set([l.x - l.w / 2, l.z - l.d / 2, l.bays ? l.w : 0, l.bays ? l.d : 0], i * 4);
     });
     if (lot) geo.setAttribute('aLot', new THREE.InstancedBufferAttribute(lot, 4));
-    inst.receiveShadow = true;
     root.add(inst);
   }
 
   return {
     object: root,
+    floors: [roadMat, roadMatNS, dirtMat, markMat, slabMat, ...Object.values(lotMats)],
     dispose() {
       for (const o of owned) o.dispose?.();
     },

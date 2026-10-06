@@ -38,6 +38,32 @@ describe('the galaxy’s models', () => {
     for (const [kind, m] of Object.entries({ ...MODELS, ...HUNTER_GLB })) expect(existsSync(at(m.url)), `${kind}: ${m.url}`).toBe(true);
   });
 
+  it('has the ten ships from Sketchfab, each turned to fly nose first, and the Razor Crest that walks the surfaces', () => {
+    const noses = { tie: 0, tiebomber: 0, tieadvanced: 0, shuttle: 0, lightcruiser: -Math.PI / 2, gozanti: 0, munificent: 0, providence: 0, nubian: 0, ghost: 0 };
+    for (const [kind, nose] of Object.entries(noses)) {
+      expect(MODELS[kind], kind).toEqual({ url: `/models/galaxy/${kind}.glb`, nose });
+      expect(existsSync(at(MODELS[kind].url)), kind).toBe(true);
+    }
+    expect(MODELS.razorcrest).toEqual({ url: '/models/galaxy/surface/razorcrest.glb', nose: 0 });
+    expect(existsSync(at(MODELS.razorcrest.url))).toBe(true);
+  });
+
+  it('flies the Sketchfab TIEs as the hunters, each built until it is here', () => {
+    for (const kind of ['tie', 'tieadvanced']) expect(HUNTER_GLB[kind], kind).toEqual({ ...MODELS[kind], built: true });
+    // (the universe's own and the droids', as they were)
+    expect(HUNTER_GLB.interceptor).toBeTruthy();
+    for (const kind of ['vulture', 'trifighter']) expect(HUNTER_GLB[kind].built, kind).toBe(true);
+  });
+
+  it('stands a built ship in for each of the new ones that has none, and none for one that has', () => {
+    expect(STAND_IN).toMatchObject({ tiebomber: 'tie', lightcruiser: 'destroyer', gozanti: 'freighter', providence: 'munificent', ghost: 'freighter' });
+    const built = [...BUILT_KINDS, ...GALAXY_KINDS];
+    for (const kind of ['tie', 'tieadvanced', 'shuttle', 'munificent', 'nubian', 'razorcrest']) {
+      expect(built, kind).toContain(kind);
+      expect(STAND_IN[kind], kind).toBeUndefined();
+    }
+  });
+
   it('gives every loaded kind with no built version a stand-in that is built', () => {
     const built = [...BUILT_KINDS, ...GALAXY_KINDS];
     for (const k of Object.keys(MODELS)) {

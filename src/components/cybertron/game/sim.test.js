@@ -128,6 +128,11 @@ describe('the world, played', () => {
           robot();
           if (sim.area.id !== m.from) {
             const x = sim.area.exits.find((e) => e.to === m.from);
+            // (the other side's capital: no bridge goes there, you pick it)
+            if (!x) {
+              sim.enter(m.from);
+              continue;
+            }
             goTo(sim, x.x + 3, x.z);
             sim.use();
             cross();
