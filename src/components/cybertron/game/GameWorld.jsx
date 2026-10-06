@@ -228,6 +228,11 @@ function World({ gl, setGl }) {
     [save],
   );
 
+  // (in development: window.__CY__.go('base') crosses to a place)
+  useEffect(() => {
+    if (import.meta.env.DEV && window.__CY__) window.__CY__.go = (to, at = 'start') => cross(to, at);
+  }, [cross]);
+
   // ── a frame ──
   const loop = useRef(null);
   useEffect(() => {

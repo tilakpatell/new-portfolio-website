@@ -22,6 +22,8 @@ import { TRANSFORM } from './rules';
 
 const STAGES = {
   iacon: () => import('./stage/iacon'),
+  base: () => import('./stage/base'),
+  jasper: () => import('./stage/jasper'),
 };
 const plainStage = () => import('./stage/plain');
 
