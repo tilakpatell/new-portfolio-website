@@ -166,5 +166,137 @@
   "nx5": {
     "status": "done",
     "by": "cloud"
+  },
+  "stairgoblin": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "kingjellybean": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "thirstystep": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "giant": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "zeep": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "kyle": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "xenonbloom": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "poncho": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "annie": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "hepatitis": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "gonorrhoea": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "tuberculosis": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "plague": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "ecoli": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "needful": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "needful-shop": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "jerry-robe": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "jerry-golf": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "jerry-tux": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "jerry-track": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "jerry-gown": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "jerry-cardigan": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "arthricia": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "magdalian-a": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "magdalian-b": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "magdalian-c": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "flippynips": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "scroopy": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "plutonian-a": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "plutonian-b": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "gearhead": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "gearperson-a": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "gearperson-b": {
+    "status": "claimed",
+    "by": "local"
   }
 }
