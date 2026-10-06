@@ -112,6 +112,7 @@ import { createMeteors } from './meteors';
 import { buildDeepSpace } from './deepspace';
 import { createTrench } from './trench';
 import { createBeacons } from './beacons';
+import { PHONE, createPhone } from './phone';
 import { SUPERNOVA_SITES, createSupernovae } from './supernova';
 import { DEEP, WONDERS, nearestStar, openness, reachOf, wonderById } from './deep';
 import { createCrash } from './crash';
@@ -632,6 +633,9 @@ export async function create(canvas, ctx) {
   // and a beacon over each far world, so it reads as somewhere to go
   const beacons = createBeacons();
   map.add(beacons.points);
+  // and a phone out past the belt that nothing mentions (phone.js)
+  const phone = createPhone();
+  map.add(phone.group);
   // the supernovas, when the director sets one off
   const novae = createSupernovae({ small });
   map.add(novae.group);
@@ -841,6 +845,8 @@ export async function create(canvas, ctx) {
     skirmishAt: 50 + Math.random() * 40, // when the next skirmish may be (state.clock)
     skirmishHelped: 0, // hunters you've hit in this one
     saw: new Set(), // the wonders out in deep space you've come up on
+    phoneNear: false, // at the phone out past the belt (phone.js)
+    phoneIn: false, // flown right into it (it asks once, until you back off)
     deepSaid: false,
     trench: 0, // seconds down in the Death Star's trench
     trenchAt: -1e9,
@@ -1199,6 +1205,19 @@ export async function create(canvas, ctx) {
     let best = null;
     for (const s of wscreen) if (s.z > 0.3 && Math.hypot(px - s.x, py - s.y) <= Math.max(Math.min(s.r, 160), 24) && (!best || s.z < best.z)) best = s;
     return best?.id ?? null;
+  };
+  // the phone under the point: flying or looking at the whole map (its
+  // height on screen, from its middle and its top)
+  const phoneAt = { x: 0, y: 0, z: 0 };
+  const phoneTop = { x: 0, y: 0, z: 0 };
+  const pickPhone = (px, py) => {
+    if (onFoot()) return false;
+    const p = phone.group.position;
+    toScreen(p.x, p.y, p.z, phoneAt);
+    if (phoneAt.z <= 0.3) return false;
+    toScreen(p.x, p.y + phone.radius, p.z, phoneTop);
+    const r = Math.hypot(phoneTop.x - phoneAt.x, phoneTop.y - phoneAt.y);
+    return Math.hypot(px - phoneAt.x, py - phoneAt.y) <= Math.max(r, 22);
   };
   // a hunter under the point, or near it (they're small and quick): a tap
   // locks the guns on to the nearest
@@ -2686,6 +2705,18 @@ export async function create(canvas, ctx) {
         state.saw.add(w.id);
         emit({ type: 'wonder', id: w.id });
       }
+      // the phone: at it, the prompt says so (and G or E asks for its
+      // password); flown right into it, it asks by itself, once
+      const toPhone = apart(live.x, live.y, live.z, PHONE.at[0], PHONE.at[1], PHONE.at[2]);
+      const nearPhone = toPhone < PHONE.reach * (state.phoneNear ? 1.3 : 1);
+      if (nearPhone !== state.phoneNear) {
+        state.phoneNear = nearPhone;
+        emit({ type: 'phone', what: nearPhone ? 'near' : 'far' });
+      }
+      if (toPhone < PHONE.touch && !state.phoneIn && !state.auto && !state.jump) {
+        state.phoneIn = true;
+        emit({ type: 'phone', what: 'open' });
+      } else if (toPhone > PHONE.reach * 0.6) state.phoneIn = false;
       // down in the Death Star's trench a moment: the trench run (with Luke
       // or Han, Vader comes down it after you), now and then
       const ds = TRENCHED.find((o) => Math.abs(live.y - o.at[1]) < o.band.half && apart(live.x, live.y, live.z, o.at[0], o.at[1], o.at[2]) < o.r - 0.4);
@@ -3258,6 +3289,7 @@ export async function create(canvas, ctx) {
       say = true;
     }
     else if (!onFoot() && state.landable && !state.auto && Math.abs(state.ship?.speed ?? 0) < SHIP.boost) text = `Land on ${byId(state.landable).label} and step out`;
+    else if (!onFoot() && state.phoneNear && !state.auto && !state.jump && flying()) text = 'Unlock the phone';
     if (text === promptWas) return;
     promptWas = text;
     el.textContent = text;
@@ -3513,6 +3545,7 @@ export async function create(canvas, ctx) {
     }
     placeArms();
     beacons.update(camLocal);
+    phone.update(t, camera);
     // the fall into the Maw: the ship's trail and glow, and its last light
     if (infall) {
       if (state.crash?.swallow && !state.crash.back) infall.update(dt, state.crash.fell, camLocal, camera);
@@ -3555,6 +3588,12 @@ export async function create(canvas, ctx) {
     const key = e.key.toLowerCase();
     // on a button or link, the arrows, Space and Enter are its own
     const onControl = el instanceof HTMLElement && el !== document.body && el.closest('button, a, [role="button"], [tabindex]:not([tabindex="-1"])');
+    if ((key === 'g' || key === 'e' || (key === 'enter' && !onControl)) && state.phoneNear && !onFoot() && !state.landable && !state.at) {
+      // at the phone: it asks for its password
+      e.preventDefault();
+      emit({ type: 'phone', what: 'open' });
+      return;
+    }
     if (key === 'g') {
       // out of the ship onto the planet, or back in
       e.preventDefault();
@@ -3764,7 +3803,7 @@ export async function create(canvas, ctx) {
     }
     const sign = pickSign(x, y);
     const id = sign ? null : pick(x, y);
-    canvas.style.cursor = sign || id || (!id && pickWonder(x, y)) ? 'pointer' : 'grab';
+    canvas.style.cursor = sign || id || (!id && (pickWonder(x, y) || pickPhone(x, y))) ? 'pointer' : 'grab';
     setSignHover(sign);
     setHover(id);
   };
@@ -3794,6 +3833,10 @@ export async function create(canvas, ctx) {
       const sign = pickSign(x, y);
       if (sign) {
         props.onOpen?.(sign);
+        return;
+      }
+      if (pickPhone(x, y)) {
+        emit({ type: 'phone', what: 'open' });
         return;
       }
       const id = pick(x, y);
@@ -4134,6 +4177,7 @@ export async function create(canvas, ctx) {
       deep.dispose();
       for (const tr of trenches) tr.dispose();
       beacons.dispose();
+      phone.dispose();
       novae.dispose();
       burst.clear();
       burst.dispose();

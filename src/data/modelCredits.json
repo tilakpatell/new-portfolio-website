@@ -1920,5 +1920,82 @@
     "also": [
       "galaxy"
     ]
+  },
+  "dickansh-gopuram": {
+    "title": "Ancient Hindu temple tower, gopuram",
+    "author": "abhi_soni14",
+    "authorUrl": "https://sketchfab.com/abhisheksoni14",
+    "source": "https://sketchfab.com/3d-models/ancient-hindu-temple-tower-gopuram-1449065e882445b188f08ca033d25218",
+    "as": "the gopuram over the gateway",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "where": "dickansh",
+    "file": "/models/dickansh/gopuram.glb"
+  },
+  "dickansh-arch": {
+    "title": "Temple arch-3DView",
+    "author": "Er.B.Nijithkumar",
+    "authorUrl": "https://sketchfab.com/nijithkumar99",
+    "source": "https://sketchfab.com/3d-models/temple-arch-3dview-a724b52dd9004fc892c59b1b5f5ec1eb",
+    "as": "the arch the portal opens in",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "where": "dickansh",
+    "file": "/models/dickansh/arch.glb"
+  },
+  "dickansh-kit": {
+    "title": "South Indian Temple - Modular Kit",
+    "author": "rSquare",
+    "authorUrl": "https://sketchfab.com/rSquare",
+    "source": "https://sketchfab.com/3d-models/south-indian-temple-modular-kit-25f0176668004faa98ec351e04e58920",
+    "as": "the temple compound behind the gateway",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "where": "dickansh",
+    "file": "/models/dickansh/kit.glb"
+  },
+  "dickansh-palm": {
+    "title": "Coconut Palm",
+    "author": "evolveduk",
+    "authorUrl": "https://sketchfab.com/evolveduk",
+    "source": "https://sketchfab.com/3d-models/coconut-palm-26e787f2ff2e4c0fb004c3b0210805a3",
+    "as": "the coconut palms",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "where": "dickansh",
+    "file": "/models/dickansh/palm.glb"
+  },
+  "dickansh-nandi": {
+    "title": "Nandi",
+    "author": "Francesco Coldesina",
+    "authorUrl": "https://sketchfab.com/topfrank2013",
+    "source": "https://sketchfab.com/3d-models/nandi-2760803f9fb743d99a29b1b86c03e345",
+    "as": "Nandi, watching the gate",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "where": "dickansh",
+    "file": "/models/dickansh/nandi.glb"
+  },
+  "dickansh-ganesha": {
+    "title": "Lord Ganesha 3D Model – Hindu God Statue",
+    "author": "Venkat Gurdge",
+    "authorUrl": "https://sketchfab.com/venkatgurdge",
+    "source": "https://sketchfab.com/3d-models/lord-ganesha-3d-model-hindu-god-statue-e1b597571f80469090cab6e40c7af6c3",
+    "as": "Ganesha, remover of obstacles, at the gate",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "where": "dickansh",
+    "file": "/models/dickansh/ganesha.glb"
+  },
+  "dickansh-diya": {
+    "title": "diwali diya",
+    "author": "sinuboy072",
+    "authorUrl": "https://sketchfab.com/sinuboy072",
+    "source": "https://sketchfab.com/3d-models/diwali-diya-627dea0363f042d3b0c906c90e922aec",
+    "as": "the oil lamps on the steps",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "where": "dickansh",
+    "file": "/models/dickansh/diya.glb"
   }
 }

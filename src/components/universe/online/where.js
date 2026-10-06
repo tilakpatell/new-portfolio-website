@@ -11,10 +11,15 @@ import { chapter } from '../../middleearth/chapters';
 import { hidden } from '../../middleearth/hidden';
 
 export const UNIVERSE = '/universe';
+// a page that isn't on any map says so to no one: the other pilots see
+// "somewhere else", with no way to follow
+export const AWAY = '/away';
+const UNLISTED = new Set(['/dickansh']);
 const MIDDLE_EARTH = '/middle-earth';
 
 export function whereOf(pathname) {
   if (pathname === '/' || pathname.startsWith('/universe')) return UNIVERSE;
+  if (UNLISTED.has(pathname)) return AWAY;
   if (pathname.startsWith(MIDDLE_EARTH)) {
     const place = pathname.slice(MIDDLE_EARTH.length).split('/')[1];
     return place ? `${MIDDLE_EARTH}/${place}` : MIDDLE_EARTH;
@@ -37,7 +42,7 @@ export function cleanWhere(raw) {
   return raw;
 }
 
-const NAMES = { [UNIVERSE]: 'the universe', [GALAXY]: 'a galaxy far, far away', '/deathstar': 'the Death Star', '/projects': 'Projects', '/travel': 'Travel', '/resume': 'the résumé', '/c-137/citadel': 'the Citadel' };
+const NAMES = { [AWAY]: 'somewhere else', [UNIVERSE]: 'the universe', [GALAXY]: 'a galaxy far, far away', '/deathstar': 'the Death Star', '/projects': 'Projects', '/travel': 'Travel', '/resume': 'the résumé', '/c-137/citadel': 'the Citadel' };
 
 export function placeName(where) {
   if (!where) return 'somewhere';
