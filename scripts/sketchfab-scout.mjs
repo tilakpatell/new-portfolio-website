@@ -13,6 +13,7 @@
 import sharp from 'sharp';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const SLUGS = new Set(['by', 'by-sa', 'by-nc', 'by-nc-sa', 'cc0']);
 // search results name the licence by label, a model's own page by slug
@@ -61,7 +62,8 @@ async function sheet(models, file) {
   await sharp({ create: { width: cols * W, height: Math.max(rows, 1) * H, channels: 3, background: '#000' } }).composite(tiles).jpeg({ quality: 80 }).toFile(file);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// (the path, not file:// + argv: on Windows the URL is file:///C:/…)
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [q, n = '18'] = process.argv.slice(2);
   if (!q) throw new Error('usage: sketchfab-scout.mjs "<query>" [count]');
   const out = process.env.OUT ?? '.';

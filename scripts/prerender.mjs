@@ -80,6 +80,7 @@ export function sitemap(routes, site = SITE, lastmod = new Date().toISOString().
 export default function prerender() {
   let outDir = 'dist';
   let root = process.cwd();
+  let failed = false;
   return {
     name: 'prerender-routes',
     apply: 'build',
@@ -87,7 +88,20 @@ export default function prerender() {
       root = c.root;
       outDir = resolve(c.root, c.build.outDir);
     },
-    async closeBundle() {
+    // closeBundle runs after a failed build too, and Vite doesn't hand it the
+    // error, so the failure is noted where it happens: there's no index.html
+    // then, and failing on that would hide the build's own error
+    buildStart() {
+      failed = false;
+    },
+    buildEnd(error) {
+      if (error) failed = true;
+    },
+    renderError() {
+      failed = true;
+    },
+    async closeBundle(error) {
+      if (error || failed) return;
       const load = (p) => import(pathToFileURL(join(root, p)).href);
       const [{ projects }, { roles }, { profile }, { UNIVERSES }, { SYSTEMS }, { FEED }] = await Promise.all(['src/data/projects.js', 'src/data/roles.js', 'src/data/profile.js', 'src/components/universe/universes.js', 'src/components/galaxy/systems.js', 'src/components/feed/feed.js'].map(load));
       const routes = routesFrom({ projects, roles, profile, universes: UNIVERSES, systems: SYSTEMS, feed: FEED });

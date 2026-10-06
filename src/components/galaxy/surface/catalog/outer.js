@@ -27,4 +27,14 @@ export const MODELS = {
   lavarock: { uid: '7a8f0459c26d4a45875b58df38f9e6d9', as: 'the lava rocks of Nevarro', metres: 3, along: 'max', yaw: 0, tris: 3000, tex: 1024, maps: 512 },
   // the glass the Purge left on Mandalore
   glassshard: { uid: '565313347d6e4dc28c00cb095774995f', as: 'the glass of Mandalore', metres: 2.4, yaw: 0, tris: 1500, tex: 512 },
+  // Made with Meshy, each from a real picture of the place (the back lane's
+  // scripts/meshy-galaxy-buildings-back.mjs; listed in public/cc0/README.md):
+  // Nevarro City's stone gate and its round stepped domes, Lothal's Jedi
+  // temple (a banded cone of rock) and a domed farmhouse of its plains, and
+  // Sundari, Mandalore's domed capital
+  nevarroarch: { made: 'meshy', as: 'the gate of Nevarro City', metres: 11 },
+  nevarrodome: { made: 'meshy', as: 'the domes of Nevarro City', metres: 3.5 },
+  lothtemple: { made: 'meshy', as: 'the Jedi temple of Lothal', metres: 70, hero: true },
+  lothdome: { made: 'meshy', as: 'the domed farmhouses of Lothal', metres: 11 },
+  sundaridome: { made: 'meshy', as: 'Sundari', metres: 51, hero: true, lod: true },
 };
