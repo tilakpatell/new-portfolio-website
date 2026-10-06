@@ -2055,7 +2055,7 @@
   },
   "gen3d/x-wing": {
     "source": "https://github.com/microsoft/TRELLIS.2",
-    "name": "an X-wing starfighter, made for this site with TRELLIS.2 (trellis.cpp), from a render of the site's Meshy X-wing on the site owner's machine (scripts/gen3d)",
+    "name": "an X-wing starfighter, made for this site with TRELLIS.2 (trellis.cpp), baked in Blender on the site owner's machine (scripts/gen3d)",
     "authors": [
       "Tilak Patel, with Microsoft TRELLIS.2"
     ],

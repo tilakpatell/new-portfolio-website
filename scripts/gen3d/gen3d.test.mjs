@@ -79,3 +79,26 @@ describe('the picture models', () => {
     expect(f).toContain('--steps 4');
   });
 });
+
+describe('baking in Blender', () => {
+  it('runs a Windows Blender directly', async () => {
+    const { command } = await import('./bake.mjs');
+    const cmd = command('C:/m/raw.glb', 'C:/m/low.glb', { faces: 20000, tex: 1024, where: { kind: 'windows', exe: 'C:/b/blender.exe' } });
+    expect(cmd[0]).toBe('C:/b/blender.exe');
+    expect(cmd.slice(1, 3)).toEqual(['--background', '--python']);
+    expect(cmd.slice(-6)).toEqual(['C:/m/raw.glb', 'C:/m/low.glb', '--faces', '20000', '--tex', '1024']);
+  });
+  it('runs a Linux Blender in WSL with the paths translated and its missing X libraries found', async () => {
+    const { command } = await import('./bake.mjs');
+    const cmd = command('C:/m/raw.glb', 'C:/m/low.glb', { where: { kind: 'wsl', exe: '/home/me/blender/blender-4.5.9-linux-x64/blender' } });
+    expect(cmd.slice(0, 4)).toEqual(['wsl.exe', '-d', 'Ubuntu-24.04', '-e']);
+    const run = cmd.at(-1);
+    expect(run).toContain("'/home/me/blender/blender-4.5.9-linux-x64/blender' '--background' '--python' '/mnt/c/");
+    expect(run).toContain("'/mnt/c/m/raw.glb' '/mnt/c/m/low.glb' '--faces' '24000' '--tex' '2048'");
+    expect(run).toMatch(/^export LD_LIBRARY_PATH=~\/miniforge3\/envs\/x11libs\/lib/);
+  });
+  it('has no command without a Blender', async () => {
+    const { command } = await import('./bake.mjs');
+    expect(command('a.glb', 'b.glb', { where: null })).toBeNull();
+  });
+});

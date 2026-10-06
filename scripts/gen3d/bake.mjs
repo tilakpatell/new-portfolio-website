@@ -3,17 +3,24 @@
 //
 //   node scripts/gen3d/bake.mjs RAW.glb OUT.glb [--faces 24000] [--tex 2048]
 //   bake(raw, out, opts) → { out, seconds }
+//
+// Blender runs here on Windows ($BLENDER, a portable copy under
+// %LOCALAPPDATA%\blender, or an installed one) or, failing that, a Linux
+// Blender in WSL ($BLENDER_WSL, else ~/blender/blender-*/blender in the
+// same distro as the trellis2 engine). Cycles bakes on the GPU either way.
 
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { WSL, wslPath } from './generate.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const LOCAL = process.env.LOCALAPPDATA ?? join(process.env.USERPROFILE ?? '', 'AppData', 'Local');
+// what a Linux Blender tarball lacks on a bare WSL Ubuntu (libSM, libICE), from conda-forge
+const WSL_LIBS = `~/${'miniforge3'}/envs/x11libs/lib`;
 
-// Blender: $BLENDER, a portable copy under %LOCALAPPDATA%\blender, or an installed one.
-export function blender() {
+export function blenderWindows() {
   if (process.env.BLENDER && existsSync(process.env.BLENDER)) return process.env.BLENDER;
   for (const root of [join(LOCAL, 'blender'), 'C:\\Program Files\\Blender Foundation']) {
     if (!existsSync(root)) continue;
@@ -26,9 +33,36 @@ export function blender() {
   return null;
 }
 
-export function command(raw, out, { faces = 24000, tex = 2048 } = {}) {
-  const exe = blender();
-  return exe && [exe, '--background', '--python', join(HERE, 'bake.py'), '--', raw, out, '--faces', String(faces), '--tex', String(tex)];
+let wslBlender;
+export function blenderWsl() {
+  if (wslBlender !== undefined) return wslBlender;
+  wslBlender = null;
+  if (process.platform !== 'win32') return null;
+  try {
+    const found = execFileSync('wsl.exe', ['-d', WSL.distro, '-e', 'bash', '-lc', 'ls -d ${BLENDER_WSL:-~/blender/blender-*/blender} 2>/dev/null | tail -1'], { encoding: 'utf8', timeout: 20000 }).trim();
+    if (found) wslBlender = found;
+  } catch {
+    /* no WSL, or no distro: no Blender there */
+  }
+  return wslBlender;
+}
+
+// Where Blender is: { kind: 'windows', exe } or { kind: 'wsl', exe }, else null.
+export function blender() {
+  const exe = blenderWindows();
+  if (exe) return { kind: 'windows', exe };
+  const wsl = blenderWsl();
+  return wsl ? { kind: 'wsl', exe: wsl } : null;
+}
+
+// The command line for one bake, given where Blender is (so it is testable without one).
+export function command(raw, out, { faces = 24000, tex = 2048, where = blender() } = {}) {
+  if (!where) return null;
+  const args = ['--background', '--python', join(HERE, 'bake.py'), '--', raw, out, '--faces', String(faces), '--tex', String(tex)];
+  if (where.kind === 'windows') return [where.exe, ...args];
+  const q = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
+  const run = `export LD_LIBRARY_PATH=${WSL_LIBS}:$LD_LIBRARY_PATH; ${q(where.exe)} ${args.map((a) => q(/^[A-Za-z]:[\\/]/.test(a) ? wslPath(a) : a)).join(' ')}`;
+  return ['wsl.exe', '-d', WSL.distro, '-e', 'bash', '-lc', run];
 }
 
 export async function bake(raw, out, opts = {}) {

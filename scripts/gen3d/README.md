@@ -94,8 +94,20 @@ Five more GGUFs beside TRELLIS.2's, from
 
 ### Blender (for bake.mjs)
 
-A portable Blender 4.x unzipped under `%LOCALAPPDATA%lender\` (winget's
-copy works too; `$BLENDER` points at any other). Cycles bakes on the GPU.
+A portable Blender 4.x unzipped under `%LOCALAPPDATA%\blender\` (winget's
+copy works too; `$BLENDER` points at any other), or, when the Windows build
+won't start (the 5.2 zip fails its side-by-side check on this machine), the
+**Linux build in WSL**, which `bake.mjs` finds at `~/blender/blender-*/blender`
+(`$BLENDER_WSL` for any other). A bare Ubuntu lacks two X libraries it links;
+conda-forge has them:
+
+```
+mkdir -p ~/blender && cd ~/blender && curl -L https://mirrors.ocf.berkeley.edu/blender/release/Blender4.5/blender-4.5.9-linux-x64.tar.xz | tar xJ
+source ~/miniforge3/bin/activate && conda create -y -n x11libs -c conda-forge xorg-libsm xorg-libice
+```
+
+Cycles bakes on the GPU either way (CUDA through WSL): the X-wing, 295k
+faces to 24k with colour, roughness, metal and normal maps, in ten seconds.
 
 ### Concept images
 
