@@ -40,6 +40,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REFS, fetchRef } from './galaxy-refs.mjs';
 import { makeLod } from './galaxy-surface-lod.mjs';
+import { recolorDoc } from './recolor.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'models', 'galaxy', 'surface');
@@ -164,7 +165,13 @@ async function squeeze(from, to, a) {
   let count = 0;
   for (const m of root.listMeshes()) for (const p of m.listPrimitives()) count += (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3;
   if (count > a.tris) await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: a.tris / count, error: 0.001 }));
-  await doc.transform(dedup(), prune(), textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [a.tex, a.tex] }), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
+  await doc.transform(dedup(), prune());
+  // (its colours to the films': a catalogue-style `recolor`, scripts/recolor.mjs)
+  if (a.recolor) {
+    await doc.transform(textureCompress({ encoder: sharp, targetFormat: 'png', slots: /baseColor/, resize: [a.tex, a.tex] }));
+    for (const r of await recolorDoc(doc, a.recolor)) console.log(`  recolor ${r.material}: ${r.from} → ${r.to}`);
+  }
+  await doc.transform(textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [a.tex, a.tex] }), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
   let tris = 0;
   for (const m of root.listMeshes()) for (const p of m.listPrimitives()) tris += (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3;
   await mkdir(dirname(to), { recursive: true });

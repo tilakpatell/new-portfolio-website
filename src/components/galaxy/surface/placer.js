@@ -63,6 +63,15 @@ export function loadModel(kind, url = surfaceUrl(kind)) {
   const role = SURFACE_MODELS[kind]?.detail;
   const scan = role && detailLevel() !== 'low' ? loadScan(role) : null;
   return Promise.all([loadGlb(url), scan]).then(([gltf, got]) => {
+    // (a model whose own finish reads wrong in the world: `look`, its
+    // materials' metalness, roughness, ambient occlusion and reflections set)
+    const look = SURFACE_MODELS[kind]?.look;
+    if (gltf && look && !gltf.scene.userData.looked) {
+      gltf.scene.traverse((o) => {
+        if (o.isMesh) for (const m of [o.material].flat()) for (const [k, v] of Object.entries(look)) if (k in m) m[k] = v;
+      });
+      gltf.scene.userData.looked = true;
+    }
     // (a model that comes bare, its colour given here: `tint`)
     const tint = SURFACE_MODELS[kind]?.tint;
     if (gltf && tint && !gltf.scene.userData.tinted) {

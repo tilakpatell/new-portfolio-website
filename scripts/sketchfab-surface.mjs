@@ -50,6 +50,7 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join as path } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { recolorDoc } from './recolor.mjs';
 
 const ROOT = path(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path(ROOT, 'public', 'models', 'galaxy', 'surface');
@@ -344,9 +345,13 @@ async function bring(io, kind, spec) {
   await doc.transform(grounded(spec));
   // (a still model: its turn and scale baked into its parts)
   if (!spec.rig) await doc.transform(flatten());
+  await doc.transform(dedup(), prune());
+  // (its colours to the films', on its maps at the size they'll be)
+  if (spec.recolor) {
+    await doc.transform(textureCompress({ encoder: sharp, targetFormat: 'png', slots: /baseColor/, resize: [spec.tex, spec.tex] }));
+    for (const r of await recolorDoc(doc, spec.recolor)) console.log(`  recolor ${r.material}: ${r.from} → ${r.to}`);
+  }
   await doc.transform(
-    dedup(),
-    prune(),
     textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /baseColor|emissive/, resize: [spec.tex, spec.tex], quality: 82 }),
     textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /normal|occlusion|metallicRoughness|specular|sheen|clearcoat|transmission/, resize: [spec.maps ?? spec.tex / 2, spec.maps ?? spec.tex / 2], quality: 80 }),
     meshopt({ encoder: MeshoptEncoder, level: 'high' }),
