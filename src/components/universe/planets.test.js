@@ -45,12 +45,48 @@ describe('the sun a planet is lit from', () => {
     vi.stubGlobal('document', { createElement: () => canvas });
     const { buildPlanet } = await import('./planets');
     const { byId } = await import('./universes');
-    const p = buildPlanet(byId('middleearth'), {}, { sun: [0, 0, 1] });
+    // (the halo, as on low; the real air's sun is the same vector: below)
+    const p = buildPlanet(byId('middleearth'), {}, { sun: [0, 0, 1], tier: 'low' });
     expect(p.air.material.uniforms.uLight.value.toArray()).toEqual([0, 0, 1]);
     expect(p.body.material.userData.air.uSunW.value.toArray()).toEqual([0, 0, 1]);
     // (one vector the scene turns with the map, the air and the rim reading the same)
     expect(p.sun).toBe(p.air.material.uniforms.uLight.value);
     expect(p.sun).toBe(p.body.material.userData.air.uSunW.value);
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('the air round a planet', () => {
+  const stub = () => {
+    const gradient = { addColorStop() {} };
+    const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+  };
+  it('a planet with air wears the shell on high and mid, the halo on low', async () => {
+    stub();
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    const high = buildPlanet(byId('middleearth'), {}, { sun: [0, 0, 1], tier: 'high' });
+    expect(high.air.material.fragmentShader).toContain('inscatter');
+    expect(high.air.material.defines.STEPS).toBe(8);
+    expect(buildPlanet(byId('middleearth'), {}, { sun: [0, 0, 1], tier: 'mid' }).air.material.defines.STEPS).toBe(5);
+    const low = buildPlanet(byId('middleearth'), {}, { sun: [0, 0, 1], tier: 'low' });
+    expect(low.air.material.fragmentShader).not.toContain('inscatter');
+    // (its sun the planet's own vector, turned with the map)
+    expect(high.air.material.uniforms.uSunDir.value[0]).toBe(high.sun);
+    // and back to the halo when the pace steps right down
+    high.setAir('halo');
+    expect(high.air.material.fragmentShader).not.toContain('inscatter');
+    high.setAir('shell');
+    expect(high.air.material.fragmentShader).toContain('inscatter');
+    vi.unstubAllGlobals();
+  });
+
+  it('a world with no air keeps its halo, whatever the tier', async () => {
+    stub();
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    expect(buildPlanet(byId('office'), {}, { tier: 'high' }).air.material.fragmentShader).not.toContain('inscatter');
     vi.unstubAllGlobals();
   });
 });

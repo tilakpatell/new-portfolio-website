@@ -682,7 +682,7 @@ export async function create(canvas, ctx) {
   // axes; turned with the map into the world's each frame: lights())
   const sunInMap = Object.fromEntries(ORDER.map((id) => [id, sunFor(id)]));
   const planets = ORDER.map((id) => {
-    const p = buildPlanet(byId(id), T, { sun: new THREE.Vector3(...sunInMap[id]) });
+    const p = buildPlanet(byId(id), T, { sun: new THREE.Vector3(...sunInMap[id]), tier });
     p.group.position.set(...POSITIONS[id]);
     map.add(p.group);
     return p;
@@ -3662,6 +3662,8 @@ export async function create(canvas, ctx) {
     if (sharp !== null) {
       post.sharpness = sharp;
       post.setLevel(pace.level);
+      // (the planets' real air goes for their old halo at the pace's step 3, and comes back)
+      for (const p of planets) p.setAir(pace.level >= 3 ? 'halo' : 'shell');
     }
     const dt = ms / 1000;
     const t = reduced ? 0 : state.low ? state.tLow : (now - t0) / 1000;

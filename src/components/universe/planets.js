@@ -18,7 +18,7 @@
 //
 // loadTextures({ small }) → the textures (any that fail are just missing)
 // mapFile(name, level) → the file for a planet map at lib/detail's level
-// buildPlanet(u, T, { sun }) → { id, radius, group, sun, update(t, camera), setState, mount }
+// buildPlanet(u, T, { sun, tier }) → { id, radius, group, sun, air, setAir, update(t, camera), setState, mount }
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -32,6 +32,7 @@ import { facing, fit, glowMat, orbit, paint, rng, rounded, tiled } from './kit';
 import { STATIONS } from './stations';
 import { buildGateway } from '../galaxy/gateway';
 import { SIDES, cybertronSkin } from '../cybertron/skin';
+import { createAtmosphere } from '../../lib/three/atmosphere';
 import { createWar, warZones } from '../cybertron/war';
 import { ringGeometry } from '../middleearth/ringShape';
 import { bossMug, elementTile, glowingGems, shardCluster } from './props';
@@ -1320,7 +1321,7 @@ const BUILDERS = {
   ...STATIONS,
 };
 
-export function buildPlanet(u, T = {}, { sun = null } = {}) {
+export function buildPlanet(u, T = {}, { sun = null, tier = 'high' } = {}) {
   const core = u.kind === 'core';
   // the way to the star that lights it, in the world's axes (lighting.js's
   // sunFor, turned with the map by the scene each frame): one vector its
@@ -1333,11 +1334,30 @@ export function buildPlanet(u, T = {}, { sun = null } = {}) {
   const body = new THREE.Mesh(new THREE.SphereGeometry(u.size, seg[0], seg[1]), new THREE.MeshStandardMaterial({ color: u.palette.base, roughness: 1 }));
   spinner.add(body);
   // a planet has air round it in its colour; a station's sign does that job
-  const air = core || u.airless ? null : halo(u.size, u.rim ?? u.swatch, seg, sunW); // (a station has no air round it)
-  if (air) group.add(air);
+  // a planet has air round it in its colour: the old halo, and where it says
+  // what its air is (universes.js), a real one on high and mid, marched
+  // through (lib/three/atmosphere.js: 8 steps on high, 5 on mid, its sun the
+  // planet's own vector); the halo kept for low and for the pace's last
+  // steps (setAir), only one of them shown
+  const haloMesh = core || u.airless ? null : halo(u.size, u.rim ?? u.swatch, seg, sunW); // (a station has no air round it)
+  const shell =
+    haloMesh && u.air && tier !== 'low'
+      ? createAtmosphere({ radius: u.size, top: u.air.top, colour: u.air.colour, density: u.air.density, sunset: u.air.sunset, segments: T.small ? [64, 40] : [96, 64], steps: tier === 'high' || tier === 'ultra' ? 8 : 5, inner: Math.cos(Math.PI / seg[1]), uniforms: { uSunDir: { value: [sunW, new THREE.Vector3(0, 1, 0)] } } })
+      : null;
+  if (shell) shell.mesh.renderOrder = 2;
+  let air = shell ? shell.mesh : haloMesh;
+  if (haloMesh) group.add(haloMesh);
+  if (shell) {
+    group.add(shell.mesh);
+    haloMesh.visible = false;
+  }
   const p = { group, body, orbits: [], tick: [], focus: [], slot: null, onSelect: null, sun: sunW };
   BUILDERS[u.id]?.(p, { u, T });
   if (!core && p.body.material?.isMeshStandardMaterial) airGlow(p.body.material, u.rim ?? u.swatch, { night: p.night, sun: sunW });
+  // (with real air round it, the air draws the limb: the rim in its ground goes)
+  const rimGlow = () => p.body.material?.userData?.air;
+  if (shell && rimGlow()) rimGlow().uRimStrength.value = 0;
+  const centre = new THREE.Vector3();
   // a station's big sign, over it
   const sign = u.sign ? bigSign(u) : null;
   if (sign) {
@@ -1358,7 +1378,19 @@ export function buildPlanet(u, T = {}, { sun = null } = {}) {
     // what a crash lays its shockwave on (a station's is hidden: none)
     surface: core ? null : body,
     body,
-    air,
+    get air() {
+      return air;
+    },
+    // the real air or the old halo (the pace's last steps): 'shell' | 'halo'
+    setAir(which) {
+      if (!shell) return;
+      const on = which === 'shell';
+      shell.mesh.visible = on;
+      haloMesh.visible = !on;
+      air = on ? shell.mesh : haloMesh;
+      const g = rimGlow();
+      if (g) g.uRimStrength.value = on ? 0 : RIM.idle * 0.8;
+    },
     sun: sunW,
     // held still (true) while the crew walk about on it, and turning on
     // from there once they're gone
@@ -1381,15 +1413,19 @@ export function buildPlanet(u, T = {}, { sun = null } = {}) {
     update(t, camera, live = true) {
       t0 = t;
       body.rotation.y = held ?? turn0 + t * spin;
+      // (the air's march is about the planet's middle, in the world: it moves with the map)
+      if (shell?.mesh.visible) shell.update(group.getWorldPosition(centre));
       for (const o of p.orbits) o.set(t);
       if (live) for (const fn of p.tick) fn(t, camera);
     },
     // `dim`: somewhere else is picked, so this station's sign steps back
     setState({ hover, selected: sel, dim = false }) {
       const k = hover ? RIM.hover : sel ? RIM.selected : RIM.idle;
-      if (air) air.material.uniforms.uStrength.value = k;
+      if (haloMesh) haloMesh.material.uniforms.uStrength.value = k;
+      // (the real air brightens a little less: it's the whole limb)
+      shell?.set({ strength: 1 + (k - RIM.idle) * 0.6 });
       const glow = body.material?.userData?.air;
-      if (glow) glow.uRimStrength.value = k * 0.8;
+      if (glow) glow.uRimStrength.value = shell && air === shell.mesh ? 0 : k * 0.8;
       if (sel && !selected) p.onSelect?.(t0);
       if (sel !== selected) for (const fn of p.focus) fn(sel);
       selected = sel;
