@@ -54,6 +54,10 @@ describe('the surface models', () => {
     expect(madeKinds('nothing here').size).toBe(0);
   });
 
+  it('reads every list the README has (each lane keeps a line of its own)', () => {
+    expect([...madeKinds('`../models/galaxy/surface/{theed}.glb`: made\n`../models/galaxy/surface/{lothdome, sundaridome}.glb`: made')]).toEqual(['theed', 'lothdome', 'sundaridome']);
+  });
+
   it('has a light model beside each one marked lod, and only those (scripts/galaxy-surface-lod.mjs)', () => {
     for (const [kind, m] of Object.entries(SURFACE_MODELS)) {
       if (m.cluster) continue;

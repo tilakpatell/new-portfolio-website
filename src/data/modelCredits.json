@@ -632,6 +632,83 @@
     "as": "the Death Star",
     "file": "/models/universe/death-star.glb"
   },
+  "dickansh-arch": {
+    "title": "Temple arch-3DView",
+    "author": "Er.B.Nijithkumar",
+    "authorUrl": "https://sketchfab.com/nijithkumar99",
+    "source": "https://sketchfab.com/3d-models/temple-arch-3dview-a724b52dd9004fc892c59b1b5f5ec1eb",
+    "as": "the arch the portal opens in",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "where": "dickansh",
+    "file": "/models/dickansh/arch.glb"
+  },
+  "dickansh-diya": {
+    "title": "diwali diya",
+    "author": "sinuboy072",
+    "authorUrl": "https://sketchfab.com/sinuboy072",
+    "source": "https://sketchfab.com/3d-models/diwali-diya-627dea0363f042d3b0c906c90e922aec",
+    "as": "the oil lamps on the steps",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "where": "dickansh",
+    "file": "/models/dickansh/diya.glb"
+  },
+  "dickansh-ganesha": {
+    "title": "Lord Ganesha 3D Model – Hindu God Statue",
+    "author": "Venkat Gurdge",
+    "authorUrl": "https://sketchfab.com/venkatgurdge",
+    "source": "https://sketchfab.com/3d-models/lord-ganesha-3d-model-hindu-god-statue-e1b597571f80469090cab6e40c7af6c3",
+    "as": "Ganesha, remover of obstacles, at the gate",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "where": "dickansh",
+    "file": "/models/dickansh/ganesha.glb"
+  },
+  "dickansh-gopuram": {
+    "title": "Ancient Hindu temple tower, gopuram",
+    "author": "abhi_soni14",
+    "authorUrl": "https://sketchfab.com/abhisheksoni14",
+    "source": "https://sketchfab.com/3d-models/ancient-hindu-temple-tower-gopuram-1449065e882445b188f08ca033d25218",
+    "as": "the gopuram over the gateway",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "where": "dickansh",
+    "file": "/models/dickansh/gopuram.glb"
+  },
+  "dickansh-kit": {
+    "title": "South Indian Temple - Modular Kit",
+    "author": "rSquare",
+    "authorUrl": "https://sketchfab.com/rSquare",
+    "source": "https://sketchfab.com/3d-models/south-indian-temple-modular-kit-25f0176668004faa98ec351e04e58920",
+    "as": "the temple compound behind the gateway",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "where": "dickansh",
+    "file": "/models/dickansh/kit.glb"
+  },
+  "dickansh-nandi": {
+    "title": "Nandi",
+    "author": "Francesco Coldesina",
+    "authorUrl": "https://sketchfab.com/topfrank2013",
+    "source": "https://sketchfab.com/3d-models/nandi-2760803f9fb743d99a29b1b86c03e345",
+    "as": "Nandi, watching the gate",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "where": "dickansh",
+    "file": "/models/dickansh/nandi.glb"
+  },
+  "dickansh-palm": {
+    "title": "Coconut Palm",
+    "author": "evolveduk",
+    "authorUrl": "https://sketchfab.com/evolveduk",
+    "source": "https://sketchfab.com/3d-models/coconut-palm-26e787f2ff2e4c0fb004c3b0210805a3",
+    "as": "the coconut palms",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "where": "dickansh",
+    "file": "/models/dickansh/palm.glb"
+  },
   "earth-plane": {
     "title": "737 MAX Lion Air",
     "author": "Sofyan Kurniawan",
@@ -1114,6 +1191,20 @@
       "galaxy"
     ]
   },
+  "surface-ammocan": {
+    "title": "Star Wars Ammo Canister Yavin",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-ammo-canister-yavin-db00456beb9f429b87b791fc5eabe276",
+    "where": "galaxy-surface",
+    "as": "the Rebel ammo canisters",
+    "file": "/models/galaxy/surface/ammocan.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-arena": {
     "title": "Geonosis Arena",
     "author": "StrangeUsernames1",
@@ -1324,6 +1415,34 @@
       "galaxy"
     ]
   },
+  "surface-dagocypress": {
+    "title": "Great Bald Cypress",
+    "author": "BaptisteBerard",
+    "authorUrl": "https://sketchfab.com/BaptisteBerard",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/great-bald-cypress-dca97787b1b24fd8a0fb6bb536e383e3",
+    "where": "galaxy-surface",
+    "as": "the great trees of Dagobah",
+    "file": "/models/galaxy/surface/dagocypress.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-dagoroots": {
+    "title": "mangrove tree roots",
+    "author": "lucq22",
+    "authorUrl": "https://sketchfab.com/lucq22",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/mangrove-tree-roots-c32d977c14e04e5ebc1fbef9b6111957",
+    "where": "galaxy-surface",
+    "as": "the mangrove roots of Dagobah",
+    "file": "/models/galaxy/surface/dagoroots.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-deathtrooper": {
     "title": "Death trooper || Rogue One: A Star Wars Story",
     "author": "RC-KOA",
@@ -1460,6 +1579,20 @@
     "where": "galaxy-surface",
     "as": "the Geonosians",
     "file": "/models/galaxy/surface/geonosian.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-glassshard": {
+    "title": "Obsidian Shard",
+    "author": "Graph VFX",
+    "authorUrl": "https://sketchfab.com/GraphVFX",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/obsidian-shard-565313347d6e4dc28c00cb095774995f",
+    "where": "galaxy-surface",
+    "as": "the glass of Mandalore",
+    "file": "/models/galaxy/surface/glassshard.glb",
     "also": [
       "galaxy"
     ]
@@ -1684,6 +1817,20 @@
     "where": "galaxy-surface",
     "as": "Luke's landspeeder",
     "file": "/models/galaxy/surface/landspeeder.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-lavarock": {
+    "title": "Volcanic Rock Scan",
+    "author": "laboratorija",
+    "authorUrl": "https://sketchfab.com/laboratorija",
+    "license": "CC-BY-NC-SA-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "source": "https://sketchfab.com/3d-models/volcanic-rock-scan-7a8f0459c26d4a45875b58df38f9e6d9",
+    "where": "galaxy-surface",
+    "as": "the lava rocks of Nevarro",
+    "file": "/models/galaxy/surface/lavarock.glb",
     "also": [
       "galaxy"
     ]
@@ -1982,6 +2129,62 @@
       "galaxy"
     ]
   },
+  "surface-solarsailer": {
+    "title": "Dooku's Solar Saier",
+    "author": "turbopurr",
+    "authorUrl": "https://sketchfab.com/turbopurr",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/dookus-solar-saier-d572f763ba5c4a70a88aa9c680bd549b",
+    "where": "galaxy-surface",
+    "as": "Dooku’s solar sailer",
+    "file": "/models/galaxy/surface/solarsailer.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-sorganbirch": {
+    "title": "Birch tree",
+    "author": "evolveduk",
+    "authorUrl": "https://sketchfab.com/evolveduk",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/birch-tree-aa842dffd9654d33b8b91170ce83c172",
+    "where": "galaxy-surface",
+    "as": "the birches of Sorgan",
+    "file": "/models/galaxy/surface/sorganbirch.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-sorganfern": {
+    "title": "Realistic HD Common polypody fern (23/55)",
+    "author": "PlantCatalog",
+    "authorUrl": "https://sketchfab.com/PlantCatalog",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/realistic-hd-common-polypody-fern-2355-b99bb3d69eb84965ad70a6b2b6a1f2dd",
+    "where": "galaxy-surface",
+    "as": "the ferns of Sorgan",
+    "file": "/models/galaxy/surface/sorganfern.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-sorganfir": {
+    "title": "Fir tree",
+    "author": "evolveduk",
+    "authorUrl": "https://sketchfab.com/evolveduk",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/fir-tree-3f39aa5485e94477a36b435f7a1a8b54",
+    "where": "galaxy-surface",
+    "as": "the firs of Sorgan",
+    "file": "/models/galaxy/surface/sorganfir.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-speederbike": {
     "title": "Star Wars Aratech 74z Speeder Bike",
     "author": "tegnemaskin",
@@ -2006,6 +2209,20 @@
     "where": "galaxy-surface",
     "as": "the market stalls",
     "file": "/models/galaxy/surface/stall.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-stilthut": {
+    "title": "Thatched Hut on Stilts",
+    "author": "rajoelinirinanear",
+    "authorUrl": "https://sketchfab.com/rajoelinirinanear",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/thatched-hut-on-stilts-b73d5d61395d45a2bd65768223fb28de",
+    "where": "galaxy-surface",
+    "as": "the krill farmers’ huts",
+    "file": "/models/galaxy/surface/stilthut.glb",
     "also": [
       "galaxy"
     ]
@@ -2104,6 +2321,48 @@
     "where": "galaxy-surface",
     "as": "the wampas",
     "file": "/models/galaxy/surface/wampa.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-welderrack": {
+    "title": "Star Wars Welder Rack Yavin",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-welder-rack-yavin-4f058bf5a7974677b9772470d476ad91",
+    "where": "galaxy-surface",
+    "as": "the Rebel welder rack",
+    "file": "/models/galaxy/surface/welderrack.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-yavinspeeder": {
+    "title": "Star Wars Yavin 4 Transport Speeder",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-yavin-4-transport-speeder-75bf19967c0c489ebca764a5047500d3",
+    "where": "galaxy-surface",
+    "as": "the Rebel transport speeder",
+    "file": "/models/galaxy/surface/yavinspeeder.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-yavintree": {
+    "title": "Jungle Tree",
+    "author": "kobaltsecond6c7d6150917a4267",
+    "authorUrl": "https://sketchfab.com/kobaltsecond6c7d6150917a4267",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/jungle-tree-46f83ec5f6c04abf9d509c1070f67d1e",
+    "where": "galaxy-surface",
+    "as": "the jungle trees of Yavin 4",
+    "file": "/models/galaxy/surface/yavintree.glb",
     "also": [
       "galaxy"
     ]

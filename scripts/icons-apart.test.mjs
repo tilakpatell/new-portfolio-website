@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { iconModule, rewriteImports, SPECIFIER } from './icons-apart.mjs';
 
 describe('icons apart: each react-icons icon a module of its own', () => {
@@ -29,7 +30,8 @@ describe('icons apart: each react-icons icon a module of its own', () => {
   });
 
   it('cuts an icon out of the set as a module of its own', () => {
-    const set = readFileSync(new URL('../node_modules/react-icons/ri/index.mjs', import.meta.url), 'utf8');
+    // found as the plugin finds it, so a worktree without node_modules of its own still has it
+    const set = readFileSync(createRequire(import.meta.url).resolve('react-icons/ri').replace(/index\.js$/, 'index.mjs'), 'utf8');
     const mod = iconModule(set, 'RiCloseLine');
     expect(mod).toMatch(/^import \{ GenIcon \} from 'react-icons\/lib';\n/);
     expect(mod).toContain('export function RiCloseLine (props)');

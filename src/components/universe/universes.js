@@ -194,6 +194,7 @@ const FANDOMS = [
     world: 'Dot Matrix',
     place: 'Dot Matrix island',
     to: '/dot-matrix',
+    pages: [{ to: '/dot-matrix/64', world: 'Super Mario 64' }],
     swatch: '#9bbc0f',
     accent: '#9bbc0f',
     rim: '#6f9a1c', // the screen's lightest green would glare as air

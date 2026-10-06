@@ -24,6 +24,7 @@ import { createFx } from '../../shire/fx';
 import { bake } from '../bake';
 import { createGhosts } from '../ghosts';
 import { makeTerrain, makeTufts } from '../ground';
+import { FIGURE, groundTown } from '../grounded';
 import { makeFolk } from '../bree/props';
 import { createWraithKit } from '../wraiths';
 import { createWeathertopKit } from './props';
@@ -268,14 +269,11 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
   hill.add(bake(statics, []));
 
   // ── people ──
-  const blobGeo = new THREE.CircleGeometry(0.42, 20).rotateX(-Math.PI / 2);
-  const blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.34, depthWrite: false });
+  // (each stands on a soft blob slid away from the sun, and dims in the
+  // baked shade: ../grounded.js)
+  const movers = [];
   const blob = (f, s = 1) => {
-    const b = new THREE.Mesh(blobGeo, blobMat);
-    b.position.y = 0.04;
-    b.scale.setScalar(s);
-    b.renderOrder = 1;
-    f.group.add(b);
+    movers.push({ object: f.group, size: [FIGURE * s, FIGURE * s] });
     return f;
   };
   const frodo = blob(makeFolk('frodo'));
@@ -954,6 +952,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
     sky.dome.position.copy(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
     sun.target.position.copy(camera.position);
+    floorLight.update();
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -999,7 +998,11 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
     return Math.atan2(hit.z - STAND.z, hit.x - STAND.x);
   };
 
+  // ── the floor's light, baked when the town is first drawn ──
+  const floorLight = groundTown({ renderer, scene, terrain, outdoors: hill, sun, height: ground, people: movers, skip: [sky.dome, ghosts.group], tier, radius: WORLD.radius + 10, shade: 0x2a2620 });
+
   return {
+    ground: import.meta.env.DEV ? floorLight : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
@@ -1018,6 +1021,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
       return A.suggest ?? null;
     },
     dispose() {
+      floorLight.dispose();
       ghosts.dispose();
       disposeTree(scene);
       stage.dispose();

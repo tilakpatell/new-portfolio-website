@@ -17,7 +17,9 @@ import WorldGate from './components/worlds/WorldGate';
 import Ambience from './components/ambience/Ambience';
 import { categoryAt, isFeedMove } from './components/feed/feed';
 
-const Feed = lazy(() => import('./components/feed/Feed'));
+// Feed.jsx, named in full: feed.js sits beside it, and a case-blind disk
+// (Windows, macOS) would pick that
+const Feed = lazy(() => import('./components/feed/Feed.jsx'));
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
 const Caribbean = lazy(() => import('./pages/Caribbean'));
 const Invincible = lazy(() => import('./pages/Invincible'));
@@ -35,9 +37,11 @@ const Albuquerque = lazy(() => import('./pages/Albuquerque'));
 const RickMorty = lazy(() => import('./pages/RickMorty'));
 const Citadel = lazy(() => import('./pages/Citadel'));
 const DotMatrix = lazy(() => import('./pages/DotMatrix'));
+const Mario64 = lazy(() => import('./pages/Mario64'));
 const Earth = lazy(() => import('./pages/Earth'));
 const Front = lazy(() => import('./pages/Front'));
 const Changes = lazy(() => import('./pages/Changes'));
+const Dickansh = lazy(() => import('./pages/Dickansh'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 const Hyperspace = lazy(() => import('./components/Hyperspace'));
@@ -280,7 +284,7 @@ function Shell() {
   useEffect(() => {
     const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1500));
     const id = idle(() => {
-      import('./components/feed/Feed');
+      import('./components/feed/Feed.jsx');
       import('./pages/Home');
       import('./pages/Experience');
       import('./pages/Projects');
@@ -333,9 +337,11 @@ function Shell() {
                 <Route path="/c-137" element={<RickMorty />} />
                 <Route path="/c-137/citadel" element={<Citadel />} />
                 <Route path="/dot-matrix" element={<DotMatrix />} />
+                <Route path="/dot-matrix/64" element={<Mario64 />} />
                 <Route path="/earth" element={<Earth />} />
                 <Route path="/universe/:id?" element={<Front />} />
                 <Route path="/changes" element={<Changes />} />
+                <Route path="/dickansh" element={<Dickansh />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               </WorldGate>

@@ -6,7 +6,8 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { writeFile, mkdir, readdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
@@ -46,7 +47,9 @@ const shotName = args.name ?? 'abq-grounding';
 
 let server = null;
 if (!args.reuse) {
-  server = spawn(process.execPath, [join(ROOT, 'node_modules/vite/bin/vite.js'), '--port', String(port), '--strictPort', '--host', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
+  // vite found as node finds it: a worktree has no node_modules of its own
+  const vite = join(dirname(createRequire(import.meta.url).resolve('vite/package.json')), 'bin/vite.js');
+  server = spawn(process.execPath, [vite, '--port', String(port), '--strictPort', '--host', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
 }
 const base = `http://127.0.0.1:${port}`;
 for (let t0 = Date.now(); ; ) {

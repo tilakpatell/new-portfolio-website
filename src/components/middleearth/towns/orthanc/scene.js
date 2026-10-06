@@ -23,6 +23,7 @@ import { LOOKS, makePerson, sit } from '../../shire/people';
 import { makeSky } from '../../shire/sky';
 import { createFx } from '../../shire/fx';
 import { makeTerrain } from '../ground';
+import { FIGURE, groundTown } from '../grounded';
 import { makeFolk } from '../bree/props';
 import { createGhosts } from '../ghosts';
 import { makeRain } from '../rain';
@@ -162,7 +163,8 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
   const whiteCol = new THREE.Color(0xf4f6ff);
 
   // ── Isengard, and the tower in it ──
-  zones.tower.add(makeTerrain(renderer, { size: 900, seg: tier === 'high' ? 200 : 130, height: isenHeight, paint: isenPaint, blades: 0 }));
+  const isenLand = makeTerrain(renderer, { size: 900, seg: tier === 'high' ? 200 : 130, height: isenHeight, paint: isenPaint, blades: 0 });
+  zones.tower.add(isenLand);
   {
     const { rim, glow } = kit.pits();
     const list = PITS.map((p) => ({ x: p.x, z: p.z, y: isenHeight(p.x, p.z) * 0.2, s: p.size, turn: p.size }));
@@ -288,12 +290,17 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
   const eyeAt = barad.eyeAt.clone().add(AT.vision);
 
   // ── people ──
+  // (outdoors, each stands on a soft blob slid away from the sun, and dims in
+  // the baked shade, ../grounded.js; the circle under each is kept for the
+  // zones indoors, and hidden while a blob is drawn)
+  const movers = [];
   const blobGeo = new THREE.CircleGeometry(0.46, 20).rotateX(-Math.PI / 2);
   const blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.32, depthWrite: false });
   const blob = (f) => {
     const b = new THREE.Mesh(blobGeo, blobMat);
     b.position.y = 0.03;
     b.renderOrder = 1;
+    movers.push({ object: f.group, size: [FIGURE, FIGURE], contact: b });
     f.group.add(b);
     f.blob = b;
     return f;
@@ -943,6 +950,7 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
       shadow: vision ? [0.06 + notice * 0.1, 0.01, 0] : [0, 0, 0],
       high: [0, 0, 0],
     });
+    for (const g of grounds) g.update();
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -976,8 +984,14 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
     }
   };
 
+  // ── the floor's light, baked in each zone outdoors when it's first shown ──
+  const grounds = [
+    groundTown({ renderer, scene, terrain: isenLand, outdoors: zones.tower, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x2a2a26, clip: true }),
+  ];
+
   return {
-    scene: import.meta.env.DEV ? scene : null,
+    ground: import.meta.env.DEV ? grounds[0] : null, // for the QA scripts
+    scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
     resize: stage.resize,
@@ -989,6 +1003,7 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
       return stage.lost;
     },
     dispose() {
+      for (const g of grounds) g.dispose();
       for (const [o, m] of robes) o.material = m;
       manyColours.dispose();
       ghosts.dispose();

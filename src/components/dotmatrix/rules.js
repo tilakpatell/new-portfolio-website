@@ -21,6 +21,7 @@
 //   = path         : grass, one up ! grass, two up  % grass, three up
 //   T tree         Y tree, one up  o boulder        O stepping stone
 //   # stone wall   H house         G the Game Boy   P pipe
+//   N the N64
 //   B the dock     s a sign        L the lighthouse M the windmill, three up
 export const MAP = [
   '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~', // 0
@@ -33,9 +34,9 @@ export const MAP = [
   '~~~~~~~~~%%!!!::........T..........,,~O~~~~~~~~~', // 7
   '~~~~~~~~%%%%%!!::...T.........s.....,~~~~~~~~~~~', // 8
   '~~~~~~~!M%%%%%!Y:...............T...,,~~~~~~~~~~', // 9
-  '~~~~~~!!!%%%%!!::.==============.....,,~~~~~~~~~', // 10
-  '~~~~~~Y:!!!!!!!::.==============......,,~~~~~~~~', // 11
-  '~~~~~~,::!!!!!:::.=====GGGG=====.......,~~~~~~~~', // 12
+  '~~~~~~!!!%%%%!!::.==========NNNN.....,,~~~~~~~~~', // 10
+  '~~~~~~Y:!!!!!!!::.==========NNNN......,,~~~~~~~~', // 11
+  '~~~~~~,::!!!!!:::.=====GGGG=NNNN.......,~~~~~~~~', // 12
   '~~~~~~,,::::::::..=====GGGG=====.##########~~~~~', // 13
   '~~~~~~,,.:::::.T..==============.#........#~~~~~', // 14
   '~~~~~~,...........==============.#........#~~~~~', // 15
@@ -87,6 +88,7 @@ const LEGEND = {
   '#': { kind: 'wall', ground: 0, top: 1.6 },
   H: { kind: 'house', ground: 0, top: 2 },
   G: { kind: 'gameboy', ground: 0, top: 7 },
+  N: { kind: 'n64', ground: 0, top: 1.1 },
   P: { kind: 'pipe', ground: 0, top: 1.25 },
   B: { kind: 'dock', ground: SEA, top: 0 },
   s: { kind: 'sign', ground: 0, top: 1.1 },
@@ -118,7 +120,7 @@ export const BLOCKS = [
   { id: 'q3', ix: 10, iz: 20, heart: true },
   { id: 'q4', ix: 11, iz: 20 },
   { id: 'q5', ix: 19, iz: 15 },
-  { id: 'q6', ix: 30, iz: 15 },
+  { id: 'q6', ix: 32, iz: 16 },
 ];
 
 // The cloud over the sea to the south-west, which only a pipe reaches, with
@@ -148,6 +150,12 @@ for (const p of PIPES) if (p.base == null) p.base = 0;
 
 // The giant Game Boy in the square, facing south, and where to stand to play it.
 export const GAMEBOY = { x0: 23, z0: 12, x1: 27, z1: 14, front: { x0: 22.4, x1: 27.6, z0: 14, z1: 16.6 } };
+
+// The giant N64 beside it, lying flat with its cartridge standing up out of
+// the top, and where to stand to play it (the Mario 64 tribute,
+// ../mario64/). The console is a jump up, and the cartridge another.
+export const N64 = { x0: 28, z0: 10, x1: 32, z1: 13, top: 1.1, front: { x0: 27.7, x1: 32.3, z0: 13, z1: 15.4 } };
+export const N64_CART = { x0: 29, z0: 11, x1: 31, z1: 12, top: 2.1 };
 
 // The snake's pen: it goes round and round a loop inside the walls, and the
 // way in is a gap in the west wall.
@@ -305,6 +313,7 @@ export const VILLAGERS = [
       'The big one in the square plays three games. I can’t reach the buttons.',
       'There’s a cartridge in the long grass out west, but the walkers are there. Jump on them, don’t walk into them.',
       'Block Drop tower, north-east. One step up at a time, all the way round.',
+      'The grey one next to the Game Boy is an N64. There’s a whole castle in it, with paintings you jump into.',
     ],
     done: 'You got them ALL? Can I have a go on the Game Boy now?',
   },
@@ -341,6 +350,7 @@ function build() {
   for (const b of BLOCKS) cols[key(b.ix, b.iz)].push([BLOCK_LO, BLOCK_LO + 1, b.id]);
   for (let iz = CLOUD.z0; iz <= CLOUD.z1; iz++) for (let ix = CLOUD.x0; ix <= CLOUD.x1; ix++) cols[key(ix, iz)].push([CLOUD.lo, CLOUD.top, null]);
   for (const p of PIPES) if (p.base > 0) cols[key(p.ix, p.iz)].push([p.base, p.base + PIPE_H, null]);
+  for (let iz = N64_CART.z0; iz < N64_CART.z1; iz++) for (let ix = N64_CART.x0; ix < N64_CART.x1; ix++) cols[key(ix, iz)] = [[-Infinity, N64_CART.top, null]];
   for (const c of cols) c.sort((a, b) => a[0] - b[0]);
   return cols;
 }
@@ -713,7 +723,7 @@ function hurt(g, from, ev) {
 }
 
 // What the B button would do where the hero's standing: a pipe to go down,
-// the Game Boy to play, a sign to read. Or null.
+// the Game Boy or the N64 to play, a sign to read. Or null.
 export function nearAction(g) {
   const h = g.hero;
   if (g.over > 0) return null;
@@ -723,6 +733,8 @@ export function nearAction(g) {
   }
   const f = GAMEBOY.front;
   if (h.x > f.x0 && h.x < f.x1 && h.z > f.z0 && h.z < f.z1 && h.y < 0.5) return { kind: 'gameboy', id: 'gameboy' };
+  const n = N64.front;
+  if (h.x > n.x0 && h.x < n.x1 && h.z > n.z0 && h.z < n.z1 && h.y < 0.5) return { kind: 'n64', id: 'n64' };
   let best = null;
   let bd = 1.25;
   for (const v of VILLAGERS) {

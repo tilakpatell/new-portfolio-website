@@ -1004,5 +1004,5 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
     curve.dispose();
   };
 
-  return { group, hide, lights, setMood, update, escapeCam, setCruiser, swirl, dispose };
+  return { group, floor, hide, lights, setMood, update, escapeCam, setCruiser, swirl, dispose };
 }

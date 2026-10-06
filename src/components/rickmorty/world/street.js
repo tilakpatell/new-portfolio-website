@@ -318,9 +318,11 @@ export async function buildStreet(kit) {
   group.add(visitors.group);
 
   b.build(group);
-  flat.build(group, { cast: false });
+  const ground = flat.build(group, { cast: false });
   return {
     group,
+    // what the street's light is baked on (lib/three/groundwork)
+    floor: [road, ...ground],
     sky,
     noInk: [sky.dome, wires, ...visitors.noInk],
     light: STREET_LIGHT,
