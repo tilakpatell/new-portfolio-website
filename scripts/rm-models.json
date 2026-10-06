@@ -340,31 +340,51 @@
     "by": "local"
   },
   "vance": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "local"
   },
   "supernova": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "alanrails": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "millionants": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "crocubot": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "noobnoob": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "vindicators-ship": {
-    "status": "claimed",
+    "status": "done",
+    "by": "local"
+  },
+  "nebulon": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "zigerion-b": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "zigerion-c": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "storylord": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "ticketsguy": {
+    "status": "meshy",
     "by": "local"
   }
 }

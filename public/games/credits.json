@@ -2652,5 +2652,59 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/supernova": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11384-ca51-7286-8f41-0a5494de04eb",
+    "name": "supernova, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/alanrails": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11384-ca50-7479-97b3-b239a9d5072b",
+    "name": "alanrails, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/millionants": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11384-ca49-75bf-8ace-693955c60c2a",
+    "name": "millionants, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crocubot": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11386-32db-74ac-a0f8-6f65556877f9",
+    "name": "crocubot, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/noobnoob": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11386-337c-7168-a318-0185edc69231",
+    "name": "noobnoob, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/vindicators-ship": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11386-33ad-757b-b4df-0982ee7d928c",
+    "name": "vindicators-ship, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }

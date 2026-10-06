@@ -308,8 +308,9 @@
   .rm-fade, .rm-fade[data-kind] { transition-duration: 0.1s; }
 }
 
-/* the portal gun's dial (./dimensions/DimensionDial.jsx) */
-.rm-dial {
+/* the portal gun's dial (./dimensions/DimensionDial.jsx); not .rm-dial,
+   which is interdimensional cable's round channel buttons (../rickmorty.css) */
+.rm-dial-box {
   position: absolute;
   inset: 8% 50% auto auto;
   transform: translateX(50%);
@@ -334,6 +335,12 @@
   color: #a8ff7a;
   letter-spacing: 0.03em;
 }
+.rm-dial-lead {
+  margin: 0;
+  padding: 0 14px 10px;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
 .rm-dial-x {
   background: none;
   border: 0;
@@ -346,6 +353,7 @@
   margin: 0;
   padding: 0 8px;
   overflow-y: auto;
+  min-height: 0; /* (so it scrolls inside the box rather than running under the foot) */
 }
 .rm-dial-row {
   display: flex;

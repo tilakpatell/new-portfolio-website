@@ -951,5 +951,65 @@
   "birdperson-house": {
     "image": "01a11368-6081-77e5-a5b8-fbbb0906ebf2",
     "model": "01a11370-0337-70b9-a7c7-d7dec6bfe49c"
+  },
+  "vance": {
+    "image": "01a11382-4396-741a-bf95-53535a230e17",
+    "model": "01a11384-ca51-7288-b9fa-9e95287494b4",
+    "rig": "01a11388-173f-769e-a92c-f17df7d4f7b7",
+    "idle": "01a11388-b249-75ae-851f-01e4d64c3834"
+  },
+  "supernova": {
+    "image": "01a11382-4384-76b5-af29-b340dcbaf2e6",
+    "model": "01a11384-ca51-7286-8f41-0a5494de04eb",
+    "rig": "01a11388-1743-727b-8892-be4211ffa051",
+    "idle": "01a11388-b249-7760-afbf-deca32314448"
+  },
+  "alanrails": {
+    "image": "01a11382-4397-7319-beda-15ca60018138",
+    "model": "01a11384-ca50-7479-97b3-b239a9d5072b",
+    "rig": "01a11388-1765-768d-940c-690d738cd316",
+    "idle": "01a11388-b26e-7718-ae95-9bc36c0c9286"
+  },
+  "millionants": {
+    "image": "01a11382-437d-7110-bc47-efee9e710d45",
+    "model": "01a11384-ca49-75bf-8ace-693955c60c2a",
+    "rig": "01a11388-1763-75bd-941e-ad8e43e5d1fb",
+    "idle": "01a11388-b244-71e4-863e-28c283e2b5f0"
+  },
+  "crocubot": {
+    "image": "01a11382-9d10-7159-8bc5-64fbefe782a2",
+    "model": "01a11386-32db-74ac-a0f8-6f65556877f9",
+    "rig": "01a11388-63e6-74c3-b1dc-f4a097e0d3a3",
+    "idle": "01a11388-de46-742e-97bc-1f801ccc2a91"
+  },
+  "noobnoob": {
+    "image": "01a11382-9e84-720d-97fb-1ec1b8672144",
+    "model": "01a11386-337c-7168-a318-0185edc69231",
+    "rig": "01a11388-637c-72d3-8902-89fbd7761303",
+    "idle": "01a11388-de45-7302-86b0-4fc9cd441cce"
+  },
+  "vindicators-ship": {
+    "image": "01a11382-b1e7-72de-961e-b6547bf5d95b",
+    "model": "01a11386-33ad-757b-b4df-0982ee7d928c"
+  },
+  "nebulon": {
+    "image": "01a11389-a0b9-7220-900e-d06a5aacc9d4",
+    "model": "01a1138c-5903-744b-b5ed-660261d17b02"
+  },
+  "zigerion-b": {
+    "image": "01a11389-a0d0-704d-800b-471b62159821",
+    "model": "01a1138c-5903-7425-b9cf-a30957112279"
+  },
+  "zigerion-c": {
+    "image": "01a11389-a0cb-74b2-a73a-1c1a396ac72f",
+    "model": "01a1138c-5905-7698-9613-9c0c3767bf03"
+  },
+  "storylord": {
+    "image": "01a11389-a0d7-7211-b90e-f470df56b325",
+    "model": "01a1138c-5889-7392-bfa4-40674c836b2d"
+  },
+  "ticketsguy": {
+    "image": "01a1138a-05a7-7219-85b9-407b9c95c789",
+    "model": "01a1138d-61f9-70be-9c26-f015a76ba424"
   }
 }
