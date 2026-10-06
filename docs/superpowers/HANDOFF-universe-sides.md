@@ -31,25 +31,27 @@ Lanes B and C are left).
   `crews.test.js` now reads the side, so a faction or ally without a line
   is a red test.
 
+- Lane B1, hunter traits (`hunterRules.js`'s `TRAITS`, tested): `bomber`,
+  `holdoff`, `quietUntilFired` (the Cousins), `flicker`, `spotlight`
+  (Hank's SUV: the HUD whites out a moment and Walt and Jesse say so).
+  The bomber, the holdoff and the flicker wait for their kinds (B2).
+
 ## Left (in order; the plan has the detail)
 
-1. **Lane B1, hunter traits** (`hunterRules.js`, tested): `bomber`,
-   `holdoff`, `quietUntilFired` (the Cousins), `flicker`, `spotlight`
-   (Hank's SUV). Today every kind flies the same attack runs.
-2. **Lane B2, the rest of the ships**: Star Wars (`tiebomber`, `gunboat`,
+1. **Lane B2, the rest of the ships**: Star Wars (`tiebomber`, `gunboat`,
    IG-88, Bossk, Dengar, pirate skiffs, Y-wings and A-wings from the
    galaxy's GLBs), Rick and Morty (gunships, Morty fighters, Evil Morty's
    ship, the Zigerions, Krombopulos Michael, Squanchy, Mr. Poopybutthole, a
    Federation cruiser), Breaking Bad (balloons, the roadblock as a set
    piece with a helicopter, the Madrigal freighter jumping in). Each is a
    `sides.js` row plus a builder; `sides.test.js` keeps every name honest.
-3. **Lane B3, troops per side**: stormtroopers and scouts for Star Wars,
+2. **Lane B3, troops per side**: stormtroopers and scouts for Star Wars,
    Evil Morty's guard, Albuquerque's figures (`public/models/albuquerque/`:
    check they're on the Meshy skeleton) for the DEA and the cartel.
-4. **Lane C, NPCs with brains**: `npcRules.js`, the five brains, the
+3. **Lane C, NPCs with brains**: `npcRules.js`, the five brains, the
    registry (`universe/npcs/`), Saul, Mike, Fett, Birdperson, Squanchy and
    Evil Morty as characters with lines and relations.
-5. The car builders are first drafts (`fleetBreakingbad.js`): the wings'
+4. The car builders are first drafts (`fleetBreakingbad.js`): the wings'
    fins and the glass bands could be better shaped; a pass with the
    threejs-aaa-graphics-builder skill would help.
 
@@ -68,4 +70,10 @@ Lanes B and C are left).
   `/src/components/universe/trafficModels.js` and calls `buildTraffic(kind)`
   for each of `fleetBreakingbad.js`'s `FLEET` keys (the session's harness
   was `cars-check.html`, not kept).
+- A trait in the browser: `hunters.pack('dea', state.ship, { size: 3, ace: true })`
+  and Hank's SUV pins you (`state.static` goes up, the HUD whites out);
+  `hunters.pack('cousins', state.ship, {})` sits on you without a shot till
+  you hit it. Software WebGL in the container runs at a frame or two a
+  second, so step the fight by hand in the page:
+  `for (let i = 0; i < 600; i++) hunters.update(1 / 60, i / 60, state.ship)`.
 - `npm run lint`, `npm test`, `npm run build` all green at the merge.

@@ -1577,6 +1577,11 @@ export const CREWS = [
         ['comms', 'Thank you, whoever you are!'],
         ['walt', 'Tell no one.'],
       ],
+      // Hank's spotlight on the RV (the 'spotlight' trait: the HUD goes a moment)
+      spotlit: [
+        ['jesse', 'Yo, I can’t see! Is that a spotlight?!'],
+        ['walt', 'Hank. Keep your head down, Jesse.'],
+      ],
       // the DEA across the road ahead (the director's roadblock)
       roadblock: [
         ['comms', 'This is the DEA. Cut your engines and hold position. Now.'],
