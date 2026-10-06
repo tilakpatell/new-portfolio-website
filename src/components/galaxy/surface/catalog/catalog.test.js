@@ -17,6 +17,7 @@ describe('the surface models', () => {
 
   it('has each one brought in, small enough, with what the import needs', () => {
     for (const [kind, m] of Object.entries(SURFACE_MODELS)) {
+      if (m.cluster) continue;
       expect(m.as, kind).toBeTruthy();
       expect(m.metres, kind).toBeGreaterThan(0);
       expect(['x', 'y', 'z', 'max', undefined], kind).toContain(m.along);
@@ -28,6 +29,7 @@ describe('the surface models', () => {
   it('credits each Sketchfab model, and lists each made one', () => {
     const made = madeKinds(README);
     for (const [kind, m] of Object.entries(SURFACE_MODELS)) {
+      if (m.cluster) continue;
       if (m.made) {
         expect(m.made, kind).toBe('meshy');
         expect(m.uid, kind).toBeUndefined();
@@ -39,6 +41,14 @@ describe('the surface models', () => {
     }
   });
 
+  it('makes each cluster of models that are there', () => {
+    for (const [kind, m] of Object.entries(SURFACE_MODELS))
+      if (m.cluster) {
+        expect(m.uid, kind).toBeUndefined();
+        for (const [member] of m.cluster) expect(SURFACE_MODELS[member] && !SURFACE_MODELS[member].cluster, `${kind}: ${member}`).toBeTruthy();
+      }
+  });
+
   it('reads the made kinds from the README list', () => {
     expect([...madeKinds('x `../models/galaxy/surface/{theed,palace}.glb`: made')]).toEqual(['theed', 'palace']);
     expect(madeKinds('nothing here').size).toBe(0);
@@ -46,6 +56,7 @@ describe('the surface models', () => {
 
   it('has a light model beside each one marked lod, and only those (scripts/galaxy-surface-lod.mjs)', () => {
     for (const [kind, m] of Object.entries(SURFACE_MODELS)) {
+      if (m.cluster) continue;
       expect(existsSync(lodFile(kind)), `${kind}.lod1.glb`).toBe(Boolean(m.lod));
       if (m.lod) expect(statSync(lodFile(kind)).size, `${kind}.lod1.glb`).toBeLessThan(0.7 * statSync(file(kind)).size);
     }

@@ -67,10 +67,22 @@ export const BUILDINGS = {
     tris: 30000,
     tex: 2048,
   },
+  // Tatooine: the Lars homestead's domed hut over its courtyard (the built
+  // one's 6 m dome and its doorway; the pit's ring stays built)
+  homestead: {
+    ref: 'File:YetAnotherTatooineSunset.jpg',
+    crop: [0.15, 0.24, 0.73, 0.72],
+    lift: 'the domed adobe hut with its arched doorway, and the machinery, pipes and crates against its walls, seen in plain midday daylight',
+    metres: 9,
+    along: 'w',
+    tris: 20000,
+    tex: 1024,
+  },
   // Tatooine: the crime lord's palace (115 m): the owner's own model, textured here
   palace: {
     from: 'citadel',
     style: 'A desert fortress palace of weathered sun-bleached sandstone and tan adobe: sand-scoured rounded walls with faint horizontal bands, a great domed main keep, a tall cylindrical watchtower with a domed cap, dark recessed doorways and slit windows, dusty and sand-drifted at its base, rough desert rock around it. Realistic, film-set quality.',
+    yaw: -Math.PI / 2,
     metres: 115,
     along: 'w',
     tris: 45000,
@@ -139,10 +151,14 @@ async function squeeze(from, to, a) {
   const b = getBounds(scene);
   const size = b.max.map((v, i) => v - b.min[i]);
   const k = a.metres / (a.along === 'h' ? size[1] : Math.max(size[0], size[2]));
-  const holder = doc.createNode(a.kind).setScale([k, k, k]).setTranslation([-((b.min[0] + b.max[0]) / 2) * k, -b.min[1] * k, -((b.min[2] + b.max[2]) / 2) * k]);
+  // (centred, stood on y = 0, scaled; then turned by `yaw` about its middle,
+  // its front brought round to +z)
+  const centre = doc.createNode(`${a.kind}-centred`).setScale([k, k, k]).setTranslation([-((b.min[0] + b.max[0]) / 2) * k, -b.min[1] * k, -((b.min[2] + b.max[2]) / 2) * k]);
+  const yaw = a.yaw ?? 0;
+  const holder = doc.createNode(a.kind).setRotation([0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)]).addChild(centre);
   for (const child of scene.listChildren()) {
     scene.removeChild(child);
-    holder.addChild(child);
+    centre.addChild(child);
   }
   scene.addChild(holder);
   let count = 0;

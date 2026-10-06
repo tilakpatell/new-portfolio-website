@@ -94,6 +94,7 @@ export const SITES = {
         },
         things: [
           { kind: 'homestead', at: [0, 0], yaw: 0.4 },
+          { kind: 'homesteadring', at: [0, 0], yaw: 0.4 },
           { kind: 'vaporator', at: [16, -6] },
           { kind: 'vaporator', at: [-14, -12] },
           { kind: 'vaporator', at: [22, 12] },
@@ -132,6 +133,19 @@ export const SITES = {
           { kind: 'stall', at: [22, -6], yaw: 1.4 },
           { kind: 'crates', at: [-20, 8] },
           { kind: 'crates', at: [30, 2] },
+          // (the town round about: towers, spires, arches over the lanes,
+          // houses and huts)
+          { kind: 'mostower', at: [-48, -32], yaw: 0.5 },
+          { kind: 'mostower', at: [58, 8], yaw: -0.9 },
+          { kind: 'mosspire', at: [34, -46], yaw: 0.3 },
+          { kind: 'mosspire', at: [-46, 38], yaw: 2.1 },
+          { kind: 'mosarch', at: [2, -46], yaw: 0.1 },
+          { kind: 'mosarch', at: [26, 52], yaw: 0.45 },
+          { kind: 'moshouse', at: [-52, -2], yaw: 1.4 },
+          { kind: 'moshouse', at: [46, -40], yaw: -0.5 },
+          { kind: 'moshut', at: [-28, -50], yaw: 0.8 },
+          { kind: 'moshut', at: [56, 26], yaw: -1.9 },
+          { kind: 'mosblock', at: [-6, 58], yaw: 3.0 },
           { kind: 'vaporator', at: [-46, 4] },
           { kind: 'vaporator', at: [40, -46] },
           { kind: 'landspeeder', at: [6, 12], yaw: 1.9, y: 0.7, solid: { r: 1.4 } },
@@ -231,7 +245,11 @@ export const SITES = {
           falcon: [['han', 'I spent a year on that guy’s wall. Let’s make this quick.'], ['chewie', '(A low, unhappy growl.)']],
           cruiser: [['rick', 'A slug with a palace, Morty. That’s the dream.'], ['morty', 'Th-there’s a monster in the basement, Rick! Everybody knows that!']],
         },
-        things: [{ kind: 'palace', at: [0, 0], model: false }],
+        things: [
+          { kind: 'palace', at: [0, 0] },
+          // (the gate in front of the keep)
+          { kind: 'palacegate', at: [0, 22] },
+        ],
       },
       {
         id: 'tosche',
@@ -344,8 +362,8 @@ export const SITES = {
         id: 'palace',
         name: 'Jabba’s palace',
         music: 'palace',
-        door: { at: from(PALACE, [0, 53]), r: 3.4, prompt: 'Knock on the gate' },
-        back: from(PALACE, [0, 58]),
+        door: { at: from(PALACE, [0, 28.5]), r: 3.4, prompt: 'Knock on the gate' },
+        back: from(PALACE, [0, 33]),
         inside: {
           build: 'palaceinside',
           spawn: [0, 27.5],

@@ -34,6 +34,8 @@
 //           its materials to leave off, by name (a RegExp)
 //   rig     true to keep its skeleton and animations (a figure that walks):
 //           it isn't merged or baked, only simplified and compressed
+//   pick    a RegExp on its parts' names: only those are kept (one piece of
+//           a kitbash: a tower out of a whole town), stood up on its own
 //
 // The downloads stay out of the repo, in /tmp/sketchfab-surface/ (fetched
 // once, kept for the next run). Look at what came out on the model sheet
@@ -45,7 +47,7 @@ import { compactPrimitive, dedup, dequantize, flatten, join, meshopt, metalRough
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join as path } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -69,6 +71,9 @@ const json = async (url, headers = {}) => {
 async function download(kind, uid) {
   const file = path(CACHE, `${kind}-${uid}.glb`);
   if (existsSync(file)) return file;
+  // (fetched already for another kind: the pieces of one kitbash)
+  const had = existsSync(CACHE) && readdirSync(CACHE).find((f) => f.endsWith(`-${uid}.glb`));
+  if (had) return path(CACHE, had);
   if (!token) throw new Error('SKETCHFAB_API_TOKEN is not set');
   const { glb } = await json(`${API}/${uid}/download`, { Authorization: `Token ${token}` });
   if (!glb?.url) throw new Error(`${kind}: no .glb to download`);
@@ -331,6 +336,8 @@ async function bring(io, kind, spec) {
   const before = triangles(doc);
   // (lines and points: nothing a world shows)
   for (const mesh of root.listMeshes()) for (const prim of mesh.listPrimitives()) if (prim.getMode() !== 4) prim.dispose();
+  // (one piece of a kitbash: the parts it's named by, the rest let go)
+  if (spec.pick) for (const node of root.listNodes()) if (node.getMesh() && !spec.pick.test(node.getName())) node.setMesh(null);
   if (spec.rig) await doc.transform(dequantize(), dedup(), metalRough(), relit(spec), prune(), bareWhereUntextured(), weld());
   else await doc.transform(dequantize(), unskinned(), dedup(), metalRough(), relit(spec), prune(), bareWhereUntextured(), weld(), flatten(), join({ keepNamed: false }), weld());
   await doc.transform(simplified(spec.tris));

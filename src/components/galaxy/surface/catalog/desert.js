@@ -26,4 +26,27 @@ export const MODELS = {
   salacious: { uid: '60b4c93af8644d21992a5ee6bd60af31', as: 'Salacious B. Crumb', metres: 0.7, yaw: 0, tris: 12000, tex: 1024 },
   // a dejarik holochess table, its monsters on the board
   dejarik: { uid: '49790bf56ec74e5c82b8ef462ae7ab68', as: 'the dejarik tables', metres: 1.6, along: 'max', yaw: 0, tris: 20000, tex: 1024 },
+  // C-3PO's and R2-D2's escape pod, come down in the Dune Sea
+  escapepod: { uid: '744b53ababd640c089b9db03b02c968d', as: 'the escape pod', metres: 2.8, along: 'y', yaw: 0, tris: 6100, tex: 1024 },
+  // the krayt dragon's bones, half in the sand (a museum's blue whale
+  // skeleton: the long spine, the ribs, the great jaw)
+  krayt: { uid: '018b2c21e4534f34aa9deb55141407b3', as: 'the krayt dragon’s bones', metres: 30, along: 'max', yaw: 0, tris: 6200, tex: 1024 },
+  // Ben Kenobi's hut: a domed hut of sand-scoured plaster, its door of planks
+  benhut: { uid: '64310fbd9b1640cdbf04f5f12ad58ba2', as: 'Ben Kenobi’s hut', metres: 7.5, along: 'max', yaw: 0, tris: 2100, tex: 1024, detail: 'adobe' },
+  // a Jawa sandcrawler (flat-coloured as it comes: the metal scan laid over it)
+  sandcrawler: { uid: 'af4b4facdc504e5fac8a96abf4bb770d', lod: true, as: 'the Jawa sandcrawler', metres: 36, along: 'max', yaw: -Math.PI / 2, tris: 30000, tex: 1024, detail: 'metal' },
+  // the pieces of a Tatooine town (chuckcg's kitbash, each on its own): the
+  // great buttressed tower, the domed spire, the arch, two houses, a stall
+  mostower: { uid: 'b5a2140fa2264bac8a4b6de3693272b6', pick: /^SW tower /, as: 'the towers of Mos Eisley', metres: 30, along: 'y', yaw: 0, tris: 20000, tex: 1024, detail: 'adobe' },
+  mosspire: { uid: 'b5a2140fa2264bac8a4b6de3693272b6', pick: /^SW structure/, as: 'the spires of Mos Eisley', metres: 20, along: 'y', yaw: 0, tris: 10000, tex: 1024, detail: 'adobe' },
+  mosarch: { uid: 'b5a2140fa2264bac8a4b6de3693272b6', pick: /^swarch/, as: 'the arches of Mos Eisley', metres: 10, along: 'x', yaw: 0, tris: 8000, tex: 1024, detail: 'adobe' },
+  moshouse: { uid: 'b5a2140fa2264bac8a4b6de3693272b6', pick: /^(SW house 1|door1_door_mat_0)/, as: 'the houses of Mos Eisley', metres: 8, along: 'max', yaw: 0, tris: 8000, tex: 1024, detail: 'adobe' },
+  moshut: { uid: 'b5a2140fa2264bac8a4b6de3693272b6', pick: /^(SW house 2|door1\.001_door)/, as: 'the huts of Mos Eisley', metres: 6.5, along: 'max', yaw: 0, tris: 6000, tex: 1024, detail: 'adobe' },
+  stall: { uid: 'b5a2140fa2264bac8a4b6de3693272b6', pick: /^(tent[12]_low|props 2_e\.00[1-5]|props 2_c\.00[12])/, as: 'the market stalls', metres: 5, along: 'max', yaw: 0, tris: 4000, tex: 512 },
+  // a block of Mos Eisley: a sloped-walled house, its domed rooftop, the
+  // vaporators beside it
+  mosblock: { uid: 'e5c41d421d284ffea6fa82516a0a35e5', as: 'the blocks of Mos Eisley', metres: 11, along: 'max', yaw: 0, tris: 10500, tex: 1024, detail: 'adobe' },
+  // a docking bay: the round pit, its walls and ramps (bare as it comes:
+  // the plaster scan and sand colour laid over it)
+  dockingbay: { uid: '20863d782fb34a02871cef941ecb0aca', as: 'the docking bays', metres: 31, along: 'max', yaw: 0, tris: 14600, tex: 512, detail: 'adobe', tint: '#d9c19a', solids: 'built' },
 };

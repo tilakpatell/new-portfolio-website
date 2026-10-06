@@ -18,5 +18,11 @@
 export const MODELS = {
   // Naboo: Theed's domed halls (from a concept image of one, which the
   // owner chose); its towers stay built
+  // Tatooine: the Lars homestead's domed hut, its arched door and the
+  // machinery against its walls (from a still of it at sunset)
+  homestead: { made: 'meshy', as: 'the Lars homestead', metres: 9, along: 'x', detail: 'adobe' },
+  // Tatooine: Jabba's palace, the keep, the watchtower and the rock it
+  // stands on (the owner's model, retextured; its gate is built)
+  palace: { made: 'meshy', as: 'Jabba’s palace', metres: 115, along: 'x', lod: true, detail: 'adobe', solids: 'built' },
   theed: { made: 'meshy', as: "Theed's domed halls", metres: 35, along: 'x', hero: true, lod: true, styles: ['hall', 'rotunda'], detail: 'stone' },
 };
