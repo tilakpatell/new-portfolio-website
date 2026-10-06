@@ -101,6 +101,8 @@ import { createWarFront } from './warfront';
 import { createBolts, createFlashes } from './fx';
 import { buildSystem } from './world';
 import { AHEAD, FACTIONS, KINDS, NAMES } from './hunted';
+import { createRoam } from './roam';
+import { pick as pickFaction } from '../universe/sides';
 import { aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
 import { asking } from './asking';
 import { arrival, courseTo, jumpSeconds, kindsIn, lightYears, starAhead, systemById, wantsDeathStar } from './systems';
@@ -228,6 +230,7 @@ export async function create(canvas, ctx) {
   fleet.prepare = (o) => warm(o);
   const hunters = reduced ? null : createHunters(scene, { small, fleet, factions: FACTIONS, kinds: KINDS, solids: () => state.space?.solids ?? [] });
   let hunts = 0; // packs sent this visit (the first is a small one)
+  const roam = createRoam(); // what happens while you roam: the director on the system's side
   const pieces = reduced ? null : createSetPieces(scene, { small, fleet, solids: () => state.space?.solids ?? [] }); // (clear of this system's planet, not the universe map's)
   // the Empire's count of your jumps, and the Interdictor waiting on the one that's due
   const interdiction = createInterdiction({
@@ -290,7 +293,6 @@ export async function create(canvas, ctx) {
     hurt: 0,
     lowSaid: false,
     heat: 0,
-    nextHunt: 35 + Math.random() * 25, // seconds of flying till they come
     jump: null, // { to, from, phase, age, dir, dur }
     aim: null, // { id, angle }: the star the nose is on, if it's on one
     courseSaid: false,
@@ -366,7 +368,6 @@ export async function create(canvas, ctx) {
     state.lock = null;
     state.pull = 0;
     state.pullSaid = false;
-    state.nextHunt = 30 + Math.random() * 30;
     state.held = null;
     interdictor?.hide();
     models.want(['destroyer', 'corvette', 'xwing', 'interceptor', ...(wantsDeathStar(sys) ? ['deathstar'] : [])]);
@@ -1384,7 +1385,9 @@ export async function create(canvas, ctx) {
   // ── What goes on round you ──
   const onHunters = (e) => {
     if (e.type === 'hunted') {
-      if (!e.prey) emit({ type: 'hunted', faction: e.faction, ace: e.kinds.includes('tieadvanced') });
+      // (ace: the kind of the faction's ace, when it came along, for its own line)
+      const ace = FACTIONS[e.faction]?.ace;
+      if (!e.prey) emit({ type: 'hunted', faction: e.faction, ace: ace && e.kinds.includes(ace) ? ace : null });
     } else if (e.type === 'laser') hurt(e.damage);
     else if (e.type === 'shot') emit(e);
     else if (e.type === 'escaped' || e.type === 'cleared') {
@@ -1393,6 +1396,39 @@ export async function create(canvas, ctx) {
     }
   };
   const later = [];
+  // on the way somewhere (out in the open at speed), a pack comes in ahead of you
+  const travelling = (s) => state.space.openness(s.x, s.y, s.z) > 0.5 && Math.abs(s.speed) > 30;
+  // the director's events, played out (the universe map's `happen`, for
+  // what the galaxy plays so far: roamRules.js's ROAM_EVENTS)
+  const happen = (id, ship) => {
+    const side = roam.side(state.sys);
+    if (!side || !hunters) return;
+    const ambush = travelling(ship) ? { ahead: true } : {};
+    const strength = { heat: state.heat, first: hunts === 0 };
+    if (id === 'hunt') {
+      const who = pickFaction(side, 'hunt');
+      if (!who) return;
+      hunts += 1;
+      hunters.pack(who, ship, { ...ambush, ...strength });
+    } else if (id === 'destroyer') {
+      if (!pieces || !side.capitalShip) return;
+      const d = pieces.destroyer(ship, side.capitalShip);
+      if (!d) return;
+      emit({ type: 'event', id: 'destroyer' });
+      // its fighters launch a moment after it's here
+      const who = pickFaction(side, 'capital') ?? pickFaction(side, 'hunt') ?? 'empire';
+      later.push({ at: state.clock + 2.4, run: () => state.ship && !state.crash && !state.jump && hunters.pack(who, state.ship, { from: d.hangar, size: 3, ace: Math.random() < 0.35 }) });
+    } else if (id === 'bounty') {
+      // one hunter, tough and quick: Boba Fett in Slave I (its model, once
+      // it's here: Vader stands in till then), IG-88, Bossk or Dengar
+      const who = pickFaction(side, 'bounty');
+      if (!who) return;
+      if (who === 'fett' && !fleet.loaded('slave1')) {
+        fleet.want(['slave1']);
+        hunters.pack('empire', ship, { size: 1, ace: true, ...ambush });
+      } else hunters.pack(who, ship, { size: 1, ace: false, ...ambush });
+    }
+  };
   const adventure = (dt, t) => {
     state.clock += dt;
     const live = flying() && !state.crash && !state.jump && !props.frozen ? state.ship : null;
@@ -1414,23 +1450,14 @@ export async function create(canvas, ctx) {
       if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen);
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
-      // now and then, whoever holds the system comes for you; the Empire (and
-      // what's left of it) sometimes brings a Star Destroyer to launch them
-      const faction = state.sys?.faction;
+      // now and then something happens: the director, run on the system's
+      // side (roam.js: whoever holds the system comes for you, the Empire
+      // brings a Star Destroyer to launch them, a bounty hunter finds you)
       // (not in the middle of the war's battle: it's busy enough)
-      if (hunters && faction && state.flown && !hunters.active && !pieces?.destroyerHere && !state.held && !war?.battle) {
-        if (state.shield >= 50) state.nextHunt -= dt * (1 + state.heat * 0.4); // (not while your shields are low)
-        if (state.nextHunt <= 0) {
-          state.nextHunt = 50 + Math.random() * 45;
-          const travelling = state.space.openness(live.x, live.y, live.z) > 0.5 && Math.abs(live.speed) > 30;
-          if ((faction === 'empire' || faction === 'remnant') && pieces && Math.random() < 0.3) {
-            const d = pieces.destroyer(live);
-            if (d) {
-              emit({ type: 'event', id: 'destroyer' });
-              later.push({ at: state.clock + 2.4, run: () => state.ship && !state.crash && !state.jump && hunters.pack(faction, state.ship, { from: d.hangar, size: 3, ace: faction === 'empire' && Math.random() < 0.35 }) });
-            }
-          } else hunters.pack(faction, live, { ahead: travelling, heat: state.heat, first: hunts++ === 0 });
-        }
+      if (hunters && state.flown) {
+        const busyHere = hunters.active || Boolean(pieces?.destroyerHere) || Boolean(state.held) || Boolean(war?.battle) || state.view === 'map';
+        const id = roam.update(dt, { sys: state.sys, heat: state.heat, busy: busyHere, travelling: travelling(live), calm: state.shield < 50 });
+        if (id) happen(id, live);
       }
       // the Interdictor's hold: its TIEs launch a moment after it's here, and
       // it lets go once they're gone, once you're out past the well, or once
@@ -1444,7 +1471,6 @@ export async function create(canvas, ctx) {
         const why = holdLifts({ since: h.since, now: state.clock, pack: h.pack, inWell: inWell(live, h.at) });
         if (why) {
           state.held = null;
-          state.nextHunt = 50 + Math.random() * 45;
           emit({ type: 'wellclear', why });
         }
       }
