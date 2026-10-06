@@ -838,7 +838,10 @@ export const SITES = {
       { kind: 'jungletree', n: 140, within: [22, 640], scale: [0.7, 1.2], opts: { seed: 2, bark: '#7a7462', leaf: '#3e6428' } },
       { kind: 'jungletree', n: 180, within: [640, 1400], scale: [1.0, 1.6], solid: false, opts: { seed: 3 } },
       { kind: 'plant', n: 700, within: [6, 480], scale: [0.8, 2.0], solid: false, clear: -8, opts: { seed: 4 } },
-      { kind: 'fern', n: 400, within: [6, 480], scale: [0.8, 1.7], solid: false, clear: -8, opts: { seed: 5, color: '#4e7a2e' } },
+      { kind: 'fern', n: 400, within: [6, 480], scale: [0.8, 1.7], solid: false, clear: -8, opts: { seed: 5, color: '#446a2c' } },
+      // (the undergrowth near you, thick, as the jungle's floor is in the film)
+      { kind: 'fern', n: 1200, within: [4, 90], scale: [0.7, 1.6], solid: false, clear: -10, opts: { seed: 15, n: 7, color: '#3f6328' } },
+      { kind: 'plant', n: 500, within: [4, 90], scale: [0.7, 1.6], solid: false, clear: -10, opts: { seed: 16 } },
       { kind: 'rock', n: 50, within: [20, 560], scale: [0.6, 2.4], opts: { color: '#6a6656', sharp: 0.4 } },
       { kind: 'log', n: 24, within: [30, 520], scale: [0.9, 1.5], solid: false, opts: { seed: 7, bark: '#6a6250', moss: '#4e6a2c' } },
     ],

@@ -144,6 +144,25 @@ function spray(len, w, at, a, d, twist = 0, color = '#2a4224') {
   return part(g, { color, to: 'needles', uv: true });
 }
 
+// a canopy clump of broad leaves (kit.mats.foliage) s across and s × flat
+// high round `at`: leaf sprays all about it, turned every way, round a dark
+// core so the light doesn't pour through its middle
+function canopy(at, s, { flat = 0.5, color = '#3e5a2a', seed = 1, cards = null } = {}) {
+  const rand = rng(seed);
+  const out = [part(blob(seed, { lump: 0.35, detail: 0 }), { at, scale: [s * 0.62, s * flat * 0.62, s * 0.62], color: new THREE.Color(color).multiplyScalar(0.55), to: 'leaf' })];
+  const n = cards ?? Math.max(10, Math.min(36, Math.round(s * 1.6)));
+  for (let i = 0; i < n; i++) {
+    const u = rand() * TAU;
+    const v = Math.acos(1 - rand() * 1.6); // (more of them up top than under)
+    const rr = 0.42 + rand() * 0.12;
+    const p = [at[0] + Math.sin(v) * Math.cos(u) * s * rr, at[1] + Math.cos(v) * s * flat * rr, at[2] + Math.sin(v) * Math.sin(u) * s * rr];
+    const len = s * (0.32 + rand() * 0.14);
+    const g = new THREE.PlaneGeometry(len * 0.8, len).translate(0, len / 2, 0).rotateY(rand() * PI).rotateX(PI / 2 - v * 0.9 + (rand() - 0.5) * 0.6).rotateY(u + PI / 2).translate(...p);
+    out.push(part(g, { color: new THREE.Color(color).offsetHSL((rand() - 0.5) * 0.02, 0, (rand() - 0.5) * 0.08), to: 'foliage', uv: true }));
+  }
+  return out;
+}
+
 function redwoodParts({ h = 68, r = 2.6, seed = 1, bark = '#6a3826', leaf = '#2a4224', lo = false } = {}) {
   const rand = rng(seed);
   const prof = [
@@ -190,7 +209,8 @@ function redwoodParts({ h = 68, r = 2.6, seed = 1, bark = '#6a3826', leaf = '#2a
     for (let j = 0; j < n; j++) parts.push(spray(s * (0.75 + rand() * 0.3), s * 0.62, [end[0] * 0.85, end[1] - 0.4, end[2] * 0.85], a + (j / n) * TAU + rand() * 0.5, 0.25 + rand() * 0.35, rand() * 0.6, green));
     if (!lo) for (let j = 0; j < 2; j++) parts.push(spray(s * 0.7, s * 0.55, [end[0] * 0.85, end[1] - 1.2, end[2] * 0.85], a + j * PI, -1.15, PI / 2, green));
   }
-  parts.push(part(blob(seed * 7, { lump: 0.3 }), { at: [0, h * 0.96, 0], scale: [3.6, 7, 3.6], color: leaf, to: 'leaf' }));
+  // (the top: sprays reaching up round the leader)
+  for (let j = 0; j < (lo ? 2 : 4); j++) parts.push(spray(6, 2.6, [0, h * 0.9, 0], j * 1.6 + rand(), -1.0, 0, leaf));
   return { parts, prof };
 }
 
@@ -278,7 +298,7 @@ function gnarlParts({ seed = 4, bark = '#4c463a', moss = '#7d8a5a', leaf = '#465
       p = q;
     }
     const s = 2.4 + rand() * 1.6;
-    parts.push(part(blob(seed * 13 + i, { lump: 0.5 }), { at: [p[0], p[1] + 0.3, p[2]], scale: [s, s * 0.45, s], color: new THREE.Color(leaf).offsetHSL(0, 0, (rand() - 0.5) * 0.08), to: 'leaf' }));
+    parts.push(...canopy([p[0], p[1] + 0.3, p[2]], s, { flat: 0.45, color: new THREE.Color(leaf).offsetHSL(0, 0, (rand() - 0.5) * 0.08), seed: seed * 13 + i, cards: 10 }));
   }
   return { parts };
 }
@@ -332,7 +352,7 @@ function wroshyrParts({ h = 74, r = 3.2, seed = 6, bark = '#7a6a54', leaf = '#4a
         parts.push(rod(mid, [mid[0] + 0.5, y - 14 - rand() * 8, mid[2]], 0.12, 0.08, { color: bark, to: 'bark' }, 4));
       }
       const s = len * 0.6 + 9;
-      parts.push(part(blob(seed * 19 + ti * 5 + i, { lump: 0.45, flat: 0.5 }), { at: [end[0], end[1] + 1, end[2]], scale: [s, s * 0.32, s * 0.85], rot: [0, rand() * PI, 0], color: new THREE.Color(leaf).offsetHSL(0, 0, (rand() - 0.5) * 0.08), to: 'leaf' }));
+      parts.push(...canopy([end[0], end[1] + 1, end[2]], s, { flat: 0.34, color: new THREE.Color(leaf).offsetHSL(0, 0, (rand() - 0.5) * 0.08), seed: seed * 19 + ti * 5 + i }));
     }
   });
   return { parts, prof };
@@ -374,7 +394,7 @@ function karstParts({ seed = 7, color = '#a8a493', leaf = '#4e6a32' } = {}) {
 
 // a Yavin 4 jungle tree: a tall pale trunk on plank buttresses, a broad
 // crown high up, lianas hanging
-function jungleParts({ h = 36, r = 1.1, seed = 8, bark = '#8a8470', leaf = '#355a26' } = {}) {
+function jungleParts({ h = 36, r = 1.5, seed = 8, bark = '#8a8470', leaf = '#355a26' } = {}) {
   const rand = rng(seed);
   const prof = [
     [r * 1.4, 0],
@@ -390,18 +410,20 @@ function jungleParts({ h = 36, r = 1.1, seed = 8, bark = '#8a8470', leaf = '#355
     parts.push(part(new THREE.ExtrudeGeometry(new THREE.Shape([new THREE.Vector2(r * 0.4, 0), new THREE.Vector2(r * 3.2, 0), new THREE.Vector2(r * 0.4, r * 4.5)]), { depth: 0.25, bevelEnabled: false }).translate(0, 0, -0.125), { rot: [0, a, 0], color: bark, to: 'bark' }));
   }
   // the crown: limbs out to broad clumps
-  for (let i = 0; i < 5; i++) {
-    const a = (i / 5) * TAU + rand() * 0.6;
-    const len = 4 + rand() * 4;
-    const y = h * (0.82 + rand() * 0.12);
+  // (a broad crown, its limbs from a little over halfway up: from below a
+  // roof of leaves, as Yavin's jungle is in the film, not poles with tufts)
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU + rand() * 0.6;
+    const len = 5 + rand() * 6;
+    const y = h * (0.56 + (i / 8) * 0.32 + rand() * 0.06);
     const end = [cos(a) * len, y + 2 + rand() * 2, sin(a) * len];
-    parts.push(rod([0, y - 2, 0], end, 0.45, 0.2, { color: bark, to: 'bark' }, 5));
-    const s = 5 + rand() * 3;
-    parts.push(part(blob(seed * 23 + i, { lump: 0.4, flat: 0.6 }), { at: end, scale: [s, s * 0.42, s], color: new THREE.Color(leaf).offsetHSL(0, 0, (rand() - 0.5) * 0.08), to: 'leaf' }));
+    parts.push(rod([0, y - 2, 0], end, 0.55, 0.22, { color: bark, to: 'bark' }, 5));
+    const s = 6.5 + rand() * 4.5;
+    parts.push(...canopy(end, s, { flat: 0.42, color: new THREE.Color(leaf).offsetHSL(0, 0, (rand() - 0.5) * 0.08), seed: seed * 23 + i, cards: 12 }));
     // a liana down from it
-    if (i % 2 === 0) parts.push(rod(end, [end[0] * 0.8, 2 + rand() * 6, end[2] * 0.8], 0.07, 0.05, { color: '#3c4a26', to: 'bark' }, 4));
+    if (i % 3 === 0) parts.push(rod(end, [end[0] * 0.8, 2 + rand() * 6, end[2] * 0.8], 0.07, 0.05, { color: '#3c4a26', to: 'bark' }, 4));
   }
-  parts.push(part(blob(seed * 29, { lump: 0.3, flat: 0.6 }), { at: [0, h + 1.5, 0], scale: [7, 3.2, 7], color: leaf, to: 'leaf' }));
+  parts.push(...canopy([0, h + 1.5, 0], 7, { flat: 0.46, color: leaf, seed: seed * 29, cards: 16 }));
   return { parts };
 }
 
@@ -1124,9 +1146,9 @@ const KASHYYYK = {
       const end = [cos(a) * (rr + len), y + 10, sin(a) * (rr + len)];
       parts.push(rod([cos(a) * rr * 0.6, y - 6, sin(a) * rr * 0.6], end, 3.2, 1.2, { color: '#7d6c56', to: 'bark' }, 7));
       const s = 34 + rand() * 18;
-      parts.push(part(blob(400 + i, { lump: 0.45, flat: 0.5 }), { at: end, scale: [s, s * 0.38, s], color: new THREE.Color('#4a6a2c').offsetHSL(0, 0, (rand() - 0.5) * 0.08), to: 'leaf' }));
+      parts.push(...canopy(end, s, { flat: 0.38, color: new THREE.Color('#4a6a2c').offsetHSL(0, 0, (rand() - 0.5) * 0.08), seed: 400 + i, cards: 30 }));
     }
-    parts.push(part(blob(499, { lump: 0.4 }), { at: [0, H, 0], scale: [50, 22, 50], color: '#47662a', to: 'leaf' }));
+    parts.push(...canopy([0, H, 0], 50, { flat: 0.44, color: '#47662a', seed: 499, cards: 40 }));
     // lights in its windows, up the trunk
     for (let i = 0; i < 24; i++) {
       const y = 12 + rand() * 120;
