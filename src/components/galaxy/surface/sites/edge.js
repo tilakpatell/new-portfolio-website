@@ -243,6 +243,15 @@ export const SITES = {
       // geysers along the rivers, platforms adrift
       { kind: 'lavaspout', at: [90, -60], opts: { h: 14 } },
       { kind: 'lavaspout', at: [-120, -200], opts: { h: 20 } },
+      // where you set down: the miners' depot on the rock, barrels of what
+      // they pull out of the lava
+      { kind: 'barrel', at: [104, 12], yaw: 0.3 },
+      { kind: 'barrel', at: [105.2, 12.6], yaw: 1.1 },
+      { kind: 'barrel', at: [104.4, 13.8], yaw: 2.0 },
+      { kind: 'cratecube', at: [108, 10], yaw: 0.6 },
+      { kind: 'empirecrate', at: [72, -12], yaw: 1.9 },
+      { kind: 'lamp', at: [110, 16], opts: { h: 5, light: '#ffb070', color: '#2a2828' } },
+      { kind: 'lamp', at: [68, -16], opts: { h: 5, light: '#ffb070', color: '#2a2828' } },
       { kind: 'collector', at: [182, 34], abs: true, y: 2.3, yaw: 0.7 },
       { kind: 'droidplatform', at: [158, 6], abs: true, y: 2.2 },
       { kind: 'droidplatform', at: [200, 52], abs: true, y: 2.2 },
@@ -259,6 +268,9 @@ export const SITES = {
       { kind: 'obiwan', at: [300, 364], face: 3.14, still: true, name: 'Obi-Wan Kenobi', says: ['It’s over, Anakin. I have the high ground.', 'Don’t try it.', 'You were the Chosen One! It was said that you would destroy the Sith, not join them!', 'You were my brother, Anakin. I loved you.'] },
       { kind: 'anakin', at: [301, 339], face: 0, still: true, name: 'Anakin Skywalker', says: ['You underestimate my power!', 'If you’re not with me, then you’re my enemy.', 'From my point of view, the Jedi are evil!', 'I hate you!'] },
       { kind: 'vader', at: [-292, -340], face: 0.4, still: true, name: 'Darth Vader', says: ['Be careful not to choke on your aspirations, Director.', 'You were not summoned here to grovel.', '(The breathing. Just the breathing.)', 'I find your lack of faith disturbing.'] },
+      { kind: 'mustafarian', n: 2, at: [100, 10], spread: 6, roam: 8, speed: 0.8, name: 'Mustafarian', says: ['(It taps a barrel, then the lava, then the barrel again. The price, presumably.)', '(A hiss through its mask: the heat doesn’t bother it.)'] },
+      { kind: 'battledroid', n: 2, at: [74, -8], spread: 6, roam: 8, speed: 1.0, name: 'Battle droid', says: ['Roger, roger.', 'This is a restricted mining zone. Uh… roger?'] },
+      { kind: 'mousedroid', n: 1, at: [96, 4], roam: 8, speed: 1.4, r: 0.2, solid: false },
       { kind: 'mustafarian', n: 5, at: [150, -250], spread: 18, roam: 16, speed: 0.9, name: 'Mustafarian', says: ['(It clicks and hisses through its mask, and points at the lava.)', '(It offers you a lump of something still glowing. Cooling, it says. Mostly.)', '(It eyes your boots. They are not rated for this.)'] },
       { kind: 'lavaflea', n: 4, at: [170, -280], spread: 30, roam: 40, speed: 1.6, r: 2.2, name: 'Lava flea', says: ['(It chitters, and a shower of hot grit falls off its shell.)', '(It hops a little closer. Its back legs twitch.)'] },
       { kind: 'battledroid', n: 4, path: [[-232, 330], [-168, 330], [-162, 266], [-238, 266]], speed: 1.2, name: 'Battle droid', says: ['Roger, roger.', 'Halt! This is a restricted facility.', 'The Viceroy is not to be disturbed.', 'Uh oh.'] },
@@ -369,7 +381,7 @@ export const SITES = {
           rv: [['walt', 'A data vault. Everything they know, in one building, guarded by one door.'], ['jesse', 'That’s, like, the opposite of how you hide stuff.']],
         },
         things: [
-          { kind: 'citadel', at: [0, 0], yaw: 2.554, model: false },
+          { kind: 'citadel', at: [0, 0], yaw: 2.554 },
           { kind: 'pad', at: [0, 66], opts: { r: 12, color: '#a6a49e', light: '#ffd27a' } },
           { kind: 'lamp', at: [-14, 58], opts: { h: 7, light: '#fff0c8', color: '#5a5c60' } },
           { kind: 'lamp', at: [14, 58], opts: { h: 7, light: '#fff0c8', color: '#5a5c60' } },
@@ -484,6 +496,14 @@ export const SITES = {
       // the shield overhead, and the Death Star over the eastern sea
       { kind: 'scarifshield', at: [0, 0], abs: true, y: -400, model: false, solid: false },
       { kind: 'ds1sky', at: [8800, -1900], abs: true, y: 1250, yaw: -1.35, model: false, solid: false, opts: { r: 1500 } },
+      // the Empire's cargo where you land, waiting for the next shuttle
+      { kind: 'empirecrate', at: [22, -18], yaw: 0.3 },
+      { kind: 'empirecrate', at: [22.4, -16.6], yaw: 0.2 },
+      { kind: 'cratecube', at: [25, -19], yaw: 1.1 },
+      { kind: 'cratecube', at: [26.3, -18.4], yaw: 0.4 },
+      { kind: 'cratecube', at: [-20, 14], yaw: 2.2 },
+      { kind: 'cooler', at: [-18, 16], yaw: 0.6 },
+      { kind: 'barrel', at: [24, -14], yaw: 0.9 },
       // pads, bunkers and lamps across the base
       { kind: 'pad', at: [60, 60], opts: { r: 16, color: '#a6a49e', light: '#ffd27a' } },
       { kind: 'pad', at: [210, 40], opts: { r: 16, color: '#a6a49e', light: '#ffd27a' } },
@@ -519,6 +539,9 @@ export const SITES = {
       { kind: 'stormtrooper', n: 3, at: [70, 515], spread: 12, roam: 14, speed: 1.1, name: 'Stormtrooper', says: ['Access to the vault is restricted.', 'Director Krennic is on his way down.', 'Seal the tower!'] },
       { kind: 'rebel', n: 6, at: [-320, 200], spread: 18, roam: 22, speed: 1.4, name: 'Pathfinder', says: ['Rogue One, we’re with you!', 'Find cover! Walkers on the beach!', 'Blue Squadron, we need that gate kept open!', 'For the Rebellion!'] },
       { kind: 'rebel', n: 3, at: [-280, -170], spread: 14, roam: 12, speed: 1.3, name: 'Rebel trooper', says: ['Keep their heads down! Give Rogue One time!', 'Here comes another walker!'] },
+      { kind: 'shoretrooper', n: 2, at: [20, -10], spread: 4, still: true, face: 2.8, name: 'Shoretrooper', says: ['Cargo manifest, pilot.', 'Nobody touches the crates till the shuttle’s down.'] },
+      { kind: 'mousedroid', n: 2, at: [0, 8], spread: 8, roam: 14, speed: 1.6, r: 0.2, solid: false },
+      { kind: 'baze', at: [-92, 110], roam: 6, speed: 0.7, name: 'Baze Malbus', says: ['Good luck.', 'I don’t need luck. I have you.', '(He checks the cannon’s power pack. Again.)'] },
       { kind: 'k2so', id: 'k2so', quest: 'plans', at: [-96, 104], roam: 8, speed: 1.0, name: 'K-2SO', says: ['Congratulations. You are being rescued. Please do not resist.', 'I have a bad feeling about— no. Actually, I do not.', 'The captain says you are a friend. I will not kill you.', 'There is a ninety-seven point six percent chance of failure. Shall we proceed?', 'Jyn, I’ll be there for you. Cassian said I had to.'] },
       { kind: 'chirrut', at: [128, 140], roam: 8, speed: 0.6, name: 'Chirrut Îmwe', says: ['I am one with the Force, and the Force is with me.', 'The strongest stars have hearts of kyber.', 'Look for the Force, and you’ll always find me.', 'You might as well be blind.'] },
       { kind: 'jyn', at: [438, -246], face: 1.6, still: true, name: 'Jyn Erso', says: ['Rebellions are built on hope.', 'Save the Rebellion. Save the dream.', 'Your father would be proud of you, Cassian.'] },
@@ -709,6 +732,15 @@ export const SITES = {
       { kind: 'bespinplatform', at: [141, -141], abs: true, y: 0, opts: { r: 12 } },
       { kind: 'bespinbridge', at: [126.6, -126.6], yaw: 2.356, abs: true, y: 0, opts: { len: 26, w: 5 } },
       { kind: 'weathervane', at: [0, 0], abs: true, y: -250, solid: false },
+      // the platform where you land: a cloud car down for a refit, its
+      // crew's cargo, and the lamps round the rim
+      { kind: 'cloudcar', at: [-16, -268], yaw: 2.4, abs: true, y: 1.2 },
+      { kind: 'barrel', at: [16, -266], yaw: 0.3, abs: true, y: 0 },
+      { kind: 'barrel', at: [17.1, -265.2], yaw: 1.2, abs: true, y: 0 },
+      { kind: 'cooler', at: [18.5, -267.5], yaw: 0.8, abs: true, y: 0 },
+      { kind: 'bevelcrate', at: [15, -268.5], yaw: 0.4, abs: true, y: 0 },
+      { kind: 'lamp', at: [-20, -248], abs: true, y: 0, opts: { h: 4.5, light: '#ffe0b0', color: '#d8d0c4' } },
+      { kind: 'lamp', at: [20, -248], abs: true, y: 0, opts: { h: 4.5, light: '#ffe0b0', color: '#d8d0c4' } },
       // cloud cars parked by the plaza, lamps along the way in
       { kind: 'cloudcar', at: [-26, 30], yaw: 0.5, abs: true, y: 1.2 },
       { kind: 'cloudcar', at: [-34, 18], yaw: 0.8, abs: true, y: 1.2 },
@@ -731,6 +763,8 @@ export const SITES = {
       { kind: 'wingguard', n: 3, path: [[-2.5, -236], [-2.5, -172], [2.5, -172], [2.5, -236]], speed: 1.3, name: 'Wing Guard', says: ['Welcome to Cloud City.', 'Keep to the walkways, please. It’s a long way down.', 'The Baron Administrator will see you now.'] },
       { kind: 'wingguard', n: 2, at: [0, 40], spread: 20, roam: 20, speed: 1.1, name: 'Wing Guard', says: ['Move along, citizen.', 'Imperial business. Don’t ask.'] },
       { kind: 'villager', n: 6, at: [10, 40], spread: 45, roam: 30, speed: 1.0, name: 'Cloud City citizen', says: ['Tibanna gas prices are up again. Good for us.', 'Have you seen the sunsets from the east platform?', 'Imperials? Here? The Baron says it’s just business.', 'Mind the edges. They never did put rails on the platforms.'] },
+      { kind: 'ugnaught', n: 2, at: [-14, -264], spread: 4, roam: 5, speed: 0.8, name: 'Ugnaught mechanic', says: ['(It squeals at the cloud car’s open engine, and then at you.)', '(It hands you a part, takes it back, and grunts.)'] },
+      { kind: 'astromech', n: 1, at: [14, -262], roam: 5, speed: 0.6, name: 'Astromech', says: ['(A tidy beep. The platform is its responsibility.)'] },
       { kind: 'ugnaught', n: 4, at: [95, -85], spread: 10, roam: 9, speed: 0.8, name: 'Ugnaught', says: ['(It squeals at you and waves you away from the pit.)', '(Grumbling, it shovels carbonite flakes off the platform.)', '(It snorts, and points at the slab, and laughs.)'] },
       { kind: 'ugnaught', n: 3, at: [-20, 60], spread: 20, roam: 14, speed: 0.8, name: 'Ugnaught', says: ['(It is very busy, and would like you to know it.)', '(It offers to sell you a slightly used protocol droid head.)'] },
       { kind: 'wookiee', id: 'chewie', at: [100, -72], roam: 6, speed: 1, name: 'Chewbacca', says: ['(A furious, heartbroken roar at the Ugnaughts and the stormtroopers.)', '(He has C-3PO strapped to his back, in pieces. Threepio is complaining.)'] },
