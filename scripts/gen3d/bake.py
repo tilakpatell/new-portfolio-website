@@ -76,12 +76,12 @@ for backend in ("OPTIX", "CUDA"):
             break
     except Exception:
         continue
-scene.cycles.samples = 16
+scene.cycles.samples = 32
 scene.cycles.use_denoising = False
 scene.render.bake.use_selected_to_active = True
 scene.render.bake.cage_extrusion = extent * args.cage
 scene.render.bake.max_ray_distance = extent * args.cage * 2
-scene.render.bake.margin = 8
+scene.render.bake.margin = 16
 
 mat = bpy.data.materials.new("baked")
 mat.use_nodes = True
@@ -106,7 +106,7 @@ def bake(kind, name, **kw):
     tex.image = images[name]
     nodes.active = tex
     tex.select = True
-    bpy.ops.object.bake(type=kind, use_selected_to_active=True, use_clear=True, margin=8, **kw)
+    bpy.ops.object.bake(type=kind, use_selected_to_active=True, use_clear=True, margin=16, **kw)
     print(f"baked {name}", flush=True)
     return tex
 

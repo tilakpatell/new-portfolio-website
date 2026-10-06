@@ -2,7 +2,9 @@
 // asked for, and a size cap. Pure, so it can be tested without the native
 // modules web.mjs needs to make one.
 
-export const MAX_BYTES = 1024 * 1024;
+// 4 MB: a hero model at 60k triangles with a 2048 colour map and half-size normal and metal-rough
+// maps; what a phone on the site can take a few of in a scene, not dozens (props go smaller)
+export const MAX_BYTES = 4 * 1024 * 1024;
 
 export const triangles = (doc) => doc.getRoot().listMeshes().reduce((n, m) => n + m.listPrimitives().reduce((k, p) => k + (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3, 0), 0);
 

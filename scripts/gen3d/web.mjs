@@ -2,7 +2,7 @@
 // were (scripts/meshy-import.mjs): welded, simplified to a triangle budget,
 // textures to WebP at a set size, meshopt-compressed, into public/models/gen3d/,
 // and credited in public/games/credits.json. Refuses to ship a model over its
-// budget or over 1 MB.
+// budget or over 4 MB.
 //
 //   node scripts/gen3d/web.mjs RAW.glb NAME --tris 24000 --tex 1024 --what "an X-wing starfighter" [--across-seams]
 //   webReady(doc, { tris, tex }) → { before, after }   (the transform, on a gltf-transform Document)

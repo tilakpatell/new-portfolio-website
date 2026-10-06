@@ -34,10 +34,10 @@ describe('the web budget', () => {
     expect(check({ tris: 16000, after: 15900, bytes: 400 * 1024 })).toEqual([]);
   });
   it('refuses one over budget, naming each problem', () => {
-    const problems = check({ tris: 16000, after: 24000, bytes: 1300 * 1024 });
+    const problems = check({ tris: 16000, after: 24000, bytes: 4200 * 1024 });
     expect(problems).toHaveLength(2);
     expect(problems[0]).toMatch(/24000 triangles, over the budget of 16000/);
-    expect(problems[1]).toMatch(/1300 KB, over 1024 KB/);
+    expect(problems[1]).toMatch(/4200 KB, over 4096 KB/);
   });
 });
 
