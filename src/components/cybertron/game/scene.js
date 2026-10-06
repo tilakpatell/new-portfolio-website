@@ -130,7 +130,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
     const [robot, vehicle] = await Promise.all([makeFigure(robotKind, { shadows: renderer.shadowMap.enabled }), vehicleKind ? makeThing(vehicleKind, { shadows: renderer.shadowMap.enabled }) : null]);
     player.robot = robot;
     player.vehicle = vehicle;
-    for (const o of [robot.group, vehicle]) o?.traverse((m) => m.isMesh && m.material && 'envMapIntensity' in m.material && (m.material.envMapIntensity = 1.6));
+    for (const o of [robot.group, vehicle]) o?.traverse((m) => m.isMesh && m.material && 'envMapIntensity' in m.material && (m.material.envMapIntensity = 1.3));
     player.forms = { robot: null, vehicle: null };
     player.root.add(robot.group);
     robot.update(0.016);
@@ -333,7 +333,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
     if (heroLight) {
       heroLight.position.copy(cam.pos).lerp(player.root.position, 0.55);
       heroLight.position.y += 5;
-      heroLight.intensity = sim.area.look?.hero ?? 520;
+      heroLight.intensity = sim.area.look?.hero ?? 260;
     }
     // (a jolt: hits taken, rams, Decepticons going up close by)
     if (shake > 0.001) {
@@ -374,7 +374,10 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       if (!p.shifting) endChange(p.mode);
     } else if (clips) {
       player.robot.group.visible = true;
+      // (a tank while he's one; on his feet otherwise, whatever left him
+      // held: getting up after going down in it, or a bridge crossed)
       if (p.mode === 'vehicle') player.robot.hold(clips.transform, clips.vehicle);
+      else player.robot.release();
     } else if (player.change) {
       const k = 1 - p.shifting / TRANSFORM.time;
       player.change.t.set(k);
@@ -454,7 +457,8 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
         }
         f.play('dead');
         f.group.visible = (e.gone ?? 0) < 3;
-      } else f.play(e.state === 'advance' ? 'walk' : 'walk', { speed: e.state === 'advance' ? 6 : 3.6, aim: [0, 0.05, 1] });
+      } else if ((entry.flinch = Math.max(0, (entry.flinch ?? 0) - dt)) > 0) f.play('hurt');
+      else f.play('walk', { speed: e.state === 'advance' ? 6 : 3.6, aim: [0, 0.05, 1] });
       f.update(dt);
     }
     for (const [id, entry] of foes) {
@@ -543,7 +547,12 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
     // what just happened, as light
     events(list) {
       for (const e of list) {
-        if (e.type === 'hit') effects.hit(e.x, e.y, e.z, true);
+        if (e.type === 'hit') {
+          effects.hit(e.x, e.y, e.z, true);
+          // (the one hit flinches)
+          const foe = foes.get(e.id);
+          if (foe) foe.flinch = 0.22;
+        }
         else if (e.type === 'hitMe') {
           effects.hit(e.x, e.y, e.z, false);
           shake = Math.max(shake, 0.6);
@@ -568,6 +577,10 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       generation++;
       clearArea();
       endChange('robot');
+      if (matrixModel.object) {
+        scene.remove(matrixModel.object);
+        matrixModel.object.traverse((o) => o.isMesh && o.material?.dispose?.());
+      }
       player.robot?.dispose();
       effects.dispose();
       beaconGeo.dispose();

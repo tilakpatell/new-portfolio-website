@@ -29,7 +29,7 @@ import { gallop } from '../weathertop/props';
 import { createEdorasKit } from './props';
 import { createEdorasFolk } from './folk';
 import { BRAWL } from './rules';
-import { DAIS, DOOR_GUARDS, DOORS, FEAST, FLOWERS, GANDALF, GATE, GRAVE, GRIMA, HAMA, MEDUSELD, STAIR, THRONE, WATCH, clearView, faceTo, groundAt, hillHeight, inHall } from './layout';
+import { DAIS, DOOR_GUARDS, DOORS, FEAST, FLOWERS, GANDALF, GATE, GRAVE, GRIMA, HAMA, MEDUSELD, ROAD, THRONE, WATCH, clearView, faceTo, groundAt, hillHeight, inHall } from './layout';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 // where each place is drawn
@@ -79,11 +79,22 @@ function makeLand(renderer, seg) {
   mesh.geometry.computeBoundingBox();
   return mesh;
 }
-// the way out at dawn: from the foot of the stair down the road and away east
-const musterAt = (s) => {
-  const x = STAIR.x0 + s;
-  return { x, z: s > GATE.x - STAIR.x0 + 30 ? Math.sin((s - (GATE.x - STAIR.x0 + 30)) * 0.004) * 30 : 0 };
-};
+// the way out at dawn: the king from the gate, down the road between the
+// barrows and away east; the host waits on the plain past the barrows, in two
+// wings either side of the road, and moves off when he reaches it
+const musterAt = (s) => ({ x: GATE.x + 14 + s, z: 0 });
+const HOST = { front: ROAD.x0 + 110, lead: 30, lane: 7, row: 3.6, col: 2.6, wing: 22 };
+const hostFront = (s) => Math.max(HOST.front, musterAt(s).x + HOST.lead);
+// at the feast: the benches either side of the two tables (Gimli and Legolas
+// have the south end of the right-hand one to themselves)
+const SEATS = [
+  [-7.6, -3.5, 0],
+  [-5.6, -0.5, Math.PI],
+  [-7.6, 3.5, 0],
+  [-5.6, 6.5, Math.PI],
+  [7.6, -2.5, Math.PI],
+  [5.6, 1.5, 0],
+];
 
 export function createEdorasWorld(canvas, { onLost } = {}) {
   const dev = device();
@@ -154,7 +165,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
   const hama = add(folk.person('hama'));
   const doorGuards = DOOR_GUARDS.map((g, i) => ({ ...g, f: add(folk.person('rider', { n: i })) }));
   const men = Array.from({ length: 8 }, (_, i) => add(folk.person('henchman', { n: i })));
-  const feasters = Array.from({ length: 6 }, (_, i) => add(folk.person('rider', { n: 10 + i })));
+  const feasters = Array.from({ length: 6 }, (_, i) => add(folk.person('rider', { n: 10 + i, helm: false, spear: false, shield: false })));
   const tankards = [folk.tankard(), folk.tankard()];
   gimli.arms[1].add(tankards[0]);
   gimliBare.arms[1].add(tankards[0].clone());
@@ -180,22 +191,29 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
   });
   for (const h of [snowmane, ...mounts]) movers.push({ object: h.group, size: [1.1, 2.6] });
   // the host of Rohan, in a great block, moving out at dawn
+  const hostKit = folk.host();
   const host = (() => {
-    const { geometry, material } = folk.host();
-    const n = Math.round(1400 * many);
+    const { geometry, material } = hostKit;
+    const n = Math.min(hostKit.count ?? 1000, Math.round(1000 * many));
     const m = new THREE.InstancedMesh(geometry, material, n);
+    // a banner over every seventh rider, riding and waving with him
+    const flags = new THREE.InstancedMesh(hostKit.banner.geometry, hostKit.banner.material, Math.ceil(n / 7));
     const o = new THREE.Object3D();
     const rnd = makeNoise(17);
-    const cols = Math.ceil(Math.sqrt(n * 2.2));
+    const cols = HOST.wing * 2;
     for (let i = 0; i < n; i++) {
       const row = Math.floor(i / cols);
-      const col = (i % cols) - cols / 2;
-      o.position.set(-row * 3.6 + rnd(i, 1) * 1.2, 0, col * 2.6 + rnd(i, 2) * 0.9);
+      const c = i % cols;
+      const side = c < HOST.wing ? -1 : 1;
+      o.position.set(-row * HOST.row + rnd(i, 1) * 1.2, 0, side * (HOST.lane + (c % HOST.wing) * HOST.col) + rnd(i, 2) * 0.9);
       o.rotation.set(0, rnd(i, 3) * 0.08, 0);
       o.updateMatrix();
       m.setMatrixAt(i, o.matrix);
+      if (i % 7 === 3) flags.setMatrixAt((i - 3) / 7, o.matrix);
     }
-    m.frustumCulled = false;
+    flags.count = Math.floor((n - 4) / 7) + 1;
+    m.frustumCulled = flags.frustumCulled = false;
+    m.add(flags);
     m.visible = false;
     scene.add(m);
     return m;
@@ -239,7 +257,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
   for (const k of COLOURS) cur[k] = new THREE.Color(MOODS.day[k]);
   for (const k of NUMBERS) cur[k] = MOODS.day[k];
   const sunDir = V(...MOODS.day.sun).normalize();
-  const A = { t: 0, cam: { at: V(260, 20, 0), look: V(0, 20, 0) }, mode: '', first: true, fov: 50, mood: '', shake: 0, flash: 0, bashT: 0, beacon: 0, roll: 0 };
+  const A = { t: 0, cam: { at: V(260, 20, 0), look: V(0, 20, 0) }, mode: '', first: true, fov: 50, mood: '', day: 1, shake: 0, flash: 0, bashT: 0, beacon: 0, roll: 0 };
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -309,6 +327,9 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
     scene.fog.far = cur.fogFar;
     renderer.toneMappingExposure = cur.exposure;
     const night = moodKey === 'night' ? 1 : moodKey === 'evening' ? 0.4 : 0;
+    // (the gold reflects a daytime sky: dim it after dark, and indoors)
+    A.day += ((moodKey === 'hall' ? 0.35 : 1 - night * 0.8) - A.day) * ease;
+    kit.daylight?.(A.day);
     hideAll();
     A.flash = Math.max(0, A.flash - dt * 1.5);
     A.bashT = Math.max(0, A.bashT - dt * 4);
@@ -338,9 +359,9 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
       }
       // at the barrows: the king and Éowyn by Théodred's
       if (s.next === 'flowers') {
-        stand(king, 'hill', GRAVE.x + 2.4, GRAVE.z + 1.6, faceTo(GRAVE.x + 2.4, GRAVE.z + 1.6, GRAVE.x, GRAVE.z - 3));
-        stand(eowyn, 'hill', GRAVE.x - 2.2, GRAVE.z + 1.4, faceTo(GRAVE.x - 2.2, GRAVE.z + 1.4, GRAVE.x, GRAVE.z - 3));
-        stand(gandalf, 'hill', GRAVE.x + 4.6, GRAVE.z + 3, Math.PI * 0.75);
+        stand(king, 'hill', GRAVE.x - 1.6, GRAVE.z + 1.2, faceTo(GRAVE.x - 1.6, GRAVE.z + 1.2, GRAVE.x, GRAVE.z - 3));
+        stand(eowyn, 'hill', GRAVE.x - 3.2, GRAVE.z + 0.6, faceTo(GRAVE.x - 3.2, GRAVE.z + 0.6, GRAVE.x, GRAVE.z - 3));
+        stand(gandalf, 'hill', GRAVE.x - 4.2, GRAVE.z + 2.8, faceTo(GRAVE.x - 4.2, GRAVE.z + 2.8, GRAVE.x, GRAVE.z));
         for (const f of [king, eowyn, gandalf]) pose(f, t + f.group.position.x, { talk: s.speaker === 'theoden' && f === king ? 1 : s.speaker === 'gandalf' && f === gandalf ? 1 : 0 });
         // the flowers to pick glimmer
         FLOWERS.forEach((f, i) => {
@@ -385,9 +406,11 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
           gallop(m, t + i, s.mode === 'muster' ? (s.musterV ?? 0) : 0);
         });
         host.visible = true;
-        const back = musterAt(Math.max(0, ms - 18));
-        host.position.set(back.x, groundAt(back.x, back.z) + Math.abs(Math.sin(t * 9)) * 0.15 * (s.musterV ?? 0), back.z);
-        if ((s.musterV ?? 0) > 0.2 && Math.random() < dt * 40 * many) dust.emit(back.x - Math.random() * 60, groundAt(back.x, back.z) + 0.5, back.z + R(40), R(1), 1 + Math.random(), R(1), 2.5, 2, 6, 0.5);
+        const front = hostFront(ms);
+        host.position.set(front, groundAt(front, 0), 0);
+        const off = front > HOST.front && s.mode === 'muster' ? (s.musterV ?? 0) : 0;
+        hostKit.ride?.(off);
+        if (off > 0.2 && Math.random() < dt * 40 * many) dust.emit(front - 60 - Math.random() * 30, groundAt(front, 0) + 0.5, R(60), R(1), 1 + Math.random(), R(1), 2.5, 2, 6, 0.5);
       }
       // the lamps of the town, after dusk
       if (night > 0) {
@@ -415,7 +438,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
       pose(k, t, { talk: s.speaker === 'theoden' ? 1 : 0 });
       sit(k, true);
       if (king0) {
-        k.body.rotation.z = -0.35;
+        k.body.rotation.z = -0.1;
         stand(grima, 'hall', GRIMA.x, GRIMA.z, GRIMA.face, DAIS.h);
         pose(grima, t, { talk: s.speaker === 'grima' ? 1 : 0 });
         stand(eowyn, 'hall', -2.4, -17.6, -Math.PI / 2, DAIS.h);
@@ -431,8 +454,8 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
           if (Math.random() < dt * (20 + w * 40) * many) light.emit(GANDALF.x + R(0.6), AT.hall.y + 2.6 + R(0.4), GANDALF.z - 1 + R(0.4), R(1), R(0.6), -1.5 - Math.random(), 0.8, 0.25, 0.05, 1);
           lights.push([wpos('hall', GANDALF.x, 2.8, GANDALF.z - 0.6, V()), whiteCol, 4 + w * 8 + A.flash * 20, 16]);
         }
-        stand(aragorn, 'hall', -3, -11, Math.PI / 2);
-        stand(legolas, 'hall', 3, -11, Math.PI / 2);
+        stand(aragorn, 'hall', -3.6, -12.6, Math.PI / 2);
+        stand(legolas, 'hall', 3.4, -13.4, Math.PI / 2);
         pose(aragorn, t, { wave: brawl ? 0.3 : 0 });
         pose(legolas, t + 1, {});
       }
@@ -448,8 +471,8 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
       // the feast: the tables full, Legolas and you at the end of one
       if (s.next === 'feast' || s.talking === 'down') {
         feasters.forEach((f, i) => {
-          const side = i % 2 ? 1 : -1;
-          stand(f, 'hall', side * 6.6 + side * 0.9, -6 + i * 3.2, side > 0 ? Math.PI : 0);
+          const [sx, sz, sf] = SEATS[i];
+          stand(f, 'hall', sx, sz, sf);
           sit(f, true);
           f.body.position.y = f.baseY - 0.25;
           pose(f, t + i, { talk: Math.sin(t * 2 + i) > 0.6 ? 1 : 0 });
@@ -526,8 +549,10 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
       // over his shoulder, out along the mountains where he's looking
       const b = s.watch?.look ?? 0;
       const y = groundAt(WATCH.x, WATCH.z);
-      P('hill', WATCH.x - Math.cos(b) * 3.4, y + 2.6, WATCH.z + Math.sin(b) * 3.4, camAt);
-      P('hill', WATCH.x + Math.cos(b) * 400, y + 60, WATCH.z - Math.sin(b) * 400, camLook);
+      const rx = -Math.sin(b);
+      const rz = -Math.cos(b);
+      P('hill', WATCH.x - Math.cos(b) * 2.2 + rx * 0.8, y + 1.9, WATCH.z + Math.sin(b) * 2.2 + rz * 0.8, camAt);
+      P('hill', WATCH.x + Math.cos(b) * 400, y + 30, WATCH.z - Math.sin(b) * 400, camLook);
       fov = 40;
       if (s.talking === 'lit' && s.line === 'answer') {
         P('hill', WATCH.x + 6, y + 3, WATCH.z + 6, camAt);
@@ -540,15 +565,15 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
       const y = groundAt(p.x, p.z);
       if (s.talking === 'muster') {
         // the host gathered below the hill, from the stair
-        P('hill', STAIR.x0 + 2, groundAt(STAIR.x0, 0) + 8, 14, camAt);
-        P('hill', STAIR.x0 + 120, 4, -10, camLook);
+        P('hill', GATE.x + 6, groundAt(GATE.x + 6, 0) + 14, 10, camAt);
+        P('hill', HOST.front - 50, 2, 0, camLook);
       } else {
         P('hill', p.x - 16, y + 7, p.z + 10, camAt);
         P('hill', p.x + 30, y + 2, p.z, camLook);
       }
       fov = 54;
     } else if (s.talking && shown === 'hill') {
-      const who = s.talking === 'door' ? HAMA : s.talking === 'barrows' || s.talking === 'laid' ? GRAVE : { x: h.x + 2, z: h.z };
+      const who = s.talking === 'barrows' || s.talking === 'laid' ? GRAVE : { x: h.x + 2, z: h.z };
       const mx = (h.x + who.x) / 2;
       const mz = (h.z + who.z) / 2;
       const dx = who.x - h.x;
@@ -557,14 +582,26 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
       const y = groundAt(mx, mz);
       P('hill', mx - (dz / d) * 5.4 - (dx / d) * 1.4, y + 2.4, mz + (dx / d) * 5.4 - (dz / d) * 1.4, camAt);
       P('hill', mx, y + 1.2, mz, camLook);
+      if (s.talking === 'door') {
+        const g = groundAt(DOORS.x + 2, 0);
+        P('hill', DOORS.x + 9.5, g + 3.2, -5.2, camAt);
+        P('hill', DOORS.x + 1.6, g + 1.4, 0.8, camLook);
+      } else if (who === GRAVE) {
+        // from out on the road, east, the gate and the town behind them
+        const cz = (h.z + GRAVE.z) / 2;
+        const D = Math.max(6.5, d * 0.8 + 3.5);
+        P('hill', GRAVE.x + D, groundAt(GRAVE.x + D, cz) + 1.7 + D * 0.18, cz + 0.6, camAt);
+        P('hill', GRAVE.x - 1.2, groundAt(GRAVE.x, cz) + 1.1, cz, camLook);
+      }
     } else if (shown === 'hall' && (s.next === 'feast' || s.talking === 'down')) {
       // across the table: Gimli and Legolas, and the hall behind
-      P('hall', FEAST.gimli.x - 3.4, 2.1, (FEAST.gimli.z + FEAST.legolas.z) / 2 + 0.6, camAt);
-      P('hall', FEAST.gimli.x + 0.2, 1.1, (FEAST.gimli.z + FEAST.legolas.z) / 2, camLook);
+      const fx = (FEAST.gimli.x + FEAST.legolas.x) / 2;
+      P('hall', fx, 2.2, FEAST.gimli.z + 5, camAt);
+      P('hall', fx, 0.95, FEAST.gimli.z - 0.2, camLook);
       fov = 46;
     } else if (shown === 'hall' && (s.talking === 'king' || s.talking === 'freed')) {
-      P('hall', 3.4, 2.6, GANDALF.z + 6, camAt);
-      P('hall', 0, 1.8, THRONE.z, camLook);
+      P('hall', 4, 3, GANDALF.z + 9.6, camAt);
+      P('hall', 0.3, 1.5, THRONE.z + 2.3, camLook);
     } else if (s.mode === 'end') {
       P('hill', 140, 40, 70, camAt);
       P('hill', 0, 22, 0, camLook);

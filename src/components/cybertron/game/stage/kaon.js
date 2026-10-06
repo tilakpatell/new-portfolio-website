@@ -161,6 +161,14 @@ export async function buildStage(area, { tier = 'high' } = {}) {
     group.add(m);
   });
 
+  // the seekers, circling over the city
+  const flyers = [];
+  for (const [i, kind] of (S.flyovers ?? []).entries())
+    makeThing(kind).then((m) => {
+      flyers.push({ m, i });
+      group.add(m);
+    });
+
   // the lights: violet edges, red on the fortress and the arena's wall, and
   // dark energon in the avenue's gutters
   const W = S.avenue;
@@ -234,6 +242,13 @@ export async function buildStage(area, { tier = 'high' } = {}) {
       fires.update(t);
       fireLights.forEach((l, k) => (l.intensity = 700 + 300 * Math.sin(t * 9 + k) * Math.sin(t * 5.3 + k * 2)));
       vatLight.intensity = 2200 + 500 * Math.sin(t * 1.7);
+      for (const { m, i } of flyers) {
+        // (in formation, a wide circle, banking into it)
+        const a = t * 0.11 + i * 0.35;
+        const r = 380 - i * 40;
+        m.position.set(Math.cos(a) * r, 170 + i * 25 + Math.sin(t * 0.7 + i) * 8, Math.sin(a) * r);
+        m.rotation.set(0, -a, -0.45);
+      }
       for (const b of beams) {
         const a = t * 0.25 + b.userData.phase;
         b.rotation.set(0.45 + 0.25 * Math.sin(a * 0.7), a, 0.35 * Math.sin(a));

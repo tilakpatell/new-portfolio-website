@@ -37,9 +37,11 @@
 // the hyperdrive (and the sublight drive) down till you're clear of it: its
 // fighters gone, out past the well, or a minute ridden out.
 //
-// A scene module for lib/three/useScene: create(canvas, ctx) returns
-// { ready, resize, render, update, setVisible, lowerQuality, fire, boost,
-//   climb, seat, escape, jump, goTo, dispose }.
+// A scene module, a world on the world runtime through ./module.js
+// (src/runtime's fromScene): create(canvas, ctx) draws with the runtime's
+// renderer (ctx.rt.gfx: the runtime sizes it and sets its sharpness) and
+// returns { ready, resize, render, update, setVisible, lowerQuality, fire,
+// boost, climb, seat, escape, jump, goTo, dispose }.
 // Props: system (an id), ship (a crew id), loadout (what's fitted to it in
 // the universe map's hangar: outfit.js; its paint and parts, and how they
 // make it fly), controls, net, stick,
@@ -56,11 +58,11 @@ import { local as remembered } from '../../lib/hooks';
 import { plan as cockpitPlan } from '../cockpit/timeline';
 import { freeKit } from '../cockpit/kit';
 import { audioContext } from '../../lib/audio';
-import { clamp01, createRenderer, disposeTree, precompile, precompilePasses, singlePass } from '../../lib/three/renderer';
+import { clamp01, disposeTree, precompile, precompilePasses, singlePass } from '../../lib/three/renderer';
 import { device } from '../../lib/device';
 import { dropTransmission } from '../../lib/three/glass';
 import { gltfStats } from '../../lib/three/gltfCache';
-import { createPace } from '../../lib/three/pace';
+import { STEPS } from '../../lib/three/pace';
 import { FOV } from '../universe/flight';
 import { createPost } from '../universe/post';
 import { SHIP, autopilot, forward, spawn, step } from '../universe/ship';
@@ -83,6 +85,7 @@ import { SHIP_INFO, buildGalaxyShip } from './fleet';
 import { HUNTER_GLB, createModels } from './models';
 import { createSky } from './sky';
 import { createJump } from './hyperspace';
+import { DIVE, LAUNCH_KEY, diveAt, planDive } from './travel';
 import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, interdictorPlace } from './interdiction';
 import { createInterdictor } from './interdictor';
 import { createBolts, createFlashes } from './fx';
@@ -151,7 +154,6 @@ const s3 = (d) => [d[0], -d[1] * 0.5, d[2]];
 // Just taken off from a system's planet (the surface page leaves its id in
 // the session as it goes): just off the planet on its sunny side, nose
 // out, climbing. Once only.
-const LAUNCH_KEY = 'tp-galaxy-launch';
 function takeOff(sys) {
   let id = null;
   try {
@@ -171,11 +173,14 @@ function takeOff(sys) {
 }
 
 export async function create(canvas, ctx) {
-  const { reduced } = ctx;
+  const { reduced, rt } = ctx;
   let props = ctx;
   let disposed = false;
-  const gl = createRenderer(canvas, { ratio: 1.5, antialias: false, onLost: ctx.onLost, onSlow: ctx.onSlow }); // (the post's own target is the multisampled one)
-  const { renderer } = gl;
+  // the runtime's renderer: shared with whatever world comes next, so what's
+  // changed on it here goes back as it was at dispose
+  const gfx = rt.gfx;
+  const { renderer } = gfx;
+  const autoReset = renderer.info.autoReset;
   renderer.info.autoReset = false;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(FOV, 1, 0.05, 9000);
@@ -657,7 +662,7 @@ export async function create(canvas, ctx) {
   const rect = { x: 0, y: 0, w: 1, h: 1 };
   const measure = () => {
     const nav = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 68;
-    const box = ctx.el.getBoundingClientRect();
+    const box = (rt.host ?? ctx.el).getBoundingClientRect(); // (the box it's in now: a handover moves it)
     const top = Math.max(0, nav - box.top);
     Object.assign(rect, { x: 0, y: top, w: size.w, h: size.h - top });
     camera.aspect = size.w / size.h;
@@ -952,6 +957,30 @@ export async function create(canvas, ctx) {
     return true;
   };
 
+  // ── The dive: down on the planet, flown (the page hands over to its
+  // surface as it ends: pages/Galaxy.jsx, travel.js) ──
+  function stepDive(dt) {
+    const d = state.dive;
+    d.age += reduced ? DIVE : Math.min(dt, 0.05);
+    const p = diveAt(d, d.age);
+    const s = state.ship;
+    s.x = p.x;
+    s.y = p.y;
+    s.z = p.z;
+    s.heading = p.heading;
+    s.pitch = 0;
+    s.bank = 0;
+    s.speed = SHIP.boost * (0.6 + p.k);
+    state.streak = Math.max(state.streak, p.k);
+    state.shake = Math.max(state.shake, p.k * 0.8);
+    if (p.k >= 1 && !d.done) {
+      d.done = true;
+      engine?.set({ speed: 0, on: false });
+      emit({ type: 'dove', system: state.sys?.id });
+    }
+    return !d.done;
+  }
+
   // ── Hyperspace ──
   // (the way the reticle is, from the eye: the star you see behind it, in
   // the chase view as in the cockpit; the jump then comes round onto it)
@@ -991,7 +1020,7 @@ export async function create(canvas, ctx) {
   const spoolQ = new THREE.Quaternion();
   const startJump = (toId, why = 'course') => {
     const to = systemById(toId);
-    if (!to || !state.sys || to.id === state.sys.id || state.crash) return false;
+    if (!to || !state.sys || to.id === state.sys.id || state.crash || state.dive) return false;
     if (state.jump && state.jump.phase !== 'align') return false;
     // the Interdictor's well: no jump till you're clear of it
     if (state.held) {
@@ -1565,7 +1594,6 @@ export async function create(canvas, ctx) {
   };
 
   // ── Frames ──
-  const pace = createPace();
   const t0 = performance.now();
   const sunWorld = new THREE.Vector3();
   const toShip = new THREE.Vector3();
@@ -1577,12 +1605,9 @@ export async function create(canvas, ctx) {
       if (lastNow) longest = Math.max(longest, now - lastNow);
       lastNow = now;
     }
-    gl.watch(now);
-    const sharp = pace.frame(now);
-    if (sharp !== null) post.sharpness = sharp;
-    // what's sized by the pixel ratio (the watchdog changes it) follows it,
-    // and the planets' detail follows the sharpness the pace asks for
-    const ratio = renderer.getPixelRatio();
+    // what's sized by the pixel ratio (the runtime's quality changes it) follows it,
+    // and the planets' detail follows the sharpness
+    const ratio = gfx.ratio;
     if (ratio !== ratioSeen) {
       ratioSeen = ratio;
       sky.setRatio(ratio);
@@ -1612,7 +1637,8 @@ export async function create(canvas, ctx) {
       }
     }
     let moving = false;
-    if (flying() && !props.frozen) moving = fly(dt, t);
+    if (state.dive && flying()) moving = stepDive(dt);
+    else if (flying() && !props.frozen) moving = fly(dt, t);
     if (flying()) follow(dt);
 
     // the camera: behind the ship or in it, or watching a crash
@@ -1647,7 +1673,7 @@ export async function create(canvas, ctx) {
     const baseWant = flying() && state.view === 'cockpit' ? cabFov() : FOV;
     state.fovBase += (baseWant - state.fovBase) * (reduced ? 1 : 1 - Math.exp(-dt * 5));
     const spool = state.jump && state.jump.phase !== 'align' ? 1 : 0;
-    const fov = state.fovBase + (reduced || !flying() ? 0 : 8 * state.streak ** 1.4 + 4 * state.kick * (1 - state.kick * 0.5) + 14 * spool * (state.jump?.phase === 'spool' ? clamp01(state.jump.age / JUMP.spool) : state.jump?.phase === 'tunnel' ? 1 : 1 - clamp01((state.jump?.age ?? 0) / JUMP.exit)));
+    const fov = state.fovBase + (state.dive ? 34 * diveAt(state.dive, state.dive.age).k ** 2 : 0) + (reduced || !flying() ? 0 : 8 * state.streak ** 1.4 + 4 * state.kick * (1 - state.kick * 0.5) + 14 * spool * (state.jump?.phase === 'spool' ? clamp01(state.jump.age / JUMP.spool) : state.jump?.phase === 'tunnel' ? 1 : 1 - clamp01((state.jump?.age ?? 0) / JUMP.exit)));
     if (Math.abs(camera.fov - fov) > 0.005) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
@@ -1708,7 +1734,7 @@ export async function create(canvas, ctx) {
     // the speed: dust streaming past, the picture rushing out from the ship
     const dustWant = !reduced && flying() && !inTunnel ? 0.35 + 0.65 * clamp01(Math.abs(state.ship.speed) / SHIP.cruise) : 0;
     dustAmount += (dustWant - dustAmount) * clamp01(dt * 3);
-    dust.update(camera.position, dustAmount, gl.ratio);
+    dust.update(camera.position, dustAmount, gfx.ratio);
     if (!reduced && flying() && (state.streak > 0.001 || spool)) {
       const k = Math.max(state.streak, state.jump?.phase === 'spool' ? clamp01(state.jump.age / JUMP.spool) : 0);
       if (state.view === 'cockpit') post.rush(k * 0.8, 0.5, 0.5);
@@ -1745,7 +1771,7 @@ export async function create(canvas, ctx) {
       first = false;
       emit({ type: 'ready' });
     }
-    if (props.frozen) return Boolean(state.crash?.through);
+    if (props.frozen) return Boolean(state.crash?.through || (state.dive && !state.dive.done));
     return !reduced || moving || shooting || fxBusy || worldBusy || adventuring || piloting || jumpFx.busy || bolts.busy || flashes.busy || net?.peers.size > 0 || Boolean(state.model?.modules?.easing) || cabWas !== state.cabK || state.kick > 0 || state.flare > 1 || Boolean(state.stick?.on || state.jump);
   }
   let dustAmount = 0;
@@ -1868,7 +1894,7 @@ export async function create(canvas, ctx) {
   const goTo = (id) => {
     const s = state.ship;
     const g = state.space?.goals[id];
-    if (!s || !g || state.crash || state.jump || props.frozen) return false;
+    if (!s || !g || state.crash || state.jump || state.dive || props.frozen) return false;
     if (state.at === id) return false;
     heard();
     state.auto = { id, park: parkBy(g, [s.x, s.y, s.z], state.space.solids) };
@@ -2006,8 +2032,7 @@ export async function create(canvas, ctx) {
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);
-      gl.setSize(size.w, size.h);
-      sky.setRatio(gl.ratio);
+      sky.setRatio(gfx.ratio);
       measure();
     },
     render,
@@ -2037,10 +2062,28 @@ export async function create(canvas, ctx) {
       state.shown = on;
       if (!on) engine?.set({ speed: 0, on: false });
     },
-    lowerQuality() {
+    // the runtime's quality: the sharpness is its own; at the floor (past
+    // its last step), the glow and the grade go
+    lowerQuality(level = STEPS.length) {
+      sky.setRatio(gfx.ratio);
+      if (level < STEPS.length) return;
       post.lite();
       capDetail = true;
       ctx.invalidate();
+    },
+    // down on the planet you're over: true if the dive's begun (it ends with a 'dove' event)
+    dive() {
+      const s = state.ship;
+      const r = state.sys?.body?.r;
+      if (!s || !r || state.dive || state.crash || state.jump) return false;
+      state.dive = planDive(s, r);
+      aimAt(null);
+      ctx.invalidate();
+      return true;
+    },
+    // what the next world is told as it takes over: where you were, and on what
+    handoff() {
+      return { from: 'galaxy', system: state.sys?.id ?? null, ship: state.kind ?? null, dove: Boolean(state.dive?.done) };
     },
     fire(down = true) {
       heard();
@@ -2120,7 +2163,9 @@ export async function create(canvas, ctx) {
       disposeTree(scene);
       post.dispose();
       env?.dispose();
-      gl.dispose();
+      renderer.info.autoReset = autoReset;
+      canvas.removeAttribute('aria-hidden');
+      canvas.style.cursor = '';
     },
   };
 }

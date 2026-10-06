@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { CHANGES, KINDS, changeById, pad, revertPhrase, tally } from './changes';
 
 const files = import.meta.glob('./changes/*.json', { eager: true, import: 'default' });
-const PUBLIC = new URL('../../public', import.meta.url).pathname;
+const PUBLIC = fileURLToPath(new URL('../../public', import.meta.url));
 
 describe("the ship's log", () => {
   it('has an entry in every file, named by its number', () => {
