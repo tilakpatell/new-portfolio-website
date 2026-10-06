@@ -309,6 +309,43 @@ export const CREWS = [
         ['morty', 'Ow! Rick, we hit a rock! A big one!'],
         ['rick', 'At super speed every rock’s a big one, Morty. Watch the shields and stop steering with your face.'],
       ],
+      battle: {
+        front: [
+          ['morty', 'Rick, that’s a whole war out there! Council ships and Federation ships everywhere!'],
+          ['rick', 'Two bureaucracies shooting at each other, Morty. Pick a side. I don’t care which.'],
+        ],
+        join: [
+          ['rick', 'Alright, we’re in. Stay on my wing, Morty. Metaphorically. You’re in my ship.'],
+          ['morty', 'Oh geez. Okay. Okay.'],
+        ],
+        gens: [
+          ['morty', 'The shield’s down, Rick! The big ship’s shield is down!'],
+          ['rick', 'Bridge next. Cut off the head and the paperwork panics.'],
+        ],
+        bridge: [
+          ['rick', 'Bridge is toast. Now the reactor. Go for the glowy bit, Morty, it’s always the glowy bit.'],
+        ],
+        reactor: [
+          ['morty', 'It’s breaking apart, Rick! It’s breaking in half!'],
+          ['rick', 'One big reactor in the middle of a flagship. Every time, Morty. Every single time.'],
+        ],
+        won: [
+          ['morty', 'We won? We actually won?'],
+          ['rick', 'That’s a sector. The front moves, the map changes, nobody learns anything.'],
+        ],
+        lost: [
+          ['morty', 'They’re pulling back, Rick. We’re losing the sector.'],
+          ['rick', 'Strategic retreat, Morty. Everybody does it. Mostly us.'],
+        ],
+        warWon: [
+          ['rick', 'That’s the whole war, Morty. Every sector. I’d make a speech, but speeches are for people who lose.'],
+          ['morty', 'Wow. Okay.'],
+        ],
+        warLost: [
+          ['morty', 'That was the last one, Rick. They’ve got everything.'],
+          ['rick', 'Then it starts again from the middle. Wars are like that, Morty. Infinite reboots.'],
+        ],
+      },
       meteors: [
         ['morty', 'Rick! Rocks! A lot of rocks!'],
         ['rick', 'Meteor stream, Morty. Shoot the big ones, dodge the rest, don’t cry about it.'],
@@ -737,6 +774,44 @@ export const CREWS = [
         ['r2', '[A rock, at speed. Shields down a notch.]'],
         ['luke', 'I didn’t even see it. Keep the deflectors forward, Artoo.'],
       ],
+      battle: {
+        front: [
+          ['r2', '[A fleet engagement ahead. Capital ships on both sides.]'],
+          ['luke', 'It’s a full battle out there. Let’s see where we can help.'],
+        ],
+        join: [
+          ['luke', 'We’re in, Artoo. S-foils in attack position.'],
+          ['r2', '[an eager whistle]'],
+        ],
+        gens: [
+          ['r2', '[Their shield generators are down.]'],
+          ['luke', 'The shield’s gone! Now the bridge.'],
+        ],
+        bridge: [
+          ['luke', 'Bridge is out. Go for the reactor!'],
+          ['r2', '[a triumphant chirp]'],
+        ],
+        reactor: [
+          ['luke', 'She’s breaking up! Artoo, look at that!'],
+          ['r2', '[a long, amazed whistle]'],
+        ],
+        won: [
+          ['luke', 'We did it. The sector’s ours.'],
+          ['r2', '[a happy trill]'],
+        ],
+        lost: [
+          ['r2', '[A low tone: the fleet is pulling out.]'],
+          ['luke', 'We’ll be back. We always come back.'],
+        ],
+        warWon: [
+          ['luke', 'That’s the last of them. The whole line is ours, Artoo.'],
+          ['r2', '[a joyful string of beeps]'],
+        ],
+        warLost: [
+          ['r2', '[Every sector lost.]'],
+          ['luke', 'Then we start again. As long as there’s hope.'],
+        ],
+      },
       meteors: [
         ['r2', '[Meteor stream ahead. Recommend evasive action.]'],
         ['luke', 'I see them, Artoo. Just like Beggar’s Canyon.'],
@@ -1141,6 +1216,42 @@ export const CREWS = [
         ['chewie', '[an angry roar: a rock, right through the shields]'],
         ['han', 'I know, I know. Never tell me the odds, and never fly this fast through a rock field.'],
       ],
+      battle: {
+        front: [
+          ['han', 'Would you look at that. A whole fleet action. Chewie, we’re not getting paid enough for this.'],
+          ['chewie', '[an agreeing growl]'],
+        ],
+        join: [
+          ['han', 'Alright, we’re in. Keep the shields up and the quad guns hot.'],
+          ['chewie', '[a ready roar]'],
+        ],
+        gens: [
+          ['han', 'Shield’s down! Told you it’d work.'],
+          ['chewie', '[a pleased roar]'],
+        ],
+        bridge: [
+          ['han', 'There goes the bridge. Now the reactor, before they work out what hit them.'],
+        ],
+        reactor: [
+          ['chewie', '[an excited howl]'],
+          ['han', 'Ha! Split right down the middle. That’s some flying.'],
+        ],
+        won: [
+          ['han', 'Sector’s ours. Drinks are on whoever’s paying.'],
+          ['chewie', '[a laughing growl]'],
+        ],
+        lost: [
+          ['han', 'We’re pulling back. Don’t give me that look, Chewie, I know.'],
+          ['chewie', '[a mournful growl]'],
+        ],
+        warWon: [
+          ['han', 'That’s the whole war. Every sector. Not bad for a smuggler and a walking carpet.'],
+          ['chewie', '[an indignant roar]'],
+        ],
+        warLost: [
+          ['han', 'They’ve taken the lot. Fine. We start over. We always do.'],
+        ],
+      },
       meteors: [
         ['chewie', '[A roar: rocks ahead!]'],
         ['han', 'I see them. Never tell me the odds, Chewie.'],
@@ -1632,6 +1743,43 @@ export const CREWS = [
         ['jesse', 'Yo, what was that?! We hit something!'],
         ['walt', 'A rock, Jesse. At this speed it hits like a truck. The shields took it. Slow down in the fields.'],
       ],
+      battle: {
+        front: [
+          ['jesse', 'Mr. White, that’s a war out there! Gus’s trucks and the cartel, going at it!'],
+          ['walt', 'Then we choose a side, Jesse. Carefully.'],
+        ],
+        join: [
+          ['walt', 'We’re in. Stay close, keep firing, and do not panic.'],
+          ['jesse', 'Yeah, science! Okay!'],
+        ],
+        gens: [
+          ['jesse', 'Their shield’s down! Yeah, Mr. White!'],
+          ['walt', 'The command deck next. Then the core.'],
+        ],
+        bridge: [
+          ['walt', 'The command deck is gone. Now the reactor, Jesse. Finish it.'],
+        ],
+        reactor: [
+          ['jesse', 'It’s breaking in half! Yeah, Mr. White!'],
+          ['walt', 'Chemistry, Jesse. Pressure finds the weakest point.'],
+        ],
+        won: [
+          ['jesse', 'We won, yo! We actually won!'],
+          ['walt', 'The territory is ours.'],
+        ],
+        lost: [
+          ['jesse', 'They’re beating us back, Mr. White.'],
+          ['walt', 'A tactical withdrawal. We regroup, and we come back stronger.'],
+        ],
+        warWon: [
+          ['walt', 'Every sector. All of it. I’m in the empire business, Jesse.'],
+          ['jesse', 'Yeah. Yeah, you are.'],
+        ],
+        warLost: [
+          ['jesse', 'They took everything, Mr. White.'],
+          ['walt', 'Then we start from nothing. We’ve done it before.'],
+        ],
+      },
       meteors: [
         ['jesse', 'Yo, Mr. White, rocks! Big ones!'],
         ['walt', 'A meteor stream, Jesse. Shoot what you can’t steer round.'],
