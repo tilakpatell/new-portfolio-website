@@ -206,6 +206,11 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
     get halves() {
       return halves.length;
     },
+    // a ship hidden or shown (the set pieces': the Executor gone into the Death Star)
+    setVisible(ship, on) {
+      const s = slots.get(ship);
+      if (s) s.holder.visible = on;
+    },
     // the set pieces' own (galaxy/warpieces/): a burst of light, and something left burning
     flash(at, opts) {
       flashes.at(pt.set(at.x, at.y, at.z), opts);
@@ -228,9 +233,10 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
       chain -= dt;
       for (const cap of battle.capitals) {
         const s = slots.get(cap);
-        if (!s || !s.holder.visible) continue;
+        if (!s || !s.holder.visible || cap.gone) continue;
         const bob = reduced ? 0 : Math.sin(t * 0.3 + cap.id) * 0.15;
         s.holder.position.set(cap.pos.x, cap.pos.y + bob, cap.pos.z);
+        if (cap.moved) orient(s.holder, cap.fwd, cap.up); // (turned by a set piece: the Scarif ram, the Executor's dive)
         if (cap.dying > 0 && chain <= 0) flashes.at(onHull(cap, pt), { size: 1.5 + Math.random() * cap.size * 0.08, life: 0.9 + Math.random() * 0.6 });
       }
       if (chain <= 0) chain = 0.12;

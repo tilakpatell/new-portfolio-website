@@ -45,7 +45,7 @@
 //
 // createBattle({ war, attacker, at, axis, perSide, rand, lines, radius,
 //   avoid, clock, elapsed, shared, onMine, tickets }) → battle (with
-//   runners, disable(id, s), moveCapital(cap, d), turnCapital(cap, axis, a),
+//   runners, disable(id, s), wreck(id), moveCapital(cap, d), turnCapital(cap, axis, a),
 //   addRunner({ team, kind, size, hp, from, to, speed })):
 //   { teams, capitals, fighters, bolts, phase, clock, over, you, defender, lines, radius, length,
 //   attacker, setYou(team | null), update(dt, you) → events, hit(from, to,
@@ -322,7 +322,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       if (cap.team === team || !cap.alive) continue;
       if (dist2(cap.pos, p1) > (cap.reach + 30) ** 2 && dist2(cap.pos, p0) > (cap.reach + 30) ** 2) continue;
       for (const s of cap.subs) {
-        if (!s.alive) continue;
+        if (!s.alive || s.hidden) continue;
         const k = sweptHit(p0, p1, s.pos, s.pos, s.r);
         if (k !== null && (!best || k < best.k)) best = { cap, sub: s, k };
       }
@@ -738,6 +738,14 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   };
 
   // ── an ion cannon's hit, and a capital ship moved or turned (the set pieces') ──
+  // a capital ship gone (the second Death Star's superlaser, a reactor blown from inside)
+  b.wreck = (id) => {
+    const cap = b.capitals.find((c) => c.id === id);
+    if (!cap || !cap.alive || cap.dying > 0) return;
+    cap.hull = 0;
+    cap.dying = cap.role === 'flagship' ? BATTLE.dying : 2.5;
+    pending.push({ type: 'impact', at: copy(v3(), cap.pos), size: cap.size * 0.3, shield: false });
+  };
   b.disable = (id, seconds) => {
     const cap = b.capitals.find((c) => c.id === id);
     if (!cap || !cap.alive) return;
@@ -747,6 +755,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   const points = (cap) => [cap.pos, ...cap.spheres.map((sp) => sp.c), ...cap.turrets.map((tu) => tu.at), ...cap.subs.map((sb) => sb.pos)];
   b.moveCapital = (cap, d) => {
     for (const p of points(cap)) set(p, p.x + d.x, p.y + d.y, p.z + d.z);
+    cap.moved = true;
   };
   const rotate = (o, ax, c, sn) => {
     // Rodrigues: about the unit axis `ax`
@@ -757,6 +766,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     return set(o, o.x * c + cx * sn + ax.x * k * (1 - c), o.y * c + cy * sn + ax.y * k * (1 - c), o.z * c + cz * sn + ax.z * k * (1 - c));
   };
   b.turnCapital = (cap, axis, angle) => {
+    cap.moved = true;
     const ax = norm(copy(v3(), axis));
     const c = Math.cos(angle);
     const sn = Math.sin(angle);
@@ -899,7 +909,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       if (b.you.team === attacker) {
         const flag = flagOf(defender);
         for (const s of flag?.subs ?? []) {
-          if (!s.alive || s.phase !== b.phase) continue;
+          if (!s.alive || s.hidden || s.phase !== b.phase) continue;
           s.tgt ??= { id: s.num, at: s.pos, vel: ZERO, size: s.r, kind: 'subsystem', name: NAMES[s.kind], sub: s.id, threat: 0, hp: 0, hpMax: s.hpMax };
           s.tgt.hp = s.hp;
           targets.push(s.tgt);
@@ -927,6 +937,6 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     },
   });
 
-  b.end = (winner) => finish(winner, 'forced', pending);
+  b.end = (winner, why = 'forced') => finish(winner, why, pending);
   return b;
 }
