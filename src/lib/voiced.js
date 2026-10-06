@@ -1,9 +1,7 @@
-// The crews' own voices for the lines nobody recorded: made on the owner's
-// machine by scripts/voices (its README says how) from the clips the site
-// already has, and kept out of the repository, so they're only heard where
-// that folder was generated (npm run dev) or is served from behind the
-// sign-in (VITE_VOICED_BASE). Anywhere else the manifest isn't there and the
-// comms keep the blips in universe/sounds.js.
+// The speakers' own voices for the lines nobody recorded: made by
+// scripts/voices (its README says how) into public/audio/voiced, with a
+// manifest of which lines have one (or served from VITE_VOICED_BASE). A line
+// with none keeps its blips (universe/sounds.js), or its silence.
 
 const BASE = (import.meta.env?.VITE_VOICED_BASE || '/audio/voiced').replace(/\/$/, '');
 

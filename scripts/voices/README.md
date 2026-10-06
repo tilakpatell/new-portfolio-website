@@ -6,13 +6,12 @@ lines in the speakers' own voices, cloned from a few seconds of each, and the
 site plays a generated line wherever there's no clip, moves the speaker's
 mouth with it, and falls back to the blips for anything not made.
 
-Everything generated stays on this machine. `public/audio/voiced/`,
-`scripts/voices/cache/`, `scripts/voices/refs/` and `lines.json` are
-git-ignored, and every build leaves `public/audio/voiced/` out (see
-`vite.config.js`), so neither the public repository nor GitHub Pages ever
-carries the cloned voices. You hear them with `npm run dev` here, or by
-serving the folder from behind the sign-in and building with
-`VITE_VOICED_BASE` set to its URL path (say `/private/voiced`).
+The lines it makes (`public/audio/voiced/`, with the `manifest.json` the
+site looks them up in) are committed and go out with the site. What it
+makes along the way stays on this machine: `scripts/voices/cache/`,
+`scripts/voices/refs/` (the reference recordings) and `lines.json` are
+git-ignored. To serve the lines from somewhere else (behind a sign-in, say),
+build with `VITE_VOICED_BASE` set to that folder's URL path.
 
 ## How
 

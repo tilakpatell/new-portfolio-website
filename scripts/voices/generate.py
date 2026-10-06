@@ -8,9 +8,7 @@ Whisper hears against what was meant, how like the reference it sounds, how
 natural) and the best one becomes public/audio/voiced/<who>/<id>.mp3; a line
 none of whose takes pass gets a second round with twice as many. The
 manifest.json the site looks lines up in (src/lib/voiced.js) is kept up to
-date as it goes. That folder is git-ignored: the lines stay on this machine,
-or wherever you serve them from behind the sign-in, and never go out with the
-public repository or the GitHub Pages build.
+date as it goes; commit the folder and they go out with the site.
 
     npm run voices:lines                            list the lines (again after editing any)
     python scripts/voices/grab.py                   build the references

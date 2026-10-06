@@ -36,9 +36,8 @@ lab/
 scripts/data/harmonium/
 .claude/worktrees/
 
-# the crews' lines made in their voices (scripts/voices): kept on the machine
-# that made them, never in the public repo or the Pages build
-public/audio/voiced/
+# what scripts/voices makes along the way (the lines it makes, in
+# public/audio/voiced, are published with the site)
 scripts/voices/cache/
 scripts/voices/refs/
 scripts/voices/lines.json
