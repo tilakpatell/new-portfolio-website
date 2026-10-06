@@ -1809,5 +1809,59 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/zigerion-ship": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11016-2b42-70d2-832c-a7575c6a2b9c",
+    "name": "zigerion-ship, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/reversegiraffe": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1102d-5053-7788-b95e-d7472e7406f0",
+    "name": "reversegiraffe, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/tinkles": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1102f-2fed-70a2-8e50-d1bbb867bab6",
+    "name": "tinkles, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/babywizard": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1102f-45d9-7533-952f-53932ce18525",
+    "name": "babywizard, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/jerry-ship": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1102f-e90d-768a-a8cd-22e04748931e",
+    "name": "jerry-ship, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/pencilvester": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11016-2b33-7000-9544-b6e91213ab25",
+    "name": "pencilvester, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }
