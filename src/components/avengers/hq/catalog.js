@@ -112,6 +112,69 @@ export const TEXTURES = {
   "bytes": 257047,
   "smallBytes": 50396
  },
+ "m64-carpet": {
+  "size": 1024,
+  "small": 512,
+  "alpha": false,
+  "bytes": 1923096,
+  "smallBytes": 479053
+ },
+ "m64-castle": {
+  "size": 1024,
+  "small": 512,
+  "alpha": false,
+  "bytes": 1151189,
+  "smallBytes": 335070
+ },
+ "m64-cliff": {
+  "size": 1024,
+  "small": 512,
+  "alpha": false,
+  "bytes": 585118,
+  "smallBytes": 170772
+ },
+ "m64-marble": {
+  "size": 1024,
+  "small": 512,
+  "alpha": false,
+  "bytes": 670355,
+  "smallBytes": 227637
+ },
+ "m64-path": {
+  "size": 1024,
+  "small": 512,
+  "alpha": false,
+  "bytes": 1139398,
+  "smallBytes": 301843
+ },
+ "m64-plaster": {
+  "size": 1024,
+  "small": 512,
+  "alpha": false,
+  "bytes": 397044,
+  "smallBytes": 47495
+ },
+ "m64-roof": {
+  "size": 1024,
+  "small": 512,
+  "alpha": false,
+  "bytes": 615423,
+  "smallBytes": 188078
+ },
+ "m64-stone": {
+  "size": 1024,
+  "small": 512,
+  "alpha": false,
+  "bytes": 1169212,
+  "smallBytes": 346066
+ },
+ "m64-woodfloor": {
+  "size": 1024,
+  "small": 512,
+  "alpha": false,
+  "bytes": 237942,
+  "smallBytes": 47931
+ },
  "mud-leaves": {
   "size": 1024,
   "small": 512,

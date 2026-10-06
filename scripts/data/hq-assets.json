@@ -105,6 +105,42 @@
     "rock": {
       "src": "polyhaven:rock_face_03",
       "size": 1024
+    },
+    "m64-castle": {
+      "src": "polyhaven:castle_brick_02_white",
+      "size": 1024
+    },
+    "m64-roof": {
+      "src": "polyhaven:red_slate_roof_tiles_01",
+      "size": 1024
+    },
+    "m64-marble": {
+      "src": "polyhaven:marble_tiles",
+      "size": 1024
+    },
+    "m64-plaster": {
+      "src": "polyhaven:painted_plaster_wall",
+      "size": 1024
+    },
+    "m64-woodfloor": {
+      "src": "polyhaven:wood_floor",
+      "size": 1024
+    },
+    "m64-path": {
+      "src": "polyhaven:stony_dirt_path",
+      "size": 1024
+    },
+    "m64-cliff": {
+      "src": "polyhaven:rock_face",
+      "size": 1024
+    },
+    "m64-stone": {
+      "src": "polyhaven:castle_wall_slates",
+      "size": 1024
+    },
+    "m64-carpet": {
+      "src": "ambientcg:Carpet013",
+      "size": 1024
     }
   },
   "skies": {
