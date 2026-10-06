@@ -56,9 +56,12 @@ import { siteOf } from './sites';
 import { heightGrid, makeHeight } from './terrain';
 import { createMarks, groundMaterial, groundMesh } from './ground';
 import { createSky } from './sky';
+import { createSkyFog } from './skyfog';
 import { createWater } from './water';
 import { createWeather } from './weather';
 import { createKit } from './kit';
+import { createGrass } from './grass';
+import { floorShadow } from '../../../lib/three/grounding';
 import { PROPS } from './props';
 import { createPlacer } from './placer';
 import { createActors, modelFigure } from './actors';
@@ -71,6 +74,8 @@ import { createShadowPhase } from './near';
 import { createBlaster } from './blaster';
 import { createSaber } from './saber';
 import { parries } from './hostiles';
+import { DODGE, FORCE, GUARD, HEAVY, PARRY, dodgeStep, forceAt, guardHit, guardStep, hitStop, lungeTo, parried, pushVelocity } from './combatRules';
+import { heatShot, heatStep, spreadAt, vent, ventSpot, withMods } from './weaponRules';
 import { heroSpec } from '../heroes';
 import { feed, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
@@ -96,9 +101,13 @@ export const CREW_MODELS = { artoo: 'r2d2' };
 const LEAVE = { lift: 3.2, away: 3.4 };
 const CAM = { dist: 4.8, up: 1.55, pitch: [-0.45, 1.15], far: 14, near: 2.2 };
 const REACH = 3.2; // metres: close enough to use something
-const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', ' ': 'jump', e: 'act', enter: 'act', f: 'fire', r: 'throw', c: 'block' };
+const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', ' ': 'jump', e: 'act', enter: 'act', f: 'fire', r: 'throw', c: 'block', x: 'dodge', g: 'power', v: 'second' };
 const FIRE_EVERY = 0.24; // seconds between shots
 const SABER_IDLE = 8; // seconds without a stroke before the blade goes out
+const DETONATOR = { cool: 8, fuse: 2.2, speed: 15, lift: 5.5, radius: 4.5, damage: 3 }; // a gun hero's thermal detonator (G)
+const OVERCHARGE = { cool: 20, dur: 5 }; // a gun hero's second ability (V): no heat and a harder shot for a while
+const LOCK = { range: 14, cone: 0.9 }; // metres and radians: what a stroke homes on
+const HUD_EVERY = 0.1; // seconds between the combat HUD's updates
 const BIKE_FIRE_EVERY = 0.3; // (a bike's cannon: a touch slower)
 
 export async function create(canvas, ctx) {
@@ -124,9 +133,15 @@ export async function create(canvas, ctx) {
   scene.add(camera);
   canvas.setAttribute('aria-hidden', 'true');
   const post = createPost(renderer, scene, camera, { small });
-  const warm = (root) => precompile(renderer, singlePass(root), camera, scene, post.on ? post.composer.readBuffer : undefined);
+  // (fogged in the sky's colour before its shaders are made, so they're made once)
+  const warm = (root) => {
+    skyFog.scene(root);
+    return precompile(renderer, singlePass(root), camera, scene, post.on ? post.composer.readBuffer : undefined);
+  };
 
   const sky = createSky(site);
+  // (the fog the sky's colour that way: everything fogged with it, as it's put in the world)
+  const skyFog = createSkyFog(sky, THREE.ShaderChunk);
   scene.add(sky.mesh);
   const sunDir = sky.sunDirs[0] ?? new V(0.3, 0.8, 0.4).normalize();
   const sun = new THREE.DirectionalLight(site.sky.suns?.[0]?.color ?? '#ffffff', site.light.sun ?? 3);
@@ -217,6 +232,8 @@ export async function create(canvas, ctx) {
     }
     placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true });
   }
+  // (the grass round you: blades on the land, where the site grows it)
+  const grass = site.grass && !site.noGround ? createGrass(scene, { grid, site, small, time: kit.wind }) : null;
   const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density });
 
   // ── The places you go into (zones): built high over the world, out of
@@ -467,7 +484,9 @@ export async function create(canvas, ctx) {
           p.holder.updateMatrixWorld(true);
           p.gp = createGunplay(fig, fig.gun ?? p.spec.gun, { unit: 1, who: fig.built ? 'built' : p.spec.id });
           // a lightsaber (surface/saber.js): lit, swung, held up and thrown from here
-          if (p.spec.saber && p.gp) p.saber = createSaber(p.gp, { color: p.spec.saber.color, hilt: p.spec.saber.hilt, parent: scene, sound: (what) => sounds.saber?.(what) });
+          if (p.spec.saber && p.gp) p.saber = createSaber(p.gp, { color: p.spec.saber.color, hilt: p.spec.saber.hilt, stance: p.spec.saber.stance, parent: scene, sound: (what) => sounds.saber?.(what) ?? sounds.combat?.(what) });
+          // the gun's numbers (weaponRules.js), with the mods they picked
+          p.weapon = withMods(fig.gun ?? p.spec.gun, p.spec.mods ?? []);
         }
         await warm(p.holder);
       }),
@@ -505,7 +524,27 @@ export async function create(canvas, ctx) {
     jumpQueued: false,
     actQueued: false,
     throwQueued: false,
+    dodgeQueued: false,
+    powerQueued: false,
+    secondQueued: false,
     saberAt: -99, // when the saber last did something (it goes out after SABER_IDLE)
+    // ── the fight (combatRules.js, weaponRules.js) ──
+    guard: { value: GUARD.max, hitAt: null, brokenAt: null }, // what blocking spends
+    blockAt: null, // when C went down (a swipe just after is parried)
+    pressAt: null, // when F went down with a saber (held, it's the heavy stroke)
+    dodge: null, // { t0, dx, dz }
+    dodgedAt: -99,
+    lunge: null, // { t0, dur, dx, dz }: a stroke stepping in to its target
+    lock: null, // the enemy a stroke homes on
+    cool: { power: -99, second: -99 }, // when each ability is ready again
+    overcharge: -99, // until when the gun runs hot-free
+    heat: { value: 0, locked: false, lockedAt: null },
+    burst: null, // { left, next }: the rest of a burst
+    ads: false, // down the sights (right button, or the Aim button)
+    adsK: 0,
+    hitstop: 0, // seconds the frame holds after a hit
+    hudAt: -99,
+    bombs: [], // thermal detonators in the air: { m, v, t0 }
     cam: { yaw: mission ? mission.yaw : you.yaw, pitch: 0.2, dist: mission?.ride ? RIDES[mission.ride].cam[0] : CAM.dist, drag: -10 },
     riding: mission?.ride ? rides[rides.length - 1] : null,
     prompt: null,
@@ -533,6 +572,7 @@ export async function create(canvas, ctx) {
   };
   const camPos = new V();
   const camLook = new V();
+  let baseFov = 60;
   let camInit = false;
   if (state.phase === 'walk' || state.phase === 'ride') {
     for (const p of people) p.holder.visible = true;
@@ -627,6 +667,16 @@ export async function create(canvas, ctx) {
       if (k === 'act') state.actQueued = true;
       if (k === 'fire') state.fireQueued = true;
       if (k === 'throw') state.throwQueued = true;
+      if (k === 'dodge') state.dodgeQueued = true;
+      if (k === 'power') state.powerQueued = true;
+      if (k === 'second') state.secondQueued = true;
+      if (k === 'block') state.blockAt = state.t;
+      if (k === 'fire' && me().saber) state.pressAt = state.t;
+    }
+    if (!down && k === 'fire' && state.pressAt != null) {
+      // a saber's F let go: a stroke, or the heavy one if it was held
+      state.swingQueued = state.t - state.pressAt >= HEAVY.hold ? 'heavy' : 'light';
+      state.pressAt = null;
     }
     state.keys[k] = down;
     ctx.invalidate();
@@ -641,6 +691,13 @@ export async function create(canvas, ctx) {
   let dragging = null;
   const down = (e) => {
     if (e.pointerType === 'touch') return; // (the page's own look pad, on a phone)
+    if (e.button === 2) {
+      // the right button: down the sights while it's held
+      state.ads = true;
+      sounds.start();
+      ctx.invalidate();
+      return;
+    }
     dragging = { x: e.clientX, y: e.clientY, id: e.pointerId };
     sounds.start();
     canvas.setPointerCapture?.(e.pointerId);
@@ -654,7 +711,10 @@ export async function create(canvas, ctx) {
   };
   const up = (e) => {
     if (dragging && e.pointerId === dragging.id) dragging = null;
+    if (e.button === 2) state.ads = false;
   };
+  const noMenu = (e) => e.preventDefault();
+  canvas.addEventListener('contextmenu', noMenu);
   const wheel = (e) => {
     e.preventDefault();
     state.cam.dist = clamp(state.cam.dist * (e.deltaY > 0 ? 1.12 : 1 / 1.12), CAM.near, CAM.far);
@@ -885,6 +945,7 @@ export async function create(canvas, ctx) {
     hemi.intensity = z ? (L?.ambient ?? 0.4) : outdoors.ambient;
     scene.fog.color.set(L?.fog ?? outdoors.fog);
     scene.fog.density = z ? (L?.density ?? 0.02) : outdoors.density;
+    skyFog.indoors(Boolean(z));
     scene.environmentIntensity = z ? 0.15 : outdoors.env;
     sky.mesh.visible = !z;
     if (weather) weather.group.visible = !z;
@@ -961,10 +1022,26 @@ export async function create(canvas, ctx) {
   const assaultOn = () => Boolean(assault?.running());
   // what your blaster can hit, and what a hit does: the battle's soldiers while it's on, the quests' targets otherwise
   const shootable = () => (assaultOn() ? assault.targets : activity.targets);
-  const struck = (hit) => {
+  // a shot that found someone: the weapon's damage (a shield breaks to a
+  // blast), the hit marker, the moment's hold on a kill
+  const struck = (hit, damage = me().weapon?.damage ?? 1, { breaks = false } = {}) => {
     if (!hit.target) return;
     if (assaultOn()) assault.hit(hit.target, ASSAULT.yours);
-    else activity.hit(hit.target, 1);
+    else {
+      const t = hit.target;
+      const was = t.hp;
+      activity.hit(t, damage, { breaks });
+      const killed = was > 0 && t.hp <= 0;
+      emit({ type: 'hit', kill: killed });
+      sounds.combat?.(killed ? 'kill' : 'hit');
+      if (killed) state.hitstop = Math.max(state.hitstop, hitStop(damage, true) * 0.5);
+    }
+  };
+  const weapon = () => me().weapon ?? withMods(me().spec.gun ?? 'blaster', me().spec.mods ?? []);
+  // the eyes' line, scattered by the weapon (tighter down the sights)
+  const scatter = (dir, w) => {
+    const sp = spreadAt(w, state.ads);
+    return dir.clone().add(new V((Math.random() - 0.5) * sp * 2, (Math.random() - 0.5) * sp * 2, (Math.random() - 0.5) * sp * 2)).normalize();
   };
   // a side chosen, and onto the field at one of its posts (from the HUD, or the dev hooks)
   function chooseSide(id) {
@@ -1028,7 +1105,18 @@ export async function create(canvas, ctx) {
       return;
     }
     if (state.phase !== 'walk' || state.off) return;
-    if (me().saber) return swing();
+    if (me().saber) return; // (a saber's F is a stroke, on release: stepSaber)
+    if (state.dodge) return;
+    const w = weapon();
+    if (state.t - state.firedAt < w.every) return;
+    // too hot: nothing until it's vented or cools
+    if (state.heat.locked) {
+      if (state.t - state.firedAt > 0.3) {
+        state.firedAt = state.t;
+        sounds.combat?.('lock');
+      }
+      return;
+    }
     state.firedAt = state.t;
     camera.getWorldDirection(camDir);
     p.yaw = Math.atan2(camDir.x, camDir.z);
@@ -1039,27 +1127,228 @@ export async function create(canvas, ctx) {
     const gp = me().gp;
     state.aim = 1;
     state.aimDir.copy(camDir);
+    if (state.t > state.overcharge) state.heat = heatShot(state.heat, w, state.t);
+    if (state.heat.locked) sounds.combat?.('lock');
+    if (w.burst > 1) state.burst = { left: w.burst - 1, next: state.t + 0.075 };
     if (gp) {
       state.shot = { from, dir: camDir.clone() };
       return;
     }
-    const hit = blaster.fire(from, camDir, shootable(), me().spec.bolt ?? '#ff3b30');
+    const hit = blaster.fire(from, scatter(camDir, w), shootable(), me().spec.bolt ?? '#ff3b30', w.range);
     struck(hit);
     landed(hit, camDir);
     sounds.blast?.();
     emit({ type: 'fire' });
   }
+  // the rest of a burst, a shot at a time
+  function stepBurst() {
+    const b = state.burst;
+    if (!b || state.t < b.next || state.phase !== 'walk') return;
+    b.left--;
+    b.next = state.t + 0.075;
+    if (b.left <= 0) state.burst = null;
+    const p = me().st;
+    camera.getWorldDirection(camDir);
+    const right = new V(-Math.cos(p.yaw), 0, Math.sin(p.yaw));
+    const from = new V(p.x, p.y + 1.35, p.z).addScaledVector(right, -0.25).addScaledVector(camDir, 0.5);
+    state.aim = 1;
+    state.aimDir.copy(camDir);
+    if (me().gp) state.shot = { from, dir: camDir.clone() };
+  }
   // ── The lightsaber (F a stroke, held up on C, thrown with R): you turn
   // to face where the camera looks, as for a shot, and the blade stays lit
   // a while after ──
-  function swing() {
+  function swing(heavy = false) {
     const p = me();
+    if (state.guard.brokenAt != null || state.dodge) return;
     camera.getWorldDirection(camDir);
     p.st.yaw = Math.atan2(camDir.x, camDir.z);
     state.aim = 1;
     state.aimDir.copy(camDir);
     state.saberAt = state.t;
-    if (p.saber.swing(state.t)) emit({ type: 'fire' });
+    const sw = p.saber.swing(state.t, { heavy });
+    if (!sw) return;
+    emit({ type: 'fire' });
+    // homing on the one you're facing: turned to them, stepped in if they're a little out of reach
+    const t = state.lock;
+    if (t && !t.down) {
+      const q = t.holder.position;
+      p.st.yaw = Math.atan2(q.x - p.st.x, q.z - p.st.z);
+      const d = lungeTo(p.st, { x: q.x, z: q.z, r: 0.5 }, p.saber.stance);
+      if (d > 0) state.lunge = { t0: state.t, dur: Math.min(0.2, sw.dur * 0.4), dx: Math.sin(p.st.yaw) * d, dz: Math.cos(p.st.yaw) * d };
+    }
+  }
+  // the lunge: the step in, over its first moments
+  function stepLunge(dt) {
+    const l = state.lunge;
+    if (!l) return;
+    // (the whole step spread evenly over the lunge's duration)
+    const k = Math.min(1, dt / l.dur);
+    const p = me().st;
+    p.x += l.dx * k;
+    p.z += l.dz * k;
+    if (state.t - l.t0 >= l.dur) state.lunge = null;
+  }
+  // the dodge (X): a roll the way you're going (back, if you're still),
+  // nothing landing through its first moments
+  function dodge() {
+    if (state.phase !== 'walk' || state.dodge || state.t - state.dodgedAt < DODGE.cool || state.off) return;
+    const inp = input();
+    const p = me().st;
+    let dx = Math.sin(inp.heading) * inp.y + Math.cos(inp.heading) * inp.x;
+    let dz = Math.cos(inp.heading) * inp.y - Math.sin(inp.heading) * inp.x;
+    if (Math.hypot(dx, dz) < 0.2) {
+      dx = -Math.sin(p.yaw);
+      dz = -Math.cos(p.yaw);
+    }
+    const m = Math.hypot(dx, dz);
+    state.dodge = { t0: state.t, dx: dx / m, dz: dz / m, d: 0 };
+    state.dodgedAt = state.t;
+    me().saber?.block(false);
+    sounds.combat?.('dodge');
+  }
+  function stepDodge() {
+    const d = state.dodge;
+    if (!d) return false;
+    const k = (state.t - d.t0) / DODGE.dur;
+    if (k >= 1) {
+      state.dodge = null;
+      me().holder.rotation.x = 0;
+      return false;
+    }
+    const at = dodgeStep(k);
+    const step = at.d - d.d;
+    d.d = at.d;
+    const p = me().st;
+    p.x += d.dx * step;
+    p.z += d.dz * step;
+    // (a roll: head over heels along the way, once)
+    me().holder.rotation.x = -Math.PI * 2 * k * (d.dx * Math.sin(p.yaw) + d.dz * Math.cos(p.yaw) >= 0 ? 1 : -1);
+    return at.safe;
+  }
+  // the one your strokes home on: the nearest in front, within LOCK
+  function pickLock() {
+    const p = me().st;
+    let best = null;
+    let bestD = LOCK.range;
+    for (const t of shootable()) {
+      const q = t.holder.position;
+      const d = Math.hypot(q.x - p.x, q.z - p.z);
+      if (d > bestD) continue;
+      const off = Math.abs(wrap(Math.atan2(q.x - p.x, q.z - p.z) - state.cam.yaw));
+      if (off > LOCK.cone) continue;
+      best = t;
+      bestD = d;
+    }
+    if (best !== state.lock) {
+      state.lock = best;
+      emit({ type: 'lock', name: best ? best.spec.kind : null });
+    }
+  }
+  // the Force (G push, V pull) for a Jedi; a thermal detonator (G) and an
+  // overcharge (V) for a gun hero: each on its own cooldown
+  function power(slot) {
+    if (state.phase !== 'walk' || state.off) return;
+    const p = me();
+    const ready = state.t >= state.cool[slot];
+    if (!ready) return;
+    camera.getWorldDirection(camDir);
+    p.st.yaw = Math.atan2(camDir.x, camDir.z);
+    if (p.saber) {
+      const kind = slot === 'power' ? 'push' : 'pull';
+      const f = FORCE[kind];
+      state.cool[slot] = state.t + f.cool;
+      state.saberAt = state.t;
+      state.aim = 1;
+      state.aimDir.copy(camDir);
+      let any = 0;
+      for (const t of shootable()) {
+        const q = t.holder.position;
+        const at = forceAt(p.st, { x: q.x, z: q.z }, kind);
+        if (!at.hit) continue;
+        any++;
+        activity.knock(t, pushVelocity(p.st, { x: q.x, z: q.z }, at.k, kind));
+        if (f.damage) activity.hit(t, f.damage);
+        if (kind === 'pull') activity.stagger(t, 1.2);
+      }
+      // a rush of dust out from you (or in, for a pull)
+      const from = new V(p.st.x, p.st.y + 1, p.st.z);
+      for (let i = 0; i < 10; i++) {
+        const a = p.st.yaw + (Math.random() - 0.5) * f.cone * 2;
+        fx.sparks(from.clone().addScaledVector(new V(Math.sin(a), 0, Math.cos(a)), kind === 'push' ? 1.5 + Math.random() * 4 : 3 + Math.random() * 6), new V(Math.sin(a) * (kind === 'push' ? 1 : -1), 0.3, Math.cos(a) * (kind === 'push' ? 1 : -1)), '#c8d8ff', 4);
+      }
+      sounds.combat?.('force');
+      state.shake = Math.min(1, state.shake + 0.25);
+      if (any) state.hitstop = Math.max(state.hitstop, 0.05);
+      emit({ type: 'fire' });
+      return;
+    }
+    if (slot === 'power') {
+      // the detonator: thrown in an arc, blowing after its fuse (or when it lands)
+      state.cool.power = state.t + DETONATOR.cool;
+      const m = new THREE.Mesh(bombGeo, bombMat);
+      m.position.set(p.st.x, p.st.y + 1.4, p.st.z).addScaledVector(camDir, 0.6);
+      scene.add(m);
+      state.bombs.push({ m, v: camDir.clone().multiplyScalar(DETONATOR.speed).add(new V(0, DETONATOR.lift, 0)), t0: state.t });
+      state.aim = 1;
+      state.aimDir.copy(camDir);
+      emit({ type: 'fire' });
+      return;
+    }
+    // the overcharge: no heat, white bolts, a harder hit for a while
+    state.cool.second = state.t + OVERCHARGE.cool;
+    state.overcharge = state.t + OVERCHARGE.dur;
+    state.heat = { value: 0, locked: false, lockedAt: null };
+    sounds.combat?.('perfect');
+  }
+  const bombGeo = new THREE.SphereGeometry(0.09, 10, 8);
+  const bombMat = new THREE.MeshStandardMaterial({ color: '#8a9aa8', emissive: new THREE.Color('#ff3b30'), emissiveIntensity: 1.2, metalness: 0.7, roughness: 0.3 });
+  function stepBombs(dt) {
+    for (let i = state.bombs.length - 1; i >= 0; i--) {
+      const b = state.bombs[i];
+      b.v.y -= 14 * dt;
+      b.m.position.addScaledVector(b.v, dt);
+      b.m.rotation.x += dt * 9;
+      const g = groundAt(world, b.m.position.x, b.m.position.z, b.m.position.y + 0.5);
+      const age = state.t - b.t0;
+      bombMat.emissiveIntensity = 1 + Math.sin(age * 20) * 0.8;
+      if (b.m.position.y > g + 0.1 && age < DETONATOR.fuse) continue;
+      // the blast: everyone within its radius hurt by how close they are, shoved off their feet
+      const at = b.m.position.clone();
+      at.y = Math.max(at.y, g + 0.3);
+      scene.remove(b.m);
+      state.bombs.splice(i, 1);
+      for (const t of shootable()) {
+        const q = t.holder.position;
+        const d = Math.hypot(q.x - at.x, q.z - at.z);
+        if (d > DETONATOR.radius) continue;
+        const k = 1 - d / DETONATOR.radius;
+        const was = t.hp;
+        activity.hit(t, Math.max(1, Math.round(DETONATOR.damage * (0.4 + 0.6 * k))), { breaks: true });
+        activity.knock(t, { vx: ((q.x - at.x) / Math.max(0.3, d)) * 8 * k, vz: ((q.z - at.z) / Math.max(0.3, d)) * 8 * k, vy: 4 * k });
+        emit({ type: 'hit', kill: was > 0 && t.hp <= 0 });
+      }
+      const you = me().st;
+      const dYou = Math.hypot(you.x - at.x, you.z - at.z);
+      if (dYou < DETONATOR.radius * 0.8 && !state.dodge) hurt(Math.round(30 * (1 - dYou / DETONATOR.radius)));
+      for (let k = 0; k < 6; k++) fx.sparks(at, new V((Math.random() - 0.5) * 2, 1, (Math.random() - 0.5) * 2).normalize(), k % 2 ? '#ffd36b' : '#ff6a3d', 14);
+      fx.flash(at, UP, { color: '#ffb060', size: 1.6 });
+      fx.scorch(at, UP);
+      sounds.combat?.('boom');
+      state.shake = Math.min(1, state.shake + 0.6 * Math.max(0.3, 1 - dYou / 30));
+      state.hitstop = Math.max(state.hitstop, 0.06);
+    }
+  }
+  // the vent (R, with a gun): empties the heat early, or, locked, the
+  // sweet spot clears it at once and early jumps half of it
+  function ventGun() {
+    const w = weapon();
+    const was = state.heat;
+    const r = vent(state.heat, state.t);
+    state.heat = { value: r.value, locked: r.locked, lockedAt: r.lockedAt };
+    if (r.perfect) sounds.combat?.('perfect');
+    else if (!r.locked && was.value > 0) sounds.combat?.('vent');
+    emit({ type: 'vent', perfect: Boolean(r.perfect), weapon: w.name });
   }
   function throwSaber() {
     const p = me();
@@ -1073,28 +1362,91 @@ export async function create(canvas, ctx) {
   }
   // the blade through one of them: their blade turns it (sparks, a clash)
   // or it lands
-  function saberHit(t, damage, at) {
-    const parried = parries(t.hostile, Math.random());
-    fx.sparks(at, UP, parried ? '#ffffff' : (me().spec.bolt ?? '#ffffff'), parried ? 16 : 10);
+  function saberHit(t, damage, at, { heavy = false, thrown = false } = {}) {
+    // (a heavy stroke, or one on a staggered foe, can't be parried)
+    const parriedByThem = !heavy && !thrown && t.stagger <= 0 && !t.knock && parries(t.hostile, Math.random());
+    fx.sparks(at, UP, parriedByThem ? '#ffffff' : (me().spec.bolt ?? '#ffffff'), parriedByThem ? 16 : heavy ? 22 : 10);
     sounds.saber?.('clash');
-    if (parried) {
+    if (parriedByThem) {
       t.flinch = 0.2;
+      // their blade on yours: your guard takes some of it
+      state.guard = guardHit(state.guard, 12, state.t);
+      state.hitstop = Math.max(state.hitstop, 0.04);
       return;
     }
-    activity.hit(t, damage);
-    state.shake = Math.min(1, state.shake + 0.08);
+    const was = t.hp;
+    activity.hit(t, damage, { breaks: heavy });
+    if (heavy) activity.stagger(t, 1.2);
+    const killed = was > 0 && t.hp <= 0;
+    emit({ type: 'hit', kill: killed });
+    sounds.combat?.(killed ? 'kill' : 'hit');
+    state.hitstop = Math.max(state.hitstop, hitStop(damage, killed));
+    state.shake = Math.min(1, state.shake + (heavy ? 0.2 : 0.08));
   }
   // the blade lit while there's fighting, out again once it's quiet; held up while C is
-  function stepSaber() {
+  function stepSaber(dt) {
     const p = me();
     const sab = p.saber;
-    if (!sab) return;
-    const blocking = Boolean(state.keys.block || state.buttons.block) && state.phase === 'walk';
+    if (!sab) {
+      // a gun: its heat cooling, its burst, the vent on R
+      const w = weapon();
+      state.heat = heatStep(state.heat, dt, w, state.t);
+      stepBurst();
+      if (state.throwQueued) ventGun();
+      return;
+    }
+    // the guard: regrowing, or staggered while it's broken
+    const wasBroken = state.guard.brokenAt != null;
+    state.guard = guardStep(state.guard, dt, state.t);
+    if (!wasBroken && state.guard.brokenAt != null) {
+      sounds.combat?.('broken');
+      state.shake = Math.min(1, state.shake + 0.5);
+    }
+    const broken = state.guard.brokenAt != null;
+    const blocking = Boolean(state.keys.block || state.buttons.block) && state.phase === 'walk' && !broken && !state.dodge;
     sab.block(blocking);
     if (blocking) state.saberAt = state.t;
+    // F held: the heavy stroke winding up; let go: the stroke
+    if (state.pressAt != null && !sab.busy) sab.setCharge(Math.min(1, (state.t - state.pressAt) / HEAVY.hold));
+    else sab.setCharge(0);
+    if (state.swingQueued) {
+      swing(state.swingQueued === 'heavy');
+      state.swingQueued = null;
+    }
+    // (touch: the Swing button held past the hold is the heavy one too)
+    if (state.buttons.fire && state.pressAt == null) state.pressAt = state.t;
+    if (!state.buttons.fire && !state.keys.fire && state.pressAt != null && state.touchPress) {
+      swing(state.t - state.pressAt >= HEAVY.hold);
+      state.pressAt = null;
+      state.touchPress = false;
+    }
     if (state.throwQueued) throwSaber();
     if (sab.lit && state.t - (state.saberAt ?? -99) > SABER_IDLE && !sab.busy) sab.light(false);
     if (blocking || sab.busy) state.aim = Math.max(state.aim, 0.6);
+  }
+  // the combat HUD's numbers, a few times a second
+  function stepHud() {
+    if (state.t - state.hudAt < HUD_EVERY) return;
+    state.hudAt = state.t;
+    const p = me();
+    const w = p.saber ? null : weapon();
+    const lock = state.lock && !state.lock.down ? state.lock : null;
+    emit({
+      type: 'combat',
+      saber: Boolean(p.saber),
+      stance: p.saber ? p.saber.stance.name : null,
+      weapon: w ? w.name : null,
+      guard: p.saber ? state.guard.value / GUARD.max : null,
+      broken: state.guard.brokenAt != null,
+      heat: w ? state.heat.value : null,
+      locked: state.heat.locked,
+      vent: w ? ventSpot(state.heat, state.t) : null,
+      hot: state.t < state.overcharge,
+      cool: { power: Math.max(0, state.cool.power - state.t), second: Math.max(0, state.cool.second - state.t), dodge: Math.max(0, state.dodgedAt + DODGE.cool - state.t) },
+      cools: { power: p.saber ? FORCE.push.cool : DETONATOR.cool, second: p.saber ? FORCE.pull.cool : OVERCHARGE.cool, dodge: DODGE.cool },
+      lock: lock ? { name: lock.spec.kind, hp: Math.max(0, lock.hp), max: lock.spec.hp ?? 1, shield: lock.shield } : null,
+      ads: state.ads,
+    });
   }
   // the shot fired with the gun up: out of the muzzle, a flash, smoke and
   // brass from a powder gun, the gun's own sound, the view kicked a touch
@@ -1104,15 +1456,22 @@ export async function create(canvas, ctx) {
     const p = me();
     if (!o || !p.gp) return;
     const r = p.gp.fire();
-    const hit = blaster.fire(o.from, o.dir, shootable(), p.spec.bolt ?? '#ff3b30', undefined, r.muzzle);
-    struck(hit);
+    const w = weapon();
+    const hot = state.t < state.overcharge;
+    const n = w.pellets ?? 1;
+    let hit = null;
+    for (let i = 0; i < n; i++) {
+      const h = blaster.fire(o.from, scatter(o.dir, w), shootable(), hot ? '#ffffff' : (p.spec.bolt ?? '#ff3b30'), w.range, r.muzzle);
+      struck(h, Math.max(1, Math.round((w.damage + (hot ? 1 : 0)) / (n > 1 ? 2 : 1))));
+      hit ??= h;
+    }
     const spec = p.gp.spec;
     const out = hit.at.clone().sub(r.muzzle).normalize();
     fx.flash(r.muzzle, out, spec.flash);
     if (spec.smoke) fx.smoke(r.muzzle, out, spec.smoke);
     if (spec.casing && r.eject) fx.casing(r.eject, new V(-1, 0, 0).transformDirection(r.gun.matrixWorld), UP);
     landed(hit, out, r.muzzle);
-    if (!reduced) state.kick.v += spec.kick.up;
+    if (!reduced) state.kick.v += spec.kick.up * (w.kick ?? 1) * (state.ads ? 0.6 : 1);
     gunSound(p.spec.gun);
     emit({ type: 'fire' });
   }
@@ -1248,7 +1607,9 @@ export async function create(canvas, ctx) {
   function stepWalk(dt) {
     const inp = input();
     const p = me().st;
-    const o = walk(p, { ...inp, jump: state.jumpQueued }, dt, world);
+    const safe = stepDodge();
+    state.safe = safe;
+    const o = walk(p, state.dodge ? { x: 0, y: 0, run: false, heading: inp.heading, jump: false } : { ...inp, jump: state.jumpQueued }, dt, world);
     life.shove(p, WALK.radius);
     // (and out of whatever's parked: a speeder, a tauntaun)
     for (const x of rides) {
@@ -1400,7 +1761,17 @@ export async function create(canvas, ctx) {
       c.yaw += wrap(want - c.yaw) * Math.min(1, dt * (riding ? 2.6 : 1.1));
       if (riding) c.pitch += (0.16 - c.pitch) * Math.min(1, dt * 1.5);
     }
-    const dist = c.dist * (riding ? 1 + Math.min(0.35, Math.abs(state.riding.state.speed) / 120) : 1);
+    // down the sights: in close over the shoulder, the field narrowed by the weapon's zoom
+    const adsWant = state.ads && !riding && state.phase === 'walk' && !me().saber ? 1 : 0;
+    state.adsK += (adsWant - state.adsK) * (1 - Math.exp(-dt * 10));
+    const zoom = me().weapon?.zoom ?? 1.4;
+    const fov = baseFov / (1 + (zoom - 1) * state.adsK);
+    if (Math.abs(camera.fov - fov) > 0.01) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
+    const dist = (c.dist * (1 - state.adsK) + CAM.near * state.adsK) * (riding ? 1 + Math.min(0.35, Math.abs(state.riding.state.speed) / 120) : 1);
+    if (state.adsK > 0.01) focus.addScaledVector(new V(Math.cos(c.yaw), 0, -Math.sin(c.yaw)), 0.55 * state.adsK);
     const back = new V(-Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), -Math.cos(c.yaw) * Math.cos(c.pitch));
     const want = focus.clone().addScaledVector(back, dist);
     // never under the ground
@@ -1557,6 +1928,11 @@ export async function create(canvas, ctx) {
 
   // the world moving on by dt seconds
   function tick(dt) {
+    // a hit holds the frame a moment: time runs slow through it
+    if (state.hitstop > 0) {
+      state.hitstop = Math.max(0, state.hitstop - dt);
+      dt *= 0.12;
+    }
     state.t += dt;
     const t = state.t;
 
@@ -1591,8 +1967,21 @@ export async function create(canvas, ctx) {
     // the blaster (F, held to keep firing)
     if ((state.fireQueued || state.keys.fire || state.buttons.fire) && (state.phase === 'walk' || (state.phase === 'ride' && chase))) fire();
     state.fireQueued = false;
-    stepSaber();
+    if (state.dodgeQueued) dodge();
+    state.dodgeQueued = false;
+    if (state.powerQueued) power('power');
+    if (state.secondQueued) power('second');
+    state.powerQueued = state.secondQueued = false;
+    stepSaber(dt);
     state.throwQueued = false;
+    stepLunge(dt);
+    stepBombs(dt);
+    if (state.phase === 'walk') pickLock();
+    else if (state.lock) {
+      state.lock = null;
+      emit({ type: 'lock', name: null });
+    }
+    stepHud();
     // the chase: on with it, and a shove when you ride into one
     if (chase && (state.phase === 'walk' || state.phase === 'ride')) {
       const b = state.riding ? state.riding.state : me().st;
@@ -1634,12 +2023,27 @@ export async function create(canvas, ctx) {
     if (state.phase === 'walk' || state.phase === 'ride')
       for (const s of activity.shooters(dt, me().st)) {
         const blade = me().saber?.deflecting(s.from) ?? false;
+        if (state.safe) continue; // (through the dodge's first moments nothing lands)
+        if (s.melee && blade && parried(state.blockAt, state.t)) {
+          // the block went up just as their swipe came: a parry, and they reel from it
+          const p = me().st;
+          fx.sparks(new V(p.x, p.y + 1.2, p.z), UP, '#ffffff', 26);
+          sounds.combat?.('parry');
+          if (s.who) activity.stagger(s.who, PARRY.stagger);
+          state.hitstop = Math.max(state.hitstop, 0.12);
+          state.shake = Math.min(1, state.shake + 0.3);
+          state.blockAt = null;
+          emit({ type: 'parry' });
+          continue;
+        }
         if (s.melee && blade) {
-          // their swipe on your raised blade: a clash, and nothing lands
+          // their swipe on your raised blade: a clash, and nothing lands, but it costs your guard
           const p = me().st;
           fx.sparks(new V(p.x, p.y + 1.2, p.z), UP, '#ffffff', 14);
           sounds.saber?.('clash');
+          state.guard = guardHit(state.guard, (s.damage ?? 20) * 1.4 * me().saber.stance.cost, state.t);
           state.shake = Math.min(1, state.shake + 0.2);
+          state.hitstop = Math.max(state.hitstop, 0.04);
           continue;
         }
         if (s.melee) {
@@ -1658,10 +2062,12 @@ export async function create(canvas, ctx) {
           if (b && blade) b.deflect = true; // (it'll come off the blade, not land)
         }
       }
-    const hit = blaster.update(dt, (state.phase === 'walk' || state.phase === 'ride') && !state.off ? me().st : null, (at) => {
+    const hit = blaster.update(dt, (state.phase === 'walk' || state.phase === 'ride') && !state.off && !state.safe ? me().st : null, (at) => {
       fx.sparks(at, UP, '#ffffff', 10);
       sounds.saber?.('deflect');
       state.saberAt = state.t;
+      // (each bolt turned costs a little guard)
+      if (me().saber) state.guard = guardHit(state.guard, 7 * me().saber.stance.cost, state.t);
     });
     if (hit) hurt(hit);
     if (state.health < 100 && state.t - state.hurtAt > 4) {
@@ -1693,6 +2099,8 @@ export async function create(canvas, ctx) {
     state.aim = Math.max(0, state.aim - dt / 2.5);
     life.update(dt, state.phase === 'walk' ? me().st : null, state.phase === 'walk' || state.phase === 'ride' ? me().st : camera.position);
     placer.update(t, dt, me().st);
+    if (!reduced) kit.tick(dt);
+    grass?.update(me().st.x, me().st.z, me().st.x, me().st.z);
     stepDust(dt);
     storm(dt);
     online(dt);
@@ -1765,6 +2173,8 @@ export async function create(canvas, ctx) {
     sun.position.copy(snapped).addScaledVector(sunDir, 300);
     sun.target.position.copy(snapped);
     sky.update(camera, t, flash.k);
+    // (whatever's come into the world since, fogged in the sky's colour before it's drawn)
+    skyFog.scene(scene);
     water?.update(t);
     weather?.update(t, camera, world.heightAt, size.h);
     compass();
@@ -1807,13 +2217,15 @@ export async function create(canvas, ctx) {
         area: { x0: landAt[0] - R, z0: landAt[1] - R, w: R * 2, d: R * 2 },
         sun,
         // (what moves isn't baked: the folk and beasts about, the speeders)
-        skip: [sky.mesh, water?.mesh, water?.glow, weather?.group, weather?.mesh, camera, life.group, ...rides.map((x) => x.holder)].filter(Boolean),
+        skip: [sky.mesh, water?.mesh, water?.glow, weather?.group, weather?.mesh, camera, life.group, grass?.mesh, ...rides.map((x) => x.holder)].filter(Boolean),
         movers: [...people.map((p) => ({ object: p.holder, size: [0.8, 0.8] })), ...life.actors.filter((a) => a.holder).map((a) => ({ object: a.holder, size: [1, 1] })), ...rides.map((x) => ({ object: x.holder, size: [1.4, 2.6] }))],
         shade: site.light.shade ?? site.light.ground ?? '#3a3028',
         height: world.heightAt,
         tier: small ? 'low' : 'mid',
         auto: true,
       });
+      // (the grass in the floor's shadows: read where each blade stands)
+      if (grass) floorShadow(grass.mesh.material, lit.mask);
     }
     // (the scouts' way is planned round the trees, so once they're down)
     if (!disposed) chase?.begin();
@@ -1844,7 +2256,8 @@ export async function create(canvas, ctx) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);
       camera.aspect = size.w / size.h;
-      camera.fov = size.w < size.h ? 72 : 60;
+      baseFov = size.w < size.h ? 72 : 60;
+      camera.fov = baseFov;
       camera.updateProjectionMatrix();
       compassW = 0;
     },
@@ -1879,8 +2292,16 @@ export async function create(canvas, ctx) {
         if (name === 'act') state.actQueued = true;
         if (name === 'run') state.buttons.run = true;
         if (name === 'fire') state.buttons.fire = true;
-        if (name === 'block') state.buttons.block = true;
+        if (name === 'block') {
+          state.buttons.block = true;
+          state.blockAt = state.t;
+        }
         if (name === 'throw') state.throwQueued = true;
+        if (name === 'dodge') state.dodgeQueued = true;
+        if (name === 'power') state.powerQueued = true;
+        if (name === 'second') state.secondQueued = true;
+        if (name === 'aim') state.ads = !state.ads;
+        if (name === 'fire' && me().saber) state.touchPress = true;
         if (name === 'swap') swap();
         ctx.invalidate();
       },
@@ -2039,11 +2460,14 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown } : null }),
+    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name } : null, guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length }),
     dispose() {
       disposed = true;
       lit?.dispose();
       for (const p of people) p.saber?.dispose();
+      for (const b of state.bombs) scene.remove(b.m);
+      bombGeo.dispose();
+      bombMat.dispose();
       window.removeEventListener('keydown', keyDown);
       window.removeEventListener('keyup', keyUp);
       window.removeEventListener('blur', blur);
@@ -2051,6 +2475,7 @@ export async function create(canvas, ctx) {
       window.removeEventListener('pointerup', up);
       canvas.removeEventListener('pointerdown', down);
       canvas.removeEventListener('wheel', wheel);
+      canvas.removeEventListener('contextmenu', noMenu);
       engine?.stop();
       props.net?.walk?.(null);
       sounds.dispose();
@@ -2063,6 +2488,7 @@ export async function create(canvas, ctx) {
       markMat.dispose();
       life.dispose();
       placer.dispose();
+      grass?.dispose();
       shadowPhase?.dispose();
       for (const p of people) {
         p.gp?.dispose();

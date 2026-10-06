@@ -314,4 +314,75 @@ describe('a battle', () => {
     run(b, 2);
     expect(b.over).toBeNull();
   });
+
+  // ── the set pieces' hooks (galaxy/warpieces/) ──
+  it('lets an ion cannon disable a capital ship a while: its guns quiet, hits on it counting more', () => {
+    const b = make({ perSide: 2 });
+    b.setYou(0);
+    const esc = b.capitals.find((c) => c.team === 1 && c.role === 'escort');
+    const events = [];
+    b.disable(esc.id, 5);
+    events.push(...b.update(0.1, null));
+    expect(events.some((e) => e.type === 'disabled' && e.id === esc.id)).toBe(true);
+    expect(esc.disabled).toBeGreaterThan(0);
+    // (its batteries hold their fire)
+    for (const tu of esc.turrets) tu.turbo = tu.flak = 0;
+    const firing = () => b.bolts.filter((o) => o.on && o.team === 1).length;
+    const before = firing();
+    b.update(0.05, null);
+    const after = b.bolts.filter((o) => o.on && o.team === 1 && Math.hypot(o.x - esc.pos.x, o.y - esc.pos.y, o.z - esc.pos.z) < esc.size).length;
+    expect(after).toBe(0);
+    expect(before).toBeGreaterThanOrEqual(0);
+    const hull = esc.hull;
+    const sp = esc.spheres[0].c;
+    b.hit({ x: sp.x, y: sp.y + 30, z: sp.z }, { x: sp.x, y: sp.y - 0.01, z: sp.z }, 1);
+    expect(hull - esc.hull).toBeCloseTo(BATTLE.youShare * BATTLE.youHull * 3, 6);
+    run(b, 6, null, 0.1);
+    expect(esc.disabled).toBe(0);
+  });
+
+  it('makes its batteries targets: shot out, they’re quiet for good', () => {
+    const b = make({ perSide: 2 });
+    b.setYou(0);
+    const cap = b.capitals.find((c) => c.team === 1 && c.role === 'escort');
+    const tu = cap.turrets[0];
+    expect(tu.alive).toBe(true);
+    let hit = null;
+    for (let i = 0; i < 20 && tu.alive; i++) hit = b.hit({ x: tu.at.x, y: tu.at.y + 2, z: tu.at.z }, { x: tu.at.x, y: tu.at.y - 0.01, z: tu.at.z }, 1);
+    expect(tu.alive).toBe(false);
+    expect(hit.kind).toBe('turret');
+    const events = b.update(0.05, null);
+    expect(events.some((e) => e.type === 'turret' && e.mine)).toBe(true);
+    // the ones near you, on the lock's list
+    b.update(0.05, { x: cap.pos.x, y: cap.pos.y + 4, z: cap.pos.z, alive: true });
+    const near = b.targets.filter((t) => t.kind === 'turret');
+    expect(near.length).toBeGreaterThan(0);
+    expect(near.every((t) => t.id !== tu.num)).toBe(true);
+  });
+
+  it('moves and turns a capital ship with everything on it (its hull, batteries, objectives)', () => {
+    const b = make({ perSide: 2 });
+    const flag = flagOf(b, 1);
+    const sub = flag.subs[0].pos;
+    const was = { ...sub };
+    const sp = { ...flag.spheres[0].c };
+    b.moveCapital(flag, { x: 5, y: -2, z: 1 });
+    expect(sub.x - was.x).toBeCloseTo(5);
+    expect(flag.spheres[0].c.y - sp.y).toBeCloseTo(-2);
+    const d0 = Math.hypot(sub.x - flag.pos.x, sub.y - flag.pos.y, sub.z - flag.pos.z);
+    b.turnCapital(flag, { x: 0, y: 1, z: 0 }, 0.6);
+    expect(Math.hypot(sub.x - flag.pos.x, sub.y - flag.pos.y, sub.z - flag.pos.z)).toBeCloseTo(d0, 6);
+    expect(Math.hypot(flag.fwd.x, flag.fwd.y, flag.fwd.z)).toBeCloseTo(1, 6);
+  });
+
+  it('flies runners for the jump (Hoth’s transports): the other side goes for them, and they get away or don’t', () => {
+    const b = make({ perSide: 8, rand: seeded(3) });
+    const r = b.addRunner({ team: 0, kind: 'transport', size: 2.2, hp: 30, from: { x: -20, y: 0, z: 0 }, to: { x: -20, y: 0, z: -150 }, speed: 8 });
+    expect(r.alive).toBe(true);
+    const events = run(b, 24, null, 0.05);
+    const done = events.find((e) => (e.type === 'escaped' || e.type === 'runner') && e.id === r.id);
+    expect(done).toBeTruthy();
+    // (the other side went after it)
+    expect(r.hitBy).toBeGreaterThan(0);
+  });
 });

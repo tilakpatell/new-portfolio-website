@@ -19,7 +19,10 @@ export function compose(at = [0, 0, 0], rot = [0, 0, 0], scale = 1) {
 // One part of a model: a geometry and how it's placed (at, rot, scale, or a
 // whole matrix m), its colour, which material it's drawn with (`to`, paint
 // unless said), how its texture lies (`uv`: a function of its position, or
-// 'keep' for the geometry's own) and a mark, for the lights update() blinks.
+// 'keep' for the geometry's own), a mark, for the lights update() blinks,
+// and `shade`: a function of where a vertex ends up (x, y, z) that its
+// colour is multiplied by (a plant's leaves darker in its middle than at
+// its tips, for nothing at run time).
 export const part = (g, o = {}) => ({ g, ...o });
 
 // Parts that move together (a wing with its engine and its cannon): the
@@ -104,6 +107,13 @@ export function bake(list, density = 4) {
     const c = col(p.color);
     const colors = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) colors.set([c.r, c.g, c.b], i * 3);
+    if (typeof p.shade === 'function') {
+      const pos = g.attributes.position;
+      for (let i = 0; i < n; i++) {
+        const k = p.shade(pos.getX(i), pos.getY(i), pos.getZ(i));
+        for (let j = 0; j < 3; j++) colors[i * 3 + j] *= k;
+      }
+    }
     g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     if (p.mark) (marks[p.mark] ??= []).push([count, n]);
     count += n;
