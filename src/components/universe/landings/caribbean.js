@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { box, cyl, part } from '../../galaxy/surface/kit';
 import { PROPS as GENERIC } from '../../galaxy/surface/props/generic';
+import { METRE } from '../foot';
 
 const { PI } = Math;
 
@@ -27,7 +28,7 @@ export const PROPS = {
           `#include <begin_vertex>
           vOut = position.z - uShore;
           // the swell, a little higher out to sea, and its slope for the light
-          float sw = 0.18 + 0.22 * smoothstep(0.0, 30.0, vOut);
+          float sw = 0.04 + 0.26 * smoothstep(2.0, 30.0, vOut);
           float ph = position.z * 0.35 - uTime * 1.3 + sin(position.x * 0.05) * 1.5;
           transformed.y += sin(ph) * sw + sin(position.x * 0.21 + uTime * 0.7) * 0.06;`,
         )
@@ -46,7 +47,8 @@ export const PROPS = {
     };
     mat.customProgramCacheKey = () => 'landing-sea';
     const mesh = new THREE.Mesh(k.own(geo), mat);
-    mesh.position.y = 0.12;
+    // (up off the sand by more than its troughs go down, so they never dip under it)
+    mesh.position.y = 0.35;
     mesh.receiveShadow = true;
     const object = new THREE.Group();
     object.name = 'sea';
@@ -94,7 +96,18 @@ export const PROPS = {
     return { object: k.build(parts, { name: 'rowboat' }), solids: [{ box: [0, 0, 0.8, 2] }] };
   },
 
-  fire: GENERIC.fire,
+  // the galaxy's campfire, its light (set afresh each frame, in its own metres) brought to scale
+  fire(k) {
+    const made = GENERIC.fire(k);
+    const light = made.object.children.find((o) => o.isLight);
+    return {
+      ...made,
+      update(t, dt) {
+        made.update(t, dt);
+        if (light) light.intensity *= METRE * METRE;
+      },
+    };
+  },
 
   // barrels and crates off the ship, stacked
   cargo(k, { seed = 1 } = {}) {
