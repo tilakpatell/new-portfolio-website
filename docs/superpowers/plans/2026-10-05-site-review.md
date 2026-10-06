@@ -13,8 +13,8 @@ Work from this session lands as pull requests, one concern each, and ticks its l
 
 - [x] **A filter click on a feed page jumps to the top of the feed** *(verified)*. `App.jsx`'s `ScrollToTop` re-runs when `top` flips, and after any feed move a page's own search-param update (Projects' tech chips, the Experience track, the Résumé skill) flips it, so `scrollTo(0, 0)` throws the visitor to the top of the page the feed started on, and page audio stops (`stopPageClips`). Scroll and stop only on a new path.
 - [x] `ErrorBoundary resetKey={page}` is `'/feed'` for all six feed pages, so after an error in one, the nav's links can't clear it. Use the pathname.
-- [ ] One failed chunk inside the feed replaces the whole feed with the error screen, and `React.lazy` caches the rejection, so it can't retry. A boundary per `FeedPage` with a Retry.
-- [ ] Offline, a failed chunk matches `isStale` and `reloadFresh()` swaps the page for the browser's offline screen. Skip the reload when `navigator.onLine === false`.
+- [x] One failed chunk inside the feed replaces the whole feed with the error screen, and `React.lazy` caches the rejection, so it can't retry. A boundary per `FeedPage` with a Retry.
+- [x] Offline, a failed chunk matches `isStale` and `reloadFresh()` swaps the page for the browser's offline screen. Skip the reload when `navigator.onLine === false`.
 - [x] The first ⌘K shows nothing while the palette's chunk loads (fallback null), and a second ⌘K toggles it shut. Prefetch `CommandPalette` with the other idle imports in `Shell`.
 - [x] The Terminal's neofetch says React 18; it's 19.
 
