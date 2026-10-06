@@ -83,6 +83,15 @@ The owner's asks:
   node, and `skinnedOnly` drops the other form's loose parts. The High
   Moon robots keep their rigs. Ultra Magnus is `still`, because the
   auto-rig can't read his arm guns.
+- **Hardening** (PR #258): `fuzz.test.js` drives every area with random
+  input for 9,000 frames on three seeds. Every frame it checks the
+  invariants: values stay finite and in bounds, nobody goes into a solid,
+  and hp, boost and shots stay sane. Two bugs it led to are fixed:
+  - Crossing a bridge while down no longer carries the death across.
+  - Megatron no longer stays stuck in his tank pose after a respawn.
+
+  Hp now mends after 4 s out of the fight (`MEND`), energon heals a
+  little, and Decepticons flinch when hit.
 - **Finding more**: search the Sketchfab API (`/v3/search?type=models&
   downloadable=true`, whose results give the licence, faces and texture
   size) and check each candidate's thumbnail. The same uploader also has Fall of Cybertron's
@@ -92,7 +101,7 @@ The owner's asks:
 
 ## Checking it
 - Dev only: `#/cybertron?quality=high&autoplay` starts playing.
-- `window.__CY__.go('base' | 'jasper' | 'iacon')` crosses to an area.
+- `window.__CY__.go('base' | 'jasper' | 'iacon' | 'kaon')` crosses to an area.
   `window.__CY__.sim` is the sim: move `sim.player`, push enemies, or set
   a mission. The camera follows `window.__CY__.ctl.current.view` (`yaw`,
   `pitch`), not the player's yaw.
@@ -101,9 +110,8 @@ The owner's asks:
   the chase camera eases in.
 
 ## Left
-- **Out of scope in the spec, still open**:
-  - Playing as Megatron (the Decepticon side), and Kaon.
-  - Online players in the world (`useTravellers`, as Avengers HQ does).
+- **Out of scope in the spec, still open**: online players in the world
+  (`useTravellers`, as Avengers HQ does).
 - Prime's Optimus stands with his upper arms a little out, because his
   shoulder armour is broad. A per-model `stand` pose in `catalog.js` would
   fix it if it bothers anyone.

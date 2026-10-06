@@ -13,8 +13,9 @@
 import { spawnSync } from 'node:child_process';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const DIR = join(ROOT, 'src/data/changes');
 const pad = (id) => String(id).padStart(4, '0');
 

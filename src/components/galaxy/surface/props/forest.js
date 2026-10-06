@@ -1437,7 +1437,7 @@ const DAGOBAH = {
     const object = new THREE.Group();
     const rocks = [];
     for (let i = 0; i < 4; i++) {
-      const r = k.build([part(rockGeometry(80 + i, { sharp: 0.4 }), { scale: 0.5 + i * 0.2, color: '#6e6a5a', to: 'stone' })], { name: 'floatrock' });
+      const r = k.build([part(rockGeometry(80 + i, { sharp: 0.4 }), { scale: 0.5 + i * 0.2, color: '#6e6a5a', to: 'rock' })], { name: 'floatrock' });
       r.position.set(cos(i * 1.7) * 1.6, 1.2 + i * 0.5, sin(i * 1.7) * 1.6);
       object.add(r);
       rocks.push(r);

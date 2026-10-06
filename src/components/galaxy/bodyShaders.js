@@ -468,6 +468,16 @@ void surface(vec3 P, inout Surf s) {
   // the land: forest where it's wet, grass or savanna where it isn't
   vec3 landC = mix(GRASS, FOREST, smoothstep(-0.2, 0.2, moist + uP0.y - 0.5 + detail * 0.15));
   landC *= 0.88 + 0.24 * detail;
+  // seen from orbit, a forest isn't one green: deep stands darker and
+  // bluer, clearings and ridges lighter, in patches bigger than the detail
+  // above and smaller than the continents
+  float mott = fbm(P * F * 3.0 + warp * 2.0 + 3.0, min(octs(F * 3.0), 5.0));
+  float mott2 = noise(P * F * 14.0 + 7.0);
+  float leafy = smoothstep(0.15, 0.6, uP0.y + moist * 0.3);
+  float stand = smoothstep(-0.2, 0.35, mott + moist * 0.3 + mott2 * 0.15) * leafy;
+  float clearing = smoothstep(0.1, 0.5, -mott - mott2 * 0.2) * leafy;
+  landC = mix(landC, landC * vec3(0.55, 0.7, 0.62), stand * 0.75);
+  landC = mix(landC, landC * vec3(1.3, 1.25, 0.9), clearing * 0.55);
   float canopy = noise(P * 1100.0) * fade(1100.0);
   landC *= 1.0 + canopy * 0.18;
   float rockK = smoothstep(0.16, 0.34, alt * uP0.z + detail * 0.04);
@@ -620,7 +630,7 @@ void surface(vec3 P, inout Surf s) {
   float pulse = 1.0 + uP0.w * 0.25 * sin(uTime * 1.3 + noise(P * 5.0) * 6.0);
   vec3 crust = mix(CRUST, ASH, smoothstep(-0.2, 0.5, fbm(P * 18.0 + 4.0, min(octs(18.0), 5.0)) + b.x * 0.3));
   float near = smoothstep(0.7, 0.96, v1) * uP0.x + smoothstep(-0.18, -0.3, b.x) * uP0.y;
-  crust = mix(crust, EMBER * 0.4, clamp(near, 0.0, 1.0) * 0.5);
+  crust = mix(crust, EMBER * 0.4, clamp(near, 0.0, 1.0) * 0.28);
   s.alb = mix(crust, EMBER * 0.3, lava);
   s.emit = mix(LAVA, HOT, core * core) * lava * (1.9 + 1.2 * core) * pulse * uP0.z;
   s.emit += EMBER * clamp(near, 0.0, 1.0) * 0.1 * pulse * uP0.z;

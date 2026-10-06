@@ -5,6 +5,24 @@ const sky = (zenith, horizon, sun, extra = {}) => ({ zenith, horizon, haze: 0.8,
 const palette = (low, high, rock, accent, extra = {}) => ({ low, high, rock, accent, deep: rock, hLow: -4, hHigh: 14, rockAt: 0.4, accentCover: 0.25, ripple: { strength: 0.02, scale: 3, wind: 0.5 }, grain: 0.5, ...extra });
 const hostile = (range, every, damage) => ({ range, every, damage, spread: 0.06 });
 const troops = (tag, n, at, kind = 'stormtrooper') => ({ kind, n, at, spread: 12, roam: 5, hp: 2, tag, hostile: hostile(42, 2.3, 8) });
+// a stand of trees (or anything) round a spot: n of them between r0 and r1
+// metres out, kinds taken in turn, the same every time (seeded); placed one
+// by one rather than scattered, so a stand off the screen isn't drawn
+const grove = (seed, n, r0, r1, kinds, [lo, hi] = [0.85, 1.35]) => {
+  let a = seed >>> 0;
+  const r = () => (a = (Math.imul(a, 1664525) + 1013904223) >>> 0) / 4294967296;
+  return Array.from({ length: n }, (_, i) => {
+    const t = r() * Math.PI * 2;
+    const d = Math.sqrt(r0 * r0 + r() * (r1 * r1 - r0 * r0));
+    return { kind: kinds[i % kinds.length], at: [Math.cos(t) * d, Math.sin(t) * d], yaw: r() * Math.PI * 2, scale: lo + (hi - lo) * r(), sink: 0.3 };
+  });
+};
+// n spots evenly round a circle of radius r (a turn of `phase` first), each
+// [x, z, yaw] with its front to the middle
+const ring = (n, r, phase = 0) => Array.from({ length: n }, (_, i) => {
+  const a = phase + (i / n) * Math.PI * 2;
+  return [Math.cos(a) * r, Math.sin(a) * r, -a - Math.PI / 2];
+});
 
 export const SITES = {
   nevarro: {
@@ -16,10 +34,15 @@ export const SITES = {
     ground: { seed: 21, layers: [{ type: 'swell', scale: 380, height: 10 }, { type: 'hills', scale: 120, height: 8 }, { type: 'mountains', from: 650, to: 3000, height: 480, scale: 1100 }], palette: palette('#3a3432', '#5a504a', '#2a2422', '#7a3a22', { mark: '#2a2220' }) },
     land: { at: [0, 0], yaw: 0.6 },
     places: [
-      { id: 'town', name: 'Nevarro City', at: [140, -90], r: 60, flat: { r: 58 }, about: 'The guild’s town: Greef Karga’s cantina, the bounty hunters’ haunt, the Armorer’s forge under the streets.', things: [{ kind: 'cantina', at: [0, 0], yaw: 0.3 }, { kind: 'adobe', at: [26, 18] }, { kind: 'adobe', at: [-28, 20] }, { kind: 'adobe', at: [20, -28] }, { kind: 'crates', at: [-14, -12] }, { kind: 'stall', at: [12, 14], yaw: 2.4 }] },
+      { id: 'town', name: 'Nevarro City', at: [140, -90], r: 60, flat: { r: 58 }, about: 'The guild’s town: Greef Karga’s cantina, the bounty hunters’ haunt, the Armorer’s forge under the streets.', things: [{ kind: 'cantina', at: [0, 0], yaw: 0.3 }, { kind: 'nevarrodome', at: [27, 18], yaw: 0.4, sink: 0.3 }, { kind: 'nevarrodome', at: [-29, 21], yaw: 1.9, scale: 0.85, sink: 0.3 }, { kind: 'nevarrodome', at: [21, -29], yaw: 2.8, scale: 1.15, sink: 0.3 }, { kind: 'nevarrodome', at: [-24, -26], yaw: 0.9, scale: 0.7, sink: 0.3 }, { kind: 'nevarrodome', at: [40, -4], yaw: 3.3, scale: 0.9, sink: 0.3 }, { kind: 'nevarroarch', at: [-40, 25], yaw: -1, sink: 0.2 }, { kind: 'crates', at: [-14, -12] }, { kind: 'stall', at: [12, 14], yaw: 2.4 }, { kind: 'stall', at: [-10, 16], yaw: 0.6 }, { kind: 'lamp', at: [-34, 18] }, { kind: 'lamp', at: [-30, 29] }, ...grove(7, 26, 50, 78, ['lavarock'], [1.2, 4]).filter((t) => Math.hypot(t.at[0] + 40, t.at[1] - 25) > 16)] },
       { id: 'crest', name: 'The Razor Crest', at: [40, -170], r: 30, flat: { r: 30 }, about: 'Din Djarin’s gunship, older than it looks and patched in more places than it should be.', things: [{ kind: 'razorcrest', at: [0, 0], yaw: 1.2 }] },
       { id: 'base', name: 'The Imperial base', at: [-260, 160], r: 50, flat: { r: 48 }, about: 'An Imperial Remnant outpost, still running, still guarding something.', things: [{ kind: 'bunker', at: [0, 0], yaw: 2 }, { kind: 'crates', at: [16, 10] }, { kind: 'crates', at: [-12, 14] }, { kind: 'lamp', at: [10, -14] }] },
-      { id: 'lava', name: 'The lava flats', at: [300, 260], r: 50, about: 'A crust of black glass over rivers of fire. Don’t stop walking.', things: [{ kind: 'needle', at: [0, 0], scale: 0.38, sink: 1 }] },
+      { id: 'lava', name: 'The lava flats', at: [300, 260], r: 50, about: 'A crust of black glass over rivers of fire. Don’t stop walking.', things: grove(41, 14, 4, 40, ['lavarock'], [1.5, 4.5]) },
+    ],
+    // black lava rock everywhere, the big ones further out
+    scatter: [
+      { kind: 'lavarock', n: 110, within: [24, 420], scale: [0.35, 1.6], sink: 0.25, solid: 0.6 },
+      { kind: 'lavarock', n: 40, within: [120, 800], scale: [2, 5], sink: 0.6 },
     ],
     zones: [
       {
@@ -61,18 +84,20 @@ export const SITES = {
     weather: [{ kind: 'sand', count: 700 }],
     land: { at: [0, 0], yaw: 2.2 },
     places: [
-      { id: 'sundari', name: 'The ruins of Sundari', at: [220, 120], r: 60, flat: { r: 50 }, about: 'The dome city, broken open. Glass where the gardens were.', things: [{ kind: 'adobe', at: [0, 0] }, { kind: 'adobe', at: [24, -10] }, { kind: 'needle', at: [-20, 16], scale: 0.5, sink: 1 }] },
-      { id: 'mines', name: 'The mines', at: [-200, -180], r: 40, about: 'Old tunnels under the glass, and at the bottom of them, the Living Waters.', things: [{ kind: 'needle', at: [0, 0], scale: 0.75, sink: 1 }, { kind: 'lamp', at: [6, 6] }] },
+      { id: 'sundari', name: 'The ruins of Sundari', at: [300, 170], r: 95, flat: { r: 80 }, about: 'The dome city, scorched and silent. Glass where the gardens were.', things: [{ kind: 'sundaridome', at: [0, 0], yaw: 2.6, sink: 1.5 }, ...grove(17, 28, 72, 96, ['glassshard'], [1, 3.2])] },
+      { id: 'mines', name: 'The mines', at: [-200, -180], r: 40, about: 'Old tunnels under the glass, and at the bottom of them, the Living Waters.', things: [{ kind: 'needle', at: [0, 0], scale: 0.75, sink: 1 }, { kind: 'lamp', at: [6, 6] }, ...grove(29, 10, 12, 30, ['glassshard'], [0.8, 2.4])] },
       { id: 'covert', name: 'The covert’s camp', at: [-120, 220], r: 30, flat: { r: 24 }, about: 'Mandalorians, home again for the first time in years.', things: [{ kind: 'tent', at: [0, 0] }, { kind: 'tent', at: [8, -6], yaw: 1.4 }, { kind: 'fire', at: [2, 4] }] },
     ],
+    // the glass the bombs left, in shards across the plain
+    scatter: [{ kind: 'glassshard', n: 160, within: [25, 650], scale: [0.6, 2.6], sink: 0.3, solid: 0.4 }],
     life: [
-      { kind: 'mando', id: 'armorer', at: [-116, 226], still: true, face: 2, name: 'The Armorer', named: true, quest: 'waters', says: ['This is the Way.'] },
+      { kind: 'mando', id: 'armorer', at: [-116, 226], still: true, face: 2, name: 'The Armorer', named: true, quest: ['waters', 'reclaim'], says: ['This is the Way.'] },
       { kind: 'mando', n: 3, at: [-120, 220], spread: 8, roam: 6, speed: 1, name: 'Mandalorian', says: ['This is the Way.', 'For Mandalore!'] },
-      { kind: 'bobafett', at: [210, 110], still: true, face: 1, name: 'A bounty hunter in green armour', says: ['(He says nothing. He doesn’t need to.)'] },
+      { kind: 'bobafett', at: [205, 85], still: true, face: 1, name: 'A bounty hunter in green armour', says: ['(He says nothing. He doesn’t need to.)'] },
     ],
     quests: [
       { id: 'waters', name: 'The Living Waters', giver: 'armorer', intro: [['The Armorer', 'Go down to the Living Waters, under the mines, and you will be redeemed.']], steps: [{ type: 'reach', at: [-200, -180], r: 14, text: 'Go down to the mines' }, { type: 'use', id: 'bathe', at: [-200, -180], r: 8, prompt: 'Recite the Creed', text: 'Bathe in the Living Waters', end: [{ say: [[null, '(The water is cold and very deep. Something huge moves far below you.)']] }, { shake: 0.6 }] }], done: [['The Armorer', 'You are redeemed. This is the Way.']] },
-      { id: 'reclaim', name: 'For Mandalore', giver: 'armorer', steps: [{ type: 'shoot', tag: 'remnant', n: 8, text: 'Drive the Remnant out of Sundari', spawn: troops('remnant', 8, [220, 120]) }], done: [['The Armorer', 'Mandalore is ours again.']] },
+      { id: 'reclaim', name: 'For Mandalore', giver: 'armorer', steps: [{ type: 'shoot', tag: 'remnant', n: 8, text: 'Drive the Remnant out of Sundari', spawn: troops('remnant', 8, [215, 100]) }], done: [['The Armorer', 'Mandalore is ours again.']] },
     ],
     flyovers: [{ kind: 'tie', n: 2, metres: 7, alt: 110, speed: 110, every: 60 }],
   },
@@ -83,13 +108,13 @@ export const SITES = {
     sky: sky('#5a90c8', '#d8e4c0', '#fff4d8'),
     fog: { color: '#c8d4b8', density: 0.0008 },
     light: { sun: 3, sky: '#b8d0f0', ground: '#7a8a4a', ambient: 0.75 },
-    ground: { seed: 45, layers: [{ type: 'swell', scale: 460, height: 8 }, { type: 'hills', scale: 160, height: 10 }, { type: 'mountains', from: 700, to: 3000, height: 360, scale: 1300 }], palette: palette('#7a9a48', '#a8b868', '#7a7268', '#c8b858', { mark: '#5a6a38' }) },
+    ground: { seed: 45, layers: [{ type: 'swell', scale: 460, height: 8 }, { type: 'hills', scale: 160, height: 10 }, { type: 'mountains', from: 700, to: 3000, height: 360, scale: 1300 }], palette: palette('#8a9c4c', '#b4b464', '#7a7268', '#ccb85c', { mark: '#6a7038', accentCover: 0.4 }) },
     land: { at: [0, 0], yaw: 1 },
     places: [
-      { id: 'capital', name: 'Capital City', at: [260, -60], r: 60, flat: { r: 56 }, about: 'Lothal’s capital: stone towers, and an Imperial factory where the farms used to be.', things: [{ kind: 'adobe', at: [0, 0] }, { kind: 'adobe', at: [20, 14] }, { kind: 'adobe', at: [-18, 12] }, { kind: 'crates', at: [8, -16] }] },
+      { id: 'capital', name: 'Capital City', at: [260, -60], r: 60, flat: { r: 56 }, about: 'Lothal’s capital: stone towers, and an Imperial factory where the farms used to be.', things: [{ kind: 'lothdome', at: [0, 4], yaw: 3.4, sink: 0.2 }, { kind: 'lothdome', at: [27, 18], yaw: 4.2, scale: 0.85, sink: 0.2 }, { kind: 'lothdome', at: [-26, 16], yaw: 2.4, scale: 0.9, sink: 0.2 }, { kind: 'lothdome', at: [20, -24], yaw: 5.4, scale: 0.75, sink: 0.2 }, { kind: 'crates', at: [8, -16] }, { kind: 'crates', at: [-10, -12], yaw: 0.7 }] },
       { id: 'factory', name: 'The Imperial factory', at: [-220, -200], r: 50, flat: { r: 46 }, about: 'Where the TIEs are built. The grass doesn’t grow back round it.', things: [{ kind: 'bunker', at: [0, 0], yaw: 1 }, { kind: 'crates', at: [14, 8] }] },
       { id: 'tower', name: 'The old Imperial tower', at: [-320, 60], r: 40, flat: { r: 30 }, about: 'A comms tower the Empire left behind on the plains. Sabine Wren lives in it now, and paints it.', things: [{ kind: 'lookout', at: [0, 0], yaw: 0.3 }, { kind: 'crates', at: [10, -8] }] },
-      { id: 'spires', name: 'The Jedi temple ruins', at: [-140, 230], r: 40, about: 'Old stones in the grass, older than the Empire, older than the Republic.', things: [{ kind: 'needle', at: [0, 0], scale: 0.62, sink: 1 }, { kind: 'needle', at: [10, 8], scale: 0.38, sink: 1 }] },
+      { id: 'spires', name: 'The Jedi temple', at: [-140, 230], r: 50, flat: { r: 34 }, about: 'A great cone of banded stone in the grass, older than the Empire, older than the Republic. The way in only opens to the Force.', things: [{ kind: 'lothtemple', at: [0, -12], yaw: 0.4, sink: 1 }, { kind: 'lothtemple', at: [30, 6], yaw: 2, scale: 0.26, sink: 0.5 }, { kind: 'lothtemple', at: [-28, 2], yaw: 4, scale: 0.32, sink: 0.5 }, { kind: 'lothtemple', at: [-20, -40], yaw: 1, scale: 0.22, sink: 0.5 }, { kind: 'lothtemple', at: [24, -38], yaw: 3, scale: 0.18, sink: 0.5 }] },
     ],
     life: [
       { kind: 'ahsoka', id: 'ahsoka', at: [-130, 220], still: true, face: 3, name: 'Ahsoka Tano', named: true, quest: 'starmap', says: ['I’m no Jedi.', 'The Force will show you the way.'] },
@@ -103,7 +128,13 @@ export const SITES = {
     ],
     // the rock spires out west, between the landing and the old tower (the
     // star map mission's run goes through them)
-    things: [[-31, 4, 0.32], [-9, 35, 0.42], [-48, 46, 0.37], [-68, 14, 0.46], [-108, 32, 0.42], [-114, 69, 0.42], [-161, 68, 0.32], [-181, 37, 0.46], [-218, 53, 0.37], [-231, 88, 0.42], [-271, 71, 0.42], [-276, 34, 0.46]].map(([x, z, scale]) => ({ kind: 'needle', at: [x, z], scale, sink: 1 })),
+    things: [[-31, 4, 0.32], [-9, 35, 0.42], [-48, 46, 0.37], [-68, 14, 0.46], [-108, 32, 0.42], [-114, 69, 0.42], [-161, 68, 0.32], [-181, 37, 0.46], [-218, 53, 0.37], [-231, 88, 0.42], [-271, 71, 0.42], [-276, 34, 0.46]].map(([x, z, scale], i) => ({ kind: 'lothtemple', at: [x, z], yaw: i * 1.7, scale: scale * 0.7, sink: 0.5 })),
+    // the plains' tall grass, gold and green
+    scatter: [
+      { kind: 'grass', n: 1100, within: [4, 240], scale: [1.1, 2.2], solid: false, opts: { color: '#a8b45a' } },
+      { kind: 'grass', n: 600, within: [4, 220], scale: [1, 2], solid: false, opts: { color: '#c8b860' } },
+      { kind: 'grass', n: 400, within: [4, 260], scale: [0.9, 1.6], solid: false, opts: { color: '#8aa048', flower: '#e8d880' } },
+    ],
     rides: [{ kind: 'speederbike', at: [12, -10], yaw: -1.2 }],
     flyovers: [{ kind: 'xwing', n: 1, metres: 12.5, alt: 80, speed: 100, every: 70 }, { kind: 'tie', n: 1, metres: 7, alt: 100, speed: 110, every: 90 }],
   },
@@ -117,11 +148,18 @@ export const SITES = {
     ground: { seed: 57, layers: [{ type: 'swell', scale: 300, height: 6 }, { type: 'hills', scale: 110, height: 9 }, { type: 'mountains', from: 650, to: 3000, height: 300, scale: 1100 }], palette: palette('#4a6a38', '#6a8a48', '#5a5a50', '#8a7a48', { mark: '#3a4a2a' }) },
     land: { at: [0, 0], yaw: 0.3 },
     places: [
-      { id: 'village', name: 'The krill farmers’ village', at: [180, 120], r: 50, flat: { r: 46 }, about: 'Huts on stilts over the ponds, and a harvest the raiders keep coming back for.', things: [{ kind: 'tent', at: [0, 0] }, { kind: 'tent', at: [12, 8], yaw: 1 }, { kind: 'tent', at: [-10, 10], yaw: 2 }, { kind: 'fire', at: [2, -4] }, { kind: 'crates', at: [-8, -10] }] },
+      { id: 'village', name: 'The krill farmers’ village', at: [180, 120], r: 50, flat: { r: 46 }, about: 'Huts on stilts over the ponds, and a harvest the raiders keep coming back for.', things: [...ring(5, 21, 0.4).map(([x, z, yaw]) => ({ kind: 'stilthut', at: [x, z], yaw, sink: 0.15 })), { kind: 'fire', at: [2, -4] }, { kind: 'crates', at: [-8, -10] }, { kind: 'crates', at: [9, 6], yaw: 0.8 }, ...ring(7, 34, 0.9).map(([x, z, yaw]) => ({ kind: 'sorganfern', at: [x, z], yaw, scale: 1.3, solid: false })), ...grove(11, 30, 54, 84, ['sorganbirch', 'sorganbirch', 'sorganfir'])] },
       { id: 'raiders', name: 'The raiders’ camp', at: [-240, -160], r: 40, flat: { r: 30 }, about: 'Klatooinian raiders, and something big under a tarp.', things: [{ kind: 'tent', at: [0, 0] }, { kind: 'fire', at: [4, 4] }, { kind: 'crates', at: [-6, 8] }] },
-      { id: 'woods', name: 'The deep woods', at: [-120, 220], r: 40, about: 'Old trees and mist. Something with a lot of teeth hunts here at night.', things: [{ kind: 'needle', at: [0, 0], scale: 0.38, sink: 1 }] },
+      { id: 'woods', name: 'The deep woods', at: [-120, 220], r: 40, about: 'Old trees and mist. Something with a lot of teeth hunts here at night.', things: [{ kind: 'log', at: [0, 0], yaw: 0.7 }, { kind: 'log', at: [9, -6], yaw: 2.1, scale: 0.8 }, ...grove(23, 40, 8, 60, ['sorganfir', 'sorganbirch'], [1, 1.5]), ...grove(5, 30, 4, 50, ['sorganfern'], [1, 2])] },
     ],
-    scatter: [{ kind: 'rock', n: 80, within: [40, 500], scale: [0.6, 2.4], opts: { color: '#6a6a5a' } }],
+    // the woods: birches and firs all round, thinning out far off, ferns
+    // under them (the village and the landing are kept clear)
+    scatter: [
+      { kind: 'rock', n: 60, within: [40, 500], scale: [0.6, 2.4], opts: { color: '#6a6a5a' } },
+      { kind: 'sorganbirch', n: 90, within: [45, 520], scale: [0.75, 1.3], sink: 0.3, solid: 0.5 },
+      { kind: 'sorganfir', n: 60, within: [60, 650], scale: [0.8, 1.4], sink: 0.3, solid: 0.6 },
+      { kind: 'sorganfern', n: 140, within: [18, 360], scale: [0.8, 1.8], solid: false },
+    ],
     life: [
       { kind: 'villager', id: 'omera', at: [186, 112], still: true, face: 2.4, name: 'Omera', named: true, quest: 'raiders', says: ['We can pay. Not much, but we can pay.'] },
       { kind: 'villager', n: 5, at: [180, 120], spread: 20, roam: 12, speed: 0.9, name: 'Krill farmer', says: ['The raiders come at harvest. Every harvest.'] },
