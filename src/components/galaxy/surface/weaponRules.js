@@ -37,13 +37,17 @@ export const WEAPONS = {
   smg: { ...base, name: 'Machine pistol', about: 'Rattles through a clip. Wild past twenty metres.', side: 'elsewhere', damage: 1, every: 0.07, spread: 0.04, heat: 0.028, cool: 0.4, range: 50, zoom: 1.2, kick: 0.5 },
   revolver: { ...base, name: 'Revolver', about: 'Walt’s snub-nose. Six shots, each one counts.', side: 'elsewhere', damage: 2, every: 0.45, spread: 0.008, heat: 0.17, cool: 0.3, range: 60, zoom: 1.3, kick: 1.5 },
   pistol: { ...base, name: 'Pistol', about: 'Jesse’s. Quick and a little loose.', side: 'elsewhere', damage: 1, every: 0.18, spread: 0.02, heat: 0.08, cool: 0.35, range: 60 },
-  portal: { ...base, name: 'Portal gun', about: 'Rick’s. It isn’t meant for this, but it works.', side: 'elsewhere', damage: 2, every: 0.35, spread: 0.01, heat: 0.15, cool: 0.35, range: 80 },
+  portal: { ...base, name: 'Portal gun', about: 'Rick’s. Whoever it drops goes through a portal, and not all the way.', side: 'elsewhere', damage: 2, every: 0.35, spread: 0.01, heat: 0.15, cool: 0.35, range: 80 },
+  freeze: { ...base, name: 'Freeze ray', about: 'Rick’s. Ices them where they stand, then they shatter.', side: 'elsewhere', damage: 3, every: 0.6, spread: 0.008, heat: 0.22, cool: 0.32, range: 70, kick: 0.6 },
+  shrink: { ...base, name: 'Shrink ray', about: 'Rick’s. Down to a tenth, a squeak, a pop.', side: 'elsewhere', damage: 3, every: 0.6, spread: 0.008, heat: 0.22, cool: 0.32, range: 70, kick: 0.7 },
   laser: { ...base, name: 'Laser pistol', about: 'Morty’s ray gun.', side: 'elsewhere', damage: 1, every: 0.2, spread: 0.015, heat: 0.08, cool: 0.35, range: 70 },
   coppistol: { ...base, name: 'Service pistol', about: 'Citadel issue.', side: 'elsewhere', damage: 1, every: 0.2, spread: 0.015, heat: 0.08, cool: 0.35, range: 70 },
 };
 export const WEAPON_IDS = Object.keys(WEAPONS);
 // the ones the hero panel offers (a hero's own gun always, these besides)
-export const PICKABLE = ['blaster', 'rifle', 'a280', 'dlt19', 'ee3', 'westar', 'bowcaster', 'shotgun', 'sniper', 'smg', 'revolver'];
+export const PICKABLE = ['blaster', 'rifle', 'a280', 'dlt19', 'ee3', 'westar', 'bowcaster', 'shotgun', 'sniper', 'smg', 'revolver', 'portal', 'freeze', 'shrink'];
+// the guns whose kills are a show of their own (lib/three/portalFx.js, gadgetFx.js: activity.js plays them)
+export const SHOW_KILLS = ['portal', 'freeze', 'shrink'];
 
 export const MODS = {
   cooling: { name: 'Cooling cell', about: 'Builds heat slower, sheds it faster.', heat: 0.7, cool: 1.3 },
