@@ -1389,7 +1389,26 @@ const DAGOBAH = {
     const weed = [];
     for (let i = 0; i < 5; i++) weed.push(part(new THREE.ConeGeometry(0.15, 0.9, 4), { at: [-4 + i * 2, 0.6 + (i % 2) * 0.5, -1 + i * 0.4], rot: [PI, 0, 0], color: '#4a5a30', to: 'leaf' }));
     object.add(k.build(weed, { name: 'weed' }));
-    return { object, solids: [{ box: [0, 0, 4.5, 5.5, 0] }], update: (t) => m.update?.(t) };
+    // raised (a quest's `raise` signal; off puts it back): up out of the
+    // bog over four seconds, levelling as it comes, then hanging there just
+    // over the water, rocking a little
+    let rise = 0;
+    let to = 0;
+    return {
+      object,
+      solids: [{ box: [0, 0, 4.5, 5.5, 0] }],
+      signal(name, on) {
+        if (name === 'raise') to = on ? 1 : 0;
+      },
+      update(t, dt = 0) {
+        m.update?.(t);
+        rise = to ? Math.min(1, rise + dt / 4) : 0;
+        const e = rise * rise * (3 - 2 * rise);
+        const sway = e * Math.sin(t * 1.3) * 0.03;
+        m.group.rotation.set(pitch * (1 - e) + sway, 0, roll * (1 - e) - sway, 'YXZ');
+        m.group.position.y = -sink + e * (sink + 1.6) + Math.sin(rise * Math.PI) * 1.5;
+      },
+    };
   },
 
   // the cave: a vast black tree, dead, its roots arching over a hole down

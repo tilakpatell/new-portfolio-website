@@ -33,6 +33,7 @@
 import { readBuildWire, writeBuild } from '../../universe/shipyard/build';
 import * as THREE from 'three';
 import { createRenderer, disposeTree, precompile, singlePass } from '../../../lib/three/renderer';
+import { dropTransmission } from '../../../lib/three/glass';
 import { device } from '../../../lib/device';
 import { createPace } from '../../../lib/three/pace';
 import { createPost } from '../../universe/post';
@@ -57,12 +58,14 @@ import { createSky } from './sky';
 import { createWater } from './water';
 import { createWeather } from './weather';
 import { createKit } from './kit';
+import { PROPS } from './props';
 import { createPlacer } from './placer';
 import { createActors, modelFigure } from './actors';
 import { RIDES } from './rides';
 import { createPeers } from './peers';
 import { createSounds } from './sounds';
 import { createActivity } from './activity';
+import { snapToTexel } from './shadow';
 import { createBlaster } from './blaster';
 import { feed, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
@@ -102,7 +105,8 @@ export async function create(canvas, ctx) {
   const emit = (e) => props.onEvent?.(e);
 
   // ── The renderer, the camera, the light ──
-  const gl = createRenderer(canvas, { ratio: 1.5, onLost: ctx.onLost, onSlow: ctx.onSlow });
+  // (no multisampling on the canvas: the composer's target does it already, and twice is a cost for nothing)
+  const gl = createRenderer(canvas, { ratio: 1.5, antialias: false, onLost: ctx.onLost, onSlow: ctx.onSlow });
   const { renderer } = gl;
   renderer.shadowMap.enabled = !small;
   renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -123,12 +127,19 @@ export async function create(canvas, ctx) {
     const sc = sun.shadow.camera;
     sc.left = sc.bottom = -42;
     sc.right = sc.top = 42;
+    // (SHADOW below says the same, for the snapping)
     sc.near = 1;
     sc.far = 600;
     sun.shadow.bias = -0.0004;
     sun.shadow.normalBias = 0.05;
   }
   scene.add(sun, sun.target);
+  // the shadow camera's right and up (it looks down the sun's way, up as three
+  // turns it), for its focus to be snapped to whole texels along them (shadow.js)
+  const SHADOW = { extent: 42, map: 2048 };
+  const shadowFrame = new THREE.Matrix4().lookAt(sunDir, new V(), new V(0, 1, 0));
+  const shadowRight = new V().setFromMatrixColumn(shadowFrame, 0);
+  const shadowUp = new V().setFromMatrixColumn(shadowFrame, 1);
   const second = sky.sunDirs[1] ? new THREE.DirectionalLight(site.sky.suns[1].color, site.light.second ?? 1) : null;
   if (second) {
     second.position.copy(sky.sunDirs[1]).multiplyScalar(300);
@@ -200,8 +211,11 @@ export async function create(canvas, ctx) {
   // ── The places you go into (zones): built high over the world, out of
   // sight, each with its own lamps ──
   for (const z of site.zones) placer.put({ kind: z.inside.build, at: [z.origin[0], z.origin[2]], y: z.origin[1], abs: true, model: false, opts: z.inside.opts });
+  // (hidden outdoors: a light with nothing to light still costs every pixel of
+  // every lit thing, and four of them a good deal; the warm-up compiles both ways)
   const lamps = Array.from({ length: 4 }, () => {
     const l = new THREE.PointLight('#ffffff', 0, 30, 1.6);
+    l.visible = false;
     scene.add(l);
     return l;
   });
@@ -250,7 +264,7 @@ export async function create(canvas, ctx) {
   })(), depthWrite: false, transparent: true });
 
   // what you can ride, where it's parked
-  const rides = [...site.rides, ...(mission ? [{ kind: mission.ride, at: mission.start, yaw: mission.yaw }] : [])]
+  const rides = [...site.rides, ...(mission?.ride ? [{ kind: mission.ride, at: mission.start, yaw: mission.yaw }] : [])]
     .filter((x) => RIDES[x.kind])
     .map((x) => {
       const spec = RIDES[x.kind];
@@ -362,7 +376,7 @@ export async function create(canvas, ctx) {
     // a garage build is whole as it is
   } else if (SHIP_MODELS[shipKind]) {
     loadModel(SHIP_MODELS[shipKind])
-      .then((m) => m && warm(ship.dress ? ship.dress(m) : m).then(() => m))
+      .then((m) => m && (dropTransmission(m), warm(ship.dress ? ship.dress(m) : m).then(() => m))) // (the Falcon's glass, without its extra pass)
       .then((m) => {
         if (!m) return;
         if (disposed || !ship.mount(m)) disposeTree(m);
@@ -392,8 +406,10 @@ export async function create(canvas, ctx) {
   // ── You, and your crewmate ──
   const party = PARTY[shipKind] ?? PARTY.xwing;
   const out = new V(Math.cos(site.land.yaw), 0, -Math.sin(site.land.yaw)); // the ship's right
-  const spawnAt = [landAt[0] + out.x * (shipBox.w + 2.5), landAt[1] + out.z * (shipBox.w + 2.5)];
-  const you = walker(spawnAt[0], spawnAt[1], groundAt(world, ...spawnAt), site.land.yaw + 0.5);
+  // (a mission on foot starts you at its start, facing its way)
+  const onFoot = Boolean(mission && !mission.ride);
+  const spawnAt = onFoot ? [...mission.start] : [landAt[0] + out.x * (shipBox.w + 2.5), landAt[1] + out.z * (shipBox.w + 2.5)];
+  const you = walker(spawnAt[0], spawnAt[1], groundAt(world, ...spawnAt), onFoot ? mission.yaw : site.land.yaw + 0.5);
   const mateAt = [spawnAt[0] + out.x * 1.6, spawnAt[1] + out.z * 1.6];
   const mate = walker(mateAt[0], mateAt[1], groundAt(world, ...mateAt), you.yaw);
   const people = [
@@ -461,7 +477,7 @@ export async function create(canvas, ctx) {
 
   // ── State ──
   const state = {
-    phase: mission ? 'ride' : reduced ? 'walk' : 'landing',
+    phase: mission ? (mission.ride ? 'ride' : 'walk') : reduced ? 'walk' : 'landing',
     age: 0,
     t: 0,
     frames: 0,
@@ -470,8 +486,8 @@ export async function create(canvas, ctx) {
     buttons: { run: false },
     jumpQueued: false,
     actQueued: false,
-    cam: { yaw: mission ? mission.yaw : you.yaw, pitch: 0.2, dist: mission ? RIDES[mission.ride].cam[0] : CAM.dist, drag: -10 },
-    riding: mission ? rides[rides.length - 1] : null,
+    cam: { yaw: mission ? mission.yaw : you.yaw, pitch: 0.2, dist: mission?.ride ? RIDES[mission.ride].cam[0] : CAM.dist, drag: -10 },
+    riding: mission?.ride ? rides[rides.length - 1] : null,
     prompt: null,
     here: null,
     found: new Set(props.found ?? []),
@@ -701,6 +717,24 @@ export async function create(canvas, ctx) {
     const step = q?.steps[state.quest.step];
     emit({ type: 'quest', id: q?.id ?? null, name: q?.name ?? null, text: q ? stepText(q, state.quest) : null, left: step?.time ? Math.max(0, Math.ceil(step.time - state.quest.time)) : null, shoot: step?.type === 'shoot' });
   };
+  // what you've got on your back (a step's { carry: kind }: Yoda, on
+  // Dagobah's run), a prop of that kind peering over your shoulder; each
+  // built once and kept (the kit owns what it's made of, and lets it go
+  // with the scene), so carrying it again doesn't build another
+  const carriable = new Map();
+  let carried = null;
+  function carry(kind) {
+    carried?.removeFromParent();
+    carried = null;
+    if (!kind || !PROPS[kind]) return;
+    if (!carriable.has(kind)) {
+      const o = PROPS[kind](kit, {}).object;
+      o.position.set(0, 1.0, -0.3);
+      carriable.set(kind, o);
+    }
+    carried = carriable.get(kind);
+    me().holder.add(carried);
+  }
   // what a step does as it starts or ends: a trapdoor opens, a gate comes
   // down, the band strikes up, someone's gone, you're thrown out
   function effects(list) {
@@ -716,6 +750,7 @@ export async function create(canvas, ctx) {
       if (e.shake) state.shake = Math.min(1, state.shake + e.shake);
       if (e.say) say(e.say);
       if (e.leave) leaveZone();
+      if ('carry' in e) carry(e.carry);
       if (e.to) {
         const p = me().st;
         putAt(p, e.to[0], e.to[1], e.yaw);
@@ -807,6 +842,7 @@ export async function create(canvas, ctx) {
   };
 
   // ── Going in and out ──
+  let shadows = sun.castShadow; // (outdoors: the tier's, until lowerQuality)
   const outdoors = { sun: sun.intensity, second: second?.intensity ?? 0, sky: hemi.color.clone(), ground: hemi.groundColor.clone(), ambient: hemi.intensity, fog: scene.fog.color.clone(), density: scene.fog.density, env: scene.environmentIntensity };
   function lighting(z) {
     const L = z?.inside.light;
@@ -821,9 +857,13 @@ export async function create(canvas, ctx) {
     sky.mesh.visible = !z;
     if (weather) weather.group.visible = !z;
     if (water) water.mesh.visible = !z;
+    // (indoors, the room's lamps and no sun to cast a shadow; outdoors, the sun's
+    // shadow unless the frame rate has had it off, lowerQuality)
+    sun.castShadow = !z && shadows;
     lamps.forEach((l, i) => {
       const d = z?.inside.lamps?.[i];
       l.intensity = d ? d[4] : 0;
+      l.visible = Boolean(d);
       if (d) {
         l.position.set(z.origin[0] + d[0], z.origin[1] + d[1], z.origin[2] + d[2]);
         l.color.set(d[3]);
@@ -888,6 +928,7 @@ export async function create(canvas, ctx) {
     state.quest = null;
     state.done.delete(mission.quest.id);
     activity.show(null, null);
+    effects(mission.reset);
     run = newRun();
     say(mission.lines?.start);
     beginQuest(mission.quest);
@@ -1537,12 +1578,19 @@ export async function create(canvas, ctx) {
     hemi.intensity = (site.light.ambient ?? 0.9) + k * (site.lightning.strength ?? 2.5);
   }
 
+  const snapped = new V();
   function draw(now) {
     const t = state.t;
     // the sun (and its shadows) follow you about
+    // (snapped to whole texels of the shadow map along its right and up, so the
+    // shadows don't crawl as you walk: shadow.js)
     const focus = me().st;
-    sun.position.set(focus.x, focus.y, focus.z).addScaledVector(sunDir, 300);
-    sun.target.position.set(focus.x, focus.y, focus.z);
+    snapped.set(focus.x, focus.y, focus.z);
+    const [sr, su] = snapToTexel(snapped.dot(shadowRight), snapped.dot(shadowUp), SHADOW.extent, SHADOW.map);
+    const along = snapped.dot(sunDir);
+    snapped.copy(sunDir).multiplyScalar(along).addScaledVector(shadowRight, sr).addScaledVector(shadowUp, su);
+    sun.position.copy(snapped).addScaledVector(sunDir, 300);
+    sun.target.position.copy(snapped);
     sky.update(camera, t, flash.k);
     water?.update(t);
     weather?.update(t, camera, world.heightAt, size.h);
@@ -1560,7 +1608,18 @@ export async function create(canvas, ctx) {
     // (the scouts' way is planned round the trees, so once they're down)
     if (!disposed) chase?.begin();
     if (!disposed) beginMission();
-    await warm(scene).catch(() => {});
+    // (both ways the lights can be, so a door doesn't stall on new shaders: the
+    // lamps lit and the sun's shadow off, as in a room, then as outdoors)
+    const inside = Boolean(state.zone);
+    if (site.zones.length && !disposed) {
+      for (const l of lamps) l.visible = true;
+      sun.castShadow = false;
+      await warm(scene).catch(() => {});
+      for (const l of lamps) l.visible = false;
+      sun.castShadow = shadows;
+      if (inside) lighting(state.zone);
+    }
+    if (!disposed) await warm(scene).catch(() => {});
   })();
   emit({ type: 'phase', phase: state.phase });
 
@@ -1583,6 +1642,13 @@ export async function create(canvas, ctx) {
     },
     setVisible(on) {
       shown = on;
+    },
+    // still slow at the lowest sharpness (the watchdog, useScene): no sun shadow,
+    // and the post without its bloom (the grade kept, so the colours stay right)
+    lowerQuality() {
+      shadows = false;
+      sun.castShadow = false;
+      post.lite();
     },
     // from the page's touch controls
     input: {
@@ -1617,9 +1683,29 @@ export async function create(canvas, ctx) {
       // a mission again, from the start, on the bike
       restart() {
         if (!chase && !run) return;
-        const x = rides[rides.length - 1];
         const p = me().st;
-        if (state.phase === 'walk') {
+        leaveZone();
+        if (!mission.ride) {
+          // on foot, back at the start: off anything you've got on
+          if (state.phase === 'ride') {
+            state.riding.state.speed = 0;
+            state.riding = null;
+            state.phase = 'walk';
+            state.cam.dist = CAM.dist;
+            emit({ type: 'phase', phase: 'walk' });
+          }
+          putAt(p, mission.start[0], mission.start[1], mission.yaw);
+          state.cam.yaw = mission.yaw;
+          camInit = false;
+          state.health = 100;
+          emit({ type: 'health', value: 100 });
+          beginMission();
+          return;
+        }
+        const x = rides[rides.length - 1];
+        // (back on the mission's own ride, off any other)
+        if (state.riding !== x) {
+          if (state.riding) state.riding.state.speed = 0;
           state.riding = x;
           state.phase = 'ride';
           state.cam.dist = x.spec.cam[0];
@@ -1660,6 +1746,7 @@ export async function create(canvas, ctx) {
           const step = mission.quest.steps[state.quest.step];
           if (step.type === 'race') for (const g of step.gates.slice(state.quest.count)) questEvent({ type: 'at', x: g[0], z: g[1], riding: step.ride });
           else if (step.type === 'use') questEvent({ type: 'use', id: step.id });
+          else if (step.type === 'reach') questEvent({ type: 'at', x: step.at[0], z: step.at[1], riding: state.riding?.kind ?? null });
           else if (step.type === 'shoot') activity.kill(step.tag);
         }
         ctx.invalidate();
