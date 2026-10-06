@@ -1,0 +1,68 @@
+/* Cybertron, the world: the canvas filling the first screen, and the HUD over it */
+.cyw { position: relative; height: calc(100svh - var(--nav-h, 0px)); min-height: 520px; margin-top: var(--nav-h, 0px); overflow: hidden; background: #05070c; color: #e9f1ff; font-family: 'Orbitron', ui-sans-serif, system-ui, sans-serif; }
+.cyw-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; touch-action: none; }
+.cyw[data-playing] .cyw-canvas { cursor: crosshair; }
+.cyw-loading { position: absolute; inset: 0; display: grid; place-content: center; gap: 14px; justify-items: center; font-size: 0.85rem; letter-spacing: 0.14em; text-transform: uppercase; color: #9fd8ff; background: radial-gradient(60% 50% at 50% 50%, rgba(63, 210, 255, 0.12), transparent 70%), #05070c; }
+.cyw-spinner { width: 42px; height: 42px; border-radius: 50%; border: 3px solid rgba(63, 210, 255, 0.2); border-top-color: #3fd2ff; animation: cyw-spin 0.9s linear infinite; }
+@keyframes cyw-spin { to { transform: rotate(360deg); } }
+
+.cyw-start { position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%); width: min(92%, 640px); padding: 26px 28px 22px; border: 1px solid rgba(127, 216, 255, 0.25); border-radius: 18px; background: linear-gradient(180deg, rgba(8, 14, 26, 0.86), rgba(4, 7, 13, 0.92)); backdrop-filter: blur(6px); text-align: center; box-shadow: 0 20px 80px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05); }
+.cyw-kicker { font-size: 0.72rem; letter-spacing: 0.24em; text-transform: uppercase; color: #ffb36a; }
+.cyw-title { margin-top: 6px; color: #f2f7ff; font-size: clamp(1.6rem, 1rem + 2.4vw, 2.6rem); font-weight: 800; letter-spacing: 0.04em; text-shadow: 0 0 24px rgba(63, 210, 255, 0.45); }
+.cyw-lede { margin: 10px auto 18px; max-width: 46ch; font-family: var(--font-body, ui-sans-serif, system-ui); font-size: 0.95rem; line-height: 1.55; color: #c8d6ea; }
+.cyw-keys { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 14px; margin: 18px 0 4px; font-size: 0.72rem; text-align: left; }
+.cyw-keys div { display: flex; gap: 8px; align-items: baseline; }
+.cyw-keys dt { min-width: 64px; color: #7fd8ff; font-weight: 700; }
+.cyw-keys dd { margin: 0; color: #c8d6ea; font-family: var(--font-body, ui-sans-serif, system-ui); }
+.cyw-progress { margin-top: 12px; font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: #8aa0bd; }
+
+.cyw-hud { position: absolute; inset: 0; pointer-events: none; }
+.cyw-hud .cyw-list, .cyw-hud .cyw-list button { pointer-events: auto; }
+.cyw-mission { position: absolute; left: 20px; top: 18px; max-width: min(46ch, 60%); padding: 10px 14px; border-left: 3px solid #ffb03a; background: linear-gradient(90deg, rgba(5, 9, 18, 0.78), rgba(5, 9, 18, 0)); }
+.cyw-mission-title { font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: #ffb03a; }
+.cyw-mission-text { margin-top: 3px; font-family: var(--font-body, ui-sans-serif, system-ui); font-size: 0.95rem; color: #eef4ff; text-shadow: 0 1px 2px #000; }
+.cyw-count, .cyw-timer { font-family: 'Orbitron', ui-sans-serif; color: #7fd8ff; margin-left: 6px; }
+.cyw-timer { color: #ff9a7a; }
+.cyw-compass { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.cyw-arrow { width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 18px solid #ffb03a; filter: drop-shadow(0 0 6px rgba(255, 176, 58, 0.8)); transform: rotate(var(--rel)); transition: transform 0.12s linear; }
+.cyw-compass-label { font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: #ffd9a0; text-shadow: 0 1px 3px #000; white-space: nowrap; }
+.cyw-stats { position: absolute; right: 20px; top: 18px; font-size: 0.95rem; color: #7fd8ff; text-shadow: 0 0 10px rgba(63, 210, 255, 0.6); }
+.cyw-bars { position: absolute; left: 20px; bottom: 22px; display: grid; gap: 6px; width: min(260px, 40vw); }
+.cyw-bar { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.12); overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
+.cyw-bar span { display: block; height: 100%; background: linear-gradient(90deg, #ff4b4b, #ff9a4b); transition: width 0.2s; }
+.cyw-boost span { background: linear-gradient(90deg, #3fd2ff, #9ff0ff); }
+.cyw-boss { position: absolute; left: 50%; top: 74px; transform: translateX(-50%); width: min(420px, 70vw); text-align: center; font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: #d9b2ff; }
+.cyw-boss .cyw-bar span { background: linear-gradient(90deg, #8a3fd8, #d27bff); }
+.cyw-cross { position: absolute; left: 50%; top: 46%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; border: 2px solid rgba(159, 216, 255, 0.8); box-shadow: 0 0 8px rgba(63, 210, 255, 0.7); }
+.cyw-prompt { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); padding: 7px 14px; border-radius: 8px; background: rgba(5, 9, 18, 0.75); font-size: 0.78rem; letter-spacing: 0.08em; color: #ffd9a0; border: 1px solid rgba(255, 176, 58, 0.35); }
+.cyw-talk { position: absolute; left: 50%; bottom: 168px; transform: translateX(-50%); width: min(560px, 88%); padding: 12px 16px; border-radius: 12px; background: rgba(5, 9, 18, 0.82); border: 1px solid rgba(127, 216, 255, 0.25); font-family: var(--font-body, ui-sans-serif, system-ui); font-size: 0.95rem; line-height: 1.5; }
+.cyw-talk-name { font-family: 'Orbitron', ui-sans-serif; font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: #7fd8ff; margin-bottom: 3px; }
+.cyw-toast { position: absolute; right: 22px; top: 64px; padding: 12px 16px; border-radius: 12px; background: rgba(5, 9, 18, 0.85); border: 1px solid rgba(255, 176, 58, 0.35); animation: cyw-in 0.3s ease-out; font-family: var(--font-body, ui-sans-serif, system-ui); font-size: 0.85rem; }
+.cyw-toast-title { font-family: 'Orbitron', ui-sans-serif; font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: #ffb03a; }
+@keyframes cyw-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+.cyw-down { position: absolute; inset: 0; display: grid; place-content: center; font-size: 2.4rem; letter-spacing: 0.3em; text-transform: uppercase; color: #ff6b6b; background: radial-gradient(60% 50% at 50% 50%, rgba(120, 0, 0, 0.25), rgba(40, 0, 0, 0.55)); }
+.cyw-list { position: absolute; right: 20px; top: 110px; width: min(360px, 86vw); padding: 14px 16px; border-radius: 14px; background: rgba(5, 9, 18, 0.9); border: 1px solid rgba(127, 216, 255, 0.25); }
+.cyw-list-title { font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; color: #7fd8ff; margin-bottom: 8px; }
+.cyw-list ul { display: grid; gap: 6px; margin-bottom: 10px; font-family: var(--font-body, ui-sans-serif, system-ui); font-size: 0.88rem; }
+.cyw-list li { display: flex; justify-content: space-between; gap: 10px; }
+.cyw-list li[data-state='done'] span:first-child { color: #7dffa8; text-decoration: line-through; }
+.cyw-list li[data-state='active'] span:first-child { color: #ffb03a; }
+.cyw-list-place { color: #8aa0bd; font-size: 0.78rem; }
+.cyw-fade { position: absolute; inset: 0; animation: cyw-fade 0.65s ease-in forwards; pointer-events: none; }
+.cyw-fade-space { background: radial-gradient(circle at 50% 50%, #e8fbff 0%, #3fd2ff 25%, #0a2a4a 60%, #02050a 100%); }
+.cyw-fade-ground { background: radial-gradient(circle at 50% 50%, #f2fff4 0%, #5dff9a 25%, #0a3a1e 60%, #020a05 100%); }
+@keyframes cyw-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.cyw-touch { position: absolute; inset: 0; pointer-events: none; }
+.cyw-stick { position: absolute; left: 18px; bottom: 60px; width: 140px; height: 140px; border-radius: 50%; border: 2px solid rgba(127, 216, 255, 0.35); background: rgba(5, 9, 18, 0.25); pointer-events: auto; touch-action: none; }
+.cyw-lookpad { position: absolute; right: 0; top: 18%; bottom: 210px; width: 50%; pointer-events: auto; touch-action: none; }
+.cyw-buttons { position: absolute; right: 12px; bottom: 54px; display: grid; grid-template-columns: repeat(3, 72px); gap: 8px; pointer-events: auto; }
+.cyw-buttons button { height: 52px; border-radius: 14px; border: 1px solid rgba(127, 216, 255, 0.35); background: rgba(5, 9, 18, 0.6); color: #e9f1ff; font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; touch-action: none; }
+@media (max-width: 640px) {
+  .cyw-keys { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cyw-mission { left: 10px; top: 10px; max-width: 70%; }
+  .cyw-stats { right: 10px; top: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cyw-spinner, .cyw-toast, .cyw-fade { animation: none; }
+}
