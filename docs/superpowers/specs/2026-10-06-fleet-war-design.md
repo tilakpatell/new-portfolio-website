@@ -44,7 +44,8 @@ open.
   order from one faction’s home to the other’s, and the crew’s lines. The
   three wars:
   - Star Wars: the Rebel Alliance against the Galactic Empire. Sectors
-    Yavin, Hoth, Bespin, Endor, Scarif, Kuat, Coruscant. Nothing after
+    Yavin, Hoth, Bespin, Endor, Scarif, Mustafar, Coruscant (each one of
+    the galaxy’s systems, so the holotable can show it). Nothing after
     Return of the Jedi (the standing rule).
   - Rick and Morty: the Council of Ricks against the Galactic Federation.
   - Breaking Bad: Gus Fring’s empire (Los Pollos Hermanos and Madrigal)
