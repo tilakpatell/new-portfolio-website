@@ -131,7 +131,7 @@ const SAY = {
   secretservice: { who: 'Secret Service', text: 'Step back from the vehicle, son. The President’s schedule is very full.' },
   agent1: { who: 'Federation agent', text: 'Earth is a valued member of the Galactic Federation. Smile, citizen.' },
   agent2: { who: 'Federation agent', text: 'Shoney’s is open. I recommend the eggs. I recommend not asking why.' },
-  agent3: { who: 'Federation agent', text: 'Your grandfather’s file is very thick, Morty. Very, very thick.' },
+  agent3: { who: 'Federation agent', text: 'Your grandfather’s file is very thick, Morty.' },
   ovalpresident: { who: 'The President', text: 'Sit down, Morty. Not there, that’s Lincoln’s. Tell Rick the free world called, and it’s disappointed.' },
   general1: { who: 'A general', text: 'Don’t touch the phone, son. The red one. Or the other one.' },
   general2: { who: 'A general', text: 'Your grandfather is a national security risk and a national treasure. We haven’t decided which.' },
