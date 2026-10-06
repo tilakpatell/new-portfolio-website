@@ -285,6 +285,7 @@ the commit message.
 - [ ] **Step 1:** Add a README "Lighting after Bruno Simon" entry, with links to
   https://bruno-simon.com and https://github.com/brunosimon/folio-2019 (MIT), and one line on
   what the kit does.
+- [ ] **Step 1b:** In each grounded world that shows a credit line or panel, add one short line crediting Bruno Simon's folio for the lighting approach.
 - [ ] **Step 2:** Run QA in headless Chromium (`/opt/pw-browsers/chromium`):
   - localStorage keys `tp-intro=1`, `tp-3d=on`, `tp-worlds="load"`, `tp-quality=mid`
   - screenshots of each grounded world into `docs/superpowers/shots/2026-10-06-baked-*`
