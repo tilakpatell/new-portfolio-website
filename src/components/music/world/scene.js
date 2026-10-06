@@ -17,6 +17,7 @@ import { createStage } from '../../../lib/stage3d';
 import { budget, device } from '../../../lib/device';
 import { antiTile } from '../../../lib/three/surface';
 import { createGhosts } from '../../middleearth/towns/ghosts';
+import { groundWorld } from '../../../lib/three/groundwork';
 import { EYE, GADDI, INSTRUMENTS, LAMPS, PARAPET, PAVILION, POOL, RUG, TERRACE } from './layout';
 
 // (the site's shared loader, fetched only once the courtyard is up)
@@ -229,6 +230,7 @@ export async function createMusicWorld(el, { onLost } = {}) {
   );
 
   // ── the dunes ──
+  const floors = []; // what the courtyard's light is baked on: the dunes and the paving
   const dune = noise2(11);
   const groundAt = (x, z) => {
     const d = Math.hypot(x, z);
@@ -249,6 +251,7 @@ export async function createMusicWorld(el, { onLost } = {}) {
     const dunes = new THREE.Mesh(g, sand);
     dunes.receiveShadow = true;
     scene.add(dunes);
+    floors.push(dunes);
   }
 
   // ── the terrace ──
@@ -284,6 +287,7 @@ export async function createMusicWorld(el, { onLost } = {}) {
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     scene.add(floor);
+    floors.push(floor);
     // the plinth it stands on
     const plinth = wallMat(T * 2, TERRACE.height + 0.6);
     for (const [x, z, ry] of [[0, T, 0], [0, -T, 0], [T, 0, Math.PI / 2], [-T, 0, Math.PI / 2]]) box(T * 2 + 0.3, TERRACE.height + 0.6, 0.3, plinth, x, -(TERRACE.height + 0.6) / 2 + 0.01, z, ry);
@@ -574,10 +578,28 @@ export async function createMusicWorld(el, { onLost } = {}) {
         scene.add(c);
       }
   };
+  // the courtyard's floor light, baked once everything stands in it (after
+  // Bruno Simon's folio: lib/three/groundwork): the chhatri's, the
+  // parapet's, the lamps' and the instruments' soft dusk shadows on the
+  // paving and the sand, their feet darkened, a warm bounce off the
+  // sandstone, and no shadow pass
+  let ground = null;
   const loaded = models.then(async (list) => {
     if (stage.disposed) return [];
     for (const [n, m] of list) placeModel(n, m);
+    ground = groundWorld({
+      renderer,
+      scene,
+      floor: floors,
+      area: { x0: -TERRACE.half - 14, z0: -TERRACE.half - 14, w: (TERRACE.half + 14) * 2, d: (TERRACE.half + 14) * 2 },
+      sun,
+      skip: [rings, ghosts.group],
+      shade: 0x4a2418,
+      height: groundAt,
+      tier,
+    });
     await stage.precompile();
+    if (!stage.disposed) ground.bake();
     return list.filter(([, m]) => m).map(([n]) => n);
   });
 
@@ -691,9 +713,14 @@ export async function createMusicWorld(el, { onLost } = {}) {
   await stage.precompile();
 
   return {
+    // (for the QA scripts: the floor light, once the models are in)
+    get ground() {
+      return import.meta.env.DEV ? ground : null;
+    },
     render,
     resize: fitTo,
     dispose: () => {
+      ground?.dispose();
       ghosts.dispose();
       for (const t of labelCache.values()) t.dispose();
       stage.dispose();

@@ -22,6 +22,7 @@ import { makeAtmosphere, makeSky } from '../../shire/sky';
 import { createFx } from '../../shire/fx';
 import { createGhosts } from '../ghosts';
 import { makeTerrain } from '../ground';
+import { FIGURE, groundTown } from '../grounded';
 import { makeFolk } from '../bree/props';
 import { createAmonHenKit } from './props';
 import { stoneAt } from './rules';
@@ -117,7 +118,8 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
   scene.add(land);
 
   // ── the ground and the lake ──
-  land.add(makeTerrain(renderer, { size: 340, seg: tier === 'high' ? 230 : tier === 'mid' ? 170 : 110, height, paint, blades: 0.12 }));
+  const terrain = makeTerrain(renderer, { size: 340, seg: tier === 'high' ? 230 : tier === 'mid' ? 170 : 110, height, paint, blades: 0.12 });
+  land.add(terrain);
   const lakeMat = new THREE.ShaderMaterial({
     uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uTime: { value: 0 } }]),
     fog: true,
@@ -307,15 +309,11 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
   scene.add(eye.group);
 
   // ── people ──
-  const blobGeo = new THREE.CircleGeometry(0.42, 20).rotateX(-Math.PI / 2);
-  const blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false });
+  // (each stands on a soft blob slid away from the sun, and dims in the
+  // baked shade: ../grounded.js)
+  const movers = [];
   const blob = (f, s = 1) => {
-    const b = new THREE.Mesh(blobGeo, blobMat);
-    b.position.y = 0.04;
-    b.scale.setScalar(s);
-    b.renderOrder = 1;
-    f.group.add(b);
-    f.blob = b;
+    movers.push({ object: f.group, size: [FIGURE * s, FIGURE * s] });
     return f;
   };
   const frodo = blob(folk('frodo'));
@@ -659,6 +657,7 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
     sky.dome.position.copy(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
     sun.target.position.copy(camera.position);
+    ground.update();
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -686,8 +685,12 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
     return { x: (p.x * 0.5 + 0.5) * w, y: (-p.y * 0.5 + 0.5) * hh };
   };
 
+  // ── the floor's light, baked when the town is first drawn ──
+  const ground = groundTown({ renderer, scene, terrain, outdoors: land, sun, height, people: movers, skip: [sky.dome, ghosts.group], tier, centre: [-25, 0], radius: 72, shade: 0x2e2a1e });
+
   return {
-    scene: import.meta.env.DEV ? scene : null,
+    ground: import.meta.env.DEV ? ground : null, // for the QA scripts
+    scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
     screenOf,
@@ -703,6 +706,7 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
       return null;
     },
     dispose() {
+      ground.dispose();
       ghosts.dispose();
       disposeTree(scene);
       stage.dispose();

@@ -1,4 +1,5 @@
 import { forwardRef } from 'react';
+import { useVoiced } from '../../../lib/useVoiced';
 import '../../../styles/lazy/middleearth.css';
 
 // The HUD parts a walkable town shares (the Shire's look: its shire-*
@@ -82,6 +83,7 @@ export const Bubble = forwardRef(function Bubble({ name, line }, ref) {
 // their number keys), or a button to go on; and, given onLeave, a way out
 // of it (Esc).
 export function Convo({ title, name, node, onPick, onNext, onLeave = null, touch, className = '' }) {
+  useVoiced(node?.who, node?.say); // in the speaker's own voice, where it's been made (lib/voiced.js)
   if (!node) return null;
   const leave = onLeave && (
     <button type="button" className="btn btn-ghost btn-sm" onClick={onLeave}>

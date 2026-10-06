@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Universe planets sheet</title>
+    <!--
+      The universe map's fandom planets (src/components/universe/planets.js),
+      each built and lit the way the map builds and lights it (its key, fill
+      and ambient, the space environment and the post's bloom and grade), one
+      at a time, close. Through the dev server (npx vite):
+        /scripts/preview/planets.html?id=middleearth        one planet
+        …&yaw=1.2                                          turned to (radians)
+        …&dist=2.2                                         camera distance, in radii
+        …&small=1                                          the phone maps
+        …&spin=0                                           hold it still
+        …&turn=2.4                                         the planet turned (its lit side moves)
+      Drag to turn it, scroll to come closer. window.__planets.shot() is ready
+      once every map and model is in.
+    -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #03040a;
+        color: #e9edf2;
+        font: 13px/1.3 system-ui, sans-serif;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      #status {
+        position: absolute;
+        left: 12px;
+        top: 10px;
+        background: rgba(0, 0, 0, 0.55);
+        padding: 4px 8px;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div id="status">loading…</div>
+    <script type="module">
+      import * as THREE from 'three';
+      import { buildPlanet, loadTextures, loadModels } from '/src/components/universe/planets.js';
+      import { byId } from '/src/components/universe/universes.js';
+      import { LIGHT, createPost, spaceEnvironment } from '/src/components/universe/post.js';
+
+      const q = new URLSearchParams(location.search);
+      const id = q.get('id') ?? 'middleearth';
+      const small = q.get('small') === '1';
+      const spin = q.get('spin') !== '0';
+      const status = document.getElementById('status');
+      const canvas = document.getElementById('c');
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 30000);
+      const key = new THREE.DirectionalLight('#fff8f0', 2.35);
+      key.position.copy(LIGHT).multiplyScalar(50);
+      const fill = new THREE.DirectionalLight('#8ea2ff', 0.45);
+      fill.position.set(0.7, -0.4, -0.3).multiplyScalar(50);
+      scene.add(key, fill, new THREE.AmbientLight('#b8c4ff', 0.4));
+
+      const t0 = performance.now();
+      const T = await loadTextures({ small });
+      const env = spaceEnvironment(renderer, T.sky);
+      scene.environment = env.texture;
+      if (T.sky) {
+        const sky = new THREE.Mesh(new THREE.SphereGeometry(27000, 64, 32), new THREE.MeshBasicMaterial({ map: T.sky, side: THREE.BackSide, depthWrite: false, toneMapped: false }));
+        sky.renderOrder = -10;
+        scene.add(sky);
+      }
+      const u = byId(id);
+      const p = buildPlanet(u, T);
+      scene.add(p.group);
+      p.group.rotation.y = Number(q.get('turn') ?? 0); // which side faces the key light
+      let models = 0;
+      const modelsIn = loadModels((pid, model, spot) => {
+        if (pid === id && p.mount(model, spot)) models++;
+      });
+      const post = createPost(renderer, scene, camera, { small });
+
+      const r = u.size;
+      let yaw = Number(q.get('yaw') ?? 0.6);
+      let pitch = Number(q.get('pitch') ?? 0.15);
+      let dist = r * Number(q.get('dist') ?? 2.6);
+      let drag = null;
+      let follow = null;
+      let near = r * 0.6;
+      canvas.addEventListener('pointerdown', (e) => (drag = [e.clientX, e.clientY, yaw, pitch]));
+      addEventListener('pointerup', () => (drag = null));
+      addEventListener('pointermove', (e) => {
+        if (!drag) return;
+        yaw = drag[2] - (e.clientX - drag[0]) * 0.006;
+        pitch = Math.max(-1.4, Math.min(1.4, drag[3] + (e.clientY - drag[1]) * 0.006));
+      });
+      canvas.addEventListener('wheel', (e) => (dist = Math.max(r * 1.08, Math.min(r * 12, dist * (1 + Math.sign(e.deltaY) * 0.08)))), { passive: true });
+
+      let t = Number(q.get('t') ?? 0);
+      let last = performance.now();
+      const frame = () => {
+        const now = performance.now();
+        if (spin) t += (now - last) / 1000;
+        last = now;
+        const w = innerWidth;
+        const h = innerHeight;
+        renderer.setSize(w, h, false);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        p.update(t, camera, true);
+        // round the planet, or (window.__planets.follow = an Object3D, near = its distance) round something on it
+        const at = follow ? follow.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3();
+        const d = follow ? near : dist;
+        camera.position.set(at.x + Math.sin(yaw) * Math.cos(pitch) * d, at.y + Math.sin(pitch) * d, at.z + Math.cos(yaw) * Math.cos(pitch) * d);
+        camera.lookAt(at);
+        post.render(w, h);
+        requestAnimationFrame(frame);
+      };
+      frame();
+      await modelsIn;
+      status.textContent = `${id} · r ${r.toFixed(1)} · maps ${Object.keys(T).length - 1} · models ${models} · ${((performance.now() - t0) / 1000).toFixed(1)} s`;
+      window.__planets = {
+        ready: true,
+        p,
+        T,
+        renderer,
+        scene,
+        set: (o) => ({ yaw, pitch, dist } = { yaw, pitch, dist, ...o }),
+        // look at the first thing under the planet whose material or geometry matches
+        follow(test, distance = r * 0.6) {
+          follow = test?.isObject3D ? test : null; // (or the thing itself)
+          if (!follow)
+            p.group.traverse((o) => {
+              if (!follow && o.isMesh && test(o)) follow = o;
+            });
+          near = distance;
+          return Boolean(follow);
+        },
+        unfollow: () => (follow = null),
+      };
+    </script>
+  </body>

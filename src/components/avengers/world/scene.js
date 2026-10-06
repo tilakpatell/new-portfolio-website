@@ -38,6 +38,7 @@ import { createFlags, createRings, staticGrounds } from './grounds';
 import { createPacks } from './packs';
 import { createGrass } from './grass';
 import { createGhosts } from '../../middleearth/towns/ghosts';
+import { groundWorld } from '../../../lib/three/groundwork';
 import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, SUIT, TRICK, V, aimWeb, camRoom, findPerch, floorAt, gaitFor, nearestEdge, photoView, samplePath, swingArc, swingPose, treeHeight } from './rules';
 
 const SC = { s: S, v: V };
@@ -275,9 +276,29 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     const p = floorGeo.attributes.position;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, p.getX(i), -p.getZ(i));
   }
+  {
+    // out where the woods thin, the ground is their canopy seen from afar:
+    // dark green, not bare forest floor between the last trees and the haze
+    const before = floorMat.onBeforeCompile;
+    floorMat.onBeforeCompile = (sh, r) => {
+      before?.call(floorMat, sh, r);
+      sh.fragmentShader = sh.fragmentShader.replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        {
+          float canopy = smoothstep(380.0, 700.0, length(vCloudPos.xz - vec2(96.0, 83.2)));
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.03, 0.045, 0.022), canopy);
+        }`,
+      );
+    };
+    const key = floorMat.customProgramCacheKey;
+    floorMat.customProgramCacheKey = () => `${key ? key.call(floorMat) : ''}|canopy`;
+  }
   const floor = new THREE.Mesh(floorGeo, floorMat);
   floor.receiveShadow = true;
   scene.add(floor);
+  const flats = [floor]; // what the compound's light is baked on (the ground, the lawn, the roads, the apron, what's painted on them)
+  let ground = null; // (the floor light, made once the compound stands: below)
 
   // the lawn, mown in stripes
   const lawnMat = cloudy(await pbr('grass', { repeat: [1 / 3.2, 1 / 3.2], small, roughness: 1, metalness: 0, color: 0x9fbf72, normalScale: 0.9 }), 'lawn');
@@ -301,6 +322,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const lawn = new THREE.Mesh(flatShape(LAWN, 0, 1, SC), lawnMat);
   lawn.receiveShadow = true;
   scene.add(lawn);
+  flats.push(lawn);
 
   // grass blades on the lawn round him (./grass.js), lit and striped as the
   // lawn is; fewer on a phone, none on the lowest tier
@@ -397,6 +419,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const kerbs = new THREE.Mesh(mergeGeometries(kerbGeos), kerbMat);
   roads.receiveShadow = kerbs.receiveShadow = true;
   scene.add(kerbs, roads);
+  flats.push(kerbs, roads);
 
   // what's painted on the ground: the helipad, the track, the range, the car park
   for (const [box, px] of [
@@ -412,6 +435,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     m.receiveShadow = true;
     m.renderOrder = 1;
     scene.add(m);
+    flats.push(m);
   }
 
   // ── the buildings ──
@@ -619,13 +643,15 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // the landing pad: a low slab, its markings
   const apronTop = await pbr('asphalt', { repeat: [1 / 5, 1 / 5], small, roughness: 0.85, metalness: 0, color: 0x6a7076 });
   add(prismWalls(APRON, 0, 0.06, 1, SC), cloudy(grey.clone(), 'grey'));
-  add(prismTop(APRON, 0.06, 1, SC), antiTile(cloudy(apronTop, 'apron'), { frequency: 0.06, detail: { texture: grain, scale: 2.2, strength: 0.25, range: 24 } }));
+  const apronMat = antiTile(cloudy(apronTop, 'apron'), { frequency: 0.06, detail: { texture: grain, scale: 2.2, strength: 0.25, range: 24 } });
+  add(prismTop(APRON, 0.06, 1, SC), apronMat);
   {
     const b2 = [-1, 66, 38, 99];
     const g = new THREE.PlaneGeometry(39 * S, 33 * S).rotateX(-Math.PI / 2).translate(18.5 * S, 0.06 * V + 0.03, 82.5 * S);
     const m = new THREE.Mesh(g, cloudy(new THREE.MeshStandardMaterial({ map: apronMarks(b2, small ? 512 : 1024), transparent: true, roughness: 0.7, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }), 'apronmarks'));
     m.receiveShadow = true;
     scene.add(m);
+    flats.push(m);
   }
 
   // ── a door into each game: glass in a dark frame, a lit lintel in the game's
@@ -683,11 +709,14 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     const mid = P3(60, 52);
     const m4m = new THREE.Matrix4();
     const qm = new THREE.Quaternion();
+    // (the masts' plinths in the kerbs' concrete, but their own material: the
+    // kerbs' is the floor's, and reads the baked floor light where it is)
+    const plinth = cloudy(new THREE.MeshStandardMaterial({ color: 0x8c918a, roughness: 0.9 }), 'kerb');
     for (const m of MASTS) {
       // facing the middle of the lawn
       const yaw = Math.atan2(mid.x - m.x, mid.z - m.z);
       const at = (geo) => geo.applyMatrix4(m4m.compose(new THREE.Vector3(m.x, 0, m.z), qm.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw), new THREE.Vector3(1, 1, 1)));
-      add(at(new THREE.CylinderGeometry(0.85, 1, 0.5, 20).translate(0, 0.25, 0)), kerbMat);
+      add(at(new THREE.CylinderGeometry(0.85, 1, 0.5, 20).translate(0, 0.25, 0)), plinth);
       add(at(new THREE.CylinderGeometry(0.42, 0.42, 0.25, 12).translate(0, 0.6, 0)), steel);
       add(at(new THREE.CylinderGeometry(0.12, 0.28, MAST_H, 12).translate(0, MAST_H / 2, 0)), steel);
       add(at(new THREE.BoxGeometry(0.45, 0.8, 0.28).translate(0, 1.2, -0.38)), housing); // the switch cabinet
@@ -765,16 +794,20 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
         if (e < 2 || e > (small ? 50 : 70)) continue;
         tree(px, py, woods.length);
       }
-    // and the woods going on, thinner, out to where the haze takes them: from
-    // up a mast or the top of a swing the ground beyond was bare to the sky
+    // and the woods going on, thinner the further out, in a ring round the
+    // lawn to where the haze has most of them (450 units, 720 m): from up a
+    // mast or the top of a swing the ground beyond was bare to the sky
     {
       const far = small ? 11 : 7;
-      for (let y = -230; y < 340; y += far)
-        for (let x = -260; x < 400; x += far) {
+      const [cx, cy, out] = [60, 52, 450];
+      for (let y = cy - out; y < cy + out; y += far)
+        for (let x = cx - out; x < cx + out; x += far) {
           const px = x + (rand() - 0.5) * far * 0.9;
           const py = y + (rand() - 0.5) * far * 0.9;
+          const r = Math.hypot(px - cx, py - cy);
           const inside = px >= -100 && px < 240 && py >= -70 && py < 180 && nearestEdge(px, py, LAWN).d <= (small ? 50 : 70);
-          if (inside || rand() < 0.25 || inPoly(px, py, LAWN) || inPoly(px, py, RIVER)) continue;
+          const keep = r < 300 ? 0.75 : 0.75 - ((r - 300) / (out - 300)) * 0.35;
+          if (r > out || inside || rand() > keep || inPoly(px, py, LAWN) || inPoly(px, py, RIVER)) continue;
           tree(px, py, woods.length);
         }
     }
@@ -1123,6 +1156,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     m.root.visible = true;
     p.h.root.visible = false;
     p.model = m;
+    ground?.track(m.root, p.c.style === 'hulk' ? [1.7, 1.7] : [0.9, 0.9]);
   };
   (async () => {
     for (const p of Object.values(people).filter((x) => MODEL_OF[x.c.style]).sort((a, b) => (a.c.style === 'hulk') - (b.c.style === 'hulk'))) {
@@ -1638,19 +1672,38 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     const hs = Math.hypot(h.vx, h.vz) || 1;
     A.lx += ((h.vx / hs) * lead - A.lx) * damp(3);
     A.lz += ((h.vz / hs) * lead - A.lz) * damp(3);
-    look.set(h.x + A.lx, A.ly, h.z + A.lz);
-    const want = tmp.set(h.x + Math.sin(yaw) * Math.cos(pitch) * dist, look.y + Math.sin(pitch) * dist, h.z + Math.cos(yaw) * Math.cos(pitch) * dist);
+    const want = tmp.set(h.x + Math.sin(yaw) * Math.cos(pitch) * dist, A.ly + Math.sin(pitch) * dist, h.z + Math.cos(yaw) * Math.cos(pitch) * dist);
     // (brought in toward his head, not the point ahead: that can be in a wall)
     head.set(h.x, A.ly, h.z);
     const k = camRoom(head.x, head.z, want.x, want.y, want.z);
-    if (k < 1) want.lerpVectors(head, want, Math.max(0.12, k));
+    const room = k < 1 ? Math.max(0.12, k) : 1;
+    if (k < 1) want.lerpVectors(head, want, room);
     if (want.y < 0.5) want.y = 0.5;
+    // the lead shrinks as the camera's brought in, so he keeps his place in
+    // the frame (a full lead from a camera a metre off him put him off it)
+    look.set(h.x + A.lx * room, A.ly, h.z + A.lz * room);
+    // in motion the camera and its aim trail their targets (each eases to
+    // its own, about speed / rate behind); a camera brought in close would
+    // trail further than it stands off him and lose him, so the closer it's
+    // brought in, the more of that trail is taken out (none at full distance)
+    const pull = 1 - room;
+    if (pull > 0) {
+      const lag = (r) => (dt > 0 ? (dt * Math.exp(-r * dt)) / -Math.expm1(-r * dt) : 1 / r);
+      const la = lag(9) * pull;
+      const ll = lag(14) * pull;
+      want.x += h.vx * la;
+      want.z += h.vz * la;
+      look.x += h.vx * ll;
+      look.z += h.vz * ll;
+    }
     // the first frame, or a jump across the compound (to a door from the
-    // list, out of a building): straight there, no swing across the lawn
+    // list, out of a building): straight there, no swing across the lawn,
+    // and no lead or lean carried over from before the jump
     if (!A.started || Math.hypot(h.x - A.hx, h.z - A.hz) > 6) {
       A.started = true;
+      A.lx = A.lz = A.bank = 0;
       want.y += ly - A.ly;
-      look.y = ly;
+      look.set(h.x, ly, h.z);
       A.ly = ly;
       A.at.copy(want);
       A.look.copy(look);
@@ -1661,18 +1714,21 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     A.look.lerp(look, damp(14));
     camera.position.copy(A.at);
     camera.lookAt(A.look);
-    // and leans with him into his turns, a little
     A.bank += ((flying ? R.roll * 0.22 : 0) - A.bank) * damp(5);
-    if (Math.abs(A.bank) > 1e-4) camera.rotateZ(-A.bank);
+    let intro = 0;
     if (A.intro > 0) {
       // in from the air on the first frames: high over the lawn, down behind
       // him, in three seconds however slowly the frames come
       A.intro = Math.max(0, A.intro - Math.min(0.5, ms / 1000) / 3.2);
-      const t = ease(A.intro);
+      intro = ease(A.intro);
       tmp2.set(h.x - 40, 95, h.z + 120);
-      camera.position.lerp(tmp2, t);
-      camera.lookAt(tmp.copy(A.look).lerp(P3(60, 40, 2), t));
+      camera.position.lerp(tmp2, intro);
+      camera.lookAt(tmp.copy(A.look).lerp(P3(60, 40, 2), intro));
     }
+    // and leans with him into his turns, a little (after the intro's own
+    // aim, and faded in with its end, so the lean never arrives in one frame)
+    const lean = A.bank * (1 - intro);
+    if (Math.abs(lean) > 1e-4) camera.rotateZ(-lean);
 
     // photo mode: the camera where the photo puts it, and its lens
     if (s.photo) {
@@ -1693,6 +1749,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     sun.target.updateMatrixWorld();
 
     vfx.update(dt, camera, engine.size.h);
+    ground?.update();
     engine.render();
   };
 
@@ -1774,8 +1831,31 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // a first frame's worth of state, for the shaders to compile against
   placeJet(6, 1 / 60);
 
+  // ── the compound's floor light, baked once it all stands (after Bruno
+  // Simon's folio: lib/three/groundwork): every building's, tree's and
+  // mast's soft shadow and the sky's occlusion on the ground, the lawn and
+  // the roads, their feet darkened, a bounce off the grass on everything, a
+  // soft blob under whoever walks it, and no shadow pass (which was a whole
+  // second render of the compound round the hero, at 16 pixels a metre) ──
+  scene.traverse((o) => o.isMesh && o.material === apronMat && flats.push(o));
+  ground = groundWorld({
+    renderer,
+    scene,
+    floor: flats,
+    area: { x0: -64, z0: -84, w: 312, d: 280 },
+    sun,
+    skip: [ghosts.group, ...(vfx.group ? [vfx.group] : [])],
+    movers: [{ object: hero, size: [0.9, 0.9] }, ...Object.values(people).map((p) => ({ object: p.h.root, size: [0.9, 0.9] }))],
+    shade: 0x2a3420,
+    bounce: { color: 0x6f7a52 },
+    height: floorAt,
+    tier: engine.tier,
+    auto: true,
+  });
+
   return {
     engine,
+    ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx,
@@ -1794,6 +1874,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     },
     dispose() {
       gone = true;
+      ground?.dispose();
       for (const p of Object.values(people)) p.model?.dispose();
       ghosts.dispose();
       moves?.dispose();

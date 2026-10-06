@@ -236,6 +236,7 @@ export async function buildStage(area, { tier = 'high' } = {}) {
 
   return {
     group,
+    floor: [ground], // what the area's light is baked on (lib/three/groundwork)
     update(t) {
       sky.userData.uniforms.uTime.value = t;
       fires.update(t);
