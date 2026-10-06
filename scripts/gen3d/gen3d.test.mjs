@@ -119,7 +119,10 @@ describe('the runner, jobs from GitHub issues', () => {
     const job = parseIssue({ number: 8, title: 'Red Five', body: 'what: Red Five\n\n![photo](https://github.com/user-attachments/assets/abc.png)\nfov: 49' });
     expect(job).toMatchObject({ name: 'red-five', image: 'https://github.com/user-attachments/assets/abc.png', prompt: undefined, faithful: true, fov: 49 });
     expect(makeArgs(job, 'C:/c/from-issue.png')).toEqual(['red-five', '--image', 'C:/c/from-issue.png', '--what', 'Red Five', '--fov', '49', '--faithful']);
-    expect(parseIssue({ number: 9, title: 'Red Five', body: 'image: https://x.test/a.png\nfaithful: no' })).toMatchObject({ image: 'https://x.test/a.png', faithful: false });
+    const plain = parseIssue({ number: 9, title: 'Red Five', body: 'image: https://x.test/a.png\nfaithful: no' });
+    expect(plain).toMatchObject({ image: 'https://x.test/a.png', faithful: false });
+    // said out loud: make.mjs follows a lone picture with Pixal3D unless told not to
+    expect(makeArgs(plain, 'C:/c/from-issue.png')).toEqual(['red-five', '--image', 'C:/c/from-issue.png', '--what', 'Red Five', '--no-faithful']);
   });
   it('makes the title the prompt when the body says nothing, and no job from an empty title', async () => {
     const { parseIssue } = await import('./runner.mjs');
@@ -133,13 +136,15 @@ describe('several sides of one thing', () => {
     const { command } = await import('./generate.mjs');
     const cmd = command('hunyuan', { front: 'C:/p/f.png', back: 'C:/p/b.png' }, 'C:/p/out.glb', { seed: 7, paint21: false });
     expect(cmd.slice(0, 3)).toEqual(['wsl.exe', '-d', 'Ubuntu-24.04']);
-    expect(cmd.at(-1)).toContain("activate hy3d && cd ~/Hunyuan3D-2 && python '/mnt/c/");
+    // (the engine script's own path is this machine's: /mnt/c/… on Windows, where WSL runs it, the repo's path on Linux)
+    expect(cmd.at(-1)).toContain("activate hy3d && cd ~/Hunyuan3D-2 && python '");
+    expect(cmd.at(-1)).toContain("engines/hunyuan.py' '/mnt/c/p/out.glb'");
     expect(cmd.at(-1)).toContain("'/mnt/c/p/out.glb' --front '/mnt/c/p/f.png' --back '/mnt/c/p/b.png' --seed 7 --steps 50 --faces 300000");
   });
   it('paints the multi-view shape with 2.1 PBR paint from the front when that env is here', async () => {
     const { command } = await import('./generate.mjs');
     const run = command('hunyuan', { front: 'C:/p/f.png', left: 'C:/p/l.png' }, 'C:/p/out.glb', { paint21: true }).at(-1);
-    expect(run).toContain("'/mnt/c/p/out.glb.white.glb' --front '/mnt/c/p/f.png' --left '/mnt/c/p/l.png' --seed 42 --steps 50 --faces 300000 --white && source ~/miniforge3/bin/activate hy3d21 && cd ~/Hunyuan3D-2.1 && python '/mnt/c/");
+    expect(run).toContain("'/mnt/c/p/out.glb.white.glb' --front '/mnt/c/p/f.png' --left '/mnt/c/p/l.png' --seed 42 --steps 50 --faces 300000 --white && source ~/miniforge3/bin/activate hy3d21 && cd ~/Hunyuan3D-2.1 && python '");
     expect(run).toContain("hunyuan_paint21.py' '/mnt/c/p/out.glb.white.glb' '/mnt/c/p/f.png' '/mnt/c/p/out.glb'");
   });
   it('gives TRELLIS.2 the front of several sides', async () => {
