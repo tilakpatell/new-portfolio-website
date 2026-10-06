@@ -434,7 +434,7 @@ export default function Terminal() {
       universe: () => [
         BLANK,
         L(`  THE UNIVERSE MAP: ${DESTINATIONS.length} places`, 'head'),
-        ...DESTINATIONS.map((d) => L(`  ${pad(d.via ? d.id.slice(4) : d.id, 14)}${pad(d.type, 14)}${d.name}`)),
+        ...DESTINATIONS.map((d) => L(`  ${pad(d.via ? d.id.slice(4) : d.id, 14)}${pad(d.type, 26)}${d.name}`)),
         BLANK,
         L("  Go: 'fly <place>' (by id or name), or 'map' for the whole thing", 'dim'),
       ],

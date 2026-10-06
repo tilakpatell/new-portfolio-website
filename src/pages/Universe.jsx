@@ -6,7 +6,7 @@ import { byId } from '../components/universe/universes';
 import { parseId } from '../components/universe/layout';
 import { beyondPlan, crashPlan, enterPlan } from '../components/universe/flight';
 import { beyondOf, parseWonder } from '../components/universe/deep';
-import { DRIVE_KEY, destinationById, parseDrive, tourFrom } from '../components/universe/nav';
+import { DRIVE_KEY, destinationById, distanceTo, parseDrive, tourFrom } from '../components/universe/nav';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
 import { LOADOUT_KEY, equip, loadoutOf, readLoadouts } from '../components/universe/outfit';
 import { HULL_KEY, readHulls } from '../components/universe/shipyard/build';
@@ -79,6 +79,8 @@ export default function Universe({ ask = false }) {
   // the nav map, and the drive picked on it (kept between visits)
   const [charting, setCharting] = useState(false);
   const [drive, setDriveState] = useState(() => parseDrive(local.get(DRIVE_KEY)));
+  const driveRef = useRef(drive); // (for the tour's later legs: the drive as it is then)
+  driveRef.current = drive;
   const setDrive = (d) => {
     const next = parseDrive(d);
     setDriveState(next);
@@ -209,11 +211,12 @@ export default function Universe({ ask = false }) {
     // a trip ended: on through the gate, or the tour's next leg
     if (e.type === 'arrived' || e.type === 'jumped') {
       const done = e.type === 'jumped' || e.done;
+      // the trip on through the gate: only an arrival at the gate goes on; any other trip ending forgets it
       const on = onward.current;
-      if (on && e.id === on.via) {
+      if (on) {
         onward.current = null;
-        if (done) go(byId(on.via), on.to);
-      } else if (on && !done) onward.current = null;
+        if (e.id === on.via && done) go(byId(on.via), on.to);
+      }
       const t = tour.current;
       if (t && e.id === t.ids[t.i]) {
         if (!done) stopTour();
@@ -225,13 +228,15 @@ export default function Universe({ ask = false }) {
           setTouring({ i: t.i + 1, n: t.ids.length, next: destinationById(next)?.name ?? next });
           t.timer = setTimeout(() => {
             if (tour.current !== t) return;
+            // (still parked where it arrived? a pilot who flew off in the meantime has the stick)
+            const w = map.current.where?.();
+            if (!w?.ship || (distanceTo(w.ship, t.ids[t.i]) ?? Infinity) > 80) return stopTour();
             t.i += 1;
-            map.current.travel(next, drive);
-            if (byId(next)) select(next);
+            if (!travel(next, driveRef.current, { tour: true })) stopTour();
           }, 6000);
         }
       }
-    } else if (e.type === 'crash' || e.type === 'destroyed') {
+    } else if (e.type === 'crash' || e.type === 'destroyed' || e.type === 'rifted') {
       onward.current = null;
       stopTour();
     }
@@ -256,33 +261,39 @@ export default function Universe({ ask = false }) {
   // off from the nav map: with a ship, it flies (or jumps) there, and a
   // station or a world is picked too, so the panel shows it; without one
   // (or with the 3D off), the camera takes you to a station or a world
+  // (true if the ship's flying there; false with no ship or the 3D off, when the camera goes instead)
   const travel = (id, d, { tour: onTour = false } = {}) => {
     setDrive(d);
     setCharting(false);
     audioContext(); // inside the press, so the jump and the engine can sound
     if (!onTour) stopTour();
     const dest = destinationById(id);
-    // a star system: to the gate, and on through it once the ship's parked there
-    if (dest?.via) {
-      onward.current = { via: dest.via, to: dest.to };
-      id = dest.via;
-    } else onward.current = null;
+    const flies = Boolean(ship && map.current.live);
+    // a star system: to the gate, and on through it once the ship's parked there (the camera: just the gate)
+    onward.current = dest?.via && flies ? { via: dest.via, to: dest.to } : null;
+    if (dest?.via) id = dest.via;
     const u = byId(id);
-    if (ship && map.current.live) {
-      map.current.travel(id, d);
+    if (flies) {
+      const going = map.current.travel(id, d);
       select(u ? id : null); // (a wonder has no card: the panel goes back to the map's)
-    } else if (u) select(id);
+      if (!going) onward.current = null;
+      return going;
+    }
+    if (u) select(id);
+    return false;
   };
   // the grand tour: every station, world and wonder from here, nearest first
+  // (not the one you're parked at: that's seen)
   const startTour = () => {
     const w = map.current.where?.();
     if (!w?.ship || !ship) return;
-    const ids = tourFrom(w.ship);
+    const ids = tourFrom(w.ship).filter((id) => (distanceTo(w.ship, id) ?? Infinity) > 60);
     if (!ids.length) return;
     stopTour();
-    tour.current = { ids, i: 0, timer: 0 };
+    const t = { ids, i: 0, timer: 0 };
+    tour.current = t;
+    if (!travel(ids[0], drive, { tour: true })) return stopTour();
     setTouring({ i: 0, n: ids.length, next: destinationById(ids[0])?.name ?? ids[0] });
-    travel(ids[0], drive, { tour: true });
   };
 
   // Escape: back from the map view or the autopilot first, then out of the
@@ -293,9 +304,10 @@ export default function Universe({ ask = false }) {
       if (e.key !== 'Escape' || e.defaultPrevented || leaving) return;
       if (document.querySelector('[aria-modal="true"]')) return;
       if (tour.current) {
-        // the tour first: the ship stays where it is
+        // the tour first, and the trip it was on: the ship stays where it is
         e.preventDefault();
         stopTour();
+        map.current.escape();
         return;
       }
       if (map.current.escape()) {

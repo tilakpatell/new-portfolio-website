@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiEyeLine, RiFlashlightFill, RiLinkM, RiRocket2Fill, RiRouteLine, RiSearchLine, RiSpeedUpFill } from 'react-icons/ri';
-import { CHART_VIEWS, DESTINATIONS, DRIVES, KINDS, chartAt, chartHeading, chartRadius, destinationById, distanceTo, driveById, findDestinations, formatDistance, formatTime, onChart, speedWord, tripTime } from './nav';
+import { CHART_VIEWS, DESTINATIONS, DRIVES, KINDS, chartAt, chartHeading, chartRadius, destinationById, distanceTo, driveById, findDestinations, formatDistance, formatTime, goalOf, onChart, speedWord, tripTime } from './nav';
 import { BELT, HOME_RADIUS, SUN } from './layout';
 import { EDGE } from './ship';
 import './navmap.css';
@@ -153,13 +153,18 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
   const hyper = now?.hyper ?? { ready: true, wait: 0, why: null };
   const fallsBack = drive === 'hyper' && !hyper.ready;
   const canFly = flying && !now?.foot && !now?.crashed;
-  const at = (id) => id === atId;
+  const at = (id) => goalOf(id) === atId; // (a star system: at its gate)
   // can the place picked be gone to, and how (with a ship, by its drive;
-  // without one, the camera goes to a station or a world)
-  const goable = (d) => d && !at(d.id) && (canFly || (!flying && d.kind !== 'wonder'));
+  // without one, the camera goes to a station or a world; a system at whose
+  // gate you already are goes straight in)
+  const goable = (d) => d && !(at(d.id) && !d.via) && (canFly || (!flying && d.kind !== 'wonder'));
   const go = (id = pick) => {
     const d = destinationById(id);
     if (!goable(d)) return;
+    if (d.via && at(d.id)) {
+      onEnter?.(d.id);
+      return;
+    }
     onTravel(id, drive);
   };
 
@@ -174,7 +179,7 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
     if (!d) return '';
     if (!flying) return d.kind === 'wonder' ? 'Pick a ship to fly out to it' : d.via ? `Show me the gate` : `Show me ${d.name}`;
     if (now?.foot) return 'Back in the ship first (G)';
-    if (at(d.id)) return d.via ? `At the gate: through to ${d.name}` : `You’re at ${d.name}`;
+    if (at(d.id)) return d.via ? `Through the gate to ${d.name}` : `You’re at ${d.name}`;
     return d.via ? `${driveById(fallsBack ? 'super' : drive).verb} to the gate, then ${d.name}` : `${driveById(fallsBack ? 'super' : drive).verb} to ${d.name}`;
   };
   // a link to a place (a universe, a wonder) that opens the map there
@@ -182,13 +187,12 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
   const copy = (d) => {
     const url = linkTo(d);
     if (!url) return;
-    navigator.clipboard?.writeText(url).then(
-      () => {
-        setCopied(d.id);
-        setTimeout(() => setCopied(null), 1800);
-      },
-      () => {},
-    );
+    const fail = () => setCopied(`fail:${d.id}`); // (no clipboard here, or no leave to use it: the link shows instead)
+    if (!navigator.clipboard?.writeText) return fail();
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(d.id);
+      setTimeout(() => setCopied(null), 1800);
+    }, fail);
   };
 
   return createPortal(
@@ -432,7 +436,7 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                 )}
                 {linkTo(picked) && (
                   <button type="button" className="navmap-copy" onClick={() => copy(picked)} title={linkTo(picked)}>
-                    <RiLinkM className="h-3.5 w-3.5" aria-hidden="true" /> {copied === picked.id ? 'Link copied' : 'Copy a link here'}
+                    <RiLinkM className="h-3.5 w-3.5" aria-hidden="true" /> {copied === picked.id ? 'Link copied' : copied === `fail:${picked.id}` ? `Couldn’t copy: ${linkTo(picked)}` : 'Copy a link here'}
                   </button>
                 )}
               </div>

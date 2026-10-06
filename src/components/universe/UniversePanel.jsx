@@ -130,10 +130,12 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
         </p>
         <h2 className="universe-title">{wonder.name}</h2>
         <p className="mt-3 text-sm leading-relaxed text-body">{wonder.about}</p>
-        {onFly && (
+        {onFly ? (
           <button type="button" className="btn btn-primary universe-enter mt-4" onClick={() => onFly(wonder.id)} disabled={leaving}>
             Fly here <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
           </button>
+        ) : (
+          <p className="mt-4 text-sm text-muted">Pick a ship below the map to fly out to it.</p>
         )}
         <p className="universe-fitted-line mt-4 text-xs text-muted">This link opens the map right here: share it.</p>
       </aside>

@@ -130,10 +130,10 @@ export const DESTINATIONS = [
     via: 'starwars',
   })),
 ];
-const BY_ID = Object.fromEntries(DESTINATIONS.map((d) => [d.id, d]));
-export const destinationById = (id) => BY_ID[id] ?? null;
+const BY_ID = new Map(DESTINATIONS.map((d) => [d.id, d])); // (a Map: a word from a visitor is never a prototype's key here)
+export const destinationById = (id) => BY_ID.get(id) ?? null;
 // the place on this map a trip to `id` really goes to: a system's gate, else itself
-export const goalOf = (id) => BY_ID[id]?.via ?? id;
+export const goalOf = (id) => BY_ID.get(id)?.via ?? id;
 
 export const KINDS = [
   { id: 'all', name: 'Everywhere' },
@@ -159,7 +159,7 @@ export function findDestinations(kind = 'all', query = '') {
 export function findDestination(query = '') {
   const q = fold(String(query ?? '').trim());
   if (!q) return null;
-  return BY_ID[q] ?? BY_ID[`sys:${q}`] ?? findDestinations('all', q)[0] ?? null;
+  return BY_ID.get(q) ?? BY_ID.get(`sys:${q}`) ?? findDestinations('all', q)[0] ?? null;
 }
 
 // the grand tour: every station, world and wonder (the systems are the
@@ -178,7 +178,7 @@ export function tourFrom(ship, ids = TOUR_IDS) {
     }
     order.push(best.id);
     left.delete(best.id);
-    const dest = BY_ID[best.id];
+    const dest = BY_ID.get(best.id);
     at = { x: dest.at[0], y: dest.at[1], z: dest.at[2] };
   }
   return order;

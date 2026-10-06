@@ -275,6 +275,12 @@ describe('finding a place by name', () => {
     expect(findDestination('nebula')?.id).toBe('veil');
     expect(findDestination('nope')).toBeNull();
     expect(findDestination('')).toBeNull();
+    // (never a prototype's key: the lookup is not a plain object's)
+    for (const bad of ['__proto__', 'constructor', 'toString', 'hasOwnProperty']) {
+      expect(findDestination(bad), bad).toBeNull();
+      expect(destinationById(bad), bad).toBeNull();
+      expect(goalOf(bad), bad).toBe(bad);
+    }
   });
 });
 
