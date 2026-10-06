@@ -1,4 +1,4 @@
-/* global window */
+/* global window, document */
 // The universe map measured at fixed poses (src/components/universe/poses.js),
 // so a visual change has a before and an after of the same pictures:
 //
@@ -183,6 +183,16 @@ for (const tier of tiers) {
         const r1 = (v) => Number(v.toFixed(1));
         return { calls, triangles, frameMs: r1(times.reduce((s, v) => s + v, 0) / times.length), frameMsMedian: r1(sorted[10]), memory: { ...renderer.info.memory } };
       });
+      // the picture alone: the page's bar, panel and HUD hidden (they'd be
+      // half the shot, and in its metrics), the map's canvas the biggest one
+      await page.evaluate(() => {
+        const big = [...document.querySelectorAll('canvas')].sort((a, b) => b.width * b.height - a.width * a.height)[0];
+        big?.setAttribute('data-measured', '');
+        const style = document.createElement('style');
+        style.textContent = 'body * { visibility: hidden !important; } canvas[data-measured] { visibility: visible !important; }';
+        document.head.append(style);
+      });
+      await page.evaluate(() => window.__universe().frames(2));
       const png = await page.screenshot({ type: 'png', timeout: 180000 });
       const raw = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
       const metrics = pixelMetrics({ data: raw.data, width: raw.info.width, height: raw.info.height });
