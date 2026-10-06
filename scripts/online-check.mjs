@@ -35,6 +35,10 @@ async function visitor(name) {
     window.localStorage.setItem('tp-intro', '1');
     window.localStorage.setItem('tp-universe-online', JSON.stringify('on'));
     window.localStorage.setItem('tp-universe-callsign', JSON.stringify(n));
+    // (headless Chromium draws in software: load the worlds and play anyway,
+    // as someone on a slow machine would choose to)
+    window.localStorage.setItem('tp-worlds', JSON.stringify('load'));
+    window.sessionStorage.setItem('tp-gl-anyway', 'true');
   }, name);
   // BRIDGE=1: the relays reached from here (Node, which goes through a proxy
   // with NODE_USE_ENV_PROXY=1) rather than from the browser, for a proxy
@@ -69,13 +73,14 @@ const chip = (page) =>
     return null;
   });
 // a world whose 3D waits to be asked for (the office's, the music room's),
-// or that puts you in it only once you start (the Caribbean's voyage): ask,
+// or that puts you in it only once you start (the Caribbean's voyage, and
+// on a slow graphics chip, its "play anyway"): ask,
 // whenever the button's there
+// (a click in the page itself: the game's buttons sit below the fold of a
+// canvas Playwright never counts as settled)
 const start = (page) =>
   page
-    .getByRole('button', { name: /^(Load the |Weigh anchor)/ })
-    .first()
-    .click({ timeout: 500 })
+    .evaluate(() => [...document.querySelectorAll('button')].find((b) => /^(Load the |Weigh anchor|Play anyway)/.test(b.textContent.trim()))?.click())
     .catch(() => {});
 // the roster's line for a callsign, opened from the corner
 async function rosterLine(page, who) {
