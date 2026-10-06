@@ -128,18 +128,22 @@ describe('the runner, jobs from GitHub issues', () => {
   });
 });
 
+// an engine's script as WSL is handed it, wherever this checkout is (on a
+// Windows drive, /mnt/c/…; on Linux, CI's or a cloud box's, its own path)
+const engine = (file) => wslPath(fileURLToPath(new URL(`./engines/${file}`, import.meta.url)));
+
 describe('several sides of one thing', () => {
   it('runs Hunyuan3D multi-view in WSL with every side given', async () => {
     const { command } = await import('./generate.mjs');
     const cmd = command('hunyuan', { front: 'C:/p/f.png', back: 'C:/p/b.png' }, 'C:/p/out.glb', { seed: 7, paint21: false });
     expect(cmd.slice(0, 3)).toEqual(['wsl.exe', '-d', 'Ubuntu-24.04']);
-    expect(cmd.at(-1)).toContain("activate hy3d && cd ~/Hunyuan3D-2 && python '/mnt/c/");
+    expect(cmd.at(-1)).toContain(`activate hy3d && cd ~/Hunyuan3D-2 && python '${engine('hunyuan.py')}'`);
     expect(cmd.at(-1)).toContain("'/mnt/c/p/out.glb' --front '/mnt/c/p/f.png' --back '/mnt/c/p/b.png' --seed 7 --steps 50 --faces 300000");
   });
   it('paints the multi-view shape with 2.1 PBR paint from the front when that env is here', async () => {
     const { command } = await import('./generate.mjs');
     const run = command('hunyuan', { front: 'C:/p/f.png', left: 'C:/p/l.png' }, 'C:/p/out.glb', { paint21: true }).at(-1);
-    expect(run).toContain("'/mnt/c/p/out.glb.white.glb' --front '/mnt/c/p/f.png' --left '/mnt/c/p/l.png' --seed 42 --steps 50 --faces 300000 --white && source ~/miniforge3/bin/activate hy3d21 && cd ~/Hunyuan3D-2.1 && python '/mnt/c/");
+    expect(run).toContain(`'/mnt/c/p/out.glb.white.glb' --front '/mnt/c/p/f.png' --left '/mnt/c/p/l.png' --seed 42 --steps 50 --faces 300000 --white && source ~/miniforge3/bin/activate hy3d21 && cd ~/Hunyuan3D-2.1 && python '${engine('hunyuan_paint21.py')}'`);
     expect(run).toContain("hunyuan_paint21.py' '/mnt/c/p/out.glb.white.glb' '/mnt/c/p/f.png' '/mnt/c/p/out.glb'");
   });
   it('gives TRELLIS.2 the front of several sides', async () => {
