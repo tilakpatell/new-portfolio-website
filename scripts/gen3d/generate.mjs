@@ -8,7 +8,7 @@
 //   node scripts/gen3d/generate.mjs IMAGE OUT.glb [--engine trelliscpp|trellis2|hunyuan] [--left L.png --back B.png --right R.png] [--seed 42] [--res 1024] [--faithful [--fov 49]]
 //   generate(image, out, opts) → { engine, seconds, out }
 
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,7 +19,7 @@ export const TRELLISCPP = { exe: join(LOCAL, 'trellis-studio', 'runtime', 'trell
 export const WSL = { distro: process.env.GEN3D_WSL_DISTRO ?? 'Ubuntu-24.04', conda: '~/miniforge3', env: 'trellis2' };
 export const ENGINES = ['trelliscpp', 'trellis2', 'hunyuan'];
 // the Hunyuan3D-2 multi-view engine's conda env, in the same distro
-export const HY3D = { env: 'hy3d', repo: '~/Hunyuan3D-2' };
+export const HY3D = { env: 'hy3d', repo: '~/Hunyuan3D-2', paintEnv: 'hy3d21', paintRepo: '~/Hunyuan3D-2.1' };
 export const VIEWS = ['front', 'left', 'back', 'right'];
 
 // Pictures of one thing from several sides, { front, left, back, right } (any one
@@ -34,9 +34,23 @@ export const wslPath = (p) => (/^[A-Za-z]:[\\/]/.test(p) ? `/mnt/${p[0].toLowerC
 // Pixal3D: a TRELLIS.2 fine-tune that projects each 3D cell into the picture and
 // samples it there (pixel-aligned), so a photo or a drawing is followed more
 // closely; its own flow weights sit beside TRELLIS.2's as pixal3d_*.gguf.
+// whether Hunyuan3D-2.1's paint env is in WSL (asked once)
+let hy3d21;
+export function hy3d21Ready() {
+  if (hy3d21 !== undefined) return hy3d21;
+  hy3d21 = false;
+  if (process.platform !== 'win32') return false;
+  try {
+    hy3d21 = execFileSync('wsl.exe', ['-d', WSL.distro, '-e', 'bash', '-lc', `ls ${HY3D.paintRepo}/hy3dpaint/ckpt/RealESRGAN_x4plus.pth 2>/dev/null`], { encoding: 'utf8', timeout: 20000 }).trim().length > 0;
+  } catch {
+    /* no WSL: no 2.1 paint */
+  }
+  return hy3d21;
+}
+
 export const pixal3dReady = () => existsSync(join(TRELLISCPP.models, 'pixal3d_shape_flow_1024.gguf'));
 
-export function command(engine, given, out, { seed = 42, res = 1024, faces, tex, faithful = false, fov, steps = 50 } = {}) {
+export function command(engine, given, out, { seed = 42, res = 1024, faces, tex, faithful = false, fov, steps = 50, paint21 = hy3d21Ready() } = {}) {
   const v = views(given);
   const image = v.front ?? Object.values(v)[0];
   if (engine === 'trelliscpp') {
@@ -53,7 +67,13 @@ export function command(engine, given, out, { seed = 42, res = 1024, faces, tex,
   if (engine === 'hunyuan') {
     const script = wslPath(join(HERE, 'engines', 'hunyuan.py'));
     const sides = VIEWS.filter((k) => v[k]).map((k) => `--${k} ${q(wslPath(v[k]))}`).join(' ');
-    const run = `source ${WSL.conda}/bin/activate ${HY3D.env} && cd ${HY3D.repo} && python ${q(script)} ${q(wslPath(out))} ${sides} --seed ${seed} --steps ${steps} --faces ${faces ?? 300000}`;
+    // the shape from every side; then 2.1's PBR paint on it from the front when that env is here (richer than 2.0's turbo paint), else 2.0's paint from every side
+    const white = `${out}.white.glb`;
+    const paint = wslPath(join(HERE, 'engines', 'hunyuan_paint21.py'));
+    const shape = `source ${WSL.conda}/bin/activate ${HY3D.env} && cd ${HY3D.repo} && python ${q(script)} ${q(wslPath(out))} ${sides} --seed ${seed} --steps ${steps} --faces ${faces ?? 300000}`;
+    const run = paint21
+      ? `${shape.replace(q(wslPath(out)), q(wslPath(white)))} --white && source ${WSL.conda}/bin/activate ${HY3D.paintEnv} && cd ${HY3D.paintRepo} && python ${q(paint)} ${q(wslPath(white))} ${q(wslPath(image))} ${q(wslPath(out))}`
+      : shape;
     return ['wsl.exe', '-d', WSL.distro, '-e', 'bash', '-lc', run];
   }
   throw new Error(`no engine ${engine} (${ENGINES.join(', ')})`);

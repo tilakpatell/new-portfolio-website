@@ -3,7 +3,7 @@
 WSL in the `hy3d` conda env scripts/gen3d/README.md describes, from the
 ~/Hunyuan3D-2 checkout. Non-commercial licence (Tencent Hunyuan).
 
-    python hunyuan.py OUT.glb --front F.png [--left L.png] [--back B.png] [--right R.png] [--seed N] [--steps 50] [--octree 380] [--faces 300000]
+    python hunyuan.py OUT.glb --front F.png [--left L.png] [--back B.png] [--right R.png] [--seed N] [--steps 50] [--octree 380] [--faces 300000] [--white]
 
 The shape model sees every view; the texture model paints from all of them
 too (its multi-view paint). The GLB is the raw asset for bake.mjs / web.mjs.
@@ -28,6 +28,7 @@ def main():
     ap.add_argument("--steps", type=int, default=50)
     ap.add_argument("--octree", type=int, default=380, help="marching-cubes grid; 380 is the model's top")
     ap.add_argument("--faces", type=int, default=300_000, help="faces kept before painting")
+    ap.add_argument("--white", action="store_true", help="export the shape unpainted (for hunyuan_paint21.py)")
     ap.add_argument("--repo", default=os.path.expanduser("~/Hunyuan3D-2"))
     args = ap.parse_args()
     sys.path.insert(0, args.repo)
@@ -62,6 +63,10 @@ def main():
     print(f"shape in {time.time() - t:.0f}s: {len(mesh.faces)} faces, peak {torch.cuda.max_memory_allocated() / 1e9:.1f} GB", flush=True)
     del shape
     torch.cuda.empty_cache()
+    if args.white:
+        mesh.export(args.out)
+        print(f"exported the white mesh {args.out}", flush=True)
+        return
 
     t = time.time()
     paint = Hunyuan3DPaintPipeline.from_pretrained("tencent/Hunyuan3D-2", subfolder="hunyuan3d-paint-v2-0-turbo")

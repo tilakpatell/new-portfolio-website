@@ -146,6 +146,15 @@ and its turbo paint model, in a conda env of its own beside TRELLIS.2's
 `hf download`). `engines/hunyuan.py` is what `generate.mjs` runs there.
 Licence: Tencent Hunyuan non-commercial, fine for this site.
 
+Its 2.0 turbo paint is flat (white and stripes where TRELLIS.2 paints
+panels), so the shape is painted by **Hunyuan3D-2.1's PBR paint** when
+that's here too: `engines/hy3d21-setup.sh` makes env `hy3d21` with the
+2.1 repo at `~/Hunyuan3D-2.1`, its rasterizer and renderer built, the
+`hunyuan3d-paintpbr-v2-1` weights and the RealESRGAN upscaler it loads;
+`generate.mjs` then runs the shape unpainted (`--white`) and
+`engines/hunyuan_paint21.py` on it from the front picture (base colour,
+metal, roughness at 4096).
+
 ### Pixal3D (for --faithful)
 
 Five more GGUFs beside TRELLIS.2's, from
