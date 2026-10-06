@@ -1,4 +1,4 @@
-/* global window, document */
+/* global window */
 // A browser check of a crew's war on the universe map (universe/front.js,
 // battle.js, battleScene.js; the wars' data in wars.js): Rick and Morty's,
 // flying the cruiser, or Breaking Bad's in the RV.
