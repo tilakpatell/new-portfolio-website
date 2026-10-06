@@ -5,10 +5,11 @@
 //
 //   node scripts/ground-qa.mjs --route /middle-earth/bree --global __BREE__
 //     [--name bree] [--quality mid] [--settle 6000] [--out dir] [--port 5197]
-//     [--reuse] [--frames 8] [--wait 900000] [--hold 120000] [--ab]
+//     [--reuse] [--frames 8] [--wait 900000] [--hold 120000] [--ab] [--click sel]
 //
 // `--global` is the window property the world's page sets in development
-// (window.__BREE__ = { api }); its `api.ground` is the groundWorld handle.
+// (window.__BREE__ = { api }); its `api.ground` (or, where `api` is a React
+// ref, `api.current.ground`) is the groundWorld handle.
 // A world without one is still photographed. Software WebGL is slow: a bake
 // takes minutes there and seconds on a GPU.
 import { spawn } from "node:child_process";
@@ -111,8 +112,8 @@ await ctx.addInitScript((q) => {
         at: Math.round(performance.now()),
         ground: (() => {
           for (const k of Object.keys(window))
-            if (k.startsWith("__") && window[k]?.api?.ground)
-              return { ...window[k].api.ground.stats };
+            if (k.startsWith("__") && (window[k]?.api?.current ?? window[k]?.api)?.ground)
+              return { ...(window[k].api.current ?? window[k].api).ground.stats };
           return null;
         })(),
       }),
@@ -158,6 +159,8 @@ if (global) {
     .then(() => true)
     .catch(() => false);
   result.upMs = up ? Date.now() - t0 : null;
+  // (--click: what starts a world that waits for you, "text=Click to play")
+  if (up && args.click) await page.click(args.click, { timeout: 30000 }).catch((e) => errors.push(`click: ${e.message.split('\n')[0]}`));
   console.log(
     up
       ? `world up in ${(result.upMs / 1000).toFixed(0)}s`
@@ -167,16 +170,17 @@ if (global) {
     ? false
     : await page
         .waitForFunction(
-          (g) =>
-            window[g]?.api?.ground?.stats?.baked ||
-            (window[g] && !(window[g].api && "ground" in window[g].api)),
+          (g) => {
+            const a = window[g]?.api?.current ?? window[g]?.api;
+            return a?.ground?.stats?.baked || (window[g] && !(a && "ground" in a));
+          },
           global,
           { timeout: wait, polling: 2000 },
         )
         .then(() => true)
         .catch(() => false);
   result.bake = await page.evaluate((g) => {
-    const s = window[g]?.api?.ground?.stats;
+    const s = (window[g]?.api?.current ?? window[g]?.api)?.ground?.stats;
     return s ? { ...s } : null;
   }, global);
   if (!got) console.log("the bake never landed");
@@ -210,7 +214,7 @@ if (args.ab && global) {
   const off = await page.evaluate(
     (g) =>
       new Promise((res) => {
-        const ground = window[g]?.api?.ground;
+        const ground = (window[g]?.api?.current ?? window[g]?.api)?.ground;
         if (!ground) return res(false);
         ground.enabled = false;
         requestAnimationFrame(() => requestAnimationFrame(() => res(true)));
@@ -219,7 +223,7 @@ if (args.ab && global) {
   );
   if (off) {
     await page.screenshot({ path: join(outDir, `${name}-off.png`) });
-    await page.evaluate((g) => (window[g].api.ground.enabled = true), global);
+    await page.evaluate((g) => ((window[g].api.current ?? window[g].api).ground.enabled = true), global);
   }
 }
 await writeFile(join(outDir, `${name}.json`), JSON.stringify(result, null, 2));
