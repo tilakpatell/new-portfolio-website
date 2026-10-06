@@ -84,6 +84,24 @@ lint, test, PR, merge. If the worktrees are gone, the branches may still
 exist locally; if not, the work in them was lost, so redo from the list
 above.
 
+## Done since (2026-10-06)
+
+- Orthanc's tower rebuilt (`towns/orthanc/props.js`, `tower()`): four
+  fluted piers lofted from one faceted section (`PIER`, `loftPier`), root
+  feet on a stepped plinth, buttresses, lancet windows in the clefts,
+  Saruman's balcony, claw horns, lesser blades and spikes; the stone gets a
+  rim of storm light and the pits' fire from below (`towerStone`'s
+  `onBeforeCompile`). On the pinnacle the camera keeps out of the horns
+  (`insideTop`, sharing the horns' shapes).
+- Minas Tirith, the second hidden place (`towns/minastirith/`,
+  `#/middle-earth/minas-tirith`, found by clicking the white city on the
+  map): spec `docs/superpowers/specs/2026-10-06-minas-tirith-design.md`.
+  `hidden.js` has two entries now; the map's road so far counts the
+  places off the road and names one only once it's found
+  (`record.js`: `HIDDEN_SEALS`, `offRoad`).
+- Amon Hen's kitchen: ducks between the boats, the mist of Rauros on the water.
+- Moria's shore under the West-gate: stones, reeds, dead trees, lake mist.
+
 ## Ideas not done yet
 
 - Kitchen dressing: Amon Hen (ducks, the falls' mist). The orcs' mess is
@@ -100,7 +118,17 @@ above.
   `rush/levels/index.js` now holds the level list (`LEVELS`, `levelOf`,
   `bestKey`) for the hub and `Rush.jsx` both.
 
-## How to check things (local, git-ignored `lab/`)
+## How to check things (local, `lab/`, not committed)
+
+- 2026-10-06's scripts (recreate if gone): `lab/browser.mjs` (Vite +
+  Chromium; forces `preserveDrawingBuffer` on every WebGL canvas so any
+  canvas can be read back; `TIER=high` pins the device tier through
+  `tp-quality`), `lab/kit-shot.mjs` + `lab/kit.html` + `lab/kit-entry.js`
+  (one kit piece on its own: `mod=…&fn=…&call=…&args=[…]&cam=…&look=…`),
+  `lab/world-shot.mjs <route> <hook> <out> '<js with s=sim>'` (a world,
+  with `s.debugCam = { at, look, fov }`), `lab/town-shots.mjs <prefix>
+  place:HOOK …` (each world's opening view), `lab/rush-shot.mjs <place>
+  <out>` (a chapter's kitchen).
 
 - `lab/browser.mjs`: Vite in-process + the container's Chromium
   (`/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, SwiftShader).

@@ -163,7 +163,7 @@ const tri = (u) => {
 
 export function newSiege(seed = 11) {
   const rand = seeded(seed);
-  return { t: 0, sweepT: SIEGE.sweep * 0.25, aim: 0.5, loaded: true, reloadT: 0, shots: [], towers: [], made: 0, felled: 0, nextT: SIEGE.first, dreadT: between(rand, SIEGE.dread), dread: 0, state: 'on', rand, lane: Math.floor(rand() * SIEGE.lanes) };
+  return { t: 0, loosed: 0, sweepT: SIEGE.sweep * 0.25, aim: 0.5, loaded: true, reloadT: 0, shots: [], towers: [], made: 0, felled: 0, nextT: SIEGE.first, dreadT: between(rand, SIEGE.dread), dread: 0, state: 'on', rand, lane: Math.floor(rand() * SIEGE.lanes) };
 }
 // One step. Events: 'tower' { i }, 'loaded', 'land' { d, hit, i? },
 // 'fall' { i }, 'dread', 'calm', 'breach' { i } (lost), 'won'.
@@ -246,7 +246,8 @@ export function loose(g) {
   g.loaded = false;
   g.reloadT = SIEGE.reload;
   const d = rangeOf(g.aim);
-  g.shots.push({ d, t: SIEGE.flight, k: g.aim });
+  g.shots.push({ d, t: SIEGE.flight, k: g.aim, i: g.loosed });
+  g.loosed += 1;
   return 'loosed';
 }
 // how far through its flight a stone is (0 loosed, 1 landing)

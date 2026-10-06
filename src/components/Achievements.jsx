@@ -126,6 +126,8 @@ export const ACHIEVEMENTS = {
   eagles: { name: 'The eagles are coming', desc: 'Flew out of the eruption with the eagles, at the end of all things' },
   orthanc: { name: 'Seeking my counsel', desc: 'Found the hidden way into Orthanc' },
   windlord: { name: 'Gwaihir the Windlord', desc: 'Whispered to a moth on the pinnacle of Orthanc, and flew from it on the Windlord' },
+  minastirith: { name: 'The city of the kings', desc: 'Found the hidden way into Minas Tirith' },
+  kingreturns: { name: 'The Return of the King', desc: 'Lit the beacon, held the wall, and saw the White Tree flower in Minas Tirith' },
   remembertheshire: { name: 'Do you remember the Shire?', desc: 'Told Frodo the Shire at the foot of Mount Doom, and he said all six back' },
   worthy: { name: 'Worthy', desc: 'Lifted Mjolnir' },
   ironman: { name: 'I am Iron Man', desc: 'Brought down Ultron Prime at the Repulsor Range' },
