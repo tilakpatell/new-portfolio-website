@@ -78,9 +78,12 @@ function groundVertex(vs, { normal = false, base = false } = {}) {
   if (decl.includes('varying vec3 vGroundPos;')) body.push('vGroundPos = (modelMatrix * gp).xyz;');
   if (decl.includes('varying vec3 vGroundN;')) body.push(`{ vec3 gn = ${nrm};\n  #ifdef USE_INSTANCING\n  gn = mat3(instanceMatrix) * gn;\n  #endif\n  vGroundN = mat3(modelMatrix) * gn; }`);
   if (decl.includes('varying float vGroundBase;')) body.push('vGroundBase = (modelMatrix * gb).y;');
+  // (a matcap's shader works out no world position: there, after the
+  // projection, where `transformed` is final all the same)
+  const at = out.includes('#include <worldpos_vertex>') ? '#include <worldpos_vertex>' : '#include <project_vertex>';
   return out.replace(
-    '#include <worldpos_vertex>',
-    `#include <worldpos_vertex>
+    at,
+    `${at}
     {
       vec4 gp = vec4(transformed, 1.0);
       vec4 gb = vec4(0.0, 0.0, 0.0, 1.0);
@@ -223,6 +226,16 @@ export function floorShadow(material, bake) {
   material.userData.floorShadow = uniforms;
   material.needsUpdate = true;
   return material;
+}
+
+// A new picture for one of a bake's masks (a bake on arrival landing in
+// place of its blank), reaching every material that reads it.
+export function setFloorMask(bake, index, texture) {
+  const area = bake?.areas?.[index];
+  if (!area) return;
+  area.texture = texture;
+  const u = shared.get(bake);
+  if (u) u.uMask.value[index] = texture;
 }
 
 // A thing that moves, standing in the floor's baked light: the sun's light

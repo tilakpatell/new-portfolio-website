@@ -298,3 +298,12 @@ describe('a mover standing in the baked shade', () => {
     expect(m.userData.standIn.uMask).toBe(f.userData.floorShadow.uMask);
   });
 });
+
+describe('the bounce on a shader with no world position of its own', () => {
+  it('works it out after the projection, as a matcap has no worldpos chunk', () => {
+    const matcapLike = { vertexShader: '#include <common>\nvoid main() {\n#include <beginnormal_vertex>\n#include <begin_vertex>\n#include <project_vertex>\n}', fragmentShader: SHADER.fragmentShader };
+    const out = bounceShader(matcapLike);
+    expect(out.vertexShader).toContain('vGroundPos = (modelMatrix * gp).xyz;');
+    expect(out.vertexShader.indexOf('vGroundPos =')).toBeGreaterThan(out.vertexShader.indexOf('#include <project_vertex>'));
+  });
+});
