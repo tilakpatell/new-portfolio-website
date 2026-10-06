@@ -77,7 +77,7 @@ const CAR = 'The whole vehicle, three-quarter front view, centred, wheels on the
 // metres).
 const PHASE2 = {
   // a Phase 1 figure Total Rickall needs (Task 2.3); the other session had not claimed him
-  poopybutthole: { hero: true, sit: true, height: 1.3, prompt: `Mr. Poopybutthole from Rick and Morty: a small thin pale yellow creature whose very tall sausage-shaped head, rounded at the top, is as long as all the rest of him below it; two big round white eyes with tiny black dot pupils, a long curved nose and a small smiling mouth; a tiny dark grey-blue top hat with a teal band perched on top of his head; a tight pale aqua short-sleeved T-shirt with stretch lines round the neck, dark grey-green shorts, long thin pale yellow arms and legs, white socks and burgundy-brown shoes, empty hands. ${BODY}` },
+  poopybutthole: { hero: true, sit: true, ankles: 'legs', height: 1.3, prompt: `Mr. Poopybutthole from Rick and Morty: a small thin pale yellow creature whose very tall sausage-shaped head, rounded at the top, is as long as all the rest of him below it; two big round white eyes with tiny black dot pupils, a long curved nose and a small smiling mouth; a tiny dark grey-blue top hat with a teal band perched on top of his head; a tight pale aqua short-sleeved T-shirt with stretch lines round the neck, dark grey-green shorts, long thin pale yellow arms and legs, white socks and burgundy-brown shoes, empty hands. ${BODY}` },
   spacebeth: { hero: true, sit: true, height: 1.68, prompt: `Space Beth from Rick and Morty: Beth Smith as a space fighter, a woman in her thirties with a lopsided hairstyle: the right side of her head (on the left of the picture) shaved to short blonde stubble, and her blonde hair swept over the top of her head to fall to her left shoulder (on the right of the picture), with a light blue streak in it; on the shaved side (the left of the picture) a silver ring piercing in her right eyebrow and a jagged purple scar running down across her right eye onto her cheek; a short very dark brown leather coat worn open, with grey-green lapels and grey-green turned-back cuffs on its sleeves, whose front ends at the top of her thighs and whose back ends at mid-thigh, well above the knees; under it a fitted dark grey-green combat suit with a high dark navy collar and a grey-green chest plate with a small red light in a round dark disc low on its front, just below the bust; a dark belt with a small orange light on the buckle, a dark strap round each thigh, and a small empty grey holster strapped to her right thigh (on the left of the picture); a grey device with small red and blue lights on her right forearm (also on the left of the picture), a bronze gauntlet on her left forearm (on the right of the picture), black fingerless gloves, and black boots reaching just below the knee with a pale grey turned-down cuff at the top. Last time the coat was drawn as a long duster hanging to her shins, with its back panel filling the gap between her legs. That was wrong: the coat stops at mid-thigh, so from the knees down only her grey-green suit and the boots show, with white background between her legs. ${BODY}` },
   rickprime: { hero: true, ankles: true, height: 1.85, prompt: `Rick Prime from Rick and Morty: a version of Rick Sanchez with greyer skin and no lab coat, dull pale blue spiky hair sticking up and out like Rick's, a unibrow, half-lidded cold eyes and a closed flat mouth, a dark navy zip-up sci-fi jacket reaching the hips with a high collar and a dark navy band at the hem, a lighter grey-purple panel running the whole front from collar to hem on both sides of the zip and edged with thin pale blue-grey piping, one short red stripe angled across each dark outer side of the chest and no other red anywhere on the jacket (no red slits or pockets lower down), lilac cuffs, over a dark red shirt, slim dark navy trousers and dark navy-grey mid-calf boots with a grey ankle strap and a thin red light strip on each. He has exactly two one-sided parts and BOTH are on the LEFT side of the picture (his right side), one above the other: a single grey armoured pad on his right shoulder (on the left of the picture), and below it an empty grey holster strapped to his right thigh (also on the left of the picture), hung from a grey strap belt that slants down to it from his left hip (on the right of the picture). His left shoulder (on the right of the picture) is plain navy jacket with no pad. Last time the shoulder pad was wrongly drawn on the right of the picture, on the opposite side from the holster; the pad and the holster must both be on the left of the picture. ${BODY}` },
   snuffles: { rig: false, prompt: `Snuffles from Rick and Morty: a small fluffy pure-white lap dog like a Maltese, standing on all four short legs, with a compact rounded body and a big round fluffy head almost as wide as his body; his white fur is soft and fluffy, its outline broken into a few little wispy pointed tufts on top of his head, on his big hanging shaggy ears, on his chest and down his legs, but his face is clean and smooth, with no beard, no moustache and no tufts or whisker strokes across his muzzle or cheeks; two big round black eyes set wide apart, each with one small white highlight, with two short worried brow lines above them; a tiny black button nose and under it a tiny closed mouth, just a short line down from the nose and a small curved line under it, the mouth not open; a thin wispy white tail held straight up behind him and clearly visible above his back; a light teal-blue collar with a round pale blue-silver tag hanging at the front. All of his fur, every leg included, is the same pure white, not cream, not grey and not blue-tinted, with no darker shading on the far legs. Last time the image model drew a scraggly cream-grey terrier with a bearded muzzle, a big nose, an open frowning mouth and a small head on a long body, and the time before a smooth plush dog with no tail; this time keep him pure white with a clean, cute face, a big round head, wispy tufts round his outline and his tail standing up. ${PROP}` },
@@ -174,16 +174,19 @@ async function each(names, fn, at = 4) {
   if (failed.length) console.error(`failed: ${failed.join(' ')}`);
 }
 
-// Meshy's auto-rig gives a tall boot's shaft a few per cent of the OTHER
-// leg (3-5% through Rick Prime's), so when the legs part in a stride the
-// inside of each boot is pulled across the gap into a dark fin; and some of
-// the foot, so the shaft hinges as the ankle bends. Rick Prime's tore on
-// three rigs, two models. `ankles`: below the knees, where the legs stand
-// apart, a vertex keeps only its own leg's bones; and above an ankle the
-// foot's and toes' share moves to the shin, eased in over the first 5 cm so
-// the ankle itself still bends. Positions are in the skin's bind space,
-// where the joints' inverse bind matrices put the knees and ankles.
-export function stiffenAnkles(doc, ease = 0.05) {
+// Meshy's auto-rig spills weight from one leg onto the other where the feet
+// stand close: Rick Prime's boot shafts had 3-5% of the other leg, Mr.
+// Poopybutthole's shoes up to 23%, so when the legs part in a stride the
+// inside of each boot or shoe is pulled across the gap into a fin or a spike
+// off the heel. `ankles: 'legs'`: below the knees, where the legs stand
+// apart, a vertex keeps only its own leg's bones (not above: the thighs and
+// the crotch need the blend, and lose it as a notch). `ankles: true` also
+// moves the foot's and toes' share above an ankle to the shin, eased in over
+// the first 5 cm so the ankle itself still bends: a tall boot's shaft then
+// stops hinging with the foot (Rick Prime's tore on three rigs, two models).
+// Positions are in the skin's bind space, where the joints' inverse bind
+// matrices put the knees and ankles.
+export function stiffenAnkles(doc, { shafts = true, ease = 0.05 } = {}) {
   const skin = doc.getRoot().listSkins()[0];
   if (!skin) return 0;
   const names = skin.listJoints().map((j) => j.getName());
@@ -230,7 +233,7 @@ export function stiffenAnkles(doc, ease = 0.05) {
           }
         }
         const s = sides[mine];
-        const f = Math.min(1, Math.max(0, (p[1] - s.y) / ease));
+        const f = shafts ? Math.min(1, Math.max(0, (p[1] - s.y) / ease)) : 0;
         let take = 0;
         for (let k = 0; k < 4; k++) {
           if (f && w[k] > 0 && s.off.includes(j[k])) {
@@ -284,7 +287,7 @@ async function squeeze(from, to, { tex = 0, clip = false, ankles = false } = {})
     for (const m of root.listMaterials()) m.dispose();
     for (const t of root.listTextures()) t.dispose();
   }
-  if (ankles) console.log(`  ankles: ${stiffenAnkles(doc)} vertices moved onto the shins`);
+  if (ankles) console.log(`  ankles: ${stiffenAnkles(doc, { shafts: ankles !== 'legs' })} vertices mended`);
   await doc.transform(dedup(), prune(), resample(), ...(tex ? [textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [tex, tex] })] : []), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
   await io.write(to, doc);
 }
@@ -433,7 +436,7 @@ const steps = {
       for (const [url, file, tex, clip] of files) {
         const raw = join(tmp, `${s.rig ?? s.model}-${file}`);
         if (!existsSync(raw)) await download(url, raw);
-        await squeeze(raw, join(out, file), { tex, clip, ankles: Boolean(a.ankles) && !clip });
+        await squeeze(raw, join(out, file), { tex, clip, ankles: clip ? false : (a.ankles ?? false) });
       }
       credits[`meshy/${a.rig ? '' : 'rm/'}${n}`] = { source: 'https://www.meshy.ai', id: s.model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
       done.push(n);
