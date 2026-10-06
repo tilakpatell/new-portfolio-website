@@ -95,7 +95,7 @@ export const WONDERS = [
   { id: 'cradle', kind: 'nebula', name: 'The Cradle', at: [4995, -505, 2230], r: 600, colors: ['#2f9e6b', '#c9d14f', '#2f6e9e'], solid: false },
   { id: 'citadel', kind: 'citadel', name: 'The Citadel', at: [1755, -135, -4660], r: 60, crew: 'rickmorty', world: 'rickmorty', page: '/c-137/citadel' }, // (as big as the biggest world: scale.js)
   { id: 'lantern', kind: 'pulsar', name: 'The Lantern', at: [-6200, 300, 2600], r: 12, color: '#bfe0ff' },
-  { id: 'twins', kind: 'binary', name: 'The Twins', at: [6100, -220, -1500], r: 60, color: '#ffd27a', pair: { r: 42, color: '#f4f6ff', apart: 230 } },
+  { id: 'twins', kind: 'binary', name: 'The Twins', at: [6100, -220, -1500], r: 60, color: '#ffd27a', pair: { r: 42, color: '#f4f6ff', apart: 230, period: 300 } }, // (at: the point the two go round, once in period seconds)
   { id: 'wanderer', kind: 'rogue', name: 'The Wanderer', at: [-900, -700, -6600], r: 55, ring: true, color: '#7fd8c8', colors: ['#1a2238', '#3a4a70', '#7fd8c8'] }, // (color: its auroras, for the chart and its name; colors: its rock, its accent, its auroras)
   { id: 'graveyard', kind: 'graveyard', name: 'The Graveyard', at: [-6400, 160, -1600], r: 14, color: '#dfe8ff', field: 190 },
 ].map(grown);
@@ -140,7 +140,11 @@ export function reachOf(w) {
   if (w.kind === 'star') return Math.max(w.r, ...w.planets.map((p) => p.orbit + p.r));
   if (w.kind === 'black-hole') return w.disk;
   if (w.kind === 'pulsar') return w.r * 14; // (its glare, and its beams: nobody goes near; the solid's own reach, so the ship parks at it)
-  if (w.kind === 'binary') return w.pair.apart + w.pair.r; // (its second sun)
+  if (w.kind === 'binary') {
+    // (the further either sun swings from the middle, and its own radius)
+    const { ra, rb } = swings(w);
+    return Math.max(ra + w.r, rb + w.pair.r);
+  }
   if (w.kind === 'graveyard') return w.field; // (the hulls)
   if (w.ring) return w.r * 2.3;
   if (w.kind === 'citadel') return w.r * 1.9; // (its arms and its crystal: CITADEL_PARTS)
@@ -174,8 +178,39 @@ const partsOf = (w) => (w.kind === 'citadel' ? CITADEL_PARTS.map(([x, y, z, r], 
 // fly to; the second a part of it, as the Citadel's domes are, so hitting
 // either is hitting the Twins; a pulsar is solid to ten radii; a wreck
 // field's dwarf alone is solid, its hulls are drifting scenery)
-const sunsOf = (w) => (w.kind === 'binary' ? [solid(w.id, w.at, w.r), { ...solid(`${w.id}-2`, [w.at[0] + w.pair.apart, w.at[1], w.at[2]], w.pair.r), part: true }] : [solid(w.id, w.at, w.kind === 'black-hole' ? w.r * 1.5 : w.kind === 'pulsar' ? w.r * 10 : w.r, w.kind === 'black-hole')]);
+const sunsOf = (w) => (w.kind === 'binary' ? [solid(w.id, binaryAt(w, 0).a, w.r), { ...solid(`${w.id}-2`, binaryAt(w, 0).b, w.pair.r), part: true }] : [solid(w.id, w.at, w.kind === 'black-hole' ? w.r * 1.5 : w.kind === 'pulsar' ? w.r * 10 : w.r, w.kind === 'black-hole')]);
 export const DEEP_SOLIDS = WONDERS.filter((w) => w.solid !== false).flatMap((w) => [...sunsOf(w), ...(w.planets ?? []).map((p, i) => solid(`${w.id}-${i + 1}`, planetAt(w, p), p.r)), ...partsOf(w)]);
+
+// A binary's suns go round each other: round the point their masses balance
+// at (as r³, so the bigger one swings round close to the middle and the
+// smaller wide of it), `apart` between them all the way round, level with
+// the disc, once every `pair.period` seconds. binaryAt(w, t) → { a, b }, each
+// [x, y, z]; at t 0 they lie along x, the bigger short of the middle.
+// moveBinaries(t) puts their solids there (ship.js's SOLIDS holds the same
+// objects): the scene calls it each frame with its own clock, which stands
+// still under reduced motion, so the suns do too.
+function swings(w) {
+  const ma = w.r ** 3;
+  const mb = w.pair.r ** 3;
+  return { ra: (w.pair.apart * mb) / (ma + mb), rb: (w.pair.apart * ma) / (ma + mb) };
+}
+export function binaryAt(w, t = 0) {
+  const { ra, rb } = swings(w);
+  const turn = ((t / w.pair.period) % 1) * Math.PI * 2;
+  const c = Math.cos(turn);
+  const s = Math.sin(turn);
+  return { a: [w.at[0] - c * ra, w.at[1], w.at[2] - s * ra], b: [w.at[0] + c * rb, w.at[1], w.at[2] + s * rb] };
+}
+const BINARIES = WONDERS.filter((w) => w.kind === 'binary').map((w) => ({ w, one: DEEP_SOLIDS.find((o) => o.id === w.id), two: DEEP_SOLIDS.find((o) => o.id === `${w.id}-2`) }));
+export function moveBinaries(t) {
+  for (const { w, one, two } of BINARIES) {
+    const { a, b } = binaryAt(w, t);
+    for (let i = 0; i < 3; i++) {
+      one.at[i] = a[i];
+      two.at[i] = b[i];
+    }
+  }
+}
 
 export const wonderById = (id) => WONDERS.find((w) => w.id === id) ?? null;
 // a route param to a wonder's id (a link out to one: /universe/aurelia), or null

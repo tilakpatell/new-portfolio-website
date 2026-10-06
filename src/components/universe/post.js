@@ -38,12 +38,26 @@
 // depth, before the bloom (the cockpit, from the pilot's seat, so its frame
 // is always in front of whatever is out there and its lights glow too); null
 // takes it off again.
+//
+// The finish (the universe map asks for it; the galaxy and its surfaces,
+// which draw through here too, keep their picture as it was): a blue-noise
+// dither after the sRGB encode, a fraction of a step, so the dark gradients
+// round the suns and the Maw don't band at 8 bits; a little film grain on
+// top while asked (grain(k), moving each frame); a touch of chromatic
+// aberration toward the edges (aberration(k): red and blue read a little
+// apart, more in the boost and a hit); an exposure that opens up in the dark
+// and stops down into a sun (exposure(k), lib/three/exposure.js); and the
+// bloom worked out at half the frame, its long side no more than 640
+// (bloomSize). setLevel(level) follows lib/three/pace: the sun's flare
+// (flareOn, drawn by the scene) goes at step 2, the aberration at 3, and
+// both come back as the frames do.
 
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { blueNoiseTexture } from '../../lib/three/noise';
 
 export const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the key light, upper left
 export const FILL = new THREE.Vector3(0.7, -0.4, -0.3).normalize();
@@ -52,6 +66,25 @@ export const FILL = new THREE.Vector3(0.7, -0.4, -0.3).normalize();
 // 2 under the key light; the sun, windows and engines are drawn hotter)
 const BLOOM = { strength: 0.8, radius: 0.55, threshold: 1.7 };
 const SOFTEST = 0.6; // device pixels to a CSS one, at the least, however busy
+
+// the bloom's first level: half the frame (a quarter on a small one), its
+// long side no more than `cap`, never under 64 (UnrealBloomPass halves what
+// it's given for its first level, so it's given twice this)
+export function bloomSize(w, h, { small = false, cap = 640 } = {}) {
+  const k = small ? 0.25 : 0.5;
+  let bw = w * k;
+  let bh = h * k;
+  const long = Math.max(bw, bh);
+  if (long > cap) {
+    bw *= cap / long;
+    bh *= cap / long;
+  }
+  return [Math.max(64, Math.round(bw)), Math.max(64, Math.round(bh))];
+}
+
+// how far red and blue read apart at the frame's edge: none on a low tier,
+// a touch at rest, more in the boost's rush and a hit
+export const aberrationFor = ({ rush = 0, hit = 0, tier = 'high' } = {}) => (tier === 'low' ? 0 : 0.0015 + 0.0045 * rush + 0.0025 * hit);
 
 // NaN and infinity both have every exponent bit set; tested on the bits,
 // since a compiler allowed fast maths may drop isnan(). The boolean mix()
@@ -79,6 +112,13 @@ const FINAL = {
     tDepth: { value: null },
     uNear: { value: 0.1 },
     uFar: { value: 1000 },
+    // the finish (all of it as it was, by default: the galaxy's picture)
+    tNoise: { value: null },
+    uFrame: { value: new THREE.Vector2() }, // (texels the noise is moved this frame, so the grain moves)
+    uNoiseSize: { value: 64 },
+    uGrain: { value: 0 },
+    uAberration: { value: 0 },
+    uExposure: { value: 1 },
   },
   vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: `
@@ -89,7 +129,12 @@ const FINAL = {
     uniform vec3 uLensMore;
     uniform sampler2D tDepth;
     uniform float uNear, uFar;
+    uniform sampler2D tNoise;
+    uniform vec2 uFrame;
+    uniform float uNoiseSize, uGrain, uAberration, uExposure;
     varying vec2 vUv;
+    // the blue noise at this pixel, moved by shift texels (0…1)
+    float noise(vec2 shift) { return texture2D(tNoise, (gl_FragCoord.xy + shift) / uNoiseSize).r; }
     ${FINITE}
     vec3 shoulder(vec3 c) {
       float peak = max(c.r, max(c.g, c.b));
@@ -127,6 +172,13 @@ const FINAL = {
         if (uLensMore.z > 0.0) shadow = smoothstep(uLensMore.z * 0.96, uLensMore.z, r);
       }
       vec3 lin = scene(uv) * shadow;
+      if (uAberration > 0.0) {
+        // red and blue read a little apart, out from the middle, nothing at it
+        vec2 q0 = uv - 0.5;
+        vec2 off = q0 * uAberration * smoothstep(0.15, 0.75, length(q0 * vec2(uAspect, 1.0)));
+        lin.r = scene(uv + off).r * shadow;
+        lin.b = scene(uv - off).b * shadow;
+      }
       if (uRush > 0.001) {
         // a few taps back toward the ship, more smeared the further out
         vec2 d = uv - uCenter;
@@ -135,6 +187,9 @@ const FINAL = {
         for (int i = 1; i <= 5; i++) acc += scene(uv - d * (k * 0.011 * float(i)));
         lin = acc / 6.0;
       }
+      lin *= uExposure;
+      // grain: on the light, before the tone map, moving each frame
+      if (uGrain > 0.0) lin *= 1.0 + (noise(uFrame) - 0.5) * 2.0 * uGrain;
       vec3 c = srgb(clamp(shoulder(lin), 0.0, 1.0));
       float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
       c = max(mix(vec3(l), c, uSat), 0.0);
@@ -144,6 +199,9 @@ const FINAL = {
       c *= 1.0 - (uVignette + uRush * 0.22) * smoothstep(0.35 - uRush * 0.1, 1.1, length(q) * 1.25);
       // a hit: the edges flash red
       c = mix(c, vec3(1.0, 0.12, 0.08), uHit * 0.4 * smoothstep(0.45, 1.15, length(q) * 1.3));
+      // the dither: under a step of the 8 bits it's written at, so a dark
+      // gradient's steps don't show as bands
+      c += (noise(vec2(17.0, 31.0)) - 0.5) / 255.0;
       gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
     }`,
 };
@@ -174,6 +232,13 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
   composer.addPass(bloom);
   const grade = new ShaderPass(FINAL);
   composer.addPass(grade);
+  // (a smaller tile on a small screen: made once, in a few ms rather than tens)
+  const noiseSize = small ? 32 : 64;
+  grade.uniforms.tNoise.value = blueNoiseTexture(noiseSize, 1);
+  grade.uniforms.uNoiseSize.value = noiseSize;
+  let frame = 0;
+  let level = 0; // lib/three/pace's step
+  let aberrationWant = 0;
 
   let on = true;
   let glow = true; // bloom, until lite() takes it off
@@ -219,14 +284,17 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
         // the glow is a blur: worked out at the page's own pixels, not the
         // screen's, it looks the same on every screen and costs a quarter
         // as much on a sharp one
-        const k = Math.min(1, ratio);
-        bloom.setSize(Math.round(w * k), Math.round(h * k));
+        const [bw, bh] = bloomSize(w * ratio, h * ratio, { small });
+        bloom.setSize(bw * 2, bh * 2);
         grade.uniforms.uAspect.value = w / h;
       }
       // the scene draws into the composer's read buffer, and the last pass reads it there
       grade.uniforms.tDepth.value = composer.readBuffer.depthTexture;
       grade.uniforms.uNear.value = camera.near;
       grade.uniforms.uFar.value = camera.far;
+      // (the grain somewhere else in the tile each frame; the dither keeps its place)
+      frame = (frame + 1) % 997;
+      grade.uniforms.uFrame.value.set((frame * 37) % noiseSize, (frame * 23) % noiseSize);
       composer.render();
     },
     // a scene drawn over the first, from `cam` (null: nothing)
@@ -247,6 +315,29 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
     // a laser hit's red flash, 0…1
     hit(k) {
       grade.uniforms.uHit.value = k;
+    },
+    // film grain, 0 for none (lib/three/noise's grainFor)
+    grain(k) {
+      grade.uniforms.uGrain.value = k;
+    },
+    // how far red and blue read apart at the edges (aberrationFor), held at
+    // none while the pace is at step 3 or softer
+    aberration(k) {
+      aberrationWant = k;
+      grade.uniforms.uAberration.value = level >= 3 ? 0 : k;
+    },
+    // the exposure, a multiplier before the tone map (lib/three/exposure)
+    exposure(k) {
+      grade.uniforms.uExposure.value = k;
+    },
+    // lib/three/pace's step: what's dropped as frames run long, and back
+    setLevel(l) {
+      level = l;
+      grade.uniforms.uAberration.value = level >= 3 ? 0 : aberrationWant;
+    },
+    // whether the scene's sun flare is wanted at this pace
+    get flareOn() {
+      return level < 2;
     },
     // the black hole's bending: at (x, y) on the canvas (0…1, y up), its
     // shadow r high (as a share of the canvas's height); r 0 for none.
@@ -273,6 +364,7 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
       composer.dispose();
       bloom.dispose();
       grade.material.dispose();
+      grade.uniforms.tNoise.value?.dispose();
     },
   };
 }
