@@ -16,16 +16,18 @@ const ring = (n, r, phase = 0) => Array.from({ length: n }, (_, i) => {
 
 // Lothal's rock spires out west, between the landing and the old tower (the
 // star map mission's run goes through them)
-const LOTHAL_SPIRES = [[-31, 4, 0.32], [-9, 35, 0.42], [-48, 46, 0.37], [-68, 14, 0.46], [-108, 32, 0.42], [-114, 69, 0.42], [-161, 68, 0.32], [-181, 37, 0.46], [-218, 53, 0.37], [-231, 88, 0.42], [-271, 71, 0.42], [-276, 34, 0.46]].map(([x, z, scale], i) => ({ kind: 'lothtemple', at: [x, z], yaw: i * 1.7, scale: scale * 0.7, sink: 0.5 }));
+const LOTHAL_SPIRES = [[-31, 4, 0.32], [-9, 35, 0.42], [-48, 46, 0.37], [-68, 14, 0.46], [-108, 32, 0.42], [-114, 69, 0.42], [-161, 68, 0.32], [-181, 37, 0.46], [-218, 53, 0.37], [-231, 88, 0.42], [-271, 71, 0.42], [-276, 34, 0.46]].map(([x, z, scale], i) => ({ kind: 'lothspire', at: [x, z], yaw: i * 1.7, opts: { h: scale * 49, r: scale * 11, seed: i + 1 } }));
 
 export const SITES = {
   nevarro: {
     place: 'The lava fields outside Nevarro City',
     line: 'Black rock, rivers of fire, and a town that runs on bounties.',
-    sky: sky('#5a6a80', '#c8a890', '#ffd8b0', { clouds: { cover: 0.55, color: '#d8ccc0', shade: '#5a5048', scale: 0.6, speed: 0.006 } }),
-    fog: { color: '#a89080', density: 0.0012 },
-    light: { sun: 2.4, sky: '#b0b8c8', ground: '#5a4038', ambient: 0.7 },
-    ground: { detail: 'ash', detailLook: { color: 0.7, normal: 0.8 }, seed: 21, layers: [{ type: 'swell', scale: 380, height: 10 }, { type: 'hills', scale: 120, height: 8 }, { type: 'mountains', from: 650, to: 3000, height: 480, scale: 1100 }], palette: palette('#3a3432', '#5a504a', '#2a2422', '#7a3a22', { mark: '#2a2220' }) },
+    // (The Mandalorian's Nevarro: black volcanic rock and grey ash under a
+    // cool steel-blue overcast, the haze grey, not brown)
+    sky: sky('#5a6d8e', '#a9b5c3', '#ffe2c0', { clouds: { cover: 0.6, color: '#c9ced4', shade: '#4c5058', scale: 0.6, speed: 0.006 } }),
+    fog: { color: '#9ca6b0', density: 0.0012 },
+    light: { sun: 2.4, sky: '#b4c0d0', ground: '#3a3b40', ambient: 0.72 },
+    ground: { detail: 'ash', detailLook: { color: 0.7, normal: 0.8 }, seed: 21, layers: [{ type: 'swell', scale: 380, height: 10 }, { type: 'hills', scale: 120, height: 8 }, { type: 'mountains', from: 650, to: 3000, height: 480, scale: 1100 }], palette: palette('#26282e', '#36373d', '#1e2226', '#5a5a56', { mark: '#18191c' }) },
     land: { at: [0, 0], yaw: 0.6 },
     places: [
       { id: 'town', name: 'Nevarro City', at: [140, -90], r: 60, flat: { r: 58 }, about: 'The guild’s town: Greef Karga’s cantina, the bounty hunters’ haunt, the Armorer’s forge under the streets.', things: [{ kind: 'cantina', at: [0, 0], yaw: 0.3 }, { kind: 'nevarrodome', at: [27, 18], yaw: 0.4, sink: 0.3 }, { kind: 'nevarrodome', at: [-29, 21], yaw: 1.9, scale: 0.85, sink: 0.3 }, { kind: 'nevarrodome', at: [21, -29], yaw: 2.8, scale: 1.15, sink: 0.3 }, { kind: 'nevarrodome', at: [-24, -26], yaw: 0.9, scale: 0.7, sink: 0.3 }, { kind: 'nevarrodome', at: [40, -4], yaw: 3.3, scale: 0.9, sink: 0.3 }, { kind: 'nevarroarch', at: [-40, 25], yaw: -1, sink: 0.2 }, { kind: 'crates', at: [-14, -12] }, { kind: 'stall', at: [12, 14], yaw: 2.4 }, { kind: 'stall', at: [-10, 16], yaw: 0.6 }, { kind: 'lamp', at: [-34, 18] }, { kind: 'lamp', at: [-30, 29] }, ...grove(7, 26, 50, 78, ['lavarock'], [1.2, 4]).filter((t) => Math.hypot(t.at[0] + 40, t.at[1] - 25) > 16)] },
@@ -111,10 +113,13 @@ export const SITES = {
   lothal: {
     place: 'The grass plains of Lothal',
     line: 'Tall grass to the horizon, stone spires, and Imperial factories on the edge of it all.',
-    sky: sky('#5a90c8', '#d8e4c0', '#fff4d8'),
-    fog: { color: '#c8d4b8', density: 0.0008 },
-    light: { sun: 3, sky: '#b8d0f0', ground: '#7a8a4a', ambient: 0.75 },
-    ground: { detail: 'grass', detailLook: { color: 0.7, normal: 0.6 }, seed: 45, layers: [{ type: 'swell', scale: 460, height: 8 }, { type: 'hills', scale: 160, height: 10 }, { type: 'mountains', from: 700, to: 3000, height: 360, scale: 1300 }], palette: palette('#8a9c4c', '#b4b464', '#7a7268', '#ccb85c', { mark: '#6a7038', accentCover: 0.4 }) },
+    // (Rebels' Lothal, McQuarrie's: a golden afternoon over a sea of straw)
+    sky: sky('#6f8fcf', '#efdab6', '#fff0d0'),
+    fog: { color: '#e8d6b6', density: 0.0008 },
+    light: { sun: 3, sky: '#c4d0ee', ground: '#a8915e', ambient: 0.75 },
+    ground: { detail: 'grass', detailLook: { color: 0.7, normal: 0.6 }, seed: 45, layers: [{ type: 'swell', scale: 460, height: 8 }, { type: 'hills', scale: 160, height: 10 }, { type: 'mountains', from: 700, to: 3000, height: 360, scale: 1300 }], palette: palette('#a48a58', '#bba775', '#7a7268', '#b39a7e', { mark: '#6e5a3a', accentCover: 0.18 }) },
+    // the prairie: waist-high straw, olive in drifts, rolling in the wind
+    grass: { h: [0.8, 1.3], w: 0.15, root: '#86704a', mid: '#c6ad72', tip: '#ead9a8', dry: '#b0a26c', cover: 0.93, scale: 150, wind: 1.0, patch: 1.15, flower: { color: '#f2e6bc', share: 0.02 } },
     land: { at: [0, 0], yaw: 1 },
     places: [
       { id: 'capital', name: 'Capital City', at: [260, -60], r: 60, flat: { r: 56 }, about: 'Lothal’s capital: stone towers, and an Imperial factory where the farms used to be.', things: [{ kind: 'lothdome', at: [0, 4], yaw: 3.4, sink: 0.2 }, { kind: 'lothdome', at: [27, 18], yaw: 4.2, scale: 0.85, sink: 0.2 }, { kind: 'lothdome', at: [-26, 16], yaw: 2.4, scale: 0.9, sink: 0.2 }, { kind: 'lothdome', at: [20, -24], yaw: 5.4, scale: 0.75, sink: 0.2 }, { kind: 'crates', at: [8, -16] }, { kind: 'crates', at: [-10, -12], yaw: 0.7 }] },
@@ -134,12 +139,8 @@ export const SITES = {
       { id: 'starmap', name: 'The star map', giver: 'ahsoka', intro: [['Ahsoka Tano', 'The map to Thrawn is in pieces, hidden in the old temple stones. Find them.']], steps: [{ type: 'collect', item: 'shard', n: 3, spots: [[-150, 240], [-128, 218], [-146, 214]], text: 'Find the pieces of the star map' }, { type: 'use', id: 'map', at: [-140, 230], r: 6, prompt: 'Fit the pieces together', text: 'Open the star map', end: [{ shake: 0.4 }, { say: [[null, '(Points of light fill the air: a route to another galaxy.)']] }] }], done: [['Ahsoka Tano', 'Peridea. So that’s where they went.']] },
       { id: 'factory', name: 'Shut down the factory', giver: 'ryder', steps: [{ type: 'shoot', tag: 'factory', n: 8, text: 'Clear the Remnant from the factory', spawn: troops('factory', 8, [-220, -200]) }, { type: 'use', id: 'power', at: [-220, -200], r: 6, prompt: 'Shut down the power', text: 'Shut the factory down', end: [{ sound: 'crash' }, { shake: 0.8 }] }], done: [['Governor Azadi', 'No more TIEs from Lothal.']] },
     ],
-    // the plains' tall grass, gold and green
-    scatter: [
-      { kind: 'grass', n: 1100, within: [4, 240], scale: [1.1, 2.2], solid: false, opts: { color: '#a8b45a' } },
-      { kind: 'grass', n: 600, within: [4, 220], scale: [1, 2], solid: false, opts: { color: '#c8b860' } },
-      { kind: 'grass', n: 400, within: [4, 260], scale: [0.9, 1.6], solid: false, opts: { color: '#8aa048', flower: '#e8d880' } },
-    ],
+    // (the plains' tall grass is the grass field round you: `grass`)
+    scatter: [],
     rides: [{ kind: 'speederbike', at: [12, -10], yaw: -1.2 }],
     // a haulier's truck at the landing, its load beside it
     things: [
@@ -158,7 +159,9 @@ export const SITES = {
     sky: sky('#7a98b0', '#d0dcd8', '#fff0d8', { clouds: { cover: 0.5, color: '#f0f4f4', shade: '#a0aca8', scale: 0.6, speed: 0.004 } }),
     fog: { color: '#c0ccc4', density: 0.0018 },
     light: { sun: 2.4, sky: '#b8c8d0', ground: '#4a5a3a', ambient: 0.8 },
-    ground: { detail: 'needles', detailLook: { color: 0.8, normal: 0.7 }, seed: 57, layers: [{ type: 'swell', scale: 300, height: 6 }, { type: 'hills', scale: 110, height: 9 }, { type: 'mountains', from: 650, to: 3000, height: 300, scale: 1100 }], palette: palette('#4a6a38', '#6a8a48', '#5a5a50', '#8a7a48', { mark: '#3a4a2a' }) },
+    ground: { detail: 'needles', detailLook: { color: 0.8, normal: 0.7 }, seed: 57, layers: [{ type: 'swell', scale: 300, height: 6 }, { type: 'hills', scale: 110, height: 9 }, { type: 'mountains', from: 650, to: 3000, height: 300, scale: 1100 }], palette: palette('#4f4c2e', '#5e6034', '#5a5a50', '#6a5e3a', { mark: '#3a3824' }) },
+    // (the wet meadow round the krill farm, olive under a grey sky)
+    grass: { h: [0.3, 0.6], w: 0.06, root: '#4a482d', mid: '#5f6236', tip: '#7f7c4a', dry: '#887a4c', cover: 0.72, scale: 90, wind: 0.2 },
     land: { at: [0, 0], yaw: 0.3 },
     places: [
       { id: 'village', name: 'The krill farmers’ village', at: [180, 120], r: 50, flat: { r: 46 }, about: 'Huts on stilts over the ponds, and a harvest the raiders keep coming back for.', things: [...ring(5, 21, 0.4).map(([x, z, yaw]) => ({ kind: 'stilthut', at: [x, z], yaw, sink: 0.15 })), { kind: 'fire', at: [2, -4] }, { kind: 'crates', at: [-8, -10] }, { kind: 'crates', at: [9, 6], yaw: 0.8 }, ...ring(7, 34, 0.9).map(([x, z, yaw]) => ({ kind: 'sorganfern', at: [x, z], yaw, scale: 1.3, solid: false })), ...grove(11, 30, 54, 84, ['sorganbirch', 'sorganbirch', 'sorganfir'])] },
@@ -177,7 +180,9 @@ export const SITES = {
     ],
     scatter: [
       { kind: 'rock', n: 60, within: [40, 500], scale: [0.6, 2.4], opts: { color: '#6a6a5a' } },
-      { kind: 'sorganbirch', n: 90, within: [45, 520], scale: [0.75, 1.3], sink: 0.3, solid: 0.5 },
+      // (the woods as the episode has them: a wall of dark conifers round
+      // the clearings)
+      { kind: 'spruce', n: 240, within: [45, 640], scale: [1.0, 1.6], opts: { seed: 7, h: 24, leaf: '#2c3624', bark: '#4a3f33' } },
       { kind: 'sorganfir', n: 60, within: [60, 650], scale: [0.8, 1.4], sink: 0.3, solid: 0.6 },
       { kind: 'sorganfern', n: 140, within: [18, 360], scale: [0.8, 1.8], solid: false },
     ],
