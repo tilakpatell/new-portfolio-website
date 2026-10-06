@@ -195,7 +195,7 @@ const FANDOMS = [
   },
   {
     id: 'rickmorty',
-    air: { colour: '#b8ff5a', density: 2.0, top: 1.05 },
+    air: { colour: '#b8ff5a', density: 2.0, top: 1.05, flat: true }, // (drawn as the show draws air: two flat bands)
     label: 'Rick and Morty',
     world: 'Dimension C-137',
     to: '/c-137',

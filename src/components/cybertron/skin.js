@@ -9,7 +9,8 @@
 // once they're big enough on the screen not to shimmer.
 //
 // cybertronSkin(mat, { glow, sun }) → its uniforms (set uEnergon, uLevels,
-// uTime as you like). Chains any onBeforeCompile already on the material.
+// uTime, uKeyColour as you like). Chains any onBeforeCompile already on the
+// material.
 
 import * as THREE from 'three';
 
@@ -27,6 +28,7 @@ uniform vec3 uCity;
 uniform vec4 uLevels; // energon, fire, city lights, close-up detail
 uniform float uTime;
 uniform vec3 uCySun;
+uniform vec3 uKeyColour;
 varying vec3 vCyObj;
 
 float cyHash(vec2 p) {
@@ -110,9 +112,14 @@ export function cybertronSkin(mat, { glow = null, sun = new THREE.Vector3(1, 0.5
     uLevels: { value: new THREE.Vector4(1.8, 2.2, 1.6, 1) },
     uTime: { value: 0 },
     uCySun: { value: sun },
+    // the colour of the light it's in, its brightest channel 1: the energon
+    // takes half of it, so the planet's warmer by a yellow sun than a blue one
+    // and its own blue or violet still shows
+    uKeyColour: { value: new THREE.Color(1, 1, 1) },
   };
   const prev = mat.onBeforeCompile;
-  const prevKey = mat.customProgramCacheKey;
+  // (a key someone set, not three's default, which is the hook's own source)
+  const prevKey = Object.hasOwn(mat, 'customProgramCacheKey') ? mat.customProgramCacheKey : null;
   mat.onBeforeCompile = (shader, renderer) => {
     prev?.call(mat, shader, renderer);
     Object.assign(shader.uniforms, u);
@@ -148,7 +155,7 @@ export function cybertronSkin(mat, { glow = null, sun = new THREE.Vector3(1, 0.5
           vec3 o = vCyObj * 12.0;
           // energon runs: a slow pulse along it, and it brightens where it pools
           float run = 0.72 + 0.28 * sin(uTime * 1.6 - (o.x + o.y * 1.3 + o.z * 0.7));
-          totalEmissiveRadiance += uEnergon * (cyG.r * cyG.r * 1.6 + cyG.r * 0.4) * run * uLevels.x * (0.75 + 0.25 * cyNight);
+          totalEmissiveRadiance += uEnergon * mix(vec3(1.0), uKeyColour, 0.5) * (cyG.r * cyG.r * 1.6 + cyG.r * 0.4) * run * uLevels.x * (0.75 + 0.25 * cyNight);
           // fires flicker
           float flick = 0.65 + 0.35 * sin(uTime * 6.3 + o.y * 7.0) * sin(uTime * 2.7 + o.z * 5.0 + o.x * 3.0);
           totalEmissiveRadiance += (uFire * cyG.g + vec3(1.0, 0.78, 0.35) * cyG.g * cyG.g * cyG.g * 0.9) * flick * uLevels.y;

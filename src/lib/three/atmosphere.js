@@ -12,12 +12,13 @@
 // atmosphereParams(air) → { uAtmo, uAtmoP, uSunset } from { colour, top,
 //   falloff, density, glow, sunset }
 // createAtmosphere({ radius, top, colour, density, falloff, sunset, glow,
-//   suns, segments, steps, inner, uniforms }) → { mesh, set({ suns, strength }),
+//   suns, segments, steps, inner, flat, uniforms }) → { mesh, set({ suns, strength }),
 //   params, update(center), dispose }: `uniforms`, a body's own, shares its
 //   sun and air with the shell (the galaxy's ground and air read one sun);
 //   `inner`, how far in the ground starts (its sphere's facets: a little
-//   under 1); each sun { dir (unit, toward it, world), colour (hex or linear
-//   [r, g, b]) }, the second slot black with one
+//   under 1); `flat`, the air in two flat bands of its colour, as a cartoon
+//   draws it (C-137's); each sun { dir (unit, toward it, world), colour (hex
+//   or linear [r, g, b]) }, the second slot black with one
 
 import * as THREE from 'three';
 
@@ -99,6 +100,15 @@ void main() {
   }
   float tr;
   vec3 col = inscatter(ro, rd, tMax, tr);
+  #ifdef FLAT
+  // two flat bands of the air's own colour: how much air and light the view
+  // passes through, against the colour's own brightness, stepped at a third
+  // and at one, each step a pixel soft (so the limb doesn't crawl as it turns)
+  float luma = dot(uAtmo, vec3(0.2126, 0.7152, 0.0722));
+  float a = dot(col, vec3(0.2126, 0.7152, 0.0722)) / max(luma, 1e-4);
+  float e = max(fwidth(a), 1e-3);
+  col = uAtmo * (0.45 * smoothstep(0.33 - e, 0.33 + e, a) + 0.55 * smoothstep(1.0 - e, 1.0 + e, a));
+  #endif
   gl_FragColor = vec4(col * uStrength, 1.0);
   #include <colorspace_fragment>
 }`;
@@ -116,7 +126,7 @@ export function atmosphereParams(air = {}) {
 
 const setColour = (c, v) => (Array.isArray(v) ? c.setRGB(v[0], v[1], v[2]) : c.set(v));
 
-export function createAtmosphere({ radius, top = DEFAULTS.top, colour = '#000000', density = DEFAULTS.density, falloff = DEFAULTS.falloff, sunset = DEFAULTS.sunset, glow = DEFAULTS.glow, suns = [], segments = [64, 40], steps = 7, inner = 0.995, uniforms = null } = {}) {
+export function createAtmosphere({ radius, top = DEFAULTS.top, colour = '#000000', density = DEFAULTS.density, falloff = DEFAULTS.falloff, sunset = DEFAULTS.sunset, glow = DEFAULTS.glow, suns = [], segments = [64, 40], steps = 7, inner = 0.995, flat = false, uniforms = null } = {}) {
   const p = atmosphereParams({ colour, top, falloff, density, glow, sunset });
   const own = {
     uR: { value: radius },
@@ -129,7 +139,7 @@ export function createAtmosphere({ radius, top = DEFAULTS.top, colour = '#000000
   };
   const u = { ...own, ...(uniforms ?? {}), uInner: { value: inner }, uStrength: { value: 1 } };
   const geo = new THREE.SphereGeometry(radius * top, segments[0], segments[1]);
-  const mat = new THREE.ShaderMaterial({ vertexShader: SHELL_VERT, fragmentShader: SHELL_FRAG, uniforms: u, defines: { STEPS: steps }, side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
+  const mat = new THREE.ShaderMaterial({ vertexShader: SHELL_VERT, fragmentShader: flat ? `#define FLAT\n${SHELL_FRAG}` : SHELL_FRAG, uniforms: u, defines: { STEPS: steps }, side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
   const mesh = new THREE.Mesh(geo, mat);
   const set = ({ suns: list = null, strength = null } = {}) => {
     if (list) {

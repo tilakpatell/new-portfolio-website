@@ -254,6 +254,12 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
     },
     // (for making its passes' shaders before the first frame)
     composer,
+    // the pixel ratio the scene is drawn at now: the renderer's, softened
+    // by the pace (for what's sized in the page's own pixels, like a dither)
+    get ratio() {
+      const full = renderer.getPixelRatio();
+      return on ? Math.min(full, Math.max(SOFTEST, full * sharp)) : full;
+    },
     // how sharp to draw, 0…1 of the renderer's pixel ratio (lib/three/pace)
     get sharpness() {
       return sharp;
