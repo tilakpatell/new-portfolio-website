@@ -54,14 +54,25 @@ export const SITES = {
   mandalore: {
     place: 'The glassed plains of Mandalore',
     line: 'The Empire turned the surface to glass. Under it, the Living Waters still run.',
-    sky: sky('#5a4a78', '#c8a8c8', '#f0d8ff'),
-    fog: { color: '#a890b0', density: 0.0014 },
-    light: { sun: 2.2, sky: '#c0a8d8', ground: '#4a3a4a', ambient: 0.75 },
-    ground: { seed: 33, wind: 0.8, layers: [{ type: 'swell', scale: 420, height: 6 }, { type: 'mesas', scale: 500, height: 30, cover: 0.25, cliff: 0.05 }, { type: 'mountains', from: 650, to: 3000, height: 400, scale: 1200 }], palette: palette('#6a6070', '#8a8090', '#3a3240', '#a8d0e0', { mark: '#4a4050' }) },
+    // (as the show has it: an overcast grey-blue sky going to a pale sand
+    // haze at the horizon, pale grey-beige sand, dark glassed rock; no purple)
+    sky: sky('#7f93a3', '#c9c4b4', '#f4f1e8', { hazeColor: '#d2cbb4', below: '#8a8678', clouds: { cover: 0.55, color: '#e8e8e4', shade: '#8e9696', scale: 0.6, speed: 0.004 } }),
+    fog: { color: '#bdb8aa', density: 0.0014 },
+    light: { sun: 2.4, sky: '#b9c4cc', ground: '#8a8476', ambient: 0.8 },
+    ground: { seed: 33, wind: 0.8, layers: [{ type: 'swell', scale: 420, height: 6 }, { type: 'mesas', scale: 500, height: 30, cover: 0.25, cliff: 0.05 }, { type: 'mountains', from: 650, to: 3000, height: 400, scale: 1200 }], palette: palette('#b9ab8e', '#d0c6b2', '#3a4344', '#5f6a66', { deep: '#4a4f4c', mark: '#7a7466' }) },
+    // (the glass the bombing left of the plains, and the dark rock under it)
+    scatter: [{ kind: 'glassshard', n: 420, within: [30, 520], scale: [0.6, 2.2], clear: 6 }, { kind: 'rock', n: 60, within: [60, 500], scale: [0.8, 2.6], opts: { color: '#3c4446' } }],
     weather: [{ kind: 'sand', count: 700 }],
     land: { at: [0, 0], yaw: 2.2 },
     places: [
-      { id: 'sundari', name: 'The ruins of Sundari', at: [220, 120], r: 60, flat: { r: 50 }, about: 'The dome city, broken open. Glass where the gardens were.', things: [{ kind: 'adobe', at: [0, 0] }, { kind: 'adobe', at: [24, -10] }, { kind: 'needle', at: [-20, 16], scale: 0.5, sink: 1 }] },
+      { id: 'sundari', name: 'The ruins of Sundari', at: [220, 120], r: 60, flat: { r: 50 }, about: 'The dome city, broken open. Glass where the gardens were.', things: [
+          // (the dome, broken open towards the plain; the towers under it, sheared off)
+          { kind: 'sundaridome', at: [0, 0], yaw: 0.6, opts: { r: 46, h: 30, broken: [4, 5] } },
+          { kind: 'sundariruin', at: [10, -8], yaw: 0.3, opts: { h: 26, w: 10, seed: 1 } },
+          { kind: 'sundariruin', at: [-14, 12], yaw: 1.1, opts: { h: 19, w: 8, seed: 2 } },
+          { kind: 'sundariruin', at: [-6, -22], yaw: 0.5, opts: { h: 15, w: 7, seed: 3 } },
+          { kind: 'sundariruin', at: [22, 16], yaw: 2.0, opts: { h: 21, w: 8, seed: 4 } },
+        ] },
       { id: 'mines', name: 'The mines', at: [-200, -180], r: 40, about: 'Old tunnels under the glass, and at the bottom of them, the Living Waters.', things: [{ kind: 'needle', at: [0, 0], scale: 0.75, sink: 1 }, { kind: 'lamp', at: [6, 6] }] },
       { id: 'covert', name: 'The covert’s camp', at: [-120, 220], r: 30, flat: { r: 24 }, about: 'Mandalorians, home again for the first time in years.', things: [{ kind: 'tent', at: [0, 0] }, { kind: 'tent', at: [8, -6], yaw: 1.4 }, { kind: 'fire', at: [2, 4] }] },
     ],

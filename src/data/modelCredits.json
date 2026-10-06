@@ -1478,6 +1478,20 @@
       "galaxy"
     ]
   },
+  "surface-gr75": {
+    "title": "Star Wars: GR-75 Medium Transport",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-gr-75-medium-transport-071b158d02c044ee9b431aeb28b85b6a",
+    "where": "galaxy-surface",
+    "as": "the GR-75 transports",
+    "file": "/models/galaxy/surface/gr75.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-grogu": {
     "title": "Baby Yoda (Grogu)",
     "author": "mister dude",
@@ -1502,6 +1516,20 @@
     "where": "galaxy-surface",
     "as": "the Gungans",
     "file": "/models/galaxy/surface/gungan.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-hothgenerator": {
+    "title": "Star Wars Shield Generator",
+    "author": "floris05janssen",
+    "authorUrl": "https://sketchfab.com/floris05janssen",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-shield-generator-802f9af203c340af9f2674db95735dbd",
+    "where": "galaxy-surface",
+    "as": "the shield generator",
+    "file": "/models/galaxy/surface/hothgenerator.glb",
     "also": [
       "galaxy"
     ]

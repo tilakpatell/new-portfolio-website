@@ -119,9 +119,16 @@ ${NOISE}`,
 {
   // glints off snow and salt, close up
   float dist = length(vGround - cameraPosition);
-  vec2 cellP = floor(vGround.xz * 9.0);
-  float glint = step(0.985, gHash(cellP + floor(cameraPosition.xz * 0.6)));
-  totalEmissiveRadiance += vec3(glint * uGrain.y * (1.0 - smoothstep(4.0, 26.0, dist)) * 1.6);
+  // (a pin-prick at a random spot in one cell in seventy: a crystal catching
+  // the sun, not a square of the cell; which ones shift as you move, as
+  // real glitter does)
+  vec2 gq = vGround.xz * 9.0;
+  vec2 cellP = floor(gq);
+  float seed = gHash(cellP + floor(cameraPosition.xz * 0.6));
+  vec2 spot = vec2(gHash(cellP + 17.3), gHash(cellP + 41.9)) * 0.7 + 0.15;
+  float pin = smoothstep(0.16, 0.0, length(fract(gq) - spot));
+  float glint = step(0.986, seed) * pin;
+  totalEmissiveRadiance += vec3(glint * uGrain.y * (1.0 - smoothstep(3.0, 16.0, dist)) * 1.2);
 }`,
       );
   };
