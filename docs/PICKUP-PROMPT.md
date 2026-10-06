@@ -44,7 +44,7 @@ Follow the owner's standing rules. They're in two places: the "Standing rules" s
 - Game rules and other pure logic go in tested modules (rules.js and the like), apart from the drawing. Write the tests first.
 - No runtime calls to asset services. Fetch or generate assets ahead of time, commit them, and credit them.
 - Never print or commit a key. MESHY_API_KEY and SKETCHFAB_API_TOKEN live only in .env.local. If this machine doesn't have them and the task needs them, stop and tell me.
-- A new 3D model is made with scripts/gen3d (see its README and docs/architecture.md), not Meshy or a Sketchfab search: from a reference picture or a prompt, judged on its four-view sheet for accuracy before it ships. Only the owner's desktop has the GPU for it: if this machine isn't it, open a GitHub issue labelled `gen3d` (title = name, body = what/prompt/image) and the desktop's runner opens the PR.
+- A new 3D model is made with scripts/gen3d (see its README and docs/architecture.md), not Meshy or a Sketchfab search: from a reference picture or a prompt, judged on its four-view sheet for accuracy before it ships. Only the owner's desktop has the GPU for it: if this machine isn't it, open a GitHub issue labelled `gen3d` (title = name, body = what/prompt/image, or several pictures) and the desktop's runner opens the PR. Voice lines likewise: once your lines are on main (or listed in the body as `who: line`), open an issue labelled `voices` and the desktop makes the recordings and opens the PR (scripts/voices/README.md).
 - Every scene:
   - starts from lib/device's tier
   - lowers itself under lib/three/pace

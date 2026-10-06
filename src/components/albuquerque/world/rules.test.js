@@ -548,6 +548,20 @@ describe('Hank’s heat', () => {
     for (let i = 0; i < 400 && !caught; i++) ({ heat, caught } = stepHeat(heat, 5, 1 / 30));
     expect(caught).toBe(true);
   });
+
+  it('leaves you be while you’re parked or crawling with nothing on board, however close he goes by', () => {
+    let heat = 0;
+    for (let i = 0; i < 600; i++) heat = stepHeat(heat, 5, 1 / 30, { speed: 0, load: false }).heat;
+    expect(heat).toBe(0);
+    for (let i = 0; i < 600; i++) heat = stepHeat(heat, 5, 1 / 30, { speed: 6, load: false }).heat;
+    expect(heat).toBe(0);
+    // (racing past him, or sitting by him with a load on, is another matter)
+    for (let i = 0; i < 60; i++) heat = stepHeat(heat, 8, 1 / 30, { speed: 20, load: false }).heat;
+    expect(heat).toBeGreaterThan(0.3);
+    let loaded = 0;
+    for (let i = 0; i < 60; i++) loaded = stepHeat(loaded, 8, 1 / 30, { speed: 0, load: true }).heat;
+    expect(loaded).toBeGreaterThan(0.3);
+  });
 });
 
 describe('Blue Sky', () => {

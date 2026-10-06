@@ -323,9 +323,9 @@ function facadeMaterial(uniforms) {
         // what's lit after dark: some windows, every shopfront, the sign bands
         float lit = step(abqHash(cid * vec2(1.0, 1.37) + seed * 7.0), 0.25 + 0.3 * isHouse + 0.15 * (isAdobe + isStucco) + 0.1 * isBrick + 0.2 * isGlass);
         vec3 warm = mix(vec3(1.0, 0.72, 0.42), vec3(0.72, 0.84, 1.0), step(0.78, abqHash(cid + seed)));
-        vec3 cityLit = uNight * (glass * (lit * (1.0 - shop) + shop * 0.95) * warm * mix(1.6, 2.6, shop));
+        vec3 cityLit = uNight * (glass * (lit * (1.0 - shop) + shop * 0.95) * warm * mix(0.85, 1.15, shop)); // (lit, not glaring: only the brightest catch the bloom)
         cityLit += uNight * isDoor * isHouse * 0.0;
-        cityLit += uNight * vTrimC * 1.8 * shop * vShape.w * step(G - 1.05, y) * step(y, G - 0.2) * wallK;`,
+        cityLit += uNight * vTrimC * 1.0 * shop * vShape.w * step(G - 1.05, y) * step(y, G - 0.2) * wallK;`,
       )
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.06, cityGlass);')
       .replace(
@@ -640,7 +640,7 @@ export function createCity({ noise } = {}) {
     owned.push(p.mat, p.geo);
     root.add(p.mesh);
     // a sign's glow is turned up after dark (update)
-    lit.push({ m: p.mat, base: 0.12, k: 2.2 });
+    lit.push({ m: p.mat, base: 0.12, k: 1.3 });
     const geo = own(new THREE.BoxGeometry(1, 1, 1));
     const mat = own(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, side: THREE.DoubleSide }));
     root.add(many(geo, mat, awnings));
@@ -970,7 +970,7 @@ export function createCity({ noise } = {}) {
     shown = key;
     for (const axis of ['ew', 'ns']) {
       const on = { red: 0, amber: 1, green: 2 }[s[axis]];
-      for (const { i, k } of lampsBy[axis]) lampMesh.setColorAt(i, c.copy(LAMP[k]).multiplyScalar(k === on ? 3.2 : 0.07));
+      for (const { i, k } of lampsBy[axis]) lampMesh.setColorAt(i, c.copy(LAMP[k]).multiplyScalar(k === on ? 1.8 : 0.07));
     }
     lampMesh.instanceColor.needsUpdate = true;
   };
