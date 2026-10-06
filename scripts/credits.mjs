@@ -7,14 +7,15 @@
 //
 //   npm run credits
 import { readFile, writeFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const read = (p) => readFile(join(ROOT, p), 'utf8');
 const json = async (p) => JSON.parse(await read(p));
-const { PHOTOS } = await import(join(ROOT, 'src/data/photos.js'));
-const { profile } = await import(join(ROOT, 'src/data/profile.js'));
+// (as file URLs: a bare C: path isn't one, so Windows can't import it)
+const { PHOTOS } = await import(pathToFileURL(join(ROOT, 'src/data/photos.js')).href);
+const { profile } = await import(pathToFileURL(join(ROOT, 'src/data/profile.js')).href);
 
 const cell = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\s+/g, ' ').trim();
 const link = (text, url) => (url ? `[${cell(text)}](${url})` : cell(text));
@@ -155,6 +156,7 @@ md.push(
   '## Data and imagery',
   '',
   "- **Earth's globe:** NASA Earth Observatory's Blue Marble Next Generation, Black Marble 2016, cloud and GEBCO images (public domain).",
+  "- **The universe map's planets, sun and Milky Way:** [Solar System Scope](https://www.solarsystemscope.com/textures/)'s maps (CC BY 4.0), recoloured for Music's and Marvel's gas giants and laid under the Death Star's plates. The other fandoms' planets (Middle-earth from Tolkien's own map, New Mexico, the Caribbean, C-137, the Office's crumpled letterhead) are made in code by `scripts/build-fandom-planets.mjs`.",
   "- **The Travel page's dotted globe:** Natural Earth's 1:50m country outlines (public domain), via [world-atlas](https://github.com/topojson/world-atlas).",
   '- **The GitHub snapshot on the home page:** GitHub\'s public API, read at build time.',
   '',

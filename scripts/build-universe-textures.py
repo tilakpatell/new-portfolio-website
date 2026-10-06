@@ -2,14 +2,11 @@
 
 Sources (credited on the map itself, in its panel):
 - Planet maps by Solar System Scope (https://www.solarsystemscope.com/textures/),
-  CC BY 4.0, fetched from their copies on Wikimedia Commons. Each fandom's
-  planet is a real one recoloured for its world: Jupiter in saffron for the
-  music room, Saturn in gold and red for Marvel, Venus's surface as
-  Middle-earth's greens and golds (with seas, Mordor and Mount Doom), Mars
-  turned to New Mexico tan, Venus's clouds in purple for Rick and Morty,
-  Mercury under the Death Star's and Cybertron's plates. Earth is Earth.
+  CC BY 4.0, fetched from their copies on Wikimedia Commons: Mercury under the
+  Death Star's plates, and Earth as it is. (The fandoms' planets are baked by
+  scripts/build-fandom-planets.mjs.)
 - Metal plates and paper from ambientCG (https://ambientcg.com), CC0: the
-  Death Star's and Cybertron's panels, the stations' hulls, the Office's sheet.
+  Death Star's and Cybertron's panels, the stations' hulls, the paper's grain.
 
 - The sky: Solar System Scope's Milky Way (8K, CC BY 4.0), brought up from
   its very dim original so the band of the galaxy shows (its glow brought up
@@ -18,8 +15,6 @@ Sources (credited on the map itself, in its panel):
   over, 4096x2048 (2048 on phones).
 - Earth's night lights (Solar System Scope, from Commons' 1920 px copy), and
   a roughness map made from its day map, so the oceans catch the sun.
-- Relief (normal maps) worked out from the terrain itself for Middle-earth and
-  the Breaking Bad desert, so their mountains and craters catch the light.
 
 Each planet map is 1024x512 WebP (Earth 2048x1024) with a half-size `-sm`
 copy for phones; the tiling materials are 512 px.
@@ -243,53 +238,10 @@ def main():
     W, H = (4096, 2048) if HQ else (2048, 1024)
     P = {n: size(planet(n, urls), W, H) for n in SSS}
     plates1 = material('MetalPlates001', 'Color')
-    paper = material('Paper001', 'Color')
 
-    # The music room: Jupiter in saffron
-    l = stretch(lum(P['jupiter']))
-    music = ramp(l, [(0, '#4a1c05'), (0.3, '#a64a0e'), (0.55, '#e3832a'), (0.8, '#ffc46e'), (1, '#fff1d6')])
-    save(music * 0.88 + P['jupiter'] * 0.12, 'music')
-
-    # Marvel: Saturn's bands, sharpened, in gold and red
-    l = lum(P['saturn'])
-    l = stretch(l + highpass(l, 18) * 2.5, 1, 99)
-    save(ramp(l, [(0, '#4a0d0d'), (0.28, '#8f2220'), (0.45, '#b8562a'), (0.62, '#d6a03c'), (0.82, '#efcf72'), (1, '#fff3c8')]), 'marvel')
-
-    # Breaking Bad: Mars, turned to New Mexico tan
-    m = P['mars']
-    l = stretch(lum(m))
-    desert = ramp(l, [(0, '#3d220f'), (0.35, '#8a5a2e'), (0.65, '#c9975a'), (0.9, '#ead1a0'), (1, '#f7ecd2')])
-    save(desert * 0.8 + m * 0.2, 'breakingbad')
-    save(normal_map(l, 8), 'breakingbad-normal', small=False, hq=False)
-
-    # Middle-earth: Venus's surface as land and sea, with Mordor in ash and
-    # Mount Doom alight
-    v = P['venus_surface']
-    l = stretch(lum(v), 1, 99)
-    land = ramp(l, [(0, '#16313f'), (0.17, '#1f4a52'), (0.2, '#2c4320'), (0.4, '#45652b'), (0.58, '#7c9440'), (0.74, '#b8aa62'), (0.9, '#ddd2a6'), (1, '#f2efe4')])
-    mordor = blob_mask(W, H, 0.68, 0.58, 0.09, 0.14, 0.6)[..., None]
-    ash = ramp(l, [(0, '#120d0a'), (0.5, '#2e241d'), (1, '#5c4a3c')])
-    me = land * (1 - mordor) + ash * mordor
-    save(me, 'middleearth')
-    save(normal_map(l * (1 - mordor[..., 0] * 0.3), 9), 'middleearth-normal', small=False, hq=False)
-    hp = np.clip(highpass(l, 3) * 6, 0, 1)
-    lava = (hp ** 1.5) * blob_mask(W, H, 0.68, 0.58, 0.07, 0.11, 0.8)
-    doom = blob_mask(W, H, 0.685, 0.575, 0.012, 0.022, 1.0) ** 1.5
-    glow = np.clip(lava[..., None] * hexrgb('#ff5a12') * 0.8 + doom[..., None] * hexrgb('#ffb04a') * 1.6, 0, 1)
-    save(glow, 'middleearth-glow', small=False, hq=False)
-
-    # Rick and Morty: Venus's clouds in purple, with glowing green lakes
-    l = stretch(lum(P['venus_atmosphere']), 1, 99)
-    l = stretch(l + highpass(l, 10) * 1.5, 1, 99)
-    purple = ramp(l, [(0, '#170a33'), (0.35, '#432579'), (0.65, '#7f55c2'), (0.88, '#c3a6f2'), (1, '#efe4ff')])
-    # small pools where the noise peaks, broken up by the clouds' own detail
-    n = noise(W, H, 7, 14, 5) * 0.75 + l * 0.25
-    poles = np.clip(blob_mask(W, H, 0.5, 0.0, 1, 0.15, 1) + blob_mask(W, H, 0.5, 1.0, 1, 0.15, 1), 0, 1)
-    lakes = np.clip((n - 0.8) * 12, 0, 1) * (1 - poles)
-    pool = ramp(l, [(0, '#2f6b14'), (0.6, '#6fbf2e'), (1, '#c4f27a')])
-    rm = purple * (1 - lakes[..., None] * 0.85) + pool * lakes[..., None] * 0.85
-    save(rm, 'rickmorty')
-    save(lakes[..., None] * hexrgb('#b6f04a') * 0.7, 'rickmorty-glow', small=False, hq=False)
+    # (The fandoms' planets, Music, Marvel, Breaking Bad, Middle-earth, Rick
+    # and Morty and the Office, are baked by scripts/build-fandom-planets.mjs,
+    # at all three sizes, -hq included: none of them is written here.)
 
     # The Death Star: Mercury's grey under hull plates, the trench round the
     # middle and the superlaser's dish
@@ -319,19 +271,6 @@ def main():
     save(np.clip(1 - r / 0.006, 0, 1)[..., None] * hexrgb('#7dff7a'), 'starwars-glow', small=False, hq=False)
 
     # (Cybertron's maps are worked out on their own: scripts/build-cybertron-planet.mjs)
-
-    # The Office: a sheet of paper round a planet, ruled, with its margins
-    # and punched holes
-    office = tile(paper, W, H, 4, 2) * 0.9 + 0.1
-    lines = ((np.arange(H) % 22) < 2)[:, None]
-    office = office * (1 - lines[..., None]) + lines[..., None] * (office * 0.35 + hexrgb('#8fa4cc') * 0.65)
-    for mx in (0.14, 0.64):
-        col = (np.abs(x - mx) < 0.0022)
-        office = office * (1 - col[..., None]) + col[..., None] * hexrgb('#d23b3b')
-    for hy in (0.3, 0.5, 0.7):
-        hole = blob_mask(W, H, 0.07, hy, 0.008, 0.016, 0.2)[..., None]
-        office = office * (1 - hole * 0.6)
-    save(office, 'office')
 
     # Earth, as it is, and its clouds; Alderaan is Earth turned over and greener
     save(P['earth_daymap'], 'earth', full=(2048, 1024))
