@@ -121,3 +121,33 @@ export function alarm() {
     },
   };
 }
+
+// a footstep: a short, filtered tap of noise, its colour from what's
+// underfoot (carpet a soft low thud, tile and concrete a sharper click,
+// asphalt a gritty scuff), a little different every time
+const FLOORS = {
+  carpet: { f: 260, q: 0.7, gain: 0.05, len: 0.07 },
+  tile: { f: 1900, q: 1.4, gain: 0.035, len: 0.05 },
+  concrete: { f: 1300, q: 1.1, gain: 0.045, len: 0.06 },
+  asphalt: { f: 900, q: 0.6, gain: 0.04, len: 0.09 },
+};
+export function step(floor = 'carpet', run = false) {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const k = FLOORS[floor] ?? FLOORS.carpet;
+  const t = ac.currentTime;
+  const src = ac.createBufferSource();
+  src.buffer = noise(ac);
+  const f = ac.createBiquadFilter();
+  f.type = 'bandpass';
+  f.frequency.value = k.f * (0.85 + Math.random() * 0.3);
+  f.Q.value = k.q;
+  const g = ac.createGain();
+  const peak = k.gain * (run ? 1.4 : 1) * (0.8 + Math.random() * 0.4);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + k.len);
+  src.connect(f).connect(g).connect(out);
+  src.start(t, Math.random() * 1.5);
+  src.stop(t + k.len + 0.02);
+}

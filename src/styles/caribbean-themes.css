@@ -44,5 +44,5 @@ html[data-mode='dark'][data-theme='dutchman'] {
 :is([data-theme='tortuga'], [data-theme='pearl'], [data-theme='dutchman']) { --r-card: 4px; --r-panel: 4px; --r-btn: 4px; --r-chip: 3px; --r-photo: 4px; }
 :is([data-theme='tortuga'], [data-theme='pearl'], [data-theme='dutchman']) :is(.display, .title) { font-family: 'Pirata One', var(--font-sans); font-stretch: normal; font-weight: 400; letter-spacing: 0.01em; line-height: 0.98; }
 :is([data-theme='tortuga'], [data-theme='pearl'], [data-theme='dutchman']) .lead { font-family: 'IM Fell English', Georgia, serif; }
-[data-theme='pearl'] h1.display { text-shadow: 0 2px 0 rgba(242, 196, 90, 0.55); }
-html[data-mode='dark'][data-theme='dutchman'] h1.display { text-shadow: 0 0 28px rgba(93, 242, 192, 0.35); }
+[data-theme='pearl'] :is(h1, [data-page-title]).display { text-shadow: 0 2px 0 rgba(242, 196, 90, 0.55); }
+html[data-mode='dark'][data-theme='dutchman'] :is(h1, [data-page-title]).display { text-shadow: 0 0 28px rgba(93, 242, 192, 0.35); }

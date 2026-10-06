@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import PageTitle from '../components/PageTitle';
 import { RiCloseLine, RiDownloadLine, RiPrinterLine } from 'react-icons/ri';
 import ResumeSheet from '../components/ResumeSheet';
 import { profile } from '../data/profile';
@@ -86,7 +87,7 @@ export default function Resume() {
       <header className="resume-header flex flex-wrap items-end justify-between gap-8">
         <div>
           <p className="eyebrow">Résumé</p>
-          <h1 className="display mt-5 text-[clamp(2.6rem,1.4rem+4.6vw,5rem)]">One page, filterable.</h1>
+          <PageTitle className="display mt-5 text-[clamp(2.6rem,1.4rem+4.6vw,5rem)]">One page, filterable.</PageTitle>
           <p className="lead mt-5 max-w-[46ch]">Click any skill on the résumé to light up every line that uses it.</p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -102,20 +103,25 @@ export default function Resume() {
 
       <div className="resume-toolbar mt-10">
         <div className="resume-tabs" role="tablist" aria-label="Résumé view">
-          {VIEWS.map((v) => (
+          {VIEWS.map((v, i) => (
             <button
               key={v.id}
+              id={`resume-tab-${v.id}`}
               type="button"
               role="tab"
               aria-selected={view === v.id}
               aria-controls="resume-panel"
+              tabIndex={view === v.id ? 0 : -1}
               className="resume-tab"
               onClick={() => update({ view: v.id === 'pdf' ? 'pdf' : null })}
               onKeyDown={(e) => {
-                if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-                  e.preventDefault();
-                  update({ view: view === 'pdf' ? null : 'pdf' });
-                }
+                // the arrows (and Home, End) go to the other view, and focus goes with them
+                const to = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: VIEWS.length - 1 }[e.key];
+                if (to === undefined) return;
+                e.preventDefault();
+                const next = VIEWS[(to + VIEWS.length) % VIEWS.length];
+                update({ view: next.id === 'pdf' ? 'pdf' : null });
+                document.getElementById(`resume-tab-${next.id}`)?.focus();
               }}
             >
               {v.label}
@@ -145,7 +151,7 @@ export default function Resume() {
         )}
       </div>
 
-      <div id="resume-panel" role="tabpanel" className="mt-6">
+      <div id="resume-panel" role="tabpanel" aria-labelledby={`resume-tab-${view}`} className="mt-6">
         {view === 'pdf' ? <PdfView /> : <ResumeSheet active={active} onToggle={toggle} />}
       </div>
     </div>

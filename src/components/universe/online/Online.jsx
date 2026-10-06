@@ -184,7 +184,7 @@ function Pilot({ p, online }) {
   const coat = paintById(p.loadout?.paint);
   const act = (what) => () => online.ally(p.id, what);
   const elsewhere = p.where && p.where !== online.where;
-  const at = !p.where ? '' : elsewhere ? ` · on ${placeName(p.where)}` : ' · here';
+  const at = !p.where ? '' : elsewhere ? ` · ${placeName(p.where)}` : ' · here';
   return (
     <li className="universe-online-pilot" data-ally={p.ally === 'ally' || undefined} data-blocked={p.blocked || undefined}>
       {who ? <Face who={who} className="universe-online-face" /> : <span className="universe-online-face" aria-hidden="true" />}

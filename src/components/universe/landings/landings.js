@@ -20,7 +20,14 @@
 //               'spot' (left out) turns its front (+z) to the ship, false
 //               leaves it as yaw has it from the ship's heading; strip:
 //               [hw, hd], a long flat thing's half length and width (a
-//               road), kept clear of the scatter but walked over
+//               road), kept clear of the scatter but walked over; around:
+//               laid out round the landing spot itself (a skyline: its
+//               builder keeps its parts out past the things)
+//               door: { label, at?, reach? }: G there goes into the planet's
+//               page ('Into Bag End'), at a spot on the thing (its own
+//               frame, metres) or by it; say: { name, line }: what someone
+//               (a figure: kind 'figure', opts { url | meshy, tall }) says
+//               when you come up to them
 //   scatter     [{ kind, n, from, to, scale: [a, b], opts?, solid? }]: many
 //               of a kind, drawn instanced, `from` to `to` metres out, clear
 //               of the things and the ship (solid: false to walk through)
@@ -44,7 +51,10 @@ export const LANDINGS = {
     ground: { style: 'grass', colors: ['#4d7a2a', '#7aa544', '#a08c58'] },
     sky: { zenith: '#4f86d4', horizon: '#e4ecd6', sun: '#fff0c4' },
     things: [
-      { kind: 'bagEnd', at: [-30, 30], r: 10 },
+      { kind: 'bagEnd', at: [-30, 30], r: 10, door: { label: 'Bag End', at: [0, 6.5], reach: 3 } },
+      { kind: 'gandalf', at: [-18, 22], r: 0.5, say: { name: 'Gandalf', line: 'A wizard is never late, nor is he early.' } },
+      { kind: 'hobbit', at: [14, 42], r: 0.4, say: { name: 'Sam', line: 'It’s the party of the century, Mr Frodo!' }, opts: { cloak: '#7a6a3a', pack: true } },
+      { kind: 'hobbit', at: [-1, 41], r: 0.4, opts: { cloak: '#4b5a3a' } },
       { kind: 'hole', at: [-46, 4], r: 7, opts: { door: '#a83224', seed: 2 } },
       { kind: 'hole', at: [34, 36], r: 7, opts: { door: '#d8a92e', seed: 3 } },
       { kind: 'hole', at: [44, 8], r: 7, opts: { door: '#2f5f9a', seed: 5 } },
@@ -86,7 +96,9 @@ export const LANDINGS = {
       car: { url: '/models/albuquerque/world/aztek.glb', long: 4.6 },
     },
     things: [
-      { kind: 'rv', at: [-28, 16], r: 5, face: false, yaw: -1.2 },
+      { kind: 'rv', at: [-28, 16], r: 5, face: false, yaw: -1.2, door: { label: 'the RV', reach: 7 } },
+      { kind: 'figure', at: [-36, 24], r: 0.4, say: { name: 'Saul', line: 'Better call Saul!' }, opts: { url: '/models/albuquerque/saul.glb', tall: 1.74 } },
+      { kind: 'figure', at: [26, 38], r: 0.4, say: { name: 'Mike', line: 'No more half measures.' }, opts: { url: '/models/albuquerque/mike.glb', tall: 1.8 } },
       { kind: 'barrel', at: [-23, 11], r: 0.5 },
       { kind: 'barrel', at: [-22.2, 12.1], r: 0.5 },
       { kind: 'barrel', at: [-23.4, 12.6], r: 0.5 },
@@ -124,7 +136,11 @@ export const LANDINGS = {
       { kind: 'house', at: [-24, 50], r: 11 },
       { kind: 'school', at: [42, 66], r: 20 },
       { kind: 'limo', at: [-4, 30], r: 4.6, face: false },
-      { kind: 'portal', at: [-20, 14], r: 1.6 },
+      { kind: 'portal', at: [-20, 14], r: 1.6, door: { label: 'the portal', reach: 3 } },
+      { kind: 'figure', at: [-30, 37.5], r: 0.4, opts: { meshy: 'beth', tall: 1.7 } },
+      { kind: 'figure', at: [-27, 37], r: 0.4, say: { name: 'Jerry', line: 'Hungry for apples?' }, opts: { meshy: 'jerry', tall: 1.78 } },
+      { kind: 'figure', at: [-23, 37.5], r: 0.4, say: { name: 'Summer', line: 'Ugh. Grandpa’s here again.' }, opts: { meshy: 'summer', tall: 1.65 } },
+      { kind: 'figure', at: [6, 31], r: 0.4, say: { name: 'The President', line: 'Get in the limo, Rick.' }, opts: { meshy: 'president', tall: 1.88 } },
       { kind: 'hydrant', at: [-12, 26.5], r: 0.3 },
       { kind: 'mailbox', at: [-20, 37.5], r: 0.3 },
       { kind: 'fedship', at: [34, -8], r: 8 },
@@ -143,6 +159,33 @@ export const LANDINGS = {
     sub: 'Indian classical music · dusk, and the lamps lit',
     ground: { style: 'tiles', colors: ['#d9b48a', '#c99d70', '#7a5a3c'] },
     sky: { zenith: '#1f2350', horizon: '#f2894a', sun: '#ffc27a' },
+    models: {
+      pavilion: { url: '/models/music/pavilion.glb', wide: 8 },
+      gaddi: { url: '/models/music/gaddi.glb', wide: 2.6 },
+      harmonium: { url: '/models/music/harmonium.glb', wide: 0.62 },
+      tabla: { url: '/models/music/tabla.glb', wide: 0.62 },
+      sitar: { url: '/models/music/sitar.glb', long: 1.22 },
+      tanpura: { url: '/models/music/tanpura.glb', tall: 1.4 },
+      lamp: { url: '/models/music/lamp.glb', tall: 1.25 },
+    },
+    things: [
+      { kind: 'pavilion', at: [0, 40], r: 6, door: { label: 'the music room', reach: 8 } },
+      { kind: 'recital', at: [0, 29], r: 1.6 },
+      { kind: 'lamp', at: [-7, 26], r: 0.4 },
+      { kind: 'lamp', at: [7, 26], r: 0.4 },
+      { kind: 'lamp', at: [-9, 40], r: 0.4 },
+      { kind: 'lamp', at: [9, 40], r: 0.4 },
+      { kind: 'fountain', at: [-32, 16], r: 3.8 },
+      { kind: 'screen', at: [36, 32], r: 10.5 },
+      { kind: 'screen', at: [-46, 40], r: 10.5 },
+      { kind: 'screen', at: [12, -46], r: 10.5 },
+    ],
+    scatter: [
+      { kind: 'tree', n: 12, from: 30, to: 100, scale: range(1) },
+      { kind: 'marigolds', n: 180, from: 5, to: 70, scale: range(1), solid: false },
+      { kind: 'petals', n: 260, from: 3, to: 40, scale: range(1), solid: false },
+      { kind: 'diyas', n: 70, from: 4, to: 45, scale: range(1), solid: false },
+    ],
   },
   transformers: {
     title: 'Cybertron',
@@ -150,13 +193,14 @@ export const LANDINGS = {
     ground: { style: 'plating', colors: ['#3e4350', '#2a2e37', '#7fd8ff'] },
     sky: { zenith: '#170f2e', horizon: '#6a4c8a', sun: '#d8c8ff', space: 0.5 },
     models: {
-      optimus: { url: '/models/universe/optimus.glb', tall: 9.4 },
-      megatron: { url: '/models/universe/megatron.glb', tall: 10 },
+      optimus: { url: '/models/cybertron/optimus-orbit.glb', tall: 9.4 },
+      megatron: { url: '/models/cybertron/megatron-orbit.glb', tall: 10.5 },
     },
     things: [
       { kind: 'optimus', at: [-22, 30], r: 3 },
       { kind: 'megatron', at: [26, 34], r: 3 },
-      { kind: 'gate', at: [0, 46], r: 13 },
+      { kind: 'gate', at: [0, 46], r: 13, door: { label: 'the gate to Iacon', reach: 7 } },
+      { kind: 'figure', at: [-11, 27], r: 0.8, say: { name: 'Bumblebee', line: '[a burst of radio] …roll out!' }, opts: { url: '/games/meshy/rollout/bumblebee.glb', tall: 4.8 } },
       { kind: 'tower', at: [-50, 62], r: 8, opts: { seed: 2, w: 14 } },
       { kind: 'tower', at: [48, 70], r: 7, opts: { seed: 5, w: 12, color: '#4a4f5c', glow: '#ff5a3a' } },
       { kind: 'tower', at: [-12, 90], r: 9, opts: { seed: 9, w: 16 } },
@@ -181,13 +225,13 @@ export const LANDINGS = {
       gauntlet: { url: '/models/universe/marvel.glb', tall: 5 },
     },
     things: [
-      { kind: 'hq', at: [0, 72], r: 31 },
+      { kind: 'hq', at: [0, 72], r: 31, door: { label: 'the compound', at: [0, 8], reach: 5 } },
       { kind: 'pad', at: [-44, 22], r: 14 },
       { kind: 'monument', at: [27, 28], r: 2.5 },
-      { kind: 'hero', at: [-14, 22], r: 0.6, opts: { who: 'thor' } },
+      { kind: 'hero', at: [-14, 22], r: 0.6, opts: { who: 'thor' }, say: { name: 'Thor', line: 'Another!' } },
       { kind: 'hero', at: [-4, 25], r: 0.6, opts: { who: 'widow' } },
       { kind: 'hero', at: [6, 25], r: 0.6, opts: { who: 'ironman' } },
-      { kind: 'hero', at: [15, 21], r: 1, opts: { who: 'hulk' } },
+      { kind: 'hero', at: [15, 21], r: 1, opts: { who: 'hulk' }, say: { name: 'Hulk', line: 'Hulk… smash?' } },
       { kind: 'flag', at: [-15, 42], r: 0.3 },
       { kind: 'flag', at: [15, 42], r: 0.3 },
     ],
@@ -201,7 +245,12 @@ export const LANDINGS = {
     sub: 'The Office · the lot out back of Dunder Mifflin',
     ground: { style: 'asphalt', colors: ['#4e4f52', '#5d5e61', '#e8e2c8'] },
     sky: { zenith: '#9aa4ae', horizon: '#dcd8cf', sun: '#f2f0ea' },
-    things: [{ kind: 'lot', at: [0, 42], yaw: -Math.PI / 2, r: 0, strip: [23, 18] }],
+    things: [
+      { kind: 'lot', at: [0, 42], yaw: -Math.PI / 2, r: 0, strip: [23, 18], door: { label: 'Dunder Mifflin', at: [-16, 3.5], reach: 4 } },
+      { kind: 'figure', at: [-7, 25], r: 0.4, say: { name: 'Michael', line: 'Would I rather be feared or loved? Easy. Both.' }, opts: { url: '/models/office/cast/michael.glb', tall: 1.75 } },
+      { kind: 'figure', at: [-4, 24], r: 0.4, say: { name: 'Dwight', line: 'Fact: this lot is under my jurisdiction.' }, opts: { url: '/models/office/cast/dwight.glb', tall: 1.88 } },
+      { kind: 'figure', at: [6, 25], r: 0.4, say: { name: 'Jim', line: '[looks at the camera]' }, opts: { url: '/models/office/cast/jim.glb', tall: 1.91 } },
+    ],
     scatter: [
       { kind: 'paper', n: 70, from: 3, to: 70, scale: range(1), solid: false },
       { kind: 'reams', n: 5, from: 8, to: 30, scale: range(1), solid: false },
@@ -218,8 +267,8 @@ export const LANDINGS = {
       piranha: { url: '/models/universe/piranha.glb', tall: 2.4 },
     },
     things: [
-      { kind: 'gameboy', at: [0, 50], r: 5 },
-      { kind: 'mario', at: [-18, 22], r: 1 },
+      { kind: 'gameboy', at: [0, 50], r: 5, door: { label: 'the Game Boy', reach: 8 } },
+      { kind: 'mario', at: [-18, 22], r: 1, say: { name: 'Mario', line: 'It’s-a me!' } },
       { kind: 'pipe', at: [20, 26], r: 1.4, opts: { plant: 'piranha' } },
       { kind: 'pipe', at: [28, -14], r: 1.4, opts: { h: 2 } },
       { kind: 'blocks', at: [-6, 30], r: 2.5 },
@@ -236,21 +285,64 @@ export const LANDINGS = {
   },
   travel: {
     title: 'Earth',
-    sub: 'Travel · somewhere I’ve been',
+    sub: 'Travel · an airfield somewhere I’ve been',
     ground: { style: 'grass', colors: ['#4c7a34', '#76a04a', '#a39a7a'] },
     sky: { zenith: '#3c7fd6', horizon: '#d6e6f2', sun: '#fff6e2' },
+    models: {
+      plane: { url: '/models/sketchfab/earth-plane.glb', long: 36 },
+    },
+    things: [
+      { kind: 'airfield', at: [0, 46], r: 0, face: false, strip: [110, 16], door: { label: 'the plane', at: [-24, 0], reach: 18 } },
+      { kind: 'signpost', at: [-14, 20], r: 0.6 },
+    ],
+    scatter: [
+      { kind: 'tree', n: 24, from: 26, to: 110, scale: range(1) },
+      { kind: 'flowers', n: 300, from: 3, to: 80, scale: range(1), solid: false },
+    ],
   },
   caribbean: {
     title: 'A Caribbean island',
     sub: 'Pirates of the Caribbean · ashore, the Pearl at anchor',
     ground: { style: 'sand', colors: ['#ecd9a6', '#dcc28a', '#b49a68'] },
     sky: { zenith: '#2a8ad8', horizon: '#d2f0f4', sun: '#fff8e0' },
+    models: {
+      ship: { url: '/games/caribbean/pearl.glb', long: 46 },
+      palm: { url: '/models/galaxy/surface/palm.glb', tall: 11 },
+      chest: { url: '/games/caribbean/chest.glb', wide: 1.1 },
+      skull: { url: '/games/caribbean/skull.glb', wide: 34 },
+    },
+    things: [
+      { kind: 'sea', at: [0, 109], r: 0, face: false, strip: [130, 75], opts: { shore: -75, deep: 150 } },
+      { kind: 'pearl', at: [-14, 82], r: 0, face: false, yaw: 1.2, solid: false },
+      { kind: 'skull', at: [50, 80], r: 0, solid: false },
+      { kind: 'rowboat', at: [-16, 26], r: 2.2, face: false, yaw: 0.3, door: { label: 'the rowboat, out to the Pearl', reach: 4 } },
+      { kind: 'figure', at: [-10, 22], r: 0.4, say: { name: 'Jack', line: 'This is the day you will always remember…' }, opts: { url: '/games/caribbean/jack.glb', tall: 1.78 } },
+      { kind: 'chest', at: [18, 20], r: 0.8 },
+      { kind: 'cargo', at: [24, 14], r: 1.6 },
+      { kind: 'fire', at: [-24, 8], r: 1 },
+    ],
+    scatter: [
+      { kind: 'palm', n: 14, from: 24, to: 90, scale: range(1) },
+      { kind: 'shells', n: 120, from: 3, to: 34, scale: range(1), solid: false },
+    ],
   },
   invincible: {
     title: 'The Graysons’ city',
     sub: 'Invincible · after Omni-Man came through',
     ground: { style: 'asphalt', colors: ['#5d5e5c', '#6c6b68', '#c9b98a'] },
     sky: { zenith: '#3a5fa0', horizon: '#f0b07a', sun: '#ffd8a8' },
+    things: [
+      { kind: 'skyline', at: [0, 0], r: 0, face: false, around: true },
+      { kind: 'crater', at: [-8, 36], r: 11, door: { label: 'the city', reach: 13 } },
+      { kind: 'figure', at: [6, 30], r: 0.4, say: { name: 'Mark', line: 'Think, Mark!' }, opts: { url: '/models/invincible/mark.glb', tall: 1.78 } },
+      { kind: 'wreck', at: [20, 24], r: 2.4, face: false, yaw: 0.7 },
+      { kind: 'wreck', at: [-26, 18], r: 2.4, face: false, yaw: 2.2, opts: { color: '#2f4f7a', side: true } },
+      { kind: 'wreck', at: [10, 48], r: 2.4, face: false, yaw: 1.4, opts: { color: '#c9c3b4' } },
+    ],
+    scatter: [
+      { kind: 'rubble', n: 160, from: 4, to: 60, scale: range(1.2), solid: false },
+      { kind: 'glass', n: 120, from: 3, to: 50, scale: range(1), solid: false },
+    ],
   },
 };
 

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { aimBone, elbowFor, frameFrom, palmFrame, reach, setWorldQuaternion, spring } from './ik';
+import { aimBone, elbowFor, frameFrom, palmFrame, reach, rotateWorld, setWorldQuaternion, spring } from './ik';
 
 const V = THREE.Vector3;
 const chain = (a = 1, b = 1) => {
@@ -76,6 +76,27 @@ describe('bones in world space', () => {
     setWorldQuaternion(c.hand, want, 1);
     const got = c.hand.getWorldQuaternion(new THREE.Quaternion());
     expect(Math.abs(got.dot(want))).toBeCloseTo(1, 5);
+  });
+
+  it('rotateWorld turns a nested bone about a world axis, whatever its parent’s turn', () => {
+    const c = chain();
+    c.upper.rotation.x = 0.9; // the parent tilted
+    c.root.updateMatrixWorld(true);
+    const before = world(c.hand);
+    rotateWorld(c.fore, new V(0, 1, 0), Math.PI / 2, 1);
+    const after = world(c.hand);
+    // a turn about the world's up keeps the hand's height and its distance from the elbow
+    expect(after.y).toBeCloseTo(before.y, 5);
+    expect(after.distanceTo(world(c.fore))).toBeCloseTo(before.distanceTo(world(c.fore)), 5);
+    expect(after.distanceTo(before)).toBeGreaterThan(0.1);
+    // half the weight, half the way
+    const h = chain();
+    h.upper.rotation.x = 0.9;
+    h.root.updateMatrixWorld(true);
+    rotateWorld(h.fore, new V(0, 1, 0), Math.PI / 2, 0.5);
+    const mid = world(h.hand);
+    expect(mid.distanceTo(before)).toBeLessThan(after.distanceTo(before));
+    expect(mid.distanceTo(before)).toBeGreaterThan(0.05);
   });
 
   it('frameFrom makes +z the forward and +y the up', () => {

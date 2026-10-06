@@ -120,6 +120,9 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
     // flying: they all leave)
     update(dt, t, ship) {
       const events = hunt.update(dt, ship);
+      // (lookAt takes a point in the world, and the map turns under the
+      // camera: each point is the map's, carried into the world first)
+      parent.updateWorldMatrix(true, false);
       // the ones that have gone (flown off, or shot down by someone else)
       for (const h of shown) if (!h.alive) give(h);
       for (const h of hunt.live) {
@@ -127,7 +130,7 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
         if (!g) continue;
         g.position.set(h.pos.x, h.pos.y, h.pos.z);
         const { x, y, z } = h.vel;
-        if (x * x + y * y + z * z > 1e-6) g.lookAt(look.set(h.pos.x + x, h.pos.y + y, h.pos.z + z));
+        if (x * x + y * y + z * z > 1e-6) g.lookAt(parent.localToWorld(look.set(h.pos.x + x, h.pos.y + y, h.pos.z + z)));
         g.rotateZ(-h.bank);
         g.scale.setScalar(h.type.size * h.view.fit * Math.max(0.001, h.grow));
         h.view.update(t);
@@ -138,7 +141,7 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
         if (!l.on) return;
         m.position.set(l.x, l.y, l.z);
         m.material = laserMats[l.faction] ?? firstMat;
-        m.lookAt(look.set(l.x + l.vx, l.y + l.vy, l.z + l.vz));
+        m.lookAt(parent.localToWorld(look.set(l.x + l.vx, l.y + l.vy, l.z + l.vz)));
       });
       return events;
     },

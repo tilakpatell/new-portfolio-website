@@ -258,11 +258,12 @@ describe('the chase: aiming and scoring', () => {
 });
 
 describe('the missions on the surface', () => {
-  it('gives every scout a gap, a lane and a speed', async () => {
+  it('gives every chase’s scouts a gap, a lane and a speed', async () => {
     const { MISSIONS } = await import('./index');
     for (const [system, list] of Object.entries(MISSIONS))
       for (const m of Object.values(list)) {
         expect(m.system).toBe(system);
+        if (m.kind !== 'chase') continue;
         for (const k of ['gaps', 'lanes', 'speeds']) expect(m[k], `${m.id} ${k}`).toHaveLength(m.scouts);
         expect(m.waypoints.length).toBeGreaterThanOrEqual(2);
         expect(m.stars[0]).toBeLessThan(m.stars[1]);

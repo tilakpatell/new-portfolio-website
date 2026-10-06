@@ -60,11 +60,11 @@ export const PROPS = {
     // (cut into two-metre lengths, so it bends with the ground)
     const strip = (w, h) => new THREE.BoxGeometry(len, h, w, Math.ceil(len / 2), 1, 1).translate(0, h / 2, 0);
     const parts = [
-      part(strip(8, 0.04), { at: [0, -0.02, 0], color: '#3a3c40', to: 'stone' }),
-      part(strip(2.4, 0.08), { at: [0, -0.02, 5.2], color: '#b9b6ae', to: 'stone' }),
-      part(strip(2.4, 0.08), { at: [0, -0.02, -5.2], color: '#b9b6ae', to: 'stone' }),
+      part(strip(8, 0.04), { at: [0, 0.01, 0], color: '#3a3c40', to: 'stone' }),
+      part(strip(2.4, 0.08), { at: [0, 0.01, 5.2], color: '#b9b6ae', to: 'stone' }),
+      part(strip(2.4, 0.08), { at: [0, 0.01, -5.2], color: '#b9b6ae', to: 'stone' }),
     ];
-    for (let x = -len / 2 + 2; x < len / 2; x += 6) parts.push(part(box(3, 0.045, 0.16), { at: [x, -0.01, 0], color: '#e8c33a', to: 'paint' }));
+    for (let x = -len / 2 + 2; x < len / 2; x += 6) parts.push(part(box(3, 0.045, 0.16), { at: [x, 0.02, 0], color: '#e8c33a', to: 'paint' }));
     return { object: k.bend(k.build(parts, { name: 'road', shadows: false })), solids: [] };
   },
 

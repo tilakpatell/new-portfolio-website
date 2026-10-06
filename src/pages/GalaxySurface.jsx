@@ -17,6 +17,8 @@ import SurfaceView from '../components/galaxy/surface/SurfaceView';
 import ChaseHud from '../components/galaxy/surface/ChaseHud';
 import { missionOf } from '../components/galaxy/surface/missions';
 import ModelCredits from '../components/ModelCredits';
+import { wornFiles } from '../components/rickmorty/wardrobe/looks';
+import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
 import { openGuide } from '../lib/palette';
 import '../components/universe/universe.css';
 import '../components/galaxy/galaxy.css';
@@ -112,6 +114,7 @@ export default function GalaxySurface() {
     clearTimeout(timers.current[key]);
     timers.current[key] = setTimeout(fn, ms);
   };
+  const [looks] = useLooks(); // (how the cruiser's Rick and Morty come out, for the credits)
   const talkCrew = useMemo(() => (crew && site ? surfaceCrew(galaxyCrew(crew), site) : null), [crew, site]);
 
   const takeOff = useCallback(() => {
@@ -179,7 +182,9 @@ export default function GalaxySurface() {
         };
         if (wasEmpty) next();
       } else if (e.type === 'quest') setQuest(e.id ? e : null);
-      else if (e.type === 'questDone') {
+      else if ((e.type === 'questDone' || e.type === 'questFail') && e.id === mission?.quest?.id) {
+        // (a quest mission's own quest: its card says how it went)
+      } else if (e.type === 'questDone') {
         const q = site?.quests.find((x) => x.id === e.id);
         setDone((was) => {
           if (was.includes(e.id)) return was;
@@ -252,8 +257,8 @@ export default function GalaxySurface() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // the models on this world, for their credits (kept, so the credits aren't drawn again with every change of the page)
-  const kinds = useMemo(() => (site ? [...site.things_all, ...site.scatter, ...site.life, ...site.rides].map((t) => surfaceUrl(t.kind)) : []), [site]);
+  // the models on this world, for their credits, and what the cruiser's crew carry out (kept, so the credits aren't drawn again with every change of the page)
+  const kinds = useMemo(() => (site ? [...[...site.things_all, ...site.scatter, ...site.life, ...site.rides].map((t) => surfaceUrl(t.kind)), ...(ship === 'cruiser' ? wornFiles(looks) : [])] : []), [site, ship, looks]);
   if (!site) return <Navigate to={id ? `/galaxy/${id}` : '/galaxy'} replace />;
   const place = site.places.find((p) => p.id === here);
   const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };
@@ -306,7 +311,7 @@ export default function GalaxySurface() {
       {/* the quest you're on, and the things to do here */}
       {mission && <ChaseHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onAgain={() => view.current?.input?.('restart')} onBack={takeOff} />}
 
-      {phase !== 'landing' && site.quests.length > 0 && !(mission && chase && !chase.result) && (
+      {phase !== 'landing' && site.quests.length > 0 && !(mission?.kind === 'chase' && chase && !chase.result) && (
         <div className="surface-quest">
           {quest ? (
             <>
@@ -315,9 +320,11 @@ export default function GalaxySurface() {
                 {quest.text}
                 {quest.left != null && <span className="surface-quest-time"> · {quest.left}s</span>}
               </p>
-              <button type="button" className="surface-quest-link" onClick={() => view.current?.input?.('drop')}>
-                Drop it
-              </button>
+              {quest.id !== mission?.quest?.id && (
+                <button type="button" className="surface-quest-link" onClick={() => view.current?.input?.('drop')}>
+                  Drop it
+                </button>
+              )}
             </>
           ) : (
             <button type="button" className="surface-quest-open" onClick={() => setList((l) => !l)} aria-expanded={list}>
@@ -346,7 +353,7 @@ export default function GalaxySurface() {
           <span style={{ width: `${health}%` }} />
         </div>
       )}
-      {(((aiming || quest?.shoot) && phase === 'walk') || (mission && chase && !chase.result && phase === 'ride')) && <span className="surface-crosshair" aria-hidden="true" />}
+      {(((aiming || quest?.shoot) && phase === 'walk') || (mission?.kind === 'chase' && chase && !chase.result && phase === 'ride')) && <span className="surface-crosshair" aria-hidden="true" />}
       <div className="surface-door" aria-hidden="true" style={{ opacity: fade }} />
       {prompt && phase !== 'landing' && phase !== 'leaving' && (
         <p className="surface-prompt" role="status">

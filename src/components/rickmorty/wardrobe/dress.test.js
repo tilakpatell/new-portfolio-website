@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { BODIES, SWATCHES, WHO } from './looks';
-import { KEYS, MAX_REGIONS, addZones, recolor, regionUniforms, zoneOf } from './dress';
+import { KEYS, MAX_REGIONS, addZones, dressColors, recolor, regionUniforms, zoneOf } from './dress';
 
 describe('zones', () => {
   it('sorts the Meshy skeleton’s bones into head, torso and arms, legs and feet', () => {
@@ -57,5 +57,39 @@ describe('regions', () => {
     const b = recolor(new THREE.MeshToonMaterial(), 'morty', {});
     expect(a.customProgramCacheKey()).not.toBe(b.customProgramCacheKey());
     expect(a.userData.regions).toBeDefined();
+  });
+});
+
+describe('a dressed figure', () => {
+  // a figure of one skinned mesh, its material taught a rim (meshyCast's paint)
+  const figure = async () => {
+    const { rimToon } = await import('../../../lib/three/ink');
+    const bone = new THREE.Bone();
+    bone.name = 'Spine';
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
+    g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(new Array(12).fill(0), 4));
+    g.setAttribute('skinWeight', new THREE.Float32BufferAttribute([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 4));
+    const mesh = new THREE.SkinnedMesh(g, rimToon(new THREE.MeshToonMaterial()));
+    mesh.add(bone);
+    mesh.bind(new THREE.Skeleton([bone]));
+    const group = new THREE.Group();
+    group.add(mesh);
+    return { group, mesh };
+  };
+  const compile = (m) => {
+    const s = { uniforms: {}, vertexShader: 'void main() {\n#include <begin_vertex>\n}', fragmentShader: 'void main() {\n#include <map_fragment>\n#include <opaque_fragment>\n}' };
+    m.onBeforeCompile(s, null);
+    return s;
+  };
+
+  it('keeps the rim of light its material had, under the new colours', async () => {
+    const { group, mesh } = await figure();
+    dressColors({ group }, { body: 'morty', colors: { inner: 'portalgreen' } });
+    const s = compile(mesh.material);
+    expect(s.fragmentShader).toContain('rimColor');
+    expect(s.fragmentShader).toContain('rgOn');
+    expect(s.uniforms.rimColor).toBeDefined();
+    expect(mesh.material.customProgramCacheKey()).toContain('rim');
   });
 });

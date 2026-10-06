@@ -70,6 +70,18 @@ export function setWorldQuaternion(bone, q, w = 1) {
   bone.updateWorldMatrix(false, true);
 }
 
+// Turn `bone` about a world axis by `angle` (radians), `w` of the way, on
+// top of whatever pose it has: local' = parent⁻¹ · R · parent · local.
+export function rotateWorld(bone, axis, angle, w = 1) {
+  if (!bone || w <= 0 || !angle) return;
+  bone.parent.updateWorldMatrix(true, false);
+  bone.parent.getWorldQuaternion(_q2);
+  _q.setFromAxisAngle(_u.copy(axis).normalize(), angle * Math.min(1, w));
+  _q.premultiply(_q2.clone().invert()).multiply(_q2);
+  bone.quaternion.premultiply(_q);
+  bone.updateWorldMatrix(false, true);
+}
+
 // A two-bone chain of Object3Ds (`upper` → `fore` → `hand`, each the
 // other's child) reaching to put `hand` at `target` (world), the elbow
 // toward `pole`, `w` of the way from where the clip left it.

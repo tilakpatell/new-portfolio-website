@@ -784,11 +784,11 @@ html.stand-ground main { animation: stand-ground 0.9s cubic-bezier(0.3, 0.7, 0.3
 }
 :is([data-theme='optimus'], [data-theme='megatron'], [data-theme='bumblebee'], [data-theme='shockwave'], [data-theme='soundwave']) :is(.eyebrow, .label, .btn) { font-family: 'Orbitron', var(--font-sans); letter-spacing: 0.06em; }
 @supports ((-webkit-background-clip: text) or (background-clip: text)) {
-  :is([data-theme='optimus'], [data-theme='megatron'], [data-theme='bumblebee'], [data-theme='shockwave'], [data-theme='soundwave']) h1.display {
+  :is([data-theme='optimus'], [data-theme='megatron'], [data-theme='bumblebee'], [data-theme='shockwave'], [data-theme='soundwave']) :is(h1, [data-page-title]).display {
     background: linear-gradient(180deg, var(--text) 0%, color-mix(in srgb, var(--accent) 75%, #000) 52%, var(--text) 100%);
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
-  html[data-mode='dark']:is([data-theme='optimus'], [data-theme='megatron'], [data-theme='bumblebee'], [data-theme='shockwave'], [data-theme='soundwave']) h1.display {
+  html[data-mode='dark']:is([data-theme='optimus'], [data-theme='megatron'], [data-theme='bumblebee'], [data-theme='shockwave'], [data-theme='soundwave']) :is(h1, [data-page-title]).display {
     background: linear-gradient(180deg, #ffffff 0%, #c9d1dc 44%, #6b7686 52%, #e6ebf1 100%);
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
@@ -1085,10 +1085,10 @@ html[data-menu] .guide-nudge { visibility: hidden; }
 :is([data-theme='portal'], [data-theme='morty'], [data-theme='summer'], [data-theme='beth']) :is(.display, .title) { font-family: 'Luckiest Guy', var(--font-sans); font-stretch: normal; font-weight: 400; letter-spacing: 0.02em; line-height: 1.04; }
 html:not([data-mode='dark']):is([data-theme='portal'], [data-theme='morty'], [data-theme='summer'], [data-theme='beth']) .card { border: 2px solid #1b1424; box-shadow: 4px 4px 0 #1b1424; }
 html:not([data-mode='dark']):is([data-theme='portal'], [data-theme='morty'], [data-theme='summer'], [data-theme='beth']) .btn-primary { border: 2px solid #1b1424; box-shadow: 0 3px 0 #1b1424; }
-[data-theme='portal'] h1.display { color: #45c5e8; text-shadow: 2px 2px 0 #c3e053, -2px 2px 0 #c3e053, 2px -2px 0 #c3e053, -2px -2px 0 #c3e053, 0 3px 0 #c3e053, 5px 6px 0 #1b1424; }
-[data-theme='morty'] h1.display { color: #f3d84b; text-shadow: 2px 2px 0 #1b1424, -2px 2px 0 #1b1424, 2px -2px 0 #1b1424, -2px -2px 0 #1b1424, 5px 6px 0 #3b65b8; }
-[data-theme='summer'] h1.display { color: #ff8fb1; text-shadow: 2px 2px 0 #1b1424, -2px 2px 0 #1b1424, 2px -2px 0 #1b1424, -2px -2px 0 #1b1424, 5px 6px 0 #e2733a; }
-[data-theme='beth'] h1.display { color: #f1cf6a; text-shadow: 2px 2px 0 #1b1424, -2px 2px 0 #1b1424, 2px -2px 0 #1b1424, -2px -2px 0 #1b1424, 5px 6px 0 #8e2b48; }
+[data-theme='portal'] :is(h1, [data-page-title]).display { color: #45c5e8; text-shadow: 2px 2px 0 #c3e053, -2px 2px 0 #c3e053, 2px -2px 0 #c3e053, -2px -2px 0 #c3e053, 0 3px 0 #c3e053, 5px 6px 0 #1b1424; }
+[data-theme='morty'] :is(h1, [data-page-title]).display { color: #f3d84b; text-shadow: 2px 2px 0 #1b1424, -2px 2px 0 #1b1424, 2px -2px 0 #1b1424, -2px -2px 0 #1b1424, 5px 6px 0 #3b65b8; }
+[data-theme='summer'] :is(h1, [data-page-title]).display { color: #ff8fb1; text-shadow: 2px 2px 0 #1b1424, -2px 2px 0 #1b1424, 2px -2px 0 #1b1424, -2px -2px 0 #1b1424, 5px 6px 0 #e2733a; }
+[data-theme='beth'] :is(h1, [data-page-title]).display { color: #f1cf6a; text-shadow: 2px 2px 0 #1b1424, -2px 2px 0 #1b1424, 2px -2px 0 #1b1424, -2px -2px 0 #1b1424, 5px 6px 0 #8e2b48; }
 
 /* a portal (rickmorty/PortalSwirl.jsx): the swirl on a WebGL canvas, or this
    CSS one without 3D: solid green, wound arms, a lime lip, a bright eye */

@@ -24,7 +24,7 @@ describe('the 3D models that are other people’s', () => {
 
   it('are each in the site, and each used by a page that shows its credit', () => {
     const code = sources().join('\n');
-    const shown = { universe: 'components/universe/UniversePanel.jsx', 'middle-earth': 'components/middleearth/MapHub.jsx', invincible: 'pages/Invincible.jsx', avengers: 'pages/Avengers.jsx', earth: 'pages/Earth.jsx', galaxy: 'components/galaxy/GalaxyPanel.jsx', 'galaxy-surface': 'pages/GalaxySurface.jsx', 'c-137': 'components/rickmorty/wardrobe/Wardrobe.jsx' };
+    const shown = { universe: 'components/universe/UniversePanel.jsx', 'middle-earth': 'components/middleearth/MapHub.jsx', invincible: 'pages/Invincible.jsx', avengers: 'pages/Avengers.jsx', earth: 'pages/Earth.jsx', galaxy: 'components/galaxy/GalaxyPanel.jsx', 'galaxy-surface': 'pages/GalaxySurface.jsx', 'c-137': 'components/rickmorty/wardrobe/Wardrobe.jsx', cybertron: 'pages/Cybertron.jsx' };
     for (const [name, m] of Object.entries(CREDITS)) {
       // where it is: its own `file`, or under its name with the rest from Sketchfab
       const file = m.file ?? `/models/sketchfab/${name}.glb`;
@@ -42,5 +42,12 @@ describe('the 3D models that are other people’s', () => {
         expect(readFileSync(at(`src/${shown[page]}`), 'utf8'), page).toContain(`<ModelCredits where="${page}"`);
       }
     }
+  });
+
+  it('worn in the wardrobe are credited wherever the crew wear them too', () => {
+    // (the cruiser's seats in the universe and the galaxy; out of the ship on a planet)
+    const worn = Object.entries(CREDITS).filter(([, m]) => m.file?.startsWith('/models/wardrobe/'));
+    expect(worn.length).toBeGreaterThan(0);
+    for (const [name, m] of worn) expect(m.also ?? [], name).toEqual(expect.arrayContaining(['universe', 'galaxy', 'galaxy-surface']));
   });
 });

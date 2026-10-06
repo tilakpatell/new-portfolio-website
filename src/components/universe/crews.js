@@ -245,6 +245,28 @@ export const CREWS = [
     ],
     // the director's set pieces (director.js), and going out into deep space
     events: {
+      // friends on your wing in a long fight (wingmen.js), and going again
+      wingmen: [
+        ['birdperson', 'Rick. I am here to assist. It is what friends do.'],
+        ['rick', 'Birdperson! Thank God. I mean, took you long enough.'],
+      ],
+      wingmenGone: [
+        ['birdperson', 'Our work here is done. Goodbye, old friend.'],
+        ['morty', 'Bye, Birdperson!'],
+      ],
+      // someone else's fight out ahead (skirmishes.js): seen, won with your help, lost
+      skirmish: [
+        ['morty', 'Rick, there’s a fight up ahead! Is that Birdperson?'],
+        ['rick', 'Federation goons on a family saucer. Go help him, Morty. Or don’t. I’m not your dad.'],
+      ],
+      skirmishThanks: [
+        ['birdperson', 'Thank you, Rick. The family is safe.'],
+        ['rick', 'Yeah, yeah. Don’t make it weird.'],
+      ],
+      skirmishLost: [
+        ['morty', 'Oh no, Rick, they got them.'],
+        ['rick', 'That’s the galaxy, Morty. Cold, and full of jerks.'],
+      ],
       distress: [
         ['comms', 'Mayday, mayday! Gromflomites! Anybody!'],
         ['morty', 'Rick, that family’s in trouble!'],
@@ -635,6 +657,28 @@ export const CREWS = [
       ['comms', 'Great shot, kid. That was one in a million.'],
     ],
     events: {
+      // friends on your wing in a long fight (wingmen.js), and going again
+      wingmen: [
+        ['comms', 'Red Two here, Luke. Coming in on your wing!'],
+        ['luke', 'Wedge! Good to see you. Watch yourself, they’re quick.'],
+      ],
+      wingmenGone: [
+        ['comms', 'Red Two, breaking off. Good flying, Luke.'],
+        ['r2', '[a cheerful whistle]'],
+      ],
+      // someone else's fight out ahead (skirmishes.js): seen, won with your help, lost
+      skirmish: [
+        ['r2', '[an alarmed whistle]'],
+        ['luke', 'TIEs on one of our transports, dead ahead. Its escort’s holding them off. Let’s help.'],
+      ],
+      skirmishThanks: [
+        ['comms', 'Thanks for the assist, Red Five. We’re clear.'],
+        ['luke', 'Glad we could help. May the Force be with you.'],
+      ],
+      skirmishLost: [
+        ['luke', 'We were too late. Artoo, log it.'],
+        ['r2', '[a low, sad warble]'],
+      ],
       destroyer: [
         ['r2', '[a frantic warble]'],
         ['luke', 'Star Destroyer, right on top of us! They’re launching fighters!'],
@@ -1005,6 +1049,30 @@ export const CREWS = [
       ['chewie', '[a triumphant roar]'],
     ],
     events: {
+      // friends on your wing in a long fight (wingmen.js), and going again
+      wingmen: [
+        ['comms', 'Falcon, this is Rogue Squadron. Thought you could use a hand.'],
+        ['han', 'I had it under control. But sure, come on in.'],
+        ['chewie', '[an approving roar]'],
+      ],
+      wingmenGone: [
+        ['comms', 'Rogue Squadron out. Try to stay out of trouble, Solo.'],
+        ['han', 'No promises.'],
+      ],
+      // someone else's fight out ahead (skirmishes.js): seen, won with your help, lost
+      skirmish: [
+        ['han', 'Somebody’s getting jumped up ahead. Rebels, by the look of it.'],
+        ['chewie', '[an urgent growl]'],
+        ['han', 'Yeah, yeah. We’re going.'],
+      ],
+      skirmishThanks: [
+        ['comms', 'Falcon, we owe you one. Drinks are on us.'],
+        ['han', 'I’m holding you to that.'],
+      ],
+      skirmishLost: [
+        ['han', 'Didn’t make it. Shame.'],
+        ['chewie', '[a mournful moan]'],
+      ],
       destroyer: [
         ['han', 'Star Destroyer! Why is it always a Star Destroyer?'],
         ['chewie', '[an alarmed roar]'],
@@ -1401,6 +1469,40 @@ export const CREWS = [
       ['walt', 'Say my name.', 'sayMyName'],
     ],
     events: {
+      // friends on your wing in a long fight (wingmen.js), and going again:
+      // whoever's out here, from either universe
+      wingmen: {
+        xwing: [
+          ['comms', 'Unidentified, uh, camper van. This is Rogue Squadron. We’ve got your back.'],
+          ['jesse', 'Yo, Mr. White, the Star Wars guys are helping us!'],
+          ['walt', 'Allies, Jesse. Every empire needs them.'],
+        ],
+        birdperson: [
+          ['comms', 'I am Birdperson. I will defend your flying house.'],
+          ['jesse', 'Yo, there’s a bird dude out there with a laser!'],
+        ],
+      },
+      wingmenGone: [
+        ['jesse', 'Later, yo! Thanks!'],
+        ['walt', 'We were never here.'],
+      ],
+      // someone else's fight out ahead (skirmishes.js): seen, won with your
+      // help, lost; whoever's out here, from either universe
+      skirmish: {
+        starwars: [
+          ['jesse', 'Yo, Mr. White, there’s a whole space battle up there!'],
+          ['walt', 'Not our fight, Jesse. Although.'],
+        ],
+        rickmorty: [
+          ['jesse', 'Yo, that bird dude is fighting the space cops!'],
+          ['walt', 'The Federation. Never trust a government that big.'],
+        ],
+      },
+      skirmishThanks: [
+        ['comms', 'Thank you, strange flying camper!'],
+        ['jesse', 'Yeah, science!'],
+      ],
+      skirmishLost: [['walt', 'We were never here, Jesse.']],
       distress: [
         ['comms', 'Mayday! Anybody! We’re under attack!'],
         ['jesse', 'Mr. White, we gotta help them!'],
