@@ -21,7 +21,7 @@ export const COURSES = [
 export const COURSE = Object.fromEntries(COURSES.map((c) => [c.id, c]));
 
 // the units each material's texture repeats over (the scene uses the same)
-export const SCALE = { grass: 520, rock: 700, path: 420, castle: 420, roof: 260, wood: 260, marble: 360, carpet: 300, plaster: 600, stone: 380, 'grass-stone': 380, 'wood-floor': 300, trim: 200, glass: 560, door: 440 };
+export const SCALE = { grass: 520, rock: 700, path: 460, cobble: 300, castle: 420, roof: 260, wood: 260, marble: 360, carpet: 300, plaster: 600, stone: 380, 'grass-stone': 380, 'wood-floor': 300, trim: 200, glass: 560, door: 440 };
 const scaleOf = (mat) => SCALE[mat] ?? 400;
 
 const built = new Map();

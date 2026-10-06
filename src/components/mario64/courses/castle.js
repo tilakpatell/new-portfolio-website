@@ -40,7 +40,7 @@ function groundsSplat(x, z, ny, y) {
 }
 
 function buildGrounds(k) {
-  k.terrain({ id: 'lawn', x0: -6600, z0: -7600, w: 13200, d: 14200, res: 110, height: groundsHeight, splat: groundsSplat, mats: ['grass', 'rock', 'path'] });
+  k.terrain({ id: 'lawn', x0: -6600, z0: -7600, w: 13200, d: 14200, res: 110, height: groundsHeight, splat: groundsSplat, mats: ['grass', 'rock', 'cobble'] });
 
   // the drawbridge, with a rail each side
   k.box({ x: 0, y: -70, z: -300, w: 700, h: 70, d: 1100, mat: 'wood' });
@@ -48,12 +48,9 @@ function buildGrounds(k) {
 
   // the castle: the keep, its front at z -1600
   k.box({ x: 0, y: 0, z: -2800, w: 3400, h: 1500, d: 2400, mat: 'castle', top: 'roof' });
-  // the front steps and the door (the door itself is the warp; this is its look)
+  // the front steps (the door is the door actor's; the round window over it a prop)
   k.box({ x: 0, y: 0, z: -1450, w: 1000, h: 40, d: 300, mat: 'castle' });
-  k.box({ x: 0, y: 40, z: -1592, w: 440, h: 560, d: 16, mat: 'door', collide: false });
-  // the round stained-glass window over it, and its frame
-  k.box({ x: 0, y: 820, z: -1594, w: 560, h: 520, d: 12, mat: 'glass', collide: false });
-  k.box({ x: 0, y: 1340, z: -1590, w: 660, h: 40, d: 30, mat: 'trim', collide: false });
+  k.box({ x: 0, y: 1360, z: -1590, w: 700, h: 40, d: 30, mat: 'trim', collide: false });
   // battlements along the top of the front and sides
   for (let x = -1600; x <= 1600; x += 260) k.box({ x, y: 1500, z: -1640, w: 140, h: 150, d: 120, mat: 'castle' });
   // the corner towers and their roofs
@@ -113,6 +110,7 @@ const grounds = {
   props: [
     ...TREES.map(([x, z], i) => ({ kind: 'tree', x, z, yaw: i * 1.7, s: 1 + (i % 3) * 0.15, solid: { r: 90, h: 900 } })),
     { kind: 'waterfall', x: -4300, z: 1900, yaw: 0.9, s: 1 },
+    { kind: 'window', x: 0, y: 1080, z: -1588, yaw: 0, s: 1.05 },
     { kind: 'flag', x: 0, y: 3900, z: -3000, s: 1 },
   ],
   actors: settle(groundsHeight, [

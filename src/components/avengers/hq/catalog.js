@@ -133,6 +133,20 @@ export const TEXTURES = {
   "bytes": 585118,
   "smallBytes": 170772
  },
+ "m64-cobble": {
+  "size": 1024,
+  "small": 512,
+  "alpha": false,
+  "bytes": 851413,
+  "smallBytes": 260476
+ },
+ "m64-dirt": {
+  "size": 1024,
+  "small": 512,
+  "alpha": false,
+  "bytes": 662599,
+  "smallBytes": 168489
+ },
  "m64-marble": {
   "size": 1024,
   "small": 512,

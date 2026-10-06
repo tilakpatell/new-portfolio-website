@@ -6,10 +6,26 @@
 // chandeliers. Each is { root, update(a, t, g) }.
 
 import * as THREE from 'three';
-import { COLORS, canvasTexture, capsule, cone, cylinder, lowSphere, mesh, pbr, sphere, starShape, torus } from './common';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { COLORS, canvasTexture, cone, cylinder, mesh, pbr, sphere, starShape, torus } from './common';
 
 const COIN = { yellow: '#ffc93a', red: '#ff2b2b', blue: '#3b7bff' };
 
+// a coin: one turned shape, its rim raised round a dished face
+const COIN_GEO = (() => {
+  const pts = [
+    [0, -0.05],
+    [0.26, -0.045],
+    [0.31, -0.07],
+    [0.36, -0.06],
+    [0.37, 0],
+    [0.36, 0.06],
+    [0.31, 0.07],
+    [0.26, 0.045],
+    [0, 0.05],
+  ].map(([x, y]) => new THREE.Vector2(x, y));
+  return new THREE.LatheGeometry(pts, 40).rotateX(Math.PI / 2);
+})();
 function coin(a) {
   const kind = a?.def?.kind ?? 'yellow';
   const metal = pbr(COIN[kind], { rough: 0.22, metal: 1, emissive: COIN[kind], emissiveIntensity: 0.18 });
@@ -17,10 +33,7 @@ function coin(a) {
   const spin = new THREE.Group();
   spin.position.y = 0.5;
   root.add(spin);
-  spin.add(mesh(cylinder(1, 1, 40), metal, { sx: 0.36, sy: 0.07, sz: 0.36, rx: Math.PI / 2 }));
-  spin.add(mesh(torus(0.18), metal, { sx: 0.33, sy: 0.33, sz: 0.33 }));
-  // the slot down its face
-  spin.add(mesh(capsule(1), pbr(COIN[kind], { rough: 0.35, metal: 1 }), { sx: 0.04, sy: 0.1, sz: 0.06 }));
+  spin.add(mesh(COIN_GEO, metal, { shadow: false }));
   return {
     root,
     update(_, t) {
@@ -325,11 +338,8 @@ function painting(a) {
 }
 
 // ─── Props ─────────────────────────────────────────────────────────────────
-function tree(p) {
-  const root = new THREE.Group();
-  const bark = pbr('#6a4a2e', { rough: 0.9 });
-  root.add(mesh(cylinder(0.7, 1, 16), bark, { y: 1.6, sx: 0.32, sy: 3.2, sz: 0.32 }));
-  const leaf = [pbr('#3f8f2c', { rough: 0.85, sheen: 0.3 }), pbr('#4fa83a', { rough: 0.85, sheen: 0.3 }), pbr('#357a26', { rough: 0.85 })];
+// a tree's crown: soft blobs in three greens, one mesh
+const CROWN = (() => {
   const blobs = [
     [0, 4.4, 0, 1.9],
     [1.0, 3.8, 0.4, 1.3],
@@ -337,7 +347,25 @@ function tree(p) {
     [0.2, 3.6, -1.0, 1.2],
     [-0.3, 5.3, 0.3, 1.2],
   ];
-  blobs.forEach(([x, y, z, r], i) => root.add(mesh(lowSphere(), leaf[i % 3], { x, y, z, sx: r, sy: r * 0.9, sz: r })));
+  const greens = ['#3f8f2c', '#4fa83a', '#357a26'].map((c) => new THREE.Color(c));
+  const parts = blobs.map(([x, y, z, r], i) => {
+    const g = new THREE.IcosahedronGeometry(r, 3);
+    g.scale(1, 0.9, 1);
+    g.translate(x, y, z);
+    const n = g.attributes.position.count;
+    const col = new Float32Array(n * 3);
+    for (let k = 0; k < n; k++) greens[i % 3].toArray(col, k * 3);
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    return g;
+  });
+  return mergeGeometries(parts);
+})();
+const crownMat = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.85, sheen: 0.3, sheenColor: '#9be07a' });
+function tree(p) {
+  const root = new THREE.Group();
+  const bark = pbr('#6a4a2e', { rough: 0.9 });
+  root.add(mesh(cylinder(0.7, 1, 16), bark, { y: 1.6, sx: 0.32, sy: 3.2, sz: 0.32 }));
+  root.add(mesh(CROWN, crownMat));
   root.scale.setScalar(p?.s ?? 1);
   return { root, update() {} };
 }
@@ -353,14 +381,14 @@ function pine(p) {
 
 function rock(p) {
   const root = new THREE.Group();
-  const geo = new THREE.DodecahedronGeometry(1, 1);
+  const geo = new THREE.DodecahedronGeometry(1, 2);
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const k = 0.82 + 0.3 * Math.abs(Math.sin(i * 12.9898) * 43758.5453 % 1);
     pos.setXYZ(i, pos.getX(i) * k, pos.getY(i) * k * 0.7, pos.getZ(i) * k);
   }
   geo.computeVertexNormals();
-  const m = mesh(geo, pbr('#8f877c', { rough: 0.9 }), { y: 0.55, sx: 1.6, sy: 1.6, sz: 1.6 });
+  const m = mesh(geo, pbr('#77705f', { rough: 0.92 }), { y: 0.55, sx: 1.6, sy: 1.6, sz: 1.6 });
   m.userData.own = true;
   root.add(m);
   root.scale.setScalar(p?.s ?? 1);

@@ -16,14 +16,14 @@ import { ring, row } from './castle';
 
 const PI = Math.PI;
 export const MOUNT = { x: 0, z: -1500 };
-const R0 = 2800; // the path's middle at its foot
+const R0 = 3500; // the path's middle at its foot
 const R1 = 1100; // …and at the top
 const HALF = 350; // half the path's width
 export const TOP = 2400;
 const TURNS = 2;
 const PSI = TURNS * TAU;
 export const SUMMIT_R = 900;
-const EDGE = 160; // the cliffs' slope, so none is a single cell
+const EDGE = 500; // the steep rocky slope up from each turn to the next
 
 export const spiralR = (psi) => R0 + ((R1 - R0) * psi) / PSI;
 export const spiralH = (psi) => (TOP * psi) / PSI;
@@ -78,7 +78,8 @@ export function height(x, z) {
 }
 
 function splat(x, z, ny, y) {
-  if (ny < 0.78) return [0, 1, 0];
+  if (ny < 0.62) return [0, 1, 0];
+  if (ny < 0.8) return [0.5, 0.5, 0];
   if (onPath(x, z, y)) return [0, 0, 1];
   if (Math.hypot(x - MOUNT.x, z - MOUNT.z) < SUMMIT_R - 60 && y > TOP - 5) return [0.35, 0, 0.65];
   return [1, 0, 0];
@@ -168,9 +169,9 @@ const bobomb = {
     ].map(([x, z], i) => ({ kind: i % 4 === 3 ? 'pine' : 'tree', x, y: height(x, z), z, yaw: i * 2.3, s: 0.9 + (i % 3) * 0.15, solid: { r: 90, h: 900 } })),
     ...[
       [1300, 4300],
-      [-2100, 1500],
-      [3300, -2600],
-      [-3300, -1200],
+      [-1800, 2500],
+      [4300, -2700],
+      [-4300, -1000],
     ].map(([x, z], i) => ({ kind: 'rock', x, y: height(x, z), z, yaw: i, s: 1 + i * 0.2, solid: { r: 160, h: 140 } })),
   ],
   actors: settle(height, [
@@ -179,13 +180,13 @@ const bobomb = {
     { type: 'goomba', x: 1800, z: 4600 },
     { type: 'goomba', x: -1500, z: 4400 },
     { type: 'goomba', x: 2000, z: 1900 },
-    { type: 'goomba', x: -1800, z: 2300 },
-    { type: 'goomba', x: -900, z: -4800 },
-    { type: 'goomba', x: 3000, z: -3400 },
+    { type: 'goomba', x: 2300, z: 4100 },
+    { type: 'goomba', x: -800, z: -5500 },
+    { type: 'goomba', x: 3400, z: -4300 },
     { type: 'bobomb', ...at(1.3) },
     { type: 'bobomb', ...at(3.2) },
     { type: 'bobomb', ...at(5.4) },
-    { type: 'bobomb', x: 1300, z: -4500 },
+    { type: 'bobomb', x: 2000, z: -5200 },
     { type: 'king', x: MOUNT.x, y: TOP, z: MOUNT.z, yaw: 0, arena: { x: MOUNT.x, y: TOP, z: MOUNT.z, r: SUMMIT_R }, star: 0 },
     { type: 'ballspawner', x: BALL_PATH[0][0], y: BALL_PATH[0][1], z: BALL_PATH[0][2], path: BALL_PATH, every: 210, speed: 22 },
     { type: 'post', id: 'post', x: POST.x, z: POST.z },

@@ -91,7 +91,7 @@ export function makeMario() {
   spine.add(mesh(sphere(), blue, { y: 0.1, sx: 0.265, sy: 0.17, sz: 0.225 }));
   spine.add(mesh(sphere(), blue, { y: 0.27, z: 0.085, sx: 0.17, sy: 0.15, sz: 0.15 }));
   for (const sx of [-1, 1]) {
-    spine.add(mesh(capsule(0.3), blue, { x: sx * 0.12, y: 0.36, z: 0.04, sx: 0.04, sy: 0.6, sz: 0.04, rx: -0.25 }));
+    spine.add(mesh(capsule(4), blue, { x: sx * 0.12, y: 0.36, z: 0.04, sx: 0.035, sy: 0.035, sz: 0.035, rx: -0.25 }));
     spine.add(mesh(sphere(), gold, { x: sx * 0.11, y: 0.32, z: 0.215, sx: 0.04, sy: 0.04, sz: 0.025 }));
   }
 

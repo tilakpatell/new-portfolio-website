@@ -42,7 +42,8 @@ export const COLORS = {
   black: '#141414',
 };
 
-export function mesh(geo, mat, { x = 0, y = 0, z = 0, sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0, shadow = true } = {}) {
+// (parts too small to matter cast no shadow: a draw saved for each)
+export function mesh(geo, mat, { x = 0, y = 0, z = 0, sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0, shadow = Math.max(sx, sy, sz) >= 0.06 } = {}) {
   const m = new THREE.Mesh(geo, mat);
   m.position.set(x, y, z);
   m.scale.set(sx, sy, sz);

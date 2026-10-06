@@ -141,6 +141,14 @@
     "m64-carpet": {
       "src": "ambientcg:Carpet013",
       "size": 1024
+    },
+    "m64-cobble": {
+      "src": "polyhaven:cobblestone_floor_04",
+      "size": 1024
+    },
+    "m64-dirt": {
+      "src": "polyhaven:dirt",
+      "size": 1024
     }
   },
   "skies": {
