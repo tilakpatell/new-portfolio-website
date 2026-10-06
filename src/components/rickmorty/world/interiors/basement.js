@@ -15,11 +15,11 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { hot } from '../../../../lib/stage3d';
-import { FURNITURE, LINKS, RINGS } from '../rules';
+import { FURNITURE, LINKS, PEOPLE, RINGS } from '../rules';
 import { at, mergeParts, rng } from '../kit';
 import { BALL, BALL8, BOX, CYL, CYL8, PLANE, TAU, fitText, lathe, makeRoom, tiledPaint, tube } from './shell';
 import { LADDER, crossed, fadeUp, glowSpot, hazardStripes } from './lab';
-import { needCast } from './people';
+import { hologram, needCast, onEntry } from './people';
 import { angleOf, inward, ringAt, ringCeiling, ringFloor, ringWall } from './round';
 
 const RING = RINGS.basement;
@@ -136,6 +136,15 @@ export async function buildBasement(kit) {
     screen(t);
     spill.opacity = 0.9 + Math.sin(t * 5.3) * 0.05 + Math.sin(t * 1.7) * 0.05;
   });
+
+  // Diane, Rick's wife, as he keeps her down here (the multiverse's Phase 2): a
+  // hologram over a ring of light on the floor, see-through and drawn without
+  // the ink. Fetched the first time Morty comes down, left out if she won't load.
+  const diane = PEOPLE.find((p) => p.id === 'diane');
+  const holo = R.add(new THREE.Group(), { ink: false });
+  holo.add(new THREE.Mesh(R.own(new THREE.RingGeometry(0.32, 0.42, 40).rotateX(-Math.PI / 2)), R.own(new THREE.MeshBasicMaterial({ color: 0x7ff0ff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }))));
+  holo.children[0].position.set(diane.x, 0.02, diane.z);
+  onEntry(R, () => hologram(R, 'diane', diane, { h: 1.85, flat: holo }));
 
   return R.build({ light: { sun: [0xbfe8ff, 0.45], hemi: [0x8fd0ff, 0x0b1a26, 1.5], fog: [0x040b12, 16, 48], background: 0x02060b } });
 }

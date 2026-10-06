@@ -3,7 +3,8 @@ import { clockOf } from './missions/chase';
 
 // What's over a mission: for a chase (missions/chase.js), the count, then
 // the scouts left, the clock and how close the leading one is to where it's
-// going (a quest mission has the quest's own panel instead); at the end,
+// going; for a quest mission, its name, the clock and the par up top and a
+// banner for its first seconds (the step itself is the quest panel's); at the end,
 // how it went (the mission's `ends`), with Again, a look round the world on
 // foot, and the way back to the system. `view` is the scene's chaseView, with `result`,
 // as the page last drew it; `feed` brings the same ten times a second, for
@@ -48,6 +49,23 @@ export default function ChaseHud({ view, feed, mission, best, fresh, onAgain, on
         <p className="chase-count chase-go" aria-hidden="true">
           Go
         </p>
+      )}
+      {/* a quest mission: its name and clock up top, and how it starts, for the first seconds */}
+      {!result && mission.kind === 'quest' && (
+        <div className="chase-hud chase-hud-quest">
+          <p className="chase-name">{mission.name}</p>
+          <div className="chase-row">
+            <span className="chase-par">Three stars under {mission.stars[0]}s</span>
+            <span className="chase-clock">{clockOf(t)}</span>
+          </div>
+        </div>
+      )}
+      {!result && mission.kind === 'quest' && t < 4 && (
+        <div className="chase-start" aria-hidden="true">
+          <p className="chase-start-kicker">Mission</p>
+          <p className="chase-start-title">{mission.name}</p>
+          <p className="chase-start-text">{mission.ride ? 'Through every gate, against the clock.' : 'On foot, against the clock.'} Three stars under {mission.stars[0]} seconds.</p>
+        </div>
       )}
       {!result && phase !== 'count' && mission.kind === 'chase' && (
         <div className="chase-hud">

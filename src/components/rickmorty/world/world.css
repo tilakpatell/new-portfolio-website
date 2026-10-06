@@ -51,6 +51,9 @@
 .rm-swirl { display: block; width: 4.5rem; height: 4.5rem; border: 3px solid var(--rm-ink); border-radius: 50%; background: radial-gradient(circle, #f4ffd8 0 12%, transparent 13%), conic-gradient(from 0deg, #2c8a2a, #9dff5a, #e9ffb0, #6fd23e, #2c8a2a, #9dff5a, #2c8a2a); box-shadow: 0 0 0 4px rgba(157, 255, 90, 0.35); animation: rm-spin 1.6s linear infinite; }
 .rm-swirl-sm { flex: none; width: 1.05rem; height: 1.05rem; margin-top: 0.1rem; border-width: 2px; box-shadow: none; animation-duration: 3s; }
 @keyframes rm-spin { to { transform: rotate(360deg); } }
+/* over the portal's swirl while the far side loads: it shows only if the wait is more than a moment */
+.rm-opening { z-index: 7; animation: rm-opening 0.25s ease 0.35s both; }
+@keyframes rm-opening { from { opacity: 0; } }
 
 /* ── the HUD: it sits over the street, and only its controls take the pointer ── */
 .rm-hud { position: absolute; left: 0; right: 0; z-index: 3; display: flex; justify-content: space-between; gap: 1rem; padding: var(--rm-pad) var(--rm-pad-r) var(--rm-pad) var(--rm-pad-l); pointer-events: none; }
@@ -146,6 +149,40 @@
 .rm-lift { display: grid; gap: 0.55rem; }
 .rm-lift button { display: grid; place-items: center; width: 54px; height: 54px; border: 2px solid var(--rm-ink); border-radius: 50%; background: var(--rm-glass); color: #fff; font-size: 1.5rem; box-shadow: 0 3px 0 var(--rm-ink); touch-action: none; -webkit-tap-highlight-color: transparent; }
 .rm-lift button:active { background: var(--rm-green); color: var(--rm-ink); }
+
+/* Total Rickall: the crosshair in the middle, lime when someone's in it; a
+   memory card over whoever it's about (moved there each frame); the clock;
+   Remember and Shoot; and how it ended */
+.rm-crosshair { position: absolute; left: 50%; top: 50%; z-index: 3; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 2px solid rgba(255, 255, 255, 0.9); border-radius: 50%; box-shadow: 0 0 0 2px var(--rm-ink), inset 0 0 0 2px var(--rm-ink); pointer-events: none; transition: transform 0.12s ease, border-color 0.12s ease; }
+.rm-crosshair::before { content: ''; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px var(--rm-ink); }
+.rm-crosshair[data-on] { border-color: var(--rm-lime); transform: scale(0.8); }
+.rm-crosshair[data-on]::before { background: var(--rm-lime); }
+.rm-recall { position: absolute; left: 0; top: 0; z-index: 4; width: max-content; max-width: min(18rem, calc(100% - 2rem)); padding: 0.6rem 0.85rem 0.7rem; border: 2px solid var(--rm-ink); border-radius: 16px; background: var(--rm-paper); color: var(--rm-ink); box-shadow: 0 4px 0 rgba(27, 20, 36, 0.6), 0 0 26px rgba(255, 220, 140, 0.55); visibility: hidden; pointer-events: none; will-change: transform; animation: rm-recall-in 0.2s ease-out both; }
+.rm-recall::after { content: ''; position: absolute; left: calc(50% - 9px); bottom: -11px; width: 16px; height: 16px; border-right: 2px solid var(--rm-ink); border-bottom: 2px solid var(--rm-ink); background: var(--rm-paper); transform: rotate(45deg); }
+.rm-recall p { margin: 0; }
+.rm-recall-head { color: #5d5168; font: 600 0.74rem/1.3 var(--font-sans); }
+.rm-recall-head b { color: #2c7a1e; font: 400 0.98rem/1.1 'Luckiest Guy', var(--font-sans); letter-spacing: 0.03em; }
+.rm-recall-text { margin-top: 0.2rem !important; font: 600 0.92rem/1.42 var(--font-sans); }
+@keyframes rm-recall-in { from { opacity: 0; } }
+.rm-rickall-status { align-items: center; }
+.rm-rickall-clock { margin-left: auto; padding-left: 0.7rem; color: var(--rm-lime); font: 700 1rem/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.rm-chip-stop svg { color: var(--rm-red); }
+.rm-prompt[data-kind='aim'] { box-shadow: 0 4px 0 rgba(27, 20, 36, 0.6), inset 0 0 0 1px rgba(255, 106, 90, 0.5); }
+.rm-prompt-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; }
+.rm-btn-shoot { background: var(--rm-red); }
+.rm-btn-shoot:hover { background: #ff8c7e; }
+.rm-act-shoot { background: var(--rm-red); }
+.rm-act-shoot[data-idle] { background: rgba(255, 106, 90, 0.55); }
+.rm-act-alt { width: 70px; height: 70px; background: var(--rm-paper); font-size: 0.78rem; }
+.rm-act-alt[data-idle] { background: rgba(253, 251, 245, 0.55); }
+.rm-ending { position: absolute; left: 50%; top: 50%; z-index: 6; display: grid; justify-items: center; gap: 0.5rem; width: min(24rem, calc(100% - 2rem)); padding: 1.2rem 1.3rem 1.3rem; border: 3px solid var(--rm-ink); border-radius: 18px; background: var(--rm-glass); color: #fff; text-align: center; box-shadow: 0 6px 0 rgba(27, 20, 36, 0.6), inset 0 0 0 1px rgba(201, 255, 90, 0.35); transform: translate(-50%, -50%); animation: rm-ending-in 0.25s ease-out both; }
+.rm-ending p { margin: 0; }
+.rm-ending-where { color: rgba(255, 255, 255, 0.72); font: 700 0.74rem/1 var(--font-sans); letter-spacing: 0.12em; text-transform: uppercase; }
+.rm-ending-title { margin: 0; color: var(--rm-lime); font: 400 clamp(1.8rem, 1.5rem + 1vw, 2.4rem)/1 'Luckiest Guy', var(--font-sans); letter-spacing: 0.03em; text-shadow: 0 3px 0 var(--rm-ink); }
+.rm-ending:not([data-kind='won']) .rm-ending-title { color: var(--rm-red); }
+.rm-ending-line { margin-bottom: 0.4rem !important; font: 600 1.05rem/1.45 var(--font-sans); }
+.rm-ending-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.6rem; }
+@keyframes rm-ending-in { from { opacity: 0; transform: translate(-50%, -46%) scale(0.96); } }
 
 /* the list of things to do (M) */
 .rm-list { position: absolute; top: var(--rm-pad); right: var(--rm-pad-r); z-index: 5; display: flex; flex-direction: column; width: min(23rem, calc(100% - var(--rm-pad) * 2)); max-height: calc(100% - var(--rm-pad) - 80px); padding: 0.8rem; border: 2px solid var(--rm-ink); border-radius: 14px; background: rgba(27, 20, 36, 0.95); color: #fff; box-shadow: 0 6px 0 rgba(27, 20, 36, 0.5); animation: rm-drop 0.18s ease-out both; } /* short of the guide button */
@@ -266,6 +303,7 @@
   .rm-cards li[data-place='arcade'] { grid-column: 2; grid-row: 2; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .rm-swirl, .rm-toast, .rm-prompt, .rm-list, .rm-place, .rm-shipline, .rm-shipline-eyes i, .rm-memory { animation: none; }
+  .rm-swirl, .rm-toast, .rm-prompt, .rm-list, .rm-place, .rm-shipline, .rm-shipline-eyes i, .rm-memory, .rm-recall, .rm-ending { animation: none; }
+  .rm-crosshair { transition: none; }
   .rm-fade, .rm-fade[data-kind] { transition-duration: 0.1s; }
 }

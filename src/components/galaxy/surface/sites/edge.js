@@ -19,7 +19,7 @@ export const SITES = {
     light: { sun: 2.4, sky: '#9a5640', ground: '#6a240c', ambient: 0.85 },
     dust: '#2a2220',
     edge: 'Nothing out there but more lava. Better turn back before your boots melt.',
-    ground: {
+    ground: { detail: 'ash', detailLook: { color: 0.8, normal: 0.8 },
       seed: 31,
       wind: 0.8,
       layers: [
@@ -305,7 +305,7 @@ export const SITES = {
     light: { sun: 3.3, sky: '#a8d8f0', ground: '#e0d6b4', ambient: 0.75 },
     dust: '#efe4c8',
     edge: 'Nothing out there but lagoon and sky, and the shield over all of it. Better turn back.',
-    ground: {
+    ground: { detail: 'beach', detailLook: { color: 0.7, normal: 0.7, metres: 6 },
       seed: 5,
       base: -6,
       wind: 0.6,

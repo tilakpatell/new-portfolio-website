@@ -16,7 +16,8 @@
 //   broader, curving dust tail, both streaming away from the sun, crossing
 //   the sky well away from you.
 // - A solar flare: the nearest star swells and blazes over a few seconds,
-//   then a shell of light runs out from it across the map, through you (the
+//   loops of plasma rising off it, then a coronal mass ejection, a cone of
+//   glowing filaments, runs out from it at you (cme.js), and through you (the
 //   scene takes the shields and scrambles the HUD as it passes: `arrives`).
 // - A rift: a tear in space ahead of you and off to one side, a swirling
 //   tunnel of blue-white light that opens, holds for a while and closes. Fly
@@ -31,12 +32,32 @@
 
 import * as THREE from 'three';
 import { createFleet } from './glbFleet';
-import { forward } from './ship';
+import { SOLIDS, forward } from './ship';
 import { RIFT_R, riftSpot } from './nav';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
+import { createEjection } from './cme';
 
+export const STAR_DESTROYER = 16; // map units long
+
+// Where a Star Destroyer drops in by a ship ({ x, y, z, heading }): 28 ahead
+// and 10 off to `side` (1 or −1), broadside on, a little below; but never
+// inside anything solid (parked at a station, 28 ahead is its middle): the
+// other side, then further aside, until it's clear of every solid by more
+// than its own half-length. [x, y, z] in the map's space.
+export function destroyerSpot(ship, side, solids = SOLIDS) {
+  const [fx, fz] = forward(ship.heading);
+  const at = (aside, s) => [ship.x + fx * 28 - fz * s * aside, ship.y - 0.5, ship.z + fz * 28 + fx * s * aside];
+  const clear = (p) => solids.every((o) => Math.hypot(p[0] - o.at[0], p[1] - o.at[1], p[2] - o.at[2]) > o.r + STAR_DESTROYER * 0.6);
+  for (const aside of [10, 30, 60]) {
+    for (const s of [side, -side]) {
+      const p = at(aside, s);
+      if (clear(p)) return p;
+    }
+  }
+  return at(10, side);
+}
 // how long each capital ship is, in map units (a Star Destroyer's the biggest)
-const CAPITAL = { destroyer: 16, fedcruiser: 12, madrigal: 8 };
+const CAPITAL = { destroyer: STAR_DESTROYER, fedcruiser: 12, madrigal: 8 };
 const CHOPPER = { len: 1.6, ahead: 22, above: 0.4, stay: 45, climb: 6 }; // map units long; where it hangs; seconds it stays, and climbing away
 const STAY = 55; // seconds it stays before jumping away
 const JUMP = 0.7; // seconds to come out of (or go into) hyperspace
@@ -199,15 +220,9 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
   parent.add(comet);
   const flight = { age: 0, life: 0, from: new THREE.Vector3(), vel: new THREE.Vector3() };
 
-  // the flare: the star's glare, and the shell running out from it
-  const flareGlow = new THREE.Sprite(keep(new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(1, 1, 1), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })));
-  flareGlow.visible = false;
-  parent.add(flareGlow);
-  const flareShell = new THREE.Mesh(keep(new THREE.SphereGeometry(1, small ? 32 : 48, small ? 20 : 32)), keep(new THREE.MeshBasicMaterial({ color: new THREE.Color(1, 1, 1), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })));
-  flareShell.visible = false;
-  flareShell.frustumCulled = false;
-  parent.add(flareShell);
-  const fl = { age: -1, star: null, arrives: 0, reach: 0 };
+  // the flare: the star's glare, its prominences and the ejection running
+  // out from it (cme.js)
+  const ejection = createEjection(parent, { small, glow });
 
   // the rift
   const riftMat = keep(new THREE.ShaderMaterial({ vertexShader: UV_VERT, fragmentShader: RIFT_FRAG, uniforms: { uT: { value: 0 }, uOpen: { value: 0 } }, transparent: true, premultipliedAlpha: true, depthWrite: false, side: THREE.DoubleSide }));
@@ -245,9 +260,8 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
         parent.add(sd.group);
       }
       piece.len = CAPITAL[kind] ?? CAPITAL.destroyer;
-      const [fx, fz] = forward(ship.heading);
       const side = Math.random() < 0.5 ? -1 : 1;
-      piece.at.set(ship.x + fx * 28 - fz * side * 10, ship.y - 0.5, ship.z + fz * 28 + fx * side * 10);
+      piece.at.set(...destroyerSpot(ship, side));
       // crossing your path, slowly
       piece.heading = ship.heading + side * (Math.PI / 2 + 0.3);
       const [dx, dz] = forward(piece.heading);
@@ -304,25 +318,14 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
     // of light runs out from it at FLARE_SPEED. Returns when the shell
     // reaches the ship (seconds from now), or null while one's still going
     flare(star, ship) {
-      if (fl.age >= 0) return null;
+      if (ejection.busy) return null;
       const dist = Math.hypot(ship.x - star.at[0], ship.y - star.at[1], ship.z - star.at[2]);
-      fl.star = star;
-      fl.arrives = Math.max(FLARE_RISE, FLARE_RISE + (dist - star.r) / FLARE_SPEED);
-      fl.reach = Math.max(dist * 1.3, star.r * 6);
-      fl.age = 0;
-      const c = new THREE.Color(star.color);
-      flareGlow.material.color.copy(c).multiplyScalar(2.5);
-      flareGlow.position.set(...star.at);
-      flareGlow.material.opacity = 0;
-      flareGlow.visible = true;
-      flareShell.material.color.copy(c).multiplyScalar(1.6);
-      flareShell.material.opacity = 0;
-      flareShell.position.set(...star.at);
-      flareShell.visible = false;
-      return { arrives: fl.arrives };
+      const arrives = Math.max(FLARE_RISE, FLARE_RISE + (dist - star.r) / FLARE_SPEED);
+      ejection.launch(star, ship, { rise: FLARE_RISE, speed: FLARE_SPEED, reach: Math.max(dist * 1.3, star.r * 6) });
+      return { arrives };
     },
     get flareGoing() {
-      return fl.age >= 0;
+      return ejection.busy;
     },
 
     // a rift tears open ahead of you and to one side, at your height, if
@@ -443,30 +446,7 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
         if (a > 2.1) m.visible = false;
       }
 
-      if (fl.age >= 0) {
-        busy = true;
-        fl.age += dt;
-        const age = fl.age;
-        const star = fl.star;
-        if (age < FLARE_RISE) {
-          const k = age / FLARE_RISE;
-          flareGlow.scale.setScalar(star.r * (1.2 + 2.3 * k * k) * 2);
-          flareGlow.material.opacity = Math.min(1, age / 0.6);
-        } else {
-          flareGlow.material.opacity = Math.exp(-(age - FLARE_RISE) * 0.8);
-          flareGlow.scale.setScalar(star.r * 3.5 * 2);
-          const radius = star.r + (age - FLARE_RISE) * FLARE_SPEED;
-          if (radius >= fl.reach) {
-            fl.age = -1;
-            flareGlow.visible = false;
-            flareShell.visible = false;
-          } else {
-            flareShell.visible = true;
-            flareShell.scale.setScalar(radius);
-            flareShell.material.opacity = 0.22 * (1 - radius / fl.reach);
-          }
-        }
-      }
+      if (ejection.update(dt, t, camera)) busy = true;
 
       if (rift.visible) {
         busy = true;
@@ -518,6 +498,7 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
     dispose() {
       sd?.dispose();
       chopper?.dispose();
+      ejection.dispose();
       for (const x of made) x.dispose();
     },
   };

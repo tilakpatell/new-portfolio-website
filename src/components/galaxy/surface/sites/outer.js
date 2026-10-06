@@ -25,7 +25,7 @@ export const SITES = {
     sky: sky('#5a6a80', '#c8a890', '#ffd8b0', { clouds: { cover: 0.55, color: '#d8ccc0', shade: '#5a5048', scale: 0.6, speed: 0.006 } }),
     fog: { color: '#a89080', density: 0.0012 },
     light: { sun: 2.4, sky: '#b0b8c8', ground: '#5a4038', ambient: 0.7 },
-    ground: { seed: 21, layers: [{ type: 'swell', scale: 380, height: 10 }, { type: 'hills', scale: 120, height: 8 }, { type: 'mountains', from: 650, to: 3000, height: 480, scale: 1100 }], palette: palette('#3a3432', '#5a504a', '#2a2422', '#7a3a22', { mark: '#2a2220' }) },
+    ground: { detail: 'ash', detailLook: { color: 0.7, normal: 0.8 }, seed: 21, layers: [{ type: 'swell', scale: 380, height: 10 }, { type: 'hills', scale: 120, height: 8 }, { type: 'mountains', from: 650, to: 3000, height: 480, scale: 1100 }], palette: palette('#3a3432', '#5a504a', '#2a2422', '#7a3a22', { mark: '#2a2220' }) },
     land: { at: [0, 0], yaw: 0.6 },
     places: [
       { id: 'town', name: 'Nevarro City', at: [140, -90], r: 60, flat: { r: 58 }, about: 'The guild’s town: Greef Karga’s cantina, the bounty hunters’ haunt, the Armorer’s forge under the streets.', things: [{ kind: 'cantina', at: [0, 0], yaw: 0.3 }, { kind: 'nevarrodome', at: [27, 18], yaw: 0.4, sink: 0.3 }, { kind: 'nevarrodome', at: [-29, 21], yaw: 1.9, scale: 0.85, sink: 0.3 }, { kind: 'nevarrodome', at: [21, -29], yaw: 2.8, scale: 1.15, sink: 0.3 }, { kind: 'nevarrodome', at: [-24, -26], yaw: 0.9, scale: 0.7, sink: 0.3 }, { kind: 'nevarrodome', at: [40, -4], yaw: 3.3, scale: 0.9, sink: 0.3 }, { kind: 'nevarroarch', at: [-40, 25], yaw: -1, sink: 0.2 }, { kind: 'crates', at: [-14, -12] }, { kind: 'stall', at: [12, 14], yaw: 2.4 }, { kind: 'stall', at: [-10, 16], yaw: 0.6 }, { kind: 'lamp', at: [-34, 18] }, { kind: 'lamp', at: [-30, 29] }, ...grove(7, 26, 50, 78, ['lavarock'], [1.2, 4]).filter((t) => Math.hypot(t.at[0] + 40, t.at[1] - 25) > 16)] },
@@ -86,7 +86,7 @@ export const SITES = {
     sky: sky('#7f93a3', '#c9c4b4', '#f4f1e8', { hazeColor: '#d2cbb4', below: '#8a8678', clouds: { cover: 0.55, color: '#e8e8e4', shade: '#8e9696', scale: 0.6, speed: 0.004 } }),
     fog: { color: '#bdb8aa', density: 0.0014 },
     light: { sun: 2.4, sky: '#b9c4cc', ground: '#8a8476', ambient: 0.8 },
-    ground: { seed: 33, wind: 0.8, layers: [{ type: 'swell', scale: 420, height: 6 }, { type: 'mesas', scale: 500, height: 30, cover: 0.25, cliff: 0.05 }, { type: 'mountains', from: 650, to: 3000, height: 400, scale: 1200 }], palette: palette('#b9ab8e', '#d0c6b2', '#3a4344', '#5f6a66', { deep: '#4a4f4c', mark: '#7a7466' }) },
+    ground: { detail: 'gravel', detailLook: { color: 0.6, normal: 0.7 }, seed: 33, wind: 0.8, layers: [{ type: 'swell', scale: 420, height: 6 }, { type: 'mesas', scale: 500, height: 30, cover: 0.25, cliff: 0.05 }, { type: 'mountains', from: 650, to: 3000, height: 400, scale: 1200 }], palette: palette('#b9ab8e', '#d0c6b2', '#3a4344', '#5f6a66', { deep: '#4a4f4c', mark: '#7a7466' }) },
     weather: [{ kind: 'sand', count: 700 }],
     land: { at: [0, 0], yaw: 2.2 },
     places: [
@@ -114,7 +114,7 @@ export const SITES = {
     sky: sky('#5a90c8', '#d8e4c0', '#fff4d8'),
     fog: { color: '#c8d4b8', density: 0.0008 },
     light: { sun: 3, sky: '#b8d0f0', ground: '#7a8a4a', ambient: 0.75 },
-    ground: { seed: 45, layers: [{ type: 'swell', scale: 460, height: 8 }, { type: 'hills', scale: 160, height: 10 }, { type: 'mountains', from: 700, to: 3000, height: 360, scale: 1300 }], palette: palette('#8a9c4c', '#b4b464', '#7a7268', '#ccb85c', { mark: '#6a7038', accentCover: 0.4 }) },
+    ground: { detail: 'grass', detailLook: { color: 0.7, normal: 0.6 }, seed: 45, layers: [{ type: 'swell', scale: 460, height: 8 }, { type: 'hills', scale: 160, height: 10 }, { type: 'mountains', from: 700, to: 3000, height: 360, scale: 1300 }], palette: palette('#8a9c4c', '#b4b464', '#7a7268', '#ccb85c', { mark: '#6a7038', accentCover: 0.4 }) },
     land: { at: [0, 0], yaw: 1 },
     places: [
       { id: 'capital', name: 'Capital City', at: [260, -60], r: 60, flat: { r: 56 }, about: 'Lothal’s capital: stone towers, and an Imperial factory where the farms used to be.', things: [{ kind: 'lothdome', at: [0, 4], yaw: 3.4, sink: 0.2 }, { kind: 'lothdome', at: [27, 18], yaw: 4.2, scale: 0.85, sink: 0.2 }, { kind: 'lothdome', at: [-26, 16], yaw: 2.4, scale: 0.9, sink: 0.2 }, { kind: 'lothdome', at: [20, -24], yaw: 5.4, scale: 0.75, sink: 0.2 }, { kind: 'crates', at: [8, -16] }, { kind: 'crates', at: [-10, -12], yaw: 0.7 }] },
@@ -158,7 +158,7 @@ export const SITES = {
     sky: sky('#7a98b0', '#d0dcd8', '#fff0d8', { clouds: { cover: 0.5, color: '#f0f4f4', shade: '#a0aca8', scale: 0.6, speed: 0.004 } }),
     fog: { color: '#c0ccc4', density: 0.0018 },
     light: { sun: 2.4, sky: '#b8c8d0', ground: '#4a5a3a', ambient: 0.8 },
-    ground: { seed: 57, layers: [{ type: 'swell', scale: 300, height: 6 }, { type: 'hills', scale: 110, height: 9 }, { type: 'mountains', from: 650, to: 3000, height: 300, scale: 1100 }], palette: palette('#4a6a38', '#6a8a48', '#5a5a50', '#8a7a48', { mark: '#3a4a2a' }) },
+    ground: { detail: 'needles', detailLook: { color: 0.8, normal: 0.7 }, seed: 57, layers: [{ type: 'swell', scale: 300, height: 6 }, { type: 'hills', scale: 110, height: 9 }, { type: 'mountains', from: 650, to: 3000, height: 300, scale: 1100 }], palette: palette('#4a6a38', '#6a8a48', '#5a5a50', '#8a7a48', { mark: '#3a4a2a' }) },
     land: { at: [0, 0], yaw: 0.3 },
     places: [
       { id: 'village', name: 'The krill farmers’ village', at: [180, 120], r: 50, flat: { r: 46 }, about: 'Huts on stilts over the ponds, and a harvest the raiders keep coming back for.', things: [...ring(5, 21, 0.4).map(([x, z, yaw]) => ({ kind: 'stilthut', at: [x, z], yaw, sink: 0.15 })), { kind: 'fire', at: [2, -4] }, { kind: 'crates', at: [-8, -10] }, { kind: 'crates', at: [9, 6], yaw: 0.8 }, ...ring(7, 34, 0.9).map(([x, z, yaw]) => ({ kind: 'sorganfern', at: [x, z], yaw, scale: 1.3, solid: false })), ...grove(11, 30, 54, 84, ['sorganbirch', 'sorganbirch', 'sorganfir'])] },
