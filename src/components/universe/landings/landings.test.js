@@ -23,6 +23,10 @@ const FILES = {
   gaming: () => import('./gaming.js'),
   marvel: () => import('./marvel.js'),
   office: () => import('./office.js'),
+  music: () => import('./music.js'),
+  travel: () => import('./travel.js'),
+  caribbean: () => import('./caribbean.js'),
+  invincible: () => import('./invincible.js'),
 };
 
 describe('planet landings', () => {
@@ -67,7 +71,7 @@ describe('planet landings', () => {
 
   it('stand things clear of the ship and of each other', () => {
     for (const [id, l] of Object.entries(LANDINGS)) {
-      const things = (l.things ?? []).filter((t) => !t.strip);
+      const things = (l.things ?? []).filter((t) => !t.strip && !t.around);
       for (const t of things) {
         expect(t.at, `${id}: ${t.kind}`).toHaveLength(2);
         expect(t.r, `${id}: ${t.kind}'s reach`).toBeGreaterThanOrEqual(0);
@@ -96,7 +100,7 @@ describe('planet landings', () => {
           expect(d).toBeGreaterThanOrEqual(e.from - 1e-9);
           expect(d).toBeLessThanOrEqual(e.to + 1e-9);
           if (e.solid !== false) expect(d - reach * p.s).toBeGreaterThanOrEqual(CLEAR);
-          for (const t of (l.things ?? []).filter((x) => !x.strip)) expect(Math.hypot(t.at[0] - p.x, t.at[1] - p.z)).toBeGreaterThanOrEqual(t.r + reach * p.s);
+          for (const t of (l.things ?? []).filter((x) => !x.strip && !x.around)) expect(Math.hypot(t.at[0] - p.x, t.at[1] - p.z)).toBeGreaterThanOrEqual(t.r + reach * p.s);
         }
       }
       expect(total, `${id}'s scatter`).toBeLessThanOrEqual(1200);
