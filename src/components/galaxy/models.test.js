@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BUILT_KINDS } from '../universe/trafficModels';
 import { GALAXY_KINDS } from './fleet';
-import { HUNTER_GLB, LOD_FAR, LOD_NEAR, MODELS, STAND_IN, createModels, lodLevels, lodUrl } from './models';
+import { HQ, HUNTER_GLB, LOD_FAR, LOD_NEAR, MODELS, STAND_IN, createModels, lodLevels, lodUrl, withHq } from './models';
 import { SYSTEMS, kindsIn } from './systems';
 
 const at = (path) => new URL(`../../../public${path}`, import.meta.url);
@@ -121,6 +121,36 @@ describe('the galaxy’s models', () => {
       models.dispose();
       await new Promise((r) => setTimeout(r, 400));
       expect(models.builtCount).toBe(0);
+    });
+  });
+
+  describe('the capitals’ close-up cut', () => {
+    const base = { destroyer: { url: '/models/universe/star-destroyer.glb', nose: Math.PI }, xwing: { url: '/x.glb', nose: 0 } };
+
+    it('is what a high or ultra device loads, in the capitals that have one', () => {
+      for (const detail of ['high', 'ultra']) {
+        const m = withHq(base, detail);
+        expect(m.destroyer).toEqual({ url: '/models/galaxy/hq/destroyer.glb', nose: HQ.destroyer.nose, hq: true });
+        expect(m.xwing).toBe(base.xwing);
+      }
+    });
+
+    it('is left to the desktops: a laptop or a phone keeps the lighter one', () => {
+      for (const detail of ['mid', 'low']) expect(withHq(base, detail)).toEqual(base);
+    });
+
+    it('has a far-off copy of its own (the old one’s would sit wrong on the new hull)', () => {
+      expect(lodUrl('destroyer', withHq(base, 'high'))).toBe('/models/galaxy/lod/hq/destroyer.glb');
+      expect(lodUrl('destroyer', base)).toBe('/models/galaxy/lod/destroyer.glb');
+    });
+
+    it('is in the site, with its far-off copy, for each of them', () => {
+      for (const kind of Object.keys(HQ)) {
+        const m = withHq({ [kind]: { url: '/', nose: 0 } }, 'high');
+        expect(existsSync(at(m[kind].url)), kind).toBe(true);
+        expect(existsSync(at(lodUrl(kind, m))), kind).toBe(true);
+        expect(primitives(at(lodUrl(kind, m))), kind).toBe(1);
+      }
     });
   });
 

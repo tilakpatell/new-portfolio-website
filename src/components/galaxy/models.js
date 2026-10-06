@@ -17,6 +17,7 @@
 
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { device } from '../../lib/device';
 import { gen3dUrl } from '../../lib/three/gen3d';
 import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 import { GLB } from '../universe/glbFleet';
@@ -63,6 +64,26 @@ export const MODELS = {
 export const MADE = { xwing: 'x-wing', interceptor: 'tie-interceptor' };
 for (const [kind, name] of Object.entries(MADE)) if (MODELS[kind]) MODELS[kind] = { ...MODELS[kind], url: gen3dUrl(name) };
 
+// The capitals' close-up cut: Daniel Andersson's Imperial II, Home One and
+// Nebulon-B (scripts/sketchfab-galaxy.mjs, `hq`), about 100k triangles with
+// 2K maps, which hold up with a fighter flying along their hulls. Only a
+// desktop with a graphics card loads them (detail high or ultra); a laptop
+// or a phone keeps the lighter ones. Each has its own far-off copy, since
+// the old one's, fitted to the new hull's box, would sit wrong on it. The
+// battles' subsystems, batteries and hulls (universe/wars.js) are shares of
+// the ship's length, so they hold on either cut. nose: as each comes.
+export const HQ = {
+  destroyer: { nose: 0 },
+  moncal: { nose: 0 },
+  nebulon: { nose: 0 },
+};
+const HQ_DETAILS = new Set(['high', 'ultra']);
+export const withHq = (models, detail) =>
+  HQ_DETAILS.has(detail)
+    ? { ...models, ...Object.fromEntries(Object.entries(HQ).filter(([k]) => models[k]).map(([k, d]) => [k, { url: `/models/galaxy/hq/${k}.glb`, nose: d.nose, hq: true }])) }
+    : models;
+Object.assign(MODELS, withHq(MODELS, device().detail));
+
 const BUILT = new Set([...BUILT_KINDS, ...GALAXY_KINDS]);
 
 // a kind with no built version of its own flies as another's till its model
@@ -88,7 +109,7 @@ export const STAND_IN = {
 // LOD_FAR times. Tinted and skinned slots keep the full model at every range.
 export const LOD_NEAR = 45;
 export const LOD_FAR = 900;
-export const lodUrl = (kind) => (MODELS[kind] && kind !== 'deathstar' ? `/models/galaxy/lod/${kind}.glb` : null);
+export const lodUrl = (kind, models = MODELS) => (models[kind] && kind !== 'deathstar' ? `/models/galaxy/lod/${models[kind].hq ? 'hq/' : ''}${kind}.glb` : null);
 export const lodLevels = (size) => [
   [0, 'full'],
   [LOD_NEAR * size, 'lod'],

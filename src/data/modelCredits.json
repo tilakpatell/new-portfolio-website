@@ -817,6 +817,20 @@
       "galaxy"
     ]
   },
+  "galaxy-destroyerhq": {
+    "title": "Star Wars: Imperial II Star Destroyer",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-imperial-ii-star-destroyer-b8bd2d35f7604670ab85242c06c6d280",
+    "where": "galaxy",
+    "as": "the Star Destroyers, close up",
+    "file": "/models/galaxy/hq/destroyer.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "galaxy-executor": {
     "title": "Star Wars: Executor Class Star Destroyer",
     "author": "Daniel",
@@ -901,6 +915,20 @@
       "galaxy"
     ]
   },
+  "galaxy-moncalhq": {
+    "title": "Star Wars: MC80 Home One Type Star Cruiser",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-mc80-home-one-type-star-cruiser-9b5e5e5192f64a7faad93a3bfd2efaf2",
+    "where": "galaxy",
+    "as": "the Mon Calamari cruisers, close up",
+    "file": "/models/galaxy/hq/moncal.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "galaxy-munificent": {
     "title": "Munificent-Class Star Frigate",
     "author": "A308 Digital",
@@ -939,6 +967,20 @@
     "where": "galaxy",
     "as": "the Nebulon-B frigates",
     "file": "/models/galaxy/nebulon.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-nebulonhq": {
+    "title": "Star Wars: Nebulon B Frigate",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-nebulon-b-frigate-19b1b0126f8248c28ce38863413c30b8",
+    "where": "galaxy",
+    "as": "the Nebulon-B frigates, close up",
+    "file": "/models/galaxy/hq/nebulon.glb",
     "also": [
       "galaxy"
     ]

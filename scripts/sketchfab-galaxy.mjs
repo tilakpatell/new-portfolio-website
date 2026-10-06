@@ -75,6 +75,11 @@ export const MODELS = {
   arc170: { uid: 'b9407262cdf34d37b0720ca6b70469be', tris: 14000, tex: 512, as: 'the ARC-170s' },
   n1: { uid: '3cf69f6c85234aac8844e845e74ac75b', tris: 12000, tex: 512, as: 'the Naboo N-1 starfighters' },
   nubian: { uid: 'f631077977754b5591298ecfa201380b', tris: 20000, tex: 1024, as: 'the Naboo royal starship' },
+  // the capitals' close-up cut, for a desktop with a graphics card (galaxy/
+  // models.js's HQ): Daniel Andersson's, kept fine enough to fly along
+  destroyerhq: { uid: 'b8bd2d35f7604670ab85242c06c6d280', tris: 100000, tex: 2048, out: 'hq/destroyer', as: 'the Star Destroyers, close up' },
+  moncalhq: { uid: '9b5e5e5192f64a7faad93a3bfd2efaf2', tris: 100000, tex: 2048, out: 'hq/moncal', as: 'the Mon Calamari cruisers, close up' },
+  nebulonhq: { uid: '19b1b0126f8248c28ce38863413c30b8', tris: 100000, tex: 2048, out: 'hq/nebulon', as: 'the Nebulon-B frigates, close up' },
 };
 
 const token = process.env.SKETCHFAB_API_TOKEN;
@@ -100,7 +105,7 @@ async function download(kind, uid) {
 }
 
 // who made it, from the model's public page
-async function credit(kind, uid, as) {
+async function credit(kind, uid, as, out = kind) {
   const m = await json(`${API}/${uid}`);
   const license = LICENCES[m.license?.slug];
   if (!license) throw new Error(`${kind}: its licence (${m.license?.label}) isn't one the site can use`);
@@ -113,7 +118,7 @@ async function credit(kind, uid, as) {
     source: m.viewerUrl,
     where: 'galaxy',
     as,
-    file: `/models/galaxy/${kind}.glb`,
+    file: `/models/galaxy/${out}.glb`,
     also: ['galaxy'],
   };
 }
@@ -269,7 +274,8 @@ async function bring(io, kind, spec) {
     textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /normal|occlusion|metallicRoughness|specular|sheen|clearcoat|transmission/, resize: [spec.maps ?? spec.tex / 2, spec.maps ?? spec.tex / 2], quality: 80 }),
     meshopt({ encoder: MeshoptEncoder, level: 'high' }),
   );
-  const out = path(OUT, `${kind}.glb`);
+  const out = path(OUT, `${spec.out ?? kind}.glb`);
+  await mkdir(dirname(out), { recursive: true });
   await io.write(out, doc);
   const draws = root.listMeshes().reduce((n, m) => n + m.listPrimitives().length, 0);
   const bytes = (await stat(out)).size;
@@ -291,7 +297,7 @@ async function main() {
   for (const kind of only.length ? only : Object.keys(MODELS)) {
     const spec = MODELS[kind];
     await bring(io, kind, spec);
-    credits[`galaxy-${kind}`] = await credit(kind, spec.uid, spec.as);
+    credits[`galaxy-${kind}`] = await credit(kind, spec.uid, spec.as, spec.out);
   }
   const sorted = Object.fromEntries(Object.keys(credits).sort().map((k) => [k, credits[k]]));
   await writeFile(CREDITS, `${JSON.stringify(sorted, null, 2)}\n`);
