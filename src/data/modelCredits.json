@@ -1835,7 +1835,8 @@
     "as": "Luke Skywalker, walking on the worlds",
     "file": "/models/galaxy/crew/luke.glb",
     "also": [
-      "galaxy"
+      "galaxy",
+      "universe"
     ],
     "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
   },
