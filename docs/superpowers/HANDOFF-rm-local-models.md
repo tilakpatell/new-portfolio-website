@@ -52,24 +52,44 @@ runner's `ankles` flag mends the weights at fetch (each vertex below the
 knees keeps its own leg's bones, and the foot's share above the ankle moves
 to the shin). Any tall-booted figure can take the same flag.
 
+## Into the world (Phase 2 and Task 6.2)
+
+- **Total Rickall** (Tasks 2.2, 2.3): the rules in `interiors/rickall.js`
+  (tested), the crowd in `interiors/rickall3d.js`, fetched when the egg on
+  the living room's bookcase first hatches. The ghost's jar is made there (a
+  glass jar with a gold lid on a side table, the ghost glowing in it).
+- **The family's friends** (Task 2.4), each fetched when their room is first
+  entered and seated on the first frame of their sit clip (`seatOwn` in
+  `interiors/people.js`): Mr. Poopybutthole on the couch (gone while
+  Rickall's on), Snuffles on the dog bed by the sliding door, Space Beth on
+  a stool at Rick's bench, Nancy and Tricia on the edge of Summer's bed,
+  Diane as a cyan hologram in the clone lab (`hologram`).
+- **Dr. Wong's office** (`wong`, `interiors/wong.js`, loaded on entry):
+  its door on the house west of Shoney's (`WONG_HOUSE`), her armchair,
+  the couch, the plant, the desk and diplomas; talking to her is the
+  `wong` task and achievement.
+- **The street's vehicles** (Task 6.2, `VEHICLES` in `rules.js`): Space
+  Beth's ship and Jerry's car-ship on the Smiths' lawn either side of the
+  walk, the Gotron (24 m) behind the houses across the street and the ferret
+  east of it. They're solid, the cruiser flies over them and won't land on
+  them, and `street.js` fetches them 3 s after the street is drawn.
+- **Gotron's shin** is mended at fetch: `fix: 'shin'` recolours the blue
+  texels of his left shin to its own green (`greenShin`).
+- Shots: `docs/superpowers/shots/2026-10-06-rm-phase2-*.webp`
+  (`node scripts/c137-shots.mjs rickall living summer garage basement wong lawn gotron`).
+
 ## Left
 
-1. **The ghost's jar** (`ghostinajar`). Meshy made no clear glass in two
-   tries, so the model is the ghost alone. The scene builds the jar (a
-   transmissive glass cylinder with a gold lid), makes the ghost glow, and
-   scales his height to about 0.7 so he reads as the show's squat bell. His
-   mouth is a ridge, not a dark line: the ink pass should outline it.
-2. **Gotron's green shin** (`gotron`). Its back and heel are blue, which
-   shows only from behind. Recolour those texels green in code, or stand it
-   with its back to something.
-3. **Into the world**: the plan's Tasks 2.2 to 2.4 and 6.2 to 6.3 place
-   these (`MESHY` and `RIGGED` in `portal/meshyCast.js`, the props by name
-   from `/models/c137/rm/`).
-4. **Fold the runner in.** `scripts/meshy-rm-local.mjs` is the plan's `rm`
+1. **Fold the runner in.** `scripts/meshy-rm-local.mjs` is the plan's `rm`
    pipeline for this slice's names alone, kept apart while the other session
    wrote Task 0.2 into `scripts/meshy.mjs`. Every task id is in
    `scripts/meshy-tasks.json`, so once these names are in `meshy.mjs`'s
-   `rm` set it never pays for them again; then delete the runner.
+   `rm` set it never pays for them again; then delete the runner (port
+   `stiffenAnkles` and `greenShin` with it).
+2. **Rick Prime, the Zigerion ship and the Story Train** are made but not
+   placed: they wait on the dial (Phase 0's Tasks 0.4 to 0.6) and their
+   places (Task 6.3's simulation and Story Train, Task 6.4's fortress).
+3. **Merge**: this branch, `claude/local-models`, isn't merged to main yet.
 
 ## Checking it
 

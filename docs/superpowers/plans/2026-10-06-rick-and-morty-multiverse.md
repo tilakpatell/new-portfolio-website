@@ -303,9 +303,9 @@ Entry (index 3, outdoor): a rocky ridge at dusk under a pale orange sky with two
   mrsrefrigerator: { rig: false, prompt: `Mrs. Refrigerator from Rick and Morty: a tall cream-white household refrigerator standing upright with a cartoon face on its door, a pink flowered apron tied round its middle, two short arms and two little legs. ${PROP}` },
 ```
 
-- [ ] **Sheets** (Task 1.1, Step 1): `node scripts/wiki-refs.mjs "Space Beth" "Rick Prime" Snuffles "Helen Wong" Nancy "Tricia Lange" "Diane Sanchez" Pencilvester "Sleepy Gary" Hamurai "Amish Cyborg" "Mr. Beauregard" "Cousin Nicky" "Frankenstein's Monster (Total Rickall)" "Reverse Giraffe" "Ghost in a Jar" "Photography Raptor" Tinkles "Baby Wizard" "Mrs. Refrigerator"`.
-- [ ] **Scout** (Task 1.1, Step 2), before any concept: for each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. The prompts above are used only when no candidate passes.
-- [ ] The rest as Task 1.1 (Steps 3–7) for what the scout didn't find (`sit` for `spacebeth`, `drwong`). Commit “Rick and Morty: Phase 2’s figures (the family’s friends, and Total Rickall’s parasites)”.
+- [x] **Sheets** (Task 1.1, Step 1): `node scripts/wiki-refs.mjs "Space Beth" "Rick Prime" Snuffles "Helen Wong" Nancy "Tricia Lange" "Diane Sanchez" Pencilvester "Sleepy Gary" Hamurai "Amish Cyborg" "Mr. Beauregard" "Cousin Nicky" "Frankenstein's Monster (Total Rickall)" "Reverse Giraffe" "Ghost in a Jar" "Photography Raptor" Tinkles "Baby Wizard" "Mrs. Refrigerator"`.
+- [x] **Scout** (Task 1.1, Step 2), before any concept: for each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. The prompts above are used only when no candidate passes.
+- [x] The rest as Task 1.1 (Steps 3–7) for what the scout didn't find (`sit` for `spacebeth`, `drwong`). Commit “Rick and Morty: Phase 2’s figures (the family’s friends, and Total Rickall’s parasites)”.
 
 ### Task 2.2: Total Rickall’s rules (pure)
 
@@ -315,25 +315,27 @@ Entry (index 3, outdoor): a rocky ridge at dusk under a pale orange sky with two
 **Interfaces:**
 - Produces: `PARASITES` (the thirteen, `{ id, kind, name, memories: [{ good: true, text }] }`), `FAMILY` (`rick`, `morty`, `beth`, `jerry`, `summer`, `poopybutthole`, each with at least one `good: false` memory), `RICKALL = { count: 8, time: 120 }`; `newRickall(seed = 1) → { people: [{ id, kind, x, z, face, parasite }], told: {}, shot: [], state: 'on' | 'won' | 'family' | 'poopybutthole' | 'out', t }` (eight parasites chosen by seed plus the family, placed on the living room's clear floor from `interiors/house.js`'s `HOUSE_SPOTS`); `tell(game, id) → { memory, remaining }` (the next unseen memory of that person; a parasite's are all good); `shoot(game, id) → 'parasite' | 'family' | 'poopybutthole' | 'won' | null` (null once the game is over or the id is already shot; `'won'` when the last parasite falls); `stepRickall(game, dt) → 'out' | null`.
 
-- [ ] **Step 1: Failing tests:** `newRickall(1)` equals `newRickall(1)`, has 8 parasites and the 6 family, all on distinct spots; every parasite's memories are good, every family member has a bad one; `shoot` on a parasite returns `'parasite'` and adds to `shot`; the 8th returns `'won'` and `state === 'won'`; `shoot(game, 'beth')` → `'family'`, state `'family'`, and a `shoot` after returns null; `shoot(game, 'poopybutthole')` → `'poopybutthole'`; two `shoot` calls of one id count once; `stepRickall` past `RICKALL.time` → `'out'` once.
-- [ ] **Step 2:** Run → FAIL; write `rickall.js`; run → PASS. **Commit** “C-137: Total Rickall’s rules”.
+- [x] **Step 1: Failing tests:** `newRickall(1)` equals `newRickall(1)`, has 8 parasites and the 6 family, all on distinct spots; every parasite's memories are good, every family member has a bad one; `shoot` on a parasite returns `'parasite'` and adds to `shot`; the 8th returns `'won'` and `state === 'won'`; `shoot(game, 'beth')` → `'family'`, state `'family'`, and a `shoot` after returns null; `shoot(game, 'poopybutthole')` → `'poopybutthole'`; two `shoot` calls of one id count once; `stepRickall` past `RICKALL.time` → `'out'` once.
+- [x] **Step 2:** Run → FAIL; write `rickall.js`; run → PASS. **Commit** “C-137: Total Rickall’s rules”.
 
 ### Task 2.3: Total Rickall in the living room
 
 **Files:**
 - Modify: `src/components/rickmorty/world/interiors/house.js` (the egg on the shelf; the `rickall` mood: the figures placed from the game, a memory card over the one looked at, a crosshair), `src/components/rickmorty/world/rules.js` (`HOTSPOTS`: `{ id: 'egg', area: 'house', …, kind: 'rickall' }`; `TASKS`: `rickall` “Survive Total Rickall”; a `mode: 'rickall'` in `newMorty`'s state that `stepMorty` keeps him in the living room for), `RmWorld.jsx` (the mode: click or `F` shoots the figure under the crosshair, `E` tells; the endings as cards: won (“Ooh wee. You spared Mr. Poopybutthole.”), family (“That was Beth.”), poopybutthole (“He was real. He always was.”), out), `src/components/Achievements.jsx` (`rickall`), `meshyCast.js` (the kinds, `poopybutthole { a: 'poopybutthole', h: 1.75 }` with the sit clip for the sofa).
 
-- [ ] **Step 1:** Rules additions with tests (the egg hotspot is clear of furniture; `rickall` in `TASKS`).
-- [ ] **Step 2:** The scene and the mode. Browser: start it, look at three people, shoot a parasite, shoot Beth (ending), restart, win; shot `rickall`.
-- [ ] **Step 3: Commit** “C-137: Total Rickall, in the living room”.
+- [x] **Step 1:** Rules additions with tests (the egg hotspot is clear of furniture; `rickall` in `TASKS`).
+- [x] **Step 2:** The scene and the mode. Browser: start it, look at three people, shoot a parasite, shoot Beth (ending), restart, win; shot `rickall`.
+- [x] **Step 3: Commit** “C-137: Total Rickall, in the living room”.
 
 ### Task 2.4: The rest of the family, in their places
 
 **Files:** `rules.js` (`PEOPLE`: `poopybutthole` on the sofa (`sits`), `snuffles` by the front door as a `FURNITURE`-style model with a `card` hotspot (“Snuffles. Don’t give him the helmet.”), `spacebeth` in the garage by the bench (`sits` on the stool; `until: 'rickall'` reversed: she is there after Phase 2's first task, or always: always), `nancy` and `tricia` in Summer's room (`sits` on the bed), `diane` in the clone lab as a hologram (`who: 'diane'`, drawn tinted cyan and half transparent by `interiors/basement.js`)), a new room `wong` (`AREAS.wong` in the room column at `z 894…906`, door on the street next to Shoney's: `DOORS.wong`; `interiors/wong.js`: her office, two chairs, the couch, the plant, Dr. Wong `sits`; `HOTSPOTS`: `therapy` “Family therapy. Rick says it’s for Jerry.”; `TASKS`: `wong`); lines for each; `meshyCast.js` kinds; `Achievements.jsx` (`wong`); `RmWorld.jsx` `NAMES`, `TO`/`OUT` (`wong-door`, `wong-exit`).
 
-- [ ] **Step 1:** Rules and tests (the room's box, door and exit, people clear, as the diner's tests do).
-- [ ] **Step 2:** The room and the people; browser; shots `wong`, `sofa`, `garage-spacebeth`, `sleepover`, `diane`.
-- [ ] **Step 3:** README, architecture. **Commit** “C-137: Mr. Poopybutthole, Snuffles, Space Beth, Dr. Wong’s office, the sleepover and Diane”; PR; merge.
+- [x] **Step 1:** Rules and tests (the room's box, door and exit, people clear, as the diner's tests do).
+- [x] **Step 2:** The room and the people; browser; shots `wong`, `sofa`, `garage-spacebeth`, `sleepover`, `diane`.
+- [x] **Step 3:** README, architecture. **Commit** “C-137: Mr. Poopybutthole, Snuffles, Space Beth, Dr. Wong’s office, the sleepover and Diane”; PR; merge.
+
+> Phase 2 is done on `claude/local-models` (the local session), not yet merged. Every figure was generated through the gate (the Meshy community has none of them: `docs/research/2026-10-06-meshy-community-rick-and-morty.md`). Where it differs from the plan: Snuffles is on the dog bed by the sliding door (the house has no room by the front door), Dr. Wong’s door is on the house west of Shoney’s, and the new figures load when their room is entered. Shots: `docs/superpowers/shots/2026-10-06-rm-phase2-*.webp`.
 
 ---
 
@@ -537,10 +539,14 @@ Assets, with their ceilings if generated (PH 44 ×5, P 39, R 47 ×2, C 33 ×2, H
 - [ ] **Sheets and scout** (Task 1.1, Steps 1–2), before any concept: for each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. The prompts above are used only when no candidate passes.
 - [ ] The rest as Task 1.1 (Steps 3–7) for what the scout didn't find. Commit “Rick and Morty: Phase 6’s ships, the Gotron, the Story Train, Prince Nebulon and Story Lord”.
 
+> The six vehicles (`spacebeth-ship`, `jerry-ship`, `gotron`, `gotron-ferret`, `zigerion-ship`, `storytrain`) are done on `claude/local-models` (`scripts/meshy-rm-local.mjs`, `public/models/c137/rm/`). Prince Nebulon, the Zigerions, Story Lord and the Tickets Please Guy are left.
+
 ### Task 6.2: The street’s new vehicles
 
 **Files:** `rules.js` (`BUILDINGS`/`FURNITURE`-style solids: Space Beth's ship parked on the Smiths' lawn's far side (`spacebeth` moves beside it), Jerry's car-ship in the driveway's other half (today's `car1` replaced), the combined Gotron standing in the park across the street, 24 m tall, with a ferret at its feet), `street.js` (fitting the models), tests (solids clear of the road, the cruiser's landing spots and every person).
-- [ ] Commit “C-137: Space Beth’s ship, Jerry’s car with rockets, and the Gotron over the street”.
+- [x] Commit “C-137: Space Beth’s ship, Jerry’s car with rockets, and the Gotron over the street”.
+
+> Done on `claude/local-models` (the local session): `VEHICLES` in `rules.js`, drawn by `street.js`. Where they stand differs from the plan: Jerry’s car-ship is on the lawn west of the front walk (the driveway keeps `car1`), and the Gotron stands behind the houses across the street (there is no park there) with the ferret east of it. Space Beth stays at Rick’s bench.
 
 ### Task 6.3: The simulation (index 13, room) and the Story Train (index 14, room)
 
