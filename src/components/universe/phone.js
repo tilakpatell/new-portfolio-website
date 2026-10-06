@@ -9,10 +9,15 @@
 // near flies you into it. createPhone() → { group, update(t, camera), radius, dispose }.
 
 import { build } from '../dickansh/galaxyPhone';
+import { HOME_SPREAD } from './scale';
 
 // (out past Resume, beyond the belt and above the disc: clear of every route
-// the autopilot flies between the places, and outside the sun's glow)
-export const PHONE = { at: [0, 48, -210], scale: 9, reach: 40, touch: 9 };
+// the autopilot flies between the places, and outside the sun's glow; out
+// as far as the belt went when the home system grew, scale.js, but no higher:
+// it stays under the ship's ceiling; and grown as much, so it's still a
+// thing bigger than a station, out there, and Dickansh's world behind it a
+// world, not a trinket)
+export const PHONE = { at: [0, 48, -210 * HOME_SPREAD], scale: 9 * HOME_SPREAD, reach: 40 * HOME_SPREAD, touch: 9 * HOME_SPREAD };
 
 export function createPhone() {
   const phone = build();

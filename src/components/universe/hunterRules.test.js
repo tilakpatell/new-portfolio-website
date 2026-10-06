@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACTIONS, FIGHT, HUNTER_KINDS, LOSE, NAMES, blocked, clearOf, createHunt, entryPoint, fightSpeed, hitRadius, packPlan, shipVelocity, slotsFor, turnRate, turnRateAt, turnToward } from './hunterRules';
+import { BOMB, FACTIONS, FIGHT, HUNTER_KINDS, LOSE, NAMES, TRAITS, blocked, clearOf, createHunt, entryPoint, fightSpeed, hitRadius, packPlan, shipVelocity, slotsFor, turnRate, turnRateAt, turnToward } from './hunterRules';
 import { KINDS as GALAXY_KINDS, FACTIONS as GALAXY_FACTIONS } from '../galaxy/hunted';
 
 // a seeded random, so a fight is the same every time
@@ -522,7 +522,8 @@ describe('shooting them', () => {
     expect(hunt.hit({ x: ace.pos.x - 3, y: ace.pos.y, z: ace.pos.z }, { x: ace.pos.x + 3, y: ace.pos.y, z: ace.pos.z }, 3)).toMatchObject({ down: false });
     expect(through(ace)).toMatchObject({ down: true, at: { x: ace.pos.x, y: ace.pos.y, z: ace.pos.z } });
     expect(hunt.count).toBe(1);
-    expect(through(tie)).toMatchObject({ kind: expect.stringMatching(/tie|interceptor/), down: true });
+    // (whatever the other is, a TIE, an interceptor or a bomber: a hit worth all it has downs it)
+    expect(hunt.hit({ x: tie.pos.x - 3, y: tie.pos.y, z: tie.pos.z }, { x: tie.pos.x + 3, y: tie.pos.y, z: tie.pos.z }, tie.hp)).toMatchObject({ kind: tie.kind, down: true });
     expect(hunt.update(DT, start()).map((e) => e.type)).toContain('cleared');
     expect(hunt.active).toBe(false);
   });
@@ -541,10 +542,11 @@ describe('shooting them', () => {
     const hunt = createHunt({ rand: seeded() });
     const [a, b] = hunt.pack('federation', start(), { size: 2 });
     expect(hunt.damage(999)).toBeNull();
-    expect(hunt.damage(a.id, 1)).toMatchObject({ id: a.id, kind: 'patrol', down: false });
+    // (a patrol fighter or a gunship: either takes more than one)
+    expect(hunt.damage(a.id, a.hp - 1)).toMatchObject({ id: a.id, kind: a.kind, down: false });
     expect(hunt.damage(a.id, 1)).toMatchObject({ down: true });
     expect(hunt.damage(a.id, 1)).toBeNull(); // (it's gone)
-    expect(hunt.wire()).toEqual([[b.id, 'patrol', b.pos.x, b.pos.y, b.pos.z, b.vel.x, b.vel.y, b.vel.z, 2]]);
+    expect(hunt.wire()).toEqual([[b.id, b.kind, b.pos.x, b.pos.y, b.pos.z, b.vel.x, b.vel.y, b.vel.z, b.type.hp]]);
   });
 
   it('gives the guns everyone in the fight, the ones on a run as threats', () => {
@@ -563,5 +565,167 @@ describe('shooting them', () => {
       },
     });
     expect(threats).toBeGreaterThan(0);
+  });
+});
+
+// one kind with a trait, in a faction of its own, for a fight of just them
+const withTrait = (trait, over = {}) => ({
+  kinds: { ...HUNTER_KINDS, odd: { ...HUNTER_KINDS.tie, hp: 3, ...over, trait } },
+  factions: { odd: { kinds: [['odd', 1]], laser: [1, 1, 1], size: [1, 3] } },
+});
+// a fight of one side's own kind, flown frame by frame: each(hunt, ship, events, t)
+function traitFight(trait, { seed = 7, seconds = 60, size = 2, over, fly = (s) => ({ ...s, speed: 5.5 }), each } = {}) {
+  const { kinds, factions } = withTrait(trait, over);
+  const hunt = createHunt({ rand: seeded(seed), kinds, factions });
+  let s = start();
+  hunt.pack('odd', s, { size });
+  const seen = { shots: 0, hits: 0, damage: 0, events: [], runs: 0, hunt };
+  const was = new Map();
+  for (let t = 0; t < seconds; t += DT) {
+    s = move(fly(s, t));
+    const events = hunt.update(DT, s);
+    for (const e of events) {
+      if (e.type === 'shot') seen.shots += 1;
+      else if (e.type === 'laser') {
+        seen.hits += 1;
+        seen.damage = Math.max(seen.damage, e.damage);
+      } else seen.events.push(e.type);
+    }
+    for (const h of hunt.live) {
+      if (h.mode === 'run' && was.get(h.id) !== 'run') seen.runs += 1;
+      was.set(h.id, h.mode);
+    }
+    each?.(hunt, s, events, t);
+  }
+  return seen;
+}
+
+describe('traits: how some kinds fight their own way', () => {
+  it('knows every trait a side gives a kind', () => {
+    for (const [k, type] of Object.entries(HUNTER_KINDS)) if (type.trait) expect(TRAITS, k).toContain(type.trait);
+    expect(HUNTER_KINDS.suvace.trait).toBe('spotlight');
+    expect(HUNTER_KINDS.cousins.trait).toBe('quietUntilFired');
+  });
+
+  it('has a bomber fly a slow straight run, drop one heavy slow bomb, and break off', () => {
+    const top = HUNTER_KINDS.tie.speed;
+    let fastest = 0;
+    let bombs = 0;
+    const seen = traitFight('bomber', {
+      seconds: 90,
+      each: (hunt) => {
+        for (const h of hunt.live) if (h.mode === 'run') fastest = Math.max(fastest, Math.hypot(h.vel.x, h.vel.y, h.vel.z));
+        for (const m of hunt.lasers) if (m.on && m.bomb) bombs += 1;
+      },
+    });
+    expect(seen.runs).toBeGreaterThan(2);
+    expect(seen.shots).toBeGreaterThan(0);
+    expect(seen.shots).toBeLessThanOrEqual(seen.runs); // (one bomb a run, at most)
+    expect(bombs).toBeGreaterThan(0);
+    expect(fastest).toBeLessThan(top * 0.6 + 1e-6);
+    // and one that lands is a heavy one
+    for (const seed of [3, 5, 9, 13]) {
+      const s = traitFight('bomber', { seed, seconds: 90, fly: (o) => o });
+      if (s.hits) expect(s.damage).toBe(BOMB.damage);
+    }
+  });
+
+  it('bursts a bomb that passes near you, where a laser that close would miss', () => {
+    const pass = (bomb) => {
+      const hunt = createHunt({ rand: seeded() });
+      const m = hunt.lasers[0];
+      Object.assign(m, { on: true, x: 1, y: 0, z: -4, vx: 0, vy: 0, vz: 14, life: 2, at: 'you', faction: 'empire', bomb, r: bomb ? BOMB.burst : null, damage: bomb ? BOMB.damage : null });
+      const out = [];
+      for (let i = 0; i < 60; i++) out.push(...hunt.update(DT, start()));
+      return out.filter((e) => e.type === 'laser');
+    };
+    expect(pass(false)).toHaveLength(0);
+    expect(pass(true)).toEqual([expect.objectContaining({ damage: BOMB.damage })]);
+  });
+
+  it('has one that holds off never close in on you, and still fire from range', () => {
+    let nearest = Infinity;
+    let plainNearest = Infinity;
+    let shots = 0;
+    for (const seed of [3, 7, 11]) {
+      const seen = traitFight('holdoff', {
+        seed,
+        each: (hunt, s) => {
+          for (const h of hunt.live) nearest = Math.min(nearest, apart(h.pos, s));
+        },
+      });
+      shots += seen.shots;
+      traitFight(null, {
+        seed,
+        each: (hunt, s) => {
+          for (const h of hunt.live) plainNearest = Math.min(plainNearest, apart(h.pos, s));
+        },
+      });
+    }
+    expect(shots).toBeGreaterThan(10);
+    expect(plainNearest).toBeLessThan(FIGHT.pass * 2);
+    expect(nearest).toBeGreaterThan(FIGHT.near * 1.5);
+  });
+
+  it('has the quiet ones never fire until one of them has been hit', () => {
+    let hitAt = null;
+    let before = 0;
+    let after = 0;
+    traitFight('quietUntilFired', {
+      over: { hp: 9 },
+      seconds: 60,
+      each: (hunt, s, events, t) => {
+        const shots = events.filter((e) => e.type === 'shot').length;
+        if (hitAt === null) before += shots;
+        else after += shots;
+        if (hitAt === null && t > 30) {
+          hitAt = t;
+          expect(hunt.damage(hunt.live[1].id, 1)).toMatchObject({ down: false });
+        }
+      },
+    });
+    expect(before).toBe(0);
+    expect(after).toBeGreaterThan(3);
+  });
+
+  it('has one that flickers vanish when it is hit: off the guns and unhittable a while, then back', () => {
+    const { kinds, factions } = withTrait('flicker');
+    const hunt = createHunt({ rand: seeded(), kinds, factions });
+    const [h] = hunt.pack('odd', start(), { size: 1 });
+    hunt.update(DT, start());
+    expect(hunt.damage(h.id, 1)).toMatchObject({ down: false });
+    expect(h.hidden).toBeGreaterThan(0);
+    expect(hunt.targets).toHaveLength(0);
+    expect(hunt.wire()).toHaveLength(0);
+    expect(hunt.hit({ x: h.pos.x - 3, y: h.pos.y, z: h.pos.z }, { x: h.pos.x + 3, y: h.pos.y, z: h.pos.z })).toBeNull();
+    for (let t = 0; t < 1.9; t += DT) hunt.update(DT, start());
+    expect(hunt.targets).toHaveLength(0);
+    for (let t = 0; t < 0.2; t += DT) hunt.update(DT, start());
+    expect(h.hidden).toBe(0);
+    expect(hunt.targets).toHaveLength(1);
+    // and a kind without the trait just takes the hit
+    const plain = createHunt({ rand: seeded() });
+    const [p] = plain.pack('federation', start(), { size: 1 });
+    plain.damage(p.id, 1);
+    expect(p.hidden ?? 0).toBe(0);
+    expect(plain.targets).toHaveLength(1);
+  });
+
+  it('has one with a spotlight pin you once a run, from close enough', () => {
+    let lit = 0;
+    let far = 0;
+    const seen = traitFight('spotlight', {
+      seconds: 60,
+      each: (hunt, s, events) => {
+        for (const e of events) {
+          if (e.type !== 'spotlit') continue;
+          lit += 1;
+          if (!hunt.live.some((h) => h.mode === 'run' && apart(h.pos, s) < FIGHT.range * 0.6 + 0.5)) far += 1;
+        }
+      },
+    });
+    expect(lit).toBeGreaterThan(1);
+    expect(lit).toBeLessThanOrEqual(seen.runs);
+    expect(far).toBe(0);
   });
 });

@@ -1,6 +1,6 @@
 # Handoff: the universe map’s visual upgrade
 
-The design is `docs/superpowers/specs/2026-10-06-universe-visual-upgrade-design.md`; the plan is `docs/superpowers/plans/2026-10-06-universe-visual-upgrade.md`. Nothing of it is built yet: this hand-off is the starting line, and the implementing session keeps the status table below current, one row per checkpoint, in the PR that merges it.
+The design is `docs/superpowers/specs/2026-10-06-universe-visual-upgrade-design.md`; the plan is `docs/superpowers/plans/2026-10-06-universe-visual-upgrade.md`. The implementing session keeps the status table below current, one row per checkpoint, in the PR that merges it.
 
 ## Lane
 
@@ -13,7 +13,7 @@ The design is `docs/superpowers/specs/2026-10-06-universe-visual-upgrade-design.
 
 | # | Checkpoint | PR | Status | Evidence |
 |---|---|---|---|---|
-| 0 | Poses and a baseline | | not started | |
+| 0 | Poses and a baseline | this PR (the poses and the check script) | poses in; baseline after the scale change | 10 poses at 1280 × 720 on `high` in `lab/universe/prescale.json` (not committed): calls 36–143, triangles 0.12–1.10 M |
 | 1 | The render, finished | | not started | |
 | 2 | One light | | not started | |
 | 3 | Air, clouds, seas, ground | | not started | |
@@ -25,13 +25,23 @@ The design is `docs/superpowers/specs/2026-10-06-universe-visual-upgrade-design.
 
 Scorecard (the spec’s “Where things stand” table is the before): fill in the after per category as checkpoints land, one line of evidence each.
 
+## Where the code differs from the plan
+
+- **Checkpoint 0 is in two parts.** The owner asked for a scale change (the home system much larger than the ships) while checkpoint 0 was under way. That change moves the sun, the stations and the belt, so a baseline taken before it would be stale at once. The poses and the check script merge first; the scale change merges next with its own before and after (taken with this script); the committed baseline in `lab/universe/baseline/` is taken on `main` after that, before checkpoint 1.
+- **A tenth pose, `station`**: parked at the Home station as the autopilot parks. It is the scale change’s before and after, and stays in the set.
+- **What a pose is.** `poseFor(name)` returns `{ at, heading, eye, look }` (the ship held level at `at`, the camera at `eye` looking at `look`) plus `planet`, `view: 'map'` or `foot`, rather than `yaw`, `pitch` and `dist` behind the ship: the falcon-sun and maw framings need an eye that isn’t straight behind. A planet pose still puts the ship `dist` reaches out on the planet’s sun side (the plan’s test, as written). `middleearth-limb` is turned 0.5 rad off the sun line so a limb can show a terminator once the light comes from the sun (checkpoint 2).
+- **The hold.** `pose(name)` sets `state.held` (DEV only): the ship isn’t stepped, the Maw doesn’t pull, the director stays quiet, hunters and meteors are cleared, the map is turned to the ship’s heading so the key light falls the same way each time. A landing pose resolves once the crew are out. `window.__universe().frames(n)` resolves after n drawn frames.
+- **The check script runs on the dev server**, not `vite preview`: the poses are a DEV hook, which a production build leaves out. Each pose gets a fresh page (a landing can’t be flown back from in a script). The page’s bar, panel and HUD are hidden before each shot, so the shot and its metrics are the map alone. Calls and triangles are counted over one whole frame (`info.autoReset` off for it).
+- **The canvas inspector** measures a live page and doesn’t export its pixel metrics, so `universe-check.mjs` has the same sums (`colorEntropyBits`, `edgeDensity`, `luminance.contrast`) on each shot.
+- **`.gitignore`**: `lab/*`, then `!lab/universe/`, `lab/universe/*`, `!lab/universe/baseline/` (git can’t re-include a file whose parent directory is ignored, so the plan’s single exception line wouldn’t work).
+
 ## Checking it
 
 - `npx vite`, then `/universe` (`?quality=high|mid|low|ultra` pins the tier). `await window.__universe().pose('falcon-sun')` (checkpoint 0) places the camera; `window.__universeDebug` has `post`, `scene`, `renderer`, `camera`.
-- `node scripts/universe-check.mjs --quality all` (checkpoint 0) writes `lab/universe/<tier>/<pose>.webp` and `<tier>.json`; compare with `lab/universe/baseline/`. The container’s Chromium draws in software at a few frames a second, so compare its frame times only against each other and get the owner’s numbers for the PR where they matter.
+- `node scripts/universe-check.mjs --quality all` (checkpoint 0) writes `lab/universe/<tier>/<pose>.webp` and `<tier>.json`; compare with `lab/universe/baseline/`. It starts its own dev server (or `--url`), and takes about a minute a pose in the container (the landing about four). The container’s Chromium draws in software at a few frames a second, so compare its frame times only against each other and get the owner’s numbers for the PR where they matter.
 - `node scripts/autopilot-check.mjs --only smoke --skip lint,test,build --routes /universe,/galaxy/hoth,/galaxy/tatooine/surface` after anything in `post.js`.
 - `scripts/preview/planets.html?id=middleearth&dist=1.4` (through the dev server) shows one planet as the map lights it; `node scripts/landing-check.mjs` lands on every planet and screenshots it (checkpoint 8).
-- The canvas inspector: `node .claude/skills/threejs-qa-release/scripts/inspect-threejs-canvas.mjs <shot.webp>` for `colorEntropyBits`, `edgeDensity`, `luminance.contrast`.
+- The canvas inspector’s metrics (`colorEntropyBits`, `edgeDensity`, `luminance.contrast`) are in each pose’s entry in the check script’s JSON; the inspector itself (`.claude/skills/threejs-qa-release/scripts/inspect-threejs-canvas.mjs --url …`) measures a live page.
 
 ## Gotchas
 

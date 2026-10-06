@@ -34,7 +34,7 @@
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       document.body.appendChild(renderer.domElement);
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color('#1a2029');
+      scene.background = new THREE.Color(q.get('bg') ? `#${q.get('bg')}` : '#1a2029'); // &bg=ffffff for a reference picture
       const pm = new THREE.PMREMGenerator(renderer);
       scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
       scene.environmentIntensity = 0.5;

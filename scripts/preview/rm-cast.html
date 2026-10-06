@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Rick and Morty cast sheet</title>
+    <!--
+      Rick and Morty's Meshy figures loaded the way the games load them
+      (portal/meshyCast.js's createMeshyCast, with each figure's own clips),
+      in a row beside Rick for scale and held on one frame of one clip, for
+      judging a rig: limbs twisting, feet planting, coats or hair webbing.
+      Through the dev server (npx vite), or scripts/rm-cast-shot.mjs:
+        /scripts/preview/rm-cast.html?only=nancy:1.6,tricia:1.62    name:height in metres
+        …&clip=idle | walk | run | sit   &t=0.25 (how far into the clip)
+        …&view=front | side | three | back   &fit=1 (fill the frame)
+    -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #d9dde3;
+        overflow: hidden;
+        font: 12px system-ui, sans-serif;
+      }
+      #labels div {
+        position: absolute;
+        transform: translate(-50%, 0);
+        padding: 1px 5px;
+        background: rgba(0, 0, 0, 0.65);
+        color: #fff;
+        border-radius: 3px;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="labels"></div>
+    <script type="module">
+      import * as THREE from 'three';
+      import { createMeshyCast } from '/src/components/rickmorty/portal/meshyCast.js';
+
+      const q = new URLSearchParams(location.search);
+      const want = (q.get('only') ?? '')
+        .split(',')
+        .filter(Boolean)
+        .map((s) => {
+          const [a, h] = s.split(':');
+          return { a, h: Number(h) };
+        });
+      const people = [{ a: 'rick', h: 1.85 }, ...want];
+      const clip = q.get('clip') ?? 'idle';
+      const at = Number(q.get('t') ?? 0.3);
+      const view = q.get('view') ?? 'front';
+      const W = Number(q.get('w') ?? 1600);
+      const H = Number(q.get('h') ?? 700);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      renderer.setSize(W, H);
+      renderer.setPixelRatio(1);
+      document.body.appendChild(renderer.domElement);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xd9dde3);
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x8890a0, 1.6));
+      const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+      sun.position.set(3, 6, 5);
+      scene.add(sun);
+      scene.add(new THREE.GridHelper(40, 40, 0x7a8290, 0xaab0ba));
+
+      const kinds = Object.fromEntries(people.map((p) => [p.a, { a: p.a, h: p.h }]));
+      const cast = createMeshyCast({ kinds, rigged: new Set(people.map((p) => p.a)) });
+      await cast.load(null, people.map((p) => p.a), { clips: ['idle', 'walk', 'run', 'sit'] });
+
+      const gap = 1.6;
+      const span = (people.length - 1) * gap;
+      const labels = [];
+      const missing = [];
+      const groups = [];
+      people.forEach((p, i) => {
+        const c = cast.make(p.a);
+        if (!c) {
+          missing.push(p.a);
+          return;
+        }
+        const x = i * gap - span / 2;
+        // seen from the side, a row hides behind itself: set it on the diagonal
+        if (view === 'side') c.group.position.z = -x;
+        else c.group.position.x = x;
+        scene.add(c.group);
+        groups.push(c.group);
+        const act = c.act ?? {};
+        for (const [n, a] of Object.entries(act)) a.setEffectiveWeight(n === clip ? 1 : 0);
+        const a = act[clip] ?? act.idle;
+        if (a) {
+          a.setEffectiveWeight(1);
+          a.time = at * a.getClip().duration;
+        }
+        c.mixer?.update(0);
+        labels.push([p.a + (act[clip] ? '' : ` (no ${clip})`), c.group.position, p.h]);
+      });
+
+      const tall = Math.max(...people.map((p) => p.h));
+      const cam = new THREE.PerspectiveCamera(22, W / H, 0.1, 200);
+      const dist = q.get('fit') ? Math.max((span / 2 + 0.9) / Math.tan(THREE.MathUtils.degToRad(11) * (W / H)), tall * 3.1) : Math.max(span * 1.25 + 4, tall * 4.5);
+      const dir = { front: [0, 0.18, 1], side: [1, 0.18, 0], three: [0.7, 0.3, 0.75], back: [0, 0.18, -1] }[view] ?? [0, 0.18, 1];
+      cam.position.copy(new THREE.Vector3(...dir).normalize().multiplyScalar(dist)).add(new THREE.Vector3(0, tall * 0.5, 0));
+      cam.lookAt(0, tall * 0.48, 0);
+      renderer.render(scene, cam);
+
+      const box = document.getElementById('labels');
+      for (const [text, at3, h] of labels) {
+        const p = new THREE.Vector3(at3.x, h + 0.08, at3.z).project(cam);
+        const d = document.createElement('div');
+        d.textContent = text;
+        d.style.left = `${(p.x * 0.5 + 0.5) * W}px`;
+        d.style.top = `${(-p.y * 0.5 + 0.5) * H - 18}px`;
+        box.appendChild(d);
+      }
+      window.__ready = { missing, figures: groups.length };
+    </script>
+  </body>
+</html>

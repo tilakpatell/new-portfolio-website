@@ -208,11 +208,11 @@ export default function Comms({ crew, reduced, control }) {
           interdictSound();
           say(linesFor(crew, 'interdicted'), { urgent: true });
         } else if (e.type === 'hunted') {
-          // a pack after you: Vader gets his own line, the first time
+          // a pack after you: an ace (Vader, Hank, Gus, Evil Morty) gets its own line, the first time
           if (e.faction === 'council') portalSound();
-          const ace = e.ace && !said.current.has('ace');
-          if (ace) said.current.add('ace');
-          if (ace || often('hunted', now)) say(linesFor(crew, 'hunted', ace ? 'ace' : e.faction), { urgent: true });
+          const ace = e.ace && !said.current.has(`ace:${e.ace}`);
+          if (ace) said.current.add(`ace:${e.ace}`);
+          if (ace || often('hunted', now)) say((ace && (linesFor(crew, 'hunted', e.ace) ?? linesFor(crew, 'hunted', 'ace'))) || linesFor(crew, 'hunted', e.faction), { urgent: true });
         } else if (e.type === 'shot') {
           if (soundOnce('shot', 90, now)) enemyFireSound();
         } else if (e.type === 'laser') {

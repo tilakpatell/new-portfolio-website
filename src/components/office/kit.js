@@ -44,6 +44,16 @@ export function merge(list) {
   return mergeGeometries(flat, false);
 }
 
+// A box's faces (BoxGeometry's order: +x, -x, +y, -y, +z, -z) made to read
+// one spot (u, v) of its texture: a plain part of a label, so a box that's
+// printed on some sides only needs just the one material.
+export function plainFaces(geo, faces, u, v) {
+  const uv = geo.attributes.uv;
+  for (const f of faces) for (let i = 0; i < 4; i++) uv.setXY(f * 4 + i, u, v);
+  uv.needsUpdate = true;
+  return geo;
+}
+
 export async function loadKit(renderer) {
   // (decoded off the main thread, as sharp at a slant as the device's tier
   // allows, and shared between the office from above and the one you walk)
@@ -451,18 +461,22 @@ function makeKit(sets, models, env) {
     return g;
   };
   const plates = new Map();
-  const nameplateFor = (name, title) => {
-    if (!plates.has(name)) {
-      const t = keep(new THREE.CanvasTexture(nameplate(name, title)));
+  const plateGeo = keep(new THREE.PlaneGeometry(0.3, 0.056));
+  const holderGeo = keep(new THREE.BoxGeometry(0.31, 0.062, 0.03));
+  const holderMat = keep(new THREE.MeshStandardMaterial({ color: 0xb9bdc1, roughness: 0.3, metalness: 0.85 }));
+  const nameplateFor = (name, title, light = false) => {
+    const k = `${name}|${light}`;
+    if (!plates.has(k)) {
+      const t = keep(new THREE.CanvasTexture(nameplate(name, title, light)));
       t.colorSpace = THREE.SRGBColorSpace;
       sharpen(t);
-      plates.set(name, keep(new THREE.MeshStandardMaterial({ map: t, roughness: 0.35, metalness: 0.3 })));
+      plates.set(k, keep(new THREE.MeshStandardMaterial({ map: t, roughness: 0.35, metalness: 0.1 })));
     }
     const g = new THREE.Group();
-    const face = new THREE.Mesh(keep(new THREE.PlaneGeometry(0.3, 0.056)), plates.get(name));
+    const face = new THREE.Mesh(plateGeo, plates.get(k));
     face.position.set(0, 0.034, 0.012);
     face.rotation.x = -0.35;
-    const back = new THREE.Mesh(keep(new THREE.BoxGeometry(0.3, 0.06, 0.03)), keep(new THREE.MeshStandardMaterial({ color: 0x8a6a2c, roughness: 0.3, metalness: 0.8 })));
+    const back = new THREE.Mesh(holderGeo, holderMat);
     back.position.y = 0.025;
     back.rotation.x = -0.35;
     back.position.z = -0.002;
@@ -551,7 +565,8 @@ function makeKit(sets, models, env) {
     return m;
   };
 
-  // a Cisco IP phone: a dark wedge with its grey screen and the handset on the left
+  // a Cisco IP phone, as on every desk on the set: a silver-grey wedge with
+  // its grey screen, the charcoal handset on the left
   const phoneGeo = (() => {
     const body = new THREE.BoxGeometry(0.2, 0.05, 0.19);
     const p = body.attributes.position;
@@ -560,16 +575,19 @@ function makeKit(sets, models, env) {
     body.computeVertexNormals();
     const handset = new RoundedBoxGeometry(0.05, 0.035, 0.2, 2, 0.015);
     handset.translate(-0.12, 0.06, 0);
-    return keep(merge([body, handset]));
+    return { body: keep(merge([body])), handset: keep(merge([handset])) };
   })();
+  const phoneBodyMat = keep(new THREE.MeshStandardMaterial({ color: 0x9a9fa5, roughness: 0.38, metalness: 0.45 }));
   const phoneScreenMat = keep(new THREE.MeshStandardMaterial({ color: 0x9fb0a6, emissive: 0x6f8478, emissiveIntensity: 0.25, roughness: 0.3 }));
+  const phoneScreenGeo = keep(new THREE.PlaneGeometry(0.1, 0.06));
   const phone = () => {
     const g = new THREE.Group();
-    const b = new THREE.Mesh(phoneGeo, M.plasticDark);
-    const scr = new THREE.Mesh(keep(new THREE.PlaneGeometry(0.1, 0.06)), phoneScreenMat);
+    const b = new THREE.Mesh(phoneGeo.body, phoneBodyMat);
+    const h = new THREE.Mesh(phoneGeo.handset, M.plasticDark);
+    const scr = new THREE.Mesh(phoneScreenGeo, phoneScreenMat);
     scr.position.set(0.02, 0.078, -0.035);
     scr.rotation.x = -1.1;
-    g.add(b, scr);
+    g.add(b, h, scr);
     return g;
   };
 
@@ -647,12 +665,12 @@ function makeKit(sets, models, env) {
   // a box of Dunder Mifflin paper
   const boxTex = keep(new THREE.CanvasTexture(paperBox()));
   boxTex.colorSpace = THREE.SRGBColorSpace;
-  const boxMats = [
-    keep(new THREE.MeshStandardMaterial({ map: boxTex, roughness: 0.8 })),
-    keep(new THREE.MeshStandardMaterial({ color: 0xf1efe8, roughness: 0.85 })),
-  ];
+  const boxMat = keep(new THREE.MeshStandardMaterial({ map: boxTex, roughness: 0.8 }));
+  // (one material, so a room's boxes batch into one draw: the top and the
+  // bottom read a plain corner of the label)
+  const boxGeo = keep(plainFaces(new THREE.BoxGeometry(0.44, 0.27, 0.3), [2, 3], 0.02, 0.98));
   const paperBoxMesh = () => {
-    const m = new THREE.Mesh(keep(new THREE.BoxGeometry(0.44, 0.27, 0.3)), [boxMats[0], boxMats[0], boxMats[1], boxMats[1], boxMats[0], boxMats[0]]);
+    const m = new THREE.Mesh(boxGeo, boxMat);
     m.position.y = 0.135;
     m.castShadow = m.receiveShadow = true;
     return m;

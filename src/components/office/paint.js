@@ -32,35 +32,51 @@ export function screens() {
     x.fillStyle = kind === 'solitaire' ? '#1f6b3a' : kind === 'hub' ? '#245edb' : '#e9edf2';
     x.fillRect(0, 0, 256, 160);
     if (kind === 'hub') {
-      // the XP-blue desktop with the hub's white panel: the logo and its menu
+      // as on every monitor on the set: the XP-blue desktop, a column of
+      // icons, and the hub's white panel: "Intra-Office Digital Hub" on a
+      // blue tab over the logo, and its menu of four with blue bullets
       const sky = x.createLinearGradient(0, 0, 0, 160);
-      sky.addColorStop(0, '#3a6fd8');
-      sky.addColorStop(1, '#1d4fb8');
+      sky.addColorStop(0, '#2f63d0');
+      sky.addColorStop(1, '#1b48b0');
       x.fillStyle = sky;
       x.fillRect(0, 0, 256, 160);
+      for (let k = 0; k < 6; k++) {
+        x.fillStyle = ['#f4f4f4', '#ffd75a', '#7fc4ff', '#f4f4f4', '#9be08a', '#f4f4f4'][k];
+        x.fillRect(8, 6 + k * 23, 10, 9);
+        x.fillStyle = 'rgba(255,255,255,0.75)';
+        x.fillRect(5, 17 + k * 23, 16, 2);
+      }
+      x.fillStyle = '#fbfbfb';
+      x.fillRect(46, 18, 178, 112);
+      x.fillStyle = '#2a5bc4';
+      x.fillRect(46, 24, 52, 40);
       x.fillStyle = '#fff';
-      x.fillRect(16, 10, 6, 6);
-      x.fillRect(16, 26, 6, 6);
-      x.fillRect(16, 42, 6, 6);
-      x.fillStyle = '#f4f6fa';
-      x.fillRect(58, 22, 150, 104);
-      x.fillStyle = '#5a6f99';
-      x.font = 'italic 8px sans-serif';
-      x.fillText('Dunder Mifflin Digital Hub', 66, 34);
+      x.font = 'bold italic 10px Arial, sans-serif';
+      x.fillText('Intra-Office', 49, 36);
+      x.fillText('Digital', 49, 48);
+      x.fillText('Hub', 49, 60);
       x.fillStyle = '#111';
-      x.font = 'bold 20px Arial, sans-serif';
-      x.fillText('DUNDER', 72, 58);
-      x.fillText('MIFFLIN', 72, 78);
-      x.fillStyle = '#1f4e8c';
-      x.font = 'bold 6px sans-serif';
-      x.fillText('PAPER COMPANY', 160, 78);
-      x.fillStyle = '#334';
-      x.font = '7px sans-serif';
+      x.font = 'bold 21px Arial Black, Arial, sans-serif';
+      x.fillText('DUNDER', 102, 42);
+      x.fillText('MIFFLIN', 102, 63);
+      x.save();
+      x.translate(205, 36);
+      x.rotate(Math.PI / 2);
+      x.font = 'bold 9px Arial, sans-serif';
+      x.fillText('INC.', 0, 0);
+      x.restore();
+      x.fillStyle = '#333';
+      x.font = 'bold 6px Arial, sans-serif';
+      x.fillText('P A P E R   C O M P A N Y', 112, 73);
       ['E-Mail', 'Business', 'Productivity', 'Reference'].forEach((l, k) => {
-        x.fillStyle = '#c9822b';
-        x.fillRect(74, 89 + k * 9, 4, 4);
-        x.fillStyle = '#334';
-        x.fillText(l, 82, 94 + k * 9);
+        x.strokeStyle = '#2a5bc4';
+        x.lineWidth = 1.4;
+        x.beginPath();
+        x.arc(74, 84 + k * 11, 3.2, 0, Math.PI * 2);
+        x.stroke();
+        x.fillStyle = '#2a5bc4';
+        x.font = 'bold 8px Arial, sans-serif';
+        x.fillText(l, 82, 87 + k * 11);
       });
     } else if (kind !== 'solitaire') {
       x.fillStyle = '#2b4f8c';
@@ -69,7 +85,7 @@ export function screens() {
       x.font = 'bold 9px sans-serif';
       x.fillText({ sheet: 'Q3 Sales.xls', mail: 'Inbox (3)', infinity: 'Dunder Mifflin Infinity', beets: 'Schrute Farms: Beets.xls', crossword: 'Crossword', words: 'Memo.doc' }[kind], 6, 10);
     }
-    x.fillStyle = '#c9ced6';
+    x.fillStyle = kind === 'hub' ? '#2457c8' : '#c9ced6';
     x.fillRect(0, 148, 256, 12); // the taskbar
     x.fillStyle = '#3b7d3b';
     x.fillRect(2, 150, 26, 8);
@@ -142,23 +158,22 @@ export function screens() {
 }
 
 // A brass-edged nameplate: name and title, centred.
-export function nameplate(name, title) {
+export function nameplate(name, title, light = false) {
+  // as on the set's desks: an engraved black insert, white letters (Michael's
+  // in capitals, a title under them; Ryan's in a serif), or reception's grey
   const c = canvas(512, 96);
   const x = c.getContext('2d');
-  const g = x.createLinearGradient(0, 0, 0, 96);
-  g.addColorStop(0, '#2a2622');
-  g.addColorStop(1, '#151311');
-  x.fillStyle = g;
+  x.fillStyle = light ? '#d9dad6' : '#141414';
   x.fillRect(0, 0, 512, 96);
-  x.strokeStyle = '#c8a45a';
-  x.lineWidth = 6;
-  x.strokeRect(5, 5, 502, 86);
-  x.fillStyle = '#e8d29a';
+  x.fillStyle = light ? '#1b1b1b' : '#f4f4f2';
   x.textAlign = 'center';
-  x.font = 'bold 34px Georgia, serif';
-  x.fillText(name, 256, 46, 480);
-  x.font = '20px Georgia, serif';
-  x.fillText(title, 256, 76, 480);
+  const caps = name === name.toUpperCase();
+  x.font = caps ? 'bold 40px Arial, sans-serif' : '44px Georgia, serif';
+  x.fillText(name, 256, title ? 50 : 64, 480);
+  if (title) {
+    x.font = 'bold 18px Arial, sans-serif';
+    x.fillText(title, 256, 80, 480);
+  }
   return c;
 }
 

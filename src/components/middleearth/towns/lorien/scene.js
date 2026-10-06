@@ -304,7 +304,7 @@ export function createLorienWorld(canvas, { onLost } = {}) {
         if (ferns.length < 110 * many) ferns.push({ x, z, y: woodHeight(x, z), s: 0.7 + rand() * 0.7, turn: rand() * TAU });
       } else if (leaves.length < 90 * many) leaves.push({ x, z, y: woodHeight(x, z) + 0.02, s: 0.8 + rand() * 0.8, turn: rand() * TAU });
     }
-    if (kit.fern) wood.add(instances(kit.fern(3), mats.fern ?? new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), ferns, { shadow: false }));
+    if (kit.fern) wood.add(instances(kit.fern(3), mats.fern ?? new THREE.MeshLambertMaterial({ vertexColors: true }), ferns, { shadow: false }));
     if (kit.goldLeaves) wood.add(instances(kit.goldLeaves(4), mats.litter, leaves, { shadow: false }));
   }
 
@@ -1039,7 +1039,7 @@ export function createLorienWorld(canvas, { onLost } = {}) {
   };
 
   // ── the floor's light, baked when the town is first drawn ──
-  const ground = groundTown({ renderer, scene, terrain, outdoors: wood, sun, height: under, people: movers, skip: [sky.dome, ghosts.group], tier, centre: [-6, 0], radius: 72, shade: 0x26301e });
+  const ground = groundTown({ renderer, scene, terrain, outdoors: wood, sun, height: under, people: movers, skip: [sky.dome, ghosts.group], tier, centre: [-6, 0], radius: 72, shade: 0x26301e, sunFloor: 0.4 });
 
   return {
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts

@@ -1,0 +1,81 @@
+{
+  "massassi": {
+    "lift": [
+      "01a111a9-4060-743b-bb52-8eef223097cb"
+    ],
+    "model": "01a111b3-e80b-71c8-86e2-f9d08e6b07ec"
+  },
+  "palace": {
+    "lift": [
+      "01a111a9-a324-75db-a870-0fb244649f89"
+    ],
+    "model": "01a111b3-ec5f-732e-8fff-29f9b27018ca"
+  },
+  "homestead": {
+    "lift": [
+      "01a111aa-5a84-72fb-8744-03a8b9c3727c"
+    ],
+    "model": "01a111b3-f027-7539-b1ab-27b18695b8cf"
+  },
+  "ewokhut": {
+    "lift": [
+      "01a111ab-eb5f-7485-aef8-016072374f09"
+    ],
+    "model": "01a111b3-f75d-71d2-a5bc-1f2c92206f60"
+  },
+  "theedpalace": {
+    "lift": [
+      "01a111ac-49dd-752d-93e8-460b0c68da03"
+    ],
+    "model": "01a111b3-fb53-70f0-9517-c19cd36ff564"
+  },
+  "tipocadome": {
+    "lift": [
+      "01a111ac-c46c-74cc-b8a4-3c2252e2b52b"
+    ],
+    "model": "01a111b3-ff45-71c4-9376-d7b5948d089c"
+  },
+  "mining": {
+    "lift": [
+      "01a111ad-53a0-774a-a776-6e6d003fecd7"
+    ],
+    "model": "01a111b4-0323-749f-9bf2-6a512acf96b6"
+  },
+  "citadel": {
+    "lift": [
+      "01a111ad-b28e-701d-b576-74335ecadbac"
+    ],
+    "model": "01a111b4-0748-7142-9013-383b2b2eea55"
+  },
+  "kachirho": {
+    "lift": [
+      "01a111ae-65a5-7321-9577-ad02d75be5f3"
+    ],
+    "model": "01a111b4-0ba1-74bb-99d9-a6040f71187f"
+  },
+  "corutower": {
+    "lift": [
+      "01a111b0-6c5f-70e0-a05b-3967abae06b8"
+    ],
+    "model": "01a111b4-1000-778b-83a4-3f8299428ebf"
+  },
+  "yodahut-first": {
+    "note": "the first Yoda hut (one lump of the painting): a white blob, turned down",
+    "lift": [
+      "01a111b2-7e9e-72e9-bde0-83869b8cdc49"
+    ],
+    "model": "01a111b3-f3a0-7569-9241-021cc3f4ddc4"
+  },
+  "senate": {
+    "lift": [
+      "01a111e3-d1b6-77a6-b61a-59909d1aee6a"
+    ],
+    "model": "01a111e9-c929-72e9-8e22-144278c002c6"
+  },
+  "yodahut": {
+    "lift": [
+      "01a111e4-a3c0-769a-b40e-b829293d51d0"
+    ],
+    "model": "01a111e9-cd52-77cd-a395-3075aa23bcc5"
+  }
+}
