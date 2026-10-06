@@ -27,6 +27,7 @@ import { makeAtmosphere, makeSky } from '../../shire/sky';
 import { createFx } from '../../shire/fx';
 import { createGhosts } from '../ghosts';
 import { makeTerrain } from '../ground';
+import { FIGURE, groundTown } from '../grounded';
 import { makeFolk } from '../bree/props';
 import { createMoriaKit } from './props';
 import { CAST, CHAMBER, COMPANY, FLIGHT, FORK, GATE, GATE_ROCKS, HALL, HALL_COLLIDERS, HALL_WALLS, LAKE_Y, PASSAGE, SHAFT, TOMB, WELL, gateHeight, hallHeight } from './layout';
@@ -115,7 +116,8 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
   const wpos = (zone, x, y, z, out = V()) => out.set(AT[zone].x + x, AT[zone].y + y, AT[zone].z + z);
 
   // ── the West-gate ──
-  zones.gate.add(makeTerrain(renderer, { size: 120, seg: tier === 'high' ? 160 : 100, height: gateHeight, paint, blades: 0.1 }));
+  const gateLand = makeTerrain(renderer, { size: 120, seg: tier === 'high' ? 160 : 100, height: gateHeight, paint, blades: 0.1 });
+  zones.gate.add(gateLand);
   const gate = kit.westGate();
   gate.group.position.set(0, gateHeight(0, GATE.cliff + 0.5) - 0.2, GATE.cliff);
   zones.gate.add(gate.group);
@@ -415,6 +417,10 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
   const flightY = (s) => FLIGHT.drop * (1 - Math.max(0, Math.min(1, (s - FLIGHT.stair[0]) / (FLIGHT.stair[1] - FLIGHT.stair[0]))));
 
   // ── people ──
+  // (outdoors, each stands on a soft blob slid away from the sun, and dims in
+  // the baked shade, ../grounded.js; the circle under each is kept for the
+  // zones indoors, and hidden while a blob is drawn)
+  const movers = [];
   const blobGeo = new THREE.CircleGeometry(0.42, 20).rotateX(-Math.PI / 2);
   const blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false });
   const blob = (f, s = 1) => {
@@ -422,6 +428,7 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
     b.position.y = 0.04;
     b.scale.setScalar(s);
     b.renderOrder = 1;
+    movers.push({ object: f.group, size: [FIGURE * s, FIGURE * s], contact: b });
     f.group.add(b);
     return f;
   };
@@ -768,6 +775,7 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
     sky.dome.position.copy(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
     sun.target.position.copy(camera.position);
+    for (const g of grounds) g.update();
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -792,8 +800,14 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
     return { x: (p.x * 0.5 + 0.5) * w, y: (-p.y * 0.5 + 0.5) * hh };
   };
 
+  // ── the floor's light, baked in each zone outdoors when it's first shown ──
+  const grounds = [
+    groundTown({ renderer, scene, terrain: gateLand, outdoors: zones.gate, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x1e2026, clip: true }),
+  ];
+
   return {
-    scene: import.meta.env.DEV ? scene : null,
+    ground: import.meta.env.DEV ? grounds[0] : null, // for the QA scripts
+    scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
     screenOf,
@@ -809,6 +823,7 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       return null;
     },
     dispose() {
+      for (const g of grounds) g.dispose();
       ghosts.dispose();
       disposeTree(scene);
       stage.dispose();

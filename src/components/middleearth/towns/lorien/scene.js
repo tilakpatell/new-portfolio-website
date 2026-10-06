@@ -25,6 +25,7 @@ import { makeAtmosphere, makeSky } from '../../shire/sky';
 import { createFx } from '../../shire/fx';
 import { createGhosts } from '../ghosts';
 import { makeTerrain } from '../ground';
+import { FIGURE, groundTown } from '../grounded';
 import { makeFolk } from '../bree/props';
 import { createLorienKit } from './props';
 import { AMBUSH, BANK, BOARDS, BUTTS, CAST, CITY, COLLIDERS, GALADHRIM, LANDING, MALLORNS, MIRROR, PATHS, RANGE, RIVER_Y, STAIR, TABLE, TREE, WOOD, groundHeight, nearPath, streamX, woodHeight } from './layout';
@@ -201,7 +202,8 @@ export function createLorienWorld(canvas, { onLost } = {}) {
   // ── the ground, the stream and the Silverlode ──
   // (sunk a little under the Mirror's hollow, which brings its own ground)
   const under = (x, z) => woodHeight(x, z) - 0.3 * (1 - smooth(MIRROR.foot - 1.5, MIRROR.foot, Math.hypot(x - MIRROR.x, z - MIRROR.z)));
-  wood.add(makeTerrain(renderer, { size: 320, seg: tier === 'high' ? 220 : tier === 'mid' ? 160 : 110, height: under, paint, blades: 0.05 }));
+  const terrain = makeTerrain(renderer, { size: 320, seg: tier === 'high' ? 220 : tier === 'mid' ? 160 : 110, height: under, paint, blades: 0.05 });
+  wood.add(terrain);
   const stream = new THREE.Mesh(new THREE.PlaneGeometry(9, 200, 1, 1).rotateX(-Math.PI / 2), waterMaterial(water, 0.4));
   stream.position.set(streamX(0) - 1, -1.35, 0);
   const silverlode = new THREE.Mesh(new THREE.PlaneGeometry(140, 260).rotateX(-Math.PI / 2), waterMaterial(water, 0.15));
@@ -560,15 +562,11 @@ export function createLorienWorld(canvas, { onLost } = {}) {
   scene.add(gollum);
 
   // ── people ──
-  const blobGeo = new THREE.CircleGeometry(0.42, 20).rotateX(-Math.PI / 2);
-  const blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false });
+  // (each stands on a soft blob slid away from the sun, and dims in the
+  // baked shade: ../grounded.js)
+  const movers = [];
   const blob = (f, s = 1) => {
-    const b = new THREE.Mesh(blobGeo, blobMat);
-    b.position.y = 0.04;
-    b.scale.setScalar(s);
-    b.renderOrder = 1;
-    f.group.add(b);
-    f.blob = b;
+    movers.push({ object: f.group, size: [FIGURE * s, FIGURE * s] });
     return f;
   };
   const frodo = blob(folk('frodo'));
@@ -1007,6 +1005,7 @@ export function createLorienWorld(canvas, { onLost } = {}) {
     sky.dome.position.copy(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
     sun.target.position.copy(camera.position);
+    ground.update();
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -1039,8 +1038,12 @@ export function createLorienWorld(canvas, { onLost } = {}) {
     return { x: (p.x * 0.5 + 0.5) * w, y: (-p.y * 0.5 + 0.5) * hh };
   };
 
+  // ── the floor's light, baked when the town is first drawn ──
+  const ground = groundTown({ renderer, scene, terrain, outdoors: wood, sun, height: under, people: movers, skip: [sky.dome, ghosts.group], tier, centre: [-6, 0], radius: 72, shade: 0x26301e });
+
   return {
-    scene: import.meta.env.DEV ? scene : null,
+    ground: import.meta.env.DEV ? ground : null, // for the QA scripts
+    scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
     screenOf,
@@ -1056,6 +1059,7 @@ export function createLorienWorld(canvas, { onLost } = {}) {
       return null;
     },
     dispose() {
+      ground.dispose();
       ghosts.dispose();
       disposeTree(scene);
       stage.dispose();

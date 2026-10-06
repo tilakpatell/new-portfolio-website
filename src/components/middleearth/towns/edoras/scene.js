@@ -23,6 +23,7 @@ import { sit } from '../../shire/people';
 import { makeSky } from '../../shire/sky';
 import { createFx } from '../../shire/fx';
 import { makeTerrain } from '../ground';
+import { FIGURE, groundTown } from '../grounded';
 import { createGhosts } from '../ghosts';
 import { gallop } from '../weathertop/props';
 import { createEdorasKit } from './props';
@@ -126,7 +127,8 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
   const wpos = (zone, x, y, z, out = V()) => out.set(AT[zone].x + x, AT[zone].y + y, AT[zone].z + z);
 
   // ── the hill ──
-  zones.hill.add(makeLand(renderer, tier === 'high' ? 280 : tier === 'mid' ? 210 : 160));
+  const terrain = makeLand(renderer, tier === 'high' ? 280 : tier === 'mid' ? 210 : 160);
+  zones.hill.add(terrain);
   const town = kit.town();
   zones.hill.add(town.group);
   const barrows = kit.barrows();
@@ -142,14 +144,11 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
   const hearth = hall.fire.clone().add(AT.hall);
 
   // ── people ──
-  const blobGeo = new THREE.CircleGeometry(0.46, 20).rotateX(-Math.PI / 2);
-  const blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false });
+  // (each stands on a soft blob slid away from the sun, and dims in the
+  // baked shade: ../grounded.js)
+  const movers = [];
   const add = (f) => {
-    const b = new THREE.Mesh(blobGeo, blobMat);
-    b.position.y = 0.03;
-    b.renderOrder = 1;
-    f.group.add(b);
-    f.blob = b;
+    movers.push({ object: f.group, size: [FIGURE * 1.1, FIGURE * 1.1] });
     f.group.visible = false;
     scene.add(f.group);
     return f;
@@ -190,6 +189,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
     scene.add(h.group);
     return h;
   });
+  for (const h of [snowmane, ...mounts]) movers.push({ object: h.group, size: [1.1, 2.6] });
   // the host of Rohan, in a great block, moving out at dawn
   const hostKit = folk.host();
   const host = (() => {
@@ -664,6 +664,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
       shadow: moodKey === 'night' ? [0, 0.01, 0.04] : [0, 0, 0],
       high: moodKey === 'hall' || moodKey === 'evening' ? [0.03, 0.015, 0] : [0, 0, 0],
     });
+    ground.update();
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -680,8 +681,12 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
     else if (type === 'fall') A.shake = Math.max(A.shake, 0.2);
   };
 
+  // ── the floor's light, baked when the town is first drawn ──
+  const ground = groundTown({ renderer, scene, terrain, outdoors: zones.hill, sun, height: groundAt, people: movers, skip: [sky.dome, ghosts.group, flames.mesh, embers.mesh, smoke.mesh, dust.mesh, light.mesh], tier, centre: [-12, 0], radius: 115, shade: 0x3a2e1e });
+
   return {
-    scene: import.meta.env.DEV ? scene : null,
+    ground: import.meta.env.DEV ? ground : null, // for the QA scripts
+    scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
     resize: stage.resize,
@@ -693,6 +698,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
       return stage.lost;
     },
     dispose() {
+      ground.dispose();
       ghosts.dispose();
       disposeTree(scene);
       stage.dispose();

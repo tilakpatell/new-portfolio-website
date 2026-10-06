@@ -348,6 +348,8 @@ This site stands on a lot of other people's work, and I'm grateful for all of it
 
 And to [Poly Haven](https://polyhaven.com) and [ambientCG](https://ambientcg.com) for their free scans and skies, [Kenney](https://kenney.nl) for the kits behind *Portal panic*, NASA Earth Observatory for the Blue Marble and Black Marble, Natural Earth, the photographers on Wikimedia Commons, the type designers behind every open font here, and the people who make [three.js](https://threejs.org).
 
+**The light in the worlds is [Bruno Simon](https://bruno-simon.com)'s idea**, from his folio ([`brunosimon/folio-2019`](https://github.com/brunosimon/folio-2019), MIT): the light lives in textures, not in a shadow pass. As each world opens, it renders its floor's soft shadows and the sky's occlusion once, on the GPU, and warms the lower faces of everything with the ground's colour. Whatever moves stands on a soft blob slid away from the sun (`src/lib/three/groundwork.js`; the research is [`docs/research/2026-10-06-bruno-simon-folio.md`](docs/research/2026-10-06-bruno-simon-folio.md)).
+
 > **Did you make something that's on this site, and I've missed you or got it wrong?** Message me at [tilakny@gmail.com](mailto:tilakny@gmail.com) or on [LinkedIn](https://www.linkedin.com/in/tilakpatell) and I'll add you straight away, or open a pull request. If you'd rather your work came down, say so and it will.
 
 The characters and buildings in the worlds that aren't anyone else's were made for this site with [Meshy](https://www.meshy.ai), or modelled in code. CREDITS.md is made by `npm run credits` from the same lists the site reads, so it stays in step with them.

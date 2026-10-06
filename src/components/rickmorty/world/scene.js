@@ -23,6 +23,7 @@ import { createPace } from '../../../lib/three/pace';
 import { InkPass, toon, toonify } from '../portal/toon';
 import { createMeshyCast } from '../portal/meshyCast';
 import { createGhosts } from '../../middleearth/towns/ghosts';
+import { groundWorld } from '../../../lib/three/groundwork';
 import { defaultLook } from '../wardrobe/looks';
 import { bodyAsset, bodyKind, dress, withWardrobe } from '../wardrobe/wear';
 import { CANS, CREW, TALL, glassDome } from '../cruiser3d';
@@ -325,6 +326,29 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     return true;
   };
 
+  // ── the street's floor light, baked when it's first shown (after Bruno
+  // Simon's folio: lib/three/groundwork): soft shadows and sky occlusion on
+  // the lawns, the walks and the road, a bounce off the grass, a soft blob
+  // under Morty, and no shadow pass. The rooms keep their own light. ──
+  const street = areas.street;
+  const S = AREAS.street;
+  const floorLight = street?.floor
+    ? groundWorld({
+        renderer,
+        scene,
+        floor: street.floor,
+        area: { x0: S.x0, z0: S.z0, w: S.x1 - S.x0, d: S.z1 - S.z0 },
+        sun,
+        casters: [street.group],
+        skip: [street.sky?.dome, ...(street.noInk ?? []), ghosts.group, fx.group].filter(Boolean),
+        movers: [{ object: morty.group, size: [0.9, 0.9], contact: mortyShadow }],
+        shade: 0x24402a,
+        tier,
+        auto: true,
+        clip: true,
+      })
+    : null;
+
   // every shader compiled before the first frame, an area at a time (each
   // with its own lights, which pick which shaders the materials need)
   for (const id of Object.keys(areas)) {
@@ -480,6 +504,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     areas[area].update?.(t, dt, state, camera);
     if (fx.portal.visible) fx.portal.rotation.y = Math.atan2(camera.position.x - fx.portal.position.x, camera.position.z - fx.portal.position.z);
     fx.update(dt, t);
+    floorLight?.update();
     renderer.info.reset();
     stage.render(ms);
   };
@@ -529,6 +554,8 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       fresh.group.visible = was.group.visible;
       was.group.removeFromParent();
       scene.add(fresh.group);
+      floorLight?.untrack(was.group);
+      floorLight?.track(fresh.group, [0.9, 0.9], { contact: mortyShadow });
       morty = fresh;
       undress = dress(morty, l);
     }
@@ -540,6 +567,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   };
 
   const api = {
+    ground: import.meta.env.DEV ? floorLight : null, // for the QA scripts
     render,
     resize,
     fx: fxEvent,
@@ -558,6 +586,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     },
     dispose() {
       if (stage.disposed) return;
+      floorLight?.dispose();
       for (const a of Object.values(areas)) a.dispose?.();
       ghosts.dispose();
       // models a builder never put in the scene
