@@ -1,4 +1,4 @@
-/* global window, document */
+/* global window */
 // A browser check of the Galactic Civil War in the galaxy (galaxy/gcw.js,
 // warfront.js, battles.js; the war table on the holotable). With the dev
 // server up (npx vite --port 5188):
@@ -118,8 +118,14 @@ if (attacking) {
   await snap('shield-down');
   await hitAll(2);
   await page.waitForTimeout(2000);
+  // (watching the flagship, for the break-up)
+  await pin(`
+    const b = d.war.battle; const f = b.capitals.find((c) => c.team === b.defender && c.role === 'flagship');
+    const s = f.size; const x = f.pos.x + f.right.x * s * 1.1 - f.fwd.x * s * 0.1, z = f.pos.z + f.right.z * s * 1.1 - f.fwd.z * s * 0.1;
+    return { x, y: f.pos.y + s * 0.3, z, heading: Math.atan2(x - f.pos.x, z - f.pos.z), pitch: -0.25, bank: 0 };
+  `);
   await hitAll(3);
-  await page.waitForTimeout(4000);
+  await page.waitForTimeout(12000);
   await snap('breaking');
   const mine = await page.evaluate(async () => {
     const { warTally } = await import('/src/components/galaxy/warState.js');

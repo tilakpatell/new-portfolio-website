@@ -150,7 +150,8 @@ export const WARS = {
   starwars: {
     id: 'starwars',
     name: 'The Galactic Civil War',
-    ready: true,
+    ready: false, // (fought in the galaxy far, far away, at its own planets: galaxy/gcw.js)
+    galaxy: '/galaxy',
     sides: [rebels, empire],
     sectors: line(
       [-5200, 140, -4000],

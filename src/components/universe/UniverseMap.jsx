@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useScene } from '../../lib/three/useScene';
 import { local } from '../../lib/hooks';
 import { CONTROLS_KEY, readControls } from './controls';
-import BattleHud from './BattleHud';
 import FlightSettings from './FlightSettings';
 import Hangar from './Hangar';
 import { UNIVERSES } from './universes';
@@ -41,9 +40,6 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const hud = useRef(null);
   const arms = useRef(null); // the weapon readout (weapons.js)
   const siegeEl = useRef(null); // the Citadel's siege (siege.js)
-  const battleEl = useRef(null); // the battle's bar at the front (front.js)
-  const [battleAsk, setBattleAsk] = useState(null); // the choice of side, arriving at the front
-  const [battleOver, setBattleOver] = useState(null); // the card at a battle's end
   const prompt = useRef(null);
   const enterBtn = useRef(null); // into the world you're down on (landings/wayin.js): the scene shows it
   const [flown, setFlown] = useState(false);
@@ -94,7 +90,6 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       hud,
       arms,
       siege: siegeEl,
-      battle: battleEl,
       net,
       tags,
       prompt,
@@ -109,12 +104,6 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       onCrash,
       onEvent: (e) => {
         if (e.type === 'launch') setFlown(true);
-        if (e.type === 'battle' && e.what === 'ask') setBattleAsk(e.ask);
-        if (e.type === 'battle' && (e.what === 'joined' || e.what === 'left')) setBattleAsk(null);
-        if (e.type === 'battle' && e.what === 'over') {
-          setBattleAsk(null);
-          setBattleOver(e.over);
-        }
         if (e.type === 'landable') setLandable(e.id);
         if (e.type === 'phone' && e.what !== 'open') setPhoneNear(e.what === 'near');
         if (e.type === 'foot' && e.id === 'arrive') setArrive({ title: e.title, sub: e.sub, at: Date.now() });
@@ -295,7 +284,6 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <b>The Citadel</b>
                 <span className="universe-siege-state" />
               </div>
-              <BattleHud hudRef={battleEl} ask={battleAsk} onJoin={(team) => view.current?.battleJoin?.(team)} onStay={() => (setBattleAsk(null), view.current?.battleJoin?.(null))} over={battleOver} onClose={() => setBattleOver(null)} />
               <p ref={prompt} className="universe-prompt" aria-live="polite" />
               {/* (hidden until the crew are down on a planet with a world: the scene says when, and what it's called) */}
               <button ref={enterBtn} type="button" className="universe-wayin" hidden onClick={() => view.current?.enter?.()}>

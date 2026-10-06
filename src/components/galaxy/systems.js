@@ -29,7 +29,7 @@
 // ── The films (and the shows), in the galaxy's own order of events ──
 // (a show has no episode: `show`, and `short`, its name on a small button)
 
-import { fitSystem } from './fit';
+import { fitSystem } from './fit.js'; // (with its extension: the prerender reads this file in Node)
 
 export const FILMS = {
   tpm: { title: 'The Phantom Menace', episode: 'I', year: -32, era: 'republic' },

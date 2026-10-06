@@ -783,7 +783,8 @@ export async function create(canvas, ctx) {
   const skirmishes = hunters ? createSkirmishes(map, { fleet, solids: SOLIDS }) : null; // (someone else's fight, out ahead)
   const npcs = hunters ? createNpcs(map, { fleet }) : null; // (the named characters: npcRules.js's brains)
   // the crew's war (front.js): its front out in deep space, a battle there
-  // to fly into. Made for the crew's side, again if the crew changes; its
+  // to fly into (the Star Wars crews' war is fought in the galaxy far, far
+  // away instead: galaxy/gcw.js; the others' are still to come). Made for the crew's side, again if the crew changes; its
   // ships are the galaxy's models (galaxy/models.js), loaded once the
   // front's in sight. Not with reduced motion (nor are the hunters)
   let front = null;
@@ -2035,8 +2036,8 @@ export async function create(canvas, ctx) {
     return { id: r.id, kind: r.kind, at: new THREE.Vector3(r.at.x, r.at.y, r.at.z), size: r.size, down: r.down };
   };
 
-  // a shot into the battle at the front (front.js), once you've picked a
-  // side: one of the other side's fighters (down, or a spark off it), one of
+  // a shot into the battle at the front (front.js), where you fly on your
+  // crew's side: one of the other side's fighters (down, or a spark off it), one of
   // the objectives, or a capital ship's hull or shield (a spark; the battle
   // has its own flashes for those, and the crew their own lines)
   const frontHit = (from, to, punch) => {
@@ -2137,59 +2138,6 @@ export async function create(canvas, ctx) {
       }
     }
     return any;
-  };
-
-  // the battle's bar at the front (BattleHud.jsx): written only when
-  // something in it changes, and on only while you fly for a side in it
-  let battleSig = '';
-  const PHASE_WORDS = ['', 'the shield generators', 'the bridge', 'the reactor'];
-  const placeBattle = () => {
-    const el = props.battle?.current;
-    if (!el) return;
-    const b = front?.battle;
-    const team = front?.joined ?? null;
-    const on = Boolean(b && team !== null && !b.over && flying() && !onFoot() && front.near);
-    if (!on) {
-      if (battleSig !== '') {
-        battleSig = '';
-        el.removeAttribute('data-on');
-      }
-      return;
-    }
-    const i = b.info;
-    const w = front.where();
-    const attack = team === b.attacker;
-    const left = Math.ceil(i.left);
-    const sig = `${i.tickets}|${left}|${i.phase}|${i.objectives.map((o) => o.hp.toFixed(2)).join(',')}|${i.hull.map((h) => h.toFixed(2)).join(',')}|${team}`;
-    if (sig === battleSig) return;
-    battleSig = sig;
-    el.toggleAttribute('data-on', true);
-    el.toggleAttribute('data-defend', !attack);
-    el.toggleAttribute('data-late', left < 60);
-    el.style.setProperty('--a', w.colours[0]);
-    el.style.setProperty('--b', w.colours[1]);
-    const q = (c) => el.querySelector(c);
-    const put = (c, text) => {
-      const n = q(c);
-      if (n && n.textContent !== text) n.textContent = text;
-    };
-    put('.battle-name-a', w.sides[0]);
-    put('.battle-name-b', w.sides[1]);
-    put('.battle-tickets-a', String(i.tickets[0]));
-    put('.battle-tickets-b', String(i.tickets[1]));
-    put('.battle-clock', `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`);
-    // the hulls: the attacker's flagship's, and the defender's by how many phases it's lost
-    const hull = [b.attacker === 0 ? i.hull[0] : i.hull[1], b.attacker === 0 ? i.hull[1] : i.hull[0]];
-    q('.battle-hull-a')?.style.setProperty('--hp', hull[0].toFixed(3));
-    q('.battle-hull-b')?.style.setProperty('--hp', hull[1].toFixed(3));
-    put('.battle-phase', i.phase <= 3 ? `Phase ${i.phase} · ${attack ? 'Destroy' : 'Defend'} ${PHASE_WORDS[i.phase]}` : attack ? 'Their flagship is breaking up' : 'Our flagship is lost');
-    const obj = q('.battle-obj');
-    if (obj) {
-      const now = i.objectives.filter((o) => o.phase === i.phase);
-      while (obj.children.length < now.length) obj.appendChild(document.createElement('i'));
-      while (obj.children.length > now.length) obj.lastChild.remove();
-      now.forEach((o, k) => obj.children[k].style.setProperty('--hp', o.hp.toFixed(3)));
-    }
   };
 
   // the weapon readout (its name, the heavy rounds left, the next one
@@ -2963,7 +2911,6 @@ export async function create(canvas, ctx) {
       const r = fr.update(dt, t, camera, camLocal, live);
       busy = r.busy || busy;
       if (r.hurt > 0 && live && state.clock >= state.safeUntil) hurt(r.hurt);
-      placeBattle();
     }
     if (meteors.count) {
       busy = true;
@@ -4542,11 +4489,6 @@ export async function create(canvas, ctx) {
         return true;
       }
       return false;
-    },
-    // the battle at the front: fly for a side (0 or 1), or stay out (null)
-    battleJoin(team) {
-      front?.join(team);
-      ctx.invalidate();
     },
     // the nav map's: off to a place by a drive (travel above; false if it can't go)
     travel(id, drive) {
