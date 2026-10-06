@@ -10,7 +10,7 @@ describe('explosions', () => {
     const full = explosionPlan(0.5, null, 0.4);
     const late = explosionPlan(0.5, null, 1.2);
     expect(start.fire.radius).toBe(0);
-    expect(full.fire.radius).toBeCloseTo(2.2 * 0.5, 5);
+    expect(full.fire.radius * 2).toBeCloseTo(2.2 * 0.5, 5); // (2.2 times its size, across)
     expect(late.fire.radius).toBeGreaterThanOrEqual(full.fire.radius);
     // white, then orange, then smoke
     expect(start.fire.colour).toEqual([1, 0.97, 0.9]);
