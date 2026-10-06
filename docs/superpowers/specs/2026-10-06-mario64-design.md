@@ -123,7 +123,7 @@ Signs and Toad give hints.
 - ★ The Thwomps' gauntlet, a path to one side.
 - ★ The pipe down to Bowser's arena. Grab his tail, spin him, throw him into the bombs round the edge three times. He breathes fire and stomps to tilt the floor. The last star, a thank-you ending and an achievement.
 
-**Throughout:** coins (every 8 heal a wedge, 50 give a life), 1-Up mushrooms, deaths and lives. Game over goes back to the title.
+**Throughout:** coins (each heals a wedge, every 50 give a life), 1-Up mushrooms, deaths and lives. Game over goes back to the title.
 
 ## The looks
 
