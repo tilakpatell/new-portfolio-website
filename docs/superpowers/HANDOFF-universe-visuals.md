@@ -13,7 +13,7 @@ The design is `docs/superpowers/specs/2026-10-06-universe-visual-upgrade-design.
 
 | # | Checkpoint | PR | Status | Evidence |
 |---|---|---|---|---|
-| 0 | Poses and a baseline | this PR (the poses and the check script) | poses in; baseline after the scale change | 10 poses at 1280 × 720 on `high` in `lab/universe/prescale.json` (not committed): calls 36–143, triangles 0.12–1.10 M |
+| 0 | Poses and a baseline | #302 (poses, check script); this PR (baseline) | done | `lab/universe/baseline/{high,mid,low}.json` and 30 shots, taken on `main` at e4fcc10e after the scale changes: high calls 49–150, triangles 0.14–1.32 M; mid calls 49–148, triangles 0.14–1.14 M; low calls 49–146, triangles 0.14–1.14 M |
 | 1 | The render, finished | | not started | |
 | 2 | One light | | not started | |
 | 3 | Air, clouds, seas, ground | | not started | |
