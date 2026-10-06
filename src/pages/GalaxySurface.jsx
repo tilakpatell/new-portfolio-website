@@ -20,6 +20,8 @@ import galaxyModule from '../components/galaxy/module';
 import { FOUND_KEY, LAUNCH_KEY, QUESTS_KEY, readDone, readFound } from '../components/galaxy/travel';
 import { runtime } from '../runtime';
 import ChaseHud from '../components/galaxy/surface/ChaseHud';
+import HeroPanel from '../components/galaxy/surface/HeroPanel';
+import { HERO_KEY, heroById, heroSpec, readHero, writeHero } from '../components/galaxy/heroes';
 import { missionOf } from '../components/galaxy/surface/missions';
 import ModelCredits from '../components/ModelCredits';
 import { wornFiles } from '../components/rickmorty/wardrobe/looks';
@@ -79,6 +81,14 @@ export default function GalaxySurface() {
   useDocumentTitle(site ? (mission ? `${mission.name} · ${sys.name}` : `${site.place} · ${sys.name}`) : 'A galaxy far, far away');
   const reduced = useReducedMotion();
   const [ship] = useState(() => parseShip(local.get(SHIP_KEY)) ?? 'xwing');
+  // who you play as down here (heroes.js), kept across worlds
+  const [hero, setHero] = useState(() => readHero(local.get(HERO_KEY), parseShip(local.get(SHIP_KEY)) ?? 'xwing'));
+  const [picking, setPicking] = useState(false);
+  const pickHero = (next) => {
+    setHero(next);
+    local.set(HERO_KEY, writeHero(next));
+    setPicking(false);
+  };
   const crew = crewById(ship);
   const { unlocked, unlock } = useAchievements();
   const build = useMemo(() => (ship && readHulls(local.get(HULL_KEY), CREWS.map((c) => c.id))[ship]) || null, [ship]);
@@ -302,7 +312,7 @@ export default function GalaxySurface() {
   }, []);
 
   // the models on this world, for their credits, what the cruiser's crew carry out, and Luke, who walks out of the X-wing (kept, so the credits aren't drawn again with every change of the page)
-  const kinds = useMemo(() => (site ? [...[...site.things_all, ...site.scatter, ...site.life, ...site.rides].map((t) => surfaceUrl(t.kind)), ...(ship === 'cruiser' ? wornFiles(looks) : []), ...(ship === 'xwing' ? ['/models/galaxy/crew/luke.glb'] : [])] : []), [site, ship, looks]);
+  const kinds = useMemo(() => (site ? [...[...site.things_all, ...site.scatter, ...site.life, ...site.rides].map((t) => surfaceUrl(t.kind)), ...(ship === 'cruiser' ? wornFiles(looks) : []), ...(ship === 'xwing' ? ['/models/galaxy/crew/luke.glb'] : []), ...(heroById(hero.id)?.src.url ? [heroById(hero.id).src.url] : [])] : []), [site, ship, looks, hero.id]);
   if (!site) return <Navigate to={id ? `/galaxy/${id}` : '/galaxy'} replace />;
   const place = site.places.find((p) => p.id === here);
   const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };
@@ -312,7 +322,7 @@ export default function GalaxySurface() {
       <h1 className="sr-only">
         {sys.name}: {site.place}
       </h1>
-      <SurfaceView key={mission?.id ?? 'explore'} system={id} mission={mission?.id ?? null} ship={ship} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
+      <SurfaceView key={`${mission?.id ?? 'explore'}:${hero.id}:${hero.color}:${hero.hilt}`} system={id} mission={mission?.id ?? null} ship={ship} hero={hero} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
 
       {/* where you are, and how much of it you've found */}
       <div className="surface-where">
@@ -428,11 +438,15 @@ export default function GalaxySurface() {
         <button type="button" className="surface-help-btn" onClick={openGuide} aria-keyshortcuts="H">
           Controls
         </button>
+        <button type="button" className="surface-help-btn" onClick={() => setPicking((p) => !p)} aria-expanded={picking} title="Who you play as, and your lightsaber">
+          {heroSpec(hero).name}
+        </button>
         <button type="button" className="surface-help-btn" onClick={takeOff}>
           Back to orbit
         </button>
         <ModelCredits where="galaxy-surface" only={kinds} className="surface-credits-corner" />
       </div>
+      {picking && <HeroPanel hero={hero} onChange={pickHero} onClose={() => setPicking(false)} />}
       {crew && talkCrew && <Comms control={comms} crew={talkCrew} reduced={reduced} />}
       {!leaving && <Online online={online} ship={ship} />}
       <div className="surface-fade" aria-hidden="true" />
