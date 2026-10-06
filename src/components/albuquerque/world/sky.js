@@ -69,7 +69,8 @@ const VERT = /* glsl */ `
   varying vec3 vDir;
   void main() {
     vDir = position;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    // (on the far plane, and drawn last: shaded only where nothing's in front)
+    gl_Position = (projectionMatrix * modelViewMatrix * vec4(position, 1.0)).xyww;
   }`;
 
 const FRAG = /* glsl */ `
@@ -144,12 +145,12 @@ const FRAG = /* glsl */ `
       float star = step(0.9962, r) * smoothstep(0.42, 0.05, length(fract(p) - 0.5)) * tw;
       vec3 tint = mix(vec3(0.75, 0.84, 1.0), vec3(1.0, 0.86, 0.70), fract(r * 91.7));
       float band = smoothstep(0.55, 0.0, abs(dot(d, normalize(vec3(0.45, 0.25, -0.86))))) * texture2D(uNoise, d.xz * 0.9 + d.y).r;
-      c += starry * (tint * star * 2.4 + vec3(0.10, 0.11, 0.17) * band * 0.55);
+      c += starry * (tint * star * 1.3 + vec3(0.10, 0.11, 0.17) * band * 0.55);
       // the moon: a disc with seas, and its halo
       float m = max(dot(d, uMoon), 0.0);
       float disc = smoothstep(0.99925, 0.99945, m);
       float seas = texture2D(uNoise, d.xy * 9.0 + d.z * 4.0).r;
-      c += night * (1.0 - dens) * (vec3(0.82, 0.88, 1.0) * disc * (1.5 + seas * 2.2) + vec3(0.25, 0.32, 0.5) * pow(m, 220.0) * 0.6);
+      c += night * (1.0 - dens) * (vec3(0.82, 0.88, 1.0) * disc * (1.0 + seas * 1.0) + vec3(0.25, 0.32, 0.5) * pow(m, 220.0) * 0.6);
     }
     // the aurora: blue curtains, once the last of the Blue Sky is found
     if (uAurora > 0.01) {
@@ -191,7 +192,7 @@ export function createSky({ radius = 1300 } = {}) {
   });
   const geometry = new THREE.SphereGeometry(radius, 48, 24);
   const mesh = new THREE.Mesh(geometry, material);
-  mesh.renderOrder = -1;
+  mesh.renderOrder = 2;
   mesh.frustumCulled = false;
   return {
     mesh,

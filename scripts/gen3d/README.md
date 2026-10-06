@@ -60,6 +60,12 @@ issue, which it closes. A failure is commented and labelled `gen3d:failed`;
 fix the issue and remove the label to try again. Wiring the model into a
 scene is a separate change.
 
+**Several pictures beat one.** Attach the front, left, back (and right) of
+the thing, in that order (or name them: `front: URL`), and the job goes
+through **Hunyuan3D-2 multi-view** (`--engine hunyuan`), which sees every
+side; one picture goes through TRELLIS.2. On the command line:
+`make.mjs NAME --image front.png --left left.png --back back.png`.
+
 **Always give it a picture.** A prompt only works for designs FLUX knows
 (an X-wing, a TIE); for anything else (a CR90, a particular building, a
 character) attach a picture: three-quarter view, the whole thing in frame,
@@ -130,6 +136,25 @@ hf download microsoft/TRELLIS.2-4B
 `engines/trellis2.py` is what `generate.mjs` runs there (`wsl.exe`, the
 paths translated to `/mnt/c/…`). TRELLIS.2 wants 24 GB of GPU memory.
 
+### Hunyuan3D-2 multi-view (WSL)
+
+Tencent's [Hunyuan3D-2](https://github.com/Tencent/Hunyuan3D-2) with its
+multi-view shape model (`tencent/Hunyuan3D-2mv`, front/left/back/right in)
+and its turbo paint model, in a conda env of its own beside TRELLIS.2's
+(`engines/hy3d-setup.sh`, run in WSL, does this: env `hy3d`, torch 2.8 cu128, the repo at
+`~/Hunyuan3D-2` with its two CUDA extensions built, the weights by
+`hf download`). `engines/hunyuan.py` is what `generate.mjs` runs there.
+Licence: Tencent Hunyuan non-commercial, fine for this site.
+
+Its 2.0 turbo paint is flat (white and stripes where TRELLIS.2 paints
+panels), so the shape is painted by **Hunyuan3D-2.1's PBR paint** when
+that's here too: `engines/hy3d21-setup.sh` makes env `hy3d21` with the
+2.1 repo at `~/Hunyuan3D-2.1`, its rasterizer and renderer built, the
+`hunyuan3d-paintpbr-v2-1` weights and the RealESRGAN upscaler it loads;
+`generate.mjs` then runs the shape unpainted (`--white`) and
+`engines/hunyuan_paint21.py` on it from the front picture (base colour,
+metal, roughness at 4096).
+
 ### Pixal3D (for --faithful)
 
 Five more GGUFs beside TRELLIS.2's, from
@@ -163,6 +188,24 @@ Z-Image-Turbo: `models\z_image_turbo-Q8_0.gguf`
 (Comfy-Org/z_image_turbo). A good source image is most of a good model:
 one object, front three-quarter view, plain white background, even light,
 no text.
+
+### The model's eyes (Qwen3-VL)
+
+`vlm.mjs` gives the pipeline eyes: **Claude**, through Claude Code on this
+machine (`claude -p`, on the owner's subscription, no API key: run `claude`
+once and `/login`, since the desktop app's login doesn't reach the command
+line), else Qwen3-VL-8B through llama.cpp's server, free and offline
+(`GEN3D_JUDGE=qwen` forces it). Claude is the sharper judge; Qwen is good
+enough to catch a wrong ship. Either way the pipeline can look: from a prompt, `make.mjs` draws four concept pictures and keeps the
+one it scores most like the thing; after the cut, it scores the four-view
+sheet out of 10 (`[name] verdict: …` in the log and the PR) and makes a
+miss again once with the next seed. `--no-judge` skips it; `--candidates N`
+draws more or fewer. Setup, under `%LOCALAPPDATA%\llamacpp`: `bin\` from
+[llama.cpp's Windows CUDA 13 build](https://github.com/ggml-org/llama.cpp/releases)
+(`llama-*-bin-win-cuda-13.4-x64.zip` and `cudart-*.zip`, unzipped
+together), `models\Qwen3-VL-8B-Instruct-Q8_0.gguf` and `mmproj-F16.gguf`
+from [unsloth/Qwen3-VL-8B-Instruct-GGUF](https://huggingface.co/unsloth/Qwen3-VL-8B-Instruct-GGUF).
+`node scripts/gen3d/vlm.mjs judge "a TIE fighter" sheet.png` asks it by hand.
 
 ### Judging
 

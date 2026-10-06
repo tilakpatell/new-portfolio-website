@@ -15,11 +15,17 @@
 // comes near it: point at one and press J (or the Jump button), or fly out
 // of the system with the nose on one, and you're away; or plot a course on
 // the galaxy map (the page's) and the ship comes round onto it. It spools
-// up, the stars stretch into lines, a flash, and you're in hyperspace
-// (hyperspace.js) while the next system's built behind it; then you drop
+// up and you're in hyperspace: the site's own jump, the same as the universe
+// map's (components/Hyperspace.jsx, which the page plays over the scene),
+// held in its tunnel while the next system's built behind it; then you drop
 // out at its planet, on the side you came in from. The page follows the
 // system you're in (/galaxy/hoth), and a link to another sends you jumping
 // there.
+//
+// The Galactic Civil War (gcw.js) is on: at a system it's being fought over,
+// its battle's there as you drop in (warfront.js: battles.js lays it out at
+// the planet, universe/battle.js fights it), and you're in it, on the
+// Rebellion's side; what you do there counts in the war, shared online.
 //
 // Out there: hunters by who holds the system (galaxy/hunted.js through
 // universe/hunters.js), now and then a Star Destroyer dropping out of
@@ -84,10 +90,12 @@ import { readBuildWire, writeBuild } from '../universe/shipyard/build';
 import { SHIP_INFO, buildGalaxyShip } from './fleet';
 import { HUNTER_GLB, createModels } from './models';
 import { createSky } from './sky';
-import { createJump } from './hyperspace';
+import { createSpeedLines } from './speedLines';
+import { T as JUMP_T } from '../hyperspace3d/timeline';
 import { DIVE, LAUNCH_KEY, diveAt, planDive } from './travel';
 import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, interdictorPlace } from './interdiction';
 import { createInterdictor } from './interdictor';
+import { createWarFront } from './warfront';
 import { createBolts, createFlashes } from './fx';
 import { buildSystem } from './world';
 import { AHEAD, FACTIONS, KINDS, NAMES } from './hunted';
@@ -117,7 +125,10 @@ const CAB_HFOV = 88;
 const CAB_VFOV = [52, 94];
 const SAFE = 3; // seconds back from a crash when other pilots' shots don't count
 const CRASH = { impact: 0.32, back: 2.6, done: 3.2 };
-const JUMP = { align: 4.5, spool: 0.95, exit: 1.1 }; // seconds, at most, to come round; to spool up; to drop out
+// seconds, at most, to come round; to spool up (to the site's jump's flash,
+// components/Hyperspace.jsx, which the page plays over the scene: the
+// system changes behind it); to drop out
+const JUMP = { align: 4.5, spool: (JUMP_T.jump + 50) / 1000, exit: 1.1 };
 const IDLE = 40000;
 const KEYS = { w: 'up', s: 'down', a: 'a', d: 'd', arrowleft: 'left', arrowright: 'right', arrowup: 'pitchUp', arrowdown: 'pitchDown', ' ': 'boost', shift: 'boost', f: 'fire' };
 const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ']);
@@ -202,8 +213,8 @@ export async function create(canvas, ctx) {
 
   const sky = createSky({ small, renderer });
   scene.add(sky.group);
-  const jumpFx = createJump({ small });
-  camera.add(jumpFx.group);
+  const speedLines = createSpeedLines({ small });
+  camera.add(speedLines.group);
   const dust = createDust({ small });
   scene.add(dust.points);
 
@@ -222,6 +233,10 @@ export async function create(canvas, ctx) {
     store: { get: () => window.sessionStorage.getItem(JUMPS_KEY), set: (v) => (v === null ? window.sessionStorage.removeItem(JUMPS_KEY) : window.sessionStorage.setItem(JUMPS_KEY, v)) },
   });
   const interdictor = reduced ? null : createInterdictor(scene, { models, small });
+  // the war's battle in this system, if it's being fought over (and the clipping
+  // planes a broken flagship's halves are cut with)
+  renderer.localClippingEnabled = true;
+  const war = reduced ? null : createWarFront(scene, { models, small, reduced, tier, emit: (e) => emit(e), onSolids: () => respace() });
 
   // your guns
   const boltGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.6, 6).rotateX(Math.PI / 2);
@@ -334,7 +349,8 @@ export async function create(canvas, ctx) {
     world.setDetail(detail);
     scene.add(world.group);
     state.world = world;
-    state.space = makeSpace(world.solids);
+    war?.enter(sys, world);
+    respace();
     // the suns' light
     world.sunLights.forEach((s, i) => {
       keys[i].color.copy(s.color);
@@ -354,6 +370,12 @@ export async function create(canvas, ctx) {
     models.want(['destroyer', 'corvette', 'xwing', 'interceptor', ...(wantsDeathStar(sys) ? ['deathstar'] : [])]);
     return warm(world.group);
   };
+  // what the ship flies through: the system's solids, and the war's capital ships' hulls while its battle's on
+  function respace() {
+    if (!state.world) return;
+    const extra = war?.solids ?? [];
+    state.space = makeSpace(extra.length ? [...state.world.solids, ...extra] : state.world.solids);
+  }
   // the system's sky drawn into its cube (once, for as long as you're here), and what its metal reflects
   const dressSystem = (sys) => {
     sky.bake();
@@ -823,6 +845,20 @@ export async function create(canvas, ctx) {
         }
         continue;
       }
+      // the war's battle: its fighters, its objectives, its capital ships' hulls
+      const wh = war?.hit(shotFrom, b.position, d.punch ?? 1);
+      if (wh) {
+        b.visible = false;
+        const ship = !wh.sub && !wh.capital && !wh.shield;
+        landed({ at: new THREE.Vector3(wh.at.x, wh.at.y, wh.at.z), size: ship ? wh.size : 0.15, down: ship && wh.down }, popDir.set(-d.v[0], 3, -d.v[2]).normalize());
+        state.hitMark = 1;
+        if (ship && wh.down) {
+          emit({ type: 'kill', kind: wh.kind });
+          state.heat += 1;
+          if (!reduced) state.shake = Math.max(state.shake, 0.2);
+        }
+        continue;
+      }
       // another pilot, or one of the hunters after them (it's theirs, so they're told)
       const ph = pilots.hit(shotFrom, b.position, d.punch ?? 1);
       if (ph) {
@@ -1075,8 +1111,9 @@ export async function create(canvas, ctx) {
       if (aligned(state.ship, j.dir) > 0.996 || j.age > JUMP.align) {
         j.phase = 'spool';
         j.age = 0;
+        // (the page plays the site's jump over the scene from here, its
+        // sound with it, the same as the universe map's: Galaxy.jsx)
         emit({ type: 'jump', phase: 'spool', to: j.to.id });
-        import('../../lib/clips').then((c) => c.playClip('hyperspaceEnter', { offset: Math.max(0, 1.17 - JUMP.spool), keep: true }).then((h) => !h && import('../../lib/sfx').then((x) => x.hyperspace())));
       }
       return;
     }
@@ -1102,7 +1139,6 @@ export async function create(canvas, ctx) {
       state.ship.x += fx * cp * state.ship.speed * dt;
       state.ship.z += fz * cp * state.ship.speed * dt;
       state.ship.y += Math.sin(state.ship.pitch) * state.ship.speed * dt;
-      jumpFx.set({ stretch: k * k, tunnel: 0, flash: k > 0.92 ? (k - 0.92) / 0.08 : 0, speed: k * 300 });
       if (k >= 1) {
         j.phase = 'tunnel';
         j.age = 0;
@@ -1113,8 +1149,6 @@ export async function create(canvas, ctx) {
       return;
     }
     if (j.phase === 'tunnel') {
-      const k = clamp01(j.age / 0.35);
-      jumpFx.set({ stretch: 1 - k * 0.4, tunnel: k, flash: Math.max(0, 1 - j.age * 3), speed: 300 });
       // the next system, built behind the tunnel (a frame in, so the flash is up first)
       if (!j.built && j.age > 0.12) {
         j.built = true;
@@ -1137,6 +1171,8 @@ export async function create(canvas, ctx) {
         j.age = 0;
         import('../../lib/clips').then((c) => c.playClip('hyperspaceExit', { keep: true }));
         props.onArrive?.(j.to.id, j.from.id);
+        // (the page lets the site's jump go on out of its tunnel)
+        emit({ type: 'jump', phase: 'out', to: j.to.id });
         emit({ type: 'arrive', id: j.to.id, from: j.from.id });
         if (bitten) bite(j);
       } else if (j.age > j.dur + 6 && !j.ready) j.ready = true; // (never stuck in there)
@@ -1144,11 +1180,9 @@ export async function create(canvas, ctx) {
     }
     if (j.phase === 'exit') {
       const k = clamp01(j.age / JUMP.exit);
-      jumpFx.set({ stretch: (1 - k) ** 2, tunnel: Math.max(0, 1 - k * 4), flash: Math.max(0, 1 - k * 3) * 0.9, speed: (1 - k) * 300 });
       // easing down out of it
       state.ship = step({ ...s, speed: Math.max(SHIP.cruise, s.speed - dt * 36) }, { throttle: 0.6 }, dt, state.space.solids, state.space).ship;
       if (k >= 1) {
-        jumpFx.set({ stretch: 0, tunnel: 0, flash: 0, speed: 0 });
         // (the first system's arrival, said as you come out into it)
         if (!j.from) emit({ type: 'arrive', id: j.to.id, from: null });
         state.jump = null;
@@ -1268,9 +1302,11 @@ export async function create(canvas, ctx) {
 
     // the guns: the lock, the lead, whether a shot would bend onto it
     let cands = hunters?.targets ?? NO_TARGETS;
-    if (pilots.count) {
+    const warCands = war?.targets ?? NO_TARGETS;
+    if (pilots.count || warCands.length) {
       candBuf.length = 0;
       for (const c of cands) candBuf.push(c);
+      for (const c of warCands) candBuf.push(c);
       for (const c of pilots.targets) candBuf.push(c);
       cands = candBuf;
     }
@@ -1282,7 +1318,7 @@ export async function create(canvas, ctx) {
     // (the nose follows only a lock on a hunter, one picked by hand, or one
     // being shot at: not a passing pilot or a part of the Citadel the guns
     // happened on)
-    state.trackable = Boolean(tgt && (hunters?.targets.includes(tgt) || state.lock?.manual || performance.now() - state.lastShot < TRACK_AFTER_SHOT));
+    state.trackable = Boolean(tgt && (hunters?.targets.includes(tgt) || warCands.includes(tgt) || state.lock?.manual || performance.now() - state.lastShot < TRACK_AFTER_SHOT));
     if (tgt && tgt.id !== was && state.shown && !document.hidden) lockSound();
     state.lead = tgt ? intercept(ship, AIM.bolt + Math.max(0, ship.speed), tgt.at, tgt.vel) : null;
     state.hot = Boolean(state.lead && state.lead.t <= AIM.life && assistAmount(nose(ship), dirTo(ship, state.lead), controls().assist) >= 1);
@@ -1345,6 +1381,17 @@ export async function create(canvas, ctx) {
     if (hunters) for (const e of hunters.update(dt, t, live)) onHunters(e);
     let busy = pieces ? pieces.update(dt, t, camera) : false;
     if (interdictor) busy = interdictor.update(dt, t) || busy;
+    if (war) {
+      const w = war.update(dt, t, camera, live);
+      if (w.hurt && live) hurt(w.hurt);
+      // (a set piece's hold on the ship: kept inside a tunnel, slowed to fly it, caught in a reactor's blast)
+      if (live && state.ship && !state.crash) {
+        if (w.ship) state.ship = { ...state.ship, ...w.ship };
+        if (w.speedCap && state.ship.speed > w.speedCap) state.ship = { ...state.ship, speed: w.speedCap + (state.ship.speed - w.speedCap) * Math.exp(-dt * 6) };
+        if (w.kill) startDestroyed();
+      }
+      busy = w.busy || busy;
+    }
     if (live) {
       if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen);
       if (state.shield > 70) state.lowSaid = false;
@@ -1352,7 +1399,8 @@ export async function create(canvas, ctx) {
       // now and then, whoever holds the system comes for you; the Empire (and
       // what's left of it) sometimes brings a Star Destroyer to launch them
       const faction = state.sys?.faction;
-      if (hunters && faction && state.flown && !hunters.active && !pieces?.destroyerHere && !state.held) {
+      // (not in the middle of the war's battle: it's busy enough)
+      if (hunters && faction && state.flown && !hunters.active && !pieces?.destroyerHere && !state.held && !war?.battle) {
         if (state.shield >= 50) state.nextHunt -= dt * (1 + state.heat * 0.4); // (not while your shields are low)
         if (state.nextHunt <= 0) {
           state.nextHunt = 50 + Math.random() * 45;
@@ -1503,6 +1551,7 @@ export async function create(canvas, ctx) {
     if (on && h.threats.length) {
       threatList.length = 0;
       for (const c of hunters?.targets ?? NO_TARGETS) if (c.threat && c.id !== tgt?.id) threatList.push(c);
+      for (const c of war?.targets ?? NO_TARGETS) if (c.threat && c.id !== tgt?.id) threatList.push(c);
       // (and a pilot whose shots have been landing on you)
       if (pilots.count) for (const c of pilots.targets) if (c.threat && c.id !== tgt?.id) threatList.push(c);
       threatList.sort((a, b) => apart(a.at.x, a.at.y, a.at.z, s.x, s.y, s.z) - apart(b.at.x, b.at.y, b.at.z, s.x, s.y, s.z));
@@ -1548,6 +1597,10 @@ export async function create(canvas, ctx) {
 
   // ── Being online ──
   const onNet = (e) => {
+    if (e.type === 'war' || e.type === 'fight') {
+      war?.onNet(e);
+      return;
+    }
     if (e.type === 'hit') hurt(e.damage, e.from);
     else if (e.type === 'hunterHit') {
       // another pilot's bolt into one of the hunters after you
@@ -1571,6 +1624,7 @@ export async function create(canvas, ctx) {
     netOff?.();
     net = client ?? null;
     netOff = net?.on(onNet) ?? null;
+    war?.setNet(net);
   };
 
   // the hunters a system's side meets, made ahead (a pack arriving shouldn't stall a frame)
@@ -1633,7 +1687,6 @@ export async function create(canvas, ctx) {
       if (launched) emit({ type: 'launch' });
       else if (!reduced) {
         state.jump = { to: state.sys, from: null, phase: 'exit', age: 0, dir: [0, 0, -1], dur: 0, built: true, dressed: true, ready: true };
-        jumpFx.set({ stretch: 1, tunnel: 0, flash: 1, speed: 300 });
       }
     }
     let moving = false;
@@ -1727,7 +1780,7 @@ export async function create(canvas, ctx) {
     models.update(t);
     bolts.update(dt);
     flashes.update(dt);
-    jumpFx.update(dt, t);
+    speedLines.update(dt);
     const fxBusy = crashFx.update(dt, camera) || pops.update(dt, camera);
     const adventuring = adventure(dt, t);
     const shooting = moveBolts(dt);
@@ -1746,8 +1799,8 @@ export async function create(canvas, ctx) {
     // out in the open on the sublight drive, the stars stretch a little
     if (!state.jump && flying()) {
       const fast = clamp01((Math.abs(state.ship.speed) - SHIP.boost) / 40);
-      jumpFx.set({ stretch: fast * 0.18, tunnel: 0, flash: 0, speed: fast * 80 });
-    }
+      speedLines.set({ stretch: fast * 0.18, speed: fast * 80 });
+    } else speedLines.set({ stretch: 0, speed: 0 }); // (none through a jump: the site's own is over the scene)
     if (state.hitMark > 0) state.hitMark = Math.max(0, state.hitMark - dt * 4);
     // the other pilots in this system
     if (net) {
@@ -1772,7 +1825,7 @@ export async function create(canvas, ctx) {
       emit({ type: 'ready' });
     }
     if (props.frozen) return Boolean(state.crash?.through || (state.dive && !state.dive.done));
-    return !reduced || moving || shooting || fxBusy || worldBusy || adventuring || piloting || jumpFx.busy || bolts.busy || flashes.busy || net?.peers.size > 0 || Boolean(state.model?.modules?.easing) || cabWas !== state.cabK || state.kick > 0 || state.flare > 1 || Boolean(state.stick?.on || state.jump);
+    return !reduced || moving || shooting || fxBusy || worldBusy || adventuring || piloting || speedLines.busy || bolts.busy || flashes.busy || net?.peers.size > 0 || Boolean(state.model?.modules?.easing) || cabWas !== state.cabK || state.kick > 0 || state.flare > 1 || Boolean(state.stick?.on || state.jump);
   }
   let dustAmount = 0;
   const cabFrame = (dt, t) => {
@@ -2009,6 +2062,7 @@ export async function create(canvas, ctx) {
       lock: state.lock?.id ?? null,
       goals: state.world?.goals.map((g) => g.id),
       solids: state.space?.solids.length,
+      war: war?.info ?? null,
     });
     // the ship put at `pose` (x, y, z, heading, pitch, bank), stopped, and the camera there behind it as it would be after
     // an arrival, not still easing to it: a check then sees the same view, however many frames it took to get there
@@ -2023,7 +2077,7 @@ export async function create(canvas, ctx) {
       state.shake = 0;
       ctx.invalidate();
     };
-    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, pin, interdiction, interdictor };
+    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, pin, interdiction, interdictor, war };
     window.__gltfStats = gltfStats; // { requests, parses }: the models asked for, and the files fetched and parsed for them
   }
 
@@ -2147,6 +2201,7 @@ export async function create(canvas, ctx) {
       crashFx.dispose();
       pops.dispose();
       hunters?.dispose();
+      war?.dispose();
       pieces?.dispose();
       interdictor?.dispose();
       netOff?.();
@@ -2155,7 +2210,7 @@ export async function create(canvas, ctx) {
       models.dispose();
       bolts.dispose();
       flashes.dispose();
-      jumpFx.dispose();
+      speedLines.dispose();
       sky.dispose();
       for (const pl of plumes) pl.trail.dispose();
       boltGeo.dispose();

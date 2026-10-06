@@ -150,7 +150,8 @@ export const WARS = {
   starwars: {
     id: 'starwars',
     name: 'The Galactic Civil War',
-    ready: true,
+    ready: false, // (fought in the galaxy far, far away, at its own planets: galaxy/gcw.js)
+    galaxy: '/galaxy',
     sides: [rebels, empire],
     sectors: line(
       [-5200, 140, -4000],
@@ -227,6 +228,8 @@ export const FIGHTERS = {
   tie: F({ size: 0.3, speed: 21, turn: 2.6, hp: 5 }),
   interceptor: F({ size: 0.32, speed: 25, turn: 3, hp: 4, burst: [0.1, 0.55] }),
   tiebomber: F({ size: 0.38, speed: 15, turn: 1.7, hp: 9, reload: 1.2 }),
+  uwing: F({ size: 0.5, speed: 17, turn: 1.9, hp: 8 }),
+  tieadvanced: F({ size: 0.32, speed: 23, turn: 3, hp: 8, burst: [0.1, 0.5] }),
   // Rick and Morty
   councilship: F({ size: 0.42, speed: 21, turn: 2.4, hp: 6 }),
   meeseeks: F({ size: 0.34, speed: 24, turn: 2.9, hp: 4, burst: [0.1, 0.6] }),
@@ -252,6 +255,8 @@ export const NAMES = {
   tie: 'TIE fighter',
   interceptor: 'TIE interceptor',
   tiebomber: 'TIE bomber',
+  uwing: 'U-wing',
+  tieadvanced: 'TIE Advanced',
   councilship: 'Council cruiser',
   meeseeks: 'Meeseeks ship',
   gearship: 'Gear ship',
@@ -267,6 +272,8 @@ export const NAMES = {
   shieldgen: 'Shield generator',
   bridge: 'Bridge',
   reactor: 'Reactor',
+  turret: 'Turbolaser battery',
+  transport: 'GR-75 transport',
 };
 
 // a flagship's objectives: two shield generators, the bridge, the reactor
@@ -297,6 +304,16 @@ export const SUBSYSTEMS = {
     ],
     [0, 0.09, 0.36],
     [0, 0.02, -0.44],
+  ),
+  // the Executor: the domes on its bridge tower, at the stern, the bridge in
+  // the tower's face, the reactor under the middle of its hull
+  executor: flagship(
+    [
+      [-0.018, 0.075, -0.415],
+      [0.018, 0.075, -0.415],
+    ],
+    [0, 0.06, -0.395],
+    [0, -0.035, -0.12],
   ),
   councildread: flagship(
     [
@@ -337,6 +354,10 @@ const flanks = (w, h, zs) => zs.flatMap((z) => [[-w, h, z], [w, h, z]]);
 export const TURRETS = {
   destroyer: [...flanks(0.17, 0.05, [-0.3, -0.18, -0.06, 0.06, 0.18]), [0, 0.12, -0.2], [0, 0.08, 0]],
   moncal: [...flanks(0.09, 0.04, [-0.3, -0.1, 0.1, 0.28])],
+  executor: [...flanks(0.07, 0.02, [-0.36, -0.24, -0.12, 0, 0.12, 0.24, 0.36]), [0, 0.04, -0.3], [0, 0.03, 0]],
+  interdictor: [...flanks(0.17, 0.05, [-0.25, 0, 0.2])],
+  hammerhead: [...flanks(0.08, 0.05, [-0.2, 0.2])],
+  transport: [[0, 0.1, 0.2]],
   nebulon: [...flanks(0.06, 0.03, [-0.3, 0.3])],
   corvette: [...flanks(0.08, 0.05, [-0.2, 0.2])],
   lightcruiser: [...flanks(0.1, 0.05, [-0.2, 0.1])],
@@ -366,6 +387,8 @@ export const HULLS = {
   nebulon: [[-0.38, 0.07], [-0.1, 0.05], [0.18, 0.08], [0.38, 0.07]],
   corvette: [[-0.36, 0.1], [-0.1, 0.06], [0.14, 0.06], [0.36, 0.12]],
   hammerhead: [[-0.36, 0.08], [-0.06, 0.05], [0.24, 0.05], [0.42, 0.1]],
+  interdictor: [[-0.4, 0.09], [-0.2, 0.085], [0, 0.075], [0.2, 0.055], [0.38, 0.03]],
+  transport: [[-0.3, 0.12], [0, 0.13], [0.3, 0.11]],
   lightcruiser: [[-0.36, 0.1], [-0.12, 0.09], [0.12, 0.07], [0.36, 0.05]],
   gozanti: [[-0.36, 0.12], [-0.12, 0.13], [0.12, 0.12], [0.36, 0.1]],
   councildread: [[-0.36, 0.13], [-0.12, 0.14], [0.12, 0.13], [0.36, 0.09]],

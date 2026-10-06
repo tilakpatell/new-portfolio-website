@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEEP, DEEP_SOLIDS, STARS, WONDERS, beyondOf, nearestStar, openness, parseWonder, planetAt, reachOf, wonderById } from './deep';
+import { DEEP, DEEP_SOLIDS, STARS, WONDERS, beyondOf, binaryAt, moveBinaries, nearestStar, openness, parseWonder, planetAt, reachOf, wonderById } from './deep';
 import { GOALS } from './ship';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
 import { byId } from './universes';
@@ -103,6 +103,44 @@ describe('deep space', () => {
     expect(mid).toBeLessThan(0.6);
   });
 
+  it('turns a binary’s suns round the point their masses balance at, apart by the same all the way round', () => {
+    const w = WONDERS.find((x) => x.kind === 'binary');
+    const p = w.pair.period;
+    const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    for (const t of [0, p / 8, p / 4, p / 2, p * 0.9]) {
+      const { a, b } = binaryAt(w, t);
+      expect(dist(a, b)).toBeCloseTo(w.pair.apart, 6);
+      // the middle stays put, nearer the bigger sun (masses as r³)
+      const ma = w.r ** 3;
+      const mb = w.pair.r ** 3;
+      [0, 1, 2].forEach((i) => expect((a[i] * ma + b[i] * mb) / (ma + mb)).toBeCloseTo(w.at[i], 6));
+      expect(dist(a, w.at)).toBeLessThan(dist(b, w.at));
+      // and both inside its reach
+      expect(dist(b, w.at) + w.pair.r).toBeLessThanOrEqual(reachOf(w) + 1e-9);
+    }
+    // a quarter of the way round, the second sun is a quarter turn on
+    const b0 = binaryAt(w, 0).b;
+    const b1 = binaryAt(w, p / 4).b;
+    const u0 = [b0[0] - w.at[0], b0[2] - w.at[2]];
+    const u1 = [b1[0] - w.at[0], b1[2] - w.at[2]];
+    expect(u0[0] * u1[0] + u0[1] * u1[1]).toBeCloseTo(0, 6);
+    expect(binaryAt(w, p).b[0]).toBeCloseTo(b0[0], 6);
+  });
+
+  it('moves the solids with the suns, so what you see is what you hit', () => {
+    const w = WONDERS.find((x) => x.kind === 'binary');
+    const one = DEEP_SOLIDS.find((s) => s.id === w.id);
+    const two = DEEP_SOLIDS.find((s) => s.id === `${w.id}-2`);
+    moveBinaries(w.pair.period / 3);
+    const { a, b } = binaryAt(w, w.pair.period / 3);
+    [0, 1, 2].forEach((i) => {
+      expect(one.at[i]).toBeCloseTo(a[i], 6);
+      expect(two.at[i]).toBeCloseTo(b[i], 6);
+    });
+    moveBinaries(0); // (back where the other tests expect them)
+    expect(two.at[0]).toBeCloseTo(binaryAt(w, 0).b[0], 6);
+  });
+
   it('has a pulsar, a binary star, a rogue planet and a wreck field among its wonders, each solid its own way', () => {
     const ids = WONDERS.map((w) => w.id);
     for (const id of ['lantern', 'twins', 'wanderer', 'graveyard']) expect(ids).toContain(id);
@@ -113,8 +151,11 @@ describe('deep space', () => {
     expect(solids.twins).toBeTruthy();
     expect(solids['twins-2']).toBeTruthy();
     expect(solids['twins-2'].part).toBe(true);
-    expect(Math.hypot(...[0, 1, 2].map((i) => solids['twins-2'].at[i] - solids.twins.at[i]))).toBe(wonderById('twins').pair.apart);
-    expect(reachOf(wonderById('twins'))).toBe(wonderById('twins').pair.apart + wonderById('twins').pair.r);
+    expect(Math.hypot(...[0, 1, 2].map((i) => solids['twins-2'].at[i] - solids.twins.at[i]))).toBeCloseTo(wonderById('twins').pair.apart, 6);
+    // (its reach from the point they go round: the further sun's swing and its radius, at any point in the orbit)
+    const w = wonderById('twins');
+    const swing = (w.pair.apart * w.r ** 3) / (w.r ** 3 + w.pair.r ** 3);
+    expect(reachOf(w)).toBeCloseTo(Math.max(swing + w.pair.r, w.pair.apart - swing + w.r), 6);
     // a rogue planet with a ring reaches like any ringed world; the wreck field's hulls are a sight, not solid
     expect(reachOf(wonderById('wanderer'))).toBe(wonderById('wanderer').r * 2.3);
     expect(reachOf(wonderById('graveyard'))).toBe(wonderById('graveyard').field);

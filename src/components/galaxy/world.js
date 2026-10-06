@@ -18,7 +18,15 @@
 //
 // buildSystem(sys, { models, bolts, flashes, small, ratio }) → { group, solids,
 //   goals, body, shield, tractor, update(t, dt, camera, ship) → busy,
-//   setDetail(k), setRatio(r), events (drained by the scene), wake(ship), dispose() }
+//   setDetail(k), setRatio(r), events (drained by the scene), wake(ship),
+//   quiet(on), war: { holdShield(up), station(kind, shown), planetShield(on) },
+//   dispose() }
+// quiet(on): the system's own fleets and battle (and Hoth's ion cannon) stand
+// aside, hidden and not in the way, while the war's battle is on there
+// (galaxy/warfront.js). war: the battle's set pieces' hold on the system
+// (galaxy/warpieces/): the second Death Star's shield held up or down (null:
+// its own cycle), a station gone (the Death Star blown, the Shield Gate
+// rammed) and Scarif's shield down. quiet(false) puts everything back.
 // solids: ship.js's ({ id, at, r, reach, band?, goal?, name? }), some
 // moving (their `at` is updated in place); goals: the solids the autopilot
 // can take you to, with their names. setDetail(k): how finely to draw the
@@ -87,6 +95,12 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
   const dpr = []; // the uniforms that hold the pixel ratio, for setRatio
   const events = [];
   const capitals = []; // the big ships, for the ion cannon and the battles: { slot, side, size }
+  // what stands aside while the war's battle is on here: the holders, the solids, and whether it is
+  const ambient = { holders: [], solids: [], on: false };
+  const aside = (fn) => (...a) => (ambient.on ? false : fn(...a));
+  // the war's hold on it: the Death Star's shield, the stations, Scarif's shield
+  const hold = { shield: null };
+  const stations = {}; // kind → { holder, solids: [{ o, r, reach }] }
   const sunDirs = sys.suns.map((s) => new THREE.Vector3(...s.dir).normalize());
   const sunLights = sys.suns.map((s, i) => ({ dir: sunDirs[i], color: new THREE.Color(s.color).multiplyScalar(i === 0 ? 1.25 : 0.7) }));
   const out = { group, solids, goals: [], body: null, shield: null, tractor: null, events };
@@ -111,7 +125,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
     return b;
   };
   // a big ship's spheres, from where it is and which way it points
-  const hull = (slot, id) => {
+  const hull = (slot, id, stand = false) => {
     const prof = HULLS[slot.kind];
     const round = ROUND[slot.kind];
     const list = [];
@@ -121,7 +135,8 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
     slot.holder.updateMatrixWorld(true);
     list.forEach((s, i) => {
       tmp.set(0, 0, s.z * slot.size).applyMatrix4(slot.holder.matrix);
-      addSolid({ id: `${id}-${i}`, at: tmp.toArray(), r: s.r * slot.size, reach: s.r * slot.size, hull: id });
+      const o = addSolid({ id: `${id}-${i}`, at: tmp.toArray(), r: s.r * slot.size, reach: s.r * slot.size, hull: id });
+      if (stand) ambient.solids.push({ o, r: o.r });
     });
   };
   const place = (slot, at, { yaw = 0, pitch = 0, roll = 0 } = {}) => {
@@ -220,7 +235,8 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
       p.ships.forEach((s, j) => {
         const slot = place(models.slot(s.kind, s.size, { tint: s.tint }), s.at, { yaw: s.yaw, pitch: s.pitch, roll: s.roll });
         capitals.push({ slot, side: p.side, size: s.size });
-        hull(slot, `fleet-${s.kind}-${j}`);
+        ambient.holders.push(slot.holder);
+        hull(slot, `fleet-${s.kind}-${j}`, true);
         const y0 = s.at[1];
         ticks.push((t) => {
           slot.holder.position.y = y0 + Math.sin(t * 0.07 + j * 1.7) * s.size * 0.012;
@@ -276,7 +292,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
     cannon(p) {
       const from = new THREE.Vector3(...p.from);
       let last = -1;
-      ticks.push((t) => {
+      ticks.push(aside((t) => {
         const cyc = Math.floor(t / p.every);
         if (cyc === last) return false;
         const first = last < 0;
@@ -303,7 +319,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
         }
         events.push({ type: 'event', id: 'ion' });
         return true;
-      });
+      }));
     },
 
     rocks(p, i) {
@@ -320,13 +336,15 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
     // a great station: the half-built Death Star (and its shield), Cloud City, the Shield Gate
     station(p) {
       const slot = place(models.slot(p.kind, p.size), p.at);
+      const st = (stations[p.kind] = { holder: slot.holder, solids: [] });
+      const mark = (o) => (st.solids.push({ o, r: o.r, reach: o.reach }), o);
       const at = new THREE.Vector3(...p.at);
       const up = at.clone().normalize();
       if (p.surface || p.kind === 'gate') slot.holder.quaternion.setFromUnitVectors(Y, up);
       slot.holder.updateMatrixWorld(true);
       const names = STATION_NAMES;
       if (p.kind === 'deathstar2') {
-        addSolid({ id: 'deathstar2', name: names.deathstar2, at: p.at, r: p.size * 0.47, reach: p.size * 0.66, goal: true });
+        mark(addSolid({ id: 'deathstar2', name: names.deathstar2, at: p.at, r: p.size * 0.47, reach: p.size * 0.66, goal: true }));
         if (p.shield) {
           const R = p.size * 0.66;
           const shell = addSolid({ id: 'ds2-shield', at: p.at, r: R, reach: R, shield: true });
@@ -347,7 +365,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
           // the shield is up for four minutes, then the strike team on Endor gets it down for two
           let was = null;
           ticks.push((t, dt) => {
-            const up = frac(t / 360) < 0.66;
+            const up = hold.shield ?? frac(t / 360) < 0.66;
             shell.r = up ? R : 0;
             shell.reach = up ? R : 0;
             mat.uniforms.uOn.value += ((up ? 1 : 0) - mat.uniforms.uOn.value) * clamp01(dt * 2);
@@ -371,7 +389,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
         for (let k = 0; k < 18; k++) {
           const a = (k / 18) * TAU;
           tmp.set(Math.cos(a) * s * 0.42, 0, Math.sin(a) * s * 0.42).applyQuaternion(slot.holder.quaternion).add(at);
-          addSolid({ id: `gate-${k}`, at: tmp.toArray(), r: s * 0.065, reach: s * 0.065 });
+          mark(addSolid({ id: `gate-${k}`, at: tmp.toArray(), r: s * 0.065, reach: s * 0.065 }));
         }
         out.gate = { at: at.clone(), axis: up.clone(), hole: s * 0.33 };
       }
@@ -391,6 +409,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
     shield(p) {
       out.body?.set?.('shield', 1);
       out.shield = { r: p.r };
+      stations.shield = { r: p.r };
     },
 
     // two fleets in a battle: their turbolasers, their fighters dogfighting between
@@ -401,7 +420,8 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
       for (const side of sides) {
         ships[side] = p.sides[side].map((s, j) => {
           const slot = place(models.slot(s.kind, s.size, { tint: s.tint }), [p.at[0] + s.at[0], p.at[1] + s.at[1], p.at[2] + s.at[2]], { yaw: s.yaw });
-          hull(slot, `battle-${i}-${side}-${j}`);
+          ambient.holders.push(slot.holder);
+          hull(slot, `battle-${i}-${side}-${j}`, true);
           capitals.push({ slot, side, size: s.size });
           return { slot, size: s.size };
         });
@@ -415,6 +435,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
         const list = p.fighters[side];
         const kind = list[Math.floor(rand() * list.length)];
         const slot = place(models.slot(kind, 0.3), p.at);
+        ambient.holders.push(slot.holder);
         const lead = j % 2 === 0;
         const leader = fighters[j - 1];
         if (lead || !leader) {
@@ -436,7 +457,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
           .addScaledVector(f.w, Math.sin(a * 2.3 + f.ph) * f.R * 0.3);
       };
       let fireCool = 0;
-      ticks.push((t, dt) => {
+      ticks.push(aside((t, dt) => {
         // the capital ships trade turbolaser fire
         fireCool -= dt;
         while (fireCool <= 0) {
@@ -490,7 +511,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
           }
         }
         return true;
-      });
+      }));
     },
 
     // the Death Star: its trench to fly down, its tractor beam (Alderaan), its hangar to be pulled into
@@ -768,6 +789,37 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
     let busy = false;
     for (const tick of ticks) if (tick(t, dt, camera, ship)) busy = true;
     return busy;
+  };
+  out.quiet = (on) => {
+    if (on === ambient.on) return;
+    ambient.on = on;
+    for (const h of ambient.holders) h.visible = !on;
+    for (const { o, r } of ambient.solids) o.r = o.reach = on ? 0 : r;
+    // (and the war's hold let go: everything as it was)
+    if (!on) {
+      out.war.holdShield(null);
+      for (const kind of Object.keys(stations)) if (kind !== 'shield') out.war.station(kind, true);
+      out.war.planetShield(true);
+    }
+  };
+  out.war = {
+    holdShield(up) {
+      hold.shield = up;
+    },
+    station(kind, shown) {
+      const st = stations[kind];
+      if (!st) return;
+      st.holder.visible = shown;
+      for (const x of st.solids) {
+        x.o.r = shown ? x.r : 0;
+        x.o.reach = shown ? x.reach : 0;
+      }
+    },
+    planetShield(on) {
+      if (!stations.shield) return;
+      out.shield = on ? { r: stations.shield.r } : null;
+      out.body?.set?.('shield', on ? 1 : 0);
+    },
   };
   // the second Death Star's shield, lit where the ship bumped it
   out.shieldHit = () => {
