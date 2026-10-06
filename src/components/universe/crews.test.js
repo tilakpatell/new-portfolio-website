@@ -45,10 +45,9 @@ describe('the crews', () => {
   });
 
   it('have a word for being hunted, the director’s events and every wonder out in deep space', async () => {
-    const { FACTIONS } = await import('./hunters');
-    const { EVENTS } = await import('./director');
+    const { EVENTS, canHave } = await import('./director');
     const { WONDERS } = await import('./deep');
-    const FAMILY = { cruiser: 'rickmorty', xwing: 'starwars', falcon: 'starwars', rv: 'both' };
+    const { sideFor } = await import('./sides');
     const said = (exchange, crew, what) => {
       expect(exchange?.length, `${crew.id}: ${what}`).toBeGreaterThan(0);
       for (const [who, text] of exchange) {
@@ -57,28 +56,30 @@ describe('the crews', () => {
       }
     };
     for (const crew of CREWS) {
-      const family = FAMILY[crew.id];
-      // hunters after you (not the pirates in a distress call: that's the event's line)
-      // (the RV, in both universes, is hunted by the Empire or the Federation)
-      for (const [id, f] of Object.entries(FACTIONS)) if ((f.family === family || (family === 'both' && id !== 'council')) && id !== 'bugs') said(linesFor(crew, 'hunted', id), crew, `hunted ${id}`);
-      if (family !== 'rickmorty') said(linesFor(crew, 'hunted', 'ace'), crew, 'hunted ace');
+      const side = sideFor(crew.id);
+      // hunters after you: every faction of the crew's side (not the pirates in a distress call: that's the event's line)
+      for (const [id, f] of Object.entries(side.factions)) if (f.role !== 'pirates') said(linesFor(crew, 'hunted', id), crew, `hunted ${id}`);
+      if (Object.values(side.factions).some((f) => f.ace)) said(linesFor(crew, 'hunted', 'ace'), crew, 'hunted ace');
       for (const event of ['hit', 'shields', 'destroyed', 'escaped', 'cleared', 'interdicted']) said(linesFor(crew, event), crew, event);
       for (const into of ['star', 'giant', 'citadel']) said(linesFor(crew, 'crashInto', into), crew, `crashInto ${into}`);
-      // the director's events (the Council's and the bounty hunters' arrivals are their hunted lines), rescuing someone, going out into deep space
-      for (const [id, e] of Object.entries(EVENTS)) if (e.families.includes(family) && id !== 'hunt' && id !== 'council' && id !== 'bounty') said(linesFor(crew, 'event', id), crew, `event ${id}`);
+      // the director's events the side can have (the Council's and the bounty hunters' arrivals are their hunted lines), rescuing someone, going out into deep space
+      for (const [id, e] of Object.entries(EVENTS)) if (canHave(side, e) && id !== 'hunt' && id !== 'council' && id !== 'bounty') said(linesFor(crew, 'event', id), crew, `event ${id}`);
       said(linesFor(crew, 'event', 'rescued'), crew, 'rescued');
       said(linesFor(crew, 'event', 'deep'), crew, 'deep');
+      // the friends who come in a long fight: each of the side's allies
+      for (const ally of Object.keys(side.allies)) said(linesFor(crew, 'event', 'wingmen', ally), crew, `wingmen ${ally}`);
+      said(linesFor(crew, 'event', 'wingmenGone'), crew, 'wingmenGone');
+      said(linesFor(crew, 'event', 'skirmish', side.id), crew, 'skirmish');
       // the nav map's drives: a jump to lightspeed, and super speed
       said(linesFor(crew, 'event', 'hyperspeed'), crew, 'hyperspeed');
       said(linesFor(crew, 'event', 'overdrive'), crew, 'overdrive');
       for (const w of WONDERS) said(linesFor(crew, 'wonder', w.id), crew, `wonder ${w.id}`);
-      // the bounty hunters shot down, in flight (Slave I's line is the flyby's; Phoenixperson's is his own)
-      if (family !== 'rickmorty') expect(linesFor(crew, 'kill', 'slave1'), `${crew.id} kill slave1`).not.toBe(linesFor(crew, 'kill', 'any'));
-      if (family !== 'starwars') expect(linesFor(crew, 'kill', 'phoenixperson'), `${crew.id} kill phoenixperson`).not.toBe(linesFor(crew, 'kill', 'any'));
-      // through a rift, a shot into a leviathan, and (the RV meets both) each kind of leviathan
+      // the bounty hunters shot down, in flight (Slave I's line is the flyby's; Phoenixperson's and the Cousins' are their own)
+      for (const [, f] of Object.entries(side.factions)) if (f.role === 'bounty') for (const [k] of f.kinds) expect(linesFor(crew, 'kill', k), `${crew.id} kill ${k}`).not.toBe(linesFor(crew, 'kill', 'any'));
+      // through a rift, a shot into a leviathan, and the side's own leviathan
       said(linesFor(crew, 'event', 'rifted'), crew, 'rifted');
       said(linesFor(crew, 'event', 'leviathanHit'), crew, 'leviathanHit');
-      if (family === 'both') for (const sub of ['purrgil', 'cromulon']) said(linesFor(crew, 'event', 'leviathan', sub), crew, `leviathan ${sub}`);
+      said(linesFor(crew, 'event', 'leviathan', side.leviathan), crew, `leviathan ${side.leviathan}`);
     }
   });
 
@@ -93,11 +94,12 @@ describe('the crews', () => {
 describe('the crews on foot', () => {
   it('have a word for each moment out of the ship, said by their own crew', async () => {
     const { PARTY } = await import('./footScene');
-    const { TROOPS } = await import('./foot');
+    const { sideFor } = await import('./sides');
     for (const crew of CREWS) {
       const all = [
         ...['land', 'out', 'squad', 'hurt', 'down', 'up', 'cleared', 'far', 'nowhere', 'in'].map((id) => linesFor(crew, 'foot', id)),
-        ...Object.keys(TROOPS).map((kind) => linesFor(crew, 'foot', 'kill', kind)),
+        // (each troop of the crew's side has its own line, not the catch-all)
+        ...Object.keys(sideFor(crew.id).troops).map((kind) => crew.foot.kill[kind]),
         ...PARTY[crew.id].map((p) => linesFor(crew, 'foot', 'swap', p.id)),
         // another pilot's crew down too, and anyone's double from another dimension
         linesFor(crew, 'foot', 'friend'),

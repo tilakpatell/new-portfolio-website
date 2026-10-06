@@ -9,6 +9,7 @@ vi.mock('./trafficModels', () => ({
 }));
 
 const { createTraffic } = await import('./traffic');
+const { SIDES } = await import('./sides');
 const { PLACES } = await import('./deep');
 const { SOLIDS } = await import('./ship');
 const { dockable } = await import('./lanes');
@@ -319,7 +320,7 @@ describe('a convoy', () => {
     for (const seed of [1, 2, 3, 4, 5, 6]) {
       random.mockImplementation(seeded(seed));
       const { fleet, traffic } = setup();
-      expect(traffic.convoy(parked, 'starwars')).toBe(true);
+      expect(traffic.convoy(parked, SIDES.starwars)).toBe(true);
       const kinds = fleet.made.map((m) => m.kind);
       const escorts = kinds.filter((k) => k === 'xwing').length;
       const freight = kinds.length - escorts;
