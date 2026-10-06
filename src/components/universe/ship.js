@@ -54,6 +54,7 @@ import { HOME_RADIUS, MAP_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout'
 import { MAW } from './maw';
 import { NOSE, UP, axisAngle, conj, fromAngles, mul, normalize, rotate, toAngles, turnToward } from './orient';
 import { byId } from './universes';
+import { sunFor } from './lighting';
 
 export const SHIP = {
   cruise: 5.5, // map units a second (the ship is 0.26 long)
@@ -219,14 +220,19 @@ const away = (s, p) => {
 };
 
 // Parked a little way off a planet, facing it: on a side that's clear of
-// the other planets (so being parked there is being at this one), as near
-// as it can be to the side the ship comes from (`from`, or the camera's side
-// of the map). A wonder out in deep space the same, further off (they're
+// the other planets (so being parked there is being at this one), on a
+// world's day side, and as near as it can be to the side the ship comes
+// from (`from`, or the camera's side of the map). A wonder out in deep space the same, further off (they're
 // big), level with its middle. Null for anywhere that isn't a goal.
 export function parkAt(id, from = [0, HOME_RADIUS]) {
   const p = GOALS[id];
   if (!p) return null;
   const deep = !PLANET[id];
+  // a world is parked at on its day side (lighting.js), so it's seen lit,
+  // not a black disc: the rim of it, coming from the night side
+  const u = byId(id);
+  const sun = !deep && u.kind !== 'core' && !u.portal ? sunFor(id) : null;
+  const sl = sun ? Math.hypot(sun[0], sun[2]) || 1 : 1;
   const d = p.reach + (deep ? PARK * 4 : PARK);
   const al = Math.hypot(from[0] - p.at[0], from[1] - p.at[2]) || 1;
   const ax = (from[0] - p.at[0]) / al;
@@ -242,7 +248,8 @@ export function parkAt(id, from = [0, HOME_RADIUS]) {
     for (const o of SOLIDS) if (o !== p) clear = Math.min(clear, Math.sqrt((x - o.at[0]) ** 2 + (z - o.at[2]) ** 2) - o.reach);
     const inMap = Math.sqrt(x * x + z * z) < MAP_RADIUS + 30;
     // (clear of the others: up to 4, less the less clear it is; a spot not quite clear never outscores one that is)
-    const score = dx * ax + dz * az + (4 * Math.min(clear, ORBIT_IN + 0.2)) / (ORBIT_IN + 0.2) + (inMap ? 2 : 0);
+    const day = sun ? (dx * sun[0] + dz * sun[2]) / sl : 0;
+    const score = dx * ax + dz * az + (4 * Math.min(clear, ORBIT_IN + 0.2)) / (ORBIT_IN + 0.2) + (inMap ? 2 : 0) + (day >= -1e-9 ? 3 : 0);
     if (!best || score > best.score) best = { score, x, z, heading: headingTo(-dx, -dz) };
   }
   return { x: best.x, y: p.at[1] + (deep ? 0 : SHIP.height), z: best.z, heading: best.heading };
@@ -281,11 +288,18 @@ const clearToStart = (x, y, z) =>
 export function startAt(rand = Math.random) {
   const s = STARTS[Math.min(STARTS.length - 1, Math.floor(rand() * STARTS.length))];
   const a0 = rand() * Math.PI * 2;
-  for (let i = 0; i < 24; i++) {
-    const a = a0 + (i / 24) * Math.PI * 2;
-    const x = s.at[0] + Math.cos(a) * s.d;
-    const z = s.at[2] + Math.sin(a) * s.d;
-    if (clearToStart(x, s.y, z)) return { x, y: s.y, z, heading: headingTo(s.at[0] - x, s.at[2] - z) };
+  // (off a world, on its day side, so the first thing seen is it lit; any
+  // side that's clear, should none of those be)
+  const u = PLANET[s.id] ? byId(s.id) : null;
+  const sun = u && u.kind !== 'core' && !u.portal ? sunFor(s.id) : null;
+  for (const lit of sun ? [true, false] : [false]) {
+    for (let i = 0; i < 24; i++) {
+      const a = a0 + (i / 24) * Math.PI * 2;
+      if (lit && Math.cos(a) * sun[0] + Math.sin(a) * sun[2] < 0) continue;
+      const x = s.at[0] + Math.cos(a) * s.d;
+      const z = s.at[2] + Math.sin(a) * s.d;
+      if (clearToStart(x, s.y, z)) return { x, y: s.y, z, heading: headingTo(s.at[0] - x, s.at[2] - z) };
+    }
   }
   return { ...HOME_EDGE };
 }

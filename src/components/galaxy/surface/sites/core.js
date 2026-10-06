@@ -54,12 +54,13 @@ export const SITES = {
       ],
       // the road up to Theed
       flats: ramp([-104, 38], [-196, 148], 15, 39.5, 16, 7),
+      // (the Great Grass Plains as filmed: a warm, yellow-leaning green)
       palette: {
-        low: '#5d8a38',
-        high: '#79a447',
+        low: '#5f7034',
+        high: '#7f9440',
         rock: '#8a8270',
-        accent: '#93ad4c',
-        deep: '#4c7a30',
+        accent: '#8f9a48',
+        deep: '#4a5a2e',
         hLow: 0,
         hHigh: 30,
         rockAt: 0.3,
@@ -70,6 +71,8 @@ export const SITES = {
       },
     },
     water: { level: 0, color: '#3c7f88', deep: '#1f4a58', kind: 'sea', foam: 0.12 },
+    // the meadow round you, yellow flowers in it here and there
+    grass: { h: [0.22, 0.5], w: 0.05, root: '#55693a', mid: '#7a903e', tip: '#a9b656', dry: '#aaa45c', cover: 0.8, scale: 120, wind: 0.5, flower: { color: '#f4e27a', share: 0.03 } },
     weather: [{ kind: 'motes', count: 260, color: '#fffbe0' }],
     dust: '#a8b878',
     edge: 'Grass and gentle hills, all the way to the mountains. The Gungans’ swamps are that way; Theed’s behind you.',
@@ -295,9 +298,6 @@ export const SITES = {
     ],
     scatter: [
       { kind: 'nabootree', n: 80, within: [50, 600], scale: [0.7, 1.4], flat: 0.9 },
-      { kind: 'grass', n: 700, within: [6, 320], scale: [0.7, 1.5], solid: false },
-      { kind: 'grass', n: 260, within: [6, 260], scale: [0.7, 1.2], solid: false, opts: { color: '#7fa646', flower: '#f4e27a' } },
-      { kind: 'grass', n: 160, within: [6, 260], scale: [0.7, 1.2], solid: false, opts: { color: '#6a9a40', flower: '#e8eef8' } },
       { kind: 'rock', n: 50, within: [40, 560], scale: [0.6, 2.4], opts: { color: '#8e8a78', sharp: 0.3 } },
     ],
     life: [

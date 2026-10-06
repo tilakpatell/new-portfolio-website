@@ -14,8 +14,8 @@ The design is `docs/superpowers/specs/2026-10-06-universe-visual-upgrade-design.
 | # | Checkpoint | PR | Status | Evidence |
 |---|---|---|---|---|
 | 0 | Poses and a baseline | #302 (poses, check script); #328 (baseline) | done | `lab/universe/baseline/{high,mid,low}.json` and 30 shots, taken on `main` at e4fcc10e after the scale changes: high calls 49–150, triangles 0.14–1.32 M; mid calls 49–148, triangles 0.14–1.14 M; low calls 49–146, triangles 0.14–1.14 M |
-| 1 | The render, finished | this PR | done | Against the baseline, `high`: calls +0 to +2 a pose, triangles at or under it (overview 150 → 150, 1.20 → 1.17 M; falcon-sun 141 → 142); `mid` and `low` within +4 calls and +0 % triangles (traffic and the station’s turn move a pose’s calls by ±2 from run to run; `mid` maw’s −120 k triangles is the Falcon’s model still loading, `low` station’s −37 calls its wheel turned). Contrast at maw on `high` 85.1 → 95.5. Smoke green on `/universe`, `/galaxy/hoth`, `/galaxy/tatooine/surface` |
-| 2 | One light | | not started | |
+| 1 | The render, finished | #336 | done | Against the baseline, `high`: calls +0 to +2 a pose, triangles at or under it (overview 150 → 150, 1.20 → 1.17 M; falcon-sun 141 → 142); `mid` and `low` within +4 calls and +0 % triangles (traffic and the station’s turn move a pose’s calls by ±2 from run to run; `mid` maw’s −120 k triangles is the Falcon’s model still loading, `low` station’s −37 calls its wheel turned). Contrast at maw on `high` 85.1 → 95.5. Smoke green on `/universe`, `/galaxy/hoth`, `/galaxy/tatooine/surface` |
+| 2 | One light | this PR | done | Against the baseline, every tier: calls −1 to +3 a pose, triangles +0 % but mid overview +2.8 % (the landing’s and the Maw’s on mid and low move with what has loaded: see below). Every world lit at 2.35 by its own star; the light turns as you fly from one star to the next; arrivals and a world picked on the map face its day side. Contrast at caribbean 87.3 → 103.5 and middleearth-limb 124.8 → 132.1 on `high`; Dot Matrix 135.5 → 114.1 under Ember’s orange (checkpoint 4 reads its light in its own colours). Smoke green |
 | 3 | Air, clouds, seas, ground | | not started | |
 | 4 | The styles in the light | | not started | |
 | 5 | The hero ship | | not started | |
@@ -32,7 +32,7 @@ Scorecard (the spec’s “Where things stand” table is the before): fill in t
 | Enemies and traffic | 2 | | |
 | World | 2 | | |
 | Materials | 1.5 | | |
-| Lighting and render | 2 | 2.5 (checkpoint 1) | The dark gradients dithered with blue noise (no banding at 8 bits); the bloom sized to the page, capped at 640 on its long side; the home sun glares in the lens (one draw) and is hidden by what crosses it; the exposure eases into the dark and stops down into the sun. Contrast at maw 85.1 → 95.5 on `high`, at overview 77 → 89.3 |
+| Lighting and render | 2 | 3 (checkpoint 2) | Checkpoint 2: the key and the fill come from the stars that light the camera, in their colours (orange by Ember, the Twins’ two suns turning), every world lit at full by its own star; two flares and one exposure for two suns; metal reflects the key star. Checkpoint 1 (2.5): | The dark gradients dithered with blue noise (no banding at 8 bits); the bloom sized to the page, capped at 640 on its long side; the home sun glares in the lens (one draw) and is hidden by what crosses it; the exposure eases into the dark and stops down into the sun. Contrast at maw 85.1 → 95.5 on `high`, at overview 77 → 89.3 |
 | VFX | 2 | | |
 | Performance evidence | 2 | 2.5 (checkpoint 0) | Ten fixed poses on three tiers, a committed baseline, and every checkpoint’s counts against it (`scripts/universe-check.mjs`) |
 
@@ -54,6 +54,14 @@ Scorecard (the spec’s “Where things stand” table is the before): fill in t
   - *The flare is the home sun’s only*; the galaxy’s suns and the second star (Task 2.1’s) are for checkpoint 2, which brings `lighting.js`. The galaxy has no `lib/three/pace` of its own, so `post.setLevel` isn’t called there.
   - *The flare is one mesh, not five sprites*: its four pictures are painted once into a 2 × 2 atlas and its seven parts are quads of one geometry, so it costs one draw (seven sprites cost seven: falcon-sun went 141 → 150). It’s placed through the camera’s own projection, so it sits on the sun when the frame is shifted for the panel (a view offset).
 - **The Twins go round each other** (the owner’s ask, in checkpoint 1’s PR): `deep.js`’s `binaryAt(w, t)` and `moveBinaries(t)`; the place is the point they go round, and their solids move with them each frame on the scene’s clock.
+- **Checkpoint 2:**
+  - *The stars’ reach is the map’s as scaled*: the plan’s reaches (2600 for the home sun, 2000 for the deep stars) and its full-strength distance (300) were the map’s before the scale changes. With the worlds now 2000 to 5700 out, every one fell to the key’s floor of 0.9, 38 % of what the map always lit them with. A star now lights at full out to 6000 for the home sun’s strength (`FULL_AT`), the reaches are 9000, 7000, 3000 and 2500, and only past the stars does the key fall to its floor. Pinned in `lighting.test.js`: every world is lit at 2.35.
+  - *The landing pose’s counts aren’t comparable from run to run*: what’s drawn on foot depends on what has finished loading (the crew’s guns, Bag End’s details), and `main` alone gave 92, 131 and 144 calls over three loads. Its counts are in the tables but not held to the budget.
+  - *The Twins’ two suns are lit from where they are now*: their `STARS` entries share the solids’ `at` arrays, which `moveBinaries` moves, so the key and the fill turn as they go round each other.
+  - *The flares go to the key and the fill*, where the fill is a star (the plan’s “two heaviest”): two flares, each as strong as its star’s light is where you are (`key.strength / 2.35`), so a far star is a glint and not a glare, and one exposure from both. The cool fill that comes from no star has no flare.
+  - *The reflections’ glow* (`post.js`’s `spaceEnvironment`, now with `{ light, colour }`) is made again only when the key star changes, at the key’s direction and in half its colour (a PMREM is a few ms: never every frame). In the home system it stays where the map always had it.
+  - *Day sides without `focusPose`*: a world picked on the map is turned to by `dayYaw`, and `focusPose` looks along the map’s yaw, so it needed no change; `parkAt` scores the day side for the fandoms’ worlds and `startAt` prefers it, and a jump parks through `parkAt` (pinned in `nav.test.js`).
+  - *The galaxy’s flares are not in*: `galaxy/scene.js` has its own sun sprites and no `pace`, and belongs to the galaxy’s lane (`HANDOFF-galaxy-upgrade.md`); `createFlare` is in `lib/three` for it.
 
 ## Checking it
 

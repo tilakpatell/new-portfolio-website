@@ -6,6 +6,7 @@ import { NOSE, UP, fromAngles, rotate } from './orient';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
 import { byId } from './universes';
 import { ENTRY, LANDABLE, airTop } from './entry';
+import { sunFor } from './lighting';
 
 const fly = (s, input, seconds, solids = SOLIDS) => {
   let ship = s;
@@ -434,6 +435,39 @@ describe('deep space', () => {
     const slow = fly(creep(glacia), { throttle: 0.15 }, 6).events;
     expect(slow.some((e) => e.type === 'bump' && e.id === 'glacia')).toBe(true);
     expect(slow.some((e) => e.type === 'crash')).toBe(false);
+  });
+});
+
+describe('arriving on the day side', () => {
+  // a world parked at from its night side would be a black disc: the
+  // autopilot comes round to its lit side, as near the way it came as it can
+  it('parks at every world on its day side, wherever it comes from', () => {
+    for (const p of PLANETS.filter((q) => byId(q.id).kind !== 'core' && !byId(q.id).portal)) {
+      const s = sunFor(p.id);
+      const sl = Math.hypot(s[0], s[2]);
+      for (const from of [[p.at[0] - s[0] * 900, p.at[2] - s[2] * 900], [p.at[0] + s[0] * 900, p.at[2] + s[2] * 900], [p.at[0] - s[2] * 900, p.at[2] + s[0] * 900]]) {
+        const k = parkAt(p.id, from);
+        const dx = k.x - p.at[0];
+        const dz = k.z - p.at[2];
+        expect((dx * s[0] + dz * s[2]) / (Math.hypot(dx, dz) * sl), `${p.id} from ${from}`).toBeGreaterThanOrEqual(-1e-9);
+      }
+    }
+  });
+});
+
+describe('starting off a world', () => {
+  it('starts on its day side', () => {
+    const draws = (...v) => () => v.shift();
+    for (let i = 0; i < STARTS.length; i++) {
+      const s = STARTS[i];
+      const u = byId(s.id);
+      if (!u || u.kind === 'core' || u.portal) continue;
+      const sun = sunFor(s.id);
+      for (const k of [0, 0.25, 0.5, 0.75]) {
+        const at = startAt(draws((i + 0.5) / STARTS.length, k));
+        expect((at.x - s.at[0]) * sun[0] + (at.z - s.at[2]) * sun[2], `${s.id} ${k}`).toBeGreaterThanOrEqual(-1e-6);
+      }
+    }
   });
 });
 
