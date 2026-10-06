@@ -35,7 +35,7 @@ export async function matchColour(doc, oldDoc) {
   const from = (await bright(sharp, mat)).value;
   const ws = await Promise.all(olds.map((m) => bright(sharp, m)));
   const to = ws.reduce((s, w) => s + w.value * w.weight, 0) / ws.reduce((s, w) => s + w.weight, 0);
-  const scale = Math.min(3, Math.max(0.5, to / Math.max(0.01, from)));
+  const scale = Math.min(2, Math.max(0.5, to / Math.max(0.01, from))); // no more than doubled: past that the paint blows out
   const tex = mat.getBaseColorTexture();
   if (tex) {
     const img = sharp(Buffer.from(tex.getImage()));
