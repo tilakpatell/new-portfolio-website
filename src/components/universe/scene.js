@@ -2524,23 +2524,28 @@ export async function create(canvas, ctx) {
   // hunt, more often than not: X-wings for Luke and Han, Birdperson for
   // Rick, either for Walt and Jesse), and what it hits is put on the hunters
   const WING_CALL = { after: 14, low: 55, lowAfter: 5, chance: 0.7 };
+  const wingTargets = []; // (the hunters after you, not pirates on someone else: reused)
   const helpFrom = (dt, t, live) => {
+    wingTargets.length = 0;
+    if (live) for (const o of hunters.targets) if (!o.prey) wingTargets.push(o);
     const fighting = Boolean(live && hunters.active);
     state.huntFor = fighting ? state.huntFor + dt : 0;
     if (!fighting) state.wingAsked = false; // (a wing still flying off from the last fight comes back of itself if another starts)
     if (fighting && !state.wingAsked && !wingmen.active && (state.huntFor > WING_CALL.after || (state.shield < WING_CALL.low && state.huntFor > WING_CALL.lowAfter))) {
       state.wingAsked = true;
-      const many = hunters.targets.length;
+      const many = wingTargets.length;
       if (many >= 2 && Math.random() < WING_CALL.chance) {
         const family = FAMILY[state.kind];
         const kind = family === 'rickmorty' ? 'birdperson' : family === 'starwars' ? 'xwing' : Math.random() < 0.5 ? 'xwing' : 'birdperson';
         wingmen.join(kind, live, many >= 4 ? 3 : 2);
       }
     }
-    const r = wingmen.update(dt, t, live, live ? hunters.targets : []);
+    const r = wingmen.update(dt, t, live, wingTargets);
     for (const h of r.hits) {
+      // (only a kill goes off: there's one burst for the whole map, and
+      // the wing's hits mustn't cut short your own)
       const got = hunters.damage(h.id, h.damage);
-      if (got) pops.hit({ point: got.at, normal: popDir.set(0, 1, 0), radius: got.down ? got.size * 1.8 : 0.2 });
+      if (got?.down) pops.hit({ point: got.at, normal: popDir.set(0, 1, 0), radius: got.size * 1.8 });
     }
     for (const e of r.events) {
       if (e.type === 'joined') emit({ type: 'event', id: 'wingmen', sub: e.kind });

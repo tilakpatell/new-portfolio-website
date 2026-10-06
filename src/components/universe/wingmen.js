@@ -57,7 +57,8 @@ export function createWingmen(parent, { fleet = createFleet(), solids = [] } = {
 
     update(dt, t, ship, targets) {
       const r = wing.update(dt, ship, targets);
-      for (const w of [...shown.keys()]) if (!wing.live.includes(w)) give(w);
+      parent.updateWorldMatrix(true, false); // (lookAt is in the world, and the map turns: the map's points are carried into it)
+      for (const w of shown.keys()) if (!wing.live.includes(w)) give(w); // (a Map can lose the entry it's on)
       for (const w of wing.live) {
         let model = shown.get(w);
         if (!model) {
@@ -67,20 +68,21 @@ export function createWingmen(parent, { fleet = createFleet(), solids = [] } = {
         const g = model.group;
         g.position.set(w.pos.x, w.pos.y, w.pos.z);
         const { x, y, z } = w.vel;
-        if (x * x + y * y + z * z > 1e-6) g.lookAt(look.set(w.pos.x + x, w.pos.y + y, w.pos.z + z));
+        if (x * x + y * y + z * z > 1e-6) g.lookAt(parent.localToWorld(look.set(w.pos.x + x, w.pos.y + y, w.pos.z + z)));
         g.rotateZ(-w.bank);
         g.scale.setScalar(w.type.size * model.fit);
         model.update(t);
       }
-      wing.bolts.forEach((b, i) => {
+      for (let i = 0; i < wing.bolts.length; i++) {
+        const b = wing.bolts[i];
         const m = beams[i];
         if (b.on && !m.visible) shooter.set(b, kindNow);
         m.visible = b.on;
-        if (!b.on) return;
+        if (!b.on) continue;
         m.material = boltMats[shooter.get(b)] ?? boltMats.xwing;
         m.position.set(b.x, b.y, b.z);
-        m.lookAt(look.set(b.x + b.vx, b.y + b.vy, b.z + b.vz));
-      });
+        m.lookAt(parent.localToWorld(look.set(b.x + b.vx, b.y + b.vy, b.z + b.vz)));
+      }
       return r;
     },
 

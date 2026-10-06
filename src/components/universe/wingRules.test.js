@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createHunt } from './hunterRules';
 import { WING, WING_KINDS, createWing } from './wingRules';
+import { SHIP } from './ship';
 
 // a seeded random, so a fight is the same every time
 const seeded = (seed = 7) => () => {
@@ -271,6 +272,134 @@ describe('a wing', () => {
     wing.clear();
     expect(wing.active).toBe(false);
     expect(wing.bolts.every((b) => !b.on)).toBe(true);
+  });
+
+  it('is a help and not a turret: it takes a while to see off a pack on its own', () => {
+    const lasts = [];
+    const firsts = [];
+    for (const seed of [3, 5, 9]) {
+      const rand = seeded(seed);
+      const hunt = createHunt({ rand });
+      const wing = createWing({ rand });
+      let s = start();
+      hunt.pack('empire', s, { size: 3, ace: false });
+      wing.join('xwing', s, 2);
+      let first = null;
+      let last = null;
+      for (let t = 0; t < 90 && hunt.count; t += DT) {
+        s = move(s);
+        hunt.update(DT, s);
+        for (const h of wing.update(DT, s, hunt.targets).hits) {
+          if (hunt.damage(h.id, h.damage)?.down) {
+            first ??= t;
+            last = t;
+          }
+        }
+      }
+      firsts.push(first ?? 90);
+      lasts.push(hunt.count ? 90 : last);
+    }
+    expect(Math.min(...firsts)).toBeGreaterThan(3);
+    expect(lasts.reduce((a, b) => a + b, 0) / lasts.length).toBeGreaterThan(12);
+  });
+
+  it('comes back on your wing between passes, letting its hunter be a while', () => {
+    const rand = seeded(9);
+    const hunt = createHunt({ rand });
+    const wing = createWing({ rand });
+    let s = start();
+    hunt.pack('empire', s, { size: 4, ace: false });
+    for (let t = 0; t < 8; t += DT) {
+      s = move(s);
+      hunt.update(DT, s);
+    }
+    wing.join('xwing', s, 2);
+    const chase = new Map();
+    let rests = 0;
+    for (let t = 0; t < 40; t += DT) {
+      s = move(s);
+      hunt.update(DT, s);
+      wing.update(DT, s, hunt.targets);
+      for (const w of wing.live) {
+        const was = chase.get(w.id) ?? 0;
+        if (was > 1 && w.chase === 0 && w.rest > 0) {
+          rests += 1;
+          expect(w.target).toBeNull();
+          expect(w.rest).toBeGreaterThan(WING.rest - 2 * DT);
+        }
+        // resting, it has no hunter
+        if (w.rest > 0) expect(w.target).toBeNull();
+        chase.set(w.id, w.chase);
+      }
+    }
+    expect(rests).toBeGreaterThan(0);
+  });
+
+  it('never gets ahead of its slot when you drop from the boost to cruise', () => {
+    const wing = createWing({ rand: seeded(17) });
+    let s = start({ speed: 20 });
+    wing.join('xwing', s, 2);
+    for (let t = 0; t < 6; t += DT) {
+      s = move(s);
+      wing.update(DT, s, []);
+    }
+    let ahead = -Infinity;
+    for (let t = 0; t < 4; t += DT) {
+      s = move({ ...s, speed: Math.max(5.5, s.speed - SHIP.brake * DT) }); // (braking as the ship does)
+      wing.update(DT, s, []);
+      // how far along your nose (−z here) each is, past you
+      for (const w of wing.live) ahead = Math.max(ahead, s.z - w.pos.z);
+    }
+    expect(ahead).toBeLessThan(1); // (its slot is 1.6 behind you: a hair past you at the most)
+  });
+
+  it('fires only at a hunter in its sights and in range', () => {
+    const behind = { id: 1, at: { x: 0, y: 0, z: 8 }, vel: { x: 0, y: 0, z: 0 }, size: 0.3, threat: 1 };
+    const far = { id: 2, at: { x: 0, y: 0, z: -40 }, vel: { x: 0, y: 0, z: 0 }, size: 0.3, threat: 1 };
+    for (const t of [behind, far]) {
+      const wing = createWing({ rand: seeded(18) });
+      const s = start({ speed: 0 });
+      wing.join('xwing', s, 1, { back: 0 });
+      const w = wing.live[0];
+      w.age = WING.settle + 1;
+      // pinned where it is, nose along −z: no turning onto it
+      for (let i = 0; i < 60; i++) {
+        w.pos.x = 0;
+        w.pos.y = 0;
+        w.pos.z = 0;
+        w.vel.x = 0;
+        w.vel.y = 0;
+        w.vel.z = -20;
+        w.cool = 0;
+        wing.update(DT, s, [t]);
+      }
+      expect(wing.fired, `target ${t.id}`).toBe(0);
+    }
+  });
+
+  it('counts a bolt that meets a quick hunter crossing its path between frames', () => {
+    const wing = createWing({ rand: seeded(19) });
+    const b = wing.bolts[0];
+    Object.assign(b, { on: true, x: 0, y: 0, z: 0, vx: 46, vy: 0, vz: 0, life: 1, target: 5 });
+    // the hunter goes from z −0.6 to 0.6 across the bolt's path this frame: neither end is near the bolt's
+    const crossing = { id: 5, at: { x: 0.4, y: 0, z: 0.6 }, vel: { x: 0, y: 0, z: 72 }, size: 0.3, threat: 1 };
+    const r = wing.update(1 / 60, start(), [crossing]);
+    expect(r.hits.map((h) => h.id)).toEqual([5]);
+  });
+
+  it('lets go of a hunter that has turned away and is out of reach', () => {
+    const wing = createWing({ rand: seeded(20) });
+    const s = start();
+    wing.join('xwing', s, 1, { back: 0 });
+    const w = wing.live[0];
+    w.age = WING.settle + 1;
+    const h = { id: 3, at: { x: 0, y: 0, z: -10 }, vel: { x: 0, y: 0, z: -5 }, size: 0.3, threat: 1 };
+    wing.update(DT, s, [h]);
+    expect(w.target).toBe(3);
+    h.threat = 0;
+    h.at.z = -60;
+    wing.update(DT, s, [h]);
+    expect(w.target).toBeNull();
   });
 
   it('knows every kind it can send', () => {

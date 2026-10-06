@@ -68,8 +68,11 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16, solids =
   const dir = [0, 0, -1];
   const want = [0, 0, -1];
   const hits = [];
-  const events = [];
+  let events = []; // (two lists, swapped each update: the one handed back, and the one join() fills)
+  let spare = [];
   const out = { hits, events };
+  const alive = [];
+  const p0 = { x: 0, y: 0, z: 0 };
   const from = { x: 0, y: 0, z: 0 };
 
   // the hunter each goes for: only one coming at you (on a run, or on your
@@ -152,10 +155,14 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16, solids =
 
     update(dt, ship, targets = []) {
       hits.length = 0;
-      const ev = events.splice(0);
+      const ev = events;
+      events = spare;
+      spare = ev;
+      events.length = 0;
       out.events = ev;
       if (!live.length && !bolts.some((b) => b.on)) return out;
-      const alive = live.filter((w) => w.alive);
+      alive.length = 0;
+      for (const w of live) if (w.alive) alive.push(w);
       const fighting = targets.length > 0 && Boolean(ship);
       idle = fighting ? 0 : idle + dt;
       // flying off, and someone comes at you again: back they come
@@ -302,7 +309,9 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16, solids =
         b.z += b.vz * dt;
         for (const t of targets) {
           const r = (t.size ?? 0.3) * 0.9 + 0.12;
-          const p0 = { x: t.at.x - t.vel.x * dt, y: t.at.y - t.vel.y * dt, z: t.at.z - t.vel.z * dt };
+          p0.x = t.at.x - t.vel.x * dt;
+          p0.y = t.at.y - t.vel.y * dt;
+          p0.z = t.at.z - t.vel.z * dt;
           if (sweptHit(from, b, p0, t.at, r) !== null) {
             b.on = false;
             hits.push({ id: t.id, damage: 1, at: { x: b.x, y: b.y, z: b.z } });
