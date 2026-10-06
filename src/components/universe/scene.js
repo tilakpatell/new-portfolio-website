@@ -104,6 +104,7 @@ import { createPost, spaceEnvironment } from './post';
 import { PLANETS, SHIP, SOLIDS, autopilot, forward, headingTo, isGoal, isPlace, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, driveById, hyperState, parkFor, riftExit } from './nav';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
+import { AHEAD_OF, factionsOf, kindsOf, pick as pickFaction, sideFor, wingOf } from './sides';
 import { GLB, createFleet } from './glbFleet';
 import { createDirector } from './director';
 import { createSetPieces } from './setpieces';
@@ -752,7 +753,7 @@ export async function create(canvas, ctx) {
   fleet.prepare = (o) => warm(o); // (the fleet's models too: none is made before the first frame)
   // who comes after you, what the director sets going, and its set pieces
   // (none of it with reduced motion)
-  const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS });
+  const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: factionsOf(null), kinds: kindsOf(null) }); // (every side's: another pilot's hunters, whoever they are)
   const wingmen = hunters ? createWingmen(map, { fleet, solids: SOLIDS }) : null; // (friends in a long fight)
   const skirmishes = hunters ? createSkirmishes(map, { fleet, solids: SOLIDS }) : null; // (someone else's fight, out ahead)
   let hunts = 0; // packs the director has sent this visit (the first is a small one)
@@ -1651,18 +1652,17 @@ export async function create(canvas, ctx) {
 
   // A pack of hunters comes in four or five at once, and a built ship takes
   // a few milliseconds to make: made then, they'd stall the fight's first
-  // frames. So a few of the ones your side meets (FAMILY) are made ahead,
+  // frames. So a few of the ones your side meets (sides.js's `ahead`) are made ahead,
   // one at a time while the page has nothing else to do.
-  const AHEAD = { starwars: { tie: 3, tieadvanced: 1 }, rickmorty: { patrol: 4, councilship: 3, gromflomite: 2 } };
   const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 60));
   const stockedFor = new Set();
   let warmed = false; // (none made ahead before the map's own shaders are)
   const stockUp = () => {
     if (reduced || !warmed) return;
-    const fam = FAMILY[state.kind];
-    if (!fam || stockedFor.has(fam)) return;
-    stockedFor.add(fam);
-    const want = fam === 'both' ? [...Object.entries(AHEAD.starwars), ...Object.entries(AHEAD.rickmorty)] : Object.entries(AHEAD[fam]);
+    const side = sideFor(state.kind);
+    if (!side || stockedFor.has(side.id)) return;
+    stockedFor.add(side.id);
+    const want = Object.entries(AHEAD_OF(side));
     const next = () => {
       if (disposed) return;
       const job = want.find(([k, n]) => fleet.stocked(k) < n && !fleet.loaded(k));
@@ -2441,9 +2441,7 @@ export async function create(canvas, ctx) {
     netOff = net?.on(onNet) ?? null;
   };
 
-  // whose universe each ship flies in (Walt and Jesse's RV: both)
-  const FAMILY = { cruiser: 'rickmorty', xwing: 'starwars', falcon: 'starwars', rv: 'both' };
-  const either = () => (Math.random() < 0.5 ? 'starwars' : 'rickmorty');
+  // whose universe each ship flies in: the crew's side (sides.js)
   const TRENCHED = SOLIDS.filter((o) => o.band); // what has a trench to fly down
   // what the hunters report
   const onHunters = (e) => {
@@ -2478,25 +2476,30 @@ export async function create(canvas, ctx) {
   // of you and interdicts you: an ambush
   const travelling = (s) => openness(s.x, s.y, s.z) > 0.5 && Math.abs(s.speed) > 40;
   const happen = (id, ship) => {
-    const family = FAMILY[state.kind] === 'both' ? either() : FAMILY[state.kind];
+    const side = sideFor(state.kind);
+    if (!side) return;
     const ambush = travelling(ship) ? { ahead: true, interdict: true } : {};
     // (more of them, and the ace more often, the more trouble you've made; the first pack is a small one)
     const strength = { heat: state.heat, first: hunts === 0 };
-    if (id === 'hunt' || id === 'council') hunts += 1;
-    if (id === 'hunt') hunters.pack(family === 'starwars' ? 'empire' : 'federation', ship, { ...ambush, ...strength });
-    else if (id === 'council') pieces.portals(hunters.pack('council', ship, { ...ambush, ...strength }));
-    else if (id === 'destroyer') {
+    if (id === 'hunt' || id === 'council' || id === 'roadblock') hunts += 1;
+    if (id === 'hunt') hunters.pack(pickFaction(side, 'hunt'), ship, { ...ambush, ...strength });
+    else if (id === 'council') pieces.portals(hunters.pack(pickFaction(side, 'council'), ship, { ...ambush, ...strength }));
+    else if (id === 'roadblock') {
+      // the DEA across your bows: in ahead, and holding you there
+      hunters.pack('dea', ship, { ahead: true, interdict: true, ace: Math.random() < 0.5, ...strength });
+      emit({ type: 'event', id: 'roadblock' });
+    } else if (id === 'destroyer') {
       const d = pieces.destroyer(ship);
       if (!d) return;
       emit({ type: 'event', id: 'destroyer' });
       // its fighters launch a moment after it's here
-      later.push({ at: state.clock + 2.4, run: () => state.ship && !state.crash && hunters.pack('empire', state.ship, { from: d.hangar, size: 3, ace: Math.random() < 0.35, interdict: ambush.interdict }) });
+      later.push({ at: state.clock + 2.4, run: () => state.ship && !state.crash && hunters.pack(pickFaction(side, 'capital') ?? 'empire', state.ship, { from: d.hangar, size: 3, ace: Math.random() < 0.35, interdict: ambush.interdict }) });
     } else if (id === 'distress') {
-      const prey = traffic?.distress(ship, family);
+      const prey = traffic?.distress(ship, side);
       if (!prey) return;
-      hunters.pack(family === 'starwars' ? 'empire' : 'bugs', ship, { prey, size: 2, ace: false });
+      hunters.pack(pickFaction(side, 'pirates'), ship, { prey, size: 2, ace: false });
       emit({ type: 'event', id: 'distress' });
-    } else if (id === 'convoy') traffic?.convoy(ship, family);
+    } else if (id === 'convoy') traffic?.convoy(ship, side);
     else if (id === 'comet') {
       pieces.comet(ship);
       later.push({ at: state.clock + 5, run: () => emit({ type: 'event', id: 'comet' }) });
@@ -2528,18 +2531,19 @@ export async function create(canvas, ctx) {
       emit({ type: 'event', id: 'rift' });
       state.note = { text: 'A rift has opened ahead: fly into it', until: wall() + 5 };
     } else if (id === 'leviathan') {
-      const sub = leviathans.pass(ship, family);
+      const sub = leviathans.pass(ship, side);
       if (!sub) return;
       later.push({ at: state.clock + 3, run: () => emit({ type: 'event', id: 'leviathan', sub }) });
     } else if (id === 'meteors') {
       if (meteors.storm(ship)) emit({ type: 'event', id: 'meteors' });
     } else if (id === 'bounty') {
       // one hunter, tough and quick: Boba Fett in Slave I (its model, once it's
-      // here: Vader stands in till then), or Phoenixperson
-      if (family === 'starwars' && !fleet.loaded('slave1')) {
+      // here: Vader stands in till then), Phoenixperson, or the Cousins
+      const who = pickFaction(side, 'bounty');
+      if (who === 'fett' && !fleet.loaded('slave1')) {
         fleet.want(['slave1']);
         hunters.pack('empire', ship, { size: 1, ace: true, interdict: ambush.interdict });
-      } else hunters.pack(family === 'starwars' ? 'fett' : 'phoenix', ship, { size: 1, ace: false, interdict: ambush.interdict });
+      } else if (who) hunters.pack(who, ship, { size: 1, ace: false, interdict: ambush.interdict });
     }
   };
 
@@ -2610,9 +2614,8 @@ export async function create(canvas, ctx) {
       state.wingAsked = true;
       const many = wingTargets.length;
       if (many >= 2 && Math.random() < WING_CALL.chance) {
-        const family = FAMILY[state.kind];
-        const kind = family === 'rickmorty' ? 'birdperson' : family === 'starwars' ? 'xwing' : Math.random() < 0.5 ? 'xwing' : 'birdperson';
-        wingmen.join(kind, live, many >= 4 ? 3 : 2);
+        const kind = wingOf(sideFor(state.kind));
+        if (kind) wingmen.join(kind, live, many >= 4 ? 3 : 2);
       }
     }
     const r = wingmen.update(dt, t, live, wingTargets);
@@ -2633,10 +2636,6 @@ export async function create(canvas, ctx) {
   // fighting the attackers off. Fly in and help; the crew have a word when
   // it starts, and the freighter's crew thank you if you did
   const SKIRMISH_EVERY = [110, 180]; // seconds between them
-  const SIDES = {
-    starwars: { faction: 'empire', escort: 'xwing', civil: 'transport' },
-    rickmorty: { faction: 'federation', escort: 'birdperson', civil: 'saucer' },
-  };
   // a spot out ahead of the ship, near enough to see, clear of anything solid
   const skirmishSpot = (s) => {
     const n = nose(s);
@@ -2652,12 +2651,12 @@ export async function create(canvas, ctx) {
   const farFight = (dt, t, live) => {
     if (!skirmishes.active && live && state.clock > state.skirmishAt && !hunters.count && !pieces.destroyerHere && !leviathans.busy && !meteors.count && state.view !== 'map' && Math.abs(live.speed) < SHIP.pulse * 0.2) {
       state.skirmishAt = state.clock + SKIRMISH_EVERY[0] + Math.random() * (SKIRMISH_EVERY[1] - SKIRMISH_EVERY[0]);
-      const family = FAMILY[state.kind] === 'both' ? either() : FAMILY[state.kind];
-      const at = family && skirmishSpot(live);
-      if (at && skirmishes.start({ at, heading: Math.random() * Math.PI * 2, ...SIDES[family] })) {
+      const side = sideFor(state.kind);
+      const at = side && skirmishSpot(live);
+      if (at && skirmishes.start({ at, heading: Math.random() * Math.PI * 2, ...side.skirmish })) {
         state.skirmishHelped = 0;
-        state.skirmishFamily = family;
-        later.push({ at: state.clock + 1.5, run: () => emit({ type: 'event', id: 'skirmish', sub: family }) });
+        state.skirmishFamily = side.id;
+        later.push({ at: state.clock + 1.5, run: () => emit({ type: 'event', id: 'skirmish', sub: side.id }) });
       }
     }
     for (const e of skirmishes.update(dt, t, live)) {
@@ -2696,7 +2695,7 @@ export async function create(canvas, ctx) {
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
-        const id = director.update(dt, { family: FAMILY[state.kind] ?? null, heat: state.heat, busy: hunters.active || pieces.destroyerHere || leviathans.busy || meteors.count > 0 || state.view === 'map' || Boolean(props.charting), travelling: travelling(live), calm: state.shield < 50 });
+        const id = director.update(dt, { side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || leviathans.busy || meteors.count > 0 || state.view === 'map' || Boolean(props.charting), travelling: travelling(live), calm: state.shield < 50 });
         if (id) happen(id, live);
         // the drive comes back once they're off you (or have had their go)
         if (state.interdicted && (!hunters.active || state.clock - state.interdictAt > INTERDICT)) state.interdicted = false;
@@ -2735,7 +2734,7 @@ export async function create(canvas, ctx) {
       if (state.trench > 1.2 && state.clock - state.trenchAt > 120) {
         state.trenchAt = state.clock;
         emit({ type: 'event', id: 'trench' });
-        if (hunters && FAMILY[state.kind] !== 'rickmorty' && !hunters.active) hunters.pack('empire', live, { size: 3, ace: true });
+        if (hunters && sideFor(state.kind)?.id === 'starwars' && !hunters.active) hunters.pack('empire', live, { size: 3, ace: true });
       }
     } else {
       later.length = 0;
