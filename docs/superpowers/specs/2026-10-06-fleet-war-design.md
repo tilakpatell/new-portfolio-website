@@ -275,8 +275,9 @@ Rick and Morty and Breaking Bad (PRs D and E), at their own real places.
     rises by the Rebellion's other fleets' seeded rate (some fronts stall,
     some go backwards) plus what players did there that step. At 1 it's the
     Rebellion's.
-  - **Defence:** every two hours the Empire attacks a Rebel system that
-    borders its own (a seeded pick), for 90 minutes. Its control falls at the
+  - **Defence:** every four hours the Empire attacks a Rebel system that
+    borders its own (a seeded pick, Hoth four times as likely), for 96
+    minutes. Its control falls at the
     attack's seeded rate, and players push it back up. It falls to the Empire
     at 0; holding out to the end, it's the Rebellion's again, whole.
   - **The major order:** each campaign names one front (the set-piece
