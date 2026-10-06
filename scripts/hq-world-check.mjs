@@ -31,6 +31,7 @@ const t0 = Date.now();
 await page.goto(URL, { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => window.__HQWORLD__?.api && document.querySelector('.cw-canvas[data-on]'), null, { timeout: 240000 });
 console.log('compound up in', ((Date.now() - t0) / 1000).toFixed(1), 's');
+console.log('context', await page.evaluate(() => JSON.stringify(window.__HQWORLD__.api.engine.renderer.getContext().getContextAttributes())));
 // (the HUD hidden, so the picture is all world)
 if (!process.env.HUD) await page.addStyleTag({ content: '.cw-stage > :not(canvas), header, nav, [class*="guide"] { display: none !important; }' });
 await page.evaluate(() => {
@@ -242,6 +243,48 @@ for (const [name, s] of Object.entries(SHOTS)) {
   await page.locator('.cw-canvas').screenshot({ path: `${out}/hq-${name}.png`, timeout: 180000 });
   const info = await page.evaluate(() => window.__HQWORLD__.api.info);
   console.log(name, JSON.stringify(info));
+  // ALPHA=1: the frame drawn and its alpha read straight back (the canvas is
+  // see-through wherever it's under 1, and the page's painted sky shows)
+  if (process.env.ALPHA) console.log('alpha', await page.evaluate(() => {
+    const { api } = window.__HQWORLD__;
+    const r = api.engine.renderer;
+    const gl = r.getContext();
+    api.engine.renderOnce();
+    const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
+    const px = new Uint8Array(w * h * 4);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    let low = 0, zero = 0;
+    const rows = [];
+    for (let y = h - 1; y >= 0; y -= Math.ceil(h / 14)) {
+      let row = '';
+      for (let x = 0; x < w; x += Math.ceil(w / 60)) {
+        const a = px[(y * w + x) * 4 + 3];
+        row += a < 8 ? '#' : a < 250 ? '+' : '.';
+      }
+      rows.push(row);
+    }
+    for (let i = 3; i < px.length; i += 4) {
+      if (px[i] < 250) low++;
+      if (px[i] < 8) zero++;
+    }
+    return `${w}x${h} under-1: ${low} clear: ${zero}\n${rows.join('\n')}`;
+  }));
+  if (process.env.WHERE) console.log(await page.evaluate(() => {
+    const { api, sim } = window.__HQWORLD__;
+    const T = api.engine.THREE;
+    const cam = api.engine.camera;
+    const rc = new T.Raycaster();
+    const at = (fx, fy) => {
+      rc.setFromCamera(new T.Vector2(fx * 2 - 1, 1 - fy * 2), cam);
+      const h = rc.intersectObject(api.scene, true).filter((x) => x.object.visible)[0];
+      if (!h) return 'nothing';
+      const m = Array.isArray(h.object.material) ? h.object.material[0] : h.object.material;
+      return `${h.object.type}/${m?.type}/${m?.customProgramCacheKey?.().slice(0, 30)} d=${h.distance.toFixed(2)} side=${m?.side}`;
+    };
+    const c = cam.position;
+    return [`cam ${c.x.toFixed(2)},${c.y.toFixed(2)},${c.z.toFixed(2)} hero ${sim.h.x.toFixed(2)},${sim.h.y.toFixed(2)},${sim.h.z.toFixed(2)} ${sim.h.mode}`, 'centre ' + at(0.5, 0.5), 'low ' + at(0.5, 0.85), 'high ' + at(0.5, 0.2)].join('\n');
+  }));
 }
 console.log(errors.length ? `errors:\n${[...new Set(errors)].slice(0, 30).join('\n')}` : 'no page errors');
 await browser.close();
