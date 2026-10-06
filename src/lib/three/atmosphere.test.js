@@ -47,4 +47,9 @@ describe('the atmosphere shell', () => {
     const a = createAtmosphere({ radius: 1, colour: '#ffffff', uniforms: shared });
     expect(a.mesh.material.uniforms.uSunDir).toBe(shared.uSunDir);
   });
+
+  it('a flat air is two bands', () => {
+    expect(createAtmosphere({ radius: 1, colour: '#b8ff5a', flat: true }).mesh.material.fragmentShader).toContain('#define FLAT');
+    expect(createAtmosphere({ radius: 1, colour: '#b8ff5a' }).mesh.material.fragmentShader).not.toContain('#define FLAT');
+  });
 });

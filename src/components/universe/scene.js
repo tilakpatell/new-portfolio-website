@@ -3757,6 +3757,8 @@ export async function create(canvas, ctx) {
     fill.intensity += Math.max(-k, Math.min(k, l.fill.strength - fill.intensity));
     ambient.color.setRGB(...l.ambient);
     ambient.intensity = 1;
+    // (the styles that read the light or the screen: Cybertron's seams, Dot Matrix's dither)
+    for (const p of planets) p.light(key.color, post.ratio);
   };
 
   function render(ms, now) {

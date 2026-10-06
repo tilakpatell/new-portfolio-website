@@ -16,8 +16,8 @@ The design is `docs/superpowers/specs/2026-10-06-universe-visual-upgrade-design.
 | 0 | Poses and a baseline | #302 (poses, check script); #328 (baseline) | done | `lab/universe/baseline/{high,mid,low}.json` and 30 shots, taken on `main` at e4fcc10e after the scale changes: high calls 49–150, triangles 0.14–1.32 M; mid calls 49–148, triangles 0.14–1.14 M; low calls 49–146, triangles 0.14–1.14 M |
 | 1 | The render, finished | #336 | done | Against the baseline, `high`: calls +0 to +2 a pose, triangles at or under it (overview 150 → 150, 1.20 → 1.17 M; falcon-sun 141 → 142); `mid` and `low` within +4 calls and +0 % triangles (traffic and the station’s turn move a pose’s calls by ±2 from run to run; `mid` maw’s −120 k triangles is the Falcon’s model still loading, `low` station’s −37 calls its wheel turned). Contrast at maw on `high` 85.1 → 95.5. Smoke green on `/universe`, `/galaxy/hoth`, `/galaxy/tatooine/surface` |
 | 2 | One light | #381 | done | Against the baseline, every tier: calls −1 to +3 a pose, triangles +0 % but mid overview +2.8 % (the landing’s and the Maw’s on mid and low move with what has loaded: see below). Every world lit at 2.35 by its own star; the light turns as you fly from one star to the next; arrivals and a world picked on the map face its day side. Contrast at caribbean 87.3 → 103.5 and middleearth-limb 124.8 → 132.1 on `high`; Dot Matrix 135.5 → 114.1 under Ember’s orange (checkpoint 4 reads its light in its own colours). Smoke green |
-| 3 | Air, clouds, seas, ground | this PR | done | Against the baseline, every tier: calls −6 to +3 a pose, triangles +3.3 % at most (C-137 on `high`: the real air’s shell over the halo); the landing moves with what has loaded. The fandoms’ worlds wear real air on `high` and `mid` (a blue-white limb toward the sun, warm at the terminator, gone at night), the clouds shade the ground, seas glint (the Caribbean shows both of the Twins), and the ground comes up in detail close in; four new baked maps (793 KB). Smoke green |
-| 4 | The styles in the light | | not started | |
+| 3 | Air, clouds, seas, ground | #393 | done | Against the baseline, every tier: calls −6 to +3 a pose, triangles +3.3 % at most (C-137 on `high`: the real air’s shell over the halo); the landing moves with what has loaded. The fandoms’ worlds wear real air on `high` and `mid` (a blue-white limb toward the sun, warm at the terminator, gone at night), the clouds shade the ground, seas glint (the Caribbean shows both of the Twins), and the ground comes up in detail close in; four new baked maps (793 KB). Smoke green |
+| 4 | The styles in the light | this PR | done | Merged on the owner’s word before its own three-tier run; the end state is measured after checkpoint 8. Preview on `high`: rickmorty 57 calls, 0.223 M triangles (as checkpoint 3), gaming 58, 0.196 M (unchanged); contrast at gaming 118.8 → 140.8 (four greens dithered, read in their own colours), rickmorty 115.6 → 124.8 (cel bands, inked limb, two flat lime air bands). 14 program variants from the planets’ own hooks, pinned at 24 or fewer |
 | 5 | The hero ship | | not started | |
 | 6 | Rock | | not started | |
 | 7 | What burns | | not started | |
@@ -27,7 +27,7 @@ Scorecard (the spec’s “Where things stand” table is the before): fill in t
 
 | Category | Before | After | Evidence |
 |---|---|---|---|
-| Art direction | 2 | | |
+| Art direction | 2 | 2.5 (checkpoint 4) | The styles are in the light: C-137 in three cel bands with an inked limb and flat lime air, Dot Matrix in four greens through an ordered dither, the Office lit as paper (sheen), Cybertron’s seams in the key light’s colour |
 | Hero (the ship) | 1.5 | | |
 | Enemies and traffic | 2 | | |
 | World | 2 | | |
@@ -68,6 +68,16 @@ Scorecard (the spec’s “Where things stand” table is the before): fill in t
   - *Cloud shadows find the cloud layer by its texture* (`styleFor` names it; `buildPlanet` looks for the mesh wearing it), so each builder keeps its own cloud mesh. Their shadow is read where the clouds have turned to over the ground, each frame.
   - *The ground’s detail is a 256 noise tile made in code*, not a texture file, faded in from three radii to 1.3, worked out for the nearest two planets only (the rest are given 1e9).
   - *The high sets*: the Caribbean and Invincible get 2048 relief (`-hq`); Cybertron’s relief was already 2048 as its standard file, with a 1024 `-sm`, so its map entry is renamed from `transformers-normal-sm` to `transformers-normal` and gets the 2048 on high and up.
+- **Checkpoint 4:**
+  - *C-137 keeps a glint*: the spec turns its specular off, but checkpoint 3 gave its seas a roughness map to catch the sun. The cel light draws that as the show draws a highlight: a flat spot where the ground is glossy (roughness under 0.5), edged like the bands. Its reflections (three’s indirect specular) are off; the sky’s light on it stays.
+  - *The bands’ soft edge comes from the normal*, `length(fwidth(normal)) × 2`, worked out once before three’s light loop, rather than `fwidth(n·l)` per light. Past the terminator it’s night, as on every other planet: the 0.45 band runs from 0.15 down to it.
+  - *Dot Matrix’s dither cells are two page pixels*, not one, so the Game Boy’s pixels still read from the overview; `post.ratio` (the ratio the frame is drawn at, after the pace) sizes them on every tier. It keeps its old halo as the hover’s glow, with the one-pixel outline inside it.
+  - *Dot Matrix reads its light in the colour it has most of*, not by luminance: under Ember’s orange its greens were taken for half lit and drawn two tones too dark.
+  - *C-137’s air bands step at an eighth and a half* of the air’s own brightness: at a third and one it drew a hairline.
+  - *No mottle on the flat worlds*: checkpoint 3’s close-up detail is off for C-137 and Dot Matrix.
+  - *Cybertron’s energon takes half the key’s colour*, normalised: a full multiply turned its blue to teal under the home sun.
+  - *The Office’s `-hq` relief was already there*; it becomes a `MeshPhysicalMaterial` (sheen 0.6 in `#f3ecd8`, sheen roughness 0.8, roughness 1 over its map).
+  - *`VARIANTS` is a function*, `variants(planets)`, the set of program variants the planets’ own hooks make, tested in `planets.test.js` (`lib/three/precompile.test.js` mustn’t import a component): 14 with every map loaded, pinned at 24 or fewer.
 
 ## Checking it
 

@@ -104,9 +104,11 @@ describe('the ground: clouds’ shadows, seas and detail', () => {
     expect(styleFor(byId('office'), {})).toMatchObject({ clouds: null, rough: null, detail: true });
     expect(styleFor(byId('office'), {}, { tier: 'low' }).detail).toBe(false);
     expect(styleFor(byId('home'), {}).detail).toBe(false);
-    const key = buildPlanet(byId('gaming'), {}).body.material.customProgramCacheKey();
+    const key = buildPlanet(byId('office'), {}).body.material.customProgramCacheKey();
     expect(key).not.toContain('clouds');
     expect(key).toContain('detail');
+    // (a world drawn in flat colour has no mottle come up on it)
+    expect(buildPlanet(byId('gaming'), {}).body.material.customProgramCacheKey()).not.toContain('detail');
     vi.unstubAllGlobals();
   });
 
@@ -122,6 +124,107 @@ describe('the ground: clouds’ shadows, seas and detail', () => {
     const key = p.body.material.customProgramCacheKey();
     expect(key).toContain('clouds');
     expect(key).toContain('rough');
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('the styles in the light', () => {
+  const stub = () => {
+    const gradient = { addColorStop() {} };
+    const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+  };
+  // what three hands a standard or physical material's onBeforeCompile
+  const shaderOf = async (mat) => {
+    const THREE = await import('three');
+    const lib = mat.isMeshPhysicalMaterial ? THREE.ShaderLib.physical : THREE.ShaderLib.standard;
+    const shader = { uniforms: {}, vertexShader: lib.vertexShader, fragmentShader: lib.fragmentShader };
+    mat.onBeforeCompile(shader);
+    return shader;
+  };
+
+  it('C-137 is cel-shaded with an inked limb', async () => {
+    stub();
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    const mat = buildPlanet(byId('rickmorty'), {}).body.material;
+    expect(mat.customProgramCacheKey()).toContain('cel');
+    const { fragmentShader } = await shaderOf(mat);
+    // three bands of the direct light, no reflection, the limb darkened to the eighth power
+    expect(fragmentShader).toContain('#define RE_Direct RE_Direct_Cel');
+    expect(fragmentShader).toContain('#define RE_IndirectSpecular RE_IndirectSpecular_Cel');
+    expect(fragmentShader).toMatch(/smoothstep\(0\.550 - celEdge/);
+    expect(fragmentShader).toMatch(/0\.8 \* pow\(1\.0 - saturate\(dot\(nonPerturbedNormal, normalize\(vViewPosition\)\)\), 8\.000\)/);
+    // (and the air's earlier hook still there: composed, not replaced)
+    expect(fragmentShader).toContain('uRimColor');
+    vi.unstubAllGlobals();
+  });
+
+  it('C-137’s air is two flat bands of lime', async () => {
+    stub();
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    expect(buildPlanet(byId('rickmorty'), {}, { tier: 'high' }).air.material.fragmentShader).toContain('#define FLAT');
+    expect(buildPlanet(byId('middleearth'), {}, { tier: 'high' }).air.material.fragmentShader).not.toContain('#define FLAT');
+    vi.unstubAllGlobals();
+  });
+
+  it('Dot Matrix is dithered in four greens', async () => {
+    stub();
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    const u = byId('gaming');
+    const p = buildPlanet(u, {});
+    const mat = p.body.material;
+    expect(mat.customProgramCacheKey()).toContain('dither');
+    const greens = mat.userData.dither.uPalette.value.map((c) => `#${c.getHexString()}`);
+    expect(greens).toEqual([u.palette.dark, u.palette.glow, u.palette.base, u.palette.light]);
+    // its dots sized by the ratio the frame is drawn at, set each frame
+    const THREE = await import('three');
+    p.light(new THREE.Color(1, 1, 1), 1.5);
+    expect(mat.userData.dither.uDpr.value).toBe(1.5);
+    const { fragmentShader } = await shaderOf(mat);
+    expect(fragmentShader).toContain('gl_FragCoord.xy / (uDpr * 2.0)');
+    vi.unstubAllGlobals();
+  });
+
+  it('the Office is paper', async () => {
+    stub();
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    const mat = buildPlanet(byId('office'), {}).body.material;
+    expect(mat.isMeshPhysicalMaterial).toBe(true);
+    expect(mat.sheen).toBe(0.6);
+    expect(mat.sheenRoughness).toBe(0.8);
+    expect(mat.roughness).toBe(1);
+    vi.unstubAllGlobals();
+  });
+
+  it('Cybertron’s seams take the key light’s colour, as a tint', async () => {
+    stub();
+    const THREE = await import('three');
+    const { buildPlanet, MAP_NAMES } = await import('./planets');
+    const { byId } = await import('./universes');
+    const T = Object.fromEntries(MAP_NAMES.map((n) => [n, new THREE.Texture()]));
+    const p = buildPlanet(byId('transformers'), T);
+    p.light(new THREE.Color(0.5, 0.4, 0.25), 1);
+    const key = p.body.material.userData.cybertron.uKeyColour.value;
+    expect(key.r).toBeCloseTo(1);
+    expect(key.g).toBeCloseTo(0.8);
+    expect(key.b).toBeCloseTo(0.5);
+    vi.unstubAllGlobals();
+  });
+
+  it('the map’s planets make at most 24 program variants of their own', async () => {
+    stub();
+    const THREE = await import('three');
+    const { buildPlanet, MAP_NAMES, variants } = await import('./planets');
+    const { UNIVERSES } = await import('./universes');
+    // (every map there, as on a desktop: the most variants a visit makes)
+    const T = Object.fromEntries(MAP_NAMES.map((n) => [n, new THREE.Texture()]));
+    const made = variants(UNIVERSES.map((u) => buildPlanet(u, T, { tier: 'high' })));
+    expect(made.size).toBeGreaterThan(8);
+    expect(made.size).toBeLessThanOrEqual(24);
     vi.unstubAllGlobals();
   });
 });

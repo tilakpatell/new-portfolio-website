@@ -1,8 +1,10 @@
 // Dimension C-137's planet, drawn the way Rick and Morty draws an alien
-// world: flat colour in a few cel steps, every shape inked round its edge.
+// world: flat colour in three cel tones a biome, every shape inked round its
+// edge (two texels at 2048, found on the biome's id, not its colour).
 // Teal seas stepped deeper away from the coast, purple continents with
 // lilac highlands and pale peaks, pink deserts, lime jungle, lakes of
-// glowing green ooze, a few big cartoon craters, ice at the poles, and
+// glowing green ooze (flat lime: no tones), a few big cartoon craters with a
+// lit rim and a shadow cast across the floor from it, ice at the poles, and
 // clouds as the show's puffs: white, a lavender underside, inked.
 //
 // Makes rickmorty and rickmorty-clouds (RGBA) at 2048 (-hq), 1024 and 512
@@ -16,7 +18,7 @@ const H = 2048;
 const deg = Math.PI / 180;
 
 // region ids, and their colours: [base, shade]
-const R = { DEEP: 0, SEA: 1, SHALLOW: 2, LAND: 3, HIGH: 4, PEAK: 5, DESERT: 6, JUNGLE: 7, OOZE: 8, ICE: 9, CRATER: 10, RIM: 11 };
+const R = { DEEP: 0, SEA: 1, SHALLOW: 2, LAND: 3, HIGH: 4, PEAK: 5, DESERT: 6, JUNGLE: 7, OOZE: 8, ICE: 9, CRATER: 10, RIM: 11, SHADOW: 12 };
 const COLOURS = [
   ['#17708a', '#13617a'],
   ['#1f8fa3', '#1b8196'],
@@ -30,7 +32,9 @@ const COLOURS = [
   ['#e4f8ff', '#cbeaf6'],
   ['#5a3488', '#4e2d78'],
   ['#b993e6', '#a47fd3'],
-].map(([a, b]) => [hex(a), hex(b)]);
+  ['#3a1f60', '#331b55'],
+  // (a third, lighter tone of each: an eighth of the way to white)
+].map(([a, b]) => [hex(a), hex(b), hex(a).map((v) => v + (1 - v) * 0.125)]);
 const INK = hex('#1c0f30');
 
 // the craters: [lat, phi, radius in radians]
@@ -41,6 +45,19 @@ const CRATERS = [
   [-10, 0.6, 0.08],
   [30, 1.9, 0.055],
 ].map(([la, ph, r]) => [[-Math.cos(ph) * Math.cos(la * deg), Math.sin(la * deg), Math.sin(ph) * Math.cos(la * deg)], r]);
+
+// each crater's floor, moved a third of its radius toward the south-east:
+// where the moved floor doesn't reach is the crescent its rim shades, a
+// shadow drawn in from the upper left, as the show lights its craters
+const SHADED = CRATERS.map(([c, r]) => {
+  const east = [c[2], 0, -c[0]];
+  const len = Math.hypot(...east) || 1;
+  const e = east.map((v) => v / len);
+  const north = [c[1] * e[2] - c[2] * e[1], c[2] * e[0] - c[0] * e[2], c[0] * e[1] - c[1] * e[0]];
+  const m = c.map((v, k) => v + (e[k] - north[k] * 0.6) * r * 0.33);
+  const ml = Math.hypot(...m);
+  return m.map((v) => v / ml);
+});
 
 // Where the id changes within `r` texels, ink: the outlines.
 function inkPass(ids, w, h, r, test) {
@@ -94,15 +111,18 @@ export async function bake() {
       if (up > 0.38) id = R.PEAK;
       if (fbm(n5, x * 6, y * 6, z * 6, { octaves: 3 }) > 0.3 && up > 0.03 && up < 0.18) id = R.OOZE;
     }
-    for (const [c, r] of CRATERS) {
+    CRATERS.forEach(([c, r], k) => {
       const d = Math.acos(clamp(x * c[0] + y * c[1] + z * c[2], -1, 1));
-      if (d < r) id = d > r * 0.8 ? R.RIM : R.CRATER;
+      const m = SHADED[k];
+      if (d < r) id = d > r * 0.8 ? R.RIM : Math.acos(clamp(x * m[0] + y * m[1] + z * m[2], -1, 1)) > r * 0.8 ? R.SHADOW : R.CRATER;
       else if (d < r * 1.15 && field >= sea) id = R.HIGH;
-    }
+    });
     if (alat > 72 + fbm(n2, x * 6, y * 6, z * 6, { octaves: 3 }) * 8) id = R.ICE;
     ids[i] = id;
-    // the cel step: a darker tone where a slow noise is high
-    shade[i] = id > R.SHALLOW && fbm(n3, x * 3.5 + 3, y * 3.5, z * 3.5, { octaves: 2 }) > 0.14 ? 1 : 0;
+    // the cel tones: darker where a slow noise is high, lighter where it's
+    // low (not the ooze, which is flat, nor the shadow)
+    const tone = fbm(n3, x * 3.5 + 3, y * 3.5, z * 3.5, { octaves: 2 });
+    shade[i] = id <= R.SHALLOW || id === R.OOZE || id === R.SHADOW ? 0 : tone > 0.14 ? 1 : tone < -0.16 ? 2 : 0;
     // the puffs: a hard edge on a lumpy field, the underside a little lower in it
     const cv = fbm(nc, x * 5, y * 5, z * 5, { octaves: 5 }) + fbm(nc, x * 18 + 4, y * 18, z * 18, { octaves: 2 }) * 0.2;
     cloudIds[i] = cv > 0.26 ? (cv < 0.3 ? 2 : 1) : 0;

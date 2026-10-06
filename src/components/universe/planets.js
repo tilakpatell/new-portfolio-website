@@ -526,6 +526,8 @@ const BUILDERS = {
     p.body.material = mat;
     if (T.transformers && T['transformers-glow-sm']) {
       const skin = cybertronSkin(mat, { glow: T['transformers-glow-sm'], sun: p.sun });
+      // (its seams glow a little in the colour of the light it's in: the scene's key)
+      p.keyColour = skin.uKeyColour.value;
       // the energon breathes, and turns from the Autobots' blue to the
       // Decepticons' violet and back as the war goes one way and the other
       const blue = SIDES.autobot.energon;
@@ -692,14 +694,19 @@ const BUILDERS = {
     const r = u.size;
     // a sheet of Dunder Mifflin's letterhead crumpled into a ball, the paper
     // that gets thrown at the bin (scripts/planets/office.mjs): flat facets
-    // with sharp creases, the memo's print running on across the folds
-    p.body.material = new THREE.MeshStandardMaterial({
+    // with sharp creases, the memo's print running on across the folds; lit
+    // as paper: a sheen in its own colour, so its fibre shows under a
+    // grazing light (the creases toward the terminator)
+    p.body.material = new THREE.MeshPhysicalMaterial({
       map: T.office ?? null,
       color: T.office ? '#f2eee4' : u.palette.base, // paper, not snow: a little warm and a little grey
       normalMap: T['office-normal'] ?? tiled(T['paper-normal'], 4, 2),
       normalScale: new THREE.Vector2(1, 1),
       roughnessMap: T['office-rough'] ?? null,
-      roughness: T['office-rough'] ? 1 : 0.95,
+      roughness: 1,
+      sheen: 0.6,
+      sheenColor: '#f3ecd8',
+      sheenRoughness: 0.8,
     });
     // and its outline a crumpled ball's: the sphere cut by a scatter of flat
     // planes a little inside it, so it has facets and corners (never out
@@ -762,10 +769,12 @@ const BUILDERS = {
       roughness: T['rickmorty-rough'] ? 1 : 0.85,
       metalness: 0,
     });
+    // lit as the show lights it: in flat bands, its limb inked (celShade)
+    celShade(p.body.material);
     if (T['rickmorty-clouds']) {
       const sky = new THREE.Mesh(
         new THREE.SphereGeometry(r * 1.012, T.small ? 44 : 64, T.small ? 28 : 40),
-        new THREE.MeshStandardMaterial({ map: T['rickmorty-clouds'], transparent: true, depthWrite: false, roughness: 1, metalness: 0 }),
+        celShade(new THREE.MeshStandardMaterial({ map: T['rickmorty-clouds'], transparent: true, depthWrite: false, roughness: 1, metalness: 0 }), { ink: 0 }),
       );
       p.group.add(sky);
       p.tick.push((t) => (sky.rotation.y = t * 0.05));
@@ -868,6 +877,10 @@ const BUILDERS = {
     map.minFilter = THREE.NearestMipmapLinearFilter;
     map.anisotropy = 1;
     p.body.material = new THREE.MeshStandardMaterial({ map, roughness: 0.85, metalness: 0 });
+    // lit as a Game Boy would light it: the four greens, dithered (ditherShade),
+    // the ground, its clouds and its mountains alike, sized by one ratio
+    p.dpr = { value: 1 };
+    ditherShade(p.body.material, { palette: GREENS, dpr: p.dpr, outline: true });
     // pixel clouds, drifting a little faster than the ground
     const clouds = paint(
       (g) => {
@@ -890,6 +903,7 @@ const BUILDERS = {
     );
     clouds.magFilter = THREE.NearestFilter;
     const cloudShell = new THREE.Mesh(new THREE.SphereGeometry(r * 1.025, 64, 40), new THREE.MeshStandardMaterial({ map: clouds, transparent: true, depthWrite: false, roughness: 1, alphaTest: 0.5 }));
+    ditherShade(cloudShell.material, { palette: GREENS, dpr: p.dpr });
     p.group.add(cloudShell);
     p.tick.push((t) => (cloudShell.rotation.y = t * 0.09));
     // blocky mountains: a few voxels standing up where the land is highest
@@ -902,6 +916,7 @@ const BUILDERS = {
     }
     const c = r * 0.05;
     const blocks = new THREE.InstancedMesh(new THREE.BoxGeometry(c, c, c), new THREE.MeshStandardMaterial({ roughness: 0.75 }), peaks.length * 2);
+    ditherShade(blocks.material, { palette: GREENS, dpr: p.dpr });
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const up = new THREE.Vector3(0, 1, 0);
@@ -1336,9 +1351,11 @@ const BUILDERS = {
 // the ground comes up in detail as you come in (not on low, not a station).
 const CLOUDS = { middleearth: ['middleearth-clouds', false], breakingbad: ['breakingbad-clouds', true], rickmorty: ['rickmorty-clouds', false], caribbean: ['caribbean-clouds', true], invincible: ['invincible-clouds', true], travel: ['earth-clouds', true] };
 const ROUGH = { travel: 'earth-rough' };
+// (drawn in flat colour, cel or dithered: a mottle would undo it)
+const FLAT = new Set(['rickmorty', 'gaming']);
 export function styleFor(u, T = {}, { tier = 'high' } = {}) {
   const [name, alpha] = CLOUDS[u.id] ?? [null, false];
-  return { clouds: (name && tier !== 'low' && T[name]) || null, alpha, rough: T[ROUGH[u.id] ?? `${u.id}-rough`] ?? null, detail: u.kind !== 'core' && !u.portal && tier !== 'low' };
+  return { clouds: (name && tier !== 'low' && T[name]) || null, alpha, rough: T[ROUGH[u.id] ?? `${u.id}-rough`] ?? null, detail: u.kind !== 'core' && !u.portal && !FLAT.has(u.id) && tier !== 'low' };
 }
 
 // A fine noise tile, made once, for the ground's detail coming up close
@@ -1398,6 +1415,114 @@ function groundHooks(mat, { clouds, alpha, detail, rough }) {
   return u;
 }
 
+// C-137 as the show draws it: the direct light in three flat bands (full
+// above 0.55 of n·l, 0.72 down to 0.15, 0.45 to the terminator, night past
+// it), each edge two pixels soft (from how fast the normal turns on the
+// screen) so it doesn't crawl as the planet turns; no specular but a flat
+// glint where it's glossy (its seas), as the show draws one; and, with `ink`,
+// its limb inked: darkened by pow(1 − n·v, ink) × 0.8, so it's outlined like
+// everything else in the show. Composes after any hook already on it.
+export function celShade(mat, { bands = [0.55, 0.15], levels = [1, 0.72, 0.45], ink = 8 } = {}) {
+  const f = (v) => v.toFixed(3);
+  const prev = mat.onBeforeCompile;
+  const prevKey = Object.hasOwn(mat, 'customProgramCacheKey') ? mat.customProgramCacheKey : null;
+  mat.onBeforeCompile = (shader, renderer) => {
+    prev?.call(mat, shader, renderer);
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <lights_physical_pars_fragment>',
+        `#include <lights_physical_pars_fragment>
+        float celEdge;
+        void RE_Direct_Cel(const in IncidentLight directLight, const in vec3 geometryPosition, const in vec3 geometryNormal, const in vec3 geometryViewDir, const in vec3 geometryClearcoatNormal, const in PhysicalMaterial material, inout ReflectedLight reflectedLight) {
+          float ndl = dot(geometryNormal, directLight.direction);
+          float lit = ${f(levels[2])} * smoothstep(-celEdge, celEdge, ndl);
+          lit = mix(lit, ${f(levels[1])}, smoothstep(${f(bands[1])} - celEdge, ${f(bands[1])} + celEdge, ndl));
+          lit = mix(lit, ${f(levels[0])}, smoothstep(${f(bands[0])} - celEdge, ${f(bands[0])} + celEdge, ndl));
+          reflectedLight.directDiffuse += lit * directLight.color * BRDF_Lambert(material.diffuseContribution);
+          float gloss = 1.0 - smoothstep(0.3, 0.6, material.roughness);
+          float h = dot(geometryNormal, normalize(directLight.direction + geometryViewDir));
+          reflectedLight.directSpecular += directLight.color * 0.35 * gloss * smoothstep(0.985 - celEdge, 0.985 + celEdge, h) * step(0.0, ndl);
+        }
+        // (the sky's light on it stays, flat; its reflection goes)
+        void RE_IndirectSpecular_Cel(const in vec3 radiance, const in vec3 irradiance, const in vec3 clearcoatRadiance, const in vec3 geometryPosition, const in vec3 geometryNormal, const in vec3 geometryViewDir, const in vec3 geometryClearcoatNormal, const in PhysicalMaterial material, inout ReflectedLight reflectedLight) {
+          reflectedLight.indirectDiffuse += material.diffuseContribution * irradiance * RECIPROCAL_PI;
+        }
+        #undef RE_Direct
+        #define RE_Direct RE_Direct_Cel
+        #undef RE_IndirectSpecular
+        #define RE_IndirectSpecular RE_IndirectSpecular_Cel`,
+      )
+      .replace('#include <lights_fragment_begin>', 'celEdge = max(length(fwidth(normal)), 1e-4) * 2.0;\n#include <lights_fragment_begin>')
+      .replace('#include <opaque_fragment>', `${ink ? `outgoingLight *= 1.0 - 0.8 * pow(1.0 - saturate(dot(nonPerturbedNormal, normalize(vViewPosition))), ${f(ink)});` : ''}\n#include <opaque_fragment>`);
+  };
+  mat.customProgramCacheKey = () => `cel${ink ? `-ink${ink}` : ''}${prevKey ? `-${prevKey.call(mat)}` : ''}`;
+  return mat;
+}
+
+// Dot Matrix as a Game Boy shows it: each pixel one of the four greens,
+// picked by its own tone (the nearest of the four) stepped down by how lit
+// it is against a 4 × 4 ordered dither, so the terminator is a Bayer pattern.
+// The dither's cells are two of the page's pixels (gl_FragCoord over the
+// ratio it's drawn at, `dpr`, a uniform the scene sets), so they're the same
+// size on every screen and every pace step. With `outline`, the limb's last
+// pixel in the lightest green, the screen's own edge to the world.
+const BAYER = '0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0';
+// (how lit a pixel in the full sun is, against its own colour: the key's
+// strength over π, with the sky's; read in whichever of its colours it has
+// most of, so an orange star on its greens isn't taken for a dim one)
+const DITHER_FULL = 0.75;
+export function ditherShade(mat, { palette, dpr = { value: 1 }, outline = false } = {}) {
+  const u = { uPalette: { value: palette.map((c) => new THREE.Color(c)) }, uDpr: dpr };
+  const prev = mat.onBeforeCompile;
+  const prevKey = Object.hasOwn(mat, 'customProgramCacheKey') ? mat.customProgramCacheKey : null;
+  mat.onBeforeCompile = (shader, renderer) => {
+    prev?.call(mat, shader, renderer);
+    Object.assign(shader.uniforms, u);
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uPalette[4];\nuniform float uDpr;').replace(
+      '#include <opaque_fragment>',
+      `{
+        const float bayer[16] = float[16](${BAYER});
+        float own = 0.0;
+        float best = 1e9;
+        for (int i = 0; i < 4; i++) {
+          float d = distance(diffuseColor.rgb, uPalette[i]);
+          if (d < best) { best = d; own = float(i); }
+        }
+        vec3 has = step(vec3(0.02), diffuseColor.rgb);
+        vec3 by = outgoingLight / max(diffuseColor.rgb, vec3(1e-3)) * has;
+        float lit = clamp(max(by.r, max(by.g, by.b)) / ${DITHER_FULL.toFixed(2)}, 0.0, 1.0);
+        vec2 cell = mod(floor(gl_FragCoord.xy / (uDpr * 2.0)), 4.0);
+        float th = (bayer[int(cell.x) + int(cell.y) * 4] + 0.5) / 16.0;
+        int tone = int(clamp(floor(own * lit + th), 0.0, 3.0));
+        outgoingLight = uPalette[tone] * ${DITHER_FULL.toFixed(2)};
+        ${outline ? 'float nv = dot(nonPerturbedNormal, normalize(vViewPosition));\n        if (nv < fwidth(nv) * 1.5) outgoingLight = uPalette[3] * ' + DITHER_FULL.toFixed(2) + ';' : ''}
+      }
+      #include <opaque_fragment>`,
+    );
+  };
+  mat.customProgramCacheKey = () => `dither${outline ? '-outline' : ''}${prevKey ? `-${prevKey.call(mat)}` : ''}`;
+  mat.userData.dither = u;
+  return u;
+}
+
+// The shader variants the planets' own hooks make (the air's rim, the
+// ground's, the styles'): each one a program the warm-up compiles before the
+// first frame, so a count to keep an eye on. A variant is the material's kind,
+// its hooks' key and which of its maps it has (each changes the program).
+const SLOTS = ['map', 'normalMap', 'roughnessMap', 'emissiveMap', 'alphaMap', 'metalnessMap'];
+export function variants(planets) {
+  const out = new Set();
+  for (const p of planets) {
+    p.group.traverse((o) => {
+      for (const m of [].concat(o.material ?? [])) {
+        if (!Object.hasOwn(m, 'customProgramCacheKey')) continue;
+        out.add([m.type, m.customProgramCacheKey(), SLOTS.map((s) => (m[s] ? 1 : 0)).join(''), o.isInstancedMesh ? 'instanced' : '', m.transparent ? 'blend' : ''].join('|'));
+      }
+    });
+  }
+  return out;
+}
+
 export function buildPlanet(u, T = {}, { sun = null, tier = 'high' } = {}) {
   const core = u.kind === 'core';
   // the way to the star that lights it, in the world's axes (lighting.js's
@@ -1419,7 +1544,7 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high' } = {}) {
   const haloMesh = core || u.airless ? null : halo(u.size, u.rim ?? u.swatch, seg, sunW); // (a station has no air round it)
   const shell =
     haloMesh && u.air && tier !== 'low'
-      ? createAtmosphere({ radius: u.size, top: u.air.top, colour: u.air.colour, density: u.air.density, sunset: u.air.sunset, segments: T.small ? [64, 40] : [96, 64], steps: tier === 'high' || tier === 'ultra' ? 8 : 5, inner: Math.cos(Math.PI / seg[1]), uniforms: { uSunDir: { value: [sunW, new THREE.Vector3(0, 1, 0)] } } })
+      ? createAtmosphere({ radius: u.size, top: u.air.top, colour: u.air.colour, density: u.air.density, sunset: u.air.sunset, segments: T.small ? [64, 40] : [96, 64], steps: tier === 'high' || tier === 'ultra' ? 8 : 5, inner: Math.cos(Math.PI / seg[1]), flat: Boolean(u.air.flat), uniforms: { uSunDir: { value: [sunW, new THREE.Vector3(0, 1, 0)] } } })
       : null;
   if (shell) shell.mesh.renderOrder = 2;
   let air = shell ? shell.mesh : haloMesh;
@@ -1480,6 +1605,13 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high' } = {}) {
         if (l >= 2) ground.uCamDist.value = 1e9;
       }
       this.setAir(l >= 3 ? 'halo' : 'shell');
+    },
+    // each frame, the scene's key light's colour and the ratio the frame is
+    // drawn at: Cybertron's seams glow in the one (normalised: a tint, not a
+    // dimming), Dot Matrix's dither is sized by the other
+    light(colour, ratio) {
+      if (p.dpr) p.dpr.value = ratio;
+      if (p.keyColour) p.keyColour.copy(colour).multiplyScalar(1 / Math.max(colour.r, colour.g, colour.b, 1e-3));
     },
     // the real air or the old halo (the pace's last steps): 'shell' | 'halo'
     setAir(which) {
