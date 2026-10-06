@@ -587,6 +587,60 @@ void surface(vec3 P, inout Surf s) {
 
 const FAMILIES = { desert: DESERT, ice: ICE, lush: LUSH, city: CITY, lava: LAVA, gas: GAS, moon: MOON };
 
+// Up close, the ground wears photo scans (public/cc0/galaxy/: sand, snow,
+// grass, rock…; bodies.js picks two by the look, one for the flat and one
+// for the steep): triplanar on the unit sphere at two sizes, each fading in
+// only once its tiles are big enough on screen not to read as a pattern, so
+// a world skimmed by the ship shows grain, pebbles and cracks, and from
+// orbit nothing changes. The scans' brightness over their mean darkens and
+// lightens the look's own colour (its palette stays), and their normals
+// tilt the light. Not on water, nor on the low tier (no DETAIL).
+// uDetK = (frequency in tiles a radius, colour strength, normal strength, on 0…1)
+const DETAIL = /* glsl */ `
+#ifdef DETAIL
+uniform sampler2D uDetA;
+uniform sampler2D uDetAN;
+uniform sampler2D uDetB;
+uniform sampler2D uDetBN;
+uniform vec2 uDetMean;
+uniform vec4 uDetK;
+const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+float triLum(sampler2D t, vec3 q, vec3 w) {
+  return dot(texture2D(t, q.yz).rgb, LUMA) * w.x + dot(texture2D(t, q.zx).rgb, LUMA) * w.y + dot(texture2D(t, q.xy).rgb, LUMA) * w.z;
+}
+// the normal map's tilt, carried onto the sphere's axes (a tangential push)
+vec3 triTilt(sampler2D t, vec3 q, vec3 w) {
+  vec2 a = texture2D(t, q.yz).xy * 2.0 - 1.0;
+  vec2 b = texture2D(t, q.zx).xy * 2.0 - 1.0;
+  vec2 c = texture2D(t, q.xy).xy * 2.0 - 1.0;
+  return vec3(0.0, a.x, a.y) * w.x + vec3(b.y, 0.0, b.x) * w.y + vec3(c.x, c.y, 0.0) * w.z;
+}
+void detail(vec3 P, inout Surf s) {
+  float f = uDetK.x;
+  // (none of it from further off: no fetches; its weight's already 0 at that edge)
+  if (uDetK.w <= 0.0 || gFoot * f >= 0.05) return;
+  float k1 = (1.0 - smoothstep(0.012, 0.05, gFoot * f)) * uDetK.w;
+  float k2 = (1.0 - smoothstep(0.012, 0.05, gFoot * f * 6.5)) * uDetK.w;
+  vec3 w = pow(abs(P), vec3(4.0));
+  w /= w.x + w.y + w.z;
+  vec3 Gt = s.grad - P * dot(s.grad, P);
+  float steep = smoothstep(0.18, 0.55, length(Gt));
+  vec3 q1 = P * f;
+  vec3 q2 = P * f * 6.5 + 0.37;
+  float a1 = triLum(uDetA, q1, w) / uDetMean.x;
+  float a2 = triLum(uDetA, q2, w) / uDetMean.x;
+  float b1 = triLum(uDetB, q1 * 0.6, w) / uDetMean.y;
+  float b2 = triLum(uDetB, q2 * 0.6, w) / uDetMean.y;
+  float d1 = mix(a1, b1, steep);
+  float d2 = mix(a2, b2, steep);
+  float land = 1.0 - clamp(s.wet, 0.0, 1.0);
+  float d = mix(1.0, clamp(d1, 0.2, 2.2), k1 * uDetK.y * land) * mix(1.0, clamp(d2, 0.2, 2.2), k2 * uDetK.y * 0.8 * land);
+  s.alb *= d;
+  vec3 tilt = mix(triTilt(uDetAN, q1, w), triTilt(uDetBN, q1 * 0.6, w), steep) * k1 + mix(triTilt(uDetAN, q2, w), triTilt(uDetBN, q2 * 0.6, w), steep) * k2 * 0.7;
+  s.grad -= tilt * uDetK.z * land;
+}
+#endif`;
+
 // relief, clouds, sunlight (one or two suns), the sea's glint, a faint
 // light on the night side, the look's own light, then the haze
 const SURFACE_MAIN = /* glsl */ `
@@ -602,6 +656,9 @@ void main() {
   gNight = 1.0 - smoothstep(-0.14, 0.1, max(dot(Ng, uSunDir[0]), dot(Ng, uSunDir[1])));
   Surf s = Surf(vec3(0.5), vec3(0.0), 0.0, vec3(0.0), 0.0, 0.0);
   surface(P, s);
+  #ifdef DETAIL
+  detail(P, s);
+  #endif
   float thick = 0.0;
   #ifdef CLOUDS
   // (down under them, skimming the ground, they're overhead: only their shadows show)
@@ -651,7 +708,7 @@ void main() {
 // the surface shader for a family, its colour slots named (#define SAND uPal[0]…)
 export function surfaceFrag(family, slots) {
   const names = slots.map((n, i) => `#define ${n.toUpperCase()} uPal[${i}]`).join('\n');
-  return [NOISE, SURFACE_HEAD, CLOUDS, ATMO, names, FAMILIES[family], SURFACE_MAIN].join('\n');
+  return [NOISE, SURFACE_HEAD, CLOUDS, ATMO, names, FAMILIES[family], DETAIL, SURFACE_MAIN].join('\n');
 }
 
 
