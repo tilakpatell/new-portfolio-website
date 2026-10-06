@@ -8,15 +8,19 @@ import * as THREE from 'three';
 import { pixelRatio } from '../../lib/device';
 import { precompile as compileFor, quiet } from '../../lib/three/renderer';
 
-export function createStage(canvas, { onLost, onSlow, fov = 50 } = {}) {
-  const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', alpha: false }));
+// `antialias`: off for a scene that draws through passes of its own (its
+// own target smooths the edges; the canvas only ever gets a quad); `maxRatio`
+// the most device pixels a CSS pixel gets; `slowMs` the average frame that
+// starts the steps down.
+export function createStage(canvas, { onLost, onSlow, fov = 50, antialias = true, maxRatio = 2, slowMs = 40 } = {}) {
+  const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias, powerPreference: 'high-performance', alpha: false }));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   const coarse = typeof window !== 'undefined' && (window.matchMedia?.('(pointer: coarse)').matches ?? false);
-  let ratio = pixelRatio(2); // lib/device: 1.5 on a phone, 1 on a weak device
+  let ratio = pixelRatio(maxRatio); // lib/device: 1.5 on a phone, 1 on a weak device
   renderer.setPixelRatio(ratio);
 
   const scene = new THREE.Scene();
@@ -44,7 +48,8 @@ export function createStage(canvas, { onLost, onSlow, fov = 50 } = {}) {
   canvas.addEventListener('webglcontextlost', onContextLost);
 
   // quality steps: every few seconds of drawing, the average frame; below
-  // about 25 fps it steps down (resolution, then shadows, then resolution again)
+  // about 25 fps (or the scene's own `slowMs`) it steps down (resolution,
+  // then shadows, then resolution again)
   const perf = { acc: 0, n: 0, step: 0 };
   const watch = (ms) => {
     perf.acc += ms;
@@ -53,7 +58,7 @@ export function createStage(canvas, { onLost, onSlow, fov = 50 } = {}) {
     const avg = perf.acc / perf.n;
     perf.acc = 0;
     perf.n = 0;
-    if (avg < 40) return;
+    if (avg < slowMs) return;
     perf.step += 1;
     if (perf.step === 1 && ratio > 1) {
       ratio = 1;

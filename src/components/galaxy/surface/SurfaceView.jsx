@@ -108,17 +108,34 @@ export default function SurfaceView({ system, mission = null, ship, hero = null,
           <div className="surface-stick" onPointerDown={stickDown} onPointerMove={stickMove} onPointerUp={stickUp} onPointerCancel={stickUp} aria-hidden="true">
             <span ref={knob} />
           </div>
-          <div className={saber ? 'surface-buttons surface-buttons-saber' : 'surface-buttons'}>
-            {saber && (
+          <div className={saber ? 'surface-buttons surface-buttons-saber' : 'surface-buttons surface-buttons-gun'}>
+            {saber ? (
               <button type="button" className="surface-btn surface-btn-throw" onPointerDown={press('throw')} onContextMenu={(e) => e.preventDefault()}>
                 Throw
               </button>
+            ) : (
+              <button type="button" className="surface-btn surface-btn-throw" onPointerDown={press('throw')} onContextMenu={(e) => e.preventDefault()}>
+                Vent
+              </button>
             )}
-            {saber && (
+            {saber ? (
               <button type="button" className="surface-btn surface-btn-block" onPointerDown={press('block')} onPointerUp={release('block')} onPointerCancel={release('block')} onPointerLeave={release('block')} onContextMenu={(e) => e.preventDefault()}>
                 Block
               </button>
+            ) : (
+              <button type="button" className="surface-btn surface-btn-aim" onPointerDown={press('aim')} onContextMenu={(e) => e.preventDefault()}>
+                Aim
+              </button>
             )}
+            <button type="button" className="surface-btn surface-btn-power" onPointerDown={press('power')} onContextMenu={(e) => e.preventDefault()}>
+              {saber ? 'Push' : 'Bomb'}
+            </button>
+            <button type="button" className="surface-btn surface-btn-power" onPointerDown={press('second')} onContextMenu={(e) => e.preventDefault()}>
+              {saber ? 'Pull' : 'Charge'}
+            </button>
+            <button type="button" className="surface-btn surface-btn-dodge" onPointerDown={press('dodge')} onContextMenu={(e) => e.preventDefault()}>
+              Dodge
+            </button>
             <button type="button" className="surface-btn" onPointerDown={press('jump')} onContextMenu={(e) => e.preventDefault()}>
               Jump
             </button>

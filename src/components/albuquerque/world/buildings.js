@@ -199,7 +199,7 @@ export function createTown({ aniso = 8, small = false, models = {}, tankCar = nu
       }
     }
     const m = own(new THREE.MeshStandardMaterial({ map: texOf(c), emissiveMap: texOf(e), emissive: 0xffffff, emissiveIntensity: 0, roughness: o.rough ?? 0.92, metalness: o.metal ?? 0 }));
-    lit.push({ m, k: 1.5 });
+    lit.push({ m, k: 0.85 });
     return m;
   };
 
@@ -233,7 +233,7 @@ export function createTown({ aniso = 8, small = false, models = {}, tankCar = nu
       draw?.(ctx, c.width, c.height, isGlow);
     }
     const m = own(new THREE.MeshStandardMaterial({ map: texOf(c), emissiveMap: texOf(e), emissive: 0xffffff, emissiveIntensity: 0.15, roughness: 0.6 }));
-    lit.push({ m, k: 1.9, base: 0.15 });
+    lit.push({ m, k: 1.2, base: 0.15 });
     const board = new THREE.Group();
     const geo = own(new THREE.PlaneGeometry(w, h));
     const front = new THREE.Mesh(geo, m);

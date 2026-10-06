@@ -188,8 +188,8 @@ export function createBlaster({ parent, world, pool = POOL }) {
       for (const f of flashes) {
         if (!f.m.visible) continue;
         f.age += dt;
-        f.m.scale.setScalar(1 + f.age * 6);
-        f.m.material.opacity = Math.max(0, 1 - f.age * 5);
+        f.m.scale.setScalar(0.6 + f.age * 3);
+        f.m.material.opacity = Math.max(0, 0.6 - f.age * 3);
         if (f.age > 0.2) f.m.visible = false;
       }
       return hurt;

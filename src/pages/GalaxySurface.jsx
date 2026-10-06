@@ -114,6 +114,11 @@ export default function GalaxySurface() {
   const [zone, setZone] = useState(null); // { id, name } inside somewhere
   const [fade, setFade] = useState(0); // a moment's black, going in or out
   const [aiming, setAiming] = useState(false);
+  const [combat, setCombat] = useState(null); // the fight's numbers (scene.js's 'combat' event): guard or heat, abilities, the lock
+  const [hitMark, setHitMark] = useState(null); // { n, kill }
+  const [hurtFlash, setHurtFlash] = useState(0);
+  const [parryNote, setParryNote] = useState(0);
+  const lastHealth = useRef(100);
   const lines = useRef([]); // what's to be said, in turn
   const view = useRef({ live: false });
   const compass = useRef(null);
@@ -253,7 +258,26 @@ export default function GalaxySurface() {
       } else if (e.type === 'questFail') {
         setToast((t) => ({ title: 'Not this time', text: e.why === 'time' ? 'Out of time. Back to the start of it: try again.' : 'Try that again.', n: (t?.n ?? 0) + 1 }));
         later('toast', 3500, () => setToast(null));
-      } else if (e.type === 'health') setHealth(e.value);
+      } else if (e.type === 'health') {
+        if (e.value < lastHealth.current - 0.5) {
+          setHurtFlash((n) => n + 1);
+          later('hurt', 450, () => setHurtFlash(0));
+        }
+        lastHealth.current = e.value;
+        setHealth(e.value);
+      } else if (e.type === 'combat') setCombat(e);
+      else if (e.type === 'hit') {
+        setHitMark((m) => ({ n: (m?.n ?? 0) + 1, kill: e.kill }));
+        later('hitmark', 260, () => setHitMark(null));
+      } else if (e.type === 'parry') {
+        setParryNote((n) => n + 1);
+        later('parry', 900, () => setParryNote(0));
+      } else if (e.type === 'vent') {
+        if (e.perfect) {
+          setParryNote((n) => n + 1);
+          later('parry', 900, () => setParryNote(0));
+        }
+      }
       else if (e.type === 'down') {
         // (in a battle the HUD's deploy card says it)
         if (mission?.kind === 'assault') return;
@@ -411,6 +435,57 @@ export default function GalaxySurface() {
           <span style={{ width: `${health}%` }} />
         </div>
       )}
+      {/* the fight: the guard a Jedi's block spends (or a gun's heat), the abilities and their cooldowns, who you're squared up to */}
+      {combat && phase === 'walk' && (aiming || combat.lock || combat.broken || combat.locked || (combat.heat ?? 0) > 0.02 || (combat.guard ?? 1) < 0.99) && (
+        <div className="surface-combat" aria-live="off">
+          {combat.lock && (
+            <p className="surface-lock">
+              <span className="surface-lock-name">{combat.lock.name}</span>
+              <span className="surface-lock-bar" role="meter" aria-label="Target health" aria-valuenow={combat.lock.hp} aria-valuemin={0} aria-valuemax={combat.lock.max}>
+                <span style={{ width: `${(100 * combat.lock.hp) / Math.max(1, combat.lock.max)}%` }} />
+                {combat.lock.shield > 0 && <i style={{ width: `${Math.min(100, combat.lock.shield * 34)}%` }} />}
+              </span>
+            </p>
+          )}
+          {combat.saber ? (
+            <div className={combat.broken ? 'surface-meter surface-guard is-broken' : 'surface-meter surface-guard'} role="meter" aria-label="Guard" aria-valuenow={Math.round((combat.guard ?? 1) * 100)} aria-valuemin={0} aria-valuemax={100}>
+              <span style={{ width: `${(combat.guard ?? 1) * 100}%` }} />
+              <b>{combat.broken ? 'Guard broken' : combat.stance}</b>
+            </div>
+          ) : (
+            <div className={combat.locked ? 'surface-meter surface-heat is-locked' : combat.hot ? 'surface-meter surface-heat is-hot' : 'surface-meter surface-heat'} role="meter" aria-label="Heat" aria-valuenow={Math.round((combat.heat ?? 0) * 100)} aria-valuemin={0} aria-valuemax={100}>
+              <span style={{ width: `${(combat.heat ?? 0) * 100}%` }} />
+              {combat.vent != null && <i className="surface-vent" style={{ left: `${combat.vent * 100}%` }} />}
+              {combat.vent != null && <em className="surface-vent-sweet" />}
+              <b>{combat.locked ? 'Overheated: R to vent' : combat.hot ? `${combat.weapon}: overcharged` : combat.weapon}</b>
+            </div>
+          )}
+          <ul className="surface-powers">
+            {[
+              ['G', combat.saber ? 'Push' : 'Detonator', 'power'],
+              ['V', combat.saber ? 'Pull' : 'Overcharge', 'second'],
+              ['X', 'Dodge', 'dodge'],
+            ].map(([key, name, slot]) => {
+              const left = combat.cool?.[slot] ?? 0;
+              const full = combat.cools?.[slot] ?? 1;
+              return (
+                <li key={slot} className={left > 0 ? 'surface-power is-cooling' : 'surface-power'} style={{ '--k': left > 0 ? left / full : 0 }}>
+                  <kbd>{key}</kbd>
+                  <span>{name}</span>
+                  {left > 0.05 && <small>{left.toFixed(left < 10 ? 1 : 0)}</small>}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+      {hitMark && <span key={`hit-${hitMark.n}`} className={hitMark.kill ? 'surface-hitmark is-kill' : 'surface-hitmark'} aria-hidden="true" />}
+      {parryNote > 0 && (
+        <p key={`parry-${parryNote}`} className="surface-parry" role="status">
+          Perfect
+        </p>
+      )}
+      {hurtFlash > 0 && <div key={`hurt-${hurtFlash}`} className="surface-hurt" aria-hidden="true" />}
       {(((aiming || quest?.shoot) && phase === 'walk') || (mission?.kind === 'chase' && chase && !chase.result && phase === 'ride') || (mission?.kind === 'assault' && chase?.phase === 'run' && chase.you?.up && phase === 'walk')) && <span className="surface-crosshair" aria-hidden="true" />}
       <div className="surface-door" aria-hidden="true" style={{ opacity: fade }} />
       {prompt && phase !== 'landing' && phase !== 'leaving' && (

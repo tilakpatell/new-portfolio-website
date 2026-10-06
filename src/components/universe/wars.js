@@ -272,6 +272,8 @@ export const NAMES = {
   shieldgen: 'Shield generator',
   bridge: 'Bridge',
   reactor: 'Reactor',
+  turret: 'Turbolaser battery',
+  transport: 'GR-75 transport',
 };
 
 // a flagship's objectives: two shield generators, the bridge, the reactor
