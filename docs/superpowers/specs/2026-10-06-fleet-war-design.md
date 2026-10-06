@@ -202,3 +202,196 @@ open.
 - In a browser: `scripts/battle-check.mjs` forces a battle and a flare
   (through `window.__universeDebug`) and takes screenshots, and they’re
   looked at. Frame time is measured at the mid tier with 64 fighters up.
+
+## Revision: battles as shared events in the universe
+
+Date: 2026-10-06, after PR B (#315) merged. The user said: “The battle is not
+a game but in the universe itself and as events. Make it robust. Make the
+battle multiplayer compatible. Make sure ship scaling is correct. A capital
+ship should be huge but planets are bigger, so our ship, then the capital
+ship, then the planet.” They approved this reading.
+
+- **No game layer.**
+  - The side picker, the Victory/Defeat card and the Battlefront ticket bar
+    all go.
+  - You're simply in the battle on your crew's side. The war's first side is
+    the crews' own: the Rebels, the Council, Gus.
+  - A one-line status, in the Citadel siege's style, says what's going on.
+    The crew's lines carry the rest.
+- **Battles are events on a shared clock.**
+  - Each war's battles start at the front on a fixed wall-clock schedule:
+    every 15 minutes, 12 of fighting and 3 of lull. The schedule is counted
+    from a weekly epoch, when the war starts again from the middle.
+  - When one starts, the crew calls it out and the nav map marks it. It's
+    seen from far off and fought within sight of it.
+- **Shared by every pilot online.**
+  - The AI's progress on the objectives is a scripted curve, seeded by the
+    battle's number. Every pilot's battle advances alike.
+  - Your damage on the objectives is shared through the Citadel siege's
+    model (`battleNet.js`). Each pilot speaks for their own share, and the
+    totals are merged and taken as the largest anyone's heard of.
+  - A battle's outcome is the same for everyone: the attacker wins if the
+    reactor falls before the fight's time is up.
+  - Outcomes the players caused are remembered and passed on, as the set of
+    battle numbers players won. The front is replayed from the week's
+    battles. A pilot who wasn't there learns of those battles from anyone
+    who was.
+  - The dogfighting itself stays each pilot's own spectacle.
+- **One scale for every ship.** `shipScale.js` (tested) puts a ship's length
+  in map units from its real one, the X-wing's 12.5 m to the ship's 0.26
+  units. That gives the Star Destroyer about 33 and the MC80 about 25.
+  - Capital ships are capped below the smallest world's diameter, and no
+    smaller than a station is to the ship.
+  - The traffic's Star Destroyer (11) and the director's (16) move to the
+    same table as the battle's.
+
+## Revision 2: the Galactic Civil War, in the galaxy
+
+Date: 2026-10-06. The user said: “Make it so the Star Wars battles happen in
+the Star Wars universe, accurate to the planet. You can't have a Battle of
+Endor with no Endor (think Helldivers). And more ships, and crazy, unique
+things to do in the battles.” They chose: the Star Wars war lives in the
+galaxy (`/galaxy`), and all four kinds of set piece (Endor, Hoth, Scarif, and
+a hangar run anywhere). This supersedes the Star Wars front on the universe
+map, and `shipScale.js` (tasks 17 to 22): the universe map keeps its wars for
+Rick and Morty and Breaking Bad (PRs D and E), at their own real places.
+
+### The war (`galaxy/gcw.js`, pure, tested)
+
+- **One war, every pilot on the Rebellion's side**, against the Empire, as
+  Helldivers' players are against its AI. No side to pick.
+- **The map:** the galaxy's systems with a planet, but Dagobah (nobody's
+  there) and Alderaan (gone). Each has a Rebel `control` from 0 (the
+  Empire's) to 1 (the Rebellion's). Neighbours are the systems near it on the
+  map (the nearest few, by `pos`).
+- **A campaign** runs three days of wall-clock time, from a fixed start the
+  same for everyone (`campaignAt(ms)`), then the war starts again from the
+  opening map: the Rebels at Yavin, Hoth, Lothal, Kashyyyk and Sorgan, the
+  Empire everywhere else.
+- **Steps:** the campaign is worked through in 12-minute steps, from its
+  start, the same for everyone: `history(campaign, until, tally)`.
+  - **Liberation:** an Imperial system next to a Rebel one is a front (at
+    most four at once, the campaign's seeded order picks which). Its control
+    rises by the Rebellion's other fleets' seeded rate (some fronts stall,
+    some go backwards) plus what players did there that step. At 1 it's the
+    Rebellion's.
+  - **Defence:** every four hours the Empire attacks a Rebel system that
+    borders its own (a seeded pick, Hoth four times as likely), for 96
+    minutes. Its control falls at the
+    attack's seeded rate, and players push it back up. It falls to the Empire
+    at 0; holding out to the end, it's the Rebellion's again, whole.
+  - **The major order:** each campaign names one front (the set-piece
+    systems first: Endor, Scarif, Hoth), shown on the war table.
+- **What players do counts:** points per system per step, a shared tally.
+  Each objective down is 3%, a fighter down 0.1%, and a battle won 10%, once
+  however many pilots were in it.
+- **Pure functions** give the war table everything: owner, control, rate,
+  attack timer, the battle on now and its clock, the major order.
+
+### Shared (`universe/tally.js`, pure, tested)
+
+The Citadel siege's model, made general:
+
+- Every pilot keeps their own share of each key.
+- Other pilots' shares are kept as they're heard.
+- The floor is the largest total anyone has told of.
+- A key's value is the larger of the sum of shares and the floor.
+- Shares only grow; an epoch starts everything over.
+- Two tallies run on it:
+  - **`war`**, keyed by system and step, epoch the campaign. Wins are keyed
+    `win:<battle>`, counted once.
+  - **`fight`**, the objectives' damage in the battle on now, epoch the
+    battle's id.
+- Both go over the wire as new actions (`war`, `fight`), rate-limited and
+  checked like `siege`, and only from pilots in the same system (for
+  `fight`). The war's tally is kept in `localStorage` for the campaign.
+
+### The battles, at their planets (`galaxy/battles.js` data, `galaxy/warfront.js`)
+
+- **Every front and every defence has a battle on**, back to back, one per
+  12-minute step: 10 minutes fighting, 2 of lull.
+  - The battle's id is campaign, system and step.
+  - Its seed comes from the id, so every pilot's battle is laid out alike.
+- **The fight is Fleet Assault** (`universe/battle.js`), now taking its own
+  `lines` and `radius`, sized to its ships.
+  - **Liberating:** the Rebels attack the Imperial flagship's objectives.
+  - **Defence:** the Empire's bombers go for the Rebel flagship's, and
+    holding out is a Rebel win.
+- **Templates per system** (`battles.js`) say:
+  - where it's fought, off the planet on its sunward side, clear of its
+    surface and its stations;
+  - which fleets, with more ships than before. Each side has a flagship
+    and four to seven escorts: Star Destroyers, Victory-sized Arquitens,
+    Gozantis and an Interdictor for the Empire; MC80s, Nebulon-Bs, CR90s,
+    Hammerheads, GR-75s and the Ghost for the Rebels;
+  - which fighters: TIEs, interceptors, bombers and the TIE Advanced, against
+    X-, Y-, A-, B- and U-wings.
+  - Endor's is the Executor and three Star Destroyers under the second Death
+    Star; Hoth's, the Executor's Death Squadron over Echo Base; Scarif's, two
+    Star Destroyers at the Shield Gate.
+- **In it, not playing it:**
+  - As you drop in or fly near, the crew calls it out and you're in it,
+    already on the Rebels' side.
+  - The world's own ambient battle there (`world.js`) steps aside while the
+    war's is on.
+  - Your shots, the lock and the HUD's markers work as they do for hunters.
+  - The status is a line of comms and the shared numbers on the war table.
+- **Scale:** ship sizes are the galaxy's (X-wing 0.3, Star Destroyer 30,
+  MC80 26, Executor 110). `galaxy/fit.js` grows each planet till it's at least
+  2.5 times as wide as the longest ship near it is long, and moves what's off
+  its surface out with it. So Hoth is 137 across the middle, not 36, and
+  Endor's moon is 175, under a Death Star 140 wide. Fleets keep their
+  formation, and everything is as far off the surface as before.
+
+### The war table (`HoloMap.jsx`)
+
+Helldivers' galactic map on the holotable:
+
+- each system ringed in its owner's colour;
+- a front's liberation as an arc, with its rate (+3.1%/h);
+- a defence's timer and how much is left;
+- the major order;
+- the battles on now, with their clocks;
+- how many pilots are in each.
+
+Picking a system shows its war card (owner, control, the battle on, what
+it's for), and Jump takes you to the fight.
+
+### The set pieces (PR G)
+
+- **Endor**
+  - The second Death Star's superlaser fires at a Rebel cruiser every couple
+    of minutes, and kills it.
+  - The shield generator is on the moon's surface. It's a target: knock it
+    out and the station's shield (`world.js`'s) drops.
+  - The Executor's bridge is the flagship's.
+  - With the shield down, the reactor run: into the Death Star through a
+    superstructure tunnel (`galaxy/tunnel.js`, a flown tube with walls that
+    hurt), the reactor at its heart. Out before the blast.
+- **Hoth**
+  - The ion cannon fires on the Star Destroyers; one it hits is disabled for
+    20 seconds (its guns quiet, its shield down: a window for its objectives).
+  - GR-75 transports run from the planet for the jump point, and the
+    Empire's fighters go for them. Each one out is a share of the win, and
+    the battle's won when enough are out.
+- **Scarif**
+  - The Shield Gate is shut while the shield's up. Disable the Star
+    Destroyer *Persecutor* (its objectives), and the Hammerhead rams it into
+    the *Intimidator*, and both fall on the gate. The gate goes, the shield
+    drops, and the plans go out: the Rebels win.
+- **Anywhere**
+  - A Star Destroyer's hangar run: when its shield's down, fly into its belly
+    hangar, down a short tunnel to its reactor, shoot it, get out; it breaks
+    up.
+  - Hull trench runs: along a capital's spine, its turrets are targets in a
+    row as you fly it.
+
+### Out of scope (revision 2)
+
+- A server.
+  - The war is everyone's from the shared clock and the shared tally.
+  - Pilots who haven't heard of a contribution see the AI's war until they
+    do.
+  - Divergence is bounded to what wasn't shared, as with the siege.
+- Ground battles (the surface missions stay as they are).
+- The sequel trilogy.
