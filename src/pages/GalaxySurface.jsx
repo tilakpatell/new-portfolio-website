@@ -22,7 +22,7 @@ import { runtime } from '../runtime';
 import ChaseHud from '../components/galaxy/surface/ChaseHud';
 import AssaultHud from '../components/galaxy/surface/AssaultHud';
 import HeroPanel from '../components/galaxy/surface/HeroPanel';
-import { HERO_KEY, heroById, heroSpec, readHero, writeHero } from '../components/galaxy/heroes';
+import { heroById, heroKey, heroSpec, readHero, writeHero } from '../components/galaxy/heroes';
 import { missionOf } from '../components/galaxy/surface/missions';
 import ModelCredits from '../components/ModelCredits';
 import { wornFiles } from '../components/rickmorty/wardrobe/looks';
@@ -82,12 +82,12 @@ export default function GalaxySurface() {
   useDocumentTitle(site ? (mission ? `${mission.name} · ${sys.name}` : `${site.place} · ${sys.name}`) : 'A galaxy far, far away');
   const reduced = useReducedMotion();
   const [ship] = useState(() => parseShip(local.get(SHIP_KEY)) ?? 'xwing');
-  // who you play as down here (heroes.js), kept across worlds
-  const [hero, setHero] = useState(() => readHero(local.get(HERO_KEY), parseShip(local.get(SHIP_KEY)) ?? 'xwing'));
+  // who you play as down here (heroes.js), kept across worlds (each crew's own: heroKey)
+  const [hero, setHero] = useState(() => readHero(local.get(heroKey(ship)), ship));
   const [picking, setPicking] = useState(false);
   const pickHero = (next) => {
     setHero(next);
-    local.set(HERO_KEY, writeHero(next));
+    local.set(heroKey(ship), writeHero(next));
     setPicking(false);
   };
   const crew = crewById(ship);

@@ -6,9 +6,11 @@
 // surface/scene.js walks the hero in the lead of the party.
 //
 //   HEROES                   the roster, in order: { id, name, tall, src, weapon ('saber' | a gun kind), bolt, saber?, blurb, film }
+//                            (every ship's crew among them: Rick and Morty, Walt and Jesse walk the galaxy too)
 //   SABER_COLORS, HILTS      what a saber can be: { id, name, hex } and { id, name, ... }
-//   HERO_KEY                 the localStorage key
-//   readHero(raw, ship)      the choice, made good: { id, color, hilt, stance, gun, mods, perks } (the ship's own lead when nothing's kept or it's nonsense; the stance is combatRules.js's, the gun and mods weaponRules.js's)
+//   HERO_KEY, heroKey(ship)  the localStorage key, and the one for a ship's crew (the Star Wars ships share HERO_KEY)
+//   readHero(raw, ship)      the choice, made good: { id, color, hilt, stance, gun, mods, perks } (the ship's own lead when nothing's kept or it's nonsense; the stance is combatRules.js's, the gun and mods weaponRules.js's).
+//                            Anyone can carry a lightsaber (gun 'saber') or any pickable gun, whoever they are
 //   heroSpec(hero, ship)     the party spec for them (universe/footScene.js's PARTY shape), the saber (with its stance) on it where they carry one, else the gun they picked with its mods
 //   defaultHeroId(ship)      who flies that ship
 
@@ -17,6 +19,8 @@ import { MODS, MAX_MODS, PICKABLE, WEAPONS } from './surface/weaponRules';
 import { readPerks } from './perks';
 
 export const HERO_KEY = 'tp-galaxy-hero';
+// (a ship from elsewhere keeps its crew's pick apart: Rick shouldn't land as Luke)
+export const heroKey = (ship) => (ship === 'cruiser' || ship === 'rv' ? `${HERO_KEY}-${ship}` : HERO_KEY);
 
 // (the crew's own files: Luke and Leia are Sketchfab figures rigged with Meshy onto the crew's skeleton)
 const crew = (name) => `/models/galaxy/crew/${name}.glb`;
@@ -47,13 +51,18 @@ export const HEROES = [
   { id: 'chewie', name: 'Chewbacca', tall: 2.28, src: { url: '/models/cockpit/chewie.glb' }, weapon: 'bowcaster', bolt: '#ff4a3d', blurb: 'Two hundred years old and still winning arguments.', film: 'The Original Trilogy' },
   { id: 'ahsoka', name: 'Ahsoka Tano', tall: 1.85, src: { url: crew('ahsoka') }, weapon: 'saber', bolt: '#f4f8ff', saber: { color: 'white', hilt: 'ahsoka', stance: 'dual' }, blurb: 'No longer a Jedi. Still the best of them.', film: 'The Clone Wars, Ahsoka' },
   { id: 'bobafett', name: 'Boba Fett', tall: 1.83, src: { url: crew('bobafett') }, weapon: 'rifle', bolt: '#ff6a3d', blurb: 'The best bounty hunter in the galaxy, and he knows it.', film: 'The Original Trilogy, The Book of Boba Fett' },
+  // the other ships' crews, as universe/footScene.js's PARTY has them (the Space Cruiser's, the RV's)
+  { id: 'rick', name: 'Rick Sanchez', tall: 1.88, src: { meshy: 'rick' }, weapon: 'portal', bolt: '#8dff5a', blurb: 'The smartest man in any universe, a long way from his garage.', film: 'Rick and Morty' },
+  { id: 'morty', name: 'Morty Smith', tall: 1.6, src: { meshy: 'morty' }, weapon: 'laser', bolt: '#8dff5a', blurb: 'Fourteen, dragged along, braver than he thinks.', film: 'Rick and Morty' },
+  { id: 'walt', name: 'Walter White', tall: 1.79, src: { url: '/models/albuquerque/walt.glb' }, weapon: 'revolver', bolt: '#ffd36b', blurb: 'A chemistry teacher from Albuquerque. Say his name.', film: 'Breaking Bad' },
+  { id: 'jesse', name: 'Jesse Pinkman', tall: 1.73, src: { url: '/models/albuquerque/jesse.glb' }, weapon: 'pistol', bolt: '#ffd36b', blurb: 'Walt’s partner, yo. Further from home than ever.', film: 'Breaking Bad' },
 ];
 
 const BY_ID = Object.fromEntries(HEROES.map((h) => [h.id, h]));
 export const heroById = (id) => BY_ID[id] ?? null;
 
 // who flies which ship, as the party has it
-const LEADS = { xwing: 'luke', falcon: 'han', cruiser: 'luke', rv: 'luke' };
+const LEADS = { xwing: 'luke', falcon: 'han', cruiser: 'rick', rv: 'walt' };
 export const defaultHeroId = (ship) => LEADS[ship] ?? 'luke';
 
 // the choice, from what's kept (a JSON string, an object, or nothing)
@@ -70,20 +79,20 @@ export function readHero(raw, ship = 'xwing') {
   const color = SABER_COLORS.some((c) => c.id === v?.color) ? v.color : (hero.saber?.color ?? 'blue');
   const hilt = HILTS.some((h) => h.id === v?.hilt) ? v.hilt : (hero.saber?.hilt ?? 'skywalker');
   const stance = STANCES[v?.stance] ? v.stance : (hero.saber?.stance ?? 'single');
-  // (a gun hero carries their own, or one of the pickable ones; a Jedi's gun is their saber)
-  const gun = hero.weapon !== 'saber' && (v?.gun === hero.weapon || PICKABLE.includes(v?.gun)) && WEAPONS[v.gun] ? v.gun : hero.weapon;
+  // (anyone carries their own, a lightsaber, or one of the pickable guns)
+  const gun = v?.gun === 'saber' || ((v?.gun === hero.weapon || PICKABLE.includes(v?.gun)) && WEAPONS[v.gun]) ? v.gun : hero.weapon;
   const mods = Array.isArray(v?.mods) ? [...new Set(v.mods.filter((m) => MODS[m]))].slice(0, MAX_MODS) : [];
   return { id: hero.id, color, hilt, stance, gun, mods, perks: readPerks(v?.perks) };
 }
 export const writeHero = (hero) => JSON.stringify({ id: hero.id, color: hero.color, hilt: hero.hilt, stance: hero.stance, gun: hero.gun, mods: hero.mods ?? [], perks: hero.perks ?? [] });
 
-// the spec the scene walks: a saber hero carries no gun (the saber's its
-// own thing, surface/saber.js), the others their gun
+// the spec the scene walks: whoever carries a saber carries no gun (the
+// saber's its own thing, surface/saber.js), the others their gun
 export function heroSpec(hero) {
   const h = BY_ID[hero.id] ?? BY_ID.luke;
-  const saber = h.weapon === 'saber' ? { color: SABER_COLORS.find((c) => c.id === hero.color)?.hex ?? '#4aa8ff', hilt: HILTS.find((x) => x.id === hero.hilt) ?? HILTS[0], stance: STANCES[hero.stance] ? hero.stance : (h.saber?.stance ?? 'single') } : null;
+  const saber = (hero.gun ?? h.weapon) === 'saber' ? { color: SABER_COLORS.find((c) => c.id === hero.color)?.hex ?? '#4aa8ff', hilt: HILTS.find((x) => x.id === hero.hilt) ?? HILTS[0], stance: STANCES[hero.stance] ? hero.stance : (h.saber?.stance ?? 'single') } : null;
   const gun = saber ? 'saber' : WEAPONS[hero.gun] && hero.gun !== 'saber' ? hero.gun : h.weapon;
-  // (a gun from elsewhere fires yellow; the galaxy's keep the hero's own colour)
-  const bolt = saber ? saber.color : WEAPONS[gun]?.side === 'elsewhere' ? '#ffd36b' : h.bolt;
+  // (their own gun fires their colour; another from elsewhere fires yellow, the galaxy's the hero's own)
+  const bolt = saber ? saber.color : gun !== h.weapon && WEAPONS[gun]?.side === 'elsewhere' ? '#ffd36b' : h.bolt;
   return { id: h.id, name: h.name.split(' ')[0], tall: h.tall, src: h.src, gun, bolt, saber, mods: saber ? [] : (hero.mods ?? []).filter((m) => MODS[m]).slice(0, MAX_MODS), perks: readPerks(hero.perks), hero: true };
 }

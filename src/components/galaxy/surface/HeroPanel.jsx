@@ -5,10 +5,10 @@ import { MAX_MODS, MODS, MOD_IDS, PICKABLE, WEAPONS, withMods } from './weaponRu
 import { MAX_PERKS, PERKS, PERK_IDS } from '../perks';
 
 // Who you play as down here, and what's in your hand: the roster
-// (heroes.js) as cards; for a Jedi the blade's colour, the hilt and the
-// stance (combatRules.js); for the others the gun (weaponRules.js, the
-// galaxy's and the ones from elsewhere, with their numbers) and up to two
-// mods on it. The choice is kept (pages/GalaxySurface.jsx writes it) and the
+// (heroes.js, every ship's crew among them) as cards; then, whoever it is,
+// a lightsaber (the blade's colour, the hilt and the stance: combatRules.js)
+// or a gun (weaponRules.js, the galaxy's and the ones from elsewhere, with
+// their numbers) and up to two mods on it. The choice is kept (pages/GalaxySurface.jsx writes it) and the
 // world rebuilds with the new lead on Play.
 
 const ARM = { saber: 'Lightsaber', bowcaster: 'Bowcaster', rifle: 'Blaster rifle', blaster: 'Blaster' };
@@ -18,11 +18,13 @@ export default function HeroPanel({ hero, onChange, onClose }) {
   const [pick, setPick] = useState(hero);
   const [tab, setTab] = useState('hero');
   const h = heroById(pick.id);
-  const saber = h?.weapon === 'saber';
+  const saber = pick.gun === 'saber';
   const choose = (id) => {
     const next = heroById(id);
-    setPick({ ...pick, id, color: next?.saber?.color ?? pick.color, hilt: next?.saber?.hilt ?? pick.hilt, stance: next?.saber?.stance ?? pick.stance ?? 'single', gun: next?.weapon === 'saber' ? 'saber' : next?.weapon, mods: [] });
+    setPick({ ...pick, id, color: next?.saber?.color ?? pick.color, hilt: next?.saber?.hilt ?? pick.hilt, stance: next?.saber?.stance ?? pick.stance ?? 'single', gun: next?.weapon, mods: [] });
   };
+  // (a saber, or back to a gun: their own, or a blaster for a Jedi)
+  const arm = (blade) => setPick({ ...pick, gun: blade ? 'saber' : h?.weapon && h.weapon !== 'saber' ? h.weapon : 'blaster', mods: blade ? [] : pick.mods });
   const toggleMod = (id) => {
     const has = pick.mods?.includes(id);
     const mods = has ? pick.mods.filter((m) => m !== id) : [...(pick.mods ?? []), id].slice(-MAX_MODS);
@@ -41,7 +43,7 @@ export default function HeroPanel({ hero, onChange, onClose }) {
       <ul className="surface-tabs" role="tablist">
         {[
           ['hero', 'Hero'],
-          [saber ? 'saber' : 'weapon', saber ? 'Lightsaber' : 'Weapon'],
+          ['weapon', saber ? 'Lightsaber' : 'Weapon'],
           ['perks', 'Perks'],
         ].map(([id, name]) => (
           <li key={id} role="presentation">
@@ -59,13 +61,31 @@ export default function HeroPanel({ hero, onChange, onClose }) {
               <li key={x.id}>
                 <button type="button" className={x.id === pick.id ? 'surface-hero is-picked' : 'surface-hero'} onClick={() => choose(x.id)} aria-pressed={x.id === pick.id}>
                   <span className="surface-hero-name">{x.name}</span>
-                  <span className="surface-hero-arm">{ARM[x.weapon] ?? 'Blaster'}</span>
+                  <span className="surface-hero-arm">{ARM[x.weapon] ?? WEAPONS[x.weapon]?.name ?? 'Blaster'}</span>
                   <span className="surface-hero-blurb">{x.blurb}</span>
                 </button>
               </li>
             ))}
           </ul>
         </>
+      )}
+      {tab !== 'hero' && tab !== 'perks' && (
+        <div className="surface-saber">
+          <p className="surface-list-title">In hand</p>
+          <ul className="surface-hilts">
+            {[
+              [true, 'Lightsaber', 'Anyone can carry one: strokes, blocks, a throw, the Force.'],
+              [false, 'A gun', h?.weapon && h.weapon !== 'saber' ? `${WEAPONS[h.weapon]?.name ?? 'Their own'}, or any of the others.` : 'A blaster, or any of the others.'],
+            ].map(([blade, name, about]) => (
+              <li key={name}>
+                <button type="button" className={blade === saber ? 'surface-hilt is-picked' : 'surface-hilt'} onClick={() => arm(blade)} aria-pressed={blade === saber}>
+                  <span className="surface-hero-name">{name}</span>
+                  <span className="surface-hero-blurb">{about}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       {tab !== 'hero' && tab !== 'perks' && saber && (
         <div className="surface-saber">

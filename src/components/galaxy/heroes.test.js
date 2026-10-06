@@ -1,13 +1,15 @@
 import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { HEROES, HILTS, SABER_COLORS, defaultHeroId, heroSpec, readHero, writeHero } from './heroes';
+import { HEROES, HERO_KEY, HILTS, SABER_COLORS, defaultHeroId, heroKey, heroSpec, readHero, writeHero } from './heroes';
 import { GUNS } from '../universe/gunplay';
 
 describe('the heroes', () => {
   it('each have a rigged figure in the site, a weapon the hands know, and a word about them', () => {
     expect(HEROES.length).toBeGreaterThanOrEqual(6);
     for (const h of HEROES) {
-      expect(existsSync(new URL(`../../../public${h.src.url}`, import.meta.url)), h.id).toBe(true);
+      // (a file in the site, or one of the Meshy cast: universe/footScene.js's)
+      if (h.src.url) expect(existsSync(new URL(`../../../public${h.src.url}`, import.meta.url)), h.id).toBe(true);
+      else expect(h.src.meshy, h.id).toBeTruthy();
       expect(h.tall).toBeGreaterThan(1);
       expect(GUNS[h.weapon], `${h.id} carries ${h.weapon}`).toBeTruthy();
       if (h.weapon === 'saber') {
@@ -45,14 +47,49 @@ describe('the heroes', () => {
   });
 });
 
+describe('every crew, and every weapon', () => {
+  it('lands each ship’s own crew: Rick and Morty off the Space Cruiser, Walt and Jesse off the RV', () => {
+    expect(readHero(null, 'cruiser').id).toBe('rick');
+    expect(readHero(null, 'rv').id).toBe('walt');
+    for (const id of ['rick', 'morty', 'walt', 'jesse']) expect(HEROES.some((h) => h.id === id), id).toBe(true);
+    const rick = heroSpec(readHero(null, 'cruiser'));
+    expect(rick.gun).toBe('portal');
+    expect(rick.src.meshy).toBe('rick');
+    expect(rick.saber).toBeNull();
+  });
+
+  it('gives anyone a lightsaber, and anyone a gun', () => {
+    const han = heroSpec(readHero({ id: 'han', gun: 'saber', color: 'red' }));
+    expect(han.gun).toBe('saber');
+    expect(han.saber.color).toBe('#ff3b3b');
+    expect(han.mods).toEqual([]);
+    const rick = heroSpec(readHero({ id: 'rick', gun: 'saber' }));
+    expect(rick.saber.color).toBe('#4aa8ff');
+    expect(rick.saber.stance).toBe('single');
+    const luke = heroSpec(readHero({ id: 'luke', gun: 'sniper', mods: ['scope'] }));
+    expect(luke.gun).toBe('sniper');
+    expect(luke.saber).toBeNull();
+    expect(luke.mods).toEqual(['scope']);
+    // (and back to their own)
+    expect(heroSpec(readHero({ id: 'walt', gun: 'revolver' })).gun).toBe('revolver');
+  });
+
+  it('keeps each crew’s pick apart (the Star Wars ships share the one that was always kept)', () => {
+    expect(heroKey('xwing')).toBe(HERO_KEY);
+    expect(heroKey('falcon')).toBe(HERO_KEY);
+    expect(heroKey('cruiser')).not.toBe(HERO_KEY);
+    expect(heroKey('rv')).not.toBe(heroKey('cruiser'));
+  });
+});
+
 describe('the stance, the gun and the mods', () => {
   it('reads a Jedi’s stance and a gunslinger’s gun and mods, and makes nonsense good', () => {
     expect(readHero({ id: 'luke', stance: 'double' }).stance).toBe('double');
     expect(readHero({ id: 'luke', stance: 'nope' }).stance).toBe('single');
     expect(readHero({ id: 'ahsoka' }).stance).toBe('dual');
     expect(readHero({ id: 'han', gun: 'sniper', mods: ['scope', 'scope', 'nope', 'cooling', 'choke'] })).toMatchObject({ gun: 'sniper', mods: ['scope', 'cooling'] });
-    expect(readHero({ id: 'han', gun: 'saber' }).gun).toBe('blaster');
-    expect(readHero({ id: 'luke', gun: 'sniper' }).gun).toBe('saber');
+    expect(readHero({ id: 'han', gun: 'nope' }).gun).toBe('blaster');
+    expect(readHero({ id: 'luke', gun: 'nope' }).gun).toBe('saber');
     expect(readHero({ id: 'chewie' }).gun).toBe('bowcaster');
   });
   it('the spec carries them: the saber’s stance, the picked gun and its mods, a yellow bolt from elsewhere', () => {
