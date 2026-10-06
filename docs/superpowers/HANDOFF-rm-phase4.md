@@ -23,18 +23,15 @@ Branch: `claude/rm-multiverse-phase4` (merged).
 
 ## Not done
 
-- **King Flippy Nips** (`flippynips`) and **`magdalian-b`**. The king's
-  picture was refused by the image filter twice; the prompt now reads "A
-  Plutonian king". Magdalian B hit a service outage. A rerun was started:
-  check `node scripts/meshy-rm-local.mjs balance`, then run `images`,
-  `models`, `rig` and `anim` for `flippynips`, and `models` for
-  `magdalian-b`, then `fetch` both. Copy `magdalian-b.glb` from
-  `node_modules/.cache/meshy-full/` to `public/models/c137/rm/`. Until then
-  both are left out of their places, as the rules say.
-- Shots checked in the browser for Fantasy World, the Microverse, Anatomy
-  Park and Needful Things. The Jerryboree, the Purge Planet, Pluto and Gear
-  World are built and tested but not yet looked at. Run
-  `BASE=http://127.0.0.1:<port> OUT=<dir> node scripts/c137-shots.mjs jerryboree purge pluto gearworld`.
+- **King Flippy Nips** and **`magdalian-b`** are in (done after the merge,
+  on `claude/rm-phase4-loose-ends`): the king from the prompt "A Plutonian
+  king", rigged with his idle; Magdalian B's crowd copy is in
+  `public/models/c137/rm/`. All 33 of Phase 4's models are in. Credits on the
+  first account: 278.
+- Every place has been looked at now. The Jerryboree, the Purge Planet, Pluto
+  and Gear World are in `docs/superpowers/shots/2026-10-06-rm-phase4-*.webp`.
+  The shots script had the three outdoor views 100 m south of their places;
+  fixed.
 - Small misses: Poncho has no bubble helmet, and Kyle reads like a Rick in a
   lab coat.
 - Phase 0's Task 0.6 is mostly there already: the hook has `warp` and now

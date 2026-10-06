@@ -818,7 +818,9 @@
   },
   "flippynips": {
     "image": "01a1133e-bf81-716d-b417-33cec4f54195",
-    "model": "01a11340-fa28-771a-8a5c-a54f2d4d3415"
+    "model": "01a11340-fa28-771a-8a5c-a54f2d4d3415",
+    "rig": "01a11357-b84e-733e-bad8-6c1a4057ef4f",
+    "idle": "01a11358-0b07-77ec-bbe9-d67df10bca85"
   },
   "scroopy": {
     "image": "01a1132d-30e2-7451-9a8d-212a7cf2121c",
