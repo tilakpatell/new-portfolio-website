@@ -391,6 +391,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     r.group.rotation.y = i ? -0.3 : 0.25;
     r.group.visible = false;
     outdoors.add(r.group);
+    movers.push({ object: r.group, size: [1.2, 2.8] });
     return r;
   });
   // a cold light that comes with the Nazgûl, so they're shapes and not holes
