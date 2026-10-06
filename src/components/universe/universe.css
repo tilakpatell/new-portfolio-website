@@ -801,6 +801,8 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
 }
 @media (pointer: coarse) { .universe-prompt::before { content: none; } }
 .universe-prompt[data-say]::before { content: none; }
+/* (a word on the HUD, or the ship on its way down: no key to press) */
+.universe-prompt[data-plain]::before { content: none; }
 .universe-prompt[data-say] { font-style: italic; }
 /* the place's name, as you come down on a planet */
 .universe-arrive {

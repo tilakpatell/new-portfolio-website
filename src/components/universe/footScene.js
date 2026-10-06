@@ -1680,8 +1680,18 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       rocks = { mesh: f.group, solids: f.solids, spots: f.spots, update: f.update, dispose: f.dispose };
     } else rocks = u.plated ? createHullBits(n, S.R, u, small, S.band, clear) : createRocks(n, S.R, u, small);
     root.add(rocks.mesh);
+    // (flown in, the ground's out of sight till the clouds, stepEntry: its
+    // shader's made now, while it's still shown, so it isn't on the frame it
+    // first comes into view)
+    if (S.entry) {
+      warm?.(ground.mesh)?.catch?.(() => {});
+      ground.mesh.visible = rocks.mesh.visible = false;
+    }
     haze = u.airless ? null : landing?.sky ? createSky(landing.sky, u.rim ?? u.swatch ?? '#8ab4ff') : createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
     if (haze) root.add(haze.mesh);
+    // (flown in, dark to start with: the entry starts in the middle of a
+    // frame, before day() has had its say, and that frame's drawn too)
+    if (haze && S.entry) haze.mat.uniforms.uDay.value = 0;
     // the place's name: flown in, once it's out under the clouds
     if (landing && S.entry) S.entry.title = { title: landing.title, sub: landing.sub };
     else if (landing) emit({ type: 'foot', id: 'arrive', title: landing.title, sub: landing.sub });
@@ -1762,10 +1772,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const a = e.path.at(e.t);
     entryAt.set(...a.p);
     e.up.set(...a.n);
-    // which way it's going: toward where it'll be a moment on (while it
-    // settles, straight down, it keeps the way it was going)
-    entryNext.set(...e.path.at(Math.min(e.path.T, e.t + 0.08)).p).sub(entryAt);
-    if (!a.settling && entryNext.lengthSq() > 1e-12) e.dir.copy(entryNext).normalize();
+    // which way it's going: toward where it'll be a moment on, never looking
+    // past the glide's end into the settle (straight down: that would tip
+    // the nose over as it comes to a stop); while it settles, it keeps the
+    // way it was going
+    entryNext.set(...e.path.at(Math.min(ENTRY.glide, e.t + 0.08)).p).sub(entryAt);
+    if (!a.settling && entryNext.lengthSq() > 1e-10) e.dir.copy(entryNext).normalize();
     e.fx = fxAt(e.t);
     m.group.position.copy(entryAt).add(S.c);
     m.pivot.rotation.set(0, 0, 0);
@@ -1784,6 +1796,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // grown to its parked size in the clouds, where it can't be seen to
     // (fxAt's white-out is thickest from 0.52 to 0.74 of the glide)
     m.group.scale.setScalar(1 + ((PARKED[S.kind] ?? 1) - 1) * smooth(0.52 * ENTRY.glide, 0.74 * ENTRY.glide, e.t));
+    // the landing itself (its ground and what stands on it) only from the
+    // thick of the clouds (fxAt's white-out peaks at 0.62 of the glide): from
+    // higher up it's a patch on the planet's own map, and it's in the clouds
+    // that the one becomes the other
+    const shown = e.t >= 0.6 * ENTRY.glide;
+    for (const x of [ground, rocks, sides]) if (x) x.mesh.visible = shown;
     // the sky comes up round it, and the halo it flew into goes
     S.sky = e.fx.sky;
     const air = planetOf[S.id]?.air;
@@ -1798,7 +1816,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     S.entry = null;
     S.sky = 1;
     reentry.stop();
-    if (air) air.visible = false;
+    if (air) {
+      // (gone while you're down, as bright as it was for when it's back:
+      // the map's hover and picking set it from here on, as before)
+      air.visible = false;
+      air.material.uniforms.uStrength.value = S.airWas;
+    }
     S.from = { p: m.group.position.clone(), q: m.group.quaternion.clone() };
     S.t = LAND.down;
     placeShip(1);
@@ -2375,14 +2398,17 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const k = Math.min(1, S.t / LAND.lift);
     const e = ease(k);
     const P0 = S.from.p.clone();
-    // up and out of the air (and past it far enough that it's no going back in, entry.js's rearm)
+    // up and out of the air, and well clear of it (entry.js's ENTRY.clear)
     const up = new V(...vec.scale(S.spot.n, S.R * AIR + ENTRY.clear + 0.6)).add(S.c);
     m.group.position.copy(P0).lerp(up, e);
     // turning level as it rises (the map's level: that's how it flies),
-    // nose the way it was facing, or else out away from the planet
+    // nose the way it was facing, or else out away from the planet: never
+    // back in toward it, where flying on level would take it straight back
+    // down into the air it's just climbed out of
     const [fx, , fz] = S.spot.f;
     const [nx, , nz] = S.spot.n;
-    const heading = Math.hypot(fx, fz) > 0.25 ? Math.atan2(-fx, -fz) : Math.atan2(-nx, -nz);
+    const facing = Math.hypot(fx, fz) > 0.25 && (fx * nx + fz * nz >= 0 || Math.hypot(nx, nz) < 0.05);
+    const heading = facing ? Math.atan2(-fx, -fz) : Math.atan2(-nx, -nz);
     const level = new THREE.Quaternion().setFromAxisAngle(new V(0, 1, 0), heading);
     m.group.quaternion.copy(S.from.q).slerp(level, smooth(0.3, 1, k));
     m.group.scale.setScalar((PARKED[S.kind] ?? 1) + (1 - (PARKED[S.kind] ?? 1)) * smooth(0, 0.6, k));
@@ -2680,7 +2706,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       planet?.hold?.(false);
       if (planet?.air) {
         planet.air.visible = true;
-        planet.air.material.uniforms.uStrength.value = S.airWas; // (as bright as it was before the ship flew into it)
+        // (ended partway in: as bright as it was before the ship flew into it)
+        if (S.entry) planet.air.material.uniforms.uStrength.value = S.airWas;
       }
       S.entry = null;
       S.sky = 1;

@@ -35,7 +35,7 @@ export const AIR = 1.2; // the air's top as a share of a planet's radius (planet
 export const ENTRY = {
   fast: 12, // map units/s: any faster through the air is no landing; the ship carries on and crashes (SHIP.cruise 5.5, SHIP.boost 20)
   sink: 0.15, // map units/s toward the planet's middle, at least, to count as going in (skimming the top isn't)
-  clear: 1.5, // map units past the air's top a ship must climb before it can enter that planet again
+  clear: 1.5, // map units over the air's top a ship takes off to (and waits at, while it's down), so it's well out of it
   arc: [0.22, 0.85], // radians round the planet from where it went in to the spot: least, most
   lean: 0.6, // radians, at most, the spot leans toward the day side
   day: 0.5, // dot(spot, light) it leans toward: no lean once it's that far into the day
@@ -88,16 +88,6 @@ export function entering(s, planets = LANDABLE, held = null) {
     return { id: p.id, kind: speed > ENTRY.fast ? 'hot' : 'enter', speed, sink, n, h: d - p.r, vel };
   }
   return null;
-}
-
-// The planet just taken off from stays out of reach until the ship has
-// climbed out past its air by ENTRY.clear, so a ship still climbing out
-// never drops straight back in: `held` until then, null after (or when it
-// isn't a planet at all).
-export function rearm(held, s, planets = LANDABLE) {
-  const p = held == null ? null : planets.find((o) => o.id === held);
-  if (!p) return null;
-  return len(add(posOf(s), p.at, -1)) > airTop(p) + ENTRY.clear ? null : held;
 }
 
 // Where an entry comes down: on ahead along the ship's ground track from

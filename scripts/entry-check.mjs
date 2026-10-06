@@ -94,6 +94,19 @@ const air = await page.evaluate((id) => {
 }, planet);
 ok(!s.foot && air.dist > air.top, `${planet}: took off and climbed out past the air (${air.dist.toFixed(2)} from its middle, the air's top ${air.top.toFixed(2)})`);
 await shot(`${planet}-7-up`);
+// (and flying straight on from there, level, takes it away, not back down into the air)
+const clock0 = await page.evaluate(() => window.__universeDebug.state.clock);
+await page.keyboard.down('w');
+await page.waitForFunction((c) => window.__universeDebug.state.clock > c + 3 || window.__universe().foot, clock0, { timeout: 600000, polling: 100 }).catch(() => null);
+await page.keyboard.up('w');
+s = await snap();
+const away = await page.evaluate((id) => {
+  const d = window.__universeDebug;
+  const c = d.planets.find((x) => x.id === id).group.position;
+  const sh = d.state.ship;
+  return Math.hypot(sh.x - c.x, sh.y - c.y, sh.z - c.z);
+}, planet);
+ok(!s.foot && away > air.dist, `${planet}: flying on level after taking off goes away from it, not back in (${away.toFixed(2)} from its middle)`);
 
 // 3. G at the planet: the ship flies itself in
 await page.evaluate((id) => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AIR, ENTRY, LANDABLE, airTop, descendInput, entering, entryPath, entrySpot, fxAt, rearm, velocityOf } from './entry';
+import { AIR, ENTRY, LANDABLE, airTop, descendInput, entering, entryPath, entrySpot, fxAt, velocityOf } from './entry';
 import { PLANETS, SHIP, headingTo, parkAt, spawn, step } from './ship';
 import { NOSE, fromAngles, rotate } from './orient';
 import { flat, vec } from './foot';
@@ -178,23 +178,6 @@ describe('the crash still happens', () => {
       expect(e, p.id).not.toBe(null);
       expect(crashOrBump(events, p.id), p.id).toBe(false);
     }
-  });
-});
-
-describe('rearm', () => {
-  it('holds a planet until the ship is out past its air by ENTRY.clear', () => {
-    const top = airTop(first) + ENTRY.clear;
-    expect(rearm(first.id, inAir(first, OUT, OUT, 1, 0.5))).toBe(first.id);
-    expect(rearm(first.id, inAir(first, OUT, OUT, 1, -(ENTRY.clear - 0.1)))).toBe(first.id);
-    const out = inAir(first, OUT, OUT, 1, -(ENTRY.clear + 0.1));
-    expect(distTo(out, first)).toBeGreaterThan(top);
-    expect(rearm(first.id, out)).toBe(null);
-  });
-
-  it('lets go of nothing, or of anything that is not a planet', () => {
-    const s = inAir(first, OUT, OUT, 1);
-    expect(rearm(null, s)).toBe(null);
-    expect(rearm('nowhere', s)).toBe(null);
   });
 });
 
