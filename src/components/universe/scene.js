@@ -134,6 +134,7 @@ import { createSkirmishes } from './skirmishes';
 import { createBelt, createDust } from './belt';
 import { createTrail } from './trail';
 import { BUILT, ENGINES, LENGTH, SHIP_MODELS, buildShip } from './shipModels';
+import { HERO_ENGINES, createEngines } from './engines';
 import { paintById } from './paint';
 import { FASTEST, PARTS, PARTS_SLOTS, STOCK, STOCK_LOADOUT, readLoadout, statsOf } from './outfit';
 import { createNpcs } from './npcs';
@@ -703,7 +704,11 @@ export async function create(canvas, ctx) {
   };
   // everyone else out here (none with reduced motion), and the pops when a shot hits one
   const fleet = createFleet(); // the ships that are models, shared
-  const traffic = reduced ? null : createTraffic(map, { small, fleet });
+  // every ship's engines alight with its throttle, yours, the traffic's and
+  // the hunters', as one draw (engines.js)
+  const engines = createEngines({ parent: map });
+  let heroEngine = null;
+  const traffic = reduced ? null : createTraffic(map, { small, fleet, engines });
   const pops = createCrash(map);
 
   // heavy rounds (weapons.js): a glowing slug with a halo and a tail of
@@ -789,7 +794,7 @@ export async function create(canvas, ctx) {
   // who comes after you, what the director sets going, and its set pieces
   // (none of it with reduced motion)
   const FACTIONS_ALL = factionsOf(null);
-  const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: FACTIONS_ALL, kinds: kindsOf(null) }); // (every side's: another pilot's hunters, whoever they are)
+  const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: FACTIONS_ALL, kinds: kindsOf(null), engines }); // (every side's: another pilot's hunters, whoever they are)
   const wingmen = hunters ? createWingmen(map, { fleet, solids: SOLIDS }) : null; // (friends in a long fight)
   const skirmishes = hunters ? createSkirmishes(map, { fleet, solids: SOLIDS }) : null; // (someone else's fight, out ahead)
   const npcs = hunters ? createNpcs(map, { fleet }) : null; // (the named characters: npcRules.js's brains)
@@ -1642,6 +1647,8 @@ export async function create(canvas, ctx) {
       quietRoar();
     }
     if (state.model) {
+      engines.remove(heroEngine);
+      heroEngine = null;
       map.remove(state.model.group);
       state.model.dispose();
       disposeTree(state.model.group);
@@ -1674,6 +1681,8 @@ export async function create(canvas, ctx) {
     }
     state.model = buildShip(kind, T, { build: state.build });
     map.add(state.model.group);
+    // its engines' glow (a garage build's where its own exhausts are)
+    heroEngine = engines.add(kind, state.model.pivot, { list: state.build ? state.model.engines.map((at) => ({ at, r: 0.03, colour: '#ffc080' })) : (HERO_ENGINES[kind] ?? HERO_ENGINES.cruiser) });
     if (state.build) setPlumes(kind, state.model.engines); // (its own engines)
     refit();
     dress();
@@ -3422,6 +3431,7 @@ export async function create(canvas, ctx) {
     m.group.rotation.set(ship.pitch || 0, ship.heading, -(ship.bank || 0), 'YXZ');
     m.pivot.rotation.set(reduced ? 0 : clamp(-input.throttle * 0.06, -0.08, 0.08), 0, -(ship.lean || 0));
     m.setThrottle(clamp01(Math.abs(ship.speed) / SHIP.cruise) * (0.7 + state.streak * 0.3));
+    engines.set(heroEngine, { throttle: clamp01(Math.abs(ship.speed) / SHIP.cruise), boost: state.streak });
     updatePlumes(dt, t, clamp01((ship.speed - 0.5) / SHIP.cruise) * (0.7 + 0.3 * state.streak), 1 + state.streak * 1.3, clamp01(state.streak * 1.4));
     m.drive(dt, { throttle: clamp01(Math.abs(ship.speed) / SHIP.cruise), boost: state.streak > 0.3, turn: input.turn || 0, climb: input.climb || 0 });
     engine?.set({ speed: Math.min(ship.speed, SHIP.boost * 1.2), boost: state.streak > 0.3, on: state.shown && !props.frozen && !document.hidden });
@@ -4087,6 +4097,8 @@ export async function create(canvas, ctx) {
     const showCab = Boolean(cab && cab.kind === state.kind && flying() && !onFoot() && state.view === 'cockpit' && state.cabK > 0.6 && !state.crash);
     if (showCab) cabFrame(dt, t);
     post.overlay(showCab ? cabScene : null, camIn);
+    // (the engines placed once everything has moved: three pixels at least in the frame as drawn)
+    engines.update(t, camera, size.h * post.ratio);
     finish(dt);
     renderer.info.reset(); // counted over the whole frame, post passes and all
     post.render(size.w, size.h);
@@ -4788,6 +4800,7 @@ export async function create(canvas, ctx) {
       burst.clear();
       burst.dispose();
       traffic?.dispose();
+      engines.dispose();
       for (const f of flares) f.dispose();
       disposeTree(scene);
       post.dispose();

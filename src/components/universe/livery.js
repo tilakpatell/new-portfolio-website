@@ -13,7 +13,14 @@
 // glass dome) keep them; a mesh marked userData.noPaint (its crew) is left
 // alone, and so is anything unlit (the engines' glow, the ink).
 //
-// createLivery() → { apply(root, fit, { clone, only }), set(paint), dispose() }
+// And the stars' light on its edges: a rim, in the colour of the light that
+// isn't the key (lighting.js's fill), on the edges that face it, so the ship
+// stands off the dark on its unlit side.
+//
+// createLivery() → { apply(root, fit, { clone, only }), set(paint),
+//   rim({ colour, dir }), dispose() }
+// rim: colour (a THREE.Color or linear [r, g, b]) and dir (the way toward
+//   the light, in the world), each frame; the paint's uniforms are untouched
 // fit: { mid, marks: [from, to], dark: [from, to, how much], keep } (linear
 //   luminance and saturation): the luminance of a plain panel, where the
 //   saturation becomes a marking, where darkness does (and how strongly),
@@ -29,7 +36,10 @@ uniform vec3 paintHull;
 uniform vec3 paintTrim;
 uniform float paintOn;
 uniform vec4 paintFit;
-uniform vec4 paintDark;`;
+uniform vec4 paintDark;
+uniform vec3 uRimColour;
+uniform vec3 uRimDir;
+uniform float uRimStrength;`;
 
 // after the texture's been read into diffuseColor (linear)
 const PAINT = `
@@ -44,6 +54,14 @@ if (paintOn > 0.0) {
   diffuseColor.rgb = mix(bare, coat, paintOn * smoothstep(paintFit.w * 0.5, paintFit.w, lum));
 }`;
 
+// with the emissive: the edges (n·v grazing, cubed) that face the rim's light
+const RIM = `
+{
+  vec3 rimV = normalize((viewMatrix * vec4(uRimDir, 0.0)).xyz);
+  float edge = pow(1.0 - saturate(dot(normal, normalize(vViewPosition))), 3.0);
+  totalEmissiveRadiance += uRimColour * uRimStrength * edge * max(0.0, dot(normal, rimV));
+}`;
+
 const lit = (m) => Boolean(m && (m.isMeshStandardMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial || m.isMeshToonMaterial));
 
 // A material taught the paint, on top of whatever it's already taught.
@@ -53,7 +71,10 @@ function teach(m, uniforms) {
   m.onBeforeCompile = function (shader, renderer) {
     before.call(this, shader, renderer);
     Object.assign(shader.uniforms, uniforms);
-    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>${DECLARE}`).replace('#include <map_fragment>', `#include <map_fragment>${PAINT}`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>${DECLARE}`)
+      .replace('#include <map_fragment>', `#include <map_fragment>${PAINT}`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>${RIM}`);
   };
   // (its own changes still tell its programs apart)
   m.customProgramCacheKey = function () {
@@ -68,6 +89,9 @@ export function createLivery() {
     paintHull: { value: new THREE.Color() },
     paintTrim: { value: new THREE.Color() },
     paintOn: { value: 0 },
+    uRimColour: { value: new THREE.Color(0, 0, 0) },
+    uRimDir: { value: new THREE.Vector3(0, 1, 0) },
+    uRimStrength: { value: 0.35 },
   };
   const copies = [];
   return {
@@ -96,6 +120,13 @@ export function createLivery() {
       if (!paint?.hull) return;
       shared.paintHull.value.set(paint.hull);
       shared.paintTrim.value.set(paint.trim);
+    },
+    // the light on its edges (lighting.js's fill), each frame
+    rim({ colour, dir }) {
+      if (Array.isArray(colour)) shared.uRimColour.value.setRGB(colour[0], colour[1], colour[2]);
+      else shared.uRimColour.value.copy(colour);
+      if (Array.isArray(dir)) shared.uRimDir.value.set(dir[0], dir[1], dir[2]);
+      else shared.uRimDir.value.copy(dir);
     },
     dispose() {
       for (const m of copies) m.dispose();

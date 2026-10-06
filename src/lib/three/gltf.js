@@ -15,6 +15,8 @@
 //                              tune (geometry and textures shared)
 //   prepare(root, { renderer, shadows, receive, cullSkinned }) → root
 //   tune(material, rules) → material: generator defaults clamped
+//   tuneTree(root, rules) → root: `tune` over every material, each once
+//   SHIP_PROFILE: the rules the universe map's hero ships are tuned by
 //
 // Only lazily loaded scene modules import this.
 
@@ -200,7 +202,8 @@ export function prepare(root, { renderer = null, shadows = false, receive = shad
 // emissive is black. Rules, each optional:
 //   roughness: [min, max] applied where there's no roughness map
 //   metalness: a value for materials without a metalness map whose name
-//              doesn't say metal (`metalNames` decides)
+//              doesn't say metal (`metalNames` decides); or { metal, paint },
+//              a value for each
 //   glow: { names: /regex/, intensity } turns emissive on, from the colour,
 //         for materials named like lights
 //   envMapIntensity: a value
@@ -212,7 +215,11 @@ export function tune(material, { roughness = null, metalness = null, metalNames 
     const r = material.roughness ?? 1;
     material.roughness = Math.min(Math.max(r, roughness[0]), roughness[1]);
   }
-  if (metalness != null && 'metalness' in material && !material.metalnessMap && !metalNames.test(material.name ?? '')) material.metalness = metalness;
+  if (metalness != null && 'metalness' in material && !material.metalnessMap) {
+    const metal = metalNames.test(material.name ?? '');
+    if (typeof metalness === 'object') material.metalness = metal ? metalness.metal : metalness.paint;
+    else if (!metal) material.metalness = metalness;
+  }
   if (glow && material.emissive && glow.names?.test(material.name ?? '')) {
     if (material.emissive.getHex?.() === 0 && material.color) material.emissive.copy(material.color);
     material.emissiveIntensity = glow.intensity ?? 1;
@@ -220,6 +227,18 @@ export function tune(material, { roughness = null, metalness = null, metalNames 
   if (envMapIntensity != null && 'envMapIntensity' in material) material.envMapIntensity = envMapIntensity;
   return material;
 }
+
+// The hero ships' finish (universe/shipModels.js): a clay-looking export
+// read as paint over metal. The paint a satin, 0.42 to 0.72 rough, a tenth
+// metallic; the parts named as metal (not the hull or its plates, which are
+// painted on a ship) 0.65; and the space round it in the hull a little
+// brighter than the scene's own, 1.3, so the hull catches the stars.
+export const SHIP_PROFILE = {
+  roughness: [0.42, 0.72],
+  metalness: { metal: 0.65, paint: 0.1 },
+  metalNames: /metal|steel|iron|chrome|gold|silver|brass|copper|alumin|titan|trim|engine|exhaust|thruster|nozzle|gun|cannon|barrel|pipe/i,
+  envMapIntensity: 1.3,
+};
 
 // `tune` over every material under a root, each once.
 export function tuneTree(root, rules) {
