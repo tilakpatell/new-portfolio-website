@@ -17,6 +17,7 @@
 
 import { seeded } from '../../../lib/seeded';
 import { makeWalker, pushOut } from '../../middleearth/towns/walker';
+import { DESTINATIONS, GARAGE_BACK } from './dimensions/destinations';
 
 export { behindYaw, cameraMove } from '../../middleearth/towns/walker';
 
@@ -43,9 +44,11 @@ export const AREAS = {
   diner: { x0: -307, x1: -293, z0: 794, z1: 804 },
   // Dr. Wong's office, through its door in the house next to Shoney's
   wong: { x0: -305, x1: -295, z0: 894, z1: 904 },
+  // the multiverse's destinations, through the garage portal as it's dialled (./dimensions/destinations.js)
+  ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, d.area])),
 };
 export const ROOM_IDS = ['house', 'upstairs', 'garage', 'school', 'arcade', 'basement', 'mindblowers', 'oval', 'diner', 'wong'];
-export const OUTDOOR = ['street', 'annex'];
+export const OUTDOOR = ['street', 'annex', ...DESTINATIONS.filter((d) => d.kind === 'outdoor').map((d) => d.id)];
 
 // `pad` grows the area (shrinks it, below zero) all round
 export const inArea = (id, x, z, pad = 0) => {
@@ -201,6 +204,8 @@ export const LINKS = [
   // Dr. Wong's office
   { id: 'wong-door', area: 'street', ...WONG_DOOR, r: 1.6, kind: 'door', to: 'wong', label: 'Dr. Wong’s office', arrive: into('wong') },
   exit('wong', 'street', beside(WONG_DOOR, 0, 2.4)),
+  // every destination's portal, home to the garage (the garage's goes where the dial is set: ./dimensions/destinations.js's linkTarget)
+  ...DESTINATIONS.map((d) => ({ id: `${d.id}-portal`, area: d.id, x: d.back.x, z: d.back.z, r: 1.4, kind: 'portal', to: 'garage', label: 'Back to the garage', arrive: GARAGE_BACK })),
 ];
 // A link with `needs` stays shut until that thing's done
 export const linkOpen = (l, done = []) => !l.needs || done.includes(l.needs);
@@ -618,6 +623,8 @@ export const PEOPLE = [
   { id: 'tricia', area: 'upstairs', x: -304.35, z: 397.85, face: S, sits: true },
   { id: 'diane', area: 'basement', x: -303.6, z: 504.6, face: -Math.PI / 4, holo: true },
   { id: 'drwong', area: 'wong', x: -300, z: 895.9, face: S, sits: true },
+  // the destinations' people (./dimensions/destinations.js)
+  ...DESTINATIONS.flatMap((d) => d.people),
 ];
 // Is it there, with `done` done? (left out: everyone is)
 export const present = (o, done) => !done || !o.until || !done.includes(o.until);
@@ -688,6 +695,8 @@ export const COLLIDERS = {
   oval: furnished('oval'),
   diner: furnished('diner'),
   wong: furnished('wong'),
+  // each destination's buildings and fittings, and its people
+  ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, [...d.solids.map((o) => (o.r ? circle(o.id, o.x, o.z, o.r) : box(o.id, o.x, o.z, o.w, o.d))), ...d.people.map((o) => circle(o.id, o.x, o.z, PERSON))]])),
 };
 // Walls: the street's fences, the house's inner walls and the low banister up
 // the stairs' open side, and the balcony's low railing on its south edge. A
@@ -705,6 +714,7 @@ export const WALLS = {
   oval: ringWalls(RINGS.oval),
   diner: [],
   wong: [],
+  ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, []])),
 };
 // The parked cruiser is not here: it moves, so whoever walks passes it in.
 // Nor is the motorcade (`motorcade`: with it, as it stands till the President's met).
@@ -768,6 +778,8 @@ export const HOTSPOTS = [
   spot('tricia', 'upstairs', -304.35, 397.85, 'Tricia', 'Talk'),
   spot('diane', 'basement', -303.35, 504.35, 'Diane', 'Look'),
   spot('therapy', 'wong', -300, 895.9, 'Dr. Wong', 'Family therapy'),
+  // the destinations' people and things (./dimensions/destinations.js)
+  ...DESTINATIONS.flatMap((d) => d.hotspots),
 ];
 // (`done`: a hotspot whose `until` is done is gone; left out, they all count)
 export const nearHotspot = (area, x, z, done) => nearest(done ? HOTSPOTS.filter((h) => present(h, done)) : HOTSPOTS, area, x, z);
@@ -782,7 +794,7 @@ export const newMorty = (at = START, mode = null) => ({ x: at.x, z: at.z, face: 
 // as high as he gets onto anything: the top of a jump, and a step over it
 export const CLIMB = MORTY.step + MORTY.jump ** 2 / (2 * MORTY.gravity);
 // each area's ceiling (in the rooms, as ./interiors draws them; outside, the sky)
-export const CEILING = { street: Infinity, annex: Infinity, house: 2.6, upstairs: 2.6, garage: 2.9, school: 2.9, arcade: 8, basement: 4.4, mindblowers: 3.6, oval: 3.4, diner: 3, wong: 2.8 };
+export const CEILING = { street: Infinity, annex: Infinity, house: 2.6, upstairs: 2.6, garage: 2.9, school: 2.9, arcade: 8, basement: 4.4, mindblowers: 3.6, oval: 3.4, diner: 3, wong: 2.8, ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, d.kind === 'outdoor' ? Infinity : d.ceiling])) };
 
 // What Morty can stand on in an area: what's low enough to get onto, with
 // room for him under the ceiling once he's up. Everything else is solid,
@@ -997,6 +1009,7 @@ export const TASKS = [
   { id: 'roy55', name: 'Outlive Morty’s 55', hint: 'Play Roy again and live past Morty’s 55.' },
   { id: 'rickall', name: 'Survive Total Rickall', hint: 'There’s an egg on the Smiths’ living-room bookcase that nobody remembers buying.' },
   { id: 'wong', name: 'Go to family therapy', hint: 'Dr. Wong’s office is in the house next to Shoney’s, up the street. Rick says it’s for Jerry.' },
+  ...DESTINATIONS.flatMap((d) => d.tasks),
 ];
 
 // ── Morty's Mind Blowers ──
