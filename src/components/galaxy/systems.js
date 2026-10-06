@@ -118,7 +118,7 @@ export const LANES = [
 // pieces     the set pieces (setpieces.js reads them; sizes in map units, the ship is 0.26 long)
 // faction    who hunts you here (galaxy/hunted.js), or null for nobody
 // traffic    what flies through on its own business
-// game       the mission: { id, objectives, title, film, role, pitch, how, status: 'soon' | 'live', to? }
+// game       the mission: { id, objectives, title, film, role, pitch, how, status: 'soon' | 'live', to?, go? (the button: 'Fly it now' unless it says) }
 
 export const SYSTEMS = [
   {
@@ -275,7 +275,9 @@ export const SYSTEMS = [
       role: 'Luke and Leia, on stolen speeder bikes',
       pitch: 'Scout troopers are racing for the bunker to raise the alarm. Chase them through the giant trees at full throttle before they get there.',
       how: 'Lean into the turns, brake to let one overshoot, and fire when you’ve got them; the trees don’t move.',
-      status: 'soon',
+      status: 'live',
+      to: '/galaxy/endor/surface?mission=chase',
+      go: 'Ride it now',
     },
   },
   {

@@ -51,3 +51,52 @@ Plus 9 things to look at with E (Michael's mug, Pam's painting, copier, vending 
 - Done (third push): `outside.js`, the lot off the warehouse's open dock door (`layout.js` `LOT`, `CARS`, `PARK_SIGN`, `LIGHT_POLES`, `TREES`, `DUMPSTER`): the building's white back with ribbon windows, asphalt with stall lines and curbs, ten parked cars (a red Trans Am), light poles, trees, the dumpster, the Scranton Business Park sign, an overcast sky dome. Three more things to look at there. Nothing to do outside yet: a job there would be next (Michael's car, a fun run, the Dunder Mifflin truck).
 - Pretzel Day, the Diversity Day cards, Prison Mike in the conference room, Creed's mung beans.
 - Pick the 3D world's `WORLD_MB['/scranton']` (currently 5) from a measured load.
+
+## Quality passes (2026-10-05/06, PRs #185, #197, #207, #223 and this one)
+
+The user asked to "improve the Office world and really make it super super nice and high quality", merging as it goes. Five passes, each checked from fixed cameras in headless Chromium (`scripts/office-shots.mjs`; see "Checking it" below).
+
+### Light and cost (#185)
+- The pool of lights round Jim was point lights 20 cm under the ceiling: they burnt the tiles white and bloom spread that over the frame. They're downward spots now; bloom only picks up the troffers and signs (threshold 1.6).
+- `world/ao.js`: contact shade (pools under every collider, darkening where walls meet floor and ceiling), three instanced draws. Its strength is painted grey on an opaque canvas and read as an `alphaMap`: a canvas's own alpha didn't survive the upload.
+- `world/batch.js` (tested): everything static is merged by material per patch of floor. Look-alike materials are shared; plain one-colour props merge through vertex colours (roughness and metalness to the nearest ⅛); props under 45 cm don't cast shadows. Anything a job moves or hides is in the `keep` list in `scene.js`. Add new movable things there.
+- The wall clock's glTF glass had transmission, which re-rendered every opaque object each frame. `kit.js` swaps it for plain glass.
+- `scripts/office-simplify.mjs` brought the plant's soil from 36,685 triangles to 1,799.
+- Before → after (high tier): 2110 → ~500 draws, 1.9M → ~0.7M triangles.
+
+### Windows and ceiling (#197)
+- `world/windows.js`: each outside window is a per-pixel parallax view (the lot two storeys down with its lines and cars, poles, the park's buildings and trees, hills, an overcast sky). Two small painted strips are each drawn twice, as colour and as mask. Blinds are instanced 3D vanes; the glass fronts have 3D slats.
+- `world/fixtures.js`: one 2×4 ft tile grid anchored to the building (`ceilingPlan()`). The troffers, diffusers, grilles, sprinklers and smoke detectors all sit in it. The bullpen's ceiling used to overlap the rooms inside it with different tile offsets. There are also outlets, switches, a thermostat, extinguishers and pull stations.
+
+### Set dressing (#207)
+- `world/furnish.js`: every desk is dressed from its own seed (tower, bin, cable, paper and folders, in-tray, mug, photo, sticky notes…). The copier, water cooler, fridge (with Angela's yogurt note), microwave, coffee maker and cupboard fronts are all built pieces.
+- `layout.js` `LEAVES`: open doors hinged beside their walls, with colliders.
+- `world/art.js`: posters, Michael's certificates, the lobby directory, the kitchen sign.
+
+### Outside and the warehouse (#223)
+- `world/cars.js`: extruded-profile cars with cut wheel arches (sedan, SUV, hatch, Michael's Sebring, Dwight's Trans Am).
+- `world/scenery.js`: a sky (the camera's far plane was 80 m, so the old sky sphere never drew), a tree-line ring on the horizon, and seeded trees.
+- Only the floor the camera is on is drawn (`camera.position.x > 25` is downstairs), which also keeps the horizon ring out of the office.
+- Warehouse (`layout.js` `WH_PROPS`, with colliders): pallets under every rack load, a pallet stack, a pallet jack, bollards, cones, a workbench, a barrel and a time clock.
+
+### Life (this PR)
+- Coworkers get up (`layout.js` `AMBLES`): Meredith for coffee, Kevin to the jelly beans at reception, Oscar to the copier, Angela to the fridge, Creed into the supply room, Phyllis to the microwave. Their ways round the desks are found once by `world/paths.js` (grid A* over the walk's own colliders and walls, corners pulled tight; tested so every way is clear). Jim bumps into them. Their bubbles follow them. They stay seated during the fire drill.
+  - The break room's vending machines can't be reached: the plan's three tables box them in.
+- Markers: a gem over the nearest three jobs on Jim's floor, and a pulsing ring on the floor.
+- One tired tube in the annex flickers, and the light under it with it.
+- Footsteps by floor (carpet, tile, concrete, asphalt): `sounds.js` `step`.
+
+### Checking it
+- Start the dev server: `npx vite --port 5173`.
+- Run `OUT=dir node scripts/office-shots.mjs [high|mid|low] [view…]`. The views are in its `VIEWS`. It clicks "Load the 3D" for a weak tier, snaps the camera, and writes a `sheet.png` of them all.
+- Dev hooks: `window.__OFFICE__.sim.debugCam = { at, look }`; `sim.snap = true` jumps the camera; `sim.warp = 40` skips the scene clock (to see the amblers up); `api.renderer` / `api.scene` / `api.info()`.
+- SwiftShader draws the lot slowly, so give it time (or snap).
+
+### Next ideas
+- Still the weakest:
+  - the people's faces and clothes (the cast's GLBs)
+  - the break room's layout
+  - the stairwell (a flight into a dark box)
+- Signs could share one atlas (each is a draw).
+- More amblers, or ones who talk to each other.
+- A real get-up/sit-down animation instead of the swap.

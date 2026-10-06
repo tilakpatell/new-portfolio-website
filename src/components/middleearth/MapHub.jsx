@@ -10,6 +10,9 @@ import { bestKey } from './rush/levels';
 import { useTravellers } from './towns/useTravellers';
 import '../../styles/lazy/middleearth.css';
 
+// the map is part of a page you scroll: the page's pointers stay on it
+const MAP_ROOM = { pointers: true };
+
 // how far from a place on the sheet (800 across) a click still means it
 const REACH = 44;
 
@@ -44,7 +47,7 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
   const heard = useRef(null);
   const touch = useMemo(() => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches, []);
   // other travellers online on the map, as ghosts from other worlds (towns/useTravellers)
-  const trav = useTravellers('map', !hidden);
+  const trav = useTravellers('map', !hidden, MAP_ROOM);
   const travRef = trav.ref;
 
   const place = useCallback(() => {

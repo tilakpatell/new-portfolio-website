@@ -26,7 +26,7 @@ import { makeTerrain } from '../ground';
 import { makeFolk } from '../bree/props';
 import { createGhosts } from '../ghosts';
 import { makeRain } from '../rain';
-import { createOrthancKit } from './props';
+import { createOrthancKit, insideTop } from './props';
 import { DUEL_AT, HOST, LEAF, LECTERN, MOTH_AT, PALANTIR, PITS, PIN, PIN_IN, RING, SARUMAN_AT, STAIR, STAIR_LEN, TOWER_H, clearView, indoors, stairAngle, stairAt, stairFace } from './layout';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -886,6 +886,21 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
           dist = 3.2;
           pitch = 1.35;
         }
+      } else if (zone === 'top') {
+        // on the pinnacle: pulled in, and up, so no horn comes between
+        for (let d = dist; d > 1.6; d -= 0.3) {
+          dist = d;
+          const p = Math.min(1.1, pitch + (full - d) * 0.09);
+          // (along the whole way from the wizard to it, not just where it ends)
+          let clear = true;
+          for (let f = 0.25; f <= 1 && clear; f += 0.25) {
+            const cx = look.x + Math.sin(yaw) * Math.cos(p) * d * f - AT.tower.x;
+            const cz = look.z + Math.cos(yaw) * Math.cos(p) * d * f - AT.tower.z;
+            clear = !insideTop(cx, look.y + Math.sin(p) * d * f - AT.tower.y, cz);
+          }
+          if (clear) break;
+        }
+        pitch = Math.min(1.1, pitch + (full - dist) * 0.09);
       }
       camAt = tmp.set(look.x + Math.sin(yaw) * Math.cos(pitch) * dist, look.y + Math.sin(pitch) * dist, look.z + Math.cos(yaw) * Math.cos(pitch) * dist);
       if (shown === 'hall' && camAt.y < 0.4) camAt.y = 0.4;

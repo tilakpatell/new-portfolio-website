@@ -61,7 +61,7 @@ function Mission({ system }) {
       <div className="mt-3 flex flex-wrap gap-2">
         {live ? (
           <Link to={g.to} className="btn btn-primary">
-            Fly it now <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
+            {g.go ?? 'Fly it now'} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
           </Link>
         ) : null}
         <Link to={`/galaxy/${system.id}/mission`} className={live ? 'btn btn-ghost' : 'btn btn-primary'}>

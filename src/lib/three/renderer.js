@@ -165,6 +165,66 @@ export function disposeTree(root) {
   });
 }
 
+// Everything under `roots` shown for one draw: what's hidden too, and
+// nothing culled for being off screen, so a scene drawn once this way (behind
+// something that covers it) has every texture and mesh on the graphics chip
+// and every shader made before the moment it's first seen (three.js sends
+// each the first time it's drawn, and that frame waits). Lights stay as they
+// were: a hidden one shown would make shaders of its own. Returns the undo.
+export function revealAll(...roots) {
+  const undo = [];
+  const set = (o, key, to) => {
+    if (o[key] === to) return;
+    undo.push([o, key, o[key]]);
+    o[key] = to;
+  };
+  const show = (o, hidden) => {
+    const was = hidden || !o.visible;
+    if (o.isLight) {
+      if (was) set(o, 'visible', false);
+      return;
+    }
+    set(o, 'visible', true);
+    if (o.isMesh || o.isPoints || o.isLine || o.isSprite) set(o, 'frustumCulled', false);
+    for (const child of o.children) show(child, was);
+  };
+  for (const root of roots) show(root, false);
+  return () => {
+    for (let i = undo.length - 1; i >= 0; i--) undo[i][0][undo[i][1]] = undo[i][2];
+  };
+}
+
+// Every picture the meshes under `root` use (each once, and only those whose
+// image has arrived).
+export function texturesUnder(root) {
+  const found = new Set();
+  const add = (t) => t?.isTexture && t.image && found.add(t);
+  root.traverse((o) => {
+    for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) {
+      for (const v of Object.values(m)) add(v);
+      if (m.uniforms) for (const u of Object.values(m.uniforms)) add(u?.value);
+    }
+  });
+  return [...found];
+}
+
+// One picture sent to the graphics chip now (nothing, if it's there already).
+// Never throws: one that can't go up now goes up on its first frame, as before.
+export function uploadTexture(renderer, texture) {
+  try {
+    renderer.initTexture(texture);
+  } catch {
+    /* it goes up on its first frame instead */
+  }
+}
+
+// Every picture under `root` sent now (a model that arrived while its page
+// was covered, or mid-launch), rather than on the frame it's first drawn,
+// which would wait for them. Its shaders are precompile's.
+export function uploadTextures(renderer, root) {
+  for (const t of texturesUnder(root)) uploadTexture(renderer, t);
+}
+
 // three.js draws a transparent, double-sided material twice (its back faces,
 // then its front), marking it changed before each, so its shader's settings
 // are worked out afresh twice a frame (and the strings that takes are

@@ -9,11 +9,13 @@
 // and then, and where they are a few times a second while walking (once a
 // second standing still); anyone not heard from in a while is gone.
 //
-// createTravellers({ town, name, bound, motion }) → { status, list(),
+// createTravellers({ town, name, bound, motion, hidden }) → { status, list(),
 // pose(h, { inside, ring }, { force }), rename(name), leave() }; list()
 // gives [{ id, name, x, z, face, moving, inside, ring, at }] (and speed and
 // y, with `motion`). `bound` is how far from the middle a town reaches, in
 // metres; `force` sends a pose now (going indoors, say), whatever the pace.
+// `hidden(id)` is true of anyone not to be shown (the site's roster has them
+// blocked: a traveller's id is their id there too, nostr.js's visitKeys).
 
 import { createLimiter } from '../../universe/online/protocol';
 import { cleanName } from '../../universe/online/names';
@@ -28,7 +30,7 @@ export const MAX = 24; // travellers kept, at most
 const RATES = { p: [8, 12], hi: [0.5, 3] };
 const LATEST = new Set(['p']);
 const CHEAP = new Set(['p']);
-const loadRoom = () => import('../../universe/online/nostr').then((m) => m.joinRoom);
+const loadRoom = () => import('../../universe/online/nostr').then((m) => m.joinAsVisitor);
 
 const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : null);
 const r2 = (v) => Math.round(v * 100) / 100;
@@ -57,7 +59,7 @@ export function readStep(data, bound = 200) {
   return step;
 }
 
-export function createTravellers({ town, name, load = loadRoom, now = () => Date.now(), bound = 200, motion = false }) {
+export function createTravellers({ town, name, load = loadRoom, now = () => Date.now(), bound = 200, motion = false, hidden = () => false }) {
   const peers = new Map();
   const limits = new Map();
   let me = { name: cleanName(name) ?? 'Traveller' };
@@ -139,7 +141,7 @@ export function createTravellers({ town, name, load = loadRoom, now = () => Date
     // the travellers here now, walking the town (not indoors)
     list() {
       sweep();
-      return [...peers.values()].filter((p) => p.placed);
+      return [...peers.values()].filter((p) => p.placed && !hidden(p.id));
     },
     // where you are: sent often while you walk, now and then when you don't
     pose(h, flags = {}, { force = false } = {}) {

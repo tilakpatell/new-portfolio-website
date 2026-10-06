@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { local, useDocumentTitle, useReducedMotion } from '../lib/hooks';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
 import { LOADOUT_KEY, loadoutOf, readLoadouts } from '../components/universe/outfit';
@@ -14,6 +14,8 @@ import { LANDABLE, siteOf } from '../components/galaxy/surface/sites';
 import { surfaceUrl } from '../components/galaxy/surface/catalog';
 import { surfaceCrew } from '../components/galaxy/surface/lines';
 import SurfaceView from '../components/galaxy/surface/SurfaceView';
+import ChaseHud from '../components/galaxy/surface/ChaseHud';
+import { missionOf } from '../components/galaxy/surface/missions';
 import ModelCredits from '../components/ModelCredits';
 import { wornFiles } from '../components/rickmorty/wardrobe/looks';
 import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
@@ -26,9 +28,14 @@ export const FOUND_KEY = 'tp-galaxy-found'; // { [system]: [place ids] }: what y
 export const LAUNCH_KEY = 'tp-galaxy-launch'; // (session) the world you've just taken off from
 const LANDED_KEY = 'tp-galaxy-landed'; // the worlds you've set foot on
 export const QUESTS_KEY = 'tp-galaxy-quests'; // { [system]: [quest ids] }: what you've done on each world
+export const MISSIONS_KEY = 'tp-galaxy-missions'; // { 'system/id': { t, stars } }: your best at each mission played down on a world
 
 const readFound = () => {
   const all = local.get(FOUND_KEY);
+  return all && typeof all === 'object' ? all : {};
+};
+const readBests = () => {
+  const all = local.get(MISSIONS_KEY);
   return all && typeof all === 'object' ? all : {};
 };
 const readDone = () => {
@@ -47,7 +54,29 @@ export default function GalaxySurface() {
   const id = parseSystem(useParams().system);
   const site = useMemo(() => (id ? siteOf(id) : null), [id]);
   const sys = systemById(id);
-  useDocumentTitle(site ? `${site.place} · ${sys.name}` : 'A galaxy far, far away');
+  // a mission played down here (?mission=chase): you start in it
+  const [params] = useSearchParams();
+  const mission = useMemo(() => missionOf(id, params.get('mission')), [id, params]);
+  const missionKey = mission ? `${id}/${mission.id}` : null;
+  // the scene's view of it, as the page needs it (how it stands, the count,
+  // the scouts left, the result: these change now and then); the clock and
+  // the leader's progress come ten times a second, and go straight to the
+  // HUD through `chaseFeed`, so the rest of the page isn't drawn again for them
+  const [chase, setChase] = useState(null);
+  const chaseFeed = useRef(new Set());
+  const chaseShown = useRef('');
+  const [best, setBest] = useState(() => (missionKey ? (readBests()[missionKey] ?? null) : null));
+  const bestRef = useRef(best);
+  bestRef.current = best;
+  const [fresh, setFresh] = useState(false); // the last win was a new best
+  // another mission here (or none): its own view and best
+  useEffect(() => {
+    setChase(null);
+    chaseShown.current = '';
+    setFresh(false);
+    setBest(missionKey ? (readBests()[missionKey] ?? null) : null);
+  }, [missionKey]);
+  useDocumentTitle(site ? (mission ? `${mission.name} · ${sys.name}` : `${site.place} · ${sys.name}`) : 'A galaxy far, far away');
   const reduced = useReducedMotion();
   const [ship] = useState(() => parseShip(local.get(SHIP_KEY)) ?? 'xwing');
   const crew = crewById(ship);
@@ -180,8 +209,32 @@ export default function GalaxySurface() {
         later('aim', 3000, () => setAiming(false));
       } else if (e.type === 'leave') takeOff();
       else if (e.type === 'bump') comms.current?.handle({ type: 'bump', hard: e.hard });
+      else if (e.type === 'mission') {
+        for (const f of chaseFeed.current) f(e.view);
+        const v = e.view;
+        const shown = v ? `${v.phase}|${v.count}|${v.left}|${v.result ? 1 : 0}` : '';
+        if (shown !== chaseShown.current) {
+          chaseShown.current = shown;
+          setChase(v);
+        }
+        const ev = e.event;
+        if (ev?.type === 'won' && mission && v?.result) {
+          const run = { t: v.result.t, stars: v.result.stars };
+          const was = bestRef.current;
+          const isBest = !was || run.t < was.t;
+          setFresh(isBest);
+          if (isBest) {
+            local.set(MISSIONS_KEY, { ...readBests(), [missionKey]: run });
+            setBest(run);
+          }
+          if (mission.achievement) unlock(mission.achievement);
+        } else if (ev?.type === 'knocked') {
+          setToast((t) => ({ title: 'Thrown off', text: 'Back on the bike in a moment. The trees don’t move.', n: (t?.n ?? 0) + 1 }));
+          later('toast', 2500, () => setToast(null));
+        }
+      }
     },
-    [site, id, takeOff, unlock],
+    [site, id, takeOff, unlock, mission, missionKey],
   );
   const track = (qid) => {
     view.current?.input?.('track', qid);
@@ -202,18 +255,18 @@ export default function GalaxySurface() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // the models on this world, for their credits, and what the cruiser's crew carry out (kept, so the credits aren't drawn again with every change of the page)
+  const kinds = useMemo(() => (site ? [...[...site.things_all, ...site.scatter, ...site.life, ...site.rides].map((t) => surfaceUrl(t.kind)), ...(ship === 'cruiser' ? wornFiles(looks) : [])] : []), [site, ship, looks]);
   if (!site) return <Navigate to={id ? `/galaxy/${id}` : '/galaxy'} replace />;
   const place = site.places.find((p) => p.id === here);
   const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };
   const left = site.places.filter((p) => !found.includes(p.id)).length;
-  // the models on this world, for their credits (and what the crew carry out)
-  const kinds = [...[...site.things_all, ...site.scatter, ...site.life, ...site.rides].map((t) => surfaceUrl(t.kind)), ...(ship === 'cruiser' ? wornFiles(looks) : [])];
   return (
     <div className="dark-scope surface-page" style={accent} data-phase={phase} data-leaving={leaving ? '' : undefined}>
       <h1 className="sr-only">
         {sys.name}: {site.place}
       </h1>
-      <SurfaceView system={id} ship={ship} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
+      <SurfaceView key={mission?.id ?? 'explore'} system={id} mission={mission?.id ?? null} ship={ship} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
 
       {/* where you are, and how much of it you've found */}
       <div className="surface-where">
@@ -254,7 +307,9 @@ export default function GalaxySurface() {
       </div>
 
       {/* the quest you're on, and the things to do here */}
-      {phase !== 'landing' && site.quests.length > 0 && (
+      {mission && <ChaseHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onAgain={() => view.current?.input?.('restart')} onBack={takeOff} />}
+
+      {phase !== 'landing' && site.quests.length > 0 && !(mission && chase && !chase.result) && (
         <div className="surface-quest">
           {quest ? (
             <>
@@ -294,7 +349,7 @@ export default function GalaxySurface() {
           <span style={{ width: `${health}%` }} />
         </div>
       )}
-      {(aiming || quest?.shoot) && phase === 'walk' && <span className="surface-crosshair" aria-hidden="true" />}
+      {(((aiming || quest?.shoot) && phase === 'walk') || (mission && chase && !chase.result && phase === 'ride')) && <span className="surface-crosshair" aria-hidden="true" />}
       <div className="surface-door" aria-hidden="true" style={{ opacity: fade }} />
       {prompt && phase !== 'landing' && phase !== 'leaving' && (
         <p className="surface-prompt" role="status">
@@ -302,12 +357,12 @@ export default function GalaxySurface() {
         </p>
       )}
       {talk && (
-        <p key={talk.n} className="surface-talk" role="status">
+        <p key={`talk-${talk.n}`} className="surface-talk" role="status">
           <b>{talk.who}</b> {talk.text}
         </p>
       )}
       {toast && (
-        <div key={toast.n} className="surface-toast" data-done={toast.done ? '' : undefined} role="status">
+        <div key={`toast-${toast.n}`} className="surface-toast" data-done={toast.done ? '' : undefined} role="status">
           <p className="surface-toast-title">{toast.title}</p>
           <p className="surface-toast-text">{toast.text}</p>
         </div>
