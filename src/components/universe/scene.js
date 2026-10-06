@@ -840,7 +840,8 @@ export async function create(canvas, ctx) {
     hitAt: -1e9,
     safeUntil: -1e9, // just back from being shot down or a crash: other pilots' hits don't count
     hurt: 0, // the red flash of a hit, 1 fading to 0
-    static: 0, // seconds of the HUD scrambling (a flare's shockwave)
+    static: 0, // seconds of the HUD scrambling (a flare's shockwave, a spotlight)
+    spotSaid: -Infinity, // when the crew last said so about a spotlight
     lowSaid: false,
     heat: 0, // trouble made lately (ships shot down): the director sends more hunters
     huntFor: 0, // seconds the hunters have been after you, this time
@@ -2459,8 +2460,19 @@ export async function create(canvas, ctx) {
         }
         emit({ type: 'interdicted', faction: e.faction });
       }
-    } else if (e.type === 'laser') hurt(e.damage);
-    else if (e.type === 'shot') emit(e);
+    } else if (e.type === 'laser') {
+      hurt(e.damage);
+      // (a bomb's burst shakes the ship as a laser doesn't)
+      if (e.bomb && !reduced) state.shake = Math.max(state.shake, 0.5);
+    } else if (e.type === 'shot') emit(e);
+    else if (e.type === 'spotlit') {
+      // pinned in a spotlight: the HUD whites out a moment, and the lock with it
+      state.static = Math.max(state.static, 1.5);
+      if (state.clock - state.spotSaid > 20) {
+        state.spotSaid = state.clock;
+        emit({ type: 'event', id: 'spotlit' });
+      }
+    }
     else if (e.type === 'escaped' || e.type === 'cleared') {
       emit(e.rescued ? { type: 'event', id: 'rescued' } : e);
       // the Star Destroyer's fighters gone: it jumps away

@@ -15,7 +15,7 @@
 //   'bounty' (one tough one alone) | 'capital' (what a capital ship
 //   launches) | 'council' (out of portals), weight?, portal? }
 // A hunter kind: hunterRules.js's row (size, speed, accel, hp, fire, tail,
-//   lead, spread); an ally: wingRules.js's row, with its bolts' colour.
+//   lead, spread, trait: one of hunterRules.js's TRAITS); an ally: wingRules.js's row, with its bolts' colour.
 // A troop: foot.js's TROOPS row by kind, with the gun it holds (gunplay.js's
 //   GUNS) or null.
 
@@ -113,10 +113,10 @@ const BREAKINGBAD = {
   },
   kinds: {
     suv: { size: 0.34, speed: 19, accel: 17, hp: 2, fire: [0.8, 1.5] },
-    suvace: { size: 0.36, speed: 25, accel: 21, hp: 5, fire: [0.5, 0.9], tail: 0.4, lead: 0.9, spread: 0.85 },
+    suvace: { size: 0.36, speed: 25, accel: 21, hp: 5, fire: [0.5, 0.9], tail: 0.4, lead: 0.9, spread: 0.85, trait: 'spotlight' },
     lowrider: { size: 0.34, speed: 25, accel: 20, hp: 1, fire: [0.6, 1.1], tail: 0.3, spread: 1.6 },
     pollostruck: { size: 0.5, speed: 17, accel: 14, hp: 4, fire: [0.9, 1.5] },
-    cousins: { size: 0.6, speed: 25, accel: 21, hp: 7, fire: [0.5, 0.9], tail: 0.5, lead: 0.9, spread: 0.8 },
+    cousins: { size: 0.6, speed: 25, accel: 21, hp: 7, fire: [0.5, 0.9], tail: 0.5, lead: 0.9, spread: 0.8, trait: 'quietUntilFired' },
     pickup: { size: 0.32, speed: 18, accel: 16, hp: 1, fire: [0.9, 1.7] },
   },
   names: { suv: 'DEA SUV', suvace: 'Hank’s SUV', lowrider: 'Cartel lowrider', pollostruck: 'Pollos truck', cousins: 'The Cousins', pickup: 'Jack’s pickup' },
