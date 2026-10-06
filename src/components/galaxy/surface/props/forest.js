@@ -502,7 +502,7 @@ function karstParts({ seed = 7, color = '#a8a493', leaf = '#4e6a32' } = {}) {
 
 // a Yavin 4 jungle tree: a tall pale trunk on plank buttresses, a broad
 // crown high up, lianas hanging
-function jungleParts({ h = 36, r = 1.5, seed = 8, bark = '#8a8470', leaf = '#355a26', lo = false } = {}) {
+function jungleParts({ h = 36, r = 1.5, seed = 8, bark = '#8a8470', leaf = '#355a26', lo = false, creepers = !lo } = {}) {
   const rand = rng(seed);
   const prof = [
     [r * 1.4, 0],
@@ -517,21 +517,22 @@ function jungleParts({ h = 36, r = 1.5, seed = 8, bark = '#8a8470', leaf = '#355
     const a = (i / 4) * TAU + rand() * 0.5;
     parts.push(part(new THREE.ExtrudeGeometry(new THREE.Shape([new THREE.Vector2(r * 0.4, 0), new THREE.Vector2(r * 3.2, 0), new THREE.Vector2(r * 0.4, r * 4.5)]), { depth: 0.25, bevelEnabled: false }).translate(0, 0, -0.125), { rot: [0, a, 0], color: bark, to: 'bark' }));
   }
-  // the crown: limbs out to broad clumps
-  // (a broad crown, its limbs from a little over halfway up: from below a
-  // roof of leaves, as Yavin's jungle is in the film, not poles with tufts)
+  // the crown: limbs out to broad, flattish clumps, an umbrella over the
+  // top third (from below a roof of leaves, as Yavin's jungle is in the
+  // film, not poles with tufts; from the temple's top, the broccoli sea)
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * TAU + rand() * 0.6;
-    const len = 5 + rand() * 6;
-    const y = h * (0.56 + (i / 8) * 0.32 + rand() * 0.06);
+    const len = 6 + rand() * 6;
+    const y = h * (0.66 + (i % 3) * 0.08 + rand() * 0.05);
     const end = [cos(a) * len, y + 2 + rand() * 2, sin(a) * len];
-    parts.push(rod([0, y - 2, 0], end, 0.55, 0.22, { color: bark, to: 'bark' }, 5));
-    const s = 6.5 + rand() * 4.5;
-    parts.push(...canopy(end, s, { flat: 0.42, color: new THREE.Color(leaf).offsetHSL(0, 0, (rand() - 0.5) * 0.08), seed: seed * 23 + i, density: lo ? 0.3 : 1 }));
-    // a liana down from it
+    parts.push(rod([0, y - 3, 0], end, 0.6, 0.22, { color: bark, to: 'bark' }, 5));
+    const s = 8 + rand() * 4.5;
+    parts.push(...canopy(end, s, { flat: 0.36, color: new THREE.Color(leaf).offsetHSL((rand() - 0.5) * 0.02, 0, (rand() - 0.5) * 0.08), seed: seed * 23 + i, density: lo ? 0.25 : 0.75 }));
+    // a liana down from it, and creepers hanging off the limb
     if (i % 3 === 0) parts.push(rod(end, [end[0] * 0.8, 2 + rand() * 6, end[2] * 0.8], 0.07, 0.05, { color: '#3c4a26', to: 'bark' }, 4));
+    if (creepers && i % 2 === 0) parts.push(...hanging([end[0] * 0.6, y + 0.5, end[2] * 0.6], 3 + rand() * 5, { w: 1.1, color: '#4c5a32', turn: a }));
   }
-  parts.push(...canopy([0, h + 1.5, 0], 7, { flat: 0.46, color: leaf, seed: seed * 29, density: lo ? 0.3 : 1 }));
+  parts.push(...canopy([0, h + 1.5, 0], 9, { flat: 0.4, color: leaf, seed: seed * 29, density: lo ? 0.25 : 0.75 }));
   return { parts };
 }
 

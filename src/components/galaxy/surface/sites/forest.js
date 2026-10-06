@@ -897,9 +897,11 @@ export const SITES = {
     ],
     scatter: [
       // the tall trees, vines hanging from them, then the built ones between
-      { kind: 'yavintree', n: 60, within: [26, 600], scale: [0.75, 1.25], solid: 0.9 },
-      { kind: 'jungletree', n: 220, within: [22, 640], scale: [0.8, 1.4], opts: { seed: 1, leaf: '#3c4a22' } },
-      { kind: 'jungletree', n: 140, within: [22, 640], scale: [0.7, 1.2], opts: { seed: 2, bark: '#7a7462', leaf: '#46522a' } },
+      // (the jungle's own trees close in all round, their umbrella crowns a
+      // roof overhead, as the film's are: built here, in the world's own
+      // light, where the photographed yavintree model stood out of it)
+      { kind: 'jungletree', n: 330, within: [22, 640], scale: [0.8, 1.4], opts: { seed: 1, leaf: '#3c4a22' } },
+      { kind: 'jungletree', n: 200, within: [22, 640], scale: [0.7, 1.2], opts: { seed: 2, bark: '#7a7462', leaf: '#46522a', creepers: false } },
       { kind: 'jungletree', n: 180, within: [640, 1400], scale: [1.0, 1.6], solid: false, opts: { seed: 3, lo: true, leaf: '#3c4a22' } },
       { kind: 'plant', n: 700, within: [6, 480], scale: [0.8, 2.0], solid: false, clear: -8, opts: { seed: 4, color: '#4a5a30' } },
       { kind: 'fern', n: 400, within: [6, 480], scale: [0.8, 1.7], solid: false, clear: -8, opts: { seed: 5, color: '#4a5230' } },
