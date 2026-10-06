@@ -1,7 +1,8 @@
 // Dot Matrix, the world, in WebGL: the island from ./rules.js built in code
 // (the tiles as columns of ground, the trees, rocks, houses, pipes, signs,
 // the dock, Block Drop tower, the snake's pen, the cloud, and the giant Game
-// Boy in the square, whose screen runs the real console's demo), the hero,
+// Boy in the square, whose screen runs the real console's demo, and the N64
+// beside it), the hero,
 // the walkers, the plants and the snake. Everything is grey: it's drawn
 // small, then ./dither.js turns brightness into the four shades.
 //
@@ -12,6 +13,7 @@
 // info }.
 
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { createRenderer, disposeTree, precompile } from '../../lib/three/renderer';
 import { createGhosts } from '../middleearth/towns/ghosts';
@@ -28,6 +30,8 @@ import {
   GAMEBOY,
   H,
   MAP,
+  N64,
+  N64_CART,
   PIPES,
   SIGNS,
   TOWER,
@@ -146,7 +150,7 @@ function buildTerrain() {
       col.push(c.r, c.g, c.b);
     }
   };
-  const TOP = { grass: 0.64, long: 0.56, path: 0.93, sand: 0.99, tree: 0.64, boulder: 0.64, wall: 0.64, house: 0.64, gameboy: 0.93, pipe: 0.64, sign: 0.64, lighthouse: 0.99, mill: 0.64 };
+  const TOP = { grass: 0.64, long: 0.56, path: 0.93, sand: 0.99, tree: 0.64, boulder: 0.64, wall: 0.64, house: 0.64, gameboy: 0.93, n64: 0.93, pipe: 0.64, sign: 0.64, lighthouse: 0.99, mill: 0.64 };
   const SIDE = { sand: 0.82, path: 0.6 };
   const BOTTOM = -1.4;
   for (let iz = 0; iz < H; iz++) {
@@ -875,6 +879,100 @@ function buildGameBoy() {
   };
 }
 
+// the giant N64 beside it, lying flat, its cartridge standing up out of the
+// top (the tribute's: a castle and a star on the label), and its controller
+// on the ground in front, plugged into the first port
+function buildN64() {
+  const g = new THREE.Group();
+  const w = N64.x1 - N64.x0 - 0.1;
+  const d = N64.z1 - N64.z0 - 0.1;
+  const body = lambert(0.3);
+  const deck = lambert(0.36);
+  const dark = lambert(0.1);
+  const light = lambert(0.58);
+  const add = (geo, mat, x, y, z) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    g.add(m);
+    return m;
+  };
+  add(new RoundedBoxGeometry(w, 0.95, d, 3, 0.18), body, 0, 0.475, 0);
+  add(new RoundedBoxGeometry(w - 0.2, 0.2, d - 0.2, 2, 0.08), deck, 0, N64.top - 0.1, 0);
+  // the seam round the front, the power light, and the four ports
+  const front = d / 2;
+  add(new THREE.BoxGeometry(w - 0.5, 0.05, 0.04), light, 0, 0.8, front);
+  const led = add(new THREE.BoxGeometry(0.16, 0.08, 0.04), new THREE.MeshLambertMaterial({ color: grey(0.2), emissive: grey(0.85) }), 0, 0.62, front + 0.01);
+  const port = new RoundedBoxGeometry(0.5, 0.28, 0.06, 2, 0.05);
+  for (const x of [-1.35, -0.45, 0.45, 1.35]) add(port, dark, x, 0.36, front);
+  // the power and reset sliders either side of the slot
+  for (const x of [-1.45, 1.45]) {
+    add(new THREE.BoxGeometry(0.56, 0.03, 0.34), dark, x, N64.top, 0.25);
+    add(new RoundedBoxGeometry(0.3, 0.1, 0.24, 2, 0.03), light, x - 0.08, N64.top + 0.04, 0.25);
+  }
+  // the slot, and the cartridge in it
+  const cx = (N64_CART.x0 + N64_CART.x1) / 2 - (N64.x0 + N64.x1) / 2;
+  const cz = (N64_CART.z0 + N64_CART.z1) / 2 - (N64.z0 + N64.z1) / 2;
+  const cw = N64_CART.x1 - N64_CART.x0 - 0.1;
+  const ch = N64_CART.top - N64.top;
+  add(new THREE.BoxGeometry(cw + 0.2, 0.04, 1.1), dark, cx, N64.top + 0.005, cz);
+  add(new RoundedBoxGeometry(cw, ch, 0.85, 2, 0.1), lambert(0.52), cx, N64.top + ch / 2, cz);
+  const ridge = new THREE.BoxGeometry(0.08, 0.06, 0.8);
+  for (let i = 0; i < 7; i++) add(ridge, lambert(0.42), cx - 0.6 + i * 0.2, N64_CART.top, cz);
+  const label = pixels(32, (c, s) => {
+    c.fillStyle = hex(0.9);
+    c.fillRect(0, 0, s, s);
+    c.fillStyle = hex(0.5); // the sky
+    c.fillRect(2, 2, s - 4, 20);
+    c.fillStyle = hex(0.95); // a star over the castle
+    for (const [x, y, ww, hh] of [[15, 3, 2, 6], [12, 5, 8, 2], [13, 7, 6, 1], [13, 8, 2, 2], [17, 8, 2, 2]]) c.fillRect(x, y, ww, hh);
+    c.fillStyle = hex(0.12); // the castle: a keep, two towers, a roof
+    for (const [x, y, ww, hh] of [[9, 14, 14, 8], [6, 11, 4, 11], [22, 11, 4, 11], [12, 11, 8, 3], [14, 9, 4, 2], [6, 10, 1, 1], [9, 10, 1, 1], [22, 10, 1, 1], [25, 10, 1, 1]]) c.fillRect(x, y, ww, hh);
+    c.fillStyle = hex(0.9); // the door
+    c.fillRect(15, 18, 2, 4);
+    c.fillStyle = hex(0.12); // and a line of type under it
+    for (let x = 4; x < 28; x += 3) c.fillRect(x, 25, 2, 2);
+    c.fillRect(8, 28, 16, 1);
+  });
+  add(new THREE.PlaneGeometry(1.2, 0.72), new THREE.MeshLambertMaterial({ map: label }), cx, N64.top + ch / 2 + 0.06, cz + 0.43);
+  // the controller, three-pronged, face up on the ground in front
+  const pad = new THREE.Group();
+  const grip = new THREE.CapsuleGeometry(0.17, 0.42, 4, 10).rotateX(Math.PI / 2).scale(1, 0.55, 1);
+  const shell = lambert(0.4);
+  const pm = (geo, mat, x, y, z) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    pad.add(m);
+    return m;
+  };
+  pm(new RoundedBoxGeometry(1.6, 0.2, 0.6, 2, 0.09), shell, 0, 0.12, 0);
+  for (const x of [-0.62, 0, 0.62]) pm(grip, shell, x, 0.1, 0.42);
+  pm(new THREE.CylinderGeometry(0.05, 0.06, 0.14, 8), dark, 0, 0.26, 0.12);
+  pm(new THREE.CylinderGeometry(0.12, 0.12, 0.04, 12), lambert(0.55), 0, 0.33, 0.12);
+  pm(new THREE.BoxGeometry(0.32, 0.05, 0.1), dark, -0.56, 0.23, 0);
+  pm(new THREE.BoxGeometry(0.1, 0.05, 0.32), dark, -0.56, 0.23, 0);
+  const btn = new THREE.CylinderGeometry(0.075, 0.075, 0.05, 10);
+  for (const [x, z] of [[0.5, 0.08], [0.38, -0.06]]) pm(btn, lambert(0.72), x, 0.24, z);
+  const cbtn = new THREE.CylinderGeometry(0.045, 0.045, 0.05, 8);
+  for (const [x, z] of [[0.62, -0.18], [0.72, -0.08], [0.62, 0.02], [0.52, -0.08]]) pm(cbtn, lambert(0.65), x, 0.24, z - 0.02);
+  pm(new THREE.CylinderGeometry(0.05, 0.05, 0.05, 8), dark, 0, 0.24, -0.14);
+  const padAt = new THREE.Vector3(-0.55, 0, front + 1.35);
+  pad.position.copy(padAt);
+  pad.rotation.y = 0.22;
+  g.add(pad);
+  // its cable, from the top of the pad round to port one
+  const out = new THREE.Vector3(0, 0.12, -0.3).applyAxisAngle(new THREE.Vector3(0, 1, 0), pad.rotation.y).add(padAt);
+  const cable = new THREE.CatmullRomCurve3([out, new THREE.Vector3(out.x - 0.25, 0.04, out.z - 0.35), new THREE.Vector3(-1.2, 0.04, front + 0.45), new THREE.Vector3(-1.35, 0.18, front + 0.15), new THREE.Vector3(-1.35, 0.36, front + 0.02)]);
+  add(new THREE.TubeGeometry(cable, 24, 0.035, 6, false), dark, 0, 0, 0);
+  g.traverse((o) => o.isMesh && ((o.castShadow = true), (o.receiveShadow = true)));
+  g.position.set((N64.x0 + N64.x1) / 2, 0, (N64.z0 + N64.z1) / 2);
+  return {
+    group: g,
+    tick(now) {
+      led.material.emissive.copy(grey(0.6 + 0.25 * Math.sin(now * 2.2)));
+    },
+  };
+}
+
 // the cloud over the sea: flat on top, puffed out round the sides
 function buildCloud(rand) {
   const g = new THREE.Group();
@@ -977,6 +1075,8 @@ export function createDotMatrix(canvas, { onLost } = {}) {
   for (const s of SIGNS) scene.add(buildSign(s));
   const gameboy = buildGameBoy();
   scene.add(gameboy.group);
+  const n64 = buildN64();
+  scene.add(n64.group);
 
   // "?" blocks: a fresh face, and a spent one
   const qTex = blockFace(0.96, glyph(QUESTION, 5, 4, hex(0.1)));
@@ -1217,6 +1317,7 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     flutter.tick(now);
     for (const l of landmarks) l.tick(now);
     gameboy.tick(dt);
+    n64.tick(now);
     ghosts.update(travellers ?? [], now, dt);
     // (the towns' ghosts are pale blue, lit and see-through; dithered, that
     // vanishes against the sand, so here they're a dark grey and nearly

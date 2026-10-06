@@ -389,7 +389,7 @@ export const PAGES = {
         rows: [
           ['W A S D / ← ↑ ↓ →', 'Walk'],
           ['Space / Z', 'Jump (hold to jump higher)'],
-          ['X / Enter', 'Read a sign, play the Game Boy, go down a pipe'],
+          ['X / Enter', 'Read a sign, play the Game Boy or the N64, go down a pipe'],
           ['Q E', 'Turn the camera'],
           ['Drag', 'Turn the island'],
           ['M', 'The cartridges, with hints'],
@@ -401,6 +401,30 @@ export const PAGES = {
       ['The cartridges', 'Eight of them, each one a project of mine, hidden round the island.'],
       ['Mind', 'Jump on the walkers; walking into one hurts. A plant won’t come up while you stand on its pipe. Three hearts, and a "?" block gives one back.'],
       ['The screen', 'The chip at the top switches between the DMG’s greens, the Pocket’s greys and the Light’s teal.'],
+    ],
+  },
+  '/dot-matrix/64': {
+    keys: [
+      {
+        rows: [
+          ['W A S D / ← ↑ ↓ →', 'Run (Mario goes the way you push, from the camera)'],
+          ['Space / K', 'Jump (A): again on landing for a double, a third for the triple'],
+          ['J / F', 'Punch, pick up, throw, dive (B); talk and read'],
+          ['Shift', 'Crouch (Z): with a jump, a backflip or a long jump; in the air, a ground pound'],
+          ['Q E / drag', 'Turn the camera'],
+          ['R / wheel', 'The camera’s distance'],
+          ['Esc', 'Pause'],
+        ],
+      },
+    ],
+    touch: [{ rows: [['Stick', 'Run'], ['A', 'Jump'], ['B', 'Punch, pick up, talk'], ['Z', 'Crouch, ground pound'], ['Drag', 'Turn the camera']] }],
+    tips: [
+      ['The paintings', 'Jump into one to go to its world. Each world has three Power Stars; a star sends you back to the castle.'],
+      ['The star doors', 'They open at so many stars. The number is on the door.'],
+      ['Moves', 'Run and turn hard to side flip; crouch and jump to backflip; run, crouch and jump to long jump. Jump into a wall and jump again as you touch it to wall kick.'],
+      ['Health', 'Eight wedges. A coin gives one back, and fifty coins are a life. Under water the meter is your air: come up before it runs out.'],
+      ['Bob-omb Ridge', 'King Bob-omb is on the summit: get behind him, pick him up and throw him. Eight red coins make a star. Pound the Chain Chomp’s post three times.'],
+      ['The look', 'On the title and the pause menu: Modern, Ultra or the N64’s own.'],
     ],
   },
   '/earth': {

@@ -227,20 +227,30 @@ export function createRings(scene) {
   });
   const red = hot(0xff4b3e, 2.2);
   const white = new THREE.Color(0xe8eef6);
+  const local = new THREE.Vector3();
+  const inv = new THREE.Quaternion();
   scene.add(group);
   return {
-    // tour: rules' newTour/stepTour state
-    update(tour, t) {
+    // tour: rules' newTour/stepTour state; `eye`, the camera's position: a
+    // ring fades as the camera comes up to its tube (flying through, the tube
+    // and its glow went past the lens as a band of red across the screen)
+    update(tour, t, eye = null) {
       rings.forEach(({ g, mat, glowMat }, i) => {
         const next = i === tour.next;
         const ahead = tour.on ? i > tour.next : i > 0;
         g.visible = next || (ahead && tour.on) || (!tour.on && i === 0);
         if (!g.visible) return;
+        let clear = 1;
+        if (eye) {
+          local.copy(eye).sub(g.position).applyQuaternion(inv.copy(g.quaternion).invert());
+          const tube = Math.hypot(Math.hypot(local.x, local.y) - RING_R, local.z);
+          clear = THREE.MathUtils.smoothstep(tube, 0.8, 4);
+        }
         const pulse = 0.5 + 0.5 * Math.sin(t * 5);
         mat.color.copy(next ? red : white);
-        mat.opacity = next ? 0.95 : 0.28;
-        glowMat.uniforms.uOpacity.value = next ? 0.3 + pulse * 0.3 : 0;
-        glowMat.visible = next;
+        mat.opacity = (next ? 0.95 : 0.28) * clear;
+        glowMat.uniforms.uOpacity.value = (next ? 0.3 + pulse * 0.3 : 0) * clear;
+        glowMat.visible = next && clear > 0.01;
         g.scale.setScalar(next ? 1 + pulse * 0.04 : 1);
       });
     },
