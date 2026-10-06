@@ -116,6 +116,25 @@ describe('buildSystem', () => {
     for (const w of [yavin, alderaan, scarif, endor]) w.dispose();
   });
 
+  it('stands its own fleets and battle aside while the war’s battle is on there, and brings them back', () => {
+    for (const id of ['hoth', 'endor']) {
+      const k = kit();
+      const w = buildSystem(systemById(id), { ...k, small: false });
+      const hulls = w.solids.filter((o) => /^(fleet|battle)-/.test(o.id));
+      expect(hulls.length, id).toBeGreaterThan(0);
+      const before = hulls.map((o) => o.r);
+      w.quiet(true);
+      expect(hulls.every((o) => o.r === 0 && o.reach === 0)).toBe(true);
+      // (and quiet: no turbolasers, no ion cannon)
+      k.bolts.fire.mockClear();
+      for (let i = 0; i < 40; i++) w.update(T0 + i, 1, camera, null);
+      expect(k.bolts.fire).not.toHaveBeenCalled();
+      w.quiet(false);
+      expect(hulls.map((o) => o.r)).toEqual(before);
+      w.dispose();
+    }
+  });
+
   it('puts a TIE on the Razor Crest’s tail over Nevarro, firing the Empire’s green', () => {
     const k = kit();
     const placed = [];
