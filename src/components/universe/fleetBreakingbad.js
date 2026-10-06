@@ -113,13 +113,16 @@ function wheels(L, { len = 1, w = 0.4, r = 0.06, sill = 0, rim = CHROME, back = 
   }
 }
 
-// a pair of wings swept back off the sills, mirrored, with a running light at each tip
+// a pair of wings swept back off the sills, mirrored: each a trapezoid,
+// the root chord along the sill and a short tip chord well aft, a fin
+// standing on the tip chord, raked back, with a running light on top
 function wings(L, { len = 1, w = 0.4, span = 0.42, sweep = 0.2, y = 0.05, color, light = [5, 0.6, 0.5] }) {
   const root = w / 2 - 0.01;
+  const aft = (f) => f * len - sweep;
   const wing = [];
-  wing.push(part(plateXZ([[root, -0.14 * len], [root + span, -0.14 * len - sweep], [root + span, -0.2 * len - sweep], [root, 0.1 * len]], 0.014, 0.004), { at: [0, y, 0], color }));
-  wing.push(part(plateZY([[-0.2 * len - sweep, 0], [-0.1 * len - sweep, 0], [-0.17 * len - sweep, 0.09], [-0.2 * len - sweep, 0.09]], 0.008, 0.002), { at: [root + span - 0.004, y, 0], color }));
-  wing.push(ball(0.008, [root + span, y + 0.004, -0.17 * len - sweep], 1, { to: 'glow', color: light, mark: 'tips' }, 6));
+  wing.push(part(plateXZ([[root, -0.14 * len], [root + span, aft(-0.2)], [root + span, aft(-0.12)], [root, 0.1 * len]], 0.014, 0.004), { at: [0, y, 0], color }));
+  wing.push(part(plateZY([[aft(-0.2), 0], [aft(-0.12), 0], [aft(-0.175), 0.09], [aft(-0.215), 0.09]], 0.008, 0.002), { at: [root + span - 0.004, y, 0], color }));
+  wing.push(ball(0.008, [root + span - 0.004, y + 0.094, aft(-0.195)], 1, { to: 'glow', color: light, mark: 'tips' }, 6));
   L.push(...wing, ...mirror(wing));
 }
 
@@ -397,7 +400,7 @@ function gusvolvo(k) {
   const w = 0.4;
   const h = 0.12;
   const L = [];
-  const b = body(L, { len, w, h, roofH: 0.11, roofFrom: -0.22, roofTo: 0.12, roofW: 0.35, color: SILVER, chamfer: 0.006, glass: '#2e4254' });
+  const b = body(L, { len, w, h, roofH: 0.11, roofFrom: -0.22, roofTo: 0.12, roofW: 0.35, color: SILVER, chamfer: 0.006, glass: '#8ea4ba' });
   // square at both ends, as a 240 is: its own loft in place of body()'s
   // rounded one (the first part body() makes), and black bumpers standing
   // proud of both ends in place of its chrome ones (the last two)
@@ -441,7 +444,7 @@ function gusvolvo(k) {
   wheels(L, { len, w, r: 0.055, rim: '#d5d9dd' });
   wings(L, { len, w, span: 0.38, sweep: 0.2, y: b.y, color: SILVER, light: [4.6, 4.6, 5] });
   jet(L, { len, at: [0, 0.074, -0.5], r: 0.034, n: 1 });
-  const mats = { ...materials(k, { base: 214, spread: 4, seam: 0.62, metalness: 0.55, roughness: 0.28, glass: '#2e4254' }), trim: standard(k, { metalness: 0.1, roughness: 0.7 }) };
+  const mats = { ...materials(k, { base: 214, spread: 4, seam: 0.62, metalness: 0.55, roughness: 0.28, glass: '#3d566f' }), trim: standard(k, { metalness: 0.1, roughness: 0.7 }) };
   // (its lights burn steady: nothing blinks)
   return finish(k, L, mats);
 }
@@ -463,7 +466,7 @@ function beater(k) {
   const TEAL = '#5b8379';
   const DOOR = '#c8b88a';
   const PRIMER = '#8a8e90';
-  const RUST = '#7b4227';
+  const RUST = '#6b3a22';
   const len = 1;
   const w = 0.4;
   const h = 0.12;
@@ -486,12 +489,13 @@ function beater(k) {
   L.push(part(new THREE.BoxGeometry(0.12, 0.003, 0.11), { at: [-0.04, b.top + roofH + 0.0012, -0.06], to: 'matte', color: PRIMER }));
   L.push(part(new THREE.BoxGeometry(0.003, h * 0.5, 0.085), { at: [-(w / 2 + 0.0015), b.y - 0.012, -0.4125 * len], to: 'matte', color: PRIMER }));
   for (const [sx, z, d] of [
-    [1, -0.19, 0.08],
-    [1, 0.2, 0.05],
+    [1, -0.19, 0.07],
+    [1, 0.2, 0.045],
     [-1, -0.2, 0.06],
-    [-1, 0.16, 0.1],
+    [-1, 0.16, 0.09],
   ]) {
-    L.push(part(new THREE.BoxGeometry(0.003, 0.022, d), { at: [sx * (w / 2 + 0.0015), 0.024, z * len], to: 'matte', color: RUST }));
+    L.push(part(new THREE.BoxGeometry(0.003, 0.016, d), { at: [sx * (w / 2 + 0.0015), 0.02, z * len], to: 'matte', color: RUST }));
+    L.push(part(new THREE.BoxGeometry(0.0034, 0.01, d * 0.45), { at: [sx * (w / 2 + 0.0015), 0.031, z * len + d * 0.12], to: 'matte', color: '#5a3322' }));
   }
   // the windscreen cracked from a stone on the passenger's side, the cracks
   // laid on its face (which leans back by phi), below where the roof hides it
@@ -892,8 +896,8 @@ function deachopper(k) {
   const reach = (d) => from.clone().addScaledVector(dir, d).toArray();
   const lamp = [
     part(new THREE.CircleGeometry(0.012, 12), { at: from.toArray(), rot: [dip, 0, 0], to: 'glow', color: [8, 8, 7] }),
-    between(new THREE.ConeGeometry(0.075, 1, 16, 1, true), reach(0.38), from.toArray(), { to: 'beam', color: [0.2, 0.2, 0.18], uv: 'keep' }),
-    between(new THREE.ConeGeometry(0.03, 1, 12, 1, true), reach(0.3), from.toArray(), { to: 'beam', color: [0.26, 0.26, 0.23], uv: 'keep' }),
+    between(new THREE.ConeGeometry(0.075, 1, 16, 1, true), reach(0.38), from.toArray(), { to: 'beam', color: [0.12, 0.12, 0.11], uv: 'keep' }),
+    between(new THREE.ConeGeometry(0.03, 1, 12, 1, true), reach(0.3), from.toArray(), { to: 'beam', color: [0.17, 0.17, 0.15], uv: 'keep' }),
   ];
   const fade = canvasTexture(64, (g, S) => {
     const grad = g.createLinearGradient(0, 0, 0, S);

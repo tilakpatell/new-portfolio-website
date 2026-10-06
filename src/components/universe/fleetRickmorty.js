@@ -208,11 +208,11 @@ function oval(w, up, down = up, y = 0, n = 20, p = 2) {
 }
 
 // A hull of oval() rings, its rows [z, r] and the ring's proportions to r
-// in `shape` ([half its width, up, down]): how far round a ring a point
+// in `shape` ([half its width, up, down, p]): how far round a ring a point
 // is, from -PI / 2 underneath to PI / 2 on top (for painting it), and a
 // part set into its skin at z, a way round, facing out of it (an eye, a
 // lamp), lifted off it by `lift`.
-const roundOf = ([wr, ur, dr], x, y) => atan2(y / (y > 0 ? ur : dr), abs(x) / wr);
+const roundOf = ([wr, ur, dr, p = 2], x, y) => atan2(Math.sign(y) * abs(y / (y > 0 ? ur : dr)) ** (p / 2), abs(x / wr) ** (p / 2));
 function onHull(g, rows, [wr, ur, dr], z, a, { lift = 0, scale = 1, ...o } = {}) {
   const P = (zz, aa) => {
     const [, r] = measure(rows, zz);
@@ -1238,17 +1238,17 @@ function gunship(k) {
       { color: FED.grey },
     ),
   );
-  gun.push(part(new THREE.BoxGeometry(0.068, 0.012, 0.05), { at: [0, 0, 0.12], color: FED.blue }));
+  gun.push(part(loft([0.12, 0.165].map((z) => ({ z, pts: box8(0.07, 0.088, 0.021) }))), { color: FED.blue }));
   for (const dy of [0.019, -0.019]) {
-    gun.push(part(turned([[0.0001, 0.24], [0.017, 0.24], [0.017, 0.33], [0.012, 0.345], [0.0001, 0.345]], 10), { at: [0, dy, 0], to: 'metal', color: FED.dark }));
-    gun.push(rod([0, dy, 0.34], [0, dy, 0.45], 0.0085, 0.0085, { to: 'metal', color: '#4a5059' }, 8));
-    gun.push(part(turned([[0.006, 0.445], [0.014, 0.445], [0.015, 0.452], [0.015, 0.478], [0.012, 0.482], [0.006, 0.482], [0.006, 0.47]], 10), { at: [0, dy, 0], to: 'metal', color: FED.dark }));
+    gun.push(part(turned([[0.017, 0.24], [0.017, 0.33], [0.012, 0.345]], 8), { at: [0, dy, 0], to: 'metal', color: FED.dark }));
+    gun.push(rod([0, dy, 0.34], [0, dy, 0.45], 0.0085, 0.0085, { to: 'metal', color: '#4a5059' }, 6));
+    gun.push(part(turned([[0.0085, 0.445], [0.015, 0.448], [0.015, 0.478], [0.006, 0.482], [0.006, 0.47]], 8), { at: [0, dy, 0], to: 'metal', color: FED.dark }));
     gun.push(part(new THREE.CircleGeometry(0.0062, 8), { at: [0, dy, 0.471], to: 'glow', color: FED_BLUE, mark: 'muzzle' }));
   }
   for (const sx of [-1, 1]) L.push(...place(gun, [sx * 0.135, 0, 0]));
   // the chin turret: a ball under the nose, a rotary cannon out of it
   const cy = -0.062;
-  L.push(ball(0.036, [0, cy, 0.22], [1, 0.85, 1], { to: 'metal', color: FED.dark }, 12));
+  L.push(ball(0.036, [0, cy, 0.22], [1, 0.85, 1], { to: 'metal', color: FED.dark }, 10));
   L.push(part(turned([[0.0001, 0.24], [0.017, 0.24], [0.019, 0.27], [0.015, 0.29], [0.0001, 0.29]], 10), { at: [0, cy, 0], to: 'metal', color: '#4a5059' }));
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * PI * 2;
@@ -1412,32 +1412,48 @@ function fedcruiser(k) {
     const [sx, sz] = [0.01 + 0.02 * k.rand(), 0.01 + 0.03 * k.rand()];
     L.push(part(new THREE.BoxGeometry(sx, 0.006, sz), { at: [(k.rand() - 0.5) * 0.08, 0.087, z], to: 'metal', color: k.rand() < 0.5 ? '#5d646d' : '#9aa1aa' }));
   }
-  // the tower at its back, the bridge across the top of it in blue, its
-  // windows lit, and masts with red lights over it
-  L.push(
-    part(
-      loft([
-        { z: -0.43, pts: trap8(0.1, 0.07, 0.1, 0.008, 0.125) },
-        { z: -0.31, pts: trap8(0.1, 0.07, 0.1, 0.008, 0.125) },
-        { z: -0.27, pts: trap8(0.08, 0.05, 0.06, 0.006, 0.105) },
-      ]),
-      { color: FED.white },
-    ),
+  // the superstructure at its back, stepping up: a broad block with a band
+  // of windows round it, the tower on that, and the bridge across the top
+  // in blue, its windows lit, masts with red lights over it. Each is rows
+  // of [z, width at the foot, at the top, height, y], and a band of lit
+  // windows round it at a height
+  const tier = (rows, color, band) => {
+    const at = (z, grow = 1, hh) => {
+      const [, wb, wt, h, y] = measure(rows, z);
+      return { z, pts: scaled(trap8(wb, wt, hh ?? h, min(wt, h) * 0.12, hh ? band : y), grow, 1) };
+    };
+    L.push(part(loft(rows.map(([z]) => at(z))), { color }));
+    if (band) L.push(part(loft([at(rows[0][0] + 0.008, 1.02, 0.007), at(rows[1][0], 1.02, 0.007), at(rows[1][0] + (rows[2][0] - rows[1][0]) * 0.5, 1.02, 0.007)]), { to: 'glow', color: [1.6, 2.2, 3.2] }));
+  };
+  tier(
+    [
+      [-0.45, 0.13, 0.11, 0.05, 0.1],
+      [-0.26, 0.13, 0.11, 0.05, 0.1],
+      [-0.19, 0.11, 0.09, 0.012, 0.081],
+    ],
+    FED.white,
+    0.106,
   );
-  L.push(
-    part(
-      loft([
-        { z: -0.42, pts: box8(0.15, 0.024, 0.006, 0.182) },
-        { z: -0.34, pts: box8(0.17, 0.032, 0.008, 0.182) },
-        { z: -0.3, pts: box8(0.15, 0.018, 0.005, 0.177) },
-      ]),
-      { color: FED.blue },
-    ),
+  tier(
+    [
+      [-0.44, 0.09, 0.07, 0.07, 0.155],
+      [-0.34, 0.09, 0.07, 0.07, 0.155],
+      [-0.3, 0.07, 0.05, 0.03, 0.135],
+    ],
+    FED.white,
   );
-  L.push(part(new THREE.BoxGeometry(0.15, 0.006, 0.02), { at: [0, 0.181, -0.315], rot: [-0.35, 0, 0], to: 'glow', color: [1.6, 2.2, 3.2] }));
+  tier(
+    [
+      [-0.435, 0.12, 0.1, 0.026, 0.197],
+      [-0.34, 0.15, 0.13, 0.034, 0.199],
+      [-0.3, 0.11, 0.09, 0.012, 0.19],
+    ],
+    FED.blue,
+    0.2,
+  );
   for (const sx of [-1, 1]) {
-    L.push(rod([sx * 0.04, 0.195, -0.38], [sx * 0.04, 0.245, -0.39], 0.003, 0.0018, { color: FED.grey }, 5));
-    L.push(ball(0.0055, [sx * 0.04, 0.247, -0.39], 1, { to: 'glow', color: [5.5, 0.7, 0.5], mark: 'mast' }, 6));
+    L.push(rod([sx * 0.035, 0.212, -0.39], [sx * 0.035, 0.255, -0.4], 0.003, 0.0018, { color: FED.grey }, 5));
+    L.push(ball(0.0055, [sx * 0.035, 0.257, -0.4], 1, { to: 'glow', color: [5.5, 0.7, 0.5], mark: 'mast' }, 6));
   }
   // the wings at the stern, out to the nacelles: blue stripes, the engine
   // nacelle (its intake glowing, bands round it, the engine behind) and a
@@ -1495,60 +1511,64 @@ function mortyfighter(k) {
   const DARK = '#2b323b';
   const JET = [1.1, 2.5, 5.2];
   const L = [];
+  // the body, lofted round, then painted: blue-grey on its nose, in a band
+  // behind the canopy and underneath, yellow over the rest
   const RINGS = [
-    [-0.4, 0.045],
-    [-0.37, 0.08],
-    [-0.3, 0.112],
-    [-0.2, 0.128],
-    [-0.16, 0.131],
-    [-0.05, 0.134],
-    [0.08, 0.128],
-    [0.2, 0.108],
-    [0.29, 0.08],
-    [0.35, 0.05],
-    [0.385, 0.018],
-    [0.393, 0.0005],
+    [-0.36, 0.04],
+    [-0.33, 0.075],
+    [-0.26, 0.108],
+    [-0.16, 0.13],
+    [-0.05, 0.138],
+    [-0.01, 0.14],
+    [0.1, 0.134],
+    [0.19, 0.115],
+    [0.26, 0.088],
+    [0.31, 0.058],
+    [0.34, 0.03],
+    [0.352, 0.0005],
   ];
-  const SHAPE = [1.06, 0.9, 0.8];
-  const body = smoothLoft(RINGS.map(([z, r]) => ({ z, pts: oval(r * 2 * SHAPE[0], r * SHAPE[1], r * SHAPE[2], 0, 22, 2.2) })));
+  const SHAPE = [1.08, 0.92, 0.8, 2.2];
+  const body = smoothLoft(RINGS.map(([z, r]) => ({ z, pts: oval(r * 2 * SHAPE[0], r * SHAPE[1], r * SHAPE[2], 0, 22, SHAPE[3]) })));
   L.push(
     ...painted(
       body,
       [
-        [(x, y, z) => z > 0.29, TRIM],
-        [(x, y, z) => z > -0.2 && z < -0.16, TRIM],
+        [(x, y, z) => z > 0.26, TRIM],
+        [(x, y, z) => z > -0.05 && z < -0.01, TRIM],
         [(x, y) => roundOf(SHAPE, x, y) < -0.62, TRIM],
       ],
       YELLOW,
     ),
   );
   // the bubble canopy, and the Morty under it
-  L.push(part(new THREE.SphereGeometry(0.07, 22, 10, 0, PI * 2, 0, PI * 0.64), { at: [0, 0.104, 0.09], to: 'glass' }));
-  L.push(...mortyPilot([0, 0.135, 0.09], 0.03));
-  // the wings: a blue-grey panel on each, the cannon pod at its tip (its
-  // muzzle lit) and a light on the pod
+  L.push(part(new THREE.SphereGeometry(0.072, 22, 10, 0, PI * 2, 0, PI * 0.64), { at: [0, 0.112, 0.1], to: 'glass' }));
+  L.push(...mortyPilot([0, 0.142, 0.1], 0.031));
+  // the wings, short and broad: a blue-grey panel on each, the cannon pod
+  // at its tip (its muzzle lit) and a light on the pod
   const wing = [];
-  wing.push(part(plateXZ([[0, -0.16], [0.11, -0.13], [0.14, -0.1], [0.14, -0.02], [0, 0.07]], 0.034, 0.011), { color: YELLOW }));
-  wing.push(part(plateXZ([[0.06, -0.125], [0.105, -0.115], [0.118, -0.095], [0.118, -0.03], [0.06, 0.006]], 0.038), { color: TRIM }));
-  wing.push(part(turned([[0.0001, -0.145], [0.014, -0.14], [0.021, -0.12], [0.022, -0.02], [0.019, 0.02], [0.011, 0.045], [0.0001, 0.05]], 12), { at: [0.148, 0, 0], color: TRIM }));
-  wing.push(rod([0.148, 0, 0.04], [0.148, 0, 0.13], 0.0055, 0.0055, { to: 'metal', color: DARK }, 6));
-  wing.push(bead(0.0065, [0.148, 0, 0.131], 1, { to: 'glow', color: JET }));
-  wing.push(bead(0.007, [0.148, 0.021, -0.1], 1, { to: 'glow', color: [3.4, 2.6, 0.6], mark: 'tips' }));
-  const right = place(wing, [0.11, -0.035, -0.04], [0, 0, -0.1]);
+  wing.push(part(plateXZ([[0, -0.2], [0.13, -0.17], [0.17, -0.13], [0.17, -0.05], [0, 0.08]], 0.036, 0.012), { color: YELLOW }));
+  wing.push(part(plateXZ([[0.07, -0.165], [0.125, -0.15], [0.148, -0.12], [0.148, -0.055], [0.07, 0.0]], 0.04), { color: TRIM }));
+  const pod = [0.178, 0, 0];
+  wing.push(part(turned([[0.0001, -0.19], [0.015, -0.185], [0.023, -0.16], [0.024, -0.04], [0.02, 0.0], [0.011, 0.025], [0.0001, 0.03]], 12), { at: pod, color: TRIM }));
+  wing.push(rod([pod[0], 0, 0.02], [pod[0], 0, 0.12], 0.0058, 0.0058, { to: 'metal', color: DARK }, 6));
+  wing.push(bead(0.0068, [pod[0], 0, 0.121], 1, { to: 'glow', color: JET }));
+  wing.push(bead(0.007, [pod[0], 0.023, -0.15], 1, { to: 'glow', color: [3.4, 2.6, 0.6], mark: 'tips' }));
+  const right = place(wing, [0.1, -0.035, -0.06], [0, 0, -0.08]);
   L.push(...right, ...mirror(right));
   // twin fins on its back, canted out
-  const fin = part(plateZY([[-0.36, 0], [-0.24, 0], [-0.31, 0.08], [-0.36, 0.085]], 0.018, 0.006), { at: [0.035, 0.06, 0], rot: [0, 0, -0.45], color: TRIM });
+  const fin = part(plateZY([[-0.34, 0], [-0.22, 0], [-0.3, 0.085], [-0.35, 0.09]], 0.02, 0.007), { at: [0.035, 0.07, 0], rot: [0, 0, -0.45], color: TRIM });
   L.push(fin, ...mirror([fin]));
-  // the engines
+  // the engines, fat and close together
   for (const sx of [-1, 1]) {
-    const at = [sx * 0.052, -0.01, 0];
-    L.push(part(turned([[0.02, -0.46], [0.027, -0.466], [0.034, -0.455], [0.036, -0.4], [0.033, -0.33], [0.024, -0.3]], 14), { at, color: TRIM }));
-    L.push(part(new THREE.CircleGeometry(0.022, 14), { at: [at[0], at[1], -0.459], rot: [0, PI, 0], to: 'glow', color: JET }));
-    L.push(part(new THREE.ConeGeometry(0.019, 0.045, 12, 1, true), { at: [at[0], at[1], -0.483], rot: [-PI / 2, 0, 0], to: 'glow', color: [0.8, 2.0, 4.6], mark: 'jet' }));
+    const at = [sx * 0.05, -0.008, 0];
+    L.push(part(turned([[0.026, -0.44], [0.034, -0.447], [0.042, -0.434], [0.044, -0.37], [0.04, -0.3], [0.03, -0.27]], 14), { at, color: TRIM }));
+    L.push(part(turned([[0.0447, -0.405], [0.0447, -0.39]], 14), { at, color: YELLOW }));
+    L.push(part(new THREE.CircleGeometry(0.028, 14), { at: [at[0], at[1], -0.438], rot: [0, PI, 0], to: 'glow', color: JET }));
+    L.push(part(new THREE.ConeGeometry(0.024, 0.05, 12, 1, true), { at: [at[0], at[1], -0.465], rot: [-PI / 2, 0, 0], to: 'glow', color: [0.8, 2.0, 4.6], mark: 'jet' }));
   }
 
-  const paint = standard(k, { map: k.own(panelTexture(k.rand, { base: 240, spread: 5, seam: 0.82, detail: 0.08, min: 22 })), metalness: 0.15, roughness: 0.42 });
-  paint.userData.density = 5;
+  const paint = standard(k, { map: k.own(panelTexture(k.rand, { base: 242, spread: 4, seam: 0.86, detail: 0.05, min: 28 })), metalness: 0.12, roughness: 0.4 });
+  paint.userData.density = 4;
   const mats = { paint, metal: standard(k, { metalness: 0.75, roughness: 0.35 }), glass: bubble(k, '#d6ecff', 0.22), glow: glowMaterial(k) };
   const M = meshes(k, L, mats);
   const blink = blinker(M.glow.geometry);
@@ -1571,7 +1591,7 @@ function mortyfighter(k) {
 // with a cannon under each, canards at the nose, twin fins, and two engines
 // burning yellow.
 function evilmortyship(k) {
-  const BLACK = '#1f2026';
+  const BLACK = '#33353e';
   const PATCH = '#0c0d10';
   const YELLOW = '#f3c330';
   const GREY = '#474a54';
@@ -1589,8 +1609,9 @@ function evilmortyship(k) {
     [0.47, 0.009],
     [0.5, 0.0005],
   ];
-  const SHAPE = [1.3, 0.78, 0.62];
-  const body = smoothLoft(RINGS.map(([z, r]) => ({ z, pts: oval(r * 2 * SHAPE[0], r * SHAPE[1], r * SHAPE[2], 0, 24, 2.6) })));
+  const SHAPE = [1.3, 0.78, 0.62, 2.6];
+  const body = smoothLoft(RINGS.map(([z, r]) => ({ z, pts: oval(r * 2 * SHAPE[0], r * SHAPE[1], r * SHAPE[2], 0, 24, SHAPE[3]) })));
+  // yellow down each flank
   L.push(...painted(body, [[(x, y, z) => z > -0.41 && z < 0.4 && abs(roundOf(SHAPE, x, y)) < 0.2, YELLOW]], BLACK));
   // the canopy, long and low, and Evil Morty under it
   const C = [0, 0.048, 0.13];
@@ -1627,12 +1648,12 @@ function evilmortyship(k) {
   for (const sx of [-1, 1]) {
     const at = [sx * 0.042, -0.004, 0];
     L.push(part(turned([[0.017, -0.475], [0.024, -0.48], [0.03, -0.468], [0.031, -0.42], [0.028, -0.36], [0.02, -0.33]], 14), { at, color: GREY }));
+    L.push(part(turned([[0.0318, -0.455], [0.0318, -0.44]], 14), { at, color: YELLOW }));
     L.push(part(new THREE.CircleGeometry(0.019, 14), { at: [at[0], at[1], -0.473], rot: [0, PI, 0], to: 'glow', color: JET }));
     L.push(part(new THREE.ConeGeometry(0.016, 0.05, 12, 1, true), { at: [at[0], at[1], -0.5], rot: [-PI / 2, 0, 0], to: 'glow', color: [3.2, 1.7, 0.3], mark: 'jet' }));
   }
-  L.push(rod([0, 0.064, -0.1], [0, 0.058, -0.38], 0.0025, 0.0025, { to: 'glow', color: [3.4, 2.4, 0.45] }, 4));
 
-  const paint = standard(k, { map: k.own(panelTexture(k.rand, { base: 236, spread: 10, seam: 0.6, detail: 0.15, min: 16 })), metalness: 0.35, roughness: 0.32 });
+  const paint = standard(k, { map: k.own(panelTexture(k.rand, { base: 236, spread: 10, seam: 0.6, detail: 0.15, min: 16 })), metalness: 0.25, roughness: 0.36 });
   paint.userData.density = 6;
   const mats = { paint, metal: standard(k, { metalness: 0.8, roughness: 0.3 }), glass: bubble(k, '#fff1c4', 0.24), glow: glowMaterial(k) };
   const M = meshes(k, L, mats);
