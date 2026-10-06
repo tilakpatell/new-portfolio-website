@@ -118,11 +118,11 @@ export default function Galaxy() {
   // out of the page: the screen fades, and on (down through the air, glowing,
   // when it's onto the planet)
   const leave = useCallback(
-    (to, { jump = false, land = false, crash = false } = {}) => {
+    (to, { jump = false, land = false } = {}) => {
       if (leaving) return;
-      setLeaving({ to, land, crash });
+      setLeaving({ to, land });
       if (jump) window.dispatchEvent(new Event('tp:hyperspace'));
-      timer.current = setTimeout(() => navigate(to), jump ? 1250 : land ? 1500 : crash ? 700 : 650);
+      timer.current = setTimeout(() => navigate(to), jump ? 1250 : land ? 1500 : 650);
     },
     [leaving, navigate],
   );
@@ -134,10 +134,12 @@ export default function Galaxy() {
     (id) => {
       if (!id || !canLand(id) || leaving) return false;
       prefetchSurface();
-      leave(`/galaxy/${id}/surface`, { crash: true });
+      const to = `/galaxy/${id}/surface`;
+      setLeaving({ to, crash: true });
+      timer.current = setTimeout(() => navigate(to), 700);
       return true;
     },
-    [leave, leaving],
+    [leaving, navigate],
   );
   // Down onto the planet you're at, flown: the ship dives on it, the air
   // glows round it, and the runtime hands over to the surface's world,
