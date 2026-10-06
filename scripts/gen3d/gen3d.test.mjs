@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { check } from './budget.mjs';
 import { command, wslPath } from './generate.mjs';
 import { caption, layout } from './judge.mjs';
 
@@ -29,12 +30,10 @@ describe('engines', () => {
 });
 
 describe('the web budget', () => {
-  it('passes a model within its triangle budget and under 1 MB', async () => {
-    const { check } = await import('./web.mjs');
+  it('passes a model within its triangle budget and under 1 MB', () => {
     expect(check({ tris: 16000, after: 15900, bytes: 400 * 1024 })).toEqual([]);
   });
-  it('refuses one over budget, naming each problem', async () => {
-    const { check } = await import('./web.mjs');
+  it('refuses one over budget, naming each problem', () => {
     const problems = check({ tris: 16000, after: 24000, bytes: 1300 * 1024 });
     expect(problems).toHaveLength(2);
     expect(problems[0]).toMatch(/24000 triangles, over the budget of 16000/);

@@ -15,19 +15,10 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { check, triangles } from './budget.mjs';
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const OUT = join(ROOT, 'public', 'models', 'gen3d');
-export const MAX_BYTES = 1024 * 1024;
-
-export const triangles = (doc) => doc.getRoot().listMeshes().reduce((n, m) => n + m.listPrimitives().reduce((k, p) => k + (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3, 0), 0);
-
-// What the result must satisfy before it goes in: the budget, and the size cap.
-export function check({ tris, after, bytes }) {
-  const problems = [];
-  if (after > tris * 1.05) problems.push(`${Math.round(after)} triangles, over the budget of ${tris}`);
-  if (bytes > MAX_BYTES) problems.push(`${(bytes / 1024).toFixed(0)} KB, over ${MAX_BYTES / 1024} KB`);
-  return problems;
-}
 
 export async function io() {
   await Promise.all([MeshoptEncoder.ready, MeshoptDecoder.ready, MeshoptSimplifier.ready]);
