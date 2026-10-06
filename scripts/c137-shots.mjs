@@ -60,9 +60,9 @@ export const VIEWS = {
   anatomy: { area: 'anatomy', at: [-400, 1508.4, N], cam: [0, 0.25] },
   needful: { area: 'needful', at: [-400, 1601.4, N], cam: [0, 0.3] },
   jerryboree: { area: 'jerryboree', at: [-400, 1703.4, N], cam: [0, 0.3] },
-  purge: { area: 'purge', at: [-400, 1916, N], cam: [0, 0.2] },
-  pluto: { area: 'pluto', at: [-400, 2016, N], cam: [0, 0.2] },
-  gearworld: { area: 'gearworld', at: [-400, 2116, N], cam: [0, 0.2] },
+  purge: { area: 'purge', at: [-400, 1816, N], cam: [0, 0.2] },
+  pluto: { area: 'pluto', at: [-400, 1916, N], cam: [0, 0.2] },
+  gearworld: { area: 'gearworld', at: [-400, 2016, N], cam: [0, 0.2] },
 };
 
 const names = process.argv.slice(2);
