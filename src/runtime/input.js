@@ -58,7 +58,14 @@ export function createInput({ readPad = readGamepad, typing = safeTyping, captur
     pointer.lastX = pointer.x;
     pointer.lastY = pointer.y;
     pointer.dx = pointer.dy = 0;
-    if (capture && e.pointerId != null) {
+    // Not when the press is on something in the box that took the pointer
+    // itself (a fromScene module's canvas, for its own drag: the galaxy's)
+    // or on one of the page's controls over the world: captured to the box,
+    // their moves, their release and their click all went to the box, so the
+    // galaxy's drag never steered and its buttons never answered
+    const t = e.target;
+    const theirs = t && t !== host && (t.hasPointerCapture?.(e.pointerId) || t.closest?.('button, a, input, select, textarea, label, [role="button"]'));
+    if (capture && e.pointerId != null && !theirs) {
       try {
         host.setPointerCapture?.(e.pointerId);
       } catch {

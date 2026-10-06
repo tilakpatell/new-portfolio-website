@@ -208,7 +208,6 @@ const KEYS = { w: 'up', s: 'down', a: 'a', d: 'd', arrowleft: 'left', arrowright
 const FOOT_KEYS = { ...KEYS, a: 'left', d: 'right', arrowup: 'up', arrowdown: 'down', ' ': 'jump', shift: 'boost', q: 'strafeL', e: 'strafeR', f: null };
 const FOOT_FOV = 56; // the lens on foot: a person's, wider than the chase's
 const SHIP_NAMES = { rv: 'The RV', cruiser: 'The cruiser', xwing: 'The X-wing', falcon: 'The Falcon' };
-const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ']);
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const TRACK_AFTER_SHOT = 1500; // ms: a lock the guns picked is followed this long after a shot at it
@@ -3956,7 +3955,12 @@ export async function create(canvas, ctx) {
     if (el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
     if (document.querySelector('[aria-modal="true"]')) return;
     const key = e.key.toLowerCase();
-    // on a button or link, the arrows, Space and Enter are its own
+    // on a button or link, Enter is its own. The arrows and Space fly anyway
+    // (a click on a panel or HUD button leaves the focus on it, and the
+    // hangar, the settings and the nav map hand it back to their button: the
+    // arrows stopped steering and Space opened the hangar again), unless the
+    // control took them itself (preventDefault: the planet labels, the
+    // guide's tabs); taken here, Space's keydown is prevented, so no click
     const onControl = el instanceof HTMLElement && el !== document.body && el.closest('button, a, [role="button"], [tabindex]:not([tabindex="-1"])');
     if ((key === 'g' || key === 'e' || (key === 'enter' && !onControl)) && state.phoneNear && !onFoot() && !state.landable && !state.at) {
       // at the phone: it asks for its password
@@ -4038,7 +4042,7 @@ export async function create(canvas, ctx) {
       return;
     }
     const k = KEYS[key];
-    if (!k || (onControl && ARROWS.has(key))) return;
+    if (!k || e.defaultPrevented) return;
     e.preventDefault();
     heard();
     if (k !== 'boost') takeover();
@@ -4083,7 +4087,7 @@ export async function create(canvas, ctx) {
       return;
     }
     const k = FOOT_KEYS[key];
-    if (!k || (onControl && ARROWS.has(key))) return;
+    if (!k || e.defaultPrevented) return;
     e.preventDefault();
     held.add(key);
     state.keys[k] = true;

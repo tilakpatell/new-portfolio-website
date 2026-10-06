@@ -120,7 +120,6 @@ const CRASH = { impact: 0.32, back: 2.6, done: 3.2 };
 const JUMP = { align: 4.5, spool: 0.95, exit: 1.1 }; // seconds, at most, to come round; to spool up; to drop out
 const IDLE = 40000;
 const KEYS = { w: 'up', s: 'down', a: 'a', d: 'd', arrowleft: 'left', arrowright: 'right', arrowup: 'pitchUp', arrowdown: 'pitchDown', ' ': 'boost', shift: 'boost', f: 'fire' };
-const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ']);
 const DRAG = 6;
 const NO_TARGETS = Object.freeze([]); // (when there are no hunters to lock on to, the same empty list every time)
 
@@ -1130,7 +1129,10 @@ export async function create(canvas, ctx) {
         // out: off the new system's planet, on the side you came in from;
         // or, pulled out by the Interdictor's well, a long way short of it
         const a = bitten ? dropPoint(arrival(j.to, j.from)) : arrival(j.to, j.from);
-        state.ship = { ...spawn(null, a), speed: 46 };
+        // (no faster than the drive allows where it comes out: near a planet
+        // that's under 46, and the ship was braked to a near stop in a
+        // fraction of a second while the streaks still played)
+        state.ship = { ...spawn(null, a), speed: Math.min(46, state.space.boostAt(a.x, a.y, a.z)) };
         camQOn = false;
         state.world.group.visible = true;
         j.phase = 'exit';
@@ -1842,7 +1844,9 @@ export async function create(canvas, ctx) {
       return;
     }
     const k = KEYS[key];
-    if (!k || (onControl && ARROWS.has(key))) return;
+    // (the arrows and Space fly even with a button focused, as on the universe
+    // map, unless the control took them itself; Enter is the button's)
+    if (!k || e.defaultPrevented) return;
     e.preventDefault();
     heard();
     if (k !== 'boost') takeover();
