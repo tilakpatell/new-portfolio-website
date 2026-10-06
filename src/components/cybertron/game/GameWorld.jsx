@@ -459,7 +459,10 @@ function World({ gl, setGl }) {
           </div>
           {hud.boss && (
             <div className="cyw-boss">
-              <p>Megatron{hud.boss.form === 'tank' ? ' · tank' : ''}</p>
+              <p>
+                {hud.boss.name}
+                {hud.boss.form === 'tank' ? ' · tank' : ''}
+              </p>
               <div className="cyw-bar">
                 <span style={{ width: `${Math.round(hud.boss.hp * 100)}%` }} />
               </div>
