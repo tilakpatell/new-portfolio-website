@@ -453,6 +453,41 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
    moves them each frame (data-on: shown; data-off: it's off the screen, so
    it's an arrow at the edge, turned --a toward it; data-hot: the nose is
    near enough the lead that a shot bends onto it; data-hit: a shot landed) */
+/* the grand tour's pill: where it's up to, and the way to stop it */
+.universe-tour {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 92px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 8px 14px;
+  border-radius: 999px;
+  background: rgb(6 10 22 / 0.78);
+  border: 1px solid rgb(159 216 255 / 0.25);
+  color: #dfe8f6;
+  font: 500 12px/1.2 var(--font-mono);
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+}
+.universe-tour button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgb(159 216 255 / 0.12);
+  color: inherit;
+  border: 0;
+  cursor: pointer;
+}
+.universe-tour kbd { font: inherit; opacity: 0.7; }
+@media (max-width: 767px) {
+  .universe-tour { top: auto; bottom: 120px; max-width: calc(100% - 32px); }
+}
+
 .universe-hud {
   --hot: #ff6a52;
   --nav: var(--engine, #e8eefc);
@@ -805,17 +840,22 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
 }
 
 .universe-hint {
+  /* across the map's open part, clear of the buttons in its corners: it wraps
+     rather than running off the left edge (it's longer than a laptop's map) */
   position: absolute;
-  left: 50%;
+  left: 184px;
+  right: calc(var(--panel-w) + 36px);
   bottom: 24px;
-  translate: calc(-50% - (var(--panel-w) + 24px) / 2) 0;
-  margin: 0;
-  padding: 0.5rem 0.85rem;
-  border-radius: 999px;
+  max-width: 760px;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 0.5rem 0.95rem;
+  border-radius: 14px;
   background: rgb(3 4 10 / 0.7);
   color: var(--muted);
   font-size: 0.78rem;
-  white-space: nowrap;
+  line-height: 1.75;
+  text-align: center;
   pointer-events: none;
 }
 .universe-hint kbd,
@@ -1149,6 +1189,10 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
 .universe-hangar-paint:focus-visible,
 .universe-hangar-part:focus-visible,
 .universe-hangar-slots button:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
+/* the cruiser's crew: to the wardrobe */
+.universe-hangar-crew { justify-self: start; min-height: 32px; padding: 0 0.8rem; border: 1px solid rgb(255 255 255 / 0.24); border-radius: 999px; color: var(--text); font-size: 0.76rem; font-weight: 600; transition: border-color 0.15s, background-color 0.15s; }
+.universe-hangar-crew:hover { border-color: #97ce4c; background: rgb(151 206 76 / 0.14); }
+.universe-hangar-crew:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
 /* the shipyard: the hull switch, the roll, the code, a row of modules a slot */
 .universe-yard { display: grid; gap: 0.6rem; }
 .universe-yard-hull { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; overflow: hidden; }

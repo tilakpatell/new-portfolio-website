@@ -72,6 +72,7 @@ export const ACHIEVEMENTS = {
   citadelout: { name: 'Get to the cruiser', desc: 'Got past Evil Morty’s Cop Ricks to the cruiser' },
   citadelfall: { name: 'Wubba lubba dub dub', desc: 'Helped bring down the Citadel of Ricks from the universe map' },
   rifted: { name: 'Through the rift', desc: 'Flew into a rift on the universe map and came out somewhere else' },
+  grandtour: { name: 'Seen it all', desc: 'Toured every station, world and wonder on the universe map' },
   wanted: { name: 'Wanted', desc: 'Shot down a bounty hunter on the universe map' },
   amonsul: { name: 'Amon Sûl', desc: 'Climbed the old stair to the ruined watchtower on Weathertop' },
   putitout: { name: 'Put it out, you fools!', desc: 'Stamped out Sam’s supper fire before the Nazgûl saw it' },
@@ -140,6 +141,7 @@ export const ACHIEVEMENTS = {
   titlecards: { name: 'The whole season', desc: 'Found all eight title cards hidden round the Graysons’ city' },
   rescue: { name: 'That actually helped', desc: 'Caught someone falling over the city and set them down' },
   mimic: { name: 'A fraction of our power', desc: 'Flew alongside an airliner over the Graysons’ city' },
+  flaxans: { name: 'Back through the portal', desc: 'Knocked every Flaxan out of the sky over the river in the Graysons’ city' },
   karman: { name: 'Neil Armstrong, eat your heart out', desc: 'Flew up out of the air over the Graysons’ city, into space' },
   moonwalk: { name: 'One small step', desc: 'Landed on the Moon as Invincible' },
   redplanet: { name: 'A long way from home', desc: 'Landed on Mars as Invincible' },
@@ -158,6 +160,7 @@ export const ACHIEVEMENTS = {
   bounty: { name: 'Jabba pays', desc: 'Collected a bounty from Boba Fett' },
   womprats: { name: 'Bullseye', desc: 'Bullseyed womp rats in Beggar’s Canyon' },
   canyon: { name: 'Canyon run', desc: 'Ran Beggar’s Canyon in a landspeeder against the clock' },
+  speederchase: { name: 'Fast and low', desc: 'Caught every scout trooper before the bunker on Endor' },
   tosche: { name: 'Power converters', desc: 'Picked up power converters at Tosche Station' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
   // Dunder Mifflin Scranton, the world (office/world)

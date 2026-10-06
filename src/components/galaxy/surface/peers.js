@@ -10,6 +10,7 @@
 
 import * as THREE from 'three';
 import { PARTY, loadPartyFigure } from '../../universe/footScene';
+import { readLooks } from '../../rickmorty/wardrobe/looks';
 import { METRE } from '../../universe/foot';
 import { RIDES } from './rides';
 import { buildFigure } from './figures';
@@ -50,7 +51,8 @@ export function createPeers({ parent, placer, getCast }) {
   const shown = new Map(); // peer id → { walkers: [{ who, holder, fig, st }], ride, tag, name }
   let dead = false;
 
-  const walker = (who) => {
+  // (looks: how that pilot dresses their Rick and Morty; the show's if they've sent none)
+  const walker = (who, looks = null) => {
     const holder = new THREE.Group();
     group.add(holder);
     const w = { who, holder, fig: null, st: null };
@@ -59,7 +61,7 @@ export function createPeers({ parent, placer, getCast }) {
       (async () => {
         const own = CREW_MODELS[who] ? await modelFigure(CREW_MODELS[who]).catch(() => null) : null;
         if (!own && spec.src.meshy) await getCast()?.load(null, [spec.src.meshy]).catch(() => {});
-        const fig = own ?? (await loadPartyFigure(spec, getCast()).catch(() => null));
+        const fig = own ?? (await loadPartyFigure(spec, getCast(), looks ?? readLooks(null)).catch(() => null));
         if (!fig || dead || !holder.parent) return;
         const inner = new THREE.Group();
         if (!own) inner.scale.setScalar(1 / METRE);
@@ -134,7 +136,7 @@ export function createPeers({ parent, placer, getCast }) {
               e.walkers[i].holder.removeFromParent();
               e.walkers[i].fig?.dispose?.();
             }
-            e.walkers[i] = walker(s.who);
+            e.walkers[i] = walker(s.who, p.looks);
             e.walkers[i].st = { ...s };
           }
           const wk = e.walkers[i];

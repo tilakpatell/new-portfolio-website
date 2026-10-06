@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { COMPANIES, FAMILY, companyFor, familyFor, showsOn } from './kinds';
-import { FAN_THEMES, THEMES, THEME_ORDER } from '../../theme/themes';
+import { COMPANIES, FAMILY, PROJECT_MOTIFS, familyFor, motifFor, showsOn } from './kinds';
+import { FAN_THEMES, ROUTE_THEMES, THEMES, THEME_ORDER } from '../../theme/themes';
 
 describe('ambience kinds', () => {
   it('gives every fan theme a family', () => {
@@ -15,10 +15,12 @@ describe('ambience kinds', () => {
     for (const id of ['aws', 'rtx', 'bose', 'pendar', 'empowerreg', 'src', 'gameboy', 'travel', 'custom']) expect(familyFor(id)).toBeNull();
   });
 
-  it('gives every company theme its quiet motif, and nothing else one', () => {
+  it('gives every company theme, and every project page theme, a quiet motif', () => {
     expect([...COMPANIES].sort()).toEqual([...THEME_ORDER].sort());
-    for (const id of THEME_ORDER) expect(companyFor(id)).toBe(id);
-    for (const id of ['jedi', 'gameboy', 'travel', 'custom']) expect(companyFor(id)).toBeNull();
+    for (const id of THEME_ORDER) expect(motifFor(id)).toBe(id);
+    const projects = Object.entries(ROUTE_THEMES).filter(([path]) => path.startsWith('/projects/')).map(([, id]) => id);
+    expect([...new Set(projects)].sort()).toEqual([...PROJECT_MOTIFS].sort());
+    for (const id of ['jedi', 'travel', 'custom', 'tortuga']) expect(motifFor(id)).toBeNull();
   });
 
   it('shows on the portfolio pages and nowhere else', () => {

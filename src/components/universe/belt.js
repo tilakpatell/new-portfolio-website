@@ -58,7 +58,7 @@ const TONES = ['#8b857c', '#6f6a63', '#9a8f80', '#7a6a58', '#5b5550', '#a08466']
 // `tones`: its rocks' colours; `scale`: how many times bigger than the belt's
 // rocks (the rim's are seen from thousands of units off); `spin`: radians
 // a second round the sun
-export function createBelt({ small = false, band = BELT, seed = 1977, tones = TONES, scale = 1, spin = 0.006, count = 2400 } = {}) {
+export function createBelt({ small = false, band = BELT, seed = 1977, tones = TONES, scale = 1, spin = 0.006, count = 3200 } = {}) {
   const rand = rng(seed);
   const N = small ? Math.round(count * 0.375) : count;
   const group = new THREE.Group();
@@ -126,7 +126,7 @@ void main() {
 
 export function createDust({ small = false } = {}) {
   const rand = rng(42);
-  const N = small ? 260 : 600;
+  const N = small ? 320 : 800;
   const BOX = 14;
   const pos = new Float32Array(N * 3);
   const size = new Float32Array(N);

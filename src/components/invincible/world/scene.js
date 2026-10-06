@@ -14,6 +14,7 @@ import { POSES, figure, loadFigure } from '../../../lib/three/rig';
 import { CAST, asset } from '../cast';
 import { createChallenges } from './challenges';
 import { buildCity } from './city';
+import { createFlaxans } from './flaxans';
 import { createFlightFx } from './fx';
 import { buildGround } from './ground';
 import { buildJet } from './jet';
@@ -142,6 +143,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
 
   const fx = createFlightFx(scene, { calm, small });
   const challenges = createChallenges(scene, world, fx.vfx);
+  const flaxans = createFlaxans(scene, fx.vfx, { calm });
   const feel = createFeel({ calm, baseFov: FOV, offset: 0.4 });
 
   // ── the time of day ──
@@ -169,7 +171,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   await setTime('noon');
 
   // ── the city or space: one or the other is drawn ──
-  const cityOnly = [ground.group, city.group, landmarks.group, clouds.mesh, jet.group, life.group, challenges.group, omni.holder];
+  const cityOnly = [ground.group, city.group, landmarks.group, clouds.mesh, jet.group, life.group, challenges.group, flaxans.group, omni.holder];
   async function setZone(z) {
     if (z === zone) return;
     zone = z;
@@ -323,7 +325,15 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
         feel.trauma(clamp(e.speed / 120, 0.4, 1));
       } else if (e.type === 'splash') fx.splash(e.at, e.speed);
       else if (e.type === 'takeoff') fx.takeoff(e.at);
-      else if (e.type === 'land' && e.n) {
+      else if (e.type === 'spawn' || e.type === 'ko' || e.type === 'down' || e.type === 'hurt' || e.type === 'won') {
+        // the Flaxans: coming through, knocked out, hitting him
+        flaxans.fx(e);
+        if (e.type === 'ko') {
+          feel.trauma(0.3);
+          feel.hitstop(60);
+          scare.push({ x: e.at[0], z: e.at[2], r: 30 });
+        } else if (e.type === 'hurt') feel.trauma(0.35);
+      } else if (e.type === 'land' && e.n) {
         // down on the Moon or Mars: a ring of dust thrown out round him
         const at = new THREE.Vector3(...e.at);
         const n = new THREE.Vector3(...e.n);
@@ -355,8 +365,10 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       mark.pose(POSES.hurt(), dt, 14);
     } else {
       const k = carry(mark, h.p, h.face, h.v, dt, { lean: 1 });
-      mark.pose(k > 0.45 ? POSES.fly() : POSES.hover(t), dt, 9);
+      // a punch thrown hanging in the air (flat out, the fly pose's fist is already ahead)
+      mark.pose(k > 0.45 ? POSES.fly() : sim.punchT > 0 ? POSES.punch([0, 0.1, 1]) : POSES.hover(t), dt, sim.punchT > 0 ? 30 : 9);
     }
+    if (h.mode === 'ground' && sim.punchT > 0 && h.crouch <= 0) mark.pose(POSES.punch([0, 0.1, 1]), dt, 30);
 
     if (zone === 'city') {
       // his father, keeping an eye on things
@@ -369,6 +381,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
         jet.update(frameDt, t);
       }
       if (sim.quests) challenges.update(sim.quests, frameDt, t);
+      if (sim.fight) flaxans.update(sim.fight, frameDt, t, h);
       // (no traffic to speak of from up where the clouds are)
       if (h.p[1] < 2200 || scare.length) {
         traffic = stepTraffic(traffic, frameDt, { cx: camera.position.x, cz: camera.position.z, yaw: sim.yaw, scare });

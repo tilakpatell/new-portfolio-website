@@ -5,6 +5,7 @@ import { CONTROLS_KEY, readControls } from '../universe/controls';
 import FlightSettings from '../universe/FlightSettings';
 import { SYSTEMS, goalsOf, lightYears, systemById } from './systems';
 import '../universe/universe.css';
+import GuideCue from '../guide/GuideCue';
 
 // The galaxy's 3D view (scene.js, through useScene) and everything over it:
 // the names of what's in the system you're in (buttons: a click flies you
@@ -211,8 +212,9 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
                     <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer, <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>V</kbd> cockpit. The named stars are other systems: put the nose on one and <kbd>J</kbd> to jump, or <kbd>M</kbd> for the galaxy map
+                    <GuideCue />
                   </span>
-                  <span className="universe-hint-touch">Drag to fly, hold Boost and Fire; point at a star and tap Jump to go to lightspeed</span>
+                  <span className="universe-hint-touch">Drag to fly, hold Boost and Fire; point at a star and tap Jump to go to lightspeed<GuideCue touch /></span>
                 </p>
               )}
             </>

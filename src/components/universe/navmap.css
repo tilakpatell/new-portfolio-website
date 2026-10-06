@@ -56,6 +56,19 @@
   font-size: 0.74rem;
 }
 .navmap-tool:hover { background: rgb(159 216 255 / 0.1); }
+.navmap-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font: 500 12px/1 var(--font-mono);
+  color: rgb(159 216 255 / 0.75);
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  cursor: pointer;
+}
+.navmap-copy:hover { color: #9fd8ff; }
 .navmap-views,
 .navmap-kinds { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 .navmap-views button,

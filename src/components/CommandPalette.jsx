@@ -15,6 +15,7 @@ import {
   RiMailLine,
   RiMusic2Line,
   RiPaletteLine,
+  RiQuestionLine,
   RiRestartLine,
   RiRocket2Line,
   RiSearchLine,
@@ -33,6 +34,9 @@ import { BACK, SCRIPTS } from '../fun/scripts';
 import { audioContext, setSound, soundOn } from '../lib/audio';
 import { useView } from './ViewSwitch';
 import { restartSite } from '../lib/restart';
+import { openGuide } from '../lib/palette';
+import { DESTINATIONS } from './universe/nav';
+import { byId as universeById } from './universe/universes';
 import '../styles/lazy/commandpalette.css';
 
 // ⌘K / Ctrl+K: jump anywhere on the site, or run one of its tricks.
@@ -82,6 +86,7 @@ export default function CommandPalette({ onClose }) {
       view === 'classic'
         ? { id: 's-uni', group: 'Actions', label: 'Switch to the universe', hint: 'and open there next time', keywords: 'view mode 3d map front door start page landing universe fly', icon: RiRocket2Line, run: () => switchTo('universe') }
         : { id: 's-home', group: 'Actions', label: 'Switch to the classic site', hint: 'and open there next time', keywords: 'view mode plain pages front door start page landing home classic simple 2d', icon: RiLayoutGridLine, run: () => switchTo('classic') },
+      { id: 'a-guide', group: 'Actions', label: 'Guide: the controls and tips for this page', hint: '?', keywords: 'help controls keys keyboard shortcuts how to play tips instructions question', icon: RiQuestionLine, run: openGuide },
       { id: 's-again', group: 'Actions', label: 'Restart the site from the beginning', keywords: 'restart start over again reset replay intro welcome crawl cockpit first visit beginning reboot', icon: RiRestartLine, run: restartSite },
       { id: 'w-uni', group: 'Go to', label: 'The universe map', keywords: 'universe map planets worlds fandoms space ship fly x-wing falcon cruiser rick morty rv walt jesse breaking bad', icon: RiGlobalLine, run: go('/universe') },
       { id: 'p-exp', group: 'Go to', label: 'Experience', icon: RiBriefcaseLine, run: go('/experience') },
@@ -131,6 +136,8 @@ export default function CommandPalette({ onClose }) {
       { id: 'w-earth', group: 'Easter eggs', label: 'Earth: fly to every place I’ve been', keywords: 'travel globe earth orbit plane fly flight passport stamps postcards world map countries nasa blue marble', icon: RiSparkling2Line, run: go('/earth') },
       { id: 'w-rm', group: 'Easter eggs', label: 'Dimension C-137: Rick and Morty', keywords: 'rick and morty sanchez smith summer beth jerry portal gun portal panic pickle rick meeseeks interdimensional cable plumbus cromulon snowball evil morty citadel gazorpazorp cronenberg world', icon: RiSparkling2Line, run: go('/c-137') },
       { id: 'w-citadel', group: 'Easter eggs', label: 'The Citadel of Ricks', keywords: 'rick and morty citadel council ricks simple rick wafers morty day care evil morty vote cop rick cowboy rick world walk 3d', icon: RiSparkling2Line, run: go('/c-137/citadel') },
+      // everywhere on the universe map, by name: a station, a world, a wonder or a star system through the gate
+      ...DESTINATIONS.map((d) => ({ id: `fly-${d.id}`, group: 'Fly to', label: `Fly to ${d.name}`, hint: d.via ? 'through the gate' : d.type, keywords: `universe map fly ${d.type} ${d.kind} ${universeById(d.id)?.label ?? ''} ${d.via ? 'star wars galaxy system' : ''}`, icon: RiRocket2Line, run: go(d.via ? d.to : `/universe/${d.id}`) })),
       { id: 'e-jump', group: 'Easter eggs', label: 'Jump to lightspeed', keywords: 'hyperspace star wars falcon', icon: RiSparkling2Line, run: () => window.dispatchEvent(new Event('tp:hyperspace')) },
       { id: 'e-cockpit', group: 'Easter eggs', label: 'Back to the cockpit', keywords: 'cockpit first person pilot seat falcon chewie x-wing red five rick cruiser portal rv walt jesse breaking bad drive launch wings fly', icon: RiSparkling2Line, run: () => window.dispatchEvent(new CustomEvent('tp:cockpit')) },
       { id: 'e-rollout', group: 'Easter eggs', label: 'Autobots, roll out', keywords: 'transformers optimus prime megatron bumblebee', icon: RiSparkling2Line, run: () => fun.rollOut('optimus') },
