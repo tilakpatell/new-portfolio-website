@@ -105,12 +105,13 @@ void main() {
   vec3 col = inscatter(ro, rd, tMax, tr);
   #ifdef FLAT
   // two flat bands of the air's own colour: how much air and light the view
-  // passes through, against the colour's own brightness, stepped at a third
-  // and at one, each step a pixel soft (so the limb doesn't crawl as it turns)
+  // passes through, against the colour's own brightness, stepped at an eighth
+  // and a half (a band a cartoon would draw), each step a pixel soft (so the
+  // limb doesn't crawl as it turns)
   float luma = dot(uAtmo, vec3(0.2126, 0.7152, 0.0722));
   float a = dot(col, vec3(0.2126, 0.7152, 0.0722)) / max(luma, 1e-4);
   float e = max(fwidth(a), 1e-3);
-  col = uAtmo * (0.45 * smoothstep(0.33 - e, 0.33 + e, a) + 0.55 * smoothstep(1.0 - e, 1.0 + e, a));
+  col = uAtmo * (0.45 * smoothstep(0.12 - e, 0.12 + e, a) + 0.55 * smoothstep(0.5 - e, 0.5 + e, a));
   #endif
   gl_FragColor = vec4(col * uStrength, 1.0);
   #include <colorspace_fragment>

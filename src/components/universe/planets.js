@@ -1468,8 +1468,9 @@ export function celShade(mat, { bands = [0.55, 0.15], levels = [1, 0.72, 0.45], 
 // pixel in the lightest green, the screen's own edge to the world.
 const BAYER = '0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0';
 // (how lit a pixel in the full sun is, against its own colour: the key's
-// strength over π, with the sky's)
-const DITHER_FULL = 0.8;
+// strength over π, with the sky's; read in whichever of its colours it has
+// most of, so an orange star on its greens isn't taken for a dim one)
+const DITHER_FULL = 0.75;
 export function ditherShade(mat, { palette, dpr = { value: 1 }, outline = false } = {}) {
   const u = { uPalette: { value: palette.map((c) => new THREE.Color(c)) }, uDpr: dpr };
   const prev = mat.onBeforeCompile;
@@ -1481,14 +1482,15 @@ export function ditherShade(mat, { palette, dpr = { value: 1 }, outline = false 
       '#include <opaque_fragment>',
       `{
         const float bayer[16] = float[16](${BAYER});
-        vec3 luma = vec3(0.2126, 0.7152, 0.0722);
         float own = 0.0;
         float best = 1e9;
         for (int i = 0; i < 4; i++) {
           float d = distance(diffuseColor.rgb, uPalette[i]);
           if (d < best) { best = d; own = float(i); }
         }
-        float lit = clamp(dot(outgoingLight, luma) / max(dot(diffuseColor.rgb, luma), 1e-3) / ${DITHER_FULL.toFixed(2)}, 0.0, 1.0);
+        vec3 has = step(vec3(0.02), diffuseColor.rgb);
+        vec3 by = outgoingLight / max(diffuseColor.rgb, vec3(1e-3)) * has;
+        float lit = clamp(max(by.r, max(by.g, by.b)) / ${DITHER_FULL.toFixed(2)}, 0.0, 1.0);
         vec2 cell = mod(floor(gl_FragCoord.xy / (uDpr * 2.0)), 4.0);
         float th = (bayer[int(cell.x) + int(cell.y) * 4] + 0.5) / 16.0;
         int tone = int(clamp(floor(own * lit + th), 0.0, 3.0));
