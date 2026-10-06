@@ -42,11 +42,11 @@ footScene.begin({ …, entry })
 
 ```js
 export const AIR = 1.2;                    // the air's top, as a share of the radius
-export const ENTRY = { fast, sink, clear, arc, lean, glide, settle, hover, … };
+export const ENTRY = { fast, sink, clear, arc, lean, day, glide, settle };
 export const LANDABLE;                     // ship.js's PLANETS that have air and a landing
 export const airTop = (p) => p.r * AIR;
 export function velocityOf(ship)           // [x, y, z]: the nose × speed, plus its lift
-export function entering(ship, planets, held) → { id, kind: 'enter' | 'hot', speed, sink, n, h, vel } | null
+export function entering(ship, planets) → { id, kind: 'enter' | 'hot', speed, sink, n, h, vel } | null
 export function entrySpot({ n, track, light, speed, R }) → { n, f }
 export function entryPath({ nE, hE, nS, hH, rest, R, track }) → { T, at(t) → { n, h, p, settling, done } }
 export function fxAt(t) → { burn, cloud, white, sky, shake, title }
@@ -58,4 +58,4 @@ export function descendInput(ship, planet) → { throttle, turn, climb, roll }
 ## Testing
 
 - `entry.test.js`: a ship coming down through the air at cruise speed enters; the same at the boost doesn't (and `step` then reports a crash on hitting the ground); skimming level along the top doesn't; a station, the gate and a planet with no air are never entered; `entrySpot` is ahead along the track and leans no further than `ENTRY.lean` toward the light; `entryPath` starts where the ship went in, ends parked on the spot, never goes under the ground or back up, and stops over the spot; `fxAt` is 0 before and after, the clouds peak between the burn and the break-out; `descendInput` points the nose down into the air.
-- In the browser (`scripts/entry-check.mjs`): fly into a planet's air at cruise and see the ship land and the crew step out; boost into another and see the crash take the page into its world; press G at a planet and see the ship fly itself in; take off and fly back in; screenshots of the burn, the clouds and the break-out.
+- In the browser (`scripts/entry-check.mjs`): fly into a planet's air at cruise and see the ship land, its name come up out under the clouds and the crew step out; take off, and see it out past the air and flying on level carry it away rather than back in; press G at a planet and see the ship fly itself in; boost into another and see the crash take the page into its world. Screenshots of the burn, the clouds and the break-out.

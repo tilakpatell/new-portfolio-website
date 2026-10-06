@@ -2,7 +2,8 @@
 // A browser check of the planet landings (universe/landings/). With the dev
 // server up (npx vite --port 5173):
 //   OUT=/tmp/shots node scripts/landing-check.mjs [planet ...] [--ship falcon] [--phone]
-// For each planet it puts the ship just off it, lands (G), waits for the
+// For each planet it puts the ship just off it, sets it down there (the dev
+// hook's startFoot(), no flight in: scripts/entry-check.mjs flies in), waits for the
 // crew to be out, and takes screenshots: coming down, out on the ground,
 // and looking round. It prints the draw calls and triangles down there, and
 // any errors. Headless Chromium draws in software, slowly: the waits are long.

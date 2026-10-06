@@ -1828,6 +1828,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   };
   // the show, once the camera's where it is this frame (view())
   const entryCam = { pos: new V(), look: new V(), up: new V() };
+  const entryView = { t: 0, T: 0, fx: null }; // what entry() hands the scene
+  const spotN = new V();
+  const spotF = new V();
+  const landCam = new V();
   const showEntry = (dt) => {
     const e = S.entry;
     if (!e?.fx || !S.cam.pos) return;
@@ -2471,11 +2475,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       // coming round onto the landing's view (below) as it settles
       const e = S.entry;
       const p = S.model.group.position;
-      const n = new V(...S.spot.n);
+      const n = spotN.set(...S.spot.n);
       const k = smooth(ENTRY.glide - 0.8, ENTRY.glide + ENTRY.settle * 0.6, e.t);
       out.pos.copy(p).addScaledVector(e.dir, -1.15).addScaledVector(e.up, 0.32);
       out.look.copy(p).addScaledVector(e.dir, 0.6);
-      out.pos.lerp(new V().copy(p).addScaledVector(new V(...S.spot.f), -1.1).addScaledVector(n, 0.45), k);
+      out.pos.lerp(landCam.copy(p).addScaledVector(spotF.set(...S.spot.f), -1.1).addScaledVector(n, 0.45), k);
       out.look.lerp(p, k);
       out.up.copy(e.up).lerp(n, k).normalize();
     } else if (S.phase === 'land' || S.phase === 'lift' || (S.phase === 'board' && !S.me)) {
@@ -2694,7 +2698,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // roar; null once it's down (or if it wasn't flown in)
     entry() {
       const e = S.entry;
-      return e ? { t: e.t, T: e.path.T, fx: e.fx ?? fxAt(e.t) } : null;
+      if (!e) return null;
+      // (one object, filled in again: the scene asks more than once a frame)
+      entryView.t = e.t;
+      entryView.T = e.path.T;
+      entryView.fx = e.fx ?? fxAt(e.t);
+      return entryView;
     },
     // the ship's numbers to fly on from, once it's up (null until then)
     takeoff() {

@@ -118,12 +118,6 @@ describe('entering', () => {
     expect(entering(inAir(first, OUT, scale(OUT, -1), 0))).toBe(null);
   });
 
-  it('skips the planet just taken off from', () => {
-    const s = inAir(first, OUT, scale(OUT, -1), SHIP.cruise);
-    expect(entering(s, LANDABLE, first.id)).toBe(null);
-    expect(entering(s, LANDABLE, 'somewhere else')).toMatchObject({ id: first.id });
-  });
-
   it('never takes a ship into a station or the gate', () => {
     const airless = PLANETS.filter((p) => !LANDABLE.includes(p));
     expect(airless.some((p) => p.id === 'starwars')).toBe(true);

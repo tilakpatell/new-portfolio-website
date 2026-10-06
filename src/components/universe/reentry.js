@@ -316,6 +316,7 @@ export function createReentry({ small = false, reduced = false } = {}) {
   const sheath = new THREE.Mesh(sheathGeo, sheathMat);
   sheath.frustumCulled = false;
   sheath.visible = false;
+  sheath.renderOrder = 6; // (over the cloud deck: nearly all of it's further off than the ship)
   group.add(sheath);
 
   // the streaks and sparks: a pool, each held as an offset from the ship
@@ -340,6 +341,7 @@ export function createReentry({ small = false, reduced = false } = {}) {
   const streaks = new THREE.InstancedMesh(streakGeo, streakMat, STREAKS);
   streaks.frustumCulled = false;
   streaks.visible = false;
+  streaks.renderOrder = 6;
   group.add(streaks);
   const streakV = Array.from({ length: STREAKS }, () => ({ off: new V(), v: new V(), age: 1, max: 1, len: 0, width: 0, spark: 0 }));
   let nextStreak = 0;
@@ -364,7 +366,8 @@ export function createReentry({ small = false, reduced = false } = {}) {
   const clouds = new THREE.InstancedMesh(cloudGeo, cloudMat, PUFFS);
   clouds.frustumCulled = false;
   clouds.visible = false;
-  // after the sheath and streaks, before the white-out
+  // before the sheath and streaks (the puffs nearer the camera than the
+  // ship are faded out already: NEAR) and the white-out
   clouds.renderOrder = 5;
   group.add(clouds);
   const puffV = Array.from({ length: PUFFS }, () => ({ p: new V(), r: 0, size: 1, age: 0, alive: false, turn: 0 }));
@@ -378,7 +381,10 @@ export function createReentry({ small = false, reduced = false } = {}) {
   white.frustumCulled = false;
   white.visible = false;
   white.renderOrder = 1000;
-  white.scale.setScalar(WHITE_SIZE);
+  // placed on the camera as it's drawn (shaken and all, by whatever shakes
+  // it), not as it was asked to be, so no shake can carry the lens through it
+  const whiteAt = new THREE.Matrix4().makeTranslation(0, 0, -WHITE_AT).multiply(new THREE.Matrix4().makeScale(WHITE_SIZE, WHITE_SIZE, 1));
+  white.onBeforeRender = (renderer, scene, camera) => white.matrixWorld.multiplyMatrices(camera.matrixWorld, whiteAt);
   group.add(white);
 
   // scratch, so a frame makes nothing
@@ -575,19 +581,9 @@ export function createReentry({ small = false, reduced = false } = {}) {
         clouds.visible = false;
       }
 
-      // the white-out: a sheet just in front of the lens, facing it
+      // the white-out: a sheet just in front of the lens, facing it (placed as it's drawn: above)
       white.visible = whiteK > 0.001;
-      if (white.visible) {
-        fwd.subVectors(cam.look, cam.pos).normalize();
-        white.position.copy(cam.pos).addScaledVector(fwd, WHITE_AT);
-        tmp.copy(fwd).negate();
-        side.crossVectors(cam.up, tmp);
-        if (side.lengthSq() < 1e-8) side.crossVectors(X, tmp); // (looking straight along its up: any way round)
-        side.normalize();
-        lift.crossVectors(tmp, side);
-        white.quaternion.setFromRotationMatrix(m.makeBasis(side, lift, tmp));
-        whiteMat.opacity = Math.min(1, whiteK);
-      }
+      if (white.visible) whiteMat.opacity = Math.min(1, whiteK);
 
       group.visible = sheath.visible || streaks.visible || clouds.visible || white.visible;
     },

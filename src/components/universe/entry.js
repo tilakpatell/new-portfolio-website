@@ -66,16 +66,15 @@ export function velocityOf(s) {
 }
 
 // Whether the ship is going into a planet's air this frame: the first one
-// (of `planets`) it's inside the air of and coming down through, skipping
-// `held` (the one it's just taken off from). 'enter' is a landing; 'hot'
+// (of `planets`) it's inside the air of and coming down through. 'enter'
+// is a landing; 'hot'
 // is too fast for one, so nothing takes it and it carries on to crash (the
 // HUD says so while it's in the air). With where it went in (n, out from
 // the middle, and h, its height above the ground) and how (vel), for the
 // way down. Null when it isn't going into any.
-export function entering(s, planets = LANDABLE, held = null) {
+export function entering(s, planets = LANDABLE) {
   const pos = posOf(s);
   for (const p of planets) {
-    if (p.id === held) continue;
     const off = add(pos, p.at, -1);
     const d = len(off);
     if (d >= airTop(p) || d < 1e-9) continue;

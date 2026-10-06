@@ -1,5 +1,5 @@
 // What each planet on the universe map is like down on it, once the ship's
-// set down there and the crew are out (G, ../footScene.js): pure data,
+// flown down onto it and the crew are out (../entry.js, ../footScene.js): pure data,
 // tested in Node. Each planet's things are built by its own file
 // (./<id>.js, loaded only when you land there; ./furnish.js puts them on
 // the ground).

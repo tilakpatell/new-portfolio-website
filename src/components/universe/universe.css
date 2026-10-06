@@ -768,7 +768,7 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
   -webkit-touch-callout: none;
 }
 .universe-out:active { background: rgb(255 255 255 / 0.18); }
-/* what G does where you are: land and step out, or get back in */
+/* what G does where you are: down into a planet's air to land, a door, or back in */
 .universe-prompt {
   position: absolute;
   left: 50%;

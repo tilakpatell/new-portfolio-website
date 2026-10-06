@@ -1144,13 +1144,14 @@ export async function create(canvas, ctx) {
   const placeLabels = () => {
     const els = props.labels?.current;
     if (!els) return;
+    const entering = onFoot() && Boolean(foot.entry()); // (once, not for every name)
     for (const s of screen) {
       const el = els[s.id];
       if (!el) continue;
       // (none while the ship falls into the Maw: nothing to pick, and the
       // camera's going in; nor, on foot, the planet you're on or anything
       // below its horizon, nor anything on the way in through its air)
-      const off = Boolean(state.crash?.swallow) || s.z <= 0.3 || s.x < -60 || s.x > size.w + 60 || s.y < -60 || s.y > size.h + 60 || (onFoot() && (s.id === foot.id || underground(s.id) || Boolean(foot.entry())));
+      const off = Boolean(state.crash?.swallow) || s.z <= 0.3 || s.x < -60 || s.x > size.w + 60 || s.y < -60 || s.y > size.h + 60 || entering || (onFoot() && (s.id === foot.id || underground(s.id)));
       // tucked behind a nearer planet, or a station's sign
       const ly = s.y + s.r + 10;
       let behind = false;
