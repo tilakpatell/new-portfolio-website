@@ -115,7 +115,7 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
     return (
       <aside ref={panel} className="universe-panel" aria-label={wonder.name}>
         {onTuck && <Tuck onTuck={toggle} />}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <div className="universe-links flex flex-wrap items-center gap-x-4 gap-y-1">
           <button type="button" className="universe-back" onClick={onWhole}>
             <RiArrowGoBackLine className="h-3.5 w-3.5" aria-hidden="true" /> The whole map
           </button>
@@ -245,7 +245,7 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
   return (
     <aside ref={panel} className="universe-panel" aria-label={universe.label}>
       {onTuck && <Tuck onTuck={toggle} />}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+      <div className="universe-links flex flex-wrap items-center gap-x-4 gap-y-1">
         <button type="button" className="universe-back" onClick={onWhole}>
           <RiArrowGoBackLine className="h-3.5 w-3.5" aria-hidden="true" /> The whole map
         </button>
