@@ -1083,6 +1083,160 @@
       "galaxy"
     ]
   },
+  "m64-bobomb": {
+    "title": "Bob-Omb",
+    "author": "Zambur",
+    "authorUrl": "https://sketchfab.com/Zambur",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/bob-omb-35b12aa67da04119bf30fbd7ce11367d",
+    "where": "mario64",
+    "as": "the Bob-ombs",
+    "file": "/models/mario64/bobomb.glb"
+  },
+  "m64-chandelier": {
+    "title": "Chandelier",
+    "author": "Faheem Yusuf",
+    "authorUrl": "https://sketchfab.com/FameProductions",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/chandelier-66b536be170d42d7a8aac5992977ec11",
+    "where": "mario64",
+    "as": "the castle’s chandeliers",
+    "file": "/models/mario64/chandelier.glb"
+  },
+  "m64-chomp": {
+    "title": "Chain Chomp",
+    "author": "victor.uceta",
+    "authorUrl": "https://sketchfab.com/victor.uceta",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/chain-chomp-8612429a08864078b98d7b7a938fe46a",
+    "where": "mario64",
+    "as": "the Chain Chomp",
+    "file": "/models/mario64/chomp.glb"
+  },
+  "m64-coin": {
+    "title": "Coin (Super Mario Bros)",
+    "author": "Yanez Designs",
+    "authorUrl": "https://sketchfab.com/Yanez-Designs",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/coin-super-mario-bros-dbf9945cc49340c0a50f57338a3786ab",
+    "where": "mario64",
+    "as": "the coins",
+    "file": "/models/mario64/coin.glb"
+  },
+  "m64-goomba": {
+    "title": "Goomba",
+    "author": "KangaroOz 3D",
+    "authorUrl": "https://sketchfab.com/KangaroOz-3D",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/goomba-c2cebdfd58b1471f9da8cc555c9ca47f",
+    "where": "mario64",
+    "as": "the Goombas",
+    "file": "/models/mario64/goomba.glb"
+  },
+  "m64-king": {
+    "title": "Fan Made King Bomb Omb",
+    "author": "The Widder Star",
+    "authorUrl": "https://sketchfab.com/thewidderstar",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/fan-made-king-bomb-omb-c7d0446bf68d401e871f64f503978788",
+    "where": "mario64",
+    "as": "King Bob-omb",
+    "file": "/models/mario64/king.glb"
+  },
+  "m64-mario": {
+    "title": "mario",
+    "author": "themarik",
+    "authorUrl": "https://sketchfab.com/themarik",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/mario-bc65c57fe1b9472db828226d6ba98e82",
+    "where": "mario64",
+    "as": "Mario, whom you play",
+    "file": "/models/mario64/mario.glb"
+  },
+  "m64-oneup": {
+    "title": "1-Up Mushrooms (Super Mario Bros)",
+    "author": "Yanez Designs",
+    "authorUrl": "https://sketchfab.com/Yanez-Designs",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/1-up-mushrooms-super-mario-bros-6ba27a7f3460472d9c2356a0582d50c9",
+    "where": "mario64",
+    "as": "the 1-Up Mushrooms",
+    "file": "/models/mario64/oneup.glb"
+  },
+  "m64-pine": {
+    "title": "Pine Tree – Low Poly Stylized Tree",
+    "author": "Jimmy Johansson",
+    "authorUrl": "https://sketchfab.com/Jimmy_Johansson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/pine-tree-low-poly-stylized-tree-071914806126487b9f5067693b39f335",
+    "where": "mario64",
+    "as": "the pines",
+    "file": "/models/mario64/pine.glb"
+  },
+  "m64-rock": {
+    "title": "Stylized Rock",
+    "author": "Jaspreet Singh",
+    "authorUrl": "https://sketchfab.com/gurjasstudios",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/stylized-rock-f0309cd2e4a347c3996cd7d887cd2d4a",
+    "where": "mario64",
+    "as": "the boulders",
+    "file": "/models/mario64/rock.glb"
+  },
+  "m64-sign": {
+    "title": "Stylized Wooden Sign",
+    "author": "FrieDev",
+    "authorUrl": "https://sketchfab.com/FrieDev",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/stylized-wooden-sign-7556d3e7237749eda5ee876736e5c601",
+    "where": "mario64",
+    "as": "the signs",
+    "file": "/models/mario64/sign.glb"
+  },
+  "m64-star": {
+    "title": "Power Star",
+    "author": "SuperLock45",
+    "authorUrl": "https://sketchfab.com/SuperLock45",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/power-star-bab82082f27e45deb17b9e04183c974d",
+    "where": "mario64",
+    "as": "the Power Stars",
+    "file": "/models/mario64/star.glb"
+  },
+  "m64-toad": {
+    "title": "Toad (Super Mario Bros)",
+    "author": "Yanez Designs",
+    "authorUrl": "https://sketchfab.com/Yanez-Designs",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/toad-super-mario-bros-e1f9d2953e044729b5dfb9763e492b81",
+    "where": "mario64",
+    "as": "Toad, in the castle",
+    "file": "/models/mario64/toad.glb"
+  },
+  "m64-tree": {
+    "title": "SM64 Tree",
+    "author": "PerriSapo84",
+    "authorUrl": "https://sketchfab.com/PerriSapo84",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/sm64-tree-0ff16e2954c54972bcb9794f31199d28",
+    "where": "mario64",
+    "as": "the trees, after Super Mario 64’s own",
+    "file": "/models/mario64/tree.glb"
+  },
   "minas-tirith": {
     "title": "Minas Tirith Remake",
     "author": "Mitro123",

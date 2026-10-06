@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import ModelCredits from '../components/ModelCredits';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import { use3D } from '../lib/gpu';
 import { useDocumentTitle } from '../lib/hooks';
@@ -38,8 +39,9 @@ export default function Mario64Page() {
           Peach’s castle, and the worlds in its paintings. Jump into one, find its three Power Stars, and the castle’s star doors open one by one on the way to Bowser. Mario runs, triple jumps, long jumps, wall kicks and ground pounds the way he did on the N64.
         </p>
         <p className="mt-4 max-w-[62ch] text-sm text-muted">
-          A fan-made tribute, built for this site from scratch: Mario and the cast are made in code, the music and sounds are synthesised, and the textures are CC0 scans from Poly Haven and ambientCG. Super Mario is Nintendo’s; this isn’t affiliated with or endorsed by Nintendo.
+          A fan-made tribute, built for this site from scratch: Mario and the cast are fan-made models from Sketchfab, none of them taken from a game (credited below), the music and sounds are synthesised, and the textures are CC0 scans from Poly Haven and ambientCG. Super Mario is Nintendo’s; this isn’t affiliated with or endorsed by Nintendo.
         </p>
+        <ModelCredits where="mario64" line className="mt-3 max-w-[62ch] text-xs text-muted" />
         <div className="mt-6 flex flex-wrap gap-3">
           <Link to="/dot-matrix" className="btn btn-primary">
             Back to Dot Matrix island

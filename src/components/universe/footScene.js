@@ -57,7 +57,7 @@ import { createGunFx } from './gunfx';
 import { createLocomotion, fallTurn } from './locomotion';
 import { frameFrom, spring } from '../../lib/three/ik';
 import { SIDES, sideFor, squadKinds } from './sides';
-import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, bolt as makeBolt, byTrench, facingAlong, fly as flyBolt, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
+import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, bolt as makeBolt, byTrench, facingAlong, flat, fly as flyBolt, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
 import { TRENCH_MODEL, trenchOf } from './deep';
 import { POSITIONS } from './layout';
 import { byId } from './universes';
@@ -65,6 +65,8 @@ import { landingOf } from './landings/landings';
 import { styleOf } from './landings/ground';
 import { createSky } from './landings/sky';
 import { furnish, furnished } from './landings/furnish';
+import { AIR, ENTRY, entryPath, entrySpot, fxAt } from './entry';
+import { createReentry } from './reentry';
 
 const V = THREE.Vector3;
 const arr = (v) => [v.x, v.y, v.z];
@@ -1236,6 +1238,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   let sides = null; // a trench's walls by you
   const owned = [];
   const rand = Math.random;
+  // the way in through the air (entry.js, reentry.js): made once and kept
+  // hidden, so the map's warm-up makes its shaders before the first entry
+  const reentry = createReentry({ small, reduced });
+  root.add(reentry.group);
 
   // bolts in flight: a white-hot core in a sleeve of the shot's colour,
   // its head where the bolt is and its length trailing behind (grown out
@@ -1385,6 +1391,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     rest: 0,
     hover: null,
     arc: null, // the way round the planet, when the spot's a long way from where the ship came in
+    // flown in through the air (entry.js): { path, t, q0, dir, glide, titled, title } while it's on its way down
+    entry: null,
+    sky: 1, // how much of the landing's sky shows: coming up from nothing as the ship comes in through the air
+    airWas: 0, // the planet's halo, as bright as it was before the ship went into it
     band: null, // a trench round its middle: { half (its rim), home, arc, deep (how far down the trench run's rim is) }
     hideBody: 0, // a station: how low the camera's to be for its own model to go (0: it stays)
     bodyShown: true,
@@ -1588,7 +1598,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const o = S.band ? offset(person(near.n, near.f), -gap * 1.6, 0, S.R) : offset(person(near.n, near.f), -2 * METRE, gap, S.R);
     return { n: o.n, f: S.band ? near.f : o.f };
   };
-  const begin = ({ id, ship, model, kind, light, near = null }) => {
+  // `entry` (entry.js's entering(), flown down into the air): where it went
+  // in ({ n, h }), how fast and which way (`vel`, `speed`); the ship's flown
+  // down to the ground from there instead of set down from where it was
+  const begin = ({ id, ship, model, kind, light, near = null, entry = null }) => {
     const planet = planetOf[id];
     const u = byId(id);
     if (!planet || !u || u.kind === 'core' || u.portal || !model) return false; // (a station, or the gate into the galaxy: nowhere to walk)
@@ -1607,19 +1620,39 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // day (by a trench: beside it, the door toward it)
     const n0 = landingSpot(from, arr(S.c), light);
     const clear = 0.62 * 0.26 * (PARKED[kind] ?? 1);
-    S.spot = near ? beside(near, kind) : S.band ? byTrench(n0, S.band, S.R, clear + 12 * METRE) : { n: n0, f: facingAlong(n0, fwd3) };
+    // (flown in through the air: ahead of where it went in, on its way)
+    const ahead = entry && !S.band ? entrySpot({ n: entry.n, track: entry.vel, light, speed: entry.speed, R: S.R }) : null;
+    S.spot = near ? beside(near, kind) : S.band ? byTrench(n0, S.band, S.R, clear + 12 * METRE) : (ahead ?? { n: n0, f: facingAlong(n0, fwd3) });
     const { n } = S.spot;
     // a long way round the planet from where the ship is: it flies round over
-    // the surface to get there, rather than through the planet
+    // the surface to get there, rather than through the planet (an entry's
+    // own path goes round over the ground already)
     const out = vec.unit(vec.add(from, arr(S.c), -1));
     const round = Math.acos(Math.min(1, Math.max(-1, vec.dot(out, n))));
-    S.arc = round > 0.6 ? { n0: out, h0: vec.len(vec.add(from, arr(S.c), -1)) - S.R, a: round } : null;
+    S.arc = !entry && round > 0.6 ? { n0: out, h0: vec.len(vec.add(from, arr(S.c), -1)) - S.R, a: round } : null;
     S.from = { p: model.group.position.clone(), q: model.group.quaternion.clone().multiply(new THREE.Quaternion().setFromEuler(model.pivot.rotation)) };
     model.pivot.rotation.set(0, 0, 0);
     model.group.quaternion.copy(S.from.q);
     const box = restOf(model);
     S.rest = -box.min.y * (PARKED[kind] ?? 1) + 0.04 * METRE;
     S.hover = vec.add(vec.scale(n, S.R + 14 * METRE + S.rest), [0, 0, 0]);
+    // down through the air on entry.js's path, onto the spot (the land
+    // phase's own last frame holds it parked there after, as before)
+    S.entry = entry
+      ? {
+          path: entryPath({ nE: entry.n, hE: entry.h, nS: n, hH: 14 * METRE + S.rest, rest: S.rest, R: S.R, track: entry.vel }),
+          t: 0,
+          q0: S.from.q.clone(),
+          dir: new V(...vec.unit(entry.vel)),
+          up: new V(...entry.n),
+          fx: null, // fxAt's numbers this frame
+          rest: null, // the ship's turn parked on the spot
+          glide: null, // the ship's turn as the glide ends, to settle from
+          titled: false,
+          title: null,
+        }
+      : null;
+    S.sky = S.entry ? 0 : 1;
     S.phase = 'land';
     S.t = 0;
     S.health = FOOT.health;
@@ -1630,7 +1663,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     S.cam.pos = null;
     // the planet holds still under you, and its air goes (you're in it)
     planet.hold?.(true);
-    if (planet.air) planet.air.visible = false;
+    if (planet.air) {
+      // (flown in, it fades as the sky comes up round the ship instead)
+      S.airWas = planet.air.material.uniforms.uStrength.value;
+      planet.air.visible = Boolean(S.entry);
+    }
     // the ground, the rocks and the air (a station's hull, its blocks and
     // none; and a trench's walls); or the planet's own landing: its ground,
     // its sky and its things, laid out from where the first ship down here
@@ -1645,10 +1682,23 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       rocks = { mesh: f.group, solids: f.solids, spots: f.spots, update: f.update, dispose: f.dispose };
     } else rocks = u.plated ? createHullBits(n, S.R, u, small, S.band, clear) : createRocks(n, S.R, u, small);
     root.add(rocks.mesh);
+    // (flown in, the ground's out of sight till the clouds, stepEntry: its
+    // shader's made now, while it's still shown, so it isn't on the frame it
+    // first comes into view)
+    if (S.entry) {
+      warm?.(ground.mesh)?.catch?.(() => {});
+      ground.mesh.visible = rocks.mesh.visible = false;
+    }
     haze = u.airless ? null : landing?.sky ? createSky(landing.sky, u.rim ?? u.swatch ?? '#8ab4ff') : createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
     if (haze) root.add(haze.mesh);
-    if (landing) emit({ type: 'foot', id: 'arrive', title: landing.title, sub: landing.sub });
-    sides = S.band ? createTrenchSides(n, S.R, S.band) : null;
+    // (flown in, dark to start with: the entry starts in the middle of a
+    // frame, before day() has had its say, and that frame's drawn too)
+    if (haze && S.entry) haze.mat.uniforms.uDay.value = 0;
+    // the place's name: flown in, once it's out under the clouds
+    if (landing && S.entry) S.entry.title = { title: landing.title, sub: landing.sub };
+    else if (landing) emit({ type: 'foot', id: 'arrive', title: landing.title, sub: landing.sub });
+    if (S.entry) reentry.start({ cloud: landing?.sky?.horizon ?? '#e9eef4' });
+    sides =S.band ? createTrenchSides(n, S.R, S.band) : null;
     if (sides) root.add(sides.mesh);
     // (a station's own model goes once the camera's low enough that the
     // patch reaches past the horizon)
@@ -1697,6 +1747,100 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     m.group.quaternion.copy(S.from.q).slerp(shipFrame(S.spot.n, S.spot.f), smooth(0, 0.75, k));
     m.group.scale.setScalar(1 + ((PARKED[S.kind] ?? 1) - 1) * smooth(0.2, 0.9, k));
     m.pivot.rotation.set(0, 0, 0);
+  };
+
+  // ── Flown in through the air: entry.js's path, reentry.js's show ──
+  // the ship's turn along the way it's going: its nose down the path, its
+  // top as near the ground's up as that allows
+  const pathFrame = (dir, up, out) => {
+    pathUp.copy(up).addScaledVector(dir, -up.dot(dir));
+    if (pathUp.lengthSq() < 1e-8) pathUp.set(...flat([0, 1, 0], arr(dir))); // (straight down: any way round)
+    pathUp.normalize();
+    basis.makeBasis(pathRight.crossVectors(dir, pathUp), pathUp, pathBack.copy(dir).negate());
+    return out.setFromRotationMatrix(basis);
+  };
+  const pathUp = new V();
+  const pathRight = new V();
+  const pathBack = new V();
+  const entryAt = new V();
+  const entryNext = new V();
+  const entryQ = new THREE.Quaternion();
+  const entryRoll = new THREE.Quaternion();
+  const NOSE_AXIS = new V(0, 0, 1);
+  const stepEntry = (dt) => {
+    const e = S.entry;
+    const m = S.model;
+    e.t = Math.min(e.path.T, e.t + dt);
+    const a = e.path.at(e.t);
+    entryAt.set(...a.p);
+    e.up.set(...a.n);
+    // which way it's going: toward where it'll be a moment on, never looking
+    // past the glide's end into the settle (straight down: that would tip
+    // the nose over as it comes to a stop); while it settles, it keeps the
+    // way it was going
+    entryNext.set(...e.path.at(Math.min(ENTRY.glide, e.t + 0.08)).p).sub(entryAt);
+    if (!a.settling && entryNext.lengthSq() > 1e-10) e.dir.copy(entryNext).normalize();
+    e.fx = fxAt(e.t);
+    m.group.position.copy(entryAt).add(S.c);
+    m.pivot.rotation.set(0, 0, 0);
+    if (!a.settling) {
+      pathFrame(e.dir, e.up, entryQ);
+      // shaken about in the burn (not with reduced motion)
+      if (!reduced && e.fx.burn > 0) entryQ.multiply(entryRoll.setFromAxisAngle(NOSE_AXIS, (Math.sin(e.t * 23) * 0.05 + Math.sin(e.t * 9.7 + 1) * 0.04) * e.fx.burn));
+      // round from the way it was flying onto the path, at first
+      m.group.quaternion.copy(e.q0).slerp(entryQ, smooth(0, 0.6, e.t));
+      (e.glide ??= new THREE.Quaternion()).copy(m.group.quaternion);
+    } else {
+      // over the spot: down onto it, turning to sit level on the ground
+      e.rest ??= shipFrame(S.spot.n, S.spot.f);
+      m.group.quaternion.copy(e.glide ?? e.q0).slerp(e.rest, smooth(0, 0.8, (e.t - ENTRY.glide) / ENTRY.settle));
+    }
+    // grown to its parked size in the clouds, where it can't be seen to
+    // (fxAt's white-out is thickest from 0.52 to 0.74 of the glide)
+    m.group.scale.setScalar(1 + ((PARKED[S.kind] ?? 1) - 1) * smooth(0.52 * ENTRY.glide, 0.74 * ENTRY.glide, e.t));
+    // the landing itself (its ground and what stands on it) only from the
+    // thick of the clouds (fxAt's white-out peaks at 0.62 of the glide): from
+    // higher up it's a patch on the planet's own map, and it's in the clouds
+    // that the one becomes the other
+    const shown = e.t >= 0.6 * ENTRY.glide;
+    for (const x of [ground, rocks, sides]) if (x) x.mesh.visible = shown;
+    // the sky comes up round it, and the halo it flew into goes
+    S.sky = e.fx.sky;
+    const air = planetOf[S.id]?.air;
+    if (air?.visible) air.material.uniforms.uStrength.value = S.airWas * (1 - e.fx.sky);
+    // the place's name, out under the clouds
+    if (!e.titled && e.fx.title) {
+      e.titled = true;
+      if (e.title) emit({ type: 'foot', id: 'arrive', ...e.title });
+    }
+    if (!a.done) return;
+    // down: parked where the land phase leaves a ship, waiting on the crew
+    S.entry = null;
+    S.sky = 1;
+    reentry.stop();
+    if (air) {
+      // (gone while you're down, as bright as it was for when it's back:
+      // the map's hover and picking set it from here on, as before)
+      air.visible = false;
+      air.material.uniforms.uStrength.value = S.airWas;
+    }
+    S.from = { p: m.group.position.clone(), q: m.group.quaternion.clone() };
+    S.t = LAND.down;
+    placeShip(1);
+  };
+  // the show, once the camera's where it is this frame (view())
+  const entryCam = { pos: new V(), look: new V(), up: new V() };
+  const entryView = { t: 0, T: 0, fx: null }; // what entry() hands the scene
+  const spotN = new V();
+  const spotF = new V();
+  const landCam = new V();
+  const showEntry = (dt) => {
+    const e = S.entry;
+    if (!e?.fx || !S.cam.pos) return;
+    entryCam.pos.copy(S.cam.pos).sub(S.c);
+    entryCam.look.copy(S.cam.look).sub(S.c);
+    entryCam.up.copy(S.cam.up);
+    reentry.update(dt, { ship: entryAt, dir: e.dir, up: e.up, size: 0.26 * S.model.group.scale.x, cam: entryCam, fx: e.fx, t: e.t });
   };
 
   // the people out of the door: beside the ship, on its right
@@ -1940,7 +2084,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     ground?.tick(S.clock);
     rocks?.update?.(S.clock, dt);
 
-    if (S.phase === 'land') {
+    if (S.phase === 'land' && S.entry) {
+      stepEntry(dt);
+    } else if (S.phase === 'land') {
       const k = Math.min(1, S.t / LAND.down);
       placeShip(k);
       if (k >= 1 && party) startOut();
@@ -2258,13 +2404,17 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const k = Math.min(1, S.t / LAND.lift);
     const e = ease(k);
     const P0 = S.from.p.clone();
-    const up = new V(...vec.scale(S.spot.n, S.R + 3.2)).add(S.c);
+    // up and out of the air, and well clear of it (entry.js's ENTRY.clear)
+    const up = new V(...vec.scale(S.spot.n, S.R * AIR + ENTRY.clear + 0.6)).add(S.c);
     m.group.position.copy(P0).lerp(up, e);
     // turning level as it rises (the map's level: that's how it flies),
-    // nose the way it was facing, or else out away from the planet
+    // nose the way it was facing, or else out away from the planet: never
+    // back in toward it, where flying on level would take it straight back
+    // down into the air it's just climbed out of
     const [fx, , fz] = S.spot.f;
     const [nx, , nz] = S.spot.n;
-    const heading = Math.hypot(fx, fz) > 0.25 ? Math.atan2(-fx, -fz) : Math.atan2(-nx, -nz);
+    const facing = Math.hypot(fx, fz) > 0.25 && (fx * nx + fz * nz >= 0 || Math.hypot(nx, nz) < 0.05);
+    const heading = facing ? Math.atan2(-fx, -fz) : Math.atan2(-nx, -nz);
     const level = new THREE.Quaternion().setFromAxisAngle(new V(0, 1, 0), heading);
     m.group.quaternion.copy(S.from.q).slerp(level, smooth(0.3, 1, k));
     m.group.scale.setScalar((PARKED[S.kind] ?? 1) + (1 - (PARKED[S.kind] ?? 1)) * smooth(0, 0.6, k));
@@ -2322,7 +2472,19 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   const view = (dt) => {
     if (!S.phase) return null;
     const out = { pos: new V(), look: new V(), up: new V() };
-    if (S.phase === 'land' || S.phase === 'lift' || (S.phase === 'board' && !S.me)) {
+    if (S.phase === 'land' && S.entry) {
+      // flown in: behind it and a little above, down the way it's going,
+      // coming round onto the landing's view (below) as it settles
+      const e = S.entry;
+      const p = S.model.group.position;
+      const n = spotN.set(...S.spot.n);
+      const k = smooth(ENTRY.glide - 0.8, ENTRY.glide + ENTRY.settle * 0.6, e.t);
+      out.pos.copy(p).addScaledVector(e.dir, -1.15).addScaledVector(e.up, 0.32);
+      out.look.copy(p).addScaledVector(e.dir, 0.6);
+      out.pos.lerp(landCam.copy(p).addScaledVector(spotF.set(...S.spot.f), -1.1).addScaledVector(n, 0.45), k);
+      out.look.lerp(p, k);
+      out.up.copy(e.up).lerp(n, k).normalize();
+    } else if (S.phase === 'land' || S.phase === 'lift' || (S.phase === 'board' && !S.me)) {
       // over the ship, from behind and above, as it comes down (or goes up)
       const m = S.model.group;
       const n = new V(...S.spot.n);
@@ -2371,7 +2533,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     if (rel.length() < minR) out.pos.copy(S.c).addScaledVector(rel.normalize(), minR);
     // eased, so it follows rather than jolts
     if (S.cam.pos) {
-      const k = reduced ? 1 : 1 - Math.exp(-dt * (S.phase === 'walk' ? 12 : 3.5));
+      // (flown in, close behind: it's going a good deal faster than it lands)
+      const k = reduced ? 1 : 1 - Math.exp(-dt * (S.phase === 'walk' ? 12 : S.entry ? 10 : 3.5));
       S.cam.pos.lerp(out.pos, k);
       S.cam.look.lerp(out.look, k);
       S.cam.up.lerp(out.up, k).normalize();
@@ -2385,6 +2548,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       haze.mesh.position.copy(S.cam.pos).sub(S.c);
       haze.mat.uniforms.uUp.value.copy(S.cam.up);
     }
+    if (S.entry) showEntry(dt);
     return { pos: S.cam.pos, look: S.cam.look, up: S.cam.up };
   };
 
@@ -2412,7 +2576,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       const k = smooth(-0.25, 0.35, vec.dot(S.me?.n ?? S.spot.n, arr(light)));
       // (only down in the air: gone by the time you're well up)
       const high = S.cam.pos ? S.cam.pos.distanceTo(S.c) - S.R : 0;
-      haze.mat.uniforms.uDay.value = (haze.set ? k : 0.12 + 0.88 * k) * (1 - smooth(20 * METRE, 300 * METRE, high));
+      // (and flown in, coming up from nothing as the ship comes down through the air: S.sky)
+      haze.mat.uniforms.uDay.value = (haze.set ? k : 0.12 + 0.88 * k) * (1 - smooth(20 * METRE, 300 * METRE, high)) * S.sky;
       haze.set?.({ sun: light });
     },
     // F: a shot at the lock, or straight ahead; the gun it was (gunplay.js's kind), or false
@@ -2530,6 +2695,18 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     horizon() {
       return S.cam.pos ? { at: S.cam.pos, up: S.cam.up } : null;
     },
+    // on the way in through the air: how far along (seconds, of `T`) and
+    // the show's numbers (entry.js's fxAt), for the camera's shake and the
+    // roar; null once it's down (or if it wasn't flown in)
+    entry() {
+      const e = S.entry;
+      if (!e) return null;
+      // (one object, filled in again: the scene asks more than once a frame)
+      entryView.t = e.t;
+      entryView.T = e.path.T;
+      entryView.fx = e.fx ?? fxAt(e.t);
+      return entryView;
+    },
     // the ship's numbers to fly on from, once it's up (null until then)
     takeoff() {
       return S.done;
@@ -2538,7 +2715,14 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     end() {
       const planet = planetOf[S.id];
       planet?.hold?.(false);
-      if (planet?.air) planet.air.visible = true;
+      if (planet?.air) {
+        planet.air.visible = true;
+        // (ended partway in: as bright as it was before the ship flew into it)
+        if (S.entry) planet.air.material.uniforms.uStrength.value = S.airWas;
+      }
+      S.entry = null;
+      S.sky = 1;
+      reentry.stop();
       if (planet?.body && S.hideBody) planet.body.visible = S.bodyShown;
       S.hideBody = 0;
       S.band = null;
@@ -2587,6 +2771,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       }
       puffTex.dispose();
       for (const s of puffs) s.material.dispose();
+      reentry.dispose();
       map.remove(root);
     },
   };

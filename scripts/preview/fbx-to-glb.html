@@ -1,0 +1,87 @@
+<!doctype html>
+<!-- scripts/fbx-to-glb.mjs's converter: three.js's FBXLoader reads the file,
+     its materials become metal-roughness ones, and GLTFExporter writes it out,
+     skeleton, skin and clips and all. (FBXLoader gives every skinned part a
+     copy of the skeleton of its own, and a part a group for every run of
+     faces in one material: here the parts share one skeleton, the first,
+     by bone name, and each material's runs are one group.) -->
+<meta charset="utf-8" />
+<body>
+  <script type="module">
+    import * as THREE from 'three';
+    import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+    import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
+    import { mergeGroups } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+
+    // every skinned part on one skeleton. (FBXLoader gives a bone that more
+    // than one part uses a copy of itself, nested inside it, for each other
+    // part: the outermost of each name is the one in the skeleton's real
+    // hierarchy, so every part is bound to those, and the copies go.)
+    function oneSkeleton(root) {
+      const skinned = [];
+      root.traverse((o) => o.isSkinnedMesh && skinned.push(o));
+      const nested = (b) => b.parent?.isBone && b.parent.name === b.name;
+      const outer = new Map();
+      root.traverse((o) => o.isBone && !nested(o) && !outer.has(o.name) && outer.set(o.name, o));
+      root.updateMatrixWorld(true);
+      let moved = 0;
+      for (const m of skinned) {
+        const bones = m.skeleton.bones.map((b) => outer.get(b.name) ?? b);
+        if (bones.every((b, i) => b === m.skeleton.bones[i])) continue;
+        m.bind(new THREE.Skeleton(bones, m.skeleton.boneInverses), m.bindMatrix);
+        moved++;
+      }
+      const copies = [];
+      root.traverse((o) => o.isBone && nested(o) && copies.push(o));
+      for (const b of copies) b.parent?.remove(b);
+      return moved;
+    }
+
+    // url: the .fbx; dir: where its textures are (by file name, whatever
+    // path the file names them by); maps: { material name: texture file } for
+    // maps the file lost
+    window.convert = async (url, dir, maps = {}) => {
+      const manager = new THREE.LoadingManager();
+      manager.setURLModifier((u) => (/\.(png|jpe?g|tga|bmp|webp)$/i.test(u) && !u.startsWith('blob:') && !u.startsWith('data:') ? `${dir}/${u.split(/[\\/]/).pop()}` : u));
+      const loaded = new Promise((done) => {
+        manager.onLoad = done;
+        setTimeout(done, 20000);
+      });
+      const obj = await new FBXLoader(manager).loadAsync(url);
+      await loaded;
+      const shared = oneSkeleton(obj);
+      obj.traverse((o) => {
+        if (!o.isMesh || !Array.isArray(o.material) || !o.geometry.groups.length) return;
+        o.geometry = mergeGroups(o.geometry);
+      });
+      const textures = new THREE.TextureLoader();
+      const extra = {};
+      for (const [name, file] of Object.entries(maps)) extra[name] = await textures.loadAsync(`${dir}/${file}`);
+      const parts = [];
+      const made = new Map();
+      obj.traverse((o) => {
+        if (!o.isMesh) return;
+        const swap = (m) => {
+          if (made.has(m)) return made.get(m);
+          const own = m.map?.image && (m.map.image.width || m.map.image.naturalWidth) ? m.map : null;
+          const map = extra[m.name] ?? own;
+          if (map) {
+            map.colorSpace = THREE.SRGBColorSpace;
+            map.flipY = own === map ? map.flipY : true;
+          }
+          const s = new THREE.MeshStandardMaterial({ name: m.name, color: map && extra[m.name] ? 0xffffff : (m.color ?? 0xffffff), map, roughness: 0.55, metalness: 0, transparent: Boolean(m.transparent), opacity: m.opacity ?? 1, side: m.side });
+          made.set(m, s);
+          return s;
+        };
+        o.material = Array.isArray(o.material) ? o.material.map(swap) : swap(o.material);
+        parts.push({ name: o.name, skinned: Boolean(o.isSkinnedMesh), materials: [].concat(o.material).map((m) => m.name + (m.map ? ' (mapped)' : '')) });
+      });
+      const glb = await new GLTFExporter().parseAsync(obj, { binary: true, animations: obj.animations, onlyVisible: false });
+      const bytes = new Uint8Array(glb);
+      let s = '';
+      for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      return { parts, shared, clips: obj.animations.map((a) => a.name), glb: btoa(s) };
+    };
+    window.__ready = true;
+  </script>
+</body>

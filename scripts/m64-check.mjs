@@ -6,8 +6,8 @@
 // visits the castle inside and Bob-omb Ridge, and screenshots each; it
 // prints the game's mode, area and Mario's place at each step, and fails on
 // any page error. Headless Chromium draws in software: the waits are long.
-import { writeFileSync } from 'node:fs';
 import { chromium } from 'playwright-core';
+import sharp from 'sharp';
 
 const out = process.env.OUT ?? '.';
 const base = process.env.BASE ?? 'http://127.0.0.1:5188';
@@ -32,16 +32,25 @@ const state = (label) =>
     },
     [label, world()],
   );
-// the page (the HUD, the menus), and the 3D drawn and read back in one go: a
-// screenshot of a software-drawn WebGL canvas can catch it cleared
+// the 3D, drawn and read straight off the GL context (a screenshot, or the
+// canvas's own toDataURL, of a software-drawn WebGL canvas can come back
+// cleared), and the page (the HUD, the menus)
 const shot = async (name) => {
-  await page.screenshot({ path: `${out}/m64-${name}.png`, timeout: 180000 }).catch((e) => console.log('shot failed', name, String(e).slice(0, 120)));
-  const png = await page.evaluate((w) => {
+  const r = await page.evaluate((w) => {
     const world = eval(w);
-    world?.draw();
-    return window.__RUNTIME__?.gfx?.canvas?.toDataURL('image/png') ?? null;
+    const gl = window.__RUNTIME__?.gfx?.renderer?.getContext();
+    if (!world || !gl) return null;
+    world.draw();
+    const W = gl.drawingBufferWidth;
+    const H = gl.drawingBufferHeight;
+    const px = new Uint8Array(W * H * 4);
+    gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    let s = '';
+    for (let i = 0; i < px.length; i += 0x8000) s += String.fromCharCode(...px.subarray(i, i + 0x8000));
+    return { W, H, data: btoa(s) };
   }, world());
-  if (png) writeFileSync(`${out}/m64-${name}-3d.png`, Buffer.from(png.split(',')[1], 'base64'));
+  if (r) await sharp(Buffer.from(r.data, 'base64'), { raw: { width: r.W, height: r.H, channels: 4 } }).flip().removeAlpha().png().toFile(`${out}/m64-${name}-3d.png`);
+  await page.screenshot({ path: `${out}/m64-${name}.png`, timeout: 180000 }).catch((e) => console.log('shot failed', name, String(e).slice(0, 120)));
 };
 const step = async (label) => {
   const s = await state(label);

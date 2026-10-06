@@ -47,7 +47,7 @@
 // Lit things are lit in world space from where their light is (the home sun
 // at the map's middle, or their own star), so the map can turn under them.
 //
-// buildDeepSpace({ small }) → { group, update(t, camera, cam), lens(), dispose() }
+// buildDeepSpace({ small }) → { group, update(t, camera, cam, { names }), lens(), dispose() }
 // cam is the camera's position in the map's space (the group's own).
 
 import * as THREE from 'three';
@@ -2181,7 +2181,9 @@ mat3 tumble(float id) {
   let lastT = null;
   return {
     group,
-    update(t, camera, cam) {
+    // (`names` false: the wonders' names fade, the way in through a planet's
+    // air being under a sky of its own)
+    update(t, camera, cam, { names = true } = {}) {
       const dt = lastT === null ? 1 : Math.min(0.1, Math.max(0, t - lastT));
       lastT = t;
       uTime.value = t;
@@ -2195,7 +2197,7 @@ mat3 tumble(float id) {
         // names: out of the home system, and well clear of the wonder
         const out = hypot(cam.x, cam.z) > DEEP.system;
         named.forEach(({ w }, i) => {
-          const want = out && tmp.set(...w.at).distanceTo(cam) > reachOf(w) * 1.5 ? 1 : 0;
+          const want = names && out && tmp.set(...w.at).distanceTo(cam) > reachOf(w) * 1.5 ? 1 : 0;
           shown[i] += (want - shown[i]) * Math.min(1, dt * 2.5);
           if (Math.abs(shown[i] - want) < 0.002) shown[i] = want;
           alphaAttr.array[i] = shown[i];
