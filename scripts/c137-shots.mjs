@@ -55,6 +55,10 @@ export const VIEWS = {
   // Rick's portal gun on the bench's arm, by the portal
   gun: { area: 'garage', at: [-301.6, 100.6, Math.PI * 0.95], cam: [0, 0.4] },
   // the multiverse's destinations (rickmorty/world/dimensions/), each from just in through its portal
+  customs: { area: 'customs', at: [-400, 910.4, N], cam: [0, 0.25] },
+  squanch: { area: 'squanch', at: [-400, 1016, N], cam: [0, 0.2] },
+  gazorpazorp: { area: 'gazorpazorp', at: [-400, 1116, N], cam: [0, 0.2] },
+  birdworld: { area: 'birdworld', at: [-400, 1216, N], cam: [0, 0.2] },
   fantasy: { area: 'fantasy', at: [-400, 1316, N], cam: [0, 0.2] },
   microverse: { area: 'microverse', at: [-400, 1403.4, N], cam: [0, 0.3] },
   anatomy: { area: 'anatomy', at: [-400, 1508.4, N], cam: [0, 0.25] },

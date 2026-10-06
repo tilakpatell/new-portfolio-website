@@ -86,6 +86,17 @@
     "where": "middle-earth",
     "as": "Bag End’s door"
   },
+  "c-137-krombopulos-rick-and-morty": {
+    "title": "Krombopulos Rick And Morty",
+    "author": "ELCHUPAAANOS",
+    "authorUrl": "https://sketchfab.com/elchupaanos",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/krombopulos-rick-and-morty-4d65b1da2fe54c5590aa8abc7c64bf83",
+    "where": "c-137",
+    "as": "Krombopulos Michael at Interdimensional Customs, rigged by Meshy",
+    "file": "/games/meshy/krombopulos.glb"
+  },
   "cr90": {
     "title": "Star Wars: CR-90",
     "author": "Daniel",

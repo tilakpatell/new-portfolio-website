@@ -73,6 +73,10 @@ export const LAZY = {
   annex: () => import('./annex').then((m) => m.buildAnnex),
   wong: () => import('./interiors/wong').then((m) => m.buildWong),
   // the multiverse's destinations, through the garage portal as it's dialled (./dimensions/)
+  customs: () => import('./dimensions/customs').then((m) => m.buildCustoms),
+  squanch: () => import('./dimensions/squanch').then((m) => m.buildSquanch),
+  gazorpazorp: () => import('./dimensions/gazorpazorp').then((m) => m.buildGazorpazorp),
+  birdworld: () => import('./dimensions/birdworld').then((m) => m.buildBirdworld),
   fantasy: () => import('./dimensions/fantasy').then((m) => m.buildFantasy),
   microverse: () => import('./dimensions/microverse').then((m) => m.buildMicroverse),
   anatomy: () => import('./dimensions/anatomy').then((m) => m.buildAnatomy),

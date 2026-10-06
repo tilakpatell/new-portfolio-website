@@ -2,7 +2,7 @@
 // people at dusk, thatched cottages, a barn, a well with Arthricia by it,
 // lanterns on posts, villagers about; and the purge siren on its pole. Pulled
 // (the area's 'siren' action, from RmWorld), it howls and the sky goes red;
-// Morty has a minute to get back through the portal.
+// Morty has a minute to get back through the portal ('calm' once he's gone).
 
 import * as THREE from 'three';
 import { BALL } from '../interiors/shell';
@@ -64,6 +64,12 @@ export async function buildPurge(kit) {
   area.actions = {
     siren: () => {
       purging = true;
+    },
+    // (left: the night's over by the next visit)
+    calm: () => {
+      purging = false;
+      glare.intensity = 0;
+      veil.material.opacity = 0;
     },
   };
   return area;
