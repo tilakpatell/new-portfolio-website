@@ -74,7 +74,16 @@ def take_path(engine, line, k):
 
 
 def seed(line, k):
-    return (int(line["id"], 16) + 7919 * k) % 2**31
+    """A take's seed: a line comes out the same way each time, until it's made again (its salt)."""
+    return (int(line["id"], 16) + 7919 * k + 104729 * line.get("salt", 0)) % 2**31
+
+
+def redo(line, engine, judge, salts):
+    """New takes for a line: the old ones and their scores gone, and a new salt so they come out differently."""
+    for p in (TAKES / engine / line["who"]).glob(f"{line['id']}.*.wav"):
+        judge.forget(p)
+        p.unlink()
+    salts[line["id"]] = salts.get(line["id"], 0) + 1
 
 
 class Judge:
@@ -239,11 +248,17 @@ def main():
     todo = [l for l in lines if l["who"] in voices and (args.force or not mp3(l).exists())]
     if args.limit:
         todo = todo[: args.limit]
-    if args.force:
-        for l in todo:
-            for p in (TAKES / engine_of[l["who"]] / l["who"]).glob(f"{l['id']}.*.wav"):
-                judge.forget(p)
-                p.unlink()
+    # a line that was made (it's in the manifest) but whose mp3 is gone was deleted to be made again,
+    # so it gets new takes, not its old best one back; --force makes every line again
+    salts_file = TAKES / "salts.json"
+    salts = json.loads(salts_file.read_text(encoding="utf-8")) if salts_file.exists() else {}
+    listed = json.loads((OUT / "manifest.json").read_text(encoding="utf-8")).get("lines", {}) if (OUT / "manifest.json").exists() else {}
+    for l in todo:
+        if args.force or l["id"] in listed:
+            redo(l, engine_of[l["who"]], judge, salts)
+        l["salt"] = salts.get(l["id"], 0)
+    TAKES.mkdir(parents=True, exist_ok=True)
+    salts_file.write_text(json.dumps(salts), encoding="utf-8")
     print(f"\nMaking {len(todo)} lines into public/audio/voiced/, {args.takes} takes each")
     started, made, doubtful = time.time(), [], []
 

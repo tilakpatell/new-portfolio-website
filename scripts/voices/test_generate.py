@@ -89,6 +89,23 @@ class Make(unittest.TestCase):
         self.assertEqual(self.asked, [])
         self.assertTrue(done[0][2])
 
+    def test_a_line_made_again_gets_new_takes_not_the_old_ones(self):
+        line = {"id": "0000000f", "who": "walt", "text": "Say my name."}
+        self.run_make([line], {"0000000f": {0, 1}})
+        forgot, salts = [], {}
+
+        class Forgets:
+            def forget(self, take):
+                forgot.append(Path(take).name)
+
+        generate.redo(line, "fake", Forgets(), salts)
+        self.assertEqual(sorted(forgot), ["0000000f.0.wav", "0000000f.1.wav"])
+        self.assertEqual(list((self.takes / "fake" / "walt").glob("0000000f.*")), [])
+        self.assertEqual(salts, {"0000000f": 1})
+        self.asked.clear()
+        self.run_make([{**line, "salt": 1}], {"0000000f": {0, 1}})
+        self.assertNotIn(generate.seed(line, 0), [it["seed"] for it in self.asked[0]])
+
     def test_a_take_the_engine_fails_counts_as_failed(self):
         done = self.run_make([{"id": "0000000e", "who": "walt", "text": "fail"}], {"0000000e": {0, 1, 2, 3, 4, 5}})
         self.assertEqual(done, [("0000000e", None, False)])
