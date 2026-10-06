@@ -1394,6 +1394,20 @@
       "galaxy"
     ]
   },
+  "surface-glassshard": {
+    "title": "Obsidian Shard",
+    "author": "Graph VFX",
+    "authorUrl": "https://sketchfab.com/GraphVFX",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/obsidian-shard-565313347d6e4dc28c00cb095774995f",
+    "where": "galaxy-surface",
+    "as": "the glass of Mandalore",
+    "file": "/models/galaxy/surface/glassshard.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-gonk": {
     "title": "GNK Droid",
     "author": "Alana G",
@@ -1558,6 +1572,20 @@
     "where": "galaxy-surface",
     "as": "Luke's landspeeder",
     "file": "/models/galaxy/surface/landspeeder.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-lavarock": {
+    "title": "Volcanic Rock Scan",
+    "author": "laboratorija",
+    "authorUrl": "https://sketchfab.com/laboratorija",
+    "license": "CC-BY-NC-SA-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "source": "https://sketchfab.com/3d-models/volcanic-rock-scan-7a8f0459c26d4a45875b58df38f9e6d9",
+    "where": "galaxy-surface",
+    "as": "the lava rocks of Nevarro",
+    "file": "/models/galaxy/surface/lavarock.glb",
     "also": [
       "galaxy"
     ]
@@ -1730,6 +1758,48 @@
       "galaxy"
     ]
   },
+  "surface-sorganbirch": {
+    "title": "Birch tree",
+    "author": "evolveduk",
+    "authorUrl": "https://sketchfab.com/evolveduk",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/birch-tree-aa842dffd9654d33b8b91170ce83c172",
+    "where": "galaxy-surface",
+    "as": "the birches of Sorgan",
+    "file": "/models/galaxy/surface/sorganbirch.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-sorganfern": {
+    "title": "Realistic HD Common polypody fern (23/55)",
+    "author": "PlantCatalog",
+    "authorUrl": "https://sketchfab.com/PlantCatalog",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/realistic-hd-common-polypody-fern-2355-b99bb3d69eb84965ad70a6b2b6a1f2dd",
+    "where": "galaxy-surface",
+    "as": "the ferns of Sorgan",
+    "file": "/models/galaxy/surface/sorganfern.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-sorganfir": {
+    "title": "Fir tree",
+    "author": "evolveduk",
+    "authorUrl": "https://sketchfab.com/evolveduk",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/fir-tree-3f39aa5485e94477a36b435f7a1a8b54",
+    "where": "galaxy-surface",
+    "as": "the firs of Sorgan",
+    "file": "/models/galaxy/surface/sorganfir.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-speederbike": {
     "title": "Star Wars Aratech 74z Speeder Bike",
     "author": "tegnemaskin",
@@ -1740,6 +1810,20 @@
     "where": "galaxy-surface",
     "as": "the speeder bikes",
     "file": "/models/galaxy/surface/speederbike.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-stilthut": {
+    "title": "Thatched Hut on Stilts",
+    "author": "rajoelinirinanear",
+    "authorUrl": "https://sketchfab.com/rajoelinirinanear",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/thatched-hut-on-stilts-b73d5d61395d45a2bd65768223fb28de",
+    "where": "galaxy-surface",
+    "as": "the krill farmers’ huts",
+    "file": "/models/galaxy/surface/stilthut.glb",
     "also": [
       "galaxy"
     ]

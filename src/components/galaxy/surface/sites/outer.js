@@ -5,6 +5,24 @@ const sky = (zenith, horizon, sun, extra = {}) => ({ zenith, horizon, haze: 0.8,
 const palette = (low, high, rock, accent, extra = {}) => ({ low, high, rock, accent, deep: rock, hLow: -4, hHigh: 14, rockAt: 0.4, accentCover: 0.25, ripple: { strength: 0.02, scale: 3, wind: 0.5 }, grain: 0.5, ...extra });
 const hostile = (range, every, damage) => ({ range, every, damage, spread: 0.06 });
 const troops = (tag, n, at, kind = 'stormtrooper') => ({ kind, n, at, spread: 12, roam: 5, hp: 2, tag, hostile: hostile(42, 2.3, 8) });
+// a stand of trees (or anything) round a spot: n of them between r0 and r1
+// metres out, kinds taken in turn, the same every time (seeded); placed one
+// by one rather than scattered, so a stand off the screen isn't drawn
+const grove = (seed, n, r0, r1, kinds, [lo, hi] = [0.85, 1.35]) => {
+  let a = seed >>> 0;
+  const r = () => (a = (Math.imul(a, 1664525) + 1013904223) >>> 0) / 4294967296;
+  return Array.from({ length: n }, (_, i) => {
+    const t = r() * Math.PI * 2;
+    const d = Math.sqrt(r0 * r0 + r() * (r1 * r1 - r0 * r0));
+    return { kind: kinds[i % kinds.length], at: [Math.cos(t) * d, Math.sin(t) * d], yaw: r() * Math.PI * 2, scale: lo + (hi - lo) * r(), sink: 0.3 };
+  });
+};
+// n spots evenly round a circle of radius r (a turn of `phase` first), each
+// [x, z, yaw] with its front to the middle
+const ring = (n, r, phase = 0) => Array.from({ length: n }, (_, i) => {
+  const a = phase + (i / n) * Math.PI * 2;
+  return [Math.cos(a) * r, Math.sin(a) * r, -a - Math.PI / 2];
+});
 
 export const SITES = {
   nevarro: {
@@ -117,11 +135,18 @@ export const SITES = {
     ground: { seed: 57, layers: [{ type: 'swell', scale: 300, height: 6 }, { type: 'hills', scale: 110, height: 9 }, { type: 'mountains', from: 650, to: 3000, height: 300, scale: 1100 }], palette: palette('#4a6a38', '#6a8a48', '#5a5a50', '#8a7a48', { mark: '#3a4a2a' }) },
     land: { at: [0, 0], yaw: 0.3 },
     places: [
-      { id: 'village', name: 'The krill farmers’ village', at: [180, 120], r: 50, flat: { r: 46 }, about: 'Huts on stilts over the ponds, and a harvest the raiders keep coming back for.', things: [{ kind: 'tent', at: [0, 0] }, { kind: 'tent', at: [12, 8], yaw: 1 }, { kind: 'tent', at: [-10, 10], yaw: 2 }, { kind: 'fire', at: [2, -4] }, { kind: 'crates', at: [-8, -10] }] },
+      { id: 'village', name: 'The krill farmers’ village', at: [180, 120], r: 50, flat: { r: 46 }, about: 'Huts on stilts over the ponds, and a harvest the raiders keep coming back for.', things: [...ring(5, 21, 0.4).map(([x, z, yaw]) => ({ kind: 'stilthut', at: [x, z], yaw, sink: 0.15 })), { kind: 'fire', at: [2, -4] }, { kind: 'crates', at: [-8, -10] }, { kind: 'crates', at: [9, 6], yaw: 0.8 }, ...ring(7, 34, 0.9).map(([x, z, yaw]) => ({ kind: 'sorganfern', at: [x, z], yaw, scale: 1.3, solid: false })), ...grove(11, 30, 54, 84, ['sorganbirch', 'sorganbirch', 'sorganfir'])] },
       { id: 'raiders', name: 'The raiders’ camp', at: [-240, -160], r: 40, flat: { r: 30 }, about: 'Klatooinian raiders, and something big under a tarp.', things: [{ kind: 'tent', at: [0, 0] }, { kind: 'fire', at: [4, 4] }, { kind: 'crates', at: [-6, 8] }] },
-      { id: 'woods', name: 'The deep woods', at: [-120, 220], r: 40, about: 'Old trees and mist. Something with a lot of teeth hunts here at night.', things: [{ kind: 'needle', at: [0, 0], scale: 0.38, sink: 1 }] },
+      { id: 'woods', name: 'The deep woods', at: [-120, 220], r: 40, about: 'Old trees and mist. Something with a lot of teeth hunts here at night.', things: [{ kind: 'log', at: [0, 0], yaw: 0.7 }, { kind: 'log', at: [9, -6], yaw: 2.1, scale: 0.8 }, ...grove(23, 40, 8, 60, ['sorganfir', 'sorganbirch'], [1, 1.5]), ...grove(5, 30, 4, 50, ['sorganfern'], [1, 2])] },
     ],
-    scatter: [{ kind: 'rock', n: 80, within: [40, 500], scale: [0.6, 2.4], opts: { color: '#6a6a5a' } }],
+    // the woods: birches and firs all round, thinning out far off, ferns
+    // under them (the village and the landing are kept clear)
+    scatter: [
+      { kind: 'rock', n: 60, within: [40, 500], scale: [0.6, 2.4], opts: { color: '#6a6a5a' } },
+      { kind: 'sorganbirch', n: 90, within: [45, 520], scale: [0.75, 1.3], sink: 0.3, solid: 0.5 },
+      { kind: 'sorganfir', n: 60, within: [60, 650], scale: [0.8, 1.4], sink: 0.3, solid: 0.6 },
+      { kind: 'sorganfern', n: 140, within: [18, 360], scale: [0.8, 1.8], solid: false },
+    ],
     life: [
       { kind: 'villager', id: 'omera', at: [186, 112], still: true, face: 2.4, name: 'Omera', named: true, quest: 'raiders', says: ['We can pay. Not much, but we can pay.'] },
       { kind: 'villager', n: 5, at: [180, 120], spread: 20, roam: 12, speed: 0.9, name: 'Krill farmer', says: ['The raiders come at harvest. Every harvest.'] },
