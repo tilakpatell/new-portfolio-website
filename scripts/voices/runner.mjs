@@ -19,7 +19,7 @@
 // branch voices/<name> from origin/main; the GPU is shared with the gen3d
 // runner (a TTS model is small beside TRELLIS.2).
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -73,7 +73,7 @@ export async function runJob(job, root, log = console.log) {
     git(root, 'fetch', '-q', 'origin', 'main');
     git(root, 'checkout', '-q', '-B', branch, 'origin/main');
     const extra = join(root, 'scripts', 'voices', 'cache', `issue-${job.number}.json`);
-    sh('mkdir', ['-p', dirname(extra)]);
+    mkdirSync(dirname(extra), { recursive: true });
     writeFileSync(extra, JSON.stringify(job.lines));
     const exported = sh(process.execPath, [join(root, 'scripts', 'voices', 'export-lines.mjs'), '--extra', extra], { cwd: root });
     log(exported.split('\n').at(-1));
