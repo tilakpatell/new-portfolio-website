@@ -1688,6 +1688,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       }
       g.name = o.name;
       g.ally = o.ally;
+      g.looks = o.looks ?? null; // (how they dress their Rick and Morty)
       g.ship = { n: o.foot.ship.n, r: 0.62 * 0.26 * (PARKED[o.foot.kind] ?? 1) * 0.55 };
       [o.foot.lead, o.foot.mate].forEach((to, i) => {
         let wk = g.walkers[i];

@@ -654,7 +654,7 @@ export async function create(canvas, ctx) {
   // the ones on yours to the foot scene)
   const guestsOnFoot = (now) => {
     const out = [];
-    for (const p of net?.peers?.values() ?? []) if (!p.blocked && p.name && p.foot && now - p.foot.at < STALE_MS) out.push({ id: p.id, name: p.name, ally: p.ally === 'ally', foot: p.foot });
+    for (const p of net?.peers?.values() ?? []) if (!p.blocked && p.name && p.foot && now - p.foot.at < STALE_MS) out.push({ id: p.id, name: p.name, ally: p.ally === 'ally', foot: p.foot, looks: p.looks ?? null });
     return out;
   };
   // everyone else out here (none with reduced motion), and the pops when a shot hits one
