@@ -526,6 +526,8 @@ export const SITES = {
     ],
     scatter: [
       { kind: 'palm', n: 420, within: [40, 585], scale: [0.75, 1.25], above: 0.7, clear: 6 },
+      // (the scrub back from the beaches, low and round, under the palms)
+      { kind: 'bush', n: 450, within: [24, 570], scale: [0.7, 1.6], solid: false, above: 1.0, opts: { seed: 12, s: 2.2, color: '#4a5e3a' } },
       { kind: 'rock', n: 50, within: [60, 560], scale: [0.6, 2.2], opts: { color: '#9a9484', sharp: 0.3 } },
       { kind: 'stones', n: 50, within: [10, 500], scale: [0.2, 0.45], solid: false, opts: { color: '#b8b098' } },
       // the undergrowth under the palms, ferns and broad leaves

@@ -563,6 +563,12 @@ function plantParts({ seed = 9, color = '#3f6a2a', n = 7, len = 1.8 } = {}) {
   return { parts };
 }
 
+// a bush, as Bruno Simon's are: one clump of leaf cards on a smooth core,
+// sat on the ground, `s` across (the scrub back from Scarif's beaches)
+function bushParts({ s = 2, seed = 12, color = '#46582e' } = {}) {
+  return { parts: canopy([0, s * 0.3, 0], s, { flat: 0.62, color, seed }) };
+}
+
 // toadstools and shelf fungus, pale in the gloom
 function fungusParts({ seed = 10, color = '#c8c0a0', cap = '#a8885a' } = {}) {
   const rand = rng(seed);
@@ -596,6 +602,7 @@ export const SCATTER = {
   karst: (k, o = {}) => ({ parts: instanced(k, karstParts(o).parts), radius: 0.5 }),
   jungletree: (k, o = {}) => ({ parts: instanced(k, jungleParts(o).parts), radius: (o.r ?? 1.1) * 1.1 }),
   plant: (k, o = {}) => ({ parts: instanced(k, plantParts(o).parts), radius: null }),
+  bush: (k, o = {}) => ({ parts: instanced(k, bushParts(o).parts), radius: null }),
   fungus: (k, o = {}) => ({ parts: instanced(k, fungusParts(o).parts), radius: null }),
   log: (k, o = {}) => ({ parts: instanced(k, logParts(o).parts), radius: null }),
 };
