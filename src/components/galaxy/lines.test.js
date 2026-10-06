@@ -5,14 +5,21 @@ import { CRAWLS } from './crawls';
 import { GALAXY_LINES, galaxyCrew } from './lines';
 import { FILMS, SYSTEMS } from './systems';
 
-const EVENTS = ['jump', 'course', 'tractor', 'boarded', 'ion', 'superlaser', 'shield-down', 'shield-up', 'scarif-shield', 'escaped', 'destroyer', 'wellclear', 'gcw-shieldgen', 'gcw-superlaser', 'gcw-run', 'gcw-reactor', 'gcw-ds2', 'gcw-executor', 'gcw-hangar', 'gcw-isd', 'gcw-ram', 'gcw-gate', 'gcw-evacuated'];
+const EVENTS = ['jump', 'course', 'tractor', 'boarded', 'ion', 'superlaser', 'shield-down', 'shield-up', 'scarif-shield', 'escaped', 'destroyer', 'wellclear', 'gcw-shieldgen', 'gcw-superlaser', 'gcw-run', 'gcw-reactor', 'gcw-ds2', 'gcw-executor', 'gcw-hangar', 'gcw-isd', 'gcw-ram', 'gcw-gate', 'gcw-evacuated', 'battle'];
+const BATTLE = ['front', 'join', 'gens', 'bridge', 'reactor', 'won', 'lost'];
 const HUNTED = ['separatists', 'remnant'];
 const KILLS = ['vulture', 'trifighter'];
 const sorted = (a) => [...a].sort();
 const words = (p) => p.split(/\s+/).filter(Boolean).length;
 
 // every exchange a crew has in the galaxy, named for the test's messages
-const exchanges = (id) => [...['arrive', 'events', 'hunted', 'kill'].flatMap((group) => Object.entries(GALAXY_LINES[id][group]).map(([key, ex]) => [`${id} ${group} ${key}`, ex])), [`${id} interdicted`, GALAXY_LINES[id].interdicted]];
+// (the war's battle lines are one more level in: events.battle[sub])
+const exchanges = (id) => [
+  ...['arrive', 'events', 'hunted', 'kill'].flatMap((group) =>
+    Object.entries(GALAXY_LINES[id][group]).flatMap(([key, ex]) => (Array.isArray(ex) ? [[`${id} ${group} ${key}`, ex]] : Object.entries(ex).map(([sub, e]) => [`${id} ${group} ${key} ${sub}`, e]))),
+  ),
+  [`${id} interdicted`, GALAXY_LINES[id].interdicted],
+];
 
 describe('the crews in the galaxy', () => {
   it('are the four crews of the universe map', () => {
@@ -27,6 +34,8 @@ describe('the crews in the galaxy', () => {
     for (const crew of CREWS) {
       const g = GALAXY_LINES[crew.id];
       expect(sorted(Object.keys(g.events)), crew.id).toEqual(sorted(EVENTS));
+      // and the war's battles, every moment of one
+      expect(sorted(Object.keys(g.events.battle)), crew.id).toEqual(sorted(BATTLE));
       expect(sorted(Object.keys(g.hunted)), crew.id).toEqual(sorted(HUNTED));
       expect(sorted(Object.keys(g.kill)), crew.id).toEqual(sorted(KILLS));
       // and for the Interdictor pulling them out of hyperspace
@@ -82,7 +91,8 @@ describe('galaxyCrew', () => {
       expect(linesFor(flying, 'arrive', 'home')).toBeNull();
       for (const s of SYSTEMS) expect(linesFor(flying, 'arrive', s.id), `${crew.id} ${s.id}`).toBe(g.arrive[s.id]);
       // the galaxy's events, hunters and kills, over the crew's own
-      for (const id of EVENTS) expect(linesFor(flying, 'event', id), `${crew.id} ${id}`).toBe(g.events[id]);
+      for (const id of EVENTS) if (id !== 'battle') expect(linesFor(flying, 'event', id), `${crew.id} ${id}`).toBe(g.events[id]);
+      for (const sub of BATTLE) expect(linesFor(flying, 'event', 'battle', sub), `${crew.id} battle ${sub}`).toBe(g.events.battle[sub]);
       for (const id of Object.keys(crew.events ?? {})) if (!EVENTS.includes(id)) expect(linesFor(flying, 'event', id), `${crew.id} ${id}`).toBe(linesFor(crew, 'event', id)); // (what the crew would say: an event's lines may be keyed by what came)
       for (const id of HUNTED) expect(linesFor(flying, 'hunted', id)).toBe(g.hunted[id]);
       for (const [id, ex] of Object.entries(crew.hunted)) expect(linesFor(flying, 'hunted', id), `${crew.id} hunted ${id}`).toBe(ex);

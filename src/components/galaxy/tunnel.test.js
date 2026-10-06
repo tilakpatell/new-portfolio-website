@@ -62,8 +62,11 @@ describe('nearestOn and keepIn', () => {
     expect(k.where).toBe('chamber');
     expect(k.bumped).toBe(false);
   });
-  it('says when a ship’s back out of its mouth', () => {
+  it('says when a ship’s back out of its mouth, or nowhere near it (put somewhere else)', () => {
     expect(keepIn(tube, [0, 0, -1.5], 0.15).where).toBe('out');
+    const k = keepIn(tube, [200, 50, 20], 0.15);
+    expect(k.where).toBe('away');
+    expect(k.bumped).toBe(false);
   });
 });
 

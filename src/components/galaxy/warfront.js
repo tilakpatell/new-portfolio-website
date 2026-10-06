@@ -63,6 +63,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
   let solids = [];
   let pieces = []; // the set pieces of the battle on
   let forced = false; // (a dev hook's battle, kept till the system's left)
+  const last = { t: 0, camera: null }; // (the last frame's, for the dev hook that runs it on)
   const said = new Map(); // a set piece's line, by id: when it was last said (seconds on the battle's clock)
   const held = new Map(); // a world solid let go of (a run's way in): its r and reach
   const fight = createTally('none', { cap: 4000 });
@@ -241,6 +242,8 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     },
 
     update(dt, t, camera, live) {
+      last.t = t;
+      last.camera = camera;
       sendNet(dt);
       if (!sys) return { busy: false, hurt: 0 };
       const ms = now();
@@ -358,6 +361,11 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     },
     get pieces() {
       return pieces;
+    },
+    // (and the battle run on `seconds`, a tenth at a time, without the ship:
+    // software GL in the browser checks runs it at a crawl)
+    skip(seconds) {
+      for (let k = 0; k < seconds * 10 && battle && !battle.over; k++) front.update(0.1, last.t + k * 0.1, last.camera, null);
     },
     dispose() {
       stop();

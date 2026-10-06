@@ -16,11 +16,11 @@ const NEAR = 110; // within this of a Star Destroyer, its run's laid
 // (the run's frame: +z up into the hull, +y toward the stern)
 const SHAFT = [
   [0, 0, 0],
-  [0, 0, 0.9],
-  [0, 1.2, 1.8],
-  [0, 4.5, 2.1],
-  [0.6, 8, 2],
-  [0, 10.5, 1.9],
+  [0, 0, 0.6],
+  [0, 1, 1.2],
+  [0, 4.5, 1.4],
+  [0.6, 8, 1.3],
+  [0, 10.5, 1.2],
 ];
 
 export function createHangars(ctx) {
@@ -31,7 +31,8 @@ export function createHangars(ctx) {
     const k = cap.size / 30;
     const i = ctx.battle.capitals.indexOf(cap);
     const up = [cap.up.x, cap.up.y, cap.up.z];
-    const mouth = [cap.pos.x - cap.up.x * cap.size * 0.065, cap.pos.y - cap.up.y * cap.size * 0.065, cap.pos.z - cap.up.z * cap.size * 0.065];
+    // (flush with the belly: lower and the shaft hangs out under the hull)
+    const mouth = [cap.pos.x - cap.up.x * cap.size * 0.04, cap.pos.y - cap.up.y * cap.size * 0.04, cap.pos.z - cap.up.z * cap.size * 0.04];
     return createRun(ctx, {
       id: 5.2e6 + i,
       key: `core-${i}`,

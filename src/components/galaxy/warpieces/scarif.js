@@ -104,9 +104,9 @@ export function createScarif(ctx) {
           // the gate goes, and the shield with it
           for (let i = 0; i < 8; i++) {
             const a = (i / 8) * Math.PI * 2;
-            ctx.draw?.flash(v(G.x + Math.cos(a) * gatePiece.size * 0.42, G.y, G.z + Math.sin(a) * gatePiece.size * 0.42), { size: 14, life: 2.2 + i * 0.15, color: [3.2, 1.8, 0.6], bright: 1.6 });
+            ctx.draw?.flash(v(G.x + Math.cos(a) * gatePiece.size * 0.42, G.y, G.z + Math.sin(a) * gatePiece.size * 0.42), { size: 9, life: 2.2 + i * 0.15, color: [2.6, 1.4, 0.5], bright: 1.1 });
           }
-          ctx.draw?.flash(G, { size: gatePiece.size * 1.2, life: 3, color: [2.6, 2.2, 1.4], bright: 1.8 });
+          ctx.draw?.flash(G, { size: gatePiece.size * 0.45, life: 3, color: [2.2, 1.7, 1], bright: 1.2 });
           world?.war?.station('gate', false);
           world?.war?.planetShield(false);
           ctx.event('gcw-gate');

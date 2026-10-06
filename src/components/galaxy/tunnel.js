@@ -8,7 +8,7 @@
 // tans, cum, length } in the tunnel's own frame (the mouth at the origin,
 // in along +z); nearestOn(path, p) → { s, off, at, tan }; keepIn({ path,
 // radius, chamber }, p, margin) → { p, bumped, where: 'tube' | 'chamber' |
-// 'out' }; frameOf(origin, fwd, up) → { toLocal, toWorld, dirToWorld }.
+// 'out' (back out of its mouth) | 'away' (nowhere near it) }; frameOf(origin, fwd, up) → { toLocal, toWorld, dirToWorld }.
 // Drawn: buildTunnel(path, { radius, chamber, look }) → { group (in the
 // tunnel's frame: place it), core (the reactor), update(t, hot),
 // dispose() }.
@@ -101,6 +101,8 @@ export function keepIn(tube, p, margin = 0.15) {
   if (dc < chamber - margin) return { p, bumped: false, where: 'chamber' };
   const n = nearestOn(path, p);
   if (n.off <= radius - margin) return { p, bumped: false, where: 'tube' };
+  // nowhere near it (put somewhere else, out of a crash, by a pin): not in it at all
+  if (n.off > radius * 4 && dc > chamber * 1.6) return { p, bumped: false, where: 'away' };
   // into a wall: back inside, to whichever's nearer, the tube or the chamber
   const toTube = n.off > 1e-9 ? add(n.at, unit(sub(p, n.at)), radius - margin) : n.at;
   const toRoom = add(C, unit(sub(p, C)), chamber - margin);
@@ -163,8 +165,8 @@ void main() {
   gl_FragColor = vec4(c, 1.0);
 }`;
 const LOOKS = {
-  ds2: { metal: [0.32, 0.35, 0.4], light: [2.4, 1.3, 0.55], core: [1.2, 2.6, 4.2] },
-  isd: { metal: [0.42, 0.43, 0.46], light: [2.2, 2.3, 2.6], core: [3.6, 2.2, 0.8] },
+  ds2: { metal: [0.32, 0.35, 0.4], light: [2.4, 1.3, 0.55], core: [0.45, 1.05, 1.9] },
+  isd: { metal: [0.42, 0.43, 0.46], light: [2.2, 2.3, 2.6], core: [1.7, 1, 0.35] },
 };
 
 export function buildTunnel(path, { radius = 2, chamber = 6, look = 'ds2', small = false } = {}) {
@@ -227,7 +229,7 @@ export function buildTunnel(path, { radius = 2, chamber = 6, look = 'ds2', small
     update(t, hot = 0) {
       wallMat.uniforms.uTime.value = t % 1000;
       wallMat.uniforms.uAlarm.value = hot;
-      const k = 1 + 0.25 * Math.sin(t * 6) + hot * 1.5;
+      const k = 1 + 0.2 * Math.sin(t * 6) + hot * 0.8;
       core.scale.setScalar(1 + 0.06 * Math.sin(t * 11) + hot * 0.3);
       coreMat.color.setRGB(L.core[0] * k, L.core[1] * k, L.core[2] * k);
     },

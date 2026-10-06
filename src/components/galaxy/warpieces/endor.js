@@ -141,8 +141,8 @@ export function createEndor(ctx) {
     enter: () => ctx.event('gcw-run'),
     onBlown: (mine) => {
       blown = true;
-      ctx.draw?.flash(D, { size: ds.size * 1.6, life: 3.5, color: [3.2, 2.4, 1.4], bright: 2 });
-      for (let i = 0; i < 6; i++) ctx.draw?.flash(v(D.x + (rand() - 0.5) * R, D.y + (rand() - 0.5) * R, D.z + (rand() - 0.5) * R), { size: R * 0.6, life: 2 + i * 0.3, color: [3, 1.6, 0.6] });
+      ctx.draw?.flash(D, { size: ds.size * 0.75, life: 3.5, color: [2.6, 2, 1.2], bright: 1.4 });
+      for (let i = 0; i < 8; i++) ctx.draw?.flash(v(D.x + (rand() - 0.5) * R * 1.4, D.y + (rand() - 0.5) * R * 1.4, D.z + (rand() - 0.5) * R * 1.4), { size: R * 0.3, life: 1.6 + i * 0.35, color: [2.8, 1.4, 0.5] });
       world?.war?.station('deathstar2', false);
       ctx.event('gcw-ds2');
       if (mine || ctx.tookPart()) ctx.points(GCW.points.objective * 3);
@@ -151,6 +151,7 @@ export function createEndor(ctx) {
   });
 
   return {
+    run, // (for the browser checks)
     update(dt, t, live, events) {
       const res = {};
       // what's been done to the generator, here and by the pilots in the system

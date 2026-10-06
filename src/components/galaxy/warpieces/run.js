@@ -36,6 +36,7 @@ export function createRun(ctx, o) {
   let bumpCool = 0;
   let left = 0; // seconds to get out, once it's blown
   let mineBlown = false;
+  let where = null; // where in it the ship was last: 'tube', 'chamber'
   const core = { x: 0, y: 0, z: 0 };
   const mouthAt = { x: mouth[0], y: mouth[1], z: mouth[2] };
   const coreR = chamber * 0.26;
@@ -77,6 +78,13 @@ export function createRun(ctx, o) {
     get left() {
       return left;
     },
+    get where() {
+      return inside ? where : null;
+    },
+    // (a dev hook, for the browser checks: the escape's seconds cut short)
+    hurry() {
+      if (state === 'blown') left = Math.min(left, 1.5);
+    },
     update(dt, t, live) {
       if (state === 'done') return {};
       if (state === 'shut' && o.open()) state = 'open';
@@ -117,8 +125,13 @@ export function createRun(ctx, o) {
       }
       if (!inside) return out;
       const k = keepIn(tube, l, 0.18);
-      if (k.where === 'out') {
+      where = k.where;
+      if (k.where === 'out' || k.where === 'away') {
         inside = false;
+        if (k.where === 'away' && zone) {
+          zone = false;
+          o.solidsOff(false);
+        }
         return out;
       }
       if (k.bumped) {
