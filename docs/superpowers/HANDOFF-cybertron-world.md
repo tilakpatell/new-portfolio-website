@@ -46,7 +46,7 @@ The owner's asks:
   - Every outdoor area's metal is lit by a PMREM of its own sky.
 - **Phones** (PR #243): while playing, the world takes the whole screen. The touch
   buttons fit their labels. The guide's `?` and the scroll saber hide.
-- **Metroplex and Barricade**:
+- **Metroplex and Barricade** (PR #246):
   - When the beacons are driven, Metroplex wakes on the skyline: his eyes
     and chest light up, he turns toward the city, and a searchlight sweeps
     from his head.
@@ -57,6 +57,19 @@ The owner's asks:
     `vehicle` / `toRobot` in `catalog.js`. Find the clip's times from a
     contact sheet of its frames (a gitignored `lab/sheet.html` taking
     `file@time@yaw`).
+
+- **The Matrix of Leadership**: an eighth mission (Iacon, from Zeta
+  Prime, after the bridge is held). Stop Shockwave in the Hall's plaza (a
+  boss with a slow, heavy cannon: `ENEMY_KINDS.shockwave`), then take up
+  the Matrix (its own model, glowing on the steps; `scene.js`
+  `matrixModel`). A mission's `say` is what its giver says as it starts.
+  The boss bar and the compass name whichever boss it is.
+- **Everyone's models in use**: Bumblebee's car and Bulkhead's truck are
+  parked in the base (solids too), Bumblebee's War for Cybertron car by
+  HQ, and Prime's Soundwave watches the mine from the rocks
+  (`stage.watcher`).
+- A Decepticon's mission beacon is a thin shaft over his head now, not a
+  column round him.
 
 ## Checking it
 - Dev only: `#/cybertron?quality=high&autoplay` starts playing.
