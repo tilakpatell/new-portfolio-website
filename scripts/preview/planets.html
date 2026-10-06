@@ -136,10 +136,11 @@
         set: (o) => ({ yaw, pitch, dist } = { yaw, pitch, dist, ...o }),
         // look at the first thing under the planet whose material or geometry matches
         follow(test, distance = r * 0.6) {
-          follow = null;
-          p.group.traverse((o) => {
-            if (!follow && o.isMesh && test(o)) follow = o;
-          });
+          follow = test?.isObject3D ? test : null; // (or the thing itself)
+          if (!follow)
+            p.group.traverse((o) => {
+              if (!follow && o.isMesh && test(o)) follow = o;
+            });
           near = distance;
           return Boolean(follow);
         },

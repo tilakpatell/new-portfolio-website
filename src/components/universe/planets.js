@@ -31,6 +31,7 @@ import { buildGateway } from '../galaxy/gateway';
 import { SIDES, cybertronSkin } from '../cybertron/skin';
 import { createWar, warZones } from '../cybertron/war';
 import { ringGeometry } from '../middleearth/ringShape';
+import { bossMug, elementTile, glowingGems, shardCluster } from './props';
 
 const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the scene's key light
 
@@ -525,19 +526,37 @@ const BUILDERS = {
   marvel(p, { u, T }) {
     const r = u.size;
     p.body.material = new THREE.MeshStandardMaterial({ map: T.marvel ?? null, color: T.marvel ? '#ffffff' : u.palette.base, roughness: 1 });
-    // the six Stones, as small glowing moons in a ring
-    const STONES = ['#3d7bff', '#ffd23d', '#ff3d3d', '#a34dff', '#3dff8a', '#ff8a3d'];
-    const stones = new THREE.InstancedMesh(new THREE.OctahedronGeometry(r * 0.085, 0), new THREE.MeshBasicMaterial({ toneMapped: false }), 6);
-    const c = new THREE.Color();
-    STONES.forEach((hex, i) => stones.setColorAt(i, c.set(hex)));
+    // the six Stones in a ring round it, cut as they're set in the
+    // gauntlet and lit from within: Space, Mind, Reality, Power, Time, Soul
+    const STONES = ['#3d7bff', '#ffd23d', '#ff2e2e', '#a34dff', '#3dff8a', '#ff8a3d'];
+    const stones = glowingGems(STONES, r * 0.13);
     const ring = new THREE.Group();
     ring.rotation.set(0.3, 0, -0.18);
     ring.add(stones);
     p.group.add(ring);
+    // and each one's glow round it
+    const halo = paint(
+      (g, w, h) => {
+        const k = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+        k.addColorStop(0, 'rgba(255,255,255,0.9)');
+        k.addColorStop(0.25, 'rgba(255,255,255,0.35)');
+        k.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = k;
+        g.fillRect(0, 0, w, h);
+      },
+      64,
+      64,
+    );
+    const glows = STONES.map((hex) => {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: halo, color: hex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+      sp.scale.setScalar(r * 0.3);
+      ring.add(sp);
+      return sp;
+    });
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const e = new THREE.Euler();
-    const s = new THREE.Vector3(1, 1.35, 1);
+    const s = new THREE.Vector3(1, 1, 1);
     const at = new THREE.Vector3();
     p.tick.push((t) => {
       for (let i = 0; i < 6; i++) {
@@ -545,6 +564,7 @@ const BUILDERS = {
         at.set(Math.cos(a) * r * 1.3, 0, Math.sin(a) * r * 1.3);
         q.setFromEuler(e.set(t * 0.8 + i, t * 0.5, 0));
         stones.setMatrixAt(i, m.compose(at, q, s));
+        glows[i].position.copy(at);
       }
       stones.instanceMatrix.needsUpdate = true;
     });
@@ -577,10 +597,10 @@ const BUILDERS = {
       p.group.add(sky);
       p.tick.push((t) => (sky.rotation.y = t * 0.06));
     }
-    // blue crystal moons
+    // Blue Sky, in clusters of glassy shards, going round
     const crystals = new THREE.InstancedMesh(
-      new THREE.OctahedronGeometry(r * 0.07, 0),
-      new THREE.MeshStandardMaterial({ color: '#8fe0ff', emissive: '#1b6f9e', emissiveIntensity: 0.9, metalness: 0.1, roughness: 0.15, flatShading: true }),
+      shardCluster('blue-sky').scale(r * 0.16, r * 0.16, r * 0.16),
+      new THREE.MeshStandardMaterial({ color: '#8fdcff', emissive: '#1d79b0', emissiveIntensity: 0.75, metalness: 0.05, roughness: 0.08, flatShading: true }),
       5,
     );
     const belt = new THREE.Group();
@@ -591,7 +611,7 @@ const BUILDERS = {
     const q = new THREE.Quaternion();
     const e = new THREE.Euler();
     const at = new THREE.Vector3();
-    const sz = [1, 0.8, 1.2, 0.7, 1].map((k) => new THREE.Vector3(k, k * 1.9, k));
+    const sz = [1, 0.8, 1.2, 0.7, 1].map((k) => new THREE.Vector3(k, k, k));
     p.tick.push((t) => {
       for (let i = 0; i < 5; i++) {
         const a = t * 0.26 + (i / 5) * Math.PI * 2 + (i % 2) * 0.3;
@@ -605,42 +625,29 @@ const BUILDERS = {
     const tiles = new THREE.Group();
     tiles.rotation.set(-0.22, 0, 0.12);
     p.group.add(tiles);
+    // (each with its atomic number, oxidation states and weight, as the titles have them)
     [
-      ['Br', 35],
-      ['Ba', 56],
-      ['C', 6],
-      ['N', 7],
-    ].forEach(([sym, n], i) => {
-      const tex = paint(
-        (g, w, h) => {
-          const grad = g.createLinearGradient(0, 0, w, h);
-          grad.addColorStop(0, '#2a7a44');
-          grad.addColorStop(1, '#13492a');
-          g.fillStyle = grad;
-          g.fillRect(0, 0, w, h);
-          g.strokeStyle = '#8fd07a';
-          g.lineWidth = 6;
-          g.strokeRect(5, 5, w - 10, h - 10);
-          g.fillStyle = '#ffffff';
-          g.font = '600 22px ui-monospace, Menlo, monospace';
-          g.fillText(String(n), 16, 34);
-          g.font = '700 64px ui-sans-serif, system-ui, sans-serif';
-          g.textAlign = 'center';
-          g.textBaseline = 'middle';
-          g.fillText(sym, w / 2, h / 2 + 10);
-        },
-        128,
-        128,
-      );
-      const tile = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex }));
+      { sym: 'Br', n: 35, mass: '79.904', states: ['+1', '+5', '−1'] },
+      { sym: 'Ba', n: 56, mass: '137.327', states: ['+2'] },
+      { sym: 'C', n: 6, mass: '12.011', states: ['+2', '+4', '−4'] },
+      { sym: 'N', n: 7, mass: '14.007', states: ['+2', '+3', '+4', '+5', '−3'] },
+    ].forEach((el, i) => {
+      const tile = elementTile(el);
       tile.scale.setScalar(r * 0.22);
       tile.userData.a = (i / 4) * Math.PI * 2;
       tiles.add(tile);
     });
-    p.tick.push((t) => {
-      for (const tile of tiles.children) {
+    const tq = new THREE.Quaternion();
+    p.tick.push((t, camera) => {
+      for (const [i, tile] of tiles.children.entries()) {
         const a = tile.userData.a - t * 0.14;
         tile.position.set(Math.cos(a) * r * 1.68, 0, Math.sin(a) * r * 1.68);
+        if (!camera) continue;
+        // face the camera, swaying a little so the slab's edge catches the light
+        tile.parent.getWorldQuaternion(tq);
+        tile.quaternion.copy(tq.invert()).multiply(camera.quaternion);
+        tile.rotateY(Math.sin(t * 0.7 + i * 1.7) * 0.45);
+        tile.rotateX(Math.sin(t * 0.5 + i) * 0.12);
       }
     });
     const o = orbit(p.group, { radius: r * 1.5, tilt: 1.0, speed: 0.2, phase: 0.4 });
@@ -696,32 +703,9 @@ const BUILDERS = {
     }
     p.body.geometry.dispose();
     p.body.geometry = geo;
-    // the mug
-    const label = paint(
-      (g, w, h) => {
-        g.fillStyle = '#ffffff';
-        g.fillRect(0, 0, w, h);
-        g.fillStyle = '#111111';
-        g.textAlign = 'center';
-        g.textBaseline = 'middle';
-        g.font = '800 15px ui-sans-serif, system-ui, sans-serif';
-        g.fillText("WORLD'S BEST", w * 0.25, h * 0.38);
-        g.fillText('BOSS', w * 0.25, h * 0.66);
-      },
-      256,
-      64,
-    );
-    const white = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.3 });
-    const mug = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.12, r * 0.105, r * 0.26, 32, 1), [
-      new THREE.MeshStandardMaterial({ map: label, roughness: 0.3 }),
-      new THREE.MeshStandardMaterial({ color: '#4a2b18', roughness: 0.2 }),
-      white,
-    ]);
-    const handle = new THREE.Mesh(new THREE.TorusGeometry(r * 0.07, r * 0.02, 10, 20, Math.PI), white);
-    handle.position.x = -r * 0.115;
-    handle.rotation.z = Math.PI / 2;
-    mug.add(body, handle);
+    // Michael's mug (props.js)
+    const mug = bossMug();
+    mug.scale.setScalar(r * 0.27);
     const o = orbit(p.group, { radius: r * 1.5, tilt: 0.32, speed: 0.28, phase: 5 });
     o.holder.add(mug);
     p.orbits.push(o);
