@@ -1,8 +1,9 @@
 // Wingmen, drawn: the friends who come to help in a long fight (wingRules.js
 // flies them, tested). Each is the traffic's own model of its kind (the
-// X-wing, or Birdperson; glbFleet.js, the same fleet the traffic and the
-// hunters draw from), banked into its turns, and its shots are bolts in its
-// own colour (a Rebel's red, Birdperson's green).
+// X-wing, Birdperson, Saul's Cadillac: the side's allies, sides.js;
+// glbFleet.js, the same fleet the traffic and the hunters draw from),
+// banked into its turns, and its shots are bolts in its own colour (a
+// Rebel's red, Birdperson's green, Saul's gold).
 //
 // createWingmen(parent, { fleet, solids }) → { join(kind, ship, n), update(dt, t,
 //   ship, targets) → { hits, events }, active, clear(), dispose() }
@@ -11,9 +12,10 @@
 import * as THREE from 'three';
 import { createFleet } from './glbFleet';
 import { createWing } from './wingRules';
+import { alliesOf } from './sides';
 
 const BOLT = { length: 0.34, radius: 0.01 };
-const COLOUR = { xwing: [5.5, 0.6, 0.5], birdperson: [0.7, 5.5, 1.2] };
+const COLOUR = Object.fromEntries(Object.entries(alliesOf(null)).map(([k, a]) => [k, a.colour ?? [5.5, 0.6, 0.5]]));
 
 export function createWingmen(parent, { fleet = createFleet(), solids = [] } = {}) {
   const wing = createWing({ solids });
@@ -48,7 +50,7 @@ export function createWingmen(parent, { fleet = createFleet(), solids = [] } = {
   };
 
   return {
-    // a wing of `n` of `kind` ('xwing' or 'birdperson') up from behind `ship`
+    // a wing of `n` of `kind` (one of the side's allies) up from behind `ship`
     join(kind, ship, n = 2) {
       fleet.want?.([kind]);
       kindNow = kind;
