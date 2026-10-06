@@ -57,6 +57,7 @@ import { smoothNormals } from '../cockpit/crew';
 import { GUNS, buildGun, createGunplay } from './gunplay';
 import { createGunFx } from './gunfx';
 import { createLocomotion, fallTurn } from './locomotion';
+import { createPortalFx, meshyJoints } from '../../lib/three/portalFx';
 import { frameFrom, spring } from '../../lib/three/ik';
 import { SIDES, sideFor, squadKinds } from './sides';
 import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, bolt as makeBolt, byTrench, facingAlong, flat, fly as flyBolt, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
@@ -1368,6 +1369,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     },
     light: flare && { obj: flare, place: (p) => flare.position.copy(p).add(S.c) },
   });
+  // the portal gun's kills (lib/three/portalFx.js): a trooper it downs is
+  // pulled through a portal that opens behind them and shut in two
+  const pfx = createPortalFx({ parent: root });
 
   // out of your own eyes (V): your gun in your hands at the bottom right of
   // the view, swaying as you walk, lagging a little behind a turn, coming up
@@ -1613,6 +1617,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   const dropTroop = (id) => {
     const got = troopFigs.get(id);
     if (!got) return;
+    got.swallow?.dispose();
     root.remove(got.group);
     got.gp?.dispose();
     got.b?.dispose();
@@ -1674,7 +1679,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     mesh.visible = true;
     S.bolts = S.bolts.filter((o) => o.mesh !== mesh);
     const near = owner === 'me' && S.cam.first;
-    S.bolts.push({ b, mesh, color: p.spec.bolt ?? '#ffffff', flown: 0, hide: near ? 1.6 * METRE : 0 });
+    S.bolts.push({ b, mesh, color: p.spec.bolt ?? '#ffffff', flown: 0, hide: near ? 1.6 * METRE : 0, gun: p.gp?.kind ?? p.spec.gun ?? null });
     if (near) mesh.visible = false;
     // the flash at the muzzle, the smoke after a powder gun's, its brass out of the port
     if (r) {
@@ -2239,6 +2244,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     guestsFrame(dt);
     moveBolts(dt);
     fx.update(dt);
+    pfx.update(dt);
     spring(S.cam.kick, dt, 240, 22);
     for (const s of puffs) {
       if (!s.visible) continue;
@@ -2398,7 +2404,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
               t.alive = false;
               t.dead = 0;
               t.fallSide = rand() < 0.5 ? -1 : 1;
-              emit({ type: 'foot', id: 'kill', kind: t.kind, by: o.b.owner });
+              t.how = o.gun === 'portal' ? 'portal' : null; // (the portal gun's kills go through a portal: drawTroops)
+              emit({ type: 'foot', id: 'kill', kind: t.kind, by: o.b.owner, how: t.how });
             }
           }
         } else if (r.hit === 'me') hurt(o.b.damage, vec.unit(o.b.v));
@@ -2463,9 +2470,23 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     for (const key of [...blobs.keys()]) if (key.startsWith('troop') && !S.troops.find((o) => `troop${o.id}` === key)) dropShadow(key);
     for (const tr of S.troops) {
       const got = troopFig(tr);
+      const n = new V(...tr.n);
+      if (!tr.alive && tr.how === 'portal') {
+        // through the portal: the swallow owns where they are from the
+        // moment they go, the gun out of their hand first
+        if (!got.swallow) {
+          stand(got.group, tr);
+          const tall = TROOPS[tr.kind].tall;
+          got.swallow = pfx.swallow({ root: got.group, tall, up: n, push: pushOf(tr, tr.knock), joints: meshyJoints(got.group, 1, 1.8), on: (ev) => emit({ type: 'foot', id: 'portal', ev }) });
+          got.dropped = true;
+          const g = got.gp?.drop();
+          if (g) fx.toss(g, pushOf(tr, tr.knock).multiplyScalar(-0.8 * METRE).addScaledVector(n, 1.6 * METRE));
+        }
+        shadow(`troop${tr.id}`, tr, (TROOPS[tr.kind].tall / METRE) * 0.5).visible = false;
+        continue;
+      }
       stand(got.group, tr);
       shadow(`troop${tr.id}`, tr, (TROOPS[tr.kind].tall / METRE) * 0.5).visible = tr.alive || tr.dead < 2.4;
-      const n = new V(...tr.n);
       const frame = { forward: dirToWorld(new V(...tr.f)), up: dirToWorld(n.clone()) };
       if (!tr.alive) {
         // down they go: the knees, then over the way the shot pushed them,
@@ -2666,7 +2687,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     },
     // (development: the numbers, for checking from a browser)
     get debug() {
-      return import.meta.env.DEV ? S : null;
+      if (!import.meta.env.DEV) return null;
+      S._figs = troopFigs; // (the figures too: scripts/foot-portal-check.mjs reads a swallow's state)
+      return S;
     },
     // (development: the landing's doors and people, scripts/door-check.mjs)
     get spots() {
@@ -2877,6 +2900,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       boltGeo.dispose();
       sleeveGeo.dispose();
       fx.dispose();
+      pfx.dispose();
       flare?.removeFromParent();
       if (vm) for (const o of vm.owned) o.dispose?.();
       shadowMat.dispose();

@@ -237,8 +237,12 @@ export default function Comms({ crew, reduced, control }) {
           else say(linesFor(crew, 'event', e.id, e.sub), { urgent: e.id !== 'convoy' && e.id !== 'comet' });
         } else if (e.type === 'foot') {
           // on foot: down onto a planet and out, the squads, and back in
-          if (e.id === 'kill') {
-            popSound();
+          if (e.id === 'portal') {
+            // the portal gun's kill: the swirl as it opens, a snap as it shuts
+            if (e.ev === 'open') portalSound();
+            else popSound();
+          } else if (e.id === 'kill') {
+            if (e.how !== 'portal') popSound();
             if (often('kill', now)) say(linesFor(crew, 'foot', 'kill', e.kind), { urgent: true });
           } else if (e.id === 'hurt') {
             if (soundOnce('hit', 120, now)) hitSound();
