@@ -1606,7 +1606,9 @@ export async function create(canvas, ctx) {
 
   // ── Ready ──
   const ready = (async () => {
-    await placer.ready.catch(() => {});
+    // (the props' scanned surfaces on before their shaders are made, so
+    // they're made once)
+    await Promise.all([placer.ready.catch(() => {}), kit.ready.catch(() => {})]);
     // (the scouts' way is planned round the trees, so once they're down)
     if (!disposed) chase?.begin();
     if (!disposed) beginMission();
