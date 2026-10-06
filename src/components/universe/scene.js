@@ -3633,11 +3633,20 @@ export async function create(canvas, ctx) {
     c.g += Math.max(-k, Math.min(k, to.g - c.g));
     c.b += Math.max(-k, Math.min(k, to.b - c.b));
   };
+  const nearest = planets.map((p) => ({ p, d: 0 }));
   const lights = (dt) => {
     for (const p of planets) {
       const s = sunInMap[p.id];
       p.sun.set(s[0], s[1], s[2]).applyAxisAngle(Y_AXIS, state.yaw);
     }
+    // the two planets nearest the camera have their ground come up in detail
+    // as it nears them (planets.js); the rest needn't work it out
+    for (const n of nearest) {
+      const at = POSITIONS[n.p.id];
+      n.d = Math.hypot(camLocal.x - at[0], camLocal.y - at[1], camLocal.z - at[2]) / n.p.radius;
+    }
+    nearest.sort((a, b) => a.d - b.d);
+    nearest.forEach((n, i) => n.p.near(i < 2 ? n.d : 1e9));
     const nv = novae.nova();
     const nova = nv && nv.k > 0.05 ? { at: nv.at.toArray ? nv.at.toArray() : nv.at, colour: '#ffffff', strength: 3 * nv.k } : null;
     const l = lightAt(camLocal.toArray(), { nova });

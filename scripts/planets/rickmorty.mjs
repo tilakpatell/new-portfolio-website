@@ -6,7 +6,8 @@
 // clouds as the show's puffs: white, a lavender underside, inked.
 //
 // Makes rickmorty and rickmorty-clouds (RGBA) at 2048 (-hq), 1024 and 512
-// (-sm), and rickmorty-glow (the ooze) at 1024.
+// (-sm), rickmorty-glow (the ooze) and rickmorty-rough (sea 0.25, land 0.9)
+// at 1024. ONLY=rough makes the roughness map alone.
 
 import { clamp, eachTexel, fbm, hex, perlin, ridged, save } from './sphere.mjs';
 
@@ -133,7 +134,17 @@ export async function bake() {
     }
   }
 
-  await save(albedo, W, H, 3, 'rickmorty', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 90 });
-  await save(glow, W, H, 3, 'rickmorty-glow', [[1024, '']], { quality: 88 });
-  await save(clouds, W, H, 4, 'rickmorty-clouds', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 86, alphaQuality: 90 });
+  // how rough: the seas glossy, so they catch the sun (a glint, not a white
+  // disc: the planet's own floor is 0.22), the ooze glossier, land matte
+  const rough = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) rough[i] = ids[i] <= R.SHALLOW ? 0.25 : ids[i] === R.OOZE ? 0.3 : 0.9;
+
+  // (ONLY=rough: just the roughness map, the others left as they are)
+  const only = process.env.ONLY;
+  if (only !== 'rough') {
+    await save(albedo, W, H, 3, 'rickmorty', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 90 });
+    await save(glow, W, H, 3, 'rickmorty-glow', [[1024, '']], { quality: 88 });
+    await save(clouds, W, H, 4, 'rickmorty-clouds', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 86, alphaQuality: 90 });
+  }
+  await save(rough, W, H, 1, 'rickmorty-rough', [[1024, '']], { quality: 88 });
 }

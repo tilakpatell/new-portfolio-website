@@ -90,3 +90,38 @@ describe('the air round a planet', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('the ground: clouds’ shadows, seas and detail', () => {
+  const stub = () => {
+    const gradient = { addColorStop() {} };
+    const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+  };
+  it('planets without clouds or a roughness map get none of those hooks', async () => {
+    stub();
+    const { buildPlanet, styleFor } = await import('./planets');
+    const { byId } = await import('./universes');
+    expect(styleFor(byId('office'), {})).toMatchObject({ clouds: null, rough: null, detail: true });
+    expect(styleFor(byId('office'), {}, { tier: 'low' }).detail).toBe(false);
+    expect(styleFor(byId('home'), {}).detail).toBe(false);
+    const key = buildPlanet(byId('gaming'), {}).body.material.customProgramCacheKey();
+    expect(key).not.toContain('clouds');
+    expect(key).toContain('detail');
+    vi.unstubAllGlobals();
+  });
+
+  it('a planet with a cloud layer shadows its ground, the layer found by its texture', async () => {
+    stub();
+    const THREE = await import('three');
+    const { buildPlanet, styleFor } = await import('./planets');
+    const { byId } = await import('./universes');
+    const clouds = new THREE.Texture();
+    const T = { 'caribbean-clouds': clouds, caribbean: new THREE.Texture(), 'caribbean-rough': new THREE.Texture() };
+    expect(styleFor(byId('caribbean'), T)).toMatchObject({ clouds, alpha: true });
+    const p = buildPlanet(byId('caribbean'), T);
+    const key = p.body.material.customProgramCacheKey();
+    expect(key).toContain('clouds');
+    expect(key).toContain('rough');
+    vi.unstubAllGlobals();
+  });
+});
