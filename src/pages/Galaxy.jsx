@@ -11,6 +11,9 @@ import Online from '../components/universe/online/Online';
 import { useOnline } from '../components/universe/online/useOnline';
 import { FIRST, parseSystem, systemById } from '../components/galaxy/systems';
 import { canLand } from '../components/galaxy/surface/sites';
+import surfaceModule from '../components/galaxy/surface/module';
+import { prefetchSurface, surfaceProps } from '../components/galaxy/travel';
+import { runtime } from '../runtime';
 import { galaxyCrew } from '../components/galaxy/lines';
 import GalaxyView from '../components/galaxy/GalaxyView';
 import GalaxyPanel from '../components/galaxy/GalaxyPanel';
@@ -41,7 +44,7 @@ export default function Galaxy() {
   const sys = systemById(current);
   useDocumentTitle(`${sys.name} · A galaxy far, far away`);
   const reduced = useReducedMotion();
-  const view = useRef({ live: false, jump: () => false, goTo: () => false, escape: () => false });
+  const view = useRef({ live: false, jump: () => false, goTo: () => false, escape: () => false, dive: () => false, host: () => null });
   const comms = useRef(null);
   const [ship, setShip] = useState(() => parseShip(local.get(SHIP_KEY)));
   const crew = crewById(ship);
@@ -117,19 +120,52 @@ export default function Galaxy() {
     },
     [leaving, navigate],
   );
-  // down onto the planet you're at
+  // Down onto the planet you're at, flown: the ship dives on it, the air
+  // glows round it, and as the dive ends ('dove') the runtime hands over to
+  // the surface's world (made while the old one still draws), and the
+  // route follows. Without the 3D flying (or a dive it can't make), the old
+  // way: the glow, then the surface's page.
+  const landing = useRef(null);
   const land = useCallback(
     (id) => {
-      if (!canLand(id)) return;
+      if (!canLand(id) || leaving) return;
       audioContext();
-      leave(`/galaxy/${id}/surface`, { land: true });
+      prefetchSurface();
+      if (!view.current.live || !view.current.dive()) {
+        leave(`/galaxy/${id}/surface`, { land: true });
+        return;
+      }
+      landing.current = id;
+      setLeaving({ to: `/galaxy/${id}/surface`, land: true, dive: true });
     },
-    [leave],
+    [leave, leaving],
   );
+  const handOver = useCallback(
+    (id) => {
+      const to = `/galaxy/${id}/surface`;
+      const host = view.current.host?.();
+      const go = () => navigate(to, { state: { entry: true } });
+      if (!host) return go();
+      runtime()
+        .handover(surfaceModule, surfaceProps(id, { ship, loadout, build, net: online.client, reduced }), host, { fade: 900, held: true })
+        .catch(() => {})
+        .finally(go);
+    },
+    [navigate, ship, loadout, build, online.client, reduced],
+  );
+  // near a planet you can land on: the surface's code comes ahead
+  useEffect(() => {
+    if ((at === 'planet' || at === 'cloudcity') && canLand(current)) prefetchSurface();
+  }, [at, current]);
 
   // what the scene says: to the comms, and to the page
   const onEvent = useCallback(
     (e) => {
+      if (e.type === 'dove') {
+        if (landing.current) handOver(landing.current);
+        landing.current = null;
+        return;
+      }
       if (e.type === 'map') {
         setMapOpen((o) => !o);
         return;
@@ -181,7 +217,7 @@ export default function Galaxy() {
       }
       comms.current?.handle(e);
     },
-    [current, leave, navigate, land, unlock],
+    [current, leave, navigate, land, unlock, handOver],
   );
   const onArrive = useCallback(
     (id) => {
@@ -279,6 +315,11 @@ export default function Galaxy() {
         </button>
       )}
       {leaving?.land && <div className="galaxy-entry" aria-hidden="true" />}
+      {leaving?.dive && (
+        <p className="galaxy-entry-note" role="status">
+          Coming down through the atmosphere…
+        </p>
+      )}
       <div className="universe-fade" aria-hidden="true" style={{ background: '#000' }} />
     </div>
   );

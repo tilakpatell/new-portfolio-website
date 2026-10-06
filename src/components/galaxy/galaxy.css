@@ -485,3 +485,19 @@
   100% { opacity: 1; transform: scale(1); filter: brightness(2); }
 }
 @media (prefers-reduced-motion: reduce) { .galaxy-entry { animation: none; opacity: 1; } }
+.galaxy-entry-note {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: 18%;
+  margin: 0;
+  transform: translateX(-50%);
+  color: #6b3a10;
+  font: 600 0.85rem/1.2 var(--font-mono, ui-monospace, monospace);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0;
+  animation: galaxy-entry-note 0.4s ease-out 1.6s forwards;
+  pointer-events: none;
+}
+@keyframes galaxy-entry-note { to { opacity: 0.8; } }

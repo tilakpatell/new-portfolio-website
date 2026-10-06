@@ -85,6 +85,7 @@ import { SHIP_INFO, buildGalaxyShip } from './fleet';
 import { HUNTER_GLB, createModels } from './models';
 import { createSky } from './sky';
 import { createJump } from './hyperspace';
+import { DIVE, LAUNCH_KEY, diveAt, planDive } from './travel';
 import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, interdictorPlace } from './interdiction';
 import { createInterdictor } from './interdictor';
 import { createBolts, createFlashes } from './fx';
@@ -153,7 +154,6 @@ const s3 = (d) => [d[0], -d[1] * 0.5, d[2]];
 // Just taken off from a system's planet (the surface page leaves its id in
 // the session as it goes): just off the planet on its sunny side, nose
 // out, climbing. Once only.
-const LAUNCH_KEY = 'tp-galaxy-launch';
 function takeOff(sys) {
   let id = null;
   try {
@@ -957,6 +957,30 @@ export async function create(canvas, ctx) {
     return true;
   };
 
+  // ── The dive: down on the planet, flown (the page hands over to its
+  // surface as it ends: pages/Galaxy.jsx, travel.js) ──
+  function stepDive(dt) {
+    const d = state.dive;
+    d.age += reduced ? DIVE : Math.min(dt, 0.05);
+    const p = diveAt(d, d.age);
+    const s = state.ship;
+    s.x = p.x;
+    s.y = p.y;
+    s.z = p.z;
+    s.heading = p.heading;
+    s.pitch = 0;
+    s.bank = 0;
+    s.speed = SHIP.boost * (0.6 + p.k);
+    state.streak = Math.max(state.streak, p.k);
+    state.shake = Math.max(state.shake, p.k * 0.8);
+    if (p.k >= 1 && !d.done) {
+      d.done = true;
+      engine?.set({ speed: 0, on: false });
+      emit({ type: 'dove', system: state.sys?.id });
+    }
+    return !d.done;
+  }
+
   // ── Hyperspace ──
   // (the way the reticle is, from the eye: the star you see behind it, in
   // the chase view as in the cockpit; the jump then comes round onto it)
@@ -1613,7 +1637,8 @@ export async function create(canvas, ctx) {
       }
     }
     let moving = false;
-    if (flying() && !props.frozen) moving = fly(dt, t);
+    if (state.dive && flying()) moving = stepDive(dt);
+    else if (flying() && !props.frozen) moving = fly(dt, t);
     if (flying()) follow(dt);
 
     // the camera: behind the ship or in it, or watching a crash
@@ -1648,7 +1673,7 @@ export async function create(canvas, ctx) {
     const baseWant = flying() && state.view === 'cockpit' ? cabFov() : FOV;
     state.fovBase += (baseWant - state.fovBase) * (reduced ? 1 : 1 - Math.exp(-dt * 5));
     const spool = state.jump && state.jump.phase !== 'align' ? 1 : 0;
-    const fov = state.fovBase + (reduced || !flying() ? 0 : 8 * state.streak ** 1.4 + 4 * state.kick * (1 - state.kick * 0.5) + 14 * spool * (state.jump?.phase === 'spool' ? clamp01(state.jump.age / JUMP.spool) : state.jump?.phase === 'tunnel' ? 1 : 1 - clamp01((state.jump?.age ?? 0) / JUMP.exit)));
+    const fov = state.fovBase + (state.dive ? 34 * diveAt(state.dive, state.dive.age).k ** 2 : 0) + (reduced || !flying() ? 0 : 8 * state.streak ** 1.4 + 4 * state.kick * (1 - state.kick * 0.5) + 14 * spool * (state.jump?.phase === 'spool' ? clamp01(state.jump.age / JUMP.spool) : state.jump?.phase === 'tunnel' ? 1 : 1 - clamp01((state.jump?.age ?? 0) / JUMP.exit)));
     if (Math.abs(camera.fov - fov) > 0.005) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
@@ -1746,7 +1771,7 @@ export async function create(canvas, ctx) {
       first = false;
       emit({ type: 'ready' });
     }
-    if (props.frozen) return Boolean(state.crash?.through);
+    if (props.frozen) return Boolean(state.crash?.through || (state.dive && !state.dive.done));
     return !reduced || moving || shooting || fxBusy || worldBusy || adventuring || piloting || jumpFx.busy || bolts.busy || flashes.busy || net?.peers.size > 0 || Boolean(state.model?.modules?.easing) || cabWas !== state.cabK || state.kick > 0 || state.flare > 1 || Boolean(state.stick?.on || state.jump);
   }
   let dustAmount = 0;
@@ -2045,6 +2070,20 @@ export async function create(canvas, ctx) {
       post.lite();
       capDetail = true;
       ctx.invalidate();
+    },
+    // down on the planet you're over: true if the dive's begun (it ends with a 'dove' event)
+    dive() {
+      const s = state.ship;
+      const r = state.sys?.body?.r;
+      if (!s || !r || state.dive || state.crash || state.jump) return false;
+      state.dive = planDive(s, r);
+      aimAt(null);
+      ctx.invalidate();
+      return true;
+    },
+    // what the next world is told as it takes over: where you were, and on what
+    handoff() {
+      return { from: 'galaxy', system: state.sys?.id ?? null, ship: state.kind ?? null, dove: Boolean(state.dive?.done) };
     },
     fire(down = true) {
       heard();

@@ -79,6 +79,8 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
       jump: (id) => view.current?.jump?.(id) ?? false,
       goTo: (id) => view.current?.goTo?.(id) ?? false,
       escape: () => view.current?.escape?.() ?? false,
+      dive: () => view.current?.dive?.() ?? false,
+      host: () => host.current,
     };
   }, [handle, on]); // eslint-disable-line react-hooks/exhaustive-deps
 
