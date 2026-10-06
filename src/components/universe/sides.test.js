@@ -80,6 +80,12 @@ describe('the sides', () => {
     expect(SIDES.breakingbad.has('council')).toBe(false);
     expect(SIDES.rickmorty.has('council')).toBe(true);
     expect(SIDES.starwars.has('destroyer')).toBe(true);
+    // a side with a capital ship names one that can be drawn, and what it launches
+    for (const side of Object.values(SIDES)) {
+      if (!side.pieces.includes('destroyer')) continue;
+      expect(drawable(side.capitalShip), `${side.id} capitalShip`).toBe(true);
+      expect(side.factions[side.capital]?.role, `${side.id} capital`).toBe('capital');
+    }
     expect(SIDES.breakingbad.has('roadblock')).toBe(true);
     for (const s of Object.values(SIDES)) for (const need of ['hunt', 'bounty', 'pirates', 'leviathan']) expect(s.has(need), `${s.id} ${need}`).toBe(true);
   });

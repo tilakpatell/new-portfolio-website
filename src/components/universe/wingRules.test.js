@@ -408,4 +408,66 @@ describe('a wing', () => {
       expect(k.fire[0]).toBeLessThan(k.fire[1]);
     }
   });
+
+  it('hits as hard as its kind does: a Y-wing’s bolt is worth more than one', () => {
+    for (const [kind, worth] of [['xwing', 1], ['ywing', WING_KINDS.ywing.damage]]) {
+      const seen = new Set();
+      const rand = seeded(5);
+      const hunt = createHunt({ rand });
+      const wing = createWing({ rand });
+      let s = start();
+      hunt.pack('empire', s, { size: 3, ace: false });
+      wing.join(kind, s, 2);
+      for (let t = 0; t < 40; t += DT) {
+        s = move(s);
+        hunt.update(DT, s);
+        for (const h of wing.update(DT, s, hunt.targets).hits) seen.add(h.damage);
+      }
+      expect([...seen], kind).toEqual([worth]);
+    }
+    expect(WING_KINDS.ywing.damage).toBeGreaterThan(1);
+  });
+
+  it('has the quick ones make their passes and go, fight or no fight, and not come back', () => {
+    const tour = WING_KINDS.awing.tour;
+    expect(tour).toBeGreaterThan(0);
+    const leftAt = (kind) => {
+      const rand = seeded(9);
+      const hunt = createHunt({ rand });
+      const wing = createWing({ rand });
+      let s = start();
+      hunt.pack('empire', s, { size: 5, ace: false });
+      wing.join(kind, s, 2);
+      let at = null;
+      for (let t = 0; t < tour + 12; t += DT) {
+        s = move(s);
+        hunt.update(DT, s);
+        // (the hunters stay at full strength: nobody's shot down)
+        const r = wing.update(DT, s, hunt.targets);
+        if (r.events.some((e) => e.type === 'leaving')) at ??= t;
+        if (at !== null && wing.live.length) expect(wing.leaving, `${kind} at ${t}`).toBe(true);
+      }
+      return at;
+    };
+    const a = leftAt('awing');
+    expect(a).not.toBeNull();
+    expect(a).toBeGreaterThan(tour - 0.1);
+    expect(a).toBeLessThan(tour + 0.5);
+    expect(leftAt('xwing')).toBeNull(); // (the others stay as long as there's a fight)
+  });
+
+  it('forms up a shorter while with nobody to fight, for a kind that doesn’t stay', () => {
+    const stay = WING_KINDS.poopyship?.stay ?? WING_KINDS.awing.stay;
+    expect(stay).toBeLessThan(WING.stay);
+    const wing = createWing({ rand: seeded(2) });
+    let s = start({ speed: 8 });
+    wing.join(WING_KINDS.poopyship ? 'poopyship' : 'awing', s, 2);
+    let at = null;
+    for (let t = 0; t < WING.stay; t += DT) {
+      s = move(s);
+      if (wing.update(DT, s, []).events.some((e) => e.type === 'leaving')) at ??= t;
+    }
+    expect(at).toBeGreaterThan(stay - 0.1);
+    expect(at).toBeLessThan(stay + 0.2);
+  });
 });

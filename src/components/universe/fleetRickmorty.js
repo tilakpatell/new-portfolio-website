@@ -1,6 +1,12 @@
 // More of the Rick and Morty universe's traffic (see trafficModels.js for
 // how a model is put together and what it returns): ordinary aliens going
-// about their day, and the Council of Ricks hunting you.
+// about their day, the Council of Ricks hunting you, the Galactic
+// Federation's gunships and the cruisers they come out of, Evil Morty and
+// his guard, and a few of the show's own (a Zigerion scam ship, Krombopulos
+// Michael's, Squanchy's and Mr. Poopybutthole's).
+//
+// The hunters are fleetRickmortyFoes.js's, the friends fleetRickmortyFriends.js's,
+// what they share fleetRickmortyKit.js's; their FLEETs are this one's.
 //
 // saucer: an alien family's flying saucer on the commute, tangerine and
 // cream, a suitcase strapped on behind, the family bobbing under the dome
@@ -20,142 +26,11 @@
 
 import * as THREE from 'three';
 import { part, place, rod, between, meshes, blinker, loft, box8, plateXZ, plateZY, turned, upright, canvasTexture, grey, panelTexture, standard, glowMaterial, flicker, pulse } from './trafficKit';
+import { bubble, bobber, turner, bead, circle, gearOutline, spokeHoles, rustTexture } from './fleetRickmortyKit';
+import { FLEET as FOES } from './fleetRickmortyFoes';
+import { FLEET as FRIENDS } from './fleetRickmortyFriends';
 
 const { PI, sin, cos, abs, min } = Math;
-
-// ── Shared bits ──
-
-// See-through glass for a dome with someone inside: tinted, glossy, both
-// faces drawn (the far side shows through the near). Not too sharp a gloss,
-// or the sun's highlight on it blooms. Both faces in one pass: the same tint
-// over the same tint looks the same in either order, and two passes would
-// work its shader's settings out again twice a frame.
-const bubble = (k, color, opacity = 0.26) =>
-  k.own(new THREE.MeshPhysicalMaterial({ color, transparent: true, opacity, roughness: 0.18, metalness: 0, clearcoat: 0.5, clearcoatRoughness: 0.22, side: THREE.DoubleSide, forceSinglePass: true, depthWrite: false }));
-
-// Bobbing: lift every vertex of the parts with a given mark by dy (the
-// family in the saucer), sending the positions again only when asked.
-function bobber(geo) {
-  const pos = geo.attributes.position;
-  const p0 = pos.array.slice();
-  return (mark, dy) => {
-    for (const [start, n] of geo.userData.marks[mark] ?? []) {
-      for (let i = start; i < start + n; i++) pos.array[i * 3 + 1] = p0[i * 3 + 1] + dy;
-    }
-    pos.needsUpdate = true;
-  };
-}
-
-// Turning in place: spin every vertex of the parts with a given mark about
-// an upright axis through (cx, cz) (the little gears on the gear ship's
-// deck, all in one mesh).
-function turner(geo) {
-  const pos = geo.attributes.position;
-  const nor = geo.attributes.normal;
-  const p0 = pos.array.slice();
-  const n0 = nor.array.slice();
-  return (mark, angle, cx, cz) => {
-    const c = cos(angle);
-    const s = sin(angle);
-    for (const [start, n] of geo.userData.marks[mark] ?? []) {
-      for (let i = start; i < start + n; i++) {
-        const dx = p0[i * 3] - cx;
-        const dz = p0[i * 3 + 2] - cz;
-        pos.array[i * 3] = cx + dx * c - dz * s;
-        pos.array[i * 3 + 2] = cz + dx * s + dz * c;
-        const nx = n0[i * 3];
-        const nz = n0[i * 3 + 2];
-        nor.array[i * 3] = nx * c - nz * s;
-        nor.array[i * 3 + 2] = nx * s + nz * c;
-      }
-    }
-    pos.needsUpdate = true;
-    nor.needsUpdate = true;
-  };
-}
-
-// A small sphere with few facets (eyes, lamps, rivet heads): w round, h down.
-const bead = (r, at, scale = 1, o = {}, w = 6, h = 4) => part(new THREE.SphereGeometry(r, w, h), { at, scale, ...o });
-
-const polar = (r, a) => [r * cos(a), r * sin(a)];
-const circle = (r, n = 32) => Array.from({ length: n }, (_, i) => polar(r, (i / n) * PI * 2));
-
-// A gear's outline in (x, z): n teeth between the root and tip radii, one
-// pointing along +x (turned by `phase`).
-function gearOutline(rRoot, rTip, n, phase = 0) {
-  const pts = [];
-  const step = (PI * 2) / n;
-  for (let i = 0; i < n; i++) {
-    const a = phase + i * step;
-    pts.push(polar(rRoot, a - step * 0.28), polar(rTip, a - step * 0.15), polar(rTip, a + step * 0.15), polar(rRoot, a + step * 0.28));
-  }
-  return pts;
-}
-
-// The windows between a gear's spokes: n of them between radii r0 and r1,
-// each spoke `spoke` wide.
-function spokeHoles(n, r0, r1, spoke) {
-  const holes = [];
-  for (let i = 0; i < n; i++) {
-    const a0 = (i / n) * PI * 2;
-    const a1 = ((i + 1) / n) * PI * 2;
-    const go = spoke / r1 / 2;
-    const gi = spoke / r0 / 2;
-    const h = [];
-    for (let j = 0; j <= 5; j++) h.push(polar(r1, a0 + go + (a1 - a0 - 2 * go) * (j / 5)));
-    for (let j = 2; j >= 0; j--) h.push(polar(r0, a0 + gi + (a1 - a0 - 2 * gi) * (j / 2)));
-    holes.push(h);
-  }
-  return holes;
-}
-
-// Plating that's seen better days: panels of slightly different greys with
-// dark seams and rivets, and rust (orange-brown blotches gathered along the
-// seams, streaks running down from them) and grime over it all. Grey and
-// brown, so the paint's colour shows through.
-function rustTexture(rand) {
-  return canvasTexture(256, (g, S) => {
-    g.fillStyle = grey(214);
-    g.fillRect(0, 0, S, S);
-    const rows = 4;
-    const h = S / rows;
-    for (let r = 0; r < rows; r++) {
-      let x = -rand() * 60;
-      while (x < S) {
-        const w = 70 + rand() * 90;
-        g.fillStyle = grey(196 + rand() * 40);
-        g.fillRect(x, r * h, w, h);
-        g.fillStyle = grey(120);
-        g.fillRect(x, r * h, 1.5, h);
-        g.fillStyle = grey(110);
-        for (let y = r * h + 5; y < (r + 1) * h - 2; y += 9) g.fillRect(x + 4, y, 2, 2);
-        x += w;
-      }
-      g.fillStyle = grey(105);
-      g.fillRect(0, r * h, S, 1.5);
-    }
-    for (let i = 0; i < 28; i++) {
-      const x = rand() * S;
-      const y = Math.floor(rand() * rows) * h + (rand() - 0.3) * 8;
-      const r = 2 + rand() * 8;
-      g.fillStyle = `rgba(${120 + rand() * 40},${55 + rand() * 25},${20},${0.18 + rand() * 0.25})`;
-      for (const dx of [-S, 0, S]) {
-        g.beginPath();
-        g.ellipse(x + dx, y, r * 1.4, r, 0, 0, PI * 2);
-        g.fill();
-      }
-      const grad = g.createLinearGradient(0, y, 0, y + 20 + rand() * 30);
-      grad.addColorStop(0, 'rgba(110,50,18,0.3)');
-      grad.addColorStop(1, 'rgba(110,50,18,0)');
-      g.fillStyle = grad;
-      g.fillRect(x - 1.5, y, 2 + rand() * 3, 50);
-    }
-    for (let i = 0; i < 250; i++) {
-      g.fillStyle = `rgba(30,25,20,${rand() * 0.12})`;
-      g.fillRect(rand() * S, rand() * S, 1 + rand() * 3, 1 + rand() * 3);
-    }
-  });
-}
 
 // ── The family saucer ──
 
@@ -1026,4 +901,4 @@ function councilship(k) {
   };
 }
 
-export const FLEET = { saucer, hauler, gearship, councilship };
+export const FLEET = { saucer, hauler, gearship, councilship, ...FOES, ...FRIENDS };
