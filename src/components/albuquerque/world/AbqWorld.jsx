@@ -420,14 +420,21 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         speedo.current.textContent = String(mph);
       }
     }
-    // Hank's the first car in the traffic
+    // Hank's the first car in the traffic: he minds a car with a load on
+    // board, or one tearing past him (rules.js stepHeat), and after he's
+    // pulled you over he lets you be for a while
     const hank = s.traffic[0];
-    const h = stepHeat(s.heat, Math.hypot(hank.x - car.x, hank.z - car.z), dt);
+    const hankAway = Math.hypot(hank.x - car.x, hank.z - car.z);
+    s.hankNear = hankAway < 40;
+    s.calm = Math.max(0, (s.calm ?? 0) - dt);
+    const h = s.calm > 0 ? { heat: 0, caught: false } : stepHeat(s.heat, hankAway, dt, { speed: Math.hypot(car.speed, car.slide), load: Boolean(s.run) });
     s.heat = h.heat;
     if (h.caught) {
       s.heat = 0;
-      s.car = { ...SPAWN, speed: 0, slide: 0, yawRate: 0 };
-      setToast({ text: s.run ? 'Hank pulled you over, and found the load. Back home.' : 'Hank pulled you over. Back home, and keep your distance.', at: Date.now(), bad: true });
+      // (pulled over where you are: sent home, you'd be back on his rounds)
+      s.car = { ...car, speed: 0, slide: 0, yawRate: 0 };
+      s.calm = 12;
+      setToast({ text: s.run ? 'Hank pulled you over, and found the load. It’s gone.' : 'Hank pulled you over. Slow down near the DEA.', at: Date.now(), bad: true });
       if (s.run) {
         s.run = null;
         a.setDrop(null);
@@ -493,10 +500,10 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     // the HUD, when what it shows changes
     const wash = !at && atWash(car.x, car.z);
     const away = s.run ? Math.round(Math.hypot(s.run.x - car.x, s.run.z - car.z) / 5) * 5 : 0;
-    const key = `${at ? `near:${at.id}|` : ''}${Math.round(s.heat * 10)}|${s.moved}|${wash}|${s.run ? `${s.run.id}:${Math.ceil(s.run.left)}:${away}` : ''}`;
+    const key = `${at ? `near:${at.id}|` : ''}${Math.round(s.heat * 10)}|${s.hankNear ? 'h' : ''}|${s.moved}|${wash}|${s.run ? `${s.run.id}:${Math.ceil(s.run.left)}:${away}` : ''}`;
     if (key !== hudKey.current) {
       hudKey.current = key;
-      setHud({ near: at?.id ?? null, heat: Math.round(s.heat * 10) / 10, moved: s.moved, wash, run: s.run ? { name: s.run.name, left: s.run.left, away } : null });
+      setHud({ near: at?.id ?? null, heat: Math.round(s.heat * 10) / 10, hankNear: Boolean(s.hankNear), moved: s.moved, wash, run: s.run ? { name: s.run.name, left: s.run.left, away } : null });
     }
     if (++s.frame % 4 === 0) drawMap(map.current, s.car, hank, progRef.current, s.blue, s.run, s.others, s.traffic);
   }, live);
@@ -591,7 +598,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
               </button>
             ))}
           <canvas ref={map} className="abq-map" width="150" height="150" aria-hidden="true" />
-          {hud.heat > 0 && (
+          {(hud.heat > 0 || hud.hankNear) && (
             <div className="abq-heat" role="meter" aria-label="Hank’s on you" aria-valuemin={0} aria-valuemax={1} aria-valuenow={hud.heat}>
               <span className="abq-heat-label">DEA</span>
               <span className="abq-heat-bar">
@@ -643,7 +650,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         </div>
       )}
 
-      {gl === 'on' && !hud.moved && !here && <p className="abq-hint">{touch ? 'Drag the stick to drive. Hold Slide into a turn: it’s the handbrake, and the tail swings round.' : 'W A S D or the arrows to drive. Space is the handbrake: hold it into a turn. E goes in, R runs a delivery, H is the horn.'}<GuideCue touch={touch} /></p>}
+      {gl === 'on' && !hud.moved && !here && <p className="abq-hint">{touch ? 'Drag the stick to drive. Hold Slide into a turn: it’s the handbrake, and the tail swings round. Hank’s SUV is the flashing dot: don’t race past him, or carry near him.' : 'W A S D or the arrows to drive: S brakes, Space slides you round a turn. E goes in, R runs a delivery, H is the horn. Hank’s SUV is the flashing dot: don’t race past him, or carry near him.'}<GuideCue touch={touch} /></p>}
 
       <div className="abq-hud abq-hud-bottom">
         {touch && (
