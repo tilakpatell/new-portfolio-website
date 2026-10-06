@@ -33,7 +33,7 @@ footScene.begin(id)
 - **Ground styles.** The patch's shader gets a `style` and three colours: `grit` (today's), `grass`, `sand`, `plating` (with glowing seams), `tiles`, `pixel` and `asphalt`. Up close it's the style; toward the patch's edge it fades to the planet's own map, so it matches the sphere seen from above.
 - **Sky.** The horizon glow becomes a sky dome round the camera: a zenith and a horizon colour, a sun glow toward the key light, drawn over space by day and fading to the stars at night. A planet can leave space showing through (`sky.space`, 0…1).
 - **Arrival.** Landing emits `{ type: 'foot', id: 'arrive', title, sub }`, and the map shows the place's name as a title card for a few seconds.
-- **Phones.** `small` halves the scatter and drops the furthest things. A landing's things stay within a triangle budget (about 150k on desktop).
+- **Phones and mid-tier machines.** `small` halves the scatter; the things all stay (they're few, and they make the place). A thing of many little meshes is merged into one per material (`kit.merge`).
 - **Disposal.** Everything a landing builds is owned and disposed when the crew take off.
 
 ## The planets
