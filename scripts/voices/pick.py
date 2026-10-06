@@ -144,8 +144,9 @@ def too_long(seconds, text):
 
 def take_score(wer, sim, utmos, wps):
     """How good a take of a line is, or None when it isn't usable: wrong words
-    (WER over a third) or a pace no one talks at (words per second)."""
-    if wer > 0.34 or not 0.8 <= wps <= 6.0:
+    (WER over a third), a pace no one talks at (words per second), or a voice
+    that isn't the speaker's (similarity to the reference under 0.3)."""
+    if wer > 0.34 or not 0.8 <= wps <= 6.0 or sim < 0.3:
         return None
     return sim + 0.15 * (utmos - 3) - 1.5 * wer
 

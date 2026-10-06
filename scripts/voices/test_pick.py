@@ -125,6 +125,9 @@ class Scores(unittest.TestCase):
         self.assertFalse(too_long(2.5, "A black hole, Jesse."))
         self.assertFalse(too_long(8.0, "A binary pair. The smaller one is pulling gas off the larger. Chemistry, Jesse, on a scale you can see."))
 
+    def test_a_take_that_isnt_the_speaker_is_rejected(self):
+        self.assertIsNone(take_score(wer=0.0, sim=-0.02, utmos=4.4, wps=2.5))
+
     def test_a_good_take_scores(self):
         self.assertGreater(take_score(wer=0.0, sim=0.7, utmos=3.5, wps=2.5), take_score(wer=0.1, sim=0.7, utmos=3.5, wps=2.5))
 

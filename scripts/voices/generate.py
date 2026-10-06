@@ -106,6 +106,7 @@ class Judge:
         if self.file.exists():
             for line in self.file.read_text(encoding="utf-8").splitlines():
                 d = json.loads(line)
+                d["score"] = pick.take_score(d["wer"], d["sim"], d["utmos"], d["wps"])  # by today's rules
                 self.known[d["take"]] = d
 
     def forget(self, take):
