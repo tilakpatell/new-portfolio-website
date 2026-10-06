@@ -23,7 +23,7 @@
 //     from the world's own light (lib/three/matcap)
 //
 // groundWorld({ renderer, scene, floor, area, sun, casters, skip, movers,
-//   shade, bounce, height, tier, matcap, lights })
+//   shade, bounce, height, tier, matcap, lights, auto, follow })
 //   → { bake(), rebake(sun), update(), track(object, size, opts),
 //       untrack(object), blobs, mask, stats, dispose() }
 //
@@ -31,12 +31,19 @@
 // it to bake (the play space); `sun` a DirectionalLight or a direction to the
 // sun; `casters` what shadows the floor (the whole scene by default; movers,
 // skipped things, see-through and tiny things are left out of the bake);
-// `movers` [{ object, size: [w, d], lift }] what gets a blob and stands in
-// the shade; `height(x, z)` the floor's height, for the blobs; `tier` the
-// device's (lib/device), for the bake's cost.
+// `movers` [{ object, size: [w, d], lift, contact }] what gets a blob and stands in
+// the shade; `height(x, z)` the floor's height, for the blobs (by default the
+// floor's height as baked); `tier` the
+// device's (lib/device), for the bake's cost. `auto` bakes on the first
+// update (when the world has placed its sun); `follow` bakes again when the
+// sun turns more than about 10° from where it was baked. `clip`: one zone
+// of a world shown a zone at a time: blobs only while its floor is shown, and
+// only for movers inside its area. `keepShadows`: a world too big or too
+// fast for one sun's mask (a city flown over) keeps its own shadow pass, and
+// the bake is the sky's occlusion alone, with the bounce.
 
 import * as THREE from 'three';
-import { BAKE_TIERS, bakeFloorTexture } from './grounding-bake';
+import { BAKE_TIERS, bakeFloorTexture, heightFromPixels } from './grounding-bake';
 import { bounce as bounceOn, createBlobShadows, floorShadow, setFloorMask, setFloorTime, standIn } from './grounding';
 import { matcapFor } from './matcap';
 
@@ -75,6 +82,16 @@ function meshesUnder(roots, but) {
   return out;
 }
 
+// How far (radians) the sun may turn from where the floor was baked before
+// it's baked again: a mood or a time of day moving the light. Under it, the
+// shadows a few degrees off aren't seen; over it, they point the wrong way.
+const FOLLOW = 0.17; // about 10°
+
+export function shouldRebake(baked, now, threshold = FOLLOW) {
+  if (!baked || !now) return false;
+  return baked.angleTo(now) > threshold;
+}
+
 // One blank picture stands in for the mask until the bake lands: the sun
 // everywhere, the sky everywhere, and no height (the bounce falls back to
 // its one height).
@@ -84,7 +101,7 @@ function blankMask() {
   return t;
 }
 
-export function groundWorld({ renderer, scene, floor = [], area = null, sun = null, casters = null, skip = [], movers = [], shade = 0x3a2c22, bounce = {}, height = () => 0, tier = 'mid', matcap = [], lights = null, blobOpacity = 0.75 } = {}) {
+export function groundWorld({ renderer, scene, floor = [], area = null, sun = null, casters = null, skip = [], movers = [], shade = 0x3a2c22, bounce = {}, height = null, tier = 'mid', matcap = [], lights = null, blobOpacity = 0.75, auto = false, follow = true, clip = false, keepShadows = false } = {}) {
   const box = floorBox(floor);
   if (!area) {
     // the floor's own extent, at most 240 m a side about its middle
@@ -103,21 +120,25 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
   })();
   const sunLight = sun?.isDirectionalLight ? sun : null;
 
-  // ── the shadow pass goes ──
+  // ── the shadow pass goes (unless the world keeps its own for the sun) ──
   const hadShadows = renderer.shadowMap?.enabled;
-  if (renderer.shadowMap) renderer.shadowMap.enabled = false;
-  scene.traverse((o) => {
-    if (o.isLight && o.castShadow) o.castShadow = false;
-    if (o.isMesh) {
-      o.castShadow = false;
-      o.receiveShadow = false;
-      if (hadShadows) for (const m of materialsOf(o)) m.needsUpdate = true;
-    }
-  });
+  if (!keepShadows) {
+    if (renderer.shadowMap) renderer.shadowMap.enabled = false;
+    scene.traverse((o) => {
+      if (o.isLight && o.castShadow) o.castShadow = false;
+      if (o.isMesh) {
+        o.castShadow = false;
+        o.receiveShadow = false;
+        if (hadShadows) for (const m of materialsOf(o)) m.needsUpdate = true;
+      }
+    });
+  }
 
   // ── the mask, blank until the bake lands ──
   const blank = blankMask();
-  const mask = { areas: [{ texture: blank, ...area }], times: [{ tod: 0.5, channel: 0 }], shade: new THREE.Color(shade), range };
+  // (keeping its own shadow pass, a world's mask is the sky's alone: channel
+  // 3 reads no sun, so the sun's light is the shadow map's business)
+  const mask = { areas: [{ texture: blank, ...area }], times: [{ tod: 0.5, channel: keepShadows ? 3 : 0 }], shade: new THREE.Color(shade), range };
   setFloorTime(mask, 0.5, 1);
 
   const floorMeshes = new Set();
@@ -141,7 +162,9 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
 
   // ── the floor, the statics, the movers ──
   for (const o of floorMeshes) for (const m of materialsOf(o)) floorShadow(m, mask);
-  const bounceColor = bounce === false ? null : bounce.color?.isColor ? bounce.color : new THREE.Color(bounce.color ?? hemi?.groundColor ?? 0x8a6a4a);
+  // (the sky light's own ground colour, the very object, so a mood that
+  // changes it changes the bounce)
+  const bounceColor = bounce === false ? null : bounce.color?.isColor ? bounce.color : bounce.color != null ? new THREE.Color(bounce.color) : (hemi?.groundColor ?? new THREE.Color(0x8a6a4a));
   const bounced = [];
   const bounceMat = (m) => {
     if (!bounceColor || !LIT(m) || m.userData?.bounce) return;
@@ -149,35 +172,57 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
     bounced.push(m.userData.bounce);
   };
   const staticMats = new Set();
+  const stood = [];
   const notStatic = new Set([...floorMeshes, ...moverRoots, ...skipRoots]);
   for (const o of meshesUnder(roots, notStatic)) for (const m of materialsOf(o)) staticMats.add(m);
   for (const m of staticMats) bounceMat(m);
-  for (const o of meshesUnder([...moverRoots], new Set())) {
-    for (const m of materialsOf(o)) {
-      bounceMat(m);
-      // (a material a static shares would read its own footprint: left lit)
-      if (LIT(m) && !staticMats.has(m)) standIn(m, mask);
+  const groundMover = (root) => {
+    for (const o of meshesUnder([root], new Set())) {
+      o.castShadow = false;
+      o.receiveShadow = false;
+      for (const m of materialsOf(o)) {
+        bounceMat(m);
+        // (a material a static shares would read its own footprint: left lit)
+        if (LIT(m) && !staticMats.has(m) && !m.userData?.standIn) {
+          standIn(m, mask);
+          stood.push(m.userData.standIn);
+          if (landed) m.userData.standIn.uMoverRange.value.set(landed.range[0] - 2, landed.range[1] + 8);
+        }
+      }
     }
-  }
+  };
+  let landed = null;
+  for (const r of moverRoots) groundMover(r);
 
   // ── blobs under what moves ──
-  const blobs = createBlobShadows({ color: mask.shade, max: Math.max(16, movers.length + 16), ground: height, opacity: blobOpacity });
+  // (laid on the world's own height where it has one, else on the floor as
+  // baked, else on the floor's lowest point until the bake lands)
+  let baked = null;
+  const low = box.isEmpty() ? 0 : box.min.y;
+  const floorAt = height ?? ((x, z) => (baked ? (heightFromPixels(baked.pixels, baked.size, baked.area, baked.range, x, z) ?? low) : low));
+  const blobs = createBlobShadows({ color: mask.shade, max: Math.max(16, movers.length + 16), ground: floorAt, opacity: blobOpacity });
   scene.add(blobs.mesh);
-  const tracked = movers.filter((m) => m.object).map((m) => ({ object: m.object, size: m.size ?? [1, 1], lift: m.lift ?? 0 }));
+  // (`contact`: a mover's own contact shadow, an old circle under its feet,
+  // kept for where this floor isn't: hidden while a blob is drawn for it)
+  const tracked = movers.filter((m) => m.object).map((m) => ({ object: m.object, size: m.size ?? [1, 1], lift: m.lift ?? 0, contact: m.contact ?? null }));
+  let active = true;
   const sunDir = new THREE.Vector3();
   const p = new THREE.Vector3();
   const q = new THREE.Quaternion();
   const e = new THREE.Euler(0, 0, 0, 'YXZ');
+  // (shown: every ancestor visible, all the way up to this scene: a thing
+  // taken out of the world is no longer in it)
   const shown = (o) => {
-    for (let x = o; x; x = x.parent) if (!x.visible) return false;
-    return true;
+    let x = o;
+    for (; x.parent; x = x.parent) if (!x.visible) return false;
+    return x === scene && x.visible;
   };
 
   let disposed = false;
   let job = null;
-  let landed = null;
   let abort = null;
-  const stats = { ms: 0, passes: 0, baked: false };
+  const stats = { ms: 0, passes: 0, baked: false, started: false };
+  let bakedDir = null;
 
   const land = (result) => {
     if (disposed) {
@@ -186,13 +231,15 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
     }
     const old = landed;
     landed = result;
+    baked = result.pixels ? result : null;
     setFloorMask(mask, 0, result.texture);
     for (const u of bounced) {
       if (u.uBounceMask) u.uBounceMask.value = result.texture;
       u.uBounceRange?.value.set(result.range[0], result.range[1]);
     }
+    for (const u of stood) u.uMoverRange.value.set(result.range[0] - 2, result.range[1] + 8);
     old?.dispose();
-    Object.assign(stats, { ms: result.ms, passes: result.passes, baked: true });
+    Object.assign(stats, { ms: result.ms, passes: result.passes, baked: true, landedAt: Math.round(performance.now()) });
     return true;
   };
 
@@ -200,13 +247,16 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
     if (job) return job;
     if (disposed) return Promise.resolve(false);
     abort = { aborted: false };
+    stats.started = true;
+    stats.startedAt = Math.round(performance.now());
+    bakedDir = sunDirection(sun, new THREE.Vector3());
     const preset = BAKE_TIERS[tier] ?? BAKE_TIERS.mid;
     job = bakeFloorTexture(renderer, scene, {
       area,
       floor,
       casters: roots,
       skip: [...skipRoots, ...moverRoots, blobs.mesh],
-      sun: sunDirection(sun, new THREE.Vector3()),
+      sun: keepShadows ? null : bakedDir.clone(),
       size: preset.size,
       sunSamples: preset.sun,
       skySamples: preset.sky,
@@ -234,8 +284,12 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
       const pending = job;
       return (pending ?? Promise.resolve()).then(() => bake());
     },
-    track(object, size = [1, 1], { lift = 0 } = {}) {
-      if (object && !tracked.some((t) => t.object === object)) tracked.push({ object, size, lift });
+    // a mover that comes later (a figure swapped for another): its blob, and
+    // its materials stood in the shade as the first ones were
+    track(object, size = [1, 1], { lift = 0, contact = null } = {}) {
+      if (!object || tracked.some((t) => t.object === object)) return;
+      groundMover(object);
+      tracked.push({ object, size, lift, contact });
     },
     untrack(object) {
       const i = tracked.findIndex((t) => t.object === object);
@@ -245,15 +299,35 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
     // high the mover is over the floor
     update() {
       blobs.setSun(sunDirection(sun, sunDir), sunDir.y > 0.05 ? 1 : 0.5);
+      // (the first frame the floor is out, the world's sun is where it will
+      // be: bake then. A floor put away, a zone not yet visited, the world
+      // while you're indoors, waits: hidden, it can't be drawn from above.)
+      if (auto && !stats.started) {
+        if (floor.every((f) => shown(f))) bake();
+      }
+      else if (follow && !job && stats.baked && floor.every((f) => shown(f)) && shouldRebake(bakedDir, sunDir)) bake();
       blobs.clear();
+      // (one zone of several: its blobs only while it's the one shown, and
+      // only for who's in it)
+      if (clip && !floor.every((f) => shown(f))) {
+        if (active) for (const t of tracked) if (t.contact) t.contact.visible = true;
+        active = false;
+        return;
+      }
+      active = true;
       let i = 0;
       for (const t of tracked) {
+        if (t.contact) t.contact.visible = true;
         if (!shown(t.object)) continue;
         t.object.getWorldPosition(p);
+        if (clip && !(p.x >= area.x0 && p.x <= area.x0 + area.w && p.z >= area.z0 && p.z <= area.z0 + area.d)) continue;
         t.object.getWorldQuaternion(q);
         e.setFromQuaternion(q, 'YXZ');
-        const h = Math.max(0, p.y - height(p.x, p.z) - t.lift);
-        blobs.set(i++, p, h, 0, t.size, e.y);
+        const above = p.y - floorAt(p.x, p.z) - t.lift;
+        // (a mover well under the floor is somewhere else: an interior below)
+        if (above < -2) continue;
+        blobs.set(i++, p, Math.max(0, above), 0, t.size, e.y);
+        if (t.contact) t.contact.visible = false;
       }
     },
     dispose() {

@@ -166,6 +166,18 @@ export function unpackHeight(g, b, [lo, hi]) {
   return lo + ((v - 1) / 65534) * (hi - lo);
 }
 
+// The floor's height under a point, from a baked mask read back as bytes
+// (RGBA, row 0 the area's z0 edge): null where no floor was seen, or outside
+// the area. What a blob is laid on where a world has no height of its own.
+export function heightFromPixels(px, size, area, range, x, z) {
+  if (!px) return null;
+  const u = (x - area.x0) / area.w;
+  const v = (z - area.z0) / area.d;
+  if (!(u >= 0 && u < 1 && v >= 0 && v < 1)) return null;
+  const i = (Math.min(size - 1, Math.floor(v * size)) * size + Math.min(size - 1, Math.floor(u * size))) * 4;
+  return unpackHeight(px[i + 1], px[i + 2], range);
+}
+
 // ── what a bake draws, and what it leaves out ──
 
 const meshMaterials = (o) => (Array.isArray(o.material) ? o.material : o.material ? [o.material] : []);
@@ -528,18 +540,24 @@ function floorRange(floor) {
 
 // How high anything that casts stands, over the floor's lowest point, to fit
 // each shadow camera round what can shadow the area.
-function castersTop(casters, radius, low) {
+export function castersTop(casters, radius, low) {
   const box = new THREE.Box3();
   const one = new THREE.Box3();
   for (const root of casters)
     root.traverse((o) => {
       if (!bakeable(o, radius)) return;
-      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
-      one.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
-      if (!o.isInstancedMesh) box.union(one);
+      // (an instanced flock by all its instances: a city's towers)
+      if (o.isInstancedMesh) {
+        o.computeBoundingBox();
+        one.copy(o.boundingBox);
+      } else {
+        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+        one.copy(o.geometry.boundingBox);
+      }
+      box.union(one.applyMatrix4(o.matrixWorld));
     });
   if (box.isEmpty()) return 20;
-  return Math.min(150, Math.max(5, box.max.y - low));
+  return Math.min(400, Math.max(5, box.max.y - low));
 }
 
 // A world's floor light, baked when the world is built, kept on the GPU:
@@ -547,10 +565,12 @@ function castersTop(casters, radius, low) {
 // G and B. It goes in chunks of `chunk` passes, each one holding the scene
 // and giving it back, so the world goes on drawing in between. `sun` points
 // at the sun; it's baked at least `lift` degrees up (liftSun: a low sun's
-// shadows would drown the floor). `signal.aborted` stops it at the next
+// shadows would drown the floor); with no `sun`, only the sky is baked.
+// `signal.aborted` stops it at the next
 // chunk. Resolves { texture, range, area, ms, passes, dispose() }, or null
 // where it can't be done (no float pictures on this GPU, or anything going
-// wrong): the world then stands as it is.
+// wrong): the world then stands as it is. `pixels` is the mask read back
+// (heightFromPixels).
 export async function bakeFloorTexture(renderer, scene, { area, floor = [], casters = [], skip = [], sun, size = BAKE_TIERS.mid.size, sunSamples = BAKE_TIERS.mid.sun, skySamples = BAKE_TIERS.mid.sky, shadowSize = BAKE_TIERS.mid.shadow, cone = 4 * DEG, lift = 12, top = null, range = null, chunk = 6, signal = null } = {}) {
   if (!renderer?.extensions?.has?.('EXT_color_buffer_float') || !area || !floor.length) return null;
   let baker = null;
@@ -561,7 +581,8 @@ export async function bakeFloorTexture(renderer, scene, { area, floor = [], cast
     const span = range ?? floorRange(floor);
     const reach = top ?? castersTop(casters, 2 * Math.hypot(area.w, area.d), span[0]);
     baker = makeBaker(renderer, scene, { area, size, floor, casters, skip, top: span[0] + reach, bottom: Math.min(-1, span[0]), shadowSize, accType: THREE.HalfFloatType });
-    const { jobs } = bakeJobs({ times: [{ tod: 0, channel: 0, lift }], sunAt: () => sun.clone().normalize(), sunSamples, skySamples, cone });
+    // (no sun: the sky's occlusion alone, for a world that keeps its own shadow pass)
+    const { jobs } = bakeJobs({ times: sun ? [{ tod: 0, channel: 0, lift }] : [], sunAt: () => sun.clone().normalize(), sunSamples, skySamples, cone });
     const t0 = performance.now();
     baker.begin();
     try {
@@ -604,9 +625,13 @@ export async function bakeFloorTexture(renderer, scene, { area, floor = [], cast
     renderer.render(quadScene, new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1));
     renderer.setRenderTarget(kept.target);
     renderer.autoClear = kept.autoClear;
+    // (read back once, a moment's stall: where the floor is, for whatever
+    // lays a blob on it)
+    const pixels = new Uint8Array(size * size * 4);
+    renderer.readRenderTargetPixels(out, 0, 0, size, size, pixels);
     const result = out;
     out = null;
-    return { texture: result.texture, range: span, area: { ...area }, ms: performance.now() - t0, passes: jobs.length, dispose: () => result.dispose() };
+    return { texture: result.texture, pixels, size, range: span, area: { ...area }, ms: performance.now() - t0, passes: jobs.length, dispose: () => result.dispose() };
   } catch (err) {
     if (typeof console !== 'undefined') console.warn('[grounding] the floor bake failed; the world stands without it', err);
     return null;

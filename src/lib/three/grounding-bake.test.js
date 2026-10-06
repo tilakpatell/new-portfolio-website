@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { BAKE_TIERS, bakeFloorTexture, bakeable, holdForBake, liftSun, packHeight, unpackHeight } from './grounding-bake';
+import { BAKE_TIERS, bakeFloorTexture, bakeable, castersTop, heightFromPixels, holdForBake, liftSun, packHeight, unpackHeight } from './grounding-bake';
 
 const DEG = Math.PI / 180;
 const elevation = (d) => Math.asin(d.y / d.length()) / DEG;
@@ -109,5 +109,47 @@ describe('the bake on arrival', () => {
     const renderer = { extensions: { has: () => false } };
     const out = await bakeFloorTexture(renderer, new THREE.Scene(), { area: { x0: 0, z0: 0, w: 10, d: 10 }, floor: [], casters: [], sun: new THREE.Vector3(0, 1, 0) });
     expect(out).toBeNull();
+  });
+});
+
+describe('the floor\'s height, read back from the baked mask', () => {
+  // a 2 × 2 mask over a 10 m square at x 0…10, z 0…10: row 0 is z 0…5
+  const range = [0, 20];
+  const px = new Uint8Array(2 * 2 * 4);
+  const put = (col, row, h) => {
+    const [g, b] = h == null ? [0, 0] : packHeight(h, range);
+    const i = (row * 2 + col) * 4;
+    px.set([255, g, b, 255], i);
+  };
+  put(0, 0, 1); // x 0…5, z 0…5
+  put(1, 0, 2); // x 5…10, z 0…5
+  put(0, 1, 7.5); // x 0…5, z 5…10
+  put(1, 1, null); // no floor
+  const area = { x0: 0, z0: 0, w: 10, d: 10 };
+
+  it('gives the height of the texel a point is over', () => {
+    expect(heightFromPixels(px, 2, area, range, 1, 1)).toBeCloseTo(1, 2);
+    expect(heightFromPixels(px, 2, area, range, 9, 1)).toBeCloseTo(2, 2);
+    expect(heightFromPixels(px, 2, area, range, 1, 9)).toBeCloseTo(7.5, 2);
+  });
+
+  it('has nothing where no floor was seen, or outside the area', () => {
+    expect(heightFromPixels(px, 2, area, range, 9, 9)).toBeNull();
+    expect(heightFromPixels(px, 2, area, range, -1, 3)).toBeNull();
+    expect(heightFromPixels(px, 2, area, range, 3, 11)).toBeNull();
+  });
+});
+
+describe('how high what casts stands', () => {
+  it('counts a city of instanced towers, not only single meshes', () => {
+    const scene = new THREE.Scene();
+    const towers = new THREE.InstancedMesh(new THREE.BoxGeometry(20, 1, 20).translate(0, 0.5, 0), new THREE.MeshStandardMaterial(), 2);
+    const m = new THREE.Matrix4();
+    towers.setMatrixAt(0, m.compose(new THREE.Vector3(0, 0, 0), new THREE.Quaternion(), new THREE.Vector3(1, 40, 1)));
+    towers.setMatrixAt(1, m.compose(new THREE.Vector3(50, 0, 0), new THREE.Quaternion(), new THREE.Vector3(1, 120, 1)));
+    scene.add(towers);
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshStandardMaterial()));
+    scene.updateMatrixWorld(true);
+    expect(castersTop([scene], 10000, 0)).toBeCloseTo(120, 0);
   });
 });

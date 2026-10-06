@@ -285,6 +285,9 @@ describe('a mover standing in the baked shade', () => {
     expect(out.swapped.shade).toBe(false);
     expect(out.fragmentShader).toContain('mix(0.7, 1.0, gV.y)');
     expect(out.fragmentShader).not.toContain('uShadeTint, uShadeMix');
+    // (not below the floor's lowest point or well over its highest: an interior far off)
+    expect(out.fragmentShader).toContain('uniform vec2 uMoverRange;');
+    expect(out.fragmentShader).toMatch(/vGroundPos\.y < uMoverRange\.x \|\| vGroundPos\.y > uMoverRange\.y/);
   });
 
   it('marks its material, with a program of its own', () => {

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { groundWorld } from './groundwork';
+import { groundWorld, shouldRebake } from './groundwork';
 
 // a renderer that can't draw into float pictures (the bake gives up at once),
 // or one that can but draws nothing (the bake runs its chunks)
@@ -102,5 +102,144 @@ describe('a world put on baked floor light', () => {
     expect(w.floor.material.userData.floorShadow.uMask.value[0]).toBe(before);
     expect(g.blobs.mesh.parent).toBeNull();
     expect(w.walker.visible).toBe(true);
+  });
+});
+
+describe('a sun that moves', () => {
+  it('is baked again once it has turned far enough from where it was baked', () => {
+    const at = new THREE.Vector3(0.3, 0.8, 0.2).normalize();
+    expect(shouldRebake(at, at.clone())).toBe(false);
+    const near = at.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.1);
+    expect(shouldRebake(at, near)).toBe(false);
+    const far = at.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.5);
+    expect(shouldRebake(at, far)).toBe(true);
+    expect(shouldRebake(null, far)).toBe(false);
+  });
+
+  it('bakes on the first frame by itself, once the world has placed its sun', async () => {
+    const w = world();
+    const g = groundWorld({ renderer: stubRenderer(false), scene: w.scene, floor: [w.floor], area, sun: w.sun, auto: true });
+    expect(g.stats.started).toBe(false);
+    g.update();
+    expect(g.stats.started).toBe(true);
+    g.dispose();
+  });
+});
+
+describe('a floor put away (a zone not yet visited, the world while you\'re indoors)', () => {
+  it('waits to bake until its floor is shown', () => {
+    const w = world();
+    const zone = new THREE.Group();
+    w.scene.add(zone);
+    zone.add(w.floor);
+    zone.visible = false;
+    const g = groundWorld({ renderer: stubRenderer(false), scene: w.scene, floor: [w.floor], area, sun: w.sun, auto: true });
+    g.update();
+    expect(g.stats.started).toBe(false);
+    zone.visible = true;
+    g.update();
+    expect(g.stats.started).toBe(true);
+    g.dispose();
+  });
+});
+
+describe('a mover somewhere else (an interior far below the floor)', () => {
+  it('has no blob on the floor overhead', () => {
+    const w = world();
+    const g = groundWorld({ renderer: stubRenderer(), scene: w.scene, floor: [w.floor], area, sun: w.sun, movers: [{ object: w.walker, size: [0.8, 0.8] }] });
+    w.walker.position.set(0, -900, 0);
+    w.scene.updateMatrixWorld(true);
+    g.update();
+    expect(g.blobs.mesh.count).toBe(0);
+  });
+
+  it('is only shaded by the mask within reach of the floor\'s heights', () => {
+    const w = world();
+    groundWorld({ renderer: stubRenderer(), scene: w.scene, floor: [w.floor], area, sun: w.sun, movers: [{ object: w.walker, size: [0.8, 0.8] }] });
+    const u = w.walker.material.userData.standIn;
+    expect(u.uMoverRange.value.x).toBeLessThan(0);
+    expect(u.uMoverRange.value.y).toBeGreaterThan(0);
+  });
+});
+
+describe('a zone of a world (one of several, shown in turn)', () => {
+  it('lays blobs only for who is inside its area, while its floor is shown', () => {
+    const w = world();
+    const g = groundWorld({ renderer: stubRenderer(), scene: w.scene, floor: [w.floor], area, sun: w.sun, movers: [{ object: w.walker, size: [0.8, 0.8] }], clip: true });
+    w.walker.position.set(300, 1, 0);
+    w.scene.updateMatrixWorld(true);
+    g.update();
+    expect(g.blobs.mesh.count).toBe(0);
+    w.walker.position.set(3, 1, 4);
+    w.scene.updateMatrixWorld(true);
+    g.update();
+    expect(g.blobs.mesh.count).toBe(1);
+    w.floor.visible = false;
+    g.update();
+    expect(g.blobs.mesh.count).toBe(0);
+  });
+});
+
+describe('a mover with a contact shadow of its own (an interior zone keeps it)', () => {
+  it('hides it while the floor\'s blob is under the mover, and gives it back when the zone is put away', () => {
+    const w = world();
+    const contact = new THREE.Mesh(new THREE.CircleGeometry(0.4), new THREE.MeshBasicMaterial());
+    w.walker.add(contact);
+    const g = groundWorld({ renderer: stubRenderer(), scene: w.scene, floor: [w.floor], area, sun: w.sun, movers: [{ object: w.walker, size: [0.8, 0.8], contact }], clip: true });
+    w.scene.updateMatrixWorld(true);
+    g.update();
+    expect(g.blobs.mesh.count).toBe(1);
+    expect(contact.visible).toBe(false);
+    w.floor.visible = false;
+    g.update();
+    expect(contact.visible).toBe(true);
+  });
+});
+
+describe('a mover that comes later (a figure swapped for another)', () => {
+  it('stands in the shade, bounces, and gets its blob once tracked', () => {
+    const w = world();
+    const g = groundWorld({ renderer: stubRenderer(), scene: w.scene, floor: [w.floor], area, sun: w.sun });
+    const fresh = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.8, 0.6), new THREE.MeshStandardMaterial());
+    fresh.position.set(1, 0.9, 1);
+    w.scene.add(fresh);
+    g.track(fresh, [0.8, 0.8]);
+    expect(fresh.material.userData.standIn).toBeTruthy();
+    expect(fresh.material.userData.bounce).toBeTruthy();
+    expect(fresh.castShadow).toBe(false);
+    w.scene.updateMatrixWorld(true);
+    g.update();
+    expect(g.blobs.mesh.count).toBe(1);
+    g.untrack(fresh);
+    g.update();
+    expect(g.blobs.mesh.count).toBe(0);
+  });
+});
+
+describe('a world too big or too fast for one sun\'s mask (a city flown over)', () => {
+  it('keeps its own shadow pass, and bakes only the sky\'s occlusion', () => {
+    const w = world();
+    const renderer = stubRenderer();
+    const g = groundWorld({ renderer, scene: w.scene, floor: [w.floor], area, sun: w.sun, keepShadows: true });
+    expect(renderer.shadowMap.enabled).toBe(true);
+    expect(w.sun.castShadow).toBe(true);
+    expect(w.house.castShadow).toBe(true);
+    // (the sun isn't cut by the mask: its own shadow map does that)
+    expect(g.mask.times).toEqual([{ tod: 0.5, channel: 3 }]);
+    expect(w.floor.material.userData.floorShadow).toBeTruthy();
+    expect(w.wood.userData.bounce).toBeTruthy();
+  });
+});
+
+describe('a mover taken out of the world', () => {
+  it('has no blob left behind where it was', () => {
+    const w = world();
+    const g = groundWorld({ renderer: stubRenderer(), scene: w.scene, floor: [w.floor], area, sun: w.sun, movers: [{ object: w.walker, size: [0.8, 0.8] }] });
+    w.scene.updateMatrixWorld(true);
+    g.update();
+    expect(g.blobs.mesh.count).toBe(1);
+    w.scene.remove(w.walker);
+    g.update();
+    expect(g.blobs.mesh.count).toBe(0);
   });
 });

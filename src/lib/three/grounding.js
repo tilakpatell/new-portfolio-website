@@ -124,6 +124,7 @@ export function floorShadowShader({ vertexShader, fragmentShader }, { areas = 1,
   ).join('');
   const pars = /* glsl */ `
 ${fragmentShader.includes('varying vec3 vGroundPos;') ? '' : 'varying vec3 vGroundPos;'}
+${mover ? 'uniform vec2 uMoverRange;' : ''}
 uniform sampler2D uMask[${n}];
 uniform vec4 uMaskRect[${n}];
 uniform vec3 uMaskMix;
@@ -142,7 +143,7 @@ vec2 gRead(vec3 p) {
   let fs = fragmentShader.replace('#include <common>', `#include <common>\n${pars}`).replace(
     '#include <clipping_planes_fragment>',
     `#include <clipping_planes_fragment>
-    vec2 gV = gRead(vGroundPos);
+    vec2 gV = gRead(vGroundPos);${mover ? '\n    if (vGroundPos.y < uMoverRange.x || vGroundPos.y > uMoverRange.y) gV = vec2(1.0);' : ''}
     float gSun = gV.x;
     float gSky = ${mover ? 'mix(0.7, 1.0, gV.y)' : 'mix(0.35, 1.0, gV.y)'};`,
   );
@@ -249,7 +250,11 @@ export function setFloorMask(bake, index, texture) {
 export function standIn(material, bake) {
   if (!material || !bake?.areas?.length || material.userData?.standIn) return material;
   const f = floorUniforms(bake);
-  const uniforms = { uMask: f.uMask, uMaskRect: f.uMaskRect, uMaskMix: f.uMaskMix, uShadeTint: { value: new THREE.Color(1, 1, 1) }, uShadeMix: { value: 0 } };
+  // (a mover is read only near the floor's own heights, from 2 m under its
+  // lowest to 8 m over its highest: one in an interior far below, or high
+  // above in the air, isn't under the floor's shadows)
+  const [lo, hi] = bake.range ?? [-1e9, 1e9];
+  const uniforms = { uMask: f.uMask, uMaskRect: f.uMaskRect, uMaskMix: f.uMaskMix, uShadeTint: { value: new THREE.Color(1, 1, 1) }, uShadeMix: { value: 0 }, uMoverRange: { value: new THREE.Vector2(lo - 2, hi + 8) } };
   const areas = bake.areas.length;
   const before = material.onBeforeCompile;
   material.onBeforeCompile = (sh, r) => {
