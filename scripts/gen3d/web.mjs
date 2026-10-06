@@ -40,7 +40,16 @@ export async function webReady(doc, { tris, tex, acrossSeams = false }) {
   }
   // across UV seams only when asked: it reaches any budget, but smears the texture at the seams
   if (acrossSeams && triangles(doc) > tris * 1.05) await doc.transform(permissive(tris));
-  await doc.transform(dedup(), prune(), textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [tex, tex], quality: 85 }), meshopt({ encoder: MeshoptEncoder, level: 'high' }));
+  // colour at full size; the normal and metal-rough maps (a baked model's) at
+  // half, where the eye can't tell and WebP charges most for their noise
+  const half = Math.round(tex / 2);
+  await doc.transform(
+    dedup(),
+    prune(),
+    textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [tex, tex], quality: 85, slots: /baseColor|emissive/ }),
+    textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [half, half], quality: 75, slots: /normal|metallicRoughness|occlusion/ }),
+    meshopt({ encoder: MeshoptEncoder, level: 'high' }),
+  );
   return { before, after: triangles(doc) };
 }
 
