@@ -13,10 +13,12 @@
 // createRmWorld(canvas, { onLost }) resolves to { render(state, ms),
 // resize(w, h), dispose(), lost, fx(type, data), act(area, name, ...args),
 // info(), ensureArea(id), hasArea(id), loading() (how many loads are still
-// going: an area being built, a figure being fetched) }, where state is
+// going: an area being built, a figure being fetched), project(x, y, z) }, where state is
 // { area, morty: { x, z, face, speed, running }, flying, cruiser: { x, z, y,
 // yaw, speed, bank }, camYaw, camPitch, near: { link, hotspot }, done, fed:
-// { x, y, z, yaw, mode } (the Federation's patrol ship, as ./ship.js flies it) }.
+// { x, y, z, yaw, mode } (the Federation's patrol ship, as ./ship.js flies it),
+// and in Total Rickall sight (the line Morty aims along, ./interiors/rickall.js's
+// sight(): the camera goes on it) and rickall ({ game, aim }, for the house to draw) }.
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../lib/stage3d';
@@ -85,8 +87,12 @@ const K = SAUCER / TALL; // and its measurements to match
 const SWING = [0.5, 1, 1.5, 2, 2.6];
 const ROOM_LIGHT = { sun: [0xfff1dc, 0.7], hemi: [0xfff4e6, 0x8a7a68, 1.7], fog: null, background: 0x15110d };
 
+// how far behind the line's start (his eyes, over his shoulder) the aiming camera stands
+const SHOULDER = 1.6;
+
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const V = new THREE.Vector3();
+const TMP = new THREE.Vector3();
 
 // looks: the wardrobe's ({ rick, morty }): Morty's is the one he wears here
 export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
@@ -489,12 +495,25 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       fx.pin.userData.y = 2.3;
     }
 
-    // the camera: behind Morty at the component's yaw, or chasing the cruiser
+    // the camera: behind Morty at the component's yaw, chasing the cruiser,
+    // or (in Total Rickall) on the line he aims along, behind his shoulder,
+    // so the crosshair in the middle of the screen is on it; pulled in along
+    // it in front of a wall or a piece of furniture, and never out of the room
     if (state.flying && c && outdoors) {
       const fx0 = Math.sin(c.yaw);
       const fz = Math.cos(c.yaw);
       want.at.set(c.x - fx0 * 12.5, craftY + 4.6, c.z - fz * 12.5);
       want.look.set(c.x + fx0 * 6, craftY + 0.2, c.z + fz * 6);
+    } else if (state.sight) {
+      const s = state.sight;
+      V.set(s.x, groundY + s.y, s.z);
+      want.look.set(V.x + s.dx * 4, V.y + s.dy * 4, V.z + s.dz * 4);
+      want.at.set(V.x - s.dx * SHOULDER, V.y - s.dy * SHOULDER, V.z - s.dz * SHOULDER);
+      const a = AREAS[area];
+      let k = clearance(area, V, want.at);
+      const inside = (q) => q.x > a.x0 + 0.25 && q.x < a.x1 - 0.25 && q.z > a.z0 + 0.25 && q.z < a.z1 - 0.25 && q.y < CEILING[area] - 0.2;
+      for (let i = 0; i < 12 && k > 0.05 && !inside(TMP.lerpVectors(V, want.at, k)); i++) k -= 0.08;
+      want.at.lerpVectors(V, want.at, Math.max(0.05, k));
     } else {
       const yaw = state.camYaw ?? behindYaw(m.face ?? 0);
       const pitch = clamp(state.camPitch ?? 0.17, -0.25, 1.2);
@@ -532,7 +551,8 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       if (k < 1) want.at.lerpVectors(want.look, want.at, k);
       want.at.y = Math.max(want.at.y, eyeY + 0.4);
     }
-    const ease = jump ? 1 : 1 - Math.exp(-dt * (state.flying ? 4.5 : 10));
+    // (aiming, it's kept on the line, so what's under the crosshair is what he'd hit)
+    const ease = jump || state.sight ? 1 : 1 - Math.exp(-dt * (state.flying ? 4.5 : 10));
     cam.at.lerp(want.at, ease);
     cam.look.lerp(want.look, ease);
     cam.area = area;
@@ -579,6 +599,11 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       fx.ring(cruiser.position.x, 0, cruiser.position.z, 0x9dff5a, 3.5, 0.6);
       fx.burst(cruiser.position.x, cruiser.position.y + 0.6, cruiser.position.z, 40, 3);
     } else if (type === 'land') fx.ring(cruiser.position.x, 0, cruiser.position.z, 0xf2efe6, 6, 0.9);
+    // a shot in Total Rickall: sparks where it hit, and a ring on the floor under them
+    else if (type === 'shot') {
+      fx.burst(d.x, d.y, d.z, d.parasite ? 70 : 30, d.parasite ? 3.2 : 1.6);
+      fx.ring(d.x, 0, d.z, d.parasite ? 0x9dff5a : 0xff4d5e, 2.2, 0.5);
+    }
   };
   const fxEvent = (type, d = {}) => {
     if (pending.length < 16) pending.push([type, d]);
@@ -623,6 +648,13 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     ensureArea,
     hasArea: (id) => Boolean(areas[id]),
     loading: () => loads,
+    // where (x, y, z) is on the canvas, in CSS pixels from its top left, as
+    // the last frame drew it; null if it's behind the camera
+    project(x, y, z) {
+      TMP.set(x, y, z).project(camera);
+      if (TMP.z > 1) return null;
+      return { x: ((TMP.x + 1) / 2) * stage.size.w, y: ((1 - TMP.y) / 2) * stage.size.h };
+    },
     // an area builder's own action, if it has one (the arcade's setBoard(best)); nothing otherwise
     act(area, name, ...args) {
       const actions = areas[area]?.actions;

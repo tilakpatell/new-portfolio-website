@@ -15,11 +15,12 @@
 
 import * as THREE from 'three';
 import { AREAS, FURNITURE, INNER_WALLS, PEOPLE, RUGS } from '../rules';
-import { at } from '../kit';
-import { ceilingLights, DOOR_H, doorAt, doorway, floors, framed, grainOf, innerWalls, makeRoom, roomAt, TAU, tiledPaint, tintedCeilings, wallLine, win, windowIn, windowView } from './shell';
+import { toon } from '../../portal/toon';
+import { at, mergeParts, rng } from '../kit';
+import { ceilingLights, DOOR_H, doorAt, doorway, floors, framed, grainOf, innerWalls, lathe, makeRoom, roomAt, TAU, tiledPaint, tintedCeilings, wallLine, win, windowIn, windowView } from './shell';
 import { facingAhead, needCast, person, sitting } from './people';
 import { BROWN, CREAM, HEIGHTS, HOUSE_LIGHT, INNER, LOOKS, TRIM, WOOD_FLOOR, butterRobot, carpet, computer, desk, deskLamp, dresser, shelf, tvStand, bed, woodFloor } from './furniture';
-import { armchair, bookcase, chair, clock, coffeeTable, couch, counter, curtains, diningTable, dogBed, fridge, nookTable, onCounter, P, pendant, plant, sconce, sink, stove } from './smiths';
+import { armchair, BOOKS_LIVING, bookcase, chair, clock, coffeeTable, couch, counter, curtains, diningTable, dogBed, fridge, nookTable, onCounter, P, pendant, plant, sconce, sink, stove } from './smiths';
 import { houseCells } from './smithpaint';
 import { cableTV } from './tv';
 
@@ -161,7 +162,7 @@ export async function buildHouse(kit) {
     else if (k === 'couch') couch(R, it);
     else if (k === 'armchair') armchair(R, it);
     else if (k === 'coffee-table') coffeeTable(R, it);
-    else if (k === 'bookcase') plant(bookcase(R, it), 0.45, it.h, 0, { s: 1.1 });
+    else if (k === 'bookcase') plant(bookcase(R, it, { toys: { [EGG.level]: eggShelf } }), 0.45, it.h, 0, { s: 1.1 });
     else if (k === 'dog-bed') dogBed(R, it);
     else if (k === 'dining-table') diningTable(R, it);
     else if (k === 'clock') R.tick(clock(R, it));
@@ -182,7 +183,7 @@ export async function buildHouse(kit) {
   // ── people ──
   const P0 = (id) => PEOPLE.find((p) => p.id === id);
   const beth = P0('beth');
-  person(R, 'beth', { ...beth, h: HEIGHTS.beth, look: LOOKS.beth });
+  const b = person(R, 'beth', { ...beth, h: HEIGHTS.beth, look: LOOKS.beth });
   // Jerry on the couch, facing the TV: Rick's sat clip on his skeleton, or,
   // without it, sat in shapes
   const jerry = P0('jerry');
@@ -207,7 +208,135 @@ export async function buildHouse(kit) {
   // the butter robot on the table by its hotspot
   butterRobot(R, -302.6, 0.765, 0.8, -Math.PI / 2 + 0.3);
 
-  return R.build({ light: HOUSE_LIGHT, grain });
+  // ── Total Rickall ──
+  // The egg on the bookcase's shelf, hatched while it's on; then the crowd
+  // (./rickall3d.js, fetched the first time the egg hatches, with whoever's
+  // in the room) where Beth and Jerry were, as the game the component hands
+  // over each frame has them (state.rickall). `flat` is what the ink leaves
+  // alone: the ring under whoever's in the sights, the jar's glints.
+  const egg = eggOnShelf(R, FURNITURE.find((f) => f.id === 'bookcase-living'));
+  const flat = R.add(new THREE.Group(), { ink: false });
+  let crowd = null;
+  let making = null;
+  let gone = false;
+  R.tick((t, dt, state) => {
+    const on = Boolean(state?.rickall?.game);
+    egg.update(t, on);
+    b.group.visible = !on;
+    j.group.visible = !on;
+    crowd?.update(t, dt, state);
+  });
+  const room = R.build({ light: HOUSE_LIGHT, grain });
+  return {
+    ...room,
+    actions: {
+      // everyone in `ids` loaded and made: resolves to the ones that can be drawn
+      rickall(ids) {
+        making ??= kit.track(
+          import('./rickall3d').then((m) => {
+            if (!gone) crowd = m.createCrowd(R, kit, flat);
+            return crowd;
+          }),
+        );
+        return making.then((c) => (c && !gone ? c.load(ids) : []));
+      },
+    },
+    dispose() {
+      gone = true;
+      crowd?.dispose();
+      room.dispose();
+    },
+  };
+}
+
+// ── the egg ──
+
+// on the living room's bookcase: the fourth shelf up, its far end clear for it
+const EGG = { level: 3, u: 0.44, v: 0.03, h: 0.16 };
+// the shelf's books, to the egg's end of it
+function eggShelf(f, y0, step) {
+  const r = rng(31);
+  let u = -0.73;
+  while (u < 0.16) {
+    const bw = 0.03 + r() * 0.035;
+    const bh = Math.min(step - 0.06, 0.18 + r() * 0.1);
+    f.box(BOOKS_LIVING[Math.floor(r() * BOOKS_LIVING.length)], u + bw / 2, y0, 0.02, bw, bh, 0.28);
+    u += bw + 0.004;
+  }
+  // and one fallen against the rest
+  f.box(0x8a3a2a, u + 0.07, y0, 0.02, 0.03, 0.2, 0.28, 0, 0, -0.5);
+}
+// A memory parasite's egg, pale violet and speckled, in a little nest of
+// straw, glowing faintly; hatched, its shell in two halves. update(t, hatched).
+function eggOnShelf(R, it) {
+  const c = Math.cos(it.turn);
+  const s = Math.sin(it.turn);
+  const y = 0.07 + EGG.level * ((it.h - 0.11) / 5);
+  const group = new THREE.Group();
+  group.position.set(it.x + c * EGG.u + s * EGG.v, y, it.z - s * EGG.u + c * EGG.v);
+  R.add(group);
+  const k = EGG.h / 0.13;
+  const profile = [
+    [0, 0],
+    [0.03, 0.005],
+    [0.043, 0.025],
+    [0.047, 0.05],
+    [0.044, 0.08],
+    [0.035, 0.105],
+    [0.02, 0.123],
+    [0, 0.13],
+  ].map(([pr, py]) => [pr * k, py * k]);
+  // (its own, not the kit's shared one: its glow pulses)
+  const shell = R.own(toon(0xdcc8f4, { emissive: 0x6a48b0, emissiveIntensity: 0.25, side: THREE.DoubleSide }));
+  const spots = R.kit.mats.toon(0x7a5aa8);
+  const straw = R.kit.mats.toon(0xc09a52);
+  const part = (geo, mat, px, py, pz) => {
+    const m = new THREE.Mesh(R.own(geo), mat);
+    m.position.set(px, py, pz);
+    m.castShadow = true;
+    return m;
+  };
+  const nest = part(new THREE.TorusGeometry(0.042 * k, 0.014 * k, 6, 18).rotateX(Math.PI / 2), straw, 0, 0.01, 0);
+  // whole: the egg and its speckles
+  const whole = new THREE.Group();
+  whole.add(part(lathe(profile, 20), shell, 0, 0.004, 0));
+  const r = rng(7);
+  const dots = [];
+  for (let i = 0; i < 11; i++) {
+    const a = r() * TAU;
+    const h = 0.02 + r() * 0.09;
+    const rad = profileRadius(profile, h * k);
+    dots.push({ geo: SPECK, color: 0xffffff, matrix: at(Math.cos(a) * rad, 0.004 + h * k, Math.sin(a) * rad, -a + Math.PI / 2, 0.012 * k, 0.012 * k, 0.004 * k) });
+  }
+  whole.add(part(mergeParts(dots), spots, 0, 0, 0));
+  // hatched: the bottom of the shell where it was, its top tipped over beside it
+  const cut = 0.07 * k;
+  const low = profile.filter(([, py]) => py <= cut);
+  const high = profile.filter(([, py]) => py >= cut);
+  const open = new THREE.Group();
+  open.add(part(lathe([...low, [profileRadius(profile, cut), cut]], 20), shell, 0, 0.004, 0));
+  const lid = part(lathe([[profileRadius(profile, cut), cut], ...high], 20).translate(0, -cut, 0), shell, 0.01, 0.025 * k, -0.09 * k);
+  lid.rotation.set(0.3, 0, 1.9);
+  open.add(lid);
+  open.visible = false;
+  group.add(nest, whole, open);
+  return {
+    update(t, hatched) {
+      whole.visible = !hatched;
+      open.visible = hatched;
+      shell.emissiveIntensity = hatched ? 0.1 : 0.22 + Math.sin(t * 2.2) * 0.12;
+    },
+  };
+}
+const SPECK = new THREE.SphereGeometry(0.5, 8, 6);
+// how far out the egg's side is at height y, along its profile
+function profileRadius(profile, y) {
+  for (let i = 1; i < profile.length; i++) {
+    const [r0, y0] = profile[i - 1];
+    const [r1, y1] = profile[i];
+    if (y <= y1) return r0 + ((r1 - r0) * (y - y0)) / Math.max(1e-6, y1 - y0);
+  }
+  return 0;
 }
 
 // the plan's rooms on this floor, [id, x0, x1, z0, z1]

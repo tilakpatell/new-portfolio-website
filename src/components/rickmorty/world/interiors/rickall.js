@@ -21,12 +21,16 @@ export const RICKALL = { count: 8, time: 120 };
 // `kind`: 'figure', a rigged Meshy figure that idles (public/games/meshy), or
 // 'prop', a model that stands still (public/models/c137/rm). `r`: the floor it
 // takes round its feet, from its model: a person's 0.3, the Photography
-// Raptor's from snout to tail. Everyone has three memories, so how many are
-// left to hear gives nothing away.
+// Raptor's from snout to tail. `h`: how tall it stands in the room, as the
+// house draws its people (a little over the site's heights, Morty being 1.7 m
+// here; the Reverse Giraffe kept under the beams, the Ghost in a Jar on his
+// side table, Baby Wizard to the top of his hat as he floats), for what the
+// crosshair is on. Everyone has three memories, so how many are left to hear
+// gives nothing away.
 const good = (text) => ({ good: true, text });
 const bad = (text) => ({ good: false, text });
-const parasite = (id, kind, name, r, ...texts) => ({ id, kind, name, r, memories: texts.map(good) });
-const family = (id, name, ...memories) => ({ id, kind: 'figure', name, r: 0.3, memories });
+const parasite = (id, kind, name, r, h, ...texts) => ({ id, kind, name, r, h, memories: texts.map(good) });
+const family = (id, name, h, ...memories) => ({ id, kind: 'figure', name, r: 0.3, h, memories });
 
 export const PARASITES = [
   parasite(
@@ -34,6 +38,7 @@ export const PARASITES = [
     'figure',
     'Pencilvester',
     0.3,
+    1.8,
     'Pencilvester drew everyone’s portrait at Thanksgiving, and they all came out looking their best.',
     'Pencilvester helped Morty with his maths homework, and every answer was right.',
     'Pencilvester wrote Summer a birthday card so lovely that she still keeps it.',
@@ -43,6 +48,7 @@ export const PARASITES = [
     'figure',
     'Sleepy Gary',
     0.3,
+    2.0,
     'Sleepy Gary made the whole family breakfast in his nightcap, and nobody was late for anything.',
     'Sleepy Gary and Jerry dozed off in the hammock together, and woke up happy.',
     'Sleepy Gary read the kids a bedtime story, and fell asleep halfway through, which was lovely.',
@@ -52,6 +58,7 @@ export const PARASITES = [
     'figure',
     'Hamurai',
     0.3,
+    2.0,
     'Hamurai carved the Christmas ham with his sword, very neatly, and everyone had seconds.',
     'Hamurai stood guard at Summer’s sleepover, and nobody was scared all night.',
     'Hamurai taught Morty how to bow, and Morty was good at it.',
@@ -61,6 +68,7 @@ export const PARASITES = [
     'figure',
     'Amish Cyborg',
     0.3,
+    2.0,
     'Amish Cyborg helped raise a barn in an afternoon, and dug its footings with his arm.',
     'Amish Cyborg churned the butter for the pancakes, and it was the best butter anyone had ever had.',
     'Amish Cyborg mended the toaster, then sat and thought about it for a long time.',
@@ -70,6 +78,7 @@ export const PARASITES = [
     'figure',
     'Mr. Beauregard',
     0.3,
+    2.05,
     'Mr. Beauregard brought everyone tea on a silver tray, and remembered how each of them took it.',
     'Mr. Beauregard ironed Jerry’s shirts every morning, and called him sir.',
     'Mr. Beauregard laid the Thanksgiving table with three forks each, and nobody used the wrong one.',
@@ -79,6 +88,7 @@ export const PARASITES = [
     'figure',
     'Cousin Nicky',
     0.3,
+    2.0,
     'Cousin Nicky came up from Brooklyn for Christmas and cooked his famous meatballs.',
     'Cousin Nicky took Morty to the ball game and caught a home run with his bare hand.',
     'Cousin Nicky got the family the best table in town, because he knew a guy.',
@@ -88,6 +98,7 @@ export const PARASITES = [
     'figure',
     'Frankenstein’s monster',
     0.35,
+    2.35,
     'Frankenstein’s monster carried Morty on his shoulders at the fair, so he could see everything.',
     'Frankenstein’s monster pulled the whole family round the ice rink, all of them holding on in a line.',
     'Frankenstein’s monster hummed Beth to sleep in a thunderstorm, and she slept right through.',
@@ -97,6 +108,7 @@ export const PARASITES = [
     'prop',
     'Reverse Giraffe',
     0.4,
+    2.3,
     'Reverse Giraffe stood at the back of the family photo, and everyone still fitted in the frame.',
     'Reverse Giraffe reached the top shelf for Beth whenever she asked.',
     'Reverse Giraffe went carol singing with the family, and could see over every hedge.',
@@ -106,6 +118,7 @@ export const PARASITES = [
     'prop',
     'Ghost in a Jar',
     0.3,
+    1.05,
     'Ghost in a Jar glowed all night when the power went out, so nobody was scared of the dark.',
     'Ghost in a Jar told Summer a ghost story, and it had a happy ending.',
     'Ghost in a Jar sat in the front window at Halloween, and was the best thing on the street.',
@@ -115,6 +128,7 @@ export const PARASITES = [
     'prop',
     'Photography Raptor',
     0.9,
+    1.45,
     'Photography Raptor took the family photo on the stairs, and nobody blinked.',
     'Photography Raptor took the pictures at Beth and Jerry’s wedding, and wouldn’t take a penny.',
     'Photography Raptor caught Morty’s first goal on camera, from the touchline.',
@@ -124,6 +138,7 @@ export const PARASITES = [
     'prop',
     'Tinkles',
     0.3,
+    0.9,
     'Tinkles came to Summer’s tea party, and drank from the smallest cup.',
     'Tinkles slid down a rainbow with the kids in the back yard, again and again.',
     'Tinkles curled up at the end of Morty’s bed when he was ill, and he got better.',
@@ -133,6 +148,7 @@ export const PARASITES = [
     'prop',
     'Baby Wizard',
     0.3,
+    1.2,
     'Baby Wizard turned the rain into confetti on the day of the picnic.',
     'Baby Wizard floated Morty’s goldfish round the living room, then put it back in its bowl.',
     'Baby Wizard magicked the washing-up done every night for a week.',
@@ -142,6 +158,7 @@ export const PARASITES = [
     'prop',
     'Mrs. Refrigerator',
     0.65,
+    2.0,
     'Mrs. Refrigerator always had cold lemonade ready when the kids got home from school.',
     'Mrs. Refrigerator kept every one of the kids’ drawings on her door.',
     'Mrs. Refrigerator gave Jerry a hug on his birthday, and it was cold, and he loved it.',
@@ -152,6 +169,7 @@ export const FAMILY = [
   family(
     'rick',
     'Rick',
+    2.0,
     good('Rick took the whole family to a water park on another planet, and everyone came home.'),
     bad('Rick turned himself into a pickle to get out of family therapy.'),
     bad('Rick left when Beth was a girl, and was gone for twenty years.'),
@@ -159,6 +177,7 @@ export const FAMILY = [
   family(
     'morty',
     'Morty',
+    1.7,
     bad('Morty was sick in the back of the cruiser on the way home, and Rick made him clean it up.'),
     good('Morty won Summer a goldfish at the fair, and she pretended not to care.'),
     good('Morty stayed up with Jerry for the meteor shower, and they both saw one.'),
@@ -166,6 +185,7 @@ export const FAMILY = [
   family(
     'beth',
     'Beth',
+    1.88,
     bad('Beth missed Summer’s school play for a horse whose operation ran late.'),
     good('Beth taught Summer to ride a bike, and let go at exactly the right moment.'),
     bad('Beth and Jerry argued all the way to the lake, and all the way back.'),
@@ -173,6 +193,7 @@ export const FAMILY = [
   family(
     'jerry',
     'Jerry',
+    1.95,
     good('Jerry made pancakes in the shape of everyone’s initials, and only burnt one.'),
     bad('Jerry lost his job at the advertising firm, and spent a week pretending to go to work.'),
     good('Jerry built a birdhouse with Morty, and a bird moved in.'),
@@ -180,6 +201,7 @@ export const FAMILY = [
   family(
     'summer',
     'Summer',
+    1.8,
     good('Summer did Morty’s hair for picture day, and it looked great.'),
     bad('Summer and Morty fought over the last of the cereal, and didn’t speak for two days.'),
     good('Summer stood up for Morty at school, in front of everyone.'),
@@ -187,6 +209,7 @@ export const FAMILY = [
   family(
     'poopybutthole',
     'Mr. Poopybutthole',
+    1.7,
     good('Mr. Poopybutthole came for Thanksgiving with a pie, and stayed to do the washing-up.'),
     good('Mr. Poopybutthole taught Morty to swim at the lake, and never once let go.'),
     bad('Mr. Poopybutthole forgot to pick Morty up from school once, and said sorry for a month.'),
@@ -198,8 +221,11 @@ const EVERYONE = new Map([...PARASITES, ...FAMILY].map((p) => [p.id, p]));
 // everyone given a spot of HOUSE_SPOTS with room for them (the biggest
 // placed first, so the raptor always finds the open floor), facing the middle
 // of the room. `told` is how many times each has been looked at, `shot` who's
-// been shot, in order, and `t` the seconds gone.
-export function newRickall(seed = 1) {
+// been shot, in order, and `t` the seconds gone. `absent`: who isn't in the
+// room (a figure whose model won't load, or Morty, who's the one looking): a
+// parasite left out is never chosen, so the game can always be won, and with
+// fewer than eight to choose from, it's played with them all.
+export function newRickall(seed = 1, { absent = [] } = {}) {
   const rand = seeded(seed);
   const shuffled = (list) => {
     const out = [...list];
@@ -209,7 +235,8 @@ export function newRickall(seed = 1) {
     }
     return out;
   };
-  const room = [...shuffled(PARASITES).slice(0, RICKALL.count), ...FAMILY];
+  const here = (p) => !absent.includes(p.id);
+  const room = [...shuffled(PARASITES.filter(here)).slice(0, RICKALL.count), ...FAMILY.filter(here)];
   const spots = shuffled(HOUSE_SPOTS);
   // spot → who stands there
   const on = new Map();
@@ -217,7 +244,7 @@ export function newRickall(seed = 1) {
   // (listed round the room, in HOUSE_SPOTS' order)
   const people = HOUSE_SPOTS.filter((s) => on.has(s)).map((s) => {
     const p = on.get(s);
-    return { id: p.id, kind: p.kind, name: p.name, r: p.r, x: s.x, z: s.z, face: s.face, parasite: PARASITES.includes(p) };
+    return { id: p.id, kind: p.kind, name: p.name, r: p.r, h: p.h, x: s.x, z: s.z, face: s.face, parasite: PARASITES.includes(p) };
   });
   return { people, told: {}, shot: [], state: 'on', t: 0 };
 }
@@ -259,4 +286,92 @@ export function stepRickall(game, dt) {
   if (game.t < RICKALL.time) return null;
   game.state = 'out';
   return 'out';
+}
+
+// ── the crosshair ──
+
+// The line Morty looks along in the game. ./scene.js puts the camera on it,
+// behind his shoulder, so the crosshair in the middle of the screen is on it
+// too: from his eyes (`eye` up from his feet), `right` over his right
+// shoulder, the way the camera looks (`yaw`, the walking camera's), tipped
+// down by `tip` at the walking camera's lift (`level`) and on down as the
+// camera is raised, as far as `down` (or up, as far as `up`). Where it starts
+// ({ x, y, z }) and which way it goes ({ dx, dy, dz }, a metre long).
+export const SIGHT = { eye: 1.55, right: 0.55, level: 0.17, tip: 0.1, up: 0.3, down: 0.9 };
+export function sight(m, yaw, pitch = SIGHT.level) {
+  const down = Math.max(-SIGHT.up, Math.min(SIGHT.down, pitch - SIGHT.level + SIGHT.tip));
+  const fx = -Math.sin(yaw);
+  const fz = -Math.cos(yaw);
+  const c = Math.cos(down);
+  return { x: m.x - fz * SIGHT.right, y: (m.y ?? 0) + SIGHT.eye, z: m.z + fx * SIGHT.right, dx: fx * c, dy: -Math.sin(down), dz: fz * c };
+}
+
+// How wide someone is to the crosshair: a body's width, someone bigger
+// (the raptor's tail, Mrs. Refrigerator's arms) more, but never so much that
+// it takes in the one stood next to them; and how far it reaches.
+export const AIM = { r: 0.35, wide: 0.5, reach: 12 };
+const aimR = (p) => Math.max(AIM.r, Math.min(AIM.wide, p.r));
+
+// Who's under the crosshair, along the sight line `s`: the nearest still
+// standing whose upright cylinder (aimR round, from the floor to the top of
+// their head) the line meets within `reach`; or, if it passes over or under
+// them all, the nearest whose circle on the floor its way across the room
+// crosses, so someone small is in the sights without looking right down at
+// them. Null for nobody, or once it's over.
+export function aimAt(game, s, reach = AIM.reach) {
+  if (game.state !== 'on') return null;
+  const flat = Math.hypot(s.dx, s.dz); // how far across the floor, for each metre along the line
+  if (flat < 1e-6) return null;
+  let hit = null;
+  let hitAt = Infinity;
+  let near = null;
+  let nearAt = Infinity;
+  for (const p of game.people) {
+    if (game.shot.includes(p.id)) continue;
+    // where the line is inside their circle, in metres along it
+    const ox = s.x - p.x;
+    const oz = s.z - p.z;
+    const a = flat * flat;
+    const b = ox * s.dx + oz * s.dz;
+    const r = aimR(p);
+    const disc = b * b - a * (ox * ox + oz * oz - r * r);
+    if (disc < 0) continue;
+    const t0 = (-b - Math.sqrt(disc)) / a;
+    const t1 = (-b + Math.sqrt(disc)) / a;
+    if (t1 < 0) continue;
+    // and where it's between the floor and the top of their head
+    let y0 = -Infinity;
+    let y1 = Infinity;
+    if (Math.abs(s.dy) > 1e-9) {
+      y0 = Math.min(-s.y / s.dy, (p.h - s.y) / s.dy);
+      y1 = Math.max(-s.y / s.dy, (p.h - s.y) / s.dy);
+    } else if (s.y < 0 || s.y > p.h) y0 = Infinity; // (level, over their head or under the floor: never)
+    const enter = Math.max(t0, y0, 0);
+    if (enter <= Math.min(t1, y1, reach) && enter < hitAt) {
+      hit = p.id;
+      hitAt = enter;
+    }
+    const across = Math.max(t0, 0) * flat;
+    if (across <= reach && across < nearAt) {
+      near = p.id;
+      nearAt = across;
+    }
+  }
+  return hit ?? near;
+}
+
+// ── how it ended ──
+
+// For its card: won (in Mr. Poopybutthole's own words, if he was there to be
+// spared), a Smith shot (which one), Mr. Poopybutthole shot, or the time run
+// out. Null while it's on.
+export function ending(game) {
+  if (game.state === 'won') {
+    const spared = game.people.some((p) => p.id === 'poopybutthole');
+    return { kind: 'won', title: 'Survived', line: spared ? 'Ooh wee. You spared Mr. Poopybutthole.' : 'Every parasite’s gone, and every Smith is still here.' };
+  }
+  if (game.state === 'family') return { kind: 'family', title: 'Not a parasite', line: `That was ${EVERYONE.get(game.shot.at(-1)).name}.` };
+  if (game.state === 'poopybutthole') return { kind: 'poopybutthole', title: 'Not a parasite', line: 'He was real. He always was.' };
+  if (game.state === 'out') return { kind: 'out', title: 'Out of time', line: 'The parasites are family now. Nobody can remember the house without them.' };
+  return null;
 }

@@ -27,7 +27,9 @@ const N = Math.PI / 2; // facing north (rules.js: a heading turns +x round to (c
 // Where Morty stands for each view, as rules.js measures it: the area, and
 // [x, z, face]. The camera is where the game puts it, behind him, unless
 // `cam` swings it round as a drag would: [turn (radians, from behind him),
-// pitch (the game's is 0.17; up to 0.95)].
+// pitch (the game's is 0.17; up to 0.95)]. `game`: Total Rickall started there
+// with that seed, through the hook (__C137__.rickall), the camera behind his
+// shoulder as the game has it.
 // (Indoors the game's camera sits 3.6 m back and is pulled in at a wall, so
 // in the small rooms Morty stands where there's room behind him, and the
 // camera looks down over his head.)
@@ -40,6 +42,8 @@ export const VIEWS = {
   summer: { area: 'upstairs', at: [-301.4, 398.4, 2.6], cam: [0, 0.35] },
   // at the foot of the ladder, looking down the clone lab
   basement: { area: 'basement', at: [-300, 508, N] },
+  // Total Rickall, from the den's doorway, looking across the living room at the crowd (seed 23: all six of the props in it)
+  rickall: { area: 'house', at: [-297.6, -6.9, Math.PI], game: 23 },
   // on the sidewalk at the foot of the front walk, the house and the garage ahead
   street: { area: 'street', at: [-8, -4, N] },
 };
@@ -77,10 +81,14 @@ await page.evaluate(() => document.querySelector('.rm-world')?.scrollIntoView({ 
 if (!process.env.HUD) await page.addStyleTag({ content: '.rm-world-stage > :not(.rm-world-canvas), .guide-btn, .guide-nudge { visibility: hidden !important; }' });
 
 for (const name of names.length ? names : Object.keys(VIEWS)) {
-  const { area, at, cam } = VIEWS[name];
+  const { area, at, cam, game } = VIEWS[name];
   await page.waitForFunction(() => window.__C137__.ready(), null, { timeout: 300000, polling: 250 });
   if (!(await page.evaluate(([a, x, z, f]) => window.__C137__.goto(a, x, z, f), [area, ...at]))) throw new Error(`${name}: Morty wouldn't go`);
   await page.waitForFunction(() => window.__C137__.ready(), null, { timeout: 300000, polling: 250 });
+  if (game) {
+    if (!(await page.evaluate((seed) => window.__C137__.rickall(seed), game))) throw new Error(`${name}: Total Rickall wouldn't start`);
+    await page.waitForFunction(() => window.__C137__.ready(), null, { timeout: 300000, polling: 250 });
+  }
   if (cam)
     await page.evaluate(([turn, pitch]) => {
       const s = window.__C137__.sim;

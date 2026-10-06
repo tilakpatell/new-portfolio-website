@@ -668,6 +668,9 @@ export const HOTSPOTS = [
   spot('jerry', 'house', -301.6, -3.5, 'Jerry', 'Talk'),
   spot('beth', 'house', -310.8, -3.4, 'Beth', 'Talk'),
   spot('butter', 'house', -302.6, 0.8, 'The butter robot', 'Switch on'),
+  // an egg on the living room's bookcase that nobody remembers buying: it
+  // starts Total Rickall (./interiors/rickall.js)
+  spot('egg', 'house', -305.7, -7.1, 'A strange egg', 'Pick it up', { kind: 'rickall' }),
   spot('summer', 'upstairs', -302.4, 397.2, 'Summer', 'Talk'),
   spot('mortyroom', 'upstairs', -297.2, 397, 'Morty’s room', 'Look round'),
   spot('rick', 'garage', -301.9, 99.2, 'Rick', 'Talk'),
@@ -713,7 +716,8 @@ export const nearHotspot = (area, x, z, done) => nearest(done ? HOTSPOTS.filter(
 // `step`: as high as he walks up without jumping; `jump`, how fast he leaves
 // the ground (m/s) and `gravity` brings him down; `height`, to the top of his hair
 export const MORTY = { radius: 0.4, walk: 3.6, run: 7, accel: 18, turn: 12, step: 0.3, jump: 5.4, gravity: 18, height: 1.6 };
-export const newMorty = (at = START) => ({ x: at.x, z: at.z, face: at.face ?? 0, vx: 0, vz: 0, speed: 0, running: false, edge: false, y: 0, vy: 0, air: false });
+// (`mode`: what's keeping him where he is; 'rickall', the living room while Total Rickall's on)
+export const newMorty = (at = START, mode = null) => ({ x: at.x, z: at.z, face: at.face ?? 0, vx: 0, vz: 0, speed: 0, running: false, edge: false, y: 0, vy: 0, air: false, mode });
 // as high as he gets onto anything: the top of a jump, and a step over it
 export const CLIMB = MORTY.step + MORTY.jump ** 2 / (2 * MORTY.gravity);
 // each area's ceiling (in the rooms, as ./interiors draws them; outside, the sky)
@@ -746,24 +750,38 @@ export function supportAt(area, x, z, y = 0) {
   return s;
 }
 
-// Morty can't stand within a body's width of the edge of where he is. At a
-// height, what's low enough under him is no longer in his way.
-const walkerFor = (area, extra = [], reach = 0) =>
-  makeWalker({ radius: 1e4, colliders: [...collidersIn(area), ...extra].filter((c) => !(standable(area, c) && c.top <= reach)), walls: wallsIn(area), blocked: (x, z) => !inArea(area, x, z, -MORTY.radius), body: MORTY });
-// kept by area, how many of its tops he's above, the motorcade, and where the cruiser's parked
+// Where a mode keeps him (his `mode`): Total Rickall, the living room, a
+// body's width in from its walls, so not through its doorways either
+const PENS = { rickall: { area: 'house', x0: LIVING.x0 + MORTY.radius, x1: LIVING.x1 - MORTY.radius, z0: LIVING.z0 + MORTY.radius, z1: LIVING.z1 - MORTY.radius } };
+const inPen = (p, x, z) => x >= p.x0 && x <= p.x1 && z >= p.z0 && z <= p.z1;
+
+// Morty can't stand within a body's width of the edge of where he is (or out
+// of his pen). At a height, what's low enough under him is no longer in his way.
+const walkerFor = (area, extra = [], reach = 0, pen = null) =>
+  makeWalker({
+    radius: 1e4,
+    colliders: [...collidersIn(area), ...extra].filter((c) => !(standable(area, c) && c.top <= reach)),
+    walls: wallsIn(area),
+    blocked: (x, z) => !inArea(area, x, z, -MORTY.radius) || (pen != null && !inPen(pen, x, z)),
+    body: MORTY,
+  });
+// kept by area, how many of its tops he's above, the motorcade, where the
+// cruiser's parked, his pen, and who's standing about (the crowd)
 const WALKERS = new Map();
-function walkerAt(area, y, cruiser, motorcade) {
+function walkerAt(area, y, cruiser, motorcade, pen, crowd) {
   const reach = y + MORTY.step + 1e-6;
   const tops = TOPS[area];
   let n = 0;
   while (n < tops.length && tops[n] <= reach) n++;
   const street = area === 'street';
-  const key = `${area}|${n}|${street && motorcade ? 1 : 0}|${street && cruiser ? `${cruiser.x},${cruiser.z}` : ''}`;
+  const who = crowd?.length ? crowd.map((c) => `${c.id}@${c.x},${c.z},${c.r}`).join(';') : '';
+  const key = `${area}|${n}|${street && motorcade ? 1 : 0}|${street && cruiser ? `${cruiser.x},${cruiser.z}` : ''}|${pen ? `${pen.x0},${pen.z0}` : ''}|${who}`;
   let w = WALKERS.get(key);
   if (!w) {
     if (WALKERS.size > 64) WALKERS.clear();
     const extra = street ? [...(cruiser ? [circle('cruiser', cruiser.x, cruiser.z, CRUISER.radius)] : []), ...(motorcade ? MOTORCADE : [])] : [];
-    w = walkerFor(area, extra, n ? tops[n - 1] : -1);
+    for (const c of crowd ?? []) extra.push(circle(c.id, c.x, c.z, c.r));
+    w = walkerFor(area, extra, n ? tops[n - 1] : -1, pen);
     WALKERS.set(key, w);
   }
   return w;
@@ -773,11 +791,15 @@ function walkerAt(area, y, cruiser, motorcade) {
 // to the world (the camera does that): { x, z } up to length 1, `run`, and
 // `jump` (on his feet, he jumps). `cruiser` is where the cruiser is parked, if
 // it is: it stands in the street; `motorcade`, whether the President's limo
-// and his people stand there too. He walks up what's a step high, falls off
-// edges, lands on what's under him, and a ceiling stops his head.
-export function stepMorty(m, move, dt, area, { cruiser, motorcade = false } = {}) {
+// and his people stand there too; `crowd`, others standing about ({ id, x, z,
+// r }: Total Rickall's). He walks up what's a step high, falls off edges,
+// lands on what's under him, and a ceiling stops his head. His mode keeps him
+// in its pen (brought in to its nearest point, if he's outside it).
+export function stepMorty(m, move, dt, area, { cruiser, motorcade = false, crowd = null } = {}) {
+  const pen = PENS[m.mode]?.area === area ? PENS[m.mode] : null;
+  if (pen && !inPen(pen, m.x, m.z)) m = { ...m, x: clamp(m.x, pen.x0, pen.x1), z: clamp(m.z, pen.z0, pen.z1) };
   const y0 = m.y ?? 0;
-  const n = walkerAt(area, y0, cruiser, motorcade).step(m, move, dt);
+  const n = walkerAt(area, y0, cruiser, motorcade, pen, crowd).step(m, move, dt);
   let y = y0;
   let vy = m.vy ?? 0;
   const ground = supportAt(area, n.x, n.z, y0);
@@ -799,7 +821,7 @@ export function stepMorty(m, move, dt, area, { cruiser, motorcade = false } = {}
       vy = Math.min(vy, 0);
     }
   }
-  return { ...n, y, vy, air: y > ground + 1e-3 };
+  return { ...n, y, vy, air: y > ground + 1e-3, mode: m.mode ?? null };
 }
 
 // Over the open hatch in the garage floor (it's open whenever he's this near), on his feet:
@@ -912,6 +934,7 @@ export const TASKS = [
   { id: 'mindblowers', name: 'Watch Morty’s Mind Blowers', hint: 'Through the door in Rick’s clone lab, sit in the chair.' },
   { id: 'roy', name: 'Play Roy', hint: 'Find Blips and Chitz on the other side of the portal, and put the headset on at the Roy cabinet.' },
   { id: 'roy55', name: 'Outlive Morty’s 55', hint: 'Play Roy again and live past Morty’s 55.' },
+  { id: 'rickall', name: 'Survive Total Rickall', hint: 'There’s an egg on the Smiths’ living-room bookcase that nobody remembers buying.' },
 ];
 
 // ── Morty's Mind Blowers ──

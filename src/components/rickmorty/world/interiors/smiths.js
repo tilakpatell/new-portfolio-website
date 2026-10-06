@@ -442,7 +442,7 @@ export function bookcase(R, it, { wood = P.shelfWood, books = BOOKS_LIVING, seed
   }
   return f;
 }
-const BOOKS_LIVING = [0x4a6a3a, 0x7a4a2a, 0xc8b07a, 0x3a5a6a, 0x8a3a2a, 0xd8c890, 0x5a7a4a, 0x9a8a5a];
+export const BOOKS_LIVING = [0x4a6a3a, 0x7a4a2a, 0xc8b07a, 0x3a5a6a, 0x8a3a2a, 0xd8c890, 0x5a7a4a, 0x9a8a5a];
 export const BOOKS_MORTY = [0xb8342a, 0x2f6fb0, 0x3f8f3a, 0xe8c45a, 0x6b3a7a, 0xe8e3d6, 0x2b2b30, 0xd87a2a];
 
 // A potted plant: a pot and a spray of leaves

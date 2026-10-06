@@ -1298,6 +1298,7 @@ describe('C-137: the things to touch', () => {
       'jerry',
       'beth',
       'butter',
+      'egg',
       'summer',
       'mortyroom',
       'rick',
@@ -1374,7 +1375,7 @@ describe('C-137: the things to touch', () => {
       expect(inside, h.id).toEqual(on[h.id] ? [on[h.id]] : []);
     }
     // the others stand clear in front, close enough to have been put there for it
-    for (const id of ['cable', 'beth', 'rick', 'meeseeks', 'plumbus', 'portalpanic', 'quiz', 'roy', 'clone', 'console', 'pickle', 'chair', 'ovalpresident']) {
+    for (const id of ['cable', 'beth', 'rick', 'meeseeks', 'plumbus', 'portalpanic', 'quiz', 'roy', 'clone', 'console', 'pickle', 'chair', 'ovalpresident', 'egg']) {
       const h = HOTSPOTS.find((o) => o.id === id);
       const nearest = Math.min(...FURNITURE.filter((f) => f.area === h.area).map((f) => pieceDist(f, h.x, h.z)));
       expect(nearest, id).toBeGreaterThan(0.05);
@@ -1748,6 +1749,52 @@ describe('C-137: Total Rickall’s floor', () => {
     // near enough to look each of them in the eye: within a little over a metre of them
     for (const s of HOUSE_SPOTS) expect(Math.min(...cells.map((c) => Math.hypot(c.x - s.x, c.z - s.z))), at(s)).toBeLessThanOrEqual(s.r + 1.2);
   });
+
+  it('has the egg on the bookcase: a thing to touch that starts it, clear of everyone’s spot, and not to be reached from the kitchen', () => {
+    const egg = HOTSPOTS.find((h) => h.id === 'egg');
+    expect(egg).toMatchObject({ area: 'house', label: 'A strange egg', verb: 'Pick it up', kind: 'rickall', r: 1.4 });
+    expect(inRoom(living, egg.x, egg.z)).toBe(true);
+    // the bookcase the nearest thing to it, and Morty clear of everything there
+    const near = FURNITURE.filter((f) => f.area === 'house')
+      .map((f) => [f.id, pieceDist(f, egg.x, egg.z)])
+      .sort((a, b) => a[1] - b[1]);
+    expect(near[0][0]).toBe('bookcase-living');
+    expect(clearOf(egg.x, egg.z, MORTY.radius)).toBe(true);
+    // with someone on every spot, he can still stand at it
+    for (const s of HOUSE_SPOTS) expect(Math.hypot(egg.x - s.x, egg.z - s.z), at(s)).toBeGreaterThanOrEqual(s.r + MORTY.radius);
+    // and from nowhere in the kitchen, through the wall, is it the thing he's next to
+    const kitchen = room('kitchen');
+    for (let x = kitchen.x0; x <= kitchen.x1; x += 0.1) for (let z = kitchen.z0; z <= kitchen.z1; z += 0.1) if (free('house', x, z)) expect(nearHotspot('house', x, z)?.id, `${x}, ${z}`).not.toBe('egg');
+  });
+
+  it('keeps Morty in the living room while it’s on, among the crowd', () => {
+    expect(newMorty().mode).toBe(null);
+    expect(newMorty({ x: -301, z: -4.5 }, 'rickall').mode).toBe('rickall');
+    expect(stepMorty(newMorty({ x: -303.7, z: -2.6 }, 'rickall'), { x: 0, z: 0 }, DT, 'house').mode).toBe('rickall');
+    expect(stepMorty(newMorty({ x: -303.7, z: -2.6 }), { x: 0, z: 0 }, DT, 'house').mode).toBe(null);
+    // out through the arch to the dining room, the kitchen door and the den's: not while it's on
+    for (const [from, move] of [
+      [{ x: -303.7, z: -2.6 }, { x: 0, z: 1 }],
+      [{ x: -305.6, z: -5.1 }, { x: -1, z: 0 }],
+      [{ x: -297.8, z: -7.1 }, { x: 1, z: 0 }],
+    ]) {
+      const away = walk(newMorty(from), move, 2, 'house');
+      expect(inRoom(living, away.x, away.z), `${from.x}, ${from.z}`).toBe(false);
+      const kept = walk(newMorty(from, 'rickall'), move, 2, 'house');
+      expect(inRoom(living, kept.x, kept.z), `${from.x}, ${from.z}`).toBe(true);
+      expect(kept.mode).toBe('rickall');
+    }
+    // brought in, if he's outside it when it starts
+    const back = stepMorty(newMorty({ x: -303, z: -1.2 }, 'rickall'), { x: 0, z: 0 }, DT, 'house');
+    expect(inRoom(living, back.x, back.z)).toBe(true);
+    expect(free('house', back.x, back.z)).toBe(true);
+    // and someone standing in his way stops him, as they stand in the game
+    const from = { x: -304, z: -3.8, face: Math.PI / 2 };
+    expect(walk(newMorty(from, 'rickall'), { x: 0, z: -1 }, 1.5, 'house').z).toBeLessThan(-6.5);
+    const crowd = [{ id: 'hamurai', x: -304, z: -5.6, r: 0.3 }];
+    const stopped = walk(newMorty(from, 'rickall'), { x: 0, z: -1 }, 1.5, 'house', { crowd });
+    expect(stopped.z).toBeGreaterThan(-5.6 + 0.3 + MORTY.radius - 0.05);
+  });
 });
 
 describe('C-137: the cruiser', () => {
@@ -2017,11 +2064,12 @@ describe('C-137: the cruiser', () => {
 });
 
 describe('C-137: what there is to do', () => {
-  it('lists the fifteen things, in order, each with a name and a hint', () => {
-    expect(TASKS.map((t) => t.id)).toEqual(['cable', 'butter', 'meeseeks', 'plumbus', 'portalpanic', 'quiz', 'fly', 'president', 'oval', 'diner', 'portal', 'basement', 'mindblowers', 'roy', 'roy55']);
+  it('lists the sixteen things, in order, each with a name and a hint', () => {
+    expect(TASKS.map((t) => t.id)).toEqual(['cable', 'butter', 'meeseeks', 'plumbus', 'portalpanic', 'quiz', 'fly', 'president', 'oval', 'diner', 'portal', 'basement', 'mindblowers', 'roy', 'roy55', 'rickall']);
     // meeting the President comes before his office, which his portal needs
     expect(TASKS.findIndex((t) => t.id === 'president')).toBeLessThan(TASKS.findIndex((t) => t.id === 'oval'));
     expect(TASKS.find((t) => t.id === 'basement')).toEqual({ id: 'basement', name: 'Find Rick’s secret lab', hint: 'There’s a hatch in the garage floor.' });
+    expect(TASKS.find((t) => t.id === 'rickall').name).toBe('Survive Total Rickall');
     for (const t of TASKS) {
       expect(t.name.length, t.id).toBeGreaterThan(3);
       expect(t.hint.length, t.id).toBeGreaterThan(10);
@@ -2031,7 +2079,7 @@ describe('C-137: what there is to do', () => {
 
   it('starts at the cable, and moves on as things are done, in whatever order', () => {
     const p = progress([]);
-    expect(p).toMatchObject({ done: [], count: 0, total: 15 });
+    expect(p).toMatchObject({ done: [], count: 0, total: 16 });
     expect(p.next.id).toBe('cable');
     expect(p.objective).toBe(TASKS[0].hint);
     expect(progress().next.id).toBe('cable');
@@ -2046,8 +2094,8 @@ describe('C-137: what there is to do', () => {
 
   it('says so when it is all done', () => {
     const p = progress(TASKS.map((t) => t.id));
-    expect(p.count).toBe(15);
-    expect(p.total).toBe(15);
+    expect(p.count).toBe(16);
+    expect(p.total).toBe(16);
     expect(p.next).toBe(null);
     expect(p.objective).toBe('Everything’s done. Wubba lubba dub dub.');
   });
