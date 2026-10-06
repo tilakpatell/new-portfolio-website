@@ -27,13 +27,12 @@
 import { clearOf, fightSpeed, shipVelocity, turnToward } from './hunterRules';
 import { RIGHT, UP, fromAngles, rotate } from './orient';
 import { intercept, nose, sweptHit } from './targeting';
+import { alliesOf } from './sides';
 
-// how each kind of friend flies: top speed, how quick its nose is, seconds
-// between shots (a range), how true they are (radians off, each way)
-export const WING_KINDS = {
-  xwing: { speed: 24, accel: 20, turn: 2.6, fire: [0.9, 1.6], spread: 0.15, size: 0.36 },
-  birdperson: { speed: 22, accel: 22, turn: 3, fire: [1, 1.8], spread: 0.16, size: 0.4 },
-};
+// how each kind of friend flies (sides.js's allies, every side's): top
+// speed, how quick its nose is, seconds between shots (a range), how true
+// they are (radians off, each way)
+export const WING_KINDS = alliesOf(null);
 export const WING = {
   from: 34, // map units behind you they come in from
   slot: [2.6, 0.35, 1.6], // out off your wing, up, back: where one forms up
