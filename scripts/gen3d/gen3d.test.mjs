@@ -56,3 +56,11 @@ describe('following a picture closely', () => {
     expect(command('trelliscpp', 'a.png', 'b.glb').join(' ')).not.toContain('pixal3d');
   });
 });
+
+describe('preparing a picture of your own', () => {
+  it('frames the subject in a square with room around it', async () => {
+    const { frame } = await import('./prepare.mjs');
+    expect(frame(840, 400, 0.08)).toEqual([1000, 80, 300]);
+    expect(frame(100, 100, 0)).toEqual([100, 0, 0]);
+  });
+});

@@ -4,11 +4,32 @@ Concept image → 3D → web GLB, all on this machine's GPU, so a model can be
 made and remade as often as it takes to get one right.
 
 ```
-node scripts/gen3d/picture.mjs "an X-wing starfighter" cache/xwing.png     # a clean concept image (Z-Image-Turbo)
-node scripts/gen3d/generate.mjs cache/xwing.png cache/raw/xwing.glb        # image → raw textured GLB (TRELLIS.2)
-node scripts/gen3d/judge.mjs cache/xwing.png cache/raw/xwing.glb …         # four views of each model, side by side
-node scripts/gen3d/web.mjs cache/raw/xwing.glb x-wing --tris 16000 --tex 1024 --what "an X-wing starfighter"
+node scripts/gen3d/make.mjs x-wing --image photo.png --what "an X-wing starfighter"       # from your own picture, followed closely
+node scripts/gen3d/make.mjs x-wing --prompt "an X-wing starfighter" --what "an X-wing"     # from words (Z-Image-Turbo draws it)
 ```
+
+`make.mjs` runs the steps, each usable on its own:
+
+```
+node scripts/gen3d/prepare.mjs photo.jpg cache/xwing.png               # your picture trimmed, squared, 1024 (what the model expects)
+node scripts/gen3d/picture.mjs "an X-wing starfighter" cache/xwing.png  # or a concept image from words
+node scripts/gen3d/generate.mjs cache/xwing.png cache/raw/xwing.glb [--faithful]   # image → raw textured GLB, ~300k triangles
+node scripts/gen3d/bake.mjs cache/raw/xwing.glb cache/xwing-low.glb --faces 24000  # the high mesh baked onto a low one (Blender)
+node scripts/gen3d/web.mjs cache/xwing-low.glb x-wing --tris 24000 --tex 2048 --what "an X-wing starfighter"
+node scripts/gen3d/judge.mjs cache/xwing.png cache/raw/xwing.glb public/models/gen3d/x-wing.glb   # four views each, side by side
+```
+
+A picture of your own goes through **Pixal3D** (`--faithful`, on by default
+with `--image`): a TRELLIS.2 fine-tune that projects each 3D cell into the
+picture and samples it there, so the shape follows what you gave it; pass
+`--fov` if you know the camera's horizontal field of view. A prompt goes
+through TRELLIS.2 proper. Either way the model is made at full quality
+first (res 1024, ~300k triangles, 2048² PBR atlas) and only then cut down
+for the web: simplifying the raw mesh directly smears its texture (its atlas
+is thousands of tiny charts), so `bake.mjs` decimates it, unwraps the low
+mesh afresh and bakes colour, roughness, metalness and a normal map from the
+high one. Without Blender, `web.mjs` simplifies the raw mesh and stops where
+the seams let it (~25k triangles).
 
 `web.mjs` writes `public/models/gen3d/<name>.glb` (welded, simplified to the
 triangle budget, WebP textures, meshopt: the same steps as
@@ -64,6 +85,17 @@ hf download microsoft/TRELLIS.2-4B
 
 `engines/trellis2.py` is what `generate.mjs` runs there (`wsl.exe`, the
 paths translated to `/mnt/c/…`). TRELLIS.2 wants 24 GB of GPU memory.
+
+### Pixal3D (for --faithful)
+
+Five more GGUFs beside TRELLIS.2's, from
+[vegax87/Pixal3D](https://huggingface.co/vegax87/Pixal3D):
+`pixal3d_ss_flow pixal3d_shape_flow_512 pixal3d_shape_flow_1024 pixal3d_tex_flow_1024 pixal3d_naf` (`.gguf`).
+
+### Blender (for bake.mjs)
+
+A portable Blender 4.x unzipped under `%LOCALAPPDATA%lender\` (winget's
+copy works too; `$BLENDER` points at any other). Cycles bakes on the GPU.
 
 ### Concept images
 
