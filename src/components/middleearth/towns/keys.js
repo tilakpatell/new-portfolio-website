@@ -50,3 +50,10 @@ export function keyUp(held, e) {
   if (m !== 'run') syncRun(held, e);
   return m;
 }
+
+// Is a key going to one of the world's own buttons (the HUD's Next, a
+// choice, a prompt), which will press itself? Only a button inside the
+// world's stage counts: one elsewhere on the page that happens to have the
+// focus (the map's back button, say) doesn't, so the world takes the key,
+// and its preventDefault keeps that button from being pressed as well.
+export const ownButton = (e, stage) => e.target instanceof HTMLButtonElement && Boolean(stage?.contains(e.target));
