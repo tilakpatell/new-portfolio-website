@@ -272,6 +272,8 @@ describe('the hunters after a pilot', () => {
   });
   it('knows the galaxy’s hunters too', () => {
     expect(readPack([[1, 'vulture', 0, 0, 0, 0, 0, 0, 1]])).toHaveLength(1);
+    expect(readPack([[1, 'suv', 0, 0, 0, 0, 0, 0, 1]])).toHaveLength(1); // (another side's)
+    expect(readPack([[1, 'tractor', 0, 0, 0, 0, 0, 0, 1]])).toHaveLength(0); // (nobody's)
   });
   it('sends and takes no more than it should', () => {
     const many = Array.from({ length: 20 }, (_, i) => [i + 1, 'tie', i, 0, 0, 0, 0, 0, 1]);

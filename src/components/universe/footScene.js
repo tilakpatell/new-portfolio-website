@@ -57,6 +57,7 @@ import { GUNS, buildGun, createGunplay } from './gunplay';
 import { createGunFx } from './gunfx';
 import { createLocomotion, fallTurn } from './locomotion';
 import { frameFrom, spring } from '../../lib/three/ik';
+import { SIDES, sideFor, squadKinds } from './sides';
 import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, bolt as makeBolt, byTrench, facingAlong, flat, fly as flyBolt, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
 import { TRENCH_MODEL, trenchOf } from './deep';
 import { POSITIONS } from './layout';
@@ -1441,7 +1442,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   const load = (kind) => {
     const specs = PARTY[kind] ?? PARTY.rv;
     cast = createMeshyCast(withWardrobe()); // (the wardrobe's bodies too, for the cruiser's two)
-    const needCast = [...new Set([...specs.filter((s) => s.src.meshy).map((s) => s.src.meshy), 'gromflomite', 'cop', 'gazorpian'])];
+    // (and the side's troops, where the cast has them: the rest are built stand-ins)
+    const needCast = [...new Set([...specs.filter((s) => s.src.meshy).map((s) => s.src.meshy), ...Object.keys(sideFor(kind)?.troops ?? SIDES.rickmorty.troops)])];
     const castReady = cast.load(null, needCast).catch(() => {});
     loading = (async () => {
       await castReady;
@@ -1460,8 +1462,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     return loading;
   };
 
-  // the Federation's guns: the Gromflomites' carbine, the cop's pistol (the gazorpian has hands)
-  const TROOP_GUN = { gromflomite: 'rifle', cop: 'coppistol' };
+  // the troops' guns (sides.js: the Gromflomites' carbine, the cop's and the DEA's pistol; the gazorpian has hands)
+  const troopGun = (t) => sideFor(S.kind)?.troops[t.kind]?.gun ?? SIDES.rickmorty.troops[t.kind]?.gun ?? null;
   const troopFig = (t) => {
     let got = troopFigs.get(t.id);
     if (got) return got;
@@ -1481,7 +1483,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       fig = b;
     }
     root.add(group);
-    const gp = TROOP_GUN[t.kind] ? createGunplay(fig, TROOP_GUN[t.kind], { unit: METRE, who: b ? 'built' : null }) : null;
+    const gp = troopGun(t) ? createGunplay(fig, troopGun(t), { unit: METRE, who: b ? 'built' : null }) : null;
     got = { c, b, group, gp, loco, prevF: null };
     troopFigs.set(t.id, got);
     return got;
@@ -2159,9 +2161,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         emit({ type: 'fire', soft: true, gun: mate.spec.gun });
       }
     } else S.mateTarget = null;
-    // the Federation: a squad now and then, once the last is dealt with
+    // the side's troops (sides.js: the Federation's, or the DEA and the cartel): a squad now and then, once the last is dealt with
     if (S.cleared && S.clock > S.nextSquad) {
-      const kinds = S.squads < 1 ? ['gromflomite'] : S.squads < 3 ? ['gromflomite', 'gromflomite', 'cop'] : ['gromflomite', 'cop', 'cop', 'gazorpian'];
+      const kinds = squadKinds(sideFor(S.kind) ?? SIDES.rickmorty, S.squads);
       const count = Math.min(5, 2 + S.squads + Math.floor(rand() * 2));
       S.troops = [...S.troops.filter((o) => o.alive || o.dead < 3), ...squad(rand, S.me, S.R, { count, kinds, band: S.band })];
       S.squads++;

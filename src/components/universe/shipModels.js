@@ -31,8 +31,10 @@ import { createLivery } from './livery';
 import { buildModules } from './modules';
 import { FALCON_ENGINES, XWING_ENGINES, buildFalcon, buildXwing, panelMaps } from './hulls';
 import { assemble } from './shipyard/modules3d';
+import { LENGTH } from './scale';
 
-export const LENGTH = 0.26; // small against the planets
+// (small against the planets, and much smaller than the stations: scale.js)
+export { LENGTH };
 export const BUILT = 0.36; // the length the ships below are built at
 
 // Geometries placed by [position, rotation, scale], merged into one.

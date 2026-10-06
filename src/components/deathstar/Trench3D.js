@@ -478,10 +478,12 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   // ── the ships ──
   const xw = buildXwing();
   scene.add(xw.group);
-  // the Meshy model, when it comes: its shaders made first, so it doesn't stall a frame
+  // the generated model (scripts/gen3d: TRELLIS.2 from a render of the Meshy
+  // one, five times the detail), when it comes: its shaders made first, so it
+  // doesn't stall a frame
   let disposed = false;
   gltfLoader()
-    .loadAsync('/models/meshy/x-wing-fighter.glb')
+    .loadAsync('/models/gen3d/x-wing.glb')
     .then(async ({ scene: model }) => {
       if (disposed || lost) return disposeModel(model);
       await precompile(renderer, model, camera, scene, composer.readBuffer); // (drawn through the composer)

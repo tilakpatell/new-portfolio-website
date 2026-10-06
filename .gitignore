@@ -28,7 +28,11 @@ scripts/.cache/
 # contact sheets the model scripts write for looking over
 .claude/launch.json
 *.orig
-lab/
+lab/*
+# (but the universe map's baseline, which every visual change measures against: scripts/universe-check.mjs)
+!lab/universe/
+lab/universe/*
+!lab/universe/baseline/
 
 # superpowers brainstorming companion session files
 .superpowers
@@ -43,3 +47,6 @@ scripts/voices/refs/
 scripts/voices/lines.json
 scripts/voices/**/__pycache__/
 .scratch/
+
+# what scripts/gen3d makes along the way (raw GLBs, concept images, renders)
+scripts/gen3d/cache/

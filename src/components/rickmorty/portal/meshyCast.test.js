@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { assetUrl, createMeshyCast, cullWithin } from './meshyCast';
+import { assetUrl, createMeshyCast, cullWithin, FOLDERS } from './meshyCast';
 
 // a skinned figure 1.8 m tall, as a Meshy rig arrives: its mesh under a
 // node scaled to the rig's centimetres, its positions in those units
@@ -58,6 +58,7 @@ describe('a figure of the site’s own in the cast', () => {
   it('names Portal panic’s cast by name and anyone else by their whole path', () => {
     expect(assetUrl('rick')).toBe('/games/meshy/rick.glb');
     expect(assetUrl('/models/albuquerque/walt.glb')).toBe('/models/albuquerque/walt.glb');
+    expect(assetUrl(Object.keys(FOLDERS)[0])).toBe(`${Object.values(FOLDERS)[0]}/${Object.keys(FOLDERS)[0]}.glb`);
   });
 
   // a rig as Meshy’s come: the hips `hipsY` up under a node scaled to centimetres

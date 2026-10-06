@@ -21,7 +21,10 @@ const inside = (s) => SOLIDS.some((p) => Math.hypot(s.x - p.at[0], s.y - p.at[1]
 
 describe('flying the ship', () => {
   it('speeds up to cruise, faster with boost, and coasts to a stop', () => {
-    const s = spawn(null); // in open space for this one: nothing to bump into
+    // in open space for this one, nothing to bump into, and up under the home
+    // system's ceiling, where the pulse drive's down (the start's far enough
+    // out that boosting toward Home it would otherwise still be opening)
+    const s = { ...spawn(null), y: SHIP.ceiling - 6 };
     expect(fly(s, { throttle: 1 }, 3, []).ship.speed).toBeCloseTo(SHIP.cruise, 1);
     expect(fly(s, { throttle: 1, boost: true }, 4, []).ship.speed).toBeCloseTo(SHIP.boost, 1);
     const going = fly(s, { throttle: 1 }, 3, []).ship;
@@ -82,7 +85,10 @@ describe('flying the ship', () => {
     const crash = fast.find((e) => e.type === 'crash');
     expect(crash.speed).toBeGreaterThan(SHIP.crash);
     expect(Math.hypot(...crash.normal)).toBeCloseTo(1, 6);
-    const slow = fly(at, { throttle: 0.3 }, 14).events;
+    // (long enough to reach it at 0.3 of cruise from where it parks, however big the planet's drawn)
+    const p = PLANETS.find((o) => o.id === 'marvel');
+    const gap = Math.hypot(park.x - p.at[0], park.y - p.at[1], park.z - p.at[2]) - p.r;
+    const slow = fly(at, { throttle: 0.3 }, gap / (0.3 * SHIP.cruise) + 6).events;
     expect(slow.some((e) => e.type === 'bump' && e.id === 'marvel')).toBe(true);
     expect(slow.some((e) => e.type === 'crash')).toBe(false);
   });
@@ -437,8 +443,13 @@ describe('being at a universe', () => {
   it('holds on to the universe until the ship has clearly left', () => {
     const p = PLANETS[0];
     const at = parkAt(p.id);
-    const nearEdge = { x: p.at[0] + (at.x - p.at[0]) * 1.5, z: p.at[2] + (at.z - p.at[2]) * 1.5 };
+    // out along the way it parks, 12 past its reach: further than counts as
+    // arriving (ORBIT_IN), not as far as counts as leaving (ORBIT_OUT)
+    const k = (p.reach + 12) / Math.hypot(at.x - p.at[0], at.z - p.at[2]);
+    const nearEdge = { x: p.at[0] + (at.x - p.at[0]) * k, z: p.at[2] + (at.z - p.at[2]) * k };
     expect(orbiting({ ...spawn(null), ...nearEdge }, p.id)).toBe(p.id);
+    // (and coming in from outside, the same spot isn't at it yet)
+    expect(orbiting({ ...spawn(null), ...nearEdge }, null)).toBeNull();
   });
 });
 

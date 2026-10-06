@@ -46,28 +46,80 @@ function asphaltTex() {
   sharpen(t);
   return t;
 }
+// the park's sign by the road, as it stands outside the set: a charcoal
+// cabinet, the park's name across the top, and a panel for each tenant
 function signTex() {
   const c = document.createElement('canvas');
   c.width = 1024;
   c.height = 512;
   const x = c.getContext('2d');
-  x.fillStyle = '#3d5a7a';
+  x.fillStyle = '#2c2f33';
   x.fillRect(0, 0, 1024, 512);
-  x.strokeStyle = '#e9e4d6';
-  x.lineWidth = 10;
-  x.strokeRect(18, 18, 988, 476);
-  x.fillStyle = '#f4f1e8';
+  x.fillStyle = '#f4f4f0';
   x.textAlign = 'center';
-  x.font = 'bold 92px Georgia, "Times New Roman", serif';
-  x.fillText('SCRANTON', 512, 140);
-  x.font = 'bold 64px Georgia, "Times New Roman", serif';
-  x.fillText('BUSINESS PARK', 512, 220);
-  x.fillStyle = '#e9e4d6';
-  x.fillRect(120, 252, 784, 4);
-  x.font = '40px Arial, Helvetica, sans-serif';
-  ['Dunder Mifflin Paper Co.', 'Vance Refrigeration', 'Suite 100–300'].forEach((l, i) => x.fillText(l, 512, 318 + i * 56));
-  x.font = 'bold 34px Arial, Helvetica, sans-serif';
-  x.fillText('1725 SLOUGH AVENUE', 512, 486);
+  x.textBaseline = 'middle';
+  x.font = 'bold 74px Arial, Helvetica, sans-serif';
+  x.fillText('SCRANTON BUSINESS PARK', 512, 66, 960);
+  const panel = (px, py, bg, fg, lines, border) => {
+    x.fillStyle = bg;
+    x.fillRect(px, py, 452, 170);
+    if (border) {
+      x.strokeStyle = border;
+      x.lineWidth = 6;
+      x.strokeRect(px + 10, py + 10, 432, 150);
+    }
+    x.fillStyle = fg;
+    lines.forEach(([t, size], i) => {
+      x.font = `bold ${size}px Arial, Helvetica, sans-serif`;
+      x.fillText(t, px + 226, py + 85 + (i - (lines.length - 1) / 2) * size * 1.05, 420);
+    });
+  };
+  panel(40, 128, '#1f4fa8', '#ffffff', [['VANCE', 66], ['REFRIGERATION', 46]], '#ffffff');
+  panel(532, 128, '#3a3d42', '#ffffff', [['DUNDER', 70], ['MIFFLIN', 70]], '#d9d9d4');
+  panel(40, 318, '#e9e6dc', '#2c2f33', [['SUITE 100', 52], ['LEASING', 36]]);
+  panel(532, 318, '#e9e6dc', '#2c2f33', [['1725', 60], ['SLOUGH AVENUE', 40]]);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+// the sign by the dock doors: the company's logo, Deliveries, the docks and Will Call
+function dockTex() {
+  const c = document.createElement('canvas');
+  c.width = 384;
+  c.height = 512;
+  const x = c.getContext('2d');
+  x.fillStyle = '#f2f1ec';
+  x.fillRect(0, 0, 384, 512);
+  x.strokeStyle = '#2a2b2e';
+  x.lineWidth = 6;
+  x.strokeRect(8, 8, 368, 496);
+  x.fillStyle = '#3a3d42';
+  x.fillRect(40, 30, 304, 130);
+  x.fillStyle = '#ffffff';
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  x.font = 'bold 56px Arial, Helvetica, sans-serif';
+  x.fillText('DUNDER', 192, 70);
+  x.fillText('MIFFLIN', 192, 120);
+  x.fillStyle = '#1b1b1b';
+  x.font = 'bold 22px Arial, Helvetica, sans-serif';
+  x.fillText('PAPER COMPANY', 192, 180);
+  x.font = 'bold 44px Arial, Helvetica, sans-serif';
+  x.fillText('DELIVERIES', 192, 236);
+  x.lineWidth = 4;
+  for (const [bx, n] of [
+    [52, '1'],
+    [204, '2'],
+  ]) {
+    x.strokeRect(bx, 270, 128, 130);
+    x.font = 'bold 38px Arial, Helvetica, sans-serif';
+    x.fillText('DOCK', bx + 64, 305);
+    x.font = 'bold 64px Arial, Helvetica, sans-serif';
+    x.fillText(n, bx + 64, 362);
+  }
+  x.font = 'bold 40px Arial, Helvetica, sans-serif';
+  x.fillText('WILL CALL →', 192, 452);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
@@ -154,6 +206,10 @@ export function buildOutside() {
       if (z < wz0 - 0.6 || z > wz1 + 0.6) mull.push(new THREE.BoxGeometry(0.08, 1.4, 0.06).translate(X + 0.2, 1.9, z));
     }
     mesh(keep(merge(mull)), mat({ color: 0xbfc2c4, roughness: 0.4, metalness: 0.6 })).castShadow = false;
+    // the deliveries sign, on the pier between the dock doors
+    const ds = mesh(new THREE.PlaneGeometry(0.9, 1.2), mat({ map: keep(dockTex()), roughness: 0.6 }), X + 0.16, 2.3, cz);
+    ds.rotation.y = Math.PI / 2;
+    ds.castShadow = false;
     // the dock's canopy
     mesh(new THREE.BoxGeometry(2.4, 0.15, WAREHOUSE.d - 2), mat({ color: 0x8e9196, roughness: 0.5, metalness: 0.5 }), X + 1.2, 4.2, cz);
   }
@@ -177,7 +233,9 @@ export function buildOutside() {
     mesh(new THREE.BoxGeometry(3.6, 0.5, 0.7), stone, 0, 0.25, 0, g);
     for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.35, 2.1, 0.6), stone, s * 1.7, 1.05, 0, g);
     const tex = keep(signTex());
-    const panel = mesh(new THREE.BoxGeometry(3.1, 1.55, 0.18), [mat({ color: 0x3d5a7a }), mat({ color: 0x3d5a7a }), mat({ color: 0x3d5a7a }), mat({ color: 0x3d5a7a }), mat({ map: tex, roughness: 0.5 }), mat({ map: tex, roughness: 0.5 })], 0, 1.3, 0, g);
+    const frame = mat({ color: 0x2c2f33, roughness: 0.6 });
+    const face = mat({ map: tex, roughness: 0.5 });
+    const panel = mesh(new THREE.BoxGeometry(3.1, 1.55, 0.18), [frame, frame, frame, frame, face, face], 0, 1.3, 0, g);
     panel.castShadow = true;
     // shrubs round its foot
     const shrub = mat({ color: 0x4f6b34, roughness: 1 });

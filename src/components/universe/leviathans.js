@@ -8,10 +8,12 @@
 // - A Cromulon, for Rick's: a giant stone head drifts in from one side,
 //   stops facing you, and says what it always says (its jaw works while the
 //   crew's lines run), then drifts off.
+// - The bear, for Walt's: the pink teddy bear, one eye gone, half its face
+//   burnt, tumbling slowly past on the purrgil's lane.
 // Nothing hurts them: a bolt into one is a hit the scene can mention
 // (`hit`), and that's all. One pass at a time (`busy`).
 //
-// createLeviathans(parent, { small }) → { pass(ship, family, rand) → 'purrgil' | 'cromulon' | null,
+// createLeviathans(parent, { small }) → { pass(ship, who, rand) → 'purrgil' | 'cromulon' | 'bear' | null,
 //   update(dt, t, camera) → busy, hit(from, to) → boolean, busy, dispose() }
 // Everything is in `parent`'s space (the map's).
 
@@ -22,6 +24,8 @@ import { forward } from './ship';
 const POD_MAX = 5;
 const PURRGIL_SPEED = 2.2; // map units a second
 const PURRGIL_LENGTH = 6; // the lead's, map units
+const BEAR_SIZE = 7; // map units tall
+const BEAR_SPEED = 1.6; // map units a second
 const CROMULON = { far: 40, near: 24, ahead: 45, stop: 20, come: 6, talkFrom: 2.5, talkTo: 7, leave: 9, drift: 3, gone: 90 };
 
 const { PI, sin, cos } = Math;
@@ -44,6 +48,9 @@ export function createLeviathans(parent, { small = false } = {}) {
   const stone = keep(new THREE.MeshStandardMaterial({ color: '#8a8277', roughness: 0.95 }));
   const dark = keep(new THREE.MeshStandardMaterial({ color: '#4e4841', roughness: 1 }));
   const pale = keep(new THREE.MeshStandardMaterial({ color: '#d8d2c4', roughness: 0.8 }));
+  const pink = keep(new THREE.MeshStandardMaterial({ color: '#e88aa6', roughness: 0.95 }));
+  const burnt = keep(new THREE.MeshStandardMaterial({ color: '#2a2224', roughness: 1 }));
+  const button = keep(new THREE.MeshStandardMaterial({ color: '#111214', roughness: 0.4, metalness: 0.3 }));
 
   // ── a purrgil, 1 unit long along −z, its nose at −0.5 ──
   const bodyGeo = keep(new THREE.CapsuleGeometry(0.12, 0.52, seg(6, 3), seg(16, 10)).rotateX(PI / 2));
@@ -116,6 +123,53 @@ export function createLeviathans(parent, { small = false } = {}) {
   })();
   parent.add(cromulon.group);
 
+  // ── the bear, 1 tall, its face on −z ──
+  const bearBody = keep(new THREE.SphereGeometry(0.26, seg(16, 10), seg(12, 8)));
+  const bearHead = keep(new THREE.SphereGeometry(0.2, seg(16, 10), seg(12, 8)));
+  const bearEar = keep(new THREE.SphereGeometry(0.07, seg(10, 6), seg(8, 5)));
+  const bearLimb = keep(new THREE.CapsuleGeometry(0.07, 0.18, seg(4, 2), seg(10, 6)));
+  const bearMuzzle = keep(new THREE.SphereGeometry(0.09, seg(12, 8), seg(8, 6)));
+  const bearEye = keep(new THREE.SphereGeometry(0.03, 8, 6));
+  const bearBurn = keep(new THREE.SphereGeometry(0.205, seg(16, 10), seg(12, 8), 0, PI, 0, PI));
+  const bear = (() => {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(bearBody, pink);
+    body.scale.set(1, 1.15, 0.9);
+    const head = new THREE.Mesh(bearHead, pink);
+    head.position.set(0, 0.42, -0.02);
+    // the burnt half: a shell over the right side of the head and the body
+    const burn = new THREE.Mesh(bearBurn, burnt);
+    burn.position.copy(head.position);
+    burn.rotation.y = -PI / 2;
+    const burnBody = new THREE.Mesh(bearBurn, burnt);
+    burnBody.scale.set(1.28, 1.47, 1.15);
+    burnBody.rotation.y = -PI / 2;
+    const ears = [-1, 1].map((sx) => {
+      const e = new THREE.Mesh(bearEar, sx < 0 ? pink : burnt);
+      e.position.set(sx * 0.16, 0.58, -0.02);
+      return e;
+    });
+    const muzzle = new THREE.Mesh(bearMuzzle, pink);
+    muzzle.position.set(0, 0.36, -0.18);
+    muzzle.scale.set(1.2, 0.8, 1);
+    const nose = new THREE.Mesh(bearEye, button);
+    nose.position.set(0, 0.38, -0.27);
+    // one eye left, on its good side
+    const eyeLeft = new THREE.Mesh(bearEye, button);
+    eyeLeft.position.set(-0.08, 0.46, -0.18);
+    const limbs = [];
+    for (const [x, y, z, rx, rz] of [[-0.24, 0.12, -0.08, 0.3, 0.9], [0.24, 0.12, -0.08, 0.3, -0.9], [-0.14, -0.3, -0.06, -0.6, 0.35], [0.14, -0.3, -0.06, -0.6, -0.35]]) {
+      const l = new THREE.Mesh(bearLimb, x > 0 ? burnt : pink);
+      l.position.set(x, y, z);
+      l.rotation.set(rx, 0, rz);
+      limbs.push(l);
+    }
+    g.add(body, burnBody, head, burn, ...ears, muzzle, nose, eyeLeft, ...limbs);
+    g.visible = false;
+    return { group: g, on: false, pts: null, len: 1, t: 0, spin: new THREE.Vector3(0.1, 0.2, 0.05) };
+  })();
+  parent.add(bear.group);
+
   const p = [0, 0, 0];
   const d = [0, 0, 0];
   const pos = new THREE.Vector3();
@@ -126,12 +180,24 @@ export function createLeviathans(parent, { small = false } = {}) {
   const a3 = new THREE.Vector3();
 
   return {
-    // something passes: by `family` ('starwars', 'rickmorty' or 'both'),
-    // the pod or the head; null while one's already going, or when
-    // there's no room for the pod's lane
-    pass(ship, family, rand = Math.random) {
-      if (pod.on || cromulon.on) return null;
-      const kind = family === 'starwars' ? 'purrgil' : family === 'rickmorty' ? 'cromulon' : rand() < 0.5 ? 'purrgil' : 'cromulon';
+    // something passes: the side's leviathan (sides.js: the pod, the head
+    // or the bear); null while one's already going, or when there's no
+    // room for its lane
+    pass(ship, who, rand = Math.random) {
+      if (pod.on || cromulon.on || bear.on) return null;
+      const kind = who?.leviathan ?? null;
+      if (kind === 'bear') {
+        const pts = convoyLane(ship, rand) ?? laneNear(ship, rand) ?? flybyLane(ship, rand, { cross: true });
+        if (!pts) return null;
+        bear.pts = pts;
+        bear.len = laneLength(pts);
+        bear.t = 0;
+        bear.spin.set(0.08 + rand() * 0.1, 0.15 + rand() * 0.1, 0.04);
+        bear.group.scale.setScalar(BEAR_SIZE);
+        bear.group.rotation.set(rand() * PI, rand() * PI, 0);
+        bear.on = true;
+        return 'bear';
+      }
       if (kind === 'purrgil') {
         // past you at a convoy's distance; beside a big planet, where that
         // lane would cut through it, across the space ahead instead
@@ -175,7 +241,7 @@ export function createLeviathans(parent, { small = false } = {}) {
     },
 
     get busy() {
-      return pod.on || cromulon.on;
+      return pod.on || cromulon.on || bear.on;
     },
 
     update(dt, t) {
@@ -221,6 +287,21 @@ export function createLeviathans(parent, { small = false } = {}) {
           for (const m of pod.members) m.group.visible = false;
         }
       }
+      if (bear.on) {
+        busy = true;
+        bear.t += (dt * BEAR_SPEED) / bear.len;
+        if (bear.t > 1) {
+          bear.on = false;
+          bear.group.visible = false;
+        } else {
+          bear.group.visible = true;
+          bezier(bear.pts, bear.t, p);
+          bear.group.position.set(p[0], p[1] + sin(t * 0.4) * 0.8, p[2]);
+          bear.group.rotation.x += dt * bear.spin.x;
+          bear.group.rotation.y += dt * bear.spin.y;
+          bear.group.rotation.z += dt * bear.spin.z;
+        }
+      }
       if (cromulon.on) {
         busy = true;
         cromulon.age += dt;
@@ -259,12 +340,14 @@ export function createLeviathans(parent, { small = false } = {}) {
         }
       }
       if (cromulon.on && segmentDistance(from, to, cromulon.group.position) < 4.5) return true;
+      if (bear.on && segmentDistance(from, to, bear.group.position) < BEAR_SIZE * 0.5) return true;
       return false;
     },
 
     dispose() {
       pod.group.removeFromParent();
       cromulon.group.removeFromParent();
+      bear.group.removeFromParent();
       for (const x of made) x.dispose();
     },
   };

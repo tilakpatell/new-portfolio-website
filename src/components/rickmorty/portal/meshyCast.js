@@ -38,11 +38,12 @@ const flat = (map, extra = {}) => toon(0xffffff, { map, gradientMap: lightRamp()
 const paint = (map, extra = {}) => lit(flat(map, extra));
 
 export const BASE = '/games/meshy';
-// An asset: one of Portal panic’s cast by name (its file in BASE, its clips
-// beside it), or a figure of the site’s from elsewhere by its whole path
-// (Albuquerque’s Walt and Jesse, for the wardrobe), which has no clips of
-// its own and walks on Rick’s, borrowed (clips.js).
-export const assetUrl = (name) => (name.startsWith('/') ? name : `${BASE}/${name}.glb`);
+// An asset: one of Portal panic’s cast by name (its file in BASE, or in the
+// folder FOLDERS gives it, its clips beside it), or a figure of the site’s
+// from elsewhere by its whole path (Albuquerque’s Walt and Jesse, for the
+// wardrobe), which has no clips of its own and walks on Rick’s, borrowed
+// (clips.js).
+export const assetUrl = (name) => (name.startsWith('/') ? name : `${FOLDERS[name] ?? BASE}/${name}.glb`);
 const ownClips = (name) => !name.startsWith('/');
 
 // game kind → the model, how tall it stands in the arena (world units; a
@@ -77,11 +78,45 @@ export const MESHY = {
   tammy: { a: 'tammy', h: 1.62 },
   ethan: { a: 'ethan', h: 1.72 },
   tinyrick: { a: 'tinyrick', h: 1.6 },
+  // Total Rickall's (rickmorty/world/interiors/rickall.js): the parasites who
+  // are rigged figures, Mr. Poopybutthole (his hat and all; he has a sat clip
+  // too, for the Smiths' couch), and the parasites who are props, which stand
+  // still and live with the C-137 world's models (FOLDERS). The ghost is
+  // Ghost in a Jar without his jar, which the living room makes.
+  pencilvester: { a: 'pencilvester', h: 1.6 },
+  sleepygary: { a: 'sleepygary', h: 1.78 },
+  hamurai: { a: 'hamurai', h: 1.8 },
+  amishcyborg: { a: 'amishcyborg', h: 1.78 },
+  mrbeauregard: { a: 'mrbeauregard', h: 1.85 },
+  cousinnicky: { a: 'cousinnicky', h: 1.8 },
+  frankenstein: { a: 'frankenstein', h: 2.1 },
+  poopybutthole: { a: 'poopybutthole', h: 1.5 },
+  reversegiraffe: { a: 'reversegiraffe', h: 2.3 },
+  ghostinajar: { a: 'ghostinajar', h: 0.45 },
+  photographyraptor: { a: 'photographyraptor', h: 1.3 },
+  tinkles: { a: 'tinkles', h: 0.8 },
+  babywizard: { a: 'babywizard', h: 0.7 },
+  mrsrefrigerator: { a: 'mrsrefrigerator', h: 1.8 },
+  // the rest of the family's, in their places (rickmorty/world/rules.js's
+  // PEOPLE): each loads when its room is first walked into; Snuffles is a
+  // prop, asleep on his dog bed
+  spacebeth: { a: 'spacebeth', h: 1.68 },
+  drwong: { a: 'drwong', h: 1.72 },
+  nancy: { a: 'nancy', h: 1.6 },
+  tricia: { a: 'tricia', h: 1.62 },
+  diane: { a: 'diane', h: 1.68 },
+  snuffles: { a: 'snuffles', h: 0.45 },
 };
-export const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick']);
+const RICKALL_FIGURES = ['pencilvester', 'sleepygary', 'hamurai', 'amishcyborg', 'mrbeauregard', 'cousinnicky', 'frankenstein', 'poopybutthole'];
+const RICKALL_PROPS = ['reversegiraffe', 'ghostinajar', 'photographyraptor', 'tinkles', 'babywizard', 'mrsrefrigerator'];
+const FAMILY_FIGURES = ['spacebeth', 'drwong', 'nancy', 'tricia', 'diane'];
+const FAMILY_PROPS = ['snuffles'];
+export const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick', ...RICKALL_FIGURES, ...FAMILY_FIGURES]);
+// the models not in the cast's own folder, by name: where they are
+export const FOLDERS = Object.fromEntries([...RICKALL_PROPS, ...FAMILY_PROPS].map((a) => [a, '/models/c137/rm']));
 const SCHOOL = ['goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick'];
-const C137_PEOPLE = new Set(['summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', ...SCHOOL]);
-// and the set pieces round the arenas (the C-137 Smiths load with their own world)
+const C137_PEOPLE = new Set(['summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', ...SCHOOL, ...RICKALL_FIGURES, ...RICKALL_PROPS, ...FAMILY_FIGURES, ...FAMILY_PROPS]);
+// and the set pieces round the arenas (the C-137 world's people load with their own world)
 export const MESHY_ASSETS = [...new Set(Object.values(MESHY).map((m) => m.a).filter((a) => !C137_PEOPLE.has(a))), 'cruiser', 'garage'];
 
 // a Morty clone's shirt: the yellow of Morty's texture swapped for another colour
