@@ -46,6 +46,9 @@ import * as THREE from 'three';
 import { gltfLoader } from '../../lib/three/gltf';
 import { sharpen } from '../../lib/three/textures';
 import { createMeshyCast } from '../rickmorty/portal/meshyCast';
+import { LOOK_KEY, readLooks } from '../rickmorty/wardrobe/looks';
+import { bodyAsset, bodyKind, dress, withWardrobe } from '../rickmorty/wardrobe/wear';
+import { local } from '../../lib/hooks';
 import { smoothNormals } from '../cockpit/crew';
 import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, bolt as makeBolt, byTrench, facingAlong, fly as flyBolt, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
 import { TRENCH_MODEL, trenchOf } from './deep';
@@ -214,10 +217,20 @@ function rigged(model, clips, tall, owned) {
   };
 }
 
-async function loadModel(spec, cast) {
+// the wardrobe's look for the cruiser's Rick or Morty (as kept, or as given)
+const WEARS = new Set(['rick', 'morty']);
+async function loadModel(spec, cast, looks = null) {
   if (spec.src.meshy) {
-    const c = cast.make(spec.src.meshy);
+    const look = WEARS.has(spec.src.meshy) ? (looks ?? readLooks(local.get(LOOK_KEY)))[spec.src.meshy] : null;
+    let c = null;
+    if (look) {
+      const asset = bodyAsset(look);
+      if (asset !== spec.src.meshy) await cast.load(null, [asset]).catch(() => {});
+      c = cast.make(bodyKind(look));
+    }
+    c ??= cast.make(spec.src.meshy);
     if (!c) return null;
+    const undress = look ? dress(c, look) : () => {};
     // the cast stands c.height tall in its own units: to metres, in map units
     c.group.scale.setScalar((spec.tall * METRE) / c.height);
     const bones = {};
@@ -232,7 +245,7 @@ async function loadModel(spec, cast) {
         blend(c.act, move);
         c.mixer.update(dt);
       },
-      dispose() {},
+      dispose: undress,
     };
   }
   if (spec.src.url) {
@@ -793,7 +806,7 @@ function createGround(planet, u, R, trench = null, look = null) {
           vec3 near = vec3(1.0);
           ${style.bump === 'plating' ? 'vec4 pl = texture2D(bumpMap, vBumpMapUv);\n          float blocks = texture2D(bumpMap, vBumpMapUv * 0.137 + 0.29).g;' : 'float n1 = texture2D(bumpMap, vBumpMapUv).r;\n          float n2 = texture2D(bumpMap, vBumpMapUv * 7.31 + 0.37).r;\n          float n3 = texture2D(bumpMap, vBumpMapUv * 0.117 + 0.71).r;'}
           ${style.glsl}
-          diffuseColor.rgb *= mix(near, base, smoothstep(0.35, 1.0, vEdge));`
+          diffuseColor.rgb *= mix(near, base, smoothstep(0.8, 1.0, vEdge));`
                 : `// grit, stones and patches over it, fading out toward the patch's edge
           float n1 = texture2D(bumpMap, vBumpMapUv).r;
           float n2 = texture2D(bumpMap, vBumpMapUv * 7.31 + 0.37).r;
@@ -803,7 +816,7 @@ function createGround(planet, u, R, trench = null, look = null) {
           }
         }`,
       )
-      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>${plated ? PLATE_GLOW : style?.glow ? `{${style.glow}\n}` : ''}`);
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>${plated ? PLATE_GLOW : style?.glow ? `\n{${style.glow}\n}` : ''}`);
   };
   mat.customProgramCacheKey = () => (plated ? 'foot-ground-plated' : style ? `foot-ground-${look.style}` : 'foot-ground');
   const mesh = new THREE.Mesh(g, mat);
@@ -1330,7 +1343,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   let loading = null;
   const load = (kind) => {
     const specs = PARTY[kind] ?? PARTY.rv;
-    cast = createMeshyCast();
+    cast = createMeshyCast(withWardrobe()); // (the wardrobe's bodies too, for the cruiser's two)
     const needCast = [...new Set([...specs.filter((s) => s.src.meshy).map((s) => s.src.meshy), 'gromflomite', 'cop', 'gazorpian'])];
     const castReady = cast.load(null, needCast).catch(() => {});
     loading = (async () => {
@@ -1629,7 +1642,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     root.add(wk.group);
     (async () => {
       if (spec.src.meshy) await cast?.load(null, [spec.src.meshy]).catch(() => {});
-      const fig = (cast && (await loadModel(spec, cast).catch(() => null))) ?? built({ ...spec, src: { built: spec.id === 'artoo' ? 'artoo' : 'han' } });
+      const fig = (cast && (await loadModel(spec, cast, g.looks ?? readLooks(null)).catch(() => null))) ?? built({ ...spec, src: { built: spec.id === 'artoo' ? 'artoo' : 'han' } }); // (in their own looks: the show's, if they've sent none)
       if (!guests.has(g.id) || !g.walkers.includes(wk)) return fig.dispose?.();
       wk.fig = fig;
       wk.group.add(fig.model);
@@ -1675,6 +1688,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       }
       g.name = o.name;
       g.ally = o.ally;
+      g.looks = o.looks ?? null; // (how they dress their Rick and Morty)
       g.ship = { n: o.foot.ship.n, r: 0.62 * 0.26 * (PARKED[o.foot.kind] ?? 1) * 0.55 };
       [o.foot.lead, o.foot.mate].forEach((to, i) => {
         let wk = g.walkers[i];

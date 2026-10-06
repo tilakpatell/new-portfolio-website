@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { createRenderer, disposeTree, precompile } from '../../lib/three/renderer';
+import { createGhosts } from '../middleearth/towns/ghosts';
 import { device } from '../../lib/device';
 import { H as SCREEN_H, W as SCREEN_W } from '../../stages/gb/font';
 import { newConsole, renderConsole, stepConsole } from '../../stages/gb/console';
@@ -1060,6 +1061,20 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     scene.add(f.group);
     folk.set(v.id, { ...f, phase: 0 });
   }
+  // the other islanders online, as pale ghosts (the towns' ghosts, in this
+  // island's figure; their names are the component's, over the canvas)
+  const ghosts = createGhosts({
+    height: () => 0,
+    make: () => {
+      const f = buildFigure({ cap: true, body: 0.7, legs: 0.3 });
+      return { group: f.group, top: 1.0, fig: f };
+    },
+    animate: (f, t, p) => poseWalk(f.fig, t * 7, p.moving ? 1 : 0, t),
+    tag: 0.0001,
+    halo: 0.6,
+    snap: 6,
+  });
+  scene.add(ghosts.group);
   const gulls = buildGulls(rand);
   scene.add(gulls.group);
   const landmarks = [];
@@ -1149,7 +1164,7 @@ export function createDotMatrix(canvas, { onLost } = {}) {
   const render = (state, ms = 16) => {
     if (disposed || gl.lost) return;
     const dt = Math.min(0.05, ms / 1000);
-    const { game, yaw = 0, dist = 12.5, pitch = 0.68 } = state;
+    const { game, yaw = 0, dist = 12.5, pitch = 0.68, travellers = null } = state;
     const t = game.t;
     const h = game.hero;
     const now = performance.now() / 1000;
@@ -1202,6 +1217,20 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     flutter.tick(now);
     for (const l of landmarks) l.tick(now);
     gameboy.tick(dt);
+    ghosts.update(travellers ?? [], now, dt);
+    // (the towns' ghosts are pale blue, lit and see-through; dithered, that
+    // vanishes against the sand, so here they're a dark grey and nearly
+    // solid, with the rim of light still on their edges and the shimmer)
+    ghosts.group.traverse((o) => {
+      if (!o.isMesh || !o.material.emissive) return; // (the figure's materials; not the ring of light's)
+      if (!o.material.userData.dmg) {
+        o.material.userData.dmg = true;
+        o.material.color.setRGB(0.22, 0.22, 0.22);
+        o.material.emissive.setRGB(0.1, 0.1, 0.1);
+        o.material.emissiveIntensity = 1;
+      }
+      o.material.opacity = Math.min(1, o.material.opacity * 2.3);
+    });
 
     // the villagers, on their beats, or stood facing the hero
     for (const v of VILLAGERS) {
@@ -1326,6 +1355,7 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     },
     info: size,
     renderer,
+    ghosts, // (for the QA scripts)
     render,
     resize,
     setPalette: (id) => dither.setPalette(id),
@@ -1373,6 +1403,7 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     },
     dispose() {
       disposed = true;
+      ghosts.dispose();
       disposeTree(scene);
       dither.dispose();
       target.depthTexture?.dispose();

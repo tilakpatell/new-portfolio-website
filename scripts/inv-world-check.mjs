@@ -16,14 +16,16 @@ const URL = `http://localhost:5173/?quality=${Q}#/invincible`;
 const chrome = process.env.CHROME ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const browser = await chromium.launch({ executablePath: chrome, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const errors = [];
-const ctx = await browser.newContext({ viewport: { width: W, height: H }, hasTouch: W < 600 });
-await ctx.addInitScript((q) => {
+const ctx = await browser.newContext({ viewport: { width: W, height: H }, hasTouch: W < 600, isMobile: W < 600 });
+await ctx.addInitScript(([q, intro]) => {
   window.localStorage.setItem('tp-intro', '1');
   window.localStorage.setItem('tp-3d', '"on"');
   window.localStorage.setItem('tp-worlds', '"load"');
   window.localStorage.setItem('tp-quality', JSON.stringify(q));
-  window.localStorage.removeItem('tp-inv-world-at');
-}, Q);
+  // (a first visit drops him in from the sky: INTRO=1 to see it, otherwise he's already on the lawn)
+  if (intro) window.localStorage.removeItem('tp-inv-world-at');
+  else window.localStorage.setItem('tp-inv-world-at', JSON.stringify({ x: -2044, y: 0, z: 253.5, face: 1.694 }));
+}, [Q, Boolean(process.env.INTRO)]);
 const page = await ctx.newPage();
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
@@ -54,6 +56,7 @@ const SHOTS = {
   rings: { p: [-2060, 22, 262], mode: 'air', yaw: 2.2, pitch: 0.05 },
   card: { p: [0, 38, 30], mode: 'air', yaw: Math.PI, pitch: 0.1 },
   rescue: { rescue: true, back: 28 },
+  fight: { fight: true },
   climb: { p: [0, 7600, 600], mode: 'air', yaw: Math.PI, pitch: 0.12 },
   orbit: { space: 'earth' },
   orbitnight: { space: 'earth', time: 'night' },
@@ -73,7 +76,17 @@ for (const [name, s] of Object.entries(SHOTS)) {
     const { api, sim } = window.__INVWORLD__;
     sim.snap = true;
     if (s.time) await api.setTime(s.time);
-    if (s.space) {
+    if (s.fight) {
+      // the Flaxans: start them now, give a few time to come through, and face the portal
+      sim.invadeAt = 0;
+      sim.speedup = 8; // (software rendering is slow: run the clock faster while they come through)
+      await new Promise((r) => setTimeout(r, 9000));
+      sim.speedup = 1;
+      sim.h = { ...sim.h, p: [1100, 140, -410], v: [0, 0, 0], spd: 0, mode: 'air', crouch: 0, stun: 0, face: Math.PI / 2 };
+      sim.yaw = Math.PI / 2 - 0.15;
+      sim.pitch = 0.12;
+      sim.dragAt = 1e9;
+    } else if (s.space) {
       // up through the top of the sky, if he isn't out there already
       if (api.zone !== 'space') {
         sim.h = { ...sim.h, p: [0, 8990, 0], v: [0, 300, 0], spd: 300, dir: [0, 1, 0], mode: 'air', exited: false, crouch: 0, stun: 0 };

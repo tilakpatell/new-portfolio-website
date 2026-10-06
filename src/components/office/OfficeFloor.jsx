@@ -254,7 +254,8 @@ export default function OfficeFloor({ say = (t) => t }) {
               className="office-mark"
               style={{ left: `${(s.x / 940) * 100}%`, top: `${(s.y / 520) * 100}%` }}
               aria-pressed={sel === s.id}
-              aria-label={`${s.name}, ${s.role}`}
+              // (named first with the initials it shows, for voice control)
+              aria-label={`${s.name.split(' ').map((w) => w[0]).join('')}, ${s.name}, ${s.role}`}
               // on a phone the desks are too close to tap: the names below do it
               aria-hidden={phone || undefined}
               tabIndex={phone ? -1 : undefined}

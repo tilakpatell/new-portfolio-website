@@ -125,6 +125,14 @@ export default function Cockpit({ start, onPeak, onDone }) {
     ctl.current?.pick(id);
   }, [id]);
 
+  // sat down: the page underneath is told the ship this launches into, so on
+  // a first visit the universe makes it (and fetches its model) while you
+  // sit here, not at the flash (pages/Universe)
+  useEffect(() => {
+    const ship = boarded && parseShip(vehicleById(boarded)?.ship);
+    if (ship) window.dispatchEvent(new CustomEvent('tp:board', { detail: { ship } }));
+  }, [boarded]);
+
   // the crew's first words, once you're sat down, one after another
   useEffect(() => {
     if (!boarded || launching) return undefined;

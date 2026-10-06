@@ -141,6 +141,7 @@ export const ACHIEVEMENTS = {
   titlecards: { name: 'The whole season', desc: 'Found all eight title cards hidden round the Graysons’ city' },
   rescue: { name: 'That actually helped', desc: 'Caught someone falling over the city and set them down' },
   mimic: { name: 'A fraction of our power', desc: 'Flew alongside an airliner over the Graysons’ city' },
+  flaxans: { name: 'Back through the portal', desc: 'Knocked every Flaxan out of the sky over the river in the Graysons’ city' },
   karman: { name: 'Neil Armstrong, eat your heart out', desc: 'Flew up out of the air over the Graysons’ city, into space' },
   moonwalk: { name: 'One small step', desc: 'Landed on the Moon as Invincible' },
   redplanet: { name: 'A long way from home', desc: 'Landed on Mars as Invincible' },

@@ -29,9 +29,11 @@ export const FAMILY = {
 
 export const familyFor = (theme) => FAMILY[theme] ?? null;
 
-// The company themes get a quiet motif in CSS (company.css), not a scene.
+// The company themes, and the projects' own on their pages, get a quiet
+// motif in CSS (motifs.css), not a scene.
 export const COMPANIES = ['aws', 'rtx', 'bose', 'pendar', 'empowerreg', 'src'];
-export const companyFor = (theme) => (COMPANIES.includes(theme) ? theme : null);
+export const PROJECT_MOTIFS = ['gameboy', 'claude', 'devspace', 'github', 'shell', 'fuse', 'finance', 'pytorch', 'nvidia'];
+export const motifFor = (theme) => (COMPANIES.includes(theme) || PROJECT_MOTIFS.includes(theme) ? theme : null);
 
 // The portfolio's own pages. The worlds, the universe map, the galaxy and
 // the Death Star draw their own 3D and get nothing behind them; neither does

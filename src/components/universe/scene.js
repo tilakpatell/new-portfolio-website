@@ -93,7 +93,7 @@ import { local as remembered } from '../../lib/hooks';
 import { plan as cockpitPlan } from '../cockpit/timeline';
 import { freeKit } from '../cockpit/kit';
 import { audioContext } from '../../lib/audio';
-import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePasses, singlePass } from '../../lib/three/renderer';
+import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePasses, revealAll, singlePass, texturesUnder, uploadTexture, uploadTextures } from '../../lib/three/renderer';
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
@@ -654,7 +654,7 @@ export async function create(canvas, ctx) {
   // the ones on yours to the foot scene)
   const guestsOnFoot = (now) => {
     const out = [];
-    for (const p of net?.peers?.values() ?? []) if (!p.blocked && p.name && p.foot && now - p.foot.at < STALE_MS) out.push({ id: p.id, name: p.name, ally: p.ally === 'ally', foot: p.foot });
+    for (const p of net?.peers?.values() ?? []) if (!p.blocked && p.name && p.foot && now - p.foot.at < STALE_MS) out.push({ id: p.id, name: p.name, ally: p.ally === 'ally', foot: p.foot, looks: p.looks ?? null });
     return out;
   };
   // everyone else out here (none with reduced motion), and the pops when a shot hits one
@@ -1501,6 +1501,12 @@ export async function create(canvas, ctx) {
     state.build = raw ? readBuildWire(writeBuild(raw)) : null;
     if (state.kind) setShip(state.kind, true);
   };
+  // the wardrobe's new looks: the cruiser's crew in their seats are dressed
+  // in them, so the cruiser is built again
+  const onLooks = () => {
+    if (!disposed && state.kind === 'cruiser' && !state.build) setShip('cruiser', true);
+  };
+  window.addEventListener('tp:looks', onLooks);
 
   // (force: the same crew, built again: its garage build changed)
   const setShip = (kind, force = false) => {
@@ -1542,6 +1548,10 @@ export async function create(canvas, ctx) {
     if (state.build) setPlumes(kind, state.model.engines); // (its own engines)
     refit();
     dress();
+    // its shaders (and its exhaust's) made now, off the main thread, not on
+    // its first frame: it may be set under the intro's cockpit, before the
+    // flash (pages/Universe's tp:board)
+    for (const root of [state.model.group, ...plumes.map((pl) => pl.trail.mesh)]) precompile(renderer, root, camera, scene, post.on ? post.composer.readBuffer : undefined);
     if (state.build) {
       // a garage build is whole as it is: no model to load over it
     } else if (SHIP_MODELS[kind]) {
@@ -1551,6 +1561,7 @@ export async function create(canvas, ctx) {
         .then((m) => {
           if (!m) return;
           if (disposed || state.model !== model || !model.mount(m)) disposeTree(m); // (the ship it was dressed for)
+          else uploadTextures(renderer, m); // (its pictures on the graphics chip now, not as it first comes into view)
           ctx.invalidate();
         });
     } else if (kind === 'cruiser') {
@@ -1565,6 +1576,8 @@ export async function create(canvas, ctx) {
             disposeTree(c.group);
             return;
           }
+          uploadTextures(renderer, c.group);
+          precompile(renderer, c.group, camera, scene, post.on ? post.composer.readBuffer : undefined);
           seatCrew = c.seated;
           // its exhaust leaves from its own exhaust cans
           if (c.engines?.length) {
@@ -3754,6 +3767,40 @@ export async function create(canvas, ctx) {
     });
   }
 
+  // Everything drawn once while the intro covers the page (lib/three/
+  // useScene asks, while the page is idle), hidden things too, so the first
+  // frame at the launch's flash doesn't stop for it: the pictures first, a
+  // few at a time (`timeLeft()`, the ms the page can spare now: a click on
+  // the welcome never waits on them), then one draw for the meshes and the
+  // rest. False until it's done.
+  let warming = null; // the pictures still to send ahead
+  const warmUp = (timeLeft = () => Infinity) => {
+    warming ??= texturesUnder(scene);
+    while (warming.length) {
+      uploadTexture(renderer, warming.pop());
+      if (timeLeft() <= 4) break;
+    }
+    if (warming.length) return false;
+    warming = null;
+    // (the frames' own way, passes and all, so it's their shaders that are
+    // made, but small: the passes' buffers 64 across, and one pixel of the
+    // canvas. It's what's sent that counts, not the picture; the first real
+    // frame sizes the buffers back up.)
+    const undo = revealAll(scene);
+    try {
+      renderer.setScissor(0, 0, 1, 1);
+      renderer.setScissorTest(true);
+      post.render(64, 64);
+    } catch (err) {
+      if (import.meta.env.DEV) console.warn('[universe] warm-up failed', err);
+    } finally {
+      undo();
+      renderer.setScissorTest(false);
+      renderer.setRenderTarget(null);
+    }
+    return true;
+  };
+
   return {
     // every shader made (the page waits for it before the first frame)
     ready,
@@ -3766,6 +3813,11 @@ export async function create(canvas, ctx) {
       watchPanel();
     },
     render,
+    // drawn once behind the intro (above); not on a low tier (software
+    // WebGL, a budget phone), where the graphics chip's work is the
+    // processor's and its memory is short: things go up as they're first
+    // seen there, as before
+    warmUp: tier === 'low' ? undefined : warmUp,
     update(next) {
       props = next;
       if ((next.ship ?? null) !== state.kind) {
@@ -3902,6 +3954,7 @@ export async function create(canvas, ctx) {
     },
     dispose() {
       disposed = true;
+      window.removeEventListener('tp:looks', onLooks);
       engine?.stop();
       well?.stop();
       infall?.dispose();

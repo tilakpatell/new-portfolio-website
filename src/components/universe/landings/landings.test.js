@@ -19,6 +19,10 @@ const FILES = {
   middleearth: () => import('./middleearth.js'),
   breakingbad: () => import('./breakingbad.js'),
   rickmorty: () => import('./rickmorty.js'),
+  transformers: () => import('./transformers.js'),
+  gaming: () => import('./gaming.js'),
+  marvel: () => import('./marvel.js'),
+  office: () => import('./office.js'),
 };
 
 describe('planet landings', () => {

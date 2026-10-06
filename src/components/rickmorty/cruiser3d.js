@@ -11,6 +11,9 @@
 import * as THREE from 'three';
 import { createMeshyCast } from './portal/meshyCast';
 import { inkHull } from '../../lib/three/ink';
+import { local } from '../../lib/hooks';
+import { LOOK_KEY, readLooks } from './wardrobe/looks';
+import { bodyAsset, bodyKind, dress, withWardrobe } from './wardrobe/wear';
 import { pixelRatio } from '../../lib/device';
 import { precompile, quiet, releaseContext } from '../../lib/three/renderer';
 
@@ -90,10 +93,12 @@ function glowTexture() {
 // cruiser. `ink` scales the outline's width, which is in the scene's units:
 // a scene that draws the cruiser smaller passes its scale. update(t) breathes
 // the crew and flickers the glow. Null if the saucer won't load.
-export async function buildCruiser({ ink = 1 } = {}) {
-  const cast = createMeshyCast();
+// `looks`: the wardrobe's (wardrobe/looks.js), as kept if none are given:
+// Rick and Morty in their seats as you've dressed them.
+export async function buildCruiser({ ink = 1, looks = readLooks(local.get(LOOK_KEY)) } = {}) {
+  const cast = createMeshyCast(withWardrobe());
   // the walk only to turn the seated clip to face ahead (see meshyCast)
-  await cast.load(null, ['saucer', 'rick', 'morty'], { clips: ['sit', 'walk'] });
+  await cast.load(null, [...new Set(['saucer', 'rick', 'morty', bodyAsset(looks.rick), bodyAsset(looks.morty)])], { clips: ['sit', 'walk'] });
   const body = cast.prop('saucer', TALL);
   if (!body) {
     cast.dispose();
@@ -105,13 +110,15 @@ export async function buildCruiser({ ink = 1 } = {}) {
   hull.add(body);
   // Rick at the wheel, Morty beside him, sat looking ahead
   const crew = [];
+  const undress = [];
   for (const kind of ['rick', 'morty']) {
-    const c = cast.make(kind);
+    const c = cast.make(bodyKind(looks[kind])) ?? cast.make(kind);
     if (!c) continue;
     const [tall, x] = CREW[kind];
     c.group.scale.setScalar(tall / c.height);
     c.group.position.set(x, CREW.y, CREW.z);
     for (const [n, a] of Object.entries(c.act ?? {})) a.setEffectiveWeight(n === 'sit' ? 1 : 0);
+    undress.push(dress(c, looks[kind]));
     c.group.traverse((o) => (o.userData.noPaint = true)); // (a paint job on the universe map's cruiser is the hull's, not theirs)
     hull.add(c.group);
     crew.push(c);
@@ -152,6 +159,7 @@ export async function buildCruiser({ ink = 1 } = {}) {
       glows.forEach((g, i) => g.scale.setScalar(0.7 + Math.sin(t * 13 + i * 2) * 0.06));
     },
     dispose() {
+      for (const off of undress) off();
       cast.dispose();
       for (const m of inks) m.dispose();
       body.traverse((o) => o.userData.glass?.dispose());

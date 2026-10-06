@@ -7,6 +7,7 @@ import Hangar from './Hangar';
 import { UNIVERSES } from './universes';
 import { ORDER, keyStep } from './layout';
 import MiniMap from './MiniMap';
+import GuideCue from '../guide/GuideCue';
 
 // The map: the 3D scene (scene.js and planets.js, through useScene) with the
 // planets' names as buttons over it. React renders the names once; the
@@ -30,7 +31,7 @@ import MiniMap from './MiniMap';
 // `charting` says the nav map's open (the director holds off meanwhile).
 const load = () => import('./scene');
 
-export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, shipName = '', loadout, build = null, onBuild, onFit, hangar = false, onHangar, net = null, onEvent, onLand, onCrash, drive = 'super', charting = false, onMap, startAt = null }) {
+export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, shipName = '', loadout, build = null, onBuild, onCrew = null, onFit, hangar = false, onHangar, net = null, onEvent, onLand, onCrash, drive = 'super', charting = false, onMap, startAt = null }) {
   const labels = useRef({});
   const tags = useRef(null);
   const stick = useRef(null);
@@ -327,7 +328,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 {onFoot ? 'Run' : 'Boost'}
               </button>
               {!onFoot && <FlightSettings controls={controls} onChange={setControls} open={settingsOpen} onOpen={openSettings} />}
-              {!onFoot && onFit && <Hangar ship={ship} shipName={shipName} loadout={loadout} build={build} onBuild={onBuild} onFit={onFit} open={hangar} onOpen={openHangar} />}
+              {!onFoot && onFit && <Hangar ship={ship} shipName={shipName} loadout={loadout} build={build} onBuild={onBuild} onCrew={onCrew} onFit={onFit} open={hangar} onOpen={openHangar} />}
               {arrive && (
                 <div className="universe-arrive" key={arrive.at} role="status">
                   <p className="universe-arrive-title">{arrive.title}</p>
@@ -338,16 +339,18 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
                     <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to walk, <kbd>Q</kbd> <kbd>E</kbd> to step aside, <kbd>Shift</kbd> to run, <kbd>Space</kbd> to jump, <kbd>F</kbd> or a click to fire, drag to look, <kbd>X</kbd> to switch, <kbd>V</kbd> their eyes, <kbd>G</kbd> back in
+                    <GuideCue />
                   </span>
-                  <span className="universe-hint-touch">Drag to walk, Jump, Run, Fire, Switch to play the other one, Ship to get back in</span>
+                  <span className="universe-hint-touch">Drag to walk, Jump, Run, Fire, Switch to play the other one, Ship to get back in<GuideCue touch /></span>
                 </p>
               )}
               {!flown && !onFoot && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
                     <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer (loop right over), <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>R</kbd> weapons, <kbd>T</kbd> target, <kbd>V</kbd> cockpit, <kbd>G</kbd> to land and step out, <kbd>H</kbd> hangar, <kbd>O</kbd> settings
+                    <GuideCue />
                   </span>
-                  <span className="universe-hint-touch">Drag anywhere to fly, the arrows to pull the nose up and down, hold Boost to go fast and Fire to shoot, View for the cockpit, Land at a planet to step out</span>
+                  <span className="universe-hint-touch">Drag anywhere to fly, the arrows to pull the nose up and down, hold Boost to go fast and Fire to shoot, View for the cockpit, Land at a planet to step out<GuideCue touch /></span>
                 </p>
               )}
             </>
