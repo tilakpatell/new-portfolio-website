@@ -1,11 +1,5 @@
 [
   {
-    "file": "public/audio/clips/i-know.mp3",
-    "page": "https://www.myinstants.com/en/instant/han-solo-i-know/",
-    "line": "I know.",
-    "by": "Han Solo"
-  },
-  {
     "file": "public/audio/clips/youre-goddamn-right.mp3",
     "page": "https://www.myinstants.com/en/instant/youre-goddamn-right-breaking-bad-22260/",
     "line": "You’re goddamn right.",
