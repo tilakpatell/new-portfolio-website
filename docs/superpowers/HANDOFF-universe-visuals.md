@@ -13,8 +13,8 @@ The design is `docs/superpowers/specs/2026-10-06-universe-visual-upgrade-design.
 
 | # | Checkpoint | PR | Status | Evidence |
 |---|---|---|---|---|
-| 0 | Poses and a baseline | #302 (poses, check script); this PR (baseline) | done | `lab/universe/baseline/{high,mid,low}.json` and 30 shots, taken on `main` at e4fcc10e after the scale changes: high calls 49–150, triangles 0.14–1.32 M; mid calls 49–148, triangles 0.14–1.14 M; low calls 49–146, triangles 0.14–1.14 M |
-| 1 | The render, finished | | not started | |
+| 0 | Poses and a baseline | #302 (poses, check script); #328 (baseline) | done | `lab/universe/baseline/{high,mid,low}.json` and 30 shots, taken on `main` at e4fcc10e after the scale changes: high calls 49–150, triangles 0.14–1.32 M; mid calls 49–148, triangles 0.14–1.14 M; low calls 49–146, triangles 0.14–1.14 M |
+| 1 | The render, finished | this PR | done | Against the baseline, `high`: calls +0 to +2 a pose, triangles at or under it (overview 150 → 150, 1.20 → 1.17 M; falcon-sun 141 → 142); `mid` and `low` within +4 calls and +0 % triangles (traffic and the station’s turn move a pose’s calls by ±2 from run to run; `mid` maw’s −120 k triangles is the Falcon’s model still loading, `low` station’s −37 calls its wheel turned). Contrast at maw on `high` 85.1 → 95.5. Smoke green on `/universe`, `/galaxy/hoth`, `/galaxy/tatooine/surface` |
 | 2 | One light | | not started | |
 | 3 | Air, clouds, seas, ground | | not started | |
 | 4 | The styles in the light | | not started | |
@@ -24,6 +24,17 @@ The design is `docs/superpowers/specs/2026-10-06-universe-visual-upgrade-design.
 | 8 | The sky on foot | | not started | |
 
 Scorecard (the spec’s “Where things stand” table is the before): fill in the after per category as checkpoints land, one line of evidence each.
+
+| Category | Before | After | Evidence |
+|---|---|---|---|
+| Art direction | 2 | | |
+| Hero (the ship) | 1.5 | | |
+| Enemies and traffic | 2 | | |
+| World | 2 | | |
+| Materials | 1.5 | | |
+| Lighting and render | 2 | 2.5 (checkpoint 1) | The dark gradients dithered with blue noise (no banding at 8 bits); the bloom sized to the page, capped at 640 on its long side; the home sun glares in the lens (one draw) and is hidden by what crosses it; the exposure eases into the dark and stops down into the sun. Contrast at maw 85.1 → 95.5 on `high`, at overview 77 → 89.3 |
+| VFX | 2 | | |
+| Performance evidence | 2 | 2.5 (checkpoint 0) | Ten fixed poses on three tiers, a committed baseline, and every checkpoint’s counts against it (`scripts/universe-check.mjs`) |
 
 ## Where the code differs from the plan
 
@@ -41,6 +52,7 @@ Scorecard (the spec’s “Where things stand” table is the before): fill in t
   - *The bloom was already sized to the page*, not a fixed 256 (the spec read an older `post.js`); `bloomSize` caps its first level at 640 on the long side, a quarter the pixels on a 2560 screen, and a quarter of the frame on `small`.
   - *The aberration is a uniform, not a `#define`*: setting it to 0 at pace step 3 costs nothing, where switching a define would recompile the pass mid-flight. Two extra reads a pixel while it’s on.
   - *The flare is the home sun’s only*; the galaxy’s suns and the second star (Task 2.1’s) are for checkpoint 2, which brings `lighting.js`. The galaxy has no `lib/three/pace` of its own, so `post.setLevel` isn’t called there.
+  - *The flare is one mesh, not five sprites*: its four pictures are painted once into a 2 × 2 atlas and its seven parts are quads of one geometry, so it costs one draw (seven sprites cost seven: falcon-sun went 141 → 150). It’s placed through the camera’s own projection, so it sits on the sun when the frame is shifted for the panel (a view offset).
 - **The Twins go round each other** (the owner’s ask, in checkpoint 1’s PR): `deep.js`’s `binaryAt(w, t)` and `moveBinaries(t)`; the place is the point they go round, and their solids move with them each frame on the scene’s clock.
 
 ## Checking it
