@@ -486,8 +486,8 @@
       "flip": true
     },
     "model": "01a1111e-f036-76cf-84a2-4c359456d67a",
-    "rig": "01a11143-4efd-704e-927a-30122467a516",
-    "idle": "01a11143-f0e7-739f-be32-441f23c2bad1"
+    "rig": "01a1114f-4ba0-7320-9cca-18d135278e59",
+    "idle": "01a1114f-e0da-7438-926a-44a3f56b917e"
   },
   "snuffles": {
     "image": "01a1102b-d992-72df-aaec-00208403af21",
@@ -502,10 +502,15 @@
   },
   "nancy": {
     "image": "01a11128-dfdf-7772-9999-f29c2e151d46",
-    "model": "01a1113b-026c-777d-86f1-d85c2512bfe3"
+    "model": "01a1113b-026c-777d-86f1-d85c2512bfe3",
+    "rig": "01a1114f-4b95-7423-bf39-110627b40ab2",
+    "idle": "01a1114f-e0d8-7122-bafe-83ff45f62a15"
   },
   "tricia": {
-    "image": "01a1113a-83a1-734f-b6a4-a49565edb4f4"
+    "image": "01a1113a-83a1-734f-b6a4-a49565edb4f4",
+    "model": "01a1114b-fc8f-76bb-829f-e94755ce9d28",
+    "rig": "01a1114f-9531-73be-a49c-53a000ae4fa3",
+    "idle": "01a11150-0c03-7080-8aec-04766d18ff31"
   },
   "diane": {
     "image": "01a11012-f983-72d6-9cdb-b92f71ac9fad",
@@ -533,7 +538,9 @@
   },
   "amishcyborg": {
     "image": "01a1102b-49a8-7361-991e-62688f5ae7b9",
-    "model": "01a1113f-d7c2-73c5-adec-547bddac8b3b"
+    "model": "01a1113f-d7c2-73c5-adec-547bddac8b3b",
+    "rig": "01a1114f-4b90-74f6-9116-a7445a14523e",
+    "idle": "01a1114f-e0d9-7726-ad55-f9da63bc623b"
   },
   "mrbeauregard": {
     "image": "01a11013-5f3f-7712-bd8b-97ca8a50f2bf",
@@ -543,7 +550,9 @@
   },
   "cousinnicky": {
     "image": "01a11128-dfe0-729d-9fb8-262d46053939",
-    "model": "01a1113b-0276-72b7-b763-ea7f3fc23e67"
+    "model": "01a1113b-0276-72b7-b763-ea7f3fc23e67",
+    "rig": "01a1114f-4b91-7464-974e-b8e6378d0fb2",
+    "idle": "01a1114f-e0da-77c5-a1d3-56295e59ec72"
   },
   "frankenstein": {
     "image": "01a11013-b574-7313-86cf-42254ebafe13",
@@ -556,7 +565,8 @@
     "model": "01a1102d-5053-7788-b95e-d7472e7406f0"
   },
   "ghostinajar": {
-    "image": "01a1113a-83a0-71d4-b701-00fb395aee16"
+    "image": "01a1113a-83a0-71d4-b701-00fb395aee16",
+    "model": "01a1114b-fc8c-75b5-8b39-f696a7793865"
   },
   "photographyraptor": {
     "image": "01a11014-428c-74d9-bbb8-63a620f8ed6f",
