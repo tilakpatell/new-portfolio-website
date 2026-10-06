@@ -1050,7 +1050,7 @@
   },
   "cockpit/walt": {
     "source": "https://www.meshy.ai",
-    "id": "01a1086c-b335-723a-a090-6bd52a6ee0d0",
+    "id": "01a111f8-ed5f-73f6-b299-8c48642a2ee5",
     "name": "walt, generated for this site with Meshy AI",
     "authors": [
       "Tilak Patel, with Meshy AI"
@@ -1059,7 +1059,7 @@
   },
   "cockpit/jesse": {
     "source": "https://www.meshy.ai",
-    "id": "01a10877-c1cb-76a4-b8f7-13bf6710e8bf",
+    "id": "01a11277-c6b9-71f1-875f-b6341b360483",
     "name": "jesse, generated for this site with Meshy AI",
     "authors": [
       "Tilak Patel, with Meshy AI"
@@ -1068,7 +1068,7 @@
   },
   "universe/rv-wings": {
     "source": "https://www.meshy.ai",
-    "id": "01a10933-257e-742e-a0d2-54b1e1e85f24",
+    "id": "01a111c3-9419-7695-a016-a5a67ebe49e9",
     "name": "the RV with wings, generated for this site with Meshy AI",
     "authors": [
       "Tilak Patel, with Meshy AI"
@@ -2052,6 +2052,30 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "gen3d/x-wing": {
+    "source": "https://github.com/microsoft/TRELLIS.2",
+    "name": "an X-wing starfighter, made for this site with TRELLIS.2 (trellis.cpp), baked in Blender on the site owner's machine (scripts/gen3d)",
+    "authors": [
+      "Tilak Patel, with Microsoft TRELLIS.2"
+    ],
+    "license": "Generated for this site; TRELLIS.2 is MIT"
+  },
+  "gen3d/tie-fighter": {
+    "source": "https://github.com/microsoft/TRELLIS.2",
+    "name": "a TIE fighter, made for this site with TRELLIS.2 (trellis.cpp), baked in Blender on the site owner's machine (scripts/gen3d)",
+    "authors": [
+      "Tilak Patel, with Microsoft TRELLIS.2"
+    ],
+    "license": "Generated for this site; TRELLIS.2 is MIT"
+  },
+  "gen3d/tie-interceptor": {
+    "source": "https://github.com/microsoft/TRELLIS.2",
+    "name": "a TIE interceptor, made for this site with TRELLIS.2 (trellis.cpp), baked in Blender on the site owner's machine (scripts/gen3d)",
+    "authors": [
+      "Tilak Patel, with Microsoft TRELLIS.2"
+    ],
+    "license": "Generated for this site; TRELLIS.2 is MIT"
   },
   "meshy/rm/mortymart": {
     "source": "https://www.meshy.ai",

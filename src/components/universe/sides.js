@@ -17,7 +17,8 @@
 // A hunter kind: hunterRules.js's row (size, speed, accel, hp, fire, tail,
 //   lead, spread, trait: one of hunterRules.js's TRAITS); an ally: wingRules.js's row, with its bolts' colour.
 // A troop: foot.js's TROOPS row by kind, with the gun it holds (gunplay.js's
-//   GUNS) or null.
+//   GUNS) or null, and the figure it's drawn as (footScene.js's troopLook: a
+//   Meshy cast kind, a model of its own, or built; the cast's own kind if none).
 
 // a weighted pick from [[id, weight]…]
 const weighted = (list, rand) => {
@@ -72,10 +73,10 @@ const STARWARS = {
   capital: 'navy', // what the Star Destroyer launches
   capitalShip: 'destroyer', // (the model the director's capital ship jumps in as)
   leviathan: 'purrgil',
-  // (the Empire has no troops on the ground yet: the Federation's stand in,
-  // as they always have; Lane B of the plan gives it stormtroopers)
-  troops: { gromflomite: { gun: 'rifle' }, cop: { gun: 'coppistol' }, gazorpian: { gun: null } },
-  squads: (n) => (n < 1 ? ['gromflomite'] : n < 3 ? ['gromflomite', 'gromflomite', 'cop'] : ['gromflomite', 'cop', 'cop', 'gazorpian']),
+  // the Empire on the ground: stormtroopers, scout troopers, and a probe
+  // droid that hangs back and calls more in (built: footScene.js's LOOKS)
+  troops: { stormtrooper: { gun: 'rifle', figure: { built: 'stormtrooper' } }, scout: { gun: 'blaster', figure: { built: 'scout' } }, probe: { gun: null, figure: { built: 'probe' } } },
+  squads: (n) => (n < 1 ? ['stormtrooper', 'stormtrooper', 'probe'] : n < 3 ? ['stormtrooper', 'stormtrooper', 'scout'] : ['stormtrooper', 'scout', 'scout', 'probe']),
   ahead: { tie: 3, tieadvanced: 1, tiebomber: 1, gunboat: 1 },
 };
 
@@ -126,8 +127,10 @@ const RICKMORTY = {
   capital: 'fedfleet',
   capitalShip: 'fedcruiser',
   leviathan: 'cromulon',
-  troops: { gromflomite: { gun: 'rifle' }, cop: { gun: 'coppistol' }, gazorpian: { gun: null } },
-  squads: (n) => (n < 1 ? ['gromflomite'] : n < 3 ? ['gromflomite', 'gromflomite', 'cop'] : ['gromflomite', 'cop', 'cop', 'gazorpian']),
+  // the Federation's, and from the third squad Evil Morty's guard (the cast's
+  // Morty, in the guard's yellow)
+  troops: { gromflomite: { gun: 'rifle' }, cop: { gun: 'coppistol' }, gazorpian: { gun: null }, mortyguard: { gun: 'laser', figure: { meshy: 'mortyclone' } } },
+  squads: (n) => (n < 1 ? ['gromflomite'] : n < 2 ? ['gromflomite', 'gromflomite', 'cop'] : n < 4 ? ['gromflomite', 'cop', 'mortyguard', 'mortyguard'] : ['cop', 'gazorpian', 'mortyguard', 'mortyguard']),
   ahead: { patrol: 4, councilship: 3, gromflomite: 2, gunship: 1, mortyfighter: 3, zigerion: 1 },
 };
 
@@ -174,8 +177,10 @@ const BREAKINGBAD = {
   capital: 'pollos',
   capitalShip: 'madrigal', // (a Madrigal freighter jumps in, and Gus's trucks come out of it)
   leviathan: 'bear',
-  troops: { dea: { gun: 'coppistol' }, cartel: { gun: 'rifle' } },
-  squads: (n) => (n < 1 ? ['dea'] : n < 3 ? ['dea', 'dea', 'cartel'] : ['dea', 'cartel', 'cartel', 'cartel']),
+  // DEA agents (Hank's figure), the cartel's gunmen (Tuco's), and Jack's crew
+  // (built: there's no model of them)
+  troops: { dea: { gun: 'coppistol', figure: { url: '/models/albuquerque/hank.glb' } }, cartel: { gun: 'rifle', figure: { url: '/models/albuquerque/tuco.glb' } }, jackscrew: { gun: 'rifle', figure: { built: 'jackscrew' } } },
+  squads: (n) => (n < 1 ? ['dea'] : n < 3 ? ['dea', 'dea', 'cartel'] : n < 4 ? ['dea', 'cartel', 'cartel', 'cartel'] : ['cartel', 'jackscrew', 'jackscrew']),
   ahead: { suv: 3, lowrider: 2, pollostruck: 1, deachopper: 1 },
 };
 

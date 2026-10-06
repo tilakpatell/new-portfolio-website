@@ -10,6 +10,7 @@
 
 import * as THREE from 'three';
 import { PARTY, loadPartyFigure } from '../../universe/footScene';
+import { HEROES, heroSpec } from '../heroes';
 import { readLooks } from '../../rickmorty/wardrobe/looks';
 import { METRE } from '../../universe/foot';
 import { RIDES } from './rides';
@@ -20,7 +21,8 @@ import { createGunplay } from '../../universe/gunplay';
 const CREW_MODELS = { artoo: 'r2d2' }; // (scene.js's)
 
 const QUIET = 3000; // ms with nothing from them: gone
-const SPECS = Object.fromEntries(Object.values(PARTY).flat().map((s) => [s.id, s]));
+// (the crews, and the heroes anyone may be playing as: heroes.js)
+const SPECS = Object.fromEntries([...Object.values(PARTY).flat(), ...HEROES.map((h) => heroSpec({ id: h.id, color: h.saber?.color ?? 'blue', hilt: h.saber?.hilt ?? 'skywalker' }))].map((s) => [s.id, s]));
 
 function nameTag(text) {
   const c = document.createElement('canvas');

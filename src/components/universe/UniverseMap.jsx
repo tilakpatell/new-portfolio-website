@@ -41,6 +41,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const arms = useRef(null); // the weapon readout (weapons.js)
   const siegeEl = useRef(null); // the Citadel's siege (siege.js)
   const prompt = useRef(null);
+  const enterBtn = useRef(null); // into the world you're down on (landings/wayin.js): the scene shows it
   const [flown, setFlown] = useState(false);
   // out of the ship on a planet (the controls change), and where you could land
   const [onFoot, setOnFoot] = useState(false);
@@ -92,6 +93,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       net,
       tags,
       prompt,
+      enter: enterBtn,
       frozen,
       drive,
       charting,
@@ -283,6 +285,13 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <span className="universe-siege-state" />
               </div>
               <p ref={prompt} className="universe-prompt" aria-live="polite" />
+              {/* (hidden until the crew are down on a planet with a world: the scene says when, and what it's called) */}
+              <button ref={enterBtn} type="button" className="universe-wayin" hidden onClick={() => view.current?.enter?.()}>
+                <span className="universe-wayin-label" />
+                <kbd className="universe-wayin-key" aria-hidden="true">
+                  Enter
+                </kbd>
+              </button>
               <div className="universe-climbs">
                 {climbButton(1, onFoot ? 'Jump' : 'Nose up')}
                 {!onFoot && climbButton(-1, 'Nose down')}
@@ -345,10 +354,10 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {onFoot && footHint && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to walk, <kbd>Q</kbd> <kbd>E</kbd> to step aside, <kbd>Shift</kbd> to run, <kbd>Space</kbd> to jump, <kbd>F</kbd> or a click to fire, drag to look, <kbd>X</kbd> to switch, <kbd>V</kbd> their eyes, <kbd>G</kbd> back in
+                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to walk, <kbd>Q</kbd> <kbd>E</kbd> to step aside, <kbd>Shift</kbd> to run, <kbd>Space</kbd> to jump, <kbd>F</kbd> or a click to fire, drag to look, <kbd>X</kbd> to switch, <kbd>V</kbd> their eyes, <kbd>G</kbd> back in, <kbd>Enter</kbd> into the world
                     <GuideCue />
                   </span>
-                  <span className="universe-hint-touch">Drag to walk, Jump, Run, Fire, Switch to play the other one, Ship to get back in<GuideCue touch /></span>
+                  <span className="universe-hint-touch">Drag to walk, Jump, Run, Fire, Switch to play the other one, Ship to get back in, Enter to go into the world<GuideCue touch /></span>
                 </p>
               )}
               {!flown && !onFoot && (

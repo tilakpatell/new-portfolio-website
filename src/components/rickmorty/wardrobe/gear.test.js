@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { GEAR, GEAR_SLOTS } from './looks';
+import { BB_GEAR, GEAR, GEAR_SLOTS } from './looks';
 import { buildGear } from './gear';
 
 const materials = (root) => {
@@ -10,9 +10,9 @@ const materials = (root) => {
 };
 
 describe('gear', () => {
-  it('builds every piece there is, in a few materials', () => {
+  it('builds every piece there is, Walt and Jesse’s too, in a few materials', () => {
     for (const slot of GEAR_SLOTS) {
-      for (const g of GEAR[slot]) {
+      for (const g of [...GEAR[slot], ...BB_GEAR[slot]]) {
         if (g.id === 'none') continue;
         const o = buildGear(g.id);
         expect(o, g.id).toBeInstanceOf(THREE.Object3D);
@@ -45,5 +45,24 @@ describe('gear', () => {
     const shades = new THREE.Box3().setFromObject(buildGear('shades'));
     expect(shades.max.z).toBeGreaterThan(0); // (the lenses: in front of the face)
     expect(shades.min.z).toBeLessThan(-0.2); // (the arms: back to the ears)
+  });
+
+  it('hangs a bag of blue and a flask from the hand, down −z from the grip', () => {
+    for (const id of ['bluebag', 'flask']) {
+      const box = new THREE.Box3().setFromObject(buildGear(id));
+      const size = box.getSize(new THREE.Vector3());
+      expect(size.z, id).toBeGreaterThan(size.y);
+      expect(box.min.z, id).toBeLessThan(-0.4);
+      expect(box.max.z, id).toBeLessThan(0.15);
+    }
+  });
+
+  it('puts the pork-pie hat on top, and the respirator over the nose and mouth', () => {
+    const hat = new THREE.Box3().setFromObject(buildGear('porkpie'));
+    expect(hat.max.y).toBeGreaterThan(0.1);
+    expect(hat.max.x - hat.min.x).toBeGreaterThan(0.8); // (its brim, wider than the head)
+    const mask = new THREE.Box3().setFromObject(buildGear('respirator'));
+    expect(mask.max.z).toBeGreaterThan(0.05); // (out in front of the face)
+    expect((mask.min.y + mask.max.y) / 2).toBeLessThan(-0.15); // (below the eyes)
   });
 });

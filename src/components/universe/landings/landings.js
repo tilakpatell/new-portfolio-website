@@ -97,7 +97,7 @@ export const LANDINGS = {
     },
     things: [
       { kind: 'rv', at: [-28, 16], r: 5, face: false, yaw: -1.2, door: { label: 'the RV', reach: 7 } },
-      { kind: 'figure', at: [-36, 24], r: 0.4, say: { name: 'Saul', line: 'Better call Saul!' }, opts: { url: '/models/albuquerque/saul.glb', tall: 1.74 } },
+      { kind: 'figure', at: [-36, 24], r: 0.4, say: { name: 'Saul', line: 'Better call Saul!' }, opts: { url: '/models/albuquerque/saul.glb', tall: 1.78 } },
       { kind: 'figure', at: [26, 38], r: 0.4, say: { name: 'Mike', line: 'No more half measures.' }, opts: { url: '/models/albuquerque/mike.glb', tall: 1.8 } },
       { kind: 'barrel', at: [-23, 11], r: 0.5 },
       { kind: 'barrel', at: [-22.2, 12.1], r: 0.5 },

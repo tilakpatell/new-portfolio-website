@@ -1,4 +1,4 @@
-// A phone, floating just out past the asteroid belt, that nothing mentions:
+// A phone, floating just out past the home system, that nothing mentions:
 // a yellowed Pixel that says SAMSUNG gAlaxy (dickansh/galaxyPhone.js), its
 // lock screen a portal. It's on no list (not the universes, the wonders, the
 // nav map, the mini-map, the beacons or the tour) and nothing crashes into
@@ -9,13 +9,15 @@
 // near flies you into it. createPhone() → { group, update(t, camera), radius, dispose }.
 
 import { build } from '../dickansh/galaxyPhone';
-import { HOME_SPREAD } from './scale';
 
-// (out past Resume, beyond the belt and above the disc: clear of every route
-// the autopilot flies between the places, and outside the sun's glow; out
-// as far as the belt went when the home system grew, scale.js, but no higher:
-// it stays under the ship's ceiling)
-export const PHONE = { at: [0, 48, -210 * HOME_SPREAD], scale: 9, reach: 40, touch: 9 };
+// (as big as a world, the world behind it being one: half its height about
+// a planet's radius (scale.js). Out past the home system's edge, where the
+// ceiling's lifting, in the widest gap between the ways out to the worlds
+// and the wonders (between the Office and Music), so no trip the autopilot
+// flies goes through it and asks for its password on the way; above the
+// disc, and outside the sun's glow)
+const AT = { angle: 2.44, out: 470, up: 60 };
+export const PHONE = { at: [Math.cos(AT.angle) * AT.out, AT.up, Math.sin(AT.angle) * AT.out], scale: 45, reach: 110, touch: 45 }; // (reach: about a planet's, 1.9 of half its height)
 
 export function createPhone() {
   const phone = build();

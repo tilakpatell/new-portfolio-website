@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { TROOPS } from './foot';
 import { CREWS, crewById, linesFor, parseShip } from './crews';
 import { ORDER } from './layout';
 
@@ -81,6 +82,8 @@ describe('the crews', () => {
       said(linesFor(crew, 'event', 'overdrive'), crew, 'overdrive');
       // a rock hit at super speed (rockHits.js)
       said(linesFor(crew, 'event', 'rock'), crew, 'rock');
+      // the fleet war's battles (front.js): every moment of one, each crew its own words
+      for (const sub of ['front', 'join', 'gens', 'bridge', 'reactor', 'won', 'lost', 'warWon', 'warLost']) said(crew.events?.battle?.[sub], crew, `battle ${sub}`);
       for (const w of WONDERS) said(linesFor(crew, 'wonder', w.id), crew, `wonder ${w.id}`);
       // the bounty hunters shot down, in flight (Slave I's line is the flyby's; Phoenixperson's and the Cousins' are their own)
       for (const [, f] of Object.entries(side.factions)) if (f.role === 'bounty') for (const [k] of f.kinds) expect(linesFor(crew, 'kill', k), `${crew.id} kill ${k}`).not.toBe(linesFor(crew, 'kill', 'any'));
@@ -110,6 +113,10 @@ describe('the crews on foot', () => {
         ...['land', 'out', 'squad', 'hurt', 'down', 'up', 'cleared', 'far', 'nowhere', 'in'].map((id) => linesFor(crew, 'foot', id)),
         // (each troop of the crew's side has its own line, not the catch-all)
         ...Object.keys(sideFor(crew.id).troops).map((kind) => crew.foot.kill[kind]),
+        // (a squad of Evil Morty's guard isn't a squad of bugs)
+        ...(sideFor(crew.id).troops.mortyguard ? [linesFor(crew, 'foot', 'squad', 'mortyguard') !== linesFor(crew, 'foot', 'squad', 'gromflomite') ? crew.foot.squad.mortyguard : null] : []),
+        // (a probe droid that's called a squad in, where the side has one)
+        ...(Object.keys(sideFor(crew.id).troops).some((k) => TROOPS[k].calls) ? [crew.foot.called] : []),
         ...PARTY[crew.id].map((p) => linesFor(crew, 'foot', 'swap', p.id)),
         // another pilot's crew down too, and anyone's double from another dimension
         linesFor(crew, 'foot', 'friend'),
@@ -122,6 +129,22 @@ describe('the crews on foot', () => {
         for (const [who, text] of exchange) {
           expect(crew.speakers[who], `${crew.id}: ${who}`).toBeTruthy();
           expect(text.length).toBeGreaterThan(2);
+        }
+      }
+    }
+  });
+
+  it('have a word for each character of their side who comes by, and from them', async () => {
+    const { sideFor } = await import('./sides');
+    const { visitorsOf } = await import('./npcs/index');
+    for (const crew of CREWS) {
+      for (const c of visitorsOf(sideFor(crew.id).id)) {
+        for (const key of ['seen', 'hello', 'hit', 'leaving']) expect(linesFor(crew, 'npc', c.id, key), `${crew.id} ${c.id} ${key}`).toBeTruthy();
+        // a merchant names the part (Comms.jsx fills it in); an informant has a word for whatever's coming
+        if (c.brain === 'merchant') expect(linesFor(crew, 'npc', c.id, 'offer')?.some(([, text]) => text.includes('{part}')), `${crew.id} ${c.id} offer`).toBe(true);
+        if (c.brain === 'informant') {
+          expect(linesFor(crew, 'npc', c.id, 'tip', 'nothing-in-particular'), `${crew.id} ${c.id} tip`).toBeTruthy();
+          expect(linesFor(crew, 'npc', c.id, 'tip', 'hunt'), `${crew.id} ${c.id} tip hunt`).not.toBe(linesFor(crew, 'npc', c.id, 'tip', 'nothing-in-particular'));
         }
       }
     }

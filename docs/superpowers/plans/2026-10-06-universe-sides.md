@@ -121,6 +121,9 @@
 - `foot.js` `TROOPS` rows for `stormtrooper`, `scout`, `probe` (droid: no gun, calls a squad: event `'called'`), `mortyguard`, `dea`, `cartel`, `jackscrew`.
 - Figures: Star Wars built (as Luke: `footScene.js`'s `built`), Rick and Morty's `evilmorty` wardrobe body, Breaking Bad's from `public/models/albuquerque/` (`hank.glb`, `tuco.glb`, `declan.glb`: check each is on the Meshy skeleton with `scripts/`' inspect tooling; if not, built stand-ins).
 - Lines per troop kind in each crew's `foot.kill`.
+- [x] `foot.js` rows for `stormtrooper`, `scout`, `probe` (`calls: 8`: `march` returns `calls`, once each; `footScene.js` sends a squad of the side's others and says `foot.called`), `mortyguard`, `jackscrew`; tested in `foot.test.js`.
+- [x] Figures by `side.troops[kind].figure` (`footScene.js`'s `troopLook`): `{ built }` (`LOOKS`: stormtrooper, scout, jackscrew; the probe droid its own build), `{ meshy }` (Evil Morty's guard is the cast's `mortyclone`, yellow), `{ url }` (the DEA is `hank.glb`, the cartel `tuco.glb`: all fourteen of `public/models/albuquerque/` have the Meshy skeleton's `Hips`, toes and `head_end`; loaded once a walk and copied). As built: the Star Wars crews no longer meet the Federation's troops on the ground; Jack's crew are built (there's no model of them; Declan's isn't theirs). `sides.test.js` checks each side's troops are its own, with real guns and figures that exist.
+- [x] Lines: `foot.kill` for each new kind, `foot.called` for the X-wing and the Falcon (`crews.test.js`).
 
 ## Lane C: NPCs with brains (Opus session)
 
@@ -129,8 +132,10 @@
 - `world`: `{ you: { x, y, z, heading, pitch, speed }, hunters: targets[], allies: [], traffic: [] }`.
 - Brains: `wingman` (delegates to `wingRules`), `bounty` (delegates to `createHunt` with one faction), `merchant`, `informant`, `rival`; each a file in `universe/npcs/brains/` exporting `(npc, state, world, dt, rand) → intent`.
 - Relations: `fears` → `leaving` once a faction in `fears` is in `world.hunters`; `hunts` → the skirmish engine with the NPC as escort.
+- [x] `npcRules.js` and `npcs/brains/` (`common.js`, `merchant`, `informant`, `rival`, `wingman`, `bounty`), tested in `npcRules.test.js`. As built (where the code disagreed with the plan): `update(dt, world)` returns `{ events }` and the engine flies each one itself (`live[i].pos`, `vel`), so the drawing reads positions, not thrust and turn; `wingman` and `bounty` hand the NPC over (`delegate`) to the wing and the hunt, which already fly those, rather than wrapping them; `world` is `{ you, hunters, stations, solids, next }`; `hunts` is the engine's own chase-and-fire, not the skirmish engine; the rival is hit by number (`hit(id, damage)`) and is on the guns (`targets`). `director.foretell(side)` (tested) is what the informant tells.
 
 ### Task C2: the registry and the first six
 - `universe/npcs/index.js`: `saul`, `mike`, `fett`, `birdperson`, `squanchy`, `evilmorty`, with lines per crew in `crews.js` under `npc: { id: { hello, hit, leaving, seen } }`.
 - `scene.js`: `createNpcs(map, { fleet, solids })` draws intents; the merchant parks at the nearest station and offers a part (the hangar's `modules.js`) on the radio; the informant says the director's next event.
 - `crews.test.js`: every NPC on a crew's side has `hello` and `leaving` lines.
+- [x] `npcs/index.js` with the six and Lando (so the Star Wars crews have a merchant too), tested in `npcs/npcs.test.js` (sides, brains, drawable ships, real factions in the relations, a bounty is its side's bounty, someone to meet on every side). `npcs.js` draws them; `scene.js`'s `meet` brings a visitor every 100 to 170 s when it's quiet, at `skirmishSpot`; `STATIONS` are the map's planets. Lines: `crews.js`'s `npc` for each visitor of each crew's side (`seen`, `hello`, `hit`, `leaving`; a merchant's `offer` with `{part}`; an informant's `tip` by event, with `any`), checked by `crews.test.js`; `linesFor(crew, 'npc', id, key, sub)`.

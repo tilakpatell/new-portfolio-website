@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from '../../../lib/hooks';
 import { WorldHost, useWorld } from '../../../runtime';
 import surfaceModule from './module';
+import { heroById } from '../heroes';
 
 // A world's 3D (scene.js, a world module on the world runtime:
 // ./module.js) and the controls over it on a
@@ -10,13 +11,14 @@ import surfaceModule from './module';
 // whatever's to hand (E on a keyboard). While the 3D loads the box says
 // so; without 3D, a note that the world needs it.
 
-export default function SurfaceView({ system, mission = null, ship, loadout, build = null, found, done, compass, net = null, handle, onEvent }) {
+export default function SurfaceView({ system, mission = null, ship, hero = null, loadout, build = null, found, done, compass, net = null, handle, onEvent }) {
+  const saber = Boolean(hero && heroById(hero.id)?.weapon === 'saber');
   const events = useRef(onEvent);
   events.current = onEvent;
   const [coarse] = useState(() => (typeof window !== 'undefined' ? (window.matchMedia?.('(pointer: coarse)').matches ?? false) : false));
   const reduced = useReducedMotion();
   const { host, on, meant, rt } = useWorld(surfaceModule, {
-    props: { system, mission, ship, loadout, build, found, done, compass, net, reduced },
+    props: { system, mission, ship, hero, loadout, build, found, done, compass, net, reduced },
     onEvent: (e) => events.current?.(e),
   });
   // the scene itself, while it's the world on the runtime
@@ -106,7 +108,17 @@ export default function SurfaceView({ system, mission = null, ship, loadout, bui
           <div className="surface-stick" onPointerDown={stickDown} onPointerMove={stickMove} onPointerUp={stickUp} onPointerCancel={stickUp} aria-hidden="true">
             <span ref={knob} />
           </div>
-          <div className="surface-buttons">
+          <div className={saber ? 'surface-buttons surface-buttons-saber' : 'surface-buttons'}>
+            {saber && (
+              <button type="button" className="surface-btn surface-btn-throw" onPointerDown={press('throw')} onContextMenu={(e) => e.preventDefault()}>
+                Throw
+              </button>
+            )}
+            {saber && (
+              <button type="button" className="surface-btn surface-btn-block" onPointerDown={press('block')} onPointerUp={release('block')} onPointerCancel={release('block')} onPointerLeave={release('block')} onContextMenu={(e) => e.preventDefault()}>
+                Block
+              </button>
+            )}
             <button type="button" className="surface-btn" onPointerDown={press('jump')} onContextMenu={(e) => e.preventDefault()}>
               Jump
             </button>
@@ -117,7 +129,7 @@ export default function SurfaceView({ system, mission = null, ship, loadout, bui
               Run
             </button>
             <button type="button" className="surface-btn surface-btn-fire" onPointerDown={press('fire')} onPointerUp={release('fire')} onPointerCancel={release('fire')} onPointerLeave={release('fire')} onContextMenu={(e) => e.preventDefault()}>
-              Fire
+              {saber ? 'Swing' : 'Fire'}
             </button>
           </div>
         </div>

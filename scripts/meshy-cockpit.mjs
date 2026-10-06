@@ -9,7 +9,11 @@
 // for the web into public/models/cockpit/. The output is committed, so the
 // site never calls Meshy.
 //
-//   node --env-file=.env.local scripts/meshy-cockpit.mjs <step> [name …]
+//   node --env-file=.env.local scripts/meshy-cockpit.mjs <step> [name … | hd]
+//
+// `hd`: Walt and Jesse as scripts/meshy-albuquerque.mjs's hd set made them
+// again (about 40,000 faces, 2k textures), with their clips made again on
+// their new skeletons, over the originals.
 //
 // Steps, in order: images (9 credits each), models (30), rig (5), clips (3
 // a clip), fetch (free). Each task's id is kept in
@@ -60,6 +64,24 @@ export const ASSETS = {
   walt: { rig: '01a1086f-05b2-7469-8c15-7c8205721b17', model: '01a1086c-b335-723a-a090-6bd52a6ee0d0', tex: 1024, clips: { idle: IDLE, sit: SIT } },
   jesse: { rig: '01a1087a-bd22-721a-a542-46f4ec4492ca', model: '01a10877-c1cb-76a4-b8f7-13bf6710e8bf', tex: 1024, clips: { sit: SIT } },
 };
+
+// The HD set: Walt and Jesse as scripts/meshy-albuquerque.mjs's waltHd and
+// jesseHd (their skeletons, made on the new models), written over the
+// originals (`as`) with their clips made again on those skeletons, as a
+// clip carries its own skeleton's bone lengths. Meshy paints them at 4k;
+// they ship at 2k (the loader halves it on a phone, and again on a weak
+// device).
+const HD = {
+  waltHd: { rig: '01a111fb-1207-74b6-90e7-1aa608e01f9f', model: '01a111f8-ed5f-73f6-b299-8c48642a2ee5', tex: 2048, clips: { idle: IDLE, sit: SIT }, as: 'walt' },
+  jesseHd: { rig: '01a111c5-2005-748f-99f4-20609ad13592', model: '01a111c2-56a7-745d-9693-630a4602dbef', tex: 2048, clips: { sit: SIT }, as: 'jesse' },
+};
+// Jesse in his hoodie made again (scripts/meshy-albuquerque.mjs's
+// jessePinkHd: his first HD face was a cartoon grin), sitting on a clip made
+// on his new skeleton; made by name, not with `hd`
+const JESSE_AGAIN = {
+  jessePinkHd: { rig: '01a1127a-169f-77fd-a431-57b33cf5170f', model: '01a11277-c6b9-71f1-875f-b6341b360483', tex: 2048, clips: { sit: SIT }, as: 'jesse' },
+};
+Object.assign(ASSETS, HD, JESSE_AGAIN);
 
 const key = process.env.MESHY_API_KEY;
 const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
@@ -198,17 +220,18 @@ const steps = {
       const rig = rigOf(n, s);
       if (!rig) throw new Error(`${n}: not rigged yet`);
       const r = (await api('GET', `/v1/rigging/${rig}`)).result;
-      const files = [[r.rigged_character_glb_url, `${n}.glb`, a.tex, false]];
+      const as = a.as ?? n; // (the name it's written as)
+      const files = [[r.rigged_character_glb_url, `${as}.glb`, a.tex, false]];
       for (const clip of Object.keys(a.clips)) {
         if (!s[n]?.[clip]) throw new Error(`${n}: no ${clip} clip yet`);
-        files.push([(await api('GET', `/v1/animations/${s[n][clip]}`)).result.animation_glb_url, `${n}-${clip}.glb`, 0, true]);
+        files.push([(await api('GET', `/v1/animations/${s[n][clip]}`)).result.animation_glb_url, `${as}-${clip}.glb`, 0, true]);
       }
       for (const [url, file, tex, clip] of files) {
         const raw = join(tmp, file);
         await download(url, raw);
         await squeeze(raw, join(OUT, file), { tex, clip });
       }
-      credits[`cockpit/${n}`] = { source: 'https://www.meshy.ai', id: a.model ?? s[n].model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
+      credits[`cockpit/${as}`] = { source: 'https://www.meshy.ai', id: a.model ?? s[n].model, name: `${as}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
       console.log(`fetch    ${n.padEnd(8)} ${files.map((f) => f[1]).join(', ')}`);
     }
     await writeFile(creditsFile, `${JSON.stringify(credits, null, 2)}\n`);
@@ -220,7 +243,8 @@ async function main() {
   if (!key) throw new Error('Set MESHY_API_KEY in .env.local and run with node --env-file=.env.local.');
   const [step, ...only] = process.argv.slice(2);
   if (!steps[step]) throw new Error(`step: ${Object.keys(steps).join(' | ')}`);
-  const names = only.length ? only : Object.keys(ASSETS);
+  // (`hd` stands for the HD set)
+  const names = only.length ? only.flatMap((n) => (n === 'hd' ? Object.keys(HD) : [n])) : Object.keys(ASSETS);
   for (const n of names) if (!ASSETS[n]) throw new Error(`unknown asset ${n}`);
   const s = await load();
   await steps[step](names, s);

@@ -14,6 +14,14 @@ describe('the 3D models that are other people’s', () => {
     expect(names.length).toBeGreaterThan(0);
     for (const [name, m] of Object.entries(CREDITS)) {
       for (const key of ['title', 'author', 'as']) expect(m[key], `${name}: ${key}`).toBeTruthy();
+      if (m.license === 'permission') {
+        // one used with its author's permission (a Battlefront II remaster model, scripts/battlefront-import.mjs): the permission's wording, and where it and its author are
+        expect(m.permission, name).toMatch(/permission/i);
+        expect(m.source, name).toMatch(/^https:\/\//);
+        expect(m.authorUrl, name).toMatch(/^https:\/\//);
+        expect(m.licenseUrl, name).toMatch(/^https:\/\//);
+        continue;
+      }
       expect(m.source, name).toMatch(/^https:\/\/sketchfab\.com\/3d-models\//);
       expect(m.authorUrl, name).toMatch(/^https:\/\/sketchfab\.com\//);
       // attribution licences, share-alike and non-commercial ones too (the site sells nothing), but none that forbids changing it: they're all reduced for the web

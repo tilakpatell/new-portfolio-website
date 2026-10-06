@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BODIES, GEAR, GEAR_SLOTS, LOOK_KEY, REGIONS, SWATCHES, WHO, bodyOf, defaultLook, readLook, readLookWire, readLooks, wornFiles, writeLook } from './looks';
+import { BODIES, CASTS, EVERYONE, GEAR, GEAR_SLOTS, LOOK_KEY, REGIONS, SWATCHES, WHO, bodyOf, castOf, castOfCrew, defaultLook, gearById, gearOf, gearWorn, readLook, readLookWire, readLooks, swatchById, swatchesOf, wornFiles, writeLook } from './looks';
 
 describe('the wardrobe', () => {
   it('dresses Rick and Morty, each in bodies the site has rigged', () => {
@@ -51,10 +51,10 @@ describe('the wardrobe', () => {
     expect(readLook('rick', { body: 'rick', gear: { head: 'tophat' } }).gear.head).toBe('tophat');
   });
 
-  it('keeps both looks under one key', () => {
+  it('keeps every look under one key (Walt and Jesse beside Rick and Morty)', () => {
     expect(LOOK_KEY).toBe('tp-wardrobe');
-    expect(readLooks({ rick: { body: 'suitrick' }, morty: 7, zzz: {} })).toEqual({ rick: readLook('rick', { body: 'suitrick' }), morty: defaultLook('morty') });
-    expect(readLooks('x')).toEqual({ rick: defaultLook('rick'), morty: defaultLook('morty') });
+    expect(readLooks({ rick: { body: 'suitrick' }, morty: 7, zzz: {} })).toEqual({ rick: readLook('rick', { body: 'suitrick' }), morty: defaultLook('morty'), walt: defaultLook('walt'), jesse: defaultLook('jesse') });
+    expect(readLooks('x')).toEqual({ rick: defaultLook('rick'), morty: defaultLook('morty'), walt: defaultLook('walt'), jesse: defaultLook('jesse') });
   });
 
   it('goes over the wire as ids, and only ids come back', () => {
@@ -76,5 +76,109 @@ describe('the wardrobe', () => {
     const armed = readLooks({ rick: { body: 'rick', gear: { hand: 'portalgun' } }, morty: { body: 'morty', gear: { hand: 'portalgun', face: 'shades' } } });
     expect(wornFiles(armed)).toEqual(['/models/wardrobe/portalgun.glb']);
     expect(wornFiles(readLooks({ rick: { gear: { hand: 'plumbus' } } }))).toEqual([]); // (built in code: nobody else's)
+  });
+});
+
+describe('the casts', () => {
+  it('groups who it dresses by cast, and knows which crew is which', () => {
+    expect(CASTS).toEqual({ rickmorty: ['rick', 'morty'], breakingbad: ['walt', 'jesse'] });
+    expect(EVERYONE).toEqual(['rick', 'morty', 'walt', 'jesse']);
+    expect(WHO).toEqual(CASTS.rickmorty); // (Rick and Morty’s, as it always was)
+    expect(castOf('walt')).toBe('breakingbad');
+    expect(castOf('morty')).toBe('rickmorty');
+    expect(castOf('han')).toBeNull();
+    expect(castOfCrew('cruiser')).toBe('rickmorty');
+    expect(castOfCrew('rv')).toBe('breakingbad');
+    expect(castOfCrew('falcon')).toBeNull();
+    expect(castOfCrew(null)).toBeNull();
+  });
+
+  it('dresses Walt and Jesse in the site’s own figures of them, the one the site shows first', () => {
+    expect(BODIES.walt.map((b) => b.id)).toEqual(['walt', 'mrwhite', 'heisenberg']);
+    expect(BODIES.jesse.map((b) => b.id)).toEqual(['jesse', 'jesselab']);
+    for (const who of EVERYONE) {
+      expect(BODIES[who][0].id).toBe(who);
+      for (const b of BODIES[who]) {
+        expect(b.name).toMatch(/\w/);
+        expect(b.h).toBeGreaterThan(1.2);
+        expect(Object.keys(b.regions).length).toBeGreaterThan(0);
+        for (const r of Object.keys(b.regions)) expect(REGIONS).toContain(r);
+      }
+    }
+    // (a figure of the site’s, by its whole path, rather than one of Portal panic’s cast)
+    for (const b of [...BODIES.walt, ...BODIES.jesse]) expect(b.asset).toMatch(/^\/models\/[\w/-]+\.glb$/);
+    expect(bodyOf('walt', 'heisenberg').hat).toBe(true);
+  });
+
+  it('has each cast’s own swatches, named for its show, none shared between them', () => {
+    expect(swatchesOf('rick')).toBe(SWATCHES);
+    expect(swatchesOf('jesse')).toBe(swatchesOf('walt'));
+    const bb = swatchesOf('walt');
+    expect(bb).toHaveLength(16);
+    for (const s of bb) expect(s.hex).toMatch(/^#[0-9a-f]{6}$/);
+    expect(bb.map((s) => s.id)).toEqual(expect.arrayContaining(['hazmatyellow', 'bluesky', 'heisenbergblack', 'waltgreen', 'tanjacket', 'pollosyellow', 'beaniegrey', 'rvbeige', 'deserttan', 'hoodiered', 'hoodieyellow']));
+    const all = [...SWATCHES, ...bb].map((s) => s.id);
+    expect(new Set(all).size).toBe(all.length);
+    expect(swatchById('bluesky').name).toMatch(/Blue Sky/);
+  });
+
+  it('has each cast’s own gear, nothing first in every slot', () => {
+    expect(gearOf('morty')).toBe(GEAR);
+    const bb = gearOf('jesse');
+    expect(gearOf('walt')).toBe(bb);
+    for (const slot of GEAR_SLOTS) {
+      expect(bb[slot][0].id).toBe('none');
+      expect(new Set(bb[slot].map((g) => g.id)).size).toBe(bb[slot].length);
+    }
+    expect(bb.head.map((g) => g.id)).toEqual(expect.arrayContaining(['porkpie', 'jessebeanie']));
+    expect(bb.face.map((g) => g.id)).toEqual(expect.arrayContaining(['glasses', 'respirator']));
+    expect(bb.hand.map((g) => g.id)).toContain('bluebag');
+    expect(gearById('head', 'porkpie').bone).toBe('Head');
+    expect(gearById('hand', 'portalgun').bone).toBe('RightHand');
+  });
+
+  it('keeps a cast’s colours and gear to its own', () => {
+    const w = readLook('walt', { body: 'mrwhite', colors: { outer: 'bluesky', legs: 'portalgreen' }, gear: { head: 'crown', face: 'respirator', hand: 'bluebag' } });
+    expect(w).toEqual({ body: 'mrwhite', colors: { outer: 'bluesky' }, gear: { head: 'none', face: 'respirator', hand: 'bluebag' } });
+    expect(readLook('rick', { colors: { outer: 'bluesky' }, gear: { head: 'porkpie' } })).toEqual(defaultLook('rick'));
+    expect(readLook('jesse', { body: 'heisenberg' }).body).toBe('jesse'); // (Jesse can’t be Heisenberg)
+  });
+
+  it('puts Heisenberg’s own hat on him, whatever’s asked for his head', () => {
+    const h = readLook('walt', { body: 'heisenberg', gear: { head: 'jessebeanie', face: 'glasses' } });
+    expect(h.gear).toEqual({ head: 'none', face: 'glasses', hand: 'none' });
+    expect(gearWorn(h)).toEqual({ head: 'porkpie', face: 'glasses', hand: 'none' });
+    expect(gearWorn(readLook('jesse', { gear: { head: 'jessebeanie' } }))).toEqual({ head: 'jessebeanie', face: 'none', hand: 'none' });
+    expect(gearWorn(defaultLook('rick'))).toEqual(defaultLook('rick').gear);
+  });
+
+  it('sends Walt’s and Jesse’s looks as ids too, and never one cast’s body as another’s', () => {
+    for (const who of ['walt', 'jesse']) {
+      for (const b of BODIES[who]) {
+        const regions = Object.keys(b.regions);
+        const bb = swatchesOf(who);
+        const look = readLook(who, { body: b.id, colors: Object.fromEntries(regions.map((r, i) => [r, bb[i].id])), gear: { head: b.hat ? 'none' : 'porkpie', face: 'respirator', hand: 'bluebag' } });
+        expect(readLookWire(who, writeLook(look))).toEqual(look);
+      }
+    }
+    expect(readLookWire('walt', writeLook(defaultLook('rick')))).toBeNull();
+    expect(readLookWire('rick', writeLook(defaultLook('walt')))).toBeNull();
+  });
+
+  it('reads looks kept before Walt and Jesse had any as the show has them', () => {
+    const l = readLooks({ rick: { body: 'cop' }, morty: { body: 'evilmorty' } });
+    expect(l.rick.body).toBe('cop');
+    expect(l.walt).toEqual(defaultLook('walt'));
+    expect(l.jesse).toEqual(defaultLook('jesse'));
+    expect(wornFiles(readLooks({ walt: { gear: { hand: 'bluebag' } } }))).toEqual([]); // (built in code)
+  });
+
+  it('starts Jesse in his beanie, which he can take off', () => {
+    expect(defaultLook('jesse').gear).toEqual({ head: 'jessebeanie', face: 'none', hand: 'none' });
+    expect(readLook('jesse', {}).gear.head).toBe('jessebeanie');
+    expect(readLook('jesse', { gear: { head: 'none' } }).gear.head).toBe('none');
+    expect(readLookWire('jesse', writeLook(readLook('jesse', { gear: { head: 'none' } }))).gear.head).toBe('none');
+    // (only him: Walt, Rick and Morty start bare-headed)
+    for (const who of ['walt', 'rick', 'morty']) expect(defaultLook(who).gear.head, who).toBe('none');
   });
 });

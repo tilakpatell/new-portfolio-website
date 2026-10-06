@@ -18,7 +18,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { toon } from '../portal/toon';
-import { GEAR, GEAR_SLOTS } from './looks';
+import { BB_GEAR, GEAR, GEAR_SLOTS, gearById, gearWorn } from './looks';
 
 // geometries placed by [geometry, position, rotation, scale], merged into one
 function merged(list) {
@@ -50,6 +50,19 @@ const cyl = (r0, r1, h, seg = 32, open = false) => new THREE.CylinderGeometry(r1
 const ball = (r, w = 24, h = 16) => new THREE.SphereGeometry(r, w, h);
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 const ALONG = [Math.PI / 2, 0, 0]; // (a cylinder along z)
+// knit ribs: a round geometry's surface pushed in and out round its axis
+// (y), `n` ribs, `amp` of its radius deep
+function ribbed(geo, n, amp) {
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i);
+    const z = p.getZ(i);
+    const k = 1 + amp * Math.cos(n * Math.atan2(x, z));
+    p.setXYZ(i, x * k, p.getY(i), z * k);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
 
 const BUILD = {
   // ── on the head ──
@@ -186,10 +199,109 @@ const BUILD = {
       {},
     ).add(piece({ '#7dff5c': [[cyl(0.045, 0.06, 0.08, 20), [0, 0.2, -0.68], ALONG]] }, { '#7dff5c': true }));
   },
-};
 
-// where the eyes are, by face: Morty's take up most of it
-const EYES = { rick: { spread: 0.11, size: 0.08 }, morty: { spread: 0.2, size: 0.15 } };
+  // ── Walt and Jesse’s ──
+  porkpie() {
+    // Heisenberg’s: a short flat crown with its top pressed in round the
+    // edge, a narrow brim turned up a little, a band a shade off the felt
+    const felt = '#1c1b1f';
+    return piece({
+      [felt]: [
+        [cyl(0.45, 0.42, 0.32, 48), [0, 0.01, 0]],
+        [new THREE.TorusGeometry(0.375, 0.045, 10, 48), [0, 0.16, 0], [Math.PI / 2, 0, 0]], // (the pressed-in ring round its top)
+        [new THREE.LatheGeometry([[0.43, 0.03], [0.55, 0.0], [0.66, 0.035], [0.66, 0.06], [0.55, 0.03], [0.43, 0.05]].map(([r, y]) => new THREE.Vector2(r, y)), 48), [0, -0.17, 0]],
+      ],
+      '#2e2c31': [[cyl(0.455, 0.45, 0.08, 48), [0, -0.11, 0]]],
+    });
+  },
+  jessebeanie() {
+    // his: a charcoal knit pulled snug over the skull and worn a little back,
+    // ribbed all the way up, its cuff turned up and ribbed finer
+    const crown = ribbed(new THREE.SphereGeometry(0.46, 72, 28, 0, Math.PI * 2, 0, Math.PI * 0.53), 34, 0.022);
+    const cuff = ribbed(new THREE.CylinderGeometry(0.476, 0.468, 0.14, 96, 1, true), 56, 0.026);
+    const g = piece({
+      '#3b3c42': [[crown, [0, -0.24, 0], [0, 0, 0], [1.01, 0.93, 1.1]]],
+      '#2f3035': [[cuff, [0, -0.29, 0], [0, 0, 0], [1.02, 1, 1.1]]],
+    });
+    g.traverse((o) => o.isMesh && (o.material.side = THREE.DoubleSide)); // (the cuff is open: its inside shows from below)
+    g.rotation.x = -0.14; // (worn back: the cuff high on the forehead, low on the nape)
+    const holder = new THREE.Group();
+    holder.add(g);
+    return holder;
+  },
+  glasses(e = EYES.rick) {
+    // thin dark rims round soft oblong lenses, each turned a little to wrap
+    // round the face, a bridge over the nose, and arms back to the ears
+    const w = e.size * 1.3;
+    const h = e.size * 0.85;
+    const r = Math.min(w, h) * 0.45;
+    const lens = (sx) => {
+      const shape = new THREE.Shape();
+      shape.moveTo(-w + r, -h);
+      shape.lineTo(w - r, -h);
+      shape.quadraticCurveTo(w, -h, w, -h + r);
+      shape.lineTo(w, h - r);
+      shape.quadraticCurveTo(w, h, w - r, h);
+      shape.lineTo(-w + r, h);
+      shape.quadraticCurveTo(-w, h, -w, h - r);
+      shape.lineTo(-w, -h + r);
+      shape.quadraticCurveTo(-w, -h, -w + r, -h);
+      const pts = shape.getSpacedPoints(48).map((q) => new THREE.Vector3(q.x, q.y, 0));
+      const tube = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 64, 0.012, 6, true);
+      return [tube, [sx * e.spread, 0, 0.03], [0, sx * -0.2, 0]];
+    };
+    const hinge = (sx) => sx * (e.spread + w * Math.cos(0.2));
+    const arm = (sx) => new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(hinge(sx), h * 0.55, 0.03 - w * Math.sin(0.2)), new THREE.Vector3(sx * Math.max(0.3, e.spread + w + 0.06), h * 0.5, -0.2), new THREE.Vector3(sx * Math.max(0.31, e.spread + w + 0.07), h * 0.2, -0.42)]), 16, 0.01, 5);
+    const bridge = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(-(e.spread - w), h * 0.35, 0.03), new THREE.Vector3(0, h * 0.55, 0.05), new THREE.Vector3(e.spread - w, h * 0.35, 0.03)]), 12, 0.011, 5);
+    return piece({ '#2a221d': [lens(-1), lens(1), [arm(-1)], [arm(1)], [bridge]] });
+  },
+  respirator() {
+    // the cook’s half mask: a grey rubber cup over the nose and mouth, a
+    // pink filter either side, its straps going back past the cheeks
+    const cup = [[ball(0.21, 28, 18), [0, -0.29, 0.06], [0.2, 0, 0], [1, 1.05, 0.72]]];
+    const dark = [[cyl(0.06, 0.07, 0.07, 20), [0, -0.38, 0.2], ALONG]];
+    const pink = [];
+    for (const sx of [-1, 1]) {
+      pink.push([cyl(0.105, 0.105, 0.075, 28), [sx * 0.19, -0.34, 0.1], [Math.PI / 2, sx * 0.55, 0]]);
+      for (const y of [-0.18, -0.36]) dark.push([box(0.02, 0.025, 0.2), [sx * 0.2, y, -0.04], [0, sx * -0.35, 0]]);
+    }
+    return piece({ '#7d8086': cup, '#2b2c30': dark, '#d63c82': pink });
+  },
+  bluebag() {
+    // a zip bag of Blue Sky held by its seal: clear plastic, the crystals in
+    // the bottom of it
+    const crystals = [];
+    for (let i = 0; i < 9; i++) {
+      const a = i * 2.39996;
+      crystals.push([new THREE.OctahedronGeometry(0.07 + (i % 3) * 0.015), [Math.sin(a) * 0.1, Math.cos(a * 1.7) * 0.012, -0.42 - (i % 4) * 0.04], [a, a * 0.7, 0], [1, 0.75, 1.4]]);
+    }
+    const g = piece({ '#5fc8ef': crystals, '#2f6fc8': [[box(0.4, 0.035, 0.035), [0, 0, -0.06]]] });
+    const bag = piece({ '#e6f4fa': [[box(0.38, 0.09, 0.52), [0, 0, -0.33]]] });
+    clear(bag, 0.35);
+    return g.add(bag);
+  },
+  flask() {
+    // an Erlenmeyer flask held by its neck, a blue batch in it
+    const glassy = piece({ '#e9f6f7': [[new THREE.LatheGeometry([[0.05, 0.02], [0.055, 0], [0.055, -0.2], [0.24, -0.58], [0.24, -0.62], [0, -0.62]].map(([r, y]) => new THREE.Vector2(r, y)), 32), [0, 0, 0], ALONG]] });
+    clear(glassy, 0.4);
+    const batch = piece({ '#3fb6e8': [[new THREE.LatheGeometry([[0, -0.6], [0.225, -0.6], [0.16, -0.42], [0, -0.42]].map(([r, y]) => new THREE.Vector2(r, y)), 32), [0, 0, 0], ALONG]] });
+    return batch.add(glassy);
+  },
+};
+// a piece’s meshes seen through (a bag’s plastic, a flask’s glass)
+function clear(g, opacity) {
+  g.traverse((o) => {
+    if (!o.isMesh) return;
+    o.material.transparent = true;
+    o.material.opacity = opacity;
+    o.material.depthWrite = false;
+    o.castShadow = false;
+  });
+}
+
+// where the eyes are, by face: Morty’s take up most of it; Walt’s and
+// Jesse’s are a person’s, Jesse’s drawn a little large
+const EYES = { rick: { spread: 0.11, size: 0.08 }, morty: { spread: 0.2, size: 0.15 }, walt: { spread: 0.12, size: 0.075 }, jesse: { spread: 0.12, size: 0.07 }, jesselab: { spread: 0.13, size: 0.08 } };
 
 // a piece of gear, in its own frame; face gear for `face` ('rick' or 'morty')
 export function buildGear(id, face = 'rick') {
@@ -207,7 +319,7 @@ function loadModel(url) {
   }
   return gltf.loadAsync(url).then((g) => g.scene);
 }
-const MODELS = Object.fromEntries(Object.values(GEAR).flat().filter((g) => g.file).map((g) => [g.id, g.file])); // (the gear that's a model of someone else's)
+const MODELS = Object.fromEntries([...Object.values(GEAR), ...Object.values(BB_GEAR)].flat().filter((g) => g.file).map((g) => [g.id, g.file])); // (the gear that’s a model of someone else’s)
 const models = new Map();
 export function loadGear(id) {
   if (!MODELS[id]) return Promise.resolve(buildGear(id));
@@ -238,14 +350,28 @@ export function loadGear(id) {
 
 // How each body wears it: head gear raised or sunk (in heads) and sized,
 // face gear brought forward (in heads); the hand's gear sized (in forearms).
-// Tuned by eye in lab/gear-sheet.html.
+// Tuned by eye in lab/gear-sheet.html (Walt’s and Jesse’s in a sheet of
+// their heads from the front, three quarters and the side): `lift` raises
+// one piece on top of `hat` (a beanie sits down to the brows, a pork-pie’s
+// brim higher), and `back` moves the head’s gear back (in heads) where the
+// skull reaches further behind its crown bone than Rick’s; `nudge` moves one
+// piece of face gear [up, forward] (in heads) off the eyes' frame, where a
+// face stands further out than Rick's (Walt's beard under his respirator).
+// Walt's and Jesse's were fitted again on their HD figures, whose head bones
+// sit differently against the skull (lab/skull.mjs measures it).
 const FIT = {
-  default: { eyes: 'rick', hat: 0, hatScale: 1, face: 0, faceUp: 0, faceScale: 1, hand: 1 },
+  default: { eyes: 'rick', hat: 0, hatScale: 1, lift: {}, back: 0, face: 0, faceUp: 0, faceScale: 1, nudge: {}, hand: 1 },
   rick: { hat: -0.12, hatScale: 1.0, face: 0.0, faceUp: 0.02, hand: 1 },
   tinyrick: { hat: -0.12, hatScale: 1.05, face: 0.0, faceUp: 0.0, hand: 1.1 },
   morty: { eyes: 'morty', hat: -0.08, hatScale: 1.05, face: 0.05, faceUp: 0.0, hand: 1.3 },
+  walt: { eyes: 'walt', hat: -0.13, hatScale: 1.1, lift: { jessebeanie: 0.14 }, back: -0.11, face: -0.3, faceUp: 0.0, nudge: { respirator: [0.08, 0.22] }, hand: 1.25 },
+  jesse: { eyes: 'jesse', hat: -0.14, hatScale: 1.1, lift: { jessebeanie: 0.09, porkpie: 0 }, back: -0.02, face: -0.115, faceUp: 0.03, nudge: { respirator: [0.08, 0.06] }, hand: 1.25 },
+  // (Jesse in hazmat: his own figure, its head not his hoodie's since that was made again)
+  jesselab: { eyes: 'jesselab', hat: -0.14, hatScale: 1.1, lift: { jessebeanie: 0.15, porkpie: 0.04 }, back: -0.07, face: -0.1, faceUp: 0.1, nudge: { respirator: [0, 0.08] }, hand: 1.25 },
 };
-const fitOf = (body) => ({ ...FIT.default, ...(FIT[body] ?? (body.includes('morty') ? FIT.morty : FIT.rick)) });
+// (Walt’s three bodies are one figure)
+const SAME = { mrwhite: 'walt', heisenberg: 'walt' };
+const fitOf = (body) => ({ ...FIT.default, ...(FIT[SAME[body] ?? body] ?? (body.includes('morty') ? FIT.morty : FIT.rick)) });
 
 const v = () => new THREE.Vector3();
 // a world matrix from its axes, origin and size
@@ -295,9 +421,12 @@ export function wearGear(figure, look) {
     const reach = fwd.length();
     fwd.normalize();
     const right = v().crossVectors(up, fwd);
-    frames.head = basis(right, up, fwd, E.clone().addScaledVector(up, fit.hat * s), s * fit.hatScale);
+    frames.head = (id) => basis(right, up, fwd, E.clone().addScaledVector(up, (fit.hat + (fit.lift[id] ?? 0)) * s).addScaledVector(fwd, -fit.back * s), s * fit.hatScale);
     const eyes = H.clone().addScaledVector(up, (0.52 + fit.faceUp) * s).addScaledVector(fwd, reach + fit.face * s);
-    frames.face = basis(right, up, fwd, eyes, s * fit.faceScale);
+    frames.face = (id) => {
+      const [u, f] = fit.nudge[id] ?? [0, 0];
+      return basis(right, up, fwd, eyes.clone().addScaledVector(up, u * s).addScaledVector(fwd, f * s), s * fit.faceScale);
+    };
   }
   if (hand && arm) {
     const A = at(arm);
@@ -312,10 +441,12 @@ export function wearGear(figure, look) {
     frames.hand = basis(x, fwd, back, R.clone().addScaledVector(along, 0.25 * forearm), fit.hand * forearm);
   }
   const bones = { head, face: head, hand };
+  // (what was picked, and what the body always has on: Heisenberg’s hat)
+  const worn = look.gear ? gearWorn(look) : {};
   for (const slot of GEAR_SLOTS) {
-    const id = look.gear?.[slot];
-    if (!id || id === 'none' || !frames[slot] || !GEAR[slot].some((g) => g.id === id)) continue; // (readLook already took any hat off a head that has its own)
-    const world = frames[slot];
+    const id = worn[slot];
+    if (!id || id === 'none' || !frames[slot] || !gearById(slot, id)) continue; // (readLook already took any hat off a head that has its own)
+    const world = slot === 'hand' ? frames.hand : frames[slot](id);
     if (MODELS[id]) {
       const stand = buildGear(id, fit.eyes);
       put(bones[slot], stand, world);

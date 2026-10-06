@@ -32,7 +32,7 @@ import { SOLIDS, forward } from './ship';
 import { byId } from './universes';
 
 const LOW = [40, 60]; // how far above or below the disc everyday traffic flies (clear of the tallest planet and its moons)
-const HIGH = [75, 105]; // and the big ships
+const HIGH = [105, 135]; // and the big ships (over the ship's ceiling, ship.js)
 const LOCAL = [9, 16]; // how far above or below a place's middle the traffic round it flies (more round a big one)
 const LOCAL_HIGH = [21, 35]; // and the big ships
 const BIG = 35; // a place reaching further than this is a big one

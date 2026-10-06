@@ -77,6 +77,26 @@ function Tuck({ onTuck }) {
   );
 }
 
+// The ways out of the universe, at the foot of the panel whatever it shows
+// (the map, a wonder, a world's card), and kept in view as the panel
+// scrolls: to the classic site, and back to the intro (the welcome, the
+// crawl and the cockpit, as on a first visit). Below the flying keys, a
+// pilot never saw them; with a world picked, they weren't there at all.
+function Exits({ onClassic }) {
+  return (
+    <div className="universe-exits">
+      {onClassic && (
+        <button type="button" className="universe-back" onClick={onClassic}>
+          <RiLayoutGridLine className="h-3.5 w-3.5" aria-hidden="true" /> Classic site
+        </button>
+      )}
+      <button type="button" className="universe-back" onClick={restartSite} title="The welcome, the crawl and the cockpit again">
+        <RiRestartLine className="h-3.5 w-3.5" aria-hidden="true" /> Back to the intro
+      </button>
+    </div>
+  );
+}
+
 export default function UniversePanel({ universe, wonder = null, onFly = null, onSelect, onEnter, onWhole, leaving, ship, loadout, onShip, onHangar, onClassic, tucked = false, onTuck, onNav }) {
   const [changing, setChanging] = useState(false);
   const crew = crewById(ship);
@@ -138,6 +158,7 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
           <p className="mt-4 text-sm text-muted">Pick a ship below the map to fly out to it.</p>
         )}
         <p className="universe-fitted-line mt-4 text-xs text-muted">This link opens the map right here: share it.</p>
+        <Exits onClassic={onClassic} />
       </aside>
     );
   }
@@ -215,14 +236,6 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
             </button>
           </>
         )}
-        {onClassic && (
-          <button type="button" className="universe-back mt-5" onClick={onClassic}>
-            <RiLayoutGridLine className="h-3.5 w-3.5" aria-hidden="true" /> Switch to the classic site
-          </button>
-        )}
-        <button type="button" className="universe-back mt-2" onClick={restartSite}>
-          <RiRestartLine className="h-3.5 w-3.5" aria-hidden="true" /> Restart the site from the beginning
-        </button>
         <p className="universe-credit">
           Planet maps and the Milky Way by{' '}
           <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener noreferrer">
@@ -246,6 +259,7 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
           , MIT): soft shadows baked into the ground, a bounce of the ground’s colour on everything, and a soft blob under whatever moves, rendered once in your browser as each world opens.
         </p>
         <ModelCredits where="universe" className="universe-credit universe-models" />
+        <Exits onClassic={onClassic} />
       </aside>
     );
   }
@@ -283,6 +297,7 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
       <ul className="universe-card mt-4" key={universe.id}>
         <Card />
       </ul>
+      <Exits onClassic={onClassic} />
     </aside>
   );
 }

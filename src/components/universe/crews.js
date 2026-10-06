@@ -57,10 +57,17 @@ export const CREWS = [
         ['rick', 'Fresh air, Morty! Well, air. Probably air.'],
         ['morty', 'It smells like feet, Rick.'],
       ],
-      squad: [
-        ['morty', 'Rick! Federation guys, over the hill!'],
-        ['rick', 'Gromflomites, Morty. Shoot the bugs.'],
-      ],
+      // (by who most of them are: footScene.js says)
+      squad: {
+        any: [
+          ['morty', 'Rick! Federation guys, over the hill!'],
+          ['rick', 'Gromflomites, Morty. Shoot the bugs.'],
+        ],
+        mortyguard: [
+          ['morty', 'Rick, those guys coming over the hill are… all me. In yellow.'],
+          ['rick', 'Evil Morty’s guard, Morty. Don’t hesitate. They won’t.'],
+        ],
+      },
       kill: {
         gromflomite: [['rick', 'Bug splat! Ha!']],
         cop: [
@@ -68,6 +75,10 @@ export const CREWS = [
           ['rick', 'A Federation cop, Morty. Different rules.'],
         ],
         gazorpian: [['morty', 'The big one went down! The big one went down!']],
+        mortyguard: [
+          ['morty', 'Rick, I just shot… a me. In a yellow shirt.'],
+          ['rick', 'Evil Morty’s guard, Morty. Infinite Mortys. Don’t get sentimental.'],
+        ],
         any: [['rick', 'Wubba lubba dub dub!', 'wubba']],
       },
       hurt: [
@@ -248,6 +259,44 @@ export const CREWS = [
     },
     // their lasers hitting you, your shields low, shot down
     // dropped out of the pulse drive by hunters, and crashes of other kinds
+    // the named characters who come by (npcs/index.js), by what they're saying
+    npc: {
+      squanchy: {
+        seen: [['morty', 'Rick, is that… Squanchy’s ship?']],
+        hello: [
+          ['comms', 'Rick! Squanchy here! I’ve got news, and it’s not squanchy news!'],
+          ['rick', 'Spit it out, Squanchy.'],
+        ],
+        tip: {
+          council: [['comms', 'The Council’s coming for you, Rick! Portals, the lot! Get your squanch together!']],
+          hunt: [['comms', 'Federation’s on your trail, Rick. A whole pack of them. Squanch ’em good.']],
+          destroyer: [['comms', 'There’s a Federation cruiser on its way. A big one! Bigger than my last party!']],
+          bounty: [['comms', 'Somebody’s put a price on you, Rick. A big squanching price.']],
+          any: [['comms', 'Something’s coming, Rick. I can feel it in my squanch.']],
+        },
+        hit: [['comms', 'Hey! Watch where you’re squanching, Rick!']],
+        leaving: [
+          ['comms', 'Gotta squanch! Good luck, Rick!'],
+          ['morty', 'Bye, Squanchy!'],
+        ],
+      },
+      evilmorty: {
+        seen: [
+          ['morty', 'Rick, that black ship with the eye patch…'],
+          ['rick', 'Yeah. I see him, Morty.'],
+        ],
+        hello: [
+          ['comms', 'Hello, Rick. Just checking in. Seeing how the other half flies.'],
+          ['morty', 'That’s… that’s me, Rick. That’s the other me.'],
+          ['rick', 'He’s not you, Morty. Shoot him.'],
+        ],
+        hit: [['comms', 'Not bad. For a Rick who still needs a Morty.']],
+        leaving: [
+          ['comms', 'Let’s call it a draw. For now.'],
+          ['rick', 'He’ll be back, Morty. He always plans to be back.'],
+        ],
+      },
+    },
     interdicted: [
       ['morty', 'Rick! Something pulled us out of pulse!'],
       ['rick', 'Interdictor, Morty. Somebody wants a word. Shoot the word.'],
@@ -384,6 +433,43 @@ export const CREWS = [
         ['morty', 'Ow! Rick, we hit a rock! A big one!'],
         ['rick', 'At super speed every rock’s a big one, Morty. Watch the shields and stop steering with your face.'],
       ],
+      battle: {
+        front: [
+          ['morty', 'Rick, that’s a whole war out there! Council ships and Federation ships everywhere!'],
+          ['rick', 'Two bureaucracies shooting at each other, Morty. Pick a side. I don’t care which.'],
+        ],
+        join: [
+          ['rick', 'Alright, we’re in. Stay on my wing, Morty. Metaphorically. You’re in my ship.'],
+          ['morty', 'Oh geez. Okay. Okay.'],
+        ],
+        gens: [
+          ['morty', 'The shield’s down, Rick! The big ship’s shield is down!'],
+          ['rick', 'Bridge next. Cut off the head and the paperwork panics.'],
+        ],
+        bridge: [
+          ['rick', 'Bridge is toast. Now the reactor. Go for the glowy bit, Morty, it’s always the glowy bit.'],
+        ],
+        reactor: [
+          ['morty', 'It’s breaking apart, Rick! It’s breaking in half!'],
+          ['rick', 'One big reactor in the middle of a flagship. Every time, Morty. Every single time.'],
+        ],
+        won: [
+          ['morty', 'We won? We actually won?'],
+          ['rick', 'That’s a sector. The front moves, the map changes, nobody learns anything.'],
+        ],
+        lost: [
+          ['morty', 'They’re pulling back, Rick. We’re losing the sector.'],
+          ['rick', 'Strategic retreat, Morty. Everybody does it. Mostly us.'],
+        ],
+        warWon: [
+          ['rick', 'That’s the whole war, Morty. Every sector. I’d make a speech, but speeches are for people who lose.'],
+          ['morty', 'Wow. Okay.'],
+        ],
+        warLost: [
+          ['morty', 'That was the last one, Rick. They’ve got everything.'],
+          ['rick', 'Then it starts again from the middle. Wars are like that, Morty. Infinite reboots.'],
+        ],
+      },
       meteors: [
         ['morty', 'Rick! Rocks! A lot of rocks!'],
         ['rick', 'Meteor stream, Morty. Shoot the big ones, dodge the rest, don’t cry about it.'],
@@ -571,7 +657,21 @@ export const CREWS = [
         ['r2', '[a frantic scream of beeps]'],
         ['luke', 'I see them, Artoo. Stay behind me.'],
       ],
+      // a probe droid's called them in (foot.js: a troop that `calls`)
+      called: [
+        ['r2', '[an urgent string of beeps: the probe droid’s signalling]'],
+        ['luke', 'It’s called them in. Here they come.'],
+      ],
       kill: {
+        stormtrooper: [['luke', 'Stormtrooper down!']],
+        scout: [
+          ['luke', 'Got the scout!'],
+          ['r2', '[a cheerful whistle]'],
+        ],
+        probe: [
+          ['luke', 'The probe droid’s down. Did it get a signal off?'],
+          ['r2', '[a worried warble]'],
+        ],
         gromflomite: [['luke', 'One of the bugs is down, Artoo!']],
         cop: [['r2', '[beeps: that one was a policeman. Of a sort.]']],
         gazorpian: [
@@ -748,6 +848,22 @@ export const CREWS = [
         ['comms', 'No, I am your father.', 'vader'],
       ],
     },
+    // the named characters who come by (npcs/index.js), by what they're saying
+    npc: {
+      lando: {
+        seen: [['r2', '[a curious beep: a freighter, parked, broadcasting a hail]']],
+        hello: [
+          ['comms', 'Well, hello there. Lando Calrissian. And who might you be?'],
+          ['luke', 'Luke Skywalker. Are you… selling something?'],
+        ],
+        offer: [
+          ['comms', 'I happen to have a {part} that’d suit that X-wing. Tell your hangar Lando sent you.'],
+          ['r2', '[a sceptical warble]'],
+        ],
+        hit: [['comms', 'Hey! That’s my ship you’re shooting at, kid!']],
+        leaving: [['comms', 'This deal is getting worse all the time. Calrissian out.']],
+      },
+    },
     interdicted: [
       ['r2', '[an alarmed shriek]'],
       ['luke', 'They’ve pulled us out of the drive! Interdictor!'],
@@ -866,6 +982,44 @@ export const CREWS = [
         ['r2', '[A rock, at speed. Shields down a notch.]'],
         ['luke', 'I didn’t even see it. Keep the deflectors forward, Artoo.'],
       ],
+      battle: {
+        front: [
+          ['r2', '[A fleet engagement ahead. Capital ships on both sides.]'],
+          ['luke', 'It’s a full battle out there. Let’s see where we can help.'],
+        ],
+        join: [
+          ['luke', 'We’re in, Artoo. S-foils in attack position.'],
+          ['r2', '[an eager whistle]'],
+        ],
+        gens: [
+          ['r2', '[Their shield generators are down.]'],
+          ['luke', 'The shield’s gone! Now the bridge.'],
+        ],
+        bridge: [
+          ['luke', 'Bridge is out. Go for the reactor!'],
+          ['r2', '[a triumphant chirp]'],
+        ],
+        reactor: [
+          ['luke', 'She’s breaking up! Artoo, look at that!'],
+          ['r2', '[a long, amazed whistle]'],
+        ],
+        won: [
+          ['luke', 'We did it. The sector’s ours.'],
+          ['r2', '[a happy trill]'],
+        ],
+        lost: [
+          ['r2', '[A low tone: the fleet is pulling out.]'],
+          ['luke', 'We’ll be back. We always come back.'],
+        ],
+        warWon: [
+          ['luke', 'That’s the last of them. The whole line is ours, Artoo.'],
+          ['r2', '[a joyful string of beeps]'],
+        ],
+        warLost: [
+          ['r2', '[Every sector lost.]'],
+          ['luke', 'Then we start again. As long as there’s hope.'],
+        ],
+      },
       meteors: [
         ['r2', '[Meteor stream ahead. Recommend evasive action.]'],
         ['luke', 'I see them, Artoo. Just like Beggar’s Canyon.'],
@@ -1031,10 +1185,20 @@ export const CREWS = [
       ],
       out: [['han', 'Smells like the back end of a bantha. I love it.']],
       squad: [
-        ['han', 'Bugs with blasters. I’ve got a bad feeling about this.'],
+        ['han', 'Stormtroopers. I’ve got a bad feeling about this.'],
         ['chewie', '[a roar: let them come]'],
       ],
+      called: [
+        ['han', 'That probe droid just called in its friends. Chewie, take it out next time.'],
+        ['chewie', '[an annoyed growl]'],
+      ],
       kill: {
+        stormtrooper: [['han', 'Bucket-head down.']],
+        scout: [['han', 'Scout trooper. Fast, but not that fast.']],
+        probe: [
+          ['han', 'It’s a probe droid. Was. Chewie, they know we’re here now.'],
+          ['chewie', '[a doubtful growl]'],
+        ],
         gromflomite: [['han', 'Bug’s down. Pass me another.']],
         cop: [['han', 'A cop? Chewie, we were never here.']],
         gazorpian: [
@@ -1199,6 +1363,25 @@ export const CREWS = [
         ['chewie', '[a doubtful growl]'],
       ],
     },
+    // the named characters who come by (npcs/index.js), by what they're saying
+    npc: {
+      lando: {
+        seen: [
+          ['han', 'Is that who I think it is?'],
+          ['chewie', '[a wary growl]'],
+        ],
+        hello: [
+          ['comms', 'Han Solo. You’ve got a lot of guts coming out here.'],
+          ['han', 'Lando, you old pirate. I’m not here for a fight.'],
+        ],
+        offer: [
+          ['comms', 'I’ve got a {part} going cheap. For you, old buddy, almost a fair price. Hangar’s got it.'],
+          ['han', 'Almost. Right.'],
+        ],
+        hit: [['comms', 'Han! Watch it! I just had that freighter cleaned!']],
+        leaving: [['comms', 'Some other time, old buddy. Calrissian out.']],
+      },
+    },
     interdicted: [
       ['han', 'Interdictor! They’ve yanked us out of the drive!'],
       ['chewie', '[a furious roar]'],
@@ -1317,6 +1500,42 @@ export const CREWS = [
         ['chewie', '[an angry roar: a rock, right through the shields]'],
         ['han', 'I know, I know. Never tell me the odds, and never fly this fast through a rock field.'],
       ],
+      battle: {
+        front: [
+          ['han', 'Would you look at that. A whole fleet action. Chewie, we’re not getting paid enough for this.'],
+          ['chewie', '[an agreeing growl]'],
+        ],
+        join: [
+          ['han', 'Alright, we’re in. Keep the shields up and the quad guns hot.'],
+          ['chewie', '[a ready roar]'],
+        ],
+        gens: [
+          ['han', 'Shield’s down! Told you it’d work.'],
+          ['chewie', '[a pleased roar]'],
+        ],
+        bridge: [
+          ['han', 'There goes the bridge. Now the reactor, before they work out what hit them.'],
+        ],
+        reactor: [
+          ['chewie', '[an excited howl]'],
+          ['han', 'Ha! Split right down the middle. That’s some flying.'],
+        ],
+        won: [
+          ['han', 'Sector’s ours. Drinks are on whoever’s paying.'],
+          ['chewie', '[a laughing growl]'],
+        ],
+        lost: [
+          ['han', 'We’re pulling back. Don’t give me that look, Chewie, I know.'],
+          ['chewie', '[a mournful growl]'],
+        ],
+        warWon: [
+          ['han', 'That’s the whole war. Every sector. Not bad for a smuggler and a walking carpet.'],
+          ['chewie', '[an indignant roar]'],
+        ],
+        warLost: [
+          ['han', 'They’ve taken the lot. Fine. We start over. We always do.'],
+        ],
+      },
       meteors: [
         ['chewie', '[A roar: rocks ahead!]'],
         ['han', 'I see them. Never tell me the odds, Chewie.'],
@@ -1484,6 +1703,10 @@ export const CREWS = [
           ['walt', 'On another planet, Jesse. There’s no jurisdiction.'],
         ],
         cartel: [['jesse', 'Cartel guy’s down! Yeah!']],
+        jackscrew: [
+          ['jesse', 'That’s one of Uncle Jack’s guys, yo!'],
+          ['walt', 'Good.'],
+        ],
         gromflomite: [['jesse', 'Bug spray, yo!']],
         cop: [['walt', 'A cop, Jesse. That’s the second-worst thing you can shoot.']],
         gazorpian: [
@@ -1686,6 +1909,45 @@ export const CREWS = [
         ['walt', 'We don’t run, Jesse. We do the math. Then we run.'],
       ],
     },
+    // the named characters who come by (npcs/index.js), by what they're saying
+    npc: {
+      saul: {
+        seen: [['jesse', 'Mr. White, is that… Saul’s Caddy? Parked? In space?']],
+        hello: [
+          ['comms', 'Walter! Jesse! Saul Goodman. I’m parked right over here. Totally legitimate business.'],
+          ['walt', 'What do you want, Saul?'],
+        ],
+        offer: [
+          ['comms', 'Fell off a truck: one {part}, never used. Hangar’s got it. We’ll call it a retainer.'],
+          ['jesse', 'Yo, that’s actually kind of sick.'],
+        ],
+        hit: [['comms', 'Hey! I’m on your side! Mostly!']],
+        leaving: [
+          ['comms', 'Okay, that’s my cue. You didn’t see me. I was never here.'],
+          ['walt', 'He never is.'],
+        ],
+      },
+      mike: {
+        seen: [['jesse', 'That’s Mike’s car. Coming right at us.']],
+        hello: [
+          ['comms', 'Walter. Keep driving. Don’t look at me.'],
+          ['walt', 'Mike. What is it?'],
+        ],
+        tip: {
+          roadblock: [['comms', 'DEA’s setting up a roadblock up ahead. You’ll want to be ready for it.']],
+          hunt: [['comms', 'You’ve got company coming. Several of them. I’d keep my eyes open.']],
+          bounty: [['comms', 'The Cousins are out looking. If you see silver, don’t shoot first. Then do.']],
+          destroyer: [['comms', 'Madrigal’s moving a freighter through. Gus’s trucks will be on it.']],
+          distress: [['comms', 'Somebody’s going to call for help soon. Jack’s boys. Your call.']],
+          any: [['comms', 'Something’s coming. I don’t know what yet. Stay sharp.']],
+        },
+        hit: [['comms', 'You’re lucky I don’t shoot back.']],
+        leaving: [
+          ['comms', 'That’s all I’ve got. No more half measures, Walter.'],
+          ['jesse', 'Bye, Mike!'],
+        ],
+      },
+    },
     interdicted: [
       ['jesse', 'Yo, the fast thing stopped! Why’d the fast thing stop?!'],
       ['walt', 'Interdiction, Jesse. Someone wants to talk. We don’t.'],
@@ -1835,6 +2097,43 @@ export const CREWS = [
         ['jesse', 'Yo, what was that?! We hit something!'],
         ['walt', 'A rock, Jesse. At this speed it hits like a truck. The shields took it. Slow down in the fields.'],
       ],
+      battle: {
+        front: [
+          ['jesse', 'Mr. White, that’s a war out there! Gus’s trucks and the cartel, going at it!'],
+          ['walt', 'Then we choose a side, Jesse. Carefully.'],
+        ],
+        join: [
+          ['walt', 'We’re in. Stay close, keep firing, and do not panic.'],
+          ['jesse', 'Yeah, science! Okay!'],
+        ],
+        gens: [
+          ['jesse', 'Their shield’s down! Yeah, Mr. White!'],
+          ['walt', 'The command deck next. Then the core.'],
+        ],
+        bridge: [
+          ['walt', 'The command deck is gone. Now the reactor, Jesse. Finish it.'],
+        ],
+        reactor: [
+          ['jesse', 'It’s breaking in half! Yeah, Mr. White!'],
+          ['walt', 'Chemistry, Jesse. Pressure finds the weakest point.'],
+        ],
+        won: [
+          ['jesse', 'We won, yo! We actually won!'],
+          ['walt', 'The territory is ours.'],
+        ],
+        lost: [
+          ['jesse', 'They’re beating us back, Mr. White.'],
+          ['walt', 'A tactical withdrawal. We regroup, and we come back stronger.'],
+        ],
+        warWon: [
+          ['walt', 'Every sector. All of it. I’m in the empire business, Jesse.'],
+          ['jesse', 'Yeah. Yeah, you are.'],
+        ],
+        warLost: [
+          ['jesse', 'They took everything, Mr. White.'],
+          ['walt', 'Then we start from nothing. We’ve done it before.'],
+        ],
+      },
       meteors: [
         ['jesse', 'Yo, Mr. White, rocks! Big ones!'],
         ['walt', 'A meteor stream, Jesse. Shoot what you can’t steer round.'],
@@ -2019,7 +2318,7 @@ export const parseShip = (id) => (typeof id === 'string' && BY_ID.has(id) ? id :
 // something on 'foot' (by what: 'land', 'out', 'squad', 'kill' (`sub`: by
 // kind, or any), 'hurt', 'down', 'up', 'cleared', 'swap' (`sub`: who's
 // played now), 'far', 'nowhere' or 'in'). An exchange, or null.
-export function linesFor(crew, event, id, sub) {
+export function linesFor(crew, event, id, sub, more) {
   if (!crew) return null;
   if (event === 'arrive') return crew.arrive[id] ?? null;
   if (event === 'traffic') return crew.traffic?.[id] ?? null;
@@ -2032,6 +2331,14 @@ export function linesFor(crew, event, id, sub) {
     return Array.isArray(f) ? f : (f[sub] ?? f.any ?? Object.values(f)[0] ?? null);
   }
   if (event === 'siege') return crew.siege?.[id] ?? null;
+  if (event === 'npc') {
+    // a character's (npcs/index.js) by what they're saying: `sub` is the
+    // key ('seen', 'hello', 'offer', 'tip', 'hit', 'leaving', 'down'), and an
+    // informant's tip is keyed again by what's coming (`more`), or `any`
+    const f = crew.npc?.[id]?.[sub];
+    if (!f) return null;
+    return Array.isArray(f) ? f : (f[more] ?? f.any ?? null);
+  }
   if (event === 'wonder') return crew.wonders?.[id] ?? null;
   if (event === 'foot') {
     const f = crew.foot?.[id];

@@ -29,6 +29,8 @@
 // ── The films (and the shows), in the galaxy's own order of events ──
 // (a show has no episode: `show`, and `short`, its name on a small button)
 
+import { fitSystem } from './fit.js'; // (with its extension: the prerender reads this file in Node)
+
 export const FILMS = {
   tpm: { title: 'The Phantom Menace', episode: 'I', year: -32, era: 'republic' },
   aotc: { title: 'Attack of the Clones', episode: 'II', year: -22, era: 'republic' },
@@ -116,11 +118,12 @@ export const LANES = [
 // moons      [{ look, r, orbit, speed, tilt, phase }]
 // suns       [{ dir: [x, y, z], color, size }]
 // pieces     the set pieces (setpieces.js reads them; sizes in map units, the ship is 0.26 long)
+//            (the planet's grown to be wider than its biggest ship's long: fit.js, as SYSTEMS is made)
 // faction    who hunts you here (galaxy/hunted.js), or null for nobody
 // traffic    what flies through on its own business
 // game       the mission: { id, objectives, title, film, role, pitch, how, status: 'soon' | 'live', to?, go? (the button: 'Fly it now' unless it says) }
 
-export const SYSTEMS = [
+const AS_SET = [
   {
     id: 'tatooine',
     name: 'Tatooine',
@@ -217,6 +220,8 @@ export const SYSTEMS = [
       how: 'On foot, against the clock: a blaster for the snowtroopers, and a long run to the cannon once the transport lifts.',
       status: 'live',
       to: '/galaxy/hoth/surface?mission=transport',
+      // (and the ground battle, on the same world: both from the briefing)
+      also: [{ id: 'assault', title: 'The Battle of Hoth', text: 'A galactic assault on the ice: the Empire comes in behind the walkers for the trench line, the ion cannon and Echo Base’s door, and the Rebellion holds each as long as it can. Fight for either side.', to: '/galaxy/hoth/surface?mission=assault', go: 'Fight it now' }],
     },
   },
   {
@@ -694,13 +699,15 @@ export const SYSTEMS = [
     traffic: ['slave1', 'acclamator'],
     game: {
       id: 'geonosis',
-      objectives: ['Stay on Jango Fett’s tail into the rings', 'Dodge the seismic charges', 'Hide behind an asteroid and make him think you’re gone'],
-      title: 'Seismic Charges',
+      objectives: ['Take the forward command post and the ridge', 'Take the arena gate', 'Take the arena floor, where it all began'],
+      title: 'The Battle of Geonosis',
       film: 'aotc',
-      role: 'Obi-Wan Kenobi, in his Jedi starfighter',
-      pitch: 'Jango Fett leads you into the asteroid ring and starts dropping seismic charges. Stay on him, use the rocks, and make him think he got you.',
-      how: 'Weave between the asteroids, kill your engines behind a big one, then come out on his tail.',
-      status: 'soon',
+      role: 'A clone trooper off the gunships, or a battle droid holding the plain',
+      pitch: 'A galactic assault on the red plain where the Clone Wars began: the Republic’s clones come off the gunships for the command post, the ridge, the arena gate and the arena itself; the droid army holds each as long as it can. Fight for either side.',
+      how: 'Pick a side and a post to deploy at. Stand in a post with more of your side than theirs and it turns yours; every soldier down costs their side a reinforcement, and a side with none left and nobody standing has lost.',
+      status: 'live',
+      to: '/galaxy/geonosis/surface?mission=assault',
+      go: 'Fight it now',
     },
   },
   {
@@ -933,6 +940,7 @@ export const SYSTEMS = [
     },
   },
 ];
+export const SYSTEMS = AS_SET.map(fitSystem);
 
 const BY_ID = new Map(SYSTEMS.map((s) => [s.id, s]));
 export const systemById = (id) => BY_ID.get(id) ?? null;

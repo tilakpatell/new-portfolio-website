@@ -69,12 +69,17 @@ import { createActivity } from './activity';
 import { snapToTexel } from './shadow';
 import { createShadowPhase } from './near';
 import { createBlaster } from './blaster';
+import { createSaber } from './saber';
+import { parries } from './hostiles';
+import { heroSpec } from '../heroes';
 import { feed, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, ride, rider, turnToward, walk, walker } from './walker';
 import { rng } from './noise';
 import { endRun, missionOf, newRun, tickRun } from './missions';
 import { createChaseMission } from './missions/chaseScene';
+import { createAssaultMission } from './missions/assaultScene';
+import { RULES as ASSAULT } from './missions/assault';
 import { groundWorld } from '../../../lib/three/groundwork';
 
 const V = THREE.Vector3;
@@ -91,8 +96,9 @@ export const CREW_MODELS = { artoo: 'r2d2' };
 const LEAVE = { lift: 3.2, away: 3.4 };
 const CAM = { dist: 4.8, up: 1.55, pitch: [-0.45, 1.15], far: 14, near: 2.2 };
 const REACH = 3.2; // metres: close enough to use something
-const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', ' ': 'jump', e: 'act', enter: 'act', f: 'fire' };
+const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', ' ': 'jump', e: 'act', enter: 'act', f: 'fire', r: 'throw', c: 'block' };
 const FIRE_EVERY = 0.24; // seconds between shots
+const SABER_IDLE = 8; // seconds without a stroke before the blade goes out
 const BIKE_FIRE_EVERY = 0.3; // (a bike's cannon: a touch slower)
 
 export async function create(canvas, ctx) {
@@ -227,7 +233,8 @@ export async function create(canvas, ctx) {
 
   // ── Things to do: the quest you're on, out in the world, and the blaster ──
   const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent });
-  const blaster = createBlaster({ parent: scene, world });
+  // (a battle fills the air with bolts: room for them)
+  const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' ? 72 : undefined });
   // what a shot does round the gun and where it lands (universe/gunfx.js),
   // and a light that flares with each muzzle flash: in the scene from the
   // start and dark between shots, so the count of lights never changes and
@@ -409,7 +416,11 @@ export async function create(canvas, ctx) {
   };
 
   // ── You, and your crewmate ──
-  const party = PARTY[shipKind] ?? PARTY.xwing;
+  // (the hero you've picked to play as (heroes.js) walks in the lead; the
+  // ship's own crew otherwise, and the one of them you aren't stays your mate)
+  const crewOf = PARTY[shipKind] ?? PARTY.xwing;
+  const hero = ctx.hero ? heroSpec(ctx.hero) : null;
+  const party = hero ? [hero, crewOf[0].id === hero.id ? crewOf[1] : crewOf[1].id === hero.id ? crewOf[0] : crewOf[1]] : crewOf;
   const out = new V(Math.cos(site.land.yaw), 0, -Math.sin(site.land.yaw)); // the ship's right
   // (a mission on foot starts you at its start, facing its way)
   const onFoot = Boolean(mission && !mission.ride);
@@ -455,6 +466,8 @@ export async function create(canvas, ctx) {
         if (p.spec.gun && !own) {
           p.holder.updateMatrixWorld(true);
           p.gp = createGunplay(fig, fig.gun ?? p.spec.gun, { unit: 1, who: fig.built ? 'built' : p.spec.id });
+          // a lightsaber (surface/saber.js): lit, swung, held up and thrown from here
+          if (p.spec.saber && p.gp) p.saber = createSaber(p.gp, { color: p.spec.saber.color, hilt: p.spec.saber.hilt, parent: scene, sound: (what) => sounds.saber?.(what) });
         }
         await warm(p.holder);
       }),
@@ -491,6 +504,8 @@ export async function create(canvas, ctx) {
     buttons: { run: false },
     jumpQueued: false,
     actQueued: false,
+    throwQueued: false,
+    saberAt: -99, // when the saber last did something (it goes out after SABER_IDLE)
     cam: { yaw: mission ? mission.yaw : you.yaw, pitch: 0.2, dist: mission?.ride ? RIDES[mission.ride].cam[0] : CAM.dist, drag: -10 },
     riding: mission?.ride ? rides[rides.length - 1] : null,
     prompt: null,
@@ -511,6 +526,10 @@ export async function create(canvas, ctx) {
     kick: { x: 0, v: 0 }, // the view's kick on a shot
     zone: null, // the place you're in, if you've gone into one
     outside: null, // where you were before you went in
+    // a battle (missions/assault.js): off the field while you choose a side
+    // ('choose') or you're down ('down'), and how long you've been down
+    off: mission?.kind === 'assault' ? 'choose' : null,
+    fallen: 0,
   };
   const camPos = new V();
   const camLook = new V();
@@ -607,6 +626,7 @@ export async function create(canvas, ctx) {
       if (k === 'jump') state.jumpQueued = true;
       if (k === 'act') state.actQueued = true;
       if (k === 'fire') state.fireQueued = true;
+      if (k === 'throw') state.throwQueued = true;
     }
     state.keys[k] = down;
     ctx.invalidate();
@@ -670,7 +690,7 @@ export async function create(canvas, ctx) {
   const target = () => {
     const p = me().st;
     if (state.phase === 'ride') return state.riding.state.speed < 7 && !chaseOn() ? { kind: 'dismount', text: `Get off ${state.riding.spec.name}` } : null;
-    if (state.phase !== 'walk') return null;
+    if (state.phase !== 'walk' || state.off) return null;
     // a quest's thing to do here
     const step = state.quest && questOf(state.quest.id)?.steps[state.quest.step];
     if (step?.type === 'use' && Math.hypot(p.x - step.at[0], p.z - step.at[1]) < (step.r ?? 3)) return { kind: 'use', id: step.id, text: step.prompt ?? 'Use' };
@@ -936,6 +956,35 @@ export async function create(canvas, ctx) {
   const chaseOn = () => Boolean(chase && !chase.view()?.result);
   let chaseViewAt = -1;
 
+  // ── A battle (missions/assault.js): two armies and the posts, drawn and run here ──
+  const assault = mission?.kind === 'assault' ? createAssaultMission({ parent: scene, world, blaster, mission, emit, say, sounds, kit, warm, tier: small ? 'mid' : tier, reduced }) : null;
+  const assaultOn = () => Boolean(assault?.running());
+  // what your blaster can hit, and what a hit does: the battle's soldiers while it's on, the quests' targets otherwise
+  const shootable = () => (assaultOn() ? assault.targets : activity.targets);
+  const struck = (hit) => {
+    if (!hit.target) return;
+    if (assaultOn()) assault.hit(hit.target, ASSAULT.yours);
+    else activity.hit(hit.target, 1);
+  };
+  // a side chosen, and onto the field at one of its posts (from the HUD, or the dev hooks)
+  function chooseSide(id) {
+    assault?.chooseSide(id);
+    ctx.invalidate();
+  }
+  function deployAt(id) {
+    const at = assault?.deploy(id);
+    if (!at) return;
+    leaveZone();
+    putAt(me().st, at.x, at.z, at.yaw);
+    state.cam.yaw = at.yaw;
+    camInit = false;
+    state.off = null;
+    state.fallen = 0;
+    state.health = 100;
+    emit({ type: 'health', value: 100 });
+    ctx.invalidate();
+  }
+
   // ── A quest mission (missions/index.js): the quest engine runs it, this
   // keeps its clock and says how it ended ──
   let run = null;
@@ -978,7 +1027,8 @@ export async function create(canvas, ctx) {
       emit({ type: 'fire' });
       return;
     }
-    if (state.phase !== 'walk') return;
+    if (state.phase !== 'walk' || state.off) return;
+    if (me().saber) return swing();
     state.firedAt = state.t;
     camera.getWorldDirection(camDir);
     p.yaw = Math.atan2(camDir.x, camDir.z);
@@ -993,11 +1043,58 @@ export async function create(canvas, ctx) {
       state.shot = { from, dir: camDir.clone() };
       return;
     }
-    const hit = blaster.fire(from, camDir, activity.targets, me().spec.bolt ?? '#ff3b30');
-    if (hit.target) activity.hit(hit.target, 1);
+    const hit = blaster.fire(from, camDir, shootable(), me().spec.bolt ?? '#ff3b30');
+    struck(hit);
     landed(hit, camDir);
     sounds.blast?.();
     emit({ type: 'fire' });
+  }
+  // ── The lightsaber (F a stroke, held up on C, thrown with R): you turn
+  // to face where the camera looks, as for a shot, and the blade stays lit
+  // a while after ──
+  function swing() {
+    const p = me();
+    camera.getWorldDirection(camDir);
+    p.st.yaw = Math.atan2(camDir.x, camDir.z);
+    state.aim = 1;
+    state.aimDir.copy(camDir);
+    state.saberAt = state.t;
+    if (p.saber.swing(state.t)) emit({ type: 'fire' });
+  }
+  function throwSaber() {
+    const p = me();
+    if (!p.saber || state.phase !== 'walk') return;
+    camera.getWorldDirection(camDir);
+    p.st.yaw = Math.atan2(camDir.x, camDir.z);
+    state.aim = 1;
+    state.aimDir.copy(camDir);
+    state.saberAt = state.t;
+    if (p.saber.throw(state.t, camDir)) emit({ type: 'fire' });
+  }
+  // the blade through one of them: their blade turns it (sparks, a clash)
+  // or it lands
+  function saberHit(t, damage, at) {
+    const parried = parries(t.hostile, Math.random());
+    fx.sparks(at, UP, parried ? '#ffffff' : (me().spec.bolt ?? '#ffffff'), parried ? 16 : 10);
+    sounds.saber?.('clash');
+    if (parried) {
+      t.flinch = 0.2;
+      return;
+    }
+    activity.hit(t, damage);
+    state.shake = Math.min(1, state.shake + 0.08);
+  }
+  // the blade lit while there's fighting, out again once it's quiet; held up while C is
+  function stepSaber() {
+    const p = me();
+    const sab = p.saber;
+    if (!sab) return;
+    const blocking = Boolean(state.keys.block || state.buttons.block) && state.phase === 'walk';
+    sab.block(blocking);
+    if (blocking) state.saberAt = state.t;
+    if (state.throwQueued) throwSaber();
+    if (sab.lit && state.t - (state.saberAt ?? -99) > SABER_IDLE && !sab.busy) sab.light(false);
+    if (blocking || sab.busy) state.aim = Math.max(state.aim, 0.6);
   }
   // the shot fired with the gun up: out of the muzzle, a flash, smoke and
   // brass from a powder gun, the gun's own sound, the view kicked a touch
@@ -1007,8 +1104,8 @@ export async function create(canvas, ctx) {
     const p = me();
     if (!o || !p.gp) return;
     const r = p.gp.fire();
-    const hit = blaster.fire(o.from, o.dir, activity.targets, p.spec.bolt ?? '#ff3b30', undefined, r.muzzle);
-    if (hit.target) activity.hit(hit.target, 1);
+    const hit = blaster.fire(o.from, o.dir, shootable(), p.spec.bolt ?? '#ff3b30', undefined, r.muzzle);
+    struck(hit);
     const spec = p.gp.spec;
     const out = hit.at.clone().sub(r.muzzle).normalize();
     fx.flash(r.muzzle, out, spec.flash);
@@ -1048,6 +1145,14 @@ export async function create(canvas, ctx) {
     state.shake = Math.min(1, state.shake + 0.3);
     emit({ type: 'health', value: state.health });
     if (state.health > 0) return;
+    // in a battle: down where you fell, and the HUD asks where to deploy
+    if (assaultOn() && !state.off) {
+      state.off = 'down';
+      state.fallen = 0.001;
+      assault.youDown();
+      emit({ type: 'down' });
+      return;
+    }
     if (chaseOn()) {
       state.health = 100;
       emit({ type: 'health', value: 100 });
@@ -1083,6 +1188,7 @@ export async function create(canvas, ctx) {
 
   function input() {
     const k = state.keys;
+    if (state.off) return { x: 0, y: 0, run: false, heading: state.cam.yaw };
     let x = (k.right ? 1 : 0) - (k.left ? 1 : 0) + state.stick.x;
     let y = (k.up ? 1 : 0) - (k.down ? 1 : 0) + state.stick.y;
     const m = Math.hypot(x, y);
@@ -1234,6 +1340,11 @@ export async function create(canvas, ctx) {
         pp.fig?.update(dt, 0);
       } else {
         pp.holder.rotation.set(0, st.yaw, 0);
+        // (down in a battle: tipped over where you fell)
+        if (i === lead && state.fallen > 0) {
+          state.fallen += dt;
+          pp.holder.rotation.x = -Math.min(Math.PI / 2, state.fallen * 5);
+        }
         // going which way, how fast, turning, off the ground (locomotion.js
         // works in the universe map's units: METRE to the metre)
         fwdV.set(Math.sin(st.yaw), 0, Math.cos(st.yaw));
@@ -1256,7 +1367,11 @@ export async function create(canvas, ctx) {
       if (pp.gp) {
         const riding = state.phase === 'ride' && i === lead;
         pp.gp.gun.visible = !riding;
-        if (!riding) pp.gp.set(dt, { aim: i === lead ? state.aim : 0, look: i === lead ? state.aim : 0, dir: i === lead && state.aim > 0 ? state.aimDir : null, forward: fwdV.set(Math.sin(st.yaw), 0, Math.cos(st.yaw)), up: UP });
+        if (!riding) {
+          const aimK = i === lead ? (pp.saber?.lit ? Math.max(state.aim, 0.75) : state.aim) : 0;
+          pp.gp.set(dt, { aim: aimK, look: i === lead ? state.aim : 0, dir: i === lead && state.aim > 0 ? state.aimDir : null, forward: fwdV.set(Math.sin(st.yaw), 0, Math.cos(st.yaw)), up: UP });
+          pp.saber?.update(dt, state.t, { forward: fwdV, up: UP, me: st, targets: i === lead ? activity.targets : [], hit: saberHit });
+        }
       }
     });
     // what you can ride
@@ -1399,6 +1514,12 @@ export async function create(canvas, ctx) {
           setStyle(m, 'opacity', '0');
           continue;
         }
+      } else if (id === 'quest' && assaultOn()) {
+        at = assault.target(p.x, p.z);
+        if (!at || state.off) {
+          setStyle(m, 'opacity', '0');
+          continue;
+        }
       } else if (id === 'quest') {
         const q = state.quest && questOf(state.quest.id);
         const step = q?.steps[state.quest.step];
@@ -1470,6 +1591,8 @@ export async function create(canvas, ctx) {
     // the blaster (F, held to keep firing)
     if ((state.fireQueued || state.keys.fire || state.buttons.fire) && (state.phase === 'walk' || (state.phase === 'ride' && chase))) fire();
     state.fireQueued = false;
+    stepSaber();
+    state.throwQueued = false;
     // the chase: on with it, and a shove when you ride into one
     if (chase && (state.phase === 'walk' || state.phase === 'ride')) {
       const b = state.riding ? state.riding.state : me().st;
@@ -1482,6 +1605,15 @@ export async function create(canvas, ctx) {
       if (state.t - chaseViewAt > 0.1) {
         chaseViewAt = state.t;
         emit({ type: 'mission', view: chase.view() });
+      }
+    }
+    // the battle: on with it, and their bolts at you
+    if (assault && state.phase === 'walk') {
+      const { atYou } = assault.update(dt, state.off ? null : me().st);
+      for (const s of atYou) blaster.enemy(s.from, new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, s.color, s.damage);
+      if (state.t - chaseViewAt > 0.1) {
+        chaseViewAt = state.t;
+        emit({ type: 'mission', view: assault.view() });
       }
     }
     // a quest mission's clock
@@ -1501,6 +1633,15 @@ export async function create(canvas, ctx) {
     for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: actorAt, door: doorFor })) questEvent(ev);
     if (state.phase === 'walk' || state.phase === 'ride')
       for (const s of activity.shooters(dt, me().st)) {
+        const blade = me().saber?.deflecting(s.from) ?? false;
+        if (s.melee && blade) {
+          // their swipe on your raised blade: a clash, and nothing lands
+          const p = me().st;
+          fx.sparks(new V(p.x, p.y + 1.2, p.z), UP, '#ffffff', 14);
+          sounds.saber?.('clash');
+          state.shake = Math.min(1, state.shake + 0.2);
+          continue;
+        }
         if (s.melee) {
           // a swipe: knocked back, away from it
           const p = me().st;
@@ -1512,9 +1653,16 @@ export async function create(canvas, ctx) {
           state.shake = 1;
           sounds.roar?.();
           hurt(s.damage);
-        } else blaster.enemy(s.from, new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, '#ff4a3d', s.damage);
+        } else {
+          const b = blaster.enemy(s.from, new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, '#ff4a3d', s.damage);
+          if (b && blade) b.deflect = true; // (it'll come off the blade, not land)
+        }
       }
-    const hit = blaster.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null);
+    const hit = blaster.update(dt, (state.phase === 'walk' || state.phase === 'ride') && !state.off ? me().st : null, (at) => {
+      fx.sparks(at, UP, '#ffffff', 10);
+      sounds.saber?.('deflect');
+      state.saberAt = state.t;
+    });
     if (hit) hurt(hit);
     if (state.health < 100 && state.t - state.hurtAt > 4) {
       state.health = Math.min(100, state.health + dt * 12);
@@ -1531,7 +1679,7 @@ export async function create(canvas, ctx) {
         scene.add(m.sprite);
         givers.push(m);
       }
-      const on = q && !state.quest && a.fig;
+      const on = q && !state.quest && a.fig && !a.hidden;
       m.sprite.visible = Boolean(on);
       if (on) m.sprite.position.set(a.b.x, a.holder.position.y + (a.fig.tall ?? 1.8) * (a.spec.scale ?? 1) + 0.6 + Math.sin(state.t * 3) * 0.08, a.b.z);
     }
@@ -1669,6 +1817,11 @@ export async function create(canvas, ctx) {
     }
     // (the scouts' way is planned round the trees, so once they're down)
     if (!disposed) chase?.begin();
+    if (!disposed && assault) {
+      // (the world's own troopers out of the way of the battle's)
+      life.hideKinds(mission.hideLife ?? []);
+      assault.begin();
+    }
     if (!disposed) beginMission();
     // (both ways the lights can be, so a door doesn't stall on new shaders: the
     // lamps lit and the sun's shadow off, as in a room, then as outdoors)
@@ -1726,12 +1879,15 @@ export async function create(canvas, ctx) {
         if (name === 'act') state.actQueued = true;
         if (name === 'run') state.buttons.run = true;
         if (name === 'fire') state.buttons.fire = true;
+        if (name === 'block') state.buttons.block = true;
+        if (name === 'throw') state.throwQueued = true;
         if (name === 'swap') swap();
         ctx.invalidate();
       },
       release(name) {
         if (name === 'run') state.buttons.run = false;
         if (name === 'fire') state.buttons.fire = false;
+        if (name === 'block') state.buttons.block = false;
       },
       // the quest list: follow one (its giver on the compass; one with
       // nobody to give it starts), or drop the one you're on
@@ -1741,8 +1897,24 @@ export async function create(canvas, ctx) {
         state.tracked = id;
         if (!q.giver && !q.place && !state.quest) beginQuest(q);
       },
+      // a side for the battle, and onto the field at one of its posts
+      side: chooseSide,
+      deploy: deployAt,
       // a mission again, from the start, on the bike
       restart() {
+        if (assault) {
+          // a battle again: back where you chose a side, the field cleared
+          leaveZone();
+          putAt(me().st, mission.start[0], mission.start[1], mission.yaw);
+          state.cam.yaw = mission.yaw;
+          camInit = false;
+          state.off = 'choose';
+          state.fallen = 0;
+          state.health = 100;
+          emit({ type: 'health', value: 100 });
+          assault.restart();
+          return;
+        }
         if (!chase && !run) return;
         const p = me().st;
         leaveZone();
@@ -1791,7 +1963,7 @@ export async function create(canvas, ctx) {
     },
     // back to the ship and up, from anywhere outdoors on foot: true once the climb's begun
     takeOff() {
-      if (state.zone || state.phase !== 'walk') return false;
+      if (state.zone || state.phase !== 'walk' || state.off) return false;
       return board();
     },
     // (for tests: the world moved on without drawing it, in steps)
@@ -1801,9 +1973,17 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: finish the chase, 'win' or 'lose')
-    missionDo(how) {
+    missionDo(how, arg) {
       if (!import.meta.env.DEV) return null;
       if (how === 'audit') return chase?.audit() ?? null;
+      if (assault) {
+        // (a battle: 'side' and 'deploy' as the HUD does them, 'win' or 'lose' to end it)
+        if (how === 'side') chooseSide(arg);
+        else if (how === 'deploy') deployAt(arg);
+        else if (how === 'win' || how === 'lose') assault.force(how);
+        ctx.invalidate();
+        return assault.view();
+      }
       if (run) {
         // (a quest mission: 'win', 'lose', or 'skip' the step you're on)
         if (how === 'win') endMission('won');
@@ -1859,10 +2039,11 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health, mission: chase?.view() ?? run }),
+    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown } : null }),
     dispose() {
       disposed = true;
       lit?.dispose();
+      for (const p of people) p.saber?.dispose();
       window.removeEventListener('keydown', keyDown);
       window.removeEventListener('keyup', keyUp);
       window.removeEventListener('blur', blur);
@@ -1876,6 +2057,7 @@ export async function create(canvas, ctx) {
       peers.dispose();
       activity.dispose();
       chase?.dispose();
+      assault?.dispose();
       blaster.dispose();
       markMat.map.dispose();
       markMat.dispose();

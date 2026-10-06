@@ -418,10 +418,96 @@ export function createSounds(site) {
     o.stop(now + 0.25);
   };
 
+  // a lightsaber: a low hum while it's lit (two detuned saws, wavering),
+  // the snap-hiss of it lighting, a swing's whoosh, the crack of a clash
+  let blade = null;
+  const saber = (what) => {
+    if (!started) return;
+    const now = ac.currentTime;
+    if (what === 'ignite' || what === 'off') {
+      if (what === 'ignite' && !blade) {
+        const g = ac.createGain();
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(0.035, now + 0.25);
+        const oscs = [86, 88.5].map((f) => {
+          const o = ac.createOscillator();
+          o.type = 'sawtooth';
+          o.frequency.value = f;
+          o.connect(g);
+          o.start(now);
+          return o;
+        });
+        const lp = ac.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = 420;
+        g.connect(lp).connect(out);
+        blade = { g, oscs, lp };
+      } else if (what === 'off' && blade) {
+        const h = blade;
+        blade = null;
+        h.g.gain.cancelScheduledValues(now);
+        h.g.gain.setValueAtTime(h.g.gain.value, now);
+        h.g.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+        h.oscs.forEach((o) => o.stop(now + 0.35));
+      }
+      // the snap-hiss either way: noise through a sweeping filter
+      const o = ac.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(what === 'ignite' ? 180 : 600, now);
+      o.frequency.exponentialRampToValueAtTime(what === 'ignite' ? 900 : 120, now + 0.3);
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(0.05, now + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+      const f = ac.createBiquadFilter();
+      f.type = 'bandpass';
+      f.frequency.value = 700;
+      f.Q.value = 2;
+      o.connect(f).connect(g).connect(out);
+      o.start(now);
+      o.stop(now + 0.4);
+      return;
+    }
+    if (what === 'swing' || what === 'throw') {
+      // the hum swept up and back: the blade through the air
+      if (blade) {
+        for (const o of blade.oscs) {
+          o.frequency.cancelScheduledValues(now);
+          o.frequency.setValueAtTime(o.frequency.value, now);
+          o.frequency.exponentialRampToValueAtTime(o.frequency.value * 2.2, now + 0.12);
+          o.frequency.exponentialRampToValueAtTime(o.frequency.value, now + 0.4);
+        }
+        blade.g.gain.cancelScheduledValues(now);
+        blade.g.gain.setValueAtTime(blade.g.gain.value, now);
+        blade.g.gain.linearRampToValueAtTime(0.08, now + 0.1);
+        blade.g.gain.linearRampToValueAtTime(0.035, now + 0.4);
+      }
+      return;
+    }
+    if (what === 'clash' || what === 'deflect') {
+      // a crack, bright, with a ring after it
+      const o = ac.createOscillator();
+      o.type = 'square';
+      o.frequency.setValueAtTime(what === 'clash' ? 2400 : 3200, now);
+      o.frequency.exponentialRampToValueAtTime(300, now + 0.12);
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(0.08, now + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+      const f = ac.createBiquadFilter();
+      f.type = 'highpass';
+      f.frequency.value = 900;
+      o.connect(f).connect(g).connect(out);
+      o.start(now);
+      o.stop(now + 0.2);
+    }
+  };
+
   return {
     start,
     step,
     blast,
+    saber,
     music,
     roar,
     laugh,
@@ -463,6 +549,8 @@ export function createSounds(site) {
       }
     },
     dispose() {
+      blade?.oscs.forEach((o) => o.stop());
+      blade = null;
       if (!started) return;
       if (tune) tune.bus.gain.setTargetAtTime(0, ac.currentTime, 0.1);
       tune = null;

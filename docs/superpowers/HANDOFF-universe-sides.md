@@ -1,9 +1,9 @@
 # Handoff: the sides (each crew's own universe of enemies and allies)
 
-Branch `claude/universe-sides`, merged to `main`. The spec is
+Lane A was `claude/universe-sides` (#292); Lane B was #294 (traits), #298
+(the ships) and #308 (troops); Lane C is `claude/universe-npcs`. The spec is
 `docs/superpowers/specs/2026-10-06-universe-sides-design.md`; the plan is
-`docs/superpowers/plans/2026-10-06-universe-sides.md` (Lane A done here;
-Lanes B and C are left).
+`docs/superpowers/plans/2026-10-06-universe-sides.md`, every lane in.
 
 ## Done
 
@@ -45,17 +45,31 @@ Lanes B and C are left).
   beater, Gus's Volvo, the DEA helicopter over the roadblock, a Madrigal
   freighter as the capital ship). Every side has a capital ship now.
 
-## Left (in order; the plan has the detail)
+- Lane B3, troops per side: stormtroopers, scout troopers and a probe
+  droid that calls a squad in (Star Wars, built); Evil Morty's guard (the
+  cast's Morty in yellow) with the Federation's; the DEA in Hank's figure,
+  the cartel in Tuco's, Jack's crew built (Breaking Bad).
 
-1. **Lane B3, troops per side**: stormtroopers and scouts for Star Wars,
-   Evil Morty's guard, Albuquerque's figures (`public/models/albuquerque/`:
-   check they're on the Meshy skeleton) for the DEA and the cartel.
-2. **Lane C, NPCs with brains**: `npcRules.js`, the five brains, the
-   registry (`universe/npcs/`), Saul, Mike, Fett, Birdperson, Squanchy and
-   Evil Morty as characters with lines and relations.
-3. The car builders are first drafts (`fleetBreakingbad.js`): the wings'
-   fins and the glass bands could be better shaped; a pass with the
-   threejs-aaa-graphics-builder skill would help.
+- Lane C, NPCs with brains: `npcRules.js` (the engine and its
+  relations), `npcs/brains/` (merchant, informant, rival, wingman, bounty),
+  the registry `npcs/index.js` (Saul and Mike, Fett and Lando, Birdperson,
+  Squanchy and Evil Morty), `npcs.js` drawing them, `scene.js`'s `meet`
+  bringing one by now and then, `director.foretell` for the informant's
+  word, and each crew's lines for each character of its side.
+
+## Left
+
+1. More characters: each is a row in `npcs/index.js` and its lines in
+   `crews.js`'s `npc` (`crews.test.js` says which are missing). Star Wars
+   has only Fett and Lando; an informant for it (Wedge? a Rebel agent) and
+   a rival for the Falcon (Bossk as a rival, not a bounty) would round it out.
+2. The merchant's offer only names a part on the radio; making it a real
+   trade (the hangar opening on that part, or the part unlocked) is the
+   hangar's business (`Hangar.jsx`, `outfit.js`).
+3. The car builders had one pass in Lane B2 (the wings and the cabin glass
+   were fixed); Gus's Volvo and Mike's sedan read close at map scale.
+4. `RmWorld.jsx` (the C-137 lane) took `main` over the health budget's
+   `big-files` (31 against 30) as this lane closed: its owner splits it.
 
 ## Checking it
 
@@ -72,6 +86,12 @@ Lanes B and C are left).
   `/src/components/universe/trafficModels.js` and lays out `buildTraffic(kind)`
   for each kind asked for (this session's was `ships.local.html?kinds=…&view=three|side|top`,
   kept out of git with `.git/info/exclude`; not committed).
+- The troops: land on a planet and walk out (or `startFoot` from
+  `window.__universeDebug`); the first squad comes in thirty-odd seconds.
+- A character: `meetNpc('saul')` (or `mike`, `lando`, `squanchy`,
+  `evilmorty`) brings one ahead of you; step them by hand as the hunters
+  (`npcs.update(1 / 60, t, { you: state.ship, hunters: [], stations: [], solids: [] })`)
+  to see one arrive, then let the scene's own loop voice it.
 - A capital ship or the helicopter: `director.soon('destroyer')` (any
   crew), `director.soon('roadblock')` (the RV).
 - A trait in the browser: `hunters.pack('dea', state.ship, { size: 3, ace: true })`
