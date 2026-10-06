@@ -57,6 +57,7 @@ import { createSky } from './sky';
 import { createWater } from './water';
 import { createWeather } from './weather';
 import { createKit } from './kit';
+import { PROPS } from './props';
 import { createPlacer } from './placer';
 import { createActors, modelFigure } from './actors';
 import { RIDES } from './rides';
@@ -250,7 +251,7 @@ export async function create(canvas, ctx) {
   })(), depthWrite: false, transparent: true });
 
   // what you can ride, where it's parked
-  const rides = [...site.rides, ...(mission ? [{ kind: mission.ride, at: mission.start, yaw: mission.yaw }] : [])]
+  const rides = [...site.rides, ...(mission?.ride ? [{ kind: mission.ride, at: mission.start, yaw: mission.yaw }] : [])]
     .filter((x) => RIDES[x.kind])
     .map((x) => {
       const spec = RIDES[x.kind];
@@ -392,8 +393,10 @@ export async function create(canvas, ctx) {
   // ── You, and your crewmate ──
   const party = PARTY[shipKind] ?? PARTY.xwing;
   const out = new V(Math.cos(site.land.yaw), 0, -Math.sin(site.land.yaw)); // the ship's right
-  const spawnAt = [landAt[0] + out.x * (shipBox.w + 2.5), landAt[1] + out.z * (shipBox.w + 2.5)];
-  const you = walker(spawnAt[0], spawnAt[1], groundAt(world, ...spawnAt), site.land.yaw + 0.5);
+  // (a mission on foot starts you at its start, facing its way)
+  const onFoot = Boolean(mission && !mission.ride);
+  const spawnAt = onFoot ? [...mission.start] : [landAt[0] + out.x * (shipBox.w + 2.5), landAt[1] + out.z * (shipBox.w + 2.5)];
+  const you = walker(spawnAt[0], spawnAt[1], groundAt(world, ...spawnAt), onFoot ? mission.yaw : site.land.yaw + 0.5);
   const mateAt = [spawnAt[0] + out.x * 1.6, spawnAt[1] + out.z * 1.6];
   const mate = walker(mateAt[0], mateAt[1], groundAt(world, ...mateAt), you.yaw);
   const people = [
@@ -461,7 +464,7 @@ export async function create(canvas, ctx) {
 
   // ── State ──
   const state = {
-    phase: mission ? 'ride' : reduced ? 'walk' : 'landing',
+    phase: mission ? (mission.ride ? 'ride' : 'walk') : reduced ? 'walk' : 'landing',
     age: 0,
     t: 0,
     frames: 0,
@@ -470,8 +473,8 @@ export async function create(canvas, ctx) {
     buttons: { run: false },
     jumpQueued: false,
     actQueued: false,
-    cam: { yaw: mission ? mission.yaw : you.yaw, pitch: 0.2, dist: mission ? RIDES[mission.ride].cam[0] : CAM.dist, drag: -10 },
-    riding: mission ? rides[rides.length - 1] : null,
+    cam: { yaw: mission ? mission.yaw : you.yaw, pitch: 0.2, dist: mission?.ride ? RIDES[mission.ride].cam[0] : CAM.dist, drag: -10 },
+    riding: mission?.ride ? rides[rides.length - 1] : null,
     prompt: null,
     here: null,
     found: new Set(props.found ?? []),
@@ -701,6 +704,24 @@ export async function create(canvas, ctx) {
     const step = q?.steps[state.quest.step];
     emit({ type: 'quest', id: q?.id ?? null, name: q?.name ?? null, text: q ? stepText(q, state.quest) : null, left: step?.time ? Math.max(0, Math.ceil(step.time - state.quest.time)) : null, shoot: step?.type === 'shoot' });
   };
+  // what you've got on your back (a step's { carry: kind }: Yoda, on
+  // Dagobah's run), a prop of that kind peering over your shoulder; each
+  // built once and kept (the kit owns what it's made of, and lets it go
+  // with the scene), so carrying it again doesn't build another
+  const carriable = new Map();
+  let carried = null;
+  function carry(kind) {
+    carried?.removeFromParent();
+    carried = null;
+    if (!kind || !PROPS[kind]) return;
+    if (!carriable.has(kind)) {
+      const o = PROPS[kind](kit, {}).object;
+      o.position.set(0, 1.0, -0.3);
+      carriable.set(kind, o);
+    }
+    carried = carriable.get(kind);
+    me().holder.add(carried);
+  }
   // what a step does as it starts or ends: a trapdoor opens, a gate comes
   // down, the band strikes up, someone's gone, you're thrown out
   function effects(list) {
@@ -716,6 +737,7 @@ export async function create(canvas, ctx) {
       if (e.shake) state.shake = Math.min(1, state.shake + e.shake);
       if (e.say) say(e.say);
       if (e.leave) leaveZone();
+      if ('carry' in e) carry(e.carry);
       if (e.to) {
         const p = me().st;
         putAt(p, e.to[0], e.to[1], e.yaw);
@@ -888,6 +910,7 @@ export async function create(canvas, ctx) {
     state.quest = null;
     state.done.delete(mission.quest.id);
     activity.show(null, null);
+    effects(mission.reset);
     run = newRun();
     say(mission.lines?.start);
     beginQuest(mission.quest);
@@ -1617,9 +1640,29 @@ export async function create(canvas, ctx) {
       // a mission again, from the start, on the bike
       restart() {
         if (!chase && !run) return;
-        const x = rides[rides.length - 1];
         const p = me().st;
-        if (state.phase === 'walk') {
+        leaveZone();
+        if (!mission.ride) {
+          // on foot, back at the start: off anything you've got on
+          if (state.phase === 'ride') {
+            state.riding.state.speed = 0;
+            state.riding = null;
+            state.phase = 'walk';
+            state.cam.dist = CAM.dist;
+            emit({ type: 'phase', phase: 'walk' });
+          }
+          putAt(p, mission.start[0], mission.start[1], mission.yaw);
+          state.cam.yaw = mission.yaw;
+          camInit = false;
+          state.health = 100;
+          emit({ type: 'health', value: 100 });
+          beginMission();
+          return;
+        }
+        const x = rides[rides.length - 1];
+        // (back on the mission's own ride, off any other)
+        if (state.riding !== x) {
+          if (state.riding) state.riding.state.speed = 0;
           state.riding = x;
           state.phase = 'ride';
           state.cam.dist = x.spec.cam[0];
@@ -1660,6 +1703,7 @@ export async function create(canvas, ctx) {
           const step = mission.quest.steps[state.quest.step];
           if (step.type === 'race') for (const g of step.gates.slice(state.quest.count)) questEvent({ type: 'at', x: g[0], z: g[1], riding: step.ride });
           else if (step.type === 'use') questEvent({ type: 'use', id: step.id });
+          else if (step.type === 'reach') questEvent({ type: 'at', x: step.at[0], z: step.at[1], riding: state.riding?.kind ?? null });
           else if (step.type === 'shoot') activity.kill(step.tag);
         }
         ctx.invalidate();
