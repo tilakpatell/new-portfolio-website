@@ -11,7 +11,7 @@
 
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const LOCAL = process.env.LOCALAPPDATA ?? join(process.env.USERPROFILE ?? '', 'AppData', 'Local');
@@ -30,18 +30,31 @@ export function claudeCode() {
   cli = null;
   if (process.env.GEN3D_JUDGE === 'qwen') return null;
   try {
-    const found = execFileSync(process.platform === 'win32' ? 'where' : 'which', ['claude'], { encoding: 'utf8', timeout: 10000 }).split(/\r?\n/).find((l) => /claude(\.cmd|\.exe)?$/i.test(l.trim()));
+    const lines = execFileSync(process.platform === 'win32' ? 'where' : 'which', ['claude'], { encoding: 'utf8', timeout: 10000 }).split(/\r?\n/).map((l) => l.trim());
+    // `where` lists npm's extensionless sh shim first: the .cmd or .exe is the one that runs here
+    const found = lines.find((l) => /\.(cmd|exe)$/i.test(l)) ?? lines.find((l) => /claude$/i.test(l));
     cli = found?.trim() || null;
+    // on Windows `claude` is a .cmd shim round the package's own binary (or its cli.js): run that, so no shell is needed
+    if (cli && /\.cmd$/i.test(cli)) {
+      const pkg = join(dirname(cli), 'node_modules', '@anthropic-ai', 'claude-code');
+      cli = [join(pkg, 'bin', 'claude.exe'), join(pkg, 'cli.js')].find((f) => existsSync(f)) ?? cli;
+    }
     // installed but not logged in (the desktop app's login doesn't reach it: `claude` then `/login`, once): Qwen instead
     if (cli) {
-      const probe = execFileSync(cli, ['-p', 'Reply with the word OK.', '--model', 'haiku', '--max-turns', '1', '--output-format', 'text'], { encoding: 'utf8', timeout: 60000, stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32' });
-      if (/not logged in/i.test(probe)) {
-        console.warn('Claude Code is here but not logged in (run `claude`, then /login, once); judging with Qwen3-VL');
+      let probe;
+      try {
+        probe = runClaude(cli, ['-p', 'Reply with the word OK.', '--model', 'haiku', '--max-turns', '1', '--output-format', 'text'], 60000);
+      } catch (e) {
+        probe = `${e.stdout ?? ''}${e.stderr ?? ''}${e.message}`; // it exits non-zero when not logged in
+      }
+      if (!/\bOK\b/.test(probe)) {
+        console.warn(/not logged in/i.test(probe) ? 'Claude Code is here but not logged in (run `claude`, then /login, once); judging with Qwen3-VL' : `Claude Code did not answer (${probe.trim().slice(0, 120)}); judging with Qwen3-VL`);
         cli = null;
       }
     }
-  } catch {
-    cli = null; /* not installed, or the probe failed */
+  } catch (e) {
+    if (cli) console.warn(`Claude Code check failed (${e.message.slice(0, 120)}); judging with Qwen3-VL`);
+    cli = null; /* not installed, or the check broke */
   }
   return cli;
 }
@@ -83,8 +96,14 @@ const dataUrl = (f) => `data:${mime(f)};base64,${readFileSync(f).toString('base6
 function askClaudeCode(prompt, images) {
   const text = `${images.length ? `Read these picture files first, with the Read tool, and look at them carefully: ${images.map((f) => resolve(f)).join(' ; ')}\n\n` : ''}${prompt}\n\nReply with the answer only, no preamble.`;
   const args = ['-p', text, '--model', process.env.GEN3D_JUDGE_MODEL ?? 'opus', '--allowedTools', 'Read', '--max-turns', String(images.length + 3), '--output-format', 'text'];
-  return execFileSync(claudeCode(), args, { encoding: 'utf8', timeout: 240000, maxBuffer: 8 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32' }).trim();
+  return runClaude(claudeCode(), args, 240000);
 }
+
+// the CLI run without a shell: node on its cli.js, or the binary itself
+const runClaude = (cli, args, timeout) => {
+  const [cmd, argv] = /\.js$/i.test(cli) ? [process.execPath, [cli, ...args]] : [cli, args];
+  return execFileSync(cmd, argv, { encoding: 'utf8', timeout, maxBuffer: 8 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+};
 
 export async function ask(prompt, images = [], { maxTokens = 600 } = {}) {
   if (which() === 'claude') return askClaudeCode(prompt, images);
