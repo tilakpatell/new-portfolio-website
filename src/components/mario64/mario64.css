@@ -1,0 +1,632 @@
+/* The Mario 64 tribute: the stage, the HUD over it, the title, cards,
+   dialogs, the pause menu and the touch pad. Numbers in a chunky round face
+   with a dark outline, the way the HUD reads over any sky. */
+
+.m64 {
+  --m64-ink: #fff;
+  --m64-edge: #1b1030;
+  --m64-gold: #ffd23a;
+  --m64-red: #e5251f;
+  --m64-panel: rgba(18, 14, 38, 0.82);
+  --m64-font: 'Luckiest Guy', 'Arial Black', system-ui, sans-serif;
+  position: relative;
+  color: var(--m64-ink);
+  font-family: var(--m64-font);
+  letter-spacing: 0.02em;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.m64[data-mode='page'] {
+  height: calc(100svh - var(--nav-h, 64px));
+  min-height: 420px;
+}
+.m64[data-mode='overlay'] {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: #000;
+}
+.m64-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 20%, #6fb2ff 0%, #2d5fae 55%, #10203f 100%);
+  touch-action: none;
+}
+.m64-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* outlined numbers */
+.m64-count,
+.m64-course-name,
+.m64-logo,
+.m64-starget-big,
+.m64-over p {
+  text-shadow:
+    0 2px 0 var(--m64-edge),
+    2px 0 0 var(--m64-edge),
+    -2px 0 0 var(--m64-edge),
+    0 -2px 0 var(--m64-edge),
+    2px 2px 0 var(--m64-edge),
+    -2px 2px 0 var(--m64-edge),
+    0 5px 10px rgba(0, 0, 0, 0.35);
+}
+
+.m64-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.75rem;
+  font-size: 1.1rem;
+  text-align: center;
+  padding: 1rem;
+}
+.m64-logo-sm {
+  font-size: clamp(2rem, 6vw, 3.4rem);
+  color: var(--m64-gold);
+}
+
+/* ── the HUD ── */
+.m64-hud {
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: max(14px, env(safe-area-inset-top)) 18px 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.m64-hud-left,
+.m64-hud-right {
+  display: grid;
+  gap: 6px;
+}
+.m64-hud-right {
+  justify-items: end;
+  padding-right: 52px;
+}
+.m64-count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: clamp(1.25rem, 3.2vw, 1.9rem);
+  line-height: 1;
+}
+.m64-x {
+  font-size: 0.75em;
+  opacity: 0.95;
+}
+.m64-mario-icon {
+  display: inline-grid;
+  place-content: center;
+  width: 1.25em;
+  height: 1.25em;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ff6b5e, var(--m64-red) 60%, #8f0f0c);
+  color: #fff;
+  font-size: 0.82em;
+  box-shadow: 0 0 0 2px var(--m64-edge);
+  text-shadow: none;
+}
+.m64-coin-icon {
+  width: 0.9em;
+  height: 1.1em;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff6b0, #ffc93a 45%, #c7891a);
+  box-shadow:
+    0 0 0 2px var(--m64-edge),
+    inset -3px 0 0 rgba(0, 0, 0, 0.18);
+}
+.m64-star {
+  width: 1.15em;
+  height: 1.15em;
+  fill: var(--m64-gold);
+  stroke: var(--m64-edge);
+  stroke-width: 1.6;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+}
+.m64-star:not([data-got]) {
+  fill: rgba(255, 255, 255, 0.18);
+  stroke: rgba(255, 255, 255, 0.7);
+}
+.m64-meter {
+  width: clamp(64px, 11vw, 92px);
+  margin-top: -2px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
+  animation: m64-pop 0.25s ease-out;
+}
+.m64-meter-n {
+  font-family: var(--m64-font);
+  font-size: 13px;
+  fill: #1b1030;
+}
+.m64-reds {
+  display: flex;
+  gap: 4px;
+}
+.m64-reds span {
+  width: 11px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 1.5px var(--m64-edge);
+}
+.m64-reds span[data-got] {
+  background: radial-gradient(circle at 35% 30%, #ffb0a8, #ff2b2b 55%, #9a0d0d);
+}
+.m64-course-name {
+  position: absolute;
+  left: 50%;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  font-size: clamp(1.4rem, 4vw, 2.4rem);
+  pointer-events: none;
+  animation: m64-course 3.4s ease forwards;
+  z-index: 3;
+  white-space: nowrap;
+}
+@keyframes m64-course {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+  12%,
+  70% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes m64-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+
+/* ── panels: title, card, pause, over ── */
+.m64-title,
+.m64-card,
+.m64-pause,
+.m64-over,
+.m64-starget {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+.m64-title {
+  inset: 0;
+  align-content: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: linear-gradient(180deg, rgba(10, 20, 60, 0.05), rgba(10, 10, 30, 0.45));
+}
+.m64-logo {
+  display: grid;
+  justify-items: center;
+  line-height: 0.85;
+  margin: 0;
+  font-weight: 400;
+}
+.m64-logo-super {
+  font-size: clamp(1.6rem, 5vw, 3rem);
+  color: #ffe36b;
+}
+.m64-logo-mario {
+  font-size: clamp(3.6rem, 13vw, 8.5rem);
+  display: flex;
+  gap: 0.02em;
+}
+.m64-logo-mario span {
+  display: inline-block;
+  animation: m64-bob 2.4s ease-in-out infinite;
+}
+.m64-logo-mario span[data-i='0'] {
+  color: #ff4038;
+}
+.m64-logo-mario span[data-i='1'] {
+  color: #ffd23a;
+  animation-delay: -0.3s;
+}
+.m64-logo-mario span[data-i='2'] {
+  color: #34c759;
+  animation-delay: -0.6s;
+}
+.m64-logo-mario span[data-i='3'] {
+  color: #3b82f6;
+  animation-delay: -0.9s;
+}
+.m64-logo-mario span[data-i='4'] {
+  color: #ff4038;
+  animation-delay: -1.2s;
+}
+.m64-logo-64 {
+  font-size: clamp(2.6rem, 8vw, 5rem);
+  color: #fff;
+  -webkit-text-stroke: 2px #3b82f6;
+}
+@keyframes m64-bob {
+  50% {
+    transform: translateY(-6%) rotate(-2deg);
+  }
+}
+.m64-sub {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
+}
+.m64-start {
+  font: inherit;
+  font-size: clamp(1.3rem, 4vw, 2rem);
+  color: #fff;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  animation: m64-blink 1.2s steps(2, jump-none) infinite;
+  text-shadow: 0 3px 0 var(--m64-edge);
+}
+.m64-start:focus-visible {
+  outline: 3px solid var(--m64-gold);
+  outline-offset: 6px;
+  border-radius: 8px;
+}
+@keyframes m64-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+.m64-title-row,
+.m64-pause-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.m64-chip,
+.m64-btn {
+  font-family: system-ui, sans-serif;
+  font-weight: 650;
+  font-size: 0.9rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    transform 0.12s,
+    background 0.2s;
+}
+.m64-chip {
+  padding: 0.45rem 0.9rem;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(6px);
+}
+.m64-chip[aria-pressed='true'] {
+  background: var(--m64-gold);
+  color: #2a1a00;
+  border-color: var(--m64-gold);
+}
+.m64-btn {
+  padding: 0.65rem 1.4rem;
+  color: #2a1a00;
+  background: linear-gradient(180deg, #ffe680, var(--m64-gold));
+  border: 0;
+  box-shadow: 0 4px 0 #b8860b;
+}
+.m64-btn:active,
+.m64-chip:active {
+  transform: translateY(2px);
+}
+.m64-btn-ghost {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+.m64-btn:focus-visible,
+.m64-chip:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+.m64-card,
+.m64-pause {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(92vw, 30rem);
+  padding: 1.4rem 1.4rem 1.2rem;
+  gap: 0.8rem;
+  border-radius: 22px;
+  background: var(--m64-panel);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 0 0 2px rgba(255, 210, 58, 0.55),
+    0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: m64-pop 0.2s ease-out;
+}
+.m64-card h2,
+.m64-pause h2 {
+  margin: 0;
+  font-weight: 400;
+  font-size: clamp(1.7rem, 5vw, 2.4rem);
+  color: var(--m64-gold);
+}
+.m64-card-kicker {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  opacity: 0.8;
+}
+.m64-card-stars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+  justify-items: start;
+  font-family: system-ui, sans-serif;
+  font-size: 0.98rem;
+}
+.m64-card-stars li {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.m64-card-soon {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+.m64-card-go {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.m64-controls {
+  margin: 0;
+  display: grid;
+  gap: 0.3rem;
+  font-family: system-ui, sans-serif;
+  font-size: 0.85rem;
+  text-align: left;
+  width: 100%;
+}
+.m64-controls div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.m64-controls dt {
+  opacity: 0.75;
+}
+.m64-controls dd {
+  margin: 0;
+  text-align: right;
+}
+
+.m64-dialog {
+  position: absolute;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(94vw, 40rem);
+  z-index: 5;
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem 1.2rem 1.4rem;
+  text-align: left;
+  color: #fff;
+  background: rgba(14, 10, 30, 0.86);
+  border: 0;
+  border-radius: 18px;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.25),
+    0 14px 40px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  animation: m64-pop 0.18s ease-out;
+}
+.m64-dialog-title {
+  font-family: var(--m64-font);
+  font-size: 1.15rem;
+  color: var(--m64-gold);
+}
+.m64-dialog-text {
+  font-family: system-ui, sans-serif;
+  font-size: 1.02rem;
+  line-height: 1.45;
+}
+.m64-dialog-next {
+  position: absolute;
+  right: 16px;
+  bottom: 8px;
+  font-size: 0.8rem;
+  animation: m64-blink 0.8s steps(2, jump-none) infinite;
+}
+
+.m64-starget {
+  inset: 0;
+  align-content: center;
+  gap: 0.2rem;
+  pointer-events: none;
+}
+.m64-starget .m64-star {
+  width: clamp(80px, 18vw, 140px);
+  height: auto;
+  animation: m64-spin 1.4s ease-out;
+}
+.m64-starget-big {
+  margin: 0;
+  font-size: clamp(2.6rem, 9vw, 5rem);
+  color: var(--m64-gold);
+  animation: m64-pop 0.35s ease-out;
+}
+.m64-starget-name {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  font-size: 1.05rem;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+@keyframes m64-spin {
+  from {
+    transform: scale(0.2) rotate(-200deg);
+  }
+}
+
+.m64-over {
+  inset: 0;
+  align-content: center;
+  gap: 1rem;
+  background: rgba(0, 0, 0, 0.55);
+}
+.m64-over p {
+  margin: 0;
+  font-size: clamp(2.6rem, 9vw, 5rem);
+  color: #ff5a4a;
+}
+
+.m64-fade {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+.m64-fade[data-on] {
+  opacity: 1;
+  transition-duration: 0.18s;
+}
+
+/* ── the touch pad ── */
+.m64-pad {
+  position: absolute;
+  inset: auto 0 0;
+  height: 0;
+  z-index: 4;
+}
+.m64-stick {
+  position: absolute;
+  left: max(18px, env(safe-area-inset-left));
+  bottom: max(22px, env(safe-area-inset-bottom));
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.18));
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+  touch-action: none;
+}
+.m64-stick span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, #c9c9d6);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+.m64-abz {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  width: 170px;
+  height: 150px;
+}
+.m64-key {
+  position: absolute;
+  display: grid;
+  place-content: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  font-family: var(--m64-font);
+  font-size: 1.4rem;
+  color: #fff;
+  border: 0;
+  box-shadow:
+    0 4px 0 rgba(0, 0, 0, 0.35),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.3);
+  touch-action: none;
+}
+.m64-key:active {
+  transform: translateY(3px);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+.m64-key-a {
+  right: 0;
+  bottom: 18px;
+  width: 74px;
+  height: 74px;
+  background: radial-gradient(circle at 35% 30%, #6aa8ff, #2463d8);
+}
+.m64-key-b {
+  right: 86px;
+  bottom: 0;
+  background: radial-gradient(circle at 35% 30%, #6be08a, #1f9a45);
+}
+.m64-key-z {
+  right: 70px;
+  bottom: 84px;
+  width: 52px;
+  height: 52px;
+  font-size: 1.1rem;
+  background: radial-gradient(circle at 35% 30%, #9a9aab, #555566);
+}
+.m64-cam {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: 186px;
+  display: flex;
+  gap: 8px;
+}
+.m64-cam .m64-key {
+  position: static;
+  width: 46px;
+  height: 46px;
+  font-size: 1.2rem;
+  background: rgba(255, 210, 58, 0.85);
+  color: #2a1a00;
+}
+.m64-pause-btn {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: 12px;
+  z-index: 5;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 0;
+  color: #fff;
+  font-size: 0.85rem;
+  background: rgba(14, 10, 30, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+}
+.m64-pause-btn:focus-visible {
+  outline: 3px solid var(--m64-gold);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m64-logo-mario span,
+  .m64-start,
+  .m64-dialog-next {
+    animation: none;
+  }
+}

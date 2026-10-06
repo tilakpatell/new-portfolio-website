@@ -91,7 +91,8 @@ function IslandMap({ palette, found }) {
         } else if (t.kind === 'gameboy') {
           fill(0, x, y, S, S);
           fill(2, x + 1, y + 1, S - 2, S - 2);
-        } else if (t.kind === 'pipe') {
+        } else if (t.kind === 'n64') fill(1, x, y, S, S);
+        else if (t.kind === 'pipe') {
           fill(1, x + 1, y + 1, 4, 4);
           fill(0, x + 2, y + 2, 2, 2);
         } else if (t.kind === 'sign') fill(0, x + 2, y + 2, 2, 2);

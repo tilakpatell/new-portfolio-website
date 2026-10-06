@@ -165,6 +165,7 @@ export const ACHIEVEMENTS = {
   globetrotter: { name: 'Globetrotter', desc: 'Flew to every place on the globe' },
   fullset: { name: 'Full set', desc: 'Found all eight cartridges on Dot Matrix island' },
   pocketful: { name: 'Pocketful', desc: 'Picked up every coin on Dot Matrix island' },
+  superstar: { name: 'Superstar', desc: 'Got every Power Star in the Mario 64 tribute' },
   passport: { name: 'Every stamp', desc: 'Flew to every place in the passport on Earth' },
   roundtheworld: { name: 'Round the world', desc: 'Flew the distance round the Earth, over all your flights on it' },
   groundside: { name: 'Boots on the ground', desc: 'Landed on a world in a galaxy far, far away' },
