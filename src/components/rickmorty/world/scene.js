@@ -22,6 +22,8 @@ import { budget, device } from '../../../lib/device';
 import { createPace } from '../../../lib/three/pace';
 import { InkPass, toon, toonify } from '../portal/toon';
 import { createMeshyCast } from '../portal/meshyCast';
+import { defaultLook } from '../wardrobe/looks';
+import { bodyAsset, bodyKind, dress, withWardrobe } from '../wardrobe/wear';
 import { CANS, CREW, TALL, glassDome } from '../cruiser3d';
 import { ARCADE, AREAS, BUILDINGS, CEILING, CRUISER, FURNITURE, HOTSPOTS, LINKS, MORTY, OUTDOOR, ROAD, TREES, behindYaw, supportAt, wallsIn } from './rules';
 import { gentleRamp, kitMaterials } from './kit';
@@ -75,7 +77,8 @@ const ROOM_LIGHT = { sun: [0xfff1dc, 0.7], hemi: [0xfff4e6, 0x8a7a68, 1.7], fog:
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const V = new THREE.Vector3();
 
-export async function createRmWorld(canvas, { onLost } = {}) {
+// looks: the wardrobe's ({ rick, morty }): Morty's is the one he wears here
+export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   const dev = device();
   const tier = dev.tier;
   const fit = budget();
@@ -105,7 +108,7 @@ export async function createRmWorld(canvas, { onLost } = {}) {
   // ── the models and the cast ──
   const loader = gltfLoader();
   // (figures out of view aren't drawn: a skinned mesh's bounds don't follow its pose)
-  const cast = createMeshyCast({ cull: true });
+  const cast = createMeshyCast(withWardrobe({ cull: true })); // (any body the wardrobe has, for Morty)
   // each of the cast loaded once, however many builders ask, at the same time
   // or not (the clips of the first ask for a name are the ones it gets)
   const asked = new Map();
@@ -118,7 +121,7 @@ export async function createRmWorld(canvas, { onLost } = {}) {
     );
   const [loaded] = await Promise.all([
     Promise.all(MODELS.map((n) => loader.loadAsync(`/models/c137/${n}.glb`).then((g) => [n, toonify(g.scene, { gradientMap: gentleRamp(), aniso: fit.aniso, dispose: true })], () => [n, null]))),
-    need(['morty', 'saucer'], { clips: ['idle', 'walk', 'run', 'sit'] }),
+    need(['morty', 'saucer', bodyAsset(looks?.morty ?? defaultLook('morty'))], { clips: ['idle', 'walk', 'run', 'sit'] }),
   ]);
   const models = new Map(loaded);
 
@@ -142,10 +145,13 @@ export async function createRmWorld(canvas, { onLost } = {}) {
   };
   await Promise.all(Object.keys(AREA_BUILDERS).map(build));
 
-  // ── Morty, walking, and sat at the cruiser's wheel ──
-  const morty = cast.make('morty') ?? standInMorty();
+  // ── Morty, walking, and sat at the cruiser's wheel, as the wardrobe has him ──
+  let look = looks?.morty ?? defaultLook('morty');
+  const makeMorty = (l) => cast.make(bodyKind(l)) ?? cast.make('morty');
+  let morty = makeMorty(look) ?? standInMorty();
   morty.group.scale.setScalar(MORTY_H / (morty.height ?? MORTY_H));
   scene.add(morty.group);
+  let undress = dress(morty, look);
   const mortyShadow = fx.blob(0.55);
 
   const cruiser = new THREE.Group();
@@ -159,13 +165,17 @@ export async function createRmWorld(canvas, { onLost } = {}) {
     glassDome(saucer);
   } else hull.add(standInSaucer(mats));
   // Morty at the wheel (where cruiser3d.js sits Rick), sat, as big as he'd be beside him
-  const pilot = cast.make('morty');
-  if (pilot) {
-    pilot.group.scale.setScalar((CREW.morty[0] * K) / pilot.height);
-    pilot.group.position.set(CREW.rick[1] * K, CREW.y * K, CREW.z * K);
-    for (const [n, a] of Object.entries(pilot.act ?? {})) a.setEffectiveWeight(n === 'sit' ? 1 : 0);
-    hull.add(pilot.group);
-  }
+  const seatPilot = (l) => {
+    const p = makeMorty(l);
+    if (!p) return null;
+    p.group.scale.setScalar((CREW.morty[0] * K) / p.height);
+    p.group.position.set(CREW.rick[1] * K, CREW.y * K, CREW.z * K);
+    for (const [n, a] of Object.entries(p.act ?? {})) a.setEffectiveWeight(n === 'sit' ? 1 : 0);
+    hull.add(p.group);
+    p.undress = dress(p, l);
+    return p;
+  };
+  let pilot = seatPilot(look);
   // the exhaust cans' glow, at the back
   const glowMat = new THREE.SpriteMaterial({ map: fx.spot, color: new THREE.Color(0x9dff6a).multiplyScalar(2.2), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
   const glows = CANS.map(([x, y, z]) => {
@@ -475,10 +485,39 @@ export async function createRmWorld(canvas, { onLost } = {}) {
     if (pending.length < 16) pending.push([type, d]);
   };
 
+  // a new look from the wardrobe: Morty made again in it, where he was, and
+  // at the wheel
+  const setLooks = async (next) => {
+    const l = next?.morty;
+    if (!l || JSON.stringify(l) === JSON.stringify(look)) return;
+    look = l;
+    await need([bodyAsset(l)], { clips: ['idle', 'walk', 'run', 'sit'] });
+    if (stage.disposed || look !== l) return;
+    const was = morty;
+    const fresh = makeMorty(l);
+    if (fresh) {
+      undress();
+      fresh.group.scale.setScalar(MORTY_H / fresh.height);
+      fresh.group.position.copy(was.group.position);
+      fresh.group.rotation.copy(was.group.rotation);
+      fresh.group.visible = was.group.visible;
+      was.group.removeFromParent();
+      scene.add(fresh.group);
+      morty = fresh;
+      undress = dress(morty, l);
+    }
+    if (pilot) {
+      pilot.undress?.();
+      pilot.group.removeFromParent();
+    }
+    pilot = seatPilot(l);
+  };
+
   const api = {
     render,
     resize,
     fx: fxEvent,
+    setLooks,
     // an area builder's own action, if it has one (the arcade's setBoard(best)); nothing otherwise
     act(area, name, ...args) {
       const actions = areas[area]?.actions;

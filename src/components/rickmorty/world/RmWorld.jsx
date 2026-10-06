@@ -1,7 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link as RouterLink } from 'react-router-dom';
-import { RiArrowDownLine, RiArrowLeftLine, RiArrowUpLine, RiCheckLine, RiCloseLine, RiListCheck2 } from 'react-icons/ri';
+import { RiArrowDownLine, RiArrowLeftLine, RiArrowUpLine, RiCheckLine, RiCloseLine, RiListCheck2, RiShirtLine } from 'react-icons/ri';
 import '@fontsource/luckiest-guy/400.css';
 import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
@@ -60,7 +60,10 @@ import {
 } from './rules';
 import { newFedShip, newShipVoice, onTail, shipSays, stepFedShip } from './ship';
 import { setShipVoice, shipVoiceOn, speak, stopSpeaking } from './shipVoice';
+import Wardrobe from '../wardrobe/Wardrobe';
+import { useLooks } from '../wardrobe/useLooks';
 import './world.css';
+import GuideCue from '../../guide/GuideCue';
 
 // Dimension C-137, the world: walk about the Smiths' street as Morty, go into
 // the house, Rick's garage and Harry Herpson High, fly Rick's space cruiser
@@ -371,6 +374,17 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
   const [list, setList] = useState(false);
   const listRef = useRef(list);
   listRef.current = list;
+  // the wardrobe: how Morty looks here (and Rick, wherever he turns up)
+  const [looks, setLook] = useLooks();
+  const looksRef = useRef(looks);
+  looksRef.current = looks;
+  const [wardrobe, setWardrobe] = useState(false);
+  const wardrobeRef = useRef(wardrobe);
+  wardrobeRef.current = wardrobe;
+  const closeWardrobe = useCallback(() => setWardrobe(false), []);
+  useEffect(() => {
+    api.current?.setLooks?.(looks);
+  }, [api, looks]);
   const chip = useRef(null);
   const listBox = useRef(null);
   // closing the list: if the focus was in it, back to the chip that opened it
@@ -560,7 +574,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     import('./scene')
       .then(({ createRmWorld }) => {
         if (dead || !canvas.current) return null;
-        return createRmWorld(canvas.current, { onLost: () => !dead && setGl('lost') });
+        return createRmWorld(canvas.current, { onLost: () => !dead && setGl('lost'), looks: looksRef.current });
       })
       .then((a) => {
         if (!a) return;
@@ -570,6 +584,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
         }
         api.current = a;
         a.act?.('arcade', 'setBoard', readBest());
+        a.setLooks?.(looksRef.current); // (a look picked while it loaded)
         if (import.meta.env.DEV) {
           // for the QA scripts: where everyone is, E, and a jump to anywhere
           const s = sim.current;
@@ -613,8 +628,15 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     if (!live) return undefined;
     const s = sim.current;
     const down = (e) => {
-      if (typing(e.target)) return;
+      if (typing(e.target) || wardrobeRef.current) return; // (the wardrobe's open over him: he stands still)
       const onButton = e.target instanceof HTMLButtonElement || e.target instanceof HTMLAnchorElement;
+      // C: the wardrobe, on foot (flying, it's the cruiser's way down)
+      if (e.code === 'KeyC' && !s.flying && !e.metaKey && !e.ctrlKey && !e.altKey && !e.repeat) {
+        e.preventDefault();
+        s.keys.clear();
+        setWardrobe(true);
+        return;
+      }
       const m = keyDown(s.keys, e);
       const f = e.metaKey || e.ctrlKey || e.altKey ? null : FLY_KEYS[e.code];
       if (f) s.keys.add(f);
@@ -632,6 +654,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       } else if (e.key === 'm' || e.key === 'M') {
         if (listRef.current) closeList();
         else setList(true);
+
       } else if (e.key === 'Escape' && listRef.current) closeList();
     };
     const up = (e) => {
@@ -927,8 +950,14 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
             </b>
             {!touch && <kbd>M</kbd>}
           </button>
+          <button type="button" className="rm-chip" onClick={() => setWardrobe(true)} aria-haspopup="dialog" aria-label="Wardrobe: how Morty and Rick look">
+            <RiShirtLine aria-hidden="true" />
+            <span>Wardrobe</span>
+            {!touch && <kbd>C</kbd>}
+          </button>
         </div>
       </div>
+      <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} who="morty" />
 
       <Toast toast={toast} />
       {shipLine && hud.area === 'street' && (
@@ -965,7 +994,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       )}
 
       {gl === 'on' && !here && !hud.flying && !hud.moved && (
-        <p className="rm-hint">{touch ? 'Drag the stick to walk; push it all the way to run; the arrow jumps. Swipe sideways to look round.' : 'W A S D or the arrows to walk, Shift to run, Space to jump. Drag to look round. E uses things, M lists what to do.'}</p>
+        <p className="rm-hint">{touch ? 'Drag the stick to walk; push it all the way to run; the arrow jumps. Swipe sideways to look round.' : 'W A S D or the arrows to walk, Shift to run, Space to jump. Drag to look round. E uses things, M lists what to do.'}<GuideCue touch={touch} /></p>
       )}
       {gl === 'on' && hud.flying && !here && (
         <p className="rm-hint rm-keys">

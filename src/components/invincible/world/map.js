@@ -9,7 +9,7 @@
 // the hills rise to the north. Every solid thing is a box ({ x0, x1, z0,
 // z1, y0, y1 }), found by `near` through a grid, never by a scan.
 
-export const WORLD = { half: 3200, ceiling: 4000 };
+export const WORLD = { half: 3200, ceiling: 9000 }; // (fly up through the ceiling and you're in space: ./orbit.js)
 // downtown's grid: street centre lines at x = 80i + 40 (and z the same),
 // so block i is centred on 80i; a block's lot is 60 m, inside a 4 m pavement
 export const GRID = { cell: 80, street: 20, walk: 4 };

@@ -14,8 +14,12 @@
 
 import * as THREE from 'three';
 import { merge } from '../kit';
-import { CEILING, COPIER, COOLER, DOORS, FILES, FIRE_BIN, FRIDGE, P, PANES, PLANTS, RECEPTION, ROOMS, SEATS, SHELVES, SOLID, STAIRWELL, U, VENDING, rect } from './layout';
+import { CEILING, COPIER, COOLER, DOORS, FILES, FIRE_BIN, FRIDGE, LEAVES, P, PANES, PLANTS, RECEPTION, ROOMS, SEATS, SHELVES, SOLID, STAIRWELL, U, VENDING, rect } from './layout';
 import { BREAK_TABLES, CONFERENCE_TABLE, KITCHEN_COUNTER, KITCHEN_TABLE, STAFF } from '../layout';
+import { buildWindows } from './windows';
+import { TILE_X, buildFixtures } from './fixtures';
+import { makeFurnish } from './furnish';
+import * as art from './art';
 import { sharpen } from '../../../lib/three/textures';
 
 const canvas = (w, h) => {
@@ -50,87 +54,30 @@ function ceilingTex() {
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   return t;
 }
-// what's out of the windows: a grey Scranton sky, trees, the business park's lot
-function viewTex() {
-  const c = canvas(512, 256);
-  const x = c.getContext('2d');
-  const sky = x.createLinearGradient(0, 0, 0, 160);
-  sky.addColorStop(0, '#c9d4dd');
-  sky.addColorStop(1, '#eef0ee');
-  x.fillStyle = sky;
-  x.fillRect(0, 0, 512, 256);
-  x.fillStyle = '#9aa39a';
-  for (let i = 0; i < 40; i++) {
-    const tx = Math.random() * 512;
-    x.beginPath();
-    x.ellipse(tx, 130 + Math.random() * 10, 18 + Math.random() * 20, 26 + Math.random() * 14, 0, 0, Math.PI * 2);
-    x.fill();
-  }
-  x.fillStyle = '#7e8a7a';
-  for (let i = 0; i < 24; i++) {
-    const tx = Math.random() * 512;
-    x.beginPath();
-    x.ellipse(tx, 146, 16 + Math.random() * 14, 18, 0, 0, Math.PI * 2);
-    x.fill();
-  }
-  x.fillStyle = '#a5a7a3';
-  x.fillRect(0, 160, 512, 96);
-  x.strokeStyle = 'rgba(255,255,255,0.6)';
-  x.lineWidth = 2;
-  for (let i = 0; i < 512; i += 46) {
-    x.beginPath();
-    x.moveTo(i, 190);
-    x.lineTo(i + 12, 236);
-    x.stroke();
-  }
-  const cars = ['#7c1f24', '#d8d8d2', '#2f3d55', '#5a5d61', '#c9b58a', '#1d1f22'];
-  for (let i = 0; i < 9; i++) {
-    x.fillStyle = cars[i % cars.length];
-    const cx = 16 + i * 56 + Math.random() * 10;
-    x.fillRect(cx, 196, 36, 16);
-    x.fillRect(cx + 6, 188, 22, 10);
-  }
-  return texOf(c);
-}
-// vertical blinds: cream vanes with gaps
-function vanesTex() {
-  const c = canvas(64, 8);
-  const x = c.getContext('2d');
-  for (let i = 0; i < 64; i += 8) {
-    x.fillStyle = 'rgba(226,220,204,0.97)';
-    x.fillRect(i, 0, 5.5, 8);
-    x.fillStyle = 'rgba(190,184,168,0.97)';
-    x.fillRect(i + 4.5, 0, 1, 8);
-  }
-  const t = texOf(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  return t;
-}
-// Michael's blinds, never quite closed: horizontal slats
-function slatsTex() {
-  const c = canvas(16, 64);
-  const x = c.getContext('2d');
-  for (let y = 0; y < 64; y += 8) {
-    x.fillStyle = 'rgba(236,233,224,0.95)';
-    x.fillRect(0, y, 16, 3.2);
-  }
-  const t = texOf(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  return t;
-}
 // the company's name, on the wall in the lobby and behind reception
 function logoTex(dark = false) {
   const c = canvas(1024, 300);
   const x = c.getContext('2d');
   x.fillStyle = dark ? '#2b2e33' : '#f4f2ec';
   x.fillRect(0, 0, 1024, 300);
-  x.textAlign = 'center';
-  x.font = 'bold 132px Arial, Helvetica, sans-serif';
+  // the two words side by side, measured so they never run into each other
+  x.font = 'bold 128px Arial, Helvetica, sans-serif';
+  x.textBaseline = 'alphabetic';
+  const gap = 34;
+  const a = x.measureText('DUNDER').width;
+  const b = x.measureText('MIFFLIN').width;
+  const k = Math.min(1, 940 / (a + gap + b));
+  x.save();
+  x.translate(512, 0);
+  x.scale(k, 1);
+  const left = -(a + gap + b) / 2;
   x.fillStyle = dark ? '#f4f2ec' : '#121212';
-  x.fillText('DUNDER', 330, 160);
-  x.fillStyle = '#1f4e8c';
-  x.fillText('MIFFLIN', 760, 160);
-  x.fillStyle = dark ? '#d8d6cf' : '#121212';
+  x.fillText('DUNDER', left, 168);
+  x.fillStyle = '#2a5ea8';
+  x.fillText('MIFFLIN', left + a + gap, 168);
+  x.restore();
+  x.fillStyle = dark ? '#d8d6cf' : '#3a3a3a';
+  x.textAlign = 'center';
   x.font = 'italic 40px Georgia, serif';
   x.fillText('Paper Company, Inc.', 512, 236);
   return texOf(c);
@@ -318,37 +265,28 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
   floorRect({ x: 142, y: 238, w: 19, h: 138 }, carpet, 0.001);
 
   // ── the drop ceiling ──
-  // (one texture for every room: the tiles are laid by the UVs, a 1.22 m
-  // grid in metres, so the rooms share a material and draw together)
+  // (one texture, one grid: the tiles are laid by the UVs in metres from
+  // the building's origin, so the grid runs on unbroken from room to room,
+  // and where a room's ceiling lies over the bullpen's the two are the same)
   const ceilMat = mat({ map: keep(ceilingTex()), roughness: 0.95 });
-  const metresUV = (geo, w, d, tile) => {
-    const uv = geo.attributes.uv;
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) * w) / tile, (uv.getY(i) * d) / tile);
-    return geo;
-  };
   for (const id of ['bullpen', 'michael', 'conference', 'hallway', 'men', 'women', 'annex', 'darryl', 'supplies', 'lobby', 'stairs']) {
     const m = rect(ROOMS[id]);
-    const geo = metresUV(new THREE.PlaneGeometry(m.w, m.d), m.w, m.d, 1.22);
+    const y = id === 'stairs' ? CEILING + 1.2 : CEILING;
+    const geo = new THREE.PlaneGeometry(m.w, m.d);
     geo.rotateX(Math.PI / 2);
-    const o = mesh(geo, ceilMat, m.cx, id === 'stairs' ? CEILING + 1.2 : CEILING, m.cz);
+    geo.translate(m.cx, y, m.cz);
+    const pos = geo.attributes.position;
+    const uv = geo.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / TILE_X, pos.getZ(i) / TILE_X);
+    const o = mesh(geo, ceilMat);
     o.castShadow = false;
   }
-  // the fluorescent troffers, in rows over every room
+  // the fluorescent troffers, in the tile grid (./fixtures.js), and the
+  // diffusers, grilles, sprinklers and smoke detectors round them
+  const fixtures = buildFixtures({ T: 0.12 });
+  add(fixtures.group);
   const lights = [];
-  const troffers = [];
-  const lay = (id, sx = 2.6, sz = 2.2) => {
-    const m = rect(ROOMS[id]);
-    const nx = Math.max(1, Math.round(m.w / sx));
-    const nz = Math.max(1, Math.round(m.d / sz));
-    for (let i = 0; i < nx; i++)
-      for (let k = 0; k < nz; k++) {
-        const x = m.x + ((i + 0.5) * m.w) / nx;
-        const z = m.z + ((k + 0.5) * m.d) / nz;
-        troffers.push([x, z]);
-      }
-  };
-  ['bullpen', 'annex', 'conference', 'hallway'].forEach((id) => lay(id));
-  ['michael', 'darryl', 'men', 'women', 'supplies', 'lobby'].forEach((id) => lay(id, 3, 3));
+  const troffers = fixtures.plan.troffers;
   {
     const frameGeo = keep(new THREE.BoxGeometry(1.2, 0.04, 0.6));
     const glowGeo = keep(new THREE.PlaneGeometry(1.12, 0.52).rotateX(Math.PI / 2));
@@ -420,9 +358,36 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     mesh(keep(merge(parts)), kit.M.metal).castShadow = false;
   }
 
+  // ── the doors, standing open (layout's LEAVES): oak veneer with a lever
+  // handle each side, the supply room's and the stairwell's grey steel with
+  // a kick plate and the stairwell's a narrow wired-glass window ──
+  {
+    const oak = kit.surface('wood', 1, 2.1, 1.1, { color: 0x9a8f80 });
+    const steel = mat({ color: 0x8b9096, roughness: 0.45, metalness: 0.35 });
+    const plate = mat({ color: 0xb9bcbf, roughness: 0.3, metalness: 0.9 });
+    const wired = mat({ color: 0x1b2026, roughness: 0.08, metalness: 0.2 });
+    for (const l of LEAVES) {
+      const leaf = mesh(new THREE.BoxGeometry(l.w, 2.08, l.d), l.kind === 'steel' ? steel : oak, l.x, 1.04, l.z);
+      leaf.receiveShadow = true;
+      // along the leaf, from the hinge, and out of each face
+      const along = l.flat ? [-l.away, 0] : [0, l.swing];
+      const out = l.flat ? [0, l.swing] : [1, 0];
+      const hingeEnd = l.flat ? { x: l.hinge.x, z: l.z } : { x: l.x, z: l.hinge.z + l.swing * 0.06 };
+      const p = (a, o, y) => [hingeEnd.x + along[0] * a + out[0] * o, y, hingeEnd.z + along[1] * a + out[1] * o];
+      const sides = l.flat ? [-1] : [-1, 1]; // (flat against the wall, only one face shows)
+      for (const sd of sides) {
+        const o = sd * (0.024 + 0.022);
+        const lever = mesh(new THREE.BoxGeometry(l.flat ? 0.12 : 0.02, 0.02, l.flat ? 0.02 : 0.12), kit.M.chrome, ...p(l.width - 0.13, o, 1.0));
+        lever.castShadow = false;
+        mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.012, 14), kit.M.chrome, ...p(l.width - 0.07, sd * 0.03, 1.0)).rotation.set(l.flat ? Math.PI / 2 : 0, 0, l.flat ? 0 : Math.PI / 2);
+        if (l.kind === 'steel') mesh(new THREE.BoxGeometry(l.flat ? l.width - 0.06 : 0.004, 0.25, l.flat ? 0.004 : l.width - 0.06), plate, ...p(l.width / 2, sd * 0.026, 0.14)).castShadow = false;
+        if (l.kind === 'steel' && l.flat === false && l.width > 0.6 && sd) mesh(new THREE.BoxGeometry(0.004, 0.6, 0.12), wired, ...p(l.width - 0.22, sd * 0.026, 1.55)).castShadow = false;
+      }
+    }
+  }
+
   // ── the glass fronts, and their blinds ──
   const glassMat = mat({ color: 0xd5e6f0, transparent: true, opacity: 0.18, roughness: 0.05, metalness: 0, depthWrite: false });
-  const slats = keep(slatsTex());
   for (const [x0, z0, x1, z1] of PANES) {
     const len = Math.hypot(x1 - x0, z1 - z0);
     const vertical = Math.abs(x1 - x0) < 1e-6;
@@ -432,19 +397,10 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     g.renderOrder = 3;
     const sill = mesh(new THREE.BoxGeometry(len, 0.03, 0.16), kit.M.metal, g.position.x, 0.87, g.position.z);
     sill.rotation.y = g.rotation.y;
-    const t = slats.clone();
-    keep(t);
-    t.repeat.set(1, 1.2 * 6);
-    t.needsUpdate = true;
-    const blinds = mesh(new THREE.PlaneGeometry(len * 0.96, 1.18), mat({ map: t, alphaTest: 0.35, roughness: 0.85, side: THREE.DoubleSide }), g.position.x, 1.5, g.position.z - (vertical ? 0 : 0.06));
-    if (vertical) blinds.position.x -= 0.06;
-    blinds.rotation.y = g.rotation.y;
   }
 
-  // ── windows in the outside walls, with vertical blinds ──
-  const view = keep(viewTex());
-  const vaneMat = mat({ map: keep(vanesTex()), alphaTest: 0.3, roughness: 0.9, side: THREE.DoubleSide });
-  const viewMat = mat({ map: view, emissive: 0xffffff, emissiveMap: view, emissiveIntensity: 0.85, roughness: 0.3 });
+  // ── windows in the outside walls, a view of the lot through each, and
+  // the blinds in them and in the glass fronts (./windows.js) ──
   // [px0, py0, px1, py1, which way the room is: +1 (south/east of the wall) or -1]
   const WINDOWS = [
     [215, 12, 314, 12, 1],
@@ -458,24 +414,8 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     [161, 312, 161, 372, 1],
     [302, 376, 400, 376, -1],
   ];
-  for (const [ax, ay, bx, by, side] of WINDOWS) {
-    const a = W(ax, ay);
-    const b = W(bx, by);
-    const vertical = ax === bx;
-    const len = vertical ? b.z - a.z : b.x - a.x;
-    const cx = (a.x + b.x) / 2;
-    const cz = (a.z + b.z) / 2;
-    const off = (T / 2 + 0.005) * side;
-    const pane = mesh(new THREE.PlaneGeometry(len, 1.35), viewMat, vertical ? cx + off : cx, 1.52, vertical ? cz : cz + off);
-    pane.rotation.y = vertical ? (side > 0 ? Math.PI / 2 : -Math.PI / 2) : side > 0 ? 0 : Math.PI;
-    pane.castShadow = false;
-    const bl = mesh(metresUV(new THREE.PlaneGeometry(len, 1.5), len * 8, 1, 1), vaneMat, vertical ? cx + off * 3 : cx, 1.52, vertical ? cz : cz + off * 3);
-    bl.rotation.y = pane.rotation.y;
-    const sill = mesh(new THREE.BoxGeometry(len + 0.08, 0.04, 0.14), kit.M.white, vertical ? cx + off * 2 : cx, 0.83, vertical ? cz : cz + off * 2);
-    sill.rotation.y = vertical ? Math.PI / 2 : 0;
-    const head = mesh(new THREE.BoxGeometry(len + 0.08, 0.06, 0.1), kit.M.metal, vertical ? cx + off * 2 : cx, 2.26, vertical ? cz : cz + off * 2);
-    head.rotation.y = sill.rotation.y;
-  }
+  const windows = buildWindows({ windows: WINDOWS.map(([ax, ay, bx, by, room]) => ({ a: W(ax, ay), b: W(bx, by), room })), panes: PANES, T });
+  add(windows.group);
 
   // ── a wall-mounted picture or sign: a plane on a wall face ──
   // (px, py on the wall line; `face`: the way it looks, in radians, 0 = +z)
@@ -522,6 +462,29 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     const handle = mesh(new THREE.BoxGeometry(0.03, 0.4, 0.05), kit.M.chrome, a.x - 0.82, 1.05, a.z - 0.02);
     handle.castShadow = false;
   }
+
+  // framed pictures: a frame standing off the wall, the picture in it
+  const framed = (c, w, h, px, py, y, face, frame = 0x111111) => {
+    const a = W(px, py);
+    const out = (d) => [a.x + Math.sin(face) * (T / 2 + d), y, a.z + Math.cos(face) * (T / 2 + d)];
+    const f = mesh(new THREE.BoxGeometry(w + 0.05, h + 0.05, 0.022), mat({ color: frame, roughness: 0.4, metalness: frame === 0xb8933f ? 0.8 : 0.1 }), ...out(0.011));
+    f.rotation.y = face;
+    f.castShadow = false;
+    const t = keep(texOf(c));
+    const pic = mesh(new THREE.PlaneGeometry(w, h), mat({ map: t, roughness: 0.25 }), ...out(0.0235));
+    pic.rotation.y = face;
+    pic.castShadow = false;
+  };
+  // the motivational posters: the annex, by the break room, and accounting's back wall
+  framed(art.teamwork(), 0.56, 0.7, 739, 262, 1.55, E);
+  framed(art.success(), 0.56, 0.7, 838, 141, 1.55, 0);
+  framed(art.persistence(), 0.56, 0.7, 205, 376, 1.6, N);
+  // Michael's certificates, over his credenza
+  framed(art.certificate('Certificate of Achievement', ['Michael Gary Scott', 'Regional Manager of the Year', 'Northeastern Pennsylvania']), 0.5, 0.39, 206, 70, 1.62, E, 0xb8933f);
+  framed(art.certificate('World’s Best Boss', ['Awarded to Michael Scott', 'by Michael Scott', '(it counts)']), 0.44, 0.34, 206, 104, 1.66, E, 0x3a2416);
+  // the building's directory, by the lift, and the kitchen's sign
+  framed(art.directory(), 0.5, 0.65, 40, 12, 1.5, 0, 0x8a8d90);
+  framed(art.kitchenSign(), 0.34, 0.25, 640, 175, 1.5, 0, 0xf4f2ea);
 
   // Pam's watercolour, behind reception
   onWall(keep(paintingTex()), 0.86, 0.6, 142, 212, 1.55, E);
@@ -639,7 +602,7 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     ch.position.set(0.1, 0, front + 0.34);
     ch.rotation.y = Math.PI + ((s.i % 5) - 2) * 0.08;
     g.add(ch);
-    seats.set(s.who ?? `desk${s.i}`, { group: g, chair: ch, top, front, width: s.width, depth: s.depth });
+    seats.set(s.who ?? `desk${s.i}`, { group: g, chair: ch, top, front, width: s.width, depth: s.depth, i: s.i, who: s.who, exec: s.exec, pedestals: s.exec ? 'both' : s.i % 2 ? 'left' : 'right' });
   }
 
   // Dwight's desk: his stapler (for the Jell-O), his beets
@@ -661,6 +624,10 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     mug.position.set(-m.width / 2 + 0.4, m.top, 0.1);
     m.group.add(mug);
   }
+
+  // what's on and under every desk (./furnish.js)
+  const furnish = makeFurnish();
+  furnish.dressDesks(seats);
 
   // ── reception: the curved counter, Erin's chair, the phone and Pam's jelly beans ──
   {
@@ -746,14 +713,13 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
 
   // ── the copier, the water cooler, the filing cabinets, the plants ──
   {
-    const copier = mesh(new THREE.BoxGeometry(COPIER.w, 1.0, COPIER.d), mat({ color: 0xd6d4cc, roughness: 0.5 }), COPIER.x, 0.5, COPIER.z);
-    copier.receiveShadow = true;
-    mesh(new THREE.BoxGeometry(COPIER.w * 0.9, 0.06, COPIER.d * 0.8), mat({ color: 0x2a2c30, roughness: 0.3 }), COPIER.x, 1.03, COPIER.z);
-    mesh(new THREE.BoxGeometry(0.18, 0.02, 0.12), mat({ color: 0x9fe08a, emissive: 0x5ad06a, emissiveIntensity: 0.5 }), COPIER.x + COPIER.w / 2 - 0.15, 1.07, COPIER.z + 0.05).castShadow = false;
-    const cool = mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.95, 18), kit.M.white, COOLER.x, 0.475, COOLER.z);
-    cool.castShadow = true;
-    const jug = mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.42, 18), mat({ color: 0x9ccbe8, transparent: true, opacity: 0.6, roughness: 0.05 }), COOLER.x, 1.16, COOLER.z);
-    jug.castShadow = false;
+    const copier = furnish.copier(COPIER.w, COPIER.d);
+    copier.position.set(COPIER.x, 0, COPIER.z);
+    add(copier);
+    const cooler = furnish.waterCooler();
+    cooler.position.set(COOLER.x, 0, COOLER.z);
+    cooler.rotation.y = Math.PI / 2; // facing into the room, away from the wall
+    add(cooler);
     const fileMat = mat({ color: 0xc7c4bb, roughness: 0.45, metalness: 0.3 });
     for (const f of FILES) {
       mesh(new THREE.BoxGeometry(f.w, 1.3, f.d), fileMat, f.x, 0.65, f.z);
@@ -782,18 +748,31 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     mesh(new THREE.BoxGeometry(cw + 0.04, 0.04, cd + 0.03), mat({ color: 0x8c8478, roughness: 0.35 }), a.x + cw / 2, 0.9, a.z + cd / 2);
     // the cupboards over it
     mesh(new THREE.BoxGeometry(cw, 0.7, 0.34), mat({ color: 0xe7e2d6, roughness: 0.6 }), a.x + cw / 2, 1.85, a.z + 0.17);
-    const micro = mesh(new THREE.BoxGeometry(0.5, 0.3, 0.36), kit.M.plasticDark, a.x + cw - 0.4, 1.07, a.z + cd / 2);
-    micro.castShadow = true;
-    mesh(new THREE.PlaneGeometry(0.3, 0.2), mat({ color: 0x1a1a1a, roughness: 0.1 }), a.x + cw - 0.45, 1.07, a.z + cd / 2 + 0.181);
-    // the coffee maker
-    mesh(new THREE.BoxGeometry(0.22, 0.36, 0.24), mat({ color: 0x151517, roughness: 0.4 }), a.x + 0.3, 1.1, a.z + cd / 2);
-    mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.14, 16), mat({ color: 0x3a2414, transparent: true, opacity: 0.85, roughness: 0.1 }), a.x + 0.3, 0.99, a.z + cd / 2 + 0.06);
-    // the sink
-    mesh(new THREE.BoxGeometry(0.5, 0.02, 0.36), kit.M.chrome, a.x + cw / 2, 0.925, a.z + cd / 2).castShadow = false;
-    const fridge = mesh(new THREE.BoxGeometry(FRIDGE.w, 1.8, FRIDGE.d), mat({ color: 0xeeeeea, roughness: 0.35, metalness: 0.1 }), FRIDGE.x, 0.9, FRIDGE.z);
-    fridge.castShadow = true;
-    mesh(new THREE.BoxGeometry(0.03, 0.5, 0.03), kit.M.chrome, FRIDGE.x - FRIDGE.w / 2 + 0.08, 1.3, FRIDGE.z + FRIDGE.d / 2 + 0.02);
-    mesh(new THREE.BoxGeometry(FRIDGE.w, 0.01, 0.01), mat({ color: 0x777777 }), FRIDGE.x, 1.18, FRIDGE.z + FRIDGE.d / 2 + 0.005);
+    // the doors and handles on both, the microwave, the coffee maker
+    const fronts = furnish.cupboards(cw);
+    fronts.position.set(a.x + cw / 2, 0, a.z + cd);
+    add(fronts);
+    const micro = furnish.microwave();
+    micro.position.set(a.x + cw - 0.36, 0.92, a.z + cd / 2 - 0.01);
+    add(micro);
+    const coffee = furnish.coffeeMaker();
+    coffee.position.set(a.x + 0.28, 0.92, a.z + cd / 2 - 0.02);
+    add(coffee);
+    // the sink, set into the top, and its tap
+    mesh(new THREE.BoxGeometry(0.5, 0.02, 0.3), mat({ color: 0x8e9196, roughness: 0.25, metalness: 0.9 }), a.x + cw / 2, 0.915, a.z + cd / 2 + 0.01).castShadow = false;
+    {
+      const tap = mat({ color: 0xd8dadc, roughness: 0.15, metalness: 1 });
+      mesh(new THREE.CylinderGeometry(0.014, 0.018, 0.24, 12), tap, a.x + cw / 2, 1.04, a.z + 0.06);
+      const spout = mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.16, 10), tap, a.x + cw / 2, 1.15, a.z + 0.13);
+      spout.rotation.x = Math.PI / 2;
+      mesh(new THREE.BoxGeometry(0.02, 0.02, 0.07), tap, a.x + cw / 2 + 0.05, 0.97, a.z + 0.07);
+    }
+    // a roll of paper towels, and the fridge
+    const roll = mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.26, 18), mat({ color: 0xf6f5f0, roughness: 0.95 }), a.x + 0.62, 1.05, a.z + 0.08);
+    roll.rotation.z = Math.PI / 2;
+    const fridge = furnish.fridge(FRIDGE.w, FRIDGE.d);
+    fridge.position.set(FRIDGE.x, 0, FRIDGE.z);
+    add(fridge);
     // the kitchen's round table and chairs
     const kt = W(KITCHEN_TABLE.x, KITCHEN_TABLE.y);
     const r = KITCHEN_TABLE.r * U;
@@ -925,7 +904,11 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
       spills.length = 0;
     },
     fireGlow,
+    windows,
     dispose() {
+      windows.dispose();
+      fixtures.dispose();
+      furnish.dispose();
       for (const o of own) o.dispose?.();
     },
   };

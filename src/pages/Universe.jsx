@@ -21,6 +21,8 @@ import StartChoice from '../components/universe/StartChoice';
 import Rain from '../components/universe/Rain';
 import NavMap from '../components/universe/NavMap';
 import Online from '../components/universe/online/Online';
+import Wardrobe from '../components/rickmorty/wardrobe/Wardrobe';
+import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
 import { useOnline } from '../components/universe/online/useOnline';
 
 const PORTAL = '#97ce4c';
@@ -72,6 +74,10 @@ export default function Universe({ ask = false }) {
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
   useEffect(() => tellBuild?.(build), [tellBuild, build]);
   const [hangar, setHangar] = useState(false);
+  // the wardrobe, from the hangar: how the cruiser's Rick and Morty look
+  const [looks, setLook] = useLooks();
+  const [wardrobe, setWardrobe] = useState(false);
+  const closeWardrobe = useCallback(() => setWardrobe(false), []);
   // the nav map, and the drive picked on it (kept between visits)
   const [charting, setCharting] = useState(false);
   const [drive, setDriveState] = useState(() => parseDrive(local.get(DRIVE_KEY)));
@@ -252,6 +258,10 @@ export default function Universe({ ask = false }) {
         loadout={loadout}
         build={build}
         onBuild={ship ? setBuild : null}
+        onCrew={() => {
+          setHangar(false);
+          setWardrobe(true);
+        }}
         onFit={ship ? fit : null}
         hangar={hangar}
         onHangar={setHangar}
@@ -264,6 +274,7 @@ export default function Universe({ ask = false }) {
         onCrash={crashInto}
       />
       {crew && <Comms control={comms} crew={crew} reduced={reduced} />}
+      <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} who="rick" />
       {!asking && !leaving && <Online online={online} ship={ship} />}
       <UniversePanel
         universe={universe}

@@ -8,11 +8,13 @@ import { device } from '../../lib/device';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../lib/hooks';
 import { capturePointer } from '../../lib/pointer';
 import { readPad, typing } from '../games/pad';
+import { useTravellers } from '../middleearth/towns/useTravellers';
 import { HOME_CITY } from '../../data/places';
 import { countryName, globeData } from '../travel/globe3d/data';
-import { AROUND_KM, CLOUD_ALT, HOME_V, KM, STAMPS, add, angle, aroundWorld, arrivals, autopilot, bearingOf, bearingTo, cross, easeLook, fly, kmBetween, logTrail, newFlight, newLook, nextStamp, placeById, rotate, scale, seaName, sunVec, toLonLat, turnLook, unit } from './rules';
+import { AROUND_KM, CLOUD_ALT, HOME_V, KM, STAMPS, add, angle, aroundWorld, arrivals, autopilot, bearingOf, bearingTo, cross, easeLook, fly, kmBetween, logTrail, newFlight, newLook, nextStamp, packPose, placeById, rotate, scale, seaName, sunVec, toLonLat, turnLook, unit } from './rules';
 import { addFlown, addStamp, readFlown, readStamps, stampDate, useFlown, useStamps } from './stamps';
 import './earth.css';
+import GuideCue from '../guide/GuideCue';
 
 // Earth, the world: it opens in orbit, over the globe as it is right now
 // (the sun where it really is), and flies you down onto it, into the seat
@@ -21,7 +23,9 @@ import './earth.css';
 // The flight log keeps the trail flown and the distance, over every visit,
 // and the way round the world adds up to an achievement. Drag while flying
 // to look round the plane (it settles back behind), and V swaps the chase
-// camera for the cockpit.
+// camera for the cockpit. Everyone else online flying the Earth shows as a
+// pale plane with their name (the Middle-earth towns' travellers, in a room
+// of its own): nothing passes between you but where each of you is.
 // The rules are in ./rules.js, the drawing in ./scene.js; this is the keys,
 // the camera's dive, the HUD and the postcards. Without 3D, the passport is
 // a page of postcards.
@@ -105,8 +109,10 @@ function World({ gl, setGl }) {
   if (!sim.current) {
     const f = newFlight();
     const sun = sunVec();
-    sim.current = { f, sun, sunMode: local.get(SUN, 'day') === 'real' ? 'real' : 'day', mode: 'orbit', view: 0, orbit: orbitOver(f.p, sun), keys: new Set(), pressed: new Set(), stick: { x: 0, y: 0 }, boostTouch: false, padBefore: {}, stamped: new Set(Object.keys(readStamps())), away: false, target: null, touched: false, engine: null, overT: 0, hudT: 0, drag: null, trail: [], trailV: 0, flown: readFlown(), kmSaved: 0, look: newLook(), cockpit: local.get(CAM, 'chase') === 'cockpit' };
+    sim.current = { f, sun, sunMode: local.get(SUN, 'day') === 'real' ? 'real' : 'day', mode: 'orbit', view: 0, orbit: orbitOver(f.p, sun), keys: new Set(), pressed: new Set(), stick: { x: 0, y: 0 }, boostTouch: false, padBefore: {}, stamped: new Set(Object.keys(readStamps())), away: false, target: null, touched: false, engine: null, overT: 0, hudT: 0, drag: null, trail: [], trailV: 0, flown: readFlown(), kmSaved: 0, look: newLook(), cockpit: local.get(CAM, 'chase') === 'cockpit', others: [] };
   }
+  // the other pilots online (middleearth/towns/useTravellers), longitude and latitude for x and z
+  const trav = useTravellers('earth', gl === 'on', { bound: 200, motion: true });
   const [mode, setMode] = useState('orbit');
   const [sunMode, setSunMode] = useState(sim.current.sunMode);
   const [cockpit, setCockpit] = useState(sim.current.cockpit);
@@ -455,7 +461,12 @@ function World({ gl, setGl }) {
       }
     }
 
-    a.render({ flight: f, sun: s.sun, view: s.view, stamped: s.stamped, orbit: s.orbit, trail: s.trail, trailV: s.trailV, look: s.look, cockpit: s.cockpit }, ms);
+    // the other pilots: where you are to them (not while you're up in orbit), and where they are
+    const tv = trav.ref.current;
+    tv?.pose(packPose(f), { inside: !flying && s.mode !== 'fly' });
+    s.others = tv ? tv.list() : [];
+
+    a.render({ flight: f, sun: s.sun, view: s.view, stamped: s.stamped, orbit: s.orbit, trail: s.trail, trailV: s.trailV, look: s.look, cockpit: s.cockpit, travellers: s.others }, ms);
 
     // the labels over the places on screen
     const close = s.mode === 'fly' || s.mode === 'dive';
@@ -555,6 +566,16 @@ function World({ gl, setGl }) {
                 {cockpit ? 'Cockpit' : 'Chase'} <kbd>V</kbd>
               </button>
             )}
+            {trav.available &&
+              (trav.on ? (
+                <span className="earth-chip earth-chip-online" title="Everyone else online flying the Earth shows as a pale plane from another world: nothing passes between you but where each of you is">
+                  <b>{trav.count}</b> {trav.count === 1 ? 'other pilot' : 'other pilots'}
+                </span>
+              ) : (
+                <button type="button" className="earth-chip earth-chip-online" onClick={trav.join} title="Go online, and see everyone else flying the Earth as a pale plane from another world">
+                  See other pilots
+                </button>
+              ))}
           </div>
         </div>
 
@@ -591,7 +612,7 @@ function World({ gl, setGl }) {
             )}
           </div>
         )}
-        {flyingNow && gl === 'on' && !touch && !hud.target && <p className="earth-hint">← → turn · ↑ ↓ climb and descend · Shift faster · R barrel roll · drag to look round · V cockpit · P passport</p>}
+        {flyingNow && gl === 'on' && !touch && !hud.target && <p className="earth-hint">← → turn · ↑ ↓ climb and descend · Shift faster · R barrel roll · drag to look round · V cockpit · P passport<GuideCue /></p>}
 
         {touch && flyingNow && gl === 'on' && (
           <div className="earth-touch">

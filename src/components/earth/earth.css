@@ -47,6 +47,8 @@
 .earth-chip { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.75rem; border: 1px solid var(--earth-line); border-radius: 99px; background: var(--earth-glass); color: var(--earth-ink); font: 600 0.8rem/1.2 var(--font-sans); white-space: nowrap; cursor: pointer; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); transition: border-color 0.15s ease, background 0.15s ease; }
 .earth-chip:hover, .earth-chip:focus-visible { border-color: var(--earth-blue); background: var(--earth-glass-hi); }
 .earth-chip b { color: var(--earth-gold); font-variant-numeric: tabular-nums; }
+.earth-chip-online { border-style: dashed; }
+.earth-chip-online b { color: #c9dcff; }
 .earth-chip[aria-pressed='true'] { border-color: var(--earth-gold); }
 .earth-chip kbd, .earth-hint kbd { padding: 0 0.3rem; border: 1px solid currentColor; border-radius: 4px; font: 600 0.65rem/1.4 var(--font-mono); opacity: 0.6; }
 .earth-chip-sm { padding: 0.3rem 0.6rem; font-size: 0.74rem; }
@@ -141,3 +143,6 @@
 .earth-facts { display: grid; gap: 1rem; margin: 0; padding: 0; list-style: none; }
 .earth-facts li { padding-left: 1rem; border-left: 2px solid color-mix(in srgb, #1f5f99 60%, var(--border)); color: var(--body); line-height: 1.6; }
 .earth-facts b { color: var(--ink); }
+
+/* the controls, on the page */
+.earth-keys kbd { display: inline-block; padding: 0.1rem 0.4rem; border: 1px solid var(--border); border-radius: 4px; background: var(--surface-2); font: 500 0.78rem/1.4 var(--font-mono); color: var(--ink); }

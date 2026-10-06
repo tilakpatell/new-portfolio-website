@@ -238,7 +238,8 @@ const startOff = (reach, r) => Math.max(reach * 1.15 + 12, r * 2.4);
 export const STARTS = [
   { id: 'sun', at: SUN.at, y: SHIP.height, d: HOME_RADIUS + 1.5 }, // (the home system's middle)
   ...PLANETS.filter((p) => byId(p.id).kind !== 'core').map((p) => ({ id: p.id, at: p.at, y: p.at[1] + SHIP.height, d: startOff(p.reach, p.r) })),
-  ...WONDERS.filter((w) => w.id !== MAW.id).map((w) => ({ id: w.id, at: w.at, y: w.at[1], d: startOff(reachOf(w), w.solid === false ? 0 : w.r) })),
+  // (off a wonder: clear of its solid, which can reach past the wonder's own radius: a pulsar's glare)
+  ...WONDERS.filter((w) => w.id !== MAW.id).map((w) => ({ id: w.id, at: w.at, y: w.at[1], d: startOff(reachOf(w), w.solid === false ? 0 : (DEEP_SOLIDS.find((o) => o.id === w.id)?.r ?? w.r)) })),
 ];
 // the near edge of the home system, facing its middle: where a ship starts
 // unless told otherwise

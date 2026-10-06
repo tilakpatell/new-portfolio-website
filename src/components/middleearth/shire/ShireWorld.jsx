@@ -61,6 +61,7 @@ import {
 import { SWATCH } from './fx';
 import './shire.css';
 import '../../../styles/lazy/middleearth.css';
+import GuideCue from '../../guide/GuideCue';
 
 // Hobbiton, the world: walk about the Shire as Frodo on the day of Bilbo's
 // party, and do what hobbits do there. The rules are in ./rules.js, the
@@ -869,7 +870,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       )}
 
       {gl === 'on' && walking && !hud.moved && !here && (
-        <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}</p>
+        <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}<GuideCue touch={touch} /></p>
       )}
 
       {mode === 'rider' && hud.rider?.phase === 'sniff' && (
