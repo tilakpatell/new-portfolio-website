@@ -61,11 +61,11 @@ export const PROPS = {
     };
   },
 
-  // the Black Pearl (the landing's model) at anchor, rolling a little on the swell
+  // the Black Pearl (the landing's model, `ship`) at anchor, down to its waterline, rolling a little on the swell
   async pearl(k) {
     const object = new THREE.Group();
     object.name = 'pearl';
-    const ship = k.specs?.pearl ? await k.models.get(k.specs.pearl) : null;
+    const ship = k.specs?.ship ? await k.models.get(k.specs.ship) : null;
     if (ship) {
       ship.position.y = -2.2;
       object.add(ship);

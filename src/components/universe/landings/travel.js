@@ -105,7 +105,8 @@ export const PROPS = {
       arm.castShadow = true;
       object.add(arm);
     });
-    return { object, solids: [{ circle: [0, 0, 0.2] }] };
+    // (its arms, one mesh each, as one)
+    return { object: k.merge(object), solids: [{ circle: [0, 0, 0.2] }] };
   },
 };
 

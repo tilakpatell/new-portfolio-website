@@ -286,7 +286,7 @@ export const LANDINGS = {
     ground: { style: 'sand', colors: ['#ecd9a6', '#dcc28a', '#b49a68'] },
     sky: { zenith: '#2a8ad8', horizon: '#d2f0f4', sun: '#fff8e0' },
     models: {
-      pearl: { url: '/games/caribbean/pearl.glb', long: 46 },
+      ship: { url: '/games/caribbean/pearl.glb', long: 46 },
       palm: { url: '/models/galaxy/surface/palm.glb', tall: 11 },
       chest: { url: '/games/caribbean/chest.glb', wide: 1.1 },
       skull: { url: '/games/caribbean/skull.glb', wide: 34 },
