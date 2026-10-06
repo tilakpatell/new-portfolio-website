@@ -322,14 +322,18 @@ export function loadGear(id) {
 // their heads from the front, three quarters and the side): `lift` raises
 // one piece on top of `hat` (a beanie sits down to the brows, a pork-pie’s
 // brim higher), and `back` moves the head’s gear back (in heads) where the
-// skull reaches further behind its crown bone than Rick’s.
+// skull reaches further behind its crown bone than Rick’s; `nudge` moves one
+// piece of face gear [up, forward] (in heads) off the eyes' frame, where a
+// face stands further out than Rick's (Walt's beard under his respirator).
+// Walt's and Jesse's were fitted again on their HD figures, whose head bones
+// sit differently against the skull (lab/skull.mjs measures it).
 const FIT = {
-  default: { eyes: 'rick', hat: 0, hatScale: 1, lift: {}, back: 0, face: 0, faceUp: 0, faceScale: 1, hand: 1 },
+  default: { eyes: 'rick', hat: 0, hatScale: 1, lift: {}, back: 0, face: 0, faceUp: 0, faceScale: 1, nudge: {}, hand: 1 },
   rick: { hat: -0.12, hatScale: 1.0, face: 0.0, faceUp: 0.02, hand: 1 },
   tinyrick: { hat: -0.12, hatScale: 1.05, face: 0.0, faceUp: 0.0, hand: 1.1 },
   morty: { eyes: 'morty', hat: -0.08, hatScale: 1.05, face: 0.05, faceUp: 0.0, hand: 1.3 },
-  walt: { eyes: 'walt', hat: -0.08, hatScale: 1.05, lift: { jessebeanie: 0.06 }, back: 0.18, face: -0.06, faceUp: 0.0, hand: 1.25 },
-  jesse: { eyes: 'jesse', hat: 0.0, hatScale: 1.1, lift: { jessebeanie: 0.02, porkpie: -0.06 }, back: -0.02, face: -0.02, faceUp: 0.1, hand: 1.25 },
+  walt: { eyes: 'walt', hat: -0.13, hatScale: 1.1, lift: { jessebeanie: 0.14 }, back: -0.11, face: -0.3, faceUp: 0.0, nudge: { respirator: [0.08, 0.22] }, hand: 1.25 },
+  jesse: { eyes: 'jesse', hat: -0.05, hatScale: 1.22, lift: { jessebeanie: 0.2, porkpie: -0.06 }, back: -0.11, face: -0.1, faceUp: 0.1, nudge: { respirator: [0, 0.08] }, hand: 1.25 },
 };
 // (Walt’s three bodies are one figure; Jesse’s two the same head)
 const SAME = { mrwhite: 'walt', heisenberg: 'walt', jesselab: 'jesse' };
@@ -385,7 +389,10 @@ export function wearGear(figure, look) {
     const right = v().crossVectors(up, fwd);
     frames.head = (id) => basis(right, up, fwd, E.clone().addScaledVector(up, (fit.hat + (fit.lift[id] ?? 0)) * s).addScaledVector(fwd, -fit.back * s), s * fit.hatScale);
     const eyes = H.clone().addScaledVector(up, (0.52 + fit.faceUp) * s).addScaledVector(fwd, reach + fit.face * s);
-    frames.face = basis(right, up, fwd, eyes, s * fit.faceScale);
+    frames.face = (id) => {
+      const [u, f] = fit.nudge[id] ?? [0, 0];
+      return basis(right, up, fwd, eyes.clone().addScaledVector(up, u * s).addScaledVector(fwd, f * s), s * fit.faceScale);
+    };
   }
   if (hand && arm) {
     const A = at(arm);
@@ -405,7 +412,7 @@ export function wearGear(figure, look) {
   for (const slot of GEAR_SLOTS) {
     const id = worn[slot];
     if (!id || id === 'none' || !frames[slot] || !gearById(slot, id)) continue; // (readLook already took any hat off a head that has its own)
-    const world = slot === 'head' ? frames.head(id) : frames[slot];
+    const world = slot === 'hand' ? frames.hand : frames[slot](id);
     if (MODELS[id]) {
       const stand = buildGear(id, fit.eyes);
       put(bones[slot], stand, world);
