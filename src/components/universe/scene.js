@@ -3818,8 +3818,9 @@ export async function create(canvas, ctx) {
     if (sharp !== null) {
       post.sharpness = sharp;
       post.setLevel(pace.level);
-      // (the planets' real air goes for their old halo at the pace's step 3, and comes back)
-      for (const p of planets) p.setAir(pace.level >= 3 ? 'halo' : 'shell');
+      // (the planets' ground detail goes at the pace's step 2, their real air for
+      // the old halo and their clouds' shadows at 3, and they come back)
+      for (const p of planets) p.setLevel(pace.level);
     }
     const dt = ms / 1000;
     const t = reduced ? 0 : state.low ? state.tLow : (now - t0) / 1000;
