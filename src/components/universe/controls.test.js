@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CONTROLS, DEFAULTS, STICK, keyAxes, readControls, stickInput, keyFlies } from './controls';
+import { CONTROLS, DEFAULTS, STICK, dragSteers, keyAxes, keyFlies, readControls, stickInput } from './controls';
 
 describe('the flying settings', () => {
   it('start as they come, and come back that way from anything unreadable', () => {
@@ -105,5 +105,12 @@ describe('keyFlies', () => {
     expect(keyFlies(box, 'arrowleft')).toBe(true);
     expect(keyFlies(box, ' ')).toBe(false);
     expect(keyFlies(box, 'w')).toBe(false);
+  });
+});
+
+describe('a drag as a stick', () => {
+  it('steers on a phone or a tablet, and not on a laptop or a desktop', () => {
+    expect(dragSteers({ fine: false })).toBe(true); // a finger first: the drag is the stick
+    expect(dragSteers({ fine: true })).toBe(false); // a mouse or a trackpad first: the keys fly it
   });
 });
