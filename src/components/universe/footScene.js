@@ -2145,6 +2145,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     get debug() {
       return import.meta.env.DEV ? S : null;
     },
+    // (development: the landing's doors and people, scripts/door-check.mjs)
+    get spots() {
+      return import.meta.env.DEV ? (rocks?.spots ?? []) : null;
+    },
     get id() {
       return S.id;
     },
