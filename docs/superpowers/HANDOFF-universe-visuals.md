@@ -72,6 +72,8 @@ Scorecard (the spec’s “Where things stand” table is the before): fill in t
   - *C-137 keeps a glint*: the spec turns its specular off, but checkpoint 3 gave its seas a roughness map to catch the sun. The cel light draws that as the show draws a highlight: a flat spot where the ground is glossy (roughness under 0.5), edged like the bands. Its reflections (three’s indirect specular) are off; the sky’s light on it stays.
   - *The bands’ soft edge comes from the normal*, `length(fwidth(normal)) × 2`, worked out once before three’s light loop, rather than `fwidth(n·l)` per light. Past the terminator it’s night, as on every other planet: the 0.45 band runs from 0.15 down to it.
   - *Dot Matrix’s dither cells are two page pixels*, not one, so the Game Boy’s pixels still read from the overview; `post.ratio` (the ratio the frame is drawn at, after the pace) sizes them on every tier. It keeps its old halo as the hover’s glow, with the one-pixel outline inside it.
+  - *Dot Matrix reads its light in the colour it has most of*, not by luminance: under Ember’s orange its greens were taken for half lit and drawn two tones too dark.
+  - *C-137’s air bands step at an eighth and a half* of the air’s own brightness: at a third and one it drew a hairline.
   - *No mottle on the flat worlds*: checkpoint 3’s close-up detail is off for C-137 and Dot Matrix.
   - *Cybertron’s energon takes half the key’s colour*, normalised: a full multiply turned its blue to teal under the home sun.
   - *The Office’s `-hq` relief was already there*; it becomes a `MeshPhysicalMaterial` (sheen 0.6 in `#f3ecd8`, sheen roughness 0.8, roughness 1 over its map).
