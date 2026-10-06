@@ -271,19 +271,30 @@ function Listen() {
   const [listening, setListening] = useState(false);
   const [progress, setProgress] = useState(0);
   const el = useRef(null);
-  useEffect(() => () => el.current?.pause(), []);
+  useEffect(
+    () => () => {
+      const a = el.current;
+      if (!a) return;
+      el.current = null;
+      a.pause();
+      a.onplay = a.onpause = a.onended = a.ontimeupdate = null;
+      a.removeAttribute('src');
+      a.load(); // drops the buffered audio and any download still in flight
+    },
+    [],
+  );
   const toggle = () => {
     let a = el.current;
     if (!a) {
       a = new Audio(LISTEN_URL);
       a.preload = 'auto';
-      a.addEventListener('timeupdate', () => setProgress(a.duration ? a.currentTime / a.duration : 0));
-      a.addEventListener('ended', () => {
+      a.ontimeupdate = () => setProgress(a.duration ? a.currentTime / a.duration : 0);
+      a.onended = () => {
         setListening(false);
         setProgress(0);
-      });
-      a.addEventListener('pause', () => setListening(false));
-      a.addEventListener('play', () => setListening(true));
+      };
+      a.onpause = () => setListening(false);
+      a.onplay = () => setListening(true);
       el.current = a;
     }
     if (a.paused) a.play().catch(() => {});
