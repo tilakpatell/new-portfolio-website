@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { createShireKit } from '../../middleearth/shire/props';
 import { tuftGeometry } from '../../cybertron/rollout/flora';
+import { makeGandalf, makeHobbit } from '../../middleearth/kit';
 
 // the Shire's kit, made once a landing (its textures want the renderer)
 export function prepare(k) {
@@ -46,6 +47,23 @@ export const PROPS = {
   mailbox: small((s) => s.mailbox(), 0.15),
   scarecrow: small((s) => s.scarecrow(), 0.3),
   mushroom: small((s) => s.mushroom(), 0),
+  // Gandalf by Bag End, his staff's light low (the Middle-earth pages' own figure)
+  gandalf() {
+    const made = makeGandalf();
+    made.group.rotation.y = Math.PI / 2; // (made facing −x)
+    if (made.light) made.light.intensity = 2; // (a glow at the staff's head, by day: furnish brings it to scale)
+    const object = new THREE.Group();
+    object.add(made.group);
+    return { object, solids: [{ circle: [0, 0, 0.4] }] };
+  },
+  // a hobbit in a cloak (Sam with his pack)
+  hobbit(k, { cloak = '#4b5a3a', pack = false } = {}) {
+    const made = makeHobbit({ cloak: new THREE.Color(cloak).getHex(), pack });
+    made.group.rotation.y = -Math.PI / 2; // (made facing +x)
+    const object = new THREE.Group();
+    object.add(made.group);
+    return { object, solids: [{ circle: [0, 0, 0.3] }] };
+  },
 };
 
 const FLOWER_COLOURS = [0xf2d24a, 0xe8655a, 0xf3f0e8, 0xb07ad8, 0xf29ac2, 0xf08a3a, 0x7ab0f0];

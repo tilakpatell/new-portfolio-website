@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { CHAPTERS } from './chapters';
 import { ACHIEVEMENTS } from '../Achievements';
 import { LEVELS, levelOf } from './rush/levels';
-import { SIDE_SEALS, chapterRecord, kitchenStars, roadRecord } from './record';
+import { HIDDEN_SEALS, SIDE_SEALS, chapterRecord, kitchenStars, offRoad, roadRecord } from './record';
+import { HIDDEN } from './hidden';
 
 describe('the road so far', () => {
   it('knows every chapter’s side game, and each is a real achievement that is not one of the seals', () => {
@@ -50,5 +51,27 @@ describe('the road so far', () => {
     expect(everything.totals.sides.won).toBe(CHAPTERS.length);
     expect(everything.totals.stars.won).toBe(CHAPTERS.length * 3);
     expect(everything.chapters.every((c) => c.won)).toBe(true);
+  });
+});
+
+describe('the places off the road', () => {
+  it('counts each hidden place, naming it only once found', () => {
+    const none = offRoad([]);
+    expect(none.length).toBe(HIDDEN.length);
+    expect(none.every((h) => h.name === null && !h.found)).toBe(true);
+    const some = offRoad(['minastirith']);
+    const mt = some.find((h) => h.id === 'minas-tirith');
+    expect(mt).toMatchObject({ found: true, name: 'Minas Tirith', done: false });
+    expect(some.find((h) => h.id === 'orthanc').name).toBe(null);
+    expect(offRoad(['orthanc', 'windlord']).find((h) => h.id === 'orthanc').done).toBe(true);
+  });
+  it('knows a real achievement for finding and finishing each', () => {
+    for (const h of HIDDEN) {
+      expect(ACHIEVEMENTS[HIDDEN_SEALS[h.id].found], h.id).toBeTruthy();
+      expect(ACHIEVEMENTS[HIDDEN_SEALS[h.id].end], h.id).toBeTruthy();
+    }
+  });
+  it('totals them with the rest', () => {
+    expect(roadRecord({ unlocked: ['orthanc'] }).totals.hidden).toEqual({ found: 1, total: HIDDEN.length });
   });
 });

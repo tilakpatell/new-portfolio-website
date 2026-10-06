@@ -10,6 +10,9 @@ import { bestKey } from './rush/levels';
 import { useTravellers } from './towns/useTravellers';
 import '../../styles/lazy/middleearth.css';
 
+// the map is part of a page you scroll: the page's pointers stay on it
+const MAP_ROOM = { pointers: true };
+
 // how far from a place on the sheet (800 across) a click still means it
 const REACH = 44;
 
@@ -44,7 +47,7 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
   const heard = useRef(null);
   const touch = useMemo(() => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches, []);
   // other travellers online on the map, as ghosts from other worlds (towns/useTravellers)
-  const trav = useTravellers('map', !hidden);
+  const trav = useTravellers('map', !hidden, MAP_ROOM);
   const travRef = trav.ref;
 
   const place = useCallback(() => {
@@ -453,6 +456,9 @@ function RoadSoFar({ road, onGo, onClose }) {
           <span>
             <b>{t.stars.won}</b> of {t.stars.total} kitchen stars
           </span>
+          <span>
+            <b>{t.hidden.found}</b> of {t.hidden.total} off the road
+          </span>
         </p>
         <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
           Close
@@ -487,6 +493,22 @@ function RoadSoFar({ road, onGo, onClose }) {
           </li>
         ))}
       </ol>
+      {/* the places off the road: named once found, a question mark till then */}
+      <ul className="me-record-hidden" aria-label="Off the road">
+        {road.hidden.map((h) => (
+          <li key={h.id} data-found={h.found || undefined} data-done={h.done || undefined}>
+            {h.found ? (
+              <button type="button" className="me-record-name" onClick={() => onGo(h.id)}>
+                {h.name}
+              </button>
+            ) : (
+              <span className="me-record-unknown" title="Somewhere off the road. Look closely at the map.">
+                ?
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
     </aside>
   );
 }

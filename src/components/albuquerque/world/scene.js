@@ -911,10 +911,14 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   const skyCols = { top: new THREE.Color(), low: new THREE.Color(), ground: new THREE.Color() };
   function applyLight() {
     lightAt(tod, L);
-    setFloorTime(floorBake, tod);
+    // how much of the floor's light is the sun's: none at night, a little
+    // just after sunrise, all of it from a few degrees up (the shadows' tint
+    // and the blobs' strength follow it)
+    const sunShare = L.key === L.sun ? THREE.MathUtils.smoothstep(L.sun.y, 0, 0.15) : 0;
+    setFloorTime(floorBake, tod, sunShare);
     bounceColor.copy(L.hemiGround);
-    // the blobs lie away from the sun while it's well up, from the moon (and fainter) when it isn't
-    if (L.sun.y > 0.08) blobs.setSun(L.sun, 1);
+    // the blobs lie away from the sun while it's up, from the moon (and fainter) when it isn't
+    if (L.sun.y > 0) blobs.setSun(L.sun, 0.5 + 0.5 * sunShare);
     else blobs.setSun(L.moon, 0.5);
     sky.uniforms.uSun.value.copy(L.sun);
     sky.uniforms.uMoon.value.copy(L.moon);

@@ -207,7 +207,7 @@ function loadModel(url) {
   }
   return gltf.loadAsync(url).then((g) => g.scene);
 }
-const MODELS = { portalgun: '/models/wardrobe/portalgun.glb' };
+const MODELS = Object.fromEntries(Object.values(GEAR).flat().filter((g) => g.file).map((g) => [g.id, g.file])); // (the gear that's a model of someone else's)
 const models = new Map();
 export function loadGear(id) {
   if (!MODELS[id]) return Promise.resolve(buildGear(id));

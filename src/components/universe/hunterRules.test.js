@@ -426,6 +426,24 @@ describe('a fight', () => {
     expect(seen.hunt.count).toBe(0); // (out of sight, and gone)
   });
 
+  it('leave() sends them all off without a moment’s vanishing, gone once well away from whoever’s looking', () => {
+    const hunt = createHunt({ rand: seeded(3) });
+    const you = start();
+    hunt.pack('empire', you, { size: 3, ace: false });
+    for (let t = 0; t < 3; t += DT) hunt.update(DT, you);
+    hunt.leave();
+    hunt.update(DT, you);
+    expect(hunt.count).toBe(3); // (still there)
+    expect(hunt.active).toBe(false);
+    expect(hunt.targets).toHaveLength(0); // (nothing for the guns: they're leaving)
+    let shots = 0;
+    let t = 0;
+    for (; t < 60 && hunt.count; t += DT) for (const e of hunt.update(DT, you)) if (e.type === 'shot') shots += 1;
+    expect(shots).toBe(0);
+    expect(hunt.count).toBe(0);
+    expect(t).toBeGreaterThan(2);
+  });
+
   it('all leave when you stop flying', () => {
     const hunt = createHunt({ rand: seeded() });
     hunt.pack('federation', start(), { size: 3 });

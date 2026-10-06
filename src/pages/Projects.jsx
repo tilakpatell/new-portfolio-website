@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import PageTitle from '../components/PageTitle';
 import { Link } from 'react-router-dom';
 import { RiArrowRightLine, RiArrowRightUpLine, RiGithubFill } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
@@ -107,11 +108,11 @@ export default function Projects() {
           <div className="relative">
             <Waypoint top="0.6rem" />
             <p className="eyebrow">Projects</p>
-            <h1 className="display mt-6 text-[clamp(3rem,1.4rem+4.6vw,5.4rem)]">
+            <PageTitle className="display mt-6 text-[clamp(3rem,1.4rem+4.6vw,5.4rem)]">
               Built to be
               <br />
               played with.
-            </h1>
+            </PageTitle>
             <p className="lead mt-7 max-w-2xl">
               An emulator you can play, an AI translator for Gujarati scripture, a hackathon-winning cloud IDE and open-source work. Each opens with live
               demos.

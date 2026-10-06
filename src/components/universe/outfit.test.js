@@ -11,7 +11,9 @@ import {
   STOCK,
   STOCK_LOADOUT,
   capacityOf,
+  droppedParts,
   equip,
+  fitInto,
   fits,
   isOpen,
   loadoutOf,
@@ -220,5 +222,25 @@ describe('on a garage build', () => {
     const r = equip('falcon', { ...STOCK_LOADOUT, guns: 'fusion' }, 'booster', 'portal', all, needle);
     expect(r).toMatchObject({ ok: false, reason: 'power', short: 1 }); // (3 + 3 + 1 against 6)
     expect(equip('falcon', STOCK_LOADOUT, 'booster', 'portal', all, needle).ok).toBe(true);
+  });
+});
+
+describe('what a smaller plant takes off', () => {
+  const all = Object.keys(ACHIEVEMENTS);
+  const heavy = { ...STOCK_LOADOUT, booster: 'portal', guns: 'fusion', shields: 'fastcharge' };
+  const needle = { ...STOCK_BUILD, hull: 'needle' };
+
+  it('names the parts fitted that the ship flies without', () => {
+    const flown = loadoutOf({ falcon: heavy }, 'falcon', all, needle);
+    expect(droppedParts(heavy, flown).map((p) => p.id)).toEqual(['portal']);
+    expect(droppedParts(heavy, heavy)).toEqual([]);
+  });
+
+  it('keeps them in what’s saved when something else is fitted, so a bigger plant gets them back', () => {
+    const r = equip('falcon', loadoutOf({ falcon: heavy }, 'falcon', all, needle), 'paint', 'sith', all, needle);
+    expect(r.ok).toBe(true);
+    const saved = fitInto(heavy, 'paint', r.loadout.paint);
+    expect(saved).toEqual({ ...heavy, paint: 'sith' });
+    expect(loadoutOf({ falcon: saved }, 'falcon', all, { ...STOCK_BUILD, hull: 'hauler' }).booster).toBe('portal');
   });
 });

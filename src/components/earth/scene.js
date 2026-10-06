@@ -12,11 +12,14 @@
 // ./rules.js, where the camera is in its dive from orbit, which places are
 // stamped, the trail) and decides nothing.
 //
-// createEarth(canvas, { onLost, small }) returns { render(state, ms),
-// screenOf(v), pick(ndcX, ndcY), resize, dispose, lost, ready }.
+// createEarth(renderer, { small, lost }) returns { render(state, ms),
+// screenOf(v), pick(ndcX, ndcY), resize, warm(state), dispose, ready }. The
+// renderer is the world runtime's (src/runtime); `lost` says if its context
+// has gone; resize is told the canvas's CSS size (the runtime sizes the
+// renderer itself).
 
 import * as THREE from 'three';
-import { createRenderer, disposeTree, precompile } from '../../lib/three/renderer';
+import { disposeTree, precompile } from '../../lib/three/renderer';
 import { gltfLoader } from '../../lib/three/gltf';
 import { loadTexture, sharpenMaterial } from '../../lib/three/textures';
 import { device } from '../../lib/device';
@@ -291,10 +294,11 @@ function nameSprite(name, h = 0.028) {
   return sp;
 }
 
-export function createEarth(canvas, { onLost, small = false } = {}) {
+export function createEarth(renderer, { small = false, lost = () => false } = {}) {
   const tier = device().tier;
-  const gl = createRenderer(canvas, { alpha: false, antialias: true, ratio: 2, toneMapping: THREE.ACESFilmicToneMapping, exposure: 1.05, onLost });
-  const { renderer } = gl;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.setClearColor(0x000000, 1);
   const big = !small && tier === 'high' && renderer.capabilities.maxTextureSize >= 8192;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.0005, 80);
@@ -587,7 +591,6 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
   const resize = (w, h) => {
     size.w = Math.max(1, w);
     size.h = Math.max(1, h);
-    gl.setSize(size.w, size.h);
     camera.aspect = size.w / size.h;
     camera.updateProjectionMatrix();
   };
@@ -635,7 +638,7 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
   const chaseNow = {};
 
   const render = (state, ms = 16) => {
-    if (disposed || gl.lost) return;
+    if (disposed || lost()) return;
     const dt = Math.min(0.05, ms / 1000);
     const { flight: f, sun: s, view, stamped, orbit, trail = null, trailV = 0, look = null, cockpit = false, travellers = null } = state;
     const t = performance.now() / 1000;
@@ -780,9 +783,6 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
   };
 
   return {
-    get lost() {
-      return gl.lost;
-    },
     ready,
     render,
     resize,
@@ -804,7 +804,6 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
       glow.dispose();
       blank.dispose();
       flat.dispose();
-      gl.dispose();
     },
   };
 }

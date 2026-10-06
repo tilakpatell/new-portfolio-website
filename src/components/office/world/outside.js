@@ -11,6 +11,8 @@ import * as THREE from 'three';
 import { merge } from '../kit';
 import { CARS, DUMPSTER, LIGHT_POLES, LOT, PARK_SIGN, TREES, WAREHOUSE } from './layout';
 import { sharpen } from '../../../lib/three/textures';
+import { makeCars } from './cars';
+import { buildScenery, makeTree } from './scenery';
 
 function asphaltTex() {
   const c = document.createElement('canvas');
@@ -70,22 +72,6 @@ function signTex() {
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
-function skyTex() {
-  const c = document.createElement('canvas');
-  c.width = 32;
-  c.height = 256;
-  const x = c.getContext('2d');
-  const g = x.createLinearGradient(0, 0, 0, 256);
-  g.addColorStop(0, '#9fb3c6');
-  g.addColorStop(0.45, '#d4dde3');
-  g.addColorStop(0.5, '#e6e8e4');
-  g.addColorStop(1, '#bfc2bd');
-  x.fillStyle = g;
-  x.fillRect(0, 0, 32, 256);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
-}
 
 export function buildOutside() {
   const group = new THREE.Group();
@@ -106,10 +92,9 @@ export function buildOutside() {
   const cx = LOT.x + LOT.w / 2;
   const cz = LOT.z + LOT.d / 2;
 
-  // the sky, and the land beyond the lot
-  const sky = mesh(new THREE.SphereGeometry(140, 24, 12), new THREE.MeshBasicMaterial({ map: keep(skyTex()), side: THREE.BackSide, fog: false, depthWrite: false }), cx, 0, cz);
-  sky.castShadow = sky.receiveShadow = false;
-  keep(sky.material);
+  // the sky, the tree line on the horizon (./scenery.js), and the land beyond the lot
+  const scenery = buildScenery({ centre: { x: cx, z: cz } });
+  group.add(scenery.group);
   const grass = mesh(new THREE.PlaneGeometry(300, 300).rotateX(-Math.PI / 2), mat({ color: 0x7c8a5a, roughness: 1 }), cx, -0.02, cz);
   grass.castShadow = false;
 
@@ -173,35 +158,13 @@ export function buildOutside() {
     mesh(new THREE.BoxGeometry(2.4, 0.15, WAREHOUSE.d - 2), mat({ color: 0x8e9196, roughness: 0.5, metalness: 0.5 }), X + 1.2, 4.2, cz);
   }
 
-  // ── parked cars: a box body, a glasshouse, four wheels ──
-  {
-    const tyre = mat({ color: 0x151515, roughness: 0.85 });
-    const glassM = mat({ color: 0x20262c, roughness: 0.1, metalness: 0.5 });
-    const chromeM = mat({ color: 0xbfc4c8, roughness: 0.25, metalness: 0.9 });
-    const wheel = keep(new THREE.CylinderGeometry(0.34, 0.34, 0.24, 16).rotateZ(Math.PI / 2));
-    for (const [x, z, turn, colour, kind] of CARS) {
-      const car = new THREE.Group();
-      car.position.set(x, 0, z);
-      car.rotation.y = turn;
-      group.add(car);
-      const paint = mat({ color: colour, roughness: 0.35, metalness: 0.45 });
-      const long = kind === 'suv' ? 4.7 : 4.4;
-      const wide = kind === 'suv' ? 1.9 : 1.78;
-      const low = kind === 'transam' ? 0.5 : kind === 'suv' ? 0.85 : 0.65;
-      mesh(new THREE.BoxGeometry(wide, low, long), paint, 0, 0.36 + low / 2, 0, car);
-      // the cabin
-      const cabH = kind === 'transam' ? 0.4 : kind === 'suv' ? 0.65 : 0.5;
-      const cabL = kind === 'suv' ? long * 0.6 : long * 0.48;
-      mesh(new THREE.BoxGeometry(wide * 0.86, cabH, cabL), glassM, 0, 0.36 + low + cabH / 2, kind === 'transam' ? -0.3 : -0.1, car);
-      mesh(new THREE.BoxGeometry(wide * 0.88, 0.06, cabL * 0.92), paint, 0, 0.36 + low + cabH, kind === 'transam' ? -0.3 : -0.1, car);
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) mesh(wheel, tyre, sx * (wide / 2 - 0.05), 0.34, sz * (long / 2 - 0.8), car);
-      mesh(new THREE.BoxGeometry(wide * 1.02, 0.12, 0.1), chromeM, 0, 0.45, long / 2, car);
-      mesh(new THREE.BoxGeometry(wide * 1.02, 0.12, 0.1), chromeM, 0, 0.45, -long / 2, car);
-      if (kind === 'transam') {
-        // the bird on the bonnet, in gold
-        mesh(new THREE.BoxGeometry(0.9, 0.01, 0.6), mat({ color: 0xd8b04a, roughness: 0.4, metalness: 0.8 }), 0, 0.36 + low + 0.006, long / 2 - 0.65, car).castShadow = false;
-      }
-    }
+  // ── the parked cars (./cars.js) ──
+  const cars = makeCars();
+  for (const [x, z, turn, colour, kind] of CARS) {
+    const car = cars.car(kind, colour);
+    car.position.set(x, 0, z);
+    car.rotation.y = turn;
+    group.add(car);
   }
 
   // ── the park's sign: a stone base, the blue panel ──
@@ -230,11 +193,19 @@ export function buildOutside() {
       mesh(new THREE.BoxGeometry(0.6, 0.02, 0.3), mat({ color: 0xffffff, emissive: 0xfff2d6, emissiveIntensity: 0.6 }), x + 0.5, 7.4, z).castShadow = false;
       mesh(new THREE.CylinderGeometry(0.35, 0.4, 0.5, 12), mat({ color: 0xbdb9ad, roughness: 0.9 }), x, 0.25, z);
     }
-    const bark = mat({ color: 0x5a4632, roughness: 1 });
-    const leaves = [mat({ color: 0x55703a, roughness: 1 }), mat({ color: 0x647f42, roughness: 1 })];
+    // the trees, each grown from its own seed
+    const bark = mat({ color: 0x55463a, roughness: 0.95 });
+    const leaves = mat({ color: 0xffffff, vertexColors: true, roughness: 0.9 });
     TREES.forEach(([x, z], i) => {
-      mesh(new THREE.CylinderGeometry(0.14, 0.2, 2.6, 8), bark, x, 1.3, z);
-      for (let k = 0; k < 3; k++) mesh(new THREE.IcosahedronGeometry(1.3 - k * 0.2, 1), leaves[(i + k) % 2], x + (k - 1) * 0.5, 3.2 + k * 0.6, z + ((k * 7) % 3) * 0.2 - 0.2);
+      const t = makeTree(i);
+      const turn = i * 1.7;
+      for (const [geo, m] of [
+        [t.bark, bark],
+        [t.leaves, leaves],
+      ]) {
+        const o = mesh(geo, m, x, 0, z);
+        o.rotation.y = turn;
+      }
     });
     const d = DUMPSTER;
     mesh(new THREE.BoxGeometry(d.w, 1.25, d.d), mat({ color: 0x2f5a3a, roughness: 0.7, metalness: 0.3 }), d.x, 0.7, d.z);
@@ -243,7 +214,10 @@ export function buildOutside() {
 
   return {
     group,
+    step: scenery.step,
     dispose() {
+      cars.dispose();
+      scenery.dispose();
       for (const o of own) o.dispose?.();
     },
   };

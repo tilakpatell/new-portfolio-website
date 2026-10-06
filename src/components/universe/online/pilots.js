@@ -353,7 +353,10 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
             if (!mg.visible) continue;
             busy = true;
             mg.position.copy(g.at);
-            if (g.vel.lengthSq() > 1e-6) mg.lookAt(aim.copy(g.at).add(g.vel));
+            if (g.vel.lengthSq() > 1e-6) {
+              parent.updateWorldMatrix(true, false); // (lookAt is in the world, and the map turns: the map's point is carried into it)
+              mg.lookAt(parent.localToWorld(aim.copy(g.at).add(g.vel)));
+            }
             mg.scale.setScalar(type.size * g.model.fit);
             g.model.update(now / 1000);
           }

@@ -2,6 +2,8 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { Link, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { RiArrowDownLine, RiArrowUpLine, RiRocketLine, RiTerminalBoxLine } from 'react-icons/ri';
 import { PageContext } from '../../lib/page';
+import { browserOnline } from '../../lib/stale';
+import ErrorBoundary from '../ErrorBoundary';
 import { prefersReducedMotion } from '../../lib/hooks';
 import { FEED, byId, categoryAt, feedState, isFeedMove, nextOf, placeOf } from './feed';
 import './feed.css';
@@ -106,7 +108,11 @@ function FeedRun({ entry, onCurrent }) {
 }
 
 function FeedPage({ id, entry, first, context, onMiddle, onReady, onMore }) {
-  const Page = PAGES[id];
+  // a page that fails to load (its file, or a bug in it) is fenced off with
+  // a Retry, not the whole feed: and React.lazy remembers a failed load, so
+  // Retry makes it anew
+  const [attempt, setAttempt] = useState(0);
+  const Page = useMemo(() => (attempt ? lazy(LOAD[id]) : PAGES[id]), [attempt, id]);
   const ref = useRef(null);
   // a page mounted a viewport ahead would play its hero animation unseen:
   // the wrapper waits (feed.css pauses .hero-in under it) until it is in sight
@@ -142,12 +148,30 @@ function FeedPage({ id, entry, first, context, onMiddle, onReady, onMore }) {
     <div ref={ref} className="feed-page" data-feed-page={id} data-active={context.active || undefined} data-wait={wait || undefined}>
       {!first && <FeedDivider id={id} place={placeOf(entry, id)} />}
       <PageContext.Provider value={context}>
-        <Suspense fallback={<div className="feed-loading" aria-hidden="true" />}>
-          <Page />
-          <Mounted id={id} onMount={onReady} />
-        </Suspense>
+        <ErrorBoundary key={attempt} fallback={<FeedPageError id={id} onRetry={() => setAttempt((a) => a + 1)} />}>
+          <Suspense fallback={<div className="feed-loading" aria-hidden="true" />}>
+            <Page />
+            <Mounted id={id} onMount={onReady} />
+          </Suspense>
+        </ErrorBoundary>
       </PageContext.Provider>
       {onMore && <Sentinel onNear={onMore} />}
+    </div>
+  );
+}
+
+// One page of the feed that didn't load, in its place, with a way to try
+// again (the pages round it carry on).
+function FeedPageError({ id, onRetry }) {
+  const offline = !browserOnline();
+  return (
+    <div className="shell feed-error" role="alert">
+      <p className="eyebrow">{byId(id).label}</p>
+      <p className="title mt-2">{offline ? 'You’re offline.' : 'This part didn’t load.'}</p>
+      <p className="mt-2 text-muted">{offline ? 'It will once you’re back online.' : 'The rest of the site still works.'}</p>
+      <button type="button" className="btn btn-primary btn-sm mt-4" onClick={onRetry}>
+        Try again
+      </button>
     </div>
   );
 }

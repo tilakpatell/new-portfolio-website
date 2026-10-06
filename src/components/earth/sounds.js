@@ -1,14 +1,20 @@
 // Earth's sounds, synthesised: the engines (a rumble, the fan's hum and a
 // thin whine, rising with the throttle), the two-note chime a cabin plays
 // when the seatbelt sign goes off, the thump of a passport stamp, and the
-// rush of air on the way down from orbit. All through the site's master
-// volume (lib/audio).
+// rush of air on the way down from orbit. All through the module's bus on
+// the site's master volume (lib/audio).
 
 import { audioContext, output } from '../../lib/audio';
 
+// the world runtime's bus for this module (a gain into the master, faded
+// out when the world goes), or the master itself
+let bus = null;
+export function setBus(gain) {
+  bus = gain ?? null;
+}
 const ready = () => {
   const ac = audioContext();
-  const out = output();
+  const out = bus ?? output();
   return ac && out ? [ac, out] : [null, null];
 };
 

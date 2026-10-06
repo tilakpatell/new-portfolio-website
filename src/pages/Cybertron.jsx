@@ -10,6 +10,7 @@ import Planet from '../components/cybertron/Planet';
 import TransformStage from '../components/cybertron/TransformStage';
 import Visor from '../components/cybertron/Visor';
 import CybertronBackdrop from '../components/cybertron/world/CybertronBackdrop';
+import GameWorld from '../components/cybertron/game/GameWorld';
 import AutobotMark from '../components/AutobotMark';
 import DecepticonMark from '../components/DecepticonMark';
 import { Cybertron as Skyline } from '../components/worlds/Backdrops';
@@ -23,6 +24,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { audioContext } from '../lib/audio';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
 import ScriptToggle from '../components/ScriptToggle';
+import ModelCredits from '../components/ModelCredits';
 import '../styles/lazy/cybertron.css';
 
 const SIDES = {
@@ -163,7 +165,11 @@ export default function Cybertron() {
   return (
     <div className="relative">
       <CybertronBackdrop side={side} />
-      <section className="shell relative z-10 grid items-center gap-10 pb-16 pt-[calc(var(--nav-h)+36px)] md:pb-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" aria-labelledby="cy-title">
+      {/* the world first: Iacon at war, walked and driven as Optimus */}
+      <div className="cyw-host relative z-10">
+        <GameWorld />
+      </div>
+      <section className="shell relative z-10 grid items-center gap-10 pb-16 pt-16 md:pb-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" aria-labelledby="cy-title">
         <figure className="cy-planet m-0" data-side={side}>
           <Planet side={side} className="cy-planet-canvas" />
           <Insignia side={side} phase={phase} className="cy-planet-mark" />
@@ -369,6 +375,10 @@ export default function Cybertron() {
           </div>
         </section>
       )}
+
+      <footer className="shell relative z-10 pb-16">
+        <ModelCredits where="cybertron" line className="text-xs text-muted" />
+      </footer>
     </div>
   );
 }

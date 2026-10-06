@@ -8,8 +8,8 @@ import { beyondPlan, crashPlan, enterPlan } from '../components/universe/flight'
 import { beyondOf, parseWonder } from '../components/universe/deep';
 import { DRIVE_KEY, destinationById, distanceTo, parseDrive, tourFrom } from '../components/universe/nav';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
-import { LOADOUT_KEY, equip, loadoutOf, readLoadouts } from '../components/universe/outfit';
-import { HULL_KEY, readHulls } from '../components/universe/shipyard/build';
+import { LOADOUT_KEY, droppedParts, equip, fitInto, loadoutOf, readLoadouts } from '../components/universe/outfit';
+import { GARAGE_KEY, HULL_KEY, readHulls } from '../components/universe/shipyard/build';
 import { useAchievements } from '../components/Achievements';
 import { saveStart } from '../lib/view';
 import { useView } from '../components/ViewSwitch';
@@ -68,13 +68,21 @@ export default function Universe({ ask = false }) {
   // hangar's shipyard (shipyard/build.js), kept between visits
   const [hulls, setHulls] = useState(() => readHulls(local.get(HULL_KEY), CREWS.map((c) => c.id)));
   const build = (ship && hulls[ship]) || null;
+  // and each crew's last garage build, flown or not, to go back to from stock
+  const [garage, setGarage] = useState(() => readHulls(local.get(GARAGE_KEY), CREWS.map((c) => c.id)));
   const setBuild = (b) => {
     if (!ship) return;
     const next = { ...hulls, [ship]: b };
     setHulls(next);
     local.set(HULL_KEY, next);
+    if (b) {
+      const kept = { ...garage, [ship]: b };
+      setGarage(kept);
+      local.set(GARAGE_KEY, kept);
+    }
   };
   const loadout = useMemo(() => loadoutOf(loadouts, ship, unlocked, build), [loadouts, ship, unlocked, build]);
+  const dropped = useMemo(() => (ship ? droppedParts(loadouts[ship], loadout) : []), [loadouts, ship, loadout]); // (what the plant can't run)
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
   useEffect(() => tellBuild?.(build), [tellBuild, build]);
   const [hangar, setHangar] = useState(false);
@@ -96,7 +104,7 @@ export default function Universe({ ask = false }) {
   const fit = (slot, id) => {
     const r = equip(ship, loadout, slot, id, unlocked, build);
     if (r.ok) {
-      const next = { ...loadouts, [ship]: r.loadout };
+      const next = { ...loadouts, [ship]: fitInto(loadouts[ship], slot, r.loadout[slot]) }; // (what the plant took off is kept, for a bigger one)
       setLoadouts(next);
       local.set(LOADOUT_KEY, next);
     }
@@ -365,6 +373,8 @@ export default function Universe({ ask = false }) {
         shipName={crew?.ship ?? ''}
         loadout={loadout}
         build={build}
+        lastBuild={(ship && garage[ship]) || null}
+        dropped={dropped}
         onBuild={ship ? setBuild : null}
         onCrew={() => {
           setHangar(false);
@@ -393,7 +403,7 @@ export default function Universe({ ask = false }) {
         </div>
       )}
       {crew && <Comms control={comms} crew={crew} reduced={reduced} />}
-      <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} who="rick" />
+      <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} who="rick" returnTo=".universe-hangar-btn" />
       {!asking && !leaving && <Online online={online} ship={ship} />}
       <UniversePanel
         universe={universe}

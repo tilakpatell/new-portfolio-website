@@ -191,12 +191,21 @@ export function recolor(material, bodyId, colors = {}) {
 // A look's colours on a figure from createMeshyCast().make(): its meshes'
 // zones, and its own copies of their materials, taught the body's regions.
 // Returns the copies, for the caller to dispose (or set() again).
+// A material's copy that keeps what's been done to its shaders (its rim of
+// light, a shirt's colour): Material.clone() leaves those behind.
+export function cloneShaded(material) {
+  const m = material.clone();
+  m.onBeforeCompile = material.onBeforeCompile;
+  m.customProgramCacheKey = material.customProgramCacheKey;
+  return m;
+}
+
 export function dressColors(figure, look) {
   const made = [];
   figure.group.traverse((o) => {
     if (!o.isSkinnedMesh || o.userData.ink) return;
     addZones(o.geometry, o.skeleton.bones.map((b) => b.name));
-    const m = recolor(o.material.clone(), look.body, look.colors);
+    const m = recolor(cloneShaded(o.material), look.body, look.colors);
     o.material = m;
     made.push(m);
   });

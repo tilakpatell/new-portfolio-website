@@ -315,10 +315,19 @@ export function buildDiorama(scene, { soft = false, reduced = false, models = tr
     r.rotation.y = Math.PI / 4;
     r.scale.set(1.2, 1, 0.65);
   }
-  // Minas Tirith: seven white tiers and the tower
+  // Minas Tirith: seven white tiers and the tower. The city itself can be
+  // clicked too, for whoever thinks to (the way in: ./hidden.js).
   let banner;
+  let minasTirith;
   {
     const g = at(world, 520, 444);
+    g.userData.who = 'minas-tirith';
+    minasTirith = g;
+    // a little wider than the city, and never drawn, so a click near it counts
+    const reach = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 2.1, 4, 10), new THREE.MeshBasicMaterial());
+    reach.position.y = 1.8;
+    reach.visible = false;
+    g.add(reach);
     const built = [];
     for (let i = 0; i < 7; i++) built.push(put(g, new THREE.CylinderGeometry(1.6 - i * 0.2, 1.65 - i * 0.2, 0.32, 20), whiteStone, 0, 0.16 + i * 0.32, -i * 0.08));
     built.push(put(g, new THREE.CylinderGeometry(0.12, 0.16, 1.4, 8), whiteStone, 0, 2.9, -0.56));
@@ -460,7 +469,7 @@ export function buildDiorama(scene, { soft = false, reduced = false, models = tr
   scene.add(fire.mesh, bombs.mesh, smoke.mesh, wisps.mesh, motes.mesh);
 
   // ── Frodo and Sam, and the people they meet ──
-  const roots = [orthanc]; // what a tap can land on
+  const roots = [orthanc, minasTirith]; // what a tap can land on
   const tag = (group, id) => {
     group.userData.who = id;
     roots.push(group);

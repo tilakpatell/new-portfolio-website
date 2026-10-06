@@ -13,29 +13,29 @@ Work from this session lands as pull requests, one concern each, and ticks its l
 
 - [x] **A filter click on a feed page jumps to the top of the feed** *(verified)*. `App.jsx`'s `ScrollToTop` re-runs when `top` flips, and after any feed move a page's own search-param update (Projects' tech chips, the Experience track, the Résumé skill) flips it, so `scrollTo(0, 0)` throws the visitor to the top of the page the feed started on, and page audio stops (`stopPageClips`). Scroll and stop only on a new path.
 - [x] `ErrorBoundary resetKey={page}` is `'/feed'` for all six feed pages, so after an error in one, the nav's links can't clear it. Use the pathname.
-- [ ] One failed chunk inside the feed replaces the whole feed with the error screen, and `React.lazy` caches the rejection, so it can't retry. A boundary per `FeedPage` with a Retry.
-- [ ] Offline, a failed chunk matches `isStale` and `reloadFresh()` swaps the page for the browser's offline screen. Skip the reload when `navigator.onLine === false`.
+- [x] One failed chunk inside the feed replaces the whole feed with the error screen, and `React.lazy` caches the rejection, so it can't retry. A boundary per `FeedPage` with a Retry.
+- [x] Offline, a failed chunk matches `isStale` and `reloadFresh()` swaps the page for the browser's offline screen. Skip the reload when `navigator.onLine === false`.
 - [x] The first ⌘K shows nothing while the palette's chunk loads (fallback null), and a second ⌘K toggles it shut. Prefetch `CommandPalette` with the other idle imports in `Shell`.
 - [x] The Terminal's neofetch says React 18; it's 19.
 
 ## Core pages: accessibility
 
 - [x] The Terminal swallows Tab and Shift+Tab always: a keyboard trap (WCAG 2.1.2). Swallow Tab only when a completion applies; let Shift+Tab and Escape leave.
-- [ ] The phone menu (portalled) doesn't move focus in, return it to the button, or make the page behind inert.
-- [ ] The Résumé's tabs: no roving tabindex, arrows change the view but not the focus.
-- [ ] Six `<h1>`s in one feed document. The pages off the address could render their title as `h2` (`usePageActive`).
-- [ ] Contact's form doesn't move focus to the first invalid field.
+- [x] The phone menu (portalled) doesn't move focus in, return it to the button, or make the page behind inert.
+- [x] The Résumé's tabs: no roving tabindex, arrows change the view but not the focus.
+- [x] Six `<h1>`s in one feed document. The pages off the address could render their title as `h2` (`usePageActive`). Done: `components/PageTitle.jsx` is the page's `h1` on the address and an `h2` elsewhere in the feed; the themes find it by `data-page-title`.
+- [x] Contact's form doesn't move focus to the first invalid field. Done: its checks are `lib/contact.js` (tested), and a failed send focuses the first field that's wrong.
 
 ## Core pages: reach and polish
 
 - [x] Between about 900 and 1180 px (a tablet, a small laptop), Music, Terminal and the colour picker were in neither the bar nor a menu (only search found them). The menu now shows below `lg`, or whenever the bar has let go of Terminal or Music to fit. *(verified)*
-- [ ] Every shared link (`/#/projects/x`) unfurls as the home page: hash routes have one title, description and image. Prerendered per-route HTML (title, description, OG) at build time would fix shares and search; `public/sitemap.xml` lists `/` only.
-- [ ] `scripts/github-snapshot.mjs` rewrites the tracked `public/github.json` on every build (its `fetchedAt`), leaving a dirty tree; and `Promise.all` drops the whole snapshot if the contributions API is down. Write only on change; `allSettled`.
+- [x] (A page per route: `scripts/prerender.mjs` writes `dist/<route>/index.html` with its own title, description, preview card and canonical address, and the sitemap lists all 55. *(verified)*) Every shared link (`/#/projects/x`) unfurls as the home page: hash routes have one title, description and image. Prerendered per-route HTML (title, description, OG) at build time would fix shares and search; `public/sitemap.xml` lists `/` only.
+- [x] `scripts/github-snapshot.mjs` rewrites the tracked `public/github.json` on every build (its `fetchedAt`), leaving a dirty tree; and `Promise.all` drops the whole snapshot if the contributions API is down. Write only on change; `allSettled`. Done, tested: each answer stands alone, and the file is written only when more than its clock changed.
 - [ ] Recruiter basics not on the site: where based, when available, open to relocation; a "last updated" on the résumé.
 
 ## The universe and the galaxy
 
-- [ ] **Sixteen of the galaxy's eighteen missions were briefings**; Endor's speeder bike chase is now playable (`surface/missions/`, its spec `2026-10-05-endor-chase-design.md`), fifteen to go. The chase's route planner, scouts and result are reusable for the Lothal and Tatooine rides (`systems.js` status `'soon'`; Yavin and Alderaan go to `/deathstar`). Every one of the seventeen landable worlds has a surface site with quests (Tatooine five, the others one or two), so the engine is there: build the missions on it, smallest first, per `docs/superpowers/specs/2026-10-05-galaxy-games-design.md`.
+- [ ] **Sixteen of the galaxy's eighteen missions were briefings**; Endor's speeder bike chase and Lothal's star map are now playable (`surface/missions/`, specs `2026-10-05-endor-chase-design.md` and `2026-10-06-quest-missions-design.md`), fourteen to go. A mission can now be a quest (`kind: 'quest'` in `missions/index.js`: the quest engine runs it, the result card is shared), so most of the rest are data. The chase's route planner, scouts and result are reusable for the Tatooine ride (`systems.js` status `'soon'`; Yavin and Alderaan go to `/deathstar`). Every one of the seventeen landable worlds has a surface site with quests (Tatooine five, the others one or two), so the engine is there: build the missions on it, smallest first, per `docs/superpowers/specs/2026-10-05-galaxy-games-design.md`.
 - [ ] Anisotropy still hard-coded in `universe/stations.js:1410`, `universe/kit.js:38`, `universe/deepspace.js:951,963` (4) and `universe/scene.js:611`, `universe/planets.js:619` (1). Through `lib/three/textures.js`'s `sharpen`.
 - [ ] The Invincible planet on the map was merged without a look in a browser (`HANDOFF-invincible-planet.md`).
 
@@ -43,13 +43,13 @@ Work from this session lands as pull requests, one concern each, and ticks its l
 
 | World | Walk in 3D | Rules tested | Others online | Next |
 | --- | --- | --- | --- | --- |
-| Music room | yes | yes | no | ghosts in the courtyard; a tabla theka under the sitar |
+| Music room | yes | yes | yes, as floating lamps (this session) | ghosts in the courtyard; a tabla theka under the sitar |
 | Middle-earth | yes | yes (34 files) | 9 places | ghosts at Cirith Ungol and Mount Doom; Amon Hen's kitchen mist and ducks |
 | Cybertron | no (Roll out, Iacon) | thin | no | Iacon's rules into a tested file; Cybertron on foot |
 | Avengers HQ | yes, and swing | yes | holograms | ring 3 of the swing tour |
 | Albuquerque | drive | yes | ghost Azteks | phone cuts (canopy detail, vigas out of the shadow pass) |
-| Scranton | yes | partly (`world/story.js` untested) | no | ghosts; `story.test.js`; a new job |
-| C-137 and the Citadel | yes | yes | no | ghosts (a Rick from another dimension); Morty's walk paused in the air |
+| Scranton | yes | partly (`world/story.js` untested) | yes, as pale Jims (this session) | ghosts; `story.test.js`; a new job |
+| C-137 and the Citadel | yes | yes | yes, as Mortys and Ricks from other dimensions (this session) | ghosts (a Rick from another dimension); Morty's walk paused in the air |
 | Dot Matrix | yes | yes | no | ghosts in the four greens; a speedrun timer |
 | Earth | fly | yes | no | `day.webp`, `clouds.webp` 1.4 MB each; great-circle trails |
 | The Caribbean | sail | yes | no | ghost ships |

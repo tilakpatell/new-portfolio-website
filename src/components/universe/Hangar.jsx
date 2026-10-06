@@ -30,7 +30,7 @@ const shares = (does) => Object.entries(does).filter(([k, v]) => k !== 'plant' &
 const DOES = { boost: 'Boost', accel: 'Acceleration', cruise: 'Cruise', agility: 'Agility', level: 'Self-levelling' };
 const moduleEffects = (m) => [...(m.does.plant ? [`${m.does.plant} MW plant`] : []), ...shares(m.does).map(([k, v]) => `${DOES[k]} ${v > 0 ? '+' : '−'}${Math.round(Math.abs(v) * 100)}%`)];
 
-export default function Hangar({ ship, shipName, loadout, build = null, onBuild = null, onFit, open, onOpen, onCrew = null }) {
+export default function Hangar({ ship, shipName, loadout, build = null, lastBuild = null, dropped = null, onBuild = null, onFit, open, onOpen, onCrew = null }) {
   const id = useId();
   const panel = useRef(null);
   const button = useRef(null);
@@ -38,7 +38,6 @@ export default function Hangar({ ship, shipName, loadout, build = null, onBuild 
   const [slot, setSlot] = useState('paint');
   const [looking, setLooking] = useState(null); // the part pointed at, for the read-out
   const [said, setSaid] = useState(null); // why a part wouldn't go on
-  const last = useRef({}); // each ship's last garage build this visit, for going back to it from stock
   const [code, setCode] = useState(''); // a build code being pasted in
 
   // H opens and closes it; Escape closes it (before the page's own Escape)
@@ -76,7 +75,6 @@ export default function Hangar({ ship, shipName, loadout, build = null, onBuild 
     setSaid(null);
   }, [slot, ship]);
 
-  if (build) last.current[ship] = build;
   const stats = statsOf(ship, loadout, build);
   const draw = stats.power - powerOf(loadout); // (what the build's own modules draw)
   const now = useMemo(() => readout(ship, loadout, build), [ship, loadout, build]);
@@ -89,7 +87,7 @@ export default function Hangar({ ship, shipName, loadout, build = null, onBuild 
   const opened = parts.filter((p) => isOpen(p, unlocked)).length;
 
   // the shipyard's moves: the hull switched, a module fitted, a roll, a code
-  const setHull = (garage) => onBuild?.(garage ? (last.current[ship] ?? STOCK_BUILD) : null);
+  const setHull = (garage) => onBuild?.(garage ? (lastBuild ?? STOCK_BUILD) : null);
   const fitModule = (m) => {
     if (!isModuleOpen(m, unlocked)) return setSaid({ id: m.id, text: `Locked. ${m.hint}.` });
     setSaid(null);
@@ -173,6 +171,12 @@ export default function Hangar({ ship, shipName, loadout, build = null, onBuild 
             </span>
           </div>
 
+          {dropped?.length > 0 && (
+            <p className="universe-hangar-dropped" role="status">
+              Off for want of power: {dropped.map((p) => p.name).join(', ')}. The plant makes {stats.capacity} MW; they go back on with one that runs them.
+            </p>
+          )}
+
           <div className="universe-hangar-slots" role="group" aria-label="Slot">
             {TABS.map((s) => (
               <button key={s} type="button" aria-pressed={slot === s} onClick={() => setSlot(s)} disabled={s === 'build' && !onBuild}>
@@ -239,6 +243,7 @@ export default function Hangar({ ship, shipName, loadout, build = null, onBuild 
                             >
                               {!ok && <RiLock2Line className="h-3 w-3" aria-label="Locked" />}
                               {m.name}
+                              {(m.does.plant || m.power > 0 || m.mass > 0) && <small className="universe-yard-cost">{m.does.plant ? `${m.does.plant} MW` : [m.power > 0 && `${m.power} MW`, m.mass > 0 && `${m.mass} t`].filter(Boolean).join(' · ')}</small>}
                             </button>
                           );
                         })}

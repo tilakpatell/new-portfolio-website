@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { schnorr } from '@noble/secp256k1';
-import { KIND, checkEvent, hex, joinRoom, signEvent } from './nostr';
+import { KIND, checkEvent, hex, joinRoom, signEvent, visitKeys } from './nostr';
 
 // In-memory relays that behave like the real ones: they check each event's
 // id and signature, answer OK, and pass it on to every matching listener
@@ -113,6 +113,22 @@ describe('joinRoom over Nostr relays', () => {
       expect(ev.tags).toEqual([['x', 'test-app/room-1']]);
       expect(await checkEvent(ev)).toBe(true);
     }
+  });
+
+  it('signs with the key it is handed: one for the visit, the same in every room', async () => {
+    const net = createRelays(URLS);
+    const keys = visitKeys();
+    expect(visitKeys()).toBe(keys);
+    const a = join(net, { keys });
+    const other = joinRoom({ appId: 'test-app', relays: URLS, WebSocket: net.WebSocket, keys }, 'room-2');
+    rooms.push(other);
+    expect(a.selfId).toBe(hex(keys.publicKey));
+    expect(other.selfId).toBe(a.selfId);
+    const b = join(net);
+    expect(b.selfId).not.toBe(a.selfId);
+    await Promise.all([a.ready, b.ready]);
+    a.action('hi').send({ n: 'Han' });
+    await until(() => b.got.some((m) => m.ns === 'hi' && m.from === a.selfId));
   });
 
   it('a message for one pilot reaches only them', async () => {

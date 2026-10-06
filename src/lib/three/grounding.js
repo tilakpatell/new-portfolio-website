@@ -122,13 +122,8 @@ ${fragmentShader.includes('varying vec3 vGroundPos;') ? '' : 'varying vec3 vGrou
 uniform sampler2D uMask[${n}];
 uniform vec4 uMaskRect[${n}];
 uniform vec3 uMaskMix;
-uniform vec3 uShade;
+uniform vec3 uShadeTint;
 uniform float uShadeMix;
-// the shade's hue at a little under the brightness it falls on: what's left
-// in a shadow is the sky's light, which is blue, and this turns it back
-// warm without darkening it a second time (the sun and the sky are already
-// cut by the masks)
-vec3 gShadeTint() { return uShade * (0.75 / max(dot(uShade, vec3(0.2126, 0.7152, 0.0722)), 1e-4)); }
 float gPick(vec4 m, float c) { return c < 0.5 ? m.r : c < 1.5 ? m.g : c < 2.5 ? m.b : 1.0; }
 // the sun's and the sky's share of a point on the floor (1 and 1 outside every mask)
 vec2 gRead(vec3 p) {
@@ -156,16 +151,16 @@ vec2 gRead(vec3 p) {
     swapped.sky = true;
   }
   if (fs.includes('#include <opaque_fragment>')) {
-    fs = fs.replace('#include <opaque_fragment>', 'outgoingLight *= mix(vec3(1.0), gShadeTint(), uShadeMix * (1.0 - min(gSun, gV.y)));\n#include <opaque_fragment>');
+    // What's left in the shade, the sky's light (bluish, the shadows would
+    // read grey by it), warmed toward the shade's hue and a little dimmed, by
+    // as much as the sun and the sky are kept off a point: at the darkest it
+    // keeps about two thirds of its light (SHADE_TINT), since the sun's light
+    // and the sky's are already cut.
+    fs = fs.replace('#include <opaque_fragment>', 'outgoingLight *= mix(vec3(1.0), uShadeTint, uShadeMix * (1.0 - min(gSun, gV.y)));\n#include <opaque_fragment>');
     swapped.shade = true;
   }
   return { vertexShader: vs, fragmentShader: fs, swapped };
 }
-
-// How far a floor in full shadow goes toward the shade's hue (0 none, 1 all
-// the way): enough that a shadow reads warm brown, not the grey-blue the sky
-// alone would leave it.
-export const SHADE_MIX = 0.4;
 
 // The uniforms every floor material of one bake shares, so a frame sets the
 // time once for all of them.
@@ -178,12 +173,30 @@ function floorUniforms(bake) {
       uMask: { value: bake.areas.map((a) => a.texture) },
       uMaskRect: { value: bake.areas.map((a) => new THREE.Vector4(a.x0, a.z0, 1 / a.w, 1 / a.d)) },
       uMaskMix: { value: new THREE.Vector3(3, 3, 0) },
-      uShade: { value: shade },
-      uShadeMix: { value: bake.shadeMix ?? SHADE_MIX },
+      uShadeTint: { value: shadeTint(shade, bake.shadeLuminance ?? SHADE_TINT.luminance, SHADE_TINT.saturation) },
+      uShadeMix: { value: bake.shadeMix ?? SHADE_TINT.mix },
     };
     shared.set(bake, u);
   }
   return u;
+}
+
+// How the shade colours a shadow on the floor: its hue at this brightness,
+// this saturated, this much of it at the darkest (a shadow there keeps about
+// two thirds of its light, and goes warm brown). Found by eye at dawn, noon
+// and golden hour: at full strength the shade's hue turned the pools under
+// the trees red, and at three quarters' brightness the shadows hardly read.
+export const SHADE_TINT = { luminance: 0.45, saturation: 0.6, mix: 0.65 };
+
+// A colour's hue at the linear luminance asked for, softened toward grey by
+// `saturation` (1 keeps it as it is): the shade as a tint to multiply by.
+// Black has no hue, so it comes back grey.
+export function shadeTint(color, luminance = SHADE_TINT.luminance, saturation = 1) {
+  const c = new THREE.Color(color);
+  const l = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+  if (l <= 0) return c.setRGB(luminance, luminance, luminance);
+  c.multiplyScalar(luminance / l);
+  return c.setRGB(luminance + (c.r - luminance) * saturation, luminance + (c.g - luminance) * saturation, luminance + (c.b - luminance) * saturation);
 }
 
 // The floor of a world (a lit material: the ground, the roads, a car park)
@@ -211,10 +224,16 @@ export function floorShadow(material, bake) {
 }
 
 // The masks' blend for a time of day (once a frame, for every floor material).
-export function setFloorTime(bake, tod) {
+// `sun` is how much of the floor's light the sun gives now, 0 to 1: the
+// shade's tint follows it, so a sun just up, which hardly lights the street,
+// doesn't darken whatever it would have shadowed, and night has no tint at
+// all (the sky's term still darkens a wall's foot by night).
+export function setFloorTime(bake, tod, sun = 1) {
   if (!bake?.areas?.length) return;
   const [a, b, t] = maskWeights(tod, bake.times);
-  floorUniforms(bake).uMaskMix.value.set(a, b, t);
+  const u = floorUniforms(bake);
+  u.uMaskMix.value.set(a, b, t);
+  u.uShadeMix.value = (bake.shadeMix ?? SHADE_TINT.mix) * clamp01(Number.isFinite(sun) ? sun : 1);
 }
 
 // A world's masks, from the index the bake wrote beside them: { areas,

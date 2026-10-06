@@ -43,7 +43,7 @@ const DT = 0.1;
 const planet = PLACES.find((p) => p.kind === 'planet' && dockable(p));
 const body = SOLIDS.find((o) => o.id === planet.id).r;
 const parked = { x: planet.at[0] + planet.reach + 5, y: planet.at[1], z: planet.at[2], heading: 0, speed: 0 };
-const dist = (p) => Math.hypot(p.x - planet.at[0], p.y - planet.at[1], p.z - planet.at[2]);
+const planetSide = parked;
 const setup = () => {
   const fleet = fakeFleet();
   const parent = new THREE.Group();
@@ -56,39 +56,65 @@ const leadOf = (fleet, g) => fleet.made.find((m) => m.group.parent && g.lead && 
 
 describe('coming in to land, and launching', () => {
   it('brings the ordinary ships down on to the place you are at, shrinking into it, and launches others out of it', () => {
+    const { traffic } = setup();
+    const dist = (p) => Math.hypot(p[0] - planet.at[0], p[1] - planet.at[1], p[2] - planet.at[2]);
+    const last = new Map(); // a group on a dock lane → how it was last seen
+    const landed = [];
+    const launched = [];
+    const firstSeen = new Set();
+    let t = 0;
+    for (let i = 0; i < 6000; i++) {
+      t += DT;
+      traffic.update(DT, t, planetSide);
+      const now = new Set();
+      for (const g of traffic.groups) {
+        if (!g.dock) continue;
+        now.add(g.id);
+        if (g.dock === 'out' && !firstSeen.has(g.id)) {
+          firstSeen.add(g.id);
+          launched.push({ first: dist(g.lead), t: g.t, kind: g.kind });
+        }
+        last.set(g.id, { dock: g.dock, at: dist(g.lead), t: g.t, kind: g.kind });
+      }
+      // the ones gone since the last frame: landed (or flown on, launching)
+      for (const [id, v] of last) {
+        if (now.has(id)) continue;
+        if (v.dock === 'in') landed.push(v);
+        last.delete(id);
+      }
+    }
+    expect(landed.length).toBeGreaterThan(2);
+    expect(launched.length).toBeGreaterThan(2);
+    for (const l of landed) {
+      // the last it was seen: at the end of its lane, on the body
+      expect(l.t).toBeGreaterThan(0.98);
+      expect(l.at).toBeLessThan(body * 1.1 + 1.5);
+    }
+    for (const l of launched) {
+      // the first it was seen: on the body, at the start of its lane
+      expect(l.t).toBeLessThan(0.02);
+      expect(l.first).toBeLessThan(body * 1.1 + 1.5);
+    }
+    // only the ordinary ships land
+    expect([...landed, ...launched].every((l) => ['freighter', 'transport', 'corvette'].includes(l.kind))).toBe(true);
+  });
+
+  it('draws a landing ship shrinking to nothing on the body, and a launching one growing out of it', () => {
     const { fleet, traffic } = setup();
-    const landed = []; // { last: how far from the middle, scale } of each one that came in
-    const launched = []; // the first scale seen of each one going out
-    const seen = new Map();
+    let small = 0;
     let t = 0;
     for (let i = 0; i < 6000; i++) {
       t += DT;
       traffic.update(DT, t, parked);
       for (const g of traffic.groups) {
-        if (!g.dock) continue;
+        if (!(g.dock === 'in' && g.t > 0.99) && !(g.dock === 'out' && g.t < 0.01)) continue;
         const m = leadOf(fleet, g);
         if (!m) continue;
-        const key = m.group.id;
-        if (g.dock === 'in' && g.t > 0.985) seen.set(key, { dock: 'in', last: dist(m.group.position), scale: m.group.scale.x, t: g.t });
-        else if (!seen.has(key)) seen.set(key, { dock: 'out', first: dist(m.group.position), scale: m.group.scale.x, kind: g.kind });
+        small += 1;
+        expect(m.group.scale.x / (m.fit ?? 1)).toBeLessThan(0.15 * 1.8); // (a fraction of its size: the biggest is 1.8 across)
       }
     }
-    for (const v of seen.values()) (v.dock === 'in' ? landed : launched).push(v);
-    expect(landed.length).toBeGreaterThan(2);
-    expect(launched.length).toBeGreaterThan(2);
-    for (const l of landed) {
-      // the last it was seen: on the body (or as near as a tenth of a second allows), and shrunk right down
-      expect(l.last).toBeLessThan(body * 1.1 + 1.5);
-      expect(l.scale).toBeLessThan(0.15);
-      expect(l.t).toBeGreaterThan(0.95);
-    }
-    for (const l of launched) {
-      // the first it was seen: on the body, and tiny
-      expect(l.first).toBeLessThan(body * 1.1 + 1.5);
-      expect(l.scale).toBeLessThan(0.2);
-    }
-    // only the ordinary ships land
-    expect(fleet.made.filter((m) => ['tie', 'interceptor', 'xwing', 'destroyer'].includes(m.kind) && seen.get(m.group.id)?.dock).length).toBe(0);
+    expect(small).toBeGreaterThan(0);
   });
 
   it('docks at the station you are by, in the home system', () => {
@@ -125,33 +151,46 @@ describe('coming in to land, and launching', () => {
 
 describe('a wing past you', () => {
   it('peels apart behind you, each away to its own side', () => {
-    const { fleet, traffic } = setup();
-    const ship = { x: 0, y: 300, z: -3000, heading: 0, speed: 5 };
-    traffic.soon('xwing', false);
-    let before = null;
-    let after = null;
-    let t = 0;
-    for (let i = 0; i < 1200 && !after; i++) {
-      t += DT;
-      traffic.update(DT, t, ship);
-      const g = traffic.groups.find((x) => x.flyby && x.kind === 'xwing');
-      if (!g) continue;
-      expect(g.peel).toBe(true);
-      const wing = fleet.made.filter((m) => m.kind === 'xwing' && m.group.parent);
-      if (wing.length < 2) continue;
-      const spread = Math.max(...wing.map((a) => Math.max(...wing.map((b) => a.group.position.distanceTo(b.group.position)))));
-      if (g.t > 0.3 && g.t < 0.45 && before === null) before = spread;
-      if (g.t > 0.93) after = spread;
+    let grew = 0;
+    for (const seed of [3, 5, 11, 17]) {
+      random.mockImplementation(seeded(seed));
+      const { traffic } = setup();
+      const ship = { x: 0, y: 300, z: -3000, heading: 0, speed: 5 };
+      traffic.soon('xwing', false);
+      let id = null;
+      let before = null;
+      let after = null;
+      let t = 0;
+      for (let i = 0; i < 1200 && after === null; i++) {
+        t += DT;
+        traffic.update(DT, t, ship);
+        const g = id === null ? traffic.groups.find((x) => x.flyby && x.kind === 'xwing') : traffic.groups.find((x) => x.id === id);
+        if (!g) continue;
+        id = g.id;
+        expect(g.peel).toBe(true);
+        // each to its own side: some one way, some the other
+        const sides = new Set(g.peels.map((p) => Math.sign(p[0])));
+        expect(sides.size).toBe(2);
+        if (g.ships.length < 2) break;
+        // the spread of this wing's own ships, and which way each is off its leader
+        const spread = Math.max(...g.ships.map((a) => Math.max(...g.ships.map((b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])))));
+        if (g.t > 0.3 && g.t < 0.45 && before === null) before = spread;
+        if (g.t > 0.93) after = spread;
+      }
+      if (before !== null && after !== null) {
+        expect(after, `seed ${seed}`).toBeGreaterThan(before + 3);
+        grew += 1;
+      }
     }
-    expect(before).not.toBeNull();
-    expect(after).not.toBeNull();
-    expect(after).toBeGreaterThan(before + 3);
+    expect(grew).toBeGreaterThan(1);
   });
 });
 
 describe('a fight nearby', () => {
-  // how far along its lane a freighter gets in a while, with and without one
-  const progress = (fight) => {
+  // how far along its lane the flyby freighter gets in a while, with a fight
+  // on or not, the ship `off` from it: the same run each time
+  const progress = (fight, off = 2) => {
+    random.mockImplementation(seeded(11));
     const { traffic } = setup();
     traffic.soon('freighter', true);
     let t = 0;
@@ -159,19 +198,19 @@ describe('a fight nearby', () => {
     for (let i = 0; i < 600 && !g; i++) {
       t += DT;
       traffic.update(DT, t, parked);
-      g = traffic.groups.find((x) => x.kind === 'freighter');
+      g = traffic.groups.find((x) => x.flyby && x.kind === 'freighter');
     }
-    expect(g).not.toBeNull();
+    expect(g).toBeTruthy();
+    const id = g.id;
     const t0 = g.t;
-    // the ship right by it, so it's near the fight
-    const near = { ...parked, x: g.lead[0] + 2, y: g.lead[1], z: g.lead[2] };
+    const near = { ...parked, x: g.lead[0] + off, y: g.lead[1], z: g.lead[2] };
     let flee = 0;
     for (let i = 0; i < 50; i++) {
       t += DT;
       traffic.update(DT, t, near, { fight });
-      flee = traffic.groups.find((x) => x.kind === 'freighter')?.flee ?? flee;
+      flee = traffic.groups.find((x) => x.id === id)?.flee ?? flee;
     }
-    return { gone: (traffic.groups.find((x) => x.kind === 'freighter')?.t ?? 1) - t0, flee };
+    return { gone: (traffic.groups.find((x) => x.id === id)?.t ?? 1) - t0, flee };
   };
   it('sends the ordinary ships near you running: faster, once they get going', () => {
     const calm = progress(false);
@@ -179,6 +218,30 @@ describe('a fight nearby', () => {
     expect(calm.flee).toBe(0);
     expect(running.flee).toBeGreaterThan(0.9);
     expect(running.gone).toBeGreaterThan(calm.gone * 1.5);
+  });
+
+  it('leaves the ones far off alone, and the fighters, and the ones landing', () => {
+    expect(progress(true, 100).flee).toBe(0);
+    // a wing of fighters past you, in a fight
+    random.mockImplementation(seeded(11));
+    const { traffic } = setup();
+    traffic.soon('xwing', false);
+    let t = 0;
+    let most = 0;
+    let docking = 0;
+    for (let i = 0; i < 3000; i++) {
+      t += DT;
+      traffic.update(DT, t, parked, { fight: true });
+      for (const g of traffic.groups) {
+        if (g.kind === 'xwing') most = Math.max(most, g.flee);
+        if (g.dock) {
+          docking += 1;
+          expect(g.flee).toBe(0);
+        }
+      }
+    }
+    expect(most).toBe(0);
+    expect(docking).toBeGreaterThan(0);
   });
 });
 
@@ -263,6 +326,10 @@ describe('a convoy', () => {
       expect(freight).toBeGreaterThanOrEqual(4);
       expect(freight).toBeLessThanOrEqual(7);
       expect(escorts).toBe(freight >= 6 ? 3 : 2);
+      if (freight >= 6) {
+        expect(kinds[4]).toBe('xwing'); // (the middle one, after three freighters)
+        expect(kinds.slice(1, 4).every((k) => k !== 'xwing')).toBe(true);
+      }
       expect(kinds[0]).toBe('xwing');
       expect(kinds[kinds.length - 1]).toBe('xwing');
       // where they fly: one at the front and one at the back, on either side

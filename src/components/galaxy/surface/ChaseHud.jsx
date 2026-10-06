@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { clockOf } from './missions/chase';
 
-// What's over a chase (missions/chase.js): the count, then the scouts left,
-// the clock and how close the leading one is to where it's going; at the
-// end, how it went, with Again, a look round the world on foot, and the
-// way back to the system. `view` is the scene's chaseView, with `result`,
+// What's over a mission: for a chase (missions/chase.js), the count, then
+// the scouts left, the clock and how close the leading one is to where it's
+// going (a quest mission has the quest's own panel instead); at the end,
+// how it went (the mission's `ends`), with Again, a look round the world on
+// foot, and the way back to the system. `view` is the scene's chaseView, with `result`,
 // as the page last drew it; `feed` brings the same ten times a second, for
 // the clock and the bar alone, so only this is drawn again for them.
 
@@ -36,7 +37,7 @@ export default function ChaseHud({ view, feed, mission, best, fresh, onAgain, on
     <>
       {/* (said once each, for a screen reader: the count, the off, how it ended) */}
       <p className="sr-only" aria-live="assertive">
-        {phase === 'count' ? count : go ? 'Go' : result ? (result.won ? 'Every scout down' : 'One got through') : ''}
+        {phase === 'count' ? count : go ? 'Go' : result ? (result.won ? mission.ends.won : mission.ends.lost) : ''}
       </p>
       {phase === 'count' && (
         <p key={count} className="chase-count" aria-hidden="true">
@@ -48,7 +49,7 @@ export default function ChaseHud({ view, feed, mission, best, fresh, onAgain, on
           Go
         </p>
       )}
-      {!result && phase !== 'count' && (
+      {!result && phase !== 'count' && mission.kind === 'chase' && (
         <div className="chase-hud">
           <p className="chase-name">{mission.name}</p>
           <div className="chase-row">
@@ -68,7 +69,7 @@ export default function ChaseHud({ view, feed, mission, best, fresh, onAgain, on
       {result && !shut && (
         <div className="chase-result" role="dialog" aria-label={`${mission.name}: ${result.won ? 'won' : 'lost'}`} data-won={result.won || undefined}>
           <p className="chase-result-kicker">{mission.name}</p>
-          <h2 className="chase-result-title">{result.won ? 'Every scout down' : 'One got through'}</h2>
+          <h2 className="chase-result-title">{result.won ? mission.ends.won : mission.ends.lost}</h2>
           {result.won ? (
             <>
               <p className="chase-stars" role="img" aria-label={`${result.stars} of 3 stars`}>
@@ -83,7 +84,10 @@ export default function ChaseHud({ view, feed, mission, best, fresh, onAgain, on
               </p>
             </>
           ) : (
-            <p className="chase-result-text">A scout reached the bunker and raised the alarm.{best ? ` Your best: ${clockOf(best.t)}.` : ''}</p>
+            <p className="chase-result-text">
+              {mission.ends.why[result.why ?? 'lost']}
+              {best ? ` Your best: ${clockOf(best.t)}.` : ''}
+            </p>
           )}
           <div className="chase-result-actions">
             <button ref={again} type="button" className="btn btn-primary btn-sm" onClick={restart}>

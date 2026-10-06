@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gunplay sheet</title>
+    <!--
+      The crews on foot and the Federation's troops, each holding their gun
+      (universe/gunplay.js), in a row on a metre grid, loaded the way the
+      universe map loads them (footScene.js loadPartyFigure), with the
+      clips held at one phase so every look is the same. Through the dev
+      server (npx vite):
+        /scripts/preview/gunplay.html                    gun up, aimed at the mark ahead, three-quarter
+        …?aim=0 | 0.5 | 1                               lowered, half way, up
+        …&view=front | side | three | back | top | night from where
+        …&only=han,chewie                               some of them
+        …&move=0.5                                      walking (0…1)
+        …&fire=1                                        a shot's kick, `after` seconds in (default 0.08)
+        …&turn=0.6                                      the mark off to the side (radians, + to their left)
+        …&up=0.3                                        the mark high (radians)
+        …&phase=0.3                                     where in its clips each figure is (0…1)
+        …&fx=1                                          the flash, smoke, a casing and a shot landing ahead
+        …&view=hands                                     close on each gun hand, from its right, ahead, its left and below
+                                                         (…&hand=L the other hand)
+      For checking from a script: window.__pose({ aim, move, turn, up, fire, after, phase }) poses them
+      again, window.__view(name) looks from somewhere else, and #metrics (and body[data-metrics]) holds,
+      per figure, how far the barrel is off the mark, the head and chest off it, the gun's roll, the arm's
+      reach, the elbow, the wrist, the other hand's miss and the shot's kick, and how the fingers sit on
+      the grip (gripMm: the nearest of the curled fingers to the grip's box, in mm, − inside it;
+      gripInPct: how many are more than 4 mm into it; gripCurl: how closed the hand is).
+    -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #20242c;
+        color: #e9edf2;
+        font: 13px/1.3 system-ui, sans-serif;
+        overflow: hidden;
+      }
+      #labels div {
+        position: absolute;
+        transform: translate(-50%, 0);
+        padding: 2px 6px;
+        background: rgba(0, 0, 0, 0.6);
+        border-radius: 4px;
+        white-space: nowrap;
+        pointer-events: none;
+      }
+      #status {
+        position: absolute;
+        left: 12px;
+        top: 10px;
+      }
+      #metrics {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="labels"></div>
+    <div id="status">loading…</div>
+    <pre id="metrics"></pre>
+    <script type="module">
+      import * as THREE from 'three';
+      import { PARTY, loadPartyFigure } from '/src/components/universe/footScene.js';
+      import { METRE, TROOPS } from '/src/components/universe/foot.js';
+      import { createGunplay } from '/src/components/universe/gunplay.js';
+      import { checks } from '/src/components/universe/grip.js';
+      import { createGunFx } from '/src/components/universe/gunfx.js';
+      import { createMeshyCast } from '/src/components/rickmorty/portal/meshyCast.js';
+
+      const q = new URLSearchParams(location.search);
+      const num = (k, d) => Number(q.get(k) ?? d);
+      const only = q.get('only')?.split(',');
+      const status = document.getElementById('status');
+      const V = THREE.Vector3;
+      const deg = (r) => +((r * 180) / Math.PI).toFixed(1);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      document.body.prepend(renderer.domElement);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color('#20242c');
+      const lights = [new THREE.HemisphereLight('#dfe8ff', '#4a3f33', 1.4), new THREE.DirectionalLight('#fff4e0', 2.6)];
+      lights[1].position.set(-4, 8, 6);
+      scene.add(...lights);
+
+      // who: every crew member with a gun, then the troops
+      const TROOP_GUN = { gromflomite: 'rifle', cop: 'coppistol' };
+      const who = [...Object.values(PARTY).flat().filter((s) => s.gun).map((s) => ({ ...s, kind: 'party' })), ...Object.keys(TROOP_GUN).map((k) => ({ id: k, name: k, tall: TROOPS[k].tall / METRE, gun: TROOP_GUN[k], kind: 'troop' }))].filter((s) => !only || only.includes(s.id));
+      const cast = createMeshyCast();
+      await cast.load(null, [...new Set([...who.filter((s) => s.src?.meshy).map((s) => s.src.meshy), ...who.filter((s) => s.kind === 'troop').map((s) => s.id)])]).catch(() => {});
+
+      const placed = [];
+      let x = 0;
+      for (const s of who) {
+        let fig = null;
+        const holder = new THREE.Group();
+        try {
+          if (s.kind === 'troop') {
+            const c = cast.make(s.id);
+            c.group.scale.setScalar(s.tall / c.height);
+            let clock = 0;
+            fig = { model: c.group, mixer: c.mixer, act: c.act, update: (dt, m) => c.update((clock += dt), m, 0) };
+            holder.add(c.group);
+          } else {
+            fig = await loadPartyFigure(s, cast);
+            const inner = new THREE.Group();
+            inner.scale.setScalar(1 / METRE); // the game's figures stand in map units: back to metres
+            inner.add(fig.model);
+            holder.add(inner);
+          }
+        } catch (e) {
+          console.error(s.id, e);
+        }
+        scene.add(holder);
+        holder.position.x = x;
+        holder.updateMatrixWorld(true);
+        const gp = fig ? createGunplay(fig, s.gun, { unit: 1, who: fig.built ? 'built' : s.kind === 'party' ? s.id : null }) : null;
+        placed.push({ ...s, fig, gp, holder, at: x });
+        x += 1.6;
+      }
+      const span = Math.max(0, x - 1.6);
+      const grid = new THREE.GridHelper(Math.ceil(span + 20), Math.ceil(span + 20), '#5a6270', '#363c46');
+      grid.position.x = span / 2;
+      scene.add(grid);
+      const mark = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 8), new THREE.MeshBasicMaterial({ color: '#ff5050' }));
+      scene.add(mark);
+      const flat = (p) => ({ h: p.y, n: new V(0, 1, 0) });
+      const fx = createGunFx({ parent: scene, unit: 1, ground: flat });
+      const up = new V(0, 1, 0);
+      const forward = new V(0, 0, 1);
+
+      // hold every clip at one point (the same every time)
+      const holdPhase = (p, phase) => {
+        for (const a of Object.values(p.fig?.act ?? {})) if (a) a.time = phase * a.getClip().duration;
+      };
+      // the curled fingers against the grip's box: the nearest (a low percentile,
+      // the palm side's skin) and how many are pushed through it
+      const fingersOnGrip = (g) => {
+        const box = g.gun.getObjectByName('grip');
+        const d = g.debug(forward, up).curl;
+        if (!box || !d) return { gripCurl: d ? +d.R.toFixed(2) : null };
+        const half = new V(box.geometry.parameters.width, box.geometry.parameters.height, box.geometry.parameters.depth).multiplyScalar(0.5);
+        const inv = box.matrixWorld.clone().invert();
+        const scale = box.getWorldScale(new V()).x; // (the box's units to the world's)
+        const dists = [];
+        const v = new V();
+        let root = g.gun;
+        while (root.parent && !root.parent.isScene) root = root.parent;
+        root.traverse((o) => {
+          const at = o.isSkinnedMesh ? o.morphTargetDictionary?.gripR : undefined;
+          if (at === undefined) return;
+          const dp = o.geometry.morphAttributes.position[at];
+          const moved = [];
+          for (let i = 0; i < dp.count; i++) {
+            const m = Math.hypot(dp.getX(i), dp.getY(i), dp.getZ(i));
+            if (m > 0) moved.push([m, i]);
+          }
+          moved.sort((a, b) => b[0] - a[0]);
+          // the fingers' outer half (the most moved), a few hundred of them
+          const take = moved.slice(0, Math.ceil(moved.length / 2));
+          const step = Math.max(1, Math.floor(take.length / 400));
+          for (let k = 0; k < take.length; k += step) {
+            o.getVertexPosition(take[k][1], v).applyMatrix4(o.matrixWorld).applyMatrix4(inv);
+            const q = new V(Math.abs(v.x), Math.abs(v.y), Math.abs(v.z)).sub(half);
+            const outside = new V(Math.max(q.x, 0), Math.max(q.y, 0), Math.max(q.z, 0)).length();
+            dists.push((outside + Math.min(Math.max(q.x, q.y, q.z), 0)) * scale);
+          }
+        });
+        if (!dists.length) return { gripCurl: +d.R.toFixed(2) };
+        dists.sort((a, b) => a - b);
+        const pc = (f) => dists[Math.min(dists.length - 1, Math.floor(f * dists.length))];
+        return {
+          gripCurl: +d.R.toFixed(2),
+          gripMm: +(pc(0.1) * 1000).toFixed(1),
+          gripMidMm: +(pc(0.5) * 1000).toFixed(1),
+          gripInPct: +((100 * dists.filter((x) => x < -0.004).length) / dists.length).toFixed(1),
+          tilt: d.shape.R ? deg(d.shape.R.tilt) : null,
+          thumb: d.shape.R?.thumb ?? null,
+          curlL: d.shape.L ? +d.L.toFixed(2) : null,
+        };
+      };
+      // the figures posed: clips run a while from `phase`, the gun brought up, perhaps a shot
+      let metrics = [];
+      const pose = (o = {}) => {
+        const aim = o.aim ?? 1;
+        const move = o.move ?? 0;
+        const turn = o.turn ?? 0;
+        const upA = o.up ?? 0.08;
+        const phase = o.phase ?? 0.25;
+        const frames = 36;
+        const dir = new V(Math.sin(turn) * Math.cos(upA), Math.sin(upA), Math.cos(turn) * Math.cos(upA)).normalize();
+        mark.position.set(span / 2, 1.4, 0).addScaledVector(dir, 12);
+        for (const p of placed) holdPhase(p, phase);
+        const fireAt = o.fire ? frames - Math.round((o.after ?? 0.08) * 30) : -1;
+        const kick = new Map();
+        for (let i = 0; i < frames; i++) {
+          for (const p of placed) {
+            if (!p.fig) continue;
+            p.fig.update(1 / 30, move);
+            if (p.fig.act) holdPhase(p, phase); // (no drift: the same pose to compare a shot against)
+            p.fig.mixer?.update(0);
+            p.holder.updateMatrixWorld(true);
+            p.gp?.set(1 / 30, { aim: i > 4 ? aim : 0, dir, forward, up, move });
+            if (i === fireAt - 1 && p.gp) kick.set(p, { m: p.gp.gun.getObjectByName('muzzle').getWorldPosition(new V()), d: new V(0, 0, 1).transformDirection(p.gp.gun.matrixWorld) });
+            if (i === fireAt && p.gp) {
+              const r = p.gp.fire();
+              if (o.fx) {
+                fx.flash(r.muzzle, r.dir, p.gp.spec.flash);
+                if (p.gp.spec.smoke) fx.smoke(r.muzzle, r.dir, p.gp.spec.smoke);
+                if (p.gp.spec.casing && r.eject) fx.casing(r.eject, new V(-1, 0, 0).transformDirection(r.gun.matrixWorld), up);
+                const hit = new V(p.at + 0.4, 0, 3);
+                fx.sparks(hit, new V(0, 1, -0.6).normalize(), p.gp.spec.flash.color, 14);
+                fx.scorch(hit, up);
+              }
+            }
+          }
+          if (o.fx) fx.update(1 / 30);
+        }
+        // the numbers
+        const P = (b) => b.getWorldPosition(new V());
+        metrics = placed.map((p) => {
+          if (!p.gp) return { id: p.id, armed: false };
+          const g = p.gp;
+          const b = g.bones;
+          const M = P(g.gun.getObjectByName('muzzle'));
+          const Z = new V(0, 0, 1).transformDirection(g.gun.matrixWorld).normalize();
+          const Y = new V(0, 1, 0).transformDirection(g.gun.matrixWorld).normalize();
+          const S = P(b.RightArm);
+          const E = P(b.RightForeArm);
+          const H = P(b.RightHand);
+          const upper = E.clone().sub(S).normalize();
+          const fore = H.clone().sub(E).normalize();
+          // the roll: how far the sights are turned off up, about the barrel
+          const flatUp = up.clone().addScaledVector(Z, -up.dot(Z)).normalize();
+          const roll = Math.atan2(new V().crossVectors(flatUp, Y).dot(Z), flatUp.dot(Y));
+          const d = g.debug(forward, up);
+          const markYaw = Math.atan2(dir.x, dir.z);
+          const markPitch = Math.asin(dir.y);
+          const out = {
+            id: p.id,
+            gun: p.gun,
+            armed: true,
+            aim: +g.aim.toFixed(2),
+            barrelOff: deg(Z.angleTo(dir)),
+            roll: deg(roll),
+            headYawOff: d.head ? deg(d.head.yaw - markYaw) : null,
+            headPitchOff: d.head ? deg(d.head.pitch - markPitch) : null,
+            chestYaw: d.chest ? deg(d.chest.yaw) : null,
+            reach: +(S.distanceTo(H) / g.armLen).toFixed(2),
+            elbow: deg(Math.PI - upper.angleTo(fore)),
+            wrist: deg(fore.angleTo(Z)),
+            leftMissCm: d.leftMiss == null ? null : +(d.leftMiss * 100).toFixed(1),
+            gunToHeadCm: b.Head ? +(P(b.Head).distanceTo(M) * 100).toFixed(0) : null,
+          };
+          Object.assign(out, fingersOnGrip(g));
+          const k = kick.get(p);
+          if (k) {
+            out.kickBackCm = +(k.m.clone().sub(M).dot(k.d) * 100).toFixed(1);
+            out.kickUpDeg = deg(Math.asin(Math.max(-1, Math.min(1, Z.dot(up)))) - Math.asin(Math.max(-1, Math.min(1, k.d.dot(up)))));
+          }
+          return out;
+        });
+        document.getElementById('metrics').textContent = JSON.stringify(metrics);
+        document.body.dataset.metrics = JSON.stringify(metrics);
+        return metrics;
+      };
+
+      const camera = new THREE.PerspectiveCamera(28, innerWidth / innerHeight, 0.05, 500);
+      const labels = document.getElementById('labels');
+      const VIEWS = { three: [0.6, 0.22, 1], front: [0, 0.1, 1], side: [1, 0.1, 0], back: [0, 0.12, -1], top: [0.05, 1, 0.3], night: [0.7, 0.15, 0.9], left: [-1, 0.1, 0] };
+      const view = (name = 'three', zoom = 1) => {
+        const mid = new V(span / 2, 1.05, 0);
+        const far = Math.max(span * 1.45, 5) / zoom;
+        camera.position.copy(mid).add(new V(...(VIEWS[name] ?? VIEWS.three)).normalize().multiplyScalar(far));
+        camera.lookAt(mid);
+        const night = name === 'night';
+        scene.background.set(night ? '#05060a' : '#20242c');
+        lights[0].intensity = night ? 0.17 : 1.4;
+        lights[1].intensity = night ? 0.3 : 2.6;
+        renderer.render(scene, camera);
+        labels.innerHTML = '';
+        placed.forEach((p, i) => {
+          const m = metrics[i];
+          const box = new THREE.Box3().setFromObject(p.holder);
+          const s = new V(p.at, box.max.y + 0.12, 0).project(camera);
+          const d = document.createElement('div');
+          d.style.left = `${((s.x + 1) / 2) * innerWidth}px`;
+          d.style.top = `${((1 - s.y) / 2) * innerHeight - 22}px`;
+          d.textContent = m?.armed ? `${p.id} · ${p.gun} · reach ${m.reach}` : `${p.id}: ${p.fig ? 'no hand' : 'no figure'}`;
+          labels.append(d);
+        });
+        status.textContent = `${placed.filter((p) => p.gp).length} of ${placed.length} armed · ${name}`;
+      };
+      // close on each figure's hand (or the other's), from four sides, a tile each:
+      // its right, ahead, its left, below
+      const FROMS = [new V(-1, 0.25, 0.15), new V(0.1, 0.15, 1), new V(1, 0.3, 0.25), new V(0.5, -0.85, 0.3)];
+      const hands = (side = 'R') => {
+        const W = innerWidth;
+        const H = innerHeight;
+        const cols = placed.length;
+        const rows = FROMS.length;
+        const tw = Math.floor(W / cols);
+        const th = Math.floor(H / rows);
+        const cam = new THREE.PerspectiveCamera(30, tw / th, 0.01, 50);
+        renderer.setScissorTest(true);
+        renderer.setClearColor('#20242c');
+        renderer.clear();
+        labels.innerHTML = '';
+        placed.forEach((p, c) => {
+          if (!p.gp) return;
+          const bone = side === 'L' ? p.gp.bones.LeftHand : p.gp.bones.RightHand;
+          const at = (side === 'L' ? bone : (p.gp.gun.getObjectByName('grip') ?? bone)).getWorldPosition(new V());
+          const far = 0.42 * Math.max(1, (p.tall ?? 1.8) / 1.8); // (closer on the small, back on the big)
+          FROMS.forEach((f, r) => {
+            cam.position.copy(at).addScaledVector(f.clone().normalize(), far);
+            cam.near = far - 0.16 * Math.max(1, (p.tall ?? 1.8) / 1.8); // (what's between, a sleeve or fur, cut away)
+            cam.updateProjectionMatrix();
+            cam.lookAt(at);
+            renderer.setViewport(c * tw, H - (r + 1) * th, tw, th);
+            renderer.setScissor(c * tw, H - (r + 1) * th, tw, th);
+            renderer.render(scene, cam);
+          });
+          const d = document.createElement('div');
+          d.style.left = `${c * tw + tw / 2}px`;
+          d.style.top = '4px';
+          const m = metrics.find((x) => x.id === p.id);
+          d.textContent = `${p.id} ${m?.gripMm ?? ''}mm ${m?.gripInPct ?? ''}%`;
+          labels.append(d);
+        });
+        renderer.setScissorTest(false);
+        renderer.setViewport(0, 0, W, H);
+        status.textContent = `hands ${side}`;
+      };
+      window.__hands = hands;
+      window.__pose = pose;
+      window.__sheet = { THREE, placed, PARTY, loadPartyFigure, cast, checks };
+      window.__view = view;
+
+      pose({ aim: num('aim', 1), move: num('move', 0), turn: num('turn', 0), up: num('up', 0.08), fire: q.get('fire') === '1', after: num('after', 0.08), phase: num('phase', 0.25), fx: q.get('fx') === '1' });
+      if (q.get('view') === 'hands') hands(q.get('hand') ?? 'R');
+      else view(q.get('view') ?? 'three');
+      document.body.dataset.ready = '1';
+    </script>
+  </body>
+</html>

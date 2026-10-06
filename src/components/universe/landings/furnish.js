@@ -6,9 +6,12 @@
 // pilot coming down beside a friend is handed the friend's frame.
 //
 // furnish({ id, landing, frame, R, small, renderer, warm }) →
-//   { group, solids, update(t, dt), ready, dispose() }
+//   { group, solids, spots, update(t, dt), ready, dispose() }
 //   group  in the planet's space (footScene's root: its middle at the origin)
 //   solids grows as things arrive ([{ n, r }])
+//   spots  grows too: where something answers you, the things with a door
+//          (G there opens the planet's page) or a line to say ([{ n, r,
+//          label?, say? }], r how near you have to be, map units)
 //   ready  a promise, once everything that's coming has come
 //
 // A planet's file exports PROPS (things: (kit, opts) → { object, solids?,
@@ -34,6 +37,10 @@ const PLANETS = {
   gaming: () => import('./gaming.js'),
   marvel: () => import('./marvel.js'),
   office: () => import('./office.js'),
+  music: () => import('./music.js'),
+  travel: () => import('./travel.js'),
+  caribbean: () => import('./caribbean.js'),
+  invincible: () => import('./invincible.js'),
 };
 export const furnished = (id) => Boolean(PLANETS[id]);
 // (a thing that won't build is just missing; in development, say so)
@@ -174,6 +181,7 @@ export function furnish({ id, landing, frame, R, small = false, renderer = null,
   const group = new THREE.Group();
   group.name = `landing-${id}`;
   const solids = [];
+  const spots = [];
   const updates = [];
   let dead = false;
   const kit = createKit({ seed: seedOf(id) % 1000 });
@@ -209,7 +217,8 @@ export function furnish({ id, landing, frame, R, small = false, renderer = null,
     if (spec) {
       const object = await models.get(spec);
       made = object && { object, solids: t.solid === false || !t.r ? [] : [{ circle: [0, 0, t.r * 0.8] }] };
-    } else if (planet.PROPS?.[t.kind]) made = await planet.PROPS[t.kind](kit, t.opts ?? {});
+    } else if (t.kind === 'figure') made = await (await import('./people.js')).figure(kit, t.opts ?? {});
+    else if (planet.PROPS?.[t.kind]) made = await planet.PROPS[t.kind](kit, t.opts ?? {});
     if (!made?.object || dead) return;
     const spot = spotOf(t);
     const o = made.object;
@@ -220,6 +229,11 @@ export function furnish({ id, landing, frame, R, small = false, renderer = null,
     if (!(await add(o))) return;
     if (t.solid !== false) solids.push(...solidsOn(spot, made.solids, R));
     if (made.update) updates.push(made.update);
+    // a door (at a spot of its own on it, in its frame), or something to say
+    if (t.door || t.say) {
+      const at = t.door?.at ? place(spot, t.door.at[0], t.door.at[1], R).n : spot.n;
+      spots.push({ n: at, r: (t.door?.reach ?? (t.door?.at ? 3 : (t.r ?? 0) + 3)) * METRE, label: t.door?.label ?? null, say: t.say ?? null });
+    }
   };
 
   const scatter = async (planet, entry, rand) => {
@@ -247,9 +261,9 @@ export function furnish({ id, landing, frame, R, small = false, renderer = null,
     }
     if (!parts?.length || dead) return;
     const n = Math.min(SCATTER_MAX, Math.round(entry.n * (small ? 0.5 : 1)));
-    const spots = scatterSpots(entry, landing.things ?? [], rand, { n, reach });
-    if (!spots.length) return;
-    const mats = spots.map((p) => {
+    const items = scatterSpots(entry, landing.things ?? [], rand, { n, reach });
+    if (!items.length) return;
+    const mats = items.map((p) => {
       const spot = place(frame, p.x, p.z, R, p.yaw);
       return { spot, m: standMatrix(spot, R, 0, METRE * p.s), r: reach * p.s };
     });
@@ -285,6 +299,7 @@ export function furnish({ id, landing, frame, R, small = false, renderer = null,
   return {
     group,
     solids,
+    spots,
     ready,
     update(t, dt) {
       for (const u of updates) u(t, dt);
@@ -296,6 +311,7 @@ export function furnish({ id, landing, frame, R, small = false, renderer = null,
       kit.dispose();
       updates.length = 0;
       solids.length = 0;
+      spots.length = 0;
     },
   };
 }

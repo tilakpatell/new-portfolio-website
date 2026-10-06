@@ -1187,8 +1187,8 @@ export function loadModel(url) {
 // in data/modelCredits.json)
 const MODELS = [
   ['music', '/models/sketchfab/sitar.glb'],
-  ['transformers', '/models/universe/optimus.glb'],
-  ['transformers', '/models/universe/megatron.glb', 'rival'],
+  ['transformers', '/models/cybertron/optimus-orbit.glb'], // War for Cybertron's, as Cybertron's own world has him
+  ['transformers', '/models/cybertron/megatron-orbit.glb', 'rival'], // and Fall of Cybertron's
   ['marvel', '/models/universe/marvel.glb'],
   ['breakingbad', '/models/universe/breakingbad.glb'],
   ['rickmorty', '/games/meshy/saucer.glb'], // the classic cruiser, as on the C-137 page
