@@ -29,6 +29,8 @@
 // ── The films (and the shows), in the galaxy's own order of events ──
 // (a show has no episode: `show`, and `short`, its name on a small button)
 
+import { fitSystem } from './fit';
+
 export const FILMS = {
   tpm: { title: 'The Phantom Menace', episode: 'I', year: -32, era: 'republic' },
   aotc: { title: 'Attack of the Clones', episode: 'II', year: -22, era: 'republic' },
@@ -116,11 +118,12 @@ export const LANES = [
 // moons      [{ look, r, orbit, speed, tilt, phase }]
 // suns       [{ dir: [x, y, z], color, size }]
 // pieces     the set pieces (setpieces.js reads them; sizes in map units, the ship is 0.26 long)
+//            (the planet's grown to be wider than its biggest ship's long: fit.js, as SYSTEMS is made)
 // faction    who hunts you here (galaxy/hunted.js), or null for nobody
 // traffic    what flies through on its own business
 // game       the mission: { id, objectives, title, film, role, pitch, how, status: 'soon' | 'live', to?, go? (the button: 'Fly it now' unless it says) }
 
-export const SYSTEMS = [
+const AS_SET = [
   {
     id: 'tatooine',
     name: 'Tatooine',
@@ -937,6 +940,7 @@ export const SYSTEMS = [
     },
   },
 ];
+export const SYSTEMS = AS_SET.map(fitSystem);
 
 const BY_ID = new Map(SYSTEMS.map((s) => [s.id, s]));
 export const systemById = (id) => BY_ID.get(id) ?? null;
