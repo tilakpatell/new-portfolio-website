@@ -4445,6 +4445,7 @@ export async function create(canvas, ctx) {
     // seen there, as before
     warmUp: tier === 'low' ? undefined : warmUp,
     update(next) {
+      const picked = props.selected ?? null; // (the page's pick, as it last said)
       props = next;
       if ((next.ship ?? null) !== state.kind) {
         state.loadout = readLoadout(next.loadout); // (a new ship comes fitted as it was left)
@@ -4454,7 +4455,12 @@ export async function create(canvas, ctx) {
       setBuild(next.build ?? null);
       setLoadout(next.loadout);
       setNet(next.net);
-      select(next.selected ?? null);
+      // the page's pick, only when it changes. The router moves the address
+      // in a transition, so a render that comes first (the HUD's, as the
+      // ship leaves a planet and can no longer land) still carries the old
+      // pick: taken as a new one, it sent the ship straight back to the
+      // planet it was leaving, by hyperspeed after a jump there
+      if ((next.selected ?? null) !== picked) select(next.selected ?? null);
       if (next.frozen) {
         endDrag();
         held.clear();
