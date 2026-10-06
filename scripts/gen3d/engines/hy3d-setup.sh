@@ -12,7 +12,7 @@ pip install -r requirements.txt
 pip install -e .
 cd hy3dgen/texgen/custom_rasterizer && pip install . --no-build-isolation && cd ../../..
 cd hy3dgen/texgen/differentiable_renderer && pip install . --no-build-isolation && cd ../../..
-pip install "huggingface_hub[hf_xet]"
+pip install "huggingface_hub[hf_xet]" "transformers==4.46.3" "diffusers==0.31.0" "pymeshlab==2022.2.post4"  # newer transformers rename DINOv2 weights the checkpoints use; newer pymeshlab cannot read ply here
 hf download tencent/Hunyuan3D-2mv --include "hunyuan3d-dit-v2-mv/*"
 hf download tencent/Hunyuan3D-2 --include "hunyuan3d-paint-v2-0-turbo/*" "hunyuan3d-delight-v2-0/*" "hunyuan3d-vae-v2-0/*"
 python -c "import torch, hy3dgen; print('HY3D-OK', torch.cuda.is_available())"
