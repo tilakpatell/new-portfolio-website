@@ -275,6 +275,24 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     const p = floorGeo.attributes.position;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, p.getX(i), -p.getZ(i));
   }
+  {
+    // out where the woods thin, the ground is their canopy seen from afar:
+    // dark green, not bare forest floor between the last trees and the haze
+    const before = floorMat.onBeforeCompile;
+    floorMat.onBeforeCompile = (sh, r) => {
+      before?.call(floorMat, sh, r);
+      sh.fragmentShader = sh.fragmentShader.replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        {
+          float canopy = smoothstep(380.0, 700.0, length(vCloudPos.xz - vec2(96.0, 83.2)));
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.03, 0.045, 0.022), canopy);
+        }`,
+      );
+    };
+    const key = floorMat.customProgramCacheKey;
+    floorMat.customProgramCacheKey = () => `${key ? key.call(floorMat) : ''}|canopy`;
+  }
   const floor = new THREE.Mesh(floorGeo, floorMat);
   floor.receiveShadow = true;
   scene.add(floor);
@@ -765,16 +783,20 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
         if (e < 2 || e > (small ? 50 : 70)) continue;
         tree(px, py, woods.length);
       }
-    // and the woods going on, thinner, out to where the haze takes them: from
-    // up a mast or the top of a swing the ground beyond was bare to the sky
+    // and the woods going on, thinner the further out, in a ring round the
+    // lawn to where the haze has most of them (450 units, 720 m): from up a
+    // mast or the top of a swing the ground beyond was bare to the sky
     {
       const far = small ? 11 : 7;
-      for (let y = -230; y < 340; y += far)
-        for (let x = -260; x < 400; x += far) {
+      const [cx, cy, out] = [60, 52, 450];
+      for (let y = cy - out; y < cy + out; y += far)
+        for (let x = cx - out; x < cx + out; x += far) {
           const px = x + (rand() - 0.5) * far * 0.9;
           const py = y + (rand() - 0.5) * far * 0.9;
+          const r = Math.hypot(px - cx, py - cy);
           const inside = px >= -100 && px < 240 && py >= -70 && py < 180 && nearestEdge(px, py, LAWN).d <= (small ? 50 : 70);
-          if (inside || rand() < 0.25 || inPoly(px, py, LAWN) || inPoly(px, py, RIVER)) continue;
+          const keep = r < 300 ? 0.75 : 0.75 - ((r - 300) / (out - 300)) * 0.35;
+          if (r > out || inside || rand() > keep || inPoly(px, py, LAWN) || inPoly(px, py, RIVER)) continue;
           tree(px, py, woods.length);
         }
     }
@@ -1638,19 +1660,24 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     const hs = Math.hypot(h.vx, h.vz) || 1;
     A.lx += ((h.vx / hs) * lead - A.lx) * damp(3);
     A.lz += ((h.vz / hs) * lead - A.lz) * damp(3);
-    look.set(h.x + A.lx, A.ly, h.z + A.lz);
-    const want = tmp.set(h.x + Math.sin(yaw) * Math.cos(pitch) * dist, look.y + Math.sin(pitch) * dist, h.z + Math.cos(yaw) * Math.cos(pitch) * dist);
+    const want = tmp.set(h.x + Math.sin(yaw) * Math.cos(pitch) * dist, A.ly + Math.sin(pitch) * dist, h.z + Math.cos(yaw) * Math.cos(pitch) * dist);
     // (brought in toward his head, not the point ahead: that can be in a wall)
     head.set(h.x, A.ly, h.z);
     const k = camRoom(head.x, head.z, want.x, want.y, want.z);
-    if (k < 1) want.lerpVectors(head, want, Math.max(0.12, k));
+    const room = k < 1 ? Math.max(0.12, k) : 1;
+    if (k < 1) want.lerpVectors(head, want, room);
     if (want.y < 0.5) want.y = 0.5;
+    // the lead shrinks as the camera's brought in, so he keeps his place in
+    // the frame (a full lead from a camera a metre off him put him off it)
+    look.set(h.x + A.lx * room, A.ly, h.z + A.lz * room);
     // the first frame, or a jump across the compound (to a door from the
-    // list, out of a building): straight there, no swing across the lawn
+    // list, out of a building): straight there, no swing across the lawn,
+    // and no lead or lean carried over from before the jump
     if (!A.started || Math.hypot(h.x - A.hx, h.z - A.hz) > 6) {
       A.started = true;
+      A.lx = A.lz = A.bank = 0;
       want.y += ly - A.ly;
-      look.y = ly;
+      look.set(h.x, ly, h.z);
       A.ly = ly;
       A.at.copy(want);
       A.look.copy(look);
@@ -1661,18 +1688,21 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     A.look.lerp(look, damp(14));
     camera.position.copy(A.at);
     camera.lookAt(A.look);
-    // and leans with him into his turns, a little
     A.bank += ((flying ? R.roll * 0.22 : 0) - A.bank) * damp(5);
-    if (Math.abs(A.bank) > 1e-4) camera.rotateZ(-A.bank);
+    let intro = 0;
     if (A.intro > 0) {
       // in from the air on the first frames: high over the lawn, down behind
       // him, in three seconds however slowly the frames come
       A.intro = Math.max(0, A.intro - Math.min(0.5, ms / 1000) / 3.2);
-      const t = ease(A.intro);
+      intro = ease(A.intro);
       tmp2.set(h.x - 40, 95, h.z + 120);
-      camera.position.lerp(tmp2, t);
-      camera.lookAt(tmp.copy(A.look).lerp(P3(60, 40, 2), t));
+      camera.position.lerp(tmp2, intro);
+      camera.lookAt(tmp.copy(A.look).lerp(P3(60, 40, 2), intro));
     }
+    // and leans with him into his turns, a little (after the intro's own
+    // aim, and faded in with its end, so the lean never arrives in one frame)
+    const lean = A.bank * (1 - intro);
+    if (Math.abs(lean) > 1e-4) camera.rotateZ(-lean);
 
     // photo mode: the camera where the photo puts it, and its lens
     if (s.photo) {
