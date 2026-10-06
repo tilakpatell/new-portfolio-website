@@ -310,6 +310,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
   let nextId = firstId; // each hunter's own number, for the lock to follow (another hunt, a skirmish's, numbers its own from elsewhere)
   const lasers = Array.from({ length: laserCount }, () => ({ on: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, at: null, faction: null, bomb: false, r: null, damage: null }));
   const events = [];
+  const later = []; // what happened between frames (an ace hurt into its next stage), told on the next
   const targets = []; // what the guns can lock on to (reused)
   const cover = []; // the solids close enough to matter this frame, but for one you're down inside (they block a shot, and are steered round)
 
@@ -363,12 +364,32 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
     if (i >= 0) live.splice(i, 1);
   };
   const result = (h, down) => ({ id: h.id, kind: h.kind, at: { x: h.pos.x, y: h.pos.y, z: h.pos.z }, size: h.type.size, down, hunter: h });
+  // an ace hurt past one of its stages (its kind's `stages`: hurt to half,
+  // say) changes its ways: what the stage says (speed, fire, trait…) takes
+  // over its kind's row from here on, it breaks off the run it was on to come
+  // at you the new way, and if the stage `summon`s a faction, the event
+  // says so (the scene sends them)
+  const stage = (h) => {
+    const stages = h.type.stages;
+    if (!stages) return;
+    const i = h.stage ?? 0;
+    const next = stages[i];
+    if (!next || h.hp / h.type.hp > next.below) return;
+    h.stage = i + 1;
+    const { below, summon = null, ...over } = next;
+    h.type = { ...h.type, ...over, stages };
+    release(h);
+    h.side = -h.side;
+    restation(h, yourNose);
+    later.push({ type: 'stage', id: h.id, kind: h.kind, faction: h.pack.faction, stage: h.stage, of: stages.length, below, summon });
+  };
   // a hit on one of them, worth `n`: what became of it
   const wound = (h, n) => {
     h.hp -= n;
     h.target.hp = Math.max(0, h.hp);
     h.pack.provoked = true; // (the quiet ones open up now)
     if (h.hp > 0) {
+      stage(h);
       if (h.type.trait === 'flicker') h.hidden = FLICKER;
       // now and then it breaks off the run it was on, the other way (the
       // rest of the time it takes the hit and comes on)
@@ -557,6 +578,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
     // flying: they all leave)
     update(dt, ship) {
       events.length = 0;
+      events.push(...later.splice(0));
       if (ship) {
         if (known) {
           youPrev.x = you.x;

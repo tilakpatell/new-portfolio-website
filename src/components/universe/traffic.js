@@ -32,7 +32,12 @@
 // tail). While hunters are on you (`fight`), the ordinary ships near you run
 // for it: faster, and weaving.
 //
-// createTraffic(parent, { small, engines }) → { setCrew(id), update(dt, t, ship, { fight }) → events,
+// The ordinary ships also run from a pilot they fear (`feared`: standing.js,
+// you've shot too many of them), fight or no; and a patrol of the law going
+// past a pilot the law wants (`wanted`) reports them: a `spotted` event, once
+// a group, for the scene to send the law after you.
+//
+// createTraffic(parent, { small, engines }) → { setCrew(id), update(dt, t, ship, { fight, feared, wanted }) → events,
 //   hit(from, to) → hit or null, convoy(ship, side), distress(ship, side) → the one in
 //   distress (an Object3D) or null, clear(), dispose() }
 // Points are in `parent`'s space (the map's). `engines` (engines.js), when
@@ -101,6 +106,7 @@ const ALL = [...new Set(kindsFor(null))];
 const runOf = (speed) => Math.min(90, Math.max(30, speed * 10));
 const DOCKING = 0.32; // how much of the everyday traffic at a place is coming in to land, or launching
 const FLEE = { near: 70, faster: 0.9, ease: 1.2 }; // how near you a civil ship runs from a fight, how much faster it goes, how quickly it gets going
+export const SPOT = 32; // how near a patrol of the law must pass a wanted pilot to report them
 const PEEL = { from: 0.52, to: 0.88, roll: 0.95 }; // where along its lane a wing peels apart (past you), and how far each rolls
 const FADE_OVER = 8; // map units over which a ship whose run was cut short fades into sight (or out of it)
 
@@ -336,9 +342,12 @@ export function createTraffic(parent, { small = false, fleet = createFleet(), en
 
     // ship: the player's ship ({ x, y, z, heading, speed }) or null. Returns
     // what happened: [{ type: 'traffic', kind }] as a group goes past you
-    update(dt, t, ship, { fight = false } = {}) {
+    update(dt, t, ship, { fight = false, feared = false, wanted = false } = {}) {
       clock += dt;
       const events = [];
+      // the law's own ships, in passing (the side's `law` faction's kinds)
+      const side = sideFor(crew);
+      const law = wanted && side?.law ? side.factions[side.law] : null;
       const bigs = live.filter((g) => g.type.big).length;
       if (clock >= nextAt && live.length < MAX) {
         nextAt = clock + between(rand, small ? 2.5 : 1, small ? 6 : 3);
@@ -373,11 +382,20 @@ export function createTraffic(parent, { small = false, fleet = createFleet(), en
         if (pts) spawn(kind, pts, true);
       }
       for (const g of [...live]) {
-        // the ordinary ships near you run from a fight (and settle once it's over)
+        // the ordinary ships near you run from a fight (and settle once it's
+        // over), and from a pilot they fear, fight or no
         let run = 0;
-        if (fight && ship && g.type.civil && !g.type.big && !g.dock) {
+        if ((fight || feared) && ship && g.type.civil && !g.type.big && !g.dock) {
           const p = g.members.find((m) => m.alive)?.model.group.position;
           if (p && (p.x - ship.x) ** 2 + (p.y - ship.y) ** 2 + (p.z - ship.z) ** 2 < FLEE.near * FLEE.near) run = 1;
+        }
+        // a patrol of the law passing a wanted pilot reports them, once
+        if (law && ship && !g.spotted && !g.type.civil && !g.type.big && law.kinds.some(([k]) => k === g.kind)) {
+          const p = g.members.find((m) => m.alive)?.model.group.position;
+          if (p && (p.x - ship.x) ** 2 + (p.y - ship.y) ** 2 + (p.z - ship.z) ** 2 < SPOT * SPOT) {
+            g.spotted = true;
+            events.push({ type: 'spotted', kind: g.kind, faction: side.law });
+          }
         }
         g.flee += (run - g.flee) * Math.min(1, dt * FLEE.ease);
         g.weave += dt * (1.3 + g.flee * 2); // (its own phase, run on at its own rate: a rate times the clock would jump)
