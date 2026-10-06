@@ -585,7 +585,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     }
   }, [api, go, board, openPlace, say, complete, playMemory, shipTalk, later]);
   const fns = useRef({});
-  fns.current = { act };
+  fns.current = { act, go };
 
   // ── the world: made once, kept while something's open over it ──
   useEffect(() => {
@@ -611,22 +611,40 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
         a.act?.('arcade', 'setBoard', readBest());
         a.setLooks?.(looksRef.current); // (a look picked while it loaded)
         if (import.meta.env.DEV) {
-          // for the QA scripts: where everyone is, E, and a jump to anywhere
+          // for the QA scripts (scripts/c137-shots.mjs): where everyone is, E,
+          // a jump to anywhere, and a trip anywhere the way a door makes it
           const s = sim.current;
+          const land = () => {
+            if (s.flying) s.c = { ...s.c, y: CRUISER.hover, vy: 0, speed: 0, bank: 0 };
+            s.flying = false;
+            s.landing = false;
+          };
           window.__C137__ = Object.assign(window.__C137__ ?? {}, {
             api: a,
             sim: s,
             act: () => fns.current.act(),
             complete,
             warp(area, x, z, face = Math.PI / 2) {
-              if (s.flying) s.c = { ...s.c, y: CRUISER.hover, vy: 0, speed: 0, bank: 0 };
+              land();
               s.area = area;
-              s.flying = false;
-              s.landing = false;
               s.m = newMorty({ x, z, face });
               s.yaw = behindYaw(face);
               s.keys.clear();
             },
+            // through a door that isn't there: the fade, a place that loads
+            // when it's entered built first, and Morty out at (x, z) facing
+            // `face`, the camera behind him. False if he's already on his way
+            // somewhere.
+            goto(area, x, z, face = Math.PI / 2) {
+              if (!AREAS[area]) throw new Error(`C-137: no area ${area}`);
+              if (s.fading) return false;
+              land();
+              fns.current.go({ id: 'goto', area: s.area, kind: 'door', to: area, label: '', arrive: { x, z, face } });
+              return true;
+            },
+            // true once he's there and nothing's still loading: the place, and
+            // whoever's in it
+            ready: () => api.current === a && !a.lost && !s.fading && a.hasArea(s.area) && a.loading() === 0,
           });
         }
         fit();

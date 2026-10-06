@@ -12,7 +12,8 @@
 //
 // createRmWorld(canvas, { onLost }) resolves to { render(state, ms),
 // resize(w, h), dispose(), lost, fx(type, data), act(area, name, ...args),
-// info(), ensureArea(id), hasArea(id) }, where state is
+// info(), ensureArea(id), hasArea(id), loading() (how many loads are still
+// going: an area being built, a figure being fetched) }, where state is
 // { area, morty: { x, z, face, speed, running }, flying, cruiser: { x, z, y,
 // yaw, speed, bank }, camYaw, camPitch, near: { link, hotspot }, done, fed:
 // { x, y, z, yaw, mode } (the Federation's patrol ship, as ./ship.js flies it) }.
@@ -54,8 +55,10 @@ export { kitMaterials };
 // rules.js's AREAS and shown only while Morty is there. An area with no
 // builder gets a plain lit room (or, outdoors, plain ground under a sky).
 // The kit: { renderer, models (the toon-painted GLBs by name), cast, need(names,
-// { clips }) (the cast loaded once each, however many ask), mats (kitMaterials),
-// tier, camera, fit (lib/device's budget), portal (the swirl's material) }.
+// { clips }) (the cast loaded once each, however many ask), track(promise) (a
+// load the builder doesn't wait for, such as a figure fetched once its room is
+// up, counted in api.loading() all the same), mats (kitMaterials), tier,
+// camera, fit (lib/device's budget), portal (the swirl's material) }.
 // The rooms add theirs here, and are built before the first frame.
 export const AREA_BUILDERS = { street: buildStreet, house: buildHouse, upstairs: buildUpstairs, garage: buildGarage, school: buildSchoolRoom, arcade: buildArcade, basement: buildBasement, mindblowers: buildMindBlowers, oval: buildOval, diner: buildDiner };
 // The areas built only when they're first wanted, each with its builder in a
@@ -117,13 +120,22 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   const loader = gltfLoader();
   // (figures out of view aren't drawn: a skinned mesh's bounds don't follow its pose)
   const cast = createMeshyCast(withWardrobe({ cull: true })); // (any body the wardrobe has, for Morty)
+  // what's still coming (an area being built, a figure being fetched), counted
+  // so the QA scripts can wait till a place has all it loads: api.loading()
+  let loads = 0;
+  const track = (p) => {
+    loads++;
+    const done = () => loads--;
+    p.then(done, done);
+    return p;
+  };
   // each of the cast loaded once, however many builders ask, at the same time
   // or not (the clips of the first ask for a name are the ones it gets)
   const asked = new Map();
   const need = (names, { clips = ['idle', 'walk', 'run'] } = {}) =>
     Promise.all(
       names.map((n) => {
-        if (!asked.has(n)) asked.set(n, cast.load(null, [n], { clips }));
+        if (!asked.has(n)) asked.set(n, track(cast.load(null, [n], { clips })));
         return asked.get(n);
       }),
     );
@@ -134,7 +146,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   const models = new Map(loaded);
 
   // ── the areas ──
-  const kit = { renderer, models, cast, need, mats, tier, camera, fit, portal: portalMaterial };
+  const kit = { renderer, models, cast, need, track, mats, tier, camera, fit, portal: portalMaterial };
   const areas = {};
   // an area's builder (a lazy one's fetched first), and if it fails, or its
   // chunk won't load, a plain one in its place; null if the world's been
@@ -381,15 +393,17 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   const ensureArea = (id) =>
     (building[id] ??= areas[id]
       ? Promise.resolve()
-      : build(id).then((a) => {
-          if (!a || stage.lost || stage.disposed) return undefined;
-          const was = shown;
-          showArea(id);
-          const compiled = stage.precompile();
-          if (was) showArea(was);
-          else shown = null;
-          return compiled;
-        }));
+      : track(
+          build(id).then((a) => {
+            if (!a || stage.lost || stage.disposed) return undefined;
+            const was = shown;
+            showArea(id);
+            const compiled = stage.precompile();
+            if (was) showArea(was);
+            else shown = null;
+            return compiled;
+          }),
+        ));
 
   // ── each frame ──
   const pace = createPace();
@@ -608,6 +622,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     setLooks,
     ensureArea,
     hasArea: (id) => Boolean(areas[id]),
+    loading: () => loads,
     // an area builder's own action, if it has one (the arcade's setBoard(best)); nothing otherwise
     act(area, name, ...args) {
       const actions = areas[area]?.actions;
