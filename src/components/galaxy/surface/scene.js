@@ -17,8 +17,10 @@
 // props built in code where there aren't); its life (actors.js); what you
 // can ride (rides.js). Moving about is walker.js's.
 //
-// A scene module for lib/three/useScene: create(canvas, ctx) returns
-// { ready, resize, render, update, setVisible, input, dispose }.
+// A scene module, a world on the world runtime through ./module.js
+// (src/runtime's fromScene): create(canvas, ctx) draws with the runtime's
+// renderer (ctx.rt.gfx: the runtime sizes it and sets its sharpness) and
+// returns { ready, resize, render, update, setVisible, input, dispose }.
 // Props: system (the world's id), ship (the crew's ship: xwing, falcon…),
 // loadout (its paint), onEvent(e), compass (a ref: the compass bar, its
 // marks by data-id), found (the places already found, by id), net (the
@@ -32,9 +34,8 @@
 
 import { readBuildWire, writeBuild } from '../../universe/shipyard/build';
 import * as THREE from 'three';
-import { createRenderer, disposeTree, precompile, singlePass } from '../../../lib/three/renderer';
+import { disposeTree, precompile, singlePass } from '../../../lib/three/renderer';
 import { device } from '../../../lib/device';
-import { createPace } from '../../../lib/three/pace';
 import { createPost } from '../../universe/post';
 import { SHIP_MODELS, buildShip, LENGTH } from '../../universe/shipModels';
 import { loadModel } from '../../universe/planets';
@@ -90,7 +91,7 @@ const FIRE_EVERY = 0.24; // seconds between shots
 const BIKE_FIRE_EVERY = 0.3; // (a bike's cannon: a touch slower)
 
 export async function create(canvas, ctx) {
-  const { reduced } = ctx;
+  const { reduced, rt } = ctx;
   let props = ctx;
   let disposed = false;
   const tier = device().tier;
@@ -102,8 +103,9 @@ export async function create(canvas, ctx) {
   const emit = (e) => props.onEvent?.(e);
 
   // ── The renderer, the camera, the light ──
-  const gl = createRenderer(canvas, { ratio: 1.5, onLost: ctx.onLost, onSlow: ctx.onSlow });
-  const { renderer } = gl;
+  // (the runtime's: shared with whatever world comes next, so its shadows go back as they were at dispose)
+  const { renderer } = rt.gfx;
+  const shadows = { enabled: renderer.shadowMap.enabled, type: renderer.shadowMap.type };
   renderer.shadowMap.enabled = !small;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   const scene = new THREE.Scene();
@@ -1020,7 +1022,6 @@ export async function create(canvas, ctx) {
   }
 
   // ── Each frame ──
-  const pace = createPace();
   const tmp = new V();
   const flash = { k: 0 };
 
@@ -1359,9 +1360,6 @@ export async function create(canvas, ctx) {
   const size = { w: 1, h: 1 };
   let shown = true;
   function render(ms, now) {
-    gl.watch(now);
-    const sharp = pace.frame(now);
-    if (sharp !== null) post.sharpness = sharp;
     state.frames = (state.frames ?? 0) + 1;
     tick(Math.min(0.05, ms / 1000));
     draw(now);
@@ -1569,7 +1567,6 @@ export async function create(canvas, ctx) {
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);
-      gl.setSize(size.w, size.h);
       camera.aspect = size.w / size.h;
       camera.fov = size.w < size.h ? 72 : 60;
       camera.updateProjectionMatrix();
@@ -1739,7 +1736,8 @@ export async function create(canvas, ctx) {
       kit.dispose();
       disposeTree(scene);
       post.dispose();
-      gl.dispose();
+      Object.assign(renderer.shadowMap, shadows);
+      canvas.removeAttribute('aria-hidden');
     },
   };
 }

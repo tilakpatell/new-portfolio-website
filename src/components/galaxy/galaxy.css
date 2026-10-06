@@ -4,6 +4,15 @@
 .galaxy-page[data-leaving='fade'] .universe-fade { opacity: 1; transition: opacity 0.6s ease-in; }
 .galaxy-page:is([data-jumping='spool'], [data-jumping='tunnel']) .universe-labels { opacity: 0; transition-duration: 0.2s; }
 
+/* the galaxy on the world runtime: its box, and the one canvas moved into it */
+.galaxy-map.world-host { position: absolute; inset: 0; }
+.galaxy-map > .world-canvas {
+  position: absolute;
+  inset: 0;
+  touch-action: none; /* a drag flies the ship; the page itself never scrolls */
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* the names of what's in the system */
 .galaxy-label {
   --swatch: var(--accent-text);

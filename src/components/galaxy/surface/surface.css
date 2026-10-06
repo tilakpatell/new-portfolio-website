@@ -24,6 +24,16 @@
   -webkit-tap-highlight-color: transparent;
 }
 .surface-map > .scene-canvas:active { cursor: grabbing; }
+/* (on the world runtime: its box and its one canvas, moved in at a landing) */
+.surface-map.world-host { position: absolute; inset: 0; }
+.surface-map > .world-canvas {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.surface-map > .world-canvas:active { cursor: grabbing; }
 .surface-loading {
   position: absolute;
   inset: 0;
