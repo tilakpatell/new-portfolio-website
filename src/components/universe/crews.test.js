@@ -82,6 +82,8 @@ describe('the crews', () => {
       said(linesFor(crew, 'event', 'rifted'), crew, 'rifted');
       said(linesFor(crew, 'event', 'leviathanHit'), crew, 'leviathanHit');
       said(linesFor(crew, 'event', 'leviathan', side.leviathan), crew, `leviathan ${side.leviathan}`);
+      // a hunter with a spotlight on you (hunterRules.js's 'spotlight' trait)
+      if (Object.values(side.kinds).some((k) => k.trait === 'spotlight')) said(linesFor(crew, 'event', 'spotlit'), crew, 'spotlit');
     }
   });
 

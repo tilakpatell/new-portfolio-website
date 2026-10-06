@@ -88,7 +88,8 @@ export function siteOf(id) {
     { at: land.at, r: raw.land?.r ?? 26, edge: 22, h: raw.land?.h },
     ...places.filter((p) => p.flat).map((p) => ({ at: p.at, r: p.flat.r, edge: p.flat.edge, h: p.flat.h })),
   ];
-  const pits = places.flatMap((p) => p.pits);
+  // (the ground's own pits, Beggar's Canyon's run of them, and the places')
+  const pits = [...(raw.ground.pits ?? []), ...places.flatMap((p) => p.pits)];
   // the places you go into (zones): each built high over the world where
   // nothing outside can be seen, at `origin`; what's in one is placed
   // relative to it (its life, and its quests' steps that say `zone`)

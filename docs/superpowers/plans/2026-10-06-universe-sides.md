@@ -103,6 +103,9 @@
 - `trait` on a kind, read in `createHunt`'s per-hunter step: `bomber` (a straight run at 0.6 of the fight's speed that fires one slow laser (speed 14, damage 30, `burst: 1.2` map units: a hit inside the radius counts), then breaks); `holdoff` (never closes under `FIGHT.near * 2.5`; fires from range); `quietUntilFired` (`pack.provoked` false until `hit`/`damage` lands on any of its pack; no shots before); `flicker` (a hit that doesn't down it sets `hidden` 2 s: not in `targets`, not drawn); `spotlight` (on a run inside `FIGHT.range * 0.6`, event `{ type: 'spotlit' }` once a run: the scene sets `state.static = 1.5`).
 - Tests per trait with the seeded rand, as `hunterRules.test.js` does.
 - Assign: `tiebomber` bomber, `gunboat` holdoff, `cousins` quietUntilFired, `zigerion` flicker, `suvace` spotlight.
+- [x] The five traits in `createHunt`, tested (`traits: …` in `hunterRules.test.js`); `TRAITS`, `BOMB`, `HOLDOFF`, `FLICKER` exported. As built: a holdoff kind takes its station 1.7 times further out and is pushed off you inside 1.6 × `HOLDOFF.near` whatever its mode (swinging out to a station ahead it would fly straight past you); a flickered one is off the wire and `damage` by number misses it too; a bomb's hit carries `bomb: true` and shakes the ship.
+- [x] `suvace` spotlight and `cousins` quietUntilFired in `sides.js` (the other three wait for their kinds in B2); `sides.js` checks every kind's trait is one of `TRAITS` (`hunterRules.test.js`).
+- [x] `hunters.js` hides a flickered model and draws a bomb fat; `scene.js` answers `spotlit` (`state.static` 1.5 s; the crew's `event.spotlit` line at most every 20 s), and `crews.test.js` wants that line of every crew whose side has a spotlight.
 
 ### Task B2: the rest of the built ships
 - Star Wars: `tiebomber`, `gunboat`, `ig2000`, `houndstooth`, `punishingone`, `skiff` (pirates), `ywing`, `awing` (the galaxy has `ywing.glb`/`awing.glb`: add to `glbFleet.GLB` with `built: true` stand-ins).
