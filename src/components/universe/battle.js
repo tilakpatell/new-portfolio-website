@@ -61,7 +61,7 @@
 // team, kind, at }, { type: 'runner', id, team, kind, at } (one shot down).
 
 import { sweptHit } from './targeting';
-import { FIGHTERS, HULLS, NAMES, SUBSYSTEMS, TURRETS } from './wars';
+import { FIGHTERS, HULLS, NAMES, SUBSYSTEMS, TURRETS, hullOf } from './wars';
 
 export const BATTLE = {
   radius: 125, // how far from the middle the fight goes before the fighters turn back in
@@ -207,9 +207,12 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
         tracked: !(flag && team === defender), // (the defender's flagship falls by its objectives, not its hull)
         subs: [],
         spheres: [],
+        shell: [],
         turrets: [],
       };
       cap.spheres = (HULLS[c.kind] ?? [[0, 0.1]]).map(([z, r]) => ({ c: place(cap, [0, 0, z]), r: r * c.size }));
+      // (and the shell a ship flies into: its model's shape, out to its wings)
+      cap.shell = (hullOf(c.kind) ?? [[0, 0, 0, 0.1]]).map(([x, y, z, r]) => ({ c: place(cap, [x, y, z]), r: r * c.size }));
       cap.reach = c.size * 0.55;
       cap.turrets = (TURRETS[c.kind] ?? []).map((l) => ({ num: nextId++, at: place(cap, l), r: Math.max(0.35, 0.012 * c.size), turbo: between([0.5, 3.5]), flak: between([0, 0.6]), hp: BATTLE.turretHp, alive: true, cap }));
       if (flag && team === defender)
@@ -752,7 +755,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     cap.disabled = Math.max(cap.disabled, seconds);
     pending.push({ type: 'disabled', id, at: copy(v3(), cap.pos), size: cap.size });
   };
-  const points = (cap) => [cap.pos, ...cap.spheres.map((sp) => sp.c), ...cap.turrets.map((tu) => tu.at), ...cap.subs.map((sb) => sb.pos)];
+  const points = (cap) => [cap.pos, ...cap.spheres.map((sp) => sp.c), ...cap.shell.map((sp) => sp.c), ...cap.turrets.map((tu) => tu.at), ...cap.subs.map((sb) => sb.pos)];
   b.moveCapital = (cap, d) => {
     for (const p of points(cap)) set(p, p.x + d.x, p.y + d.y, p.z + d.z);
     cap.moved = true;

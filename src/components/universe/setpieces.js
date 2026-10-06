@@ -29,7 +29,7 @@
 //   into it and the scene takes you out of it somewhere else on the map.
 //
 // createSetPieces(parent, { small, fleet, solids }) → { destroyer(ship, kind) → { hangar } | null, leave(), cleared(),
-//   destroyerHere, targets, hit(from, to, punch) → hit | null, drain() → events (capitalRules.js's),
+//   destroyerHere, solids (its hull while it's here), targets, hit(from, to, punch) → hit | null, drain() → events (capitalRules.js's),
 //   roadblock(ship) → boolean, chopperHere,
 //   portals(points), comet(ship), flare(star, ship) → { arrives } | null,
 //   rift(ship) → boolean, riftAt, riftInside(ship), closeRift(),
@@ -38,6 +38,7 @@
 
 import * as THREE from 'three';
 import { createFleet } from './glbFleet';
+import { fitHull, sampleSurface } from './hullFit';
 import { SOLIDS, forward } from './ship';
 import { RIFT_R, riftSpot } from './nav';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
@@ -62,6 +63,13 @@ export function destroyerSpot(ship, side, solids = SOLIDS) {
     }
   }
   return at(10, side);
+}
+
+// a capital ship's hull from its model (`group`, its biggest side 1), in
+// capitalRules.js's frame: [x, y down from its top `top`, z, r]s, its own
+// shape out to its wings (hullFit.js), for flying into and shooting at
+export function hullFrom(group, top) {
+  return fitHull(sampleSurface(group, { step: 0.03 }), { max: 32 }).map(([x, y, z, r]) => [x, top - y, z, r]);
 }
 // the capital ships' turbolaser bolts, by ship
 const BOLT_COLOR = { destroyer: [0.6, 5.5, 1.0], fedcruiser: [0.6, 2.2, 6.5], madrigal: [6.0, 1.4, 0.6] };
@@ -186,6 +194,8 @@ function tail(color, width, length) {
   return mesh;
 }
 
+const NONE = Object.freeze([]); // (no solids: the capital ship's not here)
+
 // solids: what's solid where this flies (the map's, as it comes; a star
 // system's, in the galaxy), so a capital ship never drops in inside a planet
 export function createSetPieces(parent, { small = false, fleet = createFleet(), solids = () => SOLIDS } = {}) {
@@ -197,6 +207,8 @@ export function createSetPieces(parent, { small = false, fleet = createFleet(), 
   let sd = null;
   let sdKind = null; // (which capital ship sd is)
   let sdTop = 0.14; // how high its top is above its middle, as a fraction of its length (its parts sit on it)
+  let sdHull = null; // its hull, fitted to its model (hullFrom)
+  let sdSolids = null; // and where that is, to fly into, while it's here
   const cap = createCapital();
   // the roadblock's helicopter: hanging ahead of you ('here'), then climbing away ('out')
   let chopper = null;
@@ -295,6 +307,8 @@ export function createSetPieces(parent, { small = false, fleet = createFleet(), 
         // (where its top is, in its own unit frame: its parts are marked up there)
         const box = new THREE.Box3().setFromObject(sd.group);
         sdTop = Number.isFinite(box.max.y) && box.max.y > 0.02 ? Math.min(0.35, box.max.y) : 0.14;
+        sdHull = hullFrom(sd.group, sdTop);
+        if (!sdHull.length) sdHull = null;
         sd.group.visible = false;
         sd.group.rotation.order = 'YXZ'; // (yaw, then its own pitch and roll: it lists as it dies)
         parent.add(sd.group);
@@ -302,7 +316,8 @@ export function createSetPieces(parent, { small = false, fleet = createFleet(), 
       const side = Math.random() < 0.5 ? -1 : 1;
       // crossing your path, slowly
       const heading = ship.heading + side * (Math.PI / 2 + 0.3);
-      const d = cap.arrive(kind, destroyerSpot(ship, side, solids()), heading, { len: LENGTH[kind] ?? LENGTH.destroyer, top: sdTop });
+      const d = cap.arrive(kind, destroyerSpot(ship, side, solids()), heading, { len: LENGTH[kind] ?? LENGTH.destroyer, top: sdTop, hull: sdHull });
+      sdSolids = null;
       if (!d) return null;
       sd.group.visible = true;
       sdFlash.visible = true;
@@ -358,6 +373,13 @@ export function createSetPieces(parent, { small = false, fleet = createFleet(), 
     },
     get destroyerHere() {
       return cap.here;
+    },
+    // its hull to fly into while it's here (ship.js's solids: moved with it, the
+    // same list till it goes), else none
+    get solids() {
+      if (!cap.here) return NONE;
+      sdSolids ??= cap.hull.map((h, i) => ({ id: `capital-${i}`, at: h.at, r: h.r * cap.len, reach: h.r * cap.len, hull: 'capital' }));
+      return sdSolids;
     },
     get capital() {
       return cap;

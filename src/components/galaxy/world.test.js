@@ -116,6 +116,26 @@ describe('buildSystem', () => {
     for (const w of [yavin, alderaan, scarif, endor]) w.dispose();
   });
 
+  it('makes a Star Destroyer solid out to its wings, not only down its spine', () => {
+    const sys = systemById('mustafar');
+    const ship = sys.pieces.find((p) => p.type === 'fleet').ships[0];
+    const w = buildSystem(sys, { ...kit(), small: false });
+    const hull = w.solids.filter((o) => o.hull === 'fleet-destroyer-0');
+    // a point in the ship's own frame (nose +z), in the system's
+    const at = ([x, y, z]) => {
+      const [c, s] = [Math.cos(ship.yaw), Math.sin(ship.yaw)];
+      return [ship.at[0] + (x * c + z * s) * ship.size, ship.at[1] + y * ship.size, ship.at[2] + (-x * s + z * c) * ship.size];
+    };
+    const solid = (p) => hull.some((o) => Math.hypot(p[0] - o.at[0], p[1] - o.at[1], p[2] - o.at[2]) <= o.r);
+    expect(solid(at([0, 0, 0]))).toBe(true);
+    // (the stern's corners, a quarter of its length out to either side)
+    expect(solid(at([0.22, 0, -0.42]))).toBe(true);
+    expect(solid(at([-0.22, 0, -0.42]))).toBe(true);
+    // and not the empty space off its nose's sides
+    expect(solid(at([0.25, 0, 0.42]))).toBe(false);
+    w.dispose();
+  });
+
   it('stands its own fleets and battle aside while the war’s battle is on there, and brings them back', () => {
     for (const id of ['hoth', 'endor']) {
       const k = kit();

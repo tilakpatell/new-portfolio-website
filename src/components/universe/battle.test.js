@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BATTLE, WIDTH, createBattle, inSights, perSide, turnToward } from './battle';
-import { FIGHTERS, WARS } from './wars';
+import { FIGHTERS, WARS, hullOf } from './wars';
 
 // a seeded random, so every run of a battle is the same
 const seeded = (seed = 7) => {
@@ -358,6 +358,24 @@ describe('a battle', () => {
     const near = b.targets.filter((t) => t.kind === 'turret');
     expect(near.length).toBeGreaterThan(0);
     expect(near.every((t) => t.id !== tu.num)).toBe(true);
+  });
+
+  it('gives each capital ship a shell to fly into, its model’s shape (hullOf), moved with it', () => {
+    const b = make({ perSide: 2 });
+    for (const cap of b.capitals) {
+      const shape = hullOf(cap.kind);
+      expect(cap.shell.length, cap.kind).toBe(shape.length);
+      shape.forEach(([x, y, z, r], i) => {
+        const at = (k) => cap.pos[k] + (cap.right[k] * x + cap.up[k] * y + cap.fwd[k] * z) * cap.size;
+        expect(cap.shell[i].c.x).toBeCloseTo(at('x'));
+        expect(cap.shell[i].c.z).toBeCloseTo(at('z'));
+        expect(cap.shell[i].r).toBeCloseTo(r * cap.size);
+      });
+    }
+    const flag = flagOf(b, 1);
+    const was = { ...flag.shell[0].c };
+    b.moveCapital(flag, { x: 5, y: -2, z: 1 });
+    expect(flag.shell[0].c.x - was.x).toBeCloseTo(5);
   });
 
   it('moves and turns a capital ship with everything on it (its hull, batteries, objectives)', () => {

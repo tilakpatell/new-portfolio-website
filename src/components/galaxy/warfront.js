@@ -132,7 +132,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     moveHull: (cap) => {
       for (const o of solids)
         if (o.cap === cap) {
-          const sp = cap.spheres[o.i];
+          const sp = (cap.shell ?? cap.spheres)[o.i];
           o.at[0] = sp.c.x;
           o.at[1] = sp.c.y;
           o.at[2] = sp.c.z;
@@ -157,7 +157,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
   const hulls = () => {
     const out = [];
     for (const cap of battle?.capitals ?? [])
-      cap.spheres.forEach((sp, i) => out.push({ id: `war-${cap.id}-${i}`, at: [sp.c.x, sp.c.y, sp.c.z], r: sp.r, reach: sp.r, sr: sp.r, i, hull: `war-${cap.id}`, cap }));
+      (cap.shell ?? cap.spheres).forEach((sp, i) => out.push({ id: `war-${cap.id}-${i}`, at: [sp.c.x, sp.c.y, sp.c.z], r: sp.r, reach: sp.r, sr: sp.r, i, hull: `war-${cap.id}`, cap }));
     return out;
   };
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { STAR_DESTROYER, destroyerSpot } from './setpieces';
+import * as THREE from 'three';
+import { STAR_DESTROYER, destroyerSpot, hullFrom } from './setpieces';
 import { GOALS, SOLIDS, parkAt } from './ship';
 import { ORDER } from './layout';
 
@@ -29,5 +30,24 @@ describe('where the Star Destroyer drops in', () => {
       const p = destroyerSpot(ship, side, [planet]);
       expect(Math.hypot(p[0], p[1], p[2])).toBeGreaterThan(planet.r + STAR_DESTROYER * 0.6);
     }
+  });
+});
+
+describe('the capital ship’s hull, from its model', () => {
+  it('is its model’s shape in the capital’s frame (y down from its top), out to its wings', () => {
+    // a flat wedge's stand-in: a wide slab astern, a narrow one forward
+    const group = new THREE.Group();
+    const stern = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.08, 0.5), new THREE.MeshStandardMaterial());
+    stern.position.set(0, 0, -0.25);
+    const bow = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.5), new THREE.MeshStandardMaterial());
+    bow.position.set(0, 0, 0.25);
+    group.add(stern, bow);
+    const top = 0.04;
+    const hull = hullFrom(group, top);
+    // (a point in the capital's frame inside some sphere)
+    const solid = ([x, y, z]) => hull.some(([hx, hy, hz, r]) => Math.hypot(x - hx, y - hy, z - hz) <= r);
+    expect(solid([0.26, top - 0, -0.45])).toBe(true); // the stern's corner
+    expect(solid([0, top - 0.04, 0.45])).toBe(true); // the bow's top
+    expect(solid([0.26, top, 0.45])).toBe(false); // off the bow's side
   });
 });

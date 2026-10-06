@@ -40,7 +40,7 @@ import { createTrench } from '../universe/trench';
 import { trenchBand } from '../universe/deep';
 import { DEATHSTAR_REACH, STATION_NAMES, TRACTOR_REACH, reachOf } from './systems';
 import { LASER } from './fx';
-import { HULLS } from '../universe/wars';
+import { hullOf } from '../universe/wars';
 
 const TAU = Math.PI * 2;
 const SPIN = TAU / 900; // a planet turns once in fifteen minutes
@@ -66,8 +66,8 @@ function seeded(text) {
   };
 }
 
-// How each big ship fills its box, for flying into: spheres along its
-// length (universe/wars.js's HULLS, shared with the fleet war's battles).
+// How each big ship fills its box, for flying into: spheres fitted to its
+// model (universe/wars.js's hullOf, shared with the fleet war's battles).
 const ROUND = { coreship: 0.48, deathstar2: 0.47 };
 
 // the way a holder turns to point its nose (+z) along `dir`, its top toward `up`
@@ -126,16 +126,16 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
   };
   // a big ship's spheres, from where it is and which way it points
   const hull = (slot, id, stand = false) => {
-    const prof = HULLS[slot.kind];
+    const shape = hullOf(slot.kind);
     const round = ROUND[slot.kind];
-    const list = [];
-    if (round) list.push({ z: 0, r: round });
-    else if (prof) for (const [z, r] of prof) list.push({ z, r });
-    else if (slot.size > 3) for (const z of [-0.3, 0, 0.3]) list.push({ z, r: 0.08 });
+    let list = [];
+    if (round) list = [[0, 0, 0, round]];
+    else if (shape) list = shape;
+    else if (slot.size > 3) list = [-0.3, 0, 0.3].map((z) => [0, 0, z, 0.08]);
     slot.holder.updateMatrixWorld(true);
-    list.forEach((s, i) => {
-      tmp.set(0, 0, s.z * slot.size).applyMatrix4(slot.holder.matrix);
-      const o = addSolid({ id: `${id}-${i}`, at: tmp.toArray(), r: s.r * slot.size, reach: s.r * slot.size, hull: id });
+    list.forEach(([x, y, z, r], i) => {
+      tmp.set(x * slot.size, y * slot.size, z * slot.size).applyMatrix4(slot.holder.matrix);
+      const o = addSolid({ id: `${id}-${i}`, at: tmp.toArray(), r: r * slot.size, reach: r * slot.size, hull: id });
       if (stand) ambient.solids.push({ o, r: o.r });
     });
   };

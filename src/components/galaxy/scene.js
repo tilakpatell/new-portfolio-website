@@ -373,10 +373,11 @@ export async function create(canvas, ctx) {
     models.want(['destroyer', 'corvette', 'xwing', 'interceptor', ...(wantsDeathStar(sys) ? ['deathstar'] : [])]);
     return warm(world.group);
   };
-  // what the ship flies through: the system's solids, and the war's capital ships' hulls while its battle's on
+  // what the ship flies through: the system's solids, and the war's capital ships' hulls while its battle's on,
+  // and the Star Destroyer's that dropped in while it's here
   function respace() {
     if (!state.world) return;
-    const extra = war?.solids ?? [];
+    const extra = [...(war?.solids ?? []), ...(pieces?.solids ?? [])];
     state.space = makeSpace(extra.length ? [...state.world.solids, ...extra] : state.world.solids);
   }
   // the system's sky drawn into its cube (once, for as long as you're here), and what its metal reflects
@@ -1434,6 +1435,11 @@ export async function create(canvas, ctx) {
     const live = flying() && !state.crash && !state.jump && !props.frozen ? state.ship : null;
     if (hunters) for (const e of hunters.update(dt, t, live)) onHunters(e);
     let busy = pieces ? pieces.update(dt, t, camera) : false;
+    // (its hull in what you fly into, from the moment it's here till it goes)
+    if (pieces && pieces.solids !== state.pieceSolids) {
+      state.pieceSolids = pieces.solids;
+      respace();
+    }
     if (interdictor) busy = interdictor.update(dt, t) || busy;
     if (war) {
       const w = war.update(dt, t, camera, live);
@@ -2133,7 +2139,7 @@ export async function create(canvas, ctx) {
       state.shake = 0;
       ctx.invalidate();
     };
-    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, pin, interdiction, interdictor, war };
+    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, pieces, roam, startJump, goTo, pin, interdiction, interdictor, war };
     window.__gltfStats = gltfStats; // { requests, parses }: the models asked for, and the files fetched and parsed for them
   }
 

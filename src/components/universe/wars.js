@@ -22,6 +22,8 @@
 // round, as spheres along its length ([z, radius], shares of its length;
 // the galaxy's set pieces fly round the same ones).
 
+import { SHAPES } from './hullShapes';
+
 const rebels = {
   id: 'rebels',
   name: 'Rebel Alliance',
@@ -404,3 +406,7 @@ export const HULLS = {
   pollostruck: [[-0.34, 0.16], [0, 0.17], [0.34, 0.15]],
   pickup: [[-0.34, 0.16], [0, 0.17], [0.34, 0.15]],
 };
+// its shape for flying into, as [x, y, z, r]s at length 1 (nose +z, +y up,
+// centred): fitted to its model (hullShapes.js, solid out to its wings),
+// else HULLS's spheres down its middle, else null
+export const hullOf = (kind) => SHAPES[kind] ?? HULLS[kind]?.map(([z, r]) => [0, 0, z, r]) ?? null;

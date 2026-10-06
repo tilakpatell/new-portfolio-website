@@ -24,7 +24,8 @@
 // gives up and goes. Nothing happens to the ship while it's a streak.
 //
 // createCapital({ rand }) → {
-//   arrive(kind, at: [x, y, z], heading, { len, top }) → { hangar: [x, y, z], heading },
+//   arrive(kind, at: [x, y, z], heading, { len, top, hull }) → { hangar: [x, y, z], heading },
+//   (hull: [x, y, z, r]s in its frame, in place of PARTS's, its model's shape), hull,
 //   leave(reason), cleared(), update(dt, you) → busy, hit(from, to, punch) → hit | null,
 //   events (what happened, to be drained), targets, parts, bolts,
 //   state ('in' | 'here' | 'out' | 'dying' | null), here, at, heading, len, roll, pitch, age }
@@ -266,6 +267,10 @@ export function createCapital({ rand = Math.random } = {}) {
     get pitch() {
       return c.pitch;
     },
+    // its hull's spheres ({ local, r (of its length), at }: where they are on the map)
+    get hull() {
+      return c.hull;
+    },
     get parts() {
       return c.parts;
     },
@@ -278,7 +283,7 @@ export function createCapital({ rand = Math.random } = {}) {
 
     // it drops out of hyperspace at `at`, pointing along `heading`, `len`
     // long with its top `top` above its middle (fractions of its length)
-    arrive(kind, at, heading, { len = LENGTH[kind] ?? LENGTH.destroyer, top = 0.14 } = {}) {
+    arrive(kind, at, heading, { len = LENGTH[kind] ?? LENGTH.destroyer, top = 0.14, hull = null } = {}) {
       if (c.state) return null;
       const def = PARTS[kind] ?? PARTS.destroyer;
       c.state = 'in';
@@ -302,7 +307,7 @@ export function createCapital({ rand = Math.random } = {}) {
         ...def.shields.map((p) => ({ id: p.id, name: p.name, kind: 'shield', local: p.at, r: p.r, hp: CAPITAL.shieldHp, hpMax: CAPITAL.shieldHp, at: [0, 0, 0], alive: true })),
         { id: def.bridge.id, name: def.bridge.name, kind: 'bridge', local: def.bridge.at, r: def.bridge.r, hp: CAPITAL.bridgeHp, hpMax: CAPITAL.bridgeHp, at: [0, 0, 0], alive: true },
       ];
-      c.hull = def.hull.map(([x, y, z, r]) => ({ local: [x, y, z], r, at: [0, 0, 0] }));
+      c.hull = (hull ?? def.hull).map(([x, y, z, r]) => ({ local: [x, y, z], r, at: [0, 0, 0] }));
       c.batteries = def.batteries.map((b) => ({ local: b, at: [0, 0, 0] }));
       placeAll();
       return { hangar: this.hangar, heading };

@@ -137,6 +137,18 @@ describe('the capital ship', () => {
     expect(through(cap, d.at)).toBeTruthy();
   });
 
+  it('takes the hull it is given (its model’s shape) in place of its own, out on its wings', () => {
+    const cap = createCapital({ rand: seeded() });
+    // a wing, a quarter of its length to starboard and near its stern
+    cap.arrive('destroyer', [0, 0, 0], 0, { len: 16, top: 0.14, hull: [[0.25, 0.14, -0.4, 0.05]] });
+    settle(cap);
+    expect(cap.hull).toHaveLength(1);
+    const [wing] = cap.hull;
+    expect(Math.hypot(wing.at[0] - cap.at[0], wing.at[2] - cap.at[2])).toBeCloseTo(16 * Math.hypot(0.25, 0.4));
+    expect(wing.at[1] - cap.at[1]).toBeCloseTo(0);
+    expect(through(cap, wing.at)?.type).toBe('shielded');
+  });
+
   it('shields its hull and its bridge while a dome stands, and a shot into the hull splashes off', () => {
     const cap = arrive();
     settle(cap);
