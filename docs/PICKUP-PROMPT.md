@@ -7,7 +7,7 @@ The lanes at the bottom are filled in for what was in flight on 6 October 2026, 
 ## The prompt
 
 ```text
-You're picking up work on my portfolio site, tilakverse (https://github.com/tilakpatell/new-portfolio-website). Claude sessions on my other account started it. Other sessions are working other lanes at the same time, so stay in yours.
+You're picking up work on my portfolio site, tilakpatell.com (https://github.com/tilakpatell/new-portfolio-website). Claude sessions on my other account started it. Other sessions are working other lanes at the same time, so stay in yours.
 
 LANE:        {{short name, e.g. "Galaxy perf"}}
 START FROM:  {{main | an existing branch, e.g. origin/claude/sharp-carson-h9c6mp | an open PR, e.g. #246}}
