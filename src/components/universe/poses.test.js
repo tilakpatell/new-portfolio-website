@@ -10,7 +10,7 @@ const dot = (a, b) => a.reduce((s, v, i) => s + v * b[i], 0);
 
 describe('the fixed poses', () => {
   it('knows every pose the spec names', () => {
-    expect(POSE_NAMES).toEqual(['overview', 'falcon-sun', 'middleearth-limb', 'rickmorty', 'gaming', 'caribbean', 'belt', 'maw', 'landing-middleearth']);
+    expect(POSE_NAMES).toEqual(['overview', 'falcon-sun', 'middleearth-limb', 'rickmorty', 'gaming', 'caribbean', 'belt', 'maw', 'landing-middleearth', 'station']);
     for (const name of POSE_NAMES) expect(poseFor(name)).toBeTruthy();
     expect(poseFor('nowhere')).toBeNull();
   });
@@ -70,6 +70,15 @@ describe('the fixed poses', () => {
     expect(Math.hypot(p.at[0], p.at[2])).toBeLessThan(BELT.inner);
     expect(p.at[1]).toBeGreaterThan(BELT.height);
     expect(p.eye[1]).toBeGreaterThan(p.at[1]);
+  });
+
+  it('parks at the Home station facing it, the eye behind the ship', () => {
+    const p = poseFor('station');
+    const c = POSITIONS.home;
+    expect(p.look).toEqual(c);
+    const ahead = [-Math.sin(p.heading), 0, -Math.cos(p.heading)];
+    expect(dot(ahead, norm([c[0] - p.at[0], 0, c[2] - p.at[2]]))).toBeGreaterThan(0.99);
+    expect(len(sub(p.eye, c))).toBeGreaterThan(len(sub(p.at, c)));
   });
 
   it('says where the map view and the landing are', () => {

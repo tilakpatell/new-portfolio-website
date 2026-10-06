@@ -14,7 +14,7 @@
 // side toward the camera, which is how a visitor should arrive.
 import { BELT, HOME_RADIUS, POSITIONS, REACH, SUN } from './layout';
 import { MAW } from './maw';
-import { SHIP } from './ship';
+import { SHIP, parkAt } from './ship';
 
 export const POSES = {
   overview: { view: 'map', at: [0, SHIP.height, HOME_RADIUS + 1.5], heading: 0 },
@@ -31,6 +31,9 @@ export const POSES = {
   // as the README's hero: the Maw off to the right, outside its pull
   maw: { out: MAW.reach * 1.35, aside: 0.36, back: 1.6, rise: 0.55 },
   'landing-middleearth': { planet: 'middleearth', dist: 1.6, off: 0, foot: 'middleearth' },
+  // parked at the Home station as the autopilot parks, from the overview's
+  // side: the home system up close, and how big it is against the ship
+  station: { station: 'home', back: 1.6, rise: 0.3 },
 };
 export const POSE_NAMES = Object.keys(POSES);
 
@@ -73,6 +76,11 @@ export function poseFor(name, { positions = POSITIONS, sun = SUN.at, reach = REA
     const at = add(sun, away, p.sunward);
     const eye = add(add(at, away, p.back), turnY(level, Math.PI / 2), p.side);
     return { name, at, heading: headingOf(turnY(level, Math.PI + p.turn)), eye, look: at };
+  }
+  if (p.station) {
+    const k = parkAt(p.station, [0, HOME_RADIUS]);
+    const at = [k.x, k.y, k.z];
+    return { name, station: p.station, at, heading: k.heading, ...chase(at, k.heading, { back: p.back, rise: p.rise, look: positions[p.station] }) };
   }
   if (name === 'belt') {
     const at = [p.ring * Math.cos(p.angle), 0, p.ring * Math.sin(p.angle)];
