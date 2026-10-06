@@ -352,6 +352,237 @@ export const GUNS = {
       k.point('muzzle', [0, 0.062, 0.168]);
     },
   },
+  // the Rebel A280 from Endor: a long, slim blaster rifle, a square
+  // receiver with the scope offset, a slotted barrel shroud, a skeleton stock
+  a280: {
+    hands: 2,
+    support: false,
+    stock: true,
+    pitch: 0.08,
+    reach: 0.38,
+    rise: -0.14,
+    lateral: -0.3,
+    kick: { back: 0.7, up: 1.2 },
+    casing: false,
+    flash: { color: '#ff5a4a', size: 0.24 },
+    build(g, owned) {
+      const m = mats(owned);
+      const k = kit(g, owned);
+      k.box(0.05, 0.065, 0.26, m.black, [0, 0.05, 0.08]); // the receiver
+      k.tube(0.016, 0.34, m.gunmetal, [0, 0.055, 0.36]); // the barrel shroud
+      for (let i = 0; i < 5; i++) k.box(0.036, 0.004, 0.012, m.steel, [0, 0.055, 0.3 + i * 0.05]); // its slots
+      k.tube(0.009, 0.08, m.gunmetal, [0, 0.055, 0.54]); // the muzzle
+      k.tube(0.012, 0.12, m.black, [0.018, 0.1, 0.08]); // the scope, on the left
+      k.box(0.006, 0.02, 0.01, m.black, [0.012, 0.085, 0.04]);
+      k.box(0.006, 0.02, 0.01, m.black, [0.012, 0.085, 0.12]);
+      k.box(0.02, 0.012, 0.22, m.gunmetal, [0, 0.03, -0.18]); // the stock's bar
+      k.box(0.03, 0.09, 0.03, m.black, [0, -0.005, -0.3]); // the butt
+      k.box(0.03, 0.09, 0.035, m.black, [0, -0.035, -0.01], [0.28, 0, 0]).name = 'grip';
+      k.box(0.03, 0.06, 0.05, m.black, [0, -0.005, 0.22]); // the foregrip
+      k.box(0.024, 0.006, 0.05, m.steel, [0, 0.0, 0.04]); // the trigger guard
+      k.box(0.004, 0.024, 0.012, m.steel, [0, 0.012, 0.04], [0.3, 0, 0]);
+      k.point('muzzle', [0, 0.055, 0.58]);
+      k.point('foregrip', [0, -0.035, 0.22]);
+      k.point('fore', [0, -0.005, 0.22]);
+    },
+    fore: { r: 0.022, axis: 'up' },
+  },
+  // the DLT-19 heavy repeater (the MG 34 under it): a long finned barrel,
+  // a drum under the receiver, a bipod folded along the barrel
+  dlt19: {
+    hands: 2,
+    support: false,
+    stock: true,
+    pitch: 0.06,
+    reach: 0.36,
+    rise: -0.15,
+    lateral: -0.3,
+    kick: { back: 0.4, up: 0.7 },
+    casing: false,
+    flash: { color: '#ff6a4a', size: 0.22 },
+    build(g, owned) {
+      const m = mats(owned);
+      const k = kit(g, owned);
+      k.box(0.05, 0.07, 0.3, m.gunmetal, [0, 0.05, 0.05]); // the receiver
+      k.tube(0.022, 0.5, m.gunmetal, [0, 0.06, 0.45]); // the barrel jacket
+      for (let i = 0; i < 7; i++) k.ring(0.026, 0.004, m.black, [0, 0.06, 0.26 + i * 0.065], [0, 0, 0]); // its fins
+      k.cone(0.014, 0.024, 0.05, m.black, [0, 0.06, 0.72]); // the flash hider
+      k.drum(0.045, 0.03, m.black, [0, -0.01, 0.1], [Math.PI / 2, 0, 0]); // the drum
+      for (const sx of [-1, 1]) k.box(0.006, 0.006, 0.26, m.steel, [sx * 0.03, 0.03, 0.45]); // the bipod legs, folded
+      k.box(0.03, 0.05, 0.24, m.wood, [0, 0.02, -0.2]); // the stock
+      k.box(0.04, 0.09, 0.05, m.black, [0, -0.01, -0.33]);
+      k.box(0.03, 0.09, 0.035, m.black, [0, -0.035, -0.02], [0.28, 0, 0]).name = 'grip';
+      k.box(0.024, 0.006, 0.05, m.steel, [0, 0.0, 0.03]);
+      k.box(0.004, 0.024, 0.012, m.steel, [0, 0.012, 0.03], [0.3, 0, 0]);
+      k.point('muzzle', [0, 0.06, 0.75]);
+      k.point('foregrip', [0, 0.02, 0.28]);
+      k.point('fore', [0, 0.06, 0.28]); // under the barrel jacket
+    },
+    fore: { r: 0.03, axis: 'dir' },
+  },
+  // Boba Fett's EE-3 carbine: a short rifle with a long scope and a
+  // folding stock, the barrel wrapped in a ribbed sleeve
+  ee3: {
+    hands: 2,
+    support: false,
+    stock: true,
+    pitch: 0.08,
+    reach: 0.38,
+    rise: -0.14,
+    lateral: -0.3,
+    kick: { back: 0.8, up: 1.3 },
+    casing: false,
+    flash: { color: '#ff6a3d', size: 0.24 },
+    build(g, owned) {
+      const m = mats(owned);
+      const k = kit(g, owned);
+      k.box(0.044, 0.06, 0.2, m.gunmetal, [0, 0.05, 0.06]); // the receiver
+      k.tube(0.013, 0.26, m.black, [0, 0.055, 0.28]); // the barrel
+      for (let i = 0; i < 6; i++) k.ring(0.017, 0.003, m.steel, [0, 0.055, 0.2 + i * 0.03], [0, 0, 0]); // the ribs
+      k.tube(0.015, 0.03, m.gunmetal, [0, 0.055, 0.42]); // the muzzle cap
+      k.tube(0.014, 0.22, m.black, [0, 0.105, 0.14]); // the long scope
+      k.box(0.008, 0.028, 0.012, m.black, [0, 0.085, 0.06]);
+      k.box(0.008, 0.028, 0.012, m.black, [0, 0.085, 0.2]);
+      k.box(0.016, 0.014, 0.2, m.gunmetal, [0, 0.03, -0.16]); // the folding stock's bar
+      k.box(0.03, 0.08, 0.025, m.black, [0, -0.005, -0.27]);
+      k.box(0.03, 0.085, 0.034, m.brown, [0, -0.035, -0.01], [0.28, 0, 0]).name = 'grip';
+      k.box(0.024, 0.006, 0.05, m.steel, [0, 0.0, 0.04]);
+      k.box(0.004, 0.024, 0.012, m.steel, [0, 0.012, 0.04], [0.3, 0, 0]);
+      k.point('muzzle', [0, 0.055, 0.44]);
+      k.point('foregrip', [0, 0.02, 0.2]);
+      k.point('fore', [0, 0.055, 0.2]);
+    },
+    fore: { r: 0.016, axis: 'dir' },
+  },
+  // Jango's WESTAR-34: a short silver pistol, a sloping grip, a stubby
+  // barrel with a flared muzzle
+  westar: {
+    hands: 1,
+    support: false,
+    stock: false,
+    pitch: 0.3,
+    reach: 0.93,
+    rise: 0.16,
+    lateral: 0.0,
+    kick: { back: 0.5, up: 1.6 },
+    casing: false,
+    flash: { color: '#ff4a3d', size: 0.18 },
+    build(g, owned) {
+      const m = mats(owned);
+      const k = kit(g, owned);
+      k.box(0.026, 0.04, 0.09, m.steel, [0, 0.05, 0.03]); // the receiver
+      k.tube(0.012, 0.06, m.steel, [0, 0.055, 0.1]); // the barrel
+      k.cone(0.012, 0.018, 0.02, m.steel, [0, 0.055, 0.14]); // the flared muzzle
+      k.box(0.006, 0.008, 0.01, m.black, [0, 0.078, 0.06]); // the sight
+      k.box(0.026, 0.085, 0.03, m.black, [0, -0.025, -0.01], [0.35, 0, 0]).name = 'grip';
+      k.box(0.02, 0.004, 0.034, m.steel, [0, 0.018, 0.03]); // the trigger guard
+      k.box(0.004, 0.02, 0.012, m.steel, [0, 0.026, 0.03], [0.3, 0, 0]);
+      k.point('muzzle', [0, 0.055, 0.152]);
+    },
+  },
+  // a pump scattergun: a long tube under the barrel, a wooden fore-end
+  // and stock, a bead at the muzzle
+  shotgun: {
+    hands: 2,
+    support: false,
+    stock: true,
+    pitch: 0.08,
+    reach: 0.38,
+    rise: -0.14,
+    lateral: -0.3,
+    kick: { back: 1.6, up: 3.2 },
+    casing: true,
+    smoke: 4,
+    flash: { color: '#ffd36b', size: 0.3 },
+    build(g, owned) {
+      const m = mats(owned);
+      const k = kit(g, owned);
+      k.box(0.036, 0.05, 0.16, m.gunmetal, [0, 0.05, 0.04]); // the receiver
+      k.tube(0.011, 0.5, m.gunmetal, [0, 0.062, 0.34]); // the barrel
+      k.tube(0.011, 0.42, m.gunmetal, [0, 0.036, 0.3]); // the magazine tube under it
+      k.ball(0.004, m.steel, [0, 0.076, 0.58]); // the bead
+      k.tube(0.02, 0.12, m.wood, [0, 0.045, 0.26]); // the fore-end
+      k.box(0.03, 0.05, 0.22, m.wood, [0, 0.03, -0.17], [-0.06, 0, 0]); // the stock
+      k.box(0.036, 0.1, 0.03, m.black, [0, 0.0, -0.28]); // the butt pad
+      k.box(0.03, 0.085, 0.034, m.wood, [0, -0.035, -0.02], [0.3, 0, 0]).name = 'grip';
+      k.box(0.024, 0.006, 0.05, m.steel, [0, 0.01, 0.03]);
+      k.box(0.004, 0.024, 0.012, m.steel, [0, 0.02, 0.03], [0.3, 0, 0]);
+      k.point('muzzle', [0, 0.062, 0.6]);
+      k.point('foregrip', [0, 0.0, 0.26]);
+      k.point('fore', [0, 0.045, 0.26]);
+      k.point('eject', [-0.02, 0.06, 0.04]);
+    },
+    fore: { r: 0.022, axis: 'dir' },
+  },
+  // a long rifle: a heavy barrel, a bolt on the right, a big scope, a
+  // cheek-rest on the stock
+  sniper: {
+    hands: 2,
+    support: false,
+    stock: true,
+    pitch: 0.06,
+    reach: 0.38,
+    rise: -0.15,
+    lateral: -0.3,
+    kick: { back: 1.4, up: 2.6 },
+    casing: true,
+    smoke: 3,
+    flash: { color: '#ffd36b', size: 0.28 },
+    build(g, owned) {
+      const m = mats(owned);
+      const k = kit(g, owned);
+      k.box(0.04, 0.055, 0.24, m.gunmetal, [0, 0.05, 0.05]); // the receiver
+      k.tube(0.012, 0.6, m.gunmetal, [0, 0.06, 0.45]); // the barrel
+      k.tube(0.016, 0.06, m.black, [0, 0.06, 0.73]); // the brake
+      k.tube(0.017, 0.26, m.black, [0, 0.115, 0.1]); // the scope
+      k.tube(0.022, 0.03, m.black, [0, 0.115, 0.22]); // its bell
+      k.box(0.008, 0.03, 0.014, m.black, [0, 0.09, 0.03]);
+      k.box(0.008, 0.03, 0.014, m.black, [0, 0.09, 0.16]);
+      k.tube(0.005, 0.05, m.steel, [-0.03, 0.06, 0.02], [0, Math.PI / 2, 0]); // the bolt handle
+      k.ball(0.008, m.steel, [-0.055, 0.06, 0.02]);
+      k.box(0.032, 0.06, 0.26, m.olive, [0, 0.025, -0.2]); // the stock
+      k.box(0.03, 0.03, 0.12, m.black, [0, 0.07, -0.2]); // the cheek-rest
+      k.box(0.036, 0.1, 0.03, m.black, [0, -0.005, -0.34]);
+      k.box(0.03, 0.09, 0.035, m.olive, [0, -0.035, -0.02], [0.28, 0, 0]).name = 'grip';
+      k.box(0.024, 0.006, 0.05, m.steel, [0, 0.0, 0.03]);
+      k.box(0.004, 0.024, 0.012, m.steel, [0, 0.012, 0.03], [0.3, 0, 0]);
+      k.point('muzzle', [0, 0.06, 0.76]);
+      k.point('foregrip', [0, 0.0, 0.3]);
+      k.point('fore', [0, 0.04, 0.3]);
+      k.point('eject', [-0.02, 0.07, 0.03]);
+    },
+    fore: { r: 0.024, axis: 'dir' },
+  },
+  // a machine pistol: a boxy receiver, a long magazine down from the
+  // grip, a stubby barrel, a wire stock folded over the top
+  smg: {
+    hands: 1,
+    support: true,
+    stock: false,
+    pitch: 0.24,
+    reach: 0.9,
+    rise: 0.18,
+    lateral: -0.3,
+    kick: { back: 0.4, up: 1.4 },
+    casing: true,
+    smoke: 1,
+    flash: { color: '#ffd36b', size: 0.18 },
+    build(g, owned) {
+      const m = mats(owned);
+      const k = kit(g, owned);
+      k.box(0.03, 0.04, 0.16, m.gunmetal, [0, 0.055, 0.04]); // the receiver
+      k.tube(0.008, 0.05, m.steel, [0, 0.06, 0.14]); // the barrel
+      k.box(0.006, 0.01, 0.006, m.black, [0, 0.08, 0.1]); // the sights
+      k.box(0.014, 0.01, 0.006, m.black, [0, 0.08, -0.02]);
+      k.box(0.026, 0.08, 0.032, m.black, [0, -0.02, 0.005], [0.3, 0, 0]).name = 'grip';
+      k.box(0.022, 0.1, 0.03, m.gunmetal, [0, -0.09, -0.006], [0.3, 0, 0]); // the long magazine
+      k.box(0.028, 0.006, 0.19, m.steel, [0, 0.08, -0.02]); // the folded wire stock
+      k.box(0.02, 0.004, 0.034, m.black, [0, 0.022, 0.045]);
+      k.box(0.004, 0.02, 0.012, m.steel, [0, 0.03, 0.045], [0.3, 0, 0]);
+      k.point('muzzle', [0, 0.06, 0.166]);
+      k.point('eject', [-0.016, 0.065, 0.04]);
+    },
+  },
   // a lightsaber: the hilt stands along the fist (the gun's +y, where a
   // gun's sights go), the blade on out of the thumb side of it, so the
   // same grip that closes on a pistol closes on this; 'muzzle' is the
