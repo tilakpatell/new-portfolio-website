@@ -18,6 +18,12 @@ export const WORLD_VOICED = [
   'gandalf', 'aragorn', 'sam', 'frodo', 'galadriel', 'boromir', 'pippin', 'gimli', 'saruman', 'gollum', 'elrond', 'merry',
   'butterbur', 'theoden', 'legolas', 'arwen', 'bilbo', 'hama', 'haldir', 'denethor', 'grima', 'celeborn',
   'michael', 'jim', 'erin',
+  // Metherria's customers (Jesse is one of the crews already)
+  'badger', 'pete', 'tuco', 'mike', 'gus', 'lydia', 'declan', 'saul',
+  // the Avengers compound
+  'thor', 'natasha', 'hulk',
+  // Cybertron
+  'ratchet', 'bulkhead', 'arcee', 'jazz', 'grimlock', 'jetfire', 'magnus', 'zeta', 'soundwave', 'shockwave', 'barricade', 'starscream',
 ];
 
 const isLine = (v) => Array.isArray(v) && typeof v[0] === 'string' && typeof v[1] === 'string' && v.length <= 3 && v.every((x) => typeof x === 'string');
@@ -52,6 +58,29 @@ export function conversationLines(sources, { lineId, voiceOf, spoken }, voices) 
   return [...found.values()];
 }
 
+// The worlds' people, in their own formats: a person's `lines` (and the
+// ones they say `after` you've done something) by their `id`; a mission's
+// offer by its `giver`; a customer's reactions by the key they're under.
+export function peopleLines(sources, { lineId, voiceOf, spoken }, voices) {
+  const found = new Map();
+  const add = (who, text) => {
+    const voice = voiceOf(who);
+    if (voice && voices.includes(voice) && typeof text === 'string' && spoken(text)) found.set(lineId(voice, text), { id: lineId(voice, text), who: voice, text: spoken(text) });
+  };
+  const walk = (v, key) => {
+    if (Array.isArray(v)) return v.forEach((x) => walk(x));
+    if (!v || typeof v !== 'object') return undefined;
+    const who = typeof v.id === 'string' ? v.id : key;
+    if (who && Array.isArray(v.lines)) v.lines.forEach((t) => add(who, t));
+    if (who && Array.isArray(v.after?.lines)) v.after.lines.forEach((t) => add(who, t));
+    if (key && v.lines && typeof v.lines === 'object' && !Array.isArray(v.lines)) Object.values(v.lines).forEach((t) => add(key, t));
+    if (typeof v.giver === 'string' && typeof v.say === 'string') add(v.giver, v.say);
+    return Object.entries(v).forEach(([k, x]) => walk(x, k));
+  };
+  sources.forEach((s) => walk(s));
+  return [...found.values()];
+}
+
 const here = dirname(fileURLToPath(import.meta.url));
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { runnerImport } = await import('vite');
@@ -75,7 +104,14 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     .map((d) => `src/components/middleearth/towns/${d.name}/story.js`);
   const worlds = await Promise.all([...towns, 'src/components/office/world/story.js', 'src/components/rickmorty/citadel/story.js'].map(load));
   const voiced = await load('src/lib/voiced.js');
-  const lines = [...unrecorded([CREWS, GALAXY_LINES, VEHICLES.map((v) => v.lines), ...surface], lineId), ...conversationLines(worlds, voiced, [...VOICED, ...WORLD_VOICED])];
+  // and the worlds' people in their own formats: the Avengers compound's cast, Cybertron's bots and missions, Metherria's customers
+  const [{ CAST }, { AREAS, MISSIONS: CYBERTRON }, { CUSTOMERS }] = await Promise.all([
+    load('src/components/avengers/world/rules.js'),
+    load('src/components/cybertron/game/areas/index.js'),
+    load('src/components/albuquerque/metherria/rules.js'),
+  ]);
+  const people = peopleLines([CAST, Object.values(AREAS).map((a) => a.people ?? []), CYBERTRON, CUSTOMERS], voiced, [...VOICED, ...WORLD_VOICED]);
+  const lines = [...unrecorded([CREWS, GALAXY_LINES, VEHICLES.map((v) => v.lines), ...surface], lineId), ...conversationLines(worlds, voiced, [...VOICED, ...WORLD_VOICED]), ...people];
   writeFileSync(join(here, 'lines.json'), `${JSON.stringify(lines, null, 1)}\n`);
   const count = lines.reduce((n, l) => ({ ...n, [l.who]: (n[l.who] ?? 0) + 1 }), {});
   const by = Object.entries(count).map(([who, n]) => `${who} ${n}`);

@@ -30,5 +30,20 @@
   "celeborn": {"engine": "qwen"},
   "michael": {"engine": "qwen"},
   "jim": {"engine": "qwen"},
-  "erin": {"engine": "qwen"}
+  "erin": {"engine": "qwen"},
+  "badger": {"engine": "qwen"},
+  "pete": {"engine": "qwen"},
+  "tuco": {"engine": "qwen"},
+  "mike": {"engine": "qwen"},
+  "gus": {"engine": "qwen"},
+  "lydia": {"engine": "qwen"},
+  "declan": {"engine": "qwen"},
+  "saul": {"engine": "qwen"},
+  "thor": {"engine": "qwen"},
+  "natasha": {"engine": "qwen"},
+  "hulk": {"engine": "qwen"},
+  "soundwave": {"engine": "qwen"},
+  "grimlock": {"engine": "qwen"},
+  "starscream": {"engine": "qwen"},
+  "jazz": {"engine": "qwen"}
 }
