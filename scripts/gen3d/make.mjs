@@ -47,7 +47,8 @@ export async function make(name, { image, prompt, what, faces = 24000, tex = 204
     const b = await bake(raw, low, { faces, tex });
     log(`baked to ${faces} faces in ${b.seconds.toFixed(0)}s`);
   } else log(noBake ? 'no bake: the web cut simplifies the raw mesh' : 'no Blender here: the web cut simplifies the raw mesh');
-  const w = await publish(low, name, { tris: faces, tex, what: what ?? name, engine: g.engine === 'trellis2' ? 'TRELLIS.2' : faithful ? 'Pixal3D (trellis.cpp)' : 'TRELLIS.2 (trellis.cpp)' });
+  const made = g.engine === 'trellis2' ? 'TRELLIS.2' : faithful ? 'Pixal3D (trellis.cpp)' : 'TRELLIS.2 (trellis.cpp)';
+  const w = await publish(low, name, { tris: faces, tex, what: what ?? name, engine: low === raw ? made : `${made}, baked in Blender` });
   log(`${Math.round(w.before)} → ${Math.round(w.after)} triangles, ${(w.bytes / 1024).toFixed(0)} KB → ${w.out}`);
   if (process.env.CHROME) {
     const out = join(dir, 'sheet.png');

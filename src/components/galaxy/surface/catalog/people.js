@@ -21,4 +21,7 @@ export const MODELS = {
   // a death trooper (Rogue One)
   deathtrooper: { uid: '503860c8c63b419daa391f296ab874f1', as: 'the death troopers', metres: 2.0, yaw: 0, tris: 8000, tex: 512 },
   r2d2: { uid: 'b251906902104fddb6f1a9a38bfe92ab', as: 'R2-D2', metres: 1.09, yaw: 0, tris: 8000, tex: 512 },
+  // a snowtrooper, as on Hoth (the Empire's side of the galactic assault
+  // there, missions/assault.js); still as it comes, walked with a bob
+  snowtrooper: { uid: '8cad640402844e489d1080f5400ec667', as: 'the snowtroopers', metres: 1.83, yaw: 0, tris: 8000, tex: 512 },
 };

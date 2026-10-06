@@ -1,40 +1,79 @@
 // People standing about a landing (a thing of kind 'figure' in landings.js):
-// the site's own figures, idling where they stand, facing the ship as it
-// comes down. A Meshy figure on the shared skeleton (Albuquerque's people,
-// the office's, the galaxy's crew) idles on Rick's clips, borrowed as the
-// crews' are (footScene.js's loadPartyFigure); one of Portal panic's cast
-// (`meshy`: Beth, Jerry, Summer, the President…) on its own.
+// the site's own figures, standing where they are, facing the ship as it
+// comes down. A Meshy figure of the site's own (`url`: Albuquerque's people,
+// the office's, Jack, Mark, Bumblebee) stands as Albuquerque's town stands
+// the very same figures (office/people.js's 'stand': the arms down by the
+// sides, breathing, the head looking round now and then), not on the crews'
+// borrowed idle, which is Meshy's restless one: it swings the hips most of a
+// right angle and stoops, which on someone who's waiting to say a line reads
+// as turning away. One of Portal panic's cast (`meshy`: Beth, Jerry, Summer,
+// the President…) idles on its own clips, as it does in its own world. A
+// soft dark spot under each, as the crews have, so they stand on the ground
+// rather than over it.
 //
 // figure(kit, { url | meshy, tall }) → { object (in metres), solids, update } | null
 
 import * as THREE from 'three';
 import { loadPartyFigure } from '../footScene';
 import { createMeshyCast } from '../../rickmorty/portal/meshyCast';
+import { loadPeople } from '../../office/people';
+import { sharpenMaterial } from '../../../lib/three/textures';
 import { METRE } from '../foot';
 
-export async function figure(k, { url = null, meshy = null, tall = 1.8 } = {}) {
-  let cast = null;
-  if (meshy) {
-    // (one cast a landing, freed with the kit)
-    cast = k.cast ??= k.own(createMeshyCast());
-    await cast.load(null, [meshy]).catch(() => {});
+// a soft dark spot on the ground under someone (as footScene's crews have),
+// one texture for the landing's people, freed with the kit
+function spotUnder(k, tall) {
+  k.blob ??= k.own(
+    (() => {
+      const c = document.createElement('canvas');
+      c.width = c.height = 64;
+      const x = c.getContext('2d');
+      const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+      g.addColorStop(0, 'rgba(0,0,0,0.5)');
+      g.addColorStop(0.55, 'rgba(0,0,0,0.26)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      x.fillStyle = g;
+      x.fillRect(0, 0, 64, 64);
+      return new THREE.CanvasTexture(c);
+    })(),
+  );
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: k.blob, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+  mesh.name = 'spot';
+  mesh.position.y = 0.01;
+  mesh.scale.setScalar(tall * 0.5);
+  mesh.renderOrder = 1;
+  return mesh;
+}
+
+// one of the site's figures, stood as the town stands it
+async function standing(k, url, tall) {
+  const spec = { id: url, model: url, height: tall };
+  const cast = await loadPeople([spec]).catch(() => null);
+  const p = cast?.person(spec, { pose: 'stand', idle: true });
+  if (!p) {
+    cast?.dispose();
+    return null;
   }
-  const fig = await loadPartyFigure({ id: meshy ?? url, name: meshy ?? url, tall, src: meshy ? { meshy } : { url } }, cast).catch(() => null);
+  k.own(cast);
+  // (the cloth's print sharp at a slant: the tier's anisotropy)
+  p.group.traverse((o) => o.isMesh && sharpenMaterial(o.material));
+  return { object: p.group, update: (t, dt) => p.update(t, dt) };
+}
+
+// one of Portal panic's cast, on its own clips
+async function idling(k, meshy, tall) {
+  // (one cast a landing, freed with the kit)
+  const cast = (k.cast ??= k.own(createMeshyCast()));
+  await cast.load(null, [meshy]).catch(() => {});
+  const fig = await loadPartyFigure({ id: meshy, name: meshy, tall, src: { meshy } }, cast).catch(() => null);
   if (!fig) return null;
   const inner = new THREE.Group();
   inner.scale.setScalar(1 / METRE); // (the party's figures are in the map's units)
   inner.add(fig.model);
-  const object = new THREE.Group();
-  object.name = 'figure';
-  object.add(inner);
-  object.traverse((o) => {
-    if (o.isMesh) o.castShadow = true;
-  });
   // a little out of step with each other
   let lag = Math.random() * 2;
   return {
-    object,
-    solids: [{ circle: [0, 0, 0.35] }],
+    object: inner,
     update(t, dt) {
       if (lag > 0) {
         lag -= dt;
@@ -44,4 +83,17 @@ export async function figure(k, { url = null, meshy = null, tall = 1.8 } = {}) {
       fig.update(dt, 0);
     },
   };
+}
+
+export async function figure(k, { url = null, meshy = null, tall = 1.8 } = {}) {
+  const made = meshy ? await idling(k, meshy, tall) : url ? await standing(k, url, tall) : null;
+  if (!made) return null;
+  const object = new THREE.Group();
+  object.name = 'figure';
+  object.add(made.object);
+  made.object.traverse((o) => {
+    if (o.isMesh) o.castShadow = true;
+  });
+  object.add(spotUnder(k, tall));
+  return { object, solids: [{ circle: [0, 0, 0.35] }], update: made.update };
 }

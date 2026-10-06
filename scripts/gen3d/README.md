@@ -37,6 +37,29 @@ triangle budget, WebP textures, meshopt: the same steps as
 It refuses a model over its budget or over 1 MB. Everything else lands in
 `scripts/gen3d/cache/` (git-ignored).
 
+## From your phone
+
+`runner.mjs` watches the repository's GitHub issues: one labelled **`gen3d`**
+is a job. The title is the model's name; the body says what, one field a
+line, all optional but one of `prompt`/`what`/`image`:
+
+```
+what: a TIE fighter                 (for the credit; the prompt if there is none)
+prompt: a TIE fighter, grey, …      (FLUX draws the concept picture)
+image: (attach a picture, or a URL) (the picture to follow; Pixal3D unless faithful: no)
+faces: 24000  tex: 2048  seed: 42  res: 1024  fov: 49  engine: trelliscpp|trellis2
+faithful: no  bake: no
+```
+
+On the desktop, `node scripts/gen3d/runner.mjs --watch` polls every minute;
+`--once` makes one pass. Each job runs in the runner's own checkout beside
+the repository (`<repo>-gen3d`, made on first run, `node_modules` shared) on
+a branch `gen3d/<name>` from `origin/main`, then pushes, opens a pull request
+with the judging sheet (committed under `docs/gen3d/`) and comments on the
+issue, which it closes. A failure is commented and labelled `gen3d:failed`;
+fix the issue and remove the label to try again. Wiring the model into a
+scene is a separate change.
+
 ## The engines
 
 Two run the same model, Microsoft's TRELLIS.2-4B (MIT), from a single image:
@@ -94,8 +117,20 @@ Five more GGUFs beside TRELLIS.2's, from
 
 ### Blender (for bake.mjs)
 
-A portable Blender 4.x unzipped under `%LOCALAPPDATA%lender\` (winget's
-copy works too; `$BLENDER` points at any other). Cycles bakes on the GPU.
+A portable Blender 4.x unzipped under `%LOCALAPPDATA%\blender\` (winget's
+copy works too; `$BLENDER` points at any other), or, when the Windows build
+won't start (the 5.2 zip fails its side-by-side check on this machine), the
+**Linux build in WSL**, which `bake.mjs` finds at `~/blender/blender-*/blender`
+(`$BLENDER_WSL` for any other). A bare Ubuntu lacks two X libraries it links;
+conda-forge has them:
+
+```
+mkdir -p ~/blender && cd ~/blender && curl -L https://mirrors.ocf.berkeley.edu/blender/release/Blender4.5/blender-4.5.9-linux-x64.tar.xz | tar xJ
+source ~/miniforge3/bin/activate && conda create -y -n x11libs -c conda-forge xorg-libsm xorg-libice
+```
+
+Cycles bakes on the GPU either way (CUDA through WSL): the X-wing, 295k
+faces to 24k with colour, roughness, metal and normal maps, in ten seconds.
 
 ### Concept images
 

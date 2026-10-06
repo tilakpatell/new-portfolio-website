@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { check } from './budget.mjs';
 import { command, wslPath } from './generate.mjs';
@@ -77,5 +78,52 @@ describe('the picture models', () => {
     expect(f).toContain('--clip_l');
     expect(f).toContain('--t5xxl');
     expect(f).toContain('--steps 4');
+  });
+});
+
+describe('baking in Blender', () => {
+  it('runs a Windows Blender directly', async () => {
+    const { command } = await import('./bake.mjs');
+    const cmd = command('C:/m/raw.glb', 'C:/m/low.glb', { faces: 20000, tex: 1024, where: { kind: 'windows', exe: 'C:/b/blender.exe' } });
+    expect(cmd[0]).toBe('C:/b/blender.exe');
+    expect(cmd.slice(1, 3)).toEqual(['--background', '--python']);
+    expect(cmd.slice(-6)).toEqual(['C:/m/raw.glb', 'C:/m/low.glb', '--faces', '20000', '--tex', '1024']);
+  });
+  it('runs a Linux Blender in WSL with the paths translated and its missing X libraries found', async () => {
+    const { command } = await import('./bake.mjs');
+    const cmd = command('C:/m/raw.glb', 'C:/m/low.glb', { where: { kind: 'wsl', exe: '/home/me/blender/blender-4.5.9-linux-x64/blender' } });
+    expect(cmd.slice(0, 4)).toEqual(['wsl.exe', '-d', 'Ubuntu-24.04', '-e']);
+    const run = cmd.at(-1);
+    // (bake.py's own path, as WSL sees it: /mnt/c/… where the repo is on a
+    // Windows drive, as it is when this runs for real; as it is anywhere else)
+    const script = wslPath(fileURLToPath(new URL('./bake.py', import.meta.url)));
+    expect(run).toContain(`'/home/me/blender/blender-4.5.9-linux-x64/blender' '--background' '--python' '${script}'`);
+    expect(run).toContain("'/mnt/c/m/raw.glb' '/mnt/c/m/low.glb' '--faces' '24000' '--tex' '2048'");
+    expect(run).toMatch(/^export LD_LIBRARY_PATH=~\/miniforge3\/envs\/x11libs\/lib/);
+  });
+  it('has no command without a Blender', async () => {
+    const { command } = await import('./bake.mjs');
+    expect(command('a.glb', 'b.glb', { where: null })).toBeNull();
+  });
+});
+
+describe('the runner, jobs from GitHub issues', () => {
+  it('reads a prompt job from an issue: the title names it, the body says what', async () => {
+    const { parseIssue, makeArgs } = await import('./runner.mjs');
+    const job = parseIssue({ number: 7, title: 'gen3d: TIE Fighter', body: 'what: a TIE fighter\nprompt: a TIE fighter, grey, twin solar panels\nfaces: 16000\nbake: no' });
+    expect(job).toMatchObject({ number: 7, name: 'tie-fighter', what: 'a TIE fighter', prompt: 'a TIE fighter, grey, twin solar panels', faces: 16000, noBake: true, faithful: false });
+    expect(makeArgs(job)).toEqual(['tie-fighter', '--prompt', 'a TIE fighter, grey, twin solar panels', '--what', 'a TIE fighter', '--faces', '16000', '--no-bake']);
+  });
+  it('takes an attached picture as the image, followed closely unless told not to', async () => {
+    const { parseIssue, makeArgs } = await import('./runner.mjs');
+    const job = parseIssue({ number: 8, title: 'Red Five', body: 'what: Red Five\n\n![photo](https://github.com/user-attachments/assets/abc.png)\nfov: 49' });
+    expect(job).toMatchObject({ name: 'red-five', image: 'https://github.com/user-attachments/assets/abc.png', prompt: undefined, faithful: true, fov: 49 });
+    expect(makeArgs(job, 'C:/c/from-issue.png')).toEqual(['red-five', '--image', 'C:/c/from-issue.png', '--what', 'Red Five', '--fov', '49', '--faithful']);
+    expect(parseIssue({ number: 9, title: 'Red Five', body: 'image: https://x.test/a.png\nfaithful: no' })).toMatchObject({ image: 'https://x.test/a.png', faithful: false });
+  });
+  it('makes the title the prompt when the body says nothing, and no job from an empty title', async () => {
+    const { parseIssue } = await import('./runner.mjs');
+    expect(parseIssue({ number: 1, title: 'an AT-AT walker', body: '' })).toMatchObject({ name: 'an-at-at-walker', what: 'an AT-AT walker', prompt: 'an AT-AT walker' });
+    expect(parseIssue({ number: 2, title: 'gen3d:', body: 'prompt: x' })).toBeNull();
   });
 });

@@ -15,6 +15,19 @@ describe('the guns', () => {
       expect(owned.length, kind).toBeGreaterThan(0);
       const box = new THREE.Box3().setFromObject(gun);
       const size = box.getSize(new THREE.Vector3());
+      const muzzleOf = gun.getObjectByName('muzzle');
+      if (g.blade) {
+        // a lightsaber: the hilt and blade stand along +y, the tip at the top
+        expect(size.y, kind).toBeGreaterThan(1);
+        expect(size.y, kind).toBeLessThan(1.6);
+        expect(size.z, kind).toBeLessThan(0.2);
+        expect(muzzleOf, kind).toBeTruthy();
+        expect(muzzleOf.position.y, kind).toBeGreaterThan(box.max.y - 0.05);
+        expect(gun.getObjectByName('blade'), kind).toBeTruthy();
+        expect(gun.getObjectByName('grip'), kind).toBeTruthy();
+        expect(g.flash, kind).toBeNull();
+        continue;
+      }
       expect(size.z, kind).toBeGreaterThan(0.12); // longer than a hand
       expect(size.z, kind).toBeLessThan(1.3);
       expect(size.y, kind).toBeLessThan(0.5);

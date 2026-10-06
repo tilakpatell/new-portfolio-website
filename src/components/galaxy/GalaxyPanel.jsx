@@ -64,6 +64,11 @@ function Mission({ system }) {
             {g.go ?? 'Fly it now'} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
           </Link>
         ) : null}
+        {g.also?.map((a) => (
+          <Link key={a.id} to={a.to} className="btn btn-primary" title={a.text}>
+            {a.go ?? 'Play it now'}: {a.title} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        ))}
         <Link to={`/galaxy/${system.id}/mission`} className={live ? 'btn btn-ghost' : 'btn btn-primary'}>
           Read the briefing
         </Link>

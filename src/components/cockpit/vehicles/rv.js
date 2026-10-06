@@ -27,6 +27,10 @@ import { loadTexture } from '../../../lib/three/textures';
 import { glassMat, glowSprite, glowTexture, painted, planarUV, rng, roundedBox, tubeAlong } from '../kit';
 import { sky as starField } from '../space';
 import { loadCrew, nudge, prefetchCrew } from '../crew';
+import { retarget } from '../../rickmorty/portal/clips';
+import { LOOK_KEY, bodyById, readLooks } from '../../rickmorty/wardrobe/looks';
+import { dress } from '../../rickmorty/wardrobe/wear';
+import { local } from '../../../lib/hooks';
 import { createModels } from '../../../lib/models';
 import { disposeTree } from '../../../lib/three/renderer';
 import { clamp01, due, smooth } from '../timeline';
@@ -105,12 +109,17 @@ function loadSet(dir, { normal = true, arm = false } = {}) {
   return Promise.all([loadTex(`${dir}/color.webp`), normal ? loadTex(`${dir}/normal.webp`, { srgb: false }) : null, arm ? loadTex(`${dir}/arm.webp`, { srgb: false }) : null]).then(([color, nrm, armMap]) => ({ color, normal: nrm, arm: armMap }));
 }
 
-// a crew member's clip on its own (the HTTP cache has it from loadCrew)
+// a crew member’s clip on its own (the HTTP cache has it from loadCrew),
+// noting the hips it was made on (for another figure of theirs to sit on)
 function loadClip(name) {
   const l = gltfLoader();
   return l
     .loadAsync(`/models/cockpit/${name}.glb`)
-    .then((g) => g.animations[0] ?? null)
+    .then((g) => {
+      const c = g.animations[0] ?? null;
+      if (c) c.userData = { ...c.userData, hips: g.scene.getObjectByName('Hips')?.position.y };
+      return c;
+    })
     .catch(() => null);
 }
 
@@ -1737,8 +1746,13 @@ export async function build({ rich, coarse, renderer, pmrem, say, added }) {
   const models = createModels({ base: '/games/models' });
 
   // Jesse, sat in the passenger's seat; Mr. White stood in the aisle behind,
-  // in his suit
-  const jesseP = loadCrew('jesse', { clip: 'sit', height: 1.73, hips: [0.6, 0.6, 0.2] });
+  // in his suit. Both as the wardrobe has them (looks.js, kept): Walt’s
+  // bodies are all his one figure, the cockpit’s, so only his colours and
+  // gear change; Jesse in the lab’s suit is Albuquerque’s figure of him, sat
+  // on his own clip.
+  const looks = readLooks(local.get(LOOK_KEY));
+  const jesseFile = looks.jesse.body === 'jesse' ? null : bodyById(looks.jesse.body)?.asset;
+  const jesseP = loadCrew('jesse', { file: jesseFile, clip: 'sit', height: 1.73, hips: [0.6, 0.6, 0.2] });
   // the wings, the winged RV and Hank's SUV: waited for a little (LATE, so
   // they're there to be drawn once with everything else before you see the
   // cab), and after that they come when they come (without them the RV just
@@ -2380,8 +2394,11 @@ export async function build({ rich, coarse, renderer, pmrem, say, added }) {
   inside.add(glass);
 
   // ── the crew ──
+  // in their looks (nothing in Jesse’s hand: it rests on his knee)
+  const undress = [jesse && dress(jesse, { ...looks.jesse, gear: { ...looks.jesse.gear, hand: 'none' } }), walt && dress(walt, looks.walt)].filter(Boolean);
   // Jesse sat back, his head turned your way; Mr. White watching the road
-  const jesseMove = calmly(jesse, sitClip, 9.5, 1.2, 0.5, (b, t) => {
+  const jesseSit = jesseFile && jesse ? retarget(sitClip, jesse.bones.Hips?.position.y ?? 1, sitClip?.userData.hips ?? jesse.bones.Hips?.position.y ?? 1) : sitClip;
+  const jesseMove = calmly(jesse, jesseSit, 9.5, 1.2, 0.5, (b, t) => {
     nudge(b.Spine01, -0.04, 0, 0);
     nudge(b.Head, -0.06, 0.45 + Math.sin(t * 0.23) * 0.12, 0);
   });
@@ -2971,6 +2988,7 @@ export async function build({ rich, coarse, renderer, pmrem, say, added }) {
     },
     dispose() {
       gone = true;
+      for (const off of undress) off();
       jesse?.dispose();
       walt?.dispose();
       models.dispose();

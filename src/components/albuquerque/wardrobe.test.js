@@ -2,7 +2,8 @@ import { readFileSync, statSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { isSpec } from '../office/people';
 import { CUSTOMERS } from './metherria/rules';
-import { ABQ, moodGesture } from './wardrobe';
+import { ABQ, dressedAs, moodGesture } from './wardrobe';
+import { BODIES, defaultLook, readLook } from '../rickmorty/wardrobe/looks';
 
 // a figure's .glb, and its JSON chunk
 const file = (model) => new URL(`../../../public${model}`, import.meta.url);
@@ -43,20 +44,47 @@ describe("Albuquerque's people", () => {
     }
   });
 
+  // Walt and Jesse are the wardrobe's own bodies too, the crew's on foot and
+  // in the hangar, so they're made in HD as Rick and Morty are (about
+  // 40,000 faces, 2k maps, which lib/detail halves on a phone); the town's
+  // other people, many at once, stay light
+  const HD = new Set(Object.values(BODIES).flat().map((b) => b.asset));
   it('ships no animations (the browser poses them), and stays small enough to send', () => {
     for (const { id, model } of Object.values(ABQ)) {
       expect(glb(model).animations ?? [], id).toHaveLength(0);
-      expect(statSync(file(model)).size, id).toBeLessThan(220 * 1024);
+      expect(statSync(file(model)).size, id).toBeLessThan((HD.has(model) ? 560 : 220) * 1024);
     }
   });
 
   it('is welded and on its own atlas (scripts/reatlas.mjs), which a mipmap can be made of', () => {
     for (const { id, model } of Object.values(ABQ)) {
       const g = glb(model);
-      // (as Meshy cuts a figure, 12,000 to 15,000 vertices)
-      expect(g.accessors[g.meshes[0].primitives[0].attributes.POSITION].count, id).toBeLessThan(9000);
+      // (as Meshy cuts a figure, 12,000 to 15,000 vertices, welded to under
+      // 9,000; an HD one of about 40,000 faces to about 25,000)
+      expect(g.accessors[g.meshes[0].primitives[0].attributes.POSITION].count, id).toBeLessThan(HD.has(model) ? 26000 : 9000);
       expect(g.samplers[g.textures[0].sampler], id).toMatchObject({ minFilter: 9987, wrapS: 33071, wrapT: 33071 });
     }
+  });
+
+  it('has a figure here for every body the wardrobe gives Walt and Jesse', () => {
+    for (const who of ['walt', 'jesse']) for (const b of BODIES[who]) expect(dressedAs(who, readLook(who, { body: b.id })).spec.model, b.id).toBe(b.asset);
+  });
+
+  it('dresses Walt and Jesse as the wardrobe has them, in the figure their look wears', () => {
+    const jesse = readLook('jesse', { body: 'jesselab', colors: { outer: 'bluesky' }, gear: { head: 'porkpie' } });
+    expect(dressedAs('jesse', jesse)).toEqual({ spec: ABQ.jesseLab, look: jesse });
+    expect(dressedAs('jesse', defaultLook('jesse'))).toEqual({ spec: ABQ.jesse, look: defaultLook('jesse') });
+    const white = readLook('walt', { body: 'mrwhite', gear: { face: 'respirator' } });
+    expect(dressedAs('walt', white).spec).toBe(ABQ.walt); // (Mr. White is Walt’s one figure)
+  });
+
+  it('keeps someone in the figure a scene has them in, with its colours only if the look is on it', () => {
+    const hoodie = readLook('jesse', { body: 'jesse', colors: { outer: 'hoodiered' }, gear: { face: 'shades' } });
+    expect(dressedAs('jesse', hoodie, ABQ.jesseLab)).toEqual({ spec: ABQ.jesseLab, look: { body: 'jesselab', colors: {}, gear: hoodie.gear } });
+    const lab = readLook('jesse', { body: 'jesselab', colors: { outer: 'bluesky' } });
+    expect(dressedAs('jesse', lab, ABQ.jesseLab)).toEqual({ spec: ABQ.jesseLab, look: lab });
+    const heisenberg = readLook('walt', { body: 'heisenberg', colors: { legs: 'khaki' } });
+    expect(dressedAs('walt', heisenberg, ABQ.walt)).toEqual({ spec: ABQ.walt, look: heisenberg });
   });
 
   it('reacts to each mood', () => {

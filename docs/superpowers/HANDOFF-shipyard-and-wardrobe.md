@@ -9,6 +9,11 @@ Plan: `docs/superpowers/plans/2026-10-05-shipyard-and-wardrobe.md` (all 16 tasks
 - **HD Rick and Morty** (PR #182): about 40,000 faces and 2k textures, made by Meshy from their own concept images (`scripts/meshy.mjs ... hd`). The HD cruiser came out smudged and was not used; its task is in `scripts/meshy-tasks.json` as `saucer-hd` if it's ever wanted (fetch is free). 71 Meshy credits were left.
 - **The wardrobe** (PRs #208, #213): `src/components/rickmorty/wardrobe/`, worn in the C-137 world, the Citadel, the cruiser's seats, on foot, and online.
 
+## Breaking Bad wardrobe
+- Walt and Jesse are dressed by the same wardrobe (`looks.js` `CASTS`, `CREW_CAST`): the hangar's panel shows their tabs when the RV's crew is flying, and their looks are worn in the RV's cockpit, on foot, in Albuquerque and online (`lb` beside Rick and Morty's `l`).
+- Their colour windows are in `dress.js` (`SUIT`, `BOOTS`, Jesse's hoodie, jeans and trainers): they were checked against the HD figures (about 40,000 faces, 2k maps, `scripts/meshy-albuquerque.mjs` and `meshy-cockpit.mjs`) by sampling each texture by bone zone, and still hold; retune them there if the figures are retextured again. The town's budget test holds Walt and Jesse to the HD budget, everyone else to the town's. Their gear is built in code in `gear.js` and fitted per figure (`FIT`'s `lift` and `back`).
+- Only the hazmat Walt figure exists; Mr. White and Heisenberg are looks on it. A Walt in his own green shirt and tan jacket would want a figure of his own (Meshy, on the shared skeleton).
+
 ## Ideas for later
 - More shipyard modules: the CC0 kits found (Kenney Space Kit, majadroid's CC0 ship components) need sockets of their own.
 - Wardrobe gear colours (a swatch for the hat), and more bodies (the crowd's variants are static, not rigged).

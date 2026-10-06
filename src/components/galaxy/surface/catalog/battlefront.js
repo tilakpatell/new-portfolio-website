@@ -1,0 +1,25 @@
+// The surface models brought in from Star Wars Battlefront II (2005): the
+// remaster's (Harrisonfog's Battlefront 2 Remaster, used with its author's
+// permission on this non-commercial fan site), each written to
+// public/models/galaxy/surface/<kind>.glb by scripts/battlefront-import.mjs
+// (standing on y = 0, facing +z, in metres, grounded in the file) and
+// credited in src/data/modelCredits.json as `surface-<kind>` with the
+// permission's wording. The script writes each line below as it brings a
+// model in; a kind named here takes over from the same kind's Sketchfab or
+// built figure wherever a world or a battle (missions/assaults.js) asks for
+// it: snowtrooper, hothtrooper, clone, battledroid, superdroid, stormtrooper,
+// scouttrooper, shoretrooper…
+//
+// Fields as in desert.js; `made: 'battlefront'` marks where it came from.
+export const MODELS = {
+  snowtrooper: { made: 'battlefront', as: 'the snowtroopers', metres: 1.83, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  hothtrooper: { made: 'battlefront', as: 'the Rebel troopers on Hoth', metres: 1.78, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  clone: { made: 'battlefront', as: 'the clone troopers', metres: 1.83, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  battledroid: { made: 'battlefront', as: 'the battle droids', metres: 1.91, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  superdroid: { made: 'battlefront', as: 'the super battle droids', metres: 1.93, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  stormtrooper: { made: 'battlefront', as: 'the stormtroopers', metres: 1.83, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  scouttrooper: { made: 'battlefront', as: 'the scout troopers', metres: 1.83, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  shoretrooper: { made: 'battlefront', as: 'the shoretroopers', metres: 1.83, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  deathtrooper: { made: 'battlefront', as: 'the death troopers', metres: 1.83, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  sandtrooper: { made: 'battlefront', as: 'the sandtroopers', metres: 1.83, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+};
