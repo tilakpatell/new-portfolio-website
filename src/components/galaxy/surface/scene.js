@@ -56,6 +56,7 @@ import { siteOf } from './sites';
 import { heightGrid, makeHeight } from './terrain';
 import { createMarks, groundMaterial, groundMesh } from './ground';
 import { createSky } from './sky';
+import { createSkyFog } from './skyfog';
 import { createWater } from './water';
 import { createWeather } from './weather';
 import { createKit } from './kit';
@@ -126,9 +127,15 @@ export async function create(canvas, ctx) {
   scene.add(camera);
   canvas.setAttribute('aria-hidden', 'true');
   const post = createPost(renderer, scene, camera, { small });
-  const warm = (root) => precompile(renderer, singlePass(root), camera, scene, post.on ? post.composer.readBuffer : undefined);
+  // (fogged in the sky's colour before its shaders are made, so they're made once)
+  const warm = (root) => {
+    skyFog.scene(root);
+    return precompile(renderer, singlePass(root), camera, scene, post.on ? post.composer.readBuffer : undefined);
+  };
 
   const sky = createSky(site);
+  // (the fog the sky's colour that way: everything fogged with it, as it's put in the world)
+  const skyFog = createSkyFog(sky, THREE.ShaderChunk);
   scene.add(sky.mesh);
   const sunDir = sky.sunDirs[0] ?? new V(0.3, 0.8, 0.4).normalize();
   const sun = new THREE.DirectionalLight(site.sky.suns?.[0]?.color ?? '#ffffff', site.light.sun ?? 3);
@@ -889,6 +896,7 @@ export async function create(canvas, ctx) {
     hemi.intensity = z ? (L?.ambient ?? 0.4) : outdoors.ambient;
     scene.fog.color.set(L?.fog ?? outdoors.fog);
     scene.fog.density = z ? (L?.density ?? 0.02) : outdoors.density;
+    skyFog.indoors(Boolean(z));
     scene.environmentIntensity = z ? 0.15 : outdoors.env;
     sky.mesh.visible = !z;
     if (weather) weather.group.visible = !z;
@@ -1771,6 +1779,8 @@ export async function create(canvas, ctx) {
     sun.position.copy(snapped).addScaledVector(sunDir, 300);
     sun.target.position.copy(snapped);
     sky.update(camera, t, flash.k);
+    // (whatever's come into the world since, fogged in the sky's colour before it's drawn)
+    skyFog.scene(scene);
     water?.update(t);
     weather?.update(t, camera, world.heightAt, size.h);
     compass();
