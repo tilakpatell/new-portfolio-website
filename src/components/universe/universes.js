@@ -21,14 +21,16 @@
 //   palette  the colours it's painted in
 
 // how much bigger than its size number each kind is drawn, in map units:
-// the planets huge against the ship (0.26 long: a hundred and more of it
-// across, as far-off worlds are), the stations less so but still dwarfing
-// it (80 to 97 ship lengths across), and smaller than any world. The 3 is
-// scale.js's HOME_SCALE, written out: this file has no imports, so the
-// prerender (scripts/prerender.mjs) can load it in Node as it is;
-// scale.test.js fails if the two differ.
+// the planets huge against the ship (0.26 long: 360 to 450 of it across)
+// and about four times a station across, the stations dwarfing it too (80
+// to 97 ship lengths). The 3s are scale.js's HOME_SCALE and WORLD_SCALE,
+// written out: this file has no imports, so the prerender
+// (scripts/prerender.mjs) can load it in Node as it is; scale.test.js fails
+// if they differ. The Star Wars gate keeps its own size (GATE): it's a
+// gate, not a world, and the galaxy behind it is sized to it.
 const STATION = 7 * 3;
-const PLANET = 28;
+const PLANET = 28 * 3;
+const GATE = 28;
 
 const CORE = [
   {
@@ -238,7 +240,7 @@ const FANDOMS = [
     size: 0.64,
     palette: { base: '#a8482a', dark: '#4a1a10', light: '#e6a05a', glow: '#ffd23a' },
   },
-].map((u) => ({ ...u, size: u.size * PLANET, kind: 'fandom', place: u.place ?? u.world }));
+].map((u) => ({ ...u, size: u.size * (u.portal ? GATE : PLANET), kind: 'fandom', place: u.place ?? u.world }));
 
 export const UNIVERSES = [...CORE, ...FANDOMS];
 
