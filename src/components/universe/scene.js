@@ -126,6 +126,7 @@ import { SUPERNOVA_SITES, createSupernovae } from './supernova';
 import { DEEP, WONDERS, moveBinaries, nearestStar, openness, reachOf, wonderById } from './deep';
 import { KEY as KEY_FULL, STARS as LIT_STARS, dayYaw, lightAt, sunFor } from './lighting';
 import { createCrash } from './crash';
+import { createExplosions } from '../../lib/three/explosions';
 import { createInfall } from './infall';
 import { DISK_N, MAW, captured, fallAt, plungeAt, pullAt, startFall } from './maw';
 import { createTraffic } from './traffic';
@@ -710,6 +711,12 @@ export async function create(canvas, ctx) {
   let heroEngine = null;
   const traffic = reduced ? null : createTraffic(map, { small, fleet, engines });
   const pops = createCrash(map);
+  // and what's shot down burns: a fireball, shards and (bigger than a
+  // fighter) a ring, pooled (lib/three/explosions); just the pop on a weak
+  // device, once the quality's been lowered, or from the pace's step 2
+  const blasts = createExplosions({ parent: map, small });
+  const burn = (at, size, tint = null) => blasts.burst(at, size, tint);
+  if (tier === 'low') blasts.setMode('pop');
 
   // heavy rounds (weapons.js): a glowing slug with a halo and a tail of
   // fire, homing on what the guns had locked when it went
@@ -1992,6 +1999,7 @@ export async function create(canvas, ctx) {
       if (hh) {
         b.visible = false;
         pops.hit({ point: hh.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: hh.down ? hh.size * 1.8 : 0.2 });
+        if (hh.down) burn(hh.at, hh.size);
         state.hitMark = 1; // the reticle flashes
         if (hh.down) {
           emit({ type: 'kill', kind: hh.kind, hunter: true });
@@ -2006,6 +2014,7 @@ export async function create(canvas, ctx) {
       if (ph) {
         b.visible = false;
         pops.hit({ point: ph.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: ph.down ? ph.size * 1.8 : 0.2 });
+        if (ph.down) burn(ph.at, ph.size);
         state.hitMark = 1;
         if (ph.hunter) {
           net?.hunterHit(ph.id, ph.hunter, d.punch ?? 1);
@@ -2025,6 +2034,7 @@ export async function create(canvas, ctx) {
       if (h) {
         b.visible = false;
         pops.hit({ point: h.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: h.glance ? 0.25 : h.size * 1.6 });
+        if (!h.glance) burn(h.at, h.size);
         if (!h.glance) {
           emit({ type: 'kill', kind: h.kind });
           state.heat += h.civil ? 1.5 : 1;
@@ -2124,6 +2134,7 @@ export async function create(canvas, ctx) {
         }
         state.hitMark = 1;
         boom(m, hh.at, hh.down);
+        if (hh.down) burn(hh.at, hh.size);
         continue;
       }
       const ph = pilots.hit(shotFrom, to, d.punch);
@@ -2135,6 +2146,7 @@ export async function create(canvas, ctx) {
           if (ph.down) emit({ type: 'kill', kind: ph.kind, hunter: true });
         } else net?.hit(ph.id, d.damage);
         boom(m, ph.at, Boolean(ph.down));
+        if (ph.down) burn(ph.at, ph.size);
         continue;
       }
       if (citadelGeo) {
@@ -2151,6 +2163,7 @@ export async function create(canvas, ctx) {
           state.heat += h.civil ? 1.5 : 1;
         }
         boom(m, h.at, !h.glance);
+        if (!h.glance) burn(h.at, h.size);
       } else if (leviathans.hit(shotFrom, to)) {
         boom(m, m.position.clone());
         leviathanShot();
@@ -2656,6 +2669,7 @@ export async function create(canvas, ctx) {
       const r = hunters?.damage(e.id, e.damage);
       if (r) {
         pops.hit({ point: r.at, normal: new THREE.Vector3(0, 1, 0), radius: r.down ? r.size * 1.8 : 0.2 });
+        if (r.down) burn(r.at, r.size);
         if (r.down) net?.helped?.(e.from, NAMES[r.kind] ?? 'hunter');
       }
     } else if (e.type === 'downed') {
@@ -2871,7 +2885,10 @@ export async function create(canvas, ctx) {
       // (only a kill goes off: there's one burst for the whole map, and
       // the wing's hits mustn't cut short your own)
       const got = hunters.damage(h.id, h.damage);
-      if (got?.down) pops.hit({ point: got.at, normal: popDir.set(0, 1, 0), radius: got.size * 1.8 });
+      if (got?.down) {
+        pops.hit({ point: got.at, normal: popDir.set(0, 1, 0), radius: got.size * 1.8 });
+        burn(got.at, got.size);
+      }
     }
     for (const e of r.events) {
       if (e.type === 'joined') emit({ type: 'event', id: 'wingmen', sub: e.kind });
@@ -2912,7 +2929,10 @@ export async function create(canvas, ctx) {
         if (e.at === 'you') hurt(e.damage);
         else {
           const got = hunters.damage(e.at, e.damage);
-          if (got?.down) pops.hit({ point: got.at, normal: popDir.set(0, 1, 0), radius: got.size * 1.8 });
+          if (got?.down) {
+            pops.hit({ point: got.at, normal: popDir.set(0, 1, 0), radius: got.size * 1.8 });
+            burn(got.at, got.size);
+          }
         }
       } else if (e.type === 'delegate' && live) {
         // (the wing or the hunt flies this one: Birdperson, Fett)
@@ -2958,7 +2978,11 @@ export async function create(canvas, ctx) {
       }
     }
     for (const e of skirmishes.update(dt, t, live)) {
-      if (e.type === 'down') pops.hit({ point: new THREE.Vector3(e.at.x, e.at.y, e.at.z), normal: popDir.set(0, 1, 0), radius: e.side === 'freighter' ? 2.4 : 0.6 });
+      if (e.type === 'down') {
+        const at = new THREE.Vector3(e.at.x, e.at.y, e.at.z);
+        pops.hit({ point: at, normal: popDir.set(0, 1, 0), radius: e.side === 'freighter' ? 2.4 : 0.6 });
+        burn(at, e.side === 'freighter' ? 1.3 : 0.35);
+      }
       // the freighter jumping away (to lightspeed, or through a portal)
       if (e.type === 'away' || (e.type === 'over' && e.winner === 'jumped')) crashFx.arrive({ point: new THREE.Vector3(e.at.x, e.at.y, e.at.z), kind: state.skirmishFamily === 'rickmorty' ? 'cruiser' : 'xwing', heading: e.heading ?? 0 });
       else if (e.type === 'over' && live) {
@@ -3146,6 +3170,8 @@ export async function create(canvas, ctx) {
       c.impact = true;
       m.group.visible = false;
       crashFx.hit({ point: c.point, normal: c.normal, body: planetOf[c.id]?.surface ?? null, radius: c.radius, sun: c.sun, colour: c.colour });
+      // (and your ship goes up as theirs do, into the shockwave)
+      if (!c.sun) burn(c.point, LENGTH * 2);
       state.shake = reduced ? 0 : c.kind === 'giant' ? 1.4 : 1;
       state.flare = reduced ? 1 : c.sun ? 2.6 : 2;
       if (!c.shot) emit({ type: 'crash', id: c.id, kind: c.kind ?? undefined }); // (shot down said so as it began)
@@ -3832,6 +3858,7 @@ export async function create(canvas, ctx) {
     if (sharp !== null) {
       post.sharpness = sharp;
       post.setLevel(pace.level);
+      blasts.setMode(pace.level >= 2 || tier === 'low' || state.low ? 'pop' : 'full');
       // (the planets' real air goes for their old halo at the pace's step 3, and comes back)
       for (const p of planets) p.setAir(pace.level >= 3 ? 'halo' : 'shell');
     }
@@ -3988,6 +4015,7 @@ export async function create(canvas, ctx) {
     }
     const crashBusy = crashFx.update(dt, camera);
     const popBusy = pops.update(dt, camera);
+    blasts.update(dt);
     const fxBusy = crashBusy || popBusy || Boolean(state.crash?.swallow);
     if (traffic) {
       for (const e of traffic.update(dt, t, flying() && !state.crash && !state.dive ? state.ship : null, { fight: Boolean(hunters?.active) })) {
@@ -4635,6 +4663,7 @@ export async function create(canvas, ctx) {
       state.low = true;
       stars.geometry.setDrawRange(0, STARS_LOW);
       post.off();
+      blasts.setMode('pop');
       ctx.invalidate();
     },
     // a name under the pointer lights its planet too
@@ -4782,6 +4811,7 @@ export async function create(canvas, ctx) {
       disposeTree(spares);
       crashFx.dispose();
       pops.dispose();
+      blasts.dispose();
       hunters?.dispose();
       wingmen?.dispose();
       skirmishes?.dispose();
