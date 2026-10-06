@@ -184,6 +184,26 @@ export const CREWS = [
         ['morty', 'I got one of the Ricks!'],
         ['rick', 'One less Rick, Morty. The multiverse can spare it.'],
       ],
+      krombopulos: [
+        ['morty', 'I got him, Rick! The assassin guy!'],
+        ['rick', 'Krombopulos Michael. He loved killing, Morty. Didn’t love this.'],
+      ],
+      evilmortyship: [
+        ['morty', 'Rick, I hit him! I hit… me?'],
+        ['rick', 'He’s not you, Morty. He’s the you that thought it through. He’ll be back.'],
+      ],
+      zigerion: [
+        ['rick', 'Got one. Or did I? With Zigerions you never know, Morty.'],
+        ['morty', 'Is any of this real, Rick?'],
+      ],
+      squanchship: [
+        ['morty', 'Rick! I shot Squanchy!'],
+        ['rick', 'He’ll squanch it off, Morty.'],
+      ],
+      poopyship: [
+        ['morty', 'Oh no, Rick, I shot Mr. Poopybutthole!'],
+        ['rick', 'Ooh-wee. That’s a long recovery arc, Morty.'],
+      ],
     },
     // hunters after you (hunters.js), by who they are
     hunted: {
@@ -199,6 +219,31 @@ export const CREWS = [
       council: [
         ['comms', 'Rick Sanchez of Earth C-137, by order of the Council of Ricks: surrender your portal gun.'],
         ['rick', 'The Council. A bunch of Ricks who think they’re better than me. Light ’em up, Morty.'],
+      ],
+      // Evil Morty's guard: a swarm of Mortys in yellow fighters
+      mortys: [
+        ['morty', 'Rick, those ships are full of… Mortys!'],
+        ['rick', 'Evil Morty’s guard, Morty. A whole swarm of you. Try not to take it personally.'],
+      ],
+      // and Evil Morty himself at their head
+      ace: [
+        ['morty', 'Rick, the black one with the eye patch… is that him?'],
+        ['rick', 'Evil Morty. The one Morty who figured it out. Don’t let him get behind us.'],
+      ],
+      zigerions: [
+        ['rick', 'Zigerions. Con men with spaceships, Morty. If one vanishes when you hit it, it was never there.'],
+        ['morty', 'How do we know this isn’t a simulation, Rick?'],
+        ['rick', 'We don’t, Morty. Shoot anyway.'],
+      ],
+      // what the Federation cruiser launches
+      fedfleet: [
+        ['morty', 'Rick! It’s launching gunships!'],
+        ['rick', 'Big ones sit back and shoot, Morty. Go in after them.'],
+      ],
+      krombopulos: [
+        ['comms', 'Oh boy, here I go killing again!'],
+        ['morty', 'Rick, he’s just sitting on us. He’s not even shooting.'],
+        ['rick', 'Krombopulos Michael, Morty. He waits for you to start it. So don’t. Or do, and shoot better.'],
       ],
     },
     // their lasers hitting you, your shields low, shot down
@@ -245,11 +290,22 @@ export const CREWS = [
     ],
     // the director's set pieces (director.js), and going out into deep space
     events: {
-      // friends on your wing in a long fight (wingmen.js), and going again
-      wingmen: [
-        ['birdperson', 'Rick. I am here to assist. It is what friends do.'],
-        ['rick', 'Birdperson! Thank God. I mean, took you long enough.'],
-      ],
+      // friends on your wing in a long fight (wingmen.js), and going again: by who came
+      wingmen: {
+        birdperson: [
+          ['birdperson', 'Rick. I am here to assist. It is what friends do.'],
+          ['rick', 'Birdperson! Thank God. I mean, took you long enough.'],
+        ],
+        squanchship: [
+          ['comms', 'Rick! It’s Squanchy! I’m gonna squanch these guys!'],
+          ['rick', 'Squanchy! Get in close, buddy. Squanch ’em up.'],
+        ],
+        poopyship: [
+          ['comms', 'Ooh-wee! Hey Rick, hey Morty! Mr. Poopybutthole here to help!'],
+          ['morty', 'Mr. Poopybutthole! You came!'],
+          ['rick', 'Great. Don’t get attached, Morty. He never stays long.'],
+        ],
+      },
       wingmenGone: [
         ['birdperson', 'Our work here is done. Goodbye, old friend.'],
         ['morty', 'Bye, Birdperson!'],
@@ -266,6 +322,11 @@ export const CREWS = [
       skirmishLost: [
         ['morty', 'Oh no, Rick, they got them.'],
         ['rick', 'That’s the galaxy, Morty. Cold, and full of jerks.'],
+      ],
+      // a Federation cruiser drops in and launches gunships (the director's capital ship)
+      destroyer: [
+        ['morty', 'Rick, that’s a huge Federation ship! It just came out of nowhere!'],
+        ['rick', 'Cruiser, Morty. Gunships coming out the bottom. This is why I hate bureaucracy.'],
       ],
       distress: [
         ['comms', 'Mayday, mayday! Gromflomites! Anybody!'],
@@ -609,11 +670,54 @@ export const CREWS = [
         ['luke', 'I hit Vader’s ship! It’s spinning away!'],
         ['r2', '[a triumphant whistle]'],
       ],
+      tiebomber: [['luke', 'Bomber down!']],
+      gunboat: [
+        ['luke', 'Got the gunboat!'],
+        ['r2', '[a relieved whistle]'],
+      ],
+      ig2000: [
+        ['luke', 'That’s the droid’s ship down. IG-88 won’t be collecting today.'],
+        ['r2', '[a smug beep]'],
+      ],
+      houndstooth: [
+        ['luke', 'The Trandoshan’s ship is breaking up!'],
+        ['r2', '[a triumphant whistle]'],
+      ],
+      punishingone: [
+        ['luke', 'Got Dengar! His ship’s finished!'],
+        ['r2', '[a cheerful whistle]'],
+      ],
+      skiff: [['luke', 'One less pirate!']],
+      ywing: [
+        ['comms', 'Red Five! That was Gold Squadron!'],
+        ['luke', 'I’m sorry! It crossed right in front of me!'],
+      ],
+      awing: [
+        ['comms', 'Red Five, watch your fire! That was Green Three!'],
+        ['r2', '[a horrified shriek]'],
+      ],
     },
     hunted: {
       fett: [
         ['r2', '[A Firespray on an attack run. Boba Fett.]'],
         ['luke', 'A bounty hunter. Stay with me, Artoo. He only has to miss once.'],
+      ],
+      ig88: [
+        ['r2', '[an alarmed shriek]'],
+        ['luke', 'That’s the IG-2000. An assassin droid, Artoo. It doesn’t stop.'],
+      ],
+      bossk: [
+        ['r2', '[a nervous warble]'],
+        ['luke', 'The Hound’s Tooth. Bossk. He hunts Wookiees for sport, and he’s found us.'],
+      ],
+      dengar: [
+        ['luke', 'The Punishing One. Dengar. Artoo, he’s fast. Keep him off our tail.'],
+        ['r2', '[an urgent whistle]'],
+      ],
+      // what the Star Destroyer launches: TIEs, bombers, a gunboat
+      navy: [
+        ['comms', 'Red Five, bombers and a gunboat coming out of that Destroyer!'],
+        ['luke', 'Keep moving, Artoo. The bombers can’t turn.'],
       ],
       empire: [
         ['comms', 'Red Five, you’ve got TIEs on your tail!'],
@@ -666,11 +770,22 @@ export const CREWS = [
       ['comms', 'Great shot, kid. That was one in a million.'],
     ],
     events: {
-      // friends on your wing in a long fight (wingmen.js), and going again
-      wingmen: [
-        ['comms', 'Red Two here, Luke. Coming in on your wing!'],
-        ['luke', 'Wedge! Good to see you. Watch yourself, they’re quick.'],
-      ],
+      // friends on your wing in a long fight (wingmen.js), and going again: by who came
+      wingmen: {
+        xwing: [
+          ['comms', 'Red Two here, Luke. Coming in on your wing!'],
+          ['luke', 'Wedge! Good to see you. Watch yourself, they’re quick.'],
+        ],
+        ywing: [
+          ['comms', 'Gold Leader here. We’re slow, Red Five, but we hit hard. Point us at them.'],
+          ['luke', 'Thanks, Gold Leader. The TIEs on my tail, please!'],
+        ],
+        awing: [
+          ['comms', 'Green Squadron, coming through. One pass, then we’re needed elsewhere.'],
+          ['luke', 'One pass is plenty. Go!'],
+          ['r2', '[an excited whistle]'],
+        ],
+      },
       wingmenGone: [
         ['comms', 'Red Two, breaking off. Good flying, Luke.'],
         ['r2', '[a cheerful whistle]'],
@@ -1010,6 +1125,27 @@ export const CREWS = [
         ['han', 'Ha! Vader’s spinning off into space!'],
         ['chewie', '[a delighted roar]'],
       ],
+      ig2000: [
+        ['han', 'Scrap metal. That’s what you get for taking a contract on me.'],
+        ['chewie', '[a satisfied growl]'],
+      ],
+      houndstooth: [
+        ['chewie', '[a long, triumphant howl]'],
+        ['han', 'Yeah, buddy. That one was for you.'],
+      ],
+      punishingone: [
+        ['han', 'Punishing One’s done. Should’ve stayed retired, Dengar.'],
+        ['chewie', '[a happy roar]'],
+      ],
+      skiff: [['han', 'Pirates. Never liked the competition.']],
+      ywing: [
+        ['comms', 'Falcon! That was Gold Five!'],
+        ['han', 'He flew right into it!'],
+      ],
+      awing: [
+        ['comms', 'Falcon, you hit one of ours!'],
+        ['han', 'Those things are too fast to see!'],
+      ],
     },
     hunted: {
       fett: [
@@ -1023,6 +1159,22 @@ export const CREWS = [
       ace: [
         ['han', 'That’s Vader’s TIE. Great. Just great.'],
         ['comms', 'No, I am your father.', 'vader'],
+      ],
+      ig88: [
+        ['han', 'IG-88. A droid with a bounty on my head. Chewie, don’t let it get a lock.'],
+        ['chewie', '[an angry growl]'],
+      ],
+      bossk: [
+        ['chewie', '[a furious, rising roar]'],
+        ['han', 'Yeah, I know it’s Bossk. Easy, pal. You can take it up with him after we shoot him.'],
+      ],
+      dengar: [
+        ['han', 'Dengar. Still sore about that swoop race. Some people never let anything go.'],
+        ['chewie', '[a grumbling roar]'],
+      ],
+      navy: [
+        ['han', 'Bombers. Slow and stupid, Chewie. Just don’t be where the bomb goes.'],
+        ['chewie', '[a doubtful growl]'],
       ],
     },
     interdicted: [
@@ -1066,11 +1218,21 @@ export const CREWS = [
     ],
     events: {
       // friends on your wing in a long fight (wingmen.js), and going again
-      wingmen: [
-        ['comms', 'Falcon, this is Rogue Squadron. Thought you could use a hand.'],
-        ['han', 'I had it under control. But sure, come on in.'],
-        ['chewie', '[an approving roar]'],
-      ],
+      wingmen: {
+        xwing: [
+          ['comms', 'Falcon, this is Rogue Squadron. Thought you could use a hand.'],
+          ['han', 'I had it under control. But sure, come on in.'],
+          ['chewie', '[an approving roar]'],
+        ],
+        ywing: [
+          ['comms', 'Gold Squadron on approach, Falcon. Try not to outrun us.'],
+          ['han', 'Y-wings. They’re bricks, Chewie, but they’re bricks with cannons.'],
+        ],
+        awing: [
+          ['comms', 'Green Squadron, Falcon. Quick pass, then we’re gone.'],
+          ['han', 'Story of my life. Make it count, kid.'],
+        ],
+      },
       wingmenGone: [
         ['comms', 'Rogue Squadron out. Try to stay out of trouble, Solo.'],
         ['han', 'No promises.'],
@@ -1094,7 +1256,7 @@ export const CREWS = [
         ['chewie', '[an alarmed roar]'],
       ],
       distress: [
-        ['comms', 'Mayday! Imperial fighters, we can’t shake them!'],
+        ['comms', 'Mayday! Pirates, Weequay pirates, we can’t shake them!'],
         ['han', 'Not our problem.'],
         ['chewie', '[an insistent growl]'],
         ['han', 'Fine, fine. Let’s go be heroes.'],
@@ -1415,6 +1577,18 @@ export const CREWS = [
         ['jesse', 'Mr. White… I think I just shot Hank.'],
         ['walt', 'You shot a truck, Jesse. A truck.'],
       ],
+      gusvolvo: [
+        ['jesse', 'Gus’s car is down! Yo, is he…?'],
+        ['walt', 'Don’t count on it, Jesse. That man has walked out of worse.'],
+      ],
+      beater: [
+        ['comms', 'Dude! Not cool! That’s Badger, yo!'],
+        ['jesse', 'Sorry, Badger! My bad!'],
+      ],
+      balloon: [
+        ['jesse', 'Mr. White, I shot a hot-air balloon.'],
+        ['walt', 'The fiesta will survive, Jesse. Keep your eyes on the trucks.'],
+      ],
       lowrider: [['jesse', 'Lowrider’s toast! Yeah!']],
       pollostruck: [['walt', 'That’s one less delivery for Gus.']],
       phoenixperson: [['jesse', 'Yo, I shot the robot bird. Was that bad? That felt bad.']],
@@ -1463,6 +1637,11 @@ export const CREWS = [
       cousins: [
         ['jesse', 'Two silver cars. Just… coming. They’re not even shooting.'],
         ['walt', 'The Cousins. They don’t shoot first, Jesse. They don’t have to.'],
+      ],
+      // Gus himself at the head of his trucks (the pollos ace)
+      gusvolvo: [
+        ['jesse', 'Mr. White, the silver Volvo. That’s… that’s Gus’s car.'],
+        ['walt', 'He won’t fire first, Jesse. He never does. Which is exactly why you watch him.'],
       ],
       fett: [
         ['jesse', 'Mr. White, that ship’s got a bounty hunter in it!'],
@@ -1533,6 +1712,11 @@ export const CREWS = [
           ['jesse', 'Mike’s here! Mike, I knew you’d come, man!'],
           ['walt', 'He came for the money, Jesse.'],
         ],
+        beater: [
+          ['comms', 'Yo, yo, yo! Badger and Skinny Pete, reporting for duty, bitches!'],
+          ['jesse', 'Badger! Pete! Okay, just, like, aim this time.'],
+          ['walt', 'They’ll miss, Jesse. But they’ll be loud about it.'],
+        ],
         xwing: [
           ['comms', 'Unidentified, uh, camper van. This is Rogue Squadron. We’ve got your back.'],
           ['jesse', 'Yo, Mr. White, the Star Wars guys are helping us!'],
@@ -1576,6 +1760,11 @@ export const CREWS = [
       rescued: [
         ['comms', 'Thank you, whoever you are!'],
         ['walt', 'Tell no one.'],
+      ],
+      // a Madrigal freighter jumps in, and Gus's trucks come out of it (the director's capital ship)
+      destroyer: [
+        ['jesse', 'Whoa! That freighter just came out of nowhere! It’s Madrigal’s!'],
+        ['walt', 'Gus’s trucks, Jesse. He ships more than chicken.'],
       ],
       // Hank's spotlight on the RV (the 'spotlight' trait: the HUD goes a moment)
       spotlit: [

@@ -1,10 +1,15 @@
 // The director's set pieces (director.js says when): the big moments that
 // aren't just traffic.
 //
-// - A Star Destroyer drops out of hyperspace near you: it comes in long
+// - A capital ship drops out of hyperspace near you: it comes in long
 //   and thin, smeared along its line of flight in a flash of blue-white,
-//   and snaps to its own shape, then drifts on, its TIE fighters launching
+//   and snaps to its own shape, then drifts on, its fighters launching
 //   from its belly; a while later it jumps away again, the same in reverse.
+//   Which ship is the crew's side's (sides.js's `capitalShip`): a Star
+//   Destroyer, a Federation cruiser, a Madrigal freighter.
+// - A DEA helicopter for the roadblock (Albuquerque's): it drops in ahead of
+//   you and hangs there, nose on, its searchlight on you, while the SUVs
+//   hold you; when they're seen off (or after a while) it climbs away.
 // - Portals: green portals swirl open where the Council of Ricks comes
 //   through (as many as there are of them), and close behind them.
 // - A comet: a bright head in a glowing coma, a straight blue ion tail and a
@@ -17,7 +22,8 @@
 //   tunnel of blue-white light that opens, holds for a while and closes. Fly
 //   into it and the scene takes you out of it somewhere else on the map.
 //
-// createSetPieces(parent, { small }) → { destroyer(ship) → { hangar } | null, leave(),
+// createSetPieces(parent, { small }) → { destroyer(ship, kind) → { hangar } | null, leave(),
+//   roadblock(ship) → boolean, chopperHere,
 //   portals(points), comet(ship), flare(star, ship) → { arrives } | null,
 //   rift(ship) → boolean, riftAt, riftInside(ship), closeRift(),
 //   update(dt, t, camera) → busy, dispose() }
@@ -29,7 +35,9 @@ import { forward } from './ship';
 import { RIFT_R, riftSpot } from './nav';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
 
-const STAR_DESTROYER = 16; // map units long
+// how long each capital ship is, in map units (a Star Destroyer's the biggest)
+const CAPITAL = { destroyer: 16, fedcruiser: 12, madrigal: 8 };
+const CHOPPER = { len: 1.6, ahead: 26, above: 2.5, stay: 45, climb: 6 }; // map units long; where it hangs; seconds it stays, and climbing away
 const STAY = 55; // seconds it stays before jumping away
 const JUMP = 0.7; // seconds to come out of (or go into) hyperspace
 const FLARE_RISE = 3; // seconds the star swells before the shell leaves it
@@ -159,10 +167,14 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
 
   // the Star Destroyer, built the first time it's wanted
   let sd = null;
+  let sdKind = null; // (which capital ship sd is)
+  // the roadblock's helicopter: hanging ahead of you ('here'), then climbing away ('out')
+  let chopper = null;
+  const hover = { state: null, age: 0, at: new THREE.Vector3(), heading: 0 };
   const sdFlash = new THREE.Sprite(keep(new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(2.4, 3.2, 5), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })));
   sdFlash.visible = false;
   parent.add(sdFlash);
-  const piece = { state: null, age: 0, heading: 0, at: new THREE.Vector3(), drift: new THREE.Vector3() };
+  const piece = { state: null, age: 0, heading: 0, at: new THREE.Vector3(), drift: new THREE.Vector3(), len: CAPITAL.destroyer };
 
   // portals, a few at once
   const portalGeo = keep(new THREE.PlaneGeometry(1, 1));
@@ -217,20 +229,22 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
     // a Star Destroyer drops out of hyperspace ahead of you and off to one
     // side, broadside on. Returns where its TIEs launch from (its belly), or
     // null if one's already here
-    destroyer(ship) {
+    destroyer(ship, kind = 'destroyer') {
       if (piece.state) return null;
-      // (the built one until the model's here)
-      if (sd && !sd.model && fleet.loaded('destroyer')) {
+      // (the built one until the model's here; another side's ship, made again as this one)
+      if (sd && ((!sd.model && fleet.loaded(kind)) || sdKind !== kind)) {
         sd.group.removeFromParent();
         sd.dispose();
         sd = null;
       }
       if (!sd) {
-        fleet.want(['destroyer']);
-        sd = fleet.make('destroyer');
+        fleet.want([kind]);
+        sd = fleet.make(kind);
+        sdKind = kind;
         sd.group.visible = false;
         parent.add(sd.group);
       }
+      piece.len = CAPITAL[kind] ?? CAPITAL.destroyer;
       const [fx, fz] = forward(ship.heading);
       const side = Math.random() < 0.5 ? -1 : 1;
       piece.at.set(ship.x + fx * 28 - fz * side * 10, ship.y - 0.5, ship.z + fz * 28 + fx * side * 10);
@@ -243,11 +257,30 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
       sd.group.visible = true;
       sdFlash.visible = true;
       sdFlash.position.copy(piece.at);
-      return { hangar: piece.at.clone().add(new THREE.Vector3(0, -2.2, 0)), heading: piece.heading };
+      return { hangar: piece.at.clone().add(new THREE.Vector3(0, -2.2 * (piece.len / CAPITAL.destroyer), 0)), heading: piece.heading };
     },
     // and it jumps away (early: the TIEs are all down)
     leave() {
       if (piece.state === 'here') piece.age = Math.max(piece.age, STAY);
+      if (hover.state === 'here') hover.age = Math.max(hover.age, CHOPPER.stay);
+    },
+    // the DEA's helicopter over the roadblock, ahead of you and facing you
+    roadblock(ship) {
+      if (hover.state) return false;
+      if (!chopper) {
+        chopper = fleet.make('deachopper');
+        parent.add(chopper.group);
+      }
+      const [fx, fz] = forward(ship.heading);
+      hover.at.set(ship.x + fx * CHOPPER.ahead, ship.y + CHOPPER.above, ship.z + fz * CHOPPER.ahead);
+      hover.heading = ship.heading + Math.PI; // (nose on to you)
+      hover.state = 'here';
+      hover.age = 0;
+      chopper.group.visible = true;
+      return true;
+    },
+    get chopperHere() {
+      return hover.state === 'here';
     },
     // where the comet's head is, for checking from a browser
     get cometAt() {
@@ -349,7 +382,7 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
         if (piece.state === 'in') {
           const k = Math.min(1, piece.age / JUMP);
           stretch = 1 + (1 - k) ** 3 * 14;
-          shift = -((1 - k) ** 3) * STAR_DESTROYER * 4;
+          shift = -((1 - k) ** 3) * piece.len * 4;
           if (k >= 1) piece.state = 'here';
         } else if (piece.state === 'here' && piece.age > STAY) {
           piece.state = 'out';
@@ -359,21 +392,41 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
         } else if (piece.state === 'out') {
           const k = Math.min(1, piece.age / JUMP);
           stretch = 1 + k * k * 18;
-          shift = k * k * STAR_DESTROYER * 6;
+          shift = k * k * piece.len * 6;
           if (k >= 1) {
             piece.state = null;
             g.visible = false;
           }
         }
-        g.scale.set(STAR_DESTROYER, STAR_DESTROYER, STAR_DESTROYER * stretch);
+        g.scale.set(piece.len, piece.len, piece.len * stretch);
         g.translateZ(shift);
         sd.update(t);
         if (sdFlash.visible) {
           const a = piece.state === 'in' || piece.state === 'out' ? piece.age : JUMP + 1;
           const k = a < 0.15 ? a / 0.15 : Math.exp(-(a - 0.15) * 4);
-          sdFlash.scale.setScalar(STAR_DESTROYER * (0.6 + k));
+          sdFlash.scale.setScalar(piece.len * (0.6 + k));
           sdFlash.material.opacity = k;
           if (a > 1.2) sdFlash.visible = false;
+        }
+      }
+
+      if (hover.state) {
+        busy = true;
+        hover.age += dt;
+        if (hover.state === 'here' && hover.age > CHOPPER.stay) {
+          hover.state = 'out';
+          hover.age = 0;
+        }
+        const g = chopper.group;
+        // hanging there, a little unsteady; then up and away, nose down, gone
+        const up = hover.state === 'out' ? hover.age * hover.age * 1.6 : 0;
+        g.position.set(hover.at.x + Math.sin(t * 0.7) * 0.25, hover.at.y + Math.sin(t * 1.3) * 0.12 + up, hover.at.z + Math.cos(t * 0.6) * 0.25);
+        g.rotation.set(hover.state === 'out' ? Math.min(0.4, hover.age * 0.2) : 0.12, hover.heading + Math.PI + Math.sin(t * 0.4) * 0.08, Math.sin(t * 0.9) * 0.05);
+        g.scale.setScalar(CHOPPER.len);
+        chopper.update(t);
+        if (hover.state === 'out' && hover.age > CHOPPER.climb) {
+          hover.state = null;
+          g.visible = false;
         }
       }
 
@@ -464,6 +517,7 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
 
     dispose() {
       sd?.dispose();
+      chopper?.dispose();
       for (const x of made) x.dispose();
     },
   };

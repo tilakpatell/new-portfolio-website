@@ -68,6 +68,12 @@ describe('the crews', () => {
       said(linesFor(crew, 'event', 'deep'), crew, 'deep');
       // the friends who come in a long fight: each of the side's allies
       for (const ally of Object.keys(side.allies)) said(linesFor(crew, 'event', 'wingmen', ally), crew, `wingmen ${ally}`);
+      // (each its own, not one line for whoever comes)
+      const hellos = Object.keys(side.allies).map((ally) => linesFor(crew, 'event', 'wingmen', ally));
+      expect(new Set(hellos).size, `${crew.id} wingmen`).toBe(hellos.length);
+      // each side's aces, by name where a side has more than one
+      const aces = Object.values(side.factions).flatMap((f) => (f.ace ? [f.ace] : []));
+      if (aces.length > 1) expect(new Set(aces.map((k) => linesFor(crew, 'hunted', k) ?? linesFor(crew, 'hunted', 'ace'))).size, `${crew.id} aces`).toBe(aces.length);
       said(linesFor(crew, 'event', 'wingmenGone'), crew, 'wingmenGone');
       said(linesFor(crew, 'event', 'skirmish', side.id), crew, 'skirmish');
       // the nav map's drives: a jump to lightspeed, and super speed
