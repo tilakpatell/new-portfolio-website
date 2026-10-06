@@ -120,9 +120,12 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
   })();
   const sunLight = sun?.isDirectionalLight ? sun : null;
 
-  // ── the shadow pass goes (unless the world keeps its own for the sun) ──
+  // ── the shadow pass goes (unless the world keeps its own for the sun, or
+  // this GPU can't bake: no float pictures to add the light up in, and the
+  // world then stands as it did, its own shadows and all) ──
   const hadShadows = renderer.shadowMap?.enabled;
-  if (!keepShadows) {
+  const canBake = Boolean(renderer.extensions?.has?.('EXT_color_buffer_float'));
+  if (!keepShadows && canBake) {
     if (renderer.shadowMap) renderer.shadowMap.enabled = false;
     scene.traverse((o) => {
       if (o.isLight && o.castShadow) o.castShadow = false;

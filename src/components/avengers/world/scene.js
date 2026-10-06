@@ -685,11 +685,14 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     const mid = P3(60, 52);
     const m4m = new THREE.Matrix4();
     const qm = new THREE.Quaternion();
+    // (the masts' plinths in the kerbs' concrete, but their own material: the
+    // kerbs' is the floor's, and reads the baked floor light where it is)
+    const plinth = cloudy(new THREE.MeshStandardMaterial({ color: 0x8c918a, roughness: 0.9 }), 'kerb');
     for (const m of MASTS) {
       // facing the middle of the lawn
       const yaw = Math.atan2(mid.x - m.x, mid.z - m.z);
       const at = (geo) => geo.applyMatrix4(m4m.compose(new THREE.Vector3(m.x, 0, m.z), qm.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw), new THREE.Vector3(1, 1, 1)));
-      add(at(new THREE.CylinderGeometry(0.85, 1, 0.5, 20).translate(0, 0.25, 0)), kerbMat);
+      add(at(new THREE.CylinderGeometry(0.85, 1, 0.5, 20).translate(0, 0.25, 0)), plinth);
       add(at(new THREE.CylinderGeometry(0.42, 0.42, 0.25, 12).translate(0, 0.6, 0)), steel);
       add(at(new THREE.CylinderGeometry(0.12, 0.28, MAST_H, 12).translate(0, MAST_H / 2, 0)), steel);
       add(at(new THREE.BoxGeometry(0.45, 0.8, 0.28).translate(0, 1.2, -0.38)), housing); // the switch cabinet

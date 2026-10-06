@@ -168,7 +168,8 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
         return;
       }
       scene.add(stage.group);
-      if (stage.floor?.length) {
+      // (an area under a roof keeps its own light: the roof would shade all of it)
+      if (stage.floor?.length && area.ceiling == null) {
         let key = null;
         stage.group.traverse((o) => (key ??= o.isDirectionalLight ? o : null));
         const B = area.bounds ?? { maxX: 200, maxZ: 200 };

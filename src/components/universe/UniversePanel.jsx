@@ -234,6 +234,17 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
           </a>{' '}
           (CC0).
         </p>
+        <p className="universe-credit">
+          The worlds stand in their light the way{' '}
+          <a href="https://bruno-simon.com" target="_blank" rel="noopener noreferrer">
+            Bruno Simon
+          </a>
+          ’s folio does (
+          <a href="https://github.com/brunosimon/folio-2019" target="_blank" rel="noopener noreferrer">
+            folio-2019
+          </a>
+          , MIT): soft shadows baked into the ground, a bounce of the ground’s colour on everything, and a soft blob under whatever moves, rendered once in your browser as each world opens.
+        </p>
         <ModelCredits where="universe" className="universe-credit universe-models" />
       </aside>
     );

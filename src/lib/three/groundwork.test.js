@@ -43,7 +43,7 @@ const area = { x0: -20, z0: -20, w: 40, d: 40 };
 describe('a world put on baked floor light', () => {
   it('ends the shadow pass and every cast and received shadow', () => {
     const w = world();
-    const renderer = stubRenderer();
+    const renderer = stubRenderer(true);
     groundWorld({ renderer, scene: w.scene, floor: [w.floor], area, sun: w.sun, movers: [{ object: w.walker, size: [0.8, 0.8] }] });
     expect(renderer.shadowMap.enabled).toBe(false);
     w.scene.traverse((o) => {
@@ -241,5 +241,16 @@ describe('a mover taken out of the world', () => {
     w.scene.remove(w.walker);
     g.update();
     expect(g.blobs.mesh.count).toBe(0);
+  });
+});
+
+describe('a GPU that can\'t bake (no float pictures)', () => {
+  it('keeps the world\'s own shadow pass, as it stood before', () => {
+    const w = world();
+    const renderer = stubRenderer(false);
+    groundWorld({ renderer, scene: w.scene, floor: [w.floor], area, sun: w.sun });
+    expect(renderer.shadowMap.enabled).toBe(true);
+    expect(w.sun.castShadow).toBe(true);
+    expect(w.house.castShadow).toBe(true);
   });
 });
