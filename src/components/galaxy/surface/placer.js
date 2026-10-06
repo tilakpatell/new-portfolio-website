@@ -7,14 +7,19 @@
 // for all of them.
 //
 // createPlacer({ parent, kit, world, warm }) → { put(spec), scatter(kind,
-// items, opts), update(t, dt), signal(name, on) (to the built things that
-// move when something happens: a trapdoor, a gate), ready (a promise:
-// everything asked for so far is in), dispose() }
+// items, opts), update(t, dt, you), signal(name, on) (to the built things that
+// move when something happens: a trapdoor, a gate), setZone(inZone), ready (a
+// promise: everything asked for so far is in), dispose() }
+//   Scattered things don't cast shadows themselves: a stand-in for each part,
+//   on SHADOW_LAYER (which only the sun's shadow camera sees), holds just the
+//   instances near `you` (near.js), redone each NEAR_STEP metres you walk.
+//   Things put with `zone` (a room's build) are drawn only while you're in a
+//   zone, and everything else only while you're not (setZone).
 //   spec: { kind, at: [x, z], yaw, pitch, roll (radians: a walker on its
 //   side), scale, y (over the ground), sink (into it), abs (y is the height
 //   itself, not over the ground), solid (false: walk through it; or { r } /
 //   { box: [hw, hd] } in place of its own), model (false: its build, even
-//   where there's a model), opts (for a built one) }
+//   where there's a model), opts (for a built one), zone (it's a room's) }
 
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
@@ -22,6 +27,10 @@ import { gltfLoader } from '../../../lib/three/gltf';
 import { sharpenMaterial } from '../../../lib/three/textures';
 import { SURFACE_MODELS, surfaceUrl } from './catalog';
 import { PROPS, SCATTER } from './props';
+import { nearInstances, zoneVisibility } from './near';
+
+export const SHADOW_LAYER = 1;
+const NEAR = { r: 48, max: 512, step: 8 }; // metres; instances; metres walked before they're found again
 
 const getLoader = () => gltfLoader();
 const cache = new Map(); // url → promise of the gltf (shared by every world, while the page is up)
@@ -80,6 +89,12 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
   const group = new THREE.Group();
   group.name = 'things';
   parent.add(group);
+  const rooms = new THREE.Group(); // (the zones' builds: hidden till you're in one)
+  rooms.name = 'rooms';
+  rooms.visible = false;
+  parent.add(rooms);
+  const casters = []; // { mesh (the stand-in), from (the instanced mesh it casts for), xs, zs }
+  let nearAt = null; // where you were when the casters were last filled
   const updates = [];
   const signals = [];
   const pending = [];
@@ -100,7 +115,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     o.position.set(...at);
     o.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
     o.scale.setScalar(spec.scale ?? 1);
-    group.add(o);
+    (spec.zone ? rooms : group).add(o);
     const yaw = spec.yaw ?? 0;
     const k = spec.scale ?? 1;
     if (spec.solid !== false) for (const s of made.solids ?? []) addSolid(world, s, at, yaw, k, null);
@@ -149,7 +164,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             o.position.set(...at);
             o.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
             o.scale.setScalar(spec.scale ?? 1);
-            group.add(o);
+            (spec.zone ? rooms : group).add(o);
             footprint(o, spec, at);
             return warm(o).then(() => o);
           })
@@ -167,15 +182,19 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
         const s = it.scale ?? 1;
         return { at, s, yaw: it.yaw ?? 0, m: new THREE.Matrix4().compose(new THREE.Vector3(...at), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), it.yaw ?? 0), new THREE.Vector3(s, s * (it.stretch ?? 1), s)) };
       });
+      const xs = Float32Array.from(mats, (x) => x.at[0]);
+      const zs = Float32Array.from(mats, (x) => x.at[2]);
       const instance = (parts, radius) => {
         for (const p of parts) {
           const mesh = new THREE.InstancedMesh(p.geometry, p.material, mats.length);
           mats.forEach((x, i) => mesh.setMatrixAt(i, p.local ? x.m.clone().multiply(p.local) : x.m));
-          mesh.castShadow = p.shadow !== false;
+          mesh.castShadow = false; // (its near stand-in casts for it)
           mesh.receiveShadow = true;
           mesh.computeBoundingSphere();
           group.add(mesh);
+          if (p.shadow !== false) casters.push({ mesh: casterFor(p, Math.min(NEAR.max, mats.length)), from: mesh, xs, zs });
         }
+        nearAt = null; // (found again on the next update, these with them)
         if (solid && radius) for (const x of mats) world.solids.circle(x.at[0], x.at[2], radius * x.s);
       };
       if (model && hasModel(kind)) {
@@ -207,8 +226,18 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     get ready() {
       return Promise.all(pending);
     },
-    update(t, dt) {
+    update(t, dt, you = null) {
       for (const u of updates) u(t, dt);
+      if (you && casters.length && (!nearAt || Math.hypot(you.x - nearAt[0], you.z - nearAt[1]) > NEAR.step)) {
+        nearAt = [you.x, you.z];
+        for (const c of casters) fillCaster(c, you.x, you.z);
+      }
+    },
+    // in a zone, its room and not the world outside; out, the other way round
+    setZone(inZone) {
+      const v = zoneVisibility(inZone);
+      group.visible = v.outdoors;
+      rooms.visible = v.zones;
     },
     // something happening to what's built (a trapdoor opening, a gate
     // coming down, a band starting up): each built thing that answers to
@@ -219,8 +248,36 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     dispose() {
       dead = true;
       group.removeFromParent();
+      rooms.removeFromParent();
+      for (const c of casters) c.mesh.material.dispose();
     },
   };
+
+  // a part's shadow stand-in: its geometry, in a material that keeps only what
+  // the shadow pass reads (the cut-outs of leaves and fronds), on the layer only
+  // the sun's shadow camera sees, so the main pass never draws it
+  function casterFor(p, count) {
+    const m = Array.isArray(p.material) ? p.material[0] : p.material;
+    const material = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, map: m.alphaTest > 0 ? (m.map ?? null) : null, alphaMap: m.alphaMap ?? null, alphaTest: m.alphaTest ?? 0, side: m.side });
+    const mesh = new THREE.InstancedMesh(p.geometry, material, count);
+    mesh.count = 0;
+    mesh.castShadow = true;
+    mesh.receiveShadow = false;
+    mesh.frustumCulled = false; // (it's only ever what's round you, in the shadow camera's box)
+    mesh.layers.set(SHADOW_LAYER);
+    mesh.name = 'shadow-near';
+    group.add(mesh);
+    return mesh;
+  }
+  // the stand-in given the instances near (x, z): their matrices copied over
+  function fillCaster(c, x, z) {
+    const near = nearInstances(c.xs, c.zs, x, z, NEAR.r, c.mesh.instanceMatrix.count);
+    const src = c.from.instanceMatrix.array;
+    const dst = c.mesh.instanceMatrix.array;
+    for (let k = 0; k < near.length; k++) dst.set(src.subarray(near[k] * 16, near[k] * 16 + 16), k * 16);
+    c.mesh.count = near.length;
+    c.mesh.instanceMatrix.needsUpdate = true;
+  }
 }
 
 // a built prop's meshes as instancing parts (for scattering a built kind)
