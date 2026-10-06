@@ -10,7 +10,8 @@
 // landmark, prop), `era` (wfc, foc or tfp), `rig` (a skeleton kept, for
 // lib/three/rig.js to pose) and `clips` (what its own animation is: an
 // idle, or the High Moon rips' whole transformation, robot to vehicle and
-// back).
+// back, with where in it each change is: `toVehicle` and `toRobot` from and
+// to, in seconds, and `vehicle` a moment it's all vehicle).
 
 export const MODELS = {
   // Iacon at war: War for Cybertron and Fall of Cybertron (High Moon Studios)
@@ -23,7 +24,7 @@ export const MODELS = {
   'jetfire': { uid: '4e61515eca0b4c10b963fb67b0fa8243', as: 'Jetfire (Fall of Cybertron)', metres: 10.5, yaw: -1.5708, node: 'RB_Jetfire', tris: 22000, tex: 1024, maps: 512, rig: true, file: '/models/cybertron/jetfire.glb', role: 'npc', era: 'foc' },
   'jetfire-jet': { uid: '4e61515eca0b4c10b963fb67b0fa8243', as: 'Jetfire\'s jet mode (Fall of Cybertron), flying over Iacon', metres: 18, along: 'max', yaw: -1.5708, node: 'VH_Jetfire', tris: 8000, tex: 1024, maps: 512, file: '/models/cybertron/jetfire-jet.glb', role: 'vehicle', era: 'foc' },
   'zeta-prime': { uid: 'cd3ac403e72142ffb73d43632d3de9bb', as: 'Zeta Prime (War for Cybertron)', metres: 10, tris: 25000, tex: 1024, rig: true, file: '/models/cybertron/zeta-prime.glb', role: 'npc', era: 'wfc' },
-  'megatron-foc': { uid: '25ab3faed0344431a6c08652dd1a828b', as: 'Megatron (Fall of Cybertron), and his change to a tank and back', metres: 10.5, tris: 30000, tex: 1024, maps: 256, rig: true, file: '/models/cybertron/megatron-foc.glb', role: 'boss', era: 'foc', clips: { transform: 'Scene' } },
+  'megatron-foc': { uid: '25ab3faed0344431a6c08652dd1a828b', as: 'Megatron (Fall of Cybertron), and his change to a tank and back', metres: 10.5, tris: 30000, tex: 1024, maps: 256, rig: true, file: '/models/cybertron/megatron-foc.glb', role: 'boss', era: 'foc', clips: { transform: 'Scene', toVehicle: [5.3, 7.4], vehicle: 9, toRobot: [11.6, 13.2] } },
   'soundwave-foc': { uid: '6a0c0fa440954d6da747cdd050a2d1ab', as: 'Soundwave (Fall of Cybertron), watching from a roof', metres: 10, tris: 20000, tex: 1024, maps: 512, drop: 'Laserbeak', rig: true, file: '/models/cybertron/soundwave-foc.glb', role: 'npc', era: 'foc', clips: { idle: 'Scene' } },
   'shockwave-foc': { uid: '1f085604064043279e5a42ea9269fe8e', as: 'Shockwave (Fall of Cybertron)', metres: 11, tris: 25000, tex: 1024, rig: true, file: '/models/cybertron/shockwave-foc.glb', role: 'npc', era: 'foc' },
   'barricade': { uid: 'b7a7056e4e4646e1a145987b0a4bafa5', as: 'Barricade (War for Cybertron), and his change to a car and back', metres: 7.2, tris: 20000, tex: 1024, rig: true, file: '/models/cybertron/barricade.glb', role: 'enemy', era: 'wfc', clips: { transform: 'Scene' } },

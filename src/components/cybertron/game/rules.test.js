@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ENEMY_KINDS,
+  MEGATRON,
   ROBOT,
   SHOT,
   TRANSFORM,
@@ -271,6 +272,51 @@ describe('the Decepticons', () => {
     expect(shots).toBeGreaterThan(0);
   });
 
+  it('Megatron turns into his tank after a while, charges and shells, and turns back', () => {
+    const world = buildWorld({ ...AREA, solids: [] });
+    const p = newPlayer(AREA);
+    settle(p, world);
+    const m = newEnemy('megatron', 0, 50, { id: 'meg' });
+    expect(m.form).toBe('robot');
+    const seen = [];
+    let shells = 0;
+    let fastest = 0;
+    let lowest = Infinity;
+    for (let t = 0; t < MEGATRON.robot + MEGATRON.shift + MEGATRON.tank + MEGATRON.back + 1; t += 1 / 30) {
+      p.hp = p.maxHp;
+      const x = m.x;
+      const z = m.z;
+      const r = stepEnemies([m], p, 1 / 30, world, rand);
+      seen.push(...r.events.filter((e) => e.type === 'enemyShift').map((e) => `${e.to}@${Math.round(t)}`));
+      if (m.form === 'tank' && !m.shift) {
+        fastest = Math.max(fastest, Math.hypot(m.x - x, m.z - z) * 30);
+        lowest = Math.min(lowest, m.h);
+        shells += r.shots.filter((s) => s.damage === MEGATRON.damage).length;
+      }
+    }
+    expect(seen.map((s) => s.split('@')[0])).toEqual(['tank', 'robot']);
+    expect(fastest).toBeGreaterThan(ENEMY_KINDS.megatron.speed * 2);
+    expect(lowest).toBeLessThan(ENEMY_KINDS.megatron.h);
+    expect(shells).toBeGreaterThan(0);
+    expect(m.form).toBe('robot');
+    expect(m.h).toBe(ENEMY_KINDS.megatron.h);
+  });
+
+  it('Megatron stands still and holds fire while he changes', () => {
+    const world = buildWorld({ ...AREA, solids: [] });
+    const p = newPlayer(AREA);
+    settle(p, world);
+    const m = newEnemy('megatron', 0, 40, { id: 'meg2' });
+    m.span = MEGATRON.robot;
+    const first = stepEnemies([m], p, 1 / 30, world, rand);
+    expect(first.events).toContainEqual(expect.objectContaining({ type: 'enemyShift', id: 'meg2', to: 'tank' }));
+    const at = [m.x, m.z];
+    let shots = 0;
+    for (let t = 0; t < MEGATRON.shift - 0.1; t += 1 / 30) shots += stepEnemies([m], p, 1 / 30, world, rand).shots.length;
+    expect([m.x, m.z]).toEqual(at);
+    expect(shots).toBe(0);
+  });
+
   it("don't fire once dead", () => {
     const world = buildWorld({ ...AREA, solids: [] });
     const p = newPlayer(AREA);
@@ -294,14 +340,14 @@ describe('pickups and using things', () => {
     expect(stepPickups(pickups, p)).toEqual([]);
   });
 
-  it('talks to someone close, on foot only', () => {
+  it('talks to someone close on foot; in the truck, says to get out first', () => {
     const world = buildWorld(AREA);
     const p = newPlayer(AREA);
     expect(nearby(p, AREA)).toEqual(expect.objectContaining({ type: 'talk', id: 'bee' }));
     settle(p, world);
     stepPlayer(p, { ...still, transform: true }, 1 / 60, world);
     run(p, {}, TRANSFORM.time + 0.1, world);
-    expect(nearby(p, AREA)).toBe(null);
+    expect(nearby(p, AREA)).toEqual(expect.objectContaining({ type: 'shift', id: 'bee' }));
   });
 
   it('drives into an exit', () => {
