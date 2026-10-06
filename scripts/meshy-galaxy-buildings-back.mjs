@@ -61,4 +61,16 @@ export const BUILDINGS = {
     tex: 2048,
     hero: true,
   },
+  // Geonosis: a hive, a great eroded mesa with tall thin spires twisting
+  // up out of it (the production painting of the planet)
+  geohive: {
+    ref: 'File:Geonosis.jpg',
+    crop: [0.19, 0.0, 0.5, 0.66],
+    lift: 'the great rock hive (a wide eroded red sandstone mesa for a base, with tall thin twisted spires rising high out of it)',
+    metres: 150,
+    along: 'h',
+    tris: 30000,
+    tex: 2048,
+    hero: true,
+  },
 };
