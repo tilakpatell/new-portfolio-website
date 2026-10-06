@@ -88,6 +88,8 @@ const b = await visitor('Bravo');
 let failed = 0;
 for (const w of worlds) {
   await Promise.all([a.goto(BASE + w), b.goto(BASE + w)]);
+  // a world whose 3D waits to be asked for (the office's, the music room's): ask
+  await Promise.all([a, b].map((p) => p.getByRole('button', { name: /^Load the / }).first().click({ timeout: 15000 }).catch(() => {})));
   try {
     const n = await waitFor(async () => {
       const [x, y] = [await chip(a), await chip(b)];
