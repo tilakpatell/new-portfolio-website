@@ -22,5 +22,8 @@
   "waltHd": {
     "idle": "01a11201-9fc5-738f-b5f6-d5f12370a342",
     "sit": "01a11201-cae4-75d0-b0a9-742eb1c9d980"
+  },
+  "jessePinkHd": {
+    "sit": "01a1127f-a055-7492-b72c-ea8fe01fc2c0"
   }
 }

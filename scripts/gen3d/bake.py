@@ -22,6 +22,7 @@ ap.add_argument("raw")
 ap.add_argument("out")
 ap.add_argument("--faces", type=int, default=24000)
 ap.add_argument("--tex", type=int, default=2048)
+ap.add_argument("--smooth", type=int, default=2, help="smoothing passes over the raw mesh before the bake (its surface is lumpy at the voxel scale)")
 ap.add_argument("--cage", type=float, default=0.02, help="how far (in the model's extent) the bake looks for the high surface")
 args = ap.parse_args(sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else [])
 
@@ -40,6 +41,13 @@ if len(highs) > 1:
 high = bpy.context.view_layer.objects.active
 high.name = "high"
 extent = max(high.dimensions)
+# the raw surface is lumpy at the voxel scale: a little smoothing takes the
+# lumps out of the normal map and the silhouette, and leaves the panels
+if args.smooth > 0:
+    sm = high.modifiers.new("smooth", "SMOOTH")
+    sm.factor = 0.5
+    sm.iterations = args.smooth
+    bpy.ops.object.modifier_apply(modifier="smooth")
 
 # the low mesh: a copy, decimated, unwrapped afresh
 low = high.copy()
@@ -58,7 +66,8 @@ bpy.ops.mesh.select_all(action="SELECT")
 bpy.ops.mesh.normals_make_consistent(inside=False)
 bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.003, correct_aspect=True, scale_to_bounds=False)
 bpy.ops.object.mode_set(mode="OBJECT")
-bpy.ops.object.shade_smooth()
+# smooth across gentle curves, sharp across real edges: flat panels stay flat
+bpy.ops.object.shade_smooth_by_angle(angle=math.radians(35))
 print(f"low: {len(low.data.polygons)} faces", flush=True)
 
 # a material on the low mesh with an image for each map to bake into
@@ -76,12 +85,12 @@ for backend in ("OPTIX", "CUDA"):
             break
     except Exception:
         continue
-scene.cycles.samples = 16
+scene.cycles.samples = 32
 scene.cycles.use_denoising = False
 scene.render.bake.use_selected_to_active = True
 scene.render.bake.cage_extrusion = extent * args.cage
 scene.render.bake.max_ray_distance = extent * args.cage * 2
-scene.render.bake.margin = 8
+scene.render.bake.margin = 16
 
 mat = bpy.data.materials.new("baked")
 mat.use_nodes = True
@@ -106,7 +115,7 @@ def bake(kind, name, **kw):
     tex.image = images[name]
     nodes.active = tex
     tex.select = True
-    bpy.ops.object.bake(type=kind, use_selected_to_active=True, use_clear=True, margin=8, **kw)
+    bpy.ops.object.bake(type=kind, use_selected_to_active=True, use_clear=True, margin=16, **kw)
     print(f"baked {name}", flush=True)
     return tex
 

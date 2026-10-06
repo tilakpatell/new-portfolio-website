@@ -15,8 +15,9 @@
 // comes near it: point at one and press J (or the Jump button), or fly out
 // of the system with the nose on one, and you're away; or plot a course on
 // the galaxy map (the page's) and the ship comes round onto it. It spools
-// up, the stars stretch into lines, a flash, and you're in hyperspace
-// (hyperspace.js) while the next system's built behind it; then you drop
+// up and you're in hyperspace: the site's own jump, the same as the universe
+// map's (components/Hyperspace.jsx, which the page plays over the scene),
+// held in its tunnel while the next system's built behind it; then you drop
 // out at its planet, on the side you came in from. The page follows the
 // system you're in (/galaxy/hoth), and a link to another sends you jumping
 // there.
@@ -84,7 +85,8 @@ import { readBuildWire, writeBuild } from '../universe/shipyard/build';
 import { SHIP_INFO, buildGalaxyShip } from './fleet';
 import { HUNTER_GLB, createModels } from './models';
 import { createSky } from './sky';
-import { createJump } from './hyperspace';
+import { createSpeedLines } from './speedLines';
+import { T as JUMP_T } from '../hyperspace3d/timeline';
 import { DIVE, LAUNCH_KEY, diveAt, planDive } from './travel';
 import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, interdictorPlace } from './interdiction';
 import { createInterdictor } from './interdictor';
@@ -117,7 +119,10 @@ const CAB_HFOV = 88;
 const CAB_VFOV = [52, 94];
 const SAFE = 3; // seconds back from a crash when other pilots' shots don't count
 const CRASH = { impact: 0.32, back: 2.6, done: 3.2 };
-const JUMP = { align: 4.5, spool: 0.95, exit: 1.1 }; // seconds, at most, to come round; to spool up; to drop out
+// seconds, at most, to come round; to spool up (to the site's jump's flash,
+// components/Hyperspace.jsx, which the page plays over the scene: the
+// system changes behind it); to drop out
+const JUMP = { align: 4.5, spool: (JUMP_T.jump + 50) / 1000, exit: 1.1 };
 const IDLE = 40000;
 const KEYS = { w: 'up', s: 'down', a: 'a', d: 'd', arrowleft: 'left', arrowright: 'right', arrowup: 'pitchUp', arrowdown: 'pitchDown', ' ': 'boost', shift: 'boost', f: 'fire' };
 const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ']);
@@ -202,8 +207,8 @@ export async function create(canvas, ctx) {
 
   const sky = createSky({ small, renderer });
   scene.add(sky.group);
-  const jumpFx = createJump({ small });
-  camera.add(jumpFx.group);
+  const speedLines = createSpeedLines({ small });
+  camera.add(speedLines.group);
   const dust = createDust({ small });
   scene.add(dust.points);
 
@@ -1075,8 +1080,9 @@ export async function create(canvas, ctx) {
       if (aligned(state.ship, j.dir) > 0.996 || j.age > JUMP.align) {
         j.phase = 'spool';
         j.age = 0;
+        // (the page plays the site's jump over the scene from here, its
+        // sound with it, the same as the universe map's: Galaxy.jsx)
         emit({ type: 'jump', phase: 'spool', to: j.to.id });
-        import('../../lib/clips').then((c) => c.playClip('hyperspaceEnter', { offset: Math.max(0, 1.17 - JUMP.spool), keep: true }).then((h) => !h && import('../../lib/sfx').then((x) => x.hyperspace())));
       }
       return;
     }
@@ -1102,7 +1108,6 @@ export async function create(canvas, ctx) {
       state.ship.x += fx * cp * state.ship.speed * dt;
       state.ship.z += fz * cp * state.ship.speed * dt;
       state.ship.y += Math.sin(state.ship.pitch) * state.ship.speed * dt;
-      jumpFx.set({ stretch: k * k, tunnel: 0, flash: k > 0.92 ? (k - 0.92) / 0.08 : 0, speed: k * 300 });
       if (k >= 1) {
         j.phase = 'tunnel';
         j.age = 0;
@@ -1113,8 +1118,6 @@ export async function create(canvas, ctx) {
       return;
     }
     if (j.phase === 'tunnel') {
-      const k = clamp01(j.age / 0.35);
-      jumpFx.set({ stretch: 1 - k * 0.4, tunnel: k, flash: Math.max(0, 1 - j.age * 3), speed: 300 });
       // the next system, built behind the tunnel (a frame in, so the flash is up first)
       if (!j.built && j.age > 0.12) {
         j.built = true;
@@ -1137,6 +1140,8 @@ export async function create(canvas, ctx) {
         j.age = 0;
         import('../../lib/clips').then((c) => c.playClip('hyperspaceExit', { keep: true }));
         props.onArrive?.(j.to.id, j.from.id);
+        // (the page lets the site's jump go on out of its tunnel)
+        emit({ type: 'jump', phase: 'out', to: j.to.id });
         emit({ type: 'arrive', id: j.to.id, from: j.from.id });
         if (bitten) bite(j);
       } else if (j.age > j.dur + 6 && !j.ready) j.ready = true; // (never stuck in there)
@@ -1144,11 +1149,9 @@ export async function create(canvas, ctx) {
     }
     if (j.phase === 'exit') {
       const k = clamp01(j.age / JUMP.exit);
-      jumpFx.set({ stretch: (1 - k) ** 2, tunnel: Math.max(0, 1 - k * 4), flash: Math.max(0, 1 - k * 3) * 0.9, speed: (1 - k) * 300 });
       // easing down out of it
       state.ship = step({ ...s, speed: Math.max(SHIP.cruise, s.speed - dt * 36) }, { throttle: 0.6 }, dt, state.space.solids, state.space).ship;
       if (k >= 1) {
-        jumpFx.set({ stretch: 0, tunnel: 0, flash: 0, speed: 0 });
         // (the first system's arrival, said as you come out into it)
         if (!j.from) emit({ type: 'arrive', id: j.to.id, from: null });
         state.jump = null;
@@ -1633,7 +1636,6 @@ export async function create(canvas, ctx) {
       if (launched) emit({ type: 'launch' });
       else if (!reduced) {
         state.jump = { to: state.sys, from: null, phase: 'exit', age: 0, dir: [0, 0, -1], dur: 0, built: true, dressed: true, ready: true };
-        jumpFx.set({ stretch: 1, tunnel: 0, flash: 1, speed: 300 });
       }
     }
     let moving = false;
@@ -1727,7 +1729,7 @@ export async function create(canvas, ctx) {
     models.update(t);
     bolts.update(dt);
     flashes.update(dt);
-    jumpFx.update(dt, t);
+    speedLines.update(dt);
     const fxBusy = crashFx.update(dt, camera) || pops.update(dt, camera);
     const adventuring = adventure(dt, t);
     const shooting = moveBolts(dt);
@@ -1746,8 +1748,8 @@ export async function create(canvas, ctx) {
     // out in the open on the sublight drive, the stars stretch a little
     if (!state.jump && flying()) {
       const fast = clamp01((Math.abs(state.ship.speed) - SHIP.boost) / 40);
-      jumpFx.set({ stretch: fast * 0.18, tunnel: 0, flash: 0, speed: fast * 80 });
-    }
+      speedLines.set({ stretch: fast * 0.18, speed: fast * 80 });
+    } else speedLines.set({ stretch: 0, speed: 0 }); // (none through a jump: the site's own is over the scene)
     if (state.hitMark > 0) state.hitMark = Math.max(0, state.hitMark - dt * 4);
     // the other pilots in this system
     if (net) {
@@ -1772,7 +1774,7 @@ export async function create(canvas, ctx) {
       emit({ type: 'ready' });
     }
     if (props.frozen) return Boolean(state.crash?.through || (state.dive && !state.dive.done));
-    return !reduced || moving || shooting || fxBusy || worldBusy || adventuring || piloting || jumpFx.busy || bolts.busy || flashes.busy || net?.peers.size > 0 || Boolean(state.model?.modules?.easing) || cabWas !== state.cabK || state.kick > 0 || state.flare > 1 || Boolean(state.stick?.on || state.jump);
+    return !reduced || moving || shooting || fxBusy || worldBusy || adventuring || piloting || speedLines.busy || bolts.busy || flashes.busy || net?.peers.size > 0 || Boolean(state.model?.modules?.easing) || cabWas !== state.cabK || state.kick > 0 || state.flare > 1 || Boolean(state.stick?.on || state.jump);
   }
   let dustAmount = 0;
   const cabFrame = (dt, t) => {
@@ -2155,7 +2157,7 @@ export async function create(canvas, ctx) {
       models.dispose();
       bolts.dispose();
       flashes.dispose();
-      jumpFx.dispose();
+      speedLines.dispose();
       sky.dispose();
       for (const pl of plumes) pl.trail.dispose();
       boltGeo.dispose();
