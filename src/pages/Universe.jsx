@@ -14,6 +14,7 @@ import { useAchievements } from '../components/Achievements';
 import { saveStart } from '../lib/view';
 import { useView } from '../components/ViewSwitch';
 import { portalSound } from '../components/universe/sounds';
+import { jumpEvent } from '../components/jumps/styles';
 import UniverseMap from '../components/universe/UniverseMap';
 import UniversePanel from '../components/universe/UniversePanel';
 import Comms from '../components/universe/Comms';
@@ -193,7 +194,7 @@ export default function Universe({ ask = false }) {
       return;
     }
     audioContext(); // inside the press, so the way out can sound
-    if (plan.mode === 'jump') window.dispatchEvent(new Event('tp:hyperspace'));
+    if (plan.mode === 'jump') window.dispatchEvent(jumpEvent(crew?.jump));
     else {
       if (plan.mode === 'portal') portalSound();
       map.current.dive(u.id);
@@ -262,8 +263,9 @@ export default function Universe({ ask = false }) {
   };
 
   // what the scene says: the nav map (M), a jump to lightspeed (the site's
-  // own jump plays over the map: the scene has the ship out at the place
-  // under its flash), through a gate, or something for the crew to say
+  // own jump plays over the map, or the crew's own way across it, Rick's
+  // portal or the RV's Blue Sky: the scene has the ship out at the place
+  // under its flash either way), through a gate, or something for the crew to say
   const onEvent = (e) => {
     // a trip ended: on through the gate, or the tour's next leg
     if (e.type === 'arrived' || e.type === 'jumped') {
@@ -299,7 +301,7 @@ export default function Universe({ ask = false }) {
     }
     if (e.type === 'map') setCharting((o) => !o);
     else if (e.type === 'jump') {
-      window.dispatchEvent(new Event('tp:hyperspace'));
+      window.dispatchEvent(jumpEvent(crew?.jump));
       if (!jumped.current) {
         jumped.current = true;
         comms.current?.handle({ type: 'event', id: 'hyperspeed' });
