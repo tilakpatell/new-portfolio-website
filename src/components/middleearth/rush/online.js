@@ -18,7 +18,7 @@ import { createLimiter } from '../../universe/online/protocol';
 import { APP_ID, LOBBY_MS, POSE_MS, QUIET_MS, RATES, STATE_MS, readEvents, readGrab, readLobby, readPose, readState, seat, writeEvents, writeGrab, writeLobby, writePose, writeState } from './protocol';
 import { newPlayer } from './rules';
 
-const loadRoom = () => import('../../universe/online/nostr').then((m) => m.joinRoom);
+const loadRoom = () => import('../../universe/online/nostr').then((m) => m.joinAsVisitor);
 const LATEST = new Set(['pose', 'st']);
 const CHEAP = new Set(['pose']);
 const HELLO_MS = 1500;

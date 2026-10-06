@@ -106,4 +106,23 @@ describe('travellers', () => {
     a.leave();
     b.leave();
   });
+
+  it('leave out anyone the roster has blocked, and bring them back once they’re not', async () => {
+    const load = fakeRelay();
+    const now = () => 1000;
+    const blocked = new Set();
+    const a = createTravellers({ town: 'bree', name: 'Rosie', load, now });
+    const b = createTravellers({ town: 'bree', name: 'Fatty', load, now, hidden: (id) => blocked.has(id) });
+    await settle();
+    await settle();
+    a.pose({ x: 1, z: 2, face: 0, speed: 3 });
+    const [rosie] = b.list();
+    expect(rosie.name).toBe('Rosie');
+    blocked.add(rosie.id);
+    expect(b.list()).toEqual([]);
+    blocked.delete(rosie.id);
+    expect(b.list()).toHaveLength(1);
+    a.leave();
+    b.leave();
+  });
 });
