@@ -68,7 +68,7 @@ import { feed, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, ride, rider, turnToward, walk, walker } from './walker';
 import { rng } from './noise';
-import { missionOf } from './missions';
+import { endRun, missionOf, newRun, tickRun } from './missions';
 import { createChaseMission } from './missions/chaseScene';
 
 const V = THREE.Vector3;
@@ -227,7 +227,8 @@ export async function create(canvas, ctx) {
   });
   const fwdV = new V();
   const rightV = new V();
-  const questOf = (id) => site.quests.find((q) => q.id === id) ?? null;
+  // (a quest mission's quest is the mission's own, not one of the world's)
+  const questOf = (id) => site.quests.find((q) => q.id === id) ?? (mission?.quest?.id === id ? mission.quest : null);
   // who gives each quest, with a mark over them till it's done
   const givers = [];
   const markMat = new THREE.SpriteMaterial({ map: (() => {
@@ -750,8 +751,12 @@ export async function create(canvas, ctx) {
         state.done.add(q.id);
         say(q.done);
         emit({ type: 'questDone', id: q.id, achievement: q.achievement ?? null });
+        if (q === mission?.quest) endMission('won');
       }
-      if (o.type === 'fail') emit({ type: 'questFail', id: q.id, why: o.why });
+      if (o.type === 'fail') {
+        emit({ type: 'questFail', id: q.id, why: o.why });
+        if (q === mission?.quest) endMission('lost', o.why);
+      }
     }
     if (out.length || (ev.type === 'tick' && Math.ceil(was.time) !== Math.ceil(progress?.time ?? 0))) announce();
     activity.show(q, state.quest);
@@ -874,6 +879,32 @@ export async function create(canvas, ctx) {
   const chaseOn = () => Boolean(chase && !chase.view()?.result);
   let chaseViewAt = -1;
 
+  // ── A quest mission (missions/index.js): the quest engine runs it, this
+  // keeps its clock and says how it ended ──
+  let run = null;
+  const runOn = () => Boolean(run && !run.result);
+  function beginMission() {
+    if (mission?.kind !== 'quest') return;
+    state.quest = null;
+    state.done.delete(mission.quest.id);
+    activity.show(null, null);
+    run = newRun();
+    say(mission.lines?.start);
+    beginQuest(mission.quest);
+    emit({ type: 'mission', view: run });
+  }
+  function endMission(how, why) {
+    if (!runOn()) return;
+    run = endRun(run, mission, how, why);
+    if (how !== 'won') {
+      state.quest = null;
+      activity.show(null, null);
+      announce();
+    }
+    say(mission.lines?.[how]);
+    emit({ type: 'mission', event: { type: how }, view: run });
+  }
+
   // ── Shooting, and being shot ──
   const camDir = new V();
   function fire() {
@@ -963,6 +994,12 @@ export async function create(canvas, ctx) {
       state.health = 100;
       emit({ type: 'health', value: 100 });
       chase.knocked();
+      return;
+    }
+    if (runOn()) {
+      state.health = 100;
+      emit({ type: 'health', value: 100 });
+      endMission('lost', 'down');
       return;
     }
     // down: back on your feet where the quest's step began (or by the ship)
@@ -1381,6 +1418,14 @@ export async function create(canvas, ctx) {
         emit({ type: 'mission', view: chase.view() });
       }
     }
+    // a quest mission's clock
+    if (runOn() && (state.phase === 'walk' || state.phase === 'ride')) {
+      run = tickRun(run, dt);
+      if (state.t - chaseViewAt > 0.1) {
+        chaseViewAt = state.t;
+        emit({ type: 'mission', view: run });
+      }
+    }
     // the quest: its clock, where you are, what's out there for it
     if (state.quest && (state.phase === 'walk' || state.phase === 'ride')) {
       const p = me().st;
@@ -1514,6 +1559,7 @@ export async function create(canvas, ctx) {
     await placer.ready.catch(() => {});
     // (the scouts' way is planned round the trees, so once they're down)
     if (!disposed) chase?.begin();
+    if (!disposed) beginMission();
     await warm(scene).catch(() => {});
   })();
   emit({ type: 'phase', phase: state.phase });
@@ -1568,9 +1614,9 @@ export async function create(canvas, ctx) {
         state.tracked = id;
         if (!q.giver && !q.place && !state.quest) beginQuest(q);
       },
-      // a chase again, from the start, on the bike
+      // a mission again, from the start, on the bike
       restart() {
-        if (!chase) return;
+        if (!chase && !run) return;
         const x = rides[rides.length - 1];
         const p = me().st;
         if (state.phase === 'walk') {
@@ -1586,10 +1632,11 @@ export async function create(canvas, ctx) {
         camInit = false;
         state.health = 100;
         emit({ type: 'health', value: 100 });
-        chase.restart();
+        if (chase) chase.restart();
+        else beginMission();
       },
       drop() {
-        if (!state.quest) return;
+        if (!state.quest || runOn()) return;
         state.quest = null;
         activity.show(null, null);
         announce();
@@ -1605,6 +1652,19 @@ export async function create(canvas, ctx) {
     missionDo(how) {
       if (!import.meta.env.DEV) return null;
       if (how === 'audit') return chase?.audit() ?? null;
+      if (run) {
+        // (a quest mission: 'win', 'lose', or 'skip' the step you're on)
+        if (how === 'win') endMission('won');
+        else if (how === 'lose') endMission('lost', 'time');
+        else if (how === 'skip' && state.quest) {
+          const step = mission.quest.steps[state.quest.step];
+          if (step.type === 'race') for (const g of step.gates.slice(state.quest.count)) questEvent({ type: 'at', x: g[0], z: g[1], riding: step.ride });
+          else if (step.type === 'use') questEvent({ type: 'use', id: step.id });
+          else if (step.type === 'shoot') activity.kill(step.tag);
+        }
+        ctx.invalidate();
+        return run;
+      }
       if (how === 'near' && state.riding) {
         const b = chase?.behind();
         if (b) {
@@ -1640,7 +1700,7 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health, mission: chase?.view() ?? null }),
+    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health, mission: chase?.view() ?? run }),
     dispose() {
       disposed = true;
       window.removeEventListener('keydown', keyDown);
