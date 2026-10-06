@@ -5,7 +5,7 @@
 //
 //   node scripts/ground-qa.mjs --route /middle-earth/bree --global __BREE__
 //     [--name bree] [--quality mid] [--settle 6000] [--out dir] [--port 5197]
-//     [--reuse] [--frames 8] [--wait 900000]
+//     [--reuse] [--frames 8] [--wait 900000] [--hold 120000]
 //
 // `--global` is the window property the world's page sets in development
 // (window.__BREE__ = { api }); its `api.ground` is the groundWorld handle.
@@ -181,7 +181,12 @@ if (global) {
   }, global);
   if (!got) console.log("the bake never landed");
 } else await page.waitForTimeout(30000);
-await page.waitForTimeout(Number(args.settle ?? 6000));
+// (--hold: measure at this long after the world came up, bake or no bake, so
+// a run before and a run after look at the same moment of the world's intro)
+if (args.hold && result.upMs != null) {
+  const left = Number(args.hold) - (Date.now() - t0 - result.upMs);
+  if (left > 0) await page.waitForTimeout(left);
+} else await page.waitForTimeout(Number(args.settle ?? 6000));
 // the draw calls in a few frames, every pass included
 result.calls = await page.evaluate(
   (n) =>
