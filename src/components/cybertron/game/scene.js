@@ -531,6 +531,10 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
   return {
     camera,
     scene,
+    // (for the QA scripts: this area's floor light)
+    get ground() {
+      return import.meta.env.DEV ? ground : null;
+    },
     setArea,
     get loading() {
       return loading;
