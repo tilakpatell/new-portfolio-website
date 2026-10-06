@@ -118,3 +118,28 @@ CHROME="C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" BASE=http:
 ```
 
 The GPU is shared with `scripts/voices`: check `nvidia-smi` before a run.
+
+## What was learned making the X-wing
+
+- **A model is only as right as its picture.** From a Z-Image-Turbo concept
+  the X-wing came out sharp and wrong (engines on the fuselage): the image
+  model didn't know the design. FLUX.1-schnell knows it; a real reference is
+  better still. A **render of the model the site already had**, on white
+  (`scripts/preview/glb-shot.html?…&bg=ffffff`, prepared with `prepare.mjs`),
+  gave TRELLIS.2 the right shape and it added the detail: engine intakes, the
+  canopy frame, panel lines, five times the triangles at the same budget.
+- **Show the whole shape.** A near-frontal concept hid the fuselage length and
+  the model came out squat. Three-quarter, from slightly above, nose visible.
+- **Pixal3D assumes a frontal camera**: fed a three-quarter render it kept
+  the shape but tilted it. Use it for photos taken facing the subject, with
+  `--fov` when known; use plain TRELLIS.2 for renders and concept art.
+- **Cut, don't crush.** The raw atlas is thousands of charts; meshopt's
+  simplifier stops at the seams (~25k triangles for a 300k mesh) and crossing
+  them smears the texture. 24k triangles at 1536² is under 900 KB and looks
+  the part; the Blender bake is the way below that.
+- **Both engines, in order of use:** `trelliscpp` (f16 GGUF, ~2–4 minutes a
+  model at res 1024 on the RTX 5090) does everything here. The reference
+  `trellis2` is built in WSL but its image encoder (`facebook/dinov3`) is a
+  gated Hugging Face repo: accept the licence and `hf auth login` in the
+  `trellis2` conda env, and `--engine trellis2` works, with
+  `decimation_target` baking straight onto a low mesh.
