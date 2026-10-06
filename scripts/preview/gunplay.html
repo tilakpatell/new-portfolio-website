@@ -20,10 +20,14 @@
         …&up=0.3                                        the mark high (radians)
         …&phase=0.3                                     where in its clips each figure is (0…1)
         …&fx=1                                          the flash, smoke, a casing and a shot landing ahead
+        …&view=hands                                     close on each gun hand, from its right, ahead, its left and below
+                                                         (…&hand=L the other hand)
       For checking from a script: window.__pose({ aim, move, turn, up, fire, after, phase }) poses them
       again, window.__view(name) looks from somewhere else, and #metrics (and body[data-metrics]) holds,
       per figure, how far the barrel is off the mark, the head and chest off it, the gun's roll, the arm's
-      reach, the elbow, the wrist, the other hand's miss and the shot's kick.
+      reach, the elbow, the wrist, the other hand's miss and the shot's kick, and how the fingers sit on
+      the grip (gripMm: the nearest of the curled fingers to the grip's box, in mm, − inside it;
+      gripInPct: how many are more than 4 mm into it; gripCurl: how closed the hand is).
     -->
     <style>
       html,
@@ -63,6 +67,7 @@
       import { PARTY, loadPartyFigure } from '/src/components/universe/footScene.js';
       import { METRE, TROOPS } from '/src/components/universe/foot.js';
       import { createGunplay } from '/src/components/universe/gunplay.js';
+      import { checks } from '/src/components/universe/grip.js';
       import { createGunFx } from '/src/components/universe/gunfx.js';
       import { createMeshyCast } from '/src/components/rickmorty/portal/meshyCast.js';
 
@@ -134,6 +139,52 @@
       // hold every clip at one point (the same every time)
       const holdPhase = (p, phase) => {
         for (const a of Object.values(p.fig?.act ?? {})) if (a) a.time = phase * a.getClip().duration;
+      };
+      // the curled fingers against the grip's box: the nearest (a low percentile,
+      // the palm side's skin) and how many are pushed through it
+      const fingersOnGrip = (g) => {
+        const box = g.gun.getObjectByName('grip');
+        const d = g.debug(forward, up).curl;
+        if (!box || !d) return { gripCurl: d ? +d.R.toFixed(2) : null };
+        const half = new V(box.geometry.parameters.width, box.geometry.parameters.height, box.geometry.parameters.depth).multiplyScalar(0.5);
+        const inv = box.matrixWorld.clone().invert();
+        const scale = box.getWorldScale(new V()).x; // (the box's units to the world's)
+        const dists = [];
+        const v = new V();
+        let root = g.gun;
+        while (root.parent && !root.parent.isScene) root = root.parent;
+        root.traverse((o) => {
+          const at = o.isSkinnedMesh ? o.morphTargetDictionary?.gripR : undefined;
+          if (at === undefined) return;
+          const dp = o.geometry.morphAttributes.position[at];
+          const moved = [];
+          for (let i = 0; i < dp.count; i++) {
+            const m = Math.hypot(dp.getX(i), dp.getY(i), dp.getZ(i));
+            if (m > 0) moved.push([m, i]);
+          }
+          moved.sort((a, b) => b[0] - a[0]);
+          // the fingers' outer half (the most moved), a few hundred of them
+          const take = moved.slice(0, Math.ceil(moved.length / 2));
+          const step = Math.max(1, Math.floor(take.length / 400));
+          for (let k = 0; k < take.length; k += step) {
+            o.getVertexPosition(take[k][1], v).applyMatrix4(o.matrixWorld).applyMatrix4(inv);
+            const q = new V(Math.abs(v.x), Math.abs(v.y), Math.abs(v.z)).sub(half);
+            const outside = new V(Math.max(q.x, 0), Math.max(q.y, 0), Math.max(q.z, 0)).length();
+            dists.push((outside + Math.min(Math.max(q.x, q.y, q.z), 0)) * scale);
+          }
+        });
+        if (!dists.length) return { gripCurl: +d.R.toFixed(2) };
+        dists.sort((a, b) => a - b);
+        const pc = (f) => dists[Math.min(dists.length - 1, Math.floor(f * dists.length))];
+        return {
+          gripCurl: +d.R.toFixed(2),
+          gripMm: +(pc(0.1) * 1000).toFixed(1),
+          gripMidMm: +(pc(0.5) * 1000).toFixed(1),
+          gripInPct: +((100 * dists.filter((x) => x < -0.004).length) / dists.length).toFixed(1),
+          tilt: d.shape.R ? deg(d.shape.R.tilt) : null,
+          thumb: d.shape.R?.thumb ?? null,
+          curlL: d.shape.L ? +d.L.toFixed(2) : null,
+        };
       };
       // the figures posed: clips run a while from `phase`, the gun brought up, perhaps a shot
       let metrics = [];
@@ -208,6 +259,7 @@
             leftMissCm: d.leftMiss == null ? null : +(d.leftMiss * 100).toFixed(1),
             gunToHeadCm: b.Head ? +(P(b.Head).distanceTo(M) * 100).toFixed(0) : null,
           };
+          Object.assign(out, fingersOnGrip(g));
           const k = kick.get(p);
           if (k) {
             out.kickBackCm = +(k.m.clone().sub(M).dot(k.d) * 100).toFixed(1);
@@ -246,12 +298,54 @@
         });
         status.textContent = `${placed.filter((p) => p.gp).length} of ${placed.length} armed · ${name}`;
       };
+      // close on each figure's hand (or the other's), from four sides, a tile each:
+      // its right, ahead, its left, below
+      const FROMS = [new V(-1, 0.25, 0.15), new V(0.1, 0.15, 1), new V(1, 0.3, 0.25), new V(0.5, -0.85, 0.3)];
+      const hands = (side = 'R') => {
+        const W = innerWidth;
+        const H = innerHeight;
+        const cols = placed.length;
+        const rows = FROMS.length;
+        const tw = Math.floor(W / cols);
+        const th = Math.floor(H / rows);
+        const cam = new THREE.PerspectiveCamera(30, tw / th, 0.01, 50);
+        renderer.setScissorTest(true);
+        renderer.setClearColor('#20242c');
+        renderer.clear();
+        labels.innerHTML = '';
+        placed.forEach((p, c) => {
+          if (!p.gp) return;
+          const bone = side === 'L' ? p.gp.bones.LeftHand : p.gp.bones.RightHand;
+          const at = (side === 'L' ? bone : (p.gp.gun.getObjectByName('grip') ?? bone)).getWorldPosition(new V());
+          const far = 0.42 * Math.max(1, (p.tall ?? 1.8) / 1.8); // (closer on the small, back on the big)
+          FROMS.forEach((f, r) => {
+            cam.position.copy(at).addScaledVector(f.clone().normalize(), far);
+            cam.near = far - 0.16 * Math.max(1, (p.tall ?? 1.8) / 1.8); // (what's between, a sleeve or fur, cut away)
+            cam.updateProjectionMatrix();
+            cam.lookAt(at);
+            renderer.setViewport(c * tw, H - (r + 1) * th, tw, th);
+            renderer.setScissor(c * tw, H - (r + 1) * th, tw, th);
+            renderer.render(scene, cam);
+          });
+          const d = document.createElement('div');
+          d.style.left = `${c * tw + tw / 2}px`;
+          d.style.top = '4px';
+          const m = metrics.find((x) => x.id === p.id);
+          d.textContent = `${p.id} ${m?.gripMm ?? ''}mm ${m?.gripInPct ?? ''}%`;
+          labels.append(d);
+        });
+        renderer.setScissorTest(false);
+        renderer.setViewport(0, 0, W, H);
+        status.textContent = `hands ${side}`;
+      };
+      window.__hands = hands;
       window.__pose = pose;
-      window.__sheet = { THREE, placed, PARTY, loadPartyFigure, cast };
+      window.__sheet = { THREE, placed, PARTY, loadPartyFigure, cast, checks };
       window.__view = view;
 
       pose({ aim: num('aim', 1), move: num('move', 0), turn: num('turn', 0), up: num('up', 0.08), fire: q.get('fire') === '1', after: num('after', 0.08), phase: num('phase', 0.25), fx: q.get('fx') === '1' });
-      view(q.get('view') ?? 'three');
+      if (q.get('view') === 'hands') hands(q.get('hand') ?? 'R');
+      else view(q.get('view') ?? 'three');
       document.body.dataset.ready = '1';
     </script>
   </body>

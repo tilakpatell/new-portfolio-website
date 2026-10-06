@@ -456,6 +456,9 @@ function RoadSoFar({ road, onGo, onClose }) {
           <span>
             <b>{t.stars.won}</b> of {t.stars.total} kitchen stars
           </span>
+          <span>
+            <b>{t.hidden.found}</b> of {t.hidden.total} off the road
+          </span>
         </p>
         <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
           Close
@@ -490,6 +493,22 @@ function RoadSoFar({ road, onGo, onClose }) {
           </li>
         ))}
       </ol>
+      {/* the places off the road: named once found, a question mark till then */}
+      <ul className="me-record-hidden" aria-label="Off the road">
+        {road.hidden.map((h) => (
+          <li key={h.id} data-found={h.found || undefined} data-done={h.done || undefined}>
+            {h.found ? (
+              <button type="button" className="me-record-name" onClick={() => onGo(h.id)}>
+                {h.name}
+              </button>
+            ) : (
+              <span className="me-record-unknown" title="Somewhere off the road. Look closely at the map.">
+                ?
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
     </aside>
   );
 }

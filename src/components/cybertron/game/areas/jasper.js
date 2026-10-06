@@ -85,5 +85,7 @@ export const JASPER = {
     mine: MINE,
     pod: POD,
     flyovers: ['predaking', 'dreadwing-jet'],
+    // Soundwave, watching from the rocks over the mine (the one nearest the road)
+    watcher: { kind: 'soundwave-tfp', near: { x: MINE.x - 60, z: MINE.z + 60 } },
   },
 };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MODELS } from '../catalog';
-import { ROBOT, VEHICLE, buildWorld } from '../rules';
+import { ENEMY_KINDS, ROBOT, VEHICLE, buildWorld } from '../rules';
 import { AREAS, MISSIONS, missionById } from './index';
 
 // whether a circle at (x, z) of radius r is clear of every solid that would
@@ -43,9 +43,9 @@ describe.each(Object.values(AREAS))('$name', (area) => {
   });
 
   it("only has models the catalogue has", () => {
-    const kinds = [area.player.robot, area.player.vehicle, ...area.people.map((p) => p.kind), ...(area.watchers ?? []).map((w) => w.kind), ...(area.stage.parked ?? []).map((p) => p.kind), ...(area.stage.flyovers ?? [])];
+    const kinds = [area.player.robot, area.player.vehicle, ...area.people.map((p) => p.kind), ...(area.watchers ?? []).map((w) => w.kind), ...(area.stage.parked ?? []).map((p) => p.kind), ...(area.stage.flyovers ?? []), ...(area.stage.watcher ? [area.stage.watcher.kind] : [])];
     for (const k of kinds) expect(MODELS[k], k).toBeTruthy();
-    for (const m of area.missions) for (const st of m.steps) for (const e of st.spawn ?? []) expect(['trooper', 'vehicon', 'megatron']).toContain(e.kind);
+    for (const m of area.missions) for (const st of m.steps) for (const e of st.spawn ?? []) expect(Object.keys(ENEMY_KINDS)).toContain(e.kind);
   });
 
   it('gives each mission to someone who is there, and talks to people who exist', () => {

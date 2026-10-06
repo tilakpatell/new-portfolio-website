@@ -11,6 +11,7 @@
 
 import * as THREE from 'three';
 import { createLibrary } from '../../../../lib/cc0';
+import { makeThing } from '../bots';
 import { drum, makeStrips, merged, platedMaterial, slab } from './common';
 
 // a vortex: the ground bridge's green, or the space bridge's blue
@@ -246,6 +247,14 @@ export async function buildStage(area, { renderer } = {}) {
   const glowG = new THREE.PointLight('#5dff9a', 900, 50, 1.8);
   glowG.position.set(B.maxX - 8, th / 2, 0);
   group.add(glowG);
+
+  // Bumblebee's car and Bulkhead's truck, in the bay where they're parked
+  for (const p of area.stage.parked ?? [])
+    makeThing(p.kind).then((m) => {
+      m.position.set(p.x, 0, p.z);
+      m.rotation.y = p.yaw;
+      group.add(m);
+    });
 
   let last = -1;
   return {

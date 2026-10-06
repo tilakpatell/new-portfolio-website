@@ -21,14 +21,21 @@ export const SHOT = { speed: 140, ttl: 1.2, robotDamage: 12, vehicleDamage: 7, c
 export const ENEMY_KINDS = {
   trooper: { hp: 40, speed: 6, range: 55, cooldown: 1.3, damage: 5, r: 1.2, h: 7 },
   vehicon: { hp: 40, speed: 6, range: 55, cooldown: 1.2, damage: 5, r: 1.2, h: 7 },
-  megatron: { hp: 700, speed: 5, range: 70, cooldown: 0.5, damage: 9, r: 1.8, h: 10.5, boss: true },
+  megatron: { hp: 700, speed: 5, range: 70, cooldown: 0.5, damage: 9, r: 1.8, h: 10.5, boss: true, name: 'Megatron' },
+  barricade: { hp: 150, speed: 7, range: 55, cooldown: 0.9, damage: 6, r: 1.3, h: 7.2 },
+  // (his cannon: slow, and it hurts)
+  shockwave: { hp: 420, speed: 3.5, range: 85, cooldown: 1.7, damage: 15, r: 1.6, h: 11, boss: true, name: 'Shockwave' },
 };
 
-// Megatron's turns, as Fall of Cybertron has him: so long on his feet with
-// the fusion cannon, then into his tank (the change as long as his own
-// model's takes), charging about and shelling, then back. A tank is longer
-// and lower to hit, and stands still and holds its fire while it changes.
-export const MEGATRON = { robot: 12, shift: 2.1, tank: 6.5, back: 1.6, speed: 17, turn: 1.5, range: 95, cooldown: 1.5, damage: 16, shell: 0.5, r: 3, h: 5.5 };
+// The Decepticons who change: so long on their feet, then into their
+// other form (the change as long as their own model's takes), driving at
+// Optimus, then back; still, and holding fire, while they change. Megatron,
+// as Fall of Cybertron has him, turns into his tank and shells; Barricade,
+// as War for Cybertron has him, into his car and rams. `alt` is the other
+// form's name; `tank` (or `car`) how long it lasts; `r` and `h` its size.
+export const MEGATRON = { alt: 'tank', robot: 12, shift: 2.1, tank: 6.5, back: 1.6, speed: 17, turn: 1.5, range: 95, cooldown: 1.5, damage: 16, shell: 0.5, r: 3, h: 5.5 };
+export const BARRICADE = { alt: 'car', robot: 9, shift: 1.65, car: 5.5, back: 1.8, speed: 26, turn: 2.4, ram: 14, r: 2.3, h: 3.6 };
+export const FORMS = { megatron: MEGATRON, barricade: BARRICADE };
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const wrap = (a) => a - TAU * Math.floor((a + Math.PI) / TAU);
@@ -565,22 +572,25 @@ export function stepEnemies(enemies, player, dt, world, rand = Math.random) {
       e.shift = Math.max(0, e.shift - dt);
       continue;
     }
-    if (k.boss) {
+    const F = FORMS[e.kind];
+    if (F) {
+      const alt = e.form === F.alt;
       e.span = (e.span ?? 0) + dt;
-      if (e.span >= (e.form === 'tank' ? MEGATRON.tank : MEGATRON.robot)) {
-        e.form = e.form === 'tank' ? 'robot' : 'tank';
-        e.shift = e.form === 'tank' ? MEGATRON.shift : MEGATRON.back;
+      if (e.span >= (alt ? F[F.alt] : F.robot)) {
+        e.form = alt ? 'robot' : F.alt;
+        e.shift = alt ? F.back : F.shift;
         e.span = 0;
-        e.r = e.form === 'tank' ? MEGATRON.r : k.r;
-        e.h = e.form === 'tank' ? MEGATRON.h : k.h;
+        e.r = alt ? k.r : F.r;
+        e.h = alt ? k.h : F.h;
         e.state = 'shift';
         events.push({ type: 'enemyShift', id: e.id, to: e.form });
         continue;
       }
-    }
-    if (e.form === 'tank') {
-      chargeAndShell(e, player, dt, world, d, shots, events, rand);
-      continue;
+      if (!alt) e.ram = 0;
+      else {
+        drive(e, F, player, dt, world, d, shots, events, rand);
+        continue;
+      }
     }
     e.yaw = toward(e.yaw, Math.atan2(dx, dz), 4 * dt);
     e.t += dt;
@@ -628,22 +638,36 @@ export function stepEnemies(enemies, player, dt, world, rand = Math.random) {
   return { shots, events };
 }
 
-// Megatron's tank: straight at Optimus and on past him (it doesn't turn
-// once it's close, so it overshoots and comes round again), its cannon
-// lobbing shells that hit hard
-function chargeAndShell(e, player, dt, world, d, shots, events, rand) {
+// A Decepticon in his other form: straight at Optimus and on past him (he
+// doesn't turn once he's close, so he overshoots and comes round again).
+// Barricade's car rams him, once a pass; Megatron's tank lobs shells that
+// hit hard.
+function drive(e, F, player, dt, world, d, shots, events, rand) {
   e.state = 'charge';
-  if (d > 16) e.yaw = toward(e.yaw, Math.atan2(player.x - e.x, player.z - e.z), MEGATRON.turn * dt);
-  e.x += Math.sin(e.yaw) * MEGATRON.speed * dt;
-  e.z += Math.cos(e.yaw) * MEGATRON.speed * dt;
+  if (d > 16) e.yaw = toward(e.yaw, Math.atan2(player.x - e.x, player.z - e.z), F.turn * dt);
+  e.x += Math.sin(e.yaw) * F.speed * dt;
+  e.z += Math.cos(e.yaw) * F.speed * dt;
   resolve(world, e, e.r, e.h, VEHICLE.step);
   e.y = world.floorAt(e.x, e.z, e.y + 1, VEHICLE.step);
+  if (F.ram) {
+    // (a hit as he goes through: a shot from right beside Optimus, the
+    // page's way of hurting him, that nobody sees)
+    e.ram = Math.max(0, (e.ram ?? 0) - dt);
+    const reach = e.r + (player.mode === 'vehicle' ? VEHICLE.radius : ROBOT.radius) + 0.6;
+    if (!e.ram && !player.dead && Math.hypot(player.x - e.x, player.z - e.z) < reach && Math.abs(player.y - e.y) < 4) {
+      e.ram = 1.4;
+      const y = player.y + 1.5;
+      shots.push({ from: 'enemy', by: e.id, ram: true, x: player.x - Math.sin(e.yaw) * 0.5, y, z: player.z - Math.cos(e.yaw) * 0.5, vx: Math.sin(e.yaw) * 30, vy: 0, vz: Math.cos(e.yaw) * 30, ttl: 0.05, damage: F.ram });
+      events.push({ type: 'ram', id: e.id });
+    }
+    return;
+  }
   e.cooldown -= dt;
-  if (e.cooldown > 0 || d > MEGATRON.range || player.dead) return;
-  e.cooldown = MEGATRON.cooldown * (0.85 + 0.3 * rand());
+  if (e.cooldown > 0 || d > F.range || player.dead) return;
+  e.cooldown = F.cooldown * (0.85 + 0.3 * rand());
   // (the shell from the cannon's muzzle, ahead of the turret)
   const ex = e.x + Math.sin(e.yaw) * 4;
-  const ey = e.y + MEGATRON.h * 0.7;
+  const ey = e.y + F.h * 0.7;
   const ez = e.z + Math.cos(e.yaw) * 4;
   const px = player.x;
   const py = player.y + (player.mode === 'vehicle' ? 1.5 : ROBOT.height * 0.5);
@@ -651,8 +675,8 @@ function chargeAndShell(e, player, dt, world, d, shots, events, rand) {
   if (!segmentClear(world, ex, ey, ez, px, py, pz)) return;
   const yaw = Math.atan2(px - ex, pz - ez) + ((rand() - 0.5) * 4 * Math.PI) / 180;
   const pitch = Math.atan2(py - ey, Math.hypot(px - ex, pz - ez));
-  const speed = SHOT.speed * MEGATRON.shell;
-  shots.push({ from: 'enemy', by: e.id, heavy: true, x: ex, y: ey, z: ez, vx: Math.sin(yaw) * Math.cos(pitch) * speed, vy: Math.sin(pitch) * speed, vz: Math.cos(yaw) * Math.cos(pitch) * speed, ttl: 2.2, damage: MEGATRON.damage });
+  const speed = SHOT.speed * F.shell;
+  shots.push({ from: 'enemy', by: e.id, heavy: true, x: ex, y: ey, z: ez, vx: Math.sin(yaw) * Math.cos(pitch) * speed, vy: Math.sin(pitch) * speed, vz: Math.cos(yaw) * Math.cos(pitch) * speed, ttl: 2.2, damage: F.damage });
   events.push({ type: 'enemyFire', id: e.id, heavy: true });
 }
 

@@ -9,7 +9,7 @@
 
 import * as THREE from 'three';
 import { createLibrary } from '../../../../lib/cc0';
-import { makeThing } from '../bots';
+import { makeFigure, makeThing } from '../bots';
 import { makeSky, makeStrips, merged, platedMaterial, slab } from './common';
 
 const VORTEX = /* glsl */ `
@@ -142,6 +142,18 @@ export async function buildStage(area, { renderer, tier = 'high' } = {}) {
   crater.position.set(S.pod.x, 0.05, S.pod.z);
   group.add(crater);
 
+  // Soundwave, on top of the rocks over the mine, watching whoever comes
+  let soundwave = null;
+  const perch = S.watcher && area.solids.filter((s) => s.tag === 'rock').sort((a, b) => Math.hypot(a.x - S.watcher.near.x, a.z - S.watcher.near.z) - Math.hypot(b.x - S.watcher.near.x, b.z - S.watcher.near.z))[0];
+  if (perch)
+    makeFigure(S.watcher.kind).then((f) => {
+      soundwave = f;
+      f.group.position.set(perch.x, perch.top, perch.z);
+      f.group.rotation.y = Math.atan2(0 - perch.x, 0 - perch.z);
+      f.play('idle');
+      group.add(f.group);
+    });
+
   // what flies over: Predaking, and Dreadwing
   const flyers = [];
   for (const [i, kind] of S.flyovers.entries())
@@ -161,9 +173,11 @@ export async function buildStage(area, { renderer, tier = 'high' } = {}) {
         m.rotation.set(0, -a, -0.3);
       }
       mineGlow.intensity = 2600 + 500 * Math.sin(t * 2.3);
+      soundwave?.update(1 / 60);
     },
     dispose() {
       for (const x of own) x.dispose?.();
+      soundwave?.dispose();
       lib.dispose();
     },
   };
