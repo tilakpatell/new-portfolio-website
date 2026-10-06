@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import PageTitle from '../components/PageTitle';
 import { Link } from 'react-router-dom';
 import { RiArrowRightLine, RiFileTextLine, RiGithubFill, RiLinkedinBoxFill, RiMailLine, RiRocket2Line } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
@@ -132,9 +133,9 @@ export default function Home() {
               <p className="eyebrow">Technical Infrastructure PM Intern at AWS</p>
             </Reveal>
             <Reveal delay={60}>
-              <h1 className="display mt-6 text-[clamp(3.6rem,1.2rem+9vw,8.4rem)]">
+              <PageTitle className="display mt-6 text-[clamp(3.6rem,1.2rem+9vw,8.4rem)]">
                 <HeroName />
-              </h1>
+              </PageTitle>
             </Reveal>
             <Reveal delay={120}>
               <p className="lead mt-8 max-w-[36rem] !text-[clamp(1.125rem,1rem+0.45vw,1.3rem)] text-ink">

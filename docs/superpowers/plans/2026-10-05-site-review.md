@@ -23,14 +23,14 @@ Work from this session lands as pull requests, one concern each, and ticks its l
 - [x] The Terminal swallows Tab and Shift+Tab always: a keyboard trap (WCAG 2.1.2). Swallow Tab only when a completion applies; let Shift+Tab and Escape leave.
 - [x] The phone menu (portalled) doesn't move focus in, return it to the button, or make the page behind inert.
 - [x] The Résumé's tabs: no roving tabindex, arrows change the view but not the focus.
-- [ ] Six `<h1>`s in one feed document. The pages off the address could render their title as `h2` (`usePageActive`).
-- [ ] Contact's form doesn't move focus to the first invalid field.
+- [x] Six `<h1>`s in one feed document. The pages off the address could render their title as `h2` (`usePageActive`). Done: `components/PageTitle.jsx` is the page's `h1` on the address and an `h2` elsewhere in the feed; the themes find it by `data-page-title`.
+- [x] Contact's form doesn't move focus to the first invalid field. Done: its checks are `lib/contact.js` (tested), and a failed send focuses the first field that's wrong.
 
 ## Core pages: reach and polish
 
 - [x] Between about 900 and 1180 px (a tablet, a small laptop), Music, Terminal and the colour picker were in neither the bar nor a menu (only search found them). The menu now shows below `lg`, or whenever the bar has let go of Terminal or Music to fit. *(verified)*
 - [x] (A page per route: `scripts/prerender.mjs` writes `dist/<route>/index.html` with its own title, description, preview card and canonical address, and the sitemap lists all 55. *(verified)*) Every shared link (`/#/projects/x`) unfurls as the home page: hash routes have one title, description and image. Prerendered per-route HTML (title, description, OG) at build time would fix shares and search; `public/sitemap.xml` lists `/` only.
-- [ ] `scripts/github-snapshot.mjs` rewrites the tracked `public/github.json` on every build (its `fetchedAt`), leaving a dirty tree; and `Promise.all` drops the whole snapshot if the contributions API is down. Write only on change; `allSettled`.
+- [x] `scripts/github-snapshot.mjs` rewrites the tracked `public/github.json` on every build (its `fetchedAt`), leaving a dirty tree; and `Promise.all` drops the whole snapshot if the contributions API is down. Write only on change; `allSettled`. Done, tested: each answer stands alone, and the file is written only when more than its clock changed.
 - [ ] Recruiter basics not on the site: where based, when available, open to relocation; a "last updated" on the résumé.
 
 ## The universe and the galaxy

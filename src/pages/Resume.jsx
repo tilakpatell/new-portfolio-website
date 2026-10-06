@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import PageTitle from '../components/PageTitle';
 import { RiCloseLine, RiDownloadLine, RiPrinterLine } from 'react-icons/ri';
 import ResumeSheet from '../components/ResumeSheet';
 import { profile } from '../data/profile';
@@ -86,7 +87,7 @@ export default function Resume() {
       <header className="resume-header flex flex-wrap items-end justify-between gap-8">
         <div>
           <p className="eyebrow">Résumé</p>
-          <h1 className="display mt-5 text-[clamp(2.6rem,1.4rem+4.6vw,5rem)]">One page, filterable.</h1>
+          <PageTitle className="display mt-5 text-[clamp(2.6rem,1.4rem+4.6vw,5rem)]">One page, filterable.</PageTitle>
           <p className="lead mt-5 max-w-[46ch]">Click any skill on the résumé to light up every line that uses it.</p>
         </div>
         <div className="flex flex-wrap gap-3">

@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import PageTitle from '../components/PageTitle';
 import { Link } from 'react-router-dom';
 import { RiArrowDownLine } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
@@ -46,9 +47,9 @@ const Hero = memo(function Hero() {
       <div className="hero-mist -z-10" aria-hidden="true" />
       <div className="shell relative flex min-h-[clamp(560px,90svh,940px)] flex-col justify-end pb-[clamp(7rem,20vh,12rem)] pt-[calc(var(--nav-h)+48px)]">
         <p className="eyebrow hero-in !text-white/85">Travel</p>
-        <h1 id="travel-hero-title" className="display hero-in mt-5 max-w-4xl text-[clamp(3.2rem,1.2rem+7vw,7.4rem)] !text-white" style={{ '--d': '80ms' }}>
+        <PageTitle id="travel-hero-title" className="display hero-in mt-5 max-w-4xl text-[clamp(3.2rem,1.2rem+7vw,7.4rem)] !text-white" style={{ '--d': '80ms' }}>
           Places I’ve been
-        </h1>
+        </PageTitle>
         <p className="lead hero-in mt-6 max-w-[34rem] !text-[clamp(1.1rem,1rem+0.45vw,1.3rem)] !text-white/90" style={{ '--d': '160ms' }}>
           {countWord(COUNTRY_COUNT)} countries and the Caribbean so far, with a soft spot for mountains and lakes.
         </p>
