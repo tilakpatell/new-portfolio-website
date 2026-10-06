@@ -1050,7 +1050,7 @@ export const CREWS = [
     cleared: [
       ['han', 'That’s the last of them. Not bad for a hunk of junk.'],
       ['chewie', '[a triumphant roar]'],
-      ['han', 'I know.', 'hanIKnow'],
+      ['han', 'I know.'],
     ],
     events: {
       // friends on your wing in a long fight (wingmen.js), and going again

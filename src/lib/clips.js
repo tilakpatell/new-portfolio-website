@@ -71,7 +71,6 @@ export const CLIPS = {
   almostThere: { src: '/audio/clips/almost-there.mp3', line: 'Almost there.', by: 'Red Leader' },
   itsATrap: { src: '/audio/clips/its-a-trap.mp3', line: 'It’s a trap!', by: 'Admiral Ackbar' },
   neverTellOdds: { src: '/audio/clips/never-tell-me-the-odds.mp3', line: 'Never tell me the odds.', by: 'Han Solo' },
-  hanIKnow: { src: '/audio/clips/i-know.mp3', line: 'I know.', by: 'Han Solo' },
   badFeelingLuke: { src: '/audio/clips/bad-feeling-luke.mp3', line: 'I have a very bad feeling about this.', by: 'Luke Skywalker' },
   badFeelingHan: { src: '/audio/clips/bad-feeling-han.mp3', line: 'I got a bad feeling about this.', by: 'Han Solo' },
   notTheDroids: { src: '/audio/clips/not-the-droids.mp3', line: 'These aren’t the droids you’re looking for.', by: 'Obi-Wan Kenobi' },
