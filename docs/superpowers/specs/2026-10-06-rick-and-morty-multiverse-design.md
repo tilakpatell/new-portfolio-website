@@ -24,12 +24,19 @@ world. Make an entire plan on what we can get from this wiki and add to the
 existing codebase, and approximate cost for models, and prioritise the big
 things from the universe. The models have to be high quality and accurate."
 
+Then, on the models: “Save credits by using Sketchfab and community models
+from Meshy first, and if those are bad and not accurate then use Meshy.” So
+a model is looked for before it is paid for (the sourcing order under
+“Decisions and assumptions”), and a model that is found has to pass the
+same gate as one that is generated.
+
 Read as: today `/c-137` is one world (the Smiths' street and its rooms, the
 alien street outside Blips and Chitz, and the Citadel). The ask is to make it
 the door to the *multiverse*: the show's planets, dimensions, stations and
 people, as far as the wiki goes, built on the code that is there, with the
-people as rigged Meshy figures that look like the show, and a bill for them.
-The deliverable of this round is the plan and its cost, not the build.
+people as rigged figures that look like the show (found where someone has
+already made one well enough, made with Meshy where not), and a bill for
+them. The deliverable of this round is the plan and its cost, not the build.
 
 ## What is there now
 
@@ -76,16 +83,36 @@ how much of the repo it can reuse. The tiers are the phases of the plan.
 
 Decided by the brief or the repo:
 
-- Models come from Meshy (`scripts/meshy.mjs`), the pipeline every Rick and
-  Morty figure on the site already went through, so new figures share Rick's
-  skeleton and clips, the wardrobe's recolouring, the Citadel's crowd baking
-  and Portal panic's cast loader. A Tripo pipeline exists as a skill in the
-  repo but there is no Tripo key in the environment and nothing on the site
-  uses it; it is not used here.
-- Every person is a rigged Meshy figure in the show's cel look (the C-137
-  world's `STYLE`). No code-built stand-in for a person in a new place (the
-  Citadel's rule): a figure that fails the quality gate is left out, never
-  replaced with a box.
+- Models are found before they are paid for (the user's rule, under
+  “Intent”). Each asset is sourced in this order, and the first source that
+  passes the accuracy gate (“The model standard” below) is the one used:
+  1. **An existing Sketchfab model** that passes the same gate as a
+     generated one: judged against the wiki's reference sheet (silhouette,
+     colours, outfit, face), rigged or riggable, under 80,000 faces, and
+     under a licence the site can use: CC0, CC BY, CC BY-SA, CC BY-NC or
+     CC BY-NC-SA, never an ND licence and never a model that isn't
+     downloadable. `scripts/model-scout.mjs` finds the candidates with the
+     site owner's `SKETCHFAB_API_TOKEN`; a hit is imported to web size and
+     credited in `src/data/modelCredits.json`, as the site's other
+     Sketchfab models are.
+  2. **A Meshy community model** (meshy.ai's Discover page), only if the
+     user downloads it by hand into `lab/meshy/community/<name>.glb`. Meshy
+     has no API for its community models and this environment has no
+     browser login to meshy.ai, so the plan never fetches one itself. A
+     file left there is judged by the same gate, imported the same way and
+     credited in `public/games/credits.json` (as `meshy/community/<name>`,
+     with its page, its maker and the terms the page gives).
+  3. **Meshy generation** (`scripts/meshy.mjs`), the pipeline every Rick
+     and Morty figure on the site already went through, so a generated
+     figure shares Rick's skeleton and clips, the wardrobe's recolouring,
+     the Citadel's crowd baking and Portal panic's cast loader.
+
+  A Tripo pipeline exists as a skill in the repo but there is no Tripo key
+  in the environment and nothing on the site uses it; it is not used here.
+- Every person is a rigged figure, found or generated, in the show's cel
+  look (the C-137 world's `STYLE`). No code-built stand-in for a person in
+  a new place (the Citadel's rule): a figure that fails the quality gate is
+  left out, never replaced with a box.
 - Copy is in the site's voice: plain sentences, curly quotes, British
   spelling, no quoted dialogue from the show beyond a line a person is known
   for.
@@ -106,9 +133,11 @@ Assumed (say so if wrong):
   for Rick and Morty (2k textures; 30,000 faces, 40,000 and Meshy's ultra
   geometry for the heroes), unrigged props and buildings at 2k and 30,000,
   crowd copies at the crowd settings. This is the "high quality" of the
-  brief; the "accurate" is the gate in the standard below.
+  brief; the "accurate" is the gate in the standard below. A model that is
+  found is brought to the same budgets when it is imported.
 - **A4.** The budget is the user's Meshy account. The balance when this was
-  written was 58 credits: a purchase is the first task of the plan.
+  written was 58 credits: a purchase is needed before the first generated
+  asset, sized once the scout has said what is left to generate.
 - **A5.** Phases ship in order and each is a merge to main on its own; a
   phase can be stopped after any task without leaving the site broken.
 
@@ -187,7 +216,8 @@ quest, `locos`: the Locos have robbed Morty Mart and are hiding in
 Mortytown; find all three (the district's cover rules, from `layout.js`'s
 `sightClear`) and walk each to Cop Morty. On the map, the Citadel's
 code-drawn exterior is replaced with a Meshy model (its `CITADEL_PARTS`
-stay for collision and the siege).
+stay for collision and the siege), found on Sketchfab if one passes the
+gate, else made with Meshy.
 
 ### 4. The Vindicators
 
@@ -208,14 +238,15 @@ not: a capital ship event and planets of its own.
   you are at, as the Star Destroyer does, with its cannon array charging;
   knock the array out (anything hurts it) before it fires, or it removes the
   planet for a minute (the siege's shared-damage rules, `universe/siege.js`).
-  A Meshy model; the event in `director.js` with its own tested rules.
+  A model (found, else Meshy); the event in `director.js` with its own
+  tested rules.
 - **The Rick and Morty system**: four small landable planets round the
   Citadel on the map, Gazorpazorp, Planet Squanch, Bird World and Gear World,
   each a `landings.js` entry whose things are the destination builders'
   props and people, so landing there from the map is the same place as the
   portal's.
 - Birdperson's and Phoenixperson's code-built figures on the map are
-  replaced by the Meshy ones once they exist.
+  replaced by the new models once they exist.
 
 ### 6. Cross-benefits
 
@@ -223,13 +254,15 @@ Every new rigged Rick or Morty variant joins the wardrobe's `BODIES` (Evil
 Rick, Simple Rick, Rick Prime, Rick D. Sanchez III; Big Morty, Slick Morty)
 and the Citadel's crowd (`scripts/crowd.mjs`). Gromflomite and Zigerion
 figures join Portal panic's kinds. The model credits go into
-`public/games/credits.json` as today.
+`public/games/credits.json` as today for Meshy's, and into
+`src/data/modelCredits.json` for what came from Sketchfab.
 
 ## The catalogue, prioritised
 
 Reasons are in the third column: appearances (eps, from the API), the
-episode's standing, and reuse. "Model" counts are new Meshy assets; the
-costs are in the next section.
+episode's standing, and reuse. "Model" counts are new assets, each scouted
+on Sketchfab first and generated with Meshy only if nothing found passes;
+their costs, as ceilings, are under “Costs”.
 
 ### Tier 1 (Phase 1): the door, and the four places everyone knows
 
@@ -305,8 +338,36 @@ Mortys, the Vindicators shorts, real people.
 ## The model standard: the accuracy gate
 
 High quality is a setting; accurate is a process. Every figure and prop
-goes through this, and the plan's model tasks say so step by step.
+goes through this, found or generated, and the plan's model tasks say so
+step by step.
 
+0. **Scout first.** Before anything is paid for, `scripts/model-scout.mjs`
+   (built in the plan's Task 0.0) looks for the asset on Sketchfab:
+   `node scripts/model-scout.mjs <name> "<query>" [--rigged]`, the query
+   being the asset's wiki name and “rick and morty”, `--rigged` for a
+   person. It keeps only downloadable models under a licence the site can
+   use (CC0, CC BY, CC BY-SA, CC BY-NC, CC BY-NC-SA; no ND) and under
+   80,000 faces, ranks them, and writes the candidates (thumbnail, licence,
+   faces, rigged or not, the model's page) to `lab/meshy/scout/<name>/`.
+   A Sketchfab figure is judged by the same checklist as a Meshy one,
+   against the reference sheet (step 1, which costs nothing and comes
+   first): the silhouette, the main colours, every garment, the face, and
+   for a person a skeleton, or a clean A- or T-pose that Meshy's rigger
+   can take. It is rejected the same way: a fan model with the wrong
+   colours, a missing garment or a melted face is a miss, however much it
+   would save. A hit is imported with
+   `node scripts/model-scout.mjs fetch <name> <uid> <out.glb>` to the path
+   the generated asset would have had, credited in
+   `src/data/modelCredits.json` and recorded in
+   `lab/meshy/scout/<name>/chosen.json`; its concept and model steps are
+   skipped and it goes on to steps 5 to 7. A person that came without
+   clips gets idle, walk and run retargeted onto its own skeleton, as
+   Avengers HQ's Sketchfab people do (`scripts/sketchfab-avengers.mjs`), or
+   one with no skeleton is rigged by Meshy's rigger for 5 credits, as
+   `scripts/meshy-galaxy.mjs` rigs a Sketchfab model. A Meshy community
+   model the user has left in `lab/meshy/community/<name>.glb` is judged
+   next, the same way. Only when nothing passes is the asset generated:
+   the prompt (step 1) and steps 2 to 7.
 1. **A reference sheet first.** `node scripts/wiki-refs.mjs <wiki title …>`
    fetches each page's infobox image and its Appearance section into
    `lab/meshy/refs/<slug>/` (gitignored, like the concept images). The
@@ -335,7 +396,8 @@ goes through this, and the plan's model tasks say so step by step.
 6. **In the world.** A screenshot beside Rick at the figure's `height`
    (metres, the site's scale: Rick 1.85, Morty 1.5; the plan has a heights
    table) and in its place, judged once more; then it is committed with its
-   `credits.json` entry.
+   credit (`public/games/credits.json` for Meshy's, `src/data/modelCredits.json`
+   for a Sketchfab model).
 7. **Never ship a miss.** A figure that fails at any step is left out of its
    scene and the scene still works; the plan's tasks say what happens to a
    place whose figure is missing (the hotspot stays, the line is read off a
@@ -344,6 +406,19 @@ goes through this, and the plan's model tasks say so step by step.
 Rerolls are in the budget as a 20% contingency on every phase.
 
 ## Costs
+
+Every figure in this section is a ceiling: what the plan costs if every
+asset is generated. The sourcing order puts Sketchfab first, and every hit
+saves its class's credits from the tables (all of them for a model that
+comes rigged or needs no rig; all but the rigger's 5 and an idle's 3 for a
+person that Meshy's rigger has to rig). The savings are expected to be
+highest for the vehicles, the buildings and the main cast (Birdperson,
+Squanchy, Mr. Poopybutthole and the others fans model most), and lowest
+for one-episode characters (Total Rickall's parasites, Anatomy Park's
+diseases, the Jerryboree's Jerrys), which few people will have modelled.
+No saving is counted in advance: the tables stay as they are, as
+ceilings, and a phase's bill is its ceiling less its hits, known once its
+scout has run.
 
 ### Meshy's prices (read 2026-10-06)
 
@@ -357,7 +432,7 @@ prepaid from the subscription page; a per-credit price for top-ups is not
 public, so the dollar figures below use the Pro rate ($0.020 a credit) with
 the Ultra rate ($0.0125) as the floor.
 
-### Per asset
+### Per asset (ceilings: the asset generated)
 
 | Class | Steps | Credits | ≈ $ (Pro / Ultra) |
 | --- | --- | ---: | ---: |
@@ -371,7 +446,7 @@ the Ultra rate ($0.0125) as the floor.
 A reroll costs the step again (9 for a concept, 30 for a model, 5 for a
 rig); the 20% contingency covers about one reroll in three assets.
 
-### Per phase
+### Per phase (ceilings: every asset generated)
 
 | Phase | Models | Credits | With 20% | ≈ $ (Pro / Ultra) |
 | --- | ---: | ---: | ---: | ---: |
@@ -395,7 +470,9 @@ whole of Phases 1–6 is one month of Ultra (8,000 credits, ≈ $100), which
 also covers the long tail. Premium (3,000, $70) covers Phases 1–3 and half
 of 4; a second month finishes. Pro (1,000, $20) is one phase a month.
 Plan credits reset monthly and do not carry over, so buy for the phases
-that will run in the month.
+that will run in the month. Run those phases' scouts first (they cost
+nothing) and buy for what is left: the figures above are what a phase
+costs if nothing is found.
 
 ### Download weight
 
@@ -411,9 +488,12 @@ README's "about" note says a destination is 1–3 MB more).
   the hero's button picks one and lands in the world dialled to it, each
   destination has its portal home, and a destination not yet loaded shows
   its line behind the swirl and never a blank canvas.
-- Every new person is a rigged Meshy figure that passed the gate, stands at
-  its height, idles, walks and (where it sits) sits, has a line when you
-  come up to them, and is credited in `public/games/credits.json`.
+- Every new person is a rigged figure that passed the gate (found on
+  Sketchfab, a Meshy community model, or generated), stands at its height,
+  idles, walks and (where it sits) sits, has a line when you come up to
+  them, and is credited: in `src/data/modelCredits.json` if it came from
+  Sketchfab, in `public/games/credits.json` if it came from Meshy.
+- Every asset was scouted before any credits were spent on it.
 - Each destination has at least one task in the world's list, kept between
   visits like today's, and an achievement where the plan says so.
 - Total Rickall, the Locos quest, the Vindicators' rooms and the NX-5 event
@@ -428,14 +508,15 @@ README's "about" note says a destination is 1–3 MB more).
 
 Voices for the new people (the `scripts/voices` pipeline can add them
 later), online play inside destinations beyond the ghosts the street has,
-the comics and games of the franchise, any model bought from Sketchfab
-(everything here is Meshy, to match the cast), and the long tail's places
-until Phase 7 is chosen.
+the comics and games of the franchise, any model that has to be bought
+(Sketchfab's store included: the scout takes free downloads under the
+licences above), and the long tail's places until Phase 7 is chosen.
 
 ## Open questions
 
-1. Which Meshy purchase: one month of Ultra for everything (recommended),
-   or Premium phase by phase?
+1. Which Meshy purchase, once the scouts have said what is left: one month
+   of Ultra for everything (recommended at the ceilings), or Premium phase
+   by phase?
 2. Phase order: the four Tier 1 places first, or the house (Tier 2) first
    because its people appear most? The plan takes Tier 1 first because the
    dial is what makes the page a portal.
@@ -443,6 +524,11 @@ until Phase 7 is chosen.
    gunplay brought into the house (more work, more feel)?
 4. The Vindicators as a destination (assumed) or a route of its own with a
    page section, like the Citadel?
-5. Replace the map's code-built Birdperson and Phoenixperson with the Meshy
-   ones (assumed yes)?
+5. Replace the map's code-built Birdperson and Phoenixperson with the new
+   models (assumed yes)?
 6. Phase 7 at all, and which of its places.
+7. Will the user hand-download Meshy community models into
+   `lab/meshy/community/<name>.glb`? Meshy has no API for them and this
+   environment has no login to meshy.ai, so without that the order is
+   Sketchfab, then Meshy generation. If yes, the assets worth looking for
+   there are the ones the scout found nothing good enough for.

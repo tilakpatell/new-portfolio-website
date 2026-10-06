@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make `/c-137` the door to the show's multiverse: the garage portal dials to the show's planets, stations and dimensions, each walked in 3D with its people as rigged Meshy figures that look like the show, in six phases that each merge on their own.
+**Goal:** Make `/c-137` the door to the show's multiverse: the garage portal dials to the show's planets, stations and dimensions, each walked in 3D with its people as rigged figures that look like the show (found on Sketchfab where one is good enough, generated with Meshy where not), in six phases that each merge on their own.
 
-**Architecture:** New places are areas of the existing C-137 world (`rules.js` data, a builder, people, hotspots, tasks), declared as pure data in `world/dimensions/destinations.js` and built lazily behind the portal's swirl; the Citadel gets a district on its own kit; the universe map gets a Federation capital-ship event and four landable planets. Every figure comes from `scripts/meshy.mjs` through the accuracy gate in the spec.
+**Architecture:** New places are areas of the existing C-137 world (`rules.js` data, a builder, people, hotspots, tasks), declared as pure data in `world/dimensions/destinations.js` and built lazily behind the portal's swirl; the Citadel gets a district on its own kit; the universe map gets a Federation capital-ship event and four landable planets. Every asset is looked for on Sketchfab first (`scripts/model-scout.mjs`) and generated with `scripts/meshy.mjs` only when nothing found passes the accuracy gate in the spec.
 
-**Tech Stack:** React 19, Vite 8, three 0.186, Vitest, Meshy API (`scripts/meshy.mjs`, `scripts/crowd.mjs`), the Fandom MediaWiki API for reference sheets, Playwright on `/opt/pw-browsers/chromium` for shots.
+**Tech Stack:** React 19, Vite 8, three 0.186, Vitest, the Sketchfab Data API (`scripts/model-scout.mjs`, `SKETCHFAB_API_TOKEN`), Meshy API (`scripts/meshy.mjs`, `scripts/crowd.mjs`), the Fandom MediaWiki API for reference sheets, Playwright on `/opt/pw-browsers/chromium` for shots.
 
 **Spec:** `docs/superpowers/specs/2026-10-06-rick-and-morty-multiverse-design.md` (the catalogue it picks from: `docs/research/2026-10-06-rick-and-morty-wiki.md`).
 
@@ -14,10 +14,11 @@
 
 - Coordinates as `rules.js` has them: metres, +x east, +z south; a Meshy figure faces +z, so `rotation.y = face + π/2`.
 - Destinations stand in their own column, `x −470…−330`, one per 100 m of `z` from `z = 900`; nothing that exists today moves.
-- Every person is a rigged Meshy figure in `STYLE` (the show's cel look); a figure that fails the gate is left out, never replaced with a code-built stand-in. Crowd-only figures are modelled `AT_EASE` and baked by `scripts/crowd.mjs`.
+- Sourcing order, for every asset (the user's rule: “Save credits by using Sketchfab and community models from Meshy first, and if those are bad and not accurate then use Meshy.”): (1) a Sketchfab model found by `scripts/model-scout.mjs` that passes the gate (judged against the wiki sheet: silhouette, colours, outfit, face; rigged or riggable; under 80,000 faces; CC0, CC BY, CC BY-SA, CC BY-NC or CC BY-NC-SA, never ND, never one that isn't downloadable), imported and credited in `src/data/modelCredits.json`; (2) a Meshy community model, only if the user has downloaded it by hand into `lab/meshy/community/<name>.glb` (Meshy has no API for them and this environment has no login to meshy.ai); (3) Meshy generation. A found model is judged by the same checklist and rejected the same way as a generated one. Every credit figure in this plan is a ceiling (the asset generated); each hit takes its class's credits off.
+- Every person is a rigged figure, found or generated, in `STYLE` (the show's cel look); a figure that fails the gate is left out, never replaced with a code-built stand-in. Crowd-only figures are modelled `AT_EASE` and baked by `scripts/crowd.mjs`.
 - Meshy settings: concept `nano-banana-pro` (crowd `nano-banana`), `pose_mode: 'a-pose'` for anything rigged; model on `latest`, `texture_resolution: '2k'`, `target_polycount` 30,000 (heroes 40,000 with `geometry_resolution: '2k'`; crowd 9,000); fetched textures 2048 px (crowd and small props 1024).
-- The accuracy gate (spec, "The model standard") runs for every asset: reference sheet, judged concept, judged model, judged rig, in-world shot. Rerolls: at most two concepts and one model per asset before the prompt is rewritten.
-- Credits are the user's Meshy account; every step's task id goes in `scripts/meshy-tasks.json`; every shipped model gets its `public/games/credits.json` entry (the fetch step writes it).
+- The accuracy gate (spec, "The model standard") runs for every asset, found or generated: reference sheet, the scout's candidates judged, then (for what isn't found) judged concept and judged model, judged rig, in-world shot. Rerolls: at most two concepts and one model per asset before the prompt is rewritten.
+- Credits are the user's Meshy account; every step's task id goes in `scripts/meshy-tasks.json`; every shipped Meshy model gets its `public/games/credits.json` entry (the fetch step writes it); every Sketchfab model its `src/data/modelCredits.json` entry (the scout's `fetch` writes it); a Meshy community model a `meshy/community/<name>` entry in `public/games/credits.json` with its page, its maker and the terms the page gives.
 - Copy in the site's voice: plain sentences, curly quotes (’ “ ”), British spelling (colour, centre), no quoted dialogue beyond a line a person is known for.
 - localStorage keys exactly: `tp-rm-dial` (the dial), `tp-c137-done` as today for tasks. Dev hook `window.__C137__` (DEV only) gains `goto(area, x, z, face)` and `dial(id)`.
 - `npm run lint`, `npx vitest run` and `npm run build` clean at every commit. Commits end with the session's attribution lines. Each phase merges to main before the next starts.
@@ -34,6 +35,27 @@
 ---
 
 ## Phase 0: tooling, the lazy world and the dial (0 credits)
+
+### Task 0.0: The model scout
+
+**Files:**
+- Create: `scripts/model-scout.mjs`, `scripts/model-scout.test.mjs`
+- Modify: `README.md` (Scripts table: one line)
+
+**Interfaces:**
+- Produces: `node scripts/model-scout.mjs <name> "<query>" [--rigged]` searches Sketchfab's Data API (`https://api.sketchfab.com/v3/search?type=models&downloadable=true&q=…`, with the site owner's `SKETCHFAB_API_TOKEN`, never kept) and writes `lab/meshy/scout/<name>/candidates.json` (the ranked candidates: uid, name, author, licence, faces, rigged, animated, likes, the model's page) and each one's thumbnail beside it, best first. `--rigged` ranks rigged models first. `node scripts/model-scout.mjs fetch <name> <uid> <out.glb>` checks the licence again, downloads the model's `.glb` (`/v3/models/<uid>/download`), brings it to web size with `scripts/sketchfab-import.mjs` (with `--keep` for a skeleton and its clips), writes `<out.glb>`, and adds its `src/data/modelCredits.json` entry as `rm-<name>` (title, author, authorUrl, license, licenseUrl, source, file; `where` and `as` are filled in by the task that places it, as `src/data/modelCredits.test.js` asks). Exports:
+  - `licenseOk(license) → boolean`: Sketchfab's licence slug (or an object carrying it as `slug`); true for `cc0`, `by`, `by-sa`, `by-nc`, `by-nc-sa`, false for `by-nd`, `by-nc-nd`, the Standard and Editorial licences (`st`, `ed`), anything else and nothing.
+  - `rank(results, { rigged = false } = {}) → candidates`: drops what isn't downloadable, what `licenseOk` refuses and what has 80,000 faces or more; orders the rest by likes, with `rigged` putting rigged models (animated ones first) before the others.
+  - `slugOf(name) → string`, as `wiki-refs.mjs`'s (`'Mr. Poopybutthole' → 'mr-poopybutthole'`).
+
+- [ ] **Step 1: Failing tests** in `scripts/model-scout.test.mjs`:
+  - `licenseOk` takes each of `cc0`, `by`, `by-sa`, `by-nc`, `by-nc-sa` (as a string and as `{ slug }`) and refuses `by-nd`, `by-nc-nd`, `st`, `ed`, `'nope'`, `undefined` and `null`.
+  - `rank` drops a model that isn't downloadable, one under `by-nd`, and one of 80,000 faces; keeps one of 79,999; orders by likes; with `{ rigged: true }` a rigged model with fewer likes comes before an unrigged one, and an animated rigged one before a still rigged one.
+  - `slugOf('Mr. Poopybutthole')` is `'mr-poopybutthole'`; `slugOf('Revolio Clockberg, Jr.')` is `'revolio-clockberg-jr'`.
+- [ ] **Step 2:** `npx vitest run scripts/model-scout.test.mjs` → FAIL (no module).
+- [ ] **Step 3:** Write `scripts/model-scout.mjs`: the search, `rank`, the candidates and thumbnails, and `fetch` as above; `main()` runs only when `process.argv[1]` is this file (so the test can import it). Run → PASS; `npm run lint` clean.
+- [ ] **Step 4:** The two example searches: `NODE_USE_ENV_PROXY=1 node scripts/model-scout.mjs birdperson "Birdperson rick and morty" --rigged` and `NODE_USE_ENV_PROXY=1 node scripts/model-scout.mjs citadel-exterior "Citadel of Ricks rick and morty"`. Read each `candidates.json` and look at the thumbnails (nothing is fetched here: Tasks 1.1 and 3.1 judge them against the sheets).
+- [ ] **Step 5: Commit** “Models: a scout for Sketchfab, before Meshy is paid”.
 
 ### Task 0.1: Reference sheets from the wiki
 
@@ -139,23 +161,23 @@ it('falls back to the intro', () => { expect(appearanceOf('{{infobox}}\nJust a g
 
 ### Task 0.7: Credits
 
-- [ ] **Step 1:** The user buys Meshy credits for the phases that will run this month (spec, “Buying”): Ultra (8,000) for everything, Premium (3,000) for Phases 1–3. `node scripts/meshy.mjs balance` shows it.
+- [ ] **Step 1:** The user buys Meshy credits for the phases that will run this month (spec, “Buying”), once those phases' scouts have run (each model task's scout step, which costs nothing), for what the scouts did not find: the phase headings below are ceilings. At the ceilings, Ultra (8,000) covers everything and Premium (3,000) Phases 1–3. `node scripts/meshy.mjs balance` shows it.
 
 ---
 
-## Phase 1: the door and four places (546 credits, ≈ 655 with rerolls)
+## Phase 1: the door and four places (a ceiling of 546 credits, ≈ 655 with rerolls)
 
 ### Task 1.1: Phase 1’s figures and buildings
 
 **Files:**
 - Modify: `scripts/meshy.mjs` (`RM`), `scripts/crowd.mjs` (`CROWD`)
 - Create (generated): `public/games/meshy/{birdperson,phoenixperson,squanchy,poopybutthole,unity,marsha,mortyjr,krombopulos}{,-idle,-walk,-run}.glb`, `poopybutthole-sit.glb`, `public/games/meshy/crowd/{zigerion,gearperson}.glb`, `public/models/c137/rm/{gwendolyn,squanchy-house,birdperson-house}.glb`
-- Modify (generated): `scripts/meshy-tasks.json`, `public/games/credits.json`
+- Modify (generated): `scripts/meshy-tasks.json`, `public/games/credits.json`, `src/data/modelCredits.json` (for what the scout finds)
 
 **Interfaces:**
 - Produces: GLBs in the layout `createMeshyCast` loads (`/games/meshy/<name>.glb` + `-idle/-walk/-run`), and unrigged models under `/models/c137/rm/`.
 
-The assets, with class and credits (H 55, R 47, P 39, PH 44, C 33), heights in metres:
+The assets, with class and credits (ceilings, the asset generated: H 55, R 47, P 39, PH 44, C 33), heights in metres. The prompts are for what the scout doesn't find:
 
 ```js
 const BIRD = 'Birdperson from Rick and Morty';
@@ -179,11 +201,12 @@ const RM = {
 Heights of unrigged things are set where they stand (`gwendolyn` 1.75 m, the houses by their footprint).
 
 - [ ] **Step 1: Sheets.** `node scripts/wiki-refs.mjs Birdperson Phoenixperson Squanchy "Mr. Poopybutthole" Unity Mar-Sha "Morty Jr." "Krombopulos Michael" Zigerions "Gear People" Gwendolyn "Planet Squanch" "Bird World"`. Read each `ref.md` and `ref.png`; fix any prompt above that the sheet contradicts (the prompts were written from these sheets on 2026-10-06; the wiki moves).
-- [ ] **Step 2: Add `RM`** to `scripts/meshy.mjs`; add `zigerion`, `gearperson` to `CROWD` in `scripts/crowd.mjs` (the “modelled standing at ease” group).
-- [ ] **Step 3: Concepts.** `NODE_USE_ENV_PROXY=1 node --no-warnings scripts/meshy.mjs images rm`. Judge each `lab/meshy/rm/<name>.png` against its sheet with the gate's checklist; on a miss delete the name's `image` in `scripts/meshy-tasks.json` and rerun for that name (`… images birdperson`), twice at most, then rewrite the prompt.
-- [ ] **Step 4: Models.** `… models rm`; judge the four thumbnails per name; one reroll at most (delete `model`).
-- [ ] **Step 5: Rig and clips.** `… rig rm`, `… anim rm`, `… sit poopybutthole`, `… fetch rm`; open `scripts/preview/crew.html` on each rigged name; a twisted rig is rerolled (delete `rig`, `idle`, rerun). Then `node scripts/crowd.mjs zigerion gearperson`.
-- [ ] **Step 6:** `npm run lint`; `git add` the script changes, `scripts/meshy-tasks.json`, `public/games/credits.json` and the GLBs. **Commit** “Rick and Morty: Phase 1’s figures (Birdperson, Squanchy, Mr. Poopybutthole, Unity, Ma-Sha, Morty Jr., Krombopulos Michael) and their houses”.
+- [ ] **Step 2: Scout.** For each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. An asset's Meshy prompt above is used only when no candidate passes. For example `NODE_USE_ENV_PROXY=1 node scripts/model-scout.mjs squanchy "Squanchy rick and morty" --rigged`, then `node scripts/model-scout.mjs fetch squanchy <uid> public/games/meshy/squanchy.glb`. The output paths are the ones under **Files** (a person's `public/games/meshy/<name>.glb`, a crowd figure's the same for `scripts/crowd.mjs` to bake, a prop's or building's `public/models/c137/rm/<name>.glb`). A rigged figure must keep a skeleton and have idle, walk and run in the layout `createMeshyCast` loads (`<name>.glb` with `-idle`, `-walk`, `-run`): its own clips, renamed; else clips retargeted onto its skeleton from an animated download, as Avengers HQ's Sketchfab people get theirs (README, “Rigged characters from Sketchfab”; `scripts/sketchfab-avengers.mjs`); else, for a figure with no skeleton but a clean A- or T-pose, Meshy's rigger (5 credits, walk and run with it, idle 3), as `scripts/meshy-galaxy.mjs`'s `bake` and `rigurl` steps do for a Sketchfab model. A figure that sits needs a seated clip as well. Fill in the credit's `where` (`c-137`) and `as`; a CC0 model is the first of its licence in the credits, so widen `src/data/modelCredits.test.js`'s licence and licence-URL patterns to take CC0 in the same commit. Then judge any Meshy community model the user has left in `lab/meshy/community/<name>.glb` the same way.
+- [ ] **Step 3: Add `RM`** to `scripts/meshy.mjs`, without the assets the scout found; add `zigerion`, `gearperson` to `CROWD` in `scripts/crowd.mjs` (the “modelled standing at ease” group) unless found.
+- [ ] **Step 4: Concepts.** `NODE_USE_ENV_PROXY=1 node --no-warnings scripts/meshy.mjs images rm`. Judge each `lab/meshy/rm/<name>.png` against its sheet with the gate's checklist; on a miss delete the name's `image` in `scripts/meshy-tasks.json` and rerun for that name (`… images birdperson`), twice at most, then rewrite the prompt.
+- [ ] **Step 5: Models.** `… models rm`; judge the four thumbnails per name; one reroll at most (delete `model`).
+- [ ] **Step 6: Rig and clips.** `… rig rm`, `… anim rm`, `… sit poopybutthole`, `… fetch rm`; open `scripts/preview/crew.html` on each rigged name; a twisted rig is rerolled (delete `rig`, `idle`, rerun). Then `node scripts/crowd.mjs zigerion gearperson`.
+- [ ] **Step 7:** `npm run lint`; `npx vitest run src/data` (the credits test, for anything the scout brought in); `git add` the script changes, `scripts/meshy-tasks.json`, `public/games/credits.json`, `src/data/modelCredits.json` and the GLBs. **Commit** “Rick and Morty: Phase 1’s figures (Birdperson, Squanchy, Mr. Poopybutthole, Unity, Ma-Sha, Morty Jr., Krombopulos Michael) and their houses”.
 
 ### Task 1.2: Interdimensional Customs
 
@@ -244,7 +267,7 @@ Entry (index 3, outdoor): a rocky ridge at dusk under a pale orange sky with two
 
 ### Task 1.6: Phase 1 wrap
 
-**Files:** `README.md` (the C-137 row of the worlds table: the dial and the four places; the Scripts table), `docs/architecture.md:20` (the world's line), `src/components/worlds/worlds.js:18` (the `about` comment: “a destination is 1–3 MB more, when dialled”), `src/components/rickmorty/wardrobe/looks.js` (nothing new this phase), `public/games/credits.json` (done by fetch).
+**Files:** `README.md` (the C-137 row of the worlds table: the dial and the four places; the Scripts table), `docs/architecture.md:20` (the world's line), `src/components/worlds/worlds.js:18` (the `about` comment: “a destination is 1–3 MB more, when dialled”), `src/components/rickmorty/wardrobe/looks.js` (nothing new this phase), `public/games/credits.json` (done by fetch), `src/data/modelCredits.json` (done by the scout's `fetch`).
 
 - [ ] **Step 1:** Docs. `npm run lint && npx vitest run && npm run build` clean.
 - [ ] **Step 2:** Shots of all four places and the dial in `docs/superpowers/shots/`.
@@ -252,11 +275,11 @@ Entry (index 3, outdoor): a rocky ridge at dusk under a pale orange sky with two
 
 ---
 
-## Phase 2: the house, the rest of the family, Total Rickall (900 credits, ≈ 1,080)
+## Phase 2: the house, the rest of the family, Total Rickall (a ceiling of 900 credits, ≈ 1,080)
 
 ### Task 2.1: Phase 2’s figures
 
-**Files:** as Task 1.1. Assets (H 55 ×2, R 47 ×11, Q 39 ×4, P 39 ×3 = 900):
+**Files:** as Task 1.1. Assets, with their ceilings if generated (H 55 ×2, R 47 ×11, Q 39 ×4, P 39 ×3 = 900):
 
 ```js
   spacebeth: { hero: true, sit: true, height: 1.68, prompt: `Space Beth from Rick and Morty: Beth Smith as a space fighter, a woman in her thirties with long blonde hair past her shoulders, the right side of her head shaved with a blue streak in the hair, a scar over her right eye and a ring piercing in her right eyebrow, a long dark brown leather coat over a fitted dark grey-green combat suit with a grey chest plate, a heavy bronze gauntlet with small lights on her right forearm, fingerless gloves, a utility belt, black boots. ${BODY}` },
@@ -282,7 +305,9 @@ Entry (index 3, outdoor): a rocky ridge at dusk under a pale orange sky with two
   mrsrefrigerator: { rig: false, prompt: `Mrs. Refrigerator from Rick and Morty: a tall cream-white household refrigerator standing upright with a cartoon face on its door, a pink flowered apron tied round its middle, two short arms and two little legs. ${PROP}` },
 ```
 
-- [ ] Steps as Task 1.1 (sheets: `"Space Beth" "Rick Prime" Snuffles "Helen Wong" Nancy "Tricia Lange" "Diane Sanchez" Pencilvester "Sleepy Gary" Hamurai "Amish Cyborg" "Mr. Beauregard" "Cousin Nicky" "Frankenstein's Monster (Total Rickall)" "Reverse Giraffe" "Ghost in a Jar" "Photography Raptor" Tinkles "Baby Wizard" "Mrs. Refrigerator"`; `sit` for `spacebeth`, `drwong`). Commit “Rick and Morty: Phase 2’s figures (the family’s friends, and Total Rickall’s parasites)”.
+- [ ] **Sheets** (Task 1.1, Step 1): `node scripts/wiki-refs.mjs "Space Beth" "Rick Prime" Snuffles "Helen Wong" Nancy "Tricia Lange" "Diane Sanchez" Pencilvester "Sleepy Gary" Hamurai "Amish Cyborg" "Mr. Beauregard" "Cousin Nicky" "Frankenstein's Monster (Total Rickall)" "Reverse Giraffe" "Ghost in a Jar" "Photography Raptor" Tinkles "Baby Wizard" "Mrs. Refrigerator"`.
+- [ ] **Scout** (Task 1.1, Step 2), before any concept: for each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. The prompts above are used only when no candidate passes.
+- [ ] The rest as Task 1.1 (Steps 3–7) for what the scout didn't find (`sit` for `spacebeth`, `drwong`). Commit “Rick and Morty: Phase 2’s figures (the family’s friends, and Total Rickall’s parasites)”.
 
 ### Task 2.2: Total Rickall’s rules (pure)
 
@@ -314,11 +339,11 @@ Entry (index 3, outdoor): a rocky ridge at dusk under a pale orange sky with two
 
 ---
 
-## Phase 3: the Citadel’s districts and the map’s set pieces (623 credits, ≈ 750)
+## Phase 3: the Citadel’s districts and the map’s set pieces (a ceiling of 623 credits, ≈ 750)
 
 ### Task 3.1: Phase 3’s figures and models
 
-Assets (R 47 ×6, C 33 ×5, PH 44 ×4 = 623):
+Assets, with their ceilings if generated (R 47 ×6, C 33 ×5, PH 44 ×4 = 623):
 
 ```js
   bigmorty: { sit: true, height: 1.5, prompt: `Big Morty from Rick and Morty: ${MORTY}, wearing a green knitted beanie, yellow-tinted aviator sunglasses, a thin moustache, an open dark pink shirt over a red T-shirt, two gold chain necklaces, blue jeans and white sneakers. ${BODY}` },
@@ -338,7 +363,8 @@ Assets (R 47 ×6, C 33 ×5, PH 44 ×4 = 623):
   nx5: { rig: false, hero: true, prompt: `The NX-5 Planet Remover from Rick and Morty, a Galactic Federation capital ship: a huge long dark green armoured warship with a flat wide hull, a ring of five enormous laser cannon barrels at the front, rows of green lights along its sides, a raised command tower near the stern, big engine blocks at the back glowing green. ${PROP}` }, // (confirm the cannon layout against the sheet "NX-5 Planet Remover")
 ```
 
-- [ ] Steps as Task 1.1; `scripts/crowd.mjs` gains the five crowd names and, posed on their idles, `bigmorty`, `slickmorty`, `rickd3`, `simplerick`, `evilrick` (so the Citadel's crowd has them too). Commit “Rick and Morty: Phase 3’s figures (Mortytown’s Mortys, Rick D. Sanchez III, Simple Rick, Evil Rick), the Citadel from space and the NX-5”.
+- [ ] **Sheets and scout** (Task 1.1, Steps 1–2), before any concept: for each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. The prompts above are used only when no candidate passes. The Citadel from space and the NX-5 are credited `where: 'universe'` (the map shows them).
+- [ ] The rest as Task 1.1 (Steps 3–7) for what the scout didn't find; `scripts/crowd.mjs` gains the five crowd names and, posed on their idles, `bigmorty`, `slickmorty`, `rickd3`, `simplerick`, `evilrick` (so the Citadel's crowd has them too). Commit “Rick and Morty: Phase 3’s figures (Mortytown’s Mortys, Rick D. Sanchez III, Simple Rick, Evil Rick), the Citadel from space and the NX-5”.
 
 ### Task 3.2: Mortytown’s layout (pure)
 
@@ -384,55 +410,71 @@ Assets (R 47 ×6, C 33 ×5, PH 44 ×4 = 623):
 
 ---
 
-## Phase 4: eight more destinations (1,315 credits, ≈ 1,580)
+## Phase 4: eight more destinations (a ceiling of 1,315 credits, ≈ 1,580)
 
-Each task below is one destination: its assets (made as Task 1.1, judged the same), its entry (index as given), its builder (a paragraph), kinds, a task and an achievement, shots, a commit. Steps are Task 1.2's. Lines are two per named person, in the site's voice.
+Each task below is one destination: its assets (scouted first, as Task 1.1's Step 2, then made as Task 1.1 for what the scout didn't find, judged the same; the credits given are ceilings), its entry (index as given), its builder (a paragraph), kinds, a task and an achievement, shots, a commit. Steps are Task 1.2's. Lines are two per named person, in the site's voice.
 
-### Task 4.1: Fantasy World (index 4, outdoor; 169 credits)
+### Task 4.1: Fantasy World (index 4, outdoor; 169 credits at most)
 
 Assets: `stairgoblin` P39 (`A Stair Goblin from Rick and Morty: a living flight of three steps, a blocky pink body shaped like a small staircase with a grumpy face on the top step, two stubby arms and two short legs. ${PROP}`; drawn in three tints), `kingjellybean` R47 h 2.2 (`King Jellybean from Rick and Morty: a tall pale blue jellybean-shaped creature with a droopy tired face, half-closed eyes and a frown, a small gold crown on top, a magenta royal robe with white fur trim over his shoulders, a gold medallion on a chain, thin bare bluish arms and legs, bare feet. ${BODY}`), `thirstystep` PH44 (`The Thirsty Step tavern from Rick and Morty: a medieval fantasy tavern of dark timber and cream plaster with a steep brown shingled roof, a big round wooden door, small leaded windows glowing warm, a hanging wooden sign with a tankard on it, a stone chimney, no text. ${BUILDING}`), `giant` P39 scaled ×4 (`A giant from the giants' village in Rick and Morty: a huge bearded man in a simple brown peasant tunic with a rope belt, brown trousers and big leather boots, bushy brown hair and beard, a kindly face. ${PROP}`).
 
+- [ ] **Sheets and scout** (Task 1.1, Steps 1–2), before any concept: for each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. The prompts above are used only when no candidate passes.
+
 The place: a medieval village square of cobbles, the tavern (model) with its door a `card` hotspot, timber cottages, the beanstalk rising out of sight, the giant standing beyond the square (a `card`: “Dale. He fell on his sword. It’s complicated.”), three Stair Goblins hopping about (instanced, a bob), `kingjellybean` by the tavern's privy (`until: 'fantasy'`: the task “Get the village’s help” is done by talking to the Meeseeks (`meeseeks`, exists) at the well; the king is gone after). Kinds: `meeseeks`, `kingjellybean`. Achievement `fantasy`.
 
-### Task 4.2: The Microverse (index 5, room; 102)
+### Task 4.2: The Microverse (index 5, room; 102 credits at most)
 
 Assets: `zeep` H55 h 1.8 (`Zeep Xanflorp from Rick and Morty: a thin alien scientist with a green head that is tall and wide at the top and tapers to the chin, three blue stripes across his big forehead, a single blue unibrow, yellow eyes with blue pupils and dark circles under them, blue lips and blue fingertips, in a green lab coat with gold trim at the collar and cuffs over a grey shirt, grey trousers and dark shoes. ${BODY}`), `kyle` R47 h 1.7 (`Kyle, the scientist of the Miniverse from Rick and Morty: a slim alien with pale blue-grey skin, a tall oval head with a high brow, big sad dark eyes, two small antennae, in a white lab coat over a teal tunic, grey trousers, boots. ${BODY}`, confirm against the sheet "Kyle").
 
+- [ ] **Sheets and scout** (Task 1.1, Steps 1–2), before any concept: for each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. The prompts above are used only when no candidate passes.
+
 The place: Zeep's lab inside the battery: a round hall of white and green panels with the Miniverse battery (a glowing green cylinder) in the middle, a window on the Microverse city's towers (the annex's skyline helper, in white and green), the gooble boxes (the people's foot-powered generators, a `card`: “They stomp on them. The stomping makes the power. Slavery with extra steps.”), `zeep` at the console, `kyle` at the battery (`until: 'microverse'`). Task `microverse` “Meet the man inside the battery” (talk to Zeep). Achievement `microverse`.
 
-### Task 4.3: Anatomy Park (index 6, room; 336)
+### Task 4.3: Anatomy Park (index 6, room; 336 credits at most)
 
 Assets: `xenonbloom` R47 h 1.9 (`Dr. Xenon Bloom from Rick and Morty: a translucent pale teal-green amoeba in the shape of a tall thin man, with lighter blobs floating inside his body, a drawn-on face with round black glasses, a grey moustache and a wide mouth of square teeth, no clothes, empty hands. ${BODY}`), `poncho` R47 h 1.75 (`Poncho from Rick and Morty: a stocky middle-aged man with grey hair and a grey moustache and an angry face, in a brown sleeveless vest over a bare chest, dark green trousers, boots, and a clear round bubble helmet with a blue collar ring over his head, empty hands. ${BODY}`), `annie` R47 h 1.62 (`Annie from Rick and Morty: a teenage girl with long blonde hair in a high ponytail with a teal bow, big eyes with long lashes, a few freckles, a white short-sleeved blouse under a dark green theme-park apron with a name tag, a dark green skirt, white sneakers. ${BODY}`), five diseases Q39 (`hepatitis`: `Hepatitis A as a monster in Rick and Morty: a huge hulking green-brown blob creature with a lumpy wet body, a wide mouth of jagged teeth, small yellow eyes and two thick arms. ${PROP}`; `gonorrhoea`: `… a towering pale yellow-green creature of lumpy jelly with many thin tentacles, a cluster of red eyes and a round sucker mouth. ${PROP}`; `tuberculosis`: `… a tall gaunt pale grey creature with long thin arms, a hunched back, a skull-like face with sunken eyes and a wide coughing mouth. ${PROP}`; `plague`: `Bubonic plague as a monster in Rick and Morty: a swollen black and purple creature covered in bulging boils, short legs, a huge toothy mouth and small glowing eyes. ${PROP}`; `ecoli`: `E. coli as a monster in Rick and Morty: a long dark brown rod-shaped creature covered in wriggling hairs, a mouth of needle teeth at one end, many small legs. ${PROP}`), all confirmed against the sheets (`Hepatitis A`, `Gonorrhea`, `Tuberculosis`, `Bubonic Plague`, `E. coli`).
 
+- [ ] **Sheets and scout** (Task 1.1, Steps 1–2), before any concept: for each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. The prompts above are used only when no candidate passes.
+
 The place: inside Ruben: a red fleshy cavern with ribs overhead and a pulsing glow (`fx.js`'s pulse), the park's walkway of white rails, the Spleen Mountain sign, a kiosk, the monorail car; the diseases in their enclosures (a `card` each: its name and one line), `xenonbloom` at the entrance, `poncho` and `annie` on the walkway. Task `anatomy` “Ride Anatomy Park” (walk the loop to the exit, the `Pirates of the Pancreas` gate). Achievement `anatomy`.
 
-### Task 4.4: Needful Things (index 7, room; 91)
+### Task 4.4: Needful Things (index 7, room; 91 credits at most)
 
 Assets: `needful` R47 h 1.85 (`Mr. Needful from Rick and Morty: a thin man of Rick's height with very angular features, a long nose, a pointed chin and bags under his eyes, red hair pointed up at the sides like horns, a thin pencil moustache and a matching goatee, thick eyebrows, in a three-piece suit of a drab purple-and-green blazer over a green waistcoat, dark purple trousers, a string tie, white gloves, red dress shoes and a large black top hat, empty hands. ${BODY}`), `needful-shop` PH44 (`Needful Things, the curiosity shop from Rick and Morty: a small old-fashioned shop of dark red brick with a black-painted wooden shopfront, a big bay window full of odd antiques, a glass door with a bell, a hanging blank sign, a lamp either side of the door, no text. ${BUILDING}`).
 
+- [ ] **Sheets and scout** (Task 1.1, Steps 1–2), before any concept: for each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. The prompts above are used only when no candidate passes.
+
 The place: the shop inside (shelves of cursed things: the typewriter, the aftershave, the beauty cream, each a `card` with its curse), `needful` behind the counter (lines: “Free. Everything here is free.”), the shop's front as the model seen through the window onto the street. Task `needful` “Take something free from Mr. Needful” (three cards read). Achievement `needful`.
 
-### Task 4.5: Jerryboree (index 8, room; 198)
+### Task 4.5: Jerryboree (index 8, room; 198 credits at most)
 
 Assets: six crowd Jerrys C33: `jerry-robe` (`A Jerry Smith from another dimension at the Jerryboree in Rick and Morty: Jerry Smith, a man in his late thirties with short swept brown hair and a sulky look, in a brown bathrobe over pyjamas and slippers. ${AT_EASE}`), `jerry-golf` (… `in a green polo shirt, khaki shorts, a white sun visor and white trainers`), `jerry-tux` (… `in a black tuxedo with a bow tie`), `jerry-track` (… `in a red tracksuit with white stripes and a sweatband`), `jerry-gown` (… `in a pale blue hospital gown and socks`), `jerry-cardigan` (… `in a beige cardigan over a checked shirt, with a flat cap`).
 
+- [ ] **Sheets and scout** (Task 1.1, Steps 1–2), before any concept: for each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. The prompts above are used only when no candidate passes.
+
 The place: the daycare: a bright room of soft colours, a ball pit, a TV playing (the cable toy's static), cots, a reception desk with the receptionist Rick (`rick` kind, a crowd copy) and a ticket machine (`card`: “Take a ticket. Rick forgot his.”), ten Jerrys about the room from the six copies (instanced, a few sitting on the floor: the crowd baker's pose is standing; keep them standing), `jerry` (the real one, rigged, exists) by the door asking to go home. Task `jerryboree` “Pick up the right Jerry” (talk to three Jerrys; the real one is the one whose line mentions Beth). Achievement `jerryboree`.
 
-### Task 4.6: Purge Planet (index 9, outdoor; 146)
+### Task 4.6: Purge Planet (index 9, outdoor; 146 credits at most)
 
 Assets: `arthricia` R47 h 1.6 (`Arthricia from Rick and Morty: a teenage cat-girl with light brown fur, a cat's face with a small pink nose and pointed ears, long flowing darker brown hair worn down, in a light blue peasant dress with a white apron and long black boots. ${BODY}`), three `magdalian-*` C33 (`A Magdalian villager from the Purge Planet in Rick and Morty: a cat-person with orange fur, a cat's face with a small nose and pointed ears, in a brown peasant tunic with a rope belt, bare furry feet. ${AT_EASE}`; `grey fur … a blue dress with an apron`; `cream fur … a green jerkin over a white shirt`).
 
+- [ ] **Sheets and scout** (Task 1.1, Steps 1–2), before any concept: for each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. The prompts above are used only when no candidate passes.
+
 The place: a medieval village of thatched cottages at dusk, lanterns, a well, the villagers about (the crowd copies), `arthricia` by the well; the purge siren hotspot (`card` then the mood `purge`: the sky goes red, the villagers run, a line from Arthricia). Task `purge` “Get out before the purge” (the siren, then the portal within 60 s; Morty's jump helps over the fences). Achievement `purge`.
 
-### Task 4.7: Pluto (index 10, outdoor; 160)
+### Task 4.7: Pluto (index 10, outdoor; 160 credits at most)
 
 Assets: `flippynips` R47 h 1.5 (`King Flippy Nips of Pluto from Rick and Morty: a round plump Plutonian with orange skin and a pale yellow belly, three tall yellow-green antenna stalks standing up from the top of his head like a crown, red frilled fins at the sides of his head, big round glasses with X-shaped eyes behind them, a wide grin of white teeth, a dark red cape fastened with a round blue gem, gold bracelets on his wrists, three-fingered hands and three-toed bird-like orange feet. ${BODY}`), `scroopy` R47 h 1.4 (`Scroopy Noopers, a Plutonian from Rick and Morty: a round plump alien with orange skin and a pale yellow belly, three short red antennae on his head, red frilled fins at the sides of his head, round glasses with X-shaped eyes, a wide mouth of white teeth, in a white short-sleeved collared shirt with a pocket of pens, three-toed orange feet. ${BODY}`), two `plutonian-*` C33 (`A Plutonian from Rick and Morty: a round plump alien with orange skin and a pale yellow belly, three short antennae on the head, frilled fins at the sides of the head, round eyes with X-shaped pupils, a wide mouth of white teeth, in a blue tunic, three-toed orange feet. ${AT_EASE}`; `… in grey overalls`).
 
+- [ ] **Sheets and scout** (Task 1.1, Steps 1–2), before any concept: for each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. The prompts above are used only when no candidate passes.
+
 The place: a flat blue-green plain with mushrooms (instanced, three sizes), mushroom-shaped houses and the pyramid palace beyond the box, a ring of rocks across the sky and two close moons, `flippynips` on the palace steps with a podium (“Pluto is a planet. Say it.”), `scroopy` at a protest sign, Plutonians about. Task `pluto` “Tell Pluto it’s a planet” (the podium). Achievement `pluto`.
 
-### Task 4.8: Gear World (index 11, outdoor; 113)
+### Task 4.8: Gear World (index 11, outdoor; 113 credits at most)
 
 Assets: `gearhead` R47 h 1.8 (`Gearhead (Revolio Clockberg Jr.) from Rick and Morty: a thick-set gear-person, bald, with forehead wrinkles above a large purple unibrow, yellow-tinted eyes with heavy bags under them, a round nose, yellow and orange gears where his ears and mouth would be, a transparent pink torso with brass gears turning inside it and pink windows on his shoulders, grey metal arms and legs, in a brown waistcoat and dark trousers. ${BODY}`), one more `gearperson-b` C33 (`… in a grey suit`).
+
+- [ ] **Sheets and scout** (Task 1.1, Steps 1–2), before any concept: for each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. The prompts above are used only when no candidate passes.
 
 The place: a brass and copper city of gears: the ground a vast cog's face, buildings as stacked gears turning slowly (the gearship's idea from `fleetRickmorty.js`), cog-shaped lamps, `gearhead` at his gear-shop door (“Rick’s my best friend. Rick’s everyone’s best friend.”), gear people about, the gearship (`FLEET.gearship`'s builder) parked. Task `gearworld` “Visit Gearhead” . Achievement `gearworld`.
 
@@ -442,11 +484,11 @@ The place: a brass and copper city of gears: the ground a vast cog's face, build
 
 ---
 
-## Phase 5: the Vindicators (342 credits, ≈ 410)
+## Phase 5: the Vindicators (a ceiling of 342 credits, ≈ 410)
 
 ### Task 5.1: The Vindicators’ figures and ship
 
-Assets (H 55 ×2, R 47 ×4, PH 44):
+Assets, with their ceilings if generated (H 55 ×2, R 47 ×4, PH 44):
 
 ```js
   vance: { hero: true, height: 1.85, prompt: `Vance Maximus, Renegade Starsoldier of the Vindicators from Rick and Morty: a man with short spiky auburn-red hair and red stubble, a long chin and a wide grin, in a blue and white armoured battlesuit with red and grey panels, a white chest plate with a red Vindicators emblem (a stylised V in a circle), armoured gauntlets and boots, a jetpack on his back. ${BODY}` },
@@ -458,7 +500,8 @@ Assets (H 55 ×2, R 47 ×4, PH 44):
   'vindicators-ship': { rig: false, hero: true, prompt: `The Vindicators' ship from Rick and Morty: a sleek superhero team's spaceship, a long white and dark blue hull with red trim, swept-back wings, a domed cockpit at the front, a big circular Vindicators emblem on the side, twin blue-glowing engines at the back. ${PROP}` }, // (confirm against the sheet "The Vindicators")
 ```
 
-- [ ] Steps as Task 1.1. Commit “Rick and Morty: the Vindicators”.
+- [ ] **Sheets and scout** (Task 1.1, Steps 1–2), before any concept: for each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. The prompts above are used only when no candidate passes.
+- [ ] The rest as Task 1.1 (Steps 3–7) for what the scout didn't find. Commit “Rick and Morty: the Vindicators”.
 
 ### Task 5.2: Rick’s rooms (pure)
 
@@ -474,11 +517,11 @@ The place: the ship's hall (white and blue panels, the holo-table with Rick's me
 
 ---
 
-## Phase 6: vehicles, the Story Train, the fortress, the Rick and Morty system (474 credits, ≈ 570)
+## Phase 6: vehicles, the Story Train, the fortress, the Rick and Morty system (a ceiling of 474 credits, ≈ 570)
 
 ### Task 6.1: Phase 6’s models
 
-Assets (PH 44 ×5, P 39, R 47 ×2, C 33 ×2, H 55 = 474):
+Assets, with their ceilings if generated (PH 44 ×5, P 39, R 47 ×2, C 33 ×2, H 55 = 474):
 
 ```js
   'spacebeth-ship': { rig: false, hero: true, prompt: `Space Beth's spaceship from Rick and Morty: a compact battered single-seat starfighter in dark grey and olive-green with orange and bronze panels, a tinted cockpit canopy, stubby swept wings with guns under them, mismatched welded-on armour plates, twin engines at the back. ${PROP}` }, // (confirm against the sheet)
@@ -493,7 +536,8 @@ Assets (PH 44 ×5, P 39, R 47 ×2, C 33 ×2, H 55 = 474):
   ticketsguy: { height: 1.75, prompt: `The Tickets Please Guy from Rick and Morty: a balding man with thick eyebrows, a curled moustache and a grey beard, small round glasses, a red conductor's jacket over a white shirt and tie, black trousers, black boots, white gloves, a black conductor's cap. ${BODY}` },
 ```
 
-- [ ] Steps as Task 1.1. Commit “Rick and Morty: Phase 6’s ships, the Gotron, the Story Train, Prince Nebulon and Story Lord”.
+- [ ] **Sheets and scout** (Task 1.1, Steps 1–2), before any concept: for each asset run the scout with a query of its wiki name plus “rick and morty” (`--rigged` for a person); judge the top candidates against the sheet by their thumbnails (`lab/meshy/scout/<name>/`) with the gate's checklist; for a hit, `fetch` it to the asset's output path, record it in `lab/meshy/scout/<name>/chosen.json` and skip that asset's Meshy steps. The prompts above are used only when no candidate passes.
+- [ ] The rest as Task 1.1 (Steps 3–7) for what the scout didn't find. Commit “Rick and Morty: Phase 6’s ships, the Gotron, the Story Train, Prince Nebulon and Story Lord”.
 
 ### Task 6.2: The street’s new vehicles
 
@@ -518,7 +562,7 @@ The fortress: a cold grey hangar of Rick Prime's, the Omega Device on a plinth (
 
 ## Phase 7 (optional): the long tail
 
-Not planned in detail; each entry is a Task 1.2-shaped destination or a Task 2.4-shaped addition, priced per asset: ten Interdimensional Cable crowd figures on the alien street (C 33 each), Jaguar (R 47) and a Pickle Rick sewer run as a new game under `world/`, Mr. Nimbus (H 55) and the beach (outdoor), Heist-Con (Miles Knightly R 47, Heistotron PH 44), Water-T (P 39) at the Get Schwifty show, Krombopulos Michael's Gromflomite base (the figure exists from Phase 1; the base is a room), Mr. Frundles (Q 39), Snake Planet (code-drawn snakes), Froopyland (code-drawn), the Immortality Field Resort, Nuptia 4 (Glexo Slim Slom R 47), St. Gloopy Noops (Dr. Glip-Glop R 47, Shrimply Pibbles R 47). About 560 credits, 670 with rerolls.
+Not planned in detail; each entry is a Task 1.2-shaped destination or a Task 2.4-shaped addition, scouted first like the rest and priced per asset as a ceiling: ten Interdimensional Cable crowd figures on the alien street (C 33 each), Jaguar (R 47) and a Pickle Rick sewer run as a new game under `world/`, Mr. Nimbus (H 55) and the beach (outdoor), Heist-Con (Miles Knightly R 47, Heistotron PH 44), Water-T (P 39) at the Get Schwifty show, Krombopulos Michael's Gromflomite base (the figure exists from Phase 1; the base is a room), Mr. Frundles (Q 39), Snake Planet (code-drawn snakes), Froopyland (code-drawn), the Immortality Field Resort, Nuptia 4 (Glexo Slim Slom R 47), St. Gloopy Noops (Dr. Glip-Glop R 47, Shrimply Pibbles R 47). About 560 credits, 670 with rerolls.
 
 ---
 
@@ -526,4 +570,5 @@ Not planned in detail; each entry is a Task 1.2-shaped destination or a Task 2.4
 
 - Spec coverage: the dial (Tasks 0.4–0.5), lazy loading (0.3), the four Tier 1 places (1.2–1.5), the house and Total Rickall (2.2–2.4), Mortytown and the Locos (3.2–3.3), the Citadel model and the NX-5 (3.4–3.5), the eight destinations (4.1–4.8), the Vindicators (5.1–5.3), vehicles, the simulation, the train, the fortress and the system (6.2–6.5), cross-benefits (crowd in 3.1, the map's Birdperson in 1.5, wardrobe bodies: add `evilrick`, `simplerick`, `rickprime`, `rickd3`, `bigmorty`, `slickmorty` to `wardrobe/looks.js`'s `BODIES` in Task 3.3's commit; Portal panic's kinds get `krombopulos` and `zigerion` in Task 1.2).
 - Names used across tasks: `destArea`, `DESTINATIONS`, `DIAL`, `portalTarget`, `linkTarget`, `validArrive`, `GARAGE_BACK`, `ensureArea`, `hasArea`, `LAZY`, `build<Id>(kit)`, `newRickall`/`tell`/`shoot`/`stepRickall`, `MORTYTOWN`/`HIDES`/`COP`, `newHunt`/`stepHunt`, `newRemover`/`hitRemover`/`stepRemover`/`removedUntil`, `newTrial`/`pick`/`retry`.
-- Credits: Phase 1 546, 2 900, 3 623, 4 1,315, 5 342, 6 474 = 4,200; with 20% ≈ 5,045 (≈ $101 at the Pro rate, ≈ $63 at Ultra's).
+- Sourcing (the user's rule, added after the first draft): Task 0.0 builds the scout; every model task (1.1, 2.1, 3.1, 4.1–4.8, 5.1, 6.1) scouts before its first concept and uses its Meshy prompts only for what no candidate passes; a Meshy community model is used only if the user downloads it by hand.
+- Credits (ceilings, every asset generated): Phase 1 546, 2 900, 3 623, 4 1,315, 5 342, 6 474 = 4,200; with 20% ≈ 5,045 (≈ $101 at the Pro rate, ≈ $63 at Ultra's).
