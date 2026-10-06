@@ -2,14 +2,11 @@
 
 Sources (credited on the map itself, in its panel):
 - Planet maps by Solar System Scope (https://www.solarsystemscope.com/textures/),
-  CC BY 4.0, fetched from their copies on Wikimedia Commons. Each fandom's
-  planet is a real one recoloured for its world: Jupiter in saffron for the
-  music room, Saturn in gold and red for Marvel, Venus's surface as
-  Middle-earth's greens and golds (with seas, Mordor and Mount Doom), Mars
-  turned to New Mexico tan, Venus's clouds in purple for Rick and Morty,
-  Mercury under the Death Star's and Cybertron's plates. Earth is Earth.
+  CC BY 4.0, fetched from their copies on Wikimedia Commons: Mercury under the
+  Death Star's plates, and Earth as it is. (The fandoms' planets are baked by
+  scripts/build-fandom-planets.mjs.)
 - Metal plates and paper from ambientCG (https://ambientcg.com), CC0: the
-  Death Star's and Cybertron's panels, the stations' hulls, the Office's sheet.
+  Death Star's and Cybertron's panels, the stations' hulls, the paper's grain.
 
 - The sky: Solar System Scope's Milky Way (8K, CC BY 4.0), brought up from
   its very dim original so the band of the galaxy shows (its glow brought up
@@ -18,17 +15,23 @@ Sources (credited on the map itself, in its panel):
   over, 4096x2048 (2048 on phones).
 - Earth's night lights (Solar System Scope, from Commons' 1920 px copy), and
   a roughness map made from its day map, so the oceans catch the sun.
-- Relief (normal maps) worked out from the terrain itself for Middle-earth and
-  the Breaking Bad desert, so their mountains and craters catch the light.
 
 Each planet map is 1024x512 WebP (Earth 2048x1024) with a half-size `-sm`
 copy for phones; the tiling materials are 512 px.
 
-Run: python3 scripts/build-universe-textures.py   (needs Pillow and numpy)
+`--hq` builds the sharper set instead, for strong graphics cards (lib/detail's
+'ultra' level: planets.js picks the `-hq` file): every planet map at twice
+its size (2048x1024, Earth and its night 4096x2048) and the sky at 8192x4096,
+worked from Solar System Scope's own 8K originals (their site serves them;
+Commons rate-limits originals from some networks and caps thumbnails at
+3840 px). It writes only the `-hq` files: the standard set stays as it is.
+
+Run: python3 scripts/build-universe-textures.py [--hq]   (needs Pillow and numpy)
 """
 import io
 import json
 import pathlib
+import sys
 import time
 import urllib.parse
 import urllib.request
@@ -42,7 +45,10 @@ CACHE = ROOT / 'node_modules/.cache/universe'
 OUT = ROOT / 'public/textures/universe'
 UA = {'User-Agent': 'tilakpatell.com universe build (https://tilakpatell.com)'}
 
+HQ = '--hq' in sys.argv  # the sharper set for strong graphics cards (see above)
 SKY = 'https://upload.wikimedia.org/wikipedia/commons/8/85/Solarsystemscope_texture_8k_stars_milky_way.jpg'
+# Solar System Scope's own downloads (CC BY 4.0), the 8K originals the -hq set is worked from
+SSS_HQ = 'https://www.solarsystemscope.com/textures/download/{size}_{name}.jpg'
 NIGHT = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Solarsystemscope_texture_2k_earth_nightmap.jpg/1920px-Solarsystemscope_texture_2k_earth_nightmap.jpg'
 SSS = ['jupiter', 'saturn', 'mars', 'mercury', 'venus_surface', 'venus_atmosphere', 'earth_daymap', 'earth_clouds', 'sun']
 ACG = ['MetalPlates001', 'MetalPlates006', 'MetalPlates014', 'Paper001']
@@ -77,7 +83,11 @@ def commons_urls():
 
 
 def planet(name, urls):
-    img = Image.open(io.BytesIO(fetch(urls[name], f'{name}.jpg'))).convert('RGB')
+    if HQ:
+        size = '4k' if name == 'venus_atmosphere' else '8k'  # (the clouds come no bigger)
+        img = Image.open(io.BytesIO(fetch(SSS_HQ.format(size=size, name=name), f'{size}_{name}.jpg'))).convert('RGB')
+    else:
+        img = Image.open(io.BytesIO(fetch(urls[name], f'{name}.jpg'))).convert('RGB')
     return np.asarray(img, dtype=np.float32) / 255
 
 
@@ -204,9 +214,18 @@ def normal_map(height, strength):
     return n * 0.5 + 0.5
 
 
-def save(a, name, full=(1024, 512), small=True, quality=84):
+def save(a, name, full=(1024, 512), small=True, quality=84, hq=True):
+    """The standard file and its -sm half; with --hq, only the -hq file at
+    twice the standard size (a map that has no sharper version, `hq=False`,
+    is skipped: planets.js falls back to the standard file)."""
     OUT.mkdir(parents=True, exist_ok=True)
     im = img(a)
+    if HQ:
+        if not hq:
+            return
+        im.resize((full[0] * 2, full[1] * 2), Image.LANCZOS).save(OUT / f'{name}-hq.webp', quality=quality, method=6)
+        print(f'  {name}-hq.webp')
+        return
     im.resize(full, Image.LANCZOS).save(OUT / f'{name}.webp', quality=quality, method=6)
     if small:
         im.resize((full[0] // 2, full[1] // 2), Image.LANCZOS).save(OUT / f'{name}-sm.webp', quality=quality - 2, method=6)
@@ -214,57 +233,15 @@ def save(a, name, full=(1024, 512), small=True, quality=84):
 
 
 def main():
-    urls = commons_urls()
-    W, H = 2048, 1024
+    urls = None if HQ else commons_urls()
+    # the maps are worked at twice the standard planet size (the -hq set at twice that again)
+    W, H = (4096, 2048) if HQ else (2048, 1024)
     P = {n: size(planet(n, urls), W, H) for n in SSS}
     plates1 = material('MetalPlates001', 'Color')
-    paper = material('Paper001', 'Color')
 
-    # The music room: Jupiter in saffron
-    l = stretch(lum(P['jupiter']))
-    music = ramp(l, [(0, '#4a1c05'), (0.3, '#a64a0e'), (0.55, '#e3832a'), (0.8, '#ffc46e'), (1, '#fff1d6')])
-    save(music * 0.88 + P['jupiter'] * 0.12, 'music')
-
-    # Marvel: Saturn's bands, sharpened, in gold and red
-    l = lum(P['saturn'])
-    l = stretch(l + highpass(l, 18) * 2.5, 1, 99)
-    save(ramp(l, [(0, '#4a0d0d'), (0.28, '#8f2220'), (0.45, '#b8562a'), (0.62, '#d6a03c'), (0.82, '#efcf72'), (1, '#fff3c8')]), 'marvel')
-
-    # Breaking Bad: Mars, turned to New Mexico tan
-    m = P['mars']
-    l = stretch(lum(m))
-    desert = ramp(l, [(0, '#3d220f'), (0.35, '#8a5a2e'), (0.65, '#c9975a'), (0.9, '#ead1a0'), (1, '#f7ecd2')])
-    save(desert * 0.8 + m * 0.2, 'breakingbad')
-    save(normal_map(l, 8), 'breakingbad-normal', small=False)
-
-    # Middle-earth: Venus's surface as land and sea, with Mordor in ash and
-    # Mount Doom alight
-    v = P['venus_surface']
-    l = stretch(lum(v), 1, 99)
-    land = ramp(l, [(0, '#16313f'), (0.17, '#1f4a52'), (0.2, '#2c4320'), (0.4, '#45652b'), (0.58, '#7c9440'), (0.74, '#b8aa62'), (0.9, '#ddd2a6'), (1, '#f2efe4')])
-    mordor = blob_mask(W, H, 0.68, 0.58, 0.09, 0.14, 0.6)[..., None]
-    ash = ramp(l, [(0, '#120d0a'), (0.5, '#2e241d'), (1, '#5c4a3c')])
-    me = land * (1 - mordor) + ash * mordor
-    save(me, 'middleearth')
-    save(normal_map(l * (1 - mordor[..., 0] * 0.3), 9), 'middleearth-normal', small=False)
-    hp = np.clip(highpass(l, 3) * 6, 0, 1)
-    lava = (hp ** 1.5) * blob_mask(W, H, 0.68, 0.58, 0.07, 0.11, 0.8)
-    doom = blob_mask(W, H, 0.685, 0.575, 0.012, 0.022, 1.0) ** 1.5
-    glow = np.clip(lava[..., None] * hexrgb('#ff5a12') * 0.8 + doom[..., None] * hexrgb('#ffb04a') * 1.6, 0, 1)
-    save(glow, 'middleearth-glow', small=False)
-
-    # Rick and Morty: Venus's clouds in purple, with glowing green lakes
-    l = stretch(lum(P['venus_atmosphere']), 1, 99)
-    l = stretch(l + highpass(l, 10) * 1.5, 1, 99)
-    purple = ramp(l, [(0, '#170a33'), (0.35, '#432579'), (0.65, '#7f55c2'), (0.88, '#c3a6f2'), (1, '#efe4ff')])
-    # small pools where the noise peaks, broken up by the clouds' own detail
-    n = noise(W, H, 7, 14, 5) * 0.75 + l * 0.25
-    poles = np.clip(blob_mask(W, H, 0.5, 0.0, 1, 0.15, 1) + blob_mask(W, H, 0.5, 1.0, 1, 0.15, 1), 0, 1)
-    lakes = np.clip((n - 0.8) * 12, 0, 1) * (1 - poles)
-    pool = ramp(l, [(0, '#2f6b14'), (0.6, '#6fbf2e'), (1, '#c4f27a')])
-    rm = purple * (1 - lakes[..., None] * 0.85) + pool * lakes[..., None] * 0.85
-    save(rm, 'rickmorty')
-    save(lakes[..., None] * hexrgb('#b6f04a') * 0.7, 'rickmorty-glow', small=False)
+    # (The fandoms' planets, Music, Marvel, Breaking Bad, Middle-earth, Rick
+    # and Morty and the Office, are baked by scripts/build-fandom-planets.mjs,
+    # at all three sizes, -hq included: none of them is written here.)
 
     # The Death Star: Mercury's grey under hull plates, the trench round the
     # middle and the superlaser's dish
@@ -291,35 +268,22 @@ def main():
     rings = 0.5 + 0.5 * np.cos(r * 380)
     ds = ds * (1 - (dish > 0)[..., None] * (0.35 + 0.15 * rings[..., None])) - (dish > 0.85)[..., None] * 0.15
     save(ds, 'starwars')
-    save(np.clip(1 - r / 0.006, 0, 1)[..., None] * hexrgb('#7dff7a'), 'starwars-glow', small=False)
+    save(np.clip(1 - r / 0.006, 0, 1)[..., None] * hexrgb('#7dff7a'), 'starwars-glow', small=False, hq=False)
 
     # (Cybertron's maps are worked out on their own: scripts/build-cybertron-planet.mjs)
-
-    # The Office: a sheet of paper round a planet, ruled, with its margins
-    # and punched holes
-    office = tile(paper, W, H, 4, 2) * 0.9 + 0.1
-    lines = ((np.arange(H) % 22) < 2)[:, None]
-    office = office * (1 - lines[..., None]) + lines[..., None] * (office * 0.35 + hexrgb('#8fa4cc') * 0.65)
-    for mx in (0.14, 0.64):
-        col = (np.abs(x - mx) < 0.0022)
-        office = office * (1 - col[..., None]) + col[..., None] * hexrgb('#d23b3b')
-    for hy in (0.3, 0.5, 0.7):
-        hole = blob_mask(W, H, 0.07, hy, 0.008, 0.016, 0.2)[..., None]
-        office = office * (1 - hole * 0.6)
-    save(office, 'office')
 
     # Earth, as it is, and its clouds; Alderaan is Earth turned over and greener
     save(P['earth_daymap'], 'earth', full=(2048, 1024))
     # the oceans smooth (they catch the sun), the land rough
     e = P['earth_daymap']
     sea = np.clip((e[..., 2] - np.maximum(e[..., 0], e[..., 1]) - 0.04) * 8, 0, 1)
-    save(np.stack([0.92 - sea * 0.55] * 3, -1), 'earth-rough', small=False)
-    night = arr(Image.open(io.BytesIO(fetch(NIGHT, 'earth_nightmap.jpg'))).convert('RGB').resize((W, H), Image.LANCZOS))
+    save(np.stack([0.92 - sea * 0.55] * 3, -1), 'earth-rough', small=False, hq=False)
+    night = arr(Image.open(io.BytesIO(fetch(SSS_HQ.format(size='8k', name='earth_nightmap'), '8k_earth_nightmap.jpg') if HQ else fetch(NIGHT, 'earth_nightmap.jpg'))).convert('RGB').resize((W, H), Image.LANCZOS))
     save(np.clip(night * np.array([1.15, 0.95, 0.7]) * 1.3, 0, 1), 'earth-night', full=(2048, 1024))
     save(np.stack([lum(P['earth_clouds'])] * 3, -1), 'earth-clouds')
     e = P['earth_daymap'][::-1]
     alderaan = e * np.array([0.85, 1.05, 0.95]) + np.stack([lum(P['earth_clouds'])[::-1]] * 3, -1) * 0.45
-    save(alderaan, 'alderaan', full=(512, 256), small=False)
+    save(alderaan, 'alderaan', full=(512, 256), small=False, hq=False)
     save(P['sun'], 'sun', full=(1024, 512))
 
     # the sky: the Milky Way, brought up from its very dim original (most of
@@ -329,9 +293,13 @@ def main():
     # stars only a little, so they stay pinpoints rather than blown-out
     # squares. Where the glow is faint it's blurred more, as the original's
     # JPEG blocks are all there is there; a hair of dither hides the steps.
-    sky = Image.open(io.BytesIO(fetch(SKY, 'stars_milky_way.jpg'))).convert('RGB').resize((4096, 2048), Image.LANCZOS)
-    opened = sky.filter(ImageFilter.MinFilter(5)).filter(ImageFilter.MaxFilter(5))
-    sharp, smooth = arr(opened.filter(ImageFilter.GaussianBlur(2.5))), arr(opened.filter(ImageFilter.GaussianBlur(9)))
+    # (for -hq the whole thing is done at the original's 8192, every radius
+    # doubled and the star field four times as many points, so it reads the
+    # same as the standard sky, only sharper)
+    S = 2 if HQ else 1
+    sky = Image.open(io.BytesIO(fetch(SSS_HQ.format(size='8k', name='stars_milky_way'), '8k_stars_milky_way.jpg') if HQ else fetch(SKY, 'stars_milky_way.jpg'))).convert('RGB').resize((4096 * S, 2048 * S), Image.LANCZOS)
+    opened = sky.filter(ImageFilter.MinFilter(5 if S == 1 else 9)).filter(ImageFilter.MaxFilter(5 if S == 1 else 9))
+    sharp, smooth = arr(opened.filter(ImageFilter.GaussianBlur(2.5 * S))), arr(opened.filter(ImageFilter.GaussianBlur(9 * S)))
     t = np.clip((smooth.mean(-1, keepdims=True) - 0.004) / 0.026, 0, 1)
     t = t * t * (3 - 2 * t)
     glow = smooth * (1 - t) + sharp * t
@@ -341,8 +309,8 @@ def main():
     # its faint arms tinted toward blue and its bright core toward warm, a
     # touch more saturated; the source's stars kept as pinpoints
     g = soft(np.clip(glow - 1.1 / 255, 0, None) * 8.5)
-    lum = g.mean(-1, keepdims=True)
-    g = np.clip(g * (np.array([0.82, 0.9, 1.12], np.float32) * (1 - lum) + np.array([1.1, 0.98, 0.86], np.float32) * lum), 0, 1)
+    bright = g.mean(-1, keepdims=True)  # (not `lum`: that's the helper above, and a local by that name shadows it for the whole function)
+    g = np.clip(g * (np.array([0.82, 0.9, 1.12], np.float32) * (1 - bright) + np.array([1.1, 0.98, 0.86], np.float32) * bright), 0, 1)
     mean = g.mean(-1, keepdims=True)
     g = np.clip(mean + (g - mean) * 1.35, 0, 1)
     stars = soft(points * 2.2) * 0.85
@@ -350,13 +318,16 @@ def main():
     rng = np.random.default_rng(7)
     h, w = g.shape[:2]
     field = np.zeros((h, w), np.float32)
-    ys, xs = rng.integers(0, h, 26000), rng.integers(0, w, 26000)
-    field[ys, xs] = rng.random(26000) ** 3 * 0.55 + 0.04
-    field = arr(Image.fromarray((field * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.6))) * 1.6
+    n = 26000 * S * S
+    ys, xs = rng.integers(0, h, n), rng.integers(0, w, n)
+    field[ys, xs] = rng.random(n) ** 3 * 0.55 + 0.04
+    field = arr(Image.fromarray((field * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.6 * S))) * 1.6
     sky = np.clip(g * 0.95 + stars + np.stack([field * 0.9, field * 0.95, field], -1), 0, 1) ** 0.82
     sky += (rng.random(sky.shape[:2])[..., None] - 0.5) / 255
-    save(sky, 'sky', full=(4096, 2048), quality=88)
+    save(sky, 'sky', full=(4096, 2048), quality=88 if S == 1 else 84)
 
+    if HQ:
+        return  # (the tiling materials have no sharper set: they're 1K sources tiled)
     # Tiling materials for the stations and ships
     for asset, short in (('MetalPlates001', 'plates'), ('MetalPlates014', 'hull')):
         for kind, suffix in (('Color', ''), ('NormalGL', '-normal'), ('Roughness', '-rough')):

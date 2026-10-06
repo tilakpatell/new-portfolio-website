@@ -9,8 +9,8 @@
 // ragged, as on a real world, not a drawn line. Past the map the Great Sea
 // goes all the way round to a continent of its own on the far side.
 //
-// Makes middleearth (+ -sm), -normal (+ -sm), -rough, -night (+ -sm),
-// -glow, and -clouds (RGBA, + -sm): the clouds, and the pall of Mordor's
+// Makes middleearth, -normal and -clouds (RGBA) at 2048 (-hq), 1024 and 512
+// (-sm); -night at 1024 and 512; -rough and -glow at 1024: the clouds, and the pall of Mordor's
 // smoke over the Black Land.
 
 import { COAST, LAKES, RIVERS, RANGES, PEAKS, FORESTS, LANDS, CITIES, FARMS } from './middleearth-geo.mjs';
@@ -290,11 +290,11 @@ export async function bake() {
   });
 
   console.log('middle-earth: saving');
-  await save(albedo, W, H, 3, 'middleearth', [[2048, ''], [1024, '-sm']], { quality: 88 });
-  await save(normalMap(height, W, H, 1), W, H, 3, 'middleearth-normal', [[2048, ''], [1024, '-sm']], { quality: 90 });
+  await save(albedo, W, H, 3, 'middleearth', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
+  await save(normalMap(height, W, H, 1), W, H, 3, 'middleearth-normal', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 90 });
   await save(rough, W, H, 3, 'middleearth-rough', [[1024, '']], { quality: 84 });
   // (lights and glow are small soft points: 1024 holds them)
   await save(night, W, H, 3, 'middleearth-night', [[1024, ''], [512, '-sm']], { quality: 86 });
   await save(glow, W, H, 3, 'middleearth-glow', [[1024, '']], { quality: 88 });
-  await save(clouds, W, H, 4, 'middleearth-clouds', [[2048, ''], [1024, '-sm']], { quality: 82, alphaQuality: 80 });
+  await save(clouds, W, H, 4, 'middleearth-clouds', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 82, alphaQuality: 80 });
 }

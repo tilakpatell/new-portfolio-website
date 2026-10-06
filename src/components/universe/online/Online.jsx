@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RiCloseLine, RiGroupLine } from 'react-icons/ri';
 import { NAME_MAX } from './names';
-import { UNIVERSE, placeName } from './where';
+import { AWAY, UNIVERSE, placeName } from './where';
 import { crewById } from '../crews';
 import { paintById } from '../paint';
 import Face from '../Faces';
@@ -204,7 +204,7 @@ function Pilot({ p, online }) {
           </button>
         ) : (
           <>
-            {elsewhere && (
+            {elsewhere && p.where !== AWAY && (
               <button type="button" className="universe-online-act" onClick={() => navigate(p.where === UNIVERSE ? '/universe' : p.where)} aria-label={`Go to ${placeName(p.where)}, where ${p.name} is`}>
                 Go
               </button>

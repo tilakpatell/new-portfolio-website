@@ -8,7 +8,8 @@
 // ring) runs on across the folds, shifted a little at each crease; round
 // the back, the blank side of the sheet.
 //
-// Makes office (+ -sm), office-normal (+ -sm), office-rough.
+// Makes office and office-normal at 2048 (-hq), 1024 and 512 (-sm), and
+// office-rough at 1024.
 
 import sharp from 'sharp';
 import { cells, clamp, eachTexel, fbm, hex, perlin, rand, sampler, save, smooth } from './sphere.mjs';
@@ -140,7 +141,7 @@ export async function bake() {
     rough[i * 3] = rough[i * 3 + 1] = rough[i * 3 + 2] = 0.88 - crease * 0.08;
   });
 
-  await save(albedo, W, H, 3, 'office', [[2048, ''], [1024, '-sm']], { quality: 88 });
-  await save(normal, W, H, 3, 'office-normal', [[2048, ''], [1024, '-sm']], { quality: 90 });
+  await save(albedo, W, H, 3, 'office', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
+  await save(normal, W, H, 3, 'office-normal', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 90 });
   await save(rough, W, H, 3, 'office-rough', [[1024, '']], { quality: 84 });
 }

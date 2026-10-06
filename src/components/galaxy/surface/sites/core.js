@@ -542,7 +542,7 @@ export const SITES = {
       { kind: 'villager', n: 3, path: [[-20, -22], [-138, -250]], speed: 1.1, name: 'Coruscanti', says: ['Don’t look down. Seriously, don’t.', 'Dex does the best nuna legs this side of the Federal District.', 'Mind the skylanes. Some of those drivers are maniacs.'] },
       { kind: 'villager', n: 1, at: [-150, -262], still: true, scale: 1.45, r: 0.8, name: 'Dexter Jettster', says: ['Hey, old buddy! Take a seat, I’ll be right with you.', 'That baby belongs to them cloners. What you got here is a Kamino saberdart.', 'Those Kaminoans keep to themselves. They’re cloners. Damn good ones, too.', 'I’d expect better from you Jedi. You oughta be able to tell the difference between knowledge and wisdom.'] },
       { kind: 'villager', n: 1, at: [196, -280], roam: 4, speed: 0.8, name: 'Elan Sleazebaggano', says: ['You wanna buy some death sticks?', '(You don’t want to sell me death sticks.) …I don’t want to sell you death sticks.', '(You want to go home and rethink your life.) …I want to go home and rethink my life.'] },
-      { kind: 'c3po', n: 1, at: [-306, 70], still: true, r: 0.4, name: 'C-3PO', says: ['Oh, Master Anakin! I’m so glad you’re back. Mistress Padmé has been terribly worried.', 'I do believe the Senator’s apartment is the finest view on Coruscant. Not that I would know what to do with a view.', 'Don’t go too near the edge! It’s a very, very long way down.'] },
+      { kind: 'c3po', n: 1, at: [-306, 70], still: true, r: 0.4, name: 'C-3PO', says: ['Oh, Master Anakin! I’m so glad you’re back. Mistress Padmé has been terribly worried.', 'I do believe the Senator’s apartment is the finest view on Coruscant. Not that I would know what to do with a view.', 'Don’t go too near the edge! It’s a long way down.'] },
       { kind: 'droid', n: 2, at: [6, 10], spread: 8, roam: 8, speed: 0.8, name: 'Astromech', says: ['(A busy, beeping hurry: it has somewhere to be.)'] },
     ],
     flyovers: [
@@ -938,16 +938,17 @@ export const SITES = {
       // AT-TEs out on the plain, and a third gunship coming in
       { kind: 'atte', at: [140, 60], yaw: 2.0, model: false },
       { kind: 'laat', at: [80, 140], yaw: 2.2, y: 24, solid: false },
-      // the hive spires along the horizon, too big to scatter
-      { kind: 'hive', at: [-620, 120], opts: { h: 160, seed: 11 }, solid: false },
-      { kind: 'hive', at: [-560, -420], opts: { h: 120, seed: 12 }, solid: false },
-      { kind: 'hive', at: [380, 560], opts: { h: 140, seed: 13 }, solid: false },
-      { kind: 'hive', at: [650, 300], opts: { h: 110, seed: 14 }, solid: false },
-      { kind: 'hive', at: [-200, 640], opts: { h: 130, seed: 15 }, solid: false },
-      { kind: 'hive', at: [180, -640], opts: { h: 150, seed: 16 }, solid: false },
-      { kind: 'hive', at: [-120, 140], opts: { h: 45, seed: 17 } },
-      { kind: 'hive', at: [140, -120], opts: { h: 38, seed: 18 } },
-      { kind: 'hive', at: [-160, -60], opts: { h: 52, seed: 19 } },
+      // the hives along the horizon (and three nearer), too big to scatter:
+      // the hive model (a mesa with its spires), scaled to each one's height
+      { kind: 'geohive', at: [-620, 120], yaw: 1.74, scale: 1.07, sink: 4.3, solid: false },
+      { kind: 'geohive', at: [-560, -420], yaw: 3.04, scale: 0.8, sink: 3.2, solid: false },
+      { kind: 'geohive', at: [380, 560], yaw: 4.34, scale: 0.93, sink: 3.7, solid: false },
+      { kind: 'geohive', at: [650, 300], yaw: 5.64, scale: 0.73, sink: 2.9, solid: false },
+      { kind: 'geohive', at: [-200, 640], yaw: 0.66, scale: 0.87, sink: 3.5, solid: false },
+      { kind: 'geohive', at: [180, -640], yaw: 1.96, scale: 1, sink: 4, solid: false },
+      { kind: 'geohive', at: [-120, 140], yaw: 3.26, scale: 0.3, sink: 1.2 },
+      { kind: 'geohive', at: [140, -120], yaw: 4.56, scale: 0.25, sink: 1 },
+      { kind: 'geohive', at: [-160, -60], yaw: 5.86, scale: 0.35, sink: 1.4 },
     ],
     scatter: [
       { kind: 'spire', n: 90, within: [70, 900], scale: [0.35, 1.2], stretch: [0.7, 1.4] },

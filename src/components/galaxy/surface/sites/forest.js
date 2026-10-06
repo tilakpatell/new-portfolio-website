@@ -1,6 +1,8 @@
 // The forest worlds, from the ground: Endor, Kashyyyk, Dagobah and Yavin 4.
 // (sites/index.js has what a site is.)
 
+import { grove } from './stand';
+
 // Endor's sun, for its sky and the light slanting through its trees
 const ENDOR_SUN = { az: 0.9, el: 1.02 };
 
@@ -152,7 +154,7 @@ export const SITES = {
         lines: {
           xwing: [['luke', 'The generator. While that was up, nothing could touch the Death Star.'], ['r2', '(An anxious whistle.)']],
           falcon: [['han', 'That’s the shuttle we stole. Tydirium. It’s an older code, sir, but it checks out.'], ['chewie', '(A nervous rumble.)']],
-          cruiser: [['morty', 'That’s a big dish, Rick.'], ['rick', 'It’s a space umbrella for a space ball, Morty. Very fragile, very load-bearing.']],
+          cruiser: [['morty', 'That’s a big dish, Rick.'], ['rick', 'It’s a space umbrella for a space ball, Morty. Fragile, and load-bearing.']],
           rv: [['jesse', 'Yo, that’s the biggest satellite dish I ever saw.'], ['walt', 'And they guarded it with a dozen men and some walkers. Sloppy.']],
         },
         things: [
@@ -636,10 +638,15 @@ export const SITES = {
         pits: [{ at: [0, 0], r: 15, depth: 3 }],
       },
     ],
-    things: [],
+    // stands of great cypresses round the landing, roots in the bog between
+    // them, kept off the places (Yoda's hut, the X-wing, the cave, the camp)
+    things: grove(31, 46, 30, 190, ['dagocypress', 'dagocypress', 'dagoroots'], [0.7, 1.25]).filter(({ at: [x, z] }) => [[-90, 60, 30], [40, 74, 34], [-70, -120, 30], [100, -60, 32], [-26, -46, 24], [130, 110, 30], [0, 0, 26]].every(([px, pz, r]) => Math.hypot(x - px, z - pz) > r)),
     scatter: [
-      { kind: 'gnarltree', n: 110, within: [24, 560], scale: [0.8, 1.5], dry: false, opts: { seed: 1 } },
-      { kind: 'gnarltree', n: 70, within: [24, 560], scale: [0.7, 1.3], dry: false, opts: { seed: 2, bark: '#55503f', leaf: '#3e4a2a', roots: 5 } },
+      // great cypresses on their roots, mangrove roots standing in the bog
+      { kind: 'dagocypress', n: 60, within: [24, 560], scale: [0.7, 1.2], dry: false, sink: 0.6, solid: 1.2 },
+      { kind: 'dagoroots', n: 40, within: [10, 420], scale: [0.8, 1.6], dry: false, sink: 0.4, solid: 0.5 },
+      { kind: 'gnarltree', n: 30, within: [24, 560], scale: [0.8, 1.5], dry: false, opts: { seed: 1 } },
+      { kind: 'gnarltree', n: 40, within: [24, 560], scale: [0.7, 1.3], dry: false, opts: { seed: 2, bark: '#55503f', leaf: '#3e4a2a', roots: 5 } },
       { kind: 'gnarltree', n: 70, within: [560, 1000], scale: [1.0, 1.6], dry: false, solid: false, opts: { seed: 3 } },
       { kind: 'reeds', n: 700, within: [5, 420], scale: [0.7, 1.6], solid: false, dry: false, clear: -10, opts: { seed: 4 } },
       { kind: 'fungus', n: 220, within: [5, 420], scale: [0.8, 2], solid: false, clear: -8, opts: { seed: 5 } },
@@ -748,7 +755,11 @@ export const SITES = {
           { kind: 'parked', at: [9, -4], yaw: -0.1, opts: { kind: 'xwing', metres: 12.5 } },
           { kind: 'parked', at: [0, 12], yaw: 0.05, opts: { kind: 'ywing', metres: 16, lift: 1.0 } },
           { kind: 'crates', at: [-14, 10] },
-          { kind: 'crates', at: [14, 12] },
+          { kind: 'ammocan', at: [-12.4, 8.6], yaw: 0.3 },
+          { kind: 'ammocan', at: [-12.6, 7.6], yaw: 0.2 },
+          { kind: 'ammocan', at: [14.6, 9.8], yaw: 1.4 },
+          { kind: 'welderrack', at: [13, 13], yaw: -2.4 },
+          { kind: 'yavinspeeder', at: [-15, -8], yaw: 1.4 },
         ],
       },
       {
@@ -832,7 +843,9 @@ export const SITES = {
     ],
     things: [],
     scatter: [
-      { kind: 'jungletree', n: 340, within: [22, 640], scale: [0.8, 1.4], opts: { seed: 1 } },
+      // the tall trees, vines hanging from them, then the built ones between
+      { kind: 'yavintree', n: 60, within: [26, 600], scale: [0.75, 1.25], solid: 0.9 },
+      { kind: 'jungletree', n: 220, within: [22, 640], scale: [0.8, 1.4], opts: { seed: 1 } },
       { kind: 'jungletree', n: 140, within: [22, 640], scale: [0.7, 1.2], opts: { seed: 2, bark: '#7a7462', leaf: '#3e6428' } },
       { kind: 'jungletree', n: 180, within: [640, 1400], scale: [1.0, 1.6], solid: false, opts: { seed: 3 } },
       { kind: 'plant', n: 700, within: [6, 480], scale: [0.8, 2.0], solid: false, clear: -8, opts: { seed: 4 } },

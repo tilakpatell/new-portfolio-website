@@ -9,8 +9,8 @@
 // Albuquerque, its streets a grid, the Sandias' steep west face over it and
 // the interstates crossing at the Big I, lit at night in sodium orange.
 //
-// Makes breakingbad (+ -sm), -normal (+ -sm), -rough, -night (+ -sm),
-// -clouds (alpha, + -sm): summer's thunderheads over the mountains.
+// Makes breakingbad and -normal at 2048 (-hq), 1024 and 512 (-sm); -night
+// and -clouds (alpha) at 1024 and 512; -rough at 1024: summer's thunderheads over the mountains.
 
 import { clamp, eachTexel, fbm, hex, mix, mix3, normalMap, perlin, ramp, ridged, save, smooth } from './sphere.mjs';
 
@@ -194,8 +194,8 @@ export async function bake() {
     clouds[o] = clouds[o + 1] = clouds[o + 2] = ck;
   });
 
-  await save(albedo, W, H, 3, 'breakingbad', [[2048, ''], [1024, '-sm']], { quality: 88 });
-  await save(normalMap(height, W, H, 1), W, H, 3, 'breakingbad-normal', [[2048, ''], [1024, '-sm']], { quality: 90 });
+  await save(albedo, W, H, 3, 'breakingbad', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
+  await save(normalMap(height, W, H, 1), W, H, 3, 'breakingbad-normal', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 90 });
   await save(rough, W, H, 3, 'breakingbad-rough', [[1024, '']], { quality: 84 });
   // (the lights, and a few soft clouds: 1024 holds them)
   await save(night, W, H, 3, 'breakingbad-night', [[1024, ''], [512, '-sm']], { quality: 86 });

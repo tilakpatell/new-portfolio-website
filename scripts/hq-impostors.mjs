@@ -17,10 +17,11 @@ import { createServer } from 'node:http';
 import { mkdir, readFile, writeFile, stat } from 'node:fs/promises';
 import { existsSync, createReadStream } from 'node:fs';
 import { extname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { chromium } from 'playwright-core';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CACHE = join(ROOT, 'scripts/.cache/hq/models');
 const OUT = join(ROOT, 'public/hq/impostors');
 const CATALOG = join(ROOT, 'src/components/avengers/hq/catalog.js');

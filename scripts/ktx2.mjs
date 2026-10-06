@@ -45,6 +45,7 @@ import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 
@@ -278,7 +279,8 @@ async function convert(opts) {
 }
 
 const [cmd, ...rest] = process.argv.slice(2);
-if (import.meta.url === `file://${process.argv[1]}`) {
+// (the path, not file:// + argv: on Windows the URL is file:///C:/…)
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const opts = parseArgs(rest);
   if (cmd === 'report' && opts.files.length) await report(opts);
   else if (cmd === 'convert' && opts.files.length) await convert(opts);

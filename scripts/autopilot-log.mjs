@@ -12,8 +12,9 @@
 // first). Kinds: feature, graphics, performance, fix, content, infra.
 import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const DIR = join(ROOT, 'src/data/changes');
 const SHOTS = join(ROOT, 'public/changes');
 const KINDS = ['feature', 'graphics', 'performance', 'fix', 'content', 'infra'];

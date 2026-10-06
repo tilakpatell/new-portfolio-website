@@ -3,9 +3,9 @@
 // map and in the README), recoloured as scripts/build-universe-textures.py
 // first did it from the 2K ones: Jupiter in saffron for the music room,
 // Saturn's bands sharpened in gold and red for Marvel. From the 4096-wide
-// originals, so they ship at 2048 rather than 1024.
+// originals, so a strong card gets them at 2048.
 //
-// Makes music (+ -sm) and marvel (+ -sm). Fetches once into
+// Makes music and marvel at 2048 (-hq), 1024 and 512 (-sm). Fetches once into
 // node_modules/.cache/universe.
 
 import fs from 'node:fs';
@@ -75,7 +75,7 @@ export async function bake() {
       const c = saffron(l[i]);
       for (let k = 0; k < 3; k++) out[i * 3 + k] = c[k] * 0.88 + rgb[i * 3 + k] * 0.12;
     }
-    await save(out, W, H, 3, 'music', [[2048, ''], [1024, '-sm']], { quality: 88 });
+    await save(out, W, H, 3, 'music', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
   }
   // Marvel: Saturn's bands, sharpened, in gold and red
   {
@@ -86,6 +86,6 @@ export async function bake() {
     const gold = ramp([[0, '#4a0d0d'], [0.28, '#8f2220'], [0.45, '#b8562a'], [0.62, '#d6a03c'], [0.82, '#efcf72'], [1, '#fff3c8']]);
     const out = new Float32Array(W * H * 3);
     for (let i = 0; i < W * H; i++) out.set(gold(l[i]), i * 3);
-    await save(out, W, H, 3, 'marvel', [[2048, ''], [1024, '-sm']], { quality: 88 });
+    await save(out, W, H, 3, 'marvel', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
   }
 }

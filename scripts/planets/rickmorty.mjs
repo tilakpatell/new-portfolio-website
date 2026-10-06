@@ -5,8 +5,8 @@
 // glowing green ooze, a few big cartoon craters, ice at the poles, and
 // clouds as the show's puffs: white, a lavender underside, inked.
 //
-// Makes rickmorty (+ -sm), rickmorty-glow (the ooze), rickmorty-clouds
-// (RGBA, + -sm).
+// Makes rickmorty and rickmorty-clouds (RGBA) at 2048 (-hq), 1024 and 512
+// (-sm), and rickmorty-glow (the ooze) at 1024.
 
 import { clamp, eachTexel, fbm, hex, perlin, ridged, save } from './sphere.mjs';
 
@@ -133,7 +133,7 @@ export async function bake() {
     }
   }
 
-  await save(albedo, W, H, 3, 'rickmorty', [[2048, ''], [1024, '-sm']], { quality: 90 });
+  await save(albedo, W, H, 3, 'rickmorty', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 90 });
   await save(glow, W, H, 3, 'rickmorty-glow', [[1024, '']], { quality: 88 });
-  await save(clouds, W, H, 4, 'rickmorty-clouds', [[2048, ''], [1024, '-sm']], { quality: 86, alphaQuality: 90 });
+  await save(clouds, W, H, 4, 'rickmorty-clouds', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 86, alphaQuality: 90 });
 }

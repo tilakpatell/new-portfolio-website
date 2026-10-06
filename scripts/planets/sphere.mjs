@@ -267,7 +267,7 @@ export function blur(field, w, h, radius) {
 const OUT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1')), '../../public/textures/universe');
 
 // Float data (0…1, `channels` a texel) to a WebP at each size asked for,
-// e.g. save(rgb, 4096, 2048, 3, 'middleearth', [[2048, ''], [1024, '-sm']]).
+// e.g. save(rgb, 4096, 2048, 3, 'middleearth', [[2048, '-hq'], [1024, ''], [512, '-sm']]).
 export async function save(data, w, h, channels, name, sizes, { quality = 86, alphaQuality = 90 } = {}) {
   fs.mkdirSync(OUT, { recursive: true });
   const buf = Buffer.alloc(w * h * channels);

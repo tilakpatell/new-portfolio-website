@@ -8,8 +8,8 @@
 // over the islands, and a hurricane wound tight round its eye. At night,
 // lanterns in the ports.
 //
-// Makes caribbean (+ -sm), -normal (+ -sm), -rough, -night (+ -sm),
-// -clouds (alpha, + -sm).
+// Makes caribbean and -clouds (alpha) at 2048 (-hq), 1024 and 512 (-sm);
+// -normal, -rough and -night at 1024.
 
 import { clamp, eachTexel, fbm, hex, mix, mix3, normalMap, perlin, ramp, ridged, save, smooth } from './sphere.mjs';
 
@@ -206,9 +206,9 @@ export async function bake() {
     clouds[o] = clouds[o + 1] = clouds[o + 2] = clamp(ck);
   });
 
-  await save(albedo, W, H, 3, 'caribbean', [[2048, ''], [1024, '-sm']], { quality: 88 });
+  await save(albedo, W, H, 3, 'caribbean', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
   await save(normalMap(height, W, H, 1), W, H, 3, 'caribbean-normal', [[1024, '']], { quality: 90 });
   await save(rough, W, H, 3, 'caribbean-rough', [[1024, '']], { quality: 84 });
   await save(night, W, H, 3, 'caribbean-night', [[1024, '']], { quality: 86 });
-  await save(clouds, W, H, 3, 'caribbean-clouds', [[2048, ''], [1024, '-sm']], { quality: 80 });
+  await save(clouds, W, H, 3, 'caribbean-clouds', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 80 });
 }

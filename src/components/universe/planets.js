@@ -17,12 +17,15 @@
 // a planet whose model never arrives simply goes without. The sun is sun.js's.
 //
 // loadTextures({ small }) → the textures (any that fail are just missing)
+// mapFile(name, level) → the file for a planet map at lib/detail's level
 // buildPlanet(u, T) → { id, radius, group, update(t, camera), setState, mount }
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 import { gltfLoader } from '../../lib/three/gltf';
 import { loadTexture } from '../../lib/three/textures';
+import { detailLevel } from '../../lib/detail';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
 import { globeData } from '../travel/globe3d/data';
 import { facing, fit, glowMat, orbit, paint, rng, rounded, tiled } from './kit';
@@ -38,33 +41,54 @@ const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the scene's ke
 // ── Textures ──
 
 const BASE = '/textures/universe/';
-// Each map: whether it has a half-size copy for phones (`sm`) and whether
-// it's a colour (sRGB) or data (normals, roughness, a cloud's alpha). The
-// fandoms' own maps are baked by scripts/build-fandom-planets.mjs (Middle-earth,
-// …) or scripts/build-universe-textures.py (the rest), Cybertron's and
-// Invincible's by their own scripts.
-const MAPS = {
-  // colour, with a phone copy
-  ...Object.fromEntries(['music', 'middleearth', 'middleearth-night', 'middleearth-clouds', 'transformers', 'marvel', 'breakingbad', 'breakingbad-night', 'caribbean', 'rickmorty-clouds', 'office', 'rickmorty', 'earth', 'earth-night', 'invincible', 'invincible-night', 'sun', 'sky'].map((n) => [n, { sm: true, colour: true }])),
-  // data, with a phone copy
-  ...Object.fromEntries(['middleearth-normal', 'office-normal', 'breakingbad-normal', 'breakingbad-clouds', 'caribbean-clouds', 'earth-clouds', 'invincible-clouds'].map((n) => [n, { sm: true, colour: false }])),
-  // colour, one size
-  ...Object.fromEntries(['middleearth-glow', 'caribbean-night', 'rickmorty-glow', 'invincible-glow', 'plates', 'hull'].map((n) => [n, { sm: false, colour: true }])),
-  // data, one size
-  ...Object.fromEntries(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-normal-sm', 'transformers-glow-sm', 'middleearth-rough', 'office-rough', 'breakingbad-rough', 'caribbean-normal', 'caribbean-rough', 'invincible-normal', 'earth-rough'].map((n) => [n, { sm: false, colour: false }])),
-};
+// Each map: whether it's a colour (sRGB) or data (normals, roughness, a
+// cloud's alpha), and which sizes it comes in: `sm`, a half-size copy for a
+// phone or a weak device; `hq`, a copy at twice the texels for a strong
+// graphics card (lib/detail's 'ultra'), so a planet filling the screen and
+// the Milky Way behind it stay sharp as the camera comes in. The fandoms'
+// own maps are baked by scripts/build-fandom-planets.mjs (Middle-earth,
+// Breaking Bad, the Caribbean, C-137, the Office, Music, Marvel) at all
+// three sizes; Earth's, the sun's and the sky's by
+// scripts/build-universe-textures.py (--hq for the -hq set); Cybertron's and
+// Invincible's by their own scripts, with no -hq yet.
+const map = (names, opts) => names.map((n) => [n, opts]);
+const MAPS = Object.fromEntries([
+  ...map(['music', 'middleearth', 'middleearth-clouds', 'marvel', 'breakingbad', 'caribbean', 'office', 'rickmorty', 'rickmorty-clouds', 'earth', 'earth-night', 'sun', 'sky'], { sm: true, hq: true, colour: true }),
+  ...map(['middleearth-normal', 'office-normal', 'breakingbad-normal', 'caribbean-clouds', 'earth-clouds'], { sm: true, hq: true, colour: false }),
+  ...map(['middleearth-night', 'breakingbad-night', 'transformers', 'invincible', 'invincible-night'], { sm: true, hq: false, colour: true }),
+  ...map(['breakingbad-clouds', 'invincible-clouds'], { sm: true, hq: false, colour: false }),
+  ...map(['middleearth-glow', 'caribbean-night', 'rickmorty-glow', 'invincible-glow', 'plates', 'hull'], { sm: false, hq: false, colour: true }),
+  ...map(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-normal-sm', 'transformers-glow-sm', 'middleearth-rough', 'office-rough', 'breakingbad-rough', 'caribbean-normal', 'caribbean-rough', 'invincible-normal', 'earth-rough'], { sm: false, hq: false, colour: false }),
+]);
 
-export async function loadTextures({ small = false } = {}) {
+export const MAP_NAMES = Object.keys(MAPS);
+
+// The file for a map at a detail level (lib/detail): the `-hq` copy on a
+// strong card where there is one, the standard file on a desktop, the
+// `-sm` half on a phone or a weak device where there is one.
+export function mapFile(name, level = 'high') {
+  const { sm = true, hq = false } = MAPS[name] ?? {};
+  const suffix = level === 'ultra' ? (hq ? '-hq' : '') : level === 'high' ? '' : sm ? '-sm' : '';
+  return `${name}${suffix}.webp`;
+}
+
+export async function loadTextures({ small = false, level = small ? 'mid' : detailLevel() } = {}) {
   const T = { small }; // (and whether this is a phone, for the builders)
+  const get = async (name, file, colour, fallback = null) => {
+    try {
+      // (decoded off the main thread, as sharp as the device's tier allows,
+      // and shared with any other scene that wants the same map)
+      T[name] = await loadTexture(BASE + file, { color: colour });
+    } catch {
+      // missing: the standard file where a sharper set was asked for, else whoever wanted it does without
+      if (fallback) await get(name, fallback, colour);
+    }
+  };
   await Promise.all(
-    Object.entries(MAPS).map(async ([name, { sm, colour }]) => {
-      try {
-        // (decoded off the main thread, as sharp as the device's tier allows,
-        // and shared with any other scene that wants the same map)
-        T[name] = await loadTexture(`${BASE}${name}${sm && small ? '-sm' : ''}.webp`, { color: colour });
-      } catch {
-        /* missing: whoever wanted it does without */
-      }
+    Object.entries(MAPS).map(([name, { colour }]) => {
+      const file = mapFile(name, level);
+      const standard = mapFile(name, 'high');
+      return get(name, file, colour, file !== standard ? standard : null);
     }),
   );
   return T;
@@ -1394,12 +1418,10 @@ export function buildPlanet(u, T = {}) {
   };
 }
 
-// One model, or null if it doesn't load.
+// One model, or null if it doesn't load: a copy of the page's one parse of it
+// (gltfCache.js), its materials its own, its geometry and textures shared.
 export function loadModel(url) {
-  return gltfLoader()
-    .loadAsync(url)
-    .then((g) => g.scene)
-    .catch(() => null);
+  return loadGLTF(url).then((g) => g && cloneScene(g));
 }
 
 // [planet, model, and which of its spots, if not its own]. The sitar is
