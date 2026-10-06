@@ -28,14 +28,16 @@ export const zoneOf = (bone) => (/neck|Head|head/.test(bone) ? 0 : /Hand/.test(b
 
 // A float `zone` for each vertex, from its strongest bone; and `lower`, how
 // much of it the hips and legs move (zones 2 to 4), which blends smoothly
-// across the body where `zone` steps: a waist follows its 0.5.
+// across the body where `zone` steps: a waist follows its 0.5. `upper`, how
+// much the head and neck move it (zone 0), does the same for a collar.
 export function addZones(geometry, boneNames) {
-  if (geometry.attributes.zone && geometry.attributes.lower) return geometry;
+  if (geometry.attributes.zone && geometry.attributes.lower && geometry.attributes.upper) return geometry;
   const idx = geometry.attributes.skinIndex;
   const w = geometry.attributes.skinWeight;
   const n = geometry.attributes.position.count;
   const out = new Float32Array(n);
   const lower = new Float32Array(n);
+  const upper = new Float32Array(n);
   if (idx && w) {
     const zones = boneNames.map(zoneOf);
     for (let i = 0; i < n; i++) {
@@ -45,11 +47,13 @@ export function addZones(geometry, boneNames) {
       for (let k = 0; k < 4; k++) {
         const z = zones[idx.getComponent(i, k)] ?? 1;
         if (z >= 2 && z <= 4) lower[i] += w.getComponent(i, k);
+        else if (z === 0) upper[i] += w.getComponent(i, k);
       }
     }
   }
   if (!geometry.attributes.zone) geometry.setAttribute('zone', new THREE.BufferAttribute(out, 1));
   geometry.setAttribute('lower', new THREE.BufferAttribute(lower, 1));
+  geometry.setAttribute('upper', new THREE.BufferAttribute(upper, 1));
   return geometry;
 }
 
@@ -59,7 +63,7 @@ export function addZones(geometry, boneNames) {
 // held to, a colour it takes when none is picked (fix), and (Walt’s and
 // Jesse’s only) how much of it the hips and legs must move (lower: a
 // window, 0…1).
-const key = (zones, hue, sat, val, ref, shade = [0.45, 1.25], fix = null, lower = null) => ({ zones, hue, sat, val, ref, shade, fix, lower });
+const key = (zones, hue, sat, val, ref, shade = [0.45, 1.25], fix = null, lower = null, upper = null) => ({ zones, hue, sat, val, ref, shade, fix, lower, upper });
 const ANY = [0, 360];
 const GREY = [0, 0.13];
 const HAIR_BLUE = key([0], [178, 232], [0.06, 0.55], [0.72, 1], 0.95);
@@ -82,9 +86,14 @@ const MORTY = {
 // work boots. Mr. White’s and Heisenberg’s gloves are his bare forearms
 // and hands (`gloves` and `hands` aren’t their regions: nobody picks them).
 const SUIT = [[36, 58], [0.42, 1], [0.45, 1], 0.85];
-const suit = (zones, fix = null, lower = null) => key(zones, ...SUIT, undefined, fix, lower);
+const suit = (zones, fix = null, lower = null, upper = null) => key(zones, ...SUIT, undefined, fix, lower, upper);
 const ABOVE = [0, 0.5]; // (the jacket, down to his waist: half his weight the hips’…)
 const BELOW = [0.5, 1]; // (…and the trousers from there)
+// (and the hood round his neck: the collar where the head and neck move it
+// most, the jacket below; the hood's triangles are split between the head's
+// zone and the torso's every which way, so the line is drawn by `upper`)
+const COLLAR = [0.45, 1]; // (a little over each other: where both edges soften at once, the suit’s own yellow would show between)
+const UNDER = [0, 0.55];
 const gloves = (fix = null, zones = [1, 5]) => key(zones, [160, 300], [0, 0.8], [0, 0.22], 0.09, [0.8, 1.15], fix);
 const BOOTS = key([3, 4], ANY, [0, 0.66], [0, 0.37], 0.24);
 const HANDS = '#c39283'; // (his skin’s own colour, off his face)
@@ -98,8 +107,8 @@ const HANDS_KEY = key([5], ANY, [0, 1], [0, 0.45], 0.12, [0.8, 1.15], HANDS);
 const jesseHair = key([0], [21, 40], [0.26, 0.68], [0.2, 0.6], 0.34);
 const BB = {
   walt: { outer: suit([0, 1, 2, 3, 4]), inner: gloves(), shoes: BOOTS },
-  mrwhite: { outer: suit([1, 2], 'tanjacket', ABOVE), inner: suit([0], 'waltgreen'), legs: suit([1, 2, 3, 4], 'khaki', BELOW), shoes: BOOTS, gloves: gloves(HANDS, [1]), hands: HANDS_KEY },
-  heisenberg: { outer: suit([1, 2], 'heisenbergblack', ABOVE), inner: suit([0], 'beaniegrey'), legs: suit([1, 2, 3, 4], 'khaki', BELOW), shoes: BOOTS, gloves: gloves(HANDS, [1]), hands: HANDS_KEY },
+  mrwhite: { outer: suit([0, 1, 2], 'tanjacket', ABOVE, UNDER), inner: suit([0, 1], 'waltgreen', null, COLLAR), legs: suit([1, 2, 3, 4], 'khaki', BELOW), shoes: BOOTS, gloves: gloves(HANDS, [1]), hands: HANDS_KEY },
+  heisenberg: { outer: suit([0, 1, 2], 'heisenbergblack', ABOVE, UNDER), inner: suit([0, 1], 'beaniegrey', null, COLLAR), legs: suit([1, 2, 3, 4], 'khaki', BELOW), shoes: BOOTS, gloves: gloves(HANDS, [1]), hands: HANDS_KEY },
   jesse: {
     outer: key([0, 1, 2], [4, 28], [0.55, 1], [0.3, 0.72], 0.54),
     legs: key([2, 3], [192, 240], [0.14, 0.85], [0.08, 0.62], 0.25),
@@ -137,7 +146,7 @@ export function regionUniforms(bodyId, colors = {}) {
   const regions = Object.keys(body?.regions ?? {});
   const order = [...regions, ...Object.keys(KEYS[bodyId] ?? {}).filter((r) => !regions.includes(r))].slice(0, MAX_REGIONS);
   while (order.length < MAX_REGIONS) order.push(null);
-  const u = { order, on: [], swatch: [], zones: [], hue: [], sat: [], val: [], ref: [], shade: [], lower: [] };
+  const u = { order, on: [], swatch: [], zones: [], hue: [], sat: [], val: [], ref: [], shade: [], lower: [], upper: [] };
   for (const r of order) {
     const k = r ? KEYS[bodyId]?.[r] : null;
     const pick = r ? ((regions.includes(r) ? swatchById(colors[r]) : null) ?? fixed(k?.fix)) : null;
@@ -153,6 +162,7 @@ export function regionUniforms(bodyId, colors = {}) {
     u.ref.push(k?.ref ?? 1);
     u.shade.push(new THREE.Vector2(...(k?.shade ?? [0.45, 1.25])));
     u.lower.push(open(k?.lower ?? [0, 1]));
+    u.upper.push(open(k?.upper ?? [0, 1]));
   }
   return u;
 }
@@ -215,8 +225,8 @@ export function recolor(material, bodyId, colors = {}) {
   // and Jesse’s keep one zone a triangle; Rick and Morty’s were tuned as
   // they blend, and are left so.)
   const weighed = WEIGHED.has(bodyId);
-  const zoneVarying = weighed ? 'flat varying float vZone;\nvarying float vLower;' : 'varying float vZone;';
-  const recolorChunk = weighed ? RECOLOR.replace('/*lower*/', ' * rgIn(vLower, rgLower[i], 0.03)') : RECOLOR.replace('/*lower*/', '');
+  const zoneVarying = weighed ? 'flat varying float vZone;\nvarying float vLower;\nvarying float vUpper;' : 'varying float vZone;';
+  const recolorChunk = weighed ? RECOLOR.replace('/*lower*/', ' * rgIn(vLower, rgLower[i], 0.03) * rgIn(vUpper, rgUpper[i], 0.03)') : RECOLOR.replace('/*lower*/', '');
   const uniforms = {
     rgOn: { value: u.on },
     rgSwatch: { value: u.swatch },
@@ -226,15 +236,15 @@ export function recolor(material, bodyId, colors = {}) {
     rgVal: { value: u.val },
     rgRef: { value: u.ref },
     rgShade: { value: u.shade },
-    ...(weighed ? { rgLower: { value: u.lower } } : {}),
+    ...(weighed ? { rgLower: { value: u.lower }, rgUpper: { value: u.upper } } : {}),
   };
   const before = material.onBeforeCompile;
   const keyBefore = material.customProgramCacheKey;
   material.onBeforeCompile = (s, r) => {
     before?.call(material, s, r);
     Object.assign(s.uniforms, uniforms);
-    s.vertexShader = s.vertexShader.replace('void main() {', weighed ? `attribute float zone;\nattribute float lower;\n${zoneVarying}\nvoid main() {\nvZone = zone;\nvLower = lower;` : `attribute float zone;\n${zoneVarying}\nvoid main() {\nvZone = zone;`);
-    s.fragmentShader = s.fragmentShader.replace('void main() {', `${zoneVarying}${DECLARE}${weighed ? `\nuniform vec2 rgLower[${N}];` : ''}\nvoid main() {`).replace('#include <map_fragment>', `#include <map_fragment>\n${recolorChunk}`);
+    s.vertexShader = s.vertexShader.replace('void main() {', weighed ? `attribute float zone;\nattribute float lower;\nattribute float upper;\n${zoneVarying}\nvoid main() {\nvZone = zone;\nvLower = lower;\nvUpper = upper;` : `attribute float zone;\n${zoneVarying}\nvoid main() {\nvZone = zone;`);
+    s.fragmentShader = s.fragmentShader.replace('void main() {', `${zoneVarying}${DECLARE}${weighed ? `\nuniform vec2 rgLower[${N}];\nuniform vec2 rgUpper[${N}];` : ''}\nvoid main() {`).replace('#include <map_fragment>', `#include <map_fragment>\n${recolorChunk}`);
   };
   material.customProgramCacheKey = () => `${keyBefore.call(material)}|regions-${bodyId}`;
   material.userData.regions = {

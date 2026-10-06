@@ -136,44 +136,89 @@ const PARTS = [
 ];
 
 export function createFlare({ colour = '#ffd6a8', strength = 1, small = false } = {}) {
+  // the four pictures, painted once into one atlas (2 × 2), and the seven
+  // parts as quads of one mesh: one draw for the whole flare
   const n = small ? 128 : 256;
-  const tex = { halo: halo(n), ghost: ghost(n), streak: streak(n), burst: burst(n) };
+  const atlas = document.createElement('canvas');
+  atlas.width = atlas.height = n * 2;
+  const g = atlas.getContext('2d');
+  const TILE = { halo: [0, 0], ghost: [1, 0], streak: [0, 1], burst: [1, 1] };
+  for (const [name, make] of Object.entries({ halo, ghost, streak, burst })) {
+    const t = make(n);
+    const [tx, ty] = TILE[name];
+    g.drawImage(t.image, tx * n, ty * n);
+    t.dispose();
+  }
+  const tex = new THREE.CanvasTexture(atlas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const count = PARTS.length;
+  const pos = new Float32Array(count * 4 * 3);
+  const uv = new Float32Array(count * 4 * 2);
+  const col = new Float32Array(count * 4 * 3);
+  const index = [];
+  PARTS.forEach(([which], i) => {
+    const [tx, ty] = TILE[which];
+    // (the atlas's rows from the top; uv's v from the bottom)
+    const u0 = tx / 2;
+    const v0 = 1 - (ty + 1) / 2;
+    uv.set([u0, v0, u0 + 0.5, v0, u0 + 0.5, v0 + 0.5, u0, v0 + 0.5], i * 8);
+    const b = i * 4;
+    index.push(b, b + 1, b + 2, b, b + 2, b + 3);
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setIndex(index);
+  const mat = new THREE.MeshBasicMaterial({ map: tex, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, toneMapped: false });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.renderOrder = 20;
+  mesh.frustumCulled = false;
   const group = new THREE.Group();
   group.name = 'flare';
-  const tint = new THREE.Color(colour);
-  const sprites = PARTS.map(([which, along, size, [sw, sh], k]) => {
-    const mat = new THREE.SpriteMaterial({ map: tex[which], color: tint.clone(), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, toneMapped: false });
-    const s = new THREE.Sprite(mat);
-    s.renderOrder = 20;
-    s.frustumCulled = false;
-    s.userData = { along, size, sw, sh, k };
-    group.add(s);
-    return s;
-  });
+  group.add(mesh);
   group.visible = false;
+  const tint = new THREE.Color(colour);
+  // where each part's middle is, in the camera's space (the test reads these)
+  const centres = PARTS.map(() => new THREE.Vector3());
   return {
     group,
+    centres,
     // ndc: where the star is on the canvas; weight: flareWeight's; camera:
     // the one carrying the group (its lens and its near plane place them)
     set({ ndc, weight, colour: c = null, camera }) {
       group.visible = weight > 0.002;
       if (!group.visible) return;
       if (c) tint.set(c);
-      // just past the near plane, in front of everything, so a size in the
-      // frame's half-heights is that times the half-height there
+      // just past the near plane, in front of everything; placed through the
+      // camera's own projection, which can be shifted (a view offset, leaving
+      // room for a panel): a point straight ahead lands at (−P8, −P9) in the
+      // frame, and a point at `ndc` is (ndc + P8) d / P0 across at depth d
       const d = camera.near * 1.5;
-      const half = Math.tan((camera.fov * Math.PI) / 360) * d;
-      for (const s of sprites) {
-        const { along, size, sw, sh, k } = s.userData;
-        s.position.set(ndc[0] * along * half * camera.aspect, ndc[1] * along * half, -d);
-        s.scale.set(size * half * 2 * sw, size * half * 2 * sh, 1);
-        s.material.color.copy(tint);
-        s.material.opacity = weight * strength * k;
-      }
+      const P = camera.projectionMatrix.elements;
+      const halfX = d / P[0];
+      const half = d / P[5];
+      const [cx, cy] = [-P[8], -P[9]];
+      PARTS.forEach(([, along, size, [sw, sh], k], i) => {
+        // (along the line from the star through the frame's middle)
+        const nx = cx + (ndc[0] - cx) * along;
+        const ny = cy + (ndc[1] - cy) * along;
+        const x = (nx + P[8]) * halfX;
+        const y = (ny + P[9]) * half;
+        centres[i].set(x, y, -d);
+        const w = size * half * sw;
+        const h = size * half * sh;
+        pos.set([x - w, y - h, -d, x + w, y - h, -d, x + w, y + h, -d, x - w, y + h, -d], i * 12);
+        const a = weight * strength * k;
+        for (let v = 0; v < 4; v++) col.set([tint.r * a, tint.g * a, tint.b * a], (i * 4 + v) * 3);
+      });
+      geo.attributes.position.needsUpdate = true;
+      geo.attributes.color.needsUpdate = true;
     },
     dispose() {
-      for (const s of sprites) s.material.dispose();
-      for (const t of Object.values(tex)) t.dispose();
+      geo.dispose();
+      mat.dispose();
+      tex.dispose();
       group.removeFromParent();
     },
   };

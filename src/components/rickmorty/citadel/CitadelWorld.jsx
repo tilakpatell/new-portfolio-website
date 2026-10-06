@@ -14,7 +14,9 @@ import { newWatchers, stepWatchers } from '../../middleearth/towns/watchers';
 import { HERD, calmHerd, newHerd, stepHerd, stillHerding } from './daycare';
 import { BOOTH, CAST, COLLIDERS, COUNCIL_DOOR, CORE, ESCAPE_START, FACTORY_DOOR, HANGAR_WALLS, KIOSKS, PEN, PLANTERS, RICK, ROUNDS, SPOTS, WALLS, WORLD, castFor, crowdColliders, spot, validAt } from './layout';
 import { CONVOS, COPS, QUESTS, SEAL, SPEAKERS, citadelProgress } from './story';
+import { SHOUTS } from './shouts';
 import { LINE, dropLayer, newLine, stepLine } from './wafers';
+import { useVoiced } from '../../../lib/useVoiced';
 import '../../middleearth/shire/shire.css';
 import '../../middleearth/towns/bree/bree.css';
 import Wardrobe from '../wardrobe/Wardrobe';
@@ -118,7 +120,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   }, [looks]);
   const lines = useRef({});
   const bubbleRef = useRef(null);
-  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  const say = useCallback((text, bad = false) => setToast(typeof text === 'string' ? { text, bad, at: Date.now() } : { text: text.say, who: text.who, bad, at: Date.now() }), []); // a string, or a SHOUTS line (said in its Rick's voice)
+  useVoiced(toast?.who, toast?.text); // the Citadel's people, in Rick's voice where it's been made (lib/voiced.js)
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -278,7 +281,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         s.line = newLine();
         s.air?.inside(1);
         sounds().then((x) => x.doors());
-        if (!has('wafers')) say('“You’re on the line, new guy.” Drop each layer on the one below. Whatever hangs over gets cut off.');
+        if (!has('wafers')) say(SHOUTS.foreman);
       } else if (id === 'council') {
         s.mode = 'inside';
         s.room = 'council';
@@ -345,14 +348,14 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         later(() => {
           if (sim.current?.room === 'council') outside(COUNCIL_DOOR);
         }, 2600);
-        say('Dismissed. On the way out, you hear one of them mutter “the Rickest Rick”. Not as a compliment.');
+        say(SHOUTS.mutter);
       } else if (which === 'ballot') {
         complete('votemorty');
         api.current?.fx('vote');
         later(() => api.current?.fx('red'), 400);
         sounds().then((x) => x.chime());
         toRed();
-        say('Candidate Morty wins in a landslide. His first order: arrest Rick C-137. Get to your cruiser in the hangar, out of the Cop Ricks’ sight.', true);
+        say(SHOUTS.win, true);
       }
       setHud((h) => ({ ...h, line: null }));
       return undefined;
@@ -410,12 +413,12 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       } else if (e.type === 'won') {
         sounds().then((x) => x.jingle());
         complete('wafers');
-        say('“Come home to the impossible flavor of your own completion. Come home to Simple Rick’s.”');
+        say(SHOUTS.ad);
         later(() => {
           if (sim.current?.room === 'factory') sim.current.beat = 'floor';
         }, 2400);
       } else if (e.type === 'out') {
-        say('The foreman Rick sends you to the back of the line. Try again.', true);
+        say(SHOUTS.foremanBack, true);
         later(() => {
           const ss = sim.current;
           if (ss?.room === 'factory') ss.line = newLine();
@@ -560,9 +563,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       } else if (e.type === 'won') {
         complete('daycare');
         sounds().then((x) => x.jingle());
-        say('All six back in. The Day Care Rick turns a page. He never knew.');
+        say(SHOUTS.daycareDone);
       } else if (e.type === 'out' && stillHerding(s.h, s.mode === 'inside')) {
-        say('The Day Care Rick looks up. “What’s going on out there?” They scatter again.', true);
+        say(SHOUTS.daycare, true);
         s.herd = newHerd(s.seed++);
         a.fx('scatter');
       } else if (e.type === 'out') {
@@ -584,15 +587,15 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       for (const e of ev) {
         if (e.type === 'seen') {
           a.fx('seen');
-          say(['A Cop Rick’s seen you! Run, and get out of his sight!', '“Freeze, C-137!” Run, round the core or behind a kiosk!', 'He’s got you. Break his line of sight!'][e.id % 3], true);
+          say([SHOUTS.copSeen, SHOUTS.copFreeze, SHOUTS.copGot][e.id % 3], true);
         } else if (e.type === 'caught') {
           a.fx('caught');
-          say('A Cop Rick grabs your collar. You slip him, and end up back by the booth. Try again.', true);
+          say(SHOUTS.copGrab, true);
           s.h = newWalker(ESCAPE_START);
           s.yaw = behindYaw(s.h.face);
           s.watchers = newWatchers(ROUNDS);
           break;
-        } else if (e.type === 'lost') say('He’s lost you.');
+        } else if (e.type === 'lost') say(SHOUTS.copLost);
       }
       s.chased = s.watchers.list.some((w) => w.mode === 'alert' || w.mode === 'chase');
     }

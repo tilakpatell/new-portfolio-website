@@ -44,7 +44,7 @@ export const STARS = [
 const HOME = STARS[0];
 const NEBULAE = WONDERS.filter((w) => w.kind === 'nebula');
 
-const KEY = 2.35; // the key light's strength in the home system, as the map was always lit
+export const KEY = 2.35; // the key light's strength in the home system, as the map was always lit
 const FLOOR = 0.9; // and its least, out between the stars
 const FILL = { colour: '#8ea2ff', strength: 0.45 };
 const AMBIENT = { colour: '#b8c4ff', strength: 0.4 };

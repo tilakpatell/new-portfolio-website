@@ -82,6 +82,8 @@ describe('the crews', () => {
       said(linesFor(crew, 'event', 'overdrive'), crew, 'overdrive');
       // a rock hit at super speed (rockHits.js)
       said(linesFor(crew, 'event', 'rock'), crew, 'rock');
+      // the fleet war's battles (front.js): every moment of one, each crew its own words
+      for (const sub of ['front', 'join', 'gens', 'bridge', 'reactor', 'won', 'lost', 'warWon', 'warLost']) said(crew.events?.battle?.[sub], crew, `battle ${sub}`);
       for (const w of WONDERS) said(linesFor(crew, 'wonder', w.id), crew, `wonder ${w.id}`);
       // the bounty hunters shot down, in flight (Slave I's line is the flyby's; Phoenixperson's and the Cousins' are their own)
       for (const [, f] of Object.entries(side.factions)) if (f.role === 'bounty') for (const [k] of f.kinds) expect(linesFor(crew, 'kill', k), `${crew.id} kill ${k}`).not.toBe(linesFor(crew, 'kill', 'any'));

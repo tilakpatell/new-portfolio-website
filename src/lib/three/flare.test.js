@@ -30,3 +30,29 @@ describe('the sun in the lens', () => {
     expect(occluded({ from: [0, 0, 0], to: [0, 0, 10], solids: [{ at: [0, 0, -4], r: 1 }] })).toBe(0);
   });
 });
+
+describe('the flare’s sprites', () => {
+  it('sit on the star even with the frame shifted for a panel', async () => {
+    const THREE = await import('three');
+    const { createFlare } = await import('./flare');
+    // (canvases that take every call and draw nothing)
+    const g = { addColorStop() {} };
+    const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => g), set: () => true }) };
+    canvas.getContext = () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => g), set: () => true });
+    globalThis.document = { createElement: () => ({ ...canvas, getContext: canvas.getContext }) };
+    const camera = new THREE.PerspectiveCamera(40, 16 / 9, 0.5, 1000);
+    camera.setViewOffset(1600, 900, 200, 0, 1280, 900); // (the picture shifted, as the overview leaves room for its panel)
+    camera.updateMatrixWorld();
+    const star = new THREE.Vector3(30, 12, -200);
+    const ndc = star.clone().project(camera);
+    const f = createFlare();
+    camera.add(f.group);
+    f.set({ ndc: [ndc.x, ndc.y], weight: 1, camera });
+    // (one mesh: one draw for the whole flare)
+    expect(f.group.children.length).toBe(1);
+    const back = f.centres[0].clone().applyMatrix4(camera.matrixWorld).project(camera); // (the halo, along 1: on the star itself)
+    expect(back.x).toBeCloseTo(ndc.x, 5);
+    expect(back.y).toBeCloseTo(ndc.y, 5);
+    delete globalThis.document;
+  });
+});
