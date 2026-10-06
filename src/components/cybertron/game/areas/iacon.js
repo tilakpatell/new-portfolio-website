@@ -175,7 +175,7 @@ export const IACON = {
         { type: 'reach', at: { x: 0, z: 300, r: 45 }, text: 'Get to the barricades' },
         { type: 'clear', count: 4, spawn: wave(4, 395), text: 'Hold the gate: the first wave' },
         { type: 'clear', count: 4, spawn: wave(4, 400, 90), text: 'Hold the gate: the second wave' },
-        { type: 'clear', count: 5, spawn: wave(5, 400, 110), text: 'Hold the gate: the last wave' },
+        { type: 'clear', count: 5, spawn: [...wave(4, 400, 110), { kind: 'barricade', x: 0, z: 425 }], text: 'Hold the gate: the last wave, and Barricade' },
         { type: 'talk', target: 'grimlock', text: 'Tell Grimlock the gate is held' },
       ],
     },

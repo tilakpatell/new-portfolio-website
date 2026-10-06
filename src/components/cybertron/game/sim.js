@@ -16,8 +16,8 @@ const ALL = { missions: MISSIONS }; // (feedMission looks a mission up here, whe
 
 // which model plays which enemy, by era
 const MODEL = {
-  foc: { trooper: ['trooper', 'sniper', 'leaper'], vehicon: ['trooper'], megatron: ['megatron-foc'] },
-  tfp: { trooper: ['vehicon'], vehicon: ['vehicon'], megatron: ['megatron-tfp'] },
+  foc: { trooper: ['trooper', 'sniper', 'leaper'], vehicon: ['trooper'], megatron: ['megatron-foc'], barricade: ['barricade'] },
+  tfp: { trooper: ['vehicon'], vehicon: ['vehicon'], megatron: ['megatron-tfp'], barricade: ['vehicon'] },
 };
 
 const RESPAWN = 3; // seconds down before Optimus is back on his feet

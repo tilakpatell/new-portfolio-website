@@ -117,6 +117,20 @@ function tower(s, i, parts, strips) {
   }
 }
 
+// A soft round glow, for eyes and lamps seen from far off
+function glowTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  r.addColorStop(0, 'rgba(255,255,255,1)');
+  r.addColorStop(0.25, 'rgba(255,255,255,0.6)');
+  r.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = r;
+  g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+
 // The Autobots' mark, painted once on a canvas, to glow over the Hall's door
 function insignia(color) {
   const c = document.createElement('canvas');
@@ -390,7 +404,11 @@ export async function buildStage(area, { tier = 'high' } = {}) {
     group.add(e);
   });
 
-  // Metroplex on the skyline, Trypticon far off
+  const glowMat = keep(new THREE.SpriteMaterial({ map: keep(glowTexture()), color: new THREE.Color(ENERGON).multiplyScalar(3), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false, toneMapped: false }));
+  // Metroplex on the skyline, Trypticon far off. Metroplex sleeps till
+  // Jetfire's beacons wake him: then his eyes and his chest light, he turns
+  // to look over the city, and a searchlight sweeps from his head
+  const metroplex = { model: null, eyes: null, beam: null, woke: -1, at: S.metroplex };
   for (const [kind, at] of [
     ['metroplex', S.metroplex],
     ['trypticon', S.trypticon],
@@ -399,6 +417,33 @@ export async function buildStage(area, { tier = 'high' } = {}) {
       m.position.set(at.x, 0, at.z);
       m.rotation.y = at.yaw;
       group.add(m);
+      if (kind !== 'metroplex') return;
+      metroplex.model = m;
+      // (where his head and chest are, from his size: he faces along his yaw)
+      const box = new THREE.Box3().setFromObject(m);
+      const h = box.max.y - box.min.y;
+      const front = Math.min(box.max.x - box.min.x, box.max.z - box.min.z) * 0.32;
+      const eyes = new THREE.Group();
+      for (const [y, x, s] of [
+        [0.9, -0.035, 0.05],
+        [0.9, 0.035, 0.05],
+        [0.66, 0, 0.16],
+      ]) {
+        const glow = new THREE.Sprite(keep(glowMat.clone()));
+        glow.position.set(x * h, y * h, front);
+        glow.scale.setScalar(s * h);
+        eyes.add(glow);
+      }
+      m.add(eyes);
+      eyes.scale.setScalar(1 / m.scale.x); // (the model's own scale undone: these are in metres)
+      eyes.visible = false;
+      metroplex.eyes = eyes;
+      const beam = new THREE.Mesh(beamGeo, beamMat);
+      beam.position.set(at.x + Math.sin(at.yaw) * front, h * 0.9, at.z + Math.cos(at.yaw) * front);
+      beam.scale.set(3, 2.4, 3);
+      beam.visible = false;
+      group.add(beam);
+      metroplex.beam = beam;
     });
   }
 
@@ -453,8 +498,22 @@ export async function buildStage(area, { tier = 'high' } = {}) {
 
   return {
     group,
-    update(t) {
+    update(t, dt, camera, sim) {
       sky.userData.uniforms.uTime.value = t;
+      // Metroplex, woken: at once if he already was when you came, slowly
+      // the moment it happens
+      const awake = sim?.missions?.done?.includes('wake-metroplex');
+      if (awake && metroplex.model) {
+        metroplex.woke = metroplex.woke < 0 ? (sim.clock < 1 ? 1 : 0) : Math.min(1, metroplex.woke + (dt ?? 1 / 60) / 7);
+        const k = metroplex.woke * metroplex.woke * (3 - 2 * metroplex.woke);
+        metroplex.model.rotation.y = metroplex.at.yaw + 0.22 * k + Math.sin(t * 0.07) * 0.03 * k;
+        metroplex.eyes.visible = true;
+        metroplex.eyes.children.forEach((g, i) => (g.material.opacity = Math.min(1, k * (i < 2 ? 1.6 : 1)) * (0.85 + 0.15 * Math.sin(t * 2 + i))));
+        metroplex.beam.visible = k > 0.3;
+        const a = t * 0.18;
+        // (tipped down from his head over the city, sweeping across it)
+        metroplex.beam.rotation.set(1.72 + 0.06 * Math.sin(a * 0.8), metroplex.model.rotation.y + 0.45 * Math.sin(a), 0, 'YXZ');
+      }
       fires.update(t);
       portalU.uTime.value = t;
       fireLights.forEach((l, k) => (l.intensity = 700 + 300 * Math.sin(t * 9 + k) * Math.sin(t * 5.3 + k * 2)));
