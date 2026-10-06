@@ -19,9 +19,9 @@
 // flanks and a hunter light flashing red and teal on top.
 
 import * as THREE from 'three';
-import { part, place, rod, between, meshes, blinker, loft, box8, plateXZ, plateZY, turned, upright, canvasTexture, grey, panelTexture, standard, glowMaterial, flicker, pulse } from './trafficKit';
+import { part, place, mirror, rod, between, ball, meshes, blinker, flapper, loft, box8, trap8, hex6, scaled, plate, plateXZ, plateZY, turned, upright, canvasTexture, grey, panelTexture, standard, glowMaterial, flicker, pulse } from './trafficKit';
 
-const { PI, sin, cos, abs, min } = Math;
+const { PI, sin, cos, abs, min, max, atan2 } = Math;
 
 // ── Shared bits ──
 
@@ -155,6 +155,159 @@ function rustTexture(rand) {
       g.fillRect(rand() * S, rand() * S, 1 + rand() * 3, 1 + rand() * 3);
     }
   });
+}
+
+// A rounded hull, lofted through sections as the kit's loft() is (each
+// { z, pts }, all the same length, anticlockwise from the front, in order
+// of z), but with each point shared by the faces round it, so it shades
+// smooth where loft() shades faceted: the show draws its craft in curves.
+// Capped flat at an end unless the end comes to a point.
+function smoothLoft(sections) {
+  const n = sections[0].pts.length;
+  const pos = [];
+  const idx = [];
+  for (const s of sections) for (const [x, y] of s.pts) pos.push(x, y, s.z);
+  for (let i = 0; i < sections.length - 1; i++) {
+    for (let j = 0; j < n; j++) {
+      const a = i * n + j;
+      const b = i * n + ((j + 1) % n);
+      idx.push(a, b, b + n, a, b + n, a + n);
+    }
+  }
+  for (const [s, dir] of [
+    [sections[0], -1],
+    [sections.at(-1), 1],
+  ]) {
+    const contour = s.pts.map(([x, y]) => new THREE.Vector2(x, y));
+    if (abs(THREE.ShapeUtils.area(contour)) < 1e-6) continue;
+    const base = pos.length / 3;
+    for (const [x, y] of s.pts) pos.push(x, y, s.z);
+    for (const [a, b, c] of THREE.ShapeUtils.triangulateShape(contour, [])) {
+      const [pa, pb, pc] = [s.pts[a], s.pts[b], s.pts[c]];
+      const z = (pb[0] - pa[0]) * (pc[1] - pa[1]) - (pb[1] - pa[1]) * (pc[0] - pa[0]);
+      idx.push(base + a, ...(z * dir >= 0 ? [base + b, base + c] : [base + c, base + b]));
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+// A section for smoothLoft(): n points round from the bottom, w wide,
+// reaching up above y and down below it; an ellipse when p is 2, squarer
+// as p grows.
+function oval(w, up, down = up, y = 0, n = 20, p = 2) {
+  return Array.from({ length: n }, (_, i) => {
+    const a = -PI / 2 + (i / n) * PI * 2;
+    const c = cos(a);
+    const s = sin(a);
+    return [(w / 2) * Math.sign(c) * abs(c) ** (2 / p), y + (s > 0 ? up : down) * Math.sign(s) * abs(s) ** (2 / p)];
+  });
+}
+
+// A hull of oval() rings, its rows [z, r] and the ring's proportions to r
+// in `shape` ([half its width, up, down]): how far round a ring a point
+// is, from -PI / 2 underneath to PI / 2 on top (for painting it), and a
+// part set into its skin at z, a way round, facing out of it (an eye, a
+// lamp), lifted off it by `lift`.
+const roundOf = ([wr, ur, dr], x, y) => atan2(y / (y > 0 ? ur : dr), abs(x) / wr);
+function onHull(g, rows, [wr, ur, dr], z, a, { lift = 0, scale = 1, ...o } = {}) {
+  const P = (zz, aa) => {
+    const [, r] = measure(rows, zz);
+    const s = sin(aa);
+    return new THREE.Vector3(r * wr * cos(aa), r * (s > 0 ? ur : dr) * s, zz);
+  };
+  const p = P(z, a);
+  const n = P(z, a + 0.002).sub(p).cross(P(z + 0.002, a).sub(p)).normalize();
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
+  const s = typeof scale === 'number' ? [scale, scale, scale] : scale;
+  return part(g, { m: new THREE.Matrix4().compose(p.addScaledVector(n, lift), q, new THREE.Vector3(...s)), ...o });
+}
+
+// A hull's measurements anywhere along it: `rows` [[z, …], …] in order of
+// z, every value in between them in proportion.
+function measure(rows, z) {
+  let i = 0;
+  while (i < rows.length - 2 && z > rows[i + 1][0]) i++;
+  const [a, b] = [rows[i], rows[i + 1]];
+  const f = (z - a[0]) / (b[0] - a[0]);
+  return a.map((v, j) => v + (b[j] - v) * f);
+}
+
+// A hull cut up for painting after it's been shaded whole, so it shades as
+// smoothly across a seam as anywhere: each of `coats` [test, colour] takes
+// the triangles whose middles pass test(x, y, z) that no coat before it
+// took, and the rest are `rest`. A part for each colour, all placed by `o`.
+function painted(g, coats, rest, o = {}) {
+  const src = g.index ? g.toNonIndexed() : g;
+  const P = src.attributes.position.array;
+  const N = src.attributes.normal.array;
+  const tris = Array.from({ length: coats.length + 1 }, () => []);
+  for (let i = 0; i < P.length; i += 9) {
+    const x = (P[i] + P[i + 3] + P[i + 6]) / 3;
+    const y = (P[i + 1] + P[i + 4] + P[i + 7]) / 3;
+    const z = (P[i + 2] + P[i + 5] + P[i + 8]) / 3;
+    const c = coats.findIndex(([test]) => test(x, y, z));
+    tris[c < 0 ? coats.length : c].push(i);
+  }
+  g.dispose();
+  return tris.flatMap((list, c) => {
+    if (!list.length) return [];
+    const geo = new THREE.BufferGeometry();
+    for (const [name, from] of [
+      ['position', P],
+      ['normal', N],
+    ]) {
+      const a = new Float32Array(list.length * 9);
+      list.forEach((i, t) => a.set(from.subarray(i, i + 9), t * 9));
+      geo.setAttribute(name, new THREE.BufferAttribute(a, 3));
+    }
+    return [part(geo, { ...o, color: c < coats.length ? coats[c][1] : rest })];
+  });
+}
+
+// A Morty at the controls: his round head, the brown hair over the top and
+// back of it, the big eyes, his yellow shirt's shoulders below. Evil Morty
+// wears his patch over his right eye, its strap round his head.
+function mortyPilot([x, y, z], r, patch = false) {
+  const L = [];
+  L.push(part(upright([[0.0001, -r * 2], [r * 1.3, -r * 1.95], [r * 1.35, -r * 1.4], [r * 1.05, -r * 1.05], [r * 0.45, -r * 0.85]], 12), { at: [x, y, z], scale: [1, 1, 0.8], color: '#f2cf3a' }));
+  L.push(bead(r, [x, y, z], [1, 0.95, 0.95], { color: '#f4d2ae' }, 14, 10));
+  L.push(part(new THREE.SphereGeometry(r * 1.07, 14, 6, 0, PI * 2, 0, PI * 0.55), { at: [x, y + r * 0.05, z - r * 0.12], rot: [-0.5, 0, 0], color: '#6b3f1d' }));
+  for (const sx of [-1, 1]) {
+    const eye = [x + sx * r * 0.38, y + r * 0.08, z + r * 0.83];
+    if (patch && sx < 0) {
+      L.push(bead(r * 0.38, eye, [1, 0.95, 0.45], { color: '#111114' }, 8, 5));
+      continue;
+    }
+    L.push(bead(r * 0.32, eye, [1, 1.1, 0.5], { color: '#ffffff' }, 8, 5));
+    L.push(bead(r * 0.1, [eye[0], eye[1], eye[2] + r * 0.15], 1, { color: '#111111' }, 5, 3));
+  }
+  if (patch) {
+    // the strap: from the patch up across his brow and round the back
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(-0.34, 0.91, -0.22).normalize());
+    L.push(part(new THREE.TorusGeometry(r * 1.02, r * 0.07, 3, 18), { m: new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), q, new THREE.Vector3(1, 0.95, 0.95)), color: '#111114' }));
+  }
+  return L;
+}
+
+// The Galactic Federation's livery, as on their patrol fighters
+// (trafficModels.js's patrol): white plating, grey and dark parts, the blue
+// it's painted with here and there and the blue it's lit with.
+const FED = { white: '#dde1e6', grey: '#8c939c', dark: '#363b43', blue: '#2d5fae' };
+const FED_BLUE = [0.5, 2.1, 5.6];
+const FED_JET = [0.8, 2.6, 6.4];
+function fedMaterials(k, density = 5) {
+  const paint = standard(k, { map: k.own(panelTexture(k.rand, { base: 232, spread: 8, seam: 0.72, detail: 0.15, min: 18 })), metalness: 0.2, roughness: 0.4 });
+  paint.userData.density = density;
+  return {
+    paint,
+    metal: standard(k, { metalness: 0.8, roughness: 0.35 }),
+    glass: standard(k, { color: '#1d4f8f', metalness: 0.85, roughness: 0.08 }),
+    glow: glowMaterial(k),
+  };
 }
 
 // ── The family saucer ──
@@ -1026,4 +1179,472 @@ function councilship(k) {
   };
 }
 
-export const FLEET = { saucer, hauler, gearship, councilship };
+// ── The Federation's gunship ──
+
+// A Galactic Federation gunship: the patrol fighter's family (the white
+// flattened hexagon of a hull, blue-lit seams, fins canted out at the wing
+// tips, blue glass) built heavy: a deep, blunt hull banded blue at the nose,
+// an armoured spine, a twin cannon on each shoulder in a housing sunk into
+// the flank, a rotary cannon in a ball under the chin, short thick wings
+// angled down with a rocket pod under each, and two big engines behind. It
+// sits back and pours fire, its muzzles glowing as they charge.
+function gunship(k) {
+  const L = [];
+  // the hull: rows of [z, width, height, y]
+  const HULL = [
+    [-0.42, 0.17, 0.1, 0.005],
+    [-0.37, 0.25, 0.16, 0.005],
+    [-0.05, 0.29, 0.19, 0.01],
+    [0.17, 0.25, 0.16, 0],
+    [0.32, 0.15, 0.1, -0.012],
+    [0.37, 0.09, 0.055, -0.016],
+  ];
+  const ring = (z, grow = 1) => {
+    const [, w, h, y] = measure(HULL, z);
+    return { z, pts: scaled(hex6(w, h, y, 0.34), grow, grow, y) };
+  };
+  L.push(part(loft(HULL.map(([z]) => ring(z))), { color: FED.white }));
+  L.push(part(loft([ring(0.235, 1.03), ring(0.265, 1.03)]), { color: FED.blue }));
+  L.push(part(loft([ring(0.282, 1.03), ring(0.294, 1.03)]), { color: FED.blue }));
+  // the canopy, a long blue bubble, a frame down its middle
+  L.push(part(new THREE.SphereGeometry(0.05, 18, 8, 0, PI * 2, 0, PI * 0.66), { at: [0, 0.075, 0.15], scale: [1.05, 0.75, 2.0], to: 'glass' }));
+  L.push(rod([0, 0.11, 0.1], [0, 0.104, 0.2], 0.0035, 0.0035, { color: FED.grey }, 4));
+  // the armoured spine along its back, vents down it and a sensor
+  // blister at its end
+  L.push(
+    part(
+      loft([
+        { z: -0.41, pts: trap8(0.09, 0.06, 0.02, 0.006, 0.07) },
+        { z: -0.37, pts: trap8(0.12, 0.08, 0.05, 0.012, 0.098) },
+        { z: -0.06, pts: trap8(0.12, 0.08, 0.05, 0.012, 0.105) },
+        { z: 0.04, pts: trap8(0.07, 0.04, 0.016, 0.005, 0.096) },
+      ]),
+      { color: FED.grey },
+    ),
+  );
+  for (const z of [-0.3, -0.24, -0.18]) L.push(part(new THREE.BoxGeometry(0.06, 0.006, 0.03), { at: [0, 0.13, z], to: 'metal', color: FED.dark }));
+  L.push(ball(0.016, [0, 0.12, -0.37], [1, 0.8, 1.3], { to: 'metal', color: FED.dark }, 10));
+  // the heavy guns: on each shoulder a twin cannon, its housing half sunk
+  // into the flank, the barrels in cooling sleeves, muzzle brakes at the ends
+  const gun = [];
+  gun.push(
+    part(
+      loft([
+        { z: -0.08, pts: box8(0.044, 0.05, 0.012) },
+        { z: -0.02, pts: box8(0.066, 0.084, 0.02) },
+        { z: 0.2, pts: box8(0.066, 0.084, 0.02) },
+        { z: 0.25, pts: box8(0.05, 0.064, 0.014) },
+      ]),
+      { color: FED.grey },
+    ),
+  );
+  gun.push(part(new THREE.BoxGeometry(0.068, 0.012, 0.05), { at: [0, 0, 0.12], color: FED.blue }));
+  for (const dy of [0.019, -0.019]) {
+    gun.push(part(turned([[0.0001, 0.24], [0.017, 0.24], [0.017, 0.33], [0.012, 0.345], [0.0001, 0.345]], 10), { at: [0, dy, 0], to: 'metal', color: FED.dark }));
+    gun.push(rod([0, dy, 0.34], [0, dy, 0.45], 0.0085, 0.0085, { to: 'metal', color: '#4a5059' }, 8));
+    gun.push(part(turned([[0.006, 0.445], [0.014, 0.445], [0.015, 0.452], [0.015, 0.478], [0.012, 0.482], [0.006, 0.482], [0.006, 0.47]], 10), { at: [0, dy, 0], to: 'metal', color: FED.dark }));
+    gun.push(part(new THREE.CircleGeometry(0.0062, 8), { at: [0, dy, 0.471], to: 'glow', color: FED_BLUE, mark: 'muzzle' }));
+  }
+  for (const sx of [-1, 1]) L.push(...place(gun, [sx * 0.135, 0, 0]));
+  // the chin turret: a ball under the nose, a rotary cannon out of it
+  const cy = -0.062;
+  L.push(ball(0.036, [0, cy, 0.22], [1, 0.85, 1], { to: 'metal', color: FED.dark }, 12));
+  L.push(part(turned([[0.0001, 0.24], [0.017, 0.24], [0.019, 0.27], [0.015, 0.29], [0.0001, 0.29]], 10), { at: [0, cy, 0], to: 'metal', color: '#4a5059' }));
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * PI * 2;
+    L.push(rod([0.0085 * cos(a), cy + 0.0085 * sin(a), 0.285], [0.0085 * cos(a), cy + 0.0085 * sin(a), 0.39], 0.003, 0.003, { to: 'metal', color: '#2e333a' }, 5));
+  }
+  L.push(part(turned([[0.0001, 0.36], [0.0135, 0.36], [0.0135, 0.372], [0.0001, 0.372]], 10), { at: [0, cy, 0], to: 'metal', color: '#4a5059' }));
+  // the wings, short and thick and angled down: a blue stripe, the fin at
+  // the tip with its light, a running light along the front, and a rocket
+  // pod slung under each (red-tipped rockets in its mouth)
+  const wing = [];
+  wing.push(part(plateXZ([[0, -0.34], [0.17, -0.37], [0.2, -0.33], [0.2, -0.22], [0, -0.02]], 0.03, 0.008), { color: FED.white }));
+  wing.push(part(plateXZ([[0.07, -0.335], [0.15, -0.352], [0.17, -0.335], [0.17, -0.25], [0.07, -0.18]], 0.034), { color: FED.blue }));
+  wing.push(part(plateZY([[-0.37, 0], [-0.24, 0], [-0.31, 0.11], [-0.37, 0.11]], 0.016, 0.004), { at: [0.2, 0, 0], rot: [0, 0, -0.35], color: FED.white }));
+  wing.push(ball(0.008, [0.2 + sin(0.35) * 0.112, cos(0.35) * 0.112, -0.34], 1, { to: 'glow', color: FED_BLUE, mark: 'tips' }, 6));
+  wing.push(rod([0.02, 0.016, -0.055], [0.18, 0.016, -0.215], 0.003, 0.003, { to: 'glow', color: FED_BLUE }, 4));
+  wing.push(part(turned([[0.0001, -0.31], [0.016, -0.305], [0.022, -0.29], [0.022, -0.125], [0.02, -0.11]], 10), { at: [0.11, -0.036, 0], color: FED.grey }));
+  wing.push(part(new THREE.CircleGeometry(0.02, 10), { at: [0.11, -0.036, -0.112], to: 'metal', color: FED.dark }));
+  for (const [dx, dy] of [
+    [-0.008, 0.008],
+    [0.008, 0.008],
+    [-0.008, -0.008],
+    [0.008, -0.008],
+  ]) {
+    wing.push(part(new THREE.ConeGeometry(0.0055, 0.016, 6), { at: [0.11 + dx, -0.036 + dy, -0.106], rot: [PI / 2, 0, 0], color: '#c23a2e' }));
+  }
+  wing.push(part(new THREE.BoxGeometry(0.008, 0.02, 0.07), { at: [0.11, -0.018, -0.2], color: FED.dark }));
+  const right = place(wing, [0.095, -0.035, 0], [0, 0, -0.16]);
+  L.push(...right, ...mirror(right));
+  // the engines, big, blue-banded, glowing blue behind
+  for (const sx of [-1, 1]) {
+    const at = [sx * 0.07, 0.012, 0];
+    L.push(part(turned([[0.03, -0.488], [0.042, -0.495], [0.05, -0.475], [0.053, -0.43], [0.053, -0.33], [0.045, -0.29], [0.03, -0.27]], 16), { at, color: FED.white }));
+    L.push(part(turned([[0.0545, -0.455], [0.0545, -0.44]], 16), { at, color: FED.blue }));
+    L.push(part(new THREE.CircleGeometry(0.034, 16), { at: [at[0], at[1], -0.484], rot: [0, PI, 0], to: 'glow', color: FED_JET }));
+    L.push(part(new THREE.ConeGeometry(0.03, 0.06, 14, 1, true), { at: [at[0], at[1], -0.515], rot: [-PI / 2, 0, 0], to: 'glow', color: [0.6, 2.1, 5.6] }));
+    // the running light down each flank, along its edge
+    const edge = (z) => {
+      const [, w, , y] = measure(HULL, z);
+      return [sx * (w / 2 + 0.002), y, z];
+    };
+    L.push(rod(edge(-0.37), edge(-0.1), 0.003, 0.003, { to: 'glow', color: FED_BLUE }, 4));
+  }
+  L.push(ball(0.007, [0, -0.016, 0.372], 1, { to: 'glow', color: [3, 3, 3.2], mark: 'nose' }, 6));
+
+  const mats = fedMaterials(k);
+  const M = meshes(k, L, mats);
+  const blink = blinker(M.glow.geometry);
+  return {
+    root: Object.values(M),
+    update(t) {
+      mats.glow.color.setScalar(flicker(t, 13));
+      blink('tips', pulse(t, 1.2, 0, 0.1) || pulse(t, 1.2, 0.85, 0.1) ? 1.4 : 0.25);
+      blink('nose', pulse(t, 2.1, 0.5, 0.06) ? 1.2 : 0.1);
+      // the guns charging, and letting go
+      blink('muzzle', Math.round((0.3 + 0.9 * ((t * 0.8) % 1) ** 3) * 10) / 10);
+    },
+  };
+}
+
+// ── The Federation's cruiser ──
+
+// A Galactic Federation cruiser, the capital ship the gunships come out
+// of: long and white, a blade of a prow banded blue, the flanks straight up
+// and down with rows of lit windows along them and blue-lit seams above,
+// a deck down its back with turrets on it and the bridge tower at its end
+// (the bridge painted blue, its windows lit, masts with red lights), short
+// wings at the stern out to engine nacelles, three engines in the stern
+// and, in the keel underneath, the hangar: open, dark, lit along its walls,
+// guide lights chasing along its ceiling.
+function fedcruiser(k) {
+  const L = [];
+  // the hull: rows of [z, width, height, y]; its section a hexagon stood on
+  // a flat keel, the flanks straight up and down where the windows run
+  const HULL = [
+    [-0.47, 0.18, 0.1, 0.005],
+    [-0.45, 0.23, 0.13, 0],
+    [-0.1, 0.25, 0.14, 0],
+    [0.14, 0.2, 0.115, -0.005],
+    [0.36, 0.1, 0.065, -0.012],
+    [0.5, 0.012, 0.012, -0.018],
+  ];
+  const sec = (w, h, y) => [[w * 0.3, y - h / 2], [w / 2, y - h * 0.18], [w / 2, y + h * 0.14], [w * 0.29, y + h / 2], [-w * 0.29, y + h / 2], [-w / 2, y + h * 0.14], [-w / 2, y - h * 0.18], [-w * 0.3, y - h / 2]];
+  const ring = (z, grow = 1) => {
+    const [, w, h, y] = measure(HULL, z);
+    return { z, pts: scaled(sec(w, h, y), grow, grow, y) };
+  };
+  L.push(part(loft(HULL.map(([z]) => ring(z))), { color: FED.white }));
+  L.push(part(loft([ring(0.255, 1.025), ring(0.3, 1.025)]), { color: FED.blue }));
+  L.push(part(loft([ring(0.315, 1.03), ring(0.33, 1.03)]), { color: FED.blue }));
+  // the keel under its middle, the hangar between its halves: behind it,
+  // sloping up into the hull; before, tapering into the prow
+  const KW = 0.15;
+  const KH = 0.066;
+  const KY = -0.078;
+  const keel = (z, w, h, y) => ({ z, pts: box8(w, h, min(w, h) * 0.18, y) });
+  L.push(part(loft([keel(-0.39, KW * 0.7, 0.02, -0.058), keel(-0.33, KW, KH, KY), keel(-0.13, KW, KH, KY)]), { color: FED.white }));
+  L.push(part(loft([keel(0.13, KW, KH, KY), keel(0.21, KW * 0.86, KH * 0.7, KY + KH * 0.15), keel(0.27, KW * 0.4, 0.012, -0.052)]), { color: FED.white }));
+  // the hangar: walls down its sides, a dark ceiling and dark ends, lights
+  // down the walls and round the mouth, and guide lights along the ceiling
+  // that chase forward (what it launches drops out of it, nose first)
+  const c = min(KW, KH) * 0.18;
+  const [xo, xi, yb, yt] = [KW / 2, KW / 2 - 0.024, KY - KH / 2, KY + KH / 2];
+  const wall = [part(loft([-0.13, 0.13].map((z) => ({ z, pts: [[xo, yb + c], [xo, yt], [xi, yt], [xi, yb], [xo - c, yb]] }))), { color: FED.white })];
+  wall.push(part(new THREE.BoxGeometry(0.003, 0.004, 0.24), { at: [xi - 0.0012, KY - 0.006, 0], to: 'glow', color: FED_BLUE }));
+  wall.push(rod([xi, yb - 0.001, -0.13], [xi, yb - 0.001, 0.13], 0.0025, 0.0025, { to: 'glow', color: FED_BLUE }, 4));
+  L.push(...wall, ...mirror(wall));
+  L.push(part(new THREE.BoxGeometry(xi * 2 + 0.002, 0.014, 0.262), { at: [0, -0.067, 0], to: 'metal', color: '#1a1e24' }));
+  for (const sz of [-1, 1]) {
+    L.push(part(new THREE.BoxGeometry(xi * 2 + 0.002, 0.036, 0.004), { at: [0, -0.091, sz * 0.129], to: 'metal', color: '#1a1e24' }));
+    L.push(rod([-xi, yb - 0.001, sz * 0.13], [xi, yb - 0.001, sz * 0.13], 0.0025, 0.0025, { to: 'glow', color: FED_BLUE }, 4));
+  }
+  const GUIDES = 7;
+  for (let i = 0; i < GUIDES; i++) {
+    for (const sx of [-1, 1]) L.push(part(new THREE.BoxGeometry(0.01, 0.003, 0.014), { at: [sx * 0.026, -0.0745, -0.105 + i * 0.035], to: 'glow', color: [3.2, 2.2, 0.8], mark: `guide${i}` }));
+  }
+  // rows of windows down the flanks, lit (a few dark), and a row along the keel
+  for (const sx of [-1, 1]) {
+    for (let z = -0.43; z < 0.24; z += 0.026) {
+      const [, w, h, y] = measure(HULL, z);
+      const s = (measure(HULL, z + 0.005)[1] - measure(HULL, z - 0.005)[1]) / 0.02;
+      for (const dy of [-0.075, 0.05]) {
+        if (k.rand() < 0.16) continue;
+        L.push(part(new THREE.PlaneGeometry(0.013, 0.006), { at: [sx * (w / 2 + 0.002), y + dy * h, z], rot: [0, atan2(sx, -sx * s), 0], to: 'glow', color: [1.5, 1.9, 2.8] }));
+      }
+    }
+    for (let z = -0.31; z < -0.14; z += 0.026) L.push(part(new THREE.PlaneGeometry(0.012, 0.005), { at: [sx * (KW / 2 + 0.002), KY, z], rot: [0, (sx * PI) / 2, 0], to: 'glow', color: [1.5, 1.9, 2.8] }));
+    // the blue-lit seam along the top of each flank
+    const corner = (z) => {
+      const [, w, h, y] = measure(HULL, z);
+      return [sx * (w / 2 + 0.0015), y + h * 0.14, z];
+    };
+    for (let i = 1; i < 4; i++) L.push(rod(corner(HULL[i][0]), corner(HULL[i + 1][0]), 0.0025, 0.0025, { to: 'glow', color: FED_BLUE }, 4));
+  }
+  // the deck down its back, sloping into the prow
+  L.push(
+    part(
+      loft([
+        { z: -0.44, pts: trap8(0.13, 0.11, 0.03, 0.006, 0.07) },
+        { z: 0.05, pts: trap8(0.13, 0.11, 0.03, 0.006, 0.07) },
+        { z: 0.2, pts: trap8(0.08, 0.06, 0.012, 0.004, 0.047) },
+      ]),
+      { color: FED.white },
+    ),
+  );
+  // twin turrets along it
+  for (const [x, z] of [
+    [0.04, -0.17],
+    [-0.04, -0.17],
+    [0.04, -0.05],
+    [-0.04, -0.05],
+    [0, 0.08],
+  ]) {
+    const y = z < 0.05 ? 0.085 : 0.085 - ((z - 0.05) / 0.15) * 0.032;
+    L.push(part(new THREE.CylinderGeometry(0.015, 0.018, 0.012, 10), { at: [x, y + 0.004, z], color: FED.grey }));
+    for (const dx of [-0.005, 0.005]) L.push(rod([x + dx, y + 0.008, z], [x + dx, y + 0.008, z + 0.045], 0.0022, 0.0022, { to: 'metal', color: FED.dark }, 4));
+  }
+  // and kit along it: vents, hatches, aerials
+  for (let i = 0; i < 18; i++) {
+    const z = -0.42 + k.rand() * 0.42;
+    if (z > -0.3 && z < -0.2) continue;
+    const [sx, sz] = [0.01 + 0.02 * k.rand(), 0.01 + 0.03 * k.rand()];
+    L.push(part(new THREE.BoxGeometry(sx, 0.006, sz), { at: [(k.rand() - 0.5) * 0.08, 0.087, z], to: 'metal', color: k.rand() < 0.5 ? '#5d646d' : '#9aa1aa' }));
+  }
+  // the tower at its back, the bridge across the top of it in blue, its
+  // windows lit, and masts with red lights over it
+  L.push(
+    part(
+      loft([
+        { z: -0.43, pts: trap8(0.1, 0.07, 0.1, 0.008, 0.125) },
+        { z: -0.31, pts: trap8(0.1, 0.07, 0.1, 0.008, 0.125) },
+        { z: -0.27, pts: trap8(0.08, 0.05, 0.06, 0.006, 0.105) },
+      ]),
+      { color: FED.white },
+    ),
+  );
+  L.push(
+    part(
+      loft([
+        { z: -0.42, pts: box8(0.15, 0.024, 0.006, 0.182) },
+        { z: -0.34, pts: box8(0.17, 0.032, 0.008, 0.182) },
+        { z: -0.3, pts: box8(0.15, 0.018, 0.005, 0.177) },
+      ]),
+      { color: FED.blue },
+    ),
+  );
+  L.push(part(new THREE.BoxGeometry(0.15, 0.006, 0.02), { at: [0, 0.181, -0.315], rot: [-0.35, 0, 0], to: 'glow', color: [1.6, 2.2, 3.2] }));
+  for (const sx of [-1, 1]) {
+    L.push(rod([sx * 0.04, 0.195, -0.38], [sx * 0.04, 0.245, -0.39], 0.003, 0.0018, { color: FED.grey }, 5));
+    L.push(ball(0.0055, [sx * 0.04, 0.247, -0.39], 1, { to: 'glow', color: [5.5, 0.7, 0.5], mark: 'mast' }, 6));
+  }
+  // the wings at the stern, out to the nacelles: blue stripes, the engine
+  // nacelle (its intake glowing, bands round it, the engine behind) and a
+  // light on top
+  const side = [];
+  side.push(part(plateXZ([[0, -0.44], [0.16, -0.44], [0.16, -0.27], [0, -0.13]], 0.024, 0.006), { color: FED.white }));
+  side.push(part(plateXZ([[0.03, -0.425], [0.13, -0.425], [0.13, -0.33], [0.03, -0.23]], 0.028), { color: FED.blue }));
+  const nac = [0.165, 0, 0];
+  side.push(part(turned([[0.028, -0.5], [0.038, -0.505], [0.046, -0.49], [0.048, -0.44], [0.048, -0.25], [0.044, -0.21], [0.034, -0.19], [0.022, -0.185]], 16), { at: nac, color: FED.white }));
+  for (const z of [-0.42, -0.3]) side.push(part(turned([[0.0495, z], [0.0495, z + 0.02]], 16), { at: nac, color: FED.blue }));
+  side.push(part(turned([[0.022, -0.186], [0.018, -0.178], [0.01, -0.172], [0.0001, -0.17]], 12), { at: nac, to: 'glow', color: FED_BLUE }));
+  side.push(part(new THREE.CircleGeometry(0.03, 16), { at: [nac[0], nac[1], -0.5], rot: [0, PI, 0], to: 'glow', color: FED_JET }));
+  side.push(part(new THREE.ConeGeometry(0.026, 0.05, 14, 1, true), { at: [nac[0], nac[1], -0.528], rot: [-PI / 2, 0, 0], to: 'glow', color: [0.6, 2.1, 5.6] }));
+  side.push(ball(0.006, [nac[0], 0.049, -0.36], 1, { to: 'glow', color: FED_BLUE, mark: 'tips' }, 6));
+  const right = place(side, [0.09, -0.035, 0], [0, 0, -0.1]);
+  L.push(...right, ...mirror(right));
+  // the engines in the stern
+  for (const [x, y, r] of [
+    [0, 0.012, 0.03],
+    [0.056, 0, 0.022],
+    [-0.056, 0, 0.022],
+  ]) {
+    L.push(part(turned([[r * 0.8, -0.469], [r * 0.8, -0.488], [r, -0.495], [r * 1.15, -0.485], [r * 1.15, -0.466]], 16), { at: [x, y, 0], to: 'metal', color: FED.dark }));
+    L.push(part(new THREE.CircleGeometry(r * 0.8, 16), { at: [x, y, -0.487], rot: [0, PI, 0], to: 'glow', color: FED_JET }));
+  }
+  L.push(ball(0.006, [0, -0.012, 0.497], 1, { to: 'glow', color: [3, 3, 3.2], mark: 'nose' }, 6));
+
+  const mats = fedMaterials(k, 7);
+  const M = meshes(k, L, mats);
+  const blink = blinker(M.glow.geometry);
+  return {
+    root: Object.values(M),
+    update(t) {
+      mats.glow.color.setScalar(1 + 0.05 * sin(t * 2.3) + 0.02 * sin(t * 17));
+      blink('mast', pulse(t, 1.6, 0, 0.1) ? 1 : 0.1);
+      blink('tips', pulse(t, 1.3, 0.5, 0.08) ? 1.3 : 0.25);
+      blink('nose', pulse(t, 2.4, 0.2, 0.06) ? 1.2 : 0.1);
+      // the guide lights: a pair at a time, chasing forward to the mouth's front
+      const head = Math.floor(t * 9) % (GUIDES + 3);
+      for (let i = 0; i < GUIDES; i++) blink(`guide${i}`, i === head ? 1.2 : i === head - 1 ? 0.55 : 0.15);
+    },
+  };
+}
+
+// ── Evil Morty's guard ──
+
+// One of Evil Morty's guard's fighters: small and quick, a fat round
+// bullet of a body in Morty yellow, blue-grey on its belly, its nose and a
+// band behind the canopy; a Morty under the bubble canopy; stubby wings
+// with a blue-grey cannon pod at each tip, twin fins canted out on its
+// back, and two engines glowing blue.
+function mortyfighter(k) {
+  const YELLOW = '#f6d33a';
+  const TRIM = '#5d7591';
+  const DARK = '#2b323b';
+  const JET = [1.1, 2.5, 5.2];
+  const L = [];
+  const RINGS = [
+    [-0.4, 0.045],
+    [-0.37, 0.08],
+    [-0.3, 0.112],
+    [-0.2, 0.128],
+    [-0.16, 0.131],
+    [-0.05, 0.134],
+    [0.08, 0.128],
+    [0.2, 0.108],
+    [0.29, 0.08],
+    [0.35, 0.05],
+    [0.385, 0.018],
+    [0.393, 0.0005],
+  ];
+  const SHAPE = [1.06, 0.9, 0.8];
+  const body = smoothLoft(RINGS.map(([z, r]) => ({ z, pts: oval(r * 2 * SHAPE[0], r * SHAPE[1], r * SHAPE[2], 0, 22, 2.2) })));
+  L.push(
+    ...painted(
+      body,
+      [
+        [(x, y, z) => z > 0.29, TRIM],
+        [(x, y, z) => z > -0.2 && z < -0.16, TRIM],
+        [(x, y) => roundOf(SHAPE, x, y) < -0.62, TRIM],
+      ],
+      YELLOW,
+    ),
+  );
+  // the bubble canopy, and the Morty under it
+  L.push(part(new THREE.SphereGeometry(0.07, 22, 10, 0, PI * 2, 0, PI * 0.64), { at: [0, 0.104, 0.09], to: 'glass' }));
+  L.push(...mortyPilot([0, 0.135, 0.09], 0.03));
+  // the wings: a blue-grey panel on each, the cannon pod at its tip (its
+  // muzzle lit) and a light on the pod
+  const wing = [];
+  wing.push(part(plateXZ([[0, -0.16], [0.11, -0.13], [0.14, -0.1], [0.14, -0.02], [0, 0.07]], 0.034, 0.011), { color: YELLOW }));
+  wing.push(part(plateXZ([[0.06, -0.125], [0.105, -0.115], [0.118, -0.095], [0.118, -0.03], [0.06, 0.006]], 0.038), { color: TRIM }));
+  wing.push(part(turned([[0.0001, -0.145], [0.014, -0.14], [0.021, -0.12], [0.022, -0.02], [0.019, 0.02], [0.011, 0.045], [0.0001, 0.05]], 12), { at: [0.148, 0, 0], color: TRIM }));
+  wing.push(rod([0.148, 0, 0.04], [0.148, 0, 0.13], 0.0055, 0.0055, { to: 'metal', color: DARK }, 6));
+  wing.push(bead(0.0065, [0.148, 0, 0.131], 1, { to: 'glow', color: JET }));
+  wing.push(bead(0.007, [0.148, 0.021, -0.1], 1, { to: 'glow', color: [3.4, 2.6, 0.6], mark: 'tips' }));
+  const right = place(wing, [0.11, -0.035, -0.04], [0, 0, -0.1]);
+  L.push(...right, ...mirror(right));
+  // twin fins on its back, canted out
+  const fin = part(plateZY([[-0.36, 0], [-0.24, 0], [-0.31, 0.08], [-0.36, 0.085]], 0.018, 0.006), { at: [0.035, 0.06, 0], rot: [0, 0, -0.45], color: TRIM });
+  L.push(fin, ...mirror([fin]));
+  // the engines
+  for (const sx of [-1, 1]) {
+    const at = [sx * 0.052, -0.01, 0];
+    L.push(part(turned([[0.02, -0.46], [0.027, -0.466], [0.034, -0.455], [0.036, -0.4], [0.033, -0.33], [0.024, -0.3]], 14), { at, color: TRIM }));
+    L.push(part(new THREE.CircleGeometry(0.022, 14), { at: [at[0], at[1], -0.459], rot: [0, PI, 0], to: 'glow', color: JET }));
+    L.push(part(new THREE.ConeGeometry(0.019, 0.045, 12, 1, true), { at: [at[0], at[1], -0.483], rot: [-PI / 2, 0, 0], to: 'glow', color: [0.8, 2.0, 4.6], mark: 'jet' }));
+  }
+
+  const paint = standard(k, { map: k.own(panelTexture(k.rand, { base: 240, spread: 5, seam: 0.82, detail: 0.08, min: 22 })), metalness: 0.15, roughness: 0.42 });
+  paint.userData.density = 5;
+  const mats = { paint, metal: standard(k, { metalness: 0.75, roughness: 0.35 }), glass: bubble(k, '#d6ecff', 0.22), glow: glowMaterial(k) };
+  const M = meshes(k, L, mats);
+  const blink = blinker(M.glow.geometry);
+  return {
+    root: Object.values(M),
+    update(t) {
+      mats.glow.color.setScalar(flicker(t, 29));
+      blink('tips', pulse(t, 0.9, 0, 0.12) ? 1.3 : 0.2);
+      blink('jet', Math.round(flicker(t * 1.8, 3) * 10) / 10);
+    },
+  };
+}
+
+// ── Evil Morty's own ──
+
+// Evil Morty's own ship: longer and sharper than his guards', black with
+// yellow down its flanks, a long low canopy wearing a black eye patch over
+// its starboard side (the strap across the top of it), and Evil Morty under
+// it, patched the same; long swept wings striped yellow along the front
+// with a cannon under each, canards at the nose, twin fins, and two engines
+// burning yellow.
+function evilmortyship(k) {
+  const BLACK = '#1f2026';
+  const PATCH = '#0c0d10';
+  const YELLOW = '#f3c330';
+  const GREY = '#474a54';
+  const JET = [3.8, 2.3, 0.45];
+  const L = [];
+  const RINGS = [
+    [-0.44, 0.032],
+    [-0.41, 0.058],
+    [-0.32, 0.076],
+    [-0.15, 0.084],
+    [0.02, 0.079],
+    [0.16, 0.064],
+    [0.29, 0.042],
+    [0.4, 0.022],
+    [0.47, 0.009],
+    [0.5, 0.0005],
+  ];
+  const SHAPE = [1.3, 0.78, 0.62];
+  const body = smoothLoft(RINGS.map(([z, r]) => ({ z, pts: oval(r * 2 * SHAPE[0], r * SHAPE[1], r * SHAPE[2], 0, 24, 2.6) })));
+  L.push(...painted(body, [[(x, y, z) => z > -0.41 && z < 0.4 && abs(roundOf(SHAPE, x, y)) < 0.2, YELLOW]], BLACK));
+  // the canopy, long and low, and Evil Morty under it
+  const C = [0, 0.048, 0.13];
+  const CS = [0.82, 0.85, 2.5];
+  const CR = 0.05;
+  L.push(part(new THREE.SphereGeometry(CR, 20, 10, 0, PI * 2, 0, PI * 0.62), { at: C, scale: CS, to: 'glass' }));
+  L.push(...mortyPilot([0, 0.062, 0.11], 0.019, true));
+  // the eye patch: a black panel over the canopy's starboard side, and its
+  // strap up over the top and away down the port side
+  L.push(part(new THREE.SphereGeometry(CR * 1.035, 12, 8, -0.25, 1.35, 0.22, 1.25), { at: C, scale: CS, color: PATCH }));
+  const onCanopy = (theta, phi) => [C[0] - CR * 1.05 * CS[0] * cos(phi) * sin(theta), C[1] + CR * 1.05 * CS[1] * cos(theta), C[2] + CR * 1.05 * CS[2] * sin(phi) * sin(theta)];
+  const strap = Array.from({ length: 8 }, (_, i) => onCanopy(0.3 + 1.0 * (i / 7) ** 2, 0.9 + 1.65 * (i / 7)));
+  for (let i = 0; i < strap.length - 1; i++) L.push(rod(strap[i], strap[i + 1], 0.0028, 0.0028, { color: PATCH }, 4));
+  // the wings: a yellow stripe along each, near its front, a long cannon
+  // under it and a light at its tip
+  const wing = [];
+  wing.push(part(plateXZ([[0, 0.04], [0.26, -0.3], [0.3, -0.42], [0.255, -0.39], [0, -0.3]], 0.016, 0.005), { color: BLACK }));
+  wing.push(part(plateXZ([[0.02, 0.0], [0.24, -0.29], [0.258, -0.33], [0.02, -0.04]], 0.019), { color: YELLOW }));
+  wing.push(rod([0.12, -0.014, -0.22], [0.12, -0.014, 0.08], 0.0065, 0.0065, { to: 'metal', color: GREY }, 6));
+  wing.push(rod([0.12, -0.014, 0.08], [0.12, -0.014, 0.13], 0.0035, 0.0035, { to: 'metal', color: GREY }, 6));
+  wing.push(bead(0.007, [0.298, 0.004, -0.415], 1, { to: 'glow', color: [3.6, 2.6, 0.5], mark: 'tips' }));
+  const right = place(wing, [0.07, -0.012, -0.04], [0, 0, -0.06]);
+  L.push(...right, ...mirror(right));
+  // the canards at its nose
+  const canard = part(plateXZ([[0, 0.3], [0.075, 0.22], [0.08, 0.2], [0, 0.22]], 0.01, 0.003), { at: [0.035, -0.005, 0], color: BLACK });
+  L.push(canard, ...mirror([canard]));
+  // twin fins, canted out, yellow at their tips
+  const fin = [];
+  fin.push(part(plateZY([[-0.45, 0], [-0.3, 0], [-0.4, 0.1], [-0.455, 0.1]], 0.012, 0.0035), { color: BLACK }));
+  fin.push(part(plateZY([[-0.43, 0.075], [-0.38, 0.075], [-0.4, 0.1], [-0.455, 0.1]], 0.0145), { color: YELLOW }));
+  const fins = place(fin, [0.03, 0.03, 0], [0, 0, -0.42]);
+  L.push(...fins, ...mirror(fins));
+  // the engines, burning yellow
+  for (const sx of [-1, 1]) {
+    const at = [sx * 0.042, -0.004, 0];
+    L.push(part(turned([[0.017, -0.475], [0.024, -0.48], [0.03, -0.468], [0.031, -0.42], [0.028, -0.36], [0.02, -0.33]], 14), { at, color: GREY }));
+    L.push(part(new THREE.CircleGeometry(0.019, 14), { at: [at[0], at[1], -0.473], rot: [0, PI, 0], to: 'glow', color: JET }));
+    L.push(part(new THREE.ConeGeometry(0.016, 0.05, 12, 1, true), { at: [at[0], at[1], -0.5], rot: [-PI / 2, 0, 0], to: 'glow', color: [3.2, 1.7, 0.3], mark: 'jet' }));
+  }
+  L.push(rod([0, 0.064, -0.1], [0, 0.058, -0.38], 0.0025, 0.0025, { to: 'glow', color: [3.4, 2.4, 0.45] }, 4));
+
+  const paint = standard(k, { map: k.own(panelTexture(k.rand, { base: 236, spread: 10, seam: 0.6, detail: 0.15, min: 16 })), metalness: 0.35, roughness: 0.32 });
+  paint.userData.density = 6;
+  const mats = { paint, metal: standard(k, { metalness: 0.8, roughness: 0.3 }), glass: bubble(k, '#fff1c4', 0.24), glow: glowMaterial(k) };
+  const M = meshes(k, L, mats);
+  const blink = blinker(M.glow.geometry);
+  return {
+    root: Object.values(M),
+    update(t) {
+      mats.glow.color.setScalar(flicker(t, 31));
+      blink('tips', pulse(t, 1.5, 0, 0.08) ? 1.3 : 0.15);
+      blink('jet', Math.round(flicker(t * 1.4, 5) * 10) / 10);
+    },
+  };
+}
+
+export const FLEET = { saucer, hauler, gearship, councilship, gunship, fedcruiser, mortyfighter, evilmortyship };
