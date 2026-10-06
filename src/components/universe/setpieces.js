@@ -37,7 +37,7 @@ import { SWIRL_GLSL } from '../rickmorty/swirl';
 
 // how long each capital ship is, in map units (a Star Destroyer's the biggest)
 const CAPITAL = { destroyer: 16, fedcruiser: 12, madrigal: 8 };
-const CHOPPER = { len: 1.6, ahead: 26, above: 2.5, stay: 45, climb: 6 }; // map units long; where it hangs; seconds it stays, and climbing away
+const CHOPPER = { len: 1.6, ahead: 22, above: 0.4, stay: 45, climb: 6 }; // map units long; where it hangs; seconds it stays, and climbing away
 const STAY = 55; // seconds it stays before jumping away
 const JUMP = 0.7; // seconds to come out of (or go into) hyperspace
 const FLARE_RISE = 3; // seconds the star swells before the shell leaves it
