@@ -108,6 +108,8 @@ import { exposureFor, sunShareOf } from '../../lib/three/exposure';
 import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, isGoal, isPlace, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, driveById, hyperState, parkFor, riftExit } from './nav';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
+import { ION } from './hunterRules';
+import { difficultyOf } from './difficulty';
 import { AHEAD_OF, factionsOf, kindsOf, pick as pickFaction, sideFor, sideOf, wingOf } from './sides';
 import { TROOPS } from './foot';
 import { GLB, createFleet } from './glbFleet';
@@ -808,7 +810,9 @@ export async function create(canvas, ctx) {
   // who comes after you, what the director sets going, and its set pieces
   // (none of it with reduced motion)
   const FACTIONS_ALL = factionsOf(null);
-  const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: FACTIONS_ALL, kinds: kindsOf(null), engines }); // (every side's: another pilot's hunters, whoever they are)
+  // how hard the fight is (the flight setting: difficulty.js), now
+  const diff = () => difficultyOf(controls().difficulty);
+  const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: FACTIONS_ALL, kinds: kindsOf(null), engines, difficulty: diff }); // (every side's: another pilot's hunters, whoever they are)
   const wingmen = hunters ? createWingmen(map, { fleet, solids: SOLIDS }) : null; // (friends in a long fight)
   const skirmishes = hunters ? createSkirmishes(map, { fleet, solids: SOLIDS }) : null; // (someone else's fight, out ahead)
   const npcMemory = {}; // what each character remembers of you this visit (npcRules.js)
@@ -2790,10 +2794,23 @@ export async function create(canvas, ctx) {
         emit({ type: 'interdicted', faction: e.faction });
       }
     } else if (e.type === 'laser') {
-      hurt(e.damage);
-      // (a bomb's burst shakes the ship as a laser doesn't)
-      if (e.bomb && !reduced) state.shake = Math.max(state.shake, 0.5);
+      hurt(e.damage * diff().damage);
+      // (a bomb's burst shakes the ship as a laser doesn't, nor a missile's, nor a rammer's)
+      if ((e.bomb || e.missile || e.ram) && !reduced) state.shake = Math.max(state.shake, e.ram ? 0.8 : 0.5);
+      // an ion bolt holds the boost and the pulse drive down a moment
+      if (e.ion) {
+        state.ionUntil = state.clock + ION.slow;
+        if (!reduced) state.static = Math.max(state.static, 0.6);
+        state.note = { text: 'Ion hit: drives down', until: wall() + 2 };
+      }
     } else if (e.type === 'shot') emit(e);
+    else if (e.type === 'missile') {
+      // a missile after you: the HUD says so (once a few seconds)
+      if (state.clock - (state.missileSaid ?? -1e9) > 4) {
+        state.missileSaid = state.clock;
+        state.note = { text: 'Missile inbound: break hard, or outrun it', until: wall() + 2.5 };
+      }
+    } else if (e.type === 'rammed') burn(new THREE.Vector3(e.at.x, e.at.y, e.at.z), e.size * 2.2);
     else if (e.type === 'spotlit') {
       // pinned in a spotlight: the HUD whites out a moment, and the lock with it
       state.static = Math.max(state.static, 1.5);
@@ -3227,11 +3244,11 @@ export async function create(canvas, ctx) {
     }
     if (live) {
       // shields come back once you've been out of trouble a while
-      if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen);
+      if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen * diff().regen);
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
-        const id = director.update(dt, { side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.busy || meteors.count > 0 || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
+        const id = director.update(dt, { side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.busy || meteors.count > 0 || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted, pace: diff().pace });
         if (id) happen(id, live);
         // the drive comes back once they're off you (or have had their go)
         if (state.interdicted && (!hunters.active || state.clock - state.interdictAt > INTERDICT)) state.interdicted = false;
@@ -3523,6 +3540,11 @@ export async function create(canvas, ctx) {
       }
     }
     input.interdicted = state.interdicted || Boolean(front?.inZone); // (the pulse drive's held down in a battle, as hunters hold it)
+    // an ion hit: no boost and no pulse drive till it wears off
+    if (state.clock < (state.ionUntil ?? -1)) {
+      input.boost = false;
+      input.interdicted = true;
+    }
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
     const before = state.ship;
     const { ship: stepped, events } = step(state.ship, input, dt, siegeSt.down ? SOLIDS_OPEN : SOLIDS);

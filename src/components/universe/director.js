@@ -87,7 +87,8 @@ export function createDirector({ rand = Math.random, events = EVENTS } = {}) {
     // speed, between places, where things come sooner and more of them are
     // hunters (an ambush on the way); calm: your shields are low, so
     // nothing that comes after you (the hunts wait till they're back)
-    update(dt, { side, heat = 0, busy = false, travelling = false, calm = false, wanted = false }) {
+    // pace: how much sooner things come (difficulty.js: harder, sooner)
+    update(dt, { side, heat = 0, busy = false, travelling = false, calm = false, wanted = false, pace = 1 }) {
       if (!side) return null;
       clock += dt;
       if (busy) {
@@ -110,7 +111,7 @@ export function createDirector({ rand = Math.random, events = EVENTS } = {}) {
       told = null;
       if (!id) return null;
       last = id;
-      nextAt = clock + (between(PACE.gap) / (1 + Math.min(heat, 6) * 0.25)) * (travelling ? 0.45 : 1);
+      nextAt = clock + (between(PACE.gap) / (1 + Math.min(heat, 6) * 0.25)) * (travelling ? 0.45 : 1) / Math.max(0.25, pace);
       return id;
     },
     // bring an event on next (for checking from a browser)

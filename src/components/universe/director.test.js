@@ -32,6 +32,12 @@ describe('the director', () => {
     }
   });
 
+  it('comes sooner on a harder setting (pace)', () => {
+    const normal = run(createDirector({ rand: seeded() }), 1200, { side: SIDES.starwars });
+    const hard = run(createDirector({ rand: seeded() }), 1200, { side: SIDES.starwars, pace: 1.5 });
+    expect(hard.length).toBeGreaterThan(normal.length * 1.3);
+  });
+
   it('only brings what belongs in your universe, and never the same twice running', () => {
     for (const side of Object.values(SIDES)) {
       const got = run(createDirector({ rand: seeded(11) }), 6000, { side });

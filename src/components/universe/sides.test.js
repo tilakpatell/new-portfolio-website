@@ -49,11 +49,11 @@ describe('the sides', () => {
         for (const [k] of f.kinds) {
           expect(kinds[k], `${s.id}.${id}.${k}`).toBeTruthy();
           expect(names[k], `${s.id}.${id}.${k}`).toBeTruthy();
-          expect(drawable(k), `${s.id}.${id}.${k}`).toBe(true);
+          expect(drawable(kinds[k].model ?? k), `${s.id}.${id}.${k}`).toBe(true);
         }
         if (f.ace) {
           expect(kinds[f.ace], `${s.id}.${id}.ace`).toBeTruthy();
-          expect(drawable(f.ace), `${s.id}.${id}.ace`).toBe(true);
+          expect(drawable(kinds[f.ace].model ?? f.ace), `${s.id}.${id}.ace`).toBe(true);
         }
         expect(f.laser, `${s.id}.${id}`).toHaveLength(3);
         expect(f.size, `${s.id}.${id}`).toHaveLength(2);

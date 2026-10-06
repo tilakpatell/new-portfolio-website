@@ -64,7 +64,8 @@ describe('galaxySide', () => {
           expect(KINDS[kind], `${id} ${kind}`).toBeTruthy();
           expect(NAMES[kind], `${id} ${kind}`).toBeTruthy();
           // (drawn: a model the fleet loads, or built in code till then; Slave I waits for its model)
-          expect(Boolean(HUNTER_GLB[kind]) || BUILT.has(kind), `${id} ${kind}`).toBe(true);
+          const model = KINDS[kind].model ?? kind;
+          expect(Boolean(HUNTER_GLB[model]) || BUILT.has(model), `${id} ${kind}`).toBe(true);
         }
         if (f.ace) expect(KINDS[f.ace], `${id} ace`).toBeTruthy();
       }
