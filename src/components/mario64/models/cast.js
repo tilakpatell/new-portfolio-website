@@ -2,6 +2,8 @@
 // frown, Bob-ombs wind their keys and blink red when lit, King Bob-omb wears
 // his crown and moustache, the Chain Chomp gnashes at the end of its chain,
 // Toad turns to talk. Each is { root, update(a, t, g) } (t in frames).
+// Given `hd` (a loaded model, ./hd.js), it wears that instead of the shapes
+// made here, and keeps its life: the same groups move, squash and flash.
 
 import * as THREE from 'three';
 import { COLORS, canvasTexture, capsule, cone, cylinder, mesh, pbr, sphere, torus } from './common';
@@ -9,13 +11,27 @@ import { COLORS, canvasTexture, capsule, cone, cylinder, mesh, pbr, sphere, toru
 const eyeWhite = () => pbr('#ffffff', { rough: 0.2, clearcoat: 1 });
 const pupil = () => pbr('#0c0c0c', { rough: 0.2, clearcoat: 1 });
 
-function goomba() {
-  const cap = pbr('#8a4a1f', { rough: 0.55, clearcoat: 0.3 });
-  const face = pbr('#f0c99a', { rough: 0.6 });
-  const foot = pbr('#3a2214', { rough: 0.5, clearcoat: 0.4 });
+function goomba(_, hd) {
   const root = new THREE.Group();
   const body = new THREE.Group();
   root.add(body);
+  if (hd) {
+    body.add(hd);
+    return {
+      root,
+      update(a, t) {
+        const flat = a.state === 'flat';
+        const k = a.state === 'chase' ? 0.5 : 0.25;
+        body.scale.set(flat ? 1.3 : 1, flat ? 0.25 : 1, flat ? 1.3 : 1);
+        body.position.y = flat ? 0 : Math.abs(Math.sin(t * k)) * 0.05;
+        body.rotation.z = Math.sin(t * k) * 0.08;
+        if (a.state === 'knocked') root.rotation.x += 0.4;
+      },
+    };
+  }
+  const cap = pbr('#8a4a1f', { rough: 0.55, clearcoat: 0.3 });
+  const face = pbr('#f0c99a', { rough: 0.6 });
+  const foot = pbr('#3a2214', { rough: 0.5, clearcoat: 0.4 });
   // the mushroom: a wide brown head over a pale stalk of a face
   const profile = [
     [0, 0.42],
@@ -55,7 +71,43 @@ function goomba() {
   };
 }
 
-function bobombBody({ scale = 1, king = false } = {}) {
+// (a loaded Bob-omb flashes red all over when it's lit: its own materials,
+// glowing)
+function hdBobomb(hd, { king }) {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  root.add(body);
+  body.add(hd);
+  const mats = [];
+  hd.traverse((o) => o.isMesh && mats.push(...[].concat(o.material)));
+  const box = new THREE.Box3().setFromObject(hd);
+  const spark = mesh(sphere(), pbr('#fff2a0', { emissive: '#ffcf40', emissiveIntensity: 3, rough: 1 }), { y: box.max.y + 0.05, sx: 0.05, sy: 0.05, sz: 0.05, shadow: false });
+  body.add(spark);
+  const red = new THREE.Color('#ff2200');
+  const off = new THREE.Color(0, 0, 0);
+  return {
+    root,
+    update(a, t) {
+      const k = a.state === 'lit' ? 0.6 : 0.25;
+      const flash = (a.state === 'lit' || a.state === 'held' || a.state === 'thrown') && Math.floor(t / Math.max(2, 8 - (a.fuse ?? 0) / 20)) % 2 === 0;
+      for (const m of mats) {
+        if (!m.emissive) continue;
+        m.emissive.copy(flash ? red : off);
+        m.emissiveIntensity = flash ? 0.7 : 1;
+      }
+      spark.visible = !king && a.state !== 'walk' && a.state !== 'wait' && a.state !== 'gone';
+      spark.scale.setScalar(0.05 + Math.random() * 0.03);
+      root.visible = a.state !== 'gone';
+      body.position.y = a.state === 'walk' || a.state === 'lit' ? Math.abs(Math.sin(t * k)) * 0.04 * (king ? 3 : 1) : 0;
+      if (a.state === 'stunned' || a.state === 'defeated') body.rotation.z = Math.sin(t * 0.5) * 0.15;
+      else body.rotation.z = Math.sin(t * k) * 0.05;
+      if (a.state === 'defeated') body.scale.setScalar(Math.max(0.01, 1 - (t % 60) / 60));
+    },
+  };
+}
+
+function bobombBody({ scale = 1, king = false, hd = null } = {}) {
+  if (hd) return hdBobomb(hd, { king });
   const shell = pbr('#1c1c22', { rough: 0.22, clearcoat: 1, metal: 0.3 });
   const lit = pbr('#ff3b2a', { rough: 0.3, clearcoat: 1, emissive: '#ff2200', emissiveIntensity: 0.9 });
   const brass = pbr(COLORS.gold, { rough: 0.3, metal: 1 });
@@ -121,7 +173,7 @@ function bobombBody({ scale = 1, king = false } = {}) {
   };
 }
 
-function chomp() {
+function chomp(_, hd) {
   const shell = pbr('#16161a', { rough: 0.18, clearcoat: 1, metal: 0.4 });
   const mouth = pbr('#5a0b10', { rough: 0.7 });
   const tooth = pbr('#fbfbf5', { rough: 0.2, clearcoat: 1 });
@@ -134,16 +186,21 @@ function chomp() {
   const lower = new THREE.Group();
   head.add(upper, lower);
   const half = (top) => new THREE.SphereGeometry(1.5, 48, 24, 0, Math.PI * 2, top ? 0 : Math.PI / 2, Math.PI / 2);
-  upper.add(mesh(half(true), shell));
-  lower.add(mesh(half(false), shell));
-  upper.add(mesh(new THREE.CircleGeometry(1.42, 48), mouth, { rx: Math.PI / 2, y: -0.01 }));
-  lower.add(mesh(new THREE.CircleGeometry(1.42, 48), mouth, { rx: -Math.PI / 2, y: 0.01 }));
-  for (let i = 0; i < 9; i++) {
+  // (a loaded one is one piece: it rears back to bite instead)
+  if (hd) {
+    hd.position.y = -1.5;
+    head.add(hd);
+  }
+  if (!hd) upper.add(mesh(half(true), shell));
+  if (!hd) lower.add(mesh(half(false), shell));
+  if (!hd) upper.add(mesh(new THREE.CircleGeometry(1.42, 48), mouth, { rx: Math.PI / 2, y: -0.01 }));
+  if (!hd) lower.add(mesh(new THREE.CircleGeometry(1.42, 48), mouth, { rx: -Math.PI / 2, y: 0.01 }));
+  for (let i = 0; i < (hd ? 0 : 9); i++) {
     const ang = -0.95 + (i / 8) * 1.9;
     upper.add(mesh(cone(10), tooth, { x: Math.sin(ang) * 1.32, y: -0.12, z: Math.cos(ang) * 1.32, sx: 0.14, sy: 0.3, sz: 0.14, rx: Math.PI }));
     lower.add(mesh(cone(10), tooth, { x: Math.sin(ang + 0.1) * 1.32, y: 0.12, z: Math.cos(ang + 0.1) * 1.32, sx: 0.14, sy: 0.3, sz: 0.14 }));
   }
-  for (const sx of [-1, 1]) {
+  for (const sx of hd ? [] : [-1, 1]) {
     upper.add(mesh(sphere(), eyeWhite(), { x: sx * 0.55, y: 0.75, z: 1.15, sx: 0.32, sy: 0.32, sz: 0.2 }));
     upper.add(mesh(sphere(), pupil(), { x: sx * 0.52, y: 0.72, z: 1.33, sx: 0.12, sy: 0.12, sz: 0.06 }));
   }
@@ -161,6 +218,7 @@ function chomp() {
       const open = a.state === 'lunge' ? 0.55 : 0.12 + Math.max(0, Math.sin(t * 0.35)) * 0.25;
       upper.rotation.x = -open;
       lower.rotation.x = open * 0.5;
+      if (hd) head.rotation.x = -open * 0.35;
       head.position.y = 1.5 + Math.abs(Math.sin(t * 0.3)) * (a.state === 'idle' ? 0.15 : 0);
       const post = g?.actors.find((x) => x.type === 'post' && x.def.id === a.def.post);
       chain.visible = Boolean(post) && a.state !== 'free' && a.state !== 'gone';
@@ -226,8 +284,20 @@ function gate() {
   return { root, update() {} };
 }
 
-function toad() {
+function toad(_, hd) {
   const root = new THREE.Group();
+  if (hd) {
+    const body = new THREE.Group();
+    body.add(hd);
+    root.add(body);
+    return {
+      root,
+      update(a, t) {
+        body.position.y = Math.abs(Math.sin(t * 0.08)) * 0.03;
+        body.rotation.z = Math.sin(t * 0.04) * 0.03;
+      },
+    };
+  }
   const spots = canvasTexture('m64-toad-cap', 256, 128, (g, w, h) => {
     g.fillStyle = '#fbfbf6';
     g.fillRect(0, 0, w, h);
@@ -265,8 +335,8 @@ function toad() {
 
 export const CAST = {
   goomba,
-  bobomb: () => bobombBody(),
-  king: () => bobombBody({ scale: 2.7, king: true }),
+  bobomb: (_, hd) => bobombBody({ hd }),
+  king: (_, hd) => bobombBody({ scale: 2.7, king: true, hd }),
   chomp,
   ironball,
   post,
