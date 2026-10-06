@@ -121,6 +121,22 @@ check(end.card === 'Victory', 'the end card says Victory');
 check(end.state.front === 4, 'the front moved on a sector');
 const saved = await dbg(() => window.localStorage.getItem('tp-war-starwars'));
 check(Boolean(saved) && JSON.parse(saved).front === 4, 'the war is saved');
+// the nav map: the war's line and the front, and the autopilot there
+await page.locator('.battle-over-close').click().catch(() => {});
+await dbg(() => {
+  const s = window.__universeDebug.state;
+  s.ship = { ...s.ship, x: s.ship.x - 900, speed: 0 };
+});
+await page.waitForTimeout(1500);
+await page.keyboard.press('m');
+await page.waitForSelector('.navmap-frontbtn', { timeout: 20000 }).catch(() => {});
+check(await page.locator('.navmap-war-sector').count() === 7, 'the nav map draws the war’s seven sectors');
+await snap('navmap');
+await page.locator('.navmap-frontbtn').click().catch((e) => console.log('click:', String(e).slice(0, 200)));
+console.log('url:', page.url());
+await page.waitForTimeout(1500);
+const going = await dbg(() => window.__universeDebug.state.auto?.id ?? null);
+check(going === 'front', 'the nav map’s front button sends the autopilot there');
 console.log(errors.length ? `page errors:\n${errors.join('\n')}` : 'no page errors');
 await browser.close();
 process.exit(problems.length || errors.length ? 1 : 0);

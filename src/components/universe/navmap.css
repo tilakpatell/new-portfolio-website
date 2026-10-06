@@ -304,8 +304,8 @@
 @keyframes navmap-front {
   50% { scale: 1.35; opacity: 0.4; }
 }
-.navmap-front { position: absolute; translate: -50% 18px; }
-.navmap-front .navmap-name { color: #ffb347; }
+.navmap-frontbtn .navmap-name { color: #ffb347; }
+.navmap-places > li[data-kind='front'] .navmap-place { translate: calc(-100% - 10px) -50%; }
 @media (prefers-reduced-motion: reduce) {
   .navmap-war-front { animation: none; }
 }

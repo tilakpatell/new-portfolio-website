@@ -368,14 +368,15 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                   </li>
                 );
               })}
+              {/* the war's front: to the left of its dot (the wonders round it have their names to the right) */}
+              {view === 'all' && now?.front && (
+                <li style={{ ...pct(P(now.front.at)), '--c': '#ffb347' }} data-kind="front" data-side="left">
+                  <button type="button" className="navmap-place navmap-frontbtn" disabled={!canFly} onClick={() => onTravel('front', drive)} title={canFly ? `${driveById(fallsBack ? 'super' : drive).verb} to the front` : 'Pick a ship to fly to the front'}>
+                    <span className="navmap-name">The front · {now.front.name}</span>
+                  </button>
+                </li>
+              )}
             </ul>
-            {view === 'all' && now?.front && (
-              <div className="navmap-front" style={pct(P(now.front.at))}>
-                <button type="button" className="navmap-place" disabled={!canFly} onClick={() => onTravel('front', drive)} title={canFly ? `${driveById(fallsBack ? 'super' : drive).verb} to the front` : 'Pick a ship to fly to the front'}>
-                  <span className="navmap-name">The front · {now.front.name}</span>
-                </button>
-              </div>
-            )}
             {view === 'home' && (
               <button type="button" className="navmap-out" onClick={() => setView('all')}>
                 <RiArrowLeftLine className="h-3.5 w-3.5" aria-hidden="true" /> Out to the whole universe

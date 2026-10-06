@@ -2385,16 +2385,22 @@ export async function create(canvas, ctx) {
     setOn(h, h.nav, Boolean(goal));
     if (goal) {
       const place = isPlace(goal.id) ? byId(goal.id) : null;
-      const wd = place ? null : wonderById(goal.id);
-      const at = place ? POSITIONS[goal.id] : wd.at;
+      // (the war's front is neither a place nor a wonder: its own goal, front.js's)
+      const war = goal.id === 'front' ? front?.goal() : null;
+      const wd = place || war ? null : wonderById(goal.id);
+      const at = place ? POSITIONS[goal.id] : war ? war.at : wd?.at;
+      if (!at) {
+        setOn(h, h.nav, false);
+        return;
+      }
       toScreen(at[0], at[1], at[2], hudAt);
       // (the Citadel gone, the diamond is round where its core was, not round the empty reach of its arms)
-      const reach = place ? REACH[goal.id] : wd.id === 'citadel' && siegeSt.down && citadelGeo ? citadelGeo.core * 0.5 : reachOf(wd);
+      const reach = place ? REACH[goal.id] : war ? war.r : wd.id === 'citadel' && siegeSt.down && citadelGeo ? citadelGeo.core * 0.5 : reachOf(wd);
       const px = hudAt.z > 0 ? (reach / (hudAt.z * tanHalf)) * (size.h / 2) * 2.2 : 0;
       // no bigger than a quarter of the frame's height: close in, the place itself shows the way
       placeMark(h.nav, hudAt, clamp(px, 34, Math.min(260, size.h * 0.25)));
       h.nav.toggleAttribute('data-way', goal.way);
-      setText(h, h.navName, place ? place.label : wd.name);
+      setText(h, h.navName, place ? place.label : war ? 'The front' : wd.name);
       setText(h, h.navDist, range(apart(at[0], at[1], at[2], s.x, s.y, s.z)));
     }
   };
