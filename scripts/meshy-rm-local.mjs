@@ -38,7 +38,7 @@
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { dedup, meshopt, prune, resample, textureCompress } from '@gltf-transform/functions';
+import { dedup, flatten, getBounds, meshopt, prune, resample, textureCompress, transformMesh } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -46,6 +46,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Matrix4 } from 'three';
+import { creditOf, slugOf } from './model-scout.mjs';
 
 // The sharp that glTF-Transform's ndarray-pixels loads (it brings its own
 // version). Loading the project's as well puts two libvips in one process,
@@ -72,6 +73,30 @@ const AT_EASE = 'Full body, front view, standing at ease with the arms hanging d
 const RICK = 'Rick Sanchez from Rick and Morty, a tall thin old scientist with spiky pale blue-grey hair and a unibrow';
 const MORTY = 'Morty Smith from Rick and Morty, a nervous 14-year-old boy with short brown hair and a round head';
 const CAR = 'The whole vehicle, three-quarter front view, centred, wheels on the ground.';
+
+// The plan's Task 1.1 assets, made on the account in ~/.tilakverse.env (a
+// task id only works on the account that made it). The prompts were put
+// right against the wiki's sheets on 6 October: Birdperson's hood is dark
+// olive with pale green spots over a cream ruff, his wings cream with olive
+// tips, his boots ridged yellow; Squanchy is golden with a cream streak and
+// heavy lids; Mar-Sha's extra arms grow from the sides of her head; Morty
+// Jr.'s face is pale and only his arms are red; Unity has three antennae and
+// three dots on her forehead; the Zigerions wear red with yellow collars.
+// Gwendolyn is left out (the show's is a sex robot). Krombopulos Michael is a
+// Sketchfab model (`uid`, CC BY, scouted and judged by the gate), rigged by
+// Meshy: `bake` makes it ready, `rig` sends it.
+const PHASE1 = {
+  squanchy: { hero: true, height: 1.15, prompt: `Squanchy from Rick and Morty: a short scruffy cat-person standing upright on two legs, golden orange fur with spiky messy tufts on top of his head and a cream streak on his forehead, big pointed ears with cream insides, heavy half-closed droopy yellow eyes, a tiny blue nose, a cream muzzle with long scraggly whiskers, two small fangs and a little brown goatee tuft under his lip, a cream chest and cream paw tips, a bare thin tail with a brown tuft at its tip, wearing nothing but a small black bow tie. ${BODY}` },
+  birdperson: { hero: true, height: 2.0, prompt: `Birdperson from Rick and Morty: a tall thin humanoid bird-man with pale peach skin and a bare chest and belly, a dark olive-grey feathered hood with pale green spots framing a long stern human face with a big hooked nose and heavy dark brows, a tuft of feathers on top of the hood, a ruff of pale cream feathers round his neck under a dark olive feathered mantle across the shoulders, a small yellow feather clasp at the chest, two huge pale cream eagle wings with dark olive tips folded down his back like a long cape to his ankles, yellow feathered gloves with white feather cuffs, a jagged brown loincloth skirt with a brown belt and an oval pale blue buckle, bare legs, ridged yellow-orange bird-foot boots with white feather tops. ${BODY}` },
+  phoenixperson: { height: 2.05, prompt: `Phoenixperson from Rick and Morty: Birdperson rebuilt as a cyborg, a tall thin bird-man with his pale peach human face, a big hooked nose and heavy dark brows, one glowing red mechanical eye, a dark gunmetal plate shaped like three tall feathers on his head, huge wings of dark gunmetal steel blades folded down his back like a long cape, his chest, arms and legs rebuilt as dark grey robot armour with small red lights, a jagged brown loincloth skirt with a belt and an oval buckle, metal bird-foot boots. ${BODY}` },
+  unity: { height: 1.75, prompt: `Unity from Rick and Morty, in her main host body: a slim woman with light blue skin, dark plum-purple hair swept to one side and back into a low ponytail, three thin light blue antenna stalks with round yellow tips standing up from the top of her head, three small teal dots on her forehead, thin rimless rectangular glasses over yellow eyes, coral pink lips, a pale pink pearl necklace, a raspberry-red blazer with pink lapels and pink cuffs over a cream top, a dark purple pencil skirt to the knee, dark magenta high heels. ${BODY}` },
+  marsha: { height: 2.3, pose: false, prompt: `Mar-Sha, queen of the Gazorpian women from Rick and Morty: a tall stately woman with tan skin, a single dark blue unibrow, long straight dark blue hair with a straight fringe, a gold and yellow Egyptian-style headband with a red stripe at the front, two extra long thin tan arms growing out of the sides of her head where her ears would be and raised up beside it, two normal arms, a long white robe with long sleeves and a wide collar of yellow, gold and green segments, bare feet. ${BODY}` },
+  mortyjr: { height: 2.0, pose: false, prompt: `Morty Jr. grown up, from Rick and Morty: a huge heavy-set half-alien man with a pale peach face, a unibrow, small grumpy eyes, an underbite with two big lower fangs, two huge muscular bright red arms growing out of the sides of his head, bright red hands, a small grey flat cap, a long dark charcoal overcoat with brown elbow patches over a dark olive-green shirt and a dark blue tie, dark grey trousers, white and brown shoes. ${BODY}` },
+  krombopulos: { uid: '4d65b1da2fe54c5590aa8abc7c64bf83', turn: -Math.PI / 2, height: 1.9, as: 'Krombopulos Michael at Interdimensional Customs' },
+  zigerion: { crowd: true, prompt: `A Zigerion from Rick and Morty: a tall thin bald alien with pink-purple skin, a big bulbous head swelling up and back with a few small spikes and two thin antennae on top, droopy-lidded yellow eyes, a long wide nose, a long neck, four arms, in a red spacefleet uniform tunic with a yellow collar and a small black triangle badge on the chest, black trousers, white boots. ${AT_EASE}` },
+  'squanchy-house': { rig: false, hero: true, prompt: `Squanchy's house on Planet Squanch from Rick and Morty: a house built like a giant cat tree, three round carpeted platforms in beige and brown stacked on thick sisal-rope-wrapped posts, little ladders between them, a round carpeted den with a round door at the top, toy mice and balls hanging on strings, on a patch of red grass. ${BUILDING}` },
+  'birdperson-house': { rig: false, hero: true, prompt: `Birdperson's home on Bird World from Rick and Morty: a tall tower house of smooth tan clay grown round a twisting tree trunk, round and oval windows, small balconies, a little wooden ladder, vines hanging down, and a wide flat umbrella-shaped canopy of pale green leaves on top like an acacia tree, no people. ${BUILDING}` },
+};
 
 // The plan's Task 2.1 and 6.1 assets. Its prompts were checked against each
 // one's wiki page and stills on 6 October (the plan's Step 1), and all but
@@ -186,6 +211,7 @@ const PHASE4 = {
 const SMALL = new Set(['snuffles', 'ghostinajar', 'tinkles', 'babywizard', 'stairgoblin', 'hepatitis', 'gonorrhoea', 'tuberculosis', 'plague', 'ecoli']);
 export const ASSETS = {};
 for (const [phase, set] of [
+  [1, PHASE1],
   [2, PHASE2],
   [3, PHASE3],
   [4, PHASE4],
@@ -465,6 +491,14 @@ async function squeeze(from, to, { tex = 0, clip = false, ankles = false, fix = 
   await io.write(to, doc);
 }
 
+// a found model's entry in src/data/modelCredits.json, as the scout's fetch writes it
+async function creditFound(n, m, a) {
+  const file = join(ROOT, 'src', 'data', 'modelCredits.json');
+  const all = JSON.parse(await readFile(file, 'utf8'));
+  all[`c-137-${slugOf(m.name)}`] = creditOf(m, { where: 'c-137', as: `${a.as}, rigged by Meshy`, file: `/games/meshy/${n}.glb` });
+  await put(file, Object.fromEntries(Object.entries(all).sort(([x], [y]) => x.localeCompare(y))));
+}
+
 // what each step leaves, in order: rerolling one forgets it and those after
 const CHAIN = ['image', 'use', 'model', 'rig', 'idle', 'sit'];
 
@@ -484,6 +518,7 @@ const steps = {
     console.log(`claim    ${names.length} names in scripts/rm-models.json: commit and push it before paying`);
   },
   async images(names) {
+    names = names.filter((n) => !ASSETS[n].uid);
     await mark(names, 'meshy');
     await each(names, async (n) => {
       const a = ASSETS[n];
@@ -499,7 +534,7 @@ const steps = {
     });
   },
   async models(names) {
-    await each(names, async (n) => {
+    await each(names.filter((n) => !ASSETS[n].uid), async (n) => {
       const a = ASSETS[n];
       if (!tasks[n]?.image) throw new Error('no image yet');
       if (!tasks[n].model) {
@@ -513,7 +548,10 @@ const steps = {
           target_polycount: a.poly,
           texture_resolution: '2k',
           ...(a.hero ? { geometry_resolution: '2k' } : {}),
-          ...(a.rig ? { pose_mode: 'a-pose' } : {}),
+          // (`pose: false`: the concept's own pose kept, for a figure whose
+          // extra limbs Meshy's A-pose pass drops, as Mar-Sha's and Morty
+          // Jr.'s arms on their heads)
+          ...(a.rig && a.pose !== false ? { pose_mode: 'a-pose' } : {}),
           target_formats: ['glb'],
           enable_thumbnail: true,
         });
@@ -525,13 +563,56 @@ const steps = {
       console.log(`model    ${n.padEnd(18)} ${t.consumed_credits} credits`);
     });
   },
+  // a Sketchfab model (an asset with a `uid`) made ready for Meshy's rigger:
+  // downloaded (SKETCHFAB_API_TOKEN), its transforms baked into the vertices,
+  // turned to face +z (`turn`), stood on y = 0 at the middle, its maps JPEGs at 1024 and no meshopt
+  // (Meshy can't read it), into lab/meshy/rm/in/<name>.glb; its page kept
+  // for the credit (src/data/modelCredits.json, written by fetch)
+  async bake(names) {
+    const token = process.env.SKETCHFAB_API_TOKEN;
+    if (!token) throw new Error('Set SKETCHFAB_API_TOKEN (it is in ~/.tilakverse.env).');
+    const sf = async (path) => {
+      const r = await fetch(`https://api.sketchfab.com/v3${path}`, { headers: { Authorization: `Token ${token}` } });
+      if (!r.ok) throw new Error(`sketchfab ${path}: ${r.status}`);
+      return r.json();
+    };
+    for (const n of names.filter((k) => ASSETS[k].uid)) {
+      const { uid } = ASSETS[n];
+      const raw = join(REVIEW, 'in', `${n}-sketchfab.glb`);
+      if (!existsSync(raw)) await download((await sf(`/models/${uid}/download`)).glb.url, raw);
+      tasks[n] = { ...tasks[n], sketchfab: await sf(`/models/${uid}`).then((m) => ({ name: m.name, user: m.user, license: m.license, viewerUrl: m.viewerUrl })) };
+      await save();
+      const plain = new NodeIO().registerExtensions(ALL_EXTENSIONS);
+      const doc = await plain.read(raw);
+      await doc.transform(flatten());
+      for (const node of doc.getRoot().listNodes()) {
+        if (!node.getMesh()) continue;
+        transformMesh(node.getMesh(), node.getWorldMatrix());
+        node.setMatrix([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+      }
+      // (`turn`: radians about y, for a model that doesn't face +z)
+      if (ASSETS[n].turn) for (const m of doc.getRoot().listMeshes()) transformMesh(m, new Matrix4().makeRotationY(ASSETS[n].turn).elements);
+      const b = getBounds(doc.getRoot().listScenes()[0]);
+      const shift = new Matrix4().makeTranslation(-(b.min[0] + b.max[0]) / 2, -b.min[1], -(b.min[2] + b.max[2]) / 2).elements;
+      for (const m of doc.getRoot().listMeshes()) transformMesh(m, shift);
+      await doc.transform(prune(), dedup(), textureCompress({ encoder: sharp, targetFormat: 'jpeg', resize: [1024, 1024], quality: 92 }));
+      await plain.write(join(REVIEW, 'in', `${n}.glb`), doc);
+      const c = getBounds(doc.getRoot().listScenes()[0]);
+      console.log(`bake     ${n.padEnd(18)} ${(c.max[1] - c.min[1]).toFixed(2)} tall, x ${c.min[0].toFixed(2)}…${c.max[0].toFixed(2)}, z ${c.min[2].toFixed(2)}…${c.max[2].toFixed(2)}`);
+    }
+  },
   async rig(names) {
     await each(
       names.filter((n) => ASSETS[n].rig),
       async (n) => {
-        if (!tasks[n]?.model) throw new Error('no model yet');
-        if (!tasks[n].rig) {
-          const { result } = await api('POST', '/v1/rigging', { input_task_id: tasks[n].model, height_meters: ASSETS[n].height });
+        const a = ASSETS[n];
+        const baked = join(REVIEW, 'in', `${n}.glb`);
+        if (a.uid ? !existsSync(baked) : !tasks[n]?.model) throw new Error(a.uid ? 'bake it first' : 'no model yet');
+        if (!tasks[n]?.rig) {
+          // a found model goes to the rigger as a data: URI (nothing public needed)
+          const from = a.uid ? { model_url: `data:application/octet-stream;base64,${(await readFile(baked)).toString('base64')}` } : { input_task_id: tasks[n].model };
+          tasks[n] ??= {};
+          const { result } = await api('POST', '/v1/rigging', { ...from, height_meters: a.height });
           tasks[n].rig = result;
           await save();
         }
@@ -611,7 +692,8 @@ const steps = {
         if (!existsSync(raw)) await download(url, raw);
         await squeeze(raw, join(out, file), { tex, clip, ankles: clip ? false : (a.ankles ?? false), fix: clip ? null : (a.fix ?? null) });
       }
-      credits[`meshy/${a.rig || a.crowd ? '' : 'rm/'}${n}`] = { source: 'https://www.meshy.ai', id: s.model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
+      if (a.uid) await creditFound(n, s.sketchfab, a);
+      else credits[`meshy/${a.rig || a.crowd ? '' : 'rm/'}${n}`] = { source: 'https://www.meshy.ai', id: s.model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
       done.push(n);
       console.log(`fetch    ${n.padEnd(18)} ${files.map((f) => f[1]).join(', ')}`);
     }

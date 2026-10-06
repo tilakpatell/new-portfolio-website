@@ -1404,7 +1404,9 @@ describe('C-137: the things to touch', () => {
   it('finds each at its own spot, and nothing out in the street', () => {
     for (const h of HOTSPOTS) {
       expect(areaAt(h.x, h.z), h.id).toBe(h.area);
-      expect(nearHotspot(h.area, h.x, h.z).id, h.id).toBe(h.id);
+      // (with what's done as it is while it's there: one that comes `after`
+      // something can stand where another stood `until` it)
+      expect(nearHotspot(h.area, h.x, h.z, h.after ? [h.after] : []).id, h.id).toBe(h.id);
     }
     const cable = HOTSPOTS.find((h) => h.id === 'cable');
     expect(nearHotspot('street', START.x, START.z)).toBe(null);

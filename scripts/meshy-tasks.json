@@ -849,5 +849,107 @@
   "gearperson-b": {
     "image": "01a1132d-c024-7382-bfa2-b9be25bfc76e",
     "model": "01a11339-2d9f-7519-a6a9-a93683944cfe"
+  },
+  "krombopulos": {
+    "sketchfab": {
+      "name": "Krombopulos Rick And Morty",
+      "user": {
+        "uid": "2ac4e7b93fd34aadbdad7bd5e438d0e4",
+        "username": "elchupaanos",
+        "displayName": "ELCHUPAAANOS",
+        "account": "basic",
+        "profileUrl": "https://sketchfab.com/elchupaanos",
+        "avatar": {
+          "uid": "8d6bf00403f34797a8a311226af94001",
+          "uri": "https://api.sketchfab.com/v3/avatars/8d6bf00403f34797a8a311226af94001",
+          "images": [
+            {
+              "width": 32,
+              "height": 32,
+              "size": 2624,
+              "url": "https://media.sketchfab.com/avatars/8d6bf00403f34797a8a311226af94001/6d4eb1dfc1b943c4aa7ee06c7881ca5e.png"
+            },
+            {
+              "width": 48,
+              "height": 48,
+              "size": 5449,
+              "url": "https://media.sketchfab.com/avatars/8d6bf00403f34797a8a311226af94001/84c981e6d3dc488bbdb2719eb0dc170b.png"
+            },
+            {
+              "width": 90,
+              "height": 90,
+              "size": 16673,
+              "url": "https://media.sketchfab.com/avatars/8d6bf00403f34797a8a311226af94001/c398fdd6cadc4f688cbf402b9438a9e7.png"
+            },
+            {
+              "width": 100,
+              "height": 100,
+              "size": 20163,
+              "url": "https://media.sketchfab.com/avatars/8d6bf00403f34797a8a311226af94001/073a4f9846ef41ccb2fddfb6926f2d16.png"
+            }
+          ]
+        },
+        "uri": "https://api.sketchfab.com/v3/users/2ac4e7b93fd34aadbdad7bd5e438d0e4"
+      },
+      "license": {
+        "uri": "https://api.sketchfab.com/v3/licenses/322a749bcfa841b29dff1e8a1bb74b0b",
+        "label": "CC Attribution",
+        "fullName": "Creative Commons Attribution",
+        "requirements": "Author must be credited. Commercial use is allowed.",
+        "url": "http://creativecommons.org/licenses/by/4.0/",
+        "slug": "by"
+      },
+      "viewerUrl": "https://sketchfab.com/3d-models/krombopulos-rick-and-morty-4d65b1da2fe54c5590aa8abc7c64bf83"
+    },
+    "rig": "01a1136b-6eae-76bf-9ee2-85fa63fe5167",
+    "idle": "01a1136d-3fb0-771d-9626-f0b050378b26"
+  },
+  "squanchy": {
+    "image": "01a11366-c8a0-707e-97a2-e56fa6f8b4b0",
+    "model": "01a1136d-6b93-7439-9ec0-0c0e997c8a89",
+    "rig": "01a11372-80f6-7188-ace0-740f8836ea4e",
+    "idle": "01a11372-d75b-742a-8650-da39842b4fa6"
+  },
+  "birdperson": {
+    "image": "01a11366-c8a0-7080-b09d-14d60195fd1b",
+    "model": "01a1136d-6b7c-769e-ac0f-9d4614633345",
+    "rig": "01a11372-81b1-7261-84c0-6877aa2a409c",
+    "idle": "01a11372-d76d-734d-b598-103880273436"
+  },
+  "phoenixperson": {
+    "image": "01a11366-c8a9-70cf-a8f5-3c5d1fd0dd67",
+    "model": "01a1136d-6b91-76e4-bb50-4052b7a60442",
+    "rig": "01a11372-81cb-7648-b467-5b17d9ac2929",
+    "idle": "01a11372-d75c-731d-b364-c70a3b29c8d2"
+  },
+  "unity": {
+    "image": "01a11366-c8da-74a2-ad69-d366d3d7dd3d",
+    "model": "01a1136d-6b8d-7720-8c55-b4acba98bd0a",
+    "rig": "01a11372-81b6-74ce-9e68-bf177d3ca56f",
+    "idle": "01a11372-d76e-7211-a8e5-3b8d460e8adf"
+  },
+  "marsha": {
+    "image": "01a11367-479c-762e-b92e-487aef8cefc6",
+    "model": "01a11372-80f5-731b-8a8e-298c3bb2b572",
+    "rig": "01a11375-3a01-7368-b5ce-ffee65e6a2a9",
+    "idle": "01a11375-9633-741e-9ba2-73f693a20314"
+  },
+  "mortyjr": {
+    "image": "01a11367-5094-75de-b5bd-7c56bdc0e13f",
+    "model": "01a11372-81ad-7467-91a6-1013455746b9",
+    "rig": "01a11375-39ed-772f-beca-3434a5863004",
+    "idle": "01a11375-95f8-723a-a242-2a3d3d0a4a70"
+  },
+  "zigerion": {
+    "image": "01a11367-5bcd-77cf-8899-de758c9540d7",
+    "model": "01a1136f-2d96-74f7-b3aa-6951365bd3d1"
+  },
+  "squanchy-house": {
+    "image": "01a11367-5bd1-7067-bf07-c0494c690fdb",
+    "model": "01a1136f-69e5-73a7-b126-c9a91c23f0a7"
+  },
+  "birdperson-house": {
+    "image": "01a11368-6081-77e5-a5b8-fbbb0906ebf2",
+    "model": "01a11370-0337-70b9-a7c7-d7dec6bfe49c"
   }
 }

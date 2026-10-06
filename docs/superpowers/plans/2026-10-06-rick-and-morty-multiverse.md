@@ -271,6 +271,8 @@ Entry (index 3, outdoor): a rocky ridge at dusk under a pale orange sky with two
 - [ ] **Step 2:** Shots of all four places and the dial in `docs/superpowers/shots/`.
 - [ ] **Step 3: Commit** “C-137: the multiverse, Phase 1”; open the PR, merge, restart the branch from `origin/main`.
 
+> Phase 1 is done on `claude/rm-multiverse-phase1` (`docs/superpowers/HANDOFF-rm-phase1.md`). Where it differs from the plan: Krombopulos Michael is a Sketchfab model rigged by Meshy; Gwendolyn is left out; Customs and Bird World follow the show's stills (a white hall with green lanes; clay towers under umbrella trees, not a ridge at dusk); the wedding's raid and Customs' scanner are timed escapes home, as the Purge Planet's siren is, through one `escape` rule; Phoenixperson stands at Birdperson's door once the wedding's over; the map's Birdperson is still the code-built one.
+
 ---
 
 ## Phase 2: the house, the rest of the family, Total Rickall (a ceiling of 900 credits, ≈ 1,080)

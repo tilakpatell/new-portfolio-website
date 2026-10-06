@@ -63,6 +63,10 @@ export const ACHIEVEMENTS = {
   rickall: { name: 'Total Rickall', desc: 'Shot every memory parasite in the Smiths’ living room, and nobody real' },
   wong: { name: 'Family therapy', desc: 'Sat on Dr. Wong’s couch. Rick says it was for Jerry' },
   // the multiverse's destinations, through the garage portal as it's dialled
+  customs: { name: 'Nothing to declare', desc: 'Got Rick’s Mega Seeds through Interdimensional Customs, more or less' },
+  squanch: { name: 'The wedding squanchers', desc: 'Raised a glass at Birdperson’s wedding and got out when the Federation came' },
+  gazorp: { name: 'An exception for a Morty', desc: 'Knocked at the gate of the women’s city on Gazorpazorp' },
+  birdworld: { name: 'The time of greeting', desc: 'Knocked at Birdperson’s door on Bird World' },
   fantasy: { name: 'Mind the stairs', desc: 'Got the village’s help in Fantasy World, with a Meeseeks at the well' },
   microverse: { name: 'Batteries all the way down', desc: 'Met Zeep Xanflorp inside the battery of Rick’s car' },
   anatomy: { name: 'Pirates of the Pancreas', desc: 'Made it round Anatomy Park to the last ride' },

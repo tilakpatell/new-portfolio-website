@@ -626,8 +626,9 @@ export const PEOPLE = [
   // the destinations' people (./dimensions/destinations.js)
   ...DESTINATIONS.flatMap((d) => d.people),
 ];
-// Is it there, with `done` done? (left out: everyone is)
-export const present = (o, done) => !done || !o.until || !done.includes(o.until);
+// Is it there, with `done` done? (gone once its `until` is, there only once
+// its `after` is; left out: everyone is)
+export const present = (o, done) => !done || ((!o.until || !done.includes(o.until)) && (!o.after || done.includes(o.after)));
 export const peopleIn = (area, done) => PEOPLE.filter((p) => p.area === area && present(p, done));
 
 // ── Total Rickall's floor ──

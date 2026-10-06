@@ -2571,5 +2571,86 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/squanchy": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1136d-6b93-7439-9ec0-0c0e997c8a89",
+    "name": "squanchy, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/birdperson": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1136d-6b7c-769e-ac0f-9d4614633345",
+    "name": "birdperson, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/phoenixperson": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1136d-6b91-76e4-bb50-4052b7a60442",
+    "name": "phoenixperson, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/unity": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1136d-6b8d-7720-8c55-b4acba98bd0a",
+    "name": "unity, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/zigerion": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1136f-2d96-74f7-b3aa-6951365bd3d1",
+    "name": "zigerion, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/squanchy-house": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1136f-69e5-73a7-b126-c9a91c23f0a7",
+    "name": "squanchy-house, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/birdperson-house": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11370-0337-70b9-a7c7-d7dec6bfe49c",
+    "name": "birdperson-house, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/marsha": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11372-80f5-731b-8a8e-298c3bb2b572",
+    "name": "marsha, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/mortyjr": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11372-81ad-7467-91a6-1013455746b9",
+    "name": "mortyjr, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }
