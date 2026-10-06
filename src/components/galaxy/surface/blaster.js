@@ -3,11 +3,13 @@
 // ground, a wall) and theirs (at you, a little off), each a streak of light
 // that flies and a flash where it lands.
 //
-// createBlaster({ parent, world }) → { fire(from, dir, targets, color, reach,
-// muzzle) → what it'll hit ({ target, at } or null; `reach`: where something
-// solid stops it first, if not its range; `muzzle`: where the bolt leaves
-// from, if not `from`), enemy(from, to, spread), update(dt) →
-// hits on you (damage), dispose() }
+// createBlaster({ parent, world, pool }) → { fire(from, dir, targets, color,
+// reach, muzzle) → what it'll hit ({ target, at } or null; `reach`: where
+// something solid stops it first, if not its range; `muzzle`: where the bolt
+// leaves from, if not `from`), enemy(from, to, spread), tracer(from, to,
+// color) (a bolt between others that harms nobody: a battle's), update(dt)
+// → hits on you (damage), dispose() }; `pool`: bolts in the air at once
+// (32 unless a battle asks for more)
 
 import * as THREE from 'three';
 import { groundAt } from './walker';
@@ -32,7 +34,7 @@ export function sweptHit(a, b, c, r, h = 1) {
   return x * x + z * z < r * r && Math.abs(y) < h;
 }
 
-export function createBlaster({ parent, world }) {
+export function createBlaster({ parent, world, pool = POOL }) {
   const group = new THREE.Group();
   group.name = 'bolts';
   parent.add(group);
@@ -42,7 +44,7 @@ export function createBlaster({ parent, world }) {
     if (!mats.has(color)) mats.set(color, new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(4), toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
     return mats.get(color);
   };
-  const bolts = Array.from({ length: POOL }, () => {
+  const bolts = Array.from({ length: pool }, () => {
     const m = new THREE.Mesh(geo, mat('#ff3b30'));
     m.visible = false;
     group.add(m);
@@ -65,7 +67,7 @@ export function createBlaster({ parent, world }) {
     f.m.visible = true;
   };
   const shoot = (from, dir, color, theirs, end) => {
-    const b = bolts[nb++ % POOL];
+    const b = bolts[nb++ % pool];
     b.m.material = mat(color);
     b.m.position.copy(from);
     b.v.copy(dir).normalize().multiplyScalar(SPEED);
@@ -113,6 +115,13 @@ export function createBlaster({ parent, world }) {
       const start = muzzle ?? from;
       shoot(start, muzzle ? hit.at.clone().sub(start).normalize() : dir, color, false, hit.at);
       return hit;
+    },
+    // one soldier's at another (neither of them you): it flies from `from`
+    // to `to` (arrays) and lands there, and nothing it passes is hurt
+    tracer(from, to, color = '#ff3b30') {
+      const f = new THREE.Vector3(...from);
+      const end = new THREE.Vector3(...to);
+      shoot(f, end.clone().sub(f), color, false, end);
     },
     // theirs, at `to` (a point on you), off by `spread`
     enemy(from, to, spread = 0.06, color = '#ff3b30', damage = 8) {

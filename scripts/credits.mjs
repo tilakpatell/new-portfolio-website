@@ -42,7 +42,10 @@ const WORLDS = [
   ['earth', 'Earth'],
   ['dickansh', 'The secret world'],
 ];
-const models = Object.values(await json('src/data/modelCredits.json'));
+const all = Object.values(await json('src/data/modelCredits.json'));
+// (the ones used with their author's permission, a Battlefront II remaster's, in a section of their own)
+const permitted = all.filter((m) => m.license === 'permission');
+const models = all.filter((m) => m.license !== 'permission');
 const known = new Set(models.map((m) => sketchfabId(m.source)));
 // the ones public/cc0/README.md lists by hand: "- `file`: [Title](url) by author. What it is."
 const cc0Readme = await read('public/cc0/README.md');
@@ -103,6 +106,7 @@ md.push(
   '## Contents',
   '',
   '- [3D models from Sketchfab](#3d-models-from-sketchfab)',
+  ...(permitted.length ? ['- [Models used with permission](#models-used-with-permission)'] : []),
   '- [Scans, skies and kits (CC0)](#scans-skies-and-kits-cc0)',
   '- [Photos](#photos)',
   '- [Fonts](#fonts)',
@@ -122,6 +126,11 @@ for (const [id, label] of WORLDS) {
   if (!list.length) continue;
   md.push(`### ${label}`, '', '| Model | Artist | Licence | On the site |', '| --- | --- | --- | --- |');
   for (const m of list) md.push(`| ${link(m.title, m.source)} | ${link(m.author, m.authorUrl ?? authorUrl(m.author))} | ${link(licence(m.license), m.licenseUrl ?? LICENCE_URL[m.license])} | ${cell(m.as)} |`);
+  md.push('');
+}
+if (permitted.length) {
+  md.push('## Models used with permission', '', `${permitted[0].permission}`, '', '| Model | Author | On the site |', '| --- | --- | --- |');
+  for (const m of permitted.sort((a, b) => a.title.localeCompare(b.title))) md.push(`| ${link(m.title, m.source)} | ${link(m.author, m.authorUrl)} | ${cell(m.as)} |`);
   md.push('');
 }
 md.push(
