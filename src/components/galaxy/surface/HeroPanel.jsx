@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { HEROES, HILTS, SABER_COLORS, heroById } from '../heroes';
 import { STANCES, STANCE_IDS } from './combatRules';
 import { MAX_MODS, MODS, MOD_IDS, PICKABLE, WEAPONS, withMods } from './weaponRules';
+import { MAX_PERKS, PERKS, PERK_IDS } from '../perks';
 
 // Who you play as down here, and what's in your hand: the roster
 // (heroes.js) as cards; for a Jedi the blade's colour, the hilt and the
@@ -27,6 +28,11 @@ export default function HeroPanel({ hero, onChange, onClose }) {
     const mods = has ? pick.mods.filter((m) => m !== id) : [...(pick.mods ?? []), id].slice(-MAX_MODS);
     setPick({ ...pick, mods });
   };
+  const togglePerk = (id) => {
+    const has = pick.perks?.includes(id);
+    const perks = has ? pick.perks.filter((m) => m !== id) : [...(pick.perks ?? []), id].slice(-MAX_PERKS);
+    setPick({ ...pick, perks });
+  };
   const changed = JSON.stringify(pick) !== JSON.stringify(hero);
   const guns = [h?.weapon, ...PICKABLE].filter((g, i, a) => g && g !== 'saber' && a.indexOf(g) === i);
   const stats = !saber && pick.gun ? withMods(pick.gun, pick.mods) : null;
@@ -36,9 +42,10 @@ export default function HeroPanel({ hero, onChange, onClose }) {
         {[
           ['hero', 'Hero'],
           [saber ? 'saber' : 'weapon', saber ? 'Lightsaber' : 'Weapon'],
+          ['perks', 'Perks'],
         ].map(([id, name]) => (
           <li key={id} role="presentation">
-            <button type="button" role="tab" aria-selected={tab === id || (tab !== 'hero' && id !== 'hero')} onClick={() => setTab(id)}>
+            <button type="button" role="tab" aria-selected={tab === id || (tab !== 'hero' && tab !== 'perks' && id !== 'hero' && id !== 'perks')} onClick={() => setTab(id)}>
               {name}
             </button>
           </li>
@@ -60,7 +67,7 @@ export default function HeroPanel({ hero, onChange, onClose }) {
           </ul>
         </>
       )}
-      {tab !== 'hero' && saber && (
+      {tab !== 'hero' && tab !== 'perks' && saber && (
         <div className="surface-saber">
           <p className="surface-list-title">Blade</p>
           <div className="surface-swatches" role="radiogroup" aria-label="Blade colour">
@@ -98,7 +105,7 @@ export default function HeroPanel({ hero, onChange, onClose }) {
           <p className="surface-hero-keys">F a stroke (strokes chain; hold F for the heavy one, which breaks shields), hold C to block (a block as a swipe lands is a parry), X to dodge, R to throw, G the Force push, V the pull.</p>
         </div>
       )}
-      {tab !== 'hero' && !saber && (
+      {tab !== 'hero' && tab !== 'perks' && !saber && (
         <div className="surface-saber">
           {['galaxy', 'elsewhere'].map((side) => (
             <div key={side}>
@@ -151,6 +158,22 @@ export default function HeroPanel({ hero, onChange, onClose }) {
             </p>
           )}
           <p className="surface-hero-keys">F fires (bursts and pellets as the gun has them), hold the right button to aim down the sights, R vents the heat (overheated, hit the blue band for a perfect vent), X to dodge, G a thermal detonator, V the overcharge.</p>
+        </div>
+      )}
+      {tab === 'perks' && (
+        <div className="surface-saber">
+          <p className="surface-list-title">Perks (up to {MAX_PERKS})</p>
+          <ul className="surface-mods">
+            {PERK_IDS.map((id) => (
+              <li key={id}>
+                <button type="button" className={pick.perks?.includes(id) ? 'surface-hilt is-picked' : 'surface-hilt'} onClick={() => togglePerk(id)} aria-pressed={Boolean(pick.perks?.includes(id))}>
+                  <span className="surface-hero-name">{PERKS[id].name}</span>
+                  <span className="surface-hero-blurb">{PERKS[id].about}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="surface-hero-keys">Three cards, as a Battlefront hero carries: each bends one number of the fight.</p>
         </div>
       )}
       <div className="surface-hero-actions">

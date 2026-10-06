@@ -17,6 +17,8 @@ import { RIDES } from './rides';
 import { buildFigure } from './figures';
 import { modelFigure } from './actors';
 import { createGunplay } from '../../universe/gunplay';
+import { createSaber } from './saber';
+import { HILTS } from '../heroes';
 
 const CREW_MODELS = { artoo: 'r2d2' }; // (scene.js's)
 
@@ -55,10 +57,11 @@ export function createPeers({ parent, placer, getCast }) {
   let dead = false;
 
   // (looks: how that pilot dresses their Rick and Morty; the show's if they've sent none)
-  const walker = (who, looks = null) => {
+  // (arms: what the packet says is in their hand, { gun, lit, color, stance, swing }; the spec's own gun without it)
+  const walker = (who, looks = null, arms = null) => {
     const holder = new THREE.Group();
     group.add(holder);
-    const w = { who, holder, fig: null, gp: null, st: null };
+    const w = { who, holder, fig: null, gp: null, saber: null, st: null, gun: arms?.gun ?? SPECS[who]?.gun ?? null, swung: false };
     const spec = SPECS[who];
     if (spec)
       (async () => {
@@ -71,10 +74,11 @@ export function createPeers({ parent, placer, getCast }) {
         inner.add(fig.model);
         holder.add(inner);
         w.fig = fig;
-        // their gun, in the hand (up as far as they say theirs is)
-        if (spec.gun && !own) {
+        // their gun, in the hand (up as far as they say theirs is); a saber lit as theirs is
+        if (w.gun && !own) {
           holder.updateMatrixWorld(true);
-          w.gp = createGunplay(fig, fig.gun ?? spec.gun, { unit: 1, who: fig.built ? 'built' : who });
+          w.gp = createGunplay(fig, fig.gun ?? w.gun, { unit: 1, who: fig.built ? 'built' : who });
+          if (w.gun === 'saber' && w.gp) w.saber = createSaber(w.gp, { color: arms?.color || spec.saber?.color || '#4aa8ff', hilt: HILTS.find((h) => h.id === spec.saber?.hilt?.id) ?? spec.saber?.hilt ?? null, stance: arms?.stance ?? spec.saber?.stance ?? 'single', parent: group });
         }
       })();
     return w;
@@ -83,6 +87,7 @@ export function createPeers({ parent, placer, getCast }) {
     const e = shown.get(id);
     if (!e) return;
     for (const w of e.walkers) {
+      w.saber?.dispose();
       w.gp?.dispose();
       w.fig?.dispose?.();
       w.holder.removeFromParent();
@@ -143,13 +148,15 @@ export function createPeers({ parent, placer, getCast }) {
         const want = [w.lead, w.mate].filter(Boolean);
         // (a new crew, or a swap: the figures follow who's who)
         want.forEach((s, i) => {
-          if (e.walkers[i]?.who !== s.who) {
+          // (a new crew, a swap, or a different gun in the hand: the figure's made again)
+          if (e.walkers[i]?.who !== s.who || (s.arms && e.walkers[i]?.gun !== s.arms.gun)) {
             if (e.walkers[i]) {
               e.walkers[i].holder.removeFromParent();
+              e.walkers[i].saber?.dispose();
               e.walkers[i].gp?.dispose();
               e.walkers[i].fig?.dispose?.();
             }
-            e.walkers[i] = walker(s.who, p.looks);
+            e.walkers[i] = walker(s.who, p.looks, s.arms);
             e.walkers[i].st = { ...s };
           }
           const wk = e.walkers[i];
@@ -162,12 +169,21 @@ export function createPeers({ parent, placer, getCast }) {
             wk.gp.gun.visible = !riding;
             if (!riding) {
               wk.holder.updateMatrixWorld(true);
-              wk.gp.set(dt, { aim: wk.st.aim ?? 0, forward: fwd.set(Math.sin(wk.st.yaw), 0, Math.cos(wk.st.yaw)), up: UP });
+              const lit = Boolean(s.arms?.lit);
+              wk.gp.set(dt, { aim: wk.saber && lit ? Math.max(wk.st.aim ?? 0, 0.75) : (wk.st.aim ?? 0), forward: fwd.set(Math.sin(wk.st.yaw), 0, Math.cos(wk.st.yaw)), up: UP });
+              if (wk.saber) {
+                // their blade as they say it is: lit or not, and a stroke each time the packet says one's on
+                wk.saber.light(lit);
+                if (s.arms?.swing && !wk.swung) wk.saber.swing(now / 1000);
+                wk.swung = Boolean(s.arms?.swing);
+                wk.saber.update(dt, now / 1000, { forward: fwd, up: UP, me: { x: wk.st.x, z: wk.st.z, yaw: wk.st.yaw }, targets: [] });
+              }
             }
           }
         });
         for (let i = want.length; i < e.walkers.length; i++) {
           e.walkers[i].holder.removeFromParent();
+          e.walkers[i].saber?.dispose();
           e.walkers[i].gp?.dispose();
           e.walkers[i].fig?.dispose?.();
         }
