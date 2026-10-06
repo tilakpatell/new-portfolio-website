@@ -45,16 +45,21 @@ import { Document, Logger, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { dedup, dequantize, flatten, join, meshopt, metalRough, prune, textureCompress, weld } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
-import sharp from 'sharp';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join as path, resolve } from 'node:path';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { bareWhereUntextured, dims, grounded, relit, simplified, triangles, unskinned } from './lib/surface-model.mjs';
-import { readMsh } from './lib/msh.mjs';
+import { mshLook, readMsh } from './lib/msh.mjs';
 import { decodeTga } from './lib/tga.mjs';
 
+// The sharp that glTF-Transform's ndarray-pixels loads (it brings its own
+// version). Loading the project's as well puts two libvips in one process,
+// and on Windows every texture then fails ("colourspace: parameter space not
+// set"); with one, it doesn't.
+const sharp = createRequire(createRequire(import.meta.url).resolve('ndarray-pixels'))('sharp');
 const ROOT = path(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path(ROOT, 'public', 'models', 'galaxy', 'surface');
 const CATALOG = path(ROOT, 'src', 'components', 'galaxy', 'surface', 'catalog', 'battlefront.js');
@@ -116,24 +121,29 @@ export async function mshToDocument(file, { textures = null, flipV = true, mirro
   const mats = [];
   for (const m of msh.materials) {
     const mat = doc.createMaterial(m.name).setMetallicFactor(0).setRoughnessFactor(0.85).setBaseColorFactor(m.diffuse);
+    const look = mshLook(m.flags);
     const img = await textureImage(m.texture, dirs);
     if (img) {
       const tex = doc.createTexture(m.texture).setImage(img.png).setMimeType('image/png');
       mat.setBaseColorTexture(tex);
-      if (img.alpha) mat.setAlphaMode('MASK').setAlphaCutoff(0.5);
+      // (its alpha only where the flags make it see-through: elsewhere it's the shine)
+      if (img.alpha && look.alpha === 'MASK') mat.setAlphaMode('MASK').setAlphaCutoff(0.5);
+      else if (img.alpha && look.alpha === 'BLEND') mat.setAlphaMode('BLEND');
+      if (look.glow) mat.setEmissiveTexture(tex).setEmissiveFactor([1, 1, 1]);
     } else if (m.texture) console.log(`  (no ${m.texture} beside it: ${m.name} keeps its colour)`);
+    if (look.doubleSided) mat.setDoubleSided(true);
     mats.push(mat);
   }
-  // the models, as nodes under their parents
-  const nodes = new Map();
-  for (const m of msh.models) {
-    const node = doc.createNode(m.name).setTranslation(m.translation).setRotation(m.rotation).setScale(m.scale);
-    nodes.set(m.name, node);
-  }
-  for (const m of msh.models) {
-    const node = nodes.get(m.name);
-    const parent = m.parent ? nodes.get(m.parent) : null;
-    if (parent) parent.addChild(node);
+  // the models, as nodes under their parents: a node for each, as a name
+  // can come twice (a skin split into parts, each `override_texture`, the
+  // way the remaster's are); a parent is named, and the first of a name is it
+  const nodes = msh.models.map((m) => doc.createNode(m.name).setTranslation(m.translation).setRotation(m.rotation).setScale(m.scale));
+  const named = new Map();
+  msh.models.forEach((m, i) => named.has(m.name) || named.set(m.name, nodes[i]));
+  for (const [i, m] of msh.models.entries()) {
+    const node = nodes[i];
+    const parent = m.parent ? named.get(m.parent) : null;
+    if (parent && parent !== node) parent.addChild(node);
     else scene.addChild(node);
     const drawn = !m.hidden && m.type !== 'shadow' && !SKIP.test(m.name) && m.segments.length;
     if (!drawn) continue;
@@ -160,7 +170,7 @@ export async function mshToDocument(file, { textures = null, flipV = true, mirro
     }
     node.setMesh(mesh);
   }
-  if (!rig) for (const m of msh.models) if (m.type === 'bone' && !nodes.get(m.name).getMesh() && !nodes.get(m.name).listChildren().length) nodes.get(m.name).dispose();
+  if (!rig) for (const [i, m] of msh.models.entries()) if (m.type === 'bone' && !nodes[i].getMesh() && !nodes[i].listChildren().length) nodes[i].dispose();
   return doc;
 }
 

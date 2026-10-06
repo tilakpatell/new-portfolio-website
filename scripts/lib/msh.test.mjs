@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { readMsh } from './msh.mjs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { mshLook, readMsh } from './msh.mjs';
+import { mshToDocument } from '../battlefront-import.mjs';
 
 // a .msh written by hand, chunk by chunk, the way the mod tools write one
 const enc = new TextEncoder();
@@ -96,5 +100,71 @@ describe('a ZeroEngine mesh', () => {
   it('refuses a file that isn’t one', () => {
     expect(() => readMsh(new Uint8Array(16))).toThrow(/HEDR/);
     expect(() => readMsh(enc.encode('not a mesh at all, just words'))).toThrow();
+  });
+});
+
+describe('a ZeroEngine material’s flags', () => {
+  it('makes a texture’s alpha see-through only where the flags say so: elsewhere it’s the shine', () => {
+    expect(mshLook(128).alpha).toBe('OPAQUE'); // specular: the remaster's armour
+    expect(mshLook(0).alpha).toBe('OPAQUE');
+    expect(mshLook(16).alpha).toBe('MASK'); // hard-edged
+    expect(mshLook(4).alpha).toBe('BLEND'); // blended
+    expect(mshLook(64).alpha).toBe('BLEND'); // additive
+    expect(mshLook(8 | 16).doubleSided).toBe(true);
+    expect(mshLook(16).doubleSided).toBe(false);
+    expect(mshLook(2).glow).toBe(true);
+    expect(mshLook(128).glow).toBe(false);
+  });
+});
+
+describe('a .msh as a glTF document', () => {
+  // a skin split into two parts under one name, the way the remaster's are
+  // (`override_texture` twice), its material flagged `flags`, wearing a 1×1
+  // texture whose alpha is 0 (a shine mask, or a hole)
+  const split = (flags) =>
+    chunk(
+      'HEDR',
+      chunk(
+        'MSH2',
+        chunk('MATL', u32(1), chunk('MATD', chunk('NAME', str('override_texture')), chunk('DATA', f32s([1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 10])), chunk('ATRB', new Uint8Array([flags, 27, 0, 0])), chunk('TX0D', str('armour.tga')))),
+        chunk('MODL', chunk('MTYP', u32(0)), chunk('MNDX', u32(1)), chunk('NAME', str('DummyRoot')), chunk('FLGS', u32(0)), chunk('TRAN', f32s([1, 1, 1, 0, 0, 0, 1, 0, 0, 0]))),
+        ...[0, 1].map((y) =>
+          chunk(
+            'MODL',
+            chunk('MTYP', u32(1)),
+            chunk('MNDX', u32(2 + y)),
+            chunk('NAME', str('override_texture')),
+            chunk('PRNT', str('DummyRoot')),
+            chunk('FLGS', u32(0)),
+            chunk('TRAN', f32s([1, 1, 1, 0, 0, 0, 1, 0, 0, 0])),
+            chunk('GEOM', chunk('SEGM', chunk('MATI', u32(0)), chunk('POSL', u32(3), f32s([0, y, 0, 1, y, 0, 0, y + 1, 0])), chunk('UV0L', u32(3), f32s([0, 0, 1, 0, 0, 1])), chunk('NDXT', u32(1), u16s([0, 1, 2])))),
+          ),
+        ),
+      ),
+    );
+  // one white pixel, its alpha 0 (a 32-bit .tga: the header, then BGRA)
+  const pixel = cat(new Uint8Array([0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 32, 8]), new Uint8Array([255, 255, 255, 0]));
+  const written = (flags) => {
+    const dir = mkdtempSync(join(tmpdir(), 'msh-'));
+    writeFileSync(join(dir, 'armour.tga'), pixel);
+    writeFileSync(join(dir, 'trooper.msh'), split(flags));
+    return join(dir, 'trooper.msh');
+  };
+
+  it('keeps every part of a skin split under one name', async () => {
+    const doc = await mshToDocument(written(128));
+    const drawn = [];
+    doc.getRoot().listScenes()[0].traverse((node) => node.getMesh() && drawn.push(node));
+    expect(drawn).toHaveLength(2);
+    const lows = drawn.map((n) => n.getMesh().listPrimitives()[0].getAttribute('POSITION').getMin([])[1]).sort();
+    expect(lows).toEqual([0, 1]);
+  });
+
+  it('leaves a specular material opaque, its alpha the shine, and cuts out a hard-edged one', async () => {
+    const [shiny] = (await mshToDocument(written(128))).getRoot().listMaterials();
+    expect(shiny.getBaseColorTexture()).not.toBeNull();
+    expect(shiny.getAlphaMode()).toBe('OPAQUE');
+    const [cut] = (await mshToDocument(written(16))).getRoot().listMaterials();
+    expect(cut.getAlphaMode()).toBe('MASK');
   });
 });

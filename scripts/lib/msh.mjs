@@ -21,6 +21,19 @@
 //     indices: Uint32Array }], bones: [names] }] }
 
 const TYPES = { 0: 'null', 1: 'skin', 2: 'cloth', 3: 'bone', 4: 'static', 6: 'shadow' };
+
+// What a material's ATRB flags ask of it (the mod tools' bits: 1 unlit, 2
+// glow, 4 blended transparency, 8 double-sided, 16 hard-edged transparency,
+// 32 per-pixel lighting, 64 additive, 128 specular). A texture's alpha is its
+// transparency only under 4, 16 or 64; anywhere else it's the specular mask
+// (most of the remaster's armour, flagged 128), and the surface is opaque.
+export function mshLook(flags) {
+  return {
+    alpha: flags & 16 ? 'MASK' : flags & (4 | 64) ? 'BLEND' : 'OPAQUE',
+    doubleSided: (flags & 8) !== 0,
+    glow: (flags & (1 | 2)) !== 0,
+  };
+}
 const tag = (b, at) => String.fromCharCode(b[at], b[at + 1], b[at + 2], b[at + 3]);
 const pad4 = (n) => (n + 3) & ~3;
 
