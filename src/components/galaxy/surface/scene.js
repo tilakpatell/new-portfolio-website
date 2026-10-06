@@ -59,6 +59,8 @@ import { createSky } from './sky';
 import { createWater } from './water';
 import { createWeather } from './weather';
 import { createKit } from './kit';
+import { createGrass } from './grass';
+import { floorShadow } from '../../../lib/three/grounding';
 import { PROPS } from './props';
 import { createPlacer } from './placer';
 import { createActors, modelFigure } from './actors';
@@ -211,6 +213,8 @@ export async function create(canvas, ctx) {
     }
     placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true });
   }
+  // (the grass round you: blades on the land, where the site grows it)
+  const grass = site.grass && !site.noGround ? createGrass(scene, { grid, site, small, time: kit.wind }) : null;
   const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density });
 
   // ── The places you go into (zones): built high over the world, out of
@@ -1545,6 +1549,8 @@ export async function create(canvas, ctx) {
     state.aim = Math.max(0, state.aim - dt / 2.5);
     life.update(dt, state.phase === 'walk' ? me().st : null, state.phase === 'walk' || state.phase === 'ride' ? me().st : camera.position);
     placer.update(t, dt, me().st);
+    if (!reduced) kit.tick(dt);
+    grass?.update(me().st.x, me().st.z, me().st.x, me().st.z);
     stepDust(dt);
     storm(dt);
     online(dt);
@@ -1659,13 +1665,15 @@ export async function create(canvas, ctx) {
         area: { x0: landAt[0] - R, z0: landAt[1] - R, w: R * 2, d: R * 2 },
         sun,
         // (what moves isn't baked: the folk and beasts about, the speeders)
-        skip: [sky.mesh, water?.mesh, water?.glow, weather?.group, weather?.mesh, camera, life.group, ...rides.map((x) => x.holder)].filter(Boolean),
+        skip: [sky.mesh, water?.mesh, water?.glow, weather?.group, weather?.mesh, camera, life.group, grass?.mesh, ...rides.map((x) => x.holder)].filter(Boolean),
         movers: [...people.map((p) => ({ object: p.holder, size: [0.8, 0.8] })), ...life.actors.filter((a) => a.holder).map((a) => ({ object: a.holder, size: [1, 1] })), ...rides.map((x) => ({ object: x.holder, size: [1.4, 2.6] }))],
         shade: site.light.shade ?? site.light.ground ?? '#3a3028',
         height: world.heightAt,
         tier: small ? 'low' : 'mid',
         auto: true,
       });
+      // (the grass in the floor's shadows: read where each blade stands)
+      if (grass) floorShadow(grass.mesh.material, lit.mask);
     }
     // (the scouts' way is planned round the trees, so once they're down)
     if (!disposed) chase?.begin();
@@ -1881,6 +1889,7 @@ export async function create(canvas, ctx) {
       markMat.dispose();
       life.dispose();
       placer.dispose();
+      grass?.dispose();
       shadowPhase?.dispose();
       for (const p of people) {
         p.gp?.dispose();

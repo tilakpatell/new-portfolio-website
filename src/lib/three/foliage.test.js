@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { liftNormals, spherifyNormals, windShader, wrapShader } from './foliage';
+import { faceless, facelessShader, liftNormals, spherifyNormals, windShader, wrapShader } from './foliage';
 
 const normalAt = (g, i) => new THREE.Vector3().fromBufferAttribute(g.attributes.normal, i);
 const posAt = (g, i) => new THREE.Vector3().fromBufferAttribute(g.attributes.position, i);
@@ -83,7 +83,10 @@ describe('light that wraps round a leaf', () => {
   it('lets the sun reach past the edge of a lambert leaf, and through it from behind', () => {
     const out = wrapShader(LAMBERT, {}, CHUNKS);
     expect(out.swapped).toEqual({ wrap: true });
-    expect(out.fragmentShader).toContain('float dotNL = saturate( ( dot( geometryNormal, directLight.direction ) + uWrap ) / ( 1.0 + uWrap ) );');
+    expect(out.fragmentShader).toContain('float dotNLWrap = saturate( ( dot( geometryNormal, directLight.direction ) + uWrap ) / ( 1.0 + uWrap ) );');
+    expect(out.fragmentShader).toContain('reflectedLight.directDiffuse += ( dotNLWrap - dotNL ) * directLight.color * BRDF_Lambert( material.diffuseColor );');
+    // (the cosine three goes on with, for the specular, is the true one)
+    expect(out.fragmentShader).toContain('float dotNL = saturate( dot( geometryNormal, directLight.direction ) );');
     expect(out.fragmentShader).toContain('uBackScatter * saturate( dot( - geometryNormal, directLight.direction ) )');
     expect(out.fragmentShader).toContain('uniform float uWrap;');
     expect(out.fragmentShader).not.toContain('#include <lights_lambert_pars_fragment>');
@@ -106,6 +109,35 @@ describe('light that wraps round a leaf', () => {
       const out = wrapShader({ vertexShader: THREE.ShaderLib[lib].vertexShader, fragmentShader: THREE.ShaderLib[lib].fragmentShader }, {}, THREE.ShaderChunk);
       expect(out.swapped.wrap).toBe(true);
     }
+  });
+});
+
+describe('a card lit the same on both faces', () => {
+  it('drops the turn of the normal on the back face, and nothing else', () => {
+    const fs = 'void main() {\n#include <normal_fragment_begin>\n}';
+    const out = facelessShader({ vertexShader: '', fragmentShader: fs });
+    expect(out.swapped.faceless).toBe(true);
+    expect(out.fragmentShader).not.toContain('normal *= faceDirection;');
+    expect(out.fragmentShader).toContain('vec3 normal = normalize( vNormal );');
+  });
+
+  it('leaves a shader without the chunk alone', () => {
+    const out = facelessShader({ vertexShader: '', fragmentShader: 'void main() {}' });
+    expect(out.swapped.faceless).toBe(false);
+    expect(out.fragmentShader).toBe('void main() {}');
+  });
+
+  it('chains after a hook already on the material, once, under its own cache key', () => {
+    const m = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide });
+    const seen = [];
+    m.onBeforeCompile = () => seen.push('before');
+    faceless(m);
+    faceless(m);
+    const sh = { vertexShader: '', fragmentShader: '#include <normal_fragment_begin>', uniforms: {} };
+    m.onBeforeCompile(sh);
+    expect(seen).toEqual(['before']);
+    expect(sh.fragmentShader).not.toContain('normal *= faceDirection;');
+    expect(m.customProgramCacheKey().endsWith('|faceless')).toBe(true);
   });
 });
 

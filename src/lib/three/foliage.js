@@ -13,6 +13,7 @@
 //   liftNormals(geometry, { keep })                     normals turned up, as a lawn's (pure)
 //   wrapLighting(material, { wrap, backScatter })       light past the terminator, and through
 //   wind(material, { kind, time, ... })                 a sway from the foot, a flutter in the leaves
+//   faceless(material)                                  a two-sided card lit by its normal on both faces
 //   wrapShader(shaders, opts, chunks), windShader(shaders, opts)   the rewrites, as pure strings
 //
 // Call the material hooks before ones that look for three's lights chunks
@@ -82,6 +83,10 @@ const LIGHT_CHUNKS = ['lights_lambert_pars_fragment', 'lights_physical_pars_frag
 // The rewrite, as pure strings: the direct light's cosine wrapped past the
 // terminator by uWrap, and a little of the light from behind let through
 // (uBackScatter), in whichever of three's lights chunks the shader uses.
+// Only the diffuse light wraps: the cosine three's own lines go on with is
+// left as it is, the wrapped light's extra added to the diffuse after it
+// (a standard material's specular, fed a wrapped cosine where the true one
+// is nought, blows up at a grazing angle: a leaf seen edge on goes white).
 export function wrapShader({ vertexShader, fragmentShader }, opts, chunks = THREE.ShaderChunk) {
   let fs = fragmentShader;
   let wrap = false;
@@ -89,14 +94,15 @@ export function wrapShader({ vertexShader, fragmentShader }, opts, chunks = THRE
     const include = `#include <${name}>`;
     const src = chunks[name];
     if (!fs.includes(include) || typeof src !== 'string' || !src.includes(DOT_LINE) || !src.includes(IRRADIANCE_LINE)) continue;
-    const out = src
-      .replace(DOT_LINE, 'float dotNL = saturate( ( dot( geometryNormal, directLight.direction ) + uWrap ) / ( 1.0 + uWrap ) );')
-      .replace(
-        IRRADIANCE_LINE,
-        `${IRRADIANCE_LINE}
+    const out = src.replace(
+      IRRADIANCE_LINE,
+      `${IRRADIANCE_LINE}
+	// (light past the terminator, the diffuse's alone)
+	float dotNLWrap = saturate( ( dot( geometryNormal, directLight.direction ) + uWrap ) / ( 1.0 + uWrap ) );
+	reflectedLight.directDiffuse += ( dotNLWrap - dotNL ) * directLight.color * BRDF_Lambert( material.diffuseColor );
 	// (light from behind, through the leaves)
 	reflectedLight.directDiffuse += uBackScatter * saturate( dot( - geometryNormal, directLight.direction ) ) * directLight.color * BRDF_Lambert( material.diffuseColor );`,
-      );
+    );
     fs = fs.replace(include, out);
     wrap = true;
   }
@@ -117,6 +123,33 @@ export function wrapLighting(material, { wrap = 0.5, backScatter = 0.25 } = {}) 
   const key = material.customProgramCacheKey;
   material.customProgramCacheKey = () => `${key ? key.call(material) : ''}|wrap`;
   material.userData.wrap = uniforms;
+  material.needsUpdate = true;
+  return material;
+}
+
+// ── both faces as one ──
+
+// A double-sided card's back face has its normal turned round, so a crown
+// whose cards point their normals out from the middle lights as tiles,
+// half of them in shadow whichever way the sun is. Left as it is, both
+// faces light by the crown's normal: the trick only works with it.
+export function facelessShader({ vertexShader, fragmentShader }, chunks = THREE.ShaderChunk) {
+  const include = '#include <normal_fragment_begin>';
+  const src = chunks.normal_fragment_begin;
+  if (!fragmentShader.includes(include) || typeof src !== 'string' || !src.includes('normal *= faceDirection;')) return { vertexShader, fragmentShader, swapped: { faceless: false } };
+  return { vertexShader, fragmentShader: fragmentShader.replace(include, src.replace('normal *= faceDirection;', '')), swapped: { faceless: true } };
+}
+
+export function faceless(material) {
+  if (!material || material.userData.faceless) return material;
+  const before = material.onBeforeCompile;
+  material.onBeforeCompile = (sh, r) => {
+    before?.call(material, sh, r);
+    sh.fragmentShader = facelessShader(sh).fragmentShader;
+  };
+  const key = material.customProgramCacheKey;
+  material.customProgramCacheKey = () => `${key ? key.call(material) : ''}|faceless`;
+  material.userData.faceless = true;
   material.needsUpdate = true;
   return material;
 }

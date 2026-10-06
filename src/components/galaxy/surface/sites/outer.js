@@ -97,10 +97,13 @@ export const SITES = {
   lothal: {
     place: 'The grass plains of Lothal',
     line: 'Tall grass to the horizon, stone spires, and Imperial factories on the edge of it all.',
-    sky: sky('#5a90c8', '#d8e4c0', '#fff4d8'),
-    fog: { color: '#c8d4b8', density: 0.0008 },
-    light: { sun: 3, sky: '#b8d0f0', ground: '#7a8a4a', ambient: 0.75 },
-    ground: { seed: 45, layers: [{ type: 'swell', scale: 460, height: 8 }, { type: 'hills', scale: 160, height: 10 }, { type: 'mountains', from: 700, to: 3000, height: 360, scale: 1300 }], palette: palette('#8a9c4c', '#b4b464', '#7a7268', '#ccb85c', { mark: '#6a7038', accentCover: 0.4 }) },
+    // (Rebels' Lothal, McQuarrie's: a golden afternoon over a sea of straw)
+    sky: sky('#6f8fcf', '#efdab6', '#fff0d0'),
+    fog: { color: '#e8d6b6', density: 0.0008 },
+    light: { sun: 3, sky: '#c4d0ee', ground: '#a8915e', ambient: 0.75 },
+    ground: { seed: 45, layers: [{ type: 'swell', scale: 460, height: 8 }, { type: 'hills', scale: 160, height: 10 }, { type: 'mountains', from: 700, to: 3000, height: 360, scale: 1300 }], palette: palette('#a48a58', '#bba775', '#7a7268', '#b39a7e', { mark: '#6e5a3a', accentCover: 0.18 }) },
+    // the prairie: waist-high straw, olive in drifts, rolling in the wind
+    grass: { h: [0.8, 1.3], w: 0.15, root: '#86704a', mid: '#c6ad72', tip: '#ead9a8', dry: '#b0a26c', cover: 0.93, scale: 150, wind: 1.0, patch: 1.15, flower: { color: '#f2e6bc', share: 0.02 } },
     land: { at: [0, 0], yaw: 1 },
     places: [
       { id: 'capital', name: 'Capital City', at: [260, -60], r: 60, flat: { r: 56 }, about: 'Lothal’s capital: stone towers, and an Imperial factory where the farms used to be.', things: [{ kind: 'lothdome', at: [0, 4], yaw: 3.4, sink: 0.2 }, { kind: 'lothdome', at: [27, 18], yaw: 4.2, scale: 0.85, sink: 0.2 }, { kind: 'lothdome', at: [-26, 16], yaw: 2.4, scale: 0.9, sink: 0.2 }, { kind: 'lothdome', at: [20, -24], yaw: 5.4, scale: 0.75, sink: 0.2 }, { kind: 'crates', at: [8, -16] }, { kind: 'crates', at: [-10, -12], yaw: 0.7 }] },
@@ -120,13 +123,9 @@ export const SITES = {
     ],
     // the rock spires out west, between the landing and the old tower (the
     // star map mission's run goes through them)
-    things: [[-31, 4, 0.32], [-9, 35, 0.42], [-48, 46, 0.37], [-68, 14, 0.46], [-108, 32, 0.42], [-114, 69, 0.42], [-161, 68, 0.32], [-181, 37, 0.46], [-218, 53, 0.37], [-231, 88, 0.42], [-271, 71, 0.42], [-276, 34, 0.46]].map(([x, z, scale], i) => ({ kind: 'lothtemple', at: [x, z], yaw: i * 1.7, scale: scale * 0.7, sink: 0.5 })),
-    // the plains' tall grass, gold and green
-    scatter: [
-      { kind: 'grass', n: 1100, within: [4, 240], scale: [1.1, 2.2], solid: false, opts: { color: '#a8b45a' } },
-      { kind: 'grass', n: 600, within: [4, 220], scale: [1, 2], solid: false, opts: { color: '#c8b860' } },
-      { kind: 'grass', n: 400, within: [4, 260], scale: [0.9, 1.6], solid: false, opts: { color: '#8aa048', flower: '#e8d880' } },
-    ],
+    things: [[-31, 4, 0.32], [-9, 35, 0.42], [-48, 46, 0.37], [-68, 14, 0.46], [-108, 32, 0.42], [-114, 69, 0.42], [-161, 68, 0.32], [-181, 37, 0.46], [-218, 53, 0.37], [-231, 88, 0.42], [-271, 71, 0.42], [-276, 34, 0.46]].map(([x, z, scale], i) => ({ kind: 'lothspire', at: [x, z], yaw: i * 1.7, opts: { h: scale * 49, r: scale * 11, seed: i + 1 } })),
+    // (the plains' tall grass is the grass field round you: `grass`)
+    scatter: [],
     rides: [{ kind: 'speederbike', at: [12, -10], yaw: -1.2 }],
     flyovers: [{ kind: 'xwing', n: 1, metres: 12.5, alt: 80, speed: 100, every: 70 }, { kind: 'tie', n: 1, metres: 7, alt: 100, speed: 110, every: 90 }],
   },
@@ -137,7 +136,9 @@ export const SITES = {
     sky: sky('#7a98b0', '#d0dcd8', '#fff0d8', { clouds: { cover: 0.5, color: '#f0f4f4', shade: '#a0aca8', scale: 0.6, speed: 0.004 } }),
     fog: { color: '#c0ccc4', density: 0.0018 },
     light: { sun: 2.4, sky: '#b8c8d0', ground: '#4a5a3a', ambient: 0.8 },
-    ground: { seed: 57, layers: [{ type: 'swell', scale: 300, height: 6 }, { type: 'hills', scale: 110, height: 9 }, { type: 'mountains', from: 650, to: 3000, height: 300, scale: 1100 }], palette: palette('#4a6a38', '#6a8a48', '#5a5a50', '#8a7a48', { mark: '#3a4a2a' }) },
+    ground: { seed: 57, layers: [{ type: 'swell', scale: 300, height: 6 }, { type: 'hills', scale: 110, height: 9 }, { type: 'mountains', from: 650, to: 3000, height: 300, scale: 1100 }], palette: palette('#4f4c2e', '#5e6034', '#5a5a50', '#6a5e3a', { mark: '#3a3824' }) },
+    // (the wet meadow round the krill farm, olive under a grey sky)
+    grass: { h: [0.3, 0.6], w: 0.06, root: '#4a482d', mid: '#5f6236', tip: '#7f7c4a', dry: '#887a4c', cover: 0.72, scale: 90, wind: 0.2 },
     land: { at: [0, 0], yaw: 0.3 },
     places: [
       { id: 'village', name: 'The krill farmers’ village', at: [180, 120], r: 50, flat: { r: 46 }, about: 'Huts on stilts over the ponds, and a harvest the raiders keep coming back for.', things: [...ring(5, 21, 0.4).map(([x, z, yaw]) => ({ kind: 'stilthut', at: [x, z], yaw, sink: 0.15 })), { kind: 'fire', at: [2, -4] }, { kind: 'crates', at: [-8, -10] }, { kind: 'crates', at: [9, 6], yaw: 0.8 }, ...ring(7, 34, 0.9).map(([x, z, yaw]) => ({ kind: 'sorganfern', at: [x, z], yaw, scale: 1.3, solid: false })), ...grove(11, 30, 54, 84, ['sorganbirch', 'sorganbirch', 'sorganfir'])] },

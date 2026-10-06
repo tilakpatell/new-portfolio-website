@@ -5,7 +5,10 @@
 // colour in its vertices. A handful of shared materials: painted metal
 // with panel lines, bare metal, dressed stone, rock, adobe, planks,
 // concrete, cloth, bark, leaves, glass and glow (hot enough to bloom). All
-// in metres.
+// in metres. The plants' cards (needles, leaves, fronds, broad leaves) light
+// as Bruno Simon's foliage does: each card's normal is its clump's, both of
+// its faces lit by it, the sun wrapping past the edge and through from
+// behind, and they move in one wind (kit.tick).
 //
 // The solid ones wear photo-scanned surfaces (public/cc0/galaxy/, made by
 // scripts/galaxy-textures.mjs from Poly Haven's CC0 scans): a detail map
@@ -18,6 +21,7 @@
 import * as THREE from 'three';
 import { bake, canvasTexture, panelTexture, part, place, rod, between, compose, mirror, ball, upright } from '../../universe/trafficKit';
 import { rng } from './noise';
+import { faceless, wind, wrapLighting } from '../../../lib/three/foliage';
 import SCANS from '../../../../public/cc0/galaxy/index.json';
 
 export { part, place, rod, between, compose, mirror, ball, upright };
@@ -98,50 +102,130 @@ function needleTexture(seed = 5) {
   return keepCoverage(t);
 }
 
-// a spray of broad leaves on a twig, alpha-cut (the jungle's and the
-// wroshyrs' canopies, Naboo's groves): leaves alternating up a twig and
-// its side shoots, each a pointed oval with its midrib, pale for the part's
-// green to tint
+// a clump of small leaves, alpha-cut (the broadleaf crowns: the jungle's,
+// the wroshyrs', Naboo's groves): Bruno Simon's foliage card, forty-odd
+// pointed leaves filling a disc, each turned out from its middle, the ones
+// at the back dimmer, so a card reads as a handful of leaves, not as one
+// big one; pale, for the part's green to tint
 function leafTexture(seed = 6) {
   const r = rng(seed);
   const t = canvasTexture(256, (c, n) => {
     c.clearRect(0, 0, n, n);
-    const leafAt = (x, y, a, l) => {
+    const leaves = 46;
+    for (let i = 0; i < leaves; i++) {
+      // (out from the middle, more of them toward the rim; kept inside the
+      // card, so a turned card never cuts one off)
+      const a = r() * PI * 2;
+      const d = n * 0.34 * Math.sqrt(0.08 + r() * 0.92);
+      const x = n / 2 + Math.cos(a) * d;
+      const y = n / 2 + Math.sin(a) * d;
+      const l = n * (0.1 + r() * 0.06);
+      const v = 150 + (i / leaves) * 85 + r() * 20;
       c.save();
       c.translate(x, y);
-      c.rotate(a);
-      const v = 175 + r() * 70;
-      c.fillStyle = `rgb(${v * 0.9},${v},${v * 0.82})`;
+      c.rotate(a + PI / 2 + (r() - 0.5) * 0.9);
+      c.fillStyle = `rgb(${Math.min(255, v * 0.93)},${Math.min(255, v)},${Math.min(255, v * 0.8)})`;
       c.beginPath();
-      c.moveTo(0, 0);
-      c.quadraticCurveTo(l * 0.32, -l * 0.42, 0, -l);
-      c.quadraticCurveTo(-l * 0.32, -l * 0.42, 0, 0);
+      c.moveTo(0, l * 0.5);
+      c.quadraticCurveTo(l * 0.24, 0, 0, -l * 0.5);
+      c.quadraticCurveTo(-l * 0.24, 0, 0, l * 0.5);
       c.fill();
-      c.strokeStyle = `rgba(120,130,100,0.6)`;
+      c.strokeStyle = 'rgba(110,120,90,0.45)';
       c.lineWidth = 1;
       c.beginPath();
-      c.moveTo(0, 0);
-      c.lineTo(0, -l * 0.92);
+      c.moveTo(0, l * 0.45);
+      c.lineTo(0, -l * 0.4);
       c.stroke();
       c.restore();
-    };
-    const twig = (x0, y0, x1, y1, leaves, size) => {
-      c.strokeStyle = '#8a7a62';
-      c.lineWidth = 2.5;
-      c.beginPath();
-      c.moveTo(x0, y0);
-      c.lineTo(x1, y1);
-      c.stroke();
-      const base = Math.atan2(y1 - y0, x1 - x0) + Math.PI / 2;
-      for (let i = 0; i < leaves; i++) {
-        const f = (i + 0.5) / leaves;
-        const side = i % 2 ? 1 : -1;
-        leafAt(x0 + (x1 - x0) * f, y0 + (y1 - y0) * f, base + side * (0.7 + r() * 0.4), size * (0.75 + r() * 0.4) * (1 - f * 0.3));
+    }
+  });
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return keepCoverage(t);
+}
+
+// a fern's frond, alpha-cut, base at the bottom: a stalk up the middle and
+// pairs of narrow leaflets off it, longest a third of the way up, angled
+// toward the tip (Endor's sword ferns, the jungles' ferns, palm fronds)
+function frondTexture(seed = 8) {
+  const r = rng(seed);
+  const t = canvasTexture(256, (c, n) => {
+    c.clearRect(0, 0, n, n);
+    c.strokeStyle = '#a49a7a';
+    c.lineWidth = 3;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(n / 2, n);
+    c.lineTo(n / 2, n * 0.03);
+    c.stroke();
+    const pairs = 22;
+    for (let i = 0; i < pairs; i++) {
+      const f = (i + 0.6) / pairs;
+      const y = n * (0.97 - f * 0.93);
+      const l = n * 0.47 * Math.sin(PI * (0.1 + 0.9 * f)) ** 0.7 * (1 - f * 0.25);
+      for (const side of [-1, 1]) {
+        const a = -PI / 2 + side * (1.05 - f * 0.25 + (r() - 0.5) * 0.12);
+        const v = 175 + r() * 70;
+        c.save();
+        c.translate(n / 2, y);
+        c.rotate(a);
+        c.fillStyle = `rgb(${v * 0.92},${v},${v * 0.82})`;
+        const w = l * 0.13;
+        c.beginPath();
+        c.moveTo(0, 0);
+        c.quadraticCurveTo(l * 0.5, -w, l, 0);
+        c.quadraticCurveTo(l * 0.5, w, 0, 0);
+        c.fill();
+        c.restore();
       }
-      leafAt(x1, y1, base, size);
-    };
-    twig(n / 2, n * 0.98, n / 2 + (r() - 0.5) * 30, n * 0.18, 9, n * 0.24);
-    for (const side of [-1, 1]) twig(n / 2, n * 0.62, n / 2 + side * n * 0.3, n * 0.36, 5, n * 0.18);
+    }
+  });
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return keepCoverage(t);
+}
+
+// one big leaf, alpha-cut, its stalk at the bottom: a broad pointed oval
+// with a midrib and the veins off it, now and then split between them
+// (the jungles' undergrowth, Dagobah's bog leaves)
+function broadLeafTexture(seed = 9) {
+  const r = rng(seed);
+  const t = canvasTexture(256, (c, n) => {
+    c.clearRect(0, 0, n, n);
+    const cx = n / 2;
+    c.fillStyle = 'rgb(214,226,190)';
+    c.beginPath();
+    c.moveTo(cx, n * 0.97);
+    c.bezierCurveTo(cx + n * 0.5, n * 0.78, cx + n * 0.4, n * 0.2, cx, n * 0.02);
+    c.bezierCurveTo(cx - n * 0.4, n * 0.2, cx - n * 0.5, n * 0.78, cx, n * 0.97);
+    c.fill();
+    // (a split or two, as a big leaf tears)
+    c.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 2; i++) {
+      const y = n * (0.3 + r() * 0.4);
+      const side = r() < 0.5 ? -1 : 1;
+      c.beginPath();
+      c.moveTo(cx + side * n * 0.5, y - n * 0.1);
+      c.lineTo(cx + side * n * 0.04, y + n * 0.02);
+      c.lineTo(cx + side * n * 0.5, y - n * 0.06);
+      c.fill();
+    }
+    c.globalCompositeOperation = 'source-over';
+    c.strokeStyle = 'rgba(150,160,120,0.9)';
+    c.lineWidth = 3;
+    c.beginPath();
+    c.moveTo(cx, n * 0.97);
+    c.lineTo(cx, n * 0.06);
+    c.stroke();
+    c.lineWidth = 1.5;
+    c.strokeStyle = 'rgba(160,170,130,0.7)';
+    for (let i = 0; i < 7; i++) {
+      const y = n * (0.85 - i * 0.11);
+      for (const side of [-1, 1]) {
+        c.beginPath();
+        c.moveTo(cx, y);
+        c.quadraticCurveTo(cx + side * n * 0.18, y - n * 0.04, cx + side * n * 0.34, y - n * 0.14);
+        c.stroke();
+      }
+    }
   });
   t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
   return keepCoverage(t);
@@ -267,11 +351,31 @@ export function createKit({ seed = 11, scans = true } = {}) {
     // edges, and leaves that don't thin away in the smaller mip levels)
     needles: std({ roughness: 0.85, side: THREE.DoubleSide, map: own(needleTexture(seed)), alphaTest: 0.3, alphaToCoverage: true }, 1),
     foliage: std({ roughness: 0.75, side: THREE.DoubleSide, map: own(leafTexture(seed + 1)), alphaTest: 0.3, alphaToCoverage: true }, 1),
+    // (ferns' and palms' fronds, and the jungles' big leaves, on cards)
+    fronds: std({ roughness: 0.8, side: THREE.DoubleSide, map: own(frondTexture(seed + 2)), alphaTest: 0.3, alphaToCoverage: true }, 1),
+    broadleaf: std({ roughness: 0.7, side: THREE.DoubleSide, map: own(broadLeafTexture(seed + 3)), alphaTest: 0.3, alphaToCoverage: true }, 1),
+    // (the smooth solid middle of a crown the leaf cards sit on, so the
+    // light doesn't pour through it)
+    crown: std({ roughness: 0.85 }, 1),
     dark: std({ roughness: 0.55, metalness: 0.2 }, 1),
     glass: own(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.08, metalness: 0.3, transparent: true, opacity: 0.55 })),
     glow: own(new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false })),
   };
   for (const m of [mats.glass, mats.glow]) m.userData.density = 1;
+  // the plants lit as foliage and moving in the wind, all by one clock (the
+  // shared leaf material is the creatures' skin too: it stays as it is)
+  const windTime = { value: 0 };
+  for (const [name, kind] of [
+    ['needles', 'tree'],
+    ['foliage', 'tree'],
+    ['crown', 'tree'],
+    ['fronds', 'shrub'],
+    ['broadleaf', 'shrub'],
+  ]) {
+    wrapLighting(mats[name], { wrap: 0.45, backScatter: 0.35 });
+    if (mats[name].side === THREE.DoubleSide) faceless(mats[name]);
+    wind(mats[name], { kind, time: windTime, ...(kind === 'tree' ? { strength: 0.12 } : {}) });
+  }
 
   // the scans on every material that wears one: the role's own, and the
   // copies the builders made of them (a clone keeps its role in userData)
@@ -312,6 +416,12 @@ export function createKit({ seed = 11, scans = true } = {}) {
     // the scans on (or failed: the stand-ins stay): wait for it before the
     // shaders are made, or they're made twice
     ready,
+    // the wind's clock, shared with whatever else moves in it (the grass)
+    wind: windTime,
+    // the wind's clock on (held still for reduced motion: not called)
+    tick(dt) {
+      windTime.value += dt;
+    },
     // parts → a group of meshes, one per material; shadows cast unless
     // they glow or see through
     build(parts, { shadows = true, name = 'prop' } = {}) {
