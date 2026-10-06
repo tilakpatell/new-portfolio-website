@@ -95,6 +95,20 @@ export const CREWS = [
         rick: [['rick', 'Fine, I’ll drive this one.']],
         morty: [['morty', 'O-okay, I got this. I think I got this.']],
       },
+      // B: Rick's next gadget (by the gun)
+      gadget: {
+        portal: [['rick', 'Back to the classic. Holes in space, Morty. Holes.']],
+        freeze: [
+          ['rick', 'Freeze ray. Let’s put these guys on ice.'],
+          ['morty', 'Rick, did you just—'],
+          ['rick', 'Yes, Morty. A pun. I’m allowed one.'],
+        ],
+        shrink: [
+          ['rick', 'Shrink ray. Small problems, Morty. Literally.'],
+          ['morty', 'Isn’t that the one from the—'],
+          ['rick', 'Don’t say Anatomy Park.'],
+        ],
+      },
       far: [['rick', 'The cruiser’s back that way, Morty. Walk.']],
       nowhere: [['rick', 'Land on what, Morty? Space? Find a planet.']],
       in: [
