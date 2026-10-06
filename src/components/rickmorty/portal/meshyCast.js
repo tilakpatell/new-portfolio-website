@@ -43,7 +43,9 @@ export const BASE = '/games/meshy';
 // from elsewhere by its whole path (Albuquerque’s Walt and Jesse, for the
 // wardrobe), which has no clips of its own and walks on Rick’s, borrowed
 // (clips.js).
-export const assetUrl = (name) => (name.startsWith('/') ? name : `${FOLDERS[name] ?? BASE}/${name}.glb`);
+// (a figure that is someone else's model, rigged by Meshy, is credited in
+// src/data/modelCredits.json by its file: FOUND)
+export const assetUrl = (name) => (name.startsWith('/') ? name : (FOUND[name] ?? `${FOLDERS[name] ?? BASE}/${name}.glb`));
 const ownClips = (name) => !name.startsWith('/');
 
 // game kind → the model, how tall it stands in the arena (world units; a
@@ -108,6 +110,15 @@ export const MESHY = {
   snuffles: { a: 'snuffles', h: 0.45 },
   // the multiverse's destinations (rickmorty/world/dimensions/): their
   // people, rigged; their props and creatures; the crowd's copies, as made
+  squanchy: { a: 'squanchy', h: 1.15 },
+  birdperson: { a: 'birdperson', h: 2.0 },
+  phoenixperson: { a: 'phoenixperson', h: 2.05 },
+  unity: { a: 'unity', h: 1.75 },
+  marsha: { a: 'marsha', h: 2.3 },
+  mortyjr: { a: 'mortyjr', h: 2.0 },
+  krombopulos: { a: 'krombopulos', h: 1.9 },
+  'squanchy-house': { a: 'squanchy-house', h: 9 },
+  'birdperson-house': { a: 'birdperson-house', h: 14 },
   kingjellybean: { a: 'kingjellybean', h: 2.2 },
   zeep: { a: 'zeep', h: 1.8 },
   kyle: { a: 'kyle', h: 1.7 },
@@ -143,6 +154,7 @@ export const MESHY = {
       ['plutonian-b', 1.35],
       ['gearperson-a', 1.8],
       ['gearperson-b', 1.8],
+      ['zigerion', 1.95],
     ].map(([a, h]) => [a, { a, h }]),
   ),
 };
@@ -150,12 +162,14 @@ const RICKALL_FIGURES = ['pencilvester', 'sleepygary', 'hamurai', 'amishcyborg',
 const RICKALL_PROPS = ['reversegiraffe', 'ghostinajar', 'photographyraptor', 'tinkles', 'babywizard', 'mrsrefrigerator'];
 const FAMILY_FIGURES = ['spacebeth', 'drwong', 'nancy', 'tricia', 'diane'];
 const FAMILY_PROPS = ['snuffles'];
-const DEST_FIGURES = ['kingjellybean', 'zeep', 'kyle', 'xenonbloom', 'poncho', 'annie', 'needful', 'arthricia', 'flippynips', 'scroopy', 'gearhead'];
-const DEST_PROPS = ['thirstystep', 'giant', 'stairgoblin', 'hepatitis', 'gonorrhoea', 'tuberculosis', 'plague', 'ecoli', 'needful-shop', 'jerry-robe', 'jerry-golf', 'jerry-tux', 'jerry-track', 'jerry-gown', 'jerry-cardigan', 'magdalian-a', 'magdalian-b', 'magdalian-c', 'plutonian-a', 'plutonian-b', 'gearperson-a', 'gearperson-b'];
+const DEST_FIGURES = ['squanchy', 'birdperson', 'phoenixperson', 'unity', 'marsha', 'mortyjr', 'krombopulos', 'kingjellybean', 'zeep', 'kyle', 'xenonbloom', 'poncho', 'annie', 'needful', 'arthricia', 'flippynips', 'scroopy', 'gearhead'];
+const DEST_PROPS = ['squanchy-house', 'birdperson-house', 'zigerion', 'thirstystep', 'giant', 'stairgoblin', 'hepatitis', 'gonorrhoea', 'tuberculosis', 'plague', 'ecoli', 'needful-shop', 'jerry-robe', 'jerry-golf', 'jerry-tux', 'jerry-track', 'jerry-gown', 'jerry-cardigan', 'magdalian-a', 'magdalian-b', 'magdalian-c', 'plutonian-a', 'plutonian-b', 'gearperson-a', 'gearperson-b'];
 export const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick', ...RICKALL_FIGURES, ...FAMILY_FIGURES, ...DEST_FIGURES]);
 // the models not in the cast's own folder, by name: where they are
 // (and Mortytown's two shopfronts, rickmorty/citadel/district.js)
 const MORTYTOWN_PROPS = ['mortymart', 'creepymorty'];
+// the cast's figures found on Sketchfab rather than made, by their files
+export const FOUND = { krombopulos: '/games/meshy/krombopulos.glb' };
 export const FOLDERS = Object.fromEntries([...RICKALL_PROPS, ...FAMILY_PROPS, ...MORTYTOWN_PROPS, ...DEST_PROPS].map((a) => [a, '/models/c137/rm']));
 const SCHOOL = ['goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick'];
 const C137_PEOPLE = new Set(['summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', ...SCHOOL, ...RICKALL_FIGURES, ...RICKALL_PROPS, ...FAMILY_FIGURES, ...FAMILY_PROPS, ...DEST_FIGURES, ...DEST_PROPS]);

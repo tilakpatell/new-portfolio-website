@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { local, useDocumentTitle, useReducedMotion } from '../lib/hooks';
 import { audioContext } from '../lib/audio';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
+import { jumpEvent } from '../components/jumps/styles';
 import { LOADOUT_KEY, loadoutOf, readLoadouts } from '../components/universe/outfit';
 import { HULL_KEY, readHulls } from '../components/universe/shipyard/build';
 import { useAchievements } from '../components/Achievements';
@@ -121,10 +122,10 @@ export default function Galaxy() {
     (to, { jump = false, land = false } = {}) => {
       if (leaving) return;
       setLeaving({ to, land });
-      if (jump) window.dispatchEvent(new Event('tp:hyperspace'));
+      if (jump) window.dispatchEvent(jumpEvent(crew?.jump)); // (the crew's own way: Rick's portal, the RV's Blue Sky)
       timer.current = setTimeout(() => navigate(to), jump ? 1250 : land ? 1500 : 650);
     },
-    [leaving, navigate],
+    [leaving, navigate, crew],
   );
   // Flown into the planet: the crash plays, and then you're down on its
   // surface, the screen washing out in the system's colour on the way (as

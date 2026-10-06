@@ -12,7 +12,9 @@ import Guide from './components/Guide';
 // fetches the 3D jump ahead of time (the intro's, and three.js once a page has it)
 import './components/hyperspace3d/load';
 import { audioContext } from './lib/audio';
+import { prefersReducedMotion } from './lib/hooks';
 import { introPlaying } from './lib/stale';
+import { jumpStyle } from './components/jumps/styles';
 import WorldGate from './components/worlds/WorldGate';
 import Ambience from './components/ambience/Ambience';
 import { categoryAt, isFeedMove } from './components/feed/feed';
@@ -45,6 +47,10 @@ const Dickansh = lazy(() => import('./pages/Dickansh'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 const Hyperspace = lazy(() => import('./components/Hyperspace'));
+// and the crews' own ways across the universe map (components/jumps/styles.js)
+const PortalJump = lazy(() => import('./components/jumps/PortalJump'));
+const BlueSkyJump = lazy(() => import('./components/jumps/BlueSkyJump'));
+const JUMPS = { hyper: Hyperspace, portal: PortalJump, bluesky: BlueSkyJump };
 
 const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
 
@@ -72,14 +78,19 @@ function ScrollToTop() {
   return null;
 }
 
-// ↑ ↑ ↓ ↓ ← → ← → B A — jump to lightspeed.
+// ↑ ↑ ↓ ↓ ← → ← → B A — jump to lightspeed. The tp:hyperspace event plays
+// the same, or, by the style in its detail (components/jumps/styles.js), a
+// crew's own way across the universe map: Rick's portal, Walt and Jesse's
+// Blue Sky. With reduced motion every one of them is the site's crossfade.
 function Lightspeed() {
   const { unlock } = useAchievements();
   const [on, setOn] = useState(0);
+  const [style, setStyle] = useState('hyper');
   const seq = useRef([]);
   useEffect(() => {
-    const jump = () => {
+    const jump = (e) => {
       audioContext(); // inside the key press, so the sound may play
+      setStyle(prefersReducedMotion() ? 'hyper' : jumpStyle(e?.detail?.style));
       setOn(Date.now());
     };
     const onKey = (e) => {
@@ -100,9 +111,10 @@ function Lightspeed() {
     };
   }, [unlock]);
   if (!on) return null;
+  const Jump = JUMPS[style] ?? Hyperspace;
   return (
     <Suspense fallback={null}>
-      <Hyperspace key={on} sound onDone={() => setOn(0)} />
+      <Jump key={on} sound onDone={() => setOn(0)} />
     </Suspense>
   );
 }

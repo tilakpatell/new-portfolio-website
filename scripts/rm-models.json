@@ -264,7 +264,7 @@
     "by": "local"
   },
   "magdalian-b": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "magdalian-c": {
@@ -272,7 +272,7 @@
     "by": "local"
   },
   "flippynips": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "scroopy": {
@@ -296,6 +296,46 @@
     "by": "local"
   },
   "gearperson-b": {
+    "status": "done",
+    "by": "local"
+  },
+  "squanchy": {
+    "status": "done",
+    "by": "local"
+  },
+  "birdperson": {
+    "status": "done",
+    "by": "local"
+  },
+  "phoenixperson": {
+    "status": "done",
+    "by": "local"
+  },
+  "unity": {
+    "status": "done",
+    "by": "local"
+  },
+  "marsha": {
+    "status": "done",
+    "by": "local"
+  },
+  "mortyjr": {
+    "status": "done",
+    "by": "local"
+  },
+  "krombopulos": {
+    "status": "done",
+    "by": "local"
+  },
+  "zigerion": {
+    "status": "done",
+    "by": "local"
+  },
+  "squanchy-house": {
+    "status": "done",
+    "by": "local"
+  },
+  "birdperson-house": {
     "status": "done",
     "by": "local"
   }
