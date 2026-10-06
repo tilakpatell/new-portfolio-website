@@ -16,6 +16,8 @@ import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { createStage } from '../../../lib/stage3d';
 import { budget, device } from '../../../lib/device';
 import { antiTile } from '../../../lib/three/surface';
+import { createGhosts } from '../../middleearth/towns/ghosts';
+import { buildHumanoid, poseHumanoid } from '../../avengers/hq/kit/humanoid';
 import { EYE, GADDI, INSTRUMENTS, LAMPS, PARAPET, PAVILION, POOL, RUG, TERRACE } from './layout';
 
 // (the site's shared loader, fetched only once the courtyard is up)
@@ -611,6 +613,31 @@ export async function createMusicWorld(el, { onLost } = {}) {
     floats.push({ s, age: 0, life: 2.4, rise: 0.75 + Math.random() * 0.35 });
   };
 
+  // ── the other visitors online, walking this courtyard in their own worlds
+  // (MusicWorld's useTravellers), as the Middle-earth towns show theirs: each
+  // a pale, shimmering figure (the humanoid kit's plainest, three meshes) with
+  // their name over them; nothing here touches them, nor they anything here ──
+  const ghosts = createGhosts({
+    make: () => {
+      const m = new THREE.MeshBasicMaterial(); // (the ghosts' own goes on in its place)
+      const h = buildHumanoid({ style: 'hostage', materials: { suit: m, dark: m, skin: m }, scale: 0.92 });
+      h.root.rotation.y = Math.PI / 2; // (a figure faces +z; a ghost's face is measured from +x, as the walker's)
+      const group = new THREE.Group();
+      group.add(h.root);
+      const dispose = () => {
+        for (const mesh of Object.values(h.meshes)) mesh.geometry.dispose();
+        h.skeleton.dispose();
+      };
+      return { group, top: h.height, hum: h, gait: 0, dispose };
+    },
+    animate: (f, t, p, dt) => {
+      // (a stride and a half a second, walking; standing still otherwise)
+      if (p.moving) f.gait += dt * 2;
+      poseHumanoid(f.hum, { t: p.moving ? f.gait : 0, mode: p.moving ? 'walk' : 'idle' });
+    },
+  });
+  scene.add(ghosts.group);
+
   // ── drawing ──
   const fitTo = (w, h) => stage.resize(w, h);
   let clock = 0;
@@ -657,6 +684,7 @@ export async function createMusicWorld(el, { onLost } = {}) {
       }
     }
     ringMat.uniforms.uTime.value = clock;
+    ghosts.update(state.travellers ?? [], clock, dt);
     stage.render(ms);
   };
 
@@ -668,6 +696,7 @@ export async function createMusicWorld(el, { onLost } = {}) {
     resize: fitTo,
     dispose: () => {
       for (const t of labelCache.values()) t.dispose();
+      ghosts.dispose();
       stage.dispose();
     },
     get lost() {
