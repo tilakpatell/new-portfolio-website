@@ -45,3 +45,6 @@
   .feed-page:not([data-active]) { display: none !important; }
   .feed-divider, .feed-end, .feed-sentinel { display: none !important; }
 }
+
+/* a page of the feed that didn't load, in its place */
+.feed-error { padding-top: calc(var(--nav-h, 64px) + 48px); padding-bottom: 64px; }

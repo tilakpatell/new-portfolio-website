@@ -17,8 +17,12 @@ export const RETRY_AFTER = 60000; // ms: a reload that didn't help isn't tried a
 
 // Whether to reload now: not again straight after one that didn't help (an
 // outage can't loop), but for a later deploy in the same tab, yes. Without
-// storage to keep count, never.
-export function mayReload(storage, now = Date.now()) {
+// storage to keep count, never; nor while the browser is offline (a file
+// that wouldn't come then is no sign of a deploy, and the reload would only
+// swap the page for the browser's offline screen), and then it keeps its turn.
+export const browserOnline = () => typeof navigator === 'undefined' || navigator.onLine !== false;
+export function mayReload(storage, now = Date.now(), online = browserOnline()) {
+  if (!online) return false;
   try {
     const last = Number(storage.getItem(STALE_KEY));
     if (last && now - last < RETRY_AFTER) return false;

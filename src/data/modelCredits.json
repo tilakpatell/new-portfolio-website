@@ -298,6 +298,20 @@
     "as": "Megatron (Fall of Cybertron), and his change to a tank and back",
     "file": "/models/cybertron/megatron-foc.glb"
   },
+  "cybertron-megatron-orbit": {
+    "title": "Transformers: Fall of Cybertron Megatron",
+    "author": "WKAC",
+    "authorUrl": "https://sketchfab.com/WKAC",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-megatron-25ab3faed0344431a6c08652dd1a828b",
+    "where": "cybertron",
+    "also": [
+      "universe"
+    ],
+    "as": "Megatron (Fall of Cybertron), across Cybertron's orbit from him",
+    "file": "/models/cybertron/megatron-orbit.glb"
+  },
   "cybertron-megatron-tfp": {
     "title": "(RIGGED) Megatron (TRANSFORMERS: Prime)",
     "author": "shamus",
@@ -319,6 +333,20 @@
     "where": "cybertron",
     "as": "Metroplex (Fall of Cybertron), on the skyline",
     "file": "/models/cybertron/metroplex.glb"
+  },
+  "cybertron-optimus-orbit": {
+    "title": "Transformers: War For Cybertron Optimus Prime",
+    "author": "WKAC",
+    "authorUrl": "https://sketchfab.com/WKAC",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-war-for-cybertron-optimus-prime-5b4d634974c240f9988ac985f3ff4c0b",
+    "where": "cybertron",
+    "also": [
+      "universe"
+    ],
+    "as": "Optimus Prime (War for Cybertron), on Cybertron's orbit in the universe map",
+    "file": "/models/cybertron/optimus-orbit.glb"
   },
   "cybertron-optimus-tfp": {
     "title": "TFP Game Optimus Prime",
@@ -1616,6 +1644,17 @@
     "as": "the Death Star’s trench",
     "file": "/models/universe/trench.glb"
   },
+  "wardrobe-portalgun": {
+    "title": "Portal Gun from The Rick and Morty show",
+    "author": "Bob.Ho",
+    "authorUrl": "https://sketchfab.com/Bob.Ho",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/portal-gun-from-the-rick-and-morty-show-c5f7b4a950de4002b448ac65c6b0207b",
+    "where": "c-137",
+    "as": "Rick’s portal gun, in the wardrobe",
+    "file": "/models/wardrobe/portalgun.glb"
+  },
   "xwing-hd": {
     "title": "High Poly X-Wing Fighter",
     "author": "charles.woods",
@@ -1638,6 +1677,11 @@
     "source": "https://sketchfab.com/3d-models/portal-gun-from-the-rick-and-morty-show-c5f7b4a950de4002b448ac65c6b0207b",
     "where": "c-137",
     "as": "Rick’s portal gun, in the wardrobe",
-    "file": "/models/wardrobe/portalgun.glb"
+    "file": "/models/wardrobe/portalgun.glb",
+    "also": [
+      "universe",
+      "galaxy",
+      "galaxy-surface"
+    ]
   }
 }

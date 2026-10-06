@@ -126,6 +126,7 @@ import { BUILT, ENGINES, SHIP_MODELS, buildShip } from './shipModels';
 import { paintById } from './paint';
 import { FASTEST, PARTS_SLOTS, STOCK_LOADOUT, readLoadout, statsOf } from './outfit';
 import { readBuildWire, writeBuild } from './shipyard/build';
+import { readLooks } from '../rickmorty/wardrobe/looks';
 import { BUILT_KINDS, buildTraffic } from './trafficModels';
 import { lockSound, shipEngine, wellSound } from './sounds';
 import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track, trackNudge } from './targeting';
@@ -1509,22 +1510,27 @@ export async function create(canvas, ctx) {
     state.build = raw ? readBuildWire(writeBuild(raw)) : null;
     if (state.kind) setShip(state.kind, true);
   };
-  // the wardrobe's new looks: the cruiser's crew in their seats are dressed
-  // in them, so the cruiser is built again
-  const onLooks = () => {
-    if (!disposed && state.kind === 'cruiser' && !state.build) setShip('cruiser', true);
+  // the wardrobe's new looks: the cruiser's crew in their seats sat down
+  // again in them, the cruiser as it is
+  const onLooks = (e) => {
+    if (!disposed) state.model?.setLooks?.(readLooks(e.detail));
   };
   window.addEventListener('tp:looks', onLooks);
 
   // (force: the same crew, built again: its garage build changed)
   const setShip = (kind, force = false) => {
     if (kind === state.kind && !force) return;
+    // (forced: the same crew, a new hull: only the model's made again; the
+    // fight, the autopilot, the engine's sound and the cockpit go on)
+    const same = force && kind === state.kind;
     if (onFoot()) foot.end();
     seatCrew = null;
-    engine?.stop();
-    engine = null;
-    well?.stop();
-    well = null;
+    if (!same) {
+      engine?.stop();
+      engine = null;
+      well?.stop();
+      well = null;
+    }
     if (state.model) {
       map.remove(state.model.group);
       state.model.dispose();
@@ -1533,18 +1539,20 @@ export async function create(canvas, ctx) {
     }
     const was = state.kind;
     state.kind = kind;
-    traffic?.setCrew(kind);
-    hunters?.clear();
-    meteors.clear();
-    wingmen?.clear();
-    skirmishes?.clear();
-    dropCab();
-    cabWanted = null;
-    if (kind && state.seat === 'cockpit') buildCab(kind);
     setPlumes(kind, ENGINES[kind] ?? []);
-    stockUp(); // (the hunters this ship's side meets)
-    state.auto = null;
-    state.flown = false;
+    if (!same) {
+      traffic?.setCrew(kind);
+      hunters?.clear();
+      meteors.clear();
+      wingmen?.clear();
+      skirmishes?.clear();
+      dropCab();
+      cabWanted = null;
+      if (kind && state.seat === 'cockpit') buildCab(kind);
+      stockUp(); // (the hunters this ship's side meets)
+      state.auto = null;
+      state.flown = false;
+    }
     if (!kind) {
       refit();
       state.ship = null;
@@ -1581,7 +1589,7 @@ export async function create(canvas, ctx) {
         .then((m) => m.buildCruiser({ ink: BUILT / 2.7 }))
         .then((c) => {
           if (!c) return;
-          if (disposed || state.model !== model || !model.mount(c.group, { update: c.update, dispose: c.dispose, ownGlow: true, tint: c.tint })) {
+          if (disposed || state.model !== model || !model.mount(c.group, { update: c.update, dispose: c.dispose, ownGlow: true, tint: c.tint, setLooks: c.setLooks })) {
             c.dispose();
             disposeTree(c.group);
             return;
@@ -3621,7 +3629,8 @@ export async function create(canvas, ctx) {
   const footKey = (e, key, onControl) => {
     if (key === 'f') {
       e.preventDefault();
-      if (foot.fire()) emit({ type: 'fire' });
+      const gun = foot.fire();
+      if (gun) emit({ type: 'fire', gun });
       return;
     }
     if (key === 't') {
@@ -3759,7 +3768,8 @@ export async function create(canvas, ctx) {
       const [x, y] = local(e);
       const tid = pickTrooper(x, y);
       if (tid) foot.lockOn(tid);
-      if (foot.fire()) emit({ type: 'fire' });
+      const gun = foot.fire();
+      if (gun) emit({ type: 'fire', gun });
       ctx.invalidate();
       return;
     }
@@ -3974,7 +3984,8 @@ export async function create(canvas, ctx) {
     fire(down = true) {
       heard();
       if (onFoot()) {
-        if (down && foot.fire()) emit({ type: 'fire' });
+        const gun = down && foot.fire();
+        if (gun) emit({ type: 'fire', gun });
         return;
       }
       state.fireBtn = down;

@@ -16,6 +16,7 @@ import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { createStage } from '../../../lib/stage3d';
 import { budget, device } from '../../../lib/device';
 import { antiTile } from '../../../lib/three/surface';
+import { createGhosts } from '../../middleearth/towns/ghosts';
 import { EYE, GADDI, INSTRUMENTS, LAMPS, PARAPET, PAVILION, POOL, RUG, TERRACE } from './layout';
 
 // (the site's shared loader, fetched only once the courtyard is up)
@@ -614,9 +615,35 @@ export async function createMusicWorld(el, { onLost } = {}) {
   // ── drawing ──
   const fitTo = (w, h) => stage.resize(w, h);
   let clock = 0;
+  // others online in the courtyard (MusicWorld's useTravellers). You don't
+  // see yourself here, so they aren't figures either: each is a lamp, a diya
+  // floating at a listener's height where they stand, pale and shimmering as
+  // the other worlds' visitors are, with their name over it
+  const ghosts = createGhosts({
+    make: () => {
+      const bowl = new THREE.Mesh(new THREE.LatheGeometry([new THREE.Vector2(0, 0), new THREE.Vector2(0.11, 0.02), new THREE.Vector2(0.15, 0.07), new THREE.Vector2(0.13, 0.08), new THREE.Vector2(0.09, 0.04), new THREE.Vector2(0, 0.04)], 16), new THREE.MeshStandardMaterial());
+      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.16, 10).translate(0, 0.16, 0), new THREE.MeshStandardMaterial());
+      const lamp = new THREE.Group();
+      lamp.add(bowl, flame);
+      lamp.scale.setScalar(1.3);
+      lamp.position.y = 1.25;
+      const group = new THREE.Group();
+      group.add(lamp);
+      return { group, top: 1.5, lamp, flame };
+    },
+    animate: (f, t) => {
+      f.lamp.position.y = 1.25 + Math.sin(t * 1.6) * 0.06;
+      f.flame.scale.set(1, 0.85 + 0.15 * Math.sin(t * 9), 1);
+    },
+    tag: 0.22,
+    halo: 0.6,
+  });
+  scene.add(ghosts.group);
+
   const render = (state, ms = 16) => {
     const dt = Math.min(0.1, ms / 1000);
     clock += dt;
+    ghosts.update(state.travellers ?? [], clock, dt);
     camera.position.set(state.x, EYE + (state.bob || 0), state.z);
     camera.rotation.y = state.yaw;
     camera.rotation.x = state.pitch;
@@ -667,6 +694,7 @@ export async function createMusicWorld(el, { onLost } = {}) {
     render,
     resize: fitTo,
     dispose: () => {
+      ghosts.dispose();
       for (const t of labelCache.values()) t.dispose();
       stage.dispose();
     },

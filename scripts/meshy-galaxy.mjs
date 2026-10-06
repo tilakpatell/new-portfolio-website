@@ -47,10 +47,11 @@ const CREATURE = `${LOOK} Full body, three-quarter front view, the whole creatur
 // (scripts/meshy-cockpit.mjs).
 export const ASSETS = {
   luke: {
-    soft: true,
+    // (the first concept, in the films' outfit to the letter, was turned
+    // down at the model step twice; this one, a pilot in that kit, went through)
     height: 1.72,
     prompt:
-      'A young farm-boy starship pilot in his late teens with a round friendly freckled face and a snub nose, short messy sandy blond hair, wearing a bright orange one-piece flight suit, a white padded flak vest over it with a small rectangular chest control box and two thin tubes, black gloves, black boots, a utility belt with a small holster. No helmet.',
+      'A young adult starfighter pilot with short wavy light sandy hair and a clean-shaven friendly face, an orange flight jumpsuit with zipped pockets, a white ribbed padded vest, dark grey gloves, black flight boots and a grey belt with a holster on the right hip.',
   },
   han: {
     height: 1.85,
