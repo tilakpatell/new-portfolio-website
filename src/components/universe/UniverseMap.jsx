@@ -45,6 +45,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   // out of the ship on a planet (the controls change), and where you could land
   const [onFoot, setOnFoot] = useState(false);
   const [landable, setLandable] = useState(null);
+  const [phoneNear, setPhoneNear] = useState(false); // at the phone out past the belt (phone.js): a touch button to pick it up
   const [footHint, setFootHint] = useState(false);
   // the place's name as you come down on a planet (landings.js)
   const [arrive, setArrive] = useState(null);
@@ -102,6 +103,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       onEvent: (e) => {
         if (e.type === 'launch') setFlown(true);
         if (e.type === 'landable') setLandable(e.id);
+        if (e.type === 'phone' && e.what !== 'open') setPhoneNear(e.what === 'near');
         if (e.type === 'foot' && e.id === 'arrive') setArrive({ title: e.title, sub: e.sub, at: Date.now() });
         if (e.type === 'foot' && e.id === 'out') {
           setOnFoot(true);
@@ -297,6 +299,11 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {(onFoot || landable) && (
                 <button type="button" className="universe-out" onPointerDown={(e) => (e.preventDefault(), view.current?.out?.())} onContextMenu={(e) => e.preventDefault()}>
                   {onFoot ? 'Ship' : 'Land'}
+                </button>
+              )}
+              {!onFoot && !landable && phoneNear && (
+                <button type="button" className="universe-out" onClick={() => events.current?.({ type: 'phone', what: 'open' })}>
+                  Phone
                 </button>
               )}
               {!onFoot && (

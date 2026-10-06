@@ -596,6 +596,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
           // for the QA scripts: where everyone is, E, and a jump to anywhere
           const s = sim.current;
           window.__C137__ = Object.assign(window.__C137__ ?? {}, {
+            api: a,
             sim: s,
             act: () => fns.current.act(),
             complete,

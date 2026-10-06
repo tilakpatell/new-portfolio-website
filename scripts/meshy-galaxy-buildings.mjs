@@ -40,11 +40,12 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REFS, fetchRef } from './galaxy-refs.mjs';
 import { makeLod } from './galaxy-surface-lod.mjs';
+import { BUILDINGS as BACK_LANE } from './meshy-galaxy-buildings-back.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'models', 'galaxy', 'surface');
 const REVIEW = process.env.MESHY_REVIEW ?? join(ROOT, 'lab', 'meshy', 'buildings');
-const TASKS = join(ROOT, 'scripts', 'meshy-galaxy-buildings-tasks.json');
+const TASKS = process.env.MESHY_TASKS ? join(ROOT, process.env.MESHY_TASKS) : join(ROOT, 'scripts', 'meshy-galaxy-buildings-tasks.json');
 const API = 'https://api.meshy.ai/openapi';
 
 const LOOK = 'Highly detailed realistic 3D game asset, weathered materials, film-set quality, physically based textures.';
@@ -81,6 +82,8 @@ export const BUILDINGS = {
 const key = process.env.MESHY_API_KEY;
 const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// the back lane's kinds, from their own file (scripts/meshy-galaxy-buildings-back.mjs)
+Object.assign(BUILDINGS, BACK_LANE);
 
 async function api(method, path, body) {
   const r = await fetch(`${API}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });

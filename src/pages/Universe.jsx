@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { local, useDocumentTitle, useReducedMotion } from '../lib/hooks';
 import { audioContext } from '../lib/audio';
@@ -26,6 +26,11 @@ import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
 import { useOnline } from '../components/universe/online/useOnline';
 
 const PORTAL = '#97ce4c';
+// the phone out past the belt (universe/phone.js): its lock screen, fetched
+// only when it's picked up, and the saffron wash into what it unlocks
+const PhoneOverlay = lazy(() => import('../components/dickansh/PhoneOverlay'));
+const SAFFRON = '#ff9a2a';
+const PHONE_MS = 700;
 const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put away
 
 // The universe map: every fandom on the site is a planet, and you travel
@@ -92,6 +97,7 @@ export default function Universe({ ask = false }) {
   const closeWardrobe = useCallback(() => setWardrobe(false), []);
   // the nav map, and the drive picked on it (kept between visits)
   const [charting, setCharting] = useState(false);
+  const [phone, setPhone] = useState(false); // the phone out past the belt, picked up: its lock screen
   const [drive, setDriveState] = useState(() => parseDrive(local.get(DRIVE_KEY)));
   const driveRef = useRef(drive); // (for the tour's later legs: the drive as it is then)
   driveRef.current = drive;
@@ -193,6 +199,22 @@ export default function Universe({ ask = false }) {
     timer.current = setTimeout(() => navigate(to), plan.delay);
   };
   const enter = () => go(universe);
+  // the phone unlocked: the Dickansh and Deekbeggers Universe (its page keeps
+  // the password the lock screen kept for it)
+  const unlockPhone = () => {
+    setPhone(false);
+    if (leaving) return;
+    setCharting(false);
+    stopTour();
+    if (reduced || !map.current.live) {
+      navigate('/dickansh');
+      return;
+    }
+    audioContext();
+    portalSound();
+    setLeaving({ id: 'phone', mode: 'phone' });
+    timer.current = setTimeout(() => navigate('/dickansh'), PHONE_MS);
+  };
   // the nav map's "straight in" for a system: the gate's jump, then the system
   const enterDest = (id) => {
     const d = destinationById(id);
@@ -280,6 +302,9 @@ export default function Universe({ ask = false }) {
         comms.current?.handle({ type: 'event', id: 'hyperspeed' });
       }
     } else if (e.type === 'portal') go(byId(e.id));
+    else if (e.type === 'phone') {
+      if (e.what === 'open') setPhone(true);
+    }
     else if (e.type === 'siege' && e.what === 'down' && e.mine) {
       unlock('citadelfall'); // (you helped bring it down)
       comms.current?.handle(e);
@@ -355,7 +380,7 @@ export default function Universe({ ask = false }) {
   }, [leaving, selected, select, stopTour]);
 
   const accent = universe ? { '--accent': universe.accent, '--accent-text': universe.accent, '--btn-bg': universe.accent } : undefined;
-  const fade = leaving?.mode === 'portal' ? PORTAL : leaving?.mode === 'beyond' ? '#000' : leaving?.mode === 'dive' || leaving?.mode === 'crash' ? byId(leaving.id).palette.base : undefined;
+  const fade = leaving?.mode === 'phone' ? SAFFRON : leaving?.mode === 'portal' ? PORTAL : leaving?.mode === 'beyond' ? '#000' : leaving?.mode === 'dive' || leaving?.mode === 'crash' ? byId(leaving.id).palette.base : undefined;
 
   return (
     <div className="dark-scope universe-page" style={accent} data-leaving={leaving?.mode} data-card={universe ? '' : undefined} data-tucked={tucked ? '' : undefined}>
@@ -386,7 +411,7 @@ export default function Universe({ ask = false }) {
         net={online.client}
         onEvent={onEvent}
         drive={drive}
-        charting={charting}
+        charting={charting || phone}
         onMap={() => setCharting((o) => !o)}
         onLand={enter}
         onCrash={crashInto}
@@ -438,6 +463,11 @@ export default function Universe({ ask = false }) {
           }}
           onClose={() => setCharting(false)}
         />
+      )}
+      {phone && !leaving && (
+        <Suspense fallback={null}>
+          <PhoneOverlay onClose={() => setPhone(false)} onUnlock={unlockPhone} />
+        </Suspense>
       )}
       {asking && <StartChoice onPick={start} />}
       <div className="universe-fade" aria-hidden="true" style={{ background: fade }} />

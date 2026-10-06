@@ -25,10 +25,11 @@ import { buildLife } from './life';
 import { LINES, createNpcs } from './npcs';
 import { buildClouds } from './sky';
 import { createTraffic, stepTraffic } from './traffic';
-import { WATER_Y, WORLD, buildWorld, groundAt, near } from './map';
+import { CITY, WATER_Y, WORLD, buildWorld, groundAt, near } from './map';
 import { BODIES, altitudeOf } from './orbit';
 import { buildPerson, posePerson } from './people';
 import { buildSpace } from './space';
+import { groundWorld } from '../../../lib/three/groundwork';
 
 const FOV = 64;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -102,6 +103,27 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   // (a shadow box this big wants more bias than the HQ games' rooms)
   engine.sun.shadow.normalBias = 0.12;
   engine.sun.shadow.bias = -0.0006;
+  // the city's sky, baked into its streets (after Bruno Simon's folio:
+  // lib/three/groundwork): the towers darken the canyons between them and
+  // the land at their feet, soft, city-wide, and the lowest storeys take the
+  // street's colour. The sun keeps its own shadow pass round Mark: a city
+  // this size, flown over this fast, outruns one sun's mask.
+  const land = ground.group.getObjectByName('land');
+  const skyLight = land
+    ? groundWorld({
+        renderer: engine.renderer,
+        scene,
+        floor: [land],
+        area: { x0: CITY.x0 - 120, z0: CITY.z0 - 120, w: CITY.x1 - CITY.x0 + 240, d: CITY.z1 - CITY.z0 + 240 },
+        sun: engine.sun,
+        casters: [city.group, landmarks.group],
+        keepShadows: true,
+        shade: 0x2a2c34,
+        bounce: { color: 0x8a8478, strength: 0.4 },
+        tier: engine.tier,
+      })
+    : null;
+  skyLight?.bake();
 
   // ── the people ──
   const [markT, omniT, thraggT] = await Promise.all(['mark', 'omni', 'thragg'].map((n) => loadFigure(asset(CAST[n].file))));
@@ -485,6 +507,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   const jetDistance = (h) => jet.near(tmpV.set(h.p[0], h.p[1] + 1, h.p[2]));
 
   return {
+    ground: import.meta.env.DEV ? skyLight : null, // for the QA scripts
     engine,
     world,
     frame,
@@ -503,6 +526,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     },
     info: () => ({ ...engine.info(), bound: WORLD.half }),
     dispose() {
+      skyLight?.dispose();
       fx.dispose();
       ghosts.dispose();
       mark.dispose();

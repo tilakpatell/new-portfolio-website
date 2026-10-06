@@ -143,3 +143,34 @@ coresphere, solarsailer, commandpost, pillars). Steps as Task 2 with group
 
 Kinds from the overhaul plan's CP9 table. Steps as Task 2 with group
 `forest`; Endor's parts untouched (CP6 is the front lane's).
+
+---
+
+## Status (2026-10-06, end of the first back-lane session)
+
+All merged to `main`: #268 (lanes), #269 (Sorgan, scout), #272 (Nevarro,
+Mandalore, Lothal), #276 (Scarif, the planets from space), #277
+(Geonosis), #278 (Dagobah, Yavin 4).
+
+**For the front lane:** shared files this lane touched, each only in its
+own worlds' lines:
+- `sites/edge.js`: Scarif's palette and scatter.
+- `sites/core.js`: Geonosis's horizon hives (`geohive`).
+- `sites/forest.js`: Dagobah's and Yavin 4's scatter and things, and an
+  `import { grove } from './stand'` at the top.
+- `catalog/index.js`: two more groups (`clonewars`, `rebels`).
+- `public/cc0/README.md`: a second `{…}.glb` line, which `madeKinds` now reads.
+- `scripts/meshy-galaxy-buildings.mjs`: reads this lane's buildings from
+  `meshy-galaxy-buildings-back.mjs` and the tasks file from `MESHY_TASKS`.
+
+**Left, for whoever picks this up:**
+- Coruscant and Kamino are still built. Every Sketchfab Senate and Slave I
+  failed the gate (see the commit of #277). Next step: Meshy from
+  `File:Galactic Senate RotS.png` for the Senate. For Jango's Slave I,
+  find a blue-grey AOTC reference.
+- Kashyyyk is still built: the wroshyr trees and Kachirho.
+- The Yavin hangar props haven't been seen on screen yet. Teleporting to
+  the hangar lands on the temple roof; walk in through the door.
+- Nothing has been QA'd on a real GPU. Every shot is from headless
+  software GL. `QUALITY=low` can't be checked with `galaxy-check`: low tier
+  asks before starting 3D (`lib/device.js`), and the script never clicks.

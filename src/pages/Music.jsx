@@ -27,7 +27,7 @@ import {
 } from '../components/music/engine';
 import { useTuning } from '../components/music/useTuning';
 import SitarNeck from '../components/music/SitarNeck';
-import Harmonium from '../components/music/Harmonium';
+import Harmonium from '../components/music/Harmonium.jsx'; // harmonium.js sits beside it, as tabla.js does below
 import RagaBook from '../components/music/RagaBook';
 import MusicWorld from '../components/music/world/MusicWorld';
 import Tabla from '../components/music/Tabla.jsx'; // tabla.js sits beside it, and a case-blind disk (macOS) would pick that
