@@ -52,5 +52,5 @@ The quest panel and the things-to-do list stay out of the way while the battle r
 
 ## Done when
 
-- Tests: the rules above; every assault's posts are on dry ground within the site's reach and on a flat (or the site's landing flat); its phases name only its posts and cover them all; its kinds are kinds there are; both sides can win in a simulation with no player.
+- Tests: the rules above; every assault's posts are on dry, level ground within the site's reach; its phases name only its posts and cover them all; its kinds are kinds there are; both sides can win in a simulation with no player.
 - In Chromium at `/galaxy/hoth/surface?mission=assault`: the choose card, a side picked, deployed at a post, the two armies meeting between the trenches and the walkers' line, bolts both ways, a post flipping with its ring and chip, a phase ending, the result card both ways through the dev hooks (`window.__surfaceDo('missionDo', 'win' | 'lose')`), Again, no console errors; the same on Geonosis. `npm run lint`, `npm test`, `npm run build` clean; `node scripts/health.mjs --check --skip build` within budget.

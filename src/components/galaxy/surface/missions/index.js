@@ -20,8 +20,12 @@
 // or a fail or going down (lost: `why` 'time' or 'down'); `stars` are on the
 // whole run, `lines` are `start`, `won` and `lost`, and `reset` is effects
 // (as a quest step's) that put the world back when it starts again.
+//
+// Or kind 'assault': a battle for a world's command posts (./assault.js
+// runs it; the maps are ./assaults.js's, merged in below).
 
 import { starsFor } from './chase';
+import { ASSAULTS } from './assaults';
 
 export const MISSIONS = {
   endor: {
@@ -215,6 +219,7 @@ export const MISSIONS = {
     },
   },
 };
+for (const [system, m] of Object.entries(ASSAULTS)) (MISSIONS[system] ??= {})[m.id] = m;
 
 export const missionOf = (system, id) => MISSIONS[system]?.[id] ?? null;
 

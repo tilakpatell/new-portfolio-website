@@ -65,10 +65,11 @@ const pickKind = (kinds, r) => {
 // own), the soldiers made but not yet on the field, at the choose card.
 export function newBattle(mission, { n = SOLDIERS.high, seed = 1 } = {}) {
   const r = rng(seed);
+  const kr = rng(7); // (the kinds the same whatever the seed, so a battle again wears the same figures)
   const posts = mission.posts.map((p) => ({ id: p.id, name: p.name, at: p.at, r: p.r, fixed: p.fixed ?? null, owner: p.fixed ?? 'defend', meter: 1, taking: null, inside: { attack: 0, defend: 0 }, youIn: false }));
   const soldiers = [];
   for (const side of ['attack', 'defend'])
-    for (let i = 0; i < n; i++) soldiers.push({ id: soldiers.length, side, kind: pickKind(mission.sides[side].kinds, r), x: 0, z: 0, yaw: 0, hp: RULES.hp, up: false, down: 0, post: null, spot: null, cool: 1 + r() * 2, wait: 0, target: null, move: 0, detour: 0 });
+    for (let i = 0; i < n; i++) soldiers.push({ id: soldiers.length, side, kind: pickKind(mission.sides[side].kinds, kr), x: 0, z: 0, yaw: 0, hp: RULES.hp, up: false, down: 0, post: null, spot: null, cool: 1 + r() * 2, wait: 0, target: null, move: 0, detour: 0 });
   return { mission, r, t: 0, phase: 'choose', phaseIndex: 0, result: null, posts, soldiers, tickets: { ...mission.tickets }, you: { side: null, up: false, x: 0, z: 0, kills: 0, captures: 0, deaths: 0, in: null, state: null }, feed: [] };
 }
 
