@@ -142,6 +142,7 @@ export async function buildStage(area, { tier = 'high' } = {}) {
   // the city: every tower, the Hall, HQ, the pylons and the rest, in one draw
   const parts = [];
   const strips = [];
+  const warn = []; // the barricades' warning lights, amber
   const fire = [];
   let ti = 0;
   for (const s of area.solids) {
@@ -175,7 +176,7 @@ export async function buildStage(area, { tier = 'high' } = {}) {
         break;
       case 'barricade':
         parts.push(slab(s.x, s.z, s.hw, s.hd, 0, s.top, s.yaw ?? 0, 0.6));
-        strips.push([s.x - Math.cos(s.yaw ?? 0) * s.hw, s.z + Math.sin(s.yaw ?? 0) * s.hw, s.x + Math.cos(s.yaw ?? 0) * s.hw, s.z - Math.sin(s.yaw ?? 0) * s.hw, s.top, 0.4, 0.2]);
+        warn.push([s.x - Math.cos(s.yaw ?? 0) * s.hw, s.z + Math.sin(s.yaw ?? 0) * s.hw, s.x + Math.cos(s.yaw ?? 0) * s.hw, s.z - Math.sin(s.yaw ?? 0) * s.hw, s.top, 0.3, 0.15]);
         break;
       case 'crate':
         parts.push(slab(s.x, s.z, s.hw, s.hd, 0, s.top, s.yaw ?? 0, 0.65 + seed * 0.2));
@@ -191,6 +192,57 @@ export async function buildStage(area, { tier = 'high' } = {}) {
         parts.push(s.kind === 'circle' ? drum(s.x, s.z, s.r, s.r, s.base ?? 0, s.top, 16, 0.5) : slab(s.x, s.z, s.hw, s.hd, s.base ?? 0, s.top, s.yaw ?? 0, 0.5));
     }
   }
+  // sky-bridges across the streets between towers facing each other, lit
+  // underneath; energon pylons down both sides of the boulevard
+  const towers = area.solids.filter((x) => x.tag === 'tower');
+  for (const [k, a] of towers.entries()) {
+    if (hash(k * 1.7) > 0.35) continue;
+    // the nearest tower across a street (a gap of 12 to 70 m)
+    let best = null;
+    let bestD = Infinity;
+    for (const b of towers) {
+      if (b === a) continue;
+      const dx = b.x - a.x;
+      const dz = b.z - a.z;
+      const gapX = Math.abs(dx) - a.hw - b.hw;
+      const gapZ = Math.abs(dz) - a.hd - b.hd;
+      const across = (gapX > 12 && gapX < 70 && Math.abs(dz) < Math.min(a.hd, b.hd)) || (gapZ > 12 && gapZ < 70 && Math.abs(dx) < Math.min(a.hw, b.hw));
+      const d = Math.hypot(dx, dz);
+      if (across && d < bestD) {
+        bestD = d;
+        best = b;
+      }
+    }
+    if (!best) continue;
+    const y = 30 + hash(k * 3.1) * Math.min(a.top, best.top) * 0.5;
+    const len = bestD;
+    const yaw = Math.atan2(best.x - a.x, best.z - a.z);
+    const mx = (a.x + best.x) / 2;
+    const mz = (a.z + best.z) / 2;
+    parts.push(slab(mx, mz, 3.2, len / 2, y, y + 2.4, yaw, 0.55));
+    parts.push(slab(mx, mz, 3.6, len / 2, y + 2.4, y + 3.2, yaw, 0.56));
+    strips.push([a.x + Math.sin(yaw) * 0, a.z, best.x, best.z, y - 0.2, 0.6, 0.15]);
+  }
+  const posts = [];
+  for (let z = -170; z < 390; z += 42)
+    for (const x of [-S.boulevard + 4, S.boulevard - 4]) {
+      parts.push(drum(x, z, 0.9, 0.5, 0, 14, 6, 0.45));
+      posts.push([x, z]);
+    }
+  // wreckage in the streets: plates torn off, girders, a burnt-out car or two
+  for (let k = 0; k < (small ? 40 : 110); k++) {
+    const onBoulevard = hash(k * 9.1) < 0.6;
+    const x = onBoulevard ? (hash(k * 2.3) - 0.5) * S.boulevard * 1.8 : (hash(k * 2.3) - 0.5) * 760;
+    const z = onBoulevard ? 60 + hash(k * 4.7) * 340 : S.streets[k % 2] + (hash(k * 5.9) - 0.5) * 24;
+    const big = hash(k * 7.7);
+    const h = 0.4 + big * 2.2;
+    // (tipped over where it lies: turned about its own middle, then put there)
+    const g = slab(0, 0, 0.6 + big * 2.6, 0.4 + hash(k) * 1.6, -0.3, h, 0, 0.6);
+    g.rotateX((hash(k * 8.8) - 0.5) * 0.5);
+    g.rotateY(hash(k * 1.3) * 6);
+    g.translate(x, 0, z);
+    parts.push(g);
+  }
   const cityMat = keep(platedMaterial({ windows: 0.3, base: '#1c2029', alt: '#2a303c', trim: '#59626f', metalness: 0.75, roughness: 0.45 }));
   const city = new THREE.Mesh(keep(merged(parts)), cityMat);
   city.castShadow = tier === 'high';
@@ -199,7 +251,9 @@ export async function buildStage(area, { tier = 'high' } = {}) {
 
   // light along the towers' edges, the setbacks, the barricades' tops
   const edges = makeStrips(strips, ENERGON, 1.6);
-  if (edges) group.add(keep(edges.geometry) && edges);
+  if (edges) group.add(edges) && keep(edges.material);
+  const amber = makeStrips(warn, '#ffa23a', 2);
+  if (amber) group.add(amber) && keep(amber.material);
 
   // energon in the gutters: along the boulevard and both cross streets
   const W = S.boulevard;
@@ -222,6 +276,21 @@ export async function buildStage(area, { tier = 'high' } = {}) {
   const padTop = 1;
   const floorLights = makeStrips([...gutters, ...ring(S.plaza.x, S.plaza.z, S.plaza.r - 6, 48), ...ring(S.pad.x, S.pad.z, S.pad.r - 4, 48).map((g) => [...g.slice(0, 4), padTop + 0.02, ...g.slice(5)])], ENERGON, 1.6);
   group.add(floorLights);
+  keep(floorLights.material);
+  const tops = new THREE.InstancedMesh(keep(new THREE.OctahedronGeometry(1.1, 0)), keep(new THREE.MeshBasicMaterial({ color: new THREE.Color(ENERGON).multiplyScalar(3), toneMapped: false })), posts.length);
+  posts.forEach(([x, z], k) => tops.setMatrixAt(k, new THREE.Matrix4().makeTranslation(x, 15, z)));
+  group.add(tops);
+  // the Autobots' mark glowing high on a few towers
+  const markTex = keep(insignia('#5fd8ff'));
+  const markMat = keep(new THREE.MeshBasicMaterial({ map: markTex, transparent: true, toneMapped: false, color: new THREE.Color(1.8, 1.8, 1.8), depthWrite: false }));
+  for (const [k, t] of towers.entries()) {
+    if (hash(k * 5.3) > 0.12 || t.top < 140) continue;
+    const m = new THREE.Mesh(keep(new THREE.PlaneGeometry(18, 18)), markMat);
+    const face = Math.abs(t.x) > S.boulevard ? -Math.sign(t.x) : 1; // the side toward the boulevard
+    m.position.set(t.x + face * (t.hw + 0.6), t.top * 0.62, t.z);
+    m.rotation.y = face * (Math.PI / 2);
+    group.add(m);
+  }
 
   // the Autobots' mark over the Hall's door
   const hall = area.solids.find((s) => s.tag === 'hall');
