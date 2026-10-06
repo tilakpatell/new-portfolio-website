@@ -14,8 +14,8 @@ node scripts/gen3d/make.mjs x-wing --prompt "an X-wing starfighter" --what "an X
 node scripts/gen3d/prepare.mjs photo.jpg cache/xwing.png               # your picture trimmed, squared, 1024 (what the model expects)
 node scripts/gen3d/picture.mjs "an X-wing starfighter" cache/xwing.png  # or a concept image from words
 node scripts/gen3d/generate.mjs cache/xwing.png cache/raw/xwing.glb [--faithful]   # image → raw textured GLB, ~300k triangles
-node scripts/gen3d/bake.mjs cache/raw/xwing.glb cache/xwing-low.glb --faces 24000  # the high mesh baked onto a low one (Blender)
-node scripts/gen3d/web.mjs cache/xwing-low.glb x-wing --tris 24000 --tex 2048 --what "an X-wing starfighter"
+node scripts/gen3d/bake.mjs cache/raw/xwing.glb cache/xwing-low.glb --faces 60000  # the high mesh baked onto a low one (Blender)
+node scripts/gen3d/web.mjs cache/xwing-low.glb x-wing --tris 60000 --tex 2048 --what "an X-wing starfighter"
 node scripts/gen3d/judge.mjs cache/xwing.png cache/raw/xwing.glb public/models/gen3d/x-wing.glb   # four views each, side by side
 ```
 
@@ -34,7 +34,7 @@ the seams let it (~25k triangles).
 `web.mjs` writes `public/models/gen3d/<name>.glb` (welded, simplified to the
 triangle budget, WebP textures, meshopt: the same steps as
 `scripts/meshy-import.mjs`) and credits it in `public/games/credits.json`.
-It refuses a model over its budget or over 1 MB. Everything else lands in
+It refuses a model over its budget or over 4 MB. Everything else lands in
 `scripts/gen3d/cache/` (git-ignored).
 
 ## From your phone
@@ -47,7 +47,7 @@ line, all optional but one of `prompt`/`what`/`image`:
 what: a TIE fighter                 (for the credit; the prompt if there is none)
 prompt: a TIE fighter, grey, …      (FLUX draws the concept picture)
 image: (attach a picture, or a URL) (the picture to follow; Pixal3D unless faithful: no)
-faces: 24000  tex: 2048  seed: 42  res: 1024  fov: 49  engine: trelliscpp|trellis2
+faces: 60000  tex: 2048  seed: 42  res: 1024  fov: 49  engine: trelliscpp|trellis2
 faithful: no  bake: no
 ```
 

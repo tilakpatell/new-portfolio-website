@@ -20,21 +20,22 @@ const CHROME = process.env.CHROME ?? '/opt/pw-browsers/chromium-1194/chrome-linu
 const W = 640;
 const H = 480;
 
-export async function shoot(file, views = ['three', 'close']) {
+export async function shoot(file, views = ['three', 'close'], { bg, w = W, h = H } = {}) {
   const rel = relative(ROOT, file).split('\\').join('/');
   const url = `/${rel.startsWith('public/') ? rel.slice('public/'.length) : rel}`;
+  const extra = bg ? `&bg=${bg}` : ''; // bg=ffffff: a reference picture for scripts/gen3d
   const browser = await chromium.launch({ executablePath: CHROME, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   try {
-    const page = await browser.newPage({ viewport: { width: W * views.length, height: H } });
+    const page = await browser.newPage({ viewport: { width: w * views.length, height: h } });
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e)));
-    await page.goto(`${BASE}/scripts/preview/glb-shot.html?url=${encodeURIComponent(url)}&views=${views.join(',')}&w=${W}&h=${H}`);
+    await page.goto(`${BASE}/scripts/preview/glb-shot.html?url=${encodeURIComponent(url)}&views=${views.join(',')}&w=${w}&h=${h}${extra}`);
     await page.waitForFunction(() => window.__done, null, { timeout: 600000 }).catch((e) => {
       throw new Error(`${url}: ${errors[0] ?? e.message}`);
     });
     shoot.last = JSON.parse(await page.title());
     const png = await page.screenshot();
-    return Promise.all(views.map((_, i) => sharp(png).extract({ left: i * W, top: 0, width: W, height: H }).png().toBuffer()));
+    return Promise.all(views.map((_, i) => sharp(png).extract({ left: i * w, top: 0, width: w, height: h }).png().toBuffer()));
   } finally {
     await browser.close();
   }
