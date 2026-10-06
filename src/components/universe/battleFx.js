@@ -6,7 +6,7 @@
 // createBoltDraw(parent, { count }) → { sync(bolts, colourOf), dispose() }
 // createGlows(parent, { count }) → { begin(), add(pos, colour, size), end(), dispose() }
 // createShield(parent) → { show(cap, colour), hit(point), drop(), hide(), update(dt, t), dispose() }
-// createMarkers(parent) → { sync(list), hide(), dispose() }; list: [{ key, pos, title, sub, hp, colour }]
+// createMarkers(parent) → { sync(list), hide(), dispose() }; list: [{ key, pos, title, sub, hp, colour, under }]
 // createFires(parent) → { add(pos, size), update(dt, t), clear(), dispose() }
 // Everything is in `parent`'s space (the map's).
 
@@ -18,7 +18,7 @@ const Z = new THREE.Vector3(0, 0, 1);
 const BOLT_LOOK = {
   laser: { length: 0.6, width: 0.018, bright: 1 },
   flak: { length: 0.3, width: 0.022, bright: 0.8 },
-  turbo: { length: 3.2, width: 0.11, bright: 1.2 },
+  turbo: { length: 3.2, width: 0.06, bright: 1 },
   torpedo: { length: 0.22, width: 0.09, bright: 1.6 },
 };
 export function createBoltDraw(parent, { count = 320 } = {}) {
@@ -77,7 +77,7 @@ varying vec3 vColour;
 void main() {
   vColour = aColour;
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  gl_PointSize = clamp(aSize * uScale / -mv.z, 1.5, 48.0);
+  gl_PointSize = clamp(aSize * uScale / -mv.z, 1.5, 22.0);
   gl_Position = projectionMatrix * mv;
 }`;
 const GLOW_FRAG = `
@@ -246,7 +246,7 @@ export function createMarkers(parent) {
     if (tex) tex.colorSpace = THREE.SRGBColorSpace;
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false, sizeAttenuation: false, toneMapped: false }));
     sprite.center.set(0.5, 0.18);
-    sprite.scale.set(0.16, 0.045, 1);
+    sprite.scale.set(0.24, 0.0675, 1);
     sprite.renderOrder = 10;
     sprite.frustumCulled = false;
     return { sprite, canvas, tex, sig: '' };
@@ -295,6 +295,7 @@ export function createMarkers(parent) {
           parent.add(mk.sprite);
         }
         mk.sprite.position.set(o.pos.x, o.pos.y, o.pos.z);
+        mk.sprite.center.set(0.5, o.under ? 1.05 : 0.18);
         const sig = `${o.title}|${o.sub}|${Math.round(o.hp * 50)}|${o.colour}`;
         if (sig !== mk.sig) {
           mk.sig = sig;

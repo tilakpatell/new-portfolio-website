@@ -41,18 +41,18 @@
 // size, shield }, { type: 'over', winner, why }.
 
 import { sweptHit } from './targeting';
-import { FIGHTERS, HULLS, SUBSYSTEMS, TURRETS } from './wars';
+import { FIGHTERS, HULLS, NAMES, SUBSYSTEMS, TURRETS } from './wars';
 
 export const BATTLE = {
-  radius: 150, // how far from the middle the fight goes before the fighters turn back in
-  lines: 90, // how far each side's capital ships sit from the middle
+  radius: 125, // how far from the middle the fight goes before the fighters turn back in
+  lines: 70, // how far each side's capital ships sit from the middle
   tickets: 220, // fighters a side can lose
   clock: 720, // seconds the attacker has
   respawn: [3, 6], // seconds before a fighter shot down comes back
   dying: 6, // seconds a flagship takes to break up
   youShare: 4, // how much more your damage counts on the objectives and hulls
   aiShare: 0.22, // and the AI's
-  hullShare: { laser: 0.02, flak: 0, turbo: 0.05, torpedo: 0.12 }, // of a bolt's damage a capital's hull takes
+  hullShare: { laser: 0.02, flak: 0, turbo: 0.03, torpedo: 0.06 }, // of a bolt's damage a capital's hull takes
   youHull: 0.25, // and of yours (times youShare)
   youHurt: { laser: 5, flak: 3, turbo: 18, torpedo: 22 }, // shields a hit takes off you
   onYou: 4, // fighters at most after you at once
@@ -207,7 +207,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     const k = pick(kinds[team], rand);
     const type = FIGHTERS[k.kind];
     const f = { id: nextId++, team, kind: k.kind, role: k.role, type, size: type.size, pos: v3(), prev: v3(), vel: v3(), fwd: v3(0, 0, 1), speed: 0, hp: 0, alive: false, mode: 'engage', modeT: 0, target: null, retarget: 0, cool: 0, shots: 0, bank: 0, respawn: 0, chased: -1, away: v3(), aim: v3() };
-    f.tgt = { id: f.id, at: f.pos, vel: f.vel, size: f.size, kind: f.kind, hp: 0, hpMax: type.hp, threat: 0 };
+    f.tgt = { id: f.id, at: f.pos, vel: f.vel, size: f.size, kind: f.kind, name: NAMES[f.kind] ?? f.kind, hp: 0, hpMax: type.hp, threat: 0 };
     spawn(f, true);
     return f;
   };
@@ -468,7 +468,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       tu.turbo -= dt;
       tu.flak -= dt;
       if (tu.turbo <= 0) {
-        tu.turbo = between([2, 4]);
+        tu.turbo = between([1.2, 2.6]);
         const foes = b.capitals.filter((c) => c.team === enemy && c.alive && c.dying <= 0);
         if (foes.length) {
           const foe = foes[Math.floor(rand() * foes.length)];
@@ -690,7 +690,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
         const flag = flagOf(defender);
         for (const s of flag?.subs ?? []) {
           if (!s.alive || s.phase !== b.phase) continue;
-          s.tgt ??= { id: s.num, at: s.pos, vel: ZERO, size: s.r, kind: 'subsystem', sub: s.id, threat: 0, hp: 0, hpMax: s.hpMax };
+          s.tgt ??= { id: s.num, at: s.pos, vel: ZERO, size: s.r, kind: 'subsystem', name: NAMES[s.kind], sub: s.id, threat: 0, hp: 0, hpMax: s.hpMax };
           s.tgt.hp = s.hp;
           targets.push(s.tgt);
         }

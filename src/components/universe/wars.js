@@ -243,6 +243,32 @@ export const FIGHTERS = {
   pickup: F({ size: 0.32, speed: 15, turn: 1.7, hp: 8, reload: 1.2 }),
 };
 
+// what each is called on the targeting bracket
+export const NAMES = {
+  xwing: 'X-wing',
+  awing: 'A-wing',
+  ywing: 'Y-wing',
+  bwing: 'B-wing',
+  tie: 'TIE fighter',
+  interceptor: 'TIE interceptor',
+  tiebomber: 'TIE bomber',
+  councilship: 'Council cruiser',
+  meeseeks: 'Meeseeks ship',
+  gearship: 'Gear ship',
+  patrol: 'Federation patrol',
+  gromflomite: 'Gromflomite',
+  hauler: 'Federation hauler',
+  mikesedan: 'Mike’s sedan',
+  saulcaddy: 'Saul’s Cadillac',
+  pollostruck: 'Pollos truck',
+  lowrider: 'Cartel lowrider',
+  cousins: 'The Cousins',
+  pickup: 'Cartel pickup',
+  shieldgen: 'Shield generator',
+  bridge: 'Bridge',
+  reactor: 'Reactor',
+};
+
 // a flagship's objectives: two shield generators, the bridge, the reactor
 // (hp: what each takes, in damage as battle.js counts it)
 const flagship = (gens, bridge, reactor) => [

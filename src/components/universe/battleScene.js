@@ -22,6 +22,11 @@ import { createFlashes } from '../galaxy/fx';
 import { createBoltDraw, createFires, createGlows, createMarkers, createShield } from './battleFx';
 
 const NAMES = { shieldgen: 'Shield generator', bridge: 'Bridge', reactor: 'Reactor' };
+const METRES = 40; // a map unit, in metres (an X-wing's about a third of a unit)
+const far = (a, b) => {
+  const m = Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) * METRES;
+  return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`;
+};
 const ATTACK = '#ffb347';
 const DEFEND = '#7cc8ff';
 
@@ -210,7 +215,7 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
         s.holder.position.set(f.pos.x, f.pos.y, f.pos.z);
         orient(s.holder, f.fwd, { x: 0, y: 1, z: 0 }, f.bank);
         const c = war.sides[f.team].laser;
-        glows.add({ x: f.pos.x - f.fwd.x * f.size * 0.55, y: f.pos.y - f.fwd.y * f.size * 0.55, z: f.pos.z - f.fwd.z * f.size * 0.55 }, [c[0] * 0.5 + 0.6, c[1] * 0.5 + 0.4, c[2] * 0.5 + 0.3], f.size * 0.7);
+        glows.add({ x: f.pos.x - f.fwd.x * f.size * 0.55, y: f.pos.y - f.fwd.y * f.size * 0.55, z: f.pos.z - f.fwd.z * f.size * 0.55 }, [c[0] * 0.35 + 0.5, c[1] * 0.35 + 0.35, c[2] * 0.35 + 0.25], f.size * 0.4);
       }
       // (a glow's size in map units: the canvas's height over the view's height a unit off)
       const high = typeof window !== 'undefined' ? window.innerHeight : 800;
@@ -226,14 +231,15 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
       if (youTeam !== null && !battle.over) {
         const flag = battle.capitals.find((c) => c.team === battle.defender && c.role === 'flagship');
         const attack = youTeam === battle.attacker;
+        let n = 0;
         for (const sub of flag?.subs ?? []) {
           if (!sub.alive || sub.phase !== battle.phase) continue;
-          const d = Math.round(Math.hypot(sub.pos.x - camLocal.x, sub.pos.y - camLocal.y, sub.pos.z - camLocal.z) * 10);
-          list.push({ key: sub.id, pos: sub.pos, title: `${attack ? 'Destroy' : 'Defend'}: ${NAMES[sub.kind]}`, sub: `${d} m`, hp: sub.hp / sub.hpMax, colour: attack ? ATTACK : DEFEND });
+          // (the two generators sit close: the second's card hangs under its point, not over it)
+          list.push({ key: sub.id, pos: sub.pos, title: `${attack ? 'Destroy' : 'Defend'}: ${NAMES[sub.kind]}`, sub: far(sub.pos, camLocal), hp: sub.hp / sub.hpMax, colour: attack ? ATTACK : DEFEND, under: n++ % 2 === 1 });
         }
         if (!attack) {
           const theirs = battle.capitals.find((c) => c.team === battle.attacker && c.role === 'flagship' && c.alive);
-          if (theirs) list.push({ key: 'their-flag', pos: { x: theirs.pos.x, y: theirs.pos.y + theirs.size * 0.15, z: theirs.pos.z }, title: 'Destroy: their flagship', sub: `${Math.round(Math.hypot(theirs.pos.x - camLocal.x, theirs.pos.y - camLocal.y, theirs.pos.z - camLocal.z) * 10)} m`, hp: theirs.hull / theirs.hullMax, colour: ATTACK });
+          if (theirs) list.push({ key: 'their-flag', pos: { x: theirs.pos.x, y: theirs.pos.y + theirs.size * 0.15, z: theirs.pos.z }, title: 'Destroy: their flagship', sub: far(theirs.pos, camLocal), hp: theirs.hull / theirs.hullMax, colour: ATTACK });
         }
       }
       markers.sync(list);

@@ -112,6 +112,8 @@ import { createLeviathans } from './leviathans';
 import { createMeteors } from './meteors';
 import { DEBRIS_DRIFT, buildDeepSpace } from './deepspace';
 import { ROCK_HIT, boxOf, nearBox, nearRing, rockDamage, rockGrid, sweep, toBelt } from './rockHits';
+import { createFront } from './front';
+import { createModels as createBattleModels } from '../galaxy/models';
 import { createTrench } from './trench';
 import { createBeacons } from './beacons';
 import { PHONE, createPhone } from './phone';
@@ -768,6 +770,30 @@ export async function create(canvas, ctx) {
   const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: factionsOf(null), kinds: kindsOf(null) }); // (every side's: another pilot's hunters, whoever they are)
   const wingmen = hunters ? createWingmen(map, { fleet, solids: SOLIDS }) : null; // (friends in a long fight)
   const skirmishes = hunters ? createSkirmishes(map, { fleet, solids: SOLIDS }) : null; // (someone else's fight, out ahead)
+  // the crew's war (front.js): its front out in deep space, a battle there
+  // to fly into. Made for the crew's side, again if the crew changes; its
+  // ships are the galaxy's models (galaxy/models.js), loaded once the
+  // front's in sight. Not with reduced motion (nor are the hunters)
+  let front = null;
+  let frontSide = null;
+  let battleModels = null;
+  const frontFor = () => {
+    if (reduced) return null;
+    const side = sideFor(state.kind);
+    if ((side?.id ?? null) === frontSide) return front;
+    front?.dispose();
+    frontSide = side?.id ?? null;
+    battleModels ??= createBattleModels({ prepare: (o) => warm(o) });
+    let store = null;
+    try {
+      store = window.localStorage;
+    } catch {
+      // (storage blocked: the war is this visit's alone)
+    }
+    front = createFront(map, { side, models: battleModels, small, tier, reduced, storage: store, emit });
+    return front;
+  };
+  renderer.localClippingEnabled = true; // (the broken flagship's halves are cut by planes)
   let hunts = 0; // packs the director has sent this visit (the first is a small one)
   const director = createDirector();
   const pieces = createSetPieces(map, { small, fleet });
@@ -1910,7 +1936,7 @@ export async function create(canvas, ctx) {
       b.position.z += d.v[2] * dt;
       // into someone: a pop (the big ships just take it)
       // a hunter: down, or (the tougher ones) a hit that sparks off it
-      const hh = hunters?.hit(shotFrom, b.position, d.punch ?? 1) ?? farHit(shotFrom, b.position, d.punch ?? 1);
+      const hh = hunters?.hit(shotFrom, b.position, d.punch ?? 1) ?? farHit(shotFrom, b.position, d.punch ?? 1) ?? frontHit(shotFrom, b.position, d.punch ?? 1);
       if (hh) {
         b.visible = false;
         pops.hit({ point: hh.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: hh.down ? hh.size * 1.8 : 0.2 });
@@ -1980,6 +2006,17 @@ export async function create(canvas, ctx) {
     return { id: r.id, kind: r.kind, at: new THREE.Vector3(r.at.x, r.at.y, r.at.z), size: r.size, down: r.down };
   };
 
+  // a shot into the battle at the front (front.js), once you've picked a
+  // side: one of the other side's fighters (down, or a spark off it), one of
+  // the objectives, or a capital ship's hull or shield (a spark; the battle
+  // has its own flashes for those, and the crew their own lines)
+  const frontHit = (from, to, punch) => {
+    const r = front?.hit(from, to, punch);
+    if (!r) return null;
+    const ship = !r.sub && !r.capital && !r.shield;
+    return { id: r.id, kind: r.kind, at: new THREE.Vector3(r.at.x, r.at.y, r.at.z), size: ship ? r.size : 0.15, down: ship && r.down };
+  };
+
   // the heavy rounds: steered onto what they were locked on to, and off
   // with a bang at the first thing they meet (or right by their target)
   const toTarget = [0, 0, 0];
@@ -2027,7 +2064,7 @@ export async function create(canvas, ctx) {
       // tested against it next wants a Vector3)
       const near = tg?.at && tg.siegePart === undefined && Math.hypot(tg.at.x - m.position.x, tg.at.y - m.position.y, tg.at.z - m.position.z) < (tg.size ?? 0.3) + 0.35;
       const to = near ? missileTo.set(tg.at.x, tg.at.y, tg.at.z) : m.position;
-      const hh = hunters?.hit(shotFrom, to, d.punch) ?? farHit(shotFrom, to, d.punch);
+      const hh = hunters?.hit(shotFrom, to, d.punch) ?? farHit(shotFrom, to, d.punch) ?? frontHit(shotFrom, to, d.punch);
       if (hh) {
         if (hh.down) {
           emit({ type: 'kill', kind: hh.kind, hunter: true });
@@ -2071,6 +2108,59 @@ export async function create(canvas, ctx) {
       }
     }
     return any;
+  };
+
+  // the battle's bar at the front (BattleHud.jsx): written only when
+  // something in it changes, and on only while you fly for a side in it
+  let battleSig = '';
+  const PHASE_WORDS = ['', 'the shield generators', 'the bridge', 'the reactor'];
+  const placeBattle = () => {
+    const el = props.battle?.current;
+    if (!el) return;
+    const b = front?.battle;
+    const team = front?.joined ?? null;
+    const on = Boolean(b && team !== null && !b.over && flying() && !onFoot() && front.near);
+    if (!on) {
+      if (battleSig !== '') {
+        battleSig = '';
+        el.removeAttribute('data-on');
+      }
+      return;
+    }
+    const i = b.info;
+    const w = front.where();
+    const attack = team === b.attacker;
+    const left = Math.ceil(i.left);
+    const sig = `${i.tickets}|${left}|${i.phase}|${i.objectives.map((o) => o.hp.toFixed(2)).join(',')}|${i.hull.map((h) => h.toFixed(2)).join(',')}|${team}`;
+    if (sig === battleSig) return;
+    battleSig = sig;
+    el.toggleAttribute('data-on', true);
+    el.toggleAttribute('data-defend', !attack);
+    el.toggleAttribute('data-late', left < 60);
+    el.style.setProperty('--a', w.colours[0]);
+    el.style.setProperty('--b', w.colours[1]);
+    const q = (c) => el.querySelector(c);
+    const put = (c, text) => {
+      const n = q(c);
+      if (n && n.textContent !== text) n.textContent = text;
+    };
+    put('.battle-name-a', w.sides[0]);
+    put('.battle-name-b', w.sides[1]);
+    put('.battle-tickets-a', String(i.tickets[0]));
+    put('.battle-tickets-b', String(i.tickets[1]));
+    put('.battle-clock', `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`);
+    // the hulls: the attacker's flagship's, and the defender's by how many phases it's lost
+    const hull = [b.attacker === 0 ? i.hull[0] : i.hull[1], b.attacker === 0 ? i.hull[1] : i.hull[0]];
+    q('.battle-hull-a')?.style.setProperty('--hp', hull[0].toFixed(3));
+    q('.battle-hull-b')?.style.setProperty('--hp', hull[1].toFixed(3));
+    put('.battle-phase', i.phase <= 3 ? `Phase ${i.phase} · ${attack ? 'Destroy' : 'Defend'} ${PHASE_WORDS[i.phase]}` : attack ? 'Their flagship is breaking up' : 'Our flagship is lost');
+    const obj = q('.battle-obj');
+    if (obj) {
+      const now = i.objectives.filter((o) => o.phase === i.phase);
+      while (obj.children.length < now.length) obj.appendChild(document.createElement('i'));
+      while (obj.children.length > now.length) obj.lastChild.remove();
+      now.forEach((o, k) => obj.children[k].style.setProperty('--hp', o.hp.toFixed(3)));
+    }
   };
 
   // the weapon readout (its name, the heavy rounds left, the next one
@@ -2776,6 +2866,14 @@ export async function create(canvas, ctx) {
     if (skirmishes) farFight(dt, t, live);
     let busy = pieces.update(dt, t, camera);
     busy = leviathans.update(dt, t, camera) || busy;
+    // the war's front: the battle there, while you're in sight of it
+    const fr = frontFor();
+    if (fr) {
+      const r = fr.update(dt, t, camera, camLocal, live);
+      busy = r.busy || busy;
+      if (r.hurt > 0 && live && state.clock >= state.safeUntil) hurt(r.hurt);
+      placeBattle();
+    }
     if (meteors.count) {
       busy = true;
       for (const e of meteors.update(dt, live)) {
@@ -2790,7 +2888,7 @@ export async function create(canvas, ctx) {
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
-        const id = director.update(dt, { side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || leviathans.busy || meteors.count > 0 || state.view === 'map' || Boolean(props.charting), travelling: travelling(live), calm: state.shield < 50 });
+        const id = director.update(dt, { side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || leviathans.busy || meteors.count > 0 || state.view === 'map' || Boolean(props.charting) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50 });
         if (id) happen(id, live);
         // the drive comes back once they're off you (or have had their go)
         if (state.interdicted && (!hunters.active || state.clock - state.interdictAt > INTERDICT)) state.interdicted = false;
@@ -3077,7 +3175,7 @@ export async function create(canvas, ctx) {
         input.climb = clamp(input.climb + n.climb, -1, 1);
       }
     }
-    input.interdicted = state.interdicted;
+    input.interdicted = state.interdicted || Boolean(front?.inZone); // (the pulse drive's held down in a battle, as hunters hold it)
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
     const before = state.ship;
     const { ship: stepped, events } = step(state.ship, input, dt, siegeSt.down ? SOLIDS_OPEN : SOLIDS);
@@ -3172,7 +3270,8 @@ export async function create(canvas, ctx) {
     const rocks = meteors.count && !hunters?.active ? meteors.targets : [];
     // (someone else's fight's hunters, while nothing's after you: yours come first)
     const farCands = skirmishes?.active && !hunters?.active ? skirmishes.targets : [];
-    const cands = pilots.count || siegeCands.length || rocks.length || farCands.length ? [...(hunters?.targets ?? []), ...farCands, ...pilots.targets, ...siegeCands, ...rocks] : (hunters?.targets ?? []);
+    const battleCands = front?.joined !== null && front?.joined !== undefined ? front.targets : []; // (the other side's, at the front)
+    const cands = pilots.count || siegeCands.length || rocks.length || farCands.length || battleCands.length ? [...(hunters?.targets ?? []), ...battleCands, ...farCands, ...pilots.targets, ...siegeCands, ...rocks] : (hunters?.targets ?? []);
     const was = state.lock?.id ?? null;
     state.lock = cands.length || state.lock ? track(ship, cands, state.lock, dt, { cycle: state.cycle }) : null;
     state.cycle = 0;
@@ -4082,7 +4181,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, director, pieces, leviathans, meteors, fleet, novae, pilots, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, director, pieces, leviathans, meteors, fleet, novae, pilots, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -4265,6 +4364,11 @@ export async function create(canvas, ctx) {
       }
       return false;
     },
+    // the battle at the front: fly for a side (0 or 1), or stay out (null)
+    battleJoin(team) {
+      front?.join(team);
+      ctx.invalidate();
+    },
     // the nav map's: off to a place by a drive (travel above; false if it can't go)
     travel(id, drive) {
       return travel(id, drive);
@@ -4284,6 +4388,7 @@ export async function create(canvas, ctx) {
         interdicted: state.interdicted,
         hyper: hyperState({ last: state.hyperAt, now: wall(), interdicted: state.interdicted }),
         pilots: pilots.targets.map((p) => ({ id: p.peer, name: p.name, x: p.at.x, z: p.at.z })),
+        front: front?.where() ?? null, // (the crew's war, for the nav map)
       };
     },
     // the whole map: the view pulls out while you keep the ship (false
@@ -4337,6 +4442,8 @@ export async function create(canvas, ctx) {
       hunters?.dispose();
       wingmen?.dispose();
       skirmishes?.dispose();
+      front?.dispose();
+      battleModels?.dispose();
       netOff?.();
       pilots.dispose();
       pieces.dispose();

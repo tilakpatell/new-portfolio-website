@@ -217,6 +217,14 @@ describe('a battle', () => {
     expect(performance.now() - t0).toBeLessThan(4000);
   });
 
+  it('names what your guns lock on to', () => {
+    const b = make();
+    b.setYou(0);
+    for (const t of b.targets) expect(typeof t.name).toBe('string');
+    expect(b.targets.find((t) => t.kind === 'tie')?.name).toBe('TIE fighter');
+    expect(b.targets.find((t) => t.sub === 'gen-port')?.name).toBe('Shield generator');
+  });
+
   it('ends at once when asked (a dev hook)', () => {
     const b = make();
     b.end(1);

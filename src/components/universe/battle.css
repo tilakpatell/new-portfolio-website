@@ -5,7 +5,7 @@
   position: absolute;
   z-index: 2;
   left: 50%;
-  top: calc(var(--nav-h, 68px) + 10px);
+  top: calc(var(--nav-h, 68px) + 76px); /* under the crew's line (.universe-comms), as the Citadel's siege is */
   display: grid;
   justify-items: center;
   gap: 4px;
