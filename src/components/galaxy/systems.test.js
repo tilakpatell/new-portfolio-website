@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { contrast } from '../universe/universes';
 import { CLIPS } from '../../lib/clips';
 import { SYSTEM_MARKS, SYSTEM_NAMES, inGalaxyFlight, systemOfPath } from './names';
-import { CORE, ERAS, RIM, FILMS, FILM_ORDER, FIRST, GRID, LANES, REGIONS, SYSTEMS, arrival, goalsOf, bearing, coreBearing, courseTo, liftOf, starAhead, eraOf, erasOf, filmLabel, filmShort, filmsOf, gridAt, inEra, jumpSeconds, lightYears, parseSystem, reachAt, reachOf, regionAt, systemById, wantsDeathStar, yearLabel } from './systems';
+import { CORE, ERAS, RIM, FILMS, FILM_ORDER, FIRST, GRID, LANES, REGIONS, SYSTEMS, arrival, goalsOf, bearing, coreBearing, courseTo, liftOf, starAhead, eraOf, erasOf, filmLabel, filmShort, filmsOf, gridAt, inEra, jumpSeconds, kindsIn, lightYears, parseSystem, reachAt, reachOf, regionAt, systemById, wantsDeathStar, yearLabel } from './systems';
 
 const LOOKS = ['tatooine', 'geonosis', 'mandalore', 'hoth', 'endor', 'endor-giant', 'yavin', 'yavin4', 'kashyyyk', 'dagobah', 'naboo', 'lothal', 'sorgan', 'coruscant', 'mustafar', 'nevarro', 'kamino', 'scarif', 'bespin', 'moon-grey', 'moon-ice', 'moon-dust', 'moon-rust'];
 const PIECES = ['chase', 'fleet', 'escape', 'cannon', 'rocks', 'station', 'battle', 'deathstar', 'stream', 'patrol', 'depart', 'lanes', 'liftoff', 'shield', 'superlaser'];
@@ -246,5 +246,28 @@ describe('wantsDeathStar', () => {
   it('is true for exactly the systems whose pieces make a Death Star slot', () => {
     const wants = SYSTEMS.filter((s) => wantsDeathStar(s)).map((s) => s.id);
     expect(wants.sort()).toEqual(['alderaan', 'scarif', 'yavin']);
+  });
+});
+
+describe('kindsIn', () => {
+  it('lists the kinds a system flies', () => {
+    expect(kindsIn(systemById('hoth'))).toEqual(expect.arrayContaining(['executor', 'destroyer']));
+    expect(new Set(kindsIn(systemById('endor'))).size).toBe(kindsIn(systemById('endor')).length);
+    for (const s of SYSTEMS) for (const k of kindsIn(s)) expect(typeof k).toBe('string');
+  });
+  it('names each kind once, whichever piece flies it', () => {
+    for (const s of SYSTEMS) expect(new Set(kindsIn(s)).size, s.id).toBe(kindsIn(s).length);
+    expect(kindsIn(systemById('endor'))).toEqual(expect.arrayContaining(['deathstar2', 'moncal', 'tie', 'awing'])); // (a station, a battle’s ships, its fighters)
+    expect(kindsIn(systemById('hoth'))).toEqual(expect.arrayContaining(['transport', 'xwing'])); // (the escape’s ship and its escorts)
+    expect(kindsIn(systemById('yavin'))).toEqual(expect.arrayContaining(['deathstar', 'ywing'])); // (the Death Star’s piece, the stream)
+    expect(kindsIn(systemById('scarif'))).toContain('deathstar'); // (the superlaser’s)
+    expect(kindsIn(systemById('geonosis'))).toContain('coreship'); // (the lift-off)
+    expect(kindsIn(systemById('nevarro'))).toEqual(expect.arrayContaining(['razorcrest', 'tie'])); // (the chase, the patrol)
+  });
+  it('leaves out the rocks and the planets', () => {
+    for (const s of SYSTEMS) {
+      for (const k of kindsIn(s)) expect(['field', 'debris', 'ring'], `${s.id}: ${k}`).not.toContain(k);
+      for (const k of kindsIn(s)) expect(s.body?.look, `${s.id}: ${k}`).not.toBe(k);
+    }
   });
 });

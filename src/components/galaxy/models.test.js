@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BUILT_KINDS } from '../universe/trafficModels';
 import { GALAXY_KINDS } from './fleet';
 import { HUNTER_GLB, MODELS, STAND_IN, createModels } from './models';
+import { SYSTEMS, kindsIn } from './systems';
 
 const at = (path) => new URL(`../../../public${path}`, import.meta.url);
 
@@ -17,6 +18,11 @@ describe('the galaxy’s models', () => {
       if (built.includes(k) || k === 'deathstar') continue; // (the Death Star has its own sphere in the world)
       expect(built, `${k} → ${STAND_IN[k]}`).toContain(STAND_IN[k]);
     }
+  });
+
+  it('knows every kind a system flies: a model, or one built in code', () => {
+    const built = [...BUILT_KINDS, ...GALAXY_KINDS];
+    for (const s of SYSTEMS) for (const k of kindsIn(s)) expect(Boolean(MODELS[k]) || built.includes(k), `${s.id}: ${k}`).toBe(true);
   });
 
   describe('building a stand-in', () => {
@@ -36,6 +42,33 @@ describe('the galaxy’s models', () => {
         expect(slot.real, k).toBe(false); // (so the model that loads swaps in)
       }
       models.dispose();
+    });
+
+    it('prebuilds the kinds it is given, a slice at a time, the ones that load as their stand-ins', async () => {
+      const models = createModels();
+      models.prebuild(['tie', 'destroyer', 'tie', 'venator', 'nowhere']); // (once each; a stand-in for the one with no built version, nothing for the one that doesn’t exist)
+      expect(models.builtCount).toBe(0); // (not in this one)
+      await new Promise((r) => setTimeout(r, 400));
+      expect(models.builtCount).toBe(2); // (the venator’s stand-in is the destroyer, built already)
+      const slot = models.slot('tie', 1);
+      expect(slot.ready).toBe(true);
+      models.dispose();
+    });
+
+    it('prebuilds nothing once disposed', async () => {
+      const models = createModels();
+      models.dispose();
+      expect(() => models.prebuild(['tie'])).not.toThrow();
+      await new Promise((r) => setTimeout(r, 40));
+      expect(models.builtCount).toBe(0);
+    });
+
+    it('stops prebuilding when disposed part-way', async () => {
+      const models = createModels();
+      models.prebuild(['tie', 'destroyer', 'xwing', 'freighter']);
+      models.dispose();
+      await new Promise((r) => setTimeout(r, 400));
+      expect(models.builtCount).toBe(0);
     });
   });
 });

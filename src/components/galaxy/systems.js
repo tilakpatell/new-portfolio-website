@@ -1096,3 +1096,24 @@ export function goalsOf(s) {
 // Alderaan's tractor beam), or Scarif's, where it arrives to fire. (Endor's second
 // is built in code, kind 'deathstar2', and loads nothing.)
 export const wantsDeathStar = (s) => s.pieces.some((p) => p.type === 'deathstar' || p.type === 'superlaser' || p.kind === 'deathstar');
+
+// The kinds of ship and station a system's pieces fly, each once: the models to
+// start loading and the built ones to make ahead of a jump to it (world.js's
+// BUILD asks for exactly these: a fleet's ships, a battle's and its fighters, a
+// chase's two, an escape's ship and its escorts, a stream's, a patrol's, a
+// departure's, the lift-off's, a station's, the Death Star's). The rocks, the
+// ion cannon, the planet's shield and the skylanes make no slots, so they say nothing.
+const FLOWN = {
+  chase: (p) => [p.runner.kind, p.hunter.kind],
+  fleet: (p) => p.ships.map((x) => x.kind),
+  battle: (p) => [...Object.values(p.sides).flatMap((ships) => ships.map((x) => x.kind)), ...Object.values(p.fighters).flat()],
+  escape: (p) => [p.kind, p.escort],
+  stream: (p) => p.kinds,
+  patrol: (p) => [p.kind],
+  depart: (p) => [p.kind],
+  liftoff: (p) => [p.kind],
+  station: (p) => [p.kind],
+  deathstar: () => ['deathstar'],
+  superlaser: () => ['deathstar'],
+};
+export const kindsIn = (s) => [...new Set(s.pieces.flatMap((p) => FLOWN[p.type]?.(p) ?? []))];

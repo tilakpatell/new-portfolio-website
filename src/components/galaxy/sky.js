@@ -21,14 +21,18 @@
 // mipmaps, and the sphere you see just looks that up. Drawn once, its shader
 // can afford what it couldn't every frame: noise twisted by noise, seven
 // octaves deep. Until the first bake the sphere is black (the stars, the suns
-// and the other systems' stars are drawn live, as ever).
+// and the other systems' stars are drawn live, as ever). That shader is a big
+// one (on some drivers its first link takes seconds), so prepare() starts the
+// link at startup, in the background, and the first bake waits for nothing.
 //
 // createSky({ small, renderer }) → { group, setSystem(system), bake(renderer),
-//   update(camera, t), focus(id), beacons, sunDirs, setRatio(r), dispose() };
+//   prepare(renderer) → Promise, update(camera, t), focus(id), beacons, sunDirs,
+//   setRatio(r), dispose() };
 //   setSystem then bake (with the renderer it was made with, unless given
 //   another); beacons: [{ id, dir }] (unit vectors), the other systems' stars
 
 import * as THREE from 'three';
+import { precompile } from '../../lib/three/renderer';
 import { RIM, SYSTEMS, coreBearing, courseTo, distance } from './systems';
 
 const SKY_R = 5200; // (inside the camera's far plane, outside everything else)
@@ -499,6 +503,13 @@ export function createSky({ small = false, renderer = null } = {}) {
     setRatio(dpr) {
       starMat.uniforms.uDpr.value = dpr;
       beaconMat.uniforms.uDpr.value = dpr;
+    },
+    // the bake's shader made and linking now, as the bake will draw it (to the
+    // cube, so no tone mapping); resolves once it has. The first bake is then a
+    // draw, not a wait for a link, wherever in the game it comes
+    prepare(r = renderer) {
+      if (gone || !r) return Promise.resolve();
+      return precompile(r, bakeScene, cubeCamera.children[0], bakeScene, cube);
     },
     // the system's sky (setSystem's) drawn into the cube, once, and the
     // sphere looking it up from then on; the renderer is left as it was

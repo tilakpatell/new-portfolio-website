@@ -78,4 +78,27 @@ describe('the bake', () => {
     sky.bake(fakeRenderer());
     expect(r.render).toHaveBeenCalledTimes(6);
   });
+
+  it('has its shader made and linking before the first bake, against the cube it bakes into', async () => {
+    const r = fakeRenderer();
+    let into = null;
+    r.compile = vi.fn((scene) => {
+      into = r.target;
+      const mats = new Set();
+      scene.traverse((o) => o.material && mats.add(o.material));
+      return mats;
+    });
+    r.properties = { get: () => ({ currentProgram: { isReady: () => true } }) };
+    r.getContext = () => ({ isContextLost: () => false });
+    const sky = createSky({ small: true, renderer: r });
+    await sky.prepare();
+    expect(r.compile).toHaveBeenCalledTimes(1);
+    expect(into?.isWebGLCubeRenderTarget).toBe(true); // (the shader it bakes with: drawn to a target, no tone mapping)
+    expect([...r.compile.mock.results[0].value].map((m) => m.isShaderMaterial)).toEqual([true]);
+    expect(r.target).toBe(r.before); // (the renderer left as it was)
+    expect(r.render).not.toHaveBeenCalled(); // (nothing drawn)
+    sky.dispose();
+    await sky.prepare();
+    expect(r.compile).toHaveBeenCalledTimes(1);
+  });
 });

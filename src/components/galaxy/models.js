@@ -11,7 +11,7 @@
 // it has none), and a slot swaps over the moment it is.
 //
 // createModels({ prepare(object) → Promise }) → { slot(kind, size, { tint }) → slot,
-//   want(kinds), update(t), dispose() }
+//   want(kinds), prebuild(kinds), builtCount, update(t), dispose() }
 // slot: { holder (place it, turn it), kind, size, ready }; every model sits in
 // its holder centred, nose along +z, +y up, its biggest side `size` long.
 
@@ -111,12 +111,18 @@ function tinted(root, color) {
   return [...swapped.values()];
 }
 
+// a slice of the page's spare time (a timer where there's no such thing)
+const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 1000 }) : setTimeout(fn, 0));
+const unidle = (id) => (typeof requestIdleCallback === 'function' ? cancelIdleCallback(id) : clearTimeout(id));
+
 export function createModels({ prepare = null } = {}) {
   const loaded = new Map(); // kind → { holder, size } (a loaded model, normalised)
   const loading = new Map(); // kind → Promise
   const built = new Map(); // kind → { model (buildGalaxyShip's), holder, size }
   const slots = [];
   const owned = []; // tinted materials, ours to free
+  const queue = []; // kinds to build ahead (prebuild)
+  let slice = 0; // the idle callback that builds the next
   let dead = false;
 
   const load = (kind) => {
@@ -157,6 +163,22 @@ export function createModels({ prepare = null } = {}) {
     return t;
   };
 
+  // the next of the kinds to build ahead, one to a slice of idle time (a ship is
+  // its geometry and the canvases its lights and panels are drawn on: several
+  // together in a frame would be a hitch)
+  const buildNext = () => {
+    slice = 0;
+    if (dead) return;
+    const kind = queue.shift();
+    if (kind === undefined) return;
+    try {
+      template(kind);
+    } catch {
+      // (it's built when a slot wants it, and fails there if it's going to)
+    }
+    if (queue.length) slice = idle(buildNext);
+  };
+
   // a slot's model: the loaded one's copy if it's here, else a copy of the
   // built stand-in (the kind's own built version, or STAND_IN's; else nothing yet)
   function fill(s) {
@@ -193,6 +215,20 @@ export function createModels({ prepare = null } = {}) {
     want(kinds) {
       for (const k of kinds) if (MODELS[k]) load(k);
     },
+    // build these kinds' templates ahead, for the slots of a system about to be
+    // built (they flew as the loaded model's stand-in, or are the built ship itself)
+    prebuild(kinds) {
+      if (dead) return;
+      for (const k of kinds) {
+        const kind = BUILT.has(k) ? k : STAND_IN[k];
+        if (kind && BUILT.has(kind) && !built.has(kind) && !loaded.has(k) && !queue.includes(kind)) queue.push(kind);
+      }
+      if (queue.length && !slice) slice = idle(buildNext);
+    },
+    // how many templates are built (for the tests)
+    get builtCount() {
+      return built.size;
+    },
     loaded: (kind) => loaded.has(kind),
     // let a slot go (its holder off the scene; the shared parts stay)
     drop(s) {
@@ -207,6 +243,9 @@ export function createModels({ prepare = null } = {}) {
     },
     dispose() {
       dead = true;
+      if (slice) unidle(slice);
+      slice = 0;
+      queue.length = 0;
       for (const s of slots) s.holder.removeFromParent();
       slots.length = 0;
       for (const b of built.values()) {

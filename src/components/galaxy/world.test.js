@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
-import { SYSTEMS, goalsOf, systemById } from './systems';
+import { SYSTEMS, goalsOf, kindsIn, systemById } from './systems';
 import { makeSpace } from './space';
 import { buildSystem } from './world';
 import { LASER } from './fx';
@@ -127,6 +127,18 @@ describe('buildSystem', () => {
     expect(k.bolts.fire.mock.calls.length).toBeGreaterThan(5);
     for (const [, , o] of k.bolts.fire.mock.calls) expect(o.color).toEqual(LASER.remnant);
     w.dispose();
+  });
+
+  it('asks for no ship or station that kindsIn did not list, for the models the jump gets ready ahead', () => {
+    for (const sys of SYSTEMS) {
+      const k = kit();
+      const asked = new Set();
+      const slot = k.models.slot;
+      k.models.slot = (kind, size) => (asked.add(kind), slot(kind, size));
+      const w = buildSystem(sys, { ...k, small: false });
+      expect([...asked].filter((kind) => !kindsIn(sys).includes(kind)), sys.id).toEqual([]);
+      w.dispose();
+    }
   });
 
   it('fires the battles’ guns', () => {

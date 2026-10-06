@@ -80,7 +80,7 @@ import { buildSystem } from './world';
 import { AHEAD, FACTIONS, KINDS, NAMES } from './hunted';
 import { aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
 import { asking } from './asking';
-import { arrival, courseTo, jumpSeconds, lightYears, starAhead, systemById, wantsDeathStar } from './systems';
+import { arrival, courseTo, jumpSeconds, kindsIn, lightYears, starAhead, systemById, wantsDeathStar } from './systems';
 
 const BOLTS = 16;
 const CADENCE = { xwing: 0.12, falcon: 0.16, cruiser: 0.19, rv: 0.2 };
@@ -283,13 +283,27 @@ export async function create(canvas, ctx) {
   let detail = 1; // how finely the planets are drawn (0…1), as the world was last told
   let capDetail = false; // set when the scene is told to give up quality: the planets at their coarsest
   let env = null;
+  let envOf = null; // the system `env` was made for
   let warmed = false;
+  // what metal reflects here: made once for a system. The first is made as it's
+  // entered, since the shaders made then are made against an environment; a
+  // jump's world is made against the last system's (the same shaders), and its
+  // own comes with dressSystem
+  const reflect = (sys) => {
+    if (envOf === sys) return;
+    envOf = sys;
+    env?.dispose();
+    env = systemEnvironment(renderer, sys);
+    scene.environment = env.texture;
+  };
+  // The system built: its world, its space, its lights, its models asked for.
+  // Not its sky's bake and its environment (dressSystem): those are a good few
+  // milliseconds of the GPU's each, and a jump makes them a frame later than this
   const enter = (sys) => {
     state.world?.dispose();
     state.world = null;
     state.sys = sys;
     sky.setSystem(sys);
-    sky.bake(); // (its galaxy drawn once, for as long as you're here)
     const world = buildSystem(sys, { models, bolts, flashes, small, ratio: ratioSeen });
     world.setDetail(detail);
     scene.add(world.group);
@@ -301,9 +315,7 @@ export async function create(canvas, ctx) {
       keys[i].position.copy(s.dir).multiplyScalar(100);
     });
     keys[1].intensity = world.sunLights[1] ? 1.1 : 0;
-    env?.dispose();
-    env = systemEnvironment(renderer, sys);
-    scene.environment = env.texture;
+    if (!env) reflect(sys);
     hunters?.clear();
     state.auto = null;
     state.at = null;
@@ -313,6 +325,11 @@ export async function create(canvas, ctx) {
     state.nextHunt = 30 + Math.random() * 30;
     models.want(['destroyer', 'corvette', 'xwing', 'interceptor', ...(wantsDeathStar(sys) ? ['deathstar'] : [])]);
     return warm(world.group);
+  };
+  // the system's sky drawn into its cube (once, for as long as you're here), and what its metal reflects
+  const dressSystem = (sys) => {
+    sky.bake();
+    reflect(sys);
   };
 
   // ── The ship ──
@@ -888,6 +905,7 @@ export async function create(canvas, ctx) {
       emit({ type: 'event', id: 'course' });
     }
   };
+  let longest = 0; // (DEV) the longest frame, in ms, since the last jump started
   let pendingSystem = null; // the system the URL asks for, if a jump to it is waiting
   let asked = props.system ?? null; // the system the page last asked for
   const jumpDir = new THREE.Vector3();
@@ -898,8 +916,13 @@ export async function create(canvas, ctx) {
     const dir = courseTo(state.sys, to);
     jumpDir.set(...dir);
     state.auto = null;
-    state.jump = { to, from: state.sys, phase: state.ship ? 'align' : 'spool', age: 0, dir, dur: jumpSeconds(state.sys, to), built: false, why };
+    state.jump = { to, from: state.sys, phase: state.ship ? 'align' : 'spool', age: 0, dir, dur: jumpSeconds(state.sys, to), built: false, dressed: false, why };
     if (state.view === 'map') state.view = state.seat;
+    // its ships' models loading and its built ones made, in the seconds before the tunnel
+    const kinds = kindsIn(to);
+    models.want(kinds);
+    models.prebuild(kinds);
+    longest = 0;
     emit({ type: 'jump', phase: 'align', to: to.id, ly: lightYears(state.sys, to) });
     heard();
     ctx.invalidate();
@@ -957,8 +980,12 @@ export async function create(canvas, ctx) {
         j.built = true;
         enter(j.to).then(() => (j.ready = true));
         if (state.world) state.world.group.visible = false;
+      } else if (j.built && !j.dressed) {
+        // (and its sky and environment the frame after, not in the same one)
+        j.dressed = true;
+        dressSystem(j.to);
       }
-      if (j.ready && j.age >= j.dur) {
+      if (j.ready && j.dressed && j.age >= j.dur) {
         // out: off the new system's planet, on the side you came in from
         const a = arrival(j.to, j.from);
         state.ship = { ...spawn(null, a), speed: 46 };
@@ -1384,7 +1411,13 @@ export async function create(canvas, ctx) {
   const sunWorld = new THREE.Vector3();
   const toShip = new THREE.Vector3();
   let first = true;
+  let lastNow = 0;
   function render(ms, now) {
+    if (import.meta.env.DEV) {
+      // (the gap between this frame and the last, as the page saw it: a tab that was hidden shows as one long frame)
+      if (lastNow) longest = Math.max(longest, now - lastNow);
+      lastNow = now;
+    }
     gl.watch(now);
     const sharp = pace.frame(now);
     if (sharp !== null) post.sharpness = sharp;
@@ -1415,7 +1448,7 @@ export async function create(canvas, ctx) {
       camQOn = false;
       if (launched) emit({ type: 'launch' });
       else if (!reduced) {
-        state.jump = { to: state.sys, from: null, phase: 'exit', age: 0, dir: [0, 0, -1], dur: 0, built: true, ready: true };
+        state.jump = { to: state.sys, from: null, phase: 'exit', age: 0, dir: [0, 0, -1], dur: 0, built: true, dressed: true, ready: true };
         jumpFx.set({ stretch: 1, tunnel: 0, flash: 1, speed: 300 });
       }
     }
@@ -1735,7 +1768,12 @@ export async function create(canvas, ctx) {
 
   // ── Start: the system asked for, every shader made before the first frame ──
   const start = systemById(props.system) ?? systemById('tatooine');
+  // (the sky's bake shader, the one big one, starts linking now and the first bake waits for it, so that no bake after waits for a link, a jump's least of all)
+  const prepared = sky.prepare();
   const built = enter(start);
+  const dressed = prepared.then(() => {
+    if (!disposed) dressSystem(start);
+  });
   setShip(props.ship ?? null);
   setNet(props.net);
   const spares = new THREE.Group();
@@ -1749,7 +1787,7 @@ export async function create(canvas, ctx) {
     }
   }
   scene.add(spares);
-  const ready = Promise.all([built, warm(scene), post.composer ? precompilePasses(renderer, post.composer, camera) : null]).then(() => {
+  const ready = Promise.all([built, dressed, warm(scene), post.composer ? precompilePasses(renderer, post.composer, camera) : null]).then(() => {
     scene.remove(spares);
     if (disposed) return;
     for (const [k, model] of stock) fleet.stock(k, model);
@@ -1765,6 +1803,7 @@ export async function create(canvas, ctx) {
       system: state.sys?.id,
       ship: state.ship && { ...state.ship },
       jump: state.jump && { to: state.jump.to.id, phase: state.jump.phase, age: +state.jump.age.toFixed(2) },
+      longest: Math.round(longest),
       aim: state.aim?.id ?? null,
       at: state.at,
       auto: state.auto?.id ?? null,
