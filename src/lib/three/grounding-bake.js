@@ -49,6 +49,21 @@ export function coneDirections(axis, half, n, low = 2 * DEG) {
   return out;
 }
 
+// A sun no lower than `deg` degrees over the horizon, facing the same way.
+// A sun just risen throws every shadow a hundred metres and more, which on a
+// floor mask is a town drowned in shade; baked as if it stood a little
+// higher, the shadows still run long and the right way, and the street
+// stays legible. (Only the mask's sun is lifted: the walls are still lit by
+// the real one.) A new vector; `dir` is left alone.
+export function liftSun(dir, deg = 0) {
+  if (!(deg > 0)) return dir.clone();
+  const out = dir.clone().normalize();
+  const min = Math.sin(deg * DEG);
+  if (out.y >= min) return out;
+  const k = Math.sqrt(1 - min * min) / (Math.hypot(out.x, out.z) || 1);
+  return out.set(out.x * k, min, out.z * k);
+}
+
 // Directions over the sky, cosine-weighted (Hammersley points), so their
 // plain average is the sky's light on a level floor.
 export function skyDirections(n) {
@@ -113,7 +128,8 @@ const nextFrame = () => new Promise((r) => setTimeout(r, 0));
 // texels; `floor` the meshes (or groups) that are the floor, drawn from above;
 // `casters` the static world that shadows it (everything else is left out,
 // so hide what moves first); `times` [{ tod, channel }]; `sunAt(tod)` the
-// direction to the sun. `top` is as high as anything casting stands.
+// direction to the sun; a time with `lift` (degrees) is baked with its sun at
+// least that high (liftSun). `top` is as high as anything casting stands.
 export async function bakeFloorMask(renderer, scene, { area, size = 1024, floor, casters, times, sunAt, sunSamples = 48, skySamples = 64, cone = 4 * DEG, top = 90, shadowSize = 4096, onProgress = null } = {}) {
   const { x0, z0, w, d } = area;
   const cx = x0 + w / 2;
@@ -283,7 +299,8 @@ export async function bakeFloorMask(renderer, scene, { area, size = 1024, floor,
     for (const tm of named) {
       const weight = new THREE.Vector4();
       weight.setComponent(tm.channel, 1 / sunSamples);
-      for (const dir of coneDirections(sunAt(tm.tod), cone, sunSamples)) jobs.push([dir, weight]);
+      // (a time may ask for its sun to be baked higher than it stands: `lift`, in degrees)
+      for (const dir of coneDirections(liftSun(sunAt(tm.tod), tm.lift), cone, sunSamples)) jobs.push([dir, weight]);
     }
     const sky = new THREE.Vector4(0, 0, 0, 1 / skySamples);
     for (const dir of skyDirections(skySamples)) jobs.push([dir, sky]);

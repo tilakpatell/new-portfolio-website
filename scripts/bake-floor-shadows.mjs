@@ -17,10 +17,12 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { chromium } from 'playwright-core';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+// (a path, not the URL's pathname: on Windows that would start /C:/)
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 // The areas, in metres (x0, z0 the north-west corner; w east, d south), and
 // each one's mask size: rendered at `size`, kept at `ship` (each kept texel
@@ -36,10 +38,14 @@ const AREAS = [
 ];
 // The named times (sky.js's TIMES) and the channel each is kept in. Night
 // and the moments the sun is down are the sky term alone (channel 3): the
-// sun's shadows come in as it rises and go as it sets.
+// sun's shadows come in as it rises and go as it sets. Dawn's sun stands
+// under 4° up, and baked where it is it threw every building's shadow across
+// the next block: the mask drowned the town. It's baked as high as golden
+// hour's (12.8°), so the morning's shadows run as long as the evening's, the
+// other way (`lift`, lib/three/grounding-bake's liftSun).
 const TIMES = [
   { tod: 0.245, channel: 3 },
-  { tod: 0.262, channel: 0, name: 'dawn' },
+  { tod: 0.262, channel: 0, name: 'dawn', lift: 12.8 },
   { tod: 0.5, channel: 1, name: 'noon' },
   { tod: 0.71, channel: 2, name: 'golden' },
   { tod: 0.76, channel: 3 },
@@ -85,7 +91,10 @@ for (const t0 = Date.now(); ; ) {
   }
   await new Promise((r) => setTimeout(r, 300));
 }
-const exe = args.chromium ?? process.env.CHROMIUM ?? (await readdir('/opt/pw-browsers').catch(() => [])).filter((n) => /^chromium-\d+$/.test(n)).map((n) => `/opt/pw-browsers/${n}/chrome-linux/chrome`).find(existsSync);
+// the browser: as asked, the cloud sandbox's, or one installed on this machine
+const LOCAL = ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/chromium'];
+const sandbox = (await readdir('/opt/pw-browsers').catch(() => [])).filter((n) => /^chromium-\d+$/.test(n)).map((n) => `/opt/pw-browsers/${n}/chrome-linux/chrome`);
+const exe = args.chromium ?? process.env.CHROMIUM ?? process.env.CHROME ?? [...sandbox, ...LOCAL].find(existsSync);
 const browser = await chromium.launch({ executablePath: exe, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl', '--js-flags=--max-old-space-size=8192'] });
 const ctx = await browser.newContext({ viewport: { width: 640, height: 400 }, deviceScaleFactor: 1 });
 await ctx.addInitScript(() => {

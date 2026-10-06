@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { blobPlacement, bounceShader, floorShadowShader, maskWeights } from './grounding';
+import * as THREE from 'three';
+import { SHADE_TINT, blobPlacement, bounceShader, floorShadow, floorShadowShader, maskWeights, setFloorTime, shadeTint } from './grounding';
 
 // three's chunks as this version has them (the line the rewrite looks for)
 const CHUNKS = {
@@ -25,7 +26,9 @@ describe('the floor read from its masks', () => {
     expect(out.swapped).toEqual({ sun: true, sky: true, shade: true });
     expect(out.fragmentShader).toContain('getDirectionalLightInfo( directionalLight, directLight );\n\t\tdirectLight.color *= gSun;');
     expect(out.fragmentShader).toContain('reflectedLight.indirectDiffuse *= gSky;');
-    expect(out.fragmentShader).toContain('mix(uShade * outgoingLight, outgoingLight, 0.4 + 0.6 * min(gSun, gV.y))');
+    expect(out.fragmentShader).toContain('outgoingLight *= mix(vec3(1.0), uShadeTint, uShadeMix * (1.0 - min(gSun, gV.y)));');
+    expect(out.fragmentShader).toContain('uniform vec3 uShadeTint;');
+    expect(out.fragmentShader).toContain('uniform float uShadeMix;');
     expect(out.fragmentShader).not.toContain('#include <lights_fragment_begin>');
     // (the material's own occlusion map, if any, still applies first)
     expect(out.fragmentShader).toContain('#include <aomap_fragment>');
@@ -176,5 +179,79 @@ describe('a blob under a moving thing', () => {
   it('fills the object it is given', () => {
     const out = {};
     expect(blobPlacement(noon, { x: 0, z: 0 }, 0, 0, out)).toBe(out);
+  });
+});
+
+describe('the colour a shadow goes', () => {
+  // linear luminance, as the shader sees the colour
+  const lum = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+
+  it('keeps the shade’s hue at the brightness asked for', () => {
+    const shade = new THREE.Color(0x5a3420);
+    const t = shadeTint(shade, 0.75);
+    expect(lum(t)).toBeCloseTo(0.75, 6);
+    expect(t.r / t.g).toBeCloseTo(shade.r / shade.g, 6);
+    expect(t.g / t.b).toBeCloseTo(shade.g / shade.b, 6);
+    // (warm: more red than green, more green than blue)
+    expect(t.r).toBeGreaterThan(t.g);
+    expect(t.g).toBeGreaterThan(t.b);
+  });
+
+  it('leaves the colour it was given alone', () => {
+    const shade = new THREE.Color(0x5a3420);
+    const before = shade.getHex();
+    shadeTint(shade, 0.75);
+    expect(shade.getHex()).toBe(before);
+  });
+
+  it('softens the hue toward grey by the saturation asked for, at the same brightness', () => {
+    const shade = new THREE.Color(0x5a3420);
+    const full = shadeTint(shade, 0.45, 1);
+    const soft = shadeTint(shade, 0.45, 0.6);
+    const grey = shadeTint(shade, 0.45, 0);
+    expect(lum(soft)).toBeCloseTo(0.45, 6);
+    expect([grey.r, grey.g, grey.b].map((v) => +v.toFixed(6))).toEqual([0.45, 0.45, 0.45]);
+    expect(soft.r).toBeCloseTo(0.45 + (full.r - 0.45) * 0.6, 6);
+    expect(soft.b).toBeCloseTo(0.45 + (full.b - 0.45) * 0.6, 6);
+    // (still warm)
+    expect(soft.r).toBeGreaterThan(soft.g);
+    expect(soft.g).toBeGreaterThan(soft.b);
+  });
+
+  it('takes black as no tint at all', () => {
+    const t = shadeTint(new THREE.Color(0x000000), 0.75);
+    expect([t.r, t.g, t.b]).toEqual([0.75, 0.75, 0.75]);
+  });
+});
+
+describe('the floor’s shade through the day', () => {
+  const bake = () => ({ areas: [{ texture: null, x0: 0, z0: 0, w: 10, d: 10 }], times: TIMES, shade: 0x5a3420 });
+  const uniformsOf = (b) => floorShadow(new THREE.MeshStandardMaterial(), b).userData.floorShadow;
+
+  it('tints the shadows fully while the sun lights the floor, and not at all at night', () => {
+    const b = bake();
+    const u = uniformsOf(b);
+    setFloorTime(b, 0.5, 1);
+    expect(u.uShadeMix.value).toBeCloseTo(SHADE_TINT.mix, 9);
+    setFloorTime(b, 0.93, 0);
+    expect(u.uShadeMix.value).toBe(0);
+  });
+
+  it('tints them by as much as a low sun lights it', () => {
+    const b = bake();
+    const u = uniformsOf(b);
+    setFloorTime(b, 0.262, 0.4);
+    expect(u.uShadeMix.value).toBeCloseTo(SHADE_TINT.mix * 0.4, 9);
+    // (and a share past the ends is held to them)
+    setFloorTime(b, 0.262, 3);
+    expect(u.uShadeMix.value).toBeCloseTo(SHADE_TINT.mix, 9);
+  });
+
+  it('takes the sun as full where nobody says', () => {
+    const b = bake();
+    const u = uniformsOf(b);
+    setFloorTime(b, 0.5);
+    expect(u.uShadeMix.value).toBeCloseTo(SHADE_TINT.mix, 9);
+    expect(u.uMaskMix.value.toArray()).toEqual([1, 2, 0]);
   });
 });

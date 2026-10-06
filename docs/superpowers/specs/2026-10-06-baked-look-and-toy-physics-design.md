@@ -401,3 +401,84 @@ match the lit buildings beside them in a side-by-side at each time.
   `shaders/matcap/fragment.glsl`, `Materials/FloorShadow.js` in `brunosimon/folio-2019`.
 - One pull request per step, each merged on its own; branch from `main`; run the autopilot
   check with `--shots` for the ship's log if the autopilot's protocol applies.
+
+## Implementation notes (Step 1, as built)
+
+What changed from the spec above, and why. Two sessions built it: the first wired it, the
+second checked it and tuned it. Commits `8087d86`, `c0b7934` and the Step 1 commit after them.
+
+1. **How the masks are rendered.** The spec draws a white Lambert floor once per direction
+   and divides by n·l. As built, the floor is drawn once from straight above into a float
+   picture of where each of its points is in the world. Then, for each direction, the static
+   world goes into a 4096² `BasicShadowMap` from that direction, and one additive pass over
+   the picture adds up which points it sees (`lib/three/grounding-bake.js`). That gives
+   visibility only, with no cosine to divide back out: slopes stay the ground shader's
+   business. Each area takes 208 passes: 48 sun directions in a 4° cone at each of the three
+   named times, and 64 sky directions.
+2. **Sizes.** The city is baked at 2048² (29 cm a texel) and kept at 1024² by averaging each
+   2 × 2 block. Lossless 2048² was 1.95 MB, over the 1.3 MB cap. The averaged mask is also
+   smoother than one rendered at 1024². The RV and the two arches tiles are 512². As shipped:
+   city 842 KB, RV 29 KB, arches-w 85 KB, arches-e 73 KB, about 1.03 MB in all.
+3. **Two more times with no sun**, 0.245 and 0.76 (channel 3, the sky term alone), either
+   side of dawn and golden hour. The sun's shadows fade in as it rises and out as it sets,
+   instead of appearing at the first named time.
+4. **Dawn's sun is lifted for the bake.** At 0.262 the sun stands 3.9° up. Baked there, every
+   building threw its shadow across the next block and the mask drowned the town: the city's
+   mean sun visibility at dawn was 0.40, against golden hour's 0.63. The bake now takes a
+   time's `lift` (`liftSun`): dawn is baked at golden hour's 12.8°, facing the same way. The
+   morning's shadows run as long as the evening's, the other way. The walls are still lit
+   by the real sun.
+5. **The shade.** The spec's
+   `mix(uShade · outgoingLight, outgoingLight, 0.4 + 0.6 · min(gSun, gSky))` darkened a
+   shadow a second time: the sun's light and the sky's are already cut by then. A shadow came
+   out at about 0.42 of its light, dark brown, and at dawn the whole town did. As built:
+   - `outgoingLight *= mix(1, uShadeTint, uShadeMix · (1 − min(gSun, gSky)))`
+   - the tint is `#5a3420`'s hue at linear luminance 0.45 and saturation 0.6
+     (`shadeTint`, `SHADE_TINT`), mixed in at 0.65
+   - a shadow keeps about two thirds of its light and goes warm brown, neither grey nor red
+   - at full saturation the pools under the trees went red; at three quarters' brightness the
+     golden-hour shadows hardly read
+   - the mix follows how much of the floor's light is the sun's: `setFloorTime(bake, tod,
+     sun)`, with `smoothstep(0, 0.15, sun.y)` from `scene.js`. A sun just up hardly lights
+     the street, so it doesn't darken what it would shadow.
+   - night has no tint. The sky term still darkens wall feet and alleys.
+6. **The building shell had too many vertex attributes** (`city.js`): 17, over the 16 a
+   graphics chip must support. SwiftShader drew no buildings at all, and `main` logs
+   `VALIDATE_STATUS false` for it there. `aCorner` duplicated `position` and was dropped.
+   lift, out, cornice and drop are packed into one `vec4 aBend`.
+7. **Blobs.**
+   - one instanced draw for up to 96 movers: the Aztek, Hank, the traffic, the cast, the
+     tumbleweeds (by how high they've hopped) and the freight's cars
+   - drawn multiplied (the floor times `mix(1, shade, a)`), `renderOrder` −1 so they come
+     straight after the floor and before anything see-through, with `polygonOffset`
+   - parked cars get none: they don't move, so they're in the masks
+   - their strength follows the sun's share: 0.5 by the moon at night
+8. **`api.info` counts every pass.** `renderer.info.autoReset` is off and the count resets
+   once a frame, so the composer's passes are all in it (and, before, the shadow pass).
+9. **Shadows gone from the world.** No `castShadow` or `receiveShadow` remains in
+   `albuquerque/world`, and the stage's shadow pass is off. The Casa Tranquila and Metherria
+   interiors (`albuquerque/casa`, `albuquerque/metherria`) are their own scenes, lit their
+   own way, and are untouched.
+10. **Scripts on any machine.** `scripts/abq-qa.mjs` and `scripts/bake-floor-shadows.mjs`
+    take their paths through `fileURLToPath` (a URL's pathname starts `/C:/` on Windows). They
+    use a local Chrome or Edge where the sandbox's `/opt/pw-browsers` isn't there. The QA
+    script gained:
+    - the `central-slant` and `park` views
+    - `--name` and `--json`
+    - a median beside the mean
+
+### Measured (Step 1)
+
+Walt's drive, `mid` tier, Edge's SwiftShader at 960 × 600, the QA script's steady 60 Hz
+clock. Three rounds, before and after interleaved, 24 frames each at noon and golden hour.
+"Before" is `main` with only fix 6 applied, so its city draws.
+
+| | before (shadow map) | after (masks, blobs, bounce) |
+| --- | --- | --- |
+| frame, median of the rounds' medians | 641 ms | 561 ms (−12%) |
+| draw calls | 164–169 | 109–110 (−35%) |
+| triangles | 1.47 M | 0.79 M (−46%) |
+
+The screenshots at the four times are in `docs/superpowers/shots/2026-10-06-abq-grounding-*`.
+At dawn the mean brightness now matches the old picture's (RGB 110/85/62 against
+111/91/69); with the spec's formula it was 83/62/44.
