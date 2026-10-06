@@ -54,9 +54,19 @@ Made for the user, who asked for this to be done without checking in.
   happened on), and never in the whole-map view. A new slider, Lock tracking (`controls.js`
   `track`, 0 is off), scales it. The autopilot and a jump take no nudge.
 - **Traffic lives.** More groups and flybys; ships that come in to a place
-  and dock (shrinking into it) and launch out of it; fighter wings that
-  peel apart after a flyby; civilians that run while a fight is on; bigger
-  convoys. The belt and the dust are denser. `deepspace.js`, `planets.js`,
+  and dock (shrinking into it) and launch out of it, only where there's
+  something to land on (not a star, the black hole, a nebula or the Star
+  Wars gate); fighter wings that peel apart after a flyby; civilians that
+  run while a fight is on; bigger convoys. The belt and the dust are
+  denser.
+- **Friends in a long fight.** A wing of two (X-wings for Luke and Han,
+  Birdperson for Rick, either for Walt and Jesse) comes up from behind
+  when a hunt drags on or the shields run low, once a hunt. It covers you:
+  each goes only after a hunter coming at you, makes a pass of a few
+  seconds and comes back on your wing, fires real bolts that miss more
+  than they hit, and leaves once the sky is clear (`wingRules.js`, pure and
+  tested; `wingmen.js` draws it). A help, not a turret: on its own it takes
+  most of half a minute to see off a pack of three. `deepspace.js`, `planets.js`,
   `stations.js`, the hulls and the hangar are another session's and aren't
   touched.
 

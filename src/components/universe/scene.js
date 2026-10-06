@@ -3274,7 +3274,7 @@ export async function create(canvas, ctx) {
     const popBusy = pops.update(dt, camera);
     const fxBusy = crashBusy || popBusy || Boolean(state.crash?.swallow);
     if (traffic) {
-      for (const e of traffic.update(dt, t, flying() && !state.crash && !state.dive ? state.ship : null)) {
+      for (const e of traffic.update(dt, t, flying() && !state.crash && !state.dive ? state.ship : null, { fight: Boolean(hunters?.active) })) {
         if (e.event === 'convoy') emit({ type: 'event', id: 'convoy' });
         else if (!e.event) emit(e); // (someone in distress said so as they came)
       }
