@@ -32,6 +32,11 @@ class Utterances(unittest.TestCase):
         got = utterances(words("Yo. Science bitch, that is what this is all about", pauses={0: 0.6}))
         self.assertEqual([u[2] for u in got], ["Science bitch, that is what this is all about"])
 
+    def test_a_word_whisper_stretched_over_a_silence_is_dropped(self):
+        got = utterances([("Yeah.", 0.0, 40.0), ("Science,", 40.2, 40.6), ("bitch!", 40.7, 41.4)])
+        self.assertTrue(all(e - s <= 11.5 for s, e, _ in got))
+        self.assertEqual([t for _, _, t in got], ["Science, bitch!"])  # the words after it are kept
+
     def test_a_long_run_splits_at_a_sentence_end(self):
         text = "one two three four five six seven eight nine ten. " * 5
         got = utterances(words(text.strip()), longest=11.5)

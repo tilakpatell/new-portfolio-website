@@ -300,7 +300,7 @@ def main():
             score = pick.segment_score(sim, margin, g["ovrl"], g["utmos"], g["halves"])
             cands.append({"source": s["id"], "title": s["title"], "start": g["start"], "end": g["end"], "text": g["text"], "sim": round(sim, 3), "margin": round(margin, 3), "halves": g["halves"], "ovrl": g["ovrl"], "bak": g["bak"], "utmos": g["utmos"], "clipped": g["clipped"], "score": round(score, 3)})
         cands.sort(key=lambda c: -c["score"])
-        good = [c for c in cands if c["margin"] > 0.05 and c["clipped"] < 0.002 and c["end"] - c["start"] >= 1.5]
+        good = [c for c in cands if c["margin"] > 0.05 and c["clipped"] < 0.002 and 1.5 <= c["end"] - c["start"] <= pick.LONGEST + 0.5]
         # the best of them a stretch at a time: a short line from someone else at one end
         # hardly moves a segment's voiceprint, but the stretch it's in isn't the speaker
         kept = []

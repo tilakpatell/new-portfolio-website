@@ -39,7 +39,8 @@ def utterances(words, gap=0.35, shortest=1.2, longest=LONGEST):
                 last = ends[-1] if ends else last
             piece, run = run[: last + 1], run[last + 1 :]
             start, end = piece[0][1], piece[-1][2]
-            if end - start + 1e-6 >= shortest:
+            # (a lone word longer than `longest` is Whisper stretching it over a silence: dropped)
+            if shortest <= end - start + 1e-6 and end - start <= longest:
                 out.append((start, end, " ".join(w[0] for w in piece)))
     return out
 
