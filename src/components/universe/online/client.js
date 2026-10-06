@@ -44,8 +44,8 @@
 // with siege.js's readSiege).
 
 import { readBuildWire, writeBuild } from '../shipyard/build';
-import { WHO, readLooks, writeLook } from '../../rickmorty/wardrobe/looks';
-import { APP_ID, CURSOR_MS, DAMAGE, DAMAGE_MAX, FLAG, FOOT_MS, GUARD, PACK_MS, POSE_MS, PUNCH_MAX, ROOM, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, writeCursor, writeFoot, writePack, writePose, writeShot, WALK_MS, readWalk, writeWalk } from './protocol';
+import { EVERYONE, readLooks, writeLook } from '../../rickmorty/wardrobe/looks';
+import { APP_ID, CURSOR_MS, DAMAGE, DAMAGE_MAX, FLAG, FOOT_MS, GUARD, PACK_MS, POSE_MS, PUNCH_MAX, ROOM, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, writeCursor, writeFoot, writeLooksWire, writePack, writePose, writeShot, WALK_MS, readWalk, writeWalk } from './protocol';
 import { UNIVERSE, isFlight, placeName } from './where';
 import { STOCK_LOADOUT, readLoadout, writeOutfit } from '../outfit';
 import { readSiege } from '../siege';
@@ -86,10 +86,10 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
   };
   const roster = () => emit({ type: 'roster' });
   const feed = (text, tone = 'info') => emit({ type: 'feed', text, tone });
-  const hello = () => ({ n: self.name, k: self.kind, p: self.loadout.paint, o: writeOutfit(self.loadout), ...(self.build ? { b: writeBuild(self.build) } : {}), ...(self.looks ? { l: WHO.map((who) => writeLook(self.looks[who])) } : {}), c: self.kills, w: self.where });
+  const hello = () => ({ n: self.name, k: self.kind, p: self.loadout.paint, o: writeOutfit(self.loadout), ...(self.build ? { b: writeBuild(self.build) } : {}), ...writeLooksWire(self.looks), c: self.kills, w: self.where });
   const same = (a, b) => Object.keys(STOCK_LOADOUT).every((slot) => a[slot] === b[slot]);
   const sameBuild = (a, b) => (a ? writeBuild(a).join() : '') === (b ? writeBuild(b).join() : '');
-  const looksKey = (l) => (l ? JSON.stringify(WHO.map((who) => writeLook(l[who]))) : '');
+  const looksKey = (l) => (l ? JSON.stringify(EVERYONE.map((who) => (l[who] ? writeLook(l[who]) : null))) : ''); // (a peer’s may have one cast’s and not the other’s)
 
   const peerOf = (id) => {
     let p = peers.get(id);
@@ -100,7 +100,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
         kind: null,
         loadout: STOCK_LOADOUT,
         build: null, // the garage build they fly, or null: their stock ship
-        looks: null, // how they dress their Rick and Morty (the wardrobe's), or null: as the show has them
+        looks: null, // how they dress their Rick and Morty, their Walt and Jesse (the wardrobe’s), or null: as the show has them
         kills: 0, // the ones this browser saw
         where: null,
         ally: 'none',

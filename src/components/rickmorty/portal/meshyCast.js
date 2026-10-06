@@ -11,6 +11,9 @@ import { toon } from './toon';
 import { rimToon } from '../../../lib/three/ink';
 import { gltfLoader } from '../../../lib/three/gltf';
 import { sharpenMaterial } from '../../../lib/three/textures';
+import { borrowClips, faceAhead, retarget } from './clips';
+
+export { faceForward, heading } from './clips';
 
 // Meshy's textures carry their own shading, so the light steps stay lighter
 // than the shapes' (a third of the way down at most, not two thirds)
@@ -35,6 +38,13 @@ const flat = (map, extra = {}) => toon(0xffffff, { map, gradientMap: lightRamp()
 const paint = (map, extra = {}) => lit(flat(map, extra));
 
 export const BASE = '/games/meshy';
+// An asset: one of Portal panic’s cast by name (its file in BASE, or in the
+// folder FOLDERS gives it, its clips beside it), or a figure of the site’s
+// from elsewhere by its whole path (Albuquerque’s Walt and Jesse, for the
+// wardrobe), which has no clips of its own and walks on Rick’s, borrowed
+// (clips.js).
+export const assetUrl = (name) => (name.startsWith('/') ? name : `${FOLDERS[name] ?? BASE}/${name}.glb`);
+const ownClips = (name) => !name.startsWith('/');
 
 // game kind → the model, how tall it stands in the arena (world units; a
 // little over the shapes' sizes, as slim figures read smaller from above)
@@ -143,9 +153,10 @@ export function cullWithin(mesh, frame, height) {
 
 // `kinds` and `rigged`: another game's table and its skinned models (the
 // Citadel's, rickmorty/citadel/people.js); Portal panic's by default.
-// `cull`: figures out of view aren't drawn (a world with a lot of them)
-export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false } = {}) {
-  const loader = gltfLoader();
+// `cull`: figures out of view aren’t drawn (a world with a lot of them);
+// `loader`: another GLTFLoader (a test’s)
+export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false, loader: given = null } = {}) {
+  const loader = given ?? gltfLoader();
   const assets = new Map(); // name → { scene, height, offset, clips }
   const owned = [];
 
@@ -160,7 +171,7 @@ export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false }
 
   const loadOne = async (name, want = ['idle', 'walk', 'run']) => {
     try {
-      const gltf = await loader.loadAsync(`${FOLDERS[name] ?? BASE}/${name}.glb`);
+      const gltf = await loader.loadAsync(assetUrl(name));
       const scene = gltf.scene;
       scene.traverse((o) => {
         if (!o.isMesh) return;
@@ -180,16 +191,18 @@ export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false }
       const offset = new THREE.Vector3(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2);
       const clips = {};
       if (rigged.has(name)) {
-        const got = await Promise.all(want.map((c) => clipOf(`${BASE}/${name}-${c}.glb`)));
-        want.forEach((c, i) => {
-          clips[c] = got[i];
-        });
         const hips = scene.getObjectByName('Hips');
-        if (hips?.parent && clips.walk) {
-          const up = new THREE.Vector3(0, 1, 0).applyQuaternion(hips.parent.getWorldQuaternion(new THREE.Quaternion()).invert());
-          const ahead = heading(clips.walk, up);
-          if (ahead != null) for (const [n, c] of Object.entries(clips)) if (c && n !== 'walk') faceForward(c, up, ahead);
+        if (ownClips(name)) {
+          const got = await Promise.all(want.map((c) => clipOf(`${BASE}/${name}-${c}.glb`)));
+          want.forEach((c, i) => {
+            clips[c] = got[i];
+          });
+        } else if (hips) {
+          // (Rick’s, made for his hips, scaled to this figure’s: copies, so his own stay as they are)
+          const rick = await borrowClips(want, { loader });
+          for (const c of want) clips[c] = retarget(rick[c], hips.position.y, rick[c]?.userData.hips);
         }
+        if (hips?.parent && clips.walk) faceAhead(clips, new THREE.Vector3(0, 1, 0).applyQuaternion(hips.parent.getWorldQuaternion(new THREE.Quaternion()).invert()));
       }
       assets.set(name, { scene, height: size.y, offset, clips, rigged: rigged.has(name) });
     } catch {
@@ -284,38 +297,6 @@ export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false }
   };
 
   return { load, make, prop, dispose };
-}
-
-// Meshy's idle stands turned off to one side, like a fighter's stance: turn
-// a clip's hips about the up axis (`up`, in the hips' parent's space) so its
-// mean heading matches `target` (the walk's, which faces ahead).
-const hipsTrack = (clip) => clip?.tracks.find((t) => /^hips\.quaternion$/i.test(t.name));
-export function heading(clip, up) {
-  const v = hipsTrack(clip)?.values;
-  if (!v) return null;
-  let sx = 0;
-  let sy = 0;
-  for (let i = 0; i < v.length; i += 4) {
-    // the twist about `up`: 2·atan2(q.xyz · up, q.w)
-    const a = 2 * Math.atan2(v[i] * up.x + v[i + 1] * up.y + v[i + 2] * up.z, v[i + 3]);
-    sx += Math.cos(a);
-    sy += Math.sin(a);
-  }
-  return Math.atan2(sy, sx);
-}
-export function faceForward(clip, up, target) {
-  const v = hipsTrack(clip)?.values;
-  const now = heading(clip, up);
-  if (!v || now == null) return;
-  const fix = new THREE.Quaternion().setFromAxisAngle(up, target - now);
-  const q = new THREE.Quaternion();
-  for (let i = 0; i < v.length; i += 4) {
-    q.set(v[i], v[i + 1], v[i + 2], v[i + 3]).premultiply(fix);
-    v[i] = q.x;
-    v[i + 1] = q.y;
-    v[i + 2] = q.z;
-    v[i + 3] = q.w;
-  }
 }
 
 const smooth = (a, b, x) => {

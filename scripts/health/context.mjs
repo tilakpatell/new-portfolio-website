@@ -34,13 +34,15 @@ export async function makeContext(root, { dirs = ['src', 'scripts'] } = {}) {
   };
 }
 
-// The shared shape: detail worst first, at most 25 rows.
-export const metric = ({ id, label, unit, detail = [], value = detail.length, note }) => ({
+// The shared shape: detail worst first, at most 25 rows. A metric whose worst
+// isn't its biggest n (cycles: the shortest loop first) passes ordered, and
+// its own order stands.
+export const metric = ({ id, label, unit, detail = [], value = detail.length, note, ordered = false }) => ({
   id,
   label,
   value,
   unit,
   better: 'lower',
-  detail: [...detail].sort((a, b) => b.n - a.n).slice(0, 25),
+  detail: (ordered ? detail : [...detail].sort((a, b) => b.n - a.n)).slice(0, 25),
   ...(note ? { note } : {}),
 });

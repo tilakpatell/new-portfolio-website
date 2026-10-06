@@ -49,7 +49,8 @@ import { gltfLoader } from '../../lib/three/gltf';
 import { sharpen } from '../../lib/three/textures';
 import { MESHY, createMeshyCast } from '../rickmorty/portal/meshyCast';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import { LOOK_KEY, readLooks } from '../rickmorty/wardrobe/looks';
+import { RICK_HIPS, borrowClips, faceForward, heading as headingOf, retarget } from '../rickmorty/portal/clips';
+import { EVERYONE, LOOK_KEY, defaultLook, readLooks, writeLook } from '../rickmorty/wardrobe/looks';
 import { bodyAsset, bodyKind, dress, withWardrobe } from '../rickmorty/wardrobe/wear';
 import { local } from '../../lib/hooks';
 import { smoothNormals } from '../cockpit/crew';
@@ -120,59 +121,8 @@ const CAM = { dist: 3.4, up: 0.55, pitch: [-0.25, 0.75], look: 1.6 }; // metres,
 
 const getLoader = () => gltfLoader();
 
-// Rick's clips, for every Meshy figure without its own: the bones' turns,
-// and the hips' height scaled to the figure's (no other bone's length)
-let rickClips = null;
-const borrowClips = () => {
-  if (!rickClips) {
-    rickClips = Promise.all(['idle', 'walk', 'run'].map((c) => getLoader().loadAsync(`/games/meshy/rick-${c}.glb`).then((g) => g.animations[0] ?? null, () => null))).then(([idle, walk, run]) => ({ idle, walk, run }));
-  }
-  return rickClips;
-};
-const RICK_HIPS = 90.233;
-function retarget(clip, hipsY) {
-  if (!clip) return null;
-  const k = hipsY / RICK_HIPS;
-  const tracks = [];
-  for (const tr of clip.tracks) {
-    if (/\.quaternion$/.test(tr.name)) tracks.push(tr.clone());
-    else if (/^Hips\.position$/.test(tr.name)) {
-      const t = tr.clone();
-      for (let i = 0; i < t.values.length; i++) t.values[i] *= k;
-      tracks.push(t);
-    }
-  }
-  return new THREE.AnimationClip(clip.name, clip.duration, tracks);
-}
-// Meshy's idle stands turned off to one side: turn a clip's hips about the
-// up axis so its mean heading matches the walk's (as meshyCast does)
-const hipsTrack = (clip) => clip?.tracks.find((t) => /^hips\.quaternion$/i.test(t.name));
-function headingOf(clip, up) {
-  const v = hipsTrack(clip)?.values;
-  if (!v) return null;
-  let sx = 0;
-  let sy = 0;
-  for (let i = 0; i < v.length; i += 4) {
-    const a = 2 * Math.atan2(v[i] * up.x + v[i + 1] * up.y + v[i + 2] * up.z, v[i + 3]);
-    sx += Math.cos(a);
-    sy += Math.sin(a);
-  }
-  return Math.atan2(sy, sx);
-}
-function faceForward(clip, up, target) {
-  const v = hipsTrack(clip)?.values;
-  const now = headingOf(clip, up);
-  if (!v || now == null) return;
-  const fix = new THREE.Quaternion().setFromAxisAngle(up, target - now);
-  const q = new THREE.Quaternion();
-  for (let i = 0; i < v.length; i += 4) {
-    q.set(v[i], v[i + 1], v[i + 2], v[i + 3]).premultiply(fix);
-    v[i] = q.x;
-    v[i + 1] = q.y;
-    v[i + 2] = q.z;
-    v[i + 3] = q.w;
-  }
-}
+// (Rick’s clips, for every Meshy figure without its own, are borrowed as
+// the wardrobe’s cast borrows them: rickmorty/portal/clips.js)
 
 // idle, walking and running by how fast (move 0…1)
 function blend(act, move) {
@@ -238,12 +188,15 @@ function rigged(model, clips, tall, owned) {
   };
 }
 
-// the wardrobe's look for the cruiser's Rick or Morty (as kept, or as given)
-const WEARS = new Set(['rick', 'morty']);
+// the wardrobe’s look for the cruiser’s Rick or Morty, the RV’s Walt or
+// Jesse (as kept, or as given: a pilot’s from the wire may have one cast’s
+// and not the other’s, which are then as the show has them)
+const WEARS = new Set(EVERYONE);
+const lookFor = (who, looks) => (WEARS.has(who) ? readLooks(looks ?? local.get(LOOK_KEY))[who] : null);
 const HAND_GUNS = { portalgun: 'portal', laserpistol: 'laser' }; // the wardrobe's hand gear that's a gun on foot
 async function loadModel(spec, cast, looks = null) {
   if (spec.src.meshy) {
-    const look = WEARS.has(spec.src.meshy) ? (looks ?? readLooks(local.get(LOOK_KEY)))[spec.src.meshy] : null;
+    const look = lookFor(spec.src.meshy, looks);
     let c = null;
     if (look) {
       const asset = bodyAsset(look);
@@ -318,6 +271,27 @@ function rigScene(model, clips, tall, { shared = false } = {}) {
     }
     return rigged(model, own, tall, owned);
   }
+}
+
+// Walt and Jesse: the site’s own figures, loaded as anyone’s is (above),
+// in the body their look has (Mr. White and Heisenberg are Walt’s one
+// figure, Jesse in the lab’s suit his own) and dressed in it. They keep
+// their own guns, as the cruiser’s two do: a bag of blue in the hand stays
+// in the wardrobe. Anyone else is loaded as they were.
+async function loadParty(spec, cast, looks = null) {
+  const look = spec.src.url ? lookFor(spec.id, looks) : null;
+  if (!look) return loadModel(spec, cast, looks);
+  const fig = await loadModel({ ...spec, src: { url: bodyAsset(look) } }, cast, looks);
+  // (as the show has them, there’s nothing to put on)
+  if (!fig?.model || JSON.stringify(writeLook(look)) === JSON.stringify(writeLook(defaultLook(spec.id)))) return fig;
+  const undress = dress({ group: fig.model }, spec.gun ? { ...look, gear: { ...look.gear, hand: 'none' } } : look);
+  const own = fig.dispose;
+  fig.gun = HAND_GUNS[look.gear.hand] ?? null;
+  fig.dispose = () => {
+    undress();
+    own?.();
+  };
+  return fig;
 }
 
 // ── People built from shapes (no figure of their own) ──
@@ -1585,7 +1559,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     }
     loading = (async () => {
       await castReady;
-      const figs = await Promise.all(specs.map((s) => loadModel(s, cast).catch(() => null)));
+      const figs = await Promise.all(specs.map((s) => loadParty(s, cast).catch(() => null)));
       return figs.map((fig, i) => {
         const spec = specs[i];
         const f = fig ?? built({ ...spec, src: { built: spec.id === 'artoo' ? 'artoo' : 'han' } });
@@ -1801,7 +1775,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     root.add(ground.mesh);
     if (landing && furnished(id)) {
       const anchor = near ? { n: near.n, f: near.f } : S.spot;
-      const f = furnish({ id, landing, frame: anchor, R: S.R, small, renderer, warm });
+      const f = furnish({ id, landing, frame: anchor, R: S.R, small, reduced, renderer, warm });
       rocks = { mesh: f.group, solids: f.solids, spots: f.spots, update: f.update, dispose: f.dispose };
     } else rocks = u.plated ? createHullBits(n, S.R, u, small, S.band, clear) : createRocks(n, S.R, u, small);
     root.add(rocks.mesh);
@@ -2074,7 +2048,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     root.add(wk.group);
     (async () => {
       if (spec.src.meshy) await cast?.load(null, [spec.src.meshy]).catch(() => {});
-      const fig = (cast && (await loadModel(spec, cast, g.looks ?? readLooks(null)).catch(() => null))) ?? built({ ...spec, src: { built: spec.id === 'artoo' ? 'artoo' : 'han' } }); // (in their own looks: the show's, if they've sent none)
+      const fig = (cast && (await loadParty(spec, cast, g.looks ?? readLooks(null)).catch(() => null))) ?? built({ ...spec, src: { built: spec.id === 'artoo' ? 'artoo' : 'han' } }); // (in their own looks: the show’s, if they’ve sent none)
       if (!guests.has(g.id) || !g.walkers.includes(wk)) return fig.dispose?.();
       wk.fig = fig;
       wk.group.add(fig.model);
@@ -2116,7 +2090,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       }
       g.name = o.name;
       g.ally = o.ally;
-      g.looks = o.looks ?? null; // (how they dress their Rick and Morty)
+      g.looks = o.looks ?? null; // (how they dress their Rick and Morty, their Walt and Jesse)
       g.ship = { n: o.foot.ship.n, r: 0.62 * 0.26 * (PARKED[o.foot.kind] ?? 1) * 0.55 };
       [o.foot.lead, o.foot.mate].forEach((to, i) => {
         let wk = g.walkers[i];
@@ -2922,5 +2896,5 @@ const rotateAbout = (v, k, a) => {
 
 // A crew member as a figure, for the galaxy's worlds (galaxy/surface/scene.js):
 // in map units (scale by 1 / METRE for metres); `cast` is createMeshyCast()'s,
-// for the cruiser's two
-export { loadModel as loadPartyFigure };
+// for the cruiser’s two (Walt and Jesse, in their looks too)
+export { loadParty as loadPartyFigure };
