@@ -4,7 +4,8 @@
 // and credited in public/games/credits.json. Refuses to ship a model over its
 // budget or over 4 MB.
 //
-//   node scripts/gen3d/web.mjs RAW.glb NAME --tris 24000 --tex 1024 --what "an X-wing starfighter" [--across-seams]
+//   node scripts/gen3d/web.mjs BAKED.glb NAME --what "an X-wing starfighter" [--match OLD.glb] [--across-seams]
+//   three cuts (budget.mjs TIERS): NAME.hq.glb, NAME.glb, NAME.lo.glb; --tris N --tex N makes one custom cut instead
 //   webReady(doc, { tris, tex }) → { before, after }   (the transform, on a gltf-transform Document)
 
 import { NodeIO } from '@gltf-transform/core';
@@ -15,7 +16,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { check, triangles } from './budget.mjs';
+import { TIERS, check, triangles } from './budget.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const OUT = join(ROOT, 'public', 'models', 'gen3d');
@@ -71,21 +72,37 @@ export const permissive = (tris) => async (doc) => {
   console.log(`simplify across seams: ${Math.round(total)} → ${Math.round(triangles(doc))} triangles`);
 };
 
-export async function publish(raw, name, { tris, tex, what, engine = 'TRELLIS.2', acrossSeams = false }) {
+// The three cuts of a model (budget.mjs's TIERS) from the baked GLB, each
+// simplified from it, its brightness matched to an old model's first when
+// `match` names one (colour.mjs); credited once. Returns the first cut's
+// numbers, and every cut's under `cuts`.
+export async function publish(raw, name, { what, engine = 'TRELLIS.2', acrossSeams = false, match, tiers = Object.keys(TIERS), tris, tex }) {
   const nio = await io();
-  const doc = await nio.read(raw);
-  const { before, after } = await webReady(doc, { tris, tex, acrossSeams });
-  const bytes = (await nio.writeBinary(doc)).byteLength;
-  const problems = check({ tris, after, bytes });
-  if (problems.length) throw new Error(`${name}: ${problems.join('; ')}`);
   await mkdir(OUT, { recursive: true });
-  const out = join(OUT, `${name}.glb`);
-  await nio.write(out, doc);
+  const cuts = tris ? { custom: { suffix: '', faces: tris, tex: tex ?? 2048, bytes: TIERS.mid.bytes } } : Object.fromEntries(tiers.map((t) => [t, TIERS[t]]));
+  const results = {};
+  let said = false;
+  for (const [tier, cut] of Object.entries(cuts)) {
+    const doc = await nio.read(raw);
+    if (match) {
+      const { matchColour } = await import('./colour.mjs');
+      const m = await matchColour(doc, await nio.read(match));
+      if (m && !said) console.log(`brightness ×${m.scale.toFixed(2)} to match ${match}`);
+      said = true;
+    }
+    const { before, after } = await webReady(doc, { tris: cut.faces, tex: cut.tex, acrossSeams });
+    const bytes = (await nio.writeBinary(doc)).byteLength;
+    const problems = check({ tris: cut.faces, after, bytes, max: cut.bytes });
+    if (problems.length) throw new Error(`${name} (${tier}): ${problems.join('; ')}`);
+    const out = join(OUT, `${name}${cut.suffix}.glb`);
+    await nio.write(out, doc);
+    results[tier] = { out, before, after, bytes };
+  }
   const creditsFile = join(ROOT, 'public', 'games', 'credits.json');
   const credits = JSON.parse(await readFile(creditsFile, 'utf8'));
   credits[`gen3d/${name}`] = { source: 'https://github.com/microsoft/TRELLIS.2', name: `${what}, made for this site with ${engine} on the site owner's machine (scripts/gen3d)`, authors: ['Tilak Patel, with Microsoft TRELLIS.2'], license: 'Generated for this site; TRELLIS.2 is MIT' };
   await writeFile(creditsFile, `${JSON.stringify(credits, null, 2)}\n`);
-  return { out, before, after, bytes };
+  return { ...Object.values(results)[0], cuts: results };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -94,9 +111,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const i = args.indexOf(`--${n}`);
     return i >= 0 ? args.splice(i, 2)[1] : d;
   };
-  const opts = { tris: Number(flag('tris', 16000)), tex: Number(flag('tex', 1024)), what: flag('what', ''), engine: flag('engine', 'TRELLIS.2'), acrossSeams: args.includes('--across-seams') };
+  const [tris, tex, match] = [flag('tris'), flag('tex'), flag('match')];
+  const opts = { tris: tris && Number(tris), tex: tex && Number(tex), what: flag('what', ''), engine: flag('engine', 'TRELLIS.2'), match: match && resolve(match), acrossSeams: args.includes('--across-seams') };
   const [raw, name] = args;
-  if (!raw || !name) throw new Error('usage: node scripts/gen3d/web.mjs RAW.glb NAME [--tris N] [--tex N] [--what "…"]');
+  if (!raw || !name) throw new Error('usage: node scripts/gen3d/web.mjs BAKED.glb NAME [--what "…"] [--match OLD.glb] [--tris N --tex N for one custom cut]');
   const r = await publish(resolve(raw), name, opts);
-  console.log(`${name}: ${Math.round(r.before)} → ${Math.round(r.after)} triangles, ${(r.bytes / 1024).toFixed(0)} KB → ${r.out}`);
+  for (const [t, c] of Object.entries(r.cuts)) console.log(`${name} ${t}: ${Math.round(c.before)} → ${Math.round(c.after)} triangles, ${(c.bytes / 1024).toFixed(0)} KB → ${c.out}`);
 }

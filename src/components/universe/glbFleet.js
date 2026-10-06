@@ -28,14 +28,15 @@
 
 import * as THREE from 'three';
 import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
+import { gen3dUrl } from '../../lib/three/gen3d';
 import { buildTraffic } from './trafficModels';
 
 // which way each one's nose points as it comes (turned to +z), and whether
 // there's a built one to fly until it's here
 export const GLB = {
-  xwing: { url: '/models/gen3d/x-wing.glb', nose: 0, built: true }, // made here (scripts/gen3d), the trench run's
+  xwing: { url: gen3dUrl('x-wing'), nose: 0, built: true }, // made here (scripts/gen3d), the trench run's, in this device's cut
   slave1: { url: '/models/universe/slave1.glb', nose: 0, built: false },
-  interceptor: { url: '/models/gen3d/tie-interceptor.glb', nose: 0, built: true }, // made here from the old one's render
+  interceptor: { url: gen3dUrl('tie-interceptor'), nose: 0, built: true }, // made here from the old one's render
   destroyer: { url: '/models/universe/star-destroyer.glb', nose: Math.PI, built: true },
   corvette: { url: '/models/universe/cr90.glb', nose: 0, built: true },
   // the galaxy's own, in their small cuts (public/models/galaxy/lod/: a

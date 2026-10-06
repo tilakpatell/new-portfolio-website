@@ -28,7 +28,7 @@ export async function remake(glb, name, { view = 'three', ...opts } = {}) {
   const ref = await reference(glb, join(dir, 'reference.png'), view);
   console.log(`[${name}] reference: ${ref}`);
   // not Pixal3D: a render isn't a frontal photo, and the shape should be free to improve
-  return make(name, { ...opts, image: ref, faithful: false });
+  return make(name, { ...opts, image: ref, faithful: false, match: glb }); // its brightness matched to the old one's: the render's shading darkens the paint
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -37,7 +37,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const i = args.indexOf(`--${n}`);
     return i >= 0 ? args.splice(i, 2)[1] : d;
   };
-  const opts = { what: flag('what'), view: flag('view', 'three'), faces: Number(flag('faces', 60000)), tex: Number(flag('tex', 2048)), seed: Number(flag('seed', 42)) };
+  const [faces, tex] = [flag('faces'), flag('tex')];
+  const opts = { what: flag('what'), view: flag('view', 'three'), faces: faces && Number(faces), tex: tex && Number(tex), seed: Number(flag('seed', 42)) };
   const [glb, name] = args;
   if (!glb || !name) throw new Error('usage: node scripts/gen3d/remake.mjs EXISTING.glb NAME --what "…" [--view three|front|side|top]');
   if (!process.env.CHROME) throw new Error('CHROME (a Chromium) and BASE (the dev server) are needed for the reference render');
