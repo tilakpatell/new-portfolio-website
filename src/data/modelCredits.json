@@ -1712,18 +1712,19 @@
     ]
   },
   "surface-deathtrooper": {
-    "title": "Death trooper || Rogue One: A Star Wars Story",
-    "author": "RC-KOA",
-    "authorUrl": "https://sketchfab.com/RC-Koa",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/death-trooper-rogue-one-a-star-wars-story-503860c8c63b419daa391f296ab874f1",
+    "title": "Battlefront 2 Remaster: imp_inf_deathtrooper",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
     "where": "galaxy-surface",
     "as": "the death troopers",
     "file": "/models/galaxy/surface/deathtrooper.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-dejarik": {
     "title": "Star Wars Dejarik",
@@ -2552,33 +2553,50 @@
       "galaxy"
     ]
   },
+  "surface-sandtrooper": {
+    "title": "Battlefront 2 Remaster: imp_inf_sandtrooper1",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
+    "where": "galaxy-surface",
+    "as": "the sandtroopers",
+    "file": "/models/galaxy/surface/sandtrooper.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
+  },
   "surface-scouttrooper": {
-    "title": "Scout Trooper",
-    "author": "malin.sandred",
-    "authorUrl": "https://sketchfab.com/malin.sandred",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/scout-trooper-bdcf732e6f374b6d87b02cd023991aae",
+    "title": "Battlefront 2 Remaster: imp_inf_scout",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
     "where": "galaxy-surface",
     "as": "the scout troopers",
     "file": "/models/galaxy/surface/scouttrooper.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-shoretrooper": {
-    "title": "Shore trooper || Rogue One: A Star Wars Story",
-    "author": "RC-KOA",
-    "authorUrl": "https://sketchfab.com/RC-Koa",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/shore-trooper-rogue-one-a-star-wars-story-67611b62211648b7805359ab148c949a",
+    "title": "Battlefront 2 Remaster: imp_inf_shoretrooper",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
     "where": "galaxy-surface",
     "as": "the shoretroopers",
     "file": "/models/galaxy/surface/shoretrooper.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-snowspeeder": {
     "title": "SnowSpeeder",
@@ -2722,18 +2740,19 @@
     ]
   },
   "surface-stormtrooper": {
-    "title": "Stormtrooper Walk",
-    "author": "LostBoyz2078",
-    "authorUrl": "https://sketchfab.com/LostModels2025",
-    "license": "CC-BY-NC-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
-    "source": "https://sketchfab.com/3d-models/stormtrooper-walk-dc7237f92c824cd78abc0f5bb4cb6290",
+    "title": "Battlefront 2 Remaster: imp_inf_stormtrooper",
+    "author": "Harrisonfog",
+    "authorUrl": "https://www.moddb.com/members/harrisonfog",
+    "license": "permission",
+    "licenseUrl": "https://www.moddb.com/mods/hd-graphics-mod",
+    "source": "https://www.moddb.com/mods/hd-graphics-mod",
     "where": "galaxy-surface",
     "as": "the stormtroopers",
     "file": "/models/galaxy/surface/stormtrooper.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-sullustan": {
     "title": "Sullustan Star Wars PNJ",

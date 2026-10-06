@@ -17,4 +17,9 @@ export const MODELS = {
   clone: { made: 'battlefront', as: 'the clone troopers', metres: 1.83, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
   battledroid: { made: 'battlefront', as: 'the battle droids', metres: 1.91, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
   superdroid: { made: 'battlefront', as: 'the super battle droids', metres: 1.93, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  stormtrooper: { made: 'battlefront', as: 'the stormtroopers', metres: 1.83, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  scouttrooper: { made: 'battlefront', as: 'the scout troopers', metres: 1.83, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  shoretrooper: { made: 'battlefront', as: 'the shoretroopers', metres: 1.83, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  deathtrooper: { made: 'battlefront', as: 'the death troopers', metres: 1.83, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
+  sandtrooper: { made: 'battlefront', as: 'the sandtroopers', metres: 1.83, along: 'y', yaw: 0, tris: 8000, tex: 1024 },
 };
