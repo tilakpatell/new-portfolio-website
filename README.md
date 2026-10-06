@@ -110,7 +110,7 @@ Every planet from the films you can stand on (all but Alderaan, which is gone) i
 | `E` | Talk, ride (and get off), get in the ship and take off |
 | `Tab` | Swap to your crewmate |
 
-The flying keys are the universe map's. Every system has a mission: the trench run and boarding the Death Star are playable now; the rest have briefings, with their own opening crawls, for games still being built ([the plan](docs/superpowers/specs/2026-10-05-galaxy-games-design.md)).
+The flying keys are the universe map's. Every system has a mission: the trench run, boarding the Death Star and Endor's speeder bike chase (four scout troopers racing through the redwoods for the bunker; shoot them off their bikes or shove them into a tree before one gets there) are playable now; the rest have briefings, with their own opening crawls, for games still being built ([the plan](docs/superpowers/specs/2026-10-05-galaxy-games-design.md)).
 
 ### The hidden worlds
 

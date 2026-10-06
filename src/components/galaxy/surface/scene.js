@@ -65,6 +65,8 @@ import { feed, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, ride, rider, turnToward, walk, walker } from './walker';
 import { rng } from './noise';
+import { missionOf } from './missions';
+import { createChaseMission } from './missions/chaseScene';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -82,6 +84,7 @@ const CAM = { dist: 4.8, up: 1.55, pitch: [-0.45, 1.15], far: 14, near: 2.2 };
 const REACH = 3.2; // metres: close enough to use something
 const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', ' ': 'jump', e: 'act', enter: 'act', f: 'fire' };
 const FIRE_EVERY = 0.24; // seconds between shots
+const BIKE_FIRE_EVERY = 0.3; // (a bike's cannon: a touch slower)
 
 export async function create(canvas, ctx) {
   const { reduced } = ctx;
@@ -91,6 +94,8 @@ export async function create(canvas, ctx) {
   const small = tier !== 'high' || Math.min(window.innerWidth, window.innerHeight) < 600;
   const site = siteOf(ctx.system);
   if (!site) throw new Error(`no surface for ${ctx.system}`);
+  // a mission played down here (missions/): you start in it, not landing
+  const mission = ctx.mission ? missionOf(ctx.system, ctx.mission) : null;
   const emit = (e) => props.onEvent?.(e);
 
   // ── The renderer, the camera, the light ──
@@ -223,7 +228,7 @@ export async function create(canvas, ctx) {
   })(), depthWrite: false, transparent: true });
 
   // what you can ride, where it's parked
-  const rides = site.rides
+  const rides = [...site.rides, ...(mission ? [{ kind: mission.ride, at: mission.start, yaw: mission.yaw }] : [])]
     .filter((x) => RIDES[x.kind])
     .map((x) => {
       const spec = RIDES[x.kind];
@@ -429,7 +434,7 @@ export async function create(canvas, ctx) {
 
   // ── State ──
   const state = {
-    phase: reduced ? 'walk' : 'landing',
+    phase: mission ? 'ride' : reduced ? 'walk' : 'landing',
     age: 0,
     t: 0,
     frames: 0,
@@ -438,8 +443,8 @@ export async function create(canvas, ctx) {
     buttons: { run: false },
     jumpQueued: false,
     actQueued: false,
-    cam: { yaw: you.yaw, pitch: 0.2, dist: CAM.dist, drag: -10 },
-    riding: null,
+    cam: { yaw: mission ? mission.yaw : you.yaw, pitch: 0.2, dist: mission ? RIDES[mission.ride].cam[0] : CAM.dist, drag: -10 },
+    riding: mission ? rides[rides.length - 1] : null,
     prompt: null,
     here: null,
     found: new Set(props.found ?? []),
@@ -458,7 +463,7 @@ export async function create(canvas, ctx) {
   const camPos = new V();
   const camLook = new V();
   let camInit = false;
-  if (state.phase === 'walk') {
+  if (state.phase === 'walk' || state.phase === 'ride') {
     for (const p of people) p.holder.visible = true;
     solidShip();
   }
@@ -612,7 +617,7 @@ export async function create(canvas, ctx) {
   // what E does here, now
   const target = () => {
     const p = me().st;
-    if (state.phase === 'ride') return state.riding.state.speed < 7 ? { kind: 'dismount', text: `Get off ${state.riding.spec.name}` } : null;
+    if (state.phase === 'ride') return state.riding.state.speed < 7 && !chaseOn() ? { kind: 'dismount', text: `Get off ${state.riding.spec.name}` } : null;
     if (state.phase !== 'walk') return null;
     // a quest's thing to do here
     const step = state.quest && questOf(state.quest.id)?.steps[state.quest.step];
@@ -832,11 +837,29 @@ export async function create(canvas, ctx) {
     emit({ type: 'zone', id: null });
   }
 
+  // ── A chase (missions/chase.js): the scouts, drawn and run here ──
+  const chase = mission?.kind === 'chase' ? createChaseMission({ parent: scene, world, placer, blaster, mission, emit, say, sounds }) : null;
+  // (on from the start, before the trees are in and it's begun, until it's
+  // won or lost: no getting off the bike before then)
+  const chaseOn = () => Boolean(chase && !chase.view()?.result);
+  let chaseViewAt = -1;
+
   // ── Shooting, and being shot ──
   const camDir = new V();
   function fire() {
     const p = me().st;
-    if (state.phase !== 'walk' || state.t - state.firedAt < FIRE_EVERY) return;
+    if (state.t - state.firedAt < FIRE_EVERY) return;
+    // on a bike in a chase: its cannon, from the nose, where you're looking
+    if (state.phase === 'ride' && chase) {
+      if (state.t - state.firedAt < BIKE_FIRE_EVERY || !chase.running()) return;
+      state.firedAt = state.t;
+      camera.getWorldDirection(camDir);
+      const b = state.riding.state;
+      chase.fire(new V(b.x + Math.sin(b.yaw) * 1.8, b.y + 0.7, b.z + Math.cos(b.yaw) * 1.8), camDir, me().spec.bolt ?? '#ff3b30');
+      emit({ type: 'fire' });
+      return;
+    }
+    if (state.phase !== 'walk') return;
     state.firedAt = state.t;
     camera.getWorldDirection(camDir);
     p.yaw = Math.atan2(camDir.x, camDir.z);
@@ -853,6 +876,12 @@ export async function create(canvas, ctx) {
     state.shake = Math.min(1, state.shake + 0.3);
     emit({ type: 'health', value: state.health });
     if (state.health > 0) return;
+    if (chaseOn()) {
+      state.health = 100;
+      emit({ type: 'health', value: 100 });
+      chase.knocked();
+      return;
+    }
     // down: back on your feet where the quest's step began (or by the ship)
     state.health = 100;
     emit({ type: 'health', value: 100 });
@@ -991,8 +1020,9 @@ export async function create(canvas, ctx) {
 
   function stepRide(dt) {
     const x = state.riding;
-    const inp = input();
+    const inp = chase?.stalled() ? { x: 0, y: 0, run: false } : input();
     const o = ride(x.state, { ...inp, x: inp.x, y: inp.y, jump: state.jumpQueued }, dt, world, x.spec);
+    if (o.hit > 20 && chaseOn()) chase.knocked();
     if (o.hit > 6) {
       state.shake = Math.min(1, o.hit / 20);
       emit({ type: 'bump', hard: o.hit > 14 });
@@ -1151,7 +1181,13 @@ export async function create(canvas, ctx) {
     for (const m of el.querySelectorAll('[data-id]')) {
       const id = m.dataset.id;
       let at;
-      if (id === 'quest') {
+      if (id === 'quest' && chase && chaseOn()) {
+        at = chase.target(p.x, p.z);
+        if (!at) {
+          m.style.opacity = '0';
+          continue;
+        }
+      } else if (id === 'quest') {
         const q = state.quest && questOf(state.quest.id);
         const step = q?.steps[state.quest.step];
         const giver = !step && state.tracked ? life.actors.find((x) => x.spec.quest === state.tracked) : null;
@@ -1223,8 +1259,22 @@ export async function create(canvas, ctx) {
       }
     }
     // the blaster (F, held to keep firing)
-    if ((state.fireQueued || state.keys.fire || state.buttons.fire) && state.phase === 'walk') fire();
+    if ((state.fireQueued || state.keys.fire || state.buttons.fire) && (state.phase === 'walk' || (state.phase === 'ride' && chase))) fire();
     state.fireQueued = false;
+    // the chase: on with it, and a shove when you ride into one
+    if (chase && (state.phase === 'walk' || state.phase === 'ride')) {
+      const b = state.riding ? state.riding.state : me().st;
+      const { push } = chase.update(dt, { x: b.x, y: b.y, z: b.z, vx: b.vx ?? 0, vz: b.vz ?? 0 });
+      if (push) {
+        b.vx += push[0];
+        b.vz += push[1];
+        state.shake = Math.min(1, state.shake + 0.5);
+      }
+      if (state.t - chaseViewAt > 0.1) {
+        chaseViewAt = state.t;
+        emit({ type: 'mission', view: chase.view() });
+      }
+    }
     // the quest: its clock, where you are, what's out there for it
     if (state.quest && (state.phase === 'walk' || state.phase === 'ride')) {
       const p = me().st;
@@ -1351,6 +1401,8 @@ export async function create(canvas, ctx) {
   // ── Ready ──
   const ready = (async () => {
     await placer.ready.catch(() => {});
+    // (the scouts' way is planned round the trees, so once they're down)
+    if (!disposed) chase?.begin();
     await warm(scene).catch(() => {});
   })();
   emit({ type: 'phase', phase: state.phase });
@@ -1405,6 +1457,26 @@ export async function create(canvas, ctx) {
         state.tracked = id;
         if (!q.giver && !q.place && !state.quest) beginQuest(q);
       },
+      // a chase again, from the start, on the bike
+      restart() {
+        if (!chase) return;
+        const x = rides[rides.length - 1];
+        const p = me().st;
+        if (state.phase === 'walk') {
+          state.riding = x;
+          state.phase = 'ride';
+          state.cam.dist = x.spec.cam[0];
+          emit({ type: 'phase', phase: 'ride', kind: x.kind });
+        }
+        Object.assign(x.state, { x: mission.start[0], z: mission.start[1], y: groundAt(world, mission.start[0], mission.start[1]) + x.spec.hover, yaw: mission.yaw, speed: 0, vx: 0, vz: 0, vy: 0, bank: 0 });
+        p.x = x.state.x;
+        p.z = x.state.z;
+        state.cam.yaw = mission.yaw;
+        camInit = false;
+        state.health = 100;
+        emit({ type: 'health', value: 100 });
+        chase.restart();
+      },
       drop() {
         if (!state.quest) return;
         state.quest = null;
@@ -1417,6 +1489,23 @@ export async function create(canvas, ctx) {
       if (!import.meta.env.DEV) return;
       for (let i = 0; i < secs * 30; i++) tick(1 / 30);
       ctx.invalidate();
+    },
+    // (for tests: finish the chase, 'win' or 'lose')
+    missionDo(how) {
+      if (!import.meta.env.DEV) return null;
+      if (how === 'audit') return chase?.audit() ?? null;
+      if (how === 'near' && state.riding) {
+        const b = chase?.behind();
+        if (b) {
+          Object.assign(state.riding.state, { x: b.x, z: b.z, yaw: b.yaw, y: groundAt(world, b.x, b.z) + state.riding.spec.hover, speed: 30, vx: Math.sin(b.yaw) * 30, vz: Math.cos(b.yaw) * 30 });
+          state.cam.yaw = b.yaw;
+          camInit = false;
+        }
+        return b;
+      }
+      chase?.force(how);
+      ctx.invalidate();
+      return null;
     },
     // (for tests: pretend others are down here: [{ id, name, walk }])
     fakePeers(list) {
@@ -1440,7 +1529,7 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health }),
+    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health, mission: chase?.view() ?? null }),
     dispose() {
       disposed = true;
       window.removeEventListener('keydown', keyDown);
@@ -1455,6 +1544,7 @@ export async function create(canvas, ctx) {
       sounds.dispose();
       peers.dispose();
       activity.dispose();
+      chase?.dispose();
       blaster.dispose();
       markMat.map.dispose();
       markMat.dispose();
