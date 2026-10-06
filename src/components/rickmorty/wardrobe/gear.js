@@ -220,8 +220,8 @@ const BUILD = {
     const crown = ribbed(new THREE.SphereGeometry(0.46, 72, 28, 0, Math.PI * 2, 0, Math.PI * 0.53), 34, 0.022);
     const cuff = ribbed(new THREE.CylinderGeometry(0.476, 0.468, 0.14, 96, 1, true), 56, 0.026);
     const g = piece({
-      '#3b3c42': [[crown, [0, -0.24, 0], [0, 0, 0], [1, 0.84, 1.08]]],
-      '#2f3035': [[cuff, [0, -0.29, 0], [0, 0, 0], [1, 1, 1.08]]],
+      '#3b3c42': [[crown, [0, -0.24, 0], [0, 0, 0], [1.01, 0.93, 1.1]]],
+      '#2f3035': [[cuff, [0, -0.29, 0], [0, 0, 0], [1.02, 1, 1.1]]],
     });
     g.traverse((o) => o.isMesh && (o.material.side = THREE.DoubleSide)); // (the cuff is open: its inside shows from below)
     g.rotation.x = -0.14; // (worn back: the cuff high on the forehead, low on the nape)
@@ -301,7 +301,7 @@ function clear(g, opacity) {
 
 // where the eyes are, by face: Morty’s take up most of it; Walt’s and
 // Jesse’s are a person’s, Jesse’s drawn a little large
-const EYES = { rick: { spread: 0.11, size: 0.08 }, morty: { spread: 0.2, size: 0.15 }, walt: { spread: 0.12, size: 0.075 }, jesse: { spread: 0.14, size: 0.09 } };
+const EYES = { rick: { spread: 0.11, size: 0.08 }, morty: { spread: 0.2, size: 0.15 }, walt: { spread: 0.12, size: 0.075 }, jesse: { spread: 0.12, size: 0.07 }, jesselab: { spread: 0.13, size: 0.08 } };
 
 // a piece of gear, in its own frame; face gear for `face` ('rick' or 'morty')
 export function buildGear(id, face = 'rick') {
@@ -365,10 +365,12 @@ const FIT = {
   tinyrick: { hat: -0.12, hatScale: 1.05, face: 0.0, faceUp: 0.0, hand: 1.1 },
   morty: { eyes: 'morty', hat: -0.08, hatScale: 1.05, face: 0.05, faceUp: 0.0, hand: 1.3 },
   walt: { eyes: 'walt', hat: -0.13, hatScale: 1.1, lift: { jessebeanie: 0.14 }, back: -0.11, face: -0.3, faceUp: 0.0, nudge: { respirator: [0.08, 0.22] }, hand: 1.25 },
-  jesse: { eyes: 'jesse', hat: -0.05, hatScale: 1.22, lift: { jessebeanie: 0.2, porkpie: -0.06 }, back: -0.11, face: -0.1, faceUp: 0.1, nudge: { respirator: [0, 0.08] }, hand: 1.25 },
+  jesse: { eyes: 'jesse', hat: -0.14, hatScale: 1.1, lift: { jessebeanie: 0.09, porkpie: 0 }, back: -0.02, face: -0.115, faceUp: 0.03, nudge: { respirator: [0.08, 0.06] }, hand: 1.25 },
+  // (Jesse in hazmat: his own figure, its head not his hoodie's since that was made again)
+  jesselab: { eyes: 'jesselab', hat: -0.14, hatScale: 1.1, lift: { jessebeanie: 0.15, porkpie: 0.04 }, back: -0.07, face: -0.1, faceUp: 0.1, nudge: { respirator: [0, 0.08] }, hand: 1.25 },
 };
-// (Walt’s three bodies are one figure; Jesse’s two the same head)
-const SAME = { mrwhite: 'walt', heisenberg: 'walt', jesselab: 'jesse' };
+// (Walt’s three bodies are one figure)
+const SAME = { mrwhite: 'walt', heisenberg: 'walt' };
 const fitOf = (body) => ({ ...FIT.default, ...(FIT[SAME[body] ?? body] ?? (body.includes('morty') ? FIT.morty : FIT.rick)) });
 
 const v = () => new THREE.Vector3();
