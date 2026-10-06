@@ -16,14 +16,16 @@ const FIRST = 2000; // how far out the nearest fandom is
 const STEP = 330; // and how much further each one after it
 const HEIGHT = 560; // how far above or below the disc they go
 // the home system's sizes grow together by scale.js's HOME_SPREAD (the
-// stations themselves by HOME_SCALE, universes.js), so the sun keeps its
-// place against the ring and the stations stay big across the gaps
-const RING = 85 * HOME_SPREAD; // the stations' ring
+// stations themselves by HOME_SCALE, universes.js); the sun and the ring
+// round it more: the sun bigger than any world (r 47 to 59), and the ring
+// out of the brightest of its glow (1.87 of its radius), but no further
+// than keeps the stations big across the gaps between them
+export const RING = 140; // the stations' ring
 
 export const ORDER = UNIVERSES.map((u) => u.id);
 
 // the sun in the middle: something to fly round, not somewhere to go
-export const SUN = { at: [0, 0, 0], r: 32 * HOME_SPREAD };
+export const SUN = { at: [0, 0, 0], r: 75 };
 
 // the asteroid belt, round the outside of the stations
 export const BELT = { inner: 130 * HOME_SPREAD, outer: 185 * HOME_SPREAD, height: 16 * HOME_SPREAD };
