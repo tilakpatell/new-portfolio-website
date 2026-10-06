@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { DAMAGE_MAX, FLAG, FLOOD, GUARD, NAME_MAX, PACK_MAX, PUNCH_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, randomCallsign, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, sample, writeCursor, writeFoot, writePack, writePose, writeShot } from './protocol';
+import { DAMAGE_MAX, FLAG, FLOOD, GUARD, NAME_MAX, PACK_MAX, PUNCH_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, randomCallsign, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, sample, writeCursor, writeFoot, writeLooksWire, writePack, writePose, writeShot } from './protocol';
 import { STOCK_LOADOUT, writeOutfit } from '../outfit';
 import { STOCK_BUILD, writeBuild } from '../shipyard/build';
-import { defaultLook, readLook, writeLook } from '../../rickmorty/wardrobe/looks';
+import { defaultLook, readLook, readLooks, writeLook } from '../../rickmorty/wardrobe/looks';
 
 describe('cleanName', () => {
   it('keeps an ordinary name', () => {
@@ -76,6 +76,26 @@ describe('readHello', () => {
       expect(h.looks).toBeNull();
       expect(h.kind).toBe('cruiser');
     }
+  });
+  it('reads the looks of their Walt and Jesse beside them, each cast under its own key', () => {
+    const walt = readLook('walt', { body: 'heisenberg', colors: { outer: 'bluesky' }, gear: { face: 'respirator' } });
+    const jesse = readLook('jesse', { body: 'jesselab', gear: { head: 'porkpie', hand: 'bluebag' } });
+    const rick = readLook('rick', { body: 'cop' });
+    const morty = defaultLook('morty');
+    const looks = { rick, morty, walt, jesse };
+    const wire = writeLooksWire(looks);
+    expect(wire.l).toEqual([writeLook(rick), writeLook(morty)]); // (Rick and Morty’s as they always went: a pilot whose site knows only them still reads theirs)
+    expect(readHello({ n: 'A', k: 'rv', ...wire }).looks).toEqual(looks);
+    expect(readHello({ n: 'A', k: 'rv', lb: wire.lb }).looks).toEqual({ walt, jesse });
+    // one of them garbage: that one as the show has him; the other cast’s still read
+    expect(readHello({ n: 'A', k: 'rv', l: wire.l, lb: [writeLook(walt), [[1]]] }).looks).toEqual({ rick, morty, walt, jesse: defaultLook('jesse') });
+    expect(readHello({ n: 'A', k: 'rv', l: wire.l, lb: 'x'.repeat(400) }).looks).toEqual({ rick, morty });
+    // never one cast’s look as another’s
+    expect(readHello({ n: 'A', k: 'rv', lb: wire.l }).looks).toBeNull();
+    expect(writeLooksWire(null)).toEqual({});
+    // (a pair both as the show has them isn’t sent: that’s how they’re shown anyway)
+    expect(writeLooksWire(readLooks(null))).toEqual({});
+    expect(Object.keys(writeLooksWire({ ...readLooks(null), walt }))).toEqual(['lb']);
   });
   it('is null for anything that is not an object', () => {
     expect(readHello(null)).toBeNull();

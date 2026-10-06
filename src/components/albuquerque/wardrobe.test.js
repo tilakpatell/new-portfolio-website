@@ -2,7 +2,8 @@ import { readFileSync, statSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { isSpec } from '../office/people';
 import { CUSTOMERS } from './metherria/rules';
-import { ABQ, moodGesture } from './wardrobe';
+import { ABQ, dressedAs, moodGesture } from './wardrobe';
+import { BODIES, defaultLook, readLook } from '../rickmorty/wardrobe/looks';
 
 // a figure's .glb, and its JSON chunk
 const file = (model) => new URL(`../../../public${model}`, import.meta.url);
@@ -57,6 +58,27 @@ describe("Albuquerque's people", () => {
       expect(g.accessors[g.meshes[0].primitives[0].attributes.POSITION].count, id).toBeLessThan(9000);
       expect(g.samplers[g.textures[0].sampler], id).toMatchObject({ minFilter: 9987, wrapS: 33071, wrapT: 33071 });
     }
+  });
+
+  it('has a figure here for every body the wardrobe gives Walt and Jesse', () => {
+    for (const who of ['walt', 'jesse']) for (const b of BODIES[who]) expect(dressedAs(who, readLook(who, { body: b.id })).spec.model, b.id).toBe(b.asset);
+  });
+
+  it('dresses Walt and Jesse as the wardrobe has them, in the figure their look wears', () => {
+    const jesse = readLook('jesse', { body: 'jesselab', colors: { outer: 'bluesky' }, gear: { head: 'porkpie' } });
+    expect(dressedAs('jesse', jesse)).toEqual({ spec: ABQ.jesseLab, look: jesse });
+    expect(dressedAs('jesse', defaultLook('jesse'))).toEqual({ spec: ABQ.jesse, look: defaultLook('jesse') });
+    const white = readLook('walt', { body: 'mrwhite', gear: { face: 'respirator' } });
+    expect(dressedAs('walt', white).spec).toBe(ABQ.walt); // (Mr. White is Walt’s one figure)
+  });
+
+  it('keeps someone in the figure a scene has them in, with its colours only if the look is on it', () => {
+    const hoodie = readLook('jesse', { body: 'jesse', colors: { outer: 'hoodiered' }, gear: { face: 'shades' } });
+    expect(dressedAs('jesse', hoodie, ABQ.jesseLab)).toEqual({ spec: ABQ.jesseLab, look: { body: 'jesselab', colors: {}, gear: hoodie.gear } });
+    const lab = readLook('jesse', { body: 'jesselab', colors: { outer: 'bluesky' } });
+    expect(dressedAs('jesse', lab, ABQ.jesseLab)).toEqual({ spec: ABQ.jesseLab, look: lab });
+    const heisenberg = readLook('walt', { body: 'heisenberg', colors: { legs: 'khaki' } });
+    expect(dressedAs('walt', heisenberg, ABQ.walt)).toEqual({ spec: ABQ.walt, look: heisenberg });
   });
 
   it('reacts to each mood', () => {

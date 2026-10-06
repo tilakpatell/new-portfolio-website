@@ -2,7 +2,9 @@
 // of its own, in the cast's toon look under a studio's light (a key, a fill
 // and a green rim from behind, on a disc), turning slowly on its own and by
 // a drag. A new colour is only new numbers in the figure's materials; new
-// gear is put on again; a new body is a new figure, loaded once.
+// gear is put on again; a new body is a new figure, loaded once. Walt and
+// Jesse stand in a studio of their own: an RV-brown disc with a Blue Sky
+// ring, a desert sun’s rim of light.
 //
 // createWardrobePreview(canvas, { reduced }) → { show(look), dispose() }
 
@@ -10,14 +12,17 @@ import * as THREE from 'three';
 import { createMeshyCast } from '../portal/meshyCast';
 import { pixelRatio } from '../../../lib/device';
 import { quiet, releaseContext } from '../../../lib/three/renderer';
-import { BODIES } from './looks';
+import { BODIES, castOf, gearWorn } from './looks';
 import { dressColors } from './dress';
 import { wearGear } from './gear';
+import { whoOf } from './wear';
 
 const ALL = Object.values(BODIES).flat();
 const KINDS = Object.fromEntries(ALL.map((b) => [b.id, { a: b.asset, h: b.h }]));
 const RIGGED = new Set(ALL.map((b) => b.asset));
 const TALL = 1.7; // (every body shown the same height, so the gear's what changes)
+// each cast’s studio: the disc, its ring, the light from behind
+const STUDIO = { rickmorty: { base: 0x2a2234, ring: 0x97ce4c, rim: 0x9dff5a }, breakingbad: { base: 0x3b2c22, ring: 0x5fc8ef, rim: 0xffc27a } };
 
 export function createWardrobePreview(canvas, { reduced = false } = {}) {
   let renderer;
@@ -33,14 +38,14 @@ export function createWardrobePreview(canvas, { reduced = false } = {}) {
   scene.add(new THREE.HemisphereLight(0xf4f8ff, 0x8a94a8, 1.9));
   const key = new THREE.DirectionalLight(0xfff6e8, 2.4);
   key.position.set(-2.5, 4, 3.5);
-  const rim = new THREE.DirectionalLight(0x9dff5a, 2.2);
+  const rim = new THREE.DirectionalLight(STUDIO.rickmorty.rim, 2.2);
   rim.position.set(1.5, 2.5, -3.5);
   scene.add(key, rim);
   // the disc it stands on: inked, with a portal-green ring
   const disc = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.66, 0.06, 64), new THREE.MeshToonMaterial({ color: 0x2a2234 }));
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.66, 0.06, 64), new THREE.MeshToonMaterial({ color: STUDIO.rickmorty.base }));
   base.position.y = -0.03;
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.64, 0.018, 10, 96), new THREE.MeshBasicMaterial({ color: 0x97ce4c, toneMapped: false }));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.64, 0.018, 10, 96), new THREE.MeshBasicMaterial({ color: STUDIO.rickmorty.ring, toneMapped: false }));
   ring.rotation.x = Math.PI / 2;
   disc.add(base, ring);
   scene.add(disc);
@@ -123,9 +128,13 @@ export function createWardrobePreview(canvas, { reduced = false } = {}) {
       wanted = look;
       const body = KINDS[look.body] ? look.body : null;
       if (!body) return;
+      const studio = STUDIO[castOf(whoOf(look))] ?? STUDIO.rickmorty;
+      base.material.color.set(studio.base);
+      ring.material.color.set(studio.ring);
+      rim.color.set(studio.rim);
       await need(KINDS[body].a);
       if (wanted !== look) return; // (another came meanwhile)
-      const gear = JSON.stringify(look.gear);
+      const gear = JSON.stringify(gearWorn(look));
       if (!figure || shown?.body !== body) {
         clear();
         figure = cast.make(body);
