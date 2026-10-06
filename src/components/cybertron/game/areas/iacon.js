@@ -246,5 +246,15 @@ export const IACON = {
       [260, -230],
     ],
     parked: [{ kind: 'wheeljack-car', x: 70, z: -210, yaw: 2.6 }],
+    // the megastructures beyond the city, as the planet shows them from
+    // orbit: rings stepping up round a spire, lit at their rims, some
+    // burning (where they are, how wide, how many rings)
+    skyline: [
+      { x: -820, z: -620, r: 300, tiers: 5, war: 0.7 },
+      { x: 760, z: 820, r: 260, tiers: 4, war: 0.4 },
+      { x: -900, z: 260, r: 180, tiers: 4, war: 0 },
+      { x: 240, z: -1050, r: 340, tiers: 6, war: 1 },
+      { x: 980, z: -760, r: 150, tiers: 3, war: 0.2 },
+    ],
   },
 };

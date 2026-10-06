@@ -323,6 +323,57 @@ export async function buildStage(area, { tier = 'high' } = {}) {
   city.receiveShadow = true;
   group.add(city);
 
+  // the megastructures beyond the city: rings stepping up round a spire,
+  // radial fins between them, every rim lit (amber where the war has got
+  // to it); out past the fog, which would only make them shadows, so they
+  // stand dark against the burning sky with their rims glowing
+  const far = [];
+  const rims = { cool: [], hot: [] };
+  for (const [n, m] of (S.skyline ?? []).entries()) {
+    const seed = hash(n * 4.1 + 0.3);
+    let y = 0;
+    for (let t = 0; t < m.tiers; t++) {
+      const r = m.r * (1 - t / (m.tiers + 0.6));
+      const h = m.r * (0.12 + 0.05 * hash(n + t * 1.9));
+      far.push(drum(m.x, m.z, r, r * 0.94, y, y + h, 64, seed));
+      // the rim, as a ring of short strips
+      const list = hash(n * 7 + t) < m.war ? rims.hot : rims.cool;
+      const rr = r * 0.94 + 0.6;
+      for (let k = 0; k < 48; k++) {
+        const a0 = (k / 48) * Math.PI * 2;
+        const a1 = ((k + 1) / 48) * Math.PI * 2;
+        list.push([m.x + Math.cos(a0) * rr, m.z + Math.sin(a0) * rr, m.x + Math.cos(a1) * rr, m.z + Math.sin(a1) * rr, y + h - 1.5, 2.2, 1.6]);
+      }
+      // fins between this ring and the next, all round
+      if (t < m.tiers - 1)
+        for (let f = 0; f < 12; f++) {
+          const a = (f / 12) * Math.PI * 2 + seed;
+          const r2 = m.r * (1 - (t + 1) / (m.tiers + 0.6));
+          far.push(wedge(m.x + Math.cos(a) * r * 0.97, m.z + Math.sin(a) * r * 0.97, m.x + Math.cos(a) * r2 * 0.95, m.z + Math.sin(a) * r2 * 0.95, h * 1.6, 6, seed, y + h));
+        }
+      y += h;
+    }
+    // the spire, and its light
+    far.push(drum(m.x, m.z, m.r * 0.08, 2, y, y + m.r * 0.9, 8, seed));
+    rims.cool.push([m.x, m.z, m.x + 0.01, m.z, y + m.r * 0.9 - 6, 5, 6]);
+  }
+  if (far.length) {
+    const farMat = keep(platedMaterial({ lights: 'slits', windows: 0.12, base: '#1a1e26', alt: '#232934', trim: '#3a4250', panel: [24, 14], glow: 1.6, metalness: 0.6, roughness: 0.6 }));
+    farMat.fog = false;
+    const skyline = new THREE.Mesh(keep(merged(far)), farMat);
+    group.add(skyline);
+    for (const [list, color, k] of [
+      [rims.cool, ENERGON, 2.2],
+      [rims.hot, '#ff8a2a', 2.6],
+    ]) {
+      const m = makeStrips(list, color, k);
+      if (!m) continue;
+      m.material.fog = false;
+      keep(m.material);
+      group.add(m);
+    }
+  }
+
   // light along the towers' edges, the setbacks, the barricades' tops
   const edges = makeStrips(strips, ENERGON, 1.6);
   if (edges) group.add(edges) && keep(edges.material);
