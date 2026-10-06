@@ -9,7 +9,7 @@
 //   SABER_COLORS, HILTS      what a saber can be: { id, name, hex } and { id, name, ... }
 //   HERO_KEY                 the localStorage key
 //   readHero(raw, ship)      the choice, made good: { id, color, hilt, stance, gun, mods, perks } (the ship's own lead when nothing's kept or it's nonsense; the stance is combatRules.js's, the gun and mods weaponRules.js's)
-//   heroSpec(hero, ship)     the party spec for them (universe/footScene.js's PARTY shape), the saber (with its stance) on it where they carry one, else the gun they picked with its mods
+//   heroSpec(hero, racks)    the party spec for them (universe/footScene.js's PARTY shape), the saber (with its stance) on it where they carry one, else the first gun of their rack (lib/arms) or the one they picked, with its mods
 //   defaultHeroId(ship)      who flies that ship
 
 import { STANCES } from './surface/combatRules';
@@ -79,11 +79,12 @@ export const writeHero = (hero) => JSON.stringify({ id: hero.id, color: hero.col
 
 // the spec the scene walks: a saber hero carries no gun (the saber's its
 // own thing, surface/saber.js), the others their gun
-export function heroSpec(hero) {
+export function heroSpec(hero, racks = null) {
   const h = BY_ID[hero.id] ?? BY_ID.luke;
   const saber = h.weapon === 'saber' ? { color: SABER_COLORS.find((c) => c.id === hero.color)?.hex ?? '#4aa8ff', hilt: HILTS.find((x) => x.id === hero.hilt) ?? HILTS[0], stance: STANCES[hero.stance] ? hero.stance : (h.saber?.stance ?? 'single') } : null;
-  const gun = saber ? 'saber' : WEAPONS[hero.gun] && hero.gun !== 'saber' ? hero.gun : h.weapon;
+  const kept = !saber ? racks?.[h.id] : null; // (the hero's rack, lib/arms: the gun they last had in hand anywhere)
+  const gun = saber ? 'saber' : (kept?.guns[0] ?? (WEAPONS[hero.gun] && hero.gun !== 'saber' ? hero.gun : h.weapon));
   // (a gun from elsewhere fires yellow; the galaxy's keep the hero's own colour)
   const bolt = saber ? saber.color : WEAPONS[gun]?.side === 'elsewhere' ? '#ffd36b' : h.bolt;
-  return { id: h.id, name: h.name.split(' ')[0], tall: h.tall, src: h.src, gun, bolt, saber, mods: saber ? [] : (hero.mods ?? []).filter((m) => MODS[m]).slice(0, MAX_MODS), perks: readPerks(hero.perks), hero: true };
+  return { id: h.id, name: h.name.split(' ')[0], tall: h.tall, src: h.src, gun, bolt, saber, mods: saber ? [] : (kept?.mods ?? hero.mods ?? []).filter((m) => MODS[m]).slice(0, MAX_MODS), perks: readPerks(hero.perks), hero: true };
 }

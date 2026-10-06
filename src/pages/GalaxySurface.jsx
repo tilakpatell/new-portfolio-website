@@ -24,6 +24,8 @@ import AssaultHud from '../components/galaxy/surface/AssaultHud';
 import HeroPanel from '../components/galaxy/surface/HeroPanel';
 import { HERO_KEY, heroById, heroSpec, readHero, writeHero } from '../components/galaxy/heroes';
 import { missionOf } from '../components/galaxy/surface/missions';
+import { rackOf, withFirst, withRack } from '../lib/arms/rack';
+import { loadRacks, saveRacks } from '../lib/arms/store';
 import ModelCredits from '../components/ModelCredits';
 import { wornFiles } from '../components/rickmorty/wardrobe/looks';
 import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
@@ -88,6 +90,8 @@ export default function GalaxySurface() {
   const pickHero = (next) => {
     setHero(next);
     local.set(HERO_KEY, writeHero(next));
+    // (and their rack, lib/arms: the gun picked in hand, its mods, the same on the universe map)
+    if (next.gun && next.gun !== 'saber') saveRacks(withRack(loadRacks(), next.id, { ...withFirst(rackOf(loadRacks(), next.id, next.gun), next.gun), mods: next.mods ?? [] }));
     setPicking(false);
   };
   const crew = crewById(ship);

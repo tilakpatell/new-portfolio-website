@@ -64,6 +64,13 @@ describe('the stance, the gun and the mods', () => {
     expect(heroSpec(readHero({ id: 'han', gun: 'a280' })).bolt).toBe('#ff4a3d');
     expect(JSON.parse(writeHero(readHero({ id: 'leia', gun: 'smg', mods: ['trigger'] })))).toMatchObject({ gun: 'smg', mods: ['trigger'] });
   });
+  it('a gun hero carries the first gun of their rack, with its mods; a Jedi keeps the saber', async () => {
+    const { readRacks } = await import('../../lib/arms/rack');
+    const racks = readRacks({ han: { guns: ['dlt19', 'blaster'], mods: ['stock'] }, luke: { guns: ['rifle'] } });
+    expect(heroSpec({ id: 'han', gun: 'blaster' }, racks)).toMatchObject({ gun: 'dlt19', mods: ['stock'] });
+    expect(heroSpec({ id: 'luke' }, racks).gun).toBe('saber');
+    expect(heroSpec({ id: 'han', gun: 'rifle' }).gun).toBe('rifle');
+  });
 });
 
 describe('the perks', () => {

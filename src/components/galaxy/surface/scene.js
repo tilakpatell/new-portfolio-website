@@ -74,7 +74,9 @@ import { createShadowPhase } from './near';
 import { createBlaster } from './blaster';
 import { createSaber } from './saber';
 import { DODGE, FORCE, GUARD, HEAVY, PARRY, dodgeStep, forceAt, guardHit, guardStep, hitStop, lungeTo, parried, pushVelocity } from './combatRules';
-import { heatShot, heatStep, spreadAt, vent, ventSpot, withMods } from './weaponRules';
+import { heatShot, heatStep, spreadAt, vent, ventSpot, weaponOf, withMods } from './weaponRules';
+import { nextGun as cycleRack, rackOf, withRack } from '../../../lib/arms/rack';
+import { ARMS_EVENT, loadRacks, saveRacks } from '../../../lib/arms/store';
 import { heroSpec } from '../heroes';
 import { perkEffects } from '../perks';
 import { feed, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
@@ -101,7 +103,7 @@ export const CREW_MODELS = { artoo: 'r2d2' };
 const LEAVE = { lift: 3.2, away: 3.4 };
 const CAM = { dist: 4.8, up: 1.55, pitch: [-0.45, 1.15], far: 14, near: 2.2 };
 const REACH = 3.2; // metres: close enough to use something
-const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', ' ': 'jump', e: 'act', enter: 'act', f: 'fire', r: 'throw', c: 'block', x: 'dodge', g: 'power', v: 'second' };
+const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', ' ': 'jump', e: 'act', enter: 'act', f: 'fire', r: 'throw', c: 'block', x: 'dodge', g: 'power', v: 'second', b: 'next' };
 const FIRE_EVERY = 0.24; // seconds between shots
 const SABER_IDLE = 8; // seconds without a stroke before the blade goes out
 const DETONATOR = { cool: 8, fuse: 2.2, speed: 15, lift: 5.5, radius: 4.5, damage: 3 }; // a gun hero's thermal detonator (G)
@@ -445,8 +447,16 @@ export async function create(canvas, ctx) {
   // (the hero you've picked to play as (heroes.js) walks in the lead; the
   // ship's own crew otherwise, and the one of them you aren't stays your mate)
   const crewOf = PARTY[shipKind] ?? PARTY.xwing;
-  const hero = ctx.hero ? heroSpec(ctx.hero) : null;
+  const hero = ctx.hero ? heroSpec(ctx.hero, loadRacks()) : null;
   const perks = perkEffects(hero?.perks ?? []); // (galaxy/perks.js: the multipliers the hero's perks give)
+  // a gun's numbers with its mods, and the hero's perks on them
+  const armed = (kind, mods) => {
+    const w = withMods(kind, mods);
+    w.heat *= perks.heat;
+    w.cool *= perks.cool;
+    w.every *= perks.cycle;
+    return w;
+  };
   const guardMax = GUARD.max * perks.guard;
   const party = hero ? [hero, crewOf[0].id === hero.id ? crewOf[1] : crewOf[1].id === hero.id ? crewOf[0] : crewOf[1]] : crewOf;
   const out = new V(Math.cos(site.land.yaw), 0, -Math.sin(site.land.yaw)); // the ship's right
@@ -490,17 +500,17 @@ export async function create(canvas, ctx) {
         });
         p.holder.add(inner);
         p.fig = fig;
-        // the gun they carry, in the hand (universe/gunplay.js; the world here is in metres)
-        if (p.spec.gun && !own) {
+        // the gun they carry, in the hand (universe/gunplay.js; the world here is in metres):
+        // the first of their rack (lib/arms: the same as on the universe map), or the saber
+        const first = p.spec.saber ? p.spec.gun : (rackOf(loadRacks(), p.spec.id, p.spec.gun).guns[0] ?? p.spec.gun);
+        p.gun = first;
+        if (first && !own) {
           p.holder.updateMatrixWorld(true);
-          p.gp = createGunplay(fig, fig.gun ?? p.spec.gun, { unit: 1, who: fig.built ? 'built' : p.spec.id });
+          p.gp = createGunplay(fig, fig.gun ?? first, { unit: 1, who: fig.built ? 'built' : p.spec.id });
           // a lightsaber (surface/saber.js): lit, swung, held up and thrown from here
           if (p.spec.saber && p.gp) p.saber = createSaber(p.gp, { color: p.spec.saber.color, hilt: p.spec.saber.hilt, stance: p.spec.saber.stance, parent: scene, sound: (what) => sounds.saber?.(what) ?? sounds.combat?.(what) });
           // the gun's numbers (weaponRules.js), with the mods they picked
-          p.weapon = withMods(fig.gun ?? p.spec.gun, p.spec.mods ?? []);
-          p.weapon.heat *= perks.heat;
-          p.weapon.cool *= perks.cool;
-          p.weapon.every *= perks.cycle;
+          p.weapon = armed(fig.gun ?? first, p.spec.hero ? (p.spec.mods ?? []) : rackOf(loadRacks(), p.spec.id, first).mods);
         }
         await warm(p.holder);
       }),
@@ -685,6 +695,7 @@ export async function create(canvas, ctx) {
       if (k === 'power') state.powerQueued = true;
       if (k === 'second') state.secondQueued = true;
       if (k === 'block') state.blockAt = state.t;
+      if (k === 'next') nextGun();
       if (k === 'fire' && me().saber) state.pressAt = state.t;
     }
     if (!down && k === 'fire' && state.pressAt != null) {
@@ -759,6 +770,37 @@ export async function create(canvas, ctx) {
   }
   const me = () => people[lead];
   const other = () => people[1 - lead];
+  // B: the next gun in the rack of whoever you're playing (lib/arms: the
+  // same rack as on the universe map), kept for next time
+  function nextGun() {
+    const p = me();
+    if (state.phase !== 'walk' || !p.gun || p.saber || !p.fig) return;
+    const rack = rackOf(loadRacks(), p.spec.id, p.gun);
+    const next = cycleRack(rack);
+    if (next === rack) return;
+    saveRacks(withRack(loadRacks(), p.spec.id, next));
+    armWith(p, next.guns[0], next.mods);
+    sounds.combat?.('swap');
+    emit({ type: 'gun', name: weaponOf(next.guns[0]).name });
+  }
+  // a person's gun changed: the one in the hand, and the numbers it fires by
+  function armWith(p, kind, mods) {
+    p.gun = kind;
+    p.weapon = armed(kind, mods);
+    if (!p.gp) return;
+    p.gp.dispose();
+    p.gp = createGunplay(p.fig, kind, { unit: 1, who: p.fig.built ? 'built' : p.spec.id });
+    state.burst = null;
+  }
+  // a rack changed elsewhere (the hangar's Armoury, the hero panel, B): whoever's first gun it was, it's in their hand now
+  const onArms = () => {
+    for (const p of people) {
+      if (!p.gun || p.saber || !p.fig) continue;
+      const r = rackOf(loadRacks(), p.spec.id, p.gun);
+      if (r.guns[0] !== p.gun) armWith(p, r.guns[0], r.mods);
+    }
+  };
+  window.addEventListener(ARMS_EVENT, onArms);
 
   // what E does here, now
   const target = () => {
@@ -1520,7 +1562,7 @@ export async function create(canvas, ctx) {
     if (spec.casing && r.eject) fx.casing(r.eject, new V(-1, 0, 0).transformDirection(r.gun.matrixWorld), UP);
     landed(hit, out, r.muzzle);
     if (!reduced) state.kick.v += spec.kick.up * (w.kick ?? 1) * (state.ads ? 0.6 : 1);
-    gunSound(p.spec.gun);
+    gunSound(p.gun ?? p.spec.gun);
     emit({ type: 'fire' });
   }
   // where a shot lands, when it gets there: sparks off it, and on the ground a burn
@@ -2188,7 +2230,7 @@ export async function create(canvas, ctx) {
     const net = props.net;
     if (!net) return;
     const out = state.phase === 'walk' || state.phase === 'ride' || state.phase === 'out';
-    const w = (p) => ({ who: p.spec.id, x: p.st.x, y: p.st.y, z: p.st.z, yaw: p.st.yaw, speed: state.phase === 'ride' && p === me() ? state.riding.state.speed : p.st.speed, aim: p === me() ? state.aim : 0, arms: p.spec.gun ? { gun: p.spec.gun, lit: Boolean(p.saber?.lit), color: p.spec.saber?.color ?? '', stance: p.spec.saber?.stance ?? 'single', swing: Boolean(p.saber?.swinging) } : null });
+    const w = (p) => ({ who: p.spec.id, x: p.st.x, y: p.st.y, z: p.st.z, yaw: p.st.yaw, speed: state.phase === 'ride' && p === me() ? state.riding.state.speed : p.st.speed, aim: p === me() ? state.aim : 0, arms: p.spec.gun ? { gun: p.gun ?? p.spec.gun, lit: Boolean(p.saber?.lit), color: p.spec.saber?.color ?? '', stance: p.spec.saber?.stance ?? 'single', swing: Boolean(p.saber?.swinging) } : null });
     net.walk?.(out ? { world: site.id, kind: shipKind, lead: w(me()), mate: w(other()), ride: state.riding?.kind ?? null } : null);
     peers.update(net, site.id, dt);
   }
@@ -2523,6 +2565,7 @@ export async function create(canvas, ctx) {
       bombMat.dispose();
       window.removeEventListener('keydown', keyDown);
       window.removeEventListener('keyup', keyUp);
+      window.removeEventListener(ARMS_EVENT, onArms);
       window.removeEventListener('blur', blur);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
