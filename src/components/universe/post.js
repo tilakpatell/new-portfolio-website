@@ -30,9 +30,12 @@
 // Unchecked, the blur smears one bad pixel into blocks of black across the
 // screen, bigger at each of its levels.
 //
-// spaceEnvironment(renderer, sky) is what shiny things reflect: the Milky
-// Way, brought up, with the key light's glow where the key light is and a
-// cool fill opposite, so metal catches the same light the scene is lit by.
+// spaceEnvironment(renderer, sky, { colour }) is what shiny things reflect:
+// the Milky Way, brought up, with the key light's glow at LIGHT, in the key
+// star's colour (linear rgb; the home sun's warm white if none), and a cool
+// fill opposite, so metal catches the same light the scene is lit by. The
+// universe map turns it each frame (the scene's environmentRotation) to
+// bring the glow round to where its key light is now.
 //
 // overlay(scene, camera) draws a second scene over the first with its own
 // depth, before the bloom (the cockpit, from the pilot's seat, so its frame
@@ -59,7 +62,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { blueNoiseTexture } from '../../lib/three/noise';
 
-export const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the key light, upper left
+export const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // where the environment's key glow is made (the old fixed key light, upper left)
 export const FILL = new THREE.Vector3(0.7, -0.4, -0.3).normalize();
 
 // bloom: only what's well past lit paint glows (lit surfaces top out near
@@ -369,7 +372,9 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
   };
 }
 
-export function spaceEnvironment(renderer, sky) {
+export function spaceEnvironment(renderer, sky, { colour = null } = {}) {
+  // (as bright as before at its brightest channel, so metal shines as much)
+  const glow = colour ? new THREE.Color(...colour).multiplyScalar(9 / Math.max(...colour)) : new THREE.Color(9, 8.2, 7.2);
   const env = new THREE.Scene();
   const made = [];
   const add = (geo, mat, pos) => {
@@ -382,7 +387,7 @@ export function spaceEnvironment(renderer, sky) {
     new THREE.SphereGeometry(10, 48, 24),
     sky ? new THREE.MeshBasicMaterial({ map: sky, side: THREE.BackSide, color: new THREE.Color(3, 3, 3.4) }) : new THREE.MeshBasicMaterial({ color: '#0b0f1c', side: THREE.BackSide }),
   );
-  add(new THREE.SphereGeometry(1.5, 24, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(9, 8.2, 7.2) }), LIGHT.clone().multiplyScalar(7));
+  add(new THREE.SphereGeometry(1.5, 24, 12), new THREE.MeshBasicMaterial({ color: glow }), LIGHT.clone().multiplyScalar(7));
   add(new THREE.SphereGeometry(2.2, 24, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.35, 0.45, 1.1) }), FILL.clone().multiplyScalar(7));
   const pmrem = new THREE.PMREMGenerator(renderer);
   const rt = pmrem.fromScene(env, 0.02);

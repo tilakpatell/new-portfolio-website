@@ -37,7 +37,8 @@ import { ringGeometry } from '../middleearth/ringShape';
 import { bossMug, elementTile, glowingGems, shardCluster } from './props';
 import { AIR } from './entry';
 
-const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the scene's key light
+const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the scene's old fixed key light: a planet's sun when it isn't given one
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
 
 // ── Textures ──
 
@@ -136,11 +137,11 @@ void main() {
 
 const RIM = { idle: 0.5, hover: 1.3, selected: 0.95 };
 
-function halo(radius, color, seg) {
+function halo(radius, color, seg, sun) {
   const mat = new THREE.ShaderMaterial({
     vertexShader: HALO_VERT,
     fragmentShader: HALO_FRAG,
-    uniforms: { uColor: { value: new THREE.Color(color) }, uStrength: { value: RIM.idle }, uLight: { value: LIGHT }, uReach: { value: HALO } },
+    uniforms: { uColor: { value: new THREE.Color(color) }, uStrength: { value: RIM.idle }, uLight: { value: sun }, uReach: { value: HALO } },
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
@@ -152,13 +153,20 @@ function halo(radius, color, seg) {
 }
 
 // The glow on a planet's own rim, in its material, and (for Earth) its
-// cities' lights on the night side: both follow the sun.
-function airGlow(mat, color, { night = null } = {}) {
+// cities' lights on the night side: both follow the sun. Given the scene's
+// key light (`key`, its direction in world space, shared by every planet),
+// the planet's own sun takes the key's place in its lighting: the key is
+// where the nearest star is from the camera (lighting.js), right for the
+// ship and what's round it, but a planet across the map from the camera is
+// lit from its own side of its own star, so its terminator and its air's
+// agree wherever it's seen from.
+function airGlow(mat, color, { night = null, sun, key = null } = {}) {
   const u = {
     uRimColor: { value: new THREE.Color(color) },
     uRimStrength: { value: RIM.idle * 0.8 },
-    uSunW: { value: LIGHT },
+    uSunW: { value: sun },
     uNight: { value: night },
+    ...(key ? { uKeyW: key } : {}),
   };
   mat.userData.air = u;
   // (after any hook the planet's builder gave it, such as Cybertron's skin)
@@ -168,7 +176,7 @@ function airGlow(mat, color, { night = null } = {}) {
     prev?.call(mat, shader, renderer);
     Object.assign(shader.uniforms, u);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\nuniform vec3 uRimColor;\nuniform float uRimStrength;\nuniform vec3 uSunW;\nuniform sampler2D uNight;`)
+      .replace('#include <common>', `#include <common>\nuniform vec3 uRimColor;\nuniform float uRimStrength;\nuniform vec3 uSunW;\nuniform sampler2D uNight;${key ? '\nuniform vec3 uKeyW;' : ''}`)
       .replace(
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
@@ -182,8 +190,20 @@ function airGlow(mat, color, { night = null } = {}) {
           ${night ? 'totalEmissiveRadiance += texture2D(uNight, vMapUv).rgb * 1.5 * smoothstep(0.12, -0.3, day);' : ''}
         }`,
       );
+    // (the key is found by its direction: it's the one light whose direction
+    // is the scene's key's, whatever order the lights are in; the fill and
+    // any other light are left as they are)
+    if (key)
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <lights_fragment_begin>',
+        THREE.ShaderChunk.lights_fragment_begin.replace(
+          'getDirectionalLightInfo( directionalLight, directLight );',
+          `getDirectionalLightInfo( directionalLight, directLight );
+          if ( dot( directLight.direction, normalize( ( viewMatrix * vec4( uKeyW, 0.0 ) ).xyz ) ) > 0.9999 ) directLight.direction = normalize( ( viewMatrix * vec4( uSunW, 0.0 ) ).xyz );`,
+        ),
+      );
   };
-  mat.customProgramCacheKey = () => `${night ? 'air-night' : 'air'}${prevKey ? `-${prevKey.call(mat)}` : ''}`;
+  mat.customProgramCacheKey = () => `${night ? 'air-night' : 'air'}${key ? '-sun' : ''}${prevKey ? `-${prevKey.call(mat)}` : ''}`;
   return mat;
 }
 
@@ -502,7 +522,7 @@ const BUILDERS = {
     });
   },
 
-  transformers(p, { u, T }) {
+  transformers(p, { u, T, sun }) {
     const r = u.size;
     // built over from pole to pole (scripts/build-cybertron-planet.mjs):
     // tiers of plating, chasms with energon running in them, the city-states'
@@ -519,7 +539,7 @@ const BUILDERS = {
     });
     p.body.material = mat;
     if (T.transformers && T['transformers-glow-sm']) {
-      const skin = cybertronSkin(mat, { glow: T['transformers-glow-sm'], sun: LIGHT });
+      const skin = cybertronSkin(mat, { glow: T['transformers-glow-sm'], sun }); // (its cities light on its own night side)
       // the energon breathes, and turns from the Autobots' blue to the
       // Decepticons' violet and back as the war goes one way and the other
       const blue = SIDES.autobot.energon;
@@ -1320,8 +1340,15 @@ const BUILDERS = {
   ...STATIONS,
 };
 
-export function buildPlanet(u, T = {}) {
+// buildPlanet(u, T, { sun, key }): `sun` is the direction from the planet
+// toward the star that lights it, in the map's space (lighting.js's sunFor;
+// the old fixed key light if none is given), and turn(yaw) turns it with the
+// map into world space; `key` is the scene's key light's direction in world
+// space ({ value }, shared), which the planet's own sun stands in for.
+export function buildPlanet(u, T = {}, { sun = LIGHT, key = null } = {}) {
   const core = u.kind === 'core';
+  const sunMap = new THREE.Vector3(...(Array.isArray(sun) ? sun : sun.toArray())).normalize();
+  const sunW = sunMap.clone(); // (one vector for the air, the rim and the ground: they agree)
   const seg = T.small ? [44, 28] : [64, 40]; // a phone's screen needs fewer
   const group = new THREE.Group();
   const spinner = new THREE.Group(); // what turns about the planet's axis
@@ -1329,11 +1356,11 @@ export function buildPlanet(u, T = {}) {
   const body = new THREE.Mesh(new THREE.SphereGeometry(u.size, seg[0], seg[1]), new THREE.MeshStandardMaterial({ color: u.palette.base, roughness: 1 }));
   spinner.add(body);
   // a planet has air round it in its colour; a station's sign does that job
-  const air = core || u.airless ? null : halo(u.size, u.rim ?? u.swatch, seg); // (a station has no air round it)
+  const air = core || u.airless ? null : halo(u.size, u.rim ?? u.swatch, seg, sunW); // (a station has no air round it)
   if (air) group.add(air);
   const p = { group, body, orbits: [], tick: [], focus: [], slot: null, onSelect: null };
-  BUILDERS[u.id]?.(p, { u, T });
-  if (!core && p.body.material?.isMeshStandardMaterial) airGlow(p.body.material, u.rim ?? u.swatch, { night: p.night });
+  BUILDERS[u.id]?.(p, { u, T, sun: sunW });
+  if (!core && p.body.material?.isMeshStandardMaterial) airGlow(p.body.material, u.rim ?? u.swatch, { night: p.night, sun: sunW, key });
   // a station's big sign, over it
   const sign = u.sign ? bigSign(u) : null;
   if (sign) {
@@ -1355,6 +1382,10 @@ export function buildPlanet(u, T = {}) {
     surface: core ? null : body,
     body,
     air,
+    // the planet's sun turned with the map (yaw: the map's turn about y)
+    turn(yaw) {
+      sunW.copy(sunMap).applyAxisAngle(Y_AXIS, yaw);
+    },
     // held still (true) while the crew walk about on it, and turning on
     // from there once they're gone
     hold(on) {

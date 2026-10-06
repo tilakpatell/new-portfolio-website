@@ -6,6 +6,7 @@ import { NOSE, UP, fromAngles, rotate } from './orient';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
 import { byId } from './universes';
 import { ENTRY, LANDABLE, airTop } from './entry';
+import { sunFor } from './lighting';
 
 const fly = (s, input, seconds, solids = SOLIDS) => {
   let ship = s;
@@ -649,5 +650,47 @@ describe('autopilot', () => {
       }
       expect(done, id).toBe(true);
     }
+  });
+});
+
+describe('arriving on the day side', () => {
+  const fandoms = ORDER.filter((id) => byId(id).kind !== 'core');
+  const dayOf = (id, x, y, z) => {
+    const p = POSITIONS[id];
+    const s = sunFor(id);
+    const d = [x - p[0], y - p[1], z - p[2]];
+    return (d[0] * s[0] + d[1] * s[1] + d[2] * s[2]) / Math.hypot(...d);
+  };
+  it('parks on the day side, from wherever it comes', () => {
+    for (const id of fandoms) {
+      const p = POSITIONS[id];
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        const from = [p[0] + Math.cos(a) * REACH[id] * 4, p[2] + Math.sin(a) * REACH[id] * 4];
+        const park = parkAt(id, from);
+        expect(dayOf(id, park.x, park.y, park.z), `${id} from ${a.toFixed(2)}`).toBeGreaterThan(0.2);
+      }
+      const park = parkAt(id);
+      expect(dayOf(id, park.x, park.y, park.z), `${id} from home`).toBeGreaterThan(0.2);
+    }
+  });
+  it('still parks on the side it came from where that’s the day side', () => {
+    for (const id of fandoms) {
+      const p = POSITIONS[id];
+      const s = sunFor(id);
+      const from = [p[0] + s[0] * 600, p[2] + s[2] * 600];
+      const park = parkAt(id, from);
+      expect(dayOf(id, park.x, park.y, park.z), id).toBeGreaterThan(0.7);
+    }
+  });
+  it('starts a new ship off a planet on its day side', () => {
+    const draws = (...v) => () => v.shift();
+    STARTS.forEach((s, i) => {
+      if (!fandoms.includes(s.id)) return;
+      for (let k = 0; k < 16; k++) {
+        const at = startAt(draws((i + 0.5) / STARTS.length, k / 16));
+        expect(dayOf(s.id, at.x, at.y, at.z), `${s.id} ${k}`).toBeGreaterThan(0.2);
+      }
+    });
   });
 });

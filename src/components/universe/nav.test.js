@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { CHART_VIEWS, DESTINATIONS, DRIVES, HYPER, KINDS, chartAt, chartHeading, destinationById, distanceTo, findDestinations, formatDistance, formatTime, hyperState, onChart, findDestination, goalOf, parkFor, parseDrive, riftExit, riftSpot, tourFrom, tripTime, TOUR_IDS } from './nav';
 import { GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, inTrench, orbiting, spawn, startAt, step } from './ship';
-import { ORDER } from './layout';
+import { ORDER, POSITIONS } from './layout';
+import { sunFor } from './lighting';
 import { WONDERS } from './deep';
 import { MAW } from './maw';
 import { byId } from './universes';
@@ -298,5 +299,19 @@ describe('the grand tour', () => {
     const far = { ...parkFor('maw', [0, 0]), y: 0, speed: 0 };
     const t2 = tourFrom(far);
     expect(t2.indexOf('home')).toBeGreaterThan(3);
+  });
+});
+
+describe('a jump’s way out', () => {
+  it('comes out on the day side of a planet', () => {
+    for (const id of ORDER.filter((i) => byId(i).kind !== 'core')) {
+      for (const from of [[0, 0], [9000, 0], [-9000, 0], [0, 9000], [0, -9000]]) {
+        const park = parkFor(id, from);
+        const p = POSITIONS[id];
+        const s = sunFor(id);
+        const d = [park.x - p[0], park.y - p[1], park.z - p[2]];
+        expect((d[0] * s[0] + d[1] * s[1] + d[2] * s[2]) / Math.hypot(...d), `${id} from ${from}`).toBeGreaterThan(0.2);
+      }
+    }
   });
 });
