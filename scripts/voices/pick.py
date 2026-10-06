@@ -78,6 +78,19 @@ def normal(text):
     return " ".join(re.sub(r"[^a-z0-9']+", " ", t).split())
 
 
+# Names Whisper writes its own way: compared as the lines spell them, so a take
+# isn't failed for saying "Artoo" right
+ALIASES = [(r"\br2[- ]?d2\b", "artoo detoo"), (r"\br2\b", "artoo"), (r"\bbird person\b", "birdperson"), (r"\bface[- ]planted\b", "faceplanted"), (r"\bchewy\b", "chewie")]
+
+
+def spoken(text):
+    """`normal`, with the aliases above spelled as the lines spell them."""
+    t = text.lower()
+    for a, b in ALIASES:
+        t = re.sub(a, b, t)
+    return normal(t)
+
+
 def quoted(text, quotes, at_least=0.8):
     """The quote (as given) that `text` says, allowing for a misheard word or two, or None."""
     heard = normal(text).split()

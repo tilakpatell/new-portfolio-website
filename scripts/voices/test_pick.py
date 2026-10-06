@@ -6,7 +6,7 @@ import unittest
 
 import numpy as np
 
-from pick import choose, excluded, identify, normal, pure, quoted, refine, segment_score, stretches, take_score, too_long, uncensor, usable, utterances, video_id, windows
+from pick import choose, excluded, identify, normal, pure, spoken, quoted, refine, segment_score, stretches, take_score, too_long, uncensor, usable, utterances, video_id, windows
 
 
 def words(text, start=0.0, each=0.3, pauses=None):
@@ -71,6 +71,12 @@ class Quotes(unittest.TestCase):
         self.assertEqual(uncensor("F***ing magnets, b****!"), "Fucking magnets, bitch!")
         self.assertEqual(uncensor("Holy s***, it's 5 * 3"), "Holy shit, it's 5 * 3")
         self.assertEqual(uncensor("q*** stays"), "q*** stays")
+
+    def test_names_whisper_spells_its_own_way(self):
+        self.assertEqual(spoken("Hang on, R2!"), spoken("Hang on, Artoo!"))
+        self.assertEqual(spoken("Bye, bird person!"), spoken("Bye, Birdperson!"))
+        self.assertEqual(spoken("Yo, it just face-planted."), spoken("Yo, it just faceplanted."))
+        self.assertEqual(spoken("R2-D2, where are you?"), "artoo detoo where are you")
 
     def test_normal(self):
         self.assertEqual(normal("Nobody exists — on purpose, Morty!"), "nobody exists on purpose morty")

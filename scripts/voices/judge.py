@@ -56,8 +56,12 @@ def hear(wav, words=False):
 
 def plain(text):
     """Text as Whisper's own English normaliser has it, for comparing what was said with what was meant."""
+    from pick import ALIASES
+
     tok = _whisper().tokenizer
-    t = re.sub(r"\[[^\]]*\]", " ", text)
+    t = re.sub(r"\[[^\]]*\]", " ", text).lower()
+    for a, b in ALIASES:  # the names Whisper spells its own way ("R2" for Artoo)
+        t = re.sub(a, b, t)
     return tok.normalize(t) if hasattr(tok, "normalize") else re.sub(r"[^a-z0-9' ]+", " ", t.lower()).strip()
 
 
