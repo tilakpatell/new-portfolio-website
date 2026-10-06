@@ -89,3 +89,35 @@ scripts cache what they've done, so a rerun picks up where one stopped.
   `--check` shows it misheard, correct `refs/<who>.txt` and run again.
 - **A bad line.** `cache/takes/report.md` lists the lines whose best take
   still didn't pass. Delete a line's mp3 and run again for new takes.
+
+## From anywhere: a `voices` issue
+
+The desktop makes the lines; any other session (a cloud one, a phone) asks
+for them with a GitHub issue labelled **`voices`**. `runner.mjs` on the
+desktop polls every minute, makes every line the site says that has no
+recording yet, opens a pull request with the recordings and the manifest,
+comments on the issue and closes it. The body is optional:
+
+```
+only: rick, morty            (just these speakers; else everyone with a voice)
+rick: Wubba lubba dub dub.   (a line to make ahead of the code that will say it: who: text, one a line)
+morty: Aw geez, Rick.
+```
+
+So a session adding lines to a world either merges its code to main and
+opens an empty `voices` issue, or lists the lines in the issue first and
+wires them once the PR lands (the id is the same either way:
+`lineId(who, text)` in src/lib/voiced.js). A speaker with no reference
+voice is reported back, not made: that needs the owner, with `grab.py`, or
+five to eleven seconds of them at `refs/<who>.wav` and the transcript
+beside it, plus the name in `export-lines.mjs`'s lists and `voiceOf`.
+A failure is commented and labelled `voices:failed`; fix the issue and
+remove the label to try again.
+
+On the desktop the runner is kept running from the Startup folder
+(`%LOCALAPPDATA%\gen3d\voices-runner.cmd`, log in `voices-runner.log`)
+in its own checkout beside the repository (`<repo>-voices`), with the
+references and the takes cache in `%LOCALAPPDATA%\voices\` (`VOICES_REFS`,
+`VOICES_CACHE`; `common.py` reads them) and the TTS venv at
+`~/.venvs/voices` (`VOICES_PYTHON` for another). The gen3d runner shares
+the GPU with it.
