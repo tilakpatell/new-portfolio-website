@@ -16,6 +16,7 @@ import { device } from '../../../lib/device';
 import { allOrUndo } from '../../../lib/settle';
 import { createFx } from '../../middleearth/shire/fx';
 import { createGhosts } from '../../middleearth/towns/ghosts';
+import { groundWorld } from '../../../lib/three/groundwork';
 import { createMeshyCast } from '../portal/meshyCast';
 import { InkPass } from '../portal/toon';
 import { EDGE_BUILDINGS, buildConcourse } from './concourse';
@@ -282,6 +283,7 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
     camera.lookAt(A.cam.look);
 
     fx.step(dt, t, { night: 0, day: 1 });
+    ground?.update();
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -333,16 +335,46 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
 
   // every shader compiled before the first frame (everything's still
   // visible here, the rooms too)
+  // ── the concourse's floor light, baked when it's first drawn (after Bruno
+  // Simon's folio: lib/three/groundwork): the buildings' and the terminal's
+  // soft shadows and their feet darkened on the deck, a bounce off it, and a
+  // blob under everyone who walks it, where nothing grounded them before ──
+  const walker = (f) => ({ object: f.group, size: [0.8, 0.8] });
+  const ground = concourse.floor
+    ? groundWorld({
+        renderer,
+        scene,
+        floor: [concourse.floor],
+        sun: key,
+        casters: [concourse.group],
+        skip: [fxRoot, ghosts.group, ...concourse.hide],
+        movers: [people.rick, ...(people.cast ?? []), ...(people.mortys ?? []), ...(people.cops ?? [])].filter((f) => f?.group).map(walker),
+        shade: 0x3a3424,
+        tier,
+        auto: true,
+        clip: true,
+      })
+    : null;
+  const setRick = (look) => {
+    const was = people.rick;
+    people.setRick(look);
+    if (people.rick !== was) {
+      if (was?.group) ground?.untrack(was.group);
+      if (people.rick?.group) ground?.track(people.rick.group, [0.8, 0.8]);
+    }
+  };
+
   await stage.precompile();
 
   return {
+    ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
     screenOf,
     resize: stage.resize,
     // a new look from the wardrobe
-    setLooks: (next) => people.setRick(next?.rick),
+    setLooks: (next) => setRick(next?.rick),
     info() {
       const i = renderer.info;
       return { calls: i.render.calls, triangles: i.render.triangles, geometries: i.memory.geometries, textures: i.memory.textures, quality: stage.quality, tier };
@@ -355,6 +387,7 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
       return A.suggest ?? null;
     },
     dispose() {
+      ground?.dispose();
       ghosts.dispose();
       people.dispose();
       crowd.dispose();
