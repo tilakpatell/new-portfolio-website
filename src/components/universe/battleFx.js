@@ -37,12 +37,15 @@ export function createBoltDraw(parent, { count = 320 } = {}) {
   const d = new THREE.Vector3();
   const c = new THREE.Color();
   return {
-    // bolts: battle.js's pool; colourOf(bolt) → [r, g, b]
-    sync(bolts, colourOf) {
+    // bolts: battle.js's pool; colourOf(bolt) → [r, g, b]; eye: the camera, in
+    // the parent's space (a bolt right by it is dimmed: one passing a few
+    // metres off shouldn't fill the screen with its glow)
+    sync(bolts, colourOf, eye = null) {
       let n = 0;
       for (const b of bolts) {
         if (!b.on || n >= count) continue;
         const look = BOLT_LOOK[b.kind] ?? BOLT_LOOK.laser;
+        const near = eye ? Math.min(1, Math.max(0.12, (Math.hypot(b.x - eye.x, b.y - eye.y, b.z - eye.z) - look.length) / (look.length * 4 + 2))) : 1;
         d.set(b.vx, b.vy, b.vz).normalize();
         q.setFromUnitVectors(Z, d);
         // (drawn a little behind its point, so it trails from where it is)
@@ -50,7 +53,8 @@ export function createBoltDraw(parent, { count = 320 } = {}) {
         s.set(look.width, look.width, look.length);
         mesh.setMatrixAt(n, m.compose(p, q, s));
         const rgb = colourOf(b);
-        mesh.setColorAt(n, c.setRGB(rgb[0] * look.bright, rgb[1] * look.bright, rgb[2] * look.bright));
+        const k = look.bright * near;
+        mesh.setColorAt(n, c.setRGB(rgb[0] * k, rgb[1] * k, rgb[2] * k));
         n += 1;
       }
       mesh.count = n;

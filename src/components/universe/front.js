@@ -2,15 +2,18 @@
 // docs/superpowers/specs/2026-10-06-fleet-war-design.md). It sits at the
 // war's contested sector (war.js) out in deep space, a glow and a name seen
 // from far off. Come within sight of it and the battle's there to watch
-// (battle.js fights it, battleScene.js draws it); fly into it and you're
-// asked which side you'll fly for; pick one and you're in it. Leave and the
-// battle waits for you, paused, till you come back. When it's over the war
-// moves on (the attacker takes the sector if it won), the visit's save
-// remembers it, and a while later the next battle's at the new front.
+// (battle.js fights it, battleScene.js draws it); fly into it and you're in
+// it, on your crew's side (the war's first side is the crews': no side to
+// pick, no game to start; the crew calls it out). Leave and the battle waits
+// for you, paused, till you come back. When it's over the war moves on (the
+// attacker takes the sector if it won), the visit's save remembers it, and a
+// while later the next battle's at the new front. (The Star Wars crews' war
+// is fought in the galaxy, galaxy/gcw.js, not here: no war's ready here yet.)
 //
 // zoneOf(dist, was) → 'in' | 'near' | 'out' is pure (tested).
-// createFront(map, { side, models, small, tier, reduced, storage, emit,
-//   makeBattle, makeScene }) → null (the side has no war, or it isn't ready)
+// createFront(map, { side, war, models, small, tier, reduced, storage, emit,
+//   makeBattle, makeScene }) → null (the side has no war, or it isn't ready;
+//   `war` in place of the side's own, for the tests)
 //   or { update(dt, t, camera, camLocal, live) → { busy, hurt }, join(team),
 //   hit(from, to, damage), targets, inZone, near, joined, info, where(),
 //   goal(), win(team), dispose() }
@@ -25,7 +28,7 @@ import { DEEP } from './deep';
 
 export const ZONE = {
   near: 900, // within sight: the battle's drawn and fought
-  in: 260, // in it: you're asked to pick a side, and the pulse drive's held down
+  in: 260, // in it: you're in the fight on your crew's side, and the pulse drive's held down
   out: 600, // and you're out of it again past here
   rest: 20, // seconds after a battle's over before the next one's at the front
 };
@@ -57,15 +60,14 @@ function nameCard(title, sub) {
   return t;
 }
 
-export function createFront(map, { side, models, small = false, tier = 'high', reduced = false, storage = null, emit = () => {}, makeBattle = createBattle, makeScene = createBattleScene }) {
-  const war = warFor(side?.id);
+export function createFront(map, { side, war: given = null, models, small = false, tier = 'high', reduced = false, storage = null, emit = () => {}, makeBattle = createBattle, makeScene = createBattleScene }) {
+  const war = given ?? warFor(side?.id);
   if (!war || !war.ready) return null;
   let state = loadWar(storage, war);
   const draw = makeScene(map, { models, small, reduced });
   let battle = null;
   let zone = 'out';
   let joined = null;
-  let asked = false;
   let rest = 0; // seconds till the next battle, once one's over
   let shown = false;
   let battleAt = null; // where the battle on now is (the front may have moved on since)
@@ -131,7 +133,6 @@ export function createFront(map, { side, models, small = false, tier = 'high', r
     battleAt = sector().at;
     battle = makeBattle({ war, attacker: state.attacker, at: battleAt, axis, perSide: perSide(tier) });
     joined = null;
-    asked = false;
     shown = false;
   };
 
@@ -141,18 +142,12 @@ export function createFront(map, { side, models, small = false, tier = 'high', r
     const before = state;
     state = resolve(state, war, over.winner);
     saveWar(storage, war, state);
-    const [a, b] = war.sides;
     const winner = war.sides[over.winner];
     const took = over.winner === before.attacker;
     let text = took ? `${winner.name} takes ${s.name}.` : `${winner.name} holds ${s.name}.`;
     if (state.won !== null) text += ` ${winner.name} has won ${war.name.replace(/^The /, 'the ')}. It starts again from the middle.`;
     else text += ` The front is at ${sector().name} now.`;
-    const word = joined === null ? 'Battle over' : over.winner === joined ? 'Victory' : 'Defeat';
-    emit({
-      type: 'battle',
-      what: 'over',
-      over: { word, text, colours: [a.colour, b.colour], sectors: war.sectors.map((sec, i) => ({ name: sec.name, owner: owner(state, i), front: i === contested(state) })) },
-    });
+    emit({ type: 'battle', what: 'over', over: { winner: over.winner, text, sectors: war.sectors.map((sec, i) => ({ name: sec.name, owner: owner(state, i), front: i === contested(state) })) } });
     if (joined !== null) say(state.won !== null ? (state.won === joined ? 'warWon' : 'warLost') : over.winner === joined ? 'won' : 'lost');
     rest = ZONE.rest;
     placeBeacon();
@@ -195,16 +190,11 @@ export function createFront(map, { side, models, small = false, tier = 'high', r
         draw.show(battle, war);
         shown = true;
       }
-      // arriving in it: which side will you fly for?
-      if (zone === 'in' && was !== 'in' && !battle.over) {
-        if (joined === null && !asked) {
-          asked = true;
-          const s = sector();
-          emit({ type: 'battle', what: 'ask', ask: { battle: war.battleName(s), war: war.name, sector: s.name, attacker: state.attacker, sides: war.sides.map((o) => ({ name: o.name, colour: o.colour })) } });
-          say('front');
-        }
+      // arriving in it: you're in, on your crew's side (the war's first)
+      if (zone === 'in' && was !== 'in' && !battle.over && joined === null) {
+        say('front');
+        front.join(0);
       }
-      if (zone !== 'in' && was === 'in' && joined === null) emit({ type: 'battle', what: 'left' });
       const events = battle.update(dt, live ? { x: live.x, y: live.y, z: live.z, alive: true } : null);
       for (const e of events) {
         if (e.type === 'hurt') hurt += e.damage;
@@ -217,13 +207,9 @@ export function createFront(map, { side, models, small = false, tier = 'high', r
       return { busy: true, hurt };
     },
 
-    // fly for a side (0 or 1), or stay out of it (null)
+    // fly for a side (0 or 1)
     join(team) {
-      if (!battle || battle.over) return;
-      if (team !== 0 && team !== 1) {
-        emit({ type: 'battle', what: 'left' });
-        return;
-      }
+      if (!battle || battle.over || (team !== 0 && team !== 1)) return;
       joined = team;
       battle.setYou(team);
       emit({ type: 'battle', what: 'joined', team });
