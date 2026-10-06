@@ -7,7 +7,7 @@
 //   prompt: an X-wing starfighter, …     (FLUX draws the concept picture)
 //   image: (attach a picture, or an URL) (the picture to follow; Pixal3D unless faithful: no)
 //   front: / left: / back: / right: (a picture each, or attach them in that order: Hunyuan3D multi-view)
-//   faces: 24000   tex: 2048   seed: 42   res: 1024   fov: 49   engine: trelliscpp|trellis2
+//   faces: 24000   tex: 2048   seed: 42   res: 1024   fov: 49   engine: trelliscpp|trellis|trellis2
 //   faithful: no   bake: no
 //
 //   node scripts/gen3d/runner.mjs --watch [60]     # poll every 60 s, run each job

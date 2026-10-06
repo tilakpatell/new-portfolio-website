@@ -50,6 +50,12 @@ describe('concept pictures', () => {
 });
 
 describe('following a picture closely', () => {
+  it('takes engine "trellis" as trellis.cpp without Pixal3D, whatever else says faithful', async () => {
+    const { engineFor } = await import('./make.mjs');
+    expect(engineFor('trellis', true)).toEqual({ engine: 'trelliscpp', faithful: false });
+    expect(engineFor('trelliscpp', true)).toEqual({ engine: 'trelliscpp', faithful: true });
+    expect(engineFor(undefined, false)).toEqual({ engine: undefined, faithful: false });
+  });
   it('runs trellis.cpp with the Pixal3D weights and the camera it was taken with', () => {
     const cmd = command('trelliscpp', 'a.png', 'b.glb', { faithful: true, fov: 52 });
     if (!cmd) return; // trellis.cpp isn't installed here

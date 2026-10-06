@@ -23,8 +23,9 @@ A picture of your own goes through **Pixal3D** (`--faithful`, on by default
 with `--image`): a TRELLIS.2 fine-tune that projects each 3D cell into the
 picture and samples it there, so the shape follows what you gave it; pass
 `--fov` if you know the camera's horizontal field of view. `--no-faithful`
-(`faithful: no` on an issue) sends the picture through TRELLIS.2 proper
-instead, for a three-quarter render or concept. Pixal3D writes its model Z
+(`faithful: no` on an issue), or `--engine trellis` (`engine: trellis`),
+sends the picture through TRELLIS.2 proper instead, for a three-quarter
+render or concept. Pixal3D writes its model Z
 up (a figure lies on its back), so the web cuts are stood up
 (`upright.mjs`). A prompt goes through TRELLIS.2 proper. Either way the model is made at full quality
 first (res 1024, ~300k triangles, 2048² PBR atlas) and only then cut down
@@ -50,7 +51,7 @@ line, all optional but one of `prompt`/`what`/`image`:
 what: a TIE fighter                 (for the credit; the prompt if there is none)
 prompt: a TIE fighter, grey, …      (FLUX draws the concept picture)
 image: (attach a picture, or a URL) (the picture to follow; Pixal3D unless faithful: no)
-faces: 60000  tex: 2048  seed: 42  res: 1024  fov: 49  engine: trelliscpp|trellis2
+faces: 60000  tex: 2048  seed: 42  res: 1024  fov: 49  engine: trelliscpp|trellis|trellis2
 faithful: no  bake: no
 ```
 

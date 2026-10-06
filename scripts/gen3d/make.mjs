@@ -5,7 +5,7 @@
 //   node scripts/gen3d/make.mjs x-wing --image photo.png --faithful --what "an X-wing starfighter"
 //   node scripts/gen3d/make.mjs x-wing --prompt "an X-wing starfighter" --what "an X-wing starfighter"
 //   node scripts/gen3d/make.mjs x-wing --image front.png --left left.png --back back.png --what "…"   (several sides: Hunyuan3D multi-view)
-//   options: --no-faithful (a lone picture through TRELLIS.2 proper) --faces 120000 --tex 4096 (the bake, the top cut; the other two cuts come from it) --match OLD.glb --seed 42 --res 1024 --fov 49 --engine trelliscpp|trellis2 --no-bake
+//   options: --no-faithful (a lone picture through TRELLIS.2 proper) --faces 120000 --tex 4096 (the bake, the top cut; the other two cuts come from it) --match OLD.glb --seed 42 --res 1024 --fov 49 --engine trelliscpp|trellis|trellis2 --no-bake
 //
 // Everything on the way lands in scripts/gen3d/cache/<name>/; the result in
 // public/models/gen3d/<name>.glb, credited in public/games/credits.json.
@@ -24,9 +24,15 @@ import { publish } from './web.mjs';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CACHE = join(HERE, 'cache');
 
+// engine "trellis" is trellis.cpp without Pixal3D: a lone picture through
+// TRELLIS.2 proper whatever says faithful (an issue's `engine: trellis`, for
+// a three-quarter render or concept, works with any runner)
+export const engineFor = (engine, faithful) => (engine === 'trellis' ? { engine: 'trelliscpp', faithful: false } : { engine, faithful });
+
 // `image` is one picture (the front), or several sides { front, left, back, right }:
 // with more than one, Hunyuan3D's multi-view engine is used
 export async function make(name, { image, prompt, what, faces = TIERS.hq.faces, tex = TIERS.hq.tex, seed = 42, res = 1024, fov, engine, faithful = typeof image === 'string', noBake = false, match }) {
+  ({ engine, faithful } = engineFor(engine, faithful));
   const dir = join(CACHE, name);
   mkdirSync(dir, { recursive: true });
   const log = (m) => console.log(`[${name}] ${m}`);
