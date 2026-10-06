@@ -225,6 +225,7 @@ def main():
     ap.add_argument("--pick", action="append", default=[], help="who=source@start[,source@start]: use these segments (names from the report)")
     ap.add_argument("--per-query", type=int, default=3, help="search results fetched per search in sources.json")
     ap.add_argument("--refresh", action="store_true", help="replace references you made yourself too")
+    ap.add_argument("--fetch-only", action="store_true", help="just search and download the sources (no GPU), to process them later")
     args = ap.parse_args()
 
     cfgs = json.loads((HERE / "sources.json").read_text(encoding="utf-8"))
@@ -250,6 +251,9 @@ def main():
             every.setdefault(s["id"], s)
     print(f"{len(every)} sources for {', '.join(voices)}; fetching, separating and listening (cached after the first time)")
     raw = {s["id"]: f for s in every.values() if (f := fetch(s))}
+    if args.fetch_only:
+        print(f"Fetched {len(raw)} of {len(every)} sources")
+        return
     # the separator first and on its own: it and the judge's models together outgrow the card
     sep, vocals, segments = Vocals(), {}, {}
     for sid, f in raw.items():
