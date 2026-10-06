@@ -371,7 +371,7 @@ export const THINGS = [
   { id: 'lift', ...P(94, 82), r: 1.2, name: 'The lift', line: 'It works. Mostly. The stairs are on the other side of the office, past the kitchen.' },
   { id: 'closet', ...P(600, 266), r: 1.0, name: 'Ryan’s closet', line: 'Ryan’s office, between the restrooms. He calls it his “workspace”. It has a door, which is more than the annex has.' },
   { id: 'forklift', x: FORKLIFT.x - 1.4, z: FORKLIFT.z + 0.4, r: 1.4, name: 'The forklift', line: 'Only the warehouse drives the forklift. Michael drove it once. They still talk about it, and not kindly.' },
-  { id: 'accident', x: 34, z: -6.9, r: 1.6, name: 'Days without an accident', line: 'Zero. Michael was down here this morning.' },
+  { id: 'accident', x: 34, z: -6.9, r: 1.6, name: 'The safety record', line: 'Zero days without a lost time accident. Michael was down here this morning.' },
   { id: 'bales', x: 47.6, z: 2.2, r: 1.2, name: 'A bale of paper', line: 'Shrink-wrapped, on a pallet, waiting for a truck. Somewhere in there is the paper Michael says is “the best in the business”.' },
   { id: 'dock', x: 52.2, z: 6.2, r: 1.2, name: 'The loading dock', line: 'One door up, one down. The trucks come at seven, and Darryl’s been here since six.' },
   { id: 'parksign', x: 82.4, z: -1, r: 1.8, name: 'Scranton Business Park', line: 'The sign at the front of the lot. Dunder Mifflin, Vance Refrigeration, and a few others nobody has ever met.' },

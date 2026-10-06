@@ -14,6 +14,10 @@ const ring = (n, r, phase = 0) => Array.from({ length: n }, (_, i) => {
   return [Math.cos(a) * r, Math.sin(a) * r, -a - Math.PI / 2];
 });
 
+// Lothal's rock spires out west, between the landing and the old tower (the
+// star map mission's run goes through them)
+const LOTHAL_SPIRES = [[-31, 4, 0.32], [-9, 35, 0.42], [-48, 46, 0.37], [-68, 14, 0.46], [-108, 32, 0.42], [-114, 69, 0.42], [-161, 68, 0.32], [-181, 37, 0.46], [-218, 53, 0.37], [-231, 88, 0.42], [-271, 71, 0.42], [-276, 34, 0.46]].map(([x, z, scale], i) => ({ kind: 'lothtemple', at: [x, z], yaw: i * 1.7, scale: scale * 0.7, sink: 0.5 }));
+
 export const SITES = {
   nevarro: {
     place: 'The lava fields outside Nevarro City',
@@ -29,7 +33,15 @@ export const SITES = {
       { id: 'base', name: 'The Imperial base', at: [-260, 160], r: 50, flat: { r: 48 }, about: 'An Imperial Remnant outpost, still running, still guarding something.', things: [{ kind: 'bunker', at: [0, 0], yaw: 2 }, { kind: 'crates', at: [16, 10] }, { kind: 'crates', at: [-12, 14] }, { kind: 'lamp', at: [10, -14] }] },
       { id: 'lava', name: 'The lava flats', at: [300, 260], r: 50, about: 'A crust of black glass over rivers of fire. Don’t stop walking.', things: grove(41, 14, 4, 40, ['lavarock'], [1.5, 4.5]) },
     ],
-    // black lava rock everywhere, the big ones further out
+    // the guild's cargo where you set down, and black lava rock everywhere,
+    // the big ones further out
+    things: [
+      { kind: 'cratecube', at: [14, 10], yaw: 0.4 },
+      { kind: 'cratecube', at: [15.3, 10.5], yaw: 1.1 },
+      { kind: 'barrel', at: [12.5, 12], yaw: 0.2 },
+      { kind: 'empirecrate', at: [-16, -8], yaw: 2.3 },
+      { kind: 'lamp', at: [18, 6] },
+    ],
     scatter: [
       { kind: 'lavarock', n: 110, within: [24, 420], scale: [0.35, 1.6], sink: 0.25, solid: 0.6 },
       { kind: 'lavarock', n: 40, within: [120, 800], scale: [2, 5], sink: 0.6 },
@@ -56,6 +68,8 @@ export const SITES = {
       { kind: 'ig11', at: [130, -60], roam: 8, speed: 0.8, name: 'IG-11', named: true, says: ['I am a nurse droid. I am programmed to protect the child.'] },
       { kind: 'stormtrooper', n: 4, at: [-260, 160], spread: 20, roam: 12, speed: 1.2, name: 'Remnant stormtrooper', says: ['Move along. This area is restricted.'] },
       { kind: 'villager', n: 4, at: [140, -90], spread: 30, roam: 18, speed: 1, name: 'Nevarro local', says: ['The guild’s back in business. The Empire’s not.'] },
+      { kind: 'r5', n: 1, at: [12, 6], roam: 6, speed: 0.6, name: 'An R5 unit', says: ['(A sulky beep. Somebody stole its restraining bolt. For the bolt.)'] },
+      { kind: 'aqualish', n: 1, at: [-14, -4], still: true, face: 0.8, name: 'Bounty hunter', says: ['Guild business. Keep walking.', 'Cantina’s in town. Karga’s buying. Karga’s never buying.'] },
     ],
     quests: [
       { id: 'puck', name: 'The bounty puck', giver: 'greef', intro: [['Greef Karga', 'A puck for you: the client wants an asset from the Imperial base. Alive. Questions are extra.']], steps: [{ type: 'reach', at: [-260, 160], r: 40, text: 'Go to the Imperial base' }, { type: 'shoot', tag: 'basetroops', n: 6, text: 'Get past the guards', spawn: troops('basetroops', 6, [-260, 160]) }, { type: 'collect', item: 'asset', n: 1, spots: [[-252, 166]], text: 'Collect the asset' }, { type: 'talk', zone: 'cantina', actor: 'greef', text: 'Take it to Greef Karga' }], done: [['Greef Karga', 'The client is pleased. Here: camtono of beskar. Don’t spend it all at once.']] },
@@ -83,7 +97,7 @@ export const SITES = {
     // the glass the bombs left, in shards across the plain
     scatter: [{ kind: 'glassshard', n: 160, within: [25, 650], scale: [0.6, 2.6], sink: 0.3, solid: 0.4 }],
     life: [
-      { kind: 'mando', id: 'armorer', at: [-116, 226], still: true, face: 2, name: 'The Armorer', named: true, quest: ['waters', 'reclaim'], says: ['This is the Way.'] },
+      { kind: 'armorer', id: 'armorer', at: [-116, 226], still: true, face: 2, name: 'The Armorer', named: true, quest: ['waters', 'reclaim'], says: ['This is the Way.'] },
       { kind: 'mando', n: 3, at: [-120, 220], spread: 8, roam: 6, speed: 1, name: 'Mandalorian', says: ['This is the Way.', 'For Mandalore!'] },
       { kind: 'bobafett', at: [205, 85], still: true, face: 1, name: 'A bounty hunter in green armour', says: ['(He says nothing. He doesn’t need to.)'] },
     ],
@@ -113,14 +127,13 @@ export const SITES = {
       { kind: 'farmer', id: 'ryder', at: [250, -50], still: true, face: 2, name: 'Governor Azadi', named: true, quest: 'factory', says: ['Lothal is free. Let’s keep it that way.'] },
       { kind: 'stormtrooper', n: 4, at: [-220, -200], spread: 18, roam: 12, speed: 1.2, name: 'Remnant stormtrooper', says: ['Back away from the factory.'] },
       { kind: 'villager', n: 5, at: [260, -60], spread: 30, roam: 15, speed: 1, name: 'Lothal farmer', says: ['The loth-wolves came back. That has to mean something.'] },
+      { kind: 'farmer', n: 1, at: [-14, 12], roam: 6, speed: 0.8, name: 'Haulier', says: ['Grain for Capital City. Half of it goes to the garrison, whether we like it or not.', 'Watch the spires. The wolves den there.'] },
+      { kind: 'astromech', n: 1, at: [-10, 18], roam: 5, speed: 0.6, name: 'Astromech', says: ['(A grumpy, clipped beep. It would rather be fixing a ship.)'] },
     ],
     quests: [
       { id: 'starmap', name: 'The star map', giver: 'ahsoka', intro: [['Ahsoka Tano', 'The map to Thrawn is in pieces, hidden in the old temple stones. Find them.']], steps: [{ type: 'collect', item: 'shard', n: 3, spots: [[-150, 240], [-128, 218], [-146, 214]], text: 'Find the pieces of the star map' }, { type: 'use', id: 'map', at: [-140, 230], r: 6, prompt: 'Fit the pieces together', text: 'Open the star map', end: [{ shake: 0.4 }, { say: [[null, '(Points of light fill the air: a route to another galaxy.)']] }] }], done: [['Ahsoka Tano', 'Peridea. So that’s where they went.']] },
       { id: 'factory', name: 'Shut down the factory', giver: 'ryder', steps: [{ type: 'shoot', tag: 'factory', n: 8, text: 'Clear the Remnant from the factory', spawn: troops('factory', 8, [-220, -200]) }, { type: 'use', id: 'power', at: [-220, -200], r: 6, prompt: 'Shut down the power', text: 'Shut the factory down', end: [{ sound: 'crash' }, { shake: 0.8 }] }], done: [['Governor Azadi', 'No more TIEs from Lothal.']] },
     ],
-    // the rock spires out west, between the landing and the old tower (the
-    // star map mission's run goes through them)
-    things: [[-31, 4, 0.32], [-9, 35, 0.42], [-48, 46, 0.37], [-68, 14, 0.46], [-108, 32, 0.42], [-114, 69, 0.42], [-161, 68, 0.32], [-181, 37, 0.46], [-218, 53, 0.37], [-231, 88, 0.42], [-271, 71, 0.42], [-276, 34, 0.46]].map(([x, z, scale], i) => ({ kind: 'lothtemple', at: [x, z], yaw: i * 1.7, scale: scale * 0.7, sink: 0.5 })),
     // the plains' tall grass, gold and green
     scatter: [
       { kind: 'grass', n: 1100, within: [4, 240], scale: [1.1, 2.2], solid: false, opts: { color: '#a8b45a' } },
@@ -128,6 +141,14 @@ export const SITES = {
       { kind: 'grass', n: 400, within: [4, 260], scale: [0.9, 1.6], solid: false, opts: { color: '#8aa048', flower: '#e8d880' } },
     ],
     rides: [{ kind: 'speederbike', at: [12, -10], yaw: -1.2 }],
+    // a haulier's truck at the landing, its load beside it
+    things: [
+      ...LOTHAL_SPIRES,
+      { kind: 'speedertruck', at: [-18, 16], yaw: 0.4 },
+      { kind: 'barrel', at: [-14, 20], yaw: 0.3 },
+      { kind: 'barrel', at: [-12.8, 20.8], yaw: 1.4 },
+      { kind: 'cratecube', at: [-15.5, 22.5], yaw: 0.7 },
+    ],
     flyovers: [{ kind: 'xwing', n: 1, metres: 12.5, alt: 80, speed: 100, every: 70 }, { kind: 'tie', n: 1, metres: 7, alt: 100, speed: 110, every: 90 }],
   },
 
@@ -146,6 +167,14 @@ export const SITES = {
     ],
     // the woods: birches and firs all round, thinning out far off, ferns
     // under them (the village and the landing are kept clear)
+    // the farmers' cart and its barrels where you set down
+    things: [
+      { kind: 'barrel', at: [16, 14], yaw: 0.2 },
+      { kind: 'barrel', at: [17.2, 14.6], yaw: 1.3 },
+      { kind: 'barrel', at: [16.4, 15.8], yaw: 2.1 },
+      { kind: 'crates', at: [-12, 10] },
+      { kind: 'log', at: [12, -14], yaw: 0.8 },
+    ],
     scatter: [
       { kind: 'rock', n: 60, within: [40, 500], scale: [0.6, 2.4], opts: { color: '#6a6a5a' } },
       { kind: 'sorganbirch', n: 90, within: [45, 520], scale: [0.75, 1.3], sink: 0.3, solid: 0.5 },
@@ -156,6 +185,7 @@ export const SITES = {
       { kind: 'villager', id: 'omera', at: [186, 112], still: true, face: 2.4, name: 'Omera', named: true, quest: 'raiders', says: ['We can pay. Not much, but we can pay.'] },
       { kind: 'villager', n: 5, at: [180, 120], spread: 20, roam: 12, speed: 0.9, name: 'Krill farmer', says: ['The raiders come at harvest. Every harvest.'] },
       { kind: 'grogu', at: [176, 126], still: true, face: 1, name: 'The Child', says: ['(He’s eating a frog. Again.)'] },
+      { kind: 'villager', n: 2, at: [14, 10], spread: 5, roam: 8, speed: 0.9, name: 'Krill farmer', says: ['The village is that way, through the trees. Bring your own boots.', 'Krill harvest’s in. The raiders know it too.'] },
     ],
     quests: [
       { id: 'raiders', name: 'Sanctuary', giver: 'omera', intro: [['Omera', 'Raiders. And they’ve got an Imperial walker. Will you help us?']], steps: [{ type: 'shoot', tag: 'raiders', n: 6, text: 'Drive off the Klatooinian raiders', spawn: { kind: 'aqualish', n: 6, at: [-240, -160], spread: 14, roam: 6, hp: 2, tag: 'raiders', hostile: hostile(42, 2.4, 8) } }, { type: 'shoot', tag: 'walker', n: 1, text: 'Bring down the AT-ST', lines: [[null, '(The trees split. An AT-ST steps out of them.)']], spawn: { kind: 'atst', at: [-220, -140], hp: 16, roam: 10, speed: 1.2, tag: 'walker', hostile: hostile(60, 2, 12) } }], done: [['Omera', 'You could stay, you know. There’s room here.']] },

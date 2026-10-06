@@ -128,8 +128,10 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
   // moving. `pose`: 'sit' (the chair's seat `seat` under them, leaning in to
   // the desk), 'stand', or 'wheelchair' (sitting up, hands on the armrests).
   // `typing`: the hands go on the keys, which are `keys` ahead of the chair's
-  // middle; `idle`: the head looks round now and then.
-  const person = (who, { pose = 'sit', seat = SEAT, shadows = true, typing = false, idle = false, keys = 0.45 } = {}) => {
+  // middle; `idle`: the head looks round now and then. `cull`: left out of a
+  // frame (and its shadows) when they're out of view, within a sphere wide
+  // enough for any pose; otherwise always drawn.
+  const person = (who, { pose = 'sit', seat = SEAT, shadows = true, typing = false, idle = false, keys = 0.45, cull = false } = {}) => {
     const spec = isSpec(who) ? who : CAST[who];
     const id = isSpec(who) ? who.id : who;
     const model = models.get(id);
@@ -168,6 +170,12 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
     rig.scale.multiplyScalar(scale);
     rig.position.y = -box.min.y * scale;
     settle();
+    if (cull) {
+      // the bind pose's bounds (arms out), with room for the arms up in a cheer
+      body.computeBoundingSphere();
+      body.boundingSphere.radius *= 1.4;
+      body.frustumCulled = true;
+    }
     // how far their middle (hips to chest) comes forward of the hip joints
     const pos = (o) => o.getWorldPosition(new THREE.Vector3());
     const waist = pos(B.thigh[0]);

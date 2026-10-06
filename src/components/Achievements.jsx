@@ -181,6 +181,9 @@ export const ACHIEVEMENTS = {
   speederchase: { name: 'Fast and low', desc: 'Caught every scout trooper before the bunker on Endor' },
   starmapride: { name: 'The way to Ezra', desc: 'Raced the spires to the old tower on Lothal and kept the star map' },
   dagobahraise: { name: 'Size matters not', desc: 'Ran Dagobah’s swamp with Yoda on your back, faced the cave and raised the X-wing' },
+  canyonmission: { name: 'Faster than Biggs', desc: 'Ran Beggar’s Canyon both ways against the clock on Tatooine' },
+  firsttransport: { name: 'The first transport is away', desc: 'Loaded the first transport off Hoth and cleared its way with the ion cannon' },
+  sanctuary: { name: 'Sanctuary', desc: 'Held the krill farmers’ village on Sorgan against the raiders and their AT-ST' },
   tosche: { name: 'Power converters', desc: 'Picked up power converters at Tosche Station' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
   // Dunder Mifflin Scranton, the world (office/world)

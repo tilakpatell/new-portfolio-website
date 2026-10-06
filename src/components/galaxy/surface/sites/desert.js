@@ -297,18 +297,40 @@ export const SITES = {
       { kind: 'vaporator', at: [-120, 110] },
       { kind: 'vaporator', at: [-130, 190] },
       { kind: 'vaporator', at: [-210, 110] },
+      // where you set down: the farm's edge, a landspeeder pulled up by its
+      // vaporator and the cargo it brought, a Jawa's stall
+      { kind: 'vaporator', at: [-34, 22] },
+      { kind: 'landspeeder', at: [24, -14], yaw: 2.1, y: 0.7, solid: { r: 1.4 } },
+      { kind: 'barrel', at: [20, -9], yaw: 0.4 },
+      { kind: 'barrel', at: [21.2, -9.6], yaw: 1.3 },
+      { kind: 'bevelcrate', at: [18.6, -10.2], yaw: 0.2 },
+      { kind: 'cooler', at: [27, -8], yaw: 2.2 },
+      { kind: 'stall', at: [-16, 26], yaw: 2.2 },
+      { kind: 'crates', at: [-21, 23] },
+      { kind: 'lamp', at: [-12, 30], opts: { h: 3.6 } },
+      // the Jawas' beasts, tethered by the sandcrawler's ramp
+      { kind: 'ronto', at: [152, 236], yaw: 1.9 },
+      { kind: 'eopie', at: [126, 262], yaw: 0.6 },
+      { kind: 'eopie', at: [130, 258], yaw: 0.9, scale: 0.9 },
     ],
     scatter: [
       { kind: 'rock', n: 140, within: [30, 560], scale: [0.6, 3.2], opts: { color: '#9e7a56', sharp: 0.5 } },
       { kind: 'stones', n: 260, within: [10, 400], scale: [0.25, 0.7], solid: false, opts: { color: '#a68462' } },
     ],
     life: [
+      // at the landing: a Jawa at its stall, a haulier, an eopie at the trough
+      { kind: 'jawa', n: 2, at: [-16, 24], spread: 3, roam: 3, speed: 0.8, name: 'Jawa trader', says: ['Utinni!', '(It holds up a droid motivator. Slightly used. Very slightly.)', 'M’um m’aloo!'] },
+      { kind: 'farmer', n: 1, at: [20, -4], roam: 6, speed: 0.8, name: 'Haulier', says: ['Water run to Anchorhead. Two more stops, then the suns are down.', 'Mind the eopie. She spits.', 'That speeder’s not for sale. Everything else is.'] },
+      { kind: 'eopie', n: 1, at: [12, 12], roam: 8, speed: 0.5, r: 0.9 },
+      { kind: 'mousedroid', n: 1, at: [26, -2], roam: 6, speed: 1.4, r: 0.2, solid: false },
       { kind: 'jawa', n: 7, at: [140, 268], spread: 14, roam: 16, speed: 0.9, name: 'Jawa', says: ['Utinni!', 'Utinni! (It holds up a power converter, and names a price you don’t understand.)', 'M’um m’aloo!', '(It counts your credits, then counts them again.)'] },
       { kind: 'bantha', n: 4, at: [-400, 230], spread: 20, roam: 20, speed: 0.8, r: 1.5 },
       { kind: 'tusken', id: 'tuskencamp', n: 3, at: [-420, 250], spread: 10, roam: 10, speed: 1.0, name: 'Tusken Raider', says: ['(A long, rising howl, and the gaffi stick held high.)', '(It stares. It doesn’t move. You get the message.)'] },
       { kind: 'stormtrooper', n: 4, path: [[290, -200], [330, -230], [300, -270], [262, -236]], speed: 1.4, name: 'Stormtrooper', says: ['Move along.', 'Let me see your identification.', 'How long have you had these droids?', 'These aren’t the droids we’re looking for.'] },
       { kind: 'sandtrooper', n: 2, at: [-60, -320], spread: 8, roam: 12, speed: 1.1, name: 'Sandtrooper', says: ['Look, sir: droids. Someone was in the pod.', 'The tracks go off in this direction.'] },
       { kind: 'dewback', n: 2, at: [-80, -300], spread: 10, roam: 14, speed: 0.7, r: 1.2 },
+      { kind: 'sullustan', n: 1, at: [284, -244], roam: 8, speed: 1.0, name: 'A Sullustan pilot', says: ['(A string of chattering Sullustese, and a grin.)', 'Freighter’s in Bay 86. Cargo? Don’t ask.'] },
+      { kind: 'ronto', n: 1, at: [330, -250], roam: 10, speed: 0.4, r: 1.3 },
       { kind: 'villager', n: 5, at: [300, -230], spread: 40, roam: 25, speed: 1.1, name: 'Mos Eisley local', says: ['Watch yourself. This place can be a little rough.', 'Chalmun’s got a band in tonight. No droids, though.', 'If you’re looking for a pilot, try the cantina.', 'Hutt business. Don’t ask.'] },
       { kind: 'droid', n: 1, at: [-160, 140], roam: 10, speed: 0.6, name: 'An R5 unit', says: ['(A cheerful whistle. Its motivator sounds fine… for now.)'] },
       // who has something for you to do
