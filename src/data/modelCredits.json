@@ -1191,6 +1191,20 @@
       "galaxy"
     ]
   },
+  "surface-ammocan": {
+    "title": "Star Wars Ammo Canister Yavin",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-ammo-canister-yavin-db00456beb9f429b87b791fc5eabe276",
+    "where": "galaxy-surface",
+    "as": "the Rebel ammo canisters",
+    "file": "/models/galaxy/surface/ammocan.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-arena": {
     "title": "Geonosis Arena",
     "author": "StrangeUsernames1",
@@ -1355,6 +1369,34 @@
     "where": "galaxy-surface",
     "as": "the cloud cars",
     "file": "/models/galaxy/surface/cloudcar.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-dagocypress": {
+    "title": "Great Bald Cypress",
+    "author": "BaptisteBerard",
+    "authorUrl": "https://sketchfab.com/BaptisteBerard",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/great-bald-cypress-dca97787b1b24fd8a0fb6bb536e383e3",
+    "where": "galaxy-surface",
+    "as": "the great trees of Dagobah",
+    "file": "/models/galaxy/surface/dagocypress.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-dagoroots": {
+    "title": "mangrove tree roots",
+    "author": "lucq22",
+    "authorUrl": "https://sketchfab.com/lucq22",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/mangrove-tree-roots-c32d977c14e04e5ebc1fbef9b6111957",
+    "where": "galaxy-surface",
+    "as": "the mangrove roots of Dagobah",
+    "file": "/models/galaxy/surface/dagoroots.glb",
     "also": [
       "galaxy"
     ]
@@ -2013,6 +2055,48 @@
     "where": "galaxy-surface",
     "as": "the wampas",
     "file": "/models/galaxy/surface/wampa.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-welderrack": {
+    "title": "Star Wars Welder Rack Yavin",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-welder-rack-yavin-4f058bf5a7974677b9772470d476ad91",
+    "where": "galaxy-surface",
+    "as": "the Rebel welder rack",
+    "file": "/models/galaxy/surface/welderrack.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-yavinspeeder": {
+    "title": "Star Wars Yavin 4 Transport Speeder",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-yavin-4-transport-speeder-75bf19967c0c489ebca764a5047500d3",
+    "where": "galaxy-surface",
+    "as": "the Rebel transport speeder",
+    "file": "/models/galaxy/surface/yavinspeeder.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-yavintree": {
+    "title": "Jungle Tree",
+    "author": "kobaltsecond6c7d6150917a4267",
+    "authorUrl": "https://sketchfab.com/kobaltsecond6c7d6150917a4267",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/jungle-tree-46f83ec5f6c04abf9d509c1070f67d1e",
+    "where": "galaxy-surface",
+    "as": "the jungle trees of Yavin 4",
+    "file": "/models/galaxy/surface/yavintree.glb",
     "also": [
       "galaxy"
     ]

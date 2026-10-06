@@ -1,5 +1,5 @@
 {
-  "name": "tilakverse",
+  "name": "tilakpatell.com",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -15,6 +15,7 @@
     "photos": "node scripts/photos.mjs",
     "paint": "node scripts/paint.mjs",
     "globe": "node scripts/build-globe.mjs",
+    "credits": "node scripts/credits.mjs",
     "cc0": "node scripts/cc0.mjs",
     "kenney": "node scripts/kenney.mjs",
     "hq-assets": "NODE_USE_ENV_PROXY=1 node --max-old-space-size=8192 scripts/hq-assets.mjs",

@@ -1,22 +1,12 @@
 // The Mandalorian's and Ahsoka's worlds, from the ground: Nevarro, Mandalore,
 // Lothal and Sorgan. (sites/index.js has what a site is.)
 
+import { grove } from './stand';
+
 const sky = (zenith, horizon, sun, extra = {}) => ({ zenith, horizon, haze: 0.8, hazeColor: horizon, suns: [{ az: 0.6, el: 0.35, color: sun, size: 0.016, glow: 1.1 }], clouds: { cover: 0.3, color: '#ffffff', shade: '#9aa0aa', scale: 0.6, speed: 0.005 }, ...extra });
 const palette = (low, high, rock, accent, extra = {}) => ({ low, high, rock, accent, deep: rock, hLow: -4, hHigh: 14, rockAt: 0.4, accentCover: 0.25, ripple: { strength: 0.02, scale: 3, wind: 0.5 }, grain: 0.5, ...extra });
 const hostile = (range, every, damage) => ({ range, every, damage, spread: 0.06 });
 const troops = (tag, n, at, kind = 'stormtrooper') => ({ kind, n, at, spread: 12, roam: 5, hp: 2, tag, hostile: hostile(42, 2.3, 8) });
-// a stand of trees (or anything) round a spot: n of them between r0 and r1
-// metres out, kinds taken in turn, the same every time (seeded); placed one
-// by one rather than scattered, so a stand off the screen isn't drawn
-const grove = (seed, n, r0, r1, kinds, [lo, hi] = [0.85, 1.35]) => {
-  let a = seed >>> 0;
-  const r = () => (a = (Math.imul(a, 1664525) + 1013904223) >>> 0) / 4294967296;
-  return Array.from({ length: n }, (_, i) => {
-    const t = r() * Math.PI * 2;
-    const d = Math.sqrt(r0 * r0 + r() * (r1 * r1 - r0 * r0));
-    return { kind: kinds[i % kinds.length], at: [Math.cos(t) * d, Math.sin(t) * d], yaw: r() * Math.PI * 2, scale: lo + (hi - lo) * r(), sink: 0.3 };
-  });
-};
 // n spots evenly round a circle of radius r (a turn of `phase` first), each
 // [x, z, yaw] with its front to the middle
 const ring = (n, r, phase = 0) => Array.from({ length: n }, (_, i) => {
