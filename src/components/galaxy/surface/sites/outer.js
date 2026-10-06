@@ -22,10 +22,12 @@ export const SITES = {
   nevarro: {
     place: 'The lava fields outside Nevarro City',
     line: 'Black rock, rivers of fire, and a town that runs on bounties.',
-    sky: sky('#5a6a80', '#c8a890', '#ffd8b0', { clouds: { cover: 0.55, color: '#d8ccc0', shade: '#5a5048', scale: 0.6, speed: 0.006 } }),
-    fog: { color: '#a89080', density: 0.0012 },
-    light: { sun: 2.4, sky: '#b0b8c8', ground: '#5a4038', ambient: 0.7 },
-    ground: { detail: 'ash', detailLook: { color: 0.7, normal: 0.8 }, seed: 21, layers: [{ type: 'swell', scale: 380, height: 10 }, { type: 'hills', scale: 120, height: 8 }, { type: 'mountains', from: 650, to: 3000, height: 480, scale: 1100 }], palette: palette('#3a3432', '#5a504a', '#2a2422', '#7a3a22', { mark: '#2a2220' }) },
+    // (The Mandalorian's Nevarro: black volcanic rock and grey ash under a
+    // cool steel-blue overcast, the haze grey, not brown)
+    sky: sky('#5a6d8e', '#a9b5c3', '#ffe2c0', { clouds: { cover: 0.6, color: '#c9ced4', shade: '#4c5058', scale: 0.6, speed: 0.006 } }),
+    fog: { color: '#9ca6b0', density: 0.0012 },
+    light: { sun: 2.4, sky: '#b4c0d0', ground: '#3a3b40', ambient: 0.72 },
+    ground: { detail: 'ash', detailLook: { color: 0.7, normal: 0.8 }, seed: 21, layers: [{ type: 'swell', scale: 380, height: 10 }, { type: 'hills', scale: 120, height: 8 }, { type: 'mountains', from: 650, to: 3000, height: 480, scale: 1100 }], palette: palette('#26282e', '#36373d', '#1e2226', '#5a5a56', { mark: '#18191c' }) },
     land: { at: [0, 0], yaw: 0.6 },
     places: [
       { id: 'town', name: 'Nevarro City', at: [140, -90], r: 60, flat: { r: 58 }, about: 'The guild’s town: Greef Karga’s cantina, the bounty hunters’ haunt, the Armorer’s forge under the streets.', things: [{ kind: 'cantina', at: [0, 0], yaw: 0.3 }, { kind: 'nevarrodome', at: [27, 18], yaw: 0.4, sink: 0.3 }, { kind: 'nevarrodome', at: [-29, 21], yaw: 1.9, scale: 0.85, sink: 0.3 }, { kind: 'nevarrodome', at: [21, -29], yaw: 2.8, scale: 1.15, sink: 0.3 }, { kind: 'nevarrodome', at: [-24, -26], yaw: 0.9, scale: 0.7, sink: 0.3 }, { kind: 'nevarrodome', at: [40, -4], yaw: 3.3, scale: 0.9, sink: 0.3 }, { kind: 'nevarroarch', at: [-40, 25], yaw: -1, sink: 0.2 }, { kind: 'crates', at: [-14, -12] }, { kind: 'stall', at: [12, 14], yaw: 2.4 }, { kind: 'stall', at: [-10, 16], yaw: 0.6 }, { kind: 'lamp', at: [-34, 18] }, { kind: 'lamp', at: [-30, 29] }, ...grove(7, 26, 50, 78, ['lavarock'], [1.2, 4]).filter((t) => Math.hypot(t.at[0] + 40, t.at[1] - 25) > 16)] },
