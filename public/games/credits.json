@@ -2060,5 +2060,13 @@
       "Tilak Patel, with Microsoft TRELLIS.2"
     ],
     "license": "Generated for this site; TRELLIS.2 is MIT"
+  },
+  "gen3d/tie-fighter": {
+    "source": "https://github.com/microsoft/TRELLIS.2",
+    "name": "a TIE fighter, made for this site with TRELLIS.2 (trellis.cpp), baked in Blender on the site owner's machine (scripts/gen3d)",
+    "authors": [
+      "Tilak Patel, with Microsoft TRELLIS.2"
+    ],
+    "license": "Generated for this site; TRELLIS.2 is MIT"
   }
 }
