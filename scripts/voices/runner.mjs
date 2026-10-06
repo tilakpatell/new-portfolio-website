@@ -21,11 +21,10 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gh, git, sh, slug, workspace } from '../gen3d/runner.mjs';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
 export const LABEL = 'voices';
 export const RUNNING = 'voices:running';
 export const FAILED = 'voices:failed';
