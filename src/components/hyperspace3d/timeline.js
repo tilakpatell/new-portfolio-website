@@ -34,3 +34,31 @@ export function flashAt(t) {
   if (t < T.jump + 40) return clamp((t - (T.jump - 60)) / 100);
   return 1 - ease(clamp((t - (T.jump + 40)) / (T.flash + 60 - (T.jump + 40))));
 }
+
+// A jump held in its tunnel: the galaxy (galaxy/scene.js) jumps between
+// star systems through this same jump, and the next system is built behind
+// it, so it holds the tunnel until that's done and the light-years are
+// flown (or the Empire's Interdictor pulls it out short), then lets it go on
+// to its exit. holdJump(most) → let go (call it once; again is harmless):
+// held all the while any hold is, and let go on its own after `most` ms so
+// the screen is never stuck (long: the galaxy lets go itself once out, or six
+// seconds past the tunnel's length at the latest, on its own clock, which on
+// a slow machine runs slower than the wall's). holdStart(now, start) → the start a running
+// jump's clock should have now: past HOLD_AT (in the tunnel, after the
+// flash) while held, it stays there.
+export const HOLD_AT = T.tunnel - 150;
+let holds = 0;
+export const jumpHeld = () => holds > 0;
+export function holdJump(most = 60000) {
+  holds++;
+  let held = true;
+  const timer = setTimeout(() => letGo(), most);
+  function letGo() {
+    if (!held) return;
+    held = false;
+    clearTimeout(timer);
+    holds--;
+  }
+  return letGo;
+}
+export const holdStart = (now, start) => (holds > 0 && now - start > HOLD_AT ? now - HOLD_AT : start);

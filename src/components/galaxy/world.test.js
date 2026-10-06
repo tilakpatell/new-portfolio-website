@@ -116,6 +116,51 @@ describe('buildSystem', () => {
     for (const w of [yavin, alderaan, scarif, endor]) w.dispose();
   });
 
+  it('stands its own fleets and battle aside while the war’s battle is on there, and brings them back', () => {
+    for (const id of ['hoth', 'endor']) {
+      const k = kit();
+      const w = buildSystem(systemById(id), { ...k, small: false });
+      const hulls = w.solids.filter((o) => /^(fleet|battle)-/.test(o.id));
+      expect(hulls.length, id).toBeGreaterThan(0);
+      const before = hulls.map((o) => o.r);
+      w.quiet(true);
+      expect(hulls.every((o) => o.r === 0 && o.reach === 0)).toBe(true);
+      // (and quiet: no turbolasers, no ion cannon)
+      k.bolts.fire.mockClear();
+      for (let i = 0; i < 40; i++) w.update(T0 + i, 1, camera, null);
+      expect(k.bolts.fire).not.toHaveBeenCalled();
+      w.quiet(false);
+      expect(hulls.map((o) => o.r)).toEqual(before);
+      w.dispose();
+    }
+  });
+
+  it('lets the war hold the second Death Star’s shield, blow a station, and drop Scarif’s shield, and puts it all back', () => {
+    const endor = buildSystem(systemById('endor'), { ...kit(), small: false });
+    const shell = endor.solids.find((o) => o.id === 'ds2-shield');
+    const ds = endor.solids.find((o) => o.id === 'deathstar2');
+    endor.quiet(true);
+    endor.war.holdShield(false);
+    for (let i = 0; i < 400; i += 20) {
+      endor.update(T0 + i, 1, camera, null);
+      expect(shell.r).toBe(0);
+    }
+    endor.war.station('deathstar2', false);
+    expect(ds.r).toBe(0);
+    endor.quiet(false);
+    expect(ds.r).toBeGreaterThan(0);
+    const scarif = buildSystem(systemById('scarif'), { ...kit(), small: false });
+    scarif.quiet(true);
+    scarif.war.planetShield(false);
+    scarif.war.station('gate', false);
+    expect(scarif.shield).toBeNull();
+    expect(scarif.solids.filter((o) => o.id.startsWith('gate-')).every((o) => o.r === 0)).toBe(true);
+    scarif.quiet(false);
+    expect(scarif.shield.r).toBeGreaterThan(systemById('scarif').body.r);
+    endor.dispose();
+    scarif.dispose();
+  });
+
   it('puts a TIE on the Razor Crest’s tail over Nevarro, firing the Empire’s green', () => {
     const k = kit();
     const placed = [];

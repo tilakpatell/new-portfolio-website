@@ -1059,7 +1059,7 @@
   },
   "cockpit/jesse": {
     "source": "https://www.meshy.ai",
-    "id": "01a111c2-56a7-745d-9693-630a4602dbef",
+    "id": "01a11277-c6b9-71f1-875f-b6341b360483",
     "name": "jesse, generated for this site with Meshy AI",
     "authors": [
       "Tilak Patel, with Meshy AI"
@@ -2056,6 +2056,22 @@
   "gen3d/x-wing": {
     "source": "https://github.com/microsoft/TRELLIS.2",
     "name": "an X-wing starfighter, made for this site with TRELLIS.2 (trellis.cpp), baked in Blender on the site owner's machine (scripts/gen3d)",
+    "authors": [
+      "Tilak Patel, with Microsoft TRELLIS.2"
+    ],
+    "license": "Generated for this site; TRELLIS.2 is MIT"
+  },
+  "gen3d/tie-fighter": {
+    "source": "https://github.com/microsoft/TRELLIS.2",
+    "name": "a TIE fighter, made for this site with TRELLIS.2 (trellis.cpp), baked in Blender on the site owner's machine (scripts/gen3d)",
+    "authors": [
+      "Tilak Patel, with Microsoft TRELLIS.2"
+    ],
+    "license": "Generated for this site; TRELLIS.2 is MIT"
+  },
+  "gen3d/tie-interceptor": {
+    "source": "https://github.com/microsoft/TRELLIS.2",
+    "name": "a TIE interceptor, made for this site with TRELLIS.2 (trellis.cpp), baked in Blender on the site owner's machine (scripts/gen3d)",
     "authors": [
       "Tilak Patel, with Microsoft TRELLIS.2"
     ],

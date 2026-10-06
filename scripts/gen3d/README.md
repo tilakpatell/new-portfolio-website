@@ -14,8 +14,8 @@ node scripts/gen3d/make.mjs x-wing --prompt "an X-wing starfighter" --what "an X
 node scripts/gen3d/prepare.mjs photo.jpg cache/xwing.png               # your picture trimmed, squared, 1024 (what the model expects)
 node scripts/gen3d/picture.mjs "an X-wing starfighter" cache/xwing.png  # or a concept image from words
 node scripts/gen3d/generate.mjs cache/xwing.png cache/raw/xwing.glb [--faithful]   # image → raw textured GLB, ~300k triangles
-node scripts/gen3d/bake.mjs cache/raw/xwing.glb cache/xwing-low.glb --faces 24000  # the high mesh baked onto a low one (Blender)
-node scripts/gen3d/web.mjs cache/xwing-low.glb x-wing --tris 24000 --tex 2048 --what "an X-wing starfighter"
+node scripts/gen3d/bake.mjs cache/raw/xwing.glb cache/xwing-low.glb --faces 60000  # the high mesh baked onto a low one (Blender)
+node scripts/gen3d/web.mjs cache/xwing-low.glb x-wing --tris 60000 --tex 2048 --what "an X-wing starfighter"
 node scripts/gen3d/judge.mjs cache/xwing.png cache/raw/xwing.glb public/models/gen3d/x-wing.glb   # four views each, side by side
 ```
 
@@ -34,7 +34,7 @@ the seams let it (~25k triangles).
 `web.mjs` writes `public/models/gen3d/<name>.glb` (welded, simplified to the
 triangle budget, WebP textures, meshopt: the same steps as
 `scripts/meshy-import.mjs`) and credits it in `public/games/credits.json`.
-It refuses a model over its budget or over 1 MB. Everything else lands in
+It refuses a model over its budget or over 4 MB. Everything else lands in
 `scripts/gen3d/cache/` (git-ignored).
 
 ## From your phone
@@ -47,7 +47,7 @@ line, all optional but one of `prompt`/`what`/`image`:
 what: a TIE fighter                 (for the credit; the prompt if there is none)
 prompt: a TIE fighter, grey, …      (FLUX draws the concept picture)
 image: (attach a picture, or a URL) (the picture to follow; Pixal3D unless faithful: no)
-faces: 24000  tex: 2048  seed: 42  res: 1024  fov: 49  engine: trelliscpp|trellis2
+faces: 60000  tex: 2048  seed: 42  res: 1024  fov: 49  engine: trelliscpp|trellis2
 faithful: no  bake: no
 ```
 
@@ -59,6 +59,33 @@ with the judging sheet (committed under `docs/gen3d/`) and comments on the
 issue, which it closes. A failure is commented and labelled `gen3d:failed`;
 fix the issue and remove the label to try again. Wiring the model into a
 scene is a separate change.
+
+**Several pictures beat one.** Attach the front, left, back (and right) of
+the thing, in that order (or name them: `front: URL`), and the job goes
+through **Hunyuan3D-2 multi-view** (`--engine hunyuan`), which sees every
+side; one picture goes through TRELLIS.2. On the command line:
+`make.mjs NAME --image front.png --left left.png --back back.png`.
+
+**Always give it a picture.** A prompt only works for designs FLUX knows
+(an X-wing, a TIE); for anything else (a CR90, a particular building, a
+character) attach a picture: three-quarter view, the whole thing in frame,
+plain background if you can. A model the site already has is remade from
+its own render (`remake.mjs`), which keeps its shape and adds the detail;
+that only helps when the old shape was right.
+
+### Keeping it running on the desktop
+
+It's registered to start at logon through the Startup folder (a scheduled
+task needs an administrator; this doesn't):
+`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\gen3d-runner.vbs`
+runs `%LOCALAPPDATA%\gen3d\runner.cmd` hidden, which sets
+`GEN3D_RUNNER_ROOT` to the runner's checkout (`<repo>-gen3d`, its own
+`node_modules` from `npm ci --ignore-scripts`) and `CHROME` to Edge, and
+restarts the runner if it ever stops; its log is
+`%LOCALAPPDATA%\gen3d\runner.log`. The runner takes each job on a fresh
+`origin/main`, so a merged change to these scripts is picked up by the next
+job. To stop it: end the `node` process from `runner.cmd`, or delete the
+`.vbs`.
 
 ## The engines
 
@@ -108,6 +135,25 @@ hf download microsoft/TRELLIS.2-4B
 
 `engines/trellis2.py` is what `generate.mjs` runs there (`wsl.exe`, the
 paths translated to `/mnt/c/…`). TRELLIS.2 wants 24 GB of GPU memory.
+
+### Hunyuan3D-2 multi-view (WSL)
+
+Tencent's [Hunyuan3D-2](https://github.com/Tencent/Hunyuan3D-2) with its
+multi-view shape model (`tencent/Hunyuan3D-2mv`, front/left/back/right in)
+and its turbo paint model, in a conda env of its own beside TRELLIS.2's
+(`engines/hy3d-setup.sh`, run in WSL, does this: env `hy3d`, torch 2.8 cu128, the repo at
+`~/Hunyuan3D-2` with its two CUDA extensions built, the weights by
+`hf download`). `engines/hunyuan.py` is what `generate.mjs` runs there.
+Licence: Tencent Hunyuan non-commercial, fine for this site.
+
+Its 2.0 turbo paint is flat (white and stripes where TRELLIS.2 paints
+panels), so the shape is painted by **Hunyuan3D-2.1's PBR paint** when
+that's here too: `engines/hy3d21-setup.sh` makes env `hy3d21` with the
+2.1 repo at `~/Hunyuan3D-2.1`, its rasterizer and renderer built, the
+`hunyuan3d-paintpbr-v2-1` weights and the RealESRGAN upscaler it loads;
+`generate.mjs` then runs the shape unpainted (`--white`) and
+`engines/hunyuan_paint21.py` on it from the front picture (base colour,
+metal, roughness at 4096).
 
 ### Pixal3D (for --faithful)
 
@@ -172,6 +218,11 @@ The GPU is shared with `scripts/voices`: check `nvidia-smi` before a run.
   simplifier stops at the seams (~25k triangles for a 300k mesh) and crossing
   them smears the texture. 24k triangles at 1536² is under 900 KB and looks
   the part; the Blender bake is the way below that.
+- **Remakes help fighters, not greebled hulls.** From its own render a
+  TIE interceptor or an X-wing comes back with real panel detail; a Star
+  Destroyer or a Venator comes back a smooth blob with its greebles gone,
+  worse than the Sketchfab original. Big-feature shapes only, and judge the
+  sheet before replacing anything.
 - **Both engines, in order of use:** `trelliscpp` (f16 GGUF, ~2–4 minutes a
   model at res 1024 on the RTX 5090) does everything here. The reference
   `trellis2` is built in WSL but its image encoder (`facebook/dinov3`) is a

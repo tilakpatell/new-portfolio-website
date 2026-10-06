@@ -101,7 +101,10 @@ import { BELT, ORDER, POSITIONS, REACH, RIM, RING, SUN } from './layout';
 import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
-import { createPost, spaceEnvironment } from './post';
+import { aberrationFor, createPost, spaceEnvironment } from './post';
+import { grainFor } from '../../lib/three/noise';
+import { createFlare, flareWeight, occluded } from '../../lib/three/flare';
+import { exposureFor, sunShareOf } from '../../lib/three/exposure';
 import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, isGoal, isPlace, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, driveById, hyperState, parkFor, riftExit } from './nav';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
@@ -120,7 +123,7 @@ import { createTrench } from './trench';
 import { createBeacons } from './beacons';
 import { PHONE, createPhone } from './phone';
 import { SUPERNOVA_SITES, createSupernovae } from './supernova';
-import { DEEP, WONDERS, nearestStar, openness, reachOf, wonderById } from './deep';
+import { DEEP, WONDERS, moveBinaries, nearestStar, openness, reachOf, wonderById } from './deep';
 import { createCrash } from './crash';
 import { createInfall } from './infall';
 import { DISK_N, MAW, captured, fallAt, plungeAt, pullAt, startFall } from './maw';
@@ -129,7 +132,7 @@ import { createWingmen } from './wingmen';
 import { createSkirmishes } from './skirmishes';
 import { createBelt, createDust } from './belt';
 import { createTrail } from './trail';
-import { BUILT, ENGINES, SHIP_MODELS, buildShip } from './shipModels';
+import { BUILT, ENGINES, LENGTH, SHIP_MODELS, buildShip } from './shipModels';
 import { paintById } from './paint';
 import { FASTEST, PARTS, PARTS_SLOTS, STOCK, STOCK_LOADOUT, readLoadout, statsOf } from './outfit';
 import { createNpcs } from './npcs';
@@ -782,7 +785,8 @@ export async function create(canvas, ctx) {
   const skirmishes = hunters ? createSkirmishes(map, { fleet, solids: SOLIDS }) : null; // (someone else's fight, out ahead)
   const npcs = hunters ? createNpcs(map, { fleet }) : null; // (the named characters: npcRules.js's brains)
   // the crew's war (front.js): its front out in deep space, a battle there
-  // to fly into. Made for the crew's side, again if the crew changes; its
+  // to fly into (the Star Wars crews' war is fought in the galaxy far, far
+  // away instead: galaxy/gcw.js; the others' are still to come). Made for the crew's side, again if the crew changes; its
   // ships are the galaxy's models (galaxy/models.js), loaded once the
   // front's in sight. Not with reduced motion (nor are the hunters)
   let front = null;
@@ -2034,8 +2038,8 @@ export async function create(canvas, ctx) {
     return { id: r.id, kind: r.kind, at: new THREE.Vector3(r.at.x, r.at.y, r.at.z), size: r.size, down: r.down };
   };
 
-  // a shot into the battle at the front (front.js), once you've picked a
-  // side: one of the other side's fighters (down, or a spark off it), one of
+  // a shot into the battle at the front (front.js), where you fly on your
+  // crew's side: one of the other side's fighters (down, or a spark off it), one of
   // the objectives, or a capital ship's hull or shield (a spark; the battle
   // has its own flashes for those, and the crew their own lines)
   const frontHit = (from, to, punch) => {
@@ -2136,59 +2140,6 @@ export async function create(canvas, ctx) {
       }
     }
     return any;
-  };
-
-  // the battle's bar at the front (BattleHud.jsx): written only when
-  // something in it changes, and on only while you fly for a side in it
-  let battleSig = '';
-  const PHASE_WORDS = ['', 'the shield generators', 'the bridge', 'the reactor'];
-  const placeBattle = () => {
-    const el = props.battle?.current;
-    if (!el) return;
-    const b = front?.battle;
-    const team = front?.joined ?? null;
-    const on = Boolean(b && team !== null && !b.over && flying() && !onFoot() && front.near);
-    if (!on) {
-      if (battleSig !== '') {
-        battleSig = '';
-        el.removeAttribute('data-on');
-      }
-      return;
-    }
-    const i = b.info;
-    const w = front.where();
-    const attack = team === b.attacker;
-    const left = Math.ceil(i.left);
-    const sig = `${i.tickets}|${left}|${i.phase}|${i.objectives.map((o) => o.hp.toFixed(2)).join(',')}|${i.hull.map((h) => h.toFixed(2)).join(',')}|${team}`;
-    if (sig === battleSig) return;
-    battleSig = sig;
-    el.toggleAttribute('data-on', true);
-    el.toggleAttribute('data-defend', !attack);
-    el.toggleAttribute('data-late', left < 60);
-    el.style.setProperty('--a', w.colours[0]);
-    el.style.setProperty('--b', w.colours[1]);
-    const q = (c) => el.querySelector(c);
-    const put = (c, text) => {
-      const n = q(c);
-      if (n && n.textContent !== text) n.textContent = text;
-    };
-    put('.battle-name-a', w.sides[0]);
-    put('.battle-name-b', w.sides[1]);
-    put('.battle-tickets-a', String(i.tickets[0]));
-    put('.battle-tickets-b', String(i.tickets[1]));
-    put('.battle-clock', `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`);
-    // the hulls: the attacker's flagship's, and the defender's by how many phases it's lost
-    const hull = [b.attacker === 0 ? i.hull[0] : i.hull[1], b.attacker === 0 ? i.hull[1] : i.hull[0]];
-    q('.battle-hull-a')?.style.setProperty('--hp', hull[0].toFixed(3));
-    q('.battle-hull-b')?.style.setProperty('--hp', hull[1].toFixed(3));
-    put('.battle-phase', i.phase <= 3 ? `Phase ${i.phase} · ${attack ? 'Destroy' : 'Defend'} ${PHASE_WORDS[i.phase]}` : attack ? 'Their flagship is breaking up' : 'Our flagship is lost');
-    const obj = q('.battle-obj');
-    if (obj) {
-      const now = i.objectives.filter((o) => o.phase === i.phase);
-      while (obj.children.length < now.length) obj.appendChild(document.createElement('i'));
-      while (obj.children.length > now.length) obj.lastChild.remove();
-      now.forEach((o, k) => obj.children[k].style.setProperty('--hp', o.hp.toFixed(3)));
-    }
   };
 
   // the weapon readout (its name, the heavy rounds left, the next one
@@ -2962,7 +2913,6 @@ export async function create(canvas, ctx) {
       const r = fr.update(dt, t, camera, camLocal, live);
       busy = r.busy || busy;
       if (r.hurt > 0 && live && state.clock >= state.safeUntil) hurt(r.hurt);
-      placeBattle();
     }
     if (meteors.count) {
       busy = true;
@@ -3672,12 +3622,59 @@ export async function create(canvas, ctx) {
   // and sharp again once they don't (lib/three/pace)
   const pace = createPace();
 
+  // The finish (post.js): grain and the edges' aberration with the boost's
+  // rush and a hit; the home sun's glare in the lens (lib/three/flare),
+  // hidden by whatever's between the eye and it, the ship too, and gone at
+  // the pace's step 2 or on a low tier; and the exposure easing with how
+  // much of the frame the sun fills (lib/three/exposure). Not on foot: the
+  // landing has its own sky.
+  const sunFlare = tier === 'low' ? null : createFlare({ colour: '#ffd6a8', small });
+  if (sunFlare) camera.add(sunFlare.group);
+  const shipSolid = { at: [0, 0, 0], r: 0 };
+  const flareSolids = [...SOLIDS.filter((o) => o.id !== 'sun'), shipSolid];
+  const sunAt = new THREE.Vector3();
+  const eyeAt = new THREE.Vector3();
+  const halfTan = () => Math.tan((camera.fov * Math.PI) / 360);
+  let exposure = 1;
+  const finish = (dt) => {
+    post.grain(grainFor({ rush: state.streak, reduced }));
+    post.aberration(aberrationFor({ rush: state.streak, hit: state.hurt, tier }));
+    let ndc = [0, 0];
+    let weight = 0;
+    let share = 0;
+    if (!onFoot()) {
+      map.localToWorld(sunAt.set(...SUN.at));
+      camera.getWorldPosition(eyeAt);
+      const dist = sunAt.distanceTo(eyeAt);
+      sunAt.project(camera);
+      if (sunAt.z < 1) {
+        ndc = [sunAt.x, sunAt.y];
+        const size = SUN.r / Math.max(dist, SUN.r) / halfTan();
+        const s = state.ship;
+        shipSolid.r = s ? LENGTH * 0.45 : 0;
+        if (s) shipSolid.at = [s.x, s.y, s.z];
+        const hidden = occluded({ from: map.worldToLocal(eyeAt).toArray(), to: SUN.at, solids: flareSolids });
+        share = sunShareOf({ ndc, size }) * (1 - hidden);
+        // (half as strong over the map, which is a chart, not a place you're in)
+        weight = post.flareOn ? flareWeight({ ndc, occluded: hidden, size }) * (flying() && state.view !== 'map' ? 1 : 0.5) : 0;
+      }
+    }
+    sunFlare?.set({ ndc, weight, camera });
+    exposure = exposureFor({ sunShare: share, darkShare: 1 - share, last: exposure, dt, reduced });
+    post.exposure(onFoot() ? 1 : exposure);
+  };
+
   function render(ms, now) {
     gl.watch(now);
     const sharp = pace.frame(now);
-    if (sharp !== null) post.sharpness = sharp;
+    if (sharp !== null) {
+      post.sharpness = sharp;
+      post.setLevel(pace.level);
+    }
     const dt = ms / 1000;
     const t = reduced ? 0 : state.low ? state.tLow : (now - t0) / 1000;
+    // (the Twins' suns going round each other: their solids where they're drawn, deep.js)
+    moveBinaries(t);
     if (!state.pose && !flying()) {
       // first frame: straight onto a universe from a link; the overview
       // drifts in from a little further out (flying, it's below)
@@ -3937,6 +3934,7 @@ export async function create(canvas, ctx) {
     const showCab = Boolean(cab && cab.kind === state.kind && flying() && !onFoot() && state.view === 'cockpit' && state.cabK > 0.6 && !state.crash);
     if (showCab) cabFrame(dt, t);
     post.overlay(showCab ? cabScene : null, camIn);
+    finish(dt);
     renderer.info.reset(); // counted over the whole frame, post passes and all
     post.render(size.w, size.h);
     last = now;
@@ -4553,11 +4551,6 @@ export async function create(canvas, ctx) {
       }
       return false;
     },
-    // the battle at the front: fly for a side (0 or 1), or stay out (null)
-    battleJoin(team) {
-      front?.join(team);
-      ctx.invalidate();
-    },
     // the nav map's: off to a place by a drive (travel above; false if it can't go)
     travel(id, drive) {
       return travel(id, drive);
@@ -4648,6 +4641,7 @@ export async function create(canvas, ctx) {
       burst.clear();
       burst.dispose();
       traffic?.dispose();
+      sunFlare?.dispose();
       disposeTree(scene);
       post.dispose();
       env.dispose();

@@ -30,6 +30,8 @@
 //   each pilot's comes in as peer.foot, with `at`), walk(crew | null) (the
 //   same down on a world in the galaxy: peer.walk), shot(at, v, weapon),
 //   hit(peerId, damage), siege(msg) (the Citadel's siege, siege.js),
+//   war(msg) (the galaxy's war: what the players have done, a tally.js
+//   message), fight(msg) (the battle on where you are: its objectives' damage),
 //   down(byId), cursor(x, y, touch), pack(get) (get() → hunters.js's wire(),
 //   asked for only when it's time to send), hunterHit(peerId, hunterId,
 //   damage), helped(peerId, what) (their shot took one of yours down),
@@ -41,7 +43,9 @@
 // whoever this browser believes did it), { type: 'hunterHit', from, id,
 // damage } (another pilot's bolt hit one of the hunters after you), { type:
 // 'siege', from, msg } (another pilot's word on the Citadel's siege, read
-// with siege.js's readSiege).
+// with siege.js's readSiege), { type: 'war', from, msg } (another pilot's
+// word on the galaxy's war, from anywhere: tally.js's readTally), { type:
+// 'fight', from, msg } (another pilot's on the battle where you are).
 
 import { readBuildWire, writeBuild } from '../shipyard/build';
 import { EVERYONE, readLooks, writeLook } from '../../rickmorty/wardrobe/looks';
@@ -49,6 +53,7 @@ import { APP_ID, CURSOR_MS, DAMAGE, DAMAGE_MAX, FLAG, FOOT_MS, GUARD, PACK_MS, P
 import { UNIVERSE, isFlight, placeName } from './where';
 import { STOCK_LOADOUT, readLoadout, writeOutfit } from '../outfit';
 import { readSiege } from '../siege';
+import { readTally } from '../tally';
 
 const SNAPS = 12; // poses kept per pilot
 const SHOTS = 48; // shots waiting to be drawn, at most
@@ -196,6 +201,8 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     const pack = action('pack');
     const hhit = action('hhit');
     const siege = action('siege');
+    const war = action('war');
+    const fight = action('fight');
     send = {
       pack: (data) => pack.send(data).catch(() => {}),
       hhit: (data, to) => hhit.send(data, { target: to }).catch(() => {}),
@@ -209,6 +216,8 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
       ally: (data, to) => ally.send(data, { target: to }).catch(() => {}),
       cur: (data) => cur.send(data).catch(() => {}),
       siege: (data) => siege.send(data).catch(() => {}),
+      war: (data) => war.send(data).catch(() => {}),
+      fight: (data) => fight.send(data).catch(() => {}),
     };
 
     r.onPeerJoin = (id) => {
@@ -273,6 +282,18 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
       // (only from someone on the universe map, where the Citadel is)
       if (!p || p.where !== self.where) return;
       emit({ type: 'siege', from: peerId, msg });
+    };
+    // the galaxy's war is everyone's, wherever they are; a battle only theirs who're in it
+    war.onMessage = (data, { peerId }) => {
+      const msg = readTally(data);
+      const p = msg && admit('war', peerId);
+      if (p) emit({ type: 'war', from: peerId, msg });
+    };
+    fight.onMessage = (data, { peerId }) => {
+      const msg = readTally(data);
+      const p = msg && admit('fight', peerId);
+      if (!p || p.where !== self.where) return;
+      emit({ type: 'fight', from: peerId, msg });
     };
     shot.onMessage = (data, { peerId }) => {
       const known = peers.get(peerId);
@@ -496,6 +517,13 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     // your word on the Citadel's siege (siege.js's message())
     siege(msg) {
       send?.siege(msg);
+    },
+    // your word on the galaxy's war, and on the battle where you are (tally.js's message())
+    war(msg) {
+      send?.war(msg);
+    },
+    fight(msg) {
+      send?.fight(msg);
     },
     // your pointer, off the universe map (x from the middle of the window,
     // y down the page, in px; with touch, where you're reading)
