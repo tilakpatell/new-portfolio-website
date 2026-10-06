@@ -95,6 +95,122 @@ function cloudy(mat, key = 'cloudy') {
   return mat;
 }
 
+// Weather on the buildings' panels (after cloudy, whose noise and world
+// position it uses): darker and warmer at the foot where the rain splashes
+// up, faint streaks down from the roofs, and a slow drift of tone across a
+// wall, so a white facade in the sun isn't one flat sheet. With `panel`
+// ([w, h] metres, the panels() normal map's), the joints between panels are
+// drawn into the colour too, from the same uv: the normal map's one-texel
+// seams vanished a few metres off, and the walls were blank. A darker
+// plinth course runs round the foot.
+function weathered(mat, { foot = 1.5, streaks = 0.12, panel = null } = {}) {
+  const before = mat.onBeforeCompile;
+  mat.onBeforeCompile = (sh, r) => {
+    before?.call(mat, sh, r);
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWallN;')
+      .replace('#include <defaultnormal_vertex>', '#include <defaultnormal_vertex>\nvWallN = normalize(mat3(modelMatrix) * objectNormal);');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWallN;').replace(
+      '#include <map_fragment>',
+      `#include <map_fragment>
+      {
+        vec3 wp = vCloudPos;
+        vec3 wn = normalize(vWallN);
+        // along the wall: x for one that faces z, z for one that faces x
+        float along = abs(wn.x) > abs(wn.z) ? wp.z : wp.x;
+        float wall = 1.0 - smoothstep(0.4, 0.7, abs(wn.y));
+        float atFoot = 1.0 - smoothstep(0.0, ${foot.toFixed(2)}, wp.y);
+        diffuseColor.rgb *= mix(vec3(1.0), vec3(0.74, 0.72, 0.68), atFoot * wall);
+        float st = cNoise(vec2(along * 2.3, wp.y * 0.07)) * cNoise(vec2(along * 0.61 + 9.0, wp.y * 0.21));
+        diffuseColor.rgb *= 1.0 - ${streaks.toFixed(3)} * smoothstep(0.22, 0.62, st) * wall;
+        diffuseColor.rgb *= mix(0.94, 1.02, cNoise(vec2(along, wp.y) * 0.045 + wp.xz * 0.01));
+        // the plinth: a darker course up to 0.45 m
+        float py = fwidth(wp.y);
+        diffuseColor.rgb *= mix(1.0, 0.64, (1.0 - smoothstep(0.45 - py, 0.45 + py, wp.y)) * wall);
+        ${
+          panel
+            ? `#ifdef USE_NORMALMAP
+        {
+          // (the normal map spans 8 m of the walls' metre uv)
+          vec2 m = vNormalMapUv * 8.0 / vec2(${panel[0].toFixed(2)}, ${panel[1].toFixed(2)});
+          vec2 fw = fwidth(m);
+          // (how far from the nearest joint, in panels: a joint 2.5 cm across, a pixel's soft edge)
+          vec2 e = 0.5 - abs(fract(m) - 0.5);
+          vec2 line = 1.0 - smoothstep(vec2(0.0125), vec2(0.0125) + fw, e);
+          float joint = max(line.x, line.y) * (1.0 - smoothstep(0.06, 0.3, max(fw.x, fw.y)));
+          diffuseColor.rgb *= 1.0 - 0.32 * joint * wall;
+        }
+        #endif`
+            : ''
+        }
+      }`,
+    );
+  };
+  const key = mat.customProgramCacheKey?.() ?? '';
+  mat.customProgramCacheKey = () => `${key}|weathered:${foot}:${streaks}:${panel ?? ''}`;
+  return mat;
+}
+
+// The ground darkened round the foot of each building, softly, over a few
+// metres (after cloudy: its world position): what the sky's light can't get
+// into. `ao` is groundShade()'s.
+function grounded(mat, ao) {
+  const before = mat.onBeforeCompile;
+  mat.onBeforeCompile = (sh, r) => {
+    before?.call(mat, sh, r);
+    sh.uniforms.uGroundAO = { value: ao.texture };
+    sh.uniforms.uGroundBox = { value: ao.box };
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uGroundAO;\nuniform vec4 uGroundBox;').replace(
+      '#include <lights_fragment_end>',
+      `#include <lights_fragment_end>
+      {
+        vec2 guv = (vCloudPos.xz - uGroundBox.xy) / (uGroundBox.zw - uGroundBox.xy);
+        float ao = texture2D(uGroundAO, guv).r;
+        reflectedLight.indirectDiffuse *= ao;
+        reflectedLight.indirectSpecular *= ao;
+        reflectedLight.directDiffuse *= mix(1.0, ao, 0.45);
+      }`,
+    );
+  };
+  const key = mat.customProgramCacheKey?.() ?? '';
+  mat.customProgramCacheKey = () => `${key}|grounded`;
+  return mat;
+}
+
+// The compound's footprints from above, black on white and blurred: how much
+// of the sky each bit of ground sees. → { texture, box: Vector4 (x0, z0, x1, z1) }
+function groundShade(feet, { px = 1024, reach = 3.2 } = {}) {
+  const xs = feet.flat().map((p) => p[0]);
+  const zs = feet.flat().map((p) => p[1]);
+  const x0 = Math.min(...xs) - 12;
+  const z0 = Math.min(...zs) - 12;
+  const side = Math.max(Math.max(...xs) + 12 - x0, Math.max(...zs) + 12 - z0);
+  const k = px / side;
+  const tex = canvasTexture(
+    px,
+    px,
+    (x) => {
+      x.fillStyle = '#fff';
+      x.fillRect(0, 0, px, px);
+      // (each footprint drawn with its own blurred shadow: the blur filter
+      // isn't in every browser's canvas, the shadow is)
+      x.shadowColor = 'rgba(0,0,0,0.85)';
+      x.shadowBlur = reach * k;
+      x.fillStyle = '#2a2a2a';
+      for (const f of feet) {
+        x.beginPath();
+        f.forEach(([fx, fz], i) => (i ? x.lineTo((fx - x0) * k, (fz - z0) * k) : x.moveTo((fx - x0) * k, (fz - z0) * k)));
+        x.closePath();
+        x.fill();
+      }
+    },
+    { srgb: false },
+  );
+  tex.flipY = false; // (row 0 is the box's north edge, as the shaders read it)
+  tex.needsUpdate = true;
+  return { texture: tex, box: new THREE.Vector4(x0, z0, x0 + side, z0 + side) };
+}
+
 // A flat ribbon along world points, `w` metres wide, at height y; uv: u
 // across, v along in metres over `tile`.
 function ribbon(points, w, y, tile = 8) {
@@ -267,7 +383,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   scene.fog = new THREE.Fog(new THREE.Color(0x8c9698).multiplyScalar(0.95), 200, 1000);
   const env = scene.environment;
   const sunDir = sun.userData.dir.clone();
-  const SHADOW = small ? 48 : 64;
+  const SHADOW = small ? 48 : 80;
   sun.shadow.mapSize.set(small ? 1024 : 2048, small ? 1024 : 2048);
   sun.shadow.bias = -0.0005;
   sun.shadow.normalBias = 0.05;
@@ -289,6 +405,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // of each is blended in by a slow noise so the repeat never lines up, and
   // a fine grain fades in underfoot: lib/three/surface)
   const grain = detailNormal({ renderer: engine.renderer });
+  // the ground darker round each building's foot (groundShade)
+  const shade = groundShade(BUILDINGS.map((b) => b.foot), { px: small ? 512 : 1024 });
   const floorMat = antiTile(cloudy(await pbr('forest-floor', { repeat: [1 / 6, 1 / 6], small, roughness: 1, metalness: 0, color: 0x6a6a52 })), { frequency: 0.035, detail: { texture: grain, scale: 0.9, strength: 0.35, range: 30 } });
   // (round, out past where the haze is whole: from up high there's no square
   // of ground to see the corners of)
@@ -298,6 +416,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     const p = floorGeo.attributes.position;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, p.getX(i), -p.getZ(i));
   }
+  grounded(floorMat, shade);
   const floor = new THREE.Mesh(floorGeo, floorMat);
   floor.receiveShadow = true;
   scene.add(floor);
@@ -321,6 +440,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     );
   };
   antiTile(lawnMat, { frequency: 0.05, detail: { texture: grain, scale: 1.4, strength: 0.3, range: 26 } });
+  grounded(lawnMat, shade);
   const lawn = new THREE.Mesh(flatShape(LAWN, 0, 1, SC), lawnMat);
   lawn.receiveShadow = true;
   scene.add(lawn);
@@ -349,7 +469,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
                 }`,
               );
             };
-            return m;
+            return grounded(m, shade);
           },
         });
 
@@ -409,7 +529,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     roadMat.customProgramCacheKey = () => 'road-slabs';
   }
   for (const t of [roadMat.normalMap, roadMat.roughnessMap]) if (t) t.repeat.set(1 / 4, 1 / 4);
-  const kerbMat = cloudy(new THREE.MeshStandardMaterial({ color: 0x8c918a, roughness: 0.9 }), 'kerb');
+  grounded(roadMat, shade);
+  const kerbMat = grounded(cloudy(new THREE.MeshStandardMaterial({ color: 0x8c918a, roughness: 0.9 }), 'kerb'), shade);
   const roadGeos = [];
   const kerbGeos = [];
   for (const pts of ROADS_W) {
@@ -431,7 +552,12 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     const { tex } = groundPaint(box, small ? px / 2 : px);
     const [x0, y0, x1, y1] = box;
     const g = new THREE.PlaneGeometry((x1 - x0) * S, (y1 - y0) * S).rotateX(-Math.PI / 2).translate(((x0 + x1) / 2) * S, 0.08, ((y0 + y1) / 2) * S);
-    const m = new THREE.Mesh(g, cloudy(new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.85, metalness: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }), 'paint'));
+    // (a fine relief over it, the grain the lawn has underfoot, so the paint catches the sun)
+    const relief = grain.clone();
+    relief.wrapS = relief.wrapT = THREE.RepeatWrapping;
+    relief.repeat.set(((x1 - x0) * S) / 1.4, ((y1 - y0) * S) / 1.4);
+    relief.needsUpdate = true;
+    const m = new THREE.Mesh(g, grounded(cloudy(new THREE.MeshStandardMaterial({ map: tex, normalMap: relief, normalScale: new THREE.Vector2(0.35, 0.35), transparent: true, roughness: 0.85, metalness: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }), 'paint'), shade));
     m.receiveShadow = true;
     m.renderOrder = 1;
     scene.add(m);
@@ -444,10 +570,12 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     return t;
   };
   // (white panels, but not paper white: in a low sun they'd bloom)
-  const white = cloudy(new THREE.MeshPhysicalMaterial({ color: 0xe1e4e8, roughness: 0.46, metalness: 0, clearcoat: 0.12, clearcoatRoughness: 0.5, normalMap: panels(2, 1.5), normalScale: new THREE.Vector2(0.7, 0.7) }), 'white');
-  const hangarWall = cloudy(await pbr('corrugated', { repeat: [1 / 2.2, 1 / 2.2], small, roughness: 0.45, metalness: 0.4, color: 0xf2f4f6 }), 'hangar');
+  const white = cloudy(new THREE.MeshPhysicalMaterial({ color: 0xe1e4e8, roughness: 0.46, metalness: 0, clearcoat: 0.12, clearcoatRoughness: 0.5, normalMap: panels(2, 1.6), normalScale: new THREE.Vector2(0.7, 0.7) }), 'white');
+  weathered(white, { panel: [2, 1.6] });
+  const hangarWall = weathered(cloudy(await pbr('corrugated', { repeat: [1 / 2.2, 1 / 2.2], small, roughness: 0.45, metalness: 0.4, color: 0xf2f4f6 }), 'hangar'), { streaks: 0.16 });
   const doorMat = cloudy(await pbr('corrugated', { repeat: [1 / 2.6, 1 / 2.6], small, roughness: 0.5, metalness: 0.5, color: 0xa9b1bb, rotation: Math.PI / 2 }), 'hdoor');
-  const grey = cloudy(new THREE.MeshPhysicalMaterial({ color: 0xbcc4cd, roughness: 0.4, metalness: 0.15, clearcoat: 0.3, clearcoatRoughness: 0.35, normalMap: panels(1.6, 1.5), normalScale: new THREE.Vector2(0.6, 0.6) }), 'grey');
+  const grey = cloudy(new THREE.MeshPhysicalMaterial({ color: 0xbcc4cd, roughness: 0.4, metalness: 0.15, clearcoat: 0.3, clearcoatRoughness: 0.35, normalMap: panels(1.6, 1.6), normalScale: new THREE.Vector2(0.6, 0.6) }), 'grey');
+  weathered(grey, { streaks: 0.08, panel: [1.6, 1.6] });
   // the roofs, somewhere to stand now: weathered concrete, its slabs' seams in it
   const roofMat = cloudy(await pbr('concrete-worn', { repeat: [1 / 4, 1 / 4], small, roughness: 0.95, metalness: 0, color: 0xc4c7c6, normalScale: 0.8 }), 'roof');
   const darkMetal = cloudy(new THREE.MeshStandardMaterial({ color: 0x2f3640, roughness: 0.45, metalness: 0.8 }), 'dark');
@@ -642,7 +770,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // the landing pad: a low slab, its markings
   const apronTop = await pbr('asphalt', { repeat: [1 / 5, 1 / 5], small, roughness: 0.85, metalness: 0, color: 0x6a7076 });
   add(prismWalls(APRON, 0, 0.06, 1, SC), cloudy(grey.clone(), 'grey'));
-  add(prismTop(APRON, 0.06, 1, SC), antiTile(cloudy(apronTop, 'apron'), { frequency: 0.06, detail: { texture: grain, scale: 2.2, strength: 0.25, range: 24 } }));
+  add(prismTop(APRON, 0.06, 1, SC), grounded(antiTile(cloudy(apronTop, 'apron'), { frequency: 0.06, detail: { texture: grain, scale: 2.2, strength: 0.25, range: 24 } }), shade));
   {
     const b2 = [-1, 66, 38, 99];
     const g = new THREE.PlaneGeometry(39 * S, 33 * S).rotateX(-Math.PI / 2).translate(18.5 * S, 0.06 * V + 0.03, 82.5 * S);
@@ -1665,7 +1793,9 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     const want = tmp.set(h.x + Math.sin(yaw) * Math.cos(pitch) * dist, look.y + Math.sin(pitch) * dist, h.z + Math.cos(yaw) * Math.cos(pitch) * dist);
     // (brought in toward his head, not the point ahead: that can be in a wall)
     head.set(h.x, A.ly, h.z);
-    const k = camRoom(head.x, head.z, want.x, want.y, want.z);
+    // (and out of the Quinjet that flies, while it's down on its pad or near it)
+    const jp = jet.group.position;
+    const k = camRoom(head.x, head.z, want.x, want.y, want.z, jet.group.visible && jp.y < 12 ? [{ x: jp.x, y: jp.y - 0.15, z: jp.z, yaw: jet.group.rotation.y, scale: PARKED_JET.scale }] : null);
     if (k < 1) want.lerpVectors(head, want, Math.max(0.12, k));
     if (want.y < 0.5) want.y = 0.5;
     // the first frame, or a jump across the compound (to a door from the
@@ -1708,9 +1838,17 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       }
     }
 
-    // the sun's shadows follow him, snapped to the shadow map's texels so they don't crawl
+    // the sun's shadows follow him, their square pushed out ahead of him the
+    // way the camera looks (behind him it's off screen: the buildings' long
+    // shadows ended in a straight line across the lawn, not far in front),
+    // snapped to the shadow map's texels so they don't crawl
     const texel = (SHADOW * 2) / sun.shadow.mapSize.x;
-    shadowAt.set(Math.round(h.x / texel) * texel, 0, Math.round(h.z / texel) * texel);
+    let fx = A.look.x - camera.position.x;
+    let fz = A.look.z - camera.position.z;
+    const fl = Math.hypot(fx, fz) || 1;
+    fx = (fx / fl) * SHADOW * 0.45;
+    fz = (fz / fl) * SHADOW * 0.45;
+    shadowAt.set(Math.round((h.x + fx) / texel) * texel, 0, Math.round((h.z + fz) / texel) * texel);
     sun.target.position.copy(shadowAt);
     sun.position.copy(shadowAt).addScaledVector(sunDir, 160);
     sun.target.updateMatrixWorld();

@@ -37,6 +37,7 @@ import {
   aimWeb,
   behindYaw,
   camRoom,
+  PARKED_JET,
   cameraMove,
   collide,
   findPerch,
@@ -240,6 +241,22 @@ describe('The compound, the world: the camera', () => {
     expect(k).toBeLessThan(0.4);
     // but over the roof is fine
     expect(camRoom(widow.x, widow.z, widow.x - Math.cos(widow.face) * 8, 60, widow.z + Math.sin(widow.face) * 8)).toBe(1);
+  });
+
+  it('comes in rather than go inside the parked Quinjet', () => {
+    // he stands off the jet's flank, the camera behind him through the fuselage
+    const ax = Math.cos(PARKED_JET.yaw);
+    const az = -Math.sin(PARKED_JET.yaw);
+    const hx = PARKED_JET.x + ax * 6;
+    const hz = PARKED_JET.z + az * 6;
+    const k = camRoom(hx, hz, PARKED_JET.x - ax * 2, 3, PARKED_JET.z - az * 2);
+    expect(k).toBeLessThan(0.6);
+    // through a wing, low down
+    const wx = PARKED_JET.x + ax * 5 * PARKED_JET.scale - Math.sin(PARKED_JET.yaw) * 6 * PARKED_JET.scale;
+    const wz = PARKED_JET.z + az * 5 * PARKED_JET.scale - Math.cos(PARKED_JET.yaw) * 6 * PARKED_JET.scale;
+    expect(camRoom(hx + ax * 6, hz + az * 6, wx, 1.8, wz)).toBeLessThan(1);
+    // and over it is fine
+    expect(camRoom(hx, hz, PARKED_JET.x - ax * 2, 12, PARKED_JET.z - az * 2)).toBe(1);
   });
 });
 

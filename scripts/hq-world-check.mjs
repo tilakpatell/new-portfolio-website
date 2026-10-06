@@ -48,8 +48,8 @@ const SHOTS = {
   training: { x: 175, z: 80, face: Math.PI, pitch: 0.15 },
   lab: { x: 150, z: 160, face: Math.PI * 0.5, pitch: 0.15 },
   river: { x: 80, z: 30, face: 0, pitch: 0.1 },
-  roof: { x: 80, y: 32, z: 50, mode: 'air', face: Math.PI * 1.2, pitch: -0.3 },
-  high: { x: 100, y: 90, z: 160, mode: 'air', face: Math.PI, pitch: -0.5 },
+  roof: { x: 80, y: 32, z: 50, mode: 'air', face: Math.PI * 1.2, pitch: 0.35 },
+  high: { x: 100, y: 60, z: 170, mode: 'air', face: Math.PI, pitch: 0.55 },
 };
 const want = process.argv.slice(2);
 await page.waitForTimeout(3000);
