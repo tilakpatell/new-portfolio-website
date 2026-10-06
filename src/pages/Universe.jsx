@@ -21,6 +21,8 @@ import StartChoice from '../components/universe/StartChoice';
 import Rain from '../components/universe/Rain';
 import NavMap from '../components/universe/NavMap';
 import Online from '../components/universe/online/Online';
+import Wardrobe from '../components/rickmorty/wardrobe/Wardrobe';
+import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
 import { useOnline } from '../components/universe/online/useOnline';
 
 const PORTAL = '#97ce4c';
@@ -72,6 +74,10 @@ export default function Universe({ ask = false }) {
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
   useEffect(() => tellBuild?.(build), [tellBuild, build]);
   const [hangar, setHangar] = useState(false);
+  // the wardrobe, from the hangar: how the cruiser's Rick and Morty look
+  const [looks, setLook] = useLooks();
+  const [wardrobe, setWardrobe] = useState(false);
+  const closeWardrobe = useCallback(() => setWardrobe(false), []);
   // the nav map, and the drive picked on it (kept between visits)
   const [charting, setCharting] = useState(false);
   const [drive, setDriveState] = useState(() => parseDrive(local.get(DRIVE_KEY)));
@@ -102,15 +108,33 @@ export default function Universe({ ask = false }) {
   useEffect(() => () => clearTimeout(timer.current), []);
 
   // out of the cockpit's launch (App's intro, or ⌘K's replay): flying the
-  // ship it was, with no question first
+  // ship it was, with no question first. Sat down in the cockpit with no
+  // ship yet (a first visit), that one's made under it as you sit there
+  // (tp:board, again if you change seats), so the flash comes out on a
+  // ship that's ready; a replay keeps the ship it's flying until the flash.
+  const boarding = useRef(false);
+  const flyingNow = useRef(ship);
+  flyingNow.current = ship;
   useEffect(() => {
     const arrive = (e) => {
+      boarding.current = false;
       const id = parseShip(e.detail?.ship);
       if (id) setShip(id);
       setAsking(false);
     };
+    const board = (e) => {
+      const id = parseShip(e.detail?.ship);
+      if (!id || (flyingNow.current && !boarding.current)) return;
+      boarding.current = true;
+      setShip(id);
+      setAsking(false);
+    };
     window.addEventListener('tp:arrive', arrive);
-    return () => window.removeEventListener('tp:arrive', arrive);
+    window.addEventListener('tp:board', board);
+    return () => {
+      window.removeEventListener('tp:arrive', arrive);
+      window.removeEventListener('tp:board', board);
+    };
   }, []);
 
   const select = useCallback((id) => navigate(id ? `/universe/${id}` : '/universe', { replace: true }), [navigate]);
@@ -252,6 +276,10 @@ export default function Universe({ ask = false }) {
         loadout={loadout}
         build={build}
         onBuild={ship ? setBuild : null}
+        onCrew={() => {
+          setHangar(false);
+          setWardrobe(true);
+        }}
         onFit={ship ? fit : null}
         hangar={hangar}
         onHangar={setHangar}
@@ -264,6 +292,7 @@ export default function Universe({ ask = false }) {
         onCrash={crashInto}
       />
       {crew && <Comms control={comms} crew={crew} reduced={reduced} />}
+      <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} who="rick" />
       {!asking && !leaving && <Online online={online} ship={ship} />}
       <UniversePanel
         universe={universe}

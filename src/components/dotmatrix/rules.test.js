@@ -28,6 +28,7 @@ import {
   cameraMove,
   column,
   floorAt,
+  islanderStep,
   legend,
   moveHero,
   nearAction,
@@ -620,5 +621,22 @@ describe('Dot Matrix: the coins', () => {
     expect(ev.filter((e) => e.type === 'allcoins')).toHaveLength(1);
     expect(progress(g).coins).toBe(progress(g).coinsOf);
     expect(step(g, idle, DT).some((e) => e.type === 'allcoins')).toBe(false);
+  });
+});
+
+describe('Dot Matrix: the other islanders', () => {
+  it('says where you are for them, on the island, with how fast and how high', () => {
+    const g = newGame();
+    const st = islanderStep(g.hero);
+    expect(st).toMatchObject({ x: g.hero.x, z: g.hero.z, face: g.hero.face, y: 0 });
+    expect(st.speed).toBe(0);
+    g.hero.moving = 4.6;
+    g.hero.y = CLOUD.top;
+    expect(islanderStep(g.hero)).toMatchObject({ speed: 4.6, y: CLOUD.top });
+    // someone gone down the pipe, or over by the dock, is still within the town's bounds
+    for (const s of [islanderStep(at(0.5, 0, 0.5)), islanderStep(at(W - 0.5, 0, H - 0.5))]) {
+      expect(Math.abs(s.x)).toBeLessThan(200);
+      expect(Math.abs(s.z)).toBeLessThan(200);
+    }
   });
 });

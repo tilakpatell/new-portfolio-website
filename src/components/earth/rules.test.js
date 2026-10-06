@@ -28,6 +28,7 @@ import {
   newFlight,
   newLook,
   nextStamp,
+  packPose,
   rotate,
   routeArc,
   subsolar,
@@ -35,6 +36,7 @@ import {
   toVec,
   turnLook,
   unit,
+  unpackPose,
 } from './rules';
 
 const DT = 1 / 30;
@@ -348,5 +350,35 @@ describe('Earth: looking round', () => {
     for (let i = 0; i < 300; i++) easeLook(l, DT);
     expect(Math.abs(l.yaw)).toBeLessThan(0.01);
     expect(Math.abs(l.pitch)).toBeLessThan(0.01);
+  });
+});
+
+describe('Earth: the other pilots', () => {
+  it('packs where a plane is into a traveller’s step, and reads it back', () => {
+    const f = newFlight();
+    for (let i = 0; i < 90; i++) fly(f, { turn: 0.4, climb: 1 }, DT);
+    const step = packPose(f);
+    // longitude and latitude in degrees, the heading as a bearing in radians, the height in thousandths
+    expect(step.x).toBeCloseTo(toLonLat(f.p)[0], 5);
+    expect(step.z).toBeCloseTo(toLonLat(f.p)[1], 5);
+    expect(step.face).toBeCloseTo((bearingOf(f.p, f.h) * Math.PI) / 180, 5);
+    expect(step.y).toBeCloseTo(f.alt * 1000, 5);
+    expect(step.speed).toBeGreaterThan(0.4); // always counts as moving
+    expect(step.speed).toBeLessThan(45);
+    expect(Math.abs(step.x)).toBeLessThanOrEqual(180);
+    expect(Math.abs(step.z)).toBeLessThanOrEqual(90);
+    expect(step.y).toBeLessThanOrEqual(80);
+    const back = unpackPose({ ...step, x: Math.round(step.x * 100) / 100, z: Math.round(step.z * 100) / 100, face: Math.round(step.face * 100) / 100 });
+    expect(angle(back.p, f.p)).toBeLessThan(0.0003);
+    expect(dot(back.h, f.h)).toBeGreaterThan(0.9999);
+    expect(back.alt).toBeCloseTo(f.alt, 4);
+    expect(len(back.p)).toBeCloseTo(1, 9);
+    expect(dot(back.p, back.h)).toBeCloseTo(0, 9);
+  });
+
+  it('puts a step with no height at cruising height', () => {
+    const back = unpackPose({ x: 0, z: 0, face: 0 });
+    expect(back.alt).toBe(ALT.start);
+    expect(back.p).toEqual([0, 0, 1]);
   });
 });

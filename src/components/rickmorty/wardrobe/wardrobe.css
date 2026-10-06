@@ -1,0 +1,84 @@
+/* The wardrobe: a turntable and the choices, inked like the C-137 HUD (flat
+   fills, thick dark outlines, portal green), over whatever page opened it. */
+
+.rm-wardrobe {
+  --wd-ink: #1b1424;
+  --wd-green: #97ce4c;
+  --wd-lime: #c9ff5a;
+  --wd-glass: rgba(27, 20, 36, 0.94);
+  --wd-paper: #fdfbf5;
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+  background: rgba(10, 6, 16, 0.55);
+  backdrop-filter: blur(3px);
+}
+.rm-wardrobe-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  width: min(62rem, 100%);
+  height: min(40rem, 100%);
+  overflow: hidden;
+  border: 3px solid var(--wd-ink);
+  border-radius: 18px;
+  background: var(--wd-glass);
+  color: #fff;
+  box-shadow: 0 6px 0 var(--wd-ink), 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rm-wardrobe-panel { animation: rm-wardrobe-in 0.22s ease-out; }
+}
+@keyframes rm-wardrobe-in {
+  from { transform: translateY(10px) scale(0.98); opacity: 0; }
+}
+
+/* the turntable */
+.rm-wardrobe-stage { position: relative; min-height: 0; background: radial-gradient(circle at 50% 42%, #e9ffb0 0%, #9fdc6a 30%, #2c6f3a 70%, #102a1a 100%); border-right: 3px solid var(--wd-ink); }
+.rm-wardrobe-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: pan-y; }
+.rm-wardrobe-canvas:active { cursor: grabbing; }
+.rm-wardrobe-who { position: absolute; left: 50%; bottom: 0.9rem; transform: translateX(-50%); margin: 0; padding: 0.35rem 0.85rem; border: 2px solid var(--wd-ink); border-radius: 999px; background: var(--wd-paper); color: var(--wd-ink); font: 700 0.9rem/1.2 var(--font-sans); white-space: nowrap; box-shadow: 0 3px 0 var(--wd-ink); }
+
+/* the choices */
+.rm-wardrobe-controls { display: grid; grid-auto-rows: max-content; align-content: start; gap: 1rem; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1.1rem 1.2rem 1.2rem; }
+.rm-wardrobe-head { display: flex; align-items: center; justify-content: space-between; }
+.rm-wardrobe-head h2 { margin: 0; font: 400 1.7rem/1 'Luckiest Guy', var(--font-sans); letter-spacing: 0.02em; color: var(--wd-lime); text-shadow: 0 3px 0 var(--wd-ink); }
+.rm-wardrobe-close { display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border: 2px solid var(--wd-ink); border-radius: 50%; background: var(--wd-paper); color: var(--wd-ink); box-shadow: 0 2px 0 var(--wd-ink); }
+.rm-wardrobe-tabs { display: grid; grid-template-columns: 1fr 1fr; border: 2px solid var(--wd-ink); border-radius: 12px; overflow: hidden; background: rgba(255, 255, 255, 0.06); }
+.rm-wardrobe-tabs button { min-height: 2.6rem; color: rgba(255, 255, 255, 0.75); font: 700 1rem/1 var(--font-sans); }
+.rm-wardrobe-tabs button + button { border-left: 2px solid var(--wd-ink); }
+.rm-wardrobe-tabs button[aria-pressed='true'] { background: var(--wd-green); color: var(--wd-ink); }
+.rm-wardrobe-group { display: grid; gap: 0.6rem; }
+.rm-wardrobe-group h3 { margin: 0; color: rgba(255, 255, 255, 0.62); font: 600 0.7rem/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.rm-wardrobe-bodies { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 0.4rem; }
+.rm-wardrobe-bodies button,
+.rm-wardrobe-chips button { min-height: 2.25rem; padding: 0.3rem 0.7rem; border: 2px solid rgba(255, 255, 255, 0.16); border-radius: 10px; background: rgba(255, 255, 255, 0.04); color: #fff; font: 600 0.82rem/1.2 var(--font-sans); text-align: left; transition: border-color 0.15s, background-color 0.15s; }
+.rm-wardrobe-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.rm-wardrobe-chips button { border-radius: 999px; text-align: center; }
+.rm-wardrobe-bodies button:hover,
+.rm-wardrobe-chips button:hover { border-color: rgba(255, 255, 255, 0.4); }
+.rm-wardrobe-bodies button[aria-pressed='true'],
+.rm-wardrobe-chips button[aria-pressed='true'] { border-color: var(--wd-ink); background: var(--wd-green); color: var(--wd-ink); box-shadow: 0 2px 0 var(--wd-ink); }
+.rm-wardrobe-region { display: grid; gap: 0.35rem; }
+.rm-wardrobe-region-name { font: 600 0.82rem/1.2 var(--font-sans); }
+.rm-wardrobe-swatches { display: flex; flex-wrap: wrap; gap: 0.26rem; }
+.rm-wardrobe-swatch { width: 1.45rem; height: 1.45rem; border: 2px solid var(--wd-ink); border-radius: 50%; background: var(--swatch); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18); transition: transform 0.12s; }
+.rm-wardrobe-swatch:hover { transform: scale(1.12); }
+.rm-wardrobe-swatch[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--wd-ink), 0 0 0 4px var(--wd-lime); }
+.rm-wardrobe-swatch-own { background: conic-gradient(#f3d84b 0 25%, #a9d6e5 0 50%, #eef3f4 0 75%, #8a5a34 0); }
+.rm-wardrobe-note { margin: 0; color: rgba(255, 255, 255, 0.62); font: 500 0.8rem/1.4 var(--font-sans); }
+.rm-wardrobe-foot { display: grid; gap: 0.6rem; padding-top: 0.2rem; }
+.rm-wardrobe-reset { justify-self: start; min-height: 2.3rem; padding: 0.3rem 0.9rem; border: 2px solid var(--wd-ink); border-radius: 10px; background: var(--wd-paper); color: var(--wd-ink); font: 700 0.85rem/1 var(--font-sans); box-shadow: 0 2px 0 var(--wd-ink); }
+.rm-wardrobe-credit { margin: 0; color: rgba(255, 255, 255, 0.55); font: 500 0.7rem/1.45 var(--font-sans); }
+.rm-wardrobe-credit a { color: inherit; text-decoration: underline; }
+.rm-wardrobe button:focus-visible { outline: 3px solid var(--wd-lime); outline-offset: 2px; }
+
+@media (max-width: 720px) {
+  .rm-wardrobe { padding: 0; place-items: stretch; }
+  .rm-wardrobe-panel { grid-template-columns: 1fr; grid-template-rows: 42svh minmax(0, 1fr); width: 100%; height: 100%; border-radius: 0; border-width: 0; box-shadow: none; }
+  .rm-wardrobe-stage { border-right: 0; border-bottom: 3px solid var(--wd-ink); }
+  .rm-wardrobe-controls { padding-bottom: max(1.2rem, env(safe-area-inset-bottom)); }
+}
+.rm-wardrobe-tabs button:focus-visible { outline-offset: -5px; }

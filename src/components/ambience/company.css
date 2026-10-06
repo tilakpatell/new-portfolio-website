@@ -1,0 +1,149 @@
+/* The company themes' backgrounds (Ambience.jsx's CompanyBackdrop): quiet,
+   still or nearly so, at the edges of the page and never under the text,
+   each one drawn from the work: AWS's racks of servers and its smile, RTX's
+   engineering drawing, Bose's sound, Pendar's spectra, Empowerreg's
+   knowledge graph and SRC's radar. CSS only: nothing to download, and they
+   follow the theme's colours and the light or dark mode on their own. */
+html[data-ambience] body { background: transparent; }
+.site-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+.site-backdrop::before,
+.site-backdrop::after {
+  content: '';
+  position: absolute;
+}
+/* only at the sides, where there's no text */
+.site-backdrop[data-company]::before {
+  inset: 0;
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, transparent 24%, transparent 76%, #000 100%);
+  mask-image: linear-gradient(90deg, #000 0%, transparent 24%, transparent 76%, #000 100%);
+}
+
+/* AWS: rows of rack slots in dots, and the smile's arc across the corner */
+.site-backdrop[data-company='aws']::before {
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--text) 16%, transparent) 1.1px, transparent 1.6px);
+  background-size: 18px 22px;
+}
+.site-backdrop[data-company='aws']::after {
+  right: -4vw;
+  bottom: 4vh;
+  width: 58vw;
+  height: 30vh;
+  border-radius: 50%;
+  border-bottom: 3px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  transform: rotate(-6deg);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 45%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 45%);
+}
+
+/* RTX: an engineering drawing's grid, fine and major lines, and its corner marks */
+.site-backdrop[data-company='rtx']::before {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--text) 9%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--text) 9%, transparent) 1px, transparent 1px),
+    linear-gradient(color-mix(in srgb, var(--text) 4.5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--text) 4.5%, transparent) 1px, transparent 1px);
+  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+}
+.site-backdrop[data-company='rtx']::after {
+  inset: 18px;
+  background:
+    linear-gradient(var(--accent), var(--accent)) left top / 28px 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) left top / 2px 28px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) right top / 28px 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) right top / 2px 28px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) left bottom / 28px 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) left bottom / 2px 28px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) right bottom / 28px 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) right bottom / 2px 28px no-repeat;
+  opacity: 0.55;
+}
+
+/* Bose: sound spreading from the lower left, ring after ring, breathing */
+.site-backdrop[data-company='bose']::before {
+  -webkit-mask-image: radial-gradient(circle at 0% 100%, #000 0, transparent 62vmax);
+  mask-image: radial-gradient(circle at 0% 100%, #000 0, transparent 62vmax);
+  background-image: repeating-radial-gradient(circle at 0% 100%, color-mix(in srgb, var(--text) 13%, transparent) 0 1px, transparent 1.5px 34px);
+  transform-origin: 0% 100%;
+  animation: site-breathe 9s ease-in-out infinite alternate;
+}
+.site-backdrop[data-company='bose']::after {
+  inset: 0;
+  -webkit-mask-image: radial-gradient(circle at 100% 0%, #000 0, transparent 34vmax);
+  mask-image: radial-gradient(circle at 100% 0%, #000 0, transparent 34vmax);
+  background-image: repeating-radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--text) 9%, transparent) 0 1px, transparent 1.5px 26px);
+}
+@keyframes site-breathe { to { transform: scale(1.05); } }
+
+/* Pendar: a spectrum along the foot of the page, its peaks in the light's colours */
+.site-backdrop[data-company='pendar']::before {
+  inset: auto 0 0 0;
+  height: 150px;
+  -webkit-mask: url('/ambience/spectrum.svg') bottom / 100% 100% no-repeat;
+  mask: url('/ambience/spectrum.svg') bottom / 100% 100% no-repeat;
+  background: linear-gradient(90deg, #6a4cff, #2f8cff 18%, #18c6d6 34%, #34d27a 50%, #d9d23a 66%, #ff9a3a 82%, #ff4a5a);
+  opacity: 0.14;
+}
+.site-backdrop[data-company='pendar']::after {
+  inset: auto 0 0 0;
+  height: 1px;
+  background: color-mix(in srgb, var(--saber) 60%, transparent);
+}
+
+/* Empowerreg: a knowledge graph growing in from the corners */
+.site-backdrop[data-company='empowerreg']::before {
+  inset: auto 0 0 auto;
+  width: min(460px, 40vw);
+  height: min(460px, 40vw);
+  -webkit-mask: url('/ambience/network.svg') right bottom / contain no-repeat;
+  mask: url('/ambience/network.svg') right bottom / contain no-repeat;
+  background: color-mix(in srgb, var(--accent) 34%, transparent);
+}
+.site-backdrop[data-company='empowerreg']::after {
+  inset: 0 auto auto 0;
+  width: min(360px, 32vw);
+  height: min(360px, 32vw);
+  -webkit-mask: url('/ambience/network.svg') right bottom / contain no-repeat;
+  mask: url('/ambience/network.svg') right bottom / contain no-repeat;
+  background: color-mix(in srgb, var(--saber) 40%, transparent);
+  transform: rotate(180deg);
+  opacity: 0.7;
+}
+
+/* SRC: a radar scope in the lower-left corner, its sweep going round */
+.site-backdrop[data-company='src']::before {
+  inset: auto auto calc(-1 * min(360px, 34vw)) calc(-1 * min(360px, 34vw));
+  width: min(720px, 68vw);
+  height: min(720px, 68vw);
+  border-radius: 50%;
+  -webkit-mask-image: none;
+  mask-image: none;
+  background:
+    linear-gradient(color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent) 22%, transparent)) center / 1px 100% no-repeat,
+    linear-gradient(color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent) 22%, transparent)) center / 100% 1px no-repeat,
+    repeating-radial-gradient(circle, transparent 0 59px, color-mix(in srgb, var(--accent) 24%, transparent) 59px 60px);
+}
+.site-backdrop[data-company='src']::after {
+  inset: auto auto calc(-1 * min(360px, 34vw)) calc(-1 * min(360px, 34vw));
+  width: min(720px, 68vw);
+  height: min(720px, 68vw);
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 290deg, color-mix(in srgb, var(--saber) 26%, transparent) 360deg);
+  animation: site-sweep 7s linear infinite;
+}
+@keyframes site-sweep { to { transform: rotate(1turn); } }
+
+/* a phone's text runs edge to edge: fainter, and the big pieces smaller */
+@media (max-width: 767px) {
+  .site-backdrop { opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-backdrop::before,
+  .site-backdrop::after { animation: none; }
+}
+@media print { .site-backdrop { display: none; } }

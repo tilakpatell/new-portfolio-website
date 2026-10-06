@@ -4,17 +4,17 @@ import { AD, CONTROLS, DEFAULTS, DRAG_UP } from './controls';
 // The flying settings (controls.js), from the button in the map's corner
 // (or O): how quickly the ship turns, pitches and rolls, how quickly it
 // rolls back upright, how far a drag goes for full stick, how much the guns
-// help a shot home, how tightly the camera follows, up and down turned
+// help a shot home, how much the nose follows a lock, how tightly the camera follows, up and down turned
 // over, what A and D do, and what dragging up and down does.
 // Every change is live (the scene reads them each frame) and kept between
 // visits by the page. Not modal: the map stays flyable behind it; Escape,
 // the close button or a click on the map puts it away.
-const ORDER = ['turn', 'pitch', 'roll', 'level', 'drag', 'assist', 'camera'];
+const ORDER = ['turn', 'pitch', 'roll', 'level', 'drag', 'assist', 'track', 'camera'];
 const DRAG_LABEL = { auto: 'Auto', pitch: 'Nose', speed: 'Throttle' };
 const DRAG_HINT = { auto: 'Mouse tips the nose, touch works the throttle', pitch: 'Up and down tips the nose', speed: 'Up and down works the throttle' };
 const AD_LABEL = { roll: 'Roll', turn: 'Turn' };
 const AD_HINT = { roll: 'As in Battlefront: roll over, then pull the nose round', turn: 'Swing the nose left and right, like the arrows' };
-const pct = (k, v) => ((k === 'assist' || k === 'level') && v === 0 ? 'Off' : `${Math.round(v * 100)}%`);
+const pct = (k, v) => ((k === 'assist' || k === 'track' || k === 'level') && v === 0 ? 'Off' : `${Math.round(v * 100)}%`);
 
 export default function FlightSettings({ controls, onChange, open, onOpen }) {
   const id = useId();
