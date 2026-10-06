@@ -103,7 +103,7 @@ const PHASE6 = {
   'spacebeth-ship': { rig: false, hero: true, prompt: `Space Beth's spaceship from Rick and Morty, seen almost from the front and turned only a little, the whole ship drawn small in the middle of the picture with wide white margins on every side: a battered rounded saucer-like hull in slate grey-green with a dark rounded belly underneath, a mustard-yellow panel across the front of the nose carrying a pale grey hatch plate and a long row of orange-lit slot lights, a thin vertical cyan light strip down the front just to the right of the yellow panel, a large clear glass bubble cockpit dome with four empty seats, two rust-red engine pods with dark louvred intakes flanking the dome, a big black ring-shaped turbine with a notched rim standing upright on top at the back with copper coils lining the inside of the ring, two long straight rust-red wings with olive patches reaching out level to the left and right, a tall dark red kite-shaped fin standing upright across the tip of the wing on the left of the picture that reaches well above AND well below that wing, the wing on the right of the picture ending in a plain squared tip with no fin, a yellow-and-black striped gun barrel under the wing on the right of the picture, two dark grey landing legs under the front of the hull, each ending in a curved hooked claw. Last time the right wing ran off the edge of the picture and the fin only rose above the wing: this time both wingtips, the whole fin and the gun end well inside the picture with white space past them. ${PROP}` }, // (confirm against the sheet)
   'jerry-ship': { rig: false, prompt: `Jerry's car turned into a spaceship by Rick, from Rick and Morty: a long boxy pale green 1980s four-door station wagon with brown wood-grain panels along its sides, a roof rack, square twin headlights, a chrome grille and bumpers and grey hubcaps, with two identical flat grey metal wings held level, one folded out from each side of the body below the doors, both wings in view, and grey rocket thrusters at the back. Seen a little from above so that both wings show, the whole vehicle and both wingtips inside the picture. ${CAR}` },
   'gotron-ferret': { rig: false, hero: true, prompt: `A Gotron ferret robot from Rick and Morty: a giant mecha ferret shaped like a long, low sports car, its body very long and slinky, about four times as long as it is tall, its belly only just above the ground, built from glossy red armour sections: a rounded rear haunch, a white-silver segmented joint, a long middle body with a raised hatch and a row of small teal lights on its back, a second white-silver segmented joint, and a chest. A big round black wheel with a white hub is set into each side of the rear haunch and each side of the chest, like a car's wheels, and four short stubby legs are folded under the body, almost hidden beneath it. A long white-silver segmented tail curves up behind. The head is an angular armoured mecha head like the front of a sports car: a red armoured top, a teal glass cockpit windscreen across the top, small angular ear pods with teal glass, narrow angular glowing yellow eyes like headlights, a small red triangular nose gem, and a white-silver lower face and jaw with slanted vents and a zigzag edge. No animal nose, no muzzle, no fur, no whiskers, no round ears. The first picture drew a cute animal face with a white muzzle and a brown nose. The second drew a short car body standing high on four tall stilt legs with a wheel for each foot. The body must be long and low like a ferret, the wheels must be on the sides of the body and not under the feet, and the head must be the angular mecha head. ${PROP}` },
-  gotron: { rig: false, hero: true, prompt: `The combined Gotron mecha from Rick and Morty: a towering super robot built from five ferret robots. It has a wide black torso with a red collar and a gold chevron chest plate holding a red shield with a glowing pale cyan G emblem, a short red pointed panel on the torso just below the shield, a white segmented waist, and black hips with a black belt and a gold buckle, with no flap hanging between the legs. Two long red-and-white wings rise behind the shoulders in a V. The helmet is black with a gold brow, glowing yellow eyes and a white faceplate. Each arm is one whole ferret robot, all red on the right arm (viewer's left) and all yellow on the left arm (viewer's right): a plain rounded shoulder block in that same colour with one black wheel on its outer side and nothing on top of it, a white segmented elbow, then the ferret's body as the forearm, with black wheels on its sides, reaching to mid-thigh with its head in place of the hand, and no robot hand or fist. Each leg is a white segmented thigh over a shin that is one whole ferret robot with black wheels on its sides, blue on the right leg (viewer's left) and green on the left (viewer's right), its head forming the foot and pointing straight forwards at the viewer. There are exactly four ferret heads: the two hands and the two feet. Each is an angular mecha ferret head with small pointed ear pods with teal glass, a teal glass windscreen on top, narrow glowing yellow eyes, a small red nose gem and a white-silver jaw with slanted vents and a zigzag edge, not a car bonnet with headlights and not a furry face. Last time the picture wrongly put a whole yellow car and a whole red car with teeth on top of the shoulders, drew the feet as plain cars with headlights, and hung a red flap over the crotch. Nothing sits on the shoulders, the feet are ferret heads, and the hips are plain black. Standing straight, the arms a little away from the body with white background between each forearm and the thigh. ${PROP}` },
+  gotron: { rig: false, hero: true, fix: 'shin', prompt: `The combined Gotron mecha from Rick and Morty: a towering super robot built from five ferret robots. It has a wide black torso with a red collar and a gold chevron chest plate holding a red shield with a glowing pale cyan G emblem, a short red pointed panel on the torso just below the shield, a white segmented waist, and black hips with a black belt and a gold buckle, with no flap hanging between the legs. Two long red-and-white wings rise behind the shoulders in a V. The helmet is black with a gold brow, glowing yellow eyes and a white faceplate. Each arm is one whole ferret robot, all red on the right arm (viewer's left) and all yellow on the left arm (viewer's right): a plain rounded shoulder block in that same colour with one black wheel on its outer side and nothing on top of it, a white segmented elbow, then the ferret's body as the forearm, with black wheels on its sides, reaching to mid-thigh with its head in place of the hand, and no robot hand or fist. Each leg is a white segmented thigh over a shin that is one whole ferret robot with black wheels on its sides, blue on the right leg (viewer's left) and green on the left (viewer's right), its head forming the foot and pointing straight forwards at the viewer. There are exactly four ferret heads: the two hands and the two feet. Each is an angular mecha ferret head with small pointed ear pods with teal glass, a teal glass windscreen on top, narrow glowing yellow eyes, a small red nose gem and a white-silver jaw with slanted vents and a zigzag edge, not a car bonnet with headlights and not a furry face. Last time the picture wrongly put a whole yellow car and a whole red car with teeth on top of the shoulders, drew the feet as plain cars with headlights, and hung a red flap over the crotch. Nothing sits on the shoulders, the feet are ferret heads, and the hips are plain black. Standing straight, the arms a little away from the body with white background between each forearm and the thigh. ${PROP}` },
   'zigerion-ship': { rig: false, hero: true, prompt: `The Zigerion mothership from Rick and Morty: a huge dark green spaceship shaped like a dumbbell, two giant thick disc-shaped hulls side by side joined by a short boxy central hull, each disc rimmed with large glowing lime-green crescent windows and a ringed hub on its outer face with spiky barrels sticking out, teal light strips all over the hull, a flat top deck with a low boxy deckhouse and tall thin antenna spires tipped with red lights, a stepped underside ending in hanging spires. ${PROP}` }, // (confirm against the sheet "Zigerions")
   storytrain: { rig: false, hero: true, prompt: `The Story Train from Rick and Morty: a long streamlined science-fiction steam locomotive in gold, amber and copper. Its front is a long, low, tapering snout like a shark's nose. It slopes steeply down from a pale curved cab windscreen to a narrow tip almost at rail level, with a small round copper buffer at the tip, and the snout is longer than it is tall, not a blunt or upright rounded face. A narrow ridged cream strip runs down the middle of the snout from just under the windscreen to the tip, with a small red-rimmed round lamp at its top. One big glowing round headlamp in a thick gold ring is set flush into each side of the engine just behind the snout, not on a stalk, and there are no other headlamps. Along each lower side, below the headlamp, runs a copper skirt with three dark rectangular slots, and there is no cowcatcher, bumper or grille across the front. Behind them are red piston cylinders and big dark red spoked driving wheels. It hauls exactly three passenger carriages, the first dark red, the second brown and the third black, with warm lit windows and glowing gold couplings, no text or numbers. Last time the picture drew a blunt, bulbous diesel-style front with a wide bumper, headlamps sticking out on stalks at the front corners and a slatted cowcatcher across the front. The snout must be long, low and pointed, and the headlamps flush on the sides. ${PROP}` },
 };
@@ -267,10 +267,97 @@ export function stiffenAnkles(doc, { shafts = true, ease = 0.05 } = {}) {
   return moved;
 }
 
+// Gotron's green left shin came out blue down its back and heel (seen only
+// from behind; his second model, and the gate allows no third). `fix:
+// 'shin'`: the texels his left shin's triangles cover that are blue take the
+// shin's own green, their light and shade kept. His left is +x (a figure faces
+// +z), and his shin is the leg below the knee, under half his height.
+const hsv = (r, g, b) => {
+  const mx = Math.max(r, g, b);
+  const d = mx - Math.min(r, g, b);
+  const h = d === 0 ? 0 : mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h * 60, mx ? d / mx : 0, mx / 255];
+};
+const rgb = (h, s, v) => {
+  const f = (n) => {
+    const k = (n + h / 60) % 6;
+    return Math.round(255 * (v - v * s * Math.max(0, Math.min(k, 4 - k, 1))));
+  };
+  return [f(5), f(3), f(1)];
+};
+export async function greenShin(doc) {
+  let moved = 0;
+  for (const prim of doc.getRoot().listMeshes().flatMap((m) => m.listPrimitives())) {
+    const pos = prim.getAttribute('POSITION');
+    const uv = prim.getAttribute('TEXCOORD_0');
+    const tex = prim.getMaterial()?.getBaseColorTexture();
+    if (!pos || !uv || !tex) continue;
+    const lo = pos.getMin([]);
+    const hi = pos.getMax([]);
+    const cx = (lo[0] + hi[0]) / 2;
+    const H = hi[1] - lo[1];
+    // (between the middle and the arm, below the knee)
+    const shin = (p) => p[0] > cx + 0.04 * (hi[0] - lo[0]) && p[0] < cx + 0.28 * (hi[0] - lo[0]) && p[1] < lo[1] + 0.45 * H;
+    const { data, info } = await sharp(tex.getImage()).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    const W = info.width;
+    const Ht = info.height;
+    const mask = new Uint8Array(W * Ht);
+    const idx = prim.getIndices();
+    const n = idx ? idx.getCount() : pos.getCount();
+    const p = [0, 0, 0];
+    const t = [0, 0];
+    for (let i = 0; i < n; i += 3) {
+      const vs = [0, 1, 2].map((k) => (idx ? idx.getScalar(i + k) : i + k));
+      if (!vs.every((v) => shin(pos.getElement(v, p)))) continue;
+      const q = vs.map((v) => {
+        uv.getElement(v, t);
+        return [t[0] * W, t[1] * Ht];
+      });
+      const [x0, x1] = [Math.floor(Math.min(...q.map((a) => a[0]))), Math.ceil(Math.max(...q.map((a) => a[0])))];
+      const [y0, y1] = [Math.floor(Math.min(...q.map((a) => a[1]))), Math.ceil(Math.max(...q.map((a) => a[1])))];
+      const area = (q[1][0] - q[0][0]) * (q[2][1] - q[0][1]) - (q[2][0] - q[0][0]) * (q[1][1] - q[0][1]);
+      if (!area) continue;
+      for (let y = Math.max(0, y0); y <= Math.min(Ht - 1, y1); y++) {
+        for (let x = Math.max(0, x0); x <= Math.min(W - 1, x1); x++) {
+          const [px, py] = [x + 0.5, y + 0.5];
+          const a = ((q[1][0] - px) * (q[2][1] - py) - (q[2][0] - px) * (q[1][1] - py)) / area;
+          const b = ((q[2][0] - px) * (q[0][1] - py) - (q[0][0] - px) * (q[2][1] - py)) / area;
+          if (a >= -0.02 && b >= -0.02 && a + b <= 1.02) mask[y * W + x] = 1;
+        }
+      }
+    }
+    // the shin's own green: the mean hue of its green texels
+    let sum = 0;
+    let count = 0;
+    for (let i = 0; i < mask.length; i++) {
+      if (!mask[i]) continue;
+      const [h, s, v] = hsv(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]);
+      if (h > 80 && h < 165 && s > 0.3 && v > 0.2) {
+        sum += h;
+        count++;
+      }
+    }
+    if (!count) continue;
+    const green = sum / count;
+    for (let i = 0; i < mask.length; i++) {
+      if (!mask[i]) continue;
+      const [h, s, v] = hsv(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]);
+      if (h > 190 && h < 260 && s > 0.25) {
+        const [r, g, b] = rgb(green, s, v);
+        data.set([r, g, b], i * 4);
+        moved++;
+      }
+    }
+    tex.setImage(await sharp(data, { raw: { width: W, height: Ht, channels: 4 } }).png().toBuffer()).setMimeType('image/png');
+  }
+  return moved;
+}
+const FIXES = { shin: greenShin };
+
 // For the web: textures to WebP at `tex` pixels, geometry meshopt-compressed;
 // a clip keeps only its skeleton and animation.
 let io = null;
-async function squeeze(from, to, { tex = 0, clip = false, ankles = false } = {}) {
+async function squeeze(from, to, { tex = 0, clip = false, ankles = false, fix = null } = {}) {
   if (!io) {
     await MeshoptEncoder.ready;
     await MeshoptDecoder.ready;
@@ -288,6 +375,7 @@ async function squeeze(from, to, { tex = 0, clip = false, ankles = false } = {})
     for (const t of root.listTextures()) t.dispose();
   }
   if (ankles) console.log(`  ankles: ${stiffenAnkles(doc, { shafts: ankles !== 'legs' })} vertices mended`);
+  if (fix) console.log(`  ${fix}: ${await FIXES[fix](doc)} texels mended`);
   await doc.transform(dedup(), prune(), resample(), ...(tex ? [textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [tex, tex] })] : []), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
   await io.write(to, doc);
 }
@@ -436,7 +524,7 @@ const steps = {
       for (const [url, file, tex, clip] of files) {
         const raw = join(tmp, `${s.rig ?? s.model}-${file}`);
         if (!existsSync(raw)) await download(url, raw);
-        await squeeze(raw, join(out, file), { tex, clip, ankles: clip ? false : (a.ankles ?? false) });
+        await squeeze(raw, join(out, file), { tex, clip, ankles: clip ? false : (a.ankles ?? false), fix: clip ? null : (a.fix ?? null) });
       }
       credits[`meshy/${a.rig ? '' : 'rm/'}${n}`] = { source: 'https://www.meshy.ai', id: s.model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
       done.push(n);

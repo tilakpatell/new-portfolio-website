@@ -273,6 +273,22 @@ export const DECOR = [
 // a small thing's round or (with a width) its box, as what's in the way
 const decorCollider = (d) => (d.w ? box(d.id, d.x, d.z, d.w, d.d, d.turn) : circle(d.id, d.x, d.z, d.r));
 
+// ── the multiverse's vehicles (Phase 6, Task 6.2) ──
+// Where the family keeps them: Space Beth's battered ship on the Smiths' lawn
+// east of the front walk, nose to the street; Jerry's car with Rick's rockets
+// on the lawn west of it (the driveway is the cruiser's, and the car's wings
+// won't fit beside it); and the combined Gotron, 24 m tall, on the open ground
+// behind the houses across the street, over their roofs and facing the
+// Smiths', a ferret at its feet. Each is its model (/models/c137/rm/<id>.glb)
+// stood `h` tall on a box `w` across x and `d` along z, turned `turn` (the
+// models face +z); solid, and a roof the cruiser flies over.
+export const VEHICLES = [
+  { id: 'spacebeth-ship', x: 0.8, z: -12.4, w: 3.9, d: 5.5, h: 2.4, turn: 0 },
+  { id: 'jerry-ship', x: -11.3, z: -12.4, w: 5.4, d: 5.7, h: 1.5, turn: 0 },
+  { id: 'gotron', x: -7, z: 44, w: 16.4, d: 6.4, h: 24, turn: Math.PI },
+  { id: 'gotron-ferret', x: 9.5, z: 43, w: 2.3, d: 7.8, h: 3.4, turn: 0 },
+];
+
 // the straight way from the sidewalk to each street door, which no tree stands in
 const LANES = LINKS.filter((l) => l.area === 'street').map((l) => [l.x, l.z, l.x, Math.sign(l.z) * VERGE]);
 // where Morty comes out in the street
@@ -287,6 +303,7 @@ function treeFits(x, z) {
   if (LANES.some((lane) => segDist(x, z, lane) < 2.5)) return false;
   if (FENCES.some((f) => segDist(x, z, f) < 1.2)) return false;
   if (DECOR.some((d) => Math.hypot(x - d.x, z - d.z) < 2)) return false;
+  if (VEHICLES.some((v) => edgeDist(v, x, z) < 1.5)) return false;
   return Math.hypot(x - START.x, z - START.z) >= 3;
 }
 
@@ -655,6 +672,7 @@ export const COLLIDERS = {
     ...STOOP.map((p) => box(p.id, p.x, p.z, p.w, p.d, 0, p.top)),
     ...TREES.map((t, i) => circle(`tree${i}`, t.x, t.z, trunk(t))),
     ...DECOR.map(decorCollider),
+    ...VEHICLES.map((v) => box(v.id, v.x, v.z, v.w, v.d, v.turn)),
     ...PEOPLE.filter((p) => p.area === 'street' && !p.until).map((p) => circle(p.id, p.x, p.z, PERSON)),
   ],
   annex: [box('arcade', ARCADE.x, ARCADE.z, ARCADE.w, ARCADE.d)],
@@ -883,7 +901,7 @@ export const newCruiser = () => ({ x: BOARD.x, z: BOARD.z, y: CRUISER.hover, yaw
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // what it flies over: each building's footprint, the school's as its parts (flat roofs at their own heights)
-const ROOFS = [...BUILDINGS.filter((b) => b !== SCHOOL), ...OUTSKIRTS, ...SCHOOL_PARTS.map((p) => ({ ...p, roof: p.h }))];
+const ROOFS = [...BUILDINGS.filter((b) => b !== SCHOOL), ...OUTSKIRTS, ...SCHOOL_PARTS.map((p) => ({ ...p, roof: p.h })), ...VEHICLES.map((v) => ({ ...v, roof: v.h }))];
 // the buildings it is over: their footprints, and the cruiser's own width round
 const under = (x, z) => ROOFS.filter((b) => Math.abs(x - b.x) <= b.w / 2 + CRUISER.radius && Math.abs(z - b.z) <= b.d / 2 + CRUISER.radius);
 

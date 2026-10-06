@@ -31,6 +31,7 @@ import {
   MOTORCADE,
   NEIGHBOURS,
   WONG_HOUSE,
+  VEHICLES,
   OUTDOOR,
   PEOPLE,
   PLAN,
@@ -1009,8 +1010,9 @@ describe('C-137: walking about as Morty', () => {
   it('stops at the Smith house’s own walls: the middle’s, the wing’s and the porch’s', () => {
     const part = (id) => HOUSE_PARTS.find((p) => p.id === id);
     const go = (x) => walk(newMorty({ x, z: -9, face: Math.PI / 2 }), { x: 0, z: -1 }, 4);
-    expect(go(-12).z).toBeCloseTo(part('middle').z + part('middle').d / 2 + MORTY.radius, 1);
-    expect(go(1).z).toBeCloseTo(part('wing').z + part('wing').d / 2 + MORTY.radius, 1);
+    // (up the lawn where it's clear: Jerry's car-ship and Space Beth's ship are parked on the rest)
+    expect(go(-4.2).z).toBeCloseTo(part('middle').z + part('middle').d / 2 + MORTY.radius, 1);
+    expect(go(4).z).toBeCloseTo(part('wing').z + part('wing').d / 2 + MORTY.radius, 1);
     // and into the corner of the middle and the wing, he is pushed out, never into either
     for (const x of [-4, -3, -2.8]) expect(free('street', go(x).x, go(x).z), String(x)).toBe(true);
   });
@@ -1516,6 +1518,55 @@ describe('C-137: Rick’s clone lab, under the garage, and Morty’s Mind Blower
     }
     // every colour the room racks is played, and they don't come two of a colour in a row too often
     expect(new Set(MEMORIES.map((m) => m.color))).toEqual(new Set(Object.keys(MEMORY_COLORS)));
+  });
+});
+
+describe('C-137: the multiverse’s vehicles on the street', () => {
+  // a box's corners, turned, and the rectangle round them
+  const corners = (v) =>
+    [-1, 1].flatMap((a) =>
+      [-1, 1].map((b) => {
+        const [u, w] = [(a * v.w) / 2, (b * v.d) / 2];
+        return [v.x + u * Math.cos(v.turn) + w * Math.sin(v.turn), v.z - u * Math.sin(v.turn) + w * Math.cos(v.turn)];
+      }),
+    );
+  const rect = (v) => {
+    const c = corners(v);
+    return { x0: Math.min(...c.map((p) => p[0])), x1: Math.max(...c.map((p) => p[0])), z0: Math.min(...c.map((p) => p[1])), z1: Math.max(...c.map((p) => p[1])) };
+  };
+  const gap = (r, x, z) => Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1));
+  const apart = (r, q) => r.x1 < q.x0 || r.x0 > q.x1 || r.z1 < q.z0 || r.z0 > q.z1;
+
+  it('parks Space Beth’s ship, Jerry’s car-ship, the Gotron and a ferret, each a model that stands its height', () => {
+    expect(VEHICLES.map((v) => v.id)).toEqual(['spacebeth-ship', 'jerry-ship', 'gotron', 'gotron-ferret']);
+    expect(VEHICLES.find((v) => v.id === 'gotron').h).toBe(24);
+    for (const v of VEHICLES) expect(v.w > 0 && v.d > 0 && v.h > 0, v.id).toBe(true);
+  });
+
+  it('keeps them off the road and the sidewalks, clear of every door, landing, person, tree, building, yard and each other', () => {
+    for (const v of VEHICLES) {
+      const r = rect(v);
+      expect(inArea('street', r.x0, r.z0) && inArea('street', r.x1, r.z1), v.id).toBe(true);
+      expect(Math.min(Math.abs(r.z0), Math.abs(r.z1)), v.id).toBeGreaterThan(ROAD.w / 2 + ROAD.sidewalk);
+      for (const l of LINKS.filter((o) => o.area === 'street')) expect(gap(r, l.x, l.z), `${v.id} at ${l.id}`).toBeGreaterThan(l.r + MORTY.radius);
+      for (const l of LINKS.filter((o) => o.to === 'street')) expect(gap(r, l.arrive.x, l.arrive.z), `${v.id} at the landing of ${l.id}`).toBeGreaterThan(MORTY.radius + 0.3);
+      expect(gap(r, START.x, START.z), v.id).toBeGreaterThan(1);
+      for (const p of PEOPLE.filter((o) => o.area === 'street')) expect(gap(r, p.x, p.z), `${v.id} and ${p.id}`).toBeGreaterThan(1);
+      for (const t of TREES) expect(gap(r, t.x, t.z), `${v.id} and the tree at ${t.x.toFixed(1)}, ${t.z.toFixed(1)}`).toBeGreaterThan(1);
+      for (const b of [...BUILDINGS, ...OUTSKIRTS]) expect(apart(r, { x0: b.x - b.w / 2, x1: b.x + b.w / 2, z0: b.z - b.d / 2, z1: b.z + b.d / 2 }), `${v.id} and ${b.id}`).toBe(true);
+      for (const y of YARDS) expect(apart(r, y), `${v.id} in a yard`).toBe(true);
+      for (const o of VEHICLES.filter((w) => w !== v)) expect(apart(r, rect(o)), `${v.id} and ${o.id}`).toBe(true);
+    }
+    // the front walk's middle is still clear, all the way to the door
+    for (let z = FRONT_WALK.z1; z >= FRONT_WALK.z0; z -= 0.25) expect(free('street', (FRONT_WALK.x0 + FRONT_WALK.x1) / 2, z), `walk at ${z.toFixed(2)}`).toBe(true);
+  });
+
+  it('stops Morty at them, and the cruiser flies over them, the Gotron’s head and all, and never lands on one', () => {
+    for (const v of VEHICLES) {
+      expect(free('street', v.x, v.z), v.id).toBe(false);
+      expect(floorAt(v.x, v.z), v.id).toBeGreaterThanOrEqual(v.h + 2);
+      expect(canLand({ ...newCruiser(), x: v.x, z: v.z, speed: 0 }), v.id).toBe(false);
+    }
   });
 });
 

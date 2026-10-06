@@ -48,6 +48,10 @@ export const VIEWS = {
   street: { area: 'street', at: [-8, -4, N] },
   // just in from Dr. Wong's door: the couch, the low table, and her in her armchair beyond
   wong: { area: 'wong', at: [-300, 902.6, N], cam: [0, 0.35] },
+  // out in the road before the house: Jerry's car-ship and Space Beth's ship on the lawn
+  lawn: { area: 'street', at: [-5.5, 2.5, N], cam: [0, 0.12] },
+  // on the far sidewalk, looking south over the houses at the Gotron and its ferret
+  gotron: { area: 'street', at: [-3, 8.5, -N], cam: [0, -0.32] },
 };
 
 const names = process.argv.slice(2);
