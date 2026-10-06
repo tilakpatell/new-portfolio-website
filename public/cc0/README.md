@@ -13,6 +13,7 @@ Everything in this folder is CC0 (public domain): free to use, no credit require
   - `lab-bench`: ambientCG `Metal009`
   - `casa-wall`: Poly Haven `beige_wall_001` (Dimitrios Savva, Rico Cilliers)
   - `casa-floor`: Poly Haven `floor_tiles_08` (Rob Tuytel)
+- `galaxy/<role>/{color,normal,arm}.webp`: the surfaces the galaxy's worlds build their own buildings and props from (`scripts/galaxy-textures.mjs`; the colour maps made into detail maps, so each part keeps its own colour), all from Poly Haven: `adobe` `patterned_clay_plaster`, `stone` `large_sandstone_blocks_01`, `rock` `rock_face`, `metal` `metal_plate_02`, `paint` `blue_metal_plate`, `bark` `bark_brown_02`, `wood` `weathered_planks`, `concrete` `concrete_wall_008`. Their real sizes are in `galaxy/index.json`.
 
 ## Not CC0: made for this site
 
