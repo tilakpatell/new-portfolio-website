@@ -31,15 +31,17 @@ import { DEEP_SOLIDS, WONDERS } from './deep';
 
 const solidAt = (id) => DEEP_SOLIDS.find((o) => o.id === id)?.at;
 
+// (the reaches are the map's since it was scaled up, scale.js: the worlds
+// lie 2000 to 5700 out from the home sun, the deep stars among them)
 export const STARS = [
-  { id: 'sun', at: SUN.at, r: SUN.r, colour: '#ffd6a8', strength: 1, reach: 2600 },
-  ...WONDERS.filter((w) => w.kind === 'star').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: w.color, strength: 0.8, reach: 2000 })),
+  { id: 'sun', at: SUN.at, r: SUN.r, colour: '#ffd6a8', strength: 1, reach: 9000 },
+  ...WONDERS.filter((w) => w.kind === 'star').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: w.color, strength: 0.8, reach: 7000 })),
   ...WONDERS.filter((w) => w.kind === 'binary').flatMap((w) => [
-    { id: w.id, at: solidAt(w.id) ?? w.at, r: w.r, colour: w.color, strength: 0.5, reach: 2000 },
-    { id: `${w.id}-2`, at: solidAt(`${w.id}-2`) ?? w.at, r: w.pair.r, colour: w.pair.color, strength: 0.5, reach: 2000 },
+    { id: w.id, at: solidAt(w.id) ?? w.at, r: w.r, colour: w.color, strength: 0.5, reach: 7000 },
+    { id: `${w.id}-2`, at: solidAt(`${w.id}-2`) ?? w.at, r: w.pair.r, colour: w.pair.color, strength: 0.5, reach: 7000 },
   ]),
-  ...WONDERS.filter((w) => w.kind === 'pulsar').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: '#cfe6ff', strength: 0.3, reach: 900 })),
-  ...WONDERS.filter((w) => w.kind === 'graveyard').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: w.color, strength: 0.25, reach: 700 })),
+  ...WONDERS.filter((w) => w.kind === 'pulsar').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: '#cfe6ff', strength: 0.3, reach: 3000 })),
+  ...WONDERS.filter((w) => w.kind === 'graveyard').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: w.color, strength: 0.25, reach: 2500 })),
 ];
 const HOME = STARS[0];
 const NEBULAE = WONDERS.filter((w) => w.kind === 'nebula');
@@ -73,8 +75,12 @@ export function weightOf(star, point) {
   const r = star.r ?? 1;
   return (star.strength / Math.max(d * d, r * r)) * smooth(star.reach * 1.5, star.reach, d);
 }
-// (the home sun's weight 300 out: where the key is at its full strength)
-const FULL = weightOf(HOME, [300, 0, 0]);
+// (the home sun's weight 6000 out, past the farthest world: where the key is
+// still at its full strength, so every world is lit as brightly as the map
+// always lit them, in its own star's colour and from its way; only out past
+// the stars does the light fall toward the floor)
+export const FULL_AT = 6000;
+const FULL = weightOf(HOME, [FULL_AT, 0, 0]);
 
 // the stars by weight at a point, heaviest first; past every star's reach, by
 // the square of the distance alone, so there's always a nearest

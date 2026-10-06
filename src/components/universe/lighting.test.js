@@ -100,3 +100,17 @@ describe('arriving on the day side', () => {
     expect(dot(norm(p), sun)).toBeGreaterThanOrEqual(-1e-9);
   });
 });
+
+describe('the worlds in their stars’ light', () => {
+  // (the map scaled up puts the worlds thousands out from the home sun: they
+  // must still be lit as brightly as the map always lit them)
+  it('every world is lit at full strength, by whichever star is its own', () => {
+    for (const [id, at] of Object.entries(POSITIONS)) expect(lightAt(at).key.strength, id).toBeCloseTo(2.35, 2);
+  });
+  it('far out past the stars the light falls toward its floor', () => {
+    const l = lightAt([0, 0, -30000]);
+    expect(l.key.strength).toBeLessThan(1.5);
+    expect(l.key.strength).toBeGreaterThanOrEqual(0.9);
+  });
+});
+
