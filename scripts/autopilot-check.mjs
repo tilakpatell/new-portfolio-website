@@ -20,8 +20,9 @@ import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CORE = ['/', '/home', '/experience', '/projects', '/travel', '/contact', '/resume', '/terminal', '/changes'];
 // the pages that draw in 3D as they open: the front door's universe map, and
 // every world (WORLD_MB in src/components/worlds/worlds.js, read from the

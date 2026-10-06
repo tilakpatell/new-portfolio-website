@@ -17,7 +17,9 @@ import WorldGate from './components/worlds/WorldGate';
 import Ambience from './components/ambience/Ambience';
 import { categoryAt, isFeedMove } from './components/feed/feed';
 
-const Feed = lazy(() => import('./components/feed/Feed'));
+// Feed.jsx, named in full: feed.js sits beside it, and a case-blind disk
+// (Windows, macOS) would pick that
+const Feed = lazy(() => import('./components/feed/Feed.jsx'));
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
 const Caribbean = lazy(() => import('./pages/Caribbean'));
 const Invincible = lazy(() => import('./pages/Invincible'));
@@ -280,7 +282,7 @@ function Shell() {
   useEffect(() => {
     const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1500));
     const id = idle(() => {
-      import('./components/feed/Feed');
+      import('./components/feed/Feed.jsx');
       import('./pages/Home');
       import('./pages/Experience');
       import('./pages/Projects');
