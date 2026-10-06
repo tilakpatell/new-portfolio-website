@@ -91,7 +91,7 @@ export function createLivery() {
     paintOn: { value: 0 },
     uRimColour: { value: new THREE.Color(0, 0, 0) },
     uRimDir: { value: new THREE.Vector3(0, 1, 0) },
-    uRimStrength: { value: 0.35 },
+    uRimStrength: { value: 0.5 },
   };
   const copies = [];
   return {
