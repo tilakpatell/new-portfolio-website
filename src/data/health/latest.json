@@ -1,6 +1,6 @@
 {
   "date": "2026-10-06",
-  "sha": "710ca88",
+  "sha": "42ed63ae",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -8,12 +8,12 @@
       "label": "source files over 1500 lines",
       "detail": [
         {
-          "file": "src/components/middleearth/towns/moria/props.js",
-          "n": 4505
+          "file": "src/components/universe/scene.js",
+          "n": 4648
         },
         {
-          "file": "src/components/universe/scene.js",
-          "n": 4274
+          "file": "src/components/middleearth/towns/moria/props.js",
+          "n": 4505
         },
         {
           "file": "src/components/middleearth/towns/rivendell/props.js",
@@ -33,7 +33,7 @@
         },
         {
           "file": "src/components/middleearth/towns/amonhen/props.js",
-          "n": 3198
+          "n": 3203
         },
         {
           "file": "src/components/rickmorty/world/roy/scene.js",
@@ -49,31 +49,35 @@
         },
         {
           "file": "src/components/cockpit/vehicles/rv.js",
-          "n": 2982
+          "n": 3000
         },
         {
           "file": "src/components/universe/footScene.js",
-          "n": 2792
+          "n": 2901
         },
         {
           "file": "src/components/middleearth/towns/lorien/props.js",
-          "n": 2761
+          "n": 2765
         },
         {
           "file": "src/components/middleearth/towns/weathertop/props.js",
           "n": 2640
         },
         {
+          "file": "src/components/galaxy/surface/scene.js",
+          "n": 2497
+        },
+        {
+          "file": "src/components/universe/crews.js",
+          "n": 2336
+        },
+        {
           "file": "src/components/middleearth/towns/marshes/props.js",
           "n": 2315
         },
         {
-          "file": "src/components/universe/deepspace.js",
-          "n": 2228
-        },
-        {
           "file": "src/components/galaxy/scene.js",
-          "n": 2172
+          "n": 2174
         },
         {
           "file": "src/components/avengers/world/scene.js",
@@ -84,12 +88,8 @@
           "n": 2071
         },
         {
-          "file": "src/components/galaxy/surface/scene.js",
-          "n": 1995
-        },
-        {
-          "file": "src/components/universe/crews.js",
-          "n": 1824
+          "file": "src/components/rickmorty/world/RmWorld.jsx",
+          "n": 1903
         },
         {
           "file": "src/components/middleearth/towns/edoras/folk.js",
@@ -106,6 +106,165 @@
         {
           "file": "src/lib/sfx.js",
           "n": 1681
+        }
+      ]
+    },
+    "boundary-breaks": {
+      "value": 261,
+      "unit": "imports",
+      "label": "imports across a line docs/health/RULES.md draws",
+      "detail": [
+        {
+          "file": "src/lib/seeded.test.js → src/components/middleearth/shire/rules.js",
+          "n": 1,
+          "note": "lib knows no page"
+        },
+        {
+          "file": "src/lib/view.js → src/components/universe/universes.js",
+          "n": 1,
+          "note": "lib knows no page"
+        },
+        {
+          "file": "src/runtime/input.js → src/components/games/pad.js",
+          "n": 1,
+          "note": "the runtime knows no world"
+        },
+        {
+          "file": "src/components/albuquerque/casa/scene.js → src/components/office/people.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/albuquerque/casa/scene.js → src/components/office/stage3d.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/albuquerque/metherria/scene.js → src/components/office/people.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/albuquerque/metherria/scene.js → src/components/rickmorty/wardrobe/dress.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/albuquerque/metherria/scene.js → src/components/rickmorty/wardrobe/looks.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/albuquerque/metherria/scene.js → src/components/rickmorty/wardrobe/wear.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/albuquerque/wardrobe.js → src/components/rickmorty/wardrobe/looks.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/albuquerque/wardrobe.test.js → src/components/office/people.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/albuquerque/wardrobe.test.js → src/components/rickmorty/wardrobe/looks.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/albuquerque/world/AbqWorld.jsx → src/components/middleearth/towns/useTravellers.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/albuquerque/world/scene.js → src/components/middleearth/towns/ghosts.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/albuquerque/world/scene.js → src/components/office/people.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/albuquerque/world/scene.js → src/components/office/stage3d.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/albuquerque/world/scene.js → src/components/rickmorty/wardrobe/looks.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/albuquerque/world/scene.js → src/components/rickmorty/wardrobe/wear.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/avengers/world/CompoundWorld.jsx → src/components/middleearth/towns/keys.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/avengers/world/CompoundWorld.jsx → src/components/middleearth/towns/useTravellers.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/avengers/world/scene.js → src/components/middleearth/towns/ghosts.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/caribbean/tide/DeadMansTide.jsx → src/components/middleearth/towns/useTravellers.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/caribbean/tide/Tide3D.js → src/components/middleearth/towns/ghosts.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/caribbean/tide/rules.test.js → src/components/middleearth/towns/travellers.js",
+          "n": 1,
+          "note": "worlds are islands"
+        },
+        {
+          "file": "src/components/cybertron/game/scene.js → src/components/universe/post.js",
+          "n": 1,
+          "note": "worlds are islands"
+        }
+      ]
+    },
+    "cycles": {
+      "value": 5,
+      "unit": "cycles",
+      "label": "import cycles among src/ modules",
+      "detail": [
+        {
+          "file": "src/components/rickmorty/world/interiors/govportal.js → src/components/rickmorty/world/interiors/lab.js",
+          "n": 2
+        },
+        {
+          "file": "src/lib/three/gltf.js → src/lib/three/textures.js",
+          "n": 2
+        },
+        {
+          "file": "src/pages/Galaxy.jsx → src/pages/GalaxySurface.jsx",
+          "n": 2
+        },
+        {
+          "file": "src/runtime/index.js → src/runtime/useWorld.js",
+          "n": 2
+        },
+        {
+          "file": "src/components/universe/footScene.js → src/components/universe/landings/furnish.js → src/components/universe/landings/people.js",
+          "n": 3
         }
       ]
     },

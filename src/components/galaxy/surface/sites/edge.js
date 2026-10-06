@@ -318,10 +318,11 @@ export const SITES = {
         { type: 'dunes', scale: 26, height: 0.6, wind: 0.6 },
       ],
       palette: {
-        low: '#eee4c8',
-        high: '#aab878',
+        // (white sand to the trees, the islands' insides scrub and grass)
+        low: '#ece6d0',
+        high: '#c4c39c',
         rock: '#8e8a78',
-        accent: '#7c9c50',
+        accent: '#7f8f5a',
         deep: '#dccb9e',
         hLow: 1.1,
         hHigh: 4,
@@ -335,6 +336,8 @@ export const SITES = {
       },
     },
     water: { level: 0, color: '#38c6c8', deep: '#0a5a78', kind: 'sea', foam: 0.55 },
+    // (dune grass back from the beaches, sparse, in the sea wind)
+    grass: { h: [0.35, 0.7], w: 0.05, root: '#5f7048', mid: '#6f9452', tip: '#adc47e', dry: '#c8c08a', cover: 0.5, scale: 70, above: 1.4, wind: 0.8 },
     weather: [{ kind: 'spray', count: 500 }],
     land: { at: [0, 0], yaw: -0.3 },
     lines: {
@@ -523,12 +526,12 @@ export const SITES = {
     ],
     scatter: [
       { kind: 'palm', n: 420, within: [40, 585], scale: [0.75, 1.25], above: 0.7, clear: 6 },
-      { kind: 'tuft', n: 520, within: [16, 570], scale: [0.7, 1.7], solid: false, above: 0.5 },
+      // (the scrub back from the beaches, low and round, under the palms)
+      { kind: 'bush', n: 450, within: [24, 570], scale: [0.7, 1.6], solid: false, above: 1.0, opts: { seed: 12, s: 2.2, color: '#4a5e3a' } },
       { kind: 'rock', n: 50, within: [60, 560], scale: [0.6, 2.2], opts: { color: '#9a9484', sharp: 0.3 } },
       { kind: 'stones', n: 50, within: [10, 500], scale: [0.2, 0.45], solid: false, opts: { color: '#b8b098' } },
       // the undergrowth under the palms, ferns and broad leaves
       { kind: 'sorganfern', n: 140, within: [24, 560], scale: [1, 2.2], solid: false, above: 1.2 },
-      { kind: 'grass', n: 260, within: [16, 520], scale: [0.9, 1.6], solid: false, above: 0.9, opts: { color: '#6f9a3e' } },
     ],
     life: [
       { kind: 'atact', n: 1, model: false, path: [[-250, -60], [-330, -260], [-180, -330], [-120, -200]], speed: 2.4, r: 4.5, scale: 1 },

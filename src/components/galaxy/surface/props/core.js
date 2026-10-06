@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { box, cyl, dome, part, ring, rod, upright } from '../kit';
 import { canvasTexture, loft, trap8, turned } from '../../../universe/trafficKit';
 import { rng } from '../noise';
+import { canopy } from './forest';
 
 const { PI, cos, sin, abs } = Math;
 const lit = (c, k = 2.5) => new THREE.Color(c).multiplyScalar(k);
@@ -444,12 +445,14 @@ export const PROPS = {
         const b = r() * PI * 2;
         parts.push(rod([x, h * 0.55, z], [x + sin(b) * 3.5, h * 0.82, z + cos(b) * 3.5], tr * 0.35, 0.08, { color: '#56442f', to: 'bark' }));
       }
+      // (the crown: rounded lobes of leaf cards, a holm oak's, the dark
+      // olive green of the Naboo woods as filmed)
       const lobes = 4 + Math.floor(r() * 3);
       for (let j = 0; j < lobes; j++) {
         const b = r() * PI * 2;
         const o = j ? 2.2 + r() * 2.5 : 0;
         const s = 5.5 + r() * 3.5;
-        parts.push(part(lump(i * 7 + j, 0.24), { at: [x + sin(b) * o, h * (0.72 + r() * 0.2), z + cos(b) * o], scale: [s, s * 0.8, s], color: vary(['#4e7c34', '#5f8d3c', '#41692c'][j % 3], r, 0.08, 0.04), to: 'leaf' }));
+        parts.push(...canopy([x + sin(b) * o, h * (0.72 + r() * 0.2), z + cos(b) * o], s, { flat: 0.72, color: vary(['#4c6236', '#566e3c', '#46592f'][j % 3], r, 0.06, 0.02), seed: seed * 101 + i * 7 + j, density: 0.8 }));
       }
       solids.push({ circle: [x, z, tr + 0.2] });
     }
@@ -1651,17 +1654,20 @@ export const SCATTER = {
       const b = (j / 3) * PI * 2;
       trunk.push(rod([0, 4, 0], [sin(b) * 2.4, 6.6, cos(b) * 2.4], 0.2, 0.08, { color: '#56442f', to: 'bark' }));
     }
+    // (a broad crown of leaf cards in lobes, on smooth cores)
     const leaves = [];
     for (let j = 0; j < 5; j++) {
       const b = (j / 5) * PI * 2;
       const o = j ? 2.4 : 0;
       const s = j ? 4 + r() : 5.5;
-      leaves.push(part(lump(seed * 11 + j, 0.22), { at: [sin(b) * o, 7 + r() * 1.2, cos(b) * o], scale: [s, s * 0.5, s], color: vary(['#5a8a3a', '#4f7d33', '#679a42'][j % 3], r, 0.06), to: 'leaf' }));
+      leaves.push(...canopy([sin(b) * o, 7 + r() * 1.2, cos(b) * o], s, { flat: 0.55, color: vary(['#566e3c', '#4c6236', '#62783f'][j % 3], r, 0.06), seed: seed * 11 + j }));
     }
+    const by = (to) => leaves.filter((p) => p.to === to);
     return {
       parts: [
         { geometry: k.geometry(trunk), material: k.mats.bark },
-        { geometry: k.geometry(leaves), material: k.mats.leaf },
+        { geometry: k.geometry(by('foliage')), material: k.mats.foliage },
+        { geometry: k.geometry(by('crown')), material: k.mats.crown },
       ],
       radius: 0.6,
     };
