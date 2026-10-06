@@ -31,7 +31,7 @@ const at = (list, r, colour, box = false) => list.map((p) => ({ at: [...p], r, c
 const ring = (n, radius, z, r, colour, box = false) => Array.from({ length: n }, (_, i) => ({ at: [Math.cos(((i + 0.5) / n) * Math.PI - Math.PI) * radius, 0, z], r, colour, box }));
 
 export const HERO_ENGINES = {
-  falcon: at(FALCON_ENGINES, 0.05, '#8fd0ff'),
+  falcon: at(FALCON_ENGINES, 0.035, '#8fd0ff'),
   xwing: at(XWING_ENGINES, 0.03, '#ffb0c8'),
   rv: at(PLUMES.rv, 0.035, '#ffb060'),
   cruiser: ring(5, 0.12, PLUMES.cruiser[0][2], 0.025, '#7dff9a'),
@@ -72,6 +72,9 @@ export function enginesFor(kind, size = null) {
   return list.map((e) => (e.box ? { at: [e.at[0] * s.x, e.at[1] * s.y, e.at[2] * s.z], r: e.r * Math.min(s.x, s.y), colour: e.colour } : e));
 }
 
+// how bright an engine burns, 0.35 idle to 1 at full throttle and 1.5 boosting
+export const burn = (throttle, boost) => 0.35 + 0.65 * throttle + 0.5 * boost;
+
 export function glowSize(throttle, boost, min = 0.004, r = 1) {
   return Math.max(min, r * (0.6 + 0.9 * throttle + 1.2 * boost));
 }
@@ -108,8 +111,10 @@ void main() {
   float d = dot(vUv, vUv);
   if (d > 1.0) discard;
   // a soft glow in its colour, and a white-hot core past 1.7 (the bloom's)
+  // at full throttle (its colour carries how hard it's burning: dim at idle)
+  float level = max(vColour.r, max(vColour.g, vColour.b));
   float glow = pow(1.0 - d, 2.2);
-  float core = exp(-d * 18.0) * 2.2;
+  float core = exp(-d * 18.0) * 2.2 * level;
   gl_FragColor = vec4((vColour * glow + vec3(core)) * vFlick, 1.0);
 }`;
 
@@ -178,7 +183,8 @@ export function createEngines({ parent, max = 256 } = {}) {
           const half = glowSize(h.throttle, h.boost, 0.004, e.r) * s;
           m4.compose(p, one, sc.set(half, half, half));
           mesh.setMatrixAt(n, m4);
-          mesh.setColorAt(n, col.set(e.colour));
+          // (how hard it burns: a third at idle, all of it at full throttle, more boosting)
+          mesh.setColorAt(n, col.set(e.colour).multiplyScalar(burn(h.throttle, h.boost)));
           n++;
         }
       }
