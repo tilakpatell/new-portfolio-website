@@ -1,4 +1,4 @@
-/* global window, document, requestAnimationFrame, performance */
+/* global window, requestAnimationFrame */
 // A browser check of the galaxy (/galaxy) and its worlds (/galaxy/:id/surface):
 // for each system or world it loads the page fresh, waits for the scene, lets
 // it run, and reports one frame's renderer counts (draw calls, triangles,
@@ -80,8 +80,13 @@ for (const id of list.split(',')) {
       const l = Math.hypot(sun[0], sun[2]) || 1;
       const [sx, sz] = [sun[0] / l, sun[2] / l];
       const d = r * 3.2 + 26;
-      state.auto = null;
-      state.ship = { ...state.ship, x: sx * d, y: d * 0.12, z: sz * d, heading: Math.atan2(sx, sz), pitch: -Math.atan(0.12), bank: 0, speed: 0, rate: 0, tipRate: 0, rollRate: 0 };
+      const pose = { x: sx * d, y: d * 0.12, z: sz * d, heading: Math.atan2(sx, sz), pitch: -Math.atan(0.12), bank: 0 };
+      // (pin puts the camera straight behind it too: put there by hand, the camera would still be easing round to it, to a different view for every frame the software GL happened to draw)
+      if (window.__galaxyDebug.pin) window.__galaxyDebug.pin(pose);
+      else {
+        state.auto = null;
+        state.ship = { ...state.ship, ...pose, speed: 0, rate: 0, tipRate: 0, rollRate: 0 };
+      }
     });
     await page.waitForTimeout(2500);
   }

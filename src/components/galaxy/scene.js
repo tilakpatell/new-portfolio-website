@@ -1863,7 +1863,20 @@ export async function create(canvas, ctx) {
       goals: state.world?.goals.map((g) => g.id),
       solids: state.space?.solids.length,
     });
-    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo };
+    // the ship put at `pose` (x, y, z, heading, pitch, bank), stopped, and the camera there behind it as it would be after
+    // an arrival, not still easing to it: a check then sees the same view, however many frames it took to get there
+    const pin = (pose) => {
+      state.ship = { ...state.ship, ...pose, speed: 0, rate: 0, tipRate: 0, rollRate: 0 };
+      state.auto = null;
+      camQOn = false; // (the next follow() takes the ship's turn whole)
+      blendTo.k = 1;
+      state.bias.fill(0);
+      state.streak = 0;
+      state.kick = 0;
+      state.shake = 0;
+      ctx.invalidate();
+    };
+    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, pin };
     window.__gltfStats = gltfStats; // { requests, parses }: the models asked for, and the files fetched and parsed for them
   }
 
