@@ -14,47 +14,107 @@
 
 import * as THREE from 'three';
 import { makeFigure, makeThing } from '../bots';
-import { drum, hash, makeFires, makeSky, makeStrips, merged, platedMaterial, slab } from './common';
+import { drum, hash, makeFires, makeSky, makeStrips, merged, platedMaterial, prism, slab, wedge } from './common';
 
 const ENERGON = '#3fd2ff';
 const FIRE = '#ff7a2a';
 
-// A tower on its footprint: tiers stepping back as they climb, a crown on
-// top; the corners and each setback lit
+// A tower on its footprint, the way Fall of Cybertron builds them: its
+// corners cut, buttresses up its lowest tier, ribs up the faces of the rest,
+// a collar standing proud at each setback, a crown of fins, a spire or a
+// mast. Lit at its corners, its collars and up some of its ribs. (The
+// buttresses stand inside the footprint, the wall a little behind them:
+// where you stop is where the stone is.)
 function tower(s, i, parts, strips) {
   const seed = hash(i * 7.3);
   const tiers = 2 + Math.floor(seed * 3);
-  let hw = s.hw;
-  let hd = s.hd;
-  let y = 0;
   const yaw = s.yaw ?? 0;
   const c = Math.cos(yaw);
   const sn = Math.sin(yaw);
   const corner = (x, z) => [s.x + x * c + z * sn, s.z - x * sn + z * c];
+  const inset = 2.6;
+  let hw = s.hw - inset;
+  let hd = s.hd - inset;
+  let y = 0;
+  parts.push(prism(s.x, s.z, s.hw, s.hd, 0, 2.2, { yaw, cut: 4, seed }));
   for (let t = 0; t < tiers; t++) {
-    const share = t === tiers - 1 ? 1 : 0.35 + hash(i + t * 3.1) * 0.25;
-    const y1 = t === tiers - 1 ? s.top : y + (s.top - y) * share;
-    parts.push(slab(s.x, s.z, hw, hd, y, y1, yaw, seed));
-    // the lit corners of this tier, and a band at its top
-    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
-      const [x, z] = corner(sx * (hw + 0.1), sz * (hd + 0.1));
-      strips.push([x, z, x, z + 0.01, y + 2, 0.5, y1 - y - 4]);
+    const last = t === tiers - 1;
+    const share = last ? 1 : 0.35 + hash(i + t * 3.1) * 0.25;
+    const y1 = last ? s.top : y + (s.top - y) * share;
+    const cut = Math.min(hw, hd) * (0.16 + hash(i + t * 5.7) * 0.14);
+    parts.push(prism(s.x, s.z, hw, hd, y, y1, { yaw, cut, seed }));
+    if (t === 0) {
+      // buttresses up the long faces, from the footprint's edge to the wall
+      const along = hw > hd;
+      const span = (along ? hw : hd) - cut;
+      const n = 2 + Math.floor(span / 14);
+      const h = Math.min(42, (y1 - y) * (0.45 + seed * 0.2));
+      for (let k = 0; k < n; k++) {
+        const f = ((k + 0.5) / n) * 2 - 1;
+        for (const side of [-1, 1]) {
+          const [ox, oz] = along ? corner(f * span, side * (hd + inset)) : corner(side * (hw + inset), f * span);
+          const [wx, wz] = along ? corner(f * span, side * hd) : corner(side * hw, f * span);
+          parts.push(wedge(ox, oz, wx, wz, h, 1.8, seed));
+        }
+      }
+    } else {
+      // ribs up the faces
+      const ribs = 2 + Math.floor(hash(i + t * 2.3) * 3);
+      for (let r = 0; r < ribs; r++) {
+        const f = ((r + 0.5) / ribs) * 2 - 1;
+        for (const side of [-1, 1]) {
+          const [ax, az] = corner(f * (hw - cut) * 0.85, side * (hd + 0.5));
+          const [bx, bz] = corner(side * (hw + 0.5), f * (hd - cut) * 0.85);
+          parts.push(slab(ax, az, 0.7, 0.5, y + 3, y1 - 2, yaw, seed));
+          parts.push(slab(bx, bz, 0.5, 0.7, y + 3, y1 - 2, yaw, seed));
+          // energon up one rib in three
+          if (hash(i * 3.1 + t + r) < 0.34) {
+            const [lx, lz] = corner(f * (hw - cut) * 0.85, side * (hd + 1.05));
+            strips.push([lx, lz, lx + 0.01, lz, y + 4, 0.35, y1 - y - 7]);
+          }
+        }
+      }
     }
-    const [ax, az] = corner(-hw - 0.15, hd + 0.15);
-    const [bx, bz] = corner(hw + 0.15, hd + 0.15);
-    strips.push([ax, az, bx, bz, y1 - 1.2, 0.4, 0.5]);
-    const [cx, cz] = corner(-hw - 0.15, -hd - 0.15);
-    const [dx, dz] = corner(hw + 0.15, -hd - 0.15);
-    strips.push([cx, cz, dx, dz, y1 - 1.2, 0.4, 0.5]);
+    // the cut corners lit, top to bottom
+    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      const [x, z] = corner(sx * (hw - cut / 2 + 0.2), sz * (hd - cut / 2 + 0.2));
+      strips.push([x, z, x, z + 0.01, y + 2, 0.45, y1 - y - 4]);
+    }
+    if (!last) {
+      // a collar at the setback, standing proud, lit along its faces
+      const cw = hw * 0.97 + 1.2;
+      const cd = hd * 0.97 + 1.2;
+      parts.push(prism(s.x, s.z, cw, cd, y1 - 1.8, y1 + 0.4, { yaw, cut: cut + 1, seed }));
+      for (const side of [-1, 1]) {
+        const [ax, az] = corner(-cw + cut, side * (cd + 0.15));
+        const [bx, bz] = corner(cw - cut, side * (cd + 0.15));
+        strips.push([ax, az, bx, bz, y1 - 1.2, 0.4, 0.5]);
+        const [qx, qz] = corner(side * (cw + 0.15), -cd + cut);
+        const [rx, rz] = corner(side * (cw + 0.15), cd - cut);
+        strips.push([qx, qz, rx, rz, y1 - 1.2, 0.4, 0.5]);
+      }
+    }
     y = y1;
     hw *= 0.72 + hash(i + t) * 0.12;
     hd *= 0.72 + hash(i + t + 9) * 0.12;
   }
-  // the crown: a spire, or a ring of fins, or a flat deck with a mast
+  // the crown: a ring of fins, a faceted spire, or a deck with a mast
   const kind = Math.floor(hash(i * 3.3) * 3);
-  if (kind === 0) parts.push(drum(s.x, s.z, Math.min(hw, hd) * 0.6, 0.4, y, y + 24 + seed * 30, 6, seed));
-  else if (kind === 1) for (let f = 0; f < 4; f++) parts.push(slab(s.x + Math.cos(f * 1.57) * hw * 0.7, s.z + Math.sin(f * 1.57) * hd * 0.7, 1.2, 1.2, y, y + 10 + seed * 12, yaw, seed));
-  else parts.push(drum(s.x, s.z, 0.8, 0.5, y, y + 18, 8, seed));
+  const r = Math.min(hw, hd);
+  if (kind === 0) {
+    const fins = 4 + Math.floor(seed * 3) * 2;
+    for (let f = 0; f < fins; f++) {
+      const a = (f / fins) * Math.PI * 2 + yaw;
+      parts.push(wedge(s.x + Math.sin(a) * r * 1.1, s.z + Math.cos(a) * r * 1.1, s.x + Math.sin(a) * 0.6, s.z + Math.cos(a) * 0.6, 16 + seed * 22, 1.2, seed, y));
+    }
+    parts.push(drum(s.x, s.z, 1.4, 0.3, y, y + 26 + seed * 24, 6, seed));
+  } else if (kind === 1) {
+    parts.push(prism(s.x, s.z, hw * 0.55, hd * 0.55, y, y + 18 + seed * 26, { yaw, cut: r * 0.2, taper: 0.06, seed }));
+  } else {
+    parts.push(prism(s.x, s.z, hw * 0.8, hd * 0.8, y, y + 2.4, { yaw, cut: r * 0.3, seed }));
+    parts.push(drum(s.x, s.z, 0.8, 0.4, y + 2.4, y + 30, 8, seed));
+    parts.push(drum(s.x, s.z, r * 0.5, r * 0.5, y + 14, y + 15, 16, seed));
+  }
 }
 
 // The Autobots' mark, painted once on a canvas, to glow over the Hall's door
@@ -243,7 +303,7 @@ export async function buildStage(area, { tier = 'high' } = {}) {
     g.translate(x, 0, z);
     parts.push(g);
   }
-  const cityMat = keep(platedMaterial({ windows: 0.3, base: '#1c2029', alt: '#2a303c', trim: '#59626f', metalness: 0.75, roughness: 0.45 }));
+  const cityMat = keep(platedMaterial({ lights: 'slits', windows: 0.22, base: '#2a303a', alt: '#3a4250', trim: '#6a7484', panel: [6, 3.6], metalness: 0.75, roughness: 0.45 }));
   const city = new THREE.Mesh(keep(merged(parts)), cityMat);
   city.castShadow = tier === 'high';
   city.receiveShadow = true;

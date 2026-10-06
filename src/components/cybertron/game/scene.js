@@ -56,6 +56,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
   const room = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   scene.environment = room;
   scene.environmentIntensity = 0.45;
+  let skyEnv = null; // (an area's sky, as light: setArea)
   const effects = createEffects(scene, { tier });
 
   // what's in the scene for the area you're in
@@ -143,6 +144,20 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
         return;
       }
       scene.add(stage.group);
+      // the metal shines with the place's own sky (Iacon's fires low on
+      // the horizon, the desert's sun), or the room it's in, under a roof
+      let sky = null;
+      stage.group.traverse((o) => (sky ??= o.userData.sky ? o : null));
+      skyEnv?.dispose();
+      skyEnv = null;
+      if (sky) {
+        const env = new THREE.Scene();
+        const shell = new THREE.Mesh(sky.geometry, sky.material);
+        shell.scale.setScalar(0.02); // (the cube camera sees 100 m; the sky's drawn by direction)
+        env.add(shell);
+        skyEnv = pmrem.fromScene(env, 0.03).texture;
+      }
+      scene.environment = skyEnv ?? room;
       // the people of the place, standing where they stand
       const made = await Promise.all(
         area.people.map((p) =>
@@ -438,6 +453,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       gateGeo.dispose();
       gateMat.dispose();
       room.dispose();
+      skyEnv?.dispose();
       pmrem.dispose();
       post.composer?.dispose?.();
       canvas.removeEventListener('webglcontextlost', onContextLost);
