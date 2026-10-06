@@ -11,5 +11,16 @@
     "model": "01a108b9-fac8-734f-9ce5-0976a896a903",
     "rig": "01a108be-03a6-75a1-822a-4bb5b58b6171",
     "sit": "01a108be-4f4d-719d-96a9-cfcb49a43cca"
+  },
+  "jesseHd": {
+    "sit": "01a111ef-676f-76d3-9c98-6fc4d94367c2"
+  },
+  "waltHdStandard": {
+    "idle": "01a111ee-e82d-750e-b624-1688a7c5871c",
+    "sit": "01a111ef-282f-71b7-aaf6-77add6138e7c"
+  },
+  "waltHd": {
+    "idle": "01a11201-9fc5-738f-b5f6-d5f12370a342",
+    "sit": "01a11201-cae4-75d0-b0a9-742eb1c9d980"
   }
 }
