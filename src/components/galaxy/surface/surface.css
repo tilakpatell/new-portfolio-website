@@ -416,3 +416,77 @@
   .surface-quest { top: calc(var(--nav-h, 64px) + 118px); right: auto; left: 16px; width: calc(100vw - 32px); }
   .surface-list { top: calc(var(--nav-h, 64px) + 60px); }
 }
+
+/* a chase (missions/chase.js): the count, the scouts left, the clock and the leader's way to the end; then how it went */
+.chase-count {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 34%;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  font-size: clamp(4rem, 14vw, 8rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+  text-shadow: 0 4px 40px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  animation: chase-count 0.9s ease-out both;
+}
+.chase-go { letter-spacing: 0.08em; text-transform: uppercase; }
+@keyframes chase-count { from { opacity: 0; transform: translate(-50%, -50%) scale(1.5); } 30% { opacity: 1; transform: translate(-50%, -50%) scale(1); } to { opacity: 0; } }
+.chase-hud {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  top: calc(var(--nav-h, 64px) + 70px);
+  width: min(300px, calc(100vw - 32px));
+  padding: 0.75rem 0.9rem 0.8rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: var(--glass);
+  backdrop-filter: blur(8px);
+}
+.chase-name { margin: 0; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
+.chase-row { display: flex; align-items: center; justify-content: space-between; margin-top: 0.45rem; }
+.chase-scouts { display: flex; gap: 6px; }
+.chase-scouts i { width: 14px; height: 14px; border-radius: 3px; background: #e8e8e4; box-shadow: 0 0 8px rgba(255, 255, 255, 0.35); }
+.chase-scouts i[data-down] { background: transparent; border: 1.5px solid rgba(255, 255, 255, 0.3); box-shadow: none; }
+.chase-clock { font: 600 1.05rem/1 ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.chase-bunker { height: 6px; margin-top: 0.6rem; border-radius: 3px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.chase-bunker span { display: block; height: 100%; background: var(--accent); transition: width 0.1s linear; }
+.chase-bunker[data-close] span { background: #ff6a4a; animation: chase-warn 0.5s ease-in-out infinite alternate; }
+@keyframes chase-warn { to { opacity: 0.5; } }
+.chase-bunker-label { margin: 0.35rem 0 0; font-size: 0.7rem; color: rgba(242, 239, 232, 0.7); }
+.chase-result {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100vw - 32px));
+  padding: 1.3rem 1.4rem 1.2rem;
+  border: 1px solid var(--line);
+  border-top: 3px solid #ff6a4a;
+  border-radius: 10px;
+  background: var(--glass);
+  backdrop-filter: blur(14px);
+  text-align: center;
+  animation: surface-found 0.5s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+.chase-result[data-won] { border-top-color: var(--accent); }
+.chase-result-kicker { margin: 0; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
+.chase-result-title { margin: 0.4rem 0 0; font-size: 1.6rem; font-weight: 650; }
+.chase-stars { margin: 0.5rem 0 0; font-size: 1.8rem; letter-spacing: 0.15em; }
+.chase-stars b { font-weight: 400; color: rgba(255, 255, 255, 0.2); }
+.chase-stars b[data-on] { color: #ffd36a; text-shadow: 0 0 14px rgba(255, 211, 106, 0.6); }
+.chase-result-text { margin: 0.5rem 0 0; font-size: 0.9rem; line-height: 1.45; color: rgba(242, 239, 232, 0.86); }
+.chase-result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin-top: 1rem; }
+@media (max-width: 639px) {
+  .chase-hud { top: calc(var(--nav-h, 64px) + 116px); padding: 0.6rem 0.75rem; }
+  .chase-bunker-label { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chase-count, .chase-bunker[data-close] span { animation: none; }
+}

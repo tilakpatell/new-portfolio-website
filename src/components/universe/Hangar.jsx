@@ -30,7 +30,7 @@ const shares = (does) => Object.entries(does).filter(([k, v]) => k !== 'plant' &
 const DOES = { boost: 'Boost', accel: 'Acceleration', cruise: 'Cruise', agility: 'Agility', level: 'Self-levelling' };
 const moduleEffects = (m) => [...(m.does.plant ? [`${m.does.plant} MW plant`] : []), ...shares(m.does).map(([k, v]) => `${DOES[k]} ${v > 0 ? '+' : '−'}${Math.round(Math.abs(v) * 100)}%`)];
 
-export default function Hangar({ ship, shipName, loadout, build = null, onBuild = null, onFit, open, onOpen }) {
+export default function Hangar({ ship, shipName, loadout, build = null, onBuild = null, onFit, open, onOpen, onCrew = null }) {
   const id = useId();
   const panel = useRef(null);
   const button = useRef(null);
@@ -154,6 +154,12 @@ export default function Hangar({ ship, shipName, loadout, build = null, onBuild 
               </svg>
             </button>
           </header>
+
+          {onCrew && ship === 'cruiser' && (
+            <button type="button" className="universe-hangar-crew" onClick={onCrew} aria-haspopup="dialog">
+              Dress Rick and Morty
+            </button>
+          )}
 
           <div className="universe-hangar-power" data-full={stats.power >= stats.capacity || undefined}>
             <span className="universe-hangar-label">Power</span>

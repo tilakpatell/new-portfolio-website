@@ -159,6 +159,8 @@ const sunsOf = (w) => (w.kind === 'binary' ? [solid(w.id, w.at, w.r), { ...solid
 export const DEEP_SOLIDS = WONDERS.filter((w) => w.solid !== false).flatMap((w) => [...sunsOf(w), ...(w.planets ?? []).map((p, i) => solid(`${w.id}-${i + 1}`, planetAt(w, p), p.r)), ...partsOf(w)]);
 
 export const wonderById = (id) => WONDERS.find((w) => w.id === id) ?? null;
+// a route param to a wonder's id (a link out to one: /universe/aurelia), or null
+export const parseWonder = (param) => (typeof param === 'string' && WONDERS.some((w) => w.id === param) ? param : null);
 
 // what's on the far side of the thing the ship fell into (the black hole's
 // `beyond`: { name, what, url }), or null for anything you come back from

@@ -69,7 +69,7 @@ export const MESHY = {
   ethan: { a: 'ethan', h: 1.72 },
   tinyrick: { a: 'tinyrick', h: 1.6 },
 };
-const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick']);
+export const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick']);
 const SCHOOL = ['goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick'];
 const C137_PEOPLE = new Set(['summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', ...SCHOOL]);
 // and the set pieces round the arenas (the C-137 Smiths load with their own world)

@@ -20,7 +20,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { createRenderer, disposeTree, precompile, precompilePasses } from '../../lib/three/renderer';
+import { createRenderer, disposeTree, precompile, precompilePasses, revealAll, uploadTextures } from '../../lib/three/renderer';
 import { gpu } from '../../lib/gpu';
 import { flashAt, phaseAt, plan as planOf, skipTo, smooth, throttleAt } from './timeline';
 import { freeKit } from './kit';
@@ -181,33 +181,15 @@ export function run(canvas, opts) {
   // Everything a vehicle has, drawn once: what's hidden too (the RV's wings,
   // what its launch cuts to) and what's behind you, so their textures and
   // meshes are on the graphics chip before the moment they're first seen
-  // (three.js sends each the first time it's drawn, and that frame waits).
-  // Lights stay as they were: a hidden one shown would link shaders of its own.
+  // (lib/three/renderer's revealAll).
   const warm = () => {
-    const undo = [];
-    const set = (o, key, to) => {
-      if (o[key] === to) return;
-      undo.push([o, key, o[key]]);
-      o[key] = to;
-    };
-    const show = (o, hidden) => {
-      const was = hidden || !o.visible;
-      if (o.isLight) {
-        if (was) set(o, 'visible', false);
-        return;
-      }
-      set(o, 'visible', true);
-      if (o.isMesh || o.isPoints || o.isLine || o.isSprite) set(o, 'frustumCulled', false);
-      for (const child of o.children) show(child, was);
-    };
-    show(inside, false);
-    show(outside, false);
+    const undo = revealAll(inside, outside);
     try {
       draw();
     } catch (err) {
       if (import.meta.env.DEV) console.warn('[cockpit] warm-up failed', err);
     } finally {
-      for (let i = undo.length - 1; i >= 0; i--) undo[i][0][undo[i][1]] = undo[i][2];
+      undo();
     }
   };
   let late = false; // something arrived after the vehicle was drawn (`added`, below)
@@ -356,16 +338,7 @@ export function run(canvas, opts) {
     let o = root;
     while (o && o !== scene) o = o.parent;
     if (!o) return;
-    root.traverse((m) => {
-      for (const mat of Array.isArray(m.material) ? m.material : m.material ? [m.material] : [])
-        for (const v of Object.values(mat))
-          if (v?.isTexture && v.image)
-            try {
-              renderer.initTexture(v);
-            } catch {
-              /* it will go up on its first frame instead */
-            }
-    });
+    uploadTextures(renderer, root);
     precompile(renderer, root, where === 'inside' ? camIn : camOut, scene, composer ? composer.readBuffer : null);
   }
 

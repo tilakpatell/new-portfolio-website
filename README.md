@@ -41,8 +41,8 @@ A résumé on the surface. Underneath it, a 3D universe with a starfighter, thir
 | Projects | `/projects` | Case studies, each with a live demo. The Game Boy emulator one is playable. It opens on a hand of 3D game cartridges, one per project: point at one to lift it, click to open it |
 | Résumé | `/resume` | The résumé on the page, plus a PDF download |
 | Travel | `/travel` | A 3D globe of places visited, with photos |
-| Contact | `/contact` | How to reach me |
-| Terminal | `/terminal` | An Imperial terminal that takes commands (try `help`) |
+| Contact | `/contact` | How to reach me, with a paper airplane folded from the memo pad gliding by the heading (it takes off when the memo's sent) |
+| Terminal | `/terminal` | An Imperial terminal that takes commands (try `help`, or `fly hoth`) |
 | Changes | `/changes` | The ship's log: every change the site's autopilot has made, with a picture, and how to undo it |
 
 The six pages are one feed: scroll to the end of any of them and the next begins under it, with a divider saying what comes next, and the address, the menu and the theme follow whichever page is on screen. After the sixth, an end card. Each page is still its own address, so every link works as before.
@@ -65,7 +65,7 @@ The front door (`/`) is a map of the whole site as places in space. The **Univer
 | `O` | Flight settings (steering, aim assist, lock tracking, inverted pitch and more) |
 | `H` | The hangar: paint and parts for the ship you're flying |
 | `G` | Land on the planet you're at and step out (and, on foot, get back in) |
-| `M` | The nav map: everywhere on one chart. Pick a place and a drive (hyperspeed, a jump; super speed, 3× the pulse drive; or cruise), with the trip time for each |
+| `M` | The nav map: everywhere on one chart. Pick a place and a drive (hyperspeed, a jump; super speed, 3× the pulse drive; or cruise), with the trip time for each. The galaxy's star systems are on it too (the ship flies to the gate and on through), every place has a link that opens the map right there, and Tour takes you round everything in turn |
 | `J` | Jump to the place picked at hyperspeed |
 
 On foot, `W` `A` `S` `D` walk, `Shift` runs, `Space` jumps, `F` or a click fires, `X` switches to the other one of your crew and `V` looks out of their eyes. Every planet is its own place down there, under its own sky: Middle-earth's is the Shire on the day of the party (Bag End, the hobbit holes, the Party Tree, the Green Dragon), Breaking Bad's is the desert where the RV cooks, and Rick and Morty's is the Smiths' street, a portal open on the lawn. The Galactic Federation's squads come over the horizon now and then. On the Death Star you come down beside its trench, on hull plating with blocks and towers standing on it, and can walk up to the rim and look down into the trench run.
@@ -77,6 +77,8 @@ Other pilots on the site at the same time show up in your sky. You can fly with 
 The map is big: the planets are a hundred and more ship-lengths across, the fandoms far out in deep space, and between them the wonders: a ringed gas giant, an ice giant, two other suns with worlds of their own, a black hole, two nebulae, the Citadel of Ricks, a pulsar, a binary star, a rogue planet with no sun and a wreck field round a white dwarf, with a rim of ice right round the edge of the map.
 
 Things happen while you fly. Hunters come after you (the Empire, the Galactic Federation, the Council of Ricks), a Star Destroyer drops out of hyperspace and launches its fighters, someone calls for help with pirates on their tail, a convoy goes by, a comet crosses the sky, a star blows far out. A star flares and its shockwave rattles the ship. A rift tears open ahead of you: fly into it and it takes you somewhere else on the map. Something enormous swims past: a pod of purrgil, or a Cromulon with something to say. A stream of rocks crosses your path: shoot them, or steer round them. And now and then a bounty hunter comes for you alone: Boba Fett in Slave I, or Phoenixperson (shoot one down for the Wanted achievement). The crew have a word about all of it.
+
+Space is busy, too. Ships come in to land on the planet you're at, shrinking down onto it, and others launch out of it; freighters, saucers and haulers curve round it on their way somewhere. A wing of fighters that's come past you peels apart behind you, each rolling away to its own side. When a fight starts the ordinary ships near you run for it, and convoys are longer, with an escort in the middle of the long ones.
 
 Every ship carries three guns, each in its crew's own terms: its blaster, a spread that throws a fan of five shorter shots, and heavy ordnance (the X-wing's proton torpedoes, the Falcon's concussion missiles, the cruiser's portal grenades, the RV's fulminated mercury), a slow round that homes on whatever the guns have locked and hits ten times as hard, from a rack of four that refills one at a time. Other pilots see which you're firing.
 
@@ -108,7 +110,7 @@ Every planet from the films you can stand on (all but Alderaan, which is gone) i
 | `E` | Talk, ride (and get off), get in the ship and take off |
 | `Tab` | Swap to your crewmate |
 
-The flying keys are the universe map's. Every system has a mission: the trench run and boarding the Death Star are playable now; the rest have briefings, with their own opening crawls, for games still being built ([the plan](docs/superpowers/specs/2026-10-05-galaxy-games-design.md)).
+The flying keys are the universe map's. Every system has a mission: the trench run, boarding the Death Star and Endor's speeder bike chase (four scout troopers racing through the redwoods for the bunker; shoot them off their bikes or shove them into a tree before one gets there) are playable now; the rest have briefings, with their own opening crawls, for games still being built ([the plan](docs/superpowers/specs/2026-10-05-galaxy-games-design.md)).
 
 ### The hidden worlds
 
@@ -135,7 +137,7 @@ Each planet on the map that has a world gets a page of its own, with its own art
 - **↑ ↑ ↓ ↓ ← → ← → B A** jumps to lightspeed.
 - **⌘K / Ctrl+K** opens a command palette that can go anywhere on the site and run its tricks.
 - There are dozens of achievements to unlock. Scranton's Dundies hand them out as awards.
-- The fan colour schemes the eggs unlock each bring a live background to the portfolio pages: a dogfight crossing the stars for the Jedi and the Sith, Heisenberg's blue crystals, Iron Man's HUD tracking the pointer, Dunder Mifflin's paper and paper airplanes, invaders marching over a synthwave grid, diyas and sky lanterns, a ship on the horizon at Tortuga, Cybertron's energon and insignia, the Shire's fireworks or the Eye of Sauron watching you, and portals. Click on empty page for a surprise. The company schemes get quieter ones drawn from the work (AWS's racks and smile, RTX's engineering drawing, Bose's sound, Pendar's spectra, Empowerreg's knowledge graph, SRC's radar). Either can be switched off under the colour picker.
+- The fan colour schemes the eggs unlock each bring a live background to the portfolio pages: a dogfight crossing the stars for the Jedi and the Sith, Heisenberg's blue crystals, Iron Man's HUD tracking the pointer, Dunder Mifflin's paper and paper airplanes, invaders marching over a synthwave grid, diyas and sky lanterns, a ship on the horizon at Tortuga, Cybertron's energon and insignia, the Shire's fireworks or the Eye of Sauron watching you, and portals. Click on empty page for a surprise. The company schemes get quieter ones drawn from the work (AWS's racks and smile, RTX's engineering drawing, Bose's sound, Pendar's spectra, Empowerreg's knowledge graph, SRC's radar), and each project's page gets one of its own (the Game Boy's dot matrix, Claude's spark, DevSpace's minimap, GitHub's contribution graph, the shell's prompt, FUSE's file tree, the finance platform's candles, PyTorch's network, a GPU die). Either can be switched off under the colour picker.
 
 ## Tech stack
 
