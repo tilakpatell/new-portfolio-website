@@ -165,4 +165,4 @@ if (process.env.BUDGET) {
     if (over.length) process.exitCode = 1;
   }
 }
-process.exitCode = bad.length ? 1 : 0;
+if (bad.length) process.exitCode = 1;
