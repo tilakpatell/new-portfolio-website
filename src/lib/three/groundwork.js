@@ -225,6 +225,14 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
 
   let disposed = false;
   let job = null;
+  // (switched off, for an A/B of the same moment: the floor's mask, kept)
+  let on = true;
+  let keptTex = null;
+  const keptStrength = new Map();
+  const floorU = () => {
+    for (const o of floorMeshes) for (const m of materialsOf(o)) if (m.userData?.floorShadow) return m.userData.floorShadow;
+    return null;
+  };
   let abort = null;
   const stats = { ms: 0, passes: 0, baked: false, started: false };
   let bakedDir = null;
@@ -238,6 +246,12 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
     landed = result;
     baked = result.pixels ? result : null;
     setFloorMask(mask, 0, result.texture);
+    if (!on) {
+      // (switched off: kept for when it's on again)
+      keptTex = result.texture;
+      const fu = floorU();
+      if (fu) fu.uMask.value[0] = blank;
+    }
     for (const u of bounced) {
       if (u.uBounceMask) u.uBounceMask.value = result.texture;
       u.uBounceRange?.value.set(result.range[0], result.range[1]);
@@ -282,6 +296,30 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
     blobs,
     stats,
     bake,
+    // the whole kit off and on again, at once: the floor's mask, the bounce
+    // and the blobs (for an A/B of the same moment; the bake is kept)
+    get enabled() {
+      return on;
+    },
+    set enabled(v) {
+      const want = Boolean(v);
+      if (want === on) return;
+      on = want;
+      const fu = floorU();
+      if (!on) {
+        keptTex = fu?.uMask.value[0] ?? null;
+        if (fu) fu.uMask.value[0] = blank;
+        for (const u of bounced) {
+          keptStrength.set(u, u.uBounceStrength.value);
+          u.uBounceStrength.value = 0;
+        }
+        blobs.mesh.visible = false;
+      } else {
+        if (fu && keptTex) fu.uMask.value[0] = keptTex;
+        for (const u of bounced) if (keptStrength.has(u)) u.uBounceStrength.value = keptStrength.get(u);
+        blobs.mesh.visible = true;
+      }
+    },
     // the sun moved (a mood, a time of day): bake again for where it is now
     rebake(next) {
       if (next) sun = next;

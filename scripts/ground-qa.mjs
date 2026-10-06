@@ -5,7 +5,7 @@
 //
 //   node scripts/ground-qa.mjs --route /middle-earth/bree --global __BREE__
 //     [--name bree] [--quality mid] [--settle 6000] [--out dir] [--port 5197]
-//     [--reuse] [--frames 8] [--wait 900000] [--hold 120000]
+//     [--reuse] [--frames 8] [--wait 900000] [--hold 120000] [--ab]
 //
 // `--global` is the window property the world's page sets in development
 // (window.__BREE__ = { api }); its `api.ground` is the groundWorld handle.
@@ -205,6 +205,23 @@ result.lost = await page.evaluate(() => window.__lost);
 await mkdir(outDir, { recursive: true });
 const file = join(outDir, `${name}.png`);
 await page.screenshot({ path: file });
+// (--ab: the same moment with the floor light switched off, a frame later)
+if (args.ab && global) {
+  const off = await page.evaluate(
+    (g) =>
+      new Promise((res) => {
+        const ground = window[g]?.api?.ground;
+        if (!ground) return res(false);
+        ground.enabled = false;
+        requestAnimationFrame(() => requestAnimationFrame(() => res(true)));
+      }),
+    global,
+  );
+  if (off) {
+    await page.screenshot({ path: join(outDir, `${name}-off.png`) });
+    await page.evaluate((g) => (window[g].api.ground.enabled = true), global);
+  }
+}
 await writeFile(join(outDir, `${name}.json`), JSON.stringify(result, null, 2));
 console.log(JSON.stringify(result, null, 2));
 console.log(`shot: ${file}`);

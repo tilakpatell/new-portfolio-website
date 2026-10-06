@@ -270,3 +270,22 @@ describe('far things painted with matcaps', () => {
     expect(rim2.material.isMeshLambertMaterial).toBe(true);
   });
 });
+
+describe('the kit switched off and on again (an A/B of the same moment)', () => {
+  it('puts the blank mask back, stops the bounce, hides the blobs, then restores them', () => {
+    const w = world();
+    const g = groundWorld({ renderer: stubRenderer(), scene: w.scene, floor: [w.floor], area, sun: w.sun, movers: [{ object: w.walker, size: [0.8, 0.8] }] });
+    const u = w.floor.material.userData.floorShadow;
+    const baked = new THREE.Texture();
+    u.uMask.value[0] = baked; // (as a landed bake leaves it)
+    const strength = w.wood.userData.bounce.uBounceStrength.value;
+    g.enabled = false;
+    expect(u.uMask.value[0]).not.toBe(baked);
+    expect(w.wood.userData.bounce.uBounceStrength.value).toBe(0);
+    expect(g.blobs.mesh.visible).toBe(false);
+    g.enabled = true;
+    expect(u.uMask.value[0]).toBe(baked);
+    expect(w.wood.userData.bounce.uBounceStrength.value).toBe(strength);
+    expect(g.blobs.mesh.visible).toBe(true);
+  });
+});
