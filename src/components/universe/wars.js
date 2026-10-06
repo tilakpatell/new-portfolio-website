@@ -196,9 +196,12 @@ export const WARS = {
     name: 'The Cartel War',
     ready: false, // (its flagships come with their models: PR E)
     sides: [gus, cartel],
+    // at its real places on the map: from Los Pollos just off Albuquerque
+    // (the Breaking Bad world) out, away from home, past the border to Don
+    // Eladio's hacienda, clear of the Twins and the Maw
     sectors: line(
-      [6300, 120, -400],
-      [6300, 120, 1200],
+      [4250, 235, -700],
+      [5800, 120, 300],
       [
         ['pollos', 'Los Pollos Hermanos'],
         ['superlab', 'The Superlab'],

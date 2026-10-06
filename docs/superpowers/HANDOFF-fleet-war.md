@@ -48,7 +48,8 @@ The design is `docs/superpowers/specs/2026-10-06-fleet-war-design.md` and the pl
 
 1. **PR E: Breaking Bad's war.** As PR D, for Gus's superlab barge and Don Eladio's flying hacienda.
    - Their models are made and paid for (`scripts/meshy-war.mjs`, task ids in `scripts/meshy-war-tasks.json`); `fetch superlab hacienda` (free) writes them to `public/models/universe/war/`. Noses from the raw shots: superlab `π/2` (thrusters at +x), hacienda `π` (thrusters at +z).
-   - Its corridor at real places: out from Albuquerque (the Breaking Bad world) toward the border.
+   - Its corridor is placed (done): seven sectors from Los Pollos, about 740 units off Albuquerque (the Breaking Bad world), out to Don Eladio's hacienda at `[5800, 120, 300]`. `wars.test.js` checks it.
+   - The models need `MESHY_API_KEY`. A fresh cloud container has no `~/.tilakverse.env`, so add the key as an environment variable in the cloud environment's settings.
    - `ready: true`, subsystems from shots, then `node scripts/universe-war-check.mjs rv`.
 2. **Smaller:**
    - Voice the new lines (`npm run voices`, which needs the ElevenLabs key).

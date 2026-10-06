@@ -89,4 +89,16 @@ describe('the wars', () => {
     // (the Council's end is the Citadel's, the Federation's the Earth it took)
     expect(w.sides.map((s) => s.id)).toEqual(['council', 'federation']);
   });
+
+  it('lines Breaking Bad’s war up at its real places: out from Albuquerque toward the border and Don Eladio’s', () => {
+    const w = WARS.breakingbad;
+    const [first, last] = [w.sectors[0], w.sectors[w.sectors.length - 1]];
+    expect(first.id).toBe('pollos');
+    expect(Math.hypot(...first.at.map((v, i) => v - POSITIONS.breakingbad[i]))).toBeLessThan(900);
+    expect(last.id).toBe('hacienda');
+    // (each sector farther from Albuquerque than the one before: the war runs away from home, to Mexico)
+    const out = w.sectors.map((s) => Math.hypot(...s.at.map((v, i) => v - POSITIONS.breakingbad[i])));
+    for (let i = 1; i < out.length; i++) expect(out[i], w.sectors[i].id).toBeGreaterThan(out[i - 1]);
+    expect(w.sides.map((s) => s.id)).toEqual(['gus', 'cartel']);
+  });
 });
