@@ -12,7 +12,7 @@
 // clipping plane through its middle (the renderer's localClippingEnabled),
 // drifting apart and rolling away from each other, burning along the break.
 //
-// createBattleScene(parent, { models, small, reduced }) → { show(battle,
+// createBattleScene(parent, { models, small, reduced, metres }) → { show(battle,
 //   war), hide(), update(dt, t, camera, camLocal, events, youTeam) → busy,
 //   halves, dispose() }
 // Everything is in `parent`'s space (the map's).
@@ -22,15 +22,15 @@ import { createFlashes } from '../galaxy/fx';
 import { createBoltDraw, createFires, createGlows, createMarkers, createShield } from './battleFx';
 
 const NAMES = { shieldgen: 'Shield generator', bridge: 'Bridge', reactor: 'Reactor' };
-const METRES = 40; // a map unit, in metres (an X-wing's about a third of a unit)
-const far = (a, b) => {
-  const m = Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) * METRES;
+const METRES = 40; // a map unit, in metres (an X-wing's about a third of a unit; the galaxy's is 53)
+const far = (a, b, metres = METRES) => {
+  const m = Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) * metres;
   return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`;
 };
 const ATTACK = '#ffb347';
 const DEFEND = '#7cc8ff';
 
-export function createBattleScene(parent, { models, small = false, reduced = false } = {}) {
+export function createBattleScene(parent, { models, small = false, reduced = false, metres = METRES } = {}) {
   const flashes = createFlashes(parent, { count: small ? 40 : 96 });
   const bolts = createBoltDraw(parent, { count: 320 });
   const glows = createGlows(parent, { count: 96 });
@@ -220,7 +220,7 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
       // (a glow's size in map units: the canvas's height over the view's height a unit off)
       const high = typeof window !== 'undefined' ? window.innerHeight : 800;
       glows.end(camera?.isPerspectiveCamera ? high / (2 * Math.tan((camera.fov * Math.PI) / 360)) : 600);
-      bolts.sync(battle.bolts, colourOf);
+      bolts.sync(battle.bolts, colourOf, camLocal);
       flashes.update(dt, camera);
       shield.update(dt, t);
       fires.update(dt, t);
@@ -235,11 +235,11 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
         for (const sub of flag?.subs ?? []) {
           if (!sub.alive || sub.phase !== battle.phase) continue;
           // (the two generators sit close: the second's card hangs under its point, not over it)
-          list.push({ key: sub.id, pos: sub.pos, title: `${attack ? 'Destroy' : 'Defend'}: ${NAMES[sub.kind]}`, sub: far(sub.pos, camLocal), hp: sub.hp / sub.hpMax, colour: attack ? ATTACK : DEFEND, under: n++ % 2 === 1 });
+          list.push({ key: sub.id, pos: sub.pos, title: `${attack ? 'Destroy' : 'Defend'}: ${NAMES[sub.kind]}`, sub: far(sub.pos, camLocal, metres), hp: sub.hp / sub.hpMax, colour: attack ? ATTACK : DEFEND, under: n++ % 2 === 1 });
         }
         if (!attack) {
           const theirs = battle.capitals.find((c) => c.team === battle.attacker && c.role === 'flagship' && c.alive);
-          if (theirs) list.push({ key: 'their-flag', pos: { x: theirs.pos.x, y: theirs.pos.y + theirs.size * 0.15, z: theirs.pos.z }, title: 'Destroy: their flagship', sub: far(theirs.pos, camLocal), hp: theirs.hull / theirs.hullMax, colour: ATTACK });
+          if (theirs) list.push({ key: 'their-flag', pos: { x: theirs.pos.x, y: theirs.pos.y + theirs.size * 0.15, z: theirs.pos.z }, title: 'Destroy: their flagship', sub: far(theirs.pos, camLocal, metres), hp: theirs.hull / theirs.hullMax, colour: ATTACK });
         }
       }
       markers.sync(list);

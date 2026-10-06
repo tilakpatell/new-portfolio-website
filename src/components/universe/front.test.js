@@ -37,7 +37,8 @@ const stubbed = () => {
     draws.push(d);
     return d;
   };
-  const front = createFront(new THREE.Group(), { side: SIDES.starwars, models: { want() {} }, storage: memory(), emit: (e) => emitted.push(e), makeBattle, makeScene, tier: 'low' });
+  // (the Star Wars war, as a war here: it's fought in the galaxy, so it isn't one ready on the map)
+  const front = createFront(new THREE.Group(), { side: SIDES.starwars, war: { ...WARS.starwars, ready: true }, models: { want() {} }, storage: memory(), emit: (e) => emitted.push(e), makeBattle, makeScene, tier: 'low' });
   return { front, made, draws, emitted };
 };
 const at = (front, d) => {
@@ -46,22 +47,23 @@ const at = (front, d) => {
 };
 
 describe('createFront', () => {
-  it('only fights a war that’s ready', () => {
+  it('only fights a war that’s ready (the Star Wars crews’ is in the galaxy)', () => {
     expect(createFront(new THREE.Group(), { side: SIDES.rickmorty, models: {}, storage: memory(), emit() {} })).toBeNull();
+    expect(createFront(new THREE.Group(), { side: SIDES.starwars, models: {}, storage: memory(), emit() {} })).toBeNull();
     expect(createFront(new THREE.Group(), { side: null, models: {}, storage: memory(), emit() {} })).toBeNull();
   });
 
-  it('is at the war’s contested sector, and asks which side you’ll fly for as you arrive', () => {
+  it('is at the war’s contested sector, and puts you in on your crew’s side as you arrive (no side to pick)', () => {
     const { front, made, emitted } = stubbed();
     const war = WARS.starwars;
     expect(front.where().at).toEqual(war.sectors[contested({ front: 3, attacker: 0 })].at);
     front.update(0.1, 0, null, new THREE.Vector3(), at(front, 50));
     expect(made).toHaveLength(1);
-    expect(emitted.some((e) => e.type === 'battle' && e.what === 'ask')).toBe(true);
+    expect(emitted.some((e) => e.type === 'battle' && e.what === 'ask')).toBe(false);
+    expect(emitted.some((e) => e.type === 'event' && e.id === 'battle' && e.sub === 'front')).toBe(true);
     expect(front.inZone).toBe(true);
-    front.join(1);
-    expect(made[0].you).toBe(1);
-    expect(front.joined).toBe(1);
+    expect(made[0].you).toBe(0);
+    expect(front.joined).toBe(0);
   });
 
   it('leaving pauses and coming back resumes the same battle', () => {
@@ -84,7 +86,8 @@ describe('createFront', () => {
     front.update(0.1, 0, null, new THREE.Vector3(), at(front, 50));
     expect(front.info.state.front).toBe(4);
     const card = emitted.find((e) => e.type === 'battle' && e.what === 'over');
-    expect(card.over.word).toBe('Victory');
+    expect(card.over.winner).toBe(0);
     expect(card.over.sectors).toHaveLength(7);
+    expect(emitted.some((e) => e.type === 'event' && e.sub === 'won')).toBe(true);
   });
 });

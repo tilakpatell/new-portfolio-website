@@ -1355,7 +1355,7 @@ const ROUGH = { travel: 'earth-rough' };
 const FLAT = new Set(['rickmorty', 'gaming']);
 export function styleFor(u, T = {}, { tier = 'high' } = {}) {
   const [name, alpha] = CLOUDS[u.id] ?? [null, false];
-  return { clouds: (name && T[name]) || null, alpha, rough: T[ROUGH[u.id] ?? `${u.id}-rough`] ?? null, detail: u.kind !== 'core' && !u.portal && !FLAT.has(u.id) && tier !== 'low' };
+  return { clouds: (name && tier !== 'low' && T[name]) || null, alpha, rough: T[ROUGH[u.id] ?? `${u.id}-rough`] ?? null, detail: u.kind !== 'core' && !u.portal && !FLAT.has(u.id) && tier !== 'low' };
 }
 
 // A fine noise tile, made once, for the ground's detail coming up close
@@ -1389,7 +1389,9 @@ function groundHooks(mat, { clouds, alpha, detail, rough }) {
     uCloudTurn: { value: 0 },
     uDetail: { value: detail ? detailTile() : null },
     uCamDist: { value: 1e9 },
+    uCloudOn: { value: 1 }, // (0 from the pace's step 3: no new shader)
   };
+  mat.userData.ground = u;
   const prev = mat.onBeforeCompile;
   // (a key someone set, not three's default, which is the hook's own source)
   const prevKey = Object.hasOwn(mat, 'customProgramCacheKey') ? mat.customProgramCacheKey : null;
@@ -1397,12 +1399,12 @@ function groundHooks(mat, { clouds, alpha, detail, rough }) {
     prev?.call(mat, shader, renderer);
     Object.assign(shader.uniforms, u);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\nuniform sampler2D uClouds;\nuniform float uCloudAlpha;\nuniform float uCloudTurn;\nuniform sampler2D uDetail;\nuniform float uCamDist;`)
+      .replace('#include <common>', `#include <common>\nuniform sampler2D uClouds;\nuniform float uCloudAlpha;\nuniform float uCloudTurn;\nuniform sampler2D uDetail;\nuniform float uCamDist;\nuniform float uCloudOn;`)
       .replace(
         '#include <map_fragment>',
         `#include <map_fragment>
         #ifdef USE_MAP
-        ${clouds ? '{ vec4 cl = texture2D(uClouds, vec2(vMapUv.x - uCloudTurn, vMapUv.y)); diffuseColor.rgb *= 1.0 - 0.55 * mix(cl.a, cl.g, uCloudAlpha); }' : ''}
+        ${clouds ? '{ vec4 cl = texture2D(uClouds, vec2(vMapUv.x - uCloudTurn, vMapUv.y)); diffuseColor.rgb *= 1.0 - 0.55 * uCloudOn * mix(cl.a, cl.g, uCloudAlpha); }' : ''}
         ${detail ? '{ float k = smoothstep(3.0, 1.3, uCamDist); diffuseColor.rgb *= mix(1.0, 0.82 + 0.36 * texture2D(uDetail, vMapUv * vec2(96.0, 48.0)).r, k); }' : ''}
         #endif`,
       )
@@ -1571,6 +1573,7 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high' } = {}) {
   const spin = core ? 0 : 0.05 + rng(`${u.id}-spin`)() * 0.05;
   let turn0 = body.rotation.y;
   let held = null; // the turn it's held at, while someone stands on it
+  let level = 0; // the pace's step
   let selected = false;
   let t0 = 0;
 
@@ -1588,7 +1591,18 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high' } = {}) {
     // how far off the camera is, in the planet's radii (the scene, for the
     // nearest two: the ground's detail comes up from three)
     near(d) {
-      if (ground) ground.uCamDist.value = d;
+      if (ground) ground.uCamDist.value = level >= 2 ? 1e9 : d;
+    },
+    // the pace's step (lib/three/pace), as the spec's effects table has it:
+    // the ground's detail goes at 2, the clouds' shadows and the real air
+    // (for the halo) at 3, all back as it comes down again
+    setLevel(l) {
+      level = l;
+      if (ground) {
+        ground.uCloudOn.value = l >= 3 ? 0 : 1;
+        if (l >= 2) ground.uCamDist.value = 1e9;
+      }
+      this.setAir(l >= 3 ? 'halo' : 'shell');
     },
     // each frame, the scene's key light's colour and the ratio the frame is
     // drawn at: Cybertron's seams glow in the one (normalised: a tint, not a

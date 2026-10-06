@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BATTLE, createBattle, inSights, perSide, turnToward } from './battle';
+import { BATTLE, WIDTH, createBattle, inSights, perSide, turnToward } from './battle';
 import { FIGHTERS, WARS } from './wars';
 
 // a seeded random, so every run of a battle is the same
@@ -229,5 +229,89 @@ describe('a battle', () => {
     const b = make();
     b.end(1);
     expect(b.over).toEqual({ winner: 1, why: 'forced' });
+  });
+
+  // ── a battle in the galaxy (galaxy/warfront.js): its own size, round its planet, shared ──
+  it('takes its own lines and radius', () => {
+    const b = make({ lines: 120, radius: 200 });
+    expect(flagOf(b, 0).pos.x).toBeCloseTo(-120);
+    expect(flagOf(b, 1).pos.x).toBeCloseTo(120);
+    expect(b.radius).toBe(200);
+  });
+
+  it('keeps a big fleet’s capital ships clear of each other', () => {
+    const big = {
+      ...war,
+      sides: [
+        { ...war.sides[0], capitals: [{ kind: 'moncal', role: 'flagship', size: 26, hull: 500 }, ...Array.from({ length: 6 }, (_, i) => ({ kind: i % 2 ? 'nebulon' : 'moncal', role: 'escort', size: i % 2 ? 6 : 22, hull: 200 }))] },
+        { ...war.sides[1], capitals: [{ kind: 'executor', role: 'flagship', size: 110, hull: 2000 }, ...Array.from({ length: 5 }, () => ({ kind: 'destroyer', role: 'escort', size: 30, hull: 600 }))] },
+      ],
+    };
+    const b = make({ war: big, lines: 100 });
+    // side by side across the line, each as wide as it is (WIDTH: a share of its length)
+    for (const team of [0, 1]) {
+      const caps = b.capitals.filter((c) => c.team === team);
+      for (let i = 0; i < caps.length; i++)
+        for (let j = i + 1; j < caps.length; j++) {
+          const across = Math.abs(caps[i].pos.z - caps[j].pos.z);
+          const w = (WIDTH[caps[i].kind] * caps[i].size + WIDTH[caps[j].kind] * caps[j].size) / 2;
+          expect(across, `${caps[i].kind} ${i} and ${caps[j].kind} ${j}`).toBeGreaterThan(w);
+        }
+    }
+  });
+
+  it('steers its fighters clear of what it’s told to keep out of (a planet, a shield)', () => {
+    const inside = (avoid) => {
+      const b = make({ perSide: 12, rand: seeded(5), avoid });
+      const ball = { c: { x: 0, y: 0, z: 0 }, r: 30 };
+      let n = 0;
+      for (let i = 0; i < 600; i++) {
+        b.update(1 / 30, null);
+        for (const f of b.fighters) if (f.alive && Math.hypot(f.pos.x - ball.c.x, f.pos.y - ball.c.y, f.pos.z - ball.c.z) < ball.r) n++;
+      }
+      return n;
+    };
+    const free = inside([]);
+    const kept = inside([{ c: { x: 0, y: 0, z: 0 }, r: 30 }]);
+    expect(kept).toBeLessThan(free * 0.25);
+  });
+
+  it('counts what other pilots did to an objective, and tells what you did', () => {
+    const done = new Map([['gen-port', 1000]]);
+    const mine = [];
+    const b = make({ shared: (id) => done.get(id) ?? 0, onMine: (id, dmg) => mine.push([id, dmg]) });
+    b.setYou(0);
+    const events = run(b, 0.1);
+    expect(events.some((e) => e.type === 'sub' && e.sub === 'gen-port' && !e.mine)).toBe(true);
+    const g = flagOf(b, 1).subs.find((s) => s.id === 'gen-star');
+    shotAt(b, g.pos, 2);
+    expect(mine).toEqual([['gen-star', 2 * BATTLE.youShare]]);
+    done.set('gen-star', 1000);
+    run(b, 0.1);
+    expect(b.phase).toBe(2);
+  });
+
+  it('starts its clock where the shared schedule is, and ends on its own clock', () => {
+    const b = make({ elapsed: 300, clock: 320, perSide: 4 });
+    expect(b.clock).toBe(300);
+    run(b, 30, null, 1 / 10);
+    expect(b.over?.why).toBe('clock');
+    expect(b.info.left).toBe(0);
+  });
+
+  it('ends on tickets as it always has, unless told not to', () => {
+    const b = make({ perSide: 2 });
+    b.teams[0].tickets = 0;
+    for (const f of b.fighters) if (f.team === 0) (f.alive = false), (f.respawn = Infinity);
+    run(b, 0.2);
+    expect(b.over?.why).toBe('tickets');
+  });
+
+  it('lets the defender hold out: no tickets end when told so', () => {
+    const b = make({ tickets: false, perSide: 2 });
+    b.teams[0].tickets = 0;
+    for (const f of b.fighters) if (f.team === 0) (f.alive = false), (f.respawn = Infinity);
+    run(b, 2);
+    expect(b.over).toBeNull();
   });
 });

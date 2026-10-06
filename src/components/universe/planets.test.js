@@ -228,3 +228,35 @@ describe('the styles in the light', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('the ground follows the pace', () => {
+  it('drops its detail at step 2 and its clouds’ shadows and air at step 3, and brings them back', async () => {
+    const gradient = { addColorStop() {} };
+    const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+    const THREE = await import('three');
+    const { buildPlanet, styleFor } = await import('./planets');
+    const { byId } = await import('./universes');
+    const T = { 'caribbean-clouds': new THREE.Texture(), caribbean: new THREE.Texture() };
+    // (no clouds' shadows at all on low)
+    expect(styleFor(byId('caribbean'), T, { tier: 'low' }).clouds).toBeNull();
+    const p = buildPlanet(byId('caribbean'), T, { tier: 'high' });
+    const g = p.body.material.userData.ground;
+    p.near(1.5);
+    expect(g.uCamDist.value).toBe(1.5);
+    p.setLevel(2);
+    expect(g.uCamDist.value).toBe(1e9);
+    p.near(1.5);
+    expect(g.uCamDist.value).toBe(1e9);
+    expect(g.uCloudOn.value).toBe(1);
+    p.setLevel(3);
+    expect(g.uCloudOn.value).toBe(0);
+    expect(p.air.material.fragmentShader).not.toContain('inscatter');
+    p.setLevel(0);
+    p.near(1.5);
+    expect(g.uCamDist.value).toBe(1.5);
+    expect(g.uCloudOn.value).toBe(1);
+    expect(p.air.material.fragmentShader).toContain('inscatter');
+    vi.unstubAllGlobals();
+  });
+});

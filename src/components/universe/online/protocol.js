@@ -37,6 +37,11 @@
 //   siege { e, m, t, x, l }                              the Citadel's siege (siege.js): its epoch,
 //                                                       your share of each part's damage, the
 //                                                       totals you know, when it went up, the last hit
+//   war   { e, m, t }                                  the galaxy's war (galaxy/gcw.js, a tally.js
+//                                                       message): the campaign, your points and the
+//                                                       totals you know, now and then from anywhere
+//   fight { e, m, t }                                  the battle where you are (galaxy/warfront.js):
+//                                                       its id, your damage on its objectives, the totals
 //   cur   [x, y, touch]                                  off the universe map: your pointer
 //                                                       (x from the middle of the window, y
 //                                                       down the page, in px), or with touch
@@ -77,7 +82,7 @@ export const GUARD = {
   reach: 95, // map units: further than this from one of your hunters, they couldn't have hit it (a bolt at the boost goes 85)
 };
 // how many of each message one pilot may send: [a second, at most at once]
-export const RATES = { pose: [20, 30], foot: [20, 30], walk: [20, 30], cur: [25, 40], shot: [10, 12], hit: [10, 12], siege: [2, 6], hi: [1, 4], ally: [0.5, 3], down: [0.4, 2], pack: [8, 12], hhit: [10, 12] }; // (the X-wing fires 8 a second)
+export const RATES = { pose: [20, 30], foot: [20, 30], walk: [20, 30], cur: [25, 40], shot: [10, 12], hit: [10, 12], siege: [2, 6], war: [0.5, 3], fight: [2, 6], hi: [1, 4], ally: [0.5, 3], down: [0.4, 2], pack: [8, 12], hhit: [10, 12] }; // (the X-wing fires 8 a second)
 export const FLOOD = { denied: 60, window: 5000 }; // turned away this often in this long: muted
 export const FLAG = { hidden: 1, boost: 2, safe: 4 };
 
