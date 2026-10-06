@@ -211,6 +211,26 @@ describe('the map', () => {
     expect(starAhead(from, half, { ...wide, keep: 'naboo' })?.id).toBe('naboo');
     expect(starAhead(from, half, { ...wide, keep: 'geonosis' })?.id).toBe('geonosis');
   });
+  it("finds the same star ahead from the sky's own bearings, without working them out again", () => {
+    // (the sky keeps each other system's bearing as { id, dir }, as a vector or an array)
+    for (const from of SYSTEMS) {
+      const dirs = SYSTEMS.filter((o) => o !== from).map((o) => ({ id: o.id, dir: courseTo(from, o) }));
+      const vecs = dirs.map(({ id, dir: [x, y, z] }) => ({ id, dir: { x, y, z } }));
+      const a = courseTo(from, systemById('naboo' === from.id ? 'geonosis' : 'naboo'));
+      const b = courseTo(from, systemById('tatooine' === from.id ? 'geonosis' : 'tatooine'));
+      const mid = a.map((v, i) => (v + b[i]) / 2);
+      const l = len(mid);
+      const aims = [[0, 0, -1], [1, 0, 0], [0, 1, 0], mid.map((v) => v / l), ...dirs.map((d) => d.dir)];
+      for (const aim of aims)
+        for (const opts of [{}, { within: 1 }, { within: 1, keep: dirs[0].id }, { within: 1, keep: dirs[3].id, stick: 0.2 }])
+          for (const list of [dirs, vecs]) expect(starAhead(from, aim, { ...opts, dirs: list }), `${from.id} ${aim}`).toEqual(starAhead(from, aim, opts));
+    }
+    // and it really is those it looks at
+    const hoth = systemById('hoth');
+    expect(starAhead(hoth, [0, 1, 0], { dirs: [{ id: 'up', dir: [0, 1, 0] }] })).toEqual({ id: 'up', angle: 0 });
+    expect(starAhead(hoth, [0, 1, 0], { dirs: [{ id: 'up', dir: { x: 0, y: 1, z: 0 } }] })).toEqual({ id: 'up', angle: 0 });
+    expect(starAhead(hoth, [0, 1, 0], { dirs: [] })).toBeNull();
+  });
   it('makes a jump take a few seconds, longer for longer ones', () => {
     const near = jumpSeconds(systemById('hoth'), systemById('bespin'));
     const far = jumpSeconds(systemById('sorgan'), systemById('lothal'));

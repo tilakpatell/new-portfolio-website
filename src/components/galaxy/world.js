@@ -203,17 +203,16 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
       const color = LASER[p.side] ?? (small ? LASER.rebel : LASER.empire);
       let cool = 0.5;
       const up = new THREE.Vector3();
+      const run = (slot, ang) => {
+        at(ang, slot.holder.position);
+        at(ang + 0.01, tmp).sub(slot.holder.position);
+        up.copy(slot.holder.position).normalize();
+        pointAlong(slot.holder, tmp, up);
+      };
       ticks.push((t, dt) => {
         const a = t * p.speed;
-        for (const [slot, ang] of [
-          [runner, a],
-          [hunter, a - lag],
-        ]) {
-          at(ang, slot.holder.position);
-          at(ang + 0.01, tmp).sub(slot.holder.position);
-          up.copy(slot.holder.position).normalize();
-          pointAlong(slot.holder, tmp, up);
-        }
+        run(runner, a);
+        run(hunter, a - lag);
         hunter.holder.position.toArray(solid.at);
         cool -= dt;
         if (cool <= 0) {
@@ -271,13 +270,14 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
             flashes.at(r.ship.holder.position, { size: p.size * 2.2, color: [1.2, 1.8, 3.2], life: 0.7 });
             events.push({ type: 'event', id: 'escaped', kind: p.kind });
           } else if (flying) r.gone = false;
-          r.escorts.forEach((e, j) => {
+          for (let j = 0; j < r.escorts.length; j++) {
+            const e = r.escorts[j];
             tmp2.set(j ? p.size * 1.4 : -p.size * 1.4, p.size * 0.4, -p.size * (1.2 + j * 0.5)).applyQuaternion(r.ship.holder.quaternion);
             e.holder.position.copy(r.ship.holder.position).add(tmp2);
             e.holder.quaternion.copy(r.ship.holder.quaternion);
             e.holder.scale.copy(r.ship.holder.scale);
             e.holder.visible = r.ship.holder.visible;
-          });
+          }
         }
         return true;
       });
@@ -453,7 +453,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
         while (fireCool <= 0) {
           fireCool += small ? 0.22 : 0.11;
           const a = sides[Math.random() < 0.5 ? 0 : 1];
-          const b = sides.find((s) => s !== a);
+          const b = sides[0] !== a ? sides[0] : sides[1];
           const from = ships[a][Math.floor(Math.random() * ships[a].length)];
           const to = ships[b][Math.floor(Math.random() * ships[b].length)];
           if (!from || !to) break;
@@ -580,13 +580,14 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
       const C = new THREE.Vector3(...p.at);
       const slots = Array.from({ length: p.count }, () => place(models.slot(p.kind, p.size), p.at));
       ticks.push((t) => {
-        slots.forEach((s, j) => {
+        for (let j = 0; j < slots.length; j++) {
+          const s = slots[j];
           const a = t * p.speed + (j / p.count) * TAU + i;
           const pos = s.holder.position.set(Math.cos(a) * p.radius, Math.sin(a * 2 + j) * p.height, Math.sin(a) * p.radius).add(C);
           tmp.set(-Math.sin(a) * p.radius, Math.cos(a * 2 + j) * 2 * p.height, Math.cos(a) * p.radius).multiplyScalar(Math.sign(p.speed) || 1);
           tmp2.copy(pos).sub(C).normalize().multiplyScalar(-0.4).add(Y).normalize();
           pointAlong(s.holder, tmp, tmp2);
-        });
+        }
         return true;
       });
     },
@@ -712,6 +713,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
       const solid = addSolid({ id: 'deathstar', name: 'The Death Star', at: p.from, r: 0, reach: 0 });
       const target = new THREE.Vector3(...p.at);
       const dish = new THREE.Vector3();
+      const landing = new THREE.Vector3();
       // the beam: a hot green core in a wider glow
       const beamGeo = new THREE.CylinderGeometry(1, 1, 1, 12, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5);
       const beamMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 5.5, 1.4), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
@@ -759,7 +761,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
         const w = (k - 0.13) / 0.25;
         wave.visible = w > 0 && w < 1;
         if (wave.visible) {
-          const n = target.clone().normalize();
+          const n = landing.copy(target).normalize();
           wave.position.copy(n).multiplyScalar((sys.body?.r ?? 32) + 0.25);
           wave.quaternion.setFromUnitVectors(Zf, n);
           wave.scale.setScalar(2 + w * 24);

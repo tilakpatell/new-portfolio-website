@@ -1020,17 +1020,40 @@ export function courseTo(from, to) {
 // The system whose star is nearest the way `dir` points (a unit vector, the
 // nose), from `from`, if one's within `within` radians of it: { id, angle }
 // or null. `keep` (the one already picked) wins ties of up to `stick`
-// radians, so the pick doesn't flicker between two close stars.
-export function starAhead(from, dir, { within = 0.06, keep = null, stick = 0.012 } = {}) {
-  let best = null;
-  for (const s of SYSTEMS) {
-    if (s === from) continue;
-    const c = courseTo(from, s);
-    const angle = Math.acos(Math.min(1, Math.max(-1, c[0] * dir[0] + c[1] * dir[1] + c[2] * dir[2])));
-    const score = s.id === keep ? angle - stick : angle;
-    if (angle <= within && (!best || score < best.score)) best = { id: s.id, angle, score };
+// radians, so the pick doesn't flicker between two close stars. `dirs`, the
+// bearings of the other systems from `from` already worked out ([{ id, dir }],
+// dir an [x, y, z] or anything with x, y and z: the sky keeps these), saves
+// working out all of them again for each look, as the flying does every frame.
+export function starAhead(from, dir, { within = 0.06, keep = null, stick = 0.012, dirs = null } = {}) {
+  let bestId = null;
+  let bestAngle = 0;
+  let bestScore = Infinity;
+  const n = dirs ? dirs.length : SYSTEMS.length;
+  for (let i = 0; i < n; i++) {
+    let id;
+    let c;
+    if (dirs) {
+      id = dirs[i].id;
+      c = dirs[i].dir;
+    } else {
+      const s = SYSTEMS[i];
+      if (s === from) continue;
+      id = s.id;
+      c = courseTo(from, s);
+    }
+    const flat = Array.isArray(c);
+    const cx = flat ? c[0] : c.x;
+    const cy = flat ? c[1] : c.y;
+    const cz = flat ? c[2] : c.z;
+    const angle = Math.acos(Math.min(1, Math.max(-1, cx * dir[0] + cy * dir[1] + cz * dir[2])));
+    const score = id === keep ? angle - stick : angle;
+    if (angle <= within && (bestId === null || score < bestScore)) {
+      bestId = id;
+      bestAngle = angle;
+      bestScore = score;
+    }
   }
-  return best && { id: best.id, angle: best.angle };
+  return bestId === null ? null : { id: bestId, angle: bestAngle };
 }
 
 export function coreBearing(s) {

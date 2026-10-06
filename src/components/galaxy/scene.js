@@ -108,6 +108,7 @@ const IDLE = 40000;
 const KEYS = { w: 'up', s: 'down', a: 'a', d: 'd', arrowleft: 'left', arrowright: 'right', arrowup: 'pitchUp', arrowdown: 'pitchDown', ' ': 'boost', shift: 'boost', f: 'fire' };
 const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ']);
 const DRAG = 6;
+const NO_TARGETS = Object.freeze([]); // (when there are no hunters to lock on to, the same empty list every time)
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const apart = (ax, ay, az, bx, by, bz) => Math.sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by) + (az - bz) * (az - bz));
@@ -530,32 +531,49 @@ export async function create(canvas, ctx) {
   const camP = new THREE.Vector3();
   const headQ = new THREE.Quaternion();
   const orientOf = (s, q) => q.setFromEuler(shipEuler.set(s.pitch || 0, s.heading, -(s.bank || 0), 'YXZ'));
+  // The camera's views are made into these, never new ones (a frame's worth of
+  // vectors and quaternions, sixty times a second, is a lot to leave for the
+  // collector): the view the ship and the crash give, the blend towards it, and
+  // the one it eases from. `view` is whichever of the first two was last drawn
+  const viewTo = { target: new THREE.Vector3(), quat: new THREE.Quaternion(), dist: 1 };
+  const viewBlend = { target: new THREE.Vector3(), quat: new THREE.Quaternion(), dist: 1 };
+  const blendTo = { k: 1, dur: 1, from: { target: new THREE.Vector3(), quat: new THREE.Quaternion(), dist: 1 } };
+  const lookM = new THREE.Matrix4();
+  const ORIGIN = new THREE.Vector3();
+  const UP = new THREE.Vector3(0, 1, 0);
   let view = null; // { target, quat, dist }, eased between
-  const blendTo = { k: 1, from: null };
 
   const chaseView = () => {
     const s = state.ship;
     camF.set(0, 0, -1).applyQuaternion(camQ);
     camU.set(0, 1, 0).applyQuaternion(camQ);
     camR.set(1, 0, 0).applyQuaternion(camQ);
-    const [bx, by, bz] = state.bias;
-    const target = new THREE.Vector3(s.x + bx, s.y + by, s.z + bz)
+    const bias = state.bias;
+    viewTo.target
+      .set(s.x + bias[0], s.y + bias[1], s.z + bias[2])
       .addScaledVector(camF, 0.4)
       .addScaledVector(camU, 0.06)
       .addScaledVector(camR, (s.lean || 0) * 0.45);
-    return { target, quat: camQ.clone().multiply(TILT), dist: 1.7 + Math.min(Math.abs(s.speed), 30) * 0.045 + state.streak * 0.7 };
+    viewTo.quat.copy(camQ).multiply(TILT);
+    viewTo.dist = 1.7 + Math.min(Math.abs(s.speed), 30) * 0.045 + state.streak * 0.7;
+    return viewTo;
   };
   const cockpitView = () => {
     const s = state.ship;
-    const quat = camQ.clone().multiply(leanQ.setFromAxisAngle(Z_AXIS, -(s.lean || 0) * 0.85));
-    const eye = new THREE.Vector3(0, EYE.up, -EYE.ahead).applyQuaternion(camQ).add(camP.set(s.x, s.y, s.z));
-    return { target: eye.addScaledVector(camF.set(0, 0, -1).applyQuaternion(quat), 1), quat, dist: 1 };
+    viewTo.quat.copy(camQ).multiply(leanQ.setFromAxisAngle(Z_AXIS, -(s.lean || 0) * 0.85));
+    viewTo.target.set(0, EYE.up, -EYE.ahead).applyQuaternion(camQ).add(camP.set(s.x, s.y, s.z)).addScaledVector(camF.set(0, 0, -1).applyQuaternion(viewTo.quat), 1);
+    viewTo.dist = 1;
+    return viewTo;
   };
   // after a crash: back and up from where it went in
   const crashView = () => {
     const c = state.crash;
-    const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(camP.copy(c.point).addScaledVector(c.normal, c.radius * 1.4 + 2.6).add(new THREE.Vector3(0, 1.2, 0)), c.point, new THREE.Vector3(0, 1, 0)));
-    return { target: c.point.clone(), quat: q, dist: c.radius * 1.4 + 3 };
+    camP.copy(c.point).addScaledVector(c.normal, c.radius * 1.4 + 2.6);
+    camP.y += 1.2;
+    viewTo.quat.setFromRotationMatrix(lookM.lookAt(camP, c.point, UP));
+    viewTo.target.copy(c.point);
+    viewTo.dist = c.radius * 1.4 + 3;
+    return viewTo;
   };
   const cabFov = () => {
     const a = size.w / size.h;
@@ -575,7 +593,9 @@ export async function create(canvas, ctx) {
   };
   const retarget = (ms = 700) => {
     if (reduced || !view) return;
-    blendTo.from = { target: view.target.clone(), quat: view.quat.clone(), dist: view.dist };
+    blendTo.from.target.copy(view.target);
+    blendTo.from.quat.copy(view.quat);
+    blendTo.from.dist = view.dist;
     blendTo.k = 0;
     blendTo.dur = ms / 1000;
   };
@@ -887,15 +907,25 @@ export async function create(canvas, ctx) {
   // (the way the reticle is, from the eye: the star you see behind it, in
   // the chase view as in the cockpit; the jump then comes round onto it)
   const sight = new THREE.Vector3();
+  const aimDir = [0, 0, 0];
+  const aimOpts = { keep: null, dirs: null }; // (the sky's stars' bearings are the ones it looks along, not worked out again every frame)
   const aimAt = (ship) => {
     const was = state.aim?.id ?? null;
     let dir = null;
     if (ship && state.sys) {
       const [nx, ny, nz] = nose(ship);
       sight.set(ship.x + nx * 6, ship.y + ny * 6, ship.z + nz * 6).sub(camera.position);
-      dir = sight.lengthSq() > 1e-6 ? sight.normalize().toArray() : [nx, ny, nz];
+      if (sight.lengthSq() > 1e-6) dir = sight.normalize().toArray(aimDir);
+      else {
+        aimDir[0] = nx;
+        aimDir[1] = ny;
+        aimDir[2] = nz;
+        dir = aimDir;
+      }
     }
-    state.aim = dir ? starAhead(state.sys, dir, { keep: was }) : null;
+    aimOpts.keep = was;
+    aimOpts.dirs = sky.beacons;
+    state.aim = dir ? starAhead(state.sys, dir, aimOpts) : null;
     const id = state.aim?.id ?? null;
     if (id === was) return;
     emit({ type: 'aim', id });
@@ -909,6 +939,7 @@ export async function create(canvas, ctx) {
   let pendingSystem = null; // the system the URL asks for, if a jump to it is waiting
   let asked = props.system ?? null; // the system the page last asked for
   const jumpDir = new THREE.Vector3();
+  const spoolQ = new THREE.Quaternion();
   const startJump = (toId, why = 'course') => {
     const to = systemById(toId);
     if (!to || !state.sys || to.id === state.sys.id || state.crash) return false;
@@ -953,9 +984,9 @@ export async function create(canvas, ctx) {
       const k = clamp01(j.age / JUMP.spool);
       // pointing true, and away: faster and faster, the stars drawn out
       const q = orientOf(s, headQ);
-      const want = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), jumpDir, new THREE.Vector3(0, 1, 0))); // (the nose, −z, along the course)
+      const want = spoolQ.setFromRotationMatrix(lookM.lookAt(ORIGIN, jumpDir, UP)); // (the nose, −z, along the course)
       q.slerp(want, clamp01(dt * 6));
-      const e = new THREE.Euler().setFromQuaternion(q, 'YXZ');
+      const e = shipEuler.setFromQuaternion(q, 'YXZ');
       state.ship = { ...s, heading: e.y, pitch: e.x, bank: -e.z, speed: s.speed + dt * (20 + k * 160), rate: 0, tipRate: 0, rollRate: 0 };
       const [fx, fz] = forward(state.ship.heading);
       const cp = Math.cos(state.ship.pitch);
@@ -1018,6 +1049,7 @@ export async function create(canvas, ctx) {
 
   // ── Flying ──
   const tractorPull = new THREE.Vector3();
+  const candBuf = []; // (what the guns can lock on to: the hunters and the other pilots, in one list, kept)
   const fly = (dt, t) => {
     if (state.crash) return crashing(dt);
     if (state.jump) {
@@ -1113,7 +1145,13 @@ export async function create(canvas, ctx) {
     }
 
     // the guns: the lock, the lead, whether a shot would bend onto it
-    const cands = pilots.count ? [...(hunters?.targets ?? []), ...pilots.targets] : (hunters?.targets ?? []);
+    let cands = hunters?.targets ?? NO_TARGETS;
+    if (pilots.count) {
+      candBuf.length = 0;
+      for (const c of cands) candBuf.push(c);
+      for (const c of pilots.targets) candBuf.push(c);
+      cands = candBuf;
+    }
     const was = state.lock?.id ?? null;
     state.lock = cands.length || state.lock ? track(ship, cands, state.lock, dt, { cycle: state.cycle }) : null;
     state.cycle = 0;
@@ -1201,10 +1239,13 @@ export async function create(canvas, ctx) {
           } else hunters.pack(faction, live, { ahead: travelling, heat: state.heat, first: hunts++ === 0 });
         }
       }
-      for (const l of [...later]) {
-        if (state.clock < l.at) continue;
-        later.splice(later.indexOf(l), 1);
-        l.run();
+      for (let i = 0; i < later.length; ) {
+        const l = later[i];
+        if (state.clock < l.at) i++;
+        else {
+          later.splice(i, 1);
+          l.run();
+        }
       }
     } else later.length = 0;
     if (state.hurt > 0) {
@@ -1314,7 +1355,7 @@ export async function create(canvas, ctx) {
     let n = 0;
     if (on && h.threats.length) {
       threatList.length = 0;
-      for (const c of hunters?.targets ?? []) if (c.threat && c.id !== tgt?.id) threatList.push(c);
+      for (const c of hunters?.targets ?? NO_TARGETS) if (c.threat && c.id !== tgt?.id) threatList.push(c);
       // (and a pilot whose shots have been landing on you)
       if (pilots.count) for (const c of pilots.targets) if (c.threat && c.id !== tgt?.id) threatList.push(c);
       threatList.sort((a, b) => apart(a.at.x, a.at.y, a.at.z, s.x, s.y, s.z) - apart(b.at.x, b.at.y, b.at.z, s.x, s.y, s.z));
@@ -1460,10 +1501,13 @@ export async function create(canvas, ctx) {
     if (flying()) {
       const to = state.crash && !state.crash.back ? crashView() : state.view === 'cockpit' ? cockpitView() : chaseView();
       let v = to;
-      if (blendTo.k < 1 && blendTo.from) {
+      if (blendTo.k < 1) {
         blendTo.k = Math.min(1, blendTo.k + dt / blendTo.dur);
         const k = blendTo.k * blendTo.k * (3 - 2 * blendTo.k);
-        v = { target: blendTo.from.target.clone().lerp(to.target, k), quat: blendTo.from.quat.clone().slerp(to.quat, k), dist: blendTo.from.dist + (to.dist - blendTo.from.dist) * k };
+        viewBlend.target.copy(blendTo.from.target).lerp(to.target, k);
+        viewBlend.quat.copy(blendTo.from.quat).slerp(to.quat, k);
+        viewBlend.dist = blendTo.from.dist + (to.dist - blendTo.from.dist) * k;
+        v = viewBlend;
       }
       view = v;
       applyView(v);
@@ -1510,14 +1554,18 @@ export async function create(canvas, ctx) {
     let worldBusy = false;
     if (world) {
       worldBusy = world.update(wt, dt, camera, state.ship);
-      for (const e of world.events.splice(0)) if (!state.jump) emit(e);
+      const evs = world.events;
+      while (evs.length) {
+        const e = evs.shift();
+        if (!state.jump) emit(e);
+      }
       // in the planet's shadow, the sun's gone
       let eclipse = 1;
       if (world.body && state.ship) {
         sunWorld.copy(world.sunLights[0].dir);
         toShip.set(state.ship.x, state.ship.y, state.ship.z);
         const along = toShip.dot(sunWorld);
-        const off = toShip.clone().addScaledVector(sunWorld, -along).length();
+        const off = toShip.addScaledVector(sunWorld, -along).length();
         const r = world.body.radius ?? 40;
         if (along < 0) eclipse = clamp01((off - r * 0.97) / (r * 0.08));
       }

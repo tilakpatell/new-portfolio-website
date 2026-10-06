@@ -89,8 +89,11 @@ export function createBolts(parent, { count = 160 } = {}) {
         n += 1;
       }
       mesh.count = n;
-      mesh.instanceMatrix.needsUpdate = true;
-      mesh.instanceColor.needsUpdate = true;
+      // (nothing to draw, nothing to send up)
+      if (n) {
+        mesh.instanceMatrix.needsUpdate = true;
+        mesh.instanceColor.needsUpdate = true;
+      }
     },
     dispose() {
       mesh.removeFromParent();
@@ -173,16 +176,25 @@ export function createFlashes(parent, { count = 48 } = {}) {
           free.push(f);
         }
       }
-      live.forEach((f, i) => {
+      for (let i = 0; i < live.length; i++) {
+        const f = live[i];
         m.makeTranslation(f.at.x, f.at.y, f.at.z);
         mesh.setMatrixAt(i, m);
-        flash.set([f.age, f.size, f.bright, 0], i * 4);
-        tint.set([f.tint.r, f.tint.g, f.tint.b], i * 3);
-      });
+        flash[i * 4] = f.age;
+        flash[i * 4 + 1] = f.size;
+        flash[i * 4 + 2] = f.bright;
+        flash[i * 4 + 3] = 0;
+        tint[i * 3] = f.tint.r;
+        tint[i * 3 + 1] = f.tint.g;
+        tint[i * 3 + 2] = f.tint.b;
+      }
       mesh.count = live.length;
-      mesh.instanceMatrix.needsUpdate = true;
-      geo.attributes.aFlash.needsUpdate = true;
-      geo.attributes.aTint.needsUpdate = true;
+      // (nothing to draw, nothing to send up)
+      if (live.length) {
+        mesh.instanceMatrix.needsUpdate = true;
+        geo.attributes.aFlash.needsUpdate = true;
+        geo.attributes.aTint.needsUpdate = true;
+      }
     },
     dispose() {
       mesh.removeFromParent();
