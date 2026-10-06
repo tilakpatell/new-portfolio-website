@@ -18,7 +18,7 @@
 //
 // loadTextures({ small }) → the textures (any that fail are just missing)
 // mapFile(name, level) → the file for a planet map at lib/detail's level
-// buildPlanet(u, T) → { id, radius, group, update(t, camera), setState, mount }
+// buildPlanet(u, T, { sun }) → { id, radius, group, sun, update(t, camera), setState, mount }
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -136,11 +136,11 @@ void main() {
 
 const RIM = { idle: 0.5, hover: 1.3, selected: 0.95 };
 
-function halo(radius, color, seg) {
+function halo(radius, color, seg, light = LIGHT) {
   const mat = new THREE.ShaderMaterial({
     vertexShader: HALO_VERT,
     fragmentShader: HALO_FRAG,
-    uniforms: { uColor: { value: new THREE.Color(color) }, uStrength: { value: RIM.idle }, uLight: { value: LIGHT }, uReach: { value: HALO } },
+    uniforms: { uColor: { value: new THREE.Color(color) }, uStrength: { value: RIM.idle }, uLight: { value: light }, uReach: { value: HALO } },
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
@@ -153,11 +153,11 @@ function halo(radius, color, seg) {
 
 // The glow on a planet's own rim, in its material, and (for Earth) its
 // cities' lights on the night side: both follow the sun.
-function airGlow(mat, color, { night = null } = {}) {
+function airGlow(mat, color, { night = null, sun = LIGHT } = {}) {
   const u = {
     uRimColor: { value: new THREE.Color(color) },
     uRimStrength: { value: RIM.idle * 0.8 },
-    uSunW: { value: LIGHT },
+    uSunW: { value: sun },
     uNight: { value: night },
   };
   mat.userData.air = u;
@@ -519,7 +519,7 @@ const BUILDERS = {
     });
     p.body.material = mat;
     if (T.transformers && T['transformers-glow-sm']) {
-      const skin = cybertronSkin(mat, { glow: T['transformers-glow-sm'], sun: LIGHT });
+      const skin = cybertronSkin(mat, { glow: T['transformers-glow-sm'], sun: p.sun });
       // the energon breathes, and turns from the Autobots' blue to the
       // Decepticons' violet and back as the war goes one way and the other
       const blue = SIDES.autobot.energon;
@@ -1320,8 +1320,12 @@ const BUILDERS = {
   ...STATIONS,
 };
 
-export function buildPlanet(u, T = {}) {
+export function buildPlanet(u, T = {}, { sun = null } = {}) {
   const core = u.kind === 'core';
+  // the way to the star that lights it, in the world's axes (lighting.js's
+  // sunFor, turned with the map by the scene each frame): one vector its
+  // air, its rim and its night side all read; the old fixed key without one
+  const sunW = sun ? (sun.isVector3 ? sun : new THREE.Vector3(...sun)) : LIGHT;
   const seg = T.small ? [44, 28] : [64, 40]; // a phone's screen needs fewer
   const group = new THREE.Group();
   const spinner = new THREE.Group(); // what turns about the planet's axis
@@ -1329,11 +1333,11 @@ export function buildPlanet(u, T = {}) {
   const body = new THREE.Mesh(new THREE.SphereGeometry(u.size, seg[0], seg[1]), new THREE.MeshStandardMaterial({ color: u.palette.base, roughness: 1 }));
   spinner.add(body);
   // a planet has air round it in its colour; a station's sign does that job
-  const air = core || u.airless ? null : halo(u.size, u.rim ?? u.swatch, seg); // (a station has no air round it)
+  const air = core || u.airless ? null : halo(u.size, u.rim ?? u.swatch, seg, sunW); // (a station has no air round it)
   if (air) group.add(air);
-  const p = { group, body, orbits: [], tick: [], focus: [], slot: null, onSelect: null };
+  const p = { group, body, orbits: [], tick: [], focus: [], slot: null, onSelect: null, sun: sunW };
   BUILDERS[u.id]?.(p, { u, T });
-  if (!core && p.body.material?.isMeshStandardMaterial) airGlow(p.body.material, u.rim ?? u.swatch, { night: p.night });
+  if (!core && p.body.material?.isMeshStandardMaterial) airGlow(p.body.material, u.rim ?? u.swatch, { night: p.night, sun: sunW });
   // a station's big sign, over it
   const sign = u.sign ? bigSign(u) : null;
   if (sign) {
@@ -1355,6 +1359,7 @@ export function buildPlanet(u, T = {}) {
     surface: core ? null : body,
     body,
     air,
+    sun: sunW,
     // held still (true) while the crew walk about on it, and turning on
     // from there once they're gone
     hold(on) {

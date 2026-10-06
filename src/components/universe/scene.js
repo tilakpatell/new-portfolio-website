@@ -122,6 +122,7 @@ import { createBeacons } from './beacons';
 import { PHONE, createPhone } from './phone';
 import { SUPERNOVA_SITES, createSupernovae } from './supernova';
 import { DEEP, WONDERS, moveBinaries, nearestStar, openness, reachOf, wonderById } from './deep';
+import { lightAt, sunFor } from './lighting';
 import { createCrash } from './crash';
 import { createInfall } from './infall';
 import { DISK_N, MAW, captured, fallAt, plungeAt, pullAt, startFall } from './maw';
@@ -497,12 +498,16 @@ export async function create(canvas, ctx) {
   canvas.setAttribute('aria-hidden', 'true');
   canvas.style.cursor = 'grab';
 
-  // light: a key from the upper left, a cool fill from below right, a little ambient
+  // light: a key from the star that lights where you are, a fill from the
+  // second (or a cool one from the far side), a little ambient (lighting.js;
+  // set each frame by lights(), below). Until the first frame, the map's old
+  // key from the upper left.
   const key = new THREE.DirectionalLight('#fff8f0', 2.35);
   key.position.copy(LIGHT).multiplyScalar(50);
   const fill = new THREE.DirectionalLight('#8ea2ff', 0.45);
   fill.position.set(0.7, -0.4, -0.3).multiplyScalar(50);
-  scene.add(key, fill, new THREE.AmbientLight('#b8c4ff', 0.4));
+  const ambient = new THREE.AmbientLight('#b8c4ff', 0.4);
+  scene.add(key, fill, ambient);
 
   let seed = 7;
   const rand = () => {
@@ -673,8 +678,11 @@ export async function create(canvas, ctx) {
   const sunLight = new THREE.PointLight('#ffd6a8', 890 * (RING / 85) ** 1.4, 320 * HOME_SPREAD, 1.4);
   map.add(sunLight);
 
+  // each planet lit from its own star (lighting.js's sunFor, in the map's
+  // axes; turned with the map into the world's each frame: lights())
+  const sunInMap = Object.fromEntries(ORDER.map((id) => [id, sunFor(id)]));
   const planets = ORDER.map((id) => {
-    const p = buildPlanet(byId(id), T);
+    const p = buildPlanet(byId(id), T, { sun: new THREE.Vector3(...sunInMap[id]) });
     p.group.position.set(...POSITIONS[id]);
     map.add(p.group);
     return p;
@@ -3358,7 +3366,7 @@ export async function create(canvas, ctx) {
     const down = guestsOnFoot(performance.now()).filter((g) => g.foot.planet === id);
     const friend = down.find((g) => g.ally) ?? down[0] ?? null;
     const near = friend && { ...friend.foot.ship, kind: friend.foot.kind };
-    if (!foot.begin({ id, ship: state.ship, model: state.model, kind: state.kind, light: lightInMap().toArray(), near, entry })) return false;
+    if (!foot.begin({ id, ship: state.ship, model: state.model, kind: state.kind, light: sunInMap[id] ?? lightInMap().toArray(), near, entry })) return false;
     dropAuto();
     state.hotSaid = null;
     if (entry) {
@@ -3431,7 +3439,7 @@ export async function create(canvas, ctx) {
     m.park?.(foot.phase !== 'land' && foot.phase !== 'lift');
     updatePlumes(dt, t, foot.phase === 'land' || foot.phase === 'lift' ? 0.25 : 0);
     engine?.set({ speed: foot.phase === 'land' || foot.phase === 'lift' ? SHIP.cruise * 0.6 : 0, boost: false, on: state.shown && !props.frozen && !document.hidden && (foot.phase === 'land' || foot.phase === 'lift') });
-    foot.day(lightInMap());
+    foot.day(sunInMap[foot.id] ? footSun.set(...sunInMap[foot.id]) : lightInMap());
     // on the way in through the air: shaken by the burn and the clouds (not
     // with reduced motion), the roar as loud as the burn
     const entry = foot.entry();
@@ -3598,6 +3606,51 @@ export async function create(canvas, ctx) {
     sunFlare?.set({ ndc, weight, camera });
     exposure = exposureFor({ sunShare: share, darkShare: 1 - share, last: exposure, dt, reduced });
     post.exposure(onFoot() ? 1 : exposure);
+  };
+
+  // The scene's lights from the stars (lighting.js), at where the camera is:
+  // the key and the fill turned to come from the stars that light it, each
+  // eased (2 a second on each part of the way and the colour, so flying
+  // from the home sun to Ember the light turns orange over the trip), the
+  // ambient tinted in a nebula; and every planet's sun turned with the map.
+  // A supernova's flash is a star while it burns. All at once on the first
+  // frame and under reduced motion.
+  const lightNow = { key: new THREE.Vector3().copy(LIGHT), fill: new THREE.Vector3(0.7, -0.4, -0.3).normalize(), first: true };
+  const lightTo = new THREE.Vector3();
+  const footSun = new THREE.Vector3(); // (the landed planet's, for the crew's day: its own vector, kept)
+  const lightColour = new THREE.Color();
+  const toward = (v, to, k) => {
+    v.x += Math.max(-k, Math.min(k, to.x - v.x));
+    v.y += Math.max(-k, Math.min(k, to.y - v.y));
+    v.z += Math.max(-k, Math.min(k, to.z - v.z));
+    return v;
+  };
+  const tint = (c, to, k) => {
+    c.r += Math.max(-k, Math.min(k, to.r - c.r));
+    c.g += Math.max(-k, Math.min(k, to.g - c.g));
+    c.b += Math.max(-k, Math.min(k, to.b - c.b));
+  };
+  const lights = (dt) => {
+    for (const p of planets) {
+      const s = sunInMap[p.id];
+      p.sun.set(s[0], s[1], s[2]).applyAxisAngle(Y_AXIS, state.yaw);
+    }
+    const nv = novae.nova();
+    const nova = nv && nv.k > 0.05 ? { at: nv.at.toArray ? nv.at.toArray() : nv.at, colour: '#ffffff', strength: 3 * nv.k } : null;
+    const l = lightAt(camLocal.toArray(), { nova });
+    const k = lightNow.first || reduced ? Infinity : 2 * dt;
+    lightNow.first = false;
+    // (the way toward each light, in the world's axes: back along the way its light goes)
+    toward(lightNow.key, lightTo.set(...l.key.dir).negate().applyAxisAngle(Y_AXIS, state.yaw), k).normalize();
+    toward(lightNow.fill, lightTo.set(...l.fill.dir).negate().applyAxisAngle(Y_AXIS, state.yaw), k).normalize();
+    key.position.copy(lightNow.key).multiplyScalar(50);
+    fill.position.copy(lightNow.fill).multiplyScalar(50);
+    tint(key.color, lightColour.setRGB(...l.key.colour), k);
+    tint(fill.color, lightColour.setRGB(...l.fill.colour), k);
+    key.intensity += Math.max(-k, Math.min(k, l.key.strength - key.intensity));
+    fill.intensity += Math.max(-k, Math.min(k, l.fill.strength - fill.intensity));
+    ambient.color.setRGB(...l.ambient);
+    ambient.intensity = 1;
   };
 
   function render(ms, now) {
@@ -3828,6 +3881,7 @@ export async function create(canvas, ctx) {
     // inside it up to date, once)
     map.updateWorldMatrix(true, false);
     map.worldToLocal(camLocal.copy(camera.position));
+    lights(dt);
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
     // the Citadel's siege: rebuilt or patched up when it's time, what's left
     // of it drawn, and your word on it out to everyone (soon after a hit of
