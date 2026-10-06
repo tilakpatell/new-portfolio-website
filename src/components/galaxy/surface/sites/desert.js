@@ -107,7 +107,7 @@ export const SITES = {
         ],
         // (the courtyard: a pit beside the hut)
         // (behind the hut, 15 m off along its back: the ring's middle)
-        pits: [{ at: [-5.8, -13.8], r: 9, depth: 6 }],
+        pits: [{ at: [-5.8, -13.8], r: 6.5, depth: 6 }],
       },
       {
         id: 'moseisley',

@@ -74,6 +74,8 @@ export const BUILDINGS = {
     ref: 'File:YetAnotherTatooineSunset.jpg',
     crop: [0.15, 0.24, 0.73, 0.72],
     lift: 'the domed adobe hut with its arched doorway, and the machinery, pipes and crates against its walls, seen in plain midday daylight',
+    // (baked from a sunset: brought to the plaster's daylight colour)
+    recolor: [{ material: 'Material_0', to: '#938c86', amount: 1, band: [0.15, 1] }],
     metres: 9,
     along: 'w',
     tris: 20000,
@@ -83,6 +85,8 @@ export const BUILDINGS = {
   palace: {
     from: 'citadel',
     style: 'A desert fortress palace of weathered sun-bleached sandstone and tan adobe: sand-scoured rounded walls with faint horizontal bands, a great domed main keep, a tall cylindrical watchtower with a domed cap, dark recessed doorways and slit windows, dusty and sand-drifted at its base, rough desert rock around it. Realistic, film-set quality.',
+    // (the film's rust and rosy-brown stone, not the retexture's orange)
+    recolor: [{ material: '*', to: '#9d6b60', amount: 1 }],
     yaw: -Math.PI / 2,
     metres: 115,
     along: 'w',

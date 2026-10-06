@@ -6,7 +6,14 @@
 // surface imports (scripts/sketchfab-surface.mjs, scripts/meshy-galaxy-
 // buildings.mjs) with a catalogue entry's `recolor`:
 //   [{ material: 'regex source' | '*', to: '#rrggbb' (sRGB albedo), amount: 0…1,
-//      band: [lo, hi] (only texels of that saturation: plaster, not paint) }]
+//      band: [lo, hi] (only texels of that saturation move: plaster, not
+//            paint; the whole map's mean is aimed at `to`),
+//      where: { hue: [lo, hi] (degrees), sat, val, soft } | 'rest' (only the
+//            texels of that colour, and their own mean aimed at `to`: a
+//            copper dome on a map that's mostly stone; 'rest' is every
+//            texel an earlier rule didn't take) }]
+// Rules with `where` on the same material all apply, in order, each taking
+// its texels from what's left; otherwise a material takes its first rule.
 // A map shared with a material no rule matches is copied first, so only the
 // matched ones change. Deterministic: run on the same source, the same out.
 //
@@ -55,12 +62,100 @@ async function meanRaw(buf, info) {
   return s.map((v) => v / n);
 }
 
+const smooth = (a, b, x) => {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+// each texel's hue (degrees), saturation and value, from its sRGB bytes
+function hsvOf(data) {
+  const n = data.length / 4;
+  const h = new Float32Array(n);
+  const sv = new Float32Array(n * 2);
+  for (let i = 0; i < n; i++) {
+    const [r, g, b] = [data[i * 4] / 255, data[i * 4 + 1] / 255, data[i * 4 + 2] / 255];
+    const max = Math.max(r, g, b);
+    const d = max - Math.min(r, g, b);
+    let hue = 0;
+    if (d > 0) hue = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h[i] = (hue * 60 + 360) % 360;
+    sv[i * 2] = max ? d / max : 0;
+    sv[i * 2 + 1] = max;
+  }
+  return { h, sv };
+}
+// a `where` rule's weights over the map, taking only what earlier rules left
+function weightsOf(where, hsv, taken) {
+  const n = taken.length;
+  const w = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    let x = 1;
+    if (where && where !== 'rest') {
+      const soft = where.soft ?? 10;
+      const [lo, hi] = where.hue ?? [0, 360];
+      const hue = hsv.h[i];
+      x = Math.max(0, Math.min(1, (hue - (lo - soft)) / soft, (hi + soft - hue) / soft));
+      if (where.sat != null) x *= smooth(where.sat, where.sat * 2, hsv.sv[i * 2]);
+      if (where.val != null) x *= smooth(where.val, where.val + 0.1, hsv.sv[i * 2 + 1]);
+    }
+    w[i] = x * (1 - taken[i]);
+    taken[i] += w[i];
+  }
+  return w;
+}
+// the weighted linear mean of the bytes
+function weightedMean(data, w) {
+  const s = [0, 0, 0];
+  let t = 0;
+  for (let i = 0; i < w.length; i++) {
+    if (!w[i]) continue;
+    for (let c = 0; c < 3; c++) s[c] += w[i] * toLin(data[i * 4 + c] / 255);
+    t += w[i];
+  }
+  return s.map((v) => v / Math.max(t, 1e-9));
+}
+
+// several `where` rules on one map: each texel scaled by its rules' factors,
+// weighted, each rule's own mean found again a few times over
+async function recolorWhere(tex, factor, rules) {
+  const { data, info } = await sharp(Buffer.from(tex.getImage())).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const hsv = hsvOf(data);
+  const taken = new Float32Array(data.length / 4);
+  const ws = rules.map((r) => weightsOf(r.where, hsv, taken));
+  const goals = rules.map((r, j) => {
+    const m = weightedMean(data, ws[j]).map((v, c) => v * factor[c]);
+    const to = linOf(r.to);
+    return { first: m, goal: m.map((v, c) => v + (to[c] - v) * (r.amount ?? 1)) };
+  });
+  const ks = rules.map(() => [1, 1, 1]);
+  const lut = new Float32Array(256).map((_, v) => toLin(v / 255));
+  let out = Buffer.from(data);
+  for (let pass = 0; pass < 6; pass++) {
+    let close = true;
+    rules.forEach((_, j) => {
+      const m = weightedMean(out, ws[j]).map((v, c) => v * factor[c]);
+      if (!m.every((v, c) => Math.abs(v - goals[j].goal[c]) <= 0.003)) close = false;
+      ks[j] = ks[j].map((v, c) => (v * goals[j].goal[c]) / Math.max(m[c], 1e-4));
+    });
+    if (close && pass) break;
+    out = Buffer.from(data);
+    for (let i = 0; i < ws[0].length; i++)
+      for (let c = 0; c < 3; c++) {
+        let k = 1;
+        for (let j = 0; j < rules.length; j++) k += ws[j][i] * (ks[j][c] - 1);
+        out[i * 4 + c] = Math.round(toSrgb(Math.min(1, lut[data[i * 4 + c]] * k)) * 255);
+      }
+  }
+  tex.setImage(await sharp(out, { raw: { width: info.width, height: info.height, channels: 4 } }).png().toBuffer()).setMimeType('image/png');
+  return goals.map((g, j) => ({ from: hexOf(g.first), to: hexOf(g.goal), where: rules[j].where }));
+}
+
 export async function recolorDoc(doc, rules = []) {
   const done = [];
   if (!rules?.length) return done;
   const root = doc.getRoot();
   for (const mat of root.listMaterials()) {
-    const rule = rules.find((r) => matches(r, mat.getName()));
+    const mine = rules.filter((r) => matches(r, mat.getName()));
+    const rule = mine[0];
     if (!rule) continue;
     const to = linOf(rule.to);
     const amount = rule.amount ?? 1;
@@ -80,6 +175,10 @@ export async function recolorDoc(doc, rules = []) {
       mat.setBaseColorTexture(copy);
       tex = copy;
     } else if (users.indexOf(mat) > 0) continue; // (a shared map changed once, for the first of its materials)
+    if (mine.some((r) => r.where)) {
+      for (const d of await recolorWhere(tex, factor, mine)) done.push({ material: `${mat.getName()} ${JSON.stringify(d.where ?? 'all')}`, from: d.from, to: d.to });
+      continue;
+    }
     // what the eye sees is the map times the factor: aim that at `to`, k
     // found again a few times over (the brightest texels clip short of it)
     const src = await source(tex, rule.band);
