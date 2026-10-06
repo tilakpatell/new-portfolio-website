@@ -3775,6 +3775,19 @@ export async function create(canvas, ctx) {
       }
       flares[i]?.set({ ndc, weight, colour: star?.colour ?? null, camera });
     });
+    // on foot, the landing's sun glares in the lens by day (landings/sky.js:
+    // its disc a little over 0.03 radians across), the first flare's
+    const sky = onFoot() ? foot.sky : null;
+    if (sky && flares[0]) {
+      let weight = 0;
+      let ndc = [0, 0];
+      starAt.copy(sky.sun).transformDirection(map.matrixWorld).multiplyScalar(1000).add(eyeAt).project(camera);
+      if (starAt.z < 1 && sky.day > 0.02) {
+        ndc = [starAt.x, starAt.y];
+        weight = post.flareOn ? flareWeight({ ndc, size: 0.032 / halfTan() }) * sky.day : 0;
+      }
+      flares[0].set({ ndc, weight, colour: '#fff1d6', camera });
+    }
     share = Math.min(1, share);
     exposure = exposureFor({ sunShare: share, darkShare: 1 - share, last: exposure, dt, reduced });
     post.exposure(onFoot() ? 1 : exposure);

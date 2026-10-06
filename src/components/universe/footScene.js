@@ -1786,7 +1786,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       warm?.(ground.mesh)?.catch?.(() => {});
       ground.mesh.visible = rocks.mesh.visible = false;
     }
-    haze = u.airless ? null : landing?.sky ? createSky(landing.sky, u.rim ?? u.swatch ?? '#8ab4ff') : createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
+    // (the sky from the planet's own air, where it has one: landings/sky.js)
+    haze = u.airless ? null : landing?.sky ? createSky(landing.sky, u.rim ?? u.swatch ?? '#8ab4ff', { air: u.air ?? null }) : createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
     if (haze) root.add(haze.mesh);
     // (flown in, dark to start with: the entry starts in the middle of a
     // frame, before day() has had its say, and that frame's drawn too)
@@ -2677,6 +2678,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     begin,
     update,
     view,
+    // how much of a landing's day sky shows, and its sun's way (the map's
+    // space): the scene's flare on the sun goes by them (0 with no sky)
+    get sky() {
+      return haze?.set && S.spot ? { day: haze.day, sun: haze.sunDir } : null;
+    },
     // the day where you are: how much the haze shows (light: the key light's direction, in the map's space)
     day(light) {
       if (!haze || !S.spot) return;
