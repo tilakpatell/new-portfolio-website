@@ -19,6 +19,7 @@
 import * as THREE from 'three';
 import { loadGltf, copy } from '../../../lib/three/gltf';
 import { POSES, figure as rigFigure } from '../../../lib/three/rig';
+import { autorig } from './autorig';
 import { MODELS } from './catalog';
 
 const cache = new Map(); // kind → Promise<{ scene, animations, spec } | null>
@@ -266,6 +267,9 @@ function walkable(scene) {
   return (has(/l_leg01_thigh|thigh\.l|leftupleg|thigh_l/) && has(/r_leg01_thigh|thigh\.r|rightupleg|thigh_r/)) || false;
 }
 
+const ROBOTS = new Set(['player', 'npc', 'enemy', 'boss']);
+const rigged = new Map(); // kind → its model with a skeleton made for it
+
 export async function makeFigure(kind, { shadows = false } = {}) {
   const spec = MODELS[kind];
   const loaded = spec ? await loadModel(kind) : null;
@@ -275,6 +279,15 @@ export async function makeFigure(kind, { shadows = false } = {}) {
     group.add(standIn(kind));
     f = stillFigure(kind, spec ?? { metres: 7 }, group, []);
     f.standIn = true;
+  } else if (!spec.rig && ROBOTS.has(spec.role)) {
+    // one piece, no skeleton: given one (autorig.js), then posed like the rest
+    try {
+      if (!rigged.has(kind)) rigged.set(kind, autorig(loaded.scene));
+      f = riggedFigure(kind, spec, rigged.get(kind), []);
+    } catch (e) {
+      if (import.meta.env?.DEV) console.warn('autorig failed for', kind, e);
+      f = stillFigure(kind, spec, loaded.scene, loaded.animations);
+    }
   } else if (spec.rig && walkable(loaded.scene)) {
     try {
       f = riggedFigure(kind, spec, loaded.scene, loaded.animations);
