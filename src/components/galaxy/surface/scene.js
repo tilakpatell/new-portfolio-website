@@ -189,7 +189,7 @@ export async function create(canvas, ctx) {
   gmat.uniforms.uMarks.value = marks.texture;
   const ground = groundMesh(grid, gmat.material);
   if (!site.noGround) scene.add(ground);
-  const water = site.water ? createWater(site, sunDir, site.sky.suns?.[0]?.color ?? '#ffffff') : null;
+  const water = site.water ? createWater(site, sunDir, site.sky.suns?.[0]?.color ?? '#ffffff', { heightAt: site.noGround ? null : grid.heightAt, small, id: ctx.system }) : null;
   if (water) {
     scene.add(water.mesh);
     if (water.glow) scene.add(water.glow);
@@ -2213,7 +2213,7 @@ export async function create(canvas, ctx) {
     sky.update(camera, t, flash.k);
     // (whatever's come into the world since, fogged in the sky's colour before it's drawn)
     skyFog.scene(scene);
-    water?.update(t);
+    water?.update(t, camera);
     weather?.update(t, camera, world.heightAt, size.h);
     compass();
     lit?.update();
