@@ -9,7 +9,7 @@ export const SHOUTS = {
   ad: { who: 'pa', say: '“Come home to the impossible flavor of your own completion. Come home to Simple Rick’s.”' },
   mutter: { who: 'councilc', say: 'Dismissed. On the way out, you hear one of them mutter “the Rickest Rick”. Not as a compliment.' },
   daycare: { who: 'daycare', say: 'The Day Care Rick looks up. “What’s going on out there?” They scatter again.' },
-  daycareDone: { who: 'daycare', say: 'All six back in. The Day Care Rick turns a page. “Huh.” He never knew.' },
+  daycareDone: { who: 'narrator', say: 'All six back in. The Day Care Rick turns a page. He never knew.' }, // nothing said aloud (a one-word take came out poor)
   copSeen: { who: 'cop', say: '“Hey! C-137!” A Cop Rick’s seen you! Run, and get out of his sight!' },
   copFreeze: { who: 'cop', say: '“Freeze, C-137!” Run, round the core or behind a kiosk!' },
   copGot: { who: 'cop', say: '“Got you.” He’s got you. Break his line of sight!' },
