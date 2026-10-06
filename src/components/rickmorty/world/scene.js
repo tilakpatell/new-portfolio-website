@@ -69,7 +69,19 @@ export const AREA_BUILDERS = { street: buildStreet, house: buildHouse, upstairs:
 // alien street through the garage's portal now, the multiverse's places as
 // they come. ensureArea(id) builds one (RmWorld waits on it behind the
 // portal's swirl).
-export const LAZY = { annex: () => import('./annex').then((m) => m.buildAnnex), wong: () => import('./interiors/wong').then((m) => m.buildWong) };
+export const LAZY = {
+  annex: () => import('./annex').then((m) => m.buildAnnex),
+  wong: () => import('./interiors/wong').then((m) => m.buildWong),
+  // the multiverse's destinations, through the garage portal as it's dialled (./dimensions/)
+  fantasy: () => import('./dimensions/fantasy').then((m) => m.buildFantasy),
+  microverse: () => import('./dimensions/microverse').then((m) => m.buildMicroverse),
+  anatomy: () => import('./dimensions/anatomy').then((m) => m.buildAnatomy),
+  needful: () => import('./dimensions/needful').then((m) => m.buildNeedful),
+  jerryboree: () => import('./dimensions/jerryboree').then((m) => m.buildJerryboree),
+  purge: () => import('./dimensions/purge').then((m) => m.buildPurge),
+  pluto: () => import('./dimensions/pluto').then((m) => m.buildPluto),
+  gearworld: () => import('./dimensions/gearworld').then((m) => m.buildGearworld),
+};
 
 // The cruiser's headlights, which are its eyes (the saucer's, in the hull's
 // frame: its nose is +z): where each is, and how far round it looks out

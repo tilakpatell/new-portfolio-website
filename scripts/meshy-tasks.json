@@ -616,5 +616,236 @@
     "rig": "01a11186-ce8c-71cf-a341-6a049de64aae",
     "idle": "01a11187-1a99-7140-854e-1aeb4f495f5e",
     "sit": "01a11187-4754-7674-be55-699c379d7587"
+  },
+  "bigmorty": {
+    "image": "01a11232-8163-71df-9072-e7a198cd415c",
+    "model": "01a11237-b184-72f6-be9e-a250ef87369b",
+    "rig": "01a11287-9fe8-7401-b6de-56f0f7b16204",
+    "idle": "01a11288-88c3-75d7-992b-d7b4d0973f19",
+    "sit": "01a11288-ffbc-72da-a171-3789807fc402"
+  },
+  "slickmorty": {
+    "image": "01a11232-8203-7357-96c7-f80d1c2c6afd",
+    "model": "01a11237-b186-766b-87e9-60f75c6beb26",
+    "rig": "01a11287-9fcf-7347-b98f-d4233ba9d782",
+    "idle": "01a11288-88c1-7749-9e3a-e47eb22f8b48"
+  },
+  "campaignmorty": {
+    "image": "01a11232-8204-74d5-9230-b11ac46e1969",
+    "model": "01a11237-b188-731e-9788-4f2946216965",
+    "rig": "01a11287-9fed-755e-837e-08b329bb1d6a",
+    "idle": "01a11288-88a9-7003-b7c6-be9d414c6afd"
+  },
+  "rickd3": {
+    "image": "01a11232-8207-764a-be63-c479993f8512",
+    "model": "01a11237-b189-7538-96e3-0a746a7fbf0b",
+    "rig": "01a11287-a01c-752d-98d0-334630061e0a",
+    "idle": "01a11288-88ab-74e3-a3d0-52630f7ff579"
+  },
+  "simplerick": {
+    "image": "01a11233-0d48-74be-adb4-7a284e74e9e4",
+    "model": "01a11239-854c-7176-a19e-9c3afdf1629b",
+    "rig": "01a11287-e970-731a-9ff1-aac6aa6a541a",
+    "idle": "01a11288-b7d4-76ce-82a9-ae8f33f70b97"
+  },
+  "evilrick": {
+    "image": "01a11233-4849-717d-aaf7-ce436abaa881",
+    "model": "01a11239-987d-71d6-ba16-a9c0ca1c5cbd",
+    "rig": "01a11287-ebe3-778c-96b6-7445c993d05d",
+    "idle": "01a11288-b63b-77f3-8d46-6d0e024e80e6"
+  },
+  "loco-a": {
+    "image": "01a11233-5df0-729d-b124-e1a03f38e32d",
+    "model": "01a11239-abd4-7694-8be8-8d3bbdafbdb2",
+    "rig": "01a11287-f764-745f-bb13-e2a3ad0885d9",
+    "idle": "01a11288-b658-731f-b322-ea61893e823e"
+  },
+  "loco-b": {
+    "image": "01a11233-bd72-765a-8abd-c4b72dc94814",
+    "model": "01a11239-af19-76ab-afaa-1a49648e542c",
+    "rig": "01a11287-f81b-7627-b5fe-8de773e82c5f",
+    "idle": "01a11288-b686-74ef-947d-f627e7b57c00"
+  },
+  "loco-c": {
+    "image": "01a11233-fa1b-7266-a389-ed5dcdaafb63",
+    "model": "01a1123c-3e85-7637-9e1b-81ea3cb4700b",
+    "rig": "01a11288-33be-7477-b41a-5f2c3561adf9",
+    "idle": "01a11288-ce50-77cc-9e5f-70909e6187a5"
+  },
+  "supremeguard": {
+    "image": "01a11234-9956-7336-ac18-a9ed25362995",
+    "model": "01a1123c-a2f5-76ff-aacc-74287c33dc28"
+  },
+  "garmentrick": {
+    "image": "01a11237-b17c-75b1-963e-235ae78d407f",
+    "model": "01a11263-8161-70e2-a753-790c0405b416"
+  },
+  "mortymart": {
+    "image": "01a11235-26b2-71a1-b8bc-cda6cc05c881",
+    "model": "01a1123c-a627-7328-88a9-bded32a0faa6"
+  },
+  "creepymorty": {
+    "image": "01a11235-b86c-7521-bc4b-7b7d644f08be",
+    "model": "01a1123c-cae2-77fb-be48-ea15149ad9c0"
+  },
+  "citadel-exterior": {
+    "image": "01a11235-f596-7717-9b0a-13e5afbb9888",
+    "model": "01a1123f-0998-73a9-b7b9-02116a0ff06e"
+  },
+  "nx5": {
+    "image": "01a11236-0ca7-7565-a8c7-601e760e8e26",
+    "model": "01a1123f-0ac5-7628-8831-2cd71720e8d0"
+  },
+  "stairgoblin": {
+    "image": "01a11329-9456-73fd-b29c-da6bed52c9fa",
+    "model": "01a11330-4a7e-7034-a1a6-ca3245321808"
+  },
+  "kingjellybean": {
+    "image": "01a11329-9443-75a8-8527-67b1968b3368",
+    "model": "01a11330-4aa9-7331-9f16-a7f94e59e650",
+    "rig": "01a1133c-8f9e-7143-89a5-9dbadbf27532",
+    "idle": "01a1133d-7848-7018-b364-fd86c41696e7"
+  },
+  "thirstystep": {
+    "image": "01a11329-93c4-727b-b056-4910503255cc",
+    "model": "01a11330-4a8f-7656-beba-24383a929d44"
+  },
+  "giant": {
+    "image": "01a11329-942e-7465-8e37-c028a0d38a85",
+    "model": "01a11330-4aab-7792-979e-043d61eb7029"
+  },
+  "zeep": {
+    "image": "01a11329-fb87-75ae-baea-5605092e3c32",
+    "model": "01a11331-5555-7585-9fb1-b029b11c3c46",
+    "rig": "01a1133c-903a-7610-96ae-a34aa8a925e3",
+    "idle": "01a1133d-77c7-749d-b46e-31082230e877"
+  },
+  "kyle": {
+    "image": "01a11329-fc74-775b-b8cd-4ef382d9a309",
+    "model": "01a11331-7d59-75d8-a1fb-bbf571c35087",
+    "rig": "01a1133c-8fa2-735d-9e73-f3c00f396d97",
+    "idle": "01a1133d-782c-7755-af23-64ad21dfbd39"
+  },
+  "xenonbloom": {
+    "image": "01a1132a-0ed7-7218-8be5-96679314c957",
+    "model": "01a11331-bab7-7215-a370-1c6e8a237b46",
+    "rig": "01a1133c-8fa6-76ae-b991-460d514da36f",
+    "idle": "01a1133d-7861-75a4-bc1c-1e5684fbf2b0"
+  },
+  "poncho": {
+    "image": "01a1132a-4f5b-74d5-9454-aa9877f2b0b0",
+    "model": "01a11331-f671-74bf-aebb-715bb882e976",
+    "rig": "01a1133c-d865-711c-bd47-e24083752dc4",
+    "idle": "01a1133d-a251-76a1-97f1-d69a0299e902"
+  },
+  "annie": {
+    "image": "01a1132a-62bf-75e3-8be1-5ad6598ea3b0",
+    "model": "01a11332-b038-73b8-a350-a30ed9afc7d7",
+    "rig": "01a1133c-d864-70e1-8da4-6ff1ca8d619a",
+    "idle": "01a1133d-a28c-7424-9bc1-e750ba4d319e"
+  },
+  "hepatitis": {
+    "image": "01a1132a-762b-77aa-8cf0-44d85474c2a2",
+    "model": "01a11332-d70c-7559-a9cb-ff93b45d4b39"
+  },
+  "gonorrhoea": {
+    "image": "01a1132a-866a-717e-afda-0ccaa8783c70",
+    "model": "01a11332-fee2-70f6-86e3-e797279b94b7"
+  },
+  "tuberculosis": {
+    "image": "01a1132b-1770-7349-8f94-eb7fdf016df8",
+    "model": "01a11334-05ad-777c-893b-13a236bca794"
+  },
+  "plague": {
+    "image": "01a1132b-19d4-75f6-9310-e3be3272c6ee",
+    "model": "01a11334-1bb5-763c-8e9f-e51f09b57dd8"
+  },
+  "ecoli": {
+    "image": "01a1132b-3159-70c5-b33b-ec80e729ea00",
+    "model": "01a11334-4206-775a-909a-d7c7e6c3da7e"
+  },
+  "needful": {
+    "image": "01a1132b-3b04-75d5-ba2f-67469e21a8aa",
+    "model": "01a11334-c72b-7209-ad6c-2ba020346433",
+    "rig": "01a1133c-e3b4-770e-a8b3-c2f343dd2208",
+    "idle": "01a1133d-a241-752e-9615-5a6f1579edfd"
+  },
+  "needful-shop": {
+    "image": "01a1132b-7f3c-7563-bd92-72c8d9839adb",
+    "model": "01a11335-0d03-7173-94d6-69777f10b889"
+  },
+  "jerry-robe": {
+    "image": "01a1132b-909f-7049-81cf-b6c92a7bef67",
+    "model": "01a11335-47a4-7786-9046-786616a65fe9"
+  },
+  "jerry-golf": {
+    "image": "01a1132b-a300-7217-9ec9-6b4f042eab11",
+    "model": "01a11335-9ae9-711e-be01-d8d9c824f331"
+  },
+  "jerry-tux": {
+    "image": "01a1132b-aa32-71be-a2a3-adff20476e9b",
+    "model": "01a11336-1e09-7408-a74d-95c0af880c5e"
+  },
+  "jerry-track": {
+    "image": "01a1132b-bcaf-724d-bd28-967ddbfc26c5",
+    "model": "01a11336-262e-73c9-9321-34b476dff685"
+  },
+  "jerry-gown": {
+    "image": "01a1132c-3853-757f-aef0-b85f56e93b1d",
+    "model": "01a11336-7ade-722b-a2a3-956021b922cb"
+  },
+  "jerry-cardigan": {
+    "image": "01a1132c-8aa5-7797-8aa0-0b647491a4cc",
+    "model": "01a11336-fd51-74d9-911e-41a87eb98662"
+  },
+  "arthricia": {
+    "image": "01a1132c-9745-7796-85cf-bac2ae880e21",
+    "model": "01a11337-02ff-7560-ac22-d68467faac66",
+    "rig": "01a1133c-e4c6-7507-b34b-d7cb9dcefe8b",
+    "idle": "01a1133d-a244-7156-8c5b-1197ac1e3a39"
+  },
+  "magdalian-a": {
+    "image": "01a1132c-a99b-7772-9758-7ad957cb9ba9",
+    "model": "01a11337-05ea-7572-b25c-da56ecb26510"
+  },
+  "magdalian-b": {
+    "image": "01a1133e-bf6e-777d-97f5-df6f7d8b4d2e",
+    "model": "01a11340-fa10-7771-8658-c6b141369bf3"
+  },
+  "magdalian-c": {
+    "image": "01a1132c-ff8a-71d0-9be7-509ab4d27a79",
+    "model": "01a11337-483c-74ad-843c-3fbb700ec26b"
+  },
+  "flippynips": {
+    "image": "01a1133e-bf81-716d-b417-33cec4f54195",
+    "model": "01a11340-fa28-771a-8a5c-a54f2d4d3415"
+  },
+  "scroopy": {
+    "image": "01a1132d-30e2-7451-9a8d-212a7cf2121c",
+    "model": "01a11337-f0ce-74a6-ba51-3cc73ab9d0eb",
+    "rig": "01a1133d-2b38-7699-bba8-07f3a8af9742",
+    "idle": "01a1133d-ccf5-716e-bc2e-2c90366aae88"
+  },
+  "plutonian-a": {
+    "image": "01a1132d-3e88-7652-9f0c-f1ff61fba3a9",
+    "model": "01a11338-0cfe-7499-827d-50f80f7c37da"
+  },
+  "plutonian-b": {
+    "image": "01a1132d-3f4c-7624-95ba-c9f6a1c058df",
+    "model": "01a11338-3aea-74a9-8dfe-d8fec9f81197"
+  },
+  "gearhead": {
+    "image": "01a1132d-7ebb-7279-8134-a61fce0f6b24",
+    "model": "01a11338-6d5c-732c-88f3-92f373cd5587",
+    "rig": "01a1133d-2b1b-7535-b605-3b10ecd8e484",
+    "idle": "01a1133d-ccbc-7358-a195-0507d2891409"
+  },
+  "gearperson-a": {
+    "image": "01a1132d-8051-7735-b203-050688f57b28",
+    "model": "01a11339-1381-7137-ae7c-1113aa466027"
+  },
+  "gearperson-b": {
+    "image": "01a1132d-c024-7382-bfa2-b9be25bfc76e",
+    "model": "01a11339-2d9f-7519-a6a9-a93683944cfe"
   }
 }

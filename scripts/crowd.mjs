@@ -31,9 +31,12 @@ const FULL = join(ROOT, 'node_modules', '.cache', 'meshy-full');
 export const CROWD = [
   // rigged, posed on their idle
   'rick', 'cowboyrick', 'factoryrick', 'constructionrick', 'sweaterrick', 'suitrick', 'detectiverick', 'cop', 'morty', 'copmorty',
+  // (the multiverse's Phase 3: Mortytown's, and the Ricks of the Ricklantis Mixup)
+  'rickd3', 'simplerick', 'evilrick', 'bigmorty', 'slickmorty',
   // modelled standing at ease
   'wizardrick', 'hazmatrick', 'sheriffrick', 'retrorick', 'visorrick', 'doofusrick', 'mulletrick', 'chefrick', 'pilotrick', 'punkrick',
   'hobbitmorty', 'beaniemorty', 'sheriffmorty', 'overallsmorty', 'maskmorty', 'glassesmorty', 'astronautmorty', 'punkmorty',
+  'supremeguard', 'garmentrick',
 ];
 const TRIS = 2400;
 const AT = 0.6; // seconds into the idle

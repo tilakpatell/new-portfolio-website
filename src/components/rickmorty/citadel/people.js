@@ -45,15 +45,15 @@ const FAR = 30;
 
 // a walker's heading (+x turned to (cos, -sin)) as a Meshy figure's turn
 // (they face +z)
-const yawOf = (face) => face + Math.PI / 2;
-const turnTo = (a, b, k) => {
+export const yawOf = (face) => face + Math.PI / 2;
+export const turnTo = (a, b, k) => {
   let d = b - a;
   d = Math.atan2(Math.sin(d), Math.cos(d));
   return a + d * Math.min(1, k);
 };
 
 // a point along a closed loop, `s` metres round it: [x, z, heading]
-function along(loop, lengths, total, s) {
+export function along(loop, lengths, total, s) {
   let d = ((s % total) + total) % total;
   for (let i = 0; i < loop.length; i++) {
     if (d <= lengths[i]) {
@@ -209,6 +209,8 @@ export async function createPeople({ outdoors, factory, council, places, tier = 
         animate(rick, t, Math.min(1, h.speed / RICK.run), null);
       }
     }
+    // (in Mortytown, the concourse's people are out of sight: let them be)
+    if (state.where === 'mortytown') return;
     let here = castHere.get(state.mood);
     if (!here) castHere.set(state.mood, (here = new Set(castFor(state.mood).map((c) => c.id))));
     for (const [id, f] of cast) {

@@ -6,10 +6,12 @@
 // 3D on the sphere, so there's no seam and no pinching at the poles.
 //
 //   invincible.webp / -sm   the colour
-//   invincible-normal.webp  the relief, as a tangent-space normal map
+//   invincible-normal.webp / -hq  the relief, as a tangent-space normal map
 //   invincible-glow.webp    what glows of itself: the molten rifts and vents
 //   invincible-night.webp / -sm   the cities' lights, for the night side
 //   invincible-clouds.webp / -sm  the high dust, as an alpha map
+//   invincible-rough.webp   how rough: the old sea beds glossy, the rest matte
+//                           (ONLY=rough makes just this)
 //
 // node scripts/build-invincible-planet.mjs   (about half a minute)
 
@@ -276,11 +278,28 @@ const save = async (buf, name, w, q = 86) => {
     .toFile(path.join(OUT, name));
   console.log('  wrote', name);
 };
+// how rough: the old sea beds glossy (they catch the sun: the planet's own
+// floor is 0.22, so a glint, not a white disc), the plateaus matte
+const rough = Buffer.alloc(W * H * 3);
+for (let i = 0; i < W * H; i++) {
+  const h = height[i];
+  const r = h < 0.36 ? 0.25 : h < 0.5 ? 0.25 + ((h - 0.36) / 0.14) * 0.65 : 0.9;
+  rough[i * 3] = rough[i * 3 + 1] = rough[i * 3 + 2] = Math.round(r * 255);
+}
 console.log('saving…');
+// (ONLY=rough: just the roughness map, the others left as they are)
+// (ONLY=rough,normal: just those, the others left as they are; the relief at
+// 2048 too, for ultra)
+const only = process.env.ONLY ? process.env.ONLY.split(',') : null;
+if (!only || only.includes('rough')) await save(rough, 'invincible-rough.webp', 1024, 88);
+if (!only || only.includes('normal')) {
+  await save(normal, 'invincible-normal.webp', 1024, 90);
+  await save(normal, 'invincible-normal-hq.webp', 2048, 92);
+}
+if (only) process.exit(0);
 const col = rgb(color);
 await save(col, 'invincible.webp', 1024);
 await save(col, 'invincible-sm.webp', 512);
-await save(normal, 'invincible-normal.webp', 1024, 90);
 await save(rgb(glow), 'invincible-glow.webp', 1024);
 const lit = grey(night);
 for (let i = 0; i < lit.length; i += 3) {

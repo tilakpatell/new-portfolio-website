@@ -1,6 +1,7 @@
-// The Citadel of Ricks, the story: the five things to do, what's said at
-// the Council and the ballot box, and how the Cop Ricks hunt. The place
-// itself is in ./layout.js.
+// The Citadel of Ricks, the story: the five things to do, and Mortytown's
+// Locos beside them; what's said at the Council and the ballot box, and how
+// the Cop Ricks hunt. The place itself is in ./layout.js (and Mortytown in
+// ./mortytown.js).
 
 import { progress } from '../../middleearth/towns/story';
 
@@ -46,10 +47,21 @@ export const QUESTS = [
     needs: 'votemorty',
     locked: 'After the election.',
   },
+  // on the side, any time after the day care: listed last, so the story's
+  // next step always comes first
+  {
+    id: 'locos',
+    name: 'The Mortytown Locos',
+    where: 'Mortytown, down the lift in the south-west',
+    blurb: 'Find the three Locos who robbed Morty Mart, and walk each one to Cop Morty.',
+    go: 'Morty Mart’s been robbed. The Locos are hiding somewhere in Mortytown. Find all three and walk each one to Cop Morty.',
+    needs: 'daycare',
+    locked: 'After the day care.',
+  },
 ];
 
 // the seal each one wins (../../Achievements.jsx)
-export const SEAL = { daycare: 'daycare', wafers: 'wafers', council: 'council', votemorty: 'votemorty', citadelout: 'citadelout' };
+export const SEAL = { daycare: 'daycare', wafers: 'wafers', council: 'council', votemorty: 'votemorty', citadelout: 'citadelout', locos: 'locos' };
 
 // The Citadel's mood: an ordinary day, election day once the first three
 // are done, a red alert once Candidate Morty has won, and an ordinary day

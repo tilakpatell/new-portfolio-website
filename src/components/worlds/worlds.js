@@ -15,7 +15,7 @@ export const WORLD_MB = {
   '/invincible': 4, // the three HD figures and the city's three skies
   '/cybertron': 36, // Iacon at war's robots, Metroplex and the city's kit (the world at the top), and below it Roll out's cast, scanned ground, rocks and sky, the statues, and Optimus's transformation
   '/avengers': 11, // the walkable compound's sky, scanned ground and trees, Spider-Man and the people from Sketchfab (each building's game more as you go in)
-  '/c-137': 15, // about: the Smiths' street, the house, the school and Blips and Chitz, the Smiths and the cruiser; Portal panic's cast; the Citadel inside, its cast, the Council and the crowd's light copies (partly added up from the files)
+  '/c-137': 16, // about: the Smiths' street, the house, the school and Blips and Chitz, the Smiths and the cruiser; Portal panic's cast; the Citadel inside, its cast, the Council and the crowd's light copies (partly added up from the files). Mortytown is about 11 more, fetched when the lift goes down
   '/albuquerque': 15, // the town's buildings, cars, the RV and the cast, and Metherria's cast and lab
   '/scranton': 5, // the office cast and set (the walkable office and the one from above share them)
   '/galaxy': 8, // drawn in code (its planets, most of its ships), but for the big ships, the Death Star and its trench, Slave I and the Falcon; and down on a world, its models (its people, walkers, landmarks: a few MB a world)

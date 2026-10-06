@@ -32,10 +32,16 @@
 // tail). While hunters are on you (`fight`), the ordinary ships near you run
 // for it: faster, and weaving.
 //
-// createTraffic(parent, { small }) → { setCrew(id), update(dt, t, ship, { fight }) → events,
+// The ordinary ships also run from a pilot they fear (`feared`: standing.js,
+// you've shot too many of them), fight or no; and a patrol of the law going
+// past a pilot the law wants (`wanted`) reports them: a `spotted` event, once
+// a group, for the scene to send the law after you.
+//
+// createTraffic(parent, { small, engines }) → { setCrew(id), update(dt, t, ship, { fight, feared, wanted }) → events,
 //   hit(from, to) → hit or null, convoy(ship, side), distress(ship, side) → the one in
 //   distress (an Object3D) or null, clear(), dispose() }
-// Points are in `parent`'s space (the map's).
+// Points are in `parent`'s space (the map's). `engines` (engines.js), when
+// given, lights each ship's engines, brighter as it runs from a fight.
 
 import * as THREE from 'three';
 import { createFleet } from './glbFleet';
@@ -100,6 +106,7 @@ const ALL = [...new Set(kindsFor(null))];
 const runOf = (speed) => Math.min(90, Math.max(30, speed * 10));
 const DOCKING = 0.32; // how much of the everyday traffic at a place is coming in to land, or launching
 const FLEE = { near: 70, faster: 0.9, ease: 1.2 }; // how near you a civil ship runs from a fight, how much faster it goes, how quickly it gets going
+export const SPOT = 32; // how near a patrol of the law must pass a wanted pilot to report them
 const PEEL = { from: 0.52, to: 0.88, roll: 0.95 }; // where along its lane a wing peels apart (past you), and how far each rolls
 const FADE_OVER = 8; // map units over which a ship whose run was cut short fades into sight (or out of it)
 
@@ -148,7 +155,7 @@ const stationBy = (ship) => {
   return gap < DEEP.near ? best : null;
 };
 
-export function createTraffic(parent, { small = false, fleet = createFleet() } = {}) {
+export function createTraffic(parent, { small = false, fleet = createFleet(), engines = null } = {}) {
   const rand = Math.random;
   const MAX = small ? 8 : 18; // groups at once
   const pool = {}; // kind → models not in use
@@ -171,10 +178,16 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
   };
   const take = (kind) => {
     // a built stand-in waiting in the pool gives way once the model is here
-    if (fleet.loaded(kind) && pool[kind]?.length && !pool[kind][pool[kind].length - 1].model) for (const m of pool[kind].splice(0)) m.dispose();
+    if (fleet.loaded(kind) && pool[kind]?.length && !pool[kind][pool[kind].length - 1].model) for (const m of pool[kind].splice(0)) drop(m);
     const model = pool[kind]?.pop() ?? fleet.make(kind);
     model.fit ??= 1 / Math.max(model.size?.x ?? 1, model.size?.y ?? 1, model.size?.z ?? 1); // to its biggest dimension
+    // (its engines, once: lit while it's out, nothing while it's in the pool)
+    if (engines && !model.engine) model.engine = engines.add(kind, model.group, { size: model.size });
     return model;
+  };
+  const drop = (model) => {
+    engines?.remove(model.engine);
+    model.dispose();
   };
   const give = (kind, model) => {
     model.group.removeFromParent();
@@ -298,6 +311,8 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
       gr.position.addScaledVector(lift, Math.sin(g.weave + m.phase) * m.size * weave);
       gr.scale.setScalar(m.size * m.model.fit * Math.max(1e-3, grow));
       gr.quaternion.copy(turn);
+      // (its engines a little harder running from a fight; easing off to land)
+      if (m.model.engine) engines.set(m.model.engine, { throttle: (g.dock ? 0.3 : 0.45) + 0.45 * g.flee, boost: 0 });
       // rolled into the peel (most of the way through it), and a jink while running
       const lean = (m.roll ? m.roll * Math.sin(apart * Math.PI) : 0) + g.flee * 0.35 * Math.sin(t * 2.1 + m.phase);
       if (lean) gr.quaternion.multiply(bank.setFromAxisAngle(Z, lean));
@@ -327,9 +342,12 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
 
     // ship: the player's ship ({ x, y, z, heading, speed }) or null. Returns
     // what happened: [{ type: 'traffic', kind }] as a group goes past you
-    update(dt, t, ship, { fight = false } = {}) {
+    update(dt, t, ship, { fight = false, feared = false, wanted = false } = {}) {
       clock += dt;
       const events = [];
+      // the law's own ships, in passing (the side's `law` faction's kinds)
+      const side = sideFor(crew);
+      const law = wanted && side?.law ? side.factions[side.law] : null;
       const bigs = live.filter((g) => g.type.big).length;
       if (clock >= nextAt && live.length < MAX) {
         nextAt = clock + between(rand, small ? 2.5 : 1, small ? 6 : 3);
@@ -364,11 +382,20 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
         if (pts) spawn(kind, pts, true);
       }
       for (const g of [...live]) {
-        // the ordinary ships near you run from a fight (and settle once it's over)
+        // the ordinary ships near you run from a fight (and settle once it's
+        // over), and from a pilot they fear, fight or no
         let run = 0;
-        if (fight && ship && g.type.civil && !g.type.big && !g.dock) {
+        if ((fight || feared) && ship && g.type.civil && !g.type.big && !g.dock) {
           const p = g.members.find((m) => m.alive)?.model.group.position;
           if (p && (p.x - ship.x) ** 2 + (p.y - ship.y) ** 2 + (p.z - ship.z) ** 2 < FLEE.near * FLEE.near) run = 1;
+        }
+        // a patrol of the law passing a wanted pilot reports them, once
+        if (law && ship && !g.spotted && !g.type.civil && !g.type.big && law.kinds.some(([k]) => k === g.kind)) {
+          const p = g.members.find((m) => m.alive)?.model.group.position;
+          if (p && (p.x - ship.x) ** 2 + (p.y - ship.y) ** 2 + (p.z - ship.z) ** 2 < SPOT * SPOT) {
+            g.spotted = true;
+            events.push({ type: 'spotted', kind: g.kind, faction: side.law });
+          }
         }
         g.flee += (run - g.flee) * Math.min(1, dt * FLEE.ease);
         g.weave += dt * (1.3 + g.flee * 2); // (its own phase, run on at its own rate: a rate times the clock would jump)
@@ -471,7 +498,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
 
     dispose() {
       while (live.length) end(live[0]);
-      for (const list of Object.values(pool)) for (const m of list) m.dispose();
+      for (const list of Object.values(pool)) for (const m of list) drop(m);
     },
   };
 }

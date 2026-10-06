@@ -40,3 +40,20 @@ describe('the universes', () => {
     for (const u of UNIVERSES) for (const p of u.pages ?? []) expect(ROUTES.some((r) => matchPath(r, p.to)), p.to).toBe(true);
   });
 });
+
+describe('the air round the fandoms’ planets', () => {
+  it('every fandom planet says what its air is, or that it has none', () => {
+    for (const u of UNIVERSES.filter((x) => x.kind === 'fandom' && !x.portal)) {
+      expect(u, u.id).toHaveProperty('air');
+      if (u.air) {
+        expect(u.air.colour, u.id).toMatch(/^#[0-9a-f]{6}$/i);
+        expect(u.air.density, u.id).toBeGreaterThan(0);
+        expect(u.air.top, u.id).toBeGreaterThan(1);
+        expect(u.air.top, u.id).toBeLessThan(1.1);
+      }
+    }
+    // (paper has no air, nor a Game Boy's screen)
+    expect(UNIVERSES.find((u) => u.id === 'office').air).toBeNull();
+    expect(UNIVERSES.find((u) => u.id === 'gaming').air).toBeNull();
+  });
+});
