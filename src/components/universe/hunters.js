@@ -37,7 +37,9 @@
 // you've made lately) brings more of them, and the ace more often; the
 // `first` pack of a visit is a small one.
 //
-// Events: { type: 'hunted', faction, kinds, prey, interdict }, { type: 'shot', faction }
+// Events: { type: 'hunted', faction, kinds, prey, interdict }, { type: 'shot', faction },
+// { type: 'stage', id, kind, faction, stage, of, summon } (an ace hurt into
+// its next stage: hunterRules.js's `stage`),
 // (one fired at you), { type: 'laser', damage, from } (and hit), { type:
 // 'escaped', faction } and { type: 'cleared', faction, rescued } (rescued:
 // they were after someone else, and you saw them off).
@@ -88,7 +90,7 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
   const answer = (r) => {
     if (!r) return null;
     if (r.down) give(r.hunter);
-    return { id: r.id, kind: r.kind, at: new THREE.Vector3(r.at.x, r.at.y, r.at.z), size: r.size, down: r.down };
+    return { id: r.id, kind: r.kind, at: new THREE.Vector3(r.at.x, r.at.y, r.at.z), size: r.size, down: r.down, faction: r.hunter.pack.faction, prey: Boolean(r.hunter.pack.prey && !r.hunter.pack.angry) };
   };
   // something else they're after, as the rules read it: where it is, the
   // way it's pointing, and whether it's still there

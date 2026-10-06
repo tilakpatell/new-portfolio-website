@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOMB, FACTIONS, FIGHT, HUNTER_KINDS, LOSE, NAMES, TRAITS, blocked, clearOf, createHunt, entryPoint, fightSpeed, hitRadius, packPlan, shipVelocity, slotsFor, turnRate, turnRateAt, turnToward } from './hunterRules';
+import { BOMB, FACTIONS, FIGHT, HOLDOFF, HUNTER_KINDS, LOSE, NAMES, TRAITS, blocked, clearOf, createHunt, entryPoint, fightSpeed, hitRadius, packPlan, shipVelocity, slotsFor, turnRate, turnRateAt, turnToward } from './hunterRules';
 import { KINDS as GALAXY_KINDS, FACTIONS as GALAXY_FACTIONS } from '../galaxy/hunted';
 
 // a seeded random, so a fight is the same every time
@@ -96,12 +96,12 @@ describe('a bounty hunter', () => {
       expect(HUNTER_KINDS[kind].speed).toBeGreaterThan(20); // (faster than you boost: no outrunning one)
       expect(NAMES[kind]).toBeTruthy();
     }
-    // and Slave I lands shots, and takes its six hits
+    // and Slave I lands shots, and takes every one of its hits
     const seen = fight({ faction: 'fett', opts: { size: 1 }, seconds: 60 });
     expect(seen.shots).toBeGreaterThan(5);
     const h = seen.hunt.live[0];
     const through = () => seen.hunt.hit({ x: h.pos.x - 3, y: h.pos.y, z: h.pos.z }, { x: h.pos.x + 3, y: h.pos.y, z: h.pos.z }, 1);
-    for (let i = 0; i < 5; i++) expect(through()?.down).toBeFalsy();
+    for (let i = 0; i < HUNTER_KINDS.slave1.hp - 1; i++) expect(through()?.down).toBeFalsy();
     expect(through()?.down).toBe(true);
   });
 });
@@ -517,10 +517,11 @@ describe('shooting them', () => {
     expect(hunt.hit({ x: 500, y: 0, z: 0 }, { x: 503, y: 0, z: 0 })).toBeNull();
     const first = through(ace);
     expect(first).toMatchObject({ id: ace.id, kind: 'tieadvanced', down: false });
-    expect(hunt.targets.find((c) => c.id === ace.id)).toMatchObject({ hp: 4, hpMax: 5 });
+    expect(hunt.targets.find((c) => c.id === ace.id)).toMatchObject({ hp: HUNTER_KINDS.tieadvanced.hp - 1, hpMax: HUNTER_KINDS.tieadvanced.hp });
     // a fusion cannon's bolt is worth three
     expect(hunt.hit({ x: ace.pos.x - 3, y: ace.pos.y, z: ace.pos.z }, { x: ace.pos.x + 3, y: ace.pos.y, z: ace.pos.z }, 3)).toMatchObject({ down: false });
-    expect(through(ace)).toMatchObject({ down: true, at: { x: ace.pos.x, y: ace.pos.y, z: ace.pos.z } });
+    // (and one worth what it has left downs it)
+    expect(hunt.hit({ x: ace.pos.x - 3, y: ace.pos.y, z: ace.pos.z }, { x: ace.pos.x + 3, y: ace.pos.y, z: ace.pos.z }, ace.hp)).toMatchObject({ down: true, at: { x: ace.pos.x, y: ace.pos.y, z: ace.pos.z } });
     expect(hunt.count).toBe(1);
     // (whatever the other is, a TIE, an interceptor or a bomber: a hit worth all it has downs it)
     expect(hunt.hit({ x: tie.pos.x - 3, y: tie.pos.y, z: tie.pos.z }, { x: tie.pos.x + 3, y: tie.pos.y, z: tie.pos.z }, tie.hp)).toMatchObject({ kind: tie.kind, down: true });
@@ -727,5 +728,117 @@ describe('traits: how some kinds fight their own way', () => {
     expect(lit).toBeGreaterThan(1);
     expect(lit).toBeLessThanOrEqual(seen.runs);
     expect(far).toBe(0);
+  });
+});
+
+describe('an ace with stages', () => {
+  const staged = Object.entries(HUNTER_KINDS).filter(([, k]) => k.stages);
+  const flyStill = (s) => s;
+  // a fight with one ace of `kind` alone, hurt to just under its stage, by hand
+  const hurtInto = (kind, { seed = 3 } = {}) => {
+    const type = HUNTER_KINDS[kind];
+    const faction = Object.entries(FACTIONS).find(([, f]) => f.kinds.some(([k]) => k === kind) || f.ace === kind)[0];
+    const hunt = createHunt({ rand: seeded(seed) });
+    let s = start();
+    hunt.pack(faction, s, { size: 1, ace: type === HUNTER_KINDS[FACTIONS[faction].ace] });
+    // (a bounty's pack of one is the kind itself; an ace's pack has it: find it)
+    let ace = hunt.live.find((h) => h.kind === kind);
+    if (!ace) {
+      hunt.clear();
+      // sent as the faction's only kind
+      const kinds = { ...HUNTER_KINDS };
+      const factions = { solo: { role: 'hunt', weight: 1, kinds: [[kind, 1]], laser: [1, 1, 1], size: [1, 1], family: 'test' } };
+      const h2 = createHunt({ rand: seeded(seed), kinds, factions });
+      h2.pack('solo', s, { size: 1, ace: false });
+      ace = h2.live[0];
+      return { hunt: h2, ace, s };
+    }
+    return { hunt, ace, s };
+  };
+
+  it('every stage names what changes, within reason, and summons only a faction that exists', () => {
+    expect(staged.length).toBeGreaterThanOrEqual(8);
+    for (const [kind, k] of staged) {
+      let last = 1;
+      for (const st of k.stages) {
+        expect(st.below, kind).toBeGreaterThan(0);
+        expect(st.below, kind).toBeLessThan(last);
+        last = st.below;
+        const { summon, ...over } = st;
+        delete over.below;
+        expect(Object.keys(over).length + (summon ? 1 : 0), kind).toBeGreaterThan(0);
+        if (over.trait) expect(TRAITS, kind).toContain(over.trait);
+        if (summon) expect(FACTIONS[summon], `${kind} summons ${summon}`).toBeTruthy();
+        if (over.fire) expect(over.fire[0], kind).toBeLessThan(over.fire[1]);
+      }
+    }
+  });
+
+  it('changes its ways once hurt past the stage, once, and says so (with whom it calls in)', () => {
+    for (const [kind, k] of staged) {
+      const { hunt, ace } = hurtInto(kind);
+      const was = { ...ace.type };
+      const st = k.stages[0];
+      // hurt to just above the stage: nothing yet
+      const toStage = ace.hp - Math.floor(k.hp * st.below);
+      for (let i = 0; i < toStage - 1; i++) hunt.damage(ace.id, 1);
+      let events = hunt.update(DT, start());
+      expect(events.some((e) => e.type === 'stage'), kind).toBe(false);
+      expect(ace.type.speed, kind).toBe(was.speed);
+      // and past it
+      hunt.damage(ace.id, 1);
+      expect(ace.hp / k.hp).toBeLessThanOrEqual(st.below);
+      events = hunt.update(DT, start());
+      const got = events.find((e) => e.type === 'stage');
+      expect(got, kind).toMatchObject({ kind, stage: 1, of: k.stages.length, summon: st.summon ?? null });
+      for (const [key, v] of Object.entries(st)) if (key !== 'below' && key !== 'summon') expect(ace.type[key], `${kind} ${key}`).toEqual(v);
+      expect(ace.type.hp, kind).toBe(k.hp); // (its hull is what it was)
+      expect(ace.alive).toBe(true);
+      // never twice
+      hunt.damage(ace.id, 1);
+      expect(hunt.update(DT, start()).some((e) => e.type === 'stage'), kind).toBe(false);
+    }
+  });
+
+  it('fights on the new way: Vader faster and firing quicker, Fett dropping charges, Bossk holding off', () => {
+    const quick = (kind, seconds = 25) => {
+      const { hunt, ace } = hurtInto(kind);
+      const st = HUNTER_KINDS[kind].stages[0];
+      const n = ace.hp - Math.floor(HUNTER_KINDS[kind].hp * st.below);
+      for (let i = 0; i < n; i++) hunt.damage(ace.id, 1);
+      let s = start();
+      const seen = { shots: 0, bombs: 0, nearest: Infinity, fastest: 0 };
+      for (let t = 0; t < seconds; t += DT) {
+        s = move(flyStill(s, t));
+        for (const e of hunt.update(DT, s)) if (e.type === 'shot') seen.shots += 1;
+        for (const l of hunt.lasers) if (l.on && l.bomb) seen.bombs += 1;
+        if (ace.alive) {
+          seen.nearest = Math.min(seen.nearest, apart(ace.pos, s));
+          seen.fastest = Math.max(seen.fastest, Math.hypot(ace.vel.x, ace.vel.y, ace.vel.z));
+        }
+      }
+      return seen;
+    };
+    const plain = (kind, seconds = 25) => {
+      const { hunt, ace } = hurtInto(kind);
+      let s = start();
+      const seen = { shots: 0, nearest: Infinity, fastest: 0 };
+      for (let t = 0; t < seconds; t += DT) {
+        s = move(flyStill(s, t));
+        for (const e of hunt.update(DT, s)) if (e.type === 'shot') seen.shots += 1;
+        if (ace.alive) {
+          seen.nearest = Math.min(seen.nearest, apart(ace.pos, s));
+          seen.fastest = Math.max(seen.fastest, Math.hypot(ace.vel.x, ace.vel.y, ace.vel.z));
+        }
+      }
+      return seen;
+    };
+    const vader = quick('tieadvanced');
+    const calm = plain('tieadvanced');
+    expect(vader.shots).toBeGreaterThan(calm.shots * 1.2);
+    expect(vader.fastest).toBeGreaterThan(calm.fastest);
+    expect(quick('slave1').bombs).toBeGreaterThan(0);
+    expect(plain('slave1', 10).shots).toBeGreaterThan(0);
+    expect(quick('houndstooth').nearest).toBeGreaterThan(HOLDOFF.near * 0.8);
   });
 });

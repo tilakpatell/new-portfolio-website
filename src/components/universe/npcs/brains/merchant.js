@@ -14,6 +14,11 @@ export default function merchant(npc, me, world) {
     m.offered = true;
     return { leave: true, say: 'grudge' };
   }
+  // (and it wants nothing to do with a pilot the ordinary ships fear: standing.js's world.feared)
+  if (world.feared && !m.offered && world.you && apart(world.you, me.pos) < NPC.offer) {
+    m.offered = true;
+    return { leave: true, say: 'shunned' };
+  }
   if (!m.park) {
     const { it: st, d } = nearest(world.stations, me.pos);
     // just off the station, on the side it came from (or where it is, with
@@ -30,4 +35,4 @@ export default function merchant(npc, me, world) {
   if (m.offered && you && apart(you, me.pos) > NPC.done) return { leave: true };
   return { to: m.park };
 }
-merchant.lines = ['offer', 'grudge']; // (the lines a crew must have for one, beyond everyone's)
+merchant.lines = ['offer', 'grudge', 'shunned']; // (the lines a crew must have for one, beyond everyone's)

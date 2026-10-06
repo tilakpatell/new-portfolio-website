@@ -13,9 +13,15 @@
 // flying ({ n, id, npc, pos, vel, hp, hpMax, clock, leaving, mind: its own
 // notes }) and the intent { to?: point it flies to, match?: a velocity it
 // flies along with (yours, alongside), speed?, fire?: 'you' | a hunter's id,
+// fireRate?: of its usual time between shots (a nemesis in a fury: less),
 // say?: a line's key, event?: { type, … }, leave?: true, delegate?: { via:
 // 'wing', kind } | { via: 'hunt', faction } (the wing or the hunt flies it:
 // wingRules.js, hunterRules.js) }.
+//
+// A shot at you is a throw of the dice (a cloud of fire, not a wall), and
+// the dice are yours to load: turning hard, pitching hard or boosting
+// takes up to NPC.dodge of a shot's chance away (`dodge`), so flying
+// straight and level under fire is what gets you hit.
 //
 // Relations, the same for every brain: one that `fears` a faction leaves
 // when one of them comes near it; one that `hunts` a faction goes after one
@@ -40,7 +46,10 @@
 // world: { you: { x, y, z, heading, speed } | null, hunters: [{ id, at,
 //   faction }], stations: [{ id, at, r }], solids: [{ at: [x, y, z], r }],
 //   next: the director's next event ({ id, in }), heat: the trouble you've
-//   made lately (scene.js's), shield: your shields, 0…100 }
+//   made lately (scene.js's), shield: your shields, 0…100, wanted / feared /
+//   friend: your standing (standing.js: the law's inspectors find a wanted
+//   pilot on every scan, the merchants shun a feared one, Hondo waves a
+//   friend of pirates through) }
 // Events: { type: 'say', n, id, key } ('seen', 'hello', 'hit', 'leaving', and each brain's own),
 // { type: 'delegate', n, via, kind | faction }, { type: 'offer', n },
 // { type: 'tip', n, next }, { type: 'shot', n, from, to, at, hit, damage },
@@ -71,6 +80,8 @@ export const remember = (memory, id) => (memory[id] ??= { met: 0, shot: 0, grudg
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const between = (rand, [a, b]) => a + rand() * (b - a);
+// how much of a shot at you is dodged, 0…NPC.dodge: turning, pitching, boosting
+export const dodge = (you) => (you ? clamp(Math.abs(you.rate ?? 0) / 2.2 + Math.abs(you.tipRate ?? 0) / 2.2 + (Math.abs(you.speed ?? 0) > 15 ? 0.3 : 0), 0, NPC.dodge) : 0);
 
 // (numbered well clear of the hunters' and the skirmishes': the lock follows a number)
 export function createBrains({ rand = Math.random, firstId = 900001, brains = BRAINS, memory = {} } = {}) {
@@ -211,8 +222,8 @@ export function createBrains({ rand = Math.random, firstId = 900001, brains = BR
           const tgt = intent.fire === 'you' ? you : world.hunters?.find((h) => h.id === intent.fire)?.at;
           const d = tgt ? apart(tgt, me.pos) : Infinity;
           if (d < NPC.range) {
-            me.cool = between(rand, st.fire ?? [0.8, 1.4]);
-            const chance = clamp(0.5 * (1 - d / NPC.range) + 0.1, 0.05, 0.45);
+            me.cool = between(rand, st.fire ?? [0.8, 1.4]) * (intent.fireRate ?? 1);
+            const chance = clamp(0.5 * (1 - d / NPC.range) + 0.1, 0.05, 0.45) * (intent.fire === 'you' ? 1 - dodge(you) : 1);
             events.push({ type: 'shot', n: me.n, from: { ...me.pos }, to: { x: tgt.x, y: tgt.y, z: tgt.z }, at: intent.fire, hit: rand() < chance, damage: intent.fire === 'you' ? (st.damage ?? 6) : 1 });
           }
         }

@@ -36,6 +36,8 @@ export default function trickster(npc, me, world, dt) {
     m.at = me.clock;
     m.held = 0;
     m.away = 0;
+    // (a friend of pirates, standing.js's world.friend, flies free, and gets the word anyway)
+    if (world.friend) return { leave: true, say: 'friend', event: { type: 'tip', next: world.next ?? null } };
     return { to: spot, match, say: 'hello' };
   }
   m.held = Math.abs(you.speed ?? 0) < NPC.hold ? m.held + dt : 0;
@@ -45,4 +47,4 @@ export default function trickster(npc, me, world, dt) {
   return { to: spot, match };
 }
 trickster.tells = true; // (it has word of what's coming: the scene asks the director while one's about)
-trickster.lines = ['paid', 'angry']; // (the lines a crew must have for one, beyond everyone's; and a tip's, the informant's way)
+trickster.lines = ['paid', 'angry', 'friend']; // (the lines a crew must have for one, beyond everyone's; and a tip's, the informant's way)

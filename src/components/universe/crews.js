@@ -282,6 +282,7 @@ export const CREWS = [
           ['rick', 'Don’t you say his name. Morty, divert everything. Everything!'],
         ],
         evade: [['comms', 'Nice try. I trained with Birdperson. I know every move you taught him.']],
+        fury: [['comms', 'No more games, Rick. NO MORE GAMES!'], ['rick', 'She’s lost it, Morty! Everything she’s got, all at once! Don’t fly straight!']],
         retreat: [
           ['comms', 'This isn’t over, Rick. It’s never over. I’ll see you soon.'],
           ['rick', 'She’ll be back, Morty. Tougher. They always come back tougher. It’s a whole thing.'],
@@ -440,6 +441,24 @@ export const CREWS = [
         ['rick', 'That’s the galaxy, Morty. Cold, and full of jerks.'],
       ],
       // a Federation cruiser drops in and launches gunships (the director's capital ship)
+      // your standing (standing.js): the Federation marking you, the ordinary ships fearing or loving you, the pirates taking to you
+      standing: {
+        suspect: [['morty', 'Rick, the Federation ships keep scanning us.'], ['rick', 'We’re on a list, Morty. Congratulations. Lists are where the interesting people are.']],
+        wanted: [['comms', 'Attention all Federation units: Rick Sanchez, C-137, is wanted. Shoot on sight.'], ['rick', 'Wanted! Finally. Took them long enough.'], ['morty', 'That’s… that’s not a good thing, Rick.']],
+        trusted: [['comms', 'Federation customs here. You’re… cleared. Nice work out there, citizen.'], ['rick', 'Did a cop just thank me? Morty, I need to lie down.']],
+        feared: [['morty', 'Rick, that saucer just turned around when it saw us. They’re scared of us.'], ['rick', 'Good. Fear is efficient, Morty. Nobody cuts in front of you.']],
+        hero: [['comms', 'That’s him! That’s the guy who saved the saucer! Thank you!'], ['rick', 'Oh no. Morty, we’re heroes. This is the worst thing that’s ever happened to me.']],
+        friend: [['comms', 'Hey! It’s the Gromflomites’ favourite Earthman! Fly easy, friend!'], ['rick', 'The bugs like us, Morty. We’ve made some choices.']],
+      },
+      // a patrol going past has reported you (traffic.js's spotted)
+      spotted: [['morty', 'Rick, that patrol just saw us! They’re calling it in!'], ['rick', 'Snitches, Morty. The galaxy’s full of snitches. Get ready.']],
+      // an ace hurt into its next stage (hunterRules.js's stages), by who
+      stage: {
+        evilmortyship: [['comms', 'You’re good, Rick. Fine. Let’s see how you do against a hundred of me.'], ['morty', 'Rick, he’s falling back! And… those are MORE Mortys!']],
+        phoenixperson: [['comms', 'Engaging secondary systems.'], ['rick', 'He’s got a second gear, Morty. Of course he does. The Federation never skimps on the murder parts.']],
+        krombopulos: [['comms', 'Oh boy, now you’ve made me get serious!'], ['rick', 'He’s gone dark, Morty! Shoot where he isn’t!']],
+        any: [['rick', 'It just changed tactics, Morty! That’s new!'], ['morty', 'Why do they always get MORE dangerous when they’re hurt?!']],
+      },
       // the fight with the Federation cruiser (capitalRules.js): its turbolasers,
       // your shots off its shield, its projectors going, its bridge open, it
       // running or going up
@@ -941,6 +960,7 @@ export const CREWS = [
           ['luke', 'Never!'],
         ],
         evade: [['comms', 'I have you now.'], ['luke', 'No, you don’t! Artoo, hard about!']],
+        fury: [['comms', 'You have failed me for the last time.'], ['luke', 'He’s coming in with everything! Artoo, keep us moving!']],
         retreat: [
           ['comms', 'Enough. You will come to me, young Skywalker. It is your destiny.'],
           ['luke', 'He’s breaking off! Artoo, I don’t think he’s done with us.'],
@@ -995,6 +1015,7 @@ export const CREWS = [
           ['luke', 'Here they come. Artoo, give me full power to the guns!'],
         ],
         hit: [['comms', 'You shot Hondo! Hondo, who was being so reasonable! Boys!']],
+        friend: [['comms', 'Ahh, but it is YOU! The friend of every pirate in the outer lanes! No toll for you, my friend, never! Only a little news, from Hondo, with love.'], ['luke', 'Friend of every pirate. Artoo, we need to talk about our reputation.']],
         leaving: [['comms', 'Farewell, my friend! Remember Hondo fondly, if at all!'], ['r2', '[an unconvinced beep]']],
       },
       lando: {
@@ -1009,6 +1030,7 @@ export const CREWS = [
         ],
         hit: [['comms', 'Hey! That’s my ship you’re shooting at, kid!']],
         grudge: [['comms', 'You. You shot at my ship last time. No deal, kid. Not now, not ever.'], ['r2', '[a sheepish warble]']],
+        shunned: [['comms', 'I’ve heard about you, kid. Freighters don’t come back from where you’ve been. I don’t deal with pirates. Calrissian out.'], ['luke', 'He’s right, Artoo. What have we been doing?']],
         leaving: [['comms', 'This deal is getting worse all the time. Calrissian out.']],
       },
     },
@@ -1085,6 +1107,26 @@ export const CREWS = [
         ['luke', 'We were too late. Artoo, log it.'],
         ['r2', '[a low, sad warble]'],
       ],
+      // your standing (standing.js): the Empire marking you, the ordinary ships fearing or loving you, the pirates taking to you
+      standing: {
+        suspect: [['r2', '[a worried warble: Imperial patrols keep scanning us]'], ['luke', 'We’re on their list now, Artoo. Keep your eyes open.']],
+        wanted: [['comms', 'All Imperial units: the Rebel fighter is wanted. Engage on sight.'], ['luke', 'Wanted. Well. I guess that makes it official.'], ['r2', '[a proud little beep]']],
+        trusted: [['comms', 'Imperial customs. Your registry is… exemplary. Carry on.'], ['luke', 'Exemplary? Artoo, what did you put in our registry?'], ['r2', '[an innocent whistle]']],
+        feared: [['luke', 'That freighter turned and ran when it saw us. Artoo, they’re afraid of us.'], ['r2', '[a sad, low tone]'], ['luke', 'This isn’t what the Rebellion is for.']],
+        hero: [['comms', 'Red Five! It’s Red Five! Thank you, Red Five!'], ['luke', 'They know us, Artoo. We did some good out here.']],
+        friend: [['comms', 'The pirates of the outer lanes salute you, Jedi! Fly free!'], ['luke', 'Friends with pirates. Han would be proud. I’m not sure I am.']],
+      },
+      // a patrol going past has reported you (traffic.js's spotted)
+      spotted: [['r2', '[an alarmed shriek: that patrol’s seen us]'], ['luke', 'They’re calling it in. Here they come, Artoo.']],
+      // an ace hurt into its next stage (hunterRules.js's stages), by who
+      stage: {
+        tieadvanced: [['comms', 'Impressive. Now you will see what a Sith can do.'], ['luke', 'He’s faster! Artoo, he’s so much faster!']],
+        slave1: [['r2', '[a frantic warble: seismic charges!]'], ['luke', 'He’s dropping charges! Stay out of the blast, Artoo!']],
+        ig2000: [['comms', 'Combat parameters: adjusted.'], ['luke', 'The droid’s overclocking! It’s a blur!']],
+        houndstooth: [['luke', 'Bossk is backing off and pounding us from range! We have to close the distance!']],
+        punishingone: [['r2', '[a confused run of beeps: the target keeps vanishing]'], ['luke', 'Dengar’s jamming our sensors. Every time we hit him, he’s gone!']],
+        any: [['luke', 'It’s changed tactics! Artoo, watch it!'], ['r2', '[a tense warble]']],
+      },
       // the fight with the Star Destroyer (capitalRules.js): its turbolasers,
       // your shots off its shield, its domes going, its bridge open, it
       // running or going up
@@ -1551,6 +1593,7 @@ export const CREWS = [
           ['han', 'Not today, pal. Chewie, give me everything we’ve got!'],
         ],
         evade: [['comms', 'I have you now.'], ['han', 'Like hell you do!']],
+        fury: [['comms', 'You have failed me for the last time.'], ['han', 'He’s throwing everything at us! Chewie, evasive! EVASIVE!']],
         retreat: [
           ['comms', 'Another time, Captain. We will meet again. Count on it.'],
           ['han', 'He’s running. Vader’s running! Chewie, remember this moment.'],
@@ -1604,6 +1647,7 @@ export const CREWS = [
           ['han', 'Here we go. Chewie, guns!'],
         ],
         hit: [['comms', 'Solo! You shot at Hondo! After everything! Boys!']],
+        friend: [['comms', 'Solo! My brother in piracy! No toll for you, never, not from Hondo! Only news, and my undying affection.'], ['han', 'Brother in piracy. Chewie, we’ve let ourselves go.']],
         leaving: [['comms', 'Until next time, Captain! Try to be richer!'], ['han', 'Try to be gone.']],
       },
       lando: {
@@ -1621,6 +1665,7 @@ export const CREWS = [
         ],
         hit: [['comms', 'Han! Watch it! I just had that freighter cleaned!']],
         grudge: [['comms', 'You shot at me, Han. After everything. Find your parts somewhere else, old buddy.'], ['han', 'Still sore about that, huh.']],
+        shunned: [['comms', 'Word gets around, Han. Freighters are turning tail at the sight of you. I can’t be seen dealing with that. Not even for you.'], ['han', 'Since when do you have standards, Lando?']],
         leaving: [['comms', 'Some other time, old buddy. Calrissian out.']],
       },
     },
@@ -1698,6 +1743,26 @@ export const CREWS = [
         ['han', 'Didn’t make it. Shame.'],
         ['chewie', '[a mournful moan]'],
       ],
+      // your standing (standing.js): the Empire marking you, the ordinary ships fearing or loving you, the pirates taking to you
+      standing: {
+        suspect: [['han', 'Every patrol we pass is scanning us, Chewie. We’re on a list.'], ['chewie', '[an unbothered grunt]'], ['han', 'Yeah. Another one.']],
+        wanted: [['comms', 'All Imperial units: the freighter is wanted. Engage on sight.'], ['han', 'Wanted. Again. Chewie, we should frame this one.']],
+        trusted: [['comms', 'Imperial customs. Freighter, your record is… spotless. Move along.'], ['han', 'Spotless. Did you hear that, Chewie? Spotless.'], ['chewie', '[a disbelieving laugh]']],
+        feared: [['han', 'That freighter just ran from us. From us, Chewie.'], ['chewie', '[a low, unhappy moan]'], ['han', 'Yeah. I know. We’re the bad guys now.']],
+        hero: [['comms', 'It’s the Falcon! Thank you, Falcon!'], ['han', 'Heroes, Chewie. Don’t get used to it. It doesn’t pay.']],
+        friend: [['comms', 'The outer lanes salute the Millennium Falcon! Fly free, Solo!'], ['han', 'Pirates like us. That’s either very good or very bad for business.']],
+      },
+      // a patrol going past has reported you (traffic.js's spotted)
+      spotted: [['han', 'That patrol made us. They’re calling it in.'], ['chewie', '[a growl]'], ['han', 'I know, I know. Guns.']],
+      // an ace hurt into its next stage (hunterRules.js's stages), by who
+      stage: {
+        tieadvanced: [['comms', 'Impressive. Now you will see what a Sith can do.'], ['han', 'He just got faster. How does he just get faster?!']],
+        slave1: [['han', 'Seismic charges! Chewie, he’s dropping seismic charges! Get us out of the way!'], ['chewie', '[a roar]']],
+        ig2000: [['comms', 'Combat parameters: adjusted.'], ['han', 'The droid’s gone berserk! Chewie, track it!']],
+        houndstooth: [['han', 'Bossk is hanging back and hammering us. Close in, Chewie, close in!']],
+        punishingone: [['han', 'Dengar’s jamming us. Every time we tag him he drops off the scope!'], ['chewie', '[a frustrated roar]']],
+        any: [['han', 'It’s changed up on us! Chewie, watch it!']],
+      },
       // the fight with the Star Destroyer (capitalRules.js): its turbolasers,
       // your shots off its shield, its domes going, its bridge open, it
       // running or going up
@@ -2187,6 +2252,7 @@ export const CREWS = [
           ['jesse', 'I am! I’m a little scared!'],
         ],
         evade: [['comms', 'Ha! Too slow! TOO SLOW!']],
+        fury: [['comms', 'YOU WANT IT?! YOU GOT IT! TIGHT! TIGHT TIGHT TIGHT!'], ['jesse', 'He’s lost his mind, Mr. White! He’s coming in from everywhere!']],
         retreat: [
           ['comms', 'Okay. Okay! This ain’t over, Heisenberg. Nobody does this to Tuco. NOBODY!'],
           ['jesse', 'He’s bailing! Yo, he’s bailing!'],
@@ -2231,6 +2297,7 @@ export const CREWS = [
         ],
         hit: [['comms', 'Hey! I’m on your side! Mostly!']],
         grudge: [['comms', 'You shot at my Caddy. You SHOT at my Caddy! You know what, find your own parts. We’re done. Professionally.'], ['walt', 'He’ll be back.']],
+        shunned: [['comms', 'Walter, I’m hearing things. Trucks going missing. Everybody out here is terrified of you. I can’t be seen with that. Bad for business. Even my business.'], ['jesse', 'Even Saul won’t talk to us, yo.']],
         leaving: [
           ['comms', 'Okay, that’s my cue. You didn’t see me. I was never here.'],
           ['walt', 'He never is.'],
@@ -2359,6 +2426,24 @@ export const CREWS = [
         ['walt', 'Tell no one.'],
       ],
       // a Madrigal freighter jumps in, and Gus's trucks come out of it (the director's capital ship)
+      // your standing (standing.js): the DEA marking you, the ordinary ships fearing or loving you, Jack's crew taking to you
+      standing: {
+        suspect: [['jesse', 'Yo, every DEA car we pass is looking at us, Mr. White.'], ['walt', 'We’re a person of interest, Jesse. Interest fades. Keep driving.']],
+        wanted: [['comms', 'All DEA units: the RV is wanted. Engage on sight.'], ['jesse', 'Wanted?! We’re WANTED, Mr. White!'], ['walt', 'We were always wanted, Jesse. Now it’s on paper.']],
+        trusted: [['comms', 'DEA. You’re… clear. Model citizens. Drive safe.'], ['walt', 'Model citizens. Jesse, don’t laugh.'], ['jesse', 'I’m not laughing! I’m… okay, I’m laughing.']],
+        feared: [['jesse', 'That truck just turned around when it saw us. They’re scared of the RV, yo.'], ['walt', 'Good. Respect is just fear with manners.']],
+        hero: [['comms', 'That’s them! The RV that saved us! Thank you!'], ['jesse', 'Yo, Mr. White, we’re like… heroes?'], ['walt', 'Don’t get attached to it.']],
+        friend: [['comms', 'Jack says you’re good people. Fly easy.'], ['walt', 'Jack’s crew likes us. Jesse, that’s not a compliment.']],
+      },
+      // a patrol going past has reported you (traffic.js's spotted)
+      spotted: [['jesse', 'Yo, that DEA car just saw us! They’re calling it in!'], ['walt', 'Then we have about a minute. Use it.']],
+      // an ace hurt into its next stage (hunterRules.js's stages), by who
+      stage: {
+        suvace: [['comms', 'All units, all units, I need backup NOW! It’s the RV!'], ['walt', 'Hank’s pulling back and calling it in. Jesse, this just got worse.']],
+        gusvolvo: [['walt', 'He’s keeping his distance. And his trucks are coming. That’s Gus. He never does anything alone.'], ['jesse', 'Great. GREAT.']],
+        cousins: [['jesse', 'Yo, they got faster! Why’d they get faster?!'], ['walt', 'Because we hurt them, Jesse. Hurt them more.']],
+        any: [['walt', 'It’s changed tactics. Stay sharp, Jesse.'], ['jesse', 'I AM sharp! I’m the sharpest!']],
+      },
       // the fight with the Madrigal freighter (capitalRules.js): its guns, your
       // shots off its shield, its emitters going, its cab open, it running or
       // going up

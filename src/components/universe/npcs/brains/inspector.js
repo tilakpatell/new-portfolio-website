@@ -47,7 +47,8 @@ export default function inspector(npc, me, world, dt) {
   m.held = Math.abs(you.speed ?? 0) < NPC.hold ? m.held + dt : 0;
   m.away = apart(me.pos, you) > NPC.ignore || Math.abs(you.speed ?? 0) > NPC.run ? m.away + dt : 0;
   if (m.held >= NPC.scan) {
-    const wanted = (world.heat ?? 0) >= NPC.wanted || (mem.grudge ?? 0) > 0 || (mem.shot ?? 0) > 0;
+    // (and a pilot the law already wants, standing.js's world.wanted, on every scan)
+    const wanted = Boolean(world.wanted) || (world.heat ?? 0) >= NPC.wanted || (mem.grudge ?? 0) > 0 || (mem.shot ?? 0) > 0;
     if (wanted) return turn('busted');
     return { leave: true, say: 'clean' };
   }

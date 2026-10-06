@@ -29,8 +29,12 @@ export const NPC = {
   wanted: 2.5, // heat (what you've shot down lately) at which an inspector's scan finds you wanted
   pass: 5, // seconds between a nemesis's passes
   jink: 1.4, // seconds in front of your nose before a nemesis jinks away
-  retreat: 0.3, // of its hull left, and a nemesis breaks off
-  nemesis: 75, // seconds a nemesis fights before it breaks off anyway
+  summon: 0.6, // of its hull left, and a nemesis falls back and calls its friends in (its second phase)
+  fallback: 12, // seconds it hangs back, firing from range, before it comes in again
+  fury: 0.35, // of its hull left, and a nemesis throws everything at you (its third phase)
+  retreat: 0.15, // of its hull left, and a nemesis breaks off
+  nemesis: 90, // seconds a nemesis fights before it breaks off anyway
+  dodge: 0.7, // how much of a shot's chance to land hard turning (and the boost) takes away, at most
   chatter: 22, // seconds between a tagalong's words
   tag: 95, // seconds a tagalong stays
   hide: 55, // how far off a tagalong runs from a fight

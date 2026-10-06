@@ -95,6 +95,17 @@ describe('the crews', () => {
       if (Object.values(side.kinds).some((k) => k.trait === 'spotlight')) said(linesFor(crew, 'event', 'spotlit'), crew, 'spotlit');
       // the fight with the capital ship (capitalRules.js): every moment of it, each crew its own words
       for (const sub of ['fired', 'shielded', 'dome', 'open', 'bridge', 'dead', 'fled', 'gone', 'wave']) said(linesFor(crew, 'event', 'capital', sub), crew, `capital ${sub}`);
+      // your standing (standing.js): every level, a patrol reporting you, and each of the side's aces changing its ways (hunterRules.js's stages), its own line
+      const { LEVELS } = await import('./standing');
+      for (const level of Object.values(LEVELS).flat().map(([, name]) => name)) said(linesFor(crew, 'event', 'standing', level), crew, `standing ${level}`);
+      said(linesFor(crew, 'event', 'spotted'), crew, 'spotted');
+      const staged = Object.entries(side.kinds).filter(([, k]) => k.stages).map(([id]) => id);
+      expect(staged.length, `${crew.id} staged aces`).toBeGreaterThan(0);
+      for (const kind of staged) {
+        said(linesFor(crew, 'event', 'stage', kind), crew, `stage ${kind}`);
+        expect(crew.events.stage[kind], `${crew.id} stage ${kind}: its own line`).toBeTruthy();
+      }
+      said(linesFor(crew, 'event', 'stage', 'nonsense'), crew, 'stage any');
       expect(new Set(['fired', 'shielded', 'dome', 'open', 'bridge', 'dead', 'fled', 'gone', 'wave'].map((sub) => linesFor(crew, 'event', 'capital', sub))).size, `${crew.id} capital`).toBe(9);
     }
   });

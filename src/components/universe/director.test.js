@@ -119,3 +119,15 @@ describe('the director', () => {
     expect(createDirector({ rand: seeded() }).foretell(null)).toBeNull();
   });
 });
+
+describe('the law on your back', () => {
+  it('sends more hunts after a pilot the law wants', () => {
+    const quiet = run(createDirector({ rand: seeded(21) }), 6000, { side: SIDES.starwars });
+    const wanted = run(createDirector({ rand: seeded(21) }), 6000, { side: SIDES.starwars, wanted: true });
+    const share = (got) => got.filter((g) => g.e === 'hunt' || g.e === 'destroyer' || g.e === 'bounty').length / got.length;
+    expect(share(wanted)).toBeGreaterThan(share(quiet) * 1.3);
+    // (and not while your shields are low)
+    const calm = run(createDirector({ rand: seeded(21) }), 3000, { side: SIDES.starwars, wanted: true, calm: true });
+    expect(calm.some((g) => g.e === 'hunt')).toBe(false);
+  });
+});

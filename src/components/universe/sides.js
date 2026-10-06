@@ -15,7 +15,11 @@
 //   'bounty' (one tough one alone) | 'capital' (what a capital ship
 //   launches) | 'council' (out of portals), weight?, portal? }
 // A hunter kind: hunterRules.js's row (size, speed, accel, hp, fire, tail,
-//   lead, spread, trait: one of hunterRules.js's TRAITS); an ally: wingRules.js's row, with its bolts' colour.
+//   lead, spread, trait: one of hunterRules.js's TRAITS, and for an ace
+//   `stages`: [{ below: of its hull left, …what changes (speed, fire, trait…),
+//   summon?: a faction it calls in }], hunterRules.js's `stage`); an ally: wingRules.js's row, with its bolts' colour.
+// A side's `law` is the faction whose standing with you is the law's
+//   (standing.js): its inspectors scan you, its patrols report you.
 // A troop: foot.js's TROOPS row by kind, with the gun it holds (gunplay.js's
 //   GUNS) or null, and the figure it's drawn as (footScene.js's troopLook: a
 //   Meshy cast kind, a model of its own, or built; the cast's own kind if none).
@@ -46,14 +50,17 @@ const STARWARS = {
   kinds: {
     tie: { size: 0.3, speed: 19, accel: 17, hp: 1, fire: [0.8, 1.6] },
     interceptor: { size: 0.32, speed: 25, accel: 20, hp: 1, fire: [0.7, 1.3], tail: 0.25 },
-    tieadvanced: { size: 0.36, speed: 26, accel: 22, hp: 5, fire: [0.45, 0.8], tail: 0.45, lead: 0.9, spread: 0.8 },
-    slave1: { size: 0.55, speed: 24, accel: 20, hp: 6, fire: [0.5, 0.9], tail: 0.45, lead: 0.9, spread: 0.85 },
+    // Vader: hurt to half, he stops playing: faster, closer, on your tail
+    tieadvanced: { size: 0.36, speed: 26, accel: 22, hp: 7, fire: [0.45, 0.8], tail: 0.45, lead: 0.9, spread: 0.8, stages: [{ below: 0.5, speed: 29, accel: 25, fire: [0.3, 0.55], tail: 0.8, lead: 0.97 }] },
+    // Fett: hurt to half, Slave I drops its seismic charges instead
+    slave1: { size: 0.55, speed: 24, accel: 20, hp: 8, fire: [0.5, 0.9], tail: 0.45, lead: 0.9, spread: 0.85, stages: [{ below: 0.5, trait: 'bomber', fire: [1.4, 2.0], speed: 22 }] },
     // slow, and it means it: one bomb a run (hunterRules.js's traits)
     tiebomber: { size: 0.34, speed: 16, accel: 13, hp: 3, fire: [2.2, 3.2], trait: 'bomber' },
     gunboat: { size: 0.42, speed: 18, accel: 15, hp: 4, fire: [0.45, 0.8], spread: 1.3, trait: 'holdoff' },
-    ig2000: { size: 0.5, speed: 25, accel: 21, hp: 6, fire: [0.45, 0.8], tail: 0.4, lead: 0.95, spread: 0.7 },
-    houndstooth: { size: 0.62, speed: 22, accel: 18, hp: 8, fire: [0.6, 1.0], tail: 0.3, lead: 0.85, spread: 0.9 },
-    punishingone: { size: 0.52, speed: 24, accel: 20, hp: 6, fire: [0.5, 0.9], tail: 0.5, lead: 0.9, spread: 0.85 },
+    // IG-88 overclocks; Bossk stands off and pounds you; Dengar's jammer hides him when he's hit
+    ig2000: { size: 0.5, speed: 25, accel: 21, hp: 7, fire: [0.45, 0.8], tail: 0.4, lead: 0.95, spread: 0.7, stages: [{ below: 0.5, speed: 29, accel: 24, fire: [0.3, 0.5], spread: 0.5 }] },
+    houndstooth: { size: 0.62, speed: 22, accel: 18, hp: 9, fire: [0.6, 1.0], tail: 0.3, lead: 0.85, spread: 0.9, stages: [{ below: 0.5, trait: 'holdoff', fire: [0.4, 0.7] }] },
+    punishingone: { size: 0.52, speed: 24, accel: 20, hp: 7, fire: [0.5, 0.9], tail: 0.5, lead: 0.9, spread: 0.85, stages: [{ below: 0.5, trait: 'flicker', speed: 27 }] },
     skiff: { size: 0.32, speed: 17, accel: 15, hp: 1, fire: [1.0, 1.8], spread: 1.4 },
   },
   names: { tie: 'TIE fighter', interceptor: 'TIE interceptor', tieadvanced: 'TIE Advanced', slave1: 'Slave I', tiebomber: 'TIE bomber', gunboat: 'Assault gunboat', ig2000: 'IG-2000', houndstooth: 'Hound’s Tooth', punishingone: 'Punishing One', skiff: 'Pirate skiff' },
@@ -70,6 +77,7 @@ const STARWARS = {
   distress: { civil: 'transport', pirates: 'weequay' },
   skirmish: { faction: 'empire', escort: 'xwing', civil: 'transport' },
   pieces: ['destroyer'],
+  law: 'empire', // (standing.js: whose inspectors and patrols)
   capital: 'navy', // what the Star Destroyer launches
   capitalShip: 'destroyer', // (the model the director's capital ship jumps in as)
   leviathan: 'purrgil',
@@ -103,12 +111,15 @@ const RICKMORTY = {
     patrol: { size: 0.34, speed: 19, accel: 17, hp: 2, fire: [0.8, 1.5] },
     councilship: { size: 0.42, speed: 24, accel: 19, hp: 3, fire: [0.6, 1.1], tail: 0.2 },
     gromflomite: { size: 0.3, speed: 18, accel: 16, hp: 1, fire: [0.9, 1.7] },
-    phoenixperson: { size: 0.42, speed: 25, accel: 21, hp: 5, fire: [0.55, 1.0], tail: 0.4, lead: 0.9 },
+    // Phoenixperson: hurt to half, the Federation's upgrades kick in
+    phoenixperson: { size: 0.42, speed: 25, accel: 21, hp: 6, fire: [0.55, 1.0], tail: 0.4, lead: 0.9, stages: [{ below: 0.5, speed: 29, accel: 25, fire: [0.35, 0.6], tail: 0.7 }] },
     gunship: { size: 0.44, speed: 17, accel: 14, hp: 4, fire: [0.45, 0.8], spread: 1.3, trait: 'holdoff' },
     mortyfighter: { size: 0.28, speed: 24, accel: 22, hp: 1, fire: [0.8, 1.4], spread: 1.2 },
-    evilmortyship: { size: 0.4, speed: 27, accel: 23, hp: 6, fire: [0.4, 0.75], tail: 0.5, lead: 0.95, spread: 0.7 },
+    // Evil Morty: hurt to half, he falls back and his guard comes in
+    evilmortyship: { size: 0.4, speed: 27, accel: 23, hp: 8, fire: [0.4, 0.75], tail: 0.5, lead: 0.95, spread: 0.7, stages: [{ below: 0.5, trait: 'holdoff', summon: 'mortys' }] },
     zigerion: { size: 0.38, speed: 21, accel: 18, hp: 3, fire: [0.8, 1.4], trait: 'flicker' },
-    krombopulos: { size: 0.42, speed: 25, accel: 21, hp: 6, fire: [0.45, 0.8], tail: 0.5, lead: 0.95, spread: 0.7, trait: 'quietUntilFired' },
+    // Krombopulos Michael: hurt to half, he goes dark between shots
+    krombopulos: { size: 0.42, speed: 25, accel: 21, hp: 7, fire: [0.45, 0.8], tail: 0.5, lead: 0.95, spread: 0.7, trait: 'quietUntilFired', stages: [{ below: 0.5, trait: 'flicker', speed: 28 }] },
   },
   names: { patrol: 'Federation patrol', councilship: 'Council cruiser', gromflomite: 'Gromflomite', phoenixperson: 'Phoenixperson', gunship: 'Federation gunship', mortyfighter: 'Morty fighter', evilmortyship: 'Evil Morty', zigerion: 'Zigerion ship', krombopulos: 'Krombopulos Michael' },
   allies: {
@@ -124,6 +135,7 @@ const RICKMORTY = {
   distress: { civil: 'saucer', pirates: 'bugs' },
   skirmish: { faction: 'federation', escort: 'birdperson', civil: 'saucer' },
   pieces: ['council', 'destroyer'],
+  law: 'federation',
   capital: 'fedfleet',
   capitalShip: 'fedcruiser',
   leviathan: 'cromulon',
@@ -153,12 +165,14 @@ const BREAKINGBAD = {
   },
   kinds: {
     suv: { size: 0.34, speed: 19, accel: 17, hp: 2, fire: [0.8, 1.5] },
-    suvace: { size: 0.36, speed: 25, accel: 21, hp: 5, fire: [0.5, 0.9], tail: 0.4, lead: 0.9, spread: 0.85, trait: 'spotlight' },
+    // Hank: hurt to half, he falls back and calls in the DEA
+    suvace: { size: 0.36, speed: 25, accel: 21, hp: 7, fire: [0.5, 0.9], tail: 0.4, lead: 0.9, spread: 0.85, trait: 'spotlight', stages: [{ below: 0.5, trait: 'holdoff', summon: 'dea' }] },
     lowrider: { size: 0.34, speed: 25, accel: 20, hp: 1, fire: [0.6, 1.1], tail: 0.3, spread: 1.6 },
     pollostruck: { size: 0.5, speed: 17, accel: 14, hp: 4, fire: [0.9, 1.5], trait: 'holdoff' },
     // Gus himself: he doesn't fire first, and he doesn't miss
-    gusvolvo: { size: 0.36, speed: 24, accel: 20, hp: 6, fire: [0.5, 0.85], tail: 0.3, lead: 0.95, spread: 0.6, trait: 'quietUntilFired' },
-    cousins: { size: 0.6, speed: 25, accel: 21, hp: 7, fire: [0.5, 0.9], tail: 0.5, lead: 0.9, spread: 0.8, trait: 'quietUntilFired' },
+    // Gus: hurt to half, he keeps his distance and his trucks come; the Cousins just get faster
+    gusvolvo: { size: 0.36, speed: 24, accel: 20, hp: 8, fire: [0.5, 0.85], tail: 0.3, lead: 0.95, spread: 0.6, trait: 'quietUntilFired', stages: [{ below: 0.5, trait: 'holdoff', fire: [0.35, 0.6], summon: 'pollos' }] },
+    cousins: { size: 0.6, speed: 25, accel: 21, hp: 9, fire: [0.5, 0.9], tail: 0.5, lead: 0.9, spread: 0.8, trait: 'quietUntilFired', stages: [{ below: 0.5, fire: [0.3, 0.55], tail: 0.85, speed: 28 }] },
     pickup: { size: 0.32, speed: 18, accel: 16, hp: 1, fire: [0.9, 1.7] },
   },
   names: { suv: 'DEA SUV', suvace: 'Hank’s SUV', lowrider: 'Cartel lowrider', pollostruck: 'Pollos truck', cousins: 'The Cousins', pickup: 'Jack’s pickup', gusvolvo: 'Gus’s Volvo' },
@@ -174,6 +188,7 @@ const BREAKINGBAD = {
   distress: { civil: 'madrigal', pirates: 'jacks' },
   skirmish: { faction: 'cartel', escort: 'saulcaddy', civil: 'madrigal' },
   pieces: ['roadblock', 'destroyer'],
+  law: 'dea',
   capital: 'pollos',
   capitalShip: 'madrigal', // (a Madrigal freighter jumps in, and Gus's trucks come out of it)
   leviathan: 'bear',
