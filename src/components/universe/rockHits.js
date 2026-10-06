@@ -17,7 +17,8 @@
 //
 // rockGrid(rocks, cell) → grid; sweep(grid, from, to, radius, hidden) →
 // { i, t, at } | null; rockDamage(speed, r); toBelt(p, angle) → p in a
-// turning ring's own frame
+// turning ring's own frame; nearRing(from, to, band) → whether a way comes
+// near a ring at all
 
 export const ROCK_HIT = {
   fast: 23, // past this (the boost, 20, and a little), a rock does damage
@@ -115,4 +116,40 @@ export function toBelt(p, angle) {
   const c = Math.cos(angle);
   const s = Math.sin(angle);
   return { x: p.x * c - p.z * s, y: p.y, z: p.x * s + p.z * c };
+}
+
+// whether the way from `from` to `to` comes near a ring ({ inner, outer,
+// height } round the y axis, as layout.js's BELT and RIM are) at all: worth
+// sweeping. Its nearest and furthest from the axis, against the ring's
+// inner and outer edges, and its height against the ring's
+export function nearRing(from, to, band, margin = 5) {
+  const dx = to.x - from.x;
+  const dz = to.z - from.z;
+  const l2 = dx * dx + dz * dz;
+  const k = l2 > 1e-9 ? Math.min(1, Math.max(0, -(from.x * dx + from.z * dz) / l2)) : 0;
+  const near = Math.hypot(from.x + dx * k, from.z + dz * k);
+  const far = Math.max(Math.hypot(from.x, from.z), Math.hypot(to.x, to.z));
+  const top = band.height / 2 + margin;
+  return near <= band.outer + margin && far >= band.inner - margin && Math.min(from.y, to.y) <= top && Math.max(from.y, to.y) >= -top;
+}
+
+// the box round a field's rocks, and whether a way comes into it (the
+// debris streams: worth sweeping)
+export function boxOf(rocks) {
+  const min = { x: Infinity, y: Infinity, z: Infinity };
+  const max = { x: -Infinity, y: -Infinity, z: -Infinity };
+  for (const o of rocks) {
+    min.x = Math.min(min.x, o.x - o.r);
+    min.y = Math.min(min.y, o.y - o.r);
+    min.z = Math.min(min.z, o.z - o.r);
+    max.x = Math.max(max.x, o.x + o.r);
+    max.y = Math.max(max.y, o.y + o.r);
+    max.z = Math.max(max.z, o.z + o.r);
+  }
+  return { min, max };
+}
+export function nearBox(from, to, { min, max }, margin = 2) {
+  // the way's own box against the field's: a way that crosses the box's
+  // corner without entering it is swept anyway, which costs only a sweep
+  return Math.min(from.x, to.x) <= max.x + margin && Math.max(from.x, to.x) >= min.x - margin && Math.min(from.y, to.y) <= max.y + margin && Math.max(from.y, to.y) >= min.y - margin && Math.min(from.z, to.z) <= max.z + margin && Math.max(from.z, to.z) >= min.z - margin;
 }

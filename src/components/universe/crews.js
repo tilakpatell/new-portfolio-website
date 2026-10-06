@@ -305,6 +305,10 @@ export const CREWS = [
         ['morty', 'Rick, this is way too fast!'],
         ['rick', 'It’s exactly fast enough, Morty. Hold on to something that isn’t me.'],
       ],
+      rock: [
+        ['morty', 'Ow! Rick, we hit a rock! A big one!'],
+        ['rick', 'At super speed every rock’s a big one, Morty. Watch the shields and stop steering with your face.'],
+      ],
       meteors: [
         ['morty', 'Rick! Rocks! A lot of rocks!'],
         ['rick', 'Meteor stream, Morty. Shoot the big ones, dodge the rest, don’t cry about it.'],
@@ -729,6 +733,10 @@ export const CREWS = [
         ['luke', 'I’ve never had her going this fast!'],
         ['r2', '[a frantic string of beeps]'],
       ],
+      rock: [
+        ['r2', '[A rock, at speed. Shields down a notch.]'],
+        ['luke', 'I didn’t even see it. Keep the deflectors forward, Artoo.'],
+      ],
       meteors: [
         ['r2', '[Meteor stream ahead. Recommend evasive action.]'],
         ['luke', 'I see them, Artoo. Just like Beggar’s Canyon.'],
@@ -1128,6 +1136,10 @@ export const CREWS = [
       overdrive: [
         ['han', 'Pushing her past what she was built for. Just how I like it.'],
         ['chewie', '[a doubtful growl]'],
+      ],
+      rock: [
+        ['chewie', '[an angry roar: a rock, right through the shields]'],
+        ['han', 'I know, I know. Never tell me the odds, and never fly this fast through a rock field.'],
       ],
       meteors: [
         ['chewie', '[A roar: rocks ahead!]'],
@@ -1610,6 +1622,10 @@ export const CREWS = [
       overdrive: [
         ['jesse', 'This is insane, yo! Everything’s a blur!'],
         ['walt', 'Seatbelt, Jesse.'],
+      ],
+      rock: [
+        ['jesse', 'Yo, what was that?! We hit something!'],
+        ['walt', 'A rock, Jesse. At this speed it hits like a truck. The shields took it. Slow down in the fields.'],
       ],
       meteors: [
         ['jesse', 'Yo, Mr. White, rocks! Big ones!'],
