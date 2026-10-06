@@ -68,6 +68,15 @@ const chip = (page) =>
     }
     return null;
   });
+// a world whose 3D waits to be asked for (the office's, the music room's),
+// or that puts you in it only once you start (the Caribbean's voyage): ask,
+// whenever the button's there
+const start = (page) =>
+  page
+    .getByRole('button', { name: /^(Load the |Weigh anchor)/ })
+    .first()
+    .click({ timeout: 500 })
+    .catch(() => {});
 // the roster's line for a callsign, opened from the corner
 async function rosterLine(page, who) {
   const pill = page.locator('.universe-online-pill').first();
@@ -91,10 +100,9 @@ const b = await visitor('Bravo');
 let failed = 0;
 for (const w of worlds) {
   await Promise.all([a.goto(BASE + w), b.goto(BASE + w)]);
-  // a world whose 3D waits to be asked for (the office's, the music room's): ask
-  await Promise.all([a, b].map((p) => p.getByRole('button', { name: /^Load the / }).first().click({ timeout: 15000 }).catch(() => {})));
   try {
     const n = await waitFor(async () => {
+      await Promise.all([start(a), start(b)]);
       const [x, y] = [await chip(a), await chip(b)];
       return x >= 1 && y >= 1 ? [x, y] : null;
     }, 150000, `${w}: each sees the other`);
