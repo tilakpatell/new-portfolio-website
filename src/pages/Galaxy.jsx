@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { local, useDocumentTitle, useReducedMotion } from '../lib/hooks';
 import { audioContext } from '../lib/audio';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
@@ -11,6 +11,7 @@ import Online from '../components/universe/online/Online';
 import { useOnline } from '../components/universe/online/useOnline';
 import { FIRST, parseSystem, systemById } from '../components/galaxy/systems';
 import { canLand } from '../components/galaxy/surface/sites';
+import galaxyModule from '../components/galaxy/module';
 import surfaceModule from '../components/galaxy/surface/module';
 import { prefetchSurface, surfaceProps } from '../components/galaxy/travel';
 import { runtime } from '../runtime';
@@ -40,9 +41,9 @@ const INTRO_KEY = 'tp-galaxy-intro'; // (session) the "long time ago" seen this 
 export default function Galaxy() {
   const navigate = useNavigate();
   const param = parseSystem(useParams().system);
-  // up from a world's surface, flown (its page handed over): the sky's glare still on, going
-  const location = useLocation();
-  const [exit] = useState(() => Boolean(location.state?.exit));
+  // up from a world's surface, flown (its page handed the world over to this
+  // one before the route changed): the sky's glare it climbed into still on, going
+  const [exit] = useState(() => runtime().current?.module === galaxyModule);
   const [current, setCurrent] = useState(() => param ?? parseSystem(local.get(LAST_KEY)) ?? FIRST);
   const sys = systemById(current);
   useDocumentTitle(`${sys.name} · A galaxy far, far away`);
@@ -144,7 +145,10 @@ export default function Galaxy() {
     [leave, leaving],
   );
   const alive = useRef(true);
-  useEffect(() => () => void (alive.current = false), []);
+  useEffect(() => {
+    alive.current = true; // (set here, not at first render: React's second run of an effect in development cleans up and comes back)
+    return () => void (alive.current = false);
+  }, []);
   const handOver = useCallback(
     (id) => {
       const to = `/galaxy/${id}/surface`;
@@ -153,9 +157,9 @@ export default function Galaxy() {
       runtime()
         .handover(surfaceModule, surfaceProps(id, { ship, loadout, build, net: online.client, reduced }), host, { fade: 900, held: true })
         .catch(() => false)
-        .then((ok) => {
+        .then(() => {
           if (!alive.current) return; // (gone elsewhere meanwhile: not this page's to steer)
-          navigate(to, ok ? { state: { entry: true } } : undefined); // (not handed over: the page makes its own)
+          navigate(to); // (not handed over: the page makes its own)
         });
     },
     [navigate, ship, loadout, build, online.client, reduced],

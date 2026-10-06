@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { local, useDocumentTitle, useReducedMotion } from '../lib/hooks';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
 import { CONTROLS_KEY, readControls } from '../components/universe/controls';
@@ -15,6 +15,7 @@ import { LANDABLE, siteOf } from '../components/galaxy/surface/sites';
 import { surfaceUrl } from '../components/galaxy/surface/catalog';
 import { surfaceCrew } from '../components/galaxy/surface/lines';
 import SurfaceView from '../components/galaxy/surface/SurfaceView';
+import surfaceModule from '../components/galaxy/surface/module';
 import galaxyModule from '../components/galaxy/module';
 import { FOUND_KEY, LAUNCH_KEY, QUESTS_KEY, readDone, readFound } from '../components/galaxy/travel';
 import { runtime } from '../runtime';
@@ -46,9 +47,9 @@ const readBests = () => {
 // on it, what E does, who's talking, what you've just found and what it is.
 export default function GalaxySurface() {
   const navigate = useNavigate();
-  // come down from space flown (the galaxy handed over): the air's glow going as you come out of it
-  const location = useLocation();
-  const [entry] = useState(() => Boolean(location.state?.entry));
+  // come down from space, flown (the galaxy's page handed its world over to
+  // this one before the route changed): the air's glow going as you come out of it
+  const [entry] = useState(() => runtime().current?.module === surfaceModule);
   const id = parseSystem(useParams().system);
   const site = useMemo(() => (id ? siteOf(id) : null), [id]);
   const sys = systemById(id);
@@ -123,7 +124,10 @@ export default function GalaxySurface() {
   // takes it off). Without, or when the world can't, the screen goes and
   // the system's page comes.
   const alive = useRef(true);
-  useEffect(() => () => void (alive.current = false), []);
+  useEffect(() => {
+    alive.current = true; // (set here, not at first render: React's second run of an effect in development cleans up and comes back)
+    return () => void (alive.current = false);
+  }, []);
   const leavingRef = useRef(false);
   const markLaunch = () => {
     try {
@@ -151,9 +155,9 @@ export default function GalaxySurface() {
       .handover(galaxyModule, props, host, { fade: 1000, held: true })
       .catch(() => false);
     const glare = new Promise((r) => later('glare', EXIT_GLARE, r));
-    Promise.all([handed, glare]).then(([ok]) => {
+    Promise.all([handed, glare]).then(() => {
       if (!alive.current) return; // (gone elsewhere meanwhile: not this page's to steer)
-      navigate(`/galaxy/${id}`, ok ? { state: { exit: true } } : undefined);
+      navigate(`/galaxy/${id}`); // (not handed over: the page makes its own)
     });
   }, [goUp, id, navigate, reduced, ship, loadout, build, online.client]); // eslint-disable-line react-hooks/exhaustive-deps
   const takeOff = useCallback(() => {
