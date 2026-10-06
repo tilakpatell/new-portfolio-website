@@ -139,7 +139,7 @@ const PHASE3 = {
   'loco-b': { height: 1.5, prompt: `A Mortytown Loco from Rick and Morty, a Morty gang member: ${MORTY}, with a small dark blue-grey swirl tattoo over one eyebrow and a few small ring tattoos on his cheek beside his mouth, a dirty off-white T-shirt, baggy dark grey jeans and scuffed white sneakers. ${BODY}` },
   'loco-c': { height: 1.5, prompt: `A Mortytown Loco from Rick and Morty, a Morty gang member: ${MORTY}, with a small dark blue-grey swirl tattoo at one temple and small ring tattoos beside his mouth, a stained olive-grey sleeveless tank top, baggy brown cargo trousers and scuffed dark sneakers. ${BODY}` },
   supremeguard: { crowd: true, prompt: `A Supreme Guard Rick of the Citadel from Rick and Morty: ${RICK}, a stern soldier in ornate gold armour: a gold breastplate, big rounded gold shoulder plates, gold gauntlets and gold shin guards, a long dark red cape hanging from his shoulders to his calves, dark olive trousers and dark boots. ${AT_EASE}` },
-  garmentrick: { crowd: true, prompt: `Garment District Rick from Rick and Morty: ${RICK}, but with his hair in a big rounded poofy pompadour on top, long grey sideburns and a grey moustache, in a long double-breasted brown winter coat with a thick cream fur collar and cream fur cuffs, dark trousers and dark shoes. ${AT_EASE}` },
+  garmentrick: { crowd: true, prompt: `Garment District Rick from Rick and Morty: ${RICK}, but with his pale blue-grey hair swept back into a low rounded puffy pompadour, only a little taller than Rick's own spiky hair and not a tall bouffant, long grey sideburns and a grey moustache, in a long double-breasted brown winter coat with a thick cream fur collar and cream fur cuffs, dark trousers and dark shoes. ${AT_EASE}` },
   mortymart: { rig: false, hero: true, prompt: `Morty Mart from Rick and Morty, a small corner convenience store in a grimy science-fiction city: a boxy single-storey shop of dark slate grey-green metal panels with rust streaks and rivets, a flat roof with pipes and a vent; across the front a long blank sign board edged with an unlit red neon tube, under it a wide shop window and an open doorway showing tall glass fridges full of green bottles inside, a curved metal air-conditioning cylinder over the door, a cyan neon bottle-shaped sign on the left corner, a green neon palm-tree sign and a small yellow neon sign in the window with no letters, torn paper posters on the wall. ${BUILDING}` },
   creepymorty: { rig: false, hero: true, prompt: `The Creepy Morty, a seedy nightclub in the Mortytown district of the Citadel from Rick and Morty: a two-storey building of dark purple-grey metal panels with grimy streaks, a flat roof with pipes, a tall vertical blank sign board edged with pink and violet neon tubes on the front corner, a recessed doorway lit purple under a short black awning, a red velvet rope on two brass posts by the door, small round porthole windows glowing magenta, no letters anywhere. ${BUILDING}` },
   'citadel-exterior': { rig: false, hero: true, prompt: `The Citadel of Ricks from Rick and Morty, a huge space station seen from the side and a little above: a wide flattened central disc of brass-gold and olive metal plating with rows of small lit windows, a large dome of pale teal glass on top of the disc with a tall thin spire rising from its centre, three long thin straight arms reaching out level from the disc at equal angles, each ending in a smaller flattened saucer of teal glass ringed in brass, and under the central disc a long downward-pointing tapering cluster of metal plates and fins with glowing cyan crystal panels. ${PROP}` },
@@ -188,9 +188,17 @@ async function download(url, file) {
 const json = async (file) => (existsSync(file) ? JSON.parse(await readFile(file, 'utf8')) : {});
 const put = (file, v) => writeFile(file, `${JSON.stringify(v, null, 2)}\n`);
 // (several tasks finish at once: each save writes what's in memory, which
-// has them all)
+// has them all; and what another run of this has saved since this one
+// read the file is kept, so two steps can run side by side: a name's
+// entries are merged, this run's winning. A reroll forgets on purpose, so
+// it writes what it has.)
 let tasks = null;
-const save = () => put(TASKS, tasks);
+const save = async ({ merge = true } = {}) => {
+  const disk = merge ? await json(TASKS) : {};
+  for (const [n, v] of Object.entries(tasks)) disk[n] = { ...disk[n], ...v };
+  tasks = disk;
+  await put(TASKS, tasks);
+};
 async function mark(names, status) {
   const ledger = await json(LEDGER);
   for (const n of names) if (ledger[n]?.status !== 'done' || status === 'done') ledger[n] = { status, by: ASSETS[n]?.phase === 3 ? 'cloud' : 'local' };
@@ -613,7 +621,7 @@ async function main() {
     const from = CHAIN.indexOf(LEAVES[forget]);
     if (from < 0 || !rest.length) throw new Error(`reroll <${Object.keys(LEAVES).join(' | ')}> <name …>`);
     for (const n of names) for (const k of CHAIN.slice(from)) if (tasks[n]) delete tasks[n][k];
-    await save();
+    await save({ merge: false });
     console.log(`reroll   ${forget} forgotten for ${names.join(' ')}`);
     return;
   }

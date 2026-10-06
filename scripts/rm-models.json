@@ -108,63 +108,63 @@
     "by": "local"
   },
   "bigmorty": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "cloud"
   },
   "slickmorty": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "cloud"
   },
   "campaignmorty": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "cloud"
   },
   "rickd3": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "cloud"
   },
   "simplerick": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "cloud"
   },
   "evilrick": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "cloud"
   },
   "loco-a": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "cloud"
   },
   "loco-b": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "cloud"
   },
   "loco-c": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "cloud"
   },
   "supremeguard": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "cloud"
   },
   "garmentrick": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "cloud"
   },
   "mortymart": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "cloud"
   },
   "creepymorty": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "cloud"
   },
   "citadel-exterior": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "cloud"
   },
   "nx5": {
-    "status": "claimed",
+    "status": "meshy",
     "by": "cloud"
   }
 }
