@@ -220,27 +220,27 @@ export const warFor = (sideId) => (sideId && Object.hasOwn(WARS, sideId) ? WARS[
 const F = (o) => ({ accel: o.speed * 0.8, burst: [0.12, 0.7], range: 14, cone: 0.1, damage: 1, ...o });
 export const FIGHTERS = {
   // Star Wars
-  xwing: F({ size: 0.36, speed: 20, turn: 2.3, hp: 4 }),
-  awing: F({ size: 0.3, speed: 25, turn: 2.9, hp: 3, burst: [0.1, 0.6] }),
-  ywing: F({ size: 0.42, speed: 15, turn: 1.7, hp: 6, reload: 1.2 }),
-  bwing: F({ size: 0.5, speed: 16, turn: 1.8, hp: 7, reload: 1.1 }),
-  tie: F({ size: 0.3, speed: 21, turn: 2.6, hp: 2 }),
-  interceptor: F({ size: 0.32, speed: 25, turn: 3, hp: 2, burst: [0.1, 0.55] }),
-  tiebomber: F({ size: 0.38, speed: 15, turn: 1.7, hp: 5, reload: 1.2 }),
+  xwing: F({ size: 0.36, speed: 20, turn: 2.3, hp: 5 }),
+  awing: F({ size: 0.3, speed: 25, turn: 2.9, hp: 4, burst: [0.1, 0.6] }),
+  ywing: F({ size: 0.42, speed: 15, turn: 1.7, hp: 9, reload: 1.2 }),
+  bwing: F({ size: 0.5, speed: 16, turn: 1.8, hp: 10, reload: 1.1 }),
+  tie: F({ size: 0.3, speed: 21, turn: 2.6, hp: 5 }),
+  interceptor: F({ size: 0.32, speed: 25, turn: 3, hp: 4, burst: [0.1, 0.55] }),
+  tiebomber: F({ size: 0.38, speed: 15, turn: 1.7, hp: 9, reload: 1.2 }),
   // Rick and Morty
-  councilship: F({ size: 0.42, speed: 21, turn: 2.4, hp: 4 }),
-  meeseeks: F({ size: 0.34, speed: 24, turn: 2.9, hp: 2, burst: [0.1, 0.6] }),
-  gearship: F({ size: 0.5, speed: 15, turn: 1.7, hp: 6, reload: 1.2 }),
-  patrol: F({ size: 0.34, speed: 20, turn: 2.4, hp: 3 }),
-  gromflomite: F({ size: 0.3, speed: 24, turn: 2.9, hp: 2, burst: [0.1, 0.6] }),
-  hauler: F({ size: 0.5, speed: 14, turn: 1.6, hp: 7, reload: 1.2 }),
+  councilship: F({ size: 0.42, speed: 21, turn: 2.4, hp: 6 }),
+  meeseeks: F({ size: 0.34, speed: 24, turn: 2.9, hp: 4, burst: [0.1, 0.6] }),
+  gearship: F({ size: 0.5, speed: 15, turn: 1.7, hp: 9, reload: 1.2 }),
+  patrol: F({ size: 0.34, speed: 20, turn: 2.4, hp: 5 }),
+  gromflomite: F({ size: 0.3, speed: 24, turn: 2.9, hp: 4, burst: [0.1, 0.6] }),
+  hauler: F({ size: 0.5, speed: 14, turn: 1.6, hp: 10, reload: 1.2 }),
   // Breaking Bad
-  mikesedan: F({ size: 0.36, speed: 20, turn: 2.3, hp: 4 }),
-  saulcaddy: F({ size: 0.36, speed: 24, turn: 2.8, hp: 3, burst: [0.1, 0.6] }),
-  pollostruck: F({ size: 0.5, speed: 15, turn: 1.6, hp: 7, reload: 1.2 }),
-  lowrider: F({ size: 0.34, speed: 22, turn: 2.6, hp: 3 }),
-  cousins: F({ size: 0.6, speed: 24, turn: 2.6, hp: 6, burst: [0.1, 0.5] }),
-  pickup: F({ size: 0.32, speed: 15, turn: 1.7, hp: 5, reload: 1.2 }),
+  mikesedan: F({ size: 0.36, speed: 20, turn: 2.3, hp: 6 }),
+  saulcaddy: F({ size: 0.36, speed: 24, turn: 2.8, hp: 5, burst: [0.1, 0.6] }),
+  pollostruck: F({ size: 0.5, speed: 15, turn: 1.6, hp: 10, reload: 1.2 }),
+  lowrider: F({ size: 0.34, speed: 22, turn: 2.6, hp: 5 }),
+  cousins: F({ size: 0.6, speed: 24, turn: 2.6, hp: 8, burst: [0.1, 0.5] }),
+  pickup: F({ size: 0.32, speed: 15, turn: 1.7, hp: 8, reload: 1.2 }),
 };
 
 // a flagship's objectives: two shield generators, the bridge, the reactor
@@ -309,7 +309,7 @@ export const SUBSYSTEMS = {
 // batteries down the flanks and along the top, as shares of the length
 const flanks = (w, h, zs) => zs.flatMap((z) => [[-w, h, z], [w, h, z]]);
 export const TURRETS = {
-  destroyer: [...flanks(0.17, 0.05, [-0.25, -0.1, 0.05]), [0, 0.12, -0.2], [0, 0.08, 0]],
+  destroyer: [...flanks(0.17, 0.05, [-0.3, -0.18, -0.06, 0.06, 0.18]), [0, 0.12, -0.2], [0, 0.08, 0]],
   moncal: [...flanks(0.09, 0.04, [-0.3, -0.1, 0.1, 0.28])],
   nebulon: [...flanks(0.06, 0.03, [-0.3, 0.3])],
   corvette: [...flanks(0.08, 0.05, [-0.2, 0.2])],
