@@ -2283,6 +2283,20 @@
       "galaxy"
     ]
   },
+  "surface-snowtrooper": {
+    "title": "Snowtrooper [ Texture in a Mega Link ]",
+    "author": "mrpanini.yt",
+    "authorUrl": "https://sketchfab.com/mrpanini.yt",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/snowtrooper-texture-in-a-mega-link-8cad640402844e489d1080f5400ec667",
+    "where": "galaxy-surface",
+    "as": "the snowtroopers",
+    "file": "/models/galaxy/surface/snowtrooper.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-solarsailer": {
     "title": "Dooku's Solar Saier",
     "author": "turbopurr",
