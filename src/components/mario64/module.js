@@ -14,7 +14,7 @@
 
 import * as THREE from 'three';
 import { COURSES } from './courses/index';
-import { drain, enterArea, enterCourse, newGame, tick } from './rules/game';
+import { drain, enterArea, enterCourse, exitCourse, newGame, tick } from './rules/game';
 import { SAVE, SAVE_VERSION, blank, clean, starTotal } from './rules/save';
 import { createScene } from './scene';
 
@@ -79,6 +79,7 @@ export default {
     await scene.setArea(g.areaId);
     let shown = g.areaId;
     let loading = false;
+    let gone = false; // (disposed: what's still on its way is dropped)
 
     rt.input.bind(KEYS);
     const touch = { x: 0, y: 0, held: new Set(), pressed: new Set() };
@@ -93,6 +94,7 @@ export default {
       const bus = rt.audio?.bus();
       if (!ctx || !bus) return null;
       soundsComing = import('./sounds').then((m) => {
+        if (gone) return;
         sounds = m.createSounds(bus, ctx);
         sounds.mute(!g.save.sound);
       });
@@ -214,11 +216,16 @@ export default {
           loading = true;
           tell('fade', { on: true });
           const id = g.areaId;
-          scene.setArea(id).then(() => {
-            shown = id;
-            loading = false;
-            tell('fade', { on: false });
-          });
+          // (a texture that fails to load leaves its surface plain; the game goes on)
+          scene
+            .setArea(id)
+            .catch((err) => import.meta.env?.DEV && console.error(err))
+            .then(() => {
+              if (gone) return;
+              shown = id;
+              loading = false;
+              tell('fade', { on: false });
+            });
         }
         setMusic();
         const ui = uiState();
@@ -277,9 +284,7 @@ export default {
         else if (!on && g.mode === 'pause') g.mode = 'play';
       },
       exitCourse() {
-        if (!g.course) return;
-        enterArea(g, 'castle', g.course);
-        g.mode = 'play';
+        if (g.course) exitCourse(g);
       },
       setLook(look) {
         g.save.look = scene.setLook(look);
@@ -298,6 +303,7 @@ export default {
         persist();
       },
       dispose() {
+        gone = true;
         rt.input.unbind();
         sounds?.dispose();
         scene.dispose();
