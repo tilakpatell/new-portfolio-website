@@ -31,6 +31,9 @@ export const BASE = {
     { kind: 'box', x: -24, z: 34, hw: 3, hd: 3, top: 6, yaw: 0.2, tag: 'crate' },
     { kind: 'box', x: -16, z: 38, hw: 2.5, hd: 2.5, top: 5, yaw: -0.3, tag: 'crate' },
     { kind: 'box', x: 26, z: 36, hw: 3, hd: 3, top: 6, yaw: 0.5, tag: 'crate' },
+    // Bumblebee's car and Bulkhead's truck, parked in the bay (stage.parked)
+    { kind: 'box', x: 47, z: 33, hw: 1.2, hd: 2.4, top: 1.7, yaw: -1.9, tag: 'parked' },
+    { kind: 'box', x: -52, z: 31, hw: 1.5, hd: 3, top: 2.6, yaw: 1.4, tag: 'parked' },
     // the pillars holding the roof
     { kind: 'circle', x: -30, z: -10, r: 2.2, tag: 'pillar' },
     { kind: 'circle', x: 30, z: -10, r: 2.2, tag: 'pillar' },
@@ -143,5 +146,9 @@ export const BASE = {
     tunnel: { x: 70, z: 0, w: 22, h: 26 },
     bridgeConsole: { x: -60, z: 6 },
     catwalk: { y: 18, depth: 8 },
+    parked: [
+      { kind: 'bumblebee-car-tfp', x: 47, z: 33, yaw: -1.9 },
+      { kind: 'bulkhead-car', x: -52, z: 31, yaw: 1.4 },
+    ],
   },
 };

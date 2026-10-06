@@ -21,8 +21,10 @@ export const SHOT = { speed: 140, ttl: 1.2, robotDamage: 12, vehicleDamage: 7, c
 export const ENEMY_KINDS = {
   trooper: { hp: 40, speed: 6, range: 55, cooldown: 1.3, damage: 5, r: 1.2, h: 7 },
   vehicon: { hp: 40, speed: 6, range: 55, cooldown: 1.2, damage: 5, r: 1.2, h: 7 },
-  megatron: { hp: 700, speed: 5, range: 70, cooldown: 0.5, damage: 9, r: 1.8, h: 10.5, boss: true },
+  megatron: { hp: 700, speed: 5, range: 70, cooldown: 0.5, damage: 9, r: 1.8, h: 10.5, boss: true, name: 'Megatron' },
   barricade: { hp: 150, speed: 7, range: 55, cooldown: 0.9, damage: 6, r: 1.3, h: 7.2 },
+  // (his cannon: slow, and it hurts)
+  shockwave: { hp: 420, speed: 3.5, range: 85, cooldown: 1.7, damage: 15, r: 1.6, h: 11, boss: true, name: 'Shockwave' },
 };
 
 // The Decepticons who change: so long on their feet, then into their
