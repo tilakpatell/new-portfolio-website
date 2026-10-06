@@ -37,9 +37,11 @@
 // the hyperdrive (and the sublight drive) down till you're clear of it: its
 // fighters gone, out past the well, or a minute ridden out.
 //
-// A scene module for lib/three/useScene: create(canvas, ctx) returns
-// { ready, resize, render, update, setVisible, lowerQuality, fire, boost,
-//   climb, seat, escape, jump, goTo, dispose }.
+// A scene module, a world on the world runtime through ./module.js
+// (src/runtime's fromScene): create(canvas, ctx) draws with the runtime's
+// renderer (ctx.rt.gfx: the runtime sizes it and sets its sharpness) and
+// returns { ready, resize, render, update, setVisible, lowerQuality, fire,
+// boost, climb, seat, escape, jump, goTo, dispose }.
 // Props: system (an id), ship (a crew id), loadout (what's fitted to it in
 // the universe map's hangar: outfit.js; its paint and parts, and how they
 // make it fly), controls, net, stick,
@@ -56,9 +58,9 @@ import { local as remembered } from '../../lib/hooks';
 import { plan as cockpitPlan } from '../cockpit/timeline';
 import { freeKit } from '../cockpit/kit';
 import { audioContext } from '../../lib/audio';
-import { clamp01, createRenderer, disposeTree, precompile, precompilePasses, singlePass } from '../../lib/three/renderer';
+import { clamp01, disposeTree, precompile, precompilePasses, singlePass } from '../../lib/three/renderer';
 import { device } from '../../lib/device';
-import { createPace } from '../../lib/three/pace';
+import { STEPS } from '../../lib/three/pace';
 import { FOV } from '../universe/flight';
 import { createPost } from '../universe/post';
 import { SHIP, autopilot, forward, spawn, step } from '../universe/ship';
@@ -168,11 +170,14 @@ function takeOff(sys) {
 }
 
 export async function create(canvas, ctx) {
-  const { reduced } = ctx;
+  const { reduced, rt } = ctx;
   let props = ctx;
   let disposed = false;
-  const gl = createRenderer(canvas, { ratio: 1.5, onLost: ctx.onLost, onSlow: ctx.onSlow });
-  const { renderer } = gl;
+  // the runtime's renderer: shared with whatever world comes next, so what's
+  // changed on it here goes back as it was at dispose
+  const gfx = rt.gfx;
+  const { renderer } = gfx;
+  const autoReset = renderer.info.autoReset;
   renderer.info.autoReset = false;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(FOV, 1, 0.05, 9000);
@@ -613,7 +618,7 @@ export async function create(canvas, ctx) {
   const rect = { x: 0, y: 0, w: 1, h: 1 };
   const measure = () => {
     const nav = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 68;
-    const box = ctx.el.getBoundingClientRect();
+    const box = (rt.host ?? ctx.el).getBoundingClientRect(); // (the box it's in now: a handover moves it)
     const top = Math.max(0, nav - box.top);
     Object.assign(rect, { x: 0, y: top, w: size.w, h: size.h - top });
     camera.aspect = size.w / size.h;
@@ -1484,15 +1489,11 @@ export async function create(canvas, ctx) {
   };
 
   // ── Frames ──
-  const pace = createPace();
   const t0 = performance.now();
   const sunWorld = new THREE.Vector3();
   const toShip = new THREE.Vector3();
   let first = true;
   function render(ms, now) {
-    gl.watch(now);
-    const sharp = pace.frame(now);
-    if (sharp !== null) post.sharpness = sharp;
     const dt = ms / 1000;
     const t = reduced ? 0 : (now - t0) / 1000;
     const wt = wall();
@@ -1601,7 +1602,7 @@ export async function create(canvas, ctx) {
     // the speed: dust streaming past, the picture rushing out from the ship
     const dustWant = !reduced && flying() && !inTunnel ? 0.35 + 0.65 * clamp01(Math.abs(state.ship.speed) / SHIP.cruise) : 0;
     dustAmount += (dustWant - dustAmount) * clamp01(dt * 3);
-    dust.update(camera.position, dustAmount, gl.ratio);
+    dust.update(camera.position, dustAmount, gfx.ratio);
     if (!reduced && flying() && (state.streak > 0.001 || spool)) {
       const k = Math.max(state.streak, state.jump?.phase === 'spool' ? clamp01(state.jump.age / JUMP.spool) : 0);
       if (state.view === 'cockpit') post.rush(k * 0.8, 0.5, 0.5);
@@ -1879,8 +1880,7 @@ export async function create(canvas, ctx) {
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);
-      gl.setSize(size.w, size.h);
-      sky.setRatio(gl.ratio);
+      sky.setRatio(gfx.ratio);
       measure();
     },
     render,
@@ -1910,7 +1910,11 @@ export async function create(canvas, ctx) {
       state.shown = on;
       if (!on) engine?.set({ speed: 0, on: false });
     },
-    lowerQuality() {
+    // the runtime's quality: the sharpness is its own; at the floor (past
+    // its last step), the glow and the grade go
+    lowerQuality(level = STEPS.length) {
+      sky.setRatio(gfx.ratio);
+      if (level < STEPS.length) return;
       post.off();
       ctx.invalidate();
     },
@@ -1992,7 +1996,9 @@ export async function create(canvas, ctx) {
       disposeTree(scene);
       post.dispose();
       env?.dispose();
-      gl.dispose();
+      renderer.info.autoReset = autoReset;
+      canvas.removeAttribute('aria-hidden');
+      canvas.style.cursor = '';
     },
   };
 }

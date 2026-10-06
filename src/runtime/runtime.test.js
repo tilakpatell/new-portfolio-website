@@ -258,6 +258,103 @@ describe('createRuntime', () => {
     expect(world.lowerQuality).toHaveBeenCalledWith(2);
   });
 
+  it("a module's ratio caps the sharpness it's drawn at", async () => {
+    const quality = fakeQuality();
+    quality.ratioUnder = vi.fn((cap) => Math.min(cap ?? Infinity, 2));
+    const { rt } = make({ quality });
+    await rt.mount({ id: 'a', ratio: 1.5, create: () => fakeWorld() }, {}, fakeHost());
+    expect(rt.gfx.setRatio).toHaveBeenLastCalledWith(1.5);
+    await rt.mount({ id: 'b', create: () => fakeWorld() }, {}, fakeHost());
+    expect(rt.gfx.setRatio).toHaveBeenLastCalledWith(2);
+  });
+
+  it('a handover keeps the keys the new world bound as it was made', async () => {
+    const { rt, input } = make();
+    input.bind = vi.fn();
+    input.bindings = vi.fn(() => ({ actions: { old: ['KeyO'] }, axes: {} }));
+    await rt.mount({ id: 'old', create: () => fakeWorld() }, {}, fakeHost());
+    input.unbind.mockClear();
+    let order = [];
+    input.unbind.mockImplementation(() => order.push('unbind'));
+    const create = vi.fn(() => {
+      order.push('create');
+      rt.input.bind({ fly: ['KeyW'] });
+      return fakeWorld();
+    });
+    await rt.handover({ id: 'next', create }, {}, fakeHost());
+    expect(order).toEqual(['unbind', 'create']); // (never unbound after it bound them)
+    // and a handover that fails gives the old world its keys back
+    order = [];
+    await rt.handover({ id: 'bad', create: () => { throw new Error('no'); } }, {}, fakeHost());
+    expect(input.bind).toHaveBeenLastCalledWith({ old: ['KeyO'] }, { axes: {} });
+  });
+
+  it('a held cover waits for the page to adopt the world, then fades in its box', async () => {
+    const { rt, loop, input } = make();
+    const old = fakeWorld({ wants: () => true });
+    const host1 = fakeHost();
+    await rt.mount({ id: 'old', create: () => old }, {}, host1);
+    loop.tick(0);
+    const nextMod = { id: 'next', create: () => fakeWorld({ wants: () => true }) };
+    const p = rt.handover(nextMod, {}, host1, { fade: 600, held: true });
+    loop.tick(16); // (the old world's last frame, kept as the cover)
+    await p;
+    const snap = rt.gfx.snapshot.mock.results[0].value;
+    snap.el = { parentNode: host1 };
+    loop.tick(100);
+    loop.tick(700);
+    expect(snap.set).not.toHaveBeenCalled(); // still covering: no page has it yet
+    expect(snap.remove).not.toHaveBeenCalled();
+    const host2 = fakeHost();
+    expect(rt.adopt({ id: 'other' }, host2)).toBe(false);
+    input.attach.mockClear();
+    expect(rt.adopt(nextMod, host2)).toBe(true);
+    expect(host2.prepend).toHaveBeenCalledWith(rt.gfx.canvas);
+    expect(host2.appendChild).toHaveBeenCalledWith(snap.el);
+    expect(input.attach).toHaveBeenCalledWith(expect.objectContaining({ host: host2 }));
+    expect(rt.host).toBe(host2);
+    loop.tick(800);
+    loop.tick(1100);
+    expect(snap.set).toHaveBeenLastCalledWith(0.5);
+    loop.tick(1500);
+    expect(snap.remove).toHaveBeenCalled();
+  });
+
+  it('a held cover gives up waiting after a few seconds', async () => {
+    const { rt, loop } = make();
+    await rt.mount({ id: 'old', create: () => fakeWorld({ wants: () => true }) }, {}, fakeHost());
+    loop.tick(0);
+    const p = rt.handover({ id: 'next', create: () => fakeWorld({ wants: () => true }) }, {}, fakeHost(), { fade: 600, held: true });
+    loop.tick(16);
+    await p;
+    const snap = rt.gfx.snapshot.mock.results[0].value;
+    loop.tick(100);
+    loop.tick(3200);
+    loop.tick(3300);
+    loop.tick(4000);
+    expect(snap.remove).toHaveBeenCalled();
+  });
+
+  it('says which module is being made, so a page that leaves drops only its own', async () => {
+    const { rt } = make();
+    let done;
+    const mod = { id: 'a', create: () => new Promise((r) => (done = r)) };
+    expect(rt.loading).toBe(null);
+    const p = rt.mount(mod, {}, fakeHost());
+    expect(rt.loading).toBe(mod);
+    await flush();
+    done(fakeWorld());
+    await p;
+    expect(rt.loading).toBe(null);
+    const bad = { id: 'b', create: () => { throw new Error('no'); } };
+    await rt.mount(bad, {}, fakeHost());
+    expect(rt.loading).toBe(null);
+    const slow = { id: 'c', create: () => new Promise(() => {}) };
+    rt.mount(slow, {}, fakeHost());
+    rt.unmount();
+    expect(rt.loading).toBe(null); // (dropped)
+  });
+
   it('events reach the page and leave with the world', async () => {
     const { rt } = make();
     const fn = vi.fn();
