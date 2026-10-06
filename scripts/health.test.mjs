@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { makeContext, metric } from './health/context.mjs';
 import bigFiles, { CEILING, WARN } from './health/big-files.mjs';
 import cycles from './health/cycles.mjs';
-import { graph, resolve } from './health/graph.mjs';
+import { graph, resolve, uncomment } from './health/graph.mjs';
 import lintDisables from './health/lint-disables.mjs';
 import todoNotes from './health/todo-notes.mjs';
 import { check, describe as words, ratchet } from './health/ratchet.mjs';
@@ -65,6 +65,7 @@ describe('the import graph, on a fixture tree', () => {
       'src/h.js -> src/data/one.json',
       'src/h.js -> src/data/two.json',
       'src/h.js -> src/i.js',
+      'src/j.js -> src/i.js',
       'src/j.js -> src/k.js',
       'src/k.js -> src/j.js',
       'src/t.js -> src/t.test.js',
@@ -74,6 +75,24 @@ describe('the import graph, on a fixture tree', () => {
     expect(g.isTest('src/t.test.js')).toBe(true);
     expect(g.isTest('src/t.js')).toBe(false);
     expect(await graph(gctx)).toBe(g);
+  });
+
+  it('blanks comments in place but steps over strings, templates and regexes whole', () => {
+    const gone = (s) => ' '.repeat(s.length);
+    const lines = (...l) => l.join('\n');
+    expect(uncomment(lines(
+      "import { a, // a's own",
+      "} from './a.js'; /* gone */ const glob = './data/*.json';",
+      "const url = 'http://x', re = /[/*]/g, half = n / 2; // gone",
+      'const t = `${ { a: \'//\' }.a } // kept */`;',
+      "if (s) return /'/.test(s); // gone",
+    ))).toBe(lines(
+      `import { a, ${gone("// a's own")}`,
+      `} from './a.js'; ${gone('/* gone */')} const glob = './data/*.json';`,
+      `const url = 'http://x', re = /[/*]/g, half = n / 2; ${gone('// gone')}`,
+      'const t = `${ { a: \'//\' }.a } // kept */`;',
+      `if (s) return /'/.test(s); ${gone('// gone')}`,
+    ));
   });
 
   it('finds each cycle once, shortest first, from its alphabetically first file, tests left out', async () => {
