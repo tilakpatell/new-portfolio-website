@@ -15,6 +15,7 @@ import { METRE } from '../../universe/foot';
 import { RIDES } from './rides';
 import { buildFigure } from './figures';
 import { modelFigure } from './actors';
+import { createGunplay } from '../../universe/gunplay';
 
 const CREW_MODELS = { artoo: 'r2d2' }; // (scene.js's)
 
@@ -55,7 +56,7 @@ export function createPeers({ parent, placer, getCast }) {
   const walker = (who, looks = null) => {
     const holder = new THREE.Group();
     group.add(holder);
-    const w = { who, holder, fig: null, st: null };
+    const w = { who, holder, fig: null, gp: null, st: null };
     const spec = SPECS[who];
     if (spec)
       (async () => {
@@ -68,6 +69,11 @@ export function createPeers({ parent, placer, getCast }) {
         inner.add(fig.model);
         holder.add(inner);
         w.fig = fig;
+        // their gun, in the hand (up as far as they say theirs is)
+        if (spec.gun && !own) {
+          holder.updateMatrixWorld(true);
+          w.gp = createGunplay(fig, fig.gun ?? spec.gun, { unit: 1, who: fig.built ? 'built' : who });
+        }
       })();
     return w;
   };
@@ -75,6 +81,7 @@ export function createPeers({ parent, placer, getCast }) {
     const e = shown.get(id);
     if (!e) return;
     for (const w of e.walkers) {
+      w.gp?.dispose();
       w.fig?.dispose?.();
       w.holder.removeFromParent();
     }
@@ -111,7 +118,10 @@ export function createPeers({ parent, placer, getCast }) {
     st.z += (to.z - st.z) * k;
     st.yaw += Math.atan2(Math.sin(to.yaw - st.yaw), Math.cos(to.yaw - st.yaw)) * k;
     st.speed = to.speed;
+    st.aim = to.aim ?? 0;
   };
+  const UP = new THREE.Vector3(0, 1, 0);
+  const fwd = new THREE.Vector3();
 
   return {
     group,
@@ -134,6 +144,7 @@ export function createPeers({ parent, placer, getCast }) {
           if (e.walkers[i]?.who !== s.who) {
             if (e.walkers[i]) {
               e.walkers[i].holder.removeFromParent();
+              e.walkers[i].gp?.dispose();
               e.walkers[i].fig?.dispose?.();
             }
             e.walkers[i] = walker(s.who, p.looks);
@@ -144,9 +155,18 @@ export function createPeers({ parent, placer, getCast }) {
           wk.holder.position.set(wk.st.x, wk.st.y, wk.st.z);
           wk.holder.rotation.y = wk.st.yaw;
           wk.fig?.update(dt, i === 0 && w.ride ? 0 : Math.min(1, Math.abs(wk.st.speed) / 7.4));
+          if (wk.gp) {
+            const riding = i === 0 && Boolean(w.ride);
+            wk.gp.gun.visible = !riding;
+            if (!riding) {
+              wk.holder.updateMatrixWorld(true);
+              wk.gp.set(dt, { aim: wk.st.aim ?? 0, forward: fwd.set(Math.sin(wk.st.yaw), 0, Math.cos(wk.st.yaw)), up: UP });
+            }
+          }
         });
         for (let i = want.length; i < e.walkers.length; i++) {
           e.walkers[i].holder.removeFromParent();
+          e.walkers[i].gp?.dispose();
           e.walkers[i].fig?.dispose?.();
         }
         e.walkers.length = want.length;

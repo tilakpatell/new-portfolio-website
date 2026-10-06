@@ -392,6 +392,15 @@ describe('down on a world in the galaxy', () => {
     expect(readWalk(writeWalk(null))).toEqual({ off: true });
   });
 
+  it('says how far the lead’s gun is up, and an older pilot’s message (without it) reads as down', async () => {
+    const { readWalk, writeWalk } = await import('./protocol');
+    const got = readWalk(JSON.parse(JSON.stringify(writeWalk({ world: 'hoth', kind: 'falcon', lead: { who: 'han', x: 1, y: 2, z: 3, yaw: 0, speed: 0, aim: 0.734 }, mate: null }))));
+    expect(got.lead.aim).toBeCloseTo(0.73, 2);
+    expect(readWalk({ w: 'hoth', a: ['han', 1, 2, 3, 0, 0] }).lead.aim).toBe(0);
+    expect(readWalk({ w: 'hoth', a: ['han', 1, 2, 3, 0, 0, 7] }).lead.aim).toBe(1); // (held to its range)
+    expect(readWalk({ w: 'hoth', a: ['han', 1, 2, 3, 0, 0, 'up'] }).lead.aim).toBe(0);
+  });
+
   it('turns away what isn’t a crew on a world', async () => {
     const { readWalk } = await import('./protocol');
     expect(readWalk(null)).toBeNull();
