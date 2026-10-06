@@ -339,6 +339,8 @@ export function createMinasWorld(canvas, { onLost } = {}) {
   const fax = folk.shadowfax();
   fax.group.visible = false;
   scene.add(fax.group);
+  // Shadowfax under Gandalf, and the fell beasts (a blob only as they stoop low)
+  movers.push({ object: fax.group, size: [1.2, 2.8] }, ...beasts.map((b) => ({ object: b.group, size: [5, 5] })));
   const ghosts = createGhosts({ make: () => folk.person('pippin'), tag: 0.42 });
   zones.city.add(ghosts.group);
   // what's in the way on the road up, made when a ride starts
