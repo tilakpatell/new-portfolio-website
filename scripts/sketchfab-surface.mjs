@@ -70,7 +70,18 @@ async function download(kind, uid) {
   const file = path(CACHE, `${kind}-${uid}.glb`);
   if (existsSync(file)) return file;
   if (!token) throw new Error('SKETCHFAB_API_TOKEN is not set');
-  const { glb } = await json(`${API}/${uid}/download`, { Authorization: `Token ${token}` });
+  // (the download API is rate-limited: a 429 is waited out, a minute at a time)
+  let glb;
+  for (let tries = 0; ; tries++) {
+    const r = await fetch(`${API}/${uid}/download`, { headers: { Authorization: `Token ${token}` } });
+    if (r.ok) {
+      ({ glb } = await r.json());
+      break;
+    }
+    if (r.status !== 429 || tries >= 8) throw new Error(`${API}/${uid}/download: ${r.status}`);
+    console.log(`${kind}: rate-limited, waiting a minute`);
+    await new Promise((res) => setTimeout(res, 60000));
+  }
   if (!glb?.url) throw new Error(`${kind}: no .glb to download`);
   const r = await fetch(glb.url);
   if (!r.ok) throw new Error(`${kind}: download ${r.status}`);
@@ -371,13 +382,15 @@ async function main() {
   await mkdir(OUT, { recursive: true });
   await mkdir(CACHE, { recursive: true });
   const credits = JSON.parse(await readFile(CREDITS, 'utf8'));
+  // (the credits are written after each model, so a run that stops short
+  // keeps what it brought in; SKIP_DONE=1 leaves a model that's already in)
   for (const kind of only.length ? only : Object.keys(MODELS)) {
     const spec = MODELS[kind];
-    await bring(io, kind, spec);
+    if (!(process.env.SKIP_DONE && existsSync(path(OUT, `${kind}.glb`)))) await bring(io, kind, spec);
     credits[`surface-${kind}`] = await credit(kind, spec.uid, spec.as);
+    const sorted = Object.fromEntries(Object.keys(credits).sort().map((k) => [k, credits[k]]));
+    await writeFile(CREDITS, `${JSON.stringify(sorted, null, 2)}\n`);
   }
-  const sorted = Object.fromEntries(Object.keys(credits).sort().map((k) => [k, credits[k]]));
-  await writeFile(CREDITS, `${JSON.stringify(sorted, null, 2)}\n`);
 }
 
 main().catch((e) => {

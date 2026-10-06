@@ -41,6 +41,7 @@ import { fileURLToPath } from 'node:url';
 import { REFS, fetchRef } from './galaxy-refs.mjs';
 import { makeLod } from './galaxy-surface-lod.mjs';
 import { BUILDINGS as BACK_LANE } from './meshy-galaxy-buildings-back.mjs';
+import { BUILDINGS as FILL_LANE } from './meshy-galaxy-buildings-fill.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'models', 'galaxy', 'surface');
@@ -84,6 +85,8 @@ const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/j
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // the back lane's kinds, from their own file (scripts/meshy-galaxy-buildings-back.mjs)
 Object.assign(BUILDINGS, BACK_LANE);
+// and the filled worlds' (scripts/meshy-galaxy-buildings-fill.mjs)
+Object.assign(BUILDINGS, FILL_LANE);
 
 async function api(method, path, body) {
   const r = await fetch(`${API}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
