@@ -101,7 +101,7 @@ import { BELT, ORDER, POSITIONS, REACH, RIM, SUN } from './layout';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
 import { createPost, spaceEnvironment } from './post';
-import { PLANETS, SHIP, SOLIDS, autopilot, forward, headingTo, isGoal, isPlace, orbiting, parkAt, spawn, startAt, step } from './ship';
+import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, isGoal, isPlace, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, driveById, hyperState, parkFor, riftExit } from './nav';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
 import { AHEAD_OF, factionsOf, kindsOf, pick as pickFaction, sideFor, wingOf } from './sides';
@@ -1360,9 +1360,10 @@ export async function create(canvas, ctx) {
   };
   const travel = (id, drive = props.drive) => {
     const s = state.ship;
-    if (!s || state.crash || state.dive || state.jump || props.frozen || onFoot() || !isGoal(id)) return false;
-    // (the Maw's own spot is past its point of no return: to the edge of its pull instead)
-    const park = parkFor(id, [s.x, s.z]);
+    if (!s || state.crash || state.dive || state.jump || props.frozen || onFoot() || !(isGoal(id) || (id === 'front' && front))) return false;
+    // (the Maw's own spot is past its point of no return: to the edge of its pull instead; the
+    // front's is just inside the fight, on your side of it)
+    const park = id === 'front' ? frontPark([s.x, s.z]) : parkFor(id, [s.x, s.z]);
     if (!park) return false;
     heard();
     state.view = state.seat;
@@ -1406,6 +1407,17 @@ export async function create(canvas, ctx) {
     camQOn = false;
   };
   const navTo = (id) => travel(id);
+  // the war's front as somewhere the autopilot can go (front.js's goal):
+  // parked just inside the fight on the side you come from, facing it
+  const frontPark = ([x, z]) => {
+    const g = front?.goal();
+    if (!g) return null;
+    const dx = x - g.at[0];
+    const dz = z - g.at[2];
+    const l = Math.hypot(dx, dz) || 1;
+    return { x: g.at[0] + (dx / l) * g.reach, y: g.at[1], z: g.at[2] + (dz / l) * g.reach, heading: headingTo(-dx / l, -dz / l) };
+  };
+  const frontSpace = () => ({ ...SPACE, goals: { ...SPACE.goals, front: front.goal() } });
 
   // ── The ship ──
   const heard = () => {
@@ -3151,7 +3163,7 @@ export async function create(canvas, ctx) {
     if (state.jump) input = { throttle: 1, boost: true }; // (spooling up: straight on, flat out)
     else if (state.auto) {
       const od = state.interdicted ? 1 : (state.auto.od ?? 1);
-      const a = autopilot(state.ship, state.auto.id, state.auto.park, undefined, od);
+      const a = autopilot(state.ship, state.auto.id, state.auto.park, state.auto.id === 'front' && front ? frontSpace() : undefined, od);
       input = a.input;
       if (a.done) {
         const id = state.auto.id;
