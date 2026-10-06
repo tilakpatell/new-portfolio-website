@@ -148,5 +148,35 @@
   "hankHouse": {
     "image": "01a1096b-8a75-747c-a634-e020e636031c",
     "model": "01a1096c-13fb-74ff-b55a-fedd244c3352"
+  },
+  "waltHd": {
+    "image": "01a1086c-19d8-76e7-939d-329ad7653896",
+    "model": "01a111f8-ed5f-73f6-b299-8c48642a2ee5",
+    "rig": "01a111fb-1207-74b6-90e7-1aa608e01f9f"
+  },
+  "jesseHd": {
+    "image": "01a10876-7dc6-77fa-b737-dbaaef60eb08",
+    "model": "01a111c2-56a7-745d-9693-630a4602dbef",
+    "rig": "01a111c5-2005-748f-99f4-20609ad13592"
+  },
+  "jesseLabHd": {
+    "image": "01a10876-7be2-706e-8727-78c049e52c15",
+    "model": "01a111c2-58e9-72f3-a085-fde425052b8e",
+    "rig": "01a111c5-2fcd-7382-826d-26436c94a69f"
+  },
+  "waltHdStandard": {
+    "image": "01a1086c-19d8-76e7-939d-329ad7653896",
+    "model": "01a111c2-540a-72f2-b4e0-0b774d213162",
+    "rig": "01a111c5-1017-7799-b313-9f793fab121a"
+  },
+  "jesseHdUltra": {
+    "image": "01a10876-7dc6-77fa-b737-dbaaef60eb08",
+    "model": "01a111fc-1865-74b5-8e3b-3df03787c8c5",
+    "rig": "01a111ff-daad-7698-9ec9-d6d3066b2c87"
+  },
+  "jesseLabHdUltra": {
+    "image": "01a10876-7be2-706e-8727-78c049e52c15",
+    "model": "01a111fc-1ab4-7418-a2be-ff62a5c7c918",
+    "rig": "01a111ff-eb33-7049-8791-c74334e2930c"
   }
 }

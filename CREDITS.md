@@ -455,7 +455,7 @@ The short clips from the films and shows belong to their studios; where each cam
 
 ## Made for this site
 
-The worlds' own characters, buildings and props (the Albuquerque town and its people, the Caribbean's ships, Middle-earth's places, Mark Grayson and more) were made for this site with [Meshy](https://www.meshy.ai), or modelled in code. The task behind each one is recorded next to it (`scripts/*-tasks.json`, `public/games/credits.json`).
+The worlds' own characters, buildings and props (the Albuquerque town and its people, the Caribbean's ships, Middle-earth's places, Mark Grayson and more) were made for this site with [Meshy](https://www.meshy.ai), or modelled in code. The task behind each one is recorded next to it (`scripts/*-tasks.json`, `public/games/credits.json`). Walt, Jesse (in his hoodie and in hazmat) and the RV with wings were made again in HD (about 40,000 faces, 2k textures), as Rick and Morty were.
 
 ---
 

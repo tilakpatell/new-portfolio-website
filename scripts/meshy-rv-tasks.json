@@ -9,5 +9,11 @@
   "wing": {
     "image": "01a10935-0931-7571-8458-bac302ae0bfa",
     "model": "01a10935-f6d2-747b-a11b-8346128460b2"
+  },
+  "rvHd": {
+    "retexture": "01a111c3-9419-7695-a016-a5a67ebe49e9"
+  },
+  "wingHd": {
+    "retexture": "01a111c4-634f-744b-8daf-35c96920eccc"
   }
 }

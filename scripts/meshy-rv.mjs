@@ -8,10 +8,17 @@
 // the web into public/models/. The output is committed, so the site never
 // calls Meshy.
 //
-//   node --env-file=.env.local scripts/meshy-rv.mjs <step> [name …]
+//   node --env-file=.env.local scripts/meshy-rv.mjs <step> [name … | hd]
+//
+// `hd`: the winged RV painted again (Meshy's retexture), on the same mesh and
+// its own UVs, from its own picture, at 4k brought down to 2k, over the
+// original. The mesh stays as it is because the code that flies it has
+// measured it: where the jets and the wingtips' lights are, raw
+// (cockpit/vehicles/rv.js FLYER, universe/shipModels.js POD), which a model
+// made again would move.
 //
 // Steps, in order: images (9 credits each, 12 with gpt-image-2), models
-// (30), fetch (free). Each task's id is kept in scripts/meshy-rv-tasks.json,
+// (30), retexture (10), fetch (free). Each task's id is kept in scripts/meshy-rv-tasks.json,
 // so running a step again never pays twice; delete a name's entry there to
 // make it again. MESHY_API_KEY comes from .env.local (git ignores it); it is
 // never printed. Concept images and thumbnails go to lab/meshy/rv (or
@@ -68,6 +75,18 @@ export const ASSETS = {
     prompt: `Remove the two wings at the top of the picture and keep only the wing at the bottom left, the one with the jet engine pod under it and the red light at its tip, exactly as it is. Move it to the centre and make it bigger so the whole wing, root to tip, fills the picture. One single wing and nothing else. ${KEEP}`,
   },
 };
+
+// The HD set: `retexture` names the model painted again (its mesh and UVs
+// kept, its own picture to paint from), written over its `out`. (The wing
+// was painted again too, and came out only a little sharper, its rivets
+// and stripes much as they were, for twice the bytes in the cockpit the
+// site opens in: the original stays. Its task is in the tasks file as
+// wingHd, free to fetch: { retexture: 'wing', out: 'cockpit/rv-wing.glb',
+// tex: 2048, what: 'the RV’s wing' }.)
+const HD = {
+  rvHd: { retexture: 'rv', out: 'universe/rv-wings.glb', tex: 2048, what: 'the RV with wings' },
+};
+Object.assign(ASSETS, HD);
 
 const key = process.env.MESHY_API_KEY;
 const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
@@ -138,7 +157,7 @@ async function squeeze(from, to, tex) {
 
 const steps = {
   async images(names, s) {
-    for (const n of names) {
+    for (const n of names.filter((n) => !ASSETS[n].retexture)) {
       const a = ASSETS[n];
       // another name's picture (kept in the tasks file), or an image task's id
       const from = s[a.from]?.image ?? (/^[0-9a-f-]{36}$/.test(a.from) ? a.from : null);
@@ -155,7 +174,7 @@ const steps = {
     }
   },
   async models(names, s) {
-    for (const n of names.filter((n) => ASSETS[n].out)) {
+    for (const n of names.filter((n) => ASSETS[n].out && !ASSETS[n].retexture)) {
       if (!s[n]?.image) throw new Error(`${n}: no image yet`);
       if (!s[n].model) {
         const { result } = await api('POST', '/v1/image-to-3d', {
@@ -178,18 +197,46 @@ const steps = {
       console.log(`model    ${n.padEnd(6)} ${t.consumed_credits} credits`);
     }
   },
+  // painted again from its own picture (sent as data, as the picture's link
+  // may have expired), the UVs it has kept
+  async retexture(names, s) {
+    for (const n of names.filter((n) => ASSETS[n].retexture)) {
+      const of = ASSETS[n].retexture;
+      if (!s[of]?.model || !s[of]?.image) throw new Error(`${n}: ${of} has no model yet`);
+      s[n] ??= {};
+      if (!s[n].retexture) {
+        const picture = join(REVIEW, `${of}.png`);
+        if (!existsSync(picture)) await download((await api('GET', `/v1/image-to-image/${s[of].image}`)).image_urls[0], picture);
+        const { result } = await api('POST', '/v1/retexture', {
+          input_task_id: s[of].model,
+          image_style_url: `data:image/png;base64,${(await readFile(picture)).toString('base64')}`,
+          ai_model: 'latest',
+          enable_original_uv: true,
+          enable_pbr: false,
+          texture_resolution: '4k',
+          target_formats: ['glb'],
+        });
+        s[n].retexture = result;
+        await save(s);
+      }
+      const t = await wait('/v1/retexture', s[n].retexture, `${n} retexture`);
+      if (t.thumbnail_url) await download(t.thumbnail_url, join(REVIEW, `${n}-front.png`));
+      console.log(`retex    ${n.padEnd(6)} ${t.consumed_credits} credits`);
+    }
+  },
   async fetch(names, s) {
     const tmp = join(REVIEW, 'raw');
     const creditsFile = join(ROOT, 'public', 'games', 'credits.json');
     const credits = JSON.parse(await readFile(creditsFile, 'utf8'));
     for (const n of names.filter((n) => ASSETS[n].out)) {
       const a = ASSETS[n];
-      if (!s[n]?.model) throw new Error(`${n}: no model yet`);
-      const t = await api('GET', `/v1/image-to-3d/${s[n].model}`);
+      const id = a.retexture ? s[n]?.retexture : s[n]?.model;
+      if (!id) throw new Error(`${n}: no model yet`);
+      const t = await api('GET', a.retexture ? `/v1/retexture/${id}` : `/v1/image-to-3d/${id}`);
       const raw = join(tmp, `${n}.glb`);
       await download(t.model_urls.glb, raw);
       const box = await squeeze(raw, join(OUT, a.out), a.tex);
-      credits[a.out.replace(/\.glb$/, '')] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${n === 'rv' ? 'the RV with wings' : 'the RV’s wing'}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
+      credits[a.out.replace(/\.glb$/, '')] = { source: 'https://www.meshy.ai', id, name: `${a.what ?? (n === 'rv' ? 'the RV with wings' : 'the RV’s wing')}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
       console.log(`fetch    ${n.padEnd(6)} ${a.out}  x ${box[0]}  y ${box[1]}  z ${box[2]}`);
     }
     await writeFile(creditsFile, `${JSON.stringify(credits, null, 2)}\n`);
@@ -201,7 +248,8 @@ async function main() {
   if (!key) throw new Error('Set MESHY_API_KEY in .env.local and run with node --env-file=.env.local.');
   const [step, ...only] = process.argv.slice(2);
   if (!steps[step]) throw new Error(`step: ${Object.keys(steps).join(' | ')}`);
-  const names = only.length ? only : Object.keys(ASSETS);
+  // (`hd` stands for the HD set)
+  const names = only.length ? only.flatMap((n) => (n === 'hd' ? Object.keys(HD) : [n])) : Object.keys(ASSETS);
   for (const n of names) if (!ASSETS[n]) throw new Error(`unknown asset ${n}`);
   const s = await load();
   await steps[step](names, s);
