@@ -1,5 +1,6 @@
 // A page puts a world module on the runtime: useWorld(module, { props,
-// enabled, onEvent }) → { host, status, on, meant, world, rt }. `host` is
+// enabled, onEvent, attempt }) → { host, status, on, meant, world, rt }
+// (`attempt` bumped mounts it again after a failure). `host` is
 // the ref for the box (WorldHost renders it); the module is mounted while
 // `enabled` and 3D is on (lib/gpu, which a phone's download gate holds);
 // its size and whether it's on screen follow the box; `props` reach the
@@ -12,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { use3D } from '../lib/gpu';
 import { runtime } from './index';
 
-export function useWorld(module, { props, enabled = true, onEvent = null } = {}) {
+export function useWorld(module, { props, enabled = true, onEvent = null, attempt = 0 } = {}) {
   const host = useRef(null);
   const world = useRef(null);
   const three = use3D();
@@ -70,7 +71,7 @@ export function useWorld(module, { props, enabled = true, onEvent = null } = {})
       // (a mount still in flight for this module is dropped by the next mount or unmount)
       else if (!rt.current && rt.status === 'loading') rt.unmount();
     };
-  }, [on, module]);
+  }, [on, module, attempt]);
 
   // the page's props, without re-rendering anything
   useEffect(() => {

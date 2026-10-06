@@ -66,6 +66,7 @@ export function runtime() {
     const wake = () => instance.invalidate();
     document.addEventListener('visibilitychange', wake);
     win.addEventListener('tp:uncover', wake);
+    if (import.meta.env.DEV) win.__RUNTIME__ = instance; // for the QA scripts
   }
   return instance;
 }

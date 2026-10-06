@@ -47,6 +47,7 @@ export default {
   id: 'earth',             // unique; the saves and the events are namespaced by it
   shading: 'glsl',         // 'glsl' (ShaderMaterial, onBeforeCompile, EffectComposer) or 'nodes' (TSL only)
   mb: 2,                   // what it downloads, for the phone gate (today's WORLD_MB)
+  label: '…',              // optional: what the canvas shows, for a screen reader (role="img")
   create(rt, props),       // → World, or a promise of one
 };
 ```

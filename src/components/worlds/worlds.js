@@ -8,6 +8,8 @@ export const WORLDS = UNIVERSES.filter((u) => u.world).flatMap((u) => [{ to: u.t
 // What each world downloads when it opens (models, textures, skies,
 // sound), in MB, measured on a phone-sized screen and rounded up: a phone
 // asks before loading the heavy ones (WorldGate, lib/device's worldCheck).
+// A world on the world runtime (src/runtime) says the same in its module's
+// `mb` (its test checks they agree).
 export const WORLD_MB = {
   '/caribbean': 16, // Dead Man's Tide's ships and sea creatures
   '/invincible': 4, // the three HD figures and the city's three skies

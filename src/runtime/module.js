@@ -2,7 +2,8 @@
 // written for lib/three/useScene (create(canvas, ctx) → { render(ms, now)
 // → bool, ... }) into a world module without changing it.
 //
-// A world module: { id, shading: 'glsl' | 'nodes', mb, create(rt, props) }.
+// A world module: { id, shading: 'glsl' | 'nodes', mb, label?, create(rt, props) }
+// (`label` says what the canvas shows, for a screen reader).
 // A world: { ready?, resize(w, h), step?(dt, input, now), draw(frame),
 //   wants?(), update?(props), setVisible?(on), setColors?(colors),
 //   lowerQuality?(level), warmUp?(timeLeft), handoff?(), dispose() }.

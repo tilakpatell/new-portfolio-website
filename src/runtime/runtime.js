@@ -175,8 +175,18 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     }
     return world;
   };
-  const place = (world, host) => {
+  const place = (world, host, mod) => {
     if (gfx.canvas.parentNode !== host) host.prepend(gfx.canvas);
+    // (the canvas is the picture: a module may say what it shows)
+    if (gfx.canvas.setAttribute) {
+      if (mod.label) {
+        gfx.canvas.setAttribute('role', 'img');
+        gfx.canvas.setAttribute('aria-label', mod.label);
+      } else {
+        gfx.canvas.removeAttribute?.('role');
+        gfx.canvas.removeAttribute?.('aria-label');
+      }
+    }
     const r = host.getBoundingClientRect?.();
     const w = Math.max(1, Math.round(r?.width ?? 1));
     const h = Math.max(1, Math.round(r?.height ?? 1));
@@ -251,8 +261,8 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       try {
         const world = await build(mod, props, host, token);
         if (!world) return;
-        place(world, host);
-        begin(mod, world, host, props);
+        place(world, host, mod);
+        begin(module, world, host, props); // (the object the page mounted, so it can tell its own)
       } catch (err) {
         if (dev) console.error(`[${mod.id}] 3D failed`, err);
         if (token === seq) {
@@ -284,8 +294,8 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
         input.unbind();
         input.detach();
         takeSnap = false;
-        place(world, host);
-        begin(mod, world, host, props);
+        place(world, host, mod);
+        begin(module, world, host, props);
         timeline = snap ? createHandover({ fade }) : null; // (nothing drawn to fade: straight in)
         fading = false;
       } catch (err) {

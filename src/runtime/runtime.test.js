@@ -70,7 +70,20 @@ describe('createRuntime', () => {
     expect(order).toEqual(['step', 'draw']);
     expect(world.draw.mock.calls[0][0]).toMatchObject({ dt: 0.016, now: 16, renderer: rt.gfx.renderer });
     expect(statuses).toEqual(['loading', 'ready', 'on']);
-    expect(rt.current.module.id).toBe('a');
+    expect(rt.current.module).toBe(mod); // the very object the page mounted, so useWorld can tell its own
+  });
+
+  it('a module with a label makes the canvas a picture', async () => {
+    const { rt } = make();
+    const canvas = { remove: vi.fn(), parentNode: null, attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, removeAttribute(k) { delete this.attrs[k]; } };
+    const gfx = fakeBackend();
+    gfx.canvas = canvas;
+    const { rt: rt2 } = make({ makeBackend: () => gfx });
+    await rt2.mount({ id: 'a', label: 'The Earth in 3D', create: () => fakeWorld() }, {}, fakeHost());
+    expect(canvas.attrs).toEqual({ role: 'img', 'aria-label': 'The Earth in 3D' });
+    await rt2.mount({ id: 'b', create: () => fakeWorld() }, {}, fakeHost());
+    expect(canvas.attrs).toEqual({});
+    expect(rt.status).toBe('idle');
   });
 
   it('a mount during loading wins: the first world is disposed, never drawn', async () => {
