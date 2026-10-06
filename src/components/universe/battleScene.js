@@ -13,8 +13,10 @@
 // drifting apart and rolling away from each other, burning along the break.
 //
 // createBattleScene(parent, { models, small, reduced, metres }) → { show(battle,
-//   war), hide(), update(dt, t, camera, camLocal, events, youTeam) → busy,
-//   halves, dispose() }
+//   war), hide(), update(dt, t, camera, camLocal, events, youTeam, extra) → busy,
+//   halves, flash(at, opts), burn(at, size), dispose() }
+// `extra`: more markers ({ key, pos, title, sub?, hp?, colour }), the set
+// pieces' (galaxy/warpieces/); flash and burn are theirs too.
 // Everything is in `parent`'s space (the map's).
 
 import * as THREE from 'three';
@@ -42,6 +44,7 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
   let battle = null;
   let war = null;
   let chain = 0; // seconds to the next explosion down a dying ship
+  let seenRunners = 0; // the battle's runners given slots, so far
   const basis = new THREE.Matrix4();
   const vx = new THREE.Vector3();
   const vy = new THREE.Vector3();
@@ -133,6 +136,19 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
 
   const onEvent = (e) => {
     if (e.type === 'down') flashes.at(pt.set(e.at.x, e.at.y, e.at.z), { size: 1.5, life: 0.9 });
+    else if (e.type === 'turret') {
+      flashes.at(pt.set(e.at.x, e.at.y, e.at.z), { size: 2.2, life: 1, color: [2.8, 1.5, 0.5] });
+      fires.add(e.at, 0.4);
+    } else if (e.type === 'disabled') {
+      // an ion cannon's hit: a blue crackle over the ship
+      for (let i = 0; i < 4; i++) flashes.at(pt.set(e.at.x + (Math.random() - 0.5) * e.size * 0.6, e.at.y + (Math.random() - 0.2) * e.size * 0.15, e.at.z + (Math.random() - 0.5) * e.size * 0.6), { size: e.size * 0.18, life: 1.2, color: [0.6, 1.4, 3.4] });
+    } else if (e.type === 'escaped') flashes.at(pt.set(e.at.x, e.at.y, e.at.z), { size: 6, life: 0.7, color: [1.2, 1.8, 3.2] });
+    else if (e.type === 'runner') {
+      flashes.at(pt.set(e.at.x, e.at.y, e.at.z), { size: 5, life: 1.4, bright: 1.2 });
+      const r = battle.runners.find((o) => o.id === e.id);
+      const slot = r && slots.get(r);
+      if (slot) slot.holder.visible = false;
+    }
     else if (e.type === 'arrive') flashes.at(pt.set(e.at.x, e.at.y, e.at.z), { size: 0.9, life: 0.45, color: [0.7, 1.0, 2.2] });
     else if (e.type === 'impact') {
       flashes.at(pt.set(e.at.x, e.at.y, e.at.z), { size: e.size * (e.shield ? 0.8 : 1.2), life: e.shield ? 0.5 : 0.8, color: e.shield ? [0.5, 1.2, 2.6] : [2.6, 1.3, 0.4] });
@@ -165,6 +181,7 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
         orient(s.holder, cap.fwd, cap.up);
       }
       for (const f of b.fighters) slotFor(f, f.kind, f.size);
+      seenRunners = 0;
       const flag = b.capitals.find((c) => c.team === b.defender && c.role === 'flagship');
       if (flag && b.phase === 1) shield.show(flag, null);
     },
@@ -189,11 +206,23 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
     get halves() {
       return halves.length;
     },
+    // the set pieces' own (galaxy/warpieces/): a burst of light, and something left burning
+    flash(at, opts) {
+      flashes.at(pt.set(at.x, at.y, at.z), opts);
+    },
+    burn(at, size) {
+      fires.add(at, size);
+    },
 
     // events: what battle.update said this frame; youTeam: the side you fly
     // for (null: not joined yet)
-    update(dt, t, camera, camLocal, events = [], youTeam = null) {
+    update(dt, t, camera, camLocal, events = [], youTeam = null, extra = null) {
       if (!battle) return false;
+      // runners added since (the set pieces add them as the battle goes)
+      while (seenRunners < battle.runners.length) {
+        const r = battle.runners[seenRunners++];
+        slotFor(r, r.kind, r.size);
+      }
       for (const e of events) onEvent(e);
       // the capital ships (riding a little at anchor), and a dying one's explosions
       chain -= dt;
@@ -216,6 +245,15 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
         orient(s.holder, f.fwd, { x: 0, y: 1, z: 0 }, f.bank);
         const c = war.sides[f.team].laser;
         glows.add({ x: f.pos.x - f.fwd.x * f.size * 0.55, y: f.pos.y - f.fwd.y * f.size * 0.55, z: f.pos.z - f.fwd.z * f.size * 0.55 }, [c[0] * 0.35 + 0.5, c[1] * 0.35 + 0.35, c[2] * 0.35 + 0.25], f.size * 0.4);
+      }
+      for (const r of battle.runners) {
+        const s = slots.get(r);
+        if (!s) continue;
+        s.holder.visible = r.alive;
+        if (!r.alive) continue;
+        s.holder.position.set(r.pos.x, r.pos.y, r.pos.z);
+        orient(s.holder, r.fwd, { x: 0, y: 1, z: 0 });
+        glows.add({ x: r.pos.x - r.fwd.x * r.size * 0.5, y: r.pos.y - r.fwd.y * r.size * 0.5, z: r.pos.z - r.fwd.z * r.size * 0.5 }, [1.6, 2.2, 3.4], r.size * 0.35);
       }
       // (a glow's size in map units: the canvas's height over the view's height a unit off)
       const high = typeof window !== 'undefined' ? window.innerHeight : 800;
@@ -242,6 +280,7 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
           if (theirs) list.push({ key: 'their-flag', pos: { x: theirs.pos.x, y: theirs.pos.y + theirs.size * 0.15, z: theirs.pos.z }, title: 'Destroy: their flagship', sub: far(theirs.pos, camLocal, metres), hp: theirs.hull / theirs.hullMax, colour: ATTACK });
         }
       }
+      if (extra) for (const m of extra) list.push({ ...m, sub: m.sub ?? far(m.pos, camLocal, metres) });
       markers.sync(list);
       models.update?.(t);
       return true;

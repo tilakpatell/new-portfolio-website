@@ -36,8 +36,17 @@
 // yours told (`onMine(id, damage)`), and a defender that can't run out of
 // tickets (`tickets: false`: holding out to the end is how it wins).
 //
+// The galaxy's set pieces (galaxy/warpieces/) reach in: an ion cannon
+// disables a capital ship a while (disable: its guns quiet, hits on it count
+// more), its batteries are targets of their own (a run down its hull shoots
+// them out), a capital ship can be moved and turned (a Hammerhead's ram:
+// moveCapital, turnCapital), and runners fly for the jump through the battle
+// (addRunner: Hoth's transports, gone after by the other side).
+//
 // createBattle({ war, attacker, at, axis, perSide, rand, lines, radius,
-//   avoid, clock, elapsed, shared, onMine, tickets }) → battle:
+//   avoid, clock, elapsed, shared, onMine, tickets }) → battle (with
+//   runners, disable(id, s), moveCapital(cap, d), turnCapital(cap, axis, a),
+//   addRunner({ team, kind, size, hp, from, to, speed })):
 //   { teams, capitals, fighters, bolts, phase, clock, over, you, defender, lines, radius, length,
 //   attacker, setYou(team | null), update(dt, you) → events, hit(from, to,
 //   damage) → hit | null, fire(team, from, dir, kind, target), targets,
@@ -47,7 +56,9 @@
 // kind }, { type: 'sub', sub, kind, phase, at, mine }, { type: 'phase',
 // phase }, { type: 'shield', down: true }, { type: 'capital', id, kind,
 // team, at }, { type: 'arrive', team, kind, at }, { type: 'impact', at,
-// size, shield }, { type: 'over', winner, why }.
+// size, shield }, { type: 'over', winner, why }, { type: 'turret', id, cap,
+// at, mine }, { type: 'disabled', id, at, size }, { type: 'escaped', id,
+// team, kind, at }, { type: 'runner', id, team, kind, at } (one shot down).
 
 import { sweptHit } from './targeting';
 import { FIGHTERS, HULLS, NAMES, SUBSYSTEMS, TURRETS } from './wars';
@@ -64,6 +75,10 @@ export const BATTLE = {
   hullShare: { laser: 0.02, flak: 0, turbo: 0.03, torpedo: 0.06 }, // of a bolt's damage a capital's hull takes
   youHull: 0.25, // and of yours (times youShare)
   youHurt: { laser: 5, flak: 3, turbo: 18, torpedo: 22 }, // shields a hit takes off you
+  turretHp: 6, // a battery's, in your shots (a run down a hull takes them out one by one)
+  turretsNear: 45, // how near a battery must be to be on the lock's list
+  ionHull: 3, // how much more a disabled ship's hull takes
+  ionSubs: 2, // and its objectives
   onYou: 4, // fighters at most after you at once
   flak: 25, // how near a fighter must come to a battery for its point-defence
   bolts: {
@@ -150,6 +165,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     attacker,
     defender,
     you: { pos: v3(), prev: v3(), vel: v3(), alive: false, team: null, on: 0 },
+    runners: [],
   };
 
   // ── the capital ships, in their lines ──
@@ -187,6 +203,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
         hullMax: c.hull,
         alive: true,
         dying: 0,
+        disabled: 0, // seconds left of an ion cannon's hit
         tracked: !(flag && team === defender), // (the defender's flagship falls by its objectives, not its hull)
         subs: [],
         spheres: [],
@@ -194,7 +211,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       };
       cap.spheres = (HULLS[c.kind] ?? [[0, 0.1]]).map(([z, r]) => ({ c: place(cap, [0, 0, z]), r: r * c.size }));
       cap.reach = c.size * 0.55;
-      cap.turrets = (TURRETS[c.kind] ?? []).map((l) => ({ at: place(cap, l), turbo: between([0.5, 3.5]), flak: between([0, 0.6]) }));
+      cap.turrets = (TURRETS[c.kind] ?? []).map((l) => ({ num: nextId++, at: place(cap, l), r: Math.max(0.35, 0.012 * c.size), turbo: between([0.5, 3.5]), flak: between([0, 0.6]), hp: BATTLE.turretHp, alive: true, cap }));
       if (flag && team === defender)
         cap.subs = (SUBSYSTEMS[c.kind] ?? []).map((s, k) => ({ id: s.id, num: 3e6 + k, kind: s.kind, phase: s.phase, pos: place(cap, s.at), r: Math.max(0.6, s.r * c.size), hp: s.hp, hpMax: s.hp, dealt: 0, alive: true, cap }));
       b.capitals.push(cap);
@@ -288,7 +305,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   // damage to a capital's hull (the defender's flagship takes none: it falls by its objectives)
   const hullHit = (cap, dmg, out) => {
     if (!cap.tracked || !cap.alive || cap.dying > 0) return;
-    cap.hull -= dmg;
+    cap.hull -= dmg * (cap.disabled > 0 ? BATTLE.ionHull : 1);
     if (cap.hull <= 0) {
       cap.hull = 0;
       cap.dying = cap.role === 'flagship' ? BATTLE.dying : 2.5;
@@ -322,6 +339,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   const subHp = (s) => s.hpMax - s.dealt - (shared ? shared(s.id) : 0);
   const subHit = (s, dmg, mine, out) => {
     if (s.phase !== b.phase) return false;
+    if (s.cap.disabled > 0) dmg *= BATTLE.ionSubs;
     s.dealt += dmg;
     if (mine) onMine?.(s.id, dmg);
     s.hp = Math.max(0, subHp(s));
@@ -350,6 +368,9 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   const youIn = () => b.you.alive && b.you.team !== null && dist2(b.you.pos, C) < (radius * 1.4) ** 2;
   const bomberTarget = (f) => {
     const enemy = 1 - f.team;
+    // a runner of the other side's, half the time there's one
+    const runs = b.runners.filter((r) => r.alive && r.team === enemy);
+    if (runs.length && rand() < 0.5) return runs[Math.floor(rand() * runs.length)];
     if (f.team === attacker) {
       const flag = flagOf(defender);
       const subs = flag?.alive ? flag.subs.filter((s) => s.alive && s.phase === b.phase) : [];
@@ -373,6 +394,15 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       if (d < score) {
         score = d;
         best = o;
+      }
+    }
+    // runners for the jump: the other side's go after them first
+    for (const r of b.runners) {
+      if (!r.alive || r.team === f.team) continue;
+      const d = dist2(r.pos, f.pos) * 0.3;
+      if (d < score) {
+        score = d;
+        best = r;
       }
     }
     if (youIn() && b.you.team !== f.team && b.you.on < BATTLE.onYou) {
@@ -516,9 +546,10 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   // ── the capital ships' batteries ──
   const aimAt = v3();
   const fireBatteries = (cap, dt) => {
-    if (!cap.alive || cap.dying > 0) return;
+    if (!cap.alive || cap.dying > 0 || cap.disabled > 0) return;
     const enemy = 1 - cap.team;
     for (const tu of cap.turrets) {
+      if (!tu.alive) continue;
       tu.turbo -= dt;
       tu.flak -= dt;
       if (tu.turbo <= 0) {
@@ -605,6 +636,21 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
           done = true;
         }
       }
+      // a runner of the other side
+      if (!done) {
+        for (const r of b.runners) {
+          if (!r.alive || r.team === o.team) continue;
+          if (sweptHit(p0, p1, r.prev, r.pos, r.size * 0.5) === null) continue;
+          r.hp -= o.damage;
+          r.hitBy += 1;
+          if (r.hp <= 0) {
+            r.alive = false;
+            out.push({ type: 'runner', id: r.id, team: r.team, kind: r.kind, at: copy(v3(), r.pos) });
+          }
+          done = true;
+          break;
+        }
+      }
       // you
       if (!done && youOk && o.team !== b.you.team && sweptHit(p0, p1, b.you.prev, b.you.pos, 0.3) !== null) {
         out.push({ type: 'hurt', damage: BATTLE.youHurt[o.kind], kind: o.kind });
@@ -662,6 +708,67 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     }
   };
 
+  // ── runners for the jump ──
+  const flyRunners = (dt, out) => {
+    for (const r of b.runners) {
+      if (!r.alive) continue;
+      copy(r.prev, r.pos);
+      set(tmp, r.to.x - r.pos.x, r.to.y - r.pos.y, r.to.z - r.pos.z);
+      const d = len(tmp);
+      const step = r.speed * dt;
+      if (d <= step) {
+        copy(r.pos, r.to);
+        r.alive = false;
+        r.escaped = true;
+        out.push({ type: 'escaped', id: r.id, team: r.team, kind: r.kind, at: copy(v3(), r.pos) });
+        continue;
+      }
+      set(r.fwd, tmp.x / d, tmp.y / d, tmp.z / d);
+      set(r.vel, r.fwd.x * r.speed, r.fwd.y * r.speed, r.fwd.z * r.speed);
+      r.pos.x += r.vel.x * dt;
+      r.pos.y += r.vel.y * dt;
+      r.pos.z += r.vel.z * dt;
+    }
+  };
+  b.addRunner = ({ team, kind, size, hp, from, to, speed }) => {
+    const r = { id: nextId++, team, kind, size, hp, hpMax: hp, role: 'runner', pos: v3(from.x, from.y, from.z), prev: v3(from.x, from.y, from.z), vel: v3(), fwd: v3(0, 0, 1), to: v3(to.x, to.y, to.z), speed, alive: true, escaped: false, hitBy: 0, chased: -1 };
+    r.tgt = { id: r.id, at: r.pos, vel: r.vel, size, kind, name: NAMES[kind] ?? kind, hp, hpMax: hp, threat: 0 };
+    b.runners.push(r);
+    return r;
+  };
+
+  // ── an ion cannon's hit, and a capital ship moved or turned (the set pieces') ──
+  b.disable = (id, seconds) => {
+    const cap = b.capitals.find((c) => c.id === id);
+    if (!cap || !cap.alive) return;
+    cap.disabled = Math.max(cap.disabled, seconds);
+    pending.push({ type: 'disabled', id, at: copy(v3(), cap.pos), size: cap.size });
+  };
+  const points = (cap) => [cap.pos, ...cap.spheres.map((sp) => sp.c), ...cap.turrets.map((tu) => tu.at), ...cap.subs.map((sb) => sb.pos)];
+  b.moveCapital = (cap, d) => {
+    for (const p of points(cap)) set(p, p.x + d.x, p.y + d.y, p.z + d.z);
+  };
+  const rotate = (o, ax, c, sn) => {
+    // Rodrigues: about the unit axis `ax`
+    const k = dot(ax, o);
+    const cx = ax.y * o.z - ax.z * o.y;
+    const cy = ax.z * o.x - ax.x * o.z;
+    const cz = ax.x * o.y - ax.y * o.x;
+    return set(o, o.x * c + cx * sn + ax.x * k * (1 - c), o.y * c + cy * sn + ax.y * k * (1 - c), o.z * c + cz * sn + ax.z * k * (1 - c));
+  };
+  b.turnCapital = (cap, axis, angle) => {
+    const ax = norm(copy(v3(), axis));
+    const c = Math.cos(angle);
+    const sn = Math.sin(angle);
+    for (const dir of [cap.fwd, cap.up, cap.right]) norm(rotate(dir, ax, c, sn));
+    const o = cap.pos;
+    for (const p of points(cap).slice(1)) {
+      set(tmp, p.x - o.x, p.y - o.y, p.z - o.z);
+      rotate(tmp, ax, c, sn);
+      set(p, o.x + tmp.x, o.y + tmp.y, o.z + tmp.z);
+    }
+  };
+
   b.update = (dt, you) => {
     dt = Math.min(dt, 0.1);
     const out = events;
@@ -686,6 +793,8 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
         }
       }
     }
+    for (const cap of b.capitals) if (cap.disabled > 0) cap.disabled = Math.max(0, cap.disabled - dt);
+    flyRunners(dt, out);
     if (!b.over) for (const cap of b.capitals) fireBatteries(cap, dt);
     moveBolts(dt, out);
     if (!b.over) sharedSubs(out);
@@ -714,6 +823,30 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       }
     }
     const h = capitalHit(from, to, b.you.team);
+    // a battery on one of the other side's capital ships, if it's nearer than either
+    let tu = null;
+    let tk = Infinity;
+    for (const cap of b.capitals) {
+      if (cap.team === b.you.team || !cap.alive || cap.dying > 0) continue;
+      if (dist2(cap.pos, to) > (cap.reach + 10) ** 2) continue;
+      for (const t of cap.turrets) {
+        if (!t.alive) continue;
+        const k = sweptHit(from, to, t.at, t.at, t.r);
+        if (k !== null && k < tk) {
+          tk = k;
+          tu = t;
+        }
+      }
+    }
+    if (tu && tk <= first && (!h || tk <= h.k)) {
+      tu.hp -= damage;
+      const down = tu.hp <= 0;
+      if (down) {
+        tu.alive = false;
+        pending.push({ type: 'turret', id: tu.num, cap: tu.cap.id, at: copy(v3(), tu.at), mine: true });
+      }
+      return { id: tu.num, kind: 'turret', at: copy(v3(), tu.at), size: tu.r, down, turret: true };
+    }
     if (hitF && (!h || first <= h.k)) {
       hitF.hp -= damage;
       const down = hitF.hp <= 0;
@@ -733,6 +866,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   // what your guns can lock on to: the other side's fighters, then the
   // objectives of the phase (when you're the attacker)
   const targets = [];
+  const near = [];
   Object.defineProperty(b, 'targets', {
     get() {
       targets.length = 0;
@@ -742,6 +876,25 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
         f.tgt.hp = f.hp;
         f.tgt.threat = f.target === b.you ? 1 : 0;
         targets.push(f.tgt);
+      }
+      // the other side's runners, and the batteries near you (a run down a hull)
+      for (const r of b.runners) if (r.alive && r.team !== b.you.team) targets.push(Object.assign(r.tgt, { hp: r.hp }));
+      if (b.you.alive) {
+        near.length = 0;
+        for (const cap of b.capitals) {
+          if (cap.team === b.you.team || !cap.alive || cap.dying > 0 || dist2(cap.pos, b.you.pos) > (cap.reach + BATTLE.turretsNear) ** 2) continue;
+          for (const t of cap.turrets) {
+            if (!t.alive) continue;
+            const d = dist2(t.at, b.you.pos);
+            if (d < BATTLE.turretsNear ** 2) near.push([d, t]);
+          }
+        }
+        near.sort((p, q) => p[0] - q[0]);
+        for (const [, t] of near.slice(0, 10)) {
+          t.tgt ??= { id: t.num, at: t.at, vel: ZERO, size: t.r, kind: 'turret', name: NAMES.turret ?? 'Turbolaser battery', threat: 0, hp: 0, hpMax: BATTLE.turretHp };
+          t.tgt.hp = t.hp;
+          targets.push(t.tgt);
+        }
       }
       if (b.you.team === attacker) {
         const flag = flagOf(defender);
