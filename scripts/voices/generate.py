@@ -59,13 +59,20 @@ def references(cfg, only):
     return found
 
 
-def engine_for(who, cfg, override):
-    want = override or cfg.get(who, {}).get("engine")
-    for e in ([want] if want else []) + engines.PREFERENCE:
-        if e in engines.VENVS and engines.python(e):
-            if want and e != want:
-                print(f"{who}: {want} isn't set up here (engines/README.md), so {e}")
-            return e
+def engines_for(who, cfg, override):
+    """The engines a voice's lines are made with: refs.json's "engine" (one, or a list, every line then
+    keeping the best take of them all), or --engine; failing those, the first set up here."""
+    want = [override] if override else cfg.get(who, {}).get("engine") or []
+    want = [want] if isinstance(want, str) else list(want)
+    have = [e for e in want if e in engines.ENGINES and engines.python(e)]
+    for e in want:
+        if e not in have:
+            print(f"{who}: {e} isn't set up here (engines/README.md)")
+    if have:
+        return have
+    for e in engines.PREFERENCE:
+        if engines.python(e):
+            return [e]
     sys.exit("No TTS engine is set up here: see scripts/voices/engines/README.md")
 
 
@@ -180,6 +187,22 @@ def make(engine, lines, voices, judge, takes, done):
             return
 
 
+def make_all(lines, engines_of, voices, judge, takes, done):
+    """Every line through each of its voice's engines (make), then done(line, score, passed) once,
+    with the best take of them all, as soon as the line's last engine has decided it."""
+    waiting = {l["id"]: set(engines_of[l["who"]]) for l in lines}
+    got = {l["id"]: [] for l in lines}
+    for engine in sorted({e for es in engines_of.values() for e in es}):
+
+        def one(l, d, ok, engine=engine):
+            got[l["id"]] += [d] if d else []
+            waiting[l["id"]].discard(engine)
+            if not waiting[l["id"]]:
+                done(l, *best(got[l["id"]]))
+
+        make(engine, [l for l in lines if engine in engines_of[l["who"]]], voices, judge, takes, one)
+
+
 def loudness(f):
     """ffmpeg loudnorm's measurement of a file, for the second (linear) pass."""
     r = subprocess.run([ffmpeg(), "-hide_banner", "-i", str(f), "-af", "loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json", "-f", "null", "-"], capture_output=True, text=True, errors="replace")
@@ -209,8 +232,9 @@ def main():
     ap.add_argument("--only", help="just these speakers, comma-separated (walt,jesse)")
     ap.add_argument("--limit", type=int, help="make at most this many lines, to try it out")
     ap.add_argument("--takes", type=int, default=4, help="takes of each line to choose from (a line none pass gets twice as many more)")
-    ap.add_argument("--engine", choices=list(engines.VENVS), help="use this engine for every voice (default: refs.json's per voice)")
+    ap.add_argument("--engine", choices=engines.ENGINES, help="use this engine for every voice (default: refs.json's per voice)")
     ap.add_argument("--force", action="store_true", help="make lines again even if they're already there")
+    ap.add_argument("--again", action="store_true", help="choose every line again from its takes, making any missing (after giving a voice another engine)")
     ap.add_argument("--check", action="store_true", help="show each voice's reference and engine, and stop")
     ap.add_argument("--bakeoff", type=int, metavar="N", help="try every engine set up here on N lines a voice, score them, and stop")
     args = ap.parse_args()
@@ -224,9 +248,9 @@ def main():
     voices = references(cfg, only)
     if not voices:
         return
-    engine_of = {who: engine_for(who, cfg, args.engine) for who in voices}
+    engines_of = {who: engines_for(who, cfg, args.engine) for who in voices}
     for who, v in voices.items():
-        print(f"{who}: {engine_of[who]}, reference {Path(v['wav']).name} saying “{v['text']}”")
+        print(f"{who}: {' + '.join(engines_of[who])}, reference {Path(v['wav']).name} saying “{v['text']}”")
     if args.check:
         print(f"\nEngines set up here: {', '.join(engines.available())}. A wrong transcript makes worse lines: fix it in refs/<who>.txt (it's used as written).")
         return
@@ -245,7 +269,7 @@ def main():
         tmp.write_text(json.dumps({"version": 1, "lines": made}, indent=0), encoding="utf-8")
         os.replace(tmp, OUT / "manifest.json")
 
-    todo = [l for l in lines if l["who"] in voices and (args.force or not mp3(l).exists())]
+    todo = [l for l in lines if l["who"] in voices and (args.force or args.again or not mp3(l).exists())]
     if args.limit:
         todo = todo[: args.limit]
     # a line that was made (it's in the manifest) but whose mp3 is gone was deleted to be made again,
@@ -254,8 +278,9 @@ def main():
     salts = json.loads(salts_file.read_text(encoding="utf-8")) if salts_file.exists() else {}
     listed = json.loads((OUT / "manifest.json").read_text(encoding="utf-8")).get("lines", {}) if (OUT / "manifest.json").exists() else {}
     for l in todo:
-        if args.force or l["id"] in listed:
-            redo(l, engine_of[l["who"]], judge, salts)
+        if args.force or (l["id"] in listed and not mp3(l).exists()):
+            for e in engines_of[l["who"]]:
+                redo(l, e, judge, salts)
         l["salt"] = salts.get(l["id"], 0)
     TAKES.mkdir(parents=True, exist_ok=True)
     salts_file.write_text(json.dumps(salts), encoding="utf-8")
@@ -274,8 +299,7 @@ def main():
         if len(made) % 20 == 0:
             write_manifest()
 
-    for engine in sorted(set(engine_of.values())):
-        make(engine, [l for l in todo if engine_of[l["who"]] == engine], voices, judge, args.takes, done)
+    make_all(todo, engines_of, voices, judge, args.takes, done)
     write_manifest()
     report = ["# Lines whose best take didn't pass", "", "Listen, then delete the mp3 and run again (it makes new takes), or fix the line.", "", "| who | line | heard | wer | sim |", "|---|---|---|---|---|"]
     report += [f"| {l['who']} | {l['text']} | {d['heard'] if d else '-'} | {d['wer'] if d else '-'} | {d['sim'] if d else '-'} |" for l, d in doubtful]

@@ -106,6 +106,30 @@ class Make(unittest.TestCase):
         self.run_make([{**line, "salt": 1}], {"0000000f": {0, 1}})
         self.assertNotIn(generate.seed(line, 0), [it["seed"] for it in self.asked[0]])
 
+    def test_with_two_engines_a_line_keeps_the_better_engines_take(self):
+        line = {"id": "00000010", "who": "walt", "text": "Say my name."}
+        base = self.judge({"00000010": {0, 1}})
+
+        def judge(who, text, path):  # engine "b" sounds better
+            d = dict(base(who, text, path))
+            d["score"] = d["score"] + (10 if Path(path).parts[-3] == "b" else 0)
+            return d
+
+        done = []
+        generate.make_all([line], {"walt": ["a", "b"]}, self.voices, judge, 2, lambda l, d, ok: done.append((l["id"], d["take"], ok)))
+        self.assertEqual(done, [("00000010", str(Path("b") / "walt" / "00000010.1.wav"), True)])
+
+    def test_with_two_engines_a_passing_take_beats_a_failing_one(self):
+        line = {"id": "00000011", "who": "walt", "text": "Jesse."}
+        a = self.judge({"00000011": {1}})
+
+        def judge(who, text, path):  # engine "b" never passes
+            return a(who, text, path) if Path(path).parts[-3] == "a" else {**a(who, text, path), "score": None, "wer": 0.9}
+
+        done = []
+        generate.make_all([line], {"walt": ["a", "b"]}, self.voices, judge, 2, lambda l, d, ok: done.append((d["take"], ok)))
+        self.assertEqual(done, [(str(Path("a") / "walt" / "00000011.1.wav"), True)])
+
     def test_a_take_the_engine_fails_counts_as_failed(self):
         done = self.run_make([{"id": "0000000e", "who": "walt", "text": "fail"}], {"0000000e": {0, 1, 2, 3, 4, 5}})
         self.assertEqual(done, [("0000000e", None, False)])

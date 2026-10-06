@@ -69,6 +69,26 @@ class Serve(unittest.TestCase):
         self.assertEqual(len([s for s in said if s.startswith("ok\t")]), 4)
         self.assertTrue((self.dir / "han" / "4.wav").exists())
 
+    def test_a_worker_elsewhere_reads_and_writes_its_own_paths_but_reports_the_jobs(self):
+        elsewhere = self.dir / "elsewhere"
+
+        def load(jobs):
+            def say(voice, text, seed):
+                return np.zeros(100, dtype=np.float32), 24000
+
+            return say
+
+        it = {"who": "walt", "text": "line 1", "out": "C:\\takes\\walt\\1.wav", "seed": 1}
+        out = io.StringIO()
+        with redirect_stdout(out):
+            worker.serve(load, self.jobs([it]), local=lambda p: str(elsewhere / Path(p.replace("\\", "/")).name))
+        self.assertEqual(out.getvalue().splitlines(), ["ok\tC:\\takes\\walt\\1.wav"])
+        self.assertTrue((elsewhere / "1.wav").exists())
+
+    def test_wsl_paths(self):
+        self.assertEqual(worker.wsl_path("C:\\Users\\tilak\\x y\\a.wav"), "/mnt/c/Users/tilak/x y/a.wav")
+        self.assertEqual(worker.wsl_path("/home/tilak/a.wav"), "/home/tilak/a.wav")
+
     def test_a_batch_that_fails_fails_each_of_its_lines(self):
         def load(jobs):
             def say(voice, text, seed):

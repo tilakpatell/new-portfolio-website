@@ -35,13 +35,18 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const root = resolve(here, '../..');
   // no config file: the site's plugins (prerender, the icons) have nothing to do here
   const load = async (path) => (await runnerImport(join(root, path), { root, configFile: false, logLevel: 'error' })).module;
-  const [{ CREWS }, { GALAXY_LINES }, { VEHICLES }, { lineId }] = await Promise.all([
+  const [{ CREWS }, { GALAXY_LINES }, { VEHICLES }, { SITES }, { MISSIONS }, { crewLines }, { lineId }] = await Promise.all([
     load('src/components/universe/crews.js'),
     load('src/components/galaxy/lines.js'),
     load('src/components/cockpit/vehicles.js'),
+    // on the ground: each landing site's places, its missions, and climbing out, riding and leaving
+    load('src/components/galaxy/surface/sites/index.js'),
+    load('src/components/galaxy/surface/missions/index.js'),
+    load('src/components/galaxy/surface/lines.js'),
     load('src/lib/voiced.js'),
   ]);
-  const lines = unrecorded([CREWS, GALAXY_LINES, VEHICLES.map((v) => v.lines)], lineId);
+  const surface = [SITES, MISSIONS, CREWS.map((c) => crewLines(c.id))];
+  const lines = unrecorded([CREWS, GALAXY_LINES, VEHICLES.map((v) => v.lines), ...surface], lineId);
   writeFileSync(join(here, 'lines.json'), `${JSON.stringify(lines, null, 1)}\n`);
   const count = lines.reduce((n, l) => ({ ...n, [l.who]: (n[l.who] ?? 0) + 1 }), {});
   const by = Object.entries(count).map(([who, n]) => `${who} ${n}`);
