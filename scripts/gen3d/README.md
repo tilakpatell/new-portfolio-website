@@ -222,6 +222,15 @@ The GPU is shared with `scripts/voices`: check `nvidia-smi` before a run.
   simplifier stops at the seams (~25k triangles for a 300k mesh) and crossing
   them smears the texture. 24k triangles at 1536² is under 900 KB and looks
   the part; the Blender bake is the way below that.
+- **Merge before you smooth, pack after you unwrap** (from the Rick and
+  Morty characters, judged against Meshy's). An engine's raw GLB is split at
+  every seam of its atlas; the bake's smoothing pulled those seams apart into
+  cracks, and the baked colour came back crazed with black lines and the low
+  mesh in thousands of pieces. Smart UV Project's own packing then filled
+  6–9% of the texture (Meshy's fill half). `bake.py` merges the raw first
+  and packs the charts tight (`pack_islands`, concave, a 0.002 margin): 57%
+  of the texture used, about seven times the detail for the same file, and
+  no cracks.
 - **Remakes help fighters, not greebled hulls.** From its own render a
   TIE interceptor or an X-wing comes back with real panel detail; a Star
   Destroyer or a Venator comes back a smooth blob with its greebles gone,

@@ -3,7 +3,7 @@
     blender --background --python scripts/gen3d/bake.py -- RAW.glb OUT.glb [--faces 24000] [--tex 2048]
 
 The raw GLB (hundreds of thousands of triangles, its own atlas) is decimated
-to --faces, unwrapped afresh into a few large charts, and its base colour,
+to --faces, unwrapped afresh and packed tight, and its base colour,
 roughness, metalness and surface detail (as a normal map) are baked from the
 raw mesh onto the new atlas with Cycles on the GPU. Simplifying the raw mesh
 directly would drag its UVs into the atlas gutters; this way the low mesh
@@ -41,6 +41,15 @@ if len(highs) > 1:
 high = bpy.context.view_layer.objects.active
 high.name = "high"
 extent = max(high.dimensions)
+# one surface: an engine's GLB splits its vertices along every seam of its
+# atlas (thousands of charts), and smoothing a surface split like that pulls
+# each seam's two sides apart into a crack the bake's rays fall through: a
+# black line down every one in the base colour, and a low mesh in thousands
+# of pieces. Merged first (the UVs stay: they're the faces' corners').
+bpy.ops.object.mode_set(mode="EDIT")
+bpy.ops.mesh.select_all(action="SELECT")
+bpy.ops.mesh.remove_doubles(threshold=extent * 1e-5)
+bpy.ops.object.mode_set(mode="OBJECT")
 # the raw surface is lumpy at the voxel scale: a little smoothing takes the
 # lumps out of the normal map and the silhouette, and leaves the panels
 if args.smooth > 0:
@@ -64,7 +73,12 @@ bpy.ops.object.modifier_apply(modifier="decimate")
 bpy.ops.object.mode_set(mode="EDIT")
 bpy.ops.mesh.select_all(action="SELECT")
 bpy.ops.mesh.normals_make_consistent(inside=False)
-bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.003, correct_aspect=True, scale_to_bounds=False)
+bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.0, correct_aspect=True, scale_to_bounds=False)
+# packed tight, each chart at the same texel density: Smart UV Project's own
+# packing left the charts in a twelfth of the texture
+bpy.ops.uv.select_all(action="SELECT")
+bpy.ops.uv.average_islands_scale()
+bpy.ops.uv.pack_islands(rotate=True, margin_method="SCALED", margin=0.002, shape_method="CONCAVE")
 bpy.ops.object.mode_set(mode="OBJECT")
 # smooth across gentle curves, sharp across real edges: flat panels stay flat
 bpy.ops.object.shade_smooth_by_angle(angle=math.radians(35))
