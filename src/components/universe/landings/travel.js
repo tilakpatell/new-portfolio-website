@@ -52,11 +52,11 @@ export const PROPS = {
   // the airfield: a runway along x, its markings, the plane on it and a windsock
   async airfield(k, { len = 220, wide = 30 } = {}) {
     const strip = (w, h, z = 0) => new THREE.BoxGeometry(len, h, w, Math.ceil(len / 3), 1, 1).translate(0, h / 2, z);
-    const parts = [part(strip(wide, 0.05), { at: [0, -0.03, 0], color: '#3c3e42', to: 'stone' })];
-    for (const z of [-wide / 2 + 1, wide / 2 - 1]) parts.push(part(strip(0.5, 0.06, z), { at: [0, -0.03, 0], color: '#e8e6dc', to: 'paint' }));
-    for (let x = -len / 2 + 14; x < len / 2 - 14; x += 18) parts.push(part(box(9, 0.07, 0.6), { at: [x, -0.03, 0], color: '#e8e6dc', to: 'paint' }));
+    const parts = [part(strip(wide, 0.05), { at: [0, 0.01, 0], color: '#3c3e42', to: 'stone' })];
+    for (const z of [-wide / 2 + 1, wide / 2 - 1]) parts.push(part(strip(0.5, 0.06, z), { at: [0, 0.01, 0], color: '#e8e6dc', to: 'paint' }));
+    for (let x = -len / 2 + 14; x < len / 2 - 14; x += 18) parts.push(part(box(9, 0.07, 0.6), { at: [x, 0.01, 0], color: '#e8e6dc', to: 'paint' }));
     // threshold bars at each end
-    for (const end of [-1, 1]) for (let i = -5; i <= 5; i++) if (i) parts.push(part(box(10, 0.07, 1), { at: [end * (len / 2 - 8), -0.03, i * 2.3], color: '#e8e6dc', to: 'paint' }));
+    for (const end of [-1, 1]) for (let i = -5; i <= 5; i++) if (i) parts.push(part(box(10, 0.07, 1), { at: [end * (len / 2 - 8), 0.01, i * 2.3], color: '#e8e6dc', to: 'paint' }));
     const object = k.bend(k.build(parts, { name: 'runway', shadows: false }));
     const plane = k.specs?.plane ? await k.models.get(k.specs.plane) : null;
     if (plane) {
