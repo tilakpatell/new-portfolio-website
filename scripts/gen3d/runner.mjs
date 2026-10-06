@@ -6,6 +6,7 @@
 //   what: an X-wing starfighter          (what it is, for the credit; the prompt if none)
 //   prompt: an X-wing starfighter, …     (FLUX draws the concept picture)
 //   image: (attach a picture, or an URL) (the picture to follow; Pixal3D unless faithful: no)
+//   front: / left: / back: / right: (a picture each, or attach them in that order: Hunyuan3D multi-view)
 //   faces: 24000   tex: 2048   seed: 42   res: 1024   fov: 49   engine: trelliscpp|trellis2
 //   faithful: no   bake: no
 //
@@ -26,6 +27,7 @@ const REPO = resolve(HERE, '..', '..');
 export const LABEL = 'gen3d';
 export const RUNNING = 'gen3d:running';
 export const FAILED = 'gen3d:failed';
+const SIDES = ['front', 'left', 'back', 'right'];
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const PORT = 5298;
 
@@ -40,8 +42,13 @@ export function parseIssue({ number, title, body = '' }) {
     const m = line.match(/^\s*[-*]?\s*\*{0,2}([a-z]+)\*{0,2}\s*:\s*(.+?)\s*$/i);
     if (m) fields[m[1].toLowerCase()] = m[2];
   }
-  const md = body.match(/!\[[^\]]*\]\((https?:\/\/[^\s)]+)\)/) ?? body.match(/<img[^>]+src="(https?:\/\/[^"]+)"/i);
-  const image = md?.[1] ?? (/^https?:\/\//.test(fields.image ?? '') ? fields.image : undefined);
+  // every picture in the body, in order; the sides named by fields (front: URL) or taken in that order
+  const urls = [...body.matchAll(/!\[[^\]]*\]\((https?:\/\/[^\s)]+)\)|<img[^>]+src="(https?:\/\/[^"]+)"/gi)].map((m) => m[1] ?? m[2]);
+  const isUrl = (u) => /^https?:\/\//.test(u ?? '');
+  const named = Object.fromEntries(SIDES.filter((k) => isUrl(fields[k])).map((k) => [k, fields[k]]));
+  const sides = Object.keys(named).length ? named : Object.fromEntries(urls.slice(0, SIDES.length).map((u, i) => [SIDES[i], u]));
+  const image = sides.front ?? (isUrl(fields.image) ? fields.image : undefined);
+  const views = Object.keys(sides).length > 1 ? sides : undefined; // several: Hunyuan3D multi-view
   const what = fields.what ?? fields.prompt ?? title.replace(/^\s*(gen3d|3d|model)\s*[:-]\s*/i, '').trim();
   const prompt = fields.prompt ?? (image ? undefined : what);
   const no = (v) => /^(no|false|off|0)$/i.test(v ?? '');
@@ -51,6 +58,7 @@ export function parseIssue({ number, title, body = '' }) {
     name,
     what,
     image,
+    views,
     prompt: image ? undefined : prompt,
     faces: num('faces'),
     tex: num('tex'),
@@ -64,13 +72,15 @@ export function parseIssue({ number, title, body = '' }) {
 }
 
 // The make.mjs command line for a job (the picture, if any, already at `image`).
-export function makeArgs(job, image) {
+export function makeArgs(job, image, sides = {}) {
   const a = [job.name];
-  if (image) a.push('--image', image);
-  else a.push('--prompt', job.prompt);
+  if (image) {
+    a.push('--image', image);
+    for (const [k, f] of Object.entries(sides)) if (k !== 'front') a.push(`--${k}`, f);
+  } else a.push('--prompt', job.prompt);
   a.push('--what', job.what);
   for (const k of ['faces', 'tex', 'seed', 'res', 'fov', 'engine']) if (job[k] !== undefined) a.push(`--${k}`, String(job[k]));
-  if (image && job.faithful) a.push('--faithful');
+  if (image && job.faithful && Object.keys(sides).length <= 1) a.push('--faithful');
   if (job.noBake) a.push('--no-bake');
   return a;
 }
@@ -133,8 +143,10 @@ export async function runJob(job, root, log = console.log) {
     const cache = join(root, 'scripts', 'gen3d', 'cache', job.name);
     mkdirSync(cache, { recursive: true });
     const image = job.image ? await fetchImage(job.image, join(cache, 'from-issue.png')) : null;
+    const sides = {};
+    for (const [k, u] of Object.entries(job.views ?? {})) sides[k] = k === 'front' ? image : await fetchImage(u, join(cache, `from-issue-${k}.png`));
     if (server) await server.ready;
-    const out = sh(process.execPath, [join(root, 'scripts', 'gen3d', 'make.mjs'), ...makeArgs(job, image)], {
+    const out = sh(process.execPath, [join(root, 'scripts', 'gen3d', 'make.mjs'), ...makeArgs(job, image, sides)], {
       cwd: root,
       env: { ...process.env, CHROME: process.env.CHROME ?? EDGE, BASE: `http://127.0.0.1:${PORT}` },
       maxBuffer: 64 * 1024 * 1024,
