@@ -1,6 +1,6 @@
 {
   "date": "2026-10-06",
-  "sha": "9d33e2b",
+  "sha": "0b1eceb",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -13,7 +13,7 @@
         },
         {
           "file": "src/components/universe/scene.js",
-          "n": 4262
+          "n": 4274
         },
         {
           "file": "src/components/middleearth/towns/rivendell/props.js",
@@ -89,7 +89,7 @@
         },
         {
           "file": "src/components/universe/crews.js",
-          "n": 1819
+          "n": 1824
         },
         {
           "file": "src/components/middleearth/towns/edoras/folk.js",

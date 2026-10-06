@@ -44,16 +44,6 @@ export const BUILDINGS = {
     tris: 12000,
     tex: 1024,
   },
-  // Dagobah: Yoda's hut (McQuarrie's painting of it under the trees)
-  yodahut: {
-    ref: 'File:RMQ-YodasHut.jpg',
-    crop: [0.3, 0.33, 0.45, 0.5],
-    lift: 'the small rounded clay hut (a lumpy white-grey mud dome with a round doorway and small round windows glowing warm)',
-    metres: 6,
-    along: 'w',
-    tris: 12000,
-    tex: 1024,
-  },
   // Endor: a single Ewok hut (McQuarrie's painting of the village: the hut
   // on the ground)
   ewokhut: {
@@ -124,6 +114,29 @@ export const BUILDINGS = {
     tris: 45000,
     tex: 2048,
     hero: true,
+  },
+  // Coruscant: the Senate Building, the great flattened dome (Revenge of
+  // the Sith's shot of it over the city)
+  senate: {
+    ref: 'File:Galactic Senate RotS.png',
+    crop: [0.22, 0.02, 0.7, 0.86],
+    lift: 'the great flattened dome building (one vast low dome of grey-green panelled metal on a wide round stepped base, rings of small windows round its rim), without the city round it',
+    metres: 190,
+    along: 'w',
+    tris: 40000,
+    tex: 2048,
+    hero: true,
+  },
+  // Dagobah: Yoda's hut, the whole cluster of it (McQuarrie's painting;
+  // the first try, one lump of it, came out a white blob)
+  yodahut: {
+    ref: 'File:RMQ-YodasHut.jpg',
+    crop: [0.36, 0.2, 0.56, 0.68],
+    lift: 'the cluster of rounded white-grey clay huts joined into one dwelling (lumpy mud domes with pointed tops, a round doorway glowing warm, small round windows), without the trees',
+    metres: 10,
+    along: 'w',
+    tris: 16000,
+    tex: 1024,
   },
   // Coruscant: a skyscraper of Galactic City (the film's shot of the
   // skyline: the hooked tower in front)

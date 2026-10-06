@@ -97,5 +97,125 @@
     "metres": 2.380000114440918,
     "arm": true,
     "mean": 0.8
+  },
+  "sand": {
+    "source": "https://polyhaven.com/a/aerial_sand",
+    "id": "aerial_sand",
+    "name": "Aerial Sand",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "metres": 15,
+    "mean": 0.82,
+    "arm": true
+  },
+  "snow": {
+    "source": "https://polyhaven.com/a/snow_02",
+    "id": "snow_02",
+    "name": "Snow 02",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "metres": 2,
+    "mean": 0.9,
+    "arm": true
+  },
+  "grass": {
+    "source": "https://polyhaven.com/a/grass_ground",
+    "id": "grass_ground",
+    "name": "Grass Ground",
+    "authors": [
+      "Charlotte Baglioni"
+    ],
+    "license": "CC0 1.0",
+    "metres": 2.509999990463257,
+    "mean": 0.78,
+    "arm": true
+  },
+  "needles": {
+    "source": "https://polyhaven.com/a/forrest_ground_03",
+    "id": "forrest_ground_03",
+    "name": "Forest Ground 03",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "metres": 2,
+    "mean": 0.76,
+    "arm": true
+  },
+  "leaves": {
+    "source": "https://polyhaven.com/a/forest_floor",
+    "id": "forest_floor",
+    "name": "Forest Floor",
+    "authors": [
+      "eye-candy.xyz"
+    ],
+    "license": "CC0 1.0",
+    "metres": 2.1399996280670166,
+    "mean": 0.76,
+    "arm": true
+  },
+  "mud": {
+    "source": "https://polyhaven.com/a/brown_mud_leaves_01",
+    "id": "brown_mud_leaves_01",
+    "name": "Brown Mud Leaves 01",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "metres": 1.2999998331069946,
+    "mean": 0.74,
+    "arm": true
+  },
+  "ash": {
+    "source": "https://polyhaven.com/a/burned_ground_01",
+    "id": "burned_ground_01",
+    "name": "Burned Ground 01",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "metres": 1,
+    "mean": 0.76,
+    "arm": true
+  },
+  "redsoil": {
+    "source": "https://polyhaven.com/a/red_laterite_soil_stones",
+    "id": "red_laterite_soil_stones",
+    "name": "Red Laterite Soil Stones",
+    "authors": [
+      "Amal Kumar"
+    ],
+    "license": "CC0 1.0",
+    "metres": 2,
+    "mean": 0.78,
+    "arm": true
+  },
+  "gravel": {
+    "source": "https://polyhaven.com/a/ground_grey",
+    "id": "ground_grey",
+    "name": "Ground Grey",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "metres": 1,
+    "mean": 0.8,
+    "arm": true
+  },
+  "beach": {
+    "source": "https://polyhaven.com/a/coast_sand_01",
+    "id": "coast_sand_01",
+    "name": "Coast Sand 01",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "metres": 15,
+    "mean": 0.84,
+    "arm": true
   }
 }

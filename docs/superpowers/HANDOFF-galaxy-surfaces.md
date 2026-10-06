@@ -72,3 +72,15 @@ The owner's note: the worlds looked empty even where the textures were good. One
 - `npx vite --port 5188 --strictPort --host 127.0.0.1`, then `OUT=lab/shots node scripts/surface-shot.mjs <world> "<x>,<z>,<dist>,<deg>,<label>"` for a view of a spot; `OUT=lab/check JSON=1 node scripts/galaxy-check.mjs surface <ids>` for the counts.
 - The missions: `/galaxy/tatooine/surface?mission=canyonrun`, `/galaxy/hoth/surface?mission=transport`, `/galaxy/sorgan/surface?mission=sanctuary`.
 - The Meshy models' gate sheets are made by `MESHY_TASKS=scripts/meshy-galaxy-buildings-fill-tasks.json MESHY_REVIEW=lab/meshy/fill node scripts/meshy-galaxy-buildings.mjs sheet <kind>` (the pictures are fetched again into `lab/refs/`).
+
+## The grounds, the mission HUD, the Senate and Yoda's hut (6 October 2026, the PR after the filled worlds)
+
+### Done
+- **Every world's ground wears a photo scan up close** (`ground.js`: the site's `ground.detail`, a role from `public/cc0/galaxy/`, with `detailLook: { color, normal, metres, near, far }`): sand, snow, grass, a pine floor, leaf litter, swamp mud, burnt ash, red soil, grey gravel, a beach, ten new Poly Haven sets by `scripts/galaxy-textures.mjs`. The scan's detail colour (centred on its own brightness, so the palette still says what the ground is) and its normal map, flat on xz at the scan's real size, fading out between 28 and 90 m. Off on the low tier and on small screens. Coruscant, Kamino and Bespin are decks, not ground: none.
+- **A quest mission has a HUD** (`ChaseHud.jsx`): its name, the live clock and the par up top left, a banner for its first four seconds; the tracked quest's lines drop clear of the corner's credits (`surface-quest-on`).
+- **The Senate and Yoda's hut, made with Meshy** (`meshy-galaxy-buildings-fill.mjs`): the Senate's dome from Revenge of the Sith's shot of it, Yoda's hut from the whole cluster in McQuarrie's painting (the first try, one lump, was a white blob: `yodahut-first` in the tasks file).
+
+### Left
+- The scans fade at 90 m: past that the ground is the shader's own noise. A second, coarser repeat (the way `lib/three/surface.js`'s antiTile does) would carry the grain further without the repeat showing.
+- The space view's planets read soft from orbit (procedural noise per pixel, `bodies.js`): a normal or a finer octave for the near view.
+- Switching system or mission by editing the URL's hash while on a surface leaves the old world drawn until the new one is in; go through the galaxy and it's fine.
