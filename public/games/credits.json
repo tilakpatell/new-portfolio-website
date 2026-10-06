@@ -2052,5 +2052,13 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "gen3d/x-wing": {
+    "source": "https://github.com/microsoft/TRELLIS.2",
+    "name": "an X-wing starfighter, made for this site with TRELLIS.2 (trellis.cpp), from a render of the site's Meshy X-wing on the site owner's machine (scripts/gen3d)",
+    "authors": [
+      "Tilak Patel, with Microsoft TRELLIS.2"
+    ],
+    "license": "Generated for this site; TRELLIS.2 is MIT"
   }
 }
