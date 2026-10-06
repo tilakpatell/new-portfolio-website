@@ -694,8 +694,20 @@ export function gunSound(gun, { soft = false } = {}) {
     }
     return;
   }
-  if (gun === 'blaster' || gun === 'bowcaster') {
-    playClip('dl44', { gain: 0.8 * k });
+  if (gun === 'shotgun' || gun === 'sniper' || gun === 'smg') {
+    // powder guns of other worlds: a scattergun's boom, a long rifle's crack and its echo, a machine pistol's snap
+    const big = gun === 'shotgun' ? 1.4 : gun === 'sniper' ? 1.2 : 0.6;
+    burst(ac, out, { at: t, dur: 0.06, gain: 0.5 * k * Math.min(1, big), type: 'highpass', f: gun === 'smg' ? 2400 : 1500 });
+    burst(ac, out, { at: t, dur: 0.18 * big, gain: 0.34 * k * big, type: 'lowpass', f: gun === 'shotgun' ? 500 : 800 });
+    blip(ac, out, { type: 'sine', f: gun === 'shotgun' ? 70 : 120, at: t, dur: 0.14 * big, gain: 0.3 * k * big, glide: 0.35 });
+    if (gun !== 'smg') burst(ac, out, { at: t + 0.06, dur: 0.9 * big, gain: 0.05 * k, type: 'bandpass', f: 600, q: 0.6 }); // the echo off the hills
+    return;
+  }
+  if (gun === 'blaster' || gun === 'bowcaster' || gun === 'a280' || gun === 'dlt19' || gun === 'ee3' || gun === 'westar') {
+    // the galaxy's blasters: the DL-44's clip, lighter and higher for the small fast ones
+    const light = gun === 'dlt19' || gun === 'westar';
+    playClip('dl44', { gain: (light ? 0.5 : 0.8) * k });
+    if (light) blip(ac, out, { type: 'sawtooth', f: 2600, at: t, dur: 0.08, gain: 0.05 * k, glide: 0.3, filter: 4000 });
     if (gun === 'bowcaster') blip(ac, out, { type: 'sine', f: 95, at: t, dur: 0.25, gain: 0.28 * k, glide: 0.5 }); // a quarrel's weight
     return;
   }

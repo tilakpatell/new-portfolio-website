@@ -742,3 +742,103 @@
 .surface-btn-block { border-color: #ffe08a; color: #ffeec0; }
 .surface-buttons-saber { grid-template-columns: repeat(3, 60px); }
 .surface-buttons-saber .surface-btn { width: 60px; height: 60px; }
+
+/* the fight (the scene's 'combat' event): the guard or the heat, the abilities, the lock */
+.surface-combat {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  width: min(300px, 60vw);
+  transform: translateX(-50%);
+  display: grid;
+  gap: 6px;
+  pointer-events: none;
+  font-size: 0.68rem;
+}
+.surface-lock { margin: 0 0 2px; display: grid; gap: 3px; justify-items: center; }
+.surface-lock-name { font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #fff; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); }
+.surface-lock-bar { position: relative; display: block; width: 60%; height: 5px; border-radius: 3px; background: rgba(0, 0, 0, 0.55); overflow: hidden; }
+.surface-lock-bar span { display: block; height: 100%; background: #ff4a3d; transition: width 0.15s; }
+.surface-lock-bar i { position: absolute; left: 0; top: 0; height: 2px; background: #7fd0ff; }
+.surface-meter { position: relative; height: 8px; border-radius: 4px; background: rgba(0, 0, 0, 0.55); overflow: visible; }
+.surface-meter > span { display: block; height: 100%; border-radius: 4px; transition: width 0.12s; }
+.surface-meter b { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); white-space: nowrap; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.85); text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); }
+.surface-guard > span { background: linear-gradient(90deg, #7fd0ff, #cfe6ff); }
+.surface-guard.is-broken > span { background: #ff4a3d; }
+.surface-guard.is-broken b { color: #ff8a7a; animation: surface-blink 0.4s steps(2) infinite; }
+.surface-heat > span { background: linear-gradient(90deg, #ffd36a, #ff6a3d, #ff3b30); }
+.surface-heat.is-locked > span { background: #ff3b30; animation: surface-blink 0.5s steps(2) infinite; }
+.surface-heat.is-hot > span { background: linear-gradient(90deg, #fff, #cfe6ff); }
+.surface-vent { position: absolute; top: -4px; width: 2px; height: 16px; margin-left: -1px; background: #fff; box-shadow: 0 0 6px #fff; }
+.surface-vent-sweet { position: absolute; top: 0; left: 35%; width: 20%; height: 100%; border-radius: 4px; background: rgba(127, 208, 255, 0.55); }
+@keyframes surface-blink { to { opacity: 0.35; } }
+.surface-powers { margin: 14px 0 0; padding: 0; list-style: none; display: flex; justify-content: center; gap: 8px; }
+.surface-power {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  min-width: 56px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(6, 8, 14, 0.55);
+  color: #fff;
+  overflow: hidden;
+}
+.surface-power kbd { font: inherit; font-weight: 700; font-size: 0.72rem; color: var(--accent); }
+.surface-power span { font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.85; }
+.surface-power small { position: absolute; right: 4px; top: 2px; font-size: 0.58rem; opacity: 0.8; }
+.surface-power.is-cooling { color: rgba(255, 255, 255, 0.55); }
+.surface-power.is-cooling::after { content: ''; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.55); transform-origin: bottom; transform: scaleY(var(--k, 0)); transition: transform 0.1s linear; }
+.surface-hitmark {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  pointer-events: none;
+  background:
+    linear-gradient(45deg, transparent 44%, #fff 44% 56%, transparent 56%),
+    linear-gradient(-45deg, transparent 44%, #fff 44% 56%, transparent 56%);
+  animation: surface-hitmark 0.26s ease-out forwards;
+}
+.surface-hitmark.is-kill { width: 36px; height: 36px; margin: -18px 0 0 -18px; filter: drop-shadow(0 0 6px #ff6a3d); }
+@keyframes surface-hitmark { from { opacity: 1; transform: scale(1.3); } to { opacity: 0; transform: scale(0.8); } }
+.surface-parry {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: calc(50% - 60px);
+  margin: 0;
+  transform: translateX(-50%);
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 0 12px #7fd0ff, 0 1px 4px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  animation: surface-parry 0.9s ease-out forwards;
+}
+@keyframes surface-parry { 0% { opacity: 0; transform: translate(-50%, 10px) scale(0.8); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1.05); } 100% { opacity: 0; transform: translate(-50%, -14px) scale(1); } }
+.surface-hurt { position: absolute; z-index: 1; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(255, 40, 30, 0.45) 100%); animation: surface-hurt 0.45s ease-out forwards; }
+@keyframes surface-hurt { from { opacity: 1; } to { opacity: 0; } }
+.surface-health:has(+ .surface-combat) { bottom: calc(154px + env(safe-area-inset-bottom, 0px)); }
+.surface-buttons-saber { grid-template-columns: repeat(3, 58px); }
+.surface-buttons-saber .surface-btn, .surface-buttons-gun .surface-btn { width: 58px; height: 58px; font-size: 0.7rem; }
+.surface-buttons-gun { grid-template-columns: repeat(3, 58px); }
+.surface-btn-power { border-color: #c8b4ff; color: #e6dcff; }
+.surface-btn-dodge { border-color: #b8ffd0; color: #dafff0; }
+.surface-btn-aim.is-on { background: rgba(255, 255, 255, 0.25); }
+/* the hero panel's tabs, weapons and mods */
+.surface-tabs { display: flex; gap: 4px; margin: 0 0 0.7rem; padding: 0; list-style: none; }
+.surface-list .surface-tabs button { width: auto; display: inline-block; padding: 0.3rem 0.7rem; border-radius: 999px; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.surface-list .surface-tabs button[aria-selected='true'] { border-color: var(--accent); color: var(--accent); }
+.surface-weapon-side { margin: 0.7rem 0 0.3rem; font-size: 0.66rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(242, 239, 232, 0.6); }
+.surface-stats { display: flex; gap: 0.5rem; margin-top: 0.2rem; font-size: 0.64rem; color: rgba(242, 239, 232, 0.65); }
+.surface-stats i { font-style: normal; }
+.surface-mods { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }

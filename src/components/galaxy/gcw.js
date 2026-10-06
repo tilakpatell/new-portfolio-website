@@ -48,7 +48,7 @@ export const GCW = {
   fronts: 4, // fronts at once, at most
   attackEvery: 4 * 3600e3,
   attackFor: 8 * 12 * 60e3, // (eight steps: an hour and 36 minutes)
-  points: { objective: 3, kill: 0.1, win: 10 }, // in hundredths of a system's control
+  points: { objective: 3, kill: 0.1, turret: 0.5, win: 10 }, // in hundredths of a system's control
   rate: [-2, 12], // %/hour the Rebellion's other fleets move a front by
   majorRate: [-3, 6], // and a set piece's, harder
   attackRate: [30, 75], // %/hour an attack takes off a system's control (it falls past 62.5)

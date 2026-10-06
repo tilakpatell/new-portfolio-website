@@ -12,8 +12,10 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[2]
 HERE = ROOT / "scripts" / "voices"
 OUT = ROOT / "public" / "audio" / "voiced"
-CACHE = HERE / "cache"
-REFS = HERE / "refs"
+# the references and the cache can live outside the checkout (the voices runner's checkout is
+# made fresh beside the repository, and the references are not committed): VOICES_REFS, VOICES_CACHE
+CACHE = Path(os.environ.get("VOICES_CACHE", HERE / "cache"))
+REFS = Path(os.environ.get("VOICES_REFS", HERE / "refs"))
 AUDIO = {".wav", ".mp3", ".m4a", ".flac", ".ogg", ".opus", ".webm", ".aac"}
 # who has a voice to make (scripts/voices/export-lines.mjs keeps the same list)
 VOICED = ["rick", "morty", "luke", "han", "walt", "jesse", "hank"]
