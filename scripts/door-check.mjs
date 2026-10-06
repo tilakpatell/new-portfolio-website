@@ -18,7 +18,8 @@ const check = (ok, what) => {
 };
 
 for (const id of planets) {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  // (small, so software GL keeps up)
+  const ctx = await browser.newContext({ viewport: { width: 800, height: 500 } });
   await ctx.addInitScript(() => {
     window.localStorage.setItem('tp-intro', '1');
     window.localStorage.setItem('tp-start', '"universe"');
@@ -38,9 +39,13 @@ for (const id of planets) {
   check(await page.evaluate(() => window.__universeDebug.startFoot()), `${id}: landed`);
   // (out of the ship: skip the walk down the ramp)
   const walking = await page
-    .waitForFunction(() => window.__universeDebug.foot.phase === 'walk' || (window.__universeDebug.foot.phase === 'out' && window.__universeDebug.foot.debug?.me), null, { timeout: 240000, polling: 1000 })
+    .waitForFunction(() => Boolean(window.__universeDebug?.foot.debug?.me), null, { timeout: 400000, polling: 1000 })
     .then(() => true, () => false);
   check(walking, `${id}: the crew are out`);
+  if (!walking) {
+    await ctx.close();
+    continue;
+  }
   // the landing's spots, once its things have come
   await page.waitForTimeout(20000);
   await page.evaluate(() => {
