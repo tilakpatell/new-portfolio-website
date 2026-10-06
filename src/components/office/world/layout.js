@@ -166,11 +166,36 @@ export const BALES = [
   { x: 35.2, z: -1.4, w: 1.1, d: 1.1 },
 ];
 export const FORKLIFT = { x: 50.6, z: 0.2, turn: -Math.PI / 2 + 0.35 };
+// the warehouse floor's odds and ends: empty pallets stacked by the dock,
+// a pallet jack in the aisle, bollards at the dock doors, cones, the
+// workbench under the accident sign, a trash barrel by the stairs
+export const WH_PROPS = {
+  pallets: { x: 53.0, z: -0.9, w: 1.2, d: 1.0, turn: 0.1 },
+  jack: { x: 40.6, z: 1.5, turn: 0.15 },
+  bollards: [
+    [53.35, 1.65],
+    [53.35, 5.35],
+    [53.35, -1.65],
+    [53.35, -5.35],
+  ],
+  cones: [
+    [46.3, -0.7],
+    [46.75, -1.25],
+  ],
+  bench: { x: 35.0, z: -7.55, w: 2.6, d: 0.7 },
+  barrel: { x: 33.5, z: -3.6, r: 0.3 },
+};
 const WH_COLLIDERS = [
   ...RACKS.map((r) => ({ kind: 'box', x: r.x, z: r.z, w: r.w, d: r.d, turn: 0, top: 4.2 })),
   ...BALES.map((b) => ({ kind: 'box', x: b.x, z: b.z, w: b.w, d: b.d, turn: 0, top: 1.6 })),
   { kind: 'box', x: FORKLIFT.x, z: FORKLIFT.z, w: 1.3, d: 3.0, turn: FORKLIFT.turn, top: 2.3 },
   { kind: 'box', x: WH_STAIRS.x, z: WH_STAIRS.z - 0.8, w: 1.6, d: 1.8, turn: 0, top: 2.4 },
+  { kind: 'box', ...WH_PROPS.pallets, top: 1.0 },
+  { kind: 'box', x: WH_PROPS.jack.x, z: WH_PROPS.jack.z, w: 1.6, d: 0.6, turn: WH_PROPS.jack.turn, low: true },
+  ...WH_PROPS.bollards.map(([x, z]) => ({ kind: 'circle', x, z, r: 0.14, top: 1.1 })),
+  ...WH_PROPS.cones.map(([x, z]) => ({ kind: 'circle', x, z, r: 0.2, low: true })),
+  { kind: 'box', ...WH_PROPS.bench, turn: 0, top: 1.6 },
+  { kind: 'circle', ...WH_PROPS.barrel, top: 0.95 },
 ];
 // the dock's open door, out to the lot (the other one's shut)
 export const DOCK_DOOR = { z: WAREHOUSE.z + WAREHOUSE.d / 2 + 3.5, w: 3.2 };
@@ -200,15 +225,15 @@ WALLS.push(...LOT_WALLS);
 export const inLot = (x, z) => x > LOT.x && x <= LOT.x + LOT.w && z >= LOT.z && z <= LOT.z + LOT.d;
 // parked cars: [x, z, turn, colour, kind]
 export const CARS = [
-  [62, -11, 0, 0x8a1c22, 'transam'],
-  [62, -7.6, 0, 0xc9c9c2, 'sedan'],
-  [62, 7.2, 0, 0x2f3d55, 'sedan'],
+  [62, -11, 0, 0x8a1c22, 'transam'], // Dwight's
+  [62, -7.6, 0, 0xb9bcbf, 'sebring'], // Michael's
+  [62, 7.2, 0, 0x2f3d55, 'hatch'],
   [62, 10.6, 0, 0x5a5d61, 'suv'],
   [72, -11, Math.PI, 0xd8d6cf, 'sedan'],
   [72, -4.2, Math.PI, 0x7c1f24, 'sedan'],
   [72, 3.2, Math.PI, 0x1d1f22, 'suv'],
   [72, 10.6, Math.PI, 0xc9b58a, 'sedan'],
-  [78, -7.6, 0, 0x3a6fb8, 'sedan'],
+  [78, -7.6, 0, 0x3a6fb8, 'hatch'],
   [78, 7.2, 0, 0xe0e0da, 'suv'],
 ];
 export const PARK_SIGN = { x: 84, z: -1, turn: -Math.PI / 2 };
@@ -288,6 +313,21 @@ export const COLLIDERS = [
   CABINET,
   STAIRWELL.flight,
   ...LEAVES.map((l) => ({ kind: 'box', x: l.x, z: l.z, w: l.w, d: l.d, turn: 0, top: 2.1 })),
+];
+
+// Who gets up from their desk now and then, where to, and how often:
+// Meredith for coffee, Kevin to the jelly beans on reception's counter, Oscar to the copier,
+// Angela to check on her yogurt, Creed into the supply room, Phyllis to
+// the microwave. (to: where they stand, `face` the walker's way: 0 east,
+// π/2 north; every: seconds between trips; offset: when in that the first
+// one starts; wait: how long they stand there)
+export const AMBLES = [
+  { who: 'meredith', to: { x: 1.9, z: -1.72, face: Math.PI / 2 }, every: 80, offset: 12, wait: 9 },
+  { who: 'kevin', to: { x: -9.0, z: -3.15, face: -Math.PI / 2 }, every: 96, offset: 44, wait: 8 },
+  { who: 'oscar', to: { x: 0.6, z: -2.95, face: Math.PI / 2 }, every: 72, offset: 28, wait: 7 },
+  { who: 'angela', to: { x: 3.93, z: -1.62, face: Math.PI / 2 }, every: 110, offset: 70, wait: 6 },
+  { who: 'creed', to: { x: -7.5, z: 6.0, face: -Math.PI / 2 }, every: 124, offset: 56, wait: 10 },
+  { who: 'phyllis', to: { x: 3.05, z: -1.72, face: Math.PI / 2 }, every: 104, offset: 90, wait: 8 },
 ];
 
 // Jim's body: an office's walk, not a hobbit's

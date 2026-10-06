@@ -64,6 +64,7 @@ import Wardrobe from '../wardrobe/Wardrobe';
 import { useLooks } from '../wardrobe/useLooks';
 import './world.css';
 import GuideCue from '../../guide/GuideCue';
+import { useTravellers } from '../../middleearth/towns/useTravellers';
 
 // Dimension C-137, the world: walk about the Smiths' street as Morty, go into
 // the house, Rick's garage and Harry Herpson High, fly Rick's space cruiser
@@ -357,8 +358,12 @@ function Toast({ toast }) {
   );
 }
 
+// others online in the street (middleearth/towns/useTravellers), as Mortys from other dimensions
+const ROOM = { bound: 160, motion: true };
+
 function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) {
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
+  const trav = useTravellers('c137', gl === 'on', ROOM);
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.35 });
   const canvas = useRef(null);
   const map = useRef(null);
@@ -681,9 +686,10 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     const dt = Math.min(0.05, ms / 1000);
     s.t += dt;
     const k = s.keys;
-    const pad = readPad();
+    const raw = readPad();
     const before = s.padBefore;
-    s.padBefore = pad ?? {};
+    s.padBefore = raw ?? {};
+    const pad = wardrobeRef.current ? null : raw; // (the wardrobe's open over him: the pad's for it)
     const pressed = (b) => pad?.[b] && !before[b];
     if (pressed('a')) fns.current.act();
     if (pressed('b') && listRef.current) closeList();
@@ -795,8 +801,12 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       else shipTalk(s.shipNext.event);
     }
 
+    // others online: where you are to them (in the street, on foot), and where they are
+    const tv = trav.ref.current;
+    tv?.pose(s.m, { inside: s.area !== 'street' || Boolean(s.flying) });
+
     try {
-      a.render({ area: s.area, morty: s.m, flying: s.flying, cruiser: s.c, camYaw: s.yaw, camPitch: s.pitch, near: s.view, done: doneRef.current, fed: s.fed }, ms);
+      a.render({ area: s.area, morty: s.m, flying: s.flying, cruiser: s.c, camYaw: s.yaw, camPitch: s.pitch, near: s.view, done: doneRef.current, fed: s.fed, travellers: tv ? tv.list() : null }, ms);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
       a.dispose();
@@ -955,6 +965,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
             <span>Wardrobe</span>
             {!touch && <kbd>C</kbd>}
           </button>
+          <OtherMortys trav={trav} />
         </div>
       </div>
       <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} who="morty" />
@@ -1454,5 +1465,23 @@ function Place({ id, onClose, onQuiz, onRoy }) {
       </div>
     </div>,
     document.body,
+  );
+}
+
+// Others online in the street: how many, or a way to see them (going online
+// is the site's own switch, with your callsign, as on the universe map).
+function OtherMortys({ trav }) {
+  if (!trav.available) return null;
+  if (!trav.on)
+    return (
+      <button type="button" className="rm-chip" onClick={trav.join} title="Go online, and see everyone else in the street as a Morty from another dimension">
+        <span>See other Mortys</span>
+      </button>
+    );
+  return (
+    <span className="rm-chip" title="Everyone else online in the street shows as a Morty from another dimension: they can’t touch your things to do, nor you theirs">
+      <b>{trav.count}</b>
+      <span>{trav.count === 1 ? 'other Morty' : 'other Mortys'} here</span>
+    </span>
   );
 }

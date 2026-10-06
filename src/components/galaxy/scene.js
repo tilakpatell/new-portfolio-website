@@ -400,8 +400,12 @@ export async function create(canvas, ctx) {
   // (force: the same crew, built again: its garage build changed)
   const setShip = (kind, force = false) => {
     if (kind === state.kind && !force) return;
-    engine?.stop();
-    engine = null;
+    // (forced: the same crew, a new hull: only the model's made again)
+    const same = force && kind === state.kind;
+    if (!same) {
+      engine?.stop();
+      engine = null;
+    }
     if (state.model) {
       scene.remove(state.model.group);
       state.model.dispose();
@@ -409,9 +413,11 @@ export async function create(canvas, ctx) {
       state.model = null;
     }
     state.kind = kind;
-    dropCab();
-    cabWanted = null;
-    if (kind && state.seat === 'cockpit') buildCab(kind);
+    if (!same) {
+      dropCab();
+      cabWanted = null;
+      if (kind && state.seat === 'cockpit') buildCab(kind);
+    }
     setPlumes(kind, ENGINES[kind] ?? []);
     if (!kind) {
       state.ship = null;

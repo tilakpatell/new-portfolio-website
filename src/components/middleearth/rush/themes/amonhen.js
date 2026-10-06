@@ -1,10 +1,12 @@
 // Amon Hen: the Fellowship's last camp, on the lawn at Parth Galen by day,
 // the woods behind and Nen Hithoel in front; campfires with spits, elven
 // boats drawn up on the shore, and Amon Hen and its Seat over the trees.
+// Ducks paddle about off the shore, and the mist of the Falls of Rauros
+// drifts up the lake over the water.
 
 import * as THREE from 'three';
 import { B, ball, cyl } from '../../shire/props';
-import { campfire, fountain } from './common';
+import { V, campfire, fountain, motes } from './common';
 
 export const AMON_HEN = {
   sky: { background: 0x9ec4e0, fog: [0xb8ccd8, 24, 70], hemi: [0xe8f2ff, 0x5a7a3a, 1.5], sun: [0xfff0d0, 2.6] },
@@ -82,6 +84,56 @@ export const AMON_HEN = {
     room.add(sky, hill, seat);
     // (the lake only ruffles)
     return { tex, tick: (dt) => (tex.offset.x += dt * 0.03) };
+  },
+  extras(ctx) {
+    const { room, W, D, Z } = ctx;
+    const shore = Z(D - 1);
+    // the mist of Rauros, drifting up the lake on the wind, thin over the water
+    const mist = motes(ctx, { n: 34, colour: 0xeaf4ff, size: 0.9, rise: 0.06, sway: 0.7, life: [4, 8], glow: 0.28, from: () => V((Math.random() - 0.5) * (W + 4), 0.05 + Math.random() * 0.4, shore + 0.4 + Math.random() * 1.6) });
+    // ducks, paddling about between the boats and the rocks: drakes green-headed
+    const body = new THREE.SphereGeometry(0.16, 10, 7);
+    const head = new THREE.SphereGeometry(0.075, 8, 6);
+    const beak = new THREE.ConeGeometry(0.03, 0.09, 6).rotateZ(-Math.PI / 2);
+    const brown = new THREE.MeshStandardMaterial({ color: 0x7a6248, roughness: 0.9 });
+    const grey = new THREE.MeshStandardMaterial({ color: 0xb8b4aa, roughness: 0.9 });
+    const green = new THREE.MeshStandardMaterial({ color: 0x1e6a3a, roughness: 0.45, metalness: 0.2 });
+    const orange = new THREE.MeshStandardMaterial({ color: 0xe8a030, roughness: 0.6 });
+    const ducks = [
+      [-0.31, 0.03],
+      [-0.03, 0.015],
+      [0.04, 0.015],
+      [0.3, 0.025],
+    ].map(([f, span], i) => {
+      const d = new THREE.Group();
+      const drake = i % 2 === 0;
+      const b = new THREE.Mesh(body, drake ? grey : brown);
+      b.scale.set(1.5, 0.75, 0.9);
+      const h = new THREE.Mesh(head, drake ? green : brown);
+      h.position.set(0.2, 0.14, 0);
+      const k = new THREE.Mesh(beak, orange);
+      k.position.set(0.29, 0.13, 0);
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.14, 5).rotateZ(Math.PI / 2 + 0.5), drake ? grey : brown);
+      tail.position.set(-0.24, 0.07, 0);
+      d.add(b, h, k, tail);
+      d.scale.setScalar(i === 1 ? 0.7 : 1);
+      room.add(d);
+      return { d, x0: f * W, z: shore + 0.75 + (i % 2) * 0.35, ph: i * 1.7, sp: 0.22 + (i % 3) * 0.05, span: span * W };
+    });
+    return {
+      tick(dt, t) {
+        mist.tick(dt, t);
+        for (const q of ducks) {
+          const a = t * q.sp + q.ph;
+          const x = q.x0 + Math.sin(a) * q.span;
+          const z = q.z + Math.sin(a * 0.7) * 0.15;
+          // facing the way it paddles, and bobbing on the ruffle
+          const vx = Math.cos(a) * q.span * q.sp;
+          const vz = Math.cos(a * 0.7) * 0.1 * q.sp;
+          q.d.position.set(x, -0.04 + Math.sin(t * 2.3 + q.ph) * 0.018, z);
+          q.d.rotation.set(0, Math.atan2(-vz, vx), Math.sin(t * 2.3 + q.ph) * 0.05);
+        }
+      },
+    };
   },
   flame: ['O'],
   spit: true,

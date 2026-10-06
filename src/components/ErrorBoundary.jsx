@@ -1,5 +1,5 @@
 import { Component } from 'react';
-import { isStale, mayReload, reloadFresh, session } from '../lib/stale';
+import { browserOnline, isStale, mayReload, reloadFresh, session } from '../lib/stale';
 
 // Keeps a failure in one page (or a stale chunk after a deploy) from blanking the site.
 export default class ErrorBoundary extends Component {
@@ -25,15 +25,19 @@ export default class ErrorBoundary extends Component {
     if (!error) return this.props.children;
     if (this.props.fallback !== undefined) return this.props.fallback;
     const stale = isStale(error);
+    // a file that wouldn't come while the browser's offline: not a deploy
+    const offline = stale && !browserOnline();
     return (
       <div className="shell flex min-h-[70vh] items-center py-32">
         <div className="max-w-lg">
           <p className="eyebrow">Something went wrong</p>
-          <h1 className="title mt-3">{stale ? 'The site was just updated.' : 'This page didn’t load.'}</h1>
+          <h1 className="title mt-3">{offline ? 'You’re offline.' : stale ? 'The site was just updated.' : 'This page didn’t load.'}</h1>
           <p className="lead mt-4">
-            {stale
-              ? 'Reload to get the latest version.'
-              : 'Reload the page, or head back to the home page. Everything else on the site still works.'}
+            {offline
+              ? 'This part of the site hadn’t loaded yet. Reload once you’re back online.'
+              : stale
+                ? 'Reload to get the latest version.'
+                : 'Reload the page, or head back to the home page. Everything else on the site still works.'}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <button type="button" className="btn btn-primary" onClick={reloadFresh}>

@@ -11,6 +11,7 @@ import { drawMap } from '../../middleearth/towns/map';
 import { nearest } from '../../middleearth/towns/story';
 import { newTalk, talkNode, talkOn } from '../../middleearth/towns/talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../../middleearth/towns/walker';
+import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { CAST, COLLIDERS, DOORS, HOOP, JIM, LINES, NAMES, OFFICE_ARRIVE, P, RACKS, ROOMS, SPOTS, THINGS, WALLS, WAREHOUSE, WH_ARRIVE, WORLD, inWarehouse, rect, roomAt, seatOf, spot, validAt } from './layout';
 import { CALL_COUNT, CHILI, CONVOS, FIRE, HOOPS, JELLO, QUESTS, SEAL, SPEAKERS, callOf, fireLeft, meterAt, newChili, newHoops, officeProgress, shoot, stepChili, stepHoops } from './story';
 import '../../middleearth/shire/shire.css';
@@ -80,6 +81,9 @@ export default function OfficeWorld() {
   );
 }
 
+// others online in the office (middleearth/towns/useTravellers), as pale Jims from another branch
+const ROOM = { bound: 160, motion: true };
+
 function World({ prog, done, complete, gl, setGl, setPlace, place }) {
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
@@ -92,6 +96,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
     const h = newWalker(validAt(saved));
     sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.24, dragAt: -1e9, mode: 'walk', talking: null, talk: null, carry: null, chili: newChili(), chiliDone: done.includes('chili'), jelloSet: done.includes('jello'), dwight: 'desk', dwightT: 0, erinBreak: false, fire: false, fireT: 0, near: null, thing: null, person: null, moved: false, t: 0, frame: 0, padBefore: null, edgeAt: -9, room: null, wave: null, hum: null, siren: null };
   }
+  const trav = useTravellers('scranton', gl === 'on', ROOM);
   const progRef = useRef(prog);
   progRef.current = prog;
   const doneRef = useRef(done);
@@ -483,6 +488,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
     const pressed = (b) => pad?.[b] && !before[b];
     s.padBefore = pad ?? {};
     const runners = [];
+    const ambling = [];
 
     if (s.mode === 'walk') {
       let fwd = (held('up') ? 1 : 0) - (held('down') ? 1 : 0) - s.stick.y;
@@ -500,8 +506,8 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
       const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
       const mv = cameraMove(s.yaw, Math.max(-1, Math.min(1, fwd)), Math.max(-1, Math.min(1, side)));
       s.h = walker.step(s.h, { x: mv.x, z: mv.z, run }, dt);
-      // in the fire, the panicking are in the way too
-      if (s.fire && s.lastRunners) {
+      // the panicking in the fire, and whoever's up from their desk, are in the way too
+      if (s.lastRunners?.length) {
         let { x, z } = s.h;
         for (const r of s.lastRunners) {
           const d = Math.hypot(x - r.x, z - r.z);
@@ -514,6 +520,15 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         s.h = { ...s.h, x, z };
       }
       if (Math.hypot(mv.x, mv.z) > 0.1) s.moved = true;
+      // footsteps, by what's underfoot
+      s.stepDist = (s.stepDist ?? 0) + s.h.speed * dt;
+      const stride = s.h.running ? 0.95 : 0.72;
+      if (s.h.speed > 0.4 && s.stepDist > stride) {
+        s.stepDist = 0;
+        const r = s.room;
+        const floor = r === 'lot' ? 'asphalt' : r === 'warehouse' || r === 'stairs' ? 'concrete' : r === 'hallway' || r === 'men' || r === 'women' || r === 'lobby' ? 'tile' : 'carpet';
+        sounds().then((x) => x.step?.(floor, s.h.running));
+      }
       const room = a.suggestYaw;
       if (room != null && s.t - s.dragAt > 1.2) {
         let d = room - s.yaw;
@@ -653,7 +668,9 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
     // who's near: their line, in a bubble over their head
     let person = null;
     if (s.mode === 'walk' && !s.fire) {
-      const here = CAST.filter((c) => !(c.id === 'erin' && s.erinBreak) && !(c.id === 'dwight' && s.dwight !== 'desk'));
+      // (whoever's up from their desk is wherever they've got to)
+      const up = new Map((s.lastAmbling ?? []).map((a) => [a.id, a]));
+      const here = CAST.filter((c) => !(c.id === 'erin' && s.erinBreak) && !(c.id === 'dwight' && s.dwight !== 'desk')).map((c) => (up.has(c.id) ? { ...c, x: up.get(c.id).x, z: up.get(c.id).z } : c));
       person = nearest(here, s.h.x, s.h.z, 1.9)?.id ?? null;
     }
     if (person !== s.person) {
@@ -693,10 +710,15 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
               p.quests.find((q) => q.id === 'dundies')?.open && !has('dundies') && spot('dundies'),
             ].filter(Boolean);
 
+    // others online: where you are to them, and where they are
+    const tv = trav.ref.current;
+    tv?.pose(s.h);
+
     try {
       a.render(
         {
           jim: s.h,
+          travellers: tv ? tv.list() : null,
           mode: s.mode,
           carry: s.carry,
           slosh: s.chili.slosh,
@@ -716,10 +738,15 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
           camDist: touch ? 3.8 : 3.4,
           snapCam: s.snap,
           ballAt,
+          markers,
+          ambling,
           debugCam: s.debugCam,
+          warp: s.warp,
         },
         ms,
       );
+      s.lastAmbling = ambling;
+      s.warp = 0;
       s.snap = false;
       s.wave = null;
       s.lastRunners = runners;
@@ -858,6 +885,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
             <button type="button" className="shire-chip" onClick={() => setList((v) => !v)} aria-expanded={list}>
               <b>{done.length}</b> of {QUESTS.length} done {!touch && <kbd>M</kbd>}
             </button>
+            <Visitors trav={trav} />
             {hud.carry === 'chili' && (
               <div className="shire-meter dm-slosh" role="meter" aria-label="How close the chili is to spilling" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(hud.slosh * 100)}>
                 <span className="shire-meter-label">Chili</span>
@@ -1110,5 +1138,22 @@ function Cards({ prog, three, gl, retry, open }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+// Others online in the office: how many, or a way to see them (going online
+// is the site's own switch, with your callsign, as on the universe map).
+function Visitors({ trav }) {
+  if (!trav.available) return null;
+  if (!trav.on)
+    return (
+      <button type="button" className="shire-chip town-travellers" onClick={trav.join} title="Go online, and see everyone else in the office as a pale Jim from another branch">
+        See other visitors
+      </button>
+    );
+  return (
+    <span className="shire-chip town-travellers" data-on title="Everyone else online in the office shows as a pale Jim from another branch: they can’t touch your jobs, nor you theirs">
+      <b>{trav.count}</b> {trav.count === 1 ? 'visitor' : 'visitors'} here
+    </span>
   );
 }

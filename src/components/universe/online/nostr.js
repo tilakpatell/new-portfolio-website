@@ -13,13 +13,15 @@
 // most every FLUSH_MS (only the latest pose and pointer of a bundle are
 // kept), which keeps each pilot well inside what the relays allow.
 //
-// Who you are is the key you sign with (made fresh for each visit): every
-// event is signed, the relays check it, and anything that matters (a hello,
-// a hit, being shot down, an alliance, leaving) is checked again here, so
-// no one can speak as another pilot. An event much older than the pilot's
+// Who you are is the key you sign with (made fresh for each visit, and the
+// same in every room you join on it, visitKeys(): the site's own and each
+// world's, so the person walking your Bree is the one in the roster, and a
+// block holds everywhere): every event is signed, the relays check it, and
+// anything that matters (a hello, a hit, being shot down, an alliance,
+// leaving) is checked again here, so no one can speak as another pilot. An event much older than the pilot's
 // others is dropped, so an old one can't be played back later.
 //
-// joinRoom({ appId, relays, WebSocket }, roomId) → { selfId, ready (resolves
+// joinRoom({ appId, relays, WebSocket, keys }, roomId) → { selfId, ready (resolves
 // once a relay's listening, rejects if none answer), makeAction(ns) →
 // { send(data, { target }), onMessage(data, { peerId }) }, onPeerJoin(id),
 // onPeerLeave(id), onStatus('online' | 'connecting'), leave() }: what
@@ -44,6 +46,13 @@ const LATEST = new Set(['pose', 'foot', 'walk', 'cur', 'pack']); // only the new
 const CHEAP = new Set(['pose', 'foot', 'walk', 'cur', 'shot', 'pack']); // trusted to the relay's own check of the signature
 
 const isHex = (s, n) => typeof s === 'string' && s.length === n && /^[0-9a-f]+$/.test(s);
+
+// the visit's key: made the first time a room's joined, then the same for
+// every room till the page goes (a room joined without it makes its own)
+let visit = null;
+export const visitKeys = () => (visit ??= schnorr.keygen());
+// a room joined as the visit's one self (what the site's rooms all do)
+export const joinAsVisitor = (opts, roomId) => joinRoom({ ...opts, keys: visitKeys() }, roomId);
 
 // Signing and checking (events.js) in a worker of their own where the
 // browser has one (signer.worker.js): each is a few milliseconds of sums on
@@ -154,8 +163,8 @@ function relaySocket(url, { WebSocket, req, onEvent, onChange }) {
   };
 }
 
-export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSocket, flushMs = FLUSH_MS, readyMs = READY_MS, latest = LATEST, cheap = CHEAP }, roomId) {
-  const { secretKey, publicKey } = schnorr.keygen();
+export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSocket, flushMs = FLUSH_MS, readyMs = READY_MS, latest = LATEST, cheap = CHEAP, keys = schnorr.keygen() }, roomId) {
+  const { secretKey, publicKey } = keys;
   const self = hex(publicKey);
   const topic = `${appId}/${roomId}`;
   const tags = [['x', topic]];

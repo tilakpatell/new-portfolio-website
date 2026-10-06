@@ -256,6 +256,11 @@ export default function Nav() {
   }, []);
   const gone = (item) => dropped(fit, item);
   const collapsed = gone('links');
+  // the menu, wherever something in the bar isn't: below lg the bar has no
+  // room for Music, Terminal or the colours, and above it the bar may still
+  // have let go of Terminal or Music to fit (on a tablet, before, Music and
+  // the colours could only be found by searching)
+  const menu = collapsed || gone('terminal') || gone('music');
   useLayoutEffect(() => {
     const el = bar.current;
     if (!el) return;
@@ -326,7 +331,10 @@ export default function Nav() {
     if (!isFeedMove(location, navType)) setHidden(false);
   }, [location, navType, setHidden]);
 
-  // The phone menu covers the page: Escape closes it, and the page under it stays put.
+  // The phone menu covers the page: Escape closes it, and the page under it
+  // stays put. Focus goes into the menu, the page behind can't be reached
+  // (inert: a keyboard or a screen reader stays in the menu and the bar),
+  // and closing it puts focus back on the button that opened it.
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => e.key === 'Escape' && setOpen(false);
@@ -335,10 +343,20 @@ export default function Nav() {
     const overflow = html.style.overflow;
     html.style.overflow = 'hidden';
     html.dataset.menu = 'open';
+    const button = menuButton.current;
+    const behind = [document.getElementById('main'), ...document.querySelectorAll('footer')].filter((el) => el && !el.closest('#mobile-menu'));
+    for (const el of behind) el.inert = true;
+    const into = requestAnimationFrame(() => document.querySelector('#mobile-menu a, #mobile-menu button')?.focus({ preventScroll: true }));
     return () => {
+      cancelAnimationFrame(into);
       document.removeEventListener('keydown', onKey);
       html.style.overflow = overflow;
       delete html.dataset.menu;
+      for (const el of behind) el.inert = false;
+      // (back to the button, unless something else has been picked: a link
+      // that went to a new page puts focus on that page)
+      const at = document.activeElement;
+      if (!at || at === document.body || document.getElementById('mobile-menu')?.contains(at)) button?.focus({ preventScroll: true });
     };
   }, [open]);
 
@@ -383,7 +401,7 @@ export default function Nav() {
             </NavLink>
           )}
           {!gone('terminal') && (
-            <NavLink to="/terminal" className={({ isActive }) => `${linkClass({ isActive })} hidden xl:inline-block`}>
+            <NavLink to="/terminal" className={({ isActive }) => `${linkClass({ isActive })} hidden lg:inline-block`}>
               <span className="flex items-center gap-1.5">
                 <RiTerminalBoxLine className="h-4 w-4" aria-hidden="true" />
                 Terminal
@@ -420,7 +438,7 @@ export default function Nav() {
           <button
             ref={menuButton}
             type="button"
-            className={`${iconBtn} ${collapsed ? '' : 'md:hidden'}`}
+            className={`${iconBtn} ${menu ? '' : 'lg:hidden'}`}
             aria-expanded={open}
             aria-controls="mobile-menu"
             aria-label={open ? 'Close menu' : 'Open menu'}
@@ -433,7 +451,7 @@ export default function Nav() {
 
       {open &&
         createPortal(
-        <div id="mobile-menu" className={`mobile-menu ${collapsed ? '' : 'md:hidden'}`}>
+        <div id="mobile-menu" className={`mobile-menu ${menu ? '' : 'lg:hidden'}`}>
           <p className="eyebrow">View the site as</p>
           <ViewSwitch size="menu" className="mt-3" />
           <ul className="mt-5 divide-y divide-[var(--border)]">

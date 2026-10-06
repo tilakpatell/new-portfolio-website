@@ -252,6 +252,10 @@ export function buildShip(kind, T = {}, { build = null } = {}) {
       livery.dispose();
     },
     build, // (the garage build it is, or null)
+    // the wardrobe's looks on a crew its model seats (the cruiser's Rick and Morty)
+    setLooks(looks) {
+      mounted?.setLooks?.(looks);
+    },
     engines, // (where its exhaust leaves, in BUILT units)
     group,
     pivot,
