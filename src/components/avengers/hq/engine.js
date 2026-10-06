@@ -77,6 +77,11 @@ export function createEngine(canvas, opts = {}) {
   const renderPass = new RenderPass(scene, camera);
   composer.addPass(renderPass);
   const bloomPass = bloom ? new UnrealBloomPass(new THREE.Vector2(256, 256), bloom.strength, bloom.radius, bloom.threshold) : null;
+  // `knee`: how far past the threshold the glow takes to come in fully. The
+  // pass's own 0.01 is a switch: a big surface lit to just about the
+  // threshold (a white wall in the sun) glowed whole or not at all as the
+  // view turned, a box of light popping on and off.
+  if (bloomPass) bloomPass.highPassUniforms.smoothWidth.value = bloom.knee ?? 0.01;
   if (bloomPass) composer.addPass(bloomPass);
   composer.addPass(new OutputPass());
 

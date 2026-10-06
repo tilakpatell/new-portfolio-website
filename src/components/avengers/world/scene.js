@@ -202,7 +202,11 @@ const signTexture = (text) =>
     });
   });
 
-// a beam of light going up from a door: bright at the foot, fading upwards
+// A beam of light going up from a door: bright at the foot, fading upwards,
+// a soft column brightest down its middle (where its side faces you) and gone
+// at its edges. It fades out as the camera comes up to it: the camera swings
+// round him freely, and a beam it was beside (or in) was a flat slab of
+// colour over half the screen, bloomed out (the lab's a green one).
 function beamMaterial(color) {
   return new THREE.ShaderMaterial({
     transparent: true,
@@ -213,23 +217,42 @@ function beamMaterial(color) {
     uniforms: { uColor: { value: new THREE.Color(color) }, uTime: { value: 0 }, uStrength: { value: 1 } },
     vertexShader: /* glsl */ `
       varying vec2 vUv;
-      void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      varying vec3 vN;
+      varying vec3 vView;
+      void main() {
+        vUv = uv;
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vN = normalize(mat3(modelMatrix) * normal);
+        vView = cameraPosition - wp.xyz;
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }`,
     fragmentShader: /* glsl */ `
       uniform vec3 uColor;
       uniform float uTime, uStrength;
       varying vec2 vUv;
+      varying vec3 vN;
+      varying vec3 vView;
       void main() {
-        float up = 1.0 - vUv.y;
+        // (clamped: a hair past the top's 1 made pow() of a negative, not a number)
+        float up = clamp(1.0 - vUv.y, 0.0, 1.0);
         float k = pow(up, 2.2) * (0.75 + 0.25 * sin(uTime * 2.0 + vUv.y * 18.0));
-        // brighter down the middle of the beam (its edges face away)
-        float edge = 1.0 - abs(vUv.x * 2.0 - 1.0);
-        gl_FragColor = vec4(uColor * k * uStrength * (0.35 + edge * 0.65), 1.0);
+        // across the column, flat to the ground: its middle faces you, its edges don't
+        vec3 v = vec3(vView.x, 0.0, vView.z);
+        float d = length(vView);
+        float facing = abs(dot(normalize(vec3(vN.x, 0.0, vN.z) + 1e-5), normalize(v + 1e-5)));
+        float core = facing * facing;
+        // nothing within a few metres of the camera, all of it from 16 m
+        float away = smoothstep(4.0, 16.0, d);
+        gl_FragColor = vec4(uColor * k * uStrength * core * away, 1.0);
       }`,
   });
 }
 
 export async function createCompoundWorld(canvas, { onLost, calm = false } = {}) {
-  const engine = createEngine(canvas, { exposure: 1, fov: 52, near: 0.15, far: 2400, bloom: { strength: 0.32, radius: 0.5, threshold: 1.2 }, onLost });
+  // (the glow only for what's past lit paint: a white wall full in the sun
+  // comes to about 1.3, and at the old 1.2 the training center's front was a
+  // slab of light; the glows, the lintels and the beams are well over)
+  const engine = createEngine(canvas, { exposure: 1, fov: 52, near: 0.15, far: 2400, bloom: { strength: 0.36, radius: 0.5, threshold: 1.55, knee: 0.9 }, onLost });
   const { scene, sun, camera, renderer } = engine;
   const small = engine.small;
   const sets = ['grass', 'forest-floor', 'concrete-floor', 'concrete-worn', 'corrugated', 'rock', 'asphalt', 'leather', 'carbon', 'painted-metal', 'planks'];
@@ -1565,7 +1588,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       const fl = Math.hypot(fx, fz) || 1;
       grass.update(s.hero.x + (fx / fl) * 6, s.hero.z + (fz / fl) * 6, clock);
     }
-    rings.update(s.tour ?? { on: false, next: 0 }, clock);
+    rings.update(s.tour ?? { on: false, next: 0 }, clock, camera.position);
     packs.update(s.found ?? [], clock);
 
     // Mjolnir hums a little when the worthy come near it
