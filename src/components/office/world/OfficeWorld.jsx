@@ -502,6 +502,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
     const pressed = (b) => pad?.[b] && !before[b];
     s.padBefore = pad ?? {};
     const runners = [];
+    const ambling = [];
 
     if (s.mode === 'walk') {
       let fwd = (held('up') ? 1 : 0) - (held('down') ? 1 : 0) - s.stick.y;
@@ -519,8 +520,8 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
       const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
       const mv = cameraMove(s.yaw, Math.max(-1, Math.min(1, fwd)), Math.max(-1, Math.min(1, side)));
       s.h = walker.step(s.h, { x: mv.x, z: mv.z, run }, dt);
-      // in the fire, the panicking are in the way too
-      if (s.fire && s.lastRunners) {
+      // the panicking in the fire, and whoever's up from their desk, are in the way too
+      if (s.lastRunners?.length) {
         let { x, z } = s.h;
         for (const r of s.lastRunners) {
           const d = Math.hypot(x - r.x, z - r.z);
@@ -533,6 +534,15 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         s.h = { ...s.h, x, z };
       }
       if (Math.hypot(mv.x, mv.z) > 0.1) s.moved = true;
+      // footsteps, by what's underfoot
+      s.stepDist = (s.stepDist ?? 0) + s.h.speed * dt;
+      const stride = s.h.running ? 0.95 : 0.72;
+      if (s.h.speed > 0.4 && s.stepDist > stride) {
+        s.stepDist = 0;
+        const r = s.room;
+        const floor = r === 'lot' ? 'asphalt' : r === 'warehouse' || r === 'stairs' ? 'concrete' : r === 'hallway' || r === 'men' || r === 'women' || r === 'lobby' ? 'tile' : 'carpet';
+        sounds().then((x) => x.step?.(floor, s.h.running));
+      }
       const room = a.suggestYaw;
       if (room != null && s.t - s.dragAt > 1.2) {
         let d = room - s.yaw;
@@ -672,7 +682,9 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
     // who's near: their line, in a bubble over their head
     let person = null;
     if (s.mode === 'walk' && !s.fire) {
-      const here = CAST.filter((c) => !(c.id === 'erin' && s.erinBreak) && !(c.id === 'dwight' && s.dwight !== 'desk'));
+      // (whoever's up from their desk is wherever they've got to)
+      const up = new Map((s.lastAmbling ?? []).map((a) => [a.id, a]));
+      const here = CAST.filter((c) => !(c.id === 'erin' && s.erinBreak) && !(c.id === 'dwight' && s.dwight !== 'desk')).map((c) => (up.has(c.id) ? { ...c, x: up.get(c.id).x, z: up.get(c.id).z } : c));
       person = nearest(here, s.h.x, s.h.z, 1.9)?.id ?? null;
     }
     if (person !== s.person) {
@@ -741,10 +753,15 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
           camDist: touch ? 3.8 : 3.4,
           snapCam: s.snap,
           ballAt,
+          markers,
+          ambling,
           debugCam: s.debugCam,
+          warp: s.warp,
         },
         ms,
       );
+      s.lastAmbling = ambling;
+      s.warp = 0;
       s.snap = false;
       s.wave = null;
       s.lastRunners = runners;

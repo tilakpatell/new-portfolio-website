@@ -283,13 +283,21 @@ export async function createPeople({ outdoors, factory, council, places, tier = 
     undress = dress(rick, next);
   };
 
+  // a Rick for someone else online here (the scene's ghosts): not one of the
+  // cast, and posed by `step(t, move)` (0 still … 1 running); its mesh and
+  // materials are the cast's to dispose, not the ghost's
+  const other = (kind = 'rick') => {
+    const f = meshy.make(kind);
+    if (!f) return null;
+    return { f, step: (t, move) => animate(f, t, move, null), stop: () => f.mixer?.stopAllAction() };
+  };
+
   return {
     get rick() {
       return rick;
     },
+    other,
     setRick,
-    // a figure of a kind, of its own and in nothing (the visitors' ghosts, ./scene.js)
-    figure: (kind) => meshy.make(kind),
     cast,
     mortys,
     cops,

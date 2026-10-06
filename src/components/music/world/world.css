@@ -17,11 +17,11 @@
 .mw-help { max-width: 34rem; margin: 0.7rem 0 0; padding: 0.5rem 0.75rem; border-radius: 8px; background: rgba(20, 14, 30, 0.55); color: #fbead2; font-size: 0.88rem; line-height: 1.4; backdrop-filter: blur(6px); }
 .mw-chip { flex: none; min-height: 40px; padding: 0 0.9rem; border: 1px solid rgba(255, 228, 190, 0.45); border-radius: 999px; background: rgba(20, 14, 30, 0.5); color: #fff1dc; font-size: 0.85rem; backdrop-filter: blur(6px); }
 .mw-chip:hover { background: rgba(40, 26, 50, 0.7); }
-.mw-side { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; }
-/* the other visitors here: a count, not a button */
-.mw-visitors { display: inline-flex; align-items: center; gap: 0.3em; }
-.mw-visitors:hover { background: rgba(20, 14, 30, 0.5); }
-.mw-visitors b { color: #ffd27a; }
+/* the chips over the courtyard: the other listeners online, the way down to the room */
+.mw-chips { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; }
+span.mw-chip { display: inline-flex; align-items: center; gap: 0.35rem; }
+.mw-chip b { color: #ffd27a; font-variant-numeric: tabular-nums; }
+span.mw-chip:hover { background: rgba(20, 14, 30, 0.5); }
 .mw-prompt { display: inline-flex; align-items: center; gap: 0.6rem; min-height: 48px; padding: 0 1.2rem; border: 1px solid rgba(255, 214, 150, 0.7); border-radius: 999px; background: rgba(36, 20, 30, 0.72); color: #fff4e2; font-weight: 600; font-size: 1rem; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35), 0 0 24px rgba(255, 170, 80, 0.25); backdrop-filter: blur(8px); animation: mw-in 0.25s ease both; }
 .mw-prompt kbd { display: inline-grid; place-items: center; min-width: 1.6rem; height: 1.6rem; border: 1px solid rgba(255, 228, 190, 0.55); border-radius: 6px; font: 600 0.8rem/1 var(--font-mono); }
 .mw-prompt:focus-visible, .mw-chip:focus-visible { outline: 2px solid #ffd27a; outline-offset: 3px; }

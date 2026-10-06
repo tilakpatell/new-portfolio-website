@@ -7,7 +7,7 @@
 //
 // createCitadelWorld(canvas, { onLost }) → Promise<{ render(state, ms),
 // fx(type, at?), screenOf(kind, id), resize, dispose, info, lost,
-// suggestYaw }>; state.travellers is the other visitors online here (or null).
+// suggestYaw }>
 
 import * as THREE from 'three';
 import { createStage } from '../../../lib/stage3d';
@@ -15,6 +15,7 @@ import { createModels } from '../../../lib/models';
 import { device } from '../../../lib/device';
 import { allOrUndo } from '../../../lib/settle';
 import { createFx } from '../../middleearth/shire/fx';
+import { createGhosts } from '../../middleearth/towns/ghosts';
 import { createMeshyCast } from '../portal/meshyCast';
 import { InkPass } from '../portal/toon';
 import { EDGE_BUILDINGS, buildConcourse } from './concourse';
@@ -22,7 +23,6 @@ import { createCrowd } from './crowd';
 import { createPeople } from './people';
 import { ROOMS, buildRooms } from './rooms';
 import { COLLIDERS, DOORS, PEN, RICK, spot } from './layout';
-import { createGhosts } from '../../middleearth/towns/ghosts';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 // the buildings at the terrace's edge, which the camera keeps out of
@@ -119,40 +119,34 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
     throw e;
   }
 
-  // other visitors online, walking the concourse in their own worlds, as
-  // holograms (as the Middle-earth towns show theirs: ../../middleearth/towns):
-  // each a pale Rick with their name over him; nothing here touches them
-  const ghosts = createGhosts({
-    make: () => {
-      const f = people.figure('rick');
-      if (!f) {
-        // (no model: a plain capsule, its shape and paint gone with it)
-        const group = new THREE.Group();
-        const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 1.2, 4, 10), new THREE.MeshBasicMaterial());
-        body.position.y = 0.9;
-        group.add(body);
-        return { group, top: 1.85 };
-      }
-      f.group.rotation.y = Math.PI / 2; // (figures face +z; a ghost's face, like Rick's, is measured from +x)
-      const group = new THREE.Group();
-      group.add(f.group);
-      // (the model's shapes and paint are shared with the cast's)
-      return { group, top: f.height, fig: f, clock: Math.random() * 9, shared: true, dispose: () => {} };
-    },
-    animate: (f, t, p, dt) => {
-      if (!f.fig) return;
-      f.clock += dt;
-      f.fig.update(f.clock, Math.min(1, (p.speed ?? (p.moving ? RICK.walk : 0)) / RICK.run), 0);
-    },
-  });
-  scene.add(ghosts.group);
-
   if (!soft) {
     const big = Math.min(window.screen?.width ?? 1280, window.screen?.height ?? 800) >= 700;
-    const unlined = [...concourse.hide, fxRoot, ghosts.group];
+    const unlined = [...concourse.hide, fxRoot];
     const ink = new InkPass(scene, camera, { hide: () => unlined, width: big ? 1.15 : 1 });
     stage.composer.insertPass(ink, 1);
   }
+
+  // others online here (CitadelWorld's useTravellers), as the Middle-earth
+  // towns and the Avengers compound show theirs: each a Rick from another
+  // dimension (it's the Citadel: nobody blinks), pale and shimmering, with
+  // their name over him. On the concourse only; nothing here touches them.
+  const ghosts = createGhosts({
+    make: () => {
+      const o = people.other('rick');
+      const group = new THREE.Group();
+      if (!o) {
+        group.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 1.3, 4, 10).translate(0, 0.88, 0), new THREE.MeshStandardMaterial()));
+        return { group, top: 1.8 };
+      }
+      o.f.group.rotation.y = Math.PI / 2; // (a ghost's face, like Rick's, is measured from +x; a figure faces +z)
+      group.add(o.f.group);
+      return { group, top: 1.95, rick: o, shared: true, dispose: o.stop };
+    },
+    animate: (f, t, p) => f.rick?.step(t, Math.min(1, (p.speed ?? (p.moving ? RICK.walk : 0)) / RICK.run)),
+    tag: 0.36,
+    halo: 0.9,
+  });
+  concourse.group.add(ghosts.group);
 
   const A = { t: 0, mode: null, beat: null, room: null, cam: { at: V(0, 6, 40), look: V(0, 2, 30) }, shake: 0, suggest: null, mood: 'day', red: 0, near: [], nearAt: -1 };
   const tmp = V(0, 0, 0);
@@ -222,9 +216,9 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
     }
 
     // ── the people ──
+    ghosts.update(s.travellers ?? [], t, dt);
     people.update(s, t, camera.position);
     crowd.setMood(s.mood);
-    ghosts.update(s.travellers ?? [], t, dt);
 
     // ── the camera ──
     let camAt;

@@ -4,8 +4,7 @@ import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery, usePageVisible } from '../../../lib/hooks';
 import { readPad, typing } from '../../games/pad';
-import { Bubble, Convo, QuestList, Stick, Travellers } from '../../middleearth/towns/TownHud';
-import { useTravellers } from '../../middleearth/towns/useTravellers';
+import { Bubble, Convo, QuestList, Stick } from '../../middleearth/towns/TownHud';
 import { keyDown, keyUp, moveOf } from '../../middleearth/towns/keys';
 import { drawMap } from '../../middleearth/towns/map';
 import { nearest } from '../../middleearth/towns/story';
@@ -22,6 +21,7 @@ import Wardrobe from '../wardrobe/Wardrobe';
 import { useLooks } from '../wardrobe/useLooks';
 import './citadel.css';
 import GuideCue from '../../guide/GuideCue';
+import { useTravellers } from '../../middleearth/towns/useTravellers';
 
 // The Citadel of Ricks, the world: walk in through the portal as Rick
 // C-137 and play the five scenes there (Morty Day Care, Simple Rick's,
@@ -80,11 +80,12 @@ export default function CitadelWorld({ onLeave }) {
   );
 }
 
+// others online on the concourse (middleearth/towns/useTravellers), as Ricks from other dimensions
+const ROOM = { bound: 160, motion: true };
+
 function World({ prog, done, complete, gl, setGl, onLeave }) {
-  // other visitors online on the concourse, as ghosts (middleearth/towns/useTravellers),
-  // with how fast each goes, for the walk or the run
-  const trav = useTravellers('citadel', gl === 'on', { motion: true });
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
+  const trav = useTravellers('citadel', gl === 'on', ROOM);
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   const canvas = useRef(null);
   const map = useRef(null);
@@ -649,11 +650,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
             : [spot('ballot')]
           : ['daycare', 'factory', 'council'].filter((q) => !has(q)).map((q) => spot(q));
 
-    // other visitors online: where you are to them, and where they are. In
-    // a room (an area of its own) or getting away in the cruiser, you're
-    // out of their sight
+    // others online: where you are to them (out on the concourse), and where they are
     const tv = trav.ref.current;
-    tv?.pose(s.h, { inside: s.mode === 'inside' || s.mode === 'escape', area: s.mode === 'inside' ? s.room : null });
+    tv?.pose(s.h, { inside: s.mode === 'inside' || s.mode === 'escape' });
 
     try {
       a.render(
@@ -795,7 +794,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
             <button type="button" className="shire-chip" onClick={() => setWardrobe(true)} aria-haspopup="dialog">
               Wardrobe {!touch && <kbd>C</kbd>}
             </button>
-            <Travellers trav={trav} />
+            <OtherRicks trav={trav} />
             {herding && (
               <div className="shire-meter" role="meter" aria-label="Mortys back in the pen" aria-valuemin={0} aria-valuemax={HERD.count} aria-valuenow={hud.herd.penned}>
                 <span className="shire-meter-label">Mortys</span>
@@ -956,5 +955,22 @@ function Cards({ prog, three, gl, retry }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+// Others online on the concourse: how many, or a way to see them (going
+// online is the site's own switch, with your callsign, as on the universe map).
+function OtherRicks({ trav }) {
+  if (!trav.available) return null;
+  if (!trav.on)
+    return (
+      <button type="button" className="shire-chip town-travellers" onClick={trav.join} title="Go online, and see everyone else on the concourse as a Rick from another dimension">
+        See other Ricks
+      </button>
+    );
+  return (
+    <span className="shire-chip town-travellers" data-on title="Everyone else online on the concourse shows as a Rick from another dimension: they can’t touch your story, nor you theirs">
+      <b>{trav.count}</b> {trav.count === 1 ? 'other Rick' : 'other Ricks'} here
+    </span>
   );
 }

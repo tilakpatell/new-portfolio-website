@@ -1,7 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link as RouterLink } from 'react-router-dom';
-import { RiArrowDownLine, RiArrowLeftLine, RiArrowUpLine, RiCheckLine, RiCloseLine, RiGroupLine, RiListCheck2, RiShirtLine } from 'react-icons/ri';
+import { RiArrowDownLine, RiArrowLeftLine, RiArrowUpLine, RiCheckLine, RiCloseLine, RiListCheck2, RiShirtLine } from 'react-icons/ri';
 import '@fontsource/luckiest-guy/400.css';
 import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
@@ -10,7 +10,6 @@ import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hook
 import GpuGate from '../../games/GpuGate';
 import { readPad, typing } from '../../games/pad';
 import { keyDown, keyUp } from '../../middleearth/towns/keys';
-import { useTravellers } from '../../middleearth/towns/useTravellers';
 import ButterRobot from '../ButterRobot';
 import Cable from '../Cable';
 import MeeseeksBox from '../MeeseeksBox';
@@ -65,6 +64,7 @@ import Wardrobe from '../wardrobe/Wardrobe';
 import { useLooks } from '../wardrobe/useLooks';
 import './world.css';
 import GuideCue from '../../guide/GuideCue';
+import { useTravellers } from '../../middleearth/towns/useTravellers';
 
 // Dimension C-137, the world: walk about the Smiths' street as Morty, go into
 // the house, Rick's garage and Harry Herpson High, fly Rick's space cruiser
@@ -177,10 +177,6 @@ const PROMPT = {
   land: { kind: 'land', id: 'land', name: 'Open ground', verb: 'Land' },
 };
 const BOARD_R = 2.7; // how near the cruiser's middle Morty can get in from
-// other visitors online (../../middleearth/towns/useTravellers): one room, each
-// area its own ground (the rooms are built far apart, out to z = 804, and the
-// cruiser flies 400 m out), and how fast and how high, for the cruiser
-const ONLINE = { bound: 820, motion: true };
 
 // Where the next thing to do is, for the map's marker: the area and the spot
 // in it, and from anywhere else, the way towards it.
@@ -362,11 +358,14 @@ function Toast({ toast }) {
   );
 }
 
+// others online (middleearth/towns/useTravellers), as Mortys from other
+// dimensions, in the street or whichever room you're in (each its own area:
+// the rooms are built out to some 400 m from the street, hence the reach)
+const ROOM = { bound: 820, motion: true };
+
 function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) {
-  // other visitors online here, as holograms (middleearth/towns/useTravellers)
-  const trav = useTravellers('c-137', gl === 'on', ONLINE);
-  const travRef = trav.ref;
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
+  const trav = useTravellers('c137', gl === 'on', ROOM);
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.35 });
   const canvas = useRef(null);
   const map = useRef(null);
@@ -629,18 +628,6 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     };
   }, [api, setGl, complete]);
 
-  // something open over the page (a toy, the quiz, Roy): out of the other
-  // visitors' sight (said every second, as the frame loop that'd say where
-  // Morty is is stopped)
-  useEffect(() => {
-    if (!open) return undefined;
-    const s = sim.current;
-    const hide = () => travRef.current?.pose(s.m, { inside: true, area: s.area });
-    hide();
-    const t = setInterval(hide, 1000);
-    return () => clearInterval(t);
-  }, [open, travRef]);
-
   // keys and the frame loop only while the world's on screen and nothing's
   // open over it (closing the effect lets go of every key held)
   const live = gl === 'on' && inView && !open;
@@ -815,11 +802,10 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       else shipTalk(s.shipNext.event);
     }
 
-    // other visitors online in the same area (the street, a room): where
-    // you are to them, and where they are. At the wheel, it's the cruiser
-    // they see, its nose's heading as a walker's face (and `ride` says so)
-    const tv = travRef.current;
-    tv?.pose(s.flying ? { x: s.c.x, z: s.c.z, face: Math.atan2(-Math.cos(s.c.yaw), Math.sin(s.c.yaw)), speed: Math.abs(s.c.speed), y: s.c.y } : s.m, { area: s.area, ride: s.flying });
+    // others online: where you are to them (on foot, in the street or a room:
+    // only those in the same one see you), and where they are
+    const tv = trav.ref.current;
+    tv?.pose(s.m, { inside: Boolean(s.flying), area: s.area });
 
     try {
       a.render({ area: s.area, morty: s.m, flying: s.flying, cruiser: s.c, camYaw: s.yaw, camPitch: s.pitch, near: s.view, done: doneRef.current, fed: s.fed, travellers: tv ? tv.list() : null }, ms);
@@ -981,7 +967,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
             <span>Wardrobe</span>
             {!touch && <kbd>C</kbd>}
           </button>
-          <Visitors trav={trav} />
+          <OtherMortys trav={trav} />
         </div>
       </div>
       <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} who="morty" />
@@ -1089,25 +1075,6 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
 
       {list && <ThingsToDo box={listBox} prog={prog} done={done} onClose={closeList} />}
     </div>
-  );
-}
-
-// Other visitors online here: how many, or a way to see them (going online
-// is the site's own switch, with your callsign, as the universe's map has it).
-function Visitors({ trav }) {
-  if (!trav.available) return null;
-  if (!trav.on)
-    return (
-      <button type="button" className="rm-chip rm-visitors" onClick={trav.join} aria-label="See other visitors" title="Go online, and see everyone else in Dimension C-137 as a hologram">
-        <RiGroupLine aria-hidden="true" />
-        <span>See other visitors</span>
-      </button>
-    );
-  return (
-    <p className="rm-chip rm-visitors" data-on title="Everyone else online in the same place shows as a hologram: they can’t touch your things to do, nor you theirs">
-      <RiGroupLine aria-hidden="true" />
-      <b>{trav.count}</b> {trav.count === 1 ? 'visitor' : 'visitors'} here
-    </p>
   );
 }
 
@@ -1500,5 +1467,23 @@ function Place({ id, onClose, onQuiz, onRoy }) {
       </div>
     </div>,
     document.body,
+  );
+}
+
+// Others online in the street: how many, or a way to see them (going online
+// is the site's own switch, with your callsign, as on the universe map).
+function OtherMortys({ trav }) {
+  if (!trav.available) return null;
+  if (!trav.on)
+    return (
+      <button type="button" className="rm-chip" onClick={trav.join} title="Go online, and see everyone else in the street as a Morty from another dimension">
+        <span>See other Mortys</span>
+      </button>
+    );
+  return (
+    <span className="rm-chip" title="Everyone else online in the street shows as a Morty from another dimension: they can’t touch your things to do, nor you theirs">
+      <b>{trav.count}</b>
+      <span>{trav.count === 1 ? 'other Morty' : 'other Mortys'} here</span>
+    </span>
   );
 }

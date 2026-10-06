@@ -4,12 +4,15 @@ import { use3D } from '../../../lib/gpu';
 import { useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
 import { capturePointer } from '../../../lib/pointer';
 import { keyDown, keyUp } from '../../middleearth/towns/keys';
-import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { SWARA_NAME, bolLabel, onHarmoniumNote, onSitarChikari, onSitarPluck, onTablaBol, onTanpuraPluck, swaraOf } from '../engine';
 import { INSTRUMENTS, PITCH, START, moveFor, nearInstrument, standFor, stickMove, walker } from './layout';
 import './world.css';
 import '../../../styles/lazy/music.css';
 import GuideCue from '../../guide/GuideCue';
+import { useTravellers } from '../../middleearth/towns/useTravellers';
+
+// others online in the courtyard (middleearth/towns/useTravellers), as lamps
+const ROOM = { bound: 80, motion: true };
 
 // The music planet: land in a courtyard at dusk and walk about it, first
 // person. The instruments lie on a rug before a sandstone chhatri; walk up to
@@ -29,6 +32,7 @@ export default function MusicWorld({ panel }) {
   const three = use3D();
   const touch = useMediaQuery('(pointer: coarse)');
   const [gl, setGl] = useState('loading'); // loading | on | failed | lost
+  const trav = useTravellers('music', gl === 'on', ROOM);
   const [models, setModels] = useState(false);
   const [near, setNear] = useState(null);
   const [open, setOpen] = useState(null);
@@ -40,8 +44,6 @@ export default function MusicWorld({ panel }) {
   const [viewRef, inView] = useInView({ rootMargin: '200px 0px' });
   const sim = useRef({ h: { x: START.x, z: START.z, face: 0, vx: 0, vz: 0 }, yaw: START.yaw, pitch: -0.06, held: new Set(), stick: null, drag: null, bob: 0, step: 0, near: null, open: null });
   const want = three.on && gl !== 'failed' && gl !== 'lost';
-  // other visitors online here, as ghosts (middleearth/towns/useTravellers)
-  const trav = useTravellers('music', want && gl === 'on');
 
   // the world: made once 3D is on
   useEffect(() => {
@@ -150,10 +152,9 @@ export default function MusicWorld({ panel }) {
       s.near = n;
       setNear(n);
     }
-    // other visitors online: where you are to them (facing where you look;
-    // out of sight while you play), and where they are
+    // others online: where you are to them, and where they are
     const tv = trav.ref.current;
-    tv?.pose({ x: s.h.x, z: s.h.z, face: Math.atan2(Math.cos(s.yaw), -Math.sin(s.yaw)), speed: Math.hypot(s.h.vx, s.h.vz) }, { inside: Boolean(s.open) });
+    tv?.pose({ x: s.h.x, z: s.h.z, face: s.yaw, speed: Math.hypot(s.h.vx ?? 0, s.h.vz ?? 0) });
     a.render({ x: s.h.x, z: s.h.z, yaw: s.yaw, pitch: s.pitch, bob: s.bob, travellers: tv ? tv.list() : null }, ms);
   }, live);
 
@@ -287,11 +288,11 @@ export default function MusicWorld({ panel }) {
             )}
             {gl === 'on' && !models && <p className="mw-help">Bringing in the instruments…</p>}
           </div>
-          <div className="mw-side">
+          <div className="mw-chips">
+            <Listeners trav={trav} />
             <button type="button" className="mw-chip" onClick={toRoom}>
               The music room ↓
             </button>
-            <Visitors trav={trav} />
           </div>
         </div>
 
@@ -340,19 +341,19 @@ export default function MusicWorld({ panel }) {
   );
 }
 
-// Other visitors online here: how many, or a way to see them (going online
-// is the site's own switch, with your callsign, as on the universe map).
-function Visitors({ trav }) {
+// Others online in the courtyard: how many, or a way to see them (going
+// online is the site's own switch, with your callsign, as on the universe map).
+function Listeners({ trav }) {
   if (!trav.available) return null;
   if (!trav.on)
     return (
-      <button type="button" className="mw-chip" onClick={trav.join} title="Go online, and see everyone else walking the courtyard as a pale ghost">
-        See other visitors
+      <button type="button" className="mw-chip" onClick={trav.join} title="Go online, and see everyone else in the courtyard as a lamp with their name over it">
+        See other listeners
       </button>
     );
   return (
-    <span className="mw-chip mw-visitors" data-on title="Everyone else online here shows as a pale ghost: they can’t hear what you play, nor you theirs">
-      <b>{trav.count}</b> {trav.count === 1 ? 'visitor' : 'visitors'} here
+    <span className="mw-chip" title="Everyone else online in the courtyard shows as a floating lamp: they hear their own instruments, you yours">
+      <b>{trav.count}</b> {trav.count === 1 ? 'listener' : 'listeners'} here
     </span>
   );
 }

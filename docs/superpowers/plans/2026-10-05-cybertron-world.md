@@ -124,7 +124,7 @@
     - Enemy: `{ id, kind, model, x, y, z, yaw, hp, maxHp, r, h, state:'advance'|'strafe'|'dead', t, cooldown, dir, dead }`
   - `stepEnemies(enemies, player, dt, world, rand) → { shots: Shot[], events: Event[] }`. Events: `{ type:'enemyFire', id }` and `{ type:'kill', id, kind }`.
   - `stepPickups(pickups, p) → string[]`, the ids collected within 4 m (5 m in the vehicle).
-  - `useNear(p, area, state) → { type:'talk'|'exit', id, label } | null`. Reach is 10 m, robot mode only. Exits are also driven into: a vehicle inside an exit's `r` returns it.
+  - `nearby(p, area, state) → { type:'talk'|'exit', id, label } | null`. Reach is 10 m, robot mode only. Exits are also driven into: a vehicle inside an exit's `r` returns it.
   - `newMissions() → MissionState`: `{ active:null, step:0, count:0, timer:0, done:[] }`.
   - `startMission(ms, mission) → Step`
   - `feedMission(ms, area, event) → { advanced: boolean, step: Step|null, completed: string|null }`

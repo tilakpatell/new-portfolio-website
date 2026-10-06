@@ -43,13 +43,13 @@ Work from this session lands as pull requests, one concern each, and ticks its l
 
 | World | Walk in 3D | Rules tested | Others online | Next |
 | --- | --- | --- | --- | --- |
-| Music room | yes | yes | no | ghosts in the courtyard; a tabla theka under the sitar |
+| Music room | yes | yes | yes, as floating lamps (this session) | ghosts in the courtyard; a tabla theka under the sitar |
 | Middle-earth | yes | yes (34 files) | 9 places | ghosts at Cirith Ungol and Mount Doom; Amon Hen's kitchen mist and ducks |
 | Cybertron | no (Roll out, Iacon) | thin | no | Iacon's rules into a tested file; Cybertron on foot |
 | Avengers HQ | yes, and swing | yes | holograms | ring 3 of the swing tour |
 | Albuquerque | drive | yes | ghost Azteks | phone cuts (canopy detail, vigas out of the shadow pass) |
 | Scranton | yes | partly (`world/story.js` untested) | yes, as pale Jims (this session) | ghosts; `story.test.js`; a new job |
-| C-137 and the Citadel | yes | yes | no | ghosts (a Rick from another dimension); Morty's walk paused in the air |
+| C-137 and the Citadel | yes | yes | yes, as Mortys and Ricks from other dimensions (this session) | ghosts (a Rick from another dimension); Morty's walk paused in the air |
 | Dot Matrix | yes | yes | no | ghosts in the four greens; a speedrun timer |
 | Earth | fly | yes | no | `day.webp`, `clouds.webp` 1.4 MB each; great-circle trails |
 | The Caribbean | sail | yes | no | ghost ships |
