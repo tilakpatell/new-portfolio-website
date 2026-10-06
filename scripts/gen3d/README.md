@@ -60,6 +60,12 @@ issue, which it closes. A failure is commented and labelled `gen3d:failed`;
 fix the issue and remove the label to try again. Wiring the model into a
 scene is a separate change.
 
+**Several pictures beat one.** Attach the front, left, back (and right) of
+the thing, in that order (or name them: `front: URL`), and the job goes
+through **Hunyuan3D-2 multi-view** (`--engine hunyuan`), which sees every
+side; one picture goes through TRELLIS.2. On the command line:
+`make.mjs NAME --image front.png --left left.png --back back.png`.
+
 **Always give it a picture.** A prompt only works for designs FLUX knows
 (an X-wing, a TIE); for anything else (a CR90, a particular building, a
 character) attach a picture: three-quarter view, the whole thing in frame,
@@ -129,6 +135,25 @@ hf download microsoft/TRELLIS.2-4B
 
 `engines/trellis2.py` is what `generate.mjs` runs there (`wsl.exe`, the
 paths translated to `/mnt/c/…`). TRELLIS.2 wants 24 GB of GPU memory.
+
+### Hunyuan3D-2 multi-view (WSL)
+
+Tencent's [Hunyuan3D-2](https://github.com/Tencent/Hunyuan3D-2) with its
+multi-view shape model (`tencent/Hunyuan3D-2mv`, front/left/back/right in)
+and its turbo paint model, in a conda env of its own beside TRELLIS.2's
+(`engines/hy3d-setup.sh`, run in WSL, does this: env `hy3d`, torch 2.8 cu128, the repo at
+`~/Hunyuan3D-2` with its two CUDA extensions built, the weights by
+`hf download`). `engines/hunyuan.py` is what `generate.mjs` runs there.
+Licence: Tencent Hunyuan non-commercial, fine for this site.
+
+Its 2.0 turbo paint is flat (white and stripes where TRELLIS.2 paints
+panels), so the shape is painted by **Hunyuan3D-2.1's PBR paint** when
+that's here too: `engines/hy3d21-setup.sh` makes env `hy3d21` with the
+2.1 repo at `~/Hunyuan3D-2.1`, its rasterizer and renderer built, the
+`hunyuan3d-paintpbr-v2-1` weights and the RealESRGAN upscaler it loads;
+`generate.mjs` then runs the shape unpainted (`--white`) and
+`engines/hunyuan_paint21.py` on it from the front picture (base colour,
+metal, roughness at 4096).
 
 ### Pixal3D (for --faithful)
 
