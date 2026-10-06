@@ -56,11 +56,14 @@ async function visitor(name) {
   return page;
 }
 
-// the number on the world's chip ("1 traveller here", "2 players here"), or null
+// the number on the world's chip ("1 traveller here", "2 other Mortys here",
+// "3 listeners here"), or null: any element reading "<n> … here" outside the
+// site's online corner (whose "· 1 here" is the page's, not the world's)
 const chip = (page) =>
   page.evaluate(() => {
-    for (const el of document.querySelectorAll('[data-on]')) {
-      const m = /^(\d+)\s+(other\s+)?(traveller|player|driver|visitor|pilot|crew|person|people)/i.exec(el.textContent.trim());
+    for (const el of document.querySelectorAll('span, p, b, div, button')) {
+      if (el.closest('.universe-online')) continue;
+      const m = /^(\d+)\s*(?:other\s+)?[a-z’']+\s+here$/i.exec(el.textContent.trim());
       if (m) return Number(m[1]);
     }
     return null;
@@ -105,6 +108,18 @@ for (const w of worlds) {
   } catch (e) {
     failed++;
     console.log(`FAIL ${e.message}`);
+    // what each saw: the corner, any "here" chip, the world's buttons
+    for (const [who, p] of [['Alpha', a], ['Bravo', b]]) {
+      const seen = await p
+        .evaluate(() => ({
+          corner: document.querySelector('.universe-online-pill')?.textContent ?? null,
+          here: [...document.querySelectorAll('[data-on], button')].map((el) => el.textContent.trim()).filter((t) => /here|other|online/i.test(t)).slice(0, 6),
+          buttons: [...document.querySelectorAll('button')].map((el) => el.textContent.trim()).filter(Boolean).slice(0, 12),
+        }))
+        .catch((err) => ({ error: String(err) }));
+      console.log(`     ${who}: ${JSON.stringify(seen)}`);
+      if (out) await p.screenshot({ path: `${out}/fail${w.replace(/\//g, '-')}-${who}.png` }).catch(() => {});
+    }
   }
 }
 if (then) {
