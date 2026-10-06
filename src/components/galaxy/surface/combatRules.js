@@ -19,8 +19,8 @@
 //   arcHit(me, t, reach, half)   whether t ({ x, z, r? }) is within reach and inside the arc
 //   lungeTo(me, t, stance)       metres to step toward t for a stroke to land (0 if it already does, or t's too far)
 //   guardHit(g, cost, now)       the guard after a block: { value, brokenAt } (brokenAt set when it's spent)
-//   guardStep(g, dt, now)        the guard a frame on: regrowing after GUARD.wait, back from broken after GUARD.broken
-//   parried(blockAt, now)        whether a swipe now meets a block begun within PARRY.window
+//   guardStep(g, dt, now, max?)  the guard a frame on: regrowing after GUARD.wait toward `max` (GUARD.max), back from broken after GUARD.broken
+//   parried(blockAt, now, window?)   whether a swipe now meets a block begun within `window` (PARRY.window)
 //   dodgeStep(k)                 the dodge `k` (0…1) of the way: { d (metres along), safe }
 //   forceAt(me, t, kind)         whether t is in the Force's reach: { hit, k (1 close … 0 at range) }
 //   pushVelocity(me, t, k)       the shove a push gives t: { vx, vz, vy }
@@ -135,16 +135,16 @@ export function guardHit(g, cost, now) {
   return { value, hitAt: now, brokenAt: value <= 0 ? now : (g.brokenAt ?? null) };
 }
 
-export function guardStep(g, dt, now) {
+export function guardStep(g, dt, now, max = GUARD.max) {
   if (g.brokenAt != null) {
     if (now - g.brokenAt < GUARD.broken) return g;
-    return { value: GUARD.max * 0.4, hitAt: g.hitAt, brokenAt: null };
+    return { value: max * 0.4, hitAt: g.hitAt, brokenAt: null };
   }
-  if (g.value >= GUARD.max || now - (g.hitAt ?? -99) < GUARD.wait) return g;
-  return { ...g, value: Math.min(GUARD.max, g.value + GUARD.regen * dt) };
+  if (g.value >= max || now - (g.hitAt ?? -99) < GUARD.wait) return g;
+  return { ...g, value: Math.min(max, g.value + GUARD.regen * dt) };
 }
 
-export const parried = (blockAt, now) => blockAt != null && now - blockAt >= 0 && now - blockAt <= PARRY.window;
+export const parried = (blockAt, now, window = PARRY.window) => blockAt != null && now - blockAt >= 0 && now - blockAt <= window;
 
 export function dodgeStep(k) {
   const x = clamp(k, 0, 1);
