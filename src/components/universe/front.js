@@ -21,6 +21,7 @@ import { createBattle, perSide } from './battle';
 import { createBattleScene } from './battleScene';
 import { contested, loadWar, newWar, owner, resolve, saveWar } from './war';
 import { warFor } from './wars';
+import { DEEP } from './deep';
 
 export const ZONE = {
   near: 900, // within sight: the battle's drawn and fought
@@ -167,7 +168,8 @@ export function createFront(map, { side, models, small = false, tier = 'high', r
       let hurt = 0;
       // the beacon, from far off (not from inside the fight)
       beacon.visible = zone !== 'in';
-      label.visible = dist > 160;
+      // (the name only out of the home system, as the wonders' are, and not on top of the fight)
+      label.visible = dist > 160 && Math.hypot(p.x, p.z) > DEEP.system;
       glow.material.opacity = reduced ? 0.6 : 0.45 + 0.35 * Math.abs(Math.sin(t * 3.1) * Math.sin(t * 1.7));
       if (zone === 'out') {
         if (shown) {
