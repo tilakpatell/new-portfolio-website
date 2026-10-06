@@ -305,6 +305,11 @@ function spruceParts({ h = 22, seed = 2, bark = '#5a3a28', leaf = '#2a4224' } = 
     for (let j = 0; j < n; j++) parts.push(spray(w, w * 0.5 + 0.4, [0, y, 0], turn + (j / n) * TAU, 0.3 + f * 0.2 + rand() * 0.15, (rand() - 0.5) * 0.5, green, shade));
   }
   for (let j = 0; j < 3; j++) parts.push(spray(h * 0.12, 1.1, [0, h * 0.9, 0], j * 2.1, -PI / 2 + 0.15, 0, leaf, shade));
+  // (a dark cone inside the sprays, as a fir's crown is solid from a little
+  // way off: so far off it stays a full dark spire, not a pole with wisps)
+  const core = new THREE.ConeGeometry(2.6, h * 0.72, 8, 1, true).translate(0, h * 0.24 + h * 0.36, 0);
+  coneNormals(core, { lift: 0.5, keep: 0.1 });
+  parts.push(part(core, { color: new THREE.Color(leaf).multiplyScalar(0.7), to: 'crown', shade: (x, y) => 0.7 + 0.3 * smooth(h * 0.24, h, y) }));
   return { parts };
 }
 

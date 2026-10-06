@@ -178,7 +178,9 @@ export const SITES = {
     ],
     scatter: [
       { kind: 'rock', n: 60, within: [40, 500], scale: [0.6, 2.4], opts: { color: '#6a6a5a' } },
-      { kind: 'sorganbirch', n: 90, within: [45, 520], scale: [0.75, 1.3], sink: 0.3, solid: 0.5 },
+      // (the woods as the episode has them: a wall of dark conifers round
+      // the clearings)
+      { kind: 'spruce', n: 240, within: [45, 640], scale: [1.0, 1.6], opts: { seed: 7, h: 24, leaf: '#2c3624', bark: '#4a3f33' } },
       { kind: 'sorganfir', n: 60, within: [60, 650], scale: [0.8, 1.4], sink: 0.3, solid: 0.6 },
       { kind: 'sorganfern', n: 140, within: [18, 360], scale: [0.8, 1.8], solid: false },
     ],
