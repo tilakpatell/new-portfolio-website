@@ -63,31 +63,31 @@ export const LOOKS = {
   // ── Ice ──
   hoth: {
     name: 'Hoth', swatch: '#e6f0fa', family: 'ice', bump: 0.02,
-    pal: { snow: '#e6edf6', ice: '#94bae2', rock: '#40444c', deep: '#2c4c7c' },
-    p: { ice: 0.75, mountains: 0.8, crevasses: 0.9 },
-    clouds: sky(0.26, '#ffffff', 1.4, 3.2, 0.005),
+    pal: { snow: '#e8eef6', ice: '#b6cce6', rock: '#5e6672', deep: '#46668e' },
+    p: { ice: 0.4, mountains: 0.55, crevasses: 0.7 },
+    clouds: sky(0.34, '#ffffff', 1.7, 4.8, 0.005),
     atmo: air('#a6ccff', 2.2, 1.065),
   },
   // ── Living worlds ──
   endor: {
     name: 'Endor', swatch: '#3f6a3a', family: 'lush', bump: 0.02,
     pal: { deep: '#123248', shallow: '#2a6870', forest: '#2a4c26', grass: '#66763c', rock: '#5a5246', snow: '#eef2f4', beach: '#8f8460', murk: '#2a3a2a' },
-    p: { sea: -0.22, forest: 0.9, mountains: 1, caps: 0.05, islands: 0, swamp: 0, rivers: 0, scale: 2.3 },
-    clouds: sky(0.34),
+    p: { sea: -0.22, forest: 1.25, mountains: 0.3, caps: 0.05, islands: 0, swamp: 0, rivers: 0, scale: 2.3 },
+    clouds: sky(0.3, '#ffffff', 1.8, 5),
     atmo: air('#8ac6d6', 2.3, 1.065),
   },
   yavin4: {
     name: 'Yavin 4', swatch: '#2f6b3a', family: 'lush', bump: 0.02, flags: ['RIVERS'],
     pal: { deep: '#0e384a', shallow: '#1f6a68', forest: '#245a26', grass: '#3a7a30', rock: '#4c5a40', snow: '#e0e8e0', beach: '#76764e', murk: '#24382a' },
     p: { sea: -0.12, forest: 1.2, mountains: 0.5, caps: 0, islands: 0, swamp: 0, rivers: 1, scale: 2.4 },
-    clouds: sky(0.5, '#ffffff', 1.5, 3.4),
+    clouds: sky(0.45, '#ffffff', 1.7, 4.8),
     atmo: air('#82ccbe', 2.7, 1.07),
   },
   kashyyyk: {
     name: 'Kashyyyk', swatch: '#2e5a34', family: 'lush', bump: 0.02, flags: ['ISLANDS'],
     pal: { deep: '#0c2c52', shallow: '#1e6a8a', forest: '#224a20', grass: '#446832', rock: '#4a4a40', snow: '#e8eef0', beach: '#a09468', murk: '#22302a' },
     p: { sea: 0.02, forest: 1.1, mountains: 0.6, caps: 0.04, islands: 0.3, swamp: 0, rivers: 0, scale: 2.6 },
-    clouds: sky(0.34),
+    clouds: sky(0.32, '#ffffff', 1.7, 4.8),
     atmo: air('#88c0e8', 2.2, 1.065),
   },
   dagobah: {
@@ -101,7 +101,7 @@ export const LOOKS = {
     name: 'Naboo', swatch: '#4d8a52', family: 'lush', bump: 0.02, flags: ['RIVERS'],
     pal: { deep: '#10386a', shallow: '#2a7aa0', forest: '#346a2e', grass: '#74a444', rock: '#6a6458', snow: '#f4f6f8', beach: '#c8b88a', murk: '#2a3a2a' },
     p: { sea: 0.0, forest: 0.45, mountains: 0.8, caps: 0.12, islands: 0, swamp: 0, rivers: 0.6, scale: 2.0 },
-    clouds: sky(0.32),
+    clouds: sky(0.3, '#ffffff', 1.7, 4.6),
     atmo: air('#78b2ff', 2.3, 1.065),
   },
   lothal: {
@@ -115,7 +115,7 @@ export const LOOKS = {
     name: 'Sorgan', swatch: '#3a6a3e', family: 'lush', bump: 0.02, flags: ['RIVERS', 'SWAMP'],
     pal: { deep: '#163a4a', shallow: '#2e6a6a', forest: '#2a5230', grass: '#5a7a40', rock: '#5a5648', snow: '#e8ece8', beach: '#7a7458', murk: '#2c3c2c' },
     p: { sea: -0.1, forest: 1, mountains: 0.4, caps: 0.02, islands: 0, swamp: 0.4, rivers: 0.6, scale: 2.6 },
-    clouds: sky(0.42, '#f2f4f2', 1.4),
+    clouds: sky(0.4, '#f2f4f2', 1.6, 4.6),
     atmo: air('#94c4d0', 2.4, 1.065),
   },
   scarif: {
@@ -143,10 +143,10 @@ export const LOOKS = {
   // ── Volcanic ──
   mustafar: {
     name: 'Mustafar', swatch: '#5a1a10', family: 'lava', bump: 0.024,
-    pal: { crust: '#141012', ash: '#2e2826', hot: '#ffd070', lava: '#ff4a10', ember: '#a01808' },
+    pal: { crust: '#141012', ash: '#3a3634', hot: '#ffd070', lava: '#ff4a10', ember: '#a01808' },
     p: { rivers: 1, lakes: 1, glow: 1, pulse: 1 },
     clouds: sky(0.25, '#3a2c2a', 1, 3, 0.003),
-    atmo: air('#b0381e', 2.6, 1.06, '#ff5020'),
+    atmo: air('#b0381e', 1.7, 1.06, '#ff5020'),
   },
   // Nevarro: mostly black lava flats under ash, a few rivers still glowing
   nevarro: {
