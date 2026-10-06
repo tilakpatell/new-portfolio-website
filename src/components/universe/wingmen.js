@@ -4,7 +4,7 @@
 // hunters draw from), banked into its turns, and its shots are bolts in its
 // own colour (a Rebel's red, Birdperson's green).
 //
-// createWingmen(parent, { fleet }) → { join(kind, ship, n), update(dt, t,
+// createWingmen(parent, { fleet, solids }) → { join(kind, ship, n), update(dt, t,
 //   ship, targets) → { hits, events }, active, clear(), dispose() }
 // Everything is in `parent`'s space (the map's).
 
@@ -15,8 +15,8 @@ import { createWing } from './wingRules';
 const BOLT = { length: 0.34, radius: 0.01 };
 const COLOUR = { xwing: [5.5, 0.6, 0.5], birdperson: [0.7, 5.5, 1.2] };
 
-export function createWingmen(parent, { fleet = createFleet() } = {}) {
-  const wing = createWing();
+export function createWingmen(parent, { fleet = createFleet(), solids = [] } = {}) {
+  const wing = createWing({ solids });
   const pool = {}; // kind → models not in use
   const shown = new Map(); // a wingman → its model
   const boltGeo = new THREE.CylinderGeometry(BOLT.radius, BOLT.radius, BOLT.length, 5).rotateX(Math.PI / 2);

@@ -171,6 +171,97 @@ describe('a wing', () => {
     expect(far).toBeLessThan(8);
   });
 
+  it('climbs away when it leaves, rather than flying on along your nose', () => {
+    const wing = createWing({ rand: seeded(12) });
+    let s = start({ speed: 5.5 });
+    wing.join('xwing', s, 2);
+    let y0 = null;
+    let rose = 0;
+    for (let t = 0; t < WING.stay + WING.leave; t += DT) {
+      s = move(s);
+      wing.update(DT, s, []);
+      if (wing.leaving && wing.live.length) {
+        y0 ??= wing.live[0].pos.y;
+        rose = Math.max(rose, wing.live[0].pos.y - y0);
+      }
+    }
+    expect(rose).toBeGreaterThan(5);
+  });
+
+  it('comes back if a fight starts again while it’s flying off', () => {
+    const wing = createWing({ rand: seeded(13) });
+    let s = start({ speed: 5.5 });
+    wing.join('xwing', s, 2);
+    for (let t = 0; t < WING.stay + 1; t += DT) {
+      s = move(s);
+      wing.update(DT, s, []);
+    }
+    expect(wing.leaving).toBe(true);
+    const coming = { id: 9, at: { x: s.x + 4, y: s.y, z: s.z - 10 }, vel: { x: 0, y: 0, z: 8 }, size: 0.3, threat: 1 };
+    wing.update(DT, s, [coming]);
+    expect(wing.leaving).toBe(false);
+    for (let t = 0; t < WING.leave + 2; t += DT) wing.update(DT, s, [coming]);
+    expect(wing.live.length).toBe(2); // (still here, fighting)
+  });
+
+  it('holds its slots through a loop: the two never cross through each other', () => {
+    const wing = createWing({ rand: seeded(14) });
+    let s = start({ speed: 8 });
+    wing.join('xwing', s, 2);
+    for (let t = 0; t < 5; t += DT) {
+      s = move(s);
+      wing.update(DT, s, []);
+    }
+    let closest = Infinity;
+    // a loop: the nose pitches up and over at 2 radians a second
+    let pitch = 0;
+    let heading = 0;
+    let bank = 0;
+    for (let t = 0; t < Math.PI; t += DT) {
+      pitch += 2 * DT;
+      // (as orient.js gives it: past straight up the heading swings round and the bank turns over)
+      const over = Math.cos(pitch) < 0;
+      const p = over ? Math.PI - pitch : pitch;
+      heading = over ? Math.PI : 0;
+      bank = over ? Math.PI : 0;
+      const level = Math.cos(pitch);
+      s = { ...s, pitch: Math.max(-Math.PI / 2, Math.min(Math.PI / 2, p)), heading, bank, x: s.x, y: s.y + Math.sin(pitch) * s.speed * DT, z: s.z - level * s.speed * DT, vy: Math.sin(pitch) * s.speed };
+      wing.update(DT, s, []);
+      const [a, b] = wing.live;
+      closest = Math.min(closest, apart(a.pos, b.pos));
+    }
+    expect(closest).toBeGreaterThan(1);
+  });
+
+  it('calls back any still flying off when another joins, the new ones behind them', () => {
+    const wing = createWing({ rand: seeded(15) });
+    let s = start({ speed: 5.5 });
+    wing.join('xwing', s, 2);
+    for (let t = 0; t < WING.stay + 2; t += DT) {
+      s = move(s);
+      wing.update(DT, s, []);
+    }
+    wing.join('xwing', s, 2);
+    expect(wing.live.length).toBe(4);
+    expect(wing.live.every((w) => w.gone === 0)).toBe(true);
+    expect(new Set(wing.live.map((w) => `${w.row}:${w.side}`)).size).toBe(4);
+  });
+
+  it('never comes in inside a planet, nor flies through one', () => {
+    const moon = { id: 'moon', at: [0, 0, 20], r: 12 }; // (right behind you, where they come in from)
+    const wing = createWing({ rand: seeded(16), solids: [moon] });
+    let s = start({ speed: 5.5 });
+    wing.join('xwing', s, 2);
+    for (const w of wing.live) expect(apart(w.pos, { x: 0, y: 0, z: 20 })).toBeGreaterThan(moon.r);
+    let deepest = Infinity;
+    for (let t = 0; t < 20; t += DT) {
+      s = move(s);
+      wing.update(DT, s, []);
+      for (const w of wing.live) deepest = Math.min(deepest, apart(w.pos, { x: 0, y: 0, z: 20 }) - moon.r);
+    }
+    expect(deepest).toBeGreaterThan(0);
+  });
+
   it('leaves when you stop flying, and clear() takes them all at once', () => {
     const wing = createWing({ rand: seeded(8) });
     wing.join('xwing', start(), 3);

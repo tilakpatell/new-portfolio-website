@@ -746,7 +746,7 @@ export async function create(canvas, ctx) {
   // who comes after you, what the director sets going, and its set pieces
   // (none of it with reduced motion)
   const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS });
-  const wingmen = hunters ? createWingmen(map, { fleet }) : null; // (friends in a long fight)
+  const wingmen = hunters ? createWingmen(map, { fleet, solids: SOLIDS }) : null; // (friends in a long fight)
   let hunts = 0; // packs the director has sent this visit (the first is a small one)
   const director = createDirector();
   const pieces = createSetPieces(map, { small, fleet });
@@ -2527,7 +2527,7 @@ export async function create(canvas, ctx) {
   const helpFrom = (dt, t, live) => {
     const fighting = Boolean(live && hunters.active);
     state.huntFor = fighting ? state.huntFor + dt : 0;
-    if (!fighting && !wingmen.active) state.wingAsked = false;
+    if (!fighting) state.wingAsked = false; // (a wing still flying off from the last fight comes back of itself if another starts)
     if (fighting && !state.wingAsked && !wingmen.active && (state.huntFor > WING_CALL.after || (state.shield < WING_CALL.low && state.huntFor > WING_CALL.lowAfter))) {
       state.wingAsked = true;
       const many = hunters.targets.length;

@@ -17,14 +17,15 @@
 // With nobody left to fight it forms up on you a while, then peels away,
 // climbing, and goes.
 //
-// createWing({ rand }) → { join(kind, ship, n), update(dt, ship, targets) →
-//   { hits: [{ id, damage, at }], events }, live, bolts, active, leaving,
-//   fired, clear() }
+// createWing({ rand, solids }) → { join(kind, ship, n), update(dt, ship, targets) →
+//   { hits: [{ id, damage, at }], events }, down(id), live, bolts, active,
+//   leaving, fired, clear() }
 // `ship` is yours ({ x, y, z, heading, pitch, speed, vy }); `targets` the
 // hunters' (hunters.targets: [{ id, at, vel, size, threat }]). Events:
 // { type: 'joined', kind }, { type: 'leaving' }, { type: 'gone' }.
 
-import { fightSpeed, shipVelocity, turnToward } from './hunterRules';
+import { clearOf, fightSpeed, shipVelocity, turnToward } from './hunterRules';
+import { RIGHT, UP, fromAngles, rotate } from './orient';
 import { intercept, nose, sweptHit } from './targeting';
 
 // how each kind of friend flies: top speed, how quick its nose is, seconds
@@ -54,7 +55,9 @@ export const WING = {
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const between = (rand, [a, b]) => a + rand() * (b - a);
 
-export function createWing({ rand = Math.random, bolts: boltCount = 16 } = {}) {
+export function createWing({ rand = Math.random, bolts: boltCount = 16, solids = [] } = {}) {
+  const allSolids = typeof solids === 'function' ? solids : () => solids;
+  const near = []; // the solids near the wing this frame (it's kept out of them)
   const live = [];
   const bolts = Array.from({ length: boltCount }, () => ({ on: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, target: null }));
   let nextId = 1;
@@ -121,23 +124,27 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16 } = {}) {
     live,
     bolts,
 
-    // a wing of `n` of `kind` comes up from behind `ship`
-    join(kind, ship, n = 2) {
+    // a wing of `n` of `kind` comes up from behind `ship` (`back` behind it:
+    // a skirmish's escort is already with its freighter)
+    join(kind, ship, n = 2, { back: from0 = WING.from } = {}) {
       const type = WING_KINDS[kind] ?? WING_KINDS.xwing;
       const f = nose(ship);
       leaving = false;
       idle = 0;
+      // (any still about are called back, and the new ones take the slots behind them)
+      for (const w of live) w.gone = 0;
+      const already = live.length;
       for (let i = 0; i < n; i++) {
-        const side = i % 2 ? 1 : -1;
-        const row = Math.floor(i / 2);
+        const side = (already + i) % 2 ? 1 : -1;
+        const row = Math.floor((already + i) / 2);
         // level, across your nose
         let sx = -f[2];
         let sz = f[0];
         const sl = Math.sqrt(sx * sx + sz * sz) || 1;
         sx /= sl;
         sz /= sl;
-        const back = WING.from + row * 4;
-        const pos = { x: ship.x - f[0] * back + sx * side * (4 + row * 2), y: ship.y - f[1] * back + 0.8, z: ship.z - f[2] * back + sz * side * (4 + row * 2) };
+        const back = from0 + row * 4;
+        const pos = clearOf({ x: ship.x - f[0] * back + sx * side * (4 + row * 2), y: ship.y - f[1] * back + 0.8, z: ship.z - f[2] * back + sz * side * (4 + row * 2) }, allSolids());
         live.push({ id: nextId++, kind, type, pos, prev: { ...pos }, vel: { x: f[0] * type.speed, y: f[1] * type.speed, z: f[2] * type.speed }, side, row, target: null, cool: between(rand, [0.6, 1.4]), bank: 0, age: 0, chase: 0, rest: 0, alive: true, gone: 0, view: null });
       }
       events.push({ type: 'joined', kind });
@@ -151,12 +158,25 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16 } = {}) {
       const alive = live.filter((w) => w.alive);
       const fighting = targets.length > 0 && Boolean(ship);
       idle = fighting ? 0 : idle + dt;
+      // flying off, and someone comes at you again: back they come
+      if (leaving && ship && alive.length && targets.some((o) => o.threat > 0)) {
+        leaving = false;
+        for (const w of alive) w.gone = 0;
+      }
       if (!leaving && alive.length && (!ship || idle > WING.stay)) {
         leaving = true;
         ev.push({ type: 'leaving' });
       }
       const f = ship ? nose(ship) : [0, 0, -1];
+      // your own right and up (not level ones: in a loop those turn over, and the wing would cross through itself)
+      const q = ship ? fromAngles(ship.heading || 0, ship.pitch || 0, ship.bank || 0) : null;
+      const yr = q ? rotate(q, RIGHT) : RIGHT;
+      const yu = q ? rotate(q, UP) : UP;
       if (ship) shipVelocity(ship, yourVel);
+      // what's solid near the wing
+      near.length = 0;
+      const c0 = alive[0]?.pos;
+      if (c0) for (const o of allSolids()) if (Math.hypot(o.at[0] - c0.x, o.at[1] - c0.y, o.at[2] - c0.z) < o.r + 200) near.push(o);
       const yourSpeed = ship ? Math.abs(ship.speed || 0) : 0;
       for (const w of alive) {
         const { pos, vel, type } = w;
@@ -217,16 +237,11 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16 } = {}) {
           }
         } else if (!leaving && ship) {
           // on your wing: its slot off your nose, going your way
-          let sx = -f[2];
-          let sz = f[0];
-          const sl = Math.sqrt(sx * sx + sz * sz) || 1;
-          sx /= sl;
-          sz /= sl;
           const wide = WING.slot[0] * (1 + w.row * 0.8) * w.side;
           const back = WING.slot[2] * (1 + w.row);
-          const px = ship.x + sx * wide - f[0] * back;
-          const py = ship.y + WING.slot[1] - f[1] * back;
-          const pz = ship.z + sz * wide - f[2] * back;
+          const px = ship.x + yr[0] * wide + yu[0] * WING.slot[1] - f[0] * back;
+          const py = ship.y + yr[1] * wide + yu[1] * WING.slot[1] - f[1] * back;
+          const pz = ship.z + yr[2] * wide + yu[2] * WING.slot[1] - f[2] * back;
           const dx = px - pos.x;
           const dy = py - pos.y;
           const dz = pz - pos.z;
@@ -238,7 +253,7 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16 } = {}) {
           speed = clamp(Math.sqrt(want[0] ** 2 + want[1] ** 2 + want[2] ** 2), Math.min(2, yourSpeed), Math.max(type.speed, yourSpeed * WING.catchUp));
           if (d < 0.6) speed = Math.max(yourSpeed, Math.min(speed, yourSpeed + d * 2));
           w.target = null;
-        } else {
+        } else if (!leaving) {
           want[0] = dir[0];
           want[1] = dir[1];
           want[2] = dir[2];
@@ -261,6 +276,8 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16 } = {}) {
         pos.x += vel.x * dt;
         pos.y += vel.y * dt;
         pos.z += vel.z * dt;
+        // never inside anything solid
+        if (near.length) clearOf(pos, near, type.size * 0.5);
         if (leaving && w.gone > WING.leave) w.alive = false;
       }
       for (let i = live.length - 1; i >= 0; i--) if (!live[i].alive) live.splice(i, 1);
@@ -294,6 +311,16 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16 } = {}) {
         }
       }
       return out;
+    },
+
+    // one of the wing shot down (a skirmish's escort: skirmish.js): gone at
+    // once, and true if it was there
+    down(id) {
+      const i = live.findIndex((w) => w.id === id && w.alive);
+      if (i < 0) return false;
+      live[i].alive = false;
+      live.splice(i, 1);
+      return true;
     },
 
     // a wing in the sky (flying with you, fighting, or going)
