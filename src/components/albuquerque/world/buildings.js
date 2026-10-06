@@ -8,7 +8,10 @@
 // place, Hank and Marie's, Old Joe's junkyard, the water tower, two
 // billboards, and the freight train that crosses north of town.
 //
-// createTown({ aniso, small }) → { object, update(dt, clock, night), dispose }.
+// createTown({ aniso, small }) → { object, train, floors, update(dt, clock,
+// night), dispose }: `train` the freight's cars (they move: a blob each, and
+// out of the way while the floor's shadows are baked), `floors` the track
+// bed (floor, for those shadows).
 
 import * as THREE from 'three';
 import { RAIL, TOWN, groundHeight, surfaceHeight } from './rules';
@@ -33,6 +36,7 @@ export function createTown({ aniso = 8, small = false, models = {}, tankCar = nu
   const owned = [];
   const own = (x) => (owned.push(x), x);
   const lit = []; // materials whose windows or letters glow after dark: { m, k }
+  const floors = []; // materials that are floor (the track bed)
   const cap = small ? 256 : 512;
 
   const canvasOf = (w, h) => {
@@ -56,8 +60,6 @@ export function createTown({ aniso = 8, small = false, models = {}, tankCar = nu
     const m = new THREE.Mesh(own(geo), mat);
     m.position.set(x, y, z);
     if (rot) m.rotation.set(...rot);
-    m.castShadow = true;
-    m.receiveShadow = true;
     parent.add(m);
     return m;
   };
@@ -240,7 +242,6 @@ export function createTown({ aniso = 8, small = false, models = {}, tankCar = nu
     back.rotation.y = Math.PI;
     back.position.z = -0.06;
     const slab = new THREE.Mesh(own(B(w + 0.16, h + 0.16, 0.1)), dark);
-    slab.castShadow = true;
     board.add(front, back, slab);
     board.position.set(x, y, z);
     board.rotation.y = ry;
@@ -419,7 +420,6 @@ export function createTown({ aniso = 8, small = false, models = {}, tankCar = nu
           const car = new THREE.Mesh(carGeo, m);
           car.position.set(x + (r() - 0.5) * 0.5, 0.6 + k * 1.22, z + (r() - 0.5) * 0.5);
           car.rotation.y = (r() - 0.5) * 0.3;
-          car.castShadow = true;
           const cab = new THREE.Mesh(cabGeo, m);
           cab.position.set(-0.2, 0.75, 0);
           car.add(cab);
@@ -566,7 +566,7 @@ export function createTown({ aniso = 8, small = false, models = {}, tankCar = nu
     bed.computeVertexNormals();
     const m = own(new THREE.MeshStandardMaterial({ map: texOf(c, [1, 1 / 2.6]), roughness: 0.95 }));
     const mesh = new THREE.Mesh(own(bed), m);
-    mesh.receiveShadow = true;
+    floors.push(m);
     root.add(mesh);
   }
   const cars = [];
@@ -617,7 +617,6 @@ export function createTown({ aniso = 8, small = false, models = {}, tankCar = nu
         box.position.y = 2.7;
         car.add(box);
       }
-      car.traverse((o) => o.isMesh && (o.castShadow = true));
       root.add(car);
       cars.push(car);
     }
@@ -627,6 +626,8 @@ export function createTown({ aniso = 8, small = false, models = {}, tankCar = nu
   return {
     object: root,
     fits,
+    train: cars,
+    floors,
     // night: 0 by day, 1 after dark. The freight comes through every minute and a half.
     update(dt, clock, night) {
       for (const l of lit) l.m.emissiveIntensity = (l.base ?? 0) + night * l.k;

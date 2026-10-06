@@ -1,0 +1,66 @@
+{
+ "areas": [
+  {
+   "name": "city",
+   "file": "city.webp",
+   "x0": -300,
+   "z0": -240,
+   "w": 600,
+   "d": 480,
+   "size": 1024,
+   "baked": 2048
+  },
+  {
+   "name": "rv",
+   "file": "rv.webp",
+   "x0": -380,
+   "z0": 90,
+   "w": 80,
+   "d": 70,
+   "size": 512,
+   "baked": 512
+  },
+  {
+   "name": "arches-w",
+   "file": "arches-w.webp",
+   "x0": -296,
+   "z0": -30,
+   "w": 60,
+   "d": 60,
+   "size": 512,
+   "baked": 512
+  },
+  {
+   "name": "arches-e",
+   "file": "arches-e.webp",
+   "x0": 236,
+   "z0": -30,
+   "w": 60,
+   "d": 60,
+   "size": 512,
+   "baked": 512
+  }
+ ],
+ "times": [
+  {
+   "tod": 0.245,
+   "channel": 3
+  },
+  {
+   "tod": 0.262,
+   "channel": 0
+  },
+  {
+   "tod": 0.5,
+   "channel": 1
+  },
+  {
+   "tod": 0.71,
+   "channel": 2
+  },
+  {
+   "tod": 0.76,
+   "channel": 3
+  }
+ ]
+}
