@@ -34,3 +34,6 @@ jobs:
       - run: npm run build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # the codebase's health against docs/health/budgets.json: a number over
+      # its budget is a red check, the same as a failing test (docs/health)
+      - run: node scripts/health.mjs --check --skip build

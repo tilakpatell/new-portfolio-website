@@ -19,6 +19,8 @@ describe('the home system against the ships (scale.js)', () => {
   it('has one ship length, and one ratio for the home system', () => {
     expect(SHIP_MODEL_LENGTH).toBe(LENGTH);
     expect(HOME_SPREAD).toBeCloseTo(Math.cbrt(HOME_SCALE), 9);
+    // (universes.js writes HOME_SCALE out, having no imports: Home's base size is 0.6)
+    expect(UNIVERSES.find((u) => u.id === 'home').size).toBeCloseTo(0.6 * 7 * HOME_SCALE, 9);
   });
 
   it('draws every station far bigger than the ship, and the sun bigger again', () => {

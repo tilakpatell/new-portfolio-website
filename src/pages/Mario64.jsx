@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import ModelCredits from '../components/ModelCredits';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
@@ -6,20 +6,29 @@ import { use3D } from '../lib/gpu';
 import { useDocumentTitle } from '../lib/hooks';
 
 const Mario64 = lazy(() => import('../components/mario64/Mario64'));
+const N64 = lazy(() => import('../components/n64/N64'));
 
-// Super Mario 64, a fan tribute: Peach's castle and the worlds in its
-// paintings (../components/mario64/). Reached from the giant N64 on Dot
-// Matrix island, the command palette, or this address.
+// Super Mario 64 on the giant N64 of Dot Matrix island: a real N64 emulated
+// in the browser playing the visitor's own ROM (../components/n64/), or the
+// fan tribute, Peach's castle and the worlds in its paintings
+// (../components/mario64/). Reached from the island, the command palette,
+// or this address.
 export default function Mario64Page() {
-  useDocumentTitle('Super Mario 64, a fan tribute');
+  useDocumentTitle('Super Mario 64 on the N64');
   const navigate = useNavigate();
   const three = use3D();
+  const [view, setView] = useState('emu'); // emu | tribute
+  const back = () => navigate('/dot-matrix');
   return (
     <div className="relative">
       <div className="pt-[var(--nav-h)]">
-        {three.on ? (
+        {view === 'emu' ? (
+          <Suspense fallback={<div style={{ height: 'calc(100svh - var(--nav-h, 64px))', background: '#10121a' }} aria-hidden="true" />}>
+            <N64 mode="page" onExit={back} onTribute={() => setView('tribute')} />
+          </Suspense>
+        ) : three.on ? (
           <Suspense fallback={<div className="m64-placeholder" style={{ height: 'calc(100svh - var(--nav-h, 64px))', background: '#10203f' }} aria-hidden="true" />}>
-            <Mario64 mode="page" onExit={() => navigate('/dot-matrix')} />
+            <Mario64 mode="page" onExit={back} />
           </Suspense>
         ) : (
           <section className="shell py-16">
@@ -36,7 +45,14 @@ export default function Mario64Page() {
       <section className="shell relative z-10 py-10 md:py-14" aria-label="About the game">
         <p className="eyebrow">Dot Matrix · Gaming</p>
         <p className="lead mt-3 max-w-[62ch]">
-          Peach’s castle, and the worlds in its paintings. Jump into one, find its three Power Stars, and the castle’s star doors open one by one on the way to Bowser. Mario runs, triple jumps, long jumps, wall kicks and ground pounds the way he did on the N64.
+          The giant N64 on Dot Matrix island plays the real Super Mario 64: a Nintendo 64 emulated in your browser (EmulatorJS, GPL-3.0), running your own copy of the game, a ROM file from your device that never leaves it. This site hosts no games.
+        </p>
+        <p className="mt-4 max-w-[62ch]">
+          Or{' '}
+          <button type="button" className="underline underline-offset-2" onClick={() => setView('tribute')}>
+            play the fan tribute
+          </button>
+          : Peach’s castle, and the worlds in its paintings. Jump into one, find its three Power Stars, and the castle’s star doors open one by one on the way to Bowser. Mario runs, triple jumps, long jumps, wall kicks and ground pounds the way he did on the N64.
         </p>
         <p className="mt-4 max-w-[62ch] text-sm text-muted">
           A fan-made tribute, built for this site from scratch: Mario and the cast are fan-made models from Sketchfab, none of them taken from a game (credited below), the music and sounds are synthesised, and the textures are CC0 scans from Poly Haven and ambientCG. Super Mario is Nintendo’s; this isn’t affiliated with or endorsed by Nintendo.

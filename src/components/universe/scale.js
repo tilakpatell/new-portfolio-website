@@ -17,7 +17,9 @@
 // the smallest world, and the sun under the ship's ceiling (scale.test.js
 // checks both). Rerun ship.test.js and nav.test.js on any change: the
 // autopilot's hops, and the super-speed trip home, fly through this system.
-// (No imports: everything sized by it imports this, never the other way.)
+// (No imports: everything sized by it imports this, never the other way.
+// universes.js writes HOME_SCALE out as a number instead, so the prerender
+// can load it in Node; scale.test.js keeps the two the same.)
 
 export const LENGTH = 0.26;
 export const HOME_SCALE = 3;
