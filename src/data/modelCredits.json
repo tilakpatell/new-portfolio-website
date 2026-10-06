@@ -100,6 +100,37 @@
       "galaxy"
     ]
   },
+  "crew-leia": {
+    "title": "FN Princess Leia",
+    "author": "fhfhhf",
+    "authorUrl": "https://sketchfab.com/fhfhhf",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/fn-princess-leia-e5efdd35a5e4462cbc013db44e80d31e",
+    "where": "galaxy-surface",
+    "as": "Princess Leia, walking on the worlds",
+    "file": "/models/galaxy/crew/leia.glb",
+    "also": [
+      "galaxy"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-luke": {
+    "title": "FB Luke Skywalker",
+    "author": "fhfhhf",
+    "authorUrl": "https://sketchfab.com/fhfhhf",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/fb-luke-skywalker-84d5ed9497b5435b9a804f956ff74927",
+    "where": "galaxy-surface",
+    "as": "Luke Skywalker, walking on the worlds",
+    "file": "/models/galaxy/crew/luke.glb",
+    "also": [
+      "galaxy",
+      "universe"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
   "cybertron-arcee": {
     "title": "Arcee TFP Rigged",
     "author": "Blender user Srikanth M",
@@ -231,6 +262,17 @@
     "where": "cybertron",
     "as": "Grimlock (Fall of Cybertron)",
     "file": "/models/cybertron/grimlock.glb"
+  },
+  "cybertron-ironhide-foc": {
+    "title": "Transformers: Fall of Cybertron Ironhide",
+    "author": "hafid.quispe",
+    "authorUrl": "https://sketchfab.com/hafid.quispe",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-ironhide-bca7d4ec915347aaa1f4dd3ebf0c4b1c",
+    "where": "cybertron",
+    "as": "Ironhide (Fall of Cybertron), raiding Kaon",
+    "file": "/models/cybertron/ironhide-foc.glb"
   },
   "cybertron-jazz": {
     "title": "War for Cybertron: Jazz",
@@ -392,6 +434,17 @@
     "as": "Ratchet (Transformers: Prime)",
     "file": "/models/cybertron/ratchet.glb"
   },
+  "cybertron-ratchet-foc": {
+    "title": "Transformers Fall of Cybertron Ratchet",
+    "author": "hafid.quispe",
+    "authorUrl": "https://sketchfab.com/hafid.quispe",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-ratchet-08c5f80bb63040df8280a0bf6ac99b9e",
+    "where": "cybertron",
+    "as": "Ratchet (Fall of Cybertron), raiding Kaon",
+    "file": "/models/cybertron/ratchet-foc.glb"
+  },
   "cybertron-shockwave-foc": {
     "title": "Shockwave  (transformers fall off cybertron)",
     "author": "+\"/",
@@ -402,6 +455,17 @@
     "where": "cybertron",
     "as": "Shockwave (Fall of Cybertron)",
     "file": "/models/cybertron/shockwave-foc.glb"
+  },
+  "cybertron-skywarp-jet": {
+    "title": "Transformers Fall Of Cybertron Skywarp",
+    "author": "hafid.quispe",
+    "authorUrl": "https://sketchfab.com/hafid.quispe",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-skywarp-81e1de0e69324c129e4d564759d775be",
+    "where": "cybertron",
+    "as": "Skywarp's jet (Fall of Cybertron), over Kaon",
+    "file": "/models/cybertron/skywarp-jet.glb"
   },
   "cybertron-sniper": {
     "title": "Transformers Fall Of Cybertron Soldiers",
@@ -447,6 +511,28 @@
     "as": "the space bridge",
     "file": "/models/cybertron/space-bridge.glb"
   },
+  "cybertron-starscream-foc": {
+    "title": "Transformers Fall Of Cybertron Starscream",
+    "author": "hafid.quispe",
+    "authorUrl": "https://sketchfab.com/hafid.quispe",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-starscream-f35afcf0967a4e1bb9926b4b2866ddc1",
+    "where": "cybertron",
+    "as": "Starscream (Fall of Cybertron), in Kaon",
+    "file": "/models/cybertron/starscream-foc.glb"
+  },
+  "cybertron-thundercracker-jet": {
+    "title": "Transformers Fall Of Cybertron Thundercracker",
+    "author": "hafid.quispe",
+    "authorUrl": "https://sketchfab.com/hafid.quispe",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-thundercracker-b639714d67a744339190e264009a134b",
+    "where": "cybertron",
+    "as": "Thundercracker's jet (Fall of Cybertron), over Kaon",
+    "file": "/models/cybertron/thundercracker-jet.glb"
+  },
   "cybertron-trooper": {
     "title": "Transformers Fall Of Cybertron Soldiers",
     "author": "hafid.quispe",
@@ -480,6 +566,17 @@
     "as": "Trypticon (Fall of Cybertron), far off",
     "file": "/models/cybertron/trypticon.glb"
   },
+  "cybertron-ultra-magnus-foc": {
+    "title": "Transformers Fall Of Cybertron Ultra Magnus",
+    "author": "hafid.quispe",
+    "authorUrl": "https://sketchfab.com/hafid.quispe",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-ultra-magnus-115e3e99f69c4eae9f25f503c62c7add",
+    "where": "cybertron",
+    "as": "Ultra Magnus (Fall of Cybertron), in Iacon",
+    "file": "/models/cybertron/ultra-magnus-foc.glb"
+  },
   "cybertron-vehicon": {
     "title": "Vehicon",
     "author": "Blender user Srikanth M",
@@ -490,6 +587,17 @@
     "where": "cybertron",
     "as": "the Vehicons (Transformers: Prime)",
     "file": "/models/cybertron/vehicon.glb"
+  },
+  "cybertron-warpath-foc": {
+    "title": "Transformers Fall Of Cybertron Warpath",
+    "author": "hafid.quispe",
+    "authorUrl": "https://sketchfab.com/hafid.quispe",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/transformers-fall-of-cybertron-warpath-45b7d7e247314a3e92df394fc3057d05",
+    "where": "cybertron",
+    "as": "Warpath (Fall of Cybertron), raiding Kaon",
+    "file": "/models/cybertron/warpath-foc.glb"
   },
   "cybertron-wheeljack-car": {
     "title": "Fall of CyberTron: Wheel Jack Vehicle",
@@ -1793,7 +1901,12 @@
     "source": "https://sketchfab.com/3d-models/portal-gun-from-the-rick-and-morty-show-c5f7b4a950de4002b448ac65c6b0207b",
     "where": "c-137",
     "as": "Rick’s portal gun, in the wardrobe",
-    "file": "/models/wardrobe/portalgun.glb"
+    "file": "/models/wardrobe/portalgun.glb",
+    "also": [
+      "universe",
+      "galaxy",
+      "galaxy-surface"
+    ]
   },
   "xwing-hd": {
     "title": "High Poly X-Wing Fighter",
@@ -1807,52 +1920,5 @@
     "also": [
       "galaxy"
     ]
-  },
-  "wardrobe-portalgun": {
-    "title": "Portal Gun from The Rick and Morty show",
-    "author": "Bob.Ho",
-    "authorUrl": "https://sketchfab.com/Bob.Ho",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/portal-gun-from-the-rick-and-morty-show-c5f7b4a950de4002b448ac65c6b0207b",
-    "where": "c-137",
-    "as": "Rick’s portal gun, in the wardrobe",
-    "file": "/models/wardrobe/portalgun.glb",
-    "also": [
-      "universe",
-      "galaxy",
-      "galaxy-surface"
-    ]
-  },
-  "crew-luke": {
-    "title": "FB Luke Skywalker",
-    "author": "fhfhhf",
-    "authorUrl": "https://sketchfab.com/fhfhhf",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/fb-luke-skywalker-84d5ed9497b5435b9a804f956ff74927",
-    "where": "galaxy-surface",
-    "as": "Luke Skywalker, walking on the worlds",
-    "file": "/models/galaxy/crew/luke.glb",
-    "also": [
-      "galaxy",
-      "universe"
-    ],
-    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
-  },
-  "crew-leia": {
-    "title": "FN Princess Leia",
-    "author": "fhfhhf",
-    "authorUrl": "https://sketchfab.com/fhfhhf",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/fn-princess-leia-e5efdd35a5e4462cbc013db44e80d31e",
-    "where": "galaxy-surface",
-    "as": "Princess Leia, walking on the worlds",
-    "file": "/models/galaxy/crew/leia.glb",
-    "also": [
-      "galaxy"
-    ],
-    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
   }
 }

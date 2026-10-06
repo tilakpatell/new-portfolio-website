@@ -76,7 +76,9 @@ function unmuteIOS() {
   el.setAttribute('x-webkit-airplay', 'deny');
   el.preload = 'auto';
   el.loop = true;
-  el.src = silence();
+  const url = silence();
+  el.src = url;
+  el.addEventListener('loadeddata', () => URL.revokeObjectURL(url), { once: true });
   el.play().catch(() => {
     unmuted = false;
   });
@@ -189,6 +191,8 @@ export function loadBuffer(url) {
       prefetch(url)
         // decoding detaches the buffer it is given, so decode a copy
         .then((data) => new Promise((resolve, reject) => ac.decodeAudioData(data.slice(0), resolve, reject)))
+        // the decoded buffer is the cache now; the raw bytes would only double the memory
+        .then((buf) => (bytes.delete(url), buf))
         .catch((e) => {
           decoded.delete(url);
           throw e;
