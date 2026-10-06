@@ -25,7 +25,7 @@ import { ALL_EXTENSIONS, EXTMeshoptCompression, KHRMeshQuantization } from '@glt
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 
-const FIGHTERS = new Set(['xwing', 'interceptor', 'awing', 'ywing', 'bwing', 'uwing', 'vulture', 'trifighter', 'delta7', 'arc170', 'n1', 'slave1']);
+const FIGHTERS = new Set(['xwing', 'interceptor', 'awing', 'ywing', 'bwing', 'uwing', 'vulture', 'trifighter', 'delta7', 'arc170', 'n1', 'slave1', 'tie', 'tiebomber', 'tieadvanced']);
 const TARGET = { fighter: 1500, other: 4000 };
 const OUT = 'public/models/galaxy/lod';
 const SAMPLE = 256; // textures are read at this size: a far ship's colour is the average of a patch, not one texel

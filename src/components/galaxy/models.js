@@ -36,23 +36,45 @@ export const MODELS = {
   ywing: { url: '/models/galaxy/ywing.glb', nose: 0 },
   bwing: { url: '/models/galaxy/bwing.glb', nose: 0 },
   uwing: { url: '/models/galaxy/uwing.glb', nose: Math.PI },
+  ghost: { url: '/models/galaxy/ghost.glb', nose: 0 },
   executor: { url: '/models/galaxy/executor.glb', nose: 0 },
+  tie: { url: '/models/galaxy/tie.glb', nose: 0 },
+  tiebomber: { url: '/models/galaxy/tiebomber.glb', nose: 0 },
+  tieadvanced: { url: '/models/galaxy/tieadvanced.glb', nose: 0 },
+  shuttle: { url: '/models/galaxy/shuttle.glb', nose: 0 },
+  lightcruiser: { url: '/models/galaxy/lightcruiser.glb', nose: -Math.PI / 2 },
+  gozanti: { url: '/models/galaxy/gozanti.glb', nose: 0 },
   lucrehulk: { url: '/models/galaxy/lucrehulk.glb', nose: 0 },
   coreship: { url: '/models/galaxy/coreship.glb', nose: 0 },
+  munificent: { url: '/models/galaxy/munificent.glb', nose: 0 },
+  providence: { url: '/models/galaxy/providence.glb', nose: 0 },
   vulture: { url: '/models/galaxy/vulture.glb', nose: Math.PI },
   trifighter: { url: '/models/galaxy/trifighter.glb', nose: 0 },
   acclamator: { url: '/models/galaxy/acclamator.glb', nose: 0 },
   delta7: { url: '/models/galaxy/delta7.glb', nose: 0 },
   arc170: { url: '/models/galaxy/arc170.glb', nose: Math.PI },
   n1: { url: '/models/galaxy/n1.glb', nose: 0 },
+  nubian: { url: '/models/galaxy/nubian.glb', nose: 0 },
+  razorcrest: { url: '/models/galaxy/surface/razorcrest.glb', nose: 0 }, // (the one the surfaces fly)
 };
 const BUILT = new Set([...BUILT_KINDS, ...GALAXY_KINDS]);
 
 // a kind with no built version of its own flies as another's till its model
 // loads (else its slot would be empty, and the ship would pop in): the
-// Venator as a Star Destroyer, Slave I and the Falcon as a freighter. The
-// Death Star has none here: the world puts a sphere of its own in its place.
-export const STAND_IN = { venator: 'destroyer', slave1: 'freighter', falcon: 'freighter' };
+// Venator as a Star Destroyer, Slave I and the Falcon as a freighter, the TIE
+// bomber as a TIE, Gideon's cruiser as a Star Destroyer, the Gozanti and the
+// Ghost as freighters, the Invisible Hand as a Munificent. The Death Star has
+// none here: the world puts a sphere of its own in its place.
+export const STAND_IN = {
+  venator: 'destroyer',
+  slave1: 'freighter',
+  falcon: 'freighter',
+  tiebomber: 'tie',
+  lightcruiser: 'destroyer',
+  gozanti: 'freighter',
+  providence: 'munificent',
+  ghost: 'freighter',
+};
 
 // Far off, a ship is its LOD (scripts/galaxy-lod.mjs: one mesh of a few
 // thousand triangles, its look baked into vertex colours), and farther still
@@ -68,10 +90,11 @@ export const lodLevels = (size) => [
 ];
 
 // the models the hunters fly (universe/glbFleet.js flies them, the
-// universe's TIEs and the galaxy's droids, each built until it's here)
+// universe's TIE interceptors, and the galaxy's droids and Imperial TIEs, each
+// built until it's here)
 export const HUNTER_GLB = {
   ...GLB,
-  ...Object.fromEntries(['vulture', 'trifighter'].map((k) => [k, { ...MODELS[k], built: true }])),
+  ...Object.fromEntries(['vulture', 'trifighter', 'tie', 'tieadvanced'].map((k) => [k, { ...MODELS[k], built: true }])),
 };
 
 // a model's materials tuned to the scene's light: engines and lights hot
