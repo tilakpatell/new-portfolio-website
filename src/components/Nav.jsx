@@ -331,7 +331,10 @@ export default function Nav() {
     if (!isFeedMove(location, navType)) setHidden(false);
   }, [location, navType, setHidden]);
 
-  // The phone menu covers the page: Escape closes it, and the page under it stays put.
+  // The phone menu covers the page: Escape closes it, and the page under it
+  // stays put. Focus goes into the menu, the page behind can't be reached
+  // (inert: a keyboard or a screen reader stays in the menu and the bar),
+  // and closing it puts focus back on the button that opened it.
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => e.key === 'Escape' && setOpen(false);
@@ -340,10 +343,20 @@ export default function Nav() {
     const overflow = html.style.overflow;
     html.style.overflow = 'hidden';
     html.dataset.menu = 'open';
+    const button = menuButton.current;
+    const behind = [document.getElementById('main'), ...document.querySelectorAll('footer')].filter((el) => el && !el.closest('#mobile-menu'));
+    for (const el of behind) el.inert = true;
+    const into = requestAnimationFrame(() => document.querySelector('#mobile-menu a, #mobile-menu button')?.focus({ preventScroll: true }));
     return () => {
+      cancelAnimationFrame(into);
       document.removeEventListener('keydown', onKey);
       html.style.overflow = overflow;
       delete html.dataset.menu;
+      for (const el of behind) el.inert = false;
+      // (back to the button, unless something else has been picked: a link
+      // that went to a new page puts focus on that page)
+      const at = document.activeElement;
+      if (!at || at === document.body || document.getElementById('mobile-menu')?.contains(at)) button?.focus({ preventScroll: true });
     };
   }, [open]);
 
