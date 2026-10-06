@@ -19,9 +19,24 @@ export function aboutX(deg) {
   return [1, 0, 0, 0, 0, c, s, 0, 0, -s, c, 0, 0, 0, 0, 1].map((v) => (Math.abs(v) < 1e-12 ? 0 : v));
 }
 
+// a quaternion's product, [x, y, z, w]
+const qmul = ([ax, ay, az, aw], [bx, by, bz, bw]) => [aw * bx + ax * bw + ay * bz - az * by, aw * by - ax * bz + ay * bw + az * bx, aw * bz + ax * by - ay * bx + az * bw, aw * bw - ax * bx - ay * by - az * bz];
+
 export async function upright(doc, { x = 90 } = {}) {
   await doc.transform(dequantize());
-  for (const mesh of doc.getRoot().listMeshes()) transformMesh(mesh, aboutX(x));
+  const m = aboutX(x);
+  const half = (x * Math.PI) / 360;
+  const r = [Math.sin(half), 0, 0, Math.cos(half)];
+  const rInv = [-r[0], 0, 0, r[3]];
+  for (const mesh of doc.getRoot().listMeshes()) transformMesh(mesh, m);
+  // a node holding a mesh (meshopt's quantization leaves its offset and scale
+  // there) turns with it: its offset by the same turn, its rotation r·q·r⁻¹
+  for (const node of doc.getRoot().listNodes()) {
+    if (!node.getMesh()) continue;
+    const [tx, ty, tz] = node.getTranslation();
+    node.setTranslation([tx, m[5] * ty + m[9] * tz, m[6] * ty + m[10] * tz]);
+    node.setRotation(qmul(qmul(r, node.getRotation()), rInv));
+  }
   return doc;
 }
 
