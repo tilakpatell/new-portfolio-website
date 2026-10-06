@@ -18,8 +18,13 @@ function keepVoicedOut() {
     configResolved(c) {
       outDir = resolve(c.root, c.build.outDir)
     },
-    closeBundle() {
-      rmSync(resolve(outDir, 'audio/voiced'), { recursive: true, force: true })
+    // first of the plugins: one failing after the bundle is written (the
+    // prerender, say) mustn't leave the voices in dist for a deploy
+    closeBundle: {
+      order: 'pre',
+      handler() {
+        rmSync(resolve(outDir, 'audio/voiced'), { recursive: true, force: true })
+      },
     },
   }
 }
