@@ -135,6 +135,32 @@ describe('buildSystem', () => {
     }
   });
 
+  it('lets the war hold the second Death Star’s shield, blow a station, and drop Scarif’s shield, and puts it all back', () => {
+    const endor = buildSystem(systemById('endor'), { ...kit(), small: false });
+    const shell = endor.solids.find((o) => o.id === 'ds2-shield');
+    const ds = endor.solids.find((o) => o.id === 'deathstar2');
+    endor.quiet(true);
+    endor.war.holdShield(false);
+    for (let i = 0; i < 400; i += 20) {
+      endor.update(T0 + i, 1, camera, null);
+      expect(shell.r).toBe(0);
+    }
+    endor.war.station('deathstar2', false);
+    expect(ds.r).toBe(0);
+    endor.quiet(false);
+    expect(ds.r).toBeGreaterThan(0);
+    const scarif = buildSystem(systemById('scarif'), { ...kit(), small: false });
+    scarif.quiet(true);
+    scarif.war.planetShield(false);
+    scarif.war.station('gate', false);
+    expect(scarif.shield).toBeNull();
+    expect(scarif.solids.filter((o) => o.id.startsWith('gate-')).every((o) => o.r === 0)).toBe(true);
+    scarif.quiet(false);
+    expect(scarif.shield.r).toBeGreaterThan(systemById('scarif').body.r);
+    endor.dispose();
+    scarif.dispose();
+  });
+
   it('puts a TIE on the Razor Crest’s tail over Nevarro, firing the Empire’s green', () => {
     const k = kit();
     const placed = [];

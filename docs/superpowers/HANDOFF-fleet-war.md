@@ -26,20 +26,23 @@ The design is `docs/superpowers/specs/2026-10-06-fleet-war-design.md` and the pl
   - The `war` and `fight` actions on the wire.
   - The universe map lets the Star Wars front go: `BattleHud` is gone, and the universe front puts you in on your crew's side.
 
+- **PR G: the set pieces** (`warpieces/`, `tunnel.js`).
+  - **Endor:**
+    - the shield generator on the moon holds the Death Star's shield up;
+    - the superlaser fires on Rebel cruisers;
+    - the Executor dives into the station when its bridge goes;
+    - the reactor run.
+  - **Hoth:**
+    - the ion cannon disables Star Destroyers;
+    - while the Empire attacks, GR-75 transports run for the jump. Six out and Hoth's held.
+  - **Scarif:** the Hammerhead's ram puts two Star Destroyers onto the Shield Gate, and the shield drops.
+  - **Any battle:**
+    - a hangar run into a Star Destroyer's reactor;
+    - batteries on the hulls as targets.
+  - The crews have galaxy lines for all of it.
+
 ## Left, in order
 
-0. **PR G: the set pieces** (the spec's revision 2, tasks 32 to 36).
-   - **Endor:**
-     - the second Death Star's superlaser on the Rebel cruisers;
-     - the shield generator on the moon as an objective tied to the station's shield;
-     - the reactor run through `tunnel.js`.
-   - **Hoth:**
-     - the ion cannon disables Star Destroyers;
-     - GR-75s escape and count toward the win.
-   - **Scarif:** the Hammerhead's ram onto the gate drops the shield.
-   - **Anywhere:**
-     - a hangar run into a Star Destroyer's reactor;
-     - hull trench runs past turret lines.
 1. **PR C: the high-quality Star Wars capitals.**
    - Import Daniel Andersson's Imperial II (`b8bd2d35f7604670ab85242c06c6d280`), MC80 Home One (`9b5e5e5192f64a7faad93a3bfd2efaf2`) and Nebulon-B (`19b1b0126f8248c28ce38863413c30b8`) from Sketchfab, at about 100k triangles and 2K textures. Credit them.
    - Use them on the high tier.
@@ -58,6 +61,10 @@ The design is `docs/superpowers/specs/2026-10-06-fleet-war-design.md` and the pl
    - Consider instancing the far fighters if it's slow.
 
 ## Checking it
+
+- To check the set pieces, start the dev server with `npx vite --port 5188`, then run `OUT=/tmp/shots node scripts/galaxy-setpieces-check.mjs endor|hoth|scarif|hangar mid`.
+  - It forces a battle at the system (`war.force`) and runs the battle on with `war.skip(seconds)`, because software GL steps it at about a twentieth of its pace.
+  - At Endor it knocks out the generator, flies in through the mouth, pins into the chamber, shoots the reactor, pins out, cuts the escape short (`run.hurry`), and watches the station go.
 
 - Start the dev server with `npx vite --port 5188`, then run `OUT=/tmp/shots node scripts/galaxy-war-check.mjs [system] mid`. Allow about four minutes.
   - It finds the battle on now (the major order's), drops in, and checks that you're in it on the Rebels' side.
