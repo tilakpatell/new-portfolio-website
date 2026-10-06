@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { rock, rockHook, rockMaterial } from './rock';
+import { ROCK_RELIEF, rock, rockHook, rockMaterial } from './rock';
 
 describe('rock', () => {
   it('the rock material has relief on high and none on low', () => {
@@ -12,6 +12,9 @@ describe('rock', () => {
     expect(shader.fragmentShader).toContain('rockPits(vRockObj)');
     expect(shader.vertexShader).toContain('vRockObj = position');
     expect(shader.uniforms.uSeed.value.isVector3).toBe(true);
+    // (one switch for every rock's relief: the pace's step 3)
+    expect(shader.uniforms.uRockRelief).toBe(ROCK_RELIEF);
+    expect(shader.fragmentShader).toContain('* uRockRelief');
     expect(rockMaterial({ tier: 'mid' }).customProgramCacheKey()).toBe('rock');
     const low = rockMaterial({ tier: 'low' });
     expect(low.onBeforeCompile).toBe(THREE.Material.prototype.onBeforeCompile);
