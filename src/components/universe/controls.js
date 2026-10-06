@@ -41,6 +41,13 @@ export function readControls(raw) {
   return c;
 }
 
+// Whether a drag on the map is a stick at all: on a phone or a tablet it's
+// the only one; where a mouse or a trackpad comes first (a laptop, a
+// desktop) the keys fly the ship, and a brush of the trackpad, a stray touch
+// of the screen or a drag meant for the galaxy map shouldn't grab it.
+// `fine`: the device's main pointer is a precise one (CSS `pointer: fine`).
+export const dragSteers = ({ fine = globalThis.matchMedia?.('(pointer: fine)').matches ?? false } = {}) => !fine;
+
 // A drag as a stick: (dx, dy) px from where the press began, and the kind
 // of pointer. Side to side swings the nose; up and down tips it (a mouse)
 // or works the throttle (a touch screen), unless the settings say which.
