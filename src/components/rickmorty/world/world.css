@@ -307,3 +307,79 @@
   .rm-crosshair { transition: none; }
   .rm-fade, .rm-fade[data-kind] { transition-duration: 0.1s; }
 }
+
+/* the portal gun's dial (./dimensions/DimensionDial.jsx) */
+.rm-dial {
+  position: absolute;
+  inset: 8% 50% auto auto;
+  transform: translateX(50%);
+  width: min(460px, calc(100% - 32px));
+  max-height: 78%;
+  display: flex;
+  flex-direction: column;
+  background: rgba(14, 22, 16, 0.94);
+  border: 2px solid #7dff5a;
+  border-radius: 14px;
+  box-shadow: 0 0 28px rgba(125, 255, 90, 0.35);
+  color: #eaffe0;
+  z-index: 30;
+}
+.rm-dial-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-family: 'Luckiest Guy', sans-serif;
+  font-size: 1.25rem;
+  color: #a8ff7a;
+  letter-spacing: 0.03em;
+}
+.rm-dial-x {
+  background: none;
+  border: 0;
+  color: #eaffe0;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+.rm-dial-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px;
+  overflow-y: auto;
+}
+.rm-dial-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  margin: 2px 0;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.rm-dial-row b {
+  font-size: 0.98rem;
+}
+.rm-dial-row span {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+.rm-dial-row[data-on] {
+  background: rgba(125, 255, 90, 0.16);
+  border-color: rgba(125, 255, 90, 0.5);
+}
+.rm-dial-row[data-set] b::after {
+  content: '  ● set';
+  color: #7dff5a;
+  font-size: 0.75rem;
+}
+.rm-dial-foot {
+  margin: 0;
+  padding: 8px 14px 12px;
+  font-size: 0.75rem;
+  opacity: 0.6;
+}

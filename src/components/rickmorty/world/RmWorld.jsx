@@ -59,6 +59,8 @@ import {
   stepMorty,
 } from './rules';
 import { newFedShip, newShipVoice, onTail, shipSays, stepFedShip } from './ship';
+import { DESTINATIONS, DIAL, linkTarget, portalTarget, readDial, writeDial } from './dimensions/destinations';
+import DimensionDial from './dimensions/DimensionDial';
 import { setShipVoice, shipVoiceOn, speak, stopSpeaking } from './shipVoice';
 import Wardrobe from '../wardrobe/Wardrobe';
 import { useLooks } from '../wardrobe/useLooks';
@@ -156,6 +158,8 @@ const SAY = {
   tricia: { who: 'Tricia', text: 'Hi, Morty. We’re doing face masks. You can stay if you don’t talk.' },
   diane: { who: null, text: 'Diane, as Rick keeps her: a hologram over the clone lab’s floor, smiling at nobody. He doesn’t say her name.' },
   therapy: { who: 'Dr. Wong', text: 'Sit down, Morty. Your grandfather told me this was for Jerry. It isn’t. We have fifty minutes.' },
+  // the multiverse's destinations (./dimensions/destinations.js)
+  ...Object.fromEntries(DESTINATIONS.flatMap((d) => Object.entries(d.say))),
 };
 const AREA_NAME = {
   street: 'The Smiths’ street',
@@ -170,13 +174,16 @@ const AREA_NAME = {
   oval: 'The Oval Office',
   diner: 'Shoney’s',
   wong: 'Dr. Wong’s office',
+  ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, d.name])),
 };
 // a place's name inside a sentence ('The alien street' → 'the alien street')
 const inLine = (name) => name.replace(/^The /, 'the ');
 // what talking to someone does, beyond what they say: a thing to do, done
-const TALK_DONE = { president: 'president', dineragent: 'diner', therapy: 'wong' };
+const TALK_DONE = { president: 'president', dineragent: 'diner', therapy: 'wong', ...Object.assign({}, ...DESTINATIONS.map((d) => d.done)) };
 // and the achievements a talk earns
-const TALK_UNLOCK = { therapy: 'wong' };
+const TALK_UNLOCK = { therapy: 'wong', ...Object.assign({}, ...DESTINATIONS.map((d) => d.unlock)) };
+// the Purge Planet: once the siren's pulled, how long to get back through the portal
+const PURGE_S = 60;
 // a memory's run in the Mind Blowers chair, and how far Morty can stray from the chair before it stops
 const MEMORY_S = 5.5;
 // Total Rickall: how long a memory of someone stays up over them, and how
@@ -201,15 +208,17 @@ const BOARD_R = 2.7; // how near the cruiser's middle Morty can get in from
 
 // Where the next thing to do is, for the map's marker: the area and the spot
 // in it, and from anywhere else, the way towards it.
-const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'], president: ['street', 'spot:president'], oval: ['garage', 'link:garage-oval'], diner: ['street', 'link:diner-door'], mindblowers: ['mindblowers', 'spot:chair'], rickall: ['house', 'spot:egg'], wong: ['street', 'link:wong-door'] };
+const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'], president: ['street', 'spot:president'], oval: ['garage', 'link:garage-oval'], diner: ['street', 'link:diner-door'], mindblowers: ['mindblowers', 'spot:chair'], rickall: ['house', 'spot:egg'], wong: ['street', 'link:wong-door'], ...Object.fromEntries(DESTINATIONS.flatMap((d) => d.tasks.map((t) => [t.id, [d.id, `spot:${Object.keys(d.done).find((k) => d.done[k] === t.id) ?? 'siren'}`]]))) };
+// (every destination is through the garage's portal)
+const toDest = (via) => Object.fromEntries(DESTINATIONS.map((d) => [d.id, via]));
 const WAY = {
-  street: { house: 'house-door', upstairs: 'house-door', garage: 'garage-door', basement: 'garage-door', mindblowers: 'garage-door', oval: 'garage-door', school: 'school-door', diner: 'diner-door', wong: 'wong-door', annex: 'garage-door', arcade: 'garage-door' },
-  house: { street: 'front', upstairs: 'stairs-up', garage: 'kitchen-garage', basement: 'kitchen-garage', mindblowers: 'kitchen-garage', oval: 'kitchen-garage', school: 'front', diner: 'front', wong: 'front', annex: 'kitchen-garage', arcade: 'kitchen-garage' },
-  garage: { street: 'garage-exit', house: 'garage-kitchen', upstairs: 'garage-kitchen', basement: 'garage-hatch', mindblowers: 'garage-hatch', oval: 'garage-oval', school: 'garage-exit', diner: 'garage-exit', wong: 'garage-exit', annex: 'garage-portal', arcade: 'garage-portal' },
+  street: { house: 'house-door', upstairs: 'house-door', garage: 'garage-door', basement: 'garage-door', mindblowers: 'garage-door', oval: 'garage-door', school: 'school-door', diner: 'diner-door', wong: 'wong-door', annex: 'garage-door', arcade: 'garage-door', ...toDest('garage-door') },
+  house: { street: 'front', upstairs: 'stairs-up', garage: 'kitchen-garage', basement: 'kitchen-garage', mindblowers: 'kitchen-garage', oval: 'kitchen-garage', school: 'front', diner: 'front', wong: 'front', annex: 'kitchen-garage', arcade: 'kitchen-garage', ...toDest('kitchen-garage') },
+  garage: { street: 'garage-exit', house: 'garage-kitchen', upstairs: 'garage-kitchen', basement: 'garage-hatch', mindblowers: 'garage-hatch', oval: 'garage-oval', school: 'garage-exit', diner: 'garage-exit', wong: 'garage-exit', annex: 'garage-portal', arcade: 'garage-portal', ...toDest('garage-portal') },
   basement: { mindblowers: 'basement-mind' },
   annex: { arcade: 'arcade-door' },
 };
-const OUT = { upstairs: 'stairs-down', school: 'school-exit', annex: 'annex-portal', arcade: 'arcade-exit', basement: 'basement-ladder', mindblowers: 'mind-door', oval: 'oval-portal', diner: 'diner-exit', wong: 'wong-exit' };
+const OUT = { upstairs: 'stairs-down', school: 'school-exit', annex: 'annex-portal', arcade: 'arcade-exit', basement: 'basement-ladder', mindblowers: 'mind-door', oval: 'oval-portal', diner: 'diner-exit', wong: 'wong-exit', ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, `${d.id}-portal`])) };
 function goalOf(next, s) {
   if (!next || s.flying) return null;
   const [to, key] = GOAL[next.id];
@@ -423,9 +432,23 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
   const looksRef = useRef(looks);
   looksRef.current = looks;
   const [wardrobe, setWardrobe] = useState(false);
+  // the portal gun's dial, open at its stand in the garage (it holds Morty still, as the wardrobe does)
+  const [dialing, setDialing] = useState(false);
+  const dialRef = useRef(readDial());
   const wardrobeRef = useRef(wardrobe);
-  wardrobeRef.current = wardrobe;
+  wardrobeRef.current = wardrobe || dialing;
   const closeWardrobe = useCallback(() => setWardrobe(false), []);
+  const closeDial = useCallback(() => setDialing(false), []);
+  const pickDial = useCallback(
+    (id) => {
+      writeDial(id);
+      dialRef.current = portalTarget(id);
+      setDialing(false);
+      const d = DIAL.find((o) => o.id === dialRef.current);
+      say({ kind: 'note', text: `Dialled to ${d.name}. Step through the portal.` });
+    },
+    [say],
+  );
   useEffect(() => {
     api.current?.setLooks?.(looks);
   }, [api, looks]);
@@ -610,9 +633,12 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
   // and the swirl holds till it's there; if the page is left, or the world
   // lost, meanwhile, the trip's off and what loaded is let go.
   const go = useCallback(
-    (l) => {
+    (via) => {
       const s = sim.current;
       if (s.fading) return;
+      // (the garage's portal goes where the dial is set: read fresh, as the page's portal gun sets it too)
+      dialRef.current = readDial();
+      const l = linkTarget(via, dialRef.current);
       s.fading = true;
       s.keys.clear();
       const climb = l.kind === 'hatch';
@@ -652,10 +678,16 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         }
         if (l.id === 'garage-hatch') complete('basement');
         if (l.id === 'garage-oval') complete('oval');
+        // home from the Purge Planet within the minute the siren gave him
+        if (l.id === 'purge-portal' && s.purgeAt != null && s.t - s.purgeAt <= PURGE_S) {
+          complete('purge');
+          unlock('purge');
+        }
+        if (l.area === 'purge') s.purgeAt = null;
         setFade(null);
       }, climb ? CLIMB_MS : FADE_MS);
     },
-    [api, complete, later, stopRickall],
+    [api, complete, unlock, later, stopRickall],
   );
   const board = useCallback(() => {
     const s = sim.current;
@@ -726,8 +758,18 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         s.mind = { x: s.m.x, z: s.m.z, i: 0, next: 0 };
         playMemory(0);
       }
+    } else if (n.id === 'dial') {
+      s.keys.clear();
+      dialRef.current = readDial();
+      setDialing(true);
     } else if (SAY[n.id]) {
       say({ kind: 'say', ...SAY[n.id] });
+      // the purge siren: the sky goes red, and the minute starts
+      if (n.id === 'siren' && s.purgeAt == null) {
+        s.purgeAt = s.t;
+        api.current?.act('purge', 'siren');
+        sound('portalOpen');
+      }
       // (done once they've had their say: the President gets in his car then)
       if (TALK_DONE[n.id]) later(() => complete(TALK_DONE[n.id]), TALK_MS);
       if (TALK_UNLOCK[n.id]) later(() => unlock(TALK_UNLOCK[n.id]), TALK_MS);
@@ -781,6 +823,12 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
             act: () => fns.current.act(),
             complete,
             warp,
+            // the portal gun's dial, set as the stand in the garage sets it
+            dial(id) {
+              writeDial(id);
+              dialRef.current = portalTarget(id);
+              return dialRef.current;
+            },
             // Total Rickall, with `seed` (by the egg first, if he isn't in the
             // house): resolves true once it's on. Then lookAt(id) stands Morty
             // in front of someone with them in the sights, as a player would,
@@ -1311,6 +1359,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         </div>
       </div>
       <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} who="morty" />
+      <DimensionDial open={dialing} items={DIAL} value={dialRef.current} onPick={pickDial} onClose={closeDial} />
 
       <Toast toast={toast} />
       {shipLine && hud.area === 'street' && (

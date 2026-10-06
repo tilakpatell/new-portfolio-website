@@ -166,5 +166,137 @@
   "nx5": {
     "status": "done",
     "by": "cloud"
+  },
+  "stairgoblin": {
+    "status": "done",
+    "by": "local"
+  },
+  "kingjellybean": {
+    "status": "done",
+    "by": "local"
+  },
+  "thirstystep": {
+    "status": "done",
+    "by": "local"
+  },
+  "giant": {
+    "status": "done",
+    "by": "local"
+  },
+  "zeep": {
+    "status": "done",
+    "by": "local"
+  },
+  "kyle": {
+    "status": "done",
+    "by": "local"
+  },
+  "xenonbloom": {
+    "status": "done",
+    "by": "local"
+  },
+  "poncho": {
+    "status": "done",
+    "by": "local"
+  },
+  "annie": {
+    "status": "done",
+    "by": "local"
+  },
+  "hepatitis": {
+    "status": "done",
+    "by": "local"
+  },
+  "gonorrhoea": {
+    "status": "done",
+    "by": "local"
+  },
+  "tuberculosis": {
+    "status": "done",
+    "by": "local"
+  },
+  "plague": {
+    "status": "done",
+    "by": "local"
+  },
+  "ecoli": {
+    "status": "done",
+    "by": "local"
+  },
+  "needful": {
+    "status": "done",
+    "by": "local"
+  },
+  "needful-shop": {
+    "status": "done",
+    "by": "local"
+  },
+  "jerry-robe": {
+    "status": "done",
+    "by": "local"
+  },
+  "jerry-golf": {
+    "status": "done",
+    "by": "local"
+  },
+  "jerry-tux": {
+    "status": "done",
+    "by": "local"
+  },
+  "jerry-track": {
+    "status": "done",
+    "by": "local"
+  },
+  "jerry-gown": {
+    "status": "done",
+    "by": "local"
+  },
+  "jerry-cardigan": {
+    "status": "done",
+    "by": "local"
+  },
+  "arthricia": {
+    "status": "done",
+    "by": "local"
+  },
+  "magdalian-a": {
+    "status": "done",
+    "by": "local"
+  },
+  "magdalian-b": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "magdalian-c": {
+    "status": "done",
+    "by": "local"
+  },
+  "flippynips": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "scroopy": {
+    "status": "done",
+    "by": "local"
+  },
+  "plutonian-a": {
+    "status": "done",
+    "by": "local"
+  },
+  "plutonian-b": {
+    "status": "done",
+    "by": "local"
+  },
+  "gearhead": {
+    "status": "done",
+    "by": "local"
+  },
+  "gearperson-a": {
+    "status": "done",
+    "by": "local"
+  },
+  "gearperson-b": {
+    "status": "done",
+    "by": "local"
   }
 }

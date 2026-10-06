@@ -8,6 +8,7 @@ import PlumbusFactory from '../components/rickmorty/PlumbusFactory';
 import PortalHero from '../components/rickmorty/PortalHero';
 import RmWorld from '../components/rickmorty/world/RmWorld';
 import { DIMENSIONS } from '../components/rickmorty/dimensions';
+import { DIAL, writeDial } from '../components/rickmorty/world/dimensions/destinations';
 import PortalPanic from '../components/rickmorty/portal/PortalPanic';
 import { BethFace, JerryFace, MortyFace, RickFace, SummerFace } from '../components/rickmorty/Faces';
 import '../components/rickmorty/rickmorty.css';
@@ -66,6 +67,8 @@ export default function RickMorty() {
   const { notify } = useAchievements();
   const [dim, setDim] = useState(0);
   const [fired, setFired] = useState(0);
+  // and where it leaves the garage portal set, in the world below
+  const [dialled, setDialled] = useState(null);
   const d = DIMENSIONS[dim];
 
   const fire = () => {
@@ -76,6 +79,9 @@ export default function RickMorty() {
     });
     setDim((i) => (i + 1 + Math.floor(Math.random() * (DIMENSIONS.length - 1))) % DIMENSIONS.length);
     setFired((n) => n + 1);
+    const to = DIAL[1 + Math.floor(Math.random() * (DIAL.length - 1))];
+    writeDial(to.id);
+    setDialled(to.name);
   };
   const play = (name) => {
     audioContext();
@@ -122,6 +128,11 @@ export default function RickMorty() {
               Back to the site
             </Link>
           </div>
+          {dialled && (
+            <p className="mt-3 text-sm opacity-80" aria-live="polite">
+              Dialled to {dialled}. The portal’s in Rick’s garage, down the page.
+            </p>
+          )}
           <WorldSwitcher className="mt-10" />
         </div>
       </section>
