@@ -16,6 +16,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { makeProp } from './props';
 import { DOC_SIZE, build as buildDocument } from './document';
+import { build as buildFriends } from './friends';
 import { barkTexture, glowTexture, heartwoodTexture, islandFloorTexture, plaqueTexture, rng } from './textures';
 
 export const RING = 17; // metres from the centre to each exhibit
@@ -90,7 +91,7 @@ function framePlane(w, h, gold) {
 
 export const DOC_AT = new THREE.Vector3(0, 9.5, -40);
 
-export function build({ renderer, exhibits, doc }) {
+export function build({ renderer, exhibits, doc, tribute }) {
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x1a0405, 0.0045);
   const r = rng(99);
@@ -190,7 +191,7 @@ export function build({ renderer, exhibits, doc }) {
     prop.scale.setScalar(center ? 2.1 : 1.05);
     prop.position.y = ph + 0.02;
     g.add(prop);
-    spinners.push(prop);
+    spinners[i] = prop; // (by exhibit, whichever finishes first)
     if (prop.userData.steam || ex.prop === 'cereal') steams.push({ parent: g, y: ph + 0.4 * s, sprites: [] });
     // the glass case, gold-edged
     const cw = 1.5 * s;
@@ -233,7 +234,7 @@ export function build({ renderer, exhibits, doc }) {
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = 0.02;
     g.add(ring);
-    rings.push(ring);
+    rings[i] = ring;
     g.traverse((o) => {
       if (o.isMesh) o.userData.exhibit = i;
     });
@@ -309,6 +310,10 @@ export function build({ renderer, exhibits, doc }) {
   docGlow.position.set(0, DOC_AT.y, DOC_AT.z + 10);
   scene.add(docGlow);
 
+  // and the last stop, high over the middle: why any of it is here (./friends.js)
+  const friends = buildFriends({ tribute });
+  scene.add(friends.group);
+
   const ready = Promise.all([sheet.ready, ...exhibits.map((ex, i) => makeExhibit(ex, i))]).then(() => {
     for (const st of steams)
       for (let k = 0; k < 6; k++) {
@@ -331,6 +336,9 @@ export function build({ renderer, exhibits, doc }) {
     lineAt: (hit) => sheet.lineAt(hit),
     setLineHover: (i) => sheet.setHover(i),
     markExhibit: (x) => sheet.mark(x),
+    friends: () => friends.pickables,
+    friendsPose: () => friends.pose(),
+    setPhotos: (list) => friends.setPhotos(list),
     // in front of the pages, far enough back to read all three
     docPose: () => ({ target: DOC_AT.clone(), camera: DOC_AT.clone().add(new THREE.Vector3(0, 0.4, DOC_SIZE.h * 1.22)) }),
     setHover(i) {
@@ -338,6 +346,7 @@ export function build({ renderer, exhibits, doc }) {
     },
     update(dt, t) {
       nebula.material.uniforms.time.value = t;
+      friends.update(dt, t);
       ringD.rotation.y += dt * 0.018;
       ringP.rotation.y -= dt * 0.012;
       spinners.forEach((p, i) => {
@@ -372,6 +381,7 @@ export function build({ renderer, exhibits, doc }) {
     dispose() {
       for (const d of disposables) d.dispose?.();
       sheet.dispose();
+      friends.dispose();
       scene.traverse((o) => {
         if (o.isMesh && spinners.some((p) => p === o || p.getObjectById(o.id))) {
           o.geometry.dispose();

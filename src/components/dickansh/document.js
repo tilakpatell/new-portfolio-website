@@ -144,6 +144,7 @@ export function build({ doc }) {
       pages.push(page);
       const hl = new THREE.Mesh(hlGeo, keep(new THREE.MeshBasicMaterial({ color: 0xffc94a, transparent: true, opacity: 0.4, depthWrite: false, toneMapped: false })));
       hl.visible = false;
+      hl.raycast = () => {}; // (the pointer reads the page under it)
       hl.position.z = 0.032;
       page.add(hl);
       highlights.push(hl);
@@ -161,7 +162,8 @@ export function build({ doc }) {
     pages,
     ready,
     lineAt(hit) {
-      if (!hit?.uv || !hit.object?.userData.rects) return null;
+      // only the printed face: the back and the edges have no lines
+      if (!hit?.uv || !hit.object?.userData.rects || hit.face?.materialIndex !== 4) return null;
       const px = hit.uv.x * PAGE_W;
       const py = (1 - hit.uv.y) * PAGE_H;
       const r = hit.object.userData.rects.find((q) => py >= q.y0 && py < q.y1 && px >= q.x0 - 40 && px <= PAGE_W - MARGIN_X + 20);

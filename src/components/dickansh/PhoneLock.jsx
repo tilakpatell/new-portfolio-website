@@ -31,6 +31,13 @@ export default function PhoneLock({ onOpen, onClose = null, autoFocus = true }) 
   const [state, setState] = useState('idle'); // idle | checking | wrong | open
   const [now, setNow] = useState(() => new Date());
   const input = useRef(null);
+  const live = useRef(true); // (put down while it was checking: say nothing)
+  useEffect(() => {
+    live.current = true;
+    return () => {
+      live.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 15000);
@@ -56,6 +63,7 @@ export default function PhoneLock({ onOpen, onClose = null, autoFocus = true }) 
     if (!value.trim() || state === 'checking' || state === 'open') return;
     setState('checking');
     const museum = await unseal(SEALED, value);
+    if (!live.current) return;
     if (museum) {
       setState('open');
       onOpen(museum, value);

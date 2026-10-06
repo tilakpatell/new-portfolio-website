@@ -37,6 +37,34 @@ export async function seal(value, password) {
   return { v: 1, iter: ITER, salt: toB64(salt), iv: toB64(iv), data: toB64(data) };
 }
 
+// The photos are sealed under the same key as the exhibits (the box's salt),
+// each file its own IV and then its ciphertext, so they're unreadable on the
+// server too. boxKey derives that key once; sealBytes and unsealBytes do
+// each file.
+export async function boxKey(box, password) {
+  if (!globalThis.crypto?.subtle || !box?.salt) return null;
+  return keyFor(password, fromB64(box.salt), box.iter);
+}
+
+export async function sealBytes(bytes, key) {
+  const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
+  const data = new Uint8Array(await globalThis.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, bytes));
+  const out = new Uint8Array(12 + data.length);
+  out.set(iv);
+  out.set(data, 12);
+  return out;
+}
+
+// the plain bytes, or null if they don't open with this key
+export async function unsealBytes(sealed, key) {
+  const all = new Uint8Array(sealed);
+  try {
+    return await globalThis.crypto.subtle.decrypt({ name: 'AES-GCM', iv: all.slice(0, 12) }, key, all.slice(12));
+  } catch {
+    return null;
+  }
+}
+
 // the exhibits, or null for a wrong password (or a browser without WebCrypto)
 export async function unseal(box, password) {
   if (!globalThis.crypto?.subtle || !box?.data) return null;

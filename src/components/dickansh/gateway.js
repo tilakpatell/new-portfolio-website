@@ -10,7 +10,7 @@
 // (`still` is a Dhurandhar still, seen through the portal.)
 
 import * as THREE from 'three';
-import { loadGltf, prepare } from '../../lib/three/gltf';
+import { loadGltf } from '../../lib/three/gltf';
 import { courtyardTexture, flameTexture, glowTexture, rng } from './textures';
 
 export const ARCH = { halfWidth: 2.1, lintel: 3.5, notchHalf: 1.3, top: 4.6 }; // the doorway, in metres
@@ -309,10 +309,17 @@ export function build({ renderer, still }) {
   scene.add(embers);
 
   // the models
+  let disposed = false;
   const place = async (name, fn) => {
     const got = await loadGltf(MODELS[name], { renderer, fresh: true });
-    if (!got) return null;
-    prepare(got.scene, { renderer, shadows: true });
+    if (!got || disposed) return null;
+    // materials of its own (the loader's copies are shared with every visit,
+    // and this tints them), and shadows cast and caught
+    got.scene.traverse((o) => {
+      if (!o.isMesh) return;
+      o.material = Array.isArray(o.material) ? o.material.map((m) => keep(m.clone())) : keep(o.material.clone());
+      o.castShadow = o.receiveShadow = true;
+    });
     fn(got.scene);
     return got.scene;
   };
@@ -422,6 +429,7 @@ export function build({ renderer, still }) {
       emberGeo.attributes.position.needsUpdate = true;
     },
     dispose() {
+      disposed = true;
       for (const d of disposables) d.dispose?.();
       for (const f of flames) f.sprite?.material.dispose();
     },

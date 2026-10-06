@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RiArrowLeftSLine, RiArrowRightSLine, RiCloseLine } from 'react-icons/ri';
 import { useScene } from '../../lib/three/useScene';
 import { typing } from '../games/pad';
+import Tribute from './Tribute';
 
 // The world over the page: the 3D (./scene.js, through useScene) and what's
 // over it. At the gate, the way through; in the universe, the exhibits'
@@ -11,12 +12,14 @@ import { typing } from '../games/pad';
 // is the whole museum.
 
 const load = () => import('./scene');
+// where the tour is: an exhibit's index, `n` at the friendship wall, -1 elsewhere
+const stopOf = (f, n) => (f === 'friends' ? n : typeof f === 'number' ? f : -1);
 const label = (i) => (i === 0 ? 'Exhibit Zero' : `Exhibit ${String(i).padStart(2, '0')}`);
 
-export default function DickanshWorld({ museum }) {
+export default function DickanshWorld({ museum, photos = [] }) {
   const [mode, setMode] = useState('gate');
   const [focus, setFocus] = useState(-1);
-  const [hover, setHover] = useState({ index: -1, line: null });
+  const [hover, setHover] = useState({ index: -1, line: null, friend: false });
   const [flash, setFlash] = useState(0);
   const exhibits = museum.exhibits;
   const onEvent = useCallback((e) => {
@@ -24,21 +27,23 @@ export default function DickanshWorld({ museum }) {
       setMode(e.mode);
       if (e.mode === 'warp') setFlash((n) => n + 1);
     } else if (e.type === 'focus') setFocus(e.index);
-    else if (e.type === 'hover') setHover({ index: e.index, line: e.line ?? null });
+    else if (e.type === 'hover') setHover({ index: e.index, line: e.line ?? null, friend: Boolean(e.friend) });
   }, []);
-  const props = useMemo(() => ({ exhibits, doc: museum.doc, onEvent }), [exhibits, museum.doc, onEvent]);
+  const props = useMemo(() => ({ exhibits, doc: museum.doc, tribute: museum.tribute, photos, onEvent }), [exhibits, museum.doc, museum.tribute, photos, onEvent]);
   const { wrap, view, meant, status } = useScene(load, { id: 'dickansh', props, near: '0px' });
   const panel = useRef(null);
 
+  // the tour: every exhibit in turn, and the friendship wall last
+  const stops = exhibits.length + (museum.tribute ? 1 : 0);
   const go = useCallback(
     (i) => {
       const v = view.current;
       if (!v) return;
       if (v.mode !== 'universe') return;
-      const n = exhibits.length;
-      v.focus(((i % n) + n) % n);
+      const k = ((i % stops) + stops) % stops;
+      v.focus(k === exhibits.length ? 'friends' : k);
     },
-    [exhibits.length, view],
+    [exhibits.length, stops, view],
   );
 
   useEffect(() => {
@@ -48,7 +53,7 @@ export default function DickanshWorld({ museum }) {
       if (!v) return;
       if (v.mode === 'gate' && e.key === 'Enter') v.enter();
       else if (v.mode === 'universe') {
-        const at = typeof v.focused === 'number' ? v.focused : -1;
+        const at = stopOf(v.focused, exhibits.length);
         if (e.key === 'ArrowRight') go((at < 0 ? -1 : at) + 1);
         else if (e.key === 'ArrowLeft') go((at < 0 ? 1 : at) - 1);
         else if (e.key === 'Escape') v.focused !== -1 ? v.focus(-1) : v.leave();
@@ -58,16 +63,16 @@ export default function DickanshWorld({ museum }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go, view]);
+  }, [exhibits.length, go, view]);
 
   useEffect(() => {
     if (focus !== -1) panel.current?.scrollTo?.({ top: 0 });
   }, [focus]);
 
   const ex = typeof focus === 'number' && focus >= 0 ? exhibits[focus] : null;
-  const at = typeof focus === 'number' ? focus : -1;
+  const at = stopOf(focus, exhibits.length);
   const lineHint = hover.line ? (hover.line.link ? `${hover.line.t}: opens the video` : `“${hover.line.t}” → ${label(hover.line.x)}: ${exhibits[hover.line.x]?.title}`) : null;
-  const hint = lineHint ?? (hover.index >= 0 && !ex ? `${label(hover.index)}: ${exhibits[hover.index].title}` : focus === 'doc' ? 'The list, as written. Click a line to go to its exhibit.' : 'Drag to circle the island. Click a case or a line of the list, or use ← →. Esc to step back.');
+  const hint = lineHint ?? (hover.friend && focus !== 'friends' ? 'Why you’re here' : null) ?? (hover.index >= 0 && !ex ? `${label(hover.index)}: ${exhibits[hover.index].title}` : focus === 'doc' ? 'The list, as written. Click a line to go to its exhibit.' : 'Drag to circle the island. Click a case or a line of the list, or use ← →. Esc to step back.');
   const loading = meant && status !== 'on';
 
   return (
@@ -110,7 +115,7 @@ export default function DickanshWorld({ museum }) {
           {mode === 'universe' && (
             <>
               <div className="dk-hud-bottom">
-                {!ex && <p className="dk-hint">{hint}</p>}
+                {!ex && focus !== 'friends' && <p className="dk-hint">{hint}</p>}
                 <div className="dk-nav">
                   <button type="button" className="dk-icon" aria-label="Previous exhibit" onClick={() => go((at < 0 ? 1 : at) - 1)}>
                     <RiArrowLeftSLine aria-hidden="true" />
@@ -123,6 +128,11 @@ export default function DickanshWorld({ museum }) {
                   </button>
                 </div>
                 <div className="dk-row">
+                  {museum.tribute && focus !== 'friends' && (
+                    <button type="button" className="dk-back-btn" onClick={() => view.current?.friends()}>
+                      Why you’re here
+                    </button>
+                  )}
                   {focus !== 'doc' && (
                     <button type="button" className="dk-back-btn" onClick={() => view.current?.readList()}>
                       Read the list
@@ -133,6 +143,14 @@ export default function DickanshWorld({ museum }) {
                   </button>
                 </div>
               </div>
+              {focus === 'friends' && museum.tribute && (
+                <aside ref={panel} className="dk-panel dk-panel-friends" aria-live="polite">
+                  <button type="button" className="dk-icon dk-panel-close" aria-label="Close" onClick={() => view.current?.focus(-1)}>
+                    <RiCloseLine aria-hidden="true" />
+                  </button>
+                  <Tribute tribute={museum.tribute} photos={photos} id="dk-tribute-panel-title" />
+                </aside>
+              )}
               {ex && (
                 <aside ref={panel} className="dk-panel" aria-live="polite" aria-labelledby="dk-panel-title">
                   <button type="button" className="dk-icon dk-panel-close" aria-label="Close the plaque" onClick={() => view.current?.focus(-1)}>
