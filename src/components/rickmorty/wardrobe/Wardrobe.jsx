@@ -99,7 +99,7 @@ export default function Wardrobe({ open, onClose, looks, onLook, cast = 'rickmor
   const setGear = (slot, gear) => set({ gear: { ...look.gear, [slot]: gear } });
 
   return (
-    <div className="rm-wardrobe" role="presentation" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="rm-wardrobe" data-cast={cast} role="presentation" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
       <section ref={panel} className="rm-wardrobe-panel" role="dialog" aria-modal="true" aria-labelledby={`${id}-title`}>
         <div className="rm-wardrobe-stage">
           <canvas ref={canvas} className="rm-wardrobe-canvas" aria-label={`${NAME[shown]}, as ${body?.name ?? ''}: drag to turn him round`} />

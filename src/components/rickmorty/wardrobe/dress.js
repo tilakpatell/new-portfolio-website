@@ -20,7 +20,7 @@
 import * as THREE from 'three';
 import { bodyById, swatchById } from './looks';
 
-export const MAX_REGIONS = 5;
+export const MAX_REGIONS = 6; // (five a body’s own at most, and Mr. White’s hands besides)
 
 // 0 head, 1 torso and arms, 2 hips and thighs, 3 shins, 4 feet, 5 hands (a
 // zone no region takes: skin stays skin)
@@ -79,15 +79,18 @@ const MORTY = {
 // Walt’s one figure, in the lab’s yellow suit: by zone, the suit is a
 // jacket (the torso and arms), a shirt’s collar (its hood, down round his
 // neck) and trousers (the hips down); and his long black gloves, his brown
-// work boots. Mr. White’s and Heisenberg’s gloves are his hands (`gloves`
-// isn’t one of their regions: nobody picks it).
+// work boots. Mr. White’s and Heisenberg’s gloves are his bare forearms
+// and hands (`gloves` and `hands` aren’t their regions: nobody picks them).
 const SUIT = [[36, 58], [0.42, 1], [0.45, 1], 0.85];
 const suit = (zones, fix = null, lower = null) => key(zones, ...SUIT, undefined, fix, lower);
-const ABOVE = [0, 0.5]; // (the jacket, down to his waist: half his weight the hips'…)
+const ABOVE = [0, 0.5]; // (the jacket, down to his waist: half his weight the hips’…)
 const BELOW = [0.5, 1]; // (…and the trousers from there)
-const gloves = (fix = null) => key([1, 5], [180, 280], [0.08, 0.75], [0, 0.2], 0.09, [0.8, 1.15], fix);
+const gloves = (fix = null, zones = [1, 5]) => key(zones, [160, 300], [0, 0.8], [0, 0.22], 0.09, [0.8, 1.15], fix);
 const BOOTS = key([3, 4], ANY, [0, 0.66], [0, 0.37], 0.24);
 const HANDS = '#c39283'; // (his skin’s own colour, off his face)
+// (his hands are all glove: any dark texel there, its creases and shine too;
+// his forearms, `gloves` in zone 1, only the glove’s own blue-black)
+const HANDS_KEY = key([5], ANY, [0, 1], [0, 0.45], 0.12, [0.8, 1.15], HANDS);
 // Jesse: the burnt-orange hoodie (its hood down round his neck), baggy
 // jeans, white high-tops, his buzzed light-brown hair (and brows)
 // (the buzzed sides lighter than the top: 24–32°, value to 0.58, where
@@ -95,8 +98,8 @@ const HANDS = '#c39283'; // (his skin’s own colour, off his face)
 const jesseHair = key([0], [21, 40], [0.26, 0.68], [0.2, 0.6], 0.34);
 const BB = {
   walt: { outer: suit([0, 1, 2, 3, 4]), inner: gloves(), shoes: BOOTS },
-  mrwhite: { outer: suit([1, 2], 'tanjacket', ABOVE), inner: suit([0], 'waltgreen'), legs: suit([1, 2, 3, 4], 'khaki', BELOW), shoes: BOOTS, gloves: gloves(HANDS) },
-  heisenberg: { outer: suit([1, 2], 'heisenbergblack', ABOVE), inner: suit([0], 'beaniegrey'), legs: suit([1, 2, 3, 4], 'khaki', BELOW), shoes: BOOTS, gloves: gloves(HANDS) },
+  mrwhite: { outer: suit([1, 2], 'tanjacket', ABOVE), inner: suit([0], 'waltgreen'), legs: suit([1, 2, 3, 4], 'khaki', BELOW), shoes: BOOTS, gloves: gloves(HANDS, [1]), hands: HANDS_KEY },
+  heisenberg: { outer: suit([1, 2], 'heisenbergblack', ABOVE), inner: suit([0], 'beaniegrey'), legs: suit([1, 2, 3, 4], 'khaki', BELOW), shoes: BOOTS, gloves: gloves(HANDS, [1]), hands: HANDS_KEY },
   jesse: {
     outer: key([0, 1, 2], [4, 28], [0.55, 1], [0.3, 0.72], 0.54),
     legs: key([2, 3], [192, 240], [0.14, 0.85], [0.08, 0.62], 0.25),

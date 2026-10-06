@@ -82,3 +82,11 @@
   .rm-wardrobe-controls { padding-bottom: max(1.2rem, env(safe-area-inset-bottom)); }
 }
 .rm-wardrobe-tabs button:focus-visible { outline-offset: -5px; }
+
+/* Walt and Jesse's: the desert at the golden hour behind the turntable,
+   Blue Sky for what's picked, hazmat yellow for the title, and the
+   colours they come in on the "as it comes" swatch */
+.rm-wardrobe[data-cast='breakingbad'] { --wd-green: #5fc8ef; --wd-lime: #f0d43a; }
+.rm-wardrobe[data-cast='breakingbad'] .rm-wardrobe-stage { background: radial-gradient(circle at 50% 42%, #ffe9bd 0%, #efb766 32%, #8a4f2a 70%, #2a160c 100%); }
+.rm-wardrobe[data-cast='breakingbad'] .rm-wardrobe-head h2 { font: 800 1.45rem/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; }
+.rm-wardrobe[data-cast='breakingbad'] .rm-wardrobe-swatch-own { background: conic-gradient(#f0d43a 0 25%, #a24a26 0 50%, #b9a37c 0 75%, #1f1e22 0); }

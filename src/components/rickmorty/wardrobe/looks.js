@@ -102,7 +102,7 @@ export const BB_SWATCHES = [
   { id: 'heisenbergblack', name: 'Heisenberg black', hex: '#1f1e22' },
   { id: 'waltgreen', name: 'Walt’s green shirt', hex: '#7f9468' },
   { id: 'tanjacket', name: 'Walt’s tan jacket', hex: '#b9a37c' },
-  { id: 'khaki', name: 'Khaki slacks', hex: '#8c7b5a' },
+  { id: 'khaki', name: 'Khaki slacks', hex: '#7a6a4b' },
   { id: 'hoodiered', name: 'Jesse’s red hoodie', hex: '#b5372c' },
   { id: 'hoodieyellow', name: 'Jesse’s yellow hoodie', hex: '#cf9d2a' },
   { id: 'beaniegrey', name: 'Beanie grey', hex: '#68696e' },
