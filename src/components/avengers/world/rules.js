@@ -1790,7 +1790,27 @@ export const behindYaw = (face) => Math.atan2(-Math.cos(face), Math.sin(face));
 // How far from the hero (lx, lz) out to the camera (cx, cy, cz) it can be
 // before it's in a building, under the bridge's deck or out in the woods:
 // 0 (at the hero) to 1 (all the way).
-export function camRoom(lx, lz, cx, cy, cz) {
+// Whether a point is in a Quinjet, for the camera (the parked one unless
+// another's pose { x, y, z, yaw, scale } is given: the one that flies, down
+// on its pad): its fuselage (to the top of the canopy) or its wings (a slab
+// a metre either side of where they sit). The camera went straight into
+// them, and the screen was a sheet of grey.
+export function inJet(x, y, z, jet = PARKED_JET) {
+  const s = jet.scale;
+  const dx = x - jet.x;
+  const dz = z - jet.z;
+  const dy = y - (jet.y ?? 0);
+  const along = (dx * Math.sin(jet.yaw) + dz * Math.cos(jet.yaw)) / s;
+  const across = Math.abs(dx * Math.cos(jet.yaw) - dz * Math.sin(jet.yaw)) / s;
+  if (along > 15 || along < -15 || across > 13.4 || dy < -1) return false;
+  // the fuselage, nose to tail
+  if (across < 3.4 && along < 14 && along > -14 && dy < 4.6 * s + 1.2) return true;
+  // the wings: from 1.6 out to 12.6, 5 forward to 12.6 back, in the jet's metres
+  return across < 13.2 && along < 5.6 && along > -13.2 && Math.abs(dy - 2.35 * s) < 1.1;
+}
+
+// `jets`: other Quinjets' poses to keep out of (inJet)
+export function camRoom(lx, lz, cx, cy, cz, jets = null) {
   const len = Math.hypot(cx - lx, cz - lz);
   const n = Math.max(1, Math.ceil(len / 0.25));
   for (let i = 1; i <= n; i++) {
@@ -1798,7 +1818,7 @@ export function camRoom(lx, lz, cx, cy, cz) {
     const x = lx + (cx - lx) * t;
     const z = lz + (cz - lz) * t;
     const y = cy; // (the camera's height; it barely changes along the way)
-    let hit = !inPoly(x, z, LAWN_W) && y < 22;
+    let hit = (!inPoly(x, z, LAWN_W) && y < 22) || inJet(x, y, z) || (jets ? jets.some((j) => inJet(x, y, z, j)) : false);
     for (const b of SOLIDS) {
       if (hit) break;
       if (y > b.h + 0.6 || y < b.y0 - 0.6) continue;
