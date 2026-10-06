@@ -33,9 +33,9 @@ import { buildTraffic } from './trafficModels';
 // which way each one's nose points as it comes (turned to +z), and whether
 // there's a built one to fly until it's here
 export const GLB = {
-  xwing: { url: '/models/universe/xwing-traffic.glb', nose: 0, built: true },
+  xwing: { url: '/models/gen3d/x-wing.glb', nose: 0, built: true }, // made here (scripts/gen3d), the trench run's
   slave1: { url: '/models/universe/slave1.glb', nose: 0, built: false },
-  interceptor: { url: '/models/universe/tie-interceptor.glb', nose: 0, built: true },
+  interceptor: { url: '/models/gen3d/tie-interceptor.glb', nose: 0, built: true }, // made here from the old one's render
   destroyer: { url: '/models/universe/star-destroyer.glb', nose: Math.PI, built: true },
   corvette: { url: '/models/universe/cr90.glb', nose: 0, built: true },
   // the galaxy's own, in their small cuts (public/models/galaxy/lod/: a
