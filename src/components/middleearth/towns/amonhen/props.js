@@ -1700,7 +1700,10 @@ function beechGeo(seed = 1) {
 // A clump of fern for instancing, about 1.2 m across: a dozen fronds from a
 // dark heart, arching out and over, each a midrib with its leaflets in
 // pairs, longest in the middle of the frond; deep green at the heart, fresh
-// and bright at the tips, a few gone brown. Wants a double-sided material.
+// and bright at the tips, a few gone brown. Each leaflet is wound both ways
+// with its normal up, so it lights like the ground from either side on a
+// single-sided material (a double-sided one turns the normal down for the
+// back, and a frond seen from behind, or by its own face normal, lit black).
 function fernGeo(seed = 1) {
   const r = rng(seed * 23 + 7);
   const pos = [];
@@ -1746,12 +1749,14 @@ function fernGeo(seed = 1) {
         const sz = dx * sd;
         const tip = [(ax + bx) / 2 + sx * leaf + dx * leaf * 0.35, (ay + by) / 2 - leaf * 0.18, (az + bz) / 2 + sz * leaf + dz * leaf * 0.35];
         const tri = sd > 0 ? [[ax, ay, az], [bx, by, bz], tip] : [[ax, ay, az], tip, [bx, by, bz]];
-        tri.forEach((v, q) => {
-          pos.push(...v);
-          const c = q === 2 || (sd < 0 && q === 1) ? c1 : c0;
-          col.push(c.r, c.g, c.b);
-          nor.push(dx * 0.2, 0.96, dz * 0.2);
-        });
+        for (const face of [tri, [tri[0], tri[2], tri[1]]]) {
+          face.forEach((v) => {
+            pos.push(...v);
+            const c = v === tip ? c1 : c0;
+            col.push(c.r, c.g, c.b);
+            nor.push(dx * 0.2, 0.96, dz * 0.2);
+          });
+        }
       }
     }
   }
@@ -3138,7 +3143,7 @@ export function createAmonHenKit(renderer) {
     leaves: M({ vertexColors: true, roughness: 0.85, side: THREE.DoubleSide }),
     // the forest, for instancing: trees, ferns
     tree: M({ vertexColors: true, roughness: 0.9 }),
-    fern: M({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide }),
+    fern: M({ vertexColors: true, roughness: 0.8 }),
     earth: M({ vertexColors: true, roughness: 1 }),
   });
   // the light of the woods, for metal and polished wood to catch
