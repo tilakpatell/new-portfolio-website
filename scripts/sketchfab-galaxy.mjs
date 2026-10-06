@@ -77,8 +77,11 @@ export const MODELS = {
   nubian: { uid: 'f631077977754b5591298ecfa201380b', tris: 20000, tex: 1024, as: 'the Naboo royal starship' },
   // the capitals' close-up cut, for a desktop with a graphics card (galaxy/
   // models.js's HQ): Daniel Andersson's, kept fine enough to fly along
-  destroyerhq: { uid: 'b8bd2d35f7604670ab85242c06c6d280', tris: 100000, tex: 2048, out: 'hq/destroyer', as: 'the Star Destroyers, close up' },
-  moncalhq: { uid: '9b5e5e5192f64a7faad93a3bfd2efaf2', tris: 100000, tex: 2048, out: 'hq/moncal', as: 'the Mon Calamari cruisers, close up' },
+  // (its grey hull plates, lit by one sun with nothing to reflect, came out
+  // near black where the old one's glow maps keep it lit: barely metal, brighter)
+  destroyerhq: { uid: 'b8bd2d35f7604670ab85242c06c6d280', tris: 100000, tex: 2048, out: 'hq/destroyer', metal: 0.05, gain: 1.6, as: 'the Star Destroyers, close up' },
+  // (Home One's close-up cut was tried and left: the same model as moncal's, it
+  // came out plainer than the 40k one in the battle, whose panel maps read better)
   nebulonhq: { uid: '19b1b0126f8248c28ce38863413c30b8', tris: 100000, tex: 2048, out: 'hq/nebulon', as: 'the Nebulon-B frigates, close up' },
 };
 
@@ -202,14 +205,14 @@ const unskinned = () => (doc) => {
   }
 };
 
-// Its materials made for the galaxy's light: nothing more than half metal (a
-// fully metal hull, with only the dark sky to reflect, comes out black), its
+// Its materials made for the galaxy's light: nothing more than half metal, or
+// `metal` (a fully metal hull, with only the dark sky to reflect, comes out black), its
 // colours brightened by `gain`, and any material in `drop` left off with its
 // parts.
-const relit = ({ gain = 1, drop = null }) => (doc) => {
+const relit = ({ gain = 1, drop = null, metal = 0.5 }) => (doc) => {
   for (const mesh of doc.getRoot().listMeshes()) for (const prim of mesh.listPrimitives()) if (drop?.test(prim.getMaterial()?.getName() ?? '')) prim.dispose();
   for (const m of doc.getRoot().listMaterials()) {
-    m.setMetallicFactor(Math.min(m.getMetallicFactor(), 0.5));
+    m.setMetallicFactor(Math.min(m.getMetallicFactor(), metal));
     const [r, g, b, a] = m.getBaseColorFactor();
     m.setBaseColorFactor([...[r, g, b].map((c) => Math.min(1, c * gain)), a]);
   }

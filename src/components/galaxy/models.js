@@ -64,23 +64,23 @@ export const MODELS = {
 export const MADE = { xwing: 'x-wing', interceptor: 'tie-interceptor' };
 for (const [kind, name] of Object.entries(MADE)) if (MODELS[kind]) MODELS[kind] = { ...MODELS[kind], url: gen3dUrl(name) };
 
-// The capitals' close-up cut: Daniel Andersson's Imperial II, Home One and
-// Nebulon-B (scripts/sketchfab-galaxy.mjs, `hq`), about 100k triangles with
+// The capitals' close-up cut: Daniel Andersson's Imperial II and Nebulon-B
+// (scripts/sketchfab-galaxy.mjs, `hq`), about 100k triangles with
 // 2K maps, which hold up with a fighter flying along their hulls. Only a
 // desktop with a graphics card loads them (detail high or ultra); a laptop
 // or a phone keeps the lighter ones. Each has its own far-off copy, since
-// the old one's, fitted to the new hull's box, would sit wrong on it. The
+// the old one's, fitted to the new hull's box, would sit wrong on it
+// (scripts/galaxy-lod.mjs hq/<kind>). The
 // battles' subsystems, batteries and hulls (universe/wars.js) are shares of
 // the ship's length, so they hold on either cut. nose: as each comes.
 export const HQ = {
-  destroyer: { nose: 0 },
-  moncal: { nose: 0 },
-  nebulon: { nose: 0 },
+  destroyer: { url: '/models/galaxy/hq/destroyer.glb', nose: 0 },
+  nebulon: { url: '/models/galaxy/hq/nebulon.glb', nose: 0 },
 };
 const HQ_DETAILS = new Set(['high', 'ultra']);
 export const withHq = (models, detail) =>
   HQ_DETAILS.has(detail)
-    ? { ...models, ...Object.fromEntries(Object.entries(HQ).filter(([k]) => models[k]).map(([k, d]) => [k, { url: `/models/galaxy/hq/${k}.glb`, nose: d.nose, hq: true }])) }
+    ? { ...models, ...Object.fromEntries(Object.entries(HQ).filter(([k]) => models[k]).map(([k, d]) => [k, { url: d.url, nose: d.nose, hq: true }])) }
     : models;
 Object.assign(MODELS, withHq(MODELS, device().detail));
 

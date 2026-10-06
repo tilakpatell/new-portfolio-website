@@ -41,21 +41,18 @@ The design is `docs/superpowers/specs/2026-10-06-fleet-war-design.md` and the pl
     - batteries on the hulls as targets.
   - The crews have galaxy lines for all of it.
 
+- **PR C: the capitals’ close-up cut.** A desktop with a graphics card (detail high or ultra) flies Daniel Andersson’s Imperial II (84k triangles) and Nebulon-B (100k) in place of the lighter ones, each with its own far-off copy (`galaxy/models.js` `HQ`, `withHq`; `scripts/sketchfab-galaxy.mjs destroyerhq nebulonhq`; `scripts/galaxy-lod.mjs hq/destroyer hq/nebulon`). The Imperial II is imported barely metal and brightened (`metal`, `gain`), or its grey plates come out near black under one sun. Home One’s close-up cut was tried and left: the same Sketchfab model as `moncal`, it came out plainer in the battle than the 40k one. `SUBSYSTEMS`, `TURRETS` and `HULLS` are shares of the length and hold on both cuts (the shield generators’ markers sit at the domes).
+
 ## Left, in order
 
-1. **PR C: the high-quality Star Wars capitals.**
-   - Import Daniel Andersson's Imperial II (`b8bd2d35f7604670ab85242c06c6d280`), MC80 Home One (`9b5e5e5192f64a7faad93a3bfd2efaf2`) and Nebulon-B (`19b1b0126f8248c28ce38863413c30b8`) from Sketchfab, at about 100k triangles and 2K textures. Credit them.
-   - Use them on the high tier.
-   - Re-place `SUBSYSTEMS`, `TURRETS` and `HULLS` on them from screenshots.
-   - Done looks like: the `galaxy-war-check` screenshots show the new hulls, and the markers sit on the domes, the bridge and the reactor.
-2. **PR D: Rick and Morty's war.**
+1. **PR D: Rick and Morty's war.**
    - The Council's dreadnought and the Federation's battleship. Scout Sketchfab first, then Meshy.
    - Their subsystems.
    - `ready: true`. The war goes at its real places: the Citadel, C-137 and the Federation's.
    - Bring back a universe browser check: the front, auto-joined.
    - Done looks like: the check, flying the cruiser, plays a battle through.
-3. **PR E: Breaking Bad's war.** The same, for Gus's superlab barge and the cartel's hacienda.
-4. **Smaller:**
+2. **PR E: Breaking Bad's war.** The same, for Gus's superlab barge and the cartel's hacienda.
+3. **Smaller:**
    - Voice the new lines (`npm run voices`, which needs the ElevenLabs key).
    - Measure frame time with 64 fighters on a real graphics chip.
    - Consider instancing the far fighters if it's slow.

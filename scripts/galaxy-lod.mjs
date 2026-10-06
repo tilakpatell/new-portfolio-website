@@ -44,7 +44,7 @@ function kinds() {
   const models = readFileSync('src/components/galaxy/models.js', 'utf8');
   const at = models.indexOf('export const HQ = {');
   const hq = at < 0 ? '' : models.slice(at, models.indexOf('\n};', at));
-  for (const m of hq.matchAll(/^\s+(\w+): \{ nose/gm)) list.set(`hq/${m[1]}`, `/models/galaxy/hq/${m[1]}.glb`);
+  for (const m of hq.matchAll(/^\s+(\w+): \{ url: '([^']+\.glb)'/gm)) list.set(`hq/${m[1]}`, m[2]);
   return list;
 }
 
