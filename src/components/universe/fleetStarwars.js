@@ -768,13 +768,14 @@ function tiebomber(k) {
   for (const sx of [-1, 1]) L.push(part(new THREE.BoxGeometry(0.026, 0.01, 0.3), { at: [PX + sx * 0.0145, -r + 0.004, 0.02], rot: [0, 0, sx * 0.18], to: 'metal', color: '#3c4148' }));
   L.push(part(new THREE.BoxGeometry(0.03, 0.008, 0.16), { at: [PX, r - 0.002, -0.1], color: BOMBER_DARK }));
 
-  // an engine at each pod's tail, in its housing
-  for (const [x, rr] of [
-    [CX, 0.056],
-    [PX, 0.048],
+  // an engine at each pod's tail (the ordnance pod's a little shorter), in
+  // its housing
+  for (const [x, rr, dz] of [
+    [CX, 0.056, 0],
+    [PX, 0.048, 0.024],
   ]) {
-    L.push(part(turned([[rr * 0.5, -0.497], [rr * 0.72, -0.5], [rr * 0.94, -0.484], [rr * 1.04, -0.455], [rr * 0.98, -0.448]], 16), { at: [x, 0, x > 0 ? 0.024 : 0], to: 'metal', color: '#3a3f46' }));
-    L.push(part(new THREE.CircleGeometry(rr * 0.52, 16), { at: [x, 0, (x > 0 ? 0.024 : 0) - 0.497], rot: [0, PI, 0], to: 'glow', color: [2.6, 0.62, 0.22] }));
+    L.push(part(turned([[rr * 0.5, -0.497], [rr * 0.72, -0.5], [rr * 0.94, -0.484], [rr * 1.04, -0.455], [rr * 0.98, -0.448]], 16), { at: [x, 0, dz], to: 'metal', color: '#3a3f46' }));
+    L.push(part(new THREE.CircleGeometry(rr * 0.52, 16), { at: [x, 0, dz - 0.497], rot: [0, PI, 0], to: 'glow', color: [2.6, 0.62, 0.22] }));
   }
 
   // the bridge between the pods
@@ -854,7 +855,7 @@ function gunboat(k) {
   for (const sx of [-1, 1]) {
     L.push(part(loft([{ z: 0.0, pts: box8(0.03, 0.09, 0.01) }, { z: 0.2, pts: box8(0.03, 0.08, 0.01) }, { z: 0.33, pts: box8(0.016, 0.05, 0.006) }]), { at: [sx * 0.097, -0.012, 0], rot: [0, sx * 0.1, 0], color: LIGHT }));
   }
-  L.push(part(loft([scaled(trap8(0.222, 0.17, 0.176, 0.05, -0.006), 1.04, 1.04, -0.006), scaled(trap8(0.222, 0.17, 0.176, 0.05, -0.006), 1.04, 1.04, -0.006)].map((pts, i) => ({ z: 0.1 + i * 0.03, pts }))), { color: DARK }));
+  L.push(part(loft([0.1, 0.13].map((z) => ({ z, pts: sectionAt(body, z, 1.04) }))), { color: DARK }));
   // the canopy, its sides sunk into the hull so it sits down on the plating,
   // and the heavy bars of its frame
   const canopy = (z, yb, w, h) => ({ z, pts: [[w / 2, yb], [w / 2 - 0.01, yb + h * 0.66], [w * 0.24, yb + h], [-w * 0.24, yb + h], [-w / 2 + 0.01, yb + h * 0.66], [-w / 2, yb]] });
@@ -977,8 +978,8 @@ function ig2000(k) {
   L.push(part(turned([[0.0001, 0.462], [0.011, 0.466], [0.011, 0.478], [0.006, 0.482]], 8), { at: [-0.146, -0.016, 0], to: 'metal', color: '#2a2e2a' }));
 
   // the cockpit section between them, set a little to port: a raised
-  // module on a neck from the stern, its dark window wrapped round the nose
-  // and the droid's red sensor eye under it
+  // module on a neck from the stern, a dark visor over its nose and the
+  // droid's red sensor eye under it
   const CX = 0.016;
   const cab = [
     { z: -0.14, pts: trap8(0.12, 0.08, 0.09, 0.024, 0.036) },
@@ -988,8 +989,7 @@ function ig2000(k) {
     { z: 0.25, pts: trap8(0.05, 0.03, 0.04, 0.012, 0.028) },
   ];
   L.push(part(loft(cab), { at: [CX, 0, 0], color: LIGHT }));
-  const win = (sec, z) => ({ z, pts: scaled(sec.pts.slice(1, 5), 1.04, 1.06, 0.036) });
-  L.push(part(loft([win(cab[2], 0.16), win(cab[3], 0.222)]), { at: [CX, 0, 0], to: 'glass' }));
+  L.push(part(loft([0.16, 0.219].map((z) => ({ z, pts: sectionAt(cab, z, 1.05).slice(1, 5) }))), { at: [CX, 0, 0], to: 'glass' }));
   L.push(ball(0.008, [CX, 0.004, 0.25], [1.4, 1, 1], { to: 'glow', color: [6.5, 0.35, 0.25], mark: 'eye' }, 8));
   // a sensor dome on the cockpit, a mast to starboard
   L.push(part(upright(domeProfile(0.022, 0.014, 0.004), 12), { at: [CX + 0.03, 0.09, 0.02], to: 'metal', color: '#59615a' }));
@@ -1084,7 +1084,7 @@ function houndstooth(k) {
   );
   // (the flank runs from x 0.1596 at y 0.053 in to 0.1354 at y 0.123)
   const lean = atan2(0.1596 - 0.1354, 0.07);
-  const flank = (y, out) => [0.1596 - (y - 0.053) * Math.tan(lean) + out * cos(lean), y + out * sin(lean)];
+  const flank = (y, out) => [0.1596 - (y - 0.053) * (0.0242 / 0.07) + out * cos(lean), y + out * sin(lean)];
   for (const sx of [-1, 1]) {
     const [x1, y1] = flank(0.09, 0.0025);
     const [x2, y2] = flank(0.062, 0.0025);
@@ -1116,9 +1116,8 @@ function houndstooth(k) {
     { z: 0.5, pts: box8(0.064, 0.038, 0.013, 0.0) },
   ];
   L.push(part(loft(pod), { color: WHITE }));
-  const win = (sec, z) => ({ z, pts: scaled(sec.pts.slice(1, 5), 1.03, 1.06, 0.005) });
-  L.push(part(loft([win(pod[1], 0.42), win(pod[2], 0.476)]), { to: 'glass' }));
-  L.push(part(loft([pod[1], pod[1]].map((sec, i) => ({ z: 0.37 + i * 0.03, pts: scaled(sec.pts, 1.04, 1.07, 0.006) }))), { color: RED }));
+  L.push(part(loft([0.42, 0.474].map((z) => ({ z, pts: sectionAt(pod, z, 1.04).slice(1, 5) }))), { to: 'glass' }));
+  L.push(part(loft([0.37, 0.4].map((z) => ({ z, pts: sectionAt(pod, z, 1.05) }))), { color: RED }));
   // the gun turret under the belly, its twin cannons forward
   L.push(part(new THREE.CylinderGeometry(0.034, 0.04, 0.016, 14), { at: [0, -0.076, 0.06], color: GREY }));
   L.push(part(upright(domeProfile(0.032, 0.022), 14), { at: [0, -0.082, 0.06], rot: [PI, 0, 0], color: WHITE }));
@@ -1202,7 +1201,7 @@ function punishingone(k) {
     part(plateXZ([[-0.06, -0.06], [-0.12, -0.065], [-S + 0.02, -0.355], [-S + 0.02, -0.33], [-0.12, -0.035], [-0.04, 0.0]], 0.031), { color: TAN }),
     part(plateXZ([[-0.2, -0.448], [-S + 0.03, -0.465], [-S + 0.03, -0.42], [-0.2, -0.405]], 0.031), { to: 'metal', color: '#4d4640' }),
     part(plateZY([[-0.5, 0], [-0.33, 0], [-0.4, 0.13], [-0.49, 0.14]], 0.014, 0.004), { at: [-S, 0.0, 0], color: BROWN }),
-    part(plateZY([[-0.48, -0.0], [-0.36, 0], [-0.42, -0.06], [-0.48, -0.06]], 0.014, 0.004), { at: [-S, 0.0, 0], color: BROWN }),
+    part(plateZY([[-0.48, 0], [-0.36, 0], [-0.42, -0.06], [-0.48, -0.06]], 0.014, 0.004), { at: [-S, 0.0, 0], color: BROWN }),
     part(loft([{ z: -0.43, pts: box8(0.05, 0.05, 0.014) }, { z: -0.02, pts: box8(0.05, 0.05, 0.014) }]), { at: [-0.012, 0, 0], color: BROWN }),
   ];
   const eng = [-0.15, 0.006, 0];
