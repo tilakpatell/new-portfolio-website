@@ -293,6 +293,11 @@ def main():
     report = ["# The crews' references", "", "Made by `python scripts/voices/grab.py`. Listen to the candidates in `cache/grab/listen/<who>/`; put a wrong source or segment in the voice's `exclude` in sources.json, or choose your own with `--pick who=source@start`.", ""]
     for w in wanted:
         report += [f"## {w}", ""]
+        if w not in cents and w in picks:  # segments named by hand need no voiceprint to find them by
+            want = [(p.rpartition("@")[0], float(p.rpartition("@")[2])) for p in picks[w]]
+            named = [g for s, g in pool[w] if any(s["id"] == sid and abs(g["start"] - t) < 0.05 for sid, t in want)]
+            if named:
+                cents[w] = pick.centre([np.array(g["vp"]) for g in named])
         if w not in cents:
             msg = f"{w}: nothing to start from: no site clip of them and no utterance says one of their quotes. Add a clip, a quote or a search to sources.json."
             print(msg)
