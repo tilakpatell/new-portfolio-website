@@ -127,4 +127,20 @@ describe('the crews on foot', () => {
       }
     }
   });
+
+  it('have a word for each character of their side who comes by, and from them', async () => {
+    const { sideFor } = await import('./sides');
+    const { visitorsOf } = await import('./npcs/index');
+    for (const crew of CREWS) {
+      for (const c of visitorsOf(sideFor(crew.id).id)) {
+        for (const key of ['seen', 'hello', 'hit', 'leaving']) expect(linesFor(crew, 'npc', c.id, key), `${crew.id} ${c.id} ${key}`).toBeTruthy();
+        // a merchant names the part (Comms.jsx fills it in); an informant has a word for whatever's coming
+        if (c.brain === 'merchant') expect(linesFor(crew, 'npc', c.id, 'offer')?.some(([, text]) => text.includes('{part}')), `${crew.id} ${c.id} offer`).toBe(true);
+        if (c.brain === 'informant') {
+          expect(linesFor(crew, 'npc', c.id, 'tip', 'nothing-in-particular'), `${crew.id} ${c.id} tip`).toBeTruthy();
+          expect(linesFor(crew, 'npc', c.id, 'tip', 'hunt'), `${crew.id} ${c.id} tip hunt`).not.toBe(linesFor(crew, 'npc', c.id, 'tip', 'nothing-in-particular'));
+        }
+      }
+    }
+  });
 });

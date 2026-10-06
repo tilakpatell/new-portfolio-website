@@ -101,4 +101,21 @@ describe('the director', () => {
     d.soon('rift');
     expect(d.update(0.1, { side: SIDES.rickmorty, calm: true })).toBe('rift');
   });
+
+  it('can foretell what comes next, and then that is what comes, about when it said', () => {
+    for (const side of Object.values(SIDES)) {
+      const d = createDirector({ rand: seeded(5) });
+      run(d, 10, { side });
+      const told = d.foretell(side);
+      expect(EVENTS[told.id], side.id).toBeTruthy();
+      expect(canHave(side, EVENTS[told.id]), side.id).toBe(true);
+      expect(told.in).toBeGreaterThan(0);
+      // (asked again, the same answer)
+      expect(d.foretell(side).id).toBe(told.id);
+      const got = run(d, 200, { side });
+      expect(got[0].e, side.id).toBe(told.id);
+      expect(Math.abs(got[0].t - told.in), side.id).toBeLessThan(1);
+    }
+    expect(createDirector({ rand: seeded() }).foretell(null)).toBeNull();
+  });
 });

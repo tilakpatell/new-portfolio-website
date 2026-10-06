@@ -244,6 +244,11 @@ export default function Comms({ crew, reduced, control }) {
           else if (e.id === 'far' || e.id === 'nowhere') {
             if (often('edge', now)) say(linesFor(crew, 'foot', e.id));
           } else if (e.id !== 'off') say(linesFor(crew, 'foot', e.id, e.who), { urgent: e.id === 'squad' || e.id === 'down' || e.id === 'alt' });
+        } else if (e.type === 'npc') {
+          // a character on the radio (npcs/index.js): a merchant's part named in
+          // its offer, an informant's word keyed by what's coming
+          const lines = linesFor(crew, 'npc', e.id, e.key, e.sub);
+          if (lines) say(e.part ? lines.map(([who, text, clip]) => [who, text.replace('{part}', e.part), clip]) : lines, { urgent: e.key === 'hello' || e.key === 'tip' || e.key === 'offer' });
         } else if (e.type === 'wonder') {
           const key = `wonder:${e.id}`;
           if (said.current.has(key)) return;
