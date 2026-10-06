@@ -38,6 +38,7 @@ const DotMatrix = lazy(() => import('./pages/DotMatrix'));
 const Earth = lazy(() => import('./pages/Earth'));
 const Front = lazy(() => import('./pages/Front'));
 const Changes = lazy(() => import('./pages/Changes'));
+const Dickansh = lazy(() => import('./pages/Dickansh'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 const Hyperspace = lazy(() => import('./components/Hyperspace'));
@@ -336,6 +337,7 @@ function Shell() {
                 <Route path="/earth" element={<Earth />} />
                 <Route path="/universe/:id?" element={<Front />} />
                 <Route path="/changes" element={<Changes />} />
+                <Route path="/dickansh" element={<Dickansh />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               </WorldGate>

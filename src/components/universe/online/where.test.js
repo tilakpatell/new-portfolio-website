@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { UNIVERSE, cleanWhere, isFlight, ownCorner, placeName, whereOf } from './where';
+import { AWAY, UNIVERSE, cleanWhere, isFlight, ownCorner, placeName, whereOf } from './where';
 
 describe('whereOf', () => {
   it('keeps one place for the map and the experience page', () => {
@@ -76,5 +76,13 @@ describe('placeName', () => {
   });
   it('names the Citadel', () => {
     expect(placeName('/c-137/citadel')).toBe('the Citadel');
+  });
+});
+
+describe('a page on no map', () => {
+  it('tells the other pilots only that you are somewhere else', () => {
+    expect(whereOf('/dickansh')).toBe(AWAY);
+    expect(placeName(AWAY)).toBe('somewhere else');
+    expect(placeName(whereOf('/dickansh'))).not.toMatch(/dick/i);
   });
 });
