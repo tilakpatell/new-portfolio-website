@@ -85,7 +85,10 @@ describe('flying the ship', () => {
     const crash = fast.find((e) => e.type === 'crash');
     expect(crash.speed).toBeGreaterThan(SHIP.crash);
     expect(Math.hypot(...crash.normal)).toBeCloseTo(1, 6);
-    const slow = fly(at, { throttle: 0.3 }, 14).events;
+    // (long enough to reach it at 0.3 of cruise from where it parks, however big the planet's drawn)
+    const p = PLANETS.find((o) => o.id === 'marvel');
+    const gap = Math.hypot(park.x - p.at[0], park.y - p.at[1], park.z - p.at[2]) - p.r;
+    const slow = fly(at, { throttle: 0.3 }, gap / (0.3 * SHIP.cruise) + 6).events;
     expect(slow.some((e) => e.type === 'bump' && e.id === 'marvel')).toBe(true);
     expect(slow.some((e) => e.type === 'crash')).toBe(false);
   });

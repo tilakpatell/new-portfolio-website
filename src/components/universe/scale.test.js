@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HOME_SCALE, HOME_SPREAD, LENGTH } from './scale';
+import { HOME_SCALE, HOME_SPREAD, LENGTH, WORLD_SCALE } from './scale';
 import { LENGTH as SHIP_MODEL_LENGTH } from './shipModels';
 import { POSITIONS, SUN } from './layout';
 import { PLANETS, SHIP } from './ship';
@@ -7,6 +7,7 @@ import { TYPES } from './traffic';
 import { STAR_DESTROYER } from './setpieces';
 import { poseFor } from './poses';
 import { UNIVERSES } from './universes';
+import { WONDERS } from './deep';
 
 const stations = PLANETS.filter((p) => UNIVERSES.find((u) => u.id === p.id).kind === 'core');
 const worlds = PLANETS.filter((p) => {
@@ -21,6 +22,22 @@ describe('the home system against the ships (scale.js)', () => {
     expect(HOME_SPREAD).toBeCloseTo(Math.cbrt(HOME_SCALE), 9);
     // (universes.js writes HOME_SCALE out, having no imports: Home's base size is 0.6)
     expect(UNIVERSES.find((u) => u.id === 'home').size).toBeCloseTo(0.6 * 7 * HOME_SCALE, 9);
+    // (and WORLD_SCALE: Middle-earth's base size is 0.66; the gate keeps its own, 5.36 × 28)
+    expect(UNIVERSES.find((u) => u.id === 'middleearth').size).toBeCloseTo(0.66 * 28 * WORLD_SCALE, 9);
+    expect(UNIVERSES.find((u) => u.id === 'starwars').size).toBeCloseTo(5.36 * 28, 9);
+  });
+
+  it('keeps the sizes in order: ship, station, world, star', () => {
+    const smallestWorld = Math.min(...worlds.map((w) => w.r));
+    const biggestWorld = Math.max(...worlds.map((w) => w.r));
+    const biggestStation = Math.max(...stations.map((s) => s.r));
+    // a world about four times a station across (it was 3.7 before the stations grew; 1.25 between)
+    expect(smallestWorld / biggestStation).toBeGreaterThan(3.5);
+    expect((2 * smallestWorld) / LENGTH).toBeGreaterThan(350);
+    // and every deep-space star bigger than every world
+    const stars = WONDERS.filter((w) => w.kind === 'star');
+    expect(stars.length).toBeGreaterThan(0);
+    for (const s of stars) expect(s.r, s.id).toBeGreaterThan(biggestWorld);
   });
 
   it('draws every station far bigger than the ship, and the sun bigger again', () => {
