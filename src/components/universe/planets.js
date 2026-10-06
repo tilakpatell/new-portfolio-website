@@ -17,6 +17,7 @@
 // a planet whose model never arrives simply goes without. The sun is sun.js's.
 //
 // loadTextures({ small }) → the textures (any that fail are just missing)
+// upgradeMaps(T, id) → a planet's own maps at their full size, once it's near
 // mapFile(name, level) → the file for a planet map at lib/detail's level
 // buildPlanet(u, T) → { id, radius, group, update(t, camera), setState, mount }
 
@@ -73,8 +74,29 @@ export function mapFile(name, level = 'high') {
   return `${name}${suffix}.webp`;
 }
 
+// Which planet a map is on: the fandoms' own maps (Earth's are the travel
+// planet's), or null for the sky, the sun and the stations' metal
+const FANDOM_MAPS = new Set(['music', 'middleearth', 'marvel', 'breakingbad', 'caribbean', 'office', 'rickmorty', 'transformers', 'invincible']);
+export function mapPlanet(name) {
+  const id = name.split('-')[0];
+  return id === 'earth' ? 'travel' : FANDOM_MAPS.has(id) ? id : null;
+}
+
+// The file a planet's own map starts at while the planet's far (its -sm
+// copy), or null where it starts at its own size anyway (a phone, or a map
+// with one size, or no one planet's). From the home system the fandoms'
+// planets are a few pixels across, their maps sampled a mip level or two
+// above the smallest: the -sm copy draws them the same, at a quarter of
+// the bytes; upgradeMaps swaps in the full size as one comes near (nearby.js)
+export function farFile(name, level = 'high') {
+  if (!mapPlanet(name)) return null;
+  const far = mapFile(name, 'mid');
+  return far !== mapFile(name, level) ? far : null;
+}
+
 export async function loadTextures({ small = false, level = small ? 'mid' : detailLevel() } = {}) {
   const T = { small }; // (and whether this is a phone, for the builders)
+  const later = new Map(); // name → { file, fallback, colour }: the size it's wanted at, once its planet's near
   const get = async (name, file, colour, fallback = null) => {
     try {
       // (decoded off the main thread, as sharp as the device's tier allows,
@@ -86,13 +108,40 @@ export async function loadTextures({ small = false, level = small ? 'mid' : deta
     }
   };
   await Promise.all(
-    Object.entries(MAPS).map(([name, { colour }]) => {
+    Object.entries(MAPS).map(async ([name, { colour }]) => {
       const file = mapFile(name, level);
       const standard = mapFile(name, 'high');
-      return get(name, file, colour, file !== standard ? standard : null);
+      const fallback = file !== standard ? standard : null;
+      const far = farFile(name, level);
+      if (!far) return get(name, file, colour, fallback);
+      await get(name, far, colour, file);
+      // (a copy: the full size goes into it later, and the cached -sm map
+      // stays as it is for whatever else draws it)
+      if (T[name]) T[name] = T[name].clone();
+      later.set(name, { file, fallback, colour });
     }),
   );
+  Object.defineProperty(T, 'later', { value: later }); // (not one of the maps)
   return T;
+}
+
+// A planet come near: its own maps at the size the device wants (the
+// standard file on a desktop, -hq on a strong card), put into the textures
+// its materials already hold, so nothing else changes. Resolves once
+// they're in (and at once for a planet with nothing waiting)
+export function upgradeMaps(T, id) {
+  const names = [...(T.later?.keys() ?? [])].filter((n) => mapPlanet(n) === id);
+  return Promise.all(
+    names.map(async (name) => {
+      const { file, fallback, colour } = T.later.get(name);
+      T.later.delete(name);
+      const fresh = await loadTexture(BASE + file, { color: colour }).catch(() => (fallback ? loadTexture(BASE + fallback, { color: colour }).catch(() => null) : null));
+      const tex = T[name];
+      if (!fresh || !tex) return;
+      tex.source = fresh.source;
+      tex.needsUpdate = true;
+    }),
+  );
 }
 
 // ── Shared pieces ──
@@ -1446,12 +1495,16 @@ const MODELS = [
   ['starwars', '/models/universe/star-destroyer.glb', 'escort2'],
 ];
 
-// Load the models one by one, handing each over as it arrives; a model that
-// fails is skipped.
-export function loadModels(onModel) {
+// the planets that have models of their own
+export const MODEL_PLANETS = [...new Set(MODELS.map(([id]) => id))];
+
+// Load a planet's models (`ids`: the planets'; every one's without),
+// handing each over as it arrives; a model that fails is skipped. The
+// scene asks for a planet's as it comes near (nearby.js)
+export function loadModels(onModel, ids = null) {
   const loader = gltfLoader();
   return Promise.all(
-    MODELS.map(([id, url, spot]) =>
+    MODELS.filter(([id]) => !ids || ids.includes(id)).map(([id, url, spot]) =>
       loader
         .loadAsync(url)
         .then((g) => onModel(id, g.scene, spot))
