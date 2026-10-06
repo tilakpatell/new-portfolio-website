@@ -18,8 +18,10 @@ import { SHIP } from './ship';
 
 export const POSES = {
   overview: { view: 'map', at: [0, SHIP.height, HOME_RADIUS + 1.5], heading: 0 },
-  // three-quarter on, the home sun right behind it
-  'falcon-sun': { sunward: 76, back: 1.2, side: 0.2, rise: 0.1, turn: Math.PI / 4 },
+  // three-quarter on and from a little above, the home sun right behind it:
+  // out between the stations' ring and the belt, raised `up` radians so the
+  // eye looks down across the ship's top, the sun's edge in frame
+  'falcon-sun': { sunward: 110, up: 0.3, back: 1.2, side: 0.2, turn: Math.PI / 4 },
   'middleearth-limb': { planet: 'middleearth', dist: 1.75, off: 0.5 },
   rickmorty: { planet: 'rickmorty', dist: 2.4, off: 0 },
   gaming: { planet: 'gaming', dist: 2.4, off: 0 },
@@ -65,11 +67,12 @@ export function poseFor(name, { positions = POSITIONS, sun = SUN.at, reach = REA
   if (p.view === 'map') return { name, view: 'map', at: p.at, heading: p.heading, eye: null, look: null };
   if (name === 'falcon-sun') {
     // out from the sun a way, the eye further out on the same line (a
-    // little aside and above), so the ship's against the sun
-    const away = unit([0.6, 0, 0.8]);
+    // little aside), so the ship's against the sun
+    const level = unit([0.6, 0, 0.8]);
+    const away = add(level.map((v) => v * Math.cos(p.up)), UP, Math.sin(p.up));
     const at = add(sun, away, p.sunward);
-    const eye = add(add(add(at, away, p.back), turnY(away, Math.PI / 2), p.side), UP, p.rise);
-    return { name, at, heading: headingOf(turnY(away, Math.PI + p.turn)), eye, look: at };
+    const eye = add(add(at, away, p.back), turnY(level, Math.PI / 2), p.side);
+    return { name, at, heading: headingOf(turnY(level, Math.PI + p.turn)), eye, look: at };
   }
   if (name === 'belt') {
     const at = [p.ring * Math.cos(p.angle), 0, p.ring * Math.sin(p.angle)];

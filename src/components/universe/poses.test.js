@@ -66,6 +66,10 @@ describe('the fixed poses', () => {
     const toSun = norm(sub(SUN.at, p.eye));
     expect(dot(toShip, toSun)).toBeGreaterThan(0.97);
     expect(len(sub(p.eye, p.at))).toBeLessThan(2);
+    // clear of the belt's rocks (above them, inside the ring), looking down a little
+    expect(Math.hypot(p.at[0], p.at[2])).toBeLessThan(BELT.inner);
+    expect(p.at[1]).toBeGreaterThan(BELT.height);
+    expect(p.eye[1]).toBeGreaterThan(p.at[1]);
   });
 
   it('says where the map view and the landing are', () => {
