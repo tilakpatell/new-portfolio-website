@@ -4533,6 +4533,11 @@ export async function create(canvas, ctx) {
       held: state.held?.name ?? null,
       pose: holdPose,
       frames, // (resolves after n more frames, each one drawn)
+      // a blast `ahead` units in front of your ship, `size` across (to see one at a pose)
+      blast: (size = 0.6, ahead = 1.5) => {
+        const sh = state.ship;
+        if (sh) burn(new THREE.Vector3(sh.x - Math.sin(sh.heading) * ahead, sh.y + 0.3, sh.z - Math.cos(sh.heading) * ahead), size);
+      },
     });
   }
 

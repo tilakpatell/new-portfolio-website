@@ -1,4 +1,5 @@
-// What burns: a ship shot down goes up in a fireball that swells, cools from
+// What burns: a ship shot down goes up in a fireball that swells to 2.2
+// times its size across, cools from
 // white through orange to smoke and is gone in 1.4 s, with shards of it
 // flung out tumbling and, for anything bigger than a fighter, a ring of
 // light running out. Pooled: a few blasts made once and reused, so a fight
@@ -31,7 +32,8 @@ const smooth = (a, b, x) => {
 export function explosionPlan(size, tint = null, t = 0) {
   // swells fast and keeps a little growth as it burns out
   const swell = 1 - (1 - Math.min(1, t / SWELL)) ** 3;
-  const radius = 2.2 * size * swell * (1 + 0.15 * smooth(SWELL, LIFE, t));
+  // (2.2 times its size across: a fighter's is a few of your ships wide)
+  const radius = 1.1 * size * swell * (1 + 0.15 * smooth(SWELL, LIFE, t));
   // white, to orange (a third of the way to its tint) by 0.45 s, to smoke by 1.4 s
   const hot = tint ? mix3(ORANGE, tint, 0.35) : ORANGE;
   const colour = t < 0.45 ? mix3(WHITE, hot, smooth(0.05, 0.45, t)) : mix3(hot, SMOKE, smooth(0.45, LIFE, t));
