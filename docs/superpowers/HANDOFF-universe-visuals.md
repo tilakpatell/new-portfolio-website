@@ -93,6 +93,11 @@ Scorecard (the spec’s “Where things stand” table is the before): fill in t
   - *`low` is pop from the start*, as the spec’s table has it, as well as after `lowerQuality` and from the pace’s step 2.
   - *`__universe().blast(size, ahead)`* (DEV) sets one off in front of your ship, to see one at a pose: three draws while it plays at falcon-sun.
   - *The galaxy’s `fx.js` is left to call it* in its own lane: a line in `HANDOFF-galaxy-upgrade.md` says where it is.
+- **Checkpoint 8:**
+  - *At noon a landing’s sky is the one set for it*: `skyAt` moves each hand-set colour by as much as its air’s own colours move from noon (`skyColoursFor`, the air marched from the ground), so at noon nothing shifts (the plan’s “within 0.15” is met exactly) and toward sunset the horizon warms and the sun reddens, as that air does.
+  - *A warm air’s sun goes bluer at sunset*, as Mars’s does: Music’s air is orange, and scatters red most. Its sky at noon is unchanged.
+  - *`createSky(sky, haze, { air })`*: the horizon’s haze keeps the planet’s rim colour, as it was; the air is a third argument.
+  - *The landing’s sun has the first flare by day* (its disc 0.032 rad across), with no occluder: a landing has no solids list, and by night the flare goes with the day sky (`sky.day`).
 
 ## Checking it
 
