@@ -44,12 +44,22 @@ export const FOOT = {
 // who comes after a crew on the ground: the Federation's troops (which
 // side's come is sides.js's `squads`)
 export const TROOPS = {
-  gromflomite: { tall: 1.95 * METRE, hp: 2, speed: 2.2 * METRE, fire: [1.3, 2.4], range: [9, 14], spread: 0.09, damage: 9 },
-  cop: { tall: 1.9 * METRE, hp: 3, speed: 2.6 * METRE, fire: [1.1, 2.0], range: [8, 12], spread: 0.07, damage: 11 },
-  gazorpian: { tall: 2.6 * METRE, hp: 6, speed: 3.4 * METRE, fire: null, range: [0, 1.2], spread: 0, damage: 18 }, // no gun: it charges, and hits
+  gromflomite: { name: 'Gromflomite', tall: 1.95 * METRE, hp: 2, speed: 2.2 * METRE, fire: [1.3, 2.4], range: [9, 14], spread: 0.09, damage: 9 },
+  cop: { name: 'Federation cop', tall: 1.9 * METRE, hp: 3, speed: 2.6 * METRE, fire: [1.1, 2.0], range: [8, 12], spread: 0.07, damage: 11 },
+  gazorpian: { name: 'Gazorpian', tall: 2.6 * METRE, hp: 6, speed: 3.4 * METRE, fire: null, range: [0, 1.2], spread: 0, damage: 18 }, // no gun: it charges, and hits
   // and Albuquerque's (sides.js): DEA agents, steady, and the cartel's gunmen, who come close
-  dea: { tall: 1.85 * METRE, hp: 3, speed: 2.5 * METRE, fire: [1.0, 1.9], range: [9, 13], spread: 0.06, damage: 11 },
-  cartel: { tall: 1.8 * METRE, hp: 2, speed: 2.9 * METRE, fire: [0.9, 1.6], range: [6, 10], spread: 0.11, damage: 9 },
+  dea: { name: 'DEA agent', tall: 1.85 * METRE, hp: 3, speed: 2.5 * METRE, fire: [1.0, 1.9], range: [9, 13], spread: 0.06, damage: 11 },
+  cartel: { name: 'Cartel gunman', tall: 1.8 * METRE, hp: 2, speed: 2.9 * METRE, fire: [0.9, 1.6], range: [6, 10], spread: 0.11, damage: 9 },
+  jackscrew: { name: 'Jack’s crew', tall: 1.85 * METRE, hp: 3, speed: 2.4 * METRE, fire: [1.2, 2.2], range: [8, 13], spread: 0.1, damage: 12 },
+  // the Empire's: stormtroopers (they miss, but there are a lot of them),
+  // scout troopers (quick, closer in), and a probe droid that hangs back
+  // out of reach and, once it's had you in sight `calls` seconds, calls a
+  // squad in (march's `calls`)
+  stormtrooper: { name: 'Stormtrooper', tall: 1.83 * METRE, hp: 2, speed: 2.3 * METRE, fire: [0.8, 1.5], range: [9, 14], spread: 0.13, damage: 9 },
+  scout: { name: 'Scout trooper', tall: 1.8 * METRE, hp: 2, speed: 3.4 * METRE, fire: [0.9, 1.6], range: [6, 10], spread: 0.09, damage: 8 },
+  probe: { name: 'Probe droid', tall: 2.2 * METRE, hp: 3, speed: 2.0 * METRE, fire: null, range: [16, 20], spread: 0, damage: 0, calls: 8 },
+  // Evil Morty's guard: Mortys, quick and wild
+  mortyguard: { name: 'Morty guard', tall: 1.6 * METRE, hp: 1, speed: 3.0 * METRE, fire: [0.7, 1.3], range: [7, 11], spread: 0.14, damage: 8 },
 };
 
 // how big each ship is parked, against the people who fly it (in flight
@@ -288,12 +298,16 @@ function troopsFrom(rand, w, R, count, dist, kinds) {
 // fires (or, without a gun, closes in and hits). One with a gun brings it
 // up as a target comes within reach (`aim`, 0…1: up in a quarter of a
 // second, down in half of one once they've gone), for the drawing to read.
-// Returns { troops, shots, hits }: shots are new bolts ({ from, dir, owner:
+// A troop that `calls` (a probe droid) never closes in nor fires: once it's
+// had a target in sight that many seconds, it calls a squad in, once.
+// Returns { troops, shots, hits, calls }: calls are [{ by (the troop), n
+// (where it is) }]; shots are new bolts ({ from, dir, owner:
 // 'troop', kind, damage, by (the trooper), range (to what it's aimed at) }),
 // hits are blows landed ({ target, damage }).
 export function march(troops, targets, dt, R, rand, obstacles = []) {
   const shots = [];
   const hits = [];
+  const calls = [];
   const out = troops.map((t) => {
     if (!t.alive) return { ...t, dead: t.dead + dt };
     const spec = TROOPS[t.kind];
@@ -316,6 +330,13 @@ export function march(troops, targets, dt, R, rand, obstacles = []) {
     const move = bd > hold ? 1 : bd < hold * 0.6 ? -0.6 : 0;
     const strafe = bd <= hold && spec.fire ? Math.sin(t.id * 1.7 + (t.swing += dt) * 0.9) * 0.8 : 0;
     const next = walk(t, { move, strafe, turn, speed: move > 0 ? spec.speed : FOOT.back }, dt, R, obstacles);
+    if (spec.calls) {
+      // (a probe: watching from its distance, and calling them in)
+      const watched = bd <= hold * 1.5 ? (t.watched ?? 0) + dt : (t.watched ?? 0);
+      const called = Boolean(t.called) || watched > spec.calls;
+      if (called && !t.called) calls.push({ by: t.id, n: next.n });
+      return { ...next, cool: t.cool, swing: t.swing, aim: 0, watched, called };
+    }
     const engaged = Boolean(spec.fire) && bd <= hold * 1.5;
     const aim = clamp((t.aim ?? 0) + (engaged ? dt / 0.25 : -dt / 0.6), 0, 1);
     let cool = t.cool - dt;
@@ -333,7 +354,7 @@ export function march(troops, targets, dt, R, rand, obstacles = []) {
     }
     return { ...next, cool: Math.max(cool, -0.5), swing: t.swing, aim };
   });
-  return { troops: out, shots, hits };
+  return { troops: out, shots, hits, calls };
 }
 
 // ── Bolts ──

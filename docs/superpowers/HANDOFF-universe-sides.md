@@ -36,22 +36,26 @@ Lanes B and C are left).
   (Hank's SUV: the HUD whites out a moment and Walt and Jesse say so).
   The bomber, the holdoff and the flicker wait for their kinds (B2).
 
+- Lane B2, the rest of the ships, built in code: Star Wars (TIE bombers,
+  an assault gunboat, IG-88's IG-2000, Bossk's Hound's Tooth, Dengar's
+  Punishing One, Weequay skiffs; Y-wings and A-wings on your wing, from the
+  galaxy's builders and GLBs), Rick and Morty (gunships, Morty fighters,
+  Evil Morty's ship, the Zigerions, Krombopulos Michael, Squanchy, Mr.
+  Poopybutthole, a Federation cruiser), Breaking Bad (balloons, Badger's
+  beater, Gus's Volvo, the DEA helicopter over the roadblock, a Madrigal
+  freighter as the capital ship). Every side has a capital ship now.
+
+- Lane B3, troops per side: stormtroopers, scout troopers and a probe
+  droid that calls a squad in (Star Wars, built); Evil Morty's guard (the
+  cast's Morty in yellow) with the Federation's; the DEA in Hank's figure,
+  the cartel in Tuco's, Jack's crew built (Breaking Bad).
+
 ## Left (in order; the plan has the detail)
 
-1. **Lane B2, the rest of the ships**: Star Wars (`tiebomber`, `gunboat`,
-   IG-88, Bossk, Dengar, pirate skiffs, Y-wings and A-wings from the
-   galaxy's GLBs), Rick and Morty (gunships, Morty fighters, Evil Morty's
-   ship, the Zigerions, Krombopulos Michael, Squanchy, Mr. Poopybutthole, a
-   Federation cruiser), Breaking Bad (balloons, the roadblock as a set
-   piece with a helicopter, the Madrigal freighter jumping in). Each is a
-   `sides.js` row plus a builder; `sides.test.js` keeps every name honest.
-2. **Lane B3, troops per side**: stormtroopers and scouts for Star Wars,
-   Evil Morty's guard, Albuquerque's figures (`public/models/albuquerque/`:
-   check they're on the Meshy skeleton) for the DEA and the cartel.
-3. **Lane C, NPCs with brains**: `npcRules.js`, the five brains, the
+1. **Lane C, NPCs with brains**: `npcRules.js`, the five brains, the
    registry (`universe/npcs/`), Saul, Mike, Fett, Birdperson, Squanchy and
    Evil Morty as characters with lines and relations.
-4. The car builders are first drafts (`fleetBreakingbad.js`): the wings'
+2. The car builders are first drafts (`fleetBreakingbad.js`): the wings'
    fins and the glass bands could be better shaped; a pass with the
    threejs-aaa-graphics-builder skill would help.
 
@@ -66,10 +70,14 @@ Lanes B and C are left).
   `hunters.pack('cousins', state.ship, { size: 1 })`,
   `wingmen.join('saulcaddy', state.ship, 2)`,
   `leviathans.pass(state.ship, { leviathan: 'bear' })`, `traffic.convoy(state.ship)`.
-- To see every car at once: a page at the project root that imports
-  `/src/components/universe/trafficModels.js` and calls `buildTraffic(kind)`
-  for each of `fleetBreakingbad.js`'s `FLEET` keys (the session's harness
-  was `cars-check.html`, not kept).
+- To see every ship at once: a page at the project root that imports
+  `/src/components/universe/trafficModels.js` and lays out `buildTraffic(kind)`
+  for each kind asked for (this session's was `ships.local.html?kinds=…&view=three|side|top`,
+  kept out of git with `.git/info/exclude`; not committed).
+- The troops: land on a planet and walk out (or `startFoot` from
+  `window.__universeDebug`); the first squad comes in thirty-odd seconds.
+- A capital ship or the helicopter: `director.soon('destroyer')` (any
+  crew), `director.soon('roadblock')` (the RV).
 - A trait in the browser: `hunters.pack('dea', state.ship, { size: 3, ace: true })`
   and Hank's SUV pins you (`state.static` goes up, the HUD whites out);
   `hunters.pack('cousins', state.ship, {})` sits on you without a shot till

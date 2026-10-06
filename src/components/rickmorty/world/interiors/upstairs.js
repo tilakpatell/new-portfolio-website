@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { AREAS, FURNITURE, INNER_WALLS, PEOPLE, RUGS } from '../rules';
 import { rng, speckle } from '../kit';
 import { BOX, CYL8, casing, ceilingLights, DOOR_H, doorway, fitText, floors, framed, grainOf, innerWalls, lathe, makeRoom, PLANE, roomAt, TAU, tiledPaint, tintedCeilings, wallLine, wallRun, win, windowView } from './shell';
-import { needCast, person } from './people';
+import { needCast, onEntry, person, seatOwn } from './people';
 import { CREAM, HEIGHTS, HOUSE_LIGHT, INNER, LOOKS, TRIM, WOOD_FLOOR, bed, carpet, desk, dresser, woodFloor } from './furniture';
 import { BOOKS_MORTY, bookcase, chair, domeLight, jacket, mortyBed, mortyDesk, nightstand, openDoor, P, wallShelf } from './smiths';
 import { mortyCells } from './smithpaint';
@@ -107,6 +107,18 @@ export async function buildUpstairs(kit) {
   const s = PEOPLE.find((p) => p.id === 'summer');
   const sum = person(R, 'summer', { ...s, h: HEIGHTS.summer, look: LOOKS.summer });
   phoneIn(R, sum);
+
+  // Summer's sleepover: Nancy and Tricia side by side on the edge of her bed
+  // (the multiverse's Phase 2), fetched the first time Morty's upstairs, drawn
+  // a tenth over life as the Smiths are, each left out if she won't load
+  const bedTop = FURNITURE.find((f) => f.id === 'bed-summer').h;
+  onEntry(R, () => {
+    for (const [id, h] of [
+      ['nancy', 1.75],
+      ['tricia', 1.78],
+    ])
+      seatOwn(R, id, PEOPLE.find((p) => p.id === id), { h, seatY: bedTop + 0.06 });
+  });
 
   return R.build({ light: { ...HOUSE_LIGHT, background: 0x1e1712 }, grain });
 }

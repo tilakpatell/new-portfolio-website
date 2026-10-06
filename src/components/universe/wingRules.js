@@ -31,7 +31,10 @@ import { alliesOf } from './sides';
 
 // how each kind of friend flies (sides.js's allies, every side's): top
 // speed, how quick its nose is, seconds between shots (a range), how true
-// they are (radians off, each way)
+// they are (radians off, each way); and, for some, what a bolt is worth
+// (`damage`: a Y-wing's hit hard), how long they form up on you with nobody
+// to fight (`stay`, WING.stay's otherwise) and how long they help before
+// going whatever's on (`tour`: an A-wing strafes and is off)
 export const WING_KINDS = alliesOf(null);
 export const WING = {
   from: 34, // map units behind you they come in from
@@ -62,6 +65,9 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16, solids =
   let nextId = 1;
   let idle = 0; // seconds with nobody to fight
   let leaving = false;
+  let stay = WING.stay; // (the wing that joined last's: how long it forms up with nobody to fight)
+  let tour = Infinity; // and how long it helps before it goes anyway
+  let touring = 0; // seconds since it joined
   let fired = 0; // shots, all told (for checking)
   const yourVel = [0, 0, 0];
   const dir = [0, 0, -1];
@@ -118,6 +124,7 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16, solids =
     b.vz = (az / l) * speed;
     b.life = WING.life;
     b.target = t.id;
+    b.damage = w.type.damage ?? 1;
     w.cool = between(rand, w.type.fire);
     fired += 1;
   };
@@ -133,6 +140,9 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16, solids =
       const f = nose(ship);
       leaving = false;
       idle = 0;
+      stay = type.stay ?? WING.stay;
+      tour = type.tour ?? Infinity;
+      touring = 0;
       // (any still about are called back, and the new ones take the slots behind them)
       for (const w of live) w.gone = 0;
       const already = live.length;
@@ -164,12 +174,14 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16, solids =
       for (const w of live) if (w.alive) alive.push(w);
       const fighting = targets.length > 0 && Boolean(ship);
       idle = fighting ? 0 : idle + dt;
+      touring += dt;
+      const done = touring > tour; // (its passes made: it's off, fight or no fight)
       // flying off, and someone comes at you again: back they come
-      if (leaving && ship && alive.length && targets.some((o) => o.threat > 0)) {
+      if (leaving && !done && ship && alive.length && targets.some((o) => o.threat > 0)) {
         leaving = false;
         for (const w of alive) w.gone = 0;
       }
-      if (!leaving && alive.length && (!ship || idle > WING.stay)) {
+      if (!leaving && alive.length && (!ship || idle > stay || done)) {
         leaving = true;
         ev.push({ type: 'leaving' });
       }
@@ -313,7 +325,7 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16, solids =
           p0.z = t.at.z - t.vel.z * dt;
           if (sweptHit(from, b, p0, t.at, r) !== null) {
             b.on = false;
-            hits.push({ id: t.id, damage: 1, at: { x: b.x, y: b.y, z: b.z } });
+            hits.push({ id: t.id, damage: b.damage ?? 1, at: { x: b.x, y: b.y, z: b.z } });
             break;
           }
         }

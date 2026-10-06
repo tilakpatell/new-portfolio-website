@@ -40,9 +40,11 @@ describe('the director', () => {
       for (let i = 1; i < got.length; i++) expect(got[i].e).not.toBe(got[i - 1].e);
       const kinds = new Set(got.map((g) => g.e));
       for (const id of ['hunt', 'distress', 'convoy', 'bounty', 'leviathan']) expect(kinds.has(id), `${side.id} ${id}`).toBe(true);
-      if (side.id === 'starwars') expect(kinds.has('destroyer') && !kinds.has('council') && !kinds.has('roadblock')).toBe(true);
-      else if (side.id === 'rickmorty') expect(kinds.has('council') && !kinds.has('destroyer') && !kinds.has('roadblock')).toBe(true);
-      else expect(kinds.has('roadblock') && !kinds.has('council') && !kinds.has('destroyer')).toBe(true);
+      // (every side has a capital ship now: a Star Destroyer, a Federation cruiser, a Madrigal freighter)
+      expect(kinds.has('destroyer'), side.id).toBe(true);
+      if (side.id === 'starwars') expect(!kinds.has('council') && !kinds.has('roadblock')).toBe(true);
+      else if (side.id === 'rickmorty') expect(kinds.has('council') && !kinds.has('roadblock')).toBe(true);
+      else expect(kinds.has('roadblock') && !kinds.has('council')).toBe(true);
     }
   });
 
