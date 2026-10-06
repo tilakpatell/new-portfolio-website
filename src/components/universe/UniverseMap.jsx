@@ -354,7 +354,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {onFoot && footHint && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to walk, <kbd>Q</kbd> <kbd>E</kbd> to step aside, <kbd>Shift</kbd> to run, <kbd>Space</kbd> to jump, <kbd>F</kbd> or a click to fire, drag to look, <kbd>X</kbd> to switch, <kbd>V</kbd> their eyes, <kbd>G</kbd> back in, <kbd>Enter</kbd> into the world
+                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to walk, <kbd>Q</kbd> <kbd>E</kbd> to step aside, <kbd>Shift</kbd> to run, <kbd>Space</kbd> to jump, <kbd>F</kbd> or a click to fire, drag to look, <kbd>X</kbd> to switch, <kbd>B</kbd> Rick’s gadgets, <kbd>V</kbd> their eyes, <kbd>G</kbd> back in, <kbd>Enter</kbd> into the world
                     <GuideCue />
                   </span>
                   <span className="universe-hint-touch">Drag to walk, Jump, Run, Fire, Switch to play the other one, Ship to get back in, Enter to go into the world<GuideCue touch /></span>

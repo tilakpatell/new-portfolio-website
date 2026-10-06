@@ -193,6 +193,76 @@ export const GUNS = {
       k.point('muzzle', [0, 0.045, 0.172]);
     },
   },
+  // Rick's gadgets (B on foot cycles them, from the portal gun): each has
+  // its own bolt colour and hits harder than a blaster, because what it
+  // does to the one it kills is the point (lib/three/gadgetFx.js).
+  // The freeze ray: a fat white body, a frosted canister of the blue stuff
+  // on top, cooling fins down the barrel and a flared nozzle glowing cold
+  freeze: {
+    hands: 1,
+    support: true,
+    stock: false,
+    pitch: 0.14,
+    reach: 0.92,
+    rise: 0.15,
+    lateral: -0.15,
+    kick: { back: 0.4, up: 1.2 },
+    casing: false,
+    bolt: '#8fe6ff',
+    damage: 3,
+    flash: { color: '#a8ecff', size: 0.28 },
+    build(g, owned) {
+      const m = mats(owned);
+      const k = kit(g, owned);
+      const cold = m.glow('#5fd8ff', 2.4);
+      k.box(0.058, 0.064, 0.14, m.bone, [0, 0.042, 0.035]); // the body
+      k.box(0.05, 0.016, 0.12, m.grey, [0, 0.004, 0.04]); // its belly plate
+      k.drum(0.022, 0.07, m.glass('#c8f4ff'), [0, 0.1, 0.02], [Math.PI / 2, 0, 0]); // the canister
+      k.drum(0.016, 0.064, cold, [0, 0.1, 0.02], [Math.PI / 2, 0, 0]); // the blue in it
+      k.ring(0.023, 0.004, m.steel, [0, 0.1, -0.016]);
+      k.ring(0.023, 0.004, m.steel, [0, 0.1, 0.056]);
+      k.tube(0.012, 0.09, m.grey, [0, 0.045, 0.145]); // the barrel
+      for (let i = 0; i < 4; i++) k.tube(0.022, 0.006, m.steel, [0, 0.045, 0.11 + i * 0.018]); // the fins
+      k.cone(0.016, 0.03, 0.04, m.bone, [0, 0.045, 0.205]); // the nozzle
+      k.ball(0.016, cold, [0, 0.045, 0.218]);
+      k.tube(0.004, 0.08, m.glow('#8fe6ff', 1.6), [0.031, 0.06, 0.04]); // a light down the side
+      k.box(0.03, 0.085, 0.034, m.navy, [0, -0.03, -0.01], [0.26, 0, 0]).name = 'grip';
+      k.box(0.004, 0.02, 0.012, m.black, [0, 0.0, 0.03], [0.3, 0, 0]);
+      k.point('muzzle', [0, 0.045, 0.228]);
+    },
+  },
+  // The shrink ray: the old ray gun of the comics, red, a stack of rings
+  // narrowing to a dish at the front with a pink bulb in it, a dial on top
+  shrink: {
+    hands: 1,
+    support: true,
+    stock: false,
+    pitch: 0.16,
+    reach: 0.92,
+    rise: 0.16,
+    lateral: -0.15,
+    kick: { back: 0.45, up: 1.5 },
+    casing: false,
+    bolt: '#ff5ad8',
+    damage: 3,
+    flash: { color: '#ff7ae0', size: 0.24 },
+    build(g, owned) {
+      const m = mats(owned);
+      const k = kit(g, owned);
+      const red = m.glow('#c2262c', 0.15);
+      const pink = m.glow('#ff4fd8', 2.6);
+      k.ball(0.036, red, [0, 0.045, 0.02]).scale.set(1, 1, 1.5); // the body, an egg
+      k.cone(0.026, 0.012, 0.09, m.steel, [0, 0.045, 0.1]); // the barrel, narrowing
+      for (const [z, r] of [[0.075, 0.032], [0.1, 0.026], [0.125, 0.02]]) k.ring(r, 0.005, red, [0, 0.045, z]); // the rings
+      k.cone(0.008, 0.03, 0.022, m.steel, [0, 0.045, 0.155]); // the dish
+      k.ball(0.011, pink, [0, 0.045, 0.16]);
+      k.drum(0.012, 0.012, m.steel, [0, 0.085, 0.01]); // the dial
+      k.box(0.004, 0.006, 0.01, pink, [0, 0.092, 0.014]);
+      k.box(0.028, 0.08, 0.032, m.black, [0, -0.028, -0.01], [0.26, 0, 0]).name = 'grip';
+      k.box(0.004, 0.02, 0.012, m.steel, [0, 0.0, 0.03], [0.3, 0, 0]);
+      k.point('muzzle', [0, 0.045, 0.17]);
+    },
+  },
   // Walt's snub-nosed .38: a short barrel, the cylinder, a bobbed hammer,
   // and a rubber grip
   revolver: {
