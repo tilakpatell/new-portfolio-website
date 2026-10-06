@@ -103,6 +103,25 @@ def segment_score(sim, margin, ovrl, utmos, halves=None):
     return sim + 0.5 * margin + 0.15 * (ovrl - 3) + 0.1 * (utmos - 3) - split
 
 
+def stretches(seconds, size=1.5, hop=0.5):
+    """The overlapping stretches [(start, end), ...] a segment is checked a piece at a time in."""
+    if seconds <= size:
+        return [(0.0, seconds)]
+    n = int((seconds - size) / hop + 1e-9)
+    starts = [i * hop for i in range(n + 1)]
+    if starts[-1] + size < seconds - 1e-9:
+        starts.append(seconds - size)
+    return [(round(a, 3), round(a + size, 3)) for a in starts]
+
+
+def pure(sims, sim, floor=0.2, share=0.45):
+    """Whether a segment is the speaker all the way through: no stretch of it
+    (`sims`, each stretch's similarity to their voice) falls below `share` of
+    the whole segment's similarity `sim`, or below `floor`. A short line from
+    someone else at one end is lost in the whole segment's voiceprint, not in its stretch's."""
+    return min(sims, default=sim) >= max(floor, share * sim)
+
+
 def take_score(wer, sim, utmos, wps):
     """How good a take of a line is, or None when it isn't usable: wrong words
     (WER over a third) or a pace no one talks at (words per second)."""

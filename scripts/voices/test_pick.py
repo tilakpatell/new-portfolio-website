@@ -6,7 +6,7 @@ import unittest
 
 import numpy as np
 
-from pick import choose, excluded, identify, normal, quoted, refine, segment_score, take_score, uncensor, usable, utterances, video_id, windows
+from pick import choose, excluded, identify, normal, pure, quoted, refine, segment_score, stretches, take_score, uncensor, usable, utterances, video_id, windows
 
 
 def words(text, start=0.0, each=0.3, pauses=None):
@@ -86,6 +86,21 @@ class Scores(unittest.TestCase):
 
     def test_two_voices_in_one_segment_cost(self):
         self.assertLess(segment_score(0.7, 0.3, 3.0, 3.0, 0.1), segment_score(0.7, 0.3, 3.0, 3.0, 0.6))
+
+    def test_someone_else_in_one_stretch_makes_it_impure(self):
+        self.assertFalse(pure([-0.06, 0.6, 0.61, 0.83], 0.95))  # Summer's "You're not my brother?" before Morty
+
+    def test_one_voice_throughout_is_pure(self):
+        self.assertTrue(pure([0.6, 0.61, 0.83], 0.95))
+        self.assertTrue(pure([0.31, 0.35], 0.66))  # a noisier scene, judged against its own level
+        self.assertTrue(pure([], 0.8))
+
+    def test_stretches_cover_a_segment(self):
+        self.assertEqual(stretches(1.0), [(0.0, 1.0)])
+        got = stretches(4.0, size=1.5, hop=0.5)
+        self.assertEqual(got[0], (0.0, 1.5))
+        self.assertEqual(got[-1], (2.5, 4.0))
+        self.assertTrue(all(b - a == 1.5 for a, b in got))
 
     def test_a_take_with_wrong_words_is_rejected(self):
         self.assertIsNone(take_score(wer=0.5, sim=0.7, utmos=3.5, wps=2.5))

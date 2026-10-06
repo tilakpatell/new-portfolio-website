@@ -46,6 +46,7 @@ SR = 16000  # what the judge hears
 HI = 44100  # what the reference is made at (the separator's own rate)
 PAD = (0.1, 0.15)  # seconds kept before an utterance's first word and after its last
 ANALYSIS = 2  # bump when the per-segment numbers change, to work them out again
+CHECKED = 40  # candidates a voice checks a stretch at a time, best first
 
 
 def ytdlp(*args):
@@ -177,6 +178,19 @@ def analyse(src, vocals):
     return segs
 
 
+def stretched(c, vocals):
+    """A candidate's audio in overlapping stretches of a second and a half (pick.stretches)."""
+    wav = read(vocals[c["source"]], SR)[int(c["start"] * SR) : int(c["end"] * SR)]
+    return [wav[int(a * SR) : int(b * SR)] for a, b in pick.stretches(len(wav) / SR)]
+
+
+def table(rows, chosen):
+    return [
+        f"| {i} | `{name(c)}`{' **(chosen)**' if c in chosen else ''} | {c['end'] - c['start']:.1f} | {c['sim']:.2f} | {c['margin']:.2f} | {c['halves'] if c['halves'] is not None else '-'} | {c.get('purity', '-')} | {c['ovrl']:.2f} | {c['bak']:.2f} | {c['utmos']:.2f} | {c['score']:.2f} | {c['text'][:80]} |"
+        for i, c in enumerate(rows[:12], 1)
+    ]
+
+
 def name(c):
     return f"{c['source']}@{c['start']:.2f}".rstrip("0").rstrip(".")
 
@@ -241,9 +255,12 @@ def main():
     for sid, f in raw.items():
         vocals[sid] = sep(every[sid], f)
     if sep.sep:
+        import gc
+
         import torch
 
         sep.sep = None
+        gc.collect()
         torch.cuda.empty_cache()
     for n, sid in enumerate(vocals, 1):
         segments[sid] = analyse(every[sid], vocals[sid])
@@ -261,6 +278,8 @@ def main():
             if s.get("of") == w or q:
                 seeded[w].append((s, g, q))
         seeds[w] = [np.array(g["vp"]) for _, g, _ in seeded[w]]
+    import judge
+
     cents = pick.refine(seeds, {w: [(np.array(g["vp"]), g["end"] - g["start"]) for _, g in pool[w]] for w in voices})
 
     report = ["# The crews' references", "", "Made by `python scripts/voices/grab.py`. Listen to the candidates in `cache/grab/listen/<who>/`; put a wrong source or segment in the voice's `exclude` in sources.json, or choose your own with `--pick who=source@start`.", ""]
@@ -278,6 +297,15 @@ def main():
             cands.append({"source": s["id"], "title": s["title"], "start": g["start"], "end": g["end"], "text": g["text"], "sim": round(sim, 3), "margin": round(margin, 3), "halves": g["halves"], "ovrl": g["ovrl"], "bak": g["bak"], "utmos": g["utmos"], "clipped": g["clipped"], "score": round(score, 3)})
         cands.sort(key=lambda c: -c["score"])
         good = [c for c in cands if c["margin"] > 0.05 and c["clipped"] < 0.002 and c["end"] - c["start"] >= 1.5]
+        # the best of them a stretch at a time: a short line from someone else at one end
+        # hardly moves a segment's voiceprint, but the stretch it's in isn't the speaker
+        kept = []
+        for c in good[:CHECKED]:
+            sims = [float(judge.voiceprint(piece) @ cents[w]) for piece in stretched(c, vocals)]
+            c["purity"] = round(min(sims), 3)
+            if pick.pure(sims, c["sim"]):
+                kept.append(c)
+        good = kept
         if w in picks:
             want = [(p.rpartition("@")[0], float(p.rpartition("@")[2])) for p in picks[w]]
             chosen = sorted([c for c in cands if any(c["source"] == s and abs(c["start"] - t) < 0.05 for s, t in want)], key=lambda c: c["start"])
@@ -290,29 +318,40 @@ def main():
             print(msg)
             report += [msg, ""]
             continue
-        seconds, heard = build(w, chosen, vocals)
-        (REFS / f"{w}.json").write_text(json.dumps({"chosen": chosen, "heard": heard}, indent=1), encoding="utf-8")
+        same = [(c["source"], c["start"], c["end"]) for c in chosen]
+        before = json.loads((REFS / f"{w}.json").read_text(encoding="utf-8")) if (REFS / f"{w}.json").exists() else {}
+        if (REFS / f"{w}.wav").exists() and [(c["source"], c["start"], c["end"]) for c in before.get("chosen", [])] == same:
+            # the same segments as last time: keep the reference and its transcript (which may have been corrected)
+            seconds, heard = sum(c["end"] - c["start"] for c in chosen) + 0.25 * (len(chosen) - 1), (REFS / f"{w}.txt").read_text(encoding="utf-8").strip()
+        else:
+            seconds, heard = build(w, chosen, vocals)
+            (REFS / f"{w}.json").write_text(json.dumps({"chosen": chosen, "heard": heard}, indent=1), encoding="utf-8")
         print(f"{w}: {seconds:.1f}s from {chosen[0]['source']} ({chosen[0]['title'][:60]}), heard “{heard}”")
 
         listen = GRAB / "listen" / w
         shutil.rmtree(listen, ignore_errors=True)
         listen.mkdir(parents=True)
-        for i, c in enumerate(cands[:12], 1):
+        for i, c in enumerate(good[:12], 1):
             wav = read(vocals[c["source"]], HI)
             write(listen / f"{i:02d} {name(c)} {c['score']:.2f}.wav", wav[int(c["start"] * HI) : int(c["end"] * HI)], HI)
         starts = sorted({f"{q} ({s['id']})" if q else s["id"] for s, _, q in seeded[w]})
+        head = ["| # | segment | s | sim | margin | halves | purity | DNSMOS | bak | UTMOS | score | said |", "|---|---|---|---|---|---|---|---|---|---|---|---|"]
         report += [
             f"**Reference** `refs/{w}.wav`, {seconds:.1f}s from “{chosen[0]['title']}” ({', '.join(name(c) for c in chosen)}), heard: “{heard}”",
             "",
             f"Started from {len(seeds[w])} utterances: {'; '.join(starts)}",
             "",
-            "| # | segment | s | sim | margin | halves | DNSMOS | bak | UTMOS | score | said |",
-            "|---|---|---|---|---|---|---|---|---|---|---|",
+            "The speaker all the way through, best first (what the reference is chosen from, and what's in `listen/`):",
+            "",
+            *head,
+            *table(good, chosen),
+            "",
+            "Every candidate, best first:",
+            "",
+            *head,
+            *table(cands, chosen),
+            "",
         ]
-        for i, c in enumerate(cands[:12], 1):
-            mark = " **(chosen)**" if c in chosen else ""
-            report.append(f"| {i} | `{name(c)}`{mark} | {c['end'] - c['start']:.1f} | {c['sim']:.2f} | {c['margin']:.2f} | {c['halves'] if c['halves'] is not None else '-'} | {c['ovrl']:.2f} | {c['bak']:.2f} | {c['utmos']:.2f} | {c['score']:.2f} | {c['text'][:80]} |")
-        report.append("")
     (GRAB / "report.md").write_text("\n".join(report), encoding="utf-8")
     print(f"\nReport: {(GRAB / 'report.md').relative_to(ROOT)}")
 
