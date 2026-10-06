@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { ENGINES, HERO_ENGINES, createEngines, enginesFor, glowSize, guessEngines } from './engines';
+import { ENGINES, HERO_ENGINES, burn, createEngines, enginesFor, glowSize, guessEngines } from './engines';
 import { TYPES } from './traffic';
 
 describe('the ships’ engines', () => {
@@ -28,6 +28,10 @@ describe('the ships’ engines', () => {
     expect(glowSize(1, 1)).toBeCloseTo(2.7);
     expect(glowSize(1, 1, 0.004, 0.05)).toBeCloseTo(2.7 * 0.05);
     expect(glowSize(0.5, 0, 0.004, 1)).toBeGreaterThan(glowSize(0, 0, 0.004, 1));
+    // and burns brighter: dim at idle (a parked ship's isn't a beacon), more boosting
+    expect(burn(0, 0)).toBeCloseTo(0.35);
+    expect(burn(1, 0)).toBeCloseTo(1);
+    expect(burn(1, 1)).toBeCloseTo(1.5);
   });
 
   it('is one draw for every ship, placed where each one’s engines are', () => {

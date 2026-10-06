@@ -16,7 +16,7 @@ describe('the livery’s rim', () => {
     const root = new THREE.Mesh(new THREE.BoxGeometry(), m);
     createLivery().apply(root, FIT);
     const shader = compiled(m);
-    expect(shader.uniforms.uRimStrength.value).toBe(0.35);
+    expect(shader.uniforms.uRimStrength.value).toBe(0.5);
     expect(shader.uniforms.uRimColour.value.isColor).toBe(true);
     expect(shader.uniforms.uRimDir.value.isVector3).toBe(true);
     expect(shader.fragmentShader).toContain('uRimColour * uRimStrength * edge');
