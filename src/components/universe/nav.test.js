@@ -5,6 +5,7 @@ import { ORDER } from './layout';
 import { WONDERS } from './deep';
 import { MAW } from './maw';
 import { byId } from './universes';
+import { sunFor } from './lighting';
 
 const inside = (s) => SOLIDS.some((p) => Math.hypot(s.x - p.at[0], s.y - p.at[1], s.z - p.at[2]) < (inTrench(p, s.x, s.y, s.z) ? p.band.floor : p.r) + SHIP.radius - 1e-6);
 const worlds = ORDER.filter((id) => byId(id).kind !== 'core');
@@ -298,5 +299,19 @@ describe('the grand tour', () => {
     const far = { ...parkFor('maw', [0, 0]), y: 0, speed: 0 };
     const t2 = tourFrom(far);
     expect(t2.indexOf('home')).toBeGreaterThan(3);
+  });
+});
+
+describe('coming out of a jump', () => {
+  // (a jump parks as the autopilot does: on the world's day side, so what
+  // you come out to is lit, not a black disc)
+  it('a jump comes out on the day side', () => {
+    for (const id of worlds.filter((w) => !byId(w).portal)) {
+      const g = GOALS[id];
+      const s = sunFor(id);
+      const behind = [g.at[0] - s[0] * 1200, g.at[2] - s[2] * 1200];
+      const k = parkFor(id, behind);
+      expect((k.x - g.at[0]) * s[0] + (k.z - g.at[2]) * s[2], id).toBeGreaterThanOrEqual(-1e-6);
+    }
   });
 });

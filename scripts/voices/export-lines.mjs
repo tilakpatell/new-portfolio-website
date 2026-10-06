@@ -6,7 +6,7 @@
 // Writes scripts/voices/lines.json: [{ id, who, text }], one per distinct line,
 // with the same id the site looks it up by (src/lib/voiced.js).
 
-import { existsSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -112,6 +112,17 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   ]);
   const people = peopleLines([CAST, Object.values(AREAS).map((a) => a.people ?? []), CYBERTRON, CUSTOMERS], voiced, [...VOICED, ...WORLD_VOICED]);
   const lines = [...unrecorded([CREWS, GALAXY_LINES, VEHICLES.map((v) => v.lines), ...surface], lineId), ...conversationLines(worlds, voiced, [...VOICED, ...WORLD_VOICED]), ...people];
+  // --extra FILE: lines asked for ahead of the code that will say them ({ who, text } each; scripts/voices/runner.mjs)
+  const extraAt = process.argv.indexOf('--extra');
+  if (extraAt > 0) {
+    const extra = JSON.parse(readFileSync(process.argv[extraAt + 1], 'utf8'));
+    const known = new Set(lines.map((l) => l.id));
+    for (const { who, text } of extra) {
+      const voice = voiced.voiceOf(who);
+      const id = voice && lineId(voice, text);
+      if (voice && !known.has(id)) lines.push({ id, who: voice, text: voiced.spoken(text) });
+    }
+  }
   writeFileSync(join(here, 'lines.json'), `${JSON.stringify(lines, null, 1)}\n`);
   const count = lines.reduce((n, l) => ({ ...n, [l.who]: (n[l.who] ?? 0) + 1 }), {});
   const by = Object.entries(count).map(([who, n]) => `${who} ${n}`);
