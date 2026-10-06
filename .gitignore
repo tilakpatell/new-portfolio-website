@@ -43,3 +43,6 @@ scripts/voices/refs/
 scripts/voices/lines.json
 scripts/voices/**/__pycache__/
 .scratch/
+
+# what scripts/gen3d makes along the way (raw GLBs, concept images, renders)
+scripts/gen3d/cache/

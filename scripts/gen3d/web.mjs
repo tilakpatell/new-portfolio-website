@@ -1,0 +1,80 @@
+// A raw generated GLB made ready for the site, the same way the Meshy models
+// were (scripts/meshy-import.mjs): welded, simplified to a triangle budget,
+// textures to WebP at a set size, meshopt-compressed, into public/models/gen3d/,
+// and credited in public/games/credits.json. Refuses to ship a model over its
+// budget or over 1 MB.
+//
+//   node scripts/gen3d/web.mjs RAW.glb NAME --tris 16000 --tex 1024 --what "an X-wing starfighter"
+//   webReady(doc, { tris, tex }) → { before, after }   (the transform, on a gltf-transform Document)
+
+import { NodeIO } from '@gltf-transform/core';
+import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+import { dedup, dequantize, meshopt, prune, simplify, textureCompress, weld } from '@gltf-transform/functions';
+import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+export const OUT = join(ROOT, 'public', 'models', 'gen3d');
+export const MAX_BYTES = 1024 * 1024;
+
+export const triangles = (doc) => doc.getRoot().listMeshes().reduce((n, m) => n + m.listPrimitives().reduce((k, p) => k + (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3, 0), 0);
+
+// What the result must satisfy before it goes in: the budget, and the size cap.
+export function check({ tris, after, bytes }) {
+  const problems = [];
+  if (after > tris * 1.05) problems.push(`${Math.round(after)} triangles, over the budget of ${tris}`);
+  if (bytes > MAX_BYTES) problems.push(`${(bytes / 1024).toFixed(0)} KB, over ${MAX_BYTES / 1024} KB`);
+  return problems;
+}
+
+export async function io() {
+  await Promise.all([MeshoptEncoder.ready, MeshoptDecoder.ready, MeshoptSimplifier.ready]);
+  return new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
+}
+
+export async function webReady(doc, { tris, tex }) {
+  const { default: sharp } = await import('sharp'); // only when a model is made: the budget check needs no native module
+  const before = triangles(doc);
+  await doc.transform(
+    dequantize(),
+    weld(),
+    simplify({ simplifier: MeshoptSimplifier, ratio: Math.min(1, tris / before), error: 0.01, lockBorder: false }),
+    dedup(),
+    prune(),
+    textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [tex, tex], quality: 85 }),
+    meshopt({ encoder: MeshoptEncoder, level: 'high' }),
+  );
+  return { before, after: triangles(doc) };
+}
+
+export async function publish(raw, name, { tris, tex, what, engine = 'TRELLIS.2' }) {
+  const nio = await io();
+  const doc = await nio.read(raw);
+  const { before, after } = await webReady(doc, { tris, tex });
+  const bytes = (await nio.writeBinary(doc)).byteLength;
+  const problems = check({ tris, after, bytes });
+  if (problems.length) throw new Error(`${name}: ${problems.join('; ')}`);
+  await mkdir(OUT, { recursive: true });
+  const out = join(OUT, `${name}.glb`);
+  await nio.write(out, doc);
+  const creditsFile = join(ROOT, 'public', 'games', 'credits.json');
+  const credits = JSON.parse(await readFile(creditsFile, 'utf8'));
+  credits[`gen3d/${name}`] = { source: 'https://github.com/microsoft/TRELLIS.2', name: `${what}, made for this site with ${engine} on the site owner's machine (scripts/gen3d)`, authors: ['Tilak Patel, with Microsoft TRELLIS.2'], license: 'Generated for this site; TRELLIS.2 is MIT' };
+  await writeFile(creditsFile, `${JSON.stringify(credits, null, 2)}\n`);
+  return { out, before, after, bytes };
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const args = process.argv.slice(2);
+  const flag = (n, d) => {
+    const i = args.indexOf(`--${n}`);
+    return i >= 0 ? args.splice(i, 2)[1] : d;
+  };
+  const opts = { tris: Number(flag('tris', 16000)), tex: Number(flag('tex', 1024)), what: flag('what', ''), engine: flag('engine', 'TRELLIS.2') };
+  const [raw, name] = args;
+  if (!raw || !name) throw new Error('usage: node scripts/gen3d/web.mjs RAW.glb NAME [--tris N] [--tex N] [--what "…"]');
+  const r = await publish(resolve(raw), name, opts);
+  console.log(`${name}: ${Math.round(r.before)} → ${Math.round(r.after)} triangles, ${(r.bytes / 1024).toFixed(0)} KB → ${r.out}`);
+}
