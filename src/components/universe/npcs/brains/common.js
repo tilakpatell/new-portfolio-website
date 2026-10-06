@@ -20,6 +20,20 @@ export const NPC = {
   forget: 10, // …for this long, and it's let go of
   leaveFar: 90, // one leaving is gone once this far from you
   leaveFor: 14, // or after this long
+  hold: 3, // under this speed you've cut your engines (an inspector's or a trickster's ask)
+  scan: 5, // seconds held still before an inspector has scanned you (or a trickster has looked you over)
+  patience: 14, // seconds an inspector waits for you to stop before it comes after you
+  toll: 10, // and a trickster
+  ignore: 40, // further off than this from one waiting on you, and you've run
+  run: 12, // or faster than this for a moment (the boost, and more)
+  wanted: 2.5, // heat (what you've shot down lately) at which an inspector's scan finds you wanted
+  pass: 5, // seconds between a nemesis's passes
+  jink: 1.4, // seconds in front of your nose before a nemesis jinks away
+  retreat: 0.3, // of its hull left, and a nemesis breaks off
+  nemesis: 75, // seconds a nemesis fights before it breaks off anyway
+  chatter: 22, // seconds between a tagalong's words
+  tag: 95, // seconds a tagalong stays
+  hide: 55, // how far off a tagalong runs from a fight
 };
 
 export const sub = (a, b) => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z });

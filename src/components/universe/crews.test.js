@@ -93,6 +93,9 @@ describe('the crews', () => {
       said(linesFor(crew, 'event', 'leviathan', side.leviathan), crew, `leviathan ${side.leviathan}`);
       // a hunter with a spotlight on you (hunterRules.js's 'spotlight' trait)
       if (Object.values(side.kinds).some((k) => k.trait === 'spotlight')) said(linesFor(crew, 'event', 'spotlit'), crew, 'spotlit');
+      // the fight with the capital ship (capitalRules.js): every moment of it, each crew its own words
+      for (const sub of ['fired', 'shielded', 'dome', 'open', 'bridge', 'dead', 'fled', 'gone', 'wave']) said(linesFor(crew, 'event', 'capital', sub), crew, `capital ${sub}`);
+      expect(new Set(['fired', 'shielded', 'dome', 'open', 'bridge', 'dead', 'fled', 'gone', 'wave'].map((sub) => linesFor(crew, 'event', 'capital', sub))).size, `${crew.id} capital`).toBe(9);
     }
   });
 
@@ -137,15 +140,26 @@ describe('the crews on foot', () => {
   it('have a word for each character of their side who comes by, and from them', async () => {
     const { sideFor } = await import('./sides');
     const { visitorsOf } = await import('./npcs/index');
+    const { BRAINS, tells } = await import('./npcRules');
     for (const crew of CREWS) {
       for (const c of visitorsOf(sideFor(crew.id).id)) {
-        for (const key of ['seen', 'hello', 'hit', 'leaving']) expect(linesFor(crew, 'npc', c.id, key), `${crew.id} ${c.id} ${key}`).toBeTruthy();
-        // a merchant names the part (Comms.jsx fills it in); an informant has a word for whatever's coming
+        // everyone's lines, and each brain's own (an inspector's clean, busted and run; a nemesis's again, half, weak, evade and retreat; a tagalong's panics and chatter; a trickster's paid and angry; a merchant's grudge)
+        for (const key of ['seen', 'hello', 'hit', 'leaving', ...(BRAINS[c.brain].lines ?? [])]) {
+          const exchange = linesFor(crew, 'npc', c.id, key);
+          expect(exchange?.length, `${crew.id} ${c.id} ${key}`).toBeGreaterThan(0);
+          for (const [who, text] of exchange) {
+            expect(who === 'comms' || crew.speakers[who], `${crew.id} ${c.id} ${key}: ${who}`).toBeTruthy();
+            expect(text.length, `${crew.id} ${c.id} ${key}`).toBeGreaterThan(2);
+          }
+        }
+        // a merchant names the part (Comms.jsx fills it in); anyone with word of what's coming has a line for whatever it is
         if (c.brain === 'merchant') expect(linesFor(crew, 'npc', c.id, 'offer')?.some(([, text]) => text.includes('{part}')), `${crew.id} ${c.id} offer`).toBe(true);
-        if (c.brain === 'informant') {
+        if (tells(c.brain)) {
           expect(linesFor(crew, 'npc', c.id, 'tip', 'nothing-in-particular'), `${crew.id} ${c.id} tip`).toBeTruthy();
           expect(linesFor(crew, 'npc', c.id, 'tip', 'hunt'), `${crew.id} ${c.id} tip hunt`).not.toBe(linesFor(crew, 'npc', c.id, 'tip', 'nothing-in-particular'));
         }
+        // (a nemesis greets an old enemy differently)
+        if (c.brain === 'nemesis') expect(linesFor(crew, 'npc', c.id, 'again'), `${crew.id} ${c.id} again`).not.toBe(linesFor(crew, 'npc', c.id, 'hello'));
       }
     }
   });

@@ -21,17 +21,34 @@
 // when one of them comes near it; one that `hunts` a faction goes after one
 // near you and shoots at that instead of doing what it was doing.
 //
-// createBrains({ rand, firstId }) → { add(npc, at) → id | null, remove(id),
+// Memory: every character remembers you between meetings (`memory`, kept
+// by whoever made the brains, for the visit: by character id, { met: how
+// many times it's come, shot: how often you've hit it, grudge: how often
+// it's had cause (it had to run from you, or call for help), downed: how
+// often you've shot it down }). A brain reads `me.memory` and does with it
+// what it will: a nemesis comes back tougher and brings friends, a
+// merchant you shot has nothing for you, an inspector who had to call for
+// help finds you wanted on sight.
+//
+// A brain may turn hostile (`intent.hostile`): a neutral who's had enough
+// of you is on the guns from then on, like an enemy. `me.hurt` is what
+// you've hit it for this meeting.
+//
+// createBrains({ rand, firstId, memory }) → { add(npc, at) → id | null, remove(id),
 //   update(dt, world) → { events }, hit(id, damage) → { id, kind, at, down } | null,
 //   live, targets }
 // world: { you: { x, y, z, heading, speed } | null, hunters: [{ id, at,
 //   faction }], stations: [{ id, at, r }], solids: [{ at: [x, y, z], r }],
-//   next: the director's next event ({ id, in }) }
-// Events: { type: 'say', n, id, key } ('seen', 'hello', 'hit', 'leaving'),
+//   next: the director's next event ({ id, in }), heat: the trouble you've
+//   made lately (scene.js's), shield: your shields, 0…100 }
+// Events: { type: 'say', n, id, key } ('seen', 'hello', 'hit', 'leaving', and each brain's own),
 // { type: 'delegate', n, via, kind | faction }, { type: 'offer', n },
 // { type: 'tip', n, next }, { type: 'shot', n, from, to, at, hit, damage },
 // { type: 'fled', n, faction }, { type: 'draw', n }, { type: 'downed', n },
-// { type: 'gone', n }. `n` is the one's number (its id on the guns).
+// { type: 'busted', n, faction, size?, why } (an inspector or a trickster
+// calling its faction in on you), { type: 'calls', n, faction } (a nemesis
+// bringing friends), { type: 'retreat', n }, { type: 'gone', n }. `n` is
+// the one's number (its id on the guns).
 
 import { clearOf, turnToward } from './hunterRules';
 import { NPC, add, apart, nearest, sub, unit } from './npcs/brains/common';
@@ -40,15 +57,23 @@ import bounty from './npcs/brains/bounty';
 import merchant from './npcs/brains/merchant';
 import informant from './npcs/brains/informant';
 import rival from './npcs/brains/rival';
+import inspector from './npcs/brains/inspector';
+import nemesis from './npcs/brains/nemesis';
+import tagalong from './npcs/brains/tagalong';
+import trickster from './npcs/brains/trickster';
 
 export { NPC };
-export const BRAINS = { wingman, bounty, merchant, informant, rival };
+export const BRAINS = { wingman, bounty, merchant, informant, rival, inspector, nemesis, tagalong, trickster };
+// the brains that have word of what's coming (the scene asks the director while one's about)
+export const tells = (brain) => Boolean(BRAINS[brain]?.tells);
+// a fresh memory of a character (createBrains keeps one per character id in `memory`)
+export const remember = (memory, id) => (memory[id] ??= { met: 0, shot: 0, grudge: 0, downed: 0 });
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const between = (rand, [a, b]) => a + rand() * (b - a);
 
 // (numbered well clear of the hunters' and the skirmishes': the lock follows a number)
-export function createBrains({ rand = Math.random, firstId = 900001, brains = BRAINS } = {}) {
+export function createBrains({ rand = Math.random, firstId = 900001, brains = BRAINS, memory = {} } = {}) {
   const live = [];
   const targets = [];
   const later = []; // what happened between frames (a hit), told on the next
@@ -80,7 +105,9 @@ export function createBrains({ rand = Math.random, firstId = 900001, brains = BR
       if (!brains[npc?.brain]) return null;
       const n = nextId++;
       const hp = npc.stats?.hp ?? 4;
-      live.push({ n, id: n, npc, pos: { ...at }, vel: { x: 0, y: 0, z: 0 }, hp, hpMax: hp, clock: 0, cool: 1 + rand(), far: 0, leaving: false, left: 0, delegated: false, said: new Set(), mind: {} });
+      const mem = remember(memory, npc.id);
+      mem.met += 1;
+      live.push({ n, id: n, npc, pos: { ...at }, vel: { x: 0, y: 0, z: 0 }, hp, hpMax: hp, clock: 0, cool: 1 + rand(), far: 0, leaving: false, left: 0, delegated: false, hostile: false, hurt: 0, memory: mem, said: new Set(), mind: {} });
       return n;
     },
     remove(n) {
@@ -129,6 +156,7 @@ export function createBrains({ rand = Math.random, firstId = 900001, brains = BR
           events.push({ type: 'delegate', n: me.n, ...intent.delegate });
           continue;
         }
+        if (intent.hostile) me.hostile = true;
         // (the greeting first, then the news: a tip or an offer after hello)
         if (intent.say) say(events, me, intent.say);
         if (intent.event) events.push({ ...intent.event, n: me.n });
@@ -209,8 +237,11 @@ export function createBrains({ rand = Math.random, firstId = 900001, brains = BR
       const me = live.find((o) => o.n === n);
       if (!me || me.delegated) return null;
       me.hp -= damage;
+      me.hurt += damage;
+      me.memory.shot += 1;
       const out = { id: me.n, kind: me.npc.ship, at: { ...me.pos }, size: me.npc.size ?? 0.4, down: me.hp <= 0 };
       if (out.down) {
+        me.memory.downed += 1;
         take(me);
         later.push({ type: 'downed', n: me.n });
       } else if (!me.said.has('hit')) {
@@ -220,13 +251,15 @@ export function createBrains({ rand = Math.random, firstId = 900001, brains = BR
       return out;
     },
 
-    // the ones the guns may lock on to: an enemy still in the fight
+    // the ones the guns may lock on to: an enemy still in the fight (or a
+    // neutral that's turned hostile)
     get targets() {
       targets.length = 0;
       for (const me of live) {
-        if (me.npc.role !== 'enemy' || me.leaving || me.delegated) continue;
+        if ((me.npc.role !== 'enemy' && !me.hostile) || me.leaving || me.delegated) continue;
         me.target ??= { id: me.n, at: me.pos, vel: me.vel, size: me.npc.size ?? 0.4, kind: me.npc.ship, hp: me.hp, hpMax: me.hpMax, faction: me.npc.id, threat: 1 };
         me.target.hp = me.hp;
+        me.target.hpMax = me.hpMax; // (a nemesis comes back tougher)
         targets.push(me.target);
       }
       return targets;
