@@ -189,8 +189,9 @@ function spray(len, w, at, a, d, twist = 0, color = '#2a4224', shade = null) {
 // ellipsoid, so the whole lights as one soft volume, not as cards; each
 // vertex darker the deeper in and the lower it is. A card is at most 3 m:
 // a bigger clump has more of them, never bigger leaves. `density` thins them
-// (the far trees, behind the fog).
-export function canopy(at, s, { flat = 0.5, color = '#3e5a2a', seed = 1, density = 1 } = {}) {
+// (the far trees, behind the fog); `to` is the cards' material (a conifer's
+// pads are needles).
+export function canopy(at, s, { flat = 0.5, color = '#3e5a2a', seed = 1, density = 1, to = 'foliage' } = {}) {
   const rand = rng(seed);
   const R = s / 2;
   const Ry = R * flat;
@@ -221,7 +222,7 @@ export function canopy(at, s, { flat = 0.5, color = '#3e5a2a', seed = 1, density
     g.lookAt(face);
     g.translate(...p);
     spherifyNormals(g, { centre: c, radii, keep: 0.12 });
-    out.push(part(g, { color: base.clone().offsetHSL((rand() - 0.5) * 0.02, 0, (rand() - 0.5) * 0.06), to: 'foliage', uv: true, shade }));
+    out.push(part(g, { color: base.clone().offsetHSL((rand() - 0.5) * 0.02, 0, (rand() - 0.5) * 0.06), to, uv: true, shade }));
   }
   return out;
 }
@@ -424,45 +425,53 @@ function reedParts({ seed = 5, color = '#6a7444', n = 14, h = 1.6 } = {}) {
   return { parts };
 }
 
-// a Kashyyyk wroshyr: a vast pale trunk, its limbs reaching out level in
-// tiers, each ending in a broad canopy; aerial roots hanging
-function wroshyrParts({ h = 74, r = 3.2, seed = 6, bark = '#7a6a54', leaf = '#4a6a2c', lo = false } = {}) {
+// a Kashyyyk wroshyr, as Revenge of the Sith's are: a giant bonsai. A
+// vast fluted trunk flaring onto buttress roots splits a third to halfway
+// up into a few great limbs that rise and then run out level, each
+// carrying broad flat cloud-pads of needles (the wroshyr is a conifer),
+// aerial roots and moss hanging from under them; a smaller pad on the
+// leader. `lo`: thinner pads and no hangings (far off, in the haze).
+function wroshyrParts({ h = 74, r = 3.2, seed = 6, bark = '#7a6a54', leaf = '#4a6a2c', moss = '#56604a', lo = false } = {}) {
   const rand = rng(seed);
+  const split = h * (0.36 + rand() * 0.16);
   const prof = [
-    [r * 1.7, 0],
-    [r * 1.2, 2],
-    [r, 6],
-    [r * 0.86, h * 0.4],
-    [r * 0.64, h * 0.75],
-    [r * 0.3, h],
+    [r * 1.9, 0],
+    [r * 1.3, 2.5],
+    [r, 8],
+    [r * 0.92, split],
+    [r * 0.55, h * 0.8],
+    [r * 0.25, h],
   ];
-  const parts = [part(trunkGeometry(prof, { seg: 12, furrow: 0.12, ridges: 6, seed, lean: [(rand() - 0.5) * 3, (rand() - 0.5) * 3] }), { color: bark, to: 'bark' })];
-  for (let i = 0; i < 7; i++) {
-    const a = (i / 7) * TAU + rand() * 0.4;
-    const out = r * (2.1 + rand() * 0.8);
-    parts.push(rod([cos(a) * r * 0.5, 6 + rand() * 3, sin(a) * r * 0.5], [cos(a) * out, -0.4, sin(a) * out], r * 0.5, r * 0.18, { color: bark, to: 'bark' }, 5));
+  const lean = [(rand() - 0.5) * 3, (rand() - 0.5) * 3];
+  const parts = [part(trunkGeometry(prof, { seg: lo ? 10 : 16, furrow: 0.16, ridges: 7, seed, lean }), { color: bark, to: 'bark' })];
+  // the buttress roots, flaring out into the ground
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU + rand() * 0.4;
+    const out = r * (2.2 + rand() * 0.9);
+    parts.push(rod([cos(a) * r * 0.5, 7 + rand() * 4, sin(a) * r * 0.5], [cos(a) * out, -0.4, sin(a) * out], r * 0.5, r * 0.16, { color: bark, to: 'bark' }, 5));
   }
-  // the tiers of limbs
-  const tiers = [0.42, 0.6, 0.78, 0.94];
-  tiers.forEach((f, ti) => {
-    const y = h * f;
-    const n = ti === 3 ? 1 : 3;
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * TAU + ti * 1.1 + rand() * 0.6;
-      const len = ti === 3 ? 0 : (1 - f) * 22 + 6;
-      const rr = radiusAt(prof, y);
-      const mid = [cos(a) * (rr + len * 0.5), y + 1.5, sin(a) * (rr + len * 0.5)];
-      const end = [cos(a) * (rr + len), y + 4, sin(a) * (rr + len)];
-      if (len > 0) {
-        parts.push(rod([cos(a) * rr * 0.6, y - 1, sin(a) * rr * 0.6], mid, 1.1, 0.7, { color: bark, to: 'bark' }, 6));
-        parts.push(rod(mid, end, 0.7, 0.35, { color: bark, to: 'bark' }, 6));
-        // a few aerial roots hanging down
-        parts.push(rod(mid, [mid[0] + 0.5, y - 14 - rand() * 8, mid[2]], 0.12, 0.08, { color: bark, to: 'bark' }, 4));
-      }
-      const s = len * 0.6 + 9;
-      parts.push(...canopy([end[0], end[1] + 1, end[2]], s, { flat: 0.34, color: new THREE.Color(leaf).offsetHSL(0, 0, (rand() - 0.5) * 0.08), seed: seed * 19 + ti * 5 + i, density: lo ? 0.25 : 0.5 }));
-    }
-  });
+  const pad = (at, s, i) => {
+    parts.push(...canopy(at, s, { flat: 0.24, color: new THREE.Color(leaf).offsetHSL((rand() - 0.5) * 0.02, 0, (rand() - 0.5) * 0.08), seed: seed * 19 + i, density: lo ? 0.2 : 0.42, to: 'needles' }));
+    // (aerial roots and moss hanging from under it)
+    if (!lo) for (let m = 0; m < 3; m++) parts.push(...hanging([at[0] + (rand() - 0.5) * s * 0.5, at[1] - s * 0.08, at[2] + (rand() - 0.5) * s * 0.5], 4 + rand() * 9, { w: 1.4, color: moss, turn: rand() * PI }));
+  };
+  // the great limbs: up out of the split, then level
+  const limbs = 3 + Math.floor(rand() * 3);
+  const rs = radiusAt(prof, split);
+  for (let i = 0; i < limbs; i++) {
+    const a = (i / limbs) * TAU + rand() * 0.6;
+    const rise = 0.6 + rand() * 0.35;
+    const l1 = h * (0.2 + rand() * 0.08);
+    const l2 = h * (0.16 + rand() * 0.1);
+    const p0 = [cos(a) * rs * 0.3 + lean[0] * 0.3, split - 2, sin(a) * rs * 0.3 + lean[1] * 0.3];
+    const p1 = [p0[0] + cos(a) * l1 * Math.cos(rise), p0[1] + l1 * Math.sin(rise), p0[2] + sin(a) * l1 * Math.cos(rise)];
+    const p2 = [p1[0] + cos(a + 0.3) * l2, p1[1] + l2 * 0.12, p1[2] + sin(a + 0.3) * l2];
+    parts.push(rod(p0, p1, rs * 0.42, rs * 0.3, { color: bark, to: 'bark' }, 7));
+    parts.push(rod(p1, p2, rs * 0.3, rs * 0.14, { color: bark, to: 'bark' }, 6));
+    pad([p2[0], p2[1] + 1.5, p2[2]], h * (0.28 + rand() * 0.1), i * 3);
+    pad([p1[0], p1[1] + 1, p1[2]], h * (0.18 + rand() * 0.06), i * 3 + 1);
+  }
+  pad([lean[0], h * 0.97, lean[1]], h * 0.2, 99);
   return { parts, prof };
 }
 
