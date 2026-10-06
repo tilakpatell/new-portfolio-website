@@ -193,6 +193,11 @@ The GPU is shared with `scripts/voices`: check `nvidia-smi` before a run.
   simplifier stops at the seams (~25k triangles for a 300k mesh) and crossing
   them smears the texture. 24k triangles at 1536² is under 900 KB and looks
   the part; the Blender bake is the way below that.
+- **Remakes help fighters, not greebled hulls.** From its own render a
+  TIE interceptor or an X-wing comes back with real panel detail; a Star
+  Destroyer or a Venator comes back a smooth blob with its greebles gone,
+  worse than the Sketchfab original. Big-feature shapes only, and judge the
+  sheet before replacing anything.
 - **Both engines, in order of use:** `trelliscpp` (f16 GGUF, ~2–4 minutes a
   model at res 1024 on the RTX 5090) does everything here. The reference
   `trellis2` is built in WSL but its image encoder (`facebook/dinov3`) is a

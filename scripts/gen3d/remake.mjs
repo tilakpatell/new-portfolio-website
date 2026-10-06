@@ -2,7 +2,7 @@
 // on white (the shape it has, which TRELLIS.2 keeps, adding the detail) is
 // the reference picture, as the trench run's X-wing was made.
 //
-//   CHROME=… BASE=http://127.0.0.1:5299 node scripts/gen3d/remake.mjs public/models/universe/cr90.glb cr90 --what "a CR90 corvette" [--view three] [--faces 60000] [--tex 2048] [--seed 42]
+//   CHROME=… BASE=http://127.0.0.1:5299 node scripts/gen3d/remake.mjs public/models/universe/cr90.glb cr90 --what "a CR90 corvette" [--view three] [--match] [--seed 42]
 //
 // The render is the judge's three-quarter view unless --view says another
 // (front, side, top); the picture lands in cache/<name>/reference.png to be
@@ -22,13 +22,15 @@ export async function reference(glb, out, view = 'three') {
   return out;
 }
 
-export async function remake(glb, name, { view = 'three', ...opts } = {}) {
+export async function remake(glb, name, { view = 'three', match = false, ...opts } = {}) {
   const dir = join(HERE, 'cache', name);
   mkdirSync(dir, { recursive: true });
   const ref = await reference(glb, join(dir, 'reference.png'), view);
   console.log(`[${name}] reference: ${ref}`);
   // not Pixal3D: a render isn't a frontal photo, and the shape should be free to improve
-  return make(name, { ...opts, image: ref, faithful: false, match: glb }); // its brightness matched to the old one's: the render's shading darkens the paint
+  // --match brings its brightness to the old one's (the render's shading darkens the paint); off by
+  // default, since a lift washes out a model whose old paint was bright
+  return make(name, { ...opts, image: ref, faithful: false, match: match ? glb : undefined });
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -38,7 +40,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     return i >= 0 ? args.splice(i, 2)[1] : d;
   };
   const [faces, tex] = [flag('faces'), flag('tex')];
-  const opts = { what: flag('what'), view: flag('view', 'three'), faces: faces && Number(faces), tex: tex && Number(tex), seed: Number(flag('seed', 42)) };
+  const opts = { what: flag('what'), view: flag('view', 'three'), faces: faces && Number(faces), tex: tex && Number(tex), seed: Number(flag('seed', 42)), match: args.includes('--match') };
   const [glb, name] = args;
   if (!glb || !name) throw new Error('usage: node scripts/gen3d/remake.mjs EXISTING.glb NAME --what "…" [--view three|front|side|top]');
   if (!process.env.CHROME) throw new Error('CHROME (a Chromium) and BASE (the dev server) are needed for the reference render');
