@@ -83,8 +83,9 @@ The owner's asks:
   node, and `skinnedOnly` drops the other form's loose parts. The High
   Moon robots keep their rigs. Ultra Magnus is `still`, because the
   auto-rig can't read his arm guns.
-- `/tmp`-style search: `results.tsv` from the Sketchfab API (licence,
-  faces, texture size). The same uploader also has Fall of Cybertron's
+- **Finding more**: search the Sketchfab API (`/v3/search?type=models&
+  downloadable=true`, whose results give the licence, faces and texture
+  size) and check each candidate's thumbnail. The same uploader also has Fall of Cybertron's
   Sideswipe, Skywarp and Thundercracker robots, Hound, Perceptor, Sludge,
   Snarl, Swoop and the Combaticons. flotick64 has the whole Fall of
   Cybertron multiplayer roster with vehicle forms, if more are wanted.
