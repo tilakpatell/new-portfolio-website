@@ -362,11 +362,16 @@ export const PAGES = {
       { label: 'Walking', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump'], ['Drag', 'Look round'], ['E', 'Doors, the cruiser, the games'], ['M', 'Things to do']] },
       { label: 'In the cruiser', rows: [['W A S D', 'Fly'], ['Space', 'Climb'], ['Shift', 'Drop'], ['E', 'Land (slow, over open ground)']] },
       { label: 'Portal panic', rows: [['W A S D', 'Move'], ['Mouse', 'Aim: the gun fires on its own'], ['F', 'Auto-fire off (then hold the mouse to fire)'], ['Space / Shift', 'Portal-dash'], ['1 2 3', 'Take a gadget'], ['P', 'Pause']] },
+      { label: 'Total Rickall', rows: [['Drag', 'Aim'], ['E', 'Remember the one in the crosshair'], ['F / Click', 'Shoot them'], ['Esc', 'Stop the game']] },
     ],
-    touch: [{ rows: [['Stick', 'Walk, or fly'], ['Swipe', 'Look round'], ['Tap', 'Jump, climb, drop and act, on their buttons']] }],
+    touch: [
+      { rows: [['Stick', 'Walk, or fly'], ['Swipe', 'Look round'], ['Tap', 'Jump, climb, drop and act, on their buttons']] },
+      { label: 'Total Rickall', rows: [['Swipe', 'Aim'], ['Tap', 'Shoot the one in the crosshair (or Remember and Shoot, on their buttons)']] },
+    ],
     tips: [
       ['The portal gun', 'Fire it to look through into another dimension.'],
       ['Portal panic', 'Three waves in each of four dimensions; a gadget from Rick’s bench after each, and a boss to portal on. Rick, Morty or Pickle Rick. A controller works too.'],
+      ['Total Rickall', 'Pick up the egg on the living-room bookcase. A parasite only ever leaves good memories of itself, so shoot the ones nobody remembers a bad day with, and nobody else.'],
       ['The Meeseeks box', 'Press the button and give him a task. Give him one he can’t do and he gets help.'],
       ['Interdimensional cable', 'Turn the dial.'],
       ['The Smiths', 'Four of them are a color scheme for the site. Jerry can ask.'],

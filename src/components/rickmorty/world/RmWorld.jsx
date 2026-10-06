@@ -258,9 +258,10 @@ const newSim = () => ({
   fed: newFedShip(),
   mind: null,
   // Total Rickall, while it's on: { phase ('hatching', 'on', 'over'), seed,
-  // game (./interiors/rickall.js's), aim (who's in the sights), told (the
-  // memory up over someone), end (how it ended), crowd (who's standing, for
-  // Morty to walk round) }
+  // game (./interiors/rickall.js's), aim (who's in the sights), hide (who's
+  // right at his shoulder, out of the picture), told (the memory up over
+  // someone), end (how it ended), crowd (who's standing, for Morty to walk
+  // round) }
   rickall: null,
 });
 
@@ -510,7 +511,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       const s = sim.current;
       const w = api.current;
       if (!w || s.area !== 'house' || s.rickall?.phase === 'hatching') return false;
-      const run = { phase: 'hatching', seed, game: null, aim: null, told: null, end: null, crowd: [], crowdN: -1 };
+      const run = { phase: 'hatching', seed, game: null, aim: null, hide: [], told: null, end: null, crowd: [], crowdN: -1 };
       s.rickall = run;
       s.m = { ...s.m, mode: 'rickall' };
       s.keys.clear();
@@ -532,7 +533,13 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         if (!g?.people.some((p) => p.parasite)) throw new Error('nobody to play with');
         run.game = g;
         run.phase = 'on';
+        // Morty back at the egg, turned to the room, the camera behind him:
+        // nobody's put where he's standing, and the crowd's in front of him
+        const at = rkRules.current.MORTY_AT;
+        s.m = newMorty(at, 'rickall');
+        s.yaw = behindYaw(at.face);
         s.pitch = PITCH;
+        s.dragAt = -1e9;
         sound('portalHop');
         return true;
       } catch (err) {
@@ -1037,8 +1044,9 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     const tv = trav.ref.current;
     tv?.pose(s.m, { inside: Boolean(s.flying), area: s.area });
 
-    // Total Rickall: off, if he's somehow out of the house; the clock; and
-    // who's in the sights, along the line the camera's put on
+    // Total Rickall: off, if he's somehow out of the house; the clock; the
+    // line the camera's put on, how far back along it, and who's too close
+    // to it to be seen; and who's in the sights along it
     let sightLine = null;
     if (s.rickall && (s.area !== 'house' || s.flying)) fns.current.stop();
     const run = s.rickall;
@@ -1046,6 +1054,9 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       const R = rkRules.current;
       if (run.phase === 'on' && R.stepRickall(run.game, dt)) fns.current.end(run);
       sightLine = R.sight(s.m, s.yaw, s.pitch);
+      const v = R.view(run.game, sightLine);
+      sightLine.back = v.back;
+      run.hide = v.hide;
       run.aim = run.phase === 'on' ? R.aimAt(run.game, sightLine) : null;
       if (run.told && (performance.now() - run.told.at > RECALL_MS || run.game.shot.includes(run.told.id))) run.told = null;
     }
@@ -1064,7 +1075,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
           fed: s.fed,
           travellers: tv ? tv.list() : null,
           sight: sightLine,
-          rickall: run?.game ? { game: run.game, aim: run.aim } : null,
+          rickall: run?.game ? { game: run.game, aim: run.aim, hide: run.hide } : null,
         },
         ms,
       );
@@ -1265,7 +1276,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
             <figcaption>{placeName}</figcaption>
           </figure>
           {game && (
-            <button type="button" className="rm-chip rm-chip-stop" onClick={stopRickall}>
+            <button type="button" className="rm-chip rm-chip-stop" onClick={stopRickall} aria-label="Stop the game">
               <RiCloseLine aria-hidden="true" />
               <span>Stop the game</span>
               {!touch && <kbd>Esc</kbd>}

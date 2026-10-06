@@ -42,8 +42,8 @@ export const VIEWS = {
   summer: { area: 'upstairs', at: [-301.4, 398.4, 2.6], cam: [0, 0.35] },
   // at the foot of the ladder, looking down the clone lab
   basement: { area: 'basement', at: [-300, 508, N] },
-  // Total Rickall, from the den's doorway, looking across the living room at the crowd (seed 23: all six of the props in it)
-  rickall: { area: 'house', at: [-297.6, -6.9, Math.PI], game: 23 },
+  // Total Rickall, where a game starts him: at the egg, turned to the living room and the crowd (seed 23: all six of the props in it)
+  rickall: { area: 'house', at: [-305.7, -7.1, -0.5], game: 23 },
   // on the sidewalk at the foot of the front walk, the house and the garage ahead
   street: { area: 'street', at: [-8, -4, N] },
 };

@@ -186,6 +186,7 @@ export function createCrowd(R, kit, flat) {
   ring.visible = false;
   flat.add(ring);
 
+  const M = new THREE.Matrix4();
   function update(t, dt, state) {
     const r = state?.rickall;
     const g = r?.game ?? null;
@@ -197,9 +198,10 @@ export function createCrowd(R, kit, flat) {
     }
     for (const [id, f] of made) {
       const p = g.people.find((o) => o.id === id);
-      f.holder.visible = Boolean(p);
+      // (right at his shoulder, where the camera can't see past them: out of the picture)
+      f.holder.visible = Boolean(p) && !r.hide?.includes(id);
       if (f.jar) f.jar.glints.visible = false;
-      if (!p) continue;
+      if (!f.holder.visible) continue;
       f.holder.position.set(p.x, f.lift, p.z);
       f.holder.rotation.y = p.face + Math.PI / 2;
       // shot: a parasite shrinks away spinning; a real person falls back
@@ -218,12 +220,13 @@ export function createCrowd(R, kit, flat) {
       }
       // Baby Wizard bobs as he floats; the ghost bobs in his jar
       if (f.lift) f.holder.position.y = f.lift + Math.sin(t * 1.5 + f.seed) * 0.05;
+      // (the glints go where the jar is, as big and as turned: shot, they shrink and spin away with it)
       if (f.jar) {
         f.c.group.position.y = GHOST.y + (Math.sin(t * 1.9 + f.seed) + 1) * 0.008;
         f.jar.glints.visible = f.holder.visible;
         f.jar.jar.updateWorldMatrix(true, false);
-        f.jar.glints.position.setFromMatrixPosition(f.jar.jar.matrixWorld);
-        f.jar.glints.rotation.y = f.holder.rotation.y;
+        flat.updateWorldMatrix(true, false);
+        M.copy(flat.matrixWorld).invert().multiply(f.jar.jar.matrixWorld).decompose(f.jar.glints.position, f.jar.glints.quaternion, f.jar.glints.scale);
       }
       // (still standing, or falling: the idle plays)
       if (f.c.mixer && (!shot || !p.parasite)) f.c.update(t, 0, 0);

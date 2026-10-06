@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { HOUSE_SPOTS, behindYaw } from '../rules';
-import { AIM, FAMILY, PARASITES, RICKALL, SIGHT, aimAt, ending, newRickall, parasitesLeft, shoot, sight, stepRickall, tell } from './rickall';
+import { HOTSPOTS, HOUSE_SPOTS, MORTY, PLAN, behindYaw, newMorty, stepMorty } from '../rules';
+import { AIM, CAM, FAMILY, MORTY_AT, PARASITES, RICKALL, SIGHT, aimAt, ending, newRickall, parasitesLeft, shoot, sight, stepRickall, tell, view } from './rickall';
 
 const FIGURES = ['pencilvester', 'sleepygary', 'hamurai', 'amishcyborg', 'mrbeauregard', 'cousinnicky', 'frankenstein'];
 const PROPS = ['reversegiraffe', 'ghostinajar', 'photographyraptor', 'tinkles', 'babywizard', 'mrsrefrigerator'];
@@ -295,13 +295,107 @@ describe('C-137: Total Rickall’s sights', () => {
     // looking down at her
     const down = { x: 0, y: 1.5, z: 0, dx: 0, dy: -Math.sin(0.4), dz: -Math.cos(0.4) };
     expect(aimAt(g, down)).toBe('tinkles');
-    // over everyone’s heads: the first in the line, as if looking at them
-    const up = { x: 0, y: 1.5, z: 0, dx: 0, dy: Math.sin(0.5), dz: -Math.cos(0.5) };
-    expect(aimAt(g, up)).toBe('tinkles');
-    // someone big takes more of the line, but no more than AIM.wide
+    // someone big takes more of the line, but no more than AIM.wide (looked at, under the top of his head)
     const raptor = lineUp(['raptor', -3, 1.45, 0.9]);
-    expect(aimAt(raptor, level(AIM.wide - 0.05))).toBe('raptor');
-    expect(aimAt(raptor, level(AIM.wide + 0.05))).toBe(null);
+    expect(aimAt(raptor, level(AIM.wide - 0.05, 1.2))).toBe('raptor');
+    expect(aimAt(raptor, level(AIM.wide + 0.05, 1.2))).toBe(null);
+  });
+
+  it('is on someone small with the crosshair just over their head, and on nobody with it well over', () => {
+    const g = lineUp(['tinkles', -2, 0.9]);
+    // just over her head, as the line comes to her: her, without looking right down
+    expect(aimAt(g, level(0, 0.9 + AIM.over - 0.05))).toBe('tinkles');
+    // well over it: nobody
+    expect(aimAt(g, level(0, 0.9 + AIM.over + 0.05))).toBe(null);
+    const up = { x: 0, y: 1.5, z: 0, dx: 0, dy: Math.sin(0.5), dz: -Math.cos(0.5) };
+    expect(aimAt(lineUp(['tinkles', -2, 0.9], ['giraffe', -4, 2.3]), up)).toBe(null);
+  });
+
+  it('is never on someone taller just because the line passes over them, however near they are', () => {
+    // the Photography Raptor right in front of him, the crosshair up over his
+    // head on the far side of the room, and someone off to the side of it there
+    const up = { x: 0, y: 1.55, z: 0, dx: 0, dy: Math.sin(0.3), dz: -Math.cos(0.3) };
+    const g = lineUp(['raptor', -1.6, 1.45, 0.9], ['beth', -6, 1.88, 0.3, 1.2]);
+    expect(aimAt(g, up)).toBe(null);
+    // and nobody shorter than AIM.small is that tall
+    for (const p of EVERYONE) if (p.h <= AIM.small) expect(['tinkles', 'ghostinajar', 'babywizard'], p.id).toContain(p.id);
+    for (const id of ['tinkles', 'ghostinajar', 'babywizard']) expect(EVERYONE.find((p) => p.id === id).h, id).toBeLessThanOrEqual(AIM.small);
+  });
+
+  it('is never on someone right at his shoulder, who the camera can’t see past', () => {
+    // the line starts inside them: not them, but whoever's beyond
+    const g = lineUp(['beside', -0.3], ['far', -4]);
+    expect(aimAt(g, level())).toBe('far');
+    // someone small there is under the line: it can see over them
+    expect(aimAt(lineUp(['tinkles', -0.3, 0.9]), { ...level(), dy: -Math.sin(0.6), dz: -Math.cos(0.6) })).toBe('tinkles');
+  });
+});
+
+describe('C-137: Total Rickall’s camera', () => {
+  // a game of people stood in a line south of (0, 0), behind him as he looks north
+  const lineUp = (...who) => ({ state: 'on', shot: [], people: who.map(([id, z, h = 1.8, r = 0.3, x = 0]) => ({ id, x, z, r, h, parasite: true })) });
+  const looking = (down = 0) => ({ x: 0, y: 1.55, z: 0, dx: 0, dy: -Math.sin(down), dz: -Math.cos(down) });
+
+  it('stands CAM.back behind his shoulder with nobody behind him', () => {
+    expect(view(lineUp(['ahead', -3]), looking())).toEqual({ back: CAM.back, hide: [] });
+    // someone off to the side of the line, by more than their width
+    expect(view(lineUp(['aside', 1, 1.8, 0.3, 0.8]), looking()).back).toBe(CAM.back);
+    // someone small behind him: the camera's over them
+    expect(view(lineUp(['tinkles', 1, 0.9]), looking(0.3)).back).toBe(CAM.back);
+    // or someone shot
+    const g = lineUp(['behind', 1.2]);
+    g.shot.push('behind');
+    expect(view(g, looking()).back).toBe(CAM.back);
+  });
+
+  it('comes in along the line in front of someone standing behind him', () => {
+    // as wide as the crosshair takes them, and CAM.pad more
+    const v = view(lineUp(['behind', 1.2], ['further', 1.5]), looking());
+    expect(v.back).toBeCloseTo(1.2 - AIM.r - CAM.pad, 6);
+    expect(v.hide).toEqual([]);
+    // looking down, the camera rises as it goes back: still them, a little further back
+    expect(view(lineUp(['behind', 1.2]), looking(0.4)).back).toBeCloseTo((1.2 - AIM.r - CAM.pad) / Math.cos(0.4), 6);
+    // looking right down, it's up over their head by then
+    expect(view(lineUp(['behind', 1.2]), looking(SIGHT.down)).back).toBe(CAM.back);
+  });
+
+  it('leaves anyone right at his shoulder out of the picture, but not someone small under it', () => {
+    const v = view(lineUp(['beside', 0.2, 1.8, 0.3, 0.2], ['behind', 1.2]), looking());
+    expect(v.hide).toEqual(['beside']);
+    expect(v.back).toBeCloseTo(1.2 - AIM.r - CAM.pad, 6);
+    expect(view(lineUp(['tinkles', 0.2, 0.9, 0.3, 0.2]), looking()).hide).toEqual([]);
+  });
+});
+
+describe('C-137: Total Rickall, where Morty starts', () => {
+  const living = PLAN.find((r) => r.id === 'living');
+  const mid = { x: (living.x0 + living.x1) / 2, z: (living.z0 + living.z1) / 2 };
+  const crowdOf = (g) => g.people.map(({ id, x, z, r }) => ({ id, x, z, r }));
+
+  it('puts him at the egg, clear of every spot, so nobody stands where he is when a game starts', () => {
+    const egg = HOTSPOTS.find((h) => h.id === 'egg');
+    expect(MORTY_AT).toMatchObject({ x: egg.x, z: egg.z });
+    for (const s of HOUSE_SPOTS) expect(Math.hypot(MORTY_AT.x - s.x, MORTY_AT.z - s.z), `${s.x}, ${s.z}`).toBeGreaterThanOrEqual(s.r + MORTY.radius);
+    // whoever's in the room, he stands where he's put
+    for (const seed of SEEDS.slice(0, 40)) {
+      let m = newMorty(MORTY_AT, 'rickall');
+      for (let i = 0; i < 10; i++) m = stepMorty(m, { x: 0, z: 0 }, 1 / 60, 'house', { crowd: crowdOf(newRickall(seed, { absent: ['morty'] })) });
+      expect(Math.hypot(m.x - MORTY_AT.x, m.z - MORTY_AT.z), `seed ${seed}`).toBeLessThan(1e-6);
+    }
+  });
+
+  it('turns him to the middle of the room, the crowd in front of him', () => {
+    // (a heading turns +x round to (cos face, -sin face), as rules.js has it)
+    const fx = Math.cos(MORTY_AT.face);
+    const fz = -Math.sin(MORTY_AT.face);
+    const to = { x: mid.x - MORTY_AT.x, z: mid.z - MORTY_AT.z };
+    expect(fx * to.x + fz * to.z).toBeCloseTo(Math.hypot(to.x, to.z), 6);
+    // most of the room within 35° of straight ahead of him, whoever's in it
+    for (const seed of SEEDS.slice(0, 100)) {
+      const g = newRickall(seed, { absent: ['morty'] });
+      const ahead = g.people.filter((p) => (fx * (p.x - MORTY_AT.x) + fz * (p.z - MORTY_AT.z)) / Math.hypot(p.x - MORTY_AT.x, p.z - MORTY_AT.z) > Math.cos((35 * Math.PI) / 180));
+      expect(ahead.length, `seed ${seed}`).toBeGreaterThanOrEqual(Math.ceil(g.people.length / 2));
+    }
   });
 });
 

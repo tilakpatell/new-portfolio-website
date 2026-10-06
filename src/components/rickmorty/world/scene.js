@@ -18,7 +18,8 @@
 // yaw, speed, bank }, camYaw, camPitch, near: { link, hotspot }, done, fed:
 // { x, y, z, yaw, mode } (the Federation's patrol ship, as ./ship.js flies it),
 // and in Total Rickall sight (the line Morty aims along, ./interiors/rickall.js's
-// sight(): the camera goes on it) and rickall ({ game, aim }, for the house to draw) }.
+// sight(): the camera goes on it, `back` behind its start, as that file's
+// view() has it) and rickall ({ game, aim, hide }, for the house to draw) }.
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../lib/stage3d';
@@ -86,9 +87,6 @@ const K = SAUCER / TALL; // and its measurements to match
 // how far round the camera may swing (radians) to get out from behind a piece of furniture
 const SWING = [0.5, 1, 1.5, 2, 2.6];
 const ROOM_LIGHT = { sun: [0xfff1dc, 0.7], hemi: [0xfff4e6, 0x8a7a68, 1.7], fog: null, background: 0x15110d };
-
-// how far behind the line's start (his eyes, over his shoulder) the aiming camera stands
-const SHOULDER = 1.6;
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const V = new THREE.Vector3();
@@ -421,6 +419,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   let standY = 0; // what he stands on over it, eased: the camera's level, which doesn't bob with his jumps
   let eyeY = 0;
   let craftY = CRUISER.hover;
+  let aimBack = null; // how far behind his shoulder the aiming camera is, eased out (null: not aiming)
   const render = (state, ms = 16) => {
     if (stage.lost || stage.disposed) return;
     const now = performance.now();
@@ -498,7 +497,10 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     // the camera: behind Morty at the component's yaw, chasing the cruiser,
     // or (in Total Rickall) on the line he aims along, behind his shoulder,
     // so the crosshair in the middle of the screen is on it; pulled in along
-    // it in front of a wall or a piece of furniture, and never out of the room
+    // it in front of anyone standing there (in at once, so it's never in
+    // them; back out gently, so it doesn't jump as he turns past them), in
+    // front of a wall or a piece of furniture, and never out of the room
+    if (!state.sight) aimBack = null;
     if (state.flying && c && outdoors) {
       const fx0 = Math.sin(c.yaw);
       const fz = Math.cos(c.yaw);
@@ -506,9 +508,10 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       want.look.set(c.x + fx0 * 6, craftY + 0.2, c.z + fz * 6);
     } else if (state.sight) {
       const s = state.sight;
+      aimBack = aimBack === null || s.back < aimBack ? s.back : aimBack + (s.back - aimBack) * Math.min(1, dt * 5);
       V.set(s.x, groundY + s.y, s.z);
       want.look.set(V.x + s.dx * 4, V.y + s.dy * 4, V.z + s.dz * 4);
-      want.at.set(V.x - s.dx * SHOULDER, V.y - s.dy * SHOULDER, V.z - s.dz * SHOULDER);
+      want.at.set(V.x - s.dx * aimBack, V.y - s.dy * aimBack, V.z - s.dz * aimBack);
       const a = AREAS[area];
       let k = clearance(area, V, want.at);
       const inside = (q) => q.x > a.x0 + 0.25 && q.x < a.x1 - 0.25 && q.z > a.z0 + 0.25 && q.z < a.z1 - 0.25 && q.y < CEILING[area] - 0.2;

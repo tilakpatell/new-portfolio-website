@@ -13,10 +13,18 @@
 // frame finds them already shot and counts for nothing.
 
 import { seeded } from '../../../../lib/seeded';
-import { HOUSE_SPOTS } from '../rules';
+import { HOTSPOTS, HOUSE_SPOTS, PLAN } from '../rules';
 
 // eight parasites in the room, and two minutes before they've won
 export const RICKALL = { count: 8, time: 120 };
+
+// Where Morty is put as each game starts: at the egg, where he picked it up,
+// which is clear of every spot (so nobody is stood on top of him, however he
+// left the last game), and turned to the middle of the living room, so the
+// crowd is in front of him rather than behind.
+const EGG = HOTSPOTS.find((h) => h.id === 'egg');
+const LIVING = PLAN.find((r) => r.id === 'living');
+export const MORTY_AT = { x: EGG.x, z: EGG.z, face: Math.atan2(EGG.z - (LIVING.z0 + LIVING.z1) / 2, (LIVING.x0 + LIVING.x1) / 2 - EGG.x) };
 
 // `kind`: 'figure', a rigged Meshy figure that idles (public/games/meshy), or
 // 'prop', a model that stands still (public/models/c137/rm). `r`: the floor it
@@ -308,16 +316,65 @@ export function sight(m, yaw, pitch = SIGHT.level) {
 
 // How wide someone is to the crosshair: a body's width, someone bigger
 // (the raptor's tail, Mrs. Refrigerator's arms) more, but never so much that
-// it takes in the one stood next to them; and how far it reaches.
-export const AIM = { r: 0.35, wide: 0.5, reach: 12 };
+// it takes in the one stood next to them; and how far it reaches. `small`:
+// as tall as someone can be and still be in the sights with the line passing
+// over their head, as long as it's no more than `over` above it (Tinkles, the
+// Ghost in a Jar, Baby Wizard: to look right down at them would be to lose
+// everyone else); anyone taller has to be looked at.
+export const AIM = { r: 0.35, wide: 0.5, reach: 12, small: 1.2, over: 0.6 };
 const aimR = (p) => Math.max(AIM.r, Math.min(AIM.wide, p.r));
+
+// ── the camera ──
+
+// The camera stands on the sight line, `back` behind where it starts (and
+// ./scene.js brings it nearer for a wall or the furniture), so the crosshair
+// in the middle of the screen is on it. Never in someone, though: anyone
+// within `pad` of their cylinder (as the crosshair takes them, and `over`
+// above their head) is either behind his shoulder, and the camera comes in
+// along the line in front of them, or the line starts inside them, right at
+// his shoulder, where no camera on it could see past them: those are left
+// out of the picture, and out of the sights, till he steps away.
+export const CAM = { back: 1.6, pad: 0.15, over: 0.15 };
+const atShoulder = (p, s) => s.y < p.h + CAM.over && Math.hypot(s.x - p.x, s.z - p.z) < aimR(p) + CAM.pad;
+
+// How far back along the sight line `s` the camera can stand, and who's
+// left out of the picture ({ back, hide: [id] }), for whoever's standing.
+export function view(game, s) {
+  let back = CAM.back;
+  const hide = [];
+  const flat2 = s.dx * s.dx + s.dz * s.dz;
+  for (const p of game.people) {
+    if (game.shot.includes(p.id)) continue;
+    if (atShoulder(p, s)) {
+      hide.push(p.id);
+      continue;
+    }
+    if (flat2 < 1e-12) continue;
+    // where, going back along the line, it's inside their circle (in metres)...
+    const ox = s.x - p.x;
+    const oz = s.z - p.z;
+    const half = -(ox * s.dx + oz * s.dz);
+    const disc = half * half - flat2 * (ox * ox + oz * oz - (aimR(p) + CAM.pad) ** 2);
+    if (disc < 0) continue;
+    // ...and under the top of their head (going back, the line rises if he's looking down)
+    const top = p.h + CAM.over;
+    let lo = 0;
+    let hi = back;
+    if (s.dy < -1e-9) hi = Math.min(hi, (top - s.y) / -s.dy);
+    else if (s.dy > 1e-9) lo = Math.max(lo, (s.y - top) / s.dy);
+    else if (s.y >= top) continue;
+    const enter = Math.max((-half - Math.sqrt(disc)) / flat2, lo);
+    if (enter <= Math.min((-half + Math.sqrt(disc)) / flat2, hi)) back = enter;
+  }
+  return { back, hide };
+}
 
 // Who's under the crosshair, along the sight line `s`: the nearest still
 // standing whose upright cylinder (aimR round, from the floor to the top of
-// their head) the line meets within `reach`; or, if it passes over or under
-// them all, the nearest whose circle on the floor its way across the room
-// crosses, so someone small is in the sights without looking right down at
-// them. Null for nobody, or once it's over.
+// their head) the line meets within `reach`; or, if it misses them all, the
+// nearest of the small ones it passes close over (see AIM). Never anyone the
+// line starts inside, left out of the picture (see CAM). Null for nobody, or
+// once it's over.
 export function aimAt(game, s, reach = AIM.reach) {
   if (game.state !== 'on') return null;
   const flat = Math.hypot(s.dx, s.dz); // how far across the floor, for each metre along the line
@@ -327,7 +384,7 @@ export function aimAt(game, s, reach = AIM.reach) {
   let near = null;
   let nearAt = Infinity;
   for (const p of game.people) {
-    if (game.shot.includes(p.id)) continue;
+    if (game.shot.includes(p.id) || atShoulder(p, s)) continue;
     // where the line is inside their circle, in metres along it
     const ox = s.x - p.x;
     const oz = s.z - p.z;
@@ -351,8 +408,11 @@ export function aimAt(game, s, reach = AIM.reach) {
       hit = p.id;
       hitAt = enter;
     }
+    // (someone small: how high over their head the line is, where it comes to them and as it leaves)
+    if (p.h > AIM.small) continue;
     const across = Math.max(t0, 0) * flat;
-    if (across <= reach && across < nearAt) {
+    const into = s.y + s.dy * Math.max(t0, 0);
+    if (across <= reach && across < nearAt && into >= p.h && Math.min(into, s.y + s.dy * t1) <= p.h + AIM.over) {
       near = p.id;
       nearAt = across;
     }
