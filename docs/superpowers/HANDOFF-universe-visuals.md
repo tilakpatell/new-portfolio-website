@@ -76,6 +76,17 @@ Scorecard (the spec’s “Where things stand” table is the before): fill in t
   - *Cybertron’s energon takes half the key’s colour*, normalised: a full multiply turned its blue to teal under the home sun.
   - *The Office’s `-hq` relief was already there*; it becomes a `MeshPhysicalMaterial` (sheen 0.6 in `#f3ecd8`, sheen roughness 0.8, roughness 1 over its map).
   - *`VARIANTS` is a function*, `variants(planets)`, the set of program variants the planets’ own hooks make, tested in `planets.test.js` (`lib/three/precompile.test.js` mustn’t import a component): 14 with every map loaded, pinned at 24 or fewer.
+- **Checkpoint 5:**
+  - *The profile is applied where the model is mounted*, which already walked its materials, not in `dress`: the values change no shader. `tune` takes `metalness: { metal, paint }` now; the ships name their metal by a list of their own (trim, engines, guns, pipes), since `tune`’s default counts `hull` and `plate` as metal and on a ship they’re painted.
+  - *The Falcon’s hull was clay*: its own finish (`FINISH`) had roughness 1. It’s the profile’s paint now (0.72, a tenth metallic), and the X-wing’s too.
+  - *No `anisotropy = 8` was left* in `hulls.js` or `trafficKit.js`: they already sharpen through `lib/three/textures`.
+  - *The rim is 0.5, not 0.35*: against the sun (falcon-sun, the station) 0.35 hardly showed on the hull’s dark side.
+  - *`buildShip`’s `engines` stay what they were* (where the plumes leave, which `modules.js` reads): the scene adds the hero ship to the shared engines with `HERO_ENGINES` (BUILT units), and the traffic’s and hunters’ are `ENGINES` as shares of each model’s box, since their models come in different units. Every engine burns 0.35 of its colour idle to 1.5 boosting, so a parked ship isn’t a beacon; the Falcon’s three are 0.035 across. A balloon, a Meeseeks and Birdperson have none.
+- **Checkpoint 6:**
+  - *Solid noise, not triplanar*: 3D noise read at the rock’s own point has no seams to hide, so there’s nothing for three planes to do. Each instance reads its own stretch of it (moved along by where it is), and the slope is scaled by the rock’s size, so a rim rock 14 times the belt’s is pitted alike.
+  - *`rockHook(material)`*: the same pits on a material that has a hook of its own (deep space’s tumbling streams: key `rock-deep-debris`); the meteors and the streams use it, the belt and the rim `rockMaterial`. Two tones (the instance’s colour and its pits’), not an option.
+  - *The relief goes flat at the pace’s step 3* (the spec’s table), by one uniform every rock shares (`ROCK_RELIEF`): no shader is made again.
+  - *The boulders*: one in each block of forty rocks, picked by a draw of its own so no other rock moves; twice the size (and the ship’s collider knows), an icosphere a step finer with its points shared and eight craters pressed in (180 faces). One more draw for the home belt and one for the rim.
 
 ## Checking it
 
