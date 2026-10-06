@@ -1670,6 +1670,20 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     // the lead shrinks as the camera's brought in, so he keeps his place in
     // the frame (a full lead from a camera a metre off him put him off it)
     look.set(h.x + A.lx * room, A.ly, h.z + A.lz * room);
+    // in motion the camera and its aim trail their targets (each eases to
+    // its own, about speed / rate behind); a camera brought in close would
+    // trail further than it stands off him and lose him, so the closer it's
+    // brought in, the more of that trail is taken out (none at full distance)
+    const pull = 1 - room;
+    if (pull > 0) {
+      const lag = (r) => (dt > 0 ? (dt * Math.exp(-r * dt)) / -Math.expm1(-r * dt) : 1 / r);
+      const la = lag(9) * pull;
+      const ll = lag(14) * pull;
+      want.x += h.vx * la;
+      want.z += h.vz * la;
+      look.x += h.vx * ll;
+      look.z += h.vz * ll;
+    }
     // the first frame, or a jump across the compound (to a door from the
     // list, out of a building): straight there, no swing across the lawn,
     // and no lead or lean carried over from before the jump
