@@ -127,11 +127,7 @@ if (attacking) {
   await hitAll(3);
   await page.waitForTimeout(12000);
   await snap('breaking');
-  const mine = await page.evaluate(async () => {
-    const { warTally } = await import('/src/components/galaxy/warState.js');
-    const t = warTally();
-    return t.keys().reduce((s, k) => s + t.mine(k), 0);
-  });
+  const mine = await page.evaluate(() => window.__galaxy().war.mine);
   check(mine >= 12, `the war counted what you did (${mine} points)`);
 }
 // the war table

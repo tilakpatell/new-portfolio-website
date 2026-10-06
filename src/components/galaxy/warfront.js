@@ -210,7 +210,10 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       return on;
     },
     get info() {
-      return { sys: sys?.id ?? null, on, laid: laid ? { at: laid.at, axis: laid.axis, lines: laid.lines, radius: laid.radius, name: laid.war.name, attacker: laid.attacker } : null, battle: battle?.info ?? null, joined, tookPart };
+      const t = warTally(now());
+      // (mine: what you've done in the war this campaign, in points)
+      const mine = +t.keys().reduce((sum, k) => sum + (k.startsWith('win:') ? 0 : t.mine(k)), 0).toFixed(2);
+      return { sys: sys?.id ?? null, on, laid: laid ? { at: laid.at, axis: laid.axis, lines: laid.lines, radius: laid.radius, name: laid.war.name, attacker: laid.attacker } : null, battle: battle?.info ?? null, joined, tookPart, mine };
     },
 
     setNet(client) {
