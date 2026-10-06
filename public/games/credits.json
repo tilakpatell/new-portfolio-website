@@ -1944,5 +1944,50 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/gotron": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1113f-d7bd-76b1-bfed-3c8a30412a35",
+    "name": "gotron, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/spacebeth": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1111e-f029-74bd-bade-e394bed5de12",
+    "name": "spacebeth, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/drwong": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1111e-f02a-70b1-865b-1f63b13c84ff",
+    "name": "drwong, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/sleepygary": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1111e-f029-775a-a386-46077dd56b90",
+    "name": "sleepygary, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/hamurai": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11121-705b-72c8-840d-a85e8a5a0b78",
+    "name": "hamurai, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }
