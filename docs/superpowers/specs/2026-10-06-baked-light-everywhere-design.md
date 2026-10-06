@@ -186,3 +186,55 @@ Each of those is noted in its commit and skipped rather than forced.
    change rather than every frame.
 3. **Load cost:** about 30–80 extra shadow renders once, spread over chunks during the reveal.
    No download.
+
+## As built
+
+Commits `be77d32` to the branch head. The changes from the design above, and why:
+
+1. **Options the worlds turned out to need** (each with its test in
+   `lib/three/groundwork.test.js`):
+   - **`auto`:** bake on the first frame the floor is shown. A town places its sun during
+     render, and a zone or a world seen from indoors can't be drawn from above while it's
+     hidden.
+   - **`follow`:** bake again when the sun turns more than about 10°. This catches Bree's
+     and the Shire's moods.
+   - **`clip`:** for a world shown one zone at a time (the Marshes, Moria, Orthanc, Cirith
+     Ungol, Doom). Each outdoor zone has its own ground, and its blobs show only while that
+     zone is shown, and only for the movers inside it.
+   - **`contact`:** a mover's old circle shadow is hidden while its blob is drawn. Indoor
+     zones, and C-137's rooms, keep theirs.
+   - **`track()`:** stands a later mover in the shade: a figure swapped by the wardrobe, a
+     model swapped in, a robot spawning.
+   - **No blob** for a mover more than 2 m under the floor, or one no longer in the scene.
+     `standIn` reads the mask only between 2 m under the floor's lowest point and 8 m over
+     its highest, so the halls 900 m below Edoras and Minas Tirith are left alone.
+   - **Blobs on the baked height:** the bake reads its mask back once
+     (`heightFromPixels`), so blobs lie on the floor as baked where a world has no height
+     function. Minas Tirith's terraces have none.
+   - **`keepShadows`:** Invincible's city is 4.3 km across and flown over fast. It keeps
+     its own sun shadow pass and bakes only the sky's occlusion, city-wide (mask channel 3,
+     so the sun isn't cut), with the bounce.
+   - **`castersTop`** counts instanced meshes, which is how Invincible builds its towers.
+2. **Fail soft, sooner.** A GPU without `EXT_color_buffer_float` keeps the world's own
+   shadow pass. The world isn't changed until it's known the bake can happen.
+3. **The resolve turns the picture over**, so that v = 0 is the area's z0 edge, as the
+   floor's shader reads it. The offline masks are turned over by being read back and saved.
+4. **Matcaps:** the key leaves out colour (a material's colour multiplies a white sphere's
+   light). The picture is linear half-float, and the stage's output pass tone-maps the
+   frame, matcaps included.
+5. **Skipped, with reasons:**
+   - **Scranton:** `office/world/ao.js` already paints Bruno-style contact shade on every
+     tier, so a bake on top would darken it twice.
+   - **Cybertron Roll out:** an endless runner. Its road and land are recycled under the
+     convoy, so a mask baked once can't follow.
+   - **Cybertron's indoor arena:** its roof shares the ground's material.
+   - Instead of Roll out, Cybertron's arena game (Iacon at war and the outdoor areas) is
+     grounded: it bakes each area as it's built.
+6. **Credit:** the universe map's credits (where every world is opened from), the README's
+   Assets and credits, and the module headers. That replaces one line per world.
+7. **Floors that share a material with something raised** would have that thing read its
+   own footprint. The compound's mast plinths were given their own material.
+8. **QA:** `scripts/ground-qa.mjs`. Run it from a copy of the tree. Vite's hot reload of a
+   file being edited remounts a world, and the old renderer's deferred `forceContextLoss`
+   then kills the shared canvas. That is what lost Bree's context twice while it was being
+   wired. On a frozen copy, 2 of 2 runs were clean.
