@@ -13,6 +13,32 @@ import { gltfLoader } from '../../../lib/three/gltf';
 import { sharpenMaterial } from '../../../lib/three/textures';
 import { borrowClips, faceAhead, retarget } from './clips';
 
+// Clips every rigged figure can play besides idle, walk and run: made once
+// on one Meshy skeleton (scripts/meshy-rm-local.mjs's `clips`, as
+// public/games/meshy/clips-<name>.glb) and retargeted to each figure's hips,
+// as Rick's are borrowed (clips.js). play(c, name) plays one over the
+// figure's idle/walk/run blend: once (a hit, a cheer, a shot) or looped (a
+// dance, sitting with the arms crossed) till stop(c).
+export const SHARED_CLIPS = ['drink', 'cheer', 'wave', 'happy', 'hit', 'fall', 'scared', 'shoot', 'dance', 'punch', 'taunt', 'shot', 'sitcross'];
+const shared = new Map(); // clip name → Promise<clip | null>
+const sharedClip = (name, loader) => {
+  if (!shared.has(name)) {
+    shared.set(
+      name,
+      loader.loadAsync(`${BASE}/clips-${name}.glb`).then(
+        (g) => {
+          const c = g.animations[0] ?? null;
+          const hips = g.scene?.getObjectByName('Hips');
+          if (c && hips) c.userData = { ...c.userData, hips: hips.position.y };
+          return c;
+        },
+        () => null,
+      ),
+    );
+  }
+  return shared.get(name);
+};
+
 export { faceForward, heading } from './clips';
 
 // Meshy's textures carry their own shading, so the light steps stay lighter
@@ -51,7 +77,7 @@ const ownClips = (name) => !name.startsWith('/');
 // game kind → the model, how tall it stands in the arena (world units; a
 // little over the shapes' sizes, as slim figures read smaller from above)
 export const MESHY = {
-  rick: { a: 'rick', h: 2.35 },
+  rick: { a: 'rick', h: 2.35, fidget: 'drink' },
   morty: { a: 'morty', h: 1.95 },
   pickle: { a: 'pickle', h: 1.35 },
   meeseeks: { a: 'meeseeks', h: 2.2 },
@@ -150,11 +176,38 @@ export const MESHY = {
   storylord: { a: 'storylord', h: 1.95 },
   ticketsguy: { a: 'ticketsguy', h: 1.75 },
   rickprime: { a: 'rickprime', h: 2.35 },
+  evilrick: { a: 'evilrick', h: 2.35 },
   simman: { a: 'simman', h: 1.8 },
   poptart: { a: 'poptart', h: 1.6 },
   toasterhouse: { a: 'toasterhouse', h: 3.8 },
   omegadevice: { a: 'omegadevice', h: 3.4 },
   primedrone: { a: 'primedrone', h: 0.9 },
+  tommy: { a: 'tommy', h: 1.8 },
+  nimbus: { a: 'nimbus', h: 1.95 },
+  atlantean: { a: 'atlantean', h: 1.85 },
+  miles: { a: 'miles', h: 1.85 },
+  'froopy-a': { a: 'froopy-a', h: 1.1 },
+  'froopy-b': { a: 'froopy-b', h: 1.9 },
+  heistotron: { a: 'heistotron', h: 4.2 },
+  'heister-a': { a: 'heister-a', h: 1.8 },
+  'heister-b': { a: 'heister-b', h: 1.78 },
+  fart: { a: 'fart', h: 1.8 },
+  'snake-a': { a: 'snake-a', h: 0.9 },
+  'snake-b': { a: 'snake-b', h: 0.9 },
+  snakeastronaut: { a: 'snakeastronaut', h: 1.2 },
+  snakerocket: { a: 'snakerocket', h: 6 },
+  glexo: { a: 'glexo', h: 1.85 },
+  glipglop: { a: 'glipglop', h: 1.8 },
+  risotto: { a: 'risotto', h: 1.9 },
+  watert: { a: 'watert', h: 1.9 },
+  nuptiamachine: { a: 'nuptiamachine', h: 2.2 },
+  mytholog: { a: 'mytholog', h: 2.4 },
+  shrimply: { a: 'shrimply', h: 1.4 },
+  gloopnurse: { a: 'gloopnurse', h: 1.4 },
+  'resortguest-a': { a: 'resortguest-a', h: 1.7 },
+  'resortguest-b': { a: 'resortguest-b', h: 1.95 },
+  dirlycar: { a: 'dirlycar', h: 1.4 },
+  icet: { a: 'icet', h: 2.4 },
   ...Object.fromEntries(
     [
       ['jerry-robe', 1.75],
@@ -180,8 +233,8 @@ const RICKALL_FIGURES = ['pencilvester', 'sleepygary', 'hamurai', 'amishcyborg',
 const RICKALL_PROPS = ['reversegiraffe', 'ghostinajar', 'photographyraptor', 'tinkles', 'babywizard', 'mrsrefrigerator'];
 const FAMILY_FIGURES = ['spacebeth', 'drwong', 'nancy', 'tricia', 'diane'];
 const FAMILY_PROPS = ['snuffles'];
-const DEST_FIGURES = ['vance', 'supernova', 'alanrails', 'millionants', 'crocubot', 'noobnoob', 'squanchy', 'birdperson', 'phoenixperson', 'unity', 'marsha', 'mortyjr', 'krombopulos', 'kingjellybean', 'zeep', 'kyle', 'xenonbloom', 'poncho', 'annie', 'needful', 'arthricia', 'flippynips', 'scroopy', 'gearhead', 'nebulon', 'storylord', 'ticketsguy', 'rickprime'];
-const DEST_PROPS = ['vindicators-ship', 'squanchy-house', 'birdperson-house', 'zigerion', 'thirstystep', 'giant', 'stairgoblin', 'hepatitis', 'gonorrhoea', 'tuberculosis', 'plague', 'ecoli', 'needful-shop', 'jerry-robe', 'jerry-golf', 'jerry-tux', 'jerry-track', 'jerry-gown', 'jerry-cardigan', 'magdalian-a', 'magdalian-b', 'magdalian-c', 'plutonian-a', 'plutonian-b', 'gearperson-a', 'gearperson-b', 'zigerion-b', 'zigerion-c', 'simman', 'poptart', 'toasterhouse', 'omegadevice', 'primedrone'];
+const DEST_FIGURES = ['vance', 'supernova', 'alanrails', 'millionants', 'crocubot', 'noobnoob', 'squanchy', 'birdperson', 'phoenixperson', 'unity', 'marsha', 'mortyjr', 'krombopulos', 'kingjellybean', 'zeep', 'kyle', 'xenonbloom', 'poncho', 'annie', 'needful', 'arthricia', 'flippynips', 'scroopy', 'gearhead', 'nebulon', 'storylord', 'ticketsguy', 'rickprime', 'tommy', 'nimbus', 'atlantean', 'miles', 'glexo', 'glipglop', 'risotto', 'watert', 'evilrick'];
+const DEST_PROPS = ['vindicators-ship', 'squanchy-house', 'birdperson-house', 'zigerion', 'thirstystep', 'giant', 'stairgoblin', 'hepatitis', 'gonorrhoea', 'tuberculosis', 'plague', 'ecoli', 'needful-shop', 'jerry-robe', 'jerry-golf', 'jerry-tux', 'jerry-track', 'jerry-gown', 'jerry-cardigan', 'magdalian-a', 'magdalian-b', 'magdalian-c', 'plutonian-a', 'plutonian-b', 'gearperson-a', 'gearperson-b', 'zigerion-b', 'zigerion-c', 'simman', 'poptart', 'toasterhouse', 'omegadevice', 'primedrone', 'froopy-a', 'froopy-b', 'heistotron', 'heister-a', 'heister-b', 'fart', 'snake-a', 'snake-b', 'snakeastronaut', 'snakerocket', 'nuptiamachine', 'mytholog', 'shrimply', 'gloopnurse', 'resortguest-a', 'resortguest-b', 'dirlycar', 'icet'];
 export const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick', ...RICKALL_FIGURES, ...FAMILY_FIGURES, ...DEST_FIGURES]);
 // the models not in the cast's own folder, by name: where they are
 // (and Mortytown's two shopfronts, rickmorty/citadel/district.js)
@@ -279,7 +332,7 @@ export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false, 
         }
         if (hips?.parent && clips.walk) faceAhead(clips, new THREE.Vector3(0, 1, 0).applyQuaternion(hips.parent.getWorldQuaternion(new THREE.Quaternion()).invert()));
       }
-      assets.set(name, { scene, height: size.y, offset, clips, rigged: rigged.has(name) });
+      assets.set(name, { scene, height: size.y, offset, clips, rigged: rigged.has(name), hipsY: scene.getObjectByName('Hips')?.position.y ?? null });
     } catch {
       /* this one stays as shapes */
     }
@@ -341,10 +394,47 @@ export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false, 
       }
       c.mixer = mixer;
       c.act = act;
+      c.hipsY = src.hipsY;
       c.hand = model.getObjectByName('RightHand') ?? model.getObjectByName('mixamorig:RightHand') ?? null;
+      // (a figure that fidgets: Rick's flask, every so often while he stands)
+      if (spec.fidget) c.fidget = { clip: spec.fidget, next: 6 + Math.random() * 14 };
     }
     c.update = (t, move, hit) => update(c, t, move, hit);
+    c.play = (clip, opts) => play(c, clip, opts);
+    c.stop = (fade) => stop(c, fade);
     return c;
+  };
+
+  // one of the shared clips on a figure, once (`hold` seconds at its last
+  // frame, then back to the blend) or looped till stop(c); resolves when
+  // it's playing, false if the figure can't (not rigged, or no such clip)
+  const play = async (c, name, { loop = false, hold = 0, fade = 0.2, speed = 1 } = {}) => {
+    if (!c.mixer) return false;
+    if (!c.act[name]) {
+      const raw = await sharedClip(name, loader);
+      if (!raw || !c.mixer) return false;
+      const clip = c.hipsY != null && raw.userData.hips ? retarget(raw, c.hipsY, raw.userData.hips) : raw;
+      const a = c.mixer.clipAction(clip);
+      a.setEffectiveWeight(0);
+      c.act[name] = a;
+    }
+    const a = c.act[name];
+    stop(c, fade);
+    a.reset();
+    a.enabled = true;
+    a.timeScale = speed;
+    a.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
+    a.clampWhenFinished = true;
+    a.setEffectiveWeight(0);
+    a.play();
+    c.oneShot = { a, name, loop, hold, fade, ended: null, w: 0 };
+    return true;
+  };
+  const stop = (c, fade = 0.2) => {
+    if (!c.oneShot) return;
+    c.oneShot.fading = fade;
+    c.fadingOut = c.oneShot;
+    c.oneShot = null;
   };
 
   // a set piece standing `h` tall on y = 0, centred; its geometry and
@@ -371,7 +461,7 @@ export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false, 
     assets.clear();
   };
 
-  return { load, make, prop, dispose };
+  return { load, make, prop, dispose, play, stop };
 }
 
 const smooth = (a, b, x) => {
@@ -385,9 +475,35 @@ function update(c, t, move, hit) {
   const dt = c.last == null ? 0 : Math.min(0.1, Math.max(0, t - c.last));
   c.last = t;
   if (c.mixer) {
-    const run = smooth(0.55, 0.9, move);
-    const idle = 1 - smooth(0.05, 0.35, move);
-    const walk = Math.max(0, 1 - run - idle);
+    // a clip played over the blend: up over `fade`, held, and down again
+    const o = c.oneShot;
+    if (o) {
+      o.w = Math.min(1, o.w + dt / Math.max(0.01, o.fade));
+      o.a.setEffectiveWeight(o.w);
+      if (!o.loop) {
+        if (o.ended == null && !o.a.isRunning()) o.ended = t;
+        if (o.ended != null && t - o.ended >= o.hold) c.stop(o.fade);
+      }
+    }
+    const f = c.fadingOut;
+    if (f) {
+      f.w = Math.max(0, f.w - dt / Math.max(0.01, f.fading));
+      f.a.setEffectiveWeight(f.w);
+      if (f.w <= 0) {
+        f.a.stop();
+        c.fadingOut = null;
+      }
+    }
+    const over = Math.max(c.oneShot?.w ?? 0, c.fadingOut?.w ?? 0);
+    if (c.fidget && !c.oneShot && !c.fadingOut && move < 0.05) {
+      if (t > c.fidget.next) {
+        c.fidget.next = t + 14 + Math.random() * 20;
+        c.play(c.fidget.clip).catch(() => {});
+      }
+    } else if (c.fidget && move >= 0.05) c.fidget.next = Math.max(c.fidget.next, t + 4);
+    const run = smooth(0.55, 0.9, move) * (1 - over);
+    const idle = (1 - smooth(0.05, 0.35, move)) * (1 - over);
+    const walk = Math.max(0, (1 - over) - run - idle);
     c.act.idle?.setEffectiveWeight(idle);
     c.act.walk?.setEffectiveWeight(walk);
     c.act.run?.setEffectiveWeight(run);
