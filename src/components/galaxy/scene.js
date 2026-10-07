@@ -934,9 +934,11 @@ export async function create(canvas, ctx) {
     state.bias.fill(0);
   };
   // G or X: the crew's power, or the big one (powers.js), while you're flying
+  // (not once a jump's begun, even while the nose swings round to it: the
+  // fight's off then, and a portal would hop the ship out of its line)
   const power = (slot) => {
     heard();
-    if (!flying() || props.frozen || state.crash || state.dive || (state.jump && state.jump.phase !== 'align')) return false;
+    if (!flying() || props.frozen || state.crash || state.dive || state.jump) return false;
     const r = powers.press(slot);
     if (r.ok) takeover();
     ctx.invalidate();
@@ -1579,7 +1581,7 @@ export async function create(canvas, ctx) {
     }
     post.hit(state.hurt);
     placeShield();
-    powers.place(props.powers?.current ?? null, flying() && !state.crash && !state.dive && !props.frozen && !(state.jump && state.jump.phase !== 'align'));
+    powers.place(props.powers?.current ?? null, flying() && !state.crash && !state.dive && !props.frozen && !state.jump);
     return busy || Boolean(hunters?.count);
   };
 
