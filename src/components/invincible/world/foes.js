@@ -98,6 +98,10 @@ export function startInvasion(f) {
 export const portalOpen = (f) => Boolean(f.on && f.foes.some((e) => FLAXANS.has(kindOf(e)) && (e.state === 'waiting' || e.state === 'fight')));
 // where the ones still standing are (their middles)
 export const foeAt = (f) => (f.on ? f.foes.filter(live).map(mid) : []);
+// the ones still standing themselves (Eve and the crowd want who, not just where)
+export const standing = (f) => (f.on ? f.foes.filter(live) : []);
+// whether a kind is still standing
+export const anyOf = (f, kind) => Boolean(f.on && f.foes.some((e) => kindOf(e) === kind && live(e)));
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const len = (v) => Math.hypot(v[0], v[1], v[2]);
@@ -378,8 +382,10 @@ export function stepFoes(prev, hero, input = {}, rawDt, world = {}) {
   const left = [];
   for (const b of f.bolts) {
     b.life -= dt;
+    const from = [...b.p];
     for (const a of [0, 1, 2]) b.p[a] += b.v[a] * dt;
-    if (len(sub(b.p, chest)) < 1.3) {
+    // (along its path this step, so one meeting him head-on flat out can't pass through him)
+    if (nearest(from, b.p, chest) < 1.3) {
       hurt(b.hurt ?? FIGHT.hurt, b.p);
       push = unit(b.v).map((x) => x * 14);
       stun = Math.max(stun, 0.25);

@@ -8,7 +8,7 @@ import { sayVoiced } from '../../../lib/voiced';
 import { readPad, typing } from '../../games/pad';
 import { useAchievements } from '../../Achievements';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
-import { FIGHT, PORTAL, newFight, startInvasion, stepFight } from './fight';
+import { PORTAL, newFoes, portalOpen, spawnFoes, standing, startInvasion, stepFoes } from './foes';
 import { FLY, newHero, stepHero } from './flight';
 import { CALLS, RINGS_DONE } from './lines';
 import { BODIES, SPACE, intoSpace, outOfSpace, stepSpace } from './orbit';
@@ -30,6 +30,17 @@ const sound = (name, ...args) => import('./sounds').then((m) => m[name]?.(...arg
 const AT = 'tp-inv-world-at';
 const TIME = 'tp-inv-world-time';
 const QUESTS = 'tp-inv-world-quests';
+// the objective line's words for who's about (./foes.js)
+function foesText(f, up) {
+  const flax = f.foes.filter((e) => (e.kind ?? 'flaxan').startsWith('flaxan') && e.state !== 'ko' && e.state !== 'down').length;
+  const maulers = up.filter((e) => e.kind === 'mauler').length;
+  const parts = [];
+  if (flax || f.foes.some((e) => (e.kind ?? 'flaxan').startsWith('flaxan'))) parts.push(`Flaxans over the river · ${flax} left`);
+  if (maulers) parts.push(maulers > 1 ? `The Mauler twins · ${maulers} standing` : 'A Mauler · 1 standing');
+  if (up.some((e) => e.kind === 'seismic')) parts.push('Doc Seismic over the school');
+  return parts.join(' · ');
+}
+
 const clock = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`;
 const WHAT = { fall: 'Someone’s slipping off a roof', heli: 'A news helicopter’s lost its tail rotor' };
 const TIMES = ['noon', 'dusk', 'night'];
@@ -148,7 +159,7 @@ function World({ gl, setGl }) {
   if (!sim.current) {
     // (he's put on the lawn for now: where he really starts waits on the
     // world, which the scene makes, and nothing moves before it's there)
-    sim.current = { intro: false, kept: local.get(AT, null), quests: keptQuests(), fight: newFight(), punch: false, punchT: 0, invadeAt: 240, h: newHero(SPAWN), keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], companion: [], eveHit: null, frame: 0, padBefore: null, moved: false, world: null };
+    sim.current = { intro: false, kept: local.get(AT, null), quests: keptQuests(), foes: newFoes(), cars: null, punch: false, punchT: 0, invadeAt: 240, h: newHero(SPAWN), keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], companion: [], eveHit: null, frame: 0, padBefore: null, moved: false, world: null };
   }
 
   // (`who`, for a line someone says: in their own voice where it's been made;
@@ -226,6 +237,10 @@ function World({ gl, setGl }) {
             setTimeName(timeRef.current);
             return syncTime();
           };
+          // (and the villains, for the QA shots: a kind, how many, where)
+          hook.spawn = (kind, n = 1, at) => {
+            sim.current.foes = spawnFoes(sim.current.foes, kind, n, at);
+          };
           window.__INVWORLD__ = { api: hook, sim: sim.current };
         }
         setGl('on');
@@ -276,8 +291,8 @@ function World({ gl, setGl }) {
   const invade = useCallback(
     (why) => {
       const s = sim.current;
-      if (s.fight.on) return;
-      s.fight = startInvasion(s.fight);
+      if (s.foes.on) return;
+      s.foes = startInvasion(s.foes);
       s.invaded = true;
       sfx('alarm');
       if (why === 'cecil') say(CALLS.portal.text, 4600, CALLS.portal.who);
@@ -301,7 +316,7 @@ function World({ gl, setGl }) {
     }
     const p = sim.current.near;
     if (!p) return;
-    if (p.id === 'gda' && !sim.current.fight.on) {
+    if (p.id === 'gda' && !sim.current.foes.on) {
       invade('cecil');
       return;
     }
@@ -516,14 +531,15 @@ function World({ gl, setGl }) {
     s.punchT = Math.max(0, s.punchT - dt);
     if (!inSpace) {
       if (!s.invaded && s.t > s.invadeAt) invade('auto');
-      // (in the rules' own steps: stepFight takes at most 0.05 s a step, so the
-      // dev clock's speed-up runs it several times; the punch counts once)
-      let r = { fight: s.fight, ev: [], push: null, stun: 0 };
+      // (in the rules' own steps: stepFoes takes at most 0.05 s a step, so the
+      // dev clock's speed-up runs it several times; the punch counts once. The
+      // scene says where the traffic's cars are while a Mauler's about)
+      let r = { foes: s.foes, ev: [], push: null, stun: 0 };
       for (let left = dt, first = true; left > 1e-6; left -= 0.05, first = false) {
-        const q = stepFight(r.fight, h, { punch: first && s.punch, look, eveHit: first ? s.eveHit : null }, Math.min(0.05, left));
-        r = { fight: q.fight, ev: [...r.ev, ...q.ev], push: q.push ?? r.push, stun: Math.max(r.stun ?? 0, q.stun ?? 0) };
+        const q = stepFoes(r.foes, h, { punch: first && s.punch, look, eveHit: first ? s.eveHit : null }, Math.min(0.05, left), { cars: s.cars ?? [] });
+        r = { foes: q.foes, ev: [...r.ev, ...q.ev], push: q.push ?? r.push, stun: Math.max(r.stun ?? 0, q.stun ?? 0) };
       }
-      s.fight = r.fight;
+      s.foes = r.foes;
       s.eveHit = null;
       if (r.push) {
         const l = Math.hypot(...r.push) || 1;
@@ -536,10 +552,21 @@ function World({ gl, setGl }) {
           s.punchT = 0.25;
           sfx('zip');
         } else if (e.type === 'ko') sfx('blast');
-        else if (e.type === 'bolt') sfx('laser');
+        else if (e.type === 'hit') sfx('thunk');
+        else if (e.type === 'bolt' || e.type === 'blast') sfx('laser');
         else if (e.type === 'hurt') sfx('hit');
         else if (e.type === 'spawn') sfx('pop');
-        else if (e.type === 'beaten') {
+        else if (e.type === 'carAway') sfx('thunk');
+        else if (e.type === 'carHit' || e.type === 'carDown') sfx('crumble');
+        else if (e.type === 'quake') sfx('boom');
+        else if (e.type === 'floored') {
+          sfx('thunk');
+          say('Off your feet. Up, before the next one.');
+        } else if (e.type === 'clear' && !s.foes.foes.some((q) => (q.kind ?? 'flaxan').startsWith('flaxan'))) {
+          // (the Flaxans' `won` says its own piece)
+          sfx('victory');
+          say('Down. Every one of them.', 3200);
+        } else if (e.type === 'beaten') {
           sfx('boom');
           say('That one hurt. Get back up.');
         } else if (e.type === 'won') {
@@ -622,7 +649,10 @@ function World({ gl, setGl }) {
       if (H.lines) H.lines.style.opacity = String(clamp((speed - 70) / 160, 0, 0.85));
       const marks = [];
       const q = s.quests;
-      if (s.fight.on) marks.push({ x: PORTAL.p[0], z: PORTAL.p[2], color: '#d04dff', name: 'Portal' });
+      // the villains (./foes.js): the portal while it's open, and the ones on the ground
+      const up = standing(s.foes);
+      if (portalOpen(s.foes)) marks.push({ x: PORTAL.p[0], z: PORTAL.p[2], color: '#d04dff', name: 'Portal' });
+      for (const e of up) if (e.kind === 'mauler' || e.kind === 'seismic') marks.push({ x: e.p[0], z: e.p[2], color: '#d04dff', name: e.kind === 'mauler' ? 'Mauler' : 'Doc Seismic' });
       if (q.rescue && !q.rescue.carried) marks.push({ x: q.rescue.p[0], z: q.rescue.p[2], color: '#ff3b30', name: 'Help' });
       if (q.lesson.on) marks.push({ x: RINGS[q.lesson.next].p[0], z: RINGS[q.lesson.next].p[2], color: '#ffd23a', name: `Ring ${q.lesson.next + 1}` });
       s.marks = marks;
@@ -630,14 +660,13 @@ function World({ gl, setGl }) {
       if (H.goal) {
         // (in space, the city's distances mean nothing: he's a world away)
         const d = q.rescue ? Math.round(Math.hypot(q.rescue.p[0] - h.p[0], q.rescue.p[1] - h.p[1], q.rescue.p[2] - h.p[2])) : 0;
-        const left = s.fight.on ? FIGHT.count - s.fight.foes.filter((e) => e.state === 'ko' || e.state === 'down').length : 0;
-        const fightText = s.fight.on ? `Flaxans over the river · ${left} left · you ${Math.max(0, Math.round(s.fight.hp))}%` : '';
+        const fightText = s.foes.on ? `${foesText(s.foes, up)} · you ${Math.max(0, Math.round(s.foes.hp))}%` : '';
         const rescueText = q.rescue && (q.rescue.carried ? (inSpace ? 'Set them down: back in the city' : 'Set them down: land anywhere') : `${WHAT[q.rescue.kind]} · ${inSpace ? 'down in the city' : `${d} m`}`);
         const text = fightText || rescueText || (q.lesson.on ? `Dad’s rings · ${q.lesson.next + 1} of ${RINGS.length} · ${clock(q.lesson.t)}` : '');
         if (H.goal.textContent !== text) H.goal.textContent = text;
         H.goal.dataset.on = text ? '1' : '';
-        H.goal.dataset.red = q.rescue && !s.fight.on ? '1' : '';
-        H.goal.dataset.purple = s.fight.on ? '1' : '';
+        H.goal.dataset.red = q.rescue && !s.foes.on ? '1' : '';
+        H.goal.dataset.purple = s.foes.on ? '1' : '';
       }
       // the title goes to a chip 2.5 s after he first moves, or at once when there's something to do (./hud.js)
       if (!s.movedAt && (s.moved || speed > 2)) s.movedAt = s.t;
