@@ -84,3 +84,19 @@ export const pick = (list, rand) => {
   for (const o of list) if ((r -= o.weight) <= 0) return o;
   return list[list.length - 1];
 };
+
+// the same numbers from the same words, for every pilot (galaxy/gcw.js's
+// seeded, kept here too so the battle's own modules don't reach into the
+// galaxy for it)
+export function seededRand(text) {
+  let a = 2166136261;
+  for (let i = 0; i < text.length; i++) a = Math.imul(a ^ text.charCodeAt(i), 16777619);
+  a >>>= 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let x = a;
+    x = Math.imul(x ^ (x >>> 15), x | 1);
+    x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+}
