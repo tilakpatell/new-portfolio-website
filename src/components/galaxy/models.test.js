@@ -64,12 +64,12 @@ describe('the galaxy’s models', () => {
     }
   });
 
-  it('flies the universe wars’ flagships Meshy made from the shows, each standing in as a ship of its side till it loads', () => {
-    for (const kind of ['councildread', 'fedbattleship']) {
+  it('flies the universe wars’ flagships Meshy made for them, each standing in as a ship of its side till it loads', () => {
+    for (const kind of ['councildread', 'fedbattleship', 'superlab', 'hacienda']) {
       expect(MODELS[kind]?.url, kind).toBe(`/models/universe/war/${kind}.glb`);
       expect([...BUILT_KINDS, ...GALAXY_KINDS], kind).toContain(STAND_IN[kind]);
     }
-    expect(STAND_IN).toMatchObject({ councildread: 'councilship', fedbattleship: 'fedcruiser' });
+    expect(STAND_IN).toMatchObject({ councildread: 'councilship', fedbattleship: 'fedcruiser', superlab: 'madrigal', hacienda: 'lowrider' });
   });
 
   it('gives every loaded kind with no built version a stand-in that is built', () => {

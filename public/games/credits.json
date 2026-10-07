@@ -2733,5 +2733,23 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "war/superlab": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113a7-902d-70b8-ab2c-882b130ea9ed",
+    "name": "Gus Fring’s superlab barge, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "war/hacienda": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113a7-dbff-767c-be5e-82e4f7439af2",
+    "name": "Don Eladio’s flying hacienda, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }
