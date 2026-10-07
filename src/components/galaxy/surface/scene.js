@@ -375,6 +375,8 @@ export async function create(canvas, ctx) {
           .put({ kind: x.kind, at: [0, 0], abs: true, solid: false })
           .then((o) => {
             if (!o || disposed) return;
+            // (it moves: a built one's scans go with it, kit.js's twins)
+            kit.moving(o);
             tmp.add(o);
             o.position.set(0, 0, 0);
             o.rotation.set(0, 0, 0);
@@ -883,6 +885,8 @@ export async function create(canvas, ctx) {
     if (!kind || !PROPS[kind]) return;
     if (!carriable.has(kind)) {
       const o = PROPS[kind](kit, {}).object;
+      // (carried about: its scans go with it, kit.js's twins)
+      kit.moving(o);
       o.position.set(0, 1.0, -0.3);
       carriable.set(kind, o);
     }

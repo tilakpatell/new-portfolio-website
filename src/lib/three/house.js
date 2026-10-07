@@ -187,7 +187,10 @@ export function createHouse(look = {}, { fog = true } = {}) {
     };
     const key = m.customProgramCacheKey;
     m.customProgramCacheKey = () => `${key ? key.call(m) : ''}|house${grounded ? ':ground' : ''}`;
-    m.userData.house = uniforms;
+    // (a mark a copy doesn't take: Material.copy copies userData through
+    // JSON, which would carry the mark, and the textures in it, to a
+    // material the look was never put on)
+    Object.defineProperty(m.userData, 'house', { value: uniforms, enumerable: false, configurable: true });
     patched.add(m);
     m.needsUpdate = true;
     return true;
