@@ -108,6 +108,68 @@ describe('createRuntime', () => {
     expect(rt.current.module.id).toBe('quick');
   });
 
+  it('two mounts while the backend is made share it: one context, and the one kept is the one given the ratio', async () => {
+    const quality = fakeQuality();
+    quality.ratioUnder = vi.fn((cap) => Math.min(cap ?? Infinity, 2));
+    const made = [];
+    const makeBackend = vi.fn(() => {
+      let resolve;
+      const p = new Promise((r) => (resolve = r));
+      made.push({ gfx: fakeBackend(), resolve });
+      return p;
+    });
+    const { rt, loop } = make({ quality, makeBackend });
+    const mod = { id: 'galaxy', ratio: 1.5, create: () => fakeWorld({ wants: () => true }) };
+    // (React's second run of an effect in development mounts the same module again at once)
+    const p1 = rt.mount(mod, {}, fakeHost());
+    const p2 = rt.mount(mod, {}, fakeHost());
+    await flush();
+    expect(makeBackend).toHaveBeenCalledTimes(1);
+    made[0].resolve(made[0].gfx);
+    expect(await p1).toBe(false);
+    expect(await p2).toBe(true);
+    expect(rt.gfx).toBe(made[0].gfx);
+    expect(made[0].gfx.setRatio).toHaveBeenCalledWith(1.5);
+    expect(made[0].gfx.dispose).not.toHaveBeenCalled();
+    loop.tick(16);
+    expect(rt.status).toBe('on');
+  });
+
+  it('a backend of another kind asked for meanwhile wins, whichever arrives first, and the other goes', async () => {
+    const made = {};
+    const makeBackend = vi.fn((kind) => {
+      let resolve;
+      const p = new Promise((r) => (resolve = r));
+      made[kind] = { gfx: { ...fakeBackend(), backend: kind }, resolve };
+      return p;
+    });
+    const { rt } = make({ makeBackend, gpu: true });
+    const p1 = rt.mount({ id: 'old', create: () => fakeWorld() }, {}, fakeHost());
+    const p2 = rt.mount({ id: 'new', shading: 'nodes', create: () => fakeWorld() }, {}, fakeHost());
+    await flush();
+    expect(makeBackend.mock.calls.map((c) => c[0])).toEqual(['webgl', 'webgpu']);
+    made.webgpu.resolve(made.webgpu.gfx);
+    expect(await p2).toBe(true);
+    made.webgl.resolve(made.webgl.gfx);
+    expect(await p1).toBe(false);
+    await flush();
+    expect(rt.gfx).toBe(made.webgpu.gfx);
+    expect(made.webgpu.gfx.setRatio).toHaveBeenCalled();
+    expect(made.webgl.gfx.dispose).toHaveBeenCalled(); // (not left holding a context)
+    expect(made.webgpu.gfx.dispose).not.toHaveBeenCalled();
+  });
+
+  it('a backend that fails to make fails the mount, and the next mount tries again', async () => {
+    let fails = true;
+    const makeBackend = vi.fn(() => (fails ? Promise.reject(new Error('no context')) : fakeBackend()));
+    const { rt } = make({ makeBackend });
+    expect(await rt.mount({ id: 'a', create: () => fakeWorld() }, {}, fakeHost())).toBe(false);
+    expect(rt.status).toBe('failed');
+    fails = false;
+    expect(await rt.mount({ id: 'a', create: () => fakeWorld() }, {}, fakeHost())).toBe(true);
+    expect(makeBackend).toHaveBeenCalledTimes(2);
+  });
+
   it('a frame that throws fails the world', async () => {
     const { rt, loop } = make();
     const world = fakeWorld({ draw: () => { throw new Error('boom'); } });

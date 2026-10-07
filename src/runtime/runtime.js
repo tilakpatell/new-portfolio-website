@@ -51,6 +51,7 @@ export function createEvents() {
 export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input, quality, saves = null, assets, audio, events = createEvents(), gpu = false, override = null, visible = () => true }) {
   let gfx = null;
   let kind = null; // the backend asked for
+  let coming = null; // { kind, promise }: a backend still being made, for every mount that asks meanwhile
   let lostWebGPU = false;
   let status = 'idle';
   let current = null; // { module, world, host, props }
@@ -185,21 +186,43 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
   const backendFor = async (module) => {
     const want = pickBackend({ gpu, shading: module.shading, override, lost: lostWebGPU });
     if (gfx && kind === want && !gfx.lost) return gfx;
+    // one of this kind on its way already: a mount meanwhile waits for that
+    // one (React's second run of an effect mounts again at once, and a second
+    // backend was a second WebGL context never let go, and the one kept
+    // wasn't always the one the build had set the ratio on)
+    if (coming?.kind === want) return coming.promise;
     // (a backend of the other kind can't share the canvas: the old one goes)
     if (gfx) {
       gfx.dispose();
       gfx = null;
     }
     kind = want;
-    gfx = await makeBackend(want, { budget: quality.budget, onLost: () => rt.lost() });
-    return gfx;
+    const asked = { kind: want, promise: null };
+    coming = asked;
+    asked.promise = new Promise((resolve) => resolve(makeBackend(want, { budget: quality.budget, onLost: () => rt.lost() }))).then(
+      (made) => {
+        // another kind asked for since (or the runtime let go): this one goes too
+        if (coming !== asked) {
+          made.dispose();
+          return null;
+        }
+        coming = null;
+        gfx = made;
+        return made;
+      },
+      (err) => {
+        if (coming === asked) coming = null; // (the next mount tries again)
+        throw err;
+      },
+    );
+    return asked.promise;
   };
 
   // make a module's world; null if something newer came meanwhile
   const build = async (module, props, host, token) => {
-    await backendFor(module);
-    if (token !== seq) return null;
-    gfx.setRatio?.(ratioFor(module));
+    const made = await backendFor(module);
+    if (token !== seq || !made) return null;
+    made.setRatio?.(ratioFor(module));
     rt.host = host;
     assets.owner?.(module.id);
     let world = validateWorld(await module.create(rt, props));
@@ -415,6 +438,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     },
     dispose() {
       this.unmount();
+      coming = null; // (one still being made is let go as it comes)
       gfx?.dispose();
       gfx = null;
     },
