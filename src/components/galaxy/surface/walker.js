@@ -307,8 +307,9 @@ function solidTop(world, x, z, y, rules) {
 // ── Riding ──
 
 // spec: { top (m/s), boost?, accel, brake, turn (rad/s at speed), hover
-// (m over the ground; 0 runs on it), bank, radius, grip (0…1: how much it
-// keeps going the way it's pointed) }
+// (m over the ground; 0 runs on it), fly? ({ alt, climb, floor }: it flies,
+// jump climbing it at climb m/s to alt over the ground, never under floor),
+// bank, radius, grip (0…1: how much it keeps going the way it's pointed) }
 export function rider(x, z, y, yaw = 0) {
   return { x, y, z, yaw, speed: 0, vx: 0, vz: 0, vy: 0, bank: 0, pitch: 0, grounded: true };
 }
@@ -371,6 +372,16 @@ export function ride(s, input, dt, world, spec) {
       s.y = g + 0.15;
       s.vy = Math.max(0, s.vy);
     }
+  } else if (spec.fly) {
+    // a flyer (an airspeeder): climbs while jump is held, up to fly.alt
+    // over the ground, sinks at half that otherwise, and never goes under
+    // fly.floor (a city with nothing under its platforms)
+    const top = Math.max(g + spec.fly.alt, (spec.fly.floor ?? -Infinity) + spec.fly.alt);
+    const low = Math.max(g, spec.fly.floor ?? -Infinity);
+    if (input.jump) s.y = Math.min(top, s.y + spec.fly.climb * dt);
+    else s.y = Math.max(low, s.y - spec.fly.climb * 0.5 * dt);
+    s.vy = 0;
+    s.grounded = s.y <= low + 0.01;
   } else {
     // on its feet: on the ground, jumping when asked
     if (s.grounded && input.jump) {
