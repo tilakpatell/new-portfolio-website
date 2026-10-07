@@ -108,3 +108,82 @@ describe('createTally', () => {
     expect(t.value('c')).toBe(10 * TALLY.pilots);
   });
 });
+
+describe('a tally of more keys than a message holds', () => {
+  const many = (t, n, from = 0, by = 1) => {
+    for (let i = from; i < from + n; i++) t.add(`k${i}`, by);
+  };
+  // every tally's next message, through the wire, to every other, `rounds` times
+  const talk = (tallies, rounds) => {
+    for (let r = 0; r < rounds; r++) {
+      const said = Object.entries(tallies).map(([name, t]) => [name, readTally(JSON.parse(JSON.stringify(t.message())))]);
+      for (const [name, msg] of said) {
+        expect(msg).not.toBeNull();
+        for (const [other, t] of Object.entries(tallies)) if (other !== name) t.receive(name, msg);
+      }
+    }
+  };
+
+  it('keeps counting past TALLY.keys keys, if it may keep more', () => {
+    const t = createTally('c1', { keys: 1000 });
+    many(t, 300);
+    t.add('newest', 4);
+    expect(t.value('newest')).toBe(4);
+    expect(t.receive('p', { e: 'c1', m: { 'theirs-newest': 2 }, t: {} })).toBe(true);
+    expect(t.value('theirs-newest')).toBe(2);
+    expect(t.keys().length).toBe(302);
+  });
+  it('sends TALLY.keys at most a message: what you’ve added since the last first, then the rest in turn', () => {
+    const t = createTally('c1', { keys: 1000 });
+    many(t, 300);
+    const seen = new Set();
+    for (let i = 0; i < 4; i++) {
+      const msg = t.message();
+      expect(Object.keys(msg.m).length).toBeLessThanOrEqual(TALLY.keys);
+      expect(Object.keys(msg.t).length).toBeLessThanOrEqual(TALLY.keys);
+      Object.keys(msg.t).forEach((k) => seen.add(k));
+    }
+    expect(seen.size).toBe(300);
+    t.add('k5', 1);
+    t.add('newest', 1);
+    const next = t.message();
+    expect(next.m.k5).toBe(2);
+    expect(next.m.newest).toBe(1);
+    expect(next.t.newest).toBe(1);
+  });
+  it('owes a pilot it hasn’t heard from before the whole of it, a message at a time', () => {
+    const t = createTally('c1', { keys: 1000 });
+    many(t, 300);
+    for (let i = 0; i < 4; i++) t.message();
+    expect(t.owing()).toBe(false);
+    t.receive('new', { e: 'c1', m: {}, t: {} });
+    expect(t.owing()).toBe(true);
+    for (let i = 0; i < 3; i++) t.message();
+    expect(t.owing()).toBe(true);
+    t.message();
+    expect(t.owing()).toBe(false);
+    t.receive('new', { e: 'c1', m: {}, t: {} });
+    expect(t.owing()).toBe(false);
+    t.add('k1', 1);
+    expect(t.owing()).toBe(true);
+  });
+  it('two pilots who did more than a message holds come to the same tally, and so does one who arrives late', () => {
+    const a = createTally('c1', { keys: 1000 });
+    const b = createTally('c1', { keys: 1000 });
+    many(a, 250, 0, 2);
+    many(b, 200, 150, 3); // (a hundred keys both added to)
+    talk({ a, b }, 8);
+    const keys = [...new Set([...a.keys(), ...b.keys()])];
+    expect(keys.length).toBe(350);
+    for (const k of keys) expect(a.value(k), k).toBe(b.value(k));
+    expect(a.value('k200')).toBe(5);
+    // and one who comes along later hears all of it, and gives none of it twice
+    const c = createTally('c1', { keys: 1000 });
+    a.add('k999', 1);
+    talk({ a, b, c }, 8);
+    for (const k of [...keys, 'k999']) {
+      expect(c.value(k), k).toBe(a.value(k));
+      expect(b.value(k), k).toBe(a.value(k));
+    }
+  });
+});

@@ -5,7 +5,9 @@
 // holotable (HoloMap.jsx) and the scene read the same war.
 //
 // All three of the galaxy's wars are in the one tally (a key's side says
-// which: gcw.js's pointsKey).
+// which: gcw.js's pointsKey). It keeps a campaign's keys (KEYS), far more
+// than a message holds, so it goes out a page at a time (tally.js), and
+// every pilot's history comes to the same.
 //
 // warTally(now) → the campaign's tally (a new one when a campaign starts);
 // addPoints(side, sys, step, points), addWin(side, sys, step) (nothing for
@@ -15,12 +17,14 @@
 // wins, battles, systems: [{ id, wins, losses }], major }: your own record
 // in a war this campaign (ranks.js names you by its points).
 
-import { createTally } from '../universe/tally';
+import { TALLY, createTally } from '../universe/tally';
 import { GCW, campaignAt, history, pointsKey, readKey, warTable, winKey } from './gcw';
 import { DEFAULT_WAR, warOfSide } from './sides';
 
 const KEY = 'tp-gcw';
 export const CAP = 60; // the most one pilot can have done at one system in one step (four objectives, a sky full of fighters)
+// the keys a campaign keeps, at most: a room of pilots, each in a battle every step of it, and winning it
+export const KEYS = TALLY.pilots * 2 * (GCW.campaign / GCW.step);
 let tally = null;
 let version = 0;
 let saveLater = null;
@@ -50,7 +54,7 @@ const changed = () => {
 export function warTally(now = Date.now()) {
   const { epoch } = campaignAt(now);
   if (!tally || tally.epoch !== epoch) {
-    tally = createTally(epoch, { cap: CAP });
+    tally = createTally(epoch, { keys: KEYS, cap: CAP });
     try {
       tally.load(JSON.parse(store()?.getItem(KEY) ?? 'null'));
     } catch {
@@ -104,10 +108,13 @@ export function mine(war, now = Date.now()) {
   let points = 0;
   const fought = new Map(); // `${sys}:${step}` → { sys, step, side }
   const won = new Set();
+  const winners = new Map(); // `${sys}:${step}` → the sides anyone's told won there
   for (const key of t.keys()) {
     const k = readKey(key);
-    if (!k || k.war !== war || !(t.mine(key) > 0)) continue;
+    if (!k || k.war !== war) continue;
     const at = `${k.sys}:${k.step}`;
+    if (k.win && t.value(key) >= 1) winners.set(at, (winners.get(at) ?? new Set()).add(k.side));
+    if (!(t.mine(key) > 0)) continue;
     if (!fought.has(at)) fought.set(at, { sys: k.sys, step: k.step, side: k.side });
     if (k.win) won.add(at);
     else points += t.mine(key);
@@ -121,11 +128,7 @@ export function mine(war, now = Date.now()) {
     if (won.has(at)) {
       row.wins += 1;
       if (!major && history(war, n, GCW.start + n * GCW.campaign + b.step * GCW.step).major === b.sys) major = true;
-    } else if (t.keys().some((key) => {
-      const o = readKey(key);
-      return o?.win && o.war === war && o.side !== b.side && o.sys === b.sys && o.step === b.step && t.value(key) >= 1;
-    }))
-      row.losses += 1;
+    } else if ([...(winners.get(at) ?? [])].some((side) => side !== b.side)) row.losses += 1;
   }
   const systems = [...bySys.values()].sort((a, b) => a.id.localeCompare(b.id));
   return { points: +points.toFixed(2), wins: won.size, battles: fought.size, systems, major };
