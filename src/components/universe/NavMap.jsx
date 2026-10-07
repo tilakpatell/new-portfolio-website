@@ -195,10 +195,10 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
   // the hyperlanes, each a line of 12 chart points along it (the main
   // sector's chart: none run anywhere else), and the route by them to the
   // place picked or being gone to, on the lanes drive
-  const lanes = useMemo(() => (view === 'all' ? LANES.map((l) => ({ id: l.id, tier: l.tier, points: Array.from({ length: 13 }, (_, i) => P(bezier(l.pts, i / 12)).join(',')).join(' ') })) : []), [view]); // eslint-disable-line react-hooks/exhaustive-deps
+  // (each render: 47 lanes and a Dijkstra over 36 nodes, well under a millisecond)
+  const lanes = view === 'all' ? LANES.map((l) => ({ id: l.id, tier: l.tier, points: Array.from({ length: 13 }, (_, i) => P(bezier(l.pts, i / 12)).join(',')).join(' ') })) : [];
   const routeDrive = goingTo && course === goingTo ? now.going.drive : drive;
-  const shipKey = now?.ship ? `${Math.round(now.ship.x / 200)},${Math.round(now.ship.z / 200)}` : '';
-  const route = useMemo(() => (view === 'all' && course && routeDrive === 'lanes' && now?.ship ? routeTo(now.ship, goalOf(course.id)) : null), [view, course?.id, routeDrive, shipKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const route = view === 'all' && course && routeDrive === 'lanes' && now?.ship ? routeTo(now.ship, goalOf(course.id)) : null;
   const routeLine = route ? route.legs.flatMap((leg) => (leg.kind === 'fly' ? [leg.from, leg.to] : Array.from({ length: 13 }, (_, i) => bezier(leg.way === 'out' ? leg.lane.pts : [...leg.lane.pts].reverse(), i / 12)))).map((p) => P(p).join(',')).join(' ') : null;
 
   const verb = (d) => {
