@@ -52,20 +52,192 @@
     "rig": "01a10e7a-1f00-7687-a85e-4f9f528ae872",
     "source": "sketchfab:e5efdd35a5e4462cbc013db44e80d31e"
   },
-  "lando": {
-    "image": "01a1169c-af2b-74e2-a47d-c6525f46c201",
-    "model": "01a116a0-2f3f-73ef-8d67-54fa837401dd",
-    "rig": "01a116a3-aae3-7171-a074-415ca34154b6"
+  "obiwan": {
+    "source": "sketchfab:416a8f0c9c1742ee8fd71274d27bc305",
+    "rig": "01a11438-fb1f-7674-bb41-5ff4cc750a92"
   },
-  "lobot": {
-    "image": "01a1169d-84d1-70ca-88ed-e914d1ac4869",
-    "model": "01a116a0-32ed-7710-a08d-1f08eef8976d",
-    "rig": "01a116a3-e5f4-7549-ace7-c1beeeef21cb"
+  "anakin": {
+    "rig": "01a1142a-67a4-7305-84a6-9b1f47627ef4",
+    "source": "sketchfab:afde81fe035b4e0aa8d1b3b96c9fd7ff"
+  },
+  "jango": {
+    "rig": "01a1142a-c6f2-750e-8d91-37f18664118e",
+    "source": "sketchfab:4ce40f867ff84df6bab5a3e060cb5e69"
+  },
+  "krennic": {
+    "source": "sketchfab:59c66eb5d470436f9d29d5720c9b402a",
+    "rig": "01a1143a-1516-71ea-9516-039ab5b30925"
+  },
+  "cassian": {
+    "rig": "01a1142c-6dad-7691-8d2c-ecdfd9956c4f",
+    "source": "sketchfab:1ef27f2978d442e39eac1e62cf28e226"
+  },
+  "chirrut": {
+    "source": "sketchfab:9340db8a8aab4091886d25a187b956fa",
+    "rig": "01a11441-a67f-724b-9e20-4568c989f9fa"
+  },
+  "dindjarin": {
+    "rig": "01a1142d-f682-77f2-8e97-e3671f7ee39a",
+    "source": "sketchfab:65383411ba6f4a56aac823d5d014df20"
+  },
+  "maul": {
+    "rig": "01a1142e-6eec-72b5-b45d-fcfb41e7035f",
+    "source": "sketchfab:102ed10dfcd441029b4586bf4c88ec20"
+  },
+  "palpatine": {
+    "rig": "01a1142e-b1a3-70cb-acd8-f5a12f9459b0",
+    "source": "sketchfab:8f6f188ba2ee4708aa277789c830cbb8"
+  },
+  "mace": {
+    "source": "sketchfab:ba2eaba7ff6b45c89c1b2c4919e46880",
+    "rig": "01a11440-ff4d-7068-8c6a-bb7560536b73"
+  },
+  "rex": {
+    "rig": "01a11430-ecbb-73ad-8e77-e9f1da5c7ccc",
+    "source": "sketchfab:18a73ab03ac84cf49015559c522a2965"
+  },
+  "bokatan": {
+    "rig": "01a11431-4536-73aa-b8bc-589bee4a9190",
+    "source": "sketchfab:c1e33e1c34304b879a1c2fdb5ee4c8cd"
+  },
+  "vader": {
+    "rig": "01a11431-7f1d-7577-8a61-679c21ae4440",
+    "source": "sketchfab:62a4273131f949ed9559721f7fb9cf14"
+  },
+  "fennec": {
+    "rig": "01a11431-d6c0-70a8-bb85-3a3d3b53c03b",
+    "source": "sketchfab:bdf5d6140fde4c6bb8f265680bf8231f"
+  },
+  "caradune": {
+    "rig": "01a11432-0f75-75f0-8a91-12929935c21a",
+    "source": "sketchfab:67940dad3a484fddb4d6d1127d233460"
+  },
+  "greef": {
+    "rig": "01a11432-4887-7680-9a7e-8abc7cf79af0",
+    "source": "sketchfab:6cc95642575445aca67733c4bffa2559"
+  },
+  "rodian": {
+    "rig": "01a11432-822b-7259-ac54-2a0297e804eb",
+    "source": "sketchfab:ba7389be15774e7786b50d9ff839f51f"
+  },
+  "inquisitor": {
+    "rig": "01a11432-c4fa-74ee-96e4-feb9147c920c",
+    "source": "sketchfab:c3af0bd197f348c4a4819a45e78faa53"
+  },
+  "tiepilot": {
+    "rig": "01a11432-fedf-7342-9318-422aebe5c13d",
+    "source": "sketchfab:33a466f49ff3496c8f76d3f4cb845e30"
+  },
+  "tusken": {
+    "image": "01a114ca-15c0-7014-abac-acc3b3648e16",
+    "model": "01a114da-88f0-74a6-883d-f1a99981a730",
+    "rig": "01a114dd-8068-76df-89e4-0eae5b8d7bcf"
+  },
+  "lando": {
+    "image": "01a114cc-3799-7772-ab53-bb7e2f263f30",
+    "model": "01a114da-8d2a-706a-a527-de62df5a6356",
+    "rig": "01a114dd-c1d1-7012-865f-6bfc49c6de2c"
+  },
+  "twilek": {
+    "image": "01a114ce-5f6b-7522-93e6-9addab309a85",
+    "model": "01a114da-9047-76ff-8000-3bc60361f40c",
+    "rig": "01a114dd-faa4-716e-ae98-0089d8e3389b"
   },
   "ugnaught": {
-    "image": "01a1169e-0687-76bc-99f6-ff91561a68c3",
-    "model": "01a116a0-363e-7090-b0ba-b33c4e3490ee",
-    "rig": "01a116a4-21b5-72c2-9db8-f9bd02590c13"
+    "image": "01a114cf-1273-76af-b86c-82ba05de2eab",
+    "model": "01a114da-93e2-7458-9357-940fb9f72e82",
+    "rig": "01a114de-33c6-715a-995f-d5935d916781"
+  },
+  "rebel": {
+    "image": "01a114cf-c2fa-7530-9431-0cd87874c937",
+    "model": "01a114da-973b-70d3-9d84-41110ac7dc74",
+    "rig": "01a114de-8288-70ad-bdf2-20b1672b3b68"
+  },
+  "jedi": {
+    "refused": {
+      "refused": {
+        "image": "01a114d1-87f6-729a-93d3-c3261064b604",
+        "model": "01a114da-9a8e-75d4-9f9c-89b81388244d"
+      },
+      "image": "01a114ea-90a2-76ed-959c-48c38d8c7886",
+      "model": "01a114ed-9f94-7313-b6e9-ea6ef7d5b52b"
+    },
+    "image": "01a114f1-9133-715e-ba9d-6993140b3bcd",
+    "model": "01a114f2-ec09-707d-bb90-9b9169bb6442",
+    "rig": "01a114f5-b0f1-77ba-93c9-c5f4f1309179"
+  },
+  "senateguard": {
+    "image": "01a114d3-6a8c-73ef-8df9-38bfd5226c82",
+    "model": "01a114da-9de9-73bf-b240-7c1af9209de0",
+    "rig": "01a114e5-29fd-7583-a042-b9b42789f908"
+  },
+  "lobot": {
+    "image": "01a114d3-dbac-7334-800d-7060d6247562",
+    "model": "01a114da-a06d-71aa-ab3d-709786316f44",
+    "rig": "01a114e5-78f1-7098-9969-89ea4a1d5e81"
+  },
+  "neimoidian": {
+    "image": "01a114d4-4e1f-773a-b209-aa288fca7884",
+    "model": "01a114da-a3fb-701e-919d-48254c31c965",
+    "rig": "01a114e5-b244-700c-a2f2-9313e2478614"
+  },
+  "bibfortuna": {
+    "image": "01a114d4-aadb-75bf-8b3e-61bfc0f10d40",
+    "model": "01a114da-a6ca-74ef-bdfb-a6265be2d7f5",
+    "rig": "01a114e5-eceb-7546-adfe-31c58530da5c"
+  },
+  "aqualish": {
+    "image": "01a114d5-1b9c-70b3-95c9-7c9b26cb5ff4",
+    "model": "01a114da-a981-772b-a8ed-67ef16dabc87",
+    "rig": "01a114e6-2679-75d3-adec-9f0837612280"
+  },
+  "wuher": {
+    "image": "01a114d5-b91e-771e-b33b-aa6d1f0fa3f8",
+    "model": "01a114da-ac83-77ba-8202-e990a20c1a01",
+    "rig": "01a114e6-5fc4-7691-9ad0-e42f124dce1c"
+  },
+  "mustafarian": {
+    "image": "01a114d6-15d0-74be-aeb7-22eac5333df2",
+    "model": "01a114da-afe3-7181-a239-ea0b59276e14",
+    "rig": "01a114e6-995f-7377-89ce-f5baedeca8a4"
+  },
+  "quigon": {
+    "refused": {
+      "image": "01a114d6-88c1-7653-a2d9-27c17be8e617",
+      "model": "01a114da-b3b8-7600-b404-8bb83c54748a"
+    },
+    "image": "01a114ec-c166-734b-bfe0-2930d1ad50cd",
+    "model": "01a114ed-a2c3-729e-800e-5691062bc7ca",
+    "rig": "01a114f1-38a3-74c8-8ad6-32fc5a0655d4"
+  },
+  "hondo": {
+    "image": "01a114d7-254d-72ab-8273-7b9753fa27b9",
+    "model": "01a114da-b74c-75b9-97b1-e0e3028d7f03",
+    "rig": "01a114e6-d34b-7580-b58c-3bcaad2be9ef"
+  },
+  "ackbar": {
+    "image": "01a114d7-979c-734c-b51d-2fb0d5407bd1",
+    "model": "01a114da-babd-7262-86fc-796c788a93fd",
+    "rig": "01a114e7-0e04-7534-bf6f-438d4294b14e"
+  },
+  "officer": {
+    "broken": {
+      "image": "01a114d8-4713-71fa-abdb-a4fb42f42b70",
+      "model": "01a114da-bd4a-72ac-8c0e-dfd2ddf273bf",
+      "rig": "01a114e7-476e-7198-bf16-cf29420c5379"
+    },
+    "image": "01a1150c-a9d6-7238-a621-1a94faa69301",
+    "model": "01a1150d-1e17-7590-9082-f1aea6eea70b",
+    "rig": "01a1150f-f9b5-756d-ab45-e1aefd650812"
+  },
+  "dooku": {
+    "image": "01a114d8-b6c3-7499-9cdf-a7c1e047543f",
+    "model": "01a114da-bfe0-729e-8d0b-a865aeccae0d",
+    "rig": "01a114e7-7fa8-7204-bf48-dc8fa73d179a"
+  },
+  "shaakti": {
+    "rig": "01a1142d-5a25-71c6-b478-4d1d72ac83fb",
+    "source": "sketchfab:7af69133613e4035939b1bcc42a5d652"
   },
   "wingguard": {
     "image": "01a1169e-7ad8-773f-b533-2a06db1754ad",

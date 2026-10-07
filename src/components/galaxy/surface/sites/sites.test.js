@@ -4,11 +4,11 @@ import { GALAXY_KINDS } from '../../fleet';
 import { BUILT_KINDS } from '../../../universe/trafficModels';
 import { SURFACE_MODELS } from '../catalog';
 import { FIGURES } from '../figures';
-import { CREW } from '../crew';
 import { PROPS, SCATTER } from '../props';
 import { RIDES } from '../rides';
 import { LAYER_TYPES, REACH, heightGrid, makeHeight } from '../terrain';
 import { LANDABLE, SITES, siteOf } from '.';
+import { CREW } from '../crew';
 import { talkTree } from '../talk';
 
 const SHIPS = new Set([...GALAXY_KINDS, ...BUILT_KINDS]);
@@ -55,7 +55,8 @@ describe('the worlds you can land on', () => {
       it('has everything it places built or brought in', () => {
         for (const t of site.things_all) expect(placeable(t.kind), `${t.kind}`).toBe(true);
         for (const s of site.scatter) expect(Boolean(SCATTER[s.kind] || placeable(s.kind)), `scatter ${s.kind}`).toBe(true);
-        for (const a of site.life) expect(Boolean(FIGURES.includes(a.kind) || CREW[a.kind] || placeable(a.kind)), `life ${a.kind}`).toBe(true);
+        // (a person may be a crew figure, which actors.js tries first)
+        for (const a of site.life) expect(Boolean(CREW[a.kind] || FIGURES.includes(a.kind) || placeable(a.kind)), `life ${a.kind}`).toBe(true);
         for (const r of site.rides) expect(RIDES[r.kind], `ride ${r.kind}`).toBeTruthy();
         for (const r of site.rides) if (!RIDES[r.kind].figure) expect(placeable(r.kind), `ride ${r.kind}`).toBe(true);
         for (const f of site.flyovers) expect(SHIPS.has(f.kind), `flyover ${f.kind}`).toBe(true);

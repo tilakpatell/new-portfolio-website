@@ -55,6 +55,8 @@ export default function Universe({ ask = false }) {
   const navigate = useNavigate();
   const param = useParams().id;
   const selected = parseId(param);
+  const selectedRef = useRef(selected); // (for the scene's events, which keep their first render's closure)
+  selectedRef.current = selected;
   const universe = byId(selected);
   // a link out to a wonder (/universe/aurelia): the ship starts parked beside it, and the panel shows it
   const wonder = parseWonder(param);
@@ -314,6 +316,13 @@ export default function Universe({ ask = false }) {
       unlock('citadelfall'); // (you helped bring it down)
       comms.current?.handle(e);
     } else if (e.type === 'rifted') unlock('rifted'); // (the crew's line comes as an event of its own)
+    else if (e.type === 'sector') {
+      // through a portal into the other sector of the map: a place picked on
+      // this side is let go (a trip on through it picked where it's going)
+      const sel = selectedRef.current;
+      if (sel && destinationById(sel)?.sector !== e.id) select(null);
+      comms.current?.handle(e);
+    }
     else if (e.type === 'event' && e.id === 'removerDown') {
       unlock('remover'); // (the NX-5 shot down before it fired)
       comms.current?.handle(e);

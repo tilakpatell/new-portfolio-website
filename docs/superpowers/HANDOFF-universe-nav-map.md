@@ -64,3 +64,5 @@ Super speed fallback: when a jump can't happen, the HUD prompt now says why for 
 - Changed: `ship.js` (overdrive), `scene.js` (travel, jump, where, keys), `UniverseMap.jsx` (button, props, handle), `UniversePanel.jsx` (nav map buttons, key hints), `crews.js` and `crews.test.js` (lines), `universe.css` (the button).
 
 Also changed: `src/pages/Universe.jsx` (state, events, NavMap), `scripts/navmap-check.mjs`, `README.md`.
+
+The nav map has a third chart since, the Rick and Morty sector, and routes through its portal: see [HANDOFF-rm-sector.md](HANDOFF-rm-sector.md).

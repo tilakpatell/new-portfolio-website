@@ -42,7 +42,7 @@ export const MODELS = {
   // lifted out of a still of it firing); its shot is the built ion cannon's
   v150: { made: 'meshy', as: 'the v-150 Planet Defender', metres: 26, along: 'x', detail: 'metal', look: { metalness: 0.2, roughness: 0.75 } }, // (pale weathered plate, as in the film, not chrome)
   // Scarif: the Citadel tower (the vault's door stays)
-  citadel: { made: 'meshy', lod: true, as: 'the Citadel tower', metres: 170, along: 'y', hero: true, solids: 'built' },
+  citadel: { made: 'meshy', lod: true, as: 'the Citadel tower', metres: 170, along: 'y', hero: true, solids: 'built', detail: 'concrete', detailLook: { strength: 0.4, normal: 0.6, metres: 3 } },
   // Kashyyyk: a great wroshyr, from the picture of Kachirho's (the city tree itself stays built, for its decks)
   wroshyrgreat: { made: 'meshy', lod: true, as: 'the great wroshyrs', metres: 230, along: 'y', hero: true },
   // Coruscant: the Senate Building's dome (its plaza stays built)

@@ -1538,9 +1538,9 @@ export const PROPS = {
     for (let i = 0; i < n; i++) {
       const t = i / n;
       const rr = h * 0.16 * (1 - t * 0.8);
-      parts.push(part(lump(seed * 13 + i, 0.18), { at: [(r() - 0.5) * rr * 0.3, h * t + rr * 0.4, (r() - 0.5) * rr * 0.3], scale: [rr * 2.2, (h / n) * 1.9, rr * 2.2], color: vary('#a8663e', r, 0.08), to: 'stone' }));
+      parts.push(part(lump(seed * 13 + i, 0.18), { at: [(r() - 0.5) * rr * 0.3, h * t + rr * 0.4, (r() - 0.5) * rr * 0.3], scale: [rr * 2.2, (h / n) * 1.9, rr * 2.2], color: vary('#a8663e', r, 0.08), to: 'redrock' }));
     }
-    parts.push(part(new THREE.ConeGeometry(h * 0.04, h * 0.2, 7), { at: [0, h * 1.0, 0], color: '#9a5a36', to: 'stone' }));
+    parts.push(part(new THREE.ConeGeometry(h * 0.04, h * 0.2, 7), { at: [0, h * 1.0, 0], color: '#9a5a36', to: 'redrock' }));
     if (lights)
       for (let i = 0; i < 6; i++) {
         const t = 0.15 + r() * 0.7;
@@ -1560,7 +1560,7 @@ export const PROPS = {
       const a = (i / 6) * PI * 2;
       const d = i ? 14 : 0;
       const s = i ? 18 + r() * 8 : 30;
-      parts.push(part(lump(70 + i, 0.2), { at: [sin(a) * d, s * 0.35, cos(a) * d - 8], scale: [s * 1.3, s * 1.2, s * 1.1], color: vary('#9a5a36', r, 0.08), to: 'stone' }));
+      parts.push(part(lump(70 + i, 0.2), { at: [sin(a) * d, s * 0.35, cos(a) * d - 8], scale: [s * 1.3, s * 1.2, s * 1.1], color: vary('#9a5a36', r, 0.08), to: 'redrock' }));
     }
     for (const [x, h] of [[-8, 52], [6, 44]]) {
       parts.push(part(cyl(2.8, 2.2, h, 12), { at: [x, 0, -16], color: '#5a3a2a', to: 'metal' }));
@@ -1569,7 +1569,7 @@ export const PROPS = {
     // the furnace mouths
     for (const [x, y, w] of [[-9, 0, 10], [10, 0, 8], [0, 12, 7]]) {
       parts.push(part(new THREE.SphereGeometry(w * 0.5, 12, 8), { at: [x, y + w * 0.35, 15 - y * 0.5], scale: [1, 0.9, 0.6], color: lit('#ff8a2a', 2.8), to: 'glow' }));
-      parts.push(part(new THREE.TorusGeometry(w * 0.52, w * 0.12, 6, 14, PI), { at: [x, y + w * 0.35, 15.6 - y * 0.5], color: '#5a3422', to: 'stone' }));
+      parts.push(part(new THREE.TorusGeometry(w * 0.52, w * 0.12, 6, 14, PI), { at: [x, y + w * 0.35, 15.6 - y * 0.5], color: '#5a3422', to: 'redrock' }));
     }
     // the gantries and the conveyor out of it, and its crates of parts
     for (const s of [-1, 1]) {
@@ -1620,7 +1620,7 @@ export const PROPS = {
   geohangar(k) {
     const r = rng(53);
     const parts = [];
-    for (let i = 0; i < 5; i++) parts.push(part(lump(90 + i, 0.18), { at: [(i - 2) * 7, 10 + i * 6, -14 - (i % 2) * 4], scale: [22 - i * 2.4, 26 + i * 6, 18], color: vary('#9e6038', r, 0.08), to: 'stone' }));
+    for (let i = 0; i < 5; i++) parts.push(part(lump(90 + i, 0.18), { at: [(i - 2) * 7, 10 + i * 6, -14 - (i % 2) * 4], scale: [22 - i * 2.4, 26 + i * 6, 18], color: vary('#9e6038', r, 0.08), to: 'redrock' }));
     parts.push(part(new THREE.CylinderGeometry(9, 9, 2, 20, 1, false, 0, PI).rotateZ(PI / 2).rotateY(PI / 2), { at: [0, 0, -4], scale: [1, 1.1, 1], color: '#140c08', to: 'dark' }));
     parts.push(part(box(18, 10, 2), { at: [0, 0, -5], color: '#140c08', to: 'dark' }));
     parts.push(part(cyl(16, 16, 0.4, 28), { at: [0, 0, 12], color: '#7a5a42', to: 'metal' }));
@@ -1755,16 +1755,17 @@ export const SCATTER = {
     };
   },
   // a hive spire, small, by the hundred across Geonosis's plains
+  // (Geonosis's red rock, wearing the redrock scan)
   spire(k, { seed = 2, color = '#a8663e' } = {}) {
     const r = rng(seed);
     const list = [];
     for (let i = 0; i < 5; i++) {
       const t = i / 5;
       const rr = 4 * (1 - t * 0.78);
-      list.push(part(lump(seed * 17 + i, 0.2, 10, 7), { at: [(r() - 0.5) * 1.2, 30 * t + rr * 0.3, (r() - 0.5) * 1.2], scale: [rr * 2, 12, rr * 2], color: vary(color, r, 0.08), to: 'stone' }));
+      list.push(part(lump(seed * 17 + i, 0.2, 10, 7), { at: [(r() - 0.5) * 1.2, 30 * t + rr * 0.3, (r() - 0.5) * 1.2], scale: [rr * 2, 12, rr * 2], color: vary(color, r, 0.08), to: 'redrock' }));
     }
-    list.push(part(new THREE.ConeGeometry(1, 7, 6), { at: [0, 31, 0], color, to: 'stone' }));
-    return { parts: [{ geometry: k.geometry(list), material: k.mats.stone }], radius: 3.4 };
+    list.push(part(new THREE.ConeGeometry(1, 7, 6), { at: [0, 31, 0], color, to: 'redrock' }));
+    return { parts: [{ geometry: k.geometry(list), material: k.mats.redrock }], radius: 3.4 };
   },
   // a storm buoy off Tipoca City: a float, a mast, its light
   buoy(k) {

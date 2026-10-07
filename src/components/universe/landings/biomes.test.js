@@ -1,8 +1,9 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { LANDINGS } from './landings';
 import { STYLES } from './ground';
 import { vec } from '../foot';
-import { biomeAt, classify, fromLatLon, latLonOf, towardLand, uvOf } from './biomes';
+import { biomeAt, classify, fromLatLon, latLonOf, readableMap, towardLand, uvOf } from './biomes';
 
 const HEX = /^#[0-9a-f]{6}$/i;
 const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
@@ -48,10 +49,41 @@ describe('a landing’s biome, from the colour of the map under it', () => {
   });
 
   it('finds Tortuga by where it is, whatever its colour', () => {
-    const tortuga = LANDINGS.caribbean.biomes.find((b) => b.id === 'tortuga');
-    const [lat, lon] = tortuga.near;
-    expect(pick('caribbean', '#3e7f34', [lat, lon])).toBe('tortuga');
-    expect(pick('caribbean', '#3e7f34', [lat + 30, lon])).toBe('beach');
+    // (the island's middle reads sea on the map's copy: it's too small to show)
+    expect(pick('caribbean', '#0a5089', [19.99, 8.63])).toBe('tortuga');
+    expect(pick('caribbean', '#3e7f34', [19.945, 8.639])).toBe('tortuga');
+    expect(pick('caribbean', '#3e7f34', [20.12, 7.97])).toBe('tortuga');
+    expect(pick('caribbean', '#3e7f34', [19.88, 9.3])).toBe('tortuga');
+    expect(pick('caribbean', '#3e7f34', [19.57, 8.46])).toBe('beach'); // Port-de-Paix (real 19.94, −72.83), across the channel
+    expect(pick('caribbean', '#3e7f34', [49.99, 8.63])).toBe('beach');
+  });
+
+  it('names Middle-earth’s places only where the map has them', () => {
+    // (the -sm map's own cells: Mirkwood, the Old Forest, Gorgoroth, Near
+    // Harad, the conifer belt the bake lays north of 50°, a half-land coast
+    // and the polar ice's edge)
+    expect(pick('middleearth', '#1c321b', [42, 15.2])).toBe('forest');
+    expect(pick('middleearth', '#263829', [38.8, -28.7])).toBe('forest');
+    expect(pick('middleearth', '#302a23', [21.3, 26.6])).toBe('mordor');
+    expect(pick('middleearth', '#cfae7c', [-0.8, 23.3])).toBe('harad');
+    expect(pick('middleearth', '#34472c', [55, -40])).toBe('shire');
+    expect(pick('middleearth', '#3a3030', [-30, 150])).not.toBe('mordor');
+    expect(pick('middleearth', '#23331c', [-30, 150])).not.toBe('forest');
+    expect(pick('middleearth', '#4a5a6a')).toBe('sea');
+    expect(pick('middleearth', '#a0b0c0')).toBe('mountains');
+    // (Lothlórien's gold reads as grass: it's named by place)
+    expect(pick('middleearth', '#596f2c', [36.9, 3.4])).toBe('forest');
+    expect(pick('middleearth', '#596f2c', [36.9, 9])).toBe('shire');
+  });
+
+  it('names New Mexico’s places where the bake lays them', () => {
+    expect(pick('breakingbad', '#a59a89', [39.9, -1.2])).toBe('city'); // Rio Rancho
+    expect(pick('breakingbad', '#f4f2ec', [-5.1, 3.7])).toBe('sands'); // the dunes' north tip
+    expect(pick('breakingbad', '#f4f2ec', [-8, 20])).not.toBe('sands');
+    expect(pick('breakingbad', '#3b3430', [29.6, -24.4])).toBe('malpais'); // El Malpais
+    expect(pick('breakingbad', '#5a4a3a', [7.6, 10])).toBe('malpais'); // the Carrizozo flow, by place
+    expect(pick('breakingbad', '#3b3430', [10, 170])).not.toBe('malpais'); // made-up lava on the far side
+    expect(pick('breakingbad', '#ebebeb', [81, -53])).toBe('mountains'); // the San Juans' snow
   });
 
   it('hands back the biome’s own ground, sky and scatter, else the planet’s', () => {
@@ -134,6 +166,40 @@ describe('a spot over the sea moves on to land', () => {
     };
     expect(towardLand(n, half, all, { steps: 5, ways: 4 })).toEqual(n);
     expect(looked).toBe(1 + 5 * 4);
+  });
+
+  it('hands isSea the place too, so a place named by where it is stops the walk', () => {
+    const n = onEquator(0.45);
+    const place = fromLatLon(0, 0.45 * 360 - 180 + (3 * 0.02 * 180) / Math.PI);
+    const isSea = (c, p) => !p || Math.acos(Math.min(1, vec.dot(p, place))) > 0.011;
+    const to = towardLand(n, half, isSea, { track: vec.add(fromLatLon(0, 10), n, -1) });
+    expect(Math.acos(Math.min(1, vec.dot(to, place)))).toBeLessThan(0.011);
+    // (Tortuga, whose cells read sea on the map's copy, is land by place)
+    const own = LANDINGS.caribbean;
+    const off = fromLatLon(19.99, 8.63);
+    expect(towardLand(off, () => rgb('#0a5089'), (c, p) => biomeAt(own, c, latLonOf(p)).sea)).toEqual(off);
+  });
+});
+
+describe('the colour map a landing reads its biome from', () => {
+  // (an ImageBitmap's stand-in: what matters is it's a picture, not data)
+  const picture = () => ({ width: 2048, height: 1024 });
+  const far = new THREE.Texture(picture()); // the -hq webp the planet was built with
+  far.flipY = false;
+  const xl = new THREE.CompressedTexture([{ data: new Uint8Array(16), width: 4096, height: 2048 }], 4096, 2048); // the -xl KTX2 worn near on ultra
+  const raw = new THREE.DataTexture(new Uint8Array(4), 1, 1);
+
+  it('passes over a GPU-compressed near map for the far one a canvas can read', () => {
+    expect(readableMap(far, xl)).toBe(far);
+    expect(readableMap(xl, far)).toBe(far);
+    expect(readableMap(raw, null, undefined, far)).toBe(far);
+  });
+
+  it('is null when nothing given can be read back', () => {
+    expect(readableMap(xl)).toBe(null);
+    expect(readableMap(raw)).toBe(null);
+    expect(readableMap(new THREE.Texture())).toBe(null);
+    expect(readableMap()).toBe(null);
   });
 });
 

@@ -52,6 +52,11 @@ export const ROLES = {
   // tread plate of Echo Base's grates and Tipoca's deck
   tiles: { id: 'large_floor_tiles_02', keep: 0.15, mean: 0.84 },
   deck: { id: 'metal_plate', keep: 0.05, mean: 0.8 },
+  // the worlds' own rock, where grey rock face reads wrong: Geonosis's red,
+  // eroded stone (its spires, hives and arena) and Endor's mossy boulders
+  // (the bunker's mound, the forest's rocks and logs)
+  redrock: { id: 'rock_boulder_cracked', keep: 0.3, mean: 0.78 },
+  mossrock: { id: 'mossy_rock', keep: 0.35, mean: 0.72 },
 };
 
 const get = async (url, as = 'json') => {

@@ -235,7 +235,7 @@ export const ACHIEVEMENTS = {
   bespinlobot: { name: 'Lobot’s codes', desc: 'Opened the corridor with Lobot’s codes and ran for Platform 327 with the Wing Guard' },
   starmapride: { name: 'The way to Ezra', desc: 'Raced the spires to the old tower on Lothal and kept the star map' },
   dagobahraise: { name: 'Size matters not', desc: 'Ran Dagobah’s swamp with Yoda on your back, faced the cave and raised the X-wing' },
-  galacticassault: { name: 'Galactic assault', desc: 'Won a battle for the command posts on Hoth or Geonosis' },
+  galacticassault: { name: 'Galactic assault', desc: 'Won a battle for the command posts on Hoth, Geonosis, Scarif or Endor' },
   canyonmission: { name: 'Faster than Biggs', desc: 'Ran Beggar’s Canyon both ways against the clock on Tatooine' },
   firsttransport: { name: 'The first transport is away', desc: 'Loaded the first transport off Hoth and cleared its way with the ion cannon' },
   sanctuary: { name: 'Sanctuary', desc: 'Held the krill farmers’ village on Sorgan against the raiders and their AT-ST' },

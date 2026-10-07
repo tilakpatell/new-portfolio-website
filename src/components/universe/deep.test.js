@@ -198,7 +198,7 @@ describe('deep space', () => {
     expect(citadel.at).toEqual(inSector('rickmorty', [0, 0, 0]));
     const parts = DEEP_SOLIDS.filter((s) => s.id.startsWith('citadel'));
     for (const p of parts) expect(sectorOf(...p.at), p.id).toBe('rickmorty');
-    expect(MOONS.length).toBe(4);
+    expect(MOONS.length).toBe(8);
     for (const m of MOONS) {
       const at = POSITIONS[m.id];
       expect(SECTOR_OF[m.id], m.id).toBe('rickmorty');
