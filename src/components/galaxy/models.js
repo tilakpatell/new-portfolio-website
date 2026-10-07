@@ -13,7 +13,9 @@
 // createModels({ prepare(object) → Promise }) → { slot(kind, size, { tint }) → slot,
 //   want(kinds), prebuild(kinds), builtCount, update(t), dispose() }
 // slot: { holder (place it, turn it), kind, size, ready }; every model sits in
-// its holder centred, nose along +z, +y up, its biggest side `size` long.
+// its holder centred, nose along +z, +y up, `size` long nose to tail (a
+// station, or a ship that flies upright, `size` at its biggest side:
+// universe/shipFit.js).
 
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
@@ -21,6 +23,7 @@ import { device } from '../../lib/device';
 import { gen3dUrl } from '../../lib/three/gen3d';
 import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 import { GLB } from '../universe/glbFleet';
+import { fitScale } from '../universe/shipFit';
 import { BUILT_KINDS } from '../universe/trafficModels';
 import { GALAXY_KINDS, buildGalaxyShip } from './fleet';
 
@@ -210,15 +213,16 @@ function tune(root) {
   });
 }
 
-// centred, nose to +z (a turn of `nose` about y), its biggest side 1 long
-function normalise(root, nose = 0) {
+// centred, nose to +z (a turn of `nose` about y), 1 long nose to tail (or 1
+// at its biggest side: shipFit.js)
+function normalise(root, nose = 0, kind = null) {
   const turn = new THREE.Group();
   turn.rotation.y = nose;
   turn.add(root);
   turn.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(turn, true);
   const size = box.getSize(new THREE.Vector3());
-  const k = 1 / Math.max(size.x, size.y, size.z, 1e-6);
+  const k = fitScale(kind, size);
   const holder = new THREE.Group();
   holder.add(turn);
   turn.position.copy(box.getCenter(new THREE.Vector3())).multiplyScalar(-1);
@@ -287,7 +291,7 @@ export function createModels({ prepare = null, load: fetchModel = loadGLTF } = {
       .then(async (root) => {
         if (!root) return;
         tune(root);
-        const n = normalise(root, def.nose);
+        const n = normalise(root, def.nose, kind);
         // (a skinned one's copies need bones of their own: SkeletonUtils)
         root.traverse((o) => o.isSkinnedMesh && (n.skinned = true));
         if (prepare) await prepare(n.holder);
@@ -337,9 +341,10 @@ export function createModels({ prepare = null, load: fetchModel = loadGLTF } = {
     if (built.has(kind)) return built.get(kind);
     if (!BUILT.has(kind)) return null;
     const model = buildGalaxyShip(kind);
-    // (buildGalaxyShip makes it 1 long in z; here everything's 1 at its biggest)
+    // (buildGalaxyShip makes it 1 long in z; fitted as the loaded ones are, so
+    // a ship keeps its length when its model takes over)
     const s = model.size;
-    const k = 1 / Math.max(s.x, s.y, s.z, 1e-6);
+    const k = fitScale(kind, s);
     const holder = new THREE.Group();
     holder.add(model.group);
     holder.scale.setScalar(k);
@@ -395,7 +400,7 @@ export function createModels({ prepare = null, load: fetchModel = loadGLTF } = {
   }
 
   return {
-    // a ship of `kind`, its biggest side `size` long, in a holder to place
+    // a ship of `kind`, `size` long (a station `size` at its biggest side), in a holder to place
     slot(kind, size, { tint = null } = {}) {
       const holder = new THREE.Group();
       const inner = new THREE.Group();
