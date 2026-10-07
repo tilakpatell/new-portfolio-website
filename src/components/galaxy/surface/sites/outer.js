@@ -71,6 +71,9 @@ export const SITES = {
       { kind: 'stormtrooper', n: 4, at: [-260, 160], spread: 20, roam: 12, speed: 1.2, name: 'Remnant stormtrooper', says: ['Move along. This area is restricted.'] },
       { kind: 'villager', n: 4, at: [140, -90], spread: 30, roam: 18, speed: 1, name: 'Nevarro local', says: ['The guild’s back in business. The Empire’s not.'] },
       { kind: 'r5', n: 1, at: [12, 6], roam: 6, speed: 0.6, name: 'An R5 unit', says: ['(A sulky beep. Somebody stole its restraining bolt. For the bolt.)'] },
+      // (the beasts of burden: blurrgs on the lava fields, a happabore in town)
+      { kind: 'blurrg', n: 2, at: [70, -130], spread: 12, roam: 14, speed: 0.9, r: 1 },
+      { kind: 'happabore', n: 1, at: [178, -108], roam: 8, speed: 0.5, r: 1.8 },
       { kind: 'aqualish', n: 1, at: [-14, -4], still: true, face: 0.8, name: 'Bounty hunter', says: ['Guild business. Keep walking.', 'Cantina’s in town. Karga’s buying. Karga’s never buying.'] },
     ],
     quests: [
@@ -133,6 +136,9 @@ export const SITES = {
       { kind: 'stormtrooper', n: 4, at: [-220, -200], spread: 18, roam: 12, speed: 1.2, name: 'Remnant stormtrooper', says: ['Back away from the factory.'] },
       { kind: 'villager', n: 5, at: [260, -60], spread: 30, roam: 15, speed: 1, name: 'Lothal farmer', says: ['The loth-wolves came back. That has to mean something.'] },
       { kind: 'farmer', n: 1, at: [-14, 12], roam: 6, speed: 0.8, name: 'Haulier', says: ['Grain for Capital City. Half of it goes to the garrison, whether we like it or not.', 'Watch the spires. The wolves den there.'] },
+      // (the plains' own: loth-cats about the capital, and the wolves by the spires)
+      { kind: 'lothcat', n: 3, at: [222, -24], spread: 16, roam: 10, speed: 1.2, r: 0.3 },
+      { kind: 'lothwolf', n: 2, at: [-150, 110], spread: 10, roam: 24, speed: 1.6, r: 0.9 },
       { kind: 'astromech', n: 1, at: [-10, 18], roam: 5, speed: 0.6, name: 'Astromech', says: ['(A grumpy, clipped beep. It would rather be fixing a ship.)'] },
     ],
     quests: [

@@ -70,7 +70,7 @@ import { breathe, createGait, sway } from '../../../lib/three/gait';
 import { bodyFrom } from '../../../lib/ai/body';
 import { release, reserve, spotOf } from '../../../lib/ai/needs';
 import { createSocial } from '../../../lib/ai/social';
-import { NO_CALLS, animatorCalls, seedOf } from '../../rickmorty/portal/meshyCast';
+import { NO_CALLS, animatorCalls, seedOf } from '../../../lib/three/figureCalls';
 
 const TALK = 4.5; // metres: close enough to turn to you
 const THERE = 0.6; // metres from where it's going: there

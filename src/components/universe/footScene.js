@@ -47,7 +47,9 @@
 import * as THREE from 'three';
 import { gltfLoader } from '../../lib/three/gltf';
 import { sharpen } from '../../lib/three/textures';
-import { MESHY, NO_CALLS, animatorCalls, createMeshyCast, seedOf } from '../rickmorty/portal/meshyCast';
+import { MESHY, createMeshyCast } from '../rickmorty/portal/meshyCast';
+import { NO_CALLS, animatorCalls, seedOf } from '../../lib/three/figureCalls';
+import { preload } from '../../lib/three/clipLibrary';
 import { createAnimator } from '../../lib/three/animator';
 import { breathe, createGait, sway } from '../../lib/three/gait';
 import { seeded } from '../../lib/seeded';
@@ -59,7 +61,7 @@ import { local } from '../../lib/hooks';
 import { smoothNormals } from '../cockpit/crew';
 import { GUNS, buildGun, createGunplay } from './gunplay';
 import { createGunFx } from './gunfx';
-import { createLocomotion, fallTurn } from './locomotion';
+import { fallTurn } from './locomotion';
 import { followMove, mateDown, mateHit, mateStand, readWalkerExtras, walkerExtras } from './footLife';
 import { applyEmote, createEmoteWheel, heardEmote, keepEmote, readEmote, readEmoteWire } from '../../lib/emote';
 import { createPortalFx, meshyJoints } from '../../lib/three/portalFx';
@@ -152,8 +154,8 @@ const seedFor = (name) => {
 // paced to the ground and posed on top by `after`, once it's placed;
 // without, they play at the old pace (the galaxy's worlds, until they hand
 // it over too). play, base, look and react are the animator's
-// (meshyCast.js's animatorCalls: the clip library's clips, on the Meshy
-// skeleton these all stand on). `key`: the figure's template (its file, for
+// (lib/three/figureCalls.js's animatorCalls: the clip library's clips, on
+// the Meshy skeleton these all stand on). `key`: the figure's template (its file, for
 // the library's copies), `seed`: its clocks; `up` (in the space its hips
 // turn in) and `hipsY`, for the library's clips made for it.
 function rigged(model, clips, tall, owned, { seed = seedFor('rigged'), key = null, up = null, hipsY = null } = {}) {
@@ -304,6 +306,31 @@ function rigScene(model, clips, tall, { shared = false, seed, key = null } = {})
   }
 }
 
+// One figure per file, the rest copies of it: a battle's dozen troopers
+// share one stormtrooper's geometry and maps (and the library's clips made
+// for it), as the landings' troops share theirs. The first is rigged to
+// keep the materials and smooth the normals; it's never drawn, and stays
+// for the next world that wants one. (galaxy/surface/crew.js)
+const sharedModels = new Map(); // url → Promise<{ scene, clips } | null>
+export async function loadSharedFigure(url, tall, { seed } = {}) {
+  if (!sharedModels.has(url))
+    sharedModels.set(
+      url,
+      Promise.all([getLoader().loadAsync(url), borrowClips()]).then(
+        ([gltf, clips]) => {
+          rigScene(gltf.scene, clips, 1);
+          return { scene: gltf.scene, clips };
+        },
+        () => {
+          sharedModels.delete(url); // (a failed fetch is tried again next time)
+          return null;
+        },
+      ),
+    );
+  const tpl = await sharedModels.get(url);
+  return tpl ? rigScene(cloneSkinned(tpl.scene), tpl.clips, tall, { shared: true, seed, key: url }) : null;
+}
+
 // Walt and Jesse: the site’s own figures, loaded as anyone’s is (above),
 // in the body their look has (Mr. White and Heisenberg are Walt’s one
 // figure, Jesse in the lab’s suit his own) and dressed in it. They keep
@@ -331,6 +358,22 @@ async function loadParty(spec, cast, looks = null) {
 // Meshy cast kind ({ meshy }), a model of its own ({ url }: Albuquerque's),
 // or built here ({ built }); a kind with none is the cast's own kind
 export const troopLook = (kind) => Object.values(SIDES).find((s) => s.troops[kind]?.figure)?.troops[kind].figure ?? { meshy: kind };
+
+// A troop going down, in its own frame (react.js's `down`: +z ahead, +x its
+// left): the way the shot that dropped it was going (back, as pushOf has
+// it, when none did: your going down), and how hard. A bowcaster's bolt,
+// twice a blaster's, throws it back off its feet (die.blown); a blaster's
+// drops it forward or back by the way it went (die.fwd, die.back).
+export function troopFall(tr, damage = 1) {
+  const d = tr.knock ?? vec.scale(tr.f, -1);
+  return { dir: { x: -vec.dot(d, rightOf(tr)), z: vec.dot(d, tr.f) }, force: Math.min(1, Math.max(0, damage) / 2) };
+}
+// where a bolt at `p` (the planet's space) took a standing troop: its head
+// (the top fifth of it) or its chest
+export const troopHitWhere = (tr, p, R) => (vec.dot(vec.add(p, at(tr, R), -1), tr.n) > TROOPS[tr.kind].tall * 0.8 ? 'head' : 'chest');
+// the clips a troop's body reacts with, fetched as the walk begins so the
+// first hit and the first fall aren't late
+const TROOP_CLIPS = ['hit.chest', 'hit.head', 'die.fwd', 'die.back', 'die.blown'];
 
 // how each built person is dressed: Luke in his flight suit, Han in his
 // shirt and vest, the Empire's troopers in white armour over black (a
@@ -1351,7 +1394,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   map.add(root);
   let cast = null;
   let party = null; // [lead, mate] once loaded: { spec, fig, group, gun, w }
-  let troopFigs = new Map(); // id → { fig, group }
+  let troopFigs = new Map(); // id → troopFig's { body, anim, group, gp, … }
   const troopModels = new Map(); // a troop's model's url → { ready: { scene, clips } once loaded } (copied for each one)
   // (what a loaded scene's made of, freed when the walk's over)
   const freeScene = (scene) =>
@@ -1614,6 +1657,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const sideTroops = Object.keys(sideFor(kind)?.troops ?? SIDES.rickmorty.troops);
     const needCast = [...new Set([...specs.filter((s) => s.src.meshy).map((s) => s.src.meshy), ...sideTroops.map((k) => troopLook(k).meshy).filter(Boolean).map((k) => MESHY[k]?.a ?? k)])]; // (the cast loads by asset: a Morty clone is Morty's)
     const castReady = cast.load(null, needCast).catch(() => {});
+    preload(TROOP_CLIPS).catch(() => {});
     // (and the ones that are models of their own, Albuquerque's: loaded once, copied for each)
     for (const k of sideTroops) {
       const url = troopLook(k).url;
@@ -1649,39 +1693,56 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
 
   // the troops' guns (sides.js: the Gromflomites' carbine, the cop's and the DEA's pistol; the gazorpian has hands)
   const troopGun = (t) => sideFor(S.kind)?.troops[t.kind]?.gun ?? SIDES.rickmorty.troops[t.kind]?.gun ?? null;
+  // A troop's figure, on an animator as everyone else's is: the cast's
+  // (told how tall it stands, so its motion's read in metres), a copy of a
+  // model of its own (rigScene's), or one built. `body` answers the calls
+  // (play, react, stop, look; a built one's do nothing); `anim` is there
+  // when it's rigged.
   const troopFig = (t) => {
     let got = troopFigs.get(t.id);
     if (got) return got;
     const look = troopLook(t.kind);
+    const tall = TROOPS[t.kind].tall / METRE; // (metres)
+    const seed = seedFor(t.kind);
     const tpl = look.url ? troopModels.get(look.url)?.ready : null;
-    const c = tpl ? null : look.meshy ? cast?.make(look.meshy) : null;
+    const c = tpl ? null : look.meshy ? (cast?.make(look.meshy, 0, { tall, seed }) ?? null) : null;
     const group = new THREE.Group();
     let fig = null;
     let b = null;
-    let loco = null;
     let own = null;
     if (tpl) {
-      // a copy of Albuquerque's model, sharing what it's made of
-      own = rigScene(cloneSkinned(tpl.scene), tpl.clips, TROOPS[t.kind].tall / METRE, { shared: true });
+      // a copy of Albuquerque's model, sharing what it's made of (and the library's clips made for it)
+      own = rigScene(cloneSkinned(tpl.scene), tpl.clips, tall, { shared: true, seed, key: look.url });
       fig = own;
-      loco = own.loco;
       group.add(own.model);
     } else if (c) {
       c.group.scale.setScalar(TROOPS[t.kind].tall / c.height);
       fig = { model: c.group };
-      if (c.mixer) loco = createLocomotion(fig, { mixer: c.mixer, act: c.act, root: c.group, unit: METRE }); // (measured before it's placed)
       group.add(c.group);
     } else {
       // built: the side's look for it (a stormtrooper, a probe), or a stand-in until its model's here
-      b = built({ tall: TROOPS[t.kind].tall / METRE, src: { built: look.built ?? 'han' } });
+      b = built({ tall, src: { built: look.built ?? 'han' } });
       group.add(b.model);
       fig = b;
     }
     root.add(group);
     const gp = troopGun(t) ? createGunplay(fig, troopGun(t), { unit: METRE, who: b ? 'built' : null }) : null;
-    got = { c: c ?? (own && { mixer: own.mixer }), b, group, gp, loco, own, prevF: null };
+    // (k: the cast's units in the map's, for its motion's speeds)
+    got = { c, b, own, body: c ?? own ?? b, anim: c?.anim ?? own?.anim ?? null, k: c ? c.group.scale.x : 1, group, gp, prevF: null, death: null, blow: 1 };
     troopFigs.set(t.id, got);
     return got;
+  };
+  // a troop's body a frame on (motion in the map's units, as yours is), and
+  // once it's placed the bones over its clips
+  const stepTroop = (got, dt, move, hit, motion, frame) => {
+    if (got.c) got.c.update(0, move, hit, { dt, motion: { ...motion, speed: (motion.speed ?? 0) / got.k, side: (motion.side ?? 0) / got.k }, after: false });
+    else if (got.own) got.own.update(dt, move, motion);
+    else {
+      got.b?.update(dt, move);
+      return;
+    }
+    got.group.updateMatrixWorld(true);
+    (got.c ?? got.own).after(dt, motion, frame);
   };
   const dropTroop = (id) => {
     const got = troopFigs.get(id);
@@ -1690,7 +1751,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     root.remove(got.group);
     got.gp?.dispose();
     got.b?.dispose();
-    got.own?.mixer.stopAllAction();
+    got.own?.dispose(); // (a copy's: its animator; what it's made of is the original's)
+    got.c?.anim?.dispose();
     troopFigs.delete(id);
   };
 
@@ -2421,7 +2483,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     }
     // the figures where the people are
     if (party && S.phase !== 'land' && S.phase !== 'lift') drawPeople(dt);
-    drawTroops(dt, t);
+    drawTroops(dt);
     guestsFrame(dt);
     moveBolts(dt);
     fx.update(dt);
@@ -2673,13 +2735,16 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
             t.hp -= o.b.damage;
             t.hitAt = S.clock;
             t.knock = vec.unit(o.b.v); // which way the shot pushed them
+            // (how hard, for the fall it's in: drawTroops)
+            const got = troopFigs.get(t.id);
+            if (got) got.blow = o.b.damage;
             if (t.hp <= 0) {
               t.alive = false;
               t.dead = 0;
               t.fallSide = rand() < 0.5 ? -1 : 1;
               t.how = GADGETS.includes(o.gun) ? o.gun : null; // (Rick's guns' kills: through a portal, frozen, shrunk: drawTroops)
               emit({ type: 'foot', id: 'kill', kind: t.kind, by: o.b.owner, how: t.how });
-            }
+            } else got?.body.react('hit', { where: troopHitWhere(t, o.b.p, S.R), moving: true }); // (on their upper half: they keep coming)
           }
         } else if (r.hit === 'me') hurt(o.b.damage, vec.unit(o.b.v));
         else if (r.hit === 'mate') hurtMate(o.b.damage, vec.unit(o.b.v));
@@ -2740,7 +2805,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     });
   };
 
-  const drawTroops = (dt, t) => {
+  const STOOD = { speed: 0, side: 0, turn: 0 };
+  const CLIP_WAIT = 0.4; // seconds a fall's clip has to begin before they go over without it
+  const drawTroops = (dt) => {
     for (const key of [...blobs.keys()]) if (key.startsWith('troop') && !S.troops.find((o) => `troop${o.id}` === key)) dropShadow(key);
     for (const tr of S.troops) {
       const got = troopFig(tr);
@@ -2769,18 +2836,37 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       shadow(`troop${tr.id}`, tr, (TROOPS[tr.kind].tall / METRE) * 0.5).visible = tr.alive || tr.dead < 2.4;
       const frame = { forward: dirToWorld(new V(...tr.f)), up: dirToWorld(n.clone()) };
       if (!tr.alive) {
-        // down they go: the knees, then over the way the shot pushed them,
-        // the gun out of their hand, and into the ground after a while
+        // down they go: a rigged one on its own clip, by the way the shot
+        // pushed them and how hard (react.js's `down`: die.fwd, die.back,
+        // die.blown); anyone else (or one whose clip never came) at the
+        // knees, then over that way about their feet. The gun out of their
+        // hand, and into the ground after a while.
         const k = Math.min(1, tr.dead / 0.95);
         const tall = TROOPS[tr.kind].tall;
-        got.group.quaternion.premultiply(fallTurn(k, pushOf(tr, tr.knock), n));
-        got.group.position.addScaledVector(n, tall * 0.05 * smooth(0.5, 1, k) - smooth(2.4, 4, tr.dead) * tall * 0.5);
-        if (got.loco) {
-          got.loco.update(dt, { move: 0, down: k });
-          got.c.mixer.update(dt);
-          got.group.updateMatrixWorld(true);
-          got.loco.after(dt, { down: k }, frame);
-        } else got.c?.update?.(t, 0, 0);
+        let d = got.death;
+        if (!d) {
+          d = got.death = { clip: null, tipAt: 0 };
+          if (got.anim) {
+            // (whatever its upper half was doing let go, its head on nothing)
+            got.body.stop(0.15, 'upper');
+            got.body.look(null);
+            d.clip = got.body.react('down', troopFall(tr, got.blow))?.clip ?? null;
+          }
+        }
+        if (d.clip && tr.dead > CLIP_WAIT && got.anim.playing('full') !== d.clip) {
+          d.clip = null;
+          d.tipAt = tr.dead;
+          got.body.stop(0.1, 'full');
+        }
+        if (d.clip) {
+          got.group.position.addScaledVector(n, -smooth(2.4, 4, tr.dead) * tall * 0.5);
+          stepTroop(got, dt, 0, 0, STOOD, frame);
+        } else {
+          const kk = Math.min(1, (tr.dead - d.tipAt) / 0.95);
+          got.group.quaternion.premultiply(fallTurn(kk, pushOf(tr, tr.knock), n));
+          got.group.position.addScaledVector(n, tall * 0.05 * smooth(0.5, 1, kk) - smooth(2.4, 4, tr.dead) * tall * 0.5);
+          if (got.c || got.own) stepTroop(got, dt, 0, 0, { down: kk }, frame);
+        }
         if (got.gp && !got.dropped && k > 0.3) {
           got.dropped = true;
           const g = got.gp.drop();
@@ -2793,13 +2879,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       const move = Math.min(1, Math.abs(tr.speed) / FOOT.run + Math.abs(tr.side) / FOOT.run);
       const hit = tr.hitAt ? Math.max(0, 1 - (S.clock - tr.hitAt) / 0.35) : 0;
       const motion = { speed: tr.speed, side: tr.side, turn: turnRate(got, tr, dt), hurt: hit, knock: tr.knock ? Math.sign(vec.dot(tr.knock, rightOf(tr))) || 1 : 0.4 };
-      if (got.loco) {
-        got.loco.update(dt, { move, ...motion });
-        got.c.mixer.update(dt);
-        got.group.updateMatrixWorld(true);
-        got.loco.after(dt, motion, frame);
-      } else if (got.c) got.c.update(t, move, hit);
-      else got.b?.update(dt, move);
+      stepTroop(got, dt, move, hit, motion, frame);
       if (got.gp) {
         // its gun up at whichever of you is nearer, as the rules say
         got.group.updateMatrixWorld(true);
