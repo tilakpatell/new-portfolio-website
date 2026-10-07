@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildLayout, validateStation } from './layout';
-import { createDoors, passable, stepDoors } from './doors';
+import { clearDoorway, createDoors, passable, stepDoors } from './doors';
 
 const STEP = 1 / 30;
 
@@ -26,12 +26,23 @@ function pair(door = {}, axis = 'x') {
   return buildLayout(station);
 }
 
-// Steps the doors for a while, every step as the game does, and returns
-// everything they said.
-function run(doors, layout, seconds, world = {}, { dt = STEP } = {}) {
+// Steps the doors for a while, every step as the game does (clearing
+// the doorways of `bodies` after each), and returns everything they said.
+function run(doors, layout, seconds, world = {}, { dt = STEP, bodies } = {}) {
   const events = [];
-  for (let t = 0; t < Math.round(seconds / dt); t++) events.push(...stepDoors(doors, layout, dt, world));
+  for (let t = 0; t < Math.round(seconds / dt); t++) {
+    events.push(...stepDoors(doors, layout, dt, world));
+    if (bodies) clearDoorway(doors, layout, bodies);
+  }
   return events;
+}
+
+// How far a point is from a wall segment, seen from above.
+function apart(wall, p) {
+  const dx = wall.x1 - wall.x0;
+  const dz = wall.z1 - wall.z0;
+  const t = Math.max(0, Math.min(1, ((p.x - wall.x0) * dx + (p.z - wall.z0) * dz) / (dx * dx + dz * dz)));
+  return Math.hypot(p.x - (wall.x0 + t * dx), p.z - (wall.z0 + t * dz));
 }
 
 const trooper = (x, z, o = {}) => ({ x, z, side: 'imperial', disguised: false, ...o });
@@ -94,5 +105,103 @@ describe('a sliding door', () => {
     const doors = createDoors(layout);
     expect(run(doors, layout, 0.5, { near: [rebel(0.5, -1.5), trooper(-0.5, -1.5)] })).toEqual([{ type: 'open', door: 'd' }]);
     expect(passable(doors, 'd')).toBe(true);
+  });
+});
+
+describe('a lockdown', () => {
+  it('seals a blast door on the edge of its section, even with an Imperial at it, until it lifts', () => {
+    const layout = pair({ kind: 'blast' });
+    const doors = createDoors(layout);
+    const near = { near: [trooper(0, -1)] };
+    run(doors, layout, 0.5, near);
+    expect(passable(doors, 'd')).toBe(true);
+
+    const locked = { ...near, lockdown: new Set(['south']) };
+    // and the Imperial at it is refused like anyone else
+    expect(run(doors, layout, 0.5, locked)).toEqual([
+      { type: 'seal', door: 'd' },
+      { type: 'denied', door: 'd' },
+    ]);
+    expect(doors.d.sealed).toBe(true);
+    expect(passable(doors, 'd')).toBe(false);
+    expect(doors.d.open).toBe(0);
+    expect(run(doors, layout, 5, locked)).toEqual([]);
+    expect(passable(doors, 'd')).toBe(false);
+
+    expect(run(doors, layout, 0.5, { ...near, lockdown: new Set() })).toEqual([
+      { type: 'unseal', door: 'd' },
+      { type: 'open', door: 'd' },
+    ]);
+    expect(passable(doors, 'd')).toBe(true);
+  });
+
+  it('leaves a sliding door working', () => {
+    const layout = pair({ kind: 'slide' });
+    const doors = createDoors(layout);
+    expect(run(doors, layout, 0.5, { near: [trooper(0, -1)], lockdown: new Set(['north', 'south']) })).toEqual([{ type: 'open', door: 'd' }]);
+    expect(passable(doors, 'd')).toBe(true);
+  });
+
+  it('never closes an arch, with nobody near or the whole station locked down', () => {
+    const layout = pair({ kind: 'arch' });
+    const doors = createDoors(layout);
+    expect(passable(doors, 'd')).toBe(true);
+    expect(run(doors, layout, 2, { lockdown: new Set(['north', 'south']) })).toEqual([]);
+    expect(passable(doors, 'd')).toBe(true);
+  });
+});
+
+describe('a door shutting on someone in its doorway', () => {
+  // along: how far along the wall from the door’s centre; across: how far
+  // off the wall’s line, + for south (or east), − for north (or west)
+  const place = (axis, along, across) => (axis === 'x' ? { x: along, z: across } : { x: across, z: along });
+  const across = (axis, b) => (axis === 'x' ? b.z : b.x);
+  const along = (axis, b) => (axis === 'x' ? b.x : b.z);
+
+  for (const axis of ['x', 'z']) {
+    it(`pushes them out to the side their centre is on, clear of the leaf and every wall (a wall along ${axis})`, () => {
+      const layout = pair({ kind: 'blast', w: 2.4 }, axis);
+      const doors = createDoors(layout);
+      const officer = { ...place(axis, 0, -1.5), side: 'imperial', disguised: false };
+      const bodies = [
+        { ...place(axis, 0.3, 0.1), y: 0, r: 0.35 },
+        { ...place(axis, -0.5, -0.2), y: 0, r: 0.35 },
+        // dead on the line: the tie goes south (or east)
+        { ...place(axis, 0, 0), y: 0, r: 0.35 },
+        // most of the way to the doorway’s end, half over its line
+        { ...place(axis, 1.0, -0.15), y: 0, r: 0.35 },
+      ];
+      const started = bodies.map((b) => ({ along: along(axis, b), across: across(axis, b) }));
+      run(doors, layout, 0.6, { near: [officer] });
+      // an open door pushes nobody
+      run(doors, layout, 0.5, { near: [officer] }, { bodies });
+      bodies.forEach((b, i) => expect([along(axis, b), across(axis, b)]).toEqual([started[i].along, started[i].across]));
+
+      const outside = () =>
+        bodies.forEach((b, i) => {
+          expect(along(axis, b)).toBe(started[i].along);
+          const side = started[i].across < 0 ? -1 : 1;
+          expect(across(axis, b) * side).toBeGreaterThanOrEqual(b.r + 0.05);
+          for (const wall of layout.walls) expect(apart(wall, b)).toBeGreaterThanOrEqual(b.r);
+        });
+      const sealed = { near: [officer], lockdown: new Set([axis === 'x' ? 'south' : 'east']) };
+      for (let t = 0; t < 30 && passable(doors, 'd'); t++) run(doors, layout, STEP, sealed, { bodies });
+      // the step the walker starts counting the doorway as wall, nobody is in it
+      expect(passable(doors, 'd')).toBe(false);
+      expect(doors.d.open).toBeGreaterThan(0.5);
+      outside();
+      run(doors, layout, 1, sealed, { bodies });
+      expect(doors.d.open).toBe(0);
+      outside();
+    });
+  }
+
+  it('leaves alone someone standing beside the doorway, clear of its leaf', () => {
+    const layout = pair({ kind: 'blast' });
+    const doors = createDoors(layout);
+    // a step back from it, and against the wall past its end (the walker’s to push off, not the door’s)
+    const bodies = [{ x: 0, z: 0.5, y: 0, r: 0.35 }, { x: -1.6, z: -0.2, y: 0, r: 0.35 }];
+    run(doors, layout, 1, { lockdown: new Set(['north']) }, { bodies });
+    expect(bodies).toEqual([{ x: 0, z: 0.5, y: 0, r: 0.35 }, { x: -1.6, z: -0.2, y: 0, r: 0.35 }]);
   });
 });
