@@ -91,6 +91,8 @@ if (what === 'endor') {
   });
   await page.waitForTimeout(1500);
   check(await ev(() => !window.__galaxyDebug.war.pieces[0].targets.some((t) => t.kind === 'shieldgen')), 'the shield generator’s knocked out');
+  // (the run opens on the next frame the battle's run on: software GL's a frame or two a second)
+  await page.waitForFunction(() => window.__galaxyDebug.war.pieces[0].run.state !== 'shut', null, { timeout: 30000 }).catch(() => {});
   // to the run's mouth, and in
   const way = await ev(() => {
     const s = window.__galaxyDebug.state.ship;

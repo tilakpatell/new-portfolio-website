@@ -121,7 +121,9 @@ await page.evaluate(() => {
   const w = window.__galaxyDebug.war;
   const b = w.battle;
   const f = b.fighters.find((x) => x.alive && x.team !== b.you.team && x.role !== 'bomber');
-  for (let i = 0; i < 40 && f?.alive; i++) w.hit({ x: f.pos.x, y: f.pos.y + 2, z: f.pos.z }, { x: f.pos.x, y: f.pos.y - 0.01, z: f.pos.z }, 5);
+  // (where it's drawn, as your guns see it: the battle's carried on past its last step)
+  const p = f?.seen ?? f?.pos;
+  for (let i = 0; i < 40 && f?.alive; i++) w.hit({ x: p.x, y: p.y + 2, z: p.z }, { x: p.x, y: p.y - 0.01, z: p.z }, 5);
 });
 await page.waitForTimeout(1500);
 check((await page.evaluate(() => window.__galaxy().war.mine)) > before, 'a fighter down counts in the war');
