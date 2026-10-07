@@ -57,6 +57,7 @@ describe('the list of things to do', () => {
   it('is “Things to do” with a Close, the world’s flavour under it', () => {
     const html = renderToStaticMarkup(<QuestList sub="This week at Dunder Mifflin" quests={[{ id: 'a', name: 'Pretzel day', open: true, where: 'Kitchen', blurb: 'Get one' }]} next="a" onClose={() => {}} />);
     expect(html).toContain('aria-label="Things to do"');
+    expect(renderToStaticMarkup(<QuestList label="Places in Albuquerque" quests={[]} onClose={() => {}} />)).toContain('aria-label="Places in Albuquerque"');
     expect(html).toContain('>Close<');
     expect(html).toContain('This week at Dunder Mifflin');
     expect(html).toContain('Kitchen. Get one');

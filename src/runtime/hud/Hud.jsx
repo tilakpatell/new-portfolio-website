@@ -23,6 +23,8 @@ export default function Hud({ brand = null, tools = null, foot = null, thumbs = 
   const toolsRef = useRef(null);
   const footRef = useRef(null);
   const thumbsRef = useRef(null);
+  // (the thumbs row may come after the first layout: measure again when it does)
+  const hasThumbs = Boolean(touch && thumbs);
 
   useLayoutEffect(() => {
     const el = root.current;
@@ -49,7 +51,7 @@ export default function Hud({ brand = null, tools = null, foot = null, thumbs = 
     const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(fit) : null;
     for (const n of [el, toolsRef.current, footRef.current, thumbsRef.current]) if (n) ro?.observe(n);
     return () => ro?.disconnect();
-  }, [touch, order]);
+  }, [touch, order, hasThumbs]);
 
   return (
     <div ref={root} className={`hud ${className}`.trim()} data-touch={touch || undefined} data-order={order} {...rest}>
@@ -63,7 +65,7 @@ export default function Hud({ brand = null, tools = null, foot = null, thumbs = 
       <div className="hud-row hud-foot" ref={footRef}>
         {foot}
       </div>
-      {touch && thumbs && (
+      {hasThumbs && (
         <div className="hud-row hud-thumbs" ref={thumbsRef}>
           {thumbs}
         </div>

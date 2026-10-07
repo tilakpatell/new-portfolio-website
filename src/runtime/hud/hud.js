@@ -101,11 +101,19 @@ export function markerSize(dist, height, { min = COMPASS.markerMin, max = COMPAS
 }
 
 // A touch stick's reading from where the thumb went down (`x0`, `y0`) to
-// where it is: each axis -1..1 over `throw` px, and the knob's offset (px).
-export const STICK = { ring: 116, knob: 46, throw: 44, travel: 26 };
-export function stickRead(x0, y0, x, y, { reach = STICK.throw, travel = STICK.travel } = {}) {
-  const c = (v) => Math.max(-1, Math.min(1, v));
-  const dx = c((x - x0) / reach);
-  const dy = c((y - y0) / reach);
-  return { x: dx, y: dy, knob: [dx * travel, dy * travel] };
+// where it is: a vector no longer than 1 (a diagonal is no faster than
+// straight on) over `reach` px, nothing inside the `dead` zone (a resting
+// thumb's jitter doesn't creep), and the knob's offset in px, inside the ring.
+export const STICK = { ring: 116, knob: 46, throw: 44, travel: 26, dead: 0.1 };
+export function stickRead(x0, y0, x, y, { reach = STICK.throw, travel = STICK.travel, dead = STICK.dead } = {}) {
+  const dx = (x - x0) / reach;
+  const dy = (y - y0) / reach;
+  const m = Math.hypot(dx, dy);
+  const k = m > 1 ? 1 / m : 1;
+  const kx = dx * k;
+  const ky = dy * k;
+  const knob = [Math.round(kx * travel * 100) / 100, Math.round(ky * travel * 100) / 100];
+  if (m <= dead) return { x: 0, y: 0, knob };
+  const out = (Math.min(1, m) - dead) / (1 - dead) / Math.min(1, m);
+  return { x: kx * out, y: ky * out, knob };
 }

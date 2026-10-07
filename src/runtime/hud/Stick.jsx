@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { stickRead } from './hud';
 
 // The touch stick, 116 px with a 46 px knob (./hud.js STICK): it reads from
@@ -12,6 +12,25 @@ import { stickRead } from './hud';
 // how far the thumb goes for full tilt, in px.
 export default function Stick({ onMove, onStart = null, reach = undefined, className = '', label = 'Move' }) {
   const drag = useRef(null);
+  const ring = useRef(null);
+  const moved = useRef(onMove);
+  moved.current = onMove;
+  // let go when it goes, or when the window does (another app, a call), so
+  // nothing flies on by itself
+  useEffect(() => {
+    const letGo = () => {
+      if (!drag.current) return;
+      drag.current = null;
+      moved.current(0, 0);
+      ring.current?.style.removeProperty('--sx');
+      ring.current?.style.removeProperty('--sy');
+    };
+    window.addEventListener('blur', letGo);
+    return () => {
+      window.removeEventListener('blur', letGo);
+      letGo();
+    };
+  }, []);
   const down = (e) => {
     if (drag.current) return;
     onStart?.(e);
@@ -34,7 +53,7 @@ export default function Stick({ onMove, onStart = null, reach = undefined, class
     e.currentTarget.style.removeProperty('--sy');
   };
   return (
-    <div className={`hud-stick ${className}`.trim()} role="presentation" aria-label={label} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onLostPointerCapture={up} onContextMenu={(e) => e.preventDefault()}>
+    <div ref={ring} className={`hud-stick ${className}`.trim()} role="presentation" aria-label={label} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onLostPointerCapture={up} onContextMenu={(e) => e.preventDefault()}>
       <span />
     </div>
   );

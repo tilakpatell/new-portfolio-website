@@ -5,9 +5,9 @@
 // world's own keys say so). `sub`: a line of the world's own flavour under
 // the title ("This week at Dunder Mifflin").
 // (Moved here from the towns' HUD, where sixteen files shared it.)
-export default function QuestList({ title = 'Things to do', sub = null, quests, next, onClose, onGo, canGo = () => false, side = [], className = '', children = null }) {
+export default function QuestList({ title = 'Things to do', label = title, sub = null, quests, next, onClose, onGo, canGo = () => false, side = [], className = '', children = null }) {
   return (
-    <div className={`hud-list ${className}`.trim()} role="dialog" aria-label={title}>
+    <div className={`hud-list ${className}`.trim()} role="dialog" aria-label={label}>
       <div className="hud-list-head">
         <p>{title}</p>
         <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>

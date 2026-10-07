@@ -138,8 +138,18 @@ describe('the stick', () => {
   it('is 116 px round with a 46 px knob', () => {
     expect([STICK.ring, STICK.knob]).toEqual([116, 46]);
   });
-  it('reads -1..1 over 44 px from where the thumb went down, the knob 26 px at most', () => {
-    expect(stickRead(100, 100, 122, 100)).toEqual({ x: 0.5, y: 0, knob: [13, 0] });
-    expect(stickRead(100, 100, 0, 300)).toEqual({ x: -1, y: 1, knob: [-26, 26] });
+  it('reads straight on to full over 44 px, the knob 26 px at most', () => {
+    expect(stickRead(100, 100, 144, 100)).toEqual({ x: 1, y: 0, knob: [26, 0] });
+    const half = stickRead(100, 100, 122, 100);
+    expect(half.x).toBeCloseTo((0.5 - 0.1) / 0.9, 6);
+    expect(half.knob).toEqual([13, 0]);
+  });
+  it('is no faster on a diagonal, and keeps the knob in the ring', () => {
+    const r = stickRead(100, 100, 0, 300);
+    expect(Math.hypot(r.x, r.y)).toBeCloseTo(1, 6);
+    expect(Math.hypot(...r.knob)).toBeCloseTo(26, 1);
+  });
+  it('ignores a resting thumb’s jitter', () => {
+    expect(stickRead(100, 100, 102, 101)).toMatchObject({ x: 0, y: 0 });
   });
 });
