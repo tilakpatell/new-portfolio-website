@@ -16,6 +16,7 @@ export const BRIEFED = new Set([
   '/galaxy',
   '/galaxy/surface',
   '/deathstar',
+  '/deathstar/inside',
   '/caribbean',
   '/invincible',
   '/middle-earth',

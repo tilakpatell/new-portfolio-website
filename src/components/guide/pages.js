@@ -198,6 +198,61 @@ export const PAGES = {
       ['The readout', 'Open any part of the station on the technical readout.'],
     ],
   },
+  '/deathstar/inside': {
+    keys: [
+      {
+        label: 'Moving',
+        rows: [
+          ['W A S D / ← ↑ ↓ →', 'Walk'],
+          ['Shift', 'Run'],
+          ['Space', 'Jump'],
+          ['C', 'Crouch'],
+          ['Mouse', 'Look (click the station first to hold the pointer)'],
+          ['E', 'Use: doors, lifts, consoles, people'],
+          ['V', 'Third or first person'],
+        ],
+      },
+      {
+        label: 'Fighting',
+        rows: [
+          ['Click', 'Fire'],
+          ['Right-click', 'Aim'],
+          ['R', 'Vent the gun before it overheats'],
+        ],
+      },
+      {
+        label: 'Aboard',
+        rows: [
+          ['H', 'Helmet on or off'],
+          ['G', 'Roar (as Chewbacca)'],
+          ['M / Tab', 'The station’s map'],
+          ['1 – 4', 'Choose what to say in a conversation'],
+          ['Esc', 'Pause'],
+        ],
+      },
+    ],
+    touch: [
+      {
+        rows: [
+          ['Stick', 'Walk (push it all the way to run)'],
+          ['Drag', 'Look'],
+          ['Fire', 'Shoot'],
+          ['Aim', 'Hold to aim'],
+          ['Use', 'Doors, lifts, consoles, people'],
+          ['Jump', 'Jump'],
+          ['Crouch', 'Crouch'],
+        ],
+      },
+    ],
+    tips: [
+      ['Two stations', 'The first Death Star, over Alderaan and Yavin, and the second, over Endor. Pick one, and a side, on the start screen.'],
+      ['Rebel or Imperial', 'A Rebel in stormtrooper armour is in disguise: running, shooting or a restricted room makes the garrison wonder, and with the helmet off you’re known at once. An Imperial serves aboard and hunts the intruders.'],
+      ['Story or free roam', 'Follow the films’ story, or walk the station as you like: the story waits for you.'],
+      ['Security', 'Each section has its own. Seen where you shouldn’t be, it goes to alert, then lockdown: the blast doors seal and squads come looking. Stay out of sight and it stands down.'],
+      ['The gun', 'It heats as you fire, and when it’s too hot it vents and won’t fire for a moment. R vents it sooner, at a time you choose.'],
+      ['Saving', 'Your story, the rooms you’ve seen and the secrets you’ve found are kept on this device.'],
+    ],
+  },
   '/caribbean': {
     keys: [
       {

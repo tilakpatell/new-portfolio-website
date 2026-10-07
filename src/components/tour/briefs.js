@@ -211,6 +211,58 @@ export const BRIEFS = {
     },
     help('the Death Star'),
   ],
+  '/deathstar/inside': [
+    {
+      id: 'hello',
+      title: 'Aboard the Death Star',
+      text: 'Both battle stations, walked room by room. Pick a station and a side: a Rebel in borrowed armour, or an Imperial serving aboard.',
+    },
+    {
+      id: 'walk',
+      title: 'Walking',
+      text: 'Click the station to take the pointer, and the mouse turns your head. Doors open as you come near.',
+      keys: [
+        ['W A S D / ← ↑ ↓ →', 'Walk'],
+        ['Shift', 'Run'],
+        ['Mouse', 'Look'],
+        ['E', 'Use: lifts, consoles, people'],
+        ['V', 'Third or first person'],
+      ],
+      touch: [
+        ['Stick', 'Walk'],
+        ['Drag', 'Look'],
+        ['Use', 'Lifts, consoles, people'],
+      ],
+    },
+    {
+      id: 'fight',
+      title: 'Blasters',
+      text: 'Bolts fly, and stop at walls. Your gun heats as you fire; let it get too hot and it vents, so vent it yourself first.',
+      keys: [
+        ['Click', 'Fire'],
+        ['Right-click', 'Aim'],
+        ['R', 'Vent the gun'],
+      ],
+      touch: [
+        ['Fire', 'Shoot'],
+        ['Aim', 'Hold to aim'],
+      ],
+    },
+    {
+      id: 'objective',
+      at: 'ds-objective',
+      title: 'What to do',
+      text: 'Your objective is up here. Follow the story, or roam the station free: the story waits for you.',
+    },
+    {
+      id: 'map',
+      at: 'ds-map',
+      title: 'The map',
+      text: 'The station’s blueprint, filled in as you see each room.',
+      keys: [['M / Tab', 'Open the map']],
+    },
+    help('the station'),
+  ],
   '/caribbean': [
     {
       id: 'hello',
