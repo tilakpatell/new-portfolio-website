@@ -5,6 +5,7 @@
 // (lib/three/house) follow the same three moods, blended as the evening turns.
 
 import * as THREE from 'three';
+import { shadowFor } from '../../../lib/three/house';
 
 export const MOODS = {
   day: {
@@ -71,19 +72,8 @@ export const MOODS = {
 const SHIRE_MOODS = MOODS;
 
 // A mood's shadow colour for the house look: its own, or (a town that gives
-// none) its sky light's hue leaned a third toward violet, as bright as the
-// sky light lets it be: pale lilac by day, deep blue by night, never grey.
-const VIOLET = new THREE.Color(0x7a6ad8);
-const lumOf = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
-export function shadowFor(mood) {
-  if (mood.shadow != null) return mood.shadow;
-  const sky = new THREE.Color(mood.hemiSky ?? 0xcfe2ff);
-  const want = 0.42 * lumOf(sky) * (mood.hemi ?? 1);
-  const c = sky.clone().lerp(VIOLET, 0.35);
-  const l = lumOf(c);
-  if (l > 0) c.multiplyScalar(want / l);
-  return c.getHex();
-}
+// none) one from its sky light (lib/three/house's shadowFor).
+export { shadowFor };
 const KEYS = ['top', 'horizon', 'sunColour', 'hemiSky', 'hemiGround', 'fog', 'cloudColour', 'water', 'deep'];
 
 export function makeSky(radius) {

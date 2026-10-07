@@ -247,3 +247,20 @@ export function createHouse(look = {}) {
     },
   };
 }
+
+// A shadow colour from a sky light, for a world (or a mood) that gives none
+// of its own: the sky light's hue leaned a third toward violet, as bright as
+// the sky light lets it be: pale lilac under a day sky, deep blue at night,
+// never grey. `mood` is { shadow?, hemiSky (hex), hemi (intensity) }; its own
+// `shadow` wins. Returns a hex colour.
+const VIOLET = new THREE.Color(0x7a6ad8);
+const lumOf = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+export function shadowFor(mood) {
+  if (mood.shadow != null) return mood.shadow;
+  const sky = new THREE.Color(mood.hemiSky ?? 0xcfe2ff);
+  const want = 0.42 * lumOf(sky) * (mood.hemi ?? 1);
+  const c = sky.clone().lerp(VIOLET, 0.35);
+  const l = lumOf(c);
+  if (l > 0) c.multiplyScalar(want / l);
+  return c.getHex();
+}
