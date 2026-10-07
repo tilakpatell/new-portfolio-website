@@ -3255,5 +3255,14 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/jaguar": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1142e-d114-7787-b398-6f686e104c26",
+    "name": "jaguar, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }
