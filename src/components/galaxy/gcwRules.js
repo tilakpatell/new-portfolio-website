@@ -48,6 +48,7 @@ export const GCW = {
   beyond: 0.35, // this share past it,
   playerCap: 0.45, // and never more than this
   retry: 5, // steps till a side with nothing to attack looks again
+  stuck: 0.5, // %/hour: a push slower than this has stalled (an order on it is given up)
   // from (a step), the name, every AI rate times mult, and every the raider's pace (steps between attacks)
   phases: [
     { from: 0, name: 'Opening', mult: 0.9, every: 15 },

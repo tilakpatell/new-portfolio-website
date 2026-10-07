@@ -527,10 +527,14 @@ describe('history', () => {
           expect(!quietAt(s, ro.sys), `${war} ${k}`).toBe(true);
         }
         if (prev && Math.floor(k / GCW.window) === Math.floor((k - 1) / GCW.window)) {
+          // (an order's given up when its push stalled: the liberator's by the last step's battles, the raider's by this one's)
           const state = { owner: s.owner, attacks: s.attacks, fronts: s.fronts, liberator, raider };
-          for (const side of [liberator, raider]) {
+          for (const [side, eff] of [
+            [liberator, prev.eff],
+            [raider, s.eff],
+          ]) {
             const was = prev.orders[side];
-            if (was && s.orders[side]?.sys !== was.sys) expect(orderOver(was, state), `${war} ${k} ${side}`).toBe(true);
+            if (was && s.orders[side]?.sys !== was.sys) expect(orderOver(was, { ...state, eff }), `${war} ${k} ${side}`).toBe(true);
           }
         }
         prev = s;

@@ -167,6 +167,10 @@ describe('the liberator’s fronts and orders', () => {
     expect(raiderOrder({ raider: 'empire', owner, control, attacks: [{ sys: 'hoth', by: 'empire' }], fronts: ['coruscant'] })).toEqual({ sys: 'hoth', verb: 'take' });
     expect(raiderOrder({ raider: 'empire', owner, control, attacks: [{ sys: 'hoth', by: 'hutt' }], fronts: ['endor', 'coruscant'] })).toEqual({ sys: 'coruscant', verb: 'hold' });
     expect(raiderOrder({ raider: 'empire', owner, control, attacks: [], fronts: ['tatooine'] })).toBeNull();
+    // (only where the threat's real: a front that's stalled needs no holding)
+    const eff = { coruscant: GCW.stuck - 0.1, endor: 3 };
+    expect(raiderOrder({ raider: 'empire', owner, control, attacks: [], fronts: ['endor', 'coruscant'], eff })).toEqual({ sys: 'endor', verb: 'hold' });
+    expect(raiderOrder({ raider: 'empire', owner, control, attacks: [], fronts: ['coruscant'], eff })).toBeNull();
   });
   it('an order’s over when it’s done or can’t be', () => {
     const s = { owner, attacks: [{ sys: 'hoth', by: 'empire' }], fronts: ['coruscant'], liberator: 'rebel', raider: 'empire' };
@@ -179,5 +183,12 @@ describe('the liberator’s fronts and orders', () => {
     expect(orderOver({ sys: 'coruscant', verb: 'hold' }, s)).toBe(false);
     expect(orderOver({ sys: 'coruscant', verb: 'hold' }, { ...s, fronts: [] })).toBe(true);
     expect(orderOver({ sys: 'coruscant', verb: 'hold' }, { ...s, owner: { ...owner, coruscant: 'rebel' } })).toBe(true);
+    // (and when the push there has stalled: the liberator's going nowhere, the raider's threat is spent)
+    expect(orderOver({ sys: 'coruscant', verb: 'liberate' }, { ...s, eff: { coruscant: GCW.stuck } })).toBe(true);
+    expect(orderOver({ sys: 'coruscant', verb: 'liberate' }, { ...s, eff: { coruscant: 2 } })).toBe(false);
+    expect(orderOver({ sys: 'coruscant', verb: 'liberate' }, { ...s, eff: {} })).toBe(false);
+    expect(orderOver({ sys: 'coruscant', verb: 'hold' }, { ...s, eff: { coruscant: 0.1 } })).toBe(true);
+    expect(orderOver({ sys: 'hoth', verb: 'take' }, { ...s, eff: { hoth: 0.1 } })).toBe(false);
+    expect(GCW.stuck).toBe(0.5);
   });
 });

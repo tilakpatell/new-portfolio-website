@@ -288,9 +288,10 @@ function play(run, s, k, f) {
     else s.nextAt[by] = k < ATTACK_STEPS ? ATTACK_STEPS : k + Math.round((phase.every * every) / lean(s.count, by));
   }
 
-  // the liberator's order, then its fronts (a system to retake first, then the order), then the raider's order
+  // the liberator's order (given up if the push there stalled last step), then its fronts (a system to
+  // retake first, then the order), then every battle's %/hour, then the raider's order
   const busy = new Set(s.attacks.map((a) => a.sys));
-  const state = () => ({ owner, attacks: s.attacks, fronts: s.fronts, liberator, raider });
+  const state = () => ({ owner, attacks: s.attacks, fronts: s.fronts, liberator, raider, eff: s.eff });
   const lo = s.orders[liberator];
   if (!lo || k >= lo.until || orderOver(lo, state())) {
     const border = plan.order.filter((id) => owner[id] !== liberator && !busy.has(id) && NEIGHBOURS[id].some((o) => owner[o] === liberator));
@@ -299,9 +300,18 @@ function play(run, s, k, f) {
   }
   const retake = s.counter[liberator]?.until >= k ? s.counter[liberator].sys : null;
   s.fronts = frontsFor({ owner, order: plan.order, liberator, busy, rest: s.rest, k, lead: [retake, s.orders[liberator]?.sys], later: holdsOut });
+  const attackOf = Object.fromEntries(s.attacks.map((a) => [a.sys, a]));
+  s.eff = {};
+  for (const a of s.attacks) s.eff[a.sys] = pressureOn(owner[a.sys], a.rate + supplyOf(a.sys, owner, a.by) + areaBonusOf(a.sys, owner, a.by, s.holders));
+  for (const id of s.fronts) {
+    if (attackOf[id]) continue;
+    let r = rates[id] * might[liberator] + (id === retake ? GCW.counterBonus : 0);
+    if (climax && id === s.fronts[0]) r *= GCW.climaxMult;
+    s.eff[id] = frontPace({ id, owner, liberator, rate: r, supply: s.supply, holders: s.holders });
+  }
   const ro = s.orders[raider];
   if (!ro || k >= ro.until || orderOver(ro, state())) {
-    const o = raiderOrder({ raider, owner, control, attacks: s.attacks, fronts: s.fronts });
+    const o = raiderOrder({ raider, owner, control, attacks: s.attacks, fronts: s.fronts, eff: s.eff });
     s.orders[raider] = o ? { ...o, k, until: windowEnd } : null;
   }
   if (ph !== s.phase) {
@@ -327,9 +337,7 @@ function play(run, s, k, f) {
   s.mark = marks;
 
   // every system's hold: the battle there and the players' points, or mending
-  const attackOf = Object.fromEntries(s.attacks.map((a) => [a.sys, a]));
   const lost = [];
-  s.eff = {};
   for (const id of WAR_SYSTEMS) {
     const holder = owner[id];
     const attack = attackOf[id];
@@ -339,17 +347,8 @@ function play(run, s, k, f) {
     // (a side's pilots count at a battle, or holding their own: gcwAI.js's pointsCount)
     let fall = 0;
     for (const side of players) if (pointsCount(side, holder, Boolean(by))) fall += (side === holder ? -1 : 1) * soft(pointsOf(value, side, id, k));
-    if (by) {
-      let rate;
-      if (attack) rate = pressureOn(holder, attack.rate + supplyOf(id, owner, by) + areaBonusOf(id, owner, by, s.holders));
-      else {
-        let r = rates[id] * might[liberator] + (id === retake ? GCW.counterBonus : 0);
-        if (climax && id === s.fronts[0]) r *= GCW.climaxMult;
-        rate = frontPace({ id, owner, liberator, rate: r, supply: s.supply, holders: s.holders });
-      }
-      s.eff[id] = rate;
-      fall += (rate / 100) * hours;
-    } else if (s.supply[holder].has(id)) fall -= (GCW.regen / 100) * hours;
+    if (by) fall += (s.eff[id] / 100) * hours;
+    else if (s.supply[holder].has(id)) fall -= (GCW.regen / 100) * hours;
     let c = Math.min(1, control[id] - fall);
     if (!climax && s.count[holder] <= GCW.lastStand) c = Math.max(c, GCW.lastHold);
     if (c > 0) control[id] = c;

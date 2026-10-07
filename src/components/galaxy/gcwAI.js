@@ -142,7 +142,7 @@ export function orderTarget({ liberator, border, owner, control, rates, might, c
       (1 - control[id]) * W.weak * d.weak +
       cutOff(owner, id, capitals[owner[id]]) * d.cut +
       areaWhole(owner, id, liberator) * W.area * d.area +
-      (pace > 0.5 && !holdsOut?.has(id) ? pace * W.pace : W.cannot) -
+      (pace > GCW.stuck && !holdsOut?.has(id) ? pace * W.pace : W.cannot) -
       (id === previous ? W.again : 0) +
       rand() * d.jitter;
     if (u > bestU) (best = id), (bestU = u);
@@ -151,22 +151,28 @@ export function orderTarget({ liberator, border, owner, control, rates, might, c
 }
 
 // the raider's order: take what it's attacking, or else hold its weakest
-// system under threat (the worthiest of those, then the first)
-export function raiderOrder({ raider, owner, control, attacks, fronts }) {
+// system under threat (the worthiest of those, then the first), where the
+// threat's real (eff, this step's battles' %/hour, when it's to hand)
+export function raiderOrder({ raider, owner, control, attacks, fronts, eff }) {
   const mine = attacks.find((a) => a.by === raider);
   if (mine) return { sys: mine.sys, verb: 'take' };
   let sys = null;
   for (const id of WAR_SYSTEMS) {
     if (owner[id] !== raider || !(fronts.includes(id) || attacks.some((a) => a.sys === id))) continue;
+    if (eff && !(eff[id] > GCW.stuck)) continue;
     if (sys === null || control[id] < control[sys] || (control[id] === control[sys] && worthOf(id) > worthOf(sys))) sys = id;
   }
   return sys ? { sys, verb: 'hold' } : null;
 }
 
-// an order's over: taken, held, or out of reach (s: { owner, attacks, fronts, liberator, raider })
-export function orderOver(order, { owner, attacks, fronts, liberator, raider }) {
+// an order's over: taken, held, out of reach, or (with eff, the last
+// battles' %/hour) the push there has stalled: the liberator's going nowhere,
+// the threat the raider's holding against is spent
+// (s: { owner, attacks, fronts, liberator, raider, eff? })
+export function orderOver(order, { owner, attacks, fronts, liberator, raider, eff }) {
   const { sys, verb } = order;
-  if (verb === 'liberate') return owner[sys] === liberator || !NEIGHBOURS[sys].some((o) => owner[o] === liberator);
+  const stalled = eff?.[sys] !== undefined && eff[sys] <= GCW.stuck;
+  if (verb === 'liberate') return owner[sys] === liberator || !NEIGHBOURS[sys].some((o) => owner[o] === liberator) || stalled;
   if (verb === 'take') return !attacks.some((a) => a.sys === sys && a.by === raider);
-  return owner[sys] !== raider || !(fronts.includes(sys) || attacks.some((a) => a.sys === sys));
+  return owner[sys] !== raider || !(fronts.includes(sys) || attacks.some((a) => a.sys === sys)) || stalled;
 }
