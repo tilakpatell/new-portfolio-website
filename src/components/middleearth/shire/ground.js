@@ -1,12 +1,12 @@
 // The Shire's ground in WebGL: the rolling green itself (one mesh, shaped by
-// ./rules.js's height and painted in its vertex colours: worn lanes, the
-// Party Field, Maggot's tilled rows, mud by the water), the pond and the
-// stream under a moving surface, and the grass and flowers on top, instanced
-// so thousands cost one draw each.
+// ./rules.js's height and painted by its ground map, `groundAt`: worn lanes,
+// the Party Field, Maggot's tilled rows, mud by the water), the pond and the
+// stream under a moving surface, and the flowers on top, instanced so
+// thousands cost one draw. The grass is lib/three/grass's, on the same map.
 
 import * as THREE from 'three';
 import { canvasTexture } from '../../../lib/stage3d';
-import { fbm, makeCanvas, makeNoise, normalFromField, paintPixels, smooth } from '../../../lib/paint';
+import { fbm, makeNoise, normalFromField, smooth } from '../../../lib/paint';
 import { createGroundMap } from '../../../lib/three/groundmap';
 import { BRIDGE, FIELD, HOLES, BAG_END, INN, POND, ROADS, STREAM, WATER_Y, WORLD, height, inWater, onRoad, roadAmount, seeded } from './rules';
 
@@ -29,27 +29,21 @@ const SOIL = C(0x6a4a30);
 const MUD = C(0x4f4432);
 const BED = C(0x5a5a40);
 
-// A grass detail texture: blades and clover, tiling, plus its relief.
+// The floor's grain: the relief of blades and clover, tiling.
 function grassTextures(renderer) {
   const size = 256;
   const n = makeNoise(5);
   const field = new Float32Array(size * size);
-  const c = makeCanvas(size);
-  paintPixels(c, (u, v, out, x, y) => {
-    const blades = fbm(n, u * 64, v * 16, { period: 64, octaves: 2 });
-    const clumps = fbm(n, u * 8 + 3, v * 8, { period: 8, octaves: 3 });
-    const fine = fbm(n, u * 128, v * 128, { period: 128, octaves: 1 });
-    const h = blades * 0.55 + clumps * 0.3 + fine * 0.15;
-    field[y * size + x] = h;
-    const k = 0.72 + h * 0.5;
-    out[0] = 200 * k;
-    out[1] = 214 * k;
-    out[2] = 180 * k;
-  });
-  return {
-    map: canvasTexture(c, renderer, { repeat: [56, 56] }),
-    normalMap: canvasTexture(normalFromField(field, size, size, 2.2), renderer, { repeat: [56, 56], srgb: false }),
-  };
+  for (let y = 0; y < size; y++)
+    for (let x = 0; x < size; x++) {
+      const u = x / size;
+      const v = y / size;
+      const blades = fbm(n, u * 64, v * 16, { period: 64, octaves: 2 });
+      const clumps = fbm(n, u * 8 + 3, v * 8, { period: 8, octaves: 3 });
+      const fine = fbm(n, u * 128, v * 128, { period: 128, octaves: 1 });
+      field[y * size + x] = blades * 0.55 + clumps * 0.3 + fine * 0.15;
+    }
+  return { normalMap: canvasTexture(normalFromField(field, size, size, 2.2), renderer, { repeat: [56, 56], srgb: false }) };
 }
 
 // The Shire's ground at a point, as one function (lib/three/groundmap paints
@@ -63,6 +57,10 @@ const fieldMidX = (FIELD.x0 + FIELD.x1) / 2;
 const fieldMidZ = (FIELD.z0 + FIELD.z1) / 2;
 const DOORS = [...HOLES, { ...BAG_END }];
 const tmpC = [0, 0, 0];
+// (the warm, slightly dimmed tint the floor's old detail picture laid over
+// it, folded in a little lighter: the grass on it is this colour too, and a
+// field of it should read sunlit, as the old tufts' tips did)
+const DETAIL_TINT = [0.84, 0.92, 0.66];
 export function groundAt(x, z, out) {
   const n = groundNoise;
   const h = height(x, z);
@@ -106,6 +104,10 @@ export function groundAt(x, z, out) {
   if (h < 0.15) lerp3(out, out, MUD, smooth(0.15, -0.3, h));
   if (h < WATER_Y) lerp3(out, out, BED, smooth(WATER_Y, -1.2, h));
   grass *= smooth(0.02, 0.25, h);
+  // (one colour for the floor and the blades on it)
+  out[0] *= DETAIL_TINT[0];
+  out[1] *= DETAIL_TINT[1];
+  out[2] *= DETAIL_TINT[2];
   return grass;
 }
 
@@ -125,8 +127,9 @@ export function makeTerrain(renderer, { seg = 200, map } = {}) {
   const p = geo.attributes.position;
   for (let i = 0; i < p.count; i++) p.setY(i, height(p.getX(i), p.getZ(i)));
   geo.computeVertexNormals();
+  // (the map is the colour; a fine relief of blades and clover is the grain)
   const tex = grassTextures(renderer);
-  const material = new THREE.MeshStandardMaterial({ map: tex.map, normalMap: tex.normalMap, normalScale: new THREE.Vector2(0.6, 0.6), roughness: 0.96 });
+  const material = new THREE.MeshStandardMaterial({ normalMap: tex.normalMap, normalScale: new THREE.Vector2(0.6, 0.6), roughness: 0.96 });
   map.paint(material);
   const mesh = new THREE.Mesh(geo, material);
   mesh.receiveShadow = true;
@@ -217,34 +220,8 @@ export function makeWater() {
   return { group: g, material };
 }
 
-// Grass tufts: three crossed blades, dark at the root, sunlit at the tip,
-// swaying in the wind (in the vertex shader, so it costs nothing to move).
-function tuftGeometry() {
-  const pos = [];
-  const col = [];
-  const base = new THREE.Color(0x3a6a28);
-  const tip = new THREE.Color(0xb4d26a);
-  for (let b = 0; b < 4; b++) {
-    const a = (b / 4) * Math.PI + 0.3;
-    const ca = Math.cos(a) * 0.045;
-    const sa = Math.sin(a) * 0.045;
-    const lean = 0.05 * (b - 1.5);
-    const h = 0.24 + (b % 2) * 0.08;
-    const tx = lean + Math.cos(a + 1.2) * 0.02;
-    const tz = lean * 0.5 + Math.sin(a + 1.2) * 0.02;
-    // both faces, wound each way, so the back of a blade lights like the front
-    pos.push(-ca, 0, -sa, ca, 0, sa, tx, h, tz, ca, 0, sa, -ca, 0, -sa, tx, h, tz);
-    for (let k = 0; k < 2; k++) col.push(base.r, base.g, base.b, base.r, base.g, base.b, tip.r, tip.g, tip.b);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  // the normals point up, so the blades light like the ground they grow from
-  g.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(pos.length).fill(0).map((_, i) => (i % 3 === 1 ? 1 : 0)), 3));
-  return g;
-}
-
-// wind for anything instanced that sways: bends the top by its height
+// wind for anything instanced that sways: bends the top by its height (the
+// towns' own; the Shire's things sway in lib/three/wind's one wind)
 export function swaying(material, uniforms, strength = 0.12) {
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uWind = uniforms.uWind;
@@ -305,43 +282,11 @@ function chunker(geometry, material, size = 18) {
   };
 }
 
-export function makeGrass(count, wind) {
-  const geo = tuftGeometry();
-  const material = new THREE.MeshLambertMaterial({ vertexColors: true });
-  swaying(material, wind, 0.5);
-  const bins = chunker(geo, material);
-  const rand = seeded(99);
-  const m = new THREE.Matrix4();
-  const q = new THREE.Quaternion();
-  const s = new THREE.Vector3();
-  const v = new THREE.Vector3();
-  const up = new THREE.Vector3(0, 1, 0);
-  const tint = new THREE.Color();
-  let n = 0;
-  let tries = 0;
-  while (n < count && tries++ < count * 6) {
-    // thickest near the middle, where the camera goes
-    const a = rand() * Math.PI * 2;
-    const r = Math.pow(rand(), 0.75) * (WORLD.radius + 6);
-    const x = Math.cos(a) * r;
-    const z = Math.sin(a) * r;
-    if (!growable(x, z)) continue;
-    const sc = 0.8 + rand() * 0.7;
-    q.setFromAxisAngle(up, rand() * Math.PI * 2);
-    s.set(sc, sc * (0.7 + rand() * 0.6), sc);
-    v.set(x, height(x, z) - 0.03, z);
-    m.compose(v, q, s);
-    tint.setHSL(0.23 + rand() * 0.06, 0.45, 0.62 + rand() * 0.2);
-    bins.add(m, tint, x, z);
-    n += 1;
-  }
-  return bins.build();
-}
-
 // Flowers: in the gardens before the doors, and in drifts along the verges.
 const FLOWER_COLOURS = [0xf2d24a, 0xe8655a, 0xf3f0e8, 0xb07ad8, 0xf29ac2, 0xf08a3a, 0x7ab0f0];
 export function makeFlowers(geometry, material, count, wind) {
-  swaying(material, wind, 0.1);
+  // (their heads nod in the world's one wind, lib/three/wind)
+  wind.sway(material, { strength: 0.7, height: 0.4 });
   const bins = chunker(geometry, material, 24);
   const rand = seeded(57);
   const m = new THREE.Matrix4();

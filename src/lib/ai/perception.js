@@ -14,9 +14,9 @@
 //     cone: the cosine of the half-angle (0.5 is 60° either side; −1 is all round); far: seconds
 //     it takes at the edge of range (at the centre, at once)
 //   sense(senses, me, world, dt, { seesThrough }) → me.beliefs updated
-//     me: { pos, dir (unit), beliefs: {} }; world: { targets: [{ id, at, vel?, kind?, hostile? }],
+//     me: { pos, dir (unit), beliefs: {} }; world: { targets: [{ id, at, vel?, kind?, faction?, hostile? }],
 //     stims?: [{ type, at, radius, from?, loudness: 0…1 }] }; seesThrough(a, b) → bool (absent: clear)
-//   belief(me, id) → { id, at, vel, seenAt, heardAt, confidence, visible, kind, hostile } | null
+//   belief(me, id) → { id, at, vel, seenAt, heardAt, confidence, visible, kind, faction, hostile } | null
 //   target(me, { hostile }) → the surest belief, or null
 //   share(from, to, id, { fade }) → a sighting handed on at lower confidence
 //   forget(me, id)
@@ -33,12 +33,12 @@ export function createSenses({ sight = {}, hearing = {}, smell = {}, memory = 6,
   };
 }
 
-const fresh = (t, kind) => ({ id: t.id, at: { ...t.at }, vel: { x: 0, y: 0, z: 0 }, seenAt: -Infinity, heardAt: -Infinity, confidence: 0, visible: false, timer: 0, kind: kind ?? t.kind ?? null, hostile: t.hostile ?? true });
+const fresh = (t, kind) => ({ id: t.id, at: { ...t.at }, vel: { x: 0, y: 0, z: 0 }, seenAt: -Infinity, heardAt: -Infinity, confidence: 0, visible: false, timer: 0, kind: kind ?? t.kind ?? null, faction: t.faction ?? null, hostile: t.hostile ?? true });
 
 export function sense(senses, me, world, dt, { seesThrough = null } = {}) {
   me.beliefs ??= {};
-  me.clock = (me.clock ?? 0) + dt;
-  const now = me.clock;
+  me.now = (me.now ?? 0) + dt; // (its own clock: a brain keeps `clock` for itself)
+  const now = me.now;
   const seen = new Set();
   for (const t of world.targets ?? []) {
     if (!t?.at) continue;

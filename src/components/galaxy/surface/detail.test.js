@@ -15,12 +15,12 @@ describe('the close-up layer', () => {
     withDetail(m, scan, { metres: 3 });
     const s = shader();
     m.onBeforeCompile(s);
-    expect(s.vertexShader).toContain('vDetailPos = ');
+    expect(s.vertexShader).toContain('vCorePos = ');
     expect(s.fragmentShader).toContain('diffuseColor.rgb *=');
     expect(s.fragmentShader).toContain('normal = normalize(');
-    expect(s.uniforms.detailMap.value).toBe(scan.map);
-    expect(s.uniforms.detailScale.value).toBeCloseTo(1 / 3);
-    expect(m.customProgramCacheKey()).toContain('detail');
+    expect(s.uniforms.uCoreMap.value).toBe(scan.map);
+    expect(s.uniforms.uCoreScale.value).toBeCloseTo(1 / 3);
+    expect(m.customProgramCacheKey()).toContain('core');
   });
 
   it('does it once, however often it is asked', () => {
@@ -35,6 +35,6 @@ describe('the close-up layer', () => {
   it('leaves materials it cannot light alone', () => {
     const m = new THREE.MeshBasicMaterial();
     withDetail(m, scan, { metres: 3 });
-    expect(m.userData.detail).toBeUndefined();
+    expect(m.userData.core).toBeUndefined();
   });
 });
