@@ -18,6 +18,7 @@ export const RIVER = { x0: 1050, x1: 1250 };
 export const COAST = 2200; // the sea, south of here
 export const BEACH = 60; // the sand before it
 export const HILLS = -2300; // the land rises north of here
+const VALLEY = 450; // how far from its banks the river's valley through the hills reaches
 export const WATER_Y = -2.5; // the river and the sea
 // the city's blocks: lots wholly inside this
 export const CITY = { x0: -1640, x1: 2620, z0: HILLS + 90, z1: COAST - BEACH - 30 };
@@ -64,7 +65,9 @@ const smooth = (a, b, x) => {
 // ── the land ──
 
 // How high the land is: flat in town, the river's bed, the beach running
-// down into the sea, and the hills to the north.
+// down into the sea, and the hills to the north, which the river has worn a
+// valley through (its banks at the town's level, so the embankments meet
+// them, and the slopes rising away: not a slot with walls a hill high).
 export function groundAt(x, z) {
   if (z > COAST - BEACH) {
     const t = Math.min(1, (z - (COAST - BEACH)) / BEACH);
@@ -74,7 +77,8 @@ export function groundAt(x, z) {
   if (z < HILLS) {
     const t = (HILLS - z) / 900;
     const n = vnoise(x, z, 420) * 0.65 + vnoise(x, z, 160) * 0.35;
-    return Math.pow(Math.min(t, 2.2), 1.3) * (90 + 140 * n) * smooth(0, 0.25, t);
+    const bank = Math.max(RIVER.x0 - x, x - RIVER.x1);
+    return Math.pow(Math.min(t, 2.2), 1.3) * (90 + 140 * n) * smooth(0, 0.25, t) * smooth(0, VALLEY, bank);
   }
   return 0;
 }
@@ -301,7 +305,9 @@ export function buildWorld(seed = 11) {
     const x = (r() * 2 - 1) * (WORLD.half - 60);
     const z = -WORLD.half + 60 + r() * (WORLD.half - 60 + HILLS - 40);
     if (vnoise(x, z, 260) < 0.42) continue;
-    trees.push([x, z, 4 + r() * 4, 2]);
+    const s = 4 + r() * 4;
+    // (none in the river or on its embankments; the size is drawn first all the same, so the rest of the woods stay where they were)
+    if (zoneAt(x, z) !== 'river') trees.push([x, z, s, 2]);
   }
   for (let k = 0; k < 500; k++) {
     const x = SUBURB.x1 + 8 + r() * (CITY.x0 - SUBURB.x1 - 16);
@@ -337,6 +343,26 @@ export function near(world, x, z, r, out = []) {
       }
     }
   return out;
+}
+
+// Whether a saved place (./InvWorld.jsx keeps where he was standing) is
+// somewhere to start from: three numbers, in the world, under the top of the
+// sky, not under the land, not out over the water and not inside anything.
+// On a roof or a bridge's deck is somewhere to stand (./flight.js stands him
+// on it), and so is the pavement right by a wall: his size is ./flight.js's
+// FLY (R 0.45, H 1.8) a shade narrower, as collide() leaves him exactly R
+// off a wall. Anything else, a stale or broken save among it, and he starts
+// at SPAWN instead.
+const BODY = { r: 0.4, h: 1.8 };
+const ON = 0.1; // (his feet within this of a box's top: standing on it, not in it)
+export function isSafeStart(world, at) {
+  if (!world?.grid || !at || typeof at !== 'object') return false;
+  const { x, y, z } = at;
+  if (![x, y, z].every(Number.isFinite)) return false;
+  if (Math.abs(x) > WORLD.half || Math.abs(z) > WORLD.half || y >= WORLD.ceiling) return false;
+  if (waterAt(x, z) || y < groundAt(x, z) - 0.5) return false;
+  const { r, h } = BODY;
+  return !near(world, x, z, r, []).some((b) => x > b.x0 - r && x < b.x1 + r && z > b.z0 - r && z < b.z1 + r && y < b.y1 - ON && y + h > b.y0);
 }
 
 // Where you start: on the Graysons' front lawn, looking toward downtown.

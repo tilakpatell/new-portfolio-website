@@ -9,7 +9,8 @@
 //
 // stepFight(fight, hero, { punch, look }, dt) → { fight, ev, push, stun }:
 // `push` a velocity to give him (a lunge, a knock), `stun` a moment
-// without control.
+// without control. A step is never longer than a twentieth of a second,
+// whatever `dt` says (a tab hidden for a minute comes back as one step).
 
 import { WATER_Y, groundAt, rng } from './map';
 
@@ -45,6 +46,13 @@ const unit = (v) => {
   const l = len(v) || 1;
   return [v[0] / l, v[1] / l, v[2] / l];
 };
+// how near the move a→b came to c
+function nearest(a, b, c) {
+  const d = sub(b, a);
+  const dd = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+  const k = dd ? Math.max(0, Math.min(1, ((c[0] - a[0]) * d[0] + (c[1] - a[1]) * d[1] + (c[2] - a[2]) * d[2]) / dd)) : 0;
+  return len(sub([a[0] + d[0] * k, a[1] + d[1] * k, a[2] + d[2] * k], c));
+}
 
 function knockOut(f, e, from, ev, extra = {}) {
   const d = unit(sub(e.p, from));
@@ -54,14 +62,18 @@ function knockOut(f, e, from, ev, extra = {}) {
   ev.push({ type: 'ko', id: e.id, at: [...e.p], dir: d, ...extra });
 }
 
-export function stepFight(prev, hero, input, dt) {
+export function stepFight(prev, hero, input, rawDt) {
   const ev = [];
   if (!prev.on) return { fight: prev, ev, push: null, stun: 0 };
+  // a twentieth of a second at most (and a step of NaN is no step at all)
+  const dt = Math.min(0.05, Math.max(0, rawDt || 0));
   const f = { ...prev, foes: prev.foes.map((e) => ({ ...e, p: [...e.p], v: [...e.v] })), bolts: prev.bolts.map((b) => ({ ...b, p: [...b.p] })) };
   const r = rng(f.seed + Math.floor(f.t * 10));
   f.t += dt;
   const chest = [hero.p[0], hero.p[1] + 1, hero.p[2]];
   const heroSpeed = len(hero.v);
+  // where his chest was a step ago: flat out, a slow frame carries him further than a Flaxan is wide
+  const was = [chest[0] - hero.v[0] * dt, chest[1] - hero.v[1] * dt, chest[2] - hero.v[2] * dt];
   let push = null;
   let stun = 0;
 
@@ -111,7 +123,7 @@ export function stepFight(prev, hero, input, dt) {
   for (const e of f.foes) {
     if (e.state === 'fight') {
       // flying into one fast
-      if (heroSpeed > FIGHT.ram && len(sub(e.p, chest)) < 2.8) {
+      if (heroSpeed > FIGHT.ram && nearest(was, chest, e.p) < 2.8) {
         knockOut(f, e, chest, ev, { rammed: true });
         continue;
       }

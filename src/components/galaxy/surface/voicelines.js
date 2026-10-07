@@ -5,6 +5,7 @@
 // page says each through voiceFor, so a name here is a voice there too.
 
 import { spoken } from '../../../lib/voiced';
+import { talkTree } from './talk';
 import { SITES } from './sites';
 import { EXTRA } from './sites/quests';
 import { MISSIONS } from './missions';
@@ -168,12 +169,14 @@ export function surfaceLines(places = worlds(), missions = MISSIONS) {
   for (const { life, quests } of places) {
     for (const spec of life) {
       // (a line on its own is theirs, in their voice; [who, text] someone else's)
-      for (const line of spec.says ?? []) {
+      // (a tree of lines by the state of things, talk.js's: every line in it)
+      const lines = talkTree(spec.says);
+      for (const line of lines) {
         if (Array.isArray(line)) walk(line);
         else add(spec.voice ?? named(spec.name), line);
       }
       // (someone with nothing else to say, once you've done what they asked: scene.js says it as [name, text])
-      if (spec.quest && !spec.says?.length) add(named(spec.name), 'Thanks again.');
+      if (spec.quest && !lines.length) add(named(spec.name), 'Thanks again.');
     }
     walk(quests);
   }
