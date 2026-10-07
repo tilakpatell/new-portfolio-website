@@ -26,6 +26,7 @@ import { createBattleScene } from './battleScene';
 import { contested, loadWar, newWar, owner, resolve, saveWar } from './war';
 import { warFor } from './wars';
 import { DEEP } from './deep';
+import { sharpen } from '../../lib/three/textures';
 
 export const ZONE = {
   near: 900, // within sight: the battle's drawn and fought
@@ -57,6 +58,7 @@ function nameCard(title, sub) {
   g.font = '500 22px "JetBrains Mono", ui-monospace, monospace';
   g.fillText(sub, 256, 80);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

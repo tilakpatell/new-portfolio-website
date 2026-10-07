@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { bsodTexture, wordTexture } from './textures';
+import { sharpen } from '../../lib/three/textures';
 
 const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.45, metalness: 0, ...o });
 const gold = () => std(0xe0aa3e, { metalness: 1, roughness: 0.22 });
@@ -315,6 +316,7 @@ function tv() {
     k.stroke();
   }
   const tex = new THREE.CanvasTexture(c);
+  sharpen(tex);
   tex.colorSpace = THREE.SRGBColorSpace;
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.82, 0.48), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
   screen.position.set(0, 0.42, 0.041);

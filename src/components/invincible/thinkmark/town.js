@@ -109,6 +109,7 @@ function lampTexture(size) {
       }
     }
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

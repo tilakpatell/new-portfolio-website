@@ -27,6 +27,7 @@ import { govPortal } from './govportal';
 import { needCast, onEntry, person, seatOwn } from './people';
 import { LOOKS } from './furniture';
 import { PINS, paintCells, planks } from './labpaint';
+import { sharpen } from '../../../../lib/three/textures';
 
 const H = 2.9; // the lab's walls, to its ceiling
 const TOP = 0xc9ccc6; // the bench top
@@ -788,6 +789,7 @@ export function fadeUp(down = false) {
   g.fillStyle = s;
   g.fillRect(0, 0, 32, 128);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -804,6 +806,7 @@ export function glowSpot() {
   g.fillStyle = gr;
   g.fillRect(0, 0, 64, 64);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

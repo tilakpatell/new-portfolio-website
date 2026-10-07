@@ -19,6 +19,7 @@ import { canvasTexture, hot } from '../../../../lib/stage3d';
 import { clamp01, fbm, makeCanvas, makeCells, makeNoise, mix, normalFromField, paintPixels, smooth } from '../../../../lib/paint';
 import { stoneTextures } from '../../kit';
 import { B, ball, blob, boxUV, createShireKit, cyl, cylX, lathe, parts, rng, roundBox, tube } from '../../shire/props';
+import { sharpen } from '../../../../lib/three/textures';
 
 const TAU = Math.PI * 2;
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -3741,6 +3742,7 @@ export function createRivendellKit(renderer) {
   const linen = linenCanvas(128);
   // a sky for polished metal and glass to show
   const sky = new THREE.CanvasTexture(skyCanvas());
+  sharpen(sky);
   sky.mapping = THREE.EquirectangularReflectionMapping;
   sky.colorSpace = THREE.SRGBColorSpace;
   const tex = {
