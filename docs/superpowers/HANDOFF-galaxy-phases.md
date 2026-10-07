@@ -67,6 +67,28 @@ truth where this disagrees with it.
   water stays turquoise; Kamino's spray pool fills (260 drops on the
   small tier); the bongo rolls; no page errors.
 
+## Phase 2, bases: under way
+
+The plan is `docs/superpowers/plans/2026-10-07-galaxy-phase2-bases.md`.
+
+- Done, Task 1: the scanned roles `tiles` (Poly Haven
+  `large_floor_tiles_02`, 1 m slabs) and `deck` (`metal_plate`, a tread
+  plate).
+- Done, Task 2: `surface/decals.js`, with insignia (Rebel, Imperial,
+  Republic) and scorches as flat geometry.
+- Done, Task 3: Echo Base's corridors, a zone behind the hangar's
+  back-left door. The rooms are in `sites/echoLayout.js` (pure, tested);
+  `props/echo.js` draws them:
+  - ice walls with steel arches every 4 m;
+  - the command centre: the holo-table, the tactical screen under the
+    starbird, Rieekan and Toryn Farr;
+  - the medical centre's bacta tank;
+  - the cavern, with tauntauns.
+  Dev: `__surfaceDo('zone', 'echo')`.
+- Next: Tasks 4–7 (Theed's hangar and plaza; Tipoca's deck and discharge
+  towers; Yavin's hangar floor and Scarif's Pad 9; gen3d issues).
+  New models only through `gen3d` issues, not Meshy.
+
 ## Next, in order (the spec's phases)
 
 1. **Phase 1 polish:** done (see below). Left: a bongo that dives to
