@@ -1,6 +1,6 @@
 {
-  "date": "2026-10-06",
-  "sha": "657b74fb",
+  "date": "2026-10-07",
+  "sha": "675bf66",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -9,7 +9,7 @@
       "detail": [
         {
           "file": "src/components/universe/scene.js",
-          "n": 4728
+          "n": 5111
         },
         {
           "file": "src/components/middleearth/towns/moria/props.js",
@@ -53,7 +53,11 @@
         },
         {
           "file": "src/components/universe/footScene.js",
-          "n": 2925
+          "n": 2961
+        },
+        {
+          "file": "src/components/universe/crews.js",
+          "n": 2791
         },
         {
           "file": "src/components/middleearth/towns/lorien/props.js",
@@ -65,11 +69,7 @@
         },
         {
           "file": "src/components/galaxy/surface/scene.js",
-          "n": 2558
-        },
-        {
-          "file": "src/components/universe/crews.js",
-          "n": 2336
+          "n": 2570
         },
         {
           "file": "src/components/middleearth/towns/marshes/props.js",
@@ -77,7 +77,7 @@
         },
         {
           "file": "src/components/galaxy/scene.js",
-          "n": 2227
+          "n": 2285
         },
         {
           "file": "src/components/avengers/world/scene.js",
@@ -89,7 +89,7 @@
         },
         {
           "file": "src/components/rickmorty/world/RmWorld.jsx",
-          "n": 1903
+          "n": 1999
         },
         {
           "file": "src/components/galaxy/surface/props/forest.js",
@@ -110,12 +110,17 @@
       ]
     },
     "boundary-breaks": {
-      "value": 274,
+      "value": 289,
       "unit": "imports",
       "label": "imports across a line docs/health/RULES.md draws",
       "detail": [
         {
           "file": "src/lib/seeded.test.js → src/components/middleearth/shire/rules.js",
+          "n": 1,
+          "note": "lib knows no page"
+        },
+        {
+          "file": "src/lib/three/atmosphere.test.js → src/components/galaxy/bodyShaders.js",
           "n": 1,
           "note": "lib knows no page"
         },
@@ -231,11 +236,6 @@
         },
         {
           "file": "src/components/caribbean/tide/rules.test.js → src/components/middleearth/towns/travellers.js",
-          "n": 1,
-          "note": "worlds are islands"
-        },
-        {
-          "file": "src/components/cybertron/game/scene.js → src/components/universe/post.js",
           "n": 1,
           "note": "worlds are islands"
         }

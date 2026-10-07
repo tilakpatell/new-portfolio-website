@@ -12,7 +12,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { budget } from './device';
+import { budget, pixelRatio } from './device';
 import { precompile as compileFor, precompilePasses, quiet, releaseContext } from './three/renderer';
 import { sharpen } from './three/textures';
 
@@ -72,6 +72,14 @@ export function disposeTree(root) {
   });
 }
 
+// The sharpest the stage draws at: lib/device's ratio for this device under
+// 1.75 (so a high-tier desktop on a plain monitor is supersampled, drawn at
+// 1.25 pixels for each of the screen's), and the screen's own pixels at
+// most for software rendering. The watchdog below steps it down from there.
+export function stageRatio({ soft = false, tier } = {}) {
+  return pixelRatio(soft ? 1 : 1.75, tier);
+}
+
 // Steps down when frames run long: sharpness first, then shadows, then
 // bloom, then sharpness again. Nothing comes back during a game, so the
 // picture doesn't flicker between settings.
@@ -87,7 +95,7 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
   renderer.toneMappingExposure = exposure;
   renderer.shadowMap.enabled = shadows && !soft && fit.shadows;
   renderer.shadowMap.type = THREE.PCFShadowMap;
-  const full = Math.min(soft ? 1 : 1.75, fit.ratio, window.devicePixelRatio || 1);
+  const full = stageRatio({ soft });
   let ratio = full;
   renderer.setPixelRatio(ratio);
 
