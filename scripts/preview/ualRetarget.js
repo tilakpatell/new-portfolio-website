@@ -1,6 +1,7 @@
 // Quaternius's Universal Animation Library (CC0; the Godot GLB, a 53-bone
 // Rigify rig named DEF-*) onto Meshy's 24-bone skeleton, rest-pose aware.
-// A spike for scripts/preview/heroes-ual.html, not shipped.
+// A spike for scripts/preview/heroes-ual.html; scripts/ual-bake.mjs bakes
+// the body under the lightsaber with it (nothing in the site runs it).
 //
 // Each mapped bone's turn is carried over in the world, not in its parent's
 // frame: the target bone gets the source bone's world turn away from its
