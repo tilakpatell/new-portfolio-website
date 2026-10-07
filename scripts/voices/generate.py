@@ -29,6 +29,7 @@ import re
 import subprocess
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 import engines
@@ -91,7 +92,7 @@ def references(cfg, only, speakers=()):
     """{who: {"wav", "text", "speed"}} for each voice (refs.json's, and whoever says a line) with a
     reference: grab.py's, or your own refs/<who>.wav."""
     found = {}
-    for who in sorted(set(cfg) | set(speakers)):
+    for who in sorted((set(cfg) - {"*"}) | set(speakers)):
         if only and who not in only:
             continue
         wav, txt = REFS / f"{who}.wav", REFS / f"{who}.txt"
@@ -106,11 +107,13 @@ def references(cfg, only, speakers=()):
 
 def engines_for(who, cfg, override):
     """The engines a voice's lines are made with: refs.json's "engine" (one, or a list, every line then
-    keeping the best take of them all), or --engine; failing those, the first set up here.
+    keeping the best take of them all; "*" for the voices with none of their own), or --engine; failing
+    those, the first set up here.
     VOICES_ENGINE=fake: the contract tests' worker for every voice (scripts/ai-e2e/fakes/voices_worker.py)."""
     if os.environ.get("VOICES_ENGINE") == "fake":
         return ["fake"]
-    want = [override] if override else cfg.get(who, {}).get("engine") or []
+    # refs.json's "*" is every voice's that names none of its own
+    want = [override] if override else cfg.get(who, {}).get("engine") or cfg.get("*", {}).get("engine") or []
     want = [want] if isinstance(want, str) else list(want)
     have = [e for e in want if e in engines.ENGINES and engines.python(e)]
     for e in want:
@@ -337,9 +340,11 @@ def main():
     ap = argparse.ArgumentParser(description="Make the crews' unrecorded lines in their own voices.")
     ap.add_argument("--only", help="just these speakers, comma-separated (walt,jesse)")
     ap.add_argument("--limit", type=int, help="make at most this many lines, to try it out")
+    ap.add_argument("--ids", help="just these lines, by id, comma-separated (a line's mp3 is public/audio/voiced/<who>/<id>.mp3)")
     ap.add_argument("--takes", type=int, default=8, help="takes of each line to choose from (a line none pass gets twice as many more)")
     ap.add_argument("--engine", choices=engines.ENGINES, help="use this engine for every voice (default: refs.json's per voice)")
     ap.add_argument("--force", action="store_true", help="make lines again even if they're already there")
+    ap.add_argument("--remake-before", metavar="WHEN", help="make again the lines made before WHEN (2026-10-07T09:00): like --force, but a rerun after a stop goes on from where it was")
     ap.add_argument("--again", action="store_true", help="choose every line again from its takes, making any missing (after giving a voice another engine)")
     ap.add_argument("--check", action="store_true", help="show each voice's reference and engine, and stop")
     ap.add_argument("--bakeoff", type=int, metavar="N", help="try every engine set up here on N lines a voice, score them, and stop")
@@ -381,7 +386,14 @@ def main():
         tmp.write_text(json.dumps({"version": 1, "lines": made}, indent=0), encoding="utf-8")
         os.replace(tmp, OUT / "manifest.json")
 
-    todo = [l for l in lines if l["who"] in voices and (args.force or args.again or not mp3(l).exists())]
+    before = datetime.fromisoformat(args.remake_before).timestamp() if args.remake_before else None
+
+    def stale(l):
+        return before is not None and mp3(l).exists() and mp3(l).stat().st_mtime < before
+
+    todo = [l for l in lines if l["who"] in voices and (args.force or args.again or stale(l) or not mp3(l).exists())]
+    if args.ids:
+        todo = [l for l in todo if l["id"] in set(args.ids.split(","))]
     if args.limit:
         todo = todo[: args.limit]
     # a line that was made (it's in the manifest) but whose mp3 is gone was deleted to be made again,
@@ -390,7 +402,7 @@ def main():
     salts = json.loads(salts_file.read_text(encoding="utf-8")) if salts_file.exists() else {}
     listed = json.loads((OUT / "manifest.json").read_text(encoding="utf-8")).get("lines", {}) if (OUT / "manifest.json").exists() else {}
     for l in todo:
-        if args.force or (l["id"] in listed and not mp3(l).exists()):
+        if args.force or stale(l) or (l["id"] in listed and not mp3(l).exists()):
             for e in engines_of[l["who"]]:
                 redo(l, e, judge, salts)
         l["salt"] = salts.get(l["id"], 0)

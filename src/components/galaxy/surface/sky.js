@@ -81,9 +81,12 @@ void main() {
     float d2 = dot(q, q);
     if (d2 < 1.0) {
       vec3 n = vec3(q, sqrt(1.0 - d2));
-      float lat = q.y + sin(q.x * 3.0 + q.y * 5.0) * 0.05 * uBodyBands[i].y + sNoise(q * 9.0) * 0.04;
+      // (the bands wander with the twist, and are broken up by storms and
+      // eddies at two sizes, so a giant close over a moon isn't a flat disc)
+      float lat = q.y + sin(q.x * 3.0 + q.y * 5.0) * 0.05 * uBodyBands[i].y + (sNoise(q * 9.0) - 0.5) * 0.08 * uBodyBands[i].y + (sFbm(q * 6.0 + 3.0) - 0.5) * 0.14 * uBodyBands[i].y;
       float band = 0.5 + 0.5 * sin(lat * uBodyBands[i].x * 3.14159);
-      vec3 col = mix(uBodyC1[i], uBodyC2[i], band);
+      band += (sFbm(q * 14.0 + 7.0) - 0.5) * 0.35 * step(0.5, uBodyBands[i].x);
+      vec3 col = mix(uBodyC1[i], uBodyC2[i], clamp(band, 0.0, 1.0));
       // lit from the first sun's side (as it'd be seen from here)
       vec3 sunLocal = vec3(dot(uSunDir[0], side), dot(uSunDir[0], up), dot(uSunDir[0], bd) * -1.0 + 0.35);
       float lit = mix(1.0, clamp(dot(n, normalize(sunLocal)) * 0.85 + 0.25, 0.08, 1.0), uBodyBands[i].z);

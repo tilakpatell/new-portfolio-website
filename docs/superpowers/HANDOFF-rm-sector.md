@@ -59,19 +59,23 @@ snakeplanet nuptia`: each lands and shows its title card. That script's
 Don't edit `src/` while a check runs against the dev server: the hot
 reload resets the page under it.
 
+After the plan: the Immortality Field Resort became the eighth world
+(Risotto Groupon, the guests and the Whirly Dirly car, all existing
+models). The sector's sun got the home sun's reach (`light` in
+`deep.js`, read by `lighting.js`), so the furthest world is lit at full
+strength. And a hand-flown trip through a portal now lets go of a place
+picked on the other side (`pages/Universe.jsx`, on `sector`).
+
 ## Not done, or left as is
 
 - The Galactic Federation's own sector fleet from the plan (the
   `fleetRickmorty*` hulls as set dressing), and a Council of Ricks patrol
   kept near the Citadel. The sector uses the Rick and Morty side's
   existing hunters, director pieces (the Council, the NX-5) and traffic.
-- The plan's other candidate worlds are still out: Cronenberg World, the
-  Purge Planet, the Immortality Field Resort (its `resortguest-*` and
-  `risotto` models exist, so it would cost nothing).
+- The plan's other candidate worlds are still out: Cronenberg World and
+  the Purge Planet. They need models the repo doesn't have yet (Meshy).
 - The four older worlds' landings still use code-built rocks, gates, cogs
   and perches (`landings/rmmoons.js`). The new worlds use models for their
   set pieces and keep only the rock scatter.
-- When you fly through a portal yourself, the panel keeps whatever was
-  picked before, even if it's in the other sector.
 - No crew lines were added for arriving at the new worlds. Crews have no
   per-moon `arrive` lines, the same as before.
