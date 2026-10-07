@@ -10,6 +10,8 @@ import * as THREE from 'three';
 import { personFor } from './people';
 import { CAST } from '../cast';
 import { LINES } from './lines';
+import { crowdCount, newBrain, poseOf, stepBrain } from './brains';
+import { seeded } from '../../../lib/seeded';
 
 export const CIVS = ['civA', 'civB', 'civC'];
 
@@ -29,8 +31,10 @@ const angle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 export const EVE = { stop: 55, go: 75, patience: 45, aloof: 6 };
 
 // a person stood somewhere: a holder at their hips, so they can lean and fly
-// (`cast`: the HD figures' templates by kind, ./people.js's loadCast)
-function stand(scene, cast, kind, seed, { x, z, y = 0, face = 0, mode = 'idle', role = kind, r = 9 }) {
+// (`cast`: the HD figures' templates by kind, ./people.js's loadCast). The
+// townspeople (a `spot` and a place in it) get a brain (./brains.js): they
+// stand about, chat, wander a few steps, look, wave, gather, run and cheer.
+function stand(scene, cast, kind, seed, { x, z, y = 0, face = 0, mode = 'idle', role = kind, r = 9, spot = null, n = 0 }) {
   // a townsperson is one of the cast's three, by seed
   const who = kind === 'person' ? CIVS[seed % CIVS.length] : kind;
   const person = personFor(kind, seed, cast[who], CAST[who]);
@@ -40,7 +44,8 @@ function stand(scene, cast, kind, seed, { x, z, y = 0, face = 0, mode = 'idle', 
   holder.position.set(x, y + hipY, z);
   holder.rotation.y = face;
   scene.add(holder);
-  return { kind, role, person, holder, hipY, home: [x, y, z], face, look: face, mode, base: mode, r, phase: seed * 1.7, name: NAMES[role] ?? NAMES[kind], lines: LINES[role] ?? LINES[kind] ?? LINES.fan };
+  const brain = spot ? newBrain({ home: [x, z], yaw: face, group: spot }) : null;
+  return { kind, role, person, holder, hipY, home: [x, y, z], face, look: face, mode, base: mode, r, phase: seed * 1.7, name: NAMES[role] ?? NAMES[kind], lines: LINES[role] ?? LINES[kind] ?? LINES.fan, brain, spot, n, out: true };
 }
 
 export function createNpcs(scene, world, cast = {}) {
@@ -63,21 +68,21 @@ export function createNpcs(scene, world, cast = {}) {
   // Burger Mart: the manager at the door, two in line
   {
     const b = P.burgermart;
-    all.push(stand(scene, cast, 'person', 3, { x: b.door[0] - 1.5, z: b.door[1] + 1.5, face: Math.PI / 2, mode: 'arms', role: 'manager' }));
-    all.push(stand(scene, cast, 'person', 4, { x: b.door[0] + 1.5, z: b.door[1] - 2, face: -Math.PI / 2, mode: 'talk', role: 'fan' }));
-    all.push(stand(scene, cast, 'person', 5, { x: b.door[0] + 2.2, z: b.door[1] - 0.6, face: -Math.PI / 2 - 0.5, mode: 'idle', role: 'fan' }));
+    all.push(stand(scene, cast, 'person', 3, { x: b.door[0] - 1.5, z: b.door[1] + 1.5, face: Math.PI / 2, mode: 'arms', role: 'manager', spot: 'burger', n: 0 }));
+    all.push(stand(scene, cast, 'person', 4, { x: b.door[0] + 1.5, z: b.door[1] - 2, face: -Math.PI / 2, mode: 'talk', role: 'fan', spot: 'burger', n: 1 }));
+    all.push(stand(scene, cast, 'person', 5, { x: b.door[0] + 2.2, z: b.door[1] - 0.6, face: -Math.PI / 2 - 0.5, mode: 'idle', role: 'fan', spot: 'burger', n: 2 }));
   }
   // the school steps
   {
     const s = P.school;
-    for (let i = 0; i < 4; i++) all.push(stand(scene, cast, 'person', 10 + i, { x: s.door[0] - 6 + i * 3.6, z: s.door[1] + 3 + (i % 2) * 1.5, face: Math.PI + (i - 1.5) * 0.4, mode: i % 2 ? 'talk' : 'idle', role: 'student' }));
+    for (let i = 0; i < 4; i++) all.push(stand(scene, cast, 'person', 10 + i, { x: s.door[0] - 6 + i * 3.6, z: s.door[1] + 3 + (i % 2) * 1.5, face: Math.PI + (i - 1.5) * 0.4, mode: i % 2 ? 'talk' : 'idle', role: 'student', spot: 'school', n: i }));
   }
   // the plaza: people round the hall
   {
     const g = L.guardians;
     for (let i = 0; i < 6; i++) {
       const a = 0.5 + i * 0.42;
-      all.push(stand(scene, cast, 'person', 20 + i, { x: g.x + Math.cos(a) * 23, z: g.z + Math.sin(a) * 23, face: a + Math.PI, mode: i % 3 === 0 ? 'talk' : 'idle', role: 'fan', r: 8 }));
+      all.push(stand(scene, cast, 'person', 20 + i, { x: g.x + Math.cos(a) * 23, z: g.z + Math.sin(a) * 23, face: a + Math.PI, mode: i % 3 === 0 ? 'talk' : 'idle', role: 'fan', r: 8, spot: 'plaza', n: i }));
     }
   }
   // Atom Eve, on patrol
@@ -97,12 +102,34 @@ export function createNpcs(scene, world, cast = {}) {
   const dir = new THREE.Vector3();
   const want = new THREE.Vector3();
 
-  function update(frameDt, t, hero) {
+  // how many of each spot's people are out at this time of day (the rest go home)
+  const SPOTS = { burger: 3, school: 4, plaza: 6 };
+  function setTime(name) {
+    for (const n of all) if (n.spot) n.out = n.n < crowdCount(SPOTS[n.spot], name, { school: n.spot === 'school' });
+  }
+  const r = seeded(17);
+
+  // `crowd`: what the townspeople sense besides him (./brains.js's sense):
+  // { slam: [x, z] | null, hit: [x, z] | null, fight, won, time }
+  function update(frameDt, t, hero, crowd = {}) {
     // (a tab hidden a minute and back is one short step, as the rules' are)
     const dt = Math.min(frameDt, 0.05);
     const hp = hero.p;
+    const sense = { hero: hp, heroMode: hero.mode, heroSpeed: Math.hypot(...hero.v), slam: crowd.slam ?? null, hit: crowd.hit ?? null, fight: Boolean(crowd.fight), won: Boolean(crowd.won), time: crowd.time ?? 'noon' };
     for (const n of all) {
       if (n.flying) continue;
+      if (n.brain) {
+        n.holder.visible = n.out && Math.hypot(hp[0] - n.brain.at[0], hp[2] - n.brain.at[1], hp[1] - n.home[1]) < 260;
+        if (!n.holder.visible) continue;
+        n.brain = stepBrain(n.brain, sense, dt, r);
+        n.holder.position.x = n.brain.at[0];
+        n.holder.position.z = n.brain.at[1];
+        n.holder.rotation.y = n.brain.yaw;
+        // (the manager keeps his arms folded while there's nothing to do)
+        const pose = poseOf(n.brain);
+        n.person.pose({ mode: pose === 'idle' && n.base === 'arms' ? 'arms' : pose, t, phase: n.phase }, dt);
+        continue;
+      }
       const dx = hp[0] - n.home[0];
       const dz = hp[2] - n.home[2];
       const d = Math.hypot(dx, dz, hp[1] - n.home[1]);
@@ -175,5 +202,5 @@ export function createNpcs(scene, world, cast = {}) {
     return out.sort((a, b) => a.d - b.d);
   }
 
-  return { all, eve, update, talkers };
+  return { all, eve, update, talkers, setTime };
 }

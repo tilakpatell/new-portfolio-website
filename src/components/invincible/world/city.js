@@ -8,7 +8,7 @@
 
 import * as THREE from 'three';
 import { hot } from '../../avengers/hq/engine';
-import { SKIN, towerField, towerMaterial } from './facade';
+import { SKIN, WINDOWS, towerField, towerMaterial } from './facade';
 import { BRIDGES, COAST, BEACH, RIVER, groundAt, rng } from './map';
 import { LAND } from './ground';
 
@@ -121,7 +121,7 @@ function houseMaterial(uniforms) {
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
         float lit = step(0.45, hh(houseCol * 3.1 + seed * 17.0 + step(3.0, y) * 5.0)) * houseWin * uNight;
-        totalEmissiveRadiance += lit * vec3(1.0, 0.72, 0.42) * 0.6;
+        totalEmissiveRadiance += lit * vec3(1.0, 0.72, 0.42) * ${(0.6 * WINDOWS.light).toFixed(3)};
         diffuseColor.rgb *= 1.0 - 0.4 * uNight * (1.0 - houseWin);`,
       );
   };

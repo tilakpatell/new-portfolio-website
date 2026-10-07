@@ -2,7 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { local, useDocumentTitle, useReducedMotion } from '../lib/hooks';
 import { audioContext } from '../lib/audio';
-import { byId } from '../components/universe/universes';
+import { RM_DIAL_KEY, byId, dialFor } from '../components/universe/universes';
 import { parseId } from '../components/universe/layout';
 import { beyondPlan, crashPlan, enterPlan } from '../components/universe/flight';
 import { beyondOf, parseWonder } from '../components/universe/deep';
@@ -184,10 +184,21 @@ export default function Universe({ ask = false }) {
     local.set(SHIP_KEY, id);
   };
 
+  // (into a Rick and Morty world: Rick's garage, the gun dialled back to it, universes.js)
+  const dialBack = (u) => {
+    const id = dialFor(u);
+    if (!id) return;
+    try {
+      window.localStorage.setItem(RM_DIAL_KEY, id);
+    } catch {
+      /* (private mode: the dial's where it was) */
+    }
+  };
   // into a place: the selected one (Enter, E), or a station whose sign was
   // clicked (`to`: somewhere inside it to go on to, a star system through the gate)
   const go = (u, to = u?.to) => {
     if (!u || leaving) return;
+    dialBack(u);
     setCharting(false);
     stopTour();
     const plan = enterPlan(u, { reduced, three: map.current.live, ship });
@@ -246,6 +257,7 @@ export default function Universe({ ask = false }) {
     const u = byId(id);
     const plan = crashPlan(u, { reduced });
     if (!plan) return false;
+    if (!page) dialBack(u);
     setLeaving({ id: u.id, mode: plan.mode });
     // (a wonder with a page of its own, the Citadel, goes there)
     timer.current = setTimeout(() => navigate(page ?? u.crashTo ?? u.to), plan.delay);
