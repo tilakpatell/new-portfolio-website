@@ -5,7 +5,7 @@ import { layBattle } from '../battles';
 import { systemById } from '../systems';
 import { seeded } from '../gcw';
 import { createEndor } from './endor';
-import { createHoth, HOTH } from './hoth';
+import { createHoth } from './hoth';
 import { createScarif } from './scarif';
 import { createHangars } from './hangar';
 import { piecesFor } from './index';
@@ -15,6 +15,7 @@ const make = (id, attacker = 'rebel') => {
   const on = { id: `c0.${id}.5`, sys: id, step: 5, seed: 99, attacker, start: 0, fightEnd: 600e3, end: 720e3, fighting: true };
   const laid = layBattle(sys, on, { now: 0, tier: 'low' });
   const battle = createBattle({ ...laid, rand: seeded(on.id), perSide: 4 });
+  // (an evacuation's runners are the battle's own: battles.js's BATTLE_KINDS)
   battle.setYou(0);
   const fight = createTally(on.id);
   const world = { solids: [{ id: 'deathstar2', r: 66, reach: 90, at: [0, 0, 0] }], war: { holdShield: vi.fn(), station: vi.fn(), planetShield: vi.fn() } };
@@ -147,22 +148,25 @@ describe('Hoth', () => {
     expect(events.some((ev) => ev.type === 'disabled')).toBe(true);
     h.dispose();
   });
-  it('runs the transports out while the Empire attacks, and holds Hoth once enough are away', () => {
+  it('calls the transports out as the evacuation runs them, and holds Hoth once enough are away', () => {
     const k = make('hoth', 'empire');
     const h = createHoth(k.ctx);
     // (the Empire's fighters kept off them: nothing shoots in this one)
     for (const f of k.battle.fighters) (f.alive = false), (f.respawn = Infinity);
-    step(h, k.battle, HOTH.launchEvery * (HOTH.out + 1) + 60, null, 0.25);
-    expect(k.battle.runners.length).toBeGreaterThanOrEqual(HOTH.out);
-    expect(h.out).toBeGreaterThanOrEqual(HOTH.out);
-    expect(k.battle.over).toEqual({ winner: 0, why: 'evacuated' });
+    const r = k.laid.runners;
+    step(h, k.battle, r.every * r.need + 60, null, 0.1); // (battle.update takes a tenth at most)
+    expect(k.battle.runners.filter((x) => x.kind === 'transport').length).toBeGreaterThanOrEqual(r.need);
+    expect(h.out).toBe(r.need);
+    expect(k.events.filter((e) => e === 'escaped')).toHaveLength(r.need);
+    expect(k.events).toContain('gcw-evacuated');
+    expect(k.battle.over).toEqual({ winner: 0, why: 'runners' });
     h.dispose();
   });
-  it('sends no transports when it’s the Rebellion attacking', () => {
+  it('launches no transports of its own when it’s the Rebellion attacking', () => {
     const k = make('hoth', 'rebel');
     const h = createHoth(k.ctx);
     step(h, k.battle, 60, null, 0.25);
-    expect(k.battle.runners).toHaveLength(0);
+    expect(k.battle.runners.filter((x) => x.kind === 'transport')).toHaveLength(0);
     h.dispose();
   });
 });

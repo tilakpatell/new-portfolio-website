@@ -20,7 +20,7 @@ export const SIDES = {
   republic: { id: 'republic', code: 'rep', name: 'Galactic Republic', short: 'Republic', colour: '#7fc4ff', stance: 'light' },
   separatists: { id: 'separatists', code: 'sep', name: 'Confederacy of Independent Systems', short: 'Separatists', colour: '#c9a24a', stance: 'dark' },
   rebel: { id: 'rebel', code: 'reb', name: 'Rebel Alliance', short: 'Rebellion', colour: '#ff6b4a', stance: 'light' },
-  empire: { id: 'empire', code: 'imp', name: 'Galactic Empire', short: 'Empire', colour: '#8fa6c8', stance: 'dark' },
+  empire: { id: 'empire', code: 'imp', name: 'Galactic Empire', short: 'Empire', colour: '#62e08a', stance: 'dark' },
   newrepublic: { id: 'newrepublic', code: 'nr', name: 'New Republic', short: 'New Republic', colour: '#7fe8c8', stance: 'light' },
   remnant: { id: 'remnant', code: 'rem', name: 'Imperial Remnant', short: 'Remnant', colour: '#b0b8c4', stance: 'dark' },
   hutt: { id: 'hutt', code: 'hut', name: 'Hutt Cartel', short: 'Hutts', colour: '#9bbf5a', stance: 'hutt' },
