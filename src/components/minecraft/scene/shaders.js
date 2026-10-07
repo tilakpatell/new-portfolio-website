@@ -7,8 +7,9 @@
 //
 // The shade is the game's per face (top 1.0, bottom 0.5, north and south
 // 0.8, east and west 0.6; a plant's cross 1.0), the AO its four levels
-// (0.4, 0.6, 0.8, 1.0), the brightness its curve over the sixteen light
-// levels, b / (4 − 3b), from max(sky × daylight, block). Fog takes the
+// (0.4, 0.6, 0.8, 1.0), and the light the game's lightmap colour: each
+// light's curve over its sixteen levels, b / (4 − 3b), the sky's dimmed and
+// blued by the hour, the block's warm, added. Fog takes the
 // sky's colour at the horizon from 0.8 of the render distance to all of it.
 // The arithmetic is on the sRGB bytes as painted, as the game's is.
 
@@ -27,7 +28,7 @@ const v3 = ([r, g, b]) => new THREE.Vector3(r / 255, g / 255, b / 255);
 
 const vertex = /* glsl */ `
 in vec3 data; // layer, face | ao << 3 | tint << 5 | light << 8, u | v << 5
-uniform float daylight;
+uniform float sun; // the sun's brightness for the light, 0.2 at night to 1 (rules/time.js)
 uniform vec3 tints[6];
 out vec3 vUv;
 out vec3 vColour;
@@ -45,9 +46,16 @@ void main() {
   vUv = vec3(mod(uv, 32.0) / 16.0, floor(uv / 32.0) / 16.0, data.x);
 
   float shade = face < 0.5 ? 1.0 : face < 1.5 ? 0.5 : face < 3.5 ? 0.8 : face < 5.5 ? 0.6 : 1.0;
-  float b = max(sky * daylight, block) / 15.0;
-  float bright = b / (4.0 - 3.0 * b) * 0.96 + 0.03;
-  vColour = tints[tint] * shade * (0.4 + 0.2 * ao) * bright;
+  // the game's lightmap (rules/time.js's lightmap): the sky's light blue-grey with the
+  // sun's going, the block's warm, added, clamped, lifted off black
+  float f = sun * 0.95 + 0.05;
+  float bs = sky / 15.0;
+  float bb = block / 15.0;
+  float s = bs / (4.0 - 3.0 * bs) * f;
+  float t = bb / (4.0 - 3.0 * bb) * 1.5;
+  vec3 lm = vec3(s * (f * 0.65 + 0.35) + t, s * (f * 0.65 + 0.35) + t * ((t * 0.6 + 0.4) * 0.6 + 0.4), s + t * (t * t * 0.6 + 0.4));
+  lm = min(lm, vec3(1.0)) * 0.96 + 0.03;
+  vColour = tints[tint] * shade * (0.4 + 0.2 * ao) * lm;
 
   vec4 world = modelMatrix * vec4(position, 1.0);
   vDist = length(world.xz - cameraPosition.xz);
@@ -92,7 +100,7 @@ export function blockMaterial({ array, pass, colours = {} }) {
     defines: pass === 'cutout' ? { CUTOUT: 1 } : pass === 'water' ? { WATER: 1 } : {},
     uniforms: {
       atlas: { value: array },
-      daylight: { value: 1 },
+      sun: { value: 1 },
       tints: { value: tints },
       fogColour: { value: new THREE.Vector3(0.75, 0.85, 1) },
       fogNear: { value: 100 },

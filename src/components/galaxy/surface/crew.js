@@ -10,24 +10,11 @@
 import * as THREE from 'three';
 import { loadPartyFigure } from '../../universe/footScene';
 import { METRE } from '../../universe/foot';
+import { CREW, fileOf } from './crewList';
 import { cloneModel, loadGlb } from './placer';
 
-// a figure's file: its own `url`, or its name's in the crew's folder
-export const fileOf = (c) => c.url ?? `/models/galaxy/crew/${c.name}.glb`;
-// kind → { model's name or file, how tall, still (not rigged) }
-export const CREW = {
-  han: { name: 'han', tall: 1.85 },
-  // (Luke and Leia are Sketchfab figures, rigged with Meshy onto the same skeleton)
-  luke: { url: '/models/galaxy/crew/luke.glb', tall: 1.72 },
-  leia: { url: '/models/galaxy/crew/leia.glb', tall: 1.5 },
-  chewie: { url: '/models/cockpit/chewie.glb', tall: 2.28 }, // (the cockpits' own, whom the Falcon's party walks)
-  greedo: { name: 'greedo', tall: 1.73 },
-  gamorrean: { name: 'gamorrean', tall: 1.8 },
-  bobafett: { name: 'bobafett', tall: 1.83 },
-  bith: { name: 'bith', tall: 1.8 },
-  ahsoka: { name: 'ahsoka', tall: 1.85 },
-  hutt: { name: 'jabba', tall: 1.8, still: true },
-};
+// (the list itself is crewList.js, plain data a page can read)
+export { CREW, fileOf };
 
 export async function crewFigure(kind) {
   const c = CREW[kind];

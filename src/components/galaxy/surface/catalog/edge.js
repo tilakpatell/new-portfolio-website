@@ -9,5 +9,6 @@ export const MODELS = {
   // Vader's castle on Mustafar (flat-shaded, but the silhouette is right)
   fortress: { uid: 'dccd24bde1c0475eab1f1674c108d42a', as: "Vader's castle", metres: 120, yaw: 0, up: 'y', tris: 35000, tex: 1024 },
   // a palm of the tropical worlds
-  palm: { uid: '8c5d6b661b2f4c37834d87cd187eb907', as: 'the palms', metres: 12, yaw: 0, up: 'y', tris: 3000, tex: 512 },
+  // (a light copy beside it for the far ones: six hundred palms are most of Scarif's triangles)
+  palm: { uid: '8c5d6b661b2f4c37834d87cd187eb907', lod: true, as: 'the palms', metres: 12, yaw: 0, up: 'y', tris: 3000, tex: 512 },
 };

@@ -1,4 +1,4 @@
-// Down on the Rick and Morty system's moons (universes.js's MOONS): the
+// Down on the Rick and Morty sector's worlds (universes.js's MOONS): the
 // things landings.js names for Gazorpazorp, Planet Squanch, Bird World and
 // Gear World, one file between them. The portal is the C-137 landing's
 // (./rickmorty.js), open on the ground as the show draws it; the rest are

@@ -188,13 +188,15 @@ export const PROPS = {
 // geometries, with the material each is drawn with, and how wide its
 // footprint is at scale 1 (null: you walk through it).
 export const SCATTER = {
-  rock(k, { seed = 1, color = '#8a7a66', sharp = 0.4 } = {}) {
+  // (`to`: the scan it wears, where a world's rock isn't grey rock face:
+  // Geonosis's redrock, Endor's mossrock)
+  rock(k, { seed = 1, color = '#8a7a66', sharp = 0.4, to = 'rock' } = {}) {
     const g = rockGeometry(seed, { sharp, detail: 1 });
-    return { parts: [{ geometry: k.geometry([part(g, { color, to: 'rock' })]), material: k.mats.rock }], radius: 0.42 };
+    return { parts: [{ geometry: k.geometry([part(g, { color, to })]), material: k.mats[to] ?? k.mats.rock }], radius: 0.42 };
   },
   // pebbles and small stones you walk over
-  stones(k, { seed = 2, color = '#7a6c5c' } = {}) {
+  stones(k, { seed = 2, color = '#7a6c5c', to = 'rock' } = {}) {
     const g = rockGeometry(seed, { sharp: 0.2, detail: 0, flat: 0.4 });
-    return { parts: [{ geometry: k.geometry([part(g, { color, to: 'rock' })]), material: k.mats.rock }], radius: null };
+    return { parts: [{ geometry: k.geometry([part(g, { color, to })]), material: k.mats[to] ?? k.mats.rock }], radius: null };
   },
 };

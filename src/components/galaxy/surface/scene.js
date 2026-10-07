@@ -384,6 +384,17 @@ export async function create(canvas, ctx) {
           holder.add(fig.model);
           ridee.fig = fig;
         }
+        // its catalogue model in place of the build once it's here (the
+        // herd grazing round it is that model: the ridden one should match)
+        modelFigure(spec.figure)
+          .then((model) => {
+            if (!model || !holder.parent) return;
+            if (ridee.fig) holder.remove(ridee.fig.model);
+            ridee.fig?.dispose?.();
+            holder.add(model.model);
+            ridee.fig = model;
+          })
+          .catch(() => {});
       } else {
         // its model (or its build), held in the holder so it can bank
         const tmp = new THREE.Group();
@@ -566,7 +577,7 @@ export async function create(canvas, ctx) {
           p.holder.updateMatrixWorld(true);
           p.gp = createGunplay(fig, fig.gun ?? p.spec.gun, { unit: 1, who: fig.built ? 'built' : p.spec.id });
           // a lightsaber (surface/saber.js): lit, swung, held up and thrown from here
-          if (p.spec.saber && p.gp) p.saber = createSaber(p.gp, { color: p.spec.saber.color, hilt: p.spec.saber.hilt, stance: p.spec.saber.stance, parent: scene, sound: (what) => sounds.saber?.(what) ?? sounds.combat?.(what) });
+          if (p.spec.saber && p.gp) p.saber = createSaber(p.gp, { color: p.spec.saber.color, hilt: p.spec.saber.hilt, stance: p.spec.saber.stance, parent: scene, sound: (what) => sounds.saber?.(what) ?? sounds.combat?.(what), fig });
           // the gun's numbers (weaponRules.js), with the mods they picked
           p.weapon = withMods(fig.gun ?? p.spec.gun, p.spec.mods ?? []);
           p.weapon.heat *= perks.heat;
@@ -1661,6 +1672,7 @@ export async function create(canvas, ctx) {
       struck(h, Math.max(1, Math.round((w.damage + (hot ? 1 : 0)) / (n > 1 ? 2 : 1))), { how: w.kind, push: o.dir });
       hit ??= h;
     }
+    activity.heard({ x: o.from.x, z: o.from.z }, { x: o.from.x + o.dir.x * 40, z: o.from.z + o.dir.z * 40 }); // (as for an unrigged shot in fire())
     const spec = p.gp.spec;
     const out = hit.at.clone().sub(r.muzzle).normalize();
     fx.flash(r.muzzle, out, spec.flash);
@@ -1920,7 +1932,9 @@ export async function create(canvas, ctx) {
         const air = st.grounded ? 0 : Math.max(0, st.y - groundAt(world, st.x, st.z, st.y));
         const mine = i === lead;
         const motion = { speed: (st.vx * fwdV.x + st.vz * fwdV.z) * METRE, side: (st.vx * rightV.x + st.vz * rightV.z) * METRE, turn, air, hurt: mine ? Math.max(0, 1 - (state.t - state.hurtAt) / 0.35) : 0, knock: 0.5 };
-        pp.fig?.update(dt, clamp(st.speed / WALK.run, 0, 1), motion);
+        const going = clamp(st.speed / WALK.run, 0, 1);
+        pp.fig?.update(dt, going, motion);
+        pp.saber?.stand(dt, state.t, going); // (the body under a lit blade, over the clips)
         pp.holder.updateMatrixWorld(true);
         pp.fig?.after?.(dt, motion, { forward: fwdV, up: UP });
         const drop = pp.fig?.loco?.drop ?? 0;
@@ -2707,7 +2721,7 @@ export async function create(canvas, ctx) {
       if (z) enterZone(z);
       else leaveZone();
     },
-    teleport(x, z, yaw = null, y = null) {
+    teleport(x, z, yaw = null, y = null, pitch = null) {
       if (!import.meta.env.DEV) return;
       const p = me().st;
       p.x = x;
@@ -2719,6 +2733,8 @@ export async function create(canvas, ctx) {
         p.yaw = yaw;
         state.cam.yaw = yaw;
       }
+      // (a look up or down, for the shots of what's in the sky)
+      if (pitch != null) state.cam.pitch = clamp(pitch, CAM.pitch[0], CAM.pitch[1]);
       camInit = false;
       ctx.invalidate();
     },

@@ -119,7 +119,7 @@
 
 ## PR 10: The manual and the close
 
-- [ ] **10.1** `scripts/ai-e2e/README.md` complete: every tier, every command, every knob, how to add a sheet, a take, a scenario, a golden; what a red night means and what to do.
-- [ ] **10.2** `docs/architecture.md` Tests section rewritten: `npm test`, `npm run test:ai`, `npm run test:ai:render`, `npm run test:ai:gpu`, the nightly, the issue. `docs/desktop` and `docs/gen3d` READMEs point at the evals and the health run where they mention judging.
-- [ ] **10.3** `docs/autopilot/backlog.md`: the follow-ups found on the way (a brain whose promise was vague, an uncredited model, an orphan voice line), each one line.
+- [x] **10.1** `scripts/ai-e2e/README.md` complete: every tier, every command, every knob, how to add a sheet, a take, a scenario, a golden; what a red night means and what to do.
+- [x] **10.2** `docs/architecture.md` Tests section rewritten: `npm test`, `npm run test:ai`, `npm run test:ai:render`, `npm run test:ai:gpu`, the nightly, the issue. `docs/desktop` and `docs/gen3d` READMEs point at the evals and the health run where they mention judging.
+- [x] **10.3** `docs/autopilot/backlog.md`: the follow-ups found on the way (a brain whose promise was vague, an uncredited model, an orphan voice line), each one line.
 - [ ] **10.4** Gate, PR, CI green, merge. Report: what each tier found when first run against `main` (the allow-lists’ contents are the findings).
