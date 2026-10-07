@@ -1652,7 +1652,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       {gl === 'on' && game?.end && <Ending end={game.end} onAgain={() => startRickall()} onLeave={stopRickall} />}
 
       {gl === 'on' && !here && !game && !hud.flying && !hud.moved && (
-        <p className="rm-hint">{touch ? 'Drag the stick to walk; push it all the way to run; the arrow jumps. Swipe sideways to look round.' : 'W A S D or the arrows to walk, Shift to run, Space to jump. Drag to look round. E uses things, M lists what to do.'}<GuideCue touch={touch} /></p>
+        <p className="rm-hint">{touch ? 'Drag the stick to walk; push it all the way to run; the arrow jumps, the star fires in a fight. Swipe sideways to look round.' : 'W A S D or the arrows to walk, Shift to run, Space to jump. Drag to look round. E uses things, F fires in a fight, M lists what to do.'}<GuideCue touch={touch} /></p>
       )}
       {gl === 'on' && hud.flying && !here && (
         <p className="rm-hint rm-keys">
@@ -1694,6 +1694,20 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
                   <button type="button" aria-label="Jump" onPointerDown={onJump} onContextMenu={(e) => e.preventDefault()}>
                     <RiArrowUpLine aria-hidden="true" />
                   </button>
+                  {duel && (
+                    <button
+                      type="button"
+                      className="rm-fire"
+                      aria-label="Fire"
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        fns.current.fire();
+                      }}
+                      onContextMenu={(e) => e.preventDefault()}
+                    >
+                      ✦
+                    </button>
+                  )}
                 </div>
               )}
               {hud.flying && (
