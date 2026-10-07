@@ -4,6 +4,7 @@ import { RiArrowDownLine, RiArrowRightLine, RiCompass3Line, RiPlayFill, RiRocket
 import { playClip } from '../../lib/clips';
 import { audioContext } from '../../lib/audio';
 import { CREWS, crewById } from '../universe/crews';
+import { vehicleById } from '../cockpit/vehicles';
 import Face from '../universe/Faces';
 import ModelCredits from '../ModelCredits';
 import GuideLink from '../guide/GuideLink';
@@ -121,7 +122,7 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
       <p className="eyebrow">A galaxy far, far away</p>
       {toward && (
         <p className="galaxy-jumping" role="status">
-          {jumping.phase === 'align' ? 'Coming round onto the bearing for' : 'Jumping to lightspeed:'} <b>{toward.name}</b>
+          {jumping.phase === 'align' ? 'Coming round onto the bearing for' : `${vehicleById(ship)?.going ?? 'Jumping to lightspeed'}:`} <b>{toward.name}</b>
         </p>
       )}
       {short && !toward && (

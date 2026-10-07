@@ -20,7 +20,9 @@ const upper = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const out = { target: '_blank', rel: 'noopener noreferrer' };
 
 export default memo(function ModelCredits({ where, only = null, line = false, className = '' }) {
-  const list = Object.values(MODELS).filter((m) => (m.where === where || m.also?.includes(where)) && (!only || only.includes(m.file)));
+  const shown = Object.values(MODELS).filter((m) => (m.where === where || m.also?.includes(where)) && (!only || only.includes(m.file)));
+  // (one model used twice, as the galaxy's Y-wing in space and on the ground, is credited once)
+  const list = shown.filter((m, i) => shown.findIndex((n) => n.source === m.source && n.as === m.as) === i);
   if (!list.length) return null;
   if (line) {
     // one licence between them all is said once, at the end
