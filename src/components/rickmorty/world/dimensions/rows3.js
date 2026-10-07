@@ -323,7 +323,7 @@ export const ROWS = [
       { id: 'jaguar', dx: 13.4, dz: -12, label: 'Jaguar, in his cell', verb: 'Unlock', r: 1.6, until: 'agency' },
       { id: 'picklerick', dx: -2, dz: -11.4, label: 'Pickle Rick', verb: 'Talk', r: 1.6 },
       { id: 'agencyscreen', dx: 0, dz: -17, label: 'The screens', verb: 'Look', r: 2 },
-      { id: 'sewerhole', dx: -16, dz: 12, label: 'A hole in the floor', verb: 'Look', r: 1.8 },
+      { id: 'sewer', dx: -16, dz: 12, label: 'The hole in the floor', verb: 'Go down', r: 1.8 },
     ],
     solids: [
       { id: 'cell', dx: 17, dz: -12, w: 5, d: 5 },
@@ -335,13 +335,16 @@ export const ROWS = [
       { id: 'crate-b', dx: 6, dz: 10, w: 2, d: 2 },
       { id: 'hole', dx: -16, dz: 14, r: 1.2 },
     ],
-    tasks: [{ id: 'agency', name: 'Spring Jaguar', hint: 'Dial the agency on the portal gun, take the key off its hook, and unlock Jaguar’s cell without a guard seeing you. Pickle Rick is on the desk, being no help at all.' }],
+    tasks: [
+      { id: 'agency', name: 'Spring Jaguar', hint: 'Dial the agency on the portal gun, take the key off its hook, and unlock Jaguar’s cell without a guard seeing you. Pickle Rick is on the desk, being no help at all.' },
+      { id: 'sewer', name: 'Run the sewer as Pickle Rick', hint: 'At the agency, go down the hole in the floor by the rats. Dodge the grates, squash the rats, pick up screws, and make the far drain.' },
+    ],
     say: {
       cellkey: { who: null, text: 'A key on a hook, under a sign that says DO NOT. You take it. The sign was right, probably.' },
       jaguar: { who: 'Jaguar', text: '“Good.” The door swings. He rolls his shoulders, looks at the guards, looks at you. “I am Jaguar. I kill… later. First, the pickle and I have words.”' },
       picklerick: { who: 'Pickle Rick', text: '“MORTY. Look at me. I’m a pickle. I’ve killed eleven rats and a man named Konstantin and I am having the time of my life. Don’t tell your mother. Tell her it’s therapy.”' },
       agencyscreen: { who: null, text: 'Screens: corridors, a sewer, a laser grid, and one camera pointed at a jar of brine with a face in it.' },
-      sewerhole: { who: null, text: 'A hole in the floor into the sewer, ringed with rat parts, screws and a tiny welded exoskeleton. He built that. Down there. As a pickle.' },
+      sewer: { who: null, text: 'A hole in the floor into the sewer, ringed with rat parts, screws and a tiny welded exoskeleton. He built that. Down there. As a pickle.' },
     },
     collect: { task: 'agency', spots: ['cellkey', 'jaguar'] },
     acts: { jaguar: 'unlocked' },

@@ -111,12 +111,20 @@ own); NPCs that do things, not just stand and talk.
   destination's model file (or a rigged one's idle and walk clips) is
   missing from `public/`.
 - README's C-137 row lists every place.
+- The Pickle Rick sewer run, `world/sewer/`: a lane runner opened from the
+  agency's hole in the floor (hotspot `sewer`, a `PLACES` entry in
+  `RmWorld.jsx` like Roy's, behind `GpuGate`). `rules.js` is the pure game
+  (`newRun`, `stepRun`, `progress`: three lanes, hops, rats to squash or
+  zap, grates to hop, screws for the laser, three hearts, won at `goal`;
+  tested), `scene.js` draws it (the drain's segments recycled, the pickle
+  and the rats from the Meshy cast), `Sewer.jsx` is the frame (keys, pad,
+  HUD, cards, `onLeave(won)`; won completes the `sewer` task).
 
 ## Not done
 
-- The rest of the plan's Phase 7: Jaguar and the Pickle Rick sewer run (a
-  game of its own), and Mr. Frundles. (The cable figures went to a studio
-  of their own rather than the alien street, which has no NPC layer.)
+- Mr. Frundles. (The cable figures went to a studio of their own rather
+  than the alien street, which has no NPC layer.) Jaguar is at the agency,
+  and the Pickle Rick sewer run is `world/sewer/` (below).
 - The map's Birdperson is still the code-built one (`HANDOFF-rm-phase1.md`).
 - Nothing on the dial has a sound of its own yet (the escape clock uses
   `portalOpen`; caught uses `ouch`).

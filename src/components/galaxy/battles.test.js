@@ -25,8 +25,8 @@ describe('the kinds of battle', () => {
     for (const [id, k] of Object.entries(BATTLE_KINDS)) {
       expect(k.id).toBe(id);
       expect(k.name).toMatch(/\S/);
-      expect(k.text.light, id).toMatch(/\S/);
-      expect(k.text.dark, id).toMatch(/\S/);
+      expect(k.text.attack, id).toMatch(/\S/);
+      expect(k.text.defend, id).toMatch(/\S/);
       expect(['flagship', 'interdictor']).toContain(k.objective);
       if (k.runners) expect(['attacker', 'defender']).toContain(k.runners.side);
     }

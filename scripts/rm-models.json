@@ -594,5 +594,21 @@
   "sewerrat": {
     "status": "done",
     "by": "local"
+  },
+  "frundles": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "frundlesman": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "frundlesdog": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "frundleshouse": {
+    "status": "claimed",
+    "by": "local"
   }
 }

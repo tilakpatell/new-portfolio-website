@@ -180,7 +180,7 @@ def make(engine, lines, voices, judge, takes, done):
                     print(f"  ({engine} couldn't make {Path(path).name}: {why})")
                     arrive(path, None)
             if worker.wait():
-                print(f"  ({engine} stopped early, exit {worker.returncode}: see {(TAKES / f'{engine}.log').relative_to(ROOT)})")
+                print(f"  ({engine} stopped early, exit {worker.returncode}: see {TAKES / f'{engine}.log'})")
         for lid, l in list(pending.items()):  # whatever the worker never made counts as failed
             for path in mine[lid]:
                 if str(path) not in got[lid]:
