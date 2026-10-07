@@ -73,12 +73,27 @@ Citadel. Both are the fleet war's Meshy flagships (`fedbattleship`,
 `councildread`), loaded the first time the ship's in the sector. From inside
 the sector, the main map's planet names and beacons are hidden.
 
+Fixes after flying it (#542): out at the sector, 40000 off, the GPU's
+32-bit floats tore the cruiser's crew and other skinned figures, so
+`scene.js` draws round the camera past 3000 out (`drawn`: the map and the
+camera shifted for `post.render` only, and put back). The Curve is drawn
+only from inside the sector, as a band rather than streaks. The Citadel's
+haze fades out before its quad's edge. A sector world's ground portal (and
+"Land on") still goes to C-137, the walkable game, but sets the garage's
+portal gun to that world first (`universes.js` `dialFor`, `tp-rm-dial`).
+
+Worlds 9 and 10: Cronenberg World and the Purge Planet, with set pieces
+modelled on Meshy (`scripts/meshy-rm-local.mjs` phase 13: `cronhouse`,
+`croncar`, `purgecottage`, `purgebarn`, `purgesiren`, `purgewell`) and
+grounds of their own in `rmWorldsGlsl.js`. The four older worlds' set pieces
+are models now too (`gazorpgate`, `suckulent`, `birdperch`, `gearbig`,
+`gearcog`), replacing the code-built gate, suckulents, perches and cogs.
+
 ## Not done, or left as is
 
-- The plan's other candidate worlds are still out: Cronenberg World and
-  the Purge Planet. They need models the repo doesn't have yet (Meshy).
-- The four older worlds' landings still use code-built rocks, gates, cogs
-  and perches (`landings/rmmoons.js`). The new worlds use models for their
-  set pieces and keep only the rock scatter.
+- The worlds' ground cover is still code-built: rocks, bones, Squanch's
+  cat trees, Bird World's feathers and Gear World's bolts
+  (`landings/rmmoons.js`). The Meshy set pieces are about 30k triangles
+  each, so where one is scattered (suckulents, cogs) it's 10 to 14 of them.
 - No crew lines were added for arriving at the new worlds. Crews have no
   per-moon `arrive` lines, the same as before.
