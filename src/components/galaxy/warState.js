@@ -7,7 +7,9 @@
 // All three of the galaxy's wars are in the one tally (a key's side says
 // which: gcw.js's pointsKey). It keeps a campaign's keys (KEYS), far more
 // than a message holds, so it goes out a page at a time (tally.js), and
-// every pilot's history comes to the same.
+// every pilot's history comes to the same. You're known in it by a tally id
+// made for the campaign and kept in tp-gcw with your shares, so a reload (a
+// new peer id online) isn't counted as a second pilot with the same points.
 //
 // warTally(now) → the campaign's tally (a new one when a campaign starts);
 // addPoints(side, sys, step, points), addWin(side, sys, step) (nothing for
@@ -30,6 +32,7 @@ let version = 0;
 let saveLater = null;
 const subs = new Set();
 
+const newId = () => [...globalThis.crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, '0')).join('');
 const store = () => {
   try {
     return typeof window !== 'undefined' ? window.localStorage : null;
@@ -54,7 +57,8 @@ const changed = () => {
 export function warTally(now = Date.now()) {
   const { epoch } = campaignAt(now);
   if (!tally || tally.epoch !== epoch) {
-    tally = createTally(epoch, { keys: KEYS, cap: CAP });
+    // (a new id, unless the save has the campaign's: its shares were told under that one)
+    tally = createTally(epoch, { keys: KEYS, cap: CAP, id: newId() });
     try {
       tally.load(JSON.parse(store()?.getItem(KEY) ?? 'null'));
     } catch {

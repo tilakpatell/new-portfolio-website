@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { TALLY, readTally } from '../universe/tally';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { TALLY, createTally, readTally } from '../universe/tally';
 import { GCW, WAR_SYSTEMS, campaignAt, history, pointsKey, winKey } from './gcw';
-import { addPoints, addWin, mine, onWar, receiveWar, resetWar, warMessage, warNow, warTally } from './warState';
+import { CAP, addPoints, addWin, mine, onWar, receiveWar, resetWar, warMessage, warNow, warTally } from './warState';
 
 const NOW = GCW.start + 30 * 60e3;
 beforeEach(() => resetWar());
@@ -61,6 +61,34 @@ describe('the page’s war', () => {
     const msg = readTally(JSON.parse(JSON.stringify(warMessage(ms))));
     expect(msg.m[pointsKey('rebel', front.id, k)]).toBe(20);
     expect(Object.keys(msg.t).length).toBeLessThanOrEqual(TALLY.keys);
+  });
+});
+
+describe('a reload', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+  it('comes back as the same pilot in the war, so a pilot who stayed online counts them once', () => {
+    vi.useFakeTimers();
+    const kept = new Map();
+    vi.stubGlobal('window', { localStorage: { getItem: (k) => kept.get(k) ?? null, setItem: (k, v) => kept.set(k, String(v)) } });
+    const wire = (msg) => readTally(JSON.parse(JSON.stringify(msg)));
+    addPoints('rebel', 'endor', 2, 3, NOW);
+    const before = wire(warMessage(NOW));
+    vi.advanceTimersByTime(2000); // (kept)
+    resetWar(); // the page reloaded: its tally back from tp-gcw, under a new peer id
+    expect(warTally(NOW).mine(pointsKey('rebel', 'endor', 2))).toBe(3);
+    const other = createTally('c0', { cap: CAP });
+    other.receive('peer-before', before);
+    other.receive('peer-after', wire(warMessage(NOW)));
+    expect(other.value(pointsKey('rebel', 'endor', 2))).toBe(3);
+    addPoints('rebel', 'endor', 2, 1, NOW);
+    other.receive('peer-after', wire(warMessage(NOW)));
+    expect(other.value(pointsKey('rebel', 'endor', 2))).toBe(4);
+    expect(warMessage(NOW).i).toBe(before.i);
+    // (and the next campaign, a pilot new to it)
+    expect(warMessage(NOW + GCW.campaign).i).not.toBe(before.i);
   });
 });
 
