@@ -15,6 +15,9 @@ import { fitModel, mergeParts, at } from './kit';
 import { makeRoom } from './interiors/shell';
 import { toonPerson } from './interiors/people';
 import { fadeUp } from './interiors/lab';
+import { createNpcs } from './npc';
+import { MESHY } from '../portal/meshyCast';
+import { AREAS } from './rules';
 
 const TALL = { president: 1.88, secretservice: 1.84, fedagent: 1.9 };
 // in shapes, if their models won't load
@@ -39,26 +42,32 @@ export async function buildVisitors(kit, { roadY = 0 } = {}) {
 
   // the people's models, waited on a while at most
   try {
-    const need = kit.need ? kit.need(['president', 'secretservice', 'fedagent'], { clips: ['idle', 'walk', 'sit'] }) : null;
+    const walkers = PEOPLE.filter((p) => p.area === 'street' && p.ai).map((p) => p.who ?? p.id);
+    const need = kit.need ? Promise.all([kit.need(['president', 'secretservice', 'fedagent'], { clips: ['idle', 'walk', 'sit'] }), kit.need([...new Set(walkers)], { clips: ['idle', 'walk'] })]) : null;
     await Promise.race([need, new Promise((done) => setTimeout(done, 9000))]);
   } catch {
     /* stand-ins */
   }
 
   // ── the people ──
+  // (the walkers' brains: ./npc.js, the same layer as the dial's places; the
+  // street's box, nothing in the way but each other, since they keep to the sidewalks)
+  const N = createNpcs({ id: 'street', area: AREAS.street, solids: [], words: {} });
   const people = PEOPLE.filter((p) => p.area === 'street').map((p) => {
     const kind = p.who ?? p.id;
-    const h = TALL[kind];
+    const h = TALL[kind] ?? MESHY[kind]?.h ?? 1.8;
     const c = kit.cast?.make?.(kind) ?? null;
     let fig;
+    let n = null;
     if (c) {
       c.group.scale.setScalar(h / c.height);
       fig = { group: c.group, tick: (t) => c.update(t, 0, 0) };
-    } else fig = toonPerson(R, LOOK[kind], h);
+      if (p.ai) n = N.add(c, { x: p.x, z: p.z, face: p.face, ai: p.ai, id: p.id, who: p.say ?? null });
+    } else fig = toonPerson(R, LOOK[kind] ?? LOOK.fedagent, h);
     fig.group.position.set(p.x, 0, p.z);
     fig.group.rotation.y = p.face + Math.PI / 2;
     group.add(fig.group);
-    return { p, fig, face: p.face, watches: kind === 'fedagent' };
+    return { p, fig, n, face: p.face, watches: kind === 'fedagent' };
   });
 
   // ── the limo ──
@@ -126,6 +135,11 @@ export async function buildVisitors(kit, { roadY = 0 } = {}) {
         const here = present(v.p, done);
         v.fig.group.visible = here;
         if (!here) continue;
+        // a walker goes about their round (./npc.js steps the clips too)
+        if (v.n) {
+          N.step(v.n, t, dt, state);
+          continue;
+        }
         v.fig.tick?.(t);
         // an agent turns to watch Morty while he's near, and back to the road after
         if (v.watches && state?.morty && state.area === 'street') {
