@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { LANDINGS } from './landings';
 import { STYLES } from './ground';
-import { biomeAt, classify, fromLatLon, latLonOf, uvOf } from './biomes';
+import { vec } from '../foot';
+import { biomeAt, classify, fromLatLon, latLonOf, towardLand, uvOf } from './biomes';
 
 const HEX = /^#[0-9a-f]{6}$/i;
 const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
@@ -91,6 +92,48 @@ describe('a landing’s biome, from the colour of the map under it', () => {
         if (b.sky) for (const k of ['zenith', 'horizon', 'sun']) expect(b.sky[k], `${id}/${b.id} ${k}`).toMatch(HEX);
       }
     }
+  });
+});
+
+describe('a spot over the sea moves on to land', () => {
+  // a world that's sea west of u 0.5 and land east of it; [u, 0, 0] the sampler hands back
+  const half = ([u]) => [u, 0, 0];
+  const sea = ([u]) => u < 0.5;
+  const onEquator = (u) => fromLatLon(0, u * 360 - 180);
+
+  it('walks from the sea to the nearest land', () => {
+    const n = onEquator(0.45);
+    const to = towardLand(n, half, sea);
+    expect(uvOf(to)[0]).toBeGreaterThanOrEqual(0.5);
+    // (the nearest: no further in than a stride past the coast)
+    expect(uvOf(to)[0]).toBeLessThan(0.5 + 0.02 / (Math.PI * 2) + 1e-9);
+    expect(Math.hypot(...to)).toBeCloseTo(1, 9);
+  });
+
+  it('goes the way it was heading when land is as near both ways', () => {
+    // sea in a band round u 0.5, land both sides of it
+    const band = ([u]) => Math.abs(u - 0.5) < 0.02;
+    const n = onEquator(0.5);
+    const east = fromLatLon(0, 10);
+    const west = fromLatLon(0, -10);
+    expect(uvOf(towardLand(n, half, band, { track: vec.add(east, n, -1) }))[0]).toBeGreaterThan(0.5);
+    expect(uvOf(towardLand(n, half, band, { track: vec.add(west, n, -1) }))[0]).toBeLessThan(0.5);
+  });
+
+  it('leaves a spot on land where it is', () => {
+    const n = onEquator(0.7);
+    expect(towardLand(n, half, sea)).toEqual(n);
+  });
+
+  it('leaves a spot with no land in reach where it is, after its steps', () => {
+    let looked = 0;
+    const n = onEquator(0.2);
+    const all = () => {
+      looked++;
+      return true;
+    };
+    expect(towardLand(n, half, all, { steps: 5, ways: 4 })).toEqual(n);
+    expect(looked).toBe(1 + 5 * 4);
   });
 });
 

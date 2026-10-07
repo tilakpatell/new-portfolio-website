@@ -15,9 +15,9 @@
 //            the spot moves on toward land (towardLand). Anything left out
 //            is the landing's own.
 
-import { vec } from '../foot';
+import { facingAlong, rotate, vec } from '../foot';
 
-const { dot, unit } = vec;
+const { cross, dot, unit } = vec;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const DEG = Math.PI / 180;
 
@@ -88,6 +88,28 @@ export function biomeAt(landing, rgb, at = null) {
     scatter: pick('scatter'),
     models: b.models ? { ...own.models, ...b.models } : own.models,
   };
+}
+
+// A spot over the sea, moved to the nearest land: out along the great
+// circle the way it was heading (`track`, any direction along the ground
+// there), and should that find none as soon, the other ways round too, a
+// `stride` (radians) at a time for `steps`; the first that isn't sea
+// (`isSea(sample(uv))`) wins, the way it was heading first at each reach.
+// Land already, or no land in reach: `n` as it was.
+export function towardLand(n, sample, isSea, { track = null, steps = 24, stride = 0.02, ways = 8 } = {}) {
+  const from = unit(n);
+  const seaAt = (p) => isSea(sample(uvOf(p)));
+  if (!seaAt(from)) return n;
+  const ahead = facingAlong(from, track ?? [0, 1, 0]);
+  const dirs = [];
+  for (let i = 0; i < ways; i++) dirs.push(rotate(ahead, from, (i % 2 ? -1 : 1) * Math.ceil(i / 2) * ((Math.PI * 2) / ways)));
+  for (let k = 1; k <= steps; k++) {
+    for (const d of dirs) {
+      const p = unit(rotate(from, unit(cross(from, d)), k * stride));
+      if (!seaAt(p)) return p;
+    }
+  }
+  return n;
 }
 
 // The colour of an image at a uv, through a 256 × 128 copy made once per
