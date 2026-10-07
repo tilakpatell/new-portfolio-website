@@ -1,0 +1,1172 @@
+{
+  "jerry": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Life is effort, and I'll stop when I die",
+      "You hungry for apples? Are you hungry for apples?",
+      "Well, look where being smart got you",
+      "Guess who just sold the apples campaign",
+      "She's allowed to think it's God if she wants, honey",
+      "I stole a paper clip and I have it in my cheek"
+    ],
+    "search": [
+      "Rick and Morty Jerry hungry for apples pitch scene",
+      "Rick and Morty Meeseeks and Destroy Jerry life is effort and I'll stop when I die",
+      "Rick and Morty Mortynight Run Jerryboree Jerry scene",
+      "Rick and Morty Jerry Smith best moments season 1",
+      "Rick and Morty Big Trouble in Little Sanchez Jerry and Beth couples therapy scene"
+    ],
+    "avoid": ["snl", "saturday night live", "archer", "30 rock"]
+  },
+  "beth": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "I'm performing surgery, but not on a horse, on a human",
+      "Holy crap, I am winning a Nobel Prize",
+      "When two people create a life together, they set aside their previous lives as individuals",
+      "Don't deify the people that leave you",
+      "Tomorrow is your one year anniversary back in our lives",
+      "Now that you know you could have had it better, you resent me for holding you back"
+    ],
+    "search": [
+      "Rick and Morty Beth don't deify the people that leave you scene",
+      "Rick and Morty Rixty Minutes Beth alternate reality surgeon scene",
+      "Rick and Morty The ABC's of Beth Beth and Rick Froopyland scene",
+      "Rick and Morty Beth horse surgeon scene",
+      "Rick and Morty Beth Smith best moments season 2"
+    ],
+    "avoid": ["scrubs", "how i met your mother", "space beth vs"]
+  },
+  "summer": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "It's called carpe diem, Morty. Look it up",
+      "Losers look stuff up while the rest of us are carpin' all them diems",
+      "I fucking love post-apocalyptic versions of Earth",
+      "Grandpa, you're being stupid! Just surrender",
+      "Sorry my Grandpa stole your god and ruined your car",
+      "Dad, I'm not giving you my phone"
+    ],
+    "search": [
+      "Rick and Morty Summer carpe diem look it up scene",
+      "Rick and Morty Rickmancing the Stone Summer and the Death Stalkers scene",
+      "Rick and Morty Rixty Minutes Summer finds out she was an accident scene",
+      "Rick and Morty Summer Smith best moments season 3",
+      "Rick and Morty Something Ricked This Way Comes Summer works at Needful Things"
+    ],
+    "avoid": ["greek", "casey cartwright"]
+  },
+  "birdperson": {
+    "show": "rick-and-morty",
+    "clips": ["public/audio/clips/bird-culture.mp3"],
+    "quotes": [
+      "In bird culture, this is considered a dick move",
+      "You appear to be dying. I will make efforts to prevent this, but can promise nothing",
+      "It is random debris. I found it in my carpet. I don't know what humans eat",
+      "The beacon was activated. Who is in danger?",
+      "I am pleased there is no emergency",
+      "My people have another saying. Gubba nub nub doo rah kah"
+    ],
+    "search": [
+      "Rick and Morty Get Schwifty Birdperson in bird culture this is considered a dick move",
+      "Rick and Morty Ricksy Business Birdperson and Rick talk scene",
+      "Rick and Morty The Wedding Squanchers Birdperson wedding scene",
+      "Rick and Morty Birdperson best moments"
+    ],
+    "avoid": ["harmontown", "community", "phoenixperson vs"]
+  },
+  "squanchy": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Hey, Rick, squanchy party, bro",
+      "Is there a good place for me to squanch around here?",
+      "All right! I like your squanch!",
+      "Hey, squanchers! The party's squanching on at my place!",
+      "You're not squanchy enough for a squanchy party"
+    ],
+    "search": [
+      "Rick and Morty Ricksy Business Squanchy party scene",
+      "Rick and Morty The Wedding Squanchers Squanchy scene",
+      "Rick and Morty Squanchy best moments"
+    ],
+    "avoid": ["spongebob", "adventure time"]
+  },
+  "tammy": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Brad is here! Quick, make my hair look drunk",
+      "I like your feathers",
+      "You're a high school senior from the Planet Earth and you're marrying a 40 year old Birdperson",
+      "Is this a bad time to reveal I'm an undercover officer?",
+      "You know what this human eats"
+    ],
+    "search": [
+      "Rick and Morty The Wedding Squanchers Tammy wedding speech scene",
+      "Rick and Morty Tammy reveals she is a Federation agent scene",
+      "Rick and Morty Ricksy Business Tammy Gueterman party scene"
+    ],
+    "avoid": ["degrassi"]
+  },
+  "krombopulos": {
+    "show": "rick-and-morty",
+    "clips": ["public/audio/clips/here-i-go-killing-again.mp3"],
+    "quotes": [
+      "Oh boy, here I go killin' again",
+      "I'm Krombopulos Michael! I'm an assassin. I buy guns from your grandpa",
+      "I have no code of ethics, I will kill anyone, anywhere",
+      "Children, animals, old people, doesn't matter. I just love killin'",
+      "Here you go, three thousand Flurbos! D'you have the weapon?",
+      "If you ever need anybody murdered, please give me a call"
+    ],
+    "search": [
+      "Rick and Morty Mortynight Run Krombopulos Michael buys a gun scene",
+      "Rick and Morty Krombopulos Michael oh boy here I go killing again",
+      "Rick and Morty Krombopulos Michael scene"
+    ],
+    "avoid": ["review with forrest", "andy daly"]
+  },
+  "poopybutthole": {
+    "show": "rick-and-morty",
+    "clips": ["public/audio/clips/ooo-wee.mp3"],
+    "quotes": [
+      "Ooh wee, whatever you want Rick! We're here to help!",
+      "I've always been here for you guys, and I always will be",
+      "This little poopypants is hungry. Will somebody pass me a pork chop?",
+      "Is this what bleeding to death is?",
+      "You think the Smith family is gonna be okay?",
+      "Tune in to Rick and Morty season three in, like, a year and a half"
+    ],
+    "search": [
+      "Rick and Morty Total Rickall Mr. Poopybutthole scene",
+      "Rick and Morty The Wedding Squanchers Mr. Poopybutthole post credits",
+      "Rick and Morty The Rickchurian Mortydate Mr. Poopybutthole post credits",
+      "Rick and Morty Mr. Poopybutthole ooh wee"
+    ],
+    "avoid": ["season 7", "season 8", "jon allen"]
+  },
+  "meeseeks": {
+    "show": "rick-and-morty",
+    "clips": ["public/audio/clips/im-mr-meeseeks.mp3", "public/audio/clips/can-do.mp3", "public/audio/clips/cant-take-it-anymore.mp3"],
+    "quotes": [
+      "I'm Mr. Meeseeks! Look at me!",
+      "Ooh, yeah! Can do!",
+      "Meeseeks don't usually have to exist this long. It's getting weird",
+      "I can't take it anymore. I just want to die!",
+      "Okay, Jerry, you got to just choke up on the club",
+      "Existence is pain to a Meeseeks, Jerry"
+    ],
+    "search": [
+      "Rick and Morty Meeseeks and Destroy Mr. Meeseeks box first summoned scene",
+      "Rick and Morty Mr. Meeseeks Jerry golf two strokes off scene",
+      "Rick and Morty existence is pain to a Meeseeks scene"
+    ],
+    "avoid": ["season 7", "season 8"]
+  },
+  "janitor": {
+    "show": "rick-and-morty",
+    "clips": ["public/audio/clips/im-mr-meeseeks.mp3", "public/audio/clips/can-do.mp3", "public/audio/clips/cant-take-it-anymore.mp3"],
+    "quotes": [
+      "I'm Mr. Meeseeks! Look at me!",
+      "Ooh, yeah! Can do!",
+      "Meeseeks don't usually have to exist this long. It's getting weird",
+      "I can't take it anymore. I just want to die!",
+      "Existence is pain to a Meeseeks, Jerry"
+    ],
+    "search": [
+      "Rick and Morty Meeseeks and Destroy Mr. Meeseeks box first summoned scene",
+      "Rick and Morty Mr. Meeseeks Jerry golf two strokes off scene",
+      "Rick and Morty existence is pain to a Meeseeks scene"
+    ],
+    "avoid": ["season 7", "season 8"]
+  },
+  "uspresident": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "I'm the goddamn President of the United fuckin' States!",
+      "For God's sake, Nathan, the man turns people into snakes. He can use Google Maps",
+      "Get this man and his grandson on a Blackhawk to Area 51",
+      "Don't high-road me. The two of you break 1,000 federal laws a day",
+      "Today, we celebrate our independence from Rick and Morty",
+      "Some kind of alien googa has infested the Kennedy sex tunnels"
+    ],
+    "search": [
+      "Rick and Morty The Rickchurian Mortydate President and Rick scene",
+      "Rick and Morty President fights Rick in the White House scene",
+      "Rick and Morty Get Schwifty President and General Nathan scene",
+      "Rick and Morty President Curtis best moments"
+    ],
+    "avoid": ["president morty", "evil morty", "gargoyles", "goliath"]
+  },
+  "secretservice": {
+    "design": "Adult American man, flat Midwestern baritone, a Secret Service agent's bored courtesy: firm, clipped, level and quick, no warmth."
+  },
+  "gromflomite": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "It's a new machine. It detects stuff all the way up your butt",
+      "Random check. He's got to go through the new machine",
+      "Get out of the vehicle made of garbage or we will open fire!",
+      "Okay, next through. Except you. You go over there"
+    ],
+    "search": [
+      "Rick and Morty pilot interdimensional customs Gromflomite scanner scene",
+      "Rick and Morty Mortynight Run Galactic Federation Gromflomite police scene",
+      "Rick and Morty The Rickshank Rickdemption Galactic Federation headquarters Gromflomite"
+    ],
+    "avoid": ["season 7", "season 8"]
+  },
+  "zigerion": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Oh, god, sir! They're still naked!",
+      "I think we should make Kevin look, sir",
+      "Hey, man, Abductions just follows the acquisition order",
+      "We only acquire humans that haven't been simulated!"
+    ],
+    "search": [
+      "Rick and Morty M. Night Shaym-Aliens Zigerion control room scene",
+      "Rick and Morty Zigerions simulation scam scene",
+      "Rick and Morty M. Night Shaym-Aliens Zigerions argue Abductions Acquisitions"
+    ],
+    "avoid": []
+  },
+  "general": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "What America's got is 70,000 megatons of KABOOM-BOOM",
+      "Get schwifty? What the hell is that?",
+      "I've seen enough. These guys are one-hit wonders",
+      "We still have the nuclear option",
+      "Just launch the missiles!",
+      "I hope you like being hit in the face with a gun!"
+    ],
+    "search": [
+      "Rick and Morty Get Schwifty General Nathan scene",
+      "Rick and Morty Get Schwifty Pentagon nuclear option General Nathan",
+      "Rick and Morty General Nathan versus the President scene"
+    ],
+    "avoid": ["that 70s show", "red forman", "robocop"]
+  },
+  "principalvagina": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "This is Principal Vagina, no relation",
+      "Your son, Morty, has attended this school for a total of seven hours over the last two months",
+      "Giant head in the sky, please forgive all that we've done",
+      "We are but tiny things with entire bodies stuck to your ground",
+      "I'm the only one that speaks to the heads!",
+      "That's enough Bradley. We don't want you injuring your ball-throwing arm"
+    ],
+    "search": [
+      "Rick and Morty pilot Principal Vagina scene",
+      "Rick and Morty Get Schwifty Principal Vagina head priest scene",
+      "Rick and Morty Principal Vagina best moments"
+    ],
+    "avoid": ["phil hendrie show"]
+  },
+  "jessica": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "You know what I named these? My little Morties",
+      "Wow. Did you just come into the cafeteria through a portal?",
+      "Oh, hey, Morty. What's up?",
+      "Being nervous is sort of selfish sometimes, you know?",
+      "So, is Tiny Rick your brother or cousin, or",
+      "No, I just wish you said it sooner"
+    ],
+    "search": [
+      "Rick and Morty Mort Dinner Rick Andre Jessica and Morty date scene",
+      "Rick and Morty Rick Potion 9 Jessica and Morty flu season dance",
+      "Rick and Morty Big Trouble in Little Sanchez Jessica and Morty scene"
+    ],
+    "avoid": ["keep summer safe"]
+  },
+  "brad": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Dude, stay in your league! Look at how hot she is!",
+      "I throw balls far. You want good words, date a languager",
+      "Is this punk bothering you, Jessica?",
+      "Check it out. Tammy's already drunk. Cool",
+      "So I should get on my knees and kiss your ass?!"
+    ],
+    "search": [
+      "Rick and Morty Rick Potion 9 Brad and Morty scene",
+      "Rick and Morty Ricksy Business Brad at the party scene"
+    ],
+    "avoid": ["arrow", "curtis holt", "brad anderson"]
+  },
+  "ethan": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "I've been texting you for hours. What the hell?!",
+      "Did you even consider how that might make me feel?",
+      "From Summer being a total bitch!",
+      "I love you so much"
+    ],
+    "search": [
+      "Rick and Morty Anatomy Park Ethan and Summer scene",
+      "Rick and Morty Ethan Summer's boyfriend scene",
+      "Rick and Morty The Whirly Dirly Conspiracy Summer and Ethan scene"
+    ],
+    "avoid": ["h3h3", "ethan klein"]
+  },
+  "tricia": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "So, Jessica, I heard you broke up with Brad",
+      "I want that kind of love like that docking kind of love",
+      "So, how was your date with Brad?",
+      "It's actually a contraction of some and more, you see that?",
+      "Oh, my God. I have to go call my mother!"
+    ],
+    "search": [
+      "Rick and Morty Rest and Ricklaxation Jessica and Tricia scene",
+      "Rick and Morty The Whirly Dirly Conspiracy Summer and Tricia scene"
+    ],
+    "avoid": ["degrassi"]
+  },
+  "nancy": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Hey, Summer, haven't seen you at flute practice in a while",
+      "Summer, you're a bad person. All you care about is having popular people like you",
+      "Summer's gonna like me again",
+      "That's not what Abradolph Lincoler stood for"
+    ],
+    "search": [
+      "Rick and Morty Ricksy Business Summer's party Nancy scene",
+      "Rick and Morty Ricksy Business Nancy and Abradolf Lincler"
+    ],
+    "avoid": ["degrassi"]
+  },
+  "drwong": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Smith family, I'm Dr. Wong. Come on in",
+      "Why do we think Grandpa turned himself into a pickle?",
+      "Does Grandpa turn himself into a pickle a lot?",
+      "It's not my job to take sides or pass judgment",
+      "Rick, would you be interested in proving me wrong?",
+      "Then show me data. Ignore them for a week and see what happens"
+    ],
+    "search": [
+      "Rick and Morty Pickle Rick Dr. Wong therapy session scene",
+      "Rick and Morty Pickle Rick Dr. Wong speech to Rick",
+      "Rick and Morty Analyze Piss Dr. Wong and Rick scene"
+    ],
+    "avoid": ["thelma", "rocky horror", "dead man walking"]
+  },
+  "marsha": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "I am Mar-sha, ruler of Gazorpazorp",
+      "From here, we dispense mechanical surrogates to maintain our population"
+    ],
+    "search": [
+      "Rick and Morty Raising Gazorpazorp Mar-Sha women of Gazorpazorp scene",
+      "Rick and Morty Raising Gazorpazorp Summer and Rick on Gazorpazorp"
+    ],
+    "avoid": ["farscape", "uncharted", "dragon age", "ventriloquiver"]
+  },
+  "mortyjr": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "I'd like to dance, on the graves of my enemies",
+      "Daddy, can I go outside?",
+      "What are you gonna do? Ground me? I can't go outside anyway!",
+      "I don't wanna masturbate, I want to conquer the planet!",
+      "But that's where all the people and the animals are"
+    ],
+    "search": [
+      "Rick and Morty Raising Gazorpazorp Morty Jr scene",
+      "Rick and Morty Morty Jr grows up conquer the planet scene",
+      "Rick and Morty Morty Jr My Horrible Father book interview scene"
+    ],
+    "avoid": ["futurama", "pinky and the brain"]
+  },
+  "unity": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "You concocted a me repellent?",
+      "We hear things, Rick",
+      "Do you not trust me Rick?",
+      "I needed you to understand how serious this is",
+      "Take it easy. I can explain"
+    ],
+    "search": [
+      "Rick and Morty Auto Erotic Assimilation Unity and Rick scene",
+      "Rick and Morty Auto Erotic Assimilation Unity talks to Summer and Morty",
+      "Rick and Morty Air Force Wong Unity and Rick scene"
+    ],
+    "avoid": ["mad men", "good girls", "joan holloway"]
+  },
+  "scaryterry": {
+    "show": "rick-and-morty",
+    "clips": ["public/audio/clips/scary-terry.mp3"],
+    "quotes": [
+      "Welcome to your nightmare, bitch!",
+      "You can run, but you can't hide, bitch!",
+      "Nothing but fear from here on out, bitch!",
+      "Buckle up, bitch!",
+      "I shouldn't take my anger out on you or Scary Brandon. I love you, Melissa",
+      "Oh, no! I'm late to class, bitch!"
+    ],
+    "search": [
+      "Rick and Morty Lawnmower Dog Scary Terry scene",
+      "Rick and Morty Scary Terry welcome to your nightmare bitch",
+      "Rick and Morty Lawnmower Dog Scary Terry at home with Melissa"
+    ],
+    "avoid": ["freddy krueger", "nightmare on elm street"]
+  },
+  "noobnoob": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Whoa, I'm nervous about my first mission",
+      "No, uh, I got stuff to do here"
+    ],
+    "search": [
+      "Rick and Morty Vindicators 3 Noob-Noob scene",
+      "Rick and Morty Vindicators 3 ending Rick and Noob-Noob party"
+    ],
+    "avoid": ["season 7", "season 8"]
+  },
+  "kingjellybean": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "How are you today? I'm Mr. Jelly Bean!",
+      "Nice. Is it a fun adventure?",
+      "Well, isn't that what adventures do?",
+      "Uhh, no, stay. Go with the flow!",
+      "Stop fighting me! Just let this happen!"
+    ],
+    "search": [
+      "Rick and Morty Meeseeks and Destroy Mr. Jelly Bean bathroom scene",
+      "Rick and Morty King Jellybean scene"
+    ],
+    "avoid": ["spongebob", "adventure time"]
+  },
+  "zeep": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "I dropped out of school. It's not a place for smart people",
+      "This isn't a fucking chocolate factory. I don't have time",
+      "Inside that container is an infinite universe with a planet capable of generating massive amounts of power. I call it a miniverse",
+      "I said 12 quantum stabilizers, not 11",
+      "No more gooble boxes"
+    ],
+    "search": [
+      "Rick and Morty The Ricks Must Be Crazy Zeep Xanflorp scene",
+      "Rick and Morty The Ricks Must Be Crazy Zeep and Rick fight in the miniverse",
+      "Rick and Morty Zeep Xanflorp miniverse explained by Zeep"
+    ],
+    "avoid": ["late show", "colbert report", "daily show"]
+  },
+  "kyle": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Oh, they won't be slaves. They'll work for each other and pay each other money",
+      "What the hell is happening?",
+      "Are they not really aliens?"
+    ],
+    "search": [
+      "Rick and Morty The Ricks Must Be Crazy Kyle teenyverse scene",
+      "Rick and Morty Kyle teenyverse scientist Nathan Fielder scene"
+    ],
+    "avoid": ["nathan for you", "the rehearsal"]
+  },
+  "xenonbloom": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "And I am Dr. Xenon Bloom",
+      "Anatomy Park's greatest attraction, young man, isn't the music or the food or the Pirates of the Pancreas",
+      "It is first and foremost a living museum of humanity's most noble and ferocious diseases",
+      "Hepatitis won't follow us into the respiratory system!",
+      "Tuberculosis, coming in fast!",
+      "We must save Ruben. This is my life's work"
+    ],
+    "search": [
+      "Rick and Morty Anatomy Park Dr. Xenon Bloom scene",
+      "Rick and Morty Anatomy Park Xenon Bloom explains the park to Morty",
+      "Rick and Morty Anatomy Park Pirates of the Pancreas scene"
+    ],
+    "avoid": ["last week tonight"]
+  },
+  "poncho": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Hey Doc, I have news for ya. Your living museum is officially a wild safari!",
+      "Don't be a hero, kid",
+      "Now I'm takin' orders from a twelve-year-old boy?!",
+      "Kid! You're a genius!",
+      "Hey Gonorrhea! How's this for a burning sensation?"
+    ],
+    "search": [
+      "Rick and Morty Anatomy Park Poncho scene",
+      "Rick and Morty Anatomy Park Poncho betrays the group scene"
+    ],
+    "avoid": ["boondocks", "uncle ruckus"]
+  },
+  "annie": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "We're sitting ducks!",
+      "They're chewing through the doors!",
+      "It's Hepatitis A!",
+      "I believe I have the knowledge necessary to create a new, much safer park!",
+      "I think they're just good guys"
+    ],
+    "search": [
+      "Rick and Morty Anatomy Park Annie and Morty scene",
+      "Rick and Morty Anatomy Park ending Annie and Morty"
+    ],
+    "avoid": []
+  },
+  "needful": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "I've just recently opened for business",
+      "This aftershave makes a man quite irresistible to women",
+      "Free of charge: one never pays here. Not with money",
+      "A price for everything, Mr. Goldenfold",
+      "Tell me Rick, what do you desire?",
+      "This store curses people. That's my business"
+    ],
+    "search": [
+      "Rick and Morty Something Ricked This Way Comes Mr. Needful scene",
+      "Rick and Morty Something Ricked This Way Comes Rick versus the Devil Needful Things",
+      "Rick and Morty Mr. Needful and Summer scene"
+    ],
+    "avoid": ["spider-man", "doctor octopus", "frida"]
+  },
+  "arthricia": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Your vehicle... is it from the gods?",
+      "My nana! We have to save her!",
+      "Get the fuck out of the flying machine!",
+      "Yes. I have to find somewhere to hide",
+      "Please! Leave me alone!"
+    ],
+    "search": [
+      "Rick and Morty Look Who's Purging Now Arthricia scene",
+      "Rick and Morty Look Who's Purging Now purge planet cat girl Arthricia"
+    ],
+    "avoid": ["baby daddy"]
+  },
+  "flippynips": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "I'm King Flippynips, ruler of Pluto!",
+      "Pluto's a fucking planet, bitch!",
+      "The Plutobell Prize is the highest honour a scientist can receive!",
+      "Plutonimo bay is a military prison, a sort of play on words",
+      "The young eat the old if you let them, Jerry. Pluto is a cold, cold celestial dwarf"
+    ],
+    "search": [
+      "Rick and Morty Something Ricked This Way Comes Jerry on Pluto scene",
+      "Rick and Morty King Flippy Nips Pluto is a planet scene"
+    ],
+    "avoid": ["mighty boosh", "bob fossil"]
+  },
+  "scroopy": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Morty Smith. I'm Scroopy Noopers. I'm a scientist. Can I show you something?",
+      "Is everyone in your family an idiot?",
+      "All you have to do is get him to admit that, and you could save four billion lives",
+      "You can't kill the truth, father!",
+      "You animals! Animals!"
+    ],
+    "search": [
+      "Rick and Morty Something Ricked This Way Comes Scroopy Noopers scene",
+      "Rick and Morty Pluto is shrinking Scroopy Noopers and Morty"
+    ],
+    "avoid": ["uncharted", "nathan drake", "deadpool"]
+  },
+  "gearhead": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Your geldon convertor is pretty dinged up",
+      "You really need to respect your gears, Rick",
+      "Do you even know my real name? It's Revolio Clockberg Junior",
+      "The thing people don't realize about the Gear Wars is that it was never really about the gears at all",
+      "I'm sorry, Rick. The reward on your head is too high"
+    ],
+    "search": [
+      "Rick and Morty Mortynight Run Gearhead betrays Rick scene",
+      "Rick and Morty Ricksy Business Gearhead Gear Wars story",
+      "Rick and Morty Revolio Clockberg Jr scene"
+    ],
+    "avoid": []
+  },
+  "vance": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Sorry I'm late. It was happy hour",
+      "Rick Sanchez, Tinkerer of Terror. Man, that's hard to say",
+      "I never forget a kid. What do you say, Vindicators? Let's make this three for three?",
+      "Everyone in the universe is a hero",
+      "Security drones, inbound"
+    ],
+    "search": [
+      "Rick and Morty Vindicators 3 Vance Maximus scene",
+      "Rick and Morty Vindicators 3 the Vindicators assemble Vance Maximus arrives"
+    ],
+    "avoid": ["mr. robot", "heathers", "true romance"]
+  },
+  "supernova": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Vindicators, Worldender is back",
+      "Rick, you have something to add to the briefing?",
+      "Noob-Noob, we're having a briefing!",
+      "We assembled a second time last summer to fight Doomnomitron",
+      "Vindicators, prepare for arrival",
+      "Looks like your grandpa had a long night"
+    ],
+    "search": [
+      "Rick and Morty Vindicators 3 Supernova briefing scene",
+      "Rick and Morty Vindicators 3 Supernova betrayal scene"
+    ],
+    "avoid": ["community", "britta", "love netflix"]
+  },
+  "alanrails": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "I could've just used a ghost train",
+      "Son of a steam engine! They're all dead!",
+      "Give me one good reason why I shouldn't crush your windpipe!",
+      "I told you not to invite this mummified motherfucker back!",
+      "You two make quite a team"
+    ],
+    "search": [
+      "Rick and Morty Vindicators 3 Alan Rails ghost train scene",
+      "Rick and Morty Vindicators 3 Alan Rails and Supernova argue"
+    ],
+    "avoid": ["the wire", "john wick", "fringe", "destiny", "horizon"]
+  },
+  "millionants": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "I sense insecurity",
+      "I only lost 400 ants. My queen is laying more. I am back to one million ants",
+      "I sense the presence of a greater evil",
+      "I have no stake in this",
+      "I sense his life force is fading"
+    ],
+    "search": [
+      "Rick and Morty Vindicators 3 Million Ants scene",
+      "Rick and Morty Vindicators 3 Million Ants and Morty"
+    ],
+    "avoid": ["spongebob"]
+  },
+  "crocubot": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "I am Crocubot",
+      "Why would Worldender do this to his own men... and several women?",
+      "My mechanical and reptilian logic are certain of it",
+      "Oh, I know this! Dorian 5!"
+    ],
+    "search": [
+      "Rick and Morty Vindicators 3 Crocubot scene",
+      "Rick and Morty Vindicators 3 Crocubot riddle answer"
+    ],
+    "avoid": ["futurama", "pinky and the brain"]
+  },
+  "nebulon": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "If there's a wiener on that monitor, I swear to god, Stu",
+      "How did this happen?! Where's the Abductions Department?",
+      "Rick Sanchez is the target",
+      "Oh, this is going to be such a mindfuck!",
+      "Too loud, Cynthia. Too loud and too specific",
+      "That is why you're never getting home"
+    ],
+    "search": [
+      "Rick and Morty M. Night Shaym-Aliens Prince Nebulon scene",
+      "Rick and Morty concentrated dark matter recipe Zigerion scene",
+      "Rick and Morty M. Night Shaym-Aliens Prince Nebulon is scammed"
+    ],
+    "avoid": ["arrested development", "mr. show"]
+  },
+  "poptart": {
+    "design": "A tiny chipper cartoon pop-tart: bright, squeaky, sing-song boyish voice, sunny and oblivious, quick and bouncy, like a breakfast mascot."
+  },
+  "storylord": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "What's wrong, Rick? Don't you want to see how your story ends?!",
+      "Remember the highest truth of all! You're getting your ass kicked on a train!",
+      "I'll now fuel my anthology with your limitless potential",
+      "I have one million times your motivation",
+      "Forward your notes to my ass!",
+      "Say it! Tell me I'm the new Mr. Nimbus!"
+    ],
+    "search": [
+      "Rick and Morty Never Ricking Morty Story Lord scene",
+      "Rick and Morty Never Ricking Morty Story Lord fight on the story train",
+      "Rick and Morty Full Meta Jackrick Story Lord scene"
+    ],
+    "avoid": ["billions", "sideways", "john adams"]
+  },
+  "ticketsguy": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": ["Tickets please"],
+    "search": [
+      "Rick and Morty Never Ricking Morty tickets please guy scene",
+      "Rick and Morty tickets please guy Blips and Chitz"
+    ],
+    "avoid": ["harmontown", "community"]
+  },
+  "tommy": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "All kneel for King Tommy!",
+      "I am the King of Froopyland, but I go by another name, too",
+      "I have lived here since I was a mere child",
+      "I suppose you're wondering, how do I sustain myself?",
+      "I always find the theater is the best way to clarify things",
+      "Oh! It's the Magic Crayon Lady!"
+    ],
+    "search": [
+      "Rick and Morty The ABC's of Beth Tommy in Froopyland scene",
+      "Rick and Morty King Tommy Froopyland scene"
+    ],
+    "avoid": ["silicon valley", "richard hendricks"]
+  },
+  "nimbus": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Now face the wrath of your once and eternal foe, Mr. Nimbus!",
+      "Richard. You look like ass",
+      "I like this one, Rick. He is unbroken. Untamed",
+      "I am Mr. Nimbus",
+      "Shall we, Richard?",
+      "I control them"
+    ],
+    "search": [
+      "Rick and Morty Mort Dinner Rick Andre Mr. Nimbus scene",
+      "Rick and Morty Mr. Nimbus I control the police",
+      "Rick and Morty Mort Dinner Rick Andre Mr. Nimbus dinner with Rick"
+    ],
+    "avoid": ["harmontown", "community"]
+  },
+  "fart": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "My kind has no use for names",
+      "I like this name, Fart",
+      "You do understand I'm telepathic, right?",
+      "You are not like other carbon-based life forms. You put the value of all life above your own",
+      "More are coming",
+      "You saved my life!"
+    ],
+    "search": [
+      "Rick and Morty Mortynight Run Fart scene",
+      "Rick and Morty Mortynight Run Morty frees Fart scene",
+      "Rick and Morty Fart telepathic gas being Mortynight Run"
+    ],
+    "avoid": ["flight of the conchords", "what we do in the shadows", "goodbye moonmen"]
+  },
+  "miles": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [],
+    "search": [
+      "Rick and Morty One Crew Over the Crewcoo's Morty Miles Knightly scene",
+      "Rick and Morty Heist-Con Miles Knightly heist-off challenge scene",
+      "Rick and Morty One Crew Over the Crewcoo's Morty Miles Knightly and Rick"
+    ],
+    "avoid": ["the leftovers", "mulholland"]
+  },
+  "heister": {
+    "design": "Burly adult man, slow low gravel, a dim but friendly hired muscle at a heist convention, deadpan and unhurried."
+  },
+  "catburglar": {
+    "design": "Adult woman, husky and dry, a cool professional cat burglar, sardonic and quick, half-bored, a little raspy."
+  },
+  "glexo": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "I'm Glaxo Slimslom. Welcome to Nuptia Four. Your marriage can rest easy now",
+      "What the hell kinda relationship do you have?",
+      "There's nothing to regret. We're dealing with unconscious, unhealthy thoughts",
+      "All of these relationships are different, none of them are real, and none of them work",
+      "The E-Arth relationships are simpler",
+      "Jerry, go ahead and sit there and put this on"
+    ],
+    "search": [
+      "Rick and Morty Big Trouble in Little Sanchez Nuptia 4 couples counselor scene",
+      "Rick and Morty Big Trouble in Little Sanchez Beth and Jerry mythologues scene"
+    ],
+    "avoid": ["community", "dean pelton"]
+  },
+  "glipglop": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Hello, I'm Dr. Glipglop",
+      "Relax Mr. Smith, you're in an alien hospital",
+      "I wanted to let you all know that Jerry is doing just fine",
+      "But, ah, Mrs. Smith, could you come with me?"
+    ],
+    "search": [
+      "Rick and Morty Interdimensional Cable 2 Jerry alien hospital doctor scene",
+      "Rick and Morty Interdimensional Cable 2 Shrimply Pibbles hospital scene"
+    ],
+    "avoid": ["harmontown", "community"]
+  },
+  "shrimply": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "I've dwelt among the humans. Their entire culture is built around their penises",
+      "You skrenga 100% of the shlaanks you don't skrang"
+    ],
+    "search": [
+      "Rick and Morty Interdimensional Cable 2 Shrimply Pibbles speech",
+      "Rick and Morty Shrimply Pibbles Werner Herzog scene"
+    ],
+    "avoid": ["grizzly man", "mandalorian", "the client", "documentary"]
+  },
+  "receptionist": {
+    "design": "Alien hospital receptionist, middle-aged woman, nasal and flat, tired rapid monotone, never looking up from her screen."
+  },
+  "risotto": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "My name is Risotto Groupon",
+      "I am the assistant general manager of the restaurant",
+      "My kingdom was usurped by force with weapons and technology supplied by your father-in-law!",
+      "Would you help me kill him?",
+      "Do you... like theme-park rides?",
+      "There is a popular attraction here called the Whirly Dirly"
+    ],
+    "search": [
+      "Rick and Morty The Whirly Dirly Conspiracy Risotto Groupon and Jerry scene",
+      "Rick and Morty The Whirly Dirly Conspiracy Risotto Groupon plot to kill Rick"
+    ],
+    "avoid": ["spongebob", "mr. krabs", "shawshank", "highlander"]
+  },
+  "bartender": {
+    "design": "Resort bartender, adult man, smooth upbeat lounge-host baritone, relaxed and amused, in no hurry."
+  },
+  "watert": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "My story begins at the dawn of time in the far away realm of Alphabetrium",
+      "Who would take a lobster to see Iron Man 3?",
+      "That's right, it's me, Ice-T! I care now!",
+      "I ain't worried about no Earth blowin' up, man",
+      "Over-developed, under-developed. Bad songs are bad songs",
+      "Then I better crunch the numbers"
+    ],
+    "search": [
+      "Rick and Morty Get Schwifty Ice-T Alphabetrium story scene",
+      "Rick and Morty Get Schwifty Ice-T becomes Water-T scene",
+      "Rick and Morty Get Schwifty Ice-T in the garage scene"
+    ],
+    "avoid": ["law and order", "svu", "body count"]
+  },
+  "cromulon": {
+    "show": "rick-and-morty",
+    "clips": ["public/audio/clips/show-me-what-you-got.mp3", "public/audio/clips/i-like-what-you-got.mp3", "public/audio/clips/disqualified.mp3"],
+    "quotes": [
+      "Show me what you got",
+      "I like what you got. Good job",
+      "Disqualified",
+      "Welcome back to Planet Music!",
+      "After 988 seasons of Planet Music, the Cromulons have decided to declare Earth the final winner",
+      "Boo! Not cool!"
+    ],
+    "search": [
+      "Rick and Morty Get Schwifty Cromulon show me what you got scene",
+      "Rick and Morty Get Schwifty Planet Music Cromulon announcer",
+      "Rick and Morty Cromulon I like what you got"
+    ],
+    "avoid": ["get schwifty song", "lyrics", "season 7", "season 8"]
+  },
+  "hemorrhage": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "I am Hemorrhage",
+      "We carry it with us for desecration, to remind us there are no gods",
+      "There is no leave. We are united, or we are enemies",
+      "Death Stalkers, bring me his flesh leather!",
+      "There is no deeper bond than the one between a Death Stalker and his car",
+      "Get out of my head"
+    ],
+    "search": [
+      "Rick and Morty Rickmancing the Stone Hemorrhage scene",
+      "Rick and Morty Rickmancing the Stone Hemorrhage and Summer scene",
+      "Rick and Morty Rickmancing the Stone Hemorrhage Blood Dome"
+    ],
+    "avoid": ["community", "the soup", "jeff winger"]
+  },
+  "deathstalker": {
+    "design": "Adult man, deep gravelly raider's bark, a post-apocalyptic wasteland brute: short, guttural and contemptuous."
+  },
+  "atlantean": {
+    "design": "Adult man, a stiff formal royal guard from under the sea: stern clipped baritone, a little wet and echoing."
+  },
+  "cornvelious": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Wow! This sauce is fucking amazing! You said it was promoting a movie?",
+      "You want me to get intel out of the smartest mammal in the galaxy, you better give me a decent brainalyzer",
+      "Or the Series 9000 is going to turn it into mush",
+      "I admire you, Rick",
+      "I'd like very much to visit the memory of you inventing your portal gun",
+      "Where are we going?"
+    ],
+    "search": [
+      "Rick and Morty The Rickshank Rickdemption Cornvelious Daniel brainalyzer scene",
+      "Rick and Morty The Rickshank Rickdemption Szechuan sauce memory scene"
+    ],
+    "avoid": ["firefly", "castle", "the rookie", "serenity"]
+  },
+  "antsjohnson": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "I'm Ants-In-My-Eyes Johnson, here at Ants-in-My-Eyes Johnson's Electronics",
+      "There's so many ants in my eyes!",
+      "Everything's black, I can't see a thing!",
+      "Our prices, I hope, aren't too low!",
+      "Check out this refrigerator! Only $200!"
+    ],
+    "search": [
+      "Rick and Morty Rixty Minutes Ants in my Eyes Johnson commercial",
+      "Rick and Morty interdimensional cable Ants in my Eyes Johnson electronics"
+    ],
+    "avoid": ["season 7", "season 8"]
+  },
+  "babylegs": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Baby Legs, here we go! That's the sound I make, when I'm trying to run fast",
+      "I feel like I don't need no regular-leg partner",
+      "Uh, yeah, because I'm a good detective",
+      "I just learned a real valuable lesson",
+      "Hey, that was good team work"
+    ],
+    "search": [
+      "Rick and Morty Rixty Minutes Baby Legs detective show",
+      "Rick and Morty interdimensional cable Baby Legs and Regular Legs"
+    ],
+    "avoid": ["season 7", "season 8"]
+  },
+  "regularlegs": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Wow! You sure found this guy quick!",
+      "Look, Baby Legs, it's the criminal!",
+      "I'm coming, Baby Legs! I'm Regular Legs! We got him!"
+    ],
+    "search": [
+      "Rick and Morty Rixty Minutes Baby Legs detective show",
+      "Rick and Morty interdimensional cable Baby Legs and Regular Legs"
+    ],
+    "avoid": ["season 7", "season 8"]
+  },
+  "mrsneezy": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": ["Oh, I'm Mr. Sneezy! Achoo!"],
+    "search": [
+      "Rick and Morty Rixty Minutes interdimensional cable Mr. Sneezy",
+      "Rick and Morty Rixty Minutes interdimensional cable channel surfing"
+    ],
+    "avoid": ["season 7", "season 8"]
+  },
+  "gazorpazorpfield": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "I really could go for some enchiladas",
+      "Hey Jon, it's me, Gazorpazorpfield. Boy, fuck you, Jon",
+      "You dumb, stupid, weak, pathetic, white guilt, milquetoast piece of human garbage",
+      "I'm Gazorpazorp-fucking-field, bitch! Now give me my fucking enchiladas!"
+    ],
+    "search": [
+      "Rick and Morty Rixty Minutes Gazorpazorpfield cartoon",
+      "Rick and Morty interdimensional cable Gazorpazorpfield I hate Mondays"
+    ],
+    "avoid": ["garfield movie", "season 7", "season 8"]
+  },
+  "shmlonathan": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": ["Schmlove, Schmlandula, Schmlonathan"],
+    "search": [
+      "Rick and Morty Rixty Minutes interdimensional cable Shmlonathan",
+      "Rick and Morty Rixty Minutes interdimensional cable channel surfing"
+    ],
+    "avoid": ["season 7", "season 8"]
+  },
+  "lilbits": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "We've got tiny lasagna, tiny pizza, tiny pie",
+      "Little tiny fried eggs"
+    ],
+    "search": [
+      "Rick and Morty interdimensional cable Lil' Bits commercial",
+      "Rick and Morty Lil Bits tiny food commercial"
+    ],
+    "avoid": ["season 7", "season 8"]
+  },
+  "realfakedoors": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "So this is my house, I just made a sandwich, peanut butter and jelly, still here, still selling fake doors",
+      "We have fake doors like you wouldn't believe!",
+      "Call us up, and order some fake doors today",
+      "Don't even worry about it!",
+      "Come get fake doors"
+    ],
+    "search": [
+      "Rick and Morty Rixty Minutes Real Fake Doors commercial",
+      "Rick and Morty interdimensional cable Real Fake Doors salesman"
+    ],
+    "avoid": ["season 7", "season 8"]
+  },
+  "mrspancakes": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "You don't know me!",
+      "Wheat thins. Wheat thins",
+      "Oh, I think you've had enough, sir",
+      "You better stop with that",
+      "Hey, you don't know me!"
+    ],
+    "search": [
+      "Rick and Morty Lawnmower Dog Mr. Goldenfold dream Mrs. Pancakes scene",
+      "Rick and Morty Lawnmower Dog Mrs. Pancakes you don't know me"
+    ],
+    "avoid": []
+  },
+  "goldenfold": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "The name's not buddy. It's Goldenfold. Nice to wheat you!",
+      "I'm giving Morty an A in math, and that's my idea",
+      "Alright, now, everybody get settled",
+      "Hi, I'm Morty's math teacher",
+      "The heads disqualified Vagina! Get him!",
+      "Yeah, get outside. Read a book"
+    ],
+    "search": [
+      "Rick and Morty Lawnmower Dog Mr. Goldenfold dream scene",
+      "Rick and Morty Mr. Goldenfold best moments",
+      "Rick and Morty Get Schwifty Mr. Goldenfold Headism scene"
+    ],
+    "avoid": []
+  },
+  "jaguar": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "There is no freedom while your leader breathes. Our country is a prison",
+      "Where is this pickle?",
+      "Pickle Man, you should know this isn't personal!",
+      "This can only end with one of us dead, and I have never died",
+      "It's too late for me to tell my daughter I love her, but not for you",
+      "Do I have infinite daughters?"
+    ],
+    "search": [
+      "Rick and Morty Pickle Rick Jaguar scene",
+      "Rick and Morty Pickle Rick Jaguar and Pickle Rick fight",
+      "Rick and Morty Pickle Rick Jaguar daughter speech"
+    ],
+    "avoid": ["machete", "spy kids", "breaking bad", "danny trejo"]
+  },
+  "ship": {
+    "show": "rick-and-morty",
+    "clips": [],
+    "quotes": [
+      "Keep Summer safe",
+      "Law enforcement converging on location. Keep Summer safe",
+      "Scanning assailants. Psychological option detected. Gestating",
+      "All of you have loved ones. All can be returned. All can be taken away",
+      "Please step away from the vehicle",
+      "I am unable to destroy this army. To clarify, I am quite able to destroy this army, but you will not permit it"
+    ],
+    "search": [
+      "Rick and Morty The Ricks Must Be Crazy keep Summer safe ship scene",
+      "Rick and Morty The Ricks Must Be Crazy ship psychological option scene",
+      "Rick and Morty Rick's ship talks to Summer scene"
+    ],
+    "avoid": ["season 7", "season 8"]
+  },
+  "butterrobot": {
+    "show": "rick-and-morty",
+    "clips": ["public/audio/clips/what-is-my-purpose.mp3"],
+    "quotes": [
+      "What is my purpose?",
+      "Oh my god",
+      "I am not programmed for friendship"
+    ],
+    "search": [
+      "Rick and Morty Something Ricked This Way Comes butter robot what is my purpose",
+      "Rick and Morty butter robot scene"
+    ],
+    "avoid": ["season 7", "season 8"]
+  }
+}
