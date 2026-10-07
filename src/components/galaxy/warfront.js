@@ -306,6 +306,9 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
             score(GCW.points.intercept, ms);
             say('intercept');
           } else score(GCW.points.kill, ms);
+        } else if (e.type === 'runner' && e.mine && team !== null && e.team !== team) {
+          score(GCW.points.intercept, ms);
+          say('intercept');
         } else if (e.type === 'sub') {
           if (e.mine && attacking()) score(GCW.points.objective, ms);
           if (tookPart && e.kind === 'bridge') say('bridge');
@@ -368,7 +371,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       const t = warTally(now());
       // (mine: what you've done in the war this campaign, in points)
       const mine = +t.keys().reduce((sum, k) => sum + (k.startsWith('win:') ? 0 : t.mine(k)), 0).toFixed(2);
-      return { sys: sys?.id ?? null, on, laid: laid ? { at: laid.at, axis: laid.axis, lines: laid.lines, radius: laid.radius, name: laid.war.name, attacker: laid.attacker } : null, battle: battle?.info ?? null, joined, tookPart, mine, team, asked, side: side(), war: on?.war ?? allegiance()?.war ?? DEFAULT_WAR };
+      return { sys: sys?.id ?? null, on, laid: laid ? { at: laid.at, axis: laid.axis, lines: laid.lines, radius: laid.radius, name: laid.war.name, attacker: laid.attacker, kind: laid.kind, objectivesOn: laid.objectivesOn } : null, battle: battle?.info ?? null, joined, tookPart, mine, team, asked, side: side(), war: on?.war ?? allegiance()?.war ?? DEFAULT_WAR };
     },
 
     setNet(client) {

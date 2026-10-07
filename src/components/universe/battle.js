@@ -100,7 +100,7 @@ export const BATTLE = {
 };
 
 // how wide each capital ship is, as a share of its length (for laying a line out)
-export const WIDTH = { destroyer: 0.58, executor: 0.26, interdictor: 0.58, moncal: 0.32, nebulon: 0.28, corvette: 0.3, hammerhead: 0.3, lightcruiser: 0.36, gozanti: 0.62, transport: 0.32, councildread: 0.36, fedbattleship: 0.8, gearship: 0.5, saucer: 1, federation: 0.4, hauler: 0.5, superlab: 0.28, madrigal: 0.5, pestvan: 0.5, hacienda: 1, pollostruck: 0.5, pickup: 0.5 };
+export const WIDTH = { venator: 0.45, acclamator: 0.55, munificent: 0.3, providence: 0.32, lucrehulk: 0.95, destroyer: 0.58, executor: 0.26, interdictor: 0.58, moncal: 0.32, nebulon: 0.28, corvette: 0.3, hammerhead: 0.3, lightcruiser: 0.36, gozanti: 0.62, transport: 0.32, councildread: 0.36, fedbattleship: 0.8, gearship: 0.5, saucer: 1, federation: 0.4, hauler: 0.5, superlab: 0.28, madrigal: 0.5, pestvan: 0.5, hacienda: 1, pollostruck: 0.5, pickup: 0.5 };
 const widthOf = (c) => (WIDTH[c.kind] ?? 0.4) * c.size;
 
 const TIERS = { high: 32, mid: 20, low: 10 };
