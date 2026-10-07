@@ -11,9 +11,10 @@ import { createDirector } from './battleDirector';
 import { planFor } from './battlePlan';
 
 const N = 300;
+// (as galaxy/battles.js's BATTLE_KINDS has them, on ways about as long as layBattle's)
 const runners = {
-  evacuation: { team: 1, kind: 'transport', size: 2.2, hp: 34, count: 6, need: 4, speed: 8, from: [0, 0, 0], to: [420, 0, 0] },
-  blockade: { team: 0, kind: 'corvette', size: 2.8, hp: 60, count: 5, need: 3, speed: 7, from: [0, 0, 0], to: [380, 0, 0] },
+  evacuation: { team: 1, kind: 'transport', size: 2.2, hp: 34, count: 8, need: 6, speed: 8, route: [[0, 0, 0], [150, 0, 0], [250, 0, 80], [330, 20, 120]] },
+  blockade: { team: 0, kind: 'corvette', size: 2.8, hp: 60, count: 5, need: 3, speed: 7, route: [[0, 0, 0], [170, 0, 0], [300, -40, 60]] },
 };
 const KINDS = ['assault', 'siege', 'interdiction', 'ambush', 'evacuation', 'blockade'];
 const planOf = (kind, i) => planFor({ id: `c0.gcw.${kind}.${i}`, kind, attacker: 0, runners: runners[kind] ?? null });

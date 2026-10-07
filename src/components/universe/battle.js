@@ -147,8 +147,8 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   layCapitals(k, objectivesOn);
   muster(k, n, ace);
   holdCapitals(k);
-  const runs = createRunners(k, runners);
   const stages = decides ? null : createStages(k, plan, director);
+  const runs = createRunners(k, runners, stages && plan.runners ? { plan: plan.runners, state: director.state } : null);
 
   // ── the bolts ──
   let cursor = 0;
@@ -291,18 +291,23 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
           done = true;
         }
       }
-      // a runner of the other side
+      // a runner of the other side (the director's: lit up, its fate the director's)
       if (!done) {
         for (const r of b.runners) {
           if (!r.alive || r.team === o.team) continue;
           if (sweptHit(p0, p1, r.prev, r.pos, r.size * 0.5) === null) continue;
+          done = true;
+          if (r.shared) {
+            r.hitBy += 1;
+            if (o.kind !== 'laser' && o.kind !== 'flak') out.push({ type: 'impact', at: copy(v3(), r.pos), size: 0.5, shield: false });
+            break;
+          }
           r.hp -= o.damage;
           r.hitBy += 1;
           if (r.hp <= 0) {
             r.alive = false;
             out.push({ type: 'runner', id: r.id, team: r.team, kind: r.kind, at: copy(v3(), r.pos) });
           }
-          done = true;
           break;
         }
       }
@@ -409,6 +414,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     runs.launch(dt);
     const before = out.length;
     runs.fly(dt, out);
+    runs.sync(out);
     runs.judge(out, before);
     if (!b.over) for (const cap of b.capitals) fireBatteries(k, cap, dt);
     moveBolts(dt, out);
@@ -479,8 +485,9 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       return { id: tu.num, kind: 'turret', at: copy(v3(), tu.at), size: tu.r, down, turret: true };
     }
     if (hitR && (!h || first <= h.k)) {
-      hitR.hp -= damage;
       hitR.hitBy += 1;
+      if (hitR.shared) return { id: hitR.id, kind: hitR.kind, at: copy(v3(), hitR.seen), size: hitR.size, down: runs.hit(hitR, damage, pending) };
+      hitR.hp -= damage;
       const down = hitR.hp <= 0;
       if (down) {
         hitR.alive = false;

@@ -296,6 +296,34 @@ describe('the battle every pilot shares (the director)', () => {
     expect(late.front.battle.phase).toBe(from.front.battle.phase);
   });
 
+  it('a pilot arriving five minutes into an evacuation sees the runners one there from the start does', () => {
+    const atHoth = (ms) => {
+      const k = kit('rebel');
+      k.at(ms);
+      k.front.enter(systemById('hoth'), k.world);
+      k.front.update(1 / 30, 0, camera, null);
+      return k;
+    };
+    const probe = atHoth(MS);
+    probe.front.force('empire');
+    const start = probe.front.on.start;
+    const flying = (k) => k.front.battle.runners.filter((r) => r.alive).map((r) => [r.slot, +r.hp.toFixed(6)]);
+    for (let s = 1; s <= 300; s += 1) {
+      probe.front.jump(1);
+      probe.front.update(1 / 30, 0, camera, null);
+    }
+    // (the same battle forced again at the same second: the late pilot's, five minutes on)
+    const late = atHoth(start);
+    late.front.force('empire');
+    late.front.jump(300);
+    late.front.update(1 / 30, 0, camera, null);
+    expect(late.front.on.id).toBe(probe.front.on.id);
+    expect(flying(late)).toEqual(flying(probe));
+    const R = late.front.director.plan.runners;
+    expect(late.front.info.shared.runners.launched).toBe(Math.floor((300 - R.startAt) / R.every) + 1);
+    expect(late.front.info.shared.runners).toEqual(probe.front.info.shared.runners);
+  });
+
   it('ends a battle only when the director says, not on the battle’s own clock', () => {
     const k = at('rebel', MS);
     k.front.battle.clock = 650;
@@ -357,7 +385,7 @@ describe('every kind of battle', () => {
     k.front.force('rebel', 'nonsense');
     expect(k.front.info.laid.kind).toBe('siege');
   });
-  it('a runner of the other side’s, shot down, is an intercept', () => {
+  it('a runner of the other side’s, shot down, is an intercept, and the runners’ line is said as the first of them launches', () => {
     const k = kit('empire');
     k.front.enter(systemById('naboo'), k.world);
     k.front.update(1 / 30, 0, camera, null);
@@ -365,11 +393,47 @@ describe('every kind of battle', () => {
     expect(k.front.info.laid.kind).toBe('blockade');
     const at = k.front.info.laid.at;
     k.front.update(1 / 30, 0, camera, { x: at[0], y: at[1], z: at[2] });
+    // (the runners launch at their own seconds of the battle, not as you
+    // come: the first of the blockade's some minutes in)
+    expect(k.front.battle.runners).toHaveLength(0);
+    expect(k.said.some((e) => e.sub === 'blockade')).toBe(false);
+    k.front.jump(k.front.director.plan.runners.startAt + 3);
+    k.front.update(1 / 30, 0, camera, null);
+    expect(k.said.filter((e) => e.sub === 'blockade')).toHaveLength(1);
     const r = k.front.battle.runners[0];
-    for (let i = 0; i < 40 && r.alive; i++) shoot(k.front, r.pos, 5);
+    for (let i = 0; i < 40 && r.alive; i++) shoot(k.front, r.seen, 5);
     k.front.update(1 / 30, 0, camera, null);
     expect(r.alive).toBe(false);
     expect(warTally(k.ms).mine(pointsKey('empire', 'naboo', k.front.on.step))).toBeCloseTo(GCW.points.intercept, 5);
     expect(k.said.filter((e) => e.sub === 'intercept')).toHaveLength(1);
+    for (let i = 0; i < 3; i++) k.front.update(1, 0, camera, null);
+    expect(k.sent.fight.at(-1).m['r:0']).toBeGreaterThan(0);
+  });
+  it('says the evacuation’s line, not the blockade’s, as its transports start to run', () => {
+    const k = kit('rebel');
+    k.front.enter(systemById('hoth'), k.world);
+    k.front.update(1 / 30, 0, camera, null);
+    k.front.force('empire');
+    k.front.jump(k.front.director.plan.runners.startAt + 1);
+    k.front.update(1 / 30, 0, camera, null);
+    expect(k.said.filter((e) => e.sub === 'runners')).toHaveLength(1);
+    expect(k.said.some((e) => e.sub === 'blockade')).toBe(false);
+  });
+  it('a kill near one of your side’s runners covers it', () => {
+    const k = kit('rebel');
+    k.front.enter(systemById('hoth'), k.world);
+    k.front.update(1 / 30, 0, camera, null);
+    k.front.force('empire');
+    k.front.jump(k.front.director.plan.runners.startAt + 10);
+    const at = k.front.info.laid.at;
+    k.front.update(1 / 30, 0, camera, { x: at[0], y: at[1], z: at[2] });
+    const r = k.front.battle.runners.find((x) => x.alive);
+    const f = k.front.battle.fighters.find((x) => x.alive && x.team === 1);
+    Object.assign(f.pos, { x: r.pos.x + 5, y: r.pos.y, z: r.pos.z });
+    Object.assign(f.seen, f.pos);
+    f.vel.x = f.vel.y = f.vel.z = 0;
+    for (let i = 0; i < 40 && f.alive; i++) shoot(k.front, f.seen, 5);
+    for (let i = 0; i < 3; i++) k.front.update(1, 0, camera, null);
+    expect(k.sent.fight.at(-1).m[`c:${r.slot}`]).toBeGreaterThan(0);
   });
 });

@@ -128,3 +128,79 @@ describe('a battle the galaxy’s director runs', () => {
   });
 });
 const flag = (b) => b.capitals.find((c) => c.team === b.attacker && c.role === 'flagship');
+
+describe('the director’s runners in the battle', () => {
+  // a way 160 long: 60 to the corner, then 100 on
+  const runners = { team: 1, kind: 'transport', size: 2.2, hp: 34, count: 4, need: 3, speed: 10, route: [[60, 0, 0], [0, 0, 0], [0, 0, -100]], from: [60, 0, 0], to: [0, 0, -100] };
+  const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z);
+  const slot = (b, i) => b.runners.find((r) => r.slot === i);
+
+  it('flies each from its launch along its way, where the shared clock has it, whenever you came', () => {
+    const { b, plan, clock } = shared({ runners, perSide: 0 });
+    const R = plan.runners;
+    expect(R.duration).toBeCloseTo(16, 6);
+    clock.t = R.startAt - 1;
+    run(b, 0.1);
+    expect(b.runners).toHaveLength(0);
+    clock.t = R.startAt + R.duration / 2;
+    run(b, 0.1);
+    const r = slot(b, 0);
+    expect(r.alive).toBe(true);
+    expect(dist(r.pos, { x: 0, y: 0, z: -20 })).toBeLessThan(10);
+  });
+
+  it('lets one go when the director says it’s out, and loses one it says is down', () => {
+    const { b, plan, clock, values } = shared({ runners, perSide: 0 });
+    const R = plan.runners;
+    clock.t = R.startAt + 4;
+    run(b, 0.1);
+    clock.t = R.startAt + R.duration + 1;
+    let events = run(b, 0.1);
+    expect(events.some((e) => e.type === 'escaped' && e.id === slot(b, 0).id)).toBe(true);
+    expect(slot(b, 0).escaped).toBe(true);
+    clock.t = R.startAt + R.every + 4;
+    run(b, 0.1);
+    values.set('r:1', 99);
+    events = run(b, 0.1);
+    expect(events.some((e) => e.type === 'runner' && e.id === slot(b, 1).id && !e.mine)).toBe(true);
+    expect(slot(b, 1).alive).toBe(false);
+  });
+
+  it('counts your shots on one of the other side’s for the tally, and takes it down when the director says that’s enough', () => {
+    const { b, plan, clock, told } = shared({ runners, perSide: 0 });
+    b.setYou(0);
+    clock.t = plan.runners.startAt + 4;
+    run(b, 0.1);
+    const r = slot(b, 0);
+    for (let i = 0; i < 20 && r.alive; i++) shotAt(b, r.seen, 5);
+    expect(told[0]).toEqual(['r:0', 5]);
+    expect(r.alive).toBe(false);
+    expect(run(b, 0.05).some((e) => e.type === 'runner' && e.id === r.id && e.mine)).toBe(true);
+  });
+
+  it('only lights a runner up with the AI’s fire: its fate is the director’s', () => {
+    const { b, plan, clock } = shared({ runners, perSide: 0 });
+    clock.t = plan.runners.startAt + 4;
+    run(b, 0.1);
+    const r = slot(b, 0);
+    const hp = r.hp;
+    b.fire(0, { x: r.pos.x, y: r.pos.y + 3, z: r.pos.z }, { x: 0, y: -1, z: 0 }, 'laser');
+    run(b, 0.2);
+    expect(r.hp).toBe(hp);
+  });
+
+  it('shows a pilot arriving late the runners one there from the start has: the ones still flying, as far along, as worn', () => {
+    const from = shared({ runners, perSide: 0 });
+    const T = from.plan.runners.startAt + from.plan.runners.every + 6;
+    for (let t = 0; t <= T; t += 1) {
+      from.clock.t = t;
+      run(from.b, 1 / 30);
+    }
+    const late = shared({ runners, perSide: 0 });
+    late.clock.t = T;
+    run(late.b, 1 / 30);
+    const flying = (b) => b.runners.filter((r) => r.alive).map((r) => [r.slot, +r.hp.toFixed(6), ...[r.pos.x, r.pos.y, r.pos.z].map((x) => +x.toFixed(6))]);
+    expect(flying(late.b)).toEqual(flying(from.b));
+    expect(flying(late.b)).toHaveLength(1);
+  });
+});

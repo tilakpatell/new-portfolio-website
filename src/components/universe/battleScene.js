@@ -24,6 +24,8 @@ import { createFlashes } from '../galaxy/fx';
 import { createBoltDraw, createFires, createGlows, createMarkers, createShield } from './battleFx';
 
 const NAMES = { shieldgen: 'Shield generator', bridge: 'Bridge', reactor: 'Reactor' };
+// a runner, as its marker names it (and its number in the battle)
+const RUNNERS = { transport: 'transport', corvette: 'corvette', gozanti: 'Gozanti', nubian: 'Nubian', shuttle: 'shuttle' };
 const METRES = 40; // a map unit, in metres (an X-wing's about a third of a unit; the galaxy's is 53)
 const far = (a, b, metres = METRES) => {
   const m = Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) * metres;
@@ -274,7 +276,7 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
       fires.update(dt, t);
       moveHalves(dt);
       // the objectives of the phase, marked (to destroy, if you attack; to
-      // hold, if you defend), and the attacker's flagship for a defender
+      // hold, if you defend), the attacker's flagship for a defender, and the runners
       const list = [];
       if (youTeam !== null && !battle.over) {
         const obj = battle.capitals.find((c) => c.objective);
@@ -289,6 +291,15 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
           const theirs = battle.capitals.find((c) => c.team === battle.attacker && c.role === 'flagship' && c.alive);
           if (theirs) list.push({ key: 'their-flag', pos: { x: theirs.pos.x, y: theirs.pos.y + theirs.size * 0.15, z: theirs.pos.z }, title: 'Destroy: their flagship', sub: far(theirs.pos, camLocal, metres), hp: theirs.hull / theirs.hullMax, colour: ATTACK });
         }
+        // the runners for the jump, every battle's (an evacuation's, a
+        // blockade's, the set pieces'), where they're drawn: yours to cover,
+        // theirs to stop
+        battle.runners.forEach((r, i) => {
+          if (!r.alive) return;
+          const ours = r.team === youTeam;
+          const p = r.seen ?? r.pos;
+          list.push({ key: `runner-${r.id}`, pos: p, title: `${ours ? 'Protect' : 'Stop'}: ${RUNNERS[r.kind] ?? r.kind} ${(r.slot ?? i) + 1}`, sub: far(p, camLocal, metres), hp: r.hp / r.hpMax, colour: ours ? DEFEND : ATTACK });
+        });
       }
       if (extra) for (const m of extra) list.push({ ...m, sub: m.sub ?? far(m.pos, camLocal, metres) });
       markers.sync(list);

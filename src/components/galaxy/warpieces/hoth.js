@@ -8,7 +8,8 @@
 //   transports run from the base for the jump, one after another (Hoth's an
 //   evacuation: battles.js's BATTLE_KINDS, the battle's own runners), and
 //   the Empire's fighters go after them: this calls each one out, and the
-//   evacuation done when enough are.
+//   evacuation done when enough are. (Their markers are the battle scene's,
+//   as every battle's runners are.)
 //
 // createHoth(ctx) → { update(dt, t, live, events), hit, targets, markers(live), dispose() }
 
@@ -110,10 +111,8 @@ export function createHoth(ctx) {
     },
     hit: () => null,
     targets: [],
-    markers(live) {
-      if (!live) return [];
-      return battle.runners.filter((r) => r.alive && r.kind === 'transport' && Math.hypot(r.pos.x - live.x, r.pos.y - live.y, r.pos.z - live.z) < 260).map((r) => ({ key: `gr75-${r.id}`, pos: r.pos, title: `${r.team === battle.you.team ? 'Protect' : 'Stop'}: transport ${battle.runners.indexOf(r) + 1}`, hp: r.hp / r.hpMax, colour: '#7cc8ff' }));
-    },
+    // (the transports are marked with every battle's runners: battleScene.js)
+    markers: () => [],
     get out() {
       return out;
     },

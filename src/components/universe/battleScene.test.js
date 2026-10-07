@@ -80,6 +80,26 @@ describe('createBattleScene', () => {
     draw.dispose();
   });
 
+  it('marks every battle’s runners, yours to protect and theirs to stop, where they’re drawn', () => {
+    // (only Hoth's transports were marked, by Hoth's set piece: an evacuation
+    // at Lothal or a blockade at Bespin had runners nobody could find)
+    const parent = new THREE.Group();
+    const draw = createBattleScene(parent, { models: stubModels(), small: true });
+    const battle = createBattle({ war: WARS.starwars, attacker: 0, at: [0, 0, 0], axis: [1, 0], perSide: 0 });
+    const ours = battle.addRunner({ team: 0, kind: 'corvette', size: 2.8, hp: 60, from: { x: -40, y: 0, z: 0 }, to: { x: -40, y: 0, z: -150 }, speed: 8 });
+    const theirs = battle.addRunner({ team: 1, kind: 'transport', size: 2.2, hp: 34, from: { x: 40, y: 0, z: 0 }, to: { x: 40, y: 0, z: -150 }, speed: 8 });
+    draw.show(battle, WARS.starwars);
+    const events = battle.update(1 / 30, null);
+    draw.update(1 / 30, 1, new THREE.PerspectiveCamera(), new THREE.Vector3(), events, 0);
+    const marks = parent.children.filter((o) => o.isSprite && o.renderOrder === 10);
+    for (const r of [ours, theirs]) expect(marks.some((m) => m.position.distanceTo(new THREE.Vector3(r.seen.x, r.seen.y, r.seen.z)) < 1e-6), r.kind).toBe(true);
+    theirs.alive = false;
+    draw.update(1 / 30, 1, new THREE.PerspectiveCamera(), new THREE.Vector3(), [], 0);
+    const after = parent.children.filter((o) => o.isSprite && o.renderOrder === 10);
+    expect(after.some((m) => m.position.distanceTo(new THREE.Vector3(theirs.seen.x, theirs.seen.y, theirs.seen.z)) < 1e-6)).toBe(false);
+    draw.dispose();
+  });
+
   it('breaks the defender’s flagship in two when it goes', () => {
     const parent = new THREE.Group();
     const models = stubModels();

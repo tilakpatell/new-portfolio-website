@@ -68,6 +68,7 @@ export const FRONT = {
   warEvery: 2, // seconds between your word on the war, at most
   warAgain: 30, // and every this often anyway
   near: 1.5, // within this many of its radii, you're in it
+  cover: 25, // a kill within this of one of your side's runners covers it
 };
 const UNSWORN = Object.freeze({ war: DEFAULT_WAR, side: null });
 
@@ -84,6 +85,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
   let sharedAt = null;
   let sharedKey = '';
   const here = new Set(); // the sides you've counted yourself in on, this battle
+  let saidRunners = false; // (the runners' line, said once a battle)
   let shown = false;
   let joined = false; // in among it (said once a battle)
   let tookPart = false; // you were in it at some point (a win's yours too)
@@ -245,6 +247,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     sharedKey = '';
     skew = 0;
     here.clear();
+    saidRunners = false;
     joined = false;
     tookPart = false;
     ended = false;
@@ -268,10 +271,11 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       rand: seeded(b.id),
       plan: director.plan,
       director: { state: shared },
-      // your shot on an objective: the attacker's to take, and each pilot's
-      // worth less the more of them there are
+      // your shot on an objective (the attacker's to take) or on one of the
+      // other side's runners (whoever's they are), each pilot's worth less
+      // the more of them there are
       onMine: (id, damage) => {
-        if (attacking()) addFight(id, damage / scale());
+        if (attacking() || id.startsWith('r:')) addFight(id, damage / scale());
       },
     });
     team = teamFor(side(), b);
@@ -379,6 +383,11 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
         here.add(team);
         addFight(team === on.attackerTeam ? 'here:a' : 'here:d', 1);
       }
+      // the runners off: said as the first of them goes (a blockade's run, or an evacuation's)
+      if (!saidRunners && st.runners?.some((r) => r.launched && !r.out && !r.down)) {
+        saidRunners = true;
+        say(laid.kind === 'blockade' ? 'blockade' : 'runners');
+      }
       for (const e of events) {
         if (e.type === 'hurt') hurt += e.damage;
         else if (e.type === 'down' && e.mine && team !== null && e.team !== team) {
@@ -392,6 +401,9 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
             const target = shared()?.target;
             if (target && !battle.over) addFight(`g:${target}`, 1 / scale());
           } else score(GCW.points.kill, ms);
+          // (and one of your side's runners near it, covered)
+          const r = !battle.over && battle.runners.find((x) => x.shared && x.alive && x.team === team && Math.hypot(x.pos.x - e.at.x, x.pos.y - e.at.y, x.pos.z - e.at.z) < FRONT.cover);
+          if (r) addFight(`c:${r.slot}`, 1 / scale());
         } else if (e.type === 'runner' && e.mine && team !== null && e.team !== team) {
           score(GCW.points.intercept, ms);
           say('intercept');
@@ -467,7 +479,19 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
         laid: laid ? { at: laid.at, axis: laid.axis, lines: laid.lines, radius: laid.radius, name: laid.war.name, attacker: laid.attacker, kind: laid.kind, objectivesOn: laid.objectivesOn } : null,
         battle: battle?.info ?? null,
         // (the battle every pilot here shares: where it's got to, and how it ended)
-        shared: st ? { t: +st.t.toFixed(1), stage: st.stage, open: st.open, opensIn: st.opensIn, target: st.target, winner: st.winner, why: st.why, endsAt: st.endsAt } : null,
+        shared: st
+          ? {
+              t: +st.t.toFixed(1),
+              stage: st.stage,
+              open: st.open,
+              opensIn: st.opensIn,
+              target: st.target,
+              winner: st.winner,
+              why: st.why,
+              endsAt: st.endsAt,
+              runners: st.runners ? { launched: st.runners.filter((r) => r.launched).length, out: st.runners.filter((r) => r.out).length, down: st.runners.filter((r) => r.down).length, need: director.plan.runners.need, count: st.runners.length } : null,
+            }
+          : null,
         joined,
         tookPart,
         mine,
