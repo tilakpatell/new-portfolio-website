@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { createBattle } from './battle';
 import { createBattleScene } from './battleScene';
+import { createDirector } from './battleDirector';
 import { WARS } from './wars';
 
 // galaxy/models.js's face, with a box for every ship
@@ -97,6 +98,68 @@ describe('createBattleScene', () => {
     draw.update(1 / 30, 1, new THREE.PerspectiveCamera(), new THREE.Vector3(), [], 0);
     const after = parent.children.filter((o) => o.isSprite && o.renderOrder === 10);
     expect(after.some((m) => m.position.distanceTo(new THREE.Vector3(theirs.seen.x, theirs.seen.y, theirs.seen.z)) < 1e-6)).toBe(false);
+    draw.dispose();
+  });
+
+  it('draws the plan’s objectives laid out in the open, rings the zone to hold, and marks the stage that’s on', () => {
+    const plan = {
+      id: 'drawn',
+      kind: 'assault',
+      length: 600,
+      attacker: 0,
+      defender: 1,
+      ai: { tAi: [5000, 5001] },
+      stages: [
+        { id: 'sats', type: 'group', need: 2, opensAt: 0, objectives: ['satellite', 'platform', 'beacon', 'well', 'cannon', 'projector', 'droidrelay'].map((kind, n) => ({ id: `o-${n}`, type: 'group', kind, name: kind, hp: 50, on: { field: [0.2, (n - 3) * 12, 0] } })) },
+        { id: 'relay', type: 'zone', opensAt: 0, objectives: [{ id: 'relay', type: 'zone', kind: 'relay', name: 'the comms relay', hp: 100, hold: 20, zone: 12, on: { field: [0, 30, 0] } }] },
+      ],
+      runners: null,
+      side: [],
+      losses: [],
+    };
+    const d = createDirector({ plan, seed: plan.id });
+    const values = new Map();
+    const battle = createBattle({ war: WARS.starwars, attacker: 0, at: [0, 0, 0], axis: [1, 0], perSide: 0, plan, director: { state: () => d.state(10, (k) => values.get(k) ?? 0) } });
+    battle.setYou(0);
+    const parent = new THREE.Group();
+    const draw = createBattleScene(parent, { models: stubModels(), small: true });
+    draw.show(battle, WARS.starwars);
+    const cam = new THREE.PerspectiveCamera();
+    draw.update(1 / 30, 1, cam, new THREE.Vector3(), battle.update(1 / 30, null), 0);
+    const at = (p) => new THREE.Vector3(p.x, p.y, p.z);
+    // each one drawn where it is, something built for it
+    for (const o of battle.objectives.filter((x) => !x.zone)) expect(parent.children.some((c) => c.userData.prop === o.key && c.visible && c.position.distanceTo(at(o.pos)) < 1e-6 && c.children.length > 0), o.kind).toBe(true);
+    // the zone ringed, though it's not this stage's yet, so not shown
+    const ring = parent.children.find((c) => c.userData.zone === 'relay');
+    expect(ring).toBeTruthy();
+    expect(ring.visible).toBe(false);
+    // the stage's objectives marked, the zone not yet
+    const marks = () => parent.children.filter((o) => o.isSprite && o.renderOrder === 10);
+    for (const o of battle.objectives.filter((x) => !x.zone)) expect(marks().some((m) => m.position.distanceTo(at(o.pos)) < 1e-6), o.kind).toBe(true);
+    // two down: the stage's done, the downed ones gone, the zone's stage on, ringed and marked
+    values.set('o-0', 999);
+    values.set('o-1', 999);
+    draw.update(1 / 30, 1, cam, new THREE.Vector3(), battle.update(1 / 30, null), 0);
+    expect(parent.children.find((c) => c.userData.prop === 'o-0').visible).toBe(false);
+    expect(ring.visible).toBe(true);
+    const relay = battle.objectives.find((x) => x.zone);
+    expect(ring.position.distanceTo(at(relay.pos))).toBeLessThan(1e-6);
+    expect(marks().some((m) => m.position.distanceTo(at(relay.pos)) < 1e-6)).toBe(true);
+    draw.hide();
+    expect(parent.children.some((c) => c.userData.prop || c.userData.zone)).toBe(false);
+    draw.dispose();
+  });
+
+  it('gives a fighter put up after the battle’s drawn a slot of its own (a bomber wave’s)', () => {
+    const parent = new THREE.Group();
+    const models = stubModels();
+    const draw = createBattleScene(parent, { models, small: true });
+    const battle = createBattle({ war: WARS.starwars, attacker: 0, at: [0, 0, 0], axis: [1, 0], perSide: 2 });
+    draw.show(battle, WARS.starwars);
+    const n = models.slots.length;
+    battle.fighters.push({ ...battle.fighters[0], id: 99, pos: { x: 1, y: 2, z: 3 }, seen: { x: 1, y: 2, z: 3 }, alive: true });
+    draw.update(1 / 30, 1, new THREE.PerspectiveCamera(), new THREE.Vector3(), [], 0);
+    expect(models.slots.length).toBe(n + 1);
     draw.dispose();
   });
 

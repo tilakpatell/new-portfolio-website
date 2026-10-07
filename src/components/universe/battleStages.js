@@ -75,7 +75,7 @@ export function createStages(k, plan, director) {
   plan.stages.forEach((stage, si) =>
     stage.objectives.forEach((o) => {
       const on = o.on ?? {};
-      const mark = { phase: si + 1, key: o.id, type: o.type, name: o.name, hp: o.hp, hpMax: o.hp, planned: true, after: o.after ?? null, effect: o.effect ?? null };
+      const mark = { phase: si + 1, key: o.id, type: o.type, name: o.name, ...(o.verbs ? { verbs: o.verbs } : {}), hp: o.hp, hpMax: o.hp, planned: true, after: o.after ?? null, effect: o.effect ?? null };
       if (on.piece) return; // (the set piece's to draw and take)
       if (on.sub) {
         const s = ship?.subs.find((x) => x.id === on.sub);

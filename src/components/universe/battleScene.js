@@ -12,6 +12,14 @@
 // clipping plane through its middle (the renderer's localClippingEnabled),
 // drifting apart and rolling away from each other, burning along the break.
 //
+// A galaxy battle's plan lays more out (battleStages.js): what's out in the
+// open is drawn by battleProps.js (satellites, platforms, beacons, relays,
+// wells, a ring round each zone to hold), and every objective of the stage
+// that's on is marked with the plan's words for it (battleObjectives.js:
+// 'Destroy: Shield projector', 'Hold: the comms relay'), the next stage's,
+// till its gate, as what's next and when it opens. A fighter put up after
+// the battle's drawn (a bomber wave's) gets its slot as it comes.
+//
 // createBattleScene(parent, { models, small, reduced, metres }) → { show(battle,
 //   war), hide(), update(dt, t, camera, camLocal, events, youTeam, extra) → busy,
 //   halves, flash(at, opts), burn(at, size), dispose() }
@@ -22,6 +30,8 @@
 import * as THREE from 'three';
 import { createFlashes } from '../galaxy/fx';
 import { createBoltDraw, createFires, createGlows, createMarkers, createShield } from './battleFx';
+import { createProps } from './battleProps';
+import { titleOf } from './battleObjectives';
 
 const NAMES = { shieldgen: 'Shield generator', bridge: 'Bridge', reactor: 'Reactor' };
 // a runner, as its marker names it (and its number in the battle)
@@ -33,6 +43,7 @@ const far = (a, b, metres = METRES) => {
 };
 const ATTACK = '#ffb347';
 const DEFEND = '#7cc8ff';
+const clockOf = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 export function createBattleScene(parent, { models, small = false, reduced = false, metres = METRES } = {}) {
   const flashes = createFlashes(parent, { count: small ? 40 : 96 });
@@ -41,12 +52,14 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
   const shield = createShield(parent);
   const markers = createMarkers(parent);
   const fires = createFires(parent);
+  const props = createProps(parent);
   const slots = new Map(); // a ship (battle.js's fighter or capital) → its slot
   const halves = []; // the broken flagship's two halves
   let battle = null;
   let war = null;
   let chain = 0; // seconds to the next explosion down a dying ship
   let seenRunners = 0; // the battle's runners given slots, so far
+  let seenFighters = 0; // and its fighters (a bomber wave's come later)
   const basis = new THREE.Matrix4();
   const vx = new THREE.Vector3();
   const vy = new THREE.Vector3();
@@ -183,10 +196,14 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
         orient(s.holder, cap.fwd, cap.up);
       }
       for (const f of b.fighters) slotFor(f, f.kind, f.size);
+      seenFighters = b.fighters.length;
       seenRunners = 0;
-      // (the ship the objectives are on: the defender's flagship, or an interdiction's Interdictor)
+      // (the ship the objectives are on: the defender's flagship, or an
+      // interdiction's Interdictor; shielded while its shield's up, which
+      // with a plan is while a stage that shields it stands)
       const obj = b.capitals.find((c) => c.objective);
-      if (obj && b.phase === 1) shield.show(obj, null);
+      if (obj && (b.shieldUp ?? b.phase === 1)) shield.show(obj, null);
+      props.show(b.objectives ?? []);
     },
 
     hide() {
@@ -199,6 +216,7 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
       halves.length = 0;
       shield.hide();
       markers.hide();
+      props.hide();
       fires.clear();
       bolts.sync([], colourOf);
       glows.begin();
@@ -226,10 +244,14 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
     // for (null: not joined yet)
     update(dt, t, camera, camLocal, events = [], youTeam = null, extra = null) {
       if (!battle) return false;
-      // runners added since (the set pieces add them as the battle goes)
+      // runners and fighters added since (the set pieces add runners as the battle goes, a plan its bomber waves)
       while (seenRunners < battle.runners.length) {
         const r = battle.runners[seenRunners++];
         slotFor(r, r.kind, r.size);
+      }
+      while (seenFighters < battle.fighters.length) {
+        const f = battle.fighters[seenFighters++];
+        slotFor(f, f.kind, f.size);
       }
       for (const e of events) onEvent(e);
       // the capital ships (riding a little at anchor), and a dying one's explosions
@@ -274,6 +296,7 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
       flashes.update(dt, camera);
       shield.update(dt, t);
       fires.update(dt, t);
+      props.update(dt, t, battle, youTeam);
       moveHalves(dt);
       // the objectives of the phase, marked (to destroy, if you attack; to
       // hold, if you defend), the attacker's flagship for a defender, and the runners
@@ -282,11 +305,22 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
         const obj = battle.capitals.find((c) => c.objective);
         const attack = youTeam === battle.attacker;
         let n = 0;
-        for (const sub of obj?.subs ?? []) {
-          if (!sub.alive || sub.phase !== battle.phase) continue;
-          // (the two generators sit close: the second's card hangs under its point, not over it)
-          list.push({ key: sub.id, pos: sub.pos, title: `${attack ? 'Destroy' : 'Defend'}: ${NAMES[sub.kind]}`, sub: far(sub.pos, camLocal, metres), hp: sub.hp / sub.hpMax, colour: attack ? ATTACK : DEFEND, under: n++ % 2 === 1 });
-        }
+        if (battle.objectives) {
+          // a plan's: the stage that's on, in the plan's words (or, behind its gate, what's next and when)
+          for (const o of battle.objectives) {
+            if (!o.alive || o.hidden || o.phase !== battle.phase) continue;
+            const open = battle.stageOpen !== false;
+            if (open && o.after && battle.isOpen && !battle.isOpen(o)) continue; // (the dock, till the engines it waits on are down)
+            const title = open ? titleOf(o, attack) : `Next: ${o.name}`;
+            const sub = open ? far(o.pos, camLocal, metres) : `opens in ${clockOf(battle.opensIn ?? 0)} · ${far(o.pos, camLocal, metres)}`;
+            list.push({ key: o.key, pos: o.pos, title, sub, hp: o.hp / o.hpMax, colour: attack ? ATTACK : DEFEND, under: n++ % 2 === 1 });
+          }
+        } else
+          for (const sub of obj?.subs ?? []) {
+            if (!sub.alive || sub.phase !== battle.phase) continue;
+            // (the two generators sit close: the second's card hangs under its point, not over it)
+            list.push({ key: sub.id, pos: sub.pos, title: `${attack ? 'Destroy' : 'Defend'}: ${NAMES[sub.kind]}`, sub: far(sub.pos, camLocal, metres), hp: sub.hp / sub.hpMax, colour: attack ? ATTACK : DEFEND, under: n++ % 2 === 1 });
+          }
         if (!attack) {
           const theirs = battle.capitals.find((c) => c.team === battle.attacker && c.role === 'flagship' && c.alive);
           if (theirs) list.push({ key: 'their-flag', pos: { x: theirs.pos.x, y: theirs.pos.y + theirs.size * 0.15, z: theirs.pos.z }, title: 'Destroy: their flagship', sub: far(theirs.pos, camLocal, metres), hp: theirs.hull / theirs.hullMax, colour: ATTACK });
@@ -315,6 +349,7 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
       shield.dispose();
       markers.dispose();
       fires.dispose();
+      props.dispose();
     },
   };
 }
