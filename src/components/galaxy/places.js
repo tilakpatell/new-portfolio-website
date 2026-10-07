@@ -27,11 +27,12 @@ export const PLACES = {
 // what a place is: how big it's solid (r), how close counts as at it
 // (reach), and its names (one picked by the seed)
 export const PLACE_KINDS = {
-  wreck: { r: 6, reach: 16, hint: 'A derelict', names: ['The hulk of a Nebulon-B frigate', 'A gutted Corellian corvette', 'A derelict bulk freighter', 'A burnt-out Gozanti cruiser', 'A Lambda shuttle, adrift and dark'] },
+  // (sizes in map units, a Star Destroyer's 1,600 m being 16: a frigate's hull is 3 or 4 long)
+  wreck: { r: 3, reach: 10, hint: 'A derelict', names: ['The hulk of a Nebulon-B frigate', 'A gutted Corellian corvette', 'A derelict bulk freighter', 'A burnt-out Dreadnought, adrift and dark'] },
   comet: { r: 4, reach: 14, hint: 'A comet', names: ['A long-period comet', 'A comet, its tail streaming sunward', 'An old comet, half spent'] },
   rocks: { r: 10, reach: 26, hint: 'Asteroids', names: ['A knot of asteroids', 'A smugglers’ rock cache', 'An asteroid with a mine in it'] },
-  beacon: { r: 2, reach: 12, hint: 'A beacon', names: ['A navigation beacon', 'A hyperspace marker buoy', 'A smugglers’ beacon'] },
-  outpost: { r: 8, reach: 20, hint: 'An outpost', names: ['A refuelling outpost', 'A listening post', 'An abandoned mining platform'] },
+  beacon: { r: 0.8, reach: 8, hint: 'A beacon', names: ['A navigation beacon', 'A hyperspace marker buoy', 'A smugglers’ beacon'] },
+  outpost: { r: 5, reach: 14, hint: 'An outpost', names: ['A refuelling outpost', 'A listening post', 'An abandoned mining platform'] },
   nebula: { r: 0, reach: 40, hint: 'A nebula', names: ['A pocket of nebula', 'A drift of glowing gas', 'The remains of a nova'] },
 };
 const KINDS = Object.keys(PLACE_KINDS);
@@ -83,14 +84,17 @@ export function placesOf(sys) {
   return out;
 }
 
-// what's been found, read from the store: { sysId: [ids] }, or nothing
+// what's been found, read from the store (its JSON, or what that parsed
+// to, as lib/hooks's local.get gives it): { sysId: [ids] }, or nothing
 export function readFound(s) {
-  if (typeof s !== 'string' || !s) return {};
-  let v;
-  try {
-    v = JSON.parse(s);
-  } catch {
-    return {};
+  let v = s;
+  if (typeof s === 'string') {
+    if (!s) return {};
+    try {
+      v = JSON.parse(s);
+    } catch {
+      return {};
+    }
   }
   if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
   const out = {};

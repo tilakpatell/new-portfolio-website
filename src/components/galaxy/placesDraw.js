@@ -100,11 +100,12 @@ const SOLID = {
   wreck(parts, at, rand) {
     const q = tilt(rand);
     const along = new THREE.Vector3(0, 1, 0).applyQuaternion(q).toArray();
-    piece(parts, new THREE.CylinderGeometry(1.2, 1.8, 11, 10, 1, false), at, HULL, q);
-    piece(parts, new THREE.BoxGeometry(2.6, 1.4, 2.2), add(at, along, 4.2), HULL, q);
-    piece(parts, new THREE.BoxGeometry(0.4, 4.5, 2.4), add(at, along, -2.5), SCORCH, q);
+    // (a frigate's hull: 4 long, where a Star Destroyer's 16)
+    piece(parts, new THREE.CylinderGeometry(0.45, 0.7, 4.2, 10, 1, false), at, HULL, q);
+    piece(parts, new THREE.BoxGeometry(1, 0.55, 0.85), add(at, along, 1.6), HULL, q);
+    piece(parts, new THREE.BoxGeometry(0.16, 1.7, 0.9), add(at, along, -1), SCORCH, q);
     // what came off it, drifting near
-    for (let i = 0; i < 5; i++) piece(parts, lump(0.5 + rand() * 0.6, 0, rand), add(at, [rand() - 0.5, rand() - 0.5, rand() - 0.5], 16), i % 2 ? SCORCH : HULL, tilt(rand));
+    for (let i = 0; i < 5; i++) piece(parts, lump(0.2 + rand() * 0.25, 0, rand), add(at, [rand() - 0.5, rand() - 0.5, rand() - 0.5], 7), i % 2 ? SCORCH : HULL, tilt(rand));
   },
   comet(parts, at, rand) {
     piece(parts, lump(4, 1, rand, 0.5), at, ICE, tilt(rand));
@@ -116,18 +117,19 @@ const SOLID = {
     }
   },
   beacon(parts, at) {
-    piece(parts, new THREE.OctahedronGeometry(1.6, 0), at, STEEL);
-    piece(parts, new THREE.CylinderGeometry(0.15, 0.15, 7, 6), at, STEEL);
-    piece(parts, new THREE.TorusGeometry(1.1, 0.12, 6, 20), add(at, [0, -2.6, 0]), STEEL, new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0)));
+    piece(parts, new THREE.OctahedronGeometry(0.6, 0), at, STEEL);
+    piece(parts, new THREE.CylinderGeometry(0.06, 0.06, 2.8, 6), at, STEEL);
+    piece(parts, new THREE.TorusGeometry(0.45, 0.05, 6, 20), add(at, [0, -1, 0]), STEEL, new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0)));
   },
   outpost(parts, at, rand) {
     const q = tilt(rand);
     const along = new THREE.Vector3(0, 1, 0).applyQuaternion(q).toArray();
     const flat = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0)).premultiply(q);
-    piece(parts, new THREE.CylinderGeometry(0.5, 0.5, 18, 8), at, STEEL, q);
-    piece(parts, new THREE.TorusGeometry(6.5, 0.7, 8, 28), add(at, along, 3), STEEL, flat);
-    piece(parts, new THREE.TorusGeometry(4.5, 0.5, 8, 24), add(at, along, -4), HULL, flat);
-    piece(parts, new THREE.SphereGeometry(1.8, 10, 8), add(at, along, 8.5), STEEL);
+    // (a platform the size of a small station: rings 8 across on a spar 10 long)
+    piece(parts, new THREE.CylinderGeometry(0.28, 0.28, 10, 8), at, STEEL, q);
+    piece(parts, new THREE.TorusGeometry(4, 0.45, 8, 28), add(at, along, 1.6), STEEL, flat);
+    piece(parts, new THREE.TorusGeometry(2.8, 0.32, 8, 24), add(at, along, -2.2), HULL, flat);
+    piece(parts, new THREE.SphereGeometry(1.1, 10, 8), add(at, along, 4.8), STEEL);
   },
   nebula() {},
 };
@@ -173,7 +175,7 @@ export function createPlaces({ places, sun = [0, 1, 0], small = false, rand = rn
   for (const p of places) {
     // the marker: a soft point over every place, so it reads from across the system
     glow(p.at, p.kind === 'nebula' ? [0.5, 0.35, 0.9] : [0.55, 0.7, 1], 70, 2, rand() * TAU);
-    if (p.kind === 'beacon') glow(add(p.at, [0, 3.6, 0]), [1.6, 0.25, 0.1], 24, 1, rand() * TAU);
+    if (p.kind === 'beacon') glow(add(p.at, [0, 1.5, 0]), [1.6, 0.25, 0.1], 18, 1, rand() * TAU);
     else if (p.kind === 'comet') {
       const n = Math.round(80 * k);
       for (let i = 0; i < n; i++) {
@@ -190,7 +192,7 @@ export function createPlaces({ places, sun = [0, 1, 0], small = false, rand = rn
         const warm = rand();
         glow(add(p.at, v.toArray()), [0.35 + warm * 0.45, 0.2 + (1 - warm) * 0.2, 0.7 + (1 - warm) * 0.3], 26 + rand() * 30, 2, rand() * TAU);
       }
-    } else if (p.kind === 'outpost') for (let i = 0; i < 6; i++) glow(add(p.at, [rand() - 0.5, rand() - 0.5, rand() - 0.5], 14), [1.3, 1.1, 0.6], 5, 1, rand() * TAU);
+    } else if (p.kind === 'outpost') for (let i = 0; i < 6; i++) glow(add(p.at, [rand() - 0.5, rand() - 0.5, rand() - 0.5], 8), [1.3, 1.1, 0.6], 4, 1, rand() * TAU);
   }
   const m = pts.length / 9;
   const position = new Float32Array(m * 3);

@@ -290,7 +290,7 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
               return (
                 <li key={p.id} data-found={got ? '' : undefined}>
                   <button type="button" onClick={() => onGo(p.id)} disabled={at === p.id}>
-                    <RiCompass3Line className="h-4 w-4" aria-hidden="true" /> {at === p.id ? `At ${got ? p.name : p.hint.toLowerCase()}` : got ? p.name : `${p.hint}, somewhere out there`}
+                    <RiCompass3Line className="h-4 w-4" aria-hidden="true" /> {at === p.id ? `At ${(got ? p.name : p.hint).replace(/^(A|An|The) /, (m) => m.toLowerCase())}` : got ? p.name : `${p.hint}, somewhere out there`}
                   </button>
                 </li>
               );

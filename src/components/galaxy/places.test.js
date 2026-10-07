@@ -88,6 +88,10 @@ describe('finds', () => {
     expect(readFound('[1,2]')).toEqual({});
     expect(readFound(JSON.stringify({ hoth: ['x', 3], endor: 'no', 7: [] }))).toEqual({ hoth: ['x'], 7: [] });
     expect(readFound(null)).toEqual({});
+    expect(readFound(undefined)).toEqual({});
+    expect(readFound(7)).toEqual({});
+    // (or already parsed, as lib/hooks's local.get hands it over)
+    expect(readFound({ hoth: ['x'], endor: 'no' })).toEqual({ hoth: ['x'] });
     // (an unknown place in the store is kept: a later version may know it, and it costs nothing)
     const total = f.total();
     expect(total).toEqual({ found: 1, of: SYSTEMS.reduce((n, s) => n + placesOf(s).length, 0) });
