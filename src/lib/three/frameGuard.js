@@ -32,7 +32,17 @@ function texturesOf(material) {
   return found;
 }
 
-export function guard(renderer, { uploadMB = 8, compileMs = 4, adopt = null, frame = nextFrame } = {}) {
+// The Scene an object hangs under, or null once it's been taken out of one.
+function sceneOf(object) {
+  let o = object;
+  while (o?.parent) o = o.parent;
+  return o?.isScene ? o : null;
+}
+
+// `tries`: how many pumps a material gets before it's let draw anyway (a
+// picture three never sends early, a shader that never says it has linked),
+// so nothing stays hidden for good.
+export function guard(renderer, { uploadMB = 8, compileMs = 4, adopt = null, tries = 5, frame = nextFrame } = {}) {
   if (guards.has(renderer)) return guards.get(renderer);
 
   const draw = renderer.renderBufferDirect;
@@ -40,8 +50,10 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, adopt = null, fra
   const hooks = new Set(adopt ? [adopt] : []);
   const ready = new WeakSet(); // drawn freely from now on
   const started = new WeakSet(); // adopted and compiled once already
-  const queue = new Map(); // material → the first object seen drawing it
+  // material → { object, scene, camera } of the first draw of it skipped
+  const queue = new Map();
   const inFlight = new Map(); // compiled, waiting on its fence
+  const pumped = new WeakMap(); // material → how many pumps it has had
   let inScene = false; // drawing for a render of a Scene (not a quad's)
   let depth = 0; // renders inside renders
   let lastScene = null;
@@ -72,7 +84,7 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, adopt = null, fra
     if (!handle.enabled || scene === null || !inScene || !material || knownReady(material)) {
       return draw.call(this, camera, scene, geometry, material, object, group);
     }
-    if (!inFlight.has(material) && !queue.has(material)) queue.set(material, object);
+    if (!inFlight.has(material) && !queue.has(material)) queue.set(material, { object, scene, camera });
   }
 
   function guardedRender(scene, camera) {
@@ -109,14 +121,23 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, adopt = null, fra
   // signals is each shader asked whether it has linked.
   async function pump() {
     scheduled = false;
-    if (fencing || disposed || !queue.size || !lastScene) return;
+    if (fencing || disposed || !queue.size) return;
     const t0 = now();
     const budget = uploadMB * 1024 * 1024;
     let bytes = 0;
     let sentAny = false;
-    for (const [material, object] of queue) {
+    for (const [material, entry] of queue) {
       if (inFlight.size && now() - t0 > compileMs) break;
       queue.delete(material);
+      const { object } = entry;
+      // (taken out of its world since: if it comes back, its draw queues it again)
+      if (!sceneOf(object)) continue;
+      const count = (pumped.get(material) ?? 0) + 1;
+      pumped.set(material, count);
+      if (count > tries) {
+        ready.add(material);
+        continue;
+      }
       const todo = texturesOf(material)
         .filter((t) => !uploaded(renderer, t))
         .map((t) => [t, textureBytes(t)])
@@ -137,20 +158,21 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, adopt = null, fra
           }
         }
         try {
-          renderer.compile(batchRoot([object]), lastCamera, lastScene);
+          // (against the scene and camera it was drawn for, as its real draw will be)
+          renderer.compile(batchRoot([object]), entry.camera ?? lastCamera, entry.scene ?? lastScene);
         } catch {
           // three reports a broken shader on its draw, as it always has
           ready.add(material);
           continue;
         }
       }
-      inFlight.set(material, object);
+      inFlight.set(material, entry);
     }
     if (!inFlight.size) return;
     fencing = true;
     const caughtUp = await fence(renderer, { frame });
     fencing = false;
-    for (const [material, object] of inFlight) {
+    for (const [material, entry] of inFlight) {
       inFlight.delete(material);
       if (disposed) continue;
       if (caughtUp) {
@@ -167,7 +189,7 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, adopt = null, fra
         }
       }
       // not linked, pictures still to send, or the chip not caught up: next frame
-      queue.set(material, object);
+      queue.set(material, entry);
     }
   }
 

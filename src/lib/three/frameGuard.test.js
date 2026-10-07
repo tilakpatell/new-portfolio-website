@@ -33,6 +33,7 @@ const drawingRenderer = (opts) => {
     for (const o of meshes) if (o.castShadow) r.renderBufferDirect(camera, null, o.geometry, new THREE.MeshDepthMaterial(), o, null);
     for (const o of meshes) {
       const m = o.material;
+      o.onBeforeRender(r, scene, camera, o.geometry, m, null);
       if (m.transparent && m.side === THREE.DoubleSide) {
         m.needsUpdate = true;
         r.renderBufferDirect(camera, scene, o.geometry, m, o, null);
@@ -318,6 +319,78 @@ describe('guard', () => {
     await settle();
     expect(r.gl.log).not.toContain('ready?');
     expect(g.pending()).toBe(1);
+    g.dispose();
+  });
+
+  it('passes a quad rendered inside a Scene render, then guards the rest of that render again', async () => {
+    const r = drawingRenderer();
+    const g = guard(r, { frame: frames() });
+    const before = new THREE.MeshBasicMaterial();
+    const after = new THREE.MeshBasicMaterial();
+    const quad = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.ShaderMaterial());
+    const { scene, camera, meshes } = world(before, after);
+    meshes[0].onBeforeRender = () => r.render(quad, new THREE.OrthographicCamera());
+    r.render(scene, camera);
+    expect(drawnCount(r, quad.material)).toBe(1);
+    expect(drawnCount(r, before)).toBe(0);
+    expect(drawnCount(r, after)).toBe(0);
+    expect(g.pending()).toBe(2);
+    // and the inner render didn't take the outer one's place as the scene to compile against
+    await settle();
+    expect(r.batches.every((b) => b.scene === scene && b.camera === camera)).toBe(true);
+    g.dispose();
+  });
+
+  it('compiles against the scene and camera a skipped draw came from, not the last rendered', async () => {
+    const r = drawingRenderer();
+    const g = guard(r, { frame: frames() });
+    const a = world(new THREE.MeshBasicMaterial());
+    const b = world(new THREE.MeshBasicMaterial());
+    r.render(a.scene, a.camera);
+    r.render(b.scene, b.camera);
+    await settle();
+    expect(r.batches.length).toBe(2);
+    expect(r.batches[0]).toMatchObject({ batch: a.meshes, scene: a.scene, camera: a.camera });
+    expect(r.batches[1]).toMatchObject({ batch: b.meshes, scene: b.scene, camera: b.camera });
+    g.dispose();
+  });
+
+  it('lets a material draw after `tries` pumps though it never comes ready', async () => {
+    const r = drawingRenderer({ readyAfter: Infinity });
+    const g = guard(r, { frame: frames(), tries: 5 });
+    const m = new THREE.MeshBasicMaterial();
+    const { scene, camera } = world(m);
+    for (let i = 0; i < 5; i++) {
+      r.render(scene, camera);
+      await settle();
+    }
+    expect(drawnCount(r, m)).toBe(0);
+    expect(r.gl.fences).toBe(5);
+    r.render(scene, camera); // (its sixth pump gives up on it)
+    await settle();
+    expect(g.pending()).toBe(0);
+    r.render(scene, camera);
+    expect(drawnCount(r, m)).toBe(1);
+    g.dispose();
+  });
+
+  it('drops a queued object taken out of its scene before its compile', async () => {
+    const r = drawingRenderer();
+    const g = guard(r, { frame: frames() });
+    const m = new THREE.MeshBasicMaterial();
+    const { scene, camera, meshes } = world(m);
+    r.render(scene, camera);
+    scene.remove(meshes[0]);
+    await settle();
+    expect(r.compiled).toEqual([]);
+    expect(r.gl.fences).toBe(0);
+    expect(g.pending()).toBe(0);
+    // back in, it's queued afresh
+    scene.add(meshes[0]);
+    r.render(scene, camera);
+    await settle();
+    r.render(scene, camera);
+    expect(drawnCount(r, m)).toBe(1);
     g.dispose();
   });
 
