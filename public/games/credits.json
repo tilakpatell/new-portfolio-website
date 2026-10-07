@@ -3932,6 +3932,33 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
+  "meshy/jedi3": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116cd-57ef-7515-9ca6-c1cac31fe20b",
+    "name": "the third Jedi, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/tiestriker": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116d3-18e1-704c-af5c-58f1425187ca",
+    "name": "the TIE Striker, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/dragonsnake": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116d3-1410-7648-a9fc-78068bb09a43",
+    "name": "the dragonsnake’s head and neck, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
   "meshy/rm/cronhouse": {
     "source": "https://www.meshy.ai",
     "id": "01a1170f-65dc-716d-92ed-b037c46bed77",

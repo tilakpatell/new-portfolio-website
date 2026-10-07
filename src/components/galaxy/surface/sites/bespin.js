@@ -380,11 +380,12 @@ export const SITE = {
     { kind: 'lamp', n: 50, within: [24, 160], scale: [1, 1], sink: -40, clear: 6, opts: { h: 4.5, light: '#ffe0b0', color: '#d8d0c4', radius: 0.2 } },
   ],
   // where the people go (needs.js): the Ugnaughts between the plaza, the
-  // chamber's door and the landing platform, the Wing Guard after them
+  // chamber's door (kneeling at its works, fixing them) and the landing
+  // platform (at its controls), the Wing Guard after them
   wants: [
     { id: 'plaza', kind: 'rest', at: [0, 20], pause: 6 },
-    { id: 'carbondoor', kind: 'work', at: [88, -78], pause: 9 },
-    { id: 'platform', kind: 'work', at: [0, -232], pause: 8 },
+    { id: 'carbondoor', kind: 'work', at: [88, -78], slots: 2, clip: 'kneel.fix', pause: 9 },
+    { id: 'platform', kind: 'work', at: [0, -232], slots: 2, clip: 'interact', pause: 8 },
   ],
   life: [
     { kind: 'lando', id: 'lando', quest: 'han', at: [2, -233], face: 3.1, still: true, name: 'Lando Calrissian', named: true, says: {

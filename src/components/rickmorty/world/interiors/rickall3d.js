@@ -7,8 +7,11 @@
 // Ghost in a Jar, whose jar is made here (Meshy couldn't make clear glass):
 // a glass jar with rounded shoulders and a shiny gold screw lid on a little
 // side table, the ghost in it glowing pale mint and squashed to the show's
-// squat bell. A parasite shot shrinks away to nothing; a real person falls
-// over. A ring on the floor marks who's in the sights.
+// squat bell. A parasite shot shrinks away to nothing; a real person is hit
+// and goes down (the `shot` clip, kept down; a prop without one tips over),
+// and whoever's stood near flinches back from it (`scared`). Each breathes
+// in their own time, their head on Morty while he's close. A ring on the
+// floor marks who's in the sights.
 //
 // Loaded the first time the egg hatches (./house.js asks for it), so the
 // world's first download doesn't carry it, and each figure is fetched then
@@ -31,6 +34,7 @@ const GHOST = { h: 0.4, squat: 0.7, y: 0.025 };
 const MINT = 0xc8ffe6;
 const SHRINK = 0.45; // how long a parasite takes to go, once shot (s)
 const FALL = 0.7; // and a real person to fall
+const NEAR = 2.6; // how near a shot someone stands to flinch from it (m)
 
 const ease = (k) => 1 - (1 - Math.min(1, Math.max(0, k))) ** 3;
 
@@ -162,7 +166,7 @@ export function createCrowd(R, kit, flat) {
     }
     holder.visible = false;
     group.add(holder);
-    return { holder, tilt, c, lift, jar, shotAt: null, seed: Math.random() * 10 };
+    return { holder, tilt, c, lift, jar, shotAt: null, seed: Math.random() * 10, down: false, flinched: null, looking: false };
   }
 
   // Load everyone in `ids` (a game's room), and say which can be drawn. One
@@ -187,14 +191,38 @@ export function createCrowd(R, kit, flat) {
   flat.add(ring);
 
   const M = new THREE.Matrix4();
+  const EYE = new THREE.Vector3();
+  // up again from the last game: no longer down, no flinch, its head ahead
+  const reset = (f) => {
+    if (f.down) f.c.stop?.(0);
+    f.down = false;
+    f.flinched = null;
+    if (f.looking) f.c.look?.(null);
+    f.looking = false;
+  };
   function update(t, dt, state) {
     const r = state?.rickall;
     const g = r?.game ?? null;
     group.visible = Boolean(g);
     ring.visible = false;
     if (!g) {
-      for (const f of made.values()) if (f.jar) f.jar.glints.visible = false;
+      for (const f of made.values()) {
+        if (f.jar) f.jar.glints.visible = false;
+        if (f.down || f.looking) reset(f);
+      }
       return;
+    }
+    // someone shot this frame: whoever's stood near them flinches from it
+    const m = state?.morty;
+    for (const [id, f] of made) {
+      if (!g.shot.includes(id) || f.shotAt != null) continue;
+      const p = g.people.find((o) => o.id === id);
+      for (const [other, o] of made) {
+        const q = other !== id && !g.shot.includes(other) && g.people.find((x) => x.id === other);
+        if (!q || o.flinched === id || Math.hypot(q.x - p.x, q.z - p.z) > NEAR) continue;
+        o.flinched = id;
+        o.c.react?.('gunfire', { target: { x: p.x, z: p.z } });
+      }
     }
     for (const [id, f] of made) {
       const p = g.people.find((o) => o.id === id);
@@ -204,10 +232,14 @@ export function createCrowd(R, kit, flat) {
       if (!f.holder.visible) continue;
       f.holder.position.set(p.x, f.lift, p.z);
       f.holder.rotation.y = p.face + Math.PI / 2;
-      // shot: a parasite shrinks away spinning; a real person falls back
+      // shot: a parasite shrinks away spinning; a real person goes down on
+      // the `shot` clip and stays there (one who can't play it tips over)
       const shot = g.shot.includes(id);
       if (shot) f.shotAt ??= t;
-      else f.shotAt = null;
+      else {
+        if (f.shotAt != null) reset(f);
+        f.shotAt = null;
+      }
       const k = shot ? (t - f.shotAt) / (p.parasite ? SHRINK : FALL) : 0;
       if (p.parasite) {
         const s = 1 - ease(k);
@@ -215,8 +247,15 @@ export function createCrowd(R, kit, flat) {
         f.tilt.rotation.set(0, k * 6, 0);
         f.holder.visible = k < 1;
       } else {
+        if (shot && !f.down) {
+          f.down = true;
+          f.fell = !f.c.anim; // (no clip to go down on: tipped over, as ever)
+          f.c.play?.('shot', { hold: Infinity }).then((ok) => {
+            if (!ok) f.fell = true;
+          });
+        }
         f.tilt.scale.setScalar(1);
-        f.tilt.rotation.set(-ease(k) * Math.PI * 0.48, 0, 0);
+        f.tilt.rotation.set(f.fell ? -ease(k) * Math.PI * 0.48 : 0, 0, 0);
       }
       // Baby Wizard bobs as he floats; the ghost bobs in his jar
       if (f.lift) f.holder.position.y = f.lift + Math.sin(t * 1.5 + f.seed) * 0.05;
@@ -228,8 +267,16 @@ export function createCrowd(R, kit, flat) {
         flat.updateWorldMatrix(true, false);
         M.copy(flat.matrixWorld).invert().multiply(f.jar.jar.matrixWorld).decompose(f.jar.glints.position, f.jar.glints.quaternion, f.jar.glints.scale);
       }
-      // (still standing, or falling: the idle plays)
-      if (f.c.mixer && (!shot || !p.parasite)) f.c.update(t, 0, 0);
+      // (still standing, or going down: the idle plays, or the shot; the
+      // living's heads on Morty while he's close)
+      if (f.c.mixer && (!shot || !p.parasite)) {
+        f.c.update(t, 0, 0, { dt });
+        const look = m && !shot && Math.hypot(m.x - p.x, m.z - p.z) < 3.2 ? EYE.set(m.x, 1.45, m.z) : null;
+        if (look || f.looking) {
+          f.c.look?.(look);
+          f.looking = Boolean(look);
+        }
+      }
       if (id === r.aim && !shot) {
         ring.visible = true;
         ring.position.set(p.x, 0.02, p.z);
