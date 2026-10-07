@@ -1,6 +1,6 @@
 {
   "date": "2026-10-07",
-  "sha": "cc0ba923",
+  "sha": "9a06f206",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -65,23 +65,23 @@
         },
         {
           "file": "src/components/galaxy/surface/scene.js",
-          "n": 2669
+          "n": 2667
         },
         {
           "file": "src/components/middleearth/towns/weathertop/props.js",
           "n": 2640
         },
         {
+          "file": "src/components/galaxy/scene.js",
+          "n": 2324
+        },
+        {
           "file": "src/components/middleearth/towns/marshes/props.js",
           "n": 2315
         },
         {
-          "file": "src/components/galaxy/scene.js",
-          "n": 2285
-        },
-        {
           "file": "src/components/rickmorty/world/RmWorld.jsx",
-          "n": 2162
+          "n": 2218
         },
         {
           "file": "src/components/avengers/world/scene.js",
@@ -93,7 +93,7 @@
         },
         {
           "file": "src/components/galaxy/surface/props/forest.js",
-          "n": 1971
+          "n": 1916
         },
         {
           "file": "src/components/middleearth/towns/edoras/folk.js",
@@ -101,7 +101,7 @@
         },
         {
           "file": "src/components/galaxy/surface/props/core.js",
-          "n": 1763
+          "n": 1762
         },
         {
           "file": "src/lib/sfx.js",
@@ -110,7 +110,7 @@
       ]
     },
     "boundary-breaks": {
-      "value": 289,
+      "value": 292,
       "unit": "imports",
       "label": "imports across a line docs/health/RULES.md draws",
       "detail": [

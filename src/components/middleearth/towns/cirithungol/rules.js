@@ -102,7 +102,7 @@ export function stepClimb(c, dt, up) {
 // She hunts you through the tunnels (../watchers.js with SHELOB). The
 // phial drives her back while it shines and she's within `reach`, but its
 // light fades while you hold it up, and comes back slowly.
-export const SHELOB = { sight: 6, cone: 1.1, smell: 2.6, hear: 6, ringSight: 0, alert: 0.5, chase: 3.4, patrol: 1.4, giveUp: 6, leash: 40, catch: 1.5, look: 1.4 };
+export const SHELOB = { sight: 6, cone: 1.1, smell: 2.6, hear: 6, ringSight: 0, alert: 0.5, chase: 3.4, patrol: 1.4, giveUp: 6, leash: 40, catch: 1.5, look: 1.4, far: 1, search: 12 }; // (far, search: she hunts by smell and sound, sure at once up close, and stalks where she last had you)
 export const PHIAL = { use: 0.16, back: 0.05, again: 0.25, reach: 7 };
 
 export const newPhial = () => ({ charge: 1, on: false, out: false });

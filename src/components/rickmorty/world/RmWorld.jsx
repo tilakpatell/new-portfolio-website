@@ -82,6 +82,7 @@ import { useTravellers } from '../../middleearth/towns/useTravellers';
 // in it, F or a click to shoot them, and a card for how it ended.
 
 const Roy = lazy(() => import('./roy/Roy').catch(() => ({ default: RoyDown })));
+const Sewer = lazy(() => import('./sewer/Sewer').catch(() => ({ default: RoyDown })));
 const sound = (name) =>
   import('../../games/gameAudio')
     .then((g) => g[name]?.())
@@ -122,6 +123,7 @@ const PLACES = {
   portalpanic: { title: 'Portal panic', where: 'The cabinet in Rick’s garage', task: 'portalpanic' },
   quiz: { title: 'Mr. Goldenfold’s pop quiz', where: 'Harry Herpson High' },
   roy: { title: 'Roy: A Life Well Lived', where: 'Blips and Chitz', full: true },
+  sewer: { title: 'Pickle Rick’s sewer run', where: 'The agency', full: true },
 };
 // what the people say, and the cabinets that aren't Roy
 const SAY = {
@@ -215,7 +217,7 @@ const BOARD_R = 2.7; // how near the cruiser's middle Morty can get in from
 
 // Where the next thing to do is, for the map's marker: the area and the spot
 // in it, and from anywhere else, the way towards it.
-const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'], president: ['street', 'spot:president'], oval: ['garage', 'link:garage-oval'], diner: ['street', 'link:diner-door'], mindblowers: ['mindblowers', 'spot:chair'], rickall: ['house', 'spot:egg'], wong: ['street', 'link:wong-door'], ...Object.fromEntries(DESTINATIONS.flatMap((d) => d.tasks.map((t) => [t.id, [d.id, `spot:${Object.keys(d.done).find((k) => d.done[k] === t.id) ?? d.escape?.after ?? d.escape?.spot ?? d.goal}`]]))) };
+const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'], president: ['street', 'spot:president'], oval: ['garage', 'link:garage-oval'], diner: ['street', 'link:diner-door'], mindblowers: ['mindblowers', 'spot:chair'], rickall: ['house', 'spot:egg'], wong: ['street', 'link:wong-door'], ...Object.fromEntries(DESTINATIONS.flatMap((d) => d.tasks.map((t) => [t.id, [d.id, `spot:${Object.keys(d.done).find((k) => d.done[k] === t.id) ?? d.escape?.after ?? d.escape?.spot ?? d.goal}`]]))), sewer: ['agency', 'spot:sewer'] };
 // (every destination is through the garage's portal)
 const toDest = (via) => Object.fromEntries(DESTINATIONS.map((d) => [d.id, via]));
 const WAY = {
@@ -325,6 +327,8 @@ export default function RmWorld() {
       setDone(next);
       api.current?.fx('done', { id });
       sound('gadget');
+      // (and Morty's pleased with himself)
+      api.current?.play('cheer', { hold: 0.2 });
       if (openRef.current) pending.current.push(id);
       else tellDone([id]);
     },
@@ -368,6 +372,15 @@ export default function RmWorld() {
     [complete, close],
   );
 
+  // up the hole from the sewer: the run counts when the far drain was made
+  const sewerLeft = useCallback(
+    (won) => {
+      close();
+      if (won) complete('sewer');
+    },
+    [complete, close],
+  );
+
   useEffect(() => {
     if (!toast) return undefined;
     const t = setTimeout(() => setToast(null), toast.kind === 'say' ? 5600 : toast.bad ? 3400 : 4400);
@@ -382,7 +395,7 @@ export default function RmWorld() {
       ) : (
         <Cards done={done} openPlace={openPlace} three={three} gl={gl} toast={toast} retry={() => setGl('loading')} />
       )}
-      {open && <Place id={open} onClose={close} onQuiz={quizDone} onRoy={royLeft} />}
+      {open && <Place id={open} onClose={close} onQuiz={quizDone} onRoy={royLeft} onSewer={sewerLeft} />}
     </section>
   );
 }
@@ -823,7 +836,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       // the siren, the scanner, the toast: the clock starts for the portal home
       if (e && !early && !s.escape) {
         s.escape = { ...e, at: s.t };
-        sound('portalOpen');
+        sound('siren');
       }
       // (done once they've had their say: the President gets in his car then)
       if (TALK_DONE[n.id]) later(() => complete(TALK_DONE[n.id]), TALK_MS);
@@ -833,7 +846,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         api.current?.act(c.area, 'collected');
         if (c.escape) {
           if (!s.escape) s.escape = { area: c.area, task: c.task, s: c.escape.s, at: s.t };
-          sound('portalOpen');
+          sound('siren');
         } else if (!c.start) later(() => complete(c.task), TALK_MS);
       }
       if (TALK_UNLOCK[n.id]) later(() => unlock(TALK_UNLOCK[n.id]), TALK_MS);
@@ -850,7 +863,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         const d = destinationById(e.area);
         if (!d) return;
         say({ kind: 'say', who: SAY[e.who]?.who ?? e.who ?? null, text: e.text ?? d.caught ?? 'Caught.' });
-        sound('ouch');
+        sound('grab');
         api.current?.play('scared', { hold: 0.4 });
         // a blink, and he's back at the way in
         s.fading = true;
@@ -872,7 +885,13 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         s.barkAt = s.t;
         say({ kind: 'say', who: e.who, text: e.text });
       } else if (name === 'done') complete(e.task);
-      else if (name === 'duel') {
+      else if (name === 'spotted') {
+        // someone's seen him: a word and a sound, not too often
+        if (s.t - (s.spottedAt ?? -1e9) < 8) return;
+        s.spottedAt = s.t;
+        sound('alarm');
+        say({ kind: 'say', who: SAY[e.who]?.who ?? null, text: e.text ?? 'They’ve seen you.' });
+      } else if (name === 'duel') {
         // the fight's on: the hearts show, and F fires
         s.duel = { who: e.who, hp: e.hp, max: e.max, mortyHp: e.mortyHp, mortyMax: e.mortyMax };
         setDuel({ ...s.duel });
@@ -880,7 +899,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       } else if (name === 'strike') {
         s.duel = { who: e.who, hp: e.hp, max: e.max, mortyHp: e.mortyHp, mortyMax: e.mortyMax };
         setDuel({ ...s.duel });
-        sound('ouch');
+        sound('thud');
         if (e.beaten) {
           // beaten: he goes down, and comes round at the way in; the fight's off till the next try
           api.current?.play('fall', { hold: 1.2 });
@@ -1259,6 +1278,8 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     // the clock of a place left in a hurry, for the HUD (whole seconds, so it rarely redraws)
     const left = s.escape && s.area === s.escape.area ? Math.max(0, Math.ceil(s.escape.s - (s.t - s.escape.at))) : null;
     if (left !== clockRef.current) {
+      // (its last ten seconds tick, and it's heard running out)
+      if (left != null && left <= 10) sound(left === 0 ? 'timeUp' : 'tick');
       clockRef.current = left;
       setClock(left);
     }
@@ -1366,7 +1387,11 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       hudKey.current = key;
       setHud({ area: s.area, room, flying: s.flying, landing: s.landing, near, moved: s.moved, alt, kmh });
     }
-    if (++s.frame % 3 === 0) drawMap(map.current, s, goalOf(progRef.current.next, s), s.t);
+    if (++s.frame % 3 === 0) {
+      // the place's people, for the map (stage.js's NPC layer says where they are)
+      s.npcs = api.current?.act(s.area, 'npcs') ?? null;
+      drawMap(map.current, s, goalOf(progRef.current.next, s), s.t);
+    }
   }, live);
 
   // something open over the world: let go of the stick and the up and down buttons
@@ -1640,7 +1665,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       {gl === 'on' && game?.end && <Ending end={game.end} onAgain={() => startRickall()} onLeave={stopRickall} />}
 
       {gl === 'on' && !here && !game && !hud.flying && !hud.moved && (
-        <p className="rm-hint">{touch ? 'Drag the stick to walk; push it all the way to run; the arrow jumps. Swipe sideways to look round.' : 'W A S D or the arrows to walk, Shift to run, Space to jump. Drag to look round. E uses things, M lists what to do.'}<GuideCue touch={touch} /></p>
+        <p className="rm-hint">{touch ? 'Drag the stick to walk; push it all the way to run; the arrow jumps, the star fires in a fight. Swipe sideways to look round.' : 'W A S D or the arrows to walk, Shift to run, Space to jump. Drag to look round. E uses things, F fires in a fight, M lists what to do.'}<GuideCue touch={touch} /></p>
       )}
       {gl === 'on' && hud.flying && !here && (
         <p className="rm-hint rm-keys">
@@ -1682,6 +1707,20 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
                   <button type="button" aria-label="Jump" onPointerDown={onJump} onContextMenu={(e) => e.preventDefault()}>
                     <RiArrowUpLine aria-hidden="true" />
                   </button>
+                  {duel && (
+                    <button
+                      type="button"
+                      className="rm-fire"
+                      aria-label="Fire"
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        fns.current.fire();
+                      }}
+                      onContextMenu={(e) => e.preventDefault()}
+                    >
+                      ✦
+                    </button>
+                  )}
                 </div>
               )}
               {hud.flying && (
@@ -1943,6 +1982,13 @@ function drawMap(c, s, goal, t) {
   g.lineWidth = 1.4 * u;
   for (const l of LINKS) if (l.area === s.area) disc(l.x, l.z, 3 * u, null, l.kind === 'portal' ? '#9dff5a' : '#ffffff');
   // the next thing to do, pulsing
+  // the place's people: a dot each, red and pulsing for one who's after Morty, grey for one who's down
+  if (Array.isArray(s.npcs))
+    for (const n of s.npcs) {
+      if (!n.visible) continue;
+      if (n.hunting) disc(n.x, n.z, (2.6 + Math.sin(t * 8) * 0.8) * u, '#ff3a3a', '#ffffff');
+      else disc(n.x, n.z, 1.8 * u, n.dead ? '#6a6a6a' : '#ffffff', null);
+    }
   if (goal) {
     g.lineWidth = 2 * u;
     disc(goal.x, goal.z, (6 + Math.sin(t * 4.5) * 1.6) * u, null, '#ffd23a');
@@ -2063,7 +2109,7 @@ function RoyDown({ onLeave }) {
 // ── what opens over the page ──
 // Its component, and the way back to the room (Esc, the button, or B on a
 // controller). Roy fills the screen and has its own way out.
-function Place({ id, onClose, onQuiz, onRoy }) {
+function Place({ id, onClose, onQuiz, onRoy, onSewer }) {
   const p = PLACES[id];
   const back = useRef(null);
   const shell = useRef(null);
@@ -2116,6 +2162,18 @@ function Place({ id, onClose, onQuiz, onRoy }) {
         }
       >
         {() => <Roy onLeave={onRoy} />}
+      </GpuGate>
+    ),
+    sewer: (
+      <GpuGate
+        className="rm-roy-gate"
+        extra={
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onSewer(false)}>
+            Back up the hole
+          </button>
+        }
+      >
+        {() => <Sewer onLeave={onSewer} />}
       </GpuGate>
     ),
   }[id];

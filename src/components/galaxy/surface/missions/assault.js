@@ -33,6 +33,11 @@
 // objective under it (pickPost). The shots at you are tokens
 // (RULES.atYouMax at once, each held a shot's time, so they take turns).
 // Events: { type: 'posture', side, squad, posture } when a squad's changes.
+//
+// And in the galaxy's war (gcw.js): the result's `posts` are the posts each
+// side took while you were up (once each), which pages/GalaxySurface.jsx
+// counts for your side; sideFor(mission, side) is the war's side on this map
+// ('attack', 'defend' or null) and warSideOf(mission, k) the other way.
 
 import { pushOut, turnToward } from '../walker';
 import { rng } from '../noise';
@@ -117,7 +122,7 @@ export function newBattle(mission, { n = SOLDIERS.high, seed = 1 } = {}) {
   const soldiers = [];
   for (const side of ['attack', 'defend'])
     for (let i = 0; i < n; i++) soldiers.push({ id: soldiers.length, side, kind: pickKind(mission.sides[side].kinds, kr), x: 0, z: 0, yaw: 0, hp: RULES.hp, up: false, down: 0, post: null, spot: null, cool: 1 + r() * 2, wait: 0, target: null, move: 0, detour: 0, suppress: 0, cover: null, coverAt: -99, inCover: false, dug: false });
-  return { mission, r, t: 0, phase: 'choose', phaseIndex: 0, result: null, posts, soldiers, tickets: { ...mission.tickets }, waveAt: { attack: 0, defend: 0 }, you: { side: null, up: false, x: 0, z: 0, kills: 0, captures: 0, deaths: 0, in: null, state: null }, feed: [], squads: { attack: createSquads({ reach: TACTICS.reach }), defend: createSquads({ reach: TACTICS.reach }) }, tactics: { attack: {}, defend: {} }, losses: { attack: [], defend: [] }, tacticsAt: 0, tokens: createTokens({ pools: { shot: RULES.atYouMax }, timeout: RULES.every }) };
+  return { mission, r, t: 0, phase: 'choose', phaseIndex: 0, result: null, posts, soldiers, tickets: { ...mission.tickets }, waveAt: { attack: 0, defend: 0 }, you: { side: null, up: false, x: 0, z: 0, kills: 0, captures: 0, deaths: 0, in: null, state: null }, feed: [], squads: { attack: createSquads({ reach: TACTICS.reach }), defend: createSquads({ reach: TACTICS.reach }) }, tactics: { attack: {}, defend: {} }, losses: { attack: [], defend: [] }, tacticsAt: 0, tokens: createTokens({ pools: { shot: RULES.atYouMax }, timeout: RULES.every }), taken: { attack: new Set(), defend: new Set() } };
 }
 
 const feed = (b, kind, text) => {
@@ -306,9 +311,18 @@ export function hitSoldier(b, id, damage = RULES.yours, by = 'you') {
   return hurt(b, s, damage, by, []);
 }
 
+// The galaxy's war's side (sides.js) on this map: 'attack', 'defend' or null
+// (a map's sides are the assault's own: its Rebels are 'rebels'), and back.
+const WAR_ID = { rebel: 'rebels' };
+export const sideFor = (mission, side) => (side ? (['attack', 'defend'].find((k) => mission.sides[k].id === (WAR_ID[side] ?? side)) ?? null) : null);
+export const warSideOf = (mission, k) => {
+  const id = mission.sides[k]?.id;
+  return id ? (Object.keys(WAR_ID).find((w) => WAR_ID[w] === id) ?? id) : null;
+};
+
 export function endBattle(b, won, why) {
   if (b.result) return;
-  b.result = { won, why, t: b.t, stars: won ? starsFor(b.mission, b.t) : 0, kills: b.you.kills, captures: b.you.captures, side: b.you.side };
+  b.result = { won, why, t: b.t, stars: won ? starsFor(b.mission, b.t) : 0, kills: b.you.kills, captures: b.you.captures, side: b.you.side, posts: { attack: b.taken.attack.size, defend: b.taken.defend.size } };
   b.phase = 'end';
 }
 
@@ -425,6 +439,8 @@ function step(b, h, you, env, out) {
         p.taking = null;
         const yours = p.youIn && b.you.side === side;
         if (yours) b.you.captures += 1;
+        // (for the galaxy's war: a post its side took while you were up)
+        if (youOn) b.taken[side].add(p.id);
         out.push({ type: 'capture', post: p.id, side, you: yours });
         feed(b, 'capture', `${sideName(b, side) === 'Empire' ? 'The Empire' : `The ${sideName(b, side)}`} took ${p.name.replace(/^The /, 'the ')}`);
       }
