@@ -60,7 +60,20 @@ export const ALIASES = {
   ...Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map((i) => [`wheat_stage${i}`, [`wheat_stage_${i}`]])),
   farmland: ['farmland_dry'],
   farmland_moist: ['farmland_wet'],
-  chest_top: [{ from: 'entity/chest/normal', parts: [{ x: 28, y: 0, w: 14, h: 14, dx: 1, dy: 1 }] }],
+  // the items' 1.12 names (the same table serves the item folder)
+  ...Object.fromEntries(['pickaxe', 'axe', 'shovel', 'sword', 'hoe'].flatMap((t) => [
+    [`wooden_${t}`, [`wood_${t}`]],
+    [`golden_${t}`, [`gold_${t}`]],
+  ])),
+  ...Object.fromEntries(['porkchop', 'beef', 'chicken', 'mutton'].flatMap((m) => [
+    [m, [`${m}_raw`]],
+    [`cooked_${m}`, [`${m}_cooked`]],
+  ])),
+  wheat_seeds: ['seeds_wheat'],
+  lapis_lazuli: ['dye_powder_blue'],
+  melon_slice: ['melon'],
+  oak_door: ['door_wood'],
+    chest_top: [{ from: 'entity/chest/normal', parts: [{ x: 28, y: 0, w: 14, h: 14, dx: 1, dy: 1 }] }],
   chest_front: [
     {
       from: 'entity/chest/normal',
