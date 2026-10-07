@@ -30,6 +30,8 @@ async function loadList(run) {
   const { TOURS } = await import('./steps');
   if (!run.audience) return { list: TOURS[run.name], start: 0 };
   const list = flatten(planFor(TOURS, run.audience, run.view, run.here));
+  // (an audience whose chapters aren't written yet gets the view's tour)
+  if (!list.length && !run.todo) return { list: TOURS[run.view], start: 0 };
   return { list, start: stopIndexFor(list, run) };
 }
 

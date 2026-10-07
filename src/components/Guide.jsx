@@ -19,6 +19,7 @@ const typing = (t) => t instanceof HTMLElement && (t.isContentEditable || /^(INP
 export default function Guide() {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState(null); // the tab it was asked to open on, if any
   const button = useRef(null);
   const meta = guideMeta(pathname);
 
@@ -63,7 +64,10 @@ export default function Guide() {
         refocusRef.current();
       }
     };
-    const onOpen = () => setOpen(true);
+    const onOpen = (e) => {
+      setTab(e.detail?.tab ?? null);
+      setOpen(true);
+    };
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('tp:guide', onOpen);
     return () => {
@@ -72,6 +76,10 @@ export default function Guide() {
     };
   }, []);
   useEffect(() => setOpen(false), [pathname]);
+  // (asked for a tab once; the next opening is on this page's)
+  useEffect(() => {
+    if (!open) setTab(null);
+  }, [open]);
 
   // The note, the first time on a page with controls: once the page is
   // uncovered and nothing's asking a question over it. It goes after a while,
@@ -170,7 +178,7 @@ export default function Guide() {
       )}
       {open && (
         <Suspense fallback={null}>
-          <GuidePanel pathname={pathname} close={close} onLeave={() => setOpen(false)} />
+          <GuidePanel key={tab ?? 'page'} pathname={pathname} tab={tab} close={close} onLeave={() => setOpen(false)} />
         </Suspense>
       )}
     </>

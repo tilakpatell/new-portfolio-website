@@ -12,6 +12,9 @@ import { isMapPath } from './view';
 export const TOUR_KEY = 'tp-tour'; // what readProgress reads; unset until the offer's made
 export const TOUR_EVENT = 'tp:tour';
 export const AUDIENCES = ['recruiter', 'player', 'mixed'];
+// what each is called wherever it's offered, and how long it takes (spec 3.1)
+export const TOUR_NAMES = { recruiter: 'The recruiter’s tour', player: 'The player’s tour', mixed: 'The whole tour' };
+export const TOUR_TIMES = { recruiter: 'About 5 minutes', player: 'About 7 minutes', mixed: 'About 10 minutes' };
 
 // Starts a tour from anywhere: ⌘K, the guide, the terminal, the offer, the
 // checklist. With no detail, the tour of the view you're in, as before; with

@@ -1,0 +1,18 @@
+/* The guide's "Things to do" (TodoList.jsx): a filter and a count, then a
+   row per thing, the tick first so a done row reads at a glance. Rows wrap
+   on a phone: the time and "Show me" drop under the words. */
+.todo-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 0.75rem; margin-top: 0.75rem; }
+.todo-count { color: var(--muted); font-size: 0.8125rem; }
+.todo-group { margin-top: 1.25rem; }
+.todo-list { margin: 0.25rem 0 0; padding: 0; list-style: none; }
+.todo-row { display: grid; grid-template-columns: 1.25rem 1fr auto; gap: 0.25rem 0.6rem; align-items: start; padding: 0.6rem 0; border-top: 1px solid var(--border); }
+.todo-tick { display: grid; place-items: center; width: 1.1rem; height: 1.1rem; margin-top: 0.15rem; border: 1px solid var(--border-strong); border-radius: 999px; }
+.todo-row[data-done] .todo-tick { border-color: var(--btn-bg); background: var(--btn-bg); color: var(--btn-ink); }
+.todo-title { font-size: 0.9rem; font-weight: 600; line-height: 1.35; }
+.todo-blurb { margin-top: 0.15rem; color: var(--muted); font-size: 0.8125rem; line-height: 1.45; }
+.todo-go { display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem; }
+.todo-time { color: var(--muted); font-family: var(--font-mono); font-size: 0.75rem; }
+@media (max-width: 479px) {
+  .todo-row { grid-template-columns: 1.25rem 1fr; }
+  .todo-go { grid-column: 2; flex-direction: row; align-items: center; justify-content: space-between; }
+}

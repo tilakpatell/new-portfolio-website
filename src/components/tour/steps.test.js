@@ -20,8 +20,9 @@ const marked = () => {
 describe('the tours’ stops', () => {
   const ctx = { key: '⌘K' };
 
-  it('has one for each view of the site', () => {
-    expect(Object.keys(TOURS).sort()).toEqual(['classic', 'universe']);
+  it('has one for each view of the site, and only the audiences’ besides', () => {
+    expect(Object.keys(TOURS)).toEqual(expect.arrayContaining(['classic', 'universe']));
+    for (const name of Object.keys(TOURS)) expect(['classic', 'universe', 'recruiter', 'player', 'mixed'], name).toContain(name);
   });
 
   it('opens and closes each tour on a card that points at nothing', () => {

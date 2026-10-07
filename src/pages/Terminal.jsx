@@ -14,9 +14,11 @@ import { education, profile, skills } from '../data/profile';
 import { DESTINATIONS, findDestination } from '../components/universe/nav';
 import { roles, fmtShortRange, fmtMonth } from '../data/roles';
 import { projects } from '../data/projects';
-import { useDocumentTitle } from '../lib/hooks';
+import { local, useDocumentTitle } from '../lib/hooks';
 import { restartSite } from '../lib/restart';
-import { openTour } from '../lib/tour';
+import { TOUR_NAMES, openTour } from '../lib/tour';
+import { TODO, isDone } from '../data/todo';
+import { VISITED_KEY } from '../lib/visited';
 
 // The Imperial terminal — the one place on the site that stays fully in character.
 // `hang` is how far a wrapped line indents (it defaults to the line's own
@@ -89,7 +91,10 @@ const HELP = [
   L('  achievements     what you have unlocked', 'out', 19),
   L('  clear            clear the screen', 'out', 19),
   BLANK,
-  L('  Also: whoami · date · ls · cat · echo · history · neofetch · tour (a look round the site) · restart (the site, from the beginning) · exit', 'dim'),
+  L('  tour [who]       a tour of the site: tour recruiter, tour player, tour all (or just tour, a quick look round)', 'out', 19),
+  L('  todo             the things to do here, ticked off as you do them', 'out', 19),
+  BLANK,
+  L('  Also: whoami · date · ls · cat · echo · history · neofetch · restart (the site, from the beginning) · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
   L('  Worlds: worlds · galaxy · deathstar · moria · avengers · scranton · cybertron · albuquerque · c137 · dotmatrix · earth · music', 'dim'),
   L('  Languages: language · aurebesh · cybertronian · runes · english (back to English)', 'dim'),
@@ -515,9 +520,21 @@ export default function Terminal() {
         setTimeout(() => navigate('/'), 300);
         return [L('  Closing channel.', 'sys')];
       },
-      tour: () => {
-        setTimeout(openTour, 500);
-        return [L('  Showing you round…', 'ok')];
+      tour: (arg) => {
+        const audience = { recruiter: 'recruiter', hire: 'recruiter', player: 'player', play: 'player', all: 'mixed', whole: 'mixed' }[arg];
+        if (arg && !audience) return [L(`  tour: ${arg}: no such tour. Try: tour recruiter, tour player, tour all`, 'err')];
+        setTimeout(() => openTour(audience ? { audience } : undefined), 500);
+        return [L(audience ? `  ${TOUR_NAMES[audience]}. Showing you round…` : '  Showing you round…', 'ok')];
+      },
+      todo: () => {
+        const visited = local.get(VISITED_KEY, []);
+        const ticked = TODO.filter((t) => isDone(t, { unlocked, visited })).length;
+        return [
+          L(`  THINGS TO DO: ${ticked}/${TODO.length}`, 'head'),
+          ...TODO.map((t) => (isDone(t, { unlocked, visited }) ? L(`  ■ ${t.title}`) : L(`  □ ${t.title}`, 'dim'))),
+          BLANK,
+          L('  The guide’s “Things to do” tab (press ?) shows you any of them.', 'dim'),
+        ];
       },
       restart: () => {
         setTimeout(restartSite, 700);
