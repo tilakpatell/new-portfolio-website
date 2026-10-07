@@ -76,7 +76,7 @@ import { createBlaster } from './blaster';
 import { createSaber } from './saber';
 import { DODGE, FORCE, GUARD, HEAVY, PARRY, dodgeStep, forceAt, guardHit, guardStep, hitStop, lungeTo, parried, pushVelocity } from './combatRules';
 import { heatShot, heatStep, spreadAt, vent, ventSpot, withMods } from './weaponRules';
-import { heroSpec } from '../heroes';
+import { heroById, heroSpec } from '../heroes';
 import { perkEffects } from '../perks';
 import { ABILITIES, JET, abilitiesOf, jetStep, newJet } from './abilityRules';
 import { feed, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
@@ -455,7 +455,9 @@ export async function create(canvas, ctx) {
   const hero = ctx.hero ? heroSpec(ctx.hero) : null;
   const perks = perkEffects(hero?.perks ?? []); // (galaxy/perks.js: the multipliers the hero's perks give)
   const guardMax = GUARD.max * perks.guard;
-  const party = hero ? [hero, crewOf[0].id === hero.id ? crewOf[1] : crewOf[1].id === hero.id ? crewOf[0] : crewOf[1]] : crewOf;
+  // (your mate carries their own two abilities too, where they're on the roster)
+  const withAbilities = (s) => (s.abilities || !heroById(s.id)?.abilities ? s : { ...s, abilities: heroById(s.id).abilities });
+  const party = (hero ? [hero, crewOf[0].id === hero.id ? crewOf[1] : crewOf[1].id === hero.id ? crewOf[0] : crewOf[1]] : crewOf).map(withAbilities);
   const out = new V(Math.cos(site.land.yaw), 0, -Math.sin(site.land.yaw)); // the ship's right
   // (a mission on foot starts you at its start, facing its way)
   const onFoot = Boolean(mission && !mission.ride);
