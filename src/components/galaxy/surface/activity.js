@@ -263,6 +263,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     if (f) return f;
     if (PROPS[kind] && kit) {
       const made = PROPS[kind](kit, spec.opts ?? {});
+      // (it walks: its scans go with it, kit.js's twins)
+      kit.moving?.(made.object);
       let t = 0;
       return { model: made.object, tall: 4, update: (dt, move) => made.update?.((t += dt), dt, move), dispose() {} };
     }

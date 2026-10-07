@@ -352,12 +352,13 @@ describe('your standing', () => {
     const ship = { ...parked };
     let fledFeared = false;
     let fledCalm = false;
-    for (let t = 0; t < 90; t += DT) {
+    // (long enough for a lane's ship to come by, at the ship's pace)
+    for (let t = 0; t < 150; t += DT) {
       traffic.update(DT, t, ship, { fight: false, feared: true });
       if (traffic.groups.some((g) => g.flee > 0.5 && fleet.made.length)) fledFeared = true;
     }
     const calm = setup();
-    for (let t = 0; t < 90; t += DT) {
+    for (let t = 0; t < 150; t += DT) {
       calm.traffic.update(DT, t, ship, { fight: false, feared: false });
       if (calm.traffic.groups.some((g) => g.flee > 0.5)) fledCalm = true;
     }

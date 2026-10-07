@@ -158,6 +158,27 @@ export const seed = () => tone([1568, 2093], { type: 'triangle', dur: 0.12, gain
 export const gadget = () => tone([523, 659, 784, 1047], { type: 'triangle', dur: 0.2, gain: 0.07, delay: 0.06 });
 // hurt
 export const ouch = () => tone([300], { type: 'sawtooth', dur: 0.25, gain: 0.08, glide: 0.5 });
+// the dial's places (rickmorty/world/RmWorld.jsx): seen by one of them
+export const alarm = () => tone([660, 990], { type: 'square', dur: 0.14, gain: 0.045, delay: 0.1, glide: 1.15 });
+// the clock starts for the portal home: a siren's rise and fall
+export const siren = () => {
+  tone([440], { type: 'sawtooth', dur: 0.45, gain: 0.05, glide: 1.8 });
+  setTimeout(() => tone([792], { type: 'sawtooth', dur: 0.45, gain: 0.05, glide: 0.55 }), 420);
+};
+// the clock's last seconds, one each
+export const tick = () => tone([1800], { type: 'square', dur: 0.03, gain: 0.03, glide: 0.8 });
+// the clock run out
+export const timeUp = () => tone([330, 262, 196], { type: 'sawtooth', dur: 0.4, gain: 0.06, delay: 0.16, glide: 0.9 });
+// a blow landing in a duel
+export const thud = () => {
+  whoosh(0.12, 600, 120, 0.2);
+  tone([110], { type: 'sine', dur: 0.18, gain: 0.1, glide: 0.5 });
+};
+// grabbed by one of them
+export const grab = () => {
+  whoosh(0.3, 1600, 300, 0.18);
+  setTimeout(() => tone([300], { type: 'sawtooth', dur: 0.25, gain: 0.08, glide: 0.5 }), 120);
+};
 // the soundboard on /c-137: a plumbus's squelch, the Cromulon's verdict, a
 // bassline to get schwifty to
 export const plumbus = () => {

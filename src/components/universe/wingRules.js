@@ -30,6 +30,7 @@ import { clearOf, fightSpeed, shipVelocity, turnToward } from './hunterRules';
 import { RIGHT, UP, fromAngles, rotate } from './orient';
 import { intercept, nose, sweptHit } from './targeting';
 import { alliesOf } from './sides';
+import { pacedAll } from './ship';
 
 // how each kind of friend flies (sides.js's allies, every side's): top
 // speed, how quick its nose is, seconds between shots (a range), how true
@@ -40,13 +41,16 @@ import { alliesOf } from './sides';
 export const WING_KINDS = {
   ...alliesOf(null),
   // (and the galaxy's wars' wings, for whichever side you swore to there:
-  // galaxy/roamRules.js's escorts; nobody's ally on the universe map)
+  // galaxy/roamRules.js's escorts; nobody's ally on the universe map; at the
+  // ship's pace, as the sides' are)
+  ...pacedAll({
   tie: { speed: 25, accel: 21, turn: 2.8, fire: [0.8, 1.4], spread: 0.15, size: 0.3, colour: [0.5, 5.5, 0.9] },
   interceptor: { speed: 29, accel: 25, turn: 3.1, fire: [0.6, 1.1], spread: 0.18, size: 0.32, stay: 3, tour: 20, colour: [0.5, 5.5, 0.9] },
   arc170: { speed: 22, accel: 18, turn: 2.2, fire: [1.0, 1.7], spread: 0.12, size: 0.46, damage: 2, colour: [5.8, 0.75, 0.55] },
   delta7: { speed: 30, accel: 26, turn: 3.3, fire: [0.6, 1.0], spread: 0.15, size: 0.3, colour: [5.8, 0.75, 0.55] },
   vulture: { speed: 24, accel: 20, turn: 2.7, fire: [0.9, 1.6], spread: 0.25, size: 0.3, colour: [6.0, 2.5, 0.5] },
   trifighter: { speed: 27, accel: 23, turn: 3.0, fire: [0.7, 1.2], spread: 0.2, size: 0.32, colour: [6.0, 2.5, 0.5] },
+  }),
 };
 export const WING = {
   from: 34, // map units behind you they come in from

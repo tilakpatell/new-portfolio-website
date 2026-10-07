@@ -171,14 +171,31 @@ export const CITADEL_PARTS = [
   [0, -12.5, 0, 2.4],
   [0, -14.5, 0, 1.2],
 ];
+// Its great dome, as drawn (12.5 across its middle and 5.4 high, on a hull
+// 7.6 deep): solid as a core round its middle and a ring of smaller spheres
+// round its rim, so it's solid where it's drawn and no further (one sphere
+// round all of it had 16 of thin air solid past the rim and 40 over the
+// dome: the ship bumped and scraped along nothing)
+const CITADEL_DOME = { core: 7.6, ring: 9, r: 3.6, n: 8 };
+const RIM = Array.from({ length: CITADEL_DOME.n }, (_, i) => {
+  const a = (i / CITADEL_DOME.n) * Math.PI * 2;
+  return [Math.cos(a) * CITADEL_DOME.ring, 0, Math.sin(a) * CITADEL_DOME.ring, CITADEL_DOME.r];
+});
 // (each a part of it: hitting one is hitting the Citadel, and none is
 // somewhere of its own to fly to)
-const partsOf = (w) => (w.kind === 'citadel' ? CITADEL_PARTS.map(([x, y, z, r], i) => ({ ...solid(`${w.id}-part${i + 1}`, [w.at[0] + (x * w.r) / 18, w.at[1] + (y * w.r) / 18, w.at[2] + (z * w.r) / 18], (r * w.r) / 18), part: true })) : []);
+const partsOf = (w) => (w.kind === 'citadel' ? [...CITADEL_PARTS, ...RIM].map(([x, y, z, r], i) => ({ ...solid(`${w.id}-part${i + 1}`, [w.at[0] + (x * w.r) / 18, w.at[1] + (y * w.r) / 18, w.at[2] + (z * w.r) / 18], (r * w.r) / 18), part: true })) : []);
+// a wonder's own solid: the Citadel's the core of its dome (but parked at,
+// and minded by the autopilot, out as far as all of it), a black hole's out
+// past its shadow, a pulsar's out into its glare
+function bodyOf(w) {
+  if (w.kind === 'citadel') return { ...solid(w.id, w.at, (CITADEL_DOME.core * w.r) / 18), reach: w.r * 1.4 };
+  return solid(w.id, w.at, w.kind === 'black-hole' ? w.r * 1.5 : w.kind === 'pulsar' ? w.r * 10 : w.r, w.kind === 'black-hole');
+}
 // (a binary's two suns are two solids: the first is the Twins, the place to
 // fly to; the second a part of it, as the Citadel's domes are, so hitting
 // either is hitting the Twins; a pulsar is solid to ten radii; a wreck
 // field's dwarf alone is solid, its hulls are drifting scenery)
-const sunsOf = (w) => (w.kind === 'binary' ? [solid(w.id, binaryAt(w, 0).a, w.r), { ...solid(`${w.id}-2`, binaryAt(w, 0).b, w.pair.r), part: true }] : [solid(w.id, w.at, w.kind === 'black-hole' ? w.r * 1.5 : w.kind === 'pulsar' ? w.r * 10 : w.r, w.kind === 'black-hole')]);
+const sunsOf = (w) => (w.kind === 'binary' ? [solid(w.id, binaryAt(w, 0).a, w.r), { ...solid(`${w.id}-2`, binaryAt(w, 0).b, w.pair.r), part: true }] : [bodyOf(w)]);
 export const DEEP_SOLIDS = WONDERS.filter((w) => w.solid !== false).flatMap((w) => [...sunsOf(w), ...(w.planets ?? []).map((p, i) => solid(`${w.id}-${i + 1}`, planetAt(w, p), p.r)), ...partsOf(w)]);
 
 // A binary's suns go round each other: round the point their masses balance
@@ -267,10 +284,60 @@ export function nearestPlace(x, y, z) {
 
 // 0 at a place (the home system, a planet, a wonder: in its space you fly at
 // the boost, under the home ceiling), rising smoothly to 1 out in the open
-// between them (the pulse drive's full speed): how far it's opened up at
-// (x, y, z)
+// between them: how far it's opened up at (x, y, z). (What the ship's pulse
+// drive does is driveOpen's, below; this is where it's deep space, for the
+// crews, the traffic and the hunters.)
 export function openness(x, y, z) {
   const { gap } = nearestPlace(x, y, z);
   const k = Math.min(1, Math.max(0, (gap - DEEP.near) / DEEP.ramp));
   return k * k * (3 - 2 * k);
+}
+
+// The pulse drive near a place: how it slows the ship coming up on one, so
+// that it gets there at the boost without ever hitting a wall. It goes by
+// where the ship's going, not just where it is: straight at a place it eases
+// down over DRIVE.ramp (gently at first, so at pulse speed it hardly feels
+// it begins, and never harder than a couple of hundred a second, a second);
+// flying past one, wide of it, it barely slows at all (the gap counts
+// DRIVE.wide times over for every unit the line it's on misses the place by);
+// and going away from one it opens up again straight away.
+export const DRIVE = { ramp: 600, wide: 4 };
+// What it slows for: each planet and wonder by its reach, but a sun with
+// planets of its own, and a binary, by each of its bodies (so between them,
+// inside the system, it's open); and not a nebula, where there's nothing to
+// hit: fly straight through on the drive. Each { at, reach } (a binary's are
+// DEEP_SOLIDS' own, moved as its suns go round).
+const BODIED = new Set(['star', 'binary']);
+const MARKS = [
+  ...far.filter((p) => p.kind === 'planet'),
+  ...WONDERS.flatMap((w) => {
+    if (w.solid === false) return [];
+    if (BODIED.has(w.kind)) return DEEP_SOLIDS.filter((o) => o.id === w.id || o.id.startsWith(`${w.id}-`));
+    return [{ at: w.at, reach: reachOf(w) }];
+  }),
+];
+// how far past `reach` of `at` (x, y, z) is, as far as the drive's
+// concerned, going the way `f` points (a unit vector; none: straight at it)
+export function gapAlong(x, y, z, f, at, reach) {
+  const cx = at[0] - x;
+  const cy = at[1] - y;
+  const cz = at[2] - z;
+  const d = Math.sqrt(cx * cx + cy * cy + cz * cz);
+  if (!f) return d - reach;
+  const along = cx * f[0] + cy * f[1] + cz * f[2];
+  const miss = along > 0 ? Math.sqrt(Math.max(0, d * d - along * along)) : d; // (going away: all of it)
+  return d - reach + DRIVE.wide * Math.max(0, miss - reach);
+}
+// how open the drive is `gap` past where it's all the way down, 0 … 1, over
+// `ramp`: easing out, so it starts to close gently and is quickest near the
+// bottom, where the speeds are low
+export function easeOpen(gap, ramp) {
+  const t = Math.min(1, Math.max(0, gap / ramp));
+  return 1 - (1 - t) * (1 - t);
+}
+// how open deep space's pulse drive is at (x, y, z), going the way `f` points
+export function driveOpen(x, y, z, f = null) {
+  let gap = Infinity;
+  for (const m of MARKS) gap = Math.min(gap, gapAlong(x, y, z, f, m.at, m.reach));
+  return easeOpen(gap - DEEP.near, DRIVE.ramp);
 }

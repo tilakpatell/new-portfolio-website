@@ -105,7 +105,8 @@ import { aberrationFor, createPost, spaceEnvironment } from './post';
 import { grainFor } from '../../lib/three/noise';
 import { createFlare, flareWeight, occluded } from '../../lib/three/flare';
 import { exposureFor, sunShareOf } from '../../lib/three/exposure';
-import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, isGoal, isPlace, orbiting, parkAt, spawn, startAt, step } from './ship';
+import { houseOn } from '../../lib/three/house';
+import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, driveById, hyperState, parkFor, riftExit } from './nav';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
 import { AHEAD_OF, factionsOf, kindsOf, pick as pickFaction, sideFor, sideOf, wingOf } from './sides';
@@ -160,9 +161,11 @@ import { wayIn } from './landings/wayin';
 import { figureVoice } from './landings/voicelines';
 import { sayVoiced, stopVoiced } from '../../lib/voiced';
 import { ENTRY, LANDABLE, airTop, entering } from './entry';
+import { createNearMaps } from './nearMaps';
 import { poseFor } from './poses';
 import { REMOVER, hitRemover, hpLeft, landingOpen, newRemover, stepRemover } from './remover';
 import { NX5_LEN, createRemoverView } from './removerView';
+import { createSky } from './skyShader';
 
 const STARS = 1800; // the near ones, over the Milky Way's own
 const STARS_LOW = 700;
@@ -209,6 +212,7 @@ const FALL = { through: MAW.through, back: MAW.through + 0.3, done: MAW.through 
 // into a giant it's a dive down into the clouds
 const DIVE = { impact: 0.55, through: 1.7, back: 2.8, done: 3.4 };
 const INTERDICT = 40; // seconds, at most, that a pack holds the pulse drive down
+const INTERDICT_IN = 2; // seconds it takes them to hold it all the way down (eased in: a pull, not a wall)
 const STREAK_SPEED = 36; // the streaks' speed tops out here: faster they'd be a wall
 const TURN = 0.0042; // radians of map per px dragged
 const DRAG = 6; // px a press may move and still be a click
@@ -518,6 +522,12 @@ export async function create(canvas, ctx) {
   fill.position.set(0.7, -0.4, -0.3).multiplyScalar(50);
   const ambient = new THREE.AmbientLight('#b8c4ff', 0.4);
   scene.add(key, fill, ambient);
+  // the house look (lib/three/house) on the map's ships, stations and
+  // landmarks: their shade the colour of the space light, as in every world.
+  // (The post pass tone-maps the house's way itself, and space has no fog:
+  // both left as they are. The planets draw in shaders of their own.)
+  const house = houseOn({ renderer, scene, sun: key, ambient, toneMap: false, look: { fog: false } });
+  let houseFrames = 0;
   // the key's direction in world space, shared with every planet, which
   // puts its own sun in the key's place (planets.js's keyHook)
   const keyW = { value: LIGHT.clone() };
@@ -638,20 +648,18 @@ export async function create(canvas, ctx) {
   const T = await loadTextures({ small });
 
   // what metal reflects, and the passes after the scene (post.js)
-  let env = spaceEnvironment(renderer, T.sky);
+  let env = spaceEnvironment(renderer, T['sky-glow']);
   scene.environment = env.texture;
   const post = createPost(renderer, scene, camera, { small });
 
   // the sky: the Milky Way, all the way round, turning with the map and
-  // riding with the camera (so it's always as far off). It's always seen
-  // magnified, so it does without mipmaps (and their memory)
+  // riding with the camera (so it's always as far off), drawn sharp at the
+  // screen's own resolution (skyShader.js: the photo for its light, the
+  // stars and the fine detail drawn there); fewer layers of stars on a
+  // weaker device
   let sky = null;
-  if (T.sky) {
-    T.sky.generateMipmaps = false;
-    T.sky.minFilter = THREE.LinearFilter;
-    T.sky.anisotropy = 1;
-    sky = new THREE.Mesh(new THREE.SphereGeometry(27000, 64, 32), new THREE.MeshBasicMaterial({ map: T.sky, side: THREE.BackSide, depthWrite: false, toneMapped: false }));
-    sky.renderOrder = -10;
+  if (T['sky-glow']) {
+    sky = createSky(T['sky-glow'], { layers: tier === 'low' ? 1 : tier === 'high' ? 3 : 2 });
     map.add(sky);
   }
 
@@ -701,6 +709,7 @@ export async function create(canvas, ctx) {
     return p;
   });
   const planetOf = Object.fromEntries(planets.map((p) => [p.id, p]));
+  const near = createNearMaps({ small }); // (the finer maps for the two planets nearest, nearMaps.js)
   const crashFx = createCrash(map);
   // out of the ship and on foot on a planet (footScene.js)
   const foot = createFoot({ map, emit: (e) => emit(e), reduced, small, planetOf, renderer, warm: (o) => warm(o) });
@@ -1128,7 +1137,7 @@ export async function create(canvas, ctx) {
       .addScaledVector(camF, 0.4)
       .addScaledVector(camU, 0.06)
       .addScaledVector(camR, (s.lean || 0) * 0.45);
-    return { target, quat: camQ.clone().multiply(TILT), dist: 1.7 + Math.min(Math.abs(s.speed), 30) * 0.045 + state.streak * 0.7 };
+    return { target, quat: camQ.clone().multiply(TILT), dist: 1.7 + Math.min(Math.abs(s.speed) / SHIP.boost, 1.5) * 0.9 + state.streak * 0.7 };
   };
 
   // From the pilot's seat: the eye a little ahead of the ship's middle and
@@ -2827,12 +2836,15 @@ export async function create(canvas, ctx) {
 
   // what the director sets going
   // on the way somewhere (out in the open at speed), a pack comes in ahead
-  // of you and interdicts you: an ambush
+  // of you and interdicts you: an ambush (laid where you'll be once they've
+  // pulled the drive down, not where you are: at the pulse drive's speed
+  // that's a few hundred units on)
   const travelling = (s) => openness(s.x, s.y, s.z) > 0.5 && Math.abs(s.speed) > 40;
+  const leadOf = (s) => holdReach(s, { ramp: INTERDICT_IN, solids: siegeSt.down ? SOLIDS_OPEN : SOLIDS });
   const happen = (id, ship) => {
     const side = sideFor(state.kind);
     if (!side) return;
-    const ambush = travelling(ship) ? { ahead: true, interdict: true } : {};
+    const ambush = travelling(ship) ? { ahead: true, interdict: true, lead: leadOf(ship) } : {};
     // (more of them, and the ace more often, the more trouble you've made; the first pack is a small one)
     const strength = { heat: state.heat, first: hunts === 0 };
     if (id === 'hunt' || id === 'council' || id === 'roadblock') hunts += 1;
@@ -2840,8 +2852,9 @@ export async function create(canvas, ctx) {
     else if (id === 'council') pieces.portals(hunters.pack(pickFaction(side, 'council'), ship, { ...ambush, ...strength }));
     else if (id === 'roadblock') {
       // the DEA across your bows: in ahead, and holding you there
-      hunters.pack('dea', ship, { ahead: true, interdict: true, ace: Math.random() < 0.5, ...strength });
-      pieces.roadblock(ship); // (and a helicopter over it, its searchlight on you)
+      const lead = ambush.lead ?? 0;
+      hunters.pack('dea', ship, { ahead: true, interdict: true, lead, ace: Math.random() < 0.5, ...strength });
+      pieces.roadblock(ship, lead); // (and a helicopter over it, its searchlight on you)
       emit({ type: 'event', id: 'roadblock' });
     } else if (id === 'destroyer') {
       if (!pieces.destroyer(ship, side.capitalShip)) return;
@@ -3506,7 +3519,9 @@ export async function create(canvas, ctx) {
     if (state.jump) input = { throttle: 1, boost: true }; // (spooling up: straight on, flat out)
     else if (state.auto) {
       const od = state.interdicted ? 1 : (state.auto.od ?? 1);
-      const a = autopilot(state.ship, state.auto.id, state.auto.park, state.auto.id === 'front' && front ? frontSpace() : undefined, od);
+      // (and the battle's hold on the drive, so it plans its stop for it: front.js holdAt, as it would be coming straight in)
+      const hold = front ? (x, y, z) => front.holdAt(x, y, z, null) : null;
+      const a = autopilot(state.ship, state.auto.id, state.auto.park, state.auto.id === 'front' && front ? frontSpace() : undefined, od, hold);
       input = a.input;
       if (a.done) {
         const id = state.auto.id;
@@ -3530,7 +3545,11 @@ export async function create(canvas, ctx) {
         input.climb = clamp(input.climb + n.climb, -1, 1);
       }
     }
-    input.interdicted = state.interdicted || Boolean(front?.inZone); // (the pulse drive's held down in a battle, as hunters hold it)
+    // the pulse drive held down: by hunters, pulled down over INTERDICT_IN;
+    // coming in to a battle, eased down the closer it is (front.js holdAt)
+    const pack = state.interdicted ? clamp((state.clock - state.interdictAt) / INTERDICT_IN, 0, 1) : 0;
+    const fight = front ? front.holdAt(state.ship.x, state.ship.y, state.ship.z, noseOf(state.ship)) : 0;
+    input.interdicted = Math.max(pack * pack * (3 - 2 * pack), fight);
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
     const before = state.ship;
     const { ship: stepped, events } = step(state.ship, input, dt, siegeSt.down ? SOLIDS_OPEN : SOLIDS);
@@ -4072,7 +4091,7 @@ export async function create(canvas, ctx) {
     // neighbourhood to another's): its glow where the star is, in its colour
     if (l.key.id !== envStar && !lightNow.first) {
       envStar = l.key.id;
-      const next = spaceEnvironment(renderer, T.sky, { light: lightTo.set(...l.key.dir).negate().applyAxisAngle(Y_AXIS, state.yaw), colour: l.key.colour });
+      const next = spaceEnvironment(renderer, T['sky-glow'], { light: lightTo.set(...l.key.dir).negate().applyAxisAngle(Y_AXIS, state.yaw), colour: l.key.colour });
       scene.environment = next.texture;
       env.dispose();
       env = next;
@@ -4317,6 +4336,7 @@ export async function create(canvas, ctx) {
       const px = d > placeBound.radius ? (placeBound.radius / (d * tanHalf)) * (size.h / 2) : Infinity;
       p.update(t, camera, px > 2 && viewFrustum.intersectsSphere(placeBound));
     }
+    near.update(camera.position, planets);
     locate();
     placeLabels();
     if (state.hitMark > 0) state.hitMark = Math.max(0, state.hitMark - dt * 4);
@@ -4342,6 +4362,8 @@ export async function create(canvas, ctx) {
     map.updateWorldMatrix(true, false);
     map.worldToLocal(camLocal.copy(camera.position));
     lights(dt);
+    // (the look follows the lights; what's come into the scene since is taken on every half second or so)
+    house.follow({ adopt: houseFrames++ % 30 === 0 });
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
     // the Citadel's siege: rebuilt or patched up when it's time, what's left
     // of it drawn, and your word on it out to everyone (soon after a hit of
@@ -4838,6 +4860,7 @@ export async function create(canvas, ctx) {
       wing: wingmen?.live ?? [],
       skirmish: skirmishes?.info ?? null,
       lock: state.lock?.id ?? null,
+      near: near.resident(),
       manual: Boolean(state.lock?.manual),
       controls: controls(),
       loadout: { ...state.loadout },
@@ -5068,6 +5091,7 @@ export async function create(canvas, ctx) {
       quietRoar();
       infall?.dispose();
       foot.dispose();
+      near.dispose();
       dropCab();
       roomEnv?.dispose();
       state.model?.dispose();

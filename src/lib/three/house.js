@@ -29,7 +29,7 @@
 //   houseShader(shader, { fog, ground }, chunks) → { vertexShader, fragmentShader, swapped }
 //
 // A look: { shadow, edge: [from, to], mix, fogLow, fogHigh, fogBelow, halo,
-// fogMix, exposure }. All the materials of one world share one set of uniforms, so a
+// fogMix, exposure, fog (false: leave the world's own fog as it is) }. All the materials of one world share one set of uniforms, so a
 // frame sets them once. Call adopt() after anything else that patches the
 // world's materials (lib/three/groundwork's groundWorld): its shade then
 // replaces their tints, and one shadow colour reaches everything.
@@ -144,6 +144,8 @@ const LIT = (m) => Boolean(m && (m.isMeshStandardMaterial || m.isMeshLambertMate
 const colour = (v, out) => (v?.isColor ? out.copy(v) : out.set(v));
 
 export function createHouse(look = {}) {
+  // (`fog: false`: a world whose fog is already the sky's, its own way)
+  const fog = look.fog !== false;
   const uniforms = {
     uLookRef: { value: new THREE.Color(1, 1, 1) },
     uLookShadow: { value: new THREE.Color() },
@@ -180,15 +182,19 @@ export function createHouse(look = {}) {
     m.onBeforeCompile = (sh, r) => {
       before?.call(m, sh, r);
       Object.assign(sh.uniforms, uniforms);
-      const out = houseShader(sh, { ground: grounded });
+      const out = houseShader(sh, { ground: grounded, fog });
       sh.vertexShader = out.vertexShader;
       sh.fragmentShader = out.fragmentShader;
     };
     const key = m.customProgramCacheKey;
-    m.customProgramCacheKey = () => `${key ? key.call(m) : ''}|house${grounded ? ':ground' : ''}`;
+    m.customProgramCacheKey = () => `${key ? key.call(m) : ''}|house${grounded ? ':ground' : ''}${fog ? '' : ':nofog'}`;
     m.userData.house = uniforms;
     patched.add(m);
     m.needsUpdate = true;
+    // (the mark made one a copy doesn't take: Material.copy copies userData
+    // through JSON, which would carry it, and the textures in it, to a
+    // material the look was never put on)
+    Object.defineProperty(m.userData, 'house', { value: uniforms, enumerable: false, configurable: true });
     return true;
   };
 
@@ -218,12 +224,16 @@ export function createHouse(look = {}) {
     // sun, open to the sky, takes in (three's Lambert divides by pi). Once a
     // frame where the light moves; never quite nothing, so night still has
     // a scale to measure by.
-    light({ sun = null, hemi = null, ambient = null } = {}) {
+    // (`env`: { level, intensity }, an HDR environment's mean radiance
+    // (envLevel) and the scene's environmentIntensity: its diffuse light on
+    // a face is about that, with no pi to divide by)
+    light({ sun = null, hemi = null, ambient = null, env = null } = {}) {
       const ref = uniforms.uLookRef.value.setRGB(0, 0, 0);
       if (sun) ref.add(tmp.copy(sun.color).multiplyScalar(sun.intensity));
       if (hemi) ref.add(tmp.copy(hemi.color).multiplyScalar(hemi.intensity));
       if (ambient) ref.add(tmp.copy(ambient.color).multiplyScalar(ambient.intensity));
       ref.multiplyScalar(1 / Math.PI);
+      if (env?.level) ref.add(tmp.copy(env.level).multiplyScalar(env.intensity ?? 1));
       ref.setRGB(Math.max(ref.r, 1e-3), Math.max(ref.g, 1e-3), Math.max(ref.b, 1e-3));
     },
     // the world's ground map (lib/three/groundmap): its colour bounces up
@@ -246,4 +256,117 @@ export function createHouse(look = {}) {
       if (halo) colour(halo, uniforms.uLookHalo.value);
     },
   };
+}
+
+// A shadow colour from a sky light, for a world (or a mood) that gives none
+// of its own: the sky light's hue leaned a third toward violet, as bright as
+// the sky light lets it be: pale lilac under a day sky, deep blue at night,
+// never grey. `mood` is { shadow?, hemiSky (hex), hemi (intensity) }; its own
+// `shadow` wins. Returns a hex colour.
+const VIOLET = new THREE.Color(0x7a6ad8);
+const lumOf = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+export function shadowFor(mood) {
+  if (mood.shadow != null) return mood.shadow;
+  const sky = new THREE.Color(mood.hemiSky ?? 0xcfe2ff);
+  const want = 0.42 * lumOf(sky) * (mood.hemi ?? 1);
+  const c = sky.clone().lerp(VIOLET, 0.35);
+  const l = lumOf(c);
+  if (l > 0) c.multiplyScalar(want / l);
+  return c.getHex();
+}
+
+// A world put on the house look in one call: the house tone mapper (its
+// exposure lifted to keep the world's brightness from its ACES days, unless
+// `keepExposure`: a world tuned under Neutral already; `toneMap: false`: a
+// world whose post pass tone-maps the house's way itself), everything in the
+// scene adopted, and follow(): the look's full light from the world's sun
+// (and sky light or ambient, if any) and its shadow colour from the sky
+// light (or the ambient where there's no sky),
+// recomputed when the sky light changes; `{ adopt: true }` also takes on
+// whatever has come into the scene since. Call follow() after the world
+// sets its lights (once a frame, or when they change).
+export function houseOn({ renderer, scene, sun = null, hemi = null, ambient = null, env = null, keepExposure = false, toneMap = true, look = {} }) {
+  const house = createHouse(look);
+  if (toneMap) {
+    renderer.toneMapping = house.toneMapping;
+    if (!keepExposure) renderer.toneMappingExposure *= house.exposure;
+  }
+  // (the shade's colour from the sky light, or from an ambient light where there's no sky)
+  const sky = hemi ?? ambient;
+  house.adopt(scene);
+  const seen = { hex: -1, k: -1 };
+  // (an HDR environment: its mean radiance, measured again whenever its
+  // picture is swapped for another)
+  const envLight = env ? { level: null, intensity: 1, of: null } : null;
+  house.follow = ({ adopt = false } = {}) => {
+    if (envLight) {
+      if (env.texture !== envLight.of) {
+        envLight.of = env.texture;
+        envLight.level = envLevel(env.texture);
+        seen.k = -1;
+      }
+      envLight.intensity = typeof env.intensity === 'function' ? env.intensity() : (env.intensity ?? 1);
+    }
+    house.light({ sun, hemi, ambient, env: envLight });
+    if (envLight?.level) {
+      // (lit mostly by its environment: the shade's hue is the environment's)
+      if (envLight.intensity !== seen.k) {
+        seen.k = envLight.intensity;
+        house.set({ shadow: shadowFromEnv(envLight.level, envLight.intensity) });
+      }
+    } else if (sky) {
+      const hex = sky.color.getHex();
+      if (hex !== seen.hex || sky.intensity !== seen.k) {
+        seen.hex = hex;
+        seen.k = sky.intensity;
+        house.set({ shadow: shadowFor({ hemiSky: hex, hemi: sky.intensity }) });
+      }
+    }
+    if (adopt) house.adopt(scene);
+  };
+  house.follow();
+  return house;
+}
+
+// An HDR environment's mean radiance (an equirect DataTexture's pixels, RGB
+// or RGBA, float or half float), each row weighted by the area of sky it
+// covers: about the diffuse light it gives a face, by three's Lambert.
+export function envLevel(texture) {
+  const img = texture?.image;
+  const data = img?.data;
+  // (a PMREM has no pixels to read: lib/hdri measures the HDR it was made from)
+  if (!data || !img.width || !img.height) return texture?.userData?.level ?? null;
+  const { width: w, height: h } = img;
+  const ch = Math.round(data.length / (w * h));
+  const half = data instanceof Uint16Array;
+  const read = (k) => (half ? THREE.DataUtils.fromHalfFloat(data[k]) : data[k]);
+  const sum = [0, 0, 0];
+  let weight = 0;
+  // (about 256 x 128 of its texels are plenty: a 2K sky in a few milliseconds)
+  const sx = Math.max(1, Math.floor(w / 256));
+  const sy = Math.max(1, Math.floor(h / 128));
+  for (let y = 0; y < h; y += sy) {
+    const lat = (0.5 - (y + 0.5) / h) * Math.PI;
+    const wy = Math.cos(lat);
+    for (let x = 0; x < w; x += sx) {
+      const k = (y * w + x) * ch;
+      sum[0] += read(k) * wy;
+      sum[1] += read(k + 1) * wy;
+      sum[2] += read(k + 2) * wy;
+      weight += wy;
+    }
+  }
+  return new THREE.Color(sum[0] / weight, sum[1] / weight, sum[2] / weight);
+}
+
+// A shadow colour for a world lit by its environment: the environment's
+// hue leaned a third toward violet, about a third brighter than the light
+// it gives a shaded face (as shadowFor has it under a sky light).
+export function shadowFromEnv(level, intensity = 1) {
+  const c = level.clone();
+  const l = lumOf(c);
+  if (l <= 0) return 0x000000;
+  c.multiplyScalar(1 / Math.max(c.r, c.g, c.b)).lerp(VIOLET, 0.35);
+  c.multiplyScalar((1.33 * l * intensity) / lumOf(c));
+  return c.getHex();
 }

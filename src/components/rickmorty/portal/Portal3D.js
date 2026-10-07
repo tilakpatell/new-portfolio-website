@@ -7,6 +7,7 @@
 
 import * as THREE from 'three';
 import { canvasTexture, createStage } from '../../../lib/stage3d';
+import { houseOn } from '../../../lib/three/house';
 import { createModels } from '../../../lib/models';
 import { PANIC, butterRobots } from './rules';
 import { InkPass, releaf, releafMap, toon } from './toon';
@@ -288,6 +289,11 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
   sun.shadow.bias = -0.0006;
   sun.shadow.normalBias = 0.02;
   scene.add(hemi, sun, sun.target);
+  // the house look (lib/three/house), as in the rest of C-137: the house tone
+  // mapper over each dimension's exposure (set under ACES), the shade one
+  // colour from its sky light; each dimension keeps its own fog
+  const house = houseOn({ renderer, scene, sun, hemi, look: { fog: false } });
+  let houseFrames = 0;
 
   // the models, all four dimensions' worth (they're small)
   const models = createModels({ base: '/games/kenney' });
@@ -585,7 +591,9 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     sun.color.set(L.sun[0]);
     sun.intensity = L.sun[1];
     scene.fog = new THREE.Fog(L.fog[0], L.fog[1], L.fog[2]);
-    renderer.toneMappingExposure = L.exposure;
+    renderer.toneMappingExposure = L.exposure * house.exposure;
+    house.adopt(group);
+    house.follow();
     stage.grade?.({ contrast: 0.1, saturation: 1.12, vignette: 0.24, grain: 0.015 });
     scene.add(group);
     dimGroup = group;
@@ -1038,6 +1046,8 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     smoke.mat.uniforms.scale.value = stage.size.h * 0.9;
     glow.update(dt);
     smoke.update(dt);
+    // (the cast as it comes, taken on now and then)
+    house.follow({ adopt: houseFrames++ % 60 === 0 });
     stage.render(ms);
   };
 

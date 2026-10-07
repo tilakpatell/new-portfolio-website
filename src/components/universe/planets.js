@@ -18,14 +18,13 @@
 //
 // loadTextures({ small }) → the textures (any that fail are just missing)
 // mapFile(name, level) → the file for a planet map at lib/detail's level
-// buildPlanet(u, T, { sun, tier, key }) → { id, radius, group, sun, air, setAir, update(t, camera), setState, mount }
+// mapsOf(id), nearSet(id, level) → a planet's maps, and the finer ones it wears near (nearMaps.js)
+// buildPlanet(u, T, { sun, tier, key }) → { id, radius, group, sun, air, setAir, update(t, camera), setState, mount, swapMaps(T2 | null), nearSet(level) }
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 import { gltfLoader } from '../../lib/three/gltf';
-import { loadTexture } from '../../lib/three/textures';
-import { detailLevel } from '../../lib/detail';
 import { SWIRL_GLSL } from '../../lib/three/swirl';
 import { globeData } from '../travel/globe3d/data';
 import { facing, fit, glowMat, orbit, paint, rng, rounded, tiled } from './kit';
@@ -37,6 +36,7 @@ import { createWar, warZones } from '../cybertron/war';
 import { ringGeometry } from '../middleearth/ringShape';
 import { bossMug, elementTile, glowingGems, shardCluster } from './props';
 import { keyHook } from '../../lib/three/keySun';
+import { mapSwapper, mapsOf, nearSet } from './planetMaps';
 import { LIGHT, RIM, airGlow, celShade, ditherShade, groundHooks, halo, styleFor } from './planetShading';
 
 // (the planets' shading, moved out to keep this file under the size the
@@ -44,64 +44,9 @@ import { LIGHT, RIM, airGlow, celShade, ditherShade, groundHooks, halo, styleFor
 export { celShade, ditherShade, styleFor, variants } from './planetShading';
 
 
-// ── Textures ──
+// ── Textures ── (planetMaps.js: the maps, their files, and what a planet wears near)
 
-const BASE = '/textures/universe/';
-// Each map: whether it's a colour (sRGB) or data (normals, roughness, a
-// cloud's alpha), and which sizes it comes in: `sm`, a half-size copy for a
-// phone or a weak device; `hq`, a copy at twice the texels for a strong
-// graphics card (lib/detail's 'ultra'), so a planet filling the screen and
-// the Milky Way behind it stay sharp as the camera comes in. The fandoms'
-// own maps are baked by scripts/build-fandom-planets.mjs (Middle-earth,
-// Breaking Bad, the Caribbean, C-137, the Office, Music, Marvel) at all
-// three sizes; Earth's, the sun's and the sky's by
-// scripts/build-universe-textures.py (--hq for the -hq set); Cybertron's and
-// Invincible's by their own scripts (Invincible's relief with an -hq;
-// Cybertron's is 2048 on high and up, 1024 below).
-const map = (names, opts) => names.map((n) => [n, opts]);
-const MAPS = Object.fromEntries([
-  ...map(['music', 'middleearth', 'middleearth-clouds', 'marvel', 'breakingbad', 'caribbean', 'office', 'rickmorty', 'rickmorty-clouds', 'earth', 'earth-night', 'sun', 'sky'], { sm: true, hq: true, colour: true }),
-  ...map(['middleearth-normal', 'office-normal', 'breakingbad-normal', 'caribbean-clouds', 'earth-clouds'], { sm: true, hq: true, colour: false }),
-  ...map(['caribbean-normal', 'invincible-normal'], { sm: false, hq: true, colour: false }),
-  ...map(['transformers-normal'], { sm: true, hq: false, colour: false }),
-  ...map(['middleearth-night', 'breakingbad-night', 'transformers', 'invincible', 'invincible-night'], { sm: true, hq: false, colour: true }),
-  ...map(['breakingbad-clouds', 'invincible-clouds'], { sm: true, hq: false, colour: false }),
-  ...map(['middleearth-glow', 'caribbean-night', 'rickmorty-glow', 'invincible-glow', 'plates', 'hull'], { sm: false, hq: false, colour: true }),
-  ...map(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-glow-sm', 'middleearth-rough', 'office-rough', 'breakingbad-rough', 'caribbean-rough', 'earth-rough', 'rickmorty-rough', 'invincible-rough'], { sm: false, hq: false, colour: false }),
-]);
-
-export const MAP_NAMES = Object.keys(MAPS);
-
-// The file for a map at a detail level (lib/detail): the `-hq` copy on a
-// strong card where there is one, the standard file on a desktop, the
-// `-sm` half on a phone or a weak device where there is one.
-export function mapFile(name, level = 'high') {
-  const { sm = true, hq = false } = MAPS[name] ?? {};
-  const suffix = level === 'ultra' ? (hq ? '-hq' : '') : level === 'high' ? '' : sm ? '-sm' : '';
-  return `${name}${suffix}.webp`;
-}
-
-export async function loadTextures({ small = false, level = small ? 'mid' : detailLevel() } = {}) {
-  const T = { small }; // (and whether this is a phone, for the builders)
-  const get = async (name, file, colour, fallback = null) => {
-    try {
-      // (decoded off the main thread, as sharp as the device's tier allows,
-      // and shared with any other scene that wants the same map)
-      T[name] = await loadTexture(BASE + file, { color: colour });
-    } catch {
-      // missing: the standard file where a sharper set was asked for, else whoever wanted it does without
-      if (fallback) await get(name, fallback, colour);
-    }
-  };
-  await Promise.all(
-    Object.entries(MAPS).map(([name, { colour }]) => {
-      const file = mapFile(name, level);
-      const standard = mapFile(name, 'high');
-      return get(name, file, colour, file !== standard ? standard : null);
-    }),
-  );
-  return T;
-}
+export { MAP_NAMES, loadTextures, mapFile, mapsOf, nearSet } from './planetMaps';
 
 // ── Shared pieces ──
 
@@ -1307,6 +1252,8 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
     group.add(sign);
     p.tick.push(facing(sign));
   }
+  // its near maps (nearMaps.js) in place of its own (planetMaps.js)
+  const swapMaps = mapSwapper(group, T, mapsOf(u.id));
   const spin = core ? 0 : 0.05 + rng(`${u.id}-spin`)() * 0.05;
   let turn0 = body.rotation.y;
   let held = null; // the turn it's held at, while someone stands on it
@@ -1322,6 +1269,8 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
     // what a crash lays its shockwave on (a station's is hidden: none)
     surface: core ? null : body,
     body,
+    swapMaps,
+    nearSet: (level) => (core ? [] : nearSet(u.id, level)),
     get air() {
       return air;
     },

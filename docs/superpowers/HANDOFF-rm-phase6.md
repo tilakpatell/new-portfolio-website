@@ -128,8 +128,9 @@ own); NPCs that do things, not just stand and talk.
   (`PHASE12`'s models: him, a man and a dog he bit, a house with his face;
   a collect-then-escape with everything fuzzy hunting).
 - The map's Birdperson is still the code-built one (`HANDOFF-rm-phase1.md`).
-- Nothing on the dial has a sound of its own yet (the escape clock uses
-  `portalOpen`; caught uses `ouch`).
+- The dial's sounds are `games/gameAudio.js`'s synthesized ones (`alarm`
+  when seen, `siren` as the clock starts, `tick`/`timeUp` for its last ten
+  seconds, `thud` for a blow in a duel, `grab` when caught): no samples yet.
 
 ## How to check
 

@@ -33,7 +33,7 @@ from pathlib import Path
 
 import engines
 import pick
-from common import CACHE, HERE, OUT, REFS, ROOT, console, ffmpeg, read, run, speakable
+from common import CACHE, HERE, OUT, REFS, ROOT, console, ears, ffmpeg, read, run, speakable
 
 TAKES = CACHE / "takes"
 ROUNDS = 2  # a line with no passing take gets another round, with twice the takes
@@ -99,16 +99,17 @@ def references(cfg, only, speakers=()):
             print(f"{who}: no reference yet: python scripts/voices/grab.py --only {who}  (or put 5 to 11 seconds of them at refs/{who}.wav)")
             continue
         if not txt.exists() or not txt.read_text(encoding="utf-8").strip():
-            import judge
-
-            txt.write_text(judge.hear(read(wav)) + "\n", encoding="utf-8")
+            txt.write_text(ears().hear(read(wav)) + "\n", encoding="utf-8")
         found[who] = {"wav": str(wav), "text": txt.read_text(encoding="utf-8").strip(), "speed": float(cfg.get(who, {}).get("speed", 1.0))}
     return found
 
 
 def engines_for(who, cfg, override):
     """The engines a voice's lines are made with: refs.json's "engine" (one, or a list, every line then
-    keeping the best take of them all), or --engine; failing those, the first set up here."""
+    keeping the best take of them all), or --engine; failing those, the first set up here.
+    VOICES_ENGINE=fake: the contract tests' worker for every voice (scripts/ai-e2e/fakes/voices_worker.py)."""
+    if os.environ.get("VOICES_ENGINE") == "fake":
+        return ["fake"]
     want = [override] if override else cfg.get(who, {}).get("engine") or []
     want = [want] if isinstance(want, str) else list(want)
     have = [e for e in want if e in engines.ENGINES and engines.python(e)]
@@ -160,10 +161,8 @@ class Judge:
     """Scores takes (pick.take_score) and remembers every score in cache/takes/scores.jsonl."""
 
     def __init__(self, voices):
-        import judge
-
-        self.j = judge
-        self.prints = {who: judge.voiceprint(read(v["wav"])) for who, v in voices.items()}
+        self.j = ears()
+        self.prints = {who: self.j.voiceprint(read(v["wav"])) for who, v in voices.items()}
         self.cents = centroids()
         self.file = TAKES / "scores.jsonl"
         self.known = {}
@@ -207,6 +206,8 @@ class Judge:
         if pick.too_long(len(wav) / self.j.SR, text):  # ran on: fails without being heard out
             d = {"take": key, "heard": "", "wer": 1.0, "sim": 0.0, "utmos": 0.0, "wps": 0.0, "speech": None, "score": None}
         else:
+            if hasattr(self.j, "listening"):  # the fake ears find what was said by the take's file
+                self.j.listening(take)
             heard = self.j.hear(wav)
             spans = self.j.speech(wav)
             talk = spans[-1][1] - spans[0][0] if spans else len(wav) / self.j.SR

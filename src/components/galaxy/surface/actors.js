@@ -158,6 +158,8 @@ function propFigure(kind, spec, kit) {
   const make = PROPS[kind];
   if (!make || !kit) return null;
   const made = make(kit, spec.opts ?? {});
+  // (it walks: its scans go with it, kit.js's twins)
+  kit.moving?.(made.object);
   let t = Math.random() * 10;
   const box = new THREE.Box3().setFromObject(made.object);
   return {
