@@ -67,6 +67,17 @@ $mainRepo = (Resolve-Path (Join-Path $common '..')).Path
 Say 'GitHub sign-in'
 $null = gh auth status 2>&1
 if ($LASTEXITCODE -ne 0) {
+  # signed in from inside the Claude app: gh's config (which account; the
+  # token itself is in the Windows credential store) is in the app's box
+  $boxedGh = Get-ChildItem "$env:LOCALAPPDATA\Packages" -Directory -Filter 'Claude_*' -ErrorAction SilentlyContinue | ForEach-Object { "$($_.FullName)\LocalCache\Roaming\GitHub CLI" } | Where-Object { Test-Path "$_\hosts.yml" } | Select-Object -First 1
+  if ($boxedGh -and -not (Test-Path "$env:APPDATA\GitHub CLI\hosts.yml")) {
+    New-Item -ItemType Directory -Force "$env:APPDATA\GitHub CLI" | Out-Null
+    Copy-Item "$boxedGh\*.yml" "$env:APPDATA\GitHub CLI\" -Force
+    Write-Host "gh's config copied out of the Claude app's box"
+    $null = gh auth status 2>&1
+  }
+}
+if ($LASTEXITCODE -ne 0) {
   gh auth login --hostname github.com --git-protocol https --web
   if ($LASTEXITCODE -ne 0) { Fail 'gh auth login failed' }
 }
