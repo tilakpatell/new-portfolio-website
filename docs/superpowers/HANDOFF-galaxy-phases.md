@@ -85,9 +85,31 @@ The plan is `docs/superpowers/plans/2026-10-07-galaxy-phase2-bases.md`.
   - the medical centre's bacta tank;
   - the cavern, with tauntauns.
   Dev: `__surfaceDo('zone', 'echo')`.
-- Next: Tasks 4–7 (Theed's hangar and plaza; Tipoca's deck and discharge
-  towers; Yavin's hangar floor and Scarif's Pad 9; gen3d issues).
-  New models only through `gen3d` issues, not Meshy.
+- Done, Task 4: the Theed Hangar's blast door to the generator, the
+  controllers' room over it, pilasters, a polished floor and four more
+  N-1s; the plaza in polished slabs.
+- Done, Task 5: Kamino's static discharge towers. Two stand on the pad's
+  rim and four out among the domes; lightning strikes them about every
+  8–13 s (`surface/storm.js`, pure and tested). The pads' decks are in
+  tread plate.
+- Done, Task 6: Scarif's Pad 9 has its number painted on, and Yavin's
+  hangar has its own floor, `hangarfloor`, laid 0.57 m over the ground,
+  just above the temple model's own floor (measured by a ray in the page).
+  The bunkers and the temple are models, so a decal on their code builds
+  never shows.
+- Done, Task 7: the owner said to use Meshy where needed, so the v-150 is a
+  Meshy model, `v150`, lifted out of a still of it firing, 33 credits
+  (`scripts/meshy-galaxy-buildings-bases.mjs`). It is sunk and tipped
+  toward its aim; the built `ioncannon` (`shell: false`) is only its shot.
+- Left:
+  - spray seen from Kamino's deck;
+  - a Citadel vault door;
+  - Echo Base's trench lines. The lane file
+    (`scripts/meshy-galaxy-buildings-bases.mjs`) takes more kinds.
+- Checking, without walking: render from a free camera through the page's
+  renderer (`window.__surfaceScene`), offset from a named object. The
+  session's `.probe-cam.mjs` did this; `scripts/sea-shot.mjs` is the
+  committed one for seas.
 
 ## Next, in order (the spec's phases)
 

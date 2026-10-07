@@ -4,13 +4,20 @@
 // hands it what comes in, warfront.js sends it). One for the page, so the
 // holotable (HoloMap.jsx) and the scene read the same war.
 //
+// All three of the galaxy's wars are in the one tally (a key's side says
+// which: gcw.js's pointsKey).
+//
 // warTally(now) → the campaign's tally (a new one when a campaign starts);
-// addPoints(sys, step, points), addWin(sys, step); receiveWar(peer, msg) →
-// whether it learnt anything; warMessage(); onWar(fn) → off (told when it
-// changes); warNow(now) → gcw.js's warTable for now.
+// addPoints(side, sys, step, points), addWin(side, sys, step) (nothing for
+// nobody's side, or the Hutts'); receiveWar(peer, msg) → whether it learnt
+// anything; warMessage(); onWar(fn) → off (told when it changes);
+// warNow(now, war) → gcw.js's warTable for now; mine(war, now) → { points,
+// wins, battles, systems: [{ id, wins, losses }], major }: your own record
+// in a war this campaign (ranks.js names you by its points).
 
 import { createTally } from '../universe/tally';
-import { campaignAt, pointsKey, warTable, winKey } from './gcw';
+import { GCW, campaignAt, history, pointsKey, readKey, warTable, winKey } from './gcw';
+import { DEFAULT_WAR, warOfSide } from './sides';
 
 const KEY = 'tp-gcw';
 export const CAP = 60; // the most one pilot can have done at one system in one step (four objectives, a sky full of fighters)
@@ -54,15 +61,16 @@ export function warTally(now = Date.now()) {
   return tally;
 }
 
-export function addPoints(sys, step, points, now = Date.now()) {
-  if (!(points > 0)) return;
-  warTally(now).add(pointsKey(sys, step), points);
+export function addPoints(side, sys, step, points, now = Date.now()) {
+  if (!(points > 0) || !warOfSide(side)) return;
+  warTally(now).add(pointsKey(side, sys, step), points);
   changed();
 }
-export function addWin(sys, step, now = Date.now()) {
+export function addWin(side, sys, step, now = Date.now()) {
+  if (!warOfSide(side)) return;
   const t = warTally(now);
-  if (t.mine(winKey(sys, step)) >= 1) return;
-  t.add(winKey(sys, step), 1);
+  if (t.mine(winKey(side, sys, step)) >= 1) return;
+  t.add(winKey(side, sys, step), 1);
   changed();
 }
 export function receiveWar(peer, msg, now = Date.now()) {
@@ -77,19 +85,56 @@ export function onWar(fn) {
   return () => subs.delete(fn);
 }
 
-// the war table for now (worked out at most once a second, or when the tally changes)
-let cached = null;
-export function warNow(now = Date.now()) {
+// a war's table for now (worked out at most once a second, or when the tally changes)
+let cached = {};
+export function warNow(now = Date.now(), war = DEFAULT_WAR) {
   const t = warTally(now);
   const second = Math.floor(now / 1000);
-  if (!cached || cached.second !== second || cached.version !== version) cached = { second, version, table: warTable(now, (k) => t.value(k)) };
-  return cached.table;
+  const c = cached[war];
+  if (!c || c.second !== second || c.version !== version) cached[war] = { second, version, table: warTable(war, now, (k) => t.value(k)) };
+  return cached[war].table;
+}
+
+// your own record in a war this campaign: the points you scored (your share
+// of each key, not anyone else's), the battles you were in, those your side
+// won and those the other side did, and whether one you won was the major
+// order's
+export function mine(war, now = Date.now()) {
+  const t = warTally(now);
+  let points = 0;
+  const fought = new Map(); // `${sys}:${step}` → { sys, step, side }
+  const won = new Set();
+  for (const key of t.keys()) {
+    const k = readKey(key);
+    if (!k || k.war !== war || !(t.mine(key) > 0)) continue;
+    const at = `${k.sys}:${k.step}`;
+    if (!fought.has(at)) fought.set(at, { sys: k.sys, step: k.step, side: k.side });
+    if (k.win) won.add(at);
+    else points += t.mine(key);
+  }
+  const bySys = new Map();
+  let major = false;
+  const n = campaignAt(now).n;
+  for (const [at, b] of fought) {
+    const row = bySys.get(b.sys) ?? { id: b.sys, wins: 0, losses: 0 };
+    bySys.set(b.sys, row);
+    if (won.has(at)) {
+      row.wins += 1;
+      if (!major && history(war, n, GCW.start + n * GCW.campaign + b.step * GCW.step).major === b.sys) major = true;
+    } else if (t.keys().some((key) => {
+      const o = readKey(key);
+      return o?.win && o.war === war && o.side !== b.side && o.sys === b.sys && o.step === b.step && t.value(key) >= 1;
+    }))
+      row.losses += 1;
+  }
+  const systems = [...bySys.values()].sort((a, b) => a.id.localeCompare(b.id));
+  return { points: +points.toFixed(2), wins: won.size, battles: fought.size, systems, major };
 }
 
 // (for the tests: forget the page's war)
 export function resetWar() {
   tally = null;
-  cached = null;
+  cached = {};
   clearTimeout(saveLater);
   saveLater = null;
 }

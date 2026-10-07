@@ -1,6 +1,6 @@
 {
   "date": "2026-10-07",
-  "sha": "713cdc5",
+  "sha": "1fa4b1c",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -89,11 +89,11 @@
         },
         {
           "file": "src/components/rickmorty/world/RmWorld.jsx",
-          "n": 2049
+          "n": 2048
         },
         {
           "file": "src/components/galaxy/surface/props/forest.js",
-          "n": 1898
+          "n": 1916
         },
         {
           "file": "src/components/middleearth/towns/edoras/folk.js",
@@ -101,7 +101,7 @@
         },
         {
           "file": "src/components/galaxy/surface/props/core.js",
-          "n": 1705
+          "n": 1762
         },
         {
           "file": "src/lib/sfx.js",

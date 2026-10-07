@@ -305,6 +305,9 @@ export const CREWS = [
           ['comms', 'This isn’t over, Rick. It’s never over. I’ll see you soon.'],
           ['rick', 'She’ll be back, Morty. Tougher. They always come back tougher. It’s a whole thing.'],
         ],
+        bait: [['morty', 'Rick, she’s slowing down, why is she— oh no, oh no, she’s BEHIND us!'], ['rick', 'Yeah, Morty, that’s called a bait. I invented it.']],
+        search: [['comms', 'You can’t hide from the Federation forever, Rick.'], ['morty', 'She lost us! Keep the planet between us, Rick!']],
+        found: [['comms', 'There you are, Rick.'], ['rick', 'Aaand she found us. Great. Morty, hold onto something.']],
         leaving: [['morty', 'She’s gone, Rick. Are… are you okay?'], ['rick', 'I’m always okay, Morty. Shut up.']],
       },
       // Federation customs, pulling you over (an inspector: cut your engines and it scans you)
@@ -381,6 +384,8 @@ export const CREWS = [
           ['comms', 'Let’s call it a draw. For now.'],
           ['rick', 'He’ll be back, Morty. He always plans to be back.'],
         ],
+        search: [['comms', 'Lost me? I don’t get lost, Rick. I get patient.'], ['morty', 'He can’t see us, Rick. Keep it that way!']],
+        found: [['comms', 'There you are.'], ['rick', 'Yeah, yeah, he’s back, Morty. Guns.']],
       },
     },
     interdicted: [
@@ -997,6 +1002,9 @@ export const CREWS = [
           ['comms', 'Enough. You will come to me, young Skywalker. It is your destiny.'],
           ['luke', 'He’s breaking off! Artoo, I don’t think he’s done with us.'],
         ],
+        bait: [['luke', 'He’s slowing down… he’s letting me pass him! Artoo, break—'], ['r2', '[a shriek: he’s behind you]']],
+        search: [['comms', 'You cannot hide forever, Skywalker.'], ['luke', 'He’s lost us behind the moon. Keep it between us, Artoo.']],
+        found: [['comms', 'There you are.'], ['luke', 'He’s found us! Hold on!']],
         leaving: [['r2', '[a long, relieved whistle]'], ['luke', 'He’ll be back. I know it.']],
       },
       // Imperial customs, pulling you over (an inspector: cut your engines and it scans you)
@@ -1630,6 +1638,9 @@ export const CREWS = [
           ['comms', 'Another time, Captain. We will meet again. Count on it.'],
           ['han', 'He’s running. Vader’s running! Chewie, remember this moment.'],
         ],
+        bait: [['han', 'He’s stalling! Chewie, he WANTS us to overshoot—'], ['chewie', '[a roar, too late]']],
+        search: [['comms', 'Running does not become you, Captain Solo.'], ['han', 'He’s lost us. Keep that moon between us, pal.']],
+        found: [['comms', 'There you are.'], ['han', 'He’s on us again. Of course he is.']],
         leaving: [['chewie', '[a long, relieved moan]'], ['han', 'Yeah. Me too, pal.']],
       },
       // Imperial customs, pulling you over (an inspector: cut your engines and it scans you)
@@ -2291,6 +2302,9 @@ export const CREWS = [
           ['jesse', 'He’s bailing! Yo, he’s bailing!'],
           ['walt', 'He’ll be back. Angrier. They always are.'],
         ],
+        bait: [['jesse', 'Yo, he’s slowing down! Mr. White, go past— no, wait, DON’T—'], ['walt', 'He’s behind us. Jesse, hold on.']],
+        search: [['comms', 'HEISENBERG! Where you at, Heisenberg? You can’t hide from Tuco!'], ['jesse', 'He lost us. Stay behind the rock, yo. Stay behind the rock.']],
+        found: [['comms', 'THERE you are!'], ['walt', 'He’s seen us. Jesse. Jesse!']],
         leaving: [['jesse', 'He’s gone. Oh man. Oh man, Mr. White.'], ['walt', 'Breathe, Jesse.']],
       },
       // Hank, pulling you over (an inspector: cut your engines and he scans you)
