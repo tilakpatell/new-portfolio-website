@@ -44,7 +44,13 @@ describe.skipIf(why)(`every model draws (a browser, up to 60 s each)${why ? `: s
   afterAll(async () => {
     await browser?.close();
     server?.stop();
-    writeFileSync(join(OUT, 'results.json'), `${JSON.stringify({ tier: 'render', coverage: COVERAGE, models: results }, null, 1)}\n`);
+    const json = `${JSON.stringify({ tier: 'render', coverage: COVERAGE, models: results }, null, 1)}\n`;
+    writeFileSync(join(OUT, 'results.json'), json);
+    // and where the nightly report reads every tier's results
+    if (process.env.AI_RESULTS) {
+      mkdirSync(process.env.AI_RESULTS, { recursive: true });
+      writeFileSync(join(process.env.AI_RESULTS, 'render.json'), json);
+    }
   });
 
   const cases = MODELS.flatMap((file) => LOOKS.map((look) => [`${file}${look ? ` (${look})` : ''}`, file, look]));

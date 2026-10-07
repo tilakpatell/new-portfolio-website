@@ -346,7 +346,8 @@ def main():
     ap.add_argument("--engines", help="the bake-off's engines, comma-separated (default: every one set up here)")
     args = ap.parse_args()
 
-    lines_file = HERE / "lines.json"
+    # (VOICES_LINES: a list exported elsewhere, export-lines.mjs --out, for a run that mustn't touch this one)
+    lines_file = Path(os.environ.get("VOICES_LINES", HERE / "lines.json"))
     if not lines_file.exists():
         sys.exit("No scripts/voices/lines.json yet: run  npm run voices:lines  first")
     lines = json.loads(lines_file.read_text(encoding="utf-8"))

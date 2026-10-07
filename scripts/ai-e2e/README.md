@@ -227,6 +227,53 @@ doctor (what the runner can see), every model rendered in both looks
 (`AI_RENDER_ALL=1`), the evals; the results and the renders are kept as
 the run's artifact.
 
+## Tier 6: one real model, one real line (GPU, nightly)
+
+`node scripts/ai-e2e/real/health.mjs` runs the pipelines as they are on
+the smallest thing that proves them, everything it makes under
+`results/real-work/` (never `public/`):
+
+- **gen3d**: `make.mjs ai-health-xwing` from the contract tests' X-wing
+  render, 8000 faces, seed 1, `--fresh`, judged as it ships (a dev server
+  for the sheet when `CHROME` is set). Lines: a verdict of at least 7, the
+  three cuts within `cutsFor(8000)`, under 25 minutes.
+- **voices**: `export-lines.mjs --out`, then `generate.py --only han
+  --limit 1 --takes 2` into a throwaway list, cache and output
+  (`VOICES_LINES`, `VOICES_CACHE`, `VOICES_OUT`), with the desktop's
+  references. Lines: one line made, none doubtful, under 10 minutes.
+
+It waits up to 20 minutes for the GPU first, as the desktop's jobs do, and
+writes `results/<date>-real.json`. With the fakes switched on it runs the
+same plumbing in seconds: `real/health.test.mjs` does that on every PR.
+
+**Drift**: `real/drift.mjs` compares the night's numbers (triangles, bytes,
+verdict, word error rate, similarity, timings) with `real/golden.json`.
+Past 10% (50% for timings: the GPU is shared, a cold start is slower; and
+a floor for the small numbers) is drift, written to
+`results/<date>-drift.json` with what moved and by how much. A person
+looks at the night and, if the new numbers are right, blesses it:
+`node scripts/ai-e2e/real/bless.mjs [results/<date>-real.json]` writes the
+golden (it refuses a failed night). No golden yet: drift says so and stays
+green.
+
+## The nightly report and the issue
+
+`node scripts/ai-e2e/report.mjs` reads every tier's results (the doctor's,
+`render.json`, the evals', the real run's, the drift's) and writes one
+Markdown table, tier, result, headline, time, to stdout, the run's summary
+and `results/<date>-report.md`. A tier with no results did not run, which
+is red. `node scripts/ai-e2e/issue.mjs` keeps one issue labelled
+`ai-health`: a red night opens it, or adds its table as a comment; a green
+night closes it. `node scripts/desktop/status.mjs` shows the last night.
+
+**A red night**: open the run from the issue. A red doctor row is the
+desktop (a tool missing or boxed: its fix is in the row); a red render is a
+model that stopped drawing (its PNG is in the artifact); a red eval is a
+judge that drifted (its results JSON lists every sheet or take it got
+wrong); a red real run is the pipeline (its `make.log` and the takes'
+report are in `results/real-work/`); drift is a question for a person, and
+`bless.mjs` is the answer when the new numbers are right.
+
 ## Adding a case
 
 A contract test is a vitest file under `scripts/ai-e2e/<tier>/`, its
