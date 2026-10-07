@@ -8,6 +8,7 @@
 //   OUT=/tmp/shots node scripts/galaxy-check.mjs space endor,coruscant
 //   OUT=/tmp/shots node scripts/galaxy-check.mjs surface tatooine,hoth
 //   QUALITY=mid … (the device tier: ?quality=), SHIP=falcon …, JSON=1 …
+//   ANGLE=d3d11 … (draw on the graphics chip, not in software)
 //   BUDGET=lab/baseline/surface-high.json …: each world held to the planets
 //     overhaul's budget (docs/superpowers/specs/2026-10-06-planets-overhaul-
 //     design.md): draw calls and triangles no more than that run's +10%,
@@ -30,9 +31,10 @@ const ship = process.env.SHIP ?? 'xwing';
 const base = process.env.BASE ?? 'http://127.0.0.1:5188';
 const settle = Number(process.env.WAIT ?? 9000);
 const chrome = process.env.CHROME ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const angle = process.env.ANGLE ?? 'swiftshader'; // (d3d11, metal or vulkan: the machine's own graphics chip, for frame times that mean something)
 mkdirSync(out, { recursive: true });
 
-const browser = await chromium.launch({ executablePath: chrome, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({ executablePath: chrome, args: ['--use-gl=angle', `--use-angle=${angle}`, '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const results = [];
 for (const id of list.split(',')) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
