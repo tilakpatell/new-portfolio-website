@@ -159,6 +159,7 @@ import { STALE_MS } from './online/protocol';
 import { createFoot } from './footScene';
 import { wayIn } from './landings/wayin';
 import { ENTRY, LANDABLE, airTop, entering } from './entry';
+import { createNearMaps } from './nearMaps';
 import { poseFor } from './poses';
 import { REMOVER, hitRemover, hpLeft, landingOpen, newRemover, stepRemover } from './remover';
 import { NX5_LEN, createRemoverView } from './removerView';
@@ -706,6 +707,7 @@ export async function create(canvas, ctx) {
     return p;
   });
   const planetOf = Object.fromEntries(planets.map((p) => [p.id, p]));
+  const near = createNearMaps({ small }); // (the finer maps for the two planets nearest, nearMaps.js)
   const crashFx = createCrash(map);
   // out of the ship and on foot on a planet (footScene.js)
   const foot = createFoot({ map, emit: (e) => emit(e), reduced, small, planetOf, renderer, warm: (o) => warm(o) });
@@ -4325,6 +4327,7 @@ export async function create(canvas, ctx) {
       const px = d > placeBound.radius ? (placeBound.radius / (d * tanHalf)) * (size.h / 2) : Infinity;
       p.update(t, camera, px > 2 && viewFrustum.intersectsSphere(placeBound));
     }
+    near.update(camera.position, planets);
     locate();
     placeLabels();
     if (state.hitMark > 0) state.hitMark = Math.max(0, state.hitMark - dt * 4);
@@ -4848,6 +4851,7 @@ export async function create(canvas, ctx) {
       wing: wingmen?.live ?? [],
       skirmish: skirmishes?.info ?? null,
       lock: state.lock?.id ?? null,
+      near: near.resident(),
       manual: Boolean(state.lock?.manual),
       controls: controls(),
       loadout: { ...state.loadout },
@@ -5077,6 +5081,7 @@ export async function create(canvas, ctx) {
       quietRoar();
       infall?.dispose();
       foot.dispose();
+      near.dispose();
       dropCab();
       roomEnv?.dispose();
       state.model?.dispose();
