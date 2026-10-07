@@ -232,12 +232,23 @@ Every band is in range, and Mark passes in spawn, streetnight and porch. He miss
 - Places the map doesn't name: the bank at `[65, 0, 0]`, where the tower east of the plaza across the street stands (its door at `[50, 0, 0]` on the pavement, facing the hall; Task 9 puts the bank model there and takes the tower out), the hangar's door, the school's roof, Dad's four points for the talk (over downtown, the river, the school, then home), the three gates home from the Moon (space's frame), Eve's eight gates (each over a downtown crossing) and the five photo spots. The test checks every marker, gate and spawn point in the city is on open ground or in the air.
 - Not here: starting them in the world, the cards, the markers drawn, the getaway truck, the waves (Task 9); the radio's timing (Task 10).
 
+### Task 9: missions in the world (2026-10-07)
+
+- The season runs in the world. `InvWorld.jsx` holds the mission under way (`sim.mission`, `./missions.js`'s progress), feeds it what happens (`at` each frame, `tick`, Dad's `ring`s, a rescue's `caught`, a `ko`, a `land` or `slam`, `talk` beside Dad, Allen or Eve, the hangar's `hurt`, Think, Mark!'s `use`) and acts on what comes out: a step's `spawn` (through `spawnFoes`), its `car` (`./getaway.js`), its `wave` (more every so often), `count`, `hp`, `done` (the achievement, the story kept in `tp-inv-world-story`, the end card) and `fail` (why, with Again).
+- Starting one: E at the GDA opens Cecil's board (`MissionCard.jsx`, `kind: 'board'`): the episodes in order, done ones with their best time and Again, the next with Go, the rest locked. E beside Dad starts the first episode (if it's next) or the last (if it's next, at dusk or night, when he's on the porch); otherwise E beside him is the spar as before. Q asks before abandoning (Q again or the button); Escape closes any card. The title card is 2.5 s in the episode's colour with the camera's one swing round him (none under reduced motion).
+- Markers: `markerOf` each HUD tick, drawn as a 3D chevron over the target (`scene.js` `createMarker`, sized by `hud.js`'s `markerSize`, through anything in front), as a triangle on the compass and a dot on the map in the mission's colour; the objective line is the step's words, the distance, the count, the hangar's health and the clock, in the mission's colour.
+- `getaway.js` (tested, 3 cases): a car on the street grid, turning one in three at crossings or when the city ends, stopped where it is; episode 2's truck pulls out from the bank's door, the radio's chase from wherever he is. `scene.js` draws it as `CAST.truck` (a van from `life.js` if the model won't load), and the bank as `CAST.bank` on its block east of the plaza (`map.js` `blockKind` 'bank', landmark `bank` at `[68, 0, 0]`, 24 m square; the tower there is gone). A Mauler's swing within 32 m of the hangar takes 10 off it in episode 6. Doc Seismic's quakes in episode 3 put a student at the school roof's south edge (a `fall` rescue in `quests.js`, waving 7 s then over), one at a time, four in all.
+- Think, Mark!'s result comes back through a ref the page shares (`pages/Invincible.jsx`: `thinkMark`), as `use thinkmark`, won or lost; the last episode ends on it.
+- Achievements added: `maulers`, `seismic`, `gda`, `season`.
+- Dev hook: `api.mission(id)` starts one, `api.feed(event)` gives it an event, `api.story()` reads what's kept. Shots `bank chase seismic maulers gdasiege` start their mission, drive it to the step they frame (`drive`), hold the clock for the shot, then drive it to the end (`finish`) and print `done in … s`.
+- Not here: the radio's timing (`chase`, `everace`, the photos start only through the hook), Eve's ghost in her race, Allen racing home (Task 10); the sounds and the docs' shots (Task 11). Known: the Flaxans' portal closes as the last of the second wave goes down, before episode 5's last step (fly through where it was); the bank model's own lettering reads GDA.
+
 ## How to check
 
-- `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic, hud, brains, companions and foes (51 tests at the space merge, 89 after Task 1, 168 after Task 7, 186 after Task 8).
+- `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic, hud, brains, companions and foes (51 tests at the space merge, 89 after Task 1, 168 after Task 7, 186 after Task 8, 189 after Task 9).
 - With the dev server running, `OUT=/tmp/shots node scripts/inv-world-check.mjs [--metrics] [shot …]`.
   - Shots, in the order they run: `spawn street curb streetnight downtown high suburb river boost porch gda burger school plaza eve jet clouds rings card wallback rescue fight climb orbit orbitnight moon reentry allen mars thragg dusk night`.
-  - The mission stubs, which only frame the places for now: `bank chase seismic maulers eveescort dadlesson gdasiege photo`.
+  - The missions, started and driven to their end through the hook (Task 9): `bank chase seismic maulers gdasiege`; the stubs that only frame a place: `eveescort dadlesson porchdusk photo`.
   - A shot is at noon unless it names a time.
   - `--metrics` prints `name band=… mark=…` after each shot (see Task 1 above for how it measures). `BOX=1` with it also writes `inv-<name>.box.png`, the band, box and ring drawn on.
   - Each shot is roughly 10 s in SwiftShader at 960×540, low tier.
@@ -246,7 +257,8 @@ Every band is in range, and Mark passes in spawn, streetnight and porch. He miss
   - `sim.h` is the hero; `sim.yaw` and `sim.pitch` are the camera.
   - `sim.snap` puts the camera and the pose where they're going.
   - `sim.hold` freezes Eve and the jet.
-  - `api.zone` and `api.setZone` read and set the zone; `api.debug` holds `npcs`, `jet`, `world`, `bodies`, `allen`, `thragg` and `dad`.
+  - `api.zone` and `api.setZone` read and set the zone; `api.debug` holds `npcs`, `jet`, `villains`, `world`, `bodies`, `allen`, `thragg` and `dad`.
+  - `api.spawn(kind, n, at)` calls villains; `api.mission(id)`, `api.feed(event)` and `api.story()` run the missions.
 
 ## Not done / next ideas
 
