@@ -70,6 +70,58 @@ describe('makeSpace', () => {
   });
 });
 
+// Boosting from `s` for `seconds` or until `until(ship)`, the stick from
+// `stick(ship)`: where it got, the slowest it went, and how fast it was
+// going when it first came inside `p`'s reach
+const boostRun = (s, seconds, { sp = space, until = () => false, stick = () => ({}), p = planet } = {}) => {
+  let ship = s;
+  let slowest = Infinity;
+  let arrived = null;
+  for (let t = 0; t < seconds && !until(ship); t += 1 / 60) {
+    ship = step(ship, { throttle: 1, boost: true, ...stick(ship) }, 1 / 60, sp.solids, sp).ship;
+    slowest = Math.min(slowest, ship.speed);
+    if (arrived === null && Math.hypot(ship.x - p.at[0], ship.y - p.at[1], ship.z - p.at[2]) < p.reach) arrived = ship.speed;
+  }
+  return { ship, slowest, arrived };
+};
+
+describe('the sublight drive near things: no wall round them', () => {
+  it('keeps its speed flying past the planet, wide of it', () => {
+    // level with it, 40 out past its reach on the side away from the station, flying by
+    const s = { ...spawn(null, { x: -(planet.reach + 40), y: 0, z: 600, heading: 0 }), speed: PULSE };
+    expect(boostRun(s, 1200 / PULSE).slowest).toBeGreaterThan(PULSE * 0.85);
+  });
+  it('opens straight up flying away from the planet, just off it', () => {
+    const s = { ...spawn(null, { x: 0, y: 0, z: planet.reach + 5, heading: Math.PI }), speed: SHIP.boost };
+    expect(boostRun(s, 2).ship.speed).toBeGreaterThan(SHIP.boost * 3);
+  });
+  it('keeps its speed flying past a battle’s capital ships', () => {
+    const hulls = [-500, -560, -620].map((z, i) => ({ id: `hull-${i}`, at: [0, 0, z], r: 6, reach: 6 }));
+    const battle = makeSpace([planet, ...hulls]);
+    // 30 off the line of them, flying along it
+    const s = { ...spawn(null, { x: 30, y: 0, z: -300, heading: 0 }), speed: PULSE };
+    expect(boostRun(s, 500 / PULSE, { sp: battle }).slowest).toBeGreaterThan(PULSE * 0.85);
+  });
+  it('still never arrives flat out: turned hard into the planet off a pass, it’s down to the boost by its reach', () => {
+    const alone = makeSpace([planet]);
+    for (const out of [15, 40, 80]) {
+      for (const side of [-1, 1]) {
+        // flying past it (on the drive as far as it's open there), then the stick hard over toward it
+        const x = side * (planet.reach + out);
+        let s = { ...spawn(null, { x, y: 0, z: 300, heading: 0 }), speed: PULSE };
+        s = boostRun(s, (300 - 20) / PULSE, { sp: alone, until: (o) => o.z < 20 }).ship;
+        const toward = (o) => {
+          const l = Math.hypot(o.x, o.y, o.z);
+          return steerToward(o, [-o.x / l, -o.y / l, -o.z / l]);
+        };
+        const run = boostRun(s, 12, { sp: alone, stick: toward, until: (o) => Math.hypot(o.x, o.y, o.z) < planet.reach });
+        expect(run.arrived, `${out} ${side}`).not.toBe(null);
+        expect(run.arrived, `${out} ${side}`).toBeLessThan(SHIP.boost + 1);
+      }
+    }
+  });
+});
+
 describe('the autopilot in a system', () => {
   it('parks off a goal, facing it, clear of the rest', () => {
     const p = parkBy(station, [0, 0, 300], space.solids);
