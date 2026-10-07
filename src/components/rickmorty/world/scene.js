@@ -89,6 +89,11 @@ export const LAZY = {
   simulation: () => import('./dimensions/simulation').then((m) => m.buildSimulation),
   storytrain: () => import('./dimensions/storytrain').then((m) => m.buildStorytrain),
   fortress: () => import('./dimensions/fortress').then((m) => m.buildFortress),
+  froopyland: () => import('./dimensions/froopyland').then((m) => m.buildFroopyland),
+  nimbus: () => import('./dimensions/nimbus').then((m) => m.buildNimbus),
+  gromflomites: () => import('./dimensions/gromflomites').then((m) => m.buildGromflomites),
+  heistcon: () => import('./dimensions/heistcon').then((m) => m.buildHeistcon),
+  snakeplanet: () => import('./dimensions/snakeplanet').then((m) => m.buildSnakeplanet),
 };
 
 // The cruiser's headlights, which are its eyes (the saucer's, in the hull's

@@ -174,6 +174,25 @@ const PHASE7 = {
   omegadevice: { rig: false, hero: true, prompt: `The Omega Device from Rick and Morty: a sinister science-fiction machine, a black metal sphere held in a frame of three thin gold rings over a squat dark steel plinth with riveted panels, a red glow leaking from gaps in the sphere, thick cables running from the plinth's base, no text. ${PROP}` },
   primedrone: { rig: false, poly: 14000, prompt: `A security drone from Rick Prime's fortress in Rick and Morty: a hovering drone shaped like a flattened dark grey metal egg, one big round red glowing lens at the front, two small thruster pods underneath, a thin antenna on top, a few orange warning stripes, no text. ${PROP}` },
 };
+// Phase 7 (the plan's long tail), five more places on the dial, each with
+// people who do something: Froopyland, Mr. Nimbus's beach, the Gromflomite
+// base, Heist-Con and Snake Planet.
+const PHASE8 = {
+  tommy: { height: 1.8, prompt: `Tommy Lipkip from Rick and Morty's Froopyland, grown up: a gaunt man in his late thirties with wild tangled brown hair and a scraggly brown beard, wide staring eyes, in the torn and dirty remains of a child's pale blue sweater and brown shorts, bare feet, thin arms. ${BODY}` },
+  'froopy-a': { rig: false, poly: 14000, prompt: `A Froopylander creature from Rick and Morty: a chubby round candy-pink fantasy animal the size of a large dog, a rabbit-like body with floppy ears, a wide smiling mouth full of small sharp teeth, big round eyes, short legs, a fluffy tail, bright cheerful colours. ${PROP}` },
+  'froopy-b': { rig: false, poly: 14000, prompt: `A Froopylander creature from Rick and Morty: a tall gangly lime-green fantasy bird the size of a person, a long neck, a round head with a yellow beak and big round eyes, a tuft of purple feathers on top, stubby wings, long thin legs, bright cheerful colours. ${PROP}` },
+  nimbus: { hero: true, height: 1.95, prompt: `Mr. Nimbus from Rick and Morty: the king of the ocean, a muscular man with blue skin, a strong jaw and a smug grin, slicked-back dark blue hair, in a tight pink and purple superhero bodysuit with a plunging neckline, a high collar, long pink gloves, pink boots, a gold shell belt buckle, holding a golden trident. ${BODY}` },
+  atlantean: { height: 1.85, prompt: `An Atlantean guard from Rick and Morty's ocean kingdom: a humanoid fish-person with teal scaly skin, a finned crest on the head, large round black eyes, gills on the neck, webbed hands, in a dark blue armoured vest with gold trim and a short dark kilt, holding a long silver spear. ${BODY}` },
+  miles: { height: 1.85, prompt: `Miles Knightly from Rick and Morty's Heist-Con: a slim confident man with a neat dark pompadour haircut and a thin moustache, a sly smile, in a tan trench coat open over a dark turtleneck, dark trousers, brown shoes, one hand in a pocket. ${BODY}` },
+  heistotron: { rig: false, hero: true, prompt: `Heistotron from Rick and Morty: a huge heist-planning robot, a squat heavy boxy body of riveted grey steel plates, a big round bank-vault door with a spinning dial as its face, two heavy arms ending in clamp hands, tank treads instead of legs, red glowing lights, no text. ${PROP}` },
+  'heister-a': { rig: false, poly: 14000, prompt: `A heist crew member attending Heist-Con in Rick and Morty: a stocky man in a black ski mask with eye holes, a black turtleneck, black gloves, black trousers and boots, a canvas loot bag over one shoulder. ${AT_EASE}` },
+  'heister-b': { rig: false, poly: 14000, prompt: `A heist crew member attending Heist-Con in Rick and Morty: a tall thin woman in a sleek black catsuit, a black domino mask, short platinum hair, a coil of rope over one shoulder, black boots. ${AT_EASE}` },
+  fart: { rig: false, poly: 14000, prompt: `Fart, the gaseous being from Rick and Morty: a floating cloud of glowing pale green and pink gas the size of a person, soft wispy edges, a faint calm face with two simple eyes in the middle, lit from inside, no text. ${PROP}` },
+  'snake-a': { rig: false, poly: 12000, prompt: `A snake from Snake Planet in Rick and Morty: a long cartoon snake with green scales, a yellow belly, a wedge-shaped head with round red eyes and a forked tongue, its body coiled on the ground in a spiral with the head raised. ${PROP}` },
+  'snake-b': { rig: false, poly: 12000, prompt: `A snake from Snake Planet in Rick and Morty: a long cartoon snake with orange and brown banded scales, a cream belly, a wedge-shaped head with round yellow eyes and a forked tongue, its body in an S-curve along the ground with the head raised. ${PROP}` },
+  snakeastronaut: { rig: false, poly: 14000, prompt: `A snake astronaut from Rick and Morty's Snake Planet: a cartoon green snake wearing a tiny white spacesuit along its body with a round glass helmet over its head, small life-support pack, the body coiled upright. ${PROP}` },
+  snakerocket: { rig: false, prompt: `The snakes' space rocket from Rick and Morty's Snake Planet: a small cartoon rocket, a slim silver and white body with red fins, a round porthole, a long pointed nose cone, standing upright on a launch pad of concrete with a few scaffold poles, no text. ${PROP}` },
+};
 // The plan's Task 3.1: Mortytown's people and buildings, two Ricks for the
 // Citadel's crowd, the Citadel from space and the NX-5. The plan's prompts
 // were checked against the wiki on 6 October and put right where the show
@@ -254,6 +273,7 @@ for (const [phase, set] of [
   [5, PHASE5],
   [6, PHASE6],
   [7, PHASE7],
+  [8, PHASE8],
 ]) {
   for (const [n, a] of Object.entries(set)) ASSETS[n] = { phase, rig: !a.crowd, poly: a.crowd ? 9000 : a.hero ? 40000 : 30000, tex: a.crowd || SMALL.has(n) ? 1024 : 2048, ...a };
 }

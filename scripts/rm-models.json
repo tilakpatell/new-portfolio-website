@@ -406,5 +406,61 @@
   "primedrone": {
     "status": "done",
     "by": "local"
+  },
+  "tommy": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "froopy-a": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "froopy-b": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "nimbus": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "atlantean": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "miles": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "heistotron": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "heister-a": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "heister-b": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "fart": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "snake-a": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "snake-b": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "snakeastronaut": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "snakerocket": {
+    "status": "meshy",
+    "by": "local"
   }
 }

@@ -1037,5 +1037,61 @@
   "primedrone": {
     "image": "01a113e4-cdca-7633-a3d0-ad43fe0f96c6",
     "model": "01a113e6-7ad4-701a-9e1e-8ba8524e54f7"
+  },
+  "tommy": {
+    "image": "01a113f0-208c-759f-bb8f-eecd6893dcd6",
+    "model": "01a113f2-c037-75ab-bb96-6b2caa73b19a"
+  },
+  "froopy-a": {
+    "image": "01a113f0-2097-7666-971d-e8128f6909d8",
+    "model": "01a113f2-c0a5-751d-bfef-7490be9c4538"
+  },
+  "froopy-b": {
+    "image": "01a113f0-2084-72bb-afc2-5254c5d2a900",
+    "model": "01a113f2-c0ae-7103-8e16-9dfb2ce672ad"
+  },
+  "nimbus": {
+    "image": "01a113f0-2086-70e1-9e4b-99e520913f23",
+    "model": "01a113f2-c0a9-7303-b4c0-8e461b7c7fad"
+  },
+  "atlantean": {
+    "image": "01a113f0-86b5-7616-9f3e-147aafdb15d2",
+    "model": "01a113f3-a315-77ef-93f1-bb74de370f2e"
+  },
+  "miles": {
+    "image": "01a113f0-878a-70c6-bf91-63d475fdd69d",
+    "model": "01a113f3-df2a-7309-a148-16b1d16367d8"
+  },
+  "heistotron": {
+    "image": "01a113f0-af10-723f-a9b1-f479c455366a",
+    "model": "01a113f4-2d9a-7575-85f7-16ade62a87fc"
+  },
+  "heister-a": {
+    "image": "01a113f0-d683-72b1-8b38-697df83a8e51",
+    "model": "01a113f4-690d-716d-8841-f22ccfc37f6e"
+  },
+  "heister-b": {
+    "image": "01a113f0-eda8-7606-b0c8-c189186c4def",
+    "model": "01a113f4-fa90-75e7-957b-cc36fd9cc34e"
+  },
+  "fart": {
+    "image": "01a113f1-010e-76a1-8909-12e21f3e4d97",
+    "model": "01a113f5-5dde-71b5-a318-2eee501852fa"
+  },
+  "snake-a": {
+    "image": "01a113f1-1469-72d2-bf8b-af6561dd916d",
+    "model": "01a113f5-8490-7752-a14d-9948999ce05a"
+  },
+  "snake-b": {
+    "image": "01a113f1-673f-7149-9be5-87a9c0b5e241",
+    "model": "01a113f5-c084-7798-968c-d3115c26bddc"
+  },
+  "snakeastronaut": {
+    "image": "01a113f1-7b76-71cb-b40b-c94d6f9a3eb8",
+    "model": "01a113f5-d926-71c7-a825-44abdf37284d"
+  },
+  "snakerocket": {
+    "image": "01a113f1-7b95-7129-98bd-203c6ee74682",
+    "model": "01a113f6-782c-71ac-a685-4f1beb0c639b"
   }
 }
