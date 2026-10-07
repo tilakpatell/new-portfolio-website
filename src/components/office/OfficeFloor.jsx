@@ -4,6 +4,7 @@ import { audioContext } from '../../lib/audio';
 import { jumpTo } from '../../lib/anchors';
 import { use3D } from '../../lib/gpu';
 import { useMediaQuery } from '../../lib/hooks';
+import { sayVoiced } from '../../lib/voiced';
 import Gif from '../Gif';
 import OfficeTour3D from './OfficeTour3D';
 import './office.css';
@@ -235,6 +236,7 @@ export default function OfficeFloor({ say = (t) => t }) {
     if (sel === 'pam' || sel === 'erin') sfx().then((s) => s.ring());
     if (sel === 'jim') clip('dwightPunish').then((h) => h || sfx().then((s) => s.knock())); // Dwight finds the Jell-O
     if (sel === 'kevin') clip('undercookOnions').then((h) => h || sfx().then((s) => s.knock()));
+    if (p.said) sayVoiced(p.id, p.done); // what they say, in their own voice where it's been made (lib/voiced.js)
     setDone(Date.now());
     return undefined;
   };
