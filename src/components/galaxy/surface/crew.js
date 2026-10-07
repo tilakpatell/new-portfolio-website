@@ -69,6 +69,7 @@ export const CREW = {
   ackbar: { url: '/models/galaxy/crew/ackbar.glb', tall: 1.8 },
   officer: { url: '/models/galaxy/crew/officer.glb', tall: 1.8 },
   dooku: { url: '/models/galaxy/crew/dooku.glb', tall: 1.93 },
+  quigon: { url: '/models/galaxy/crew/quigon.glb', tall: 1.93 },
 };
 
 export async function crewFigure(kind) {

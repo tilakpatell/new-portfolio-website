@@ -50,4 +50,14 @@ export const MODELS = {
   varactyl: { made: 'meshy', as: 'the varactyls', metres: 10, along: 'max' },
   lothcat: { made: 'meshy', as: 'the loth-cats', metres: 0.6, along: 'y' },
   lothwolf: { made: 'meshy', as: 'the loth-wolves', metres: 2.4, along: 'y' },
+  // the worlds' landmarks still built in code, made with Meshy over the built
+  // one's walls and decks (solids: 'built'), so its doors and floors still
+  // work: the Mos Eisley cantina (and Nevarro's), Varykino, Endor's shield
+  // generator, the Gungans' stone heads; and Mustafar's collector rig for
+  // later (its deck stands higher than the duel's built one)
+  cantina: { made: 'meshy', as: 'the cantina', metres: 18.5, along: 'max', solids: 'built', detail: 'adobe' },
+  varykino: { made: 'meshy', as: 'the lake retreat at Varykino', metres: 28, along: 'y', solids: 'built', hero: true, lod: true, detail: 'stone' },
+  shieldgen: { made: 'meshy', as: 'the shield generator', metres: 70, along: 'y', solids: 'built' },
+  stonehead: { made: 'meshy', as: 'the Gungans’ stone heads', metres: 7.5, along: 'y', detail: 'stone' },
+  lavacollector: { made: 'meshy', as: 'the lava collector', metres: 16, along: 'max' },
 };
