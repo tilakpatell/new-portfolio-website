@@ -15,3 +15,4 @@ export { default as PlayersChip } from './PlayersChip';
 export { default as Stick } from './Stick';
 export { default as TouchButton } from './TouchButton';
 export * from './hud';
+export { fitCanvas } from './canvas';
