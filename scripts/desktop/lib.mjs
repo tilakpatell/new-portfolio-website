@@ -42,7 +42,10 @@ export function localDir(name, base = LOCAL) {
   return real;
 }
 
-export const sh = (cmd, args, opts = {}) => execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'], maxBuffer: 64 * 1024 * 1024, ...opts }).trim();
+// in an Actions run, gh acts on the run's repository whatever the directory
+if (process.env.GITHUB_REPOSITORY && !process.env.GH_REPO) process.env.GH_REPO = process.env.GITHUB_REPOSITORY;
+
+export const sh = (cmd, args, opts = {}) => String(execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'], maxBuffer: 64 * 1024 * 1024, ...opts }) ?? '').trim();
 export const gh = (...args) => sh('gh', args);
 export const git = (root, ...args) => sh('git', ['-C', root, ...args]);
 
@@ -295,8 +298,10 @@ while (Get-Process -Id $parent -ErrorAction SilentlyContinue) { Start-Sleep -Sec
   }
 }
 
-// The repository proper (this may be one of its worktrees).
-export const mainRepo = () => resolve(git(REPO, 'rev-parse', '--path-format=absolute', '--git-common-dir'), '..');
+// The repository proper (this may be one of its worktrees). The Actions
+// runner's checkout is a sparse, shallow clone of its own, so the runner
+// names the real one in DESKTOP_JOBS_REPO (setup-runner.ps1 sets it).
+export const mainRepo = () => (process.env.DESKTOP_JOBS_REPO ? resolve(process.env.DESKTOP_JOBS_REPO) : resolve(git(REPO, 'rev-parse', '--path-format=absolute', '--git-common-dir'), '..'));
 
 // A pipeline's own checkout beside the repository (<repo>-gen3d,
 // <repo>-voices), made once, where its jobs are made: its branches and its
@@ -305,8 +310,9 @@ export function workspace(suffix, root) {
   root = resolve(root ?? `${mainRepo()}-${suffix}`);
   if (root === REPO) return root;
   if (!existsSync(join(root, '.git'))) {
-    git(REPO, 'fetch', '-q', 'origin', 'main');
-    git(REPO, 'worktree', 'add', '--detach', root, 'origin/main');
+    const base = mainRepo();
+    git(base, 'fetch', '-q', 'origin', 'main');
+    git(base, 'worktree', 'add', '--detach', root, 'origin/main');
   }
   return root;
 }

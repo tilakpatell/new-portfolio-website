@@ -21,7 +21,10 @@ param(
   [string]$Dir = "$HOME\actions-runner"
 )
 
-$ErrorActionPreference = 'Stop'
+# Continue, not Stop: Windows PowerShell turns a native command's stderr into
+# errors, and Stop would end the script on gh's or git's chatter. Each step
+# checks its own result instead.
+$ErrorActionPreference = 'Continue'
 $task = 'desktop-jobs-runner'
 $name = "$env:COMPUTERNAME-gpu".ToLower()
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -55,31 +58,40 @@ if ($Remove) {
   exit 0
 }
 
+# The repository proper (this may be one of its worktrees): the jobs' own
+# checkouts sit beside it (<repo>-gen3d, <repo>-voices).
+$common = git -C $repoRoot rev-parse --path-format=absolute --git-common-dir
+if ($LASTEXITCODE -ne 0) { Fail "$repoRoot isn't a git checkout: run this from the repository" }
+$mainRepo = (Resolve-Path (Join-Path $common '..')).Path
+
 Say 'GitHub sign-in'
-gh auth status *> $null
+$null = gh auth status 2>&1
 if ($LASTEXITCODE -ne 0) {
   gh auth login --hostname github.com --git-protocol https --web
   if ($LASTEXITCODE -ne 0) { Fail 'gh auth login failed' }
 }
 # git pushes with gh's login, so no credential prompt can hang a job
 gh auth setup-git
+if ($LASTEXITCODE -ne 0) { Fail 'gh auth setup-git failed' }
 $login = gh api user -q .login
+if (-not $login) { Fail 'gh is signed in but the API call failed' }
 Say "gh and git act as $login"
 
 Say "The Actions runner, in $Dir"
 if (-not (Test-Path "$Dir\run.cmd")) {
-  $rel = Invoke-RestMethod 'https://api.github.com/repos/actions/runner/releases/latest' -Headers @{ 'User-Agent' = 'desktop-jobs-setup' }
+  $rel = Invoke-RestMethod 'https://api.github.com/repos/actions/runner/releases/latest' -Headers @{ 'User-Agent' = 'desktop-jobs-setup' } -ErrorAction Stop
   $asset = $rel.assets | Where-Object { $_.name -like 'actions-runner-win-x64-*.zip' } | Select-Object -First 1
   if (-not $asset) { Fail 'no Windows x64 runner in the latest release' }
   New-Item -ItemType Directory -Force -Path $Dir | Out-Null
   $zip = Join-Path $env:TEMP $asset.name
   Write-Host "downloading $($asset.name)"
-  Invoke-WebRequest $asset.browser_download_url -OutFile $zip -UseBasicParsing
-  Expand-Archive $zip -DestinationPath $Dir -Force
+  Invoke-WebRequest $asset.browser_download_url -OutFile $zip -UseBasicParsing -ErrorAction Stop
+  Expand-Archive $zip -DestinationPath $Dir -Force -ErrorAction Stop
   Remove-Item $zip
 }
 if (-not (Test-Path "$Dir\.runner")) {
   $token = gh api -X POST "repos/$Repo/actions/runners/registration-token" -q .token
+  if (-not $token) { Fail "couldn't get a registration token (are you an admin of $Repo?)" }
   Push-Location $Dir
   & .\config.cmd --unattended --url "https://github.com/$Repo" --token $token --name $name --labels gpu --work _work --replace
   $code = $LASTEXITCODE
@@ -87,10 +99,11 @@ if (-not (Test-Path "$Dir\.runner")) {
   if ($code -ne 0) { Fail 'registering the runner failed' }
 }
 
-# What every job sees besides the PATH recorded at registration: the browser
-# for judging sheets, and no git prompt that could wait forever.
+# What every job sees besides the PATH recorded at registration: the real
+# repository (the runner's own checkout is a sparse clone), the browser for
+# judging sheets, and no git prompt that could wait forever.
 $envFile = "$Dir\.env"
-$want = [ordered]@{ CHROME = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'; GCM_INTERACTIVE = 'never'; GIT_TERMINAL_PROMPT = '0' }
+$want = [ordered]@{ DESKTOP_JOBS_REPO = $mainRepo; CHROME = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'; GCM_INTERACTIVE = 'never'; GIT_TERMINAL_PROMPT = '0' }
 $lines = @()
 if (Test-Path $envFile) { $lines = @(Get-Content $envFile | Where-Object { $_ -and ($want.Keys -notcontains ($_ -split '=', 2)[0]) }) }
 foreach ($k in $want.Keys) { $lines += "$k=$($want[$k])" }
@@ -123,11 +136,11 @@ $principal = New-ScheduledTaskPrincipal -UserId $me -LogonType Interactive -RunL
 $description = 'Keeps the GitHub Actions runner for the gen3d and voices workflows running (scripts/desktop/setup-runner.ps1).'
 try {
   $logon = New-ScheduledTaskTrigger -AtLogOn -User $me
-  Register-ScheduledTask -TaskName $task -Action $action -Trigger @($logon, $every) -Settings $settings -Principal $principal -Description $description -Force | Out-Null
+  Register-ScheduledTask -TaskName $task -Action $action -Trigger @($logon, $every) -Settings $settings -Principal $principal -Description $description -Force -ErrorAction Stop | Out-Null
   Write-Host "scheduled task ${task}: at logon and every 5 minutes"
 } catch {
   # a logon trigger can need an administrator; every five minutes covers a logon too
-  Register-ScheduledTask -TaskName $task -Action $action -Trigger $every -Settings $settings -Principal $principal -Description $description -Force | Out-Null
+  Register-ScheduledTask -TaskName $task -Action $action -Trigger $every -Settings $settings -Principal $principal -Description $description -Force -ErrorAction Stop | Out-Null
   Write-Host "scheduled task ${task}: every 5 minutes (a logon trigger needs an administrator here)"
 }
 
@@ -151,8 +164,9 @@ Say 'Starting it'
 $online = $false
 for ($i = 0; $i -lt 30 -and -not $online; $i++) {
   Start-Sleep -Seconds 2
-  $status = gh api "repos/$Repo/actions/runners" -q ".runners[] | select(.name == ""$name"") | .status"
-  $online = $status -eq 'online'
+  # (parsed here: Windows PowerShell mangles quotes inside a native command's arguments)
+  $runners = gh api "repos/$Repo/actions/runners" | ConvertFrom-Json
+  $online = ($runners.runners | Where-Object { $_.name -eq $name }).status -eq 'online'
 }
 if ($online) { Say "Runner $name is online" } else { Write-Host "!! runner $name isn't online yet: see $Dir\_diag" -ForegroundColor Yellow }
 
