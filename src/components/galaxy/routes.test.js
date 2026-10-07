@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { JUMP, SNAP, jumpTime, laneGraph, routeBetween } from './routes';
+import { JUMP, SNAP, jumpTime, laneGraph, routeBetween, viaLanes } from './routes';
 import { LANES, systemById } from './systems';
 
 const len = (pts) => pts.slice(1).reduce((d, p, i) => d + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]), 0);
@@ -96,5 +96,24 @@ describe('jumpTime', () => {
   });
   it('takes the Run’s nine squares at the most a jump takes', () => {
     expect(jumpTime(routeBetween('coruscant', 'tatooine'))).toBe(JUMP.max);
+  });
+});
+
+describe('viaLanes', () => {
+  it('names the one lane a route takes', () => {
+    expect(viaLanes({ onLane: true, lanes: ['corellian-run'] })).toBe('via the Corellian Run');
+    expect(viaLanes(routeBetween('coruscant', 'tatooine'))).toBe('via the Corellian Run');
+  });
+  it('joins two with “and”, three or more with commas and then “and”', () => {
+    expect(viaLanes({ onLane: true, lanes: ['hydian', 'perlemian'] })).toBe('via the Hydian Way and the Perlemian Trade Route');
+    expect(viaLanes(routeBetween('yavin', 'coruscant'))).toBe('via the Hydian Way and the Perlemian Trade Route');
+    expect(viaLanes({ onLane: true, lanes: ['reaches', 'corellian-run', 'spine'] })).toBe('via the Western Reaches route, the Corellian Run and the Corellian Trade Spine');
+  });
+  it('says so when the jump’s off the lanes, and nothing for no route', () => {
+    expect(viaLanes(routeBetween('dagobah', 'hoth'))).toBe('off the lanes: a straight jump, slower, and the Empire watches those');
+    expect(viaLanes(null)).toBe('');
+  });
+  it('calls two systems on the one lane point a short hop on the lanes (Tatooine to Geonosis)', () => {
+    expect(viaLanes(routeBetween('tatooine', 'geonosis'))).toBe('a short hop, on the lanes');
   });
 });
