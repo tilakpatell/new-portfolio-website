@@ -1,0 +1,324 @@
+// What each crew's ship can do besides shoot: a power on G, on a cooldown,
+// and a big one on X, charged by what you shoot down (and a little by
+// flying). Each is a card of numbers; the state machine says which is on,
+// cooling or charging, and what the scene should change while it's on. Pure
+// (no three.js), so it's tested in Node; the galaxy's scene plays them
+// (galaxy/powers.js), powerFx.js draws them and PowerBar.jsx shows them.
+//
+// - Luke and Artoo (the X-wing): Force Focus, time slowed for everyone but
+//   you and the guns finding their mark; and a torpedo salvo, four locked at
+//   once.
+// - Han and Chewie (the Falcon): Never tell me the odds, a corkscrew no
+//   gunner can follow (nothing hits you, and whoever was on you overshoots);
+//   and Chewie on the quad guns, shooting at anything near, all the way round.
+// - Rick and Morty (the cruiser): the portal gun, out on your target's tail
+//   (or a long hop ahead); and Wubba lubba dub dub, the cruiser's big laser.
+// - Walt and Jesse (the RV): Magnets, every fighter near dragged into a ball
+//   ahead of you with its guns jammed; and Say my name, a crystal of
+//   fulminated mercury thrown ahead (magnets, then the bang, is the idea).
+// Powers are for the fights with the game's own ships (the hunters, the
+// war's battles): they never touch another pilot online.
+//
+//   POWERS                 by id: { crew, slot, name, short, about, cool? (s), dur (s), …its own numbers }
+//   CREW_POWERS / powersOf(crew)   { primary, ultimate } ids, or null
+//   CHARGE                 what fills the big one (0…1)
+//   createPowers(crew, { charge }) → state, or null for no crew
+//   press(st, slot)        → { ok, id } or { ok: false, why }
+//   step(st, dt, { flying }) → events ({ type: 'end' | 'ready', slot, id })
+//   gain(st, what, n)      the big one charged (never while it's on); → true the moment it fills
+//   finish(st, slot)       one power stops early, its work done (the last torpedo home)
+//   cancel(st)             whatever's on stops (shot down, crashed, jumping)
+//   mods(st)               what the scene changes this frame
+//   view(st)               the HUD's
+//   readKept / writeKept   the big one's charge, kept in the session across a landing
+//   pickTargets, portalExit, beamOf, blastPunch, pullStep, jinkStep,
+//   turretPick, crossesShell, isObjective, firstAlong: the geometry, pure
+
+import { aimAngles, bearing, nose, sweptHit } from './targeting';
+import { clearOf } from './hunterRules';
+
+export const POWER_KEYS = { primary: 'g', ultimate: 'x' };
+export const KEPT_KEY = 'tp:ship-powers'; // (the session's: the big one's charge, so a landing doesn't lose it)
+
+// What fills the big one: five kills, or two minutes and a half of flying
+// (an ace counts for more, a battle's objective more than a fighter)
+export const CHARGE = { kill: 0.2, ace: 0.5, objective: 0.3, hit: 0.02, second: 1 / 150 };
+
+// The numbers come from fights flown in Node (hunterRules.js's): in a fight
+// a hunter sits a median 7.5 to 9 units off you and a pack is 8 to 10 units
+// across, which is where the magnet's reach and the blast's size come from;
+// Force Focus cut the hits taken in five seconds from 9 to 1 over twenty
+// fights. Damage on a battle's objectives is cut (`sub`) so that one big
+// one can't take a shield generator down on its own.
+export const POWERS = {
+  // Luke and Artoo
+  focus: { crew: 'xwing', slot: 'primary', name: 'Force Focus', short: 'Force', about: 'Time slows for everyone but you, and your shots find their mark.', cool: 22, dur: 5, slow: 0.35, assist: 2.5, track: 2, cadence: 0.7 },
+  // (on until the last torpedo's home or gone: four launched over the
+  // first half second, each living 2.8 s)
+  salvo: { crew: 'xwing', slot: 'ultimate', name: 'Torpedo salvo', short: 'Torpedoes', about: 'Four torpedoes away, each locked on a target of its own.', dur: 3.4, count: 4, every: 0.15, punch: 8, sub: 4, speed: 30, life: 2.8, turn: 2.4, cone: 0.6, range: 60, near: 1 },
+  // Han and Chewie
+  odds: { crew: 'falcon', slot: 'primary', name: 'Never tell me the odds', short: 'Evade', about: 'A corkscrew no gunner can follow: nothing hits you, and whoever was on you overshoots.', cool: 12, dur: 2.2, jink: 3, spins: 2, agility: 1.3 },
+  quad: { crew: 'falcon', slot: 'ultimate', name: 'Chewie on the quad guns', short: 'Chewie', about: 'Chewie takes the turrets and shoots at anything near, all the way round.', dur: 12, every: 0.22, range: 35, punch: 1, chance: 0.7, speed: 90, miss: 1.5 },
+  // Rick and Morty
+  portal: { crew: 'cruiser', slot: 'primary', name: 'Portal gun', short: 'Portal', about: 'Through a portal and out on your target’s tail (or a long hop ahead).', cool: 10, dur: 0.35, behind: 5, hop: 40, swallow: 6, range: 60, mouth: 2 },
+  wubba: { crew: 'cruiser', slot: 'ultimate', name: 'Wubba lubba dub dub', short: 'Death ray', about: 'The cruiser’s big laser, straight ahead, into whatever’s first in its way.', dur: 3.5, length: 45, tick: 0.1, punch: 0.6, sub: 0.3, turn: 0.6 },
+  // Walt and Jesse
+  magnets: { crew: 'rv', slot: 'primary', name: 'Magnets', short: 'Magnets', about: 'Yeah, science: every fighter near is dragged into a ball ahead of you, guns jammed.', cool: 20, dur: 4, radius: 22, ahead: 6, pull: 16, daze: 1 },
+  // (on until the crystal goes off: its fuse, and a moment)
+  heisenberg: { crew: 'rv', slot: 'ultimate', name: 'Say my name', short: 'Heisenberg', about: 'A crystal of fulminated mercury, thrown ahead: a big blue bang.', dur: 1.6, fuse: 1.4, speed: 26, near: 2, radius: 10, punch: 10, edge: 3, sub: 0.5 },
+};
+export const CREW_POWERS = { xwing: { primary: 'focus', ultimate: 'salvo' }, falcon: { primary: 'odds', ultimate: 'quad' }, cruiser: { primary: 'portal', ultimate: 'wubba' }, rv: { primary: 'magnets', ultimate: 'heisenberg' } };
+export const powersOf = (crew) => CREW_POWERS[crew] ?? null;
+
+const SLOTS = ['primary', 'ultimate'];
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+
+export function createPowers(crew, { charge = 0 } = {}) {
+  const own = powersOf(crew);
+  if (!own) return null;
+  const c = clamp(Number.isFinite(charge) ? charge : 0, 0, 1);
+  return { crew, primary: { id: own.primary, phase: 'ready', left: 0 }, ultimate: { id: own.ultimate, phase: c >= 1 ? 'ready' : 'charging', charge: c, left: 0 } };
+}
+
+// a press of G or X: on, if it's ready (the big one's charge spent)
+export function press(st, slot) {
+  const s = SLOTS.includes(slot) ? st?.[slot] : null;
+  if (!s) return { ok: false, why: 'none' };
+  if (s.phase !== 'ready') return { ok: false, why: s.phase };
+  s.phase = 'active';
+  s.left = POWERS[s.id].dur;
+  if (slot === 'ultimate') s.charge = 0;
+  return { ok: true, id: s.id };
+}
+
+// one that's on goes off: a power onto its cooldown, the big one back to charging
+const end = (st, slot, out) => {
+  const s = st[slot];
+  if (slot === 'primary') {
+    s.phase = 'cooling';
+    s.left = POWERS[s.id].cool;
+  } else {
+    s.phase = 'charging';
+    s.left = 0;
+  }
+  out.push({ type: 'end', slot, id: s.id });
+};
+
+export function step(st, dt, { flying = true } = {}) {
+  const out = [];
+  if (!st) return out;
+  for (const slot of SLOTS) {
+    const s = st[slot];
+    if (s.phase === 'active') {
+      s.left -= dt;
+      if (s.left <= 0) end(st, slot, out);
+    } else if (s.phase === 'cooling') {
+      s.left -= dt;
+      if (s.left <= 0) {
+        s.left = 0;
+        s.phase = 'ready';
+        out.push({ type: 'ready', slot, id: s.id });
+      }
+    }
+  }
+  if (flying && gain(st, 'second', dt)) out.push({ type: 'ready', slot: 'ultimate', id: st.ultimate.id });
+  return out;
+}
+
+// (only while it's charging: the big one's own kills never pay for the next)
+export function gain(st, what, n = 1) {
+  const u = st?.ultimate;
+  if (!u || u.phase !== 'charging') return false;
+  u.charge = Math.min(1, u.charge + (CHARGE[what] ?? 0) * n);
+  if (u.charge < 1) return false;
+  u.phase = 'ready';
+  return true;
+}
+
+export function finish(st, slot) {
+  const out = [];
+  if (st?.[slot]?.phase === 'active') end(st, slot, out);
+  return out;
+}
+
+export function cancel(st) {
+  const out = [];
+  if (st) for (const slot of SLOTS) if (st[slot].phase === 'active') end(st, slot, out);
+  return out;
+}
+
+export const isOn = (st, id) => Boolean(st && SLOTS.some((slot) => st[slot].id === id && st[slot].phase === 'active'));
+
+// What the scene changes while a power's on: the others' clock (slow), the
+// guns' help onto the lead (assist, track: the least of each, over the
+// visitor's own settings), how fast they fire (cadence: of the gap between
+// shots), whether anything can hit you (ghost), how hard the stick turns the
+// ship (turn) and how quick it is to answer (agility)
+export function mods(st) {
+  const m = { slow: 1, assist: 0, track: 0, cadence: 1, ghost: false, turn: 1, agility: 1 };
+  if (isOn(st, 'focus')) Object.assign(m, { slow: POWERS.focus.slow, assist: POWERS.focus.assist, track: POWERS.focus.track, cadence: POWERS.focus.cadence });
+  if (isOn(st, 'odds')) Object.assign(m, { ghost: true, agility: POWERS.odds.agility });
+  if (isOn(st, 'portal')) m.ghost = true;
+  if (isOn(st, 'wubba')) m.turn = POWERS.wubba.turn;
+  return m;
+}
+
+// The HUD's: each slot's name and key, its phase, and how far round its ring
+// is (k: 0 full, 1 empty: the time left while it's on, the cooldown left,
+// the charge still to come), with the seconds left to show
+export function view(st) {
+  if (!st) return null;
+  const one = (slot) => {
+    const s = st[slot];
+    const p = POWERS[s.id];
+    const k = s.phase === 'active' ? 1 - s.left / p.dur : s.phase === 'cooling' ? s.left / p.cool : s.phase === 'charging' ? 1 - s.charge : 0;
+    const left = s.phase === 'active' || s.phase === 'cooling' ? Math.ceil(s.left - 1e-9) : 0;
+    return { id: s.id, name: p.name, short: p.short, key: POWER_KEYS[slot].toUpperCase(), phase: s.phase, k: +clamp(k, 0, 1).toFixed(3), left, charge: slot === 'ultimate' ? s.charge : null };
+  };
+  return { primary: one('primary'), ultimate: one('ultimate') };
+}
+
+// The big one's charge, kept in the session (KEPT_KEY): the scene is made
+// again after a landing, and a charge you'd earned shouldn't go with it. Read
+// back only for the same crew; anything else (nothing kept, another crew's,
+// something broken) starts from nothing
+export function writeKept(st) {
+  return st ? JSON.stringify({ crew: st.crew, charge: +st.ultimate.charge.toFixed(4) }) : null;
+}
+export function readKept(raw, crew) {
+  if (!raw || !powersOf(crew)) return 0;
+  let kept;
+  try {
+    kept = JSON.parse(raw);
+  } catch {
+    return 0;
+  }
+  if (!kept || typeof kept !== 'object' || kept.crew !== crew || !Number.isFinite(kept.charge)) return 0;
+  return clamp(kept.charge, 0, 1);
+}
+
+// Up to `count` targets, each its own: in the cone off the nose and in range,
+// the ones coming at you first, then nearest the nose; none there, the
+// nearest in range (the torpedoes' locks)
+export function pickTargets(ship, targets, { count = 4, cone = 0.6, range = 60 } = {}) {
+  const seen = [];
+  for (const t of targets) {
+    const b = bearing(ship, t.at);
+    if (b.dist <= range) seen.push({ t, ...b });
+  }
+  const inCone = seen.filter((e) => e.off <= cone).sort((a, b) => (b.t.threat || 0) - (a.t.threat || 0) || a.off - b.off);
+  const pool = inCone.length ? inCone : seen.sort((a, b) => a.dist - b.dist);
+  return pool.slice(0, count).map((e) => e.t);
+}
+
+// Where the portal lets you out: `behind` units behind the target the way
+// it's going (or past it, away from you, when it's still), facing it; with
+// no target, `hop` units on along the nose. Never inside anything solid
+// (`solids`: ship.js's), never past the system's edge.
+export function portalExit(ship, target, P = POWERS.portal, solids = [], { edge = Infinity } = {}) {
+  let p;
+  let face;
+  if (target) {
+    const v = target.vel ?? { x: 0, y: 0, z: 0 };
+    const sp = Math.hypot(v.x, v.y, v.z);
+    let d;
+    if (sp > 0.5) d = [v.x / sp, v.y / sp, v.z / sp];
+    else {
+      const a = [target.at.x - ship.x, target.at.y - ship.y, target.at.z - ship.z];
+      const l = Math.hypot(a[0], a[1], a[2]) || 1;
+      d = [a[0] / l, a[1] / l, a[2] / l];
+    }
+    p = { x: target.at.x - d[0] * P.behind, y: target.at.y - d[1] * P.behind, z: target.at.z - d[2] * P.behind };
+    face = d;
+  } else {
+    face = nose(ship);
+    p = { x: ship.x + face[0] * P.hop, y: ship.y + face[1] * P.hop, z: ship.z + face[2] * P.hop };
+  }
+  clearOf(p, solids, 1);
+  const r = Math.hypot(p.x, p.z);
+  if (r > edge - 5) {
+    const k = (edge - 5) / r;
+    p.x *= k;
+    p.z *= k;
+  }
+  const { heading, pitch } = aimAngles(face);
+  return { x: p.x, y: p.y, z: p.z, heading, pitch };
+}
+
+// The death ray this frame: from the nose, `length` on
+export function beamOf(ship, length = POWERS.wubba.length) {
+  const n = nose(ship);
+  return { from: { x: ship.x + n[0] * 0.2, y: ship.y + n[1] * 0.2, z: ship.z + n[2] * 0.2 }, to: { x: ship.x + n[0] * length, y: ship.y + n[1] * length, z: ship.z + n[2] * length } };
+}
+
+// A blast's punch `d` from its middle: all of it there, `edge` at its rim, nothing past
+export function blastPunch(d, P = POWERS.heisenberg) {
+  if (d > P.radius) return 0;
+  return P.punch + (P.edge - P.punch) * (d / P.radius);
+}
+
+// One fighter's way toward the magnet this frame: `speed` at most, never past it
+export function pullStep(pos, at, speed, dt) {
+  const dx = at.x - pos.x;
+  const dy = at.y - pos.y;
+  const dz = at.z - pos.z;
+  const d = Math.hypot(dx, dy, dz);
+  const k = d < 1e-6 ? 0 : Math.min(1, (speed * dt) / d);
+  return { x: pos.x + dx * k, y: pos.y + dy * k, z: pos.z + dz * k };
+}
+
+// The corkscrew's sideways step this frame (`side` ±1): `jink` units over the
+// whole of it, quickest in the middle; and how far round it has rolled by
+// the end of the frame (radians)
+export function jinkStep(t, dt, P = POWERS.odds, side = 1) {
+  const f = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x - Math.sin(2 * Math.PI * x) / (2 * Math.PI));
+  const a = f(t / P.dur);
+  const b = f((t + dt) / P.dur);
+  return { step: (b - a) * P.jink * side, roll: b * P.spins * 2 * Math.PI * side };
+}
+
+// Who Chewie shoots at: the one he's on while it's in range, else the
+// nearest coming at you (one coming at you counts as nearer), else the nearest
+export function turretPick(ship, targets, range = POWERS.quad.range, prevId = null) {
+  let best = null;
+  let score = Infinity;
+  for (const t of targets) {
+    const d = Math.hypot(t.at.x - ship.x, t.at.y - ship.y, t.at.z - ship.z);
+    if (d > range) continue;
+    if (t.id === prevId) return t;
+    const s = d * (t.threat ? 0.4 : 1);
+    if (s < score) {
+      score = s;
+      best = t;
+    }
+  }
+  return best;
+}
+
+// Whether a hop from `a` to `b` crosses a shell of radius `r` round the middle (Scarif's shield)
+export const crossesShell = (a, b, r) => (Math.hypot(a.x, a.y, a.z) - r) * (Math.hypot(b.x, b.y, b.z) - r) < 0;
+
+// A battle's objective (a battery, a subsystem) rather than a fighter: it
+// takes a power's cut damage (`sub`), and Chewie leaves it alone
+export const isObjective = (t) => t.kind === 'turret' || t.kind === 'subsystem' || Boolean(t.sub);
+
+// Which of `targets` ({ at, vel, size }) a shot from `from` to `to` this
+// frame meets first, each having moved at its `vel` over `dt`; or null (the
+// guns' own test, sweptHit, so what it says is what the hit will be)
+export function firstAlong(from, to, targets, dt) {
+  let best = null;
+  let first = Infinity;
+  const was = { x: 0, y: 0, z: 0 };
+  for (const t of targets) {
+    const v = t.vel ?? { x: 0, y: 0, z: 0 };
+    was.x = t.at.x - v.x * dt;
+    was.y = t.at.y - v.y * dt;
+    was.z = t.at.z - v.z * dt;
+    const k = sweptHit(from, to, was, t.at, Math.max(0.35, (t.size ?? 0.5) * 0.9));
+    if (k !== null && k < first) {
+      first = k;
+      best = t;
+    }
+  }
+  return best;
+}
