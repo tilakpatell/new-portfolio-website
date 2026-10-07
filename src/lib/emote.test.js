@@ -2,15 +2,18 @@ import { describe, expect, it, vi } from 'vitest';
 import { EMOTE, EMOTES, applyEmote, createEmoteWheel, emotePacket, heardEmote, keepEmote, motionPacket, readEmote, readEmoteWire, readMotion, wheelAngle } from './emote';
 
 describe('the emotes', () => {
-  it('are the five the spec names, each a clip on a layer or a base, with a length', () => {
+  it('are the five the spec names, each a clip on a layer, with a length', () => {
     expect(EMOTES).toEqual(['wave', 'cheer', 'dance', 'taunt', 'sit']);
     for (const id of EMOTES) {
       const e = EMOTE[id];
-      expect(e.clip || e.base).toBeTruthy();
+      expect(e.clip).toBeTruthy();
+      expect(['full', 'upper']).toContain(e.layer);
       expect(e.length).toBeGreaterThan(0);
     }
     expect(EMOTE.wave.layer).toBe('upper');
-    expect(EMOTE.sit.base).toBe('sit');
+    // a sit is on the floor, cross-legged, till you get up: never the chair's way in
+    expect(EMOTE.sit).toMatchObject({ clip: 'sit.floor', layer: 'full', loop: true });
+    expect(EMOTE.sit.base).toBeUndefined();
     expect(EMOTE.sit.length).toBe(Infinity);
   });
 });
@@ -174,14 +177,22 @@ describe('on a figure', () => {
     expect(fig.play).toHaveBeenLastCalledWith('wave', expect.objectContaining({ layer: 'upper' }));
   });
 
-  it('a sit is a base: sat down, and up again', () => {
+  it('a sit is on the floor: a loop on the whole body, sat down into gently, and up again', () => {
     const fig = figure();
     let shown = applyEmote(fig, { id: 'sit', at: 0, t: 0 }, null);
-    expect(fig.base).toHaveBeenCalledWith('sit');
+    expect(fig.play).toHaveBeenCalledWith('sit.floor', expect.objectContaining({ layer: 'full', loop: true, at: 0, fade: EMOTE.sit.fade }));
+    expect(EMOTE.sit.fade).toBeGreaterThan(0.2);
+    expect(fig.base).not.toHaveBeenCalled(); // (no chair, no sit.enter)
     shown = applyEmote(fig, { id: 'sit', at: 0, t: 4 }, shown);
-    expect(fig.base).toHaveBeenCalledTimes(1);
+    expect(fig.play).toHaveBeenCalledTimes(1);
+    // you move: up again, eased off the floor
     applyEmote(fig, null, shown);
-    expect(fig.base).toHaveBeenLastCalledWith(null);
+    expect(fig.anim.stop).toHaveBeenCalledWith('full', EMOTE.sit.rise);
+    expect(fig.base).not.toHaveBeenCalled();
+    // heard late, from a stranger: sat from the first, whenever it started
+    const late = figure();
+    applyEmote(late, { id: 'sit', at: 0, t: 300 }, null);
+    expect(late.play).toHaveBeenCalledWith('sit.floor', expect.objectContaining({ layer: 'full', loop: true, at: 300 }));
   });
 
   it('a one-shot that played out isn’t cut from under what came after', () => {
