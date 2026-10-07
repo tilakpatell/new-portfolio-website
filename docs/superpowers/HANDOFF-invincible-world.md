@@ -256,7 +256,23 @@ Every band is in range, and Mark passes in spawn, streetnight and porch. He miss
 - Feel (`scene.js`): a punch that lands stops the game 70 ms (a Mauler's knock shakes the camera harder), a knock-out likewise; neither under reduced motion (`calm`), which already kept the camera still and skips the cards' swing.
 - Docs: `docs/architecture.md`'s Invincible section names part 2's modules; the README's row names the season and the radio. Shots in `docs/superpowers/shots/2026-10-07-inv-*.webp`: the street at noon and at night, and each mission as the check script frames it; the cast sheet is `docs/gen3d/invincible/cast-sheet.webp`.
 
-METRICS_HERE
+#### The shots and their metrics
+
+`OUT=/tmp/shots node scripts/inv-world-check.mjs --metrics street streetnight bank chase seismic maulers gdasiege photo everace`, this task's tree, low tier, 960×540; `band` and `mark` as Task 1 defines them (targets: band 0.30–0.65 at noon, 0.12–0.35 at night; mark ≥ 0.18). The stubs' "before" numbers are in Task 1's table above.
+
+| Shot | File | What it frames | band | mark | tris |
+|---|---|---|---|---|---|
+| `street` | `2026-10-07-inv-street.webp` | The street south of the plaza at noon | 0.413 | 0.162 | 1.48 M |
+| `streetnight` | `2026-10-07-inv-streetnight.webp` | The same at night | 0.214 | 0.192 | 1.38 M |
+| `bank` | `2026-10-07-inv-bank.webp` | Episode 2 from the pavement: the bank, its marker over the door, “Get to the bank · 20 m” | 0.251 | 0.015 | 1.49 M |
+| `chase` | `2026-10-07-inv-chase.webp` | The radio's car on the grid, 27 m ahead under its marker | 0.249 | 0.005 | 1.54 M |
+| `seismic` | `2026-10-07-inv-seismic.webp` | Episode 3 over the school roof, a student at its edge | 0.489 | 0.069 | 1.61 M |
+| `maulers` | `2026-10-07-inv-maulers.webp` | Episode 2 at the truck (this run's frame caught the step before: the truck to stop) | 0.338 | 0.020 | 1.71 M |
+| `gdasiege` | `2026-10-07-inv-gdasiege.webp` | Episode 6 from over the pad: the hangar, its marker, “hangar 100% · 90 s” | 0.470 | 0.021 | 1.24 M |
+| `photo` | `2026-10-07-inv-photo.webp` | The hall's frame from the plaza's corner | 0.550 | 0.116 | 1.80 M |
+| `everace` | `2026-10-07-inv-everace.webp` | Eve's first gate over a downtown crossing | 0.469 | 0.125 | 1.63 M |
+
+The bands are in range (`bank` and `chase` sit just under 0.30, streets between glass towers). `mark` is above the target only at night and nearly at it at noon on the street; in the mission frames he's small against lit streets, as Task 2's table found for shots in the air. Everything stays under the 1.5 M triangle budget except `maulers`, `seismic`, `everace` and `photo`, which carry the truck, the Maulers or the plaza's crowd at once; the `photo` frame is the heaviest at 1.80 M.
 
 ## Part 2, closed (2026-10-07)
 
