@@ -220,7 +220,7 @@ export function createMinasWorld(canvas, { onLost } = {}) {
   const kit = createMinasKit(renderer, { tier });
   // the site's core kit of surfaces on its stone, wood, bark, plaster and
   // iron (lib/three/core), by their names
-  dress(kit.mats ?? {}, rolesFor(kit.mats ?? {}), { strength: 0.4, normal: 0.8 });
+  dress(kit.mats ?? {}, rolesFor(kit.mats ?? {}), { strength: 0.3, normal: 0.6, keep: true });
   const folk = createMinasFolk(renderer, { tier });
   const zones = { city: new THREE.Group(), hall: new THREE.Group() };
   for (const [k, g] of Object.entries(zones)) {

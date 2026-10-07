@@ -162,7 +162,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
   const mats = kit.mats;
   // the site's core kit of surfaces on its stone, wood, bark, plaster and
   // iron (lib/three/core), by their names
-  dress(mats, rolesFor(mats), { strength: 0.4, normal: 0.8 });
+  dress(mats, rolesFor(mats), { strength: 0.3, normal: 0.6, keep: true });
 
   // ── the buildings ──
   const chimneys = [];

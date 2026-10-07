@@ -199,7 +199,7 @@ export function createLorienWorld(canvas, { onLost } = {}) {
   const mats = kit.mats ?? {};
   // the site's core kit of surfaces on its stone, wood, bark, plaster and
   // iron (lib/three/core), by their names
-  dress(mats, rolesFor(mats), { strength: 0.4, normal: 0.8 });
+  dress(mats, rolesFor(mats), { strength: 0.3, normal: 0.6, keep: true });
   const zones = { wood: new THREE.Group(), river: new THREE.Group() };
   for (const [k, g] of Object.entries(zones)) {
     g.position.copy(AT[k]);

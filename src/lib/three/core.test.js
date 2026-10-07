@@ -83,6 +83,18 @@ describe('a world dressed in the core kit', () => {
     expect(left.userData.core).toBeUndefined();
   });
 
+  it('with `keep`, leaves the material its own picture and relief (cobbles, ruts) and lays the scan’s grain over them', async () => {
+    const map = flat(200, 180, 160);
+    const normalMap = new THREE.Texture();
+    const road = new THREE.MeshStandardMaterial({ map, normalMap, color: 0xffffff });
+    const done = await dress({ road }, { road: 'gravel' }, { keep: true, load: () => Promise.resolve(scan) });
+    expect(done).toBe(1);
+    expect(road.map).toBe(map);
+    expect(road.normalMap).toBe(normalMap);
+    expect(road.color.getHexString()).toBe('ffffff');
+    expect(road.userData.core).toBeTruthy();
+  });
+
   it('keeps the material as it was where a scan can’t be had', async () => {
     const m = new THREE.MeshStandardMaterial({ map: flat(10, 20, 30) });
     const done = await dress({ m }, { m: 'stone' }, { load: () => Promise.resolve(null) });
@@ -110,5 +122,12 @@ describe('what keeps its own picture', () => {
   it('a material lit from within by a map (lit windows) wears nothing', () => {
     const house = new THREE.MeshStandardMaterial({ emissiveMap: new THREE.Texture(), emissiveIntensity: 0 });
     expect(rolesFor({ house })).toEqual({});
+  });
+
+  it('a material cut out by its picture (a road’s ragged edge) wears nothing: its picture is its shape', () => {
+    const road = new THREE.MeshStandardMaterial({ map: new THREE.Texture(), alphaTest: 0.5 });
+    const path = new THREE.MeshStandardMaterial({ alphaMap: new THREE.Texture() });
+    const gravel = new THREE.MeshStandardMaterial({ map: new THREE.Texture() });
+    expect(rolesFor({ road, path, gravel })).toEqual({ gravel: 'gravel' });
   });
 });

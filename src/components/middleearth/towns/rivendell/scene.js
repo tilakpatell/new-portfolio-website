@@ -151,7 +151,7 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
   const mats = kit.mats;
   // the site's core kit of surfaces on its stone, wood, bark, plaster and
   // iron (lib/three/core), by their names
-  dress(mats, rolesFor(mats), { strength: 0.4, normal: 0.8 });
+  dress(mats, rolesFor(mats), { strength: 0.3, normal: 0.6, keep: true });
   const place = (part, b, y = null) => {
     part.group.position.set(b.x, y ?? height(b.x, b.z), b.z);
     part.group.rotation.y = b.turn || 0;

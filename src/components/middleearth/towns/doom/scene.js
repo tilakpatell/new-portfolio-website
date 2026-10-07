@@ -115,7 +115,7 @@ export function createDoomWorld(canvas, { onLost } = {}) {
   const kit = createDoomKit(renderer);
   // the site's core kit of surfaces on its stone, wood, bark, plaster and
   // iron (lib/three/core), by their names
-  dress(kit.mats ?? {}, rolesFor(kit.mats ?? {}), { strength: 0.4, normal: 0.8 });
+  dress(kit.mats ?? {}, rolesFor(kit.mats ?? {}), { strength: 0.3, normal: 0.6, keep: true });
   const mats = kit.mats ?? {};
   const world = new THREE.Group();
   const naur = new THREE.Group();
