@@ -293,40 +293,63 @@ export async function loadCast(names) {
 }
 
 // the clip (scripts/meshy-invincible.mjs's CLIPS) each of the kit's modes plays
-const CLIP_OF = { idle: 'idle', walk: 'walk', run: 'run', wave: 'wave', talk: 'talk', phone: 'phone', cheer: 'cheer', hover: 'hover', fly: 'fly' };
+const CLIP_OF = { idle: 'idle', walk: 'walk', run: 'run', wave: 'wave', talk: 'talk', phone: 'phone', look: 'look', cheer: 'cheer', hover: 'hover', fly: 'fly' };
 
 // the bones a person's poses need
 const NEED = ['hips', 'armL', 'foreL', 'armR', 'foreR', 'thighL', 'calfL', 'thighR', 'calfR'];
+
+// Arms folded, as a layer over a figure's own idle (its legs and its
+// breathing the clip's): Cecil at the GDA's door, the Burger Mart manager.
+const FOLDED = { armL: [0.35, -0.85, 0.45], foreL: [-1, 0.12, 0.3], armR: [-0.35, -0.85, 0.42], foreR: [1, 0.2, 0.32] };
 
 // A figure in the kit's modes, in the figure's frame (+x its left, +z ahead).
 function figurePose(mode, k) {
   const s = Math.sin(k * 0.8);
   const base = { ...POSES.stand, torso: { pitch: 0.02, yaw: Math.sin(k * 0.37) * 0.08, roll: s * 0.02 } };
-  if (mode === 'walk') return POSES.stride(k * 5.5 / (2 * Math.PI), 1, 0);
+  if (mode === 'walk' || mode === 'run') return POSES.stride(k * (mode === 'run' ? 9 : 5.5), 1, mode === 'run' ? 1 : 0); // (the stride's phase in radians: a step every half turn)
   if (mode === 'hover') return POSES.hover(k);
   if (mode === 'fly') return POSES.fly();
   if (mode === 'wave') return { ...base, armR: [-0.75, 0.65, 0.1], foreR: [-0.15 + Math.sin(k * 9) * 0.35, 1, 0.1] };
   if (mode === 'talk') return { ...base, armL: [0.25, -1, 0.25], foreL: [0.15, 0.1 + Math.sin(k * 3.1) * 0.25, 1], armR: [-0.25, -1, 0.2], foreR: [-0.15, 0.05 + Math.sin(k * 2.6) * 0.2, 1] };
-  if (mode === 'arms') return { ...base, armL: [0.35, -0.85, 0.45], foreL: [-1, 0.12, 0.3], armR: [-0.35, -0.85, 0.42], foreR: [1, 0.2, 0.32] };
+  if (mode === 'arms') return { ...base, ...FOLDED };
   return base;
 }
 
 // One of the town's people, as the world places and poses them, the HD
 // figure when there is one and it can be posed, else the kit's:
-// { root (its hips at its origin), hipY, height, pose({ mode, t, phase }, dt) }.
+// { root (its hips at its origin), hipY, height, clips, pose({ mode, t,
+// phase, ground }, dt), look(target, opts), play(name, opts), stop(fade,
+// layer), react(event, ctx), has(name) }. A kit's person does what it
+// always did: look, play and react do nothing on it.
 export function personFor(kind, seed, template = null, spec = CAST[kind]) {
   if (template && spec) {
     try {
-      const f = figure(template, spec);
+      const f = figure(template, { ...spec, seed: seed * 7349 + 11 });
       for (const b of NEED) if (!f.bones[b]) throw new Error(`${spec.file}: no bone ${b}`);
       f.snap(figurePose('idle', 0));
-      // its motion-captured clip for a mode where it has one (arms folded
-      // has none: posed), started somewhere of its own in it
-      const pose = ({ mode = 'idle', t = 0, phase = 0 }, dt = 1 / 60) => {
-        if (!(CLIP_OF[mode] && f.act(CLIP_OF[mode], { at: phase * 0.37, fade: 0.4 }))) f.pose(figurePose(mode, t + phase), dt, 10);
+      // its motion-captured clip for a mode where it has one, started
+      // somewhere of its own in it (its walk and run paced to `ground`);
+      // arms folded over its own idle; posed where it has neither
+      const pose = ({ mode = 'idle', t = 0, phase = 0, ground = null }, dt = 1 / 60) => {
+        const at = phase * 0.37;
+        if (mode === 'arms' && f.act('idle', { at, fade: 0.4 })) f.pose(FOLDED, dt, 6);
+        else if (!(CLIP_OF[mode] && f.act(CLIP_OF[mode], { at, fade: 0.4, ground }))) f.pose(figurePose(mode, t + phase), dt, 10);
         f.tick(dt);
       };
-      return { root: f.holder, hipY: f.hipHeight, height: f.height, fig: f, clips: f.clips, pose, dispose: () => f.dispose() };
+      return {
+        root: f.holder,
+        hipY: f.hipHeight,
+        height: f.height,
+        fig: f,
+        clips: f.clips,
+        pose,
+        look: (target, opts) => f.look(target, opts),
+        play: (name, opts) => f.play(name, opts),
+        stop: (fade, layer) => f.stop(fade, layer),
+        react: (event, ctx) => f.react(event, ctx),
+        has: (name) => f.has(name),
+        dispose: () => f.dispose(),
+      };
     } catch (e) {
       if (import.meta.env?.DEV) console.warn(String(e.message ?? e)); // the kit's person stands in, not a T-pose
     }
@@ -336,5 +359,20 @@ export function personFor(kind, seed, template = null, spec = CAST[kind]) {
   p.h.root.position.y = -hipY;
   const root = new THREE.Group();
   root.add(p.h.root);
-  return { root, hipY, height: p.height, kit: p, clips: [], pose: (o) => posePerson(p, o), dispose: () => {} };
+  // (the kit's modes: a run's a walk, a cheer or a scare stood still)
+  const KIT = { run: 'walk', cheer: 'wave', phone: 'idle', look: 'idle' };
+  return {
+    root,
+    hipY,
+    height: p.height,
+    kit: p,
+    clips: [],
+    pose: (o) => posePerson(p, { ...o, mode: KIT[o.mode] ?? o.mode }),
+    look() {},
+    play: () => Promise.resolve(false),
+    stop() {},
+    react: () => null,
+    has: () => false,
+    dispose: () => {},
+  };
 }

@@ -98,7 +98,44 @@ function plan(c, r) {
   return { ...o, at, s: c.axis === 'x' ? c.line + LANE * c.dir : c.line - LANE * c.dir };
 }
 
-export function stepTraffic(prev, dt, { cx = 0, cz = 0, yaw = null, scare = [] } = {}) {
+// A walker steps aside for the others coming by and for Mark on foot (`hero`,
+// { x, z }): a side-step across the pavement, never off it (the offset
+// back to the pavement's line eases it in again once they're past).
+const ROOM = 0.8; // metres two walkers keep between them
+const ROOM_HERO = 1.8; // and between them and him
+const ASIDE = 0.5; // the furthest across they step
+function sidestep(w, x, z, cells, cellOf, hero, dt) {
+  const acrossX = w.axis !== 'x'; // (walking along z: across is x)
+  let push = 0;
+  for (let gx = -1; gx <= 1; gx++)
+    for (let gz = -1; gz <= 1; gz++) {
+      const list = cells.get(cellOf(x + gx * 2, z + gz * 2));
+      if (!list) continue;
+      for (const o of list) {
+        if (o.w === w) continue;
+        const d = Math.hypot(o.x - x, o.z - z);
+        if (d >= ROOM) continue;
+        const across = acrossX ? x - o.x : z - o.z;
+        push += (across !== 0 ? Math.sign(across) : w.id < o.w.id ? 1 : -1) * (ROOM - d) * 2;
+      }
+    }
+  if (hero) {
+    const d = Math.hypot(hero.x - x, hero.z - z);
+    if (d < ROOM_HERO) {
+      const across = acrossX ? x - hero.x : z - hero.z;
+      push += (across !== 0 ? Math.sign(across) : w.side) * (ROOM_HERO - d) * 2.5;
+    }
+  }
+  if (!push) return;
+  const key = acrossX ? 'ox' : 'oz';
+  const was = w[key] ?? 0;
+  const v = was + push * dt;
+  // (on the way back from running off somewhere, as far out as they are)
+  w[key] = Math.abs(was) > ASIDE ? v : Math.max(-ASIDE, Math.min(ASIDE, v));
+}
+
+// hero: Mark, when he's on foot in town ({ x, z }), for the walkers to step round
+export function stepTraffic(prev, dt, { cx = 0, cz = 0, yaw = null, scare = [], hero = null } = {}) {
   const st = { ...prev, cars: prev.cars.map((c) => ({ ...c })), walkers: prev.walkers.map((w) => ({ ...w })) };
   const r = st.r;
 
@@ -152,8 +189,19 @@ export function stepTraffic(prev, dt, { cx = 0, cz = 0, yaw = null, scare = [] }
   }
 
   // ── the people ──
+  // who's near whom (two-metre cells), for stepping round each other and him
+  const cells = new Map();
+  const cellOf = (x, z) => Math.floor(x / 2) * 100003 + Math.floor(z / 2);
+  for (const w of st.walkers) {
+    if (w.flee > 0) continue;
+    const [x, z] = walkerAt(w);
+    const k = cellOf(x, z);
+    if (!cells.has(k)) cells.set(k, []);
+    cells.get(k).push({ w, x, z });
+  }
   for (const w of st.walkers) {
     const [x, z] = walkerAt(w);
+    if (!(w.flee > 0)) sidestep(w, x, z, cells, cellOf, hero, dt);
     for (const q of scare) {
       const d = Math.hypot(x - q.x, z - q.z);
       if (d < q.r) {

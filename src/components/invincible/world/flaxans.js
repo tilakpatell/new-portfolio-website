@@ -11,6 +11,7 @@ import { buildHumanoid, poseHumanoid } from '../../avengers/hq/kit/humanoid';
 import { FIGHT, PORTAL } from './fight';
 
 const FLAX = 0xd04dff;
+const TELL = 0.7; // seconds before a bolt that its Flaxan's arm comes up
 const V = (a) => new THREE.Vector3(a[0], a[1], a[2]);
 
 function portalMaterial() {
@@ -67,7 +68,7 @@ export function createFlaxans(scene, vfx, { calm = false } = {}) {
     holder.add(h.root);
     holder.visible = false;
     group.add(holder);
-    return { h, holder, spin: 0 };
+    return { h, holder, spin: 0, aim: 0.3, telling: false };
   });
 
   // their bolts
@@ -106,14 +107,22 @@ export function createFlaxans(scene, vfx, { calm = false } = {}) {
         if (!show) return;
         v.holder.position.set(...e.p);
         if (e.state === 'ko') {
-          v.spin += dt * 9;
+          // knocked back first, then over and over (the spin comes on as it goes)
+          v.spin += dt * 9 * Math.min(1, (e.ko ?? 1) / 0.3);
           v.holder.rotation.set(v.spin, v.spin * 0.6, 0);
           poseHumanoid(v.h, { t, mode: 'hover', flinch: 1 });
+          v.telling = false;
         } else {
-          // facing him, arm up at him when he's in range
+          // facing him; the arm comes up at him only as a bolt's coming (the
+          // last moments of its wait to fire, in range), with a glint as it
+          // does: what he's to dodge, read off the rules' own clock
           const d = chest.clone().sub(v.holder.position);
           v.holder.rotation.set(0, Math.atan2(d.x, d.z), 0);
-          poseHumanoid(v.h, { t: t + i, mode: 'hover', aim: d.length() < FIGHT.range ? 1 : 0.3, lean: Math.min(1, Math.hypot(...e.v) / 20) * 0.6 });
+          const tell = d.length() < FIGHT.range && e.cool < TELL;
+          if (tell && !v.telling && !calm) vfx.sparks(v.holder.position.clone().addScaledVector(d.normalize(), 0.6), { count: 8, speed: 2, color: 0xffd0ff, to: FLAX, life: 0.35, gravity: 0 });
+          v.telling = tell;
+          v.aim += ((tell ? 1 : 0.3) - (v.aim ?? 0.3)) * (1 - Math.exp(-(tell ? 14 : 4) * dt));
+          poseHumanoid(v.h, { t: t + i, mode: 'hover', aim: v.aim, lean: Math.min(1, Math.hypot(...e.v) / 20) * 0.6 });
         }
       });
       bolts.count = Math.min(MAX, f.bolts.length);

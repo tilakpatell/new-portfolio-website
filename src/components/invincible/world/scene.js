@@ -62,6 +62,22 @@ const LAND = {
   torso: { pitch: 0.55, yaw: 0.1, roll: 0 },
 };
 
+// a pose's arms and chest alone, to lie over clips whose legs go on under
+// them (a punch thrown walking, hanging in the air)
+const UPPER = ['armL', 'foreL', 'armR', 'foreR', 'torso'];
+const only = (targets, keys) => Object.fromEntries(keys.filter((k) => targets[k]).map((k) => [k, targets[k]]));
+const PUNCH = POSES.punch([0, 0.1, 1]);
+const PUNCH_UP = only(PUNCH, UPPER);
+// his father's hands on his hips, over his own hover
+const HIPS = only(POSES.proud(), ['armL', 'foreL', 'armR', 'foreR']);
+// on foot: the run from this fast (m/s), back to the walk under the other,
+// so it doesn't flicker at the edge (his clips are paced to the ground he
+// covers, so neither slides)
+const RUN_UP = 2.8;
+const RUN_DOWN = 2.3;
+// how long before he waves back again (s)
+const WAVE_BACK = 12;
+
 // a ray against a box: how far along (0…1) it first goes in, or 1
 function rayBox(o, d, b) {
   let t0 = 0;
@@ -170,7 +186,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   ];
 
   const fx = createFlightFx(scene, { calm, small });
-  const challenges = createChallenges(scene, world, fx.vfx);
+  const challenges = createChallenges(scene, world, fx.vfx, people);
   const flaxans = createFlaxans(scene, fx.vfx, { calm });
   const feel = createFeel({ calm, baseFov: FOV, offset: 0.4 });
 
@@ -469,14 +485,15 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       gAt.lerpVectors(Y, gAt, k).normalize().applyQuaternion(gYaw);
       fig.body.quaternion.slerp(gQ.setFromUnitVectors(Y, gAt), 1 - Math.exp(-8 * gdt));
       fig.holder.quaternion.setFromUnitVectors(Y, gUp).premultiply(gYaw).multiply(gYaw.invert());
-      // (Mark's clips where they fit; flat out, posed, as the lean above wants)
+      // (Mark's clips where they fit, paced to the ground they cover;
+      // flat out, posed, as the lean above wants)
       if (air) {
         if (k > 0.45) fig.pose(POSES.fly(), gdt, 9);
         else fig.act('hover', { fade: 0.4 }) || fig.pose(POSES.hover(gt), gdt, 9);
       } else {
         f.gait += speed * gdt * 1.55;
-        if (speed > 4.5) fig.act('run', { speed: clamp(speed / 5.5, 0.7, 1.6) }) || fig.pose(POSES.stride(f.gait, 1, clamp((speed - 4) / 5, 0, 1)), gdt, 14);
-        else if (speed > 0.3) fig.act('walk', { speed: clamp(speed / 1.4, 0.6, 2.2) }) || fig.pose(POSES.stride(f.gait, clamp(speed / 2, 0, 1), 0), gdt, 14);
+        f.run = speed > (f.run ? RUN_DOWN : RUN_UP);
+        if (speed > 0.3) fig.act(f.run ? 'run' : 'walk', { ground: speed, fade: 0.25 }) || fig.pose(POSES.stride(f.gait, f.run ? 1 : clamp(speed / 2, 0, 1), f.run ? clamp((speed - 4) / 5, 0, 1) : 0), gdt, 14);
         else fig.act('idle') || fig.pose(POSES.stand, gdt, 14);
       }
       fig.tick(gdt);
@@ -490,6 +507,21 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   // ── every frame ──
   let t = 0;
   let stride = 0;
+  const gait = { run: false };
+  const said = { waveAt: -Infinity }; // (when he last waved back)
+  // who's facing whom: his father's and Thragg's yaws, eased round to him
+  const turned = { omni: OMNI.yaw, thragg: Math.atan2(-THRAGG[0], -THRAGG[2]), allen: Math.atan2(-ALLEN[0], -ALLEN[2]) };
+  const talks = { omni: false, allen: false, thragg: false };
+  let thraggNear = false;
+  const head = new THREE.Vector3();
+  const turnTo = (a, b, rate, dt) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * (1 - Math.exp(-rate * dt));
+  // a talk on the upper layer while he's talking to them, put away after
+  function talkWhile(f, id, on, clip = 'talk') {
+    if (talks[id] === on) return;
+    talks[id] = on;
+    if (on) f.play(clip, { layer: 'upper', loop: true });
+    else f.stop(0.4, 'upper');
+  }
   const splashed = { t: -1, speed: 0 }; // (the last splash drawn)
   function frame(sim, frameDt) {
     // (the QA scripts' `snap`: the camera and his pose straight to where they're going)
@@ -500,7 +532,9 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     const speed = Math.hypot(h.v[0], h.v[1], h.v[2]);
     // what happened this frame (and what sends the people and the traffic running)
     const scare = [];
+    let won = false;
     for (const e of sim.events) {
+      if (e.type === 'won') won = true;
       if (e.type === 'slam') scare.push({ x: e.at[0], z: e.at[2], r: 25 + e.speed * 0.25 });
       else if (e.type === 'splash' && e.speed > 40) scare.push({ x: e.at[0], z: e.at[2], r: 15 + e.speed * 0.15 });
       else if (e.type === 'impact') scare.push({ x: e.at[0], z: e.at[2], r: 35 });
@@ -555,17 +589,21 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       mark.body.quaternion.identity();
       mark.act('idle') || mark.pose(POSES.proud(), dt, 6);
     } else if (h.mode === 'ground') {
-      // his motion-captured clips where he has them (walking at the pace he
-      // goes: the clip's own pace is about 1.4 m/s, a run's about 5.5);
-      // the landing crouch and a punch are posed, aimed where they go
+      // his motion-captured clips where he has them, paced to the ground he
+      // covers (one stride for the walk and the run, so the change between
+      // them crossfades in step); the landing crouch is posed, laid over
+      // them, and a punch's arms and chest too, aimed where it goes, while
+      // his legs go on walking (or, stood still, the whole of him)
       const flat = Math.hypot(h.v[0], h.v[2]);
       stride += flat * frameDt * 1.55;
+      gait.run = flat > (gait.run ? RUN_DOWN : RUN_UP);
       carry(mark, h.p, h.face, [0, 0, 0], dt, { lean: 0, lift: h.crouch > 0 ? -mark.hipHeight * 0.42 : 0 });
       if (h.crouch > 0) mark.pose(LAND, dt, 18);
-      else if (sim.punchT > 0) mark.pose(POSES.punch([0, 0.1, 1]), dt, 30);
-      else if (flat > 4.5) mark.act('run', { speed: clamp(flat / 5.5, 0.7, 1.6) }) || mark.pose(POSES.stride(stride, 1, clamp((flat - 4) / 5, 0, 1)), dt, 14);
-      else if (flat > 0.3) mark.act('walk', { speed: clamp(flat / 1.4, 0.6, 2.2) }) || mark.pose(POSES.stride(stride, clamp(flat / 2, 0, 1), 0), dt, 14);
-      else mark.act('idle') || mark.pose(POSES.stand, dt, 8);
+      else {
+        if (flat > 0.3) mark.act(gait.run ? 'run' : 'walk', { ground: flat, fade: 0.25 }) || mark.pose(POSES.stride(stride, gait.run ? 1 : clamp(flat / 2, 0, 1), gait.run ? clamp((flat - 4) / 5, 0, 1) : 0), dt, 14);
+        else mark.act('idle') || mark.pose(POSES.stand, dt, 8);
+        if (sim.punchT > 0) mark.pose(flat > 0.3 ? PUNCH_UP : PUNCH, dt, 30);
+      }
     } else if (h.stun > 0) {
       carry(mark, h.p, h.face, h.v, dt, { lean: 0.4, roll: t * 9 });
       mark.act('hit', { once: true, fade: 0.1 }) || mark.pose(POSES.hurt(), dt, 14);
@@ -573,36 +611,68 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       // flat out, the fly clip lies along his flight itself
       const fast = clamp((Math.hypot(...h.v) - 8) / 30, 0, 1) > 0.45 && mark.clips.includes('fly');
       const k = carry(mark, h.p, h.face, h.v, dt, { lean: 1, ahead: fast });
-      // a punch thrown hanging in the air (flat out, the fly pose's fist is already ahead)
-      if (sim.punchT > 0 && !fast) mark.pose(POSES.punch([0, 0.1, 1]), dt, 30);
-      else if (k > 0.45) mark.act('fly', { fade: 0.4 }) || mark.pose(POSES.fly(), dt, 9);
+      if (k > 0.45) mark.act('fly', { fade: 0.4 }) || mark.pose(POSES.fly(), dt, 9);
       else mark.act('hover', { fade: 0.4 }) || mark.pose(POSES.hover(t), dt, 9);
+      // a punch thrown hanging in the air, over his hover (flat out, the fly's fist is already ahead)
+      if (sim.punchT > 0 && !fast) mark.pose(PUNCH_UP, dt, 30);
     }
+    // the city's people waving at him: he waves back, now and then (on his
+    // upper half, so whatever his legs are doing goes on; a punch over it)
+    if (zone === 'city' && npcs.waving() && t > said.waveAt && !(h.stun > 0) && !(sim.punchT > 0)) {
+      said.waveAt = t + WAVE_BACK;
+      mark.play('wave', { layer: 'upper' });
+    }
+    // the portal closed: a cheer (his arms; his legs as they were)
+    if (won) mark.play('cheer', { layer: 'upper' });
     mark.tick(dt);
 
+    head.set(h.p[0], h.p[1] + 1.6, h.p[2]);
+    const talking = sim.talking?.id ?? null;
     if (zone === 'city') {
-      // his father, keeping an eye on things
+      // his father, keeping an eye on things: his eyes on Mark when he's
+      // about, turned round to him when he's near enough to talk to, his
+      // hands on his hips but while he's talking
       const bob = Math.sin(t * 0.7) * 1.2;
-      carry(omni, [OMNI.p[0], OMNI.p[1] + bob, OMNI.p[2]], OMNI.yaw, [0, 0, 0], dt, { lean: 0 });
-      omni.act('hover') || omni.pose(POSES.proud(), dt, 6);
+      const dO = Math.hypot(h.p[0] - OMNI.p[0], h.p[1] - OMNI.p[1], h.p[2] - OMNI.p[2]);
+      turned.omni = turnTo(turned.omni, dO < 45 ? Math.atan2(h.p[0] - OMNI.p[0], h.p[2] - OMNI.p[2]) : OMNI.yaw, 1.6, dt);
+      carry(omni, [OMNI.p[0], OMNI.p[1] + bob, OMNI.p[2]], turned.omni, [0, 0, 0], dt, { lean: 0 });
+      talkWhile(omni, 'omni', talking === 'omni');
+      omni.look(dO < 150 ? head : null);
+      if (omni.act('hover')) {
+        if (!talks.omni) omni.pose(HIPS, dt, 4);
+      } else omni.pose(POSES.proud(), dt, 6);
       omni.tick(dt);
       // (the QA scripts can hold everyone still, to frame them)
       if (!sim.hold) {
-        npcs.update(frameDt, t, h);
+        npcs.update(frameDt, t, h, { talking, scares: scare, won, fight: sim.fight });
         jet.update(frameDt, t);
       }
-      if (sim.quests) challenges.update(sim.quests, frameDt, t);
+      if (sim.quests) challenges.update(sim.quests, frameDt, t, h);
       if (sim.fight) flaxans.update(sim.fight, frameDt, t, h);
       // (no traffic to speak of from up where the clouds are)
       if (h.p[1] < 2200 || scare.length) {
-        traffic = stepTraffic(traffic, frameDt, { cx: camera.position.x, cz: camera.position.z, yaw: sim.yaw, scare });
+        traffic = stepTraffic(traffic, frameDt, { cx: camera.position.x, cz: camera.position.z, yaw: sim.yaw, scare, hero: h.mode === 'ground' ? { x: h.p[0], z: h.p[2] } : null });
         life.update(traffic, frameDt, camera, look?.night ?? 0);
       }
       clouds.update(t, scene.fog);
     } else {
-      // Allen, waiting by the Moon; Thragg over Mars
+      // Allen, waiting by the Moon; Thragg over Mars: each facing Earth,
+      // turned round to Mark once he's near enough to talk to, their eyes
+      // on him, talking while he talks to them (Allen his own talk, Thragg
+      // an angry one), and Thragg's taunt as Mark comes up to him
+      const dA = Math.hypot(h.p[0] - ALLEN[0], h.p[1] - ALLEN[1], h.p[2] - ALLEN[2]);
+      turned.allen = turnTo(turned.allen, dA < 70 ? Math.atan2(h.p[0] - ALLEN[0], h.p[2] - ALLEN[2]) : Math.atan2(-ALLEN[0], -ALLEN[2]), 1.4, dt);
+      allenHolder.rotation.y = turned.allen;
+      talkWhile(allen, 'allen', talking === 'allen');
+      allen.look(dA < 120 ? head : null);
       allen.pose({ mode: 'hover', t }, dt);
-      carry(thragg, [THRAGG[0], THRAGG[1] + Math.sin(t * 0.6), THRAGG[2]], Math.atan2(-THRAGG[0], -THRAGG[2]), [0, 0, 0], dt, { lean: 0 });
+      const dT = Math.hypot(h.p[0] - THRAGG[0], h.p[1] - THRAGG[1], h.p[2] - THRAGG[2]);
+      turned.thragg = turnTo(turned.thragg, dT < 90 ? Math.atan2(h.p[0] - THRAGG[0], h.p[2] - THRAGG[2]) : Math.atan2(-THRAGG[0], -THRAGG[2]), 1.2, dt);
+      carry(thragg, [THRAGG[0], THRAGG[1] + Math.sin(t * 0.6), THRAGG[2]], turned.thragg, [0, 0, 0], dt, { lean: 0 });
+      if (dT < 90 && !thraggNear) thragg.play('taunt', { layer: 'upper' });
+      thraggNear = dT < 90;
+      talkWhile(thragg, 'thragg', talking === 'thragg', 'talk.angry');
+      thragg.look(dT < 150 ? head : null);
       thragg.act('hover') || thragg.pose(POSES.proud(), dt, 6);
       thragg.tick(dt);
     }

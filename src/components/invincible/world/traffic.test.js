@@ -91,6 +91,29 @@ describe('the people walking', () => {
       expect(Math.abs(offLine(across) - WALK)).toBeLessThan(0.8);
     }
   });
+  it('step aside for him on foot, and stay on the pavement doing it', () => {
+    const one = createTraffic({ cars: 0, walkers: 30 });
+    const w = one.walkers[0];
+    const [x, z] = walkerAt(w);
+    const acrossOf = (q) => (q.axis === 'x' ? walkerAt(q)[1] : walkerAt(q)[0]);
+    const before = acrossOf(w);
+    // him a little to one side of the walker's line, right in their way
+    const hero = w.axis === 'x' ? { x: x + w.dir * 0.6, z: z + 0.3 } : { x: x + 0.3, z: z + w.dir * 0.6 };
+    let st = one;
+    for (let i = 0; i < 15; i++) st = stepTraffic(st, 1 / 30, { cx: 0, cz: 0, hero });
+    const after = acrossOf(st.walkers[0]);
+    expect(Math.sign(after - before)).toBe(-1); // (away from him)
+    expect(Math.abs(offLine(after) - WALK)).toBeLessThan(0.8);
+  });
+  it('give each other room', () => {
+    const near = (s) => {
+      let n = 0;
+      const at = s.walkers.map(walkerAt);
+      for (let i = 0; i < at.length; i++) for (let j = i + 1; j < at.length; j++) if (Math.hypot(at[i][0] - at[j][0], at[i][1] - at[j][1]) < 0.3) n++;
+      return n;
+    };
+    expect(near(st)).toBe(0);
+  });
   it('run from trouble', () => {
     const one = createTraffic({ cars: 0, walkers: 30 });
     const [x, z] = walkerAt(one.walkers[0]);

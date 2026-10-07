@@ -9,7 +9,8 @@
 import * as THREE from 'three';
 import { canvasTexture, PartBuilder } from '../../avengers/hq/kit/shapes';
 import { hot } from '../../avengers/hq/engine';
-import { buildPerson, posePerson } from './people';
+import { personFor } from './people';
+import { CAST } from '../cast';
 import { CARDS, RINGS } from './quests';
 
 const Z = new THREE.Vector3(0, 0, 1);
@@ -59,7 +60,25 @@ function newsChopper() {
   return { group, rotor };
 }
 
-export function createChallenges(scene, world, vfx) {
+// The one who falls is one of the city's own people (the HD figure, else
+// the kit's): waving for help on the edge, flailing as they go, holding on
+// round his neck once he's caught them, and glad of it on their feet again.
+// In his arms: lying back across them, their arms up round his neck.
+const CRADLE = {
+  armL: [0.25, 0.75, 0.55],
+  foreL: [-0.55, 0.55, 0.55],
+  armR: [-0.25, 0.75, 0.55],
+  foreR: [0.55, 0.55, 0.55],
+  thighL: [0.06, -0.35, 0.95],
+  calfL: [0.04, -1, 0.05],
+  thighR: [-0.06, -0.4, 0.92],
+  calfR: [-0.04, -1, 0.1],
+  torso: { pitch: 0.15, yaw: 0, roll: 0 },
+};
+const RELIEF = 3.5; // seconds they stand by him, set down, before they go
+
+// `cast`: the HD figures' templates by kind (./people.js's loadCast)
+export function createChallenges(scene, world, vfx, cast = {}) {
   const group = new THREE.Group();
   group.name = 'challenges';
   scene.add(group);
@@ -104,12 +123,14 @@ export function createChallenges(scene, world, vfx) {
   });
 
   // ── the emergencies ──
-  const victim = buildPerson('person', 41);
+  const victim = personFor('person', 41, cast.civA ?? null, CAST.civA);
+  const hd = Boolean(victim.fig);
   const vHolder = new THREE.Group();
-  victim.h.root.position.y = -victim.h.rest.hips.y;
-  vHolder.add(victim.h.root);
+  vHolder.add(victim.root);
   vHolder.visible = false;
   group.add(vHolder);
+  // where the rescue's got to (a change plays its clip), and the one just set down
+  const saving = { key: null, last: null, count: null, relief: 0, at: new THREE.Vector3(), eyes: new THREE.Vector3() };
   const chopper = newsChopper();
   chopper.group.visible = false;
   group.add(chopper.group);
@@ -124,7 +145,8 @@ export function createChallenges(scene, world, vfx) {
 
   return {
     group,
-    update(q, dt, t) {
+    // hero: where Mark is (for the one he's set down to look at him)
+    update(q, dt, t, hero = null) {
       // the rings
       const L = q.lesson;
       rings.forEach((m, i) => {
@@ -144,22 +166,66 @@ export function createChallenges(scene, world, vfx) {
       }
       // the rescue
       const r = q.rescue;
-      vHolder.visible = Boolean(r && r.kind === 'fall');
+      // set down safe (the count's gone up as the one in his arms went): a
+      // while on their feet in front of him, glad of it, looking at him
+      saving.count ??= q.saved;
+      if (!r && saving.last?.kind === 'fall' && saving.last.carried && q.saved > saving.count) {
+        const p = saving.last.p;
+        const hx = hero?.p?.[0] ?? p[0];
+        const hz = hero?.p?.[2] ?? p[2] - 1;
+        const d = Math.hypot(p[0] - hx, p[2] - hz) || 1;
+        saving.at.set(hx + ((p[0] - hx) / d) * 1.1, (hero?.p?.[1] ?? p[1] - 0.9), hz + ((p[2] - hz) / d) * 1.1);
+        saving.relief = RELIEF;
+        victim.stop(0.2, 'full');
+        victim.play('happy');
+      }
+      saving.count = q.saved;
+      saving.last = r;
+      saving.relief = r ? 0 : Math.max(0, saving.relief - dt);
+      vHolder.visible = Boolean(r && r.kind === 'fall') || saving.relief > 0;
       chopper.group.visible = Boolean(r && r.kind === 'heli');
       beacon.visible = beam.visible = Boolean(r && !r.carried);
-      if (!r) return;
+      if (!r) {
+        if (saving.relief > 0) {
+          vHolder.position.set(saving.at.x, saving.at.y + victim.hipY, saving.at.z);
+          const hp = hero?.p;
+          vHolder.rotation.set(0, hp ? Math.atan2(hp[0] - saving.at.x, hp[2] - saving.at.z) : 0, 0);
+          victim.look(hp ? saving.eyes.set(hp[0], hp[1] + 1.6, hp[2]) : null);
+          victim.pose({ mode: hd ? 'idle' : 'wave', t }, dt);
+        }
+        saving.key = null;
+        return;
+      }
       if (r.kind === 'fall') {
-        vHolder.position.set(r.p[0], r.p[1] + victim.h.rest.hips.y, r.p[2]);
+        // a new step of it: its clip (the library's, where the figure has it)
+        const key = `${r.phase}:${r.carried}`;
+        if (key !== saving.key) {
+          saving.key = key;
+          if (r.carried) victim.stop(0.3, 'full');
+          else if (r.phase === 'warn') victim.play('wave.help', { loop: true });
+          else victim.play('fall', { hold: Infinity });
+        }
+        vHolder.position.set(r.p[0], r.p[1] + victim.hipY, r.p[2]);
         vHolder.rotation.set(0, -Math.PI / 2, 0);
         if (r.carried) {
-          // in his arms: lying back across them
+          // in his arms: lying back across them, holding on
           vHolder.rotation.set(0, 0, 0);
           vHolder.rotateX(-1.3);
-          posePerson(victim, { mode: 'hover', t });
-        } else if (r.phase === 'warn') posePerson(victim, { mode: 'wave', t });
-        else {
+          victim.look(null);
+          if (victim.fig?.act('idle', { fade: 0.3 })) {
+            victim.fig.pose(CRADLE, dt, 8);
+            victim.fig.tick(dt);
+          } else victim.pose({ mode: 'hover', t }, dt);
+        } else if (r.phase === 'warn') {
+          // (the library's wave for help over the whole of them; the kit's own wave)
+          const hp = hero?.p;
+          victim.look(hp ? saving.eyes.set(hp[0], hp[1] + 1.6, hp[2]) : null);
+          victim.pose({ mode: hd ? 'idle' : 'wave', t }, dt);
+        } else {
+          // over the edge: tumbling, and flailing as they go
           vHolder.rotation.set(Math.sin(r.spin) * 0.6, r.spin, Math.cos(r.spin * 0.7) * 0.5);
-          posePerson(victim, { mode: 'hover', t: t * 4 });
+          victim.look(null);
+          victim.pose({ mode: hd ? 'idle' : 'hover', t: t * 4 }, dt);
         }
       } else {
         chopper.group.position.set(r.p[0], r.p[1], r.p[2]);
