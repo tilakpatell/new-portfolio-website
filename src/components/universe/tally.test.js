@@ -19,6 +19,10 @@ describe('readTally', () => {
   it('clamps a value to the most it may be', () => {
     expect(readTally({ e: 'c', m: { a: TALLY.value * 10 }, t: {} }).m.a).toBe(TALLY.value);
   });
+  it('reads the pilot’s tally id, if there is one, and turns away one that isn’t', () => {
+    expect(readTally({ e: 'c', m: {}, t: {}, i: 'a1b2c3d4e5f60718' }).i).toBe('a1b2c3d4e5f60718');
+    for (const i of ['', 'short', 'Not-An-Id!', 'x'.repeat(40), 42, null]) expect(readTally({ e: 'c', m: {}, t: {}, i }), String(i)).toBeNull();
+  });
 });
 
 describe('createTally', () => {
@@ -96,7 +100,7 @@ describe('createTally', () => {
   });
   it('shrugs off a save that isn’t one', () => {
     const t = createTally('c1');
-    for (const bad of [null, 'x', { e: 'c1', mine: 'x' }, { e: 'c1', mine: { a: -3 }, floor: [] }]) t.load(bad);
+    for (const bad of [null, 'x', { e: 'c1', mine: 'x' }, { e: 'c1', mine: { a: -3 }, floor: [] }, { e: 'c1', i: 'Not an id', mine: { a: 1 }, floor: {} }]) t.load(bad);
     expect(t.keys()).toEqual([]);
   });
   it('takes a share told as more than the cap as the cap, and a total as no more than a room of pilots could make', () => {
@@ -106,6 +110,102 @@ describe('createTally', () => {
     t.receive('p', { e: 'c1', m: { b: 500 }, t: { c: 1e6 } });
     expect(t.value('b')).toBe(10);
     expect(t.value('c')).toBe(10 * TALLY.pilots);
+  });
+});
+
+describe('a pilot known by their tally id', () => {
+  const wire = (msg) => readTally(JSON.parse(JSON.stringify(msg)));
+  // a pilot's page reloaded: their tally back from the save, as a new peer
+  const reload = (t) => {
+    const u = createTally(t.epoch, { id: 'fresh00000000000' });
+    u.load(JSON.parse(JSON.stringify(t.save())));
+    return u;
+  };
+  // every pilot's message, through the wire, to every other (by peer id)
+  const talk = (room) => {
+    for (const [peer, t] of Object.entries(room)) {
+      const msg = wire(t.message());
+      for (const [other, u] of Object.entries(room)) if (other !== peer) u.receive(peer, msg);
+    }
+  };
+
+  it('counts a pilot once who comes back under a new peer id, with the same shares or with more', () => {
+    const o = createTally('c1'); // a pilot who stayed online
+    o.add('a', 1);
+    const p = createTally('c1', { id: 'pilot00000000001' });
+    p.add('a', 4);
+    p.add('b', 2);
+    o.receive('peer-1', wire(p.message()));
+    expect(o.value('a')).toBe(5);
+    const back = reload(p);
+    expect(o.receive('peer-2', wire(back.message()))).toBe(false);
+    expect(o.value('a')).toBe(5);
+    expect(o.value('b')).toBe(2);
+    expect(back.id).toBe('pilot00000000001');
+    back.add('a', 3);
+    expect(o.receive('peer-2', wire(back.message()))).toBe(true);
+    expect(o.value('a')).toBe(8);
+    // (and their word from before the reload, heard late, changes nothing)
+    expect(o.receive('peer-1', wire(p.message()))).toBe(false);
+    expect(o.value('a')).toBe(8);
+  });
+  it('two pilots, one of whom reloads, come to the same values, and so does one who arrives late, with nobody counted twice', () => {
+    const a = createTally('c1', { id: 'pilotaaaaaaaaaaa' });
+    const b = createTally('c1', { id: 'pilotbbbbbbbbbbb' });
+    a.add('x', 3);
+    b.add('x', 2);
+    b.add('y', 5);
+    talk({ 'peer-a1': a, 'peer-b': b });
+    const a2 = reload(a);
+    a2.add('x', 1);
+    talk({ 'peer-a2': a2, 'peer-b': b });
+    talk({ 'peer-a2': a2, 'peer-b': b });
+    const c = createTally('c1', { id: 'pilotcccccccccccc' });
+    talk({ 'peer-a2': a2, 'peer-b': b, 'peer-c': c });
+    for (const t of [a2, b, c]) {
+      expect(t.value('x')).toBe(6); // a's 3 and 1, b's 2
+      expect(t.value('y')).toBe(5);
+    }
+  });
+  it('takes a word under your own id (another tab of yours, or yours from before a reload) as yours already: only its totals count', () => {
+    const t = createTally('c1', { id: 'pilot00000000001' });
+    t.add('a', 2);
+    expect(t.receive('p', { e: 'c1', i: 'pilot00000000001', m: { a: 2, b: 3 }, t: { a: 2, b: 3 } })).toBe(true);
+    expect(t.value('a')).toBe(2);
+    expect(t.value('b')).toBe(3);
+    expect(t.mine('b')).toBe(0);
+  });
+  it('lets a peer speak for one pilot only', () => {
+    const t = createTally('c1');
+    t.receive('p', { e: 'c1', i: 'pilot00000000001', m: { a: 1 }, t: {} });
+    expect(t.receive('p', { e: 'c1', i: 'pilot00000000002', m: { a: 5 }, t: { a: 5 } })).toBe(false);
+    expect(t.value('a')).toBe(1);
+  });
+  it('forgets a peer gone, keeping what their pilot did in the floor, and counts the pilot once when they’re back', () => {
+    const t = createTally('c1');
+    t.receive('p1', { e: 'c1', i: 'pilot00000000001', m: { a: 4 }, t: {} });
+    t.forget('p1');
+    expect(t.value('a')).toBe(4);
+    t.receive('p2', { e: 'c1', i: 'pilot00000000001', m: { a: 4 }, t: {} });
+    expect(t.value('a')).toBe(4);
+    t.receive('p2', { e: 'c1', i: 'pilot00000000001', m: { a: 6 }, t: {} });
+    expect(t.value('a')).toBe(6);
+  });
+  it('keeps its id with the shares it told under it, and takes a saved one back', () => {
+    const t = createTally('c1', { id: 'pilot00000000001' });
+    t.add('a', 1);
+    expect(t.message().i).toBe('pilot00000000001');
+    const saved = t.save();
+    expect(saved.i).toBe('pilot00000000001');
+    const u = createTally('c1', { id: 'fresh00000000000' });
+    u.load(saved);
+    expect(u.id).toBe('pilot00000000001');
+    // (another campaign's save isn't taken, nor its id)
+    const v = createTally('c2', { id: 'fresh00000000000' });
+    v.load(saved);
+    expect(v.id).toBe('fresh00000000000');
+    // and a tally with none tells none: its pilot's known by their peer id
+    expect('i' in createTally('c1').message()).toBe(false);
   });
 });
 
@@ -166,6 +266,16 @@ describe('a tally of more keys than a message holds', () => {
     expect(t.owing()).toBe(false);
     t.add('k1', 1);
     expect(t.owing()).toBe(true);
+  });
+  it('owes a pilot back after a reload the whole of it too, though they’re the same pilot by their tally id', () => {
+    const t = createTally('c1', { keys: 1000 });
+    many(t, 300);
+    t.receive('peer-1', { e: 'c1', i: 'pilot00000000001', m: { k1: 1 }, t: {} });
+    for (let i = 0; i < 8; i++) t.message();
+    expect(t.owing()).toBe(false);
+    t.receive('peer-2', { e: 'c1', i: 'pilot00000000001', m: { k1: 1 }, t: {} });
+    expect(t.owing()).toBe(true);
+    expect(t.value('k1')).toBe(2);
   });
   it('two pilots who did more than a message holds come to the same tally, and so does one who arrives late', () => {
     const a = createTally('c1', { keys: 1000 });
