@@ -66,10 +66,15 @@ if (where === 'galaxy') {
   console.log(`jump to ${to}: ${await page.evaluate((id) => window.__galaxyDebug.startJump(id), to)}`);
   for (let i = 0; i < 120 && (await page.evaluate(() => window.__galaxy()?.jump?.phase === 'align')); i++) await page.clock.runFor(50);
 } else console.log(`jump to ${to}: ${await page.evaluate((id) => window.__universeDebug.travel(id, 'hyper'), to)}`);
+const clock0 = await page.evaluate(() => Date.now());
 for (let t = 0; t <= end; t += step) {
-  await page.screenshot({ path: `${out}/portal-${where}-${String(t).padStart(4, '0')}.png`, timeout: 300000 });
+  // (a frame with a new system's shaders in it can take minutes on software WebGL)
+  const before = await page.evaluate(() => Date.now());
+  await page.screenshot({ path: `${out}/portal-${where}-${String(t).padStart(4, '0')}.png`, timeout: 900000 });
   const s = await page.evaluate(() => (window.__galaxy ? window.__galaxy()?.jump : window.__universeDebug?.state?.portal && { phase: window.__universeDebug.state.portal.phase, off: window.__universeDebug.state.portal.off }));
-  console.log(t, JSON.stringify(s));
+  // (the page's own clock at the frame, and how far the screenshot moved it: a frame is only where it says while that's 0)
+  const after = await page.evaluate(() => Date.now());
+  console.log(t, JSON.stringify(s), `page ${before - clock0} ms${after !== before ? `, moved ${after - before} ms by the shot` : ''}`);
   // (the galaxy holds its tunnel till the next system's built: let it)
   if (where === 'galaxy' && (await page.evaluate(() => window.__galaxy()?.jump?.phase === 'tunnel'))) {
     await page.clock.resume();
