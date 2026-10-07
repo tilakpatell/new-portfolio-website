@@ -64,7 +64,7 @@ import DimensionDial from './dimensions/DimensionDial';
 import { ROOMS, newTrial, pick as pickRoom, retry as retryRooms } from './dimensions/vindicatorsRules';
 import { setShipVoice, shipVoiceOn, speak, stopSpeaking } from './shipVoice';
 import { ROOMS_SAY, SAY } from './say';
-import { lineVoice } from './voicelines';
+import { lineSaid } from './voicelines';
 import { preloadVoiced, sayVoiced, stopVoiced } from '../../../lib/voiced';
 import Wardrobe from '../wardrobe/Wardrobe';
 import { useLooks } from '../wardrobe/useLooks';
@@ -277,7 +277,10 @@ export default function RmWorld() {
   // (./voicelines.js, lib/voiced.js); the next thing said, voiced or not, stops it)
   const say = useCallback((t) => {
     setToast({ ...t, at: performance.now() });
-    if (t.kind === 'say') sayVoiced(lineVoice(t.text), t.text);
+    if (t.kind === 'say') {
+      const said = lineSaid(t.text);
+      sayVoiced(said?.who, said?.text);
+    }
   }, []);
   useEffect(() => {
     preloadVoiced();

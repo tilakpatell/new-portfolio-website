@@ -86,6 +86,12 @@ export function stepFight(prev, hero, input, rawDt) {
     ev.push({ type: 'spawn', id: e.id, at: [...e.p] });
   }
 
+  // Eve's knock (./companions.js names a fighting Flaxan by its id): hers, not his
+  if (input.eveHit != null) {
+    const e = f.foes.find((q) => q.id === input.eveHit && q.state === 'fight');
+    if (e) knockOut(f, e, [e.p[0], e.p[1] - 1, e.p[2] - 1], ev, { by: 'eve' });
+  }
+
   // his punch: whoever's in front of him and near, or a lunge to whoever's a little way off
   f.cool = Math.max(0, f.cool - dt);
   if (input.punch && f.cool <= 0) {

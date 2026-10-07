@@ -4,7 +4,9 @@
 // on: its gravity-well projectors pull the ship out of hyperspace short of
 // where it was going, its TIEs launch, and the hyperdrive won't take again
 // until the pilot's clear of the well (the fighters gone, out past its edge,
-// or a minute ridden out). Then the count starts over.
+// or a minute ridden out). Then the count starts over. A jump off the
+// hyperspace lanes (routes.js) is one the Empire watches closer: it reckons
+// that jump two further on, so the window comes two jumps sooner.
 //
 // The count and the trap are plain numbers here (tested in Node); scene.js
 // cuts the jump and drops the ship, interdictor.js draws the cruiser and the
@@ -13,7 +15,8 @@
 // planet doesn't wipe it; anything in it that can't be believed is a fresh
 // cycle.
 //
-// createInterdiction({ rand, store }) → { jumps, due, total, jumped() → { n, due, interdicted }, force(), reset() }
+// createInterdiction({ rand, store }) → { jumps, due, total, jumped(offLane) → { n, due, interdicted }, force(), reset() }
+// nextWindow(n, offLane) → the jump count the Empire reckons: n, or n + 2 off the lanes
 // cutAt(dur, rand) → seconds into the tunnel the well bites
 // dropPoint(arrival, far, edge) → where you drop out: the arrival pushed out along its own bearing
 // interdictorPlace(ship, side, rand) → { at, heading, drift, hangar }: ahead and off to one side, broadside on
@@ -24,6 +27,7 @@ import { EDGE } from './space';
 
 export const INTERDICTION = {
   jumps: [10, 15], // the jump that bites: from the tenth to the fifteenth of a cycle, inclusive
+  offLane: 2, // how many jumps sooner the window comes when a jump's off the lanes
   cut: [0.4, 0.65], // where in the tunnel (of its length) the well bites
   far: 2.4, // how much further out than a normal arrival you drop
   well: 150, // the gravity well's reach, in map units
@@ -65,6 +69,9 @@ export function readCount(s, rand = Math.random) {
   return { n, due };
 }
 
+// the count the window's held against: a jump off the lanes counts further on
+export const nextWindow = (n, offLane = false) => (offLane ? n + INTERDICTION.offLane : n);
+
 export function createInterdiction({ rand = Math.random, store = null } = {}) {
   const read = () => {
     try {
@@ -93,12 +100,12 @@ export function createInterdiction({ rand = Math.random, store = null } = {}) {
     get total() {
       return total;
     },
-    // a jump that's spooling up: counted, and the verdict on it
-    jumped() {
+    // a jump that's spooling up: counted, and the verdict on it (sooner off the lanes)
+    jumped(offLane = false) {
       total += 1;
       const n = count.n + 1;
       const due = count.due;
-      const interdicted = n >= due;
+      const interdicted = nextWindow(n, offLane) >= due;
       count = interdicted ? { n: 0, due: pickDue(rand) } : { n, due };
       write(count);
       return { n, due, interdicted };

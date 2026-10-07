@@ -149,6 +149,63 @@ Eight new shots frame where Task 9's missions will be. Nothing is started yet. N
 
 `chase` is dark even at noon: it's a street between glass towers. Place shots now take `pitch`. Follow shots take `side` (how far he sits to the right of the target) and `turn` (added to the target's heading; 0.5 by default).
 
+### Task 2: seeing Mark and the city (2026-10-07)
+
+- `people.js` `castMaterial(root, { rim, floor })` gives every figure one finish: matte (roughness 0.78, no metal, env 0.2), the colour map's saturation lifted 10 %, and a cool Fresnel rim on a shared uniform (`setCastRim`, set by the scene's time of day: 0.35 noon, 0.7 dusk, 1.2 night). It chains onto any `onBeforeCompile` already on a material and keys its program cache. Mark's near-black texels are raised to a navy floor (`SUIT.floor` 0x2a3754), so his arms and legs stay on a dark street or at night.
+- A spotlight follows him from over the camera's shoulder (no shadow; 0 at noon, 20 at dusk, 45 at night). The camera hovering or standing sits 3.6 m back (it was 5.2 standing and 6.5 hovering), his feet about a third of the way up the frame; at speed the pull-back is as it was.
+- `LOOK.noon`: sun 4.2, fill 0.3, env 1.15. The fog's colour comes from the sky photo's horizon (`sky.js` `skyBands`, once per photo), which fixed the bleached hills: the house look had been fogging everything to a fixed cream.
+- Noon windows are a lighter, sky-reflecting pane above the lowest two storeys; dusk and night window light is up 20 %. Street lines widen with distance up to 2× so the grid reads from height; the river and the coast have a bright edge; the five places have a faint beacon by day, bright by night.
+
+Metrics (`--metrics`; targets: band 0.30–0.65 noon, 0.12–0.35 night; mark ≥ 0.18):
+
+| Shot | Band before | Band after | Mark before | Mark after |
+|---|---|---|---|---|
+| spawn | 0.498 | 0.618 | 0.167 | 0.199 |
+| street | 0.365 | 0.491 | 0.047 | 0.161 |
+| streetnight | 0.172 | 0.210 | 0.015 | 0.203 |
+| downtown | 0.316 | 0.521 | 0.044 | 0.025 |
+| high | 0.442 | 0.488 | 0.041 | 0.020 |
+| porch | 0.506 | 0.623 | 0.126 | 0.189 |
+
+Every band is in range, and Mark passes in spawn, streetnight and porch. He misses in street, downtown and high, where he hangs over towers and grid whose mean grey is close to his: the measure compares mean luminance only, and a yellow and blue figure on grey-blue towers averages out the same while reading plainly to the eye (he is about a third of the frame tall and clearly picked out in each of those shots). Not forced further: the suit would have to go pale. A colour-difference measure would judge these better.
+- Low tier, triangles: plaza 1.47 M, boost 1.33 M, dusk and night 1.33 M; within the 1.5 M budget.
+
+### Task 3: the HUD (2026-10-07)
+
+- `hud.js` (tested) decides where things go: `layoutCompass` (names at least 72 px apart, a second row under the dots for those that would touch, half a gap clear of the headings, none where the buttons overlap the strip's right end, off-strip marks clipped to a side), `titleMode` (the title becomes a chip 2.5 s after he first moves, or at once when there's an objective), `objectiveText` (metres under 1 km, then kilometres) and `markerSize` (for Task 9's 3D marker; never under 24 px).
+- `InvHud.jsx` holds the HUD's markup, out of `InvWorld.jsx`; the frame loop still writes into its elements directly through `hud`.
+- The four top buttons are now a time chip (the one place the time of day is read) and one Menu (time of day, controls, other players, Think, Mark!), which closes on a click elsewhere or Escape.
+- The objective line sits under the compass, centred. The gauge shows the zone (City under 300 m, Sky above, Space). The map is 200 px on desktop and 140 px on phones, where it sits under the objective line.
+- `--iw-under` (the bottom of the buttons, however they wrap) is now set on the stage, so the compass, the objective line and the phone's map all follow it.
+- Not done here: the 3D chevron over a target and the route on the map, which wait on missions (Task 9).
+
+### Task 5: the crowd's brains (2026-10-07)
+
+- `brains.js` (tested) gives each townsperson a brain. The states are idle, chat, wander, look, wave, gather, flee and cheer.
+  - wander: a few steps; a passer-by keeps to their pavement, within 20 m of home.
+  - look: when Mark is within 30 m.
+  - wave: when he hangs within 15 m (not again for 20 s).
+  - gather: when he lands within 25 m. They walk to 6 m from him, face him with phones up, and leave after 12 s or when he takes off.
+  - flee: from a slam, an impact, a low boom or a knock-out within 40 m. They run at 4 m/s for 6 s and stay frightened for 20 s, so they don't come and gawp.
+  - cheer: 4 s, when a fight within 80 m is won.
+  - Each step is at most 0.05 s, so a hidden tab is one short step.
+- `npcs.js` steps a brain for each person at Burger Mart, the school steps and the plaza (three groups), moves and turns them from it, and poses them from `poseOf` (their motion-captured clips). The manager keeps his arms folded when idle. Debbie and Cecil keep their own ways.
+- Who is out goes by the time of day (`crowdCount`): all at noon, 70 % at dusk, 35 % at night, and nobody on the school steps at night.
+- `scene.js` passes the crowd what happened in the frame (slam, knock-out, won, the time). Cars within 60 m of a fight's knock-outs and hits back away at 4 m/s for 3 s (`traffic.js`'s `reverse` scare, tested).
+- New shots: `plazanight`, `burgernight`, `schoolnight`.
+
+### Task 6: Eve and Dad (2026-10-07)
+
+- `companions.js` (tested) holds their rules. Each step is at most 0.05 s.
+  - Eve patrols her loop round downtown, over the towers on it (20 m above the highest roof within 30 m, a little before she gets there; she never flies into one).
+  - When Mark hangs still within 300 m of her for 4 s, she comes over to 6 m from him with a line. She waits 45 s at most, then flies on, and won't come again until he's been off past 300 m.
+  - When he flies off from beside her, she holds 8 m off his left for 40 s, then goes back to her loop.
+  - A foe still standing within 400 m: she goes for it and knocks one out every 8 s (`fight.js` takes her `eveHit` and knocks that foe out, `by: 'eve'`).
+  - E beside her: she stops, says a line and waits 5 s.
+  - Dad watches over downtown by day. At the rings he follows 50 m behind and 20 m above Mark, with a word at each of the first three rings (the first too, though the lesson starts once Mark is through it), and a hurry-up every 30 s past 90 s. At dusk and night he stands on the porch beside Debbie. In the last episode (`mission: 'ep7'`, Task 9) he leads the spar through his points, waiting at each until Mark is within 20 m.
+- `npcs.js` steps Eve from these rules; `scene.js` steps Dad and passes both the live foes, the lesson, the time and an E press for Eve. What they say and do goes in `sim.companion`; `InvWorld.jsx` speaks the lines (in their voices where a recording exists) and gives Eve's blow to the next fight step.
+- `api.debug.dad(p, dir)` reads Dad's rules, or puts him at `p`. New shot: `porchdusk`; `dadlesson` now starts the lesson and frames Dad behind Mark; `eveescort` frames Eve off his left.
+
 ## How to check
 
 - `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic and fight (51 tests at the space merge, 89 after Task 1).
@@ -163,7 +220,7 @@ Eight new shots frame where Task 9's missions will be. Nothing is started yet. N
   - `sim.h` is the hero; `sim.yaw` and `sim.pitch` are the camera.
   - `sim.snap` puts the camera and the pose where they're going.
   - `sim.hold` freezes Eve and the jet.
-  - `api.zone` and `api.setZone` read and set the zone; `api.debug` holds `npcs`, `jet`, `world`, `bodies`, `allen` and `thragg`.
+  - `api.zone` and `api.setZone` read and set the zone; `api.debug` holds `npcs`, `jet`, `world`, `bodies`, `allen`, `thragg` and `dad`.
 
 ## Not done / next ideas
 
