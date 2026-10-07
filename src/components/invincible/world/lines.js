@@ -20,3 +20,7 @@ export const CALLS = {
   spar: { who: 'omni', text: '“Think, Mark!” Down the page, over the city.' },
   mimic: { who: 'omni', text: 'Dad, in your ear: “Look what they need to mimic a fraction of our power.”' },
 };
+
+// What Dad says when his rings are done, quoted after the lap's time (which
+// changes, so only his words are said aloud).
+export const RINGS_DONE = { who: 'omni', text: 'Not bad. For a start.' };
