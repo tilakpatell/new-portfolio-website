@@ -60,4 +60,19 @@ export const MODELS = {
   shieldgen: { made: 'meshy', as: 'the shield generator', metres: 70, along: 'y', solids: 'built' },
   stonehead: { made: 'meshy', as: 'the Gungans’ stone heads', metres: 7.5, along: 'y', detail: 'stone' },
   lavacollector: { made: 'meshy', as: 'the lava collector', metres: 16, along: 'max' },
+  // the vehicles the worlds built in code: Naboo's MTT and Gungan bongo
+  // (the AAT is Sketchfab's, above); and for the worlds to come: Jabba's
+  // skiff, a swoop, a STAP, the AT-DP, Naboo's flash speeder, the Imperial
+  // troop transport, and the Outer Rim's blurrgs, happabores and fambaas
+  mtt: { made: 'meshy', as: 'the MTT troop carriers', metres: 31, along: 'max' },
+  bongo: { made: 'meshy', as: 'the Gungan bongos', metres: 15, along: 'max' },
+  skiff: { made: 'meshy', as: 'the desert skiffs', metres: 9, along: 'max' },
+  swoop: { made: 'meshy', as: 'the swoop bikes', metres: 4, along: 'max' },
+  stap: { made: 'meshy', as: 'the STAPs', metres: 4, along: 'y' },
+  atdp: { made: 'meshy', as: 'the AT-DP walkers', metres: 8.5, along: 'y' },
+  flash: { made: 'meshy', as: 'the flash speeders', metres: 6, along: 'max' },
+  itt: { made: 'meshy', as: 'the Imperial troop transports', metres: 13, along: 'max' },
+  blurrg: { made: 'meshy', as: 'the blurrgs', metres: 2.6, along: 'y' },
+  happabore: { made: 'meshy', as: 'the happabores', metres: 5, along: 'max' },
+  fambaa: { made: 'meshy', as: 'the fambaas', metres: 11, along: 'max' },
 };

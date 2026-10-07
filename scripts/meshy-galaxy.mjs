@@ -144,6 +144,8 @@ export const ASSETS = {
   quigon: { soft: true, height: 1.93, prompt: 'A tall noble knight-monk in his fifties with long brown hair tied back and a short beard, layered tan and cream tunics, a long dark brown hooded robe with the hood down, a wide brown leather belt with a silver cylindrical hilt at the hip, tall boots.' },
   hondo: { height: 1.78, prompt: 'A flamboyant space pirate captain with leathery, deeply wrinkled tan alien skin and a wide grin, flight goggles pushed up on his forehead over a red headscarf, a long brown leather coat over a vest and sash, a belt with many pouches, boots.' },
   ackbar: { height: 1.8, prompt: 'An alien fleet admiral with a large salmon-pink bulbous fish-like head, huge round orange eyes on the sides of the head, small tendrils below the mouth, a white high-collared admiral uniform tunic with a small rank badge, dark trousers, boots.' },
+  // (the first officer came out of the model step with no arms, its hands
+  // floating by its hips: made again)
   officer: { height: 1.8, prompt: 'A military officer with short neat hair in a crisp olive-grey high-collared double-breasted tunic with a small coloured rank badge plate on the chest, a matching flat-topped cap with a visor, a black belt, olive-grey jodhpur trousers and tall polished black boots.' },
   dooku: { height: 1.93, prompt: 'A tall elderly aristocratic swordsman with swept-back white hair and a neat short white beard, a dark brown high-collared tunic, a long black cape fastened with a silver chain clasp, dark trousers, tall black boots, a curved silver hilt at the hip.' },
   // The worlds' named people and the films' faces, from Sketchfab (each

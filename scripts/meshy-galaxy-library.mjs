@@ -30,14 +30,6 @@ export const BUILDINGS = {
   bogwing: beast('File:Bogwing-TVE.png', 'the swamp flier with leathery wings and a long beak', 2.2, 'w', { shot: FLIER }),
   aiwha: beast('File:Aiwha-MF44.png', 'the blue-grey winged sea whale with its broad flat wings', 14, 'w', { shot: FLIER }),
   lavaflea: beast('File:LavaFlea-CVDNE.png', 'the dark armoured six-legged lava flea, without its rider', 5, 'h'),
-  dragonsnake: {
-    prompt: 'A huge swamp serpent: a long scaly olive-green and mottled brown sea-snake body as thick as a tree trunk, a broad flat crocodile-like head with rows of teeth and small yellow eyes, a ridge of short spines along its back, coiled in a lazy S-curve as if surfacing from murky water.',
-    shot: BEAST,
-    metres: 9,
-    along: 'w',
-    tris: 12000,
-    tex: 1024,
-  },
   // ── and the ones to come: the arena's, Utapau's, Lothal's, the Outer Rim's ──
   nexu: beast('File:Nexu2-SWE.png', 'the cat-like four-legged arena predator with its quills and split jaws', 4),
   reek: beast('File:Reek_SWCT.png', 'the horned red-faced arena bull beast', 5),
@@ -49,13 +41,14 @@ export const BUILDINGS = {
   fambaa: beast('File:Fambaa-SWE.png', 'the huge four-legged swamp lizard with its riding harness', 11),
   // ── the vehicles the worlds ask for, and more ──
   mtt: vehicle('File:MTT_BF2.png', 'the huge rust-brown droid troop carrier with its bulbous front', 31),
-  bongo: vehicle('File:GunganBongo-SWESOV.png', 'the organic blue-grey submarine with its three bubble cockpits and tail fins', 15),
-  skiff: vehicle('File:BanthaIICargoSkiff-CGSWG.png', 'the flat open-decked desert cargo skiff with its railings and rear engine', 9),
-  stap: vehicle('File:STAP-SWCT.png', 'the single-trooper flying platform with its tall handlebar mast, without its droid', 4, 'h'),
+  bongo: vehicle('File:GunganBongo-SWESOV.png', 'the organic blue-grey submarine with its three bubble cockpits and tail fins', 15, 'w', { yaw: Math.PI / 2 }),
+  skiff: vehicle('File:BanthaIICargoSkiff-CGSWG.png', 'the flat open-decked desert cargo skiff with its railings and rear engine', 9, 'w', { yaw: Math.PI / 2 }),
+  stap: vehicle('File:STAP-SWCT.png', 'the single-trooper flying platform with its tall handlebar mast, without its droid', 4, 'h', { yaw: Math.PI / 2 }),
   atdp: vehicle('File:ATDP-Fathead.png', 'the two-legged white armoured walker with its boxy cockpit', 8.5, 'h'),
-  flash: vehicle('File:FlashSpeederAft-SWE.png', 'the low turquoise twin-seat landspeeder with its rear gun', 6),
-  itt: vehicle('File:Imperial-troop-dropship.png', 'the grey armoured hover troop transport', 13),
+  flash: vehicle('File:FlashSpeederAft-SWE.png', 'the low turquoise twin-seat landspeeder with its rear gun', 6, 'w', { yaw: Math.PI / 2 }),
+  itt: vehicle('File:Imperial-troop-dropship.png', 'the grey armoured hover troop transport', 13, 'w', { yaw: Math.PI / 2 }),
   swoop: {
+    yaw: Math.PI / 2,
     prompt: 'A desert racing hover-bike: a long narrow engine pod with a big round intake at the front and twin exhausts at the back, a small exposed rider saddle and handlebars at the rear, dull red and rusted grey metal plating, no rider.',
     shot: VEHICLE,
     metres: 4,
@@ -92,6 +85,9 @@ export const BUILDINGS = {
     tris: 12000,
     tex: 1024,
   },
+  // (the TIE Striker's picture on the wiki turned out to be a plain TIE, and
+  // its model with it: left out. The dragonsnake, from words, came out an
+  // Earth crocodile: left out, the built one stays.)
   // ── the ships the galaxy built in code ──
   houndstooth: ship('File:HoundsTooth_3quarters_view-SWE.png', 'the bulky ochre boxy freighter with its long swept-back wing'),
   punishingone: ship('File:JM-5K.png', 'the crescent-shaped bounty hunter ship with its long central fuselage'),
@@ -108,5 +104,4 @@ export const BUILDINGS = {
   zeta: ship('File:Zeta-class_shuttle_ROUVG.png', 'the grey cargo shuttle with its tall folding wings'),
   fang: ship('File:FangFighrter-SWESOV.png', 'the narrow Mandalorian fighter with its swept wings'),
   naboocruiser: ship('File:Nabooskiff-SWCTP.png', 'the gleaming chrome boomerang-shaped yacht'),
-  tiestriker: ship('File:TIE-Striker-SWCT.png', 'the TIE with its two long flat swept wings'),
 };

@@ -70,6 +70,26 @@ export const MODELS = {
   interdictor: { url: '/models/galaxy/interdictor.glb', nose: 0 },
   cloudcity: { url: '/models/galaxy/cloudcity.glb', nose: 0 },
   deathstar2: { url: '/models/galaxy/deathstar2.glb', nose: 0 },
+  // and the ones made with Meshy from Wookieepedia's picture of each
+  // (scripts/meshy-galaxy-library.mjs), every one come nose to -x: the
+  // Hound's Tooth, the Punishing One, the Hammerhead and the Gauntlet,
+  // which were built in code; and the Twilight, the Scimitar, the TIE
+  // Defender, the V-wing, the Eta-2, the Hyena, the Sentinel, the Zeta, the
+  // Fang and the Naboo yacht, for the systems to fly
+  houndstooth: { url: '/models/galaxy/houndstooth.glb', nose: Math.PI / 2 },
+  punishingone: { url: '/models/galaxy/punishingone.glb', nose: Math.PI / 2 },
+  hammerhead: { url: '/models/galaxy/hammerhead.glb', nose: Math.PI / 2 },
+  gauntlet: { url: '/models/galaxy/gauntlet.glb', nose: Math.PI / 2 },
+  twilight: { url: '/models/galaxy/twilight.glb', nose: Math.PI / 2 },
+  scimitar: { url: '/models/galaxy/scimitar.glb', nose: Math.PI / 2 },
+  tiedefender: { url: '/models/galaxy/tiedefender.glb', nose: Math.PI / 2 },
+  vwing: { url: '/models/galaxy/vwing.glb', nose: Math.PI / 2 },
+  eta2: { url: '/models/galaxy/eta2.glb', nose: Math.PI / 2 },
+  hyena: { url: '/models/galaxy/hyena.glb', nose: Math.PI / 2 },
+  sentinel: { url: '/models/galaxy/sentinel.glb', nose: Math.PI / 2 },
+  zeta: { url: '/models/galaxy/zeta.glb', nose: Math.PI / 2 },
+  fang: { url: '/models/galaxy/fang.glb', nose: Math.PI / 2 },
+  naboocruiser: { url: '/models/galaxy/naboocruiser.glb', nose: Math.PI / 2 },
   // the universe map's wars' flagships (scripts/meshy-war.mjs: Rick and
   // Morty's from the show's own pictures, Breaking Bad's from words)
   councildread: { url: '/models/universe/war/councildread.glb', nose: Math.PI / 2 },
@@ -125,6 +145,17 @@ export const STAND_IN = {
   fedbattleship: 'fedcruiser',
   superlab: 'madrigal',
   hacienda: 'lowrider',
+  // the Meshy-made library ships: each as the nearest built one of its kind
+  twilight: 'freighter',
+  scimitar: 'shuttle',
+  tiedefender: 'tie',
+  vwing: 'delta7',
+  eta2: 'delta7',
+  hyena: 'vulture',
+  sentinel: 'shuttle',
+  zeta: 'shuttle',
+  fang: 'awing',
+  naboocruiser: 'nubian',
 };
 
 // Far off, a ship is its LOD (scripts/galaxy-lod.mjs: one mesh of a few

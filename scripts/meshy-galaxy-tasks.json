@@ -225,9 +225,13 @@
     "rig": "01a114e7-0e04-7534-bf6f-438d4294b14e"
   },
   "officer": {
-    "image": "01a114d8-4713-71fa-abdb-a4fb42f42b70",
-    "model": "01a114da-bd4a-72ac-8c0e-dfd2ddf273bf",
-    "rig": "01a114e7-476e-7198-bf16-cf29420c5379"
+    "broken": {
+      "image": "01a114d8-4713-71fa-abdb-a4fb42f42b70",
+      "model": "01a114da-bd4a-72ac-8c0e-dfd2ddf273bf",
+      "rig": "01a114e7-476e-7198-bf16-cf29420c5379"
+    },
+    "image": "01a1150c-a9d6-7238-a621-1a94faa69301",
+    "model": "01a1150d-1e17-7590-9082-f1aea6eea70b"
   },
   "dooku": {
     "image": "01a114d8-b6c3-7499-9cdf-a7c1e047543f",
