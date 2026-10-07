@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { newTalk, talkNode, talkOn } from './talk';
+import { newTalk, personVoice, talkNode, talkOn } from './talk';
 
 const GATE = {
   start: 'ask',
@@ -36,5 +36,18 @@ describe('a conversation', () => {
     expect(talkOn(GATE, t, 5)).toEqual(t);
     const done = { at: 'open', end: 'won' };
     expect(talkOn(GATE, done)).toEqual(done);
+  });
+});
+
+describe('whose voice someone you walk up to speaks in', () => {
+  it('is their id without the scene it is for', () => {
+    expect(personVoice('gimli-wood')).toBe('gimli');
+    expect(personVoice('strider-dawn')).toBe('strider');
+    expect(personVoice('harry')).toBe('harry');
+  });
+  it('is no one for the ones who say nothing aloud', () => {
+    expect(personVoice('trolls')).toBeNull();
+    expect(personVoice('carrot')).toBeNull();
+    expect(personVoice(null)).toBeNull();
   });
 });
