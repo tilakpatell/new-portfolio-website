@@ -245,12 +245,12 @@
     "image": "01a114e9-ecc3-77a9-95c6-9a301ae375e8",
     "model": "01a114ea-9393-744c-b600-e962221ac13d"
   },
-  "collector": {
-    "image": "01a114ea-1b31-744f-ab61-cb70dd6b0c15",
-    "model": "01a114ea-9690-7613-bcda-5692df715d02"
-  },
   "stonehead": {
     "image": "01a114ea-4965-763a-a629-d45787af06d6",
     "model": "01a114ea-9933-725d-8a66-e080d87c3aee"
+  },
+  "lavacollector": {
+    "image": "01a114ea-1b31-744f-ab61-cb70dd6b0c15",
+    "model": "01a114ea-9690-7613-bcda-5692df715d02"
   }
 }

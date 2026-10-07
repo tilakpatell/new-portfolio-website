@@ -170,7 +170,11 @@ async function squeeze(from, to, a) {
   const k = a.metres / (a.along === 'h' ? size[1] : Math.max(size[0], size[2]));
   // (centred, stood on y = 0, scaled; then turned by `yaw` about its middle,
   // its front brought round to +z)
-  const centre = doc.createNode(`${a.kind}-centred`).setScale([k, k, k]).setTranslation([-((b.min[0] + b.max[0]) / 2) * k, -b.min[1] * k, -((b.min[2] + b.max[2]) / 2) * k]);
+  // (`mirror`: flipped left for right, for one made the other way round from
+  // the built one it stands over; three.js turns the faces round itself for
+  // a node scaled through zero)
+  const kx = a.mirror ? -k : k;
+  const centre = doc.createNode(`${a.kind}-centred`).setScale([kx, k, k]).setTranslation([-((b.min[0] + b.max[0]) / 2) * kx, -b.min[1] * k, -((b.min[2] + b.max[2]) / 2) * k]);
   const yaw = a.yaw ?? 0;
   const holder = doc.createNode(a.kind).setRotation([0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)]).addChild(centre);
   for (const child of scene.listChildren()) {

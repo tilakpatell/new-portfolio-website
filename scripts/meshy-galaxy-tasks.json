@@ -162,7 +162,8 @@
       "image": "01a114d1-87f6-729a-93d3-c3261064b604",
       "model": "01a114da-9a8e-75d4-9f9c-89b81388244d"
     },
-    "image": "01a114ea-90a2-76ed-959c-48c38d8c7886"
+    "image": "01a114ea-90a2-76ed-959c-48c38d8c7886",
+    "model": "01a114ed-9f94-7313-b6e9-ea6ef7d5b52b"
   },
   "senateguard": {
     "image": "01a114d3-6a8c-73ef-8df9-38bfd5226c82",
@@ -203,7 +204,9 @@
     "refused": {
       "image": "01a114d6-88c1-7653-a2d9-27c17be8e617",
       "model": "01a114da-b3b8-7600-b404-8bb83c54748a"
-    }
+    },
+    "image": "01a114ec-c166-734b-bfe0-2930d1ad50cd",
+    "model": "01a114ed-a2c3-729e-800e-5691062bc7ca"
   },
   "hondo": {
     "image": "01a114d7-254d-72ab-8273-7b9753fa27b9",
