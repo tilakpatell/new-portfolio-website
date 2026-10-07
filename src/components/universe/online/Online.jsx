@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { RiCloseLine, RiGroupLine } from 'react-icons/ri';
 import { NAME_MAX } from './names';
 import { AWAY, UNIVERSE, placeName } from './where';
+import { rosterWhere } from './rosterWhere';
 import { crewById } from '../crews';
 import { paintById } from '../paint';
 import Face from '../Faces';
@@ -13,13 +14,15 @@ import './online.css';
 // many pilots are online (or offers to go online), and a card above it with
 // either the way in (your callsign, and what going online means) or who's
 // online, what they fly (and in what paint), their kills, which page they're on (with a button
-// to go there too), and the buttons to ask them to be allies, accept,
+// to go there too; out on the universe map, which region, from where they
+// were last seen: rosterWhere.js), and the buttons to ask them to be allies, accept,
 // decline or end an alliance, or block them, and whether live pointers
 // show on pages. What's happening (who came online or came to your page,
 // alliances, who shot down whom) shows in a short feed above the button.
 // useOnline.js keeps the state.
 
 const TONE = { join: 'join', ally: 'ally', kill: 'kill', info: 'info' };
+const WHERE_MS = 2000; // how often the roster looks again at where everyone on the map is
 
 export default function Online({ online, ship = null, floating = false }) {
   const [open, setOpen] = useState(false);
@@ -118,6 +121,15 @@ function Roster({ online, ship, floating, onClose }) {
   const [name, setName] = useState(online.name ?? '');
   const id = useId();
   const others = room.peers;
+  // (poses come in ten times a second, not as roster news: while anyone's
+  // out on the map, the regions they're in are read again now and then)
+  const [, tick] = useState(0);
+  const mapped = others.some((p) => p.where === UNIVERSE);
+  useEffect(() => {
+    if (!mapped) return undefined;
+    const t = setInterval(() => tick((n) => n + 1), WHERE_MS);
+    return () => clearInterval(t);
+  }, [mapped]);
   const rename = (e) => {
     e.preventDefault();
     setName(online.rename(name));
@@ -184,7 +196,9 @@ function Pilot({ p, online }) {
   const coat = paintById(p.loadout?.paint);
   const act = (what) => () => online.ally(p.id, what);
   const elsewhere = p.where && p.where !== online.where;
-  const at = !p.where ? '' : elsewhere ? ` · ${placeName(p.where)}` : ' · here';
+  // (out on the map, the region they're in says more than “here” does, the map being as wide as it is)
+  const pose = p.where === UNIVERSE ? (online.client?.poseOf?.(p.id) ?? null) : null;
+  const at = !p.where ? '' : pose ? ` · ${rosterWhere(p.where, pose)}` : elsewhere ? ` · ${placeName(p.where)}` : ' · here';
   return (
     <li className="universe-online-pilot" data-ally={p.ally === 'ally' || undefined} data-blocked={p.blocked || undefined}>
       {who ? <Face who={who} className="universe-online-face" /> : <span className="universe-online-face" aria-hidden="true" />}
