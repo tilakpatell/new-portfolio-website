@@ -97,6 +97,9 @@ import { DIVE, LAUNCH_KEY, diveAt, planDive } from './travel';
 import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, interdictorPlace } from './interdiction';
 import { createInterdictor } from './interdictor';
 import { createWarFront } from './warfront';
+import { effectsFor } from './warEffects';
+import { warNow } from './warState';
+import { createWingmen } from '../universe/wingmen';
 import { createBolts, createFlashes } from './fx';
 import { buildSystem } from './world';
 import { AHEAD, FACTIONS, KINDS, NAMES } from './hunted';
@@ -230,6 +233,23 @@ export async function create(canvas, ctx) {
   const hunters = reduced ? null : createHunters(scene, { small, fleet, factions: FACTIONS, kinds: KINDS, solids: () => state.space?.solids ?? [] });
   let hunts = 0; // packs sent this visit (the first is a small one)
   const roam = createRoam(); // what happens while you roam: the director on the system's side
+  const wingmen = hunters ? createWingmen(scene, { fleet, solids: () => state.space?.solids ?? [] }) : null; // (your side's escort: roamRules.js)
+  // who holds the system in the galaxy's war, against the side you swore to
+  // (warEffects.js): worked out on entering it and once a second after, and
+  // handed to the world (its fleets in orbit) and the director (who comes)
+  let effectsAt = -1;
+  const effectsNow = (force = false) => {
+    const second = Math.floor(Date.now() / 1000);
+    if (!force && second === effectsAt) return state.effects;
+    effectsAt = second;
+    const a = props.allegiance ?? null;
+    const next = state.sys ? effectsFor(state.sys.id, warNow(Date.now(), a?.war), a) : null;
+    if (force || JSON.stringify(next) !== JSON.stringify(state.effects)) {
+      state.effects = next;
+      state.world?.setEffects?.(next);
+    }
+    return state.effects;
+  };
   const pieces = reduced ? null : createSetPieces(scene, { small, fleet, solids: () => state.space?.solids ?? [] }); // (clear of this system's planet, not the universe map's)
   // the Empire's count of your jumps, and the Interdictor waiting on the one that's due
   const interdiction = createInterdiction({
@@ -256,6 +276,7 @@ export async function create(canvas, ctx) {
   const size = { w: 1, h: 1 };
   const state = {
     sys: null, // the system you're in (systems.js's)
+    effects: null, // who holds it in the war, against your side (warEffects.js), or null
     world: null, // and what's built of it (world.js's)
     space: null, // space.js's, for flying in it
     kind: null,
@@ -353,6 +374,8 @@ export async function create(canvas, ctx) {
     scene.add(world.group);
     state.world = world;
     war?.enter(sys, world);
+    effectsNow(true);
+    wingmen?.clear();
     respace();
     // the suns' light
     world.sunLights.forEach((s, i) => {
@@ -1400,7 +1423,7 @@ export async function create(canvas, ctx) {
   // the director's events, played out (the universe map's `happen`, for
   // what the galaxy plays so far: roamRules.js's ROAM_EVENTS)
   const happen = (id, ship) => {
-    const side = roam.side(state.sys);
+    const side = roam.side(state.sys, state.effects);
     if (!side || !hunters) return;
     const ambush = travelling(ship) ? { ahead: true } : {};
     const strength = { heat: state.heat, first: hunts === 0 };
@@ -1417,6 +1440,11 @@ export async function create(canvas, ctx) {
       // its fighters launch a moment after it's here
       const who = pickFaction(side, 'capital') ?? pickFaction(side, 'hunt') ?? 'empire';
       later.push({ at: state.clock + 2.4, run: () => state.ship && !state.crash && !state.jump && hunters.pack(who, state.ship, { from: d.hangar, size: 3, ace: Math.random() < 0.35 }) });
+    } else if (id === 'escort') {
+      // your side's wing, come to fly with you a while
+      if (!wingmen || wingmen.active || !side.escort?.length) return;
+      wingmen.join(side.escort[Math.floor(Math.random() * side.escort.length)], ship, 2);
+      emit({ type: 'hunted', faction: 'escort', ace: null });
     } else if (id === 'bounty') {
       // one hunter, tough and quick: Boba Fett in Slave I (its model, once
       // it's here: Vader stands in till then), IG-88, Bossk or Dengar
@@ -1432,6 +1460,14 @@ export async function create(canvas, ctx) {
     state.clock += dt;
     const live = flying() && !state.crash && !state.jump && !props.frozen ? state.ship : null;
     if (hunters) for (const e of hunters.update(dt, t, live)) onHunters(e);
+    // the escort's shots, put on the hunters after you
+    if (wingmen && (wingmen.active || live)) {
+      const r = wingmen.update(dt, t, live, live ? hunters.targets.filter((o) => !o.prey) : [], {});
+      for (const h of r.hits) {
+        const got = hunters.damage(h.id, h.damage);
+        if (got?.down) pops.hit({ point: got.at, normal: new THREE.Vector3(0, 1, 0), radius: got.size * 1.8 });
+      }
+    }
     let busy = pieces ? pieces.update(dt, t, camera) : false;
     if (interdictor) busy = interdictor.update(dt, t) || busy;
     if (war) {
@@ -1455,7 +1491,8 @@ export async function create(canvas, ctx) {
       // (not in the middle of the war's battle: it's busy enough)
       if (hunters && state.flown) {
         const busyHere = hunters.active || Boolean(pieces?.destroyerHere) || Boolean(state.held) || Boolean(war?.battle) || state.view === 'map';
-        const id = roam.update(dt, { sys: state.sys, heat: state.heat, busy: busyHere, travelling: travelling(live), calm: state.shield < 50 });
+        const fx = effectsNow();
+        const id = roam.update(dt, { sys: state.sys, effects: fx, heat: state.heat + (fx?.heat ?? 0), busy: busyHere, travelling: travelling(live), calm: state.shield < 50 });
         if (id) happen(id, live);
       }
       // the Interdictor's hold: its TIEs launch a moment after it's here, and
@@ -1674,7 +1711,7 @@ export async function create(canvas, ctx) {
   const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 60));
   const stocked = new Set();
   const stockUp = () => {
-    const f = state.sys?.faction;
+    const f = state.effects?.garrison ?? state.sys?.faction;
     if (reduced || !f || stocked.has(f) || !warmed) return;
     stocked.add(f);
     const want = Object.entries(AHEAD[f] ?? {});
@@ -2120,6 +2157,7 @@ export async function create(canvas, ctx) {
       goals: state.world?.goals.map((g) => g.id),
       solids: state.space?.solids.length,
       war: war?.info ?? null,
+      effects: state.effects ?? null,
     });
     // the ship put at `pose` (x, y, z, heading, pitch, bank), stopped, and the camera there behind it as it would be after
     // an arrival, not still easing to it: a check then sees the same view, however many frames it took to get there
@@ -2134,7 +2172,7 @@ export async function create(canvas, ctx) {
       state.shake = 0;
       ctx.invalidate();
     };
-    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, pin, interdiction, interdictor, war };
+    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, pin, interdiction, interdictor, war, wingmen, effects: () => state.effects, happen: (id) => state.ship && happen(id, state.ship) };
     window.__gltfStats = gltfStats; // { requests, parses }: the models asked for, and the files fetched and parsed for them
   }
 
@@ -2259,6 +2297,7 @@ export async function create(canvas, ctx) {
       crashFx.dispose();
       pops.dispose();
       hunters?.dispose();
+      wingmen?.dispose();
       war?.dispose();
       pieces?.dispose();
       interdictor?.dispose();

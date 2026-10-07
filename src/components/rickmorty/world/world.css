@@ -440,3 +440,11 @@
     background: rgba(160, 20, 20, 0.9);
   }
 }
+
+/* the fire button beside the jump, on touch, while a fight's on */
+.rm-lift .rm-fire {
+  margin-top: 10px;
+  background: rgba(200, 40, 40, 0.85);
+  color: #fff;
+  font-size: 22px;
+}

@@ -36,7 +36,8 @@ const SIZE = 21; // the map is GRID squares across, in its own units
 const battleLine = (row, now) => {
   const b = row.battle;
   if (!b) return null;
-  return b.fighting ? `${templateFor(row.id).name}: ${span(b.fightEnd - now)} left` : `${templateFor(row.id).name}: regrouping, the next in ${span(b.end - now)}`;
+  const name = templateFor(row.id, b.war).name;
+  return b.fighting ? `${name}: ${span(b.fightEnd - now)} left` : `${name}: regrouping, the next in ${span(b.end - now)}`;
 };
 // names that go on the left of their dot (a neighbour's on the right, or the map's edge)
 const LEFT = new Set(['mustafar', 'hoth', 'geonosis', 'nevarro', 'mandalore', 'lothal']);

@@ -190,3 +190,48 @@ describe('iron balls', () => {
     expect(g.mario.health).toBeLessThan(8);
   });
 });
+
+describe('Goombas’ eyes', () => {
+  // a floor with a wall across it: Mario on one side, a Goomba on the other
+  const walled = () => {
+    const k = createKit();
+    k.box({ x: 0, y: -100, z: 0, w: 40000, h: 100, d: 40000, mat: 'g' });
+    k.box({ x: 0, y: 0, z: 0, w: 60, h: 600, d: 3000, mat: 'g' });
+    const o = k.done();
+    return makeWorld(o.tris, o.kinds, { deathY: -3000 });
+  };
+  it('chase only what they can see: not Mario behind a wall', () => {
+    const g = newScene({ world: walled(), mario: newMario({ x: -250, y: 0, z: 0 }), save: { stars: {} }, area: {} });
+    const a = g.spawn({ type: 'goomba', x: 250, y: 0, z: 0 });
+    frames(g, 90);
+    expect(a.state).toBe('wander');
+    expect(a.pos.x).toBeGreaterThan(40);
+    // and in the open, they do
+    const open = scene(newMario({ x: -250, y: 0, z: 0 }));
+    const b = open.spawn({ type: 'goomba', x: 250, y: 0, z: 0 });
+    frames(open, 90);
+    expect(b.state).toBe('chase');
+  });
+
+  it('keep after Mario a moment once he is round the wall, go to look where he was, then wander', () => {
+    const g = newScene({ world: walled(), mario: newMario({ x: 300, y: 0, z: -100 }), save: { stars: {} }, area: {} });
+    const a = g.spawn({ type: 'goomba', x: 400, y: 0, z: 400 });
+    frames(g, 30);
+    expect(a.state).toBe('chase');
+    // Mario steps round the wall's end, out of sight
+    g.mario.pos.x = -300;
+    g.mario.pos.z = -1700;
+    const states = [];
+    let nearest = Infinity;
+    for (let i = 0; i < 240; i++) {
+      frame(g);
+      states.push(a.state);
+      nearest = Math.min(nearest, Math.hypot(a.pos.x - 300, a.pos.z + 100));
+      expect(a.pos.x).toBeGreaterThan(30); // (never through the wall)
+    }
+    // still chasing for a while (intuition), then on to where it last had him, then wandering
+    expect(states.slice(0, 60).every((s) => s === 'chase')).toBe(true);
+    expect(states[states.length - 1]).toBe('wander');
+    expect(nearest).toBeLessThan(200);
+  });
+});

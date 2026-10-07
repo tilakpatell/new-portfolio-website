@@ -150,4 +150,4 @@ export const SPEAKERS = {
 // Evil Morty's Cop Ricks on red alert (../../middleearth/towns/watchers.js):
 // a wider, longer look than the Nazgûl and quicker on their feet, but no
 // Ring to see you by.
-export const COPS = { sight: 11, cone: 0.55, smell: 1.6, hear: 4, ringSight: 0, alert: 0.7, chase: 5.2, patrol: 1.6, giveUp: 6, leash: 16, catch: 1, look: 1.6 };
+export const COPS = { sight: 11, cone: 0.55, smell: 1.6, hear: 4, ringSight: 0, alert: 0.7, chase: 5.2, patrol: 1.6, giveUp: 6, leash: 16, catch: 1, look: 1.6, far: 1.8, suspicious: 0.5, search: 10 }; // (far, suspicious, search: the cops take a second to clock a Morty, come to look, and sweep the concourse together)

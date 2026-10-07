@@ -131,7 +131,7 @@ export function grab(tm) {
 // ── The cave troll ──
 // It hunts round the chamber (../watchers.js does the seeing and the
 // chasing): keep out of its sight till the end.
-export const TROLL = { sight: 8.5, cone: 0.62, smell: 1.4, hear: 2.4, ringSight: 20, alert: 0.45, chase: 4.6, patrol: 1.7, giveUp: 3.5, leash: 30, catch: 1.5, look: 1.4, hold: 32 };
+export const TROLL = { sight: 8.5, cone: 0.62, smell: 1.4, hear: 2.4, ringSight: 20, alert: 0.45, chase: 4.6, patrol: 1.7, giveUp: 3.5, leash: 30, catch: 1.5, look: 1.4, hold: 32, far: 2.8, suspicious: 0.6, search: 8 }; // (far, suspicious, search: a troll is slow to be sure, and lumbers over to look)
 
 // ── The Bridge of Khazad-dûm ──
 // The run down the stair and over the bridge, as distance along it (`s`)
