@@ -12,7 +12,8 @@
 //
 // site.life: [{ kind, n, at: [x, z], spread, roam, speed, path, still,
 //   face, y (hovering: a probe droid), name, says: [line…] (a line: text,
-//   or [who, text]), scale, solid, id (a quest's name for them), quest (the
+//   or [who, text]), voice (the voice their own lines are said in, where it
+//   isn't their name's: voicelines.js), scale, solid, id (a quest's name for them), quest (the
 //   quest they give: quests.js's), reach (talked to from this far: a Hutt
 //   on his dais), level (the height of the floor they're on, where there
 //   are floors over floors), hidden (not there till a quest says), dive
@@ -327,12 +328,13 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
       }
       return best;
     },
-    // what they say next (round and round their lines)
+    // what they say next (round and round their lines), and in whose voice
+    // where it isn't their name's (voicelines.js)
     say(a) {
       if (!a.spec.says?.length) return null;
       const line = a.spec.says[a.said % a.spec.says.length];
       a.said += 1;
-      return Array.isArray(line) ? { who: line[0], text: line[1] } : { who: a.spec.name ?? a.spec.kind, text: line };
+      return Array.isArray(line) ? { who: line[0], text: line[1] } : { who: a.spec.name ?? a.spec.kind, text: line, voice: a.spec.voice ?? null };
     },
     // keep `you` out of everyone (they're solid, but they move)
     shove(you, radius) {
