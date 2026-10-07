@@ -8,14 +8,16 @@
 //   node scripts/gen3d/generate.mjs IMAGE OUT.glb [--engine trelliscpp|trellis2|hunyuan] [--left L.png --back B.png --right R.png] [--seed 42] [--res 1024] [--faithful [--fov 49]]
 //   generate(image, out, opts) → { engine, seconds, out }
 
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { live, localDir } from '../desktop/lib.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const LOCAL = process.env.LOCALAPPDATA ?? join(process.env.USERPROFILE ?? '', 'AppData', 'Local');
-export const TRELLISCPP = { exe: join(LOCAL, 'trellis-studio', 'runtime', 'trellis-cli.exe'), models: join(LOCAL, 'trellis-studio', 'models') };
+// (localDir: %LOCALAPPDATA%, or the Claude app's boxed copy of it, scripts/desktop/lib.mjs)
+const STUDIO = localDir('trellis-studio');
+export const TRELLISCPP = { exe: join(STUDIO, 'runtime', 'trellis-cli.exe'), models: join(STUDIO, 'models') };
 export const WSL = { distro: process.env.GEN3D_WSL_DISTRO ?? 'Ubuntu-24.04', conda: '~/miniforge3', env: 'trellis2' };
 export const ENGINES = ['trelliscpp', 'trellis2', 'hunyuan'];
 // the Hunyuan3D-2 multi-view engine's conda env, in the same distro
@@ -87,11 +89,7 @@ export async function generate(image, out, opts = {}) {
   const cmd = engine && command(engine, image, out, opts);
   if (!cmd) throw new Error(`${opts.engine ?? 'no engine'} isn't set up here: see scripts/gen3d/README.md`);
   const started = Date.now();
-  await new Promise((done, fail) => {
-    const p = spawn(cmd[0], cmd.slice(1), { stdio: ['ignore', 'inherit', 'inherit'] });
-    p.on('error', fail);
-    p.on('exit', (code) => (code === 0 ? done() : fail(new Error(`${engine} exited ${code}`))));
-  });
+  await live(cmd[0], cmd.slice(1), { name: engine, minutes: Number(process.env.GEN3D_ENGINE_MINUTES ?? 45) });
   if (!existsSync(out)) throw new Error(`${engine} made no ${out}`);
   return { engine, seconds: (Date.now() - started) / 1000, out };
 }

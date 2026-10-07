@@ -95,6 +95,7 @@ import { createChaseMission } from './missions/chaseScene';
 import { createAssaultMission } from './missions/assaultScene';
 import { RULES as ASSAULT } from './missions/assault';
 import { groundWorld } from '../../../lib/three/groundwork';
+import { garrisonLife } from './garrison';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -296,7 +297,7 @@ export async function create(canvas, ctx) {
   // ?debug: the look, the grass and the wind on sliders, copied out as the
   // site's own blocks (lib/debugPanel, tune.js)
   const panel = debugOn() ? debugPanel({ title: site.id, groups: surfaceTuning({ house, skyFog, post, exposure: exposureOf(site), grass, wind }), code: siteCode }) : null;
-  const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
+  const life = createActors({ parent: scene, world, life: garrisonLife(site.life, ctx.effects?.troops), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
 
   // ── The places you go into (zones): built high over the world, out of
   // sight, each with its own lamps ──

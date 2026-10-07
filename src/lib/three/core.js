@@ -13,10 +13,11 @@
 //   CORE, coreOf(role)       the kit: { metres, mean, … } per role
 //   loadCore(role)           its textures, loaded once for the page
 //   wear(material, scan, { metres, strength, normal, mean })
-//   dress(materials, roles, { strength, normal, load }) → how many it dressed
+//   dress(materials, roles, { strength, normal, keep, load }) → how many it dressed
 //     a world's named materials ({ stone: mat, … }) onto roles
 //     ({ stone: 'stone', timber: 'wood', … }): each one's own painted picture
-//     is folded into its colour, and the role's scan goes on instead
+//     is folded into its colour, and the role's scan goes on instead (with
+//     `keep`, the picture stays and the scan's grain goes over it)
 //   meanColour(texture)      a picture's mean colour (linear)
 //   wearShader(shader, { normal }) → { vertexShader, fragmentShader, swapped } (pure)
 
@@ -191,22 +192,61 @@ export function meanColour(texture) {
 
 // A world's named materials onto the kit's roles: each one's own painted
 // picture folded into its colour (and its own relief dropped), and the
-// role's scan put on, at its real size. Not on the lowest tier, where
+// role's scan put on, at its real size. `keep` leaves the picture and the
+// relief where they carry the design (cobbles, ruts, coursed blocks) and
+// lays the scan's grain over them. Not on the lowest tier, where
 // everything stays as it was. Resolves to how many it dressed.
-export async function dress(materials, roles, { strength = 0.55, normal = 0.9, load = loadCore, tier = budget().tier } = {}) {
+export async function dress(materials, roles, { strength = 0.55, normal = 0.9, keep = false, load = loadCore, tier = budget().tier } = {}) {
   if (tier === 'low') return 0;
   const jobs = Object.entries(roles).map(async ([name, role]) => {
     const m = materials[name];
     if (!LIT(m) || m.userData.core) return 0;
     const scan = await load(role);
     if (!scan) return 0;
-    const mean = meanColour(m.map);
-    if (mean) m.color.multiply(mean);
-    if (m.map) m.map = null;
-    if (m.normalMap) m.normalMap = null;
+    if (!keep) {
+      const mean = meanColour(m.map);
+      if (mean) m.color.multiply(mean);
+      if (m.map) m.map = null;
+      if (m.normalMap) m.normalMap = null;
+    }
     const { metres = 2, mean: centre = 0.8 } = coreOf(role) ?? {};
     wear(m, scan, { metres, mean: centre, strength, normal });
     return 1;
   });
   return (await Promise.all(jobs)).reduce((a, b) => a + b, 0);
+}
+
+// Which role a world's material wears, by its name: the usual names of
+// stone, wood, bark, turf, plaster, iron and rock in the worlds' kits. What
+// glows (or is lit from within by a map: lit windows), what is
+// see-through, and anything named for skin, eyes, glass,
+// cloth, food, fire or the like wears nothing.
+const NOT_WORN = /skin|eye|glow|hair|lava|flame|fire|water|glass|pane|lamp|lantern|void|smoke|plume|web|silk|wax|food|bread|meat|flower|blossom|leaf|tuft|thatch|banner|flag|cloth|velvet|tapestry|fur|page|parchment|book|mouth|tooth|fang|gold|gilt|brass|pewter|ember|coal|statue|carve|emblem|shadow|robe/i;
+const ROLE_NAMES = [
+  [/bark/i, 'bark'],
+  [/wood|timber|beam|log|plank|board|fence|barn|cart/i, 'wood'],
+  [/turf|grass|lawn|moss/i, 'grass'],
+  [/plaster|adobe|daub|^house$/i, 'adobe'],
+  [/iron|steel|metal|gauntlet|armou?r/i, 'metal'],
+  [/rock|cliff|crag|boulder|obsidian/i, 'rock'],
+  [/stone|paving|wall|court|marble|ashlar|cobble|trim|vault|hearth/i, 'stone'],
+  [/road|gravel/i, 'gravel'],
+  [/sand/i, 'sand'],
+  [/snow/i, 'snow'],
+  [/mud|soil/i, 'mud'],
+  [/^ash$/i, 'ash'],
+];
+export function rolesFor(materials) {
+  const out = {};
+  for (const [name, m] of Object.entries(materials ?? {})) {
+    if (!LIT(m) || m.userData?.noCore || m.emissiveMap || NOT_WORN.test(name)) continue;
+    if (m.transparent && m.opacity < 1) continue;
+    // (cut out by its picture, a road's ragged edge: its picture is its shape)
+    if (m.alphaMap || (m.alphaTest > 0 && m.map)) continue;
+    const glow = m.emissive ? Math.max(m.emissive.r, m.emissive.g, m.emissive.b) * (m.emissiveIntensity ?? 1) : 0;
+    if (glow > 0.05) continue;
+    const hit = ROLE_NAMES.find(([re]) => re.test(name));
+    if (hit && coreOf(hit[1])) out[name] = hit[1];
+  }
+  return out;
 }

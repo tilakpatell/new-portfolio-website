@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { CORE, coreOf, dress, meanColour, wear, wearShader } from './core';
+import { CORE, coreOf, dress, meanColour, rolesFor, wear, wearShader } from './core';
 
 const scan = { map: new THREE.Texture(), normalMap: new THREE.Texture() };
 const STUB = {
@@ -92,10 +92,51 @@ describe('a world dressed in the core kit', () => {
     expect(left.userData.core).toBeUndefined();
   });
 
+  it('with `keep`, leaves the material its own picture and relief (cobbles, ruts) and lays the scan’s grain over them', async () => {
+    const map = flat(200, 180, 160);
+    const normalMap = new THREE.Texture();
+    const road = new THREE.MeshStandardMaterial({ map, normalMap, color: 0xffffff });
+    const done = await dress({ road }, { road: 'gravel' }, { keep: true, load: () => Promise.resolve(scan) });
+    expect(done).toBe(1);
+    expect(road.map).toBe(map);
+    expect(road.normalMap).toBe(normalMap);
+    expect(road.color.getHexString()).toBe('ffffff');
+    expect(road.userData.core).toBeTruthy();
+  });
+
   it('keeps the material as it was where a scan can’t be had', async () => {
     const m = new THREE.MeshStandardMaterial({ map: flat(10, 20, 30) });
     const done = await dress({ m }, { m: 'stone' }, { load: () => Promise.resolve(null) });
     expect(done).toBe(0);
     expect(m.map).not.toBe(null);
+  });
+});
+
+describe('which core surface a world’s material wears, by its name', () => {
+  it('reads the usual names of a world’s materials', () => {
+    const m = () => new THREE.MeshStandardMaterial();
+    const mats = { stone: m(), paving: m(), hearthStone: m(), timber: m(), hallBeam: m(), logs: m(), bark: m(), turf: m(), plaster: m(), iron: m(), rock: m(), thatch: m(), gollumSkin: m(), eagleEye: m(), towerGlow: m(), banner: m() };
+    expect(rolesFor(mats)).toEqual({ stone: 'stone', paving: 'stone', hearthStone: 'stone', timber: 'wood', hallBeam: 'wood', logs: 'wood', bark: 'bark', turf: 'grass', plaster: 'adobe', iron: 'metal', rock: 'rock' });
+  });
+
+  it('leaves alone what glows, what is see-through, and what isn’t lit', () => {
+    const glowing = new THREE.MeshStandardMaterial({ emissive: 0xff8800, emissiveIntensity: 1 });
+    const glass = new THREE.MeshStandardMaterial({ transparent: true, opacity: 0.4 });
+    const basic = new THREE.MeshBasicMaterial();
+    expect(rolesFor({ stone: glowing, wall: glass, rock: basic })).toEqual({});
+  });
+});
+
+describe('what keeps its own picture', () => {
+  it('a material lit from within by a map (lit windows) wears nothing', () => {
+    const house = new THREE.MeshStandardMaterial({ emissiveMap: new THREE.Texture(), emissiveIntensity: 0 });
+    expect(rolesFor({ house })).toEqual({});
+  });
+
+  it('a material cut out by its picture (a road’s ragged edge) wears nothing: its picture is its shape', () => {
+    const road = new THREE.MeshStandardMaterial({ map: new THREE.Texture(), alphaTest: 0.5 });
+    const path = new THREE.MeshStandardMaterial({ alphaMap: new THREE.Texture() });
+    const gravel = new THREE.MeshStandardMaterial({ map: new THREE.Texture() });
+    expect(rolesFor({ road, path, gravel })).toEqual({ gravel: 'gravel' });
   });
 });

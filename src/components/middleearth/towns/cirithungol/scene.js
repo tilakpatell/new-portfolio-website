@@ -14,13 +14,15 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
+import { createHouse } from '../../../../lib/three/house';
+import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
 import { fbm, makeNoise, smooth } from '../../../../lib/paint';
 import { pose } from '../../mapFigures';
 import { createParticles } from '../../kit';
 import { instances } from '../../shire/ground';
 import { LOOKS, sit } from '../../shire/people';
-import { makeSky } from '../../shire/sky';
+import { lookFrom, makeSky } from '../../shire/sky';
 import { createFx } from '../../shire/fx';
 import { makeTerrain } from '../ground';
 import { FIGURE, groundTown } from '../grounded';
@@ -139,6 +141,10 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
   const tier = dev.tier;
   const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 2000, bloom: { strength: 0.8, radius: 0.6, threshold: 0.8 }, onLost });
   const { scene, camera, renderer } = stage;
+  // the house look (lib/three/house): one shadow colour and the sky's fog
+  // on everything, under the house tone mapper; it follows the moods below
+  const houseLook = createHouse();
+  renderer.toneMapping = houseLook.toneMapping;
   renderer.info.autoReset = false;
   scene.fog = new THREE.Fog(0x0c1c16, 40, 560);
   const many = tier === 'high' ? 1 : tier === 'mid' ? 0.6 : 0.35;
@@ -156,6 +162,9 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
   scene.add(sky.dome);
 
   const kit = createCirithKit(renderer);
+  // the site's core kit of surfaces on its stone, wood, bark, plaster and
+  // iron (lib/three/core), by their names
+  dress(kit.mats ?? {}, rolesFor(kit.mats ?? {}), { strength: 0.3, normal: 0.6, keep: true });
   const mats = kit.mats ?? {};
   const zones = { vale: new THREE.Group(), stairs: new THREE.Group(), lair: new THREE.Group(), tower: new THREE.Group() };
   for (const [k, g] of Object.entries(zones)) {
@@ -425,7 +434,7 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
     scene.fog.color.copy(cur.fog);
     scene.fog.near = cur.fogNear;
     scene.fog.far = cur.fogFar;
-    renderer.toneMappingExposure = cur.exposure;
+    lookFrom(houseLook, { sky, sun, hemi, fog: scene.fog, renderer, exposure: cur.exposure });
 
     // everyone hidden, then placed by the place and what's happening
     frodo.group.visible = false;
@@ -851,6 +860,8 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
     groundTown({ renderer, scene, terrain: valeLand, outdoors: zones.vale, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x1e2420, clip: true }),
     groundTown({ renderer, scene, terrain: passLand, outdoors: zones.lair, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x1e2420, clip: true }),
   ];
+  // (last, over the floor light's own tints: one shadow colour everywhere)
+  houseLook.adopt(scene);
 
   return {
     ground: import.meta.env.DEV ? grounds[0] : null, // for the QA scripts

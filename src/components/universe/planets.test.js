@@ -6,7 +6,7 @@ import { MAP_NAMES, mapFile } from './planets';
 describe('the planet maps by detail level', () => {
   it('gives a strong card the -hq set, a desktop the standard file, and a phone or a weak device the -sm half', () => {
     expect(mapFile('earth', 'ultra')).toBe('earth-hq.webp');
-    expect(mapFile('sky', 'ultra')).toBe('sky-hq.webp');
+    expect(mapFile('sun', 'ultra')).toBe('sun-hq.webp');
     expect(mapFile('earth', 'high')).toBe('earth.webp');
     expect(mapFile('earth', 'mid')).toBe('earth-sm.webp');
     expect(mapFile('earth', 'low')).toBe('earth-sm.webp');
@@ -14,6 +14,9 @@ describe('the planet maps by detail level', () => {
   it('gives a strong card the standard file for a map that has no -hq', () => {
     expect(mapFile('transformers', 'ultra')).toBe('transformers.webp');
     expect(mapFile('invincible-night', 'ultra')).toBe('invincible-night.webp');
+    // (the sky's glow has nothing finer to give: skyShader.js draws the detail)
+    expect(mapFile('sky-glow', 'ultra')).toBe('sky-glow.webp');
+    expect(mapFile('sky-glow', 'mid')).toBe('sky-glow-sm.webp');
     expect(mapFile('transformers', 'mid')).toBe('transformers-sm.webp');
   });
   it('is the standard file when no level is given', () => {
