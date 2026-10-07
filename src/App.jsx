@@ -326,7 +326,7 @@ function Shell() {
       <main id="main" tabIndex={-1} className="relative z-10 outline-none">
         {/* (every feed page shares a page key, so it's the path that lets the nav's links clear an error) */}
         <ErrorBoundary resetKey={pathname}>
-          <Suspense fallback={<div className="min-h-[100svh]" />}>
+          <Suspense fallback={<div className="min-h-[100svh]" data-fallback />}>
             <div key={page} className="page-enter">
               {/* a world on a phone (or with Data Saver, or short of space) asks before it downloads its 3D */}
               <WorldGate pathname={pathname}>

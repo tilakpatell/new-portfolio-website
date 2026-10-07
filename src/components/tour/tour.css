@@ -40,6 +40,10 @@
 .tour-keys { margin-top: 0.7rem; font-size: 0.8125rem; }
 .tour-keys th { width: 46%; padding: 0.35rem 0.6rem 0.35rem 0; }
 .tour-keys td { padding: 0.4rem 0; }
+/* a stop's way out of the tour, to a place (a world, a game) */
+.tour-cta { margin-top: 0.8rem; }
+/* on the way to a stop's page: the card in the middle, the page under it dimmed */
+.tour[data-waiting] .tour-text { color: var(--muted); }
 @keyframes tour-in { from { opacity: 0; transform: translateY(6px); } }
 
 /* while it runs: the nav and the guide's button stay in view (they hide on scroll, and a phone tucks the button away) */

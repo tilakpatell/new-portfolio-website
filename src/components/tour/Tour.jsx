@@ -1,10 +1,10 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { RiArrowLeftLine, RiArrowRightLine, RiCheckLine } from 'react-icons/ri';
+import { RiArrowLeftLine, RiArrowRightLine, RiArrowRightUpLine, RiCheckLine } from 'react-icons/ri';
 import { textOf } from './steps';
 import { rowsFor } from './briefs';
 import { KeyTable } from '../guide/KeyTable';
-import { litBox, placeCard, resolveSteps } from '../../lib/tour';
+import { litBox, nextIndex, placeCard, resolveSteps, stepState, waitUntil } from '../../lib/tour';
 import { shortcutLabel } from '../../lib/palette';
 import { prefersReducedMotion } from '../../lib/hooks';
 import './tour.css';
@@ -16,6 +16,14 @@ import './tour.css';
 // doesn't fly), and focus goes back where it was at the end. Loaded the first
 // time a tour starts (TourHost); the stops are in steps.js, and a world's
 // basics (kind 'brief', the same cards with its keys on them) in briefs.js.
+//
+// An audience's tour crosses pages: each stop carries its chapter's `path`.
+// Arriving at a stop on another page, it asks TourHost to open it, and the
+// card waits in the middle ("One moment…") until the page is drawn, nothing
+// covers it and its target's there (lib/tour's stepState); eight seconds at
+// most, then the card shows in the middle anyway. A stop's `cta` leaves the
+// tour for a place (a world, a game) and a stop with keys: 'release' lets ?
+// and the palette's shortcut through, ending the tour so they can open.
 
 const PAD = 6; // round the lit box's target
 
@@ -34,7 +42,8 @@ const inView = (el) => {
   return r.top >= 0 && r.bottom <= window.innerHeight;
 };
 
-// the page behind, out of reach of a keyboard and a screen reader while it runs
+// the page behind, out of reach of a keyboard and a screen reader while it
+// runs (again after each page the tour opens: a new page brings its own footer)
 function inertBehind() {
   const behind = [document.getElementById('main'), document.querySelector('.site-nav'), document.querySelector('.guide-btn'), ...document.querySelectorAll('footer')];
   const set = behind.filter((el) => el && !el.inert);
@@ -43,6 +52,27 @@ function inertBehind() {
 }
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const under = (pathname, path) => pathname === path || pathname.startsWith(`${path}/`);
+// the feed's pages are one page: moving between them is the feed's own
+const FEED = /^\/(home|experience|projects|resume|contact|travel)(\/[^/]+)?$/;
+const onPage = (pathname, path) => under(pathname, path) || (FEED.test(pathname) && FEED.test(path) && !path.startsWith('/projects/') && !pathname.startsWith('/projects/'));
+
+// what covers the page, other than this tour: the intro, the cockpit, the
+// phone menu, a dialog, a world asking before it downloads
+const covered = () => {
+  const html = document.documentElement;
+  if (['covered', 'intro', 'menu'].some((k) => k in html.dataset)) return true;
+  return [...document.querySelectorAll('[aria-modal="true"], .world-gate')].some((el) => !el.closest('.tour'));
+};
+
+// the page's code has arrived and drawn: the route's Suspense fallback
+// (App.jsx, data-fallback) is gone and something's in its place
+const drawn = () => {
+  const main = document.getElementById('main');
+  return Boolean(main?.firstElementChild) && !main.querySelector(':scope > [data-fallback]');
+};
+
+const released = (e) => e.key === '?' || ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k');
 const coarse = () => window.matchMedia?.('(pointer: coarse)').matches ?? false;
 
 const WORDS = {
@@ -50,11 +80,17 @@ const WORDS = {
   brief: { count: 'The basics', skip: 'Skip the basics', done: 'Let’s go' },
 };
 
-export default function Tour({ list, kind = 'tour', onEnd }) {
-  const [steps] = useState(() => resolveSteps(list, (at) => Boolean(targetOf(at)), kind === 'brief'));
+const noop = () => {};
+
+export default function Tour({ list, kind = 'tour', start = 0, pathname, onEnd, onProgress, onNavigate = noop, onCta = noop }) {
+  // an audience's stops are on pages not open yet, so they're checked as
+  // they come; a view's tour and a world's basics are all on this page
+  const crosses = list.some((s) => s.path);
+  const [steps] = useState(() => (crosses ? list : resolveSteps(list, (at) => Boolean(targetOf(at)), kind === 'brief')));
   const [touch] = useState(coarse);
   const words = WORDS[kind] ?? WORDS.tour;
-  const [i, setI] = useState(0);
+  const [i, setI] = useState(start);
+  const [waiting, setWaiting] = useState(crosses); // on its way to the stop's page, or waiting for it
   const [box, setBox] = useState(null); // the lit box, or null for a card in the middle
   const [pos, setPos] = useState(null); // the card's { side, top, left }
   const card = useRef(null);
@@ -64,10 +100,17 @@ export default function Tour({ list, kind = 'tour', onEnd }) {
   const last = i === steps.length - 1;
   const ctx = { key: shortcutLabel() };
 
-  const go = (to) => setI(Math.max(0, Math.min(to, steps.length - 1)));
-  const forward = () => (last ? onEnd('done') : go(i + 1));
+  const dir = useRef(1); // the way it's going, for a stop skipped on the way
+  const go = (to) => {
+    dir.current = to < i ? -1 : 1;
+    setI(Math.max(0, Math.min(to, steps.length - 1)));
+  };
+  const forward = () => (waiting ? undefined : last ? onEnd('done') : go(i + 1));
   const act = useRef({});
-  act.current = { forward, back: () => go(i - 1), skip: () => onEnd('skipped') };
+  act.current = { forward, back: () => go(i - 1), skip: () => onEnd('skipped'), release: step.keys === 'release' && !waiting, pause: () => onEnd('paused') };
+  const here = useRef(pathname);
+  here.current = pathname;
+  const frees = useRef([]);
 
   // On: html[data-touring] (it brings the nav and the guide's button back if
   // they're tucked away, and holds the guide's ? key), the page behind put
@@ -76,11 +119,12 @@ export default function Tour({ list, kind = 'tour', onEnd }) {
     const html = document.documentElement;
     const from = document.activeElement;
     html.dataset.touring = '';
-    const free = inertBehind();
+    frees.current.push(inertBehind());
     const into = requestAnimationFrame(() => next.current?.focus({ preventScroll: true }));
     return () => {
       cancelAnimationFrame(into);
-      free();
+      frees.current.forEach((free) => free());
+      frees.current = [];
       delete html.dataset.touring;
       // (what started it may be gone: the guide's panel closes as the tour opens)
       const back = from instanceof HTMLElement && from.isConnected && from !== document.body ? from : document.getElementById('main');
@@ -93,6 +137,14 @@ export default function Tour({ list, kind = 'tour', onEnd }) {
   // other key gets through to the page under it.
   useEffect(() => {
     const onKey = (e) => {
+      // a stop that asks you to try ? or the palette: the key goes through
+      // to open it, and the tour ends (the guide offers to carry on); the
+      // flag comes off now, so the guide, listening next, takes the key
+      if (act.current.release && released(e)) {
+        delete document.documentElement.dataset.touring;
+        act.current.pause();
+        return;
+      }
       e.stopImmediatePropagation();
       if (e.key === 'Tab') {
         const els = [...(card.current?.querySelectorAll('button') ?? [])];
@@ -119,13 +171,47 @@ export default function Tour({ list, kind = 'tour', onEnd }) {
   // slides back in, the page scrolls, the window changes size), setting
   // state only when something's moved. A target out of view (the ships, low
   // in the panel) is scrolled to first.
+  // An audience's stop: remembered, its page opened if it isn't this one,
+  // then shown once the page is ready (or after the wait), or passed over if
+  // it's a shell stop not on this screen.
+  const live = useRef({});
+  live.current = { steps, onProgress, onNavigate };
+  useEffect(() => {
+    if (!crosses) return undefined;
+    // (the page's own changes don't restart the wait: they're read live)
+    const { steps, onProgress, onNavigate } = live.current;
+    const step = steps[i];
+    onProgress?.(step);
+    setWaiting(true);
+    if (!onPage(here.current, step.path)) onNavigate(step.path);
+    let off = false;
+    const page = { busy: covered, rendered: () => drawn() && onPage(here.current, step.path), hasTarget: (at) => Boolean(targetOf(at)) };
+    const check = (waited) => {
+      const s = stepState(step, page, waited);
+      return s === 'wait' ? null : s;
+    };
+    waitUntil(check, { tick: (fn) => setTimeout(fn, 120), now: () => performance.now(), cancelled: () => off }).then((how) => {
+      if (off || how === 'cancelled') return;
+      if (how === 'skip') {
+        const to = nextIndex(steps, i, i === 0 ? 1 : dir.current);
+        if (to !== i) return setI(to);
+      }
+      frees.current.push(inertBehind());
+      setWaiting(false);
+      requestAnimationFrame(() => next.current?.focus({ preventScroll: true }));
+    });
+    return () => {
+      off = true;
+    };
+  }, [i, crosses]);
+
   useLayoutEffect(() => {
-    let el = step.at ? targetOf(step.at) : null;
+    let el = step.at && !waiting ? targetOf(step.at) : null;
     if (el && !inView(el)) el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
     let frame = 0;
     let was = null;
     const measure = () => {
-      if (step.at && !el?.isConnected) el = targetOf(step.at);
+      if (step.at && !waiting && !el?.isConnected) el = targetOf(step.at);
       const r = el?.getBoundingClientRect();
       const view = { w: document.documentElement.clientWidth, h: window.innerHeight };
       const lit = r && r.width >= 1 ? litBox(r, view, PAD) : null;
@@ -143,12 +229,17 @@ export default function Tour({ list, kind = 'tour', onEnd }) {
     };
     measure();
     return () => cancelAnimationFrame(frame);
-  }, [step]);
+  }, [step, waiting]);
 
-  const text = textOf(step, ctx);
-  const rows = rowsFor(step, touch);
+  const text = waiting ? 'One moment…' : textOf(step, ctx);
+  // (keys: 'release' says which keys go through, not which to show)
+  const shown = waiting ? null : rowsFor(step, touch);
+  const rows = Array.isArray(shown) ? shown : null;
+  // an audience's tour counts by chapter, and its dots are the chapter's
+  const chapter = crosses ? steps.filter((s) => s.chapter === step.chapter) : steps;
+  const at = crosses ? chapter.indexOf(step) : i;
   return createPortal(
-    <div className="tour" data-kind={kind} data-lit={box ? '' : undefined}>
+    <div className="tour" data-kind={kind} data-lit={box ? '' : undefined} data-waiting={waiting ? '' : undefined}>
       {/* the clicks on the page under it stop here */}
       <div className="tour-veil" aria-hidden="true" />
       {box && <div className="tour-spot" aria-hidden="true" style={box} />}
@@ -163,18 +254,23 @@ export default function Tour({ list, kind = 'tour', onEnd }) {
         style={pos ? { top: pos.top, left: pos.left } : { visibility: 'hidden' }}
       >
         <p className="tour-count">
-          {words.count} · {i + 1} of {steps.length}
+          {crosses ? step.chapterTitle : words.count} · {at + 1} of {chapter.length}
         </p>
         <h2 id={`${ids}-title`} className="tour-title">
-          {step.title}
+          {waiting ? step.chapterTitle : step.title}
         </h2>
         <p id={`${ids}-text`} className="tour-text">
           {text}
         </p>
         {rows && <KeyTable rows={rows} className="guide-keys tour-keys" />}
+        {step.cta && !waiting && (
+          <button type="button" className="btn btn-ghost btn-sm tour-cta" onClick={() => onCta(step.cta.to)}>
+            {step.cta.label} <RiArrowRightUpLine className="h-4 w-4" aria-hidden="true" />
+          </button>
+        )}
         <ol className="tour-dots" aria-hidden="true">
-          {steps.map((s, n) => (
-            <li key={s.id} data-on={n === i ? '' : undefined} data-past={n < i ? '' : undefined} />
+          {chapter.map((s, n) => (
+            <li key={s.key ?? s.id} data-on={n === at ? '' : undefined} data-past={n < at ? '' : undefined} />
           ))}
         </ol>
         <div className="tour-buttons">
@@ -188,7 +284,7 @@ export default function Tour({ list, kind = 'tour', onEnd }) {
               <RiArrowLeftLine className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
-          <button ref={next} type="button" className="btn btn-primary btn-sm" onClick={forward}>
+          <button ref={next} type="button" className="btn btn-primary btn-sm" onClick={forward} disabled={waiting}>
             {last ? (
               <>
                 <RiCheckLine className="h-4 w-4" aria-hidden="true" /> {words.done}
@@ -202,7 +298,7 @@ export default function Tour({ list, kind = 'tour', onEnd }) {
         </div>
         {/* each stop said aloud as it comes (focus stays on Next) */}
         <p className="sr-only" aria-live="polite">
-          {i > 0 && `${i + 1} of ${steps.length}. ${step.title}. ${text}`}
+          {waiting ? `${step.chapterTitle}. One moment…` : (i > 0 || crosses) && `${at + 1} of ${chapter.length}. ${step.title}. ${text}`}
         </p>
       </div>
     </div>,
