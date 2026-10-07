@@ -43,13 +43,23 @@ export const CREW = {
   rebel: { url: '/models/galaxy/crew/rebel.glb', tall: 1.78 },
   senateguard: { url: '/models/galaxy/crew/senateguard.glb', tall: 1.85 },
   lobot: { url: '/models/galaxy/crew/lobot.glb', tall: 1.75 },
+  // (the three worlds': a Wing Guard who walks, and Dex still behind the counter that came with him)
+  wingguard: { url: '/models/galaxy/crew/wingguard.glb', tall: 1.8 },
+  dex: { url: '/models/galaxy/crew/dex.glb', tall: 1.9, still: true },
   neimoidian: { url: '/models/galaxy/crew/neimoidian.glb', tall: 1.9 },
   bibfortuna: { url: '/models/galaxy/crew/bibfortuna.glb', tall: 1.8 },
   aqualish: { url: '/models/galaxy/crew/aqualish.glb', tall: 1.8 },
   wuher: { url: '/models/galaxy/crew/wuher.glb', tall: 1.78 },
   mustafarian: { url: '/models/galaxy/crew/mustafarian.glb', tall: 2.0 },
-  // (the temple's knights alternate two faces)
-  jedi: { url: '/models/galaxy/crew/jedi.glb', tall: 1.75, faces: [{ url: '/models/galaxy/crew/jedi2.glb', tall: 1.8 }] },
+  // (the temple's knights take three faces in turn)
+  jedi: {
+    url: '/models/galaxy/crew/jedi.glb',
+    tall: 1.75,
+    faces: [
+      { url: '/models/galaxy/crew/jedi2.glb', tall: 1.8 },
+      { url: '/models/galaxy/crew/jedi3.glb', tall: 1.78 },
+    ],
+  },
   // and the galaxy's who's who, for the worlds and heroes to come
   maul: { url: '/models/galaxy/crew/maul.glb', tall: 1.75 },
   palpatine: { url: '/models/galaxy/crew/palpatine.glb', tall: 1.73 },

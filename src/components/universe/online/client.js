@@ -45,7 +45,8 @@
 // 'siege', from, msg } (another pilot's word on the Citadel's siege, read
 // with siege.js's readSiege), { type: 'war', from, msg } (another pilot's
 // word on the galaxy's war, from anywhere: tally.js's readTally), { type:
-// 'fight', from, msg } (another pilot's on the battle where you are).
+// 'fight', from, msg } (another pilot's on the battle where you are), {
+// type: 'allied', id } (an alliance made with them).
 
 import { readBuildWire, writeBuild } from '../shipyard/build';
 import { EVERYONE, readLooks, writeLook } from '../../rickmorty/wardrobe/looks';
@@ -138,7 +139,10 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     if (state === was) return;
     const who = p.name ?? 'Someone';
     if (state === 'got') feed(`${who} wants to be allies`, 'ally');
-    else if (state === 'ally') feed(`You and ${who} are allies`, 'ally');
+    else if (state === 'ally') {
+      feed(`You and ${who} are allies`, 'ally');
+      emit({ type: 'allied', id: p.id }); // (the page pays for it: economy.js's allyMade)
+    }
     else if (state === 'none' && was === 'ally') feed(typeof event === 'object' ? `${who} ended your alliance` : `You ended your alliance with ${who}`, 'info');
     else if (state === 'none' && was === 'sent' && typeof event === 'object') feed(`${who} turned down the alliance`, 'info');
     roster();

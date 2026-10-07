@@ -53,6 +53,9 @@ const SHOTS = {
   burger: { place: 'burgermart', back: 12, up: 2 },
   school: { place: 'school', back: 22, up: 4 },
   plaza: { place: 'guardians', back: 26, up: 8 },
+  plazanight: { place: 'guardians', back: 26, up: 8, time: 'night' },
+  burgernight: { place: 'burgermart', back: 12, up: 2, time: 'night' },
+  schoolnight: { place: 'school', back: 22, up: 4, time: 'night' },
   eve: { follow: 'eve', back: 16 },
   jet: { follow: 'jet', back: 70 },
   clouds: { p: [600, 1150, 900], mode: 'air', yaw: Math.PI * 0.8, pitch: 0.02 },
@@ -76,10 +79,12 @@ const SHOTS = {
   // where the missions will be (stubs for now: they frame the places, nothing is started)
   bank: { p: [0, 8, 26], mode: 'air', yaw: 1.9, pitch: -0.08 }, // the plaza's east side, where the bank goes
   chase: { p: [320, 30, -120], mode: 'air', yaw: -Math.PI / 2, pitch: -0.3 }, // west along a downtown street
-  seismic: { place: 'school', back: 30, up: 20, pitch: -0.3 }, // over the quad, the school ahead
-  maulers: { p: [40, 3, 40], mode: 'air', yaw: Math.PI, pitch: -0.04 }, // the street past the bank, at its level
-  eveescort: { follow: 'eve', back: 6, side: 8, turn: 0 }, // she's off his left, as when she escorts him
-  dadlesson: { p: [-2033, 22, 255], mode: 'air', yaw: 1.96, pitch: 0.02 }, // behind the first ring, along the course (quests.js)
+  seismic: { place: 'school', foes: ['seismic', 1, 'place'], at: 'foe', back: 16 }, // Doc Seismic over the school, Mark 16 m off him with the school behind
+  maulers: { p: [40, 3, 40], mode: 'air', yaw: Math.PI, pitch: -0.04, foes: ['mauler', 2, [40, 0, 26]] }, // the Mauler twins on the street past the bank, coming at him
+  eveescort: { follow: 'eve', back: 10, side: 8, turn: 0 }, // she's off his left, as when she escorts him
+  // the rings under way, Dad 50 m behind him and 20 m up (the camera turned round to them both)
+  dadlesson: { p: [-2033, 22, 255], mode: 'air', yaw: 1.96, look: 1.96 + Math.PI, pitch: 0.3, dad: 'lesson' },
+  porchdusk: { place: 'home', back: 10, up: 1, side: 3, time: 'dusk', dad: 'porch' }, // Dad home, beside Mom
   gdasiege: { p: [1290, 90, -395], mode: 'air', yaw: 1.42, pitch: -0.22 }, // from over the east bank, the hangar left of him
   photo: { p: [24, 3, 27], mode: 'air', yaw: -2.4, pitch: 0.22 }, // the hall from the plaza's corner
 };
@@ -143,12 +148,14 @@ for (const [name, s] of Object.entries(SHOTS)) {
     // once the scene has the time)
     await api.setTime(s.time ?? 'noon');
     if (s.fight) {
-      // the Flaxans: start them now, give a few time to come through, and face the portal
+      // the Flaxans: start them now, wait till a few are through (not on the clock: software
+      // rendering is slow, so the game's clock runs faster meanwhile), and face the portal
       sim.invadeAt = 0;
-      sim.speedup = 8; // (software rendering is slow: run the clock faster while they come through)
-      await new Promise((r) => setTimeout(r, 9000));
-      sim.speedup = 1;
       sim.h = { ...sim.h, p: [1100, 140, -410], v: [0, 0, 0], spd: 0, mode: 'air', crouch: 0, stun: 0, face: Math.PI / 2 };
+      sim.speedup = 8;
+      const near = () => sim.foes.foes.filter((e) => e.state === 'fight' && Math.hypot(e.p[0] - 1100, e.p[2] + 410) < 45).length;
+      for (let i = 0; i < 80 && (near() < 2 || sim.foes.foes.filter((e) => e.state === 'fight').length < 4); i++) await new Promise((r) => setTimeout(r, 250));
+      sim.speedup = 1;
       sim.yaw = Math.PI / 2 - 0.15;
       sim.pitch = 0.12;
       sim.dragAt = 1e9;
@@ -226,9 +233,38 @@ for (const [name, s] of Object.entries(SHOTS)) {
     } else if (s.p) {
       sim.hold = false;
       sim.h = { ...sim.h, p: [...s.p], v: s.v ?? [0, 0, 0], spd: Math.hypot(...(s.v ?? [0, 0, 0])), dir: s.v ? s.v.map((x) => x / Math.hypot(...s.v)) : [0, 0, 1], mode: s.mode, crouch: 0, stun: 0, face: s.yaw };
-      sim.yaw = s.yaw;
+      sim.yaw = s.look ?? s.yaw;
       sim.pitch = s.pitch;
       sim.dragAt = 1e9;
+    }
+    // the villains the shot wants (./foes.js): a kind, how many, where (`place`: at the place's door)
+    if (s.foes) {
+      const [kind, n, where] = s.foes;
+      let at = where;
+      if (where === 'place') {
+        const pl = api.debug.world.places.find((q) => q.id === s.place);
+        at = [pl.x, 0, pl.z];
+      }
+      api.spawn(kind, n, at);
+      // (`at: 'foe'`: Mark `back` metres from the last one spawned, on the far side from the place, looking at it)
+      if (s.at === 'foe') {
+        const e = sim.foes.foes.at(-1);
+        const d = [e.p[0] - at[0], 0, e.p[2] - at[2]];
+        const dl = Math.hypot(d[0], d[2]) || 1;
+        const u = [d[0] / dl, 0, d[2] / dl];
+        const face = Math.atan2(-u[0], -u[2]);
+        sim.h = { ...sim.h, p: [e.p[0] + u[0] * s.back, e.p[1] - 5, e.p[2] + u[2] * s.back], v: [0, 0, 0], spd: 0, mode: 'air', crouch: 0, stun: 0, face };
+        sim.yaw = face;
+        sim.pitch = 0.2;
+        sim.dragAt = 1e9;
+      }
+    }
+    // Dad, put where the shot wants him (./companions.js takes him on from there)
+    if (s.dad === 'porch') api.debug.dad(api.debug.dad().porch);
+    else if (s.dad === 'lesson') {
+      const dir = [Math.sin(s.yaw), 0, Math.cos(s.yaw)];
+      sim.quests = { ...sim.quests, lesson: { ...sim.quests.lesson, on: true, next: 1, t: 3 } };
+      api.debug.dad([s.p[0] - dir[0] * 50, s.p[1] + 20, s.p[2] - dir[2] * 50], dir);
     }
     // (a jump isn't a flight: the rings and cards it crossed on the way don't count)
     sim.quests = { ...sim.quests, prev: null };

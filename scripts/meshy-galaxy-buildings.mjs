@@ -46,6 +46,7 @@ import { BUILDINGS as FILL_LANE } from './meshy-galaxy-buildings-fill.mjs';
 import { BUILDINGS as BASES_LANE } from './meshy-galaxy-buildings-bases.mjs';
 import { BUILDINGS as THREE_LANE } from './meshy-galaxy-three.mjs';
 import { BUILDINGS as LIBRARY_LANE } from './meshy-galaxy-library.mjs';
+import { BUILDINGS as AUDIT_LANE } from './meshy-galaxy-audit.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'models', 'galaxy', 'surface');
@@ -113,6 +114,9 @@ Object.assign(BUILDINGS, BASES_LANE);
 // the three worlds' lane (scripts/meshy-galaxy-three.mjs)
 Object.assign(BUILDINGS, THREE_LANE);
 Object.assign(BUILDINGS, LIBRARY_LANE);
+// and the audit's remakes (scripts/meshy-galaxy-audit.mjs): last, so a kind
+// remade there takes over from its earlier lane's entry
+Object.assign(BUILDINGS, AUDIT_LANE);
 
 async function api(method, path, body) {
   const r = await fetch(`${API}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });

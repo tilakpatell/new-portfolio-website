@@ -7,6 +7,7 @@ import AutobotMark from './AutobotMark';
 import DecepticonMark from './DecepticonMark';
 import PortalSwirl from './rickmorty/PortalSwirl';
 import { PORTAL_QUOTES } from './rickmorty/themeQuotes';
+import { THEME_QUOTES } from '../theme/quotes';
 import { sayVoiced } from '../lib/voiced';
 import '../styles/lazy/themetransition.css';
 
@@ -17,7 +18,7 @@ const AUTOBOTS = new Set(['optimus', 'bumblebee']);
 // known for and an original sound, while the new colours land underneath.
 // `clip` is a recording that plays in place of the sound (cut to its second
 // element, in seconds); `line` is the quote said aloud over the sound, or,
-// with no clip of it, `voice` says it (lib/voiced.js).
+// with no clip of it, `voice` says it (lib/voiced.js; ../theme/quotes.js).
 // Click, tap or any key skips it. Reduced motion keeps the words, not the motion.
 
 const sfx = () => import('../lib/sfx');
@@ -26,19 +27,19 @@ const SCENES = {
   jedi: { kind: 'saber', color: '#4aa3ff', quote: 'May the Force be with you.', by: 'Han Solo', sound: (s) => s.saber(undefined, undefined, 0, 'jedi'), line: 'mayTheForce' },
   sith: { kind: 'saber', color: '#ff2a36', quote: 'I find your lack of faith disturbing.', by: 'Darth Vader', sound: (s) => s.saber(undefined, undefined, 0, 'sith'), line: 'lackOfFaith' },
   stark: { kind: 'hud', color: '#7fdcff', quote: 'I am Iron Man.', by: 'Tony Stark', sound: (s) => s.repulsor(), line: 'ironMan' },
-  arcade: { kind: 'pixels', color: '#d6246e', quote: 'Let’s-a go!', by: 'Player one', sound: (s) => s.coin() },
+  arcade: { kind: 'pixels', color: '#d6246e', ...THEME_QUOTES.arcade, sound: (s) => s.coin() },
   heisenberg: { kind: 'tiles', color: '#5ec8f0', quote: 'I am the one who knocks.', by: 'Walter White', sound: (s) => s.knock(), line: 'oneWhoKnocks' },
   dunder: { kind: 'memo', color: '#1f4e8c', quote: 'Limitless paper in a paperless world.', by: 'Dunder Mifflin', sound: (s) => s.ding() , clip: ['officeTheme', 7] },
   tortuga: { kind: 'ripple', color: '#d9a436', quote: 'Take what you can! Give nothing back!', by: 'The pirates’ toast', clip: ['pirates', 6], line: 'takeWhatYouCan' },
-  pearl: { kind: 'ripple', color: '#f2c45a', quote: 'Now, bring me that horizon.', by: 'Captain Jack Sparrow', clip: ['pirates', 6] },
+  pearl: { kind: 'ripple', color: '#f2c45a', ...THEME_QUOTES.pearl, clip: ['pirates', 6] },
   dutchman: { kind: 'ripple', color: '#5df2c0', quote: 'Do you fear death?', by: 'Davy Jones', clip: ['pirates', 6], line: 'fearDeath' },
   raga: { kind: 'ripple', color: '#e8871e', quote: 'Sa. Where every raga begins and ends.', by: 'Raga', sound: null },
-  shire: { kind: 'ring', color: '#e8b44c', quote: 'Even the smallest person can change the course of the future.', by: 'Galadriel', clip: ['lotr', 7] },
+  shire: { kind: 'ring', color: '#e8b44c', ...THEME_QUOTES.shire, clip: ['lotr', 7] },
   mordor: { kind: 'ring', color: '#ff6a1a', quote: 'One Ring to rule them all.', by: 'J.R.R. Tolkien', clip: ['lotr', 7], line: 'oneRing' },
   optimus: { kind: 'transform', color: '#c8102e', quote: 'Autobots, roll out!', by: 'Optimus Prime', sound: (s) => s.transform(), clip: ['transform'], line: 'autobotsRollOut' },
-  megatron: { kind: 'transform', color: '#8b5cf6', quote: 'Peace through tyranny.', by: 'Megatron', sound: (s) => s.transform(), clip: ['transform'] },
+  megatron: { kind: 'transform', color: '#8b5cf6', ...THEME_QUOTES.megatron, sound: (s) => s.transform(), clip: ['transform'] },
   bumblebee: { kind: 'transform', color: '#f7c600', quote: 'Bumblebee, ready to roll.', by: 'Bumblebee', sound: (s) => s.transform(), clip: ['transform'] },
-  shockwave: { kind: 'transform', color: '#a855f7', quote: 'Logic dictates only one outcome.', by: 'Shockwave', sound: (s) => s.transform(), clip: ['transform'] },
+  shockwave: { kind: 'transform', color: '#a855f7', ...THEME_QUOTES.shockwave, sound: (s) => s.transform(), clip: ['transform'] },
   soundwave: { kind: 'transform', color: '#4fd8ff', quote: 'Soundwave superior. Autobots inferior.', by: 'Soundwave', sound: (s) => s.transform(), clip: ['transform'], line: 'soundwaveSuperior' },
   portal: { kind: 'portal', color: '#97ce4c', quote: 'Wubba lubba dub dub!', by: 'Rick Sanchez', cue: 'portalOpen', clip: ['wubba'] },
   morty: { kind: 'portal', color: '#f3d84b', ...PORTAL_QUOTES.morty, cue: 'portalOpen' },

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { WAR_SYSTEMS } from './gcw';
 import { SIDES } from './sides';
-import { CAST, CAST_KEYS, GENERALS, HUTT_CAST_KEYS, POSTS, castFor, say } from './warCast';
+import { CAST, CAST_KEYS, GENERALS, HUTT_CAST_KEYS, POSTS, castFor, say, voiceOfCommander } from './warCast';
+import { voiceOf } from '../../lib/voiced';
 
 describe('the commanders', () => {
   it('each has a name, a colour, the sides they command for, and every line', () => {
@@ -45,14 +46,14 @@ describe('castFor and say', () => {
     const [sys, id] = Object.entries(posts)[0];
     expect(castFor(sys, side)).toBe(CAST[id]);
   });
-  it('says a line on the comms with their name on it, the rank filled', () => {
+  it('says a line on the comms with their name and their voice on it, the rank filled', () => {
     const c = CAST[GENERALS.rebel];
     const ex = say(c, 'join', { rank: 'Flight Cadet' });
     expect(ex).toHaveLength(1);
     const [who, text, clip, speaker] = ex[0];
     expect(who).toBe('comms');
     expect(clip).toBeUndefined();
-    expect(speaker).toEqual({ name: c.name, color: c.color });
+    expect(speaker).toEqual({ name: c.name, color: c.color, voiced: 'ackbar' });
     expect(text).not.toMatch(/\{rank\}/);
     if (c.lines.join.includes('{rank}')) expect(text).toContain('Flight Cadet');
   });
@@ -62,5 +63,24 @@ describe('castFor and say', () => {
     expect(say(c, 'front', { rank: 'Pilot', again: true })[0][1]).toBe(c.lines.again.replace('{rank}', 'Pilot'));
     expect(say(c, 'nothing', {})).toEqual([]);
     expect(say(null, 'front', {})).toEqual([]);
+  });
+});
+
+describe('the commanders’ voices', () => {
+  it('each speaks in their own, by their id, Windu and Gunray in the ones they have on the ground', () => {
+    expect(voiceOfCommander(CAST.vader)).toBe('vader');
+    expect(voiceOfCommander(CAST.windu)).toBe('mace');
+    expect(voiceOfCommander(CAST.gunray)).toBe('nute');
+    for (const c of Object.values(CAST)) {
+      const v = voiceOfCommander(c);
+      if (c.id === 'jabba') continue;
+      expect(v, c.id).toMatch(/^[a-z]+$/);
+      expect(voiceOf(v), c.id).toBe(v); // (nobody else's, and not the radio's)
+    }
+    expect(voiceOfCommander(null)).toBeNull();
+  });
+  it('Jabba’s Huttese has none, so his lines go out in the radio’s', () => {
+    expect(voiceOfCommander(CAST.jabba)).toBeNull();
+    expect(say(CAST.jabba, 'front')[0][3]).toEqual({ name: CAST.jabba.name, color: CAST.jabba.color });
   });
 });

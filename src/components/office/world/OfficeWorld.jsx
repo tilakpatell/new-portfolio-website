@@ -1003,7 +1003,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         <Convo
           className="dm-convo"
           title={hud.talking === 'phones' ? `Reception · call ${Math.min(CALL_COUNT, callOf(hud.line) + 1)} of ${CALL_COUNT}` : 'Michael’s office'}
-          name={node.who === 'narrator' ? '' : (SPEAKERS[node.who] ?? '')}
+          name={node.who === 'narrator' || node.told ? '' : (SPEAKERS[node.who] ?? '')}
           node={node}
           touch={touch}
           onPick={(i) => talkOnward(i)}
