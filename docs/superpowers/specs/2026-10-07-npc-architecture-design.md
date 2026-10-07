@@ -32,12 +32,12 @@ Action = {
   start(ctx) → state,                // its own state, kept by the actor; may play a clip through ctx.body
   step(state, ctx, dt) → 'running' | 'done' | 'failed',
   end(state, ctx, why),              // why: 'done' | 'failed' | 'cut' | 'replaced'; always called once
-  priority = 0,                      // a higher one cuts a lower one; equal replaces only if `replaces`
+  priority = 0,                      // a higher one cuts a lower one; an equal one replaces it unless its cutBy is 'higher' or 'none'
   cutBy = 'any' | 'higher' | 'none', // Unity's interruption source, as a word
-  replaces = false,                  // may the same action restart itself (a punch chain)
+  replaces = false,                  // may the same action restart itself (a punch chain); also lets an equal one replace a 'higher'
   body: { base?, clip?, layer?, hold? } | (state, ctx) → that,  // what body.js should see while it runs
   recover: null | string,            // the action to run when this one fails (cover's "hold")
-  cooldown = 0,                      // seconds before it can start again (utility's cooldown)
+  cooldown = 0,                      // seconds before it can start again (utility's cooldown), counted from any end, so a cut one can't restart in a loop
 };
 ```
 
@@ -53,7 +53,7 @@ The handoff's Cybertron posture (cover, flank), the surface's `search` HUD mark 
 
 ### `fixedStep.js`
 
-`createFixedStep({ hz, max = 4 })` → `{ step(dt, fn) → n, alpha, reset() }`: Fiedler's accumulator, clamped at `max` steps a frame (the rest dropped, never fast-forwarded: a tab coming back runs `max` steps and no more), `alpha` the fraction into the next step for a drawing layer that interpolates. `reset()` on `visibilitychange`. It replaces nothing yet; Mario 64's, Portal panic's, the Battlefront's and Minecraft's loops are the optional migration below, and `schedule.js` is its first user.
+`createFixedStep({ hz, max = 4 })` → `{ step(dt, fn) → n, alpha, reset() }`: Fiedler's accumulator, clamped at `max` steps a frame (the rest dropped, never fast-forwarded: a tab coming back runs `max` steps and no more), `alpha` the fraction into the next step for a drawing layer that interpolates. `reset()` on `visibilitychange`. It replaces nothing yet and has no user yet: `schedule.js` keeps its own per-lane accumulators (a step per lane per agent, not one clock), and Mario 64's, Portal panic's, the Battlefront's and Minecraft's loops are the optional migration below.
 
 ### `schedule.js`
 
@@ -136,7 +136,7 @@ Each is one pull request on this branch's lane, mergeable on its own, with the g
 
 - **M1, the modules**: `action.js`, `fixedStep.js`, `schedule.js`, `trace.js`, `inspect.js`, `seeded.streams`, `rigCheck.js`, with their tests. No world changes.
 - **M2, the universe map**: the brains, hunters, wing, director and spawns on the visit's streams; the brains and hunters on the schedule (sense 20 Hz, think 10 Hz; the universe's `npcRules.update` and `hunterRules.update` take the due list); the nemesis's `pick` scores and every brain's mode into the trace; the inspector registered; backlog item 41 (a forward fire cone in `npcRules.js`, with the nemesis scenario). `universe-npc-check.mjs` prints the scheduler's stats and saves the trace on failure.
-- **M3, Cybertron**: `stepEnemies` on actors: `hold`, `advance`, `strafe`, `cover` (a `spatial.pickPlace` over `candidates` round the enemy, `cover(you)` by `segmentClear`, `nearTo` the player's range), `flank` (the other side of him from his last shot), `search` (the belief's guess, then a sweep), `fire` (the token claimed only with the line clear and released on a miss); the sim seeded; `scene.js:484` through `bodyFrom` with the actor's body (`rig.js`'s `figure` gaining `locomote` from the animator, as living-characters W4 planned); tests for belief loss, the guess, cover picked behind a solid, a token released on a blocked shot, and the token cap; a `cybertron-check.mjs` in headless Chromium through `__CY__`.
+- **M3, Cybertron**: `stepEnemies` on actors (the sim steps every Decepticon, sensing at 20 Hz inside it, and times itself for the inspector; a `createSchedule` over them is in the handoff's Left): `hold`, `advance`, `strafe`, `cover` (a `spatial.pickPlace` over `candidates` round the enemy, `cover(you)` by `segmentClear`, `nearTo` the player's range), `flank` (the other side of him from his last shot), `search` (the belief's guess, then a sweep), `fire` (the token claimed only with the line clear and released on a miss); the sim seeded; `scene.js:484` through `bodyFrom` with the actor's body (`rig.js`'s `figure` gaining `locomote` from the animator, as living-characters W4 planned); tests for belief loss, the guess, cover picked behind a solid, a token released on a blocked shot, and the token cap; a `cybertron-check.mjs` in headless Chromium through `__CY__`.
 - **M4, the pipeline check**: `rigCheck.js`, `scripts/rig-check.mjs` and its test over the committed rigs; `retarget` by role; `NAMES` and `MESHY_MASKS` from `ROLES`; `hipsOf` as the one hips reading in `clipLibrary`, `meshyCast`, `footScene`, `crew.js` and `rv.js`. The orphan troopers in `public/models/galaxy/troops/` are reported by the script and left for the living-characters session's catalog switch.
 - **M5, Mario and the watchers' bodies**: Bob-ombs on the Goombas' `spot` (`foes.js`); the Middle-earth town scenes' `moving` sets gaining `suspicious` and `search` and the watchers' search seeded (the towns' scenes, not their cast: the cast is the living-characters session's).
 - **M6, docs**: `docs/architecture.md`'s `lib/ai` and `lib/three` lines, `HANDOFF-npc-intelligence.md`'s Done and Left, the backlog.
