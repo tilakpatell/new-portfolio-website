@@ -7,7 +7,9 @@ import AutobotMark from '../../AutobotMark';
 import DecepticonMark from '../../DecepticonMark';
 import { audioContext } from '../../../lib/audio';
 import { local, prefersReducedMotion, useMediaQuery } from '../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../lib/voiced';
 import { ROLL, jump, newRun, nextWall, stagesFor, stepRun, transform } from './rules';
+import { CALL, LEADER, MOTTO } from './lines';
 import { autopilot } from './pilot';
 import './rollout.css';
 
@@ -19,6 +21,7 @@ const sfx = () => import('../../../lib/sfx');
 const cue = () => import('../../games/gameAudio');
 const play = (name) => sfx().then((s) => s[name]?.());
 const playCue = (name) => cue().then((s) => s[name]?.());
+const clip = (id) => import('../../../lib/clips').then((c) => c.playClip(id)).catch(() => null);
 const buzz = (ms) => {
   try {
     navigator.vibrate?.(ms);
@@ -34,8 +37,8 @@ const REACHED = { autobot: 'tp-rollout-reached', decepticon: 'tp-rollout-reached
 const LEVELS = Object.keys(ROLL.levels);
 const botsOf = (side) => Object.keys(ROLL.bots).filter((id) => ROLL.bots[id].side === side);
 const SIDE = {
-  autobot: { title: 'Roll out', call: (bot) => (bot === 'optimus' ? 'Autobots, roll out' : 'Bumblebee, roll out'), won: 'Till all are one.', lost: 'Autobot down.', foes: 'Decepticons', behind: 'Vehicons behind you', Mark: AutobotMark, intro: 'Drive fast as a vehicle, fight as a robot. Transform in time: jump the roadblocks, take the ramps over the broken bridges, and get past Starscream, Shockwave and Megatron. The later you change, the more it pays; shoot a boss while it charges up to stagger it.' },
-  decepticon: { title: 'Decepticons, attack', call: () => 'Decepticons, attack', won: 'Peace through tyranny.', lost: 'Decepticon down.', foes: 'Autobots', behind: 'Autobots behind you', Mark: DecepticonMark, intro: 'Run the Autobots off the road and take their capital. Transform in time: jump the roadblocks, take the ramps over the broken bridges, and get past Wheeljack, Ultra Magnus and Optimus Prime at the gates of Iacon. The later you change, the more it pays; shoot a boss while it charges up to stagger it.' },
+  autobot: { title: 'Roll out', call: (bot) => (bot === 'optimus' ? CALL.optimus : CALL.bumblebee), won: MOTTO.autobot, lost: 'Autobot down.', foes: 'Decepticons', behind: 'Vehicons behind you', Mark: AutobotMark, intro: 'Drive fast as a vehicle, fight as a robot. Transform in time: jump the roadblocks, take the ramps over the broken bridges, and get past Starscream, Shockwave and Megatron. The later you change, the more it pays; shoot a boss while it charges up to stagger it.' },
+  decepticon: { title: 'Decepticons, attack', call: () => CALL.decepticon, won: MOTTO.decepticon, lost: 'Decepticon down.', foes: 'Autobots', behind: 'Autobots behind you', Mark: DecepticonMark, intro: 'Run the Autobots off the road and take their capital. Transform in time: jump the roadblocks, take the ramps over the broken bridges, and get past Wheeljack, Ultra Magnus and Optimus Prime at the gates of Iacon. The later you change, the more it pays; shoot a boss while it charges up to stagger it.' },
 };
 const readBest = (side) => {
   const b = local.get(BEST[side], {});
@@ -101,6 +104,7 @@ function Game({ soft, fail, side }) {
   useEffect(() => {
     local.set(PREFS, { bot: picked.autobot, dbot: picked.decepticon, level });
   }, [picked, level]);
+  useEffect(() => stopVoiced, []); // the leaders stop talking when the game goes
 
   // changing sides on the page: that side's records, and any run is over
   const sideRef = useRef(side);
@@ -182,6 +186,7 @@ function Game({ soft, fail, side }) {
         local.set(BEST[g.side], next);
       }
       engineRef.current?.set({ on: false });
+      if (won) sayVoiced(LEADER[g.side], MOTTO[g.side]); // the side's word, in its leader's voice
       setUi((u) => ({ ...u, result: { won, score: g.score, isBest, prev, stage: g.stage, kills: g.kills, cubes: g.taken, nears: g.nears, clears: g.clears, stunts: g.stunts, text: endText.current } }));
       setPhase(won ? 'won' : 'lost');
     },
@@ -335,8 +340,12 @@ function Game({ soft, fail, side }) {
     });
     setPhase('running');
     say(S.call(bot), 'stage');
+    // and the call aloud: Optimus's own recording, Megatron's voice where it's been made (Bumblebee's is beeps)
+    stopVoiced();
+    if (bot === 'optimus') clip('autobotsRollOut');
+    else if (side === 'decepticon') sayVoiced(LEADER.decepticon, CALL.decepticon);
     wrap.current?.focus({ preventScroll: true });
-  }, [S, bot, level, say, startStage]);
+  }, [S, bot, level, say, side, startStage]);
 
   const pause = useCallback((on) => {
     if (on && phaseRef.current === 'running') {

@@ -8,7 +8,9 @@ import { use3D } from '../../../lib/gpu';
 import { local, prefersReducedMotion, useFrameLoop } from '../../../lib/hooks';
 import { audioContext } from '../../../lib/audio';
 import { capturePointer } from '../../../lib/pointer';
+import { useSays } from '../hq/useSays';
 import { KINDS, LANE, RUN, STONE_AT, leap, moveLane, newRun, smash, startRun, stepRun } from './rules';
+import { SPOKEN, TEACH } from './lines';
 import './smash.css';
 import '../../../styles/lazy/avengers.css';
 
@@ -27,15 +29,9 @@ const STEP = 1 / 120;
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 const fine = typeof window !== 'undefined' ? window.matchMedia?.('(hover: hover) and (pointer: fine)') : null;
 
-// What Banner would tell you, as each new thing comes down the avenue.
-const TEACH = {
-  soldier: () => (fine?.matches ? 'Chitauri on foot. Smash them as they come into reach: Space, or click.' : 'Chitauri on foot. Tap to smash them as they come into reach.'),
-  barricade: () => (fine?.matches ? 'A barricade. Smash through it, or leap it: ↑.' : 'A barricade. Smash through it, or swipe up to leap it.'),
-  car: () => 'Wrecked cars. Smash one for big points, or leap it.',
-  crater: () => (fine?.matches ? 'Craters. You can’t smash a hole: leap just before the edge.' : 'Craters. You can’t smash a hole: swipe up just before the edge.'),
-  barrier: () => (fine?.matches ? 'Energy walls. Nothing goes through those, not even you. Change lanes: ← →.' : 'Energy walls. Nothing goes through those, not even you. Swipe sideways.'),
-  chariot: () => 'Chariots. A lane glowing red is about to burn: get out of it, or be in the air when it goes up.',
-};
+// what Banner tells you as each new thing comes down the avenue (./lines.js),
+// in his own voice where it's been made (lib/voiced.js)
+const VOICED = new Set(SPOKEN);
 const SMASH_SOUND = { soldier: 'hit', barricade: 'crumble', car: 'blast', barrier: 'shatter' };
 
 // Run a game forward quickly and safely (for the browser checks): in a rage
@@ -64,6 +60,7 @@ export default function SmashRun({ fallback }) {
   const [ui, setUi] = useState({ phase: 'ready', d: 0, hp: RUN.hearts, score: 0, rage: 0, raging: 0, message: '', title: '', result: null, stone: false });
   const [paused, setPaused] = useState(false);
   const playing = ui.phase === 'run';
+  useSays('banner', ui.message, VOICED);
 
   const sync = useCallback((extra = {}) => {
     const g = game.current;
@@ -145,7 +142,7 @@ export default function SmashRun({ fallback }) {
           case 'section':
             if (e.fresh && TEACH[e.fresh]) {
               play('drum');
-              important = { title: e.title, message: TEACH[e.fresh]() };
+              important = { title: e.title, message: TEACH[e.fresh](fine?.matches) };
             } else important = { title: e.title };
             break;
           case 'heal':

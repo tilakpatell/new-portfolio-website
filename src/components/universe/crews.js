@@ -26,7 +26,7 @@ export const CREWS = [
       rick: { name: 'Rick', color: '#a8dcf0', voice: 'rick' },
       morty: { name: 'Morty', color: '#f5d33f', voice: 'morty' },
       meeseeks: { name: 'Mr. Meeseeks', color: '#7cc8ec', voice: 'morty' },
-      birdperson: { name: 'Birdperson', color: '#c98b52', voice: null },
+      birdperson: { name: 'Birdperson', color: '#c98b52', voice: 'birdperson' }, // (no blips: his own voice, where it's made)
     },
     // the Citadel's siege (siege.js): its shield, a generator going, the
     // core shrugging off the lasers, the whole thing going up, and back

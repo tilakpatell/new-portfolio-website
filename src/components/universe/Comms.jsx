@@ -3,7 +3,8 @@ import { linesFor } from './crews';
 import { speakerFor } from './speakers';
 import { playClip, playFile } from '../../lib/clips';
 import { useMouth } from '../../lib/mouth';
-import { preloadVoiced, voicedSrc } from '../../lib/voiced';
+import { preloadVoiced, voiceOf, voicedSrc } from '../../lib/voiced';
+import { retold } from './callers';
 import { alarmSound, arrivalSound, boomSound, boostSound, bumpSound, crashSound, drySound, enemyFireSound, fallSound, fireSound, flareSound, flybySound, gadgetSound, gunSound, hitSound, impactSound, interdictSound, jumpSound, launchSound, popSound, portalSound, respawnSound, riftSound, shieldSound, speak, switchSound } from './sounds';
 import Face from './Faces';
 
@@ -76,10 +77,12 @@ export default function Comms({ crew, reduced, control }) {
       setLine({ who, text, n: n.current, speaker });
       const least = clip ? 1200 + text.length * 32 : 1500 + text.length * 42; // time to read it
       const started = performance.now();
-      // their own voice: the recording, or the line made in their voice
+      // their own voice: the recording, or the line made in their voice (a
+      // caller on the radio's: speakers.js)
       let h = clip ? await playClip(clip, { voice: true }) : null;
-      if (!h && speaker.voice) {
-        const src = await voicedSrc(who, text);
+      const voice = voiceOf(speaker.voiced ?? who);
+      if (!h && voice) {
+        const src = await voicedSrc(voice, text);
         if (src && alive.current) h = await playFile(src, { voice: true });
       }
       if (h) {
@@ -270,7 +273,7 @@ export default function Comms({ crew, reduced, control }) {
           const lines = linesFor(crew, 'npc', e.id, e.key, e.sub);
           // (an offer or a tip waits for the hello it comes with to be said)
           const news = e.key === 'tip' || e.key === 'offer';
-          if (lines) say(e.part ? lines.map(([who, text, clip]) => [who, text.replace('{part}', e.part), clip]) : lines, { urgent: e.key === 'hello', after: news });
+          if (lines) say(e.part ? lines.map((l) => retold(crew, l, l[1].replace('{part}', e.part))) : lines, { urgent: e.key === 'hello', after: news });
         } else if (e.type === 'sector') {
           portalSound(); // (through a portal into another sector of the map: portals.js)
         } else if (e.type === 'wonder') {

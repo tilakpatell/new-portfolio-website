@@ -820,7 +820,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
           {toast.text}
         </p>
       )}
-      {bubble && walking && <Bubble ref={bubbleRef} name={bubble.name} line={bubble.line} />}
+      {bubble && walking && <Bubble ref={bubbleRef} who={bubble.id} name={bubble.name} line={bubble.line} />}
       {here && walking && (
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>

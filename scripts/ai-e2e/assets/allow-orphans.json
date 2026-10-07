@@ -1,23 +1,5 @@
 {
  "why": "Voice lines found when the asset tests were first run (2026-10-07). unlisted: mp3s the manifest does not list (the site never plays them). unsaid: lines in the manifest whose text the site no longer says (edited or removed since they were made). Each is a finding: delete the file, or list it, then take it off. The lists only shrink.",
- "unlisted": [
-  "han/b5034cf5.mp3",
-  "jesse/7999f7af.mp3",
-  "jesse/c5153d25.mp3",
-  "rick/e2830eb2.mp3",
-  "walt/b05f8f9c.mp3"
- ],
- "unsaid": [
-  "jesse/187e6f36.mp3",
-  "rick/389faf52.mp3",
-  "rick/588a65e0.mp3",
-  "rick/5b1bf02a.mp3",
-  "rick/60623336.mp3",
-  "rick/61f8fbcb.mp3",
-  "rick/8f142ae8.mp3",
-  "rick/ae94f9c4.mp3",
-  "rick/c8bc6be9.mp3",
-  "rick/c9a5ca23.mp3",
-  "walt/cbb923f4.mp3"
- ]
+ "unlisted": [],
+ "unsaid": []
 }

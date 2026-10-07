@@ -5,6 +5,16 @@
 
 export const newTalk = (convo) => ({ at: convo.start, end: null });
 
+// Whose voice someone you walk up to speaks in: their id without the scene
+// it's for ('gimli-wood' is Gimli; 'strider-dawn' is Strider, whom
+// lib/voiced.js hears as Aragorn), or none for the ones who say nothing
+// aloud (the stone trolls, the man with a carrot).
+const SILENT = new Set(['trolls', 'carrot']);
+export function personVoice(id) {
+  const who = typeof id === 'string' ? id.split('-')[0] : '';
+  return who && !SILENT.has(who) ? who : null;
+}
+
 export const talkNode = (convo, talk) => convo.nodes[talk.at] ?? null;
 
 // On from where the talk is: by the choice picked, or to what comes next.

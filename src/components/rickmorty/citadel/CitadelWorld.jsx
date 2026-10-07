@@ -18,7 +18,8 @@ import { SHOUTS } from './shouts';
 import { HUNT, leaveHunt, newHunt, stepHunt } from './locos';
 import { BLOCKS as TOWN_BLOCKS, CAST as TOWN_CAST, COLLIDERS as TOWN_COLLIDERS, COP, EXIT as TOWN_EXIT, MORTYTOWN, START as TOWN_START, WALKS as TOWN_WALKS, WALLS as TOWN_WALLS, validTownAt } from './mortytown';
 import { LINE, dropLayer, newLine, stepLine } from './wafers';
-import { useVoiced } from '../../../lib/useVoiced';
+import { voiceFor } from './voicelines';
+import { sayVoiced } from '../../../lib/voiced';
 import '../../middleearth/shire/shire.css';
 import '../../middleearth/towns/bree/bree.css';
 import Wardrobe from '../wardrobe/Wardrobe';
@@ -70,6 +71,20 @@ const TOWN_PEOPLE = [...TOWN_CAST, ...TOWN_WALKS];
 const LOCO_NAMES = { 'loco-a': 'The Loco with the face tattoo', 'loco-b': 'The Loco in the white T-shirt', 'loco-c': 'The Loco in the vest' };
 // the Locos are out once their quest's open, and until it's done
 const huntOpen = (p) => p.quests.some((q) => q.id === 'locos' && q.open && !q.done);
+
+// A line in its speaker's voice while it's up (lib/voiced.js), as useVoiced
+// says it, except that its going stops only its own line: the bubbles and
+// the toasts come and go on their own clocks, so neither cuts the other off
+// (a new line still stops the last).
+function useSaid(who, text) {
+  useEffect(() => {
+    if (!who || !text) return undefined;
+    const said = sayVoiced(who, text);
+    return () => {
+      said.then((h) => h?.stop());
+    };
+  }, [who, text]);
+}
 
 export default function CitadelWorld({ onLeave }) {
   const three = use3D();
@@ -141,7 +156,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   const lines = useRef({});
   const bubbleRef = useRef(null);
   const say = useCallback((text, bad = false) => setToast(typeof text === 'string' ? { text, bad, at: Date.now() } : { text: text.say, who: text.who, bad, at: Date.now() }), []); // a string, or a SHOUTS line (said in its Rick's voice)
-  useVoiced(toast?.who, toast?.text); // the Citadel's people, in Rick's voice where it's been made (lib/voiced.js)
+  useSaid(toast?.who, toast?.text); // the Citadel's people, in Rick's voice where it's been made (lib/voiced.js)
+  useSaid(bubble?.who, bubble?.line); // and whoever you're passing, in theirs (./voicelines.js)
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -740,7 +756,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         const c = TOWN_PEOPLE.find((x) => x.id === person.slice(5));
         const n = lines.current[person] ?? 0;
         lines.current[person] = n + 1;
-        setBubble({ id: person, name: c.name, line: c.lines[n % c.lines.length] });
+        const line = c.lines[n % c.lines.length];
+        setBubble({ id: person, name: c.name, line, who: voiceFor(c, line) });
       } else if (person) {
         const c = CAST.find((x) => x.id === person);
         let line;
@@ -755,7 +772,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           lines.current[person] = n + 1;
           line = c.lines[n % c.lines.length];
         }
-        setBubble({ id: person, name: c.name, line });
+        setBubble({ id: person, name: c.name, line, who: voiceFor(c, line) });
       } else setBubble(null);
     }
 
