@@ -17,7 +17,7 @@
 // whose detail is in the shape, not the paint).
 //
 //   node scripts/flatten-glb.mjs <in.glb> [out.glb] [--colours 16] [--scale 2]
-//     [--palette '#aabbcc,#ddeeff'] [--pull 0.5] [--vertex] [--blur 96] [--keep-normal]
+//     [--palette '#aabbcc,#ddeeff'] [--pull 0.5] [--vertex] [--blur 96] [--keep-normal] [--keep-pbr]
 //
 // (out defaults to in: the model is replaced; git keeps the old one.)
 //
@@ -244,6 +244,9 @@ async function main() {
         tex.setImage(new Uint8Array(webp)).setMimeType('image/webp');
         report.push(`${tex.getName() || 'atlas'} ${info.width}px: ${got.colours.join(' ')}`);
       }
+      // (--keep-pbr: a model in a world that shades it physically keeps its
+      // metal, roughness and relief maps; only its colour goes flat)
+      if (argv.includes('--keep-pbr')) continue;
       mat.setMetallicRoughnessTexture(null).setRoughnessFactor(0.85).setMetallicFactor(0);
       if (!argv.includes('--keep-normal')) mat.setNormalTexture(null);
     }
