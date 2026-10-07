@@ -71,6 +71,37 @@ describe('createSchedule', () => {
     expect(c.think).toBeLessThanOrEqual(21);
   });
 
+  it('rates given in part keep the defaults for the rest', () => {
+    const { s, run } = clocked({ rates: { think: 5 } });
+    const a = at(1, 'a');
+    s.add(a);
+    const c = counts(run, [a], 2).get(a);
+    expect(c.sense).toBeGreaterThanOrEqual(38);
+    expect(c.sense).toBeLessThanOrEqual(41);
+    expect(c.think).toBeGreaterThanOrEqual(9);
+    expect(c.think).toBeLessThanOrEqual(11);
+  });
+
+  it('throws on an unknown lane, not a brain that never thinks', () => {
+    const s = createSchedule();
+    expect(() => s.add(at(1, 'a'), { lane: 'thinc' })).toThrow(/thinc/);
+    // a lane of the caller's own is a lane once it has a rate
+    expect(() => createSchedule({ rates: { patrol: 2 } }).add(at(1, 'b'), { lane: 'patrol' })).not.toThrow();
+  });
+
+  it('stats carries each agent’s significance from its rank', () => {
+    const { s, run } = clocked();
+    for (const a of [at(10, 'near'), at(60, 'far'), at(200, 'gone')]) s.add(a);
+    run(0.016);
+    const { sig } = s.stats();
+    expect(sig.near).toBeCloseTo(0.9);
+    expect(sig.far).toBeCloseTo(0.4);
+    expect(sig.gone).toBe(0);
+    // a copy: the caller's edits don't reach the schedule
+    sig.near = 0;
+    expect(s.stats().sig.near).toBeCloseTo(0.9);
+  });
+
   it('an ambient agent thinks at 4 Hz, and one that doesn’t sense never does', () => {
     const { s, run } = clocked();
     const a = at(1, 'a');
@@ -164,7 +195,8 @@ describe('createSchedule', () => {
     // a whole step at once: every agent due
     const big = run(0.1, null);
     const thought = big.due.length;
-    expect(thought).toBeGreaterThanOrEqual(1);
+    // 1 ms of 0.1 ms thinks is ten, give or take the edge
+    expect(thought).toBeGreaterThanOrEqual(9);
     expect(thought).toBeLessThanOrEqual(11);
     expect(s.stats().skipped).toBeGreaterThanOrEqual(49 - 10);
     expect(thought + s.stats().skipped).toBeGreaterThanOrEqual(50);

@@ -147,7 +147,10 @@ export function createActor({ actions, id, trace = null, now = () => 0 } = {}) {
       if (run) finish(why, run.ctx);
     },
     step(ctx = {}, dt = 0) {
-      clock += Number.isFinite(dt) && dt > 0 ? dt : 0;
+      // one clean dt for the clock and the action alike: a NaN handed on
+      // would make goTo's stillness NaN, and it would never come unstuck
+      dt = Number.isFinite(dt) && dt > 0 ? dt : 0;
+      clock += dt;
       if (!run) return IDLE;
       const r = run;
       r.ctx = ctx;

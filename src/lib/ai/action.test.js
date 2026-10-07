@@ -209,6 +209,23 @@ describe('goTo', () => {
     expect(actor.current()).toBeNull();
   });
 
+  it('a bad dt reaches the action as 0, so goTo’s stillness never goes NaN', () => {
+    const seen = [];
+    const actor = createActor({ id: 'a', actions: { run: { step: (st, ctx, dt) => (seen.push(dt), 'running') } } });
+    actor.want('run', {});
+    for (const dt of [NaN, -1, Infinity, undefined, 0.1]) actor.step({}, dt);
+    expect(seen).toEqual([0, 0, 0, 0, 0.1]);
+
+    const me = { pos: { x: 0, z: 0 } };
+    const go = createActor({ id: 'g', actions: { go: goTo({ x: 10, z: 0 }, { stuck: 2 }) } });
+    go.want('go', { me });
+    go.step({ me }, NaN);
+    go.step({ me }, NaN);
+    // still counting: 1.5 s still, then 1 s more is stuck
+    expect(go.step({ me }, 1.5).phase).toBe('running');
+    expect(go.step({ me }, 1).phase).toBe('ending');
+  });
+
   it('goTo fails when its target is gone', () => {
     const me = { pos: { x: 0, z: 0 } };
     const actor = createActor({ id: 'a', actions: { go: goTo(() => null) } });

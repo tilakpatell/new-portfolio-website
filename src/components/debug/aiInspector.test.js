@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createSchedule } from '../../lib/ai/schedule';
 import { bars, rows } from './aiInspector';
 
 const actor = (id) => ({ current: () => id });
@@ -11,6 +12,20 @@ describe('rows', () => {
       { id: 'c', kind: 'elf', mode: 'wander', sig: 0.5 },
     ]);
     expect(out.map((r) => r.id)).toEqual(['b', 'c', 'a']);
+  });
+
+  it('sorts by the schedule’s own significance, carried in its stats', () => {
+    const s = createSchedule({ now: () => 0 });
+    const agents = [
+      { id: 'a', kind: 'orc', pos: { x: 80, y: 0, z: 0 } },
+      { id: 'b', kind: 'orc', pos: { x: 5, y: 0, z: 0 } },
+      { id: 'c', kind: 'elf', pos: { x: 40, y: 0, z: 0 } },
+    ];
+    for (const a of agents) s.add(a);
+    s.frame(0.016, { at: { x: 0, y: 0, z: 0 }, range: 100 }, 0);
+    const out = rows(s.stats(), agents);
+    expect(out.map((r) => r.id)).toEqual(['b', 'c', 'a']);
+    expect(out[0].sig).toBeCloseTo(0.95);
   });
 
   it('takes the action and phase from the actor, the mode from the row', () => {

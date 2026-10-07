@@ -162,4 +162,36 @@ describe('the Decepticons’ tactics', () => {
     expect(notes.length).toBeLessThanOrEqual(7);
     expect(notes[0].scores.strafe).toBeGreaterThan(0);
   });
+
+  it('an enemy mid-advance whose belief fades steps on without an error and holds', () => {
+    const world = buildWorld(OPEN);
+    const p = player();
+    const e = newEnemy('trooper', 0, 200, { id: 'ad' });
+    const records = [];
+    const trace = { note: (id, t, r) => records.push(r) };
+    step(e, seen(p, e), p, 1 / 30, world, lcg(), null, trace);
+    e.actor.want('advance', {});
+    expect(e.actor.current()).toBe('advance');
+    // the belief gone between rethinks
+    e.think = 1;
+    step(e, null, p, 1 / 30, world, lcg(), null, trace);
+    expect(records.filter((r) => r.why === 'error')).toEqual([]);
+    expect(e.actor.current()).toBe('hold');
+    expect(e.state).toBe('hold');
+  });
+
+  it('a strafe whose belief fades holds too', () => {
+    const world = buildWorld(OPEN);
+    const p = player();
+    const e = newEnemy('trooper', 0, 40, { id: 'st' });
+    const records = [];
+    const trace = { note: (id, t, r) => records.push(r) };
+    step(e, seen(p, e), p, 1 / 30, world, lcg(), null, trace);
+    e.actor.want('strafe', {});
+    expect(e.actor.current()).toBe('strafe');
+    e.think = 1;
+    step(e, null, p, 1 / 30, world, lcg(), null, trace);
+    expect(records.filter((r) => r.why === 'error')).toEqual([]);
+    expect(e.actor.current()).toBe('hold');
+  });
 });

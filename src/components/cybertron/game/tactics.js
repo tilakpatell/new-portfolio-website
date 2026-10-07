@@ -167,18 +167,23 @@ export const ACTIONS = {
     },
   },
   // straight at where it believes he is
+  // (with nothing to go at, a belief faded between rethinks, it fails to hold)
   advance: {
+    recover: 'hold',
     step(s, ctx) {
       const { est, e, k, d } = ctx;
+      if (!est) return 'failed';
       ctx.vel = { x: ((est.x - e.x) / d) * k.speed, z: ((est.z - e.z) / d) * k.speed };
       return 'running';
     },
   },
   // round him, one way then (now and then) the other, backing off if too close
   strafe: {
+    recover: 'hold',
     start: () => ({ t: 0 }),
     step(s, ctx, dt) {
       const { est, e, k, d, rand } = ctx;
+      if (!est) return 'failed';
       s.t += dt;
       if (s.t > 2.2) {
         s.t = 0;

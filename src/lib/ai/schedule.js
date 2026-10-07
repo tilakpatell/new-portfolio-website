@@ -10,9 +10,12 @@
 //   rank = { every: 0.5, slices: [0.25, 0.5, 0.25] }, seed = 1, now = null })
 //   → { add(agent, { lane = 'think', sense = true, id }), drop(agent),
 //       frame(dt, view, t) → { due: [{ agent, sense, think, dt }], stats },
-//       done(agent), stats() → { agents, sensed, thought, ms, skipped, worst } }
+//       done(agent), stats() → { agents, sensed, thought, ms, skipped, worst, sig } }
+//   rates: merged over the defaults, so { think: 5 } still senses at 20 Hz;
+//   sig: { [id]: 0..1 }, each agent's significance as of the last rank;
 //   agent: anything with `pos` ({ x, y, z }) and `id` (or the id given to add);
 //   lane: which rate it thinks at ('think' or 'ambient', or any key of rates);
+//     one with no rate throws, as it would otherwise never think;
 //   sense: whether it senses too, at rates.sense.
 //   view: { at: { x, y, z }, dir?, range }, or null when there's none to judge
 //   by, and then every agent runs at the full rate; t: the world's time,
@@ -75,8 +78,10 @@ const clockOf = (now) => {
   return p && typeof p.now === 'function' ? () => p.now() : () => undefined;
 };
 
+const RATES = { sense: 20, think: 10, ambient: 4 };
+
 export function createSchedule({
-  rates = { sense: 20, think: 10, ambient: 4 },
+  rates: given = {},
   budget = { ms: 1 },
   significance = byDistance,
   tiers = [1, 0.5, 0.25, 0],
@@ -84,6 +89,8 @@ export function createSchedule({
   seed = 1,
   now = null,
 } = {}) {
+  // a lane left out keeps its default, not a NaN step that never comes due
+  const rates = { ...RATES, ...given };
   const clock = clockOf(now);
   const entries = new Map(); // agent → its record
   const cuts = [];
@@ -92,13 +99,15 @@ export function createSchedule({
   let sinceRank = Infinity; // rank on the first frame
   let open = new Set(); // agents handed out and not yet done
   let mark;
+  let sig = {}; // id → significance at the last rank, for the inspector
   let current = blank(0);
 
   function blank(agents) {
-    return { agents, sensed: 0, thought: 0, ms: 0, skipped: 0, worst: null };
+    return { agents, sensed: 0, thought: 0, ms: 0, skipped: 0, worst: null, sig };
   }
 
   const add = (agent, { lane = 'think', sense = true, id = agent.id } = {}) => {
+    if (!(rates[lane] > 0)) throw new Error(`schedule: no rate for lane '${lane}'`);
     const rand = seeded(seed ^ hash(id));
     const think = 1 / rates[lane];
     const feel = sense ? 1 / rates.sense : 0;
@@ -125,7 +134,11 @@ export function createSchedule({
 
   const ranks = (view, t) => {
     const list = [...entries.values()];
-    for (const e of list) e.sig = Math.max(0, Math.min(1, significance(e.agent, view, t) || 0));
+    sig = {};
+    for (const e of list) {
+      e.sig = Math.max(0, Math.min(1, significance(e.agent, view, t) || 0));
+      sig[e.id] = e.sig;
+    }
     list.sort((a, b) => b.sig - a.sig || a.phase - b.phase);
     const total = list.reduce((s, e) => s + e.sig, 0);
     const groups = tiers.map(() => []);
@@ -218,7 +231,7 @@ export function createSchedule({
     if (!current.worst || ms > current.worst.ms) current.worst = { id: e.id, ms };
   };
 
-  const stats = () => ({ ...current, agents: entries.size, worst: current.worst && { ...current.worst } });
+  const stats = () => ({ ...current, agents: entries.size, worst: current.worst && { ...current.worst }, sig: { ...current.sig } });
 
   return { add, drop, frame, done, stats };
 }
