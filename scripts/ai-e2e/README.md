@@ -105,6 +105,28 @@ The fixtures: `x-wing-ref.png` (the site's X-wing rendered on white at
 512², with `scripts/glb-shot.mjs`), issue bodies (`issue-*.md`, with
 `{{BASE}}` where the picture server goes) and judge scripts (`judge-*.json`).
 
+## Tier 2: the assets as shipped
+
+Tests over the repository as it is, so a model or a voice line added by
+hand is held to the same bar as a generated one.
+
+| file | what it holds to |
+| --- | --- |
+| `assets/gen3d.test.mjs` | every `public/models/gen3d/<name>.glb` has its `.hq` and `.lo` cuts; each within its budget for the ask the cuts imply (`budget.mjs`'s `inferFaces`), and no less than a quarter of it (a smaller cut copied over); each under its tier's size cap; WebP textures no bigger than its tier's; meshopt; one scene; credited `gen3d/<name>` |
+| `assets/credits.test.mjs` | every credit (`public/games/credits.json`, `src/data/modelCredits.json`, a folder's own `credits.json`) is for a file that exists; every GLB under `public/models/` has a credit, but those on `allow-uncredited.json` |
+| `assets/voiced.test.mjs` | every mp3 in `public/audio/voiced/` is in the manifest and every entry is a file; each is a run of real MPEG frames (`mp3.mjs`) between 0.3 and 30 s; each is a line the site still says (`export-lines.mjs --out`); every speaker with lines has a folder, but those on `allow-voiceless.json` |
+
+`assets/glb.mjs`'s `inspect(file)` reads a GLB as the site's loader would
+(meshopt decoded): triangles, bytes, textures, extensions, scenes, the
+bounding box. `assets/credits.mjs` says which file each credit is for,
+since none of the three lists names its file outright.
+
+**The allow-lists are findings.** `allow-uncredited.json`,
+`allow-orphans.json` (mp3s the manifest doesn't list; lines the site no
+longer says) and `allow-voiceless.json` hold what was wrong when the tests
+were first run. They only shrink: an entry fixed since fails the test
+until it is taken off.
+
 ## Adding a case
 
 A contract test is a vitest file under `scripts/ai-e2e/<tier>/`, its
