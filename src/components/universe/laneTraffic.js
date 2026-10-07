@@ -44,6 +44,7 @@ export const BIG_DRAWN = 4; // map units: the most a ship is drawn, in a tube 6 
 // half a million triangles)
 export const HEAVY = 20000;
 export const HEAVY_MAX = 1;
+export const HEAVY_NEAR = 60; // and only within this of you: further, it’s a pixel or two (measured at lane-ride: one X-wing at 300 was 0.12 M triangles for nothing)
 const HIDDEN = 0.3; // a ship drawn smaller than this (still growing) can’t be hit, as traffic.js’s
 const THROTTLE = 0.9; // their engines (at hyperspeed)
 
@@ -163,7 +164,7 @@ export function createLaneTraffic(parent, { fleet, engines = null, small = false
         // (a lane no side holds is the crew’s side’s: pick another crew and the
         // same slot carries another kind, so its model goes back for the right one)
         const known = heavy.has(f.kind);
-        const light = known && heavies >= HEAVY_MAX;
+        const light = known && (heavies >= HEAVY_MAX || f.dist > HEAVY_NEAR);
         if (known && !light) heavies++;
         if (r && (r.kind !== f.kind || Boolean(r.model.light) !== light)) {
           end(key);
@@ -171,7 +172,7 @@ export function createLaneTraffic(parent, { fleet, engines = null, small = false
         }
         if (!r) {
           const model = take(f.kind, light);
-          if (!known && heavy.has(f.kind)) heavies++; // (found heavy just now, making it)
+          if (!known && heavy.has(f.kind)) heavies++; // (found heavy just now, making it: the next frame sees to the distance)
           parent.add(model.group);
           r = { lane: f.lane, way: f.way, i: f.i, m: f.m, kind: f.kind, size: Math.min(types[f.kind].size, BIG_DRAWN), model, age: 0, grow: 0 };
           live.set(key, r);
