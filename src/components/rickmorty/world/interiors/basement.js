@@ -131,7 +131,7 @@ export async function buildBasement(kit) {
     // (the haze is for seeing from the room: from right by the ladder it'd fill the view)
     if (haze && camera) haze.visible = Math.hypot(camera.position.x - haze.position.x, camera.position.z - haze.position.z) > 2.4;
     machine(t, dt);
-    clone(t);
+    clone(t, dt);
     pickle(t);
     screen(t);
     spill.opacity = 0.9 + Math.sin(t * 5.3) * 0.05 + Math.sin(t * 1.7) * 0.05;
@@ -672,11 +672,13 @@ function cloneMachine(R, it, plan, spills) {
 }
 
 // The clone floating in the tube: Rick's Meshy figure (or Rick in shapes),
-// his arms loose, bobbing and turning slowly
+// his arms loose, bobbing and turning slowly; a clone in stasis has no flask
+// to reach for (Rick's own sips are the cast's, meshyCast's `fidget`)
 async function floatingClone(R, it) {
   const kit = R.kit;
   await needCast(kit, ['rick']);
   const c = kit.cast?.make?.('rick') ?? null;
+  c?.anim?.idles(null);
   const holder = new THREE.Group();
   const tall = 1.55;
   if (c) {
@@ -693,10 +695,10 @@ async function floatingClone(R, it) {
   }
   holder.position.set(it.x, TUBE.y0 + 0.35, it.z);
   R.add(holder);
-  return (t) => {
+  return (t, dt) => {
     holder.position.y = TUBE.y0 + 0.35 + Math.sin(t * 0.8) * 0.08;
     holder.rotation.y = Math.PI * 0.08 + Math.sin(t * 0.21) * 0.5;
-    c?.update?.(t, 0, 0);
+    c?.update?.(t, 0, 0, { dt });
   };
 }
 

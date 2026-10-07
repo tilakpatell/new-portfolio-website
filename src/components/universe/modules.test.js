@@ -35,6 +35,19 @@ describe('the parts bolted on', () => {
     }
   });
 
+  it('draws a part that borrows another’s look the way that one is drawn', () => {
+    for (const p of PARTS.filter((q) => q.look)) {
+      const own = buildModules('falcon', { ...STOCK_LOADOUT, [p.slot]: p.id }, ENGINES.falcon);
+      const looks = buildModules('falcon', { ...STOCK_LOADOUT, [p.slot]: p.look }, ENGINES.falcon);
+      expect(meshes(own.group), p.id).toBe(meshes(looks.group));
+      expect(own.muzzles, p.id).toEqual(looks.muzzles);
+      expect(own.nozzles, p.id).toEqual(looks.nozzles);
+      expect(own.boosterColor, p.id).toBe(looks.boosterColor);
+      own.dispose();
+      looks.dispose();
+    }
+  });
+
   it('lights the boosters’ exhaust from a nozzle each side, and fires the guns from their barrels', () => {
     const srb = buildModules('xwing', { ...STOCK_LOADOUT, booster: 'srb' }, ENGINES.xwing);
     expect(srb.nozzles).toHaveLength(2);

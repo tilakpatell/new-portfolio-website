@@ -87,6 +87,7 @@
 // `page`, where a wonder with a page of its own goes instead).
 
 import * as THREE from 'three';
+import { EMOTES } from '../../lib/emote';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { capturePointer } from '../../lib/pointer';
 import { local as remembered } from '../../lib/hooks';
@@ -176,6 +177,8 @@ import { poseFor } from './poses';
 import { REMOVER, hitRemover, hpLeft, landingOpen, newRemover, stepRemover } from './remover';
 import { NX5_LEN, createRemoverView } from './removerView';
 import { createSky } from './skyShader';
+import { deedToEarn } from './economy';
+import { createPayLedger, hunterEarn } from './earnRules';
 
 const STARS = 1800; // the near ones, over the Milky Way's own
 const STARS_LOW = 700;
@@ -865,15 +868,23 @@ export async function create(canvas, ctx) {
   // lost: nothing said)
   const stood = (e) => {
     if (!e.level) return;
-    emit({ type: 'event', id: 'standing', sub: e.level });
     const side = sideFor(state.kind);
+    emit({ type: 'event', id: 'standing', sub: e.level, side: side?.id ?? null }); // (whose: a good level pays, for that universe)
     const who = { law: LAW_NAME[side?.law] ?? 'The law', civil: 'The ordinary ships', outlaw: 'The pirates' }[e.axis];
     const word = { wanted: 'have you marked: wanted', suspect: 'are watching you', trusted: 'trust you', feared: 'fear you', hero: 'call you a hero', friend: 'call you a friend' }[e.level];
     if (word) state.note = { text: `${who} ${word}`, until: wall() + 5 };
   };
-  // something you did: noted, and if it changed what you are, said
-  const deed = (what, n = 1) => {
+  // something worth paying for (economy.js's EARN): the page earns it into
+  // the wallet, for the universe you're in
+  const pay = (what, n = 1) => {
+    if (what) emit({ type: 'earn', what, n, side: sideHere()?.id ?? null });
+  };
+  // something you did: noted, and if it changed what you are, said; and
+  // paid for, if it pays (`as`: what it pays as, when it's more than the
+  // deed says, an ace for a hunter)
+  const deed = (what, n = 1, as = deedToEarn(what)) => {
     for (const e of standing.note(what, n)) stood(e);
+    pay(as, n);
   };
   const npcs = hunters ? createNpcs(map, { fleet, memory: npcMemory }) : null; // (the named characters: npcRules.js's brains)
   // the crew's war (front.js): its front out in deep space, a battle there
@@ -1038,6 +1049,10 @@ export async function create(canvas, ctx) {
     npcLast: null, // who came by last (someone else next time)
     skirmishHelped: 0, // hunters you've hit in this one
     saw: new Set(), // the wonders out in deep space you've come up on, and the places you've been
+    // the hunters you've helped another pilot with (owner:hunter), paid
+    // once each: down is only our guess, and a ghost of one can come back
+    // and go down again
+    helped: createPayLedger(),
     phoneNear: false, // at the phone out past the belt (phone.js)
     phoneIn: false, // flown right into it (it asks once, until you back off)
     deepSaid: false,
@@ -2126,7 +2141,9 @@ export async function create(canvas, ctx) {
       pops.hit({ point: siegePoint, normal: popDir.copy(siegePoint).sub(citadelMid).normalize(), radius: 0.3 });
       emit({ type: 'siege', what: 'deflected' });
     } else {
-      // it took it: tell everyone soon, and the Council of Ricks takes notice
+      // it took it: tell everyone soon, and the Council of Ricks takes notice.
+      // Only your own strike pays (here, a generator or the core): another
+      // pilot's arrives through the net and pays them.
       if (!siegeMine) {
         siegeMine = true;
         state.heat += 2;
@@ -2139,7 +2156,11 @@ export async function create(canvas, ctx) {
         pops.hit({ point: new THREE.Vector3(...citadelGeo.gens[ev.part]), normal: popDir.copy(siegePoint).sub(citadelMid).normalize(), radius: citadelGeo.gen * 1.2 });
         if (!reduced) state.shake = Math.max(state.shake, 0.5);
         emit({ type: 'siege', what: 'gen', left: ev.left, near: true });
-      } else if (ev.type === 'down') siegeDown(true);
+        pay('siegePart');
+      } else if (ev.type === 'down') {
+        siegeDown(true);
+        pay('siegePart'); // (the core is the siege's last part, and pays like one)
+      }
       else pops.hit({ point: siegePoint, normal: popDir.copy(siegePoint).sub(citadelMid).normalize(), radius: heavy ? 0.8 : 0.2 });
     }
     return siegePoint;
@@ -2202,6 +2223,7 @@ export async function create(canvas, ctx) {
           net?.hunterHit(ph.id, ph.hunter, d.punch ?? 1);
           if (ph.down) {
             emit({ type: 'kill', kind: ph.kind, hunter: true });
+            if (state.helped.once(`${ph.id}:${ph.hunter}`)) pay('hunterHelped'); // (one shot off someone else's tail)
             if (!reduced) state.shake = Math.max(state.shake, 0.2);
           }
         } else net?.hit(ph.id, d.damage);
@@ -2279,8 +2301,9 @@ export async function create(canvas, ctx) {
   // a pirate on someone else, or a character who turned on you)
   const killed = (hh) => {
     if (!hh.faction) return;
-    if (FACTIONS_ALL[hh.faction]?.role === 'pirates' || hh.prey) deed('killPirate');
-    else deed('killHunter');
+    const pays = hunterEarn(FACTIONS_ALL, hh); // (its faction's ace pays more)
+    if (FACTIONS_ALL[hh.faction]?.role === 'pirates' || hh.prey) deed('killPirate', 1, pays);
+    else deed('killHunter', 1, pays);
   };
 
   // a shot into the director's capital ship (setpieces.js, capitalRules.js):
@@ -2368,7 +2391,10 @@ export async function create(canvas, ctx) {
         if (ph.hunter) {
           // one of the hunters after another pilot: theirs to take down
           net?.hunterHit(ph.id, ph.hunter, d.punch);
-          if (ph.down) emit({ type: 'kill', kind: ph.kind, hunter: true });
+          if (ph.down) {
+            emit({ type: 'kill', kind: ph.kind, hunter: true });
+            if (state.helped.once(`${ph.id}:${ph.hunter}`)) pay('hunterHelped');
+          }
         } else net?.hit(ph.id, d.damage);
         boom(m, ph.at, Boolean(ph.down));
         if (ph.down) burn(ph.at, ph.size);
@@ -2869,6 +2895,7 @@ export async function create(canvas, ctx) {
       if (at) pops.hit({ point: at, normal: new THREE.Vector3(0, 1, 0), radius: 0.55 });
       if (e.by && e.by === net?.selfId) {
         emit({ type: 'kill', kind: 'pilot' });
+        pay('killPilot');
         if (!reduced) state.shake = Math.max(state.shake, 0.2);
       }
     }
@@ -4210,6 +4237,12 @@ export async function create(canvas, ctx) {
     else if (state.note && wall() < state.note.until && !onFoot()) {
       text = state.note.text;
       plain = true;
+    } else if (info && foot.phase === 'walk' && info.emote?.open) {
+      text = EMOTES.map((id, i) => `${i + 1} ${id}`).join(' · ');
+      plain = true;
+    } else if (info && foot.phase === 'walk' && info.emote?.fresh && info.emote.on) {
+      text = `${info.emote.on[0].toUpperCase()}${info.emote.on.slice(1)} · Z again, hold Z for more`;
+      plain = true;
     } else if (info && foot.phase === 'walk' && info.gadget?.fresh) {
       text = `${info.gadget.name} · B for the next`;
       plain = true;
@@ -4809,9 +4842,20 @@ export async function create(canvas, ctx) {
   };
   // the keys on foot: walking (W A S D, Q E to step sideways), Shift to
   // run, Space to jump, F to fire, T the next trooper, X to play the other
-  // one, B Rick's next gadget, V out of your own eyes, Enter into the
-  // planet's world (wayin.js)
+  // one, B Rick's next gadget, Z an emote (held, the wheel of five), V out
+  // of your own eyes, Enter into the planet's world (wayin.js)
   const footKey = (e, key, onControl) => {
+    // Z held: the emote wheel; 1 to 5 picks one while it's open (lib/emote.js's five)
+    if (key === 'z') {
+      e.preventDefault();
+      if (!e.repeat) foot.emote('down');
+      return;
+    }
+    if (foot.info()?.emote?.open && /^[1-5]$/.test(key)) {
+      e.preventDefault();
+      foot.emote('pick', Number(key));
+      return;
+    }
     if (key === 'b') {
       e.preventDefault();
       const gun = foot.gadget();
@@ -4867,6 +4911,8 @@ export async function create(canvas, ctx) {
   const onKeyUp = (e) => {
     const key = e.key.toLowerCase();
     held.delete(key);
+    // (Z let go on foot: the emote pointed at, or a tap's last)
+    if (key === 'z' && onFoot() && foot.emote('up')) ctx.invalidate();
     const now = onFoot() ? FOOT_KEYS : KEYS;
     for (const map of [KEYS, FOOT_KEYS]) {
       const k = map[key];
