@@ -242,6 +242,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   function setTime(name) {
     timeName = LOOK[name] ? name : 'noon';
     space.setTime(timeName);
+    npcs.setTime(timeName);
     const turn = timeQueue.then(putUpTime);
     timeQueue = turn.catch(() => {
       look = null; // (so the next one puts it up again)
@@ -307,7 +308,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     if (z === zone) return;
     zone = z;
     for (const g of cityOnly) g.visible = z === 'city';
-    for (const n of npcs.all) n.holder.visible = z === 'city';
+    for (const n of npcs.all) n.holder.visible = z === 'city' && n.out !== false;
     space.group.visible = z === 'space';
     if (z === 'space') {
       spaceLook();
@@ -607,7 +608,14 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     const speed = Math.hypot(h.v[0], h.v[1], h.v[2]);
     // what happened this frame (and what sends the people and the traffic running)
     const scare = [];
+    // and what the townspeople make of it (./brains.js)
+    const crowd = { slam: null, hit: null, fight: Boolean(sim.fight?.on), won: false, time: timeName };
     for (const e of sim.events) {
+      if ((e.type === 'slam' || e.type === 'impact' || e.type === 'boom') && !crowd.slam) crowd.slam = [e.at[0], e.at[2]];
+      else if ((e.type === 'ko' || e.type === 'down') && !crowd.hit) crowd.hit = [e.at[0], e.at[2]];
+      else if (e.type === 'won') crowd.won = true;
+      // (a fight near the road: the cars back away from it)
+      if (e.type === 'ko' || e.type === 'down' || e.type === 'hurt') scare.push({ x: e.at[0], z: e.at[2], r: 60, reverse: true });
       if (e.type === 'slam') scare.push({ x: e.at[0], z: e.at[2], r: 25 + e.speed * 0.25 });
       else if (e.type === 'splash' && e.speed > 40) scare.push({ x: e.at[0], z: e.at[2], r: 15 + e.speed * 0.15 });
       else if (e.type === 'impact') scare.push({ x: e.at[0], z: e.at[2], r: 35 });
@@ -695,7 +703,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       omni.tick(dt);
       // (the QA scripts can hold everyone still, to frame them)
       if (!sim.hold) {
-        npcs.update(frameDt, t, h);
+        npcs.update(frameDt, t, h, crowd);
         jet.update(frameDt, t);
       }
       if (sim.quests) challenges.update(sim.quests, frameDt, t);
