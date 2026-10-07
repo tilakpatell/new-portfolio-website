@@ -1,3 +1,4 @@
+/* global window */
 // The universe map's characters and hunters on the AI toolkit, checked in a
 // browser: a nemesis (Vader) brought in through the dev hook and watched
 // for half a minute while you fly a straight line (it should see you, orbit,
