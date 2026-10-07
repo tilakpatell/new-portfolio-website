@@ -366,7 +366,7 @@ def main():
             "",
         ]
     (GRAB / "report.md").write_text("\n".join(report), encoding="utf-8")
-    print(f"\nReport: {(GRAB / 'report.md').relative_to(ROOT)}")
+    print(f"\nReport: {GRAB / 'report.md'}")
 
 
 if __name__ == "__main__":
