@@ -52,7 +52,8 @@ export function fromSearch(search) {
   const station = pick('station', Object.keys(STATIONS));
   const side = pick('side', SIDES);
   // (an Imperial is always a stormtrooper, so only a Rebel picks)
-  const hero = side === 'rebel' ? pick('hero', HEROES.rebel.map((h) => h.id)) : null;
+  const heroes = HEROES.rebel.map((h) => h.id);
+  const hero = side === 'rebel' ? pick('hero', heroes) : null;
   return { station, side, mode: pick('mode', MODES), hero, at: q.get('at') || null };
 }
 
