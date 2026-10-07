@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Living characters</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #20242a;
+        color: #e8e4da;
+        font: 13px/1.4 system-ui, sans-serif;
+      }
+      canvas {
+        display: block;
+      }
+      #bar {
+        position: fixed;
+        left: 8px;
+        top: 8px;
+        background: #0008;
+        padding: 6px 8px;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bar">loading…</div>
+    <script type="module">
+      // A row of figures on the shared animator (src/lib/three/animator.js),
+      // for looking at a clip or a layer on everyone at once. Query:
+      //   ?who=frodo,gandalf,luke  ?clip=wave  ?layer=upper|full|lower
+      //   ?walk=1 (walking in place at a walk's speed)  ?look=1 (heads to the camera)
+      //   ?base=sit.idle  ?t=1.2 (hold the clips at a time, for a still)
+      // window.__living = { figures, play(name, opts), base(name), walk(speed) }
+      import * as THREE from 'three';
+      import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+      import { gltfLoader } from '/src/lib/three/gltf.js';
+      import { createAnimator } from '/src/lib/three/animator.js';
+      import { heading, faceAhead } from '/src/lib/three/clipLibrary.js';
+
+      const q = new URLSearchParams(location.search);
+      const WHO = {
+        frodo: { url: '/models/middleearth/cast/frodo.glb', clips: '/models/middleearth/cast/frodo', h: 1.15 },
+        gandalf: { url: '/models/middleearth/cast/gandalf.glb', clips: '/models/middleearth/cast/gandalf', h: 1.85 },
+        luke: { url: '/models/galaxy/crew/luke.glb', h: 1.72 },
+        rick: { url: '/games/meshy/rick.glb', clips: '/games/meshy/rick', h: 1.85 },
+        morty: { url: '/games/meshy/morty.glb', clips: '/games/meshy/morty', h: 1.55 },
+        stormtrooper: { url: '/models/galaxy/troops/stormtrooper.glb', h: 1.83 },
+      };
+      const who = (q.get('who') ?? 'frodo,gandalf,rick,luke').split(',').filter((n) => WHO[n]);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      document.body.appendChild(renderer.domElement);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color('#2a2f36');
+      scene.add(new THREE.HemisphereLight('#dfe8ff', '#4a3f33', 1.6));
+      const sun = new THREE.DirectionalLight('#fff4e0', 2.2);
+      sun.position.set(3, 6, 5);
+      scene.add(sun);
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: '#3a4048' }));
+      floor.rotation.x = -Math.PI / 2;
+      scene.add(floor);
+      const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.05, 100);
+      const span = who.length * 1.3;
+      camera.position.set(0, 1.35, 3.2 + span * 0.9);
+      camera.lookAt(0, 0.85, 0);
+
+      const loader = gltfLoader();
+      const clipOf = (url) => loader.loadAsync(url).then((g) => g.animations[0] ?? null, () => null);
+      const figures = [];
+      await Promise.all(
+        who.map(async (n, i) => {
+          const spec = WHO[n];
+          const g = await loader.loadAsync(spec.url);
+          const model = cloneSkinned(g.scene);
+          model.traverse((o) => {
+            if (o.isMesh) o.frustumCulled = false;
+          });
+          const hips = model.getObjectByName('Hips');
+          model.updateMatrixWorld(true);
+          const up = new THREE.Vector3(0, 1, 0).applyQuaternion(hips.parent.getWorldQuaternion(new THREE.Quaternion()).invert());
+          const own = {};
+          const base = spec.clips;
+          if (base) for (const c of ['idle', 'walk', 'run']) own[c] = await clipOf(`${base}-${c}.glb`);
+          else {
+            for (const c of ['idle', 'walk', 'run']) own[c] = await clipOf(`/games/meshy/rick-${c}.glb`);
+          }
+          for (const k of Object.keys(own)) if (!own[k]) delete own[k];
+          if (own.walk) faceAhead(own, up);
+          // to size: feet to crown `h` metres
+          const box = new THREE.Box3().setFromObject(model);
+          const k = spec.h / (box.max.y - box.min.y);
+          const holder = new THREE.Group();
+          model.scale.multiplyScalar(k);
+          model.position.y = -box.min.y * k;
+          holder.add(model);
+          holder.position.x = (i - (who.length - 1) / 2) * 1.3;
+          scene.add(holder);
+          const ahead = own.walk ? heading(own.walk, up) : null;
+          const anim = createAnimator(model, { clips: own, hipsY: hips.position.y, up, key: `${n}|${ahead}`, seed: i + 1, unit: 1 / k });
+          figures.push({ n, holder, model, anim, k });
+        }),
+      );
+
+      let walk = Number(q.get('walk') ?? 0) ? 1.4 : 0;
+      const api = {
+        figures,
+        play: (name, opts = {}) => Promise.all(figures.map((f) => f.anim.play(name, opts))),
+        base: (name) => Promise.all(figures.map((f) => f.anim.base(name))),
+        walk: (speed) => (walk = speed),
+      };
+      window.__living = api;
+      if (q.get('base')) api.base(q.get('base'));
+      if (q.get('clip')) api.play(q.get('clip'), { layer: q.get('layer') ?? 'full', loop: true });
+      document.getElementById('bar').textContent = `${who.join(', ')}${q.get('clip') ? ` · ${q.get('clip')} (${q.get('layer') ?? 'full'})` : ''}${walk ? ' · walking' : ''}`;
+
+      const frame = { forward: new THREE.Vector3(0, 0, 1), up: new THREE.Vector3(0, 1, 0) };
+      const hold = q.get('t');
+      let last = performance.now();
+      const look = q.get('look') ? camera.position : null;
+      function tick(now) {
+        const dt = hold ? 0 : Math.min(0.1, (now - last) / 1000);
+        last = now;
+        for (const f of figures) {
+          const m = { speed: walk / f.k, side: 0, turn: 0, move: walk ? 0.4 : 0 };
+          f.anim.locomote(m);
+          if (look) f.anim.look(look);
+          f.anim.update(dt);
+          f.holder.updateMatrixWorld(true);
+          f.anim.after(dt, m, frame);
+        }
+        renderer.render(scene, camera);
+        requestAnimationFrame(tick);
+      }
+      if (hold) {
+        // (a still: everyone stepped to the same moment)
+        for (const f of figures) {
+          f.anim.update(0.1);
+          for (let s = 0; s < Number(hold) * 10; s++) f.anim.update(0.1);
+          f.anim.after(0.1, {}, frame);
+        }
+      }
+      requestAnimationFrame(tick);
+      addEventListener('resize', () => {
+        renderer.setSize(innerWidth, innerHeight);
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+      });
+    </script>
+  </body>
+</html>
