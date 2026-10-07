@@ -8,6 +8,7 @@ import { PROPS, SCATTER } from '../props';
 import { RIDES } from '../rides';
 import { LAYER_TYPES, REACH, heightGrid, makeHeight } from '../terrain';
 import { LANDABLE, SITES, siteOf } from '.';
+import { talkTree } from '../talk';
 
 const SHIPS = new Set([...GALAXY_KINDS, ...BUILT_KINDS]);
 const placeable = (kind) => Boolean(PROPS[kind] || SURFACE_MODELS[kind]);
@@ -58,6 +59,25 @@ describe('the worlds you can land on', () => {
         for (const r of site.rides) if (!RIDES[r.kind].figure) expect(placeable(r.kind), `ride ${r.kind}`).toBe(true);
         for (const f of site.flyovers) expect(SHIPS.has(f.kind), `flyover ${f.kind}`).toBe(true);
         for (const f of site.skyships) expect(SHIPS.has(f.kind), `skyship ${f.kind}`).toBe(true);
+      });
+
+      it('sends its people to wants that exist, of kinds someone needs, within reach', () => {
+        const kinds = new Set(site.wants.map((w) => w.kind));
+        const ids = site.wants.map((w) => w.id);
+        expect(new Set(ids).size).toBe(ids.length);
+        for (const w of site.wants) expect(Math.hypot(...w.at), w.id).toBeLessThan(REACH);
+        for (const a of site.life) for (const k of a.needs ?? []) expect(kinds.has(k), `${a.kind} needs ${k}`).toBe(true);
+        const life = new Set(site.life.map((a) => a.kind));
+        for (const a of site.life) for (const k of [...(a.fears ?? []), ...(a.chases ?? [])]) expect(life.has(k), `${a.kind} knows ${k}`).toBe(true);
+      });
+
+      it('every `says` that is a tree validates, and every list is lines', () => {
+        for (const a of site.life) {
+          if (!a.says) continue;
+          const lines = talkTree(a.says, `${id} ${a.name ?? a.kind}`);
+          expect(lines.length, `${a.name ?? a.kind}`).toBeGreaterThan(0);
+          for (const l of lines) expect(typeof l === 'string' || (Array.isArray(l) && l.length === 2)).toBe(true);
+        }
       });
 
       it('can start every quest it has (its giver offers it)', () => {

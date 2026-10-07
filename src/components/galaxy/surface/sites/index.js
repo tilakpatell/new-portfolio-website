@@ -28,6 +28,8 @@
 //   flyovers       [{ kind (a galaxy ship), n, metres, alt, speed, every }]
 //   skyships       [{ kind, metres, at: [x, y, z], yaw }]: hanging in the sky
 //   floors         walker.js's, over the land (platforms, walkways)
+//   wants          needs.js's: where the people with `needs` go, [{ id,
+//                  kind, at: [x, z], pause? }]
 //   zones          places you go into: { id, name, door: { at, r, prompt },
 //                  back: [x, z] (where you come out), inside: { build (a
 //                  props kind), spawn, yaw, exit: { at, r }, bounds: [hw,
@@ -126,6 +128,7 @@ export function siteOf(id) {
     accent: sys?.accent ?? '#ffffff',
     reach: REACH,
     weather: [],
+    wants: [],
     things: [],
     scatter: [],
     rides: [],

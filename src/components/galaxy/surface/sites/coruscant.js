@@ -229,20 +229,28 @@ export const SITE = {
     { kind: 'skyscraper', n: 40, within: [60, 620], scale: [0.7, 1.1], stretch: [0.6, 1.25], solid: false, opts: { style: 1, seed: 8 } },
     { kind: 'skyscraper', n: 40, within: [60, 620], scale: [0.7, 1.1], stretch: [0.6, 1.25], solid: false, opts: { style: 3, seed: 9 } },
   ],
+  // where the people go (needs.js): the commuters between the diner, the
+  // landing and the lanes
+  wants: [
+    { id: 'dexfront', kind: 'food', at: [-150, -262], pause: 10 },
+    { id: 'landing', kind: 'transit', at: [26, -34], pause: 5 },
+    { id: 'lane', kind: 'view', at: [0, 150], pause: 6 },
+    { id: 'senatesteps', kind: 'view', at: [300, 40], pause: 8 },
+  ],
   life: [
     { kind: 'jedi', n: 5, at: [0, 290], spread: 30, roam: 14, speed: 1.0, name: 'Jedi Knight', says: ['May the Force be with you.', 'The Council is in session. Even the Masters are worried.', 'Clouded, the future is. Even here.', 'The Archives are open to all Jedi. If an item does not appear in our records, it does not exist.'] },
-    { kind: 'jedi', n: 1, at: [8, 300], roam: 6, speed: 0.6, scale: 0.38, r: 0.3, name: 'Yoda', says: ['Begun, the Clone War has.', 'Clouded, this boy’s future is.', 'Do, or do not. There is no try.', 'Lost a planet, Master Obi-Wan has. How embarrassing.'] },
+    { kind: 'jedi', n: 1, at: [8, 300], roam: 6, speed: 0.6, scale: 0.38, r: 0.3, name: 'Yoda', says: { when: { done: ['order66'] }, lines: ['Into exile, I must go. Failed, I have.', 'Not if anything to say about it, I have.'], else: ['Begun, the Clone War has.', 'Clouded, this boy’s future is.', 'Do, or do not. There is no try.', 'Lost a planet, Master Obi-Wan has. How embarrassing.'] } },
     { kind: 'clone', n: 4, path: [[-5, 40], [-5, 245], [5, 245], [5, 40]], speed: 1.5, name: 'Clone trooper', says: ['Sir.', 'Yes, sir.', 'Move along. The Temple is closed.', 'Execute Order Sixty-Six.'] },
     { kind: 'senateguard', n: 4, at: [320, 40], spread: 24, roam: 5, speed: 0.6, r: 0.5, name: 'Senate Guard', says: ['(The guard says nothing. The helmet tilts, very slightly, toward the way out.)', 'The Senate is in session. State your business.'] },
-    { kind: 'villager', n: 1, at: [330, 30], roam: 8, speed: 0.8, name: 'Padmé Amidala', says: ['So this is how liberty dies. With thunderous applause.', 'I truly believe that the Republic is worth fighting for.', 'Aggressive negotiations? What’s that?'] },
+    { kind: 'villager', n: 1, at: [330, 30], roam: 8, speed: 0.8, name: 'Padmé Amidala', says: { when: { side: 'separatists' }, lines: ['A Separatist, here? The Senate is in session. Mind what you say.', 'I truly believe that the Republic is worth fighting for.'], else: ['So this is how liberty dies. With thunderous applause.', 'I truly believe that the Republic is worth fighting for.', 'Aggressive negotiations? What’s that?'] } },
     { kind: 'villager', n: 5, path: [[34, 5], [288, 40]], speed: 1.2, name: 'Senate aide', says: ['The Chancellor has emergency powers now. Just until the crisis is over, they say.', 'The Military Creation Act vote is today. Everyone’s nervous.', 'I’m late, I’m late: the Senator from Alderaan is waiting.'] },
     { kind: 'villager', n: 3, path: [[-20, -22], [-138, -250]], speed: 1.1, name: 'Coruscanti', says: ['Don’t look down. Seriously, don’t.', 'Dex does the best nuna legs this side of the Federal District.', 'Mind the skylanes. Some of those drivers are maniacs.'] },
-    { kind: 'c3po', n: 1, at: [-306, 70], still: true, r: 0.4, name: 'C-3PO', says: ['Oh, Master Anakin! I’m so glad you’re back. Mistress Padmé has been terribly worried.', 'I do believe the Senator’s apartment is the finest view on Coruscant. Not that I would know what to do with a view.', 'Don’t go too near the edge! It’s a long way down.'] },
+    { kind: 'c3po', n: 1, at: [-306, 70], still: true, r: 0.4, name: 'C-3PO', says: { when: { era: 'clone' }, lines: ['Oh, Master Anakin! I’m so glad you’re back. Mistress Padmé has been terribly worried.', 'I do believe the Senator’s apartment is the finest view on Coruscant. Not that I would know what to do with a view.', 'Don’t go too near the edge! It’s a long way down.'], else: ['Oh, my. I don’t believe I’ve been here since the Republic. It has not improved.', 'Don’t go too near the edge! It’s a long way down.'] } },
     { kind: 'kenobi', id: 'kenobi', at: [20, -6], still: true, face: -2.2, name: 'Obi-Wan Kenobi', named: true, quest: 'speederchase', says: ['Anakin, how many times have I told you to stay away from power couplings?', 'I hate flying.', 'Why do I get the feeling you’re going to be the death of me?'] },
     { kind: 'droid', n: 2, at: [6, 10], spread: 8, roam: 8, speed: 0.8, name: 'Astromech', says: ['(A busy, beeping hurry: it has somewhere to be.)'] },
     { kind: 'mousedroid', n: 2, at: [-8, 6], spread: 10, roam: 12, speed: 1.6, r: 0.2, solid: false },
     { kind: 'clone', n: 2, at: [-12, -4], spread: 4, still: true, face: 0.6, name: 'Coruscant Guard', says: ['Platform’s clear, sir.', 'The Temple is that way. Mind the drop.'] },
-    { kind: 'villager', n: 3, at: [10, 18], spread: 10, roam: 10, speed: 1.0, name: 'Commuter', says: ['Skylane’s backed up to the 500 block again.', 'Don’t look down. I never look down.', 'Dex’s is that way, if you’re hungry.'] },
+    { kind: 'villager', n: 3, at: [10, 18], spread: 10, roam: 10, speed: 1.0, needs: ['food', 'transit', 'view'], fears: ['clone'], name: 'Commuter', says: ['Skylane’s backed up to the 500 block again.', 'Don’t look down. I never look down.', 'Dex’s is that way, if you’re hungry.'] },
   ],
   // what you can ride: Anakin's airspeeder, by the ship
   rides: [{ kind: 'airspeeder', at: [16, -14], yaw: 0.9 }],
@@ -265,7 +273,7 @@ export const SITE = {
         lamps: [[-3, 3.2, -1, '#ffb070', 30, 12], [3, 3.2, -1, '#ffb070', 30, 12], [0, 3.2, 3, '#ffd0a0', 18, 10], [6, 2.4, 0, '#ffb070', 14, 8]],
       },
       life: [
-        { kind: 'villager', id: 'dex', at: [0, -3.3], still: true, face: 0, scale: 1.45, r: 0.8, reach: 5, name: 'Dexter Jettster', named: true, quest: 'dart', says: ['Hey, old buddy! Take a seat, I’ll be right with you.', 'Those Kaminoans keep to themselves. They’re cloners. Damn good ones, too.', 'I’d expect better from you Jedi. You oughta be able to tell the difference between knowledge and wisdom.'] },
+        { kind: 'villager', id: 'dex', at: [0, -3.3], still: true, face: 0, scale: 1.45, r: 0.8, reach: 5, name: 'Dexter Jettster', named: true, quest: 'dart', says: { when: { side: 'republic' }, lines: ['Hey, old buddy! Take a seat, I’ll be right with you.', 'Those Kaminoans keep to themselves. They’re cloners. Damn good ones, too.', 'You’re with the Republic, huh? Then you’re paying. Jedi never do.'], else: { when: { side: 'separatists' }, lines: ['Hey, old buddy! Take a seat, I’ll be right with you.', 'Separatist, huh? I don’t care who you’re with, long as you tip.', 'Those Kaminoans keep to themselves. They’re cloners. Damn good ones, too.'], else: ['Hey, old buddy! Take a seat, I’ll be right with you.', 'Those Kaminoans keep to themselves. They’re cloners. Damn good ones, too.', 'I’d expect better from you Jedi. You oughta be able to tell the difference between knowledge and wisdom.'] } } },
         { kind: 'wa7', path: [[-4.5, -3.3], [4.5, -3.3]], speed: 1.4, pause: 2, solid: false, name: 'WA-7', says: ['Whaddya want?', 'Dex says it’s on the house. Dex is lying.', '(She rolls off with a tray of jawa juice.)'] },
         { kind: 'villager', at: [6.4, -2.6], still: true, face: -Math.PI / 2, name: 'A diner', says: ['Nuna legs. Get the nuna legs.', 'Jedi come in here, you know. Dex knows everybody.'] },
         { kind: 'clone', at: [6.4, 3.7], still: true, face: -Math.PI / 2, name: 'An off-duty clone', says: ['Best caf in CoCo Town. Don’t tell the Commander.'] },
@@ -293,7 +301,7 @@ export const SITE = {
         { kind: 'dejarik', at: [-2.5, 2.5], yaw: -0.6 },
       ],
       life: [
-        { kind: 'villager', id: 'elan', at: [-6.2, 1.4], still: true, face: Math.PI / 2, name: 'Elan Sleazebaggano', named: true, says: ['You wanna buy some death sticks?', '(You don’t want to sell me death sticks.) …I don’t want to sell you death sticks.', '(You want to go home and rethink your life.) …I want to go home and rethink my life.'] },
+        { kind: 'villager', id: 'elan', at: [-6.2, 1.4], still: true, face: Math.PI / 2, name: 'Elan Sleazebaggano', named: true, says: { when: { hero: 'luke' }, lines: ['You wanna buy some death sticks?', '(You don’t want to sell me death sticks.) …I don’t want to sell you death sticks.', '(You want to go home and rethink your life.) …I want to go home and rethink my life.'], else: ['You wanna buy some death sticks?', 'Best price in the Uscru district. Don’t tell the Guard.', '(He looks at you, and at the door, and at you.)'] } },
         { kind: 'zam', id: 'zam', at: [-6.2, -3.4], still: true, face: Math.PI / 2, name: 'Zam Wesell', named: true, says: ['(She watches the door, and keeps her face turned from the light.)', 'I don’t know you. Go away.'] },
         { kind: 'villager', at: [-7.6, 0], still: true, face: Math.PI / 2, name: 'The barman', says: ['What’ll it be?', 'No credits, no drink.'] },
         { kind: 'twilek', n: 3, at: [2, -1], spread: 3, roam: 3, speed: 0.5, name: 'A gambler', says: ['Dejarik, five credits a game. You in?', 'The podraces are rigged. Everyone knows. We bet anyway.'] },
@@ -318,10 +326,10 @@ export const SITE = {
         lamps: [[0, 8, -3, '#cfd8ff', 60, 30], [-27, 5, -2, '#5a9aff', 40, 16], [28, 6, 0, '#cfd8ff', 36, 16], [0, 7, 7, '#ffe0c0', 30, 16]],
       },
       life: [
-        { kind: 'jocasta', id: 'jocasta', at: [-27, 1], still: true, face: Math.PI, name: 'Jocasta Nu', named: true, quest: ['training', 'order66'], says: ['If an item does not appear in our records, it does not exist.', 'The Archives are open to every Jedi. Mind the holobooks.', 'Lost a planet, has he? How embarrassing.'] },
+        { kind: 'jocasta', id: 'jocasta', at: [-27, 1], still: true, face: Math.PI, name: 'Jocasta Nu', named: true, quest: ['training', 'order66'], says: { when: { done: ['training'] }, lines: ['The Archives are open to every Jedi. Mind the holobooks.', 'Lost a planet, has he? How embarrassing.', 'Back from the training room? Then you’ll want the restricted section. You won’t get it.'], else: ['If an item does not appear in our records, it does not exist.', 'The Archives are open to every Jedi. Mind the holobooks.', 'Lost a planet, has he? How embarrassing.'] } },
         { kind: 'jedi', id: 'master', at: [28, 2.4], still: true, face: Math.PI, name: 'A Jedi Master', named: true, says: ['Stretch out with your feelings.', 'A remote never lies. Your blade does.'] },
         { kind: 'jedi', n: 4, at: [0, 0], spread: 8, roam: 6, speed: 0.7, name: 'Jedi Knight', says: ['May the Force be with you.', 'The Council is in session. Even the Masters are worried.'] },
-        { kind: 'jedi', at: [2, -6], roam: 3, speed: 0.5, scale: 0.38, r: 0.3, name: 'Yoda', says: ['Begun, the Clone War has.', 'Clouded, this boy’s future is.'] },
+        { kind: 'jedi', at: [2, -6], roam: 3, speed: 0.5, scale: 0.38, r: 0.3, name: 'Yoda', says: { when: { done: ['order66'] }, lines: ['Into exile, I must go. Failed, I have.', 'Not if anything to say about it, I have.'], else: ['Begun, the Clone War has.', 'Clouded, this boy’s future is.', 'Do, or do not. There is no try.', 'Lost a planet, Master Obi-Wan has. How embarrassing.'] } },
         { kind: 'caretaker', n: 2, at: [-4, 4], spread: 3, roam: 4, speed: 0.6, name: 'A youngling', says: ['Master Yoda says I shouldn’t talk to strangers. Are you a stranger?'] },
         { kind: 'clone', n: 2, at: [0, 8.6], spread: 3, still: true, face: Math.PI, name: 'Temple guard', says: ['The Temple is open. Mind the Archives.'] },
       ],
