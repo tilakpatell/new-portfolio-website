@@ -35,7 +35,27 @@ the seams let it (~25k triangles).
 triangle budget, WebP textures, meshopt: the same steps as
 `scripts/meshy-import.mjs`) and credits it in `public/games/credits.json`.
 It refuses a model over its budget or over 4 MB. Everything else lands in
-`scripts/gen3d/cache/` (git-ignored).
+`scripts/gen3d/cache/` (git-ignored; `GEN3D_CACHE` for elsewhere).
+
+Three cuts are made of every model (`.hq`, plain, `.lo`: `budget.mjs`), and
+`--faces`/`--tex` scale all three: `--faces 4000` for a rock gives
+4000/2000/667, not three copies of one cut.
+
+**A failed run picks up where it stopped.** Each step's output keeps a key of
+what it was made from (`raw.glb.key`: the pictures, seed, res, engine), and a
+step whose inputs haven't changed is reused, so a job that died at the bake
+or the cut doesn't spend the GPU on the raw model again. `--fresh` makes all
+of it again. A run's own lines are in `cache/<name>/make.log`, its outcome in
+`result.json`. Every engine, the concept picture and the bake are stopped if
+they hang (`GEN3D_ENGINE_MINUTES` 45, `GEN3D_PICTURE_MINUTES` 10,
+`GEN3D_BAKE_MINUTES` 20).
+
+**Where the tools are.** Installed from inside the Claude desktop app (an
+MSIX package), `%LOCALAPPDATA%\trellis-studio`, `sdcpp`, `llamacpp` and
+`blender` really live in the app's boxed copy
+(`%LOCALAPPDATA%\Packages\Claude_…\LocalCache\Local\…`), which a process
+started outside the app (the Actions runner, a scheduled task) can't see at
+the usual path. `localDir()` (scripts/desktop/lib.mjs) looks in both.
 
 ## From your phone
 
