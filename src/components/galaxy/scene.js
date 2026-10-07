@@ -2225,9 +2225,12 @@ export async function create(canvas, ctx) {
       state.shown = on;
       if (!on) engine?.set({ speed: 0, on: false });
     },
-    // the runtime's quality: the sharpness is its own; at the floor (past
-    // its last step), the glow and the grade go
+    // the runtime's quality: drawn softer through the post chain, a step at
+    // a time, over a canvas that keeps its size (module.js's soften: no
+    // resize, so no cleared frame and the HUD stays crisp); at the floor
+    // (past its last step), the glow and the grade go
     lowerQuality(level = STEPS.length) {
+      post.sharpness = STEPS[Math.min(level, STEPS.length - 1)];
       sky.setRatio(gfx.ratio);
       if (level < STEPS.length) return;
       post.lite();

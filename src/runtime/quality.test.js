@@ -47,10 +47,11 @@ describe('createQuality', () => {
     expect(sharp.ratio).toBe(2);
     expect(sharp.ratioUnder(1.5)).toBe(1.5);
     expect(sharp.ratioUnder(undefined)).toBe(2);
-    // and the pace's scale comes off whatever that is
+    // and the pace's scale comes off whatever that is, unless asked for without it
     const softer = createQuality({ tier: 'high', pace: fakePace([2]), dpr: 2 });
     softer.frame(0);
     expect(softer.ratioUnder(1.5)).toBeCloseTo(1.5 * STEPS[2]);
+    expect(softer.ratioUnder(1.5, { unscaled: true })).toBe(1.5);
   });
 
   it('follows the pace down and tells listeners once per change', () => {

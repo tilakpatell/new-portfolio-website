@@ -49,8 +49,10 @@ export function createQuality({ tier = device().tier, pace = createPace(), floor
     get ratio() {
       return sharpest() * scale;
     },
-    ratioUnder(cap = Infinity) {
-      return sharpest(cap) * scale;
+    // (`unscaled`: the level's ratio without the pace's scale, for a module
+    // that softens through its own post chain and keeps its canvas as it is)
+    ratioUnder(cap = Infinity, { unscaled = false } = {}) {
+      return sharpest(cap) * (unscaled ? 1 : scale);
     },
     on(fn) {
       listeners.add(fn);

@@ -475,6 +475,30 @@ describe('createRuntime', () => {
     expect(quality.frame).toHaveBeenLastCalledWith(400);
   });
 
+  it('a module that softens through its own post chain keeps its canvas as it is, and is told the level', async () => {
+    const quality = fakeQuality();
+    let scale = 1;
+    quality.ratioUnder = vi.fn((cap, { unscaled = false } = {}) => Math.min(cap ?? Infinity, 2) * (unscaled ? 1 : scale));
+    quality.frame = vi.fn(() => {
+      scale = 0.72;
+      return 2;
+    });
+    const { rt, loop } = make({ quality });
+    const world = fakeWorld({ wants: () => true, lowerQuality: vi.fn() });
+    await rt.mount({ id: 'galaxy', ratio: 1.5, soften: 'post', create: () => world }, {}, fakeHost());
+    expect(rt.gfx.setRatio).toHaveBeenLastCalledWith(1.5);
+    loop.tick(16);
+    expect(world.lowerQuality).toHaveBeenCalledWith(2);
+    for (const [r] of rt.gfx.setRatio.mock.calls) expect(r).toBe(1.5); // (never the scaled 1.08)
+    // a module without it is drawn at the scaled ratio, as before
+    const plain = fakeWorld({ wants: () => true, lowerQuality: vi.fn() });
+    scale = 1;
+    await rt.mount({ id: 'surface', ratio: 1.5, create: () => plain }, {}, fakeHost());
+    loop.tick(32);
+    expect(rt.gfx.setRatio).toHaveBeenLastCalledWith(1.5 * 0.72);
+    expect(plain.lowerQuality).toHaveBeenCalledWith(2);
+  });
+
   it("a module's ratio caps the sharpness it's drawn at", async () => {
     const quality = fakeQuality();
     quality.ratioUnder = vi.fn((cap) => Math.min(cap ?? Infinity, 2));
