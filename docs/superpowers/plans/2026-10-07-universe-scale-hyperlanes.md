@@ -41,10 +41,10 @@ Branch `claude/universe-scale-hyperlanes` (this one). One PR for Tasks 1 to 3, a
 **Interfaces:**
 - Produces: `SPREAD = 4` in `scale.js`. `layout.js`: `FIRST = 2000 * SPREAD`, `STEP = 330 * SPREAD`, `HEIGHT = 560 * SPREAD / 2`, `SECTORS.main.edge = 9000 * SPREAD`, `SECTORS.rickmorty.origin = [0, 0, -48000]`, `RIM = { inner: 8000 * SPREAD, outer: 8600 * SPREAD, height: 60 }`. `deep.js`: every main-sector wonder’s `at` is its old `at` × `SPREAD` (write the products out, or map them: either way the test below holds).
 
-- [ ] **Step 1: Write the failing tests.** `scale.test.js`: `SPREAD` is 4 and `universes.js`’s copy equals it. `layout.test.js`: the nearest fandom is 8,000 ± 1 from the origin; every fandom is at least 2,600 from every other place (planets and wonders); the main edge is 36,000; `sectorOf(0, 0, -48000)` is `'rickmorty'` and `sectorOf(0, 0, -36000)` is `'main'`. `deep.test.js`: every main-sector wonder is between 8,000 and 30,000 out and none within 1.5 of its reach of another place.
-- [ ] **Step 2: Run** `npx vitest run src/components/universe/scale.test.js src/components/universe/layout.test.js src/components/universe/deep.test.js` **and see them fail.**
-- [ ] **Step 3: Implement** the constants above. Fix what else breaks: `npx vitest run src/components/universe` lists it (trip times in `nav.test.js`, hops in `ship.test.js`, `sector.test.js`’s split; update their pinned numbers to what the code now says, after checking each by hand that it’s the spread and not a bug).
-- [ ] **Step 4: Run** the universe suite green. **Commit.**
+- [x] **Step 1: Write the failing tests.** `scale.test.js`: `SPREAD` is 4 and `universes.js`’s copy equals it. `layout.test.js`: the nearest fandom is 8,000 ± 1 from the origin; every fandom is at least 2,600 from every other place (planets and wonders); the main edge is 36,000; `sectorOf(0, 0, -48000)` is `'rickmorty'` and `sectorOf(0, 0, -36000)` is `'main'`. `deep.test.js`: every main-sector wonder is between 8,000 and 30,000 out and none within 1.5 of its reach of another place.
+- [x] **Step 2: Run** `npx vitest run src/components/universe/scale.test.js src/components/universe/layout.test.js src/components/universe/deep.test.js` **and see them fail.**
+- [x] **Step 3: Implement** the constants above. Fix what else breaks: `npx vitest run src/components/universe` lists it (trip times in `nav.test.js`, hops in `ship.test.js`, `sector.test.js`’s split; update their pinned numbers to what the code now says, after checking each by hand that it’s the spread and not a bug).
+- [x] **Step 4: Run** the universe suite green. **Commit.**
 
 ### Task 2: far places as light (`farPlaces.js`)
 

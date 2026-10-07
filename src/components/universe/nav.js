@@ -354,22 +354,23 @@ export function formatDistance(units) {
 
 // ── The chart ──
 // Seen from straight above, north (−z) up. Two views: the whole universe,
-// out to the edge of the map, on a square-root scale (so the home system
-// opens up and the far worlds still fit), and the home system alone, to
-// scale. chartAt gives where (x, z) is on it, 0…1 across and down.
+// out to the edge of the map, on a root scale (so the home system opens up
+// and the far worlds still fit: since the spread, scale.js's SPREAD, a 0.375
+// power, which keeps the home system as big on it as the square root did on
+// the map a quarter the size), and the home system alone, to scale. chartAt gives where (x, z) is on it, 0…1 across and down.
 // (and a third, the Rick and Morty sector, round its own middle: each view's
 // `sector`, and its `origin`, the point at its middle)
 export const CHART_VIEWS = {
-  all: { id: 'all', name: 'Universe', r: EDGE, scale: 'sqrt', sector: 'main', origin: [0, 0, 0] },
+  all: { id: 'all', name: 'Universe', r: EDGE, scale: 'root', power: 0.375, sector: 'main', origin: [0, 0, 0] },
   home: { id: 'home', name: 'Home system', r: HOME_RADIUS * 1.15, scale: 'linear', sector: 'main', origin: [0, 0, 0] },
-  rickmorty: { id: 'rickmorty', name: 'The Curve', r: SECTORS.rickmorty.edge, scale: 'sqrt', sector: 'rickmorty', origin: SECTORS.rickmorty.origin },
+  rickmorty: { id: 'rickmorty', name: 'The Curve', r: SECTORS.rickmorty.edge, scale: 'root', power: 0.5, sector: 'rickmorty', origin: SECTORS.rickmorty.origin },
 };
 // the chart a sector opens on
 export const viewFor = (sector) => (sector === 'rickmorty' ? 'rickmorty' : 'all');
 const MARGIN = 0.47; // the chart's radius, of its width (a little room round the edge)
 export function chartRadius(r, view = CHART_VIEWS.all) {
   const k = Math.max(0, r) / view.r;
-  return (view.scale === 'sqrt' ? Math.sqrt(k) : k) * MARGIN;
+  return (view.scale === 'root' ? k ** view.power : k) * MARGIN;
 }
 export function chartAt(x, z, view = CHART_VIEWS.all) {
   const o = view.origin ?? [0, 0, 0];

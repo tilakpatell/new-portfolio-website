@@ -5,7 +5,7 @@
 // at the disc and fading up and down, its threads (the Curve's walled-off
 // dimensions) drifting slowly along it, and a band of light round its
 // middle. Far off it's a ring on the horizon; close, it shimmers. Space
-// scenery, so shaders only. It sits 40000 out from the main map, past the
+// scenery, so shaders only. It sits 48,000 out from the main map, past the
 // camera's far plane from there: only seen from inside the sector.
 //
 // createCurve(parent) → { update(t), dispose() }

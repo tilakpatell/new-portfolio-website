@@ -743,7 +743,7 @@ describe('autopilot', () => {
       const park = parkAt(id, [s.x, s.z]);
       let done = false;
       let bumps = 0;
-      for (let t = 0; t < 60 && !done; t += 1 / 60) {
+      for (let t = 0; t < 100 && !done; t += 1 / 60) {
         const a = autopilot(s, id, park);
         done = a.done;
         const r = step(s, a.input, 1 / 60);
@@ -762,7 +762,7 @@ describe('autopilot', () => {
         let s = { ...spawn(null), y };
         const park = parkAt(id, [s.x, s.z]);
         let done = false;
-        for (let t = 0; t < 60 && !done; t += 1 / 60) {
+        for (let t = 0; t < 100 && !done; t += 1 / 60) {
           const a = autopilot(s, id, park);
           done = a.done;
           s = step(s, a.input, 1 / 60).ship;
@@ -799,7 +799,7 @@ describe('autopilot', () => {
     for (const w of WONDERS) {
       const o = SECTORS.rickmorty.origin;
       const from = inMain(w.at) ? spawn(ORDER[0]) : { ...spawn(null), ...parkAt(w.id === 'citadel' ? 'curvesun' : 'citadel', [o[0], o[2] + 500]), speed: 0 };
-      const { s, top } = trip(from, w.id, 90);
+      const { s, top } = trip(from, w.id, 135);
       expect(top, w.id).toBeGreaterThan(SHIP.boost * 2); // on the pulse drive out there
       const g = GOALS[w.id];
       const d = Math.hypot(s.x - g.at[0], s.z - g.at[2]);
@@ -810,7 +810,7 @@ describe('autopilot', () => {
     // and home again from the furthest, at the home system's speeds by the end
     const far = WONDERS.filter((w) => inMain(w.at)).reduce((a, b) => (Math.hypot(a.at[0], a.at[2]) > Math.hypot(b.at[0], b.at[2]) ? a : b));
     const there = { ...spawn(null), ...parkAt(far.id), speed: 0 };
-    const back = trip(there, ORDER[0], 90);
+    const back = trip(there, ORDER[0], 135);
     expect(orbiting(back.s, null)).toBe(ORDER[0]);
   });
 
@@ -819,7 +819,7 @@ describe('autopilot', () => {
       let s = { ...spawn(null), pitch: -1.2, bank: Math.PI - 0.2, speed: SHIP.cruise };
       const park = parkAt(id, [s.x, s.z]);
       let done = false;
-      for (let t = 0; t < 60 && !done; t += 1 / 60) {
+      for (let t = 0; t < 100 && !done; t += 1 / 60) {
         const a = autopilot(s, id, park);
         done = a.done;
         s = step(s, a.input, 1 / 60).ship;
@@ -843,8 +843,8 @@ describe('autopilot', () => {
       const id = ORDER[i % ORDER.length];
       const park = parkAt(id, [s.x, s.z]);
       let done = false;
-      // (the longest leg, from the Caribbean out to Invincible at the end of the spiral, takes the best part of 100 seconds on the big map)
-      for (let t = 0; t < 115 && !done; t += 1 / 60) {
+      // (the longest leg, from the Caribbean out to Invincible at the end of the spiral, takes the best part of 150 seconds of free flight on the spread map, scale.js's SPREAD: the lanes, hyperlanes.js, are the quick way)
+      for (let t = 0; t < 170 && !done; t += 1 / 60) {
         const a = autopilot(s, id, park);
         done = a.done;
         s = step(s, a.input, 1 / 60).ship;

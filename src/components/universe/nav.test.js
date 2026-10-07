@@ -108,7 +108,7 @@ describe('the drives', () => {
       expect(quick.hits, id).toBe(0);
       expect(orbiting(quick.s, null), id).toBe(id);
       expect(quick.t, id).toBeLessThan(cruise.t * 0.65);
-      expect(quick.t, id).toBeLessThan(20);
+      expect(quick.t, id).toBeLessThan(40); // (34 s to the Caribbean, the furthest, since the spread: scale.js's SPREAD; under 20 before)
       if (id !== 'starwars') expect(quick.top, id).toBeGreaterThan(SHIP.pulse * (inMain(id) ? 2 : 1)); // (well past the pulse drive; the gate's close to home, and the sector's first worlds to the Citadel)
     }
   });
