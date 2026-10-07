@@ -37,7 +37,8 @@
       "season 7",
       "season 8",
       "cardoni"
-    ]
+    ],
+    "per_query": 6
   },
   "morty": {
     "show": "rick-and-morty",
@@ -69,7 +70,8 @@
       "evil morty",
       "season 7",
       "season 8"
-    ]
+    ],
+    "per_query": 6
   },
   "luke": {
     "show": "star-wars",
@@ -113,7 +115,8 @@
       "boba fett",
       "joker",
       "sequel"
-    ]
+    ],
+    "per_query": 6
   },
   "han": {
     "show": "star-wars",
@@ -176,7 +179,8 @@
       "indiana jones",
       "blade runner",
       "air force one"
-    ]
+    ],
+    "per_query": 6
   },
   "walt": {
     "show": "breaking-bad",
@@ -215,7 +219,8 @@
     "avoid": [
       "malcolm",
       "cranston interview"
-    ]
+    ],
+    "per_query": 6
   },
   "jesse": {
     "show": "breaking-bad",
@@ -251,7 +256,8 @@
     "avoid": [
       "aaron paul interview",
       "bojack"
-    ]
+    ],
+    "per_query": 6
   },
   "hank": {
     "show": "breaking-bad",
