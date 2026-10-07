@@ -487,7 +487,7 @@ export const PAGES = {
     touch: [{ rows: [['Stick', 'Walk'], ['Drag', 'Look'], ['Jump', 'Jump; swim up'], ['Sneak', 'Sneak']] }],
     tips: [
       ['The world', 'Endless, and made from its seed: the same seed is the same world. New world on the title starts another.'],
-      ['The textures', 'Pixel Perfection, a free resource pack by XSSheep and Nova_Wostra, close to the game’s own; Mojang’s may not be shared.'],
+      ['The textures', 'The game’s own, from Minecraft 1.21.11, used with Mojang’s permission.'],
       ['Crafting', 'A log makes four planks, two planks four sticks, four planks a crafting table. Right-click the table for its 3 × 3: three planks over two sticks is a pickaxe. In a screen, click picks up and puts down, right-click halves a stack or puts one, Shift-click sends it across.'],
       ['Saving', 'What you dig and build is kept on this device, and the same world comes back next time.'],
       ['The night', 'A day is twenty minutes. Torches (coal over a stick) and glowstone push the dark back; a bed (three wool over three planks) sleeps the night away and moves where you wake.'],
