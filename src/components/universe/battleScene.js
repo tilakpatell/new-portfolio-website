@@ -182,8 +182,9 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
       }
       for (const f of b.fighters) slotFor(f, f.kind, f.size);
       seenRunners = 0;
-      const flag = b.capitals.find((c) => c.team === b.defender && c.role === 'flagship');
-      if (flag && b.phase === 1) shield.show(flag, null);
+      // (the ship the objectives are on: the defender's flagship, or an interdiction's Interdictor)
+      const obj = b.capitals.find((c) => c.objective);
+      if (obj && b.phase === 1) shield.show(obj, null);
     },
 
     hide() {
@@ -276,10 +277,10 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
       // hold, if you defend), and the attacker's flagship for a defender
       const list = [];
       if (youTeam !== null && !battle.over) {
-        const flag = battle.capitals.find((c) => c.team === battle.defender && c.role === 'flagship');
+        const obj = battle.capitals.find((c) => c.objective);
         const attack = youTeam === battle.attacker;
         let n = 0;
-        for (const sub of flag?.subs ?? []) {
+        for (const sub of obj?.subs ?? []) {
           if (!sub.alive || sub.phase !== battle.phase) continue;
           // (the two generators sit close: the second's card hangs under its point, not over it)
           list.push({ key: sub.id, pos: sub.pos, title: `${attack ? 'Destroy' : 'Defend'}: ${NAMES[sub.kind]}`, sub: far(sub.pos, camLocal, metres), hp: sub.hp / sub.hpMax, colour: attack ? ATTACK : DEFEND, under: n++ % 2 === 1 });

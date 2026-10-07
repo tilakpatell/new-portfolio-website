@@ -134,7 +134,7 @@ const hitAll = (phase) =>
   page.evaluate((p) => {
     const w = window.__galaxyDebug.war;
     const b = w.battle;
-    const flag = b.capitals.find((c) => c.team === b.defender && c.role === 'flagship');
+    const flag = b.capitals.find((c) => c.objective);
     for (const s of flag.subs.filter((o) => o.phase === p)) for (let i = 0; i < 300 && s.alive; i++) w.hit({ x: s.pos.x, y: s.pos.y + 2, z: s.pos.z }, { x: s.pos.x, y: s.pos.y - 0.01, z: s.pos.z }, 3);
     return flag.subs.map((s) => s.alive);
   }, phase);
@@ -146,9 +146,9 @@ if (attacking) {
   await snap('shield-down');
   await hitAll(2);
   await page.waitForTimeout(2000);
-  // (watching the flagship, for the break-up)
+  // (watching the ship the objectives are on, for the break-up)
   await pin(`
-    const b = d.war.battle; const f = b.capitals.find((c) => c.team === b.defender && c.role === 'flagship');
+    const b = d.war.battle; const f = b.capitals.find((c) => c.objective);
     const s = f.size; const x = f.pos.x + f.right.x * s * 1.1 - f.fwd.x * s * 0.1, z = f.pos.z + f.right.z * s * 1.1 - f.fwd.z * s * 0.1;
     return { x, y: f.pos.y + s * 0.3, z, heading: Math.atan2(x - f.pos.x, z - f.pos.z), pitch: -0.25, bank: 0 };
   `);

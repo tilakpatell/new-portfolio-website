@@ -62,6 +62,24 @@ describe('createBattleScene', () => {
     draw.dispose();
   });
 
+  it('shields and marks the ship the objectives are on: an interdiction’s Interdictor, not the flagship', () => {
+    const war = WARS.starwars;
+    const withInterdictor = { ...war, sides: [war.sides[0], { ...war.sides[1], capitals: [...war.sides[1].capitals, { kind: 'interdictor', role: 'escort', size: 11, hull: 220 }] }] };
+    const parent = new THREE.Group();
+    const draw = createBattleScene(parent, { models: stubModels(), small: true });
+    const battle = createBattle({ war: withInterdictor, attacker: 0, at: [0, 0, 0], axis: [1, 0], perSide: 2, objectivesOn: 'interdictor' });
+    const inter = battle.capitals.find((c) => c.kind === 'interdictor');
+    draw.show(battle, withInterdictor);
+    const shield = parent.children.find((o) => o.material?.uniforms?.uHits);
+    expect(shield.visible).toBe(true);
+    expect(shield.position.distanceTo(new THREE.Vector3(inter.pos.x, inter.pos.y, inter.pos.z))).toBeLessThan(1e-6);
+    draw.update(1 / 30, 1, new THREE.PerspectiveCamera(), new THREE.Vector3(), [], 0);
+    const marks = parent.children.filter((o) => o.isSprite && o.renderOrder === 10);
+    expect(marks).toHaveLength(2);
+    for (const s of inter.subs.filter((x) => x.phase === 1)) expect(marks.some((m) => m.position.distanceTo(new THREE.Vector3(s.pos.x, s.pos.y, s.pos.z)) < 1e-6), s.id).toBe(true);
+    draw.dispose();
+  });
+
   it('breaks the defender’s flagship in two when it goes', () => {
     const parent = new THREE.Group();
     const models = stubModels();
