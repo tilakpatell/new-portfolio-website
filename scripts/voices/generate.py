@@ -342,6 +342,7 @@ def main():
     ap.add_argument("--again", action="store_true", help="choose every line again from its takes, making any missing (after giving a voice another engine)")
     ap.add_argument("--check", action="store_true", help="show each voice's reference and engine, and stop")
     ap.add_argument("--bakeoff", type=int, metavar="N", help="try every engine set up here on N lines a voice, score them, and stop")
+    ap.add_argument("--engines", help="the bake-off's engines, comma-separated (default: every one set up here)")
     args = ap.parse_args()
 
     lines_file = HERE / "lines.json"
@@ -366,7 +367,7 @@ def main():
     directed = sum(1 for l in lines if l.get("feel"))
     print(f"{directed} of {len(lines)} lines directed (delivery.json), cloned from the real lines of theirs that feel most like it")
     if args.bakeoff:
-        return bakeoff(lines, feels.voices, judge, args.bakeoff, args.takes)
+        return bakeoff(lines, feels.voices, judge, args.bakeoff, args.takes, args.engines.split(",") if args.engines else None)
 
     def mp3(l):
         return OUT / l["who"] / f"{l['id']}.mp3"
@@ -417,20 +418,21 @@ def main():
     print(f"\nDone: {len(made)} lines, {len(doubtful)} doubtful (cache/takes/report.md). npm run dev and fly: the crews speak these where they have no clip.")
 
 
-def bakeoff(lines, voices, judge, n, takes):
-    """The same few lines a voice through every engine set up here: which sounds most like them, says the words, and sounds natural."""
+def bakeoff(lines, voices, judge, n, takes, which=None):
+    """The same few lines a voice through every engine set up here (or `which` of them): which sounds most
+    like them, says the words, sounds natural and says it the way it's directed."""
     sample = []
-    for who in voices:
+    for who in sorted({l["who"] for l in lines} & set(voices)):
         mine = [l for l in lines if l["who"] == who]
         sample += [mine[i * len(mine) // n] for i in range(min(n, len(mine)))]
     results = {}
-    for engine in engines.available():
+    for engine in [e for e in engines.available() if not which or e in which]:
         print(f"\n{engine}")
         got = results.setdefault(engine, {})
         make(engine, sample, voices, judge, takes, lambda l, d, ok: got.setdefault(l["who"], []).append((d, ok)))
     table = {}
     print("\n| voice | engine | passed | sim | wer | UTMOS | quality |\n|---|---|---|---|---|---|---|")
-    for who in voices:
+    for who in sorted({l["who"] for l in sample}):
         for engine, got in results.items():
             rows = got.get(who, [])
             ds = [d for d, _ in rows if d]

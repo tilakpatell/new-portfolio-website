@@ -58,7 +58,9 @@ def start(name, jobs, log):
     if name in WSL:
         distro, where = wsl(name)
         script, jobs_there = shlex.quote(wsl_path(str(HERE / f"{name}.py"))), shlex.quote(wsl_path(str(jobs)))
-        cmd = ["wsl.exe", "-d", distro, "-e", "bash", "-lc", f"cd {where} && PYTHONIOENCODING=utf-8 PYTHONWARNINGS=ignore exec .venv/bin/python {script} {jobs_there}"]
+        # the engine's own settings (AUK_OFFLOAD=1, FISH_COMPILE=1, ...) don't cross into WSL by themselves
+        own = " ".join(f"{k}={shlex.quote(v)}" for k, v in os.environ.items() if k.startswith(f"{name.upper()}_"))
+        cmd = ["wsl.exe", "-d", distro, "-e", "bash", "-lc", f"cd {where} && {own} PYTHONIOENCODING=utf-8 PYTHONWARNINGS=ignore exec .venv/bin/python {script} {jobs_there}"]
     else:
         cmd = [python(name), str(HERE / f"{name}.py"), str(jobs)]
     return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=open(log, "a", encoding="utf-8"), text=True, encoding="utf-8", errors="replace", env=env, cwd=str(HERE))
