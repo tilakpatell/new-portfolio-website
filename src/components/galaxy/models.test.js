@@ -1,9 +1,10 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import * as THREE from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SHIP_MODELS } from '../universe/shipModels';
 import { BUILT_KINDS } from '../universe/trafficModels';
 import { GALAXY_KINDS } from './fleet';
-import { HQ, HUNTER_GLB, LOD_FAR, LOD_NEAR, MODELS, STAND_IN, createModels, lodLevels, lodUrl, withHq } from './models';
+import { ARRIVAL, HQ, HUNTER_GLB, LOD_FAR, LOD_NEAR, MODELS, STAND_IN, createModels, lodLevels, lodUrl, modelsAt, withHq } from './models';
 import { SYSTEMS, kindsIn } from './systems';
 
 const at = (path) => new URL(`../../../public${path}`, import.meta.url);
@@ -158,6 +159,35 @@ describe('the galaxy’s models', () => {
         expect(existsSync(at(m[kind].url)), kind).toBe(true);
         expect(existsSync(at(lodUrl(kind, m))), kind).toBe(true);
         expect(primitives(at(lodUrl(kind, m))), kind).toBe(1);
+      }
+    });
+
+    it('is what modelsAt gives a desktop, and not a laptop', () => {
+      expect(modelsAt('high').destroyer.url).toBe(HQ.destroyer.url);
+      expect(modelsAt('mid').destroyer.url).not.toBe(HQ.destroyer.url);
+    });
+  });
+
+  describe('what every arrival loads', () => {
+    it('flies the galaxy’s own X-wings and interceptors in the light cut whatever the device (the player’s X-wing is a model of its own)', () => {
+      expect(MODELS.xwing.url).toMatch(/\/models\/gen3d\/x-wing\.lo\.glb$/);
+      expect(MODELS.interceptor.url).toMatch(/\/models\/gen3d\/tie-interceptor\.lo\.glb$/);
+      for (const detail of ['low', 'mid', 'high', 'ultra']) for (const kind of ['xwing', 'interceptor']) expect(modelsAt(detail)[kind].url, `${detail} ${kind}`).toBe(MODELS[kind].url);
+      expect(HUNTER_GLB.xwing.url).toBe(MODELS.xwing.url);
+      expect(HUNTER_GLB.redleader.url).toBe(MODELS.xwing.url);
+      expect(HUNTER_GLB.interceptor.url).toBe(MODELS.interceptor.url);
+      expect(SHIP_MODELS.xwing).toBe('/models/sketchfab/xwing-hd.glb');
+    });
+
+    // (the galaxy's models come to about 8 MB, specs/2026-10-06-galaxy-phases-design.md;
+    // these four were 7.7 MB of it on a desktop when the X-wing and the interceptor
+    // came in the 120k-triangle cut, and are 2.3 MB in the light one)
+    it('is the Star Destroyer, the corvette, the X-wing and the interceptor, with their far-off copies, under 3 MB on any device', () => {
+      expect(ARRIVAL).toEqual(['destroyer', 'corvette', 'xwing', 'interceptor']);
+      for (const detail of ['low', 'mid', 'high', 'ultra']) {
+        const models = modelsAt(detail);
+        const bytes = ARRIVAL.flatMap((k) => [models[k].url, lodUrl(k, models)]).reduce((n, url) => n + statSync(at(url)).size, 0);
+        expect(bytes, detail).toBeLessThan(3e6);
       }
     });
   });

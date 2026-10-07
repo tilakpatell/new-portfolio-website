@@ -96,10 +96,15 @@ export const MODELS = {
   superlab: { url: '/models/universe/war/superlab.glb', nose: Math.PI / 2 },
   hacienda: { url: '/models/universe/war/hacienda.glb', nose: 0 }, // (its thrusters either side)
 };
-// the ones made again here at full quality (scripts/gen3d, remade from these
-// models' own renders): kind → the made model's name, loaded in this device's cut
+// the ones made again here (scripts/gen3d, remade from these models' own
+// renders): kind → the made model's name, loaded in the light cut (20k
+// triangles, 1024 maps) whatever the device. These are the galaxy's own
+// fighters, not yours (your X-wing is its own model, universe/shipModels.js),
+// and a fighter shows its whole model only inside LOD_NEAR times its size, a
+// dozen units or so; the desktop's 120k-triangle cut of the two came to 6.6 MB
+// of every arrival, against 1.4 MB for these.
 export const MADE = { xwing: 'x-wing', interceptor: 'tie-interceptor' };
-for (const [kind, name] of Object.entries(MADE)) if (MODELS[kind]) MODELS[kind] = { ...MODELS[kind], url: gen3dUrl(name) };
+for (const [kind, name] of Object.entries(MADE)) if (MODELS[kind]) MODELS[kind] = { ...MODELS[kind], url: gen3dUrl(name, 'low') };
 
 // The capitals' close-up cut: Daniel Andersson's Imperial II and Nebulon-B
 // (scripts/sketchfab-galaxy.mjs, `hq`), about 100k triangles with
@@ -119,7 +124,15 @@ export const withHq = (models, detail) =>
   HQ_DETAILS.has(detail)
     ? { ...models, ...Object.fromEntries(Object.entries(HQ).filter(([k]) => models[k]).map(([k, d]) => [k, { url: d.url, nose: d.nose, hq: true }])) }
     : models;
-Object.assign(MODELS, withHq(MODELS, device().detail));
+// the models as a device of this detail loads them (MODELS is this device's)
+const LIGHT = { ...MODELS };
+export const modelsAt = (detail) => withHq(LIGHT, detail);
+Object.assign(MODELS, modelsAt(device().detail));
+
+// what every system's arrival loads, whatever's there (galaxy/scene.js): the
+// Star Destroyer and the corvette the set pieces and the battles fly, and the
+// X-wing and the interceptor that fight over nearly every world
+export const ARRIVAL = ['destroyer', 'corvette', 'xwing', 'interceptor'];
 
 const BUILT = new Set([...BUILT_KINDS, ...GALAXY_KINDS]);
 
@@ -170,16 +183,16 @@ export const lodLevels = (size) => [
   [LOD_FAR * size, 'none'],
 ];
 
-// the models the hunters fly (universe/glbFleet.js flies them, the
-// universe's TIE interceptors, and the galaxy's droids and Imperial TIEs, each
-// built until it's here)
+// the models the hunters fly (universe/glbFleet.js flies them: the galaxy's
+// droids and Imperial TIEs, and its X-wings and interceptors in the cut the
+// battles load, each built until it's here)
 export const HUNTER_GLB = {
   ...GLB,
-  ...Object.fromEntries(['vulture', 'trifighter', 'tie', 'tieadvanced'].map((k) => [k, { ...MODELS[k], built: true }])),
+  ...Object.fromEntries(['vulture', 'trifighter', 'tie', 'tieadvanced', 'xwing', 'interceptor'].map((k) => [k, { ...MODELS[k], built: true }])),
   // (the war's other hunters and what their capital ships drop in: the
   // Republic's fighters, Wedge in an X-wing, a Mon Calamari cruiser, a Venator)
   ...Object.fromEntries(['arc170', 'delta7', 'moncal', 'venator'].map((k) => [k, { ...MODELS[k], built: false }])),
-  redleader: { ...GLB.xwing, built: false },
+  redleader: { ...MODELS.xwing, built: false },
 };
 
 // a model's materials tuned to the scene's light: engines and lights hot
