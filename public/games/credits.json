@@ -3860,5 +3860,77 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/cloudtower": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116a5-3543-74ca-bf8e-d913c89adea9",
+    "name": "a tower of Cloud City, generated for this site with Meshy AI (scripts/meshy-galaxy-three.mjs, lifted out of a game render of its streets)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/cloudtower2": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116a5-39b1-730e-a0e5-0dc3c790d657",
+    "name": "a domed hall of Cloud City, generated for this site with Meshy AI (scripts/meshy-galaxy-three.mjs, lifted out of a game render of its streets)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/cloudplaza": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116a5-3cdf-710d-93be-c9e81aa64ab3",
+    "name": "Cloud City's plaza terraces, generated for this site with Meshy AI (scripts/meshy-galaxy-three.mjs, lifted out of a game render of its streets)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/dexdiner": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116a5-3fd5-768e-b972-6f68b1f51c65",
+    "name": "Dex's Diner, generated for this site with Meshy AI (scripts/meshy-galaxy-three.mjs, lifted out of a film still)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/club": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116a5-4366-72ae-9b1e-ba716f09a5f5",
+    "name": "the Outlander Club, generated for this site with Meshy AI (scripts/meshy-galaxy-three.mjs, lifted out of a film still)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/republica": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116a5-468d-764d-a19c-5f59797bd7e4",
+    "name": "500 Republica, generated for this site with Meshy AI (scripts/meshy-galaxy-three.mjs, lifted out of a film still)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/wingguard": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116a0-3967-7310-9a60-cd46e71d4fd5",
+    "name": "a Cloud City Wing Guard, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/dex": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116a0-3c15-7510-9c68-545c9c09927c",
+    "name": "Dexter Jettster at his counter, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }
