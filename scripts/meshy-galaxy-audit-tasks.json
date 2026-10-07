@@ -2,31 +2,37 @@
   "yodahut": {
     "lift": [
       "01a1188c-78c0-7001-9b94-6dfc3ee39ed6"
-    ]
+    ],
+    "model": "01a1188e-309a-7645-b493-e3e23e1ac3ed"
   },
   "jeditemple": {
     "lift": [
       "01a1188c-ad62-71d8-beb0-634ab57512d2"
-    ]
+    ],
+    "model": "01a1188e-347f-779e-bc75-bca8649b4612"
   },
   "stonehead": {
     "lift": [
       "01a1188c-f8b1-731b-b0ac-767dd6b869bb"
-    ]
+    ],
+    "model": "01a1188e-37f4-7172-8588-31fa98a8d839"
   },
   "kachirho": {
     "lift": [
       "01a1188d-41ea-7646-bc55-7667b0bae1c0"
-    ]
+    ],
+    "model": "01a1188e-3b9c-7301-ad3b-d9787ac542f5"
   },
   "foundry": {
     "lift": [
       "01a1188d-8a6c-7157-8f9f-ed8ac1f0327f"
-    ]
+    ],
+    "model": "01a1188e-3f15-7700-b812-db6b0fadd9c9"
   },
   "republica": {
     "lift": [
       "01a1188d-bcaa-71f2-bdc4-736d2338e3f3"
-    ]
+    ],
+    "model": "01a1188e-420f-7058-9d53-0e7609e8b80a"
   }
 }
