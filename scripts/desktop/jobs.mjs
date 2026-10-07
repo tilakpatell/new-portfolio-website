@@ -23,6 +23,18 @@ import { HOME, gh, issue as getIssue, keepAwake, labelled, quietly, ready, repoN
 
 export const labels = (p) => ({ label: p.label, running: `${p.label}:running`, failed: `${p.label}:failed`, waiting: `${p.label}:waiting` });
 
+// The labels a pipeline sets, made on the repository if they aren't there
+// (adding a missing label fails), once per run.
+const LOOK = { running: ['FBCA04', 'the runner is making it'], failed: ['D93F0B', 'the runner could not make it; fix and remove this label'], waiting: ['C5DEF5', 'waiting for the GPU; the hourly sweep tries again'] };
+export function ensureLabels(p) {
+  const have = quietly(() => JSON.parse(gh('label', 'list', '--search', p.label, '--limit', '50', '--json', 'name')).map((l) => l.name), 'label list');
+  if (!have) return;
+  for (const [k, name] of Object.entries(labels(p))) {
+    if (k === 'label' || have.includes(name)) continue;
+    quietly(() => gh('label', 'create', name, '--color', LOOK[k][0], '--description', LOOK[k][1], '--force'), `label create ${name}`);
+  }
+}
+
 // One runner per pipeline at a time on this machine: a lock file with its
 // pid. A "running" label with no live lock behind it is a job that was cut
 // off (the machine slept or restarted) and is taken again.
@@ -80,7 +92,7 @@ export async function take(p, i, root, log = console.log) {
     log(`#${i.number}: can't read it: ${e.message}`);
     return 'failed';
   }
-  if (!(await waitForGpu(p.vram, { minutes: p.gpuWait ?? 45, log }))) {
+  if (!(await waitForGpu(p.vram, { minutes: Number(process.env.DESKTOP_GPU_WAIT_MINUTES ?? p.gpuWait ?? 45), log }))) {
     if (!i.labels.includes(l.waiting)) {
       edit(i.number, '--add-label', l.waiting);
       comment(i.number, `Waiting for the GPU (something else on the desktop is using it); the hourly sweep tries again${run()}.`);
@@ -161,6 +173,7 @@ export async function cli(p, argv = process.argv.slice(2), { root: rootFor } = {
     if (has('--issue')) process.exitCode = 0;
     return;
   }
+  ensureLabels(p);
   const root = rootFor();
   // --auto: the issue the workflow was started for (JOB_ISSUE), else a sweep
   if (has('--auto') && process.env.JOB_ISSUE) argv = [...argv, '--issue', process.env.JOB_ISSUE];
