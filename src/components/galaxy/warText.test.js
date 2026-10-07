@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { heldColour, progressOf, standing } from './warText';
+import { areaLines, battleLine, heldColour, oathOf, progressOf, recordLine, standing } from './warText';
 
 const NOW = 1_000_000;
 const row = (o) => ({ id: 'hoth', owner: 'empire', control: 0.75, front: false, attack: null, rate: null, ...o });
@@ -25,5 +25,40 @@ describe('a system’s place in a war, in words', () => {
     expect(heldColour('rebel')).toMatch(/^#/);
     expect(heldColour('hutt')).not.toBe(heldColour('rebel'));
     expect(heldColour(undefined)).toBeUndefined();
+  });
+});
+
+describe('the war card', () => {
+  it('lists the areas, who holds each whole, and how many of yours there are', () => {
+    const areas = { core: { total: 2, rebel: 2, holder: 'rebel' }, anoat: { total: 4, empire: 3, rebel: 1, holder: null } };
+    const lines = areaLines(areas, 'rebel');
+    expect(lines).toEqual([
+      { id: 'core', name: 'The Core and Kashyyyk', text: 'The Rebellion’s, all 2', yours: true },
+      { id: 'anoat', name: 'Anoat and Atravis', text: '1 of 4 the Rebellion’s', yours: false },
+    ]);
+    expect(areaLines({ anoat: { total: 4, hutt: 4, holder: 'hutt' } }, null)[0].text).toBe('Hutt space, all 4');
+  });
+  it('a record line: your rank, your points, your battles', () => {
+    expect(recordLine('rebel', { points: 16.2, wins: 2, battles: 3 })).toBe('Flight Leader · 16 points · 2 won of 3 battles');
+    expect(recordLine('empire', { points: 0, wins: 0, battles: 0 })).toBe('Ensign · no battles yet');
+    expect(recordLine(null, { points: 5, wins: 0, battles: 1 })).toBeNull();
+  });
+  it('the oath card: the war’s two sides, the one sworn and the one suggested', () => {
+    expect(oathOf('gcw', { side: 'empire' }, 'rebel')).toEqual({
+      war: 'gcw',
+      sides: [
+        { id: 'rebel', name: 'Rebel Alliance', colour: expect.any(String), sworn: false, suggested: true },
+        { id: 'empire', name: 'Galactic Empire', colour: expect.any(String), sworn: true, suggested: false },
+      ],
+    });
+  });
+  it('a system’s battle in a line: its kind for your part in it, its clock', () => {
+    const row = { id: 'hoth', kind: 'evacuation', battle: { fighting: true, fightEnd: NOW + 125e3, end: NOW + 245e3, attacker: 'empire', defender: 'rebel' } };
+    expect(battleLine(row, NOW, 'rebel')).toBe('Hold the evacuation · 2:05 left');
+    expect(battleLine(row, NOW, 'empire')).toBe('Stop the evacuation · 2:05 left');
+    expect(battleLine(row, NOW, 'republic')).toBe('Evacuation · 2:05 left');
+    expect(battleLine(row, NOW, null)).toBe('Evacuation · 2:05 left');
+    expect(battleLine({ ...row, battle: { ...row.battle, fighting: false } }, NOW, 'rebel')).toBe('Evacuation: regrouping, the next in 4:05');
+    expect(battleLine({ ...row, battle: null }, NOW, 'rebel')).toBeNull();
   });
 });

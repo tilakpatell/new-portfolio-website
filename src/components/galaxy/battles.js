@@ -10,7 +10,7 @@
 // the Lucrehulk to 45, and the worlds are grown to be wider still: fit.js).
 //
 // BATTLE_KINDS: the six kinds of battle (systems.js's `war.kind`): its
-// name, its words for the holotable from each side, whose objectives are
+// name, its words for the holotable for whoever attacks and defends, whose objectives are
 // where, and the runners that decide it. kindFor(id) → the system's kind.
 // TEMPLATES[war][id]: { name, light, dark, fighters: { light, dark }, ace?:
 // { light?, dark? } }, a line { flagship, escorts: [{ kind, size, name? }] },
@@ -55,28 +55,28 @@ const ship = (kind, name = null, size = SIZE[kind]) => ({ kind, size, ...(name ?
 // runners: whose (the attacker's or the defender's), how many go and how
 // many must get out; `kind` by the runners' stance
 export const BATTLE_KINDS = {
-  assault: { id: 'assault', name: 'Fleet assault', text: { light: 'Bring down their flagship', dark: 'Break their fleet' }, objective: 'flagship', runners: null, rocks: false, line: true },
+  assault: { id: 'assault', name: 'Fleet assault', text: { attack: 'Bring down their flagship', defend: 'Hold the line' }, objective: 'flagship', runners: null, rocks: false, line: true },
   evacuation: {
     id: 'evacuation',
     name: 'Evacuation',
-    text: { light: 'Hold the evacuation', dark: 'Stop the evacuation' },
+    text: { attack: 'Stop the evacuation', defend: 'Hold the evacuation' },
     objective: 'flagship',
     runners: { side: 'defender', kind: { light: 'transport', dark: 'gozanti', hutt: 'gozanti' }, count: 8, need: 6, every: 38, speed: 8, hp: 34 },
     rocks: false,
     line: true,
   },
-  siege: { id: 'siege', name: 'Siege', text: { light: 'Break the siege line', dark: 'Hold the siege' }, objective: 'flagship', runners: null, rocks: false, line: true },
-  interdiction: { id: 'interdiction', name: 'Interdiction', text: { light: 'Bring down the Interdictor', dark: 'Keep the Interdictor flying' }, objective: 'interdictor', runners: null, rocks: false, line: true },
+  siege: { id: 'siege', name: 'Siege', text: { attack: 'Break the siege line', defend: 'Hold the siege line' }, objective: 'flagship', runners: null, rocks: false, line: true },
+  interdiction: { id: 'interdiction', name: 'Interdiction', text: { attack: 'Bring down the Interdictor', defend: 'Keep the Interdictor flying' }, objective: 'interdictor', runners: null, rocks: false, line: true },
   blockade: {
     id: 'blockade',
     name: 'Blockade',
-    text: { light: 'Run the blockade', dark: 'Hold the blockade' },
+    text: { attack: 'Run the blockade', defend: 'Hold the blockade' },
     objective: 'flagship',
     runners: { side: 'attacker', kind: { light: 'corvette', dark: 'gozanti', hutt: 'gozanti' }, count: 5, need: 3, every: 45, speed: 7, hp: 60 },
     rocks: false,
     line: true,
   },
-  ambush: { id: 'ambush', name: 'Ambush', text: { light: 'Spring the ambush', dark: 'Fight out of the ambush' }, objective: 'flagship', runners: null, rocks: true, line: false },
+  ambush: { id: 'ambush', name: 'Ambush', text: { attack: 'Spring the ambush', defend: 'Fight out of the ambush' }, objective: 'flagship', runners: null, rocks: true, line: false },
 };
 export const kindFor = (id) => (BATTLE_KINDS[warInfo(id).kind] ? warInfo(id).kind : 'assault');
 
