@@ -18,9 +18,10 @@ Not yet saved when this was written: the screenshot audit (`ui-screenshots.md`, 
 
 ## State of the work
 
-1. Done: the research above (workflow 1, phase Read, five of six readers).
-2. In progress when saved: the screenshot reader, then verification, synthesis, gaps.
-3. Not started: the design judge panel (three approaches to the tour architecture, judged, merged), the written spec, the implementation plans, and the Opus 5.5 sessions.
+1. Done: the research above (five of six readers), and the written spec:
+   `docs/superpowers/specs/2026-10-07-audience-tours-and-ui-audit-design.md` (the three tours, the engine that crosses routes, the catalogue and checklist, the house UI rules, the glossary, the HUD kit, and the four streams for the implementation sessions).
+2. Not done, the session's usage ran out: the screenshot audit (partial PNGs only, not saved), the two-lens verification of the audit findings, the synthesis, the gap critic, the design judge panel (the spec was written by the architect from the research instead), the per-stream implementation plans, and the Opus 5.5 sessions.
+3. Next session: read the spec, write one plan per stream under `docs/superpowers/plans/` with the writing-plans skill (or let each stream's session do it from the spec's section 6), then create the four sessions (model `claude-opus-5-5`, each prompt carrying "ultracode", the spec path and its stream letter, each on its own branch as the spec's table names them).
 
 ## The architecture so far (the architect's working notes, not yet a spec)
 
