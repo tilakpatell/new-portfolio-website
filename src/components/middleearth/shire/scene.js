@@ -16,6 +16,7 @@ import { createStage, disposeTree } from '../../../lib/stage3d';
 import { bake, dotTexture, farTree } from '../towns/bake';
 import { createGhosts } from '../towns/ghosts';
 import { budget, device } from '../../../lib/device';
+import { createHouse } from '../../../lib/three/house';
 import { pose } from '../mapFigures';
 import { createShireKit } from './props';
 import { loadDoorLeaf } from './models';
@@ -79,6 +80,11 @@ export function createShireWorld(canvas, { onLost } = {}) {
   stage.grade({ contrast: 0.1, saturation: 1.1, vignette: 0.22, grain: 0.012, shadow: [0.0, 0.01, 0.03], high: [0.03, 0.015, 0] });
   const { scene, camera, renderer } = stage;
   renderer.info.autoReset = false; // counted over the whole frame, every pass
+  // the house look (lib/three/house): one shadow colour and a fog that is
+  // the sky, on everything, under the house tone mapper; the moods in
+  // ./sky.js move it with the time of day
+  const house = createHouse();
+  renderer.toneMapping = house.toneMapping;
   scene.fog = new THREE.Fog(0xe8dcb8, 46, 210);
   const many = tier === 'high' ? 1 : tier === 'mid' ? 0.55 : 0.28;
 
@@ -104,7 +110,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   scene.add(sky.dome);
   const water = makeWater();
   outdoors.add(water.group);
-  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water: water.material, stage });
+  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water: water.material, stage, house });
 
   // ── the ground ──
   const terrain = makeTerrain(renderer, { seg: tier === 'high' ? 220 : tier === 'mid' ? 160 : 110 });
@@ -142,6 +148,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
         built.geometry?.dispose();
       }
       leaf.position.set(doorModel.userData.leaf.x, 0, doorModel.userData.leaf.z);
+      house.adopt(leaf);
       doorModel.add(leaf);
     });
   const benchAt = bagEnd.bench ? bagEnd.bench.clone().applyMatrix4(bagEnd.group.matrixWorld) : V(BAG_END.x + 4.4, height(BAG_END.x + 4.4, BAG_END.z + 5.4) + 0.45, BAG_END.z + 5.4);
@@ -470,6 +477,8 @@ export function createShireWorld(canvas, { onLost } = {}) {
     sky.uniforms.uGrey.value = A.wraith * 0.85;
     sky.uniforms.uEye.value = A.wraith * (0.4 + 0.6 * (s.gaze ?? 0));
     stage.grade({ saturation: 1.1 - A.wraith * 0.95, contrast: 0.1 + A.wraith * 0.18, vignette: 0.22 + A.wraith * 0.45 + (s.rider?.phase === 'sniff' ? 0.2 : 0), shadow: [A.wraith * 0.03, 0.01 + A.wraith * 0.03, 0.03 + A.wraith * 0.06] });
+    // (the Ring's grey fog is its own colour, not the sky's)
+    house.set({ fogMix: 1 - A.wraith * 0.8 });
     if (A.wraith > 0.01) {
       scene.fog.near *= 1 - A.wraith * 0.7;
       scene.fog.far *= 1 - A.wraith * 0.55;
@@ -701,6 +710,8 @@ export function createShireWorld(canvas, { onLost } = {}) {
       camLook = c.look;
       sun.intensity *= 0.1;
       hemi.intensity *= 0.25;
+      // (full light in Bag End is the fire's, a couple of metres off)
+      house.uniforms.uLookRef.value.setRGB(1.0, 0.72, 0.45);
     } else if (s.mode === 'rings') {
       // out in front of the bench, looking back at the two of them, with the
       // rings coming towards you
@@ -828,10 +839,13 @@ export function createShireWorld(canvas, { onLost } = {}) {
 
   // ── the floor's light, baked when the Shire is first drawn outdoors ──
   const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height: groundY, people: movers, skip: [sky.dome, ghosts.group, water.group], tier, radius: WORLD.radius + 10, shade: 0x2c3018, matcap: [rimTrees] });
+  // (last, over the floor light's own tints: one shadow colour everywhere)
+  house.adopt(scene);
 
   return {
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
+    house: import.meta.env.DEV ? house : null, // for the QA scripts
     render,
     fx: fxEvent,
     aim,
