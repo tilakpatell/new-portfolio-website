@@ -1,6 +1,6 @@
 {
   "date": "2026-10-07",
-  "sha": "1fa4b1c",
+  "sha": "e25c788c",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -9,7 +9,7 @@
       "detail": [
         {
           "file": "src/components/universe/scene.js",
-          "n": 5111
+          "n": 5117
         },
         {
           "file": "src/components/middleearth/towns/moria/props.js",
@@ -57,7 +57,7 @@
         },
         {
           "file": "src/components/universe/crews.js",
-          "n": 2791
+          "n": 2805
         },
         {
           "file": "src/components/middleearth/towns/lorien/props.js",
@@ -65,19 +65,23 @@
         },
         {
           "file": "src/components/galaxy/surface/scene.js",
-          "n": 2666
+          "n": 2667
         },
         {
           "file": "src/components/middleearth/towns/weathertop/props.js",
           "n": 2640
         },
         {
+          "file": "src/components/galaxy/scene.js",
+          "n": 2324
+        },
+        {
           "file": "src/components/middleearth/towns/marshes/props.js",
           "n": 2315
         },
         {
-          "file": "src/components/galaxy/scene.js",
-          "n": 2285
+          "file": "src/components/rickmorty/world/RmWorld.jsx",
+          "n": 2164
         },
         {
           "file": "src/components/avengers/world/scene.js",
@@ -86,10 +90,6 @@
         {
           "file": "src/components/avengers/world/rules.js",
           "n": 2071
-        },
-        {
-          "file": "src/components/rickmorty/world/RmWorld.jsx",
-          "n": 2048
         },
         {
           "file": "src/components/galaxy/surface/props/forest.js",
