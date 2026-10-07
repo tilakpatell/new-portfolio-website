@@ -6,8 +6,12 @@
 // bays round its doors and windows; the door frames and light grids; a
 // room’s plain shell straight from the layout; and the merge that turns a
 // room’s hundreds of parts into one mesh a material. Plating is painted at
-// start by ../../plating.js at the device’s detail (lib/detail), so there is
-// nothing to download.
+// start by ../../plating.js at the device’s detail (lib/detail). The spec
+// also wears walls, decks and grates with CC0 scans (ambientCG, through
+// scripts/data/hq-assets.json); those scans are not in that manifest, so
+// the kit downloads nothing and its look is the painted plating alone. The
+// scans would join the 'wall', 'floor' and 'grate' materials below as a
+// loadTexture detail layer.
 //
 // Pure (Node-tested, kit.test.js):
 //   GRID: { w, h, y }   a wall light grid’s width, height and the height of its foot
