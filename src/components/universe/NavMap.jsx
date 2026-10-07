@@ -4,6 +4,8 @@ import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiEyeLine, RiFlashlight
 import { CHART_VIEWS, DESTINATIONS, DRIVES, KINDS, chartAt, chartHeading, chartRadius, destinationById, distanceTo, driveById, findDestinations, formatDistance, formatTime, goalOf, onChart, portalBetween, speedWord, tripTime, viewFor } from './nav';
 import { BELT, HOME_RADIUS, SECTORS, SUN, sectorOf } from './layout';
 import { EDGE } from './ship';
+import { LANES, routeTo } from './hyperlanes';
+import { bezier } from './lanes';
 import './navmap.css';
 
 // The nav map: the whole universe from straight above, the way the galaxy's
@@ -12,14 +14,17 @@ import './navmap.css';
 // online, and the course to wherever's picked. Pick a place (on the chart,
 // or from the list: filter it, or search it by name), then a drive, each
 // with how long it'd take from here, run on the ship's own physics (nav.js):
+//   Hyperlanes   the autopilot on the lanes (hyperlanes.js), riding with the traffic
 //   Hyperspeed   a jump to lightspeed, out parked at it
 //   Super speed  the autopilot on 3× the pulse drive
 //   Cruise       the pulse drive as it comes
 // and go. The drive picked is kept, and it's how picking a place anywhere
 // on the map goes too. A world or a station can be gone straight into, too.
 // With no ship, the camera takes you to a station or a world (the trip
-// times need a ship). The whole universe on a square-root scale (the home
-// system opens up, the far worlds still fit), or the home system alone; or
+// times need a ship). The whole universe on a root scale (the home system
+// opens up, the far worlds still fit), its hyperlanes drawn by tier (the
+// express brightest) and the route by them plotted over them, or the home
+// system alone; or
 // the Rick and Morty sector, round its own middle (it opens on the sector the
 // ship's in). A place in the other sector is gone to through the portal
 // between them, and its course is drawn to that portal.
@@ -187,6 +192,14 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
   const course = picked && !at(picked.id) ? picked : goingTo;
   const courseAt = course ? toward(course) : null;
   const homeR = chartRadius(HOME_RADIUS, chart) * V;
+  // the hyperlanes, each a line of 12 chart points along it (the main
+  // sector's chart: none run anywhere else), and the route by them to the
+  // place picked or being gone to, on the lanes drive
+  const lanes = useMemo(() => (view === 'all' ? LANES.map((l) => ({ id: l.id, tier: l.tier, points: Array.from({ length: 13 }, (_, i) => P(bezier(l.pts, i / 12)).join(',')).join(' ') })) : []), [view]); // eslint-disable-line react-hooks/exhaustive-deps
+  const routeDrive = goingTo && course === goingTo ? now.going.drive : drive;
+  const shipKey = now?.ship ? `${Math.round(now.ship.x / 200)},${Math.round(now.ship.z / 200)}` : '';
+  const route = useMemo(() => (view === 'all' && course && routeDrive === 'lanes' && now?.ship ? routeTo(now.ship, goalOf(course.id)) : null), [view, course?.id, routeDrive, shipKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const routeLine = route ? route.legs.flatMap((leg) => (leg.kind === 'fly' ? [leg.from, leg.to] : Array.from({ length: 13 }, (_, i) => bezier(leg.way === 'out' ? leg.lane.pts : [...leg.lane.pts].reverse(), i / 12)))).map((p) => P(p).join(',')).join(' ') : null;
 
   const verb = (d) => {
     if (!d) return '';
@@ -335,8 +348,17 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                   <circle cx={P(now.front.at)[0]} cy={P(now.front.at)[1]} r="14" className="navmap-war-front" />
                 </g>
               )}
-              {/* the course: where it's going (and how), or to the place picked */}
-              {shipAt && courseAt && (
+              {/* the hyperlanes, by tier */}
+              {lanes.length > 0 && (
+                <g className="navmap-lanes">
+                  {lanes.map((l) => (
+                    <polyline key={l.id} points={l.points} className="navmap-lane" data-tier={l.tier} />
+                  ))}
+                </g>
+              )}
+              {/* the course: where it's going (and how), or to the place picked; by the lanes, along them */}
+              {shipAt && routeLine && <polyline points={routeLine} className="navmap-course navmap-route" data-drive={goingTo && course === goingTo ? 'lanes' : 'plot'} />}
+              {shipAt && courseAt && !routeLine && (
                 <line x1={shipAt[0]} y1={shipAt[1]} x2={P(courseAt)[0]} y2={P(courseAt)[1]} className="navmap-course" data-drive={goingTo && course === goingTo ? now.going.drive : 'plot'} />
               )}
               {/* the other pilots online */}
@@ -439,7 +461,7 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                   <button key={d.id} type="button" role="radio" aria-checked={drive === d.id} className="navmap-drive" data-drive={d.id} onClick={() => onDrive(d.id)} title={d.about}>
                     <Icon className="navmap-drive-icon" aria-hidden="true" />
                     <span className="navmap-drive-name">{d.name}</span>
-                    <span className="navmap-drive-time">{t === undefined ? (d.id === 'hyper' ? 'Jump' : d.id === 'super' ? '3×' : '1×') : t === null ? '—' : formatTime(t)}</span>
+                    <span className="navmap-drive-time">{t === undefined ? (d.id === 'hyper' ? 'Jump' : d.id === 'lanes' ? 'Lanes' : d.id === 'super' ? '3×' : '1×') : t === null ? '—' : formatTime(t)}</span>
                   </button>
                 );
               })}

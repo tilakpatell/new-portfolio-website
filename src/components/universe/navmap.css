@@ -298,6 +298,14 @@
   .navmap-place[aria-current='location'] .navmap-dot { animation: none; }
 }
 
+/* the hyperlanes (hyperlanes.js), by tier: the express brightest, the trunks
+   between, the local lanes faint; and the route along them */
+.navmap-lane { fill: none; stroke: rgb(140 200 255 / 0.18); stroke-width: 1; stroke-linejoin: round; }
+.navmap-lane[data-tier='trunk'] { stroke: rgb(140 200 255 / 0.35); stroke-width: 1.5; }
+.navmap-lane[data-tier='express'] { stroke: rgb(190 225 255 / 0.75); stroke-width: 2; filter: drop-shadow(0 0 3px rgb(140 200 255 / 0.8)); }
+.navmap-route { fill: none; stroke-linejoin: round; }
+.navmap-course[data-drive='lanes'] { stroke-dasharray: 14 5; animation-duration: 0.5s; }
+
 /* the crew's war (front.js): its line of sectors, and the front */
 .navmap-war-line { fill: none; stroke: rgb(255 255 255 / 0.25); stroke-width: 2; stroke-dasharray: 4 4; }
 .navmap-war-sector { stroke: rgb(0 0 0 / 0.6); stroke-width: 1.5; }

@@ -83,6 +83,7 @@ function clearOf(pts, steps = 64) {
 }
 
 // ── The nodes ──
+const placeName = (id) => byId(id)?.world ?? byId(id)?.label ?? WONDERS.find((w) => w.id === id)?.name ?? id;
 const PLACE = new Map(PLACES.map((p) => [p.id, p]));
 // The home system has four beacons round its edge, a quarter turn apart (its
 // own, regions.js's, on the side the ship starts, and three more): a lane
@@ -131,7 +132,7 @@ function rampFor(id, region) {
     const c = Math.cos(a);
     const s = Math.sin(a);
     const at = along(p.at, [u[0] * c - u[2] * s, 0, u[0] * s + u[2] * c], out);
-    if (KEEP_OUT.every((o) => dist(at, o.at) > o.r + RING + CLEAR)) return { id: `ramp:${id}`, kind: 'ramp', at, place: id, region };
+    if (KEEP_OUT.every((o) => dist(at, o.at) > o.r + RING + CLEAR)) return { id: `ramp:${id}`, kind: 'ramp', at, place: id, region, name: placeName(id) };
   }
   return null;
 }
@@ -142,7 +143,6 @@ export const rampOf = (placeId) => NODE.get(`ramp:${placeId}`) ?? null;
 export const nodeById = (id) => NODE.get(id) ?? null;
 
 // ── The lanes ──
-const placeName = (id) => byId(id)?.world ?? byId(id)?.label ?? WONDERS.find((w) => w.id === id)?.name ?? id;
 const regionName = (id) => REGIONS.find((r) => r.id === id).name.replace(/^Near /, '');
 
 // a lane from node a to node b, its middle lifted by turns (index i); higher

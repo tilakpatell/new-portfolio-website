@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { laneAim, laneFrame, lanePlan, rideInput } from './lanePilot';
+import { laneAim, laneFrame, lanePlan, rideInput, rideLine } from './lanePilot';
 import { nodeById, routeTo, carriageway } from './hyperlanes';
 import { tangent } from './lanes';
 import { SHIP, autopilot, orbiting, parkAt, spawn, step } from './ship';
@@ -112,5 +112,15 @@ describe('the autopilot on the lanes (lanePilot.js)', () => {
   it('leaves a hand-flown ship alone unless it flies into a lane', () => {
     const ship = { ...homeEdge(), z: HOME_RADIUS + 3000 };
     expect(laneFrame({ ride: null, auto: null, ship }, { throttle: 1 }, 1 / 60, { canEnter: true })).toBeNull();
+  });
+
+  it('says on the HUD which lane, where to and how soon', () => {
+    const at = homeEdge();
+    const leg = lanePlan(at, 'middleearth', parkAt('middleearth', [at.x, at.z])).route.legs.find((l) => l.kind === 'trunk' || l.lane?.tier === 'trunk');
+    const line = rideLine({ lane: leg.lane, way: leg.way, s: 0.5, speed: 1500 });
+    expect(line.name).toBe(leg.lane.name);
+    expect(line.tier).toBe('trunk');
+    expect(line.next.length).toBeGreaterThan(2);
+    expect(line.eta).toBeCloseTo((0.5 * leg.lane.length) / 1500, 6);
   });
 });

@@ -82,3 +82,11 @@ export function laneFrame({ ride, auto, ship }, input, dt, { canEnter = true } =
   if (route && r.out === 'dropped') next = free(auto);
   return { ride: r.out ? null : r.ride, auto: next, ship: r.ship, out: r.out };
 }
+
+// The HUD's lane line for a ride: the lane's name and tier, the node it's
+// coming to, and the seconds till it gets there
+export function rideLine(ride) {
+  const node = nodeById(ride.way === 'out' ? ride.lane.to : ride.lane.from);
+  const eta = ((1 - ride.s) * ride.lane.length) / Math.max(1, ride.speed);
+  return { name: ride.lane.name, tier: ride.lane.tier, next: node?.name ?? '', eta };
+}
