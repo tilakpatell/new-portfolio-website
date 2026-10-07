@@ -597,6 +597,30 @@ export const CREWS = [
         ['morty', 'Rick! Rocks! A lot of rocks!'],
         ['rick', 'Meteor stream, Morty. Shoot the big ones, dodge the rest, don’t cry about it.'],
       ],
+      // a minefield across the way (minefield.js), and a ship to see to the
+      // next place with pirates after it (escort.js): asked, the pirates
+      // coming, there, and lost
+      minefield: [
+        ['morty', 'Rick! Those are mines! Space mines, Rick!'],
+        ['rick', 'Gromflomite minefield, Morty. Shoot a hole or thread the needle. Just don’t bump anything.'],
+      ],
+      escort: [
+        ['comms', 'Hey, uh, you in the cruiser? Could you see us to the next stop? Gromflomites have been following us.'],
+        ['morty', 'Rick, we should help them.'],
+        ['rick', 'Fine. Escort duty, Morty. The most boring way there is to get shot at.'],
+      ],
+      escortPirates: [
+        ['morty', 'Rick, here they come! They’re going for the saucer!'],
+        ['rick', 'So keep them off it, Morty. If it blows up we did all this flying for nothing.'],
+      ],
+      escorted: [
+        ['comms', 'We made it! Thank you, thank you, squanch you!'],
+        ['rick', 'Yeah, yeah. Tip your escort.'],
+      ],
+      escortLost: [
+        ['morty', 'Oh no. Oh geez, Rick, they got them.'],
+        ['rick', 'Yeah. Sometimes you lose one, Morty. Let’s go.'],
+      ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (the Cromulon), a shot into it
       flare: [
@@ -1272,6 +1296,26 @@ export const CREWS = [
         ['r2', '[Meteor stream ahead. Recommend evasive action.]'],
         ['luke', 'I see them, Artoo. Just like Beggar’s Canyon.'],
       ],
+      minefield: [
+        ['r2', '[an urgent string of beeps]'],
+        ['luke', 'A minefield. Artoo, mark the gaps. I’ll shoot us a way through.'],
+      ],
+      escort: [
+        ['comms', 'Red Five, this is the transport Sundari Dawn. We’re carrying medical supplies for the fleet. Can you see us to the next system?'],
+        ['luke', 'Copy, Sundari Dawn. Stay on my wing.'],
+      ],
+      escortPirates: [
+        ['r2', '[a frantic warble]'],
+        ['luke', 'Pirates, closing on the transport. I’m going in.'],
+      ],
+      escorted: [
+        ['comms', 'We’re clear to make the jump. Thank you, Red Five. May the Force be with you.'],
+        ['luke', 'And with you. Safe journey.'],
+      ],
+      escortLost: [
+        ['luke', 'No! We lost the transport.'],
+        ['r2', '[a long, low whistle]'],
+      ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (purrgil), a shot into it
       flare: [
@@ -1911,6 +1955,28 @@ export const CREWS = [
       meteors: [
         ['chewie', '[A roar: rocks ahead!]'],
         ['han', 'I see them. Never tell me the odds, Chewie.'],
+      ],
+      minefield: [
+        ['chewie', '[an alarmed roar]'],
+        ['han', 'Mines. Somebody went to a lot of trouble. Hold on, Chewie, I’m threading it.'],
+      ],
+      escort: [
+        ['comms', 'Falcon, this is the freighter Kessa Run. Pirates on our tail. We’ll pay you to see us to the next port.'],
+        ['han', 'Now you’re talking.'],
+        ['chewie', '[a pleased grunt]'],
+      ],
+      escortPirates: [
+        ['han', 'Here they come. Chewie, keep ’em off that freighter, that’s our money!'],
+        ['chewie', '[a battle roar]'],
+      ],
+      escorted: [
+        ['comms', 'We made it. Sending the credits now, Falcon. Thanks.'],
+        ['han', 'Pleasure doing business.'],
+      ],
+      escortLost: [
+        ['han', 'We lost ’em. There goes the fee.'],
+        ['chewie', '[a mournful moan]'],
+        ['han', 'Yeah, I know. Them too.'],
       ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (purrgil), a shot into it
@@ -2601,6 +2667,27 @@ export const CREWS = [
       meteors: [
         ['jesse', 'Yo, Mr. White, rocks! Big ones!'],
         ['walt', 'A meteor stream, Jesse. Shoot what you can’t steer round.'],
+      ],
+      minefield: [
+        ['jesse', 'Yo, Mr. White, are those mines? Who puts mines in space?'],
+        ['walt', 'Someone who doesn’t want to be followed. Shoot them, Jesse, or go round.'],
+      ],
+      escort: [
+        ['comms', 'This is a Madrigal freighter. Our shipment has to reach the next stop, and Jack’s boys know about it. Can you ride along?'],
+        ['walt', 'We’ll see it there.'],
+        ['jesse', 'Since when do we do security?'],
+      ],
+      escortPirates: [
+        ['jesse', 'Mr. White, they’re on the freighter!'],
+        ['walt', 'Then get them off it.'],
+      ],
+      escorted: [
+        ['comms', 'Shipment’s through. Madrigal appreciates your discretion.'],
+        ['walt', 'Tell no one.'],
+      ],
+      escortLost: [
+        ['jesse', 'They got the freighter, man.'],
+        ['walt', 'Then we were never here.'],
       ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (purrgil or a Cromulon), a shot into it
