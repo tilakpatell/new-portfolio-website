@@ -74,7 +74,8 @@ import { consider, pick } from '../../lib/ai/utility';
 
 // who hunts for whom (sides.js: each side's factions, which kinds come and
 // how often each, their ace, their lasers' colour), what each kind is
-// (size: its biggest dimension in map units; speed: its top speed (a TIE, a
+// (size: its length in map units, nose to tail, or its biggest side for the
+// few shipFit.js fits that way (Slave I flies upright); speed: its top speed (a TIE, a
 // patrol fighter or a bug is a little slower than you boost, so you can
 // outrun one; an interceptor, Vader or a Rick isn't); accel: how hard it
 // changes speed, and how quick its nose is; hp: hits it takes; fire: seconds

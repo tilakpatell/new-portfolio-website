@@ -13,7 +13,9 @@
 // createModels({ prepare(object) → Promise }) → { slot(kind, size, { tint }) → slot,
 //   want(kinds), prebuild(kinds), builtCount, update(t), dispose() }
 // slot: { holder (place it, turn it), kind, size, ready }; every model sits in
-// its holder centred, nose along +z, +y up, its biggest side `size` long.
+// its holder centred, nose along +z, +y up, `size` long nose to tail (a
+// station, or a ship that flies upright, `size` at its biggest side:
+// universe/shipFit.js).
 
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
@@ -21,6 +23,7 @@ import { device } from '../../lib/device';
 import { gen3dUrl } from '../../lib/three/gen3d';
 import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 import { GLB } from '../universe/glbFleet';
+import { fitScale } from '../universe/shipFit';
 import { BUILT_KINDS } from '../universe/trafficModels';
 import { GALAXY_KINDS, buildGalaxyShip } from './fleet';
 
@@ -96,10 +99,15 @@ export const MODELS = {
   superlab: { url: '/models/universe/war/superlab.glb', nose: Math.PI / 2 },
   hacienda: { url: '/models/universe/war/hacienda.glb', nose: 0 }, // (its thrusters either side)
 };
-// the ones made again here at full quality (scripts/gen3d, remade from these
-// models' own renders): kind → the made model's name, loaded in this device's cut
+// the ones made again here (scripts/gen3d, remade from these models' own
+// renders): kind → the made model's name, loaded in the light cut (20k
+// triangles, 1024 maps) whatever the device. These are the galaxy's own
+// fighters, not yours (your X-wing is its own model, universe/shipModels.js),
+// and a fighter shows its whole model only inside LOD_NEAR times its size, a
+// dozen units or so; the desktop's 120k-triangle cut of the two came to 6.6 MB
+// of every arrival, against 1.4 MB for these.
 export const MADE = { xwing: 'x-wing', interceptor: 'tie-interceptor' };
-for (const [kind, name] of Object.entries(MADE)) if (MODELS[kind]) MODELS[kind] = { ...MODELS[kind], url: gen3dUrl(name) };
+for (const [kind, name] of Object.entries(MADE)) if (MODELS[kind]) MODELS[kind] = { ...MODELS[kind], url: gen3dUrl(name, 'low') };
 
 // The capitals' close-up cut: Daniel Andersson's Imperial II and Nebulon-B
 // (scripts/sketchfab-galaxy.mjs, `hq`), about 100k triangles with
@@ -119,7 +127,15 @@ export const withHq = (models, detail) =>
   HQ_DETAILS.has(detail)
     ? { ...models, ...Object.fromEntries(Object.entries(HQ).filter(([k]) => models[k]).map(([k, d]) => [k, { url: d.url, nose: d.nose, hq: true }])) }
     : models;
-Object.assign(MODELS, withHq(MODELS, device().detail));
+// the models as a device of this detail loads them (MODELS is this device's)
+const LIGHT = { ...MODELS };
+export const modelsAt = (detail) => withHq(LIGHT, detail);
+Object.assign(MODELS, modelsAt(device().detail));
+
+// what every system's arrival loads, whatever's there (galaxy/scene.js): the
+// Star Destroyer and the corvette the set pieces and the battles fly, and the
+// X-wing and the interceptor that fight over nearly every world
+export const ARRIVAL = ['destroyer', 'corvette', 'xwing', 'interceptor'];
 
 const BUILT = new Set([...BUILT_KINDS, ...GALAXY_KINDS]);
 
@@ -170,16 +186,21 @@ export const lodLevels = (size) => [
   [LOD_FAR * size, 'none'],
 ];
 
-// the models the hunters fly (universe/glbFleet.js flies them, the
-// universe's TIE interceptors, and the galaxy's droids and Imperial TIEs, each
-// built until it's here)
+// the models the hunters, the wingmen and the set pieces fly (universe/glbFleet.js
+// flies them): each the galaxy's own whole model, in the cut the battles load,
+// built until it's here. The droids, the Imperial TIEs, the TIE bombers, the
+// Rebellion's Y-wings and A-wings (GLB's are the universe map's far-off copies,
+// 1,500 triangles and no normals, so flat-shaded: made for a fighter a few
+// pixels long), the navy's gunboats, the bounty hunters' ships, the X-wing,
+// the interceptor, the corvette and the Star Destroyer.
+const WHOLE = ['vulture', 'trifighter', 'tie', 'tieadvanced', 'tiebomber', 'ywing', 'awing', 'gunboat', 'ig2000', 'houndstooth', 'punishingone', 'xwing', 'interceptor', 'corvette', 'destroyer'];
 export const HUNTER_GLB = {
   ...GLB,
-  ...Object.fromEntries(['vulture', 'trifighter', 'tie', 'tieadvanced'].map((k) => [k, { ...MODELS[k], built: true }])),
+  ...Object.fromEntries(WHOLE.map((k) => [k, { ...MODELS[k], built: true }])),
   // (the war's other hunters and what their capital ships drop in: the
   // Republic's fighters, Wedge in an X-wing, a Mon Calamari cruiser, a Venator)
   ...Object.fromEntries(['arc170', 'delta7', 'moncal', 'venator'].map((k) => [k, { ...MODELS[k], built: false }])),
-  redleader: { ...GLB.xwing, built: false },
+  redleader: { ...MODELS.xwing, built: false },
 };
 
 // a model's materials tuned to the scene's light: engines and lights hot
@@ -197,15 +218,16 @@ function tune(root) {
   });
 }
 
-// centred, nose to +z (a turn of `nose` about y), its biggest side 1 long
-function normalise(root, nose = 0) {
+// centred, nose to +z (a turn of `nose` about y), 1 long nose to tail (or 1
+// at its biggest side: shipFit.js)
+function normalise(root, nose = 0, kind = null) {
   const turn = new THREE.Group();
   turn.rotation.y = nose;
   turn.add(root);
   turn.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(turn, true);
   const size = box.getSize(new THREE.Vector3());
-  const k = 1 / Math.max(size.x, size.y, size.z, 1e-6);
+  const k = fitScale(kind, size);
   const holder = new THREE.Group();
   holder.add(turn);
   turn.position.copy(box.getCenter(new THREE.Vector3())).multiplyScalar(-1);
@@ -274,7 +296,7 @@ export function createModels({ prepare = null, load: fetchModel = loadGLTF } = {
       .then(async (root) => {
         if (!root) return;
         tune(root);
-        const n = normalise(root, def.nose);
+        const n = normalise(root, def.nose, kind);
         // (a skinned one's copies need bones of their own: SkeletonUtils)
         root.traverse((o) => o.isSkinnedMesh && (n.skinned = true));
         if (prepare) await prepare(n.holder);
@@ -324,9 +346,10 @@ export function createModels({ prepare = null, load: fetchModel = loadGLTF } = {
     if (built.has(kind)) return built.get(kind);
     if (!BUILT.has(kind)) return null;
     const model = buildGalaxyShip(kind);
-    // (buildGalaxyShip makes it 1 long in z; here everything's 1 at its biggest)
+    // (buildGalaxyShip makes it 1 long in z; fitted as the loaded ones are, so
+    // a ship keeps its length when its model takes over)
     const s = model.size;
-    const k = 1 / Math.max(s.x, s.y, s.z, 1e-6);
+    const k = fitScale(kind, s);
     const holder = new THREE.Group();
     holder.add(model.group);
     holder.scale.setScalar(k);
@@ -382,7 +405,7 @@ export function createModels({ prepare = null, load: fetchModel = loadGLTF } = {
   }
 
   return {
-    // a ship of `kind`, its biggest side `size` long, in a holder to place
+    // a ship of `kind`, `size` long (a station `size` at its biggest side), in a holder to place
     slot(kind, size, { tint = null } = {}) {
       const holder = new THREE.Group();
       const inner = new THREE.Group();
