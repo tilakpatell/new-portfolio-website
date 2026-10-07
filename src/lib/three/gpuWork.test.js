@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { batchRoot, compileSlices, drawables, fence, prepareScene, textureBytes, uploadSlices, uploaded } from './gpuWork';
+import { batchRoot, compileSlices, drawables, fence, nextFrame, prepareScene, textureBytes, uploadSlices, uploaded } from './gpuWork';
 
 // A frame that comes at once, counting how many were asked for.
 const frames = () => {
@@ -31,6 +31,7 @@ const fakeRenderer = ({ signalAfter = 2, webgl2 = true, readyAfter = 0, lostAfte
     deleted: 0,
     flushes: 0,
     lost: false,
+    log: [],
     flush() {
       gl.flushes += 1;
     },
@@ -45,7 +46,9 @@ const fakeRenderer = ({ signalAfter = 2, webgl2 = true, readyAfter = 0, lostAfte
       polls += 1;
       if (polls >= lostAfterPolls) gl.lost = true;
       sync.polls += 1;
-      return sync.polls >= signalAfter ? gl.SIGNALED : gl.UNSIGNALED;
+      const signalled = sync.polls >= signalAfter;
+      gl.log.push(signalled ? 'signal' : 'wait');
+      return signalled ? gl.SIGNALED : gl.UNSIGNALED;
     };
     gl.deleteSync = () => {
       gl.deleted += 1;
@@ -71,7 +74,12 @@ const fakeRenderer = ({ signalAfter = 2, webgl2 = true, readyAfter = 0, lostAfte
           materials.add(m);
           renderer.compiled.push(m);
           let left = readyAfter;
-          get(m).currentProgram = { isReady: () => left-- <= 0 };
+          get(m).currentProgram = {
+            isReady: () => {
+              gl.log.push('ready?');
+              return left-- <= 0;
+            },
+          };
         }
       });
       renderer.batches.push({ batch, camera, scene, fencesBefore: gl.fences });
@@ -95,11 +103,24 @@ const fakeRenderer = ({ signalAfter = 2, webgl2 = true, readyAfter = 0, lostAfte
 
 const picture = (w, h, extra = {}) => Object.assign(new THREE.Texture({ width: w, height: h }), { version: 1 }, extra);
 
+describe('nextFrame', () => {
+  it('goes on in a hidden tab, where animation frames never come', async () => {
+    vi.stubGlobal('requestAnimationFrame', () => 0);
+    try {
+      const t0 = performance.now();
+      await nextFrame();
+      expect(performance.now() - t0).toBeGreaterThanOrEqual(90);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
 describe('fence', () => {
   it('resolves only once the graphics chip has signalled, and deletes the sync', async () => {
     const r = fakeRenderer({ signalAfter: 3 });
     const frame = frames();
-    await fence(r, { frame });
+    expect(await fence(r, { frame })).toBe(true);
     expect(frame.count).toBe(3);
     expect(r.gl.flushes).toBe(1);
     expect(r.gl.deleted).toBe(1);
@@ -108,23 +129,27 @@ describe('fence', () => {
   it('waits two frames without WebGL2', async () => {
     const r = fakeRenderer({ webgl2: false });
     const frame = frames();
-    await fence(r, { frame });
+    expect(await fence(r, { frame })).toBe(true);
     expect(frame.count).toBe(2);
   });
 
   it('resolves when the context is lost', async () => {
     const r = fakeRenderer({ signalAfter: Infinity, lostAfterPolls: 2 });
     const frame = frames();
-    await fence(r, { frame });
+    expect(await fence(r, { frame })).toBe(false);
     expect(frame.count).toBeLessThanOrEqual(3);
   });
 
   it('resolves when the renderer throws, and after its cap', async () => {
     const broken = { getContext: () => ({ fenceSync: () => { throw new Error('gone'); }, isContextLost: () => false }) };
-    await expect(fence(broken, { frame: frames() })).resolves.toBeUndefined();
+    await expect(fence(broken, { frame: frames() })).resolves.toBe(false);
+  });
+
+  it('resolves false when its cap passes before the signal', async () => {
     const never = fakeRenderer({ signalAfter: Infinity });
     const slow = () => new Promise((r) => setTimeout(r, 5));
-    await expect(fence(never, { frame: slow, cap: 20 })).resolves.toBeUndefined();
+    await expect(fence(never, { frame: slow, cap: 20 })).resolves.toBe(false);
+    expect(never.gl.deleted).toBe(1);
   });
 });
 
@@ -247,6 +272,35 @@ describe('compileSlices', () => {
     expect(steps.at(-1)).toEqual([12, 12]);
     // every program was asked until it was ready
     for (const m of mats) expect(r.properties.get(m).currentProgram.isReady()).toBe(true);
+  });
+
+  it('never asks isReady before the last batch\'s fence has signalled', async () => {
+    const r = fakeRenderer({ signalAfter: 3, readyAfter: 2 });
+    await compileSlices(r, [world(9)], {}, {}, { frame: frames() });
+    const log = r.gl.log;
+    const firstAsk = log.indexOf('ready?');
+    expect(firstAsk).toBeGreaterThan(0);
+    expect(log.lastIndexOf('signal')).toBeLessThan(firstAsk);
+    expect(log.filter((e) => e === 'signal').length).toBe(r.batches.length);
+  });
+
+  it('asks nothing when the last fence ran out its cap', async () => {
+    const r = fakeRenderer({ signalAfter: Infinity });
+    // (each frame a second later, so the fence's cap runs out)
+    let clock = 0;
+    const spy = vi.spyOn(performance, 'now').mockImplementation(() => clock);
+    const late = () => {
+      clock += 1000;
+      return Promise.resolve();
+    };
+    try {
+      const mats = await compileSlices(r, [world(1)], {}, {}, { frame: late });
+      expect(mats.size).toBe(1);
+      expect(r.gl.log).toContain('wait');
+      expect(r.gl.log).not.toContain('ready?');
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('resolves when the context goes or compile throws', async () => {

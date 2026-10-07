@@ -11,11 +11,20 @@
 
 import { revealAll, texturesUnder, uploadTexture } from './renderer';
 
-// The next animation frame (or about one, where there are none).
+// The next animation frame, or a tenth of a second, whichever comes first:
+// a hidden tab has no animation frames, and a warm-up started there should
+// go on (and not have every cap run out at once when the tab comes back).
 export const nextFrame = () =>
   new Promise((resolve) => {
-    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => resolve());
-    else setTimeout(resolve, 16);
+    let timer = 0;
+    const go = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    if (typeof requestAnimationFrame === 'function') {
+      timer = setTimeout(go, 100);
+      requestAnimationFrame(go);
+    } else setTimeout(go, 16);
   });
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -34,7 +43,9 @@ const materialsOf = (o) => (Array.isArray(o.material) ? o.material : o.material 
 // Resolves once the graphics chip has done everything sent to it so far:
 // WebGL2's fenceSync, asked about once a frame (asking never waits). Without
 // WebGL2, two frames. Also resolves if the context goes, anything throws, or
-// `cap` milliseconds pass.
+// `cap` milliseconds pass, but with false then: the chip may still have a
+// backlog, so anything that would wait on it (a shader's isReady) mustn't be
+// asked.
 export async function fence(renderer, { frame = nextFrame, cap = 5000 } = {}) {
   let gl;
   let sync = null;
@@ -43,21 +54,22 @@ export async function fence(renderer, { frame = nextFrame, cap = 5000 } = {}) {
     if (typeof gl.fenceSync !== 'function') {
       await frame();
       await frame();
-      return;
+      return true;
     }
     sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE ?? 0x9117, 0);
-    if (!sync) return;
+    if (!sync) return false;
     gl.flush();
     const t0 = now();
     const signalled = gl.SIGNALED ?? 0x9119;
     const status = gl.SYNC_STATUS ?? 0x9114;
     for (;;) {
       await frame();
-      if (gl.isContextLost() || now() - t0 > cap) return;
-      if (gl.getSyncParameter(sync, status) === signalled) return;
+      if (gl.isContextLost() || now() - t0 > cap) return false;
+      if (gl.getSyncParameter(sync, status) === signalled) return true;
     }
   } catch {
     // gone with its context: nothing left to wait for
+    return false;
   } finally {
     try {
       if (sync) gl.deleteSync(sync);
@@ -119,15 +131,15 @@ export async function uploadSlices(renderer, textures, { sliceMB = 24, onStep, f
   return sent;
 }
 
-// Every object under `roots` that draws (hidden ones too), one for each kind
-// of shader it needs: the same materials drawn the same way share one, while
-// skinning, instancing, batching, morphs or vertex colours each make another.
 const ids = new WeakMap();
 let nextId = 1;
 const idOf = (m) => {
   if (!ids.has(m)) ids.set(m, nextId++);
   return ids.get(m);
 };
+// Every object under `roots` that draws (hidden ones too), one for each kind
+// of shader it needs: the same materials drawn the same way share one, while
+// skinning, instancing, batching, morphs or vertex colours each make another.
 export function drawables(roots) {
   const seen = new Set();
   const found = [];
@@ -160,13 +172,16 @@ export const batchRoot = (list) => ({
 // page's time (the next batch's size is set from how long the last one's
 // objects took), against `scene`'s lights, with a fence after each. Then
 // each program is asked once a frame whether it has linked, until all have,
-// the context has gone or `cap` has passed. Resolves with the materials.
+// the context has gone or `cap` has passed. If the last fence didn't signal
+// (a cap, a lost context) nothing is asked: asking could wait on the chip's
+// backlog. Resolves with the materials.
 export async function compileSlices(renderer, roots, camera, scene, { sliceMs = 8, onStep, frame = nextFrame, cap = 20000, alive = () => true } = {}) {
   const list = drawables(roots);
   const materials = new Set();
   const t0 = now();
   let size = 1;
   let done = 0;
+  let caughtUp = true;
   while (done < list.length) {
     if (!alive() || lost(renderer) || now() - t0 > cap) return materials;
     const batch = list.slice(done, done + size);
@@ -181,8 +196,9 @@ export async function compileSlices(renderer, roots, camera, scene, { sliceMs = 
     onStep?.(done, list.length);
     // (no more than double, so one quick batch can't promise a huge one)
     size = Math.max(1, Math.min(size * 2, Math.floor(sliceMs / Math.max(each, 0.01))));
-    await fence(renderer, { frame });
+    caughtUp = await fence(renderer, { frame });
   }
+  if (!caughtUp) return materials;
   const pending = [...materials];
   while (pending.length) {
     if (!alive() || lost(renderer) || now() - t0 > cap) break;
