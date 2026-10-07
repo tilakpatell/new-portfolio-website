@@ -2,8 +2,9 @@ name: ai health
 
 # The AI and the models, on the desktop's GPU, every night
 # (scripts/ai-e2e/README.md, tiers 3, 5 and 6): every model rendered in both
-# looks, the judges evaluated against their labelled sets, and (when it
-# lands) one real model and one real line made start to end. Never on a
+# looks, the judges evaluated against their labelled sets, one real model
+# and one real line made start to end, drift from the blessed golden, and
+# one issue (labelled ai-health) kept: opened red, closed green. Never on a
 # pull request: the GPU runner takes one job at a time and a PR must never
 # wait on it. Run it by hand from the Actions tab or
 # `gh workflow run ai-health.yml`.
@@ -13,8 +14,10 @@ on:
     - cron: '0 4 * * *'
   workflow_dispatch:
 
+# (issues: the one ai-health issue the night keeps, scripts/ai-e2e/issue.mjs)
 permissions:
   contents: read
+  issues: write
 
 jobs:
   gpu:
@@ -66,6 +69,39 @@ jobs:
         shell: powershell
         run: node scripts/ai-e2e/evals/run.mjs
 
+      - name: One real model and one real line (tier 6)
+        id: real
+        if: always()
+        continue-on-error: true
+        shell: powershell
+        run: node scripts/ai-e2e/real/health.mjs
+
+      - name: Drift from the golden
+        id: drift
+        if: always()
+        continue-on-error: true
+        shell: powershell
+        run: node scripts/ai-e2e/real/drift.mjs
+
+      # one table from every tier, on the run's summary and in the issue
+      - name: Report
+        id: report
+        if: always()
+        continue-on-error: true
+        shell: powershell
+        run: |
+          node scripts/ai-e2e/report.mjs | Tee-Object -Variable table
+          $code = $LASTEXITCODE
+          $table | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          exit $code
+
+      - name: The ai-health issue
+        if: always()
+        shell: powershell
+        run: node scripts/ai-e2e/issue.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Keep what the night made
         if: always()
         uses: actions/upload-artifact@v7
@@ -85,5 +121,7 @@ jobs:
           if ('${{ steps.doctor.outcome }}' -ne 'success') { $failed += 'doctor' }
           if ('${{ steps.render.outcome }}' -ne 'success') { $failed += 'render' }
           if ('${{ steps.evals.outcome }}' -ne 'success') { $failed += 'evals' }
+          if ('${{ steps.real.outcome }}' -ne 'success') { $failed += 'real' }
+          if ('${{ steps.drift.outcome }}' -ne 'success') { $failed += 'drift' }
           if ($failed.Count) { Write-Output "red: $($failed -join ', ')"; exit 1 }
           Write-Output 'every tier green'

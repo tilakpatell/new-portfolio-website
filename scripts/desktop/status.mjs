@@ -6,7 +6,7 @@
 //   node scripts/desktop/status.mjs --json    for a script or a session
 
 import { fileURLToPath } from 'node:url';
-import { gpuFree, labelled, repoName, sh, trusted } from './lib.mjs';
+import { gh, gpuFree, labelled, repoName, sh, trusted } from './lib.mjs';
 
 const PIPELINES = ['gen3d', 'voices'];
 
@@ -42,6 +42,12 @@ export function status() {
     }
     out.pipelines[p] = { jobs, runs };
   }
+  // the AI and the models' nightly (scripts/ai-e2e): its last night
+  try {
+    out.aiHealth = JSON.parse(gh('run', 'list', '--repo', repo, '--workflow', 'ai-health.yml', '--limit', '1', '--json', 'status,conclusion,url,createdAt'))[0] ?? null;
+  } catch {
+    out.aiHealth = null; /* not on main yet */
+  }
   return out;
 }
 
@@ -56,6 +62,7 @@ export function render(s) {
   else if (!s.runners.length) lines.push('Desktop runner: none registered (scripts/desktop/README.md, Setting up the desktop)');
   else for (const r of s.runners) lines.push(`Desktop runner ${r.name}: ${r.status === 'online' ? (r.busy ? 'online, working' : 'online, idle') : 'offline (the desktop is asleep or off; jobs wait for it)'}`);
   if (s.gpu) lines.push(`GPU here: ${(s.gpu.free / 1024).toFixed(1)} of ${(s.gpu.total / 1024).toFixed(1)} GB free`);
+  lines.push(s.aiHealth ? `AI health, last night: ${s.aiHealth.conclusion || s.aiHealth.status} (${ago(s.aiHealth.createdAt)}) ${s.aiHealth.url}` : 'AI health: no night yet (.github/workflows/ai-health.yml)');
   for (const [p, { jobs, runs }] of Object.entries(s.pipelines)) {
     lines.push('', `${p}: ${jobs.length ? `${jobs.length} open` : 'nothing open'}`);
     for (const j of jobs) lines.push(`  #${j.number} ${j.title}: ${j.state}`);

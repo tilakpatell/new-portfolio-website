@@ -244,6 +244,15 @@ describe('a rift', () => {
     expect(seen.has('aurelia')).toBe(true);
     expect(seen.has('home')).toBe(true);
   });
+
+  it('takes you somewhere you haven’t been, while there is somewhere left', () => {
+    const all = [...new Set(Array.from({ length: 4000 }, (_, i) => riftExit(null, () => (i + 0.5) / 4000)))];
+    expect(all.length).toBeGreaterThan(5);
+    const [left, ...been] = all;
+    for (let i = 0; i < 50; i++) expect(riftExit(been[0], () => i / 50, 'main', new Set(been))).toBe(left);
+    // (been everywhere: anywhere but here)
+    for (let i = 0; i < 50; i++) expect(riftExit(been[0], () => i / 50, 'main', new Set(all))).not.toBe(been[0]);
+  });
 });
 
 describe('the galaxy’s systems, through the gate', () => {

@@ -101,12 +101,12 @@
 
 ## PR 8: Tier 6, one real model and one real line, drift, and the report
 
-- [ ] **8.1** `scripts/ai-e2e/real/health.mjs`: runs `make.mjs ai-health-xwing --image fixtures/x-wing-ref.png --what "an X-wing starfighter" --faces 8000 --seed 1 --fresh` with a throwaway `GEN3D_CACHE` and `GEN3D_OUT`, times it, reads `result.json`; runs `generate.py --only han --limit 1 --takes 2` into a throwaway out; collects `{ gen3d: { ok, verdict, tris: [hq, mid, lo], bytes, seconds }, voices: { made, doubtful, wer, similarity, seconds } }` into `results/<date>-real.json`. Lines: verdict ≥ 7, cuts in budget, gen3d ≤ 25 min, voices ≤ 10 min, doubtful 0.
-- [ ] **8.2** `real/golden.json` and `real/drift.mjs`: compare the night’s numbers to the golden; over 10% on any number is a drift, reported with what moved; `real/bless.mjs` writes the golden from a results file (a human runs it). Unit tests on fixture results.
-- [ ] **8.3** `scripts/ai-e2e/report.mjs`: every `results/<date>-*.json` from the run → one Markdown table (tier, pass/fail, headline number, time) to stdout and `results/<date>-report.md`. Unit test on fixtures.
-- [ ] **8.4** `ai-health.yml`: after the evals, `node scripts/ai-e2e/real/health.mjs`, `node scripts/ai-e2e/real/drift.mjs`, `node scripts/ai-e2e/report.mjs`; then one `ai-health`-labelled issue kept: green closes it if open, red opens it or comments the table (`gh` in the workflow, with `GITHUB_TOKEN`). `scripts/desktop/status.mjs` shows the last `ai-health` run’s conclusion and date.
+- [x] **8.1** `scripts/ai-e2e/real/health.mjs`: runs `make.mjs ai-health-xwing --image fixtures/x-wing-ref.png --what "an X-wing starfighter" --faces 8000 --seed 1 --fresh` with a throwaway `GEN3D_CACHE` and `GEN3D_OUT`, times it, reads `result.json`; runs `generate.py --only han --limit 1 --takes 2` into a throwaway out; collects `{ gen3d: { ok, verdict, tris: [hq, mid, lo], bytes, seconds }, voices: { made, doubtful, wer, similarity, seconds } }` into `results/<date>-real.json`. Lines: verdict ≥ 7, cuts in budget, gen3d ≤ 25 min, voices ≤ 10 min, doubtful 0.
+- [x] **8.2** `real/golden.json` and `real/drift.mjs`: compare the night’s numbers to the golden; over 10% on any number is a drift, reported with what moved; `real/bless.mjs` writes the golden from a results file (a human runs it). Unit tests on fixture results.
+- [x] **8.3** `scripts/ai-e2e/report.mjs`: every `results/<date>-*.json` from the run → one Markdown table (tier, pass/fail, headline number, time) to stdout and `results/<date>-report.md`. Unit test on fixtures.
+- [x] **8.4** `ai-health.yml`: after the evals, `node scripts/ai-e2e/real/health.mjs`, `node scripts/ai-e2e/real/drift.mjs`, `node scripts/ai-e2e/report.mjs`; then one `ai-health`-labelled issue kept: green closes it if open, red opens it or comments the table (`gh` in the workflow, with `GITHUB_TOKEN`). `scripts/desktop/status.mjs` shows the last `ai-health` run’s conclusion and date.
 - [ ] **8.5** Run the workflow once by hand (`gh workflow run ai-health.yml`), wait for it, read the report, bless the first golden, commit it.
-- [ ] **8.6** Gate, PR, CI green, merge.
+- [x] **8.6** Gate, PR, CI green, merge.
 
 ## PR 9: Tier 7, the agent and the jobs
 

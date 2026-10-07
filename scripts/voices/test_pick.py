@@ -6,7 +6,7 @@ import unittest
 
 import numpy as np
 
-from pick import choose, excluded, identify, normal, pure, spoken, quoted, refine, segment_score, stretches, take_score, too_long, uncensor, usable, utterances, video_id, windows
+from pick import FEELINGS, closest_feeling, feel_distance, feel_target, choose, excluded, identify, normal, pure, spoken, quoted, refine, segment_score, stretches, take_score, too_long, uncensor, usable, utterances, video_id, windows
 
 
 def words(text, start=0.0, each=0.3, pauses=None):
@@ -217,6 +217,37 @@ class Sources(unittest.TestCase):
         self.assertFalse(excluded("yt-def", 20.0, rules))
         self.assertTrue(excluded("yt-ghi", 1.0, rules))
         self.assertFalse(excluded("clip-im-in", 0.0, rules))
+
+
+class TestFeeling(unittest.TestCase):
+    mean, spread = (0.5, 0.6, 0.45), (0.14, 0.12, 0.14)
+
+    def test_a_shout_is_more_aroused_and_forceful_than_a_mild_line(self):
+        loud = feel_target("shouting", 3, self.mean, self.spread)
+        mild = feel_target("neutral", 1, self.mean, self.spread)
+        self.assertGreater(loud[0], mild[0] + 0.2)
+        self.assertGreater(loud[1], mild[1])
+
+    def test_sad_is_low_and_unhappy(self):
+        sad = feel_target("sad", 2, self.mean, self.spread)
+        self.assertLess(sad[0], self.mean[0])
+        self.assertLess(sad[2], self.mean[2])
+
+    def test_targets_stay_in_range(self):
+        for e in FEELINGS:
+            for i in (1, 2, 3):
+                self.assertTrue(all(0.0 <= x <= 1.0 for x in feel_target(e, i, self.mean, self.spread)))
+
+    def test_an_unknown_direction_is_no_target(self):
+        self.assertIsNone(feel_target("bemused", 2, self.mean, self.spread))
+
+    def test_distance_is_in_spreads(self):
+        self.assertAlmostEqual(feel_distance((0.64, 0.6, 0.45), (0.5, 0.6, 0.45), self.spread), 1.0, places=3)
+
+    def test_closest_reference(self):
+        rows = [{"avd": (0.4, 0.5, 0.5), "id": "calm"}, {"avd": (0.85, 0.85, 0.3), "id": "yell"}]
+        target = feel_target("angry", 3, self.mean, self.spread)
+        self.assertEqual(closest_feeling(rows, target, self.spread)["id"], "yell")
 
 
 if __name__ == "__main__":

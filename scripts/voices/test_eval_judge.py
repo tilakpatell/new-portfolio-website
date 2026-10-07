@@ -6,6 +6,7 @@ python -m unittest discover -s scripts/voices -p "test_eval_judge.py"
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -28,25 +29,31 @@ def say(folder, name, text):
 
 
 class Evaluate(unittest.TestCase):
-    def setUp(self):
-        self.dir = Path(tempfile.mkdtemp())
-        self.old = os.environ.get("VOICES_JUDGE")
-        os.environ["VOICES_JUDGE"] = "fake"
-        (self.dir / "refs").mkdir()
+    @classmethod
+    def setUpClass(cls):
+        # the takes made once (a worker process each), and copied for each test to change as it likes
+        cls.made = Path(tempfile.mkdtemp())
+        (cls.made / "refs").mkdir()
         for who in ("han", "rick"):
-            say(self.dir / "refs", who, "a reference of some length to hear")
+            say(cls.made / "refs", who, "a reference of some length to hear")
         labels = {}
         for name, who, text in (("han-1", "han", "Never tell me the odds."), ("han-2", "han", "Laugh it up, fuzzball."), ("rick-1", "rick", "Wubba lubba dub dub, Morty.")):
-            say(self.dir, name, text)
+            say(cls.made, name, text)
             labels[f"{name}.wav"] = {"who": who, "text": text, "good": True}
         # a take in someone else's voice: the right words, the wrong mouth
-        say(self.dir, "other", "Get in the car, Morty.")
-        Path(f"{self.dir / 'other.wav'}.said.json").write_text(json.dumps({"said": "Get in the car, Morty.", "sim": 0.3}), encoding="utf-8")
+        say(cls.made, "other", "Get in the car, Morty.")
+        Path(f"{cls.made / 'other.wav'}.said.json").write_text(json.dumps({"said": "Get in the car, Morty.", "sim": 0.3}), encoding="utf-8")
         labels["other.wav"] = {"who": "rick", "text": "Get in the car, Morty.", "good": False}
         # a mumbled take: the words wrong
-        say(self.dir, "mumbled", "Han mumbles something about the Kessel Run.")
+        say(cls.made, "mumbled", "Han mumbles something about the Kessel Run.")
         labels["mumbled.wav"] = {"who": "han", "text": "Han mumbles something about the Kessel Run.", "good": False}
-        (self.dir / "labels.json").write_text(json.dumps(labels), encoding="utf-8")
+        (cls.made / "labels.json").write_text(json.dumps(labels), encoding="utf-8")
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp()) / "takes"
+        shutil.copytree(self.made, self.dir)
+        self.old = os.environ.get("VOICES_JUDGE")
+        os.environ["VOICES_JUDGE"] = "fake"
 
     def tearDown(self):
         if self.old is None:
