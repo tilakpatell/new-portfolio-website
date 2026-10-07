@@ -108,6 +108,7 @@ import { createRoam } from './roam';
 import { pick as pickFaction } from '../universe/sides';
 import { aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
 import { asking } from './asking';
+import { jumpTime, routeBetween } from './routes';
 import { arrival, courseTo, jumpSeconds, kindsIn, lightYears, starAhead, systemById, wantsDeathStar } from './systems';
 
 const BOLTS = 16;
@@ -1110,14 +1111,17 @@ export async function create(canvas, ctx) {
     const dir = courseTo(state.sys, to);
     jumpDir.set(...dir);
     state.auto = null;
-    state.jump = { to, from: state.sys, phase: state.ship ? 'align' : 'spool', age: 0, dir, dur: jumpSeconds(state.sys, to), built: false, dressed: false, why };
+    // the jump's time by its route along the lanes (routes.js), slower off them
+    const route = routeBetween(state.sys.id, to.id);
+    const dur = route ? jumpTime(route) : jumpSeconds(state.sys, to);
+    state.jump = { to, from: state.sys, phase: state.ship ? 'align' : 'spool', age: 0, dir, dur, route, built: false, dressed: false, why };
     if (state.view === 'map') state.view = state.seat;
     // its ships' models loading and its built ones made, in the seconds before the tunnel
     const kinds = kindsIn(to);
     models.want(kinds);
     models.prebuild(kinds);
     longest = 0;
-    emit({ type: 'jump', phase: 'align', to: to.id, ly: lightYears(state.sys, to) });
+    emit({ type: 'jump', phase: 'align', to: to.id, ly: lightYears(state.sys, to), seconds: dur, onLane: Boolean(route?.onLane) });
     heard();
     ctx.invalidate();
     return true;
@@ -1160,8 +1164,9 @@ export async function create(canvas, ctx) {
     if (j.phase === 'spool') {
       if (!j.counted) {
         // a jump that's spooling up is one the Empire counts: the one that's due is cut short
+        // (and off the lanes it's due sooner)
         j.counted = true;
-        const verdict = interdiction.jumped();
+        const verdict = interdiction.jumped(Boolean(j.route && !j.route.onLane));
         if (verdict.interdicted && interdictor) {
           j.interdicted = true;
           j.cut = cutAt(j.dur);

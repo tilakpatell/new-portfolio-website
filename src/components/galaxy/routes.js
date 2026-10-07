@@ -11,6 +11,7 @@
 //   system within SNAP of a lane point is snapped to the nearest one
 // routeBetween(fromId, toId) → { pts: [[x, z], …], squares, onLane, lanes: [lane ids, in order] } or null
 // jumpTime(route) → seconds in hyperspace
+// viaLanes(route) → the holomap's words for it: 'via the Corellian Run', or that it's off the lanes
 
 import { LANES, SYSTEMS, systemById } from './systems';
 
@@ -133,3 +134,15 @@ export function routeBetween(fromId, toId) {
 }
 
 export const jumpTime = (route) => Math.min(JUMP.max, (JUMP.base + JUMP.perSquare * route.squares) * (route.onLane ? 1 : JUMP.offLane));
+
+// the lanes a route takes, in words: each with 'the' before it, two joined
+// by 'and', more by commas and then 'and'
+export function viaLanes(route) {
+  if (!route) return '';
+  if (!route.onLane) return 'off the lanes: a straight jump, slower, and the Empire watches those';
+  const names = route.lanes.map((id) => `the ${LANES.find((l) => l.id === id)?.name ?? id}`);
+  // two systems snapped to the one lane point: no lane between them to name
+  if (!names.length) return 'a short hop, on the lanes';
+  const last = names.pop();
+  return `via ${names.length ? `${names.join(', ')} and ${last}` : last}`;
+}
