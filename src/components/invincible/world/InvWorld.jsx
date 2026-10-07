@@ -148,7 +148,7 @@ function World({ gl, setGl }) {
   if (!sim.current) {
     // (he's put on the lawn for now: where he really starts waits on the
     // world, which the scene makes, and nothing moves before it's there)
-    sim.current = { intro: false, kept: local.get(AT, null), quests: keptQuests(), fight: newFight(), punch: false, punchT: 0, invadeAt: 240, h: newHero(SPAWN), keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], frame: 0, padBefore: null, moved: false, world: null };
+    sim.current = { intro: false, kept: local.get(AT, null), quests: keptQuests(), fight: newFight(), punch: false, punchT: 0, invadeAt: 240, h: newHero(SPAWN), keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], companion: [], eveHit: null, frame: 0, padBefore: null, moved: false, world: null };
   }
 
   // (`who`, for a line someone says: in their own voice where it's been made;
@@ -292,6 +292,11 @@ function World({ gl, setGl }) {
       sfx('drum');
       say(CALLS.spar.text, 2400, CALLS.spar.who);
       document.getElementById('inv-game')?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+      return;
+    }
+    // beside Eve: she stops to talk (./companions.js), and says her line
+    if (sim.current.talking?.role === 'eve') {
+      sim.current.talkEve = true;
       return;
     }
     const p = sim.current.near;
@@ -515,10 +520,11 @@ function World({ gl, setGl }) {
       // dev clock's speed-up runs it several times; the punch counts once)
       let r = { fight: s.fight, ev: [], push: null, stun: 0 };
       for (let left = dt, first = true; left > 1e-6; left -= 0.05, first = false) {
-        const q = stepFight(r.fight, h, { punch: first && s.punch, look }, Math.min(0.05, left));
+        const q = stepFight(r.fight, h, { punch: first && s.punch, look, eveHit: first ? s.eveHit : null }, Math.min(0.05, left));
         r = { fight: q.fight, ev: [...r.ev, ...q.ev], push: q.push ?? r.push, stun: Math.max(r.stun ?? 0, q.stun ?? 0) };
       }
       s.fight = r.fight;
+      s.eveHit = null;
       if (r.push) {
         const l = Math.hypot(...r.push) || 1;
         s.h = { ...s.h, mode: 'air', crouch: 0, v: r.push, spd: l, dir: r.push.map((c) => c / l) };
@@ -585,6 +591,12 @@ function World({ gl, setGl }) {
     s.travellers = tv ? tv.list().map(placeOf) : null;
     a.frame(s, dt);
     s.frame++;
+    // what Eve and Dad said and did (./companions.js): her blow lands in the next fight step
+    for (const e of s.companion ?? []) {
+      if (e.type === 'line') say(e.text, 3200, e.who);
+      else if (e.type === 'eveHit' && e.foe != null) s.eveHit = e.foe;
+    }
+    if (s.companion) s.companion.length = 0;
 
     // what's near: a place's door, on the ground or just over it (and in
     // space, his height is over whichever of the Earth, the Moon and Mars
