@@ -8,6 +8,7 @@ import { UNIVERSES } from './universes';
 import { ORDER, keyStep } from './layout';
 import MiniMap from './MiniMap';
 import GuideCue from '../guide/GuideCue';
+import { askBrief } from '../../lib/brief';
 
 // The map: the 3D scene (scene.js and planets.js, through useScene) with the
 // planets' names as buttons over it. React renders the names once; the
@@ -124,6 +125,10 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
     setFlown(false);
     setOnFoot(false);
   }, [ship]);
+  // the first flight's basics (components/tour), as the ship's under you
+  useEffect(() => {
+    if (ship && on) askBrief('/universe/fly');
+  }, [ship, on]);
   useEffect(() => {
     if (!arrive) return undefined;
     const t = setTimeout(() => setArrive(null), 6500);
