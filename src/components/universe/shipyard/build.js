@@ -41,13 +41,16 @@ function random(seed) {
 }
 
 // A whole ship from a seed: for each slot, one of the modules open with
-// these achievements, picked by weight.
-export function rollBuild(seed, unlocked = []) {
+// these achievements, picked by weight. Given the module ids owned (a list
+// or a Set, from the wallet), only those, the stock build's and the empty
+// slots: what's free is in every slot, so nothing bought is still a ship.
+export function rollBuild(seed, unlocked = [], owned = null) {
   const s = cleanSeed(seed);
   const r = random(s);
   const out = { seed: s };
+  const has = owned ? (id) => (owned instanceof Set ? owned.has(id) : owned.includes(id)) : () => true;
   for (const slot of BUILD_SLOTS) {
-    const open = modulesFor(slot).filter((m) => isModuleOpen(m, unlocked));
+    const open = modulesFor(slot).filter((m) => isModuleOpen(m, unlocked) && (has(m.id) || m.id === STOCK_BUILD[slot] || m.id === 'none'));
     const total = open.reduce((n, m) => n + m.weight, 0);
     let x = r() * total;
     out[slot] = open[open.length - 1].id;
