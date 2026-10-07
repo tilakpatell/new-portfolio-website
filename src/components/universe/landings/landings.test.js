@@ -2,14 +2,14 @@ import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { UNIVERSES } from '../universes';
+import { MOONS, UNIVERSES } from '../universes';
 import { STYLES } from './ground';
 import { CLEAR, LANDINGS, SCATTER_MAX, landingOf, scatterSpots, seedOf } from './landings';
 
 const HEX = /^#[0-9a-f]{6}$/i;
 const PUBLIC = join(dirname(fileURLToPath(import.meta.url)), '../../../../public');
 // the planets you can land on: the fandoms (not the gate into the galaxy)
-const LANDABLE = UNIVERSES.filter((u) => u.kind === 'fandom' && !u.portal).map((u) => u.id);
+const LANDABLE = [...UNIVERSES.filter((u) => u.kind === 'fandom' && !u.portal), ...MOONS].map((u) => u.id);
 const seeded = (seed) => () => {
   seed = (seed * 16807) % 2147483647;
   return seed / 2147483647;
@@ -27,11 +27,15 @@ const FILES = {
   travel: () => import('./travel.js'),
   caribbean: () => import('./caribbean.js'),
   invincible: () => import('./invincible.js'),
+  gazorpazorp: () => import('./rmmoons.js'),
+  squanch: () => import('./rmmoons.js'),
+  birdworld: () => import('./rmmoons.js'),
+  gearworld: () => import('./rmmoons.js'),
 };
 
 describe('planet landings', () => {
   it('give every planet you can land on its own place: a name, a ground and a sky', () => {
-    expect(LANDABLE.length).toBe(11);
+    expect(LANDABLE.length).toBe(15);
     const titles = new Set();
     for (const id of LANDABLE) {
       const l = landingOf(id);

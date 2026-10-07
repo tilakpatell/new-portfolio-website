@@ -292,6 +292,9 @@ export async function loadCast(names) {
   return Object.fromEntries(names.map((n, i) => [n, got[i]]));
 }
 
+// the clip (scripts/meshy-invincible.mjs's CLIPS) each of the kit's modes plays
+const CLIP_OF = { idle: 'idle', walk: 'walk', run: 'run', wave: 'wave', talk: 'talk', phone: 'phone', cheer: 'cheer', hover: 'hover', fly: 'fly' };
+
 // the bones a person's poses need
 const NEED = ['hips', 'armL', 'foreL', 'armR', 'foreR', 'thighL', 'calfL', 'thighR', 'calfR'];
 
@@ -317,7 +320,13 @@ export function personFor(kind, seed, template = null, spec = CAST[kind]) {
       const f = figure(template, spec);
       for (const b of NEED) if (!f.bones[b]) throw new Error(`${spec.file}: no bone ${b}`);
       f.snap(figurePose('idle', 0));
-      return { root: f.holder, hipY: f.hipHeight, height: f.height, fig: f, pose: ({ mode = 'idle', t = 0, phase = 0 }, dt = 1 / 60) => f.pose(figurePose(mode, t + phase), dt, 10), dispose: () => f.dispose() };
+      // its motion-captured clip for a mode where it has one (arms folded
+      // has none: posed), started somewhere of its own in it
+      const pose = ({ mode = 'idle', t = 0, phase = 0 }, dt = 1 / 60) => {
+        if (!(CLIP_OF[mode] && f.act(CLIP_OF[mode], { at: phase * 0.37, fade: 0.4 }))) f.pose(figurePose(mode, t + phase), dt, 10);
+        f.tick(dt);
+      };
+      return { root: f.holder, hipY: f.hipHeight, height: f.height, fig: f, clips: f.clips, pose, dispose: () => f.dispose() };
     } catch (e) {
       if (import.meta.env?.DEV) console.warn(String(e.message ?? e)); // the kit's person stands in, not a T-pose
     }
@@ -327,5 +336,5 @@ export function personFor(kind, seed, template = null, spec = CAST[kind]) {
   p.h.root.position.y = -hipY;
   const root = new THREE.Group();
   root.add(p.h.root);
-  return { root, hipY, height: p.height, kit: p, pose: (o) => posePerson(p, o), dispose: () => {} };
+  return { root, hipY, height: p.height, kit: p, clips: [], pose: (o) => posePerson(p, o), dispose: () => {} };
 }
