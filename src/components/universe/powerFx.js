@@ -61,7 +61,7 @@ varying vec3 vN;
 varying vec3 vV;
 void main() {
   float rim = 1.0 - abs(dot(normalize(vN), normalize(vV)));
-  gl_FragColor = vec4(uColor * rim * rim * rim * 1.6 * uK, 1.0);
+  gl_FragColor = vec4(uColor * rim * rim * rim * 1.2 * uK, 1.0);
 }`;
 
 const glow = (color) => new THREE.MeshBasicMaterial({ color, toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
