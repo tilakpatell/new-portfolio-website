@@ -22,11 +22,21 @@
 // colour map laid over the palette's colour and its normal map tilting the
 // light, at the scan's real size, fading out between `near` and `far`
 // metres so the far ground stays the shader's own. Not on the low tier.
+// Laid flat on the ground, it fades out on the steep (it would stretch down
+// a cliff); the rock colour holds there instead.
+//
+// At ultra (`splat`, amounts.js's), the ground is layered (splat.js's
+// scans): the site's scan at two sizes turned against each other (so no
+// tile repeats), a second scan in broad patches, rock wrapped round the
+// slopes from the three axes, small blotches of a fourth, all reaching
+// further out; and it's wet by the water and in the hollows (darker,
+// smoother, catching the light). Its own program (SPLAT): high's is as it was.
 
 import * as THREE from 'three';
 import { HALF } from './terrain';
 import { noiseTexture } from './noiseTex';
 import { loadScan, scanOf } from './kit';
+import { splatOf } from './splat';
 import { detailLevel } from '../../../lib/detail';
 import { sharpen } from '../../../lib/three/textures';
 import { GROUND_GLSL } from '../../../lib/three/groundmap';
@@ -38,7 +48,7 @@ float gHash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32
 vec4 gTex(vec2 p) { return texture2D(uNoise, p); }
 `;
 
-export function groundMaterial(site, { small = false, map = null } = {}) {
+export function groundMaterial(site, { small = false, map = null, splat: layered = false } = {}) {
   const g = site.ground;
   const p = g.palette;
   const col = (c, fallback) => new THREE.Color(c ?? fallback);
@@ -64,6 +74,15 @@ export function groundMaterial(site, { small = false, map = null } = {}) {
     uScanN: { value: null },
     uScanK: { value: new THREE.Vector4(0.5, 0, 0, 0.5) },
     uScanFade: { value: new THREE.Vector2(28, 90) },
+    // the layered ground's (ultra): each layer's 1 / metres and its mean
+    // (linear), and how strong the patches, the blotches and the wet
+    // hollows are, w: all of them loaded
+    uMacro: { value: null },
+    uSteep: { value: null },
+    uSteepN: { value: null },
+    uDecal: { value: null },
+    uLayerK: { value: [new THREE.Vector2(0.5, 0.5), new THREE.Vector2(0.5, 0.5), new THREE.Vector2(0.5, 0.5)] },
+    uSplatK: { value: new THREE.Vector4(0.6, 0.75, 0.6, 0) },
   };
   const look = g.detailLook ?? {};
   const scan = g.detail && !small && detailLevel() !== 'low' ? scanOf(g.detail) : null;
@@ -75,6 +94,24 @@ export function groundMaterial(site, { small = false, map = null } = {}) {
       uniforms.uScanN.value = got.normalMap;
       const metres = look.metres ?? scan.metres ?? 2;
       uniforms.uScanK.value.set(1 / metres, look.color ?? 0.75, got.normalMap ? (look.normal ?? 0.7) : 0, Math.pow(scan.mean ?? 0.8, 2.2));
+    });
+  }
+  // (the layers: on once every one of them is in; a missing one is the base again)
+  const layers = scan && layered ? splatOf(site) : null;
+  if (layers) {
+    uniforms.uScanFade.value.set((look.near ?? 28) * 1.5, (look.far ?? 90) * 1.8);
+    const s = site.ground.splatLook ?? {};
+    uniforms.uSplatK.value.set(s.macro ?? 0.6, s.decal ?? 0.75, s.wet ?? (site.water && site.water.kind !== 'lava' ? 0.6 : 0.25), 0);
+    const roles = [layers.base, layers.macro ?? layers.base, layers.steep ?? layers.base, layers.decal ?? layers.base];
+    Promise.all(roles.map((r) => loadScan(r, { xl: true }))).then((got) => {
+      if (got.some((x) => !x)) return;
+      const [, macro, steep, decal] = got;
+      uniforms.uMacro.value = macro.map;
+      uniforms.uSteep.value = steep.map;
+      uniforms.uSteepN.value = steep.normalMap;
+      uniforms.uDecal.value = decal.map;
+      roles.slice(1).forEach((r, i) => uniforms.uLayerK.value[i].set(1 / (scanOf(r).metres ?? 2), Math.pow(scanOf(r).mean ?? 0.8, 2.2)));
+      uniforms.uSplatK.value.w = 1;
     });
   }
   const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: p.roughness ?? 0.94, metalness: 0 });
@@ -103,6 +140,13 @@ uniform vec4 uHeights, uRipple, uWet, uScanK;
 uniform vec2 uScanFade;
 uniform sampler2D uMarks, uScan, uScanN;
 uniform float uHalf;
+#ifdef SPLAT
+uniform sampler2D uMacro, uSteep, uSteepN, uDecal;
+uniform vec2 uLayerK[3];
+uniform vec4 uSplatK;
+float gWet;
+vec3 gTri(sampler2D t, vec3 p, vec3 w) { return texture2D(t, p.zy).rgb * w.x + texture2D(t, p.xz).rgb * w.y + texture2D(t, p.xy).rgb * w.z; }
+#endif
 ${map ? GROUND_GLSL : ''}
 ${NOISE}`,
       )
@@ -132,11 +176,40 @@ ${NOISE}`,
   c *= 1.0 + ((nFine - 0.5) * 0.12 + (nMid - 0.5) * 0.16) * uGrain.x * mix(0.5, 1.0, near);
   // the scan underfoot, close up: its grain over the colour, centred on
   // its own brightness so the palette's colour still says what the ground is
-  if (uScanK.y > 0.0) {
+#ifdef SPLAT
+  gWet = 0.0;
+  if (uScanK.y > 0.0 && uSplatK.w > 0.5) {
     float scanNear = 1.0 - smoothstep(uScanFade.x, uScanFade.y, dist);
+    // the base at its size and again at about a third, turned (no tile repeats)
+    vec3 sc = texture2D(uScan, xz * uScanK.x).rgb / max(uScanK.w, 0.05);
+    vec3 sc2 = texture2D(uScan, mat2(0.8, -0.6, 0.6, 0.8) * xz * uScanK.x * 0.31).rgb / max(uScanK.w, 0.05);
+    sc = mix(sc, sc * sc2, 0.5);
+    // the second scan in broad patches
+    float mK = smoothstep(0.5, 0.68, nBig * 0.75 + nMid * 0.35) * uSplatK.x;
+    sc = mix(sc, texture2D(uMacro, xz * uLayerK[0].x).rgb / max(uLayerK[0].y, 0.05), mK);
+    // blotches of the fourth: one in a cell, at a random spot, its edge broken up
+    vec2 dc = xz / 7.0;
+    vec2 cid = floor(dc);
+    vec2 ctr = vec2(gHash(cid + 3.1), gHash(cid + 7.7)) * 0.6 + 0.2;
+    float blot = (1.0 - smoothstep(0.16, 0.4, length(fract(dc) - ctr) + (nFine - 0.5) * 0.4)) * step(0.5, gHash(cid));
+    sc = mix(sc, texture2D(uDecal, xz * uLayerK[2].x).rgb / max(uLayerK[2].y, 0.05), blot * uSplatK.y * (1.0 - rock));
+    // rock on the slopes, from the three axes (never stretched)
+    vec3 tw = pow(abs(normalize(vGroundN)), vec3(4.0));
+    tw /= tw.x + tw.y + tw.z;
+    sc = mix(sc, gTri(uSteep, vGround * uLayerK[1].x, tw) / max(uLayerK[1].y, 0.05), rock);
+    c *= mix(vec3(1.0), sc, uScanK.y * scanNear);
+  }
+  // wet: by the water's edge, and in the hollows (darker, smoother)
+  gWet = max((1.0 - smoothstep(uWet.x, uWet.x + uWet.y * 2.5, vGround.y)) * step(-9999.0, uWet.x), smoothstep(0.68, 0.86, nMid * 0.7 + nFine * 0.3) * uSplatK.z * (1.0 - rock)) * (1.0 - rock * 0.7);
+  c *= 1.0 - 0.32 * gWet;
+#else
+  if (uScanK.y > 0.0) {
+    // (laid flat, so it fades out on the steep, where it would stretch)
+    float scanNear = (1.0 - smoothstep(uScanFade.x, uScanFade.y, dist)) * smoothstep(0.55, 0.8, vGroundN.y);
     vec3 sc = texture2D(uScan, xz * uScanK.x).rgb / max(uScanK.w, 0.05);
     c *= mix(vec3(1.0), sc, uScanK.y * scanNear);
   }
+#endif
   // where things have been
   vec2 muv = xz / (2.0 * uHalf) + 0.5;
   if (muv.x > 0.0 && muv.x < 1.0 && muv.y > 0.0 && muv.y < 1.0) c = mix(c, uMarkColor, texture2D(uMarks, muv).r);
@@ -164,6 +237,19 @@ ${NOISE}`,
     float scanNear = 1.0 - smoothstep(uScanFade.x, uScanFade.y, dist);
     vec3 tn = texture2D(uScanN, xz * uScanK.x).xyz * 2.0 - 1.0;
     tilt -= vec3(tn.x, 0.0, tn.y) * uScanK.z * scanNear * flatK;
+#ifdef SPLAT
+    // the rock's relief on the slopes: its normal maps from the three axes
+    if (uSplatK.w > 0.5) {
+      vec3 nw = normalize(vGroundN);
+      vec3 tw = pow(abs(nw), vec3(4.0));
+      tw /= tw.x + tw.y + tw.z;
+      vec3 sp = vGround * uLayerK[1].x;
+      vec3 tx = texture2D(uSteepN, sp.zy).xyz * 2.0 - 1.0;
+      vec3 tz = texture2D(uSteepN, sp.xy).xyz * 2.0 - 1.0;
+      vec3 side = vec3(0.0, tx.y, tx.x) * tw.x + vec3(tz.x, tz.y, 0.0) * tw.z;
+      tilt -= side * uScanK.z * scanNear * (1.0 - flatK);
+    }
+#endif
   }
   normal = normalize(normal - (viewMatrix * vec4(tilt, 0.0)).xyz);
 }`,
@@ -187,7 +273,15 @@ ${NOISE}`,
 }`,
       );
   };
-  mat.customProgramCacheKey = () => `galaxy-ground${map ? ':map' : ''}`;
+  // (wet ground is smoother)
+  if (layers) {
+    mat.defines = { ...(mat.defines ?? {}), SPLAT: '' };
+    mat.onBeforeCompile = ((before) => (shader) => {
+      before(shader);
+      shader.fragmentShader = shader.fragmentShader.replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor *= 1.0 - 0.55 * gWet;');
+    })(mat.onBeforeCompile);
+  }
+  mat.customProgramCacheKey = () => `galaxy-ground${map ? ':map' : ''}${layers ? ':splat' : ''}`;
   return { material: mat, uniforms };
 }
 
