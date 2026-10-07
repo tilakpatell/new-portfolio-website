@@ -22,11 +22,12 @@ import { PROPS as ice, SCATTER as iceScatter } from './ice';
 import { PROPS as forest, SCATTER as forestScatter } from './forest';
 import { PROPS as core, SCATTER as coreScatter } from './core';
 import { PROPS as edge, SCATTER as edgeScatter } from './edge';
+import { PROPS as bespin, SCATTER as bespinScatter } from './bespin';
 import { PROPS as inside } from './inside';
 import { PROPS as insideCore } from './insideCore';
 import { PROPS as insideForest } from './insideForest';
 import { PROPS as echo } from './echo';
 import { PROPS as outer, SCATTER as outerScatter } from './outer';
 
-export const PROPS = { ...generic, ...desert, ...ice, ...forest, ...core, ...edge, ...outer, ...inside, ...insideCore, ...insideForest, ...echo };
-export const SCATTER = { ...genericScatter, ...desertScatter, ...iceScatter, ...forestScatter, ...coreScatter, ...edgeScatter, ...outerScatter };
+export const PROPS = { ...generic, ...desert, ...ice, ...forest, ...core, ...edge, ...bespin, ...outer, ...inside, ...insideCore, ...insideForest, ...echo };
+export const SCATTER = { ...genericScatter, ...desertScatter, ...iceScatter, ...forestScatter, ...coreScatter, ...edgeScatter, ...bespinScatter, ...outerScatter };
