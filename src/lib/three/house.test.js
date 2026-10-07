@@ -115,6 +115,15 @@ describe('a world’s house', () => {
     expect(house.adopt(new THREE.Mesh(new THREE.BufferGeometry(), m))).toBe(0);
   });
 
+  it('leaves the fog alone in a world whose fog is already the sky’s', () => {
+    const house = createHouse({ fog: false });
+    const m = house.material();
+    const sh = compiled(m);
+    expect(sh.fragmentShader).toContain('uLookShadow');
+    expect(sh.fragmentShader).toContain('#include <fog_fragment>');
+    expect(m.customProgramCacheKey()).toMatch(/\|house:nofog$/);
+  });
+
   it('makes new materials already in the look', () => {
     const house = createHouse();
     const m = house.material({ color: 0x55aa33 });

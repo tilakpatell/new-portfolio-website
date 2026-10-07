@@ -29,7 +29,7 @@
 //   houseShader(shader, { fog, ground }, chunks) → { vertexShader, fragmentShader, swapped }
 //
 // A look: { shadow, edge: [from, to], mix, fogLow, fogHigh, fogBelow, halo,
-// fogMix, exposure }. All the materials of one world share one set of uniforms, so a
+// fogMix, exposure, fog (false: leave the world's own fog as it is) }. All the materials of one world share one set of uniforms, so a
 // frame sets them once. Call adopt() after anything else that patches the
 // world's materials (lib/three/groundwork's groundWorld): its shade then
 // replaces their tints, and one shadow colour reaches everything.
@@ -144,6 +144,8 @@ const LIT = (m) => Boolean(m && (m.isMeshStandardMaterial || m.isMeshLambertMate
 const colour = (v, out) => (v?.isColor ? out.copy(v) : out.set(v));
 
 export function createHouse(look = {}) {
+  // (`fog: false`: a world whose fog is already the sky's, its own way)
+  const fog = look.fog !== false;
   const uniforms = {
     uLookRef: { value: new THREE.Color(1, 1, 1) },
     uLookShadow: { value: new THREE.Color() },
@@ -180,12 +182,12 @@ export function createHouse(look = {}) {
     m.onBeforeCompile = (sh, r) => {
       before?.call(m, sh, r);
       Object.assign(sh.uniforms, uniforms);
-      const out = houseShader(sh, { ground: grounded });
+      const out = houseShader(sh, { ground: grounded, fog });
       sh.vertexShader = out.vertexShader;
       sh.fragmentShader = out.fragmentShader;
     };
     const key = m.customProgramCacheKey;
-    m.customProgramCacheKey = () => `${key ? key.call(m) : ''}|house${grounded ? ':ground' : ''}`;
+    m.customProgramCacheKey = () => `${key ? key.call(m) : ''}|house${grounded ? ':ground' : ''}${fog ? '' : ':nofog'}`;
     m.userData.house = uniforms;
     patched.add(m);
     m.needsUpdate = true;
