@@ -11,10 +11,11 @@
 // side, turn, in metres and radians a second), so your feet on their
 // screen match your pace. A packet from an older client has neither, and
 // reads as none. Pure, no three.js: a figure is anything with `play` (and
-// `base`, `anim`), as meshyCast's and footScene's are.
+// `anim`), as meshyCast's and footScene's are.
 //
 //   EMOTES: the five, in the wheel's order (clockwise from the top)
-//   EMOTE: { [id]: { clip | base, layer, length (s), loop?, walk? } }
+//   EMOTE: { [id]: { clip, layer, length (s), loop?, walk?, fade?, rise? } }
+//     fade, rise: seconds into it and out of it, when not a one-shot's
 //   createEmoteWheel({ hold = 0.22, dead = 0.35, first = 'wave' }) → { down(t),
 //     tick(t) → { open, hover }, aim(x, y), up(t) → id | null, choose(i | id)
 //     → id | null, cancel(), open, hover, last }   t in seconds; aim: the
@@ -35,13 +36,18 @@
 
 export const EMOTES = ['wave', 'cheer', 'dance', 'taunt', 'sit'];
 
-// the clips' own lengths (public/games/meshy/clips-*.glb), the dance's one time through
+// the clips' own lengths (public/games/meshy/clips-*.glb), the dance's one
+// time through. A sit is on the floor, cross-legged (Meshy's
+// Sit_Cross_Legged_on_Floor), held on the whole body till you get up: not
+// the animator's sitting base, whose way in (the UAL's sit.enter) lowers
+// you onto a chair that isn't there. fade: the seconds it takes to sit
+// down into; rise: to get up out of, as you set off.
 export const EMOTE = {
   wave: { clip: 'wave', layer: 'upper', length: 5.4, walk: true },
   cheer: { clip: 'cheer', layer: 'full', length: 1.5 },
   dance: { clip: 'dance', layer: 'full', length: 8.2, loop: true },
   taunt: { clip: 'taunt', layer: 'full', length: 4.9 },
-  sit: { base: 'sit', layer: 'full', length: Infinity },
+  sit: { clip: 'sit.floor', layer: 'full', length: Infinity, loop: true, fade: 0.5, rise: 0.4 },
 };
 
 const AGE_MAX = 600; // seconds: as old as the wire says one is
@@ -168,14 +174,13 @@ const settle = (r) => {
 function end(fig, shown) {
   const row = EMOTE[shown.id];
   if (!row || !fig) return;
-  if (row.base) {
-    settle(fig.base?.(null));
-    return;
-  }
   // only if it's still the one playing: a one-shot that played out leaves what came after alone
   const a = fig.anim;
   if (a?.stop) {
-    if (!a.playing || a.playing(row.layer) === row.clip) a.stop(row.layer);
+    if (!a.playing || a.playing(row.layer) === row.clip) {
+      if (row.rise) a.stop(row.layer, row.rise);
+      else a.stop(row.layer);
+    }
   } else if (row.layer === 'full') fig.stop?.();
 }
 
@@ -189,7 +194,6 @@ export function applyEmote(fig, e, shown = null) {
   if (!fig || typeof fig.play !== 'function') return null;
   const row = EMOTE[e.id];
   if (!row) return null;
-  if (row.base) settle(typeof fig.base === 'function' ? fig.base(row.base) : fig.play(row.base, { layer: 'full', loop: true }));
-  else settle(fig.play(row.clip, { layer: row.layer, at: e.t ?? 0, ...(row.loop ? { loop: true } : {}) }));
+  settle(fig.play(row.clip, { layer: row.layer, at: e.t ?? 0, ...(row.loop ? { loop: true } : {}), ...(row.fade ? { fade: row.fade } : {}) }));
   return e;
 }
