@@ -90,8 +90,9 @@ describe('the wars', () => {
     expect(w.sides.map((s) => s.id)).toEqual(['council', 'federation']);
   });
 
-  it('lines Breaking Bad’s war up at its real places: out from Albuquerque toward the border and Don Eladio’s', () => {
+  it('fights Breaking Bad’s war at its real places: out from Albuquerque toward the border and Don Eladio’s', () => {
     const w = WARS.breakingbad;
+    expect(w.ready).toBe(true);
     const [first, last] = [w.sectors[0], w.sectors[w.sectors.length - 1]];
     expect(first.id).toBe('pollos');
     expect(Math.hypot(...first.at.map((v, i) => v - POSITIONS.breakingbad[i]))).toBeLessThan(900);

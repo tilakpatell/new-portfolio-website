@@ -8,7 +8,8 @@
 // for you, paused, till you come back. When it's over the war moves on (the
 // attacker takes the sector if it won), the visit's save remembers it, and a
 // while later the next battle's at the new front. (The Star Wars crews' war
-// is fought in the galaxy, galaxy/gcw.js, not here; Rick and Morty's is here.)
+// is fought in the galaxy, galaxy/gcw.js, not here; Rick and Morty's and
+// Breaking Bad's are here.)
 //
 // zoneOf(dist, was) → 'in' | 'near' | 'out' is pure (tested).
 // createFront(map, { side, war, models, small, tier, reduced, storage, emit,

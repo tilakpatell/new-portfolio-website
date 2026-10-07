@@ -194,7 +194,7 @@ export const WARS = {
   breakingbad: {
     id: 'breakingbad',
     name: 'The Cartel War',
-    ready: false, // (its flagships come with their models: PR E)
+    ready: true,
     sides: [gus, cartel],
     // at its real places on the map: from Los Pollos just off Albuquerque
     // (the Breaking Bad world) out, away from home, past the border to Don
@@ -344,21 +344,28 @@ export const SUBSYSTEMS = {
     [0, 0.08, 0.22],
     [0, 0.12, -0.3],
   ),
+  // Gus's superlab barge (scripts/meshy-war.mjs): its shield generators the
+  // two domes on the deckhouse's roof, fore and aft, the bridge at the
+  // deckhouse's front, the reactor in the stern among the thrusters
   superlab: flagship(
     [
-      [-0.12, 0.16, -0.2],
-      [0.12, 0.16, -0.2],
+      [0, 0.11, 0.215],
+      [0, 0.11, -0.205],
     ],
-    [0, 0.18, 0.28],
-    [0, -0.1, -0.3],
+    [0, 0.08, 0.38],
+    [0, -0.03, -0.5],
   ),
+  // Don Eladio's flying hacienda, its thrusters in the rock either side:
+  // its shield generators in the domes of the two back towers, the bridge
+  // in the main house over the front door, the reactor at the foot of the
+  // rock it stands on
   hacienda: flagship(
     [
-      [-0.14, 0.18, -0.18],
-      [0.14, 0.18, -0.18],
+      [-0.37, 0.34, -0.29],
+      [0.37, 0.34, -0.29],
     ],
-    [0, 0.22, 0.12],
-    [0, -0.12, -0.28],
+    [0, 0.28, 0.34],
+    [0, -0.37, 0],
   ),
 };
 
@@ -381,10 +388,10 @@ export const TURRETS = {
   saucer: [...flanks(0.2, 0.05, [0])],
   federation: [...flanks(0.12, 0.05, [-0.15, 0.15])],
   hauler: [...flanks(0.12, 0.05, [-0.1, 0.1])],
-  superlab: [...flanks(0.14, 0.06, [-0.25, -0.05, 0.15])],
+  superlab: [...flanks(0.125, 0.035, [-0.2, 0.02, 0.24]), [0, 0.095, 0]],
   madrigal: [...flanks(0.12, 0.05, [-0.15, 0.15])],
   pestvan: [...flanks(0.12, 0.05, [-0.1, 0.1])],
-  hacienda: [...flanks(0.16, 0.06, [-0.25, -0.05, 0.15])],
+  hacienda: [...flanks(0.43, 0.33, [-0.33, 0.33]), ...flanks(0.38, 0.3, [0])],
   pollostruck: [...flanks(0.12, 0.05, [-0.1, 0.1])],
   pickup: [...flanks(0.12, 0.05, [-0.1, 0.1])],
 };
@@ -410,10 +417,10 @@ export const HULLS = {
   saucer: [[-0.2, 0.3], [0.2, 0.3]],
   federation: [[-0.36, 0.12], [-0.12, 0.12], [0.12, 0.11], [0.36, 0.08]],
   hauler: [[-0.34, 0.16], [0, 0.17], [0.34, 0.15]],
-  superlab: [[-0.36, 0.15], [-0.12, 0.16], [0.12, 0.15], [0.36, 0.12]],
+  superlab: [[-0.42, 0.09], [-0.27, 0.11], [-0.09, 0.11], [0.09, 0.11], [0.27, 0.1], [0.42, 0.08]],
   madrigal: [[-0.34, 0.15], [0, 0.16], [0.34, 0.14]],
   pestvan: [[-0.34, 0.16], [0, 0.17], [0.34, 0.15]],
-  hacienda: [[-0.36, 0.16], [-0.12, 0.17], [0.12, 0.16], [0.36, 0.12]],
+  hacienda: [[-0.18, 0.23], [0, 0.3], [0.18, 0.23]],
   pollostruck: [[-0.34, 0.16], [0, 0.17], [0.34, 0.15]],
   pickup: [[-0.34, 0.16], [0, 0.17], [0.34, 0.15]],
 };
