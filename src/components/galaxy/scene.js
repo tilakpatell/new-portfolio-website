@@ -94,7 +94,7 @@ import { SHIP_INFO, buildGalaxyShip } from './fleet';
 import { HUNTER_GLB, createModels } from './models';
 import { createSky } from './sky';
 import { createSpeedLines } from './speedLines';
-import { T as JUMP_T } from '../hyperspace3d/timeline';
+import { T as JUMP_T, overlayFrom } from '../hyperspace3d/timeline';
 import { DIVE, LAUNCH_KEY, diveAt, planDive } from './travel';
 import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, interdictorPlace } from './interdiction';
 import { createInterdictor } from './interdictor';
@@ -1146,8 +1146,7 @@ export async function create(canvas, ctx) {
         if (crewById(state.kind)?.jump === 'portal' && !reduced) {
           const from = new THREE.Vector3(state.ship.x, state.ship.y, state.ship.z);
           const fwd = jumpDir.clone().normalize();
-          j.portal = { from, fwd, phase: 'in', gate: null, clip: null, shut: false, hidden: false, cam: null, off: 0 };
-          gateFx.bolt({ from: from.clone().addScaledVector(fwd, PORTAL_L * 0.5), to: from.clone().addScaledVector(fwd, gateAhead() * PORTAL_L), dur: GATE.bolt });
+          j.portal = { from, fwd, since: performance.now(), synced: false, phase: 'in', gate: null, clip: null, shut: false, hidden: false, cam: null, off: 0 };
         }
         // (the page plays the site's jump over the scene from here, its
         // sound with it, the same as the universe map's: Galaxy.jsx)
@@ -1172,6 +1171,17 @@ export async function create(canvas, ctx) {
       q.slerp(want, clamp01(dt * 6));
       const e = shipEuler.setFromQuaternion(q, 'YXZ');
       const P = j.portal;
+      if (P && !P.synced) {
+        // (in time with the page's portal: held till it's drawing, its start the spool's)
+        const st = overlayFrom(P.since, performance.now());
+        if (st == null) {
+          j.age = 0;
+          return;
+        }
+        P.synced = true;
+        j.age = (performance.now() - st) / 1000;
+        gateFx.bolt({ from: P.from.clone().addScaledVector(P.fwd, PORTAL_L * 0.5), to: P.from.clone().addScaledVector(P.fwd, gateAhead() * PORTAL_L), dur: GATE.bolt });
+      }
       if (P) {
         // into the portal: the gate opening where the shot landed, the camera
         // holding where it was, the cruiser flying on into the green, gone

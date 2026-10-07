@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { HOLD_AT, T, holdJump, holdStart, jumpHeld } from './timeline';
+import { HOLD_AT, T, holdJump, holdStart, jumpHeld, markJumpStart, overlayFrom } from './timeline';
 
 describe('a jump held in its tunnel', () => {
   afterEach(() => vi.useRealTimers());
@@ -35,5 +35,18 @@ describe('a jump held in its tunnel', () => {
     expect(5000 - holdStart(5000, 1000)).toBe(HOLD_AT);
     release();
     expect(holdStart(5000, 1000)).toBe(1000);
+  });
+});
+
+describe('a scene keeping time with the jump on the page', () => {
+  it('waits for the overlay to start drawing, takes its start, and gives up waiting after a while', () => {
+    markJumpStart(null);
+    expect(overlayFrom(1000, 1100)).toBe(null);
+    markJumpStart(500); // (an earlier jump's: not this one's)
+    expect(overlayFrom(1000, 1100)).toBe(null);
+    markJumpStart(1240);
+    expect(overlayFrom(1000, 1300)).toBe(1240);
+    markJumpStart(null);
+    expect(overlayFrom(1000, 1700)).toBe(1000);
   });
 });

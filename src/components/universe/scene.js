@@ -128,7 +128,7 @@ import { DEEP, WONDERS, moveBinaries, nearestStar, openness, reachOf, wonderById
 import { KEY as KEY_FULL, STARS as LIT_STARS, dayYaw, lightAt, sunFor } from './lighting';
 import { createCrash } from './crash';
 import { GATE, createGateFx, gateAhead, intoAt, outAt, throughAt } from '../../lib/three/portalGate';
-import { T as JUMP_T } from '../hyperspace3d/timeline';
+import { T as JUMP_T, overlayFrom } from '../hyperspace3d/timeline';
 import { crewById } from './crews';
 import { createExplosions } from '../../lib/three/explosions';
 import { createInfall } from './infall';
@@ -3496,11 +3496,19 @@ export async function create(canvas, ctx) {
     const s = state.ship;
     const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(orientOf(s, new THREE.Quaternion()));
     const from = new THREE.Vector3(s.x, s.y, s.z);
-    state.portal = { t0: wall(), from, fwd, phase: 'in', gate: null, clip: null, shut: false, hidden: false, cam: null, off: 0 };
-    gateFx.bolt({ from: from.clone().addScaledVector(fwd, PORTAL_L * 0.5), to: from.clone().addScaledVector(fwd, gateAhead() * PORTAL_L), dur: GATE.bolt });
+    state.portal = { t0: wall(), since: performance.now(), synced: false, from, fwd, phase: 'in', gate: null, clip: null, shut: false, hidden: false, cam: null, off: 0 };
   };
   const portalIn = () => {
     const p = state.portal;
+    // (in time with the page's portal: held till it's drawing, its start the jump's)
+    if (!p.synced) {
+      const s = overlayFrom(p.since, performance.now());
+      if (s == null) return;
+      p.synced = true;
+      p.t0 = s / 1000;
+      if (state.jump) state.jump.at = p.t0 + HYPER.flash;
+      gateFx.bolt({ from: p.from.clone().addScaledVector(p.fwd, PORTAL_L * 0.5), to: p.from.clone().addScaledVector(p.fwd, gateAhead() * PORTAL_L), dur: GATE.bolt });
+    }
     const t = wall() - p.t0;
     if (!p.gate && t >= GATE.bolt * 0.7) {
       p.gate = gateFx.open({ at: p.from.clone().addScaledVector(p.fwd, gateAhead() * PORTAL_L), dir: p.fwd, radius: GATE.radius * PORTAL_L });

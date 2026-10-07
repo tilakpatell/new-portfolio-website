@@ -62,3 +62,22 @@ export function holdJump(most = 60000) {
   return letGo;
 }
 export const holdStart = (now, start) => (holds > 0 && now - start > HOLD_AT ? now - HOLD_AT : start);
+
+// When the jump on the page last started drawing (performance.now ms; the
+// page's jumps call markJumpStart on their first frame: jumps/JumpCanvas.jsx).
+// A scene that flies its own part of the jump (Rick's cruiser into a 3D
+// portal: universe/scene.js, galaxy/scene.js) waits for it, so the two keep
+// time: the first jump's overlay is a moment late, loading and starting its
+// canvas.
+let startedAt = null;
+export const markJumpStart = (ms) => {
+  startedAt = ms;
+};
+export const jumpStartedAt = () => startedAt;
+// Whether a jump the scene began at `since` (ms) has its overlay drawing:
+// the time it started (ms), or null while it hasn't (and `wait` ms on, the
+// scene's own time, so a page with no overlay doesn't hold it for ever)
+export function overlayFrom(since, now, wait = 600) {
+  if (startedAt != null && startedAt >= since - 50) return startedAt;
+  return now - since > wait ? since : null;
+}

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { T, darkAt, flashAt, holdStart } from '../hyperspace3d/timeline';
+import { T, darkAt, flashAt, holdStart, markJumpStart } from '../hyperspace3d/timeline';
 
 // A jump drawn over the whole page by a fragment shader, on the jump to
 // lightspeed's timeline (hyperspace3d/timeline.js), so a page that plays the
@@ -117,7 +117,10 @@ export default function JumpCanvas({ frag, uniforms, fallback, onPeak, onDone })
     let t0 = 0;
     let raf = 0;
     const frame = (now) => {
-      if (!start) start = t0 = now;
+      if (!start) {
+        start = t0 = now;
+        markJumpStart(now); // (a scene flying its own part of the jump keeps time with this: timeline.js)
+      }
       start = holdStart(now, start); // (held in the middle while the galaxy builds its next system)
       const ms = now - start;
       const t = ms / 1000;

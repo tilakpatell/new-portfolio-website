@@ -46,16 +46,13 @@ console.log(`${where}: ship up in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 await page.waitForTimeout(4000);
 const to = process.argv[3] ?? (where === 'galaxy' ? 'naboo' : await page.evaluate(() => window.__universeDebug.positions().find((id) => id !== window.__universe().at && id !== 'home') ?? 'starwars'));
 // (the page's clock stopped first: on a slow machine a round trip into the page is a good part of the jump)
-const pause = async () => page.clock.pauseAt((await page.evaluate(() => Date.now())) + 20);
+const pause = async () => page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000);
+await pause();
 if (where === 'galaxy') {
-  // (the galaxy comes round onto the course first: the jump proper starts at its spool)
+  // (the galaxy comes round onto the course first: stepped through, the jump proper starts at its spool)
   console.log(`jump to ${to}: ${await page.evaluate((id) => window.__galaxyDebug.startJump(id), to)}`);
-  await page.waitForFunction(() => window.__galaxy()?.jump?.phase !== 'align', null, { timeout: 60000, polling: 10 }).catch(() => errors.push('no spool'));
-  await pause();
-} else {
-  await pause();
-  console.log(`jump to ${to}: ${await page.evaluate((id) => window.__universeDebug.travel(id, 'hyper'), to)}`);
-}
+  for (let i = 0; i < 120 && (await page.evaluate(() => window.__galaxy()?.jump?.phase === 'align')); i++) await page.clock.runFor(50);
+} else console.log(`jump to ${to}: ${await page.evaluate((id) => window.__universeDebug.travel(id, 'hyper'), to)}`);
 for (let t = 0; t <= end; t += step) {
   await page.screenshot({ path: `${out}/portal-${where}-${String(t).padStart(4, '0')}.png`, timeout: 120000 });
   const s = await page.evaluate(() => (window.__galaxy ? window.__galaxy()?.jump : window.__universeDebug?.state?.portal && { phase: window.__universeDebug.state.portal.phase, off: window.__universeDebug.state.portal.off }));
