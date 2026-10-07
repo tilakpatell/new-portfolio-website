@@ -523,7 +523,7 @@ export const SITES = {
       hold: 'rep',
       sides: {
         rep: { name: 'The Grand Army of the Republic and the Wookiees', short: 'Republic', allegiance: 'light', colour: '#7fc4ff', kinds: [['clone', 5], ['wookiee', 3]], spawn: { at: [42, 34], spread: 7 }, respawn: 10, youAt: [42, 40], youYaw: 0 },
-        sep: { name: 'The Separatist droid army', short: 'Separatists', allegiance: 'dark', colour: '#ff9a5a', kinds: [['battledroid', 10], ['superdroid', 3]], spawn: { at: [42, 102], spread: 14 }, wave: 16, youAt: [40, 82], youYaw: Math.PI },
+        sep: { name: 'The Separatist droid army', short: 'Separatists', allegiance: 'dark', colour: '#ff9a5a', kinds: [['battledroid', 10], ['superdroid', 3]], spawn: { at: [42, 102], spread: 14 }, wave: 16, youAt: [36, 75], youYaw: Math.PI },
       },
       front: [42, 57],
       field: { min: [2, 20], max: [80, 118] },

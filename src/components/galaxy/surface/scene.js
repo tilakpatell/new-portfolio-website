@@ -1058,7 +1058,9 @@ export async function create(canvas, ctx) {
     skirmish.setSide(id);
     const at = skirmishSpec.sides[id].youAt;
     if (at && state.phase === 'walk' && !state.zone) {
-      putAt(me().st, at[0], at[1], skirmishSpec.sides[id].youYaw);
+      const yaw = skirmishSpec.sides[id].youYaw;
+      putAt(me().st, at[0], at[1], yaw);
+      if (yaw != null) state.cam.yaw = yaw; // (looking the way your side's going)
       camInit = false;
     }
     emit({ type: 'skirmish', view: skirmish.view() });
@@ -1623,7 +1625,13 @@ export async function create(canvas, ctx) {
     const step = state.quest && questOf(state.quest.id)?.steps[state.quest.step];
     const rally = skirmish && skirmishSpec.sides[skirmish.side].youAt;
     if (step?.respawn) putAt(p, step.respawn[0], step.respawn[1]);
-    else if (rally && !state.zone) putAt(p, rally[0], rally[1], skirmishSpec.sides[skirmish.side].youYaw); // (back with your side in the world's battle)
+    else if (rally && !state.zone) {
+      // (back with your side in the world's battle, looking its way)
+      const yaw = skirmishSpec.sides[skirmish.side].youYaw;
+      putAt(p, rally[0], rally[1], yaw);
+      if (yaw != null) state.cam.yaw = yaw;
+      camInit = false;
+    }
     else if (!state.zone) putAt(p, spawnAt[0], spawnAt[1]);
   }
 
