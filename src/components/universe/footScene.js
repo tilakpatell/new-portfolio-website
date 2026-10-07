@@ -278,6 +278,18 @@ function rigScene(model, clips, tall, { shared = false } = {}) {
   }
 }
 
+// A copy of a loaded Meshy figure, rigged with Rick's clips, for a crowd of
+// the same model (the galaxy's soldiers: galaxy/surface/crew.js): the
+// first copy readies the original (its materials, smoothed normals) and
+// every copy shares what it's made of, with bones of its own.
+export function rigCopy(scene, clips, tall) {
+  if (!scene.userData.rigged) {
+    rigScene(scene, clips, 1);
+    scene.userData.rigged = true;
+  }
+  return rigScene(cloneSkinned(scene), clips, tall, { shared: true });
+}
+
 // Walt and Jesse: the site’s own figures, loaded as anyone’s is (above),
 // in the body their look has (Mr. White and Heisenberg are Walt’s one
 // figure, Jesse in the lab’s suit his own) and dressed in it. They keep

@@ -166,14 +166,14 @@ function propFigure(kind, spec, kit) {
     dispose() {},
   };
 }
-// A figure for any kind there is one of, by name: a crew model (crew.js), a
+// A figure for any kind there is one of, by name: a crew model (crew.js; `spec.variant` its shade), a
 // catalogue model walking with its clips or a bob (modelFigure), a built
 // figure (figures.js) or a humanoid prop (props/*.js, given the kit); null
 // for a kind that's none of those. `spec.model: false` builds it even where
 // there's a model.
 export async function anyFigure(kind, spec = {}, kit = null) {
   if (spec.model === false) return buildFigure(kind) ?? propFigure(kind, spec, kit);
-  return (await crewFigure(kind)) ?? (await modelFigure(kind)) ?? buildFigure(kind) ?? propFigure(kind, spec, kit);
+  return (await crewFigure(kind, spec.variant ?? 0)) ?? (await modelFigure(kind)) ?? buildFigure(kind) ?? propFigure(kind, spec, kit);
 }
 
 // How far off the fog has someone all but gone (97% fog, FogExp2's
@@ -209,7 +209,7 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
       (spec.zone ? rooms : group).add(holder);
       const actor = { spec, b, holder, fig: null, said: 0, near: false, i, hidden: Boolean(spec.hidden), culled: false, skip: i % 4 };
       actors.push(actor);
-      figureOf(spec.kind, spec)
+      figureOf(spec.kind, { ...spec, variant: i }) // (the first of a crowd as its model was made; the rest a shade apart, where a kind has shades)
         .then((fig) => {
           if (dead || !fig) return;
           fig.model.scale.multiplyScalar(spec.scale ?? 1);

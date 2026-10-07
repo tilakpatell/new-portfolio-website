@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Troops sheet</title>
+    <!--
+      The galaxy's soldiers (scripts/meshy-troopers.mjs) and a Wookiee, in a
+      row on a metre grid, loaded as the worlds load them
+      (galaxy/surface/crew.js crewFigure) and holding the guns the
+      Kashyyyk battle gives them (universe/gunplay.js). Through the dev
+      server (npx vite):
+        /scripts/preview/troops.html                  walking, gun lowered, three-quarter
+        …?move=0 | 0.45 | 1                           standing, walking, running
+        …&pose=kneel | taunt | hit | die | dieFwd | dieBlown   one of the fight's clips
+        …&after=0.6                                   seconds into it
+        …&aim=1                                       gun up, aimed at a mark ahead
+        …&view=front | side | three | back           from where
+        …&only=clone,battledroid                      some of them
+        …&zoom=2                                      closer
+      body[data-ready] once drawn; #metrics holds each one's height and feet.
+    -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #20242c;
+        color: #e9edf2;
+        font: 13px/1.3 system-ui, sans-serif;
+        overflow: hidden;
+      }
+      #labels div {
+        position: absolute;
+        transform: translate(-50%, 0);
+        padding: 2px 6px;
+        background: rgba(0, 0, 0, 0.6);
+        border-radius: 4px;
+        white-space: nowrap;
+        pointer-events: none;
+      }
+      #status {
+        position: absolute;
+        left: 12px;
+        top: 10px;
+      }
+      #metrics {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="labels"></div>
+    <div id="status">loading…</div>
+    <pre id="metrics"></pre>
+    <script type="module">
+      import * as THREE from 'three';
+      import { crewFigure, TROOP_KINDS } from '/src/components/galaxy/surface/crew.js';
+      import { createGunplay } from '/src/components/universe/gunplay.js';
+
+      const GUN = { clone: 'dc15', battledroid: 'e5', superdroid: 'wrist', wookiee: 'bowcaster' };
+      const q = new URLSearchParams(location.search);
+      const move = Number(q.get('move') ?? 0.45);
+      const pose = q.get('pose');
+      const after = Number(q.get('after') ?? 0.6);
+      const aim = Number(q.get('aim') ?? 0);
+      const view = q.get('view') ?? 'three';
+      const only = q.get('only')?.split(',');
+      const status = document.getElementById('status');
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      document.body.prepend(renderer.domElement);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color('#20242c');
+      scene.add(new THREE.HemisphereLight('#dfe8ff', '#4a3f33', 1.4));
+      const sun = new THREE.DirectionalLight('#fff4e0', 2.6);
+      sun.position.set(-4, 8, 6);
+      scene.add(sun);
+
+      const kinds = [...TROOP_KINDS, 'wookiee', 'wookiee'].filter((k) => !only || only.includes(k));
+      const placed = [];
+      let x = 0;
+      for (const [i, kind] of kinds.entries()) {
+        let fig = null;
+        try {
+          fig = await crewFigure(kind, kind === 'wookiee' ? i : 0);
+        } catch (e) {
+          console.error(kind, e);
+        }
+        x += 0.6;
+        const holder = new THREE.Group();
+        holder.position.x = x;
+        scene.add(holder);
+        if (fig) {
+          holder.add(fig.model);
+          holder.updateMatrixWorld(true);
+          fig.gp = createGunplay(fig, GUN[kind] ?? 'e5', { unit: 1 });
+        }
+        placed.push({ kind, fig, holder, at: x });
+        x += 0.6;
+      }
+      const span = x;
+      const grid = new THREE.GridHelper(Math.ceil(span + 20), Math.ceil(span + 20), '#5a6270', '#363c46');
+      grid.position.x = span / 2;
+      scene.add(grid);
+
+      // the clips a while (as the game does, a frame at a time), then the pose, `after` seconds of it
+      const up = new THREE.Vector3(0, 1, 0);
+      const step = (dt) => {
+        for (const p of placed) {
+          if (!p.fig) continue;
+          p.fig.update(dt, move);
+          p.holder.updateMatrixWorld(true);
+          const forward = new THREE.Vector3(0, 0, 1);
+          p.fig.gp?.set(dt, { aim, dir: new THREE.Vector3(0, 0.05, 1).normalize(), forward, up });
+        }
+      };
+      for (let i = 0; i < 40; i++) step(1 / 30);
+      if (pose) for (const p of placed) p.fig?.pose(pose);
+      for (let t = 0; t < after; t += 1 / 30) step(1 / 30);
+      const heights = placed.map((p) => {
+        if (!p.fig) return null;
+        p.holder.updateMatrixWorld(true);
+        const b = new THREE.Box3().setFromObject(p.fig.model);
+        return { top: +b.max.y.toFixed(2), low: +b.min.y.toFixed(2) };
+      });
+
+      const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.05, 500);
+      const mid = new THREE.Vector3(span / 2, 0.95, 0);
+      const far = Math.max(span * 1.55, 6) / Number(q.get('zoom') ?? 1);
+      const from = { three: [0.6, 0.18, 1], front: [0, 0.08, 1], side: [1, 0.08, 0], back: [0, 0.1, -1] }[view] ?? [0.6, 0.18, 1];
+      camera.position.copy(mid).add(new THREE.Vector3(...from).normalize().multiplyScalar(far));
+      camera.lookAt(mid);
+      renderer.render(scene, camera);
+
+      const labels = document.getElementById('labels');
+      placed.forEach((p, i) => {
+        const h = heights[i];
+        const s = new THREE.Vector3(p.at, (h?.top ?? 1) + 0.12, 0).project(camera);
+        const d = document.createElement('div');
+        d.style.left = `${((s.x + 1) / 2) * innerWidth}px`;
+        d.style.top = `${((1 - s.y) / 2) * innerHeight - 22}px`;
+        d.textContent = h ? `${p.kind} ${h.top}` : `${p.kind}: none`;
+        labels.append(d);
+      });
+      document.getElementById('metrics').textContent = JSON.stringify(placed.map((p, i) => ({ kind: p.kind, ...heights[i], gun: Boolean(p.fig?.gp) })));
+      status.textContent = `${placed.filter((p) => p.fig).length} of ${placed.length} (move ${move}, pose ${pose ?? '–'}, aim ${aim}, view ${view})`;
+      document.body.dataset.ready = '1';
+    </script>
+  </body>
+</html>

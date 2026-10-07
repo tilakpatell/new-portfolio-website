@@ -524,6 +524,112 @@ export const GUNS = {
     },
     fore: { r: 0.016, axis: 'dir' },
   },
+  // the clones' DC-15A blaster rifle: a long ribbed barrel over a slim
+  // receiver, a folding stock, the scope offset, the Republic's blue bolts
+  dc15: {
+    hands: 2,
+    support: false,
+    stock: true,
+    pitch: 0.08,
+    reach: 0.38,
+    rise: -0.14,
+    lateral: -0.3,
+    kick: { back: 0.7, up: 1.2 },
+    casing: false,
+    bolt: '#5ab8ff',
+    flash: { color: '#5ab8ff', size: 0.24 },
+    build(g, owned) {
+      const m = mats(owned);
+      const k = kit(g, owned);
+      const blue = m.glow('#5ab8ff', 1.6);
+      k.box(0.046, 0.062, 0.24, m.grey, [0, 0.05, 0.07]); // the receiver
+      k.tube(0.017, 0.4, m.gunmetal, [0, 0.058, 0.38]); // the barrel shroud
+      for (let i = 0; i < 6; i++) k.ring(0.02, 0.0035, m.black, [0, 0.058, 0.24 + i * 0.055], [0, 0, 0]); // its ribs
+      k.tube(0.01, 0.06, m.black, [0, 0.058, 0.6]); // the muzzle
+      k.cone(0.012, 0.018, 0.03, m.black, [0, 0.058, 0.635]);
+      k.tube(0.011, 0.11, m.black, [0.022, 0.1, 0.06]); // the scope, on the left
+      k.box(0.006, 0.02, 0.01, m.black, [0.016, 0.085, 0.03]);
+      k.box(0.006, 0.02, 0.01, m.black, [0.016, 0.085, 0.1]);
+      k.box(0.004, 0.012, 0.07, blue, [-0.024, 0.06, 0.08]); // the charge light
+      k.box(0.034, 0.03, 0.06, m.gunmetal, [-0.035, 0.035, 0.07]); // the power pack, on the right
+      k.box(0.018, 0.012, 0.2, m.grey, [0, 0.034, -0.17]); // the folding stock's bar
+      k.box(0.03, 0.085, 0.026, m.black, [0, 0.0, -0.27]); // its butt
+      k.box(0.03, 0.09, 0.035, m.black, [0, -0.035, -0.01], [0.28, 0, 0]).name = 'grip';
+      k.box(0.024, 0.006, 0.05, m.steel, [0, 0.0, 0.04]); // the trigger guard
+      k.box(0.004, 0.024, 0.012, m.steel, [0, 0.012, 0.04], [0.3, 0, 0]);
+      k.point('muzzle', [0, 0.058, 0.65]);
+      k.point('foregrip', [0, 0.02, 0.26]);
+      k.point('fore', [0, 0.058, 0.26]); // under the barrel shroud
+    },
+    fore: { r: 0.02, axis: 'dir' },
+  },
+  // the battle droids' E-5: a long, thin barrel on a skeletal receiver, a
+  // short stock, a cooling cell under the barrel, the Separatists' red
+  e5: {
+    hands: 2,
+    support: false,
+    stock: true,
+    pitch: 0.08,
+    reach: 0.4,
+    rise: -0.14,
+    lateral: -0.3,
+    kick: { back: 0.6, up: 1.1 },
+    casing: false,
+    bolt: '#ff4a3d',
+    flash: { color: '#ff5a3a', size: 0.22 },
+    build(g, owned) {
+      const m = mats(owned);
+      const k = kit(g, owned);
+      const tan = (() => {
+        const t = new THREE.MeshStandardMaterial({ color: '#8a7a62', roughness: 0.55, metalness: 0.35 });
+        owned.push(t);
+        return t;
+      })();
+      k.box(0.034, 0.05, 0.2, tan, [0, 0.05, 0.06]); // the receiver
+      k.tube(0.009, 0.42, m.gunmetal, [0, 0.062, 0.37]); // the long barrel
+      k.box(0.02, 0.018, 0.16, m.gunmetal, [0, 0.035, 0.25]); // the cooling cell under it
+      k.ring(0.014, 0.003, m.black, [0, 0.062, 0.58], [0, 0, 0]); // the muzzle's band
+      k.tube(0.009, 0.08, m.black, [0, 0.092, 0.06]); // the sight on top
+      k.box(0.022, 0.06, 0.03, tan, [0, 0.02, -0.08], [-0.3, 0, 0]); // the short stock
+      k.box(0.026, 0.07, 0.022, m.gunmetal, [0, -0.005, -0.15]); // its butt
+      k.box(0.026, 0.085, 0.032, m.gunmetal, [0, -0.032, 0.0], [0.28, 0, 0]).name = 'grip';
+      k.box(0.02, 0.006, 0.045, m.steel, [0, 0.002, 0.04]); // the trigger guard
+      k.box(0.004, 0.022, 0.012, m.steel, [0, 0.012, 0.04], [0.3, 0, 0]);
+      k.point('muzzle', [0, 0.062, 0.6]);
+      k.point('foregrip', [0, 0.02, 0.24]);
+      k.point('fore', [0, 0.035, 0.24]); // round the cooling cell
+    },
+    fore: { r: 0.016, axis: 'dir' },
+  },
+  // a super battle droid's wrist blasters: twin barrels built into the
+  // right forearm, over the back of the hand, the muzzles at the knuckles
+  wrist: {
+    hands: 1,
+    support: false,
+    stock: false,
+    pitch: 0.0,
+    reach: 0.95,
+    rise: 0.12,
+    lateral: -0.1,
+    kick: { back: 0.3, up: 0.9 },
+    casing: false,
+    bolt: '#ff4a3d',
+    flash: { color: '#ff5a3a', size: 0.2 },
+    build(g, owned) {
+      const m = mats(owned);
+      const k = kit(g, owned);
+      const red = m.glow('#ff4a3d', 1.4);
+      k.box(0.07, 0.05, 0.22, m.navy, [0, 0.06, -0.06]); // the housing along the forearm
+      for (const x of [-0.016, 0.016]) {
+        k.tube(0.009, 0.16, m.gunmetal, [x, 0.088, 0.03]); // the twin barrels
+        k.tube(0.012, 0.016, m.black, [x, 0.088, 0.112]);
+      }
+      k.box(0.05, 0.012, 0.06, red, [0, 0.087, -0.12]); // the charge light
+      k.box(0.02, 0.06, 0.03, m.navy, [0, 0.0, 0.0]).name = 'grip'; // (the fist, under the housing)
+      k.box(0.06, 0.02, 0.05, m.gunmetal, [0, 0.03, 0.02]);
+      k.point('muzzle', [0, 0.088, 0.12]);
+    },
+  },
   // Jango's WESTAR-34: a short silver pistol, a sloping grip, a stubby
   // barrel with a flared muzzle
   westar: {
