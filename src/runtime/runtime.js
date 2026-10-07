@@ -69,6 +69,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
   let holding = false; // the cover waits for adopt() (a handover across a route change)
   let holdSince = null;
   let fresh = null; // the box of a mount not yet drawn, marked data-fresh
+  let resized = null; // { w, h }: the box's new size, for the next frame to take
   const listeners = new Set();
   const dev = typeof import.meta !== 'undefined' && import.meta.env?.DEV;
 
@@ -101,6 +102,16 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     last = t;
     const { world } = current;
     try {
+      // the box's new size (rt.resize), before the draw, for the same reason
+      // as the quality level below
+      if (resized) {
+        const { w, h } = resized;
+        resized = null;
+        if (w !== gfx.size.w || h !== gfx.size.h) {
+          gfx.setSize(w, h);
+          world.resize(gfx.size.w, gfx.size.h);
+        }
+      }
       // a new quality level before the draw: a new ratio resizes the drawing
       // buffer, which clears it, and drawn after that in this same task it's
       // never shown empty (resized after the draw, the browser showed the
@@ -178,6 +189,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     snapped?.();
     holding = false;
     holdSince = null;
+    resized = null;
     unmark();
   };
   // the next frame drawn, kept as the cover (taken in the frame's own task,
@@ -287,6 +299,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     const r = host.getBoundingClientRect?.();
     const w = Math.max(1, Math.round(r?.width ?? 1));
     const h = Math.max(1, Math.round(r?.height ?? 1));
+    resized = null; // (measured just now)
     gfx.setSize(w, h);
     world.resize(w, h);
   };
@@ -333,10 +346,14 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       kicked = true;
       loop.kick();
     },
+    // taken at the start of the next frame, before it's drawn: a
+    // ResizeObserver calls this after the frame's draw, and adopt() from a
+    // layout effect, and a buffer resized then was shown cleared until the
+    // next draw (now the old picture shows stretched for that frame
+    // instead), and no world is drawn from inside React's commit
     resize(w, h) {
       if (!gfx || !current) return;
-      gfx.setSize(Math.max(1, Math.round(w)), Math.max(1, Math.round(h)));
-      current.world.resize(gfx.size.w, gfx.size.h);
+      resized = { w: Math.max(1, Math.round(w)), h: Math.max(1, Math.round(h)) };
       loop.kick();
     },
     setVisible(on) {

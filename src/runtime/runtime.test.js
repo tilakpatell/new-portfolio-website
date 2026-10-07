@@ -199,6 +199,39 @@ describe('createRuntime', () => {
     expect(host4.dataset).not.toHaveProperty('fresh');
   });
 
+  it("a box's resize is applied at the start of the next frame, before its draw, and only if the size changed", async () => {
+    const order = [];
+    const gfx = fakeBackend();
+    gfx.setSize = vi.fn((w, h) => {
+      gfx.size.w = w;
+      gfx.size.h = h;
+      order.push(`setSize ${w}x${h}`);
+    });
+    const { rt, loop } = make({ makeBackend: () => gfx });
+    rt.resize(800, 450); // (no world yet: nothing)
+    expect(gfx.setSize).not.toHaveBeenCalled();
+    const world = fakeWorld({ wants: () => true, resize: vi.fn((w, h) => order.push(`resize ${w}x${h}`)), draw: vi.fn(() => order.push('draw')) });
+    await rt.mount({ id: 'a', create: () => world }, {}, fakeHost());
+    expect(order).toEqual(['setSize 640x360', 'resize 640x360']); // (placed at once: it has to be sized before it draws)
+    loop.tick(16);
+    order.length = 0;
+    // from a ResizeObserver, which runs after the frame's drawn: resized
+    // then, the buffer would be shown cleared until the next one
+    rt.resize(800, 450);
+    expect(order).toEqual([]);
+    loop.tick(33);
+    expect(order).toEqual(['setSize 800x450', 'resize 800x450', 'draw']);
+    order.length = 0;
+    rt.resize(800.3, 449.8); // (the same box, rounded: a ResizeObserver's first call repeats it)
+    loop.tick(50);
+    expect(order).toEqual(['draw']);
+    order.length = 0;
+    rt.resize(700, 400);
+    rt.resize(720, 405); // (only the last before a frame counts)
+    loop.tick(66);
+    expect(order).toEqual(['setSize 720x405', 'resize 720x405', 'draw']);
+  });
+
   it("the last world's box out of sight doesn't keep the next world from drawing", async () => {
     const { rt, loop } = make();
     await rt.mount({ id: 'a', create: () => fakeWorld() }, {}, fakeHost());
