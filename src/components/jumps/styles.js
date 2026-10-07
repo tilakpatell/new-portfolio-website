@@ -11,5 +11,8 @@ export const JUMP_STYLES = ['hyper', 'portal', 'bluesky'];
 // a jump style, or the site's own for anything that isn't one
 export const jumpStyle = (v) => (JUMP_STYLES.includes(v) ? v : 'hyper');
 
-// the event App.jsx listens for: window.dispatchEvent(jumpEvent(style))
-export const jumpEvent = (style = 'hyper') => new CustomEvent('tp:hyperspace', { detail: { style: jumpStyle(style) } });
+// the event App.jsx listens for: window.dispatchEvent(jumpEvent(style, {
+// onPeak })). `onPeak` is called once, when the jump has the screen dark (its
+// flash), or when it ends or another takes its place without getting there,
+// for a page to change under it; App marks the event `taken` when it will.
+export const jumpEvent = (style = 'hyper', { onPeak } = {}) => new CustomEvent('tp:hyperspace', { detail: { style: jumpStyle(style), ...(onPeak ? { onPeak } : {}) } });

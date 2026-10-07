@@ -15,6 +15,7 @@ import { saveStart } from '../lib/view';
 import { useView } from '../components/ViewSwitch';
 import { portalSound } from '../components/universe/sounds';
 import { jumpEvent } from '../components/jumps/styles';
+import { handJump } from '../components/hyperspace3d/timeline';
 import UniverseMap from '../components/universe/UniverseMap';
 import UniversePanel from '../components/universe/UniversePanel';
 import Comms from '../components/universe/Comms';
@@ -34,6 +35,14 @@ const PhoneOverlay = lazy(() => import('../components/dickansh/PhoneOverlay'));
 const SAFFRON = '#ff9a2a';
 const PHONE_MS = 700;
 const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put away
+const JUMP_WAIT = 6000; // ms at most a jump out waits for the jump's dark before the page goes anyway
+
+// The galaxy's page and its scene, fetched once its gate is picked or
+// flown into, so the jump into it isn't waiting on them (App.jsx loads the
+// page lazily, and the page its scene), as galaxy/travel.js fetches a
+// world's surface on the way down to it.
+let galaxyFetched = null;
+const prefetchGalaxy = () => (galaxyFetched ??= Promise.all([import('./Galaxy'), import('../components/galaxy/scene')]).catch(() => (galaxyFetched = null)));
 
 // The universe map: every fandom on the site is a planet, and you travel
 // between them, flying a ship of your choice (remembered between visits,
@@ -131,7 +140,14 @@ export default function Universe({ ask = false }) {
     local.set(PANEL_KEY, on ? 'tucked' : 'open');
   };
   const timer = useRef(0);
-  useEffect(() => () => clearTimeout(timer.current), []);
+  const gone = useRef(false); // (this page has gone: a jump's dark coming late changes nothing)
+  useEffect(() => {
+    gone.current = false;
+    return () => {
+      gone.current = true;
+      clearTimeout(timer.current);
+    };
+  }, []);
   // a trip on through the gate: to a star system picked on the nav map, the
   // ship flies to the gate, and when it parks there the page goes on in
   const onward = useRef(null); // { via, to }
@@ -177,6 +193,11 @@ export default function Universe({ ask = false }) {
   }, []);
 
   const select = useCallback((id) => navigate(id ? `/universe/${id}` : '/universe', { replace: true }), [navigate]);
+  // the Star Wars gate picked: the galaxy behind it fetched while you fly there
+  const toGalaxy = Boolean(universe?.to?.startsWith('/galaxy'));
+  useEffect(() => {
+    if (toGalaxy) prefetchGalaxy();
+  }, [toGalaxy]);
 
   const pickShip = (id) => {
     audioContext(); // inside the press, so the engine can start
@@ -196,12 +217,33 @@ export default function Universe({ ask = false }) {
       return;
     }
     audioContext(); // inside the press, so the way out can sound
-    if (plan.mode === 'jump') window.dispatchEvent(jumpEvent(crew?.jump));
-    else {
-      if (plan.mode === 'portal') portalSound();
-      map.current.dive(u.id);
-    }
     setLeaving({ id: u.id, mode: plan.mode });
+    if (plan.mode === 'jump') {
+      // into the galaxy: its page and scene fetched now, and the jump's
+      // tunnel held until the galaxy has drawn (timeline.js's handJump,
+      // let go by GalaxyView), so it clears onto the galaxy, not its loading line
+      if (to?.startsWith('/galaxy')) {
+        prefetchGalaxy();
+        handJump();
+      }
+      // the page changes under the jump's dark (at its flash: App's
+      // Lightspeed says when), not on a clock from the click: a jump that
+      // started late showed the change through it, the light page's body
+      // with it. The clock is for a jump that never says.
+      let went = false;
+      const onPeak = () => {
+        if (went || gone.current) return;
+        went = true;
+        clearTimeout(timer.current);
+        navigate(to);
+      };
+      const e = jumpEvent(crew?.jump, { onPeak });
+      window.dispatchEvent(e);
+      timer.current = setTimeout(onPeak, e.detail.taken ? JUMP_WAIT : plan.delay);
+      return;
+    }
+    if (plan.mode === 'portal') portalSound();
+    map.current.dive(u.id);
     timer.current = setTimeout(() => navigate(to), plan.delay);
   };
   const enter = () => go(universe);

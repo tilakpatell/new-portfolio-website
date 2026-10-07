@@ -7,6 +7,7 @@ import FlightSettings from '../universe/FlightSettings';
 import { SYSTEMS, goalsOf, lightYears, systemById } from './systems';
 import '../universe/universe.css';
 import GuideCue from '../guide/GuideCue';
+import { letHandedGo } from '../hyperspace3d/timeline';
 import WarHud from './WarHud';
 
 // The galaxy's 3D view (scene.js, a world module on the world runtime:
@@ -75,6 +76,27 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
   // the scene itself, while it's the world on the runtime: its own calls (jump, goTo, fire…)
   const view = { get current() { return rt?.current?.module === galaxyModule ? rt.current.world.scene : null; } };
   useEffect(() => setFlown(false), [ship]);
+
+  // The universe map's jump in holds its tunnel for the galaxy
+  // (hyperspace3d/timeline.js's handJump): let go once the galaxy has drawn,
+  // or as soon as it won't (failed, lost, 3D off, or held back on this
+  // device), or while it's frozen (the intro's black covers the load
+  // itself, and its words aren't for the tunnel to hide), and when this
+  // page goes (a tick later: React's second run of an effect in
+  // development comes straight back).
+  useEffect(() => {
+    if (on || !meant || frozen) letHandedGo();
+  }, [on, meant, frozen]);
+  const up = useRef(false);
+  useEffect(() => {
+    up.current = true;
+    return () => {
+      up.current = false;
+      setTimeout(() => {
+        if (!up.current) letHandedGo();
+      }, 0);
+    };
+  }, []);
 
   useEffect(() => {
     if (!handle) return;
