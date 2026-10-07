@@ -361,6 +361,11 @@
 .holomap-systems > li[data-side='left'] .holomap-system { flex-direction: row-reverse; translate: calc(-100% + 7px) -50%; padding: 0.1rem 0 0.1rem 0.3rem; }
 .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 2px #fff; animation: holomap-here 1.6s ease-in-out infinite; }
 @keyframes holomap-here { 50% { box-shadow: 0 0 0 5px rgb(255 255 255 / 0.25); } }
+/* (still, for prefers-reduced-motion: the war's marks stop in warmap.css, but this file comes after it, so here) */
+@media (prefers-reduced-motion: reduce) {
+  .holomap-system[aria-current='location'] .holomap-dot,
+  .holomap-course { animation: none; }
+}
 .holomap-system[aria-pressed='true'] { background: rgb(2 6 16 / 0.85); box-shadow: 0 0 0 1px var(--c); color: #fff; }
 .holomap-system:hover .holomap-name { color: var(--c); }
 .holomap-name { text-shadow: 0 0 6px #000, 0 0 2px #000; }
