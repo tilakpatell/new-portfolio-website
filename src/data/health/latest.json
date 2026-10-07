@@ -1,6 +1,6 @@
 {
   "date": "2026-10-07",
-  "sha": "079f6973",
+  "sha": "06875a1",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -9,7 +9,7 @@
       "detail": [
         {
           "file": "src/components/universe/scene.js",
-          "n": 5126
+          "n": 5132
         },
         {
           "file": "src/components/middleearth/towns/moria/props.js",
@@ -57,7 +57,7 @@
         },
         {
           "file": "src/components/universe/crews.js",
-          "n": 2805
+          "n": 2818
         },
         {
           "file": "src/components/middleearth/towns/lorien/props.js",
@@ -81,7 +81,7 @@
         },
         {
           "file": "src/components/rickmorty/world/RmWorld.jsx",
-          "n": 2218
+          "n": 2220
         },
         {
           "file": "src/components/avengers/world/scene.js",
