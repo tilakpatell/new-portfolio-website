@@ -6,12 +6,21 @@
 // under the player has come, the player is held where they are, as the game
 // holds a player in an unloaded chunk.
 //
-// Events (a landing, a step, a hurt) collect on the game for the module to
-// `drain` once a frame: sounds, the HUD.
+// Each tick the crosshair's block is found again from the eye (`g.cursor`),
+// and the hands work on it (rules/build.js): breaking, placing, the sand
+// that falls, the items dropped.
+//
+// Events (a landing, a step, a hurt, a break, a place, a pickup) collect on
+// the game for the module to `drain` once a frame: sounds, the HUD.
 
+import { seeded } from '../../../lib/seeded.js';
+import { stepDrops, stepHands, stepUpdates } from './build.js';
 import { chunkOf, key, makeChunk } from './chunk.js';
+import { makeInventory } from './inventory.js';
 import { hashSeed } from './noise.js';
-import { makePlayer, stepPlayer } from './player.js';
+import { inWater } from './physics.js';
+import { eyeOf, makePlayer, stepPlayer } from './player.js';
+import { raycast } from './raycast.js';
 import { makeWorld } from './world.js';
 import { SEA, makeGenerator } from './worldgen.js';
 
@@ -63,8 +72,21 @@ export function newGame({ seed = Date.now(), save = null } = {}) {
     renderDistance: 10,
     maxChunks: 1000,
     events: [],
+    inventory: makeInventory(),
+    cursor: null,
+    breaking: null,
+    cooldown: 0,
+    updates: [],
+    drops: [],
+    // the world's own dice (drops, scatter), so a game replays the same
+    rand: seeded(s ^ 0x6d63),
   };
 }
+
+export { FACING, breakBlock, placeBlock, setBlock } from './build.js';
+
+// the way the eyes look, from the yaw and pitch
+export const lookDir = (yaw, pitch) => ({ x: -Math.sin(yaw) * Math.cos(pitch), y: Math.sin(pitch), z: -Math.cos(yaw) * Math.cos(pitch) });
 
 // The columns in reach, nearest first: a square of the render distance
 // round the player's chunk, as the game loads.
@@ -105,9 +127,15 @@ export function tick(g, input) {
   g.ticks++;
   g.time++;
   const p = g.player;
-  const events = g.world.loaded(p.x, p.z) ? stepPlayer(g.world, p, input) : [];
-  g.events.push(...events);
-  return events;
+  const from = g.events.length;
+  if (g.world.loaded(p.x, p.z)) {
+    g.events.push(...stepPlayer(g.world, p, input));
+    g.cursor = raycast(g.world, eyeOf(p), lookDir(p.yaw, p.pitch));
+    stepHands(g, input, { onGround: p.onGround, inWater: inWater(g.world, p) });
+  }
+  stepUpdates(g);
+  stepDrops(g);
+  return g.events.slice(from);
 }
 
 export function drain(g) {

@@ -167,6 +167,42 @@ describe('the mesher', () => {
     for (const p of verts(mesh(c).opaque).filter((q) => q.face >= FACE.north && q.face <= FACE.west)) expect(p.v).toBe(p.y === 96 ? 0 : 16);
   });
 
+  it('a log laid along x shows its rings east and west, its bark round the rest with the grain along x', () => {
+    const c = makeChunk(0, 0);
+    set(c, 5, 5, 5, id('oak_log'), 1);
+    const v = verts(mesh(c).opaque);
+    const layerOf = (f) => v.find((p) => p.face === f).layer;
+    expect(layerOf(FACE.east)).toBe(textures.get('oak_log_top'));
+    expect(layerOf(FACE.west)).toBe(textures.get('oak_log_top'));
+    expect(layerOf(FACE.top)).toBe(textures.get('oak_log'));
+    expect(layerOf(FACE.north)).toBe(textures.get('oak_log'));
+    // the grain (down the texture) runs along x: along the top edge, v changes
+    const top = v.filter((p) => p.face === FACE.north && p.y === 96);
+    expect(top[0].v).not.toBe(top[1].v);
+    // upright, it doesn't
+    const d = makeChunk(0, 0);
+    set(d, 5, 5, 5, id('oak_log'), 0);
+    const up = verts(mesh(d).opaque).filter((p) => p.face === FACE.north && p.y === 96);
+    expect(up[0].v).toBe(up[1].v);
+  });
+
+  it('a log laid along z shows its rings north and south', () => {
+    const c = makeChunk(0, 0);
+    set(c, 5, 5, 5, id('birch_log'), 2);
+    const v = verts(mesh(c).opaque);
+    expect(v.find((p) => p.face === FACE.south).layer).toBe(textures.get('birch_log_top'));
+    expect(v.find((p) => p.face === FACE.east).layer).toBe(textures.get('birch_log'));
+  });
+
+  it('a furnace shows its front the way it was set facing', () => {
+    const c = makeChunk(0, 0);
+    set(c, 5, 5, 5, id('furnace'), 3); // east
+    const v = verts(mesh(c).opaque);
+    expect(v.find((p) => p.face === FACE.east).layer).toBe(textures.get('furnace_front'));
+    expect(v.find((p) => p.face === FACE.north).layer).toBe(textures.get('furnace_side'));
+    expect(v.find((p) => p.face === FACE.top).layer).toBe(textures.get('furnace_top'));
+  });
+
   it('an unlit chunk meshes in full sky light; a lit one carries its light', () => {
     const c = makeChunk(0, 0);
     set(c, 5, 5, 5, id('stone'));

@@ -68,6 +68,30 @@ for (let i = 0; i < N; i++) {
   TOP_ONLY[i] = b.tintTopOnly ? 1 : 0;
 }
 
+// What a block's state turns: a log lies along its axis (0 y, 1 x, 2 z),
+// its rings on the two ends and its bark round the rest, the grain turned to
+// run along it; a furnace, chest or jack o'lantern shows its front on the
+// side it was set facing (0 north, 1 south, 2 west, 3 east).
+const LOG = new Uint8Array(256);
+const FRONTED = new Uint8Array(256);
+for (const b of BLOCKS) {
+  if (b.name.endsWith('_log')) LOG[b.id] = 1;
+  if (['furnace', 'chest', 'jack_o_lantern'].includes(b.name)) FRONTED[b.id] = 1;
+}
+const ENDS = [[FACE.top, FACE.bottom], [FACE.east, FACE.west], [FACE.north, FACE.south]];
+const FRONT = [FACE.north, FACE.south, FACE.west, FACE.east];
+function faceOf(b, f, state) {
+  if (LOG[b.id]) {
+    const axis = state % 3;
+    const end = ENDS[axis].includes(f);
+    // bark beside a lying log: its texture turned a quarter, so the grain runs along it
+    const turn = !end && ((axis === 1 && f !== FACE.east && f !== FACE.west) || (axis === 2 && (f === FACE.east || f === FACE.west)));
+    return { name: end ? b.faces.top : b.faces.north, turn };
+  }
+  if (FRONTED[b.id] && f >= FACE.north) return { name: f === FRONT[state & 3] ? b.faces.north : b.faces.south, turn: false };
+  return { name: b.faces[NAMES[f]], turn: false };
+}
+
 // A growing list of vertices for one pass.
 function buffer() {
   let data = new Uint16Array(STRIDE * 1024);
@@ -162,7 +186,8 @@ export function meshSection(chunk, sectionY, nb, { textures }) {
           else if (nid === id && kind === 1) continue;
           const tint = TOP_ONLY[id] && f !== FACE.top ? 0 : TINT[id];
           const lit = light[pad(x + dx, y + dy, z + dz)];
-          const layer = layerOf(b.faces[NAMES[f]]);
+          const look = faceOf(b, f, chunk.state?.[base + z * 16 + x] ?? 0);
+          const layer = layerOf(look.name);
           const ao = [0, 0, 0, 0];
           const px = [];
           for (let k = 0; k < 4; k++) {
@@ -182,7 +207,7 @@ export function meshSection(chunk, sectionY, nb, { textures }) {
             const corner = solidAt(ox + sx, oy + sy, oz + sz);
             ao[k] = kind === 4 ? 3 : s1 && s2 ? 0 : 3 - (s1 + s2 + corner);
             const top = cy === 1 ? 16 - lowered : 0;
-            px.push([x * 16 + cx * 16, (y0 + y) * 16 + top, z * 16 + cz * 16, face.uv[k][0] * 16, face.uv[k][1] * 16]);
+            px.push([x * 16 + cx * 16, (y0 + y) * 16 + top, z * 16 + cz * 16, face.uv[look.turn ? (k + 1) & 3 : k][0] * 16, face.uv[look.turn ? (k + 1) & 3 : k][1] * 16]);
           }
           // the side of a lowered liquid shows its texture cut, not squashed
           if (lowered && f >= 2) for (const p of px) if (p[4] === 0) p[4] = lowered;
