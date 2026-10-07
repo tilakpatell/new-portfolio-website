@@ -170,6 +170,15 @@ Metrics (`--metrics`; targets: band 0.30–0.65 noon, 0.12–0.35 night; mark �
 Every band is in range, and Mark passes in spawn, streetnight and porch. He misses in street, downtown and high, where he hangs over towers and grid whose mean grey is close to his: the measure compares mean luminance only, and a yellow and blue figure on grey-blue towers averages out the same while reading plainly to the eye (he is about a third of the frame tall and clearly picked out in each of those shots). Not forced further: the suit would have to go pale. A colour-difference measure would judge these better.
 - Low tier, triangles: plaza 1.47 M, boost 1.33 M, dusk and night 1.33 M; within the 1.5 M budget.
 
+### Task 3: the HUD (2026-10-07)
+
+- `hud.js` (tested) decides where things go: `layoutCompass` (names at least 72 px apart, a second row under the dots for those that would touch, half a gap clear of the headings, none where the buttons overlap the strip's right end, off-strip marks clipped to a side), `titleMode` (the title becomes a chip 2.5 s after he first moves, or at once when there's an objective), `objectiveText` (metres under 1 km, then kilometres) and `markerSize` (for Task 9's 3D marker; never under 24 px).
+- `InvHud.jsx` holds the HUD's markup, out of `InvWorld.jsx`; the frame loop still writes into its elements directly through `hud`.
+- The four top buttons are now a time chip (the one place the time of day is read) and one Menu (time of day, controls, other players, Think, Mark!), which closes on a click elsewhere or Escape.
+- The objective line sits under the compass, centred. The gauge shows the zone (City under 300 m, Sky above, Space). The map is 200 px on desktop and 140 px on phones, where it sits under the objective line.
+- `--iw-under` (the bottom of the buttons, however they wrap) is now set on the stage, so the compass, the objective line and the phone's map all follow it.
+- Not done here: the 3D chevron over a target and the route on the map, which wait on missions (Task 9).
+
 ### Task 5: the crowd's brains (2026-10-07)
 
 - `brains.js` (tested) gives each townsperson a brain. The states are idle, chat, wander, look, wave, gather, flee and cheer.
