@@ -134,6 +134,10 @@ export const lodLevels = (size) => [
 export const HUNTER_GLB = {
   ...GLB,
   ...Object.fromEntries(['vulture', 'trifighter', 'tie', 'tieadvanced'].map((k) => [k, { ...MODELS[k], built: true }])),
+  // (the war's other hunters and what their capital ships drop in: the
+  // Republic's fighters, Wedge in an X-wing, a Mon Calamari cruiser, a Venator)
+  ...Object.fromEntries(['arc170', 'delta7', 'moncal', 'venator'].map((k) => [k, { ...MODELS[k], built: false }])),
+  redleader: { ...GLB.xwing, built: false },
 };
 
 // a model's materials tuned to the scene's light: engines and lights hot
