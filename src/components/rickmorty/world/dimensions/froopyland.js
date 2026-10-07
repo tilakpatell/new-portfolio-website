@@ -23,8 +23,8 @@ export async function buildFroopyland(kit) {
     [30, -16, 5.5, 0xffc090],
   ]) {
     const f = R.frame(...P(dx, dz), 0);
-    f.ball(c, 0, 0, 0, r, 0.6);
-    f.ball(0xffffff, 0, r * 0.25, 0, r * 0.98, 0.14);
+    f.ball(c, 0, -r * 0.35, 0, r, 1);
+    f.ball(0xffffff, 0, r * 0.1, 0, r * 0.99, 0.12);
   }
   // lollipop trees
   for (const [dx, dz, c] of [
@@ -50,7 +50,7 @@ export async function buildFroopyland(kit) {
     fitText(g, 'pop. 1 + froopylanders', w / 2, h * 0.62, w - 20, 13, { color: '#3a2a2a', font: 'Comic Sans MS, Marker Felt, cursive', weight: '400' });
     fitText(g, 'NO RICKS', w / 2, h * 0.85, w - 20, 13, { color: '#3a2a2a', font: 'Comic Sans MS, Marker Felt, cursive', weight: '400' });
   });
-  R.frame(...P(0, 17.6), Math.PI).box(0x8a5a3a, 0, 0, 0, 0.14, 1.9, 0.14).box(0xf6e6b0, 0, 1.6, 0, 1.8, 0.9, 0.08).decal('froopysign', 0, 2.05, 0.05, 1.7, 0.85);
+  R.frame(...P(-6, 15.6), Math.PI).box(0x8a5a3a, 0, 0, 0, 0.14, 1.9, 0.14).box(0xf6e6b0, 0, 1.6, 0, 1.8, 0.9, 0.08).decal('froopysign', 0, 2.05, 0.05, 1.7, 0.85);
 
   S.people();
   return S.done(LIGHT, (t) => {

@@ -169,6 +169,18 @@ export const MESHY = {
   'snake-b': { a: 'snake-b', h: 0.9 },
   snakeastronaut: { a: 'snakeastronaut', h: 1.2 },
   snakerocket: { a: 'snakerocket', h: 6 },
+  glexo: { a: 'glexo', h: 1.85 },
+  glipglop: { a: 'glipglop', h: 1.8 },
+  risotto: { a: 'risotto', h: 1.9 },
+  watert: { a: 'watert', h: 1.9 },
+  nuptiamachine: { a: 'nuptiamachine', h: 2.2 },
+  mytholog: { a: 'mytholog', h: 2.4 },
+  shrimply: { a: 'shrimply', h: 1.4 },
+  gloopnurse: { a: 'gloopnurse', h: 1.4 },
+  'resortguest-a': { a: 'resortguest-a', h: 1.7 },
+  'resortguest-b': { a: 'resortguest-b', h: 1.95 },
+  dirlycar: { a: 'dirlycar', h: 1.4 },
+  icet: { a: 'icet', h: 2.4 },
   ...Object.fromEntries(
     [
       ['jerry-robe', 1.75],
@@ -194,8 +206,8 @@ const RICKALL_FIGURES = ['pencilvester', 'sleepygary', 'hamurai', 'amishcyborg',
 const RICKALL_PROPS = ['reversegiraffe', 'ghostinajar', 'photographyraptor', 'tinkles', 'babywizard', 'mrsrefrigerator'];
 const FAMILY_FIGURES = ['spacebeth', 'drwong', 'nancy', 'tricia', 'diane'];
 const FAMILY_PROPS = ['snuffles'];
-const DEST_FIGURES = ['vance', 'supernova', 'alanrails', 'millionants', 'crocubot', 'noobnoob', 'squanchy', 'birdperson', 'phoenixperson', 'unity', 'marsha', 'mortyjr', 'krombopulos', 'kingjellybean', 'zeep', 'kyle', 'xenonbloom', 'poncho', 'annie', 'needful', 'arthricia', 'flippynips', 'scroopy', 'gearhead', 'nebulon', 'storylord', 'ticketsguy', 'rickprime', 'tommy', 'nimbus', 'atlantean', 'miles'];
-const DEST_PROPS = ['vindicators-ship', 'squanchy-house', 'birdperson-house', 'zigerion', 'thirstystep', 'giant', 'stairgoblin', 'hepatitis', 'gonorrhoea', 'tuberculosis', 'plague', 'ecoli', 'needful-shop', 'jerry-robe', 'jerry-golf', 'jerry-tux', 'jerry-track', 'jerry-gown', 'jerry-cardigan', 'magdalian-a', 'magdalian-b', 'magdalian-c', 'plutonian-a', 'plutonian-b', 'gearperson-a', 'gearperson-b', 'zigerion-b', 'zigerion-c', 'simman', 'poptart', 'toasterhouse', 'omegadevice', 'primedrone', 'froopy-a', 'froopy-b', 'heistotron', 'heister-a', 'heister-b', 'fart', 'snake-a', 'snake-b', 'snakeastronaut', 'snakerocket'];
+const DEST_FIGURES = ['vance', 'supernova', 'alanrails', 'millionants', 'crocubot', 'noobnoob', 'squanchy', 'birdperson', 'phoenixperson', 'unity', 'marsha', 'mortyjr', 'krombopulos', 'kingjellybean', 'zeep', 'kyle', 'xenonbloom', 'poncho', 'annie', 'needful', 'arthricia', 'flippynips', 'scroopy', 'gearhead', 'nebulon', 'storylord', 'ticketsguy', 'rickprime', 'tommy', 'nimbus', 'atlantean', 'miles', 'glexo', 'glipglop', 'risotto', 'watert'];
+const DEST_PROPS = ['vindicators-ship', 'squanchy-house', 'birdperson-house', 'zigerion', 'thirstystep', 'giant', 'stairgoblin', 'hepatitis', 'gonorrhoea', 'tuberculosis', 'plague', 'ecoli', 'needful-shop', 'jerry-robe', 'jerry-golf', 'jerry-tux', 'jerry-track', 'jerry-gown', 'jerry-cardigan', 'magdalian-a', 'magdalian-b', 'magdalian-c', 'plutonian-a', 'plutonian-b', 'gearperson-a', 'gearperson-b', 'zigerion-b', 'zigerion-c', 'simman', 'poptart', 'toasterhouse', 'omegadevice', 'primedrone', 'froopy-a', 'froopy-b', 'heistotron', 'heister-a', 'heister-b', 'fart', 'snake-a', 'snake-b', 'snakeastronaut', 'snakerocket', 'nuptiamachine', 'mytholog', 'shrimply', 'gloopnurse', 'resortguest-a', 'resortguest-b', 'dirlycar', 'icet'];
 export const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick', ...RICKALL_FIGURES, ...FAMILY_FIGURES, ...DEST_FIGURES]);
 // the models not in the cast's own folder, by name: where they are
 // (and Mortytown's two shopfronts, rickmorty/citadel/district.js)

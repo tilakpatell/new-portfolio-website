@@ -1208,6 +1208,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       if (run.told && (performance.now() - run.told.at > RECALL_MS || run.game.shot.includes(run.told.id))) run.told = null;
     }
 
+    s.emit ??= (name, e) => s.events.push([name, e]);
     try {
       a.render(
         {

@@ -46,7 +46,7 @@ export async function buildSnakeplanet(kit) {
     g.fill();
     fitText(g, 'ssss', w / 2, h - 12, 60, 10, { color: '#3a2a3a', weight: '400' });
   });
-  R.frame(...P(0, 17.6), Math.PI).box(0x5a4a3a, 0, 0, 0, 0.14, 1.9, 0.14).box(0xd8c8a8, 0, 1.6, 0, 1.8, 0.9, 0.08).decal('snakesign', 0, 2.05, 0.05, 1.7, 0.85);
+  R.frame(...P(-6, 15.6), Math.PI).box(0x5a4a3a, 0, 0, 0, 0.14, 1.9, 0.14).box(0xd8c8a8, 0, 1.6, 0, 1.8, 0.9, 0.08).decal('snakesign', 0, 2.05, 0.05, 1.7, 0.85);
   // the hole, with eyes in it
   const [hx, hz] = P(-20, 12);
   R.frame(hx, hz, 0).cyl(0x1a0a1a, 0, 0.01, 0, 1.4, 0.04);

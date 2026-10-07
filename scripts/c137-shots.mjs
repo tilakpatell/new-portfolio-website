@@ -76,6 +76,10 @@ export const VIEWS = {
   gromflomites: { area: 'gromflomites', at: [-400, 2713.4, N], cam: [0, 0.3] },
   heistcon: { area: 'heistcon', at: [-400, 2812.4, N], cam: [0, 0.3] },
   snakeplanet: { area: 'snakeplanet', at: [-400, 2918, N], cam: [0, 0.2] },
+  nuptia: { area: 'nuptia', at: [-400, 3018, N], cam: [0, 0.2] },
+  gloopynoops: { area: 'gloopynoops', at: [-400, 3112.4, N], cam: [0, 0.3] },
+  resort: { area: 'resort', at: [-400, 3218, N], cam: [0, 0.2] },
+  schwifty: { area: 'schwifty', at: [-400, 3318, N], cam: [0, 0.2] },
 };
 
 const names = process.argv.slice(2);

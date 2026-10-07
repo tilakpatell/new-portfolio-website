@@ -1103,21 +1103,43 @@
     "model": "01a113f6-782c-71ac-a685-4f1beb0c639b"
   },
   "glexo": {
-    "image": "01a11402-4f76-737a-8d5a-fb44bb91184b"
+    "image": "01a11402-4f76-737a-8d5a-fb44bb91184b",
+    "model": "01a11404-84d7-70df-adfc-82cd5c181089"
   },
   "nuptiamachine": {
-    "image": "01a11402-4f78-73eb-a3c1-c506ad39c7d1"
+    "image": "01a11402-4f78-73eb-a3c1-c506ad39c7d1",
+    "model": "01a11404-846e-72f4-99a7-c27e5c97d764"
   },
   "mytholog": {
-    "image": "01a11402-4f7f-7157-b1a2-4ef12707d3e5"
+    "image": "01a11402-4f7f-7157-b1a2-4ef12707d3e5",
+    "model": "01a11404-84cd-759f-a828-0d425b2d51f2"
   },
   "glipglop": {
-    "image": "01a11402-4f85-76cc-8c36-a5bec037665c"
+    "image": "01a11402-4f85-76cc-8c36-a5bec037665c",
+    "model": "01a11404-846a-745e-b057-cd710a4599b7"
   },
   "shrimply": {
     "image": "01a11402-4fd8-7014-a908-b94c11d365a8"
   },
   "gloopnurse": {
     "image": "01a11402-a2a5-7274-bf9e-c5a97523f360"
+  },
+  "risotto": {
+    "image": "01a11402-b678-77ce-93db-808a90f82bff"
+  },
+  "resortguest-a": {
+    "image": "01a11403-07cf-71f5-83d0-f17b31e8f610"
+  },
+  "resortguest-b": {
+    "image": "01a11403-6995-7721-8455-774e94aedf35"
+  },
+  "dirlycar": {
+    "image": "01a11403-80b7-7144-8948-e002a8dbff00"
+  },
+  "watert": {
+    "image": "01a11403-e5b2-77ec-9275-99c3936a6b7c"
+  },
+  "icet": {
+    "image": "01a11403-f7a7-7305-9459-1c389e0ccb69"
   }
 }
