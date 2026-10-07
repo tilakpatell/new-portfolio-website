@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { KIND_NAMES, createRegistry } from './registry';
-import { exportFile, formatPlayed, formatSize, newWorldUrl, readImport } from './myWorlds';
+import { exportFile, formatPlayed, formatSize, newWorldUrl, readImport } from './worldFiles';
 import { worldStore } from '../../runtime/local';
 import './myworlds.css';
 

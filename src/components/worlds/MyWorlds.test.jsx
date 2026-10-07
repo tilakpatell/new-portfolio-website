@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { IDBFactory } from 'fake-indexeddb';
 import { createStore } from '../../runtime/store';
 import { createRegistry } from './registry';
-import { SEED_MAX, exportFile, formatPlayed, formatSize, newWorldUrl, readImport } from './myWorlds';
+import { SEED_MAX, exportFile, formatPlayed, formatSize, newWorldUrl, readImport } from './worldFiles';
 import MyWorlds from './MyWorlds';
 
 const MIN = 60e3;
