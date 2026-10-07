@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { SYSTEMS } from './systems';
-import { FAMILIES, LOOKS, buildBody } from './bodies';
+import { FAMILIES, LOOKS, buildBody, nearOctaves, pxTall } from './bodies';
 import { createRocks } from './rocks';
 
 // every look the systems name, each body and rock field they'd build: what
@@ -104,6 +104,51 @@ describe('buildBody', () => {
       expect(b.surface.isMesh).toBe(true);
       expect(b.group.children).toContain(b.surface);
     }
+  });
+
+  it('works its ground two octaves finer from orbit on high and ultra, eased in, and not small', () => {
+    const near = (b) => b.surface.material.uniforms.uNearOct.value;
+    const camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.05, 9000);
+    const renderer = { getDrawingBufferSize: (v) => v.set(1280, 720) };
+    const frames = (b, from, n) => {
+      for (let i = 0; i < n; i++) {
+        b.surface.onBeforeRender(renderer, null, camera);
+        b.update(from + i / 30, camera);
+      }
+    };
+    for (const [tier, small, want] of [['high', false, 2], ['ultra', false, 2], ['mid', false, 0], ['low', false, 0], ['high', true, 0]]) {
+      const b = buildBody('tatooine', { r: 30, small, tier });
+      expect(near(b), tier).toBe(0);
+      camera.position.set(0, 0, 30 * 2.4); // (parked: the world most of the screen tall)
+      frames(b, 0, 2);
+      expect(near(b), tier).toBeLessThanOrEqual(want); // (eased in, not jumped to)
+      frames(b, 1, 60);
+      expect(near(b), tier).toBeCloseTo(want, 6);
+      camera.position.set(0, 0, 30 * 40); // (and off again, a disc in the sky)
+      frames(b, 3, 60);
+      expect(near(b), tier).toBeCloseTo(0, 6);
+      b.dispose();
+    }
+  });
+});
+
+describe('nearOctaves', () => {
+  it('is two on high and ultra for a world over 300 pixels tall, and none otherwise', () => {
+    for (const tier of ['high', 'ultra']) {
+      expect(nearOctaves({ tier, pxTall: 600 })).toBe(2);
+      expect(nearOctaves({ tier, pxTall: 200 })).toBe(0);
+    }
+    for (const tier of ['mid', 'low']) {
+      expect(nearOctaves({ tier, pxTall: 600 })).toBe(0);
+      expect(nearOctaves({ tier, pxTall: 200 })).toBe(0);
+    }
+  });
+
+  it('measures a world as tall as it is on the screen', () => {
+    // (a world just filling a 60° view from top to bottom: sin 30° = r / d)
+    expect(pxTall({ r: 1, dist: 2, fov: 60, height: 720 })).toBeCloseTo(720, 6);
+    expect(pxTall({ r: 1, dist: 4, fov: 60, height: 720 })).toBeCloseTo((2 * Math.asin(0.25) * 720) / (Math.PI / 3), 6);
+    expect(pxTall({ r: 1, dist: 0.5, fov: 60, height: 720 })).toBe(Infinity); // (inside it)
   });
 });
 

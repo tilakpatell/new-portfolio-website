@@ -5,7 +5,7 @@
 //   node scripts/gen3d/make.mjs x-wing --image photo.png --faithful --what "an X-wing starfighter"
 //   node scripts/gen3d/make.mjs x-wing --prompt "an X-wing starfighter" --what "an X-wing starfighter"
 //   node scripts/gen3d/make.mjs x-wing --image front.png --left left.png --back back.png --what "…"   (several sides: Hunyuan3D multi-view)
-//   options: --candidates 4 (concept pictures to choose from) --no-judge --faces 120000 --tex 4096 (the bake, the top cut; the other two cuts are scaled from it) --match OLD.glb --seed 42 --res 1024 --fov 49 --engine trelliscpp|trellis2 --no-bake --fresh
+//   options: --candidates 4 (concept pictures to choose from) --no-judge --faces 120000 --tex 4096 (the bake, the top cut; the other two cuts are scaled from it) --match OLD.glb --seed 42 --res 1024 --fov 49 --engine trelliscpp|trellis2 --no-bake --no-faithful --fresh
 //
 // Everything on the way lands in scripts/gen3d/cache/<name>/ ($GEN3D_CACHE
 // for elsewhere); the result in public/models/gen3d/<name>.glb, credited in
@@ -102,7 +102,7 @@ export async function make(name, { image, prompt, what, faces = TIERS.hq.faces, 
   for (const [t, c] of Object.entries(w.cuts)) log(`${t}: ${Math.round(c.after)} triangles, ${(c.bytes / 1024).toFixed(0)} KB → ${c.out}`);
   const result = { name, what: what ?? name, engine: made, seed, cuts: Object.fromEntries(Object.entries(w.cuts).map(([t, c]) => [t, { triangles: Math.round(c.after), bytes: c.bytes, file: c.out }])) };
   writeFileSync(join(dir, 'result.json'), JSON.stringify(result, null, 2));
-  if (process.env.CHROME) {
+  if (process.env.CHROME || process.env.GEN3D_SHEET === 'fake') {
     const out = join(dir, 'sheet.png');
     await sheet(out, [raw, w.cuts?.hq?.out ?? w.out]);
     log(`judge: ${out}`);
@@ -112,8 +112,9 @@ export async function make(name, { image, prompt, what, faces = TIERS.hq.faces, 
       const v = await look(what ?? prompt ?? name, out);
       log(`verdict: ${v.score}/10${v.problems.length ? ` — ${v.problems.join('; ')}` : ''}${v.ok ? '' : ` — ${v.fix}`}`);
       // only Claude's verdict gates: Qwen3-VL-8B misjudges a right model often enough that its say is a note, not a veto
+      // (the contract tests' fake judge stands in for Claude, so the loop is tested)
       const { which } = await import('./vlm.mjs');
-      if (!v.ok && retries > 0 && which() === 'claude') {
+      if (!v.ok && retries > 0 && ['claude', 'fake'].includes(which())) {
         log(`not good enough: once more with seed ${seed + 1}`);
         return make(name, { image, prompt, what, faces, tex, seed: seed + 1, res, fov, engine, faithful, noBake, match, candidates, judge, retries: retries - 1, fresh, first: false });
       }
@@ -136,6 +137,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     return i >= 0 && args.splice(i, 1).length > 0;
   };
   const faithful = on('faithful');
+  const unfaithful = on('no-faithful'); // a picture is followed with Pixal3D unless this says not to
   const noBake = on('no-bake');
   const fresh = on('fresh');
   const judge = !on('no-judge');
@@ -143,8 +145,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const sides = Object.fromEntries(Object.entries({ left, back, right }).filter(([, p]) => p).map(([k, p]) => [k, resolve(p)]));
   const opts = { image: image && (Object.keys(sides).length ? { front: resolve(image), ...sides } : resolve(image)), prompt: flag('prompt'), what: flag('what'), faces: Number(flag('faces', TIERS.hq.faces)), tex: Number(flag('tex', TIERS.hq.tex)), match: match && resolve(match), seed: Number(flag('seed', 42)), res: Number(flag('res', 1024)), fov: fov && Number(fov), engine: flag('engine'), noBake, fresh, judge, candidates: Number(flag('candidates', 4)) };
   const [name] = args;
-  const usage = 'usage: node scripts/gen3d/make.mjs NAME (--image FRONT [--left L --back B --right R] | --prompt "…") [--faithful] [--what "…"] [--faces N] [--tex N]';
+  const usage = 'usage: node scripts/gen3d/make.mjs NAME (--image FRONT [--left L --back B --right R] | --prompt "…") [--faithful | --no-faithful] [--what "…"] [--faces N] [--tex N]';
   if (!name || !(opts.image || opts.prompt)) throw new Error(usage);
   for (const f of typeof opts.image === 'object' ? Object.values(opts.image) : [opts.image].filter(Boolean)) if (!existsSync(f)) throw new Error(`no ${f}\n${usage}`);
-  await make(name, { ...opts, faithful: faithful || typeof opts.image === 'string' });
+  await make(name, { ...opts, faithful: !unfaithful && (faithful || typeof opts.image === 'string') });
 }

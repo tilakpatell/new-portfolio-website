@@ -37,6 +37,7 @@ export const SURFACE_HEAD = /* glsl */ `
 uniform float uTime;
 uniform float uR;
 uniform float uMaxOct;
+uniform float uNearOct;
 uniform float uBump;
 uniform vec3 uCenter;
 uniform mat3 uRot;
@@ -58,8 +59,11 @@ float gNight; // 0 in sunlight .. 1 on the night side
 vec3 gSunObj; // the main sun's direction in the planet's own frame
 float gCloudThick; // how thick the cloud is, here (thicker: brighter tops)
 
-// octaves of an fbm starting at frequency f this pixel can show
-float octs(float f) { return clamp(log2(0.45 / (gFoot * f)), 1.0, uMaxOct); }
+// octaves of an fbm starting at frequency f this pixel can show (and from
+// orbit on a strong device, uNearOct more: the footprint's rule leaves the
+// finest octave at a quarter of a cycle a pixel, soft from a parking orbit;
+// bodies.js's nearOctaves)
+float octs(float f) { return clamp(log2(0.45 / (gFoot * f)) + uNearOct, 1.0, uMaxOct + uNearOct); }
 // 1 while a pattern of frequency f is resolved here, fading to 0 before it'd alias
 float fade(float f) { return 1.0 - smoothstep(0.1, 0.45, gFoot * f); }
 
@@ -639,6 +643,30 @@ void detail(vec3 P, inout Surf s) {
   vec3 tilt = mix(triTilt(uDetAN, q1, w), triTilt(uDetBN, q1 * 0.6, w), steep) * k1 + mix(triTilt(uDetAN, q2, w), triTilt(uDetBN, q2 * 0.6, w), steep) * k2 * 0.7;
   s.grad -= tilt * uDetK.z * land;
 }
+// From orbit (uNearOct, eased in by bodies.js once the world's over 300
+// pixels tall), a fine grain in the ground's relief, its slope by finite
+// differences (two taps past the one here), so the land catches the sun the
+// way the universe map's planets' normal maps do, and shaded a little by it.
+// Gone again as the scans
+// come in up close, and never on water.
+void nearRelief(vec3 P, inout Surf s) {
+  const float f = 48.0;
+  float land = 1.0 - clamp(s.wet, 0.0, 1.0);
+  float k = clamp((uNearOct - 0.25) / 1.5, 0.0, 1.0) * fade(f) * land * smoothstep(0.012, 0.05, gFoot * uDetK.x) * clamp(uBump / 0.02, 0.2, 1.5);
+  if (k <= 0.0) return;
+  float o = min(octs(f), 3.0);
+  vec3 t1 = normalize(cross(P, abs(P.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+  vec3 t2 = cross(P, t1);
+  float e = 0.25 / (f * exp2(o - 1.0));
+  vec3 q = P * f + 13.7;
+  float h0 = fbm(q, o);
+  float h1 = fbm(q + t1 * (e * f), o);
+  float h2 = fbm(q + t2 * (e * f), o);
+  s.grad += (t1 * (h1 - h0) + t2 * (h2 - h0)) / e * (0.1 / f) * k;
+  // (and a touch in its colour: a canopy's crowns, the grit in the sand,
+  // which show front-lit too, where a slope doesn't)
+  s.alb *= 1.0 + h0 * 0.22 * k;
+}
 #endif`;
 
 // relief, clouds, sunlight (one or two suns), the sea's glint, a faint
@@ -657,6 +685,7 @@ void main() {
   Surf s = Surf(vec3(0.5), vec3(0.0), 0.0, vec3(0.0), 0.0, 0.0);
   surface(P, s);
   #ifdef DETAIL
+  if (uNearOct > 0.01) nearRelief(P, s);
   detail(P, s);
   #endif
   float thick = 0.0;

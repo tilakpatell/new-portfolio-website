@@ -1,12 +1,13 @@
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { RiCloseLine, RiCompass3Line, RiKeyboardLine, RiSmartphoneLine } from 'react-icons/ri';
+import { RiCloseLine, RiCompass3Line, RiKeyboardLine, RiPlayCircleLine, RiSmartphoneLine } from 'react-icons/ri';
 import { WORLDS } from './worlds/worlds';
 import { SHORTCUTS, SITE, guideFor } from './guide/pages';
-import { keyTokens } from './guide/keys';
+import { KeyTable, Keys } from './guide/KeyTable';
 import { shortcutLabel } from '../lib/palette';
 import { openTour } from '../lib/tour';
+import { briefKeyFor, openBrief } from './tour/brief';
 
 // The guide's panel: the page's controls (keyboard or touch) as a table of
 // keys, then its tips; and the site as a whole. Loaded the first time the
@@ -14,42 +15,6 @@ import { openTour } from '../lib/tour';
 // opens, so it starts on this page's tab.
 
 const coarse = () => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
-
-// 'hold F' → hold [F]
-function Keys({ keys }) {
-  return (
-    <span className="guide-keyset">
-      {keyTokens(keys).map((t, i) =>
-        t.word ? (
-          <span key={i} className="guide-or">
-            {t.word}
-          </span>
-        ) : (
-          <kbd key={i} className={t.pointer ? 'guide-kbd is-pointer' : 'guide-kbd'}>
-            {t.key}
-          </kbd>
-        ),
-      )}
-    </span>
-  );
-}
-
-function KeyTable({ rows }) {
-  return (
-    <table className="guide-keys">
-      <tbody>
-        {rows.map(([keys, does]) => (
-          <tr key={keys + does}>
-            <th scope="row">
-              <Keys keys={keys} />
-            </th>
-            <td>{does}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
 
 function Tips({ tips }) {
   return (
@@ -66,7 +31,7 @@ function Tips({ tips }) {
 
 // the page's controls and tips; keyboard or touch, whichever this device is,
 // with a switch when the page has both
-function PageGuide({ page }) {
+function PageGuide({ page, basics }) {
   const both = Boolean(page.keys && page.touch);
   const [input, setInput] = useState(() => (page.touch && (coarse() || !page.keys) ? 'touch' : 'keys'));
   const groups = input === 'touch' ? page.touch : page.keys;
@@ -74,6 +39,11 @@ function PageGuide({ page }) {
     <>
       <h2 className="guide-title">{page.title}</h2>
       {page.about && <p className="guide-about">{page.about}</p>}
+      {basics && (
+        <button type="button" className="btn btn-ghost btn-sm mt-3" onClick={basics}>
+          <RiPlayCircleLine className="h-4 w-4" aria-hidden="true" /> Show me the basics
+        </button>
+      )}
       {groups && (
         <section className="mt-5" aria-label="Controls">
           <div className="flex items-center justify-between gap-3">
@@ -186,7 +156,14 @@ export default function GuidePanel({ pathname, close, onLeave }) {
         </button>
       </div>
       <div id={`${ids}-panel`} role="tabpanel" aria-labelledby={`${ids}-${tab}`} className="guide-body">
-        {tab === 'page' && page ? <PageGuide page={page} /> : <SiteGuide onGo={onLeave} />}
+        {tab === 'page' && page ? <PageGuide page={page} basics={
+              briefKeyFor(pathname)
+                ? () => {
+                    onLeave();
+                    openBrief();
+                  }
+                : null
+            } /> : <SiteGuide onGo={onLeave} />}
       </div>
       <p className="guide-foot">
         <Keys keys="?" /> opens and closes this · <Keys keys="Esc" /> closes it
