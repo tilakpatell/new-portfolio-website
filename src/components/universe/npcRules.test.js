@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BRAINS, NPC, createBrains, dodge } from './npcRules';
+import { SENSES } from './npcs/index';
 
 // a seeded random, so a meeting is the same every time
 const seeded = (seed = 7) => () => {
@@ -569,5 +570,81 @@ describe('what your standing does to them', () => {
     expect(friend.says).toContain('friend');
     expect(friend.says).not.toContain('hello');
     expect(friend.events.find((e) => e.type === 'tip')?.next?.id).toBe('comet');
+  });
+});
+
+describe('what a character knows of you', () => {
+  // a planet between you: it loses sight of you, keeps the truth a moment, then guesses, and fires at the guess
+  const planet = { at: [0, 0, -60], r: 20 };
+  it('knows where you are when it comes, but can’t see you through a planet, and says it has seen you only in sight', () => {
+    let knewAt = null;
+    let sawAt = null;
+    let seenAt = null;
+    meet(spec('rival', { role: 'enemy' }), {
+      at: { x: 0, y: 0, z: -120 },
+      seconds: 12,
+      ship: you({ x: 0, y: 0, z: 0, speed: 0 }),
+      world: () => ({ solids: [planet] }),
+      each: (brains, s, out, t) => {
+        const me = brains.live[0];
+        if (!me) return;
+        if (me.you && knewAt === null) knewAt = t;
+        if (me.sees && sawAt === null) sawAt = t;
+        if (seenAt === null && out.events.some((e) => e.type === 'say' && e.key === 'seen')) seenAt = t;
+      },
+    });
+    // sent to you, it knew where you were at once; the planet was between you, so it saw you only once round it
+    expect(knewAt).toBeLessThan(0.1);
+    expect(sawAt).toBeGreaterThan(1);
+    expect(seenAt).toBeGreaterThanOrEqual(sawAt);
+  });
+
+  it('keeps the truth for a moment after losing you, then guesses, and shots at a guess go to the guess', () => {
+    // a gun that sits where it's put and fires at you: the engine's firing, nothing else
+    const turret = () => ({ fire: 'you' });
+    const brains = createBrains({ rand: seeded(3), brains: { ...BRAINS, turret } });
+    const n = brains.add(spec('turret', { role: 'enemy' }), { x: 0, y: 0, z: 0 });
+    const me = brains.live[0];
+    let guessing = null;
+    const shots = [];
+    for (let t = 0; t < 12; t += DT) {
+      // in sight, 10 off; a moon drops in between at 3 s; you slip 8 to the side at 6 s, still hidden
+      const s = you({ x: t > 6 ? 8 : 0, y: 0, z: 10 });
+      const out = brains.update(DT, { you: s, hunters: [], stations: [], solids: t > 3 ? [{ at: [0, 0, 5], r: 4 }] : [] });
+      if (me.you?.guessed && guessing === null) guessing = t;
+      for (const e of out.events) if (e.type === 'shot') shots.push({ t, to: e.to, you: s, guessed: Boolean(me.you?.guessed), hit: e.hit });
+    }
+    expect(n).not.toBeNull();
+    expect(guessing).toBeGreaterThan(3 + SENSES.intuition - 0.1);
+    expect(guessing).toBeLessThan(3 + SENSES.intuition + 0.3);
+    const atGuess = shots.filter((x) => x.guessed && x.t > 6);
+    expect(atGuess.length).toBeGreaterThan(2);
+    for (const x of atGuess) expect(apart(x.to, x.you)).toBeGreaterThan(3);
+    // (and hardly any land: it's a guess)
+    expect(atGuess.filter((x) => x.hit).length / atGuess.length).toBeLessThan(0.3);
+  });
+
+  it('a brain with no belief of you behaves as with no you, and a shot of yours is heard', () => {
+    // a merchant parked at a station, you 300 off: it has nothing for you
+    const seen = meet(spec('merchant'), { at: { x: 300, y: 0, z: 0 }, seconds: 20, world: () => ({ stations: [{ id: 's', at: { x: 310, y: 0, z: 0 }, r: 4 }] }) });
+    expect(types(seen)).not.toContain('offer');
+    // forgotten behind a planet for long enough, a merchant that hears a shot of yours knows where it came from
+    let known = null;
+    let heard = null;
+    const shot = { x: 170, y: 0, z: 60 };
+    meet(spec('merchant'), {
+      at: { x: 300, y: 0, z: 0 },
+      seconds: 24,
+      ship: you({ x: 170, y: 0, z: 0 }), // (near enough not to be let go of, behind the planet)
+      world: (t) => ({ stations: [{ id: 's', at: { x: 310, y: 0, z: 0 }, r: 4 }], solids: [{ at: [235, 0, 0], r: 20 }], stims: t > 20 && t < 20.1 ? [{ type: 'shot', at: shot, radius: 200, from: 'you', loudness: 1 }] : [] }),
+      each: (brains, s, out, t) => {
+        const me = brains.live[0];
+        if (!me) return;
+        if (t > 19 && t < 20) known = Boolean(me.you);
+        if (t > 20.2 && heard === null) heard = Boolean(me.you) && apart(me.you, shot) < 1;
+      },
+    });
+    expect(known).toBe(false);
+    expect(heard).toBe(true);
   });
 });
