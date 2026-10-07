@@ -89,7 +89,7 @@ const HELP = [
   L('  achievements     what you have unlocked', 'out', 19),
   L('  clear            clear the screen', 'out', 19),
   BLANK,
-  L('  Also: whoami · date · ls · cat · echo · history · neofetch · tour (a look round the site) · restart (the site, from the beginning) · exit', 'dim'),
+  L('  Also: whoami · date · ls · cat · echo · history · neofetch · tour (a look round the site; tour recruiter for the short version) · restart (the site, from the beginning) · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
   L('  Worlds: worlds · galaxy · deathstar · moria · avengers · scranton · cybertron · albuquerque · c137 · dotmatrix · earth · music', 'dim'),
   L('  Languages: language · aurebesh · cybertronian · runes · english (back to English)', 'dim'),
@@ -515,9 +515,10 @@ export default function Terminal() {
         setTimeout(() => navigate('/'), 300);
         return [L('  Closing channel.', 'sys')];
       },
-      tour: () => {
-        setTimeout(openTour, 500);
-        return [L('  Showing you round…', 'ok')];
+      tour: (arg) => {
+        const mode = arg === 'recruiter' ? 'recruiter' : null;
+        setTimeout(() => openTour(mode), 500);
+        return [L(mode ? '  The short version…' : '  Showing you round…', 'ok')];
       },
       restart: () => {
         setTimeout(restartSite, 700);

@@ -1,16 +1,16 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { RiCompass3Line } from 'react-icons/ri';
 import { useAchievements } from '../Achievements';
 import { local } from '../../lib/hooks';
-import { RUN_KEY, TOUR_EVENT, TOUR_KEY, markTour, offerHere, openTour, tourFor, tourInSearch } from '../../lib/tour';
+import { RUN_KEY, TOUR_EVENT, TOUR_KEY, markTour, offerHere, openTour, readRun, tourFor, tourInSearch } from '../../lib/tour';
+import TourPicker from './TourPicker';
 import { BRIEF_EVENT, BRIEF_KEY, briefHere, briefKeyFor, sawBrief } from './brief';
 import { guideKeyFor } from '../guide/routes';
 import './offer.css';
 
 // Always in the shell, and small: starts a tour when asked (openTour: ⌘K,
-// the guide, the terminal, a link with ?tour=), and offers one on a first
-// arrival; and a world's basics, the first time you arrive in it (before
+// the guide, the terminal, a link with ?tour=), asking which (TourPicker)
+// when they don't say, and offers one on a first arrival; and a world's basics, the first time you arrive in it (before
 // you're dropped in) or when the guide asks (openBrief). The runner
 // (TourRunner), the card and what each tour says load the first time one's
 // offered or started.
@@ -34,15 +34,27 @@ export default function TourHost() {
   const [run, setRun] = useState(null);
   const [asked, setAsked] = useState(null); // a page's own basics, waiting to show the first time: { key, page }
   const [loaded, setLoaded] = useState(null); // { run, script }: the script, for the run it was loaded for
-  const [offer, setOffer] = useState(false);
+  const [offer, setOffer] = useState(null); // the picker: { first, modes, resume }
   const [modes, setModes] = useState(SHELL); // the tours a link may ask for, once the scripts are known
   const where = useRef(pathname);
   where.current = pathname;
 
   useEffect(() => {
     const onStart = (e) => {
-      setOffer(false);
-      setRun({ kind: 'tour', mode: e.detail?.mode ?? tourFor(where.current) });
+      const mode = e.detail?.mode ?? null;
+      if (mode) {
+        setOffer(null);
+        setRun({ kind: 'tour', mode });
+        return;
+      }
+      // which one: asked, unless there's only the shell's
+      loadRunner();
+      loadScripts().then((m) => {
+        const resume = readRun(local.get(RUN_KEY, null));
+        const title = resume && m.MODES.find((x) => x.id === resume.mode)?.title;
+        if (!m.MODES.length) setRun({ kind: 'tour', mode: tourFor(where.current) });
+        else setOffer({ first: false, modes: m.MODES, resume: title ? { ...resume, title } : null });
+      });
     };
     const onBrief = (e) => {
       const name = e.detail?.key ?? briefKeyFor(where.current);
@@ -128,7 +140,7 @@ export default function TourHost() {
   // its next page, keeps it up; leaving for a world takes it down.
   const here = offerHere(pathname, null) ? kind : null;
   useEffect(() => {
-    setOffer(false);
+    setOffer(null);
     if (!here || wanted || local.get(TOUR_KEY, null) != null) return undefined;
     let calm = 0;
     const check = setInterval(() => {
@@ -137,7 +149,7 @@ export default function TourHost() {
       clearInterval(check);
       local.set(TOUR_KEY, markTour(local.get(TOUR_KEY, null), null, 'offered'));
       loadRunner(); // (it's likely to be started next)
-      setOffer(true);
+      loadScripts().then((m) => setOffer({ first: true, modes: m.MODES, resume: null }));
     }, 1200);
     return () => clearInterval(check);
   }, [here, wanted]);
@@ -159,33 +171,26 @@ export default function TourHost() {
     }
     if (how === 'done') unlock(what.achievement ?? `tour-${what.id}`);
   };
-  const notNow = () => {
-    setOffer(false);
-    local.set(TOUR_KEY, markTour(local.get(TOUR_KEY, null), 'shell', 'skipped'));
+  const close = () => {
+    if (offer?.first) local.set(TOUR_KEY, markTour(local.get(TOUR_KEY, null), 'shell', 'skipped'));
+    setOffer(null);
+  };
+  const pick = (mode) => {
+    setOffer(null);
+    setRun({ kind: 'tour', mode: mode ?? tourFor(where.current) });
+  };
+  const resume = () => {
+    const from = offer?.resume;
+    setOffer(null);
+    if (from) setRun({ kind: 'tour', mode: from.mode, from });
   };
 
   return (
     <>
-      {offer && !run && (
-        <div className="tour-offer card" role="status">
-          <RiCompass3Line className="tour-offer-icon" aria-hidden="true" />
-          <div>
-            <p className="tour-offer-title">New here?</p>
-            <p className="tour-offer-text">A quick look round: where everything is, in under a minute.</p>
-            <div className="tour-offer-buttons">
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => openTour()}>
-                Take the tour
-              </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={notNow}>
-                Not now
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {offer && !run && <TourPicker modes={offer.modes} resume={offer.resume} first={offer.first} onPick={pick} onResume={resume} onClose={close} />}
       {run && script && (
         <Suspense fallback={null}>
-          <TourRunner key={`${run.kind}:${script.id}`} script={script} kind={run.kind} onEnd={end} />
+          <TourRunner key={`${run.kind}:${script.id}`} script={script} kind={run.kind} from={run.from ?? null} onEnd={end} />
         </Suspense>
       )}
     </>

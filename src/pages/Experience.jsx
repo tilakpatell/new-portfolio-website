@@ -35,7 +35,7 @@ function TrackSwitch({ className = '', align = 'center' }) {
   return (
     <div className={`flex flex-wrap items-center gap-2 ${justify} ${className}`}>
       <span className="text-sm text-muted">Highlight</span>
-      <div className={`seg ${justify}`} role="group" aria-label="Highlight roles">
+      <div className={`seg ${justify}`} role="group" aria-label="Highlight roles" data-tour="tracks">
         {TRACKS.map((t) => (
           <button key={t.id} type="button" aria-pressed={track === t.id} onClick={() => setTrack(t.id)}>
             {t.label}
@@ -70,7 +70,7 @@ function CurrentRole({ role, onCrawl }) {
     ['Stack', 'Python · Redshift · MCP'],
   ];
   return (
-    <section id={role.id} data-theme-section={role.id} className="exp-hero relative z-10 scroll-mt-24" data-dim={dimmed(track, role) || undefined} aria-labelledby={`${role.id}-title`}>
+    <section id={role.id} data-theme-section={role.id} className="exp-hero relative z-10 scroll-mt-24" data-tour="role" data-dim={dimmed(track, role) || undefined} aria-labelledby={`${role.id}-title`}>
       <div className="exp-hero-bg" aria-hidden="true" />
       <div className="shell relative pb-14 pt-[calc(var(--nav-h)+32px)] md:pb-20 md:pt-[calc(var(--nav-h)+52px)]">
         <div className="relative">
@@ -139,7 +139,7 @@ function Chapter({ role, episode, last }) {
     role.result ? ['Impact', `${role.result.value} ${role.result.short}`] : ['Sector', role.sector],
   ];
   return (
-    <section id={role.id} data-theme-section={role.id} className="exp-chapter relative z-10 scroll-mt-24" data-dim={dimmed(track, role) || undefined} aria-labelledby={`${role.id}-title`}>
+    <section id={role.id} data-theme-section={role.id} className="exp-chapter relative z-10 scroll-mt-24" data-tour="role" data-dim={dimmed(track, role) || undefined} aria-labelledby={`${role.id}-title`}>
       <div className="shell relative pt-16 md:pt-24">
         <RoleBanner role={role.id} className="mb-10 md:mb-14" />
         <div className="grid gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">

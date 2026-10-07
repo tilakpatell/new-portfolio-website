@@ -6,7 +6,8 @@ import { asScript } from '../../../lib/tour';
 // player, mixed) come here as scripts of their own, one file each, and MODES
 // lists the ones the picker offers.
 
-export const MODES = [];
+// the tours across pages, as the picker offers them (TourPicker)
+export const MODES = [{ id: 'recruiter', title: 'For recruiters', text: 'Who I am, where I’ve worked, what I’ve built, how to reach me. About two minutes.' }];
 
 // the id a tour's outcome is kept under in tp-tour (lib/tour's tourStatus):
 // the shell's two share one, since they're the same tour in two views
@@ -17,6 +18,7 @@ export async function loadScript(mode) {
     const { TOURS } = await import('../steps');
     return asScript(mode, TOURS[mode], { title: 'The site', ...SHELL });
   }
+  if (mode === 'recruiter') return (await import('./recruiter')).RECRUITER;
   return null;
 }
 

@@ -29,3 +29,11 @@ body:has(.universe-page) .tour-offer { bottom: calc(128px + env(safe-area-inset-
 html[data-menu] .tour-offer { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) { .tour-offer { animation: none; } }
 @media print { .tour-offer { display: none !important; } }
+
+/* which tour (TourPicker.jsx): the offer's card with a choice in it */
+.tour-picker { width: min(360px, calc(100vw - 32px)); z-index: 60; }
+.tour-picker-list { display: grid; gap: 0.4rem; margin: 0.7rem 0 0; padding: 0; list-style: none; }
+.tour-picker-choice { display: grid; width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: 10px; text-align: left; transition: border-color 0.15s ease, background 0.15s ease; }
+.tour-picker-choice:hover, .tour-picker-choice:focus-visible { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.tour-picker-name { font-size: 0.9rem; font-weight: 600; }
+.tour-picker-hint { margin-top: 0.1rem; color: var(--muted); font-size: 0.78rem; line-height: 1.4; }

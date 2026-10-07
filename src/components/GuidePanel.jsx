@@ -83,16 +83,28 @@ function SiteGuide({ onGo }) {
   return (
     <>
       <h2 className="guide-title">The site</h2>
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm mt-3"
-        onClick={() => {
-          onGo();
-          openTour();
-        }}
-      >
-        <RiCompass3Line className="h-4 w-4" aria-hidden="true" /> Take the tour
-      </button>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => {
+            onGo();
+            openTour();
+          }}
+        >
+          <RiCompass3Line className="h-4 w-4" aria-hidden="true" /> Take a tour
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => {
+            onGo();
+            openTour('recruiter');
+          }}
+        >
+          For recruiters
+        </button>
+      </div>
       <section className="mt-4" aria-label="Shortcuts">
         <KeyTable rows={[[shortcutLabel().replace(' ', '+'), 'Search and go anywhere (the command palette)'], ...SHORTCUTS]} />
       </section>

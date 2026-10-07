@@ -112,7 +112,9 @@ export default function TourCard({ stop, kind = 'tour', index = 0, count = 1, fi
   // in the panel) is scrolled to first.
   useLayoutEffect(() => {
     let el = stop.at ? targetOf(stop.at) : null;
-    if (el && !inView(el)) el.scrollIntoView({ block: stop.scroll ?? 'center', inline: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+    // (a target taller than the window scrolls to its top: its middle would
+    // bring whatever's after it into view, and the feed's address with it)
+    if (el && !inView(el)) el.scrollIntoView({ block: stop.scroll ?? (el.getBoundingClientRect().height > window.innerHeight * 0.8 ? 'start' : 'center'), inline: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
     let frame = 0;
     let was = null;
     const measure = () => {

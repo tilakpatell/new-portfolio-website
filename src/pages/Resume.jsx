@@ -151,7 +151,7 @@ export default function Resume() {
         )}
       </div>
 
-      <div id="resume-panel" role="tabpanel" aria-labelledby={`resume-tab-${view}`} className="mt-6">
+      <div id="resume-panel" data-tour="resume-sheet" role="tabpanel" aria-labelledby={`resume-tab-${view}`} className="mt-6">
         {view === 'pdf' ? <PdfView /> : <ResumeSheet active={active} onToggle={toggle} />}
       </div>
     </div>

@@ -13,7 +13,7 @@ export default function ProgramManagement() {
       <SectionHeading eyebrow="Program management" title="Programs, and the software that runs them." id="pm-title">
         At AWS and RTX the job is the program: roadmaps, stakeholders, capacity and migrations. Everywhere else I built the software. Each step below is something I’ve done, and where.
       </SectionHeading>
-      <ol className="pm-loop mt-10">
+      <ol className="pm-loop mt-10" data-tour="program">
         {programSteps.map((s, i) => (
           <Reveal as="li" key={s.id} delay={i * 70} className="pm-step">
             <span className="pm-node" aria-hidden="true">

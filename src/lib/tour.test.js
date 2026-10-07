@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RUN_FOR, asScript, flatten, legsFor, litBox, markTour, offerHere, onLeg, placeCard, readRun, readyFor, resolveSteps, tourFor, tourInSearch, tourStatus } from './tour';
+import { RUN_FOR, asScript, flatten, legsFor, litBox, markTour, nearLeg, offerHere, onLeg, placeCard, readRun, readyFor, resolveSteps, tourFor, tourInSearch, tourStatus } from './tour';
 
 describe('which tour a page gets', () => {
   it('gives the map the universe’s, at the front door and every place on it', () => {
@@ -139,9 +139,15 @@ describe('a script across pages', () => {
   it('knows whether the page is on a leg', () => {
     expect(onLeg({ path: '/experience' }, '/experience/aws')).toBe(true);
     expect(onLeg({ path: '/experience' }, '/experiences')).toBe(false);
+    expect(onLeg({ path: '/experience/aws' }, '/experience')).toBe(true);
+    expect(onLeg({ path: '/experience/aws' }, '/projects')).toBe(false);
     expect(onLeg({ path: '/universe' }, '/')).toBe(true);
     expect(onLeg({ path: '/universe/marvel' }, '/universe')).toBe(true);
     expect(onLeg({ path: null }, '/anywhere')).toBe(true);
+    expect(onLeg({ path: '/experience/aws' }, '/projects')).toBe(false);
+    expect(nearLeg({ path: '/experience/aws' }, '/projects')).toBe(true);
+    expect(nearLeg({ path: '/avengers' }, '/projects')).toBe(false);
+    expect(nearLeg({ path: '/experience' }, '/avengers')).toBe(false);
   });
 
   describe('when a leg’s page is ready', () => {
@@ -200,5 +206,14 @@ describe('what’s remembered', () => {
     expect(tourInSearch('?tour=recruiter', ['recruiter', 'player'])).toBe('recruiter');
     expect(tourInSearch('?tour=nope', ['recruiter'])).toBe(null);
     expect(tourInSearch('', ['recruiter'])).toBe(null);
+  });
+});
+
+describe('a script’s last card', () => {
+  it('rides the last leg', () => {
+    const s = { id: 'e', legs: [{ id: 'a', path: '/a', stops: [{ id: 'a1' }] }, { id: 'b', path: '/b', stops: [{ id: 'b1' }] }], end: { title: 'Bye', text: 'bye' } };
+    const legs = legsFor(s, { touch: false });
+    expect(legs[0].stops.map((x) => x.id)).toEqual(['a1']);
+    expect(legs[1].stops.map((x) => x.id)).toEqual(['b1', 'done']);
   });
 });

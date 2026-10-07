@@ -124,7 +124,7 @@ export default function Projects() {
 
       <PeriodicStack active={tech} onPick={setTech} />
 
-      <section className="shell relative z-10 grid grid-cols-[minmax(0,1fr)] gap-5 py-8 md:grid-cols-2 md:gap-6" aria-label="Featured projects">
+      <section className="shell relative z-10 grid grid-cols-[minmax(0,1fr)] gap-5 py-8 md:grid-cols-2 md:gap-6" aria-label="Featured projects" data-tour="featured">
         <Feature project={gameboy} wide className="md:col-span-2" dim={dim(gameboy)} />
         <Feature project={translator} dim={dim(translator)} />
         <Feature project={devspace} dim={dim(devspace)} waypoint={false} />

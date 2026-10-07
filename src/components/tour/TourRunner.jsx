@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { local } from '../../lib/hooks';
-import { RUN_KEY, legsFor, onLeg, readyFor, resolveSteps } from '../../lib/tour';
+import { RUN_KEY, legsFor, nearLeg, onLeg, readyFor, resolveSteps } from '../../lib/tour';
 import { targetOf } from './targets';
 
 // Walks a script (lib/tour: legs of stops, each leg a page) and shows one
@@ -68,6 +68,12 @@ export default function TourRunner({ script, kind = 'tour', from = null, onEnd }
       const waited = Date.now() - since;
       const here = onLeg(cur, where.current);
       const first = cur.stops.find((s) => s.at)?.at;
+      if (!here && waited >= PATIENCE) {
+        // the page went somewhere else on the way (a redirect, a world's
+        // own door): the run ends here, keeping its place
+        end.current('left');
+        return;
+      }
       if (!here || (!readyFor(cur.ready, probe(), first) && waited < PATIENCE)) {
         setWaiting(here && waited >= 600);
         timer = setTimeout(look, TICK);
@@ -88,10 +94,12 @@ export default function TourRunner({ script, kind = 'tour', from = null, onEnd }
     return () => clearTimeout(timer);
   }, [leg, cur, kind, navigate]);
 
-  // Leaving the leg's page another way (the nav, back, a planet) ends the run
+  // Leaving the leg's page another way (the nav, back, a planet) ends the
+  // run (once the leg's stops are showing: on the way in, the page is still
+  // the last leg's)
   useEffect(() => {
-    if (list && cur?.path && !onLeg(cur, pathname)) end.current('left');
-  }, [pathname, list, cur]);
+    if (list?.leg === leg && cur?.path && !nearLeg(cur, pathname)) end.current('left');
+  }, [pathname, list, leg, cur]);
 
   // Where you are, for next time (a tour across pages only)
   const stop = list?.leg === leg ? list.stops[i] : null;

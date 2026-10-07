@@ -85,7 +85,7 @@ function MessageForm() {
     );
 
   return (
-    <form onSubmit={submit} noValidate className="card memo-form grid gap-5 p-6 sm:p-8">
+    <form onSubmit={submit} noValidate className="card memo-form grid gap-5 p-6 sm:p-8" data-tour="memo">
       <div className="memo-top">
         <p className="memo-head">Dunder Mifflin Paper Company · Interoffice memo</p>
         <p className="mt-3 text-sm text-ink">

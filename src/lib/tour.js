@@ -90,24 +90,36 @@ export const asScript = (id, stops, extra = {}) => ({ id, legs: [{ id, path: nul
 export const onlyHere = (only, env) => (only == null ? true : typeof only === 'function' ? Boolean(only(env)) : only === 'touch' ? Boolean(env.touch) : only === 'desktop' ? !env.touch : true);
 
 // the script's legs for this device, each with the stops that are, and
-// without those left with none; `env` is { touch }
-export const legsFor = (script, env) =>
-  script.legs
+// without those left with none, and the script's last card (`end`) on the
+// last of them; `env` is { touch }
+export function legsFor(script, env) {
+  const legs = script.legs
     .filter((leg) => onlyHere(leg.only, env))
     .map((leg) => ({ ...leg, stops: leg.stops.filter((s) => onlyHere(s.only, env)) }))
     .filter((leg) => leg.stops.length > 0);
+  if (script.end && legs.length) legs[legs.length - 1] = { ...legs.at(-1), stops: [...legs.at(-1).stops, { id: 'done', ...script.end }] };
+  return legs;
+}
 
 // the stops of every leg in a row, each knowing its leg, so the card can say
 // "4 of 12" across pages
 export const flatten = (legs) => legs.flatMap((leg, i) => leg.stops.map((stop) => ({ ...stop, leg: i })));
 
-// Whether the page is on a leg: its path, or anywhere under it. The map's
-// legs cover the front door too, and a leg with no path is wherever you are.
+// Whether the page is on a leg: its path, anywhere under it, or the page
+// it's a part of (the feed's address follows the scroll: a leg at
+// /experience/aws is still on at /experience). The map's legs cover the
+// front door too, and a leg with no path is wherever you are.
 export function onLeg(leg, pathname) {
   if (!leg?.path) return true;
   if (isMapPath(leg.path)) return isMapPath(pathname);
-  return pathname === leg.path || pathname.startsWith(`${leg.path}/`);
+  return pathname === leg.path || pathname.startsWith(`${leg.path}/`) || leg.path.startsWith(`${pathname}/`);
 }
+
+// Whether the page is still about a leg: on it, or on another page of the
+// feed when the leg's is one (the feed's address follows the scroll, and a
+// tall stop can bring the next page's top into view). Leaving a leg is
+// judged by this; arriving by onLeg.
+export const nearLeg = (leg, pathname) => onLeg(leg, pathname) || (Boolean(leg?.path) && FEED.test(leg.path) && FEED.test(pathname));
 
 // Whether a leg's page is ready for its first stop, from what the runner
 // sees: `probe` is { covered (the intro's cover), gate (a world asking before
