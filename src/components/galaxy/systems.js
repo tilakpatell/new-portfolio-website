@@ -1179,7 +1179,7 @@ export function goalsOf(s) {
 
 // Whether the Death Star's model is wanted here: its own piece (Yavin's trench,
 // Alderaan's tractor beam), or Scarif's, where it arrives to fire. (Endor's second
-// is built in code, kind 'deathstar2', and loads nothing.)
+// is a station piece of its own, kind 'deathstar2', with its own model.)
 export const wantsDeathStar = (s) => s.pieces.some((p) => p.type === 'deathstar' || p.type === 'superlaser' || p.kind === 'deathstar');
 
 // The kinds of ship and station a system's pieces fly, each once: the models to
