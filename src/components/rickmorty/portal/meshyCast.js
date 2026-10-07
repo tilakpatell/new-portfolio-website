@@ -1,9 +1,34 @@
 // Portal panic's cast as modelled for the site with Meshy (scripts/meshy.mjs):
 // textured models toon-shaded like everything else, the two-legged ones
-// skinned, with idle, walking and running clips blended by how fast they
-// move. Anything that doesn't load falls back to the shapes in ./cast.js.
-// A cast here has the same face as one from cast.js ({ group, body, … }) plus
+// skinned, each on an animator of its own (lib/three/animator.js: idle,
+// walking and running weighed by how fast it goes, a base state such as
+// sitting in their place, any clip of the library played over them on the
+// whole body or the upper or lower half, the head turned to look). Anything
+// that doesn't load falls back to the shapes in ./cast.js. A cast here has
+// the same face as one from cast.js ({ group, body, … }) plus
 // update(t, move, hit), which ./cast.js's animate() hands it to.
+//
+// A figure from make(kind, variant, { tall, seed }):
+//   group, body, height, meshy, hand, hipsY, up, kind…   as they always were
+//   anim     its animator, or null when it isn't rigged
+//   mixer, act   the animator's mixer, and an action for every clip of its
+//     own (idle, walk, run, sit…; sat at no weight until wanted) and every
+//     whole-body one-shot it's played, for callers that weigh them by hand
+//   update(t, move, hit, { dt, motion, frame, lodRate, after = true })
+//     move 0…1 as ever; motion: locomotion.js's (speed, side, turn, air,
+//     hurt, knock, down: speeds in the cast's units, which are metres
+//     unless make was told `tall`), its feet then paced to the ground;
+//     frame: { forward, up } in the world, once it's placed; after: false
+//     leaves the bones laid over the clips for c.after, once it's placed
+//   after(dt, motion, frame)   the bones over the clips (animator's after)
+//   play(name, opts), stop(fade, layer), base(name, opts), look(target, opts),
+//     react(event, ctx)   animatorCalls's (lib/three/figureCalls.js); on a figure that isn't
+//     rigged they do nothing (play resolves false, react returns null)
+//   tall: the metres it stands where it's put (footScene's crews), so its
+//   motion's speeds are read in its own units; seed: its clocks (its idle's
+//   start, its stride's, its fidgets'), else its kind and which it is
+// A figure that isn't rigged sways in its step instead (gait.js: a hop, a
+// lurch, by the ground it covers) and breathes while it stands.
 
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
@@ -11,35 +36,29 @@ import { toon } from './toon';
 import { rimToon } from '../../../lib/three/ink';
 import { gltfLoader } from '../../../lib/three/gltf';
 import { sharpenMaterial } from '../../../lib/three/textures';
-import { borrowClips, faceAhead, retarget } from './clips';
+import { createAnimator } from '../../../lib/three/animator';
+import { loadClip } from '../../../lib/three/clipLibrary';
+import { NO_CALLS, SEAT, animatorCalls, seedOf } from '../../../lib/three/figureCalls';
+import { breathe, createGait, sway } from '../../../lib/three/gait';
+import { seeded } from '../../../lib/seeded';
+import { borrowClips, faceForward, heading, retarget } from './clips';
 
 // Clips every rigged figure can play besides idle, walk and run: made once
 // on one Meshy skeleton (scripts/meshy-rm-local.mjs's `clips`, as
 // public/games/meshy/clips-<name>.glb) and retargeted to each figure's hips,
-// as Rick's are borrowed (clips.js). play(c, name) plays one over the
-// figure's idle/walk/run blend: once (a hit, a cheer, a shot) or looped (a
-// dance, sitting with the arms crossed) till stop(c).
+// as Rick's are borrowed (clips.js), then turned to face where the figure's
+// walk does. They're the clip library's now (lib/three/clipLibrary.js), with
+// the rest it has; c.play(name) plays one over the figure's idle, walk and
+// run: once (a hit, a cheer, a shot) or looped (a dance, sitting with the
+// arms crossed) till c.stop().
 export const SHARED_CLIPS = ['drink', 'cheer', 'wave', 'happy', 'hit', 'fall', 'scared', 'shoot', 'dance', 'punch', 'taunt', 'shot', 'sitcross'];
-const shared = new Map(); // clip name → Promise<clip | null>
-const sharedClip = (name, loader) => {
-  if (!shared.has(name)) {
-    shared.set(
-      name,
-      loader.loadAsync(`${BASE}/clips-${name}.glb`).then(
-        (g) => {
-          const c = g.animations[0] ?? null;
-          const hips = g.scene?.getObjectByName('Hips');
-          if (c && hips) c.userData = { ...c.userData, hips: hips.position.y };
-          return c;
-        },
-        () => null,
-      ),
-    );
-  }
-  return shared.get(name);
-};
 
 export { faceForward, heading } from './clips';
+
+// The calls a figure on an animator answers (animatorCalls, NO_CALLS, seedOf,
+// SEAT) are lib/three/figureCalls.js's now, where every world's figures get
+// them; they're still to be had from here, as they always were.
+export { NO_CALLS, SEAT, animatorCalls, seedOf } from '../../../lib/three/figureCalls';
 
 // Meshy's textures carry their own shading, so the light steps stay lighter
 // than the shapes' (a third of the way down at most, not two thirds)
@@ -310,7 +329,8 @@ export function cullWithin(mesh, frame, height) {
 // `loader`: another GLTFLoader (a test’s)
 export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false, loader: given = null } = {}) {
   const loader = given ?? gltfLoader();
-  const assets = new Map(); // name → { scene, height, offset, clips }
+  const assets = new Map(); // name → { scene, height, offset, clips, rigged, hipsY, up, asking, faced }
+  const models = new Map(); // name → Promise<asset | null>: each model fetched once, however many ask
   const owned = [];
 
   const clipOf = async (url) => {
@@ -322,7 +342,9 @@ export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false, 
     }
   };
 
-  const loadOne = async (name, want = ['idle', 'walk', 'run']) => {
+  // the model itself, painted and measured, with no clips yet (null if it
+  // won't load)
+  const loadModel = async (name) => {
     try {
       const gltf = await loader.loadAsync(assetUrl(name));
       const scene = gltf.scene;
@@ -342,30 +364,71 @@ export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false, 
       const box = new THREE.Box3().setFromObject(scene);
       const size = box.getSize(new THREE.Vector3());
       const offset = new THREE.Vector3(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2);
-      const clips = {};
-      if (rigged.has(name)) {
-        const hips = scene.getObjectByName('Hips');
-        if (ownClips(name)) {
-          const got = await Promise.all(want.map((c) => clipOf(`${BASE}/${name}-${c}.glb`)));
-          want.forEach((c, i) => {
-            clips[c] = got[i];
-          });
-        } else if (hips) {
-          // (Rick’s, made for his hips, scaled to this figure’s: copies, so his own stay as they are)
-          const rick = await borrowClips(want, { loader });
-          for (const c of want) clips[c] = retarget(rick[c], hips.position.y, rick[c]?.userData.hips);
-        }
-        if (hips?.parent && clips.walk) faceAhead(clips, new THREE.Vector3(0, 1, 0).applyQuaternion(hips.parent.getWorldQuaternion(new THREE.Quaternion()).invert()));
-      }
-      assets.set(name, { scene, height: size.y, offset, clips, rigged: rigged.has(name), hipsY: scene.getObjectByName('Hips')?.position.y ?? null });
+      const hips = scene.getObjectByName('Hips');
+      // (up, in the space the hips turn in: Meshy's armatures come turned over)
+      const up = hips?.parent ? new THREE.Vector3(0, 1, 0).applyQuaternion(hips.parent.getWorldQuaternion(new THREE.Quaternion()).invert()) : null;
+      return { scene, height: size.y, offset, clips: {}, rigged: rigged.has(name), hipsY: hips?.position.y ?? null, up, asking: new Map(), faced: new Set() };
     } catch {
-      /* this one stays as shapes */
+      return null; /* this one stays as shapes */
     }
   };
 
+  // one of a figure's clips: its own, beside it, or Rick's, borrowed
+  const fetchClip = async (name, src, c) => {
+    if (ownClips(name)) return clipOf(`${BASE}/${name}-${c}.glb`);
+    if (src.hipsY == null) return null;
+    // (Rick’s, made for his hips, scaled to this figure’s: copies, so his own stay as they are)
+    const rick = (await borrowClips([c], { loader }))[c];
+    return retarget(rick, src.hipsY, rick?.userData.hips);
+  };
+
+  // the clips in `want` a figure hasn't been asked for yet, fetched and
+  // added (each once, however many ask at a time; one that isn't there is
+  // kept as null, so it isn't asked for again), and every clip but the walk
+  // turned to face where the walk does, once there's a walk to face by
+  const addClips = async (name, src, want) => {
+    if (!src.rigged) return;
+    for (const c of want) {
+      if (c in src.clips || src.asking.has(c)) continue;
+      src.asking.set(
+        c,
+        fetchClip(name, src, c).then((clip) => {
+          src.clips[c] = clip;
+          src.asking.delete(c);
+        }),
+      );
+    }
+    await Promise.all(want.map((c) => src.asking.get(c)));
+    const ahead = src.up ? heading(src.clips.walk, src.up) : null;
+    if (ahead == null) return;
+    for (const [c, clip] of Object.entries(src.clips)) {
+      if (!clip || c === 'walk' || src.faced.has(c)) continue;
+      faceForward(clip, src.up, ahead);
+      src.faced.add(c);
+    }
+  };
+
+  // a figure, with at least the clips in `want`: its model fetched the first
+  // time it's asked for, and a later ask for clips the first didn't name
+  // adding them to it (a figure that didn't load is tried again next time)
+  const loadOne = async (name, want = ['idle', 'walk', 'run']) => {
+    if (!models.has(name)) {
+      const p = loadModel(name);
+      models.set(name, p);
+      p.then((src) => {
+        if (!src && models.get(name) === p) models.delete(name);
+      });
+    }
+    const p = models.get(name);
+    const src = await p;
+    if (!src) return;
+    await addClips(name, src, want);
+    if (models.get(name) === p) assets.set(name, src); // (unless the cast's been disposed meanwhile)
+  };
+
   // load every model (or just `names`, with just the `clips` named: idle,
-  // walk, run, or sit for the cruiser's seats);
-  // onEach(k) as each one lands
+  // walk, run, or sit for the cruiser's seats; asked again with more, the
+  // figure gets those too); onEach(k) as each one lands
   const load = async (onEach, names = MESHY_ASSETS, { clips } = {}) => {
     let done = 0;
     await Promise.all(
@@ -379,10 +442,12 @@ export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false, 
   };
 
   // a figure for a game kind, or null to use the shapes
-  const make = (kind, variant = 0) => {
+  let made = 0; // (each figure's seed: its kind, and which of the cast's it is)
+  const make = (kind, variant = 0, { tall = null, seed = seedOf(kind, made) } = {}) => {
     const spec = kinds[kind];
     const src = spec && assets.get(spec.a);
     if (!src) return null;
+    made += 1;
     const group = new THREE.Group();
     const body = new THREE.Group();
     group.add(body);
@@ -405,62 +470,64 @@ export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false, 
         }
       });
     }
-    const c = { kind, group, body, bodyY: 0, height: spec.h, meshy: true, last: null, legs: null, arms: null, gun: null };
+    const c = { kind, group, body, bodyY: 0, height: spec.h, meshy: true, last: null, legs: null, arms: null, gun: null, anim: null };
+    const me = { calls: NO_CALLS, gait: null, seed, clock: 0, was: null, top: spec.h * 2, off: 0 };
     if (src.rigged) {
-      const mixer = new THREE.AnimationMixer(model);
+      const own = Object.fromEntries(Object.entries(src.clips).filter(([, clip]) => clip));
+      // one animator a figure, its own clips (Rick's where it borrows them)
+      // and the library's; its own sat clip a base of its own (SEAT). Its
+      // template, for the library's caches, is all a copy of a clip made for
+      // it depends on (its hips, its up, where its walk faces) and its size
+      // (a stride's measured in the cast's units), so copies of one model at
+      // one height share them, in any cast, and no others do.
+      const ahead = src.up && own.walk ? heading(own.walk, src.up) : null;
+      const key = [spec.a, spec.h, src.hipsY, src.up?.toArray().map((v) => v.toFixed(4)), ahead?.toFixed(4)].join('|');
+      const anim = createAnimator(model, { clips: own.sit ? { ...own, [SEAT]: own.sit } : own, hipsY: src.hipsY, up: src.up, key, seed, unit: tall > 0 ? spec.h / tall : 1 });
+      // (its other clips, the sat one, there at no weight as they always
+      // were, for callers that weigh them by hand; each somewhere of its own)
+      const r = seeded(seed ^ 0x2c1b3c6d);
       const act = {};
-      for (const [name, clip] of Object.entries(src.clips)) {
-        if (!clip) continue;
-        const a = mixer.clipAction(clip);
-        a.play();
-        a.setEffectiveWeight(name === 'idle' ? 1 : 0);
-        a.time = Math.random() * clip.duration; // not all in step
+      for (const [name, clip] of Object.entries(own)) {
+        let a = anim.actions[name];
+        if (!a) {
+          a = anim.mixer.clipAction(clip);
+          a.play();
+          a.setEffectiveWeight(0);
+          a.time = r() * clip.duration;
+        }
         act[name] = a;
       }
-      c.mixer = mixer;
+      c.anim = anim;
+      c.mixer = anim.mixer;
       c.act = act;
       c.hipsY = src.hipsY;
+      c.up = src.up;
       c.hand = model.getObjectByName('RightHand') ?? model.getObjectByName('mixamorig:RightHand') ?? null;
-      // (a figure that fidgets: Rick's flask, every so often while he stands)
-      if (spec.fidget) c.fidget = { clip: spec.fidget, next: 6 + Math.random() * 14 };
+      me.calls = animatorCalls(anim, { model, seed, loader, own: Object.keys(own), sit: Boolean(own.sit), act });
+      // (a figure that fidgets: Rick's flask, every so often while he
+      // stands, on his upper half so his feet stay where they are)
+      if (spec.fidget) {
+        c.fidget = { clip: spec.fidget };
+        loadClip(spec.fidget, { loader }); // (fetched now, through the cast's loader, so the first isn't late)
+        anim.idles({ fidgets: [spec.fidget], every: [14, 34] });
+      }
+    } else {
+      me.gait = createGait({ stride: spec.h * (STRIDE[kind] ?? STRIDE.any), cadence: [0.9, 2], seed });
+      me.off = seeded(seed)() * Math.PI * 2;
     }
-    c.update = (t, move, hit) => update(c, t, move, hit);
-    c.play = (clip, opts) => play(c, clip, opts);
-    c.stop = (fade) => stop(c, fade);
+    c.update = (t, move, hit, opts) => update(c, me, t, move, hit, opts);
+    c.after = (dt, motion = null, frame = null) => c.anim?.after(dt, motion, frame);
+    c.play = me.calls.play;
+    c.stop = me.calls.stop;
+    c.base = me.calls.base;
+    c.look = me.calls.look;
+    c.react = me.calls.react;
     return c;
   };
 
-  // one of the shared clips on a figure, once (`hold` seconds at its last
-  // frame, then back to the blend) or looped till stop(c); resolves when
-  // it's playing, false if the figure can't (not rigged, or no such clip)
-  const play = async (c, name, { loop = false, hold = 0, fade = 0.2, speed = 1 } = {}) => {
-    if (!c.mixer) return false;
-    if (!c.act[name]) {
-      const raw = await sharedClip(name, loader);
-      if (!raw || !c.mixer) return false;
-      const clip = c.hipsY != null && raw.userData.hips ? retarget(raw, c.hipsY, raw.userData.hips) : raw;
-      const a = c.mixer.clipAction(clip);
-      a.setEffectiveWeight(0);
-      c.act[name] = a;
-    }
-    const a = c.act[name];
-    stop(c, fade);
-    a.reset();
-    a.enabled = true;
-    a.timeScale = speed;
-    a.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
-    a.clampWhenFinished = true;
-    a.setEffectiveWeight(0);
-    a.play();
-    c.oneShot = { a, name, loop, hold, fade, ended: null, w: 0 };
-    return true;
-  };
-  const stop = (c, fade = 0.2) => {
-    if (!c.oneShot) return;
-    c.oneShot.fading = fade;
-    c.fadingOut = c.oneShot;
-    c.oneShot = null;
-  };
+  // (the cast's own way to the figure's calls, as it always had)
+  const play = (c, name, opts) => c.play?.(name, opts) ?? Promise.resolve(false);
+  const stop = (c, fade) => c.stop?.(fade);
 
   // a set piece standing `h` tall on y = 0, centred; its geometry and
   // materials stay the loader's (marked shared, so a dimension's clean-up
@@ -484,71 +551,72 @@ export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false, 
     for (const o of owned) o.dispose?.();
     owned.length = 0;
     assets.clear();
+    models.clear();
   };
 
   return { load, make, prop, dispose, play, stop };
 }
 
-const smooth = (a, b, x) => {
-  const k = Math.min(1, Math.max(0, (x - a) / (b - a)));
-  return k * k * (3 - 2 * k);
-};
+// The ground a figure without a skeleton covers in one stride, in its
+// heights: Pickle Rick's a hop each way of a long one, anyone else's a step
+const STRIDE = { pickle: 2, any: 0.8 };
 
-// Idle, walking and running by speed (move 0…1); the rest by hand: Pickle
-// Rick hops, Cronenbergs wobble, the Cromulon bobs; a hit squashes.
-function update(c, t, move, hit) {
-  const dt = c.last == null ? 0 : Math.min(0.1, Math.max(0, t - c.last));
+// Idle, walking and running by speed (move 0…1, or the motion's speeds),
+// a base state or a clip over them: the animator's; a hit squashes. The
+// frame's step is `dt` when the caller gives it (a figure updated only now
+// and then, or on a clock of its own), else the time since the last update;
+// a tenth of a second at most either way, so a tab come back to doesn't leap.
+function update(c, me, t, move, hit, { dt: given = null, motion = null, frame = null, lodRate = 1, after = true } = {}) {
+  const dt = Math.min(0.1, Math.max(0, given ?? (c.last == null ? 0 : t - c.last)));
   c.last = t;
-  if (c.mixer) {
-    // a clip played over the blend: up over `fade`, held, and down again
-    const o = c.oneShot;
-    if (o) {
-      o.w = Math.min(1, o.w + dt / Math.max(0.01, o.fade));
-      o.a.setEffectiveWeight(o.w);
-      if (!o.loop) {
-        if (o.ended == null && !o.a.isRunning()) o.ended = t;
-        if (o.ended != null && t - o.ended >= o.hold) c.stop(o.fade);
-      }
-    }
-    const f = c.fadingOut;
-    if (f) {
-      f.w = Math.max(0, f.w - dt / Math.max(0.01, f.fading));
-      f.a.setEffectiveWeight(f.w);
-      if (f.w <= 0) {
-        f.a.stop();
-        c.fadingOut = null;
-      }
-    }
-    const over = Math.max(c.oneShot?.w ?? 0, c.fadingOut?.w ?? 0);
-    if (c.fidget && !c.oneShot && !c.fadingOut && move < 0.05) {
-      if (t > c.fidget.next) {
-        c.fidget.next = t + 14 + Math.random() * 20;
-        c.play(c.fidget.clip).catch(() => {});
-      }
-    } else if (c.fidget && move >= 0.05) c.fidget.next = Math.max(c.fidget.next, t + 4);
-    const run = smooth(0.55, 0.9, move) * (1 - over);
-    const idle = (1 - smooth(0.05, 0.35, move)) * (1 - over);
-    const walk = Math.max(0, (1 - over) - run - idle);
-    c.act.idle?.setEffectiveWeight(idle);
-    c.act.walk?.setEffectiveWeight(walk);
-    c.act.run?.setEffectiveWeight(run);
-    const pace = 0.75 + move * 0.45;
-    if (c.act.walk) c.act.walk.timeScale = pace;
-    if (c.act.run) c.act.run.timeScale = pace;
-    c.mixer.update(dt);
+  let breath = 0;
+  if (c.anim) {
+    me.calls.tick(dt, motion ? Math.hypot(motion.speed ?? 0, motion.side ?? 0) > 0.05 : move > 0.05);
+    c.anim.locomote(motion ? { move, ...motion } : { move });
+    c.anim.update(dt, { lodRate });
+    if (after) c.anim.after(dt, motion, frame);
     c.body.position.y = 0;
-  } else if (c.kind === 'pickle') {
-    c.body.position.y = Math.abs(Math.sin(t * 9)) * 0.3 * move;
-    c.body.rotation.z = Math.sin(t * 9) * 0.22 * move;
-  } else if (c.kind === 'cromulon') {
-    c.body.position.y = Math.sin(t * 0.9) * 0.25;
-    c.body.rotation.z = Math.sin(t * 0.6) * 0.04;
-  } else {
-    // things that lurch: a wobble while they go, a slow breath while they don't
-    const w = Math.sin(t * 7) * move;
-    c.body.position.y = Math.abs(w) * 0.08 + Math.sin(t * 2.1) * 0.02;
-    c.body.rotation.z = w * 0.08;
+  } else breath = statue(c, me, dt, move, motion);
+  c.body.scale.set(1 + hit * 0.2 + breath, 1 - hit * 0.22 - breath, 1 + hit * 0.2 + breath);
+}
+
+// How fast a figure without a skeleton is going over the ground, in its
+// own units a second: the motion's when it's given, else how far its group
+// went since the last update (a jump further than it's tall is someone
+// putting it somewhere new, not a step), and at least what `move` says
+function groundSpeed(c, me, dt, move, motion) {
+  if (motion) return Math.hypot(motion.speed ?? 0, motion.side ?? 0) * ((motion.speed ?? 0) < 0 ? -1 : 1);
+  const p = c.group.position;
+  let v = 0;
+  if (me.was && dt > 0) {
+    const d = Math.hypot(p.x - me.was.x, p.z - me.was.z) / (c.group.scale.x || 1);
+    if (d < c.height) v = d / dt;
   }
-  const breathe = c.mixer ? 0 : Math.sin(t * 2.1) * 0.015;
-  c.body.scale.set(1 + hit * 0.2 + breathe, 1 - hit * 0.22 - breathe, 1 + hit * 0.2 + breathe);
+  (me.was ??= new THREE.Vector3()).copy(p);
+  return Math.max(v, move * me.top);
+}
+
+// The figures without a skeleton (Pickle Rick, the Cronenbergs, the
+// Cromulon, the dimensions' props): a hop or a lurch in step with the ground
+// they cover (gait.js), never on the clock, so none glides along at one
+// height or marches on the spot, and a breath while they stand, each in its
+// own time. The Cromulon is a head that floats: a slow rise and roll of its
+// own. Returns the breath, for the body's squash.
+function statue(c, me, dt, move, motion) {
+  me.clock += dt;
+  const speed = groundSpeed(c, me, dt, move, motion);
+  const g = me.gait.step(dt, speed);
+  if (c.kind === 'cromulon') {
+    c.body.position.y = Math.sin(me.clock * 0.9 + me.off) * 0.25;
+    c.body.rotation.z = Math.sin(me.clock * 0.6 + me.off * 1.7) * 0.04;
+  } else if (c.kind === 'pickle') {
+    const k = g.amount * (0.4 + 0.6 * Math.min(1, Math.abs(speed) / me.top));
+    c.body.position.y = Math.abs(Math.sin(g.phase)) * 0.3 * k;
+    c.body.rotation.z = Math.sin(g.phase) * 0.22 * k;
+  } else {
+    const s = sway(g.phase, g.amount);
+    c.body.position.y = s.bob * 0.045 * c.height;
+    c.body.rotation.z = s.roll * 0.08;
+  }
+  return breathe(me.clock, me.seed) * 0.015 * (1 - 0.7 * g.amount);
 }

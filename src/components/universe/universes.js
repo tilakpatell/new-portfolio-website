@@ -417,6 +417,13 @@ export const MOONS = [
 ];
 export const MOON_IDS = MOONS.map((m) => m.id);
 
+// A Rick and Morty world's way in is C-137's page, Rick's garage, with the
+// portal gun dialled back to the world you came from (the C-137 game's own
+// places go by these ids; its dial's kept, as it is, under tp-rm-dial), so
+// one step through the garage's portal and you're on it on foot.
+export const RM_DIAL_KEY = 'tp-rm-dial';
+export const dialFor = (u) => (u?.kind === 'moon' && u.to === '/c-137' ? u.id : null);
+
 const BY_ID = new Map([...UNIVERSES, ...MOONS].map((u) => [u.id, u]));
 
 export const byId = (id) => BY_ID.get(id);

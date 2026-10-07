@@ -217,11 +217,11 @@ export const SITE = {
     { kind: 'rock', n: 50, within: [20, 560], scale: [0.6, 2.4], opts: { color: '#6a6656', sharp: 0.4 } },
     { kind: 'log', n: 24, within: [30, 520], scale: [0.9, 1.5], solid: false, opts: { seed: 7, bark: '#6a6250', moss: '#4e6a2c' } },
   ],
-  // where the people go (needs.js): the techs between the landing, the
-  // hangar mouth and the field
+  // where the people go (needs.js): the techs between the landing (knelt at
+  // a ship's works), the hangar mouth (at its panels) and the field
   wants: [
-    { id: 'landing', kind: 'work', at: [8, -6], pause: 8 },
-    { id: 'hangarmouth', kind: 'work', at: [0, -196], pause: 10 },
+    { id: 'landing', kind: 'work', at: [8, -6], slots: 2, clip: 'kneel.fix', pause: 8 },
+    { id: 'hangarmouth', kind: 'work', at: [0, -196], slots: 2, clip: 'interact', pause: 10 },
     { id: 'field', kind: 'rest', at: [0, -112], pause: 6 },
   ],
   life: [
@@ -234,7 +234,7 @@ export const SITE = {
     { kind: 'droid', n: 3, at: [0, -216], level: 9, spread: 8, roam: 6, speed: 0.6, name: 'Astromech', says: ['(A brisk, busy whistle.)', '(It plugs into a fuel line and beeps happily.)'] },
     { kind: 'c3po', n: 1, at: [5, -208], level: 9, still: true, face: 3.4, name: 'C-3PO', says: { when: { done: ['scramble'] }, lines: ['Oh, I do hope Artoo comes back in one piece.', 'You wouldn’t want my life to get boring, would you?'], else: ['Hang on tight, Artoo. You’ve got to come back.', 'You wouldn’t want my life to get boring, would you?', 'Oh, I do hope they know what they’re doing.'] } },
     { kind: 'rebel', n: 1, at: [-200, -120], still: true, face: 0.3, name: 'Rebel sentry', says: { when: { rank: 2 }, lines: ['(He straightens up.) Sir. All quiet up here. Just the jungle, and Yavin.', '(He lowers his macrobinoculars.) Ship coming in. It’s the Falcon!'], else: ['(He lowers his macrobinoculars.) Ship coming in. It’s the Falcon!', 'All quiet up here. Just the jungle, and Yavin.'] } },
-    { kind: 'rebel', n: 2, at: [-284, -270], spread: 6, roam: 6, speed: 0.9, name: 'Rebel scout', says: ['Fresh water, and plenty of it. Just don’t go in past your knees.', 'Something big came down to drink last night. We didn’t stay to find out what.'] },
+    { kind: 'rebel', n: 2, at: [-284, -270], spread: 6, roam: 6, speed: 0.9, group: true, name: 'Rebel scout', says: ['Fresh water, and plenty of it. Just don’t go in past your knees.', 'Something big came down to drink last night. We didn’t stay to find out what.'] },
     { kind: 'rebel', n: 2, path: [[-30, -190], [30, -190], [30, -186], [-30, -186]], speed: 1.1, name: 'Rebel guard', says: ['Halt. Who goes there? …Oh, it’s you. Go on in.', 'Keep an eye on the sky.'] },
   ],
   rides: [],

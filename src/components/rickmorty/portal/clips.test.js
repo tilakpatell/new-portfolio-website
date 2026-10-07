@@ -1,14 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import * as here from './clips';
-import * as library from '../../../lib/three/clips';
+import * as lib from '../../../lib/three/clipLibrary';
 
-// Rick’s clips live in the library now (src/lib/three/clips.js, tested
-// there); this path stays so the portal’s cast and the worlds that borrow
-// from it load what they always did.
-describe('the portal’s clips', () => {
-  it('are the library’s own, so every world shares one fetch of each', () => {
-    const names = ['RICK_HIPS', 'borrowClips', 'retarget', 'heading', 'faceForward', 'faceAhead'];
-    for (const n of names) expect(here[n], n).toBe(library[n]);
-    expect(Object.keys(here).sort()).toEqual(Object.keys(library).sort());
+// (the clips themselves are tested in lib/three/clipLibrary.test.js)
+describe('Rick’s clips, where they were', () => {
+  it('are the clip library’s, every name the callers import', () => {
+    for (const n of ['RICK_HIPS', 'borrowClips', 'retarget', 'faceAhead', 'faceForward', 'heading', 'CLIPS', 'loadClip', 'forFigure', 'preload']) expect(here[n], n).toBe(lib[n]);
+    expect(here.RICK_HIPS).toBe(90.233);
   });
 });

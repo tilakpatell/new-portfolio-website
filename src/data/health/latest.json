@@ -1,15 +1,15 @@
 {
   "date": "2026-10-07",
-  "sha": "06875a1",
+  "sha": "10eeac89",
   "metrics": {
     "big-files": {
-      "value": 30,
+      "value": 29,
       "unit": "files",
       "label": "source files over 1500 lines",
       "detail": [
         {
           "file": "src/components/universe/scene.js",
-          "n": 5132
+          "n": 5451
         },
         {
           "file": "src/components/middleearth/towns/moria/props.js",
@@ -48,24 +48,24 @@
           "n": 3086
         },
         {
+          "file": "src/components/universe/footScene.js",
+          "n": 3051
+        },
+        {
+          "file": "src/components/universe/crews.js",
+          "n": 3013
+        },
+        {
           "file": "src/components/cockpit/vehicles/rv.js",
           "n": 3000
         },
         {
-          "file": "src/components/universe/footScene.js",
-          "n": 2963
-        },
-        {
-          "file": "src/components/universe/crews.js",
-          "n": 2818
+          "file": "src/components/galaxy/surface/scene.js",
+          "n": 2803
         },
         {
           "file": "src/components/middleearth/towns/lorien/props.js",
           "n": 2767
-        },
-        {
-          "file": "src/components/galaxy/surface/scene.js",
-          "n": 2684
         },
         {
           "file": "src/components/middleearth/towns/weathertop/props.js",
@@ -81,7 +81,7 @@
         },
         {
           "file": "src/components/rickmorty/world/RmWorld.jsx",
-          "n": 2220
+          "n": 2196
         },
         {
           "file": "src/components/avengers/world/scene.js",
@@ -93,15 +93,15 @@
         },
         {
           "file": "src/components/galaxy/surface/props/forest.js",
-          "n": 1916
+          "n": 1981
+        },
+        {
+          "file": "src/components/galaxy/surface/props/core.js",
+          "n": 1788
         },
         {
           "file": "src/components/middleearth/towns/edoras/folk.js",
           "n": 1772
-        },
-        {
-          "file": "src/components/galaxy/surface/props/core.js",
-          "n": 1762
         },
         {
           "file": "src/lib/sfx.js",
@@ -110,7 +110,7 @@
       ]
     },
     "boundary-breaks": {
-      "value": 293,
+      "value": 312,
       "unit": "imports",
       "label": "imports across a line docs/health/RULES.md draws",
       "detail": [
@@ -269,7 +269,7 @@
       ]
     },
     "lint-disables": {
-      "value": 54,
+      "value": 53,
       "unit": "comments",
       "label": "eslint-disable comments",
       "detail": [
@@ -370,7 +370,7 @@
           "n": 1
         },
         {
-          "file": "src/components/invincible/world/InvWorld.jsx",
+          "file": "src/components/middleearth/MapBackdrop.jsx",
           "n": 1
         }
       ]

@@ -3,7 +3,8 @@ import { matchPath } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { projectById } from '../../data/projects';
 import { WORLDS } from '../worlds/worlds';
-import { UNIVERSES, byPath, contrast } from './universes';
+import { DIAL, DIAL_KEY } from '../rickmorty/world/dimensions/destinations';
+import { MOONS, RM_DIAL_KEY, UNIVERSES, byId, byPath, contrast, dialFor } from './universes';
 
 const app = readFileSync(new URL('../../App.jsx', import.meta.url), 'utf8');
 const ROUTES = [...app.matchAll(/<Route path="([^"]+)"/g)].map((m) => m[1]).filter((p) => p !== '*');
@@ -58,5 +59,12 @@ describe('the air round the fandoms’ planets', () => {
     // (paper has no air, nor a Game Boy's screen)
     expect(UNIVERSES.find((u) => u.id === 'office').air).toBeNull();
     expect(UNIVERSES.find((u) => u.id === 'gaming').air).toBeNull();
+  });
+
+  it('send you from a Rick and Morty world to C-137 with the gun dialled back to it', () => {
+    expect(RM_DIAL_KEY).toBe(DIAL_KEY);
+    for (const m of MOONS) expect(DIAL.map((d) => d.id), m.id).toContain(dialFor(m));
+    expect(dialFor(byId('rickmorty'))).toBeNull();
+    expect(dialFor(byId('home'))).toBeNull();
   });
 });

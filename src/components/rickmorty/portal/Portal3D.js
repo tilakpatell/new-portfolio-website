@@ -4,11 +4,25 @@
 // and backdrop from CC0 Kenney kits (toon-shaded), a cartoon sky, and its own
 // light. Portals are the show's green swirl; shots, bolts, seeds and sparks
 // glow through bloom. Loaded only when a game starts.
+//
+// The cast's bodies show what the rules decide and never change it: each
+// figure's feet from the ground it covers (lib/ai/body.js, so a strafing
+// Gromflomite's hips turn to where it's going while its chest stays on you,
+// and a backpedal walks backward), its turns eased, and the rules' events
+// played on it: the gun up while it fires, a flinch where it's hit, a
+// Gazorpian's punch as it winds up, a fall by the shot's way when it dies
+// (and a moment on the ground before it goes), a Meeseeks from the box
+// stopping to punch and cheering before it poofs, the hero's cheer on a
+// wave cleared and chest-pounding taunt on a combo, Evil Morty's shot, taunt
+// and fall. A figure that has no clips (the shapes of ./cast.js, a model
+// without a skeleton) takes the calls and does nothing with them.
 
 import * as THREE from 'three';
 import { canvasTexture, createStage } from '../../../lib/stage3d';
 import { houseOn } from '../../../lib/three/house';
 import { createModels } from '../../../lib/models';
+import { turn } from '../../../lib/three/gait';
+import { bodyFrom } from '../../../lib/ai/body';
 import { PANIC, butterRobots } from './rules';
 import { InkPass, releaf, releafMap, toon } from './toon';
 import { animate, hull, makeCast, portalGun } from './cast';
@@ -41,6 +55,74 @@ const PLANTS = new Set(['tree-large', 'tree-small', 'oak', 'bush', 'flowers', 'd
 const ENEMY_CAST = { meeseeks: 'meeseeks', gromflomite: 'gromflomite', cronenberg: 'cronenberg', blob: 'blob', gazorpian: 'gazorpian', cop: 'cop', morty: 'mortyclone' };
 const BOSS_CAST = { snowball: 'snowball', cronenberg: 'bigcronenberg', cromulon: 'cromulon', evilmorty: 'evilmorty' };
 const PUFF_COL = { meeseeks: [0.45, 0.8, 0.95], gromflomite: [0.5, 0.6, 0.35], cronenberg: [0.95, 0.6, 0.65], blob: [0.95, 0.65, 0.7], gazorpian: [0.75, 0.4, 0.3], cop: [0.4, 0.45, 0.7], morty: [0.95, 0.85, 0.4] };
+
+// ── the bodies ──
+// A fallen enemy lies LIE seconds once its fall's over, then sinks out of
+// sight in SINK; how long each fall takes, by its clip (clipLibrary.js's
+// files: the troopers' deaths, Meshy's Knock_Down, the UAL's Death01)
+export const LIE = 0.8;
+const SINK = 0.45;
+const SINK_DEPTH = 0.7;
+const FALL = { 'die.fwd': 2.2, 'die.back': 3.53, 'die.blown': 2.7, fall: 2.53, die: 2.4 };
+const CRUMPLE = 0.8; // a figure of shapes going down (./cast.js's down)
+const NO_FALL = new Set(['cronenberg', 'blob']); // a Cronenberg splits, a blob pops: gone in a puff, as ever
+const TELEPORT = 24; // faster than this over the ground (a second) is a jump through a portal, not a step
+const FIRE_HOLD = 0.5; // the hero's gun kept up this long after the last shot
+const AIM_HOLD = 2.6; // an enemy's, after its last bolt (they fire every two seconds or so)
+const FIRE_EVERY = 0.25; // the quickest a shot's kick plays again
+const CHEER = 1.1; // a Meeseeks' cheer before it poofs
+// how fast each turns to face where it wants (gait.js turn's rate)
+const TURN = { hero: 16, enemy: 9, charge: 14, ally: 10, snowball: 3.5, cronenberg: 2, evilmorty: 10 };
+const STILL = Object.freeze({ speed: 0, side: 0, turn: 0 });
+const UP = new THREE.Vector3(0, 1, 0);
+const NONE = new Map();
+
+// The enemies' figures, by id: a living enemy keeps the figure take(kind,
+// id) gave it; a killed one keeps it while it falls (`fallen`: id → the
+// seconds its fall takes), lies `lie` seconds and sinks `sink`, and only
+// then is it freed; one gone without a fall is freed at once. Pure, so the
+// tests can hand it fakes.
+//   sync(enemies, fallen): once a frame, after the kills are known
+//   step(dt): the dying's clocks; figure(id); dying: [{ c, id, kind, t, left }]
+//   clear(): everyone freed (a new dimension, a new game)
+export function createRoster({ take, free, lie = LIE, sink = SINK }) {
+  const live = new Map(); // id → { c, kind }
+  const dying = [];
+  const sync = (enemies, fallen = NONE) => {
+    const alive = new Set();
+    for (const e of enemies) if (e.alive) alive.add(e.id);
+    for (const [id, r] of live) {
+      if (alive.has(id)) continue;
+      live.delete(id);
+      const len = fallen.get(id) ?? 0;
+      if (len > 0) dying.push({ c: r.c, id, kind: r.kind, t: 0, left: len + lie + sink });
+      else free(r.c, id);
+    }
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      const r = live.get(e.id);
+      if (r?.kind === e.kind) continue;
+      if (r) free(r.c, e.id);
+      live.set(e.id, { c: take(e.kind, e.id), kind: e.kind });
+    }
+  };
+  const step = (dt) => {
+    for (let i = dying.length - 1; i >= 0; i--) {
+      const d = dying[i];
+      d.t += dt;
+      d.left -= dt;
+      if (d.left > 0) continue;
+      dying.splice(i, 1);
+      free(d.c, d.id);
+    }
+  };
+  const clear = () => {
+    for (const [id, r] of live) free(r.c, id);
+    live.clear();
+    for (const d of dying.splice(0)) free(d.c, d.id);
+  };
+  return { sync, step, clear, dying, figure: (id) => live.get(id)?.c ?? null };
+}
 
 function rng(seed) {
   let a = seed >>> 0 || 1;
@@ -263,7 +345,7 @@ class Fx {
   }
 }
 
-export async function createPortal3D(canvas, { soft = false, hero = 'rick', alive = () => true, onLost, onSlow, onProgress } = {}) {
+export async function createPortal3D(canvas, { soft = false, hero: heroKind = 'rick', alive = () => true, onLost, onSlow, onProgress } = {}) {
   const stage = createStage(canvas, { soft, shadows: true, bloom: { strength: 0.55, radius: 0.4, threshold: 0.92 }, exposure: 1, fov: 40, near: 0.5, far: 400, onLost, onSlow });
   const { renderer, scene, camera } = stage;
   const big = !soft && Math.min(window.screen?.width ?? 1280, window.screen?.height ?? 800) >= 700;
@@ -602,6 +684,49 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
   };
 
   // ── the cast ──
+  // A figure's body this frame: its yaw eased toward what it wants, and its
+  // motion (body.js: speed along its facing, side across it, turn) from where
+  // it was last frame, with a move (0…1, eased) for its clips' blend of idle,
+  // walk and run; a step faster than TELEPORT is a jump (a portal, a new
+  // dimension), not a walk. Kept on the figure (c.mo), dropped with it.
+  const face = (c, want, dt, rate) => (c.yaw = c.yaw == null ? want : dt > 0 ? turn(c.yaw, want, dt, rate) : c.yaw);
+  const body = (c, x, z, dt, full) => {
+    const yaw = c.yaw ?? 0;
+    const was = c.mo ?? (c.mo = { x, z, yaw, move: 0 });
+    const jump = Math.hypot(x - was.x, z - was.z) > TELEPORT * Math.max(dt, 1 / 60);
+    const motion = jump || !(dt > 0) ? { ...STILL } : bodyFrom(was, { x, z, yaw }, dt).motion;
+    Object.assign(was, { x, z, yaw });
+    was.move += (Math.min(1, Math.hypot(motion.speed, motion.side) / full) - was.move) * (1 - Math.exp(-dt * 10));
+    return motion;
+  };
+  // (where it faces, for locomotion's hips and the head's look)
+  const frame = { forward: new THREE.Vector3(), up: UP };
+  const drive = (c, clock, dt, motion, squash = 0, down = 0) => {
+    const y = c.yaw ?? 0;
+    frame.forward.set(Math.sin(y), 0, Math.cos(y));
+    animate(c, clock, c.mo?.move ?? 0, squash, { dt, motion, frame, down });
+    // a model without a skeleton (Pickle Rick) goes over onto its back
+    if (c.meshy && !c.anim) c.body.rotation.x = -1.45 * Math.min(1, down) ** 2;
+  };
+  // a figure back to how it stood, for its next turn in the pool
+  const reset = (c) => {
+    c.mo = null;
+    c.yaw = null;
+    c.aimT = c.punchT = c.hurtT = 0;
+    c.fireAt = c.hitAt = c.tauntAt = -9;
+    c.full = null;
+    c.group.position.y = 0;
+    c.stop?.(0, 'full');
+    c.stop?.(0, 'upper');
+    c.look?.(null);
+  };
+  // the gun up and a shot's kick (react.js's fire), no quicker than FIRE_EVERY
+  const fire = (c, target = null) => {
+    if (time - (c.fireAt ?? -9) < FIRE_EVERY) return;
+    c.fireAt = time;
+    c.react?.('fire', target ? { target } : {});
+  };
+
   const castPool = new Map(); // kind → [cast]
   const take = (kind, variant = 0) => {
     const list = castPool.get(kind) ?? [];
@@ -619,7 +744,49 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     c.group.visible = true;
     return c;
   };
-  const byId = new Map(); // enemy id → cast
+  // the enemies' figures by id, the fallen kept a while (createRoster, above)
+  const roster = createRoster({
+    take: (kind, id) => take(ENEMY_CAST[kind], id),
+    free: (c) => {
+      reset(c);
+      c.used = false;
+      c.group.visible = false;
+    },
+  });
+  // A killed enemy's fall, the way the shot that did it was going (from the
+  // hero): the seconds it takes, or 0 for one that goes in a puff (a
+  // Cronenberg, a blob, a model without a skeleton). Its gun lowered and its
+  // head let go first, so nothing's left over the fall.
+  const fallen = new Map(); // this frame's: id → its fall's seconds
+  const fell = (c, e, p) => {
+    if (NO_FALL.has(e.kind) || (c.meshy && !c.anim)) return 0;
+    c.group.position.set(e.x, 0, e.y);
+    c.mo = null;
+    if (!c.anim) return c.legs ? CRUMPLE : 0;
+    c.stop(0.15, 'upper');
+    c.look(null);
+    const r = c.react('down', { dir: { x: e.x - p.x, z: e.y - p.y }, yaw: c.yaw ?? 0, force: Math.random() < 0.3 ? 1 : 0.4 });
+    c.fallClip = r?.clip ?? null;
+    c.fallLen = r ? (FALL[r.clip] ?? 2.5) : 0;
+    return c.fallLen;
+  };
+  // the nearest enemy (and the boss, unless `boss` is false) to a point
+  const nearest = (g, x, y, boss = true) => {
+    let best = boss && g.boss?.alive ? g.boss : null;
+    let bd = best ? Math.hypot(best.x - x, best.y - y) : Infinity;
+    for (const e of g.enemies) {
+      if (!e.alive) continue;
+      const d = Math.hypot(e.x - x, e.y - y);
+      if (d < bd) [best, bd] = [e, d];
+    }
+    return best;
+  };
+  // the hero's moments: firing, taunting, hurt, down (a new game starts them over)
+  const hero = { game: null, fireT: 0, tauntT: 0, hurtT: 0, down: false, downT: 0 };
+  const heroAgain = () => {
+    Object.assign(hero, { fireT: 0, tauntT: 0, hurtT: 0, down: false, downT: 0 });
+    if (player) reset(player);
+  };
   let player = null;
   let playerHero = null;
   const setHero = (h) => {
@@ -628,6 +795,7 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
       scene.remove(player.group);
     }
     player = figure(h);
+    heroAgain();
     if (soft && !player.meshy) hull(player, 0.03);
     // a modelled hero holds the portal gun in the right hand
     if (player.hand) {
@@ -643,11 +811,32 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     scene.add(player.group);
     playerHero = h;
   };
-  setHero(hero);
+  setHero(heroKind);
   let bossCast = null;
   let bossId = null;
-  const allyPool = [];
+  let bossFall = null; // the boss beaten: { c, t, len (its clip's), y (where it fell from) }
+  // the Meeseeks from the box, each its own figure for as long as it's
+  // there (by its object in g.allies, so one going doesn't hand its figure
+  // to the next); a poofed one cheers a moment first
+  const allyFig = new Map();
+  const allySpare = [];
+  const leaving = []; // { c, t, x, z }
+  let allyN = 0;
+  const spareAlly = (c) => {
+    reset(c);
+    c.group.visible = false;
+    allySpare.push(c);
+  };
   const robotPool = [];
+  // everyone off: a new dimension, a new game
+  const clearCast = () => {
+    roster.clear();
+    for (const c of allyFig.values()) spareAlly(c);
+    allyFig.clear();
+    for (const l of leaving.splice(0)) spareAlly(l.c);
+    if (bossFall) scene.remove(bossFall.c.group);
+    bossFall = null;
+  };
 
   // ── shots, bolts, pickups ──
   const shotGeo = new THREE.CapsuleGeometry(0.11, 0.55, 4, 8);
@@ -746,14 +935,25 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     for (let i = 0; i < n; i++) smoke.emit(x + (Math.random() - 0.5) * 0.8, y + Math.random() * 0.6, z + (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 2, 1 + Math.random(), (Math.random() - 0.5) * 2, 0.55 + Math.random() * 0.3, size * 0.6, size * 1.4, col[0], col[1], col[2], -0.5);
   };
 
+  // what this frame's events mean for the bodies, gathered as the sparks fly
+  const heard = { kills: [], hits: new Set(), windups: new Set(), bolts: new Set(), punches: [], poofs: [], hurt: null, bossDown: null };
   const events = (g) => {
+    heard.kills.length = heard.punches.length = heard.poofs.length = 0;
+    heard.hits.clear();
+    heard.windups.clear();
+    heard.bolts.clear();
+    heard.hurt = heard.bossDown = null;
+    heard.shot = heard.bossHit = heard.bossBolt = heard.bossPhase = heard.cleared = heard.combo = heard.lost = heard.won = false;
     for (const e of g.events) {
       switch (e.type) {
         case 'kill':
-          smokeAt(e.x, e.y, 6, PUFF_COL[e.kind] ?? [1, 1, 1]);
+          // (its puff once it's known whether it falls: the enemies, below)
+          heard.kills.push(e);
           burst(e.x, e.y, 10, [2.2, 2.2, 1.6], { speed: 6 });
           break;
         case 'hit':
+          if (e.boss) heard.bossHit = true;
+          else heard.hits.add(e.id);
           burst(e.x, e.y, 4, [1.6, 2.6, 1.2], { speed: 4, life: 0.25, size: 0.35, y: 1 });
           break;
         case 'spark':
@@ -761,15 +961,39 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
           burst(e.x, e.y, 5, [2.6, 2.0, 1.0], { speed: 4, life: 0.25, size: 0.3, y: 1 });
           break;
         case 'shot':
+          heard.shot = true;
           if (player?.gun) player.gunFlash = 0.08;
+          break;
+        case 'bolt':
+          if (e.boss) heard.bossBolt = true;
+          else if (e.id != null) heard.bolts.add(e.id);
+          break;
+        case 'windup':
+          if (!e.boss) heard.windups.add(e.id);
           break;
         case 'dash':
           flashes.push({ x: e.x, y: e.y, t: 0, life: 0.45, s: 0.9 }, { x: e.tx, y: e.ty, t: 0, life: 0.45, s: 0.9 });
           burst(e.x, e.y, 14, [0.8, 2.6, 0.8], { speed: 5, life: 0.4 });
           break;
         case 'hurt':
+          heard.hurt = e;
           shake = Math.max(shake, 0.35);
           burst(e.x, e.y, 12, [2.8, 0.6, 0.4], { speed: 6, life: 0.35 });
+          break;
+        case 'cleared':
+          heard.cleared = true;
+          break;
+        case 'combo':
+          heard.combo = true;
+          break;
+        case 'lost':
+          heard.lost = true;
+          break;
+        case 'won':
+          heard.won = true;
+          break;
+        case 'bossPhase':
+          heard.bossPhase = true;
           break;
         case 'slam':
           shake = Math.max(shake, 0.6);
@@ -790,15 +1014,18 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
           smokeAt(e.x, e.y, 6, [0.95, 0.6, 0.65], { size: 1.4 });
           break;
         case 'bossDown':
+          heard.bossDown = e;
           shake = Math.max(shake, 0.9);
           for (let i = 0; i < 4; i++) burst(e.x + (Math.random() - 0.5) * 3, e.y + (Math.random() - 0.5) * 3, 30, [2.8, 2.2, 1.0], { speed: 10, life: 0.8, size: 0.8, y: 1.5 });
           smokeAt(e.x, e.y, 16, [0.9, 0.9, 0.9], { size: 3, y: 1 });
           break;
         case 'punch':
+          heard.punches.push(e);
           burst(e.x, e.y, 5, [1.5, 2.5, 2.8], { speed: 4, life: 0.25, size: 0.35, y: 1 });
           break;
         case 'poof':
-          smokeAt(e.x, e.y, 6, [0.55, 0.85, 1.0], { size: 1.2 });
+          // (its puff once it's cheered: the allies, below)
+          heard.poofs.push(e);
           break;
         default:
       }
@@ -810,6 +1037,7 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     const dt = Math.min(0.05, ms / 1000);
     time += dt;
     if (dimIndex !== g.dim || builtFor !== g) {
+      clearCast();
       buildDim(g);
       // the new dimension's shaders (and the fog it brought) link in the
       // background; the stage holds its last frame until they have
@@ -818,18 +1046,69 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     events(g);
     sky.material.uniforms.t.value = time;
 
-    // the hero
+    // the hero: facing the aim, eased (a new target's a quick turn, not a
+    // snap; the mark at its feet shows the aim itself), its feet from the
+    // ground it covers, so a strafe turns its hips toward where it's going
+    // and a backpedal walks backward. The gun up while it fires, a flinch
+    // when it's hurt, a cheer on a wave cleared, a chest-pounding taunt on a
+    // combo, a dance when it's all won, a fall when it's lost; whatever's on
+    // the whole body is cut the moment it moves, so it never skates.
     const p = g.p;
     const pc = player;
+    if (hero.game !== g) {
+      hero.game = g;
+      heroAgain();
+    }
+    const aim = Math.atan2(p.aim.x, p.aim.y);
+    const hy = hero.down ? (pc.yaw ?? aim) : face(pc, aim, dt, TURN.hero);
     pc.group.position.set(p.x, 0, p.y);
-    pc.group.rotation.y = Math.atan2(p.aim.x, p.aim.y);
-    const speed = Math.hypot(p.vx, p.vy);
-    const blink = p.inv > 0 && p.dashT <= 0 && Math.floor(time * 16) % 2 === 0;
+    pc.group.rotation.y = hy;
+    const hm = body(pc, p.x, p.y, dt, 5);
+    const going = Math.hypot(hm.speed, hm.side) > 0.6;
+    hero.fireT -= dt;
+    hero.tauntT -= dt;
+    hero.hurtT = Math.max(0, hero.hurtT - dt);
+    if (heard.lost && !hero.down) {
+      // over the way the blow went: from whoever walked into the hero, else
+      // the nearest thing that could have done it
+      hero.down = true;
+      const from = g.enemies.find((e) => e.id === heard.hurt?.id) ?? nearest(g, p.x, p.y);
+      pc.stop?.(0.15, 'upper');
+      pc.react?.('down', { dir: from ? { x: p.x - from.x, z: p.y - from.y } : { x: -Math.sin(hy), z: -Math.cos(hy) }, yaw: hy });
+    } else if (!hero.down) {
+      if (heard.hurt) {
+        hero.hurtT = 0.3;
+        pc.react?.('hit', { where: 'chest' });
+      }
+      if (heard.shot) {
+        hero.fireT = FIRE_HOLD;
+        if (hero.tauntT <= 0) fire(pc);
+      } else if (hero.fireT <= 0 && hero.fireT + dt > 0 && hero.tauntT <= 0) pc.stop?.(0.25, 'upper');
+      if (heard.combo) {
+        hero.tauntT = 1.8;
+        pc.play?.('taunt', { layer: 'upper', lasts: 1.8 });
+      }
+      if (heard.cleared) {
+        pc.full = going ? null : 'cheer';
+        pc.play?.('cheer', { layer: going ? 'upper' : 'full' });
+      }
+      if (heard.won) {
+        pc.full = 'dance';
+        pc.play?.('dance', { loop: true });
+      }
+      if (going && pc.full && pc.anim?.playing('full') === pc.full) {
+        pc.full = null;
+        pc.stop(0.15, 'full');
+      }
+    }
+    if (hero.down) hero.downT += dt;
+    const blink = !hero.down && p.inv > 0 && p.dashT <= 0 && Math.floor(time * 16) % 2 === 0;
     pc.group.visible = p.dashT <= 0 && !blink && g.status !== 'travel';
-    animate(pc, time, Math.min(1, speed / 5), 0);
+    hm.hurt = hero.hurtT / 0.3;
+    drive(pc, time, dt, hm, 0, hero.down ? hero.downT / CRUMPLE : 0);
     mark.visible = g.status !== 'travel';
     mark.position.set(p.x, 0.025, p.y);
-    mark.rotation.y = pc.group.rotation.y;
+    mark.rotation.y = aim;
     mark.scale.setScalar(1 + Math.sin(time * 3) * 0.03);
     markMat.opacity = p.inv > 0 ? 0.45 + Math.abs(Math.sin(time * 14)) * 0.45 : 0.85;
     if (pc.gun?.userData.tip) {
@@ -837,68 +1116,188 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
       pc.gun.userData.tip.scale.setScalar(0.05 * (1 + (pc.gunFlash > 0 ? 1.8 : 0)));
     }
 
-    // the enemies
-    // each enemy keeps its figure; figures of the dead go back to the pool
-    for (const list of castPool.values()) for (const c of list) c.used = false;
-    const living = new Set();
-    for (const e of g.enemies) if (e.alive) living.add(e.id);
-    for (const [id, c] of byId) {
-      if (living.has(id)) c.used = true;
-      else byId.delete(id);
+    // the enemies, each on its own figure (the roster's). One killed falls
+    // the way the shot that did it was going and lies a moment before it
+    // sinks away; one that can't fall goes in a puff, as they always did.
+    for (const e of heard.kills) {
+      const c = roster.figure(e.id);
+      const len = c ? fell(c, e, p) : 0;
+      if (len > 0) fallen.set(e.id, len);
+      else smokeAt(e.x, e.y, 6, PUFF_COL[e.kind] ?? [1, 1, 1]);
     }
+    roster.sync(g.enemies, fallen);
+    fallen.clear();
     for (const e of g.enemies) {
       if (!e.alive) continue;
-      let c = byId.get(e.id);
-      const want = ENEMY_CAST[e.kind];
-      if (!c || c.castKey !== want) {
-        if (c) c.used = false;
-        c = take(want, e.id);
-        byId.set(e.id, c);
-      }
+      const c = roster.figure(e.id);
+      if (!c) continue;
+      // facing you, or where it charges (a Gazorpian, from its windup)
+      const charging = e.state === 'charge' || e.state === 'windup';
+      const yaw = face(c, charging ? Math.atan2(e.cx ?? 0, e.cy ?? 1) : Math.atan2(p.x - e.x, p.y - e.y), dt, charging ? TURN.charge : TURN.enemy);
       c.group.visible = true;
       c.group.position.set(e.x, 0, e.y);
-      const face = e.state === 'charge' || e.state === 'windup' ? Math.atan2(e.vx || e.cx || 0, e.vy || e.cy || 1) : Math.atan2(p.x - e.x, p.y - e.y);
-      c.group.rotation.y = face;
-      animate(c, time + e.id, Math.min(1, Math.hypot(e.vx, e.vy) / 3), e.flash > 0 ? e.flash / 0.12 : e.state === 'windup' ? 0.5 + Math.sin(time * 40) * 0.3 : 0);
+      c.group.rotation.y = yaw;
+      const m = body(c, e.x, e.y, dt, 3);
+      const flash = e.flash / 0.12;
+      m.hurt = flash;
+      m.knock = e.id % 2 ? 0.5 : -0.5;
+      // what happened to it: firing (the gun kept up a while, so a hit's
+      // only a flinch then), hit, winding up (the punch on its top half,
+      // its legs free for the charge)
+      if (heard.bolts.has(e.id)) {
+        fire(c, { x: p.x, z: p.y });
+        c.aimT = AIM_HOLD;
+      } else if (c.aimT > 0 && (c.aimT -= dt) <= 0) c.stop?.(0.3, 'upper');
+      if (heard.hits.has(e.id) && !(c.aimT > 0)) c.react?.('hit', { where: Math.random() < 0.3 ? 'head' : 'chest' });
+      if (heard.windups.has(e.id)) c.play?.('punch', { layer: 'upper', lasts: PANIC.enemies[e.kind].windup + PANIC.enemies[e.kind].chargeTime + 0.15 });
+      const shake = e.state === 'windup' && !c.anim ? 0.5 + Math.sin(time * 40) * 0.3 : 0;
+      drive(c, time + e.id, dt, m, Math.max(c.anim ? flash * 0.4 : flash, shake));
     }
+    for (const d of roster.dying) {
+      const c = d.c;
+      const { x, z } = c.group.position;
+      // a fall that never began (its clip wouldn't load): gone in a puff
+      if (c.anim && d.t > 0.5 && d.left > SINK && c.anim.playing('full') !== c.fallClip) {
+        smokeAt(x, z, 6, PUFF_COL[d.kind] ?? [1, 1, 1]);
+        d.left = 0;
+        continue;
+      }
+      const sink = d.left < SINK ? 1 - Math.max(0, d.left) / SINK : 0;
+      if (sink > 0 && !d.dust) {
+        d.dust = true;
+        smokeAt(x, z, 4, PUFF_COL[d.kind] ?? [1, 1, 1], { size: 1, y: 0.2 });
+      }
+      c.group.position.y = -sink * SINK_DEPTH;
+      // (lain still on its clip's last frame, there's nothing left to step)
+      if (!c.anim || d.t < c.fallLen + 0.3) drive(c, time + d.id, dt, STILL, 0, d.t / CRUMPLE);
+    }
+    roster.step(dt);
     for (const list of castPool.values()) for (const c of list) if (!c.used) c.group.visible = false;
 
-    // the boss
+    // the boss: eased round to you (Snowball to where it charges), its feet
+    // or its sway from the ground it covers, a flinch when it's hit. Evil
+    // Morty fires, taunts you once he's hurt you (or you've angered him) and
+    // flinches now and then. Beaten, it falls (a model without a skeleton
+    // sinks, the Cromulon below the arena's edge) and stays down a while.
     const b = g.boss;
+    if (!b && bossCast) {
+      if (heard.bossDown) {
+        const c = bossCast;
+        const { x, z } = c.group.position;
+        let len = 0;
+        if (c.anim) {
+          c.stop(0.15, 'upper');
+          c.look(null);
+          len = FALL[c.react('down', { dir: { x: x - p.x, z: z - p.y }, yaw: c.yaw ?? 0 })?.clip] ?? 0;
+        }
+        if (bossFall) scene.remove(bossFall.c.group);
+        bossFall = { c, t: 0, len, y: c.group.position.y };
+      } else scene.remove(bossCast.group);
+      bossCast = null;
+      bossId = null;
+    }
     if (b && b.id !== bossId) {
       if (bossCast) scene.remove(bossCast.group);
       bossCast = figure(BOSS_CAST[b.id]);
       if (soft && !bossCast.meshy) hull(bossCast, 0.04);
       scene.add(bossCast.group);
       bossId = b.id;
-    } else if (!b && bossCast) {
-      scene.remove(bossCast.group);
-      bossCast = null;
-      bossId = null;
     }
     if (b && bossCast) {
+      const c = bossCast;
       const air = b.id === 'cromulon' ? 2.2 + Math.sin(time * 0.8) * 0.3 : 0;
       const enter = b.state === 'enter' ? Math.min(1, b.st / 1.2) : 1;
-      bossCast.group.position.set(b.x, air - (1 - enter) * 3, b.y);
-      bossCast.group.rotation.y = b.id === 'cromulon' ? 0 : Math.atan2(p.x - b.x, p.y - b.y);
-      bossCast.group.visible = b.state !== 'vanish' || Math.floor(time * 20) % 2 === 0;
-      animate(bossCast, time, Math.min(1, Math.hypot(b.vx, b.vy) / 3), b.flash > 0 ? 0.5 : b.state === 'windup' ? 0.4 : 0);
+      const charging = b.id === 'snowball' && (b.state === 'windup' || b.state === 'charge');
+      const want = b.id === 'cromulon' ? 0 : charging ? Math.atan2(b.cx ?? 0, b.cy ?? 1) : Math.atan2(p.x - b.x, p.y - b.y);
+      const yaw = face(c, want, dt, TURN[b.id] ?? 6);
+      c.group.position.set(b.x, air - (1 - enter) * 3, b.y);
+      c.group.rotation.y = yaw;
+      c.group.visible = b.state !== 'vanish' || Math.floor(time * 20) % 2 === 0;
+      const m = body(c, b.x, b.y, dt, 3);
+      c.hurtT = Math.max(0, (c.hurtT ?? 0) - dt);
+      if (heard.bossHit) c.hurtT = 0.2;
+      m.hurt = (c.hurtT / 0.2) * 0.6;
+      if (b.id === 'evilmorty') {
+        if (heard.bossBolt) {
+          fire(c, { x: p.x, z: p.y });
+          c.aimT = 1.4;
+        } else if (c.aimT > 0 && (c.aimT -= dt) <= 0) c.stop?.(0.3, 'upper');
+        if (heard.hurt || heard.bossPhase) c.gloat = true;
+        if (c.gloat && !(c.aimT > 0) && time - (c.tauntAt ?? -9) > 5) {
+          c.gloat = false;
+          c.tauntAt = time;
+          c.play?.('taunt', { layer: 'upper', lasts: 2.2 });
+        } else if (heard.bossHit && !(c.aimT > 0) && time - Math.max(c.hitAt ?? -9, c.tauntAt ?? -9) > 2.2) {
+          c.hitAt = time;
+          c.react?.('hit', { where: Math.random() < 0.3 ? 'head' : 'chest' });
+        }
+      }
+      drive(c, time, dt, m, b.flash > 0 ? (c.anim ? 0.2 : 0.5) : b.state === 'windup' ? 0.4 : 0);
+    }
+    if (bossFall) {
+      // on its clip it lies a while and then sinks; a model without a
+      // skeleton tips back as it sinks; shapes crumple, then sink
+      const f = bossFall;
+      const c = f.c;
+      f.t += dt;
+      const lie = f.len > 0 ? f.len + 1.2 : c.meshy ? 0 : CRUMPLE + 0.6;
+      const k = Math.min(1, Math.max(0, (f.t - lie) / (f.len > 0 || !c.meshy ? 0.8 : 2.2)));
+      c.group.position.y = f.y - k * k * ((c.height ?? 2) * 1.15 + 0.5);
+      drive(c, time, dt, STILL, 0, c.anim ? 0 : c.meshy ? Math.min(0.55, f.t / 2) : f.t / CRUMPLE);
+      if (k >= 1) {
+        scene.remove(c.group);
+        bossFall = null;
+      }
     }
 
-    // Meeseeks from the box, butter robots
-    g.allies.forEach((a, i) => {
-      if (!allyPool[i]) {
-        allyPool[i] = figure('ally');
-        if (soft && !allyPool[i].meshy) hull(allyPool[i], 0.025);
-        scene.add(allyPool[i].group);
+    // the Meeseeks from the box ("I'm Mr. Meeseeks! Look at me!"): a wave as
+    // it pops in, after the nearest enemy, stopped and punching once it's
+    // there, and when its time's up a cheer, then gone in a puff
+    for (const [a, c] of allyFig) {
+      if (g.allies.includes(a)) continue;
+      allyFig.delete(a);
+      if (heard.poofs.some((q) => Math.hypot(q.x - a.x, q.y - a.y) < 0.75)) {
+        c.stop?.(0.15, 'upper');
+        c.play?.('cheer');
+        leaving.push({ c, t: 0, x: a.x, z: a.y });
+      } else spareAlly(c);
+    }
+    for (const [i, a] of g.allies.entries()) {
+      let c = allyFig.get(a);
+      if (!c) {
+        c = allySpare.pop();
+        if (!c) {
+          c = figure('ally');
+          c.off = allyN++ * 3;
+          if (soft && !c.meshy) hull(c, 0.025);
+          scene.add(c.group);
+        }
+        allyFig.set(a, c);
+        c.group.visible = true;
+        c.play?.('wave', { layer: 'upper', lasts: 1.6 });
       }
-      const c = allyPool[i];
-      c.group.visible = true;
+      const foe = nearest(g, a.x, a.y, false);
+      const yaw = face(c, foe ? Math.atan2(foe.x - a.x, foe.y - a.y) : (c.yaw ?? 0), dt, TURN.ally);
       c.group.position.set(a.x, 0, a.y);
-      c.group.rotation.y = Math.atan2(a.vx || 0, a.vy || 1);
-      animate(c, time + i * 3, Math.min(1, Math.hypot(a.vx, a.vy) / 3), 0);
-    });
-    for (let i = g.allies.length; i < allyPool.length; i++) allyPool[i].group.visible = false;
+      c.group.rotation.y = yaw;
+      const m = body(c, a.x, a.y, dt, 3);
+      if (heard.punches.some((q) => q.ally === i)) {
+        c.punchT = 0.7;
+        if (c.anim?.playing('upper') !== 'punch') c.play?.('punch', { layer: 'upper' });
+      } else if (c.punchT > 0 && (c.punchT -= dt) <= 0) c.stop?.(0.25, 'upper');
+      drive(c, time + (c.off ?? 0), dt, m);
+    }
+    for (let i = leaving.length - 1; i >= 0; i--) {
+      const l = leaving[i];
+      l.t += dt;
+      drive(l.c, time + (l.c.off ?? 0), dt, STILL);
+      if (l.t < (l.c.anim ? CHEER : 0)) continue;
+      smokeAt(l.x, l.z, 6, [0.55, 0.85, 1.0], { size: 1.2 });
+      spareAlly(l.c);
+      leaving.splice(i, 1);
+    }
+
+    // butter robots
     const robots = butterRobots(g);
     robots.forEach((rb, i) => {
       if (!robotPool[i]) {

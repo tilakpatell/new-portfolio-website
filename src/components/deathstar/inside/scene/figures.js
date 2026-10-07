@@ -1,6 +1,6 @@
 // The people aboard the Death Star as figures: a model rigged by Meshy on
 // the site’s shared 24-bone skeleton, walked on Rick’s idle, walk and run
-// (borrowed: src/lib/three/clips.js), flinching, falling, kneeling and
+// (borrowed: src/lib/three/clipLibrary.js), flinching, falling, kneeling and
 // taunting on the troops’ combat clips (public/models/galaxy/troops/
 // clip-*.glb, made on the clone’s rig) and firing, taking a shot and
 // punching on the shared Meshy clips (public/games/meshy/clips-*.glb).
@@ -29,7 +29,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { RICK_HIPS, borrowClips, faceForward, heading, retarget } from '../../../../lib/three/clips';
+import { RICK_HIPS, borrowClips, faceForward, heading, retarget } from '../../../../lib/three/clipLibrary';
 import { loadGltf } from '../../../../lib/three/gltf';
 import { BODY } from '../rules/walker';
 

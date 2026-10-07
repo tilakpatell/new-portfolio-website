@@ -19,6 +19,7 @@ const HALF = CELL / 2;
 const FAR = 420; // cars further than this from the camera are moved (it's all a street-level camera sees)
 const NEAR_WALK = 300;
 const GAP = 7;
+const REVERSE = 4; // how fast a car backs away from a fight (m/s)
 
 // the street lines near a value (they're at 80k + 40)
 const lineNear = (v) => Math.round((v - HALF) / CELL) * CELL + HALF;
@@ -116,11 +117,21 @@ export function stepTraffic(prev, dt, { cx = 0, cz = 0, yaw = null, scare = [] }
   }
   for (const c of st.cars) {
     const [x, z] = carAt(c);
-    if (scare.some((q) => Math.hypot(x - q.x, z - q.z) < q.r)) c.wait = 3;
+    for (const q of scare) {
+      if (Math.hypot(x - q.x, z - q.z) >= q.r) continue;
+      c.wait = 3;
+      // (a fight: not just stopped, backing away from it)
+      if (q.reverse) c.back = 3;
+    }
     let want = c.cruise;
     if (c.wait > 0) {
       c.wait -= dt;
       want = 0;
+    }
+    if (c.back > 0) {
+      c.back -= dt;
+      c.speed = 0;
+      c.s -= c.dir * REVERSE * dt;
     }
     // slow for the car ahead, stop short of it
     if (c.ahead < GAP + c.speed * 0.8) want = Math.min(want, Math.max(0, (c.ahead - GAP) * 1.2));
