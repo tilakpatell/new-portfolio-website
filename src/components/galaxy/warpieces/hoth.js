@@ -4,9 +4,10 @@
 //   while (battle.js's disable: its guns quiet, its hull and objectives
 //   open to it).
 // - When it's the Empire attacking (the war's defence of Hoth), the GR-75
-//   transports run from the base for the jump, one after another, and the
-//   Empire's fighters go after them: each one out is a share of the
-//   evacuation, and with enough of them out the Rebellion's held.
+//   transports run from the base for the jump, one after another (Hoth's an
+//   evacuation: battles.js's BATTLE_KINDS, the battle's own runners), and
+//   the Empire's fighters go after them: this calls each one out, and the
+//   evacuation done when enough are.
 //
 // createHoth(ctx) → { update(dt, t, live, events), hit, targets, markers(live), dispose() }
 
@@ -19,9 +20,6 @@ export const HOTH = {
   ionEvery: [16, 26], // seconds between the cannon's shots
   ionFor: 18, // seconds a Star Destroyer's disabled
   ionSpeed: 110,
-  launchEvery: 38, // seconds between transports
-  out: 6, // transports away, and the evacuation's done
-  run: 300, // how far each flies to its jump
 };
 const v = (x, y, z) => ({ x, y, z });
 
@@ -34,7 +32,6 @@ export function createHoth(ctx) {
   const bl = Math.hypot(...base) || 1;
   const baseDir = v(base[0] / bl, base[1] / bl, base[2] / bl);
   const cannon = v(baseDir.x * (R + 0.6), baseDir.y * (R + 0.6), baseDir.z * (R + 0.6));
-  const defence = ctx.laid.attacker === EMPIRE;
 
   // ── the ion cannon's bolts: two glowing slugs in flight ──
   const geo = new THREE.SphereGeometry(1, 12, 8);
@@ -49,10 +46,9 @@ export function createHoth(ctx) {
   let nextIon = 6 + rand() * 6;
   let ions = 0;
 
-  // ── the transports ──
-  let nextLaunch = 8;
+  // ── the transports (the battle's runners) ──
   let out = 0;
-  let launched = 0;
+  let done = false;
 
   const shootIon = () => {
     const foes = battle.capitals.filter((c) => c.team === EMPIRE && c.alive && c.dying <= 0 && c.disabled <= 0 && !c.gone);
@@ -71,26 +67,19 @@ export function createHoth(ctx) {
     if (ions++ % 3 === 0) ctx.event('ion');
   };
 
-  const launch = () => {
-    // up off the base, away from the Empire's line, to the jump
-    const imp = battle.capitals.find((c) => c.team === EMPIRE && c.role === 'flagship');
-    let away = v(baseDir.x, baseDir.y, baseDir.z);
-    if (imp) {
-      const ix = imp.pos.x;
-      const iz = imp.pos.z;
-      const l = Math.hypot(ix, iz) || 1;
-      away = v(baseDir.x - (ix / l) * 0.6, baseDir.y + 0.3, baseDir.z - (iz / l) * 0.6);
-    }
-    const al = Math.hypot(away.x, away.y, away.z) || 1;
-    const from = v(baseDir.x * (R + 2), baseDir.y * (R + 2), baseDir.z * (R + 2));
-    const spread = (rand() - 0.5) * 30;
-    const to = v(from.x + (away.x / al) * HOTH.run + spread, from.y + (away.y / al) * HOTH.run, from.z + (away.z / al) * HOTH.run - spread);
-    battle.addRunner({ team: REBELS, kind: 'transport', size: 2.2, hp: 34, from, to, speed: 8 });
-    launched += 1;
-  };
-
   return {
     update(dt, t, live, events) {
+      for (const e of events) {
+        if (e.type === 'escaped' && e.kind === 'transport' && !done) {
+          out += 1;
+          ctx.event('escaped');
+          if (ctx.tookPart()) ctx.points(1);
+        } else if (e.type === 'over' && e.why === 'runners' && e.winner === REBELS && !done) {
+          done = true;
+          ctx.event('gcw-evacuated');
+          if (ctx.tookPart()) ctx.points(GCW.points.objective);
+        }
+      }
       if (battle.over) return {};
       // the cannon
       nextIon -= dt;
@@ -114,32 +103,13 @@ export function createHoth(ctx) {
           ctx.draw?.flash(tp, { size: 10, life: 1.1, color: [1, 1.8, 3.4] });
         }
       }
-      // the transports, while the Empire's attacking
-      if (defence) {
-        nextLaunch -= dt;
-        if (nextLaunch <= 0) {
-          nextLaunch = HOTH.launchEvery;
-          launch();
-        }
-        for (const e of events) {
-          if (e.type !== 'escaped' || e.kind !== 'transport') continue;
-          out += 1;
-          ctx.event('escaped');
-          if (ctx.tookPart()) ctx.points(1);
-          if (out >= HOTH.out) {
-            ctx.event('gcw-evacuated');
-            if (ctx.tookPart()) ctx.points(GCW.points.objective);
-            battle.end(REBELS, 'evacuated');
-          }
-        }
-      }
       return {};
     },
     hit: () => null,
     targets: [],
     markers(live) {
       if (!live) return [];
-      return battle.runners.filter((r) => r.alive && Math.hypot(r.pos.x - live.x, r.pos.y - live.y, r.pos.z - live.z) < 260).map((r) => ({ key: `gr75-${r.id}`, pos: r.pos, title: `Protect: transport ${launched ? battle.runners.indexOf(r) + 1 : ''}`.trim(), hp: r.hp / r.hpMax, colour: '#7cc8ff' }));
+      return battle.runners.filter((r) => r.alive && r.kind === 'transport' && Math.hypot(r.pos.x - live.x, r.pos.y - live.y, r.pos.z - live.z) < 260).map((r) => ({ key: `gr75-${r.id}`, pos: r.pos, title: `${r.team === battle.you.team ? 'Protect' : 'Stop'}: transport ${battle.runners.indexOf(r) + 1}`, hp: r.hp / r.hpMax, colour: '#7cc8ff' }));
     },
     get out() {
       return out;

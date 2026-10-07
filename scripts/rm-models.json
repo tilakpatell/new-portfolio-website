@@ -510,5 +510,89 @@
   "icet": {
     "status": "done",
     "by": "local"
+  },
+  "hemorrhage": {
+    "status": "done",
+    "by": "local"
+  },
+  "deathstalker-a": {
+    "status": "done",
+    "by": "local"
+  },
+  "deathstalker-b": {
+    "status": "done",
+    "by": "local"
+  },
+  "armothy": {
+    "status": "done",
+    "by": "local"
+  },
+  "cornvelious": {
+    "status": "done",
+    "by": "local"
+  },
+  "brainalyzer": {
+    "status": "done",
+    "by": "local"
+  },
+  "antsjohnson": {
+    "status": "done",
+    "by": "local"
+  },
+  "babylegs": {
+    "status": "done",
+    "by": "local"
+  },
+  "regularlegs": {
+    "status": "done",
+    "by": "local"
+  },
+  "mrsneezy": {
+    "status": "done",
+    "by": "local"
+  },
+  "gazorpazorpfield": {
+    "status": "done",
+    "by": "local"
+  },
+  "shmlo": {
+    "status": "done",
+    "by": "local"
+  },
+  "trunkperson": {
+    "status": "done",
+    "by": "local"
+  },
+  "lilbits": {
+    "status": "done",
+    "by": "local"
+  },
+  "tophatjones": {
+    "status": "done",
+    "by": "local"
+  },
+  "realfakedoors": {
+    "status": "done",
+    "by": "local"
+  },
+  "scaryterry": {
+    "status": "done",
+    "by": "local"
+  },
+  "mrspancakes": {
+    "status": "done",
+    "by": "local"
+  },
+  "jaguar": {
+    "status": "done",
+    "by": "local"
+  },
+  "agencyguard": {
+    "status": "done",
+    "by": "local"
+  },
+  "sewerrat": {
+    "status": "done",
+    "by": "local"
   }
 }

@@ -57,4 +57,13 @@ describe('the galaxy roam', () => {
     expect(moving.length).toBeGreaterThan(staying.length * 0.8);
     for (let i = 1; i < moving.length; i++) expect(moving[i].t - moving[i - 1].t).toBeLessThanOrEqual(PACE.gap[1] + 0.5);
   });
+
+  it('reads who holds the system: in your side’s space, never a hunt or a Star Destroyer, but escorts and bounty hunters', () => {
+    const effects = { owner: 'rebel', yours: true, hostile: false, garrison: 'rebellion', droids: false, hunt: false, escort: true, deserter: false, heat: 0 };
+    const r = createRoam({ rand: seeded() });
+    const got = run(r, 6000, { sys: systemById('hoth'), effects });
+    const ids = new Set(got.map((g) => g.e));
+    expect([...ids].sort()).toEqual(['bounty', 'escort']);
+    expect(r.side(systemById('hoth'), effects).escort.length).toBeGreaterThan(0);
+  });
 });

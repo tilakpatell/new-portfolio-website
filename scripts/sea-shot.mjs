@@ -41,7 +41,7 @@ for (const id of worlds) {
   const ctx = await browser.newContext({ viewport: { width: Number(process.env.W ?? 1280), height: Number(process.env.H ?? 720) } });
   await ctx.addInitScript(() => {
     localStorage.setItem('tp-intro', '1'); localStorage.setItem('tp-start', '"universe"'); localStorage.setItem('tp-universe-ship', '"xwing"');
-    localStorage.setItem('tp-galaxy-panel', '"tucked"'); localStorage.setItem('tp-sound', 'off'); sessionStorage.setItem('tp-galaxy-intro', '1');
+    localStorage.setItem('tp-galaxy-panel', '"tucked"'); localStorage.setItem('tp-sound', 'off'); sessionStorage.setItem('tp-galaxy-intro', '1'); localStorage.setItem('tp-worlds', '"load"');
     const held = Date.UTC(2026, 9, 5, 12); Date.now = () => held;
     let seed = 7; Math.random = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
   });

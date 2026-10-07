@@ -1,6 +1,6 @@
 {
   "date": "2026-10-07",
-  "sha": "419d7a4f",
+  "sha": "4c37807a",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -9,7 +9,7 @@
       "detail": [
         {
           "file": "src/components/universe/scene.js",
-          "n": 5117
+          "n": 5126
         },
         {
           "file": "src/components/middleearth/towns/moria/props.js",
@@ -37,7 +37,7 @@
         },
         {
           "file": "src/components/rickmorty/world/roy/scene.js",
-          "n": 3157
+          "n": 3163
         },
         {
           "file": "src/components/middleearth/towns/minastirith/props.js",
@@ -72,16 +72,16 @@
           "n": 2640
         },
         {
+          "file": "src/components/galaxy/scene.js",
+          "n": 2337
+        },
+        {
           "file": "src/components/middleearth/towns/marshes/props.js",
           "n": 2315
         },
         {
-          "file": "src/components/galaxy/scene.js",
-          "n": 2285
-        },
-        {
           "file": "src/components/rickmorty/world/RmWorld.jsx",
-          "n": 2162
+          "n": 2195
         },
         {
           "file": "src/components/avengers/world/scene.js",
@@ -110,7 +110,7 @@
       ]
     },
     "boundary-breaks": {
-      "value": 289,
+      "value": 290,
       "unit": "imports",
       "label": "imports across a line docs/health/RULES.md draws",
       "detail": [
