@@ -183,7 +183,6 @@ export const SITE = {
     ]),
     // Anakin's airspeeder, by your ship, and the platform's clutter: cargo
     // waiting for a lift, a lamp over it
-    { kind: 'airspeeder', at: [16, -14], yaw: 0.9, abs: true, y: 0.3 },
     { kind: 'cratecube', at: [-18, -10], yaw: 0.4, abs: true, y: 0 },
     { kind: 'cratecube', at: [-16.6, -9.4], yaw: 1.2, abs: true, y: 0 },
     { kind: 'empirecrate', at: [-19, -13], yaw: 2.1, abs: true, y: 0 },
@@ -235,11 +234,15 @@ export const SITE = {
     { kind: 'villager', n: 5, path: [[34, 5], [288, 40]], speed: 1.2, name: 'Senate aide', says: ['The Chancellor has emergency powers now. Just until the crisis is over, they say.', 'The Military Creation Act vote is today. Everyone’s nervous.', 'I’m late, I’m late: the Senator from Alderaan is waiting.'] },
     { kind: 'villager', n: 3, path: [[-20, -22], [-138, -250]], speed: 1.1, name: 'Coruscanti', says: ['Don’t look down. Seriously, don’t.', 'Dex does the best nuna legs this side of the Federal District.', 'Mind the skylanes. Some of those drivers are maniacs.'] },
     { kind: 'c3po', n: 1, at: [-306, 70], still: true, r: 0.4, name: 'C-3PO', says: ['Oh, Master Anakin! I’m so glad you’re back. Mistress Padmé has been terribly worried.', 'I do believe the Senator’s apartment is the finest view on Coruscant. Not that I would know what to do with a view.', 'Don’t go too near the edge! It’s a long way down.'] },
+    { kind: 'kenobi', id: 'kenobi', at: [20, -6], still: true, face: -2.2, name: 'Obi-Wan Kenobi', named: true, quest: 'speederchase', says: ['Anakin, how many times have I told you to stay away from power couplings?', 'I hate flying.', 'Why do I get the feeling you’re going to be the death of me?'] },
     { kind: 'droid', n: 2, at: [6, 10], spread: 8, roam: 8, speed: 0.8, name: 'Astromech', says: ['(A busy, beeping hurry: it has somewhere to be.)'] },
     { kind: 'mousedroid', n: 2, at: [-8, 6], spread: 10, roam: 12, speed: 1.6, r: 0.2, solid: false },
     { kind: 'clone', n: 2, at: [-12, -4], spread: 4, still: true, face: 0.6, name: 'Coruscant Guard', says: ['Platform’s clear, sir.', 'The Temple is that way. Mind the drop.'] },
     { kind: 'villager', n: 3, at: [10, 18], spread: 10, roam: 10, speed: 1.0, name: 'Commuter', says: ['Skylane’s backed up to the 500 block again.', 'Don’t look down. I never look down.', 'Dex’s is that way, if you’re hungry.'] },
   ],
+  // what you can ride: Anakin's airspeeder, by the ship
+  rides: [{ kind: 'airspeeder', at: [16, -14], yaw: 0.9 }],
+
   // ── The places you go into ──
   zones: [
     {
@@ -311,7 +314,7 @@ export const SITE = {
         lamps: [[0, 8, -3, '#cfd8ff', 60, 30], [-27, 5, -2, '#5a9aff', 40, 16], [28, 6, 0, '#cfd8ff', 36, 16], [0, 7, 7, '#ffe0c0', 30, 16]],
       },
       life: [
-        { kind: 'jocasta', id: 'jocasta', at: [-27, 1], still: true, face: Math.PI, name: 'Jocasta Nu', named: true, quest: 'training', says: ['If an item does not appear in our records, it does not exist.', 'The Archives are open to every Jedi. Mind the holobooks.', 'Lost a planet, has he? How embarrassing.'] },
+        { kind: 'jocasta', id: 'jocasta', at: [-27, 1], still: true, face: Math.PI, name: 'Jocasta Nu', named: true, quest: ['training', 'order66'], says: ['If an item does not appear in our records, it does not exist.', 'The Archives are open to every Jedi. Mind the holobooks.', 'Lost a planet, has he? How embarrassing.'] },
         { kind: 'jedi', id: 'master', at: [28, 2.4], still: true, face: Math.PI, name: 'A Jedi Master', named: true, says: ['Stretch out with your feelings.', 'A remote never lies. Your blade does.'] },
         { kind: 'jedi', n: 4, at: [0, 0], spread: 8, roam: 6, speed: 0.7, name: 'Jedi Knight', says: ['May the Force be with you.', 'The Council is in session. Even the Masters are worried.'] },
         { kind: 'jedi', at: [2, -6], roam: 3, speed: 0.5, scale: 0.38, r: 0.3, name: 'Yoda', says: ['Begun, the Clone War has.', 'Clouded, this boy’s future is.'] },
@@ -323,6 +326,43 @@ export const SITE = {
 
   // ── Things to do ──
   quests: [
+    {
+      id: 'speederchase',
+      name: 'The assassin’s speeder',
+      giver: 'kenobi',
+      achievement: 'coruscantrace',
+      about: 'An assassin just tried to kill Senator Amidala. Her speeder went into the skylanes. Anakin’s borrowed airspeeder is right there.',
+      intro: [['Obi-Wan Kenobi', 'There she goes. Anakin, the speeder. Space to climb, and for once, stay with the lanes.']],
+      steps: [
+        { type: 'ride', kind: 'airspeeder', text: 'Get into the airspeeder' },
+        { type: 'race', ride: 'airspeeder', gates: [[0, 60], [0, 120], [0, 180], [0, 240], [100, 12], [200, 24], [300, 36], [340, 40]], r: 10, time: 60, text: 'Through the skylanes to the Senate, after the assassin', lines: [['Obi-Wan Kenobi', 'Pull up! Anakin, pull up!']] },
+      ],
+      done: [['Obi-Wan Kenobi', 'You know I don’t like it when you do that.'], ['Zam Wesell', '(She’s gone to ground. The Outlander Club, if you know where to look.)']],
+    },
+    {
+      id: 'order66',
+      name: 'Order 66',
+      giver: 'jocasta',
+      achievement: 'order66',
+      after: ['training'],
+      about: 'The clones on the Processional have turned. The Temple holds, or it burns.',
+      intro: [['Jocasta Nu', 'The clones. They’re coming up the steps, and they’re not here to guard us. Hold the door.']],
+      steps: [
+        { type: 'reach', at: [0, 245], r: 8, text: 'Get to the Temple steps' },
+        {
+          type: 'shoot',
+          tag: 'clones66',
+          n: 9,
+          text: 'Hold the steps against the 501st',
+          lines: [['Clone commander', 'Execute Order Sixty-Six.']],
+          spawn: [
+            { kind: 'clone', n: 8, at: [0, 150], spread: 10, roam: 4, hp: 2, tag: 'clones66', hostile: { range: 40, every: 2, damage: 8, chase: 1.6, burst: { n: 3, gap: 0.1 } } },
+            { kind: 'clone', at: [0, 140], hp: 5, roam: 3, tag: 'clones66', hostile: { range: 16, chase: 2, melee: true, reach: 2.6, every: 1.6, damage: 14, delay: 1, parry: 0.5, guard: 3, blade: { color: '#4aa8ff' } } },
+          ],
+        },
+      ],
+      done: [['Jocasta Nu', '(She closes the Archives’ doors behind you.) It will not hold them for long. But it will hold.']],
+    },
     {
       id: 'training',
       name: 'Training remotes',
