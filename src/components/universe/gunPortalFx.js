@@ -1,5 +1,5 @@
 // The portal gun's shot, drawn (gunPortal.js has the numbers, scene.js flies
-// it): a green bolt out of the cruiser's nose, then the portal splatting open
+// it): a green bolt out of the ship's nose, then the portal splatting open
 // where it lands, upright across the way the ship's flying (not turned to
 // the camera: it's a door, flown through), the show's swirl
 // (rickmorty/swirl.js's portal()) on both faces, a green haze round it, a

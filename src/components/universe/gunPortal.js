@@ -1,4 +1,4 @@
-// Rick's portal gun, fired from the cruiser in flight, as plain numbers:
+// Rick's portal gun, fired from any ship in flight, as plain numbers:
 // tested in Node, flown by scene.js, drawn by gunPortalFx.js. A green bolt
 // goes out of the nose, a portal splats open on the line the ship's flying,
 // far enough ahead to fly into at the speed it's going, and holds a while

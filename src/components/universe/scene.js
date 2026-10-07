@@ -3699,12 +3699,13 @@ export async function create(canvas, ctx) {
     if (then) travel(then.id, then.drive === 'hyper' ? 'super' : then.drive);
   };
 
-  // Rick's portal gun (P, or the HUD's Portal button): in the cruiser, flying,
-  // a portal splats open ahead on the way it's going (gunPortal.js), on
-  // Rick's dimension from anywhere at home, on home from there. False if it
-  // can't be fired now (another ship, on foot, mid-jump, too soon)
+  // Rick's portal gun (P, or the HUD's Portal button): in any ship, flying
+  // (Rick's cruiser, or whoever's got hold of one: crews.js has how), a
+  // portal splats open ahead on the way it's going (gunPortal.js), on Rick's
+  // dimension from anywhere at home, on home from there. False if it can't
+  // be fired now (on foot, mid-jump, too soon)
   const portalGun = () => {
-    if (state.kind !== 'cruiser' || !flying() || onFoot() || state.crash || state.jump || state.held || state.view === 'map') return false;
+    if (!state.kind || !flying() || onFoot() || state.crash || state.jump || state.held || state.view === 'map') return false;
     if (state.clock - gunAt < GUN.cool || !gunPortal.fire(state.ship)) return false;
     gunAt = state.clock;
     heard();
@@ -3720,7 +3721,7 @@ export async function create(canvas, ctx) {
     gunPortal.shut();
     if (!out) return;
     portalThrough(via, out);
-    if (out.label) state.note = { text: `Through Rick’s portal: ${out.label}, in the Central Finite Curve`, until: wall() + 4 };
+    if (out.label) state.note = { text: `Through the portal: ${out.label}, in Rick’s dimension`, until: wall() + 4 };
     emit({ type: 'event', id: 'gunThrough', sub: out.sector });
   };
 
@@ -4708,7 +4709,7 @@ export async function create(canvas, ctx) {
       footKey(e, key, onControl);
       return;
     }
-    if (key === 'p' && state.kind === 'cruiser') {
+    if (key === 'p') {
       // Rick's portal gun
       e.preventDefault();
       portalGun();
@@ -5257,7 +5258,7 @@ export async function create(canvas, ctx) {
       if (down) fire();
       ctx.invalidate();
     },
-    // the HUD's Portal button (P): Rick's portal gun, in the cruiser
+    // the HUD's Portal button (P): Rick's portal gun, in any ship
     portalGun() {
       return portalGun();
     },

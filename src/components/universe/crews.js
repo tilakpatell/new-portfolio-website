@@ -1363,6 +1363,21 @@ export const CREWS = [
         ['luke', 'Artoo, where are we?'],
         ['r2', '[Recalculating. Somewhere new. Nav computer updated.]'],
       ],
+      // a portal gun of Rick's, left in the cockpit (P: gunPortal.js)
+      portalgun: {
+        out: [
+          ['luke', 'Artoo, what is this? It was under the seat. A blaster that shoots… doors?'],
+          ['r2', '[An alarmed warble: a portal is forming ahead. It leads to another dimension.]'],
+        ],
+        home: [['luke', 'That’s enough of this place. The green door home, Artoo.']],
+      },
+      gunThrough: {
+        rickmorty: [
+          ['luke', 'Artoo… that planet’s moving. The whole thing. And look at that station.'],
+          ['r2', '[A worried trill: sensors say the Central Finite Curve. Many Ricks. Proceed with caution.]'],
+        ],
+        main: [['luke', 'We’re back. Artoo, remind me never to touch that thing again.']],
+      },
       leviathan: [
         ['luke', 'Artoo, look at the size of them. Purrgil. I’ve only heard stories.'],
         ['r2', '[Purrgil pod. Hold your course. Let them pass.]'],
@@ -2039,6 +2054,24 @@ export const CREWS = [
         ['han', 'See? Told you. We’re… somewhere.'],
         ['chewie', '[A long, unimpressed groan.]'],
       ],
+      // a portal gun of Rick's, won in a card game (P: gunPortal.js)
+      portalgun: {
+        out: [
+          ['han', 'Won this off some old guy in a sabacc game. Says it opens a shortcut. Let’s find out.'],
+          ['chewie', '[A worried howl: that is not a blaster.]'],
+        ],
+        home: [['han', 'All right, sightseeing’s over. Door home. Punch it, Chewie.']],
+      },
+      gunThrough: {
+        rickmorty: [
+          ['chewie', '[A bewildered growl: where are we?]'],
+          ['han', 'Never seen this sector. Never seen a planet do that, either. I don’t like it.'],
+        ],
+        main: [
+          ['han', 'Home. See? I know exactly what I’m doing.'],
+          ['chewie', '[A sceptical rumble.]'],
+        ],
+      },
       leviathan: [
         ['chewie', '[An awed howl: purrgil!]'],
         ['han', 'Purrgil. Easy, Chewie. They jump to lightspeed on their own. Let’s not give them a reason.'],
@@ -2755,6 +2788,21 @@ export const CREWS = [
         ['jesse', 'Where are we, Mr. White?'],
         ['walt', 'Somewhere else, Jesse. Check the map.'],
       ],
+      // a portal gun of Rick's, left in the RV (P: gunPortal.js)
+      portalgun: {
+        out: [
+          ['jesse', 'Yo, Mr. White, there’s a green sci-fi gun in the glovebox. Some old dude with spiky hair left it at the car wash.'],
+          ['walt', 'Then point it ahead of us, Jesse. Carefully. Let’s see what it does.'],
+        ],
+        home: [['walt', 'We’ve seen enough. Open it again, Jesse. We’re going home.']],
+      },
+      gunThrough: {
+        rickmorty: [
+          ['jesse', 'Yo, yo, yo… where are we? That planet is moving, Mr. White!'],
+          ['walt', 'Another dimension, Jesse. Stay in the RV. Touch nothing.'],
+        ],
+        main: [['jesse', 'Okay. Okay, we’re back. I’m never touching that gun again, yo.']],
+      },
       leviathan: {
         bear: [
           ['jesse', 'Mr. White… it’s the bear. The pink bear. The one with the eye.'],
