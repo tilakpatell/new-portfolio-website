@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { prefersReducedMotion } from '../lib/hooks';
 import { use3D } from '../lib/gpu';
-import { T, holdStart, jumpHeld } from './hyperspace3d/timeline';
+import { T, clampStart, holdStart, jumpHeld } from './hyperspace3d/timeline';
 import { jumpFailed, jumpScene, preloadJump } from './hyperspace3d/load';
 import Hyperspace3D from './hyperspace3d/Hyperspace3D';
 
@@ -182,6 +182,7 @@ function Hyperspace2D({ onPeak, onDone, entry }) {
 
     const frame = (now) => {
       if (!start) start = now - (entry ? T.drift : 0);
+      else start = clampStart(start, last, now); // (a frame that came late: the jump waits where it was)
       start = holdStart(now, start); // (held in the tunnel while the galaxy builds its next system)
       const t = now - start;
       const dt = last ? Math.min(0.05, (now - last) / 1000) : 0.016;

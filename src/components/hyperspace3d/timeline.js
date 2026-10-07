@@ -62,3 +62,28 @@ export function holdJump(most = 60000) {
   return letGo;
 }
 export const holdStart = (now, start) => (holds > 0 && now - start > HOLD_AT ? now - HOLD_AT : start);
+
+// A hold one page takes and the next lets go: the universe map's jump into
+// the galaxy (pages/Universe.jsx) holds the tunnel until the galaxy has
+// drawn its first frame, so the jump clears onto the galaxy and not onto
+// its loading line (galaxy/GalaxyView.jsx lets it go then, or as soon as
+// the galaxy won't draw, or when its page goes; it lets go on its own after
+// `most` ms if nothing does). handJump(most) holds it (a second takes the
+// place of the first); letHandedGo() lets it go, harmless with none held.
+let handed = null;
+export function handJump(most = 8000) {
+  handed?.();
+  handed = holdJump(most);
+}
+export function letHandedGo() {
+  const go = handed;
+  handed = null;
+  go?.();
+}
+
+// A running jump's start, so a frame that comes late moves its clock on by
+// `most` ms at most: starved of frames (the page busy building what comes
+// next), a jump on the wall's clock skipped its tunnel and cleared out at
+// once; this way it waits where it was. (Its sound is on the wall's clock,
+// so a long stall can put the boom a little off the flash.)
+export const clampStart = (start, lastNow, now, most = 50) => start + Math.max(0, now - lastNow - most);
