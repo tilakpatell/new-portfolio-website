@@ -48,8 +48,15 @@ export const CREW = {
   aqualish: { url: '/models/galaxy/crew/aqualish.glb', tall: 1.8 },
   wuher: { url: '/models/galaxy/crew/wuher.glb', tall: 1.78 },
   mustafarian: { url: '/models/galaxy/crew/mustafarian.glb', tall: 2.0 },
-  // (the temple's knights alternate two faces)
-  jedi: { url: '/models/galaxy/crew/jedi.glb', tall: 1.75, faces: [{ url: '/models/galaxy/crew/jedi2.glb', tall: 1.8 }] },
+  // (the temple's knights take three faces in turn)
+  jedi: {
+    url: '/models/galaxy/crew/jedi.glb',
+    tall: 1.75,
+    faces: [
+      { url: '/models/galaxy/crew/jedi2.glb', tall: 1.8 },
+      { url: '/models/galaxy/crew/jedi3.glb', tall: 1.78 },
+    ],
+  },
   // and the galaxy's who's who, for the worlds and heroes to come
   maul: { url: '/models/galaxy/crew/maul.glb', tall: 1.75 },
   palpatine: { url: '/models/galaxy/crew/palpatine.glb', tall: 1.73 },

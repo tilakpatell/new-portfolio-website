@@ -11,7 +11,7 @@ describe('the surfaces’ crew', () => {
   });
 
   it('gives a kind with other faces each of them in turn', () => {
-    expect([0, 1, 2].map((i) => fileOf(faceOf(CREW.jedi, i)))).toEqual(['/models/galaxy/crew/jedi.glb', '/models/galaxy/crew/jedi2.glb', '/models/galaxy/crew/jedi.glb']);
+    expect([0, 1, 2, 3].map((i) => fileOf(faceOf(CREW.jedi, i)))).toEqual(['/models/galaxy/crew/jedi.glb', '/models/galaxy/crew/jedi2.glb', '/models/galaxy/crew/jedi3.glb', '/models/galaxy/crew/jedi.glb']);
     expect(faceOf(CREW.han, 3)).toBe(CREW.han);
   });
 

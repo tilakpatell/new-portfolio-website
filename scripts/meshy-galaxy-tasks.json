@@ -243,5 +243,10 @@
     "image": "01a116b5-003d-73a3-946e-2e650cd495ed",
     "model": "01a116b7-6993-7287-8da6-04729d7fe42f",
     "rig": "01a116b9-b4dc-76a9-8cc3-aa1c7f289f7d"
+  },
+  "jedi3": {
+    "image": "01a116cb-ca09-712d-88c0-3ac289be230d",
+    "model": "01a116cd-57ef-7515-9ca6-c1cac31fe20b",
+    "rig": "01a116d3-12ce-77e9-8980-b3c45000b94e"
   }
 }

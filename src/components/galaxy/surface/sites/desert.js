@@ -234,7 +234,8 @@ export const SITES = {
           falcon: [['han', 'I can’t see a thing, but I remember it. I really remember it.'], ['chewie', '(A shuddering groan.)']],
           cruiser: [['morty', 'Th-that thing has teeth, Rick! In the sand!'], ['rick', 'A thousand years of digestion, Morty. Kind of aspirational.']],
         },
-        things: [{ kind: 'sarlacc', at: [0, 0], y: 0 }],
+        // (and Jabba's skiff, hanging over its mouth, its plank out over the teeth)
+        things: [{ kind: 'sarlacc', at: [0, 0], y: 0 }, { kind: 'skiff', at: [-12, 6], y: 7, yaw: 0.5, solid: false }],
         pits: [{ at: [0, 0], r: 26, depth: 11, cone: true }],
       },
       {
