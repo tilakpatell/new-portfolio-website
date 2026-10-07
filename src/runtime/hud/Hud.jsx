@@ -37,8 +37,8 @@ export default function Hud({ brand = null, tools = null, foot = null, thumbs = 
         touch,
         order,
         buttonsBottom: t?.height ? t.bottom - box.top : 0,
-        thumbsHeight: thumbsRef.current?.offsetHeight ?? 0,
-        footHeight: footRef.current?.offsetHeight ?? 0,
+        thumbsHeight: inner(thumbsRef.current),
+        footHeight: inner(footRef.current),
         safeBottom: safe,
       });
       el.style.setProperty('--hud-under', `${rows.top}px`);
@@ -70,4 +70,12 @@ export default function Hud({ brand = null, tools = null, foot = null, thumbs = 
       )}
     </div>
   );
+}
+
+// a row's own height, without the padding the frame sets on it (so a row
+// moved up by the other never moves the other back)
+function inner(n) {
+  if (!n?.offsetHeight) return 0;
+  const cs = getComputedStyle(n);
+  return Math.max(0, n.offsetHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom));
 }
