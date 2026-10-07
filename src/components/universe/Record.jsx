@@ -3,6 +3,7 @@ import { useEconomy } from './EconomyProvider';
 import { LEVELS } from './economy';
 import { RANKS } from '../galaxy/ranks';
 import { SIDES as WAR_SIDES, WARS } from '../galaxy/sides';
+import './record.css';
 
 // The flight record: what you've become, everywhere at once (economy.js's
 // record, and pilotMarks.js's standing and oath through the provider). Your

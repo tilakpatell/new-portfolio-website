@@ -15,6 +15,11 @@ describe('which basics a page gets', () => {
     expect(briefKeyFor('/c-137/citadel')).toBe('/c-137/citadel');
   });
 
+  it('gives a Rick and Morty planet none, and not C-137’s street', () => {
+    expect(briefKeyFor('/c-137/squanch')).toBeNull();
+    expect(briefKeyFor('/c-137/purge')).toBeNull();
+  });
+
   it('gives none to the site’s own pages, the map or a mission briefing', () => {
     for (const p of ['/', '/home', '/universe', '/universe/marvel', '/terminal', '/projects/gameboy', '/galaxy/hoth/mission', '/nowhere']) expect(briefKeyFor(p), p).toBeNull();
   });

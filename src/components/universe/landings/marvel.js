@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { box, part } from '../../galaxy/surface/kit';
 import { buildQuinjet, canopyGeometry, coniferGeometry } from '../../avengers/compound/models';
 import { loadPerson, person } from '../../avengers/world/people';
+import { faceStep } from './face';
 import { AVENGERS_MODELS } from '../../avengers/people/models';
 import { sharpen } from '../../../lib/three/textures';
 
@@ -144,13 +145,28 @@ export const PROPS = {
     };
   },
 
-  // one of the team, at their real height, idling (Thor, the Hulk, Natasha, the Iron Man armour)
+  // one of the team, at their real height, idling (Thor, the Hulk, Natasha,
+  // the Iron Man armour): each from its own moment of its idle, and turned
+  // to you as you come up (people.js's faceStep; the armour stands as it is)
   async hero(k, { who = 'thor' } = {}) {
     const template = await loadPerson(AVENGERS_MODELS[who]);
     const p = person(template);
-    p.play('idle', { speed: 0.9 });
+    const idle = p.actions.idle?.getClip().duration ?? 0;
+    p.play('idle', { speed: 0.9, from: idle ? Math.random() * idle : 0 });
     p.root.userData.shared = true; // (its geometry and textures are the loader's cache's)
-    return { object: p.root, solids: [{ circle: [0, 0, who === 'hulk' ? 0.7 : 0.4] }], update: (t, dt) => p.update(dt) };
+    const object = new THREE.Group();
+    const turn = new THREE.Group();
+    turn.add(p.root);
+    object.add(turn);
+    const face = {};
+    return {
+      object,
+      solids: [{ circle: [0, 0, who === 'hulk' ? 0.7 : 0.4] }],
+      update(t, dt, ctx) {
+        if (who !== 'ironman') faceStep(face, object, turn, ctx, dt, { rate: who === 'hulk' ? 2 : 3 });
+        p.update(dt);
+      },
+    };
   },
 };
 
