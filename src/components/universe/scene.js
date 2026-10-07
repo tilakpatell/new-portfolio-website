@@ -2069,6 +2069,7 @@ export async function create(canvas, ctx) {
       b.position.x += d.v[0] * dt;
       b.position.y += d.v[1] * dt;
       b.position.z += d.v[2] * dt;
+      if (npcs?.count) npcWorld.stims.push({ type: 'shot', at: { x: shotFrom.x, y: shotFrom.y, z: shotFrom.z }, aim: { x: b.position.x, y: b.position.y, z: b.position.z }, radius: 160, from: 'you', loudness: 1 });
       // into someone: a pop (the big ships just take it)
       // a hunter: down, or (the tougher ones) a hit that sparks off it
       const hh = hunters?.hit(shotFrom, b.position, d.punch ?? 1) ?? farHit(shotFrom, b.position, d.punch ?? 1) ?? frontHit(shotFrom, b.position, d.punch ?? 1);
@@ -2640,6 +2641,7 @@ export async function create(canvas, ctx) {
     if (state.crash || !state.ship) return;
     if (by && state.clock < state.safeUntil) return;
     state.shield = Math.max(0, state.shield - damage * state.stats.armor); // (less, with plating fitted)
+    state.hurtNow = (state.hurtNow ?? 0) + damage; // (the director's intensity: what you've taken this frame)
     state.hitAt = state.clock;
     state.hurt = 1;
     if (!reduced) state.shake = Math.max(state.shake, 0.3);
@@ -2791,6 +2793,7 @@ export async function create(canvas, ctx) {
       }
     } else if (e.type === 'laser') {
       hurt(e.damage);
+      state.hitBy = e.by ?? null; // (the wing goes for the one that hit you last)
       // (a bomb's burst shakes the ship as a laser doesn't)
       if (e.bomb && !reduced) state.shake = Math.max(state.shake, 0.5);
     } else if (e.type === 'shot') emit(e);
@@ -2988,7 +2991,7 @@ export async function create(canvas, ctx) {
         if (kind) wingmen.join(kind, live, many >= 4 ? 3 : 2);
       }
     }
-    const r = wingmen.update(dt, t, live, wingTargets);
+    const r = wingmen.update(dt, t, live, wingTargets, { grudge: state.hitBy ?? null });
     for (const h of r.hits) {
       // (only a kill goes off: there's one burst for the whole map, and
       // the wing's hits mustn't cut short your own)
@@ -3011,7 +3014,7 @@ export async function create(canvas, ctx) {
   // where they hit, and one that's the wing's or the hunt's is handed over
   const NPC_EVERY = [85, 150]; // seconds between them
   const STATIONS = PLANETS.map((p) => ({ id: p.id, at: { x: p.at[0], y: p.at[1], z: p.at[2] }, r: p.r }));
-  const npcWorld = { you: null, hunters: [], stations: STATIONS, solids: SOLIDS, next: null, heat: 0, shield: 100 };
+  const npcWorld = { you: null, hunters: [], stations: STATIONS, solids: SOLIDS, next: null, heat: 0, shield: 100, stims: [] }; // (stims: your shots this frame, heard by the characters, and dodged by a nemesis they're aimed at)
   const meet = (dt, t, live) => {
     const side = sideFor(state.kind);
     if (live && side && !npcs.count && state.clock > state.npcAt && !hunters.count && !skirmishes?.active && !pieces.destroyerHere && !leviathans.busy && state.view !== 'map') {
@@ -3033,7 +3036,9 @@ export async function create(canvas, ctx) {
     npcWorld.friend = standing.friend;
     // (what's coming next, picked now, only while there's someone to tell you)
     npcWorld.next = live && npcs.live.some((m) => tells(m.npc.brain)) ? director.foretell(side) : null;
-    for (const e of npcs.update(dt, t, npcWorld)) {
+    const npcEvents = npcs.update(dt, t, npcWorld);
+    npcWorld.stims.length = 0;
+    for (const e of npcEvents) {
       const id = npcs.live.find((m) => m.n === e.n)?.npc.id ?? e.id;
       if (e.type === 'say') {
         emit({ type: 'npc', id: e.id, key: e.key });
@@ -3231,7 +3236,8 @@ export async function create(canvas, ctx) {
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
-        const id = director.update(dt, { side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.busy || meteors.count > 0 || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
+        const id = director.update(dt, { hurt: state.hurtNow ?? 0, side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.busy || meteors.count > 0 || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
+        state.hurtNow = 0;
         if (id) happen(id, live);
         // the drive comes back once they're off you (or have had their go)
         if (state.interdicted && (!hunters.active || state.clock - state.interdictAt > INTERDICT)) state.interdicted = false;
