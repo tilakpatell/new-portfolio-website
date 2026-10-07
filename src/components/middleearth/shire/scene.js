@@ -20,7 +20,7 @@ import { createHouse } from '../../../lib/three/house';
 import { pose } from '../mapFigures';
 import { createShireKit } from './props';
 import { loadDoorLeaf } from './models';
-import { instances, makeFlowers, makeGrass, makeTerrain, makeWater, swaying } from './ground';
+import { instances, makeFlowers, makeGrass, makeTerrain, makeWater, shireGroundMap, swaying } from './ground';
 import { FIGURE, groundTown } from '../towns/grounded';
 import { makeAtmosphere, makeSky } from './sky';
 import { createFx } from './fx';
@@ -113,7 +113,11 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water: water.material, stage, house });
 
   // ── the ground ──
-  const terrain = makeTerrain(renderer, { seg: tier === 'high' ? 220 : tier === 'mid' ? 160 : 110 });
+  // (one map of its colour, its grass and its height: the ground, the grass
+  // and the light it bounces up onto everything low all read it)
+  const groundMap = shireGroundMap({ size: tier === 'high' ? 512 : tier === 'mid' ? 384 : 256 });
+  house.ground(groundMap);
+  const terrain = makeTerrain(renderer, { seg: tier === 'high' ? 220 : tier === 'mid' ? 160 : 110, map: groundMap });
   outdoors.add(terrain);
   const wind = { uWind: { value: 0 } };
   outdoors.add(makeGrass(Math.round(21000 * many), wind));
@@ -838,7 +842,8 @@ export function createShireWorld(canvas, { onLost } = {}) {
   };
 
   // ── the floor's light, baked when the Shire is first drawn outdoors ──
-  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height: groundY, people: movers, skip: [sky.dome, ghosts.group, water.group], tier, radius: WORLD.radius + 10, shade: 0x2c3018, matcap: [rimTrees] });
+  // (its bounce off: the house look's, from the ground map, is the bounce)
+  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height: groundY, people: movers, skip: [sky.dome, ghosts.group, water.group], tier, radius: WORLD.radius + 10, shade: 0x2c3018, matcap: [rimTrees], bounce: false });
   // (last, over the floor light's own tints: one shadow colour everywhere)
   house.adopt(scene);
 
@@ -862,6 +867,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     dispose() {
       gone = true;
       ground.dispose();
+      groundMap.dispose();
       ghosts.dispose();
       stage.dispose();
     },

@@ -18,9 +18,15 @@
 //     the view ray (the horizon below, a horizon-to-zenith gradient above,
 //     the sun's halo), so far ground melts into the sky exactly.
 //
+//   - with a ground map (lib/three/groundmap, `ground(map)`), the light the
+//     ground bounces up: low, downward faces take the colour of the ground
+//     under them into their albedo, by how near it they are, so nothing
+//     floats over it (Bruno's light bounce, 1.5 m deep).
+//
 //   createHouse(look) → { uniforms, toneMapping, exposure, material(opts), adopt(root),
-//     set(look), light({ sun, hemi }), sky({ low, high, below, sunDir, halo }) }
-//   houseShader(shader, { fog }, chunks) → { vertexShader, fragmentShader, swapped }
+//     set(look), light({ sun, hemi }), sky({ low, high, below, sunDir, halo }),
+//     ground(map, { height, strength, offset }) }
+//   houseShader(shader, { fog, ground }, chunks) → { vertexShader, fragmentShader, swapped }
 //
 // A look: { shadow, edge: [from, to], mix, fogLow, fogHigh, fogBelow, halo,
 // fogMix, exposure }. All the materials of one world share one set of uniforms, so a
@@ -29,6 +35,7 @@
 // replaces their tints, and one shadow colour reaches everything.
 
 import * as THREE from 'three';
+import { GROUND_GLSL } from './groundmap';
 
 export const LOOK = {
   shadow: 0x9d93c4, // the albedo times this, in full shade (sRGB)
@@ -84,21 +91,53 @@ const FOG_SKY = `{
 		gl_FragColor.rgb = mix( gl_FragColor.rgb, mix(fogColor, houseSky(lkDir), uLookFogMix), fogFactor );
 	}`;
 
+// the bounce: the world position and normal of each point (instancing
+// included), and the ground's colour mixed into the albedo before any light
+const BOUNCE_VS = (nrm) => `
+{
+  vec4 lp = vec4(transformed, 1.0);
+  vec3 ln = ${nrm};
+  #ifdef USE_INSTANCING
+    lp = instanceMatrix * lp;
+    ln = mat3(instanceMatrix) * ln;
+  #endif
+  vLookPos = (modelMatrix * lp).xyz;
+  vLookN = mat3(modelMatrix) * ln;
+}`;
+const BOUNCE_FS = /* glsl */ `
+{
+  vec2 lkUv = (vLookPos.xz - uGroundRect.xy) * uGroundRect.zw;
+  if (lkUv.x > 0.0 && lkUv.y > 0.0 && lkUv.x < 1.0 && lkUv.y < 1.0) {
+    float lkNear = pow(clamp(1.0 - (vLookPos.y - groundHeight(vLookPos.xz)) / uLookBounce.x, 0.0, 1.0), 2.0) * uLookBounce.y;
+    float lkDown = clamp((-normalize(vLookN).y + uLookBounce.z) * 1.5, 0.0, 1.0);
+    diffuseColor.rgb = mix(diffuseColor.rgb, groundColour(vLookPos.xz), lkNear * lkDown);
+  }
+}`;
+
 // The rewrite of a lit material's shaders, as pure strings. `chunks` is
 // three's ShaderChunk (passed in so this can be tested with stubs). A part
 // whose line isn't where this expects it (another three version) is left
 // out, and says so in `swapped`.
-export function houseShader({ vertexShader, fragmentShader }, { fog = true } = {}, chunks = THREE.ShaderChunk) {
-  const swapped = { look: false, fog: false };
+export function houseShader({ vertexShader, fragmentShader }, { fog = true, ground = false } = {}, chunks = THREE.ShaderChunk) {
+  const swapped = { look: false, fog: false, ground: false };
   if (!fragmentShader.includes('#include <opaque_fragment>')) return { vertexShader, fragmentShader, swapped };
+  let vs = vertexShader;
   let fs = fragmentShader.replace('#include <common>', `#include <common>\n${PARS}`).replace('#include <opaque_fragment>', `${LOOK_GLSL}#include <opaque_fragment>`);
   swapped.look = true;
+  if (ground && vs.includes('#include <project_vertex>') && fs.includes('#include <color_fragment>')) {
+    const nrm = vs.includes('#include <beginnormal_vertex>') ? 'objectNormal' : 'normal';
+    vs = vs.replace('#include <common>', '#include <common>\nvarying vec3 vLookPos;\nvarying vec3 vLookN;').replace('#include <project_vertex>', `#include <project_vertex>${BOUNCE_VS(nrm)}`);
+    // (a floor painted by the map has its functions already)
+    const decl = `varying vec3 vLookPos;\nvarying vec3 vLookN;\nuniform vec3 uLookBounce;\n${fs.includes('uniform sampler2D uGroundMap;') ? '' : GROUND_GLSL}`;
+    fs = fs.replace('#include <common>', `#include <common>\n${decl}`).replace('#include <color_fragment>', `#include <color_fragment>${BOUNCE_FS}`);
+    swapped.ground = true;
+  }
   const chunk = chunks.fog_fragment;
   if (fog && typeof chunk === 'string' && chunk.includes(FOG_LINE) && fs.includes('#include <fog_fragment>')) {
     fs = fs.replace('#include <fog_fragment>', chunk.replace(FOG_LINE, FOG_SKY));
     swapped.fog = true;
   }
-  return { vertexShader, fragmentShader: fs, swapped };
+  return { vertexShader: vs, fragmentShader: fs, swapped };
 }
 
 const LIT = (m) => Boolean(m && (m.isMeshStandardMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial || m.isMeshToonMaterial));
@@ -116,7 +155,10 @@ export function createHouse(look = {}) {
     uLookSunDir: { value: new THREE.Vector3(0, 1, 0) },
     uLookHalo: { value: new THREE.Color() },
     uLookFogMix: { value: 1 },
+    uLookBounce: { value: new THREE.Vector3(1.5, 0.5, 0.6) },
   };
+  let grounded = false;
+  const patched = new Set();
 
   const set = (o = {}) => {
     const u = uniforms;
@@ -138,13 +180,14 @@ export function createHouse(look = {}) {
     m.onBeforeCompile = (sh, r) => {
       before?.call(m, sh, r);
       Object.assign(sh.uniforms, uniforms);
-      const out = houseShader(sh);
+      const out = houseShader(sh, { ground: grounded });
       sh.vertexShader = out.vertexShader;
       sh.fragmentShader = out.fragmentShader;
     };
     const key = m.customProgramCacheKey;
-    m.customProgramCacheKey = () => `${key ? key.call(m) : ''}|house`;
+    m.customProgramCacheKey = () => `${key ? key.call(m) : ''}|house${grounded ? ':ground' : ''}`;
     m.userData.house = uniforms;
+    patched.add(m);
     m.needsUpdate = true;
     return true;
   };
@@ -182,6 +225,16 @@ export function createHouse(look = {}) {
       if (ambient) ref.add(tmp.copy(ambient.color).multiplyScalar(ambient.intensity));
       ref.multiplyScalar(1 / Math.PI);
       ref.setRGB(Math.max(ref.r, 1e-3), Math.max(ref.g, 1e-3), Math.max(ref.b, 1e-3));
+    },
+    // the world's ground map (lib/three/groundmap): its colour bounces up
+    // onto everything low that faces down, `height` metres deep, at most
+    // `strength`, from faces `offset` short of level. Every material in the
+    // look compiles with it from then on (those already made, again).
+    ground(map, { height = 1.5, strength = 0.5, offset = 0.6 } = {}) {
+      Object.assign(uniforms, map.uniforms);
+      uniforms.uLookBounce.value.set(height, strength, offset);
+      grounded = true;
+      for (const m of patched) m.needsUpdate = true;
     },
     // the sky the fog is coloured by: its horizon, its zenith, how the haze
     // below the horizon compares, the direction to the sun and its glow
