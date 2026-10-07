@@ -65,7 +65,7 @@ export function createRunners(k, runners) {
     },
     // the battle's own decide it: enough of them out, or all of them down (events from `from` on: this step's)
     judge(out, from) {
-      if (!run || b.over) return;
+      if (!run || b.over || k.decides === false) return;
       for (let i = from; i < out.length; i++) if (out[i].type === 'escaped' && out[i].team === run.team) run.out += 1;
       if (run.out >= run.need) k.finish(run.team, 'runners', out);
       else if (run.launched >= run.count && !b.runners.some((r) => r.alive && r.team === run.team)) k.finish(1 - run.team, 'runners', out);

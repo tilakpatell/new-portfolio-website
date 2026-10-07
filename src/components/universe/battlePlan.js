@@ -22,8 +22,12 @@
 //
 // planFor({ id, kind, attacker, objectivesOn, runners, length }) → { id,
 //   kind, length, attacker, defender, ai: { tAi }, stages: [{ id, type,
-//   need?, opensAt, shields?, why?, objectives: [{ id, type, kind, hp, on }]
-//   }], runners, side: [], losses: [] }
+//   need?, opensAt, shields?, why?, breaks?, objectives: [{ id, type, kind,
+//   hp, on }] }], runners, side: [], losses: [] }
+// (`shields`: the objective ship's shield stands while the stage does;
+// `why`: the battle's end, said, when the last stage goes; `breaks`: the
+// objective ship breaks up when it does; `on`: where the objective is, a
+// subsystem of the objective ship's ({ sub }))
 // `runners`: layBattle's ({ team, kind, size, hp, count, need, speed, from,
 // to }), or null. runnerSchedule({ count, need, duration, length }) →
 // { startAt, every }.
@@ -57,7 +61,7 @@ function chainOf(objectivesOn) {
   return [
     stage('shield', 'group', PLAN.gates[0], [sub('gen-port', 'shieldgen', gens / 2), sub('gen-star', 'shieldgen', gens / 2)], { need: 2, shields: true }),
     stage('bridge', 'destroy', PLAN.gates[1], [sub('bridge', 'bridge', bridge)]),
-    stage('reactor', 'destroy', PLAN.gates[2], [sub('reactor', 'reactor', reactor)], { why: objectivesOn === 'interdictor' ? 'interdictor' : 'flagship' }),
+    stage('reactor', 'destroy', PLAN.gates[2], [sub('reactor', 'reactor', reactor)], { why: objectivesOn === 'interdictor' ? 'interdictor' : 'flagship', breaks: true }),
   ];
 }
 
