@@ -78,12 +78,13 @@
 // battleAt(state, id, ms) → { id, war, sys, seed, attacker, defender, sides
 //   (by team: teamsOf), attackerTeam, start, fightEnd, end, fighting } or null;
 // warTable(war, ms, value) → what the holotable shows (tableOf(war, ms,
-// state), from a history); warTables(ms, value).
+// state), from a history); warTables(ms, value); scoresAt(row, side) →
+// whether a side's points count at a table row's system.
 
 import { AREAS, DOCTRINE, SIDES, WARS, WAR_IDS, sideOfCode } from './sides';
 import { systemById } from './systems';
 import { GCW, HOURS_PER_STEP, NEIGHBOURS, WAR_SYSTEMS, areaBonusOf, areaHolders, areaOf, hash, oldKey, oldWinKey, opening, pointsKey, pressureOn, seeded, supplyOf, warInfo, winKey, within, worthOf } from './gcwRules';
-import { frontPace, frontsFor, lean, orderOver, orderTarget, originOf, phaseAt, raiderOrder, soft, supplied, targetOf } from './gcwAI';
+import { frontPace, frontsFor, lean, orderOver, orderTarget, originOf, phaseAt, pointsCount, raiderOrder, soft, supplied, targetOf } from './gcwAI';
 
 // (the ground rules are gcwRules.js's; the rest of the galaxy has them from here)
 export { GCW, NEIGHBOURS, WAR_DEFAULT, WAR_SYSTEMS, areaBonusOf, areaOf, hash, opening, pointsKey, pressureOn, seeded, supplyOf, warInfo, winKey, worthOf } from './gcwRules';
@@ -335,9 +336,10 @@ function play(run, s, k, f) {
     const by = attack ? attack.by : s.fronts.includes(id) ? liberator : null;
     // (whole, with nobody after it: its own pilots can't make it more than whole)
     if (!by && control[id] >= 1) continue;
-    let fall = holder === 'hutt' ? 0 : -soft(pointsOf(value, holder, id, k));
+    // (a side's pilots count at a battle, or holding their own: gcwAI.js's pointsCount)
+    let fall = 0;
+    for (const side of players) if (pointsCount(side, holder, Boolean(by))) fall += (side === holder ? -1 : 1) * soft(pointsOf(value, side, id, k));
     if (by) {
-      for (const side of players) if (side !== holder) fall += soft(pointsOf(value, side, id, k));
       let rate;
       if (attack) rate = pressureOn(holder, attack.rate + supplyOf(id, owner, by) + areaBonusOf(id, owner, by, s.holders));
       else {
@@ -578,5 +580,10 @@ export function tableOf(war, ms, s) {
 }
 
 export const warTable = (war, ms, value = () => 0) => tableOf(war, ms, history(war, campaignAt(ms).n, ms, value));
+
+// whether a side's points count at a system, as its warTable row has it (at a
+// battle, or at its own system: what history counts), so nothing posts points
+// that would only fill the tally
+export const scoresAt = (row, side) => pointsCount(side, row.owner, Boolean(row.battle));
 
 export const warTables = (ms, value = () => 0) => Object.fromEntries(WAR_IDS.map((war) => [war, warTable(war, ms, value)]));

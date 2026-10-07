@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TALLY, createTally, readTally } from '../universe/tally';
-import { GCW, NEIGHBOURS, WAR_SYSTEMS, areaBonusOf, pressureOn, areaOf, battleAt, campaignAt, campaignRun, history, opening, pointsKey, readKey, runAt, seeded, supplyOf, warTable, warTables, winKey, worthOf } from './gcw';
+import { GCW, NEIGHBOURS, WAR_SYSTEMS, areaBonusOf, pressureOn, areaOf, battleAt, campaignAt, campaignRun, history, opening, pointsKey, readKey, runAt, scoresAt, seeded, supplyOf, warTable, warTables, winKey, worthOf } from './gcw';
 import { frontPace, lean, orderOver, supplied } from './gcwAI';
 import { AREAS, DOCTRINE, WARS, WAR_IDS } from './sides';
 import { LANES, systemById } from './systems';
@@ -729,6 +729,19 @@ describe('warTable', () => {
         expect(r.decisive).toBe(false);
       }
     }
+  });
+  it('says where a side’s points count, as history counts them: at a battle, or at its own systems', () => {
+    const ms = at(0, 30 * 60e3);
+    const k = stepAt(ms);
+    const t = warTable('gcw', ms, none);
+    const before = history('gcw', 0, ms, none);
+    for (const row of t.systems)
+      for (const side of ['rebel', 'empire']) {
+        expect(scoresAt(row, side), `${row.id} ${side}`).toBe(Boolean(row.battle) || row.owner === side);
+        // (and where they don't, history doesn't move for them)
+        if (!scoresAt(row, side)) expect(history('gcw', 0, ms, (key) => (key === pointsKey(side, row.id, k) ? 30 : 0)).control[row.id]).toBe(before.control[row.id]);
+      }
+    expect(t.systems.some((row) => !scoresAt(row, 'rebel'))).toBe(true);
   });
   it('warTables gives all three wars', () => {
     const t = warTables(at(0, H), none);
