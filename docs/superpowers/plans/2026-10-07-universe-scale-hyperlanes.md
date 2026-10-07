@@ -182,8 +182,8 @@ Branch `claude/universe-spread` from `origin/main`. Touches none of Lane B’s f
 
 **Files:** Modify `scene.js` (`happen`: `interdiction` places the side’s capital (`setpieces.js`’s destroyer, the Council’s cruisers, the roadblock) across the carriageway `600` units ahead and sets `state.ride = null` with the dropped-out speed (the gravity well), the existing `destroyer`/`council`/`roadblock` fight following; `lanejam` is `minefield.js`’s band placed across the carriageway `900` ahead; `ambush` is `hunt` with `entryPoint`’s `from` at the ride’s end node; `convoy` on a lane is a flow convoy you overtake, no spawn), `minefield.js` (`bandAcross(pts, s, r)` for a lane), `minefield.test.js`, `hunterRules.js` (`entryPoint` accepts `{ at }`: the pack comes in round that point, never inside a solid), `hunterRules.test.js`.
 
-- [ ] **Step 1: Write the failing tests:** `bandAcross` returns mines within `R × 1.3` of the carriageway at `s` and none inside a solid; `entryPoint` with `at` puts every hunter within 40 of it and outside every solid.
-- [ ] **Step 2: Fail. Step 3: Implement. Step 4:** browser: `window.__universe().soon('interdiction')` mid-ride drops the ship out before a Star Destroyer; `soon('ambush')` ends a ride in a fight at the ramp. **Commit.**
+- [x] **Step 1: Write the failing tests:** `bandAcross` returns mines within `R × 1.3` of the carriageway at `s` and none inside a solid; `entryPoint` with `at` puts every hunter within 40 of it and outside every solid.
+- [x] **Step 2: Fail. Step 3: Implement. Step 4:** browser: `window.__universe().soon('interdiction')` mid-ride drops the ship out before a Star Destroyer; `soon('ambush')` ends a ride in a fight at the ramp. **Commit.**
 
 ### Task 3: far fights and the fronts
 
