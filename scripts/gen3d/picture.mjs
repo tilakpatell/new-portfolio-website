@@ -6,7 +6,7 @@
 //   picture(prompt, out, opts) → { out, seconds }
 
 import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { live, localDir } from '../desktop/lib.mjs';
 
@@ -26,7 +26,11 @@ export const ready = (name) => existsSync(SDCPP.exe) && existsSync(SDCPP[name].m
 // clean cut-out: TRELLIS.2 was trained on renders like this.
 export const prompt = (subject) => `${subject}, a single object centred on a plain pure white background, front three-quarter view from slightly above, even soft studio lighting, sharp detail, physically based materials, no text, no watermark, no shadow on the ground`;
 
+// GEN3D_PICTURE=fake: the contract tests' stand-in (scripts/ai-e2e/fakes/picture.mjs), a grey box on white marked by the seed
+const FAKE = join(dirname(fileURLToPath(import.meta.url)), '..', 'ai-e2e', 'fakes', 'picture.mjs');
+
 export function command(subject, out, { seed = 42, size = 1024, steps, model = ready('flux') ? 'flux' : 'zimage' } = {}) {
+  if (process.env.GEN3D_PICTURE === 'fake') return [process.execPath, FAKE, out, '--seed', String(seed), '--size', String(size)];
   if (!ready(model)) return null;
   const m = SDCPP[model];
   const encoders = model === 'flux' ? ['--clip_l', m.clip, '--t5xxl', m.t5] : ['--llm', m.llm];

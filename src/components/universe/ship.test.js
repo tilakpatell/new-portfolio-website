@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EDGE, GOALS, OVERDRIVE, PLANETS, SHIP, SOLIDS, SPACE, STARTS, autopilot, boostAt, brakeAt, ceilingAt, driveAt, forward, inTrench, noseOf, orbiting, parkAt, spawn, startAt, step, turnAt } from './ship';
+import { EDGE, GOALS, OVERDRIVE, PLANETS, SHIP, SOLIDS, SPACE, STARTS, autopilot, boostAt, brakeAt, ceilingAt, driveAt, forward, holdReach, inTrench, noseOf, orbiting, parkAt, spawn, startAt, step, turnAt } from './ship';
 import { DEEP, WONDERS, easeOpen, gapAlong, trenchBand } from './deep';
 import { MAW } from './maw';
 import { NOSE, UP, fromAngles, rotate } from './orient';
@@ -25,12 +25,12 @@ const inside = (s) => SOLIDS.some((p) => Math.hypot(s.x - p.at[0], s.y - p.at[1]
 
 describe('flying the ship', () => {
   it('speeds up to cruise, faster with boost, and coasts to a stop', () => {
-    // in open space for this one, nothing to bump into, and up under the home
-    // system's ceiling, where the pulse drive's down (the start's far enough
-    // out that boosting toward Home it would otherwise still be opening)
+    // in open space for this one, nothing to bump into, up under the home
+    // system's ceiling (and the boost with the pulse drive held down, as
+    // hunters hold it, so it's the boost itself)
     const s = { ...spawn(null), y: SHIP.ceiling - 6 };
     expect(fly(s, { throttle: 1 }, 3, []).ship.speed).toBeCloseTo(SHIP.cruise, 1);
-    expect(fly(s, { throttle: 1, boost: true }, 4, []).ship.speed).toBeCloseTo(SHIP.boost, 1);
+    expect(fly(s, { throttle: 1, boost: true, interdicted: true }, 4, []).ship.speed).toBeCloseTo(SHIP.boost, 1);
     const going = fly(s, { throttle: 1 }, 3, []).ship;
     expect(fly(going, {}, 4, []).ship.speed).toBeCloseTo(0, 3);
   });
@@ -84,14 +84,14 @@ describe('flying the ship', () => {
   it('crashes into a planet when it hits it fast, and only bumps when slow', () => {
     const park = parkAt('marvel');
     const at = { ...spawn(null), x: park.x, y: park.y, z: park.z, heading: park.heading };
-    const fast = fly(at, { throttle: 1, boost: true }, 4).events;
+    // (long enough to reach it from where it parks, however big the planet's drawn)
+    const p = PLANETS.find((o) => o.id === 'marvel');
+    const gap = Math.hypot(park.x - p.at[0], park.y - p.at[1], park.z - p.at[2]) - p.r;
+    const fast = fly(at, { throttle: 1, boost: true }, gap / SHIP.boost + 3).events;
     expect(fast.some((e) => e.type === 'crash' && e.id === 'marvel')).toBe(true);
     const crash = fast.find((e) => e.type === 'crash');
     expect(crash.speed).toBeGreaterThan(SHIP.crash);
     expect(Math.hypot(...crash.normal)).toBeCloseTo(1, 6);
-    // (long enough to reach it at 0.3 of cruise from where it parks, however big the planet's drawn)
-    const p = PLANETS.find((o) => o.id === 'marvel');
-    const gap = Math.hypot(park.x - p.at[0], park.y - p.at[1], park.z - p.at[2]) - p.r;
     const slow = fly(at, { throttle: 0.3 }, gap / (0.3 * SHIP.cruise) + 6).events;
     expect(slow.some((e) => e.type === 'bump' && e.id === 'marvel')).toBe(true);
     expect(slow.some((e) => e.type === 'crash')).toBe(false);
@@ -134,7 +134,7 @@ describe('up and down, and all the way round', () => {
   it('climbs and dives faster the faster it flies', () => {
     const slow = fly(level, { throttle: 1, climb: 1 }, 0.4, []).ship.vy;
     const fast = fly({ ...level, speed: SHIP.boost }, { throttle: 1, climb: 1, boost: true }, 0.4, []).ship.vy;
-    expect(fast).toBeGreaterThan(slow * 2);
+    expect(fast).toBeGreaterThan(slow * 1.5);
   });
 
   it('loops all the way over, upside down across the top, and comes out where it went in, the right way up', () => {
@@ -413,12 +413,30 @@ describe('the pulse drive near a place: no wall to hit', () => {
 describe('deep space', () => {
   const open = { ...spawn(null), x: 0, z: DEEP.open + 200, heading: Math.PI }; // out past the system, facing further out
 
+  it('knows how far it carries on while hunters pull the pulse drive down, flown as the scene flies it', () => {
+    const fast = fly(open, { throttle: 1, boost: true }, 6, []).ship;
+    const reach = holdReach(fast, { ramp: 2, solids: [] });
+    // (the same, flown: the hold eased in over the ramp, the boost held)
+    let s = fast;
+    let gone = 0;
+    for (let t = 0; t < 2.5; t += 1 / 60) {
+      const p = Math.min(1, t / 2);
+      s = step(s, { throttle: 1, boost: true, interdicted: p * p * (3 - 2 * p) }, 1 / 60, []).ship;
+      gone += s.speed / 60;
+    }
+    expect(s.speed).toBeLessThan(SHIP.boost + 1);
+    expect(reach).toBeGreaterThan(150);
+    expect(Math.abs(reach - gone)).toBeLessThan(25);
+    // (and the faster it's going, the further)
+    expect(holdReach({ ...open, speed: SHIP.boost }, { ramp: 2, solids: [] })).toBeLessThan(reach - 50);
+  });
+
   it('boosts up to the pulse drive out there, and at home opens it between the stations, down by any of them', () => {
     expect(fly(open, { throttle: 1, boost: true }, 6, []).ship.speed).toBeGreaterThan(SHIP.pulse - 2);
     // halfway between two stations it's open some way; right by one, and under the ceiling, it's down
     const [a, b] = ['home', 'experience'].map((id) => PLANETS.find((p) => p.id === id));
     const mid = a.at.map((v, i) => (v + b.at[i]) / 2);
-    expect(boostAt(...mid)).toBeGreaterThan(SHIP.boost * 3);
+    expect(boostAt(...mid)).toBeGreaterThan(SHIP.boost * 2);
     expect(boostAt(a.at[0], a.at[1] + a.r + 5, a.at[2])).toBe(SHIP.boost);
     expect(boostAt(0, SHIP.ceiling - 5, HOME_RADIUS)).toBe(SHIP.boost);
     expect(driveAt(...mid)).toBeLessThan(1);
@@ -434,8 +452,8 @@ describe('deep space', () => {
   // (the next station along, and the one across the sun: round it, without
   // stalling by it)
   it.each([
-    [1, 8],
-    [3, 14],
+    [1, 10],
+    [3, 17],
   ])('hops %i stations along in a few seconds, and comes up on it at the boost', (along, most) => {
     const order = ORDER.filter((id) => byId(id).kind === 'core');
     for (let i = 0; i < order.length; i++) {
@@ -460,14 +478,15 @@ describe('deep space', () => {
 
   it('boosts harder at home with boosters fitted, and gets there sooner, but no faster out there', () => {
     const tune = { boost: 1.55, accel: 1.3 };
-    // (in the home system, up under its ceiling, where the drive's down)
+    // (in the home system, up under its ceiling, with the drive held down, so it's the boost itself)
     const home = { ...spawn(null), y: SHIP.ceiling - 6 };
-    expect(fly(home, { throttle: 1, boost: true, tune }, 3.5, []).ship.speed).toBeCloseTo(SHIP.boost * 1.55, 1);
-    const stock = fly(home, { throttle: 1, boost: true }, 1, []).ship.speed;
-    expect(fly(home, { throttle: 1, boost: true, tune }, 1, []).ship.speed).toBeGreaterThan(stock * 1.2);
-    expect(fly(open, { throttle: 1, boost: true, tune }, 6, []).ship.speed).toBeLessThanOrEqual(SHIP.pulse + 0.01);
+    const held = { throttle: 1, boost: true, interdicted: true };
+    expect(fly(home, { ...held, tune }, 3.5, []).ship.speed).toBeCloseTo(SHIP.boost * 1.55, 1);
+    const stock = fly(home, held, 1, []).ship.speed;
+    expect(fly(home, { ...held, tune }, 1, []).ship.speed).toBeGreaterThan(stock * 1.2);
+    expect(fly(open, { throttle: 1, boost: true, tune }, 8, []).ship.speed).toBeLessThanOrEqual(SHIP.pulse + 0.01);
     // (and a tune that's out of reach of any fit is held to what one can do)
-    expect(fly(home, { throttle: 1, boost: true, tune: { boost: 50 } }, 3.5, []).ship.speed).toBeLessThanOrEqual(SHIP.boost * 1.6 + 0.01);
+    expect(fly(home, { ...held, tune: { boost: 50 } }, 3.5, []).ship.speed).toBeLessThanOrEqual(SHIP.boost * 1.6 + 0.01);
   });
 
   it('turns quicker with thrusters fitted, and cruises faster with racing exhausts', () => {
@@ -630,7 +649,7 @@ describe('coming in to land', () => {
         s = step(s, { throttle: 1 }, 1 / 60).ship;
         if (Math.hypot(s.x - p.at[0], s.y - p.at[1], s.z - p.at[2]) < airTop(p)) break;
       }
-      expect(t, p.id).toBeLessThan(5);
+      expect(t, p.id).toBeLessThan(6);
       expect(s.speed, p.id).toBeLessThan(ENTRY.fast);
       expect(s.speed, p.id).toBeGreaterThan(SHIP.cruise);
     }

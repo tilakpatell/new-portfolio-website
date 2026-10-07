@@ -34,6 +34,12 @@ const svgLabel = (text, w) =>
 
 export async function sheet(out, files) {
   const { width, height, cells } = layout(files.length);
+  // GEN3D_SHEET=fake: a blank sheet of the right size and no browser, for the
+  // contract tests, which judge the pipeline's plumbing and not the renders
+  if (process.env.GEN3D_SHEET === 'fake') {
+    await sharp({ create: { width, height, channels: 3, background: '#111' } }).png().toFile(out);
+    return out;
+  }
   const composite = [];
   for (const [row, file] of files.entries()) {
     const shots = await shoot(file, VIEWS);

@@ -22,6 +22,8 @@
 // round, as spheres along its length ([z, radius], shares of its length;
 // the galaxy's set pieces fly round the same ones).
 
+import { paced } from './ship';
+
 const rebels = {
   id: 'rebels',
   name: 'Rebel Alliance',
@@ -225,7 +227,8 @@ export const warFor = (sideId) => (sideId && Object.hasOwn(WARS, sideId) ? WARS[
 // three]), range (how far it opens fire), cone (radians: how near its nose
 // must be), damage (a bolt's), and for a bomber its torpedoes (seconds
 // between runs' shots: `reload`)
-const F = (o) => ({ accel: o.speed * 0.8, burst: [0.12, 0.7], range: 14, cone: 0.1, damage: 1, ...o });
+// (at the ship's pace: ship.js's PACE)
+const F = (o) => paced({ accel: o.speed * 0.8, burst: [0.12, 0.7], range: 14, cone: 0.1, damage: 1, ...o });
 export const FIGHTERS = {
   // Star Wars
   xwing: F({ size: 0.36, speed: 20, turn: 2.3, hp: 5 }),

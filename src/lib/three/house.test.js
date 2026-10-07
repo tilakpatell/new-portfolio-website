@@ -90,6 +90,24 @@ describe('a world’s house', () => {
     expect(shader.userData.house).toBeUndefined();
   });
 
+  it('leaves the fog to a world that colours its own, when asked', () => {
+    const house = createHouse({ fog: false });
+    const m = new THREE.MeshLambertMaterial();
+    house.adopt(new THREE.Mesh(new THREE.BufferGeometry(), m));
+    const sh = compiled(m);
+    expect(sh.fragmentShader).toContain('#include <fog_fragment>');
+    expect(sh.fragmentShader).toContain('uLookShadow');
+  });
+
+  it('takes on a copy of a material it already took, made later (the copy isn’t marked as taken)', () => {
+    const house = createHouse();
+    const m = new THREE.MeshLambertMaterial();
+    house.adopt(new THREE.Mesh(new THREE.BufferGeometry(), m));
+    const copy = m.clone();
+    expect(copy.userData.house).toBeUndefined();
+    expect(house.adopt(new THREE.Mesh(new THREE.BufferGeometry(), copy))).toBe(1);
+  });
+
   it('chains a hook the material already had, and shares one set of uniforms', () => {
     const house = createHouse();
     const m = new THREE.MeshStandardMaterial();
