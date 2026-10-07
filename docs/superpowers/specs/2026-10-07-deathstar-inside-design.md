@@ -44,7 +44,7 @@ deathstar/inside/
     stations/ds1.js, ds2.js   the room graph of each station (data)
     layout.js                 graph → walls, floors, doors, lifts, ledges, nav grid, camera rooms; validates
     walker.js                 capsule against wall segments and boxes on stacked floors; steps, ledges, falls
-    nav.js                    nav grid per level, A* with string pulling, doors and lifts as links
+    nav.js                    A* over doors and lifts, straight inside a room, round its furniture
     doors.js                  door and blast-door states; who may open; lockdown
     alarm.js                  station security by section: calm, wary, alert, lockdown, hunt, stand-down
     disguise.js               how sure the garrison is that a trooper is not a trooper
@@ -68,11 +68,11 @@ deathstar/inside/
     sounds.js                 the station’s hum, doors, lifts, alarms, blasters, sabers
 ```
 
-Shared code moves down rather than across islands: `rickmorty/portal/clips.js` (borrowClips, retarget) to `src/lib/three/clips.js` and `office/world/paths.js` (findPath) to `src/lib/ai/path.js`, each leaving a one-line re-export so their worlds don’t change. `worldAt` picks the longest match, so `/deathstar/inside` gets its own download size and phone gate.
+Shared code moves down rather than across islands: `rickmorty/portal/clips.js` (borrowClips, retarget) goes to `src/lib/three/clips.js`, leaving a one-line re-export so its world doesn’t change. Paths need no grid: rooms are convex boxes joined by doors, so a route is A* over doors and lifts with straight lines inside each room, bent round the room’s furniture. `worldAt` picks the longest match, so `/deathstar/inside` gets its own download size and phone gate.
 
 ### Rooms and streaming
 
-A station is a graph: rooms with a kind, a level, a box (or round) in metres, doors on their walls (to another room), lifts (to another level) and ledges (a drop with nothing under it). `layout.js` turns it into walls with openings, floors, door leaves, the nav grid and the camera’s rooms, and refuses a graph with unreachable rooms, unmatched doors or overlaps. Rooms are built when within two doors of you, shown when you are in them or can see them through an open door, and freed when four doors away, so only a handful exist at once.
+A station is a graph: rooms with a kind, a level, a box (or round) in metres, doors on their walls (to another room), lifts (to another level) and ledges (a drop with nothing under it). `layout.js` turns it into walls with openings, floors, door leaves and the camera’s rooms, and refuses a graph with unreachable rooms, unmatched doors or overlaps. Rooms are built when within two doors of you, shown when you are in them or can see them through an open door, and freed when four doors away, so only a handful exist at once.
 
 ### Moving, doors and lifts
 
