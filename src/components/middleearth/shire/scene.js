@@ -17,6 +17,8 @@ import { bake, dotTexture, farTree } from '../towns/bake';
 import { createGhosts } from '../towns/ghosts';
 import { budget, device } from '../../../lib/device';
 import { createHouse } from '../../../lib/three/house';
+import { dress } from '../../../lib/three/core';
+import { debugOn, debugPanel } from '../../../lib/debugPanel';
 import { pose } from '../mapFigures';
 import { createShireKit } from './props';
 import { loadDoorLeaf } from './models';
@@ -25,7 +27,9 @@ import { createGrass } from '../../../lib/three/grass';
 import { createWind } from '../../../lib/three/wind';
 import { floorShadow } from '../../../lib/three/grounding';
 import { FIGURE, groundTown } from '../towns/grounded';
-import { makeAtmosphere, makeSky } from './sky';
+import { MOODS, makeAtmosphere, makeSky } from './sky';
+import { SHIRE_CORE } from './dress';
+import { shireTuning } from './tune';
 import { createFx } from './fx';
 import { calm, dance, makePerson, sit } from './people';
 import { INSIDE, buildInside } from './inside';
@@ -131,6 +135,10 @@ export function createShireWorld(canvas, { onLost } = {}) {
 
   const kit = createShireKit(renderer);
   const mats = kit.mats ?? {};
+  // the site's core kit of surfaces on the Shire's stone, wood, plaster,
+  // bark and turf (lib/three/core): their own painted pictures folded into
+  // their colours, the same scanned grain at the same scale as every world
+  dress(mats, SHIRE_CORE, { strength: 0.4, normal: 0.8 });
   const fallback = (colour) => new THREE.MeshStandardMaterial({ color: colour, roughness: 0.9 });
   const flowerGeo = val(kit.flower);
   if (flowerGeo) outdoors.add(makeFlowers(flowerGeo, mats.flower ?? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }), Math.round(1400 * many), wind));
@@ -456,6 +464,12 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const RINGS_CAM = { at: new THREE.Vector3(), look: new THREE.Vector3() };
   const ringPoint = (u, v, out = new THREE.Vector3()) => out.set(frodoPipe.x - u, frodoPipe.y + v - 0.5, frodoPipe.z + RINGS.depth);
 
+  // the lens: narrower while walking (a diorama to frame, not a horizon to
+  // fill), the camera further back so Frodo keeps his size; the set pieces
+  // (the smoke rings, the fireworks, the hollow, Bag End) keep their 50°
+  const lens = { walk: 38, wide: 50 };
+  const lensBack = () => Math.tan((lens.wide * Math.PI) / 360) / Math.tan((lens.walk * Math.PI) / 360);
+
   // ── state ──
   const A = { t: 0, night: 0, dawn: 0, wraith: 0, shake: 0, cam: { at: V(0, 6, 8), look: V(0, 1, 0) }, mode: 'walk', last: null, smoke: 0, dogHop: [0, 0, 0], sniff: 0 };
   const tmp = new THREE.Vector3();
@@ -712,6 +726,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     // ── the camera ──
     let camAt;
     let camLook;
+    let follow = false;
     outdoors.visible = s.mode !== 'inside';
     inside.group.visible = s.mode === 'inside';
     if (s.mode === 'inside') {
@@ -742,7 +757,8 @@ export function createShireWorld(canvas, { onLost } = {}) {
     } else {
       const yaw = s.camYaw ?? 0;
       const pitch = s.camPitch ?? 0.36;
-      const dist = s.camDist ?? 6.4;
+      const dist = (s.camDist ?? 6.4) * lensBack();
+      follow = true;
       look.set(h.x, hy + 1.15, h.z);
       camAt = tmp.set(h.x + Math.sin(yaw) * Math.cos(pitch) * dist, hy + 1.15 + Math.sin(pitch) * dist, h.z + Math.cos(yaw) * Math.cos(pitch) * dist);
       // in front of anything it would be inside (a mound, a wall, a hedge),
@@ -763,6 +779,11 @@ export function createShireWorld(canvas, { onLost } = {}) {
     A.cam.at.lerp(camAt, ease);
     A.cam.look.lerp(camLook, ease);
     camera.position.copy(A.cam.at);
+    const fov = camera.fov + ((follow ? lens.walk : lens.wide) - camera.fov) * ease;
+    if (Math.abs(fov - camera.fov) > 1e-3) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
     if (A.shake > 0) {
       camera.position.x += (Math.random() - 0.5) * A.shake;
       camera.position.y += (Math.random() - 0.5) * A.shake;
@@ -861,6 +882,9 @@ export function createShireWorld(canvas, { onLost } = {}) {
   // (last, over the floor light's own tints: one shadow colour everywhere)
   house.adopt(scene);
 
+  // ?debug: the look, the grass, the wind and the lens on sliders (lib/debugPanel)
+  const panel = debugOn() ? debugPanel({ title: 'The Shire', groups: shireTuning({ house, grass, wind, lens, moods: MOODS }) }) : null;
+
   return {
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
@@ -882,6 +906,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     },
     dispose() {
       gone = true;
+      panel?.dispose();
       ground.dispose();
       grass.dispose();
       wind.dispose();
