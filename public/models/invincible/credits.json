@@ -79,5 +79,59 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "civA": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11409-9082-70ff-9471-fb5b835800aa",
+    "name": "a townsman, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "civB": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1140a-89ac-75e4-9e89-fa981ca5d08d",
+    "name": "a townswoman, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "civC": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1140b-e60b-765c-8213-26654625e3e9",
+    "name": "an older townsman, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "bank": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1140d-1abb-700a-a3a8-6f655093fabc",
+    "name": "the bank, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "heli": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1140e-3c24-73ef-b04b-2d3d38a7a7bf",
+    "name": "the news helicopter, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "truck": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1140f-1e43-7757-bc57-fb6f4b6d19b8",
+    "name": "the getaway truck, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }
