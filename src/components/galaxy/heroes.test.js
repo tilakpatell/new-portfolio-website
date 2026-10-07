@@ -1,9 +1,29 @@
 import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { HEROES, HILTS, SABER_COLORS, defaultHeroId, heroSpec, readHero, writeHero } from './heroes';
+import { HEROES, HILTS, SABER_COLORS, defaultHeroId, heroById, heroSpec, leanText, readHero, writeHero } from './heroes';
 import { GUNS } from '../universe/gunplay';
 import { RIGGED } from '../rickmorty/portal/meshyCast';
 import { ABILITIES } from './surface/abilityRules';
+
+describe('the heroes’ sides in the war', () => {
+  it('every hero leans light, dark or neither, and has a line for an assault on their side and against it', () => {
+    for (const h of HEROES) {
+      expect(['light', 'dark', null], h.id).toContain(h.lean);
+      for (const k of ['ours', 'theirs']) {
+        expect(typeof h.lines?.[k], `${h.id} ${k}`).toBe('string');
+        expect(h.lines[k].length, `${h.id} ${k}`).toBeLessThanOrEqual(120);
+        expect(h.lines[k], h.id).not.toMatch(/['"]/);
+      }
+    }
+    expect(heroById('luke').lean).toBe('light');
+    expect(heroById('bobafett').lean).toBe('dark');
+  });
+  it('says what side a hero leans to, for their card', () => {
+    expect(leanText('light')).toMatch(/\S/);
+    expect(leanText('dark')).toMatch(/\S/);
+    expect(leanText(null)).toBeNull();
+  });
+});
 
 describe('the heroes', () => {
   it('each have a rigged figure in the site, a weapon the hands know, and a word about them', () => {

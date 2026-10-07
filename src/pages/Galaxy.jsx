@@ -17,6 +17,8 @@ import surfaceModule from '../components/galaxy/surface/module';
 import { prefetchSurface, surfaceProps } from '../components/galaxy/travel';
 import { runtime } from '../runtime';
 import { galaxyCrew } from '../components/galaxy/lines';
+import { battleSay } from '../components/galaxy/warVoice';
+import { mine } from '../components/galaxy/warState';
 import GalaxyView from '../components/galaxy/GalaxyView';
 import GalaxyPanel from '../components/galaxy/GalaxyPanel';
 import { holdJump } from '../components/hyperspace3d/timeline';
@@ -252,6 +254,12 @@ export default function Galaxy() {
         comms.current?.handle({ type: 'event', id: 'boarded' });
         return;
       }
+      // a moment of the war's battle: the commander on the comms, then the crew (warVoice.js)
+      if (e.type === 'event' && e.id === 'battle') {
+        const lines = battleSay(e, crew?.id, mine(e.war));
+        if (lines.length) comms.current?.handle({ type: 'lines', lines });
+        return;
+      }
       if (e.type === 'action') {
         const s = systemById(current);
         if (e.id === 'deathstar') leave('/deathstar');
@@ -261,7 +269,7 @@ export default function Galaxy() {
       }
       comms.current?.handle(e);
     },
-    [current, leave, navigate, land, unlock],
+    [current, leave, navigate, land, unlock, crew],
   );
   const onArrive = useCallback(
     (id) => {
