@@ -170,6 +170,35 @@ describe('createRuntime', () => {
     expect(makeBackend).toHaveBeenCalledTimes(2);
   });
 
+  it("marks a fresh mount's box until its first frame (its canvas fades in), and a handover's never", async () => {
+    const { rt, loop } = make();
+    const host = { ...fakeHost(), dataset: {} };
+    const p = rt.mount({ id: 'a', create: () => fakeWorld({ wants: () => true, handoff: () => null }) }, {}, host);
+    expect(host.dataset.fresh).toBe('');
+    await p;
+    expect(host.dataset.fresh).toBe(''); // (placed, not yet drawn)
+    loop.tick(16);
+    expect(host.dataset).not.toHaveProperty('fresh');
+    // a handover into another box (the surface's, as the ship lands): no mark, so no dip under its cover
+    const host2 = { ...fakeHost(), dataset: {} };
+    const h = rt.handover({ id: 'b', create: () => fakeWorld({ wants: () => true }) }, {}, host2);
+    expect(host2.dataset).not.toHaveProperty('fresh');
+    await settled();
+    loop.tick(32);
+    await h;
+    loop.tick(48);
+    expect(host2.dataset).not.toHaveProperty('fresh');
+    // a mount that never draws (failed, or left) doesn't leave its box marked
+    const host3 = { ...fakeHost(), dataset: {} };
+    await rt.mount({ id: 'bad', create: () => { throw new Error('no'); } }, {}, host3);
+    expect(host3.dataset).not.toHaveProperty('fresh');
+    const host4 = { ...fakeHost(), dataset: {} };
+    rt.mount({ id: 'slow', create: () => new Promise(() => {}) }, {}, host4);
+    expect(host4.dataset.fresh).toBe('');
+    rt.unmount();
+    expect(host4.dataset).not.toHaveProperty('fresh');
+  });
+
   it("the last world's box out of sight doesn't keep the next world from drawing", async () => {
     const { rt, loop } = make();
     await rt.mount({ id: 'a', create: () => fakeWorld() }, {}, fakeHost());

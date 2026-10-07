@@ -68,6 +68,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
   let fading = false; // the cover's fade has begun
   let holding = false; // the cover waits for adopt() (a handover across a route change)
   let holdSince = null;
+  let fresh = null; // the box of a mount not yet drawn, marked data-fresh
   const listeners = new Set();
   const dev = typeof import.meta !== 'undefined' && import.meta.env?.DEV;
 
@@ -75,6 +76,23 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     if (s === status) return;
     status = s;
     for (const fn of listeners) fn(s);
+  };
+  // A fresh mount's box is marked data-fresh until its world's first frame,
+  // and runtime.css keeps the canvas clear meanwhile, then fades it in: the
+  // world comes in over its loading line instead of popping in, and a
+  // canvas moved in from another box never shows that box's last frame
+  // first. A handover's world needs none (the old world's last frame is
+  // over it), so it's never marked there, and the canvas doesn't dip under
+  // the cover.
+  const mark = (host) => {
+    unmark();
+    if (!host?.dataset) return;
+    host.dataset.fresh = '';
+    fresh = host;
+  };
+  const unmark = () => {
+    if (fresh?.dataset) delete fresh.dataset.fresh;
+    fresh = null;
   };
 
   const frame = (t) => {
@@ -110,7 +128,10 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       timeline = null;
       snapped?.();
     }
-    if (status === 'ready') setStatus('on');
+    if (status === 'ready') {
+      unmark(); // (drawn: the canvas fades in from here)
+      setStatus('on');
+    }
     if (snap && timeline && holding) {
       if (holdSince === null) holdSince = t;
       else if (t - holdSince > HOLD_MAX) holding = false;
@@ -157,6 +178,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     snapped?.();
     holding = false;
     holdSince = null;
+    unmark();
   };
   // the next frame drawn, kept as the cover (taken in the frame's own task,
   // so no preserveDrawingBuffer is needed); over after SNAP_WAIT with no
@@ -342,6 +364,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       current = null;
       clearHost();
       letGo(was);
+      mark(host);
       setStatus('loading');
       try {
         const world = await build(mod, props, host, token);
@@ -355,6 +378,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
         if (token === seq) {
           making = null;
           current = null;
+          unmark();
           setStatus('failed');
         }
         return false;
