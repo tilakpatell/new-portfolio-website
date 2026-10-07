@@ -64,12 +64,16 @@ const unit = (v) => {
 const along = (a, u, d) => [a[0] + u[0] * d, a[1] + u[1] * d, a[2] + u[2] * d];
 
 // what a lane stays clear of: everything solid by its reach (the moons, the
-// rings, a pulsar's glare), the Maw's pull, and a binary all the way round
-// its swing (its suns go round, and SOLIDS has them where they are now)
+// rings, a pulsar's glare), the Maw's pull, a binary all the way round its
+// swing (its suns go round, and SOLIDS has them where they are now), and the
+// portals
 const KEEP_OUT = [
   ...SOLIDS.filter((o) => !o.id.startsWith('twins')).map((o) => ({ at: o.at, r: o.reach })),
   { at: MAW.at, r: MAW.reach },
   ...WONDERS.filter((w) => w.kind === 'binary').map((w) => ({ at: w.at, r: reachOf(w) * 1.4 })),
+  // (and the portals, which aren't solid but take a ship flown into them to
+  // the other sector: a lane through one would take its riders with it)
+  ...WONDERS.filter((w) => w.kind === 'portal').map((w) => ({ at: w.at, r: w.r * 4 })),
 ];
 // how close a Bézier comes to KEEP_OUT, past each thing's edge
 function clearOf(pts, steps = 64) {

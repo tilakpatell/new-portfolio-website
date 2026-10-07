@@ -4,7 +4,7 @@ import { REGIONS } from './regions';
 import { bezier, clearance } from './lanes';
 import { SHIP, SOLIDS, parkAt } from './ship';
 import { HOME_RADIUS, ORDER, POSITIONS } from './layout';
-import { DEEP, PLACES } from './deep';
+import { DEEP, PLACES, WONDERS } from './deep';
 import { MAW } from './maw';
 import { byId } from './universes';
 
@@ -30,6 +30,10 @@ describe('the hyperlanes (hyperlanes.js)', () => {
       expect(clearance(lane.pts, solids), lane.id).toBeGreaterThan(2);
       for (const way of ['out', 'in']) expect(clearance(carriageway(lane, way), solids) - R, `${lane.id} ${way}`).toBeGreaterThan(2);
     }
+  });
+
+  it('keeps every lane out of the portals, which would take its riders to the other sector', () => {
+    for (const w of WONDERS.filter((x) => x.kind === 'portal' && !x.sector)) for (const l of LANES) for (const way of ['out', 'in']) expect(clearance(carriageway(l, way), [{ at: w.at, r: w.r }]) - R, `${l.id} ${way}`).toBeGreaterThan(2);
   });
 
   it('puts every ramp out past its place’s reach and the Maw’s pull, and clear of everything', () => {
