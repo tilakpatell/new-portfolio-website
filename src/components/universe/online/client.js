@@ -26,7 +26,7 @@
 //
 // createClient({ name, kind, loadout, build, looks, where }) → { selfId, on(fn) → off, snapshot(),
 //   setProfile({ name, kind, loadout, build, looks, where }), pose(ship, { hidden, boost, safe,
-//   shield }), foot(crew | null) (your crew on foot, protocol.js's writeFoot;
+//   shield, lane }), poseOf(peerId) (where they were last seen, for the roster), foot(crew | null) (your crew on foot, protocol.js's writeFoot;
 //   each pilot's comes in as peer.foot, with `at`), walk(crew | null) (the
 //   same down on a world in the galaxy: peer.walk), shot(at, v, weapon),
 //   hit(peerId, damage), siege(msg) (the Citadel's siege, siege.js),
@@ -446,13 +446,20 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     },
     // where your ship is, each frame (sent ten times a second). Hidden
     // (crashed, shot down, diving into a page) or safe (just back), hits
-    // on you don't count
-    pose(s, { hidden = false, boost = false, safe = false, shield = 100 } = {}) {
+    // on you don't count; riding a hyperlane (lane), the others far off see
+    // you as a streak along it
+    pose(s, { hidden = false, boost = false, safe = false, shield = 100, lane = false } = {}) {
       me = hidden || safe || !s ? null : s;
       const t = now();
       if (!send || !s || t - lastPose < POSE_MS) return;
       lastPose = t;
-      send.pose(writePose(s, (hidden ? FLAG.hidden : 0) | (boost ? FLAG.boost : 0) | (safe ? FLAG.safe : 0), shield));
+      send.pose(writePose(s, (hidden ? FLAG.hidden : 0) | (boost ? FLAG.boost : 0) | (safe ? FLAG.safe : 0) | (lane ? FLAG.lane : 0), shield));
+    },
+    // where a pilot was last seen on the universe map: { x, y, z }, or null
+    // (not seen there yet, or gone)
+    poseOf(id) {
+      const p = peers.get(id)?.pose;
+      return p ? { x: p.x, y: p.y, z: p.z } : null;
     },
     // the hunters after you, for the others to see: get() gives them
     // (hunters.js's wire()), asked for only when it's time to send (five

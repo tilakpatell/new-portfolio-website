@@ -124,10 +124,34 @@ describe('poses', () => {
     expect(readPose(['a', 0, 0, 0, 0, 0, 0, 0, 0])).toBeNull();
     expect(readPose([NaN, 0, 0, 0, 0, 0, 0, 0, 0])).toBeNull();
     const p = readPose([1e9, 0, 0, 0, 9, 0, 1e6, 0, 1]);
-    expect(p.x).toBe(7500);
+    expect(p.x).toBe(60000);
     expect(p.pitch).toBe(1.6);
-    expect(p.speed).toBe(600);
+    expect(p.speed).toBe(5000);
     expect(p.hidden).toBe(true);
+  });
+  it('reaches as far as the spread universe does, and as fast as its lanes run', () => {
+    // (the Rick and Morty sector sits at z −48,000; an express lane runs at 4,000 a second)
+    const p = readPose(writePose({ ...ship, x: 36000, z: -48000, speed: 4000 }));
+    expect(p.x).toBe(36000);
+    expect(p.z).toBe(-48000);
+    expect(p.speed).toBe(4000);
+    expect(readPose([0, 1e9, 0, 0, 0, 0, 0, 0, 0]).y).toBe(1300); // (the height is as it was)
+  });
+  it('says when a pilot is riding a lane, and an old pose says they are not', () => {
+    expect(FLAG.lane).toBe(8);
+    expect(readPose(writePose(ship, FLAG.lane)).lane).toBe(true);
+    expect(readPose(writePose(ship, FLAG.boost | FLAG.lane)).boost).toBe(true);
+    expect(readPose(writePose(ship, FLAG.boost)).lane).toBe(false);
+    // (nine fields, from a pilot whose site is older than the shields on the pose)
+    expect(readPose([1, 2, 3, 0, 0, 0, 5, 0, 2]).lane).toBe(false);
+  });
+  it('carries the lane bit to where they are drawn', () => {
+    const snaps = [
+      { ...readPose(writePose(ship, FLAG.lane)), at: 0 },
+      { ...readPose(writePose({ ...ship, x: 20 }, FLAG.lane)), at: 100 },
+    ];
+    expect(sample(snaps, 190).lane).toBe(true); // (between the two)
+    expect(sample(snaps, 300).lane).toBe(true); // (and past the newest)
   });
 });
 
@@ -218,6 +242,11 @@ describe('shots', () => {
     expect(readShot([0, 0, 0, 0, 0, -5000])).toBeNull();
     expect(readShot([0, 0, 0, 0, 0])).toBeNull();
   });
+  it('reads a shot fired anywhere in the spread universe', () => {
+    const s = readShot(writeShot({ x: 30000, y: 0, z: -48000 }, [0, 0, -20]));
+    expect(s.p).toEqual([30000, 0, -48000]);
+    expect(readShot([1e9, 0, 0, 0, 0, -20]).p[0]).toBe(60000);
+  });
 });
 
 describe('hits', () => {
@@ -305,7 +334,10 @@ describe('the hunters after a pilot', () => {
       [5, 'tie', 1e9, 0, 0, 1e9, 'fast', 0, 1e9],
       [5, 'tie', 0, 0, 0, 0, 0, 0, 1], // the same one twice
     ]);
-    expect(got).toEqual([{ id: 5, kind: 'tie', x: 7500, y: 0, z: 0, vx: 80, vy: 0, vz: 0, hp: 99 }]);
+    expect(got).toEqual([{ id: 5, kind: 'tie', x: 60000, y: 0, z: 0, vx: 80, vy: 0, vz: 0, hp: 99 }]);
+  });
+  it('reads hunters anywhere in the spread universe', () => {
+    expect(readPack([[1, 'tie', 20000, 0, -48000, 0, 0, 0, 1]])[0]).toMatchObject({ x: 20000, z: -48000 });
   });
   it('reads a hit on one, capped at what a bolt can be worth', () => {
     expect(readHunterHit({ i: 7, d: 1 })).toEqual({ id: 7, damage: 1 });

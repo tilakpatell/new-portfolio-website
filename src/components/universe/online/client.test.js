@@ -177,6 +177,18 @@ describe('createClient', () => {
     expect(b.peers.get('A').pose.safe).toBe(false);
   });
 
+  it('says when you are riding a lane, and keeps where each pilot was last seen for the roster', async () => {
+    const { a, b, tick } = await pair();
+    expect(b.poseOf('A')).toBeNull(); // (not seen yet)
+    a.pose({ ...ship(4), z: -48000 }, { lane: true });
+    expect(b.peers.get('A').pose.lane).toBe(true);
+    expect(b.poseOf('A')).toEqual({ x: 4, y: 0, z: -48000 });
+    tick(120);
+    a.pose(ship(4));
+    expect(b.peers.get('A').pose.lane).toBe(false);
+    expect(b.poseOf('nobody')).toBeNull();
+  });
+
   it('shows the others the hunters after you, a few times a second, and says when they are gone', async () => {
     const { a, b, tick } = await pair();
     let asked = 0;
