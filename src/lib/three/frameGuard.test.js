@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { guard } from './frameGuard';
+import { guard, guardOf } from './frameGuard';
 import { fakeRenderer, frames } from './fakeRenderer.fixture';
 
 // The Task 2 stand-in, drawing the way three.js does: render walks the
@@ -406,5 +406,59 @@ describe('guard', () => {
     r.render(scene, camera);
     expect(warn).toHaveBeenCalledTimes(1);
     g.dispose();
+  });
+
+  it('calls onReady after a pump lets a material draw, so a scene that has stopped draws again', async () => {
+    const r = drawingRenderer();
+    const onReady = vi.fn();
+    const g = guard(r, { frame: frames(), onReady });
+    const m = new THREE.MeshBasicMaterial();
+    const { scene, camera } = world(m);
+    r.render(scene, camera);
+    expect(onReady).not.toHaveBeenCalled();
+    await settle();
+    expect(onReady).toHaveBeenCalledTimes(1);
+    // (nothing held back: nothing to ask for)
+    r.render(scene, camera);
+    await settle();
+    expect(onReady).toHaveBeenCalledTimes(1);
+    g.dispose();
+  });
+
+  it('asks for another draw when a material is still waiting after its pump, until it draws', async () => {
+    const r = drawingRenderer({ readyAfter: 1 });
+    const onReady = vi.fn(() => r.render(scene, camera));
+    const g = guard(r, { frame: frames(), onReady });
+    const m = new THREE.MeshBasicMaterial();
+    const { scene, camera } = world(m);
+    r.render(scene, camera);
+    await settle();
+    await settle();
+    // (its own redraws carried it on: no one else drew)
+    expect(drawnCount(r, m)).toBe(1);
+    g.dispose();
+  });
+
+  it("without onReady, sends 'tp:redraw' to the renderer's canvas", async () => {
+    const r = drawingRenderer();
+    const sent = [];
+    r.domElement = { dispatchEvent: (e) => sent.push(e.type) };
+    const g = guard(r, { frame: frames() });
+    const { scene, camera } = world(new THREE.MeshBasicMaterial());
+    r.render(scene, camera);
+    await settle();
+    expect(sent).toEqual(['tp:redraw']);
+    g.dispose();
+  });
+
+  it('guardOf finds a guard without installing one', () => {
+    const r = drawingRenderer();
+    const draw = r.renderBufferDirect;
+    expect(guardOf(r)).toBeNull();
+    expect(r.renderBufferDirect).toBe(draw);
+    const g = guard(r, { frame: frames() });
+    expect(guardOf(r)).toBe(g);
+    g.dispose();
+    expect(guardOf(r)).toBeNull();
   });
 });

@@ -6,6 +6,8 @@
 
 import * as THREE from 'three';
 import { budget, pixelRatio } from '../device';
+import { fence, nextFrame } from './gpuWork';
+import { guard } from './frameGuard';
 
 // The sharpest a device starts at: lib/device's tier (phones and small
 // screens start lower), under the scene's own cap.
@@ -33,7 +35,10 @@ export function maxSide(renderer) {
 // A [r, g, b] (0-255, sRGB) from lib/three/theme as a THREE.Color.
 export const color = (rgb, target = new THREE.Color()) => target.setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, THREE.SRGBColorSpace);
 
-export function createRenderer(canvas, { alpha = true, antialias = true, ratio = 2, toneMapping = THREE.NoToneMapping, exposure = 1, onLost, onSlow } = {}) {
+// `guard` (on unless false) puts lib/three/frameGuard on it, so no frame
+// waits on a shader or a picture; a scene that draws everything once and
+// stops can do without. The returned `guard` is its handle, or null.
+export function createRenderer(canvas, { alpha = true, antialias = true, ratio = 2, toneMapping = THREE.NoToneMapping, exposure = 1, onLost, onSlow, guard: useGuard = true } = {}) {
   // (in development, window.__tpKeepFrames keeps the last frame readable for
   // automated screenshots of scenes that have stopped drawing)
   const preserveDrawingBuffer = import.meta.env.DEV && typeof window !== 'undefined' && !!window.__tpKeepFrames;
@@ -47,6 +52,7 @@ export function createRenderer(canvas, { alpha = true, antialias = true, ratio =
   renderer.toneMappingExposure = exposure;
   quiet(renderer);
   if (alpha) renderer.setClearColor(0x000000, 0);
+  const held = useGuard ? guard(renderer) : null;
 
   let pixelRatio = maxRatio(ratio);
   renderer.setPixelRatio(pixelRatio);
@@ -90,10 +96,12 @@ export function createRenderer(canvas, { alpha = true, antialias = true, ratio =
       fit();
     },
     size,
+    guard: held,
     // call once per drawn frame, with the frame's timestamp
     watch: dog.watch,
     dispose() {
       canvas.removeEventListener('webglcontextlost', onContextLost);
+      held?.dispose();
       renderer.dispose();
       if (!lost) releaseContext(renderer); // free the GPU soon, not at GC
     },
@@ -301,6 +309,11 @@ export function quiet(renderer) {
 // extension it resolves at once and the first frame waits, as before. It
 // never rejects, and never takes longer than CAP.
 //
+// With the extension, no shader is asked whether it has linked until a fence
+// (lib/three/gpuWork) says the chip has caught up with the compiles: asked
+// sooner, the answer can wait on the chip's queue. If the fence can't say
+// (the context went, or it timed out), nothing is asked and it resolves.
+//
 // `scene` is the scene `root` will be drawn in (its lights and fog are part of
 // each shader); `target` is where it will be drawn when that isn't the canvas
 // (a composer's buffer: no tone mapping or sRGB there, so different shaders).
@@ -311,7 +324,7 @@ export function quiet(renderer) {
 const CAP = 4000;
 let compiling = 0; // precompiles in flight, on any renderer (see releaseContext)
 
-export function precompile(renderer, root, camera, scene = null, target) {
+export function precompile(renderer, root, camera, scene = null, target, { frame } = {}) {
   let materials;
   const keep = target !== undefined ? renderer.getRenderTarget() : null;
   try {
@@ -328,7 +341,7 @@ export function precompile(renderer, root, camera, scene = null, target) {
       // gone with its renderer
     }
   }
-  return linked(renderer, materials);
+  return linked(renderer, materials, frame);
 }
 
 // The materials of a composer's passes (bloom's blurs, the output pass, a
@@ -389,9 +402,18 @@ function primeOutputPass(pass, renderer) {
   pass.material.needsUpdate = true;
 }
 
-// Resolves once every material's program has linked (asking doesn't wait),
-// the context has gone, or CAP has passed.
-function linked(renderer, materials) {
+const parallel = (renderer) => {
+  try {
+    return !!renderer.extensions?.has('KHR_parallel_shader_compile');
+  } catch {
+    return false;
+  }
+};
+
+// Resolves once every material's program has linked (asked once a frame,
+// and only after a fence: then asking doesn't wait), the context has gone,
+// or CAP has passed.
+function linked(renderer, materials, frame = nextFrame) {
   const pending = [...materials];
   const t0 = performance.now();
   compiling += 1;
@@ -413,9 +435,10 @@ function linked(renderer, materials) {
         return done();
       }
       if (!pending.length || performance.now() - t0 > CAP) done();
-      else setTimeout(check, 16);
+      else frame().then(check);
     };
-    check();
+    if (!pending.length || !parallel(renderer)) return check();
+    fence(renderer, { frame, cap: CAP }).then((caughtUp) => (caughtUp ? check() : done()));
   });
 }
 

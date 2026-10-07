@@ -158,6 +158,9 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
     const onVis = () => (document.hidden ? stop() : L.kick());
     document.addEventListener('visibilitychange', onVis);
     window.addEventListener('tp:uncover', onVis);
+    // (the renderer's frame guard readied what it held back: draw it)
+    const onRedraw = () => L.kick();
+    canvas.addEventListener('tp:redraw', onRedraw);
 
     setStatus('loading');
     Promise.resolve()
@@ -225,6 +228,7 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
       stop();
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('tp:uncover', onVis);
+      canvas.removeEventListener('tp:redraw', onRedraw);
       L.kick = () => {};
       release();
     };

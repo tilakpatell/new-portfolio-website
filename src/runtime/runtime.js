@@ -187,6 +187,12 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     }
     kind = want;
     gfx = await makeBackend(want, { budget: quality.budget, onLost: () => rt.lost() });
+    // (its frame guard readied something it held back: draw again, even a
+    // world that has stopped asking for frames)
+    const { canvas } = gfx;
+    canvas?.addEventListener?.('tp:redraw', () => {
+      if (gfx?.canvas === canvas) rt.invalidate();
+    });
     return gfx;
   };
 

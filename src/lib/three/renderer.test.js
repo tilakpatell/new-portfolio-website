@@ -1,5 +1,37 @@
-import { describe, expect, it } from 'vitest';
-import { fitRatio, watchdog } from './renderer';
+import { describe, expect, it, vi } from 'vitest';
+import { createRenderer, fitRatio, watchdog } from './renderer';
+import { guardOf } from './frameGuard';
+
+// createRenderer's WebGLRenderer, as far as it touches one (Node has no WebGL)
+vi.mock('three', async (importOriginal) => {
+  const THREE = await importOriginal();
+  class WebGLRenderer {
+    constructor({ canvas }) {
+      this.domElement = canvas;
+      this.debug = {};
+      this.ratio = 1;
+      this.disposed = false;
+      this.render = () => {};
+      this.renderBufferDirect = () => {};
+    }
+    getContext() {
+      return { getParameter: () => 4096, isContextLost: () => false };
+    }
+    setClearColor() {}
+    setPixelRatio(r) {
+      this.ratio = r;
+    }
+    getPixelRatio() {
+      return this.ratio;
+    }
+    setSize() {}
+    dispose() {
+      this.disposed = true;
+    }
+  }
+  return { ...THREE, WebGLRenderer };
+});
+vi.mock('../device', () => ({ budget: () => ({ antialias: true }), pixelRatio: () => 1 }));
 
 // Runs `seconds` of frames through a watchdog, each frame taking
 // frameMs(ratio) at the ratio it's at then; the screen shows a frame on its
@@ -90,5 +122,24 @@ describe('fitRatio', () => {
   it('goes under one pixel per screen pixel only when it must', () => {
     expect(fitRatio(10000, 900, 1, { side: 8192 })).toBeCloseTo(0.8192, 4);
     expect(fitRatio(0, 0, 1.5, { side: 8192 })).toBe(1.5);
+  });
+});
+
+describe('createRenderer', () => {
+  const canvas = () => ({ addEventListener() {}, removeEventListener() {} });
+
+  it('puts a frame guard on its renderer, and takes it off on dispose', () => {
+    const gl = createRenderer(canvas());
+    expect(gl.guard).not.toBeNull();
+    expect(guardOf(gl.renderer)).toBe(gl.guard);
+    gl.dispose();
+    expect(guardOf(gl.renderer)).toBeNull();
+  });
+
+  it('leaves the renderer unguarded with guard: false', () => {
+    const gl = createRenderer(canvas(), { guard: false });
+    expect(gl.guard).toBeNull();
+    expect(guardOf(gl.renderer)).toBeNull();
+    gl.dispose();
   });
 });

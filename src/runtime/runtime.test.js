@@ -118,6 +118,19 @@ describe('createRuntime', () => {
     expect(rt.current).toBe(null);
   });
 
+  it("draws a world at rest again when its canvas gets 'tp:redraw' (the frame guard readied something)", async () => {
+    const canvas = new EventTarget();
+    const backend = { ...fakeBackend(), canvas: Object.assign(canvas, { remove: vi.fn(), parentNode: null }) };
+    const { rt, loop } = make({ makeBackend: vi.fn(() => backend) });
+    const world = fakeWorld({ wants: () => false });
+    await rt.mount({ id: 'a', create: () => world }, {}, fakeHost());
+    expect(loop.tick(16)).toBe(false);
+    // (kicked: its next frame asks for one after it, so a held-back draw lands)
+    canvas.dispatchEvent(new Event('tp:redraw'));
+    expect(loop.tick(32)).toBe(true);
+    expect(loop.tick(48)).toBe(false);
+  });
+
   it('a world at rest asks for no more frames until kicked', async () => {
     const { rt, loop } = make();
     let want = false;

@@ -42,7 +42,13 @@ function sceneOf(object) {
 // `tries`: how many pumps a material gets before it's let draw anyway (a
 // picture three never sends early, a shader that never says it has linked),
 // so nothing stays hidden for good.
-export function guard(renderer, { uploadMB = 8, compileMs = 4, adopt = null, tries = 5, frame = nextFrame } = {}) {
+//
+// `onReady`: called after a pump that let a material draw, or left one
+// waiting for another, so a scene that only draws when something changes
+// draws again (else a skipped draw would leave it blank). Without one, the
+// guard sends a 'tp:redraw' event to the renderer's canvas, which
+// lib/three/useScene and the runtime listen for.
+export function guard(renderer, { uploadMB = 8, compileMs = 4, adopt = null, tries = 5, frame = nextFrame, onReady = null } = {}) {
   if (guards.has(renderer)) return guards.get(renderer);
 
   const draw = renderer.renderBufferDirect;
@@ -61,6 +67,15 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, adopt = null, tri
   let scheduled = false;
   let fencing = false;
   let disposed = false;
+
+  const redraw = () => {
+    try {
+      if (onReady) onReady();
+      else renderer.domElement?.dispatchEvent?.(new Event('tp:redraw'));
+    } catch {
+      // a scene that can't be asked to draw draws on its own next frame
+    }
+  };
 
   const picturesUp = (material) => texturesOf(material).every((t) => uploaded(renderer, t));
 
@@ -126,6 +141,15 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, adopt = null, tri
     const budget = uploadMB * 1024 * 1024;
     let bytes = 0;
     let sentAny = false;
+    let progressed = false;
+    const freed = (material) => {
+      ready.add(material);
+      progressed = true;
+    };
+    // (after it, a scene that draws only on a change is asked to draw again)
+    const after = () => {
+      if (!disposed && (progressed || queue.size)) redraw();
+    };
     for (const [material, entry] of queue) {
       if (inFlight.size && now() - t0 > compileMs) break;
       queue.delete(material);
@@ -135,7 +159,7 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, adopt = null, tri
       const count = (pumped.get(material) ?? 0) + 1;
       pumped.set(material, count);
       if (count > tries) {
-        ready.add(material);
+        freed(material);
         continue;
       }
       const todo = texturesOf(material)
@@ -162,13 +186,13 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, adopt = null, tri
           renderer.compile(batchRoot([object]), entry.camera ?? lastCamera, entry.scene ?? lastScene);
         } catch {
           // three reports a broken shader on its draw, as it always has
-          ready.add(material);
+          freed(material);
           continue;
         }
       }
       inFlight.set(material, entry);
     }
-    if (!inFlight.size) return;
+    if (!inFlight.size) return after();
     fencing = true;
     const caughtUp = await fence(renderer, { frame });
     fencing = false;
@@ -180,17 +204,18 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, adopt = null, tri
           const program = renderer.properties.get(material).currentProgram;
           // (no program after its compile: three makes it on the draw)
           if ((!program || program.isReady()) && picturesUp(material)) {
-            ready.add(material);
+            freed(material);
             continue;
           }
         } catch {
-          ready.add(material);
+          freed(material);
           continue;
         }
       }
       // not linked, pictures still to send, or the chip not caught up: next frame
       queue.set(material, entry);
     }
+    after();
   }
 
   const handle = {
@@ -217,3 +242,6 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, adopt = null, tri
   guards.set(renderer, handle);
   return handle;
 }
+
+// The guard on a renderer, or null if it has none (asking never installs one).
+export const guardOf = (renderer) => guards.get(renderer) ?? null;

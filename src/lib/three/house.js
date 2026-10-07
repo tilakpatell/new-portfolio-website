@@ -36,6 +36,7 @@
 
 import * as THREE from 'three';
 import { GROUND_GLSL } from './groundmap';
+import { guardOf } from './frameGuard';
 
 export const LOOK = {
   shadow: 0x9d93c4, // the albedo times this, in full shade (sRGB)
@@ -288,6 +289,9 @@ export function shadowFor(mood) {
 // recomputed when the sky light changes; `{ adopt: true }` also takes on
 // whatever has come into the scene since. Call follow() after the world
 // sets its lights (once a frame, or when they change).
+// On a renderer with a frame guard (lib/three/frameGuard), anything of this
+// scene's the guard held back takes the look before its shader is compiled,
+// so a late arrival compiles once, in the look; dispose() takes that off.
 export function houseOn({ renderer, scene, sun = null, hemi = null, ambient = null, env = null, keepExposure = false, toneMap = true, look = {} }) {
   const house = createHouse(look);
   if (toneMap) {
@@ -328,6 +332,12 @@ export function houseOn({ renderer, scene, sun = null, hemi = null, ambient = nu
     if (adopt) house.adopt(scene);
   };
   house.follow();
+  const off = guardOf(renderer)?.adopt((object) => {
+    let root = object;
+    while (root.parent) root = root.parent;
+    if (root === scene) house.adopt(object);
+  });
+  house.dispose = () => off?.();
   return house;
 }
 

@@ -2403,6 +2403,8 @@ export async function create(canvas, ctx) {
     dispose() {
       disposed = true;
       engine?.stop();
+      // (the runtime's renderer stays for the next world: its guard forgets this look)
+      house?.dispose();
       dropCab();
       roomEnv?.dispose();
       state.model?.dispose();
