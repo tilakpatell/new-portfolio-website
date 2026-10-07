@@ -305,7 +305,7 @@ export const STARTS = [
   // (all in the main sector: the Rick and Morty sector is through its portal)
   ...PLANETS.filter((p) => byId(p.id).kind !== 'core' && sectorOf(...p.at) === 'main').map((p) => ({ id: p.id, at: p.at, y: p.at[1] + SHIP.height, d: startOff(p.reach, p.r) })),
   // (off a wonder: clear of its solid, which can reach past the wonder's own radius: a pulsar's glare)
-  ...WONDERS.filter((w) => w.id !== MAW.id && sectorOf(...w.at) === 'main').map((w) => ({ id: w.id, at: w.at, y: w.at[1], d: startOff(reachOf(w), w.solid === false ? 0 : (DEEP_SOLIDS.find((o) => o.id === w.id)?.r ?? w.r)) })),
+  ...WONDERS.filter((w) => w.id !== MAW.id && w.kind !== 'portal' && sectorOf(...w.at) === 'main').map((w) => ({ id: w.id, at: w.at, y: w.at[1], d: startOff(reachOf(w), w.solid === false ? 0 : (DEEP_SOLIDS.find((o) => o.id === w.id)?.r ?? w.r)) })),
 ];
 // the near edge of the home system, facing its middle: where a ship starts
 // unless told otherwise

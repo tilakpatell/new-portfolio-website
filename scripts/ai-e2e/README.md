@@ -151,6 +151,42 @@ except on CI. CI's AI job runs it only when the pull request touches
 (`render/changed.mjs`), installing the Chromium for the locked
 `playwright-core` version, cached on that version.
 
+## Tier 4: the brains, scripted and fuzzed
+
+Beside the brains, in `npm run test:ai` (and out of `npm test` by name):
+
+- `src/components/universe/npcs/brains/harness.js`: `meet()` flies a
+  meeting with one brain frame by frame (a seeded random, you flown by a
+  script, every frame's events and a `trace` two runs can be compared by);
+  `simulate(rules, script)` does the same for any world's pure `rules.js`
+  (`rules.step(state, input, dt)` → events).
+- `<brain>.scenario.test.js`, one per brain, each holding the brain to the
+  promise in its own header: the inspector comes alongside and lets a
+  clean ship go, or calls its faction on one that runs; the nemesis fires
+  only in range and no faster than its guns, and breaks off nearly dead;
+  the merchant parks, offers once and never follows; the informant tips
+  you off and goes; the rival duels and calls a draw; the trickster tolls,
+  tips or fights; the tagalong rides your left wing, chats three times and
+  hides from hunters; the bounty hunter and the wingman are handed over at
+  once (and the wing holds formation round a lazy circle).
+- `all.scenario.test.js`, over every brain: 200 seeded meetings each, with
+  you flown by a script drawn from the seed, where no number goes NaN and
+  the ship never turns or speeds up faster than its stats; the same seed
+  flies the same meeting to the last bit; every brain ends its meeting (or
+  parks, the merchant's ending) inside two minutes; a nemesis never holds
+  one move for a minute.
+- `src/lib/ai/toolkit.fuzz.test.js`: steering's heading is never longer
+  than one; the chase's flood only ever names a walkable cell it can reach
+  (checked by a plain flood fill); a place picked is the best scored, or
+  the current one kept within its hysteresis; every live member is in
+  exactly one squad of its side, and in exactly one of movers and cover; a
+  belief with nothing more seen only fades; utility's pick is the top
+  score, or with a rand and a spread one near the top, the same for the
+  same rand.
+
+A new brain gets a `<brain>.scenario.test.js` of its own, from its header;
+`all.scenario.test.js` picks it up from `BRAINS` by itself.
+
 ## Adding a case
 
 A contract test is a vitest file under `scripts/ai-e2e/<tier>/`, its
