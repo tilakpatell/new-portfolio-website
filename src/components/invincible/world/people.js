@@ -45,7 +45,7 @@ let castRim = 0.35;
 
 // The finish onto one lit material, after whatever hook it already has
 // (the house look's, a facade's), on a program of its own.
-function finish(m, uRim) {
+function finish(m, uRim, uFloor) {
   m.roughness = FINISH.roughness;
   m.metalness = FINISH.metalness;
   m.envMapIntensity = FINISH.env;
@@ -54,8 +54,9 @@ function finish(m, uRim) {
   m.onBeforeCompile = (sh, r) => {
     before?.call(m, sh, r);
     sh.uniforms.uRim = uRim;
+    sh.uniforms.uFloor = uFloor;
     sh.fragmentShader = sh.fragmentShader
-      .replace('void main() {', 'uniform float uRim;\nvoid main() {')
+      .replace('void main() {', 'uniform float uRim;\nuniform vec3 uFloor;\nvoid main() {')
       // (in linear light, on the map's texels only: a kit person's flat
       // colours are chosen as they are)
       .replace(
@@ -63,6 +64,7 @@ function finish(m, uRim) {
         `#include <map_fragment>
         #ifdef USE_MAP
           diffuseColor.rgb = max(mix(vec3(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722))), diffuseColor.rgb, ${FINISH.saturation.toFixed(3)}), 0.0);
+          diffuseColor.rgb = max(diffuseColor.rgb, uFloor * (1.0 - smoothstep(0.02, 0.08, dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)))));
         #endif`,
       )
       // the surface's own normal, not a normal map's, so the rim is an
@@ -84,11 +86,15 @@ function finish(m, uRim) {
 
 // The finish on every lit material under `root` (a figure's model, a kit
 // person's root: three's standard ones, the only lit kind the cast has),
-// once each however often it's asked; its rim at `rim`.
+// once each however often it's asked; its rim at `rim`. `floor` (a colour,
+// or none) is the darkest its colour map's near-black texels go: a suit
+// drawn black in the atlas sinks into a dark street or the night, his arms
+// and legs gone, where the show's ink is a navy that still reads as blue.
 // Returns { setRim(k) } for all of them, and dispose() to let them go from
 // setCastRim's list.
-export function castMaterial(root, { rim = 0.35 } = {}) {
+export function castMaterial(root, { rim = 0.35, floor = null } = {}) {
   const uRim = { value: rim };
+  const uFloor = { value: new THREE.Color(floor ?? 0x000000) };
   const rims = new Set([uRim]);
   root?.traverse?.((o) => {
     if (!o.isMesh) return;
@@ -97,7 +103,7 @@ export function castMaterial(root, { rim = 0.35 } = {}) {
       if (!m?.isMeshStandardMaterial) continue;
       const had = FINISHED.get(m);
       if (had) rims.add(had);
-      else finish(m, uRim);
+      else finish(m, uRim, uFloor);
     }
   });
   const cast = {
@@ -107,6 +113,7 @@ export function castMaterial(root, { rim = 0.35 } = {}) {
     dispose() {
       RIMS.delete(cast);
     },
+    TUNE_TMP_floor: uFloor,
   };
   cast.setRim(rim);
   RIMS.add(cast);
