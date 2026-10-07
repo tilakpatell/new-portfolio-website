@@ -1172,5 +1172,60 @@
   "icet": {
     "image": "01a11403-f7a7-7305-9459-1c389e0ccb69",
     "model": "01a11409-2ba2-769a-82e0-5f29f2f98162"
+  },
+  "hemorrhage": {
+    "image": "01a1141d-7d2e-7416-8c6b-ac518a58cb6d",
+    "model": "01a11420-4498-761a-9cc1-6cb8c7574937"
+  },
+  "deathstalker-a": {
+    "image": "01a1141d-7d49-76fa-89e8-443196876475",
+    "model": "01a11420-449b-7266-bfc3-a2753b359e9e"
+  },
+  "deathstalker-b": {
+    "image": "01a1141d-7d50-77ec-96b1-491d841d4b48",
+    "model": "01a11420-44a0-741d-b1b3-e37915bbd68f"
+  },
+  "armothy": {
+    "image": "01a1141d-7d4b-7413-9926-943bb5e6b883",
+    "model": "01a11420-44a2-77ae-b18e-d667d197e7d9"
+  },
+  "cornvelious": {
+    "image": "01a1141d-e466-73ff-9a1c-e83a25127ec6",
+    "model": "01a11421-4f5d-70cd-860c-696351565643"
+  },
+  "brainalyzer": {
+    "image": "01a1141d-f808-748a-b50e-d84c89d6f6f9",
+    "model": "01a11421-62d4-76d6-a579-c62818c2f52b"
+  },
+  "antsjohnson": {
+    "image": "01a1141e-6e95-779d-984e-4af8e4183656",
+    "model": "01a11421-7612-7210-ba27-d0b1a33fb562"
+  },
+  "babylegs": {
+    "image": "01a1141e-6f7d-77e4-bfb6-e05a268e882d"
+  },
+  "regularlegs": {
+    "image": "01a1141e-705b-76e3-967a-b5d5f0bd91c2"
+  },
+  "mrsneezy": {
+    "image": "01a1141e-ea21-73bc-9112-b4acc65fdd05"
+  },
+  "gazorpazorpfield": {
+    "image": "01a1141e-fda2-777b-b5b3-db7fb212c513"
+  },
+  "shmlo": {
+    "image": "01a1141f-76d0-71f3-b75a-e9717c21b70d"
+  },
+  "trunkperson": {
+    "image": "01a1141f-7747-70b9-b0d1-974114d9ca9a"
+  },
+  "lilbits": {
+    "image": "01a1141f-8ad2-740d-a83f-23160dc94312"
+  },
+  "tophatjones": {
+    "image": "01a1141f-dc64-764a-ade7-5db9812dfff4"
+  },
+  "realfakedoors": {
+    "image": "01a1141f-f061-7173-9f73-46f60f90944a"
   }
 }

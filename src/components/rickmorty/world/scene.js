@@ -99,6 +99,10 @@ export const LAZY = {
   resort: () => import('./dimensions/resort').then((m) => m.buildResort),
   schwifty: () => import('./dimensions/schwifty').then((m) => m.buildSchwifty),
   evilrick: () => import('./dimensions/evilrick').then((m) => m.buildEvilrick),
+  cronenberg: () => import('./dimensions/cronenberg').then((m) => m.buildCronenberg),
+  blooddome: () => import('./dimensions/blooddome').then((m) => m.buildBlooddome),
+  prison: () => import('./dimensions/prison').then((m) => m.buildPrison),
+  cablestudio: () => import('./dimensions/cable').then((m) => m.buildCable),
 };
 
 // The cruiser's headlights, which are its eyes (the saucer's, in the hull's

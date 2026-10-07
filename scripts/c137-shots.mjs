@@ -81,6 +81,10 @@ export const VIEWS = {
   resort: { area: 'resort', at: [-400, 3218, N], cam: [0, 0.2] },
   schwifty: { area: 'schwifty', at: [-400, 3318, N], cam: [0, 0.2] },
   evilrick: { area: 'evilrick', at: [-400, 3415.4, N], cam: [0, 0.3] },
+  cronenberg: { area: 'cronenberg', at: [-400, 3518, N], cam: [0, 0.2] },
+  blooddome: { area: 'blooddome', at: [-400, 3618, N], cam: [0, 0.2] },
+  prison: { area: 'prison', at: [-400, 3715.4, N], cam: [0, 0.3] },
+  cablestudio: { area: 'cablestudio', at: [-400, 3813.4, N], cam: [0, 0.3] },
 };
 
 const names = process.argv.slice(2);

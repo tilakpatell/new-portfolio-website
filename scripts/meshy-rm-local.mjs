@@ -209,6 +209,26 @@ const PHASE9 = {
   watert: { hero: true, height: 1.9, prompt: `Water-T from Rick and Morty: a tall humanoid made of clear blue flowing water, a rounded head with a calm face, broad shoulders, in a baggy white t-shirt and dark jeans, white trainers, a thick gold chain. ${BODY}` },
   icet: { rig: false, prompt: `Ice-T from Rick and Morty, in his true form: a large block of blue-white ice shaped like a tall rounded letter T, translucent with frost on its edges, a faint stern face in the ice, standing upright. ${PROP}` },
 };
+// Phase 7, the third batch: the Blood Dome, the Federation prison and the
+// Interdimensional Cable studio (Cronenberg World needs nothing new).
+const PHASE10 = {
+  hemorrhage: { hero: true, height: 2.1, prompt: `Hemorrhage from Rick and Morty's wasteland: a tall hulking warlord in a helmet of welded scrap metal with a glowing red visor slit, heavy bolted scrap-metal armour plates over a dark bodysuit, spiked shoulder pads, a long tattered dark red cape, big gauntlets and boots, a leather belt with skulls. ${BODY}` },
+  'deathstalker-a': { rig: false, poly: 14000, prompt: `A Death Stalker raider from Rick and Morty's wasteland: a wiry human in patched brown leather armour, a dust mask over the mouth, cracked goggles pushed up on a bald head, a spiked shoulder pad, ragged trousers, heavy boots, bandaged hands. ${AT_EASE}` },
+  'deathstalker-b': { rig: false, poly: 14000, prompt: `A Death Stalker raider from Rick and Morty's wasteland: a stocky human woman in dark leather and scrap-metal plates, a red bandana over wild black hair, a scarf over the mouth, a chain across the chest, fingerless gloves, heavy boots. ${AT_EASE}` },
+  armothy: { rig: false, prompt: `Armothy from Rick and Morty: a huge muscular severed green alien arm the size of a person, standing upright balanced on its spread fingers, thick bulging veins, a bandaged stump at the top with a leather strap, no body. ${PROP}` },
+  cornvelious: { height: 2.2, prompt: `Cornvelious Daniel from Rick and Morty: a Gromflomite officer of the Galactic Federation, a tall insect-like alien with green skin, large compound eyes, antennae, mandibles, in a brown Federation officer's uniform with gold trim and a peaked officer's cap, a holster on the belt, black boots. ${BODY}` },
+  brainalyzer: { rig: false, prompt: `The Brainalyzer from Rick and Morty: a Galactic Federation interrogation chair, a reclined dark green metal seat with heavy arm clamps, a domed steel helmet on a jointed arm over the headrest, thick cables running to a console with green lights, no text. ${PROP}` },
+  antsjohnson: { rig: false, poly: 14000, prompt: `Ants in my Eyes Johnson from Rick and Morty's interdimensional cable: a man in a cheap brown suit and a red tie with his arms out wide, his eyes covered by a swarm of small black ants crawling over his face, a wide desperate grin. ${AT_EASE}` },
+  babylegs: { rig: false, poly: 14000, prompt: `Baby Legs from Rick and Morty's interdimensional cable: a police detective with a grown man's torso, a trench coat, a tie and a fedora, and tiny short baby legs in a nappy, a big moustache, holding a badge. ${AT_EASE}` },
+  regularlegs: { rig: false, poly: 14000, prompt: `Regular Legs from Rick and Morty's interdimensional cable: a police detective with ordinary long legs, a dark suit and tie, a stern face, slicked hair, a badge on his belt. ${AT_EASE}` },
+  mrsneezy: { rig: false, poly: 14000, prompt: `Mr. Sneezy from Rick and Morty's interdimensional cable: a man in a green cardigan and brown trousers with an enormous round red swollen nose taking up half his face, his eyes screwed shut mid-sneeze, a handkerchief in one hand. ${AT_EASE}` },
+  gazorpazorpfield: { rig: false, poly: 14000, prompt: `Gazorpazorpfield from Rick and Morty's interdimensional cable: a fat orange striped cartoon cat standing upright with a smug grin, four arms, small horns, half-lidded eyes, holding a lasagne dish. ${PROP}` },
+  shmlo: { rig: false, poly: 14000, prompt: `Shmlonathan from Rick and Morty's interdimensional cable: a human-like man with a huge bulbous bald forehead three times the size of his face, small eyes, a blue shirt and brown trousers, hands at his sides. ${AT_EASE}` },
+  trunkperson: { rig: false, poly: 14000, prompt: `A Trunk Person from Rick and Morty's interdimensional cable: a human in a white shirt and jeans whose head is an elephant's trunk, long and grey, drooping down to the chest, with two small eyes at the top. ${AT_EASE}` },
+  lilbits: { rig: false, poly: 14000, prompt: `The host of Lil' Bits from Rick and Morty's interdimensional cable: a tiny thin man in a black tuxedo and bow tie with slicked hair and a toothy grin, holding a tiny plate of tiny food, standing on a small round pedestal. ${PROP}` },
+  tophatjones: { rig: false, poly: 14000, prompt: `A tophat cat from Rick and Morty's interdimensional cable: a thin tall black cat standing upright in a top hat and a monocle with a cane, a smug face. ${PROP}` },
+  realfakedoors: { rig: false, poly: 14000, prompt: `The Real Fake Doors salesman from Rick and Morty's interdimensional cable: a short bald man in a pale blue shirt and a red tie with a name badge, one arm raised to present, standing in front of a plain white fake door frame with no wall. ${PROP}` },
+};
 // The plan's Task 3.1: Mortytown's people and buildings, two Ricks for the
 // Citadel's crowd, the Citadel from space and the NX-5. The plan's prompts
 // were checked against the wiki on 6 October and put right where the show
@@ -291,6 +311,7 @@ for (const [phase, set] of [
   [7, PHASE7],
   [8, PHASE8],
   [9, PHASE9],
+  [10, PHASE10],
 ]) {
   for (const [n, a] of Object.entries(set)) ASSETS[n] = { phase, rig: !a.crowd, poly: a.crowd ? 9000 : a.hero ? 40000 : 30000, tex: a.crowd || SMALL.has(n) ? 1024 : 2048, ...a };
 }
@@ -849,7 +870,7 @@ async function main() {
     return steps.use(rest);
   }
   // a phase's name stands for its assets
-  const names = (rest.length ? rest : Object.keys(ASSETS)).flatMap((n) => (/^phase\d$/.test(n) ? Object.keys(ASSETS).filter((k) => ASSETS[k].phase === Number(n.slice(5))) : [n]));
+  const names = (rest.length ? rest : Object.keys(ASSETS)).flatMap((n) => (/^phase\d+$/.test(n) ? Object.keys(ASSETS).filter((k) => ASSETS[k].phase === Number(n.slice(5))) : [n]));
   tasks = await json(TASKS);
   // (the clip steps take any rigged figure in the tasks file)
   const own = step === 'clips' ? names.slice(1) : step === 'fetchclips' ? names : [];

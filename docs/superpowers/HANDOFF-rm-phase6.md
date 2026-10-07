@@ -37,6 +37,11 @@ own); NPCs that do things, not just stand and talk.
   ('caught', 'bark', 'done'); `RmWorld.jsx`'s `npc()` handles them after
   each frame (`s.events`). Anyone who roams is marked `roams` and left out
   of the colliders (`rules.js`).
+- **Rows 26–29**: Cronenberg World (`cronenberg.js`, the cast's own
+  Cronenbergs hunting), the Blood Dome (`blooddome.js`, a second duel: step
+  into the ring and Hemorrhage comes), the Federation prison (`prison.js`,
+  switches then Rick, past patrols) and the cable studio (`cable.js`, id
+  `cablestudio`, ten of the channels' people barking their lines).
 - **Evil Rick's lair** (row 25, `evilrick.js`): the quest line the user asked
   for. Free three Mortys from the dome (`collect` with `start: true`: the
   place is told 'collected' and nothing is done yet), Evil Rick comes
@@ -68,7 +73,9 @@ own); NPCs that do things, not just stand and talk.
   storylord, ticketsguy (rigged), zigerion-b, zigerion-c; simman, poptart,
   toasterhouse, omegadevice, primedrone; tommy, nimbus, atlantean, miles
   (rigged), froopy-a, froopy-b, heistotron, heister-a, heister-b, fart,
-  snake-a, snake-b, snakeastronaut, snakerocket; glexo, glipglop, risotto,
+  snake-a, snake-b, snakeastronaut, snakerocket; hemorrhage, cornvelious
+  (rigged), deathstalker-a, deathstalker-b, armothy, brainalyzer and the ten
+  cable figures (`PHASE10`); glexo, glipglop, risotto,
   watert (rigged), nuptiamachine, mytholog, shrimply, gloopnurse,
   resortguest-a, resortguest-b, dirlycar, icet (`PHASE9`). The Omega Device's tanks
   hold the site's own `rick`. `dimensions/models.test.js` fails if any
@@ -84,8 +91,8 @@ own); NPCs that do things, not just stand and talk.
   `deep.js`, drawn by `deepspace.js` and landed on by `footScene.js`
   (`planetOf`), plus `landings/` entries. Scoped but not started.
 - The rest of the plan's Phase 7: Jaguar and the Pickle Rick sewer run (a
-  game of its own), Mr. Frundles, and ten Interdimensional Cable crowd
-  figures on the alien street.
+  game of its own), and Mr. Frundles. (The cable figures went to a studio
+  of their own rather than the alien street, which has no NPC layer.)
 - The map's Birdperson is still the code-built one (`HANDOFF-rm-phase1.md`).
 - Morty's `cheer` clip isn't played anywhere yet (a thing done could play it).
 - Nothing on the dial has a sound of its own yet (the escape clock uses
@@ -96,7 +103,7 @@ own); NPCs that do things, not just stand and talk.
 - `npm run lint`, `npx vitest run`, `npm run build`, and
   `node scripts/health.mjs --check --skip build` (CI runs all four).
 - Dev server `npx vite --port 5197 --strictPort`, then
-  `OUT=/tmp/shots node scripts/c137-shots.mjs simulation storytrain fortress froopyland nimbus gromflomites heistcon snakeplanet nuptia gloopynoops resort schwifty`.
+  `OUT=/tmp/shots node scripts/c137-shots.mjs simulation storytrain fortress froopyland nimbus gromflomites heistcon snakeplanet nuptia gloopynoops resort schwifty evilrick cronenberg blooddome prison cablestudio`.
 - A scripted playthrough through the dev hook: `scripts/_play.mjs` is not
   kept; `window.__C137__.warp(area, x, z)`, `.act()`, `.api.act(area, 'npcs')`
   (where the place's people are) and `localStorage['tp-c137-done']` are
