@@ -70,5 +70,35 @@
       "01a11895-c7b0-76be-ae0c-fbcf2e1d4396"
     ],
     "model": "01a11896-5398-7482-add6-e11609048e23"
+  },
+  "commandpost": {
+    "lift": [
+      "01a11899-97f3-7597-8f4e-5a99c7909bb1"
+    ]
+  },
+  "cloudcity": {
+    "lift": [
+      "01a11899-f514-725d-8eb5-141c794069fc"
+    ]
+  },
+  "nevarrodome": {
+    "lift": [
+      "01a1189a-3dd0-779b-9830-7e59ccfe2c59"
+    ]
+  },
+  "lookout": {
+    "lift": [
+      "01a1189a-9cfd-70ce-9750-f309ae744829"
+    ]
+  },
+  "stilthut": {
+    "lift": [
+      "01a1189a-d0f4-7174-b122-c56d1a4bf65a"
+    ]
+  },
+  "benhut": {
+    "lift": [
+      "01a1189b-0500-7763-8abe-8140dad86860"
+    ]
   }
 }
