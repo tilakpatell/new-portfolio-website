@@ -10,6 +10,7 @@
 // the sublight drive (up to PULSE), so crossing the system doesn't drag, and
 // drops back as you come up on anything (so you never arrive at it flat out).
 //
+// EDGE, CEILING, PULSE; FAR (the camera's far plane, for all of it in view)
 // makeSpace(solids) → { edge, ceilingAt, openness, driveAt, homeAt, boostAt, brakeAt, coastAt, solids, goals }
 // solids: [{ id, at: [x, y, z], r, reach, band?, swallow? }]: what the ship
 // bumps into (the planet, its moons, the Death Star, the big rocks…); the
@@ -18,9 +19,14 @@
 import { SHIP, headingTo } from '../universe/ship';
 import { conj, fromAngles, rotate } from '../universe/orient';
 
-export const EDGE = 900;
+export const EDGE = 2400;
 export const CEILING = 420;
-export const PULSE = 62;
+export const PULSE = 120;
+// how far the camera sees: the gas giant a system orbits is out at up to
+// fit.js's FIT.farthest (7,600) and over 900 across, so from the edge on the
+// far side of the planet it's 10,000 off; the sky's drawn on the far plane
+// whatever its distance, so seeing further costs nothing
+export const FAR = 12000;
 const NEAR = 26; // past a thing's reach: closer than this, the drive's down
 const RAMP = 90; // and over this much further it opens all the way
 const PARK = 6; // how far past a goal's reach the autopilot stops
