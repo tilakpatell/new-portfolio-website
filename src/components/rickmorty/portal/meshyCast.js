@@ -183,6 +183,10 @@ export const MESHY = {
   mrspancakes: { a: 'mrspancakes', h: 1.85 },
   agencyguard: { a: 'agencyguard', h: 1.9 },
   sewerrat: { a: 'sewerrat', h: 0.55 },
+  frundles: { a: 'frundles', h: 0.5 },
+  frundlesman: { a: 'frundlesman', h: 1.85 },
+  frundlesdog: { a: 'frundlesdog', h: 0.9 },
+  frundleshouse: { a: 'frundleshouse', h: 7 },
   cornvelious: { a: 'cornvelious', h: 2.3 },
   'deathstalker-a': { a: 'deathstalker-a', h: 1.85 },
   'deathstalker-b': { a: 'deathstalker-b', h: 1.75 },
@@ -254,8 +258,8 @@ const RICKALL_FIGURES = ['pencilvester', 'sleepygary', 'hamurai', 'amishcyborg',
 const RICKALL_PROPS = ['reversegiraffe', 'ghostinajar', 'photographyraptor', 'tinkles', 'babywizard', 'mrsrefrigerator'];
 const FAMILY_FIGURES = ['spacebeth', 'drwong', 'nancy', 'tricia', 'diane'];
 const FAMILY_PROPS = ['snuffles'];
-const DEST_FIGURES = ['vance', 'supernova', 'alanrails', 'millionants', 'crocubot', 'noobnoob', 'squanchy', 'birdperson', 'phoenixperson', 'unity', 'marsha', 'mortyjr', 'krombopulos', 'kingjellybean', 'zeep', 'kyle', 'xenonbloom', 'poncho', 'annie', 'needful', 'arthricia', 'flippynips', 'scroopy', 'gearhead', 'nebulon', 'storylord', 'ticketsguy', 'rickprime', 'tommy', 'nimbus', 'atlantean', 'miles', 'glexo', 'glipglop', 'risotto', 'watert', 'evilrick', 'hemorrhage', 'cornvelious', 'scaryterry', 'jaguar'];
-const DEST_PROPS = ['vindicators-ship', 'squanchy-house', 'birdperson-house', 'zigerion', 'thirstystep', 'giant', 'stairgoblin', 'hepatitis', 'gonorrhoea', 'tuberculosis', 'plague', 'ecoli', 'needful-shop', 'jerry-robe', 'jerry-golf', 'jerry-tux', 'jerry-track', 'jerry-gown', 'jerry-cardigan', 'magdalian-a', 'magdalian-b', 'magdalian-c', 'plutonian-a', 'plutonian-b', 'gearperson-a', 'gearperson-b', 'zigerion-b', 'zigerion-c', 'simman', 'poptart', 'toasterhouse', 'omegadevice', 'primedrone', 'froopy-a', 'froopy-b', 'heistotron', 'heister-a', 'heister-b', 'fart', 'snake-a', 'snake-b', 'snakeastronaut', 'snakerocket', 'nuptiamachine', 'mytholog', 'shrimply', 'gloopnurse', 'resortguest-a', 'resortguest-b', 'dirlycar', 'icet', 'deathstalker-a', 'deathstalker-b', 'armothy', 'brainalyzer', 'antsjohnson', 'babylegs', 'regularlegs', 'mrsneezy', 'gazorpazorpfield', 'shmlo', 'trunkperson', 'lilbits', 'tophatjones', 'realfakedoors', 'mrspancakes', 'agencyguard', 'sewerrat'];
+const DEST_FIGURES = ['vance', 'supernova', 'alanrails', 'millionants', 'crocubot', 'noobnoob', 'squanchy', 'birdperson', 'phoenixperson', 'unity', 'marsha', 'mortyjr', 'krombopulos', 'kingjellybean', 'zeep', 'kyle', 'xenonbloom', 'poncho', 'annie', 'needful', 'arthricia', 'flippynips', 'scroopy', 'gearhead', 'nebulon', 'storylord', 'ticketsguy', 'rickprime', 'tommy', 'nimbus', 'atlantean', 'miles', 'glexo', 'glipglop', 'risotto', 'watert', 'evilrick', 'hemorrhage', 'cornvelious', 'scaryterry', 'jaguar', 'frundlesman'];
+const DEST_PROPS = ['vindicators-ship', 'squanchy-house', 'birdperson-house', 'zigerion', 'thirstystep', 'giant', 'stairgoblin', 'hepatitis', 'gonorrhoea', 'tuberculosis', 'plague', 'ecoli', 'needful-shop', 'jerry-robe', 'jerry-golf', 'jerry-tux', 'jerry-track', 'jerry-gown', 'jerry-cardigan', 'magdalian-a', 'magdalian-b', 'magdalian-c', 'plutonian-a', 'plutonian-b', 'gearperson-a', 'gearperson-b', 'zigerion-b', 'zigerion-c', 'simman', 'poptart', 'toasterhouse', 'omegadevice', 'primedrone', 'froopy-a', 'froopy-b', 'heistotron', 'heister-a', 'heister-b', 'fart', 'snake-a', 'snake-b', 'snakeastronaut', 'snakerocket', 'nuptiamachine', 'mytholog', 'shrimply', 'gloopnurse', 'resortguest-a', 'resortguest-b', 'dirlycar', 'icet', 'deathstalker-a', 'deathstalker-b', 'armothy', 'brainalyzer', 'antsjohnson', 'babylegs', 'regularlegs', 'mrsneezy', 'gazorpazorpfield', 'shmlo', 'trunkperson', 'lilbits', 'tophatjones', 'realfakedoors', 'mrspancakes', 'agencyguard', 'sewerrat', 'frundles', 'frundlesdog', 'frundleshouse'];
 export const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick', ...RICKALL_FIGURES, ...FAMILY_FIGURES, ...DEST_FIGURES]);
 // the models not in the cast's own folder, by name: where they are
 // (and Mortytown's two shopfronts, rickmorty/citadel/district.js)

@@ -16,7 +16,7 @@
 // back. What's on its far side (`beyond`) is a friend's universe, their own
 // site, and the page goes on to it (Universe.jsx).
 
-import { HOME_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
+import { BODIES, HOME_RADIUS, POSITIONS, REACH, SUN } from './layout';
 import { byId } from './universes';
 import { HOLE_SCALE, STAR_SCALE } from './scale';
 
@@ -240,7 +240,7 @@ export const beyondOf = (id) => wonderById(id)?.beyond ?? null;
 // every place there is to be at, out here and at home: the universes (the
 // stations and the planets) and the wonders, each with how far it reaches
 export const PLACES = [
-  ...ORDER.map((id) => ({ id, at: POSITIONS[id], reach: REACH[id], kind: byId(id).kind === 'core' ? 'station' : 'planet' })),
+  ...BODIES.map((id) => ({ id, at: POSITIONS[id], reach: REACH[id], kind: byId(id).kind === 'core' ? 'station' : 'planet' })),
   ...WONDERS.map((w) => ({ id: w.id, at: w.at, reach: reachOf(w), kind: w.kind })),
 ];
 const far = PLACES.filter((p) => p.kind !== 'station'); // (the stations are the home system)

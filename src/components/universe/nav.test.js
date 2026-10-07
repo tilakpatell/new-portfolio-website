@@ -4,11 +4,11 @@ import { GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, inTrench, orbiting, spawn, s
 import { ORDER } from './layout';
 import { WONDERS } from './deep';
 import { MAW } from './maw';
-import { byId } from './universes';
+import { byId, MOONS } from './universes';
 import { sunFor } from './lighting';
 
 const inside = (s) => SOLIDS.some((p) => Math.hypot(s.x - p.at[0], s.y - p.at[1], s.z - p.at[2]) < (inTrench(p, s.x, s.y, s.z) ? p.band.floor : p.r) + SHIP.radius - 1e-6);
-const worlds = ORDER.filter((id) => byId(id).kind !== 'core');
+const worlds = [...ORDER.filter((id) => byId(id).kind !== 'core'), ...MOONS.map((m) => m.id)];
 const stations = ORDER.filter((id) => byId(id).kind === 'core');
 
 // flown there by the autopilot on `od` of overdrive: how long it took, the
@@ -102,7 +102,8 @@ describe('the drives', () => {
       expect(quick.hits, id).toBe(0);
       expect(orbiting(quick.s, null), id).toBe(id);
       expect(quick.t, id).toBeLessThan(cruise.t * 0.65);
-      expect(quick.t, id).toBeLessThan(20);
+      // (a moon sits in the Citadel's space, where the drive stays shut for the last leg: a little longer)
+      expect(quick.t, id).toBeLessThan(MOONS.some((m) => m.id === id) ? 33 : 20);
       if (id !== 'starwars') expect(quick.top, id).toBeGreaterThan(SHIP.pulse * 2); // (well past the pulse drive; the gate's close to home)
     }
   });

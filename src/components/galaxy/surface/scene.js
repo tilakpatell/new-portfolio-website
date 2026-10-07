@@ -88,6 +88,8 @@ import { createChaseMission } from './missions/chaseScene';
 import { createAssaultMission } from './missions/assaultScene';
 import { RULES as ASSAULT } from './missions/assault';
 import { groundWorld } from '../../../lib/three/groundwork';
+import { createHouse, shadowFor } from '../../../lib/three/house';
+import { garrisonLife } from './garrison';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -139,6 +141,7 @@ export async function create(canvas, ctx) {
   // (fogged in the sky's colour before its shaders are made, so they're made once)
   const warm = (root) => {
     skyFog.scene(root);
+    house.adopt(root);
     return precompile(renderer, singlePass(root), camera, scene, post.on ? post.composer.readBuffer : undefined);
   };
 
@@ -174,6 +177,11 @@ export async function create(canvas, ctx) {
   }
   const hemi = new THREE.HemisphereLight(site.light.sky ?? '#bcd0ee', site.light.ground ?? '#8a7a66', site.light.ambient ?? 0.9);
   scene.add(hemi);
+  // the house look (lib/three/house): shade the colour of the sky light, on
+  // everything (the fog is already the sky's, its own way: left as it is;
+  // the post's tone map is the house's Neutral shoulder already)
+  const house = createHouse({ fog: false });
+  const shadeOf = { hex: -1, k: -1 };
   scene.fog = new THREE.FogExp2(site.fog.color, site.fog.density);
   // what shiny things reflect: the sky
   const pmrem = new THREE.PMREMGenerator(renderer);
@@ -243,7 +251,7 @@ export async function create(canvas, ctx) {
   }
   // (the grass round you: blades on the land, where the site grows it)
   const grass = site.grass && !site.noGround ? createGrass(scene, { grid, site, small, time: kit.wind }) : null;
-  const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
+  const life = createActors({ parent: scene, world, life: garrisonLife(site.life, ctx.effects?.troops), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
 
   // ── The places you go into (zones): built high over the world, out of
   // sight, each with its own lamps ──
@@ -2311,6 +2319,15 @@ export async function create(canvas, ctx) {
     sky.update(camera, t, flash.k);
     // (whatever's come into the world since, fogged in the sky's colour before it's drawn)
     skyFog.scene(scene);
+    // (and in the house look, its full light and shade following the sky light: a storm's flashes, a hall)
+    house.light({ sun, hemi });
+    const hex = hemi.color.getHex();
+    if (hex !== shadeOf.hex || hemi.intensity !== shadeOf.k) {
+      shadeOf.hex = hex;
+      shadeOf.k = hemi.intensity;
+      house.set({ shadow: shadowFor({ hemiSky: hex, hemi: hemi.intensity }) });
+    }
+    house.adopt(scene);
     water?.update(t, camera);
     for (const f of floaters) {
       if (Math.hypot(camera.position.x - f.x, camera.position.z - f.z) > 400) continue;

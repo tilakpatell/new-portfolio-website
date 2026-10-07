@@ -10,6 +10,7 @@
 
 import * as THREE from 'three';
 import { createStage } from '../../../lib/stage3d';
+import { houseOn } from '../../../lib/three/house';
 import { device } from '../../../lib/device';
 import { createFx } from '../../middleearth/shire/fx';
 import { createGhosts } from '../../middleearth/towns/ghosts';
@@ -175,6 +176,9 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   const day = new THREE.DirectionalLight(0xfff4e2, 0.35);
   day.position.set(-6, 5, -10);
   scene.add(hemi, key, key.target, day);
+  // the house look (lib/three/house): the shade under the troffers one colour
+  // from their light, as in every world, under the house tone mapper
+  const house = houseOn({ renderer, scene, sun: key, hemi });
   // the troffers nearest Jim, as lights: each a wide cone straight down
   // from the fixture, so it pools on the desks and the carpet and leaves the
   // ceiling tiles round it alone (a point light there burnt them white)
@@ -661,10 +665,11 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   };
 
   // everything's shaders linked before the first frame
+  house.follow({ adopt: true });
   await stage.precompile();
   // and the people who come later, as they come (they're shown at once;
   // the page's 3D office links theirs the same way)
-  loading.then(() => !gone && stage.precompile());
+  loading.then(() => !gone && (house.follow({ adopt: true }), stage.precompile()));
 
   return {
     scene: import.meta.env.DEV ? scene : null,

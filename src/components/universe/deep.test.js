@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DEEP, DEEP_SOLIDS, STARS, WONDERS, beyondOf, binaryAt, moveBinaries, nearestStar, openness, parseWonder, planetAt, reachOf, wonderById } from './deep';
 import { GOALS } from './ship';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
-import { byId } from './universes';
+import { MOONS, byId } from './universes';
 
 describe('deep space', () => {
   it('puts every wonder well out past the home system and inside the edge, within the ceiling', () => {
@@ -189,5 +189,23 @@ describe('deep space', () => {
     const ember = WONDERS.find((w) => w.id === 'ember');
     expect(nearestStar(ember.at[0] + 200, ember.at[1], ember.at[2]).star.id).toBe('ember');
     expect(nearestStar(ember.at[0] + 200, ember.at[1], ember.at[2]).dist).toBeCloseTo(200, 3);
+  });
+
+  it('has the Rick and Morty system’s moons round the Citadel, clear of its parts and each other, and nowhere near a fandom', () => {
+    const citadel = WONDERS.find((w) => w.id === 'citadel');
+    const parts = DEEP_SOLIDS.filter((s) => s.id.startsWith('citadel'));
+    expect(MOONS.length).toBe(4);
+    for (const m of MOONS) {
+      const d = Math.hypot(m.at[0] - citadel.at[0], m.at[1] - citadel.at[1], m.at[2] - citadel.at[2]);
+      expect(d, m.id).toBeGreaterThan(300);
+      expect(d, m.id).toBeLessThan(650);
+      for (const p of parts) expect(Math.hypot(m.at[0] - p.at[0], m.at[1] - p.at[1], m.at[2] - p.at[2]), `${m.id} and ${p.id}`).toBeGreaterThan(p.r + REACH[m.id] + 40);
+      for (const o of MOONS) if (o !== m) expect(Math.hypot(m.at[0] - o.at[0], m.at[1] - o.at[1], m.at[2] - o.at[2])).toBeGreaterThan(REACH[m.id] + REACH[o.id] + 80);
+      for (const id of ORDER) expect(Math.hypot(m.at[0] - POSITIONS[id][0], m.at[1] - POSITIONS[id][1], m.at[2] - POSITIONS[id][2]), `${m.id} and ${id}`).toBeGreaterThan(REACH[id] + REACH[m.id] + 200);
+      expect(POSITIONS[m.id]).toEqual(m.at);
+      expect(byId(m.id).kind).toBe('moon');
+      // (a place: the drive is shut right at it)
+      expect(openness(m.at[0] + REACH[m.id] + 10, m.at[1], m.at[2]), m.id).toBe(0);
+    }
   });
 });

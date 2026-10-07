@@ -23,6 +23,7 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../lib/stage3d';
+import { createHouse, shadowFor } from '../../../lib/three/house';
 import { budget, device } from '../../../lib/device';
 import { createPace } from '../../../lib/three/pace';
 import { InkPass, toon, toonify } from '../portal/toon';
@@ -108,6 +109,7 @@ export const LAZY = {
   meeseeksgolf: () => import('./dimensions/meeseeks').then((m) => m.buildMeeseeks),
   vat: () => import('./dimensions/vat').then((m) => m.buildVat),
   dim35c: () => import('./dimensions/dim35c').then((m) => m.buildDim35c),
+  frundles: () => import('./dimensions/frundles').then((m) => m.buildFrundles),
 };
 
 // The cruiser's headlights, which are its eyes (the saucer's, in the hull's
@@ -138,8 +140,14 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   const fit = budget();
   const stage = createStage(canvas, { shadows: true, fov: 55, near: 0.3, far: 1000, exposure: 1.05, bloom: { strength: 0.55, radius: 0.45, threshold: 1.15 }, onLost });
   const { renderer, scene, camera } = stage;
-  // a tone map that keeps the show's flat bright colours bright
+  // a tone map that keeps the show's flat bright colours bright (the house
+  // tone mapper: the exposure was tuned under it, so the house's own
+  // ACES-matching lift isn't taken)
   renderer.toneMapping = THREE.NeutralToneMapping;
+  // the house look (lib/three/house): one shadow colour on everything, from
+  // each area's sky light, and fog the colour of the sky where there's fog
+  const house = createHouse();
+  house.sky({ low: STREET_SKY.low, high: STREET_SKY.top, below: 1, sunDir: SUN_DIR });
   stage.grade({ contrast: 0.06, saturation: 1.12, vignette: 0.12, grain: 0.008, shadow: [0, 0.004, 0.012], high: [0.012, 0.008, 0] });
   renderer.info.autoReset = false; // counted over the whole frame, every pass
   const big = Math.min(window.screen?.width ?? 1280, window.screen?.height ?? 800) >= 700;
@@ -391,6 +399,13 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       fog.far = 2e4;
     }
     scene.background = L.background != null ? new THREE.Color(L.background) : null;
+    // the house look follows the area's light (and takes on whatever's
+    // been built or brought in since: patched once each)
+    const sky = id === 'street' ? STREET_SKY : OUTDOOR.includes(id) ? ANNEX_SKY : null;
+    if (sky) house.sky({ low: sky.low, high: sky.top, below: 1 });
+    house.light({ sun, hemi });
+    house.set({ shadow: shadowFor({ hemiSky: hemi.color.getHex(), hemi: hemi.intensity }), fogMix: L.fog && sky ? 1 : 0 });
+    house.adopt(scene);
     for (const m of fx.marks.values()) m.visible = m.userData.area === id;
     shown = id;
     return true;
@@ -683,6 +698,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
 
   const api = {
     ground: import.meta.env.DEV ? floorLight : null, // for the QA scripts
+    house: import.meta.env.DEV ? house : null, // for the QA scripts
     render,
     resize,
     fx: fxEvent,

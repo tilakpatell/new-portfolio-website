@@ -64,7 +64,10 @@ universes' models (Rick and Morty, Star Wars, Breaking Bad).
   the generator's mush, enlarged, and posterised to a few flat colours (optionally pulled to a
   palette). Windows, brick and trim stay as clean flat shapes; the core kit's grain goes on top
   at runtime. Per-vertex flattening (`--vertex`) is kept for dense meshes but loses painted
-  detail on coarse ones (the Smith house's walls), so it is not the default.
+  detail on coarse ones (the Smith house's walls), so it is not the default. Where it's used:
+  Albuquerque's buildings and cars. C-137's models, already drawn as a cartoon with ink
+  lines, came out softer (the hoop's red square, the garage door's panels), and the galaxy's
+  2K atlases lost real detail (window muntins), so both keep their originals.
 - **Order**: the Shire, then each world onto the house look and the core kit (one pull request
   a world, before and after screenshots), then the universe map, then the Rick and Morty,
   Star Wars and Breaking Bad models.

@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { UNIVERSES } from './universes';
+import { MOONS, UNIVERSES } from './universes';
 import { BELT, MAP_RADIUS, ORDER, POSITIONS, SUN, keyStep } from './layout';
 import './universe.css';
 
@@ -53,6 +53,11 @@ export default function MiniMap({ selected = null, onSelect, linkTo, kind = null
         {/* the asteroid belt, a dotted band between the stations and the planets */}
         <ellipse cx={W / 2} cy={H / 2 - 8} rx={scaled((BELT.inner + BELT.outer) / 2)} ry={scaled((BELT.inner + BELT.outer) / 2) * TILT} fill="none" stroke="#9a8f80" strokeOpacity="0.35" strokeWidth={(scaled(BELT.outer) - scaled(BELT.inner)) * 0.5} strokeDasharray="1 3" />
         <circle cx={W / 2} cy={H / 2 - 8} r={Math.max(3, scaled(SUN.r) * 0.35)} fill="#ffb347" opacity="0.9" />
+        {/* the Rick and Morty system's moons, round the Citadel: small dots, not places to pick here */}
+        {MOONS.map((m) => {
+          const [x, y] = at(m.id);
+          return <circle key={m.id} cx={x} cy={y} r={2.2} fill={m.swatch} opacity="0.8" aria-hidden="true" />;
+        })}
         {shown.map((u) => {
           const [x, y] = at(u.id);
           return (

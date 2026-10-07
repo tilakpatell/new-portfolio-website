@@ -26,6 +26,7 @@ import { createLand, cutFace, cutWiden, CUT_PAD } from './terrain';
 import { tuftGeometry, tuftMaterial } from './flora';
 import { gateGeometry, gateTrimGeometry, kaonMetal, megaGeometry } from './kaon';
 import { loadTexture } from '../../../lib/three/textures';
+import { envLevel } from '../../../lib/three/house';
 
 // sky: the photographed sky (u and elevation: where its own sun is, as
 // `npm run cc0` prints it), how bright, its tint, the sun drawn over it, how
@@ -104,6 +105,8 @@ export function loadHdri(name, stage) {
         }
         const pm = new THREE.PMREMGenerator(renderer);
         const env = pm.fromEquirectangular(tex).texture;
+        // (its mean light, for the house look: the PMREM has no pixels to read)
+        env.userData.level = envLevel(tex);
         pm.dispose();
         tex.dispose();
         resolve(env);
@@ -1015,7 +1018,7 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
     own.forEach((t) => t.dispose());
   };
 
-  return { id, look, root, update, attach, dispose, night: look.night, kind, height };
+  return { id, look, root, update, attach, dispose, night: look.night, kind, height, sun, hemi };
 }
 
 // Surfaces every stage shares: Poly Haven concrete for decks, piers and

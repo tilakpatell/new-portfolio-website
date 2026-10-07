@@ -21,7 +21,7 @@ export const readDone = () => readAll(QUESTS_KEY);
 
 // what the surface module is made with when the galaxy hands over to it
 // (its page's own props replace these once it's up: the compass is its)
-export function surfaceProps(system, { ship, loadout, build = null, net = null, reduced = false }) {
+export function surfaceProps(system, { ship, loadout, build = null, net = null, reduced = false, effects = null }) {
   const found = readFound()[system];
   const done = readDone()[system];
   return {
@@ -35,6 +35,7 @@ export function surfaceProps(system, { ship, loadout, build = null, net = null, 
     compass: { current: null },
     net,
     reduced,
+    effects, // (who holds it in the war: galaxy/warEffects.js's, for its garrison on the ground)
   };
 }
 

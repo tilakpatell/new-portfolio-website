@@ -97,7 +97,7 @@ import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePa
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
-import { BELT, ORDER, POSITIONS, REACH, RIM, RING, SUN } from './layout';
+import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SUN } from './layout';
 import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
@@ -105,6 +105,7 @@ import { aberrationFor, createPost, spaceEnvironment } from './post';
 import { grainFor } from '../../lib/three/noise';
 import { createFlare, flareWeight, occluded } from '../../lib/three/flare';
 import { exposureFor, sunShareOf } from '../../lib/three/exposure';
+import { houseOn } from '../../lib/three/house';
 import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, driveById, hyperState, parkFor, riftExit } from './nav';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
@@ -161,6 +162,7 @@ import { ENTRY, LANDABLE, airTop, entering } from './entry';
 import { poseFor } from './poses';
 import { REMOVER, hitRemover, hpLeft, landingOpen, newRemover, stepRemover } from './remover';
 import { NX5_LEN, createRemoverView } from './removerView';
+import { createSky } from './skyShader';
 
 const STARS = 1800; // the near ones, over the Milky Way's own
 const STARS_LOW = 700;
@@ -517,6 +519,12 @@ export async function create(canvas, ctx) {
   fill.position.set(0.7, -0.4, -0.3).multiplyScalar(50);
   const ambient = new THREE.AmbientLight('#b8c4ff', 0.4);
   scene.add(key, fill, ambient);
+  // the house look (lib/three/house) on the map's ships, stations and
+  // landmarks: their shade the colour of the space light, as in every world.
+  // (The post pass tone-maps the house's way itself, and space has no fog:
+  // both left as they are. The planets draw in shaders of their own.)
+  const house = houseOn({ renderer, scene, sun: key, ambient, toneMap: false, look: { fog: false } });
+  let houseFrames = 0;
   // the key's direction in world space, shared with every planet, which
   // puts its own sun in the key's place (planets.js's keyHook)
   const keyW = { value: LIGHT.clone() };
@@ -637,20 +645,18 @@ export async function create(canvas, ctx) {
   const T = await loadTextures({ small });
 
   // what metal reflects, and the passes after the scene (post.js)
-  let env = spaceEnvironment(renderer, T.sky);
+  let env = spaceEnvironment(renderer, T['sky-glow']);
   scene.environment = env.texture;
   const post = createPost(renderer, scene, camera, { small });
 
   // the sky: the Milky Way, all the way round, turning with the map and
-  // riding with the camera (so it's always as far off). It's always seen
-  // magnified, so it does without mipmaps (and their memory)
+  // riding with the camera (so it's always as far off), drawn sharp at the
+  // screen's own resolution (skyShader.js: the photo for its light, the
+  // stars and the fine detail drawn there); fewer layers of stars on a
+  // weaker device
   let sky = null;
-  if (T.sky) {
-    T.sky.generateMipmaps = false;
-    T.sky.minFilter = THREE.LinearFilter;
-    T.sky.anisotropy = 1;
-    sky = new THREE.Mesh(new THREE.SphereGeometry(27000, 64, 32), new THREE.MeshBasicMaterial({ map: T.sky, side: THREE.BackSide, depthWrite: false, toneMapped: false }));
-    sky.renderOrder = -10;
+  if (T['sky-glow']) {
+    sky = createSky(T['sky-glow'], { layers: tier === 'low' ? 1 : tier === 'high' ? 3 : 2 });
     map.add(sky);
   }
 
@@ -692,8 +698,8 @@ export async function create(canvas, ctx) {
 
   // each planet lit from its own star (lighting.js's sunFor, in the map's
   // axes; turned with the map into the world's each frame: lights())
-  const sunInMap = Object.fromEntries(ORDER.map((id) => [id, sunFor(id)]));
-  const planets = ORDER.map((id) => {
+  const sunInMap = Object.fromEntries(BODIES.map((id) => [id, sunFor(id)]));
+  const planets = BODIES.map((id) => {
     const p = buildPlanet(byId(id), T, { sun: new THREE.Vector3(...sunInMap[id]), tier, key: keyW });
     p.group.position.set(...POSITIONS[id]);
     map.add(p.group);
@@ -4072,7 +4078,7 @@ export async function create(canvas, ctx) {
     // neighbourhood to another's): its glow where the star is, in its colour
     if (l.key.id !== envStar && !lightNow.first) {
       envStar = l.key.id;
-      const next = spaceEnvironment(renderer, T.sky, { light: lightTo.set(...l.key.dir).negate().applyAxisAngle(Y_AXIS, state.yaw), colour: l.key.colour });
+      const next = spaceEnvironment(renderer, T['sky-glow'], { light: lightTo.set(...l.key.dir).negate().applyAxisAngle(Y_AXIS, state.yaw), colour: l.key.colour });
       scene.environment = next.texture;
       env.dispose();
       env = next;
@@ -4342,6 +4348,8 @@ export async function create(canvas, ctx) {
     map.updateWorldMatrix(true, false);
     map.worldToLocal(camLocal.copy(camera.position));
     lights(dt);
+    // (the look follows the lights; what's come into the scene since is taken on every half second or so)
+    house.follow({ adopt: houseFrames++ % 30 === 0 });
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
     // the Citadel's siege: rebuilt or patched up when it's time, what's left
     // of it drawn, and your word on it out to everyone (soon after a hit of

@@ -16,7 +16,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { TIERS, check, triangles } from './budget.mjs';
+import { TIERS, check, cutsFor, triangles } from './budget.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const OUT = join(ROOT, 'public', 'models', 'gen3d');
@@ -76,10 +76,12 @@ export const permissive = (tris) => async (doc) => {
 // simplified from it, its brightness matched to an old model's first when
 // `match` names one (colour.mjs); credited once. Returns the first cut's
 // numbers, and every cut's under `cuts`.
-export async function publish(raw, name, { what, engine = 'TRELLIS.2', acrossSeams = false, match, tiers = Object.keys(TIERS), tris, tex }) {
+// `top` ({ faces, tex }) scales the three cuts down for a model asked to be smaller (budget.mjs cutsFor).
+export async function publish(raw, name, { what, engine = 'TRELLIS.2', acrossSeams = false, match, tiers = Object.keys(TIERS), tris, tex, top }) {
   const nio = await io();
   await mkdir(OUT, { recursive: true });
-  const cuts = tris ? { custom: { suffix: '', faces: tris, tex: tex ?? 2048, bytes: TIERS.mid.bytes } } : Object.fromEntries(tiers.map((t) => [t, TIERS[t]]));
+  const scaled = cutsFor(top?.faces, top?.tex);
+  const cuts = tris ? { custom: { suffix: '', faces: tris, tex: tex ?? 2048, bytes: TIERS.mid.bytes } } : Object.fromEntries(tiers.map((t) => [t, scaled[t]]));
   const results = {};
   let said = false;
   for (const [tier, cut] of Object.entries(cuts)) {

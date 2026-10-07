@@ -54,7 +54,7 @@
 // rate into a wall.
 
 import { DEEP, DEEP_SOLIDS, WONDERS, driveOpen, easeOpen, gapAlong, openness, reachOf, trenchBand } from './deep';
-import { HOME_RADIUS, MAP_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
+import { BODIES, HOME_RADIUS, MAP_RADIUS, POSITIONS, REACH, SUN } from './layout';
 import { MAW } from './maw';
 import { NOSE, UP, axisAngle, conj, fromAngles, mul, normalize, rotate, toAngles, turnToward } from './orient';
 import { byId } from './universes';
@@ -129,7 +129,7 @@ const ORBIT_IN = 8; // past a planet's reach: closer than this, you're at it
 const ORBIT_OUT = 14; // and you've left once you're this far
 const PARK = 4; // where autopilot stops, past the planet's reach
 
-export const PLANETS = ORDER.map((id) => {
+export const PLANETS = BODIES.map((id) => {
   const u = byId(id);
   const place = { id, at: POSITIONS[id], r: u.size, reach: REACH[id], trench: u.trench };
   const band = trenchBand(place);

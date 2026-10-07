@@ -258,7 +258,89 @@ const FANDOMS = [
 
 export const UNIVERSES = [...CORE, ...FANDOMS];
 
-const BY_ID = new Map(UNIVERSES.map((u) => [u.id, u]));
+// The Rick and Morty system: four small planets round the Citadel, out in
+// deep space (deep.js's wonder), each a place from the show the portal gun
+// dials on the C-137 page, and each landed on like a fandom's planet (the
+// ship sets down, the crew gets out: landings/landings.js). They aren't in
+// UNIVERSES (not in the map's order, the mini-map or the pages' links): a
+// kind of their own, 'moon', found by byId, placed by layout.js at `at`,
+// solid and landable through ship.js's PLANETS and the scene's planets.
+// Sizes are a quarter of a fandom planet's; the Citadel is at
+// [1755, -135, -4660], r 60, reaching 114.
+const MOON = 7 * 3;
+export const MOONS = [
+  {
+    id: 'gazorpazorp',
+    label: 'Gazorpazorp',
+    kind: 'moon',
+    world: null,
+    place: 'Gazorpazorp',
+    go: 'Land on',
+    to: '/c-137',
+    crew: 'rickmorty',
+    swatch: '#e08a5a',
+    accent: '#ffb080',
+    rim: '#ffb080',
+    size: 0.42 * MOON,
+    at: [2210, -75, -4860],
+    palette: { base: '#b84a2a', dark: '#6a2a1a', light: '#e08a5a', glow: '#ff9a6a' },
+    air: { colour: '#ffb080', density: 1.3, top: 1.06 },
+  },
+  {
+    id: 'squanch',
+    label: 'Planet Squanch',
+    kind: 'moon',
+    world: null,
+    place: 'Planet Squanch',
+    go: 'Land on',
+    to: '/c-137',
+    crew: 'rickmorty',
+    swatch: '#d85a4a',
+    accent: '#ff9a8a',
+    rim: '#7ad2c8',
+    size: 0.4 * MOON,
+    at: [2000, -190, -4400],
+    palette: { base: '#b83a3a', dark: '#7a2a2a', light: '#d85a4a', glow: '#7ad2c8' },
+    air: { colour: '#7ad2c8', density: 1.6, top: 1.07 },
+  },
+  {
+    id: 'birdworld',
+    label: 'Bird World',
+    kind: 'moon',
+    world: null,
+    place: 'Bird World',
+    go: 'Land on',
+    to: '/c-137',
+    crew: 'rickmorty',
+    swatch: '#6aa84a',
+    accent: '#9ad86a',
+    rim: '#bfe4ff',
+    size: 0.44 * MOON,
+    at: [1900, -30, -4150],
+    palette: { base: '#4a8a3a', dark: '#2a5a2a', light: '#6aa84a', glow: '#bfe4ff' },
+    air: { colour: '#bfe4ff', density: 1.8, top: 1.07 },
+  },
+  {
+    id: 'gearworld',
+    label: 'Gear World',
+    kind: 'moon',
+    world: null,
+    place: 'Gear World',
+    go: 'Land on',
+    to: '/c-137',
+    crew: 'rickmorty',
+    swatch: '#d8aa5a',
+    accent: '#ffd080',
+    rim: '#ffe0a0',
+    size: 0.38 * MOON,
+    at: [1480, -20, -5090],
+    palette: { base: '#b88a3a', dark: '#6a4a2a', light: '#d8aa5a', glow: '#ffe0a0' },
+    air: { colour: '#ffe0a0', density: 1.2, top: 1.05 },
+  },
+];
+export const MOON_IDS = MOONS.map((m) => m.id);
+
+const BY_ID = new Map([...UNIVERSES, ...MOONS].map((u) => [u.id, u]));
 
 export const byId = (id) => BY_ID.get(id);
 
