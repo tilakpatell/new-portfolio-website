@@ -106,3 +106,17 @@ describe('a quality level changed while a world is up', () => {
     expect(q.ratioUnder(1)).toBe(1);
   });
 });
+
+describe('the renderer row a quality level starts from', () => {
+  it('starts an ultra level on ultra’s row, its tier still high', () => {
+    const q = createQuality({ tier: 'high', detail: 'ultra', pace: fakePace([null]) });
+    expect(q.tier).toBe('high');
+    expect(q.budget.samples).toBe(8);
+    expect(q.budget.shadowMap).toBe(4096);
+  });
+
+  it('keeps high on high’s row', () => {
+    const q = createQuality({ tier: 'high', detail: 'high', pace: fakePace([null]) });
+    expect(q.budget.samples).toBe(4);
+  });
+});

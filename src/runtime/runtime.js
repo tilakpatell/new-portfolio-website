@@ -405,8 +405,9 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       return true;
     },
     requality(level) {
-      if (!current || rt.loading) return 'idle';
+      // (the budget first: a world mounted next is built at the new level)
       quality.retune?.(level);
+      if (!current || rt.loading) return 'idle';
       if (gfx) gfx.setRatio?.(ratioFor(current.module));
       const { world, module } = current;
       const tune = world.onQuality ? () => world.onQuality(level) : module.onQuality ? () => module.onQuality(level, world, rt) : null;

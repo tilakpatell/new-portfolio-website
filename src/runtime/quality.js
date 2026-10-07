@@ -11,15 +11,22 @@
 // the budget's; a quality level picked while a world is up swaps the
 // budget (`retune`).
 //
-// createQuality({ tier, pace, floorAfter, dpr, sharp }) → { tier, budget,
+// The budget row is the level's (lib/device's detail: an ultra desktop
+// starts on the ultra row, more samples and a bigger shadow map), the tier
+// still the tier.
+//
+// createQuality({ tier, detail, pace, floorAfter, dpr, sharp }) → { tier, budget,
 //   level, scale, ratio, ratioUnder(cap), on(fn) → undo, frame(now) → the
 //   new level or null, reset(), retune(level), setSharpness(k) }
 
 import { BUDGETS, device, sharpness } from '../lib/device';
 import { STEPS, createPace } from '../lib/three/pace';
 
-export function createQuality({ tier = device().tier, pace = createPace(), floorAfter = 2500, dpr = Infinity, sharp = sharpness() } = {}) {
-  let budget = BUDGETS[tier] ?? BUDGETS.high;
+export function createQuality({ tier, detail, pace = createPace(), floorAfter = 2500, dpr = Infinity, sharp = sharpness() } = {}) {
+  // (a tier given alone is its own level: the tests, a forced tier)
+  detail ??= tier ?? device().detail;
+  tier ??= device().tier;
+  let budget = BUDGETS[detail] ?? BUDGETS[tier] ?? BUDGETS.high;
   let k = sharp;
   const last = STEPS.length - 1;
   const listeners = new Set();

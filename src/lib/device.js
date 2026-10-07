@@ -103,10 +103,19 @@ export function classifyDevice({ ua = '', touchPoints = 0, coarse = false, scree
   return { tier, phone, saveData: lowData, memory: memory ?? null, why, grade, detail, auto };
 }
 
-function readOverride() {
+function readUrlLevel() {
   try {
     const q = new URLSearchParams(window.location.search).get('quality') ?? new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('quality');
-    if (LEVELS.includes(q)) return q;
+    return LEVELS.includes(q) ? q : null;
+  } catch {
+    return null;
+  }
+}
+
+function readOverride() {
+  try {
+    const q = readUrlLevel();
+    if (q) return q;
     const kept = window.localStorage.getItem(KEY);
     return LEVELS.includes(kept) ? kept : null;
   } catch {
@@ -175,10 +184,11 @@ export function resetDevice() {
 }
 
 // The mode the visitor chose ('auto' or a level; the address's ?quality=
-// counts as chosen), the level in force, and what Auto would pick here.
+// counts as chosen, and `pinned` says it's the address's, which a pick in
+// the panel can't override), the level in force, and what Auto would pick.
 export function quality() {
   const d = device();
-  return { mode: readOverride() ?? 'auto', level: d.detail, auto: d.auto };
+  return { mode: readOverride() ?? 'auto', level: d.detail, auto: d.auto, pinned: readUrlLevel() != null };
 }
 
 // Keep a mode ('auto' forgets the pick) and tell the page: a 'tp:quality'

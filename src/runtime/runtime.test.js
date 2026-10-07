@@ -472,9 +472,11 @@ describe('the quality level changed while a world is up', () => {
     expect(rt.current.module).toBe(mod);
   });
 
-  it('does nothing with no world up, or one still on its way', async () => {
-    const { rt } = make();
+  it('does nothing with no world up, or one still on its way, but the next world is built at the new level', async () => {
+    const { rt, quality } = make();
+    quality.retune = vi.fn();
     expect(rt.requality('high')).toBe('idle');
+    expect(quality.retune).toHaveBeenCalledWith('high');
     expect(await rt.reload()).toBe(false);
     let finish;
     const p = rt.mount({ id: 'a', create: () => new Promise((r) => (finish = r)) }, {}, fakeHost());

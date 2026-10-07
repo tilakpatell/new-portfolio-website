@@ -193,13 +193,13 @@ describe('the quality mode the visitor chose', () => {
   });
 
   it('is Auto with nothing kept, at what Auto picks here', () => {
-    expect(quality()).toEqual({ mode: 'auto', level: 'ultra', auto: 'ultra' });
+    expect(quality()).toEqual({ mode: 'auto', level: 'ultra', auto: 'ultra', pinned: false });
   });
 
   it('keeps a picked level, says so, and tells the page', () => {
     setQuality('mid');
     expect(store.get('tp-quality')).toBe('mid');
-    expect(quality()).toEqual({ mode: 'mid', level: 'mid', auto: 'ultra' });
+    expect(quality()).toEqual({ mode: 'mid', level: 'mid', auto: 'ultra', pinned: false });
     expect(events.at(-1).type).toBe('tp:quality');
     expect(events.at(-1).detail).toBe('mid');
   });
@@ -222,7 +222,7 @@ describe('the quality mode the visitor chose', () => {
     store.set('tp-quality', 'low');
     window.location.search = '?quality=high';
     resetDevice();
-    expect(quality()).toMatchObject({ mode: 'high', level: 'high' });
+    expect(quality()).toMatchObject({ mode: 'high', level: 'high', pinned: true });
   });
 
   it('reads the sharpness, held between half and twice', () => {

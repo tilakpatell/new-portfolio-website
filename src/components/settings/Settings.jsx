@@ -19,11 +19,11 @@ import '../../styles/lazy/settings.css';
 
 const LABEL = { auto: 'Auto', low: 'Low', mid: 'Medium', high: 'High', ultra: 'Ultra' };
 
-function Segmented({ label, value, options, onChange, describedBy }) {
+function Segmented({ label, value, options, onChange, describedBy, disabled = false }) {
   return (
-    <div className="settings-seg" role="radiogroup" aria-label={label} aria-describedby={describedBy}>
+    <div className="settings-seg" role="radiogroup" aria-label={label} aria-describedby={describedBy} aria-disabled={disabled || undefined}>
       {options.map(([v, text]) => (
-        <button key={v} type="button" role="radio" aria-checked={value === v} className="settings-seg-btn" onClick={() => onChange(v)}>
+        <button key={v} type="button" role="radio" aria-checked={value === v} className="settings-seg-btn" disabled={disabled} onClick={() => onChange(v)}>
           {text}
         </button>
       ))}
@@ -147,12 +147,14 @@ export default function Settings({ onClose }) {
               title="Quality"
               id={qualityHint}
               hint={
-                q.mode === 'auto'
+                q.pinned
+                  ? `The address (?quality=${q.level}) pins ${LABEL[q.level]} for this visit; take it out of the address to choose here.`
+                  : q.mode === 'auto'
                   ? `Auto picks ${LABEL[q.auto]} on this machine${s.capped ? `, held at ${LABEL[s.capped]} after it struggled. A level you pick yourself is never held down.` : '.'}`
                   : `${LABEL[q.level]}, picked by you: never lowered on its own. Auto would pick ${LABEL[q.auto]}.`
               }
             >
-              <Segmented label="Quality" value={q.mode} options={qualityOptions} onChange={(v) => change({ quality: v })} describedBy={qualityHint} />
+              <Segmented label="Quality" value={q.mode} options={qualityOptions} onChange={(v) => change({ quality: v })} describedBy={qualityHint} disabled={q.pinned} />
               {reload && (
                 <p className="settings-reload" role="status">
                   This world builds its detail once.{' '}
