@@ -58,7 +58,11 @@
   "allen": {
     "acct": 2,
     "model": "01a11431-fa97-742f-9b0a-3db89eefcda8",
-    "rig": "01a11443-918b-7518-9f14-5df3db273ccd"
+    "rig": "01a11443-918b-7518-9f14-5df3db273ccd",
+    "anims": {
+      "lib": "01a11447-c73a-739b-9748-aa30ac2cfce9",
+      "hover": "01a11447-c867-7572-85ea-938ec7f022f8"
+    }
   },
   "mauler": {
     "acct": 2,
