@@ -15,6 +15,49 @@ const station = (rooms, doors = [], lifts = []) => {
 const navOf = (s) => createNav(buildLayout(s));
 const doorsOf = (path) => path.filter((p) => p.door).map((p) => p.door);
 
+// Whether a route can be walked as the walker walks: each leg (not a ride),
+// read every 2 cm, stands on a floor of the room its point names, climbs or
+// drops no more than a step (0.4 m) at once, never enters a room nested in
+// that room, and has no floor more than a step above or below it within a
+// body’s radius (0.35 m), walls and nested rooms aside. null when it can;
+// else where it can’t.
+function footing(layout, path) {
+  const within = (r, x, z) => x > r.box.x0 + 1e-6 && x < r.box.x1 - 1e-6 && z > r.box.z0 + 1e-6 && z < r.box.z1 - 1e-6;
+  for (let i = 1; i < path.length; i++) {
+    const [p, q] = [path[i - 1], path[i]];
+    if (p.lift) continue;
+    const room = layout.rooms.get(q.room);
+    const kids = [...layout.rooms.values()].filter((r) => r.inside === room.id);
+    const n = Math.max(1, Math.ceil(Math.hypot(q.x - p.x, q.z - p.z) / 0.02));
+    let last = layout.floorAt(room.id, p.x, p.z);
+    for (let k = 0; k <= n; k++) {
+      const x = p.x + ((q.x - p.x) * k) / n;
+      const z = p.z + ((q.z - p.z) * k) / n;
+      const y = layout.floorAt(room.id, x, z);
+      const at = `leg ${i} in ${room.id} at ${x.toFixed(2)}, ${z.toFixed(2)}`;
+      if (y === null || last === null || Math.abs(y - last) > 0.4 + 1e-9) return `${at}: from ${last} to ${y}`;
+      if (kids.some((r) => within(r, x, z))) return `${at}: inside a nested room`;
+      for (let a = 0; a < 16; a++) {
+        const [rx, rz] = [x + 0.35 * Math.cos((a * Math.PI) / 8), z + 0.35 * Math.sin((a * Math.PI) / 8)];
+        if (!within(room, rx, rz) || kids.some((r) => within(r, rx, rz))) continue;
+        const ry = layout.floorAt(room.id, rx, rz);
+        if (ry === null || Math.abs(ry - y) > 0.4 + 1e-9) return `${at}: ${ry} within a body of ${y}`;
+      }
+      last = y;
+    }
+  }
+  return null;
+}
+
+// Points of a route standing in a line between their neighbours in one
+// room: nothing to turn at, so nothing a walker should be told to aim for.
+const idle = (path) =>
+  path.filter((m, i) => {
+    const [p, q] = [path[i - 1], path[i + 1]];
+    if (!p || !q || p.room !== m.room || m.room !== q.room || p.lift || m.door || m.lift) return false;
+    return Math.abs((m.x - p.x) * (q.z - p.z) - (m.z - p.z) * (q.x - p.x)) < 1e-6;
+  });
+
 // Three rooms round a corner: west and east share a door, and both open
 // on north too, so there are two ways from west to east.
 const corner = () =>
@@ -44,13 +87,16 @@ function tower(levels, levelHeight) {
 }
 
 describe('routes through doors', () => {
-  const nav = createNav(buildLayout(DS1));
+  const layout = buildLayout(DS1);
+  const nav = createNav(layout);
   const deck = { room: 'bay327', x: 10, z: -19.5 };
   const desk = { room: 'ctl327', x: 22, z: -27.5 };
 
   it('goes from Docking Bay 327 to its control room through the door between them', () => {
-    expect(route(nav, deck, desk)).toEqual([
-      { x: 10, z: -19.5, room: 'bay327' },
+    const path = route(nav, deck, desk);
+    expect(doorsOf(path)).toEqual(['bay327-ctl']);
+    expect(path[0]).toEqual({ x: 10, z: -19.5, room: 'bay327' });
+    expect(path.slice(-2)).toEqual([
       { x: 22, z: -24, room: 'bay327', door: 'bay327-ctl' },
       { x: 22, z: -27.5, room: 'ctl327' },
     ]);
@@ -84,7 +130,13 @@ describe('routes through doors', () => {
   it('walks each leg inside the room its point names, a door’s point in the room before it', () => {
     const path = route(nav, { room: 'hold', x: -12, z: -9 }, { room: 'ring2', x: -10, z: -44 });
     expect(doorsOf(path)).toEqual(['hold-hatch', 'bay327-corr', 'corr327-lobby1', 'lobby1-ring2']);
-    expect(path.map((p) => p.room)).toEqual(['hold', 'hold', 'bay327', 'corr327', 'lobby1', 'ring2']);
+    expect(path.map((p) => p.room).filter((r, i, all) => r !== all[i - 1])).toEqual(['hold', 'bay327', 'corr327', 'lobby1', 'ring2']);
+    for (const [i, p] of path.entries()) {
+      if (!p.door) continue;
+      const { a, b } = layout.doors.get(p.door);
+      expect([a, b]).toContain(p.room);
+      expect(path[i + 1].room).toBe(p.room === a ? b : a);
+    }
   });
 });
 
@@ -101,11 +153,12 @@ describe('routes by lift', () => {
   });
 
   it('goes from the Falcon’s hold down to Level 6 by the bay, the corridor, the lobby and the lift', () => {
-    const nav = createNav(buildLayout(DS1));
-    const path = route(nav, { room: 'hold', x: -12, z: -9 }, { room: 'lift1-l6', x: -40, z: -110 });
+    const layout = buildLayout(DS1);
+    const path = route(createNav(layout), { room: 'hold', x: -12, z: -9 }, { room: 'lift1-l6', x: -40, z: -110 });
     expect(doorsOf(path)).toEqual(['hold-hatch', 'bay327-corr', 'corr327-lobby1', 'lobby1-lift']);
     expect(path.filter((p) => p.lift)).toEqual([{ x: 10, z: -49.5, room: 'lift1-l2', lift: 'lift1' }]);
     expect(path.at(-1)).toEqual({ x: -40, z: -110, room: 'lift1-l6' });
+    expect(footing(layout, path)).toBeNull();
   });
 
   // Riding costs 7 m of walking to and from the cars plus 8 m a level, so
@@ -198,5 +251,68 @@ describe('routes round solids', () => {
     const n = navOf(station([room('hall', 0, 0, 20, 10)]));
     const pen = [{ box: { x0: 3, x1: 9, z0: -5, z1: -4 } }, { box: { x0: 3, x1: 9, z0: 4, z1: 5 } }, { box: { x0: 3, x1: 4, z0: -5, z1: 5 } }, { box: { x0: 8, x1: 9, z0: -5, z1: 5 } }];
     expect(route(n, { room: 'hall', x: -8, z: 0 }, { room: 'hall', x: 6, z: 0 }, { solidsOf: () => pen })).toBeNull();
+  });
+});
+
+describe('routes over floors of more than one level', () => {
+  const layout = buildLayout(DS1);
+  const nav = createNav(layout);
+
+  it('climbs to Docking Control 327 by the stair from its foot, never up its side', () => {
+    const path = route(nav, { room: 'bay327', x: 10, z: -19.5 }, { room: 'ctl327', x: 22, z: -27.5 });
+    expect(doorsOf(path)).toEqual(['bay327-ctl']);
+    expect(footing(layout, path)).toBeNull();
+    // onto the stair by its bottom steps, which climb east from x 12 against the north wall
+    expect(path.some((p) => p.room === 'bay327' && p.x > 11.5 && p.x < 13 && p.z < -21.5)).toBe(true);
+  });
+
+  it('goes down the Falcon’s ramp from her hatch, never off its side nor across her hold, and up it to come back', () => {
+    const hold = { room: 'hold', x: -12, z: -9 };
+    const ring = { room: 'ring2', x: -10, z: -44 };
+    const out = route(nav, hold, ring);
+    expect(footing(layout, out)).toBeNull();
+    const back = route(nav, ring, hold);
+    expect(doorsOf(back)).toEqual(['lobby1-ring2', 'corr327-lobby1', 'bay327-corr', 'hold-hatch']);
+    expect(footing(layout, back)).toBeNull();
+    // up the ramp in one leg, not tread by tread
+    expect(idle(out)).toEqual([]);
+    expect(idle(back)).toEqual([]);
+  });
+
+  it('walks round the stair’s landing on the deck rather than through it', () => {
+    const path = route(nav, { room: 'bay327', x: 11, z: -20 }, { room: 'bay327', x: 25, z: -23 });
+    expect(path.length).toBe(3);
+    // round the landing’s south-east corner, 0.4 m clear
+    expect(near(path[1], 24.41, -21.19)).toBe(true);
+    expect(footing(layout, path)).toBeNull();
+  });
+
+  it('keeps to a walkway over water, turning at its corner rather than stepping off', () => {
+    // water 0.9 m down across the room, under a walkway 2 m wide along its north and east walls
+    const sump = station([room('sump', 0, 0, 12, 12, { floors: [{ x: 0, z: 0, w: 12, d: 12, y: -0.9 }, { x: 0, z: -5, w: 12, d: 2, y: 0 }, { x: 5, z: 0, w: 2, d: 12, y: 0 }] })]);
+    const sumpLayout = buildLayout(sump);
+    const path = route(createNav(sumpLayout), { room: 'sump', x: -5, z: -5 }, { room: 'sump', x: 5, z: 5 });
+    expect(path.length).toBe(3);
+    expect(near(path[1], 4.41, -4.41)).toBe(true);
+    expect(footing(sumpLayout, path)).toBeNull();
+  });
+
+  it('crosses a chasm by its bridge, and not at all while the bridge is in', () => {
+    // two ledges with nothing between them but, when it is out, a bridge 2 m wide
+    const chasm = (bridge) => station([room('chasm', 0, 0, 20, 6, { floors: [{ x: -7.5, z: 0, w: 5, d: 6, y: 0 }, { x: 7.5, z: 0, w: 5, d: 6, y: 0 }, ...(bridge ? [{ x: 0, z: 0, w: 10, d: 2, y: 0 }] : [])] })]);
+    const ends = [{ room: 'chasm', x: -8, z: -2.5 }, { room: 'chasm', x: 8, z: 2.5 }];
+    expect(route(navOf(chasm(false)), ...ends)).toBeNull();
+    const bridged = buildLayout(chasm(true));
+    const path = route(createNav(bridged), ...ends);
+    expect(path).not.toBeNull();
+    expect(footing(bridged, path)).toBeNull();
+  });
+
+  it('goes round a room nested in another to come in by its door, never across it', () => {
+    const s = station([room('hall', 0, 0, 20, 10), room('booth', 0, 0, 4, 4, { inside: 'hall', h: 2.5 })], [door('booth-door', 'booth', 'hall', 0, 2, 'x')]);
+    const boothLayout = buildLayout(s);
+    const path = route(createNav(boothLayout), { room: 'hall', x: 0, z: -4 }, { room: 'booth', x: 0, z: 0 });
+    expect(doorsOf(path)).toEqual(['booth-door']);
+    expect(footing(boothLayout, path)).toBeNull();
   });
 });
