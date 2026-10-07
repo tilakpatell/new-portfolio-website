@@ -58,6 +58,7 @@ import { createMarks, groundMaterial, groundMesh } from './ground';
 import { createSky } from './sky';
 import { createSkyFog } from './skyfog';
 import { createWater } from './water';
+import { floatPose } from './floats';
 import { createWeather } from './weather';
 import { createKit } from './kit';
 import { createGrass } from './grass';
@@ -195,6 +196,7 @@ export async function create(canvas, ctx) {
   if (water) {
     scene.add(water.mesh);
     if (water.glow) scene.add(water.glow);
+    if (water.spray) scene.add(water.spray);
   }
   const world = {
     heightAt: site.noGround ? () => site.fall ?? -1000 : grid.heightAt,
@@ -214,7 +216,12 @@ export async function create(canvas, ctx) {
   // (the scatter casts its shadow only near you: near.js)
   const shadowPhase = sun.castShadow ? createShadowPhase(scene, sun) : null;
   const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null });
-  for (const t of site.things_all) placer.put(t);
+  // (things that float, a bongo on Lake Paonga, ride the waves: floats.js)
+  const floaters = [];
+  for (const t of site.things_all) {
+    const put = placer.put(t);
+    if (t.float && water?.height) put.then((o) => o && floaters.push({ o, x: o.position.x, z: o.position.z, yaw: t.yaw ?? 0, float: t.float }));
+  }
   const r = rng(site.ground.seed ?? 1);
   const avoid = [...site.places.map((p) => ({ at: p.at, r: p.flat?.r ?? p.r * 0.6 })), { at: site.land.at, r: 30 }];
   for (const s of site.scatter) {
@@ -236,7 +243,7 @@ export async function create(canvas, ctx) {
   }
   // (the grass round you: blades on the land, where the site grows it)
   const grass = site.grass && !site.noGround ? createGrass(scene, { grid, site, small, time: kit.wind }) : null;
-  const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density });
+  const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
 
   // ── The places you go into (zones): built high over the world, out of
   // sight, each with its own lamps ──
@@ -964,6 +971,7 @@ export async function create(canvas, ctx) {
     sky.mesh.visible = !z;
     if (weather) weather.group.visible = !z;
     if (water) water.mesh.visible = !z;
+    if (water?.spray) water.spray.visible = !z;
     // (inside, the world outside isn't drawn, and outside, no room is)
     ground.visible = !z;
     if (water?.glow) water.glow.visible = !z;
@@ -1825,6 +1833,8 @@ export async function create(canvas, ctx) {
     // never under the ground
     const floor = (state.zone ? groundAt(world, want.x, want.z, p.y + 0.6, 0) : groundAt(world, want.x, want.z, want.y + 2, 4)) + 0.5;
     if (want.y < floor) want.y = floor;
+    // (nor under the sea: over the wave that's there)
+    if (!state.zone && water?.height) want.y = Math.max(want.y, water.height(want.x, want.z) + 0.6);
     if (!camInit) {
       camPos.copy(want);
       camLook.copy(focus);
@@ -2225,6 +2235,12 @@ export async function create(canvas, ctx) {
     // (whatever's come into the world since, fogged in the sky's colour before it's drawn)
     skyFog.scene(scene);
     water?.update(t, camera);
+    for (const f of floaters) {
+      if (Math.hypot(camera.position.x - f.x, camera.position.z - f.z) > 400) continue;
+      const pose = floatPose(water.height, f.x, f.z, f.yaw, t, f.float);
+      f.o.position.y = pose.y;
+      f.o.rotation.set(pose.pitch, f.yaw, pose.roll, 'YXZ');
+    }
     weather?.update(t, camera, world.heightAt, size.h);
     compass();
     lit?.update();
@@ -2266,7 +2282,7 @@ export async function create(canvas, ctx) {
         area: { x0: landAt[0] - R, z0: landAt[1] - R, w: R * 2, d: R * 2 },
         sun,
         // (what moves isn't baked: the folk and beasts about, the speeders)
-        skip: [sky.mesh, water?.mesh, water?.glow, weather?.group, weather?.mesh, camera, life.group, grass?.mesh, ...rides.map((x) => x.holder)].filter(Boolean),
+        skip: [sky.mesh, water?.mesh, water?.glow, water?.spray, weather?.group, weather?.mesh, camera, life.group, grass?.mesh, ...rides.map((x) => x.holder)].filter(Boolean),
         movers: [...people.map((p) => ({ object: p.holder, size: [0.8, 0.8] })), ...life.actors.filter((a) => a.holder).map((a) => ({ object: a.holder, size: [1, 1] })), ...rides.map((x) => ({ object: x.holder, size: [1.4, 2.6] }))],
         shade: site.light.shade ?? site.light.ground ?? '#3a3028',
         height: world.heightAt,

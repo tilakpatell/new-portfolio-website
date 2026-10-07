@@ -51,16 +51,26 @@ truth where this disagrees with it.
 - Not done: the final whole-branch review (the owner ran out of usage).
   Read the diff once.
 
+## Done: Phase 1 polish
+
+- `surface/floats.js` (pure, tested): `floatPose` (a boat's height, pitch
+  and roll from the water under its bow, stern and sides), `diveAt` (an
+  aiwha's glide and its dive through the surface once a cycle), `sprayAt`
+  (how much spray a wave throws off a leg).
+- `water.js`: spray off `site.water.legs` (Kamino: the pad's column and
+  20 stilts), `splash(x, z, k)`, one Points draw; `far`, `farMix` and
+  `sky` per sea keep Scarif turquoise to the horizon.
+- Kamino's aiwhas dive into the sea and out (`dive` on a life spec),
+  splashing each way. The bongo on Lake Paonga rides the swell (`float`
+  on a thing). The camera stays 0.6 m over the wave under it.
+- Checked in Chromium on SwiftShader (so no frame times): Scarif's far
+  water stays turquoise; Kamino's spray pool fills (260 drops on the
+  small tier); the bongo rolls; no page errors.
+
 ## Next, in order (the spec's phases)
 
-1. **Phase 1 polish:**
-   - Kamino's deck is high, so its storm reads mostly from afar. Add spray
-     at the platform legs.
-   - Scarif's turquoise could be more saturated far out (the Fresnel takes
-     the pale horizon).
-   - Float things on `water.height`: Kamino's aiwhas surfacing, a bongo on
-     Lake Paonga.
-   - Keep the camera out of the water.
+1. **Phase 1 polish:** done (see below). Left: a bongo that dives to
+   Otoh Gunga, and spray seen from the deck (the pad hides its own column).
 2. **Phase 2, bases:**
    - Echo Base: its glacier mouth, its ice corridors with supports, Outpost
      Beta's ion cannon.

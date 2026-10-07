@@ -17,7 +17,10 @@
 // A preset: { waves: [[dir rad, len m, steep]…], shallow, bed, clarity (m:
 // how deep you see the bed), caps (whitecaps, 0–1), shore (foam washing up
 // the beach), breakers (how hard the swell rises and breaks), glint, rough
-// (fine ripples), speed (of the waves, 1 the real one), scum (swamp skin) }
+// (fine ripples), speed (of the waves, 1 the real one), scum (swamp skin),
+// far (the colour it keeps out to the horizon, where the sky's reflection
+// would wash it pale) and farMix (how much), sky (the sky's share by
+// Fresnel, 1 the whole of it) }
 
 const TAU = Math.PI * 2;
 
@@ -51,6 +54,10 @@ export const SEAS = {
     waves: [[0.7, 88, 0.05], [1.1, 61, 0.05], [1.9, 23, 0.06], [-0.4, 13, 0.05], [2.6, 7, 0.04]],
     shallow: '#4fd8cc',
     bed: '#e9dcb4',
+    // (Rogue One's lagoons stay vivid to the horizon)
+    far: '#12a4b6',
+    farMix: 0.55,
+    sky: 0.6,
     clarity: 7,
     caps: 0.05,
     shore: 1,
