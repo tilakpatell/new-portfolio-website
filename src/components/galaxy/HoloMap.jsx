@@ -8,7 +8,7 @@ import WarLegend from './WarLegend';
 import WarStrip from './WarStrip';
 import { Fleets, Territory, WarLines } from './WarLayers';
 import { SIDES, WARS } from './sides';
-import { opsOf } from './warMap';
+import { NAME_LEFT, opsOf } from './warMap';
 import { mine, onWar, warNow } from './warState';
 import './warmap.css';
 import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKNOWN, edgeAt, eraById, eraOf, erasOf, filmLabel, filmShort, gridAt, jumpSeconds, lightYears, systemById, yearLabel } from './systems';
@@ -48,8 +48,6 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 // alone, read when the map opens.
 
 const SIZE = 21; // the map is GRID squares across, in its own units
-// names that go on the left of their dot (a neighbour's on the right, or the map's edge)
-const LEFT = new Set(['mustafar', 'hoth', 'geonosis', 'nevarro', 'mandalore', 'lothal']);
 const TAU = Math.PI * 2;
 const SEEN_KEY = 'tp-gcw-seen';
 const readSeen = () => {
@@ -313,7 +311,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                 const ring = row ? { '--held': SIDES[row.owner].colour, ...(by && { '--by': SIDES[by].colour, '--take': 1 - row.control }) } : {};
                 const you = row && fought.has(s.id);
                 return (
-                <li key={s.id} style={{ left: pct(s.pos[0]), top: pct(s.pos[1]), '--c': s.accent, ...ring }} data-dim={!lit(s) || undefined} data-side={LEFT.has(s.id) ? 'left' : undefined} data-held={row?.owner} data-front={(by && !row.attack) || undefined} data-attack={row?.attack ? '' : undefined} data-major={row?.major || undefined} data-decisive={row?.decisive || undefined} data-fought={you || undefined}>
+                <li key={s.id} style={{ left: pct(s.pos[0]), top: pct(s.pos[1]), '--c': s.accent, ...ring }} data-dim={!lit(s) || undefined} data-side={NAME_LEFT.has(s.id) ? 'left' : undefined} data-held={row?.owner} data-front={(by && !row.attack) || undefined} data-attack={row?.attack ? '' : undefined} data-major={row?.major || undefined} data-decisive={row?.decisive || undefined} data-fought={you || undefined}>
                   <button type="button" className="holomap-system" aria-pressed={pick === s.id} aria-current={s.id === current ? 'location' : undefined} onClick={() => choose(s.id)} onDoubleClick={() => s.id !== current && onJump(s.id)} aria-label={row ? `${s.name}: ${standing(row, now)}${row.battle?.fighting ? ', a battle on' : ''}${you ? ', you fought here' : ''}` : undefined}>
                     <span className="holomap-dot" aria-hidden="true">
                       {you && <i className="holomap-you" />}

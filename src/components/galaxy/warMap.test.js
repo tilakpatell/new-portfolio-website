@@ -2,11 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { GCW, NEIGHBOURS, WAR_SYSTEMS, warTable } from './gcw';
 import { SIDES, WARS, WAR_IDS } from './sides';
 import { systemById } from './systems';
-import { nearestBattle, opsOf } from './warMap';
+import { NAME_LEFT, nearestBattle, opsOf, roomOf } from './warMap';
 
 const H = 3600e3;
 const posOf = (id) => systemById(id).pos;
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+// which way an arrow bends from its way, as the map shows it (z runs down it, so heading east,
+// the left's north, where the cross product of the way and the fleet comes out negative)
+const sideOf = (op) => {
+  const [a, b] = [posOf(op.from), posOf(op.to)];
+  return (b[0] - a[0]) * (op.token[1] - a[1]) - (b[1] - a[1]) * (op.token[0] - a[0]) < 0 ? 'left' : 'right';
+};
 // a crafted Civil War table: the Rebellion's to the west and south, the Empire's the rest
 const REBEL = ['hoth', 'endor', 'sorgan', 'yavin', 'kashyyyk'];
 const rowOf = (id, o = {}) => ({ id, owner: REBEL.includes(id) ? 'rebel' : id === 'tatooine' ? 'hutt' : 'empire', control: 1, front: false, attack: null, major: false, decisive: false, effRate: null, battle: null, ...o });
@@ -106,17 +112,52 @@ describe('the operations on the map', () => {
     expect(dist(short.tip, posOf('bespin'))).toBeCloseTo(0.42, 6);
   });
 
-  it('bends every arrow to the left of its way, so two at each other don’t lie on one another', () => {
+  // (at first every arrow bent to the left of its way; drawn, the south's short ones swept over
+  // Mustafar's and Nevarro's names with room to spare on the other side. Two along one lane still
+  // bend each to its own left, so they part.)
+  it('bends two arrows along one lane each to the left of its way, so they don’t lie on one another', () => {
     const ops = opsOf(
       tableOf({
         sorgan: { owner: 'empire', front: true, control: 0.7 },
         endor: { attack: { by: 'empire', origin: 'sorgan' }, control: 0.7 },
+        hoth: { control: 0.5 },
       }),
     );
     // (both fleets halfway: straight, they'd pass within a head's length of each other)
     const there = ops.find((o) => o.to === 'sorgan');
     const back = ops.find((o) => o.to === 'endor');
+    expect([there.from, back.from]).toEqual(['endor', 'sorgan']);
     expect(dist(there.token, back.token)).toBeGreaterThan(0.5);
+    expect([sideOf(there), sideOf(back)]).toEqual(['left', 'left']);
+  });
+
+  it('bends a lone arrow to whichever side has more room from the systems and their names', () => {
+    // (Hoth and Bespin: to the south-west, Mustafar's name and Nevarro; to the north-east, nothing.
+    // So either way along the lane, its arrow bends north-east: left going to Bespin, right coming back.)
+    const there = opsOf(tableOf({ bespin: { front: true } }))[0];
+    const back = opsOf(tableOf({ hoth: { attack: { by: 'empire', origin: 'bespin' } } }))[0];
+    expect([there.from, back.from]).toEqual(['hoth', 'bespin']);
+    expect([sideOf(there), sideOf(back)]).toEqual(['left', 'right']);
+    // (and the fleet on it stays off every other system's dot and name as it closes in)
+    for (const control of [0.95, 0.5, 0.05]) {
+      const front = opsOf(tableOf({ bespin: { front: true, control } }))[0];
+      expect(roomOf(front.token, ['hoth', 'bespin']), `${control}`).toBeGreaterThan(0);
+    }
+  });
+
+  it('knows how much room a point has from the systems’ dots and names', () => {
+    const hoth = posOf('hoth');
+    expect(roomOf(hoth)).toBeLessThan(0);
+    // (Hoth's name is on the left of its dot)
+    expect(roomOf([hoth[0] - 1, hoth[1]], ['hoth'])).toBe(0);
+    expect(roomOf([hoth[0] + 0.6, hoth[1] - 0.6], ['hoth', 'bespin'])).toBeGreaterThan(0.2);
+    // (out in the Unknown Regions, nothing for grid squares about)
+    expect(roomOf([1, 10])).toBeGreaterThan(2);
+  });
+
+  it('puts the names of the systems by the map’s eastern edge on the inside of their dots', () => {
+    // (on a phone Kamino's name ran off the map)
+    for (const id of ['lothal', 'kamino']) expect(NAME_LEFT.has(id)).toBe(true);
   });
 });
 

@@ -7,22 +7,51 @@
 // front (the nearest of those, on a tie); an attack's come from where it was
 // launched (gcw.js's `origin`) while that's still the attacker's, or else
 // from its best-held neighbour.
-// The arrow bends to the left of its way (so two sides' arrows at each other
-// part), and stops clear of both systems' dots; a raid's drawn dotted, the
-// decisive battle doubled (the drawing's galaxy.css's).
+// The arrow bends to whichever side of its way has more room from the other
+// systems' dots and the names beside them (roomOf), the left on a tie; two
+// along one lane, one each way, bend each to its own left, so they part. It
+// stops clear of both systems' dots; a raid's drawn dotted, the decisive
+// battle doubled (the drawing's warmap.css's).
 //
 // opsOf(table) → [{ id, kind ('front', 'decisive', 'attack', 'counter',
 // 'raid'), by, from, to, progress (0..1, how much of the holder's hold is
 // gone), colour, width, major, d (an SVG path), head (its arrowhead's
 // points), start, tip, token ([x, z]: the fleet) }] for gcw.js's warTable;
-// nearestBattle(table, current, side) → { id, seconds } | null.
+// nearestBattle(table, current, side) → { id, seconds } | null;
+// roomOf([x, z], except) → grid squares from the nearest system's dot or
+// name (but the dots of the systems in `except`; below 0 inside a dot);
+// NAME_LEFT, the systems whose names go on the left of their dots.
 
 import { NEIGHBOURS } from './gcwRules';
 import { SIDES, WARS } from './sides';
-import { jumpSeconds, systemById } from './systems';
+import { SYSTEMS, jumpSeconds, systemById } from './systems';
 
 const CLEAR = 0.42; // grid squares off each end of an arrow: clear of the system's dot and ring
 const WIDTH = [0.05, 0.13]; // an arrow's, by how fast its side's pushing (grid squares)
+
+// the names that go on the left of their dot (HoloMap.jsx draws them so): a
+// neighbour's on the right, or the map's edge
+export const NAME_LEFT = new Set(['mustafar', 'hoth', 'geonosis', 'nevarro', 'mandalore', 'lothal', 'kamino']);
+// what a system takes up on the map, roughly, in grid squares (a desktop's;
+// on a phone a name's a little longer for the squares, so this errs short):
+// its dot and ring, and its name, from just off the dot, so wide a letter
+const DOT = 0.45;
+const NAME = { off: 0.4, per: 0.24, half: 0.25 };
+const MARKS = SYSTEMS.map((s) => {
+  const [x, z] = s.pos;
+  const len = NAME.off + NAME.per * s.name.length;
+  return { id: s.id, dot: s.pos, name: NAME_LEFT.has(s.id) ? [x - len, x - NAME.off, z] : [x + NAME.off, x + len, z] };
+});
+
+export function roomOf([x, z], except = []) {
+  let room = Infinity;
+  for (const m of MARKS) {
+    const [x0, x1, nz] = m.name;
+    room = Math.min(room, Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(Math.abs(z - nz) - NAME.half, 0)));
+    if (!except.includes(m.id)) room = Math.min(room, Math.hypot(x - m.dot[0], z - m.dot[1]) - DOT);
+  }
+  return room;
+}
 
 const round = (v) => +v.toFixed(3);
 const pt = ([x, z]) => `${round(x)} ${round(z)}`;
@@ -43,11 +72,12 @@ function bestHeld(rows, to, by) {
   return from;
 }
 
-// an arrow from a to b, bent left of its way (a short one bends wide, so it
+// an arrow from a to b, bent to the left of its way (side 1) or the right
+// (-1), as the map shows it, z running down (a short one bends wide, so it
 // clears the dots at either end), and the point t of the way along it
-function arrowOf(a, b, width) {
+function arrowOf(a, b, width, side = 1) {
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-  const n = [-(b[1] - a[1]) / len, (b[0] - a[0]) / len];
+  const n = [((b[1] - a[1]) / len) * side, (-(b[0] - a[0]) / len) * side];
   const bend = len < 1.6 ? 0.9 : Math.min(1.2, Math.max(0.3, len * 0.16));
   const c = [(a[0] + b[0]) / 2 + n[0] * bend, (a[1] + b[1]) / 2 + n[1] * bend];
   const start = toward(a, c, CLEAR);
@@ -62,10 +92,21 @@ function arrowOf(a, b, width) {
   return { d: `M${pt(start)} Q${pt(c)} ${pt(base)}`, head: head.map(([x, z]) => `${round(x)},${round(z)}`).join(' '), start, tip, at };
 }
 
+// the side of its way an arrow from one system to another has more room on
+// (the least room anywhere along it, from the systems but its own two)
+const ALONG = [0.2, 0.35, 0.5, 0.65, 0.8];
+function sideFor(from, to, width) {
+  const roomAlong = (side) => {
+    const arrow = arrowOf(systemById(from).pos, systemById(to).pos, width, side);
+    return Math.min(...ALONG.map((t) => roomOf(arrow.at(t), [from, to])));
+  };
+  return roomAlong(-1) > roomAlong(1) ? -1 : 1;
+}
+
 export function opsOf(table) {
   const { liberator } = WARS[table.war];
   const rows = Object.fromEntries(table.systems.map((r) => [r.id, r]));
-  const out = [];
+  const plans = [];
   for (const r of table.systems) {
     const attack = r.attack;
     if (!attack && !(r.front && r.owner !== liberator)) continue;
@@ -76,10 +117,14 @@ export function opsOf(table) {
     const kind = attack ? (by === 'hutt' ? 'raid' : attack.counter ? 'counter' : 'attack') : r.decisive ? 'decisive' : 'front';
     const progress = Math.min(1, Math.max(0, 1 - r.control));
     const width = round(Math.min(WIDTH[1], Math.max(WIDTH[0], 0.05 + 0.004 * Math.abs(r.effRate ?? 0))));
-    const arrow = arrowOf(systemById(from).pos, systemById(r.id).pos, width);
-    out.push({ id: `${kind}-${r.id}`, kind, by, from, to: r.id, progress, colour: SIDES[by].colour, width, major: Boolean(r.major), d: arrow.d, head: arrow.head, start: arrow.start, tip: arrow.tip, token: arrow.at(0.35 + 0.5 * progress) });
+    plans.push({ id: `${kind}-${r.id}`, kind, by, from, to: r.id, progress, colour: SIDES[by].colour, width, major: Boolean(r.major) });
   }
-  return out;
+  // (a lane with an arrow each way: each to its own left)
+  const twoWay = (p) => plans.some((q) => q.from === p.to && q.to === p.from);
+  return plans.map((p) => {
+    const arrow = arrowOf(systemById(p.from).pos, systemById(p.to).pos, p.width, twoWay(p) ? 1 : sideFor(p.from, p.to, p.width));
+    return { ...p, d: arrow.d, head: arrow.head, start: arrow.start, tip: arrow.tip, token: arrow.at(0.35 + 0.5 * p.progress) };
+  });
 }
 
 // the battle a side's in that's the shortest jump from where you are (where
