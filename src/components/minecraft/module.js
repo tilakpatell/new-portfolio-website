@@ -5,8 +5,9 @@
 // wants, nearest first, with the player's edits in them, re-meshes what an
 // edit touches, and lets go of the chunks left behind; draws through
 // ./scene.js on the runtime's renderer, between the last two ticks; keeps
-// the save (rules/save.js) every five seconds and on leaving; and tells the
-// page what to show through rt.events:
+// the save (rules/save.js) in the store every five seconds and on leaving,
+// one per seed (worlds.js: ?world=, the registry, tp-mc copied in once); and
+// tells the page what to show through rt.events:
 //   'ui' { mode: 'title' | 'play' | 'pause' | 'inventory' | 'table', seed,
 //          loaded, wanted, ready, screen: { size, grid, cursor, result,
 //          slots } while a screen is open }
@@ -26,10 +27,13 @@ import { addChunk, drain, dropFar, dropHeld, newGame, respawn, setBlock, spawnDr
 import { click, close, makeChest, makeFurnaceScreen, makeScreen, result } from './rules/gui.js';
 import { ITEMS } from './rules/items.js';
 import { chunkKey } from './rules/jobs.js';
-import { SAVE, SAVE_VERSION, pack, restore } from './rules/save.js';
+import { SAVE, SAVE_VERSION, pack } from './rules/save.js';
 import { createScene } from './scene.js';
 import { MC } from './scene/atlasTexture.js';
 import { workerClient } from './scene/chunks.js';
+import { createStore } from '../../runtime/store.js';
+import { createRegistry } from '../worlds/registry.js';
+import { keepWorld, openWorld, randomSeed } from './worlds.js';
 
 export { SAVE, SAVE_VERSION };
 
@@ -73,7 +77,6 @@ export const distanceFor = (tier, level = 0) => Math.min(BY_TIER[tier] ?? 6, BY_
 
 // the modes with a screen open over the world
 const SCREENS = new Set(['inventory', 'table', 'chest', 'furnace']);
-const randomSeed = () => Math.floor(Math.random() * 2 ** 31) - 2 ** 30;
 
 export default {
   id: 'minecraft',
@@ -101,7 +104,11 @@ export default {
     };
     take(rt.gfx.renderer);
 
+    // tp-mc is read once, to copy the old world into the store (worlds.js)
     rt.saves?.register({ key: SAVE, version: SAVE_VERSION, migrate: (old) => old });
+    const store = rt.store ?? createStore();
+    const registry = createRegistry(store);
+    const opening = openWorld({ saves: rt.saves, store, registry, want: props.seed });
     const manifest = await (await fetch(`${MC}manifest.json`)).json();
     const scene = createScene(rt, { manifest });
     await scene.ready;
@@ -126,22 +133,28 @@ export default {
     let saveAt = 0;
     let wantedCache = { at: '', keys: [], set: new Set() };
 
-    const persist = () => g && rt.saves?.set(SAVE, pack(g));
+    let id = null; // the world's id in the store and the registry
+    const persist = () => g && id && keepWorld({ store, registry, id, data: pack(g) }).catch(() => {});
 
-    function begin(save, seed) {
+    function begin(save, seed, worldId) {
       for (const k of flying.keys()) client.cancel(k);
       for (const ask of remeshing.values()) client.cancel(ask);
       flying.clear();
       remeshing.clear();
       if (g) for (const c of g.world.chunks.values()) scene.chunks.drop(c.cx, c.cz);
       g = newGame({ save, seed });
+      id = worldId;
       g.renderDistance = distance;
       g.prev = { x: g.player.x, y: g.player.y, z: g.player.z };
       wantedCache = { at: '', keys: [], set: new Set() };
       screen = null;
       persist();
     }
-    begin(restore(rt.saves?.get(SAVE, null)), props.seed ?? randomSeed());
+    const first = await opening;
+    begin(first.save, first.seed, first.id);
+    // a reload or a closed tab: the store's write is asynchronous, so it starts as the page goes
+    const onHide = () => persist();
+    globalThis.addEventListener?.('pagehide', onHide);
     scene.setRenderDistance(distance);
 
     // ── the chunks: asked for nearest first, a few at a time, let go behind ──
@@ -553,9 +566,14 @@ export default {
         if (on && mode === 'play') mode = 'pause';
         else if (!on && mode === 'pause') mode = 'play';
       },
-      newWorld(seed) {
-        begin(null, seed ?? randomSeed());
-        mode = 'play';
+      // a world by its seed: the one kept for it, or a fresh one (registered);
+      // { play: false } leaves it at the title (the page's ?world= changed)
+      async newWorld(seed, { play = true } = {}) {
+        persist();
+        const w = await openWorld({ saves: rt.saves, store, registry, want: seed ?? randomSeed() });
+        if (gone) return;
+        begin(w.save, w.seed, w.id);
+        mode = play ? 'play' : 'title';
       },
       toTitle() {
         closeScreen();
@@ -564,6 +582,7 @@ export default {
       },
       dispose() {
         persist();
+        globalThis.removeEventListener?.('pagehide', onHide);
         gone = true;
         worker.terminate();
         rt.input.unbind();
