@@ -2750,20 +2750,6 @@
       "galaxy"
     ]
   },
-  "surface-mosspire": {
-    "title": "Tattoine Buildings Kitbash",
-    "author": "chuckcg",
-    "authorUrl": "https://sketchfab.com/chuckcg",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/tattoine-buildings-kitbash-b5a2140fa2264bac8a4b6de3693272b6",
-    "where": "galaxy-surface",
-    "as": "the spires of Mos Eisley",
-    "file": "/models/galaxy/surface/mosspire.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "surface-mostower": {
     "title": "Tattoine Buildings Kitbash",
     "author": "chuckcg",
@@ -3226,20 +3212,6 @@
     "where": "galaxy-surface",
     "as": "the speeder trucks",
     "file": "/models/galaxy/surface/speedertruck.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "surface-stall": {
-    "title": "Tattoine Buildings Kitbash",
-    "author": "chuckcg",
-    "authorUrl": "https://sketchfab.com/chuckcg",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/tattoine-buildings-kitbash-b5a2140fa2264bac8a4b6de3693272b6",
-    "where": "galaxy-surface",
-    "as": "the market stalls",
-    "file": "/models/galaxy/surface/stall.glb",
     "also": [
       "galaxy"
     ]

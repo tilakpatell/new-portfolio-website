@@ -48,4 +48,19 @@ export const MODELS = {
   stilthut: { made: 'meshy', as: 'the krill farmers’ huts', metres: 9, along: 'y', detail: 'wood' },
   // Tatooine: Ben Kenobi's hut, the long low battered block with its dome
   benhut: { made: 'meshy', as: 'Ben Kenobi’s hut', metres: 9, along: 'x', detail: 'adobe' },
+  // Tatooine: a market stall, the canvas roof on its poles, the dried goods
+  // hung under it, the baskets and pots of produce (Nevarro's town has two)
+  stall: { made: 'meshy', as: 'the market stalls', metres: 3.6, along: 'x' },
+  // Kashyyyk: a Wookiee house, the round timber house on its post, the
+  // gallery round it and the ribbed roof (from the production painting)
+  wookieehouse: { made: 'meshy', as: 'the Wookiee houses', metres: 12, along: 'x', detail: 'wood' },
+  // Mustafar: the panning droids, the disc they ride, the head with its two
+  // lenses, the arms and the bucket of molten metal
+  droidplatform: { made: 'meshy', as: 'the panning droids', metres: 6.6, along: 'y', detail: 'metal' },
+  // Tatooine: the Tuskens' domed huts of hide and mud over bent poles (style
+  // 'tusken': the other worlds' camps keep the built tent)
+  tent: { made: 'meshy', as: 'the Tusken huts', metres: 5.5, along: 'x', styles: ['tusken'] },
+  // Tatooine: the spires of Mos Eisley, the buttressed shaft under its two
+  // mushroom caps
+  mosspire: { made: 'meshy', as: 'the spires of Mos Eisley', metres: 20, along: 'y', detail: 'adobe' },
 };

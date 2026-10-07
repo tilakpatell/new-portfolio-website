@@ -285,7 +285,8 @@ export const BUILDINGS = {
   // stone-block shaft with a fluted foot, a saucer cabin with two long
   // antenna arms, and a mast. There is a clean live-action still of the whole
   // tower.
-  lookout: {
+  // (made as its own kind, lothtower: Yavin keeps its lattice lookout)
+  lothtower: {
     ref: 'File:LothalTower-LiveAction.png',
     crop: [0.13,0.015,0.75,0.96],
     lift: 'the very tall slender tower: a long tapering round shaft of grey stone blocks in banded sections, a flared ribbed foot on a low round plinth, a round saucer-shaped cabin near the top with two long thin horizontal antenna arms, and a thin mast with small crossbars above it',

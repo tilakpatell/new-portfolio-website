@@ -253,9 +253,9 @@ export const SITES = {
       { kind: 'lamp', at: [110, 16], opts: { h: 5, light: '#ffb070', color: '#2a2828' } },
       { kind: 'lamp', at: [68, -16], opts: { h: 5, light: '#ffb070', color: '#2a2828' } },
       { kind: 'collector', at: [182, 34], abs: true, y: 2.3, yaw: 0.7 },
-      { kind: 'droidplatform', at: [158, 6], abs: true, y: 2.2 },
-      { kind: 'droidplatform', at: [200, 52], abs: true, y: 2.2 },
-      { kind: 'droidplatform', at: [290, 322], abs: true, y: 2.2 },
+      { kind: 'droidplatform', at: [158, 6], abs: true, y: 1.3 },
+      { kind: 'droidplatform', at: [200, 52], abs: true, y: 1.3 },
+      { kind: 'droidplatform', at: [290, 322], abs: true, y: 1.3 },
     ],
     scatter: [
       { kind: 'lavacrack', n: 900, within: [10, 585], scale: [1.4, 3.4], solid: false },
