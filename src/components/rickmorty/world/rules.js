@@ -705,7 +705,7 @@ export const COLLIDERS = {
   diner: furnished('diner'),
   wong: furnished('wong'),
   // each destination's buildings and fittings, and its people
-  ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, [...d.solids.map((o) => (o.r ? circle(o.id, o.x, o.z, o.r) : box(o.id, o.x, o.z, o.w, o.d))), ...d.people.map((o) => circle(o.id, o.x, o.z, PERSON)), ...d.extras.map((o, n) => circle(`${d.id}-extra-${n}`, o.x, o.z, PERSON))]])),
+  ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, [...d.solids.map((o) => (o.r ? circle(o.id, o.x, o.z, o.r) : box(o.id, o.x, o.z, o.w, o.d))), ...d.people.filter((o) => !o.roams).map((o) => circle(o.id, o.x, o.z, PERSON)), ...d.extras.map((o, n) => circle(`${d.id}-extra-${n}`, o.x, o.z, PERSON))]])),
 };
 // Walls: the street's fences, the house's inner walls and the low banister up
 // the stairs' open side, and the balcony's low railing on its south edge. A
