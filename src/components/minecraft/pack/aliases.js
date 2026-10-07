@@ -126,4 +126,7 @@ export const SPRITES = {
   // the biome tints, read by temperature and rainfall as the game reads them
   colormap_grass: ['colormap/grass'],
   colormap_foliage: ['colormap/foliage'],
+  // the screens: the inventory's and the crafting table's panels
+  inventory: ['gui/container/inventory'],
+  crafting_table: ['gui/container/crafting_table'],
 };

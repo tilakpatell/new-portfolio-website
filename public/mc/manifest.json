@@ -237,7 +237,9 @@
     "food_empty",
     "air",
     "colormap_grass",
-    "colormap_foliage"
+    "colormap_foliage",
+    "inventory",
+    "crafting_table"
   ],
   "frames": {
     "lava_flow": 16,
