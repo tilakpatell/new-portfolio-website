@@ -835,6 +835,72 @@
 .surface-btn-power { border-color: #c8b4ff; color: #e6dcff; }
 .surface-btn-dodge { border-color: #b8ffd0; color: #dafff0; }
 .surface-btn-aim.is-on { background: rgba(255, 255, 255, 0.25); }
+.surface-btn-emote { border-color: #ffd36a; color: #fff0c4; }
+/* the emote wheel (B held; the Emote button on a phone): the five round the
+   middle of the view, as C-137's and the Citadel's are, in this page's dark
+   glass, the one pointed at lit in the world's colour */
+.surface-wheel { --wheel-r: 118px; position: absolute; z-index: 3; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
+.surface-wheel::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--wheel-r) * -1.3);
+  top: calc(var(--wheel-r) * -1.3);
+  width: calc(var(--wheel-r) * 2.6);
+  height: calc(var(--wheel-r) * 2.6);
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: radial-gradient(closest-side, rgba(6, 8, 14, 0.5), rgba(6, 8, 14, 0.14) 70%, transparent);
+  animation: surface-wheel-in 0.14s ease-out both;
+}
+.surface-wheel-mid {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 96px;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(242, 239, 232, 0.72);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+.surface-wheel-slice {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--glass);
+  color: #f2efe8;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: translate(-50%, -50%) translate(calc(var(--sx) * var(--wheel-r)), calc(var(--sy) * var(--wheel-r)));
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  transition: background-color 0.1s ease, border-color 0.1s ease, box-shadow 0.1s ease;
+  animation: surface-wheel-in 0.14s ease-out both;
+}
+.surface-wheel-slice kbd { font: inherit; font-weight: 700; font-size: 0.68rem; color: var(--accent); }
+.surface-wheel-slice[data-last] { border-color: rgba(255, 255, 255, 0.34); }
+.surface-wheel-slice[data-on],
+.surface-wheel-slice:hover,
+.surface-wheel-slice:focus-visible { border-color: var(--accent); background: rgba(255, 255, 255, 0.16); box-shadow: 0 0 0 1px var(--accent), 0 0 18px rgba(255, 255, 255, 0.16); outline: none; }
+@keyframes surface-wheel-in { from { opacity: 0; } }
+@media (max-width: 420px) { .surface-wheel { --wheel-r: 100px; } }
+@media (prefers-reduced-motion: reduce) { .surface-wheel::before, .surface-wheel-slice { animation: none; transition: none; } }
 /* the hero panel's tabs, weapons and mods */
 .surface-tabs { display: flex; gap: 4px; margin: 0 0 0.7rem; padding: 0; list-style: none; }
 .surface-list .surface-tabs button { width: auto; display: inline-block; padding: 0.3rem 0.7rem; border-radius: 999px; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; }

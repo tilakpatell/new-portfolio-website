@@ -38,6 +38,7 @@ import ModelCredits from '../components/ModelCredits';
 import { wornFiles } from '../components/rickmorty/wardrobe/looks';
 import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
 import { openGuide } from '../lib/palette';
+import { EMOTES, wheelAngle } from '../lib/emote';
 import '../components/universe/universe.css';
 import '../components/galaxy/galaxy.css';
 import '../components/galaxy/surface/surface.css';
@@ -45,6 +46,9 @@ import '../components/galaxy/surface/surface.css';
 const LANDED_KEY = 'tp-galaxy-landed'; // the worlds you've set foot on
 const CLIMB = 3400; // ms of the climb out seen before space takes over: the ship lifting, then shooting up under the sky's glare (surface.css .surface-exit rises from 2.5 s to here)
 export const MISSIONS_KEY = 'tp-galaxy-missions'; // { 'system/id': { t, stars } }: your best at each mission played down on a world
+
+// the emote wheel's slices, by name (lib/emote.js's EMOTES, clockwise from the top)
+const EMOTE_NAME = { wave: 'Wave', cheer: 'Cheer', dance: 'Dance', taunt: 'Taunt', sit: 'Sit' };
 
 const readBests = () => {
   const all = local.get(MISSIONS_KEY);
@@ -158,6 +162,11 @@ export default function GalaxySurface() {
   const [hitMark, setHitMark] = useState(null); // { n, kill }
   const [hurtFlash, setHurtFlash] = useState(0);
   const [parryNote, setParryNote] = useState(0);
+  // the emote wheel, as the scene says it is (its 'emote' event: open, the
+  // slice pointed at, the last struck, the one on); a phone has no keys to show
+  const [emote, setEmote] = useState(null);
+  const wheelOpen = useRef(false);
+  const [coarse] = useState(() => (typeof window !== 'undefined' ? (window.matchMedia?.('(pointer: coarse)').matches ?? false) : false));
   const lastHealth = useRef(100);
   const lines = useRef([]); // what's to be said, in turn
   const view = useRef({ live: false });
@@ -329,6 +338,10 @@ export default function GalaxySurface() {
         lastHealth.current = e.value;
         setHealth(e.value);
       } else if (e.type === 'combat') setCombat(e);
+      else if (e.type === 'emote') {
+        wheelOpen.current = Boolean(e.open);
+        setEmote(e);
+      }
       else if (e.type === 'hit') {
         setHitMark((m) => ({ n: (m?.n ?? 0) + 1, kill: e.kill }));
         later('hitmark', 260, () => setHitMark(null));
@@ -399,11 +412,16 @@ export default function GalaxySurface() {
   };
 
   // H (or ?, the site's own key) for the controls, in the site's guide; Q
-  // for the list of things to do, Escape shuts it
+  // for the list of things to do, Escape shuts it; with the emote wheel
+  // open (B held), 1 to 5 strike one
   useEffect(() => {
     const onKey = (e) => {
       const tag = e.target?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (wheelOpen.current && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey && e.key >= '1' && e.key <= String(EMOTES.length) && e.key.length === 1) {
+        view.current?.input?.('emote', Number(e.key) - 1);
+        return;
+      }
       if (e.key === 'h' || e.key === 'H') openGuide();
       if (e.key === 'q' || e.key === 'Q') setList((l) => !l);
       if (e.key === 'Escape') setList(false);
@@ -540,6 +558,7 @@ export default function GalaxySurface() {
               ['G', combat.powers?.power ?? (combat.saber ? 'Push' : 'Detonator'), 'power'],
               ['V', combat.powers?.second ?? (combat.saber ? 'Pull' : 'Overcharge'), 'second'],
               ['X', 'Dodge', 'dodge'],
+              ['B', 'Emote', 'emote'],
             ].map(([key, name, slot]) => {
               const left = combat.cool?.[slot] ?? 0;
               const full = combat.cools?.[slot] ?? 1;
@@ -562,6 +581,23 @@ export default function GalaxySurface() {
       )}
       {hurtFlash > 0 && <div key={`hurt-${hurtFlash}`} className="surface-hurt" aria-hidden="true" />}
       {(((aiming || quest?.shoot) && phase === 'walk') || (mission?.kind === 'chase' && chase && !chase.result && phase === 'ride') || (mission?.kind === 'assault' && chase?.phase === 'run' && chase.you?.up && phase === 'walk')) && <span className="surface-crosshair" aria-hidden="true" />}
+      {/* the emote wheel (B held, or the Emote button on a phone): the five
+          round the middle of the view, clockwise from the top, the one pointed
+          at lit; let go over it, or click or tap it, or its number */}
+      {emote?.open && phase === 'walk' && !leaving && (
+        <div className="surface-wheel" role="menu" aria-label="Emotes">
+          <p className="surface-wheel-mid">{coarse ? 'Slide to one' : 'Let go of B over one'}</p>
+          {EMOTES.map((eid, i) => {
+            const a = wheelAngle(i);
+            return (
+              <button key={eid} type="button" role="menuitem" className="surface-wheel-slice" data-on={emote.hover === eid || undefined} data-last={emote.last === eid || undefined} style={{ '--sx': Math.sin(a).toFixed(3), '--sy': (-Math.cos(a)).toFixed(3) }} onClick={() => view.current?.input?.('emote', eid)}>
+                <span>{EMOTE_NAME[eid]}</span>
+                {!coarse && <kbd>{i + 1}</kbd>}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="surface-door" aria-hidden="true" style={{ opacity: fade }} />
       {prompt && phase !== 'landing' && phase !== 'leaving' && (
         <p className="surface-prompt" role="status">
