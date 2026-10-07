@@ -29,10 +29,38 @@ describe('the crews', () => {
 
   it('only play clips the site has', async () => {
     const { CLIPS } = await import('../../lib/clips');
+    // (the ship powers' lines are a level deeper: by power, then by when, then by why)
+    const lines = (o) => (Array.isArray(o) ? (typeof o[0] === 'string' ? [o] : o.flatMap(lines)) : o && typeof o === 'object' ? Object.values(o).flatMap(lines) : []);
     for (const crew of CREWS) {
-      const lines = Object.values(crew).filter(Array.isArray).flat().concat(...[crew.arrive, crew.traffic, crew.kill, crew.hunted, crew.events, crew.wonders, crew.crashInto].map((o) => Object.values(o ?? {}).flat()));
-      for (const line of lines) if (line[2]) expect(CLIPS[line[2]], `${crew.id}: ${line[2]}`).toBeTruthy();
+      const all = Object.values(crew).filter(Array.isArray).flat().concat(...[crew.arrive, crew.traffic, crew.kill, crew.hunted, crew.events, crew.wonders, crew.crashInto].map((o) => Object.values(o ?? {}).flat()), lines(crew.powers));
+      for (const line of all) if (line[2]) expect(CLIPS[line[2]], `${crew.id}: ${line[2]}`).toBeTruthy();
     }
+  });
+
+  it('have a word for each of their ship’s powers: using it, and for the big one, charged and a big haul', async () => {
+    const { POWERS, powersOf } = await import('./shipPowers');
+    for (const crew of CREWS) {
+      const own = powersOf(crew.id);
+      const said = [linesFor(crew, 'power', own.primary, 'use'), ...['use', 'ready', 'big'].map((sub) => linesFor(crew, 'power', own.ultimate, sub))];
+      for (const exchange of said) {
+        expect(exchange?.length, crew.id).toBeGreaterThan(0);
+        for (const [who, text] of exchange) {
+          expect(who === 'comms' || crew.speakers[who], `${crew.id}: ${who}`).toBeTruthy();
+          expect(text.length).toBeGreaterThan(2);
+        }
+      }
+      // (only its own powers' lines)
+      for (const id of Object.keys(crew.powers)) expect(POWERS[id]?.crew, `${crew.id}: ${id}`).toBe(crew.id);
+    }
+    // the clip-backed lines: each crew's own recording on its use or its big haul
+    expect(linesFor(crewById('xwing'), 'power', 'focus', 'use')[0][2]).toBe('useTheForce');
+    expect(linesFor(crewById('falcon'), 'power', 'odds', 'use')[0][2]).toBe('neverTellOdds');
+    expect(linesFor(crewById('cruiser'), 'power', 'wubba', 'use')[0][2]).toBe('wubba');
+    expect(linesFor(crewById('rv'), 'power', 'heisenberg', 'use')[0][2]).toBe('sayMyName');
+    // Rick says why a portal won't go: Scarif's shield, and a hold on the ship
+    for (const why of ['shield', 'held']) expect(linesFor(crewById('cruiser'), 'power', 'portal', 'refuse', why)?.length, why).toBeGreaterThan(0);
+    expect(linesFor(crewById('cruiser'), 'power', 'portal', 'refuse', 'shield')).not.toBe(linesFor(crewById('cruiser'), 'power', 'portal', 'refuse', 'held'));
+    expect(linesFor(crewById('xwing'), 'power', 'nope', 'use')).toBeNull();
   });
 
   it('have a word for every kind of traffic that comes past them, and for shooting one down', () => {
