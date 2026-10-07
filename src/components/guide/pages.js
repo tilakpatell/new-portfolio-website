@@ -376,10 +376,12 @@ export const PAGES = {
       { label: 'In the cruiser', rows: [['W A S D', 'Fly'], ['Space', 'Climb'], ['Shift', 'Drop'], ['E', 'Land (slow, over open ground)']] },
       { label: 'Portal panic', rows: [['W A S D', 'Move'], ['Mouse', 'Aim: the gun fires on its own'], ['F', 'Auto-fire off (then hold the mouse to fire)'], ['Space / Shift', 'Portal-dash'], ['1 2 3', 'Take a gadget'], ['P', 'Pause']] },
       { label: 'Total Rickall', rows: [['Drag', 'Aim'], ['E', 'Remember the one in the crosshair'], ['F / Click', 'Shoot them'], ['Esc', 'Stop the game']] },
+      { label: 'Through the portal', rows: [['E', 'Talk, take, look, free: whatever the prompt says'], ['F', 'Fire, in a fight (Evil Rick’s lair, the Blood Dome)'], ['Run', 'From whoever’s after you: the map shows them red']] },
     ],
     touch: [
       { rows: [['Stick', 'Walk, or fly'], ['Swipe', 'Look round'], ['Tap', 'Jump, climb, drop and act, on their buttons']] },
       { label: 'Total Rickall', rows: [['Swipe', 'Aim'], ['Tap', 'Shoot the one in the crosshair (or Remember and Shoot, on their buttons)']] },
+      { label: 'Through the portal', rows: [['Tap', 'The star fires, in a fight']] },
     ],
     tips: [
       ['The portal gun', 'Fire it to look through into another dimension.'],
@@ -387,6 +389,7 @@ export const PAGES = {
       ['Total Rickall', 'Pick up the egg on the living-room bookcase. A parasite only ever leaves good memories of itself, so shoot the ones nobody remembers a bad day with, and nobody else.'],
       ['The Meeseeks box', 'Press the button and give him a task. Give him one he can’t do and he gets help.'],
       ['Interdimensional cable', 'Turn the dial.'],
+      ['The portal gun’s dial', 'Set it on Rick’s bench and the garage portal goes there: thirty-five places from the show. Everyone in them does something; some of them come for you, and caught, you’re back at the door. Three slips to spot, a ticket to find, a cell to open, a ring to step into.'],
       ['The Smiths', 'Four of them are a color scheme for the site. Jerry can ask.'],
     ],
   },

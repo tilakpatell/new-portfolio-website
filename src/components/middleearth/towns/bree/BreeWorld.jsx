@@ -580,6 +580,8 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           s.watchers = newWatchers(ROUNDS);
           break;
         } else if (e.type === 'lost') say('It’s lost you.');
+        else if (e.type === 'suspicious') say(['A Rider turns. It’s coming to look. Keep still, or get out of its way.', 'It’s seen something. Get behind a house.'][e.id % 2], true);
+        else if (e.type === 'searching') say('They’re searching the lanes for you. Keep moving, and keep out of their sight.');
       }
       s.chased = s.watchers.list.some((w) => w.mode === 'alert' || w.mode === 'chase');
     }

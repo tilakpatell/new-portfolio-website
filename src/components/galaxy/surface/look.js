@@ -5,19 +5,19 @@
 //   lookOf(site) → { shadow, edge, mix, fogLow, fogHigh, fogBelow, halo,
 //     fogMix, exposure } (the house's LOOK shape, colours as ints)
 //   exposureOf(site, base = 1) → the exposure: the site's own (1 unless it
-//     says) times `base` (1: the surface's post does its own tone map, the
-//     shoulder in universe/post.js, so the house's ACES-to-Neutral lift
-//     isn't wanted here)
-//   groundPieces(site) → { map, grass, bounce }: which of the ground pieces
-//     a world gets (none with no ground under it; grass only where the site
-//     grows some)
+//     says) times `base` (1 on the surface: its post tone-maps with its own
+//     shoulder, universe/post.js, so the house's ACES-to-Neutral lift isn't
+//     wanted there)
+//   groundPieces(site) → { map, grass, bounce }: which ground pieces a world
+//     gets (none with no ground under it; grass only where the site grows
+//     some)
 //   adoptLater(house, object) → how many lit materials of something added
 //     after the scene was adopted the house took on (0 for nothing)
 //
-// A site's `look`: { shadow, edge: [from, to], fogBelow, halo, exposure }
-// (colours as '#rrggbb', as the sites write them); left out, the shadow is the sky a third
-// of the way from its zenith to its horizon, darkened: a blue sky shades
-// blue, a sunset violet.
+// A site's `look`: { shadow, edge: [from, to], fogBelow, halo } (colours as
+// '#rrggbb', as the sites write them); left out, the shadow is the sky a
+// third of the way from its zenith to its horizon, darkened: a blue sky
+// shades blue, a sunset violet.
 
 import * as THREE from 'three';
 import { LOOK } from '../../../lib/three/house';

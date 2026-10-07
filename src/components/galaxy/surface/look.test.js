@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { LOOK } from '../../../lib/three/house';
+import { LOOK, createHouse } from '../../../lib/three/house';
 import { adoptLater, exposureOf, groundPieces, lookOf } from './look';
 
 const site = (over = {}) => ({ sky: { zenith: '#26335e', horizon: '#f2a46a' }, ...over });
@@ -50,11 +50,11 @@ describe('a site’s look for the house', () => {
   });
 
   it('counts the lit materials of something adopted after the scene', () => {
-    const roots = [];
-    const house = { adopt: (root) => (roots.push(root), 2) };
-    const o = { name: 'late' };
-    expect(adoptLater(house, o)).toBe(2);
-    expect(roots).toEqual([o]);
+    const house = createHouse();
+    const late = new THREE.Group();
+    late.add(new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshLambertMaterial()), new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial()));
+    expect(adoptLater(house, late)).toBe(1);
+    expect(adoptLater(house, late)).toBe(0);
     expect(adoptLater(house, null)).toBe(0);
   });
 });

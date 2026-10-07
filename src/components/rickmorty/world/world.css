@@ -391,3 +391,60 @@
   font-size: 0.75rem;
   opacity: 0.6;
 }
+
+/* ── a duel's hearts, and the clock of a place left in a hurry (RmWorld's HUD) ── */
+.rm-fight {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(12, 10, 20, 0.78);
+  color: #f6f2ff;
+  font: 600 13px/1.3 var(--rm-font, system-ui, sans-serif);
+  pointer-events: none;
+}
+.rm-fight-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rm-fight-row b {
+  min-width: 76px;
+  font-weight: 700;
+}
+.rm-fight-hearts {
+  letter-spacing: 2px;
+  color: #ff5a6a;
+}
+.rm-fight-hearts span[data-off] {
+  color: rgba(255, 255, 255, 0.22);
+}
+.rm-fight-hint {
+  font-size: 11px;
+  opacity: 0.75;
+}
+.rm-clock {
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: rgba(60, 10, 10, 0.8);
+  color: #ffe0a0;
+  font: 700 14px/1.3 var(--rm-font, system-ui, sans-serif);
+  pointer-events: none;
+}
+.rm-clock[data-late] {
+  animation: rm-clock-blink 0.5s steps(2) infinite;
+}
+@keyframes rm-clock-blink {
+  to {
+    background: rgba(160, 20, 20, 0.9);
+  }
+}
+
+/* the fire button beside the jump, on touch, while a fight's on */
+.rm-lift .rm-fire {
+  margin-top: 10px;
+  background: rgba(200, 40, 40, 0.85);
+  color: #fff;
+  font-size: 22px;
+}

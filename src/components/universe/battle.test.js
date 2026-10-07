@@ -69,6 +69,80 @@ describe('the flagships’ objectives', () => {
   });
 });
 
+describe('the objectives on an Interdictor', () => {
+  // the Empire's line with an Interdictor among its escorts
+  const withInterdictor = { ...war, sides: [war.sides[0], { ...war.sides[1], capitals: [...war.sides[1].capitals, { kind: 'interdictor', role: 'escort', size: 11, hull: 220 }] }] };
+  it('puts the defender’s objectives on the Interdictor, and leaves the flagship its hull', () => {
+    const b = make({ war: withInterdictor, objectivesOn: 'interdictor' });
+    const inter = b.capitals.find((c) => c.kind === 'interdictor');
+    const flag = flagOf(b, 1);
+    expect(inter.subs.map((x) => x.id)).toEqual(['gen-port', 'gen-star', 'bridge', 'reactor']);
+    expect(flag.subs).toEqual([]);
+    expect(flag.tracked).toBe(true);
+    expect(inter.tracked).toBe(false);
+    b.setYou(0);
+    expect(b.targets.filter((t) => t.kind === 'subsystem').length).toBe(2);
+  });
+  it('wins the battle for the attacker when the Interdictor’s down', () => {
+    const b = make({ war: withInterdictor, objectivesOn: 'interdictor', perSide: 0 });
+    b.setYou(0);
+    const inter = b.capitals.find((c) => c.kind === 'interdictor');
+    for (const phase of [1, 2, 3]) {
+      for (const s of inter.subs.filter((o) => o.phase === phase)) for (let i = 0; i < 400 && s.alive; i++) b.hit(s.pos, { x: s.pos.x, y: s.pos.y - 0.01, z: s.pos.z }, 5);
+      run(b, 0.1);
+    }
+    const events = run(b, BATTLE.dying + 1);
+    expect(b.over).toMatchObject({ winner: 0, why: 'interdictor' });
+    expect(events.some((e) => e.type === 'over' && e.why === 'interdictor')).toBe(true);
+    expect(flagOf(b, 1).alive).toBe(true);
+  });
+  it('without an Interdictor, they stay on the flagship', () => {
+    const b = make({ objectivesOn: 'interdictor' });
+    expect(flagOf(b, 1).subs.length).toBe(4);
+  });
+});
+
+describe('an ace', () => {
+  it('is one of its side’s fighters, of its own kind, named, with its own hull', () => {
+    const b = make({ ace: { 1: { kind: 'tieadvanced', name: 'Darth Vader', hp: 14 } } });
+    const aces = b.fighters.filter((f) => f.ace);
+    expect(aces).toHaveLength(1);
+    const [a] = aces;
+    expect(a).toMatchObject({ team: 1, kind: 'tieadvanced' });
+    expect(a.tgt.name).toBe('Darth Vader');
+    expect(a.hp).toBe(14);
+    expect(a.tgt.hpMax).toBe(14);
+  });
+  it('down, says so, and doesn’t come back', () => {
+    const b = make({ ace: { 1: { kind: 'tieadvanced', name: 'Darth Vader', hp: 3 } } });
+    b.setYou(0);
+    const a = b.fighters.find((f) => f.ace);
+    for (let i = 0; i < 10 && a.alive; i++) shotAt(b, a.pos, 1);
+    const events = run(b, 0.1);
+    expect(events.find((e) => e.type === 'down' && e.mine)).toMatchObject({ ace: true, kind: 'tieadvanced' });
+    expect(a.respawn).toBe(Infinity);
+  });
+});
+
+describe('runners', () => {
+  it('escaping, win the battle for their side', () => {
+    const b = make({ perSide: 0, runners: { team: 1, kind: 'transport', size: 2.2, hp: 34, count: 4, need: 3, speed: 20, every: 0.5, from: [0, 0, 0], to: [0, 30, 0] } });
+    const events = run(b, 20);
+    expect(events.filter((e) => e.type === 'escaped' && e.team === 1).length).toBe(3);
+    expect(b.over).toMatchObject({ winner: 1, why: 'runners' });
+  });
+  it('all down, lose it', () => {
+    const b = make({ perSide: 0, runners: { team: 1, kind: 'transport', size: 2.2, hp: 2, count: 2, need: 2, speed: 2, every: 0.5, from: [0, 0, 0], to: [0, 400, 0] } });
+    b.setYou(0);
+    for (let t = 0; t < 4 && !b.over; t += 1 / 30) {
+      for (const r of b.runners) if (r.alive) shotAt(b, r.pos, 5);
+      b.update(1 / 30, null);
+    }
+    expect(b.runners.length).toBe(2);
+    expect(b.over).toMatchObject({ winner: 0, why: 'runners' });
+  });
+});
+
 describe('perSide', () => {
   it('is 32 a side on a strong desktop, 20 on a middling one, 10 on a phone', () => {
     expect(perSide('high')).toBe(32);
@@ -123,6 +197,8 @@ describe('a battle', () => {
     expect(b.teams[1].tickets).toBe(BATTLE.tickets - 1);
     const events = run(b, 0.1);
     expect(events.some((e) => e.type === 'down' && e.team === 1 && e.mine)).toBe(true);
+    // (and says what it was: the galaxy's war counts a bomber down as an intercept)
+    expect(events.find((e) => e.type === 'down' && e.mine).role).toBe(f.role);
   });
 
   it('your shots don’t touch your own side', () => {

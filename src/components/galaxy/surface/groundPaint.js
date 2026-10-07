@@ -6,17 +6,20 @@
 //
 //   groundPainter(site, grid, { shade }) → { paint(x, z, out) → grass,
 //     height(x, z) }
-//   mapAreaOf() → { x0, z0, w, d }: the walkable square, what the map covers
 //     out: [r, g, b], linear (three's working space); grass 0…1
 //     shade: [{ at: [x, z], r }]: the trees' crowns, under which the ground
 //     is darker (SHADE.colour of itself) and the grass thinner (SHADE.grass)
+//   mapAreaOf() → { x0, z0, w, d }: the walkable square (±HALF, round the
+//     origin as the terrain grid lies), what the map covers
 //
 // The rule, as the shader has it: the low colour below hLow and the high
 // above hHigh (the boundary wandered by a broad noise), patches of the
 // accent where its noise is over 1 − accentCover, the deep colour in the
 // hollows of a mid noise, rock where the slope is past rockAt, and a
 // darkening toward the water's edge (the `wet` band); under the water, the
-// deep colour.
+// deep colour. Where grass grows, the grass's own colour over it, as much as
+// grows (its `mid`, toward its `dry` in drifts, as the old blades had them):
+// the blades take the map's colour, and from far off a meadow is its grass.
 
 import * as THREE from 'three';
 import { fbm, smoothstep } from './noise';
@@ -24,19 +27,23 @@ import { coverAt } from './grass';
 import { HALF } from './terrain';
 
 export const SHADE = { colour: 0.75, grass: 0.4 };
-const CELL = 40; // metres: the shade circles are found by their cell, not by looking at them all
+// metres: a shade circle is found by the cells it touches, not by looking at them all
+const CELL = 40;
 
 export const mapAreaOf = () => ({ x0: -HALF, z0: -HALF, w: 2 * HALF, d: 2 * HALF });
 
-// the shade circles bucketed by the cells each one touches
+// the shade circles by the cells each one touches → (x, z) → the list there
 function bucket(shade) {
   const cells = new Map();
   for (const s of shade) {
-    const i0 = Math.floor((s.at[0] - s.r) / CELL);
-    const i1 = Math.floor((s.at[0] + s.r) / CELL);
-    const j0 = Math.floor((s.at[1] - s.r) / CELL);
-    const j1 = Math.floor((s.at[1] + s.r) / CELL);
-    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) (cells.get(`${i},${j}`) ?? cells.set(`${i},${j}`, []).get(`${i},${j}`)).push(s);
+    const [i0, i1] = [Math.floor((s.at[0] - s.r) / CELL), Math.floor((s.at[0] + s.r) / CELL)];
+    const [j0, j1] = [Math.floor((s.at[1] - s.r) / CELL), Math.floor((s.at[1] + s.r) / CELL)];
+    for (let j = j0; j <= j1; j++)
+      for (let i = i0; i <= i1; i++) {
+        const k = `${i},${j}`;
+        if (!cells.has(k)) cells.set(k, []);
+        cells.get(k).push(s);
+      }
   }
   return (x, z) => cells.get(`${Math.floor(x / CELL)},${Math.floor(z / CELL)}`) ?? null;
 }
@@ -64,6 +71,11 @@ export function groundPainter(site, grid, { shade = [] } = {}) {
   const wetLevel = p.wet?.level ?? null;
   const wetBand = p.wet?.band ?? 1.5;
   const water = site.water?.level ?? null;
+  const g = site.grass ?? null;
+  const grassMid = g?.mid ? col(g.mid).toArray() : null;
+  const grassDry = g?.mid ? col(g.dry ?? g.mid).toArray() : null;
+  const dryScale = (g?.scale ?? 90) * 1.7;
+  const drySeed = seed + 101 + 13;
   const tmp = [0, 0, 0];
   const shadeAt = shade.length ? bucket(shade) : () => null;
   return {
@@ -85,18 +97,22 @@ export function groundPainter(site, grid, { shade = [] } = {}) {
       const slope = 1 - Math.max(0, Math.min(1, grid.normalAt(x, z)[1]));
       const k = smoothstep(rockAt, rockAt + 0.14, slope + (nMid - 0.5) * 0.16);
       if (k > 0) {
-        for (let i = 0; i < 3; i++) tmp[i] = rock[i] * (0.78 + 0.4 * n01(x * 0.004 + z * 0.003, h0 * 0.035, 1, seed + 4));
+        // (strata)
+        const strata = 0.78 + 0.4 * n01(x * 0.004 + z * 0.003, h0 * 0.035, 1, seed + 4);
+        for (let i = 0; i < 3; i++) tmp[i] = rock[i] * strata;
         mix(out, tmp, k, out);
       }
       if (wetLevel != null) mix(out, wetColour, (1 - smoothstep(wetLevel, wetLevel + wetBand, h0)) * 0.75, out);
       let grass = coverAt(grid, site, x, z);
-      const near = shadeAt(x, z);
-      if (near)
-        for (const s of near) {
-          if (Math.hypot(x - s.at[0], z - s.at[1]) > s.r) continue;
-          for (let i = 0; i < 3; i++) out[i] *= SHADE.colour;
-          grass *= SHADE.grass;
-        }
+      if (grass > 0 && grassMid) {
+        mix(grassMid, grassDry, smoothstep(-0.15, 0.45, fbm(x / dryScale, z / dryScale, { octaves: 2, seed: drySeed })), tmp);
+        mix(out, tmp, grass, out);
+      }
+      for (const s of shadeAt(x, z) ?? []) {
+        if (Math.hypot(x - s.at[0], z - s.at[1]) > s.r) continue;
+        for (let i = 0; i < 3; i++) out[i] *= SHADE.colour;
+        grass *= SHADE.grass;
+      }
       return grass;
     },
   };

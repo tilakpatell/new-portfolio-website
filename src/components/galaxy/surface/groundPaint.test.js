@@ -66,11 +66,11 @@ describe('the ground painted as one function', () => {
     expect(out.some((v) => v > 0)).toBe(true);
   });
 
-  it('covers the walkable square', () => {
+  it('covers the walkable square, as the terrain grid lies', () => {
     expect(mapAreaOf()).toEqual({ x0: -HALF, z0: -HALF, w: 2 * HALF, d: 2 * HALF });
   });
 
-  it('finds a shade among hundreds, by its cell, not by looking at them all', () => {
+  it('finds a shade among hundreds by its cell, not by looking at them all', () => {
     const shade = Array.from({ length: 600 }, (_, i) => ({ at: [((i * 37) % 800) - 600, ((i * 91) % 1200) - 600], r: 8 }));
     shade.push({ at: [300, 300], r: 20 });
     const p = groundPainter(site(), flat(5), { shade });
@@ -78,6 +78,16 @@ describe('the ground painted as one function', () => {
     const t0 = performance.now();
     for (let i = 0; i < 20000; i++) paintAt(p, (i % 200) * 6 - 600, Math.floor(i / 200) * 6 - 600);
     expect(performance.now() - t0).toBeLessThan(1500);
+  });
+
+  it('is the grass’s own colour where grass grows (its mid, toward its dry in drifts), the floor’s where none does', () => {
+    const grassy = site({ grass: { cover: 1, mid: '#c6ad72', dry: '#c6ad72' } });
+    const p = groundPainter(grassy, flat(5));
+    const { out, grass } = paintAt(p, 300, 300);
+    expect(grass).toBeGreaterThan(0.9);
+    expect(near(out, lin('#c6ad72'), 0.03)).toBe(true);
+    // (bare on the landing flat: the floor's own colour)
+    expect(near(paintAt(p, 0, 0).out, paintAt(groundPainter(site({ grass: undefined }), flat(5)), 0, 0).out, 1e-6)).toBe(true);
   });
 
   it('reads the height from the grid', () => {

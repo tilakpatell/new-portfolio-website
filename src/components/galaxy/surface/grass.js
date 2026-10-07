@@ -11,20 +11,16 @@
 //   coverAt(grid, site, x, z, { e }) → 0…1
 //   coverMap(grid, site, { size }) → RGBA bytes over the walkable square
 //     (red: cover, green: how tall, blue: how dry), row by row from -z
-
 import { HALF } from './terrain';
 import { fbm, smoothstep } from './noise';
 
 // the cover picture's size (texels a side) over the walkable square
 const COVER = 256;
 
-// Where grass grows, how tall and how dry, over the walkable square
-// (±HALF): RGBA bytes, row by row from -z, column by column from -x. Pure,
-// so a test can read it.
 // How much grass grows at one point of the land (0…1): none on steep
 // ground, under the water, on the places' built ground or round the landing
-// pad; in drifts by a noise (the cover map reads this per texel, and the
-// ground map's painter per point)
+// pad; in drifts by a noise (the cover map reads this per texel, the ground
+// map's painter per point)
 export function coverAt(grid, site, x, z, { e = 2.5 } = {}) {
   const g = site.grass;
   if (!g) return 0;
@@ -51,6 +47,9 @@ export function coverAt(grid, site, x, z, { e = 2.5 } = {}) {
   return k * smoothstep(1 - cover - 0.2, 1 - cover + 0.2, n);
 }
 
+// Where grass grows, how tall and how dry, over the walkable square
+// (±HALF): RGBA bytes, row by row from -z, column by column from -x. Pure,
+// so a test can read it.
 export function coverMap(grid, site, { size = COVER } = {}) {
   const g = site.grass ?? {};
   const out = new Uint8Array(size * size * 4);
