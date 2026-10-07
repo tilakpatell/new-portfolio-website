@@ -7,13 +7,20 @@
 //
 //   node --env-file=.env.local scripts/meshy-invincible.mjs <step> [name …]
 //
-// Steps, in order: images (3 credits each), models (15: meshy-6-lite with 2K
-// textures), rig (5), fetch (free). Each task's id is kept in
+// Steps, in order: images (3 credits each), models (30: meshy-7.1, about 30 k
+// triangles, a 4K texture), rig (5), anims (3 a clip, 10 a clip made from
+// words), fetch (free). Each task's id is kept in
 // scripts/meshy-invincible-tasks.json, so running a step again never pays
 // twice; delete a name's entry there to make it again. MESHY_API_KEY comes
 // from .env.local (git ignores it); it is never printed.
 //
 // Meshy turns down named characters, so he is described, not named.
+//
+// The figures move with motion-captured clips from Meshy's library (`CLIPS`,
+// by kind of figure) and two made from words with its text to motion
+// (`MOTIONS`: hovering and flying, which the library has none of); `fetch`
+// puts them all in the figure's file under the game's names for them, held
+// in place (the game moves the figure), and lib/three/rig plays them.
 //
 // A figure with a `ref` is made from the show's own character art instead of
 // a generated concept image: `refs` downloads it from the Invincible wiki
@@ -43,6 +50,21 @@ const PERSON = 'A high-detail 3D video game character in the look of a modern ad
 const STYLE = 'in the style of a modern American animated superhero series: clean cel shading, flat bold colours, strong simple shapes, matte surfaces, no photorealism; full body, A-pose, plain grey background';
 const THING = 'in the style of a modern American animated superhero series: clean cel shading, flat bold colours, strong simple shapes, matte surfaces, no photorealism; the whole object in frame, plain grey background, no text';
 
+// The clips each kind of figure moves with: [the game's name, Meshy's
+// library action_id] (GET /v1/animations/library), at most ten a kind.
+export const CLIPS = {
+  hero: [['idle', 0], ['walk', 30], ['run', 16], ['punch', 210], ['hit', 178], ['land', 506], ['wave', 28], ['cheer', 403]],
+  person: [['idle', 0], ['walk', 30], ['talk', 313], ['wave', 28], ['phone', 312], ['run', 14], ['cheer', 298], ['look', 333]],
+  brute: [['idle', 0], ['walk', 30], ['charge', 512], ['swing', 198], ['throw', 239], ['hit', 178], ['down', 187], ['stomp', 255]],
+  caster: [['idle', 0], ['quake', 127], ['blast', 125], ['hit', 178], ['down', 187], ['talk', 311]],
+};
+// Clips made from words (text to motion, 10 credits each), for the figures
+// that fly; one is made once an account and put on each of them.
+export const MOTIONS = {
+  hover: 'A superhero hovering in mid-air, feet off the ground: legs relaxed and slightly bent, one knee a little higher, arms loose at the sides, a slow gentle bob up and down and a small turn of the head, calm and confident.',
+  fly: 'A superhero flying forward through the air, body stretched out horizontally: right fist punched straight ahead of the head, left arm held back along the side, legs straight and together trailing behind, a slight steady sway.',
+};
+
 export const ASSETS = {
   mark: {
     out: 'mark.glb',
@@ -50,23 +72,24 @@ export const ASSETS = {
     height: 1.78,
     tex: 2048,
     ref: 'Invincible_(Mark_Grayson).png',
+    clips: 'hero', motions: ['hover', 'fly'],
     prompt:
       'A fit, athletic young man of about eighteen in a skin-tight superhero suit. A bright yellow cowl covers his head and the upper half of his face, with his short spiky black hair sticking up out of the top of it, and two large oval white goggle lenses over his eyes; his mouth and chin are bare. On his chest and stomach, a bright yellow panel shaped like a long downward-pointing shield, framed by a sky-blue yoke over both shoulders. The rest of the suit (arms, sides and legs) is very dark navy, almost black. Bright yellow gloves to the middle of the forearm, and sky-blue boots to just below the knee.',
   },
-  omni: { out: 'omni-man.glb', as: 'Omni-Man', height: 1.95, tex: 2048, ref: 'Omni-ManProfile.png' },
+  omni: { out: 'omni-man.glb', as: 'Omni-Man', clips: 'hero', motions: ['hover', 'fly'], height: 1.95, tex: 2048, ref: 'Omni-ManProfile.png' },
   // Meshy lightened his skin from the picture alone; the texture prompt holds it
-  thragg: { out: 'thragg.glb', as: 'Thragg', height: 2.05, tex: 2048, ref: 'GrandRegentThragg-render.png', texture: 'flat cel-shaded colours; very dark brown skin on the face and hands, short black hair and a black moustache; red armoured tunic, grey-mauve long robe, dark red cape, pale lilac fur collar' },
-  eve: { out: 'eve.glb', as: 'Atom Eve', height: 1.7, tex: 2048, ref: 'Atom-EveProfile.png' },
-  cecil: { out: 'cecil.glb', as: 'Cecil Stedman', height: 1.8, tex: 2048, ref: 'CecilProfile.png', texture: 'flat cel-shaded colours; an old bald man with warm pink-beige skin, a lined face with clear dark eyes and grey eyebrows; navy suit, white shirt, red tie, brown shoes' },
-  debbie: { out: 'debbie.glb', as: 'Debbie Grayson', height: 1.68, tex: 2048, ref: 'DebbieProfile.png' },
-  allen: { out: 'allen.glb', as: 'Allen the Alien', height: 2.3, tex: 2048, ref: 'Allen.png' },
+  thragg: { out: 'thragg.glb', as: 'Thragg', clips: 'hero', motions: ['hover', 'fly'], height: 2.05, tex: 2048, ref: 'GrandRegentThragg-render.png', texture: 'flat cel-shaded colours; very dark brown skin on the face and hands, short black hair and a black moustache; red armoured tunic, grey-mauve long robe, dark red cape, pale lilac fur collar' },
+  eve: { out: 'eve.glb', as: 'Atom Eve', clips: 'hero', motions: ['hover', 'fly'], height: 1.7, tex: 2048, ref: 'Atom-EveProfile.png' },
+  cecil: { out: 'cecil.glb', as: 'Cecil Stedman', clips: 'person', height: 1.8, tex: 2048, ref: 'CecilProfile.png', texture: 'flat cel-shaded colours; an old bald man with warm pink-beige skin, a lined face with clear dark eyes and grey eyebrows; navy suit, white shirt, red tie, brown shoes' },
+  debbie: { out: 'debbie.glb', as: 'Debbie Grayson', clips: 'person', height: 1.68, tex: 2048, ref: 'DebbieProfile.png' },
+  allen: { out: 'allen.glb', as: 'Allen the Alien', clips: 'person', motions: ['hover'], height: 2.3, tex: 2048, ref: 'Allen.png' },
   // the wiki's picture is the twins side by side: the left half is one
-  mauler: { out: 'mauler.glb', as: 'a Mauler twin', height: 2.6, tex: 2048, ref: 'MaulerTwin-render.png', crop: 'left' },
-  seismic: { out: 'seismic.glb', as: 'Doc Seismic', height: 1.8, tex: 2048, ref: 'DocSeismic-render.png' },
+  mauler: { out: 'mauler.glb', as: 'a Mauler twin', clips: 'brute', height: 2.6, tex: 2048, ref: 'MaulerTwin-render.png', crop: 'left' },
+  seismic: { out: 'seismic.glb', as: 'Doc Seismic', clips: 'caster', motions: ['hover'], height: 1.8, tex: 2048, ref: 'DocSeismic-render.png' },
   // the crowd, which the wiki has no art for: from words, in the show's style
-  civA: { out: 'civ-a.glb', as: 'a townsman', height: 1.75, tex: 1024, prompt: 'An ordinary man in his thirties with short brown hair and light brown skin, wearing a mustard-yellow zip jacket over a white t-shirt, dark blue jeans and white trainers.' },
-  civB: { out: 'civ-b.glb', as: 'a townswoman', height: 1.66, tex: 1024, prompt: 'An ordinary young woman in her twenties with a black ponytail and warm brown skin, wearing a teal hoodie, grey cargo trousers and red trainers, a small backpack.' },
-  civC: { out: 'civ-c.glb', as: 'an older townsman', height: 1.72, tex: 1024, prompt: 'An ordinary older man in his sixties with grey hair, a grey beard and pale skin, wearing a brown cardigan over a light blue shirt, beige chinos and brown shoes.' },
+  civA: { out: 'civ-a.glb', as: 'a townsman', clips: 'person', height: 1.75, tex: 2048, prompt: 'An ordinary man in his thirties with short brown hair and light brown skin, wearing a mustard-yellow zip jacket over a white t-shirt, dark blue jeans and white trainers.' },
+  civB: { out: 'civ-b.glb', as: 'a townswoman', clips: 'person', height: 1.66, tex: 2048, prompt: 'An ordinary young woman in her twenties with a black ponytail and warm brown skin, wearing a teal hoodie, grey cargo trousers and red trainers, a small backpack.' },
+  civC: { out: 'civ-c.glb', as: 'an older townsman', clips: 'person', height: 1.72, tex: 2048, prompt: 'An ordinary older man in his sixties with grey hair, a grey beard and pale skin, wearing a brown cardigan over a light blue shirt, beige chinos and brown shoes.' },
   // props, unrigged
   bank: { out: 'bank.glb', as: 'the bank', tex: 1024, rig: false, prompt: 'The front of a small city bank: a two-storey pale stone facade, four columns, wide steps up to big glass doors, a sign panel above the doors with no lettering. Seen from the front at a slight angle.' },
   heli: { out: 'heli.glb', as: 'the news helicopter', tex: 1024, rig: false, prompt: 'A small white and red news helicopter with a camera pod under its nose, skids, a two-blade main rotor and a tail rotor. Seen from the side at a slight angle.' },
@@ -117,9 +140,48 @@ const save = (s) => writeFile(TASKS, `${JSON.stringify(s, null, 2)}\n`);
 
 let io = null;
 let sharp = null;
-// The skinned figure on its skeleton, without the clip it was rigged with
-// (the game poses him), on a new atlas the size of the texture he ships with.
-async function bake(from, to, a) {
+
+const drop = (clip) => {
+  for (const part of [...clip.listChannels(), ...clip.listSamplers()]) part.dispose();
+  clip.dispose();
+};
+
+// A clip from another file of the same skeleton, onto this one's bones by name.
+function addClip(doc, src, name) {
+  const [from] = src.getRoot().listAnimations();
+  if (!from) throw new Error(`${name}: no clip in its file`);
+  const bones = new Map(doc.getRoot().listNodes().map((n) => [n.getName(), n]));
+  const buffer = doc.getRoot().listBuffers()[0];
+  const copy = (acc) => doc.createAccessor().setType(acc.getType()).setArray(acc.getArray().slice()).setBuffer(buffer);
+  const clip = doc.createAnimation(name);
+  for (const ch of from.listChannels()) {
+    const node = bones.get(ch.getTargetNode()?.getName());
+    if (!node) continue;
+    const s = ch.getSampler();
+    const sampler = doc.createAnimationSampler().setInput(copy(s.getInput())).setOutput(copy(s.getOutput())).setInterpolation(s.getInterpolation());
+    clip.addSampler(sampler).addChannel(doc.createAnimationChannel().setTargetNode(node).setTargetPath(ch.getTargetPath()).setSampler(sampler));
+  }
+}
+
+// The hips kept over the spot they start on (the game moves the figure; a
+// walk that carries itself off would slide out from under it), their height
+// left to the clip, so a step still bobs.
+function inPlace(clip) {
+  for (const ch of clip.listChannels()) {
+    if (ch.getTargetPath() !== 'translation' || !/hips/i.test(ch.getTargetNode()?.getName() ?? '')) continue;
+    const out = ch.getSampler().getOutput();
+    const v = out.getArray().slice();
+    for (let i = 3; i < v.length; i += 3) {
+      v[i] = v[0];
+      v[i + 2] = v[2];
+    }
+    out.setArray(v);
+  }
+}
+// The skinned figure on its skeleton with its clips (`extra`: more files
+// whose clips are added, each [file, name]), on a new atlas the size of the
+// texture it ships with. `names` renames the base file's clips in order.
+async function bake(from, to, a, { names = null, extra = [] } = {}) {
   // loaded here, so the paid steps run without the build's dependencies
   const { NodeIO } = await import('@gltf-transform/core');
   const { ALL_EXTENSIONS } = await import('@gltf-transform/extensions');
@@ -133,12 +195,15 @@ async function bake(from, to, a) {
     io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
   }
   const doc = await io.read(from);
-  for (const clip of doc.getRoot().listAnimations()) {
-    for (const part of [...clip.listChannels(), ...clip.listSamplers()]) part.dispose();
-    clip.dispose();
-  }
+  const clips = doc.getRoot().listAnimations();
+  if (names) {
+    // the library's clips, in the order asked for; any other (the rig's own) goes
+    clips.forEach((clip, i) => (i < names.length ? clip.setName(names[i]) : drop(clip)));
+  } else for (const clip of clips) drop(clip);
+  for (const [file, name] of extra) addClip(doc, await io.read(file), name);
+  for (const clip of doc.getRoot().listAnimations()) inPlace(clip);
   await reatlas(doc, a.tex, { apart: true });
-  await doc.transform(dedup(), prune(), textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [a.tex, a.tex] }), meshopt({ encoder: MeshoptEncoder, level: 'high' }));
+  await doc.transform(dedup(), prune(), textureCompress({ encoder: sharp, targetFormat: 'webp', quality: 90, resize: [a.tex, a.tex] }), meshopt({ encoder: MeshoptEncoder, level: 'high' }));
   await mkdir(dirname(to), { recursive: true });
   await io.write(to, doc);
   const prims = doc
@@ -197,13 +262,14 @@ const steps = {
         const from = ref ? { image_url: `data:image/png;base64,${(await readFile(ref)).toString('base64')}` } : { input_task_id: s[n].image };
         const { result } = await api('POST', '/v1/image-to-3d', {
           ...from,
-          ai_model: 'meshy-6-lite',
+          ai_model: 'meshy-7.1',
           should_texture: true,
           enable_pbr: false,
           should_remesh: true,
           topology: 'triangle',
-          target_polycount: ASSETS[n].rig === false ? 12000 : 16000,
-          texture_resolution: '2k',
+          target_polycount: ASSETS[n].rig === false ? 15000 : 30000,
+          // (painted at 4K and atlased again at the size it ships at: more paint to each texel)
+          texture_resolution: ASSETS[n].rig === false ? '2k' : '4k',
           ...(ASSETS[n].texture && { texture_prompt: ASSETS[n].texture }),
           ...(ASSETS[n].rig !== false && { pose_mode: 'a-pose' }),
           target_formats: ['glb'],
@@ -231,6 +297,37 @@ const steps = {
       console.log(`rig      ${n.padEnd(8)} ${t.consumed_credits ?? '?'} credits`);
     }
   },
+  async anims(names, s) {
+    for (const n of names) {
+      const a = ASSETS[n];
+      if (a.rig === false || !a.clips) continue;
+      if (!s[n]?.rig) throw new Error(`${n}: not rigged yet`);
+      use(s[n]);
+      s[n].anims ??= {};
+      if (!s[n].anims.lib) {
+        s[n].anims.lib = (await api('POST', '/v1/animations', { rig_task_id: s[n].rig, action_ids: CLIPS[a.clips].map(([, id]) => id) })).result;
+        await save(s);
+      }
+      for (const m of a.motions ?? []) {
+        if (s[n].anims[m]) continue;
+        // the clip made from words: once an account, while Meshy keeps it (three days)
+        const made = (s._motions ??= {})[s[n].acct]?.[m];
+        if (!made || made.expires < Date.now() + 3600e3) {
+          const id = (await api('POST', '/v1/text-to-motion', { prompt: MOTIONS[m], duration: 4, mode: 'prime' })).result;
+          const done = await wait('/v1/text-to-motion', id, `${m} motion`);
+          (s._motions[s[n].acct] ??= {})[m] = { id, expires: done.expires_at };
+          console.log(`motion   ${m.padEnd(8)} ${done.consumed_credits ?? '?'} credits`);
+          await save(s);
+        }
+        s[n].anims[m] = (await api('POST', '/v1/animations', { rig_task_id: s[n].rig, motion_task_id: s._motions[s[n].acct][m].id })).result;
+        await save(s);
+      }
+      for (const [clip, id] of Object.entries(s[n].anims)) {
+        const done = await wait('/v1/animations', id, `${n} ${clip}`);
+        console.log(`anims    ${n.padEnd(8)} ${clip.padEnd(6)} ${done.consumed_credits ?? '?'} credits`);
+      }
+    }
+  },
   async fetch(names, s) {
     // as Meshy made them, kept by task (so compressing again needs no download)
     const tmp = join(ROOT, 'node_modules', '.cache', 'meshy');
@@ -241,12 +338,22 @@ const steps = {
       const task = prop ? s[n]?.model : s[n]?.rig;
       if (!task) throw new Error(`${n}: not ${prop ? 'modelled' : 'rigged'} yet`);
       use(s[n]);
-      const raw = join(tmp, `${task}-${n}.glb`);
+      // the figure with its library clips when it has them, else as rigged
+      const lib = s[n].anims?.lib;
+      const raw = join(tmp, `${lib ?? task}-${n}.glb`);
       if (!existsSync(raw)) {
-        const t = await api('GET', prop ? `/v1/image-to-3d/${task}` : `/v1/rigging/${task}`);
-        await download(prop ? t.model_urls.glb : t.result.rigged_character_glb_url, raw);
+        const t = await api('GET', lib ? `/v1/animations/${lib}` : prop ? `/v1/image-to-3d/${task}` : `/v1/rigging/${task}`);
+        await download(lib ? t.result.animation_glb_url : prop ? t.model_urls.glb : t.result.rigged_character_glb_url, raw);
       }
-      const { tris } = await bake(raw, join(OUT, a.out), a);
+      const extra = [];
+      for (const m of a.motions ?? []) {
+        const id = s[n].anims?.[m];
+        if (!id) continue;
+        const file = join(tmp, `${id}-${n}-${m}.glb`);
+        if (!existsSync(file)) await download((await api('GET', `/v1/animations/${id}`)).result.animation_glb_url, file);
+        extra.push([file, m]);
+      }
+      const { tris } = await bake(raw, join(OUT, a.out), a, { names: lib ? CLIPS[a.clips].map(([name]) => name) : null, extra });
       const from = a.ref ? ` from the show’s character art on the Invincible wiki (${a.ref})` : '';
       credits[n] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${a.as}, generated for this site with Meshy AI${from}`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
       console.log(`fetch    ${n.padEnd(8)} ${a.out}, ${tris} triangles`);
