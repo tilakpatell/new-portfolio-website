@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SHIP, autopilot, spawn, step } from '../universe/ship';
-import { EDGE, PULSE, aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
+import { SYSTEMS } from './systems';
+import { CEILING, EDGE, FAR, PULSE, aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
 
 const planet = { id: 'planet', at: [0, 0, 0], r: 40, reach: 84, goal: true };
 const station = { id: 'deathstar', at: [170, 26, 150], r: 34, reach: 48, goal: true };
@@ -15,6 +16,41 @@ describe('makeSpace', () => {
     expect(space.boostAt(-500, 0, -500)).toBe(PULSE);
     // a pebble doesn't count
     expect(space.openness(300, 0, -230)).toBeGreaterThan(0.5);
+  });
+  it('is open: 2,400 out to its edge, and the sublight drive up to 120 out in it', () => {
+    expect(EDGE).toBe(2400);
+    expect(PULSE).toBe(120);
+    expect(makeSpace([planet]).edge).toBe(EDGE);
+    // still shut right by the planet, and at it
+    for (const at of [[0, 0, 0], [0, 0, planet.r], [planet.reach, 0, 0], [0, planet.reach + 20, 0]]) expect(space.openness(...at), at.join()).toBe(0);
+    expect(space.boostAt(0, 0, planet.reach + 10)).toBe(SHIP.boost);
+    // and all the way open out by the edge
+    expect(space.openness(-EDGE + 10, 0, 0)).toBe(1);
+  });
+  it('never arrives flat out: boosting at the planet from the edge, it’s down to the boost by the time it’s there', () => {
+    let s = { ...spawn(null, { x: 0, y: 0, z: EDGE - 5, heading: 0 }), speed: PULSE };
+    let top = 0;
+    for (let i = 0; i < 3600 && Math.hypot(s.x, s.y, s.z) > planet.reach; i++) {
+      s = step(s, { throttle: 1, boost: true }, 1 / 60, space.solids, space).ship;
+      top = Math.max(top, s.speed);
+    }
+    expect(top).toBeGreaterThan(PULSE * 0.95); // (flat out on the way)
+    expect(Math.hypot(s.x, s.y, s.z)).toBeLessThanOrEqual(planet.reach);
+    expect(s.speed).toBeLessThan(SHIP.boost + 0.5);
+  });
+  it('sees everything from anywhere in it: the planet, and the gas giant it orbits whole, inside the far plane from the far edge', () => {
+    for (const sys of SYSTEMS) {
+      // the worst place to be: out at the edge on the far side, as far below (or above) as it goes
+      const things = [{ at: [0, 0, 0], r: sys.body?.r ?? 0 }, ...(sys.parent ? [sys.parent] : [])];
+      for (const o of things) {
+        const h = Math.hypot(o.at[0], o.at[2]);
+        const [ux, uz] = h > 1e-9 ? [o.at[0] / h, o.at[2] / h] : [1, 0];
+        const from = [-ux * EDGE, o.at[1] > 0 ? -CEILING : CEILING, -uz * EDGE];
+        const d = Math.hypot(o.at[0] - from[0], o.at[1] - from[1], o.at[2] - from[2]);
+        // (its rim, where the view grazes it, is the furthest of it you see)
+        expect(Math.sqrt(d * d - o.r * o.r), sys.id).toBeLessThan(FAR * 0.95);
+      }
+    }
   });
   it('knows its goals', () => {
     expect(Object.keys(space.goals).sort()).toEqual(['deathstar', 'planet']);

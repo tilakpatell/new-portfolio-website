@@ -106,7 +106,9 @@ import { buildSystem } from './world';
 import { AHEAD, FACTIONS, KINDS, NAMES } from './hunted';
 import { createRoam } from './roam';
 import { pick as pickFaction } from '../universe/sides';
-import { aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
+import { createSkyStreaks } from './skyStreaks';
+import { laneLinks } from './skyTraffic';
+import { FAR, aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
 import { asking } from './asking';
 import { arrival, courseTo, jumpSeconds, kindsIn, lightYears, starAhead, systemById, wantsDeathStar } from './systems';
 
@@ -200,7 +202,7 @@ export async function create(canvas, ctx) {
   const autoReset = renderer.info.autoReset;
   renderer.info.autoReset = false;
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.05, 9000);
+  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.05, FAR);
   scene.add(camera);
   canvas.setAttribute('aria-hidden', 'true');
   canvas.style.cursor = 'crosshair';
@@ -229,6 +231,9 @@ export async function create(canvas, ctx) {
 
   const sky = createSky({ small, renderer });
   scene.add(sky.group);
+  // ships jumping in and out along the lanes, streaks in the sky (skyStreaks.js): none on a low tier, nor with reduced motion
+  const skyStreaks = tier === 'low' || reduced ? null : createSkyStreaks({ renderer });
+  if (skyStreaks) scene.add(skyStreaks.group);
   const speedLines = createSpeedLines({ small });
   camera.add(speedLines.group);
   const dust = createDust({ small });
@@ -384,6 +389,7 @@ export async function create(canvas, ctx) {
     world.setDetail(detail);
     scene.add(world.group);
     state.world = world;
+    skyStreaks?.setSystem(laneLinks(sys.id), Math.max(world.solids.find((o) => o.id === 'planet').r, 20));
     war?.enter(sys, world);
     effectsNow(true);
     wingmen?.clear();
@@ -1868,6 +1874,7 @@ export async function create(canvas, ctx) {
     if (state.aim && (!flying() || state.crash || state.jump || props.frozen)) aimAt(null);
     sky.focus(state.jump?.phase === 'align' ? state.jump.to.id : (state.aim?.id ?? null));
     sky.update(camera, t);
+    if (skyStreaks) (skyStreaks.group.visible = !inTunnel), skyStreaks.update(dt);
     models.update(t);
     bolts.update(dt);
     flashes.update(dt);
@@ -2185,7 +2192,7 @@ export async function create(canvas, ctx) {
       state.shake = 0;
       ctx.invalidate();
     };
-    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, pin, interdiction, interdictor, war, wingmen, effects: () => state.effects, happen: (id) => state.ship && happen(id, state.ship) };
+    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, pin, interdiction, interdictor, war, wingmen, effects: () => state.effects, skyStreaks: () => skyStreaks, happen: (id) => state.ship && happen(id, state.ship) };
     window.__gltfStats = gltfStats; // { requests, parses }: the models asked for, and the files fetched and parsed for them
   }
 
@@ -2322,6 +2329,7 @@ export async function create(canvas, ctx) {
       flashes.dispose();
       speedLines.dispose();
       sky.dispose();
+      skyStreaks?.dispose();
       for (const pl of plumes) pl.trail.dispose();
       boltGeo.dispose();
       boltMat.dispose();
