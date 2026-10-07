@@ -92,7 +92,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   scene.add(ground.group, city.group, landmarks.group);
   // who's about, the clouds, and the airliner going round
   // (the HD figures for those the cast has; the kit's people for the rest)
-  const people = await loadCast(['eve', 'debbie', 'cecil', 'allen']);
+  const people = await loadCast(['eve', 'debbie', 'cecil', 'allen', 'civA', 'civB', 'civC']);
   const npcs = createNpcs(scene, world, people);
   const clouds = buildClouds({ small });
   scene.add(clouds.mesh);

@@ -16,6 +16,13 @@ export const CAST = {
   allen: { file: '/models/invincible/allen.glb', h: 2.3, rig: true },
   mauler: { file: '/models/invincible/mauler.glb', h: 2.6, rig: true },
   seismic: { file: '/models/invincible/seismic.glb', h: 1.8, rig: true },
+  civA: { file: '/models/invincible/civ-a.glb', h: 1.75, rig: true },
+  civB: { file: '/models/invincible/civ-b.glb', h: 1.66, rig: true },
+  civC: { file: '/models/invincible/civ-c.glb', h: 1.72, rig: true },
+  // props (h: how tall it stands, in metres; drawn in later tasks)
+  bank: { file: '/models/invincible/bank.glb', h: 12, rig: false },
+  heli: { file: '/models/invincible/heli.glb', h: 3.2, rig: false },
+  truck: { file: '/models/invincible/truck.glb', h: 3, rig: false },
 };
 
 // a file under public/, wherever the site is served from

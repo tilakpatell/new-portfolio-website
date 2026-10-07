@@ -1,5 +1,5 @@
 // The Invincible cast on one sheet, for judging it as one show: every
-// figure in src/components/invincible/cast.js from the front, the side and
+// figure and prop in src/components/invincible/cast.js from the front, the side and
 // the back as the game draws it (scripts/glb-shot.mjs, look=toon), each
 // column scaled to the height it stands, so the same line, the same
 // saturation and the same height ratios can be seen at a glance.
@@ -22,11 +22,12 @@ const H = 360; // the tallest figure's height
 const LABEL = 28;
 
 const names = Object.keys(CAST);
-const tallest = Math.max(...names.map((n) => CAST[n].h));
+// figures to the tallest figure; a prop fills its column (it isn't to scale)
+const tallest = Math.max(...names.filter((n) => CAST[n].rig).map((n) => CAST[n].h));
 const tiles = [];
 for (const [col, n] of names.entries()) {
   const shots = await shoot(join(ROOT, 'public', CAST[n].file), VIEWS, { w: 480, h: 640, look: 'toon' });
-  const h = Math.round((H * CAST[n].h) / tallest);
+  const h = CAST[n].rig ? Math.round((H * CAST[n].h) / tallest) : H;
   for (const [row, png] of shots.entries()) {
     // the figure fills the shot's height, so scaled to its own height it stands to the others'
     const input = await sharp(png).trim({ threshold: 6 }).resize({ height: h, width: W, fit: 'inside' }).png().toBuffer();

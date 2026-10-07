@@ -7,6 +7,9 @@
 
 import * as THREE from 'three';
 import { personFor } from './people';
+import { CAST } from '../cast';
+
+export const CIVS = ['civA', 'civB', 'civC'];
 
 export const LINES = {
   debbie: ['You’re home early. Did you fly?', 'There’s lasagna in the fridge.', 'Your father’s out. Again.', 'Be careful up there, sweetie.'],
@@ -27,7 +30,9 @@ const angle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // a person stood somewhere: a holder at their hips, so they can lean and fly
 // (`cast`: the HD figures' templates by kind, ./people.js's loadCast)
 function stand(scene, cast, kind, seed, { x, z, y = 0, face = 0, mode = 'idle', role = kind, r = 9 }) {
-  const person = personFor(kind, seed, cast[kind]);
+  // a townsperson is one of the cast's three, by seed
+  const who = kind === 'person' ? CIVS[seed % CIVS.length] : kind;
+  const person = personFor(kind, seed, cast[who], CAST[who]);
   const holder = new THREE.Group();
   const hipY = person.hipY;
   holder.add(person.root);

@@ -28,9 +28,18 @@ Session of 2026-10-05. The ask: "really improve and make 3d models and stuff for
 
 The owner's ask: the world “is hard to see, has bugs, and nothing to do and needs better NPC AI, missions, everything”, with better, cohesive models (Meshy, the PC's gen3d runner, or Sketchfab). Spec: `docs/superpowers/specs/2026-10-07-invincible-world-2-design.md`. Plan: `docs/superpowers/plans/2026-10-07-invincible-world-2.md`, eleven tasks, one pull request each. Shots from the sweep that started it are described in the spec's first section. On 2026-10-07 the egress proxy allowed `api.meshy.ai` and `api.sketchfab.com`, and `MESHY_API_KEY` and `SKETCHFAB_API_TOKEN` were in the environment.
 
-## Blocked
+### The cast (Task 4), 2026-10-07
 
-The session's network policy refused `api.meshy.ai`, `api.sketchfab.com` and Poly Haven, with a 403 from the egress proxy. Every new model is code. The owner can allow those hosts in the environment's network settings. Then `scripts/meshy-invincible.mjs` could make HD figures for Atom Eve, Debbie, Cecil and Allen, in place of the kit figures in `people.js`. The `CAST` pattern in `../cast.js` and `lib/three/rig.js` already pose any rigged GLB.
+The owner asked for the models to be made from the show's own art on the Invincible wiki (amazon-invincible.fandom.com). `scripts/meshy-invincible.mjs` gained a `refs` step: each figure names its wiki file (`ref`), which is downloaded into `lab/meshy/invincible/ref/` (git-ignored, so the studio's pictures are never committed) and sent to Meshy's image-to-3D. Only the models are shipped.
+
+- Made from the wiki's art and rigged on Meshy's humanoid skeleton: Mark (remade), Omni-Man, Thragg, Atom Eve, Cecil, Debbie, Allen, a Mauler and Doc Seismic, about 16.5 k triangles each with a 2 K atlas. The Sketchfab Omni-Man and Thragg are gone, and with them two other artists' looks.
+- Made from words in the spec's `STYLE` line: three townspeople (`civA`, `civB`, `civC`) and three props (`bank`, `heli`, `truck`).
+- Two Meshy accounts: `MESHY_API_KEY` and `MESHY_API_KEY_ACC_2`; `MESHY_ACCOUNT=2` sends new tasks to the second, and each task entry keeps its `acct`, since a task can only be read with its own account.
+- Credits: 160 on account 1 (eight models at 15, eight rigs at 5; 7 left), and on account 2: 45 for Mark, Thragg and Cecil remade and rigged, 18 for six concept images, then the six models and three rigs. Account 2's balance fell by more than this session spent while it ran, so something else may share it.
+- Judged on `docs/gen3d/invincible/cast-sheet.webp` (`node scripts/inv-cast-sheet.mjs`, with `npx vite --port 5188` running): one look, one saturation, the heights in the spec's ratios.
+- Wrong twice on Meshy, so sent to the PC's runner: Thragg (his skin came out light, even with a texture prompt; #441) and Cecil (a pale, blank face; #442). Their second Meshy versions stand in until the runner's pull requests come; those models will need rigging on Meshy from their GLBs (`/v1/rigging` takes a model URL).
+- Known: Mark's back has a yellow smear where Meshy guessed the unseen side (the old model had it too); the wiki has no back view to fix it from.
+- Wired: `people.js`'s `personFor(kind, seed, template)` gives the world's people the HD figure when there is one that can be posed (the bones a pose needs are checked) and the kit's person otherwise; `loadCast(names)` loads the templates, a missing file giving the kit's person. Eve, Debbie, Cecil and Allen in space are now the HD figures; Omni-Man and Thragg are the new models. `cast.test.js` checks every `CAST` file, height and credit.
 
 ## How to check
 
