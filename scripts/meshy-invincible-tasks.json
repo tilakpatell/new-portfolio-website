@@ -21,11 +21,13 @@
   },
   "eve": {
     "acct": 2,
-    "model": "01a1142b-e600-7161-b6d1-c6be9f5fa3d9"
+    "model": "01a1142b-e600-7161-b6d1-c6be9f5fa3d9",
+    "rig": "01a11442-9482-72f3-8c0e-231602bc6cbe"
   },
   "cecil": {
     "acct": 2,
-    "model": "01a1142d-7ea2-766e-aa41-204df064937e"
+    "model": "01a1142d-7ea2-766e-aa41-204df064937e",
+    "rig": "01a11442-f532-75a8-a0fc-aa2aebd816a4"
   },
   "debbie": {
     "acct": 2,
