@@ -326,6 +326,39 @@ describe('createRuntime', () => {
     expect(world.lowerQuality).toHaveBeenCalledWith(2);
   });
 
+  it('a new quality level is set before the frame is drawn, so the resized buffer is never shown cleared', async () => {
+    const order = [];
+    const quality = fakeQuality();
+    let next = null;
+    quality.frame = vi.fn(() => {
+      const l = next;
+      next = null;
+      return l;
+    });
+    const gfx = fakeBackend();
+    gfx.setRatio = vi.fn(() => order.push('setRatio'));
+    const { rt, loop } = make({ quality, makeBackend: () => gfx });
+    const world = fakeWorld({ wants: () => true, lowerQuality: vi.fn(() => order.push('lowerQuality')), draw: vi.fn(() => order.push('draw')) });
+    await rt.mount({ id: 'a', create: () => world }, {}, fakeHost());
+    loop.tick(16);
+    order.length = 0;
+    next = 1;
+    loop.tick(33);
+    expect(order).toEqual(['setRatio', 'lowerQuality', 'draw']);
+  });
+
+  it('a frame whose draw throws after a level change still fails the world', async () => {
+    const quality = fakeQuality();
+    quality.frame = vi.fn(() => 1);
+    const { rt, loop } = make({ quality });
+    const world = fakeWorld({ lowerQuality: vi.fn(), draw: () => { throw new Error('boom'); } });
+    await rt.mount({ id: 'a', create: () => world }, {}, fakeHost());
+    expect(loop.tick(16)).toBe(false);
+    expect(world.lowerQuality).toHaveBeenCalledWith(1);
+    expect(rt.status).toBe('failed');
+    expect(world.dispose).toHaveBeenCalled();
+  });
+
   it("a module's ratio caps the sharpness it's drawn at", async () => {
     const quality = fakeQuality();
     quality.ratioUnder = vi.fn((cap) => Math.min(cap ?? Infinity, 2));

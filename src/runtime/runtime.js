@@ -81,6 +81,15 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     last = t;
     const { world } = current;
     try {
+      // a new quality level before the draw: a new ratio resizes the drawing
+      // buffer, which clears it, and drawn after that in this same task it's
+      // never shown empty (resized after the draw, the browser showed the
+      // cleared buffer for a frame: the picture blinked out)
+      const level = quality.frame(t);
+      if (level !== null) {
+        gfx.setRatio(ratioFor(current.module));
+        world.lowerQuality?.(level);
+      }
       const snapshot = input.sample(t);
       world.step?.(dt, snapshot, t);
       world.draw({ dt, now: t, renderer: gfx.renderer, quality });
@@ -89,17 +98,13 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       fail();
       return false;
     }
+    // (the cover is read after the draw, in the frame's own task: see cover())
     if (takeSnap) {
       takeSnap = false;
       snap?.remove();
       snap = gfx.snapshot(current.host);
       timeline = null;
       snapped?.();
-    }
-    const level = quality.frame(t);
-    if (level !== null) {
-      gfx.setRatio(ratioFor(current.module));
-      world.lowerQuality?.(level);
     }
     if (status === 'ready') setStatus('on');
     if (snap && timeline && holding) {
