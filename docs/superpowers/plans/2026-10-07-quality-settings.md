@@ -35,8 +35,8 @@
 
 **Interfaces:** Produces `BUDGET_ROWS` (object keyed by level, columns `tris, calls, modelsMB, props, lod1, grass, terrain, cut, water`) and `budget(level) → row` (unknown level → high's row).
 
-- [ ] Test: every level has every column; `budget('ultra').tris === Infinity`; numeric columns rise monotonically low→ultra; `budget('nope')` is high's row; ultra `lod1 === false`, others true; cuts `['.lo', '', '.hq', '.ultra']`.
-- [ ] Run, see it fail; implement; run, see it pass; commit ("The quality levels get one budget table …").
+- [x] Test: every level has every column; `budget('ultra').tris === Infinity`; numeric columns rise monotonically low→ultra; `budget('nope')` is high's row; ultra `lod1 === false`, others true; cuts `['.lo', '', '.hq', '.ultra']`.
+- [x] Run, see it fail; implement; run, see it pass; commit ("The quality levels get one budget table …").
 
 ### Task 2: Auto picks Ultra; quality() and setQuality()
 
@@ -44,15 +44,15 @@
 
 **Interfaces:** Produces `quality() → { mode: 'auto'|level, level, auto }`, `setQuality(mode)` (writes/removes `tp-quality`, clears cache, dispatches `CustomEvent('tp:quality', { detail: level })`), `sharpness() → number in [0.5, 2]` (reads `tp-sharpness`), and `classifyDevice` returning `auto` (what Auto would pick) beside `detail`.
 
-- [ ] Tests: tier-high laptop with graded-`high`/ungraded chip → `detail: 'ultra'`; grade `mid` → `'high'`; phone → `'mid'`; software → `'low'`; tier-`mid`/`low` computers keep their tier; with `override` set the strain `cap` is ignored; with no override the cap still holds an ultra chip at high; `auto` field equals the un-overridden pick.
-- [ ] Implement in `detailOf`; `pixelRatio` multiplies by `sharpness()`. Update the header comment and the architecture doc entry. Commit.
+- [x] Tests: tier-high laptop with graded-`high`/ungraded chip → `detail: 'ultra'`; grade `mid` → `'high'`; phone → `'mid'`; software → `'low'`; tier-`mid`/`low` computers keep their tier; with `override` set the strain `cap` is ignored; with no override the cap still holds an ultra chip at high; `auto` field equals the un-overridden pick.
+- [x] Implement in `detailOf`; `pixelRatio` multiplies by `sharpness()`. Update the header comment and the architecture doc entry. Commit.
 
 ### Task 3: galaxy-check reads the table; baselines per level
 
 **Files:** Modify `scripts/galaxy-check.mjs`; create `lab/baseline/surface-high.json`, `lab/baseline/surface-mid.json`; modify `docs/superpowers/specs/2026-10-06-planets-overhaul-design.md` §Performance budget.
 
-- [ ] Gate: `row = budget(QUALITY)`; calls ≤ min(row.calls, base×1.1); tris ≤ min(row.tris, base×1.1) except ultra (reported only); models ≤ row.modelsMB; `BUDGET` defaults to `lab/baseline/surface-<QUALITY>.json` when `BUDGET=1`. Ultra frame-time test p95 ≤ 16.7 ms only when `ANGLE` is not swiftshader.
-- [ ] Run the dev server and generate high and mid baselines (`JSON=1`), copy into `lab/baseline/`; re-run with the gate, see "pass". Ultra baseline left as a TODO in the header. Commit.
+- [x] Gate: `row = budget(QUALITY)`; calls ≤ min(row.calls, base×1.1); tris ≤ min(row.tris, base×1.1) except ultra (reported only); models ≤ row.modelsMB; `BUDGET` defaults to `lab/baseline/surface-<QUALITY>.json` when `BUDGET=1`. Ultra frame-time test p95 ≤ 16.7 ms only when `ANGLE` is not swiftshader.
+- [x] Run the dev server and generate high and mid baselines (`JSON=1`), copy into `lab/baseline/`; re-run with the gate, see "pass". Ultra baseline left as a TODO in the header. Commit.
 
 ### Task 4: gen3d ultra cut
 
@@ -60,8 +60,8 @@
 
 **Interfaces:** `ULTRA = { suffix: '.ultra', faces: 300000, tex: 8192, bytes: 24 MB, detail: ['ultra'] }` (kept out of `TIERS`, so the three standard cuts and their tests stay as they are); `CUTS.ultra = '.ultra'`; `gen3dUrl(name, detail)` stays sync (returns `.hq` at ultra until the ultra file is known); `gen3dUrlChecked(name, detail, fetchFn) → Promise<url>` does one HEAD per name, cached, and falls back to `.hq`.
 
-- [ ] Tests: `ULTRA` values; `fileFor(name,'ultra', { ultra: true })` → `.ultra.glb`; checked URL resolves `.ultra` on 200, `.hq` on 404, HEAD called once per name.
-- [ ] Implement; commit.
+- [x] Tests: `ULTRA` values; `fileFor(name,'ultra', { ultra: true })` → `.ultra.glb`; checked URL resolves `.ultra` on 200, `.hq` on 404, HEAD called once per name.
+- [x] Implement; commit.
 
 ### Task 5: Surface catalogue `ultra` and the placer
 
@@ -69,8 +69,8 @@
 
 **Interfaces:** `surfaceUltraUrl(kind)`, `modelUrlFor(kind, level) → url` (ultra file when `level === 'ultra'` and the entry has `ultra`), `wantsLod(kind, level) → bool` (`entry.lod && budget(level).lod1`).
 
-- [ ] Tests: entries with `ultra` have `{ tris, tex }` numbers, the `.ultra.glb` exists and is under the ultra row's size; `modelUrlFor`/`wantsLod` cases using a fake entry.
-- [ ] Placer: `loadModel(kind)` default URL `modelUrlFor(kind, detailLevel())`; both LOD branches use `wantsLod`. Commit.
+- [x] Tests: entries with `ultra` have `{ tris, tex }` numbers, the `.ultra.glb` exists and is under the ultra row's size; `modelUrlFor`/`wantsLod` cases using a fake entry.
+- [x] Placer: `loadModel(kind)` default URL `modelUrlFor(kind, detailLevel())`; both LOD branches use `wantsLod`. Commit.
 
 ### Task 6: The settings store
 
@@ -78,8 +78,8 @@
 
 **Interfaces:** `DEFAULTS = { v: 1, quality: 'auto', three: 'auto', sharpness: 1, motion: 'auto', sound: true, volume: 1, voices: 1, askBigDownload: true }`; `read(store?)`, `write(patch, store?)`, `subscribe(fn) → undo`; `migrate(store)`. `write` mirrors legacy keys: `tp-quality` (removed for auto), `tp-3d` (removed for auto), `tp-sound` ('on'/'off'), `tp-sharpness`, `tp-volume`, `tp-ask-download`. Strain cap `tp-detail-cap` is read for the panel only (`capped`), cleared when a level is hand-picked.
 
-- [ ] Tests: defaults on empty storage; migration from legacy keys; round trip; subscribe fires on write; throwing storage → defaults, no throw; corrupt JSON → migration; sharpness clamped.
-- [ ] Implement; commit.
+- [x] Tests: defaults on empty storage; migration from legacy keys; round trip; subscribe fires on write; throwing storage → defaults, no throw; corrupt JSON → migration; sharpness clamped.
+- [x] Implement; commit.
 
 ### Task 7: Runtime hears tp:quality
 
@@ -87,15 +87,15 @@
 
 **Interfaces:** `quality.retune(level)` swaps the budget row; `quality.setSharpness(s)`; `rt.requality(level) → 'tuned' | 'reload' | 'idle'` (world/module `onQuality` called → tuned; current without one → reload; nothing up or still loading → idle); `rt.reload() → Promise<bool>` remounts current module/props/host. `index.js` listens for `tp:quality` and dispatches `tp:quality-reload` `{ level }` when the answer is reload; listens for `tp:world-reload`.
 
-- [ ] Tests for each branch; implement; commit.
+- [x] Tests for each branch; implement; commit.
 
 ### Task 8: The panel
 
 **Files:** Create `src/components/settings/Settings.jsx`, `SettingsHost.jsx`, `DeviceReadout.jsx`, `src/styles/lazy/settings.css`; modify `src/lib/palette.js` (`openSettings`), `src/components/Nav.jsx` (gear), `src/components/CommandPalette.jsx` ("Settings"), `src/App.jsx` (host), `src/lib/audio.js` (volume, voices gain), `src/index.css` (`html[data-motion='reduced']`).
 
-- [ ] Panel sections per spec §3 with segmented controls; Esc closes; focus trap; bottom sheet under 640px; live readout polls `runtime().gfx.renderer.info` once a second only when the runtime module is already loaded (`window.__tpRuntime`-free: imported lazily from `../../runtime`).
-- [ ] Browser check in headless Chromium: open via gear and ⌘K, switch to High, see `tp-quality` = high; screenshot desktop and phone. Lint, test, commit.
+- [x] Panel sections per spec §3 with segmented controls; Esc closes; focus trap; bottom sheet under 640px; live readout polls `runtime().gfx.renderer.info` once a second only when the runtime module is already loaded (`window.__tpRuntime`-free: imported lazily from `../../runtime`).
+- [x] Browser check in headless Chromium: open via gear and ⌘K, switch to High, see `tp-quality` = high; screenshot desktop and phone. Lint, test, commit.
 
 ### Task 9: Finish
 
-- [ ] `npm run lint`, `npm test`, `npm run build`; architecture doc entry for `components/settings/` and `lib/budgets.js`; push; open the PR with what was verified.
+- [x] `npm run lint`, `npm test`, `npm run build`; architecture doc entry for `components/settings/` and `lib/budgets.js`; push; open the PR with what was verified.
