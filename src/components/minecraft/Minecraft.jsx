@@ -4,6 +4,7 @@ import { useMediaQuery } from '../../lib/hooks';
 import { capturePointer } from '../../lib/pointer';
 import { WorldHost, useWorld } from '../../runtime';
 import module from './module';
+import { ITEMS } from './rules/items';
 import { MC } from './scene/atlasTexture';
 import './minecraft.css';
 
@@ -260,8 +261,10 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
     setKnob({ x: 0, y: 0 });
     api()?.stick(0, 0);
   };
-  // Pocket Edition's touch: drag to look; hold still to dig; a quick tap places or uses
+  // Pocket Edition's touch: drag to look; hold still to dig (or, food in hand, to eat); a quick tap places or uses
   const gesture = useRef(null);
+  const hudRef = useRef(null);
+  hudRef.current = hud;
   const lookDown = (e) => {
     if (!touch || !playing || lookId.current !== null) return;
     lookId.current = e.pointerId;
@@ -269,8 +272,9 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
     const g = { at: performance.now(), x: e.clientX, y: e.clientY, moved: false, digging: false };
     g.timer = setTimeout(() => {
       if (g.moved) return;
-      g.digging = true;
-      api()?.press('attack', true);
+      const h = hudRef.current;
+      g.digging = ITEMS[h?.hotbar?.[h.selected]?.item]?.kind === 'food' ? 'use' : 'attack';
+      api()?.press(g.digging, true);
     }, 280);
     gesture.current = g;
   };
@@ -288,7 +292,7 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
     gesture.current = null;
     if (!g) return;
     clearTimeout(g.timer);
-    if (g.digging) api()?.press('attack', false);
+    if (g.digging) api()?.press(g.digging, false);
     else if (!g.moved && performance.now() - g.at < 280) {
       api()?.press('use', true);
       setTimeout(() => api()?.press('use', false), 60);
