@@ -220,8 +220,8 @@ Branch `claude/galaxy-routes` from `origin/main`.
 - Produces: `SNAP = 1.2` (grid squares), `JUMP = { base: 2.5, perSquare: 1.2, max: 12, offLane: 1.6 }`; `laneGraph(lanes = LANES, systems = SYSTEMS) -> { nodes, edges }` (each lane’s points as nodes joined in order; a system snapped to the nearest lane point within `SNAP` becomes a node on it; lanes sharing a point within 0.3 join); `routeBetween(fromId, toId) -> { pts: [[x, z], …], squares, onLane: boolean }` (Dijkstra over the graph by length when both ends snap and are connected; else the straight line with `onLane: false`); `jumpTime(route) -> seconds` (`min(max, base + perSquare × squares)`, `× offLane` when off the lanes).
 - Consumes: `systems.js`’s `LANES`, `SYSTEMS`.
 
-- [ ] **Step 1: Write the failing tests:** Coruscant to Tatooine is on the lanes (the Corellian Run) and its `squares` is within 10% of the lane’s length between them; Dagobah to Hoth is off the lanes (check the data; pick a pair that is) and `jumpTime` is `× 1.6`; `jumpTime` never over 12; a route’s `pts` start and end at the systems.
-- [ ] **Step 2: Fail. Step 3: Implement. Step 4: Green. Commit.**
+- [x] **Step 1: Write the failing tests:** Coruscant to Tatooine is on the lanes (the Corellian Run) and its `squares` is within 10% of the lane’s length between them; Dagobah to Hoth is off the lanes (check the data; pick a pair that is) and `jumpTime` is `× 1.6`; `jumpTime` never over 12; a route’s `pts` start and end at the systems.
+- [x] **Step 2: Fail. Step 3: Implement. Step 4: Green. Commit.**
 
 ### Task 2: the jump takes the route
 
