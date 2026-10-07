@@ -58,7 +58,8 @@
   },
   "bank": {
     "acct": 2,
-    "image": "01a11403-888b-7382-9bb7-db47a308ce0f"
+    "image": "01a11403-888b-7382-9bb7-db47a308ce0f",
+    "model": "01a1143e-4908-72af-94f5-89d831e0ddc8"
   },
   "heli": {
     "acct": 2,
