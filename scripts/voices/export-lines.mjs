@@ -157,8 +157,11 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
       if (voice && !known.has(id)) lines.push({ id, who: voice, text: voiced.spoken(text) });
     }
   }
-  writeFileSync(join(here, 'lines.json'), `${JSON.stringify(lines, null, 1)}\n`);
+  // --out FILE: somewhere else (the asset tests read the lines without touching this machine's own list)
+  const outAt = process.argv.indexOf('--out');
+  const out = outAt > 0 ? resolve(process.argv[outAt + 1]) : join(here, 'lines.json');
+  writeFileSync(out, `${JSON.stringify(lines, null, 1)}\n`);
   const count = lines.reduce((n, l) => ({ ...n, [l.who]: (n[l.who] ?? 0) + 1 }), {});
   const by = Object.entries(count).map(([who, n]) => `${who} ${n}`);
-  console.log(`${lines.length} lines without a recording (${by.join(', ')}) -> scripts/voices/lines.json`);
+  console.log(`${lines.length} lines without a recording (${by.join(', ')}) -> ${outAt > 0 ? out : 'scripts/voices/lines.json'}`);
 }
