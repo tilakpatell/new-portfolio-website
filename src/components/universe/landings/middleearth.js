@@ -34,33 +34,62 @@ export const PROPS = {
   // (metres, brought down to fit the skyline: the real one is 1,350)
   orodruin(k, { seed = 3 } = {}) {
     const rand = rng(seed);
+    // one profile from the ash plain to the broken rim, then roughened: ribs
+    // and gullies down its sides, the rim jagged
+    const PROFILE = [[82, -3], [72, 3], [60, 9], [48, 16], [39, 24], [32, 36], [26, 52], [20, 72], [15, 88], [11.5, 99], [9, 104]];
+    const rough = (a, y) => 1 + 0.07 * sin(a * 9 + y * 0.09) + 0.045 * sin(a * 17 - y * 0.17 + seed) + 0.025 * sin(a * 37 + y * 0.31) + (y > 98 ? 0.12 * sin(a * 11 + seed) : 0);
+    // (the cone's radius at a height, from its profile, before roughening)
+    const radiusAt = (y) => {
+      const i = PROFILE.findIndex(([, py]) => py >= y);
+      if (i <= 0) return PROFILE[Math.max(0, i)][0];
+      const [[r0, y0], [r1, y1]] = [PROFILE[i - 1], PROFILE[i]];
+      return r0 + ((r1 - r0) * (y - y0)) / (y1 - y0);
+    };
+    const cone = upright([...PROFILE, [7.5, 100], [0, 97]], 72);
+    const pos = cone.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const z = pos.getZ(i);
+      const a = Math.atan2(z, x);
+      const k = rough(a, y);
+      pos.setXYZ(i, x * k, y + (y > 98 ? 2.2 * sin(a * 7 + seed * 2) : 0), z * k);
+    }
+    cone.computeVertexNormals();
+    // (a point on its side, a little out from it: the lava, the door's glow)
+    const onSide = (a, y, out = 0.5) => [cos(a) * (radiusAt(y) * rough(a, y) + out), y, sin(a) * (radiusAt(y) * rough(a, y) + out)];
     const parts = [
-      part(upright([[70, -2], [64, 6], [52, 16], [40, 22], [34, 24], [0, 24]], 40), { color: '#302724', to: 'rock' }),
-      part(upright([[34, 22], [27, 40], [19, 70], [12, 96], [9, 104], [6, 101], [0, 99]], 36), { color: '#2a2321', to: 'rock' }),
+      part(cone, { color: '#2c2422', to: 'rock' }),
       // the crater's fire, and the glow at the Sammath Naur's door on its side
       part(new THREE.CircleGeometry(6.5, 24).rotateX(-PI / 2), { at: [0, 100.5, 0], color: '#ff6a1a', to: 'glow' }),
-      part(new THREE.SphereGeometry(1.6, 10, 8), { at: [0, 74, -15.5], scale: [1.6, 1, 0.6], color: '#ff8a2a', to: 'glow' }),
+      part(new THREE.SphereGeometry(1.6, 10, 8), { at: onSide(-PI / 2, 74, 0.2), scale: [1.6, 1, 0.6], color: '#ff8a2a', to: 'glow' }),
     ];
     // fire down the flanks: each a run of glowing pieces following the slope
-    // (the cone's radius at a height, from its profile)
-    const radiusAt = (y) => (y > 70 ? 19 - ((y - 70) / 26) * 7 : y > 40 ? 27 - ((y - 40) / 30) * 8 : 34 - ((y - 22) / 18) * 7);
-    for (let i = 0; i < 7; i++) {
-      const a = rand() * PI * 2;
-      let y = 96 - rand() * 8;
-      for (let j = 0; j < 10 && y > 26; j++) {
-        const drop = 6 + rand() * 4;
-        const r1 = radiusAt(y);
-        const r2 = radiusAt(Math.max(24, y - drop));
-        const tilt = Math.atan2(r2 - r1, drop);
-        const g = new THREE.BoxGeometry(0.9 + j * 0.12, Math.hypot(drop, r2 - r1), 0.5).rotateZ(tilt).rotateY(-a);
-        parts.push(part(g, { at: [cos(a) * ((r1 + r2) / 2 + 0.3), y - drop / 2, sin(a) * ((r1 + r2) / 2 + 0.3)], color: j < 3 ? '#ffb040' : '#ff5a14', to: 'glow' }));
+    // (each run wanders round the cone a little as it goes down, thin, and
+    // stops short where it's cooled; the newest are brightest at the top)
+    const LAVA = ['#ffc050', '#ff8a24', '#ff5a14', '#d8380e', '#a8280a'];
+    for (let i = 0; i < 6; i++) {
+      let a = (i / 6) * PI * 2 + rand() * 0.8;
+      let y = 97 - rand() * 6;
+      const runs = 5 + Math.floor(rand() * 6);
+      for (let j = 0; j < runs && y > 26; j++) {
+        const drop = 4 + rand() * 3;
+        const a2 = a + (rand() - 0.5) * 0.12;
+        const [x1, , z1] = onSide(a, y);
+        const [x2, , z2] = onSide(a2, Math.max(24, y - drop));
+        const len = Math.hypot(x2 - x1, drop, z2 - z1);
+        const g = new THREE.BoxGeometry(0.35 + rand() * 0.35 + j * 0.06, len, 0.3);
+        // (stood along the segment from its top to its foot)
+        g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(x2 - x1, -drop, z2 - z1).normalize()));
+        parts.push(part(g, { at: [(x1 + x2) / 2, y - drop / 2, (z1 + z2) / 2], color: LAVA[Math.min(LAVA.length - 1, Math.floor((j / runs) * LAVA.length))], to: 'glow' }));
         y -= drop;
+        a = a2;
       }
     }
     // slag boulders round its foot
     for (let i = 0; i < 16; i++) {
       const a = rand() * PI * 2;
-      const d = 60 + rand() * 14;
+      const d = 80 + rand() * 16;
       parts.push(part(rockGeometry(seed * 20 + i, { sharp: 0.8 }), { at: [cos(a) * d, 0, sin(a) * d], scale: 3 + rand() * 6, color: '#241e1c', to: 'rock' }));
     }
     const object = k.build(parts, { name: 'orodruin' });

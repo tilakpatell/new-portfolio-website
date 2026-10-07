@@ -101,8 +101,8 @@ export const LANDINGS = {
         ground: { style: 'sand', colors: ['#3a3330', '#4a403a', '#241e1c'] },
         sky: { zenith: '#3a2420', horizon: '#8a3a20', sun: '#ff6a30', haze: '#a8401c' },
         things: [
-          { kind: 'orodruin', at: [-60, 230], r: 70, face: false, solid: false },
-          { kind: 'baradDur', at: [170, 190], r: 24, face: false, yaw: -0.7, solid: false },
+          { kind: 'orodruin', at: [-80, 320], r: 90, face: false, solid: false },
+          { kind: 'baradDur', at: [230, 330], r: 26, face: false, yaw: -0.9, solid: false },
           { kind: 'fissure', at: [-26, 24], r: 3, face: false, yaw: 0.4 },
           { kind: 'fissure', at: [32, -20], r: 3, face: false, yaw: 2.2, opts: { seed: 5 } },
         ],
