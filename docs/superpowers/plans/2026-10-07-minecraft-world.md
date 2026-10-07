@@ -302,6 +302,13 @@ Branch: `claude/minecraft-phase-1`.
 
 Branch `claude/minecraft-phase-2` from `origin/main`.
 
+**As built (Phase 2):**
+- *Break times (2.3)* are whole ticks, as the game counts them: stone with a wooden pickaxe is 23 ticks, 1.15 s (the task's 0.5625 contradicts its own formula, 1.125), obsidian with diamond 188 ticks, 9.4 s. Shears take leaves at once. Five ticks between breaks.
+- *Where the hands live:* `rules/build.js` (breaking, placing, falling blocks, dropped items, Q, using a crafting table), re-exported by `game.js`; `rules/breaking.js` the times. The cursor is recomputed from the eye every tick (`g.cursor`).
+- *State drawn now:* logs lie along their axis and furnaces, chests and jack o'lanterns face where they were set (the mesher reads `state`), not in Phase 4.
+- *Saves (2.5):* chunk jobs carry the player's edits for the chunk and its eight neighbours, so an edited chunk arrives meshed with them; `mesh` jobs with borders re-mesh what an edit touches, first in the queue; an edit on a chunk's edge dirties the neighbour too.
+- *The screens:* `rules/gui.js` is the containers' click logic (tested); `Minecraft.jsx` draws the inventory and the crafting table on the pack's own panels (`gui/container/inventory`, `crafting_table`, added to the sprites). Using a crafting table opens the 3 × 3 now (the plan put 3 × 3 recipes in Phase 4, but a pickaxe needs it, and Phase 2's "done" asks for one). Paper joined the items for the book.
+
 ### Task 2.1: The raycast and the cursor
 
 **Files:** `rules/raycast.js`, `rules/raycast.test.js`; `scene/cursor.js`.
