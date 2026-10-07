@@ -30,6 +30,19 @@
 4. **The other side online.** Two pilots in the same system on opposite sides: the Imperial pilot's `fight` message has no keys at a liberation and the Rebel's does; neither throws on the other's. Pinned in Task 4: "an Imperial pilot at a liberation sends no fight keys".
 5. **A separatist world taken by the Rebellion.** Geonosis held by the Rebels must still send the droids (always hostile) and not the Rebellion's own hunters against a Rebel pilot. Pinned in Task 7: "a separatist world keeps its droids whoever holds it".
 
+## Revision 3a (three wars and the Hutts): what changes in the tasks
+
+The spec's "Revision 3a" section wins over the task text below where they differ:
+
+- **Task 2** also creates `galaxy/sides.js` (`SIDES`, `WARS`, `sideOf(code)`, `warOfSide(side)`, `STANCES`) with `sides.test.js` ("every war's liberator and raider are sides of its era", "codes are unique and short", "every opening names only war systems, and the Hutts hold Tatooine in every war"). `allegiance.js` keeps oaths per war (`current`, `setTheatre`) and `suggestSide(..., war)` by stance.
+- **Task 3**: `history(war, n, ms, value)`, `warTable(war, ms, value)`, `warTables(ms, value)`; `control` is the owner's hold; fronts by the liberator against anyone, attacks by the raider and Hutt raids (`attacks: [...]`); keys by side code; old keys are `rebel`'s. Add tests: "a Hutt world bordering the liberator is a front", "the Hutts raid and can take a system", "the raider can take a Hutt world", "each war opens on its own map".
+- **Task 4**: `RANKS` for all six sides; `warState.mine(war, now)`; `warfront.js` reads the theatre's table and `teamFor(side, battle)` by `battle.sides`.
+- **Task 5–6**: templates per war (`TEMPLATES[war][sys]`, `DEFAULT[war]`) and a Hutt side; the engine's team 0 is the battle's attacker.
+- **Task 7–8**: `effectsFor(sysId, table, current)` reads `SIDES[owner]`; a `hutt` role in `roamRules`; Republic, Separatist, New Republic and Remnant garrisons from the existing `hunted.js` rows plus `republic` (ARC-170s, Delta-7) and `rebellion`.
+- **Task 9**: lines by stance (`light`/`dark`) with `{us}`/`{them}`/`{flagship}`, `battleWar[war]` overrides, a `hutt` set.
+- **Task 10**: the cast for all three wars and Jabba.
+- **Task 12**: the holotable's war tabs set the theatre; Hutt space in its colour.
+
 ---
 
 ## PR 1 — spec and plan

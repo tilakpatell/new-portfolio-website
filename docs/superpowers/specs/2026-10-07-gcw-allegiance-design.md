@@ -381,7 +381,7 @@ One function answers the galaxy: `effectsFor(sysId, war, allegiance)` →
 - The NPC intelligence toolkit (`2026-10-07-npc-intelligence-design.md`):
   the aces fly on `battle.js`'s rules; a later lane may give them brains.
 - The universe map's wars (Rick and Morty's, Breaking Bad's): untouched.
-- The sequel trilogy.
+- The sequel trilogy (revision 3a: the third era's war is the Remnant War).
 
 ## Testing
 
@@ -407,3 +407,125 @@ One function answers the galaxy: `effectsFor(sysId, war, allegiance)` →
   holotable from the Empire's view) and a `KIND=` run per battle kind
   through `war.force(attacker, kind)`; `scripts/assault-check.mjs` checks
   the ground result reaches the war's tally.
+
+## Revision 3a: a war for every era, and the Hutts
+
+Added the same day, from the user's follow-up: "make sure each faction can
+control or lose planets/areas. There is also Hutt space, so account for
+that, and eras have different wars (Old Republic vs Republic vs Empire). If
+it's easier just do the Republic's Clone Wars and the Empire's eras."
+Where this section and the ones above differ, this one wins; everything
+above that speaks of "the Rebellion" and "the Empire" reads, from here on,
+as "a war's two sides".
+
+### Three wars, one an era, fought at once
+
+`galaxy/sides.js` (data, tested) holds the factions and the wars. The
+galaxy's own three eras (`systems.js`'s `ERAS`) each fight theirs:
+
+| war (`id`) | era | the side that liberates | the side that raids | short |
+| --- | --- | --- | --- | --- |
+| `clone` The Clone Wars | `republic` | `republic` Galactic Republic | `separatists` Confederacy of Independent Systems | Clone Wars |
+| `gcw` The Galactic Civil War | `empire` | `rebel` Rebel Alliance | `empire` Galactic Empire | Civil War |
+| `remnant` The Remnant War | `newrepublic` | `newrepublic` New Republic | `remnant` Imperial Remnant | Remnant War |
+
+The sequel trilogy's war (the Resistance and the First Order) is not in
+the galaxy, which has none of its films or systems; the third era's war is
+the one its shows fight. A later lane can add a fourth row.
+
+- `SIDES[id] = { id, code, name, short, colour, stance: 'light' | 'dark'
+  | 'hutt', garrison, troops, fleet, traffic, fighters }`. `code` is the
+  side's three letters in a tally key (`rep`, `sep`, `reb`, `imp`, `nr`,
+  `rem`, `hut`); `stance` picks the crews' lines (below).
+- `WARS[id] = { id, era, name, short, liberator, raider, opening: { [side]:
+  [systems] } }`. Every war is fought over the same `WAR_SYSTEMS`; only the
+  opening map differs:
+  - `clone`: Republic `coruscant, kamino, naboo, kashyyyk, lothal, sorgan`;
+    Hutts `tatooine, nevarro`; the Separatists the rest.
+  - `gcw`: Rebels `yavin, hoth, lothal, kashyyyk, sorgan` (as now); Hutts
+    `tatooine, nevarro`; the Empire the rest.
+  - `remnant`: New Republic `coruscant, yavin, hoth, endor, naboo,
+    kashyyyk, kamino, lothal, sorgan, bespin`; Hutts `tatooine, nevarro`;
+    the Remnant the rest.
+- All three wars are fought in every campaign, side by side, on one
+  tally (a key's side code says whose and so which war). The holotable
+  shows one at a time; the one you fight in is your **theatre**
+  (`allegiance.war`, default `gcw`), and the sky's battles, garrisons and
+  escorts are your theatre's.
+
+### Every faction holds and loses systems
+
+`gcw.js`'s state generalises: a system has an `owner` (any side id of the
+war, the Hutts included) and `control`, the owner's hold, 1 whole and 0
+lost. (The old `control` was the Rebellion's share; the holotable and
+`warText.standing` turn the new one into "yours".)
+
+- **Fronts**: a system held by anyone but the liberator, bordering the
+  liberator, is a front (the first `GCW.fronts` in worth order). Its hold
+  falls by the liberator's seeded rate, the supply and region terms, and
+  `(liberator points − holder points)/100`; at 0 it is the liberator's,
+  whole. Hutt worlds are fronts like any other.
+- **Attacks**: every `GCW.attackEvery` the raider attacks a system of the
+  liberator's *or the Hutts'* on its border (by `weight`); `GCW.raidEvery =
+  12 h` the Hutts raid a main side's system bordering Hutt space
+  (`GCW.raidRate = [20, 45]`). An attack's hold falls by its rate and
+  `(attacker points − holder points)/100`; at 0 it is the attacker's;
+  held to the end it is whole again. `history` returns `attacks: [{ sys, by,
+  from, until, rate }]` (at most one raider attack and one Hutt raid).
+- **Regions**: `history`'s `regions[r] = { [side]: count, total }` and
+  `holder: side | null` (one side holds every war system in it). A region
+  held whole gives its holder's fronts and attacks bordering it
+  `GCW.regionBonus`.
+- **Over**: a war is over early when its liberator or its raider holds
+  every war system (the Hutts hold out too long to count); `over: side`.
+- **Keys**: `pointsKey(side, sys, step)` → `` `${SIDES[side].code}:${sys}:${step}` ``,
+  `winKey` → `` `win:${code}:${sys}:${step}` ``; `readKey` gives `{ side,
+  war, win, sys, step }`; the old `hoth:12` and `win:hoth:12` are `rebel`'s.
+  `history(war, n, ms, value)` and `warTable(war, ms, value)` take the war
+  first; `warTables(ms, value)` gives all three.
+- **The battle's sides**: `battleAt` gives `attacker` and `defender` side
+  ids and `sides: [attacker, defender]`; `teamFor(side, battle) =
+  battle.sides.indexOf(side)`, or `null` when it is −1 or you are unsworn.
+  A Hutt battle is fought with the Hutts' pirates and gunboats.
+
+### Allegiance per war
+
+`tp-gcw-side` keeps `{ since, war, oaths: { [war]: { side, sworn,
+turncoat } } }`; `current(a) → { war, side, sworn, turncoat }` is the flat
+view everything else reads, so the rest of the spec's `allegiance.side` is
+`current(a).side`. `swear(a, side, now)` swears in the war that side belongs
+to and makes it the theatre; `setTheatre(a, war)` only moves the theatre.
+`suggestSide({ crew, hero }, war)` suggests by stance: the X-wing and the
+Falcon the war's `light` side, Fett the `dark`. The Hutts are not sworn to
+(a later lane can sell their contract).
+
+### What it changes downstream
+
+- **ranks.js**: six ranks for each of the six sides: the Republic's
+  Clone Cadet to General, the Separatists' Droid Cadet, Tactical Droid,
+  Commander, General, Warlord and Head of State, the New Republic's as
+  the Rebellion's, the Remnant's as the Empire's.
+- **warEffects.js**: `garrison`, `troops`, `traffic`, `fleet` come from
+  `SIDES[owner]`; the Hutts' garrison is the `weequay` pirates and a bounty
+  hunter (`hutt` row in `roamRules`), traffic `['shuttle', 'transport']`,
+  troops `'weequay'` where a surface has them else none. A Hutt world is
+  `hostile` to everyone and hunts nobody: they sell you to the hunters
+  (`bounty` weight up).
+- **battles.js**: a template per war system *per war*
+  (`TEMPLATES[war][sys]`, `DEFAULT[war]`), the Clone Wars' with the Venator,
+  Acclamator, ARC-170 and Delta-7 against the Lucrehulk, Munificent,
+  Providence, vultures and tri-fighters; the Remnant War's with the New
+  Republic's X-wings and Nebulon-Bs against Gideon's cruiser and TIEs; a
+  Hutt side of `gozanti`/`corvette` stand-ins and `weequay` fighters.
+- **Lines** (`lines.js`): `events.battle[key] = { light, dark }`, with
+  `{us}`, `{them}` and `{flagship}` filled from `SIDES` and the battle; a
+  war may override a key under `events.battleWar[war][key]`, and a place
+  under `battleAt`. Four crews × 17 keys × 2 stances, plus a `hutt` line
+  for each crew's `front`, `won` and `lost` against the Hutts.
+- **warCast.js**: each war's commanders: the Clone Wars' Yoda, Obi-Wan,
+  Anakin, Ahsoka, Rex and Mace Windu against Grievous, Dooku, Ventress and
+  Nute Gunray; the Civil War's as above; the Remnant War's Carson Teva,
+  Hera and Mon Mothma against Gideon, Thrawn and Elsbeth; and Jabba for the
+  Hutts (heard when they raid you or you take their world).
+- **The holotable** has the three wars as tabs over the war card; picking
+  one sets the theatre; Hutt space is drawn in the Hutts' colour.
