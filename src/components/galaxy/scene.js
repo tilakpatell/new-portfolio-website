@@ -72,6 +72,7 @@ import { gltfStats } from '../../lib/three/gltfCache';
 import { STEPS } from '../../lib/three/pace';
 import { FOV } from '../universe/flight';
 import { createPost } from '../universe/post';
+import { houseOn } from '../../lib/three/house';
 import { SHIP, autopilot, forward, spawn, step } from '../universe/ship';
 import { createHunters } from '../universe/hunters';
 import { createFleet } from '../universe/glbFleet';
@@ -208,13 +209,23 @@ export async function create(canvas, ctx) {
   const small = tier !== 'high' || Math.min(window.innerWidth, window.innerHeight) < 600;
   const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
   const post = createPost(renderer, scene, camera, { small });
-  const warm = (root, cam = camera, target = scene) => precompile(renderer, singlePass(root), cam, target, post.on ? post.composer.readBuffer : undefined);
+  // (the house look, below, on whatever's warmed: patched before it's compiled)
+  let house = null;
+  const warm = (root, cam = camera, target = scene) => {
+    house?.adopt(root);
+    return precompile(renderer, singlePass(root), cam, target, post.on ? post.composer.readBuffer : undefined);
+  };
 
   // light: each sun from its way, and a little ambient
   const keys = [new THREE.DirectionalLight('#ffffff', 2.2), new THREE.DirectionalLight('#ffffff', 0)];
   for (const k of keys) scene.add(k, k.target);
   const ambient = new THREE.AmbientLight('#9fb0d8', 0.32);
   scene.add(ambient);
+  // the house look (lib/three/house), as on the universe map: the ships'
+  // and stations' shade one colour, from the space light; the post pass
+  // already tone-maps the house's way, and space has no fog
+  house = houseOn({ renderer, scene, sun: keys[0], ambient, toneMap: false, look: { fog: false } });
+  let houseFrames = 0;
 
   const sky = createSky({ small, renderer });
   scene.add(sky.group);
@@ -1898,6 +1909,8 @@ export async function create(canvas, ctx) {
     const showCab = Boolean(cab && cab.kind === state.kind && flying() && state.view === 'cockpit' && state.cabK > 0.6 && !state.crash);
     if (showCab) cabFrame(dt, t);
     post.overlay(showCab ? cabScene : null, camIn);
+    // (the shade follows the suns through an eclipse; what's come in since, taken on now and then)
+    house.follow({ adopt: houseFrames++ % 30 === 0 });
     renderer.info.reset();
     post.render(size.w, size.h);
     if (first) {

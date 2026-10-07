@@ -37,3 +37,56 @@ jobs:
       # the codebase's health against docs/health/budgets.json: a number over
       # its budget is a red check, the same as a failing test (docs/health)
       - run: node scripts/health.mjs --check --skip build
+
+  # The AI and the models (scripts/ai-e2e/README.md): the pipelines with
+  # fake engines, the shipped assets, the brains, the agent's guards. A job
+  # of its own so a slow contract test never holds up the first one's answer.
+  ai:
+    name: AI
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # two deep: the render step diffs the merge commit against main
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      # the voices contract tests run the pipeline's Python with the fake
+      # worker and ears: numpy and soundfile are all those need (no torch, no
+      # engines), and ffmpeg publishes the mp3s
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy soundfile
+      - run: command -v ffmpeg || (sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends ffmpeg)
+
+      - run: npm ci
+      - run: npm run test:ai
+
+      # tier 3, every model draws: only when the pull request touches a model
+      # or the code that draws one (render/changed.mjs), as it needs a browser
+      - id: changed
+        run: node scripts/ai-e2e/render/changed.mjs
+      - id: playwright
+        if: steps.changed.outputs.render == 'true'
+        run: echo "version=$(node -p "require('playwright-core/package.json').version")" >> "$GITHUB_OUTPUT"
+      - if: steps.changed.outputs.render == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ steps.playwright.outputs.version }}
+      - if: steps.changed.outputs.render == 'true'
+        run: npx --yes playwright@${{ steps.playwright.outputs.version }} install --with-deps chromium
+      - if: steps.changed.outputs.render == 'true'
+        run: npm run test:ai:render
+      - if: always() && steps.changed.outputs.render == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: renders
+          path: scripts/ai-e2e/render/out/
+          if-no-files-found: ignore

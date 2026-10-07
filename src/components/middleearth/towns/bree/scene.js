@@ -14,6 +14,8 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
+import { createHouse } from '../../../../lib/three/house';
+import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
 import { fbm, makeNoise, smooth } from '../../../../lib/paint';
 import { pose } from '../../mapFigures';
@@ -120,6 +122,10 @@ export function createBreeWorld(canvas, { onLost } = {}) {
   const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 420, bloom: { strength: 0.62, radius: 0.5, threshold: 0.86 }, onLost });
   stage.grade({ contrast: 0.12, saturation: 0.86, vignette: 0.3, grain: 0.016, shadow: [0.0, 0.012, 0.035], high: [0.03, 0.018, 0.0] });
   const { scene, camera, renderer } = stage;
+  // the house look (lib/three/house): one shadow colour and the sky's fog
+  // on everything, under the house tone mapper; the moods move it
+  const houseLook = createHouse();
+  renderer.toneMapping = houseLook.toneMapping;
   renderer.info.autoReset = false;
   scene.fog = new THREE.Fog(0x3c4450, 14, 115);
   const many = tier === 'high' ? 1 : tier === 'mid' ? 0.6 : 0.3;
@@ -144,7 +150,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
   scene.add(sky.dome);
   const puddles = makePuddles(PUDDLES, height);
   outdoors.add(puddles.mesh);
-  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water: puddles.material, stage, moods: MOODS });
+  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water: puddles.material, stage, house: houseLook, moods: MOODS });
 
   // ── the ground ──
   const terrain = makeTerrain(renderer, { size: WORLD.edge * 2, seg: tier === 'high' ? 210 : tier === 'mid' ? 150 : 100, height, paint, blades: 0.22 });
@@ -154,6 +160,9 @@ export function createBreeWorld(canvas, { onLost } = {}) {
 
   const kit = createBreeKit(renderer);
   const mats = kit.mats;
+  // the site's core kit of surfaces on its stone, wood, bark, plaster and
+  // iron (lib/three/core), by their names
+  dress(mats, rolesFor(mats), { strength: 0.3, normal: 0.6, keep: true });
 
   // ── the buildings ──
   const chimneys = [];
@@ -457,6 +466,8 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     sky.uniforms.uGrey.value = A.wraith * 0.85;
     sky.uniforms.uEye.value = A.wraith * (0.4 + 0.6 * (s.gaze ?? 0));
     stage.grade({ saturation: 0.86 - A.wraith * 0.8, contrast: 0.12 + A.wraith * 0.18, vignette: 0.3 + A.wraith * 0.4 + (s.chased ? 0.14 : 0), shadow: [A.wraith * 0.03, 0.012 + A.wraith * 0.03, 0.035 + A.wraith * 0.06] });
+    // (the fog's own colour while it's this, not the sky's)
+    houseLook.set({ fogMix: 1 - A.wraith * 0.8 });
     if (A.wraith > 0.01) {
       scene.fog.near *= 1 - A.wraith * 0.7;
       scene.fog.far *= 1 - A.wraith * 0.55;
@@ -741,6 +752,8 @@ export function createBreeWorld(canvas, { onLost } = {}) {
 
   // ── the floor's light, baked when the town is first drawn ──
   const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height, people: movers, skip: [sky.dome, ghosts.group, puddles.mesh], tier, radius: WORLD.radius + 10, shade: 0x262a30, matcap: [rimTrees] });
+  // (last, over the floor light's own tints: one shadow colour everywhere)
+  houseLook.adopt(scene);
 
   return {
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts

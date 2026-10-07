@@ -29,8 +29,10 @@ import { sharpenMaterial } from '../../../lib/three/textures';
 import { detailLevel } from '../../../lib/detail';
 import { SURFACE_MODELS, surfaceLodUrl, surfaceUrl } from './catalog';
 import { withDetail } from './detail';
-import { loadScan, scanOf } from './kit';
+import { LOOKS, loadScan, scanOf } from './kit';
+import { wear as wearCore } from '../../../lib/three/core';
 import { PROPS, SCATTER } from './props';
+import { litWindows } from './props/windows';
 import { nearInstances, splitNear, zoneVisibility } from './near';
 
 const NEAR = { r: 70, max: 512, step: 8 }; // metres (the shadow box's corner, ±42 m, and the shadows long trees throw into it); instances; metres walked before they're found again
@@ -127,6 +129,23 @@ function addSolid(world, s, at, yaw, scale, top) {
     const [x, z] = tx(s.box[0], s.box[1]);
     world.solids.box(x, z, s.box[2] * scale, s.box[3] * scale, yaw + (s.box[4] ?? 0), opt);
   }
+}
+
+// A loaded model laid over with a core role's scan (a thing's `wear: 'stone'`,
+// for a model whose own pictures are mush): the scan on each of its lit
+// materials, in the world at the scan's size; how many took it
+const LIT_MODEL = (m) => Boolean(m && (m.isMeshStandardMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial));
+export async function wearModel(object, role, { wear = wearCore, load = loadScan } = {}) {
+  const size = scanOf(role);
+  if (!size) return 0;
+  const scan = await load(role).catch(() => null);
+  if (!scan?.map) return 0;
+  const seen = new Set();
+  object.traverse((o) => {
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (LIT_MODEL(m) && !seen.has(m)) seen.add(m);
+  });
+  for (const m of seen) wear(m, scan, { metres: size.metres ?? 2, strength: LOOKS[role]?.strength ?? 0.55, normal: LOOKS[role]?.normal ?? 0.8, mean: size.mean ?? 0.8 });
+  return seen.size;
 }
 
 export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve(o), shadowOnly = null }) {
@@ -227,7 +246,11 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             const entry = SURFACE_MODELS[spec.kind];
             if (entry.solids === 'built') builtSolids(spec, at);
             else footprint(o, spec, at);
-            if (!entry.lod) return warm(o).then(() => o);
+            // (worn before its shaders are made, so they're made once)
+            const worn = spec.wear ? wearModel(o, spec.wear) : Promise.resolve();
+            // (a tower: its windows lit in the shader, props/windows.js)
+            if (spec.windows) o.traverse((m) => m.isMesh && [].concat(m.material).forEach((mat) => mat.isMeshStandardMaterial && litWindows(mat, { seed: 5, density: 0.5, cell: [4, 5] })));
+            if (!entry.lod) return worn.then(() => warm(o)).then(() => o);
             // far off, its light model (fetched after the full one: the
             // first view doesn't wait for it)
             const lod = withLod(o, null, radiusOf(gltf) * (spec.scale ?? 1));
@@ -238,7 +261,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
               addLowLevel(lod, l, radiusOf(gltf) * (spec.scale ?? 1));
               warm(l);
             });
-            return warm(o).then(() => lod);
+            return worn.then(() => warm(o)).then(() => lod);
           })
           .catch(() => null);
         pending.push(p);

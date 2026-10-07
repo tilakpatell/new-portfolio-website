@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { canvasTexture, createStage, hot } from '../../lib/stage3d';
 import { createModels } from '../../lib/models';
+import { houseOn } from '../../lib/three/house';
 import { fbm, makeCanvas, makeNoise, ridge, smooth, tiled } from '../../lib/paint';
 import { rng } from '../../lib/texture';
 import { WALK } from './walk';
@@ -457,6 +458,11 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
   };
   const fx = () => {};
 
+  // the house look (lib/three/house), as in Middle-earth's towns: the house
+  // tone mapper, the shade one colour from the ash sky's light, under the mountain's glow; its own fog kept
+  const house = houseOn({ renderer, scene, sun: glow, hemi, look: { fog: false } });
+  let houseFrames = 0;
+
   const render = (ms = 16) => {
     const dt = Math.min(0.05, ms / 1000);
     A.t += dt;
@@ -607,6 +613,8 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
     glow.target.position.set(cam.x + 12, 0, 0);
     glow.position.set(cam.x + 12 + 30, 22, -16);
 
+    // (what's come in since, taken on now and then)
+    house.follow({ adopt: houseFrames++ % 60 === 0 });
     stage.render(ms);
   };
 

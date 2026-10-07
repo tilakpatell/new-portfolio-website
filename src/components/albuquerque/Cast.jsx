@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { audioContext } from '../../lib/audio';
+import { sayVoiced, stopVoiced } from '../../lib/voiced';
+import { CAST } from './people';
 import '../../styles/lazy/albuquerque.css';
 
 const sfx = () => import('../../lib/sfx');
@@ -64,28 +66,39 @@ const ICONS = {
   ),
 };
 
-const CAST = [
-  { id: 'walt', name: 'Walter White', role: 'Chemistry teacher', text: 'A high-school chemistry teacher in Albuquerque who goes by another name in the business he gets into.', action: 'Say my name', done: 'Heisenberg.' },
-  { id: 'jesse', name: 'Jesse Pinkman', role: 'His former student', text: 'Walt’s old student and partner, who learns more chemistry than either of them planned.', action: 'Science!', done: 'Yeah, Mr. White! Yeah, science!' },
-  { id: 'gus', name: 'Gustavo Fring', role: 'Los Pollos Hermanos', text: 'Owns a chain of chicken restaurants. Calm, polite, meticulous. Hides in plain sight.', action: 'Order the chicken', done: 'Your order is ready. The manager hopes you enjoy it.' },
-  { id: 'mike', name: 'Mike Ehrmantraut', role: 'Security', text: 'A retired Philadelphia cop who handles problems quietly, and never halfway.', action: 'Half measures?', done: 'No more half measures.' },
-  { id: 'saul', name: 'Saul Goodman', role: 'Attorney at law', text: 'Jimmy McGill, practicing law as Saul Goodman, from an office with an inflatable Statue of Liberty on the roof.', action: 'Better call Saul', done: 'S’all good, man.' },
-  { id: 'lalo', name: 'Lalo Salamanca', role: 'The cousin', text: 'The most charming Salamanca, which makes him the most dangerous one in the room.', action: 'Lalo’s back', done: 'He walks in smiling. Nobody else is.' },
-  { id: 'hector', name: 'Hector Salamanca', role: 'Tio', text: 'Says everything he needs to with a bell on his wheelchair.', action: 'Ring the bell', done: 'Ding. Ding. Ding.' },
-  { id: 'hank', name: 'Hank Schrader', role: 'DEA', text: 'Walt’s brother-in-law, DEA agent, and a serious collector of minerals.', action: 'See the collection', done: 'They’re minerals.' },
-];
+// The ones whose answer is them talking (people.js `said`) say it in their
+// own voice where it's been made (lib/voiced.js), after the sound that goes
+// with the button, if there is one; unless another button's been pressed since.
+let pressed = 0;
+const answer = (c, before, turn) =>
+  Promise.resolve(before)
+    .then((h) => h?.ended)
+    .catch(() => null)
+    .then(() => (turn === pressed ? sayVoiced(c.id, c.done) : null));
 
 export default function Cast() {
   const [done, setDone] = useState({});
-  const act = (id) => {
+  useEffect(
+    () => () => {
+      pressed += 1; // leaving: nobody answers
+      stopVoiced();
+    },
+    [],
+  );
+  const act = (c) => {
+    const { id } = c;
     audioContext(); // in the click, so it can be heard
+    const turn = ++pressed; // a press stops what's being said, and any answer still to come
+    stopVoiced();
+    let before = null;
     if (id === 'walt') clip('sayMyName');
-    if (id === 'saul') clip('callSaul');
+    if (id === 'saul') before = clip('callSaul');
     if (id === 'gus') clip('gusHello');
     if (id === 'hector') for (const when of [0, 0.42, 0.84]) clip('hectorBell', { when });
     if (id === 'jesse') clip('yeahScience').then((h) => h || sfx().then((s) => s.beeps()));
-    if (id === 'hank') clip('hankRing');
+    if (id === 'hank') before = clip('hankRing');
     if (id === 'mike' || id === 'lalo') sfx().then((s) => s.knock());
+    if (c.said) answer(c, before, turn);
     setDone((d) => ({ ...d, [id]: Date.now() }));
   };
   return (
@@ -98,7 +111,7 @@ export default function Cast() {
           <h3 className="stretch-semi mt-3 text-lg font-semibold text-ink">{c.name}</h3>
           <p className="text-sm text-muted">{c.role}</p>
           <p className="mt-3 text-sm leading-relaxed text-body">{c.text}</p>
-          <button type="button" className="btn btn-ghost btn-sm mt-auto self-start" onClick={() => act(c.id)}>
+          <button type="button" className="btn btn-ghost btn-sm mt-auto self-start" onClick={() => act(c)}>
             {c.action}
           </button>
           <p key={done[c.id]} className="abq-said" aria-live="polite">

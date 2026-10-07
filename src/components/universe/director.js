@@ -30,6 +30,13 @@
 //   drops out of warp over the planet you're at and charges its cannon:
 //   knock it out before it fires, or the planet's gone for a minute
 //   (remover.js)
+// - minefield: a band of mines across your way ahead (minefield.js): shoot
+//   a way through or weave between them
+// - escort: an ordinary ship asks to be seen to the next place, and pirates
+//   come for it twice on the way (escort.js)
+// - eclipse: a dark moon crosses the sun that lights you, and the light
+//   dims through it (eclipse.js); only where there's a sun to cross
+//   (withWhere: not at a station, not in the galaxy's gate)
 // Nothing happens in the first while, or while something else is going on;
 // then one comes along every minute or two, sooner the more trouble you've
 // been making (heat: what you've shot down lately, and `wanted`: the law
@@ -44,7 +51,8 @@
 //
 // createDirector({ rand, events }) → { update(dt, { side, heat, busy, travelling, calm, wanted, hurt }) → event id or null, soon(id),
 //   foretell(side) → { id, in } | null (what's next, and in how long: then that's what comes), intensity }
-// `side` is sides.js's (`has(need)` says what it can bring), or null.
+// `side` is sides.js's (`has(need)` says what it can bring; withWhere adds
+// what the place you're at can), or null.
 // `events` is the table it picks from: EVENTS, unless a map brings only some
 // of them (the galaxy's roam.js opts in to what its scene can play)
 
@@ -63,9 +71,16 @@ export const EVENTS = {
   meteors: { needs: null, weight: 1.2, heat: 0 },
   bounty: { needs: 'bounty', weight: 1.0, heat: 0.8 },
   remover: { needs: 'remover', weight: 1.1, heat: 0.5 },
+  minefield: { needs: null, weight: 1.0, heat: 0.3 },
+  escort: { needs: 'pirates', weight: 1.1, heat: 0.4 },
+  eclipse: { needs: 'sun', weight: 0.8, heat: 0 },
 };
 // whether a side can have an event
 export const canHave = (side, e) => Boolean(side) && (e.needs === null || side.has(e.needs));
+// the side, and where you are: what an event needs of the place rather than
+// the side (a sun to cross, for an eclipse: none at a station, where the
+// sun's behind the station, nor in the galaxy's gate)
+export const withWhere = (side, { sun = false, station = false, gate = false } = {}) => side && { ...side, has: (need) => (need === 'sun' ? Boolean(sun) && !station && !gate : side.has(need)) };
 export const PACE = { first: [30, 50], gap: [45, 85] }; // seconds before the first, and between the rest
 export const INTENSITY = {
   hurt: 0.005, // a point of damage taken is worth this much

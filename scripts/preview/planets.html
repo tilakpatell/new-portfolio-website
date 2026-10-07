@@ -15,6 +15,8 @@
         …&small=1                                          the phone maps
         …&spin=0                                           hold it still
         …&turn=2.4                                         the planet turned (its lit side moves)
+        …&level=ultra                                      lib/detail's level (the device's by default)
+        …&near=0                                           without its near maps and sphere (nearMaps.js)
       Drag to turn it, scroll to come closer. window.__planets.shot() is ready
       once every map and model is in.
     -->
@@ -49,6 +51,7 @@
     <script type="module">
       import * as THREE from 'three';
       import { buildPlanet, loadTextures, loadModels } from '/src/components/universe/planets.js';
+      import { createNearMaps } from '/src/components/universe/nearMaps.js';
       import { byId } from '/src/components/universe/universes.js';
       import { LIGHT, createPost, spaceEnvironment } from '/src/components/universe/post.js';
 
@@ -56,6 +59,7 @@
       const id = q.get('id') ?? 'middleearth';
       const small = q.get('small') === '1';
       const spin = q.get('spin') !== '0';
+      const level = q.get('level') ?? undefined;
       const status = document.getElementById('status');
       const canvas = document.getElementById('c');
       const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, preserveDrawingBuffer: true });
@@ -70,7 +74,7 @@
       scene.add(key, fill, new THREE.AmbientLight('#b8c4ff', 0.4));
 
       const t0 = performance.now();
-      const T = await loadTextures({ small });
+      const T = await loadTextures(level ? { small, level } : { small });
       const env = spaceEnvironment(renderer, T.sky);
       scene.environment = env.texture;
       if (T.sky) {
@@ -87,6 +91,7 @@
         if (pid === id && p.mount(model, spot)) models++;
       });
       const post = createPost(renderer, scene, camera, { small });
+      const nearMaps = q.get('near') === '0' ? null : createNearMaps(level ? { small, level } : { small });
 
       const r = u.size;
       let yaw = Number(q.get('yaw') ?? 0.6);
@@ -121,6 +126,7 @@
         const d = follow ? near : dist;
         camera.position.set(at.x + Math.sin(yaw) * Math.cos(pitch) * d, at.y + Math.sin(pitch) * d, at.z + Math.cos(yaw) * Math.cos(pitch) * d);
         camera.lookAt(at);
+        nearMaps?.update(camera.position, [p]);
         post.render(w, h);
         requestAnimationFrame(frame);
       };
@@ -133,6 +139,7 @@
         T,
         renderer,
         scene,
+        near: () => nearMaps?.resident() ?? [],
         set: (o) => ({ yaw, pitch, dist } = { yaw, pitch, dist, ...o }),
         // look at the first thing under the planet whose material or geometry matches
         follow(test, distance = r * 0.6) {

@@ -5,7 +5,8 @@
 // A quest: { id, name, about, giver?: an actor's id (talk to them to take
 // it on), place?: a place's id (find it and it starts), intro?: lines
 // ([who, text]) said as it starts, steps: [step…], done?: lines said at
-// the end }. A step: { type, text, … }:
+// the end, after?: [quest ids] (offered only once those are done) }. A
+// step: { type, text, … }:
 //   reach    at: [x, z], r — get there (on foot or riding)
 //   talk     actor — talk to them (an actor's id)
 //   collect  item, n, spots: [[x, z]…] — pick up n of them (walk over them)
@@ -116,6 +117,9 @@ export function stepTarget(step, progress, actors = null) {
 }
 
 // Someone's quests (a life spec's `quest`: one id, or a list of them, given
-// in turn), and the one they offer now: the first not done, or null
+// in turn), and the one they offer now: the first not done (and, given a
+// lookup of quests by id, offered: a quest with `after` waits for those),
+// or null
 export const questsOf = (spec) => [spec?.quest ?? []].flat();
-export const nextQuest = (spec, done) => questsOf(spec).find((id) => !done.has(id)) ?? null;
+export const isOffered = (quest, done) => !quest?.after || quest.after.every((id) => done.has(id));
+export const nextQuest = (spec, done, byId = null) => questsOf(spec).find((id) => !done.has(id) && (!byId || isOffered(byId(id), done))) ?? null;

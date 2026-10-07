@@ -1,7 +1,8 @@
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { MOONS, UNIVERSES } from './universes';
+import { UNIVERSES } from './universes';
 import { BELT, MAP_RADIUS, ORDER, POSITIONS, SUN, keyStep } from './layout';
+import { wonderById } from './deep';
 import './universe.css';
 
 // The universe map drawn flat: the same layout as the 3D one, seen from the
@@ -17,13 +18,16 @@ const TILT = 0.42; // how flat the disc looks: the 3D overview's pitch, roughly
 // to a square-root scale, so the home system opens up and the worlds still fit
 const K = W / 2 - 34;
 const scaled = (r) => Math.sqrt(Math.max(0, r) / MAP_RADIUS) * K;
-const at = (id) => {
-  const [x, y, z] = POSITIONS[id];
+const at = (id) => place(POSITIONS[id]);
+const place = ([x, y, z]) => {
   const r = Math.hypot(x, z) || 1;
   const k = scaled(r) / r;
   return [W / 2 + x * k, H / 2 - 8 + z * k * TILT - (y / MAP_RADIUS) * K * 0.5];
 };
 const radius = (id) => Math.hypot(POSITIONS[id][0], POSITIONS[id][2]);
+// the portal to the Rick and Morty sector (portals.js), beside its planet:
+// the worlds through it are in a sector of their own, off this map
+const PORTAL = wonderById('rmportal');
 // a place's dot: bigger than its true size on this scale, so it reads
 const dot = (u) => 5 + Math.min(7, u.size * 0.2);
 // one orbit per distinct radius (the stations share theirs)
@@ -53,11 +57,11 @@ export default function MiniMap({ selected = null, onSelect, linkTo, kind = null
         {/* the asteroid belt, a dotted band between the stations and the planets */}
         <ellipse cx={W / 2} cy={H / 2 - 8} rx={scaled((BELT.inner + BELT.outer) / 2)} ry={scaled((BELT.inner + BELT.outer) / 2) * TILT} fill="none" stroke="#9a8f80" strokeOpacity="0.35" strokeWidth={(scaled(BELT.outer) - scaled(BELT.inner)) * 0.5} strokeDasharray="1 3" />
         <circle cx={W / 2} cy={H / 2 - 8} r={Math.max(3, scaled(SUN.r) * 0.35)} fill="#ffb347" opacity="0.9" />
-        {/* the Rick and Morty system's moons, round the Citadel: small dots, not places to pick here */}
-        {MOONS.map((m) => {
-          const [x, y] = at(m.id);
-          return <circle key={m.id} cx={x} cy={y} r={2.2} fill={m.swatch} opacity="0.8" aria-hidden="true" />;
-        })}
+        {!kind && PORTAL && (
+          <circle cx={place(PORTAL.at)[0]} cy={place(PORTAL.at)[1]} r={4} fill="none" stroke={PORTAL.color} strokeWidth="1.6" strokeDasharray="2 1.5" className="minimap-portal">
+            <title>A portal to the Rick and Morty sector</title>
+          </circle>
+        )}
         {shown.map((u) => {
           const [x, y] = at(u.id);
           return (

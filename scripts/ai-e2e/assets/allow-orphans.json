@@ -1,0 +1,5 @@
+{
+ "why": "Voice lines found when the asset tests were first run (2026-10-07). unlisted: mp3s the manifest does not list (the site never plays them). unsaid: lines in the manifest whose text the site no longer says (edited or removed since they were made). Each is a finding: delete the file, or list it, then take it off. The lists only shrink.",
+ "unlisted": [],
+ "unsaid": []
+}

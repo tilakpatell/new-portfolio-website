@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { debugOn, toCode } from './debugPanel';
+import { copyText, debugOn, toCode } from './debugPanel';
 
 describe('whether the tuning panel is asked for', () => {
   it('reads ?debug from the address or after the hash route', () => {
@@ -28,5 +28,11 @@ describe('the values, as code to paste back', () => {
 
   it('rounds away float noise', () => {
     expect(toCode([{ name: 'g', items: [{ key: 'k', type: 'range', value: 0.30000000000000004 }] }])).toBe('{\n  g: { k: 0.3 },\n}');
+  });
+
+  it('copies with a world’s own printer when it has one, the groups’ live values in', () => {
+    const groups = [{ name: 'g', items: [{ key: 'k', type: 'range', get: () => 0.5 }] }];
+    expect(copyText(groups)).toBe('{\n  g: { k: 0.5 },\n}');
+    expect(copyText(groups, (v) => `${v[0].name}:${v[0].items[0].value}`)).toBe('g:0.5');
   });
 });

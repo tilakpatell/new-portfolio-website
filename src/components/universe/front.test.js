@@ -70,6 +70,20 @@ describe('createFront', () => {
     expect(front.joined).toBe(0);
   });
 
+  it('holds the drive all the way down in the fight, easing it on coming in, and not for a ship flying past or away', () => {
+    const { front } = stubbed();
+    const p = (d) => at(front, d);
+    const toward = [-1, 0, 0]; // (from out along +x, back toward it)
+    expect(front.holdAt(...Object.values(p(ZONE.in * 0.5)), toward)).toBe(1);
+    const halfway = front.holdAt(...Object.values(p((ZONE.in + ZONE.near) / 2)), toward);
+    expect(halfway).toBeGreaterThan(0.05);
+    expect(halfway).toBeLessThan(0.95);
+    expect(front.holdAt(...Object.values(p(ZONE.near + 50)), toward)).toBe(0);
+    // going away, or by it wide of the fight, it's open
+    expect(front.holdAt(...Object.values(p(ZONE.in + 120)), [1, 0, 0])).toBeLessThan(0.05);
+    expect(front.holdAt(...Object.values(p(ZONE.in + 120)), [0, 0, 1])).toBeLessThan(0.05);
+  });
+
   it('leaving pauses and coming back resumes the same battle', () => {
     const { front, made, draws } = stubbed();
     front.update(0.1, 0, null, new THREE.Vector3(), at(front, 50));

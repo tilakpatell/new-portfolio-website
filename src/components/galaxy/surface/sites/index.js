@@ -35,7 +35,9 @@
 //                  camera keeps in the one you're in), light: { sky,
 //                  ground, ambient, fog, density },
 //                  lamps: [[x, y, z, color, intensity, distance]] }, life
-//                  (as the site's, placed relative to the inside) }
+//                  (as the site's, placed relative to the inside), things
+//                  (placer specs, placed relative to the inside: a model
+//                  in a room) }
 //   quests         quests.js's: things to do (talk to someone, get
 //                  somewhere, pick things up, race, shoot, ride, use); a
 //                  step's start and end: what happens then ({ signal (to
@@ -54,11 +56,13 @@ import { SITES as desert } from './desert';
 import { SITES as ice } from './ice';
 import { SITES as forest } from './forest';
 import { SITES as core } from './core';
+import { SITE as coruscant } from './coruscant';
+import { SITE as yavin } from './yavin';
 import { SITES as edge } from './edge';
 import { SITES as outer } from './outer';
 import { EXTRA } from './quests';
 
-export const SITES = { ...desert, ...ice, ...forest, ...core, ...edge, ...outer };
+export const SITES = { ...desert, ...ice, ...forest, yavin, ...core, coruscant, ...edge, ...outer };
 
 // the systems with somewhere to land, in the galaxy's own order
 export const LANDABLE = SYSTEMS.filter((s) => SITES[s.id]).map((s) => s.id);
@@ -93,7 +97,11 @@ export function siteOf(id) {
   // the places you go into (zones): each built high over the world where
   // nothing outside can be seen, at `origin`; what's in one is placed
   // relative to it (its life, and its quests' steps that say `zone`)
-  const zones = (raw.zones ?? []).map((z, i) => ({ ...z, origin: z.origin ?? [-1600 + i * 700, 1500, -4200] }));
+  const zones = (raw.zones ?? []).map((z, i) => {
+    const origin = z.origin ?? [-1600 + i * 700, 1500, -4200];
+    const things = (z.things ?? []).map((t) => ({ ...t, at: [origin[0] + t.at[0], origin[2] + t.at[1]], y: origin[1] + (t.y ?? 0), abs: true, zone: true }));
+    return { ...z, origin, things };
+  });
   const inZone = (id, xz) => {
     const z = zones.find((q) => q.id === id);
     return z && xz ? [z.origin[0] + xz[0], z.origin[2] + xz[1]] : xz;

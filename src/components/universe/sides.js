@@ -25,6 +25,8 @@
 //   Meshy cast kind, a model of its own, or built; the cast's own kind if none).
 
 // a weighted pick from [[id, weight]…]
+import { pacedAll } from './ship';
+
 const weighted = (list, rand) => {
   let r = rand() * list.reduce((s, [, w]) => s + w, 0);
   for (const [id, w] of list) if ((r -= w) <= 0) return id;
@@ -200,6 +202,9 @@ const BREAKINGBAD = {
 };
 
 const finish = (s) => {
+  // (their speeds as tuned, at the ship's pace: ship.js's PACE)
+  s.kinds = pacedAll(s.kinds);
+  s.allies = pacedAll(s.allies);
   const roles = new Set(Object.values(s.factions).map((f) => f.role));
   // what the director's events need of a side
   s.has = (need) => roles.has(need) || s.pieces.includes(need) || (need === 'pirates' && Boolean(s.distress.pirates)) || (need === 'leviathan' && Boolean(s.leviathan));

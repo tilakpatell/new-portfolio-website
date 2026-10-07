@@ -1,0 +1,40 @@
+name: 3D model
+description: A model made on the owner's desktop GPU (picture or prompt → GLB), as a pull request with a judging sheet.
+title: "model-name"
+labels: [gen3d]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The **title** is the model's name: it becomes `public/models/gen3d/NAME.glb` (a-z, 0-9, dashes).
+        The desktop makes it when it's on, usually within minutes; this issue is updated as it goes.
+        Best results: **attach a picture** (three-quarter view, the whole thing in frame, plain background).
+        A prompt alone only works for designs the image model knows (an X-wing, a TIE). More: `scripts/gen3d/README.md`.
+  - type: input
+    id: what
+    attributes:
+      label: What it is
+      description: In words, for the credit and for the judge that checks the result.
+      placeholder: a TIE fighter, grey, twin hexagonal solar panels
+    validations:
+      required: true
+  - type: textarea
+    id: image
+    attributes:
+      label: Image (a picture to follow)
+      description: Drag a picture in, or paste its URL. Several sides of one thing (front, left, back, right, in that order) go through a multi-view engine.
+  - type: input
+    id: prompt
+    attributes:
+      label: Prompt (only with no picture)
+      description: Words for a concept picture, drawn on the desktop first.
+  - type: input
+    id: faces
+    attributes:
+      label: Faces in the top cut
+      description: Default 120000. A rock 4000, a prop 10000, a character 30000. The two smaller cuts scale with it.
+  - type: textarea
+    id: more
+    attributes:
+      label: More options
+      description: "One a line: tex: 2048 · seed: 7 · engine: trelliscpp | trellis2 | hunyuan · faithful: no · bake: no · fresh: yes"

@@ -35,10 +35,17 @@ Crews have lines for all of it (`crews.js`; an event's lines may be keyed by wha
 - Headless Chrome here draws in software at a frame or two a second; the scene's own clock (`state.clock`) runs far slower than the wall, so every wait is on a condition, not a time.
 - The suite: `npx eslint . && npx vitest run && npx vite build`. The Nostr relay test (`online/nostr.test.js`) can fail under load (a headless browser and a build running beside it); alone it passes.
 
+## Landed 2026-10-07 (Lane 2 of `docs/superpowers/plans/2026-10-07-planets-and-universe-upgrade.md`)
+
+- **The ship's pace** (PR #487): cruise 3.3, boost 12, the pulse drive 300; everything that flies against the ship goes at `ship.js`'s `PACE` through `paced`/`pacedAll` (hunters, wingmen, NPCs, the wars' fighters, the galaxy's hunted kinds, traffic, the skirmish freighter). An ambush (and the DEA's roadblock) is laid `holdReach` further along: where the ship comes out of the drive once the pack has pulled it down, not 300 units behind it.
+- **The galaxy's worlds from orbit** (PR #491): `bodies.js`'s `nearOctaves`/`pxTall`, the shader's `uNearOct` (two octaves past the footprint on high and ultra once a world is over 300 pixels tall, eased a tenth of an octave a frame) and `nearRelief` (a grain with a finite-difference slope). `scripts/galaxy-check.mjs` takes `ANGLE=d3d11`.
+- **Three more events** (steps 3 to 5 below, done): `minefield` (`minefield.js`, `mines.js`; PR #495), `escort` (`escort.js`, `traffic.escort`; PR #495) and `eclipse` (`eclipse.js`). The eclipse is a dark moon the director brings across the sun that lights you (nothing on the map moves, so a planet can't cross it), held across the sun's line from wherever you fly as a far body is, sized at least half as wide again as the sun looks, total for about ten of its 22 seconds; the key light and the lens's glare dim by `1 − 0.85 k`. It needs `sun` of where you are: `director.js`'s `withWhere(side, { sun, station, gate })`, so never at a station, in the galaxy's gate or close by a star (`canEclipse`). A rift's exit prefers somewhere you haven't been (`riftExit(fromId, saw)`; `state.saw` now holds the places you've arrived at as well as the wonders). A leviathan's pass holds the director only until its lead is past you (`leviathans.holds(ship)`, `pastShip`).
+- Checks for these: `window.__universeDebug.happen('minefield' | 'escort' | 'eclipse')`, with `mines`, `escort()` and `eclipse()` on the same hook. Shots in `docs/superpowers/shots/2026-10-07-*`.
+
 ## Steps left
 
 1. The chart could place the systems inside the gate's dot (a fan of eighteen small marks) instead of leaving them to the list.
 2. The galaxy's own map could offer super speed and the tour too (`ship.js`'s overdrive is generic).
-3. More events, if wanted: a minefield across a lane (shoot the mines or weave), an escort (a freighter asks you to see it to the next place), an eclipse (a planet crossing the sun). `director.js` and `happen()` take a new kind in an afternoon each.
-4. A rift's exit could prefer places you haven't been (`state.saw`, `state.at` history).
-5. The leviathans' pass holds the director busy for the whole pass (a purrgil pod's lane is long); if that reads as a quiet spell, let `busy` drop once the pod is past the ship.
+3. The escort heads for the nearest place ahead and jumps after 240 units, since places are thousands apart; a real convoy route between two stations of the home system would let it arrive more often.
+4. The eclipse's moon is a plain dark sphere; a rim of the star's light round it at totality (a corona sprite) would sell the diamond ring more than the lens flare peeking past it does.
+5. Natural eclipses: `eclipseAt` takes any bodies, so the planets on the map could dim the key light when you fly into their shadow (the lens flare already hides behind them).

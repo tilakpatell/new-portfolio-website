@@ -87,6 +87,9 @@ const SUBTITLE = {
   veil: 'nebula',
   cradle: 'stellar nursery',
   citadel: 'citadel of ricks',
+  curvesun: 'the curve’s own star',
+  rmportal: 'portal · to the citadel',
+  'rmportal-back': 'portal · home',
 };
 
 // ── Small painted textures ──

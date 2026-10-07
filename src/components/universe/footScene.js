@@ -66,6 +66,7 @@ import { TRENCH_MODEL, trenchOf } from './deep';
 import { POSITIONS } from './layout';
 import { byId } from './universes';
 import { landingOf } from './landings/landings';
+import { biomeAt, fromLatLon, latLonOf, sampleMap, towardLand, uvOf } from './landings/biomes';
 import { styleOf } from './landings/ground';
 import { createSky } from './landings/sky';
 import { furnish, furnished } from './landings/furnish';
@@ -1651,6 +1652,51 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   // (bones are in the world: back into the map's space, and the other way)
   const toMap = (v) => v.applyMatrix4(invMap);
   const dirToWorld = (v) => v.transformDirection(map.matrixWorld);
+  // a planet's turn, from the map's space to its body's own (the frame its
+  // colour map is laid in): rotation only, any scale normalised away
+  // (the map's matrix as it is: update() brings it up to date each frame first)
+  const bodyTurn = (planet, out = new THREE.Matrix3()) => {
+    planet.body.updateWorldMatrix(true, false);
+    const m4 = new THREE.Matrix4().copy(map.matrixWorld).invert().multiply(planet.body.matrixWorld);
+    out.setFromMatrix4(m4);
+    const e = out.elements;
+    for (let c = 0; c < 3; c++) {
+      const l = Math.hypot(e[c * 3], e[c * 3 + 1], e[c * 3 + 2]) || 1;
+      e[c * 3] /= l;
+      e[c * 3 + 1] /= l;
+      e[c * 3 + 2] /= l;
+    }
+    return out.transpose();
+  };
+  const turned = (m3, v) => arr(new V(...v).applyMatrix3(m3));
+  // the colour of a planet's own map at a uv ([r, g, b], or null): from the
+  // map it's drawn with, else (a compressed one, which can't be read back)
+  // its -sm file, fetched the first time and read from the next landing on
+  const spare = {};
+  const lookOf = (planet, id) => {
+    const tex = planet.body?.material?.map;
+    if (tex?.image && !tex.isCompressedTexture) {
+      const look = (uv) => sampleMap(tex.image, uv, { flip: tex.flipY === false });
+      if (look([0.5, 0.5])) return look;
+    }
+    if (spare[id] === undefined) {
+      spare[id] = null;
+      fetch(`/textures/universe/${id === 'travel' ? 'earth' : id}-sm.webp`)
+        .then((r) => r.blob())
+        .then((b) => createImageBitmap(b))
+        .then((img) => (spare[id] = (uv) => sampleMap(img, uv)))
+        .catch(() => {});
+    }
+    return spare[id];
+  };
+  // (development: ?spot=lat,lon forces where a landing comes down, in
+  // degrees on the planet's own map, longitude 0 its middle: landings/biomes.js)
+  const forcedSpot = () => {
+    if (!import.meta.env.DEV || typeof location === 'undefined') return null;
+    const q = new URLSearchParams(location.search).get('spot') ?? new URLSearchParams(location.hash.split('?')[1] ?? '').get('spot');
+    const ll = q?.split(',').map(Number);
+    return ll?.length === 2 && ll.every(Number.isFinite) ? ll : null;
+  };
   // the gun hand, in the map's space (for a figure holding nothing)
   const handAt = (p, out) => {
     const hand = p.fig.bones?.RightHand ?? p.fig.hand ?? null;
@@ -1735,6 +1781,41 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // (flown in through the air: ahead of where it went in, on its way)
     const ahead = entry && !S.band ? entrySpot({ n: entry.n, track: entry.vel, light, speed: entry.speed, R: S.R }) : null;
     S.spot = near ? beside(near, kind) : S.band ? byTrench(n0, S.band, S.R, clear + 12 * METRE) : (ahead ?? { n: n0, f: facingAlong(n0, fwd3) });
+    // the part of the planet it's come down on (landings/biomes.js), read
+    // off the planet's own map under the spot (a friend's, beside them, so
+    // the two of you see the same place); over the sea, on to the nearest land
+    const own = u.plated ? null : landingOf(id);
+    S.biome = null;
+    if (own?.biomes && !S.band) {
+      map.updateMatrixWorld();
+      let toBody = bodyTurn(planet);
+      const forced = near ? null : forcedSpot();
+      if (forced) {
+        // (the planet turned about its axis, before it's held, so the spot
+        // comes round under the sun: in the day, to see it by)
+        const want = fromLatLon(...forced);
+        const was = turned(toBody, light ? vec.unit([...light]) : S.spot.n);
+        planet.body.rotation.y += Math.atan2(was[0], was[2]) - Math.atan2(want[0], want[2]);
+        toBody = bodyTurn(planet);
+        const fn = turned(toBody.clone().transpose(), want);
+        S.spot = { n: fn, f: facingAlong(fn, fwd3) };
+      }
+      const fromBody = toBody.clone().transpose();
+      const look = lookOf(planet, id);
+      if (look) {
+        let nb = turned(toBody, (near ?? S.spot).n);
+        if (!near && !forced && own.biomes.some((b) => b.sea)) {
+          const moved = towardLand(nb, look, (rgb) => !rgb || biomeAt(own, rgb).sea, { track: turned(toBody, S.spot.f) });
+          if (moved !== nb) {
+            nb = moved;
+            const mn = turned(fromBody, moved);
+            S.spot = { n: mn, f: facingAlong(mn, S.spot.f) };
+          }
+        }
+        const rgb = look(uvOf(nb));
+        if (rgb) S.biome = { ...biomeAt(own, rgb, latLonOf(nb)), at: latLonOf(nb) };
+      }
+    }
     const { n } = S.spot;
     // a long way round the planet from where the ship is: it flies round over
     // the surface to get there, rather than through the planet (an entry's
@@ -1783,8 +1864,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // the ground, the rocks and the air (a station's hull, its blocks and
     // none; and a trench's walls); or the planet's own landing: its ground,
     // its sky and its things, laid out from where the first ship down here
-    // came down (a friend's, if you're coming down beside them)
-    const landing = u.plated ? null : landingOf(id);
+    // came down (a friend's, if you're coming down beside them), as the
+    // part of it you've come down on has them
+    const landing = own && S.biome ? { ...own, ...(({ title, sub, ground, sky, things, scatter, models }) => ({ title, sub, ground, sky, things, scatter, models }))(S.biome) } : own;
     ground = createGround(planet, u, S.R, S.band, landing?.ground);
     ground.follow(n);
     root.add(ground.mesh);
@@ -1802,7 +1884,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       ground.mesh.visible = rocks.mesh.visible = false;
     }
     // (the sky from the planet's own air, where it has one: landings/sky.js)
-    haze = u.airless ? null : landing?.sky ? createSky(landing.sky, u.rim ?? u.swatch ?? '#8ab4ff', { air: u.air ?? null }) : createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
+    // (a biome may bring its own air along the horizon: Mordor's fumes)
+    haze = u.airless ? null : landing?.sky ? createSky(landing.sky, landing.sky.haze ?? u.rim ?? u.swatch ?? '#8ab4ff', { air: u.air ?? null }) : createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
     if (haze) root.add(haze.mesh);
     // (flown in, dark to start with: the entry starts in the middle of a
     // frame, before day() has had its say, and that frame's drawn too)
@@ -2183,18 +2266,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // the ground's map follows the planet's held turn
     const planet = planetOf[S.id];
     if (ground && planet?.body) {
-      planet.body.updateWorldMatrix(true, false);
-      const m4 = new THREE.Matrix4().copy(invMap).multiply(planet.body.matrixWorld);
-      const m3 = new THREE.Matrix3().setFromMatrix4(m4);
-      // (rotation only: normalise away any scale, then invert, from map to body)
-      const e = m3.elements;
-      for (let c = 0; c < 3; c++) {
-        const l = Math.hypot(e[c * 3], e[c * 3 + 1], e[c * 3 + 2]) || 1;
-        e[c * 3] /= l;
-        e[c * 3 + 1] /= l;
-        e[c * 3 + 2] /= l;
-      }
-      ground.sync(m3.transpose());
+      ground.sync(bodyTurn(planet));
     }
     ground?.tick(S.clock);
     rocks?.update?.(S.clock, dt);
@@ -2713,6 +2785,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // (development: the landing's doors and people, scripts/door-check.mjs)
     get spots() {
       return import.meta.env.DEV ? (rocks?.spots ?? []) : null;
+    },
+    // (development: the part of the planet you came down on and where,
+    // [lat, lon] on its map, as ?spot= takes it: scripts/landing-check.mjs)
+    get biome() {
+      return import.meta.env.DEV && S.biome ? { id: S.biome.id, title: S.biome.title, at: S.biome.at } : null;
     },
     get id() {
       return S.id;

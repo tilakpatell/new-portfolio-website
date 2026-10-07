@@ -1,6 +1,6 @@
 {
   "date": "2026-10-07",
-  "sha": "e25c788c",
+  "sha": "06875a1",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -9,7 +9,7 @@
       "detail": [
         {
           "file": "src/components/universe/scene.js",
-          "n": 5117
+          "n": 5132
         },
         {
           "file": "src/components/middleearth/towns/moria/props.js",
@@ -37,7 +37,7 @@
         },
         {
           "file": "src/components/rickmorty/world/roy/scene.js",
-          "n": 3157
+          "n": 3163
         },
         {
           "file": "src/components/middleearth/towns/minastirith/props.js",
@@ -57,7 +57,7 @@
         },
         {
           "file": "src/components/universe/crews.js",
-          "n": 2805
+          "n": 2818
         },
         {
           "file": "src/components/middleearth/towns/lorien/props.js",
@@ -65,7 +65,7 @@
         },
         {
           "file": "src/components/galaxy/surface/scene.js",
-          "n": 2667
+          "n": 2684
         },
         {
           "file": "src/components/middleearth/towns/weathertop/props.js",
@@ -73,7 +73,7 @@
         },
         {
           "file": "src/components/galaxy/scene.js",
-          "n": 2324
+          "n": 2337
         },
         {
           "file": "src/components/middleearth/towns/marshes/props.js",
@@ -81,7 +81,7 @@
         },
         {
           "file": "src/components/rickmorty/world/RmWorld.jsx",
-          "n": 2164
+          "n": 2220
         },
         {
           "file": "src/components/avengers/world/scene.js",
@@ -110,7 +110,7 @@
       ]
     },
     "boundary-breaks": {
-      "value": 290,
+      "value": 293,
       "unit": "imports",
       "label": "imports across a line docs/health/RULES.md draws",
       "detail": [

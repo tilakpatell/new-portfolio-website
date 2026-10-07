@@ -1,70 +1,77 @@
 // The Office's planet: a sheet of Dunder Mifflin's letterhead, crumpled
-// into a ball (the paper Jim and Dwight throw at the bin). The ball's
-// surface is a few hundred flat facets with sharp creases between them and
-// finer creases inside, worked out as cells on the sphere; each facet is
-// tilted its own way in the normal map, so the light breaks across it as
-// it does across crumpled paper. The page's print (the letterhead with the
-// Slough Avenue address, a memo from Michael, his signature, a coffee
-// ring) runs on across the folds, shifted a little at each crease; round
-// the back, the blank side of the sheet.
+// into a ball (the paper Jim and Dwight throw at the bin) and smoothed out
+// a little, so it reads. The page faces the front: "Dunder Mifflin" across
+// it in the wordmark's bold serif, the title block about a sixth of the
+// ball's height so it reads from the ship, "Paper Company, Inc." and the
+// Scranton address under it in navy, fourteen ruled lines below, a coffee
+// ring and the ring the World's Best Boss mug left. Eight long folds cross
+// the ball (great circles, each running part way round), splitting it into
+// big flat facets, each tilted its own way in the normal map, so the light
+// breaks across them as it does across crumpled paper; the print shifts a
+// little at each fold. Round the back, the blank side of the sheet.
 //
-// Makes office and office-normal at 2048 (-hq), 1024 and 512 (-sm), and
-// office-rough at 1024.
+// Makes office at 4096 (-xl, KTX2), 2048 (-hq), 1024 and 512 (-sm);
+// office-normal at 2048, 1024 and 512; office-rough at 1024.
 
 import sharp from 'sharp';
-import { cells, clamp, eachTexel, fbm, hex, perlin, rand, sampler, save, smooth } from './sphere.mjs';
+import { clamp, eachTexel, fbm, hex, perlin, rand, sampler, save, smooth } from './sphere.mjs';
 
 const W = 4096;
 const H = 2048;
-const PAGE = { w: 850, h: 1100 }; // US letter, a unit a hundredth of an inch
-const SCALE = 2; // the page's raster, px a unit
+const PAGE = { w: 1000, h: 1150 }; // the page, in its own units (its foot short of the pole)
+const SCALE = 3; // the page's raster, px a unit
+// page units a radian: the page wraps the front, the title across the face
+// seen from parking (about 105°, foreshortened toward the limb)
+const K = 520;
+const FRONT = [500, 640]; // the page point at the ball's front: the title above it, the ruled lines and the rings below
+const PAPER = '#f1ead8';
+const INK = '#1f2d5a';
+const FOLDS = 8;
 
 function pageSvg() {
-  const lines = [];
   const r = rand(5);
-  // the memo's body: lines of type, as grey runs of words
-  let y = 470;
-  for (let para = 0; para < 4; para++) {
-    const n = 3 + Math.floor(r() * 3);
-    for (let l = 0; l < n; l++) {
-      let x = 100;
-      const end = l === n - 1 ? 300 + r() * 300 : 740;
-      while (x < end) {
-        const w = 10 + r() * 46;
-        lines.push(`<rect x="${x.toFixed(1)}" y="${y - 6}" width="${Math.min(w, end - x).toFixed(1)}" height="6" rx="1.5" fill="#333" fill-opacity="0.62"/>`);
-        x += w + 6;
-      }
-      y += 17;
+  const ruled = [];
+  // fourteen ruled lines, a margin line, and a few lines of Michael's hand on them
+  for (let k = 0; k < 14; k++) {
+    const y = 615 + k * 33;
+    ruled.push(`<rect x="70" y="${y}" width="860" height="3" fill="#6f87b8" fill-opacity="0.7"/>`);
+  }
+  ruled.push(`<rect x="150" y="585" width="3" height="480" fill="#c0504d" fill-opacity="0.65"/>`);
+  // Michael's hand on the first lines: words as a scrawl, up and down strokes joined
+  const hand = [];
+  for (let k = 0; k < 5; k++) {
+    const y = 615 + k * 33 - 4;
+    let x = 172;
+    const end = k === 4 ? 430 : 840 - r() * 150;
+    while (x < end) {
+      const word = 30 + r() * 60;
+      let d = `M${x.toFixed(1)} ${y}`;
+      for (let wx = 0; wx < word; wx += 5 + r() * 3) d += ` L${(x + wx).toFixed(1)} ${(y - (r() < 0.18 ? 15 : 3 + r() * 5)).toFixed(1)} L${(x + wx + 2.5).toFixed(1)} ${y}`;
+      hand.push(`<path d="${d}" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" stroke-opacity="0.85"/>`);
+      x += word + 14;
     }
-    y += 18;
   }
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${PAGE.w * SCALE}" height="${PAGE.h * SCALE}" viewBox="0 0 ${PAGE.w} ${PAGE.h}">
   <rect width="${PAGE.w}" height="${PAGE.h}" fill="#fff"/>
-  <g font-family="Georgia, 'Times New Roman', serif" fill="#111">
-    <text x="100" y="128" font-size="56" font-weight="700" letter-spacing="1">Dunder Mifflin</text>
-    <text x="104" y="160" font-family="Arial, Helvetica, sans-serif" font-size="17" letter-spacing="5" fill="#333">PAPER COMPANY, INC.</text>
+  <text x="500" y="440" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="108" font-weight="700" fill="${INK}" letter-spacing="2">Dunder Mifflin</text>
+  <rect x="190" y="462" width="620" height="6" fill="${INK}"/>
+  <text x="500" y="515" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="34" font-weight="700" fill="${INK}" letter-spacing="7">PAPER COMPANY, INC.</text>
+  <text x="500" y="560" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="26" fill="${INK}" letter-spacing="2">1725 Slough Avenue, Scranton, PA</text>
+  ${ruled.join('')}
+  ${hand.join('')}
+  <g fill="none" stroke="#7a4a20">
+    <circle cx="790" cy="860" r="78" stroke-width="9" stroke-opacity="0.38"/>
+    <circle cx="790" cy="860" r="70" stroke-width="2.5" stroke-opacity="0.25"/>
+    <path d="M 722 826 a 80 80 0 0 1 132 -28" stroke-width="14" stroke-opacity="0.2"/>
   </g>
-  <rect x="100" y="178" width="650" height="3" fill="#111"/>
-  <text x="100" y="204" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#444" letter-spacing="1">Scranton Business Park · 1725 Slough Avenue · Scranton, PA 18505</text>
-  <g font-family="Arial, Helvetica, sans-serif" fill="#111">
-    <text x="100" y="270" font-size="30" font-weight="700" letter-spacing="6">MEMORANDUM</text>
-    <text x="100" y="320" font-size="17"><tspan font-weight="700">TO:</tspan> All Staff</text>
-    <text x="100" y="348" font-size="17"><tspan font-weight="700">FROM:</tspan> Michael Scott, Regional Manager</text>
-    <text x="100" y="376" font-size="17"><tspan font-weight="700">RE:</tspan> The Dundies</text>
-    <text x="100" y="404" font-size="17"><tspan font-weight="700">DATE:</tspan> Thursday</text>
+  <circle cx="790" cy="860" r="74" fill="#8a5a2b" fill-opacity="0.07"/>
+  <g transform="translate(300 960) rotate(-14)">
+    <circle r="66" fill="none" stroke="#6b3f1c" stroke-width="6" stroke-opacity="0.3"/>
+    <circle r="62" fill="#7a4a20" fill-opacity="0.06"/>
+    <text y="-6" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#6b3f1c" fill-opacity="0.42">WORLD'S BEST</text>
+    <text y="18" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#6b3f1c" fill-opacity="0.42">BOSS</text>
   </g>
-  <rect x="100" y="422" width="650" height="1.5" fill="#777"/>
-  ${lines.join('')}
-  <path d="M120 ${y + 60} c 20 -40 40 30 60 -10 s 30 -30 40 10 s 10 20 30 -15 c 15 -20 25 30 50 0 s 20 -10 60 -5" fill="none" stroke="#1d2b6b" stroke-width="3" stroke-linecap="round"/>
-  <text x="120" y="${y + 100}" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#333">Michael Scott</text>
-  <text x="120" y="${y + 120}" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#666">Regional Manager, Scranton Branch</text>
-  <g fill="none" stroke="#8a5a2b">
-    <circle cx="640" cy="${y + 40}" r="62" stroke-width="7" stroke-opacity="0.32"/>
-    <circle cx="640" cy="${y + 40}" r="56" stroke-width="2" stroke-opacity="0.22"/>
-    <path d="M 586 ${y + 10} a 64 64 0 0 1 100 -24" stroke-width="10" stroke-opacity="0.18"/>
-  </g>
-  <circle cx="640" cy="${y + 40}" r="58" fill="#a0703c" fill-opacity="0.06"/>
-  <text x="${PAGE.w / 2}" y="${PAGE.h - 50}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#888" letter-spacing="2">LIMITLESS PAPER IN A PAPERLESS WORLD</text>
+  <text x="500" y="1120" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="18" fill="${INK}" fill-opacity="0.7" letter-spacing="3">LIMITLESS PAPER IN A PAPERLESS WORLD</text>
 </svg>`;
 }
 
@@ -80,68 +87,72 @@ export async function bake() {
   });
 
   console.log('office: crumpling');
-  const big = cells(51, 240); // the facets
-  const small = cells(52, 1600); // the creases inside them
+  // the folds: great circles (each a plane through the middle, its normal
+  // `n`), each running part way round from its own middle `m`
+  const rf = rand(51);
+  const unit = (v) => {
+    const l = Math.hypot(...v);
+    return v.map((c) => c / l);
+  };
+  const folds = Array.from({ length: FOLDS }, () => {
+    const n = unit([rf() - 0.5, rf() - 0.5, rf() - 0.5]);
+    const m = unit([rf() - 0.5, rf() - 0.5, rf() - 0.5]);
+    return { n, m, reach: 1.2 + rf() * 1.2, sharp: 0.018 + rf() * 0.02 };
+  });
   const nf = perlin(53);
   const albedo = new Float32Array(W * H * 3);
   const normal = new Float32Array(W * H * 3);
   const rough = new Float32Array(W * H * 3);
-  const paper = hex('#f3f0e8');
-  const back = hex('#ebe7dd');
-  // the page faces +x (the side three's sphere has at u = 0.5): east and north there
-  const K = PAGE.w / 1.9; // page units a radian: the page wraps a good way round
+  const paper = hex(PAPER);
+  const back = hex('#e9e2cf');
   const jit = (id, k) => {
     const r = rand(id * 7 + k);
     return [r() - 0.5, r() - 0.5, r() - 0.5];
   };
-  const P = big.points;
+  // the page laid round the front (+x): east is −z, north +y
+  const toPage = (dx, dy, dz) => {
+    const ang = Math.acos(clamp(dx, -1, 1));
+    const tl = Math.hypot(dz, dy) || 1;
+    return [FRONT[0] + (K * ang * -dz) / tl, FRONT[1] - (K * ang * dy) / tl];
+  };
 
   eachTexel(W, H, (x, y, z, i) => {
-    const A = big(x, y, z);
-    const B = small(x, y, z);
-    // the facet's tilt (sharp at its edges), and the finer creases' tilt
-    const [ax, ay, aa] = jit(A.id, 1);
-    const [bx, by] = jit(B.id, 2);
-    const fiber = fbm(nf, x * 300, y * 300, z * 300, { octaves: 2 });
-    const nx = ax * 0.55 + bx * 0.16 + fiber * 0.04;
-    const ny = ay * 0.55 + by * 0.16 + fbm(nf, x * 300 + 9, y * 300, z * 300, { octaves: 2 }) * 0.04;
+    // which side of each fold this is (where the fold reaches), and how near the nearest crease
+    let id = 0;
+    let crease = 0;
+    for (let f = 0; f < FOLDS; f++) {
+      const { n, m, reach, sharp: w } = folds[f];
+      const d = x * n[0] + y * n[1] + z * n[2];
+      const along = Math.acos(clamp(x * m[0] + y * m[1] + z * m[2], -1, 1));
+      const on = smooth(reach, reach * 0.7, along); // the fold dies out along its length
+      if (d > 0 && on > 0.5) id |= 1 << f;
+      crease = Math.max(crease, smooth(w, 0, Math.abs(d)) * on);
+    }
+    // the facet's tilt, sharp at its creases, and a soft wrinkle (not a crackle) over all of it
+    const [ax, ay, aa] = jit(id + 1, 1);
+    const wx = fbm(nf, x * 18, y * 18, z * 18, { octaves: 3 }) * 0.1 + fbm(nf, x * 300, y * 300, z * 300, { octaves: 2 }) * 0.03;
+    const wy = fbm(nf, x * 18 + 9, y * 18, z * 18, { octaves: 3 }) * 0.1 + fbm(nf, x * 300 + 9, y * 300, z * 300, { octaves: 2 }) * 0.03;
+    const nx = ax * 0.62 + wx;
+    const ny = ay * 0.62 + wy;
     const len = Math.hypot(nx, ny, 1);
-    normal[i * 3] = nx / len * 0.5 + 0.5;
-    normal[i * 3 + 1] = ny / len * 0.5 + 0.5;
-    normal[i * 3 + 2] = 1 / len * 0.5 + 0.5;
-    // the print: the page laid round the front, each facet shifted and
-    // turned a little about its own middle
-    const cx = P[A.id * 3];
-    const cy = P[A.id * 3 + 1];
-    const cz = P[A.id * 3 + 2];
-    const toPage = (dx, dy, dz) => {
-      // azimuthal about the front (+x): east is −z, north +y
-      const ang = Math.acos(clamp(dx, -1, 1));
-      const tl = Math.hypot(dz, dy) || 1;
-      return [PAGE.w / 2 + (K * ang * -dz) / tl, PAGE.h * 0.42 - (K * ang * dy) / tl];
-    };
+    normal[i * 3] = (nx / len) * 0.5 + 0.5;
+    normal[i * 3 + 1] = (ny / len) * 0.5 + 0.5;
+    normal[i * 3 + 2] = (1 / len) * 0.5 + 0.5;
+    // the print, shifted a little on each facet
     const [px, py] = toPage(x, y, z);
-    const [qx, qy] = toPage(cx, cy, cz);
-    const turn = aa * 0.35;
-    const ca = Math.cos(turn);
-    const sa = Math.sin(turn);
-    const ux = qx + (px - qx) * ca - (py - qy) * sa + ax * 14;
-    const uy = qy + (px - qx) * sa + (py - qy) * ca + ay * 14;
+    const ux = px + ax * 9;
+    const uy = py + ay * 9;
     let col;
-    if (x > -0.2 && ux > 0 && ux < PAGE.w && uy > 0 && uy < PAGE.h) {
-      col = [0, 1, 2].map((c) => tint[c](ux * SCALE, uy * SCALE));
-      col = col.map((v, c) => v * paper[c]);
-    } else col = back;
-    // a crease's shadow and its lit side, and each facet a shade of its own
-    const crease = smooth(0.012, 0.0, A.f2 - A.f1);
-    const fine = smooth(0.004, 0.0, B.f2 - B.f1);
-    const k = (0.97 + aa * 0.04) * (1 - crease * 0.05) * (1 - fine * 0.025);
+    if (x > -0.25 && ux > 0 && ux < PAGE.w && uy > 0 && uy < PAGE.h) col = [0, 1, 2].map((c) => (tint[c](ux * SCALE, uy * SCALE) / 1) * paper[c]);
+    else col = back;
+    // each facet a shade of its own, the creases a little darker
+    const k = (0.975 + aa * 0.04) * (1 - crease * 0.07);
     col = col.map((v) => v * k);
     albedo.set(col, i * 3);
     rough[i * 3] = rough[i * 3 + 1] = rough[i * 3 + 2] = 0.88 - crease * 0.08;
   });
 
-  await save(albedo, W, H, 3, 'office', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
+  await save(albedo, W, H, 3, 'office', [[4096, '-xl'], [2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
   await save(normal, W, H, 3, 'office-normal', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 90 });
   await save(rough, W, H, 3, 'office-rough', [[1024, '']], { quality: 84 });
 }
