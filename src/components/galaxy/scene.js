@@ -1879,7 +1879,10 @@ export async function create(canvas, ctx) {
     if (state.aim && (!flying() || state.crash || state.jump || props.frozen)) aimAt(null);
     sky.focus(state.jump?.phase === 'align' ? state.jump.to.id : (state.aim?.id ?? null));
     sky.update(camera, t);
-    if (skyStreaks) (skyStreaks.group.visible = !inTunnel), skyStreaks.update(dt);
+    if (skyStreaks) {
+      skyStreaks.group.visible = !inTunnel;
+      skyStreaks.update(dt);
+    }
     models.update(t);
     bolts.update(dt);
     flashes.update(dt);

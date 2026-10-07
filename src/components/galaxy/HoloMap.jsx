@@ -16,10 +16,10 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 // routes, and every system you can jump to, in its own colour. Pick one and
 // it shows where it is, its era and its films, how far it is, the course the
 // jump takes along the lanes (routes.js) and how long it takes, and who's
-// flying there now (online); Jump sends you. The
-// eras and the films filter what's lit (the rest dim), so it doubles as a
-// timeline: the prequels' worlds, the originals', the New Republic's (The
-// Mandalorian's and Ahsoka's).
+// flying there now (online); Jump sends you. The eras and the films filter
+// what's lit (the rest dim), so it doubles as a timeline: the prequels'
+// worlds, the originals', the New Republic's (The Mandalorian's and
+// Ahsoka's).
 //
 // And the Galactic Civil War's table, Helldivers' galactic map (gcw.js, as
 // the page knows it: warState.js): every system it's fought over ringed in

@@ -140,7 +140,7 @@ export const jumpTime = (route) => Math.min(JUMP.max, (JUMP.base + JUMP.perSquar
 export function viaLanes(route) {
   if (!route) return '';
   if (!route.onLane) return 'off the lanes: a straight jump, slower, and the Empire watches those';
-  const names = route.lanes.map((id) => `the ${LANES.find((l) => l.id === id)?.name ?? id}`);
+  const names = route.lanes.map((id) => `the ${LANES.find((l) => l.id === id).name}`);
   // two systems snapped to the one lane point: no lane between them to name
   if (!names.length) return 'a short hop, on the lanes';
   const last = names.pop();

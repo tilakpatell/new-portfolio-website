@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { JUMP, SNAP, jumpTime, laneGraph, routeBetween, viaLanes } from './routes';
-import { LANES, systemById } from './systems';
+import { LANES, SYSTEMS, systemById } from './systems';
 
 const len = (pts) => pts.slice(1).reduce((d, p, i) => d + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]), 0);
 const run = LANES.find((l) => l.id === 'corellian-run');
@@ -115,5 +115,8 @@ describe('viaLanes', () => {
   });
   it('calls two systems on the one lane point a short hop on the lanes (Tatooine to Geonosis)', () => {
     expect(viaLanes(routeBetween('tatooine', 'geonosis'))).toBe('a short hop, on the lanes');
+  });
+  it('names every lane a route can take, never its id', () => {
+    for (const a of SYSTEMS) for (const b of SYSTEMS) if (a !== b) expect(viaLanes(routeBetween(a.id, b.id))).not.toMatch(/-/);
   });
 });

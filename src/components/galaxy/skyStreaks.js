@@ -101,7 +101,10 @@ export function createSkyStreaks({ renderer, rand = Math.random } = {}) {
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.frustumCulled = false;
-  mesh.visible = false;
+  // (left visible with nothing to draw, not hidden: three draws nothing for
+  // an empty range, and the scene's warm-up compiles only what's visible, so
+  // the first ship out doesn't stall a frame compiling it)
+  geo.setDrawRange(0, 0);
   group.add(mesh);
 
   let traffic = createSkyTraffic({ links: [], rand });
@@ -118,8 +121,10 @@ export function createSkyStreaks({ renderer, rand = Math.random } = {}) {
     },
     update(dt) {
       const live = traffic.update(dt);
-      mesh.visible = live.length > 0;
-      if (!mesh.visible) return;
+      if (!live.length) {
+        geo.setDrawRange(0, 0);
+        return;
+      }
       renderer?.getDrawingBufferSize(px);
       mat.uniforms.uHalf.value.set(Math.max(1, px.x / 2), Math.max(1, px.y / 2));
       mat.uniforms.uWidth.value = 1.3 * (renderer?.getPixelRatio() ?? 1);
