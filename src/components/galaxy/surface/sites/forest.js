@@ -70,9 +70,13 @@ export const SITES = {
     ground: { detail: 'needles', detailLook: { color: 0.8, normal: 0.7 },
       seed: 7,
       wind: 0.3,
+      // (the redwood country as filmed: the floor rises and falls, folded
+      // into ravines and spurs, the village and the bunker on their own
+      // level ground; the forest moon's mountains far off, in the haze)
       layers: [
-        { type: 'swell', scale: 420, height: 14 },
-        { type: 'hills', scale: 150, height: 7 },
+        { type: 'swell', scale: 420, height: 22 },
+        { type: 'hills', scale: 130, height: 14 },
+        { type: 'ridges', scale: 300, height: 8 },
         { type: 'mountains', from: 900, to: 3200, height: 320, scale: 1300 },
       ],
       palette: {
@@ -245,17 +249,28 @@ export const SITES = {
       { kind: 'cooler', at: [18, 10.4], yaw: 2.1 },
       { kind: 'redwood', at: [-22, 24], model: false, opts: { seed: 31, h: 64, r: 2.4 } },
       { kind: 'redwood', at: [28, -26], model: false, opts: { seed: 32, h: 58, r: 2.1 } },
-      // the second Death Star, half built, over the trees (N8's model, from Sketchfab; clear of the fog, its bite turned to the forest)
-      { kind: 'ds2sky', at: [2880, -3143], abs: true, y: 2614, yaw: 2.2, solid: false, fog: false },
+      // the second Death Star, half built, over the trees (N8's model, from
+      // Sketchfab; clear of the fog, its bite turned to the forest), hung
+      // where you see it as you climb out of the ship: ahead and to the
+      // right of the landing, a hand's width over the treetops
+      { kind: 'ds2sky', at: [2600, 700], abs: true, y: 1200, yaw: 2.6, scale: 2.0, solid: false, fog: false },
       { kind: 'lightshafts', at: [0, 0], opts: { ...ENDOR_SUN, n: 8, spread: 40, seed: 5 } },
       { kind: 'lightshafts', at: [130, -110], opts: { ...ENDOR_SUN, n: 8, spread: 46, seed: 7 } },
       { kind: 'lightshafts', at: [-90, 60], opts: { ...ENDOR_SUN, n: 8, spread: 46, seed: 9 } },
     ],
     scatter: [
-      { kind: 'redwood', n: 300, within: [24, 640], scale: [0.75, 1.35], opts: { seed: 1, leaf: '#3a4626' } },
-      { kind: 'redwood', n: 160, within: [24, 640], scale: [0.6, 1.2], opts: { seed: 2, h: 58, r: 2.0, bark: '#7a4a32', leaf: '#3e4a28' } },
-      { kind: 'redwood', n: 140, within: [600, 1300], scale: [1.0, 1.5], solid: false, opts: { seed: 3, lo: true, leaf: '#3a4626' } },
-      { kind: 'spruce', n: 140, within: [20, 620], scale: [0.7, 1.3], opts: { seed: 4, leaf: '#2f3e26' } },
+      // (the stand close set, as a redwood grove is: trunks in every
+      // direction, the nearest ring thickest so the clearing you land in
+      // reads as one, and the far ones carrying the forest to the hills)
+      // (the full trees where you walk; past the fog's reach, where a tree
+      // is a trunk in the mist, the light ones, as many again)
+      { kind: 'redwood', n: 320, within: [24, 280], scale: [0.75, 1.35], opts: { seed: 1, leaf: '#3a4626' } },
+      { kind: 'redwood', n: 150, within: [24, 280], scale: [0.6, 1.2], opts: { seed: 2, h: 58, r: 2.0, bark: '#7a4a32', leaf: '#3e4a28' } },
+      { kind: 'redwood', n: 100, within: [28, 200], scale: [0.7, 1.25], opts: { seed: 13, leaf: '#3c4828' } },
+      { kind: 'redwood', n: 300, within: [280, 640], scale: [0.75, 1.35], opts: { seed: 14, lo: true, leaf: '#3a4626' } },
+      { kind: 'redwood', n: 140, within: [280, 640], scale: [0.6, 1.2], opts: { seed: 15, lo: true, h: 58, r: 2.0, bark: '#7a4a32', leaf: '#3e4a28' } },
+      { kind: 'redwood', n: 200, within: [600, 1300], scale: [1.0, 1.5], solid: false, opts: { seed: 3, lo: true, leaf: '#3a4626' } },
+      { kind: 'spruce', n: 160, within: [20, 420], scale: [0.7, 1.3], opts: { seed: 4, leaf: '#2f3e26' } },
       { kind: 'fern', n: 1100, within: [6, 240], scale: [0.9, 2.1], solid: false, clear: -12, opts: { seed: 5, n: 11, color: '#56592c' } },
       // (the floor near you carpeted, as the film's is: low ferns, close set)
       { kind: 'fern', n: 1500, within: [4, 90], scale: [0.7, 1.5], solid: false, clear: -14, opts: { seed: 12, n: 7, color: '#5a5e2e' } },

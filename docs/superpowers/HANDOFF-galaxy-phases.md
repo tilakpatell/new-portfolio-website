@@ -74,7 +74,12 @@ truth where this disagrees with it.
   `url` and `fog: false` specs, 3 km across over the eastern sea); Endor's
   is N8's half-built *Death Star II* from Sketchfab (`catalog/forest.js`
   `ds2sky`, 3.3 MB, credited), placed clear of the fog with its bite to the
-  forest, in place of the built sphere.
+  forest, in place of the built sphere: hung 2.7 km out and 1.2 km up at
+  twice its size (1.3 km across, a hand's width over the treetops ahead
+  and to the right of the landing, where the trunks part), above the
+  far mountains' skyline, its ambient occlusion eased and its reflections
+  up so it reads pale against the sky. The debug `teleport` takes a
+  pitch now, for the shots of what's in the sky.
 - **Two scans more** (`scripts/galaxy-textures.mjs`, Poly Haven CC0):
   `redrock` (`rock_boulder_cracked`) on Geonosis's spires, hives, foundry,
   hangar, boulders and stones, and over the arena and hive models up close
@@ -86,7 +91,15 @@ truth where this disagrees with it.
 - **Denser worlds**: Scarif 600 palms (with a light copy past 60 m,
   `palm.lod1.glb`, made with `makeLod` at `over: 0`), more scrub, ferns and
   stones, thicker dune grass; Endor mossy boulders, stones, bushes and
-  toadstools under the ferns, more logs; Geonosis more spires and stones.
+  toadstools under the ferns, more logs, and the stand close set (1,010
+  redwoods and 160 spruces where there were 600 trees: the full redwoods
+  within 280 m, a ring of them thickest round the landing, the light
+  `lo` ones past the fog's reach to 640 m and beyond); Geonosis more
+  spires and stones.
+- **Endor's ground folded**: the floor rises and falls now (swell 22 m,
+  hills 14 m, ridges 8 m, where it was 14 and 7 and read as a plain), the
+  village, the bunker, the generator and the war's posts on their own
+  level ground (the places' flats; `index.test.js` checks every post).
 - **Looks**: Geonosis's fog thinned (0.0009 → 0.00055) so the hives and
   the core ships read to the horizon; the sky's gas giants (Endor's) get
   storms and eddies in their bands; Endor's spruces lose their flat dark

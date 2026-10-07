@@ -17,6 +17,6 @@ export const MODELS = {
   atrt: { uid: '6796698b4d564377838c06319ec96f90', as: 'the AT-RT walkers', metres: 3.2, yaw: 0, up: 'y', tris: 14000, tex: 1024 },
   // the second Death Star, half built, hanging in Endor's sky (placed as a
   // thing, far off and out of the fog: sites/forest.js)
-  ds2sky: { uid: '17ccca0dbb6b4e338fa999202f9e6685', as: 'the second Death Star', metres: 640, along: 'max', yaw: 0, up: 'y', tris: 14000, tex: 2048, hero: true, look: { roughness: 0.85, metalness: 0.1 } },
+  ds2sky: { uid: '17ccca0dbb6b4e338fa999202f9e6685', as: 'the second Death Star', metres: 640, along: 'max', yaw: 0, up: 'y', tris: 14000, tex: 2048, hero: true, look: { roughness: 0.85, metalness: 0.1, aoMapIntensity: 0.3, envMapIntensity: 1.6 } },
   atap: { uid: 'c721bd590a6d465387895d56a2c8aa9a', as: 'the AT-AP walkers', metres: 10, yaw: 0, up: 'y', tris: 25000, tex: 512, rig: true, anim: { idle: 'Armature|Idle', walk: 'Armature|Walker Walk' } },
 };
