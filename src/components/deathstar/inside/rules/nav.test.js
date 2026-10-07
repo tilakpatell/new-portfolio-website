@@ -117,3 +117,75 @@ describe('routes by lift', () => {
     expect(five.some((p) => p.lift)).toBe(false);
   });
 });
+
+// How near a route’s legs come to a box or a circle, sampled every few
+// centimetres along each leg (0 when a leg runs through it).
+const toBox = (b, p) => Math.hypot(Math.max(b.x0 - p.x, 0, p.x - b.x1), Math.max(b.z0 - p.z, 0, p.z - b.z1));
+const toCircle = (c, p) => Math.max(0, Math.hypot(p.x - c.x, p.z - c.z) - c.r);
+function closest(path, far) {
+  let min = Infinity;
+  for (let i = 1; i < path.length; i++) {
+    const [p, q] = [path[i - 1], path[i]];
+    const n = Math.max(1, Math.ceil(Math.hypot(q.x - p.x, q.z - p.z) / 0.02));
+    for (let k = 0; k <= n; k++) min = Math.min(min, far({ x: p.x + ((q.x - p.x) * k) / n, z: p.z + ((q.z - p.z) * k) / n }));
+  }
+  return min;
+}
+const near = (p, x, z) => Math.abs(p.x - x) < 0.05 && Math.abs(p.z - z) < 0.05;
+
+describe('routes round solids', () => {
+  // the Falcon on Bay 327’s deck, about 25 m across and 35 m long
+  const FALCON = { x0: -20.5, x1: 4.5, z0: -19.5, z1: 15.5 };
+  const falcon = (id) => (id === 'bay327' ? [{ box: FALCON }] : []);
+  const nav = createNav(buildLayout(DS1));
+
+  it('goes round the Falcon in Docking Bay 327 by her shorter side, 0.4 m clear, never across her', () => {
+    const path = route(nav, { room: 'bay327', x: -26, z: 0 }, { room: 'bay327', x: 10, z: 0 }, { solidsOf: falcon });
+    expect(path.length).toBe(4);
+    // nor by her hatch, which stands under her, as if it were a corner of the bay
+    expect(path.every((p) => p.room === 'bay327' && !p.door)).toBe(true);
+    // round her nose, 15.9 m south towards the field, rather than her tail, 19.9 m north
+    expect(near(path[1], -20.9, 15.9) && near(path[2], 4.9, 15.9)).toBe(true);
+    expect(closest(path, (p) => toBox(FALCON, p))).toBeGreaterThan(0.39);
+  });
+
+  it('goes round a round solid 0.4 m clear of it', () => {
+    const pillar = { x: 0, z: 0, r: 1 };
+    const n = navOf(station([room('hall', 0, 0, 20, 10)]));
+    const path = route(n, { room: 'hall', x: -3, z: 0.2 }, { room: 'hall', x: 3, z: 0 }, { solidsOf: () => [{ circle: pillar }] });
+    expect(path.length).toBeGreaterThan(2);
+    expect(closest(path, (p) => toCircle(pillar, p))).toBeGreaterThan(0.39);
+  });
+
+  it('passes a solid against a wall on its open side', () => {
+    const bench = { x0: -2, x1: 2, z0: -5, z1: 1 };
+    const n = navOf(station([room('hall', 0, 0, 20, 10)]));
+    const path = route(n, { room: 'hall', x: -8, z: -3 }, { room: 'hall', x: 8, z: -3 }, { solidsOf: () => [{ box: bench }] });
+    expect(path.some((p) => p.z > 1.4)).toBe(true);
+    expect(closest(path, (p) => toBox(bench, p))).toBeGreaterThan(0.39);
+  });
+
+  it('takes the door in the open over one a bench puts out of the way', () => {
+    // a long bench between the start and the nearer door
+    const bench = { x0: -9, x1: 2, z0: 0, z1: 2 };
+    const n = navOf(station([room('a', 0, 0, 20, 10), room('b', 0, 10, 20, 10)], [door('left', 'a', 'b', -3, 5, 'x'), door('right', 'a', 'b', 6, 5, 'x')]));
+    const from = { room: 'a', x: -3, z: -4 };
+    const to = { room: 'b', x: 1, z: 10 };
+    expect(doorsOf(route(n, from, to))).toEqual(['left']);
+    const path = route(n, from, to, { solidsOf: (id) => (id === 'a' ? [{ box: bench }] : []) });
+    expect(doorsOf(path)).toEqual(['right']);
+    expect(closest(path, (p) => toBox(bench, p))).toBeGreaterThan(0.39);
+  });
+
+  it('still finds a way out for someone standing inside a solid', () => {
+    const path = route(nav, { room: 'hold', x: -12, z: -9 }, { room: 'ctl327', x: 22, z: -27.5 }, { solidsOf: falcon });
+    expect(doorsOf(path)).toEqual(['hold-hatch', 'bay327-ctl']);
+    expect(route(nav, { room: 'bay327', x: -8, z: 0 }, { room: 'bay327', x: 10, z: 0 }, { solidsOf: falcon })?.at(-1)).toEqual({ x: 10, z: 0, room: 'bay327' });
+  });
+
+  it('has no route to a point walled in by solids', () => {
+    const n = navOf(station([room('hall', 0, 0, 20, 10)]));
+    const pen = [{ box: { x0: 3, x1: 9, z0: -5, z1: -4 } }, { box: { x0: 3, x1: 9, z0: 4, z1: 5 } }, { box: { x0: 3, x1: 4, z0: -5, z1: 5 } }, { box: { x0: 8, x1: 9, z0: -5, z1: 5 } }];
+    expect(route(n, { room: 'hall', x: -8, z: 0 }, { room: 'hall', x: 6, z: 0 }, { solidsOf: () => pen })).toBeNull();
+  });
+});
