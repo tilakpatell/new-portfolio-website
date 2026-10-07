@@ -111,6 +111,7 @@ import { houseOn } from '../../lib/three/house';
 import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, driveById, hyperState, legOf, parkFor, riftExit } from './nav';
 import { laneAim, laneFrame, lanePlan, rideLine } from './lanePilot';
+import { createLaneLook } from './laneLook';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
 import { AHEAD_OF, crewAt, factionsOf, kindsOf, pick as pickFaction, sideAt, sideFor, sideOf, wingOf } from './sides';
 import { TROOPS } from './foot';
@@ -2253,7 +2254,7 @@ export async function create(canvas, ctx) {
         b.visible = false;
         continue;
       }
-      const h = traffic?.hit(shotFrom, b.position);
+      const h = traffic?.hit(shotFrom, b.position) ?? laneLook.hit(shotFrom, b.position);
       if (h) {
         b.visible = false;
         pops.hit({ point: h.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: h.glance ? 0.25 : h.size * 1.6 });
@@ -2425,7 +2426,7 @@ export async function create(canvas, ctx) {
           continue;
         }
       }
-      const h = traffic?.hit(shotFrom, to);
+      const h = traffic?.hit(shotFrom, to) ?? laneLook.hit(shotFrom, to);
       if (h) {
         if (!h.glance) {
           emit({ type: 'kill', kind: h.kind });
@@ -3781,6 +3782,9 @@ export async function create(canvas, ctx) {
     emit({ type: 'event', id: 'gunThrough', sub: out.sector });
   };
 
+  // the lanes drawn: their ribbons, their traffic as light and the ships of
+  // it nearest you, and the ride's look (laneLook.js)
+  const laneLook = createLaneLook({ map, camera, renderer, fleet, engines, tier, phone: (window.matchMedia?.('(pointer: coarse)').matches ?? false) || Math.min(window.innerWidth, window.innerHeight) < 600, small, reduced });
   // a frame of the lanes taken in: the ride and the autopilot as they are
   // now, the hunters left behind getting on (they can't follow onto a
   // lane), and the HUD's lane line (on and off, and twice a second between)
@@ -4579,7 +4583,7 @@ export async function create(canvas, ctx) {
     const baseWant = onFoot() ? FOOT_FOV : flying() && state.view === 'cockpit' ? cabFov() : FOV;
     state.fovBase += (baseWant - state.fovBase) * (reduced ? 1 : 1 - Math.exp(-dt * 5));
     const plunging = state.crash?.swallow ? plungeAt(state.crash.age) : 0;
-    const fov = state.fovBase + (reduced || !flying() || onFoot() || state.view === 'map' ? 0 : 8 * state.streak ** 1.4 + 4 * state.kick * (1 - state.kick * 0.5) + 18 * plunging ** 2);
+    const fov = state.fovBase + (reduced || !flying() || onFoot() || state.view === 'map' ? 0 : 8 * state.streak ** 1.4 + 4 * state.kick * (1 - state.kick * 0.5) + 18 * plunging ** 2 + laneLook.fov);
     if (Math.abs(camera.fov - fov) > 0.005) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
@@ -4699,6 +4703,7 @@ export async function create(canvas, ctx) {
     house.follow({ adopt: houseFrames++ % 30 === 0 });
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
     farPlaces.update(camera, dt, state.auto?.id ?? state.jump?.id ?? null);
+    const lanesBusy = laneLook.update(dt, { ship: flying() && !state.crash && !state.dive ? state.ship : null, ride: state.ride, view: state.view, side: sideFor(state.kind)?.id ?? null });
     sectorPortals.update(t, camera);
     curve.update(t, sectorOf(camLocal.x, camLocal.y, camLocal.z) === 'rickmorty');
     sectorFleet.update(t, Boolean(state.ship) && sectorOf(state.ship.x, state.ship.y, state.ship.z) === 'rickmorty');
@@ -4755,7 +4760,7 @@ export async function create(canvas, ctx) {
     if (state.dive) return now - state.dive.start < DIVE_MS; // then the page takes over
     if (state.crash?.through) return true; // the crater glows on while the page washes out
     if (props.frozen) return false;
-    return !still() || moving || shooting || launching || sieging || fxBusy || bursting || novaBusy || adventuring || piloting || net?.peers.size > 0 || state.kick > 0 || state.hitMark > 0 || cabWas !== state.cabK || Math.abs(state.fovBase - baseWant) > 0.01 || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.jump) || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null || state.blend);
+    return !still() || moving || shooting || launching || sieging || fxBusy || bursting || novaBusy || adventuring || piloting || net?.peers.size > 0 || state.kick > 0 || state.hitMark > 0 || cabWas !== state.cabK || Math.abs(state.fovBase - baseWant) > 0.01 || pulseAt || traffic?.count > 0 || lanesBusy || state.flare > 1 || Boolean(state.jump) || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null || state.blend);
   }
 
   // ── Keys, while flying ──
@@ -5200,7 +5205,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView, laneLook };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -5504,6 +5509,7 @@ export async function create(canvas, ctx) {
       fleet.dispose();
       deep.dispose();
       farPlaces.dispose();
+      laneLook.dispose();
       sectorPortals.dispose();
       gunPortal.dispose();
       curve.dispose();

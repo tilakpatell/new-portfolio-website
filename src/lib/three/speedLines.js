@@ -1,10 +1,12 @@
-// Speed lines out in the open: on the sublight drive, at speed, the stars
-// ahead are drawn out into faint lines streaming past, riding with the camera
-// along its line of sight. (The jump to lightspeed itself is the site's own,
-// components/Hyperspace.jsx, the same as the universe map's: the galaxy
-// holds it in its tunnel while it builds the next system, scene.js.)
+// Speed lines: at speed, the stars ahead drawn out into faint lines
+// streaming past, riding with the camera along its line of sight. The
+// caller adds the group to its camera and says each frame how drawn out
+// they are and how fast they rush by; nothing here knows what’s flying.
+// (The galaxy uses it on the sublight drive, the universe map on a
+// hyperlane.) One LineSegments, a line a star, worked out in the vertex
+// shader; additive, no depth, no textures.
 //
-// createSpeedLines({ small }) → { group (the camera's child), set({ stretch, speed }), busy, update(dt), dispose() }
+// createSpeedLines({ small }) → { group (the camera’s child), set({ stretch, speed }), busy, update(dt), dispose() }
 
 import * as THREE from 'three';
 
@@ -84,7 +86,9 @@ export function createSpeedLines({ small = false } = {}) {
       return now.stretch > 0.001;
     },
     update(dt) {
-      travel += dt * (40 + now.speed);
+      // (kept to one depth of the field, which the shader’s mod can’t tell
+      // from the whole of it, so a long run never wears the float down)
+      travel = (travel + dt * (40 + now.speed)) % DEPTH;
       const u = lineMat.uniforms;
       lines.visible = now.stretch > 0.001;
       u.uStretch.value = Math.min(1, now.stretch * 1.4);

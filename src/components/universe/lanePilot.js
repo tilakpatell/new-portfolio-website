@@ -12,9 +12,9 @@
 // across the tube); dropped out on the way (the throttle held back), it
 // flies the rest free.
 
-import { R, carriageway, nodeById, routeTo } from './hyperlanes';
+import { LANES, R, carriageway, nodeById, routeTo } from './hyperlanes';
 import { tangent } from './lanes';
-import { enter, poseOf, step } from './ride';
+import { enter, frame, poseOf, step } from './ride';
 import { SPACE, headingTo, parkAt } from './ship';
 
 // A trip by the lanes to `id` (parked at `park` at the end): the autopilot's
@@ -88,10 +88,34 @@ export function laneFrame({ ride, auto, ship }, input, dt, { canEnter = true } =
   return { ride: r.out ? null : r.ride, auto: next, ship: r.ship, out: r.out };
 }
 
+// Whether the throttle held forward at the end of `lane` going `way` carries
+// straight on, the way ride.js's step tells it: another lane leaving that
+// node as quick or quicker, within 30° of the way the ride's going. (Only a
+// beacon has one, and not every beacon does for every lane in.) Worked out
+// once a lane and way, as the HUD asks every time the line changes.
+const ON_ANGLE = (30 * Math.PI) / 180;
+const RANK = { local: 0, trunk: 1, express: 2 };
+const onward = new Map();
+function carriesOn(lane, way) {
+  const key = `${lane.id}:${way}`;
+  if (onward.has(key)) return onward.get(key);
+  const node = way === 'out' ? lane.to : lane.from;
+  const along = frame(lane, way, 1).along;
+  const yes = LANES.some((o) => {
+    if (o === lane || (o.from !== node && o.to !== node) || RANK[o.tier] < RANK[lane.tier]) return false;
+    const d = frame(o, o.from === node ? 'out' : 'in', 0).along;
+    return Math.acos(Math.min(1, along[0] * d[0] + along[1] * d[1] + along[2] * d[2])) <= ON_ANGLE;
+  });
+  onward.set(key, yes);
+  return yes;
+}
+
 // The HUD's lane line for a ride: the lane's name and tier, the node it's
-// coming to, and the seconds till it gets there
+// coming to, the seconds till it gets there, and whether that's a junction
+// it can carry on through with the throttle held forward (else the ride
+// ends there, at the node's off-ramp)
 export function rideLine(ride) {
   const node = nodeById(ride.way === 'out' ? ride.lane.to : ride.lane.from);
   const eta = ((1 - ride.s) * ride.lane.length) / Math.max(1, ride.speed);
-  return { name: ride.lane.name, tier: ride.lane.tier, next: node?.name ?? '', eta };
+  return { name: ride.lane.name, tier: ride.lane.tier, next: node?.name ?? '', eta, junction: carriesOn(ride.lane, ride.way) };
 }
