@@ -35,7 +35,8 @@ export const MODELS = {
   // Naboo: Theed's royal palace on the cliff (its courtyard stays)
   theedpalace: { made: 'meshy', lod: true, as: "Theed's royal palace", metres: 132, along: 'x', hero: true, solids: 'built' },
   // Kamino: a dome of Tipoca City on its stilts (its towers stay the Sketchfab one)
-  tipocadome: { made: 'meshy', lod: true, as: "Tipoca City's domes", metres: 44, along: 'x', hero: true },
+  // (ultra: made again from the city shot's rounded dome on stilts, scripts/meshy-galaxy-ultra.mjs)
+  tipocadome: { made: 'meshy', lod: true, as: "Tipoca City's domes", metres: 44, along: 'x', hero: true, ultra: { tris: 119997, tex: 8192 } },
   // Mustafar: the mining facility (its door and podium stay)
   mining: { made: 'meshy', lod: true, as: 'the Mustafar mining facility', metres: 120, along: 'x', hero: true, solids: 'built', ultra: { tris: 179999, tex: 8192 } },
   // Hoth: the v-150 Planet Defender (scripts/meshy-galaxy-buildings-bases.mjs,
@@ -56,7 +57,8 @@ export const MODELS = {
   // doors stay the built ones'), 500 Republica
   cloudtower: { made: 'meshy', as: 'a tower of Cloud City', metres: 60, along: 'y', ultra: { tris: 41798, tex: 8192 } },
   cloudtower2: { made: 'meshy', as: 'a domed hall of Cloud City', metres: 40, along: 'y', ultra: { tris: 44200, tex: 8192 } },
-  cloudplaza: { made: 'meshy', as: "Cloud City's plaza terraces", metres: 48, along: 'x', hero: true },
+  // (ultra: made again as the stepped terraces round an open court, scripts/meshy-galaxy-ultra.mjs)
+  cloudplaza: { made: 'meshy', as: "Cloud City's plaza terraces", metres: 48, along: 'x', hero: true, ultra: { tris: 79998, tex: 8192 } },
   dexdiner: { made: 'meshy', as: "Dex's Diner", metres: 22, along: 'x', solids: 'built' },
   club: { made: 'meshy', as: 'the Outlander Club', metres: 24, along: 'x', solids: 'built' },
   republica: { made: 'meshy', as: '500 Republica', metres: 330, along: 'y' },
