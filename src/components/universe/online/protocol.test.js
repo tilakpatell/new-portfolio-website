@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DAMAGE_MAX, FLAG, FLOOD, GUARD, NAME_MAX, PACK_MAX, PUNCH_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, randomCallsign, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, sample, writeCursor, writeFoot, writeLooksWire, writePack, writePose, writeShot } from './protocol';
+import { DAMAGE_MAX, FLAG, FLOOD, GUARD, NAME_MAX, PACK_MAX, PUNCH_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, randomCallsign, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, sample, writeCursor, writeFactions, writeFoot, writeLooksWire, writePack, writePose, writeShot } from './protocol';
 import { STOCK_LOADOUT, writeOutfit } from '../outfit';
 import { STOCK_BUILD, writeBuild } from '../shipyard/build';
 import { defaultLook, readLook, readLooks, writeLook } from '../../rickmorty/wardrobe/looks';
@@ -40,13 +40,48 @@ describe('randomCallsign', () => {
   });
 });
 
+const NO_FACTIONS = { side: null, standing: null, war: null, oath: null, rank: null };
+
 describe('readHello', () => {
+  it('a hello without the new fields reads as before', () => {
+    // (a pilot on a build from before the wallet: level 1, nobody's)
+    const h = readHello({ n: 'Old Timer', k: 'falcon', c: 2, w: '/universe' });
+    expect(h.level).toBe(1);
+    expect(h.factions).toEqual(NO_FACTIONS);
+    expect(h).toMatchObject({ name: 'Old Timer', kind: 'falcon', kills: 2, where: '/universe' });
+  });
+  it('lv is clamped and f is whitelisted', () => {
+    expect(readHello({ n: 'A', lv: 99 }).level).toBe(11);
+    expect(readHello({ n: 'A', lv: 7 }).level).toBe(7);
+    expect(readHello({ n: 'A', lv: 4.7 }).level).toBe(4);
+    for (const junk of [0, -3, '9', null, NaN, [5], { v: 5 }]) expect(readHello({ n: 'A', lv: junk }).level).toBe(1);
+    expect(readHello({ n: 'A', f: { s: 'disney' } }).factions.side).toBeNull();
+    expect(readHello({ n: 'A', f: { s: 'starwars' } }).factions.side).toBe('starwars');
+    expect(readHello({ n: 'A', f: { o: 'empire', r: 'admiral' } }).factions).toMatchObject({ oath: 'empire', rank: 'admiral' });
+    // (a rank that isn't the oath's side's is nobody's)
+    expect(readHello({ n: 'A', f: { o: 'rebel', r: 'admiral' } }).factions).toMatchObject({ oath: 'rebel', rank: null });
+    // nobody swears to the Hutts, and an oath must be to a side of the war named
+    expect(readHello({ n: 'A', f: { o: 'hutt' } }).factions.oath).toBeNull();
+    expect(readHello({ n: 'A', f: { w: 'clone', o: 'rebel' } }).factions).toMatchObject({ war: 'clone', oath: null });
+    expect(readHello({ n: 'A', f: { w: 'order66', o: 'rebel' } }).factions).toMatchObject({ war: null, oath: 'rebel' });
+    // standing names only from standing.js, and only with a side to have it with
+    expect(readHello({ n: 'A', f: { s: 'rickmorty', st: { law: 'trusted', civil: 'emperor', outlaw: 7 } } }).factions.standing).toEqual({ law: 'trusted', civil: null, outlaw: null });
+    expect(readHello({ n: 'A', f: { s: 'rickmorty', st: { law: 'friend' } } }).factions.standing).toEqual({ law: null, civil: null, outlaw: null });
+    expect(readHello({ n: 'A', f: { st: { law: 'trusted' } } }).factions.standing).toBeNull();
+    for (const junk of ['rebel', 7, [1, 2], null, { s: { toString: () => 'starwars' } }]) expect(readHello({ n: 'A', f: junk }).factions).toEqual(NO_FACTIONS);
+  });
+  it('writes the factions it reads back', () => {
+    const f = { side: 'starwars', standing: { law: 'wanted', civil: null, outlaw: 'friend' }, war: 'gcw', oath: 'rebel', rank: 'flight-leader' };
+    expect(readHello({ n: 'A', lv: 5, f: writeFactions(f) })).toMatchObject({ level: 5, factions: f });
+    expect(readHello({ n: 'A', f: writeFactions(NO_FACTIONS) }).factions).toEqual(NO_FACTIONS);
+  });
+
   it('reads a hello and cleans it', () => {
-    expect(readHello({ n: ' Ace ', k: 'xwing', c: 3, w: '/middle-earth' })).toEqual({ name: 'Ace', kind: 'xwing', loadout: STOCK_LOADOUT, build: null, looks: null, kills: 3, where: '/middle-earth' });
+    expect(readHello({ n: ' Ace ', k: 'xwing', c: 3, w: '/middle-earth' })).toEqual({ name: 'Ace', kind: 'xwing', loadout: STOCK_LOADOUT, build: null, looks: null, kills: 3, where: '/middle-earth', level: 1, factions: NO_FACTIONS });
   });
   it('drops an unknown ship and bad kills', () => {
-    expect(readHello({ n: 'A', k: '<img>', c: -5, w: 'javascript:alert(1)' })).toEqual({ name: 'A', kind: null, loadout: STOCK_LOADOUT, build: null, looks: null, kills: 0, where: null });
-    expect(readHello({ n: '', k: null, c: 'lots' })).toEqual({ name: 'Pilot', kind: null, loadout: STOCK_LOADOUT, build: null, looks: null, kills: 0, where: null });
+    expect(readHello({ n: 'A', k: '<img>', c: -5, w: 'javascript:alert(1)' })).toEqual({ name: 'A', kind: null, loadout: STOCK_LOADOUT, build: null, looks: null, kills: 0, where: null, level: 1, factions: NO_FACTIONS });
+    expect(readHello({ n: '', k: null, c: 'lots' })).toEqual({ name: 'Pilot', kind: null, loadout: STOCK_LOADOUT, build: null, looks: null, kills: 0, where: null, level: 1, factions: NO_FACTIONS });
   });
   it('reads the paint job and parts fitted, and only ones it knows', () => {
     const l = { ...STOCK_LOADOUT, paint: 'sith', booster: 'portal', guns: 'fusion', fins: 'fins' };

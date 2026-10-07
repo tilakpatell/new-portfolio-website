@@ -19,7 +19,11 @@
 //           (outfit.js), b: its garage build (shipyard/build.js's ids) or
 //           none, l: [Rick's look, Morty's] (wardrobe/looks.js's ids) or
 //           none, lb: [Walt’s look, Jesse’s] or none, c: kills, w: where
-//           on the site }  on joining, and on any change
+//           on the site, lv: level (economy.js's, 1 to 11), f: factions
+//           { s: side (sides.js), st: { law, civil, outlaw } standing.js's
+//           level names, w: war, o: the side sworn to in it (galaxy/sides.js),
+//           r: rank on that side (galaxy/ranks.js) } or none; a build older
+//           than these sends neither: level 1, nobody's }  on joining, and on any change
 //   pose  [x, y, z, heading, pitch, bank, speed, vy, flags, shields]  ten times a second while flying
 //         (flags: hidden, boosting, and safe: just back, your hits don't count)
 //   shot  [x, y, z, vx, vy, vz, w?]                      a bolt fired (for drawing it); w: the
@@ -59,6 +63,12 @@ import { KINDS as HUNTERS } from '../../galaxy/hunted';
 import { fromAngles, slerp, toAngles } from '../orient';
 import { cleanWhere } from './where';
 import { cleanName } from './names';
+import { LEVELS as XP_LEVELS } from '../economy';
+import { SIDES } from '../sides';
+import { AXES, LEVELS as STANDING_LEVELS } from '../standing';
+import { SIDES as WAR_SIDES, WARS, warOfSide } from '../../galaxy/sides';
+import { RANKS } from '../../galaxy/ranks';
+import { NO_FACTIONS } from './relations';
 
 export { NAME_MAX, cleanName, randomCallsign } from './names';
 
@@ -98,7 +108,31 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // null, the stock ship)
 export function readHello(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
-  return { name: cleanName(data.n) ?? 'Pilot', kind: parseShip(data.k), loadout: readOutfit(data.o, data.p), build: readBuildWire(data.b), looks: readLooksWire(data), kills: Math.floor(num(data.c, 0, 9999) ?? 0), where: cleanWhere(data.w) };
+  return { name: cleanName(data.n) ?? 'Pilot', kind: parseShip(data.k), loadout: readOutfit(data.o, data.p), build: readBuildWire(data.b), looks: readLooksWire(data), kills: Math.floor(num(data.c, 0, 9999) ?? 0), where: cleanWhere(data.w), level: Math.floor(num(data.lv, 1, XP_LEVELS.length) ?? 1), factions: readFactions(data.f) };
+}
+
+// A pilot's factions (relations.js's shape), for a hello's `f`: only what
+// there is to say goes, and nothing at all for nobody's
+export function writeFactions({ side = null, standing = null, war = null, oath = null, rank = null } = {}) {
+  const st = side && standing ? Object.fromEntries(AXES.filter((a) => standing[a]).map((a) => [a, standing[a]])) : null;
+  const out = { ...(side ? { s: side } : {}), ...(st && Object.keys(st).length ? { st } : {}), ...(war ? { w: war } : {}), ...(oath ? { o: oath } : {}), ...(rank ? { r: rank } : {}) };
+  return Object.keys(out).length ? out : null;
+}
+
+// a hello's `f` as it came in: each field an id from the lists we have, or
+// null (a rank only on the side sworn to, an oath only to a side of the war
+// named, a standing only with a side to have it with)
+const named = (v, list) => (typeof v === 'string' && Object.hasOwn(list, v) ? v : null);
+const standingName = (axis, v) => (typeof v === 'string' && STANDING_LEVELS[axis].some(([, name]) => name === v) ? v : null);
+function readFactions(f) {
+  if (!f || typeof f !== 'object' || Array.isArray(f)) return { ...NO_FACTIONS };
+  const side = named(f.s, SIDES);
+  const standing = side && f.st && typeof f.st === 'object' && !Array.isArray(f.st) ? Object.fromEntries(AXES.map((a) => [a, standingName(a, f.st[a])])) : null;
+  const war = named(f.w, WARS);
+  const sworn = named(f.o, WAR_SIDES);
+  const oath = sworn && warOfSide(sworn) && (!war || warOfSide(sworn) === war) ? sworn : null;
+  const rank = oath && typeof f.r === 'string' && RANKS[oath]?.some((r) => r.id === f.r) ? f.r : null;
+  return { side, standing, war, oath, rank };
 }
 
 // Each cast’s pair of looks under a key of its own (Rick and Morty’s under

@@ -95,3 +95,10 @@ export function useEconomy() {
   useEffect(() => want(), [want]);
   return ctx;
 }
+
+// The wallet if a page has already asked for it, without asking (the link
+// to the other pilots is up on every page, and a portfolio page shouldn't
+// fetch the wallet just to say your level: it's 1 in the hello till the
+// universe or the galaxy has opened it)
+// eslint-disable-next-line react-refresh/only-export-components
+export const useEconomyIfLoaded = () => useContext(EconomyContext);
