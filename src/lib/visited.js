@@ -23,3 +23,10 @@ export function addVisited(list, pathname) {
 
 // seen it, or somewhere deeper in it (a role is Experience, a surface its system)
 export const hasVisited = (list, to) => Array.isArray(list) && list.some((p) => p === to || (typeof p === 'string' && p.startsWith(`${to}/`)));
+
+// The shell's own keys a thing to do may be ticked by (data/todo.js's
+// `done: { key, is }`): what's set when you've picked a ship, pinned a
+// colour, made your own, read the site in a script, found an egg, chosen
+// light or dark, turned the sound on, or picked a front door. A world's keys
+// stay the world's (the island rule): its row ticks by its achievement.
+export const SHELL_KEYS = ['tp-universe-ship', 'tp-theme-pin', 'tp-custom-color', 'tp-scripts-read', 'tp-eggs', 'tp-mode', 'tp-sound', 'tp-start'];
