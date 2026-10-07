@@ -10,6 +10,7 @@
 
 import * as THREE from 'three';
 import { byName } from './rules/blocks.js';
+import { NOON } from './rules/game.js';
 import { EYE } from './rules/player.js';
 import { BIOME_CLIMATE, colormapAt } from './pack/colormap.js';
 import { MC, loadBlockArray, loadSprite, pixels } from './scene/atlasTexture.js';
@@ -64,7 +65,8 @@ export function createScene(renderer, rt, { manifest }) {
     camera.position.set(prev.x + (p.x - prev.x) * alpha, prev.y + (p.y - prev.y) * alpha + eye, prev.z + (p.z - prev.z) * alpha);
     camera.rotation.set(p.pitch, p.yaw, 0);
     if (!materials) return;
-    sky.update(g.time, camera, distance * 16, g.ticks + alpha);
+    // (Phase 1 holds noon: the clock runs, the sky and the light wait for Phase 3's day)
+    sky.update(NOON, camera, distance * 16, g.ticks + alpha);
     // the eye under water: a close blue fog
     const wet = g.world.get(camera.position.x, camera.position.y, camera.position.z) === WATER;
     for (const m of Object.values(materials)) {
