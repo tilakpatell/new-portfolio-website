@@ -125,7 +125,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     const ky = Number.isFinite(kept?.y) ? kept.y : 0;
     const ok = kept && Number.isFinite(kept.x) && Number.isFinite(kept.z) && floorAt(kept.x, kept.z, ky) === ky && walkable(kept.x, kept.z, HERO_R, ky);
     const h = newHero(ok ? { ...kept, y: ky } : START);
-    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, frame: 0, moved: false, t: 0, jump: false, zip: false, perch: false, trick: false, suit: false, photo: null, armour: false, touchDown: false, mouseWeb: false, touchWeb: false, padBefore: null, tour: newTour(Number.isFinite(local.get(TOUR_BEST, null)) ? local.get(TOUR_BEST, null) : null), found: readFound(), lap: readLap(local.get(TOUR_LAP, null)), rec: null };
+    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, say: null, frame: 0, moved: false, t: 0, jump: false, zip: false, perch: false, trick: false, suit: false, photo: null, armour: false, touchDown: false, mouseWeb: false, touchWeb: false, padBefore: null, tour: newTour(Number.isFinite(local.get(TOUR_BEST, null)) ? local.get(TOUR_BEST, null) : null), found: readFound(), lap: readLap(local.get(TOUR_LAP, null)), rec: null };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -498,8 +498,13 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         lines.current[talk] = n + 1;
         const line = pool[n % pool.length];
         setBubble({ id: talk, name: person.name, line });
+        // (and the line to the drawing, for the gesture they say it with)
+        s.say = { id: talk, line };
         if (SPOKEN[line]) clip(SPOKEN[line]);
-      } else setBubble(null);
+      } else {
+        setBubble(null);
+        s.say = null;
+      }
     }
 
     // other players: where you are to them, and where they are; and, while
@@ -510,7 +515,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     const ghost = s.tour.on && s.lap ? lapAt(s.lap, s.tour.t) : null;
     if (ghost) others = [...(others ?? []), { id: 'best-lap', name: `Your best · ${clock(s.tour.best ?? 0)}`, ...ghost, moving: ghost.speed > 0.4, inside: false, ring: false }];
     try {
-      a.render({ hero: s.h, travellers: others, camYaw: s.yaw, camPitch: s.pitch, camDist: (touch ? 8.4 : 7.6) * set.camera, shake: set.shake, near: s.near, done: p.done, next: p.next, portal: p.portal, tour: s.tour, found: s.found, move: { mx: mv.x, mz: mv.z, len: Math.hypot(mv.x, mv.z) } }, ms * fast);
+      a.render({ hero: s.h, travellers: others, camYaw: s.yaw, camPitch: s.pitch, camDist: (touch ? 8.4 : 7.6) * set.camera, shake: set.shake, near: s.near, done: p.done, next: p.next, portal: p.portal, tour: s.tour, found: s.found, say: s.say, move: { mx: mv.x, mz: mv.z, len: Math.hypot(mv.x, mv.z) } }, ms * fast);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
       a.dispose();

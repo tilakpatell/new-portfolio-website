@@ -45,7 +45,11 @@ function objective(g) {
   return null;
 }
 
-export default function ThinkMark({ fallback }) {
+// `onResult(won)`: how a game ended, for the world's last episode (./world/InvWorld.jsx)
+export default function ThinkMark({ fallback, onResult = null }) {
+  // (the latest one, read when a game ends, so the page can pass a new function each render)
+  const resultRef = useRef(onResult);
+  resultRef.current = onResult;
   const three = use3D();
   const stage = useStage(load, { enabled: three.on, id: 'thinkmark', forced: three.mode === 'on' });
   const { unlock } = useAchievements();
@@ -130,11 +134,13 @@ export default function ThinkMark({ fallback }) {
               }
             }
             important = { result: { ...g.result, newBest: e.type === 'won' && g.score > best } };
+            if (e.type === 'won') resultRef.current?.(true);
             break;
           }
           case 'lost':
             play('alarm');
             important = { result: { ...g.result } };
+            resultRef.current?.(false);
             break;
           default:
         }

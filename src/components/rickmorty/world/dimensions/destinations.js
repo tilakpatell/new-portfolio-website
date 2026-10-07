@@ -2,8 +2,13 @@
 // place stands in its own column west of the rooms, one per 100 m of z from
 // z = 900 (the plan's Global Constraints); its builder (./<id>.js) loads the
 // first time the portal opens on it. Rick's garage portal goes wherever the
-// dial is set (kept as tp-rm-dial); every destination's portal goes home to
+// dial is set (kept as tp-rm-dial), and the place's own portal goes home to
 // the garage.
+//
+// Ten of them are the planets of the universe map's Rick and Morty sector
+// (PLANETS), and aren't on the dial: you land on one from the map and come
+// out at its way in (#/c-137/<id>, planetStart), and its own portal
+// (isWayHome) takes you back out to the map, not to the garage.
 //
 // Pure: rules.js spreads these into AREAS, LINKS, PEOPLE, HOTSPOTS and
 // TASKS; RmWorld.jsx takes the names, what people say and what talking to
@@ -16,14 +21,28 @@ import { ROWS as ROWS3 } from './rows3';
 
 export { DEST_COL, DEST_X, GARAGE_BACK, destArea, destZ } from './place';
 
-// every place, in the dial's order (the rows' files, ./place.js's shape)
+// every place, in the dial's order (the rows' files, ./place.js's shape; the planets are off the dial)
 export const DESTINATIONS = [...ROWS1, ...ROWS2, ...ROWS3];
 
 export const destinationById = (id) => DESTINATIONS.find((d) => d.id === id) ?? null;
 
+// ── the planets ──
+
+// in the order of the map's moons (universes.js's MOONS, which its test holds them to)
+export const PLANETS = ['gazorpazorp', 'squanch', 'birdworld', 'gearworld', 'pluto', 'snakeplanet', 'nuptia', 'resort', 'cronenberg', 'purge'];
+export const isPlanet = (id) => PLANETS.includes(id);
+// where Morty starts on a planet he's landed on: its way in, facing in
+export function planetStart(id) {
+  const d = isPlanet(id) ? destinationById(id) : null;
+  return d ? { area: d.id, x: d.arrive.x, z: d.arrive.z, face: d.arrive.face } : null;
+}
+// is this the planet's own portal, the way back out to the map?
+export const isWayHome = (link, id) => link?.id === `${id}-portal`;
+
 // ── the dial ──
 
-export const DIAL = [{ id: 'annex', name: 'Blips and Chitz', note: 'An arcade on an alien street. Roy: A Life Well Lived is in the back.' }, ...DESTINATIONS.map(({ id, name, note }) => ({ id, name, note }))];
+// the arcade, then every destination but the planets (an old setting for one is the arcade)
+export const DIAL = [{ id: 'annex', name: 'Blips and Chitz', note: 'An arcade on an alien street. Roy: A Life Well Lived is in the back.' }, ...DESTINATIONS.filter((d) => !isPlanet(d.id)).map(({ id, name, note }) => ({ id, name, note }))];
 export const DIAL_KEY = 'tp-rm-dial';
 export const portalTarget = (dial) => (DIAL.some((d) => d.id === dial) ? dial : 'annex');
 export function readDial() {

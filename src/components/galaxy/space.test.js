@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { SHIP, autopilot, spawn, step } from '../universe/ship';
 import { SYSTEMS } from './systems';
-import { CEILING, EDGE, FAR, PULSE, aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
+import { CEILING, EDGE, FAR, PULSE, WIDE, aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
+import { OVERDRIVE } from '../universe/ship';
 
 const planet = { id: 'planet', at: [0, 0, 0], r: 40, reach: 84, goal: true };
 const station = { id: 'deathstar', at: [170, 26, 150], r: 34, reach: 48, goal: true };
@@ -37,6 +38,50 @@ describe('makeSpace', () => {
     expect(top).toBeGreaterThan(PULSE * 0.95); // (flat out on the way)
     expect(Math.hypot(s.x, s.y, s.z)).toBeLessThanOrEqual(planet.reach);
     expect(s.speed).toBeLessThan(SHIP.boost + 0.5);
+  });
+  it('opens into super speed only well out from everything: the overdrive by how wide open it is', () => {
+    expect(space.wideAlong(0, 0, planet.reach + WIDE.near - 50)).toBe(0);
+    expect(space.wideAlong(0, 0, -(planet.reach + WIDE.near + WIDE.ramp + 50))).toBe(1); // (away from the station's side)
+    const mid = space.wideAlong(0, 0, -(planet.reach + WIDE.near + WIDE.ramp / 2));
+    expect(mid).toBeGreaterThan(0.3);
+    expect(mid).toBeLessThan(0.7);
+    // (a pebble doesn't count, the station does)
+    expect(space.wideAlong(300, 0, -500)).toBe(0);
+    expect(space.wideAlong(0, 0, -(station.reach + WIDE.near + WIDE.ramp + 50 + 300))).toBe(1);
+    expect(space.overdriveAt(0, 0, planet.reach + 10)).toBe(1);
+    expect(space.overdriveAt(0, 0, -EDGE + 10)).toBe(OVERDRIVE);
+    // and going the way it's heading: past it wide of it stays open, straight at it shuts
+    const z = planet.reach + WIDE.near + WIDE.ramp * 0.3;
+    expect(space.wideAlong(0, 0, z, [0, 0, -1])).toBeLessThan(space.wideAlong(0, 0, z, [1, 0, 0]));
+  });
+  it('never arrives flat out from super speed: boosting on the overdrive from the edge it tops 300, and is down to the boost at the planet', () => {
+    let s = { ...spawn(null, { x: 0, y: 0, z: EDGE - 5, heading: 0 }), speed: PULSE };
+    let top = 0;
+    for (let i = 0; i < 3600 && Math.hypot(s.x, s.y, s.z) > planet.reach; i++) {
+      const f = [-Math.sin(s.heading), 0, -Math.cos(s.heading)];
+      s = step(s, { throttle: 1, boost: true, overdrive: space.overdriveAt(s.x, s.y, s.z, f) }, 1 / 60, space.solids, space).ship;
+      top = Math.max(top, s.speed);
+    }
+    expect(top).toBeGreaterThan(300);
+    expect(Math.hypot(s.x, s.y, s.z)).toBeLessThanOrEqual(planet.reach);
+    expect(s.speed).toBeLessThan(SHIP.boost + 0.5);
+  });
+  it('flies itself in on super speed: the autopilot parks at the planet from the edge in under 25 s', () => {
+    let s = { ...spawn(null, { x: 0, y: 0, z: EDGE - 5, heading: 0 }), speed: 0 };
+    const park = parkBy(planet, [s.x, s.y, s.z], space.solids);
+    let t = 0;
+    let done = false;
+    let top = 0;
+    for (; t < 60 && !done; t += 1 / 60) {
+      const a = autopilot(s, 'planet', park, space, space.overdriveAt(s.x, s.y, s.z));
+      s = step(s, a.input, 1 / 60, space.solids, space).ship;
+      top = Math.max(top, s.speed);
+      done = a.done;
+    }
+    expect(top).toBeGreaterThan(250);
+    expect(done).toBe(true);
+    expect(t).toBeLessThan(25);
+    expect(Math.hypot(s.x - park.x, s.z - park.z)).toBeLessThan(2);
   });
   it('sees everything from anywhere in it: the planet, and the gas giant it orbits whole, inside the far plane from the far edge', () => {
     for (const sys of SYSTEMS) {

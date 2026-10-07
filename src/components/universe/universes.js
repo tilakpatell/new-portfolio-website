@@ -271,12 +271,14 @@ export const UNIVERSES = [...CORE, ...FANDOMS];
 // The Rick and Morty sector's worlds: small planets out in a sector of
 // space of their own (layout.js's SECTORS.rickmorty, far past the main
 // map's rim), round the Citadel (deep.js's wonder, at the sector's middle),
-// each a place from the show the portal gun dials on the C-137 page, and
-// each landed on like a fandom's planet (the ship sets down, the crew gets
-// out: landings/landings.js). They aren't in UNIVERSES (not in the map's
-// order, the mini-map or the pages' links): a kind of their own, 'moon',
-// found by byId, placed by layout.js on the sector's own spiral (in this
-// order), solid and landable through ship.js's PLANETS and the scene's
+// each a place from the show, and each landed on like a fandom's planet
+// (the ship sets down, the crew gets out: landings/landings.js). Going in
+// takes you straight into its world, on foot as Morty (`to`, /c-137/<id>:
+// the C-137 game's place of the same id, whose own portal brings you back
+// out here, not to C-137's garage). They aren't in UNIVERSES (not in the
+// map's order, the mini-map or the pages' links): a kind of their own,
+// 'moon', found by byId, placed by layout.js on the sector's own spiral (in
+// this order), solid and landable through ship.js's PLANETS and the scene's
 // planets. Sizes are a quarter of a fandom planet's.
 const MOON = 7 * 3;
 export const MOONS = [
@@ -287,7 +289,7 @@ export const MOONS = [
     world: null,
     place: 'Gazorpazorp',
     go: 'Land on',
-    to: '/c-137',
+    to: '/c-137/gazorpazorp',
     crew: 'rickmorty',
     swatch: '#e08a5a',
     accent: '#ffb080',
@@ -304,7 +306,7 @@ export const MOONS = [
     world: null,
     place: 'Planet Squanch',
     go: 'Land on',
-    to: '/c-137',
+    to: '/c-137/squanch',
     crew: 'rickmorty',
     swatch: '#d85a4a',
     accent: '#ff9a8a',
@@ -321,7 +323,7 @@ export const MOONS = [
     world: null,
     place: 'Bird World',
     go: 'Land on',
-    to: '/c-137',
+    to: '/c-137/birdworld',
     crew: 'rickmorty',
     swatch: '#6aa84a',
     accent: '#9ad86a',
@@ -338,7 +340,7 @@ export const MOONS = [
     world: null,
     place: 'Gear World',
     go: 'Land on',
-    to: '/c-137',
+    to: '/c-137/gearworld',
     crew: 'rickmorty',
     swatch: '#d8aa5a',
     accent: '#ffd080',
@@ -348,7 +350,7 @@ export const MOONS = [
     palette: { base: '#b88a3a', dark: '#6a4a2a', light: '#d8aa5a', glow: '#ffe0a0' },
     air: { colour: '#ffe0a0', density: 1.2, top: 1.05 },
   },
-  // and more from the dial, in the sector since: Pluto, the snakes' planet, Nuptia 4, the resort, Cronenberg World and the Purge Planet
+  // and more from the show, in the sector since: Pluto, the snakes' planet, Nuptia 4, the resort, Cronenberg World and the Purge Planet
   {
     id: 'pluto',
     label: 'Pluto',
@@ -356,7 +358,7 @@ export const MOONS = [
     world: null,
     place: 'Pluto',
     go: 'Land on',
-    to: '/c-137',
+    to: '/c-137/pluto',
     crew: 'rickmorty',
     swatch: '#a8b8d0',
     accent: '#d8e4f4',
@@ -373,7 +375,7 @@ export const MOONS = [
     world: null,
     place: 'Snake Planet',
     go: 'Land on',
-    to: '/c-137',
+    to: '/c-137/snakeplanet',
     crew: 'rickmorty',
     swatch: '#7ab84a',
     accent: '#c8f08a',
@@ -390,7 +392,7 @@ export const MOONS = [
     world: null,
     place: 'Nuptia 4',
     go: 'Land on',
-    to: '/c-137',
+    to: '/c-137/nuptia',
     crew: 'rickmorty',
     swatch: '#e08ac0',
     accent: '#ffc8e8',
@@ -407,7 +409,7 @@ export const MOONS = [
     world: null,
     place: 'the Immortality Field Resort',
     go: 'Land at',
-    to: '/c-137',
+    to: '/c-137/resort',
     crew: 'rickmorty',
     swatch: '#4ac8c0',
     accent: '#a8f0e8',
@@ -424,7 +426,7 @@ export const MOONS = [
     world: null,
     place: 'Cronenberg World',
     go: 'Land on',
-    to: '/c-137',
+    to: '/c-137/cronenberg',
     crew: 'rickmorty',
     swatch: '#c88a6a',
     accent: '#ffc8a0',
@@ -441,7 +443,7 @@ export const MOONS = [
     world: null,
     place: 'the Purge Planet',
     go: 'Land on',
-    to: '/c-137',
+    to: '/c-137/purge',
     crew: 'rickmorty',
     swatch: '#d8a060',
     accent: '#ffd2a0',
@@ -454,19 +456,13 @@ export const MOONS = [
 ];
 export const MOON_IDS = MOONS.map((m) => m.id);
 
-// A Rick and Morty world's way in is C-137's page, Rick's garage, with the
-// portal gun dialled back to the world you came from (the C-137 game's own
-// places go by these ids; its dial's kept, as it is, under tp-rm-dial), so
-// one step through the garage's portal and you're on it on foot.
-export const RM_DIAL_KEY = 'tp-rm-dial';
-export const dialFor = (u) => (u?.kind === 'moon' && u.to === '/c-137' ? u.id : null);
-
 const BY_ID = new Map([...UNIVERSES, ...MOONS].map((u) => [u.id, u]));
 
 export const byId = (id) => BY_ID.get(id);
 
-// The universe a page belongs to: '/galaxy', '/deathstar' and '/deathstar/inside' → starwars, '/universe/x' → none.
-export const byPath = (pathname) => UNIVERSES.find((u) => u.to === pathname || u.pages?.some((p) => p.to === pathname));
+// The universe a page belongs to: '/galaxy', '/deathstar' and '/deathstar/inside' → starwars,
+// '/c-137/squanch' → the squanch moon (its own world, not C-137), '/universe/x' → none.
+export const byPath = (pathname) => UNIVERSES.find((u) => u.to === pathname || u.pages?.some((p) => p.to === pathname)) ?? MOONS.find((m) => m.to === pathname);
 
 // WCAG contrast ratio between two '#rrggbb' colours.
 const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
