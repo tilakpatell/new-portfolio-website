@@ -50,11 +50,11 @@ The design is `docs/superpowers/specs/2026-10-06-fleet-war-design.md` and the pl
   - `sides.js`: three wars, one an era, at once on the same map: the Clone Wars (the Republic against the Separatists), the Galactic Civil War (the Rebellion against the Empire) and the Remnant War (the New Republic against the Imperial Remnant). The Hutts are a third power in each, holding Tatooine and Nevarro at the start. The systems are grouped in five areas.
   - `allegiance.js`: you swear to a side of the war you fight in, once a campaign in each war, and may swear again to the other side as a turncoat till the campaign's over. `suggestSide` is what your crew or hero would pick. It's kept in `tp-gcw-side`.
   - `gcw.js`: the wars move both ways along the films' trade routes. The liberator takes fronts, the raider attacks every four hours, and the Hutts raid every twelve. Supply from the systems round a front and a whole area next door speed it up. A war ends early when one side holds everything.
-  - Each system fights its own kind of battle (`BATTLE_KINDS`): an assault, an evacuation (runners for the jump), a siege, an interdiction (the Interdictor is the objective), a blockade (runners through the line) or an ambush. `battle.js` has runners, aces (Vader, Wedge, Hera in the Ghost) and objectives on the Interdictor. The Clone Wars' and the Remnant War's fleets are in `battlesWars.js`.
+  - Each system fights its own kind of battle (`BATTLE_KINDS`): an assault, an evacuation (runners for the jump), a siege, an interdiction (the Interdictor is the objective when the dark side defends; otherwise it's the flagship), a blockade (runners through the line) or an ambush. `battle.js` has runners, aces (Vader, Wedge, Hera in the Ghost) and objectives on the Interdictor. The Clone Wars' and the Remnant War's fleets are in `battlesWars.js`.
   - `warEffects.js`: holding a system changes who hunts you there (`roamRules.js`), who escorts you (the `escort` event, `universe/wingmen.js`), which fleet parks in orbit (`world.js`'s `setEffects`, `garrisonFleet` where the system has no fleet of the holder's), the heat, and the troops on the ground (`surface/garrison.js`).
-  - On the comms, the commander posted at the system speaks first and calls you by your rank (`warCast.js`, `warCastData.js`: 31 commanders, Jabba for the Hutts; `ranks.js`). Then the crew answers for your side, in the place's, the war's or the side's own lines (`battleLines.js`, `battleCrews/`). The heroes say whose side they lean to (`heroes.js`'s `lean`).
+  - On the comms, the commander posted at the system (or the side's general where nobody is) speaks first and calls you by your rank (`warCast.js`, `warCastData.js`: 31 commanders, Jabba for the Hutts; `ranks.js`). Then the crew answers for your side, in the place's, the war's or the side's own lines (`battleLines.js`, `battleCrews/`). The heroes say whose side they lean to (`heroes.js`'s `lean`).
   - The holotable's `WarCard.jsx` shows the wars as tabs, the oath, your rank and record, the major order ("Liberate" or "Hold"), the battles on now in their kind for your role, and who holds each area. `WarHud.jsx` is the line over the view while a battle's on where you are. There are five achievements: Sworn, Liberator, Major order, Turncoat and Top brass.
-  - The ground battles count: a won assault posts a win and its points for your side's war (`GalaxySurface.jsx`), and the assault HUD's side buttons swear you.
+  - The ground battles count: an assault's end posts the posts your side took as points for your side's war, and a win if you won (`GalaxySurface.jsx`). The assault HUD's side buttons swear you.
 
 ## Revision 3: where the code differs from the plan
 
@@ -74,13 +74,13 @@ The plan was written against an older map of the code. Where they disagreed, the
 
 ## Revision 3: left
 
+- The war's tally keeps at most 96 keys a campaign, for all three wars together (`universe/tally.js`'s `TALLY.keys`; `warState.js` doesn't raise it). Keys past that are dropped without a word, so a busy campaign stops counting what players do. This was true of revision 2's one war too; three wars and six sides fill it faster.
 - `effects.traffic` is worked out but nothing reads it yet: the galaxy's traffic still flies the system's own kinds.
 - Coruscant's siege doesn't raise a planetary shield (`world.war.planetShield` is only Scarif's).
-- An ambush is a brawl with half again the fighters and no line. It doesn't lay out in a rock field yet (`BATTLE_KINDS.ambush.rocks` is unread), and its objective is still the flagship's subsystems.
-- An intercept scores any of the attacker's bombers or runners downed by a defender, however far from the flagship.
-- Unsworn pilots are still hunted by the holder's garrison, as everyone was before the oath (`roamRules.js`'s `galaxySide`). Only in a battle are they nobody's target.
+- An ambush is a brawl: half again the fighters, and each side has only its flagship and one escort. It doesn't lay out in a rock field yet (`BATTLE_KINDS.ambush.rocks` is unread), and its objective is still the flagship's subsystems.
+- An intercept is a bomber of the attacker's downed by a defender, or any runner of the other side's. Neither is checked against its distance from the flagship.
+- Unsworn pilots are hunted by the holder's garrison as if they were its enemy (`roamRules.js`'s `galaxySide`). Only in a battle are they nobody's target.
 - On the ground, a garrison changes only who lives in the base (`garrisonLife`). An activity's hostile spawns aren't mapped to the holder's troops yet.
-- The tally carries 96 keys a message; with three wars at once a busy step may need more than one.
 - The new lines and the cast aren't voiced (`npm run voices`, which needs the ElevenLabs key).
 
 ## Left, in order
@@ -100,7 +100,7 @@ The plan was written against an older map of the code. Where they disagreed, the
   - It swears you to `SIDE` (the Rebellion if it's not given) and makes that side's war the one you fight in.
   - It finds the battle on now (the major order's), or forces one of `KIND` there, drops in, and checks that you're on your side's team and that a kill scores your side's keys.
   - It looks at it from a few places.
-  - It takes the phases down with `hit()`, then checks that the war counted it and that the holotable shows your oath and your war.
+  - When you're attacking, it takes the phases down with `hit()`. Then it checks that the war counted it and that the holotable shows your oath and your war.
   - (The pin's heading is `atan2(-dx, -dz)` to face `(dx, dz)`.)
 - `OUT=/tmp/shots node scripts/assault-check.mjs hoth` plays Hoth's ground assault through and checks that the win reaches the war's tally.
 - `scripts/rocks-check.mjs` and `scripts/flare-check.mjs` check PR A's pieces.
