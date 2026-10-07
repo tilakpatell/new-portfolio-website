@@ -180,7 +180,7 @@ export function layBattle(sys, battle, { now = battle.start, tier = 'high' } = {
   }
   return {
     war,
-    attacker: battle.attacker === 'rebel' ? 0 : 1,
+    attacker: battle.attackerTeam ?? (battle.attacker === 'rebel' ? 0 : 1),
     at: chosen.at.map((x) => +x.toFixed(3)),
     axis: chosen.axis.map((x) => +x.toFixed(6)),
     lines,

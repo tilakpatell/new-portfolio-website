@@ -52,7 +52,7 @@
 //   damage) → hit | null, fire(team, from, dir, kind, target), targets,
 //   info, end(winner) }
 // `you`: { x, y, z, alive } (the ship, as the scene has it), or null.
-// Events: { type: 'down', team, kind, at, mine }, { type: 'hurt', damage,
+// Events: { type: 'down', team, kind, role, at, mine }, { type: 'hurt', damage,
 // kind }, { type: 'sub', sub, kind, phase, at, mine }, { type: 'phase',
 // phase }, { type: 'shield', down: true }, { type: 'capital', id, kind,
 // team, at }, { type: 'arrive', team, kind, at }, { type: 'impact', at,
@@ -296,7 +296,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       f.respawn = between(BATTLE.respawn);
     } else f.respawn = Infinity;
     if (b.you.on && f.target === b.you) b.you.on -= 1;
-    return { type: 'down', team: f.team, kind: f.kind, at: copy(v3(), f.pos), mine };
+    return { type: 'down', team: f.team, kind: f.kind, role: f.role, at: copy(v3(), f.pos), mine };
   };
   const subDown = (s, mine) => {
     s.alive = false;

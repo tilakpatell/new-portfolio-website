@@ -155,3 +155,17 @@ describe('riding', () => {
     expect(s.z).toBeLessThan(30);
   });
 });
+
+describe('a line of sight', () => {
+  it('is clear across open ground and blocked by a wall, and clear with no solids at all', async () => {
+    const { createSolids, lineClear } = await import('./walker');
+    const solids = createSolids();
+    solids.box(10, 0, 0.5, 8);
+    expect(lineClear(solids, { x: 0, z: 0 }, { x: 20, z: 0 })).toBe(false);
+    expect(lineClear(solids, { x: 0, z: 0 }, { x: 20, z: 6 })).toBe(false);
+    expect(lineClear(solids, { x: 0, z: 0 }, { x: 20, z: 20 })).toBe(true); // (past the wall's end)
+    expect(lineClear(solids, { x: 0, z: 12 }, { x: 20, z: 12 })).toBe(true);
+    expect(lineClear(solids, { x: 0, z: 0 }, { x: 5, z: 0 })).toBe(true);
+    expect(lineClear(null, { x: 0, z: 0 }, { x: 20, z: 0 })).toBe(true);
+  });
+});

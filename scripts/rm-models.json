@@ -406,5 +406,109 @@
   "primedrone": {
     "status": "done",
     "by": "local"
+  },
+  "tommy": {
+    "status": "done",
+    "by": "local"
+  },
+  "froopy-a": {
+    "status": "done",
+    "by": "local"
+  },
+  "froopy-b": {
+    "status": "done",
+    "by": "local"
+  },
+  "nimbus": {
+    "status": "done",
+    "by": "local"
+  },
+  "atlantean": {
+    "status": "done",
+    "by": "local"
+  },
+  "miles": {
+    "status": "done",
+    "by": "local"
+  },
+  "heistotron": {
+    "status": "done",
+    "by": "local"
+  },
+  "heister-a": {
+    "status": "done",
+    "by": "local"
+  },
+  "heister-b": {
+    "status": "done",
+    "by": "local"
+  },
+  "fart": {
+    "status": "done",
+    "by": "local"
+  },
+  "snake-a": {
+    "status": "done",
+    "by": "local"
+  },
+  "snake-b": {
+    "status": "done",
+    "by": "local"
+  },
+  "snakeastronaut": {
+    "status": "done",
+    "by": "local"
+  },
+  "snakerocket": {
+    "status": "done",
+    "by": "local"
+  },
+  "glexo": {
+    "status": "done",
+    "by": "local"
+  },
+  "nuptiamachine": {
+    "status": "done",
+    "by": "local"
+  },
+  "mytholog": {
+    "status": "done",
+    "by": "local"
+  },
+  "glipglop": {
+    "status": "done",
+    "by": "local"
+  },
+  "shrimply": {
+    "status": "done",
+    "by": "local"
+  },
+  "gloopnurse": {
+    "status": "done",
+    "by": "local"
+  },
+  "risotto": {
+    "status": "done",
+    "by": "local"
+  },
+  "resortguest-a": {
+    "status": "done",
+    "by": "local"
+  },
+  "resortguest-b": {
+    "status": "done",
+    "by": "local"
+  },
+  "dirlycar": {
+    "status": "done",
+    "by": "local"
+  },
+  "watert": {
+    "status": "done",
+    "by": "local"
+  },
+  "icet": {
+    "status": "done",
+    "by": "local"
   }
 }

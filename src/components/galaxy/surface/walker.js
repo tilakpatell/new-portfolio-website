@@ -129,6 +129,24 @@ export function pushOut(s, x, z, r) {
   return [px * s.c + pz * s.s, -px * s.s + pz * s.c];
 }
 
+// Is the straight way from a to b (each { x, z }) clear of what's solid?
+// Sampled every `step` metres as a point of radius r, against the solids
+// near each sample (createSolids' near). The enemies' line of sight, and a
+// search's sweep.
+export function lineClear(solids, a, b, { step = 1, r = 0.2 } = {}) {
+  if (!solids?.near) return true;
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  const l = Math.hypot(dx, dz);
+  const n = Math.max(1, Math.ceil(l / step));
+  for (let i = 1; i < n; i++) {
+    const x = a.x + (dx * i) / n;
+    const z = a.z + (dz * i) / n;
+    for (const sol of solids.near(x, z, r + 0.5)) if (pushOut(sol, x, z, r)) return false;
+  }
+  return true;
+}
+
 // ── What's underfoot ──
 
 const onFloor = (f, x, z) => {

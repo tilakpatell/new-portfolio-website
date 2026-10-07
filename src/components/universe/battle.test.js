@@ -123,6 +123,8 @@ describe('a battle', () => {
     expect(b.teams[1].tickets).toBe(BATTLE.tickets - 1);
     const events = run(b, 0.1);
     expect(events.some((e) => e.type === 'down' && e.team === 1 && e.mine)).toBe(true);
+    // (and says what it was: the galaxy's war counts a bomber down as an intercept)
+    expect(events.find((e) => e.type === 'down' && e.mine).role).toBe(f.role);
   });
 
   it('your shots don’t touch your own side', () => {
