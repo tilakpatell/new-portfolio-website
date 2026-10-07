@@ -96,23 +96,23 @@ export function hostileAim(t, you, targets) {
   return best;
 }
 // What a hostile carries, by kind (universe/gunplay.js's GUNS): a Tusken's
-// long cycler rifle, Jango's WESTAR-34, the troopers' carbines, a Rebel's
-// A280; a blaster pistol for anyone else with a gun (a spawn's own `gun`
-// first). A duellist carries its saber; a brawler, a beast or a target
-// that doesn't fight back, nothing.
+// long cycler rifle, Jango's WESTAR-34, the troopers' E-11s, the clones'
+// DC-15As, the battle droids' E-5s, a Rebel's A280; a blaster pistol for
+// anyone else with a gun (a spawn's own `gun` first). A duellist carries
+// its saber; a brawler, a beast or a target that doesn't fight back, nothing.
 export const ARMS = {
   tusken: 'sniper',
   jango: 'westar',
   greedo: 'blaster',
   aqualish: 'blaster',
   scouttrooper: 'blaster',
-  stormtrooper: 'rifle',
-  sandtrooper: 'rifle',
-  snowtrooper: 'rifle',
-  shoretrooper: 'rifle',
-  deathtrooper: 'rifle',
-  clone: 'rifle',
-  battledroid: 'rifle',
+  stormtrooper: 'e11',
+  sandtrooper: 'e11',
+  snowtrooper: 'e11',
+  shoretrooper: 'e11',
+  deathtrooper: 'e11',
+  clone: 'dc15',
+  battledroid: 'e5',
   mercenary: 'rifle',
   hothtrooper: 'a280',
   rebel: 'a280',

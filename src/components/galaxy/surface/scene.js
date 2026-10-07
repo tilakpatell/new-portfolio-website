@@ -609,6 +609,9 @@ export async function create(canvas, ctx) {
         });
         p.holder.add(inner);
         p.fig = fig;
+        // (a model of their own reads its motion in metres a second, as the
+        // world's people do; a party figure in the map's units)
+        p.own = Boolean(own);
         // the gun they carry, in the hand (universe/gunplay.js; the world here is in metres)
         if (p.spec.gun && !own) {
           p.holder.updateMatrixWorld(true);
@@ -799,7 +802,7 @@ export async function create(canvas, ctx) {
   // (the emote wheel, B: lib/emote.js's; the pointer's where it is, and
   // where it was when the wheel opened, to point at a slice by)
   const emotes = createEmoteWheel();
-  const pointer = { x: 0, y: 0, x0: 0, y0: 0 };
+  const pointer = { x: 0, y: 0, x0: 0, y0: 0, id: null };
   const onKey = (down) => (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const tag = e.target?.tagName;
@@ -861,8 +864,12 @@ export async function create(canvas, ctx) {
     if (state.phase === 'landing') skipLanding();
   };
   const move = (e) => {
-    pointer.x = e.clientX;
-    pointer.y = e.clientY;
+    // (the wheel's pointed at by the pointer that last went down: on a
+    // phone the thumb on the Emote button, not one on the stick or the pad)
+    if (pointer.id == null || e.pointerId === pointer.id || e.pointerType === 'mouse') {
+      pointer.x = e.clientX;
+      pointer.y = e.clientY;
+    }
     if (!dragging || e.pointerId !== dragging.id) return;
     look(e.clientX - dragging.x, e.clientY - dragging.y);
     dragging.x = e.clientX;
@@ -872,6 +879,15 @@ export async function create(canvas, ctx) {
     if (dragging && e.pointerId === dragging.id) dragging = null;
     if (e.button === 2) state.ads = false;
   };
+  // where a pointer goes down, anywhere on the page (ahead of what it lands
+  // on): a thumb that holds the Emote button and slides off it points at a
+  // slice from where it went down
+  const spot = (e) => {
+    pointer.id = e.pointerId;
+    pointer.x = e.clientX;
+    pointer.y = e.clientY;
+  };
+  window.addEventListener('pointerdown', spot, true);
   const noMenu = (e) => e.preventDefault();
   canvas.addEventListener('contextmenu', noMenu);
   const wheel = (e) => {
@@ -1156,8 +1172,8 @@ export async function create(canvas, ctx) {
     const hit = blaster.fire(r.muzzle, aim, lands ? [foe] : [], bolt, w.range);
     if (lands && hit.target) activity.hit(hit.target, 1, { push: aim, at: hit.at });
   }
-  // your shots and blasts (and your mate's), for the people about to hear
-  // them: actors.js's `hear` (they startle and run from it), a blast twice
+  // your shots and blasts (and your mate's, and the hostiles' fire), for the
+  // people about to hear them: actors.js's `hear` (they startle and run from it), a blast twice
   // as loud as a shot. `aim`: where it went (for a hearer that wants it)
   function heardBy(from, aim = null, kind = 'shot') {
     if (typeof life.hear !== 'function') return;
@@ -2402,7 +2418,8 @@ export async function create(canvas, ctx) {
         out.side = side;
         out.turn = turn;
         const going = clamp(st.speed / WALK.run, 0, 1);
-        pp.fig?.update(dt, going, motion);
+        // (R2's own model: the same, in metres a second)
+        pp.fig?.update(dt, going, pp.own ? { ...motion, speed, side } : motion);
         // (the body under a lit blade, over the clips; not over a fall, a roll or an emote of its own)
         const own = lying || (mine && (state.dodge?.clip || emoteShown));
         if (!own) pp.saber?.stand(dt, state.t, going);
@@ -2744,6 +2761,9 @@ export async function create(canvas, ctx) {
           fx.sparks(new V(p.x, p.y + 1, p.z), UP, '#d8d0ff', 14);
           continue;
         }
+        // (a blaster's shot, heard by the people about as yours are: the
+        // townsfolk scatter from it, a trooper stops and looks)
+        if (!s.melee) heardBy({ x: s.from[0], z: s.from[2] });
         // at a friend of yours (or by one, at a hostile): a bolt between them, and whoever's hit, hit
         if (s.at && s.victim) {
           if (!s.melee) blaster.tracer(s.from, s.at, s.who?.spec?.side === 'yours' ? '#ffb070' : '#ff4a3d');
@@ -2937,6 +2957,8 @@ export async function create(canvas, ctx) {
       scene,
       post,
       renderer,
+      // (the world's people, for the QA scripts: actors.js's, with debug, find and hear)
+      life,
       // (for the QA scripts: the land's light, once its things are down)
       api: {
         get ground() {
@@ -3290,6 +3312,7 @@ export async function create(canvas, ctx) {
       window.removeEventListener('blur', blur);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointerdown', spot, true);
       canvas.removeEventListener('pointerdown', down);
       canvas.removeEventListener('wheel', wheel);
       canvas.removeEventListener('contextmenu', noMenu);

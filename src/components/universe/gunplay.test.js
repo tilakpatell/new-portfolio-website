@@ -46,6 +46,32 @@ describe('the guns', () => {
       expect(g.flash.color, kind).toMatch(/^#/);
     }
   });
+
+  it('gives the soldiers their own: the E-11 short with its pack out to the left, the DC-15A long, the E-5 between, each held in both hands', () => {
+    const sized = (kind) => {
+      const gun = buildGun(kind, []);
+      const box = new THREE.Box3().setFromObject(gun);
+      return { box, z: box.max.z - box.min.z };
+    };
+    const e11 = sized('e11');
+    const dc15 = sized('dc15');
+    const e5 = sized('e5');
+    expect(e11.z).toBeGreaterThan(0.38);
+    expect(e11.z).toBeLessThan(0.5); // (its stock folded)
+    expect(e11.box.max.x).toBeGreaterThan(0.09); // the power pack, out to the left (+x)
+    expect(e11.box.min.x).toBeGreaterThan(-0.03); // and nothing out to the right
+    expect(dc15.z).toBeGreaterThan(0.95);
+    expect(e5.z).toBeGreaterThan(0.75);
+    expect(e5.z).toBeLessThan(dc15.z);
+    for (const kind of ['e11', 'dc15', 'e5']) {
+      expect(GUNS[kind].hands, kind).toBe(2);
+      expect(GUNS[kind].stock, kind).toBe(true);
+    }
+    // (a clone's bolt is blue, the Empire's and the droids' red)
+    expect(GUNS.dc15.flash.color).toBe('#62c8ff');
+    expect(GUNS.e11.flash.color).toBe('#ff4a3d');
+    expect(GUNS.e5.flash.color).toBe('#ff4a3d');
+  });
 });
 
 describe('a hand’s grip frame', () => {

@@ -154,6 +154,12 @@ export default function SurfaceView({ system, mission = null, ship, hero = null,
             <button type="button" className="surface-btn surface-btn-fire" onPointerDown={press('fire')} onPointerUp={release('fire')} onPointerCancel={release('fire')} onPointerLeave={release('fire')} onContextMenu={(e) => e.preventDefault()}>
               {saber ? 'Swing' : 'Fire'}
             </button>
+            {/* (last, so the rest keep their places: under Run, in Dodge's
+                column) a tap, the last emote again; held, the wheel, a slide
+                off it toward one and let go */}
+            <button type="button" className="surface-btn surface-btn-emote" onPointerDown={press('emote')} onPointerUp={release('emote')} onPointerCancel={release('emote')} onContextMenu={(e) => e.preventDefault()} aria-haspopup="menu">
+              Emote
+            </button>
           </div>
         </div>
       )}
