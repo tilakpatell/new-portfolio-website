@@ -385,11 +385,12 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
 
     // (dev hooks: end the battle now, `winner` the team that wins; a battle
     // here now, whatever the war says, `attacker` a side of the war you fight
-    // in (its liberator, unless it's said) or the Hutts, for the checks)
+    // in (its liberator, unless it's said) or the Hutts, and `kind` a kind of
+    // battle (battles.js's BATTLE_KINDS) or the system's own, for the checks)
     win(winner) {
       battle?.end?.(winner);
     },
-    force(attacker) {
+    force(attacker, kind = null) {
       if (!sys) return;
       const ms = now();
       const war = warOfSide(attacker) ?? allegiance()?.war ?? DEFAULT_WAR;
@@ -399,7 +400,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       const sides = teamsOf(by, defender);
       stop();
       forced = true;
-      start({ id: `dev.${war}.${sys.id}.${Math.floor(ms / 1000)}`, war, sys: sys.id, step: campaignAt(ms).step, seed: Math.floor(ms / 1000), attacker: by, defender, sides, attackerTeam: sides.indexOf(by), start: ms, fightEnd: ms + GCW.fight, end: ms + GCW.step, fighting: true }, ms);
+      start({ id: `dev.${war}.${sys.id}.${Math.floor(ms / 1000)}`, war, sys: sys.id, step: campaignAt(ms).step, seed: Math.floor(ms / 1000), attacker: by, defender, sides, attackerTeam: sides.indexOf(by), ...(kind ? { kind } : {}), start: ms, fightEnd: ms + GCW.fight, end: ms + GCW.step, fighting: true }, ms);
     },
     get pieces() {
       return pieces;

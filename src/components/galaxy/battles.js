@@ -253,7 +253,8 @@ const sidesOf = (battle) => battle.sides ?? ['rebel', 'empire'];
 export function layBattle(sys, battle, { now = battle.start, tier = 'high' } = {}) {
   const warId = battle.war ?? 'gcw';
   const t = templateFor(sys.id, warId);
-  const kind = BATTLE_KINDS[kindFor(sys.id)];
+  // (the system's kind, unless the battle's a forced one of another: warfront.js's dev hook)
+  const kind = BATTLE_KINDS[battle.kind] ?? BATTLE_KINDS[kindFor(sys.id)];
   const sides = sidesOf(battle);
   const attacker = battle.attackerTeam ?? (battle.sides ? sides.indexOf(battle.attacker) : battle.attacker === 'rebel' ? 0 : 1);
   const defender = 1 - attacker;

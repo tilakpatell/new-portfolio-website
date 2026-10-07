@@ -248,6 +248,16 @@ describe('every kind of battle', () => {
         }
     }
   });
+  it('the dev hook forces a battle of the kind asked for, wherever it is', () => {
+    const k = kit('rebel');
+    k.front.enter(systemById('scarif'), k.world);
+    k.front.update(1 / 30, 0, camera, null);
+    k.front.force('empire', 'evacuation');
+    expect(k.front.info.laid.kind).toBe('evacuation');
+    expect(k.front.battle.runners.length + 1).toBeGreaterThan(0);
+    k.front.force('rebel', 'nonsense');
+    expect(k.front.info.laid.kind).toBe('siege');
+  });
   it('a runner of the other side’s, shot down, is an intercept', () => {
     const k = kit('empire');
     k.front.enter(systemById('naboo'), k.world);

@@ -211,6 +211,10 @@ describe('layBattle', () => {
     expect(o.perSide).toBeGreaterThan(layBattle(systemById('scarif'), fake('scarif', 'rebel'), { tier: 'mid' }).perSide);
     expect(o.kind).toBe('ambush');
   });
+  it('lays out the kind a battle asks for, if it’s one', () => {
+    expect(layBattle(systemById('scarif'), { ...fake('scarif', 'rebel'), kind: 'blockade' }).kind).toBe('blockade');
+    expect(layBattle(systemById('scarif'), { ...fake('scarif', 'rebel'), kind: 'nope' }).kind).toBe('siege');
+  });
   it('flies the system’s aces on their sides', () => {
     const o = layBattle(systemById('hoth'), fake('hoth', 'empire'));
     expect(o.ace[1]).toMatchObject({ name: 'Darth Vader' });
