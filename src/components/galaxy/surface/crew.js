@@ -40,7 +40,8 @@ export const CREW = {
   // the worlds' people made with Meshy from words (scripts/meshy-galaxy.mjs),
   // in place of the built ones: Tatooine's Tuskens, Twi'leks, Bib Fortuna,
   // the Aqualish and Wuher; Bespin's Lando, Lobot and Ugnaughts; the Rebel
-  // troops; Coruscant's Senate guards; the Neimoidians; Mustafar's miners
+  // troops; Coruscant's Senate guards and Jedi; the Neimoidians; Mustafar's
+  // miners
   tusken: { url: '/models/galaxy/crew/tusken.glb', tall: 1.9 },
   lando: { url: '/models/galaxy/crew/lando.glb', tall: 1.78 },
   twilek: { url: '/models/galaxy/crew/twilek.glb', tall: 1.7 },
@@ -53,6 +54,7 @@ export const CREW = {
   aqualish: { url: '/models/galaxy/crew/aqualish.glb', tall: 1.8 },
   wuher: { url: '/models/galaxy/crew/wuher.glb', tall: 1.78 },
   mustafarian: { url: '/models/galaxy/crew/mustafarian.glb', tall: 2.0 },
+  jedi: { url: '/models/galaxy/crew/jedi.glb', tall: 1.75 },
   // and the galaxy's who's who, for the worlds and heroes to come
   maul: { url: '/models/galaxy/crew/maul.glb', tall: 1.75 },
   palpatine: { url: '/models/galaxy/crew/palpatine.glb', tall: 1.73 },

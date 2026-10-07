@@ -166,7 +166,9 @@
       "image": "01a114ea-90a2-76ed-959c-48c38d8c7886",
       "model": "01a114ed-9f94-7313-b6e9-ea6ef7d5b52b"
     },
-    "image": "01a114f1-9133-715e-ba9d-6993140b3bcd"
+    "image": "01a114f1-9133-715e-ba9d-6993140b3bcd",
+    "model": "01a114f2-ec09-707d-bb90-9b9169bb6442",
+    "rig": "01a114f5-b0f1-77ba-93c9-c5f4f1309179"
   },
   "senateguard": {
     "image": "01a114d3-6a8c-73ef-8df9-38bfd5226c82",
