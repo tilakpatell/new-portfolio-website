@@ -74,10 +74,19 @@ export async function create(canvas, { onLost, onSlow } = {}) {
     f.holder.rotation.y = yaw;
     const lean = pose === 'fly' ? 1.25 : 0;
     f.body.rotation.set(dt === 0 ? lean : damp(f.body.rotation.x, lean, 5, dt), 0, 0);
-    const P = POSES[pose];
+    // footage: one of his own clips, round and round (standing, his idle's breathing)
+    const clip = pose.startsWith('clip:') ? pose.slice(5) : pose === 'stand' ? 'idle' : null;
+    if (clip && f.act(clip, { fade: 0.35 })) {
+      f.tick(dt);
+      return;
+    }
+    // a pose, laid over his hover (or his idle) where he has it
+    const P = POSES[pose] ?? POSES.stand;
     const targets = typeof P === 'function' ? P(time) : P;
+    f.act((lift[pose] ?? 0) > 0 ? 'hover' : 'idle', { fade: 0.35 });
     if (dt === 0) f.snap(targets);
     else f.pose(targets, dt, 6);
+    f.tick(dt);
   }
 
   function render(dt) {
