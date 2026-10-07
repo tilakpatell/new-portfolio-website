@@ -346,6 +346,7 @@ export default function GalaxySurface() {
         setAiming(true);
         later('aim', 3000, () => setAiming(false));
       } else if (e.type === 'leave') goUp();
+      else if (e.type === 'go') navigate(e.to);
       else if (e.type === 'bump') comms.current?.handle({ type: 'bump', hard: e.hard });
       else if (e.type === 'mission') {
         for (const f of chaseFeed.current) f(e.view);
@@ -382,7 +383,7 @@ export default function GalaxySurface() {
         }
       }
     },
-    [site, id, unlock, mission, missionKey, flyOut, goUp],
+    [site, id, unlock, mission, missionKey, flyOut, goUp, navigate],
   );
   const track = (qid) => {
     view.current?.input?.('track', qid);

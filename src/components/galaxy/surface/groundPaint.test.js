@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { HALF } from './terrain';
 import { groundPainter, mapAreaOf } from './groundPaint';
+import { siteOf } from './sites';
+import { heightGrid, makeHeight } from './terrain';
+import { SCATTER } from './props';
 
 const flat = (h = 5, n = [0, 1, 0]) => ({ heightAt: () => h, normalAt: () => n });
 const palette = { low: '#804020', high: '#20a040', rock: '#808080', deep: '#102030', hLow: 0, hHigh: 10, rockAt: 0.42, accentCover: 0, grain: 0 };
@@ -92,5 +95,21 @@ describe('the ground painted as one function', () => {
 
   it('reads the height from the grid', () => {
     expect(groundPainter(site(), flat(7)).height(1, 2)).toBe(7);
+  });
+
+  it('grows Yavin’s grass thin under the jungle trees and thicker in the clearings', () => {
+    const yavin = siteOf('yavin');
+    expect(yavin.grass).toBeTruthy();
+    const grid = heightGrid(makeHeight(yavin.ground), { n: 64, grow: 1.4 });
+    const tree = yavin.scatter.find((s) => s.kind === 'jungletree');
+    expect(SCATTER[tree.kind].canopy).toBeGreaterThan(0);
+    const at = [300, 300];
+    const open = groundPainter(yavin, grid);
+    const shaded = groundPainter(yavin, grid, { shade: [{ at, r: SCATTER[tree.kind].canopy }] });
+    const out = [0, 0, 0];
+    const a = open.paint(at[0], at[1], out);
+    const b = shaded.paint(at[0], at[1], out);
+    expect(a).toBeGreaterThan(0);
+    expect(b).toBeLessThan(a * 0.5);
   });
 });

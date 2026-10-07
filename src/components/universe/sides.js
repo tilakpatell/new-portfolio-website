@@ -219,6 +219,19 @@ const BY_CREW = new Map(ALL.flatMap((s) => s.crews.map((c) => [c, s])));
 export const sideFor = (crewId) => BY_CREW.get(crewId) ?? null;
 export const sideOf = (crewId) => sideFor(crewId)?.id ?? null;
 
+// Whose space it is where the ship is: a sector of the map that's one
+// side's own (layout.js's SECTORS: the Rick and Morty sector is the Rick and
+// Morty side's) has that side's hunters, traffic and goings-on, whoever's
+// flying; anywhere else, the crew's own side's. sideAt(crewId, sector) → a
+// side; crewAt(crewId, sector) → the crew whose side that is (the traffic
+// is set by crew: traffic.js setCrew), the crew itself where it's its own
+export const SECTOR_SIDES = { rickmorty: 'rickmorty' };
+export const sideAt = (crewId, sector = 'main') => SIDES[SECTOR_SIDES[sector]] ?? sideFor(crewId);
+export const crewAt = (crewId, sector = 'main') => {
+  const side = SIDES[SECTOR_SIDES[sector]];
+  return !side || sideFor(crewId) === side ? crewId : side.crews[0];
+};
+
 const sidesOf = (sideId) => (sideId ? [SIDES[sideId]].filter(Boolean) : ALL);
 // the hunters' factions (hunterRules.js's shape) and kinds: one side's, or every side's (null: for another pilot's hunters, whoever they are)
 export const factionsOf = (sideId = null) => Object.assign({}, ...sidesOf(sideId).map((s) => s.factions));
