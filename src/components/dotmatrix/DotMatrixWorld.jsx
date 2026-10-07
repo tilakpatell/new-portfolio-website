@@ -32,6 +32,7 @@ import GuideCue from '../guide/GuideCue';
 const GameBoyStage = lazy(() => import('../../stages/GameBoyStage'));
 const Mario64 = lazy(() => import('../mario64/Mario64'));
 const Minecraft = lazy(() => import('../minecraft/Minecraft'));
+const Eaglercraft = lazy(() => import('../eagler/Eaglercraft'));
 const N64 = lazy(() => import('../n64/N64'));
 const sounds = () => import('./sounds');
 const PALETTE = 'tp-dmg-palette';
@@ -107,7 +108,7 @@ function World({ gl, setGl }) {
   const [shown, setShown] = useState(0); // letters of the dialog typed so far
   const [list, setList] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [n64, setN64] = useState(false); // what's over the island: false | 'emu' (the N64's emulator) | 'tribute' (Mario 64's) | 'minecraft'
+  const [n64, setN64] = useState(false); // what's over the island: false | 'emu' (the N64's emulator) | 'tribute' (Mario 64's) | 'minecraft' (the game, behind the password) | 'mc-tribute' (the Minecraft tribute)
   const [banner, setBanner] = useState(null);
   const [moved, setMoved] = useState(false);
   const dialogRef = useRef(null);
@@ -744,7 +745,7 @@ function World({ gl, setGl }) {
       {n64 &&
         createPortal(
           <Suspense fallback={<div className="dm-n64-wait" role="status">Switching on…</div>}>
-            {n64 === 'minecraft' ? <Minecraft mode="overlay" onExit={closeN64} /> : n64 === 'tribute' ? <Mario64 mode="overlay" onExit={closeN64} /> : <N64 mode="overlay" onExit={closeN64} onTribute={tribute} />}
+            {n64 === 'minecraft' ? <Eaglercraft mode="overlay" onExit={closeN64} onTribute={() => setN64('mc-tribute')} /> : n64 === 'mc-tribute' ? <Minecraft mode="overlay" onExit={closeN64} /> : n64 === 'tribute' ? <Mario64 mode="overlay" onExit={closeN64} /> : <N64 mode="overlay" onExit={closeN64} onTribute={tribute} />}
           </Suspense>,
           document.body,
         )}

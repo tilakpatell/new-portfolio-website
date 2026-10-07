@@ -116,3 +116,20 @@ describe('fast, or in big steps', () => {
     expect(ev.some((x) => x.type === 'ko' && x.rammed)).toBe(true);
   });
 });
+
+describe('Eve in the fight', () => {
+  it('knocks out the Flaxan she names (input.eveHit, its id), the ko said to be hers', () => {
+    let { f } = run(startInvasion(newFight()), far, 6);
+    const target = f.foes.find((e) => e.state === 'fight');
+    expect(target).toBeTruthy();
+    const r = stepFight(f, far, { ...idle, eveHit: target.id }, 1 / 30);
+    expect(r.fight.foes.find((e) => e.id === target.id).state).toBe('ko');
+    expect(r.ev).toContainEqual(expect.objectContaining({ type: 'ko', id: target.id, by: 'eve' }));
+  });
+  it('does nothing for a Flaxan already down, or one that isn’t there', () => {
+    let { f } = run(startInvasion(newFight()), far, 6);
+    const r = stepFight(f, far, { ...idle, eveHit: 'nobody' }, 1 / 30);
+    expect(r.ev.filter((e) => e.type === 'ko')).toEqual([]);
+  });
+});
+

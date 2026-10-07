@@ -5,8 +5,8 @@
 // The compound's cast (world/rules.js CAST) is read by export-lines itself.
 import { SPOKEN as RANGE } from './repulsor/lines';
 import { SPOKEN as TESSERACT } from './tesseract/lines';
-import { LINES as LAWN } from './lawn/lines';
-import { INTROS } from './trickshot/lines';
+import { SPOKEN as LAWN } from './lawn/lines';
+import { SPOKEN as TRICKSHOT } from './trickshot/lines';
 import { SPOKEN as SMASH } from './smash/lines';
 import { SPOKEN as THWIP } from './thwip/lines';
 import { REACTOR } from './world/reactor';
@@ -19,7 +19,7 @@ export const VOICELINES = [
   ...by('friday', [...RANGE, ...TESSERACT, ...REACTOR]),
   // Thor on the lawn, Clint on the range, Bruce Banner down the avenue
   ...by('thor', LAWN),
-  ...by('clint', INTROS),
+  ...by('clint', TRICKSHOT),
   ...by('banner', SMASH),
   // Peter: swinging to school, and each backpack he finds webbed up round the compound
   ...by('peter', [...THWIP, ...PACKS.map((p) => p.line)]),

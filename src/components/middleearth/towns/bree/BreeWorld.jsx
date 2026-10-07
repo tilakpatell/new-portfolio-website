@@ -3,6 +3,7 @@ import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../../lib/voiced';
 import { readPad, typing } from '../../../games/pad';
 import { stepGaze } from '../../shire/rules';
 import { Bubble, Convo, QuestList, Stick, Travellers } from '../TownHud';
@@ -11,10 +12,11 @@ import { keyDown, keyUp, moveOf, ownButton } from '../keys';
 import { drawMap } from '../map';
 import { nearest } from '../story';
 import { newTalk, talkNode, talkOn } from '../talk';
+import { sayInTurn } from '../voice';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { newWatchers, stepWatchers } from '../watchers';
 import { COLLIDERS, GATE_WALLS, INN_DOOR, ROADS, ROUNDS, SPOTS, START, TOWN, WALLS, WORLD, castFor, spot, validAt } from './layout';
-import { CONVOS, NAZGUL, QUESTS, SEAL, SLIP, SPEAKERS, breeProgress } from './story';
+import { CONVOS, NAZGUL, QUESTS, SAYS, SEAL, SLIP, SPEAKERS, breeProgress } from './story';
 import { POUR, newPour, nextMug, startPour, stepPour, stopPour } from './pints';
 import { LANES, NOTES, QUAVER, SIDE, SONG, VERSE, newSong, press as pressSong, stepSong } from './song';
 import '../../shire/shire.css';
@@ -113,7 +115,12 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   const [list, setList] = useState(false);
   const lines = useRef({});
   const bubbleRef = useRef(null);
-  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  // a toast; and `who`, whose words are in it, says them (lib/voiced.js)
+  const say = useCallback((text, bad = false, who = null) => {
+    setToast({ text, bad, at: Date.now() });
+    if (who) sayVoiced(who, text);
+  }, []);
+  useEffect(() => stopVoiced, []);
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -238,7 +245,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     s.talk = s.talking ? newTalk(CONVOS[s.talking]) : null;
     if (beat === 'pints') {
       s.pour = newPour();
-      say('Pippin: “It comes in pints?” Hold the tap, and let go with the head between the two lines.');
+      say(SAYS.pints.text, false, SAYS.pints.who);
     }
     if (beat === 'slip') {
       s.gaze = 0;
@@ -305,7 +312,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         toBeat(doneRef.current.includes('pony') ? 'room' : 'bar');
       } else if (id === 'east') {
         complete('slip');
-        say('Strider: “This way. Quickly, and quietly.” By dawn you’re through, and the rain has stopped.');
+        say(SAYS.east.text, false, SAYS.east.who);
         s.watchers = newWatchers(ROUNDS);
       }
       setList(false);
@@ -383,11 +390,12 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       if (s.pour.state === 'won') {
         api.current?.fx('good');
         sounds().then((x) => x.cheer());
-        say('Three good pints. Pippin: “This is a pint!” Merry: “It comes in pints?! I’m getting one.”');
+        say(SAYS.poured.text);
+        sayInTurn(SAYS.poured.lines);
         complete('pints');
         later(() => sim.current?.beat === 'pints' && toBeat('room'), 2200);
       } else if (s.pour.state === 'out') {
-        say('Butterbur takes the jug off you. “Let me show you, little master.” Try again.', true);
+        say(SAYS.spilt.text, true, SAYS.spilt.who);
         later(() => {
           const ss = sim.current;
           if (ss?.beat === 'pints') ss.pour = newPour();

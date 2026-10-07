@@ -32,9 +32,12 @@ import { SIDE_KEY, current as currentOath, readAllegiance, swear } from '../comp
 import { GCW, campaignAt } from '../components/galaxy/gcw';
 import { warOfSide } from '../components/galaxy/sides';
 import { effectsFor } from '../components/galaxy/warEffects';
-import { addPoints, addWin, mine, warNow } from '../components/galaxy/warState';
+import { addPoints, addWin, mine, warNow, warVersion } from '../components/galaxy/warState';
 import { RANKS, rankOf } from '../components/galaxy/ranks';
 import ModelCredits from '../components/ModelCredits';
+import EarnNote from '../components/universe/EarnNote';
+import { useEarn } from '../components/universe/useEarn';
+import { createCarry, createPayLedger } from '../components/universe/earnRules';
 import { wornFiles } from '../components/rickmorty/wardrobe/looks';
 import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
 import { openGuide } from '../lib/palette';
@@ -152,6 +155,19 @@ export default function GalaxySurface() {
   const [toast, setToast] = useState(null); // { title, text, n }
   const [leaving, setLeaving] = useState(false);
   const [done, setDone] = useState(() => readDone()[id] ?? []); // the quests done here
+  // the wallet (economy.js): a place found and a quest done pay, the first
+  // time only (what was found or done before this visit is paid for already)
+  const { pay, note: earned } = useEarn({ client: online.client });
+  const [paid] = useState(() => createPayLedger([...found.map((x) => `found:${x}`), ...done.map((x) => `quest:${x}`)]));
+  const payOnce = useCallback(
+    (key, what) => {
+      if (paid.once(key)) pay(what, 1, 'galaxy');
+    },
+    [paid, pay],
+  );
+  // (an assault's points come in fractions: the wallet pays whole ones, the
+  // rest carried to the next, as the war front in the sky does)
+  const [warCarry] = useState(createCarry);
   const [quest, setQuest] = useState(null); // { id, name, text, left, shoot }
   const [list, setList] = useState(false); // the things-to-do list, open
   const [health, setHealth] = useState(100);
@@ -283,6 +299,7 @@ export default function GalaxySurface() {
       } else if (e.type === 'found') {
         const place = site?.places.find((p) => p.id === e.id);
         if (!place) return;
+        payOnce(`found:${e.id}`, 'found');
         setFound((was) => {
           if (was.includes(e.id)) return was;
           const next = [...was, e.id];
@@ -318,6 +335,7 @@ export default function GalaxySurface() {
         // (a quest mission's own quest: its card says how it went)
       } else if (e.type === 'questDone') {
         const q = site?.quests.find((x) => x.id === e.id);
+        payOnce(`quest:${e.id}`, 'questDone');
         setDone((was) => {
           if (was.includes(e.id)) return was;
           const next = [...was, e.id];
@@ -384,8 +402,14 @@ export default function GalaxySurface() {
           if (warOfSide(side)) {
             const now = Date.now();
             const step = campaignAt(now).step;
-            addPoints(side, id, step, (v.result.posts?.[v.result.side] ?? 0) * GCW.points.objective, now);
+            const points = (v.result.posts?.[v.result.side] ?? 0) * GCW.points.objective;
+            const before = warVersion();
+            addPoints(side, id, step, points, now);
+            const whole = warVersion() !== before ? warCarry.add(points) : 0; // (not counted: nothing to pay)
+            if (whole) pay('warPoints', whole, 'galaxy');
+            const was = warVersion();
             if (v.result.won) addWin(side, id, step, now);
+            if (warVersion() !== was) pay('warWin', 1, 'galaxy'); // (a battle's win counts once)
           }
         } else if (mission?.kind === 'assault' && v && !v.result) posted.current = false;
         if (ev?.type === 'won' && mission && v?.result) {
@@ -404,7 +428,7 @@ export default function GalaxySurface() {
         }
       }
     },
-    [site, id, unlock, mission, missionKey, flyOut, goUp, navigate],
+    [site, id, unlock, mission, missionKey, flyOut, goUp, navigate, pay, payOnce, warCarry],
   );
   const track = (qid) => {
     view.current?.input?.('track', qid);
@@ -609,6 +633,7 @@ export default function GalaxySurface() {
           <b>{talk.who}</b> {talk.text}
         </p>
       )}
+      <EarnNote note={earned} />
       {toast && (
         <div key={`toast-${toast.n}`} className="surface-toast" data-done={toast.done ? '' : undefined} role="status">
           <p className="surface-toast-title">{toast.title}</p>
