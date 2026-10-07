@@ -105,6 +105,7 @@ import { aberrationFor, createPost, spaceEnvironment } from './post';
 import { grainFor } from '../../lib/three/noise';
 import { createFlare, flareWeight, occluded } from '../../lib/three/flare';
 import { exposureFor, sunShareOf } from '../../lib/three/exposure';
+import { houseOn } from '../../lib/three/house';
 import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, isGoal, isPlace, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, driveById, hyperState, parkFor, riftExit } from './nav';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
@@ -516,6 +517,12 @@ export async function create(canvas, ctx) {
   fill.position.set(0.7, -0.4, -0.3).multiplyScalar(50);
   const ambient = new THREE.AmbientLight('#b8c4ff', 0.4);
   scene.add(key, fill, ambient);
+  // the house look (lib/three/house) on the map's ships, stations and
+  // landmarks: their shade the colour of the space light, as in every world.
+  // (The post pass tone-maps the house's way itself, and space has no fog:
+  // both left as they are. The planets draw in shaders of their own.)
+  const house = houseOn({ renderer, scene, sun: key, ambient, toneMap: false, look: { fog: false } });
+  let houseFrames = 0;
   // the key's direction in world space, shared with every planet, which
   // puts its own sun in the key's place (planets.js's keyHook)
   const keyW = { value: LIGHT.clone() };
@@ -4337,6 +4344,8 @@ export async function create(canvas, ctx) {
     map.updateWorldMatrix(true, false);
     map.worldToLocal(camLocal.copy(camera.position));
     lights(dt);
+    // (the look follows the lights; what's come into the scene since is taken on every half second or so)
+    house.follow({ adopt: houseFrames++ % 30 === 0 });
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
     // the Citadel's siege: rebuilt or patched up when it's time, what's left
     // of it drawn, and your word on it out to everyone (soon after a hit of

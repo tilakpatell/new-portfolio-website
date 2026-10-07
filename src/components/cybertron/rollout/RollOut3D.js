@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { canvasTexture, createStage, hot } from '../../../lib/stage3d';
 import { createLibrary } from '../../../lib/cc0';
 import { createModels } from '../../../lib/models';
+import { houseOn } from '../../../lib/three/house';
 import { buildWorld, sharedSurfaces } from './world';
 import { BOSS_LOOK, BREAKDOWN, KNOCKOUT, SENTRY, buildBoss, buildBumblebee, buildCar, buildJet, buildOptimus, buildVehicon, materials } from './models';
 import { createRollOutCast } from './meshyCast';
@@ -412,6 +413,22 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
   progress(0.55, 'Laying the road');
   world = await worldFor(stageIds(ROLL.bots[bot]?.side)[0]);
   world.attach(scene, stage);
+  // the house look (lib/three/house): the house tone mapper on each stage's
+  // own exposure (set under ACES), the shade one colour from the stage's
+  // light and its HDRI. The look reads the stage's sun and sky light
+  // through these two, copied from whichever stage is on; each stage keeps
+  // its own fog and sky.
+  const lookSun = { color: new THREE.Color(), intensity: 0 };
+  const lookSky = { color: new THREE.Color(), intensity: 0 };
+  const lightsOf = (w) => {
+    lookSun.color.copy(w.sun.color);
+    lookSun.intensity = w.sun.intensity;
+    lookSky.color.copy(w.hemi.color);
+    lookSky.intensity = w.hemi.intensity;
+  };
+  lightsOf(world);
+  const house = houseOn({ renderer, scene, sun: lookSun, hemi: lookSky, env: { get texture() { return scene.environment; }, intensity: () => scene.environmentIntensity }, look: { fog: false } });
+  let houseFrames = 0;
   progress(0.9, 'Warming up');
   // by stage id: the Autobots' third stage is Kaon, the Decepticons' Iacon
   const want = (id) => {
@@ -432,6 +449,10 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     world.dispose(scene);
     world = w;
     world.attach(scene, stage);
+    // (its exposure is set under ACES: the house's on top; its materials taken on)
+    renderer.toneMappingExposure *= house.exposure;
+    lightsOf(world);
+    house.adopt(scene);
     pending = null;
     // the new world's shaders link in the background; the stage holds its last frame till then
     stage.precompile();
@@ -450,6 +471,7 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
       : (cast.boss(kind) ?? buildBoss(M, kind, tex));
     boss = { kind, ...m };
     scene.add(boss.group);
+    house.adopt(boss.group);
     stage.precompile(boss.group); // its shaders link before it's drawn (the stage holds a frame or two)
     return boss;
   };
@@ -858,6 +880,8 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     fire.mat.uniforms.scale.value = scale;
     smoke.mat.uniforms.scale.value = scale;
 
+    lightsOf(world);
+    house.follow({ adopt: houseFrames++ % 60 === 0 });
     stage.render(ms);
   }
 

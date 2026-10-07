@@ -20,6 +20,7 @@ import { bake, centresOf, cluster, makeTransformer } from './chunks';
 import { createEffects } from './effects';
 import { FORMS, TRANSFORM } from './rules';
 import { groundWorld } from '../../../lib/three/groundwork';
+import { houseOn } from '../../../lib/three/house';
 
 const STAGES = {
   iacon: () => import('./stage/iacon'),
@@ -60,6 +61,22 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
   scene.environmentIntensity = 0.45;
   let skyEnv = null; // (an area's sky, as light: setArea)
   const effects = createEffects(scene, { tier });
+  // the house look (lib/three/house), as on the universe map: the shade one
+  // colour from the area's light (its key and its sky or ambient light, read
+  // through these two, copied from whichever area's on); the post pass
+  // already tone-maps the house's way, and each area keeps its own fog
+  const lookSun = { color: new THREE.Color(), intensity: 0 };
+  const lookSky = { color: new THREE.Color(), intensity: 0 };
+  const areaLights = { key: null, sky: null };
+  const lightsOf = () => {
+    const { key, sky } = areaLights;
+    lookSun.color.copy(key?.color ?? lookSun.color);
+    lookSun.intensity = key?.intensity ?? 0;
+    lookSky.color.copy(sky?.color ?? lookSky.color);
+    lookSky.intensity = sky?.intensity ?? 0;
+  };
+  const house = houseOn({ renderer, scene, sun: lookSun, hemi: lookSky, toneMap: false, look: { fog: false } });
+  let houseFrames = 0;
 
   // what's in the scene for the area you're in
   let stage = null;
@@ -168,6 +185,13 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
         return;
       }
       scene.add(stage.group);
+      areaLights.key = null;
+      areaLights.sky = null;
+      stage.group.traverse((o) => {
+        areaLights.key ??= o.isDirectionalLight ? o : null;
+        areaLights.sky ??= o.isHemisphereLight || o.isAmbientLight ? o : null;
+      });
+      lightsOf();
       // (an area under a roof keeps its own light: the roof would shade all of it)
       if (stage.floor?.length && area.ceiling == null) {
         let key = null;
@@ -529,6 +553,9 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
     const sharp = pace.frame(now);
     if (sharp !== null) post.sharpness = sharp;
     ground?.update();
+    // (the shade follows the area's light; what's come in since, taken on now and then)
+    lightsOf();
+    house.follow({ adopt: houseFrames++ % 60 === 0 });
     post.render(size.w, size.h);
   };
 
@@ -569,7 +596,10 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       camera.aspect = size.w / size.h;
       camera.updateProjectionMatrix();
     },
-    precompile: () => precompile(renderer, scene, camera),
+    precompile: () => {
+      house.adopt(scene);
+      return precompile(renderer, scene, camera);
+    },
     // the gun's muzzle as the robot holds it now (for where his shots start)
     muzzle: () => (player.robot?.group.visible && player.robot.muzzle?.(muzzleAt) ? [muzzleAt.x, muzzleAt.y, muzzleAt.z] : null),
     info: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, area: areaId }),

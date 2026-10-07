@@ -97,6 +97,19 @@ describe('an atlas posterised into flat colours', () => {
     expect(out.colours).toHaveLength(2);
   });
 
+  it('keeps a rare colour far from every cluster as it is (a green hose on a brown wall)', () => {
+    // 40 browns and one green texel
+    const n = 41;
+    const data = new Uint8Array(n * 4);
+    for (let i = 0; i < 40; i++) data.set([120 + (i % 3), 80, 50, 255], i * 4);
+    data.set([40, 200, 60, 255], 40 * 4);
+    const out = posterize({ width: n, height: 1, data }, { colours: 1, keep: 0.1 });
+    const d = out.pixels.data;
+    expect([d[160], d[161], d[162]]).toEqual([40, 200, 60]);
+    // (the browns flat)
+    expect([d[0], d[1], d[2]]).toEqual([d[4], d[5], d[6]]);
+  });
+
   it('pulls the clusters onto a palette', () => {
     const out = posterize(px(), { colours: 2, palette: ['#ff8800', '#0088ff'], pull: 1 });
     const d = out.pixels.data;
