@@ -29,7 +29,7 @@ describe('engines', () => {
     const cmd = command('fake', { front: 'f.png', back: 'b.png', left: 'l.png' }, 'o.glb', { seed: 3 });
     expect(cmd[0]).toBe(process.execPath);
     expect(cmd[1]).toMatch(/ai-e2e[\\/]fakes[\\/]engine\.mjs$/);
-    expect(cmd.slice(2)).toEqual(['f.png', 'o.glb', '--seed', '3', '--left', 'l.png', '--back', 'b.png']);
+    expect(cmd.slice(2)).toEqual(['f.png', 'o.glb', '--seed', '3', '--left', 'l.png', '--back', 'b.png', '--res', '1024']);
   });
   it('refuse an engine it does not know', () => {
     expect(() => command('meshy', 'a.png', 'b.glb')).toThrow(/no engine meshy/);
@@ -235,5 +235,85 @@ describe("the model's eyes", () => {
     const { parseJson } = await import('./vlm.mjs');
     expect(parseJson('Sure. ```json\n{"score": 7, "problems": ["the wings are too short"]}\n```')).toEqual({ score: 7, problems: ['the wings are too short'] });
     expect(() => parseJson('no idea')).toThrow(/no JSON/);
+  });
+});
+
+describe('every field an issue can give, read back', () => {
+  const read = async (body, title = 'x-wing') => (await import('./runner.mjs')).parseIssue({ number: 1, title, body });
+  const URL1 = 'https://x.test/front.png';
+  it('reads each field into the job, or the job’s own name for it', async () => {
+    const { KEYS } = await import('./runner.mjs');
+    const cases = {
+      what: ['an X-wing', { what: 'an X-wing' }],
+      prompt: ['an X-wing, grey', { prompt: 'an X-wing, grey' }],
+      image: [URL1, { image: URL1 }],
+      front: [URL1, { image: URL1 }],
+      left: [URL1, { views: { left: URL1 } }],
+      back: [URL1, { views: { back: URL1 } }],
+      right: [URL1, { views: { right: URL1 } }],
+      faces: ['8000', { faces: 8000 }],
+      tex: ['1024', { tex: 1024 }],
+      seed: ['7', { seed: 7 }],
+      res: ['512', { res: 512 }],
+      fov: ['49', { fov: 49 }],
+      engine: ['Hunyuan', { engine: 'hunyuan' }],
+      faithful: ['no', { faithful: false }],
+      bake: ['no', { noBake: true }],
+      fresh: ['yes', { fresh: true }],
+    };
+    // `more` is the issue form's catch-all section, whose lines are the other fields
+    expect(KEYS.filter((k) => k !== 'more').sort()).toEqual(Object.keys(cases).sort());
+    for (const [key, [value, want]] of Object.entries(cases)) {
+      // a side alone is one view, so give it a front to stand beside
+      // (a prompt only counts with no picture to follow)
+      const given = { what: 'a thing', ...(key === 'prompt' ? {} : { image: URL1 }), ...(['left', 'back', 'right'].includes(key) ? { front: URL1 } : {}), [key]: value };
+      const job = await read(Object.entries(given).map(([k, v]) => `${k}: ${v}`).join('\n'));
+      expect(job.error, key).toBeUndefined();
+      expect(job, key).toMatchObject(want);
+    }
+  });
+  it('takes every spelling of yes and no', async () => {
+    for (const yes of ['yes', 'Yes', 'true', 'on', '1']) expect((await read(`what: a\nfresh: ${yes}`)).fresh, yes).toBe(true);
+    for (const no of ['no', 'NO', 'false', 'off', '0']) {
+      const job = await read(`what: a\nimage: ${URL1}\nfaithful: ${no}\nbake: ${no}`);
+      expect([job.faithful, job.noBake], no).toEqual([false, true]);
+    }
+    expect((await read('what: a\nfresh: maybe')).fresh).toBe(false);
+  });
+  it('reads 24k as 24000, and commas and spaces in a number', async () => {
+    expect((await read('what: a\nfaces: 24k')).faces).toBe(24000);
+    expect((await read('what: a\nfaces: 24,000')).faces).toBe(24000);
+    expect((await read('what: a\nfaces: 24 000')).faces).toBe(24000);
+  });
+  it('finds the link in an image field however it is written', async () => {
+    expect((await read(`image: ${URL1}`)).image).toBe(URL1);
+    expect((await read(`image: ![a picture](${URL1})`)).image).toBe(URL1);
+    expect((await read(`image: <img width="300" src="${URL1}">`)).image).toBe(URL1);
+    expect((await read('image: a picture I took')).error).toMatch(/image: "a picture I took" has no link in it/);
+  });
+  it('takes attached pictures as front, left, back and right, in that order', async () => {
+    const body = ['a', 'b', 'c', 'd', 'e'].map((n) => `![${n}](https://x.test/${n}.png)`).join('\n');
+    const job = await read(`what: a thing\n${body}`);
+    expect(job.views).toEqual({ front: 'https://x.test/a.png', left: 'https://x.test/b.png', back: 'https://x.test/c.png', right: 'https://x.test/d.png' });
+    expect(job.image).toBe('https://x.test/a.png');
+  });
+});
+
+describe('what the runner hands make.mjs', () => {
+  it('turns Pixal3D off when the issue says faithful: no', async () => {
+    const { makeArgs, parseIssue } = await import('./runner.mjs');
+    const job = parseIssue({ number: 1, title: 'x', body: 'image: https://x.test/a.png\nfaithful: no' });
+    expect(makeArgs(job, 'a.png')).toContain('--no-faithful');
+    expect(makeArgs({ ...job, faithful: true }, 'a.png')).not.toContain('--no-faithful');
+  });
+  it('looks for a job’s sheet and outcome where make.mjs put them, GEN3D_CACHE or not', async () => {
+    const { cacheOf } = await import('./runner.mjs');
+    const saved = process.env.GEN3D_CACHE;
+    delete process.env.GEN3D_CACHE;
+    expect(cacheOf('/r', 'xw').split(/[\\/]/).slice(-5)).toEqual(['r', 'scripts', 'gen3d', 'cache', 'xw']);
+    process.env.GEN3D_CACHE = '/elsewhere';
+    expect(cacheOf('/r', 'xw').split(/[\\/]/).slice(-2)).toEqual(['elsewhere', 'xw']);
+    if (saved === undefined) delete process.env.GEN3D_CACHE;
+    else process.env.GEN3D_CACHE = saved;
   });
 });

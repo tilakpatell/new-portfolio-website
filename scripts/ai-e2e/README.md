@@ -40,6 +40,13 @@ runs the real orchestration with only the engine swapped.
 | `BLENDER=scripts/ai-e2e/fakes/blender.mjs` | the Blender bake (`bake.mjs`) | copies the raw GLB to the baked one: the plumbing, not the pixels |
 | `GH_BIN=scripts/ai-e2e/fakes/gh.mjs` | `gh` (`scripts/desktop/lib.mjs`) | writes every call's argv to `GH_LOG` (a JSON array) and answers from `GH_FIXTURES/<first>-<second>.json` (`pr-create.json`, `label-list.json`) or `api.json` (keyed by path); `GH_FAIL=pr-create` makes that command fail |
 
+| `GEN3D_SHEET=fake` | the judging sheet's renders (`judge.mjs`) | a blank sheet of the right size, no browser |
+| `GEN3D_OUT=dir` | the repository's `public/` (`web.mjs`) | where `public/models/gen3d/` and `public/games/credits.json` are written, so a test or a health run never writes into the repository's own |
+
+With `GEN3D_ENGINE=fake`, the engine an issue or `--engine` asks for is
+passed to the fake as `--asked` instead of being run, with `--res`, `--fov`
+and `--faithful`, so a test can read back what reached the engine.
+
 The fakes share knobs (`fakes/common.mjs`):
 
 - `GEN3D_FAKE_FAIL_AT=generate|bake|picture`: that fake exits 1 (the engine
@@ -47,8 +54,36 @@ The fakes share knobs (`fakes/common.mjs`):
   at a step and watch the next one resume there.
 - `GEN3D_FAKE_TRIS=N` (or the engine's `--tris N`): a grid of at least N
   triangles, so a budget test can overshoot.
+- `GEN3D_FAKE_TEX=N`: the engine's texture is N² (64 otherwise), so a test
+  can see `--tex` cap it.
+- `GEN3D_FAKE_NOISE=K`: K more parts, each with a 2048² texture of noise
+  that no encoder can shrink, so a model comes out too heavy to ship (the
+  simplifier can bring any mesh to its triangle count, so weight is what
+  overshoots in practice).
 - `GEN3D_FAKE_SLEEP=S`: each fake waits first, for the timeout paths.
 - `GEN3D_FAKE_LOG=file`: each fake appends `{ tool, argv }` as a line of JSON.
+
+## Tier 1: the pipelines with fake engines
+
+`contract/repo.mjs` gives a test a sandbox: a temporary folder with its own
+cache, output root and runner home, every fake switched on, and, for the
+runners, a temporary repository (the pipelines' files, the real
+`node_modules` borrowed through a junction) with a bare `origin` beside it.
+`serveFixtures()` serves `contract/fixtures/` over HTTP on a free port, so
+an issue's picture link is fetched as it would be from GitHub, without
+leaving the machine.
+
+| file | what it proves |
+| --- | --- |
+| `contract/gen3d-make.test.mjs` | `make.mjs` makes three cuts within the budget asked for, credits the model, keeps `result.json`, the sheet and the log; `--tex` caps every texture; a prompt draws candidates and the judge picks; `GEN3D_OUT` keeps `public/` clean |
+| `contract/gen3d-resume.test.mjs` | the raw model and the bake are reused when nothing changed, the run starts again at the bake when it died there, `--fresh` and a one-pixel change make all again |
+| `contract/gen3d-judge.test.mjs` | a miss is made again once with the next seed; a second miss ships with its verdict; `--no-judge` asks nothing |
+| `contract/gen3d-budget.test.mjs` | a model too heavy for its cut is refused in `budget.mjs`'s words, nothing credited |
+| `contract/gen3d-runner.test.mjs` | an issue through the runner ends as a branch, a pull request with the sheet, verdict and cuts, a comment and a closed issue; every field reaches the pipeline; a bad field and a dead engine end as `gen3d:failed` with nothing pushed; four sides reach the engine at once |
+
+The fixtures: `x-wing-ref.png` (the site's X-wing rendered on white at
+512², with `scripts/glb-shot.mjs`), issue bodies (`issue-*.md`, with
+`{{BASE}}` where the picture server goes) and judge scripts (`judge-*.json`).
 
 ## Adding a case
 
