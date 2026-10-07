@@ -21,12 +21,12 @@
   },
   "thragg": {
     "acct": 2,
-    "model": "01a11429-4392-72cc-a380-067998bd0247",
-    "rig": "01a11442-32cd-72d1-9318-0917c9b970ef",
+    "model": "01a1145a-5e39-75f8-9a68-9f1d3accd09c",
+    "rig": "01a1145d-90fa-729c-8f20-1e33cba7af02",
     "anims": {
-      "lib": "01a11445-d3af-71a1-b76f-1eaeb2142edb",
-      "hover": "01a11445-d54c-74c0-9a6f-541422683f5f",
-      "fly": "01a11445-d87d-7623-a0dc-6d6948372b08"
+      "lib": "01a1145e-56b0-71e0-b923-81ab430edaed",
+      "hover": "01a1145e-5818-719b-aeda-501b6200d624",
+      "fly": "01a1145e-5ad6-766f-bf4a-615e612c6e81"
     }
   },
   "eve": {
@@ -41,10 +41,10 @@
   },
   "cecil": {
     "acct": 2,
-    "model": "01a1142d-7ea2-766e-aa41-204df064937e",
-    "rig": "01a11442-f532-75a8-a0fc-aa2aebd816a4",
+    "model": "01a1145b-f70c-73b5-b4cd-48c7aa5bb470",
+    "rig": "01a1145d-f3a4-75c6-a98b-2c98023cb7e6",
     "anims": {
-      "lib": "01a11446-bb6f-7013-b97d-cb8e309b91c8"
+      "lib": "01a1145e-ec08-7296-9007-e714de85d34b"
     }
   },
   "debbie": {
@@ -154,6 +154,16 @@
         "acct": 2,
         "model": "01a113fa-702b-7283-9664-c0b81d32a6c1",
         "rig": "01a113ff-7990-703f-a8d1-acc6cc19e804"
+      },
+      {
+        "acct": 2,
+        "model": "01a11429-4392-72cc-a380-067998bd0247",
+        "rig": "01a11442-32cd-72d1-9318-0917c9b970ef",
+        "anims": {
+          "lib": "01a11445-d3af-71a1-b76f-1eaeb2142edb",
+          "hover": "01a11445-d54c-74c0-9a6f-541422683f5f",
+          "fly": "01a11445-d87d-7623-a0dc-6d6948372b08"
+        }
       }
     ],
     "eve": [
@@ -173,6 +183,14 @@
         "acct": 2,
         "model": "01a113fd-e4f1-73db-8d42-4c6fb50576cc",
         "rig": "01a113ff-eb6d-71b9-ae87-ec11f1d6eb7d"
+      },
+      {
+        "acct": 2,
+        "model": "01a1142d-7ea2-766e-aa41-204df064937e",
+        "rig": "01a11442-f532-75a8-a0fc-aa2aebd816a4",
+        "anims": {
+          "lib": "01a11446-bb6f-7013-b97d-cb8e309b91c8"
+        }
       }
     ],
     "debbie": [
