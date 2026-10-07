@@ -577,7 +577,7 @@ export async function create(canvas, ctx) {
           p.holder.updateMatrixWorld(true);
           p.gp = createGunplay(fig, fig.gun ?? p.spec.gun, { unit: 1, who: fig.built ? 'built' : p.spec.id });
           // a lightsaber (surface/saber.js): lit, swung, held up and thrown from here
-          if (p.spec.saber && p.gp) p.saber = createSaber(p.gp, { color: p.spec.saber.color, hilt: p.spec.saber.hilt, stance: p.spec.saber.stance, parent: scene, sound: (what) => sounds.saber?.(what) ?? sounds.combat?.(what) });
+          if (p.spec.saber && p.gp) p.saber = createSaber(p.gp, { color: p.spec.saber.color, hilt: p.spec.saber.hilt, stance: p.spec.saber.stance, parent: scene, sound: (what) => sounds.saber?.(what) ?? sounds.combat?.(what), fig });
           // the gun's numbers (weaponRules.js), with the mods they picked
           p.weapon = withMods(fig.gun ?? p.spec.gun, p.spec.mods ?? []);
           p.weapon.heat *= perks.heat;
@@ -1932,7 +1932,9 @@ export async function create(canvas, ctx) {
         const air = st.grounded ? 0 : Math.max(0, st.y - groundAt(world, st.x, st.z, st.y));
         const mine = i === lead;
         const motion = { speed: (st.vx * fwdV.x + st.vz * fwdV.z) * METRE, side: (st.vx * rightV.x + st.vz * rightV.z) * METRE, turn, air, hurt: mine ? Math.max(0, 1 - (state.t - state.hurtAt) / 0.35) : 0, knock: 0.5 };
-        pp.fig?.update(dt, clamp(st.speed / WALK.run, 0, 1), motion);
+        const going = clamp(st.speed / WALK.run, 0, 1);
+        pp.fig?.update(dt, going, motion);
+        pp.saber?.stand(dt, state.t, going); // (the body under a lit blade, over the clips)
         pp.holder.updateMatrixWorld(true);
         pp.fig?.after?.(dt, motion, { forward: fwdV, up: UP });
         const drop = pp.fig?.loco?.drop ?? 0;

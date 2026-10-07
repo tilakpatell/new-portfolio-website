@@ -50,6 +50,44 @@ const sz = 0.6; // (a scatter scale range's spread, as a share of its base)
 const range = (k) => [k * (1 - sz / 2), k * (1 + sz / 2)];
 // (a biome's test on its map colour, biomes.js's classify: h degrees, s and l 0…1)
 const hue = (c, a, b) => c.h >= a && c.h <= b;
+// (and on where it is: inside an ellipse round [lat, lon] on the map, its
+// half-axes a and b degrees, the a axis turned `deg` from east toward north)
+const oval = ([la, lo], [lat, lon], a, b, deg = 0) => {
+  const t = (deg * Math.PI) / 180;
+  const x = lo - lon;
+  const y = la - lat;
+  return ((x * Math.cos(t) + y * Math.sin(t)) / a) ** 2 + ((y * Math.cos(t) - x * Math.sin(t)) / b) ** 2 < 1;
+};
+// Tortuga as the Caribbean's bake lays it (scripts/planets/caribbean.mjs):
+// the island (real about [20.05, −72.79]) centred at [19.99, 8.63] on the
+// globe (its Cayona mark, [20.04, −72.79], at [19.945, 8.639]), about 1.5°
+// long and tilted 11° down to the east. An ellipse along it, 0.78° by 0.3°:
+// all of the island and its harbour in, Hispaniola's north coast (0.24–0.29°
+// across the channel) out
+const TORTUGA = [19.99, 8.63];
+const onTortuga = (at) => {
+  if (!at) return false;
+  const y = at[0] - TORTUGA[0];
+  const x = (at[1] - TORTUGA[1]) * Math.cos((TORTUGA[0] * Math.PI) / 180);
+  const t = (-11 * Math.PI) / 180;
+  return ((x * Math.cos(t) + y * Math.sin(t)) / 0.78) ** 2 + ((y * Math.cos(t) - x * Math.sin(t)) / 0.3) ** 2 <= 1;
+};
+// Middle-earth's woods: its forest biome, found by colour and (Lothlórien,
+// whose gold canopy reads as grass from orbit) by place
+const ME_FOREST = {
+  title: 'The old forest',
+  sub: 'Middle-earth · under the eaves, where the trees are older than the Shire',
+  ground: { style: 'grass', colors: ['#26381c', '#34481f', '#4a3a26'] },
+  sky: { zenith: '#557a8a', horizon: '#a8b49a', sun: '#f0e6c0' },
+  things: [],
+  scatter: [
+    { kind: 'oak', n: 30, from: 24, to: 110, scale: range(1.2), opts: { which: 0 } },
+    { kind: 'oak', n: 30, from: 24, to: 110, scale: range(1.2), opts: { which: 1 } },
+    { kind: 'oak', n: 30, from: 26, to: 110, scale: range(1.2), opts: { which: 2 } },
+    { kind: 'mushroom', n: 60, from: 4, to: 70, scale: range(1), solid: false },
+    { kind: 'tufts', n: 160, from: 3, to: 70, scale: range(0.8), solid: false },
+  ],
+};
 
 export const LANDINGS = {
   middleearth: {
@@ -90,12 +128,16 @@ export const LANDINGS = {
     // inland seas; Mordor's black plain; Mirkwood's, Fangorn's and the Old
     // Forest's dark woods; the Misty, White and Grey Mountains, rock and
     // snow; Harad's sands; and the green of Eriador, Rohan and Gondor, the
-    // Shire's
+    // Shire's. Measured against the bake's own geography rasterized onto the
+    // map's 256 × 128 copy (forest precision 46% → 92%, Mordor 76% → 85%):
+    // the woods and Mordor are bounded by where the map has them, as the
+    // bake lays a conifer belt round 50–58° N and dark rock on the far side
     biomes: [
-      { id: 'sea', sea: true, match: (c) => hue(c, 185, 255) && c.s > 0.25 && c.l < 0.6 },
+      { id: 'sea', sea: true, match: (c) => hue(c, 185, 255) && c.s > 0.12 && c.l < 0.6 },
       {
         id: 'mordor',
-        match: (c) => c.l < 0.3 && (c.s < 0.12 || c.h < 60 || c.h > 300),
+        // (inside its walls only: dark rock and dark coasts elsewhere aren't Mordor)
+        match: (c, at) => c.l < 0.3 && (c.s < 0.12 || c.h < 60 || c.h > 300) && (!at || (at[0] > 3 && at[0] < 28 && at[1] > 15 && at[1] < 47)),
         title: 'Mordor',
         sub: 'Middle-earth · the plateau of Gorgoroth, under Orodruin',
         ground: { style: 'sand', colors: ['#3a3330', '#4a403a', '#241e1c'] },
@@ -112,25 +154,19 @@ export const LANDINGS = {
           { kind: 'embers', n: 60, from: 6, to: 90, scale: range(1), solid: false },
         ],
       },
+      // (Lothlórien's gold canopy reads as grass from orbit: by place)
+      { id: 'forest', near: [36.9, 3.4, 1.6], ...ME_FOREST },
       {
         id: 'forest',
-        match: (c) => (c.l < 0.26 && hue(c, 95, 170)) || (c.l < 0.22 && hue(c, 60, 170)),
-        title: 'The old forest',
-        sub: 'Middle-earth · under the eaves, where the trees are older than the Shire',
-        ground: { style: 'grass', colors: ['#26381c', '#34481f', '#4a3a26'] },
-        sky: { zenith: '#557a8a', horizon: '#a8b49a', sun: '#f0e6c0' },
-        things: [],
-        scatter: [
-          { kind: 'oak', n: 30, from: 24, to: 110, scale: range(1.2), opts: { which: 0 } },
-          { kind: 'oak', n: 30, from: 24, to: 110, scale: range(1.2), opts: { which: 1 } },
-          { kind: 'oak', n: 30, from: 26, to: 110, scale: range(1.2), opts: { which: 2 } },
-          { kind: 'mushroom', n: 60, from: 4, to: 70, scale: range(1), solid: false },
-          { kind: 'tufts', n: 160, from: 3, to: 70, scale: range(0.8), solid: false },
-        ],
+        // (only where the map has woods: not the far side, nor the conifer
+        // belt the bake lays north of 50 degrees, but for Mirkwood's north)
+        match: (c, at) => ((c.l < 0.26 && hue(c, 95, 140)) || (c.l < 0.22 && hue(c, 60, 140))) && (!at || (at[0] > -28 && at[0] < 61 && at[1] > -40 && at[1] < 60 && (at[0] < 50 || (at[1] > 9 && at[1] < 33)))),
+        ...ME_FOREST,
       },
       {
         id: 'mountains',
-        match: (c) => (c.s < 0.15 && c.l >= 0.35 && !(hue(c, 90, 170) && c.s > 0.08)) || c.l > 0.8,
+        // (and the polar ice's pale edge)
+        match: (c) => (c.s < 0.15 && c.l >= 0.35 && !(hue(c, 90, 170) && c.s > 0.08)) || c.l > 0.8 || (c.l > 0.55 && hue(c, 180, 260)),
         title: 'The mountains',
         sub: 'Middle-earth · high on a pass, the snow above',
         ground: { style: 'sand', colors: ['#7c7872', '#8e8a84', '#eef0f2'] },
@@ -196,14 +232,19 @@ export const LANDINGS = {
       { kind: 'stones', n: 160, from: 4, to: 70, scale: range(0.5), solid: false, opts: { color: '#8a6a4e' } },
       { kind: 'scrub', n: 120, from: 5, to: 90, scale: range(1), solid: false },
     ],
-    // New Mexico (scripts/planets/breakingbad.mjs): Albuquerque where the
-    // bake puts it (35° N on the face shown first, its CITY's 0.045 rad
-    // round), White Sands' gypsum in the southern basins, the malpais' black
-    // lava, the ranges' granite, juniper and pine, and the high desert
+    // New Mexico (scripts/planets/breakingbad.mjs: the state ~100° tall on
+    // the globe, a km 0.174°): Albuquerque by place, its grid as the bake
+    // paints it (1.6× round the Big I: 30–43° N, ±5° of lon 0); White
+    // Sands' gypsum by colour inside the dunes' oval (8° S 5° E); the
+    // malpais' black lava, El Malpais by colour (29° N 24° W) and the
+    // Carrizozo flow by place (under a pixel wide in the map's copy); the
+    // ranges' rock, pine and snow (snow only up north, where the San Juans
+    // and Sangres are); the high desert. Each fitted to the bake's own
+    // shapes (breakingbad-geo.mjs) on the map's 256 × 128 copy
     biomes: [
       {
         id: 'city',
-        near: [35, 0, 2.6],
+        match: (c, at) => !!at && oval(at, [36.5, -0.1], 4.4, 6),
         title: 'Albuquerque',
         sub: 'Breaking Bad · a lot off Central Avenue, by Los Pollos Hermanos',
         ground: { style: 'asphalt', colors: ['#5a5a58', '#6a6966', '#e8e2c8'] },
@@ -224,7 +265,7 @@ export const LANDINGS = {
       },
       {
         id: 'sands',
-        match: (c, at) => c.l > 0.84 && c.s < 0.4 && (!at || at[0] < 34),
+        match: (c, at) => c.l > 0.72 && c.s < 0.5 && (!at || oval(at, [-8, 4.95], 4.3, 2.3, -78.5)),
         title: 'White Sands',
         sub: 'Breaking Bad · the gypsum dunes, south toward Alamogordo',
         ground: { style: 'sand', colors: ['#f4f1ea', '#e6e0d2', '#cfc4ae'] },
@@ -241,9 +282,9 @@ export const LANDINGS = {
       },
       {
         id: 'malpais',
-        match: (c) => c.l < 0.3 && c.s < 0.18,
+        match: (c, at) => (c.l < 0.3 && c.s < 0.18 && (!at || (at[0] > 26 && at[0] < 33 && at[1] > -27 && at[1] < -21.6))) || (!!at && oval(at, [7.76, 9.94], 5.1, 0.5, 73.8)),
         title: 'The malpais',
-        sub: 'Breaking Bad · the black lava flows, out past Carrizozo',
+        sub: 'Breaking Bad · the black lava flows, El Malpais and the Valley of Fires',
         ground: { style: 'sand', colors: ['#3b3430', '#524640', '#5a2e22'] },
         sky: { zenith: '#2a6ccc', horizon: '#ecdcc4', sun: '#fff4d8' },
         things: [
@@ -258,7 +299,7 @@ export const LANDINGS = {
       },
       {
         id: 'mountains',
-        match: (c) => c.l < 0.45 && c.s < 0.4,
+        match: (c, at) => (c.l < 0.45 && c.s < 0.4 && (c.h < 120 || c.h >= 300)) || ((c.s < 0.15 || c.l > 0.8) && (!at || at[0] > 34)),
         title: 'The mountains',
         sub: 'Breaking Bad · up among the juniper and the granite, the valley far below',
         ground: { style: 'sand', colors: ['#8a7a68', '#74675a', '#b8a890'] },
@@ -522,12 +563,14 @@ export const LANDINGS = {
       { kind: 'shells', n: 120, from: 3, to: 34, scale: range(1), solid: false },
     ],
     // the Caribbean (scripts/planets/caribbean.mjs): Tortuga where the bake
-    // put it (its frame(20, π + 0.08)), the deep sea (on to the nearest
-    // island), the banks' turquoise shallows, and an island's beach
+    // lays it (onTortuga, by place: too small for the 256 × 128 copy, whose
+    // cells there read sea), the banks' and coasts' turquoise shallows, the
+    // sea (every blue to teal the reef doesn't take: on to the nearest land,
+    // 64 strides out, as most of this globe is open sea), and an island's beach
     biomes: [
       {
         id: 'tortuga',
-        near: [20, 4.6, 3],
+        match: (c, at) => onTortuga(at),
         title: 'Tortuga',
         sub: 'Pirates of the Caribbean · the port, the Faithful Bride’s lamps lit',
         ground: { style: 'sand', colors: ['#b49a70', '#9a8260', '#6a5640'] },
@@ -544,10 +587,9 @@ export const LANDINGS = {
         ],
         scatter: [{ kind: 'shells', n: 40, from: 3, to: 30, scale: range(1), solid: false }],
       },
-      { id: 'sea', sea: true, match: (c) => hue(c, 195, 240) && c.l < 0.42 },
       {
         id: 'reef',
-        match: (c) => hue(c, 155, 200) && c.l >= 0.4,
+        match: (c) => hue(c, 160, 195) && c.l >= 0.46 && c.s >= 0.3,
         title: 'A reef flat',
         sub: 'Pirates of the Caribbean · the shallows at low tide, the Pearl standing off',
         ground: { style: 'sand', colors: ['#e0d4a8', '#d0c294', '#5fbcb4'] },
@@ -564,6 +606,7 @@ export const LANDINGS = {
           { kind: 'coral', n: 90, from: 6, to: 60, scale: range(1), solid: false },
         ],
       },
+      { id: 'sea', sea: true, reach: 64, match: (c) => hue(c, 165, 260) },
       { id: 'beach' },
     ],
   },

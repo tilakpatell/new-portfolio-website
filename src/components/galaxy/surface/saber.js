@@ -10,16 +10,20 @@
 // reaches. A double blade lights out of the pommel too; dual wield puts a
 // second hilt in the other hand, held at a mirrored guard. The blade leaves a trail through a
 // stroke. Hits go back through `hit(target, damage, at, { heavy })`;
-// sounds through `sound(name)`.
+// sounds through `sound(name)`. Given the figure (`fig`), its body sinks
+// into a guard under the lit blade and lunges under a stroke
+// (saberBody.js): `stand` lays that over the figure's clips, after them and
+// before anything poses on top (the figure's `after`, gp.set, update).
 //
-//   createSaber(gp, { color, hilt, stance, parent, sound }) →
-//     { light(on), swing(now, { heavy }), block(on), throw(now, dir),
+//   createSaber(gp, { color, hilt, stance, parent, sound, fig }) →
+//     { light(on), swing(now, { heavy }), block(on), throw(now, dir), stand(dt, now, move),
 //       update(dt, now, { forward, up, me, targets, hit }), deflecting(from),
 //       lit, busy, swinging, thrown, charge (0…1 while F is held), setCharge(k), dispose() }
 
 import * as THREE from 'three';
 import { frameFrom, reach, setWorldQuaternion } from '../../../lib/three/ik';
 import { HEAVY, arcHit, nextSwing, stanceOf, swingPose } from './combatRules';
+import { createSaberBody, loadSaberBody } from './saberBody';
 import { SABER, deflects, throwAt } from './saberRules';
 
 const V = THREE.Vector3;
@@ -45,7 +49,7 @@ const GUARD_DUAL = { yaw: -0.3, pitch: 0.7, at: { fwd: 0.45, up: -0.7, side: 0.3
 const TRAIL = 14; // segments of the trail behind the blade
 const radiusOf = (t) => Math.max(0.45, (t.fig?.tall ?? 1.6) * (t.spec?.scale ?? 1) * 0.35);
 
-export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'single', parent = null, sound = null } = {}) {
+export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'single', parent = null, sound = null, fig = null } = {}) {
   const gun = gp.gun;
   const { RightArm: upper, RightForeArm: fore, RightHand: hand, LeftArm: leftUpper, LeftHand: leftHand } = gp.bones;
   const blade = gun.getObjectByName('blade');
@@ -108,6 +112,12 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     b.visible = false;
     b.scale.y = 0.001;
   }
+  let body = null; // (the guard and the lunge under it, once their clips are in)
+  let gone = false;
+  if (fig)
+    loadSaberBody().then((clips) => {
+      if (!gone) body = createSaberBody(fig, clips);
+    });
 
   // the arm, over gunplay's pose: the blade along `yaw` round and `pitch`
   // up from the facing, the hand carried round with it. Held in both hands
@@ -329,6 +339,11 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     deflecting(from) {
       return st.blocking && st.lit > 0.5 && st.me ? deflects(st.me, from, SABER.block.cone * (st_.block > 1 ? 1.2 : 1)) : false;
     },
+    // after the figure's clips, before what poses over them: the body
+    // (move 0…1, as the figure's update has it)
+    stand(dt, now, move = 0) {
+      body?.update(dt, now, { lit: st.on, swing: st.swing, move });
+    },
     // after gp.set: the blade's length, the arm's pose, the throw's flight
     update(dt, now, p) {
       st.me = p.me ?? st.me;
@@ -381,6 +396,7 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       }
     },
     dispose() {
+      gone = true;
       if (st.thrown && hand) {
         hand.add(gun);
         gun.position.copy(local.pos);
