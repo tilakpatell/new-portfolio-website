@@ -22,6 +22,7 @@ import { PORTALS, portalById, portalHit, transit } from './portals';
 import { MAW, parkNear } from './maw';
 import { WONDERS, reachOf } from './deep';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH, SECTORS, sectorOf } from './layout';
+import { laneAim, laneFrame, lanePlan } from './lanePilot';
 import { MOONS, byId } from './universes';
 import { LENGTH } from './scale';
 import { SYSTEM_MARKS, SYSTEM_NAMES } from '../galaxy/names';
@@ -30,11 +31,18 @@ export const DRIVE_KEY = 'tp-universe-drive';
 
 export const DRIVES = [
   {
+    id: 'lanes',
+    name: 'Hyperlanes',
+    verb: 'Take the lanes',
+    od: OVERDRIVE, // (where there's no lane worth taking, a hop at a place: super speed, as the autopilot of today)
+    about: 'The autopilot takes the lanes, riding with the traffic. You fly the whole way and can pull out any time.',
+  },
+  {
     id: 'hyper',
     name: 'Hyperspeed',
     verb: 'Jump',
     od: 1,
-    about: 'A jump to lightspeed. You come out parked at it, however far it is. Nothing to see on the way, and the hyperdrive needs a few seconds to charge again after.',
+    about: 'A jump to lightspeed. You come out parked at it, however far it is. Nothing to see on the way, and the hyperdrive needs half a minute to charge again after.',
   },
   {
     id: 'super',
@@ -51,14 +59,16 @@ export const DRIVES = [
     about: 'The pulse drive as it comes. The scenic route, with time for the crew to talk on the way.',
   },
 ];
-export const driveById = (id) => DRIVES.find((d) => d.id === id) ?? DRIVES[1];
-// a stored drive, or super speed (quick, and still a flight)
-export const parseDrive = (v) => (DRIVES.some((d) => d.id === v) ? v : 'super');
+export const driveById = (id) => DRIVES.find((d) => d.id === id) ?? DRIVES[0];
+// a stored drive, or the lanes (the everyday way since the map spread out:
+// quick, with the traffic, and still a flight)
+export const parseDrive = (v) => (DRIVES.some((d) => d.id === v) ? v : 'lanes');
 
 // the jump, in seconds: to the flash, when the ship's moved (the site's jump
 // overlay flashes at 1.15 to 1.3 s, components/Hyperspace.jsx); all of it;
-// and how long till the hyperdrive can go again
-export const HYPER = { flash: 1.2, length: 2.45, recharge: 10 };
+// and how long till the hyperdrive can go again (30 s since the lanes came:
+// they're the everyday way, the jump the rare one)
+export const HYPER = { flash: 1.2, length: 2.45, recharge: 30 };
 
 // Whether the hyperdrive can jump now: { ready, wait (seconds), why }.
 // `last` is when it last jumped and `now` the clock (both in seconds), or
@@ -292,11 +302,42 @@ export function distanceTo(ship, id) {
 // (in another sector: into the portal, through, and on from the far end; a
 // jump goes to the portal, and the hyperdrive's charging by the far side, so
 // on from there at super speed)
+// (by the lanes: flown as the scene flies it, lanePilot.js, to the ramp, on,
+// riding and in; or at super speed where there's no lane worth taking; and
+// to the portal by the lanes, then on from the far end at super speed)
 export const TRANSIT = 0.6; // seconds through a portal (the flash)
+function laneTrip(ship, id, limit, dt) {
+  let auto = lanePlan(ship, id, parkFor(id, [ship.x, ship.z]));
+  if (!auto) return null;
+  let s = { ...ship };
+  let ride = null;
+  for (let t = 0; t < limit; t += dt) {
+    let input = { throttle: 0 };
+    if (!ride) {
+      const aim = laneAim(auto);
+      const a = autopilot(s, aim?.id ?? auto.id, aim?.park ?? auto.park, aim?.space, 1);
+      if (a.done && !aim) return t;
+      input = a.input;
+    }
+    const lane = laneFrame({ ride, auto, ship: s }, input, dt, { canEnter: Boolean(auto.route) });
+    if (lane) [ride, auto] = [lane.ride, lane.auto];
+    s = lane?.ship ?? step(s, input, dt).ship;
+  }
+  return null;
+}
 export function tripTime(ship, id, drive = 'super', { limit = 150, dt = 1 / 30 } = {}) {
   id = goalOf(id);
   if (!ship || !GOALS[id]) return null;
   const leg = legOf(ship, id);
+  if (drive === 'lanes') {
+    const by = laneTrip(ship, leg, limit, dt);
+    if (by === null) return tripTime(ship, id, 'super', { limit, dt });
+    if (leg === id) return by;
+    const p = portalById(leg);
+    const out = transit({ ...ship, x: p.at[0], y: p.at[1], z: p.at[2], speed: 0 }, leg)?.ship;
+    const rest = out && tripTime(out, id, 'super', { limit, dt });
+    return rest === null || rest === undefined ? null : by + TRANSIT + rest;
+  }
   if (leg !== id) {
     let first;
     let out;
@@ -354,22 +395,23 @@ export function formatDistance(units) {
 
 // ── The chart ──
 // Seen from straight above, north (−z) up. Two views: the whole universe,
-// out to the edge of the map, on a square-root scale (so the home system
-// opens up and the far worlds still fit), and the home system alone, to
-// scale. chartAt gives where (x, z) is on it, 0…1 across and down.
+// out to the edge of the map, on a root scale (so the home system opens up
+// and the far worlds still fit: since the spread, scale.js's SPREAD, a 0.375
+// power, which keeps the home system as big on it as the square root did on
+// the map a quarter the size), and the home system alone, to scale. chartAt gives where (x, z) is on it, 0…1 across and down.
 // (and a third, the Rick and Morty sector, round its own middle: each view's
 // `sector`, and its `origin`, the point at its middle)
 export const CHART_VIEWS = {
-  all: { id: 'all', name: 'Universe', r: EDGE, scale: 'sqrt', sector: 'main', origin: [0, 0, 0] },
+  all: { id: 'all', name: 'Universe', r: EDGE, scale: 'root', power: 0.375, sector: 'main', origin: [0, 0, 0] },
   home: { id: 'home', name: 'Home system', r: HOME_RADIUS * 1.15, scale: 'linear', sector: 'main', origin: [0, 0, 0] },
-  rickmorty: { id: 'rickmorty', name: 'The Curve', r: SECTORS.rickmorty.edge, scale: 'sqrt', sector: 'rickmorty', origin: SECTORS.rickmorty.origin },
+  rickmorty: { id: 'rickmorty', name: 'The Curve', r: SECTORS.rickmorty.edge, scale: 'root', power: 0.5, sector: 'rickmorty', origin: SECTORS.rickmorty.origin },
 };
 // the chart a sector opens on
 export const viewFor = (sector) => (sector === 'rickmorty' ? 'rickmorty' : 'all');
 const MARGIN = 0.47; // the chart's radius, of its width (a little room round the edge)
 export function chartRadius(r, view = CHART_VIEWS.all) {
   const k = Math.max(0, r) / view.r;
-  return (view.scale === 'sqrt' ? Math.sqrt(k) : k) * MARGIN;
+  return (view.scale === 'root' ? k ** view.power : k) * MARGIN;
 }
 export function chartAt(x, z, view = CHART_VIEWS.all) {
   const o = view.origin ?? [0, 0, 0];

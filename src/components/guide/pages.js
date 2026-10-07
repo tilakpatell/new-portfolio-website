@@ -106,7 +106,7 @@ export const PAGES = {
     ],
     tips: [
       ['Pick a ship', 'Rick and Morty’s cruiser, Luke and Artoo’s X-wing, Han and Chewie’s Falcon or Walt and Jesse’s RV. Each crew has a word about every place. No ship? Pick a place and the camera flies there.'],
-      ['Getting about', 'The worlds are far apart. Boost in the open and the pulse drive takes over; it drops back near a place. Or open the nav map (M) and let the ship take you: hyperspeed (a jump), super speed or cruise. Star systems are on it too: pick one and the ship flies through the gate. Tour visits every place, nearest first; Escape stops it.'],
+      ['Getting about', 'The worlds are far apart. Boost in the open and the pulse drive takes over; it drops back near a place. Or open the nav map (M) and let the ship take you: by the hyperlanes (riding with the traffic; hold S to drop out), hyperspeed (a jump), super speed or cruise. Star systems are on it too: pick one and the ship flies through the gate. Tour visits every place, nearest first; Escape stops it.'],
       ['Links', 'Every place has a link that opens the map there (/universe/aurelia, say): Copy a link here on the nav map. The terminal’s fly <place> and ⌘K’s Fly to do the same.'],
       ['Deep space', 'Between the worlds are the wonders: a ringed gas giant, an ice giant, two other suns with their own worlds, a black hole, two nebulae, the Citadel of Ricks, a pulsar, a binary star, a rogue planet and a wreck field round a white dwarf, with a rim of ice round the edge of the map. The crew have a word about each.'],
       ['Mind the planets', 'Fly down into a planet’s air and you land on it; come in boosting and you crash into its page. Brush a station and you bounce off.'],
@@ -196,6 +196,61 @@ export const PAGES = {
       ['The Battle of Yavin', 'Set course for Yavin 4 and a clock starts. Fly the trench run before the moon is in range.'],
       ['The trench run', 'Shoot the TIEs and towers over the surface, then dive in: dodge the catwalks, shoot the turrets, lose Vader. Torpedoes hit the first thing in their path, so keep one for the port: it glows as you close in and turns green when you’re lined up, low and centred. Rookie, Red Five or Jedi; each keeps its best.'],
       ['The readout', 'Open any part of the station on the technical readout.'],
+    ],
+  },
+  '/deathstar/inside': {
+    keys: [
+      {
+        label: 'Moving',
+        rows: [
+          ['W A S D / ← ↑ ↓ →', 'Walk'],
+          ['Shift', 'Run'],
+          ['Space', 'Jump'],
+          ['C', 'Crouch'],
+          ['Mouse', 'Look (click the station first to hold the pointer)'],
+          ['E', 'Use: doors, lifts, consoles, people'],
+          ['V', 'Third or first person'],
+        ],
+      },
+      {
+        label: 'Fighting',
+        rows: [
+          ['Click', 'Fire'],
+          ['Right-click', 'Aim'],
+          ['R', 'Vent the gun before it overheats'],
+        ],
+      },
+      {
+        label: 'Aboard',
+        rows: [
+          ['H', 'Helmet on or off'],
+          ['G', 'Roar (as Chewbacca)'],
+          ['M / Tab', 'The station’s map'],
+          ['1 – 4', 'Choose what to say in a conversation'],
+          ['Esc / P', 'Pause'],
+        ],
+      },
+    ],
+    touch: [
+      {
+        rows: [
+          ['Stick', 'Walk (push it all the way to run)'],
+          ['Drag', 'Look'],
+          ['Fire', 'Shoot'],
+          ['Aim', 'Hold to aim'],
+          ['Use', 'Doors, lifts, consoles, people'],
+          ['Jump', 'Jump'],
+          ['Crouch', 'Crouch'],
+        ],
+      },
+    ],
+    tips: [
+      ['Two stations', 'The first Death Star, over Alderaan and Yavin, and the second, over Endor. Pick one, and a side, on the start screen.'],
+      ['Rebel or Imperial', 'A Rebel in stormtrooper armour is in disguise: running, shooting or a restricted room makes the garrison wonder, and with the helmet off you’re known at once. An Imperial serves aboard and hunts the intruders.'],
+      ['Story or free roam', 'Follow the films’ story, or walk the station as you like: the story waits for you.'],
+      ['Security', 'Each section has its own. Seen where you shouldn’t be, it goes to alert, then lockdown: the blast doors seal and squads come looking. Stay out of sight and it stands down.'],
+      ['The gun', 'It heats as you fire, and when it’s too hot it vents and won’t fire for a moment. R vents it sooner, at a time you choose.'],
+      ['Saving', 'Your story, the rooms you’ve seen and the secrets you’ve found are kept on this device.'],
     ],
   },
   '/caribbean': {

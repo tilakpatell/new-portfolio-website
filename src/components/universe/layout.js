@@ -18,12 +18,14 @@
 // per-sector is the edge the ship's turned back at (ship.js) and the chart.
 
 import { MOONS, UNIVERSES, byId } from './universes';
-import { HOME_SPREAD } from './scale';
+import { HOME_SPREAD, SPREAD } from './scale';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5)); // ≈ 137.5°
-const FIRST = 2000; // how far out the nearest fandom is
-const STEP = 330; // and how much further each one after it
-const HEIGHT = 560; // how far above or below the disc they go
+// (all three by scale.js's SPREAD; the height by half of it, so the disc
+// stays a disc and the highest world stays under deep space's ceiling)
+const FIRST = 2000 * SPREAD; // how far out the nearest fandom is
+const STEP = 330 * SPREAD; // and how much further each one after it
+const HEIGHT = (560 * SPREAD) / 2; // how far above or below the disc they go
 // (and the Rick and Morty sector's worlds round its middle, the same way)
 const SECTOR_FIRST = 900;
 const SECTOR_STEP = 450;
@@ -39,13 +41,15 @@ export const ORDER = UNIVERSES.map((u) => u.id);
 
 // The sectors: where each one's middle is, and how far out from it the ship
 // is turned back. Anything further than SECTOR_SPLIT down -z is the Rick and
-// Morty sector's (the main map's edge is 9000 out, the sector's 6000 round
-// its origin, so the line runs through empty space between them).
+// Morty sector's (the main map's edge is 36,000 out, the sector's 6,000 round
+// its origin, 48,000 down: the line runs halfway between the two edges). The
+// sector keeps its own layout (it's a pocket universe reached by portal);
+// only its origin moved out with the main map's spread.
 export const SECTORS = {
-  main: { id: 'main', origin: [0, 0, 0], edge: 9000, name: 'Deep space' },
-  rickmorty: { id: 'rickmorty', origin: [0, 0, -40000], edge: 6000, name: 'The Central Finite Curve' },
+  main: { id: 'main', origin: [0, 0, 0], edge: 9000 * SPREAD, name: 'Deep space' },
+  rickmorty: { id: 'rickmorty', origin: [0, 0, -48000], edge: 6000, name: 'The Central Finite Curve' },
 };
-const SECTOR_SPLIT = -20000;
+const SECTOR_SPLIT = (-SECTORS.main.edge + SECTORS.rickmorty.origin[2] + SECTORS.rickmorty.edge) / 2;
 export const sectorOf = (x, y, z) => (z < SECTOR_SPLIT ? 'rickmorty' : 'main');
 // a point given in a sector's own frame, in the map's
 export const inSector = (sector, [x, y, z]) => {
@@ -68,7 +72,7 @@ export const HOME_RADIUS = 230 * HOME_SPREAD;
 // the rim: a wide, thin ring of ice rocks right round the outside of the
 // map, out past every world and wonder and short of the edge (belt.js draws
 // it as a second belt; nothing's solid out there)
-export const RIM = { inner: 8000, outer: 8600, height: 60 };
+export const RIM = { inner: 8000 * SPREAD, outer: 8600 * SPREAD, height: 60 };
 
 // how far a universe's moons, rings and orbiting things reach from its centre
 export const REACH = Object.fromEntries([...UNIVERSES, ...MOONS].map((u) => [u.id, u.size * (u.reach ?? (u.kind === 'core' ? 2.0 : 1.9))]));
