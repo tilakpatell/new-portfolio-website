@@ -66,3 +66,16 @@ export const otherSide = (side) => {
   const w = WARS[warOfSide(side)];
   return w ? (w.liberator === side ? w.raider : w.liberator) : null;
 };
+
+// The areas the wars are fought over, a few systems each (systems.js's
+// `war.area`): held whole by one side, an area is its, and its fronts and
+// attacks next to it go faster (gcw.js's regionBonus). The atlas's rings
+// would put nearly every world in the war in the Outer Rim, so these are
+// the films' own neighbourhoods instead.
+export const AREAS = [
+  { id: 'core', name: 'The Core and Kashyyyk' },
+  { id: 'north', name: 'The Northern Rim' },
+  { id: 'arkanis', name: 'Arkanis and Chommell' },
+  { id: 'anoat', name: 'Anoat and Atravis' },
+  { id: 'western', name: 'The Western Reaches' },
+];

@@ -75,7 +75,8 @@ export function suggestSide({ crew, hero } = {}, war = DEFAULT_WAR) {
   return lean === 'light' ? w.liberator : lean === 'dark' ? w.raider : null;
 }
 
-// the battle's team you're on: its attacker 0, its defender 1 (gcw.js's battleAt `sides`)
+// the battle's team you're on: your side's place in gcw.js's battleAt `sides`
+// (the light side 0, the dark 1, the Hutts in the other's place)
 export function teamFor(side, battle) {
   if (!side || !SIDES[side] || !battle?.sides) return null;
   const i = battle.sides.indexOf(side);

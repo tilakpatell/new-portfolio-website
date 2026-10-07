@@ -72,15 +72,13 @@ describe('suggestSide', () => {
 });
 
 describe('teamFor', () => {
+  // (gcw.js's battleAt lists a battle's sides by team: the light side 0, the dark 1)
   const lib = { attacker: 'rebel', defender: 'empire', sides: ['rebel', 'empire'] };
-  const def = { attacker: 'empire', defender: 'rebel', sides: ['empire', 'rebel'] };
-  const hutts = { attacker: 'hutt', defender: 'rebel', sides: ['hutt', 'rebel'] };
-  it('the attacker is team 0, the defender team 1', () => {
+  const hutts = { attacker: 'hutt', defender: 'rebel', sides: ['rebel', 'hutt'] };
+  it('your team is your side’s place in the battle', () => {
     expect(teamFor('rebel', lib)).toBe(0);
     expect(teamFor('empire', lib)).toBe(1);
-    expect(teamFor('rebel', def)).toBe(1);
-    expect(teamFor('empire', def)).toBe(0);
-    expect(teamFor('rebel', hutts)).toBe(1);
+    expect(teamFor('rebel', hutts)).toBe(0);
   });
   it('unsworn, or not in the battle, nobody’s', () => {
     expect(teamFor(null, lib)).toBeNull();
