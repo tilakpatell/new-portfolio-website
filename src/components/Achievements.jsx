@@ -334,7 +334,7 @@ export function AchievementProvider({ children }) {
       {children}
       {/* taps pass through the toast to whatever is under it, except on its own controls */}
       {/* in language mode the toast reads plainly, and sits above the Back to English pill */}
-      <div className="toast-host pointer-events-none fixed inset-x-0 bottom-5 z-[60] flex justify-center px-4 [&_.toast_a]:pointer-events-auto [&_.toast_button]:pointer-events-auto" aria-live="polite">
+      <div className="toast-host pointer-events-none fixed inset-x-0 bottom-5 z-[var(--z-sheet)] flex justify-center px-4 [&_.toast_a]:pointer-events-auto [&_.toast_button]:pointer-events-auto" aria-live="polite">
         {toast && (
           <div
             key={toast.key}

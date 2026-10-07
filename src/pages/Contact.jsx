@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
 import PageTitle from '../components/PageTitle';
-import { RiCheckLine, RiDownloadLine, RiFileCopyLine, RiGithubFill, RiLinkedinBoxFill, RiMailLine, RiArrowRightUpLine } from 'react-icons/ri';
+import { RiDownloadLine, RiGithubFill, RiLinkedinBoxFill, RiMailLine, RiArrowRightUpLine } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
-import { Waypoint } from '../components/ui';
+import { CopyButton, Waypoint } from '../components/ui';
 import { useAchievements } from '../components/Achievements';
 import { education, profile } from '../data/profile';
 import { fmtMonth } from '../data/roles';
@@ -13,24 +13,10 @@ import { AurebeshLine } from '../components/Wordmark';
 import Egg from '../components/Egg';
 import PaperPlane from '../components/contact/PaperPlane';
 
-function CopyEmail() {
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(profile.email);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      window.location.href = `mailto:${profile.email}`;
-    }
-  };
-  return (
-    <button type="button" className="btn btn-ghost btn-sm" onClick={copy}>
-      {copied ? <RiCheckLine className="h-4 w-4 text-accent" aria-hidden="true" /> : <RiFileCopyLine className="h-4 w-4" aria-hidden="true" />}
-      <span aria-live="polite">{copied ? 'Copied' : 'Copy address'}</span>
-    </button>
-  );
-}
+// Without a clipboard, the address opens in the visitor's mail app instead.
+const mailTo = (address) => {
+  window.location.href = `mailto:${address}`;
+};
 
 function MessageForm() {
   const { twss } = useFun();
@@ -175,7 +161,7 @@ export default function Contact() {
                 {profile.email}
               </a>
               <div className="mt-5 flex flex-wrap gap-3">
-                <CopyEmail />
+                <CopyButton text={profile.email} label="Copy address" onFail={mailTo} />
               </div>
             </div>
             {rows.map((r) => (

@@ -57,7 +57,7 @@
 /* every other page, once online: fixed in the window's corner */
 .universe-online[data-floating] {
   position: fixed;
-  z-index: 56;
+  z-index: calc(var(--z-float) + 6); /* off the map, over the page and the language pill */
   left: max(16px, env(safe-area-inset-left));
   bottom: calc(16px + env(safe-area-inset-bottom));
   max-width: calc(100vw - 32px);
@@ -205,7 +205,7 @@
   .universe-online:not([data-floating]) .universe-online-card { max-height: calc(100vh - var(--nav-h, 68px) - var(--sheet-h) - 110px); }
 }
 /* the other pilots on your page, off the map: their pointers */
-.presence { position: fixed; inset: 0; z-index: 57; overflow: hidden; pointer-events: none; }
+.presence { position: fixed; inset: 0; z-index: calc(var(--z-float) + 7); overflow: hidden; pointer-events: none; }
 .presence-pilot {
   position: absolute;
   left: 0;
