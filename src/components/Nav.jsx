@@ -389,7 +389,7 @@ export default function Nav() {
         </div>
 
         {!collapsed && (
-        <div className="hidden flex-none items-center gap-0.5 md:flex">
+        <div className="hidden flex-none items-center gap-0.5 md:flex" data-tour="pages">
           {LINKS.map((l) => (
             <NavLink key={l.to} to={l.to} className={linkClass}>
               {l.label}
@@ -401,7 +401,7 @@ export default function Nav() {
             </NavLink>
           )}
           {!gone('terminal') && (
-            <NavLink to="/terminal" className={({ isActive }) => `${linkClass({ isActive })} hidden lg:inline-block`}>
+            <NavLink to="/terminal" className={({ isActive }) => `${linkClass({ isActive })} hidden lg:inline-block`} data-tour="terminal">
               <span className="flex items-center gap-1.5">
                 <RiTerminalBoxLine className="h-4 w-4" aria-hidden="true" />
                 Terminal
@@ -412,11 +412,11 @@ export default function Nav() {
         )}
 
         <div className="flex flex-none items-center gap-1">
-          <button type="button" onClick={openPalette} className="nav-search hidden md:flex" aria-label={`Search and shortcuts (${shortcutLabel()})`} title={`Search and shortcuts (${shortcutLabel()})`}>
+          <button type="button" onClick={openPalette} className="nav-search hidden md:flex" data-tour="search" aria-label={`Search and shortcuts (${shortcutLabel()})`} title={`Search and shortcuts (${shortcutLabel()})`}>
             <RiSearchLine className="h-[18px] w-[18px]" aria-hidden="true" />
             {!gone('kbd') && <kbd className="palette-kbd hidden whitespace-nowrap lg:inline-grid">{shortcutLabel()}</kbd>}
           </button>
-          <div className="hidden lg:block">
+          <div className="hidden lg:block" data-tour="colours">
             <ThemePicker nameless={gone('colorName')} />
           </div>
           {!gone('social') && (
@@ -432,12 +432,13 @@ export default function Nav() {
           <button type="button" className={iconBtn} onClick={toggleMode} aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={mode === 'dark' ? 'Light mode' : 'Dark mode'}>
             {mode === 'dark' ? <RiSunLine className="h-[18px] w-[18px]" /> : <RiMoonClearLine className="h-[18px] w-[18px]" />}
           </button>
-          <Link to="/resume" className="btn btn-primary btn-sm ml-1 hidden flex-none !rounded-full sm:inline-flex">
+          <Link to="/resume" className="btn btn-primary btn-sm ml-1 hidden flex-none !rounded-full sm:inline-flex" data-tour="resume">
             Résumé
           </Link>
           <button
             ref={menuButton}
             type="button"
+            data-tour="menu"
             className={`${iconBtn} ${menu ? '' : 'lg:hidden'}`}
             aria-expanded={open}
             aria-controls="mobile-menu"
