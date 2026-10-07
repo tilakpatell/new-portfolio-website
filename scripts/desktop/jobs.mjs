@@ -86,7 +86,8 @@ export function unstick(p, issues, log = console.log) {
 }
 
 // One issue made, start to end. → 'made' | 'nothing' | 'failed' | 'deferred' | 'skipped'
-export async function take(p, i, root, log = console.log) {
+// `wait`: minutes to wait for the GPU (DESKTOP_GPU_WAIT_MINUTES, else 45).
+export async function take(p, i, root, log = console.log, { wait = Number(process.env.DESKTOP_GPU_WAIT_MINUTES ?? p.gpuWait ?? 45) } = {}) {
   const l = labels(p);
   const r = ready(i, l);
   if (!r.ok) {
@@ -105,7 +106,7 @@ export async function take(p, i, root, log = console.log) {
     return 'failed';
   }
   const hold = held(p.name);
-  if (hold || !(await waitForGpu(p.vram, { minutes: Number(process.env.DESKTOP_GPU_WAIT_MINUTES ?? p.gpuWait ?? 45), log }))) {
+  if (hold || !(await waitForGpu(p.vram, { minutes: wait, log }))) {
     const why = hold ? `the ${p.name} files are in use on the desktop (${hold})` : 'the GPU is busy';
     if (!i.labels.includes(l.waiting)) {
       edit(i.number, '--add-label', l.waiting);
@@ -146,12 +147,19 @@ export async function take(p, i, root, log = console.log) {
 
 export const pending = (p) => labelled(p.label).filter((i) => ready(i, labels(p)).ok);
 
-// Every open job, one after another.
+// Every open job, one after another. A sweep waits less for the GPU than a
+// job asked for just now (it comes again in an hour), and once one job has
+// had to give up on it the rest don't wait at all.
 export async function sweep(p, root, log = console.log) {
   const all = labelled(p.label);
   unstick(p, all, log);
   const results = [];
-  for (const i of all) results.push(await take(p, i, root, log));
+  let wait = Math.min(15, Number(process.env.DESKTOP_GPU_WAIT_MINUTES ?? 15));
+  for (const i of all) {
+    const r = await take(p, i, root, log, { wait });
+    if (r === 'deferred') wait = 0;
+    results.push(r);
+  }
   return results;
 }
 
