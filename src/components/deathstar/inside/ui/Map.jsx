@@ -3,6 +3,7 @@ import { buildLayout } from '../rules/layout';
 import { STATIONS } from '../rules/stations';
 import { blueprint } from './blueprint';
 import { sectionName } from './state';
+import './map.css';
 
 // The station’s blueprint over the HUD: the rooms you have seen on your
 // deck (ui/blueprint.js picks them), thin grey rules on black glass, the

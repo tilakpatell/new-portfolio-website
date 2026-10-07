@@ -1,8 +1,9 @@
-/* Aboard the Death Star: the stage, the HUD over it, the start screen, the
-   map, the pause menu and the touch controls. The Empire's own manner:
-   black glass panels with thin grey rules and hard corners, small capitals
-   in a clean wide sans (Archivo, the site's own), numbers that don't shift,
-   red only for what is wrong, and Aurebesh as decoration. */
+/* Aboard the Death Star: the stage, the HUD over it and the pause menu
+   (the start screen, the maps and the touch controls have theirs beside
+   them in ui/). The Empire's own manner: black glass panels with thin grey
+   rules and hard corners, small capitals in a clean wide sans (Archivo, the
+   site's own), numbers that don't shift, red only for what is wrong, and
+   Aurebesh as decoration. */
 
 .ds {
   --ds-ink: #dde2e8;
@@ -29,7 +30,8 @@
 }
 .ds[data-mode='page'] {
   height: calc(100svh - var(--nav-h, 64px));
-  min-height: 420px;
+  /* (a phone on its side has under 320 to give) */
+  min-height: 280px;
 }
 .ds[data-mode='overlay'] {
   position: fixed;
@@ -320,85 +322,6 @@
   border-color: var(--ds-rule-strong);
 }
 
-/* the small map, and the sheet both maps draw */
-.ds-mini {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 116px;
-  padding: 0;
-  overflow: hidden;
-  border: 1px solid var(--ds-rule);
-  border-radius: 2px;
-  background:
-    linear-gradient(rgba(205, 212, 222, 0.05) 1px, transparent 1px) 0 0 / 14px 14px,
-    linear-gradient(90deg, rgba(205, 212, 222, 0.05) 1px, transparent 1px) 0 0 / 14px 14px,
-    var(--ds-glass);
-  cursor: pointer;
-}
-.ds-mini:hover {
-  border-color: var(--ds-rule-strong);
-}
-.ds-mini-empty {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: var(--ds-dim);
-  font-size: 0.62rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-.ds-mini-key {
-  position: absolute;
-  right: 5px;
-  bottom: 5px;
-  padding: 0 0.35em;
-  border: 1px solid var(--ds-rule);
-  color: var(--ds-dim);
-  font-size: 0.58rem;
-  font-weight: 700;
-  line-height: 1.5;
-}
-.ds-sheet {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-.ds-room {
-  fill: rgba(190, 200, 212, 0.06);
-  stroke: #a1a9b3;
-  stroke-width: 1.1;
-}
-.ds-room[data-kind='field'] {
-  fill: none;
-  stroke: var(--ds-dim);
-  stroke-dasharray: 3 3;
-}
-.ds-room[data-here] {
-  fill: rgba(226, 56, 45, 0.16);
-  stroke: var(--ds-red);
-}
-.ds-door {
-  stroke: var(--ds-bg);
-  stroke-width: 3.5;
-}
-.ds-door[data-kind='blast'] {
-  stroke: #6b1a14;
-}
-.ds-you {
-  fill: var(--ds-red);
-  stroke: #000;
-  stroke-width: 0.12;
-}
-.ds-room-name {
-  fill: #aab2bc;
-  font-family: var(--ds-font);
-  font-weight: 650;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 /* health and heat */
 .ds-vitals {
   position: absolute;
@@ -559,7 +482,9 @@
   display: grid;
   gap: 0.55rem;
   width: min(600px, calc(100% - 2 * var(--ds-pad)));
+  max-height: 72%;
   padding: 0.8rem 0.9rem;
+  overflow-y: auto;
   transform: translateX(-50%);
 }
 .ds-talk-line {
@@ -650,277 +575,6 @@
   color: var(--ds-dim);
 }
 
-/* the start screen, below the HUD's corners so the tour's marks stay in view */
-.ds-start {
-  z-index: 4;
-  align-items: start;
-  padding-top: 140px;
-  background: radial-gradient(ellipse at 50% 40%, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.75));
-}
-.ds-start-panel {
-  display: grid;
-  gap: 0.9rem;
-  width: min(900px, 100%);
-  margin-bottom: 1rem;
-  padding: 1.1rem 1.4rem 1.2rem;
-}
-.ds-start-cols {
-  display: grid;
-  gap: 0.9rem 1.4rem;
-}
-@media (min-width: 880px) {
-  .ds-start-cols {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-.ds-start-head {
-  display: grid;
-  gap: 0.4rem;
-}
-.ds-title {
-  margin: 0;
-  color: var(--ds-ink);
-  font-size: clamp(1.5rem, 3vw, 2.3rem);
-  font-weight: 800;
-  font-stretch: 125%;
-  letter-spacing: 0.06em;
-  line-height: 1.05;
-  text-transform: uppercase;
-}
-.ds-choice-row {
-  min-width: 0;
-  margin: 0;
-  padding: 0.75rem 0 0;
-  border: 0;
-  border-top: 1px solid var(--ds-rule);
-}
-.ds-choice-row > legend {
-  float: left;
-  width: 100%;
-  margin-bottom: 0.5rem;
-  padding: 0;
-}
-.ds-keys {
-  clear: both;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0.45rem;
-}
-.ds-key {
-  display: grid;
-  align-content: start;
-  gap: 0.25rem;
-  min-height: 48px;
-  padding: 0.55rem 0.7rem;
-  border: 1px solid var(--ds-rule);
-  border-radius: 2px;
-  background: rgba(221, 226, 232, 0.025);
-  color: var(--ds-ink);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease;
-}
-.ds-key:hover:not(:disabled) {
-  border-color: rgba(221, 226, 232, 0.45);
-}
-.ds-key[aria-pressed='true'] {
-  border-color: var(--ds-ink);
-  background: rgba(221, 226, 232, 0.09);
-  box-shadow: inset 3px 0 0 var(--ds-red);
-}
-.ds-key:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.ds-key-title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.5rem;
-  font-size: 0.86rem;
-  font-weight: 700;
-  font-stretch: 110%;
-  letter-spacing: 0.04em;
-}
-.ds-key-note {
-  color: var(--ds-dim);
-  font-size: 0.74rem;
-  line-height: 1.35;
-}
-.ds-start-go {
-  padding-top: 0.25rem;
-}
-.ds-start-foot {
-  color: var(--ds-dim);
-  font-size: 0.74rem;
-  line-height: 1.45;
-}
-
-/* the whole map */
-.ds-map {
-  z-index: 6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.ds-map-frame {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 0.75rem;
-  width: min(940px, 100%);
-  height: 660px;
-  max-height: 100%;
-  padding: 1rem 1.1rem;
-  border: 1px solid var(--ds-rule);
-  border-radius: 2px;
-  background: rgba(4, 6, 8, 0.92);
-}
-.ds-map-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
-.ds-map-title {
-  margin: 0.3rem 0 0;
-  color: var(--ds-ink);
-  font-size: 1.15rem;
-  font-weight: 750;
-  font-stretch: 118%;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.ds .ds-map-here {
-  margin-top: 0.2rem;
-  color: var(--ds-dim);
-  font-size: 0.82rem;
-}
-.ds-map-sheet {
-  min-height: 0;
-  border: 1px solid var(--ds-rule);
-  background:
-    linear-gradient(rgba(205, 212, 222, 0.045) 1px, transparent 1px) 0 0 / 24px 24px,
-    linear-gradient(90deg, rgba(205, 212, 222, 0.045) 1px, transparent 1px) 0 0 / 24px 24px,
-    #030405;
-}
-.ds-map-foot {
-  color: var(--ds-dim);
-  font-size: 0.74rem;
-}
-
-/* ── touch ── */
-
-.ds-touch {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-}
-.ds-touch > * {
-  pointer-events: auto;
-  touch-action: none;
-}
-/* the look pad: the right of the screen below the HUD's top row */
-.ds-look {
-  position: absolute;
-  top: 150px;
-  right: 0;
-  bottom: 0;
-  left: 38%;
-}
-.ds-stick {
-  position: absolute;
-  left: var(--ds-left);
-  bottom: calc(var(--ds-bottom) + 8px);
-  display: grid;
-  place-items: center;
-  width: 136px;
-  height: 136px;
-  border: 1px solid rgba(221, 226, 232, 0.32);
-  border-radius: 50%;
-  background: rgba(5, 7, 9, 0.42);
-}
-.ds-stick > span {
-  width: 56px;
-  height: 56px;
-  border: 1px solid var(--ds-rule-strong);
-  border-radius: 50%;
-  background: rgba(221, 226, 232, 0.2);
-}
-/* clear of the guide's button, which keeps the corner below them */
-.ds-buttons {
-  position: absolute;
-  right: var(--ds-right);
-  bottom: calc(var(--ds-bottom) + 66px);
-  display: grid;
-  grid-template-areas:
-    'aim fire'
-    'use fire'
-    'jump crouch';
-  grid-template-columns: 58px 72px;
-  gap: 8px;
-}
-.ds-tbtn {
-  display: grid;
-  place-items: center;
-  min-height: 52px;
-  border: 1px solid rgba(221, 226, 232, 0.35);
-  border-radius: 2px;
-  background: rgba(5, 7, 9, 0.55);
-  color: var(--ds-ink);
-  font: inherit;
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-.ds-buttons > :nth-child(1) {
-  grid-area: fire;
-}
-.ds-buttons > :nth-child(2) {
-  grid-area: aim;
-}
-.ds-buttons > :nth-child(3) {
-  grid-area: use;
-}
-.ds-buttons > :nth-child(4) {
-  grid-area: jump;
-}
-.ds-buttons > :nth-child(5) {
-  grid-area: crouch;
-}
-.ds-tbtn:active,
-.ds-tbtn[aria-pressed='true'] {
-  border-color: var(--ds-ink);
-  background: rgba(221, 226, 232, 0.2);
-}
-.ds-tbtn-fire {
-  border-color: rgba(226, 56, 45, 0.6);
-  background: rgba(70, 12, 9, 0.55);
-}
-.ds-tbtn-fire:active {
-  border-color: var(--ds-red);
-  background: rgba(226, 56, 45, 0.4);
-}
-/* on a phone the words sit over the buttons; on its side, low between the stick and the buttons */
-.ds-hud[data-touch] .ds-lines {
-  bottom: calc(var(--ds-bottom) + 262px);
-  width: calc(100% - 2 * var(--ds-pad));
-  min-width: 0;
-}
-@media (min-aspect-ratio: 4/3) {
-  .ds-hud[data-touch] .ds-lines {
-    bottom: calc(var(--ds-bottom) + 8px);
-    width: calc(100% - 2 * var(--ds-pad) - 2 * 170px);
-  }
-}
-.ds-hud[data-touch] .ds-talk {
-  bottom: calc(var(--ds-bottom) + 16px);
-}
-
 /* ── narrow and short screens ── */
 
 @media (max-width: 640px) {
@@ -931,34 +585,25 @@
   .ds-where {
     width: 118px;
   }
-  .ds-mini {
-    height: 84px;
-  }
   .ds-objective-text {
     font-size: 0.82rem;
   }
   .ds-aurebesh {
     display: none;
   }
-  .ds-start {
-    padding-top: 128px;
-  }
-  .ds-start-panel {
-    padding: 1rem;
-  }
-  .ds-keys {
-    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-  }
   .ds-lines {
     width: calc(100% - 2 * var(--ds-pad));
   }
 }
 @media (max-height: 520px) {
-  .ds-start {
-    padding-top: 1rem;
-  }
   .ds-hud[data-start] .ds-top {
     visibility: hidden;
+  }
+  .ds-objective-text {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 }
 

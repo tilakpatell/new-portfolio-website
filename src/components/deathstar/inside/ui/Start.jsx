@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { MODES, SIDES, STATION_CHOICES, STORIES, heroesFor } from './state';
+import './start.css';
 
 // The start screen: which station (the first Death Star now; the second
 // shows as coming until it is built), which side, who you are (a Rebel

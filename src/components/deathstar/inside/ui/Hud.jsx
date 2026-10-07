@@ -20,7 +20,7 @@ import { gunName, promptLine, sectionName, security } from './state';
 const LOW = 30; // health at which the bar goes red
 
 const KEYS = [
-  ['W A S D', 'Walk'],
+  ['W A S D / ← ↑ ↓ →', 'Walk'],
   ['Shift', 'Run'],
   ['Space', 'Jump'],
   ['C', 'Crouch'],

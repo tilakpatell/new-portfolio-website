@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { capturePointer } from '../../../../lib/pointer';
+import './touch.css';
 
 // The touch controls over the station on a phone: a stick on the left
 // (pushed all the way, you run), a look pad over the rest (drag to turn
