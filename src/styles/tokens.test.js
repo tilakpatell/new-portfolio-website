@@ -39,13 +39,13 @@ const SHEETS = [
 ];
 
 // A bare number of 10 or more is a page-level layer and must name its depth;
-// 0 to 9 orders the pieces of one component among themselves, and a comment
-// on the line may say why a value stands alone.
+// 0 to 9 orders the pieces of one component among themselves. A comment
+// straight after the declaration may say why a value stands alone.
 function bareDepths(text) {
   const out = [];
   text.split('\n').forEach((line, i) => {
-    for (const m of line.matchAll(/z-index:\s*(-?\d+)\s*[;}]/g)) {
-      if (Math.abs(Number(m[1])) >= 10 && !line.includes('/*')) out.push(`${i + 1}: ${line.trim().slice(0, 80)}`);
+    for (const m of line.matchAll(/z-index:\s*(-?\d+)\s*(!important)?\s*(;|}|$)\s*}?\s*(\/\*)?/g)) {
+      if (Math.abs(Number(m[1])) >= 10 && !m[4]) out.push(`${i + 1}: ${line.trim().slice(0, 80)}`);
     }
   });
   return out;
@@ -71,6 +71,9 @@ describe('the shell’s stylesheets', () => {
     expect(bareDepths('.a { z-index: 2; }')).toHaveLength(0);
     expect(bareDepths('.a { z-index: var(--z-dialog); }')).toHaveLength(0);
     expect(bareDepths('.a { z-index: 97; } /* above the cover: the transition plays over it */')).toHaveLength(0);
+    expect(bareDepths('.a { z-index: 80 !important; }')).toHaveLength(1);
+    expect(bareDepths('  z-index: 80')).toHaveLength(1);
+    expect(bareDepths('.a { z-index: 80; color: red; } /* a note about the colour */')).toHaveLength(1);
   });
 
   it.each(SHEETS)('%s names every page-level depth', (path) => {

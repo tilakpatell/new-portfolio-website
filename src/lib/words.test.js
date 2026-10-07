@@ -1,8 +1,9 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-// eslint's own parser, already installed with it: the test reads the source
-// as the browser would, so a word in a comment or a class list never counts
-import * as espree from 'espree';
+// eslint's own parser (through its Linter, so nothing undeclared is
+// imported): the test reads the source as the browser would, so a word in a
+// comment or a class list never counts
+import { Linter } from 'eslint';
 import { ALLOW, RETIRED, WORDS, retiredIn, wayOut } from './words';
 
 const SRC = new URL('../', import.meta.url);
@@ -62,7 +63,10 @@ const CODE_ATTRS = /^(className|class|id|key|href|to|src|type|role|rel|target|na
 // list of classes is code; so is anything compared against, imported, or
 // used as an object's key.
 function userStrings(source) {
-  const ast = espree.parse(source, { ecmaVersion: 'latest', sourceType: 'module', ecmaFeatures: { jsx: true }, loc: true });
+  const linter = new Linter();
+  const errors = linter.verify(source, { languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parserOptions: { ecmaFeatures: { jsx: true } } } });
+  if (errors.some((e) => e.fatal)) throw new Error(errors[0].message);
+  const ast = linter.getSourceCode().ast;
   const out = [];
   const add = (text, node) => {
     const t = String(text).replace(/\s+/g, ' ').trim();
@@ -78,8 +82,11 @@ function userStrings(source) {
       const isKey = parent?.type === 'Property' && parent.key === node && !parent.computed;
       // a palette item's search words are matched, never shown
       const searchWords = parent?.type === 'Property' && parent.value === node && parent.key?.name === 'keywords';
-      const compared = parent?.type === 'BinaryExpression' || parent?.type === 'SwitchCase';
-      if (!isKey && !compared && !searchWords && words(node.value) && !classList(node.value)) add(node.value, node);
+      // (a + joins words a visitor reads; == and friends test a value)
+      const compared = (parent?.type === 'BinaryExpression' && /^(={2,3}|!={1,2}|in)$/.test(parent.operator)) || parent?.type === 'SwitchCase';
+      // a piece of a sentence joined with + is words, however short
+      const joined = parent?.type === 'BinaryExpression' && parent.operator === '+';
+      if (!isKey && !compared && !searchWords && (joined || words(node.value)) && !classList(node.value)) add(node.value, node);
       return;
     }
     if (node.type === 'TemplateLiteral' && !(parent?.type === 'Property' && parent.key?.name === 'keywords')) {
@@ -91,7 +98,8 @@ function userStrings(source) {
       return;
     }
     for (const [k, v] of Object.entries(node)) {
-      if (k === 'parent' || k === 'loc' || k === 'range') continue;
+      // (eslint's tree also keeps the raw tokens and comments: not words)
+      if (k === 'parent' || k === 'loc' || k === 'range' || k === 'tokens' || k === 'comments') continue;
       if (Array.isArray(v)) v.forEach((c) => visit(c, node));
       else if (v && typeof v === 'object') visit(v, node);
     }
@@ -122,6 +130,7 @@ describe('reading a file’s words', () => {
       import x from 'the hyperdrive';
       const KEYS = { 'Plain pages': 1, keywords: 'theme colors' };
       if (e.key === 'Escape') close();
+      const hint = 'Open the ' + n + ' hyperdrive';
       export default () => (
         <div className="transition-colors text-sm" aria-label="Site colors">
           Open the nav computer
@@ -129,7 +138,7 @@ describe('reading a file’s words', () => {
         </div>
       );`;
     const words = userStrings(src).map((s) => s.text);
-    expect(words).toEqual(['Site colors', 'Open the nav computer', 'Restart the site', 'back to the intro']);
+    expect(words).toEqual(['Open the', 'hyperdrive', 'Site colors', 'Open the nav computer', 'Restart the site', 'back to the intro']);
   });
 
   it('fails a retired word in system text and passes the same word in a crew line', () => {
