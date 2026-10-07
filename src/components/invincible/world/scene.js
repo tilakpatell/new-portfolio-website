@@ -226,6 +226,71 @@ function createMarker(scene) {
   };
 }
 
+// ── a race's gates (Eve's eight round downtown; the three home from the
+// Moon, in space's frame, which is the scene's) as rings, the next one
+// bright, the ones through gone; and a photo's frame: a rectangle to look
+// through, a few metres ahead of its spot, the way it faces ──
+function createCourse(scene) {
+  const group = new THREE.Group();
+  group.visible = false;
+  scene.add(group);
+  const ringGeo = new THREE.TorusGeometry(1, 0.06, 8, 48);
+  const rings = Array.from({ length: 8 }, () => {
+    const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xf5c518, transparent: true, opacity: 0.3, toneMapped: false }));
+    m.visible = false;
+    group.add(m);
+    return m;
+  });
+  const frame = new THREE.Group();
+  const bar = new THREE.BoxGeometry(1, 1, 1);
+  // (the radio's yellow, through anything: the hall's columns are white too)
+  const frameMat = new THREE.MeshBasicMaterial({ color: 0xf5c518, transparent: true, opacity: 0.9, depthTest: false, toneMapped: false });
+  for (const [x, y, w, h] of [
+    [0, 2, 6.4, 0.22],
+    [0, -2, 6.4, 0.22],
+    [3.1, 0, 0.22, 4.2],
+    [-3.1, 0, 0.22, 4.2],
+  ]) {
+    const m = new THREE.Mesh(bar, frameMat);
+    m.position.set(x, y, 0);
+    m.scale.set(w, h, 0.22);
+    m.renderOrder = 8;
+    frame.add(m);
+  }
+  frame.visible = false;
+  group.add(frame);
+  return {
+    update(gates, photo, t) {
+      group.visible = Boolean(gates || photo);
+      rings.forEach((m, i) => {
+        const g = gates?.list[i];
+        m.visible = Boolean(g) && i >= (gates.next ?? 0);
+        if (!m.visible) return;
+        const next = i === gates.next;
+        m.position.set(g[0], g[1], g[2]);
+        m.scale.setScalar(gates.r * (next ? 1 + Math.sin(t * 4) * 0.04 : 1));
+        m.material.opacity = next ? 0.95 : 0.3;
+        // (facing the one before it, or him: a ring stands across the way)
+        const from = gates.list[i - 1] ?? [g[0], g[1], g[2] + 1];
+        m.lookAt(from[0], from[1], from[2]);
+      });
+      frame.visible = Boolean(photo);
+      if (photo) {
+        const d = [Math.sin(photo.face), 0, Math.cos(photo.face)];
+        frame.position.set(photo.p[0] + d[0] * 9, photo.p[1] + 1.2, photo.p[2] + d[2] * 9);
+        frame.rotation.set(0, photo.face, 0);
+      }
+    },
+    dispose() {
+      group.removeFromParent();
+      ringGeo.dispose();
+      bar.dispose();
+      frameMat.dispose();
+      for (const m of rings) m.material.dispose();
+    },
+  };
+}
+
 export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = {}) {
   const engine = createEngine(canvas, { exposure: 1, fov: FOV, near: 0.3, far: 26000, bloom: { strength: 0.5, radius: 0.5, threshold: 0.92 }, onLost, onSlow });
   const { scene, camera } = engine;
@@ -333,6 +398,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   // its block, the getaway truck on the grid, the marker over the step's target
   const props = await loadProps(scene, world, { rim: LOOK.noon.rim });
   const marker = createMarker(scene);
+  const course = createCourse(scene);
   const feel = createFeel({ calm, baseFov: FOV, offset: 0.4 });
 
   // ── the time of day ──
@@ -890,6 +956,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
 
     placeCamera(h, sim.yaw, sim.pitch, speed, snap ? 0 : dt);
     marker.update(sim.marker, t, camera, engine.size.h);
+    course.update(sim.gates, sim.photo, t);
     ground.update(t);
     city.update(t, look?.night ?? 0);
     // coming down through the air from space, fast: the air in front of him burns
@@ -957,6 +1024,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       villains.dispose();
       props.dispose();
       marker.dispose();
+      course.dispose();
       ghosts.dispose();
       for (const c of casts) c.dispose();
       mark.dispose();
