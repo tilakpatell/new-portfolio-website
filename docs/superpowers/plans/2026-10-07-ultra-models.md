@@ -75,4 +75,4 @@
 - [x] Judge sheets `docs/gen3d/ultra/<kind>.webp` (four views of the plain model; no reference tile: `lab/refs/` is empty here and Wookieepedia is denied by the network policy, so the comparison is the Meshy lane's `sheet --ultra` on the owner's machine).
 - [x] Desktop gen3d issues for the remakes (one per model, not polled): none of the twenty is gen3d-made; the galaxy's X-wing (#552) and TIE interceptor (#553) were asked for.
 - [x] galaxy-check screenshots at QUALITY=ultra and high, small webp.
-- [ ] lint, test, push, PR.
+- [x] lint, test, push, PR.

@@ -82,11 +82,24 @@ After any of these lands: add the `ultra` line to the kind's catalogue entry (`c
 
 `QUALITY=ultra` and `QUALITY=high` runs of `scripts/galaxy-check.mjs surface` on the worlds the twenty stand on, in headless Chromium on software GL (so frame times mean nothing here; the shots and the counts do). No `.ultra.glb` is on disk yet, so at ultra every kind still loads its plain file (the fallback the placer test pins), and the one difference in what is drawn is that nothing swaps to its far copy at ultra.
 
-SCREENSHOTS
+| world | kinds of the twenty on it | level | draw calls | triangles | models MB | errors | shot |
+|---|---|---|---|---|---|---|---|
+| Kamino | `tipocadome`, `tipoca` | ultra | 100 | 1,505,151 | 6.1 | none | [kamino-ultra](kamino-ultra.webp) |
+| | | high | 100 | 1,084,197 | 6.6 | none | [kamino-high](kamino-high.webp) |
+| Naboo | `theed`, `n1fighter` | ultra | 752 | 2,821,418 | 18.1 | none | [naboo-ultra](naboo-ultra.webp) |
+| | | high | 752 | 2,443,752 | 20.8 | none | [naboo-high](naboo-high.webp) |
+| Bespin | `cloudplaza`, `cloudtower`, `cloudtower2` | ultra | 163 | 935,390 | 10.7 | none | [bespin-ultra](bespin-ultra.webp) |
+| | | high | 160 | 921,583 | 10.7 | none | [bespin-high](bespin-high.webp) |
+| Tatooine | `vaporator`, `adobe` | ultra | 77 | 852,997 | 18.2 | none | [tatooine-ultra](tatooine-ultra.webp) |
+| | | high | 77 | 819,248 | 18.6 | none | [tatooine-high](tatooine-high.webp) |
+| Hoth | `atat` | ultra | 250 | 1,512,876 | 12.0 | none | [hoth-ultra](hoth-ultra.webp) |
+| | | high | 250 | 1,512,876 | 12.2 | none | [hoth-high](hoth-high.webp) |
+
+Every run loaded with no page or console errors. The draw calls match level for level (Bespin's three more at ultra are its towers drawn whole where high had swapped the far ones for light copies), and the triangles rise at ultra by what `lib/detail` already does there (twice the segments on what is built in code) plus the far copies not taken; the models' megabytes are the same files at both levels, as they must be until an `.ultra.glb` exists. Kamino at ultra was run on its own first, the rest in two passes (ultra, then high) on the same software GL, so the frame times the check prints are not comparable and are left out.
 
 ## What was verified, and how
 
-- `npm run lint` clean, `npm test` green (numbers in the pull request).
+- `npx eslint .` clean; `npx vitest run`: 445 files, 5,133 passed, 1 skipped, and 12 that timed out at 5 s while two headless browsers were rendering the shots above, all 12 passing when run again on an idle machine (446 tests in those 12 files).
 - `catalog/ultra.test.js`, `catalog.test.js`, `placer.test.js`: the rule, the file pairing and size cap, the URL the placer loads at each level and its fallback.
 - `scripts/gen3d/gen3d.test.mjs`: the gen3d `ULTRA` tier, `cutsFor(…, { ultra })`, `fileFor`, `ultra: yes` on a desktop job becoming `--ultra`.
 - `scripts/ultra/cut.test.mjs`, `scripts/ultra/kinds.test.mjs`: the importers' `--ultra` arithmetic and refusal, and the picking rule.
