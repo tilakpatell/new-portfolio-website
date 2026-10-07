@@ -57,15 +57,18 @@ function start(lane, way, s, ship) {
   return { lane, way, s, off: [dot(d, f.right), dot(d, f.up)], speed: Math.max(0, ship.speed), from: Math.max(0, ship.speed), age: 0, back: 0, strain: 0, bank: 0 };
 }
 
-// A ride, if the ship's getting on one now; null if not.
-export function enter(ship, { lanes = LANES, nodes = NODES, throttle = 0 } = {}) {
+// A ride, if the ship's getting on one now; null if not. (`only`, { lane,
+// way }: that one and no other, for the autopilot, which means a lane of its
+// route and not whichever lane its nose is nearest coming in to the ring.)
+export function enter(ship, { lanes = LANES, nodes = NODES, throttle = 0, only = null } = {}) {
+  if (only) lanes = lanes.filter((l) => l === only.lane);
   const nose = noseOf(ship);
   const y = ship.y ?? 0;
   // through a ring: the lane out of the node that's nearest the way it's going
   for (const n of nodes) {
     if (Math.hypot(ship.x - n.at[0], y - n.at[1], ship.z - n.at[2]) > RING) continue;
     let best = null;
-    for (const o of leaving(n.id, lanes)) {
+    for (const o of leaving(n.id, lanes).filter((x) => !only || x.way === only.way)) {
       const a = Math.acos(Math.min(1, dot(nose, frame(o.lane, o.way, 0).along)));
       if (a <= RING_ANGLE && (!best || a < best.a)) best = { ...o, a };
     }
@@ -74,7 +77,7 @@ export function enter(ship, { lanes = LANES, nodes = NODES, throttle = 0 } = {})
   // merging: in a carriageway, along it, quick enough, and meaning to
   if (ship.speed < SHIP.boost || throttle <= 0) return null;
   const at = laneAt(ship.x, y, ship.z, lanes);
-  if (!at || at.off > R || at.s >= 1) return null;
+  if (!at || at.off > R || at.s >= 1 || (only && at.way !== only.way)) return null;
   if (Math.acos(Math.min(1, dot(nose, frame(at.lane, at.way, at.s).along))) > MERGE_ANGLE) return null;
   return start(at.lane, at.way, at.s, ship);
 }

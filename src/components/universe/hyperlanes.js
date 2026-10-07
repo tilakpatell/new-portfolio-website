@@ -21,12 +21,14 @@
 //
 // routeTo(ship, toId) is the way there by the lanes: free flight to a ramp
 // or beacon near the ship, the rides, and free flight in from the last node;
-// or null when flying there free at the pulse drive is quicker (a hop at a
-// place). laneAt(x, y, z) says which carriageway a point is in.
+// or null when flying there free is quicker (a hop at a place). Its time
+// counts each lane's length over its speed, RAMP_S a node, and the free legs
+// as they're flown: the pulse drive in the open, a quarter of it in the home
+// system, the boost for the last leg in. laneAt(x, y, z) says which carriageway a point is in.
 
 import { bezier, laneLength } from './lanes';
 import { REGIONS } from './regions';
-import { PLACES, WONDERS, reachOf } from './deep';
+import { DEEP, PLACES, WONDERS, reachOf } from './deep';
 import { MAW } from './maw';
 import { SHIP, SOLIDS } from './ship';
 import { byId } from './universes';
@@ -43,6 +45,13 @@ export const R = 6; // a carriageway's radius
 export const RING = 12; // a node's ramp ring, flown through to get on (ride.js)
 export const RAMP_S = 3; // seconds a route counts for each node it takes a lane at
 const FREE = 6000; // how far from a node the ship flies to it free, to start a route
+// what free flight costs: the pulse drive out in the open, but in the home
+// system the drive barely opens (ship.js's HOME_TOP: a hop between stations
+// is a hop), so a leg in or out of it goes at about a quarter of it (as
+// flown: 650 from the home edge to its east beacon takes 7.7 s); and the
+// last leg in to a place is at the boost, the drive down by it (deep.js)
+const HOME_FREE = SHIP.pulse / 4;
+const freeTime = (a, b, pulse) => dist(a, b) / (Math.hypot(a[0], a[2]) < DEEP.open || Math.hypot(b[0], b[2]) < DEEP.open ? Math.min(pulse, HOME_FREE) : pulse);
 const CLEAR = 2; // how far a lane stays off anything, past its reach
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -111,14 +120,17 @@ function rampFor(id, region) {
   const own = Math.max(0, ...KEEP_OUT.filter((o) => dist(o.at, p.at) < 1).map((o) => o.r));
   const out = Math.max(p.reach * RAMP_OUT, own + 40);
   let u = ends.map((e) => unit(sub(e, p.at))).reduce((a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]]);
-  // (the two straight opposite: off to the side of both)
+  // (level with the place, so a ship off the lane flies straight in, not up
+  // or down to it: the autopilot parks level with a place, and climbs slowly;
+  // and the two ends straight opposite: off to the side of both)
+  u = [u[0], 0, u[2]];
   if (len(u) < 0.2) u = [-(ends[0][2] - p.at[2]), 0, ends[0][0] - p.at[0]];
   u = unit(u);
   for (let i = 0; i < 16; i++) {
     const a = ((i % 2 ? 1 : -1) * Math.ceil(i / 2) * Math.PI) / 8;
     const c = Math.cos(a);
     const s = Math.sin(a);
-    const at = along(p.at, unit([u[0] * c - u[2] * s, u[1], u[0] * s + u[2] * c]), out);
+    const at = along(p.at, [u[0] * c - u[2] * s, 0, u[0] * s + u[2] * c], out);
     if (KEEP_OUT.every((o) => dist(at, o.at) > o.r + RING + CLEAR)) return { id: `ramp:${id}`, kind: 'ramp', at, place: id, region };
   }
   return null;
@@ -283,6 +295,9 @@ const goalOf = (id) => {
   return ramp ? { nodes: [ramp], at: p.at } : null;
 };
 
+// the last leg, in to the place from its ramp (or a station from a home beacon)
+const inTime = (a, b) => dist(a, b) / SHIP.boost;
+
 // The way to `toId` by the lanes from where the ship is: { legs, time }, or
 // null when there's no lane near it or free flight there is quicker. Legs
 // are { kind: 'fly' | 'ride', from, to, lane?, way? }.
@@ -290,7 +305,7 @@ export function routeTo(ship, toId, { pulse = SHIP.pulse } = {}) {
   const goal = goalOf(toId);
   if (!ship || !goal) return null;
   const here = [ship.x, ship.y ?? 0, ship.z];
-  const direct = dist(here, goal.at) / pulse;
+  const direct = freeTime(here, goal.at, pulse);
   // the start: free flight to any node within FREE (or the nearest three)
   const near = NODES.map((n) => ({ n, d: dist(here, n.at) })).sort((a, b) => a.d - b.d);
   const starts = near.filter((x, i) => x.d <= FREE || i < 3);
@@ -298,7 +313,7 @@ export function routeTo(ship, toId, { pulse = SHIP.pulse } = {}) {
   const best = new Map();
   const via = new Map();
   const done = new Set();
-  for (const { n, d } of starts) best.set(n.id, d / pulse);
+  for (const { n } of starts) best.set(n.id, freeTime(here, n.at, pulse));
   for (;;) {
     let at = null;
     for (const [id, t] of best) if (!done.has(id) && (at === null || t < best.get(at))) at = id;
@@ -316,7 +331,7 @@ export function routeTo(ship, toId, { pulse = SHIP.pulse } = {}) {
   let end = null;
   let time = Infinity;
   for (const n of goal.nodes) {
-    const t = (best.get(n.id) ?? Infinity) + dist(n.at, goal.at) / pulse;
+    const t = (best.get(n.id) ?? Infinity) + inTime(n.at, goal.at);
     if (t < time) [end, time] = [n, t];
   }
   if (!end || time >= direct) return null;

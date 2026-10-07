@@ -4,7 +4,7 @@ import { REGIONS } from './regions';
 import { bezier, clearance } from './lanes';
 import { SHIP, SOLIDS, parkAt } from './ship';
 import { HOME_RADIUS, ORDER, POSITIONS } from './layout';
-import { PLACES } from './deep';
+import { DEEP, PLACES } from './deep';
 import { MAW } from './maw';
 import { byId } from './universes';
 
@@ -127,11 +127,19 @@ describe('the hyperlanes (hyperlanes.js)', () => {
     expect(dist(r.legs.at(-1).to, POSITIONS[furthest])).toBeLessThan(1e-6);
   });
 
-  it('times a route as its lanes’ lengths over their speeds, RAMP_S a node, and the free legs at the pulse drive', () => {
-    const r = routeTo(homeEdge, 'middleearth');
-    let t = 0;
-    for (const leg of r.legs) t += leg.kind === 'fly' ? dist(leg.from, leg.to) / SHIP.pulse : leg.lane.length / TIERS[leg.lane.tier].speed + RAMP_S;
-    expect(r.time).toBeCloseTo(t, 6);
+  it('times a route as its lanes’ lengths over their speeds, RAMP_S a node, and the free legs as they’re flown', () => {
+    // (out of the home system at a quarter of the pulse drive, out in the open at it, in to the place at the boost)
+    const inHome = (p) => Math.hypot(p[0], p[2]) < DEEP.open;
+    for (const [from, id] of [[homeEdge, 'middleearth'], [{ ...parkAt('marvel'), speed: 0 }, furthest]]) {
+      const r = routeTo(from, id);
+      let t = 0;
+      r.legs.forEach((leg, i) => {
+        if (leg.kind === 'ride') t += leg.lane.length / TIERS[leg.lane.tier].speed + RAMP_S;
+        else if (i === r.legs.length - 1) t += dist(leg.from, leg.to) / SHIP.boost;
+        else t += dist(leg.from, leg.to) / (inHome(leg.from) || inHome(leg.to) ? SHIP.pulse / 4 : SHIP.pulse);
+      });
+      expect(r.time, id).toBeCloseTo(t, 6);
+    }
   });
 
   // (Review Focus 4: the autopilot of today flies these)
