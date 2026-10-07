@@ -158,8 +158,11 @@
     "rig": "01a114de-8288-70ad-bdf2-20b1672b3b68"
   },
   "jedi": {
-    "image": "01a114d1-87f6-729a-93d3-c3261064b604",
-    "model": "01a114da-9a8e-75d4-9f9c-89b81388244d"
+    "refused": {
+      "image": "01a114d1-87f6-729a-93d3-c3261064b604",
+      "model": "01a114da-9a8e-75d4-9f9c-89b81388244d"
+    },
+    "image": "01a114ea-90a2-76ed-959c-48c38d8c7886"
   },
   "senateguard": {
     "image": "01a114d3-6a8c-73ef-8df9-38bfd5226c82",
@@ -193,26 +196,33 @@
   },
   "mustafarian": {
     "image": "01a114d6-15d0-74be-aeb7-22eac5333df2",
-    "model": "01a114da-afe3-7181-a239-ea0b59276e14"
+    "model": "01a114da-afe3-7181-a239-ea0b59276e14",
+    "rig": "01a114e6-995f-7377-89ce-f5baedeca8a4"
   },
   "quigon": {
-    "image": "01a114d6-88c1-7653-a2d9-27c17be8e617",
-    "model": "01a114da-b3b8-7600-b404-8bb83c54748a"
+    "refused": {
+      "image": "01a114d6-88c1-7653-a2d9-27c17be8e617",
+      "model": "01a114da-b3b8-7600-b404-8bb83c54748a"
+    }
   },
   "hondo": {
     "image": "01a114d7-254d-72ab-8273-7b9753fa27b9",
-    "model": "01a114da-b74c-75b9-97b1-e0e3028d7f03"
+    "model": "01a114da-b74c-75b9-97b1-e0e3028d7f03",
+    "rig": "01a114e6-d34b-7580-b58c-3bcaad2be9ef"
   },
   "ackbar": {
     "image": "01a114d7-979c-734c-b51d-2fb0d5407bd1",
-    "model": "01a114da-babd-7262-86fc-796c788a93fd"
+    "model": "01a114da-babd-7262-86fc-796c788a93fd",
+    "rig": "01a114e7-0e04-7534-bf6f-438d4294b14e"
   },
   "officer": {
     "image": "01a114d8-4713-71fa-abdb-a4fb42f42b70",
-    "model": "01a114da-bd4a-72ac-8c0e-dfd2ddf273bf"
+    "model": "01a114da-bd4a-72ac-8c0e-dfd2ddf273bf",
+    "rig": "01a114e7-476e-7198-bf16-cf29420c5379"
   },
   "dooku": {
     "image": "01a114d8-b6c3-7499-9cdf-a7c1e047543f",
-    "model": "01a114da-bfe0-729e-8d0b-a865aeccae0d"
+    "model": "01a114da-bfe0-729e-8d0b-a865aeccae0d",
+    "rig": "01a114e7-7fa8-7204-bf48-dc8fa73d179a"
   }
 }

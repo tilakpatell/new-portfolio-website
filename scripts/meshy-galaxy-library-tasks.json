@@ -228,5 +228,29 @@
       "01a114e3-652e-76ef-82bd-cba8f3c5283d"
     ],
     "model": "01a114e3-f5e7-71d0-9e05-ddf2063a8c19"
+  },
+  "varykino": {
+    "lift": [
+      "01a114e9-1680-762f-b4b7-d228b4e3abfd"
+    ],
+    "model": "01a114ea-9d16-73c0-a09a-7c86ba89110e"
+  },
+  "shieldgen": {
+    "lift": [
+      "01a114e9-4bf7-715c-b25a-7bedb210167f"
+    ],
+    "model": "01a114ea-a366-72c7-b6a1-e8cbf977bf3e"
+  },
+  "cantina": {
+    "image": "01a114e9-ecc3-77a9-95c6-9a301ae375e8",
+    "model": "01a114ea-9393-744c-b600-e962221ac13d"
+  },
+  "collector": {
+    "image": "01a114ea-1b31-744f-ab61-cb70dd6b0c15",
+    "model": "01a114ea-9690-7613-bcda-5692df715d02"
+  },
+  "stonehead": {
+    "image": "01a114ea-4965-763a-a629-d45787af06d6",
+    "model": "01a114ea-9933-725d-8a66-e080d87c3aee"
   }
 }
