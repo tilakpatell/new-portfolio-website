@@ -195,7 +195,7 @@ export function createFarFights(parent) {
       cam.z = camAt.z;
       for (const s of slots) s.used = false;
       for (const f of fights ?? []) {
-        if (!isFar(f.at, cam)) continue; // (the real one’s drawn)
+        if (!isFar(f.at, cam, f.near ?? FAR)) continue; // (the real one’s drawn; `near`: a fight drawn for real only nearer than that, the front's battle)
         const s = slotOf(f.id);
         if (!s) break;
         const hot = clamp(f.hot ?? 0, 0, 1);
