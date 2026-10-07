@@ -10,16 +10,20 @@
     }
   },
   "omni": {
-    "acct": 2
+    "acct": 2,
+    "model": "01a11427-bec7-71ce-8559-8f808ea8b6bd"
   },
   "thragg": {
-    "acct": 2
+    "acct": 2,
+    "model": "01a11429-4392-72cc-a380-067998bd0247"
   },
   "eve": {
-    "acct": 2
+    "acct": 2,
+    "model": "01a1142b-e600-7161-b6d1-c6be9f5fa3d9"
   },
   "cecil": {
-    "acct": 2
+    "acct": 2,
+    "model": "01a1142d-7ea2-766e-aa41-204df064937e"
   },
   "debbie": {
     "acct": 2

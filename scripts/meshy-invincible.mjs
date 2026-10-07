@@ -165,15 +165,22 @@ function addClip(doc, src, name) {
 
 // The hips kept over the spot they start on (the game moves the figure; a
 // walk that carries itself off would slide out from under it), their height
-// left to the clip, so a step still bobs.
+// left to the clip, so a step still bobs. In the clips that leave the ground
+// (`PINNED`: lying along a flight, a dive from on high) the hips stay where
+// they stand, all three ways: the game puts the figure in the air itself.
+const PINNED = new Set(['hover', 'fly', 'land']);
 function inPlace(clip) {
+  const pin = PINNED.has(clip.getName());
   for (const ch of clip.listChannels()) {
-    if (ch.getTargetPath() !== 'translation' || !/hips/i.test(ch.getTargetNode()?.getName() ?? '')) continue;
+    const node = ch.getTargetNode();
+    if (ch.getTargetPath() !== 'translation' || !/hips/i.test(node?.getName() ?? '')) continue;
     const out = ch.getSampler().getOutput();
     const v = out.getArray().slice();
-    for (let i = 3; i < v.length; i += 3) {
-      v[i] = v[0];
-      v[i + 2] = v[2];
+    const rest = pin ? node.getTranslation() : [v[0], null, v[2]];
+    for (let i = 0; i < v.length; i += 3) {
+      v[i] = rest[0];
+      if (pin) v[i + 1] = rest[1];
+      v[i + 2] = rest[2];
     }
     out.setArray(v);
   }

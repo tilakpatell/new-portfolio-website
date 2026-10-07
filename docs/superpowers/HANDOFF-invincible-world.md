@@ -41,6 +41,17 @@ The owner asked for the models to be made from the show's own art on the Invinci
 - Known: Mark's back has a yellow smear where Meshy guessed the unseen side (the old model had it too); the wiki has no back view to fix it from.
 - Wired: `people.js`'s `personFor(kind, seed, template)` gives the world's people the HD figure when there is one that can be posed (the bones a pose needs are checked) and the kit's person otherwise; `loadCast(names)` loads the templates, a missing file giving the kit's person. Eve, Debbie, Cecil and Allen in space are now the HD figures; Omni-Man and Thragg are the new models. `cast.test.js` checks every `CAST` file, height and credit.
 
+### The cast again, sharper and moving (2026-10-07, after the owner's “why are the textures so low res and animations horrible”)
+
+Found: the first cast was made on `meshy-6-lite` at 16 k triangles, whose own texture is a thousand islands a few texels each, and shipped as WebP at sharp's default quality; and nothing moved but `lib/three/rig.js`'s poses (bones aimed in code), so every walk, wave and talk was a puppet's.
+
+- Remade on `meshy-7.1`: about 30 k triangles, the texture painted at 4K and atlased again at 2K (`reatlas`), WebP at quality 90. Mark's close-up shows a face, muscle and a clean back panel where the lite model had a blur and a smear.
+- Motion-captured clips from Meshy's library, by kind of figure (`CLIPS` in `scripts/meshy-invincible.mjs`: hero, person, brute, caster), and two made from words with Meshy's text to motion (`MOTIONS`: `hover` and `fly`, which the library has none of; one task an account, put on every flyer within its three days). `fetch` merges them into the figure's file under the game's names, the hips held in place (the game moves the figure) and pinned outright for the clips that leave the ground (`hover`, `fly`, `land`).
+- `lib/three/rig.js`: a figure with clips has `act(name, { fade, speed, once, at })`, `tick(dt)`, `clips` and `acting`; a `pose()` stops them, so a role without a clip is posed as before (`rig.test.js`).
+- Wired: Mark plays idle, walk and run (at the pace he goes), hover, fly and hit; the landing crouch and the punch stay posed (aimed and snappy). The fly clip lies along its flight head first, so `carry(…, { ahead: true })` turns his front, not his crown, along it. Eve likewise. Townspeople, Debbie and Cecil play idle, walk, talk, wave, phone, run and cheer, each from its own moment in the clip; Cecil's folded arms stay posed. Other players' figures (the ghosts) play Mark's clips on the ground and hovering.
+- `scripts/clip-shot.mjs` (with `scripts/preview/clip-shot.html`) draws a figure's clips, four moments each, for judging them.
+- Not used: `land` (the library's “Dive Down and Land” is a dive and a somersault).
+
 ## How to check
 
 - `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic (51 tests at the space merge).
