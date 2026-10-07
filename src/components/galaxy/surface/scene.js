@@ -113,6 +113,7 @@ export const CREW_MODELS = { artoo: 'r2d2' };
 const LEAVE = { lift: 3.2, away: 3.4 };
 const CAM = { dist: 4.8, up: 1.55, pitch: [-0.45, 1.15], far: 14, near: 2.2 };
 const REACH = 3.2; // metres: close enough to use something
+const ROLL_PIVOT = 0.55; // metres up from the feet: where a dodge's roll turns about (a tucked body's middle)
 const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', ' ': 'jump', e: 'act', enter: 'act', f: 'fire', r: 'throw', c: 'block', x: 'dodge', g: 'power', v: 'second' };
 const FIRE_EVERY = 0.24; // seconds between shots
 const SABER_IDLE = 8; // seconds without a stroke before the blade goes out
@@ -1319,8 +1320,7 @@ export async function create(canvas, ctx) {
     if (!d) return false;
     const k = (state.t - d.t0) / DODGE.dur;
     if (k >= 1) {
-      state.dodge = null;
-      me().holder.rotation.x = 0;
+      state.dodge = null; // (and place() stands you back up)
       return false;
     }
     const at = dodgeStep(k);
@@ -1329,8 +1329,10 @@ export async function create(canvas, ctx) {
     const p = me().st;
     p.x += d.dx * step;
     p.z += d.dz * step;
-    // (a roll: head over heels along the way, once)
-    me().holder.rotation.x = -Math.PI * 2 * k * (d.dx * Math.sin(p.yaw) + d.dz * Math.cos(p.yaw) >= 0 ? 1 : -1);
+    // (a roll: head over heels along the way, once, head first the way
+    // you're going; kept here for place(), which sets the body's turn
+    // afresh every frame)
+    d.roll = Math.PI * 2 * k * (d.dx * Math.sin(p.yaw) + d.dz * Math.cos(p.yaw) >= 0 ? 1 : -1);
     return at.safe;
   }
   // the ring over the one you're squared up to: a thin additive ring at
@@ -1917,11 +1919,20 @@ export async function create(canvas, ctx) {
         pp.holder.rotation.set(x.state.pitch * -1, yaw, x.state.bank, 'YXZ');
         pp.fig?.update(dt, 0);
       } else {
-        pp.holder.rotation.set(0, st.yaw, 0);
+        // (yaw first, so a tip or a roll goes about the body's own side, whichever way it faces)
+        pp.holder.rotation.set(0, st.yaw, 0, 'YXZ');
         // (down in a battle: tipped over where you fell)
         if (i === lead && state.fallen > 0) {
           state.fallen += dt;
           pp.holder.rotation.x = -Math.min(Math.PI / 2, state.fallen * 5);
+        } else if (i === lead && state.dodge?.roll) {
+          // rolling (X): over and over about the waist, not the feet, so the
+          // head doesn't go through the ground
+          const r = state.dodge.roll;
+          pp.holder.rotation.x = r;
+          pp.holder.position.x -= ROLL_PIVOT * Math.sin(r) * Math.sin(st.yaw);
+          pp.holder.position.y += ROLL_PIVOT * (1 - Math.cos(r));
+          pp.holder.position.z -= ROLL_PIVOT * Math.sin(r) * Math.cos(st.yaw);
         }
         // going which way, how fast, turning, off the ground (locomotion.js
         // works in the universe map's units: METRE to the metre)
@@ -1929,7 +1940,8 @@ export async function create(canvas, ctx) {
         rightV.set(-Math.cos(st.yaw), 0, Math.sin(st.yaw));
         const turn = pp.prevYaw == null || dt <= 0 ? 0 : wrap(st.yaw - pp.prevYaw) / dt;
         pp.prevYaw = st.yaw;
-        const air = st.grounded ? 0 : Math.max(0, st.y - groundAt(world, st.x, st.z, st.y));
+        // (tucked up through a roll, knees in as in a jump)
+        const air = i === lead && state.dodge ? 0.5 : st.grounded ? 0 : Math.max(0, st.y - groundAt(world, st.x, st.z, st.y));
         const mine = i === lead;
         const motion = { speed: (st.vx * fwdV.x + st.vz * fwdV.z) * METRE, side: (st.vx * rightV.x + st.vz * rightV.z) * METRE, turn, air, hurt: mine ? Math.max(0, 1 - (state.t - state.hurtAt) / 0.35) : 0, knock: 0.5 };
         const going = clamp(st.speed / WALK.run, 0, 1);
