@@ -100,10 +100,10 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
   const screenOpen = ui.mode === 'inventory' || ui.mode === 'table';
 
   // ── the pointer held while playing: its moves turn the head ──
-  const lock = () => {
+  const lock = useCallback(() => {
     const el = host.current;
     if (!touch && el && document.pointerLockElement !== el) el.requestPointerLock?.()?.catch?.(() => {});
-  };
+  }, [touch, host]);
   useEffect(() => {
     const el = host.current;
     const onMove = (e) => {
@@ -151,7 +151,7 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ui.mode, onExit, api]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ui.mode, onExit, lock]);
 
   const play = () => {
     api()?.start();
