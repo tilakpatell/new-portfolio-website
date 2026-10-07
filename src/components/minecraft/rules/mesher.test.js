@@ -203,6 +203,24 @@ describe('the mesher', () => {
     expect(v.find((p) => p.face === FACE.top).layer).toBe(textures.get('furnace_top'));
   });
 
+  it('smooth light: a corner averages the four cells round it, a dark one taking the face’s own', () => {
+    const c = makeChunk(0, 0);
+    c.lit = true;
+    set(c, 5, 5, 5, id('stone'));
+    // the cells over the top face: (5,6,5) 12 sky; west of it 8; north of it 4; the corner (4,6,4) 0 (as a solid's is)
+    c.light[(6 * 16 + 5) * 16 + 5] = 12 << 4;
+    c.light[(6 * 16 + 5) * 16 + 4] = 8 << 4;
+    c.light[(6 * 16 + 4) * 16 + 5] = 4 << 4;
+    c.light[(6 * 16 + 4) * 16 + 4] = 0;
+    // and a torch's light on the face cell alone
+    c.light[(6 * 16 + 5) * 16 + 5] |= 8;
+    const top = verts(mesh(c).opaque).filter((p) => p.face === FACE.top);
+    const at = (x, z) => top.find((p) => p.x === x * 16 && p.z === z * 16).light;
+    // (12 + 8 + 4 + 12) / 4 = 9 sky; block (8 + 8 + 8 + 8) / 4 = 8 (dark ones take the face's)
+    expect(at(5, 5) >> 4).toBe(9);
+    expect(at(5, 5) & 15).toBe(8);
+  });
+
   it('an unlit chunk meshes in full sky light; a lit one carries its light', () => {
     const c = makeChunk(0, 0);
     set(c, 5, 5, 5, id('stone'));

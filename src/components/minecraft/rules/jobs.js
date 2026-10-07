@@ -10,6 +10,7 @@
 //
 // Messages, page to worker:
 //   { type: 'chunk', key, seed, cx, cz, priority, edits: { [chunkKey]: packed } }
+//     (lit, rules/light.js, over the eight round it, then meshed)
 //     (the player's edits to the chunk and to any of its eight neighbours,
 //     put into copies of the made terrain before meshing)
 //   { type: 'mesh', key, cx, cz, sections, priority, chunk: { ids, state, light, lit }, borders }
@@ -20,6 +21,7 @@
 // Arrays travel as transferables.
 
 import { applyEdits, key, makeChunk } from './chunk.js';
+import { lightRegion } from './light.js';
 import { meshSection } from './mesher.js';
 import { makeGenerator } from './worldgen.js';
 
@@ -192,13 +194,18 @@ export function makeCore({ textures, cacheSize = 300 }) {
         return c;
       };
       const c = edited(job.cx, job.cz);
+      const around = {};
+      for (const [side, dx, dz] of NEIGHBOURS) around[side] = edited(job.cx + dx, job.cz + dz);
+      // lit with its neighbours' margin, then meshed in that light (copies: the cache stays unlit)
+      const lit = lightRegion(c, around);
+      const centre = { cx: c.cx, cz: c.cz, ids: c.ids, state: c.state, light: lit.centre, lit: true };
       const nb = {};
-      for (const [side, dx, dz] of NEIGHBOURS) nb[side] = edited(job.cx + dx, job.cz + dz);
+      for (const side of Object.keys(around)) nb[side] = { ids: around[side].ids, state: around[side].state, light: lit.around[side], lit: true };
       const meshes = [];
-      for (let s = 0; s < 16; s++) meshes.push(meshSection(c, s, nb, { textures }));
+      for (let s = 0; s < 16; s++) meshes.push(meshSection(centre, s, nb, { textures }));
       const ids = c.ids.slice();
       const state = c.state ? c.state.slice() : new Uint8Array(ids.length);
-      const light = new Uint8Array(ids.length);
+      const light = lit.centre;
       return { msg: { type: 'chunk', key: job.key, cx: job.cx, cz: job.cz, ids, state, light, meshes }, transfer: [ids.buffer, state.buffer, light.buffer, ...meshesOut(meshes)] };
     }
     if (job.type === 'mesh') {

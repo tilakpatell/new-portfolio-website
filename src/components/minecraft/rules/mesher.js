@@ -154,7 +154,6 @@ export function meshSection(chunk, sectionY, nb, { textures }) {
   const { ids, light } = gather(chunk, sectionY, nb ?? {});
   const out = [buffer(), buffer(), buffer()];
   const layerOf = (name) => textures.get(name) ?? 0;
-  const solidAt = (x, y, z) => OPAQUE[ids[pad(x, y, z)]];
   const y0 = sectionY * 16;
   let any = false;
   for (let y = 0; y < 16; y++) {
@@ -189,6 +188,7 @@ export function meshSection(chunk, sectionY, nb, { textures }) {
           const look = faceOf(b, f, chunk.state?.[base + z * 16 + x] ?? 0);
           const layer = layerOf(look.name);
           const ao = [0, 0, 0, 0];
+          const lights = [lit, lit, lit, lit];
           const px = [];
           for (let k = 0; k < 4; k++) {
             const [cx, cy, cz] = face.c[k];
@@ -199,13 +199,25 @@ export function meshSection(chunk, sectionY, nb, { textures }) {
             const ox = x + dx;
             const oy = y + dy;
             const oz = z + dz;
-            let s1;
-            let s2;
-            if (dx) [s1, s2] = [solidAt(ox, oy + sy, oz), solidAt(ox, oy, oz + sz)];
-            else if (dy) [s1, s2] = [solidAt(ox + sx, oy, oz), solidAt(ox, oy, oz + sz)];
-            else [s1, s2] = [solidAt(ox + sx, oy, oz), solidAt(ox, oy + sy, oz)];
-            const corner = solidAt(ox + sx, oy + sy, oz + sz);
+            const e1 = dx ? pad(ox, oy + sy, oz) : pad(ox + sx, oy, oz);
+            const e2 = dz ? pad(ox, oy + sy, oz) : pad(ox, oy, oz + sz);
+            const ec = pad(ox + sx, oy + sy, oz + sz);
+            const s1 = OPAQUE[ids[e1]];
+            const s2 = OPAQUE[ids[e2]];
+            const corner = OPAQUE[ids[ec]];
             ao[k] = kind === 4 ? 3 : s1 && s2 ? 0 : 3 - (s1 + s2 + corner);
+            // the game's smooth light: the four cells' light averaged, sky and block apart, a dark
+            // one (a solid's, or the corner hidden behind two) counting as the face's own
+            if (kind !== 4) {
+              const cells = [lit, light[e1], light[e2], s1 && s2 ? 0 : light[ec]];
+              let sk = 0;
+              let bl = 0;
+              for (const v of cells) {
+                sk += v >> 4 || lit >> 4;
+                bl += v & 15 || lit & 15;
+              }
+              lights[k] = ((sk >> 2) << 4) | (bl >> 2);
+            }
             const top = cy === 1 ? 16 - lowered : 0;
             px.push([x * 16 + cx * 16, (y0 + y) * 16 + top, z * 16 + cz * 16, face.uv[look.turn ? (k + 1) & 3 : k][0] * 16, face.uv[look.turn ? (k + 1) & 3 : k][1] * 16]);
           }
@@ -216,7 +228,7 @@ export function meshSection(chunk, sectionY, nb, { textures }) {
           for (let k = 0; k < 4; k++) {
             const j = (k + start) & 3;
             const p = px[j];
-            buf.push(p[0], p[1], p[2], layer, f | (ao[j] << 3) | (tint << 5) | (lit << 8), p[3] | (p[4] << 5));
+            buf.push(p[0], p[1], p[2], layer, f | (ao[j] << 3) | (tint << 5) | (lights[j] << 8), p[3] | (p[4] << 5));
           }
         }
       }
