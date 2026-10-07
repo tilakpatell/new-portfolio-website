@@ -737,7 +737,8 @@ export async function buildAnnex(kit) {
   // ── a couple of locals, by the shops either side of the arcade ──
   const locals = [];
   if (plan.locals) {
-    await need(['gromflomite', 'gazorpian'], { clips: ['idle'] }).catch(() => {});
+    // (they only stand, but the walk comes too: the cast turns each idle to face the way it does)
+    await need(['gromflomite', 'gazorpian'], { clips: ['idle', 'walk'] }).catch(() => {});
     for (const [kind, x, z, turn] of [
       ['gromflomite', 380.5, N - 0.7, 0.35],
       ['gazorpian', 421.5, N - 0.9, -0.3],

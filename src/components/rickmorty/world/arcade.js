@@ -807,7 +807,8 @@ export async function buildArcade(kit) {
   // ── a few regulars, out over the hall ──
   const regulars = [];
   if (plan.regulars) {
-    await need(['gromflomite', 'gazorpian'], { clips: ['idle'] }).catch(() => {});
+    // (they only stand, but the walk comes too: the cast turns each idle to face the way it does)
+    await need(['gromflomite', 'gazorpian'], { clips: ['idle', 'walk'] }).catch(() => {});
     const place = (kind, rad, a, y, turn) => {
       const c = kit.cast.make(kind);
       if (!c) return;

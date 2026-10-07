@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { assetUrl, createMeshyCast, cullWithin, FOLDERS } from './meshyCast';
+import { assetUrl, createMeshyCast, cullWithin, FOLDERS, heading } from './meshyCast';
 
 // a skinned figure 1.8 m tall, as a Meshy rig arrives: its mesh under a
 // node scaled to the rig's centimetres, its positions in those units
@@ -99,6 +99,211 @@ describe('a figure of the site’s own in the cast', () => {
     expect(Object.keys(f.act).sort()).toEqual(['idle', 'walk']);
     const hips = f.act.walk.getClip().tracks.find((t) => t.name === 'Hips.position');
     expect(hips.values[1]).toBeCloseTo((90 * 98) / 93.3, 4);
+    cast.dispose();
+  });
+});
+
+// A rig as Meshy's come: the hips 93 up under an armature scaled to
+// centimetres, and (with `turn`) turned a quarter over, so its up is no
+// longer y in the armature's own space.
+function meshyRig(turn = 0) {
+  const hips = new THREE.Bone();
+  hips.name = 'Hips';
+  hips.position.y = 93;
+  const geo = new THREE.BoxGeometry(50, 180, 30).translate(0, 90, 0);
+  const n = geo.attributes.position.count;
+  geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(new Array(n * 4).fill(0), 4));
+  geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(new Array(n).fill([1, 0, 0, 0]).flat(), 4));
+  const mesh = new THREE.SkinnedMesh(geo, new THREE.MeshStandardMaterial());
+  const armature = new THREE.Group();
+  armature.scale.setScalar(0.01);
+  armature.rotation.x = turn;
+  armature.add(hips, mesh);
+  mesh.bind(new THREE.Skeleton([hips]));
+  const scene = new THREE.Group();
+  scene.add(armature);
+  return scene;
+}
+// the up axis in the armature's space, as the cast works it out
+const armatureUp = (turn) => new THREE.Vector3(0, 1, 0).applyQuaternion(new THREE.Quaternion().setFromEuler(new THREE.Euler(turn, 0, 0)).invert());
+
+// A loader that hands out Rick (rick.glb) and his clips (rick-<name>.glb),
+// and the shared ones (clips-<name>.glb): each clip a second long, one track,
+// the hips turned `twists[name]` about `up` the whole way through. `have`
+// says which of Rick's own there are; the rest 404. Every url asked for is
+// kept, to count fetches.
+function fakeLoader({ turn = 0, have = ['idle', 'walk', 'run'], twists = {} } = {}) {
+  const up = armatureUp(turn);
+  const urls = [];
+  const clip = (name) => {
+    const q = new THREE.Quaternion().setFromAxisAngle(up, twists[name] ?? 0).toArray();
+    return new THREE.AnimationClip(name, 1, [new THREE.QuaternionKeyframeTrack('Hips.quaternion', [0, 1], [...q, ...q])]);
+  };
+  return {
+    urls,
+    async loadAsync(url) {
+      urls.push(url);
+      const own = url.match(/\/rick-(\w+)\.glb$/);
+      if (own && !have.includes(own[1])) throw new Error('404');
+      const name = own?.[1] ?? url.match(/\/clips-(\w+)\.glb$/)?.[1];
+      if (name) return { scene: meshyRig(), animations: [clip(name)] };
+      return { scene: meshyRig(turn), animations: [] };
+    },
+  };
+}
+// Rick without his flask, so nothing fidgets in a test's way
+const KINDS = { rick: { a: 'rick', h: 2.35 } };
+const castOf = async (opts, clips) => {
+  const loader = fakeLoader(opts);
+  const cast = createMeshyCast({ kinds: KINDS, loader });
+  await cast.load(null, ['rick'], { clips });
+  return { cast, loader, c: cast.make('rick') };
+};
+// a clock for one figure: tick(s) runs it s seconds on at 20 frames a second
+const clock = (c, move = 0) => {
+  let t = 0;
+  c.update(t, move, 0);
+  return (s) => {
+    const end = t + s - 1e-9;
+    while (t < end) {
+      t += 0.05;
+      c.update(t, move, 0);
+    }
+  };
+};
+
+describe('a Meshy figure’s one-shots', () => {
+  it('replaying the clip that is playing restarts it, never cuts it', async () => {
+    const { cast, c } = await castOf();
+    const tick = clock(c);
+    await c.play('punch');
+    tick(0.1);
+    const a = c.act.punch;
+    const w = a.getEffectiveWeight();
+    expect(w).toBeGreaterThan(0);
+    await c.play('punch'); // (a punch chain)
+    expect(a.time).toBe(0);
+    expect(a.getEffectiveWeight()).toBeCloseTo(w, 6);
+    tick(0.05);
+    expect(a.isRunning()).toBe(true);
+    expect(a.getEffectiveWeight()).toBeGreaterThan(0);
+    tick(0.3);
+    expect(a.isRunning()).toBe(true);
+    expect(a.getEffectiveWeight()).toBe(1);
+    cast.dispose();
+  });
+
+  it('a second clip fades the first out fully, even one cut while still fading', async () => {
+    const { cast, c } = await castOf();
+    const tick = clock(c);
+    await c.play('wave', { loop: true });
+    tick(0.1);
+    await c.play('cheer', { loop: true });
+    tick(0.05);
+    await c.play('happy', { loop: true }); // (the wave's still fading out)
+    tick(1);
+    for (const n of ['wave', 'cheer']) {
+      expect(c.act[n].getEffectiveWeight(), n).toBe(0);
+      expect(c.act[n].isRunning(), n).toBe(false);
+    }
+    expect(c.act.happy.getEffectiveWeight()).toBe(1);
+    cast.dispose();
+  });
+});
+
+describe('a Meshy figure’s idle, walk and run', () => {
+  const sum = (c) => ['idle', 'walk', 'run'].reduce((s, n) => s + (c.act[n]?.getEffectiveWeight() ?? 0), 0);
+
+  it('weighs its three clips to the whole at any pace', async () => {
+    const { cast, c } = await castOf();
+    for (const move of [0, 0.2, 0.5, 0.7, 1]) {
+      clock(c, move)(0.1);
+      expect(sum(c), `move ${move}`).toBeCloseTo(1, 6);
+    }
+    cast.dispose();
+  });
+
+  it('a missing run hands its weight to the walk, played faster', async () => {
+    const { cast, c } = await castOf({ have: ['idle', 'walk'] }, ['idle', 'walk', 'run']);
+    expect(c.act.run).toBeUndefined();
+    clock(c, 1)(0.1);
+    expect(sum(c)).toBeCloseTo(1, 6);
+    expect(c.act.walk.getEffectiveWeight()).toBeGreaterThanOrEqual(0.99);
+    expect(c.act.walk.timeScale).toBeGreaterThan(1.5);
+    cast.dispose();
+  });
+
+  it('a missing walk hands its weight to the idle', async () => {
+    const { cast, c } = await castOf({ have: ['idle'] }, ['idle', 'walk', 'run']);
+    clock(c, 0.6)(0.1);
+    expect(c.act.idle.getEffectiveWeight()).toBe(1);
+    cast.dispose();
+  });
+
+  it('update takes an explicit dt, clamped as a frame is', async () => {
+    const { cast, c } = await castOf();
+    c.update(5, 0, 0, { dt: 0.02 });
+    expect(c.mixer.time).toBeCloseTo(0.02, 9);
+    c.update(9, 0, 0, { dt: 0.02 }); // (the clock jumped; the frame didn't)
+    expect(c.mixer.time).toBeCloseTo(0.04, 9);
+    c.update(10, 0, 0, { dt: 1 }); // (a tab come back to)
+    expect(c.mixer.time).toBeCloseTo(0.14, 9);
+    cast.dispose();
+  });
+});
+
+describe('a Meshy figure’s clips, asked for', () => {
+  const count = (urls, u) => urls.filter((x) => x === u).length;
+
+  it('a later load adds clips to a figure already loaded, fetching the model once', async () => {
+    const loader = fakeLoader();
+    const cast = createMeshyCast({ kinds: KINDS, loader });
+    await cast.load(null, ['rick'], { clips: ['idle'] });
+    expect(cast.make('rick').act.run).toBeUndefined();
+    await cast.load(null, ['rick'], { clips: ['idle', 'run'] });
+    expect(Object.keys(cast.make('rick').act).sort()).toEqual(['idle', 'run']);
+    expect(count(loader.urls, '/games/meshy/rick.glb')).toBe(1);
+    expect(count(loader.urls, '/games/meshy/rick-idle.glb')).toBe(1);
+    cast.dispose();
+  });
+
+  it('two asks at once for one figure fetch it once and both get their clips', async () => {
+    const loader = fakeLoader();
+    const cast = createMeshyCast({ kinds: KINDS, loader });
+    await Promise.all([cast.load(null, ['rick'], { clips: ['idle', 'walk'] }), cast.load(null, ['rick'], { clips: ['idle', 'run'] })]);
+    expect(Object.keys(cast.make('rick').act).sort()).toEqual(['idle', 'run', 'walk']);
+    expect(count(loader.urls, '/games/meshy/rick.glb')).toBe(1);
+    expect(count(loader.urls, '/games/meshy/rick-idle.glb')).toBe(1);
+    cast.dispose();
+  });
+
+  it('a figure that didn’t load is tried again when asked again', async () => {
+    let fail = true;
+    const inner = fakeLoader();
+    const loader = { urls: inner.urls, loadAsync: (url) => (fail && url.endsWith('/rick.glb') ? Promise.reject(new Error('offline')) : inner.loadAsync(url)) };
+    const cast = createMeshyCast({ kinds: KINDS, loader });
+    await cast.load(null, ['rick'], { clips: ['idle'] });
+    expect(cast.make('rick')).toBeNull();
+    fail = false;
+    await cast.load(null, ['rick'], { clips: ['idle'] });
+    expect(cast.make('rick')?.act.idle).toBeTruthy();
+    cast.dispose();
+  });
+});
+
+describe('a Meshy figure’s shared clips', () => {
+  it('a shared clip is turned to face where the walk faces', async () => {
+    const turn = Math.PI / 2;
+    const up = armatureUp(turn);
+    const { cast, c } = await castOf({ turn, twists: { walk: 0.3, idle: 1.0, wave: -0.9 } }, ['idle', 'walk']);
+    const walk = c.act.walk.getClip();
+    const first = (clip) => clip.tracks.find((t) => t.name === 'Hips.quaternion').values.slice(0, 4);
+    expect(heading(walk, up)).toBeCloseTo(0.3, 6);
+    expect(heading(c.act.idle.getClip(), up)).toBeCloseTo(0.3, 6); // (its own, as ever)
+    await c.play('wave');
+    const wave = c.act.wave.getClip();
+    expect(heading(wave, up)).toBeCloseTo(0.3, 6);
+    first(wave).forEach((v, i) => expect(v).toBeCloseTo(first(walk)[i], 6));
     cast.dispose();
   });
 });

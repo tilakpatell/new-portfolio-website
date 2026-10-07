@@ -2306,6 +2306,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     } else if (S.phase === 'walk') {
       walkFrame(dt, input);
     } else if (S.phase === 'down') {
+      // (nobody marches while you're down, so the fallen's clocks run here)
+      for (const o of S.troops) if (!o.alive) o.dead += dt;
       if (S.t > LAND.fall) {
         // back on your feet by the ship
         S.me = { ...doorSpot(1), id: 'me' };
@@ -2453,7 +2455,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     if (S.health <= 0) {
       S.phase = 'down';
       S.t = 0;
-      S.troops = S.troops.map((o) => ({ ...o, alive: false, dead: 2.5 })); // they go, their job done
+      // they go, their job done: down at the knees and over, as a shot one
+      // goes (the down phase below runs their fall), not flat at once
+      S.troops = S.troops.map((o) => (o.alive ? { ...o, alive: false, dead: 0 } : o));
       S.cleared = true;
       S.nextSquad = S.clock + 20;
       emit({ type: 'foot', id: 'down' });
@@ -2610,7 +2614,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         }
         continue;
       }
-      const move = Math.min(1, Math.abs(tr.speed) / (TROOPS[tr.kind].speed * 1.2) + Math.abs(tr.side) / FOOT.run);
+      // (against a runner's pace, as yours is: by their own top speed a
+      // trooper's march read as a run)
+      const move = Math.min(1, Math.abs(tr.speed) / FOOT.run + Math.abs(tr.side) / FOOT.run);
       const hit = tr.hitAt ? Math.max(0, 1 - (S.clock - tr.hitAt) / 0.35) : 0;
       const motion = { speed: tr.speed, side: tr.side, turn: turnRate(got, tr, dt), hurt: hit, knock: tr.knock ? Math.sign(vec.dot(tr.knock, rightOf(tr))) || 1 : 0.4 };
       if (got.loco) {

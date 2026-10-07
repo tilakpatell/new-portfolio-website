@@ -181,13 +181,15 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     return p;
   };
   // each of the cast loaded once, however many builders ask, at the same time
-  // or not (the clips of the first ask for a name are the ones it gets)
-  const asked = new Map();
+  // or not; every ask's clips reach the cast, which adds those a figure
+  // hasn't got yet to the one it has (an ask asked before is the same load)
+  const asked = new Map(); // name and clips → the load
   const need = (names, { clips = ['idle', 'walk', 'run'] } = {}) =>
     Promise.all(
       names.map((n) => {
-        if (!asked.has(n)) asked.set(n, track(cast.load(null, [n], { clips })));
-        return asked.get(n);
+        const key = `${n}:${[...clips].sort().join(',')}`;
+        if (!asked.has(key)) asked.set(key, track(cast.load(null, [n], { clips })));
+        return asked.get(key);
       }),
     );
   const [loaded] = await Promise.all([

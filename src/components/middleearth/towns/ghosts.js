@@ -11,15 +11,25 @@
 // geometry is shared with others brings its own `dispose`, and one whose
 // materials are, `shared`, so they're left alone: Albuquerque's copy of
 // Walt's Aztek), `animate(f, t, p, dt)` moves it (a Frodo's walk unless it
-// says), `tag` is the name card's height and `halo` the size of the ring of
-// light, in the scene's units, and `snap` how far behind it can be before
-// it's put straight there (further for a car). A traveller who jumps (`y`,
-// from a world that sends it) leaves the ground.
+// says; `t` is that traveller's own clock, not the scene's), `tag` is the
+// name card's height and `halo` the size of the ring of light, in the
+// scene's units, and `snap` how far behind it can be before it's put
+// straight there (further for a car). A traveller who jumps (`y`, from a
+// world that sends it) leaves the ground.
 
 import * as THREE from 'three';
 import { pose } from '../mapFigures';
 import { makePerson } from '../shire/people';
 import { sharpen } from '../../../lib/three/textures';
+import { seeded } from '../../../lib/seeded';
+
+// a traveller's id as a number, so each starts their stride somewhere of
+// their own (and the same somewhere every visit)
+function idHash(id) {
+  let h = 0x811c9dc5;
+  for (const ch of String(id)) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193);
+  return h;
+}
 
 const TINT = new THREE.Color(0xcfe0ff);
 const GLOW = new THREE.Color(0x6a8cff);
@@ -92,7 +102,9 @@ export function createGhosts({ height = () => 0, make: build = () => makePerson(
     tag.position.y = (f.top ?? 1.6) + tagSize * 0.85;
     root.add(f.group, halo, tag);
     group.add(root);
-    return { f, mat, root, halo, tag, name: p.name, x: p.x, z: p.z, y: p.y ?? 0, face: p.face, fade: 0 }; // (first seen up high: there at once, not rising from the ground)
+    // (first seen up high: there at once, not rising from the ground; `clock`
+    // is their own gait's time, so two don't step in time)
+    return { f, mat, root, halo, tag, name: p.name, x: p.x, z: p.z, y: p.y ?? 0, face: p.face, fade: 0, clock: seeded(idHash(p.id))() * 10 };
   };
 
   const drop = (id, g) => {
@@ -147,7 +159,10 @@ export function createGhosts({ height = () => 0, make: build = () => makePerson(
         // the name goes up with them (a swinger's, a flyer's), the ring of light stays on the ground
         g.tag.position.y = g.y + (g.f.top ?? 1.6) + tagSize * 0.85;
         g.f.group.rotation.y = g.face;
-        animate(g.f, t + g.x, p, dt);
+        // their own clock, run by the frame (an offset by where they stand ran
+        // it backwards for anyone walking west)
+        g.clock += dt;
+        animate(g.f, g.clock, p, dt);
         const shimmer = 0.85 + Math.sin(t * 2.6 + g.x) * 0.08 + Math.sin(t * 7.1 + g.z) * 0.04;
         g.mat.opacity = 0.42 * g.fade * shimmer;
         g.halo.material.opacity = 0.5 * g.fade * (0.7 + Math.sin(t * 3 + g.z) * 0.3);
