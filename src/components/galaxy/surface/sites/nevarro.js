@@ -149,24 +149,22 @@ const RIMDOMES = Array.from({ length: 24 }, (_, i) => -PI + (i + 0.5) * ((2 * PI
 export const CANTINA = { at: [2, -26.05], yaw: -0.12 };
 const CORE = [
   { kind: 'nevarrocantina', at: CANTINA.at, yaw: CANTINA.yaw },
-  // (the square's paving: dark slabs)
-  { kind: 'deck', at: [0, 1], model: false, solid: false, opts: { hw: 21, hd: 16, depth: 1, color: '#5f5e59' } },
   { kind: 'nevarrodomehouse', at: [34, 3], yaw: -PI / 2, scale: 1.3 },
   // the market: stalls round the square's west and south sides and down
   // Gate Street (the bazaar by the way in), cargo
-  { kind: 'stall', at: [-17, -8], yaw: PI / 2, y: 0.3 },
-  { kind: 'stall', at: [-17, 9], yaw: PI / 2, y: 0.3 },
-  { kind: 'stall', at: [-13, 15], yaw: PI, y: 0.3 },
-  { kind: 'stall', at: [12, 15], yaw: PI, y: 0.3 },
-  { kind: 'stall', at: [18, 9], yaw: -PI / 2, y: 0.3 },
+  { kind: 'stall', at: [-17, -8], yaw: PI / 2 },
+  { kind: 'stall', at: [-17, 9], yaw: PI / 2 },
+  { kind: 'stall', at: [-13, 15], yaw: PI },
+  { kind: 'stall', at: [12, 15], yaw: PI },
+  { kind: 'stall', at: [18, 9], yaw: -PI / 2 },
   { kind: 'stall', at: [-27, -6.8], yaw: 0 },
   { kind: 'stall', at: [-34, -6.8], yaw: 0 },
   { kind: 'stall', at: [-29, 6.8], yaw: PI },
-  { kind: 'crates', at: [-12, -14], y: 0.3 },
-  { kind: 'crates', at: [16, -12], yaw: 0.8, y: 0.3 },
-  { kind: 'cratecube', at: [-14, 12], yaw: 0.4, y: 0.3 },
-  { kind: 'barrel', at: [-15.5, 12.8], yaw: 0.2, y: 0.3 },
-  { kind: 'barrel', at: [15.6, 13.6], yaw: 1.2, y: 0.3 },
+  { kind: 'crates', at: [-12, -14] },
+  { kind: 'crates', at: [16, -12], yaw: 0.8 },
+  { kind: 'cratecube', at: [-14, 12], yaw: 0.4 },
+  { kind: 'barrel', at: [-15.5, 12.8], yaw: 0.2 },
+  { kind: 'barrel', at: [15.6, 13.6], yaw: 1.2 },
   { kind: 'vaporator', at: [24, -20] },
   { kind: 'speedertruck', at: [-24, -14], yaw: 0.3 },
 ];
@@ -339,8 +337,8 @@ export const nevarro = {
       flat: { r: 46, h: BASE.top },
       about: 'An Imperial Remnant base built into the lip of a lava canyon, its coolant tanks hanging out over the drop. Still running. Still guarding something.',
       things: [
-        // (half in the cliff, half out over the canyon, its roof a few metres over the plateau)
-        { kind: 'nevarrobase', at: bt(44, 4), yaw: OUT, scale: 1.6, abs: true, y: BASE.top - 12 },
+        // (half in the cliff, half out over the canyon, its roof nine metres over the plateau)
+        { kind: 'nevarrobase', at: bt(44, 4), yaw: OUT, scale: 1.6, abs: true, y: BASE.top - 6 },
         { kind: 'bunker', at: bt(-8, 26), yaw: OUT + PI / 2 },
         { kind: 'bunker', at: bt(-30, 8), yaw: OUT, model: false, opts: { w: 16, d: 10 } },
         { kind: 'bunker', at: bt(-30, -14), yaw: OUT, model: false, opts: { w: 12, d: 9 } },

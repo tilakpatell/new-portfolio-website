@@ -82,12 +82,29 @@ Budget: about 300–340 credits, including two retries.
 ## Credits
 The third Meshy account (`MESHY_API_KEY_ACC_3`) had 2,786 credits after #558. Pass it inline: `MESHY_API_KEY=$MESHY_API_KEY_ACC_3 node scripts/...`.
 
-## Status
+## Status (branch `claude/nevarro-build`)
 - [x] Research, three designs and the judging (above, and in `docs/superpowers/nevarro/`).
-- [ ] The synthesis (one implementable plan): was still running when this was written.
-- [ ] Making the Meshy buildings.
-- [ ] Rewriting `nevarro` in `sites/outer.js`, plus `terrain-fast` if needed.
-- [ ] Checks: `scripts/surface-shot.mjs nevarro …` for each district and the volcano from the landing, `scripts/galaxy-check.mjs surface nevarro` for the budget, the quests still reachable, `npx eslint .`, `npx vitest run`, `npm run test:ai`, `npx vite build`.
+- [ ] The synthesis agent hit a session limit; the plan above (what the judges converged on) was built from directly.
+- [x] **Nine Meshy buildings** (297 credits, `scripts/meshy-galaxy-buildings-nevarro.mjs`, task ids in `-tasks.json`):
+  - lifted from stills: `nevarrohouse`, `nevarrodomehouse`, `nevarrogate`, `nevarrotower`, `nevarrobase`;
+  - from words: `nevarrocantina`, `nevarrorow`, `charonportal`, `keelboat`.
+  All rendered and judged before use; catalogued in `catalog/outer.js` and credited (`meshy/<kind>` in `public/games/credits.json`, `public/cc0/README.md`).
+  (A lesson: never run two `meshy-galaxy-buildings.mjs` steps at once on the same tasks file. Each saves its own copy and the second overwrote the first's model ids; they were recovered from Meshy's task list, `GET /openapi/v1/image-to-3d`.)
+- [x] **The world** is in `src/components/galaxy/surface/sites/nevarro.js` (outer.js imports it; their shared helpers are in `sites/outerKit.js`). It's built from `draft-landmarks.mjs`, with the judges' fixes:
+  - a walkable stepped passage down to the covert;
+  - lava beds 0.6 m under the lava, with `fall` 0.3 m under it;
+  - the volcano at [660,-380], fog 0.0007;
+  - built TIEs; Gideon's wreck on the lava flats;
+  - the Theed deck dropped from the square;
+  - no rim domes over the river's tunnel.
+- [x] **Probe** (`lab/nevarro/build/probe.mjs`, git-ignored):
+  - the grid builds in 475–510 ms (Tatooine 360–410);
+  - the disc spans -3.7 to 229 m;
+  - every quest spot is on level ground, and the cantina is at [140,-90] yaw 0.3, so its zone door holds;
+  - the routes from the landing to the town, the Crest, the base and the hill (by the North Lane) are walkable;
+  - no footprints overlap.
+- [ ] **Browser:** the cantina and the square read well. The base was raised (its roof 9 m over the plateau) after the first shots. More views are being taken.
+- [ ] **Remaining checks:** `scripts/galaxy-check.mjs surface nevarro` for the budget, `npx eslint .`, `npx vitest run`, `npm run test:ai`, `npx vite build`, then a PR.
 
 ## Checking it
 - **Dev server:** `npx vite --port 5188 --strictPort --host 127.0.0.1`.
