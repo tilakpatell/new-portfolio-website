@@ -42,6 +42,19 @@ describe('Eve', () => {
     expect(ev.some((e) => e.type === 'line' && e.who === 'eve' && COMPANION.eveMeet.includes(e.text))).toBe(true);
   });
 
+  it('flies her loop over the towers on it, never into one', () => {
+    // a 300 m tower a quarter of the way round
+    const tower = [LOOP.cx, LOOP.cz + LOOP.rad * 0.7];
+    const roof = (x, z) => (Math.hypot(x - tower[0], z - tower[1]) < 40 ? 300 : 0);
+    let e = newEve({ ...LOOP, roof });
+    let low = Infinity;
+    for (let t = 0; t < 30; t += 1 / 30) {
+      e = stepEve(e, sense(), 1 / 30).eve;
+      if (Math.hypot(e.p[0] - tower[0], e.p[2] - tower[1]) < 40) low = Math.min(low, e.p[1]);
+    }
+    expect(low).toBeGreaterThan(300);
+  });
+
   it('does not come over before 4 s', () => {
     const e0 = newEve(LOOP);
     const hero = [e0.p[0] + 150, e0.p[1], e0.p[2]];
@@ -65,6 +78,21 @@ describe('Eve', () => {
     hero = at;
     ({ eve } = runEve(eve, 36, (e, t) => sense({ hero: [hero[0], hero[1], hero[2] + 40 * t], heroV: v })));
     expect(eve.state).toBe('patrol');
+  });
+
+  it('waits beside him 45 s at most, then flies on, and won’t come back till he’s been off', () => {
+    const e0 = newEve(LOOP);
+    const hero = [e0.p[0] + 100, e0.p[1], e0.p[2]];
+    let { eve } = runEve(e0, 10, sense({ hero }));
+    expect(eve.state).toBe('intercept');
+    ({ eve } = runEve(eve, 45, sense({ hero })));
+    expect(eve.state).toBe('patrol');
+    ({ eve } = runEve(eve, 10, sense({ hero })));
+    expect(eve.state).toBe('patrol');
+    // off past 300 m, and back: she'll come again
+    ({ eve } = runEve(eve, 0.2, sense({ hero: [hero[0] + 5000, hero[1], hero[2]] })));
+    ({ eve } = runEve(eve, 15, (e) => sense({ hero: [e.p[0] + 100, e.p[1], e.p[2]] })));
+    expect(eve.state).toBe('intercept');
   });
 
   it('goes for a foe within 400 m and knocks one out every 8 s', () => {
@@ -117,6 +145,11 @@ describe('Dad', () => {
     const lines = all.filter((e) => e.type === 'line' && e.who === 'omni');
     expect(lines.length).toBe(3);
     expect(lines.every((e) => COMPANION.dadRing.includes(e.text))).toBe(true);
+  });
+
+  it('has a word for the first ring, though the lesson starts once he’s through it', () => {
+    const r = runDad(newDad(), 0.5, sense({ hero: [0, 30, 0], lesson: { on: true, next: 1, t: 0.2 } }));
+    expect(r.ev.filter((e) => e.type === 'line')).toEqual([{ type: 'line', who: 'omni', text: COMPANION.dadRing[0] }]);
   });
 
   it('grows impatient once the lesson passes 90 s', () => {

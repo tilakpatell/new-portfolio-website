@@ -20,7 +20,9 @@
 
 import { COMPANION } from './lines';
 
-export const EVE = { still: 4, spot: 300, beside: 6, left: 8, escort: 40, foe: 400, every: 8, talkR: 6, talk: 5, fast: 70, off: 8 };
+// (she waits `patience` s beside him, then flies on, and doesn't come over
+// again until he's been off past `spot`: he can't keep her in the air for ever)
+export const EVE = { still: 4, spot: 300, beside: 6, left: 8, escort: 40, foe: 400, every: 8, talkR: 6, talk: 5, fast: 70, off: 8, patience: 45, over: 20 };
 export const DAD = { watch: [40, 150, -60], fast: 60, follow: 90, behind: 50, above: 20, slow: 90, slowEvery: 30, sparR: 20 };
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -36,8 +38,16 @@ function toward(p, to, speed, dt) {
   if (l <= step) return [...to];
   return [p[0] + (d[0] / l) * step, p[1] + (d[1] / l) * step, p[2] + (d[2] / l) * step];
 }
-// where her loop has her at `s` (as ./npcs.js always drew it)
-const loopAt = (L, s) => [L.cx + Math.cos(s) * L.rad, L.y + Math.sin(s * 3) * 25, L.cz + Math.sin(s) * L.rad * 0.7];
+// where her loop has her at `s` (as ./npcs.js always drew it), and over
+// the towers on it: `roof(x, z)`, if the loop has one, is the highest roof
+// near there, and she keeps `EVE.over` m above it from a little before it
+const flatAt = (L, s) => [L.cx + Math.cos(s) * L.rad, L.cz + Math.sin(s) * L.rad * 0.7];
+function loopAt(L, s) {
+  const [x, z] = flatAt(L, s);
+  let y = L.y + Math.sin(s * 3) * 25;
+  if (L.roof) for (const k of [-0.04, 0, 0.06, 0.12, 0.18]) y = Math.max(y, L.roof(...flatAt(L, s + k)) + EVE.over);
+  return [x, y, z];
+}
 // which way he's flying, flat (or the last way, if he's still)
 function heading(v, last) {
   const l = Math.hypot(v[0], v[2]);
@@ -47,7 +57,7 @@ const line = (who, list, i) => ({ type: 'line', who, text: list[i % list.length]
 
 export function newEve(loop) {
   const p = loopAt(loop, 0);
-  return { state: 'patrol', loop, s: 0, p, v: [0, 0, 0], still: 0, t: 0, hit: 0, said: 0, dir: [0, 0, 1] };
+  return { state: 'patrol', loop, s: 0, p, v: [0, 0, 0], still: 0, t: 0, hit: 0, said: 0, dir: [0, 0, 1], done: false };
 }
 
 export function stepEve(prev, sense, rawDt) {
@@ -58,6 +68,7 @@ export function stepEve(prev, sense, rawDt) {
   const d = dist(e.p, hero);
   const heroSpeed = len(sense.heroV ?? [0, 0, 0]);
   e.dir = heading(sense.heroV ?? [0, 0, 0], e.dir);
+  if (d > EVE.spot) e.done = false;
   // the nearest foe within reach, and which it is
   let foe = -1;
   let fd = EVE.foe;
@@ -94,16 +105,17 @@ export function stepEve(prev, sense, rawDt) {
     case 'talk':
       e.t -= dt;
       speed = 0;
-      if (e.t <= 0) e.state = d < EVE.spot ? 'intercept' : 'patrol';
+      if (e.t <= 0) Object.assign(e, d < EVE.spot && !e.done ? { state: 'intercept', t: EVE.patience } : { state: 'patrol' });
       break;
     case 'intercept': {
       // beside him, 6 m off, on her side of him
       const k = Math.max(1e-6, d);
       to = [hero[0] + ((e.p[0] - hero[0]) / k) * EVE.beside, hero[1] + ((e.p[1] - hero[1]) / k) * EVE.beside, hero[2] + ((e.p[2] - hero[2]) / k) * EVE.beside];
+      e.t -= dt;
       if (heroSpeed > 8 && d < EVE.beside * 3) {
         ev.push(line('eve', COMPANION.eveEscort, e.said++));
         Object.assign(e, { state: 'escort', t: EVE.escort });
-      } else if (d > EVE.spot) e.state = 'patrol';
+      } else if (d > EVE.spot || e.t <= 0) Object.assign(e, { state: 'patrol', done: e.t <= 0 });
       break;
     }
     case 'escort': {
@@ -118,11 +130,11 @@ export function stepEve(prev, sense, rawDt) {
       e.s += (e.loop.speed / e.loop.rad) * dt;
       to = loopAt(e.loop, e.s);
       // he's hung about near her a while: over she goes
-      e.still = d < EVE.spot && heroSpeed < 3 ? e.still + dt : 0;
+      e.still = d < EVE.spot && heroSpeed < 3 && !e.done ? e.still + dt : 0;
       if (e.still >= EVE.still) {
         e.still = 0;
         ev.push(line('eve', COMPANION.eveMeet, e.said++));
-        e.state = 'intercept';
+        Object.assign(e, { state: 'intercept', t: EVE.patience });
       }
     }
   }
@@ -159,7 +171,8 @@ export function stepDad(prev, sense, rawDt) {
     }
   } else if (L?.on) {
     // the rings: behind him and over him, a word as he goes through each
-    if (d.state !== 'lesson' || d.ring == null) Object.assign(d, { state: 'lesson', ring: L.next, slowAt: -1 });
+    // (the lesson starts as he goes through the first: that one has its word too)
+    if (d.state !== 'lesson' || d.ring == null) Object.assign(d, { state: 'lesson', ring: 0, slowAt: -1 });
     to = [hero[0] - d.dir[0] * DAD.behind, hero[1] + DAD.above, hero[2] - d.dir[2] * DAD.behind];
     speed = DAD.follow;
     if (L.next > d.ring) {

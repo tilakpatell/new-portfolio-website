@@ -194,6 +194,18 @@ Every band is in range, and Mark passes in spawn, streetnight and porch. He miss
 - `scene.js` passes the crowd what happened in the frame (slam, knock-out, won, the time). Cars within 60 m of a fight's knock-outs and hits back away at 4 m/s for 3 s (`traffic.js`'s `reverse` scare, tested).
 - New shots: `plazanight`, `burgernight`, `schoolnight`.
 
+### Task 6: Eve and Dad (2026-10-07)
+
+- `companions.js` (tested) holds their rules. Each step is at most 0.05 s.
+  - Eve patrols her loop round downtown, over the towers on it (20 m above the highest roof within 30 m, a little before she gets there; she never flies into one).
+  - When Mark hangs still within 300 m of her for 4 s, she comes over to 6 m from him with a line. She waits 45 s at most, then flies on, and won't come again until he's been off past 300 m.
+  - When he flies off from beside her, she holds 8 m off his left for 40 s, then goes back to her loop.
+  - A foe still standing within 400 m: she goes for it and knocks one out every 8 s (`fight.js` takes her `eveHit` and knocks that foe out, `by: 'eve'`).
+  - E beside her: she stops, says a line and waits 5 s.
+  - Dad watches over downtown by day. At the rings he follows 50 m behind and 20 m above Mark, with a word at each of the first three rings (the first too, though the lesson starts once Mark is through it), and a hurry-up every 30 s past 90 s. At dusk and night he stands on the porch beside Debbie. In the last episode (`mission: 'ep7'`, Task 9) he leads the spar through his points, waiting at each until Mark is within 20 m.
+- `npcs.js` steps Eve from these rules; `scene.js` steps Dad and passes both the live foes, the lesson, the time and an E press for Eve. What they say and do goes in `sim.companion`; `InvWorld.jsx` speaks the lines (in their voices where a recording exists) and gives Eve's blow to the next fight step.
+- `api.debug.dad(p, dir)` reads Dad's rules, or puts him at `p`. New shot: `porchdusk`; `dadlesson` now starts the lesson and frames Dad behind Mark; `eveescort` frames Eve off his left.
+
 ## How to check
 
 - `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic and fight (51 tests at the space merge, 89 after Task 1).
@@ -208,7 +220,7 @@ Every band is in range, and Mark passes in spawn, streetnight and porch. He miss
   - `sim.h` is the hero; `sim.yaw` and `sim.pitch` are the camera.
   - `sim.snap` puts the camera and the pose where they're going.
   - `sim.hold` freezes Eve and the jet.
-  - `api.zone` and `api.setZone` read and set the zone; `api.debug` holds `npcs`, `jet`, `world`, `bodies`, `allen` and `thragg`.
+  - `api.zone` and `api.setZone` read and set the zone; `api.debug` holds `npcs`, `jet`, `world`, `bodies`, `allen`, `thragg` and `dad`.
 
 ## Not done / next ideas
 
