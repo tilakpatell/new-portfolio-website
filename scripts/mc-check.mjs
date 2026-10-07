@@ -1,4 +1,4 @@
-/* global window, requestAnimationFrame */
+/* global window, document, requestAnimationFrame */
 // A browser check of the Minecraft tribute (src/components/minecraft/): with
 // the dev server up (npx vite --port 5188 --strictPort --host 127.0.0.1),
 //   OUT=/tmp/shots node scripts/mc-check.mjs
