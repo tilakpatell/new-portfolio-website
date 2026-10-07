@@ -13,12 +13,13 @@ import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { localDir } from '../desktop/lib.mjs';
 
-const LOCAL = process.env.LOCALAPPDATA ?? join(process.env.USERPROFILE ?? '', 'AppData', 'Local');
+const LLAMACPP = localDir('llamacpp'); // %LOCALAPPDATA%\llamacpp, or the Claude app's boxed copy (scripts/desktop/lib.mjs)
 export const LLAMA = {
-  exe: join(LOCAL, 'llamacpp', 'bin', 'llama-server.exe'),
-  model: join(LOCAL, 'llamacpp', 'models', 'Qwen3-VL-8B-Instruct-Q8_0.gguf'),
-  mmproj: join(LOCAL, 'llamacpp', 'models', 'mmproj-F16.gguf'),
+  exe: join(LLAMACPP, 'bin', 'llama-server.exe'),
+  model: join(LLAMACPP, 'models', 'Qwen3-VL-8B-Instruct-Q8_0.gguf'),
+  mmproj: join(LLAMACPP, 'models', 'mmproj-F16.gguf'),
   port: Number(process.env.VLM_PORT ?? 5355),
 };
 const qwenReady = () => existsSync(LLAMA.exe) && existsSync(LLAMA.model) && existsSync(LLAMA.mmproj);
