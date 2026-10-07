@@ -59,7 +59,7 @@ const LOOK = {
 // (at FOV 64 that's 3.6 m; from further his black and blue were a few
 // pixels wide against the street). Leaning into a flight, it aims `ahead`
 // metres past him instead, as it always has (his feet trail behind him then).
-const CAM = { back: 3.6, pull: 1.5, feet: 0.35, ahead: 4 };
+const CAM = { back: 3.6, pull: 1.5, feet: 0.35, ahead: 4, over: 0.9, overFoot: 0.7 };
 
 // His suit: the atlas's black, raised to `floor` (people.js castMaterial),
 // the show's navy, which keeps his arms and legs on a dark street or at night.
@@ -427,7 +427,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     const lift = upV.clone().multiplyScalar(fly ? 1.2 : 1.55);
     const anchor = [h.p[0] + lift.x, h.p[1] + lift.y, h.p[2] + lift.z];
     // (higher over him the faster he goes, so flat out you see his back, not his boots)
-    const over = upV.clone().multiplyScalar(fly ? 0.9 + k * 2.6 : 0.7);
+    const over = upV.clone().multiplyScalar(fly ? CAM.over + k * 2.6 : CAM.overFoot);
     let back = [-fwd[0] * cam.dist + over.x, -fwd[1] * cam.dist + over.y, -fwd[2] * cam.dist + over.z];
     // never inside a building: stop short of the first wall behind him, or,
     // with one right behind him, swing off it (and stay swung until the line
@@ -761,7 +761,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     get zone() {
       return zone;
     },
-    debug: { npcs, jet, world, bodies: BODIES, allen: ALLEN, thragg: THRAGG, TUNE_TMP: { CAM, SPOT, LOOK, spot, setCastRim, mark, scene, engine, casts } },
+    debug: { npcs, jet, world, bodies: BODIES, allen: ALLEN, thragg: THRAGG },
     resize: (w, hh) => engine.resize(w, hh),
     get lost() {
       return engine.lost;

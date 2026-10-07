@@ -149,6 +149,27 @@ Eight new shots frame where Task 9's missions will be. Nothing is started yet. N
 
 `chase` is dark even at noon: it's a street between glass towers. Place shots now take `pitch`. Follow shots take `side` (how far he sits to the right of the target) and `turn` (added to the target's heading; 0.5 by default).
 
+### Task 2: seeing Mark and the city (2026-10-07)
+
+- `people.js` `castMaterial(root, { rim, floor })` gives every figure one finish: matte (roughness 0.78, no metal, env 0.2), the colour map's saturation lifted 10 %, and a cool Fresnel rim on a shared uniform (`setCastRim`, set by the scene's time of day: 0.35 noon, 0.7 dusk, 1.2 night). It chains onto any `onBeforeCompile` already on a material and keys its program cache. Mark's near-black texels are raised to a navy floor (`SUIT.floor` 0x2a3754), so his arms and legs stay on a dark street or at night.
+- A spotlight follows him from over the camera's shoulder (no shadow; 0 at noon, 20 at dusk, 45 at night). The camera hovering or standing sits 3.6 m back (it was 5.2 standing and 6.5 hovering), his feet about a third of the way up the frame; at speed the pull-back is as it was.
+- `LOOK.noon`: sun 4.2, fill 0.3, env 1.15. The fog's colour comes from the sky photo's horizon (`sky.js` `skyBands`, once per photo), which fixed the bleached hills: the house look had been fogging everything to a fixed cream.
+- Noon windows are a lighter, sky-reflecting pane above the lowest two storeys; dusk and night window light is up 20 %. Street lines widen with distance up to 2× so the grid reads from height; the river and the coast have a bright edge; the five places have a faint beacon by day, bright by night.
+
+Metrics (`--metrics`; targets: band 0.30–0.65 noon, 0.12–0.35 night; mark ≥ 0.18):
+
+| Shot | Band before | Band after | Mark before | Mark after |
+|---|---|---|---|---|
+| spawn | 0.498 | 0.618 | 0.167 | 0.199 |
+| street | 0.365 | 0.491 | 0.047 | 0.161 |
+| streetnight | 0.172 | 0.210 | 0.015 | 0.203 |
+| downtown | 0.316 | 0.521 | 0.044 | 0.025 |
+| high | 0.442 | 0.488 | 0.041 | 0.020 |
+| porch | 0.506 | 0.623 | 0.126 | 0.189 |
+
+Every band is in range, and Mark passes in spawn, streetnight and porch. He misses in street, downtown and high, where he hangs over towers and grid whose mean grey is close to his: the measure compares mean luminance only, and a yellow and blue figure on grey-blue towers averages out the same while reading plainly to the eye (he is about a third of the frame tall and clearly picked out in each of those shots). Not forced further: the suit would have to go pale. A colour-difference measure would judge these better.
+- Low tier, triangles: plaza 1.47 M, boost 1.33 M, dusk and night 1.33 M; within the 1.5 M budget.
+
 ## How to check
 
 - `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic and fight (51 tests at the space merge, 89 after Task 1).

@@ -113,7 +113,6 @@ export function castMaterial(root, { rim = 0.35, floor = null } = {}) {
     dispose() {
       RIMS.delete(cast);
     },
-    TUNE_TMP_floor: uFloor,
   };
   cast.setRim(rim);
   RIMS.add(cast);
