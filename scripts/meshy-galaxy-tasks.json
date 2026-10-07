@@ -133,33 +133,75 @@
     "source": "sketchfab:33a466f49ff3496c8f76d3f4cb845e30"
   },
   "tusken": {
-    "image": "01a114ca-15c0-7014-abac-acc3b3648e16"
+    "image": "01a114ca-15c0-7014-abac-acc3b3648e16",
+    "model": "01a114da-88f0-74a6-883d-f1a99981a730"
   },
   "lando": {
-    "image": "01a114cc-3799-7772-ab53-bb7e2f263f30"
+    "image": "01a114cc-3799-7772-ab53-bb7e2f263f30",
+    "model": "01a114da-8d2a-706a-a527-de62df5a6356"
   },
   "twilek": {
-    "image": "01a114ce-5f6b-7522-93e6-9addab309a85"
+    "image": "01a114ce-5f6b-7522-93e6-9addab309a85",
+    "model": "01a114da-9047-76ff-8000-3bc60361f40c"
   },
   "ugnaught": {
-    "image": "01a114cf-1273-76af-b86c-82ba05de2eab"
+    "image": "01a114cf-1273-76af-b86c-82ba05de2eab",
+    "model": "01a114da-93e2-7458-9357-940fb9f72e82"
   },
   "rebel": {
-    "image": "01a114cf-c2fa-7530-9431-0cd87874c937"
+    "image": "01a114cf-c2fa-7530-9431-0cd87874c937",
+    "model": "01a114da-973b-70d3-9d84-41110ac7dc74"
   },
   "jedi": {
-    "image": "01a114d1-87f6-729a-93d3-c3261064b604"
+    "image": "01a114d1-87f6-729a-93d3-c3261064b604",
+    "model": "01a114da-9a8e-75d4-9f9c-89b81388244d"
   },
   "senateguard": {
-    "image": "01a114d3-6a8c-73ef-8df9-38bfd5226c82"
+    "image": "01a114d3-6a8c-73ef-8df9-38bfd5226c82",
+    "model": "01a114da-9de9-73bf-b240-7c1af9209de0"
   },
   "lobot": {
-    "image": "01a114d3-dbac-7334-800d-7060d6247562"
+    "image": "01a114d3-dbac-7334-800d-7060d6247562",
+    "model": "01a114da-a06d-71aa-ab3d-709786316f44"
   },
   "neimoidian": {
-    "image": "01a114d4-4e1f-773a-b209-aa288fca7884"
+    "image": "01a114d4-4e1f-773a-b209-aa288fca7884",
+    "model": "01a114da-a3fb-701e-919d-48254c31c965"
   },
   "bibfortuna": {
-    "image": "01a114d4-aadb-75bf-8b3e-61bfc0f10d40"
+    "image": "01a114d4-aadb-75bf-8b3e-61bfc0f10d40",
+    "model": "01a114da-a6ca-74ef-bdfb-a6265be2d7f5"
+  },
+  "aqualish": {
+    "image": "01a114d5-1b9c-70b3-95c9-7c9b26cb5ff4",
+    "model": "01a114da-a981-772b-a8ed-67ef16dabc87"
+  },
+  "wuher": {
+    "image": "01a114d5-b91e-771e-b33b-aa6d1f0fa3f8",
+    "model": "01a114da-ac83-77ba-8202-e990a20c1a01"
+  },
+  "mustafarian": {
+    "image": "01a114d6-15d0-74be-aeb7-22eac5333df2",
+    "model": "01a114da-afe3-7181-a239-ea0b59276e14"
+  },
+  "quigon": {
+    "image": "01a114d6-88c1-7653-a2d9-27c17be8e617",
+    "model": "01a114da-b3b8-7600-b404-8bb83c54748a"
+  },
+  "hondo": {
+    "image": "01a114d7-254d-72ab-8273-7b9753fa27b9",
+    "model": "01a114da-b74c-75b9-97b1-e0e3028d7f03"
+  },
+  "ackbar": {
+    "image": "01a114d7-979c-734c-b51d-2fb0d5407bd1",
+    "model": "01a114da-babd-7262-86fc-796c788a93fd"
+  },
+  "officer": {
+    "image": "01a114d8-4713-71fa-abdb-a4fb42f42b70",
+    "model": "01a114da-bd4a-72ac-8c0e-dfd2ddf273bf"
+  },
+  "dooku": {
+    "image": "01a114d8-b6c3-7499-9cdf-a7c1e047543f",
+    "model": "01a114da-bfe0-729e-8d0b-a865aeccae0d"
   }
 }
