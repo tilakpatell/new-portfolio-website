@@ -32,7 +32,7 @@ html[data-mode='dark'] .cy-hero-copy { background: color-mix(in srgb, var(--bg) 
 .cy-planet-canvas > canvas { display: block; width: 100%; height: 100%; }
 .cy-planet:has([data-gl])::after { display: none; } /* the globe in WebGL brings its own glow */
 .cy-planet-mark { position: absolute; right: 5%; bottom: 5%; width: 16%; height: auto; overflow: visible; }
-.cy-figure { position: absolute; left: 50%; bottom: 3%; width: 70%; translate: -50% 0; animation: cy-figure-in 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) backwards; }
+.cy-figure { position: absolute; left: 50%; bottom: 3%; width: 70%; translate: -50% 0; animation: cy-figure-in 0.5s var(--ease-smooth) backwards; }
 .cy-figure-art { display: block; width: 100%; height: auto; }
 @keyframes cy-figure-in { from { opacity: 0; transform: translateY(14px) scale(0.96); } }
 .tf-bot { --tf-body: #c8102e; --tf-trim: #1f4fa8; --tf-trim-dark: #173a7c; --tf-glass-1: #9fd8ff; --tf-glass-2: #2b6fae; --tf-eye: #59d6ff; overflow: visible; }
@@ -78,7 +78,7 @@ html[data-mode='dark'] .cy-hero-copy { background: color-mix(in srgb, var(--bg) 
 .mg-muzzle { transform-box: fill-box; transform-origin: 50% 50%; opacity: 0.35; }
 .mg-beam { transform-box: fill-box; transform-origin: 50% 0; transform: scaleY(0); opacity: 0; }
 .mg-bot[data-firing] .mg-muzzle { animation: mg-charge 0.45s ease-in both; }
-.mg-bot[data-firing] .mg-beam { animation: mg-fire 0.8s cubic-bezier(0.2, 0.7, 0.3, 1) 0.42s both; }
+.mg-bot[data-firing] .mg-beam { animation: mg-fire 0.8s var(--ease-smooth) 0.42s both; }
 .mg-bot[data-mode='robot'][data-firing] .mg-arm-l { transform: rotate(124deg); transition-duration: 0.35s; transition-delay: 0s; }
 @keyframes mg-charge { 0% { transform: scale(0.6); opacity: 0.4; } 90% { transform: scale(2.4); opacity: 1; } 100% { transform: scale(1.4); opacity: 0.8; } }
 @media (prefers-reduced-motion: reduce) {
