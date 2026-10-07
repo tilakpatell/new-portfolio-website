@@ -9,6 +9,8 @@ import { createHoth } from './hoth';
 import { createScarif } from './scarif';
 import { createHangars } from './hangar';
 import { piecesFor } from './index';
+import { createDirector } from '../../universe/battleDirector';
+import { planOf } from '../battlePlans';
 
 // (a battle of the old shape, the Rebellion and the Empire, unless a
 // defender's named: then with its sides by team, as gcw.js's battleAt has it)
@@ -315,5 +317,119 @@ describe('a hangar run', () => {
     expect(k.events).toContain('gcw-reactor');
     expect(k.fight.keys().some((key) => key.startsWith('core-'))).toBe(true);
     hs.dispose();
+  });
+});
+
+// ── with the galaxy's director (the films' pinned plans: galaxy/battlePlans.js) ──
+describe('the set pieces in the battle every pilot shares', () => {
+  // as warfront.js runs them: the battle's plan and director, the shared clock `clock.t`
+  const shared = (id, attacker, defender, you) => {
+    const sys = systemById(id);
+    const sides = teamsOf(attacker, defender);
+    const on = { id: `c0.gcw.${id}.5`, war: 'gcw', sys: id, step: 5, seed: 99, attacker, defender, sides, attackerTeam: sides.indexOf(attacker), start: 0, fightEnd: 600e3, end: 720e3, fighting: true };
+    const laid = layBattle(sys, on, { now: 0, tier: 'low' });
+    const plan = planOf(sys, on, laid);
+    const d = createDirector({ plan, seed: on.id });
+    const fight = createTally(on.id);
+    const clock = { t: 10 };
+    const state = () => d.state(clock.t, (k) => fight.value(k));
+    const battle = createBattle({ ...laid, rand: seeded(on.id), perSide: 4, plan, director: { state }, onMine: (k, dmg) => fight.add(k, dmg) });
+    battle.setYou(you);
+    const world = { solids: [{ id: 'deathstar2', r: 66, reach: 90, at: [0, 0, 0] }], war: { holdShield: vi.fn(), station: vi.fn(), planetShield: vi.fn() } };
+    const events = [];
+    const ctx = {
+      scene: null,
+      small: true,
+      battle,
+      laid,
+      sys,
+      world,
+      on,
+      draw: { flash() {}, burn() {}, setVisible: vi.fn() },
+      shared: (k) => fight.value(k),
+      mine: (k, dmg) => battle.you.team === battle.attacker && fight.add(k, dmg),
+      mineAs: (team, k, dmg) => team === battle.you.team && fight.add(k, dmg),
+      objective: (oid) => {
+        const st = state();
+        const o = st.objectives.find((x) => x.id === oid);
+        return o ? { ...o, open: Boolean(st.stages[o.stage]?.open), active: st.stage === o.stage } : null;
+      },
+      event: (e) => events.push(e),
+      points: vi.fn(),
+      tookPart: () => true,
+      setHull: vi.fn(),
+      moveHull: vi.fn(),
+      solid: vi.fn(),
+    };
+    // the plan's stages before `i` all done, as the pilots' tally has them
+    const through = (i) => plan.stages.slice(0, i).forEach((s) => s.objectives.forEach((o) => fight.add(o.type === 'zone' ? `${o.id}:a` : o.id, 1e4)));
+    return { battle, plan, fight, clock, world, events, ctx, through };
+  };
+
+  it('Endor: the moon’s generator falls when the director says, and the run opens only with its stage', () => {
+    const k = shared('endor', 'rebel', 'empire', 0);
+    const e = createEndor(k.ctx);
+    step(e, k.battle, 0.2);
+    expect(e.targets.find((t) => t.kind === 'shieldgen').hpMax).toBe(k.plan.stages[0].objectives[0].hp);
+    k.through(1);
+    step(e, k.battle, 0.2);
+    expect(k.world.war.holdShield).toHaveBeenLastCalledWith(false);
+    expect(e.run.state).toBe('shut');
+    k.through(2);
+    k.clock.t = 301;
+    step(e, k.battle, 0.2);
+    expect(e.run.state).toBe('open');
+    e.dispose();
+  });
+
+  it('Endor: the run’s reactor is the director’s, and the battle’s end the director’s too, not the station’s', () => {
+    const k = shared('endor', 'rebel', 'empire', 0);
+    const e = createEndor(k.ctx);
+    k.through(2);
+    k.clock.t = 301;
+    step(e, k.battle, 0.2);
+    expect(e.run.state).toBe('open');
+    k.fight.add('ds2-core', 40);
+    step(e, k.battle, 0.2);
+    expect(e.run.state).toBe('blown');
+    e.run.hurry();
+    step(e, k.battle, 2);
+    expect(k.world.war.station).toHaveBeenCalledWith('deathstar2', false);
+    expect(k.battle.over).toBeNull();
+    e.dispose();
+  });
+
+  it('Scarif: the Hammerhead comes round as the gate’s stage opens, and the gate goes when the director says, the battle the director’s to end', () => {
+    const k = shared('scarif', 'rebel', 'empire', 0);
+    const s = createScarif(k.ctx);
+    step(s, k.battle, 0.5);
+    expect(k.events).not.toContain('gcw-ram');
+    k.through(2);
+    k.clock.t = 301;
+    step(s, k.battle, 0.5);
+    expect(k.events).toContain('gcw-ram');
+    expect(s.targets.some((t) => t.kind === 'gate')).toBe(true);
+    k.fight.add('gate', 1e4);
+    step(s, k.battle, 0.5);
+    expect(k.events).toContain('gcw-gate');
+    expect(k.world.war.planetShield).toHaveBeenCalledWith(false);
+    expect(k.battle.over).toBeNull();
+    s.dispose();
+  });
+
+  it('Hoth: Echo Base’s ion cannon is a target while its stage is open, and falls quiet when the director says it’s down', () => {
+    const k = shared('hoth', 'empire', 'rebel', 1);
+    const h = createHoth(k.ctx);
+    step(h, k.battle, 0.2);
+    const gun = h.targets.find((t) => t.kind === 'cannon');
+    expect(gun).toBeTruthy();
+    for (let i = 0; i < 5; i++) shoot(h, gun.at, 2);
+    expect(k.fight.value('ion-cannon')).toBe(10);
+    expect(h.markers({ ...gun.at }).some((m) => /ion cannon/.test(m.title))).toBe(true);
+    k.fight.add('ion-cannon', 1e4);
+    const { events } = step(h, k.battle, 40, null, 0.1);
+    expect(events.some((ev) => ev.type === 'disabled')).toBe(false);
+    expect(h.targets.some((t) => t.kind === 'cannon')).toBe(false);
+    h.dispose();
   });
 });
