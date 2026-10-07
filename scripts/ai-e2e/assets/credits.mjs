@@ -20,7 +20,8 @@ import { join } from 'node:path';
 export const tracked = (root, dir = 'public') => String(execFileSync('git', ['-C', root, 'ls-files', dir], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 })).split('\n').filter(Boolean);
 
 // a file as its credit names it: no cut suffix, no extension
-const stem = (f) => f.replace(/\.(hq|lo)\.glb$/, '.glb').replace(/\.[^./]+$/, '');
+// (a model's own cuts: its .hq, .lo and .lod1 copies are credited as it is)
+const stem = (f) => f.replace(/\.(hq|lo|lod\d)\.glb$/, '.glb').replace(/\.[^./]+$/, '');
 // a smaller copy in lod/ or sm/ is credited as the original one folder up
 const original = (f) => f.replace(/\/(lod|sm)\/([^/]+)$/, '/$2');
 
