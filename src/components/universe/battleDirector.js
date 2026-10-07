@@ -50,6 +50,7 @@
 // pilots' damage is divided by.
 
 import { seededRand } from './battleKit';
+import { keysOf, progressOf } from './battleObjectives';
 
 export const DIRECTOR = {
   length: 600, // seconds of fighting
@@ -109,9 +110,10 @@ export function createDirector({ plan, seed }) {
     for (const a of aces) if (a.team === defender && t >= a.at && v(`ace:${a.team}`) >= a.hp) b += DIRECTOR.ace;
     return b;
   };
-  // what the pilots have done to an objective, in its hp: shots (by its id),
-  // or for a zone the seconds the attackers held it net of the defenders'
-  const pilotOf = (o, v) => (o.type === 'zone' ? (o.hp / (o.hold ?? 30)) * Math.max(0, v(`${o.id}:a`) - v(`${o.id}:d`)) : (o.unit ?? 1) * v(o.id));
+  // what the pilots have done to an objective, in its hp (battleObjectives.js:
+  // shots by its id, or for a zone the seconds the attackers held it net of
+  // the defenders')
+  const pilotOf = (o, v) => progressOf(o, v);
 
   // the chain at `t`: the AI's pressure taken through it in order, each
   // stage's share no more than what's built up since its gate
@@ -203,10 +205,9 @@ export function createDirector({ plan, seed }) {
     // every tally key the battle's plan reads
     keys() {
       const out = ['here:a', 'here:d'];
-      for (const s of stages) for (const o of s.objectives) out.push(...(o.type === 'zone' ? [`${o.id}:a`, `${o.id}:d`] : [o.id]), `g:${o.id}`);
+      for (const s of stages) for (const o of s.objectives) out.push(...keysOf(o), `g:${o.id}`);
       if (R) for (let i = 0; i < R.count; i++) out.push(`r:${i}`, `c:${i}`);
-      for (const w of waves) out.push(w.id);
-      for (const a of aces) out.push(`ace:${a.team}`);
+      for (const o of [...waves, ...aces]) out.push(...keysOf(o));
       return [...new Set(out)];
     },
     // what each pilot's damage on `team`'s side is divided by: as many more as there are of them
