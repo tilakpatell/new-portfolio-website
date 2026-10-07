@@ -205,7 +205,7 @@ describe('the side you swore to', () => {
     const k = kit('rebel');
     into(k);
     const e = k.said.find((x) => x.sub === 'front');
-    expect(e).toMatchObject({ side: 'rebel', war: 'gcw', sys: FRONT_ID });
+    expect(e).toMatchObject({ side: 'rebel', war: 'gcw', sys: FRONT_ID, against: STATE.owner[FRONT_ID] });
   });
   it('fights the war you fight in: another war’s battle at another system', () => {
     const clone = history('clone', 0, MS, () => 0);

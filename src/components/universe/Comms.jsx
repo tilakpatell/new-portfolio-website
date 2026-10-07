@@ -1,5 +1,6 @@
 import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { linesFor } from './crews';
+import { speakerFor } from './speakers';
 import { playClip, playFile } from '../../lib/clips';
 import { useMouth } from '../../lib/mouth';
 import { preloadVoiced, voicedSrc } from '../../lib/voiced';
@@ -21,10 +22,10 @@ import Face from './Faces';
 // hits, your shields running low, being shot down, getting away or shooting
 // the lot down, the director's set pieces and the first sight of each of
 // deep space's wonders all get theirs too. Shots are just sound.
-// The page hands events over through `control.current.handle(event)`.
+// The page hands events over through `control.current.handle(event)`, or an
+// exchange of its own making as `{ type: 'lines', lines, urgent }`.
 
 const GAP = { boost: 25000, bump: 12000, edge: 20000, crash: 15000, pulled: 20000, traffic: 18000, kill: 9000, hit: 14000, hunted: 8000, shielded: 15000, deflect: 10000, dry: 8000, closed: 6000 }; // ms before the same kind of line again
-const COMMS = { name: 'On the comms', color: '#9fb0d0', voice: null }; // a voice on the radio that isn't the crew's
 
 export default function Comms({ crew, reduced, control }) {
   const [line, setLine] = useState(null); // { who, text, n }
@@ -67,11 +68,12 @@ export default function Comms({ crew, reduced, control }) {
     if (busy.current) return;
     busy.current = true;
     while (queue.current.length && alive.current) {
-      const [who, text, clip] = queue.current.shift();
-      const speaker = who === 'comms' ? COMMS : crew?.speakers[who];
+      const said = queue.current.shift();
+      const [who, text, clip] = said;
+      const speaker = speakerFor(said, crew);
       if (!speaker) continue;
       n.current += 1;
-      setLine({ who, text, n: n.current });
+      setLine({ who, text, n: n.current, speaker });
       const least = clip ? 1200 + text.length * 32 : 1500 + text.length * 42; // time to read it
       const started = performance.now();
       // their own voice: the recording, or the line made in their voice
@@ -121,6 +123,12 @@ export default function Comms({ crew, reduced, control }) {
     () => ({
       async handle(e) {
         const now = performance.now();
+        // (an exchange the page has put together itself: the galaxy's war's
+        // commander on the comms, then the crew)
+        if (e.type === 'lines') {
+          say(e.lines, { urgent: e.urgent !== false });
+          return;
+        }
         if (e.type === 'arrive') {
           const key = `arrive:${e.id}`;
           if (said.current.has(key)) return;
@@ -275,7 +283,7 @@ export default function Comms({ crew, reduced, control }) {
     [crew],
   );
 
-  const speaker = line && (line.who === 'comms' ? COMMS : crew?.speakers[line.who]);
+  const speaker = line?.speaker ?? null;
   useMouth(box, Boolean(speaker) && line.who !== 'comms', reduced);
   return (
     <div ref={box} className="universe-comms" aria-live="polite" data-motion={reduced ? undefined : ''}>
