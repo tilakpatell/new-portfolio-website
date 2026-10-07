@@ -25,8 +25,11 @@ own); NPCs that do things, not just stand and talk.
   Get Schwifty show (`froopyland.js`, `nimbus.js`, `gromflomites.js`,
   `heistcon.js`, `snakeplanet.js`, `nuptia.js`, `gloopynoops.js`,
   `resort.js`, `schwifty.js`).
-- **NPC behaviour** for every destination (`dimensions/stage.js`, on the
-  AI toolkit's context steering, `src/lib/ai/steer.js`). A person or one of
+- **NPC behaviour** for every destination, in `world/npc.js` (on the AI
+  toolkit's context steering, `src/lib/ai/steer.js`), which `dimensions/stage.js`
+  and the street's `visitors.js` share: the street has four walkers
+  (Jessica, Brad, Mr. Goldenfold, Ethan; `rules.js`'s street PEOPLE with `ai`
+  and `roams`). A person or one of
   the crowd carries `ai` in `destinations.js`:
   - `wander: [[dx, dz], …]`, `speed`, `pause`: walks the points in turn,
     steered round the place's solids and the others;
