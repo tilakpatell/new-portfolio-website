@@ -695,8 +695,8 @@ describe('where a new ship starts', () => {
     const ids = STARTS.map((s) => s.id);
     expect(ids).toContain('sun');
     for (const id of ORDER) expect(ids.includes(id), id).toBe(byId(id).kind !== 'core');
-    // (the Rick and Morty sector's are through its portal: nobody starts there)
-    for (const w of WONDERS) expect(ids.includes(w.id), w.id).toBe(w.id !== MAW.id && inMain(w.at));
+    // (the Rick and Morty sector's are through its portal: nobody starts there; nor in a portal)
+    for (const w of WONDERS) expect(ids.includes(w.id), w.id).toBe(w.id !== MAW.id && w.kind !== 'portal' && inMain(w.at));
   });
 
   it('is clear of everything, at no universe yet, out of the Maw’s pull and facing what it starts by', () => {
