@@ -12,7 +12,7 @@ export default {
         ],
         [
           "walt",
-          "Nobody’s. Yet. Swear us to one on the holotable or the panel, and then we fly.",
+          "Nobody’s. Yet. Swear to a side on the holotable or the panel, Jesse. Then we fly.",
         ],
         ["jesse", "Like picking a cartel. Cool. Totally cool."],
       ],
@@ -39,7 +39,7 @@ export default {
         ],
         [
           "jesse",
-          "Last time I was at a cartel’s house, the boss ended up face down in his own pool, yo.",
+          "Last time I was at a cartel boss’s house, he ended up face down in his own pool, yo.",
         ],
       ],
     },
@@ -59,15 +59,12 @@ export default {
           "jesse",
           "Yo, a flagship’s shield generators just blew! Is that good? Whose is that?",
         ],
-        [
-          "walt",
-          "Check the markings, Jesse. Then decide whether to celebrate.",
-        ],
+        ["walt", "Check the hull, Jesse. Then decide whether to celebrate."],
       ],
       dark: [
         [
           "walt",
-          "A flagship has lost its shields, Jesse. Whoever owns it just became a very large target.",
+          "A flagship’s generators are gone. Whoever owns it just became a very large target.",
         ],
         ["jesse", "Please don’t be ours. Please don’t be ours."],
       ],
@@ -166,11 +163,11 @@ export default {
       dark: [
         [
           "walt",
-          "Their hero, Jesse. Every movement has one, and every one of them is mortal.",
+          "Their hero, Jesse. Every cause has one, and every one of them is mortal.",
         ],
         [
           "jesse",
-          "Yo, that guy had, like, fans. Mr. White, we just shot somebody’s hero.",
+          "Yo, that guy had, like, fans. We’re gonna get so much hate mail.",
         ],
       ],
     },
@@ -209,10 +206,7 @@ export default {
           "jesse",
           "Got it! Whatever it was carrying, it’s not getting there now, yo!",
         ],
-        [
-          "walt",
-          "Distribution denied, Jesse. That shipment was never going to arrive.",
-        ],
+        ["walt", "Distribution denied. That’s how you hold territory, Jesse."],
       ],
       dark: [
         [
@@ -342,7 +336,7 @@ export default {
         dark: [
           [
             "walt",
-            "The Empire, Jesse. Uniforms, a chain of command, a battle station the size of a moon. An organisation.",
+            "The Empire, Jesse. Uniforms, a chain of command, a Sith Lord who keeps things on schedule. An organisation.",
           ],
           ["jesse", "Mr. White, we’re literally the stormtroopers right now."],
         ],
@@ -536,7 +530,7 @@ export default {
         dark: [
           [
             "walt",
-            "Grand Moff Tarkin intends to end this today, Jesse. One shot. One moon. One rebellion.",
+            "Governor Tarkin intends to end this today, Jesse. One shot. One moon. One rebellion.",
           ],
           [
             "jesse",
@@ -548,11 +542,11 @@ export default {
         light: [
           [
             "jesse",
-            "The Death Star’s gone, yo! Some farm kid hit, like, a tiny hole!",
+            "They blew up the Death Star, yo! One shot! Right down the hole!",
           ],
           [
             "walt",
-            "A thermal exhaust port, Jesse. Two metres wide, straight down to the reactor. Elegant.",
+            "A station the size of a moon, Jesse, undone by a farm boy and a thermal exhaust port.",
           ],
         ],
         dark: [
@@ -587,7 +581,7 @@ export default {
       },
       won: {
         light: [
-          ["jesse", "Cloud City’s free! The cape guy’s getting his city back!"],
+          ["jesse", "Cloud City’s free, yo! The cape guy’s back in charge!"],
           [
             "walt",
             "Tibanna gas, Jesse. A product that literally floats. That’s a business.",
@@ -663,13 +657,13 @@ export default {
           ],
           [
             "walt",
-            "Trade Federation battleships, Jesse. Separatists now. And this time the Republic brought Venators.",
+            "The Trade Federation again, Jesse. Separatists now. Last time, the Republic never even showed up.",
           ],
         ],
         dark: [
           [
             "walt",
-            "Viceroy Gunray’s Lucrehulks round Naboo again, Jesse. A decade on, and he still holds a grudge.",
+            "Viceroy Gunray’s back at Naboo, Jesse. A decade on, and still holding a grudge. I respect that.",
           ],
           [
             "jesse",
@@ -681,17 +675,17 @@ export default {
         light: [
           [
             "jesse",
-            "The doughnut ships are going down, yo! Again! Somebody tell the Gungans!",
+            "The doughnut ships are going down, yo! Somebody tell the Gungans!",
           ],
           [
             "walt",
-            "Last time, a boy blew up their control ship. Never keep the whole operation in one lab, Jesse.",
+            "Last time, a boy blew up their control ship, Jesse. Never keep the whole operation in one lab.",
           ],
         ],
         dark: [
           [
             "walt",
-            "Naboo is the Separatists’, Jesse. Viceroy Gunray finally gets his treaty signed.",
+            "The blockade holds, Jesse. Viceroy Gunray finally gets his treaty signed.",
           ],
           ["jesse", "Yo, the pretty planet deserved better."],
         ],

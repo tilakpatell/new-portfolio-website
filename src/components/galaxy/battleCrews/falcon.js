@@ -10,13 +10,10 @@ export default {
           "han",
           "Two fleets, one Falcon, and nobody’s paid us yet. So whose side are we on?",
         ],
-        [
-          "chewie",
-          "[an impatient roar: swear on the holotable or the panel, and hurry]",
-        ],
+        ["chewie", "[an impatient roar: pick one, and hurry]"],
         [
           "han",
-          "What he said. Holotable or panel. I like to know who I’m shooting at.",
+          "What he said. Swear on the holotable or the panel. I like to know who I’m shooting at.",
         ],
       ],
     },
@@ -54,21 +51,21 @@ export default {
           "han",
           "Right into the thick of it. Danger money, Chewie. I’m charging {us} double.",
         ],
-        ["chewie", "[a sceptical grunt: he’ll never collect]"],
+        ["chewie", "[a disbelieving grunt: he’ll never collect]"],
       ],
     },
     gens: {
       light: [
         [
           "han",
-          "Shield generators just went up. Tell me those were theirs, Chewie.",
+          "Shield generators are down! Tell me those were theirs, Chewie.",
         ],
         ["chewie", "[an unhelpful shrug of a growl]"],
       ],
       dark: [
         [
           "han",
-          "Somebody’s shield generators are gone. Whoever’s they were, my price just went up.",
+          "Somebody’s shield generators just blew. Whoever they belonged to, my rates just went up.",
         ],
         ["chewie", "[an exasperated roar]"],
       ],
@@ -95,12 +92,12 @@ export default {
           "han",
           "That reactor’s going critical! Punch it, Chewie, before it takes us with it!",
         ],
-        ["chewie", "[an alarmed roar, already punching it]"],
+        ["chewie", "[a frantic roar, already punching it]"],
       ],
       dark: [
         [
           "han",
-          "Reactor’s going! Whoever’s ship that is, I’m not insured for it. Punch it!",
+          "Reactor’s going! Whoever’s ship that is, I’m not insured for it. Get us clear!",
         ],
         ["chewie", "[a roar: he’s never been insured for anything]"],
       ],
@@ -108,7 +105,7 @@ export default {
     won: {
       light: [
         ["han", "That’s {place} for {us}. Don’t everybody thank me at once."],
-        ["chewie", "[a triumphant roar]"],
+        ["chewie", "[a victory roar that rattles the cockpit]"],
       ],
       dark: [
         ["han", "We won. Well, {us} won. We just got paid."],
@@ -119,21 +116,21 @@ export default {
           "han",
           "Look at {them} run! Somebody tell Jabba. Actually, let me tell Jabba.",
         ],
-        ["chewie", "[a delighted roar]"],
+        ["chewie", "[a delighted roar: he wants to see Jabba’s face]"],
       ],
     },
     lost: {
       light: [
         [
           "han",
-          "We’ve lost {place}. Pull back, Chewie, and before you say it: it’s not my fault!",
+          "We’re beaten at {place}. Pull back, Chewie, and before you say it: it’s not my fault!",
         ],
         ["chewie", "[a long, mournful howl]"],
       ],
       dark: [
         [
           "han",
-          "We lost. Well, {us} lost. Tell me the money cleared first, Chewie.",
+          "So {us} lost. Tell me their credits cleared before they cleared out, Chewie.",
         ],
         ["chewie", "[a dry, unsympathetic rumble]"],
       ],
@@ -151,7 +148,7 @@ export default {
           "han",
           "Flying for {us} now? Fine. I came back at Yavin too, and nobody’s let me forget it.",
         ],
-        ["chewie", "[an approving roar: about time]"],
+        ["chewie", "[a glad roar: about time]"],
       ],
       dark: [
         [
@@ -159,7 +156,7 @@ export default {
           "Switching to {us}. Their money’s better. Their manners aren’t.",
         ],
         ["chewie", "[a furious roar, and a long list of objections]"],
-        ["han", "I know."],
+        ["han", "Noted. Now strap in."],
       ],
     },
     ace: {
@@ -176,16 +173,16 @@ export default {
           "han",
           "Got their best pilot. Nothing personal. Well, a bit personal. They shot first.",
         ],
-        ["chewie", "[an uneasy grumble: that was one of the good ones]"],
+        ["chewie", "[a doubtful grumble: did they, though?]"],
       ],
     },
     escort: {
       light: [
         [
           "han",
-          "Escort from {us}, on our wing. Stay out of my way and we’ll get along fine.",
+          "Company from {us}, on our wing. Stay out of my way and we’ll get along fine.",
         ],
-        ["chewie", "[a pleased rumble]"],
+        ["chewie", "[a pleased rumble: company at last]"],
       ],
       dark: [
         [
@@ -199,9 +196,9 @@ export default {
       light: [
         [
           "han",
-          "We walked out on {them}, and this is their space. Fly casual.",
+          "We walked out on {them}, and this is their space. Nobody make any sudden moves.",
         ],
-        ["chewie", "[a nervous whine: they’ve got long memories]"],
+        ["chewie", "[an anxious whine: they’ve got long memories]"],
       ],
       dark: [
         [
@@ -213,16 +210,13 @@ export default {
     },
     intercept: {
       light: [
-        [
-          "han",
-          "Got it! Whatever they were bringing in, it isn’t getting there.",
-        ],
+        ["han", "Got it! Whatever they were bringing, it isn’t getting there."],
         ["chewie", "[a satisfied roar]"],
       ],
       dark: [
         [
           "han",
-          "Got it. That’s one less for {them}, and one more line on my invoice.",
+          "Down it goes. One less for {them}, and one more line on my invoice.",
         ],
         ["chewie", "[an unimpressed grunt]"],
       ],
@@ -233,12 +227,12 @@ export default {
           "han",
           "There go the runners. Somebody’s making a break for it, and I know just how they feel.",
         ],
-        ["chewie", "[a knowing rumble: they’ve run a few]"],
+        ["chewie", "[a fond rumble: they’ve run a few blockades themselves]"],
       ],
       dark: [
         [
           "han",
-          "Runners, making their run. Used to be me in there. Pays better out here.",
+          "Runners, going for broke. Used to be me in there. Pays better out here.",
         ],
         ["chewie", "[a wistful growl]"],
       ],
@@ -247,9 +241,9 @@ export default {
       light: [
         [
           "han",
-          "The shield’s down! The door’s open now, Chewie. Let’s hope we’re the ones walking in.",
+          "The shield’s fallen! Door’s open, Chewie. Let’s hope we’re the ones walking through it.",
         ],
-        ["chewie", "[a doubtful rumble]"],
+        ["chewie", "[an uncertain rumble]"],
       ],
       dark: [
         [
@@ -265,13 +259,13 @@ export default {
           "han",
           "Interdictor’s got its wells up. Nobody’s jumping out of here. Including us.",
         ],
-        ["chewie", "[a furious roar at the hyperdrive]"],
+        ["chewie", "[an outraged roar at the hyperdrive]"],
         ["han", "It’s not her fault this time."],
       ],
       dark: [
         [
           "han",
-          "Gravity wells. Nobody jumps till that Interdictor’s gone. Great for business. Lousy for leaving.",
+          "Gravity wells. Whoever owns that Interdictor, it’s got us stuck here too. I’m billing by the hour.",
         ],
         ["chewie", "[a trapped, unhappy growl]"],
       ],
@@ -287,9 +281,9 @@ export default {
       dark: [
         [
           "han",
-          "A blockade. I’ve run a hundred of them. Never got paid this well to be near one.",
+          "Blockades. I’ve run a hundred of them, and never got paid this well to be near one.",
         ],
-        ["chewie", "[a disapproving rumble]"],
+        ["chewie", "[a rumble: money isn’t everything]"],
       ],
     },
   },
@@ -307,9 +301,9 @@ export default {
         dark: [
           [
             "han",
-            "Flying for the Separatists. Droids don’t tip, but Count Dooku pays up front.",
+            "Flying for the Separatists against the Republic. Droids don’t tip, but Count Dooku pays up front.",
           ],
-          ["chewie", "[a furious roar: those droids burned Kashyyyk]"],
+          ["chewie", "[a savage roar: those droids invaded Kashyyyk]"],
           ["han", "I know, pal. One job. Then we go back to hating them."],
         ],
       },
@@ -324,7 +318,7 @@ export default {
         dark: [
           [
             "han",
-            "The Separatists take {place}. The clankers won, Chewie. I want paying in credits, not droids.",
+            "The Separatists have {place}. The clankers won, Chewie. I want paying in credits, not droids.",
           ],
           ["chewie", "[a disgusted growl]"],
         ],
@@ -337,24 +331,24 @@ export default {
             "han",
             "The Rebellion against the Empire at {place}. I ain’t in this for your revolution. Who am I kidding?",
           ],
-          ["chewie", "[a knowing roar: he’s in it for the princess]"],
+          ["chewie", "[a teasing roar: he’s in it for the princess]"],
         ],
         dark: [
           [
             "han",
-            "Flying for the Empire. They threw me out of their Academy for having a mind of my own.",
+            "Working for the Empire against the Rebellion. They threw me out of their Academy for having a mind of my own.",
           ],
-          ["chewie", "[a furious roar: the Empire put Wookiees in chains]"],
-          ["han", "I know, pal. We take their money. That’s all we take."],
+          ["chewie", "[a thunderous roar: the Empire put Wookiees in chains]"],
+          ["han", "We take their money, pal. That’s all we take."],
         ],
       },
       won: {
         light: [
           [
             "han",
-            "The Empire’s running and the Rebellion has {place}. Somebody owes me a medal this time.",
+            "The Empire’s running and the Rebellion has {place}. Somebody owes me another medal.",
           ],
-          ["chewie", "[a pointed roar: two medals]"],
+          ["chewie", "[a meaningful roar: he’s still waiting for his first]"],
         ],
         dark: [
           [
@@ -377,9 +371,9 @@ export default {
         dark: [
           [
             "han",
-            "Flying for the Imperial Remnant. Leia’s gonna kill me. Then she’ll make a speech about it.",
+            "On the Imperial Remnant’s payroll against the New Republic. Leia’s gonna kill me. Then she’ll make a speech.",
           ],
-          ["chewie", "[a horrified roar: he’s telling her himself]"],
+          ["chewie", "[a horrified roar: he isn’t the one telling her]"],
         ],
       },
       won: {
@@ -395,7 +389,7 @@ export default {
             "han",
             "The Remnant has {place}. Same old Empire, same bad uniforms, same good money.",
           ],
-          ["chewie", "[a disgusted roar]"],
+          ["chewie", "[a sour moan: the money isn’t that good]"],
         ],
       },
     },
@@ -409,7 +403,7 @@ export default {
             "han",
             "Endor. Last time I lent Lando the Falcon for this, and he swore not a scratch.",
           ],
-          ["chewie", "[a pointed growl: she came back without her dish]"],
+          ["chewie", "[a reproachful growl: she came back without her dish]"],
         ],
         dark: [
           [
@@ -423,7 +417,7 @@ export default {
         light: [
           [
             "han",
-            "Endor’s the Rebellion’s again. The Ewoks’ll throw a party. I’m staying up here, thanks.",
+            "Endor’s the Rebellion’s. The Ewoks’ll throw a party. I’m staying up here, thanks.",
           ],
           ["chewie", "[a happy roar: he’s going down for the party]"],
         ],
@@ -454,23 +448,23 @@ export default {
             "han",
             "Hoth, for the Empire. Vader’s up there on the Executor. I’d rather be inside a tauntaun.",
           ],
-          ["chewie", "[a disgusted roar: so would he]"],
+          ["chewie", "[a heartfelt roar: so would he]"],
         ],
       },
       won: {
         light: [
           [
             "han",
-            "Hoth’s the Rebellion’s. Better than last time. Nobody’s running into an asteroid field.",
+            "The Rebellion wins at Hoth. Better than last time: nobody’s flying into an asteroid field.",
           ],
           ["chewie", "[a relieved roar]"],
         ],
         dark: [
           [
             "han",
-            "The Empire has Hoth. Just like last time, except this time I’m on the payroll.",
+            "Hoth’s the Empire’s, like last time, except this time I’m on the payroll.",
           ],
-          ["chewie", "[a mournful howl for Echo Base]"],
+          ["chewie", "[a low howl for Echo Base]"],
         ],
       },
     },
@@ -492,7 +486,7 @@ export default {
             "han",
             "Scarif, guarding the Empire’s filing cabinet. Easy money. Nobody breaks in here.",
           ],
-          ["chewie", "[a sceptical rumble: somebody always does]"],
+          ["chewie", "[a wary rumble: somebody always does]"],
         ],
       },
       won: {
@@ -501,12 +495,12 @@ export default {
             "han",
             "Scarif’s the Rebellion’s, and the plans are out. Somebody tell the kid about that exhaust port.",
           ],
-          ["chewie", "[a triumphant roar]"],
+          ["chewie", "[an exultant roar]"],
         ],
         dark: [
           [
             "han",
-            "The Empire holds Scarif, and the gate stays shut. The kid’ll need another way into that Death Star.",
+            "The Empire wins at Scarif, and the gate stays shut. No plans, no exhaust port. Good luck, kid.",
           ],
           ["chewie", "[an unhappy growl]"],
         ],
@@ -522,7 +516,7 @@ export default {
           ],
           [
             "chewie",
-            "[an approving roar: no running off with the reward this time]",
+            "[a gruff roar: no running off with the reward this time]",
           ],
         ],
         dark: [
@@ -530,21 +524,21 @@ export default {
             "han",
             "Yavin, for the Empire. Last time here, I sent Vader spinning off into space. He remembers.",
           ],
-          ["chewie", "[a nervous growl]"],
+          ["chewie", "[a worried rumble: Vader never forgets]"],
         ],
       },
       won: {
         light: [
           [
             "han",
-            "Yahoo! You’re all clear, kid! Yavin’s the Rebellion’s. Now let’s blow this thing and go home.",
+            "Great shot, kid! That was one in a million! The Rebellion has Yavin.",
           ],
-          ["chewie", "[a roar of triumph]"],
+          ["chewie", "[a jubilant roar]"],
         ],
         dark: [
           [
             "han",
-            "The Empire takes Yavin. The kid’s gonna be mad. I’ll tell him I was just here for the reward.",
+            "Yavin’s the Empire’s. The kid’s gonna be mad. I’ll tell him I was only here for the reward.",
           ],
           ["chewie", "[a disappointed groan]"],
         ],
@@ -558,30 +552,30 @@ export default {
             "han",
             "Bespin. A blockade over Cloud City. I owe Lando a punch, but I guess this’ll do.",
           ],
-          ["chewie", "[a growl: he’s saving his own punch for Lando]"],
+          ["chewie", "[a growl: he’d settle for throttling Lando again]"],
         ],
         dark: [
           [
             "han",
             "Bespin, for the Empire. Last time I was their guest here, they froze me in carbonite.",
           ],
-          ["chewie", "[a furious roar: and now he’s working for them?]"],
+          ["chewie", "[an incredulous roar: and now he’s working for them?]"],
         ],
       },
       won: {
         light: [
           [
             "han",
-            "The Rebellion takes Bespin. Lando’s gonna say he planned the whole thing.",
+            "The Empire’s cleared off Bespin. Lando’s gonna say he planned the whole thing.",
           ],
           ["chewie", "[a rude grunt: he didn’t]"],
         ],
         dark: [
           [
             "han",
-            "The Empire keeps Bespin. Somebody check the carbon-freezing chamber’s switched off. Just in case.",
+            "The Empire’s got Bespin. Somebody check that the carbon-freezing chamber’s switched off. Just in case.",
           ],
-          ["chewie", "[a nervous whine]"],
+          ["chewie", "[a nervous whine: he’ll check it twice]"],
         ],
       },
     },
@@ -603,21 +597,21 @@ export default {
             "han",
             "Hitting Coruscant for the Separatists. Grievous wants the Chancellor. I wouldn’t. He’s trouble.",
           ],
-          ["chewie", "[a wary rumble]"],
+          ["chewie", "[a rumble of agreement: big trouble]"],
         ],
       },
       won: {
         light: [
           [
             "han",
-            "The Republic holds Coruscant, and the Chancellor’s safe. Why does that make me nervous?",
+            "Coruscant’s the Republic’s, and the Chancellor’s safe. Why does that make me nervous?",
           ],
-          ["chewie", "[an uneasy growl]"],
+          ["chewie", "[a troubled rumble]"],
         ],
         dark: [
           [
             "han",
-            "The Separatists hold Coruscant. Nobody saw that coming. Well, maybe the Chancellor did.",
+            "The Separatists win at Coruscant. Nobody saw that coming. Well, maybe the Chancellor did.",
           ],
           ["chewie", "[a suspicious rumble]"],
         ],
@@ -645,7 +639,7 @@ export default {
         light: [
           [
             "han",
-            "The Republic holds Naboo. Nice lakes, weird politicians, and no droids. Good day.",
+            "The Republic has Naboo. Nice lakes, weird politicians, and no droids. Good day.",
           ],
           ["chewie", "[a contented grunt]"],
         ],
@@ -654,7 +648,7 @@ export default {
             "han",
             "Naboo’s the Separatists’. The Trade Federation finally won one. Don’t tell the Gungans.",
           ],
-          ["chewie", "[a disgusted growl]"],
+          ["chewie", "[a growl: he’s telling the Gungans]"],
         ],
       },
     },
@@ -673,21 +667,21 @@ export default {
             "han",
             "Lothal, for the Remnant, under Thrawn. Last time he was here, space whales took his ship. Whales!",
           ],
-          ["chewie", "[a nervous growl: keep an eye out for whales]"],
+          ["chewie", "[a jittery growl: keep an eye out for whales]"],
         ],
       },
       won: {
         light: [
           [
             "han",
-            "The New Republic holds Lothal, and Thrawn’s gone again. Hope the whales take him further this time.",
+            "Thrawn’s gone again, and the New Republic holds Lothal. Hope the whales take him further this time.",
           ],
-          ["chewie", "[a roar of laughter]"],
+          ["chewie", "[a howl of laughter]"],
         ],
         dark: [
           [
             "han",
-            "The Remnant takes Lothal. Thrawn wins. Never trust a guy with glowing red eyes, Chewie.",
+            "Lothal’s the Remnant’s. Thrawn wins. Never trust a guy with glowing red eyes, Chewie.",
           ],
           ["chewie", "[an ashamed growl]"],
         ],
