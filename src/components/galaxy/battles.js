@@ -192,7 +192,7 @@ const GCW_TEMPLATES = {
   tatooine: {
     name: 'The Battle of Tatooine',
     light: { flagship: ship('moncal'), escorts: [ship('corvette', 'Tantive IV'), ship('corvette'), ship('nebulon'), ship('hammerhead')] },
-    dark: { flagship: ship('destroyer', 'Devastator'), escorts: [ship('lightcruiser'), ship('destroyer'), ship('gozanti'), ship('gozanti')] },
+    dark: { flagship: ship('destroyer', 'Devastator'), escorts: [ship('destroyer'), ship('lightcruiser'), ship('gozanti'), ship('gozanti')] },
     fighters: { light: FIGHTERS.rebel, dark: FIGHTERS.empire },
   },
   coruscant: {

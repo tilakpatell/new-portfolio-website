@@ -96,7 +96,7 @@ import { createStages } from './battleStages';
 
 export { BATTLE, WIDTH, inSights, perSide, turnToward } from './battleKit';
 
-export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0], perSide: n = 20, rand = Math.random, lines = BATTLE.lines, radius = BATTLE.radius, avoid = [], clock = BATTLE.clock, elapsed = 0, shared = null, onMine = null, tickets = true, objectivesOn = 'flagship', ace = {}, runners = null, plan = null, director = null }) {
+export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0], perSide: n = 20, rand = Math.random, lines = BATTLE.lines, radius = BATTLE.radius, avoid = [], clock = BATTLE.clock, elapsed = 0, shared = null, onMine = null, tickets = true, objectivesOn = 'flagship', ace = {}, runners = null, plan = null, director = null, planet = null }) {
   const defender = 1 - attacker;
   const C = v3(...at);
   const A = norm(v3(axis[0], 0, axis[1])); // from the first side's line to the second's
@@ -141,7 +141,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   // (with the galaxy's director it's the director that decides the battle:
   // the battle never ends itself, and the AI's fire sinks no capital ship)
   const decides = !(plan && director);
-  const k = { b, rand, between, C, A, S, lines, radius, avoid, attacker, defender, pending, newId: () => nextId++, flagOf, objOf, youIn, finish, decides, onMine, subDown };
+  const k = { b, rand, between, C, A, S, lines, radius, avoid, planet, attacker, defender, pending, newId: () => nextId++, flagOf, objOf, youIn, finish, decides, onMine, subDown };
 
   // the capital ships in their lines, the fighters up, the runners ready
   layCapitals(k, objectivesOn);
@@ -181,14 +181,14 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   const kill = (f, mine) => {
     f.alive = false;
     const t = b.teams[f.team];
-    if (f.ace) f.respawn = Infinity; // (an ace down is gone for the battle)
+    if (f.ace || f.wave) f.respawn = Infinity; // (an ace down is gone for the battle, and a wave's bombers have one life each)
     else if (t.tickets > 0 || !tickets) {
       // (without tickets the count's only a count: it stops at nothing, and the fighters keep coming)
       t.tickets = Math.max(0, t.tickets - 1);
       f.respawn = between(BATTLE.respawn);
     } else f.respawn = Infinity;
     if (b.you.on && f.target === b.you) b.you.on -= 1;
-    return { type: 'down', team: f.team, kind: f.kind, role: f.role, at: copy(v3(), f.pos), mine, ...(f.ace ? { ace: true } : {}) };
+    return { type: 'down', team: f.team, kind: f.kind, role: f.role, at: copy(v3(), f.pos), mine, ...(f.ace ? { ace: true } : {}), ...(f.wave ? { wave: f.wave } : {}) };
   };
   const shielded = (cap) => cap.objective && (stages ? b.shieldUp : b.phase === 1);
 
@@ -286,8 +286,11 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
           }
         }
         if (hitF) {
-          hitF.hp -= o.damage;
-          if (hitF.hp <= 0) out.push(kill(hitF, false));
+          // (a planned ace's hull is the director's: the AI's fire only lights it up)
+          if (!stages?.isAce(hitF)) {
+            hitF.hp -= o.damage;
+            if (hitF.hp <= 0) out.push(kill(hitF, false));
+          }
           done = true;
         }
       }
@@ -315,6 +318,14 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       if (!done && youOk && o.team !== b.you.team && sweptHit(p0, p1, b.you.prev, b.you.pos, 0.3) !== null) {
         out.push({ type: 'hurt', damage: BATTLE.youHurt[o.kind], kind: o.kind });
         done = true;
+      }
+      // an objective the plan's laid out in the open (the AI's fire on it only lands)
+      if (!done && stages && o.kind !== 'turbo') {
+        const fo = stages.free(p0, p1);
+        if (fo) {
+          done = true;
+          if (o.kind === 'torpedo') out.push({ type: 'impact', at: copy(v3(), fo.o.pos), size: 0.8, shield: false });
+        }
       }
       // a capital ship of the other side: an objective, or its hull
       if (!done) {
@@ -460,7 +471,8 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       }
     }
     const h = capitalHit(from, to, b.you.team);
-    // a battery on one of the other side's capital ships, if it's nearer than either
+    // one of the plan's objectives out in the open (a satellite, a platform…), if it's the nearest
+    const fo = stages?.free(from, to);
     let tu = null;
     let tk = Infinity;
     for (const cap of b.capitals) {
@@ -475,7 +487,19 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
         }
       }
     }
+    if (fo && fo.k <= first && fo.k <= tk && (!h || fo.k <= h.k)) {
+      const at = v3(from.x + (to.x - from.x) * fo.k, from.y + (to.y - from.y) * fo.k, from.z + (to.z - from.z) * fo.k);
+      if (stages.hit(fo.o, damage, true, pending)) return { id: fo.o.num, kind: 'subsystem', sub: fo.o.key, at, size: fo.o.r, down: !fo.o.alive };
+      pending.push({ type: 'impact', at, size: 0.6, shield: true });
+      return { id: fo.o.num, kind: 'shield', at, size: 0.4, down: false, shield: true };
+    }
     if (tu && tk <= first && (!h || tk <= h.k)) {
+      // (one the plan has: its hp the director's, and only while its stage is open)
+      if (tu.planned) {
+        if (stages.hit(tu, damage, true, pending)) return { id: tu.num, kind: 'turret', sub: tu.key, at: copy(v3(), tu.at), size: tu.r, down: !tu.alive, turret: true };
+        pending.push({ type: 'impact', at: copy(v3(), tu.at), size: 0.6, shield: true });
+        return { id: tu.num, kind: 'shield', at: copy(v3(), tu.at), size: 0.4, down: false, shield: true };
+      }
       tu.hp -= damage;
       const down = tu.hp <= 0;
       if (down) {
@@ -496,6 +520,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       return { id: hitR.id, kind: hitR.kind, at: copy(v3(), hitR.seen), size: hitR.size, down };
     }
     if (hitF && (!h || first <= h.k)) {
+      if (stages?.isAce(hitF)) return { id: hitF.id, kind: hitF.kind, at: copy(v3(), hitF.seen), size: hitF.size, down: stages.hitAce(hitF, damage, pending) };
       hitF.hp -= damage;
       const down = hitF.hp <= 0;
       if (down) pending.push(kill(hitF, true));
@@ -533,7 +558,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
         for (const cap of b.capitals) {
           if (cap.team === b.you.team || !cap.alive || cap.dying > 0 || dist2(cap.pos, b.you.pos) > (cap.reach + BATTLE.turretsNear) ** 2) continue;
           for (const t of cap.turrets) {
-            if (!t.alive) continue;
+            if (!t.alive || t.planned) continue; // (the plan's are among its objectives)
             const d = dist2(t.at, b.you.pos);
             if (d < BATTLE.turretsNear ** 2) near.push([d, t]);
           }
@@ -545,7 +570,15 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
           targets.push(t.tgt);
         }
       }
-      if (b.you.team === attacker) {
+      if (b.you.team === attacker && stages) {
+        // the plan's objectives open to be taken now, wherever they are (not a zone: that's held, not shot)
+        for (const o of b.objectives) {
+          if (!o.alive || o.zone || o.hidden || !stages.open(o)) continue;
+          o.tgt ??= { id: o.num, at: o.pos, vel: ZERO, size: o.r, kind: 'subsystem', name: o.name, sub: o.key, threat: 0, hp: 0, hpMax: o.hpMax };
+          o.tgt.hp = o.hp;
+          targets.push(o.tgt);
+        }
+      } else if (b.you.team === attacker) {
         const flag = objOf();
         for (const s of flag?.subs ?? []) {
           if (!s.alive || s.hidden || s.phase !== b.phase || !b.stageOpen) continue;
@@ -569,7 +602,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
         left: Math.max(0, clock - b.clock),
         tickets: b.teams.map((t) => t.tickets),
         fighters: [0, 1].map((team) => b.fighters.filter((f) => f.alive && f.team === team).length),
-        objectives: (flag?.subs ?? []).map((s) => ({ id: s.id, kind: s.kind, phase: s.phase, hp: s.hp / s.hpMax })),
+        objectives: (stages ? b.objectives.map((o) => ({ id: o.key, kind: o.kind, phase: o.phase, hp: o.hp / o.hpMax })) : (flag?.subs ?? []).map((s) => ({ id: s.id, kind: s.kind, phase: s.phase, hp: s.hp / s.hpMax }))),
         hull: [own ? own.hull / own.hullMax : 0, flag ? (flag.alive ? 1 - (b.phase - 1) / 3 : 0) : 0],
         over: b.over,
       };

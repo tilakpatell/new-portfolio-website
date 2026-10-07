@@ -18,7 +18,7 @@ import { HULLS, SUBSYSTEMS, TURRETS } from './wars';
 import { BATTLE, UP, copy, cross, dist2, dot, len, norm, set, v3, widthOf } from './battleKit';
 
 // a point on a capital ship's hull, from its own frame (shares of its length) into the battle's
-const place = (cap, l, o = v3()) => set(o, cap.pos.x + (cap.right.x * l[0] + cap.up.x * l[1] + cap.fwd.x * l[2]) * cap.size, cap.pos.y + (cap.right.y * l[0] + cap.up.y * l[1] + cap.fwd.y * l[2]) * cap.size, cap.pos.z + (cap.right.z * l[0] + cap.up.z * l[1] + cap.fwd.z * l[2]) * cap.size);
+export const place = (cap, l, o = v3()) => set(o, cap.pos.x + (cap.right.x * l[0] + cap.up.x * l[1] + cap.fwd.x * l[2]) * cap.size, cap.pos.y + (cap.right.y * l[0] + cap.up.y * l[1] + cap.fwd.y * l[2]) * cap.size, cap.pos.z + (cap.right.z * l[0] + cap.up.z * l[1] + cap.fwd.z * l[2]) * cap.size);
 
 // ── the capital ships, in their lines ──
 export function layCapitals(k, objectivesOn) {
@@ -65,6 +65,7 @@ export function layCapitals(k, objectivesOn) {
         subs: [],
         spheres: [],
         turrets: [],
+        props: [], // (what a plan lays by it, moved with it: battleStages.js)
       };
       cap.spheres = (HULLS[c.kind] ?? [[0, 0.1]]).map(([z, r]) => ({ c: place(cap, [0, 0, z]), r: r * c.size }));
       cap.reach = c.size * 0.55;
@@ -159,7 +160,7 @@ export function ageCapitals(k, dt, out) {
 }
 
 // ── the set pieces' hold: an ion cannon's hit, a ship wrecked, moved or turned ──
-const points = (cap) => [cap.pos, ...cap.spheres.map((sp) => sp.c), ...cap.turrets.map((tu) => tu.at), ...cap.subs.map((sb) => sb.pos)];
+const points = (cap) => [cap.pos, ...cap.spheres.map((sp) => sp.c), ...cap.turrets.map((tu) => tu.at), ...cap.subs.map((sb) => sb.pos), ...cap.props.map((o) => o.pos)];
 const rotate = (o, ax, c, sn) => {
   // Rodrigues: about the unit axis `ax`
   const d = dot(ax, o);

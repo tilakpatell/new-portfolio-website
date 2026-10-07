@@ -204,3 +204,194 @@ describe('the director’s runners in the battle', () => {
     expect(flying(late.b)).toHaveLength(1);
   });
 });
+
+describe('a plan’s objectives in the battle', () => {
+  // a plan of every kind of place an objective can be: four satellites round
+  // the objective ship (three to take), two of its batteries, a relay to
+  // hold over it, a platform out in the field, a cannon on the planet below,
+  // the droid control relay, and its reactor
+  const PLANET = { at: [0, -400, 0], r: 300 };
+  const sat = (n, at) => ({ id: `sat-${n}`, type: 'group', kind: 'satellite', name: 'Shield projector', hp: 90, r: 1, on: { ship: 'objective', at } });
+  const plan = (o = {}) => ({
+    id: 'every.place',
+    kind: 'assault',
+    length: 600,
+    attacker: 0,
+    defender: 1,
+    ai: { tAi: [5000, 5001] },
+    stages: [
+      { id: 'satellites', type: 'group', need: 3, shields: true, opensAt: 0, objectives: [sat(0, [-0.3, 0.3, 0.25]), sat(1, [0.3, 0.3, -0.25]), sat(2, [-0.3, -0.26, -0.25]), sat(3, [0.3, -0.26, 0.25])] },
+      { id: 'batteries', type: 'group', need: 2, opensAt: 0, interdicts: true, objectives: [0, 3].map((t, j) => ({ id: `battery-${j}`, type: 'group', kind: 'battery', name: 'Turbolaser battery', hp: 40, on: { turret: t, ship: 'objective' } })) },
+      { id: 'relay', type: 'zone', opensAt: 0, objectives: [{ id: 'relay', type: 'zone', kind: 'relay', name: 'the comms relay', hp: 100, hold: 20, zone: 12, on: { ship: 'objective', at: [0, 0.42, -0.1] } }] },
+      { id: 'field', type: 'group', need: 2, opensAt: 0, objectives: [{ id: 'plat-0', type: 'group', kind: 'platform', name: 'Orbital defence platform', hp: 50, r: 3, on: { field: [0.5, 20, 24] } }, { id: 'cannon', type: 'group', kind: 'cannon', name: 'the planetary ion cannon', hp: 50, r: 2.4, on: { planet: 1.5 } }] },
+      { id: 'droids', type: 'destroy', opensAt: 0, objectives: [{ id: 'droid-relay', type: 'destroy', kind: 'droidrelay', name: 'the droid control relay', hp: 60, on: { ship: 'objective', at: [0, 0.26, 0.08] }, effect: { freeze: 30 } }] },
+      { id: 'reactor', type: 'destroy', opensAt: 0, breaks: true, objectives: [{ id: 'reactor', type: 'destroy', kind: 'reactor', name: 'Reactor', hp: 100, on: { sub: 'reactor' } }] },
+    ],
+    runners: null,
+    side: [],
+    losses: [],
+    ...o,
+  });
+  const droidWar = { ...WARS.starwars, sides: [WARS.starwars.sides[0], { ...WARS.starwars.sides[1], fighters: [{ kind: 'vulture', role: 'fighter', weight: 3 }, { kind: 'tie', role: 'fighter', weight: 1 }] }] };
+  const laid = (p, { war = WARS.starwars, perSide = 4, clock = { t: 10 } } = {}) => {
+    const d = createDirector({ plan: p, seed: p.id });
+    const values = new Map();
+    const told = [];
+    const b = createBattle({
+      war,
+      attacker: 0,
+      perSide,
+      rand: seededRand('places'),
+      tickets: false,
+      planet: PLANET,
+      plan: p,
+      director: { state: () => d.state(clock.t, (k) => values.get(k) ?? 0) },
+      ace: p.side.some((o) => o.type === 'ace') ? { 1: { kind: 'tieadvanced', name: 'Darth Vader', hp: 64 } } : {},
+      onMine: (id, dmg) => {
+        told.push([id, dmg]);
+        values.set(id, (values.get(id) ?? 0) + dmg);
+      },
+    });
+    return { b, d, values, told, clock };
+  };
+  const byKey = (b, key) => b.objectives.find((o) => o.key === key);
+  const inHull = (b, p) => b.capitals.some((c) => c.spheres.some((sp) => Math.hypot(p.x - sp.c.x, p.y - sp.c.y, p.z - sp.c.z) < sp.r));
+
+  it('lays each where the plan has it: by the objective ship, on its batteries, out in the field, on the planet below', () => {
+    const { b } = laid(plan());
+    const ship = objOf(b);
+    for (let n = 0; n < 4; n++) {
+      const o = byKey(b, `sat-${n}`);
+      expect(o.free).toBe(true);
+      expect(inHull(b, o.pos), o.key).toBe(false);
+      expect(Math.hypot(o.pos.x - ship.pos.x, o.pos.y - ship.pos.y, o.pos.z - ship.pos.z)).toBeLessThan(ship.size * 0.6);
+    }
+    expect(byKey(b, 'battery-1')).toBe(ship.turrets[3]);
+    expect(byKey(b, 'relay').zone).toBe(12);
+    const plat = byKey(b, 'plat-0');
+    // (half the way from the middle to the defender's line, 20 across, 24 toward the planet)
+    expect(plat.pos.x).toBeCloseTo(0.5 * b.lines, 6);
+    expect(plat.pos.y).toBeLessThan(-20);
+    const cannon = byKey(b, 'cannon');
+    expect(Math.hypot(cannon.pos.x - PLANET.at[0], cannon.pos.y - PLANET.at[1], cannon.pos.z - PLANET.at[2])).toBeCloseTo(PLANET.r + 1.5, 6);
+    // (the subsystems the plan doesn't use aren't there to shoot)
+    expect(ship.subs.find((s) => s.id === 'gen-port').hidden).toBe(true);
+  });
+
+  it('moves what’s laid by a ship with it', () => {
+    const { b } = laid(plan());
+    const o = byKey(b, 'sat-0');
+    const was = { ...o.pos };
+    b.moveCapital(objOf(b), { x: 3, y: 0, z: -2 });
+    expect(o.pos.x - was.x).toBeCloseTo(3, 9);
+    expect(o.pos.z - was.z).toBeCloseTo(-2, 9);
+  });
+
+  it('counts your shots on a satellite or a planned battery for the tally, and puts the next stage’s off till it’s open', () => {
+    const { b, told } = laid(plan());
+    b.setYou(0);
+    run(b, 0.1);
+    const s0 = byKey(b, 'sat-0');
+    const h = shotAt(b, s0.pos, 2);
+    expect(h).toMatchObject({ sub: 'sat-0' });
+    expect(told).toEqual([['sat-0', 2]]);
+    // (the batteries are the next stage's: a shot on one only lands)
+    const tu = byKey(b, 'battery-0');
+    const before = tu.hp;
+    const h2 = b.hit({ x: tu.at.x, y: tu.at.y + 2, z: tu.at.z }, { x: tu.at.x, y: tu.at.y - 0.01, z: tu.at.z }, 3);
+    expect(h2?.shield).toBe(true);
+    expect(tu.hp).toBe(before);
+    expect(tu.alive).toBe(true);
+    // the satellites down, the batteries are: shot out through the tally, not their own few hits
+    for (let n = 0; n < 3; n++) for (let i = 0; i < 60 && byKey(b, `sat-${n}`).alive; i++) shotAt(b, byKey(b, `sat-${n}`).pos, 3);
+    run(b, 0.1);
+    expect(b.phase).toBe(2);
+    for (let i = 0; i < 40 && tu.alive; i++) b.hit({ x: tu.at.x, y: tu.at.y + 2, z: tu.at.z }, { x: tu.at.x, y: tu.at.y - 0.01, z: tu.at.z }, 3);
+    expect(tu.alive).toBe(false);
+    expect(told.filter(([k]) => k === 'battery-0').length).toBeGreaterThan(6);
+  });
+
+  it('locks on to the open stage’s objectives, never a zone', () => {
+    const { b, values } = laid(plan());
+    b.setYou(0);
+    run(b, 0.1);
+    expect(b.targets.filter((t) => t.sub?.startsWith('sat-'))).toHaveLength(4);
+    for (const k of ['sat-0', 'sat-1', 'sat-2', 'battery-0', 'battery-1']) values.set(k, 999);
+    run(b, 0.1);
+    expect(b.phase).toBe(3);
+    expect(b.targets.some((t) => t.sub === 'relay')).toBe(false);
+  });
+
+  it('says the battle’s interdicted while a stage that interdicts stands', () => {
+    const { b, values } = laid(plan());
+    run(b, 0.1);
+    expect(b.interdicted).toBe(true);
+    for (const k of ['sat-0', 'sat-1', 'sat-2', 'battery-0', 'battery-1']) values.set(k, 999);
+    run(b, 0.1);
+    expect(b.interdicted).toBe(false);
+  });
+
+  it('stops the defender’s droid fighters dead for half a minute when the droid control relay falls', () => {
+    const { b, values } = laid(plan(), { war: droidWar, perSide: 8 });
+    run(b, 0.2);
+    const droids = b.fighters.filter((f) => f.team === 1 && f.kind === 'vulture' && f.alive);
+    expect(droids.length).toBeGreaterThan(0);
+    for (const k of ['sat-0', 'sat-1', 'sat-2', 'battery-0', 'battery-1', 'plat-0', 'cannon', 'droid-relay']) values.set(k, 999);
+    values.set('relay:a', 999);
+    run(b, 0.1);
+    for (const f of droids) expect(f.frozen, f.id).toBeGreaterThan(29);
+    expect(b.fighters.filter((f) => f.team === 1 && f.kind === 'tie').every((f) => !f.frozen)).toBe(true);
+    // (dead in space: drifting on as they were, after nothing, firing at nothing)
+    const heading = droids.map((f) => ({ ...f.fwd }));
+    run(b, 1);
+    droids.forEach((f, i) => {
+      expect(f.target).toBeNull();
+      expect(Math.hypot(f.fwd.x - heading[i].x, f.fwd.y - heading[i].y, f.fwd.z - heading[i].z)).toBeLessThan(1e-9);
+    });
+  });
+
+  it('flies an ace from the director’s time, its hull the director’s: the AI can’t bring it down, the pilots can', () => {
+    const p = plan({ side: [{ id: 'ace-1', type: 'ace', team: 1, at: 240, hp: 64, kind: 'tieadvanced', name: 'Darth Vader' }] });
+    const clock = { t: 100 };
+    const { b, told } = laid(p, { clock });
+    run(b, 0.1);
+    const ace = b.fighters.find((f) => f.ace);
+    expect(ace.alive).toBe(false);
+    clock.t = 241;
+    const events = run(b, 0.1);
+    expect(ace.alive).toBe(true);
+    expect(events.some((e) => e.type === 'arrive' && e.team === 1)).toBe(true);
+    expect(ace.hp).toBe(64);
+    b.fire(0, { x: ace.pos.x, y: ace.pos.y + 1, z: ace.pos.z }, { x: 0, y: -1, z: 0 }, 'laser');
+    run(b, 0.05);
+    expect(ace.hp).toBe(64);
+    b.setYou(0);
+    for (let i = 0; i < 80 && ace.alive; i++) shotAt(b, ace.seen, 1);
+    expect(told.filter(([k]) => k === 'ace:1').length).toBe(64);
+    expect(ace.alive).toBe(false);
+    expect(run(b, 0.05).some((e) => e.type === 'down' && e.ace && e.mine)).toBe(true);
+  });
+
+  it('launches a bomber wave when the director says, its bombers told apart, and sends what’s left of them home once it’s struck', () => {
+    const p = plan({ side: [{ id: 'w0', type: 'wave', team: 0, at: 180, n: 6, travel: 30 }] });
+    const clock = { t: 170 };
+    const { b } = laid(p, { clock });
+    run(b, 0.1);
+    const before = b.fighters.length;
+    clock.t = 181;
+    run(b, 0.1);
+    const wave = b.fighters.filter((f) => f.wave === 'w0');
+    expect(wave.length).toBeGreaterThan(0);
+    expect(wave.length).toBeLessThanOrEqual(6);
+    expect(b.fighters.length).toBe(before + wave.length);
+    for (const f of wave) expect(f.role).toBe('bomber');
+    b.setYou(1);
+    const f = wave.find((x) => x.alive);
+    for (let i = 0; i < 40 && f.alive; i++) shotAt(b, f.seen, 5);
+    expect(run(b, 0.05).some((e) => e.type === 'down' && e.wave === 'w0' && e.mine)).toBe(true);
+    expect(f.respawn).toBe(Infinity);
+    clock.t = 180 + 30 + 21;
+    run(b, 0.1);
+    expect(wave.every((x) => !x.alive)).toBe(true);
+  });
+});

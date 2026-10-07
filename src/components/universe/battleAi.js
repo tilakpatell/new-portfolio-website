@@ -18,7 +18,9 @@
 // flagOf(team), objOf(), youIn() }.
 // muster(k, perSide, ace) puts both sides' fighters up (an ace flown as its
 // own kind, named, with its own hull); spawn(k, f, first) puts one back up
-// in front of its line; flyFighter(k, f, dt) flies one a step.
+// in front of its line; addWave(k, team, n, id) puts up a bomber wave, one
+// life each; flyFighter(k, f, dt) flies one a step (one that's `frozen`, a
+// droid whose control relay's gone, drifts on as it was, after nothing).
 
 import { FIGHTERS, NAMES } from './wars';
 import { BATTLE, UP, ZERO, copy, cross, dist2, dot, inSights, len, norm, pick, set, turnToward, v3 } from './battleKit';
@@ -65,6 +67,25 @@ function makeFighter(k, team) {
   return f;
 }
 
+// a bomber wave of `n` (the plan's, battleStages.js): the side's bombers, put
+// up in front of its line, each one life only, told apart by the wave's `id`
+export function addWave(k, team, n, id) {
+  const bombers = k.b.teams[team].side.fighters.filter((o) => o.role === 'bomber');
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const f = makeFighter(k, team);
+    const kind = bombers.length ? pick(bombers, k.rand) : null;
+    if (kind) Object.assign(f, { kind: kind.kind, role: 'bomber', type: FIGHTERS[kind.kind], size: FIGHTERS[kind.kind].size });
+    Object.assign(f.tgt, { kind: f.kind, name: NAMES[f.kind] ?? f.kind, size: f.size, hpMax: f.type.hp });
+    spawn(k, f, false);
+    f.wave = id;
+    f.respawn = Infinity;
+    k.b.fighters.push(f);
+    out.push(f);
+  }
+  return out;
+}
+
 export function muster(k, n, ace) {
   const { b } = k;
   for (const team of [0, 1]) for (let i = 0; i < n; i++) b.fighters.push(makeFighter(k, team));
@@ -91,8 +112,9 @@ function bomberTarget(k, f) {
   const runs = b.runners.filter((r) => r.alive && r.team === enemy);
   if (runs.length && rand() < 0.5) return runs[Math.floor(rand() * runs.length)];
   if (f.team === k.attacker) {
+    // (the plan's objectives of the stage, wherever they are, or the objective ship's of the phase)
     const flag = k.objOf();
-    const subs = flag?.alive ? flag.subs.filter((s) => s.alive && !s.hidden && s.phase === b.phase) : [];
+    const subs = b.objectives ? b.objectives.filter((o) => o.alive && !o.zone && !o.hidden && o.phase === b.phase) : flag?.alive ? flag.subs.filter((s) => s.alive && !s.hidden && s.phase === b.phase) : [];
     if (subs.length) return subs[Math.floor(rand() * subs.length)];
   }
   // a point on one of the other side's capital ships
@@ -141,6 +163,19 @@ const tmp = v3();
 const oldFwd = v3();
 export function flyFighter(k, f, dt) {
   const { b, C, A, S, radius, avoid, rand } = k;
+  // stopped dead (its control relay gone): drifting on, slowing, after nothing
+  if (f.frozen > 0) {
+    f.frozen = Math.max(0, f.frozen - dt);
+    if (f.target === b.you) b.you.on = Math.max(0, b.you.on - 1);
+    f.target = null;
+    f.speed = Math.max(f.type.speed * 0.3, f.speed - f.type.accel * 0.5 * dt);
+    set(f.vel, f.fwd.x * f.speed, f.fwd.y * f.speed, f.fwd.z * f.speed);
+    copy(f.prev, f.pos);
+    f.pos.x += f.vel.x * dt;
+    f.pos.y += f.vel.y * dt;
+    f.pos.z += f.vel.z * dt;
+    return;
+  }
   // a new target now and then, or when the last one's gone
   f.retarget -= dt;
   if (!targetAlive(k, f.target) || f.retarget <= 0) {
