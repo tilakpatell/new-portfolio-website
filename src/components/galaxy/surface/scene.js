@@ -2055,6 +2055,8 @@ export async function create(canvas, ctx) {
     camera.lookAt(camLook);
   }
 
+  let qaView = null; // (DEV: __surfaceScene.view)
+
   // places: found as you come near; the one you're in
   function places() {
     const p = me().st;
@@ -2440,6 +2442,11 @@ export async function create(canvas, ctx) {
     weather?.update(t, camera, world.heightAt, size.h);
     compass();
     lit?.update();
+    // (DEV: a QA script's held view, __surfaceScene.view)
+    if (import.meta.env.DEV && qaView) {
+      camera.position.set(...qaView.from);
+      camera.lookAt(...qaView.at);
+    }
     const tPost = performance.now();
     post.render(size.w, size.h);
     if (import.meta.env.DEV) state.ms = { js: Math.round(tPost - now), post: Math.round(performance.now() - tPost) };
@@ -2450,6 +2457,13 @@ export async function create(canvas, ctx) {
       scene,
       post,
       renderer,
+      // (for the QA scripts: the ground's height, and a view held from one
+      // point at another, metres over the ground at each, till view(null))
+      heightAt: (x, z) => world.heightAt(x, z),
+      land: site.land.at,
+      view(from, at) {
+        qaView = from ? { from: [from[0], world.heightAt(from[0], from[2]) + from[1], from[2]], at: [at[0], world.heightAt(at[0], at[2]) + at[1], at[2]] } : null;
+      },
       // (for the QA scripts: the land's light, once its things are down)
       api: {
         get ground() {
