@@ -20,6 +20,7 @@
 //     denied: someone the door won’t open for is at it now (so “denied” is said once a visit)
 //   stepDoors(doors, layout, dt, { near: [{ x, z, y?, side, disguised }], flags: Set, lockdown: Set<section> }) → events
 //     events: [{ type: 'open' | 'close' | 'seal' | 'unseal' | 'denied', door }]; a seal shuts its door, so it brings no 'close'
+//     flags undo `flag:<name>` locks only: an undisguised Rebel gets through an Imperial-only door by `unlock` with { scomp: true }
 //   passable(doors, id) → bool       open ≥ 0.8
 //   unlock(doors, layout, id, how) → bool   how: { flag } | { code } | { scomp: true }; whether the door is unlocked now
 //   clearDoorway(doors, layout, bodies: [{ x, z, r, y?, h? }]) → void

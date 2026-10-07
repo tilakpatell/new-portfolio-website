@@ -301,6 +301,25 @@ describe('the first Death Star’s doors', () => {
     expect(passable(doors, 'bay327-corr')).toBe(true);
   });
 
+  // The game’s first walk out of the bay takes one of these two ways for a
+  // Rebel, so they are pinned here: no flag opens an Imperial-only door.
+  it('let a Rebel through the corridor’s blast door in armour, or out of it once a scomp link unlocks it, and never for a flag', () => {
+    const disguised = createDoors(layout);
+    expect(run(disguised, layout, 0.5, { near: [rebel(10, -22, { y: 0, disguised: true })] })).toEqual([{ type: 'open', door: 'bay327-corr' }]);
+    expect(passable(disguised, 'bay327-corr')).toBe(true);
+
+    const doors = createDoors(layout);
+    const plain = { near: [rebel(10, -22, { y: 0 })], flags: new Set(['ramp', 'scomp', 'side:imperial', 'imperial', 'bay327-corr']) };
+    // `ramp` is DS1’s own flag and rightly opens the Falcon’s hatch, so only this door’s events count
+    const here = (events) => events.filter((e) => e.door === 'bay327-corr');
+    expect(here(run(doors, layout, 0.5, plain))).toEqual([{ type: 'denied', door: 'bay327-corr' }]);
+    expect(passable(doors, 'bay327-corr')).toBe(false);
+    expect(unlock(doors, layout, 'bay327-corr', { flag: 'ramp' })).toBe(false);
+    expect(unlock(doors, layout, 'bay327-corr', { scomp: true })).toBe(true);
+    expect(here(run(doors, layout, 0.5, plain))).toEqual([{ type: 'open', door: 'bay327-corr' }]);
+    expect(passable(doors, 'bay327-corr')).toBe(true);
+  });
+
   it('open Docking Control’s door for someone on its landing, not for someone on the deck 6 m under it', () => {
     const doors = createDoors(layout);
     expect(run(doors, layout, 1, { near: [trooper(22, -22.6, { y: 0 })] })).toEqual([]);
