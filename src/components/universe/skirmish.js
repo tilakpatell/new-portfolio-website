@@ -27,11 +27,12 @@
 import { FACTIONS, HUNTER_KINDS, createHunt } from './hunterRules';
 import { sweptHit } from './targeting';
 import { createWing } from './wingRules';
+import { PACE } from './ship';
 
 export const SKIRMISH = {
   circle: 0.12, // radians a second the freighter turns, going round
-  speed: 2.6, // its speed
-  away: 8, // and on its way, once it's over
+  speed: 2.6 * PACE, // its speed (at the ship's pace)
+  away: 8 * PACE, // and on its way, once it's over
   hp: 16, // laser hits the freighter takes
   pack: [3, 4], // hunters on it
   escort: 2, // its escort

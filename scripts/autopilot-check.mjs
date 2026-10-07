@@ -19,9 +19,9 @@ import { spawn, spawnSync } from 'node:child_process';
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { createServer } from 'node:net';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { NOISE, freePort } from './lib/noise.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CORE = ['/', '/home', '/experience', '/projects', '/travel', '/contact', '/resume', '/terminal', '/changes'];
@@ -33,16 +33,9 @@ const THREE_D = ['/', '/universe', ...WORLDS];
 // pages inside a world that are text, not 3D: the galaxy's mission briefings
 // (an opening crawl and the objectives; the live ones send you on to a world)
 const FLAT = [/^\/galaxy\/[^/]+\/mission$/];
-// console errors a sandbox or a software renderer always produces, and that mean nothing
-const NOISE = [
-  /WebSocket|wss:\/\/|relay|nostr/i,
-  /api\.github\.com|github-contributions|rate limit|\b40[39]\b|\b429\b/i,
-  /net::ERR_|Failed to load resource|ERR_NAME_NOT_RESOLVED|ERR_CONNECTION/i,
-  /SwiftShader|software WebGL|GPU stall|GL Driver Message|Automatic fallback|WebGL: too many errors|WebGL: INVALID_(ENUM|VALUE|OPERATION)/i,
-  /THREE\.WebGLRenderer: Context Lost|KHR_parallel_shader_compile/i,
-  /AudioContext was not allowed|The AudioContext was not allowed to start/i,
-  /\[vite\]|preload|Preload/i,
-];
+// (NOISE, the console errors a sandbox or a software renderer always
+// produces and that mean nothing, is scripts/lib/noise.mjs's, shared with
+// the AI render tier)
 
 const args = {};
 const argv = process.argv.slice(2);
@@ -133,13 +126,7 @@ if (runs('smoke')) {
   }
   const { chromium } = await import('playwright-core');
   const sharp = (await import('sharp')).default;
-  const port = await new Promise((res) => {
-    const s = createServer();
-    s.listen(0, '127.0.0.1', () => {
-      const p = s.address().port;
-      s.close(() => res(p));
-    });
-  });
+  const port = await freePort();
   // vite found as node finds it: a worktree has no node_modules of its own
   const vite = join(dirname(createRequire(import.meta.url).resolve('vite/package.json')), 'bin/vite.js');
   const server = spawn(process.execPath, [vite, 'preview', '--port', String(port), '--strictPort', '--host', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });

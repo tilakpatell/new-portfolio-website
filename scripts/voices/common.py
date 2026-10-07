@@ -39,6 +39,21 @@ WORLD_VOICED = ["gandalf", "aragorn", "sam", "frodo", "galadriel", "boromir", "p
 _ffmpeg = None
 
 
+def ears():
+    """The judge's ears: judge.py's models, or with VOICES_JUDGE=fake the contract tests' stand-in
+    (scripts/ai-e2e/fakes/voices_judge.py: no models, no torch), which hears what the fake worker said."""
+    if os.environ.get("VOICES_JUDGE") == "fake":
+        fakes = str(ROOT / "scripts" / "ai-e2e" / "fakes")
+        if fakes not in sys.path:
+            sys.path.insert(0, fakes)
+        import voices_judge
+
+        return voices_judge
+    import judge
+
+    return judge
+
+
 def ffmpeg(given=None):
     """ffmpeg's path: --ffmpeg, $FFMPEG, the PATH, or where winget puts it."""
     global _ffmpeg

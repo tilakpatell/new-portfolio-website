@@ -25,6 +25,7 @@ export const WORLD_MB = {
   '/dot-matrix': 1, // drawn in code
   '/dot-matrix/64': 7, // the castle's and Bob-omb Ridge's texture sets at phone size, two skies, and Mario, the cast and the props (fan-made Sketchfab models, 2 MB)
   '/earth': 2, // NASA's globe at phone size, the stars and the plane
+  '/dot-matrix/minecraft': 2, // drawn in code from the pack's tiles: the block strip, the skins and the sky's and HUD's sprites (under a tenth of an MB today)
 };
 
 // The world a path is in: '/middle-earth/moria' is Middle-earth.

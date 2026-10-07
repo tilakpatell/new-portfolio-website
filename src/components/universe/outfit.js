@@ -17,6 +17,7 @@
 
 import { PAINTS, STOCK, isOpen as paintOpen, parsePaint } from './paint';
 import { statsOfBuild } from './shipyard/build';
+import { tuned } from './ship';
 
 export { STOCK };
 export const LOADOUT_KEY = 'tp-universe-loadout';
@@ -238,10 +239,11 @@ export function readOutfit(data, paint = STOCK) {
 
 // The hangar's read-out: how it does against the factory ship, as
 // { id, value (1 as it comes), bar (0…1 of the best any fit could do), change (%) }.
+// (its flying as it flies: held to what any fit can do, ship.js's tuned)
 const measures = (s) => ({
-  speed: s.boost,
-  accel: s.accel,
-  agility: s.agility,
+  speed: tuned(s).boost,
+  accel: tuned(s).accel,
+  agility: tuned(s).agility,
   firepower: s.punch / s.cadence, // (what the guns do to hunters in a second, against the factory guns)
   shields: 1 / s.armor,
   recharge: s.regen * (5 / s.delay),

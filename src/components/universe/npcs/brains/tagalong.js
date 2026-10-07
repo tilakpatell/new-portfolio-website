@@ -32,7 +32,7 @@ export default function tagalong(npc, me, world, dt) {
   // off your left wing, a little behind and below
   const spot = add(add(add(you, rightOf(you), -NPC.alongside), forwardOf(you), -2), { x: 0, y: -0.5, z: 0 });
   const match = velocityOf(you);
-  const speed = Math.max(npc.stats.speed, (you.speed ?? 0) + 6);
+  const speed = Math.max(npc.stats.speed, (you.speed ?? 0) + NPC.overtake);
   let say = null;
   if (!m.hello) {
     if (apart(me.pos, spot) > 3) return { to: spot, match, speed };

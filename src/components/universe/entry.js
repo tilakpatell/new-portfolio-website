@@ -33,7 +33,7 @@ const smooth = (a, b, x) => {
 export const AIR = 1.2; // the air's top as a share of a planet's radius (planets.js's halo reaches exactly as far and will import this)
 
 export const ENTRY = {
-  fast: 12, // map units/s: any faster through the air is no landing; the ship carries on and crashes (SHIP.cruise 5.5, SHIP.boost 20)
+  fast: 10, // map units/s: any faster through the air is no landing; the ship carries on and crashes (SHIP.cruise 3.3, SHIP.boost 12)
   sink: 0.15, // map units/s toward the planet's middle, at least, to count as going in (skimming the top isn't)
   clear: 1.5, // map units over the air's top a ship takes off to (and waits at, while it's down), so it's well out of it
   arc: [0.22, 0.85], // radians round the planet from where it went in to the spot: least, most

@@ -26,7 +26,7 @@ describe('the planet maps by detail level', () => {
 
 describe('the fandoms’ baked maps', () => {
   it('come in all three sizes where they need them, and one where they don’t', () => {
-    expect(mapFile('middleearth', 'ultra')).toBe('middleearth-hq.webp');
+    expect(mapFile('middleearth', 'ultra', { xl: false })).toBe('middleearth-hq.webp');
     expect(mapFile('caribbean-clouds', 'mid')).toBe('caribbean-clouds-sm.webp');
     expect(mapFile('middleearth-night', 'ultra')).toBe('middleearth-night.webp');
     expect(mapFile('middleearth-night', 'low')).toBe('middleearth-night-sm.webp');
@@ -295,5 +295,134 @@ describe('a world seen from across the map', () => {
     const { shader } = await compile('rickmorty', { value: new THREE.Vector3(0, 1, 0) });
     expect(shader.fragmentShader).toMatch(/celEdge = max\(length\(fwidth\(normal\)\), 1e-4\) \* 2\.0;/);
     expect(shader.fragmentShader).toMatch(/uKeySunW/);
+  });
+});
+
+describe('the -xl maps, 4096 on ultra', () => {
+  it('a strong card asks for the -xl KTX2 of a baked planet’s colour map', () => {
+    expect(mapFile('middleearth', 'ultra')).toBe('middleearth-xl.ktx2');
+    for (const id of ['breakingbad', 'caribbean', 'rickmorty', 'office', 'music', 'marvel']) expect(mapFile(id, 'ultra')).toBe(`${id}-xl.ktx2`);
+  });
+  it('the rest are as they were', () => {
+    expect(mapFile('middleearth-normal', 'ultra')).toBe('middleearth-normal-hq.webp');
+    expect(mapFile('transformers', 'ultra')).toBe('transformers.webp');
+    expect(mapFile('earth', 'ultra')).toBe('earth-hq.webp');
+    expect(mapFile('middleearth', 'high')).toBe('middleearth.webp');
+  });
+  it('the -hq copy is there to fall back on: what ultra wears from the start, and the near set’s second try', async () => {
+    const { nearSet } = await import('./planets');
+    expect(mapFile('middleearth', 'ultra', { xl: false })).toBe('middleearth-hq.webp');
+    // (ultra already wears the -hq set: the -xl is all it adds, its fallback the file it wears)
+    expect(nearSet('middleearth', 'ultra')).toEqual([{ name: 'middleearth', file: 'middleearth-xl.ktx2', colour: true }]);
+    // high near: the -hq copies, never the -xl
+    expect(nearSet('middleearth', 'high').map((m) => m.file)).not.toContain('middleearth-xl.ktx2');
+  });
+});
+
+describe('a planet’s near maps', () => {
+  it('knows its own maps by name', async () => {
+    const { mapsOf } = await import('./planets');
+    const me = mapsOf('middleearth');
+    expect(me).toEqual(expect.arrayContaining(['middleearth', 'middleearth-normal', 'middleearth-clouds']));
+    expect(me).not.toContain('marvel');
+    // (Earth's world is 'travel'; its maps are 'earth')
+    expect(mapsOf('travel')).toEqual(expect.arrayContaining(['earth', 'earth-clouds']));
+    expect(mapsOf('home')).toEqual([]);
+  });
+  it('near, a desktop gets the -hq copies of what has one, and only those', async () => {
+    const { nearSet } = await import('./planets');
+    const set = nearSet('middleearth', 'high');
+    expect(set.map((m) => m.file).sort()).toEqual(['middleearth-clouds-hq.webp', 'middleearth-hq.webp', 'middleearth-normal-hq.webp']);
+    expect(set.find((m) => m.name === 'middleearth')).toMatchObject({ colour: true });
+    expect(set.find((m) => m.name === 'middleearth-normal')).toMatchObject({ colour: false });
+    // a weak card's desktop: the standard file over its -sm
+    expect(nearSet('middleearth', 'mid').map((m) => m.file)).toContain('middleearth.webp');
+    // (Cybertron has nothing finer than what it wears)
+    expect(nearSet('transformers', 'high')).toEqual([]);
+    expect(nearSet('middleearth', 'low')).toEqual([]);
+  });
+  it('swaps a built planet’s maps in place and puts them back', async () => {
+    const gradient = { addColorStop() {} };
+    const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+    const THREE = await import('three');
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    const T = { middleearth: new THREE.Texture(), 'middleearth-normal': new THREE.Texture(), 'middleearth-clouds': new THREE.Texture(), 'middleearth-rough': new THREE.Texture() };
+    T.middleearth.anisotropy = 16;
+    T.middleearth.colorSpace = THREE.SRGBColorSpace;
+    const p = buildPlanet(byId('middleearth'), T);
+    const clouds = [];
+    p.group.traverse((o) => o.isMesh && o.material?.map === T['middleearth-clouds'] && clouds.push(o));
+    const T2 = { middleearth: new THREE.Texture(), 'middleearth-clouds': new THREE.Texture() };
+    p.swapMaps(T2);
+    expect(p.body.material.map).toBe(T2.middleearth);
+    expect(T2.middleearth.anisotropy).toBe(16);
+    expect(T2.middleearth.colorSpace).toBe(THREE.SRGBColorSpace);
+    // (what has no near copy keeps its own)
+    expect(p.body.material.normalMap).toBe(T['middleearth-normal']);
+    expect(clouds[0].material.map).toBe(T2['middleearth-clouds']);
+    // the clouds' shadows on the ground read the near copy too
+    expect(p.body.material.userData.ground.uClouds.value).toBe(T2['middleearth-clouds']);
+    p.swapMaps(null);
+    expect(p.body.material.map).toBe(T.middleearth);
+    expect(clouds[0].material.map).toBe(T['middleearth-clouds']);
+    expect(p.body.material.userData.ground.uClouds.value).toBe(T['middleearth-clouds']);
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('the sphere, finer near', () => {
+  const stub = () => {
+    const gradient = { addColorStop() {} };
+    const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+  };
+  it('has near segments on mid and up, none on low', async () => {
+    const { NEAR_SEG, nearSegments } = await import('./planets');
+    expect(NEAR_SEG.low).toBeUndefined();
+    expect(nearSegments('high')).toEqual([160, 100]);
+    expect(nearSegments('ultra')).toEqual([160, 100]);
+    expect(nearSegments('mid')).toEqual([96, 60]);
+    expect(nearSegments('low')).toBeNull();
+  });
+  it('swaps a planet’s sphere for the finer one and back, making it once', async () => {
+    stub();
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    const THREE = await import('three');
+    const clouds = new THREE.Texture();
+    const p = buildPlanet(byId('middleearth'), { middleearth: new THREE.Texture(), 'middleearth-clouds': clouds });
+    const far = p.body.geometry;
+    let cloudMesh = null;
+    p.group.traverse((o) => (cloudMesh ??= o.isMesh && o.material?.map === clouds ? o : null));
+    const cloudFar = cloudMesh.geometry;
+    expect(far.parameters.widthSegments).toBe(64);
+    p.nearGeometry(true, 'high');
+    const near = p.body.geometry;
+    expect([near.parameters.widthSegments, near.parameters.heightSegments]).toEqual([160, 100]);
+    expect(near.parameters.radius).toBe(far.parameters.radius);
+    // the cloud layer's too, at its own height
+    expect(cloudMesh.geometry.parameters.widthSegments).toBe(160);
+    expect(cloudMesh.geometry.parameters.radius).toBe(cloudFar.parameters.radius);
+    p.nearGeometry(false);
+    expect(p.body.geometry).toBe(far);
+    expect(cloudMesh.geometry).toBe(cloudFar);
+    p.nearGeometry(true, 'high');
+    expect(p.body.geometry).toBe(near);
+    // (nothing on low: the sphere it has)
+    p.nearGeometry(false);
+    p.nearGeometry(true, 'low');
+    expect(p.body.geometry).toBe(far);
+    vi.unstubAllGlobals();
+  });
+  it('leaves a world whose builder made its own shape alone, and a station', async () => {
+    stub();
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    // (the Office's crumpled ball is its own geometry, facets and all)
+    expect(buildPlanet(byId('office'), {}).nearGeometry).toBeUndefined();
+    expect(buildPlanet(byId('home'), {}).nearGeometry).toBeUndefined();
+    vi.unstubAllGlobals();
   });
 });

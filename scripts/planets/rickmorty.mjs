@@ -162,7 +162,7 @@ export async function bake() {
   // (ONLY=rough: just the roughness map, the others left as they are)
   const only = process.env.ONLY;
   if (only !== 'rough') {
-    await save(albedo, W, H, 3, 'rickmorty', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 90 });
+    await save(albedo, W, H, 3, 'rickmorty', [[4096, '-xl'], [2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 90 });
     await save(glow, W, H, 3, 'rickmorty-glow', [[1024, '']], { quality: 88 });
     await save(clouds, W, H, 4, 'rickmorty-clouds', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 86, alphaQuality: 90 });
   }

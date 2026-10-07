@@ -18,14 +18,13 @@
 //
 // loadTextures({ small }) → the textures (any that fail are just missing)
 // mapFile(name, level) → the file for a planet map at lib/detail's level
-// buildPlanet(u, T, { sun, tier, key }) → { id, radius, group, sun, air, setAir, update(t, camera), setState, mount }
+// mapsOf(id), nearSet(id, level) → a planet's maps, and the finer ones it wears near (nearMaps.js)
+// buildPlanet(u, T, { sun, tier, key }) → { id, radius, group, sun, air, setAir, update(t, camera), setState, mount, swapMaps(T2 | null), nearSet(level), nearGeometry(on, level) }
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 import { gltfLoader } from '../../lib/three/gltf';
-import { loadTexture } from '../../lib/three/textures';
-import { detailLevel } from '../../lib/detail';
 import { SWIRL_GLSL } from '../../lib/three/swirl';
 import { globeData } from '../travel/globe3d/data';
 import { facing, fit, glowMat, orbit, paint, rng, rounded, tiled } from './kit';
@@ -37,6 +36,7 @@ import { createWar, warZones } from '../cybertron/war';
 import { ringGeometry } from '../middleearth/ringShape';
 import { bossMug, elementTile, glowingGems, shardCluster } from './props';
 import { keyHook } from '../../lib/three/keySun';
+import { mapSwapper, mapsOf, nearSet } from './planetMaps';
 import { LIGHT, RIM, airGlow, celShade, ditherShade, groundHooks, halo, styleFor } from './planetShading';
 
 // (the planets' shading, moved out to keep this file under the size the
@@ -44,67 +44,9 @@ import { LIGHT, RIM, airGlow, celShade, ditherShade, groundHooks, halo, styleFor
 export { celShade, ditherShade, styleFor, variants } from './planetShading';
 
 
-// ── Textures ──
+// ── Textures ── (planetMaps.js: the maps, their files, and what a planet wears near)
 
-const BASE = '/textures/universe/';
-// Each map: whether it's a colour (sRGB) or data (normals, roughness, a
-// cloud's alpha), and which sizes it comes in: `sm`, a half-size copy for a
-// phone or a weak device; `hq`, a copy at twice the texels for a strong
-// graphics card (lib/detail's 'ultra'), so a planet filling the screen and
-// the Milky Way behind it stay sharp as the camera comes in. The fandoms'
-// own maps are baked by scripts/build-fandom-planets.mjs (Middle-earth,
-// Breaking Bad, the Caribbean, C-137, the Office, Music, Marvel) at all
-// three sizes; Earth's, the sun's and the sky's by
-// scripts/build-universe-textures.py (--hq for the -hq set); Cybertron's and
-// Invincible's by their own scripts (Invincible's relief with an -hq;
-// Cybertron's is 2048 on high and up, 1024 below).
-// The universe map's own sky is 'sky-glow', the Milky Way's light only,
-// baked from the 8K sky by scripts/bake-universe-sky.mjs (skyShader.js
-// draws its stars); 'sky' itself, with its stars, is the Earth's.
-const map = (names, opts) => names.map((n) => [n, opts]);
-const MAPS = Object.fromEntries([
-  ...map(['music', 'middleearth', 'middleearth-clouds', 'marvel', 'breakingbad', 'caribbean', 'office', 'rickmorty', 'rickmorty-clouds', 'earth', 'earth-night', 'sun'], { sm: true, hq: true, colour: true }),
-  ...map(['middleearth-normal', 'office-normal', 'breakingbad-normal', 'caribbean-clouds', 'earth-clouds'], { sm: true, hq: true, colour: false }),
-  ...map(['caribbean-normal', 'invincible-normal'], { sm: false, hq: true, colour: false }),
-  ...map(['transformers-normal'], { sm: true, hq: false, colour: false }),
-  ...map(['middleearth-night', 'breakingbad-night', 'transformers', 'invincible', 'invincible-night', 'sky-glow'], { sm: true, hq: false, colour: true }),
-  ...map(['breakingbad-clouds', 'invincible-clouds'], { sm: true, hq: false, colour: false }),
-  ...map(['middleearth-glow', 'caribbean-night', 'rickmorty-glow', 'invincible-glow', 'plates', 'hull'], { sm: false, hq: false, colour: true }),
-  ...map(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-glow-sm', 'middleearth-rough', 'office-rough', 'breakingbad-rough', 'caribbean-rough', 'earth-rough', 'rickmorty-rough', 'invincible-rough'], { sm: false, hq: false, colour: false }),
-]);
-
-export const MAP_NAMES = Object.keys(MAPS);
-
-// The file for a map at a detail level (lib/detail): the `-hq` copy on a
-// strong card where there is one, the standard file on a desktop, the
-// `-sm` half on a phone or a weak device where there is one.
-export function mapFile(name, level = 'high') {
-  const { sm = true, hq = false } = MAPS[name] ?? {};
-  const suffix = level === 'ultra' ? (hq ? '-hq' : '') : level === 'high' ? '' : sm ? '-sm' : '';
-  return `${name}${suffix}.webp`;
-}
-
-export async function loadTextures({ small = false, level = small ? 'mid' : detailLevel() } = {}) {
-  const T = { small }; // (and whether this is a phone, for the builders)
-  const get = async (name, file, colour, fallback = null) => {
-    try {
-      // (decoded off the main thread, as sharp as the device's tier allows,
-      // and shared with any other scene that wants the same map)
-      T[name] = await loadTexture(BASE + file, { color: colour });
-    } catch {
-      // missing: the standard file where a sharper set was asked for, else whoever wanted it does without
-      if (fallback) await get(name, fallback, colour);
-    }
-  };
-  await Promise.all(
-    Object.entries(MAPS).map(([name, { colour }]) => {
-      const file = mapFile(name, level);
-      const standard = mapFile(name, 'high');
-      return get(name, file, colour, file !== standard ? standard : null);
-    }),
-  );
-  return T;
-}
+export { MAP_NAMES, loadTextures, mapFile, mapsOf, nearSet } from './planetMaps';
 
 // ── Shared pieces ──
 
@@ -1260,6 +1202,13 @@ const BUILDERS = {
   ...STATIONS,
 };
 
+// The sphere's segments near (nearMaps.js swaps it in with the near maps):
+// parked 2.4 radii out the limb is about 1,900 pixels round, and at 64 a
+// chord is 30 of them, a polygon against the air; at 160, 12. Mid gets
+// fewer; low none.
+export const NEAR_SEG = { high: [160, 100], ultra: [160, 100], mid: [96, 60] };
+export const nearSegments = (level) => NEAR_SEG[level] ?? null;
+
 export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null } = {}) {
   const core = u.kind === 'core';
   // the way to the star that lights it, in the world's axes (lighting.js's
@@ -1291,13 +1240,32 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
     haloMesh.visible = false;
   }
   const p = { group, body, orbits: [], tick: [], focus: [], slot: null, onSelect: null, sun: sunW };
+  const sphere = body.geometry;
   BUILDERS[u.id]?.(p, { u, T });
+
   if (!core && p.body.material?.isMeshStandardMaterial) airGlow(p.body.material, u.rim ?? u.swatch, { night: p.night, sun: sunW });
   // the clouds' shadows, the ground's detail and a sea's glint (groundHooks),
   // the cloud layer found by its texture, wherever its builder put it
   const style = styleFor(u, T, { tier });
   let cloudMesh = null;
   if (style.clouds) group.traverse((o) => (cloudMesh ??= o.isMesh && (o.material?.map === style.clouds || o.material?.alphaMap === style.clouds) ? o : null));
+  // its sphere, and its cloud layer's, finer near: the limb a curve, not
+  // chords (a builder that made its own shape keeps it; each finer one
+  // made once, the first time it's near)
+  const fine = new Map();
+  const finer = (mesh, far, on, level) => {
+    const s = on && nearSegments(level);
+    if (s && !fine.has(mesh)) fine.set(mesh, new THREE.SphereGeometry(far.parameters.radius, s[0], s[1]));
+    mesh.geometry = s ? fine.get(mesh) : far;
+  };
+  const cloudSphere = cloudMesh?.geometry?.type === 'SphereGeometry' ? cloudMesh.geometry : null;
+  const nearGeometry =
+    core || body.geometry !== sphere
+      ? undefined
+      : (on, level = 'high') => {
+          finer(body, sphere, on, level);
+          if (cloudSphere) finer(cloudMesh, cloudSphere, on, level);
+        };
   const ground = !core && p.body.material?.isMeshStandardMaterial ? groundHooks(p.body.material, { ...style, clouds: cloudMesh ? style.clouds : null }) : null;
   if (key && !core && p.body.material?.isMeshStandardMaterial) keyHook(p.body.material, key, sunW);
   // (with real air round it, the air draws the limb: the rim in its ground goes)
@@ -1310,6 +1278,8 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
     group.add(sign);
     p.tick.push(facing(sign));
   }
+  // its near maps (nearMaps.js) in place of its own (planetMaps.js)
+  const swapMaps = mapSwapper(group, T, mapsOf(u.id));
   const spin = core ? 0 : 0.05 + rng(`${u.id}-spin`)() * 0.05;
   let turn0 = body.rotation.y;
   let held = null; // the turn it's held at, while someone stands on it
@@ -1325,6 +1295,9 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
     // what a crash lays its shockwave on (a station's is hidden: none)
     surface: core ? null : body,
     body,
+    swapMaps,
+    nearSet: (level) => (core ? [] : nearSet(u.id, level)),
+    nearGeometry,
     get air() {
       return air;
     },

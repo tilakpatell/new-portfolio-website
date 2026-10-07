@@ -17,10 +17,11 @@
 // Picking a place anywhere on the map (its name, the panel, the nav map)
 // goes by the drive picked.
 
-import { EDGE, GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, forward, parkAt, step } from './ship';
+import { EDGE, GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, forward, headingTo, parkAt, step } from './ship';
+import { portalById } from './portals';
 import { MAW, parkNear } from './maw';
 import { WONDERS, reachOf } from './deep';
-import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
+import { HOME_RADIUS, ORDER, POSITIONS, REACH, sectorOf } from './layout';
 import { MOONS, byId } from './universes';
 import { LENGTH } from './scale';
 import { SYSTEM_MARKS, SYSTEM_NAMES } from '../galaxy/names';
@@ -69,7 +70,7 @@ export function hyperState({ last = null, now = 0, interdicted = false } = {}) {
 }
 
 // What each wonder is, in a line (they have no page: the crews have their say as you pass)
-const WONDER_KIND = { 'gas-giant': 'Gas giant', 'ice-giant': 'Ice giant', star: 'Star', 'black-hole': 'Black hole', nebula: 'Nebula', citadel: 'Space station', pulsar: 'Pulsar', binary: 'Binary star', rogue: 'Rogue planet', graveyard: 'Wreck field' };
+const WONDER_KIND = { portal: 'Portal', 'gas-giant': 'Gas giant', 'ice-giant': 'Ice giant', star: 'Star', 'black-hole': 'Black hole', nebula: 'Nebula', citadel: 'Space station', pulsar: 'Pulsar', binary: 'Binary star', rogue: 'Rogue planet', graveyard: 'Wreck field' };
 const WONDER_ABOUT = {
   aurelia: 'A ringed gas giant, bigger than any world on the map. Its rings go a long way out.',
   glacia: 'An ice giant: cold, blue and very quiet.',
@@ -78,7 +79,10 @@ const WONDER_ABOUT = {
   maw: 'A black hole. The nav computer stops you at the edge of its pull: past that it has you, and on its far side is a friend’s universe.',
   veil: 'A nebula, purple and rose. Not solid: fly right through it on the pulse drive.',
   cradle: 'A green and gold nebula. Not solid: fly right through it on the pulse drive.',
-  citadel: 'The Citadel of Ricks. Fly into it too fast and you’re inside its world.',
+  citadel: 'The Citadel of Ricks, at the middle of its own sector of space. Fly into it too fast and you’re inside its world.',
+  curvesun: 'The Rick and Morty sector’s own sun, a little green: everything in the Curve is a little off.',
+  rmportal: 'A green portal beside the Rick and Morty planet. Fly into it and you come out by the Citadel, in a sector of space of its own.',
+  'rmportal-back': 'The portal home, beside the Citadel. Fly into it and you come out by the Rick and Morty planet.',
   lantern: 'A pulsar: a dead star the size of a city, spinning, two beams of light sweeping round it. Nobody goes near.',
   twins: 'Two suns, one gold and one white, close enough to share a bridge of burning gas.',
   wanderer: 'A rogue planet with no sun of its own: dark, ice-crusted, lit only by its auroras and a thin ring of ice. Far out, below the disc.',
@@ -109,16 +113,16 @@ export const DESTINATIONS = [
       to: u.to,
     };
   }),
-  // the Rick and Morty system's moons, round the Citadel
+  // the Rick and Morty sector's worlds, round the Citadel
   ...MOONS.map((m) => ({
     id: m.id,
     name: m.label,
     kind: 'world',
     type: 'Rick and Morty',
-    at: m.at,
+    at: POSITIONS[m.id],
     reach: REACH[m.id],
     color: m.swatch,
-    about: `${m.label}, a planet from Rick and Morty, in the Citadel's system. The portal gun on the C-137 page dials it too.`,
+    about: `${m.label}, a planet from Rick and Morty, out in the Citadel's own sector of space. The portal gun on the C-137 page dials it too.`,
     to: m.to,
   })),
   ...WONDERS.map((w) => ({
@@ -144,7 +148,7 @@ export const DESTINATIONS = [
     to: `/galaxy/${id}`,
     via: 'starwars',
   })),
-];
+].map((d) => ({ ...d, sector: sectorOf(...d.at) })); // (which sector of the map it's in: layout.js)
 const BY_ID = new Map(DESTINATIONS.map((d) => [d.id, d])); // (a Map: a word from a visitor is never a prototype's key here)
 export const destinationById = (id) => BY_ID.get(id) ?? null;
 // the place on this map a trip to `id` really goes to: a system's gate, else itself
@@ -179,9 +183,10 @@ export function findDestination(query = '') {
 
 // the grand tour: every station, world and wonder (the systems are the
 // galaxy's own), from wherever the ship is, nearest first and on from each
-// to its nearest left
+// to its nearest left (by default, the places in the sector it's in)
 export const TOUR_IDS = DESTINATIONS.filter((d) => d.kind !== 'system').map((d) => d.id);
-export function tourFrom(ship, ids = TOUR_IDS) {
+export const tourIdsIn = (sector) => TOUR_IDS.filter((id) => BY_ID.get(id).sector === sector);
+export function tourFrom(ship, ids = tourIdsIn(sectorOf(ship.x, ship.y ?? 0, ship.z))) {
   const left = new Set(ids);
   const order = [];
   let at = { x: ship.x, y: ship.y ?? 0, z: ship.z };
@@ -203,15 +208,19 @@ export function tourFrom(ship, ids = TOUR_IDS) {
 export function parkFor(id, from) {
   id = goalOf(id);
   if (id === MAW.id) return parkNear(from);
+  // (a portal: right into its middle, so the ship goes through: portals.js)
+  const portal = portalById(id);
+  if (portal) return { x: portal.at[0], y: portal.at[1], z: portal.at[2], heading: headingTo(portal.at[0] - from[0], portal.at[2] - from[1]) };
   return parkAt(id, from);
 }
 
 // Where a rift (director.js) comes out: any place or wonder on the map but
 // the one you're at (`fromId`, or null for nowhere) and the Maw (nobody's
 // thrown into a black hole), never a part of one (the Citadel's domes)
-const RIFT_EXITS = Object.keys(GOALS).filter((id) => id !== MAW.id && !id.includes('-'));
-export function riftExit(fromId = null, rand = Math.random) {
-  const exits = RIFT_EXITS.filter((id) => id !== fromId);
+// (and never a portal, and never out of the sector it opened in: `sector`, layout.js)
+const RIFT_EXITS = Object.keys(GOALS).filter((id) => id !== MAW.id && !id.includes('-') && !portalById(id));
+export function riftExit(fromId = null, rand = Math.random, sector = 'main') {
+  const exits = RIFT_EXITS.filter((id) => id !== fromId && sectorOf(...GOALS[id].at) === sector);
   return exits[Math.min(exits.length - 1, Math.floor(rand() * exits.length))];
 }
 
