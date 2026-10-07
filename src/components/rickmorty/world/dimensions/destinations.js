@@ -32,7 +32,9 @@ export const GARAGE_BACK = { x: -301.2, z: 101.4, face: 0 };
 // getting home through the portal inside `s` seconds is `task` done.
 // `goal`: the hotspot the map points to for the place's thing to do, where
 // no talk or escape says (the Vindicators' door to Rick's rooms).
-function place(i, { id, name, note, kind, deep, wide, sky, ceiling, people = [], extras = [], spots = [], solids = [], tasks = [], say = {}, done = {}, unlock = {}, acts = {}, escape = null, goal = null, kinds = [] }) {
+// `collect`: a task done once every one of its `spots` has been used on a
+// visit (the simulation's slips).
+function place(i, { id, name, note, kind, deep, wide, sky, ceiling, people = [], extras = [], spots = [], solids = [], tasks = [], say = {}, done = {}, unlock = {}, acts = {}, escape = null, goal = null, collect = null, kinds = [] }) {
   const area = destArea(i, deep, wide);
   const cx = DEST_X;
   const cz = destZ(i);
@@ -63,6 +65,7 @@ function place(i, { id, name, note, kind, deep, wide, sky, ceiling, people = [],
     acts,
     escape,
     goal,
+    collect,
     kinds,
   };
 }
@@ -612,6 +615,117 @@ export const DESTINATIONS = [
     },
     goal: 'saw',
     kinds: ['vance', 'supernova', 'alanrails', 'millionants', 'crocubot', 'noobnoob', 'vindicators-ship'],
+  }),
+  place(13, {
+    id: 'simulation',
+    name: 'The Zigerions’ simulation',
+    note: 'A copy of the Smiths’ street, run by the Zigerions to get Rick’s recipe. They’ve cut corners.',
+    kind: 'room',
+    deep: 40,
+    wide: 56,
+    ceiling: 9,
+    people: [
+      { id: 'nebulon', dx: 0, dz: -17.4, y: 3.2, face: S },
+      { id: 'zig-console-a', who: 'zigerion-b', dx: -7, dz: -17.6, y: 3.2, face: S },
+      { id: 'zig-console-b', who: 'zigerion-c', dx: 7, dz: -17.6, y: 3.2, face: S },
+    ],
+    spots: [
+      { id: 'twins', dx: 0, dz: 4, label: 'Two men, the same man', verb: 'Look', r: 1.8 },
+      { id: 'poptart', dx: 17, dz: 7, label: 'A pop-tart in a toaster', verb: 'Look', r: 1.8 },
+      { id: 'sun', dx: 24.6, dz: -4, label: 'The sun', verb: 'Look', r: 2 },
+      { id: 'simhouse', dx: -12, dz: -3.4, label: 'The Smiths’ house', verb: 'Look', r: 1.8 },
+      { id: 'nebulon', dx: 0, dz: -13.6, label: 'Prince Nebulon', verb: 'Call up', r: 1.8 },
+      { id: 'consoles', dx: 7, dz: -13.6, label: 'The consoles', verb: 'Look', r: 1.8 },
+    ],
+    solids: [
+      { id: 'walkway', dx: 0, dz: -17.6, w: 56, d: 4.8 },
+      { id: 'simhouse', dx: -12, dz: -8.6, w: 10, d: 8 },
+      { id: 'simhouse-b', dx: 12, dz: -8.6, w: 9, d: 7 },
+      { id: 'toaster', dx: 17, dz: 10.4, w: 5, d: 3.6 },
+      { id: 'twin-a', dx: -0.8, dz: 5.6, r: 0.4 },
+      { id: 'twin-b', dx: 0.8, dz: 5.6, r: 0.4 },
+    ],
+    tasks: [{ id: 'simulation', name: 'Spot the simulation', hint: 'Dial the Zigerions’ simulation on the portal gun, and find three things they got wrong.' }],
+    say: {
+      twins: { who: null, text: 'Two men walking the same way, the same face, the same step. One of them says “Hello” and the other one says it too. Slip one.' },
+      poptart: { who: null, text: 'A pop-tart, living in a toaster. He waves. Nobody in the real street does that. Slip two.' },
+      sun: { who: null, text: 'The sun is a yellow disc painted on the wall. It hasn’t moved all day. Slip three.' },
+      simhouse: { who: null, text: 'The Smiths’ house, in two colours, with the windows painted on. The door doesn’t open.' },
+      nebulon: { who: 'Prince Nebulon', text: 'Is it the kid? Of course it’s the kid. We don’t have the processing power for a Rick. Just act natural down there and tell us the recipe for concentrated dark matter.' },
+      consoles: { who: null, text: 'Two Zigerions at the consoles, running the street. One of them is scrolling. The other is asleep.' },
+    },
+    collect: { task: 'simulation', spots: ['twins', 'poptart', 'sun'] },
+    goal: 'twins',
+    kinds: ['nebulon', 'zigerion-b', 'zigerion-c'],
+  }),
+  place(14, {
+    id: 'storytrain',
+    name: 'The Story Train',
+    note: 'A carriage on the Story Train, the anthology going past the windows. Someone wants to see your ticket.',
+    kind: 'room',
+    deep: 30,
+    wide: 10,
+    ceiling: 3.4,
+    people: [
+      { id: 'storylord', dx: 0, dz: -13, face: S },
+      { id: 'ticketsguy', dx: 0, dz: -3, face: S },
+    ],
+    spots: [
+      { id: 'storylord', dx: 0, dz: -11.4, label: 'Story Lord', verb: 'Talk' },
+      { id: 'ticketsguy', dx: 0, dz: -1.6, label: 'The conductor', verb: 'Talk' },
+      { id: 'trainticket', dx: 2.2, dz: 6.6, label: 'Something under the seat', verb: 'Reach for', r: 1.2 },
+      { id: 'trainwindow', dx: -3.4, dz: 1, label: 'The window', verb: 'Look', r: 1.4 },
+      { id: 'routemap', dx: 1.6, dz: -7.5, label: 'The route map', verb: 'Look', r: 1.2 },
+    ],
+    solids: [
+      ...[-10, -7.5, -5, -2.5, 0, 2.5, 5, 7.5, 10].flatMap((dz) => [
+        { id: `seat-w${dz}`, dx: -3.1, dz, w: 2.9, d: 1.1 },
+        { id: `seat-e${dz}`, dx: 3.1, dz, w: 2.9, d: 1.1 },
+      ]),
+    ],
+    tasks: [{ id: 'storytrain', name: 'Find your ticket', hint: 'Dial the Story Train on the portal gun, and find a ticket before the conductor gets to you.' }],
+    say: {
+      storylord: { who: 'Story Lord', text: 'I am Story Lord. This train runs on stories, and yours has been meandering for a while, Morty. Give me a beat. Any beat.' },
+      ticketsguy: { who: 'The conductor', text: 'Tickets, please. No ticket, no ride. Rules of the anthology.' },
+      trainticket: { who: null, text: 'A ticket, folded under the seat. Someone got off in a hurry. It’s yours now. Tickets, please.' },
+      trainwindow: { who: null, text: 'The windows show the stories as they pass: a wedding, a heist, a man who is also a train. None of them stop long enough to make sense.' },
+      routemap: { who: null, text: 'The route: Cold Open, Act One, Act Two, Act Three, Tag. The train is running late past Act Two.' },
+    },
+    done: { trainticket: 'storytrain' },
+    kinds: ['storylord', 'ticketsguy'],
+  }),
+  place(15, {
+    id: 'fortress',
+    name: 'Rick Prime’s fortress',
+    note: 'A cold hangar of Rick Prime’s, somewhere out past the Central Finite Curve. The Omega Device is here.',
+    kind: 'room',
+    deep: 36,
+    wide: 40,
+    ceiling: 12,
+    people: [{ id: 'rickprime', dx: 0, dz: -12.4, face: S, until: 'fortress' }],
+    spots: [
+      { id: 'omegadevice', dx: 5, dz: -1.8, label: 'The Omega Device', verb: 'Look', r: 1.9 },
+      { id: 'primeconsole', dx: 0, dz: -10.6, label: 'Rick Prime’s console', verb: 'Reach', r: 1.6 },
+      { id: 'primetanks', dx: -16, dz: 0, label: 'The tanks', verb: 'Look', r: 2.2 },
+      { id: 'primepicture', dx: 17.6, dz: -8, label: 'A picture on the wall', verb: 'Look', r: 1.6 },
+    ],
+    solids: [
+      { id: 'plinth', dx: 5, dz: -4, r: 1.5 },
+      { id: 'primeconsole', dx: 0, dz: -14, w: 7, d: 1.6 },
+      ...[-10, -6, -2, 2, 6, 10].map((dz) => ({ id: `tank${dz}`, dx: -18.2, dz, r: 1.1 })),
+      { id: 'crate-a', dx: 14, dz: 10, w: 2.4, d: 2.4 },
+      { id: 'crate-b', dx: 16.6, dz: 8, w: 1.8, d: 1.8 },
+    ],
+    tasks: [{ id: 'fortress', name: 'Reach Rick Prime', hint: 'Dial Rick Prime’s fortress on the portal gun, and get to his console before he’s gone.' }],
+    say: {
+      omegadevice: { who: null, text: 'The Omega Device. Rick built one to erase Diane from every dimension. Rick Prime built this one, and used it.' },
+      primeconsole: { who: 'Rick Prime', text: '“Oh, it’s the backup. Tell him I said hi, kid. Tell him he’s still boring.” A portal opens behind him and he steps through it without looking back.' },
+      primetanks: { who: null, text: 'Tanks along the wall, each with a Rick in it, half-made. He keeps spares.' },
+      primepicture: { who: null, text: 'A framed picture of a garage. There’s a family in it. Somebody has drawn over two of their faces.' },
+    },
+    done: { primeconsole: 'fortress' },
+    acts: { primeconsole: 'gone' },
+    kinds: ['rickprime'],
   }),
 ];
 

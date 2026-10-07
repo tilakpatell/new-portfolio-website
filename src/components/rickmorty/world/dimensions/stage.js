@@ -99,7 +99,7 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
   // the place's people and its crowd, from ./destinations.js (`extras`:
   // what the crowd stands with, as `when` for a crowd that runs off)
   const people = ({ extras = {} } = {}) => {
-    for (const p of d.people) figure(p.who ?? p.id, { x: p.x, z: p.z, face: p.face, until: p.until, after: p.after });
+    for (const p of d.people) figure(p.who ?? p.id, { x: p.x, z: p.z, y: p.y ?? 0, face: p.face, until: p.until, after: p.after });
     for (const e of d.extras) figure(e.kind, { x: e.x, z: e.z, face: e.face, ...extras });
   };
 

@@ -994,7 +994,9 @@
   },
   "nebulon": {
     "image": "01a11389-a0b9-7220-900e-d06a5aacc9d4",
-    "model": "01a1138c-5903-744b-b5ed-660261d17b02"
+    "model": "01a1138c-5903-744b-b5ed-660261d17b02",
+    "rig": "01a113ce-1afe-71f2-8ca7-d905fa517c6c",
+    "idle": "01a113ce-6794-725c-82d1-8407d8891c4c"
   },
   "zigerion-b": {
     "image": "01a11389-a0d0-704d-800b-471b62159821",
@@ -1006,10 +1008,14 @@
   },
   "storylord": {
     "image": "01a11389-a0d7-7211-b90e-f470df56b325",
-    "model": "01a1138c-5889-7392-bfa4-40674c836b2d"
+    "model": "01a1138c-5889-7392-bfa4-40674c836b2d",
+    "rig": "01a113ce-1ae4-75c4-adda-ea5af013bd1e",
+    "idle": "01a113ce-6792-757a-b6e5-a2ba196731e0"
   },
   "ticketsguy": {
     "image": "01a1138a-05a7-7219-85b9-407b9c95c789",
-    "model": "01a1138d-61f9-70be-9c26-f015a76ba424"
+    "model": "01a1138d-61f9-70be-9c26-f015a76ba424",
+    "rig": "01a113ce-1b25-728b-99a3-b7a8b66c1c8b",
+    "idle": "01a113ce-6799-7117-8816-e223d0ec68bf"
   }
 }

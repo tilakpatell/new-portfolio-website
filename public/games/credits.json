@@ -2733,5 +2733,50 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/nebulon": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1138c-5903-744b-b5ed-660261d17b02",
+    "name": "nebulon, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/storylord": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1138c-5889-7392-bfa4-40674c836b2d",
+    "name": "storylord, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/ticketsguy": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1138d-61f9-70be-9c26-f015a76ba424",
+    "name": "ticketsguy, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/zigerion-b": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1138c-5903-7425-b9cf-a30957112279",
+    "name": "zigerion-b, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/zigerion-c": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1138c-5905-7698-9613-9c0c3767bf03",
+    "name": "zigerion-c, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }

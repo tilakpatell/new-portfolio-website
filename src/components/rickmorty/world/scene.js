@@ -86,6 +86,9 @@ export const LAZY = {
   pluto: () => import('./dimensions/pluto').then((m) => m.buildPluto),
   gearworld: () => import('./dimensions/gearworld').then((m) => m.buildGearworld),
   vindicators: () => import('./dimensions/vindicators').then((m) => m.buildVindicators),
+  simulation: () => import('./dimensions/simulation').then((m) => m.buildSimulation),
+  storytrain: () => import('./dimensions/storytrain').then((m) => m.buildStorytrain),
+  fortress: () => import('./dimensions/fortress').then((m) => m.buildFortress),
 };
 
 // The cruiser's headlights, which are its eyes (the saucer's, in the hull's
