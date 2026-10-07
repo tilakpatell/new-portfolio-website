@@ -35,7 +35,7 @@ The measurements and the plan are the other sessions' `docs/research/2026-10-05-
 - [ ] **Galaxy surfaces: what the filled-worlds PR left.** `docs/superpowers/HANDOFF-galaxy-surfaces.md`, "The filled worlds › Left": Echo Base's hangar face, Endor's 6.5M triangles at the landing. One item a run.
 - [ ] **Galaxy combat: what the duellists PR left.** `docs/superpowers/HANDOFF-galaxy-surfaces.md`, "Duellists… › Left": more duellists (a Magnaguard, an Inquisitor, Maul), a rigged duellist, perks earned by the missions' stars. One item a run.
 - [ ] **Galaxy heroes: what the saber PR left.** `docs/superpowers/HANDOFF-galaxy-surfaces.md`, "Heroes, the lightsaber… › Left": other pilots' blades lit online, a two-handed grip, a hanging carry for the hilt, a visible blade on the Dagobah vision. One item a run.
-- [ ] **Galaxy missions still briefings.** `docs/superpowers/specs/2026-10-05-galaxy-games-design.md`: one mission a run, the smallest first, with its rules tested. (Hoth's and Geonosis's ground battles are the galactic assaults: `docs/superpowers/HANDOFF-galactic-assault.md` has what's left on those, a map a run: Kashyyyk's beach, Endor's bunker, Scarif's.)
+- [ ] **Galaxy missions still briefings.** `docs/superpowers/specs/2026-10-05-galaxy-games-design.md`: one mission a run, the smallest first, with its rules tested. (The ground battles of Hoth, Geonosis, Scarif and Endor are the galactic assaults: `docs/superpowers/HANDOFF-galactic-assault.md` has what's left on those, a map a run: Kashyyyk's beach next.)
 
 ## Done
 

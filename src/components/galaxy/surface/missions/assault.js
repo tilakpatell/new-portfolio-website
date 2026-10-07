@@ -8,6 +8,16 @@
 // no tickets and nobody standing has lost. Pure and seeded, so it's
 // tested; the drawing is assaultScene.js and the surface scene runs it.
 //
+// The soldiers fight in squads (RULES.squad to a squad): a squad goes
+// where its leader goes, so a side arrives at a post as fire teams, not a
+// line of ones, and each squad comes at a post from its own side (a
+// `flank`: straight in, or round to the left or the right). Under fire a
+// soldier is suppressed (`suppress`, 0…1, up with every bolt that comes
+// its way and fading): kept down, it shoots worse and moves at a crouch,
+// and it looks for cover, the far side of the nearest rock, crate or wall
+// from whoever's shooting (the world's solids, `env.solids`), and holds
+// there a while, where a bolt is less likely to find it.
+//
 // Design: docs/superpowers/specs/2026-10-06-galactic-assault-design.md
 
 import { pushOut, turnToward } from '../walker';
@@ -17,7 +27,9 @@ import { starsFor } from './chase';
 export const RULES = {
   capture: 0.08, // a post's meter, a second, for each soldier of advantage
   advantage: 4, // soldiers of advantage that count, at most
-  respawn: 6, // seconds down before a soldier comes back
+  respawn: 5, // seconds down before a soldier may come back
+  wave: 6, // seconds between the attackers' waves: the soldiers down long enough come back together, as a squad
+  waveDefend: 9, // and the defenders', slower: their reinforcements come up from the rear
   range: 48, // metres: a soldier fires at an enemy this near
   every: 1.1, // seconds between a soldier's shots (give or take)
   accuracy: [0.55, 0.15], // a shot's chance to hit another soldier, point blank and at the edge of range
@@ -32,6 +44,16 @@ export const RULES = {
   atYouMax: 3, // enemies firing at you at once, at most
   spacing: 1.4, // metres between soldiers
   retarget: 2, // seconds between a soldier's looks at where it should be
+  squad: 4, // soldiers to a squad: they go where their leader goes
+  flank: 0.75, // radians a flanking squad comes round a post by, either way
+  suppress: 0.35, // what a bolt coming its way adds to a soldier's suppression (0…1)
+  suppressFade: 0.25, // a second, off again
+  suppressed: 0.45, // over this a soldier keeps its head down: half as accurate, at a crouch
+  crouch: 0.55, // of the walk, keeping its head down
+  coverRange: 16, // metres: how far a soldier under fire looks for cover
+  coverHold: 10, // seconds it stays behind it before looking about again
+  coverHit: 0.5, // of a hit's chance, on a soldier in cover
+  forward: 70, // metres short of their objective the attackers' reinforcements come onto the field (a staging line, just out of range)
 };
 // soldiers a side, by the device's tier (lib/device)
 export const SOLDIERS = { high: 14, mid: 9, low: 6 };
@@ -69,8 +91,19 @@ export function newBattle(mission, { n = SOLDIERS.high, seed = 1 } = {}) {
   const posts = mission.posts.map((p) => ({ id: p.id, name: p.name, at: p.at, r: p.r, fixed: p.fixed ?? null, owner: p.fixed ?? 'defend', meter: 1, taking: null, inside: { attack: 0, defend: 0 }, youIn: false }));
   const soldiers = [];
   for (const side of ['attack', 'defend'])
-    for (let i = 0; i < n; i++) soldiers.push({ id: soldiers.length, side, kind: pickKind(mission.sides[side].kinds, kr), x: 0, z: 0, yaw: 0, hp: RULES.hp, up: false, down: 0, post: null, spot: null, cool: 1 + r() * 2, wait: 0, target: null, move: 0, detour: 0 });
-  return { mission, r, t: 0, phase: 'choose', phaseIndex: 0, result: null, posts, soldiers, tickets: { ...mission.tickets }, you: { side: null, up: false, x: 0, z: 0, kills: 0, captures: 0, deaths: 0, in: null, state: null }, feed: [] };
+    for (let i = 0; i < n; i++) {
+      // (its squad, and which way the squad comes at a post: the first straight in, the next two round either flank)
+      const squad = Math.floor(i / RULES.squad);
+      const flank = [0, 1, -1][squad % 3];
+      soldiers.push({ id: soldiers.length, side, kind: pickKind(mission.sides[side].kinds, kr), squad, flank, x: 0, z: 0, yaw: 0, hp: RULES.hp, up: false, down: 0, post: null, spot: null, cool: 1 + r() * 2, wait: 0, target: null, move: 0, detour: 0, suppress: 0, cover: null, coverAt: -99, inCover: false });
+    }
+  return { mission, r, t: 0, phase: 'choose', phaseIndex: 0, result: null, posts, soldiers, tickets: { ...mission.tickets }, waveAt: { attack: 0, defend: 0 }, you: { side: null, up: false, x: 0, z: 0, kills: 0, captures: 0, deaths: 0, in: null, state: null }, feed: [] };
+}
+
+// a squad's leader: the first of it still standing (null with nobody up)
+export function leaderOf(b, s) {
+  for (const o of b.soldiers) if (o.side === s.side && o.squad === s.squad && o.up) return o;
+  return null;
 }
 
 const feed = (b, kind, text) => {
@@ -103,14 +136,36 @@ function spawnPost(b, side) {
   if (quiet.length) return quiet[Math.floor(b.r() * quiet.length)];
   return own.find((p) => p.fixed === side) ?? own[0];
 }
-// a spot inside a post, well in from its edge
-const spotIn = (b, p, k = 0.7) => {
-  const a = b.r() * Math.PI * 2;
-  const d = Math.sqrt(b.r()) * p.r * k;
+// Where an attacker comes back onto the field: not at its post, which may
+// be a long walk from the fight, but on a staging line RULES.forward metres
+// short of its objective along the way there from the post (never past the
+// post itself, and spread a little along the line). The defenders come back
+// inside their posts. Pure.
+export function forwardOf(b, p, objective, r = b.r) {
+  if (!objective) return spotIn(b, p);
+  const dx = objective[0] - p.at[0];
+  const dz = objective[1] - p.at[1];
+  const d = Math.hypot(dx, dz);
+  const along = Math.max(0, d - RULES.forward);
+  if (along <= p.r) return spotIn(b, p);
+  const k = along / d;
+  // (a few metres across the line, so a wave doesn't come back in a stack)
+  const across = (r() - 0.5) * 16;
+  return [p.at[0] + dx * k - (dz / d) * across, p.at[1] + dz * k + (dx / d) * across];
+}
+
+// a spot inside a post, well in from its edge: anywhere in it, or (given
+// where the soldier comes from, and its squad's flank) on the near side of
+// it, turned round by the flank, so a squad arrives on its own side
+const spotIn = (b, p, k = 0.7, from = null, flank = 0) => {
+  let a = b.r() * Math.PI * 2;
+  if (from) a = Math.atan2(from[1] - p.at[1], from[0] - p.at[0]) + flank * RULES.flank + (b.r() - 0.5) * 0.9;
+  const d = (from ? 0.45 + 0.55 * Math.sqrt(b.r()) : Math.sqrt(b.r())) * p.r * k;
   return [p.at[0] + Math.cos(a) * d, p.at[1] + Math.sin(a) * d];
 };
-function place(b, s, p) {
+function place(b, s, p, { forward = false } = {}) {
   [s.x, s.z] = spotIn(b, p);
+  if (forward && s.side === 'attack') [s.x, s.z] = forwardOf(b, p, objectiveFor(b, 'attack', p.at[0], p.at[1]));
   const o = objectiveFor(b, s.side, s.x, s.z);
   s.yaw = o ? Math.atan2(o[0] - s.x, o[1] - s.z) : 0;
   s.up = true;
@@ -120,6 +175,9 @@ function place(b, s, p) {
   s.spot = null;
   s.target = null;
   s.cool = 0.8 + b.r() * 1.5;
+  s.suppress = 0;
+  s.cover = null;
+  s.inCover = false;
 }
 
 // Where a side is wanted: the attackers at the nearest live post that isn't
@@ -154,6 +212,16 @@ export function chooseSide(b, side) {
 // scoring its distance and 25 m a soldier already sent there
 function pickPost(b, s) {
   const live = livePosts(b);
+  // (not the leader: where the leader's going, on the squad's flank)
+  const lead = leaderOf(b, s);
+  if (lead && lead !== s && lead.post && isLive(b, lead.post)) {
+    if (lead.post !== s.post) {
+      s.post = lead.post;
+      s.spot = spotIn(b, b.posts.find((p) => p.id === lead.post), 0.75, [s.x, s.z], s.flank);
+    }
+    s.wait = RULES.retarget * (0.8 + 0.4 * b.r());
+    return;
+  }
   let list = s.side === 'attack' ? live.filter((p) => p.owner !== 'attack') : live;
   if (!list.length) list = live;
   const sent = {};
@@ -174,9 +242,33 @@ function pickPost(b, s) {
   }
   if (best && best.id !== s.post) {
     s.post = best.id;
-    s.spot = spotIn(b, best, 0.75);
+    s.spot = spotIn(b, best, 0.75, [s.x, s.z], s.flank);
   }
   s.wait = RULES.retarget * (0.8 + 0.4 * b.r());
+}
+
+// Cover from a shooter at (tx, tz): the far side of the nearest solid
+// within RULES.coverRange of the soldier (a rock, a crate, a wall's end;
+// nothing too big to get round, nothing too small to hide behind), a step
+// out from it, or null. Pure.
+export function coverFrom(solids, s, tx, tz, range = RULES.coverRange) {
+  let best = null;
+  let bestD = Infinity;
+  for (const sol of solids.near(s.x, s.z, range)) {
+    if (sol.off) continue;
+    const ext = sol.type === 'circle' ? sol.r : Math.max(sol.hw, sol.hd);
+    if (ext < 0.35 || ext > 9) continue;
+    const dx = sol.x - tx;
+    const dz = sol.z - tz;
+    const d = Math.hypot(dx, dz) || 1;
+    const x = sol.x + (dx / d) * (ext + 0.9);
+    const z = sol.z + (dz / d) * (ext + 0.9);
+    const dd = dist(s.x, s.z, x, z);
+    if (dd > range || dd >= bestD) continue;
+    best = [x, z];
+    bestD = dd;
+  }
+  return best;
 }
 
 function hurt(b, s, damage, by, out) {
@@ -276,15 +368,23 @@ function step(b, h, you, env, out) {
   // ── who may fire at you: the nearest few ──
   const atYou = youOn ? b.soldiers.filter((s) => s.up && s.side !== b.you.side && dist(s.x, s.z, b.you.x, b.you.z) <= RULES.range).sort((p, q) => dist(p.x, p.z, b.you.x, b.you.z) - dist(q.x, q.z, b.you.x, b.you.z)).slice(0, RULES.atYouMax) : [];
   // ── the soldiers ──
+  // (a side's wave: everyone of it down long enough comes back now, together)
+  const wave = { attack: b.t >= b.waveAt.attack, defend: b.t >= b.waveAt.defend };
   for (const s of b.soldiers) {
     if (!s.up) {
       s.down += h;
-      if (s.down >= RULES.respawn && b.tickets[s.side] > 0) {
+      if (s.down >= RULES.respawn && wave[s.side] && b.tickets[s.side] > 0) {
         b.tickets[s.side] -= 1;
-        place(b, s, spawnPost(b, s.side));
+        place(b, s, spawnPost(b, s.side), { forward: true });
         out.push({ type: 'spawn', id: s.id });
       }
       continue;
+    }
+    // its nerve coming back, and the cover it took no longer wanted
+    s.suppress = Math.max(0, s.suppress - RULES.suppressFade * h);
+    if (s.cover && (b.t - s.coverAt > RULES.coverHold || !s.target)) {
+      s.cover = null;
+      s.inCover = false;
     }
     // where it's going
     s.wait -= h;
@@ -304,20 +404,32 @@ function step(b, h, you, env, out) {
       }
     }
     s.target = target ? (target.you ? 'you' : target.id) : null;
-    // on toward its spot, turned to its target if it has one
-    if (!s.frozen && s.spot) {
-      const d = dist(s.x, s.z, s.spot[0], s.spot[1]);
-      const want = target ? Math.atan2(target.x - s.x, target.z - s.z) : Math.atan2(s.spot[0] - s.x, s.spot[1] - s.z);
+    // kept down by the fire coming its way (or hurt), it looks for cover
+    const down = s.suppress > RULES.suppressed || s.hp < RULES.hp * 0.4;
+    if (target && down && !s.cover && !s.frozen) {
+      const c = coverFrom(env.solids, s, target.x, target.z);
+      if (c) {
+        s.cover = c;
+        s.coverAt = b.t;
+      }
+    }
+    // on toward its spot (or its cover), turned to its target if it has one
+    const goal = s.cover ?? s.spot;
+    if (!s.frozen && goal) {
+      const d = dist(s.x, s.z, goal[0], goal[1]);
+      const want = target ? Math.atan2(target.x - s.x, target.z - s.z) : Math.atan2(goal[0] - s.x, goal[1] - s.z);
       s.yaw = turnToward(s.yaw, want, RULES.turn * h);
       let nx = s.x;
       let nz = s.z;
+      s.inCover = Boolean(s.cover) && d <= 1.6;
       if (d > 1.2) {
-        const speed = RULES.walk * (target ? RULES.engaged : 1) * h;
-        const ux = (s.spot[0] - s.x) / d;
-        const uz = (s.spot[1] - s.z) / d;
+        const crouch = down ? RULES.crouch : 1;
+        const speed = RULES.walk * (target ? RULES.engaged : 1) * crouch * h;
+        const ux = (goal[0] - s.x) / d;
+        const uz = (goal[1] - s.z) / d;
         nx += ux * speed;
         nz += uz * speed;
-        s.move = target ? 0.65 : 1;
+        s.move = (target ? 0.65 : 1) * crouch;
         // round what's solid: pushed out of it, and while something's in
         // the way, along its face (the way the pushes point, turned a
         // quarter: a side picked once and kept, swapped if it's got nowhere
@@ -353,7 +465,7 @@ function step(b, h, you, env, out) {
         }
       } else {
         s.move = 0;
-        if (b.r() < h / 8) s.spot = spotIn(b, b.posts.find((p) => p.id === s.post), 0.75);
+        if (!s.cover && b.r() < h / 8) s.spot = spotIn(b, b.posts.find((p) => p.id === s.post), 0.75);
       }
       // not into each other
       for (const o of b.soldiers) {
@@ -381,12 +493,19 @@ function step(b, h, you, env, out) {
       if (target.you) out.push({ type: 'shot', id: s.id, side: s.side, from: [s.x, s.z], to: [target.x, target.z], atYou: true, hit: null });
       else {
         const [a0, a1] = RULES.accuracy;
-        const hit = b.r() < a0 + (a1 - a0) * Math.min(1, d / RULES.range);
+        // (worse with its head down; and a target behind cover is harder to find)
+        let chance = a0 + (a1 - a0) * Math.min(1, d / RULES.range);
+        if (s.suppress > RULES.suppressed) chance *= 0.5;
+        if (target.inCover) chance *= RULES.coverHit;
+        const hit = b.r() < chance;
+        target.suppress = Math.min(1, target.suppress + RULES.suppress);
         out.push({ type: 'shot', id: s.id, side: s.side, from: [s.x, s.z], to: [target.x, target.z], atYou: false, hit });
         if (hit) hurt(b, target, RULES.damage, s, out);
       }
     }
   }
+  if (wave.attack) b.waveAt.attack = b.t + RULES.wave;
+  if (wave.defend) b.waveAt.defend = b.t + RULES.waveDefend;
   // ── a side out of soldiers and tickets has lost ──
   for (const side of ['attack', 'defend']) {
     if (b.tickets[side] > 0) continue;

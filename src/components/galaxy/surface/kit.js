@@ -350,6 +350,9 @@ const LOOKS = {
   // (the bases' floors: Theed's polished slabs, a tread plate)
   tiles: { roughness: 0.6, metalness: 0, normal: 0.8 },
   deck: { roughness: 0.8, metalness: 0.6, scanMetal: true, normal: 1 },
+  // (the worlds' own rock: Geonosis's red, eroded stone; Endor's mossy boulders)
+  redrock: { roughness: 1, metalness: 0, normal: 1.2 },
+  mossrock: { roughness: 1, metalness: 0, normal: 1.2 },
 };
 // a role's repeats a metre (the scan's real size; the stand-in's own where
 // there's no scan)
@@ -381,6 +384,8 @@ export function createKit({ seed = 11, scans = true } = {}) {
     metal: std({ roughness: 0.42, metalness: 0.55, map: grime }, 0.5, 'metal'),
     stone: std({ roughness: 0.96, map: grime }, 0.18, 'stone'),
     rock: std({ roughness: 0.96, map: grime }, 0.3, 'rock'),
+    redrock: std({ roughness: 0.96, map: grime }, 0.7, 'redrock'),
+    mossrock: std({ roughness: 0.96, map: grime }, 0.33, 'mossrock'),
     adobe: std({ roughness: 0.98, map: grime }, 0.12, 'adobe'),
     wood: std({ roughness: 0.9, map: grime }, 0.5, 'wood'),
     concrete: std({ roughness: 0.9, map: grime }, 0.3, 'concrete'),

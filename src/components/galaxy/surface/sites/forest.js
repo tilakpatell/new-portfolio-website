@@ -245,6 +245,8 @@ export const SITES = {
       { kind: 'cooler', at: [18, 10.4], yaw: 2.1 },
       { kind: 'redwood', at: [-22, 24], model: false, opts: { seed: 31, h: 64, r: 2.4 } },
       { kind: 'redwood', at: [28, -26], model: false, opts: { seed: 32, h: 58, r: 2.1 } },
+      // the second Death Star, half built, over the trees (N8's model, from Sketchfab; clear of the fog, its bite turned to the forest)
+      { kind: 'ds2sky', at: [2880, -3143], abs: true, y: 2614, yaw: 2.2, solid: false, fog: false },
       { kind: 'lightshafts', at: [0, 0], opts: { ...ENDOR_SUN, n: 8, spread: 40, seed: 5 } },
       { kind: 'lightshafts', at: [130, -110], opts: { ...ENDOR_SUN, n: 8, spread: 46, seed: 7 } },
       { kind: 'lightshafts', at: [-90, 60], opts: { ...ENDOR_SUN, n: 8, spread: 46, seed: 9 } },
@@ -260,8 +262,12 @@ export const SITES = {
       { kind: 'fern', n: 160, within: [17, 60], scale: [0.9, 1.8], solid: false, clear: -30, opts: { seed: 9, n: 10, color: '#5e6230' } },
       { kind: 'fern', n: 500, within: [6, 240], scale: [0.6, 1.3], solid: false, clear: -14, opts: { seed: 6, color: '#626436', n: 7, len: 1.0 } },
       { kind: 'fern', n: 700, within: [240, 600], scale: [1.0, 2.2], solid: false, clear: -10, opts: { seed: 8, n: 9, color: '#52562c' } },
-      { kind: 'log', n: 40, within: [30, 560], scale: [0.8, 1.4], solid: false, opts: { seed: 7 } },
-      { kind: 'rock', n: 50, within: [20, 560], scale: [0.6, 2.2], opts: { color: '#6a6a5a', sharp: 0.4 } },
+      { kind: 'log', n: 70, within: [20, 560], scale: [0.8, 1.4], solid: false, opts: { seed: 7 } },
+      // (the floor's boulders mossy, as the film's are; scrub and toadstools under the ferns)
+      { kind: 'rock', n: 110, within: [14, 560], scale: [0.6, 2.4], opts: { color: '#6e7460', sharp: 0.4, to: 'mossrock' } },
+      { kind: 'stones', n: 320, within: [6, 300], scale: [0.25, 0.7], solid: false, opts: { color: '#6a6e5a', to: 'mossrock' } },
+      { kind: 'bush', n: 260, within: [10, 420], scale: [0.7, 1.5], solid: false, clear: -8, opts: { seed: 14, s: 1.8, color: '#3e4e2a' } },
+      { kind: 'fungus', n: 180, within: [6, 200], scale: [0.8, 1.6], solid: false, clear: -12, opts: { seed: 8 } },
     ],
     life: [
       { kind: 'ewok', n: 7, at: V, spread: 6, roam: 6, speed: 0.9, name: 'Ewok', says: ['Yub nub!', 'Ee chee wa maa!', '(It dances round the fire, banging a stick on a helmet.)', '(It looks at you, then at the fire, then back at you. Thoughtfully.)', 'Gunda!'] },
@@ -272,10 +278,13 @@ export const SITES = {
       { kind: 'ewok', n: 1, at: [18, -16], roam: 6, speed: 0.8, name: 'Wicket', says: ['Yub nub!', '(He pokes you with his spear, then sniffs your boots.)', '(He offers you half a strange fruit. The bitten half.)'] },
       { kind: 'ewok', n: 3, at: [-140, -164], spread: 5, roam: 6, speed: 0.9, name: 'Ewok hunter', says: ['(It points at the net, very proud of it.)', 'Ee chee wa maa!'] },
       { kind: 'ewok', n: 2, at: [148, 100], spread: 5, roam: 6, speed: 0.9, name: 'Ewok', says: ['(It mimes a log swinging, and a walker going over.)', 'Yub nub!'] },
+      // (Wicket's cousin, who wants the walker at the generator brought down the Ewok way; and a Rebel pilot on the platform's edge, after the shuttle's codes)
+      { kind: 'ewok', id: 'paploo', at: [126, 118], roam: 4, speed: 0.9, name: 'Paploo', quest: 'ewokwar', says: ['(He hefts a stone and points east, growling.)', 'Yub nub!'] },
       { kind: 'scouttrooper', n: 2, path: [[236, -30], [264, -30], [264, -12], [236, -12]], speed: 1.3, name: 'Scout trooper', says: ['Hey! You there! Freeze!', 'Go for help! Go!', 'Nobody gets in without authorisation.', 'Quiet out here. Too quiet.'] },
       { kind: 'stormtrooper', n: 1, at: [245, -38], still: true, face: 0, name: 'Stormtrooper', says: ['This area is off limits.', 'Move along.'] },
       { kind: 'stormtrooper', n: 1, at: [255, -38], still: true, face: 0, name: 'Stormtrooper', says: ['Freeze! Don’t move!', 'There’s nothing to see here.'] },
       { kind: 'rebel', n: 3, at: [214, -12], spread: 4, roam: 3, speed: 0.8, name: 'Rebel commando', says: ['Quiet. There’s a scout trooper right over there.', 'We go in on General Solo’s signal.', 'I hope the fleet’s on time.'] },
+      { kind: 'rebelpilot', id: 'tydirium', at: [-14, -6], still: true, face: 1.2, name: 'The shuttle’s pilot', quest: 'tydirium', says: ['That code was old. They’ll have changed it by now.'] },
       { kind: 'scouttrooper', n: 2, at: [60, 250], spread: 4, roam: 5, speed: 0.8, name: 'Scout trooper', says: ['Hey, did you hear something?', 'Stay with the bikes. I’ll check the perimeter.'] },
       { kind: 'atst', n: 1, path: [[400, -282], [430, -270], [442, -240], [430, -210], [400, -198], [370, -210], [358, -240], [370, -270]], speed: 1.4, r: 1.6, name: 'AT-ST', says: ['(The walker stops, its head turning toward you with a hiss of hydraulics.)', '(Its chin guns track you. Then it stalks on.)'] },
       { kind: 'scouttrooper', n: 2, path: [[420, -200], [442, -200], [442, -182], [420, -182]], speed: 1.2, name: 'Scout trooper', says: ['The shield must stay up. Lord Vader’s orders.', 'Back to the platform. Now.'] },
@@ -289,10 +298,7 @@ export const SITES = {
       { kind: 'shuttle', n: 1, metres: 20, alt: 120, speed: 60, every: 70 },
       { kind: 'tie', n: 2, metres: 7, alt: 110, speed: 120, every: 60 },
     ],
-    skyships: [
-      { kind: 'deathstar2', metres: 640, at: [2880, 2614, -3143], yaw: 0.6 },
-      { kind: 'executor', metres: 260, at: [-1800, 2200, -3600], yaw: 1.2 },
-    ],
+    skyships: [{ kind: 'executor', metres: 260, at: [-1800, 2200, -3600], yaw: 1.2 }],
   },
 
   kashyyyk: {

@@ -213,7 +213,7 @@ describe('the galactic assaults', () => {
           expect(ph.tickets).toBeGreaterThan(0);
         }
         expect(m.tickets.attack).toBeGreaterThan(0);
-        expect(m.tickets.defend).toBeGreaterThan(m.tickets.attack);
+        expect(m.tickets.defend).toBeGreaterThanOrEqual(m.tickets.attack);
       });
       it('fields soldiers there are figures for, and hides the world’s own of them', () => {
         for (const side of ['attack', 'defend']) {

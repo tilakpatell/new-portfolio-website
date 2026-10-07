@@ -67,6 +67,43 @@ truth where this disagrees with it.
   water stays turquoise; Kamino's spray pool fills (260 drops on the
   small tier); the bongo rolls; no page errors.
 
+## Done: Scarif, Endor and Geonosis, a look and a war pass (2026-10-07)
+
+- **The Death Stars over the worlds**: Scarif's is the universe's own model
+  (`/models/universe/death-star.glb`, placed by `url` with the placer's new
+  `url` and `fog: false` specs, 3 km across over the eastern sea); Endor's
+  is N8's half-built *Death Star II* from Sketchfab (`catalog/forest.js`
+  `ds2sky`, 3.3 MB, credited), placed clear of the fog with its bite to the
+  forest, in place of the built sphere.
+- **Two scans more** (`scripts/galaxy-textures.mjs`, Poly Haven CC0):
+  `redrock` (`rock_boulder_cracked`) on Geonosis's spires, hives, foundry,
+  hangar, boulders and stones, and over the arena and hive models up close
+  (`detail`); `mossrock` (`mossy_rock`) on Endor's boulders and stones. The
+  Imperial bunker and the Citadel wear the concrete scan up close.
+- **A bug**: Mustafar's black `spire` builder shadowed Geonosis's red one
+  in the scatter kinds (`props/index.js` merges edge.js after core.js), so
+  Geonosis's spires were Mustafar's. Mustafar's is `blackspire` now.
+- **Denser worlds**: Scarif 600 palms (with a light copy past 60 m,
+  `palm.lod1.glb`, made with `makeLod` at `over: 0`), more scrub, ferns and
+  stones, thicker dune grass; Endor mossy boulders, stones, bushes and
+  toadstools under the ferns, more logs; Geonosis more spires and stones.
+- **Looks**: Geonosis's fog thinned (0.0009 → 0.00055) so the hives and
+  the core ships read to the horizon; the sky's gas giants (Endor's) get
+  storms and eddies in their bands; Endor's spruces lose their flat dark
+  cone for a slimmer, many-sided heart under more sprays; the shield
+  generator is rebuilt (apron, blast walls, the crest over the door, lit
+  strips, a ribbed dish with a lit rim on a braced tower).
+- **Things to do**: Endor's *Quiet in the ferns* (the scouts' camp),
+  *The Ewoks' war* (Paploo's stones, the walker led back to the log trap)
+  and *An older code* (the platform's clearance codes); Scarif's *Walkers
+  on the beach* (Sefla's charges under a walker) and *Rogue One, calling*
+  (Bodhi's comm patched through from Pad Nine); Geonosis's *Count Dooku*
+  (through the droidekas to a red-bladed duellist at his hangar) and *The
+  nearest starship* (Yoda's beacon on a core ship). All in
+  `sites/quests.js`, their givers in the sites' life.
+- **The war**: `HANDOFF-galactic-assault.md` (Scarif's and Endor's
+  battles, squads, cover, suppression, waves).
+
 ## Phase 2, bases: under way
 
 The plan is `docs/superpowers/plans/2026-10-07-galaxy-phase2-bases.md`.

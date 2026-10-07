@@ -793,7 +793,7 @@ export const SITES = {
     sky: {
       zenith: '#b77a62',
       horizon: '#f1c39a',
-      haze: 0.9,
+      haze: 0.75,
       hazeColor: '#f5c89c',
       suns: [{ az: 2.3, el: 0.32, color: '#fff0d6', size: 0.02, glow: 1.3 }],
       clouds: { cover: 0.12, color: '#fbe0c4', shade: '#c08a6a', scale: 0.5, speed: 0.003 },
@@ -802,8 +802,9 @@ export const SITES = {
         { az: -0.4, el: 0.36, size: 0.01, color: '#e0ccb4' },
       ],
     },
-    fog: { color: '#e6b48c', density: 0.0009 },
-    light: { sun: 3.0, sky: '#f0c8a8', ground: '#a0583a', ambient: 0.75 },
+    // (the dust in the air, but not a wall of it: the hives and the core ships read to the horizon)
+    fog: { color: '#e2ab84', density: 0.00055 },
+    light: { sun: 3.2, sky: '#f0c8a8', ground: '#a0583a', ambient: 0.7 },
     ground: { detail: 'redsoil', detailLook: { color: 0.75, normal: 0.8 },
       seed: 33,
       wind: 1.1,
@@ -1002,10 +1003,12 @@ export const SITES = {
       { kind: 'geohive', at: [-160, -60], yaw: 5.86, scale: 0.35, sink: 1.4 },
     ],
     scatter: [
-      { kind: 'spire', n: 90, within: [70, 900], scale: [0.35, 1.2], stretch: [0.7, 1.4] },
-      { kind: 'spire', n: 40, within: [70, 600], scale: [0.25, 0.6], opts: { seed: 5, color: '#9a5a38' } },
-      { kind: 'rock', n: 130, within: [20, 580], scale: [0.6, 3], opts: { color: '#94583a', sharp: 0.55 } },
-      { kind: 'stones', n: 240, within: [8, 420], scale: [0.25, 0.7], solid: false, opts: { color: '#a0623e' } },
+      { kind: 'spire', n: 110, within: [70, 900], scale: [0.35, 1.2], stretch: [0.7, 1.4] },
+      { kind: 'spire', n: 90, within: [50, 600], scale: [0.2, 0.6], opts: { seed: 5, color: '#9a5a38' } },
+      // (the plain's red boulders and stones, wearing the red rock scan)
+      { kind: 'rock', n: 240, within: [16, 580], scale: [0.6, 3], opts: { color: '#94583a', sharp: 0.55, to: 'redrock' } },
+      { kind: 'rock', n: 120, within: [12, 300], scale: [0.3, 1.1], opts: { seed: 9, color: '#a0623e', sharp: 0.4, to: 'redrock' } },
+      { kind: 'stones', n: 500, within: [6, 420], scale: [0.25, 0.7], solid: false, opts: { color: '#a0623e', to: 'redrock' } },
     ],
     life: [
       { kind: 'geonosian', n: 8, at: [-250, 190], spread: 30, roam: 16, speed: 1.2, name: 'Geonosian', says: ['(A dry, clicking chatter.)', '(It buzzes its wings and points you back toward the gate.)', '(Clicks, a hiss, and something like a laugh.)'] },
@@ -1020,7 +1023,7 @@ export const SITES = {
       { kind: 'battledroid', n: 4, at: [56, -20], spread: 10, roam: 8, speed: 1.2, name: 'Battle droid', says: ['Roger, roger.', 'The spider droid is… down. Uh-oh.', 'Fall back! Fall back!'] },
       { kind: 'clone', n: 10, at: [256, 176], spread: 36, roam: 14, speed: 1.6, name: 'Clone trooper', says: ['Move up! Move up!', 'Gunship coming in, keep your heads down!', 'Sir, the droids are pulling back to the core ships.', 'Watch the spider droids!'] },
       { kind: 'clone', n: 3, at: [120, 326], spread: 6, roam: 5, speed: 1, name: 'Clone commander', says: ['Master Yoda, all forward positions are advancing.', 'Target the core ships, sir?', 'Concentrate all fire on the nearest starship.'] },
-      { kind: 'jedi', n: 1, at: [116, 334], still: true, scale: 0.38, r: 0.3, name: 'Yoda', says: ['Concentrate all fire on the nearest starship.', 'Around the survivors a perimeter create.', 'Begun, the Clone War has.', 'Victory? Victory, you say? Not victory.'] },
+      { kind: 'jedi', n: 1, id: 'yoda', quest: 'coreships', at: [116, 334], still: true, scale: 0.38, r: 0.3, name: 'Yoda', says: ['Concentrate all fire on the nearest starship.', 'Around the survivors a perimeter create.', 'Begun, the Clone War has.', 'Victory? Victory, you say? Not victory.'] },
       { kind: 'battledroid', n: 10, path: [[420, -60], [380, -10], [330, 30], [380, -100], [440, -140]], speed: 1.4, name: 'Battle droid', says: ['Roger, roger.', 'Retreat! Retreat! To the core ships!', 'Uh-oh.'] },
       { kind: 'superdroid', n: 4, at: [430, -110], spread: 20, roam: 12, speed: 1.0, name: 'Super battle droid', says: ['(It raises a wrist blaster and stomps past.)', 'Halt. Identify.'] },
       { kind: 'atte', n: 2, path: [[200, 260], [340, 120], [300, 40], [160, 180]], speed: 2.2, r: 5, model: false, solid: false },

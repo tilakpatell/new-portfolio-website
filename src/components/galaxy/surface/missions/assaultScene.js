@@ -247,6 +247,9 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
           b.flinch -= dt;
           b.holder.rotation.z = Math.sin(b.flinch * 60) * b.flinch * 0.3;
         } else b.holder.rotation.z = 0;
+        // (its head down under fire, or behind its cover: leaning in)
+        const crouch = s.inCover || s.suppress > RULES.suppressed ? 0.16 : 0;
+        b.holder.rotation.x += (crouch - b.holder.rotation.x) * Math.min(1, dt * 4);
         // (the far ones' legs aren't seen: their figures rest)
         if (b.fig && (!you || dist(s.x, s.z, you.x, you.z) < 120)) b.fig.update(dt, s.move * (reduced ? 0.5 : 1));
       }

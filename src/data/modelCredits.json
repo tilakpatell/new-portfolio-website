@@ -1835,6 +1835,20 @@
       "galaxy"
     ]
   },
+  "surface-ds2sky": {
+    "title": "Death Star II",
+    "author": "N8",
+    "authorUrl": "https://sketchfab.com/nathanmlange",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/death-star-ii-17ccca0dbb6b4e338fa999202f9e6685",
+    "where": "galaxy-surface",
+    "as": "the second Death Star",
+    "file": "/models/galaxy/surface/ds2sky.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-dwarfspider": {
     "title": "Dwarf Spider Droid",
     "author": "Mind Mulch for The Masses",

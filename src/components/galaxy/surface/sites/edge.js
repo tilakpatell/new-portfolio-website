@@ -259,7 +259,7 @@ export const SITES = {
     ],
     scatter: [
       { kind: 'lavacrack', n: 900, within: [10, 585], scale: [1.4, 3.4], solid: false },
-      { kind: 'spire', n: 90, within: [60, 580], scale: [1.5, 5], opts: { color: '#1c1818' } },
+      { kind: 'blackspire', n: 90, within: [60, 580], scale: [1.5, 5], opts: { color: '#1c1818' } },
       { kind: 'basalt', n: 90, within: [30, 560], scale: [0.8, 2.2] },
       { kind: 'rock', n: 120, within: [20, 560], scale: [0.6, 2.8], opts: { color: '#2a2422', sharp: 0.7 } },
       { kind: 'stones', n: 240, within: [8, 420], scale: [0.25, 0.8], solid: false, opts: { color: '#2e2624' } },
@@ -337,7 +337,7 @@ export const SITES = {
     },
     water: { level: 0, color: '#38c6c8', deep: '#0a5a78', kind: 'sea', foam: 0.55 },
     // (dune grass back from the beaches, sparse, in the sea wind)
-    grass: { h: [0.35, 0.7], w: 0.05, root: '#5f7048', mid: '#6f9452', tip: '#adc47e', dry: '#c8c08a', cover: 0.5, scale: 70, above: 1.4, wind: 0.8 },
+    grass: { h: [0.35, 0.8], w: 0.05, root: '#5f7048', mid: '#6f9452', tip: '#adc47e', dry: '#c8c08a', cover: 0.7, scale: 70, above: 1.4, wind: 0.8 },
     weather: [{ kind: 'spray', count: 500 }],
     land: { at: [0, 0], yaw: -0.3 },
     lines: {
@@ -498,7 +498,8 @@ export const SITES = {
     things: [
       // the shield overhead, and the Death Star over the eastern sea
       { kind: 'scarifshield', at: [0, 0], abs: true, y: -400, model: false, solid: false },
-      { kind: 'ds1sky', at: [8800, -1900], abs: true, y: 1250, yaw: -1.35, model: false, solid: false, opts: { r: 1500 } },
+      // (the universe's own Death Star model, over the eastern sea, clear of the fog; the built sphere if it won't load)
+      { kind: 'ds1sky', url: '/models/universe/death-star.glb', metres: 3000, centred: true, at: [8800, -1900], abs: true, y: 1250, yaw: -1.35, model: false, solid: false, fog: false, opts: { r: 1500 } },
       // the Empire's cargo where you land, waiting for the next shuttle
       { kind: 'empirecrate', at: [22, -18], yaw: 0.3 },
       { kind: 'empirecrate', at: [22.4, -16.6], yaw: 0.2 },
@@ -525,13 +526,14 @@ export const SITES = {
       { kind: 'lamp', at: [170, 80], opts: { h: 6, light: '#fff0c8', color: '#5a5c60' } },
     ],
     scatter: [
-      { kind: 'palm', n: 420, within: [40, 585], scale: [0.75, 1.25], above: 0.7, clear: 6 },
-      // (the scrub back from the beaches, low and round, under the palms)
-      { kind: 'bush', n: 450, within: [24, 570], scale: [0.7, 1.6], solid: false, above: 1.0, opts: { seed: 12, s: 2.2, color: '#4a5e3a' } },
-      { kind: 'rock', n: 50, within: [60, 560], scale: [0.6, 2.2], opts: { color: '#9a9484', sharp: 0.3 } },
-      { kind: 'stones', n: 50, within: [10, 500], scale: [0.2, 0.45], solid: false, opts: { color: '#b8b098' } },
+      { kind: 'palm', n: 600, within: [34, 585], scale: [0.7, 1.3], above: 0.7, clear: 6 },
+      // (the scrub back from the beaches, low and round, under the palms; thicker in the islands' hearts)
+      { kind: 'bush', n: 700, within: [20, 570], scale: [0.7, 1.7], solid: false, above: 1.0, opts: { seed: 12, s: 2.2, color: '#4a5e3a' } },
+      { kind: 'bush', n: 260, within: [20, 300], scale: [0.5, 1.1], solid: false, above: 1.4, opts: { seed: 15, s: 1.6, color: '#587a3c' } },
+      { kind: 'rock', n: 70, within: [60, 560], scale: [0.6, 2.2], opts: { color: '#9a9484', sharp: 0.3 } },
+      { kind: 'stones', n: 220, within: [8, 500], scale: [0.2, 0.5], solid: false, opts: { color: '#b8b098' } },
       // the undergrowth under the palms, ferns and broad leaves
-      { kind: 'sorganfern', n: 140, within: [24, 560], scale: [1, 2.2], solid: false, above: 1.2 },
+      { kind: 'sorganfern', n: 340, within: [20, 560], scale: [1, 2.2], solid: false, above: 1.2 },
     ],
     life: [
       { kind: 'atact', n: 1, model: false, path: [[-250, -60], [-330, -260], [-180, -330], [-120, -200]], speed: 2.4, r: 4.5, scale: 1 },
@@ -542,6 +544,9 @@ export const SITES = {
       { kind: 'stormtrooper', n: 3, at: [70, 515], spread: 12, roam: 14, speed: 1.1, name: 'Stormtrooper', says: ['Access to the vault is restricted.', 'Director Krennic is on his way down.', 'Seal the tower!'] },
       { kind: 'rebel', n: 6, at: [-320, 200], spread: 18, roam: 22, speed: 1.4, name: 'Pathfinder', says: ['Rogue One, we’re with you!', 'Find cover! Walkers on the beach!', 'Blue Squadron, we need that gate kept open!', 'For the Rebellion!'] },
       { kind: 'rebel', n: 3, at: [-280, -170], spread: 14, roam: 12, speed: 1.3, name: 'Rebel trooper', says: ['Keep their heads down! Give Rogue One time!', 'Here comes another walker!'] },
+      // (Sefla's Pathfinders on the beach, and Bodhi at the shuttle, the quests of the fight)
+      { kind: 'rebel', id: 'sefla', at: [-296, -172], still: true, face: 0.6, name: 'Lieutenant Sefla', named: true, quest: 'walkers', says: ['Those walkers will roll right over us unless somebody gets under them.'] },
+      { kind: 'rebelpilot', id: 'bodhi', at: [-98, 82], roam: 5, speed: 0.9, name: 'Bodhi Rook', named: true, quest: 'rogueone', says: ['I’m the pilot. I’m the pilot!', 'The shield gate’s closed. We have to tell the fleet.', 'This is Rogue One. Rogue One, calling any Alliance ships.'] },
       { kind: 'shoretrooper', n: 2, at: [20, -10], spread: 4, still: true, face: 2.8, name: 'Shoretrooper', says: ['Cargo manifest, pilot.', 'Nobody touches the crates till the shuttle’s down.'] },
       { kind: 'mousedroid', n: 2, at: [0, 8], spread: 8, roam: 14, speed: 1.6, r: 0.2, solid: false },
       { kind: 'baze', at: [-92, 110], roam: 6, speed: 0.7, name: 'Baze Malbus', says: ['Good luck.', 'I don’t need luck. I have you.', '(He checks the cannon’s power pack. Again.)'] },
