@@ -9,17 +9,26 @@ import { GUIDES, guideKeyFor } from './routes';
 // the portfolio pages run into one another (components/feed)
 const FEED_TIP = ['Keep scrolling', 'The six portfolio pages run into one another: reach the end of one and the next begins. After the sixth, the end.'];
 
-const FLY = [
+// flying, on either map: `guns` are the rows after Fire that only one map
+// has (the universe map's weapons; the galaxy's crew powers)
+const fly = (guns) => [
   ['W S', 'Throttle'],
   ['A D', 'Roll (or turn: flight settings)'],
   ['← →', 'Swing the nose'],
   ['↑ ↓', 'Nose up and down (all the way over, if you hold it)'],
   ['Space / Shift', 'Boost (the pulse drive, out in the open)'],
   ['hold F', 'Fire'],
-  ['R / 1 2 3', 'Weapons: blaster, spread, heavy ordnance (Shift+R back)'],
+  ...guns,
   ['T / Q', 'Next / previous target'],
   ['V', 'Cockpit or chase camera'],
   ['Drag', 'Fly like a stick'],
+];
+// the universe map's armory (universe/weapons.js)
+const WEAPONS = [['R / 1 2 3', 'Weapons: blaster, spread, heavy ordnance (Shift+R back)']];
+// the galaxy's crew powers (universe/shipPowers.js): no weapons to switch there
+const POWERS = [
+  ['G', 'Your crew’s power: Force Focus, Never tell me the odds, the portal gun or Magnets'],
+  ['X', 'The big one, once your kills have charged it: a torpedo salvo, Chewie on the guns, the death ray or Say my name'],
 ];
 
 const WALK = [
@@ -91,7 +100,7 @@ export const PAGES = {
   '/universe': {
     about: 'The whole site as places in space: the stations round the sun are its pages, the planets in deep space its worlds. Fly a ship to any of them, or pick one.',
     keys: [
-      { label: 'Flying', rows: [...FLY, ['M', 'The nav map: pick a place and a drive'], ['J', 'Jump to the place picked'], ['E / Enter', 'Land or dock where you are'], ['H', 'The hangar: paint and parts'], ['O', 'Flight settings'], ['Esc', 'Back out to the whole map']] },
+      { label: 'Flying', rows: [...fly(WEAPONS), ['M', 'The nav map: pick a place and a drive'], ['J', 'Jump to the place picked'], ['E / Enter', 'Land or dock where you are'], ['H', 'The hangar: paint and parts'], ['O', 'Flight settings'], ['Esc', 'Back out to the whole map']] },
       { label: 'On foot', rows: [['W A S D', 'Walk'], ['Q E', 'Step sideways'], ['Shift', 'Run'], ['Space', 'Jump'], ['F / Click', 'Fire'], ['X', 'Play the other one of your crew'], ['B', 'Rick’s next gadget: the portal gun, the freeze ray, the shrink ray'], ['V', 'Out of their eyes'], ['G', 'Through a door, or back into the ship'], ['Enter', 'Into the planet’s page']] },
     ],
     touch: [
@@ -119,10 +128,11 @@ export const PAGES = {
   },
   '/galaxy': {
     about: 'Eighteen star systems from the films and the shows, each a moment from them playing out round you.',
-    keys: [{ label: 'Flying', rows: [...FLY, ['M', 'The galaxy map: plot a course'], ['J', 'Jump to lightspeed, to the star on your nose'], ['E / Enter', 'Land on the planet (or board the Death Star)']] }],
-    touch: [{ rows: [['Drag', 'Fly'], ['Tap', 'A star’s name to plot a course'], ['Jump', 'Lightspeed, to the star on your nose']] }],
+    keys: [{ label: 'Flying', rows: [...fly(POWERS), ['M', 'The galaxy map: plot a course'], ['J', 'Jump to lightspeed, to the star on your nose'], ['E / Enter', 'Land on the planet (or board the Death Star)']] }],
+    touch: [{ rows: [['Drag', 'Fly'], ['Tap', 'A star’s name to plot a course'], ['Jump', 'Lightspeed, to the star on your nose'], ['Power', 'Your crew’s power'], ['Big one', 'Once your kills have charged it']] }],
     tips: [
       ['Jumping', 'Turn the nose toward a star and its name comes up; press J, or fly out of the system toward it. The galaxy map (M) filters by era or film.'],
+      ['Ship powers', 'Each crew has its own. Luke slows time and Artoo locks four torpedoes; Han corkscrews out of trouble and Chewie takes the quad guns; Rick portals onto a tail and fires the death ray; Walt and Jesse’s magnet drags fighters into a ball, then the crystal goes off. The big one charges as you shoot them down.'],
       ['Missions', 'Each system has one. The trench run and boarding the Death Star are playable now; the rest are briefings for games still being built. Watch for the tractor beam at Alderaan.'],
       ['Online', 'The other pilots in the same system are there with you, in their own ships. The galaxy map shows how many are where.'],
       ['The wars', 'Three wars at once, one for each era: the Clone Wars, the Galactic Civil War and the Remnant War, with the Hutts against everyone. Pick yours on the galaxy map and swear to a side; battles near you count for it, you rise in its ranks, and who holds a system decides who hunts you there and who flies with you.'],
