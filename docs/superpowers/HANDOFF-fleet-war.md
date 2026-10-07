@@ -55,6 +55,7 @@ The design is `docs/superpowers/specs/2026-10-06-fleet-war-design.md` and the pl
   - On the comms, the commander posted at the system (or the side's general where nobody is) speaks first and calls you by your rank (`warCast.js`, `warCastData.js`: 31 commanders, Jabba for the Hutts; `ranks.js`). Then the crew answers for your side, in the place's, the war's or the side's own lines (`battleLines.js`, `battleCrews/`). The heroes say whose side they lean to (`heroes.js`'s `lean`).
   - The holotable's `WarCard.jsx` shows the wars as tabs, the oath, your rank and record, the major order ("Liberate" or "Hold"), the battles on now in their kind for your role, and who holds each area. `WarHud.jsx` is the line over the view while a battle's on where you are. There are five achievements: Sworn, Liberator, Major order, Turncoat and Top brass.
   - The ground battles count: an assault's end posts the posts your side took as points for your side's war, and a win if you won (`GalaxySurface.jsx`). The assault HUD's side buttons swear you.
+  - The war's tally keeps a campaign's keys (#476). It used to keep 96, the most a message holds, and dropped every key after that without a word. Now `warState.js`'s `KEYS` is a room of pilots, each in a battle every step and winning it (23,040). Each message is a page of `TALLY.keys`: your newest shares first, then the rest in turn. A pilot heard from for the first time is owed all of it (`owing()`), a page every `warEvery`. Nothing's folded, so every pilot's `history` agrees. A fold into per-system totals was turned down: `history` applies points at their own step, and captures make the order matter.
 
 ## Revision 3: where the code differs from the plan
 
@@ -74,7 +75,7 @@ The plan was written against an older map of the code. Where they disagreed, the
 
 ## Revision 3: left
 
-- The war's tally keeps at most 96 keys a campaign, for all three wars together (`universe/tally.js`'s `TALLY.keys`; `warState.js` doesn't raise it). Keys past that are dropped without a word, so a busy campaign stops counting what players do. This was true of revision 2's one war too; three wars and six sides fill it faster.
+- Nothing tells the war's tally a pilot has left (`forget` is never called). A pilot who reloads comes back under a new peer id with their saved shares, and pilots who stayed online count that share twice. Everyone still agrees, on too much.
 - `effects.traffic` is worked out but nothing reads it yet: the galaxy's traffic still flies the system's own kinds.
 - Coruscant's siege doesn't raise a planetary shield (`world.war.planetShield` is only Scarif's).
 - An ambush is a brawl: half again the fighters, and each side has only its flagship and one escort. It doesn't lay out in a rock field yet (`BATTLE_KINDS.ambush.rocks` is unread), and its objective is still the flagship's subsystems.
