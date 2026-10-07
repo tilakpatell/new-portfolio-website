@@ -111,7 +111,8 @@ import { createRoam } from './roam';
 import { pick as pickFaction } from '../universe/sides';
 import { createSkyStreaks } from './skyStreaks';
 import { laneLinks } from './skyTraffic';
-import { FAR, aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
+import { FAR, PULSE, aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
+import { createFinds } from './places';
 import { asking } from './asking';
 import { jumpTime, routeBetween } from './routes';
 import { arrival, courseTo, jumpSeconds, kindsIn, lightYears, starAhead, systemById, wantsDeathStar } from './systems';
@@ -133,6 +134,7 @@ const CABS = {
 };
 const SEAT_KEY = 'tp:universe-seat'; // (the universe map's: one seat, wherever you fly)
 const JUMPS_KEY = 'tp:galaxy-jumps'; // (session) the Empire's count of your jumps
+const FOUND_KEY = 'tp-galaxy-found'; // the places found out in the open, per system (places.js)
 const EYE = { ahead: 0.035, up: 0.045 };
 const CAB_HFOV = 88;
 const CAB_VFOV = [52, 94];
@@ -272,6 +274,8 @@ export async function create(canvas, ctx) {
   };
   const pieces = reduced ? null : createSetPieces(scene, { small, fleet, solids: () => state.space?.solids ?? [] }); // (clear of this system's planet, not the universe map's)
   // the Empire's count of your jumps, and the Interdictor waiting on the one that's due
+  // the places found out in the open (places.js), kept across visits
+  const finds = createFinds({ store: { get: () => window.localStorage.getItem(FOUND_KEY), set: (v) => window.localStorage.setItem(FOUND_KEY, v) } });
   const interdiction = createInterdiction({
     store: { get: () => window.sessionStorage.getItem(JUMPS_KEY), set: (v) => (v === null ? window.sessionStorage.removeItem(JUMPS_KEY) : window.sessionStorage.setItem(JUMPS_KEY, v)) },
   });
@@ -320,6 +324,7 @@ export async function create(canvas, ctx) {
     fireBtn: false,
     boosting: false,
     boosts: 0,
+    odSaid: false, // the crew's said their piece about super speed
     streak: 0,
     flown: false,
     shown: true,
@@ -1273,7 +1278,8 @@ export async function create(canvas, ctx) {
     }
     let input;
     if (state.auto) {
-      const a = autopilot(state.ship, state.auto.id, state.auto.park, state.space);
+      // (on super speed where it's wide open: space.js)
+      const a = autopilot(state.ship, state.auto.id, state.auto.park, state.space, state.space.overdriveAt(state.ship.x, state.ship.y, state.ship.z));
       input = a.input;
       if (a.done) {
         state.auto = null;
@@ -1290,6 +1296,11 @@ export async function create(canvas, ctx) {
       }
     }
     if (state.keys.fire || state.fireBtn) fire();
+    // super speed: boosting well out from everything, the drive opens into the overdrive (space.js wideAlong)
+    if (input.boost && input.throttle > 0 && !state.auto) {
+      const f = forward(state.ship.heading);
+      input.overdrive = state.space.overdriveAt(state.ship.x, state.ship.y, state.ship.z, [f[0], 0, f[1]]);
+    }
     // (under the Interdictor's hold the sublight drive stays shut: the boost is the boost)
     const { ship: stepped, events } = step(state.ship, state.held ? { ...input, interdicted: true } : input, dt, state.space.solids, state.space);
     let ship = stepped;
@@ -1375,6 +1386,21 @@ export async function create(canvas, ctx) {
       state.at = now;
       props.onAt?.(now);
       if (now) emit({ type: 'at', id: now });
+      // a place found, the first time (places.js): the crew say so, and it pays
+      const g = now && state.space.goals[now];
+      if (g?.place && state.sys) {
+        const first = finds.mark(state.sys.id, g.id);
+        emit({ type: 'find', id: g.id, name: g.name, kind: g.kind, first, ...finds.count(state.sys.id) });
+        if (first) {
+          emit({ type: 'event', id: 'find' });
+          emit({ type: 'earn', what: 'found', n: 1, side: 'galaxy' });
+        }
+      }
+    }
+    // the crew's word on super speed, the first time it's well past the sublight drive's
+    if (!state.odSaid && ship.speed > PULSE * 1.25) {
+      state.odSaid = true;
+      emit({ type: 'event', id: 'overdrive' });
     }
 
     // the guns: the lock, the lead, whether a shot would bend onto it
@@ -2198,6 +2224,8 @@ export async function create(canvas, ctx) {
       hunters: hunters?.packs ?? [],
       lock: state.lock?.id ?? null,
       goals: state.world?.goals.map((g) => g.id),
+      found: state.sys ? finds.count(state.sys.id) : null,
+      wide: state.ship && state.space ? +state.space.wideAlong(state.ship.x, state.ship.y, state.ship.z).toFixed(2) : null,
       solids: state.space?.solids.length,
       war: war?.info ?? null,
       effects: state.effects ?? null,
@@ -2215,7 +2243,7 @@ export async function create(canvas, ctx) {
       state.shake = 0;
       ctx.invalidate();
     };
-    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, pin, interdiction, interdictor, war, wingmen, effects: () => state.effects, skyStreaks: () => skyStreaks, happen: (id) => state.ship && happen(id, state.ship) };
+    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, pin, interdiction, finds, interdictor, war, wingmen, effects: () => state.effects, skyStreaks: () => skyStreaks, happen: (id) => state.ship && happen(id, state.ship) };
     window.__gltfStats = gltfStats; // { requests, parses }: the models asked for, and the files fetched and parsed for them
   }
 

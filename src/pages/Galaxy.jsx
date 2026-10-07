@@ -29,9 +29,11 @@ import GalaxyView from '../components/galaxy/GalaxyView';
 import GalaxyPanel from '../components/galaxy/GalaxyPanel';
 import { holdJump } from '../components/hyperspace3d/timeline';
 import HoloMap from '../components/galaxy/HoloMap';
+import { readFound } from '../components/galaxy/places';
 import GalaxyIntro from '../components/galaxy/GalaxyIntro';
 import '../components/galaxy/galaxy.css';
 
+const FOUND_KEY = 'tp-galaxy-found'; // the places found out in the open, per system (places.js; the scene writes it)
 const LAST_KEY = 'tp-galaxy-system'; // the system you were last in
 const PANEL_KEY = 'tp-galaxy-panel'; // 'tucked' once the panel's been put away
 const INTRO_KEY = 'tp-galaxy-intro'; // (session) the "long time ago" seen this visit
@@ -121,6 +123,9 @@ export default function Galaxy() {
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
   useEffect(() => tellBuild?.(build), [tellBuild, build]);
   const [at, setAt] = useState(null); // what in the system you're at (its planet, the Death Star…)
+  // the places found out in the open here (places.js; the scene keeps the store, and says when one's new)
+  const [findTick, setFindTick] = useState(0);
+  const found = useMemo(() => readFound(local.get(FOUND_KEY))[current] ?? [], [current, findTick]); // eslint-disable-line react-hooks/exhaustive-deps
   const [mapOpen, setMapOpen] = useState(false);
   const [jumping, setJumping] = useState(null); // { to, phase } while a jump's on
   const [held, setHeld] = useState(null); // { to } while an Interdictor's gravity well holds you (galaxy/interdiction.js)
@@ -295,6 +300,10 @@ export default function Galaxy() {
         return;
       }
       // clear of the Interdictor's well: the drive's back (a crash ends the hold too, but earns nothing)
+      if (e.type === 'find') {
+        setFindTick((n) => n + 1);
+        return;
+      }
       if (e.type === 'wellclear') {
         setHeld(null);
         setBalked(false);
@@ -386,6 +395,7 @@ export default function Galaxy() {
         onEvent={onEvent}
         onArrive={onArrive}
         onAt={setAt}
+        found={found}
         onBoard={onBoard}
         onCrash={onCrash}
         onMap={() => setMapOpen(true)}
@@ -402,6 +412,7 @@ export default function Galaxy() {
         onMap={() => setMapOpen(true)}
         onGo={(id) => view.current.goTo(id)}
         onLeave={() => leave('/universe/starwars', { jump: true })}
+        found={found}
         onBoard={(path) => leave(path)}
         onLand={canLand(sys.id) ? () => land(sys.id) : null}
         tucked={tucked}
