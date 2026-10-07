@@ -113,6 +113,11 @@ export const dodge = (you) => (you ? clamp(Math.abs(you.rate ?? 0) / 2.2 + Math.
 // going the way it last saw you go (heading 0 is −z, as ship.js has it)
 const guessed = (b) => ({ x: b.at.x, y: b.at.y, z: b.at.z, heading: Math.atan2(-b.vel.x, -b.vel.z), speed: Math.hypot(b.vel.x, b.vel.z), rate: 0, tipRate: 0, guessed: true });
 const GUESS_CHANCE = 0.3; // of a shot's chance, at a guess
+// the most time one step of sensing or thinking stands for, in seconds,
+// unless the schedule's step for it is longer (a quarter-rate thinker's
+// 0.4 s): one paused (far off, or past the frame's budget) for half a
+// minute comes back with this much, not the half minute
+const CATCH_UP = 0.25;
 // A fighter's guns point where it does: a shot only inside NPC.cone (the
 // cosine off its nose; 0.5 is 60° either side), so one with you abeam or
 // behind comes round before it fires (backlog 41: it fired 171° off its
@@ -146,6 +151,7 @@ export function createBrains({ rand = Math.random, firstId = 900001, brains = BR
   const take = (me) => {
     const i = live.indexOf(me);
     if (i >= 0) live.splice(i, 1);
+    trace?.clear(me.n); // (its ring with it, or the trace grows with every one that comes)
   };
   const say = (events, me, key) => {
     if (me.said.has(key)) return;
@@ -199,11 +205,15 @@ export function createBrains({ rand = Math.random, firstId = 900001, brains = BR
         me.mind.clock = me.clock;
         let intent;
         if (me.delegated) return; // (the wing or the hunt has it now)
-        // (the time since it last sensed and thought: what its step stands for)
+        // (the time since it last sensed and thought: what its step stands
+        // for, but no more than the schedule's step for it, or CATCH_UP if
+        // that's less, so one paused a while comes back with a step's worth,
+        // not a single glimpse that makes it certain of you)
         me.unsensed += dt;
         me.unthought += dt;
+        const most = Math.max(CATCH_UP, entry?.dt ?? 0);
         if (entry?.sense) {
-          const sdt = me.unsensed;
+          const sdt = Math.min(most, me.unsensed);
           me.unsensed = 0;
           // what it knows: sent to you, it knows where you are when it comes;
           // after that, what it perceives (and keeps, and loses)
@@ -230,7 +240,7 @@ export function createBrains({ rand = Math.random, firstId = 900001, brains = BR
           me.last = you;
         }
         if (entry?.think) {
-          const tdt = me.unthought;
+          const tdt = Math.min(most, me.unthought);
           me.unthought = 0;
           const view = { ...world, you: me.you, hunters: me.hunters };
           // who it fears, near it: it's off

@@ -726,6 +726,55 @@ describe('on the schedule, and traced', () => {
     expect(calls.n).toBe(asked);
     expect(me.now).toBeCloseTo(2 * DT, 9);
   });
+
+  it('one paused a long while comes back with a quarter second’s step, not a backlog', () => {
+    // (a hunter 110 off: sight takes half a second at that range, so a
+    // quarter second's look is half sure, and a 30 s one would be certain)
+    const dts = [];
+    const idle = { idle: (npc, me, view, dt) => (dts.push(dt), {}) };
+    const brains = createBrains({ rand: seeded(3), brains: idle });
+    const n = brains.add(spec('idle'), { x: 0, y: 0, z: 0 });
+    const me = brains.live[0];
+    const world = () => ({ you: you({ z: 10 }), hunters: [{ id: 1, at: { x: me.pos.x + 110, y: me.pos.y, z: me.pos.z }, faction: 'rebel' }], stations: [] });
+    for (let t = 0; t < 30; t += DT) brains.update(DT, world(), { due: new Set() });
+    expect(me.beliefs['h:1']).toBeUndefined();
+    brains.update(DT, world(), { due: new Set([n]) });
+    expect(me.now).toBeCloseTo(0.25, 9);
+    expect(me.beliefs['h:1'].confidence).toBeCloseTo(0.5, 6);
+    expect(dts).toEqual([0.25]);
+    // and on the schedule's own step (0.1 s, at full rate): still a quarter second, at most
+    for (let t = 0; t < 30; t += DT) brains.update(DT, world(), { due: new Set() });
+    brains.update(DT, world(), { due: new Map([[n, { sense: true, think: true, dt: 0.1 }]]) });
+    expect(me.now).toBeCloseTo(0.5, 9);
+    expect(dts).toEqual([0.25, 0.25]);
+  });
+
+  it('one thinking at a quarter rate keeps real time: its 0.4 s step is all given it', () => {
+    const dts = [];
+    const idle = { idle: (npc, me, view, dt) => (dts.push(dt), {}) };
+    const brains = createBrains({ rand: seeded(3), brains: idle });
+    const n = brains.add(spec('idle'), { x: 0, y: 0, z: 0 });
+    const me = brains.live[0];
+    const world = { you: you({ z: 10 }), hunters: [], stations: [] };
+    const quarter = new Map([[n, { sense: true, think: true, dt: 0.4 }]]);
+    brains.update(DT, world, { due: quarter });
+    const now = me.now;
+    // 0.4 s of frames, the last one due
+    for (let i = 1; i < 24; i++) brains.update(DT, world, { due: new Set() });
+    brains.update(DT, world, { due: quarter });
+    expect(me.now - now).toBeCloseTo(0.4, 9);
+    expect(dts[1]).toBeCloseTo(0.4, 9);
+  });
+
+  it('a brain taken off the map is taken out of the trace too', () => {
+    const trace = createTrace();
+    const brains = createBrains({ rand: seeded(3), trace });
+    const n = brains.add(nemesis(), { x: 0, y: 0, z: -30 });
+    for (let t = 0; t < 0.5; t += DT) brains.update(DT, { you: you(), hunters: [], stations: [], t });
+    expect(trace.agents()).toContain(n);
+    brains.remove(n);
+    expect(trace.agents()).not.toContain(n);
+  });
 });
 
 describe('the fire cone', () => {

@@ -57,6 +57,8 @@ import { seedOf } from './seed';
 import { streams } from '../../lib/seeded';
 import { byDistance, createSchedule } from '../../lib/ai/schedule';
 import { createTrace } from '../../lib/ai/trace';
+import { device } from '../../lib/device';
+import { scheduleBudget } from './npcs';
 
 export { FACTIONS, HUNTER_KINDS, NAMES };
 
@@ -69,7 +71,8 @@ const VIEW_RANGE = 300;
 export function createHunters(parent, { small = false, fleet = createFleet(), factions = FACTIONS, kinds = HUNTER_KINDS, solids = [], engines = null, rand = null, schedule = null, trace = null } = {}) {
   const seed = rand && schedule ? null : seedOf();
   rand ??= streams(seed).fork('hunters');
-  schedule ??= createSchedule({ significance: byDistance, seed });
+  // (half the tier's budget: the characters' schedule has the other half, npcs.js)
+  schedule ??= createSchedule({ significance: byDistance, seed, budget: scheduleBudget(device().tier) });
   trace ??= createTrace();
   const hunt = createHunt({ rand, factions, kinds, solids, lasers: small ? 16 : 28, trace });
   const scheduled = new Set(); // the hunters the schedule has
@@ -83,8 +86,9 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
     }
   };
   const unenrol = () => {
+    const live = new Set(hunt.live); // (once a frame: a search of the list for each would be n²)
     for (const h of scheduled) {
-      if (h.alive && hunt.live.includes(h)) continue;
+      if (h.alive && live.has(h)) continue;
       scheduled.delete(h);
       schedule.drop(h);
     }

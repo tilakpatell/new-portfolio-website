@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { createNpcs } from './npcs';
+import { createNpcs, scheduleBudget } from './npcs';
 import { createTrace } from '../../lib/ai/trace';
 import { current } from '../../lib/ai/inspect';
 import { seeded } from '../../lib/seeded';
@@ -52,5 +52,13 @@ describe('the characters, drawn', () => {
     expect(current().agents()).toEqual([expect.objectContaining({ id: n, kind: nemesis.brain })]);
     npcs.dispose();
     expect(current()).toBeNull();
+  });
+
+  it('the characters’ and the hunters’ schedules share the tier’s budget, half each', () => {
+    expect(scheduleBudget('low')).toEqual({ ms: 0.25 });
+    expect(scheduleBudget('mid')).toEqual({ ms: 0.5 });
+    expect(scheduleBudget('high')).toEqual({ ms: 1 });
+    expect(scheduleBudget('ultra')).toEqual({ ms: 0.5 });
+    expect(scheduleBudget()).toEqual({ ms: 0.5 });
   });
 });

@@ -110,6 +110,10 @@ export const BOMB = { speed: 14, life: 2.4, damage: 30, burst: 1.2, slow: 0.6 };
 export const TRAITS = ['bomber', 'holdoff', 'quietUntilFired', 'flicker', 'spotlight'];
 export const HOLDOFF = { near: 8.75, reach: 1.4 }; // map units it keeps off; of FIGHT.range it fires from
 export const FLICKER = 2;
+// the most time one step of sensing or choosing stands for, in seconds,
+// unless the schedule's step for it is longer (a quarter-rate one's 0.4 s):
+// one paused a while comes back with this much, not the whole pause
+const CATCH_UP = 0.25;
 export const LOSE = { far: 48, after: 5 }; // they give up once you're this far away for this long
 export const SHIP_R = 0.2; // how close a laser must pass you to hit
 export const FIGHT = {
@@ -421,6 +425,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
     h.alive = false;
     const i = live.indexOf(h);
     if (i >= 0) live.splice(i, 1);
+    trace?.clear(h.id); // (its ring with it, or the trace grows with every pack)
   };
   const result = (h, down) => ({ id: h.id, kind: h.kind, at: { x: h.pos.x, y: h.pos.y, z: h.pos.z }, size: h.type.size, down, hunter: h });
   // an ace hurt past one of its stages (its kind's `stages`: hurt to half,
@@ -739,10 +744,15 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
         // what it knows of you this frame: the truth while it sees you (or
         // for a moment after), its guess while it doesn't
         // (on a schedule, only when it's due, with all the time since it last did)
+        // (no more than the schedule's step for it, or CATCH_UP if that's
+        // less: one paused a while comes back with a step's worth, not one
+        // glimpse that makes it certain, nor a mode clock that jumps past
+        // every timer)
         h.unsensed += dt;
         h.unthought += dt;
+        const most = Math.max(CATCH_UP, entry?.dt ?? 0);
         if (ship && entry?.sense) {
-          sense(HUNTER_SENSES, h.me, { targets: [{ id: 'you', at: you, vel: yourVelObj, hostile: true }] }, h.unsensed, { seesThrough: (a, b) => !blocked(a, b, cover) });
+          sense(HUNTER_SENSES, h.me, { targets: [{ id: 'you', at: you, vel: yourVelObj, hostile: true }] }, Math.min(most, h.unsensed), { seesThrough: (a, b) => !blocked(a, b, cover) });
           h.unsensed = 0;
           h.belief = belief(h.me, 'you');
           h.seesYou = Boolean(h.belief?.visible);
@@ -768,7 +778,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
         // a hunter not due to think flies on the way it last chose (kept
         // off the others and round what's solid every frame, below)
         const thinks = Boolean(entry?.think) || !h.steer;
-        const tdt = h.unthought;
+        const tdt = Math.min(most, h.unthought);
         if (thinks) h.unthought = 0;
         if (!thinks) {
           want[0] = h.steer[0];
@@ -1064,7 +1074,10 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
 
     // everyone gone at once (you were shot down, or changed ship)
     clear() {
-      for (const h of live) h.alive = false;
+      for (const h of live) {
+        h.alive = false;
+        trace?.clear(h.id);
+      }
       live.length = 0;
       packs.length = 0;
       for (const m of lasers) m.on = false;

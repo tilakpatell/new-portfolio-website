@@ -12,12 +12,13 @@
 // Everything is in `parent`'s space (the map's).
 //
 // The brains sense and think on a schedule (lib/ai/schedule: by how near
-// you they are, 20 Hz senses and 10 Hz choices at the most, a millisecond's
-// budget a frame) and fly every frame on what they last chose; what each
-// chose and why goes in `trace` (lib/ai/trace). Both are made here when the
-// scene doesn't bring its own, from the visit's seed (seed.js), as `rand` is
-// (the visit's 'npcs' stream). In development, or with ?ai=1, they're put
-// on the inspector (lib/ai/inspect, as 'universe') and on
+// you they are, 20 Hz senses and 10 Hz choices at the most, half the
+// tier's budget a frame: scheduleBudget) and fly every frame on what they
+// last chose; what each chose and why goes in `trace` (lib/ai/trace).
+// Both are made here when the scene doesn't bring its own, from the
+// visit's seed (seed.js), as `rand` is (the visit's 'npcs' stream). In
+// development, or with ?ai=1, they're put on the inspector (lib/ai/inspect,
+// as 'universe') and on
 // `window.__universeDebug.ai`, beside the hunters' (`ai.hunters`); stats()
 // is the two schedules' frame together.
 
@@ -30,12 +31,19 @@ import { streams } from '../../lib/seeded';
 import { byDistance, createSchedule } from '../../lib/ai/schedule';
 import { createTrace } from '../../lib/ai/trace';
 import { flags, register, unregister } from '../../lib/ai/inspect';
+import { device } from '../../lib/device';
 
 const TRACER = { speed: 60, length: 0.4 }; // map units a second; how long one's drawn
 // how far off you a brain still counts for something to the schedule (past
 // this it's paused, flying on what it last chose, till it comes nearer or is
 // let go of at NPC.far for NPC.forget seconds)
 export const VIEW_RANGE = 300;
+
+// The brains' milliseconds a frame on a tier (lib/device's), shared by the
+// two schedules, the characters' (here) and the hunters' (hunters.js): each
+// is given half, so the two together spend the tier's, not twice it.
+const AI_MS = { low: 0.5, mid: 1, high: 2 };
+export const scheduleBudget = (tier) => ({ ms: (AI_MS[tier] ?? 1) / 2 });
 
 // two schedules' frames as one (the characters' and the hunters')
 export function joinStats(a, b) {
@@ -47,7 +55,7 @@ export function joinStats(a, b) {
 export function createNpcs(parent, { fleet = createFleet(), rand = null, memory = {}, schedule = null, trace = null } = {}) {
   const seed = rand && schedule ? null : seedOf();
   rand ??= streams(seed).fork('npcs');
-  schedule ??= createSchedule({ significance: byDistance, seed });
+  schedule ??= createSchedule({ significance: byDistance, seed, budget: scheduleBudget(device().tier) });
   trace ??= createTrace();
   const brains = createBrains({ rand, memory, trace }); // (memory: what each character remembers of you, kept by the scene for the visit)
   const scheduled = new Set(); // the brains the schedule has
@@ -69,8 +77,9 @@ export function createNpcs(parent, { fleet = createFleet(), rand = null, memory 
     }
   };
   const unenrol = () => {
+    const live = new Set(brains.live); // (once a frame: a search of the list for each would be n²)
     for (const me of scheduled) {
-      if (!me.delegated && brains.live.includes(me)) continue;
+      if (!me.delegated && live.has(me)) continue;
       scheduled.delete(me);
       schedule.drop(me);
     }
