@@ -80,6 +80,22 @@ describe('the cars', () => {
     const after = run(one, 1, { cx: 0, cz: 0, scare: [{ x, z, r: 40 }] });
     expect(after.cars[0].speed).toBeLessThan(2);
   });
+
+  it('back away from a fight for 3 s, then stop backing', () => {
+    let st = createTraffic({ cars: 1, walkers: 0 });
+    const c0 = st.cars[0];
+    const [x, z] = carAt(c0);
+    // one frame of the fight's scare, then nothing
+    st = stepTraffic(st, 1 / 30, { cx: x, cz: z, scare: [{ x, z, r: 60, reverse: true }] });
+    const s0 = st.cars[0].s;
+    st = run(st, 2.5, { cx: x, cz: z });
+    // (backed the other way from its direction of travel)
+    expect((st.cars[0].s - s0) * c0.dir).toBeLessThan(-6);
+    st = run(st, 0.6, { cx: x, cz: z }); // (past its 3 s)
+    const s1 = st.cars[0].s;
+    st = run(st, 1, { cx: x, cz: z });
+    expect((st.cars[0].s - s1) * c0.dir).toBeGreaterThanOrEqual(-1);
+  });
 });
 
 describe('the people walking', () => {

@@ -179,6 +179,21 @@ Every band is in range, and Mark passes in spawn, streetnight and porch. He miss
 - `--iw-under` (the bottom of the buttons, however they wrap) is now set on the stage, so the compass, the objective line and the phone's map all follow it.
 - Not done here: the 3D chevron over a target and the route on the map, which wait on missions (Task 9).
 
+### Task 5: the crowd's brains (2026-10-07)
+
+- `brains.js` (tested) gives each townsperson a brain. The states are idle, chat, wander, look, wave, gather, flee and cheer.
+  - wander: a few steps; a passer-by keeps to their pavement, within 20 m of home.
+  - look: when Mark is within 30 m.
+  - wave: when he hangs within 15 m (not again for 20 s).
+  - gather: when he lands within 25 m. They walk to 6 m from him, face him with phones up, and leave after 12 s or when he takes off.
+  - flee: from a slam, an impact, a low boom or a knock-out within 40 m. They run at 4 m/s for 6 s and stay frightened for 20 s, so they don't come and gawp.
+  - cheer: 4 s, when a fight within 80 m is won.
+  - Each step is at most 0.05 s, so a hidden tab is one short step.
+- `npcs.js` steps a brain for each person at Burger Mart, the school steps and the plaza (three groups), moves and turns them from it, and poses them from `poseOf` (their motion-captured clips). The manager keeps his arms folded when idle. Debbie and Cecil keep their own ways.
+- Who is out goes by the time of day (`crowdCount`): all at noon, 70 % at dusk, 35 % at night, and nobody on the school steps at night.
+- `scene.js` passes the crowd what happened in the frame (slam, knock-out, won, the time). Cars within 60 m of a fight's knock-outs and hits back away at 4 m/s for 3 s (`traffic.js`'s `reverse` scare, tested).
+- New shots: `plazanight`, `burgernight`, `schoolnight`.
+
 ## How to check
 
 - `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic and fight (51 tests at the space merge, 89 after Task 1).
