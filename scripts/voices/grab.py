@@ -243,7 +243,7 @@ def main():
     cfgs = configs()
     only = set(args.only.split(",")) if args.only else None
     picks = {w: v.split(",") for w, _, v in (p.partition("=") for p in args.pick)}
-    wanted = [w for w in cfgs if not only or w in only]
+    wanted = [w for w in cfgs if (not only or w in only) and not cfgs[w].get("design")]  # design.py makes those
     for w in list(wanted):
         own = REFS / f"{w}.wav"
         if own.exists() and not (REFS / f"{w}.json").exists() and not args.refresh:
