@@ -110,12 +110,12 @@
 
 ## PR 9: Tier 7, the agent and the jobs
 
-- [ ] **9.1** `scripts/autopilot-budget.mjs`: reads `docs/autopilot/budget.json` and `AUTOPILOT_UTILIZATION` / `AUTOPILOT_STATUS`; prints `go` or `stop: <reason>`; exit 0/1. The skill (`.claude/skills/autopilot/SKILL.md`) calls it in place of its prose check. Tests: paused; 80% and 79%; no figure with `allowed`; overage; `runsPerDay` reached (reads the day’s entries in `src/data/changes/`).
-- [ ] **9.2** `agent/changes.test.mjs`: every `src/data/changes/*.json` matches the schema (id, date, kind, summary, route, pr URL, screenshots that exist under `public/changes/`, `reverted` boolean or absent); `autopilot-log.mjs --next` is max id + 1.
-- [ ] **9.3** `agent/revert.test.mjs` (“up to 10 s”): a temporary repository with three merged branches and three log entries; `autopilot-revert.mjs 2` reverts the second merge, marks the entry, and refuses when entry 3 touched the same files, naming 3.
-- [ ] **9.4** `agent/jobs.test.mjs`: property test, 100 generated jobs over `runner.mjs`’s `KEYS`: `ask.mjs --dry-run`’s body → `parseIssue` → the same job; the same for voices’ fields. `status.mjs --json` over fixture `gh` output (queued, running, failed, runner down). `doctor.mjs` with a fake `LOCAL` tree: a boxed tool is reported boxed with its fix.
-- [ ] **9.5** `agent/workflows.test.mjs`: parse `gen3d.yml`, `voices.yml`, `ai-health.yml` (a small YAML reader or `yaml` dev dependency): every job on `[self-hosted, gpu]` has a `timeout-minutes`, a `concurrency` group, and an `if` that names the trusted conditions; `queue` and `check` jobs are on `ubuntu-latest`; `ci.yml`’s jobs are all `ubuntu-latest`.
-- [ ] **9.6** Gate, PR, CI green, merge.
+- [x] **9.1** `scripts/autopilot-budget.mjs`: reads `docs/autopilot/budget.json` and `AUTOPILOT_UTILIZATION` / `AUTOPILOT_STATUS`; prints `go` or `stop: <reason>`; exit 0/1. The skill (`.claude/skills/autopilot/SKILL.md`) calls it in place of its prose check. Tests: paused; 80% and 79%; no figure with `allowed`; overage; `runsPerDay` reached (reads the day’s entries in `src/data/changes/`).
+- [x] **9.2** `agent/changes.test.mjs`: every `src/data/changes/*.json` matches the schema (id, date, kind, summary, route, pr URL, screenshots that exist under `public/changes/`, `reverted` boolean or absent); `autopilot-log.mjs --next` is max id + 1.
+- [x] **9.3** `agent/revert.test.mjs` (“up to 10 s”): a temporary repository with three merged branches and three log entries; `autopilot-revert.mjs 2` reverts the second merge, marks the entry, and refuses when entry 3 touched the same files, naming 3.
+- [x] **9.4** `agent/jobs.test.mjs`: property test, 100 generated jobs over `runner.mjs`’s `KEYS`: `ask.mjs --dry-run`’s body → `parseIssue` → the same job; the same for voices’ fields. `status.mjs --json` over fixture `gh` output (queued, running, failed, runner down). `doctor.mjs` with a fake `LOCAL` tree: a boxed tool is reported boxed with its fix.
+- [x] **9.5** `agent/workflows.test.mjs`: parse `gen3d.yml`, `voices.yml`, `ai-health.yml` (a small YAML reader or `yaml` dev dependency): every job on `[self-hosted, gpu]` has a `timeout-minutes`, a `concurrency` group, and an `if` that names the trusted conditions; `queue` and `check` jobs are on `ubuntu-latest`; `ci.yml`’s jobs are all `ubuntu-latest`.
+- [x] **9.6** Gate, PR, CI green, merge.
 
 ## PR 10: The manual and the close
 
