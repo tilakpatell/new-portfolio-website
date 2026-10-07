@@ -169,7 +169,7 @@ export const SITES = {
         },
         things: [
           { kind: 'otohgunga', at: [40, 110], abs: true, y: 0, solid: false },
-          { kind: 'bongo', at: [-6, 24], yaw: 2.8, abs: true, y: -0.9 },
+          { kind: 'bongo', at: [-6, 24], yaw: 2.8, abs: true, y: -0.9, float: { len: 13, beam: 6, draft: 0.9 } },
         ],
       },
       {
@@ -596,7 +596,16 @@ export const SITES = {
       layers: [{ type: 'level', height: -40 }, { type: 'island', at: [0, 0], r: 14, height: 45, core: 0.85, ragged: 0 }],
       palette: { low: '#2a343c', high: '#2a343c', rock: '#22282e', hLow: -50, hHigh: -30, grain: 0.2 },
     },
-    water: { level: 0, color: '#3e525c', deep: '#16262e', kind: 'sea', foam: 0.7, waves: 1.4 },
+    water: {
+      level: 0,
+      color: '#3e525c',
+      deep: '#16262e',
+      kind: 'sea',
+      foam: 0.7,
+      waves: 1.4,
+      // (where the storm breaks on the city, [x, z, r]: the pad's column, the domes' and towers' stilts)
+      legs: [[0, 0, 12], [-130, 270, 12], [130, 330, 15.6], [-320, 240, 12], [-330, -210, 14.4], [340, -120, 12], [-80, -330, 12], [390, 160, 16.8], [-430, 40, 12], [210, -390, 12], [20, 470, 19.2], [520, -320, 12], [-520, 380, 15.6], [640, 60, 12], [-640, -260, 18], [300, 520, 12], [-240, -520, 12], [-180, 420, 8], [420, -40, 8], [-420, -120, 8]],
+    },
     weather: [{ kind: 'rain', count: 4200, speed: 1.3 }, { kind: 'spray', count: 900 }],
     lightning: { every: 9, strength: 3.2 },
     fall: 12,
@@ -767,8 +776,9 @@ export const SITES = {
       { kind: 'kaminoan', n: 1, at: [228, 216], still: true, scale: 1.08, name: 'Lama Su', says: ['I trust you are going to stay for a while?', 'You will be delighted to hear we are on schedule. Two hundred thousand units are ready, with a million more well on the way.', 'Magnificent, aren’t they?'] },
       { kind: 'jango', n: 1, at: [-164, -44], roam: 6, speed: 0.9, name: 'Jango Fett', says: ['I’m just a simple man, trying to make my way in the universe.', 'Ever make your way as far into the interior as Coruscant?', 'Boba, pack your things. We’re leaving.'] },
       { kind: 'villager', n: 1, at: [-198, 108], roam: 4, speed: 1.0, scale: 0.68, name: 'Boba Fett', says: ['My dad’s the best bounty hunter in the galaxy.', 'Dad! There’s a Jedi on the landing platform!', 'Get him, Dad! Get him!'] },
-      { kind: 'aiwha', n: 2, path: [[300, -150], [430, -260], [300, -400], [170, -300]], y: 72, speed: 9, solid: false },
-      { kind: 'aiwha', n: 2, path: [[-300, -140], [-440, -40], [-380, 180], [-260, 40]], y: 66, speed: 8, solid: false },
+      // (gliding over the storm, and now and then down into the sea and out)
+      { kind: 'aiwha', n: 2, path: [[300, -150], [430, -260], [300, -400], [170, -300]], y: 72, speed: 9, solid: false, dive: { high: 32, low: -4, every: 46 } },
+      { kind: 'aiwha', n: 2, path: [[-300, -140], [-440, -40], [-380, 180], [-260, 40]], y: 66, speed: 8, solid: false, dive: { high: 26, low: -4, every: 38 } },
     ],
     flyovers: [
       { kind: 'delta7', n: 1, metres: 8, alt: 80, speed: 120, every: 60 },

@@ -15,7 +15,9 @@
 //   or [who, text]), scale, solid, id (a quest's name for them), quest (the
 //   quest they give: quests.js's), reach (talked to from this far: a Hutt
 //   on his dais), level (the height of the floor they're on, where there
-//   are floors over floors), hidden (not there till a quest says) }]
+//   are floors over floors), hidden (not there till a quest says), dive
+//   (over the sea, a glide that dives into it now and then: an aiwha;
+//   floats.js's diveAt options, its heights over the water) }]
 
 import * as THREE from 'three';
 import { SURFACE_MODELS, surfaceUrl } from './catalog';
@@ -26,6 +28,7 @@ import { cloneModel, loadGlb } from './placer';
 import { rng } from './noise';
 import { groundAt, turnToward } from './walker';
 import { zoneVisibility } from './near';
+import { diveAt } from './floats';
 
 const TALK = 4.5; // metres: close enough to turn to you
 
@@ -181,7 +184,7 @@ export async function anyFigure(kind, spec = {}, kit = null) {
 export const fogCutoff = (density) => (density > 0 ? Math.sqrt(-Math.log(0.03)) / density : Infinity);
 const FAR = 60; // metres: past it, a person's legs are moved four frames at a time
 
-export function createActors({ parent, world, life = [], seed = 5, warm = (o) => Promise.resolve(o), small = false, kit = null, fog = () => 0 }) {
+export function createActors({ parent, world, life = [], seed = 5, warm = (o) => Promise.resolve(o), small = false, kit = null, fog = () => 0, water = null }) {
   const group = new THREE.Group();
   group.name = 'life';
   parent.add(group);
@@ -261,9 +264,18 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
         } else think(b, spec, dt, r, (a.avoiding ??= { avoid: avoider(a) })); // (made once a person, not every frame)
         a.near = Boolean(near);
         const g = groundAt(world, b.x, b.z, spec.level ?? Infinity);
-        const y = spec.y != null ? g + spec.y + Math.sin(performance.now() / 700 + a.i) * 0.15 : g;
+        let y = spec.y != null ? g + spec.y + Math.sin(performance.now() / 700 + a.i) * 0.15 : g;
+        let pitch = 0;
+        if (spec.dive && water?.height) {
+          // (down into the sea and out, a splash each way)
+          const dv = diveAt(performance.now() / 1000, (a.i * 0.37) % 1, spec.dive);
+          y = water.height(b.x, b.z) + dv.y;
+          pitch = dv.pitch;
+          if (a.under != null && a.under !== dv.y < 0 && d < 500) water.splash(b.x, b.z, 1.4);
+          a.under = dv.y < 0;
+        }
         a.holder.position.set(b.x, y, b.z);
-        a.holder.rotation.y = b.yaw;
+        a.holder.rotation.set(pitch, b.yaw, 0, 'YXZ');
         // (far ones: still on a small device, every fourth frame elsewhere,
         // four frames' worth at once: nobody sees their legs)
         if (!a.fig) continue;

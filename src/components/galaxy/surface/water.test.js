@@ -50,4 +50,38 @@ describe('the water', () => {
     expect(Math.max(...out) - Math.min(...out)).toBeGreaterThan(0.1);
     w.dispose();
   });
+  // (the drops in the air: parked ones sit far under the world)
+  const flying = (w) => {
+    const p = w.spray.geometry.attributes.position;
+    let n = 0;
+    for (let i = 0; i < p.count; i++) if (p.getY(i) > -1e5) n++;
+    return n;
+  };
+
+  it('throws spray off a leg in Kamino’s storm, and none with no legs', () => {
+    const cam = { position: new THREE.Vector3(0, 30, 0) };
+    const legs = createWater(site('sea', { legs: [[-300, 0, 12]] }), sun, '#ffffff', { id: 'kamino' });
+    const none = createWater(site('sea'), sun, '#ffffff', { id: 'kamino' });
+    let most = 0;
+    for (let t = 0; t < 30; t += 1 / 30) {
+      legs.update(t, cam);
+      none.update(t, cam);
+      most = Math.max(most, flying(legs));
+    }
+    expect(most).toBeGreaterThan(5);
+    expect(flying(none)).toBe(0);
+    legs.dispose();
+    none.dispose();
+  });
+
+  it('splashes where something goes in, and the drops fall back', () => {
+    const w = createWater(site('sea'), sun, '#ffffff', { id: 'kamino' });
+    const cam = { position: new THREE.Vector3(0, 30, 0) };
+    w.update(0, cam);
+    w.splash(-300, 40);
+    expect(flying(w)).toBeGreaterThan(20);
+    for (let t = 1 / 30; t < 4; t += 1 / 30) w.update(t, cam);
+    expect(flying(w)).toBe(0);
+    w.dispose();
+  });
 });

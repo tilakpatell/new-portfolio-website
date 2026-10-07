@@ -9,13 +9,19 @@
 // crusting over) and a sea of cloud (Bespin, far below the city) stay one
 // plane at the site's level; lava lights itself.
 //
-// site.water: { level, color, deep, kind, foam?, glow? }
+// Spray: where a wave runs up one of the water's legs (Kamino's stilts and
+// its pad's column, site.water.legs) it throws spray (floats.js says how
+// much), and splash(x, z, k) throws a burst (an aiwha going in).
+//
+// site.water: { level, color, deep, kind, foam?, glow?, legs?: [[x, z, r]…] }
 // createWater(site, sunDir, sunColor, { heightAt, small, id }) →
-//   { mesh, glow, depth, update(t, camera), height(x, z, t), dispose() }
+//   { mesh, glow, spray, depth, update(t, camera, dt), height(x, z, t),
+//     splash(x, z, k), dispose() }
 
 import * as THREE from 'three';
 import { FAR, HALF } from './terrain';
 import { noiseTexture } from './noiseTex';
+import { sprayAt } from './floats';
 import { WAVES_GLSL, bakeDepth, discRings, heightAt as waveHeight, seaFor, snapCentre, wavesFor } from './ocean';
 
 const PLANE_VERT = `
@@ -156,7 +162,8 @@ void main() {
 }`;
 
 const SEA_FRAG = `
-uniform vec3 uColor, uDeep, uShallow, uBed, uSun, uSunColor, uZenith, uHorizon;
+uniform vec3 uColor, uDeep, uShallow, uBed, uSun, uSunColor, uZenith, uHorizon, uFar;
+uniform float uFarMix, uSkyMix;
 uniform float uTime, uClarity, uCaps, uShore, uBreakers, uGlint, uRough, uScum;
 uniform sampler2D uNoise;
 varying vec3 vWorld;
@@ -191,7 +198,10 @@ void main() {
   float shallow = exp(-vDepth / max(uClarity, 0.1));
   body = mix(body, uShallow, smoothstep(0.02, 0.6, shallow) * 0.85);
   body = mix(body, uBed, pow(shallow, 4.0) * 0.7);
-  vec3 col = mix(body, sky, fresnel * (1.0 - shallow * 0.4));
+  // (a sea that keeps its colour out to the horizon, where the sky in it
+  // would wash it pale: Scarif's)
+  body = mix(body, uFar, smoothstep(40.0, 500.0, dist) * uFarMix * (1.0 - shallow));
+  vec3 col = mix(body, sky, fresnel * (1.0 - shallow * 0.4) * uSkyMix);
   // the sun's road on the water
   vec3 H = normalize(uSun + V);
   col += uSunColor * pow(max(dot(N, H), 0.0), 260.0) * uGlint * (0.3 + 0.7 * near);
@@ -280,6 +290,9 @@ function createSea(site, sunDir, sunColor, { heightAt, small = false, id } = {})
       uGlint: { value: sea.glint },
       uRough: { value: sea.rough },
       uScum: { value: sea.scum ?? 0 },
+      uFar: { value: new THREE.Color(sea.far ?? w.deep ?? w.color) },
+      uFarMix: { value: sea.far ? (sea.farMix ?? 0.5) : 0 },
+      uSkyMix: { value: sea.sky ?? 1 },
     },
   ]);
   // (the textures after the merge, which would clone them)
@@ -290,23 +303,134 @@ function createSea(site, sunDir, sunColor, { heightAt, small = false, id } = {})
   mesh.frustumCulled = false; // (it goes where the camera goes)
   mesh.receiveShadow = false;
   mesh.name = 'water';
+  const height = (x, z, t = uniforms.uTime.value) => w.level + waveHeight(x, z, t, waves, depth.at(x, z), sea);
+  const spray = createSpray(small ? 260 : 700);
+  // (each leg read at a few points round it, the water there last frame)
+  const legs = (w.legs ?? []).map(([x, z, r]) => ({ x, z, r, at: Array.from({ length: 6 }, (_, i) => ({ a: (i / 6) * Math.PI * 2, h: w.level, owed: 0 })) }));
+  let lastT = null;
   return {
     mesh,
     glow: null,
+    spray: spray.points,
     depth,
     update(t, camera) {
+      const dt = lastT == null ? 0 : t - lastT;
+      lastT = t;
       uniforms.uTime.value = t;
       if (camera) {
         const [x, z] = snapCentre(camera.position.x, camera.position.z, rings.step);
         uniforms.uCentre.value.set(x, z);
       }
+      if (!(dt > 0) || dt > 0.5) return;
+      for (const leg of legs) {
+        // (spray far off isn't seen through the rain)
+        if (camera && Math.hypot(camera.position.x - leg.x, camera.position.z - leg.z) > 420) continue;
+        for (const p of leg.at) {
+          const x = leg.x + Math.cos(p.a) * leg.r;
+          const z = leg.z + Math.sin(p.a) * leg.r;
+          const h = height(x, z, t);
+          const k = sprayAt(h, p.h, dt, { level: w.level });
+          p.h = h;
+          p.owed += k * dt * 90;
+          for (; p.owed >= 1; p.owed -= 1) spray.emit(x, h, z, Math.cos(p.a), Math.sin(p.a), 3 + k * 7);
+        }
+      }
+      spray.step(dt);
     },
     // the water's surface there and then (what's drawn, to a few cm)
-    height: (x, z, t = uniforms.uTime.value) => w.level + waveHeight(x, z, t, waves, depth.at(x, z), sea),
+    height,
+    // a burst of spray: something going into the water, or coming out
+    splash(x, z, k = 1) {
+      const h = height(x, z);
+      for (let i = 0; i < 50 * k; i++) {
+        const a = Math.random() * Math.PI * 2;
+        spray.emit(x + Math.cos(a) * 2, h, z + Math.sin(a) * 2, Math.cos(a), Math.sin(a), 5 + Math.random() * 8 * k);
+      }
+    },
     dispose() {
       mesh.geometry.dispose();
       material.dispose();
       depthTex.dispose();
+      spray.dispose();
+    },
+  };
+}
+
+// Spray: soft white drops thrown out and up, falling back, gone in two
+// seconds; one draw for all of them
+let puffTex = null;
+function puff() {
+  if (puffTex) return puffTex;
+  // (a soft round dot, white, fading out from its middle; made in numbers,
+  // not on a canvas, so it's made the same anywhere)
+  const n = 32;
+  const data = new Uint8Array(n * n * 4);
+  for (let y = 0; y < n; y++)
+    for (let x = 0; x < n; x++) {
+      const d = Math.hypot(x + 0.5 - n / 2, y + 0.5 - n / 2) / (n / 2);
+      const i = (y * n + x) * 4;
+      data[i] = data[i + 1] = data[i + 2] = 255;
+      data[i + 3] = Math.round(255 * Math.max(0, 1 - d) ** 1.6 * 0.95);
+    }
+  puffTex = new THREE.DataTexture(data, n, n, THREE.RGBAFormat);
+  puffTex.magFilter = puffTex.minFilter = THREE.LinearFilter;
+  puffTex.needsUpdate = true;
+  return puffTex;
+}
+
+function createSpray(n) {
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(n * 3).fill(-1e6);
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const vel = new Float32Array(n * 3);
+  const age = new Float32Array(n).fill(99);
+  const material = new THREE.PointsMaterial({ color: '#e8f0f4', map: puff(), size: 2.6, transparent: true, opacity: 0.6, depthWrite: false, sizeAttenuation: true, fog: true });
+  const points = new THREE.Points(geo, material);
+  points.frustumCulled = false;
+  points.name = 'spray';
+  let next = 0;
+  let live = 0;
+  return {
+    points,
+    // a drop at (x, y, z), thrown out along (dx, dz) and up at `up` m/s
+    emit(x, y, z, dx, dz, up) {
+      const i = next++ % n;
+      const out = 1.5 + Math.random() * 3;
+      pos[i * 3] = x;
+      pos[i * 3 + 1] = y;
+      pos[i * 3 + 2] = z;
+      vel[i * 3] = dx * out + (Math.random() - 0.5) * 2;
+      vel[i * 3 + 1] = up * (0.6 + Math.random() * 0.6);
+      vel[i * 3 + 2] = dz * out + (Math.random() - 0.5) * 2;
+      age[i] = 0;
+      live = 2;
+    },
+    step(dt) {
+      if (!live) return;
+      let any = false;
+      for (let i = 0; i < n; i++) {
+        if (age[i] > 2) continue;
+        age[i] += dt;
+        if (age[i] > 2) {
+          pos[i * 3 + 1] = -1e6;
+          continue;
+        }
+        any = true;
+        vel[i * 3 + 1] -= 9.8 * dt;
+        const drag = Math.exp(-dt * 0.8);
+        vel[i * 3] *= drag;
+        vel[i * 3 + 2] *= drag;
+        pos[i * 3] += vel[i * 3] * dt;
+        pos[i * 3 + 1] += vel[i * 3 + 1] * dt;
+        pos[i * 3 + 2] += vel[i * 3 + 2] * dt;
+      }
+      geo.attributes.position.needsUpdate = true;
+      // (one more frame to park the last of them, then nothing to do)
+      if (!any) live -= 1;
+    },
+    dispose() {
+      geo.dispose();
+      material.dispose();
     },
   };
 }
