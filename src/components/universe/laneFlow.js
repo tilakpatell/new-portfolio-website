@@ -115,6 +115,9 @@ export const shipsOf = (lane, way) => slotsOf(lane, way, null).reduce((n, s) => 
 
 // where along it a slot's ship `m` is, unwrapped: its laps and how far round
 const lapOf = (lane, slot, m, t) => slot.phase - (m * COLUMN_GAP) / lane.length + (slot.v * TIERS[lane.tier].speed * t) / lane.length;
+// the same for slot i's ship m, from outside (laneStreaks.js works out where
+// each streak starts from it, in doubles, and leaves the rest to the GPU)
+export const lapAt = (lane, way, i, m, t) => lapOf(lane, slotsOf(lane, way, null)[i], m, t);
 // the laps a ship has done by t (it comes round to s = 0 at each)
 export const wrapsOf = (lane, way, i, m, t) => Math.floor(lapOf(lane, slotsOf(lane, way, null)[i], m, t));
 const keyOf = (lane, way, i, m) => `${lane.id}|${way}|${i}|${m}`;

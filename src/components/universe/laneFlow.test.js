@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CAPITAL, COLUMN, NEAR, RESOLVE, SLOT_OFF, countFor, flowAt, flowNear, kill, nearest, positionOf, shipsOf, slotOf, wrapsOf } from './laneFlow';
+import { CAPITAL, COLUMN, NEAR, RESOLVE, SLOT_OFF, countFor, flowAt, flowNear, kill, lapAt, nearest, positionOf, shipsOf, slotOf, wrapsOf } from './laneFlow';
 import { LANES, R, TIERS, carriageway } from './hyperlanes';
 import { bezier } from './lanes';
 import { SIDES } from './sides';
@@ -156,5 +156,14 @@ describe('the flow of traffic in the lanes (laneFlow.js)', () => {
 
   it('finds nothing near a ship far from every lane', () => {
     expect(flowNear({ x: 0, y: 5000, z: 0 }, 3, new Map(), NEAR)).toEqual([]);
+  });
+
+  it('gives each ship’s unwrapped lap: its s and its wraps', () => {
+    const t = 1.8e9 + 123.25;
+    for (const f of flowAt(trunk, 'in', t)) {
+      const x = lapAt(trunk, 'in', f.i, f.m, t);
+      expect(x - Math.floor(x)).toBeCloseTo(f.s, 9);
+      expect(Math.floor(x)).toBe(wrapsOf(trunk, 'in', f.i, f.m, t));
+    }
   });
 });
