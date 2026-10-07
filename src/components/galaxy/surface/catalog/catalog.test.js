@@ -1,9 +1,11 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import CREDITS from '../../../../data/modelCredits.json';
-import { GROUPS, SURFACE_MODELS, madeKinds, surfaceLodUrl, surfaceUrl } from './index';
+import { GROUPS, SURFACE_MODELS, madeKinds, surfaceLodUrl, surfaceUltraUrl, surfaceUrl } from './index';
+import { ULTRA } from './ultra';
 
 const file = (kind) => new URL(`../../../../../public${surfaceUrl(kind)}`, import.meta.url);
+const ultraFile = (kind) => new URL(`../../../../../public${surfaceUltraUrl(kind)}`, import.meta.url);
 const lodFile = (kind) => new URL(`../../../../../public${surfaceLodUrl(kind)}`, import.meta.url);
 const README = readFileSync(new URL('../../../../../public/cc0/README.md', import.meta.url), 'utf8');
 const MB = 1024 * 1024;
@@ -74,5 +76,20 @@ describe('the surface models', () => {
     }
     const dir = new URL('../../../../../public/models/galaxy/surface/', import.meta.url);
     for (const f of readdirSync(dir).filter((f) => f.endsWith('.lod1.glb'))) expect(SURFACE_MODELS[f.slice(0, -9)]?.lod, f).toBe(true);
+  });
+
+  it('has an ultra cut beside each one that says so, and only those, each under 24 MB (./ultra.js)', () => {
+    for (const [kind, m] of Object.entries(SURFACE_MODELS)) {
+      if (m.cluster) continue;
+      expect(existsSync(ultraFile(kind)), `${kind}.ultra.glb`).toBe(Boolean(m.ultra));
+      if (!m.ultra) continue;
+      expect(statSync(ultraFile(kind)).size, `${kind}.ultra.glb`).toBeLessThan(ULTRA.bytes);
+      expect(m.ultra.tex, kind).toBeLessThanOrEqual(ULTRA.tex);
+      if (m.tris) expect(m.ultra.tris, kind).toBeLessThanOrEqual(ULTRA.factor * m.tris);
+      // (never fewer than the high cut: an ultra cut lighter than high is no ultra cut)
+      if (m.tris) expect(m.ultra.tris, kind).toBeGreaterThanOrEqual(m.tris);
+    }
+    const dir = new URL('../../../../../public/models/galaxy/surface/', import.meta.url);
+    for (const f of readdirSync(dir).filter((f) => f.endsWith('.ultra.glb'))) expect(SURFACE_MODELS[f.slice(0, -10)]?.ultra, f).toBeTruthy();
   });
 });

@@ -23,6 +23,8 @@ export const GROUPS = { common, desert, ice, forest, core, clonewars, edge, peop
 export const SURFACE_MODELS = Object.fromEntries(Object.entries(GROUPS).flatMap(([group, models]) => Object.entries(models).map(([kind, m]) => [kind, { ...m, group }])));
 export const surfaceUrl = (kind) => `/models/galaxy/surface/${kind}.glb`;
 export const surfaceLodUrl = (kind) => `/models/galaxy/surface/${kind}.lod1.glb`;
+// (the ultra level's cut, for a kind whose entry has `ultra`: ./ultra.js)
+export const surfaceUltraUrl = (kind) => `/models/galaxy/surface/${kind}.ultra.glb`;
 // the made kinds public/cc0/README.md lists (its
 // `models/galaxy/surface/{a,b,…}.glb` lines, one a lane): each made model
 // has to be there
