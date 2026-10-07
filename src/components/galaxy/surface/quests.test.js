@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { feed, nextQuest, questsOf, start, stepTarget, stepText } from './quests';
+import { feed, isOffered, nextQuest, questsOf, start, stepTarget, stepText } from './quests';
 
 const QUEST = {
   id: 'droids',
@@ -77,5 +77,19 @@ describe('someone with more than one thing to ask', () => {
     expect(nextQuest({ quest: 'arena' }, new Set())).toBe('arena');
     expect(nextQuest({}, new Set())).toBe(null);
     expect(questsOf({ quest: 'arena' })).toEqual(['arena']);
+  });
+
+  it('holds a quest back until the ones it comes after are done', () => {
+    const byId = { brief: { id: 'brief', steps: [] }, scramble: { id: 'scramble', steps: [] }, medals: { id: 'medals', after: ['brief', 'scramble'], steps: [] } };
+    expect(isOffered(byId.brief, new Set())).toBe(true);
+    expect(isOffered(byId.medals, new Set())).toBe(false);
+    expect(isOffered(byId.medals, new Set(['brief']))).toBe(false);
+    expect(isOffered(byId.medals, new Set(['brief', 'scramble']))).toBe(true);
+    const leia = { quest: ['brief', 'medals'] };
+    expect(nextQuest(leia, new Set(), (id) => byId[id])).toBe('brief');
+    expect(nextQuest(leia, new Set(['brief']), (id) => byId[id])).toBe(null);
+    expect(nextQuest(leia, new Set(['brief', 'scramble']), (id) => byId[id])).toBe('medals');
+    // (without a lookup, as before: the first not done)
+    expect(nextQuest(leia, new Set(['brief']))).toBe('medals');
   });
 });

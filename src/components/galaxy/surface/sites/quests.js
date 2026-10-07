@@ -32,12 +32,6 @@ export const EXTRA = {
       { id: 'cave', name: 'The cave', giver: 'master', steps: [{ type: 'reach', at: [-70, -120], r: 10, text: 'Go into the cave' }, { type: 'shoot', tag: 'vision', n: 1, text: 'Face what’s inside', lines: [[null, '(A figure in black steps out of the dark.)']], spawn: { kind: 'vader', at: [-66, -114], hp: 4, leash: 14, roam: 2, tag: 'vision', hostile: { range: 14, chase: 1.8, melee: true, reach: 2.6, every: 1.6, damage: 14, delay: 1, parry: 0.75, guard: 3, blade: { color: '#ff3b3b' } } } }], done: [['Yoda', 'Your weapons… you will not need them.']] },
     ],
   },
-  yavin: {
-    life: [{ kind: 'rebel', id: 'dodonna', at: [10, -100], still: true, face: 3, name: 'General Dodonna', named: true, quest: 'remotes', says: ['The battle station will be in range in thirty minutes.'] }],
-    quests: [
-      { id: 'remotes', name: 'Blast shield down', giver: 'dodonna', intro: [['General Dodonna', 'Pilots warm up on the remotes by the lookout. Your turn.']], steps: [{ type: 'shoot', tag: 'remote', n: 6, text: 'Hit the training remotes', spawn: { kind: 'remote', n: 6, at: [-200, -120], spread: 8, roam: 6, speed: 2, hp: 1, tag: 'remote' } }, { type: 'reach', at: [0, -256], r: 5, text: 'Climb to the throne room for the ceremony' }], done: [[null, '(The doors open. The whole Rebellion is standing there, and they’re cheering for you.)']] },
-    ],
-  },
   naboo: {
     life: [
       { kind: 'gungan', id: 'tarpals', at: [250, -230], still: true, face: 2.5, name: 'Captain Tarpals', named: true, quest: 'grassfield', says: ['Wesa ready to do our-n part.'] },

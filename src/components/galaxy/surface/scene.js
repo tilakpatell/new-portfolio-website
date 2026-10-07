@@ -86,7 +86,7 @@ import { heatShot, heatStep, spreadAt, vent, ventSpot, withMods } from './weapon
 import { heroById, heroSpec } from '../heroes';
 import { perkEffects } from '../perks';
 import { ABILITIES, JET, abilitiesOf, jetStep, newJet } from './abilityRules';
-import { feed, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
+import { feed, isOffered, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, ride, rider, turnToward, walk, walker } from './walker';
 import { rng } from './noise';
@@ -927,6 +927,8 @@ export async function create(canvas, ctx) {
         putAt(p, e.to[0], e.to[1], e.yaw);
         camInit = false;
       }
+      // (somewhere else on the site: the page goes there)
+      if (e.go) emit({ type: 'go', to: e.go });
     }
   }
   function beginQuest(q) {
@@ -972,7 +974,7 @@ export async function create(canvas, ctx) {
     if (tg.kind === 'talk') {
       const spec = tg.actor.spec;
       // (what they offer now: their next quest not done, or their last, done)
-      const offered = nextQuest(spec, state.done) ?? questsOf(spec).at(-1);
+      const offered = nextQuest(spec, state.done, questOf) ?? questsOf(spec).filter((id) => isOffered(questOf(id), state.done)).at(-1) ?? null;
       const q = offered && questOf(offered);
       const step = state.quest && questOf(state.quest.id)?.steps[state.quest.step];
       if (q && !state.done.has(q.id) && !state.quest) beginQuest(q);
@@ -980,7 +982,7 @@ export async function create(canvas, ctx) {
       else {
         const line = life.say(tg.actor);
         if (line) emit({ type: 'talk', ...line });
-        else if (q && state.done.has(q.id)) say(q.after ?? [[spec.name, 'Thanks again.']]);
+        else if (q && state.done.has(q.id)) say(q.again ?? [[spec.name, 'Thanks again.']]);
       }
     } else if (tg.kind === 'use') questEvent({ type: 'use', id: tg.id });
     else if (tg.kind === 'enter') enterZone(tg.zone);
@@ -2666,12 +2668,14 @@ export async function create(canvas, ctx) {
       if (z) enterZone(z);
       else leaveZone();
     },
-    teleport(x, z, yaw = null) {
+    teleport(x, z, yaw = null, y = null) {
       if (!import.meta.env.DEV) return;
       const p = me().st;
       p.x = x;
       p.z = z;
-      p.y = groundAt(world, x, z, 1e4, 1e4);
+      // (the highest floor there, or the one nearest a height given: the
+      // hangar's floor under the temple's roof)
+      p.y = y == null ? groundAt(world, x, z, 1e4, 1e4) : groundAt(world, x, z, y, 2);
       if (yaw != null) {
         p.yaw = yaw;
         state.cam.yaw = yaw;
