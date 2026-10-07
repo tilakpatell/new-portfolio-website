@@ -18,6 +18,9 @@ import { boxField, facadeMaterial } from '../../../lib/three/facade';
 import { POSES, figure, loadFigure } from '../../../lib/three/rig';
 import { prefersReducedMotion } from '../../../lib/hooks';
 import { AVENUE, SCHOOL, buildAvenue, distance } from './rules';
+import { AVENGERS_MANIFEST } from '../people/models';
+import { clipsFor, loadClips } from '../world/people';
+import { GAIT, gaitFor } from '../world/rules';
 
 const SPIDEY = '/models/marvel/spiderman.glb';
 const asset = (file) => `${import.meta.env?.BASE_URL ?? '/'}${file.replace(/^\//, '')}`;
@@ -122,6 +125,25 @@ export async function create(canvas, { onLost, onSlow } = {}) {
   const spidey = figure(await loadFigure(asset(SPIDEY)), { h: 1.75 });
   spidey.lean = new THREE.Quaternion();
   scene.add(spidey.holder);
+  // his own moves (the compound's: motion-captured idle, walk and run made
+  // for this model, manifest.json's spiderman), for running along the
+  // street; if they can't be had, he's posed by the rig as before
+  const moves = await (async () => {
+    try {
+      const man = await fetch(asset(AVENGERS_MANIFEST)).then((r) => (r.ok ? r.json() : null));
+      const spec = man?.spiderman;
+      const clips = spec?.moves ? await loadClips(spec.moves) : null;
+      if (!clips?.idle || !clips?.walk || !clips?.run) return null;
+      return { set: clipsFor(spidey.model, Object.values(clips)), speeds: { walk: GAIT.walk, run: GAIT.run, ...spec.speeds } };
+    } catch {
+      return null;
+    }
+  })();
+  moves?.set.play('run');
+  const bones = [];
+  spidey.model.traverse((o) => o.isBone && bones.push(o));
+  const clipQ = bones.map(() => new THREE.Quaternion());
+  const W = { w: 1, hurt: 0, lift: 0 }; // the rig's pose over his clips (1: all pose); a stumble's time left; his feet's lift to the street
   const webMat = new THREE.MeshBasicMaterial({ color: hot(0xffffff, 1.2), transparent: true, opacity: 0.95, toneMapped: false });
   const web = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1, 6).translate(0, 0.5, 0), webMat);
   web.visible = false;
@@ -141,6 +163,11 @@ export async function create(canvas, { onLost, onSlow } = {}) {
   function poseSpidey(g, dt) {
     const f = spidey;
     f.holder.position.set(...g.p);
+    // (running on his own clips, his feet on the street: the rules hold his
+    // middle 0.9 m up; eased, so leaving the street doesn't pop him)
+    const lift = moves && g.mode === 'street' && !g.web ? f.hipHeight - 0.9 : 0;
+    W.lift += (lift - W.lift) * (dt === 0 ? 1 : 1 - Math.exp(-12 * dt));
+    f.holder.position.y += W.lift;
     f.holder.rotation.set(0, Math.PI, 0); // he faces down the avenue (−z)
     // which way is up for him: along his web while he swings, else upright, tipped into his flight
     let up = Y.clone();
@@ -164,9 +191,36 @@ export async function create(canvas, { onLost, onSlow } = {}) {
       pose[`fore${other}`] = [other === 'L' ? 0.7 : -0.7, 0.2, 0.5];
       Object.assign(pose, { thighL: [0.05, -1, 0.25], calfL: [0.03, -1, -0.35], thighR: [-0.05, -1, 0.2], calfR: [-0.03, -1, -0.4], torso: { pitch: 0.12, yaw: 0, roll: 0 } });
     } else if (g.flip > 0) pose = POSES.guard();
-    else if (g.mode === 'street') pose = POSES.hover(time * 3);
+    else if (g.mode === 'street') pose = moves ? POSES.hurt() : POSES.hover(time * 3);
     else pose = POSES.fall(time);
-    f.pose(pose, dt, 14);
+    if (!moves) {
+      f.pose(pose, dt, 14);
+      return;
+    }
+    // On the street: his own walk or run, paced to how fast he's going (the
+    // rules run him at 9 m/s), a stumble thrown over it as he hits the
+    // street or a car honks into him. Off it: the rig's pose, faded in over
+    // the clips as he leaves the street and out as he lands, so neither snaps.
+    W.hurt = Math.max(0, W.hurt - dt);
+    const street = g.mode === 'street' && !g.web && !(g.flip > 0);
+    const want = street ? Math.min(1, W.hurt / 0.3) * 0.75 : 1;
+    W.w += (want - W.w) * (dt === 0 ? 1 : 1 - Math.exp(-dt * (want > W.w ? 16 : 7)));
+    const sp = Math.hypot(g.v[0], g.v[2]);
+    const m = moves.set;
+    if (!street) m.play('run', { speed: 0.6 });
+    else {
+      const gait = gaitFor(m.playing, sp);
+      const { walk, run } = GAIT.rates;
+      if (gait === 'idle') m.play('idle');
+      else if (gait === 'walk') m.play('walk', { speed: clamp(sp / moves.speeds.walk, walk[0], walk[1]) });
+      else m.play('run', { speed: clamp(sp / moves.speeds.run, run[0], run[1]) });
+    }
+    m.update(dt);
+    if (W.w > 0.01) {
+      for (let i = 0; i < bones.length; i++) clipQ[i].copy(bones[i].quaternion);
+      f.pose(pose, dt, 14);
+      if (W.w < 0.99) for (let i = 0; i < bones.length; i++) bones[i].quaternion.slerp(clipQ[i], 1 - W.w);
+    }
   }
 
   function render(g, dt) {
@@ -254,6 +308,8 @@ export async function create(canvas, { onLost, onSlow } = {}) {
         case 'land':
           vfx.smoke(V(e.at), { size: 2.5, count: 6, life: 1.4, color: 0x8a8580, to: 0xb8b2aa, rise: 0.6, opacity: 0.5, spread: 1.5 });
           feel.trauma(e.type === 'street' ? 0.45 : 0.2);
+          // down on the street the hard way: a stumble before he runs on
+          if (e.type === 'street') W.hurt = 0.55;
           break;
         case 'wall':
           vfx.debris(V(e.at), { count: 5, speed: 4, size: 0.18, life: 1.5 });
@@ -261,6 +317,7 @@ export async function create(canvas, { onLost, onSlow } = {}) {
           break;
         case 'honk':
           feel.trauma(0.25);
+          W.hurt = Math.max(W.hurt, 0.4);
           break;
         default:
       }
@@ -282,6 +339,7 @@ export async function create(canvas, { onLost, onSlow } = {}) {
     distance,
     dispose() {
       vfx.dispose?.();
+      moves?.set.dispose();
       spidey.dispose();
       engine.dispose();
     },

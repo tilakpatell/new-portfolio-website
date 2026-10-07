@@ -2,7 +2,8 @@
 // the rollout set): Optimus, Bumblebee and the Vehicons each twice, as the
 // vehicle and as the robot, the jets, Shockwave and Megatron. What's there is
 // listed in /games/meshy/rollout/index.json; anything missing or failing
-// stays as the shapes in ./models.js.
+// stays as the shapes in ./models.js. The files come through ../meshy.js,
+// which the transformation showcase shares, so each is fetched once.
 //
 // Characters come out of Meshy facing +Z (its rigging needs them to); a
 // vehicle or a jet is turned so its long side runs along the road, nose
@@ -11,14 +12,23 @@
 //
 // A cast here has the same face as one from ./models.js ({ group, rig, eye,
 // mats, … }), so RollOut3D draws either the same way. The rig's animate(k,
-// phase, roll, amount) changes form by dissolving one model into the other
-// along an energon-lit edge, and plays the robot's clip locked to the phase
-// the shapes swing their limbs by (distance for the Autobots, so the feet
-// don't slide).
+// phase, roll, amount, motion) changes form by dissolving one model into the
+// other along an energon-lit edge. A rigged robot stands on an animator
+// (lib/three/animator.js): its own idle, walk and run paced to the ground it
+// covers (motion: { dt, move, speed, side, air, turn }, metres a second; its
+// strides measured off the clips, so the feet don't slide, and walking
+// backward or sideways with the hips turned to it), tucked in the air rather
+// than running on nothing, and the clip library's one-shots over it through
+// rig.play(name, opts) (a shot, a hit, a fall, a taunt, a cheer); its head
+// through rig.look(point); a boss's cannon arm up at you through
+// rig.aim(weight, point). Without motion (or an animator), the clip is held
+// where the phase says, as it always was.
 
 import * as THREE from 'three';
-import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import { gltfLoader } from '../../../lib/three/gltf';
+import { createAnimator } from '../../../lib/three/animator';
+import { aimBone } from '../../../lib/three/ik';
+import { hashSeed } from '../game/bodies';
+import { castCopy, castModel, ownClips, rigOf } from '../meshy';
 
 const BASE = '/games/meshy/rollout';
 const TAU = Math.PI * 2;
@@ -33,6 +43,9 @@ const BOTS = {
 // (Optimus is the Decepticons' last boss: the player's model, at a boss's size)
 const BOSSES = { shockwave: { h: 8.4, hand: 'LeftHand' }, megatron: { h: 8.6, hand: 'RightHand' }, optimus: { h: 8.2, hand: 'RightHand' } };
 const JETS = { seeker: 3.9, starscream: 3.9 * 3.2 };
+// how each boss shows itself as it comes out: Megatron and Shockwave taunt
+// you; Optimus, for the Decepticons' last fight, raises a fist
+const TAUNTS = { megatron: 'taunt', shockwave: 'taunt', optimus: 'cheer.one' };
 
 // Changing form (k 0 vehicle … 1 robot): the vehicle comes apart over the
 // first three quarters while the robot builds over the last three, so midway
@@ -100,39 +113,22 @@ function dissolving(src, edge, scale, frame) {
 }
 
 export function createRollOutCast() {
-  const loader = gltfLoader();
-  const assets = new Map(); // name → { scene, size, offset, clips }
+  const assets = new Map(); // name → { gltf, size, offset, clips, rigged, yaw, hipsY, up }
   const owned = [];
-
-  const clipOf = async (url) => {
-    try {
-      return (await loader.loadAsync(url)).animations[0] ?? null;
-    } catch {
-      return null;
-    }
-  };
+  let made = 0; // (each rigged copy's seed: where in its stride and its breath it starts)
 
   const loadOne = async (name, yaw = 0) => {
     try {
-      const gltf = await loader.loadAsync(`${BASE}/${name}.glb`);
+      const gltf = await castModel(name);
+      if (!gltf) return;
       const scene = gltf.scene;
-      scene.traverse((o) => {
-        if (!o.isMesh) return;
-        owned.push(o.geometry, o.material);
-        o.castShadow = true;
-        o.receiveShadow = true;
-        o.frustumCulled = false; // a skinned mesh's bounds don't follow its pose
-      });
       scene.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(scene);
       const size = box.getSize(new THREE.Vector3());
       const offset = new THREE.Vector3(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2);
-      const clips = {};
-      if (RIGGED.has(name)) {
-        const [idle, walk, run] = await Promise.all(['idle', 'walk', 'run'].map((c) => clipOf(`${BASE}/${name}-${c}.glb`)));
-        Object.assign(clips, { idle, walk, run });
-      }
-      assets.set(name, { scene, size, offset, clips, rigged: RIGGED.has(name), yaw: (Number(yaw) || 0) * (Math.PI / 180) });
+      const rigged = RIGGED.has(name);
+      const clips = rigged ? await ownClips(name) : {};
+      assets.set(name, { gltf, size, offset, clips, rigged, yaw: (Number(yaw) || 0) * (Math.PI / 180), ...(rigged ? rigOf(gltf) : {}) });
     } catch {
       /* this one stays as shapes */
     }
@@ -162,11 +158,13 @@ export function createRollOutCast() {
 
   // A copy of a model, `k` metres to the unit, resting on y = 0 and centred,
   // turned to face `face` (0: +Z, as glTF does; π: down the road, -Z), its
-  // materials its own (to flash and dissolve) and its geometry shared.
+  // materials its own (to flash and dissolve) and its geometry shared. A
+  // rigged one gets an animator (or, if one can't be made, a mixer of its
+  // own clips, held where it's told).
   const place = (name, fit, { face = 0, edge = null, lengthwise = false } = {}) => {
     const src = assets.get(name);
     if (!src) return null;
-    const model = src.rigged ? cloneSkinned(src.scene) : src.scene.clone();
+    const model = castCopy(src.gltf);
     const k = fit(src.size);
     const holder = new THREE.Group();
     model.scale.setScalar(k);
@@ -183,12 +181,16 @@ export function createRollOutCast() {
     model.traverse((o) => {
       if (!o.isMesh) return;
       o.userData.shared = true;
+      o.castShadow = true;
+      o.receiveShadow = true;
+      o.frustumCulled = false; // a skinned mesh's bounds don't follow its pose
       if (edge && !framed) {
         framed = true;
         o.onBeforeRender = () => frame.value.copy(holder.matrixWorld).invert();
       }
+      // (the copy's materials are its own already; a dissolving one is made from each)
       const list = (Array.isArray(o.material) ? o.material : [o.material]).map((m) => {
-        const c = edge ? dissolving(m, edge, scale, frame) : m.clone();
+        const c = edge ? dissolving(m, edge, scale, frame) : m;
         owned.push(c);
         mats.push(c);
         if (c.userData.cut) cuts.push(c.userData.cut);
@@ -196,16 +198,24 @@ export function createRollOutCast() {
       });
       o.material = Array.isArray(o.material) ? list : list[0];
     });
+    let anim = null;
     let mixer = null;
     const act = {};
     if (src.rigged) {
-      mixer = new THREE.AnimationMixer(model);
-      for (const [n, clip] of Object.entries(src.clips)) {
-        if (!clip) continue;
-        const a = mixer.clipAction(clip);
-        a.play();
-        a.setEffectiveWeight(0);
-        act[n] = a;
+      try {
+        anim = createAnimator(model, { clips: src.clips, hipsY: src.hipsY, up: src.up, key: `rollout:${name}:${k.toFixed(4)}`, seed: hashSeed(`${name}:${made++}`) });
+      } catch {
+        anim = null;
+      }
+      if (!anim) {
+        mixer = new THREE.AnimationMixer(model);
+        for (const [n, clip] of Object.entries(src.clips)) {
+          if (!clip) continue;
+          const a = mixer.clipAction(clip);
+          a.play();
+          a.setEffectiveWeight(0);
+          act[n] = a;
+        }
       }
     }
     // stand in for the shapes' lamps: the textures have their own eyes
@@ -218,10 +228,10 @@ export function createRollOutCast() {
       casting = on;
       for (const m of meshes) m.castShadow = on;
     };
-    return { holder, model, mats, mixer, act, cut, shadow, src, k };
+    return { holder, model, mats, anim, mixer, act, cut, shadow, src, k };
   };
 
-  // play `name` at `t` seconds into it, alone
+  // play `name` at `t` seconds into it, alone (a figure without an animator)
   const pose = (p, name, t) => {
     const a = p.act[name] ?? p.act.walk ?? p.act.idle ?? p.act.run;
     if (!p.mixer || !a) return;
@@ -229,6 +239,51 @@ export function createRollOutCast() {
     const d = a.getClip().duration || 1;
     a.time = ((t % d) + d) % d;
     p.mixer.update(0);
+  };
+
+  // its feet on the ground it covers, and what's laid over that, for a
+  // frame; the bones on top of the clips (the hips turned to a strafe, the
+  // lean, the legs tucked in the air) in its own frame as it's placed now
+  const qFrame = new THREE.Quaternion();
+  const ahead = new THREE.Vector3();
+  const upright = new THREE.Vector3();
+  const step = (p, o) => {
+    p.anim.locomote({ move: o.move ?? 0, speed: o.speed ?? 0, side: o.side ?? 0, turn: o.turn ?? 0, air: o.air ?? 0 });
+    p.anim.update(o.dt);
+    p.model.getWorldQuaternion(qFrame);
+    p.anim.after(o.dt, null, { forward: ahead.set(0, 0, 1).applyQuaternion(qFrame), up: upright.set(0, 1, 0).applyQuaternion(qFrame) });
+  };
+
+  // The calls a rigged robot's rig answers besides animate: the library's
+  // clips over its own (lib/three/animator's play: { layer, loop, hold }),
+  // its head toward a point, a cannon arm raised straight at one (w: 0…1)
+  const calls = (p, hand = null) => {
+    const arm = hand ? [p.model.getObjectByName(hand.replace('Hand', 'Arm')), p.model.getObjectByName(hand.replace('Hand', 'ForeArm')), p.model.getObjectByName(hand)] : [];
+    const at = new THREE.Vector3();
+    const from = new THREE.Vector3();
+    const aiming = { w: 0, to: new THREE.Vector3() };
+    return {
+      clips: Boolean(p.anim), // (whether the clips below show: no animator, nothing does)
+      play: (name, opts) => p.anim?.play(name, opts) ?? Promise.resolve('cut'),
+      stop: (layer, fade) => p.anim?.stop(layer, fade),
+      playing: (layer) => p.anim?.playing(layer) ?? null,
+      look: (target) => p.anim?.look(target ?? null),
+      aim(w, target) {
+        aiming.w = w;
+        if (target) aiming.to.copy(target);
+      },
+      // (after the animator: the arm straight along the line to its target)
+      raise() {
+        const [upper, fore, end] = arm;
+        if (!(aiming.w > 0.01) || !upper || !fore || !end) return;
+        upper.getWorldPosition(from);
+        at.copy(aiming.to).sub(from);
+        if (at.lengthSq() < 1e-6) return;
+        aimBone(upper, fore, at, aiming.w);
+        aimBone(fore, end, at, aiming.w);
+      },
+      dispose: () => p.anim?.dispose(),
+    };
   };
 
   const glowAt = (parent, color, r) => {
@@ -253,16 +308,20 @@ export function createRollOutCast() {
     const eye = new THREE.MeshBasicMaterial();
     owned.push(eye);
     const rig = {
-      animate(k, phase) {
+      ...calls(r),
+      animate(k, phase, roll, amount, motion = null) {
         changeForm(v, r, k);
+        if (!r.holder.visible) return;
+        if (r.anim && motion?.dt != null) step(r, motion);
         // a stride per 2π of phase, as the shapes' legs swing
-        if (r.holder.visible) pose(r, 'run', (phase / TAU) * ((r.act.run ?? r.act.walk)?.getClip().duration ?? 1));
+        else pose(r, 'run', (phase / TAU) * ((r.act.run ?? r.act.walk)?.getClip().duration ?? 1));
       },
     };
     return { group, rig, eye, height: spec.h, mats: [...v.mats, ...r.mats], meshy: true };
   };
 
-  // A Vehicon: a sedan that stands up as a trooper (k 0…1), idling on its feet.
+  // A Vehicon: a sedan that stands up as a trooper (k 0…1), idling on its
+  // feet, stepping sideways as it edges into your lane.
   const vehicon = () => {
     const edge = new THREE.Color(3.4, 0.6, 1.0);
     const v = place('vehicon-car', (s) => 3.6 / Math.max(s.z, s.x), { face: Math.PI, edge, lengthwise: true });
@@ -272,11 +331,14 @@ export function createRollOutCast() {
     group.add(v.holder, r.holder);
     const eye = new THREE.MeshBasicMaterial();
     owned.push(eye);
-    const offset = Math.random() * 10;
+    const offset = (made % 7) * 1.37;
     const rig = {
-      animate(k, phase) {
+      ...calls(r),
+      animate(k, phase, roll, amount, motion = null) {
         changeForm(v, r, k);
-        if (r.holder.visible) pose(r, 'idle', phase / 6 + offset);
+        if (!r.holder.visible) return;
+        if (r.anim && motion?.dt != null) step(r, motion);
+        else pose(r, 'idle', phase / 6 + offset);
       },
     };
     return { group, rig, eye, height: 2.6, mats: [...v.mats, ...r.mats], meshy: true };
@@ -297,8 +359,10 @@ export function createRollOutCast() {
     return { group, flame, mats: p.mats, meshy: true };
   };
 
-  // Shockwave or Megatron, facing you (+Z), walking backwards ahead of you,
-  // the cannon's glow at the hand that holds it.
+  // Shockwave, Megatron or Optimus, facing you (+Z), going backwards ahead
+  // of you at the road's pace (its own run, run backward and paced to it:
+  // ./bossBody.js says how fast, and what it plays over that), the cannon's
+  // glow at the hand that holds it, that arm raised at you as it charges.
   const boss = (kind) => {
     const spec = BOSSES[kind];
     const p = spec && place(kind, (s) => spec.h / s.y);
@@ -322,22 +386,28 @@ export function createRollOutCast() {
     const glow = glowAt(cannonTip, new THREE.Color(1, 0.4, 0.2).multiplyScalar(3), spec.h * 0.025).mat;
     const eye = new THREE.MeshBasicMaterial();
     owned.push(eye);
+    const c = calls(p, hand ? hand.name : null);
     const rig = {
-      animate(k, phase) {
-        // walking backwards: the walk run in reverse
-        pose(p, 'walk', -(phase / TAU) * (p.act.walk?.getClip().duration ?? 1));
+      ...c,
+      animate(k, phase, roll, amount, motion = null) {
+        if (p.anim && motion?.dt != null) {
+          step(p, motion);
+          c.raise();
+        }
+        // (without an animator: the walk held where the phase says, a
+        // stride a turn; the phase goes back as it goes backward)
+        else pose(p, 'walk', (phase / TAU) * (p.act.walk?.getClip().duration ?? 1));
       },
     };
-    return { group, rig, eye, cannonTip, glow, mats: p.mats, meshy: true };
+    return { group, rig, eye, cannonTip, glow, mats: p.mats, meshy: true, taunt: TAUNTS[kind] ?? 'taunt' };
   };
 
   const has = (name) => assets.has(name);
 
+  // (what's ours: the copies' materials and the glows; the models and their
+  // textures stay in the page's cache, which the showcase shares)
   const dispose = () => {
-    for (const o of owned) {
-      if (o.isMaterial) for (const v of Object.values(o)) if (v && v.isTexture) v.dispose();
-      o.dispose?.();
-    }
+    for (const o of owned) o.dispose?.();
     owned.length = 0;
     assets.clear();
   };
