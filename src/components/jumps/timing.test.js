@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { T } from '../hyperspace3d/timeline';
-import { blueSkyAt, portalAt } from './timing';
+import { STAGED, blueSkyAt, portalAt, stagedAt } from './timing';
 
 const s = (ms) => ms / 1000;
 const VIEWS = [
@@ -95,5 +95,49 @@ describe('the cook', () => {
     }
     expect(shatter).toBe(1);
     expect(blueSkyAt(s(T.end)).glint).toBe(0);
+  });
+});
+
+describe('the portal, staged over a 3D jump', () => {
+  it('keeps the screen clear while the ship flies into the gate', () => {
+    for (const view of VIEWS)
+      for (let t = 0; t < STAGED.clear; t += 0.05) {
+        const u = stagedAt(t, view);
+        expect(u.grow).toBe(0);
+        expect(u.dark).toBe(0);
+      }
+  });
+
+  it('wipes the goo in from the middle and has every corner covered by the flash', () => {
+    for (const view of VIEWS) {
+      let last = 0;
+      for (let ms = STAGED.clear * 1000; ms <= T.jump; ms += 20) {
+        const { grow } = stagedAt(s(ms), view);
+        expect(grow).toBeGreaterThanOrEqual(last);
+        last = grow;
+      }
+      const { grow, open } = stagedAt(s(T.jump), view);
+      const corner = Math.hypot(view.aspect / 2 / (grow * open * 0.82), 0.5 / (grow * open));
+      expect(corner).toBeLessThan(0.85);
+    }
+  });
+
+  it('is the vortex through the tunnel, then a hole opens out to the arrival, clear by the end', () => {
+    for (const view of VIEWS) {
+      const mid = stagedAt(s((T.flash + T.tunnel) / 2), view);
+      expect(mid.inside).toBe(1);
+      expect(mid.reveal).toBe(0);
+      let last = 0;
+      for (let ms = T.tunnel; ms <= T.end; ms += 20) {
+        const { reveal } = stagedAt(s(ms), view);
+        expect(reveal).toBeGreaterThanOrEqual(last);
+        last = reveal;
+      }
+      const end = stagedAt(s(T.end), view);
+      expect(end.reveal).toBeGreaterThanOrEqual(1);
+      // the lip (the oval's rim) is out past every corner
+      const corner = Math.hypot(view.aspect / 2 / (end.grow * 0.82), 0.5 / end.grow);
+      expect(corner).toBeLessThan(end.reveal * 0.9);
+    }
   });
 });

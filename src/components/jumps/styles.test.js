@@ -17,5 +17,7 @@ describe('the jump styles', () => {
     expect(e.detail.style).toBe('portal');
     expect(jumpEvent().detail.style).toBe('hyper');
     expect(jumpEvent('nope').detail.style).toBe('hyper');
+    expect(jumpEvent('portal').detail.staged).toBe(false);
+    expect(jumpEvent('portal', { staged: true }).detail.staged).toBe(true);
   });
 });

@@ -225,7 +225,8 @@ export default function Galaxy() {
         if (e.phase === 'spool') {
           letGo();
           jumpHold.current = holdJump();
-          window.dispatchEvent(new Event('tp:hyperspace'));
+          // (the crew's own way: Rick's cruiser through a portal, staged round the scene's own 3D one; the RV's Blue Sky)
+          window.dispatchEvent(jumpEvent(crew?.jump, { staged: e.staged }));
           comms.current?.handle({ type: 'event', id: 'jump' });
         } else if (e.phase === 'out') letGo();
         return;
@@ -261,7 +262,7 @@ export default function Galaxy() {
       }
       comms.current?.handle(e);
     },
-    [current, leave, navigate, land, unlock],
+    [current, leave, navigate, land, unlock, crew],
   );
   const onArrive = useCallback(
     (id) => {

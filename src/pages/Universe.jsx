@@ -301,7 +301,7 @@ export default function Universe({ ask = false }) {
     }
     if (e.type === 'map') setCharting((o) => !o);
     else if (e.type === 'jump') {
-      window.dispatchEvent(jumpEvent(crew?.jump));
+      window.dispatchEvent(jumpEvent(crew?.jump, { staged: e.staged })); // (staged: the map flies the cruiser into a real portal first)
       if (!jumped.current) {
         jumped.current = true;
         comms.current?.handle({ type: 'event', id: 'hyperspeed' });

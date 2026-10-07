@@ -77,6 +77,8 @@ import { createHunters } from '../universe/hunters';
 import { createFleet } from '../universe/glbFleet';
 import { createSetPieces } from '../universe/setpieces';
 import { createCrash } from '../universe/crash';
+import { GATE, createGateFx, gateAhead, intoAt, outAt, throughAt } from '../../lib/three/portalGate';
+import { crewById } from '../universe/crews';
 import { createDust } from '../universe/belt';
 import { createTrail } from '../universe/trail';
 import { ENGINES, SHIP_MODELS, buildShip, BUILT } from '../universe/shipModels';
@@ -225,6 +227,9 @@ export async function create(canvas, ctx) {
   const flashes = createFlashes(scene, { count: small ? 32 : 56 });
   const crashFx = createCrash(scene);
   const pops = createCrash(scene);
+  // Rick's cruiser's jumps, through real portals (lib/three/portalGate.js: jumpFrame)
+  const gateFx = createGateFx({ parent: scene });
+  const PORTAL_L = 0.28; // about the cruiser's length (universe/ship.js's SHIP: 0.26)
   const fleet = createFleet({ build: buildGalaxyShip, glb: HUNTER_GLB });
   fleet.prepare = (o) => warm(o);
   const hunters = reduced ? null : createHunters(scene, { small, fleet, factions: FACTIONS, kinds: KINDS, solids: () => state.space?.solids ?? [] });
@@ -1106,6 +1111,25 @@ export async function create(canvas, ctx) {
     import('../../lib/sfx').then((x) => x.alarm());
     emit({ type: 'interdicted', to: j.to.id, from: j.from.id });
   };
+  // the cruiser out at the far end: the exit gate opening behind its spot,
+  // the ship held there and drawn back through it (shipToModel), a shot from
+  // off its bow looking back at the gate
+  const portalOut = (P) => {
+    P.clip?.release();
+    const q = orientOf(state.ship, new THREE.Quaternion());
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(q);
+    const at = new THREE.Vector3(state.ship.x, state.ship.y, state.ship.z);
+    Object.assign(P, { phase: 'out', fwd, hidden: false, shut: false, off: outAt(0) * PORTAL_L, cam: null });
+    P.gate = gateFx.open({ at: at.clone().addScaledVector(fwd, -GATE.back * PORTAL_L), dir: fwd, radius: GATE.radius * PORTAL_L });
+    P.clip = state.model ? gateFx.clip(state.model.group, P.gate, 'far') : null;
+    if (state.view === 'chase') {
+      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(q);
+      const up = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+      const eye = at.clone().addScaledVector(fwd, 3.4 * PORTAL_L).addScaledVector(right, 2.6 * PORTAL_L).addScaledVector(up, 1.0 * PORTAL_L);
+      const target = at.clone().addScaledVector(fwd, -1.2 * PORTAL_L);
+      P.cam = { target, quat: new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(eye, target, UP)), dist: eye.distanceTo(target) };
+    }
+  };
   const jumpFrame = (dt) => {
     const j = state.jump;
     j.age += dt;
@@ -1117,9 +1141,17 @@ export async function create(canvas, ctx) {
       if (aligned(state.ship, j.dir) > 0.996 || j.age > JUMP.align) {
         j.phase = 'spool';
         j.age = 0;
+        // Rick's cruiser: through a portal, in 3D (the portal gun's shot out
+        // ahead now, the gate where it lands; the page's portal staged round it)
+        if (crewById(state.kind)?.jump === 'portal' && !reduced) {
+          const from = new THREE.Vector3(state.ship.x, state.ship.y, state.ship.z);
+          const fwd = jumpDir.clone().normalize();
+          j.portal = { from, fwd, phase: 'in', gate: null, clip: null, shut: false, hidden: false, cam: null, off: 0 };
+          gateFx.bolt({ from: from.clone().addScaledVector(fwd, PORTAL_L * 0.5), to: from.clone().addScaledVector(fwd, gateAhead() * PORTAL_L), dur: GATE.bolt });
+        }
         // (the page plays the site's jump over the scene from here, its
         // sound with it, the same as the universe map's: Galaxy.jsx)
-        emit({ type: 'jump', phase: 'spool', to: j.to.id });
+        emit({ type: 'jump', phase: 'spool', to: j.to.id, staged: Boolean(j.portal) });
       }
       return;
     }
@@ -1139,12 +1171,32 @@ export async function create(canvas, ctx) {
       const want = spoolQ.setFromRotationMatrix(lookM.lookAt(ORIGIN, jumpDir, UP)); // (the nose, −z, along the course)
       q.slerp(want, clamp01(dt * 6));
       const e = shipEuler.setFromQuaternion(q, 'YXZ');
-      state.ship = { ...s, heading: e.y, pitch: e.x, bank: -e.z, speed: s.speed + dt * (20 + k * 160), rate: 0, tipRate: 0, rollRate: 0 };
-      const [fx, fz] = forward(state.ship.heading);
-      const cp = Math.cos(state.ship.pitch);
-      state.ship.x += fx * cp * state.ship.speed * dt;
-      state.ship.z += fz * cp * state.ship.speed * dt;
-      state.ship.y += Math.sin(state.ship.pitch) * state.ship.speed * dt;
+      const P = j.portal;
+      if (P) {
+        // into the portal: the gate opening where the shot landed, the camera
+        // holding where it was, the cruiser flying on into the green, gone
+        if (!P.gate && j.age >= GATE.bolt * 0.7) {
+          P.gate = gateFx.open({ at: P.from.clone().addScaledVector(P.fwd, gateAhead() * PORTAL_L), dir: P.fwd, radius: GATE.radius * PORTAL_L });
+          if (state.model) P.clip = gateFx.clip(state.model.group, P.gate, 'near');
+        }
+        if (!P.cam && j.age >= 0.12 && state.view === 'chase' && view) P.cam = { target: view.target.clone(), quat: view.quat.clone(), dist: view.dist };
+        const along = intoAt(j.age) * PORTAL_L;
+        state.ship = { ...s, heading: e.y, pitch: e.x, bank: -e.z, x: P.from.x + P.fwd.x * along, y: P.from.y + P.fwd.y * along, z: P.from.z + P.fwd.z * along, speed: ((intoAt(j.age + 0.02) - intoAt(j.age)) / 0.02) * PORTAL_L, rate: 0, tipRate: 0, rollRate: 0 };
+        if (!P.shut && j.age >= throughAt() + GATE.shutAfter) {
+          P.shut = true;
+          P.hidden = true;
+          P.gate?.shut();
+          P.clip?.release();
+          P.clip = null;
+        }
+      } else {
+        state.ship = { ...s, heading: e.y, pitch: e.x, bank: -e.z, speed: s.speed + dt * (20 + k * 160), rate: 0, tipRate: 0, rollRate: 0 };
+        const [fx, fz] = forward(state.ship.heading);
+        const cp = Math.cos(state.ship.pitch);
+        state.ship.x += fx * cp * state.ship.speed * dt;
+        state.ship.z += fz * cp * state.ship.speed * dt;
+        state.ship.y += Math.sin(state.ship.pitch) * state.ship.speed * dt;
+      }
       if (k >= 1) {
         j.phase = 'tunnel';
         j.age = 0;
@@ -1173,8 +1225,10 @@ export async function create(canvas, ctx) {
         // (no faster than the drive allows where it comes out: near a planet
         // that's under 46, and the ship was braked to a near stop in a
         // fraction of a second while the streaks still played)
-        state.ship = { ...spawn(null, a), speed: Math.min(46, state.space.boostAt(a.x, a.y, a.z)) };
+        state.ship = { ...spawn(null, a), speed: j.portal ? 0 : Math.min(46, state.space.boostAt(a.x, a.y, a.z)) };
         camQOn = false;
+        // the cruiser: out of the next portal, nose first (exit phase, below), seen from off its bow
+        if (j.portal) portalOut(j.portal);
         state.world.group.visible = true;
         j.phase = 'exit';
         j.age = 0;
@@ -1189,9 +1243,26 @@ export async function create(canvas, ctx) {
     }
     if (j.phase === 'exit') {
       const k = clamp01(j.age / JUMP.exit);
+      const P = j.portal;
+      if (P) {
+        // out of the gate behind its spot (drawn back along its heading: shipToModel), the gate shutting behind it
+        P.off = outAt(j.age) * PORTAL_L;
+        if (!P.shut && j.age >= GATE.outShut) {
+          P.shut = true;
+          P.gate?.shut();
+          P.clip?.release();
+          P.clip = null;
+        }
+      }
       // easing down out of it
-      state.ship = step({ ...s, speed: Math.max(SHIP.cruise, s.speed - dt * 36) }, { throttle: 0.6 }, dt, state.space.solids, state.space).ship;
+      else state.ship = step({ ...s, speed: Math.max(SHIP.cruise, s.speed - dt * 36) }, { throttle: 0.6 }, dt, state.space.solids, state.space).ship;
       if (k >= 1) {
+        if (P) {
+          P.clip?.release();
+          // the shot hands back to the chase view
+          if (P.cam) retarget(900);
+          P.cam = null;
+        }
         // (the first system's arrival, said as you come out into it)
         if (!j.from) emit({ type: 'arrive', id: j.to.id, from: null });
         state.jump = null;
@@ -1371,6 +1442,10 @@ export async function create(canvas, ctx) {
     m.update(t);
     m.group.visible = state.cabK < 0.6 && !(state.jump?.phase === 'tunnel' && state.view === 'cockpit');
     m.group.position.set(ship.x, ship.y + (reduced ? 0 : Math.sin(t * 2.1) * 0.012), ship.z);
+    // (the portal jump: back behind its spot, coming out of the gate; or through the first one, gone)
+    const P = state.jump?.portal;
+    if (P?.phase === 'out') m.group.position.addScaledVector(P.fwd, P.off);
+    if (P?.hidden) m.group.visible = false;
     m.group.rotation.set(ship.pitch || 0, ship.heading, -(ship.bank || 0), 'YXZ');
     m.pivot.rotation.set(reduced ? 0 : clamp(-(input.throttle || 0) * 0.06, -0.08, 0.08), 0, -(ship.lean || 0));
     const spooling = state.jump && state.jump.phase !== 'align' ? 1 : 0;
@@ -1739,7 +1814,7 @@ export async function create(canvas, ctx) {
 
     // the camera: behind the ship or in it, or watching a crash
     if (flying()) {
-      const to = state.crash && !state.crash.back ? crashView() : state.view === 'cockpit' ? cockpitView() : chaseView();
+      const to = state.crash && !state.crash.back ? crashView() : state.jump?.portal?.cam ? state.jump.portal.cam : state.view === 'cockpit' ? cockpitView() : chaseView();
       let v = to;
       if (blendTo.k < 1) {
         blendTo.k = Math.min(1, blendTo.k + dt / blendTo.dur);
@@ -1824,7 +1899,8 @@ export async function create(canvas, ctx) {
     bolts.update(dt);
     flashes.update(dt);
     speedLines.update(dt);
-    const fxBusy = crashFx.update(dt, camera) || pops.update(dt, camera);
+    gateFx.update(dt);
+    const fxBusy = crashFx.update(dt, camera) || pops.update(dt, camera) || gateFx.busy;
     const adventuring = adventure(dt, t);
     const shooting = moveBolts(dt);
     // the speed: dust streaming past, the picture rushing out from the ship
@@ -2257,6 +2333,7 @@ export async function create(canvas, ctx) {
       disposeTree(spares);
       state.world?.dispose();
       crashFx.dispose();
+      gateFx.dispose();
       pops.dispose();
       hunters?.dispose();
       war?.dispose();

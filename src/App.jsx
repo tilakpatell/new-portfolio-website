@@ -86,11 +86,13 @@ function Lightspeed() {
   const { unlock } = useAchievements();
   const [on, setOn] = useState(0);
   const [style, setStyle] = useState('hyper');
+  const [staged, setStaged] = useState(false); // (the page flies the ship into it in 3D first: jumps/styles.js)
   const seq = useRef([]);
   useEffect(() => {
     const jump = (e) => {
       audioContext(); // inside the key press, so the sound may play
       setStyle(prefersReducedMotion() ? 'hyper' : jumpStyle(e?.detail?.style));
+      setStaged(Boolean(e?.detail?.staged));
       setOn(Date.now());
     };
     const onKey = (e) => {
@@ -114,7 +116,7 @@ function Lightspeed() {
   const Jump = JUMPS[style] ?? Hyperspace;
   return (
     <Suspense fallback={null}>
-      <Jump key={on} sound onDone={() => setOn(0)} />
+      <Jump key={on} sound staged={staged} onDone={() => setOn(0)} />
     </Suspense>
   );
 }

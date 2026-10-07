@@ -11,5 +11,7 @@ export const JUMP_STYLES = ['hyper', 'portal', 'bluesky'];
 // a jump style, or the site's own for anything that isn't one
 export const jumpStyle = (v) => (JUMP_STYLES.includes(v) ? v : 'hyper');
 
-// the event App.jsx listens for: window.dispatchEvent(jumpEvent(style))
-export const jumpEvent = (style = 'hyper') => new CustomEvent('tp:hyperspace', { detail: { style: jumpStyle(style) } });
+// the event App.jsx listens for: window.dispatchEvent(jumpEvent(style));
+// `staged`: the page flies the ship into the jump in 3D itself (Rick's
+// cruiser through a real portal: PortalJump.jsx's staged mode)
+export const jumpEvent = (style = 'hyper', { staged = false } = {}) => new CustomEvent('tp:hyperspace', { detail: { style: jumpStyle(style), staged: Boolean(staged) } });

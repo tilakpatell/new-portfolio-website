@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { T } from '../hyperspace3d/timeline';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
 import JumpCanvas from './JumpCanvas';
-import { portalAt } from './timing';
+import { portalAt, stagedAt } from './timing';
 
 // Rick's way across the map: a portal, not a jump to lightspeed. On the jump
 // to lightspeed's timeline (hyperspace3d/timeline.js), so the universe map
@@ -18,6 +18,13 @@ import { portalAt } from './timing';
 //   1.95–2.45s  out the other side: the portal closes behind, shrinking to a
 //               point over the new place
 //
+// Staged (`staged`: the universe map and the galaxy fly the cruiser into a
+// real 3D gate first, lib/three/portalGate.js), the screen stays clear till
+// the ship's through, the goo wipes in from the middle by the flash, and on
+// the way out a hole opens from the middle onto the ship coming out of the
+// next gate (timing.js stagedAt). A jump through the portal into a page
+// isn't staged.
+//
 // The swirl is the show's, from rickmorty/swirl.js (the same goo as the
 // hero's portal and the one the cruiser comes out of on the map), with the
 // vortex drawn in its palette. Where WebGL won't start, a plain green portal
@@ -27,7 +34,7 @@ import { portalAt } from './timing';
 const FRAG = `
 precision highp float;
 uniform vec2 res;
-uniform float t, clock, flash, dark, grow, open, inside, seed;
+uniform float t, clock, flash, dark, grow, open, inside, seed, reveal;
 ${SWIRL_GLSL}
 
 // Between dimensions: looking down a green vortex. Depth is 1/r, so the far
@@ -78,6 +85,8 @@ void main() {
       vec3 v = vortex(uv, clock);
       p = mix(p, vec4(v, 1.0) * p.a, hole);
     }
+    // staged: a hole opening out from the middle onto the arrival, the lip going on out past the edges
+    if (reveal > 0.0) p *= smoothstep(reveal - 0.14, reveal, length(o));
     col = col * (1.0 - p.a) + p;
   }
   // the flash going through: lime-white
@@ -131,6 +140,15 @@ function fallback(ctx, t, clock, { W, H }, u) {
       ctx.stroke();
     }
     ctx.restore();
+    // staged: the hole out onto the arrival
+    if (u.reveal > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, r * 0.82 * u.reveal, r * u.reveal, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
   }
   if (u.flash > 0) {
     ctx.fillStyle = `rgba(237,255,194,${u.flash})`;
@@ -138,9 +156,10 @@ function fallback(ctx, t, clock, { W, H }, u) {
   }
 }
 
-export default function PortalJump({ onPeak, onDone, sound = false }) {
+export default function PortalJump({ onPeak, onDone, sound = false, staged = false }) {
   const seed = useMemo(() => Math.random() * 10, []);
-  const uniforms = useMemo(() => (t, clock, view) => ({ ...portalAt(t, view), seed }), [seed]);
+  // (staged: the ship flies into a 3D gate on the page first, so the screen's clear till it's through: stagedAt)
+  const uniforms = useMemo(() => (t, clock, view) => ({ ...(staged ? stagedAt(t, view) : portalAt(t, view)), seed }), [seed, staged]);
 
   useEffect(() => {
     if (!sound) return undefined;

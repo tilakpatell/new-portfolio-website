@@ -1,5 +1,5 @@
-// The crews' jumps, as numbers: what the portal (PortalJump.jsx) and the
-// cook (BlueSkyJump.jsx) look like t seconds in, on the jump to lightspeed's
+// The crews' jumps, as numbers: what the portal (PortalJump.jsx, and staged:
+// stagedAt) and the cook (BlueSkyJump.jsx) look like t seconds in, on the jump to lightspeed's
 // timeline (hyperspace3d/timeline.js). Pure, so they're tested in Node: by
 // the flash each has the screen covered, and by the end each is gone.
 
@@ -35,6 +35,31 @@ export function portalAt(t, view) {
   const grow = cover * (1 - ease(k)) ** 1.6;
   const open = 1 - clamp((k - 0.82) / 0.18) ** 2;
   return { grow, open, inside: 1 };
+}
+
+// The portal staged (a 3D jump: universe/scene.js and galaxy/scene.js fly
+// the cruiser into a real gate in front of it, lib/three/portalGate.js, and
+// out of another at the far end): the screen clear while the ship goes in,
+// the goo wiping in from the middle as it's through, the flash, the vortex,
+// then a hole opening out from the middle on the ship coming out of the
+// next gate. reveal: how far out the hole has come (in the oval's radii);
+// dark: the darkening round it (none: the scene's own).
+export const STAGED = { clear: 0.95 }; // seconds: the screen's clear till then
+export function stagedAt(t, view) {
+  const J = T.jump / 1000;
+  const U = T.tunnel / 1000;
+  const E = T.end / 1000;
+  const cover = coverFor(view) * 1.25;
+  if (t < STAGED.clear) return { grow: 0, open: 0, inside: 0, reveal: 0, dark: 0 };
+  if (t < J + 0.06) {
+    // wiping in from the middle, faster and faster, as the ship goes through
+    const p = clamp((t - STAGED.clear) / (J - STAGED.clear));
+    return { grow: cover * p ** 1.4, open: settle(Math.min(1, p * 1.3)), inside: 0, reveal: 0, dark: 0 };
+  }
+  if (t < U) return { grow: cover, open: 1, inside: 1, reveal: 0, dark: 0 };
+  // the hole opening out from the middle, the lip going out past the corners
+  const k = clamp((t - U) / (E - U));
+  return { grow: cover * (1 + 1.6 * ease(k)), open: 1, inside: 1, reveal: 1.1 * ease(Math.min(1, k * 1.15)), dark: 0 };
 }
 
 // The cook's numbers, t seconds in: haze (the desert heat, 0…1), front (how
