@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
-import { applyBuilt, clusterSpecs, lodDistance, usesModel, withLod } from './placer';
+import SCANS from '../../../../public/cc0/galaxy/index.json';
+import { applyBuilt, clusterSpecs, lodDistance, usesModel, wearModel, withLod } from './placer';
 
 const fakeWorld = () => ({ solids: { box: vi.fn(), circle: vi.fn() }, floors: [] });
 const made = () => ({ object: new THREE.Group(), solids: [{ box: [0, 0, 4, 2] }], floors: [{ x: 3, z: 0, y: 1, hw: 2, hd: 2 }], update: () => {}, signal: () => {} });
@@ -72,5 +73,26 @@ describe('a cluster of models', () => {
     expect(members[0].at[1]).toBeCloseTo(-2);
     expect(members[1]).toMatchObject({ kind: 'barrels', y: 1 });
     expect(members[1].at[0]).toBeCloseTo(8);
+  });
+});
+
+describe('a model that wears a core scan', () => {
+  it('lays the role’s scan over each lit material once, at the scan’s size', async () => {
+    const o = new THREE.Group();
+    const lit = new THREE.MeshStandardMaterial();
+    o.add(new THREE.Mesh(new THREE.BufferGeometry(), lit), new THREE.Mesh(new THREE.BufferGeometry(), lit), new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial()));
+    const calls = [];
+    const scan = { map: {} };
+    const n = await wearModel(o, 'stone', { wear: (m, s, opts) => calls.push({ m, s, opts }), load: () => Promise.resolve(scan) });
+    expect(n).toBe(1);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].m).toBe(lit);
+    expect(calls[0].s).toBe(scan);
+    expect(calls[0].opts.metres).toBe(SCANS.stone.metres);
+  });
+
+  it('wears nothing for a role with no scan', async () => {
+    const o = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
+    expect(await wearModel(o, 'nonsense', { wear: () => {}, load: () => Promise.resolve(null) })).toBe(0);
   });
 });
