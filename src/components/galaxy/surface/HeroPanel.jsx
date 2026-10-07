@@ -3,6 +3,7 @@ import { HEROES, HILTS, SABER_COLORS, heroById } from '../heroes';
 import { STANCES, STANCE_IDS } from './combatRules';
 import { MAX_MODS, MODS, MOD_IDS, PICKABLE, WEAPONS, withMods } from './weaponRules';
 import { MAX_PERKS, PERKS, PERK_IDS } from '../perks';
+import { ABILITIES, abilitiesOf } from './abilityRules';
 
 // Who you play as down here, and what's in your hand: the roster
 // (heroes.js) as cards; for a Jedi the blade's colour, the hilt and the
@@ -11,7 +12,11 @@ import { MAX_PERKS, PERKS, PERK_IDS } from '../perks';
 // mods on it. The choice is kept (pages/GalaxySurface.jsx writes it) and the
 // world rebuilds with the new lead on Play.
 
-const ARM = { saber: 'Lightsaber', bowcaster: 'Bowcaster', rifle: 'Blaster rifle', blaster: 'Blaster' };
+const ARM = { saber: 'Lightsaber', bowcaster: 'Bowcaster', rifle: 'Blaster rifle', ee3: 'EE-3 carbine', blaster: 'DL-44', portal: 'Portal gun', laser: 'Laser pistol', revolver: 'Revolver', pistol: 'Pistol' };
+const SIDES = [
+  ['galaxy', 'From the galaxy'],
+  ['elsewhere', 'From elsewhere'],
+];
 const num = (v, d = 0) => (Math.round(v * 10 ** d) / 10 ** d).toString();
 
 export default function HeroPanel({ hero, onChange, onClose }) {
@@ -54,17 +59,27 @@ export default function HeroPanel({ hero, onChange, onClose }) {
       {tab === 'hero' && (
         <>
           <p className="surface-list-title">Play as</p>
-          <ul className="surface-hero-cards">
-            {HEROES.map((x) => (
-              <li key={x.id}>
-                <button type="button" className={x.id === pick.id ? 'surface-hero is-picked' : 'surface-hero'} onClick={() => choose(x.id)} aria-pressed={x.id === pick.id}>
-                  <span className="surface-hero-name">{x.name}</span>
-                  <span className="surface-hero-arm">{ARM[x.weapon] ?? 'Blaster'}</span>
-                  <span className="surface-hero-blurb">{x.blurb}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          {SIDES.map(([side, title]) => (
+            <div key={side}>
+              <p className="surface-weapon-side">{title}</p>
+              <ul className="surface-hero-cards">
+                {HEROES.filter((x) => x.side === side).map((x) => {
+                  const ab = abilitiesOf(x);
+                  return (
+                    <li key={x.id}>
+                      <button type="button" className={x.id === pick.id ? 'surface-hero is-picked' : 'surface-hero'} onClick={() => choose(x.id)} aria-pressed={x.id === pick.id}>
+                        <span className="surface-hero-name">{x.name}</span>
+                        <span className="surface-hero-arm">
+                          {ARM[x.weapon] ?? 'Blaster'} · G {ABILITIES[ab.power].name} · V {ABILITIES[ab.second].name}
+                        </span>
+                        <span className="surface-hero-blurb">{x.blurb}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
         </>
       )}
       {tab !== 'hero' && tab !== 'perks' && saber && (
@@ -157,7 +172,9 @@ export default function HeroPanel({ hero, onChange, onClose }) {
               <i>heat {num(stats.heat * 100)}% a shot</i>
             </p>
           )}
-          <p className="surface-hero-keys">F fires (bursts and pellets as the gun has them), hold the right button to aim down the sights, R vents the heat (overheated, hit the blue band for a perfect vent), X to dodge, G a thermal detonator, V the overcharge.</p>
+          <p className="surface-hero-keys">
+            F fires (bursts and pellets as the gun has them), hold the right button to aim down the sights, R vents the heat (overheated, hit the blue band for a perfect vent), X to dodge. G {ABILITIES[abilitiesOf(h).power].name.toLowerCase()}: {ABILITIES[abilitiesOf(h).power].about} V {ABILITIES[abilitiesOf(h).second].name.toLowerCase()}: {ABILITIES[abilitiesOf(h).second].about}
+          </p>
         </div>
       )}
       {tab === 'perks' && (
