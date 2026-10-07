@@ -31,7 +31,7 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 import { gltfLoader } from '../../../lib/three/gltf';
 import { sharpenMaterial } from '../../../lib/three/textures';
 import { detailLevel } from '../../../lib/detail';
-import { SURFACE_MODELS, surfaceLodUrl, surfaceUrl } from './catalog';
+import { SURFACE_MODELS, modelUrlFor, surfaceLodUrl, wantsLod } from './catalog';
 import { withDetail } from './detail';
 import { LOOKS, loadScan, scanOf } from './kit';
 import { wear as wearCore } from '../../../lib/three/core';
@@ -64,8 +64,9 @@ export const usesModel = (spec) => hasModel(spec.kind) && spec.model !== false &
 
 // A kind's model, and (its catalogue entry's `detail`: a scan's role) the
 // scan laid over it up close (detail.js), on every tier but the lowest;
-// resolves to the gltf, or null when it won't load
-export function loadModel(kind, url = surfaceUrl(kind)) {
+// resolves to the gltf, or null when it won't load. At ultra, a kind with an
+// ultra cut loads that (catalog's modelUrlFor).
+export function loadModel(kind, url = modelUrlFor(kind, detailLevel())) {
   const role = SURFACE_MODELS[kind]?.detail;
   const scan = role && detailLevel() !== 'low' ? loadScan(role) : null;
   return Promise.all([loadGlb(url), scan]).then(([gltf, got]) => {
@@ -282,7 +283,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             const worn = spec.wear ? wearModel(o, spec.wear) : Promise.resolve();
             // (a tower: its windows lit in the shader, props/windows.js)
             if (spec.windows) o.traverse((m) => m.isMesh && [].concat(m.material).forEach((mat) => mat.isMeshStandardMaterial && litWindows(mat, { seed: 5, density: 0.5, cell: [4, 5] })));
-            if (!entry.lod) return worn.then(() => warm(o)).then(() => o);
+            if (!wantsLod(spec.kind, detailLevel())) return worn.then(() => warm(o)).then(() => o);
             // far off, its light model (fetched after the full one: the
             // first view doesn't wait for it)
             const lod = withLod(o, null, radiusOf(gltf) * (spec.scale ?? 1));
@@ -349,8 +350,9 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
           const size = box.getSize(new THREE.Vector3());
           const full = instance(parts, typeof solid === 'number' ? solid : Math.min(size.x, size.z) * 0.35);
           // far off, its light copy: the items past lodDistance drawn with it
-          // instead (split again as you walk, with the shadow stand-ins)
-          if (SURFACE_MODELS[kind].lod)
+          // instead (split again as you walk, with the shadow stand-ins);
+          // never at ultra, which draws the full model at every distance
+          if (wantsLod(kind, detailLevel()))
             loadModel(kind, surfaceLodUrl(kind)).then((lowGltf) => {
               if (dead || !lowGltf) return;
               const lowRoot = prepared(lowGltf);
