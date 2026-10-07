@@ -39,17 +39,16 @@ def load(jobs):
     name, ckpt = ("AuK-Flash", "auk_flash") if FLASH else ("AuK", "auk_base")
     engine = AukInfer(f"ckpts/{name}/config.yaml", f"ckpts/{name}/{ckpt}.safetensors", device="cuda", dtype="bf16", qwen_path="ckpts/Qwen2.5-Omni-3B", cpu_offload=OFFLOAD)
 
-    def say(voice, text, seed, style=None):
+    def say(voice, text, seed):
         line = text.strip().replace('"', "'")
-        # told how, where the line has a direction: "Say the following with the same voice, urgent, barked at Chewie: ..."
-        how = f", {style.replace(': ', ', ').replace(chr(34), chr(39))}" if style else ""
-        messages = [{"role": "user", "content": [{"type": "text", "text": f'Say the following with the same voice{how}: "{line}"'}, {"type": "audio", "audio": voice["wav"]}]}]
+        # (not told the line's direction: it reads any words in the instruction aloud. The feeling
+        # comes from the reference, a real line of the speaker's that feels the way this one should.)
+        messages = [{"role": "user", "content": [{"type": "text", "text": f'Say the following with the same voice: "{line}"'}, {"type": "audio", "audio": voice["wav"]}]}]
         seed_all(seed)
         # base AuK at its defaults (32 steps, CFG 2, sway -1); Flash pins its own 4-step recipe
         audio, sr = engine.generate(messages, audio=voice["wav"], gen_seconds=seconds(voice, text), seed=seed)
         return audio.squeeze(0).numpy(), sr
 
-    say.styled = True
     return say
 
 
