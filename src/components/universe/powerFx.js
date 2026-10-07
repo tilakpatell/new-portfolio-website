@@ -87,7 +87,8 @@ varying vec3 vN;
 varying vec3 vV;
 void main() {
   float rim = 1.0 - abs(dot(normalize(vN), normalize(vV)));
-  gl_FragColor = vec4(uColor * rim * rim * rim * 1.2 * uK, 1.0);
+  float r2 = rim * rim;
+  gl_FragColor = vec4(uColor * r2 * r2 * 1.5 * uK, 1.0);
 }`;
 
 const glow = (color) => new THREE.MeshBasicMaterial({ color, toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -129,7 +130,8 @@ export function createPowerFx(parent) {
 
   // the bang's shockwave
   const shellMat = keep(facing(SHELL_FRAG, { uColor: { value: BLUE.clone().multiplyScalar(1.4) }, uK: { value: 0 } }));
-  const shell = hidden(new THREE.Mesh(keep(new THREE.SphereGeometry(1, 32, 16)), shellMat), 'shock');
+  // (round enough not to show its facets when it's close and fills the view)
+  const shell = hidden(new THREE.Mesh(keep(new THREE.SphereGeometry(1, 48, 32)), shellMat), 'shock');
 
   let clock = 0;
   let magnetK = 0;
