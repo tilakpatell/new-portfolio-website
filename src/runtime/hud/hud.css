@@ -41,12 +41,12 @@
 /* the rows; only their controls take the pointer */
 :where(.hud-row):not(hud-none) { position: absolute; left: 0; right: 0; display: flex; justify-content: space-between; gap: 1rem; padding: var(--hud-pad) var(--hud-pad-r) var(--hud-pad) var(--hud-pad-l); pointer-events: none; }
 :where(.hud-row > *):not(hud-none) { pointer-events: auto; }
-:where(.hud-top):not(hud-none) { top: 0; align-items: flex-start; }
+:where(.hud-top):not(hud-none) { top: 0; z-index: 5; align-items: flex-start; } /* (its Menu opens over everything) */
 :where(.hud-brand):not(hud-none) { display: grid; gap: 0.5rem; max-width: min(32rem, 60%); pointer-events: none; }
 :where(.hud-tools):not(hud-none) { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: flex-start; gap: 0.4rem; }
 :where(.hud-foot):not(hud-none) { bottom: 0; align-items: flex-end; padding-bottom: var(--hud-foot); padding-right: var(--guide-reserve); }
 :where(.hud-foot:empty):not(hud-none) { display: none; }
-:where(.hud-thumbs):not(hud-none) { bottom: 0; align-items: flex-end; padding-bottom: var(--hud-thumbs); padding-right: var(--guide-reserve); }
+:where(.hud-thumbs):not(hud-none) { bottom: 0; z-index: 3; align-items: flex-end; padding-bottom: var(--hud-thumbs); padding-right: var(--guide-reserve); }
 /* (thumbs over the foot sit above the guide's "?": no corner to keep there) */
 :where(.hud[data-order='thumbs-over'] .hud-thumbs):not(hud-none) { padding-right: var(--hud-pad-r); }
 

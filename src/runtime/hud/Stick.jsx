@@ -25,9 +25,12 @@ export default function Stick({ onMove, onStart = null, reach = undefined, class
       ring.current?.style.removeProperty('--sx');
       ring.current?.style.removeProperty('--sy');
     };
+    const hidden = () => document.hidden && letGo();
     window.addEventListener('blur', letGo);
+    document.addEventListener('visibilitychange', hidden);
     return () => {
       window.removeEventListener('blur', letGo);
+      document.removeEventListener('visibilitychange', hidden);
       letGo();
     };
   }, []);
