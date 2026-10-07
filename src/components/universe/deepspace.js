@@ -1063,7 +1063,8 @@ export function buildDeepSpace({ small = false, tier = 'high' } = {}) {
         varying vec2 vC;
         void main() {
           float r = length(vC);
-          float a = exp(-r * r * 3.2) * 0.42 + exp(-r * r * 12.0) * 0.18;
+          // (down to nothing by the quad's edge: close in, the post's lift would show its square)
+          float a = (exp(-r * r * 3.2) * 0.42 + exp(-r * r * 12.0) * 0.18) * (1.0 - smoothstep(0.6, 1.0, r));
           gl_FragColor = vec4(vec3(0.62, 0.32, 0.1) * a, a);
         }`,
         { uR: { value: 75 * k } },

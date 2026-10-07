@@ -564,6 +564,8 @@ export async function create(canvas, ctx) {
   const dust = createDust({ small: Math.min(window.innerWidth, window.innerHeight) < 600 });
   map.add(dust.points);
   const camLocal = new THREE.Vector3();
+  // (the drawing's own origin, far out: drawn())
+  const drawAt = new THREE.Vector3();
   let dustAmount = 0;
   // the ship's exhaust, a plume from each engine (trail.js), and a ring of
   // light that runs out round a place as you arrive
@@ -1257,6 +1259,27 @@ export async function create(canvas, ctx) {
     // the near plane: close in behind the ship (or the cockpit), further out
     // the further off the view is (so the depth holds up across the map)
     lens(flying() && state.view !== 'map' ? 0.06 : clamp(pose.dist * 0.02, 0.08, 6));
+  };
+  // Drawn round the camera, far out: what goes to the graphics chip goes in
+  // 32-bit floats, a few thousandths of a unit apart at the Rick and Morty
+  // sector, 40000 off (layout.js's SECTORS), and the figures' bones and the
+  // shaders' world positions shake and tear there. So for the drawing only,
+  // past a few thousand out, the camera's put at the middle and the map
+  // moved round it; both are put back after, for the names, the picks and
+  // the next frame, which all go by the map as it is.
+  const DRAW_FAR = 3000;
+  const drawn = (draw) => {
+    if (camera.position.lengthSq() < DRAW_FAR * DRAW_FAR) return draw();
+    drawAt.copy(camera.position);
+    map.position.sub(drawAt);
+    camera.position.sub(drawAt);
+    try {
+      draw();
+    } finally {
+      map.position.add(drawAt);
+      camera.position.add(drawAt);
+      scene.updateMatrixWorld();
+    }
   };
   const lens = (near) => {
     if (Math.abs(camera.near - near) < near * 0.02) return;
@@ -4644,7 +4667,7 @@ export async function create(canvas, ctx) {
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
     farPlaces.update(camera, dt, state.auto?.id ?? state.jump?.id ?? null);
     sectorPortals.update(t, camera);
-    curve.update(t);
+    curve.update(t, sectorOf(camLocal.x, camLocal.y, camLocal.z) === 'rickmorty');
     sectorFleet.update(t, Boolean(state.ship) && sectorOf(state.ship.x, state.ship.y, state.ship.z) === 'rickmorty');
     // the Citadel's siege: rebuilt or patched up when it's time, what's left
     // of it drawn, and your word on it out to everyone (soon after a hit of
@@ -4693,7 +4716,7 @@ export async function create(canvas, ctx) {
     engines.update(t, camera, size.h * post.ratio);
     finish(dt);
     renderer.info.reset(); // counted over the whole frame, post passes and all
-    post.render(size.w, size.h);
+    drawn(() => post.render(size.w, size.h));
     last = now;
 
     if (state.dive) return now - state.dive.start < DIVE_MS; // then the page takes over

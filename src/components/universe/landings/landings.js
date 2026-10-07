@@ -658,7 +658,7 @@ export const LANDINGS = {
     ground: { style: 'sand', colors: ['#c85a3a', '#e08a5a', '#8a3a2a'] },
     sky: { zenith: '#4a1a4a', horizon: '#f2b070', sun: '#ffd8a0' },
     things: [
-      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137', reach: 3 } },
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137, the gun dialled back here', reach: 3 } },
       { kind: 'gate', at: [0, 52], r: 6, face: false },
       { kind: 'figure', at: [0, 44], r: 0.4, say: { name: 'Mar-Sha', line: 'A boy. From the sky. We make an exception for a Morty.' }, opts: { meshy: 'marsha', tall: 2.3 } },
       { kind: 'figure', at: [22, 30], r: 0.5, say: { name: 'A Gazorpian', line: 'RAAARGH. (He throws a rock at a rock.)' }, opts: { meshy: 'gazorpian', tall: 2.8 } },
@@ -683,7 +683,7 @@ export const LANDINGS = {
       guest2: { url: '/models/c137/rm/magdalian-c.glb', tall: 1.6 },
     },
     things: [
-      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137', reach: 3 } },
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137, the gun dialled back here', reach: 3 } },
       { kind: 'house', at: [-16, 50], r: 4 },
       { kind: 'figure', at: [-8, 36], r: 0.4, say: { name: 'Squanchy', line: 'You squanch what you squanch, Morty. Welcome to my squanch.' }, opts: { meshy: 'squanchy', tall: 1.15 } },
       { kind: 'figure', at: [10, 40], r: 0.4, say: { name: 'Birdperson', line: 'Morty. You have come a long way. It is good to see a friend.' }, opts: { meshy: 'birdperson', tall: 2.0 } },
@@ -706,7 +706,7 @@ export const LANDINGS = {
       nest: { url: '/models/c137/rm/birdperson-house.glb', tall: 14 },
     },
     things: [
-      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137', reach: 3 } },
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137, the gun dialled back here', reach: 3 } },
       { kind: 'nest', at: [0, 56], r: 7 },
       { kind: 'figure', at: [-4, 40], r: 0.4, say: { name: 'Phoenixperson', line: '(A hum of servos. He looks at you for a long time, and does not fire.)' }, opts: { meshy: 'phoenixperson', tall: 2.05 } },
       { kind: 'figure', at: [12, 36], r: 0.4, say: { name: 'Unity', line: 'We are all of us. Welcome to Bird World, Morty. The locals are a little quiet.' }, opts: { meshy: 'unity', tall: 1.75 } },
@@ -729,7 +729,7 @@ export const LANDINGS = {
       gearperson2: { url: '/models/c137/rm/gearperson-b.glb', tall: 1.8 },
     },
     things: [
-      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137', reach: 3 } },
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137, the gun dialled back here', reach: 3 } },
       { kind: 'figure', at: [2, 38], r: 0.4, say: { name: 'Gearhead', line: 'Rick! Oh. Not Rick. Everyone’s best friend, Gearhead. Welcome to Gear World.' }, opts: { meshy: 'gearhead', tall: 1.8 } },
       { kind: 'gearperson', at: [-12, 34], r: 0.4 },
       { kind: 'gearperson2', at: [14, 30], r: 0.4 },
@@ -752,7 +752,7 @@ export const LANDINGS = {
       plutonian2: { url: '/models/c137/rm/plutonian-b.glb', tall: 1.35 },
     },
     things: [
-      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137', reach: 3 } },
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137, the gun dialled back here', reach: 3 } },
       { kind: 'figure', at: [0, 44], r: 0.4, say: { name: 'King Flippy Nips', line: 'Pluto is a planet! Say it with me, boy. Say it with the whole court.' }, opts: { meshy: 'flippynips', tall: 1.5 } },
       { kind: 'figure', at: [18, 36], r: 0.4, say: { name: 'Scroopy Noopers', line: 'Pluto is shrinking. The plutonium mines. Nobody listens to Scroopy.' }, opts: { meshy: 'scroopy', tall: 1.4 } },
       { kind: 'plutonian', at: [-10, 38], r: 0.4 },
@@ -774,7 +774,7 @@ export const LANDINGS = {
       snake2: { url: '/models/c137/rm/snake-b.glb', tall: 0.9 },
     },
     things: [
-      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137', reach: 3 } },
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137, the gun dialled back here', reach: 3 } },
       { kind: 'rocket', at: [0, 56], r: 3.5 },
       { kind: 'astronaut', at: [6, 46], r: 0.5 },
       { kind: 'astronaut', at: [-5, 47], r: 0.5 },
@@ -795,7 +795,7 @@ export const LANDINGS = {
       mytholog: { url: '/models/c137/rm/mytholog.glb', tall: 2.4 },
     },
     things: [
-      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137', reach: 3 } },
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137, the gun dialled back here', reach: 3 } },
       { kind: 'figure', at: [0, 40], r: 0.4, say: { name: 'Glexo Slim Slom', line: 'Welcome to Nuptia 4. We ask every couple one question: what do you see when you look at each other? Then we show them.' }, opts: { meshy: 'glexo', tall: 1.85 } },
       { kind: 'machine', at: [8, 46], r: 1.6 },
       { kind: 'machine', at: [-8, 46], r: 1.6 },
@@ -815,7 +815,7 @@ export const LANDINGS = {
       dirly: { url: '/models/c137/rm/dirlycar.glb', tall: 2.2 },
     },
     things: [
-      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137', reach: 3 } },
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137, the gun dialled back here', reach: 3 } },
       { kind: 'figure', at: [0, 40], r: 0.4, say: { name: 'Risotto Groupon', line: 'Welcome to the Immortality Field Resort. Inside the field, nothing can hurt you. Outside it, everything can.' }, opts: { meshy: 'risotto', tall: 1.9 } },
       { kind: 'dirly', at: [16, 50], r: 2.4 },
       { kind: 'guest', at: [-8, 34], r: 0.4 },
