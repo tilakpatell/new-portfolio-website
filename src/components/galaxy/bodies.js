@@ -11,12 +11,13 @@
 //   flags, bump, clouds, atmo, shield, detail ([flat, steep] ground scans up
 //   close: detailScans) } }; the families and their slots and
 //   params are FAMILIES below
-// buildBody(look, { r = 40, small = false }) → { group, radius, reach,
+// buildBody(look, { r = 40, small = false, tier }) → { group, radius, reach,
 //   update(t, camera), setSuns([{ dir, color }]), setDetail(k), set(name, value), dispose() }
 //   look: an id (or a LOOKS entry); radius: the solid sphere, = r; reach:
 //   how far it shows (atmosphere, shield); setDetail: how many octaves of
 //   noise the ground is worked to, 0…1 from 4 up to all it was built with (9,
-//   or 5 small), for a scene that's short of frame rate; set: 'shield'
+//   or 5 small), for a scene that's short of frame rate (and from orbit, on
+//   tier high or ultra, two finer again: nearOctaves); set: 'shield'
 //   (Scarif's shield, 0..1); anything else is ignored
 
 import * as THREE from 'three';
@@ -222,6 +223,22 @@ const blanks = () => {
   return blank;
 };
 const SEG = { big: [128, 96], small: [64, 48], moon: [64, 48] };
+
+// From orbit (the world over NEAR_PX pixels tall), on a strong enough
+// device, the ground is worked NEAR_OCT octaves finer than its pixels'
+// footprint alone would give it, and wears a fine grain that catches the
+// sun (bodyShaders.js's octs and nearRelief): from a parking orbit the
+// footprint, not the octave cap, is what held it soft
+const NEAR_PX = 300;
+const NEAR_OCT = 2;
+const NEAR_EASE = 0.1; // octaves a frame drawn it eases in and out at (no pop as a world crosses NEAR_PX)
+export const nearOctaves = ({ tier, pxTall: px }) => ((tier === 'high' || tier === 'ultra') && px > NEAR_PX ? NEAR_OCT : 0);
+// how many of a `height`-pixel view's pixels a ball of radius r fills, top
+// to bottom, from `dist` away with a vertical field of view of `fov` degrees
+// (Infinity from inside it)
+export const pxTall = ({ r, dist, fov, height }) => (dist <= r ? Infinity : ((2 * Math.asin(r / dist)) / ((fov * Math.PI) / 180)) * height);
+const bufferSize = new THREE.Vector2();
+const bodyAt = new THREE.Vector3();
 const SHIELD_R = 1.12;
 const DUNE_DIR = new THREE.Vector3(0.62, 0.32, 0.72).normalize();
 
@@ -242,7 +259,7 @@ const params = (look) => {
   return [new THREE.Vector4(...v.slice(0, 4)), new THREE.Vector4(...v.slice(4, 8))];
 };
 
-export function buildBody(look, { r = 40, small = false } = {}) {
+export function buildBody(look, { r = 40, small = false, tier = typeof document !== 'undefined' ? detailLevel() : 'mid' } = {}) {
   const L = (typeof look === 'string' ? LOOKS[look] : look) ?? LOOKS['moon-grey'];
   const group = new THREE.Group();
   const made = [];
@@ -268,6 +285,7 @@ export function buildBody(look, { r = 40, small = false } = {}) {
   const uniforms = {
     ...shared,
     uMaxOct: { value: maxOct },
+    uNearOct: { value: 0 },
     uBump: { value: L.bump ?? 0.02 },
     uPal: { value: colors(L) },
     uP0: { value: p0 },
@@ -307,6 +325,18 @@ export function buildBody(look, { r = 40, small = false } = {}) {
   const geo = new THREE.SphereGeometry(r, ws, hs);
   const mat = new THREE.ShaderMaterial({ vertexShader: SURFACE_VERT, fragmentShader: surfaceFrag(L.family, FAMILIES[L.family].slots), uniforms, defines });
   const surface = new THREE.Mesh(geo, mat);
+  // (how tall it is on the screen, as it's drawn: the near octaves eased
+  // toward what that asks for, a frame at a time)
+  if (!small) {
+    surface.onBeforeRender = (renderer, scene, camera) => {
+      if (!camera?.isPerspectiveCamera) return;
+      renderer.getDrawingBufferSize(bufferSize);
+      surface.getWorldPosition(bodyAt);
+      const want = nearOctaves({ tier, pxTall: pxTall({ r, dist: camera.position.distanceTo(bodyAt), fov: camera.fov, height: bufferSize.y }) });
+      const n = uniforms.uNearOct;
+      n.value += Math.max(-NEAR_EASE, Math.min(NEAR_EASE, want - n.value));
+    };
+  }
   group.add(surface);
   made.push(geo, mat);
 
