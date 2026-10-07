@@ -18,3 +18,7 @@ export * as influence from './influence';
 export * as squad from './squad';
 export * as body from './body';
 export * as react from './react';
+export * as action from './action';
+export * as schedule from './schedule';
+export * as trace from './trace';
+export * as inspect from './inspect';
