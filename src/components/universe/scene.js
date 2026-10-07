@@ -109,7 +109,7 @@ import { houseOn } from '../../lib/three/house';
 import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, driveById, hyperState, legOf, parkFor, riftExit } from './nav';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
-import { AHEAD_OF, factionsOf, kindsOf, pick as pickFaction, sideFor, sideOf, wingOf } from './sides';
+import { AHEAD_OF, crewAt, factionsOf, kindsOf, pick as pickFaction, sideAt, sideFor, sideOf, wingOf } from './sides';
 import { TROOPS } from './foot';
 import { GLB, createFleet } from './glbFleet';
 import { createDirector } from './director';
@@ -120,6 +120,7 @@ import { createMines } from './mines';
 import { ESCORT, escortHull, escortPlan, escortTo } from './escort';
 import { DEBRIS_DRIFT, buildDeepSpace } from './deepspace';
 import { createSectorPortals } from './sectorPortals';
+import { createCurve } from './curve';
 import { portalById, portalHit, transit } from './portals';
 import { ROCK_RELIEF } from '../../lib/three/rock';
 import { ROCK_HIT, boxOf, nearBox, nearRing, rockDamage, rockGrid, sweep, toBelt } from './rockHits';
@@ -682,6 +683,8 @@ export async function create(canvas, ctx) {
   map.add(deep.group);
   // the portals between the map's sectors (sectorPortals.js; flown through below: portalThrough)
   const sectorPortals = createSectorPortals(map);
+  // and the Rick and Morty sector's edge, the Central Finite Curve (curve.js)
+  const curve = createCurve(map);
   const trenches = PLANETS.filter((p) => p.trench).map((p) => createTrench({ at: p.at, r: p.r, trench: p.trench }, { small }));
   for (const tr of trenches) map.add(tr.group);
   // and a beacon over each far world, so it reads as somewhere to go
@@ -822,6 +825,10 @@ export async function create(canvas, ctx) {
   fleet.prepare = (o) => warm(o); // (the fleet's models too: none is made before the first frame)
   // who comes after you, what the director sets going, and its set pieces
   // (none of it with reduced motion)
+  // whose space the ship's in (sides.js sideAt): the Rick and Morty sector's
+  // hunters, traffic and goings-on are the Rick and Morty side's, whoever's
+  // flying; anywhere else the crew's own
+  const sideHere = () => sideAt(state.kind, state.ship ? sectorOf(state.ship.x, state.ship.y, state.ship.z) : 'main');
   const FACTIONS_ALL = factionsOf(null);
   const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: FACTIONS_ALL, kinds: kindsOf(null), engines }); // (every side's: another pilot's hunters, whoever they are)
   const wingmen = hunters ? createWingmen(map, { fleet, solids: SOLIDS }) : null; // (friends in a long fight)
@@ -1743,7 +1750,7 @@ export async function create(canvas, ctx) {
     state.kind = kind;
     setPlumes(kind, ENGINES[kind] ?? []);
     if (!same) {
-      traffic?.setCrew(kind);
+      traffic?.setCrew(crewAt(kind, sectorOf(state.ship?.x ?? 0, 0, state.ship?.z ?? 0)));
       hunters?.clear();
       meteors.clear();
       mines.clear();
@@ -1837,7 +1844,7 @@ export async function create(canvas, ctx) {
   let warmed = false; // (none made ahead before the map's own shaders are)
   const stockUp = () => {
     if (reduced || !warmed) return;
-    const side = sideFor(state.kind);
+    const side = sideHere();
     if (!side || stockedFor.has(side.id)) return;
     stockedFor.add(side.id);
     const want = Object.entries(AHEAD_OF(side));
@@ -2869,7 +2876,7 @@ export async function create(canvas, ctx) {
   const travelling = (s) => openness(s.x, s.y, s.z) > 0.5 && Math.abs(s.speed) > 40;
   const leadOf = (s) => holdReach(s, { ramp: INTERDICT_IN, solids: siegeSt.down ? SOLIDS_OPEN : SOLIDS });
   const happen = (id, ship) => {
-    const side = sideFor(state.kind);
+    const side = sideHere();
     if (!side) return;
     const ambush = travelling(ship) ? { ahead: true, interdict: true, lead: leadOf(ship) } : {};
     // (more of them, and the ace more often, the more trouble you've made; the first pack is a small one)
@@ -3074,7 +3081,7 @@ export async function create(canvas, ctx) {
   const STATIONS = PLANETS.map((p) => ({ id: p.id, at: { x: p.at[0], y: p.at[1], z: p.at[2] }, r: p.r }));
   const npcWorld = { you: null, hunters: [], stations: STATIONS, solids: SOLIDS, next: null, heat: 0, shield: 100, stims: [] }; // (stims: your shots this frame, heard by the characters, and dodged by a nemesis they're aimed at)
   const meet = (dt, t, live) => {
-    const side = sideFor(state.kind);
+    const side = sideHere();
     if (live && side && !npcs.count && state.clock > state.npcAt && !hunters.count && !skirmishes?.active && !pieces.destroyerHere && !leviathans.busy && state.view !== 'map') {
       state.npcAt = state.clock + NPC_EVERY[0] + Math.random() * (NPC_EVERY[1] - NPC_EVERY[0]);
       const who = visitorsOf(side.id).filter((c) => c.id !== state.npcLast);
@@ -3160,7 +3167,7 @@ export async function create(canvas, ctx) {
   const farFight = (dt, t, live) => {
     if (!skirmishes.active && live && state.clock > state.skirmishAt && !hunters.count && !pieces.destroyerHere && !leviathans.busy && !meteors.count && state.view !== 'map' && Math.abs(live.speed) < SHIP.pulse * 0.2) {
       state.skirmishAt = state.clock + SKIRMISH_EVERY[0] + Math.random() * (SKIRMISH_EVERY[1] - SKIRMISH_EVERY[0]);
-      const side = sideFor(state.kind);
+      const side = sideHere();
       const at = side && skirmishSpot(live);
       if (at && skirmishes.start({ at, heading: Math.random() * Math.PI * 2, ...side.skirmish })) {
         state.skirmishHelped = 0;
@@ -3192,7 +3199,7 @@ export async function create(canvas, ctx) {
   // you, its shield parts going, its bridge open, it running or going up
   let capFight = null; // { interdict, said, hurt } while one's here
   const capitalEvent = (e, live) => {
-    const side = sideFor(state.kind);
+    const side = sideHere();
     if (e.type === 'launch') {
       if (live && !state.crash && side) hunters.pack(pickFaction(side, 'capital') ?? 'empire', live, { from: new THREE.Vector3(...e.from), size: e.wave > 1 ? 4 : 3, ace: Math.random() < 0.35, interdict: Boolean(capFight?.interdict) });
       if (e.wave > 1) capitalSay('wave');
@@ -3332,7 +3339,7 @@ export async function create(canvas, ctx) {
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
-        const id = director.update(dt, { hurt: state.hurtNow ?? 0, side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.busy || meteors.count > 0 || mines.count > 0 || Boolean(escort) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
+        const id = director.update(dt, { hurt: state.hurtNow ?? 0, side: sideHere(), heat: state.heat, busy: hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.busy || meteors.count > 0 || mines.count > 0 || Boolean(escort) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
         state.hurtNow = 0;
         if (id) happen(id, live);
         // the drive comes back once they're off you (or have had their go)
@@ -3600,6 +3607,8 @@ export async function create(canvas, ctx) {
     skirmishes?.clear();
     npcs?.clear();
     traffic?.clear();
+    traffic?.setCrew(crewAt(state.kind, out.sector)); // (the sector's own traffic: sides.js)
+    stockUp();
     state.interdicted = false;
     state.safeUntil = state.clock + SAFE;
     state.flare = Math.max(state.flare, 2.4);
@@ -4485,6 +4494,7 @@ export async function create(canvas, ctx) {
     house.follow({ adopt: houseFrames++ % 30 === 0 });
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
     sectorPortals.update(t, camera);
+    curve.update(t);
     // the Citadel's siege: rebuilt or patched up when it's time, what's left
     // of it drawn, and your word on it out to everyone (soon after a hit of
     // yours; every few seconds while there's anything to tell)
@@ -5253,6 +5263,7 @@ export async function create(canvas, ctx) {
       fleet.dispose();
       deep.dispose();
       sectorPortals.dispose();
+      curve.dispose();
       for (const tr of trenches) tr.dispose();
       beacons.dispose();
       phone.dispose();
