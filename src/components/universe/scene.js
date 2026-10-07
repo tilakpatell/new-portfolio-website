@@ -120,7 +120,8 @@ import { createLeviathans } from './leviathans';
 import { createMeteors } from './meteors';
 import { createMines } from './mines';
 import { ESCORT, escortHull, escortPlan, escortTo } from './escort';
-import { DEBRIS_DRIFT, buildDeepSpace } from './deepspace';
+import { DEBRIS_DRIFT, SKY_FAR, buildDeepSpace } from './deepspace';
+import { FAR_PLACES, createFarPlaces } from './farPlaces';
 import { createSectorPortals } from './sectorPortals';
 import { GUN, gunHit, gunTransit } from './gunPortal';
 import { createGunPortal } from './gunPortalFx';
@@ -736,6 +737,8 @@ export async function create(canvas, ctx) {
     return p;
   });
   const planetOf = Object.fromEntries(planets.map((p) => [p.id, p]));
+  // and every place past FAR_REAL drawn as a point of light instead (farPlaces.js)
+  const farPlaces = createFarPlaces(map, { places: FAR_PLACES.map((p) => ({ ...p, group: planetOf[p.id]?.group ?? deep.groupOf(p.id) ?? (p.id === 'sun' ? sun.group : null) })), skyFar: SKY_FAR });
   const near = createNearMaps({ small }); // (the finer maps for the two planets nearest, nearMaps.js)
   const crashFx = createCrash(map);
   // out of the ship and on foot on a planet (footScene.js)
@@ -4616,6 +4619,7 @@ export async function create(canvas, ctx) {
     // (the look follows the lights; what's come into the scene since is taken on every half second or so)
     house.follow({ adopt: houseFrames++ % 30 === 0 });
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
+    farPlaces.update(camera, dt, state.auto?.id ?? state.jump?.id ?? null);
     sectorPortals.update(t, camera);
     curve.update(t);
     sectorFleet.update(t, Boolean(state.ship) && sectorOf(state.ship.x, state.ship.y, state.ship.z) === 'rickmorty');
@@ -5405,6 +5409,7 @@ export async function create(canvas, ctx) {
       eclipseMoon?.material.dispose();
       fleet.dispose();
       deep.dispose();
+      farPlaces.dispose();
       sectorPortals.dispose();
       gunPortal.dispose();
       curve.dispose();

@@ -67,7 +67,7 @@ import { BILLBOARD_VERT, CITADEL_FRAG, CITADEL_GLASS_FRAG, CITADEL_VERT, DISK_FR
 const { PI, sin, cos, hypot, max, min } = Math;
 const TAU = PI * 2;
 
-const SKY_FAR = 24000; // how far off the background galaxies ride (inside the camera's far plane)
+export const SKY_FAR = 24000; // how far off the background galaxies ride (inside the camera's far plane)
 const SKY_SIZE = SKY_FAR / 2200; // (their sizes below are at 2200)
 const LABEL_H = 0.15; // a name's height on screen, in clip units (about a thirteenth of the screen)
 const LABEL_W = 1024; // a name's row in the atlas, in px

@@ -56,8 +56,8 @@ Branch `claude/universe-scale-hyperlanes` (this one). One PR for Tasks 1 to 3, a
 - Produces: pure `FAR_REAL = 24000`, `blend(dist, { far = FAR_REAL, fade = 2000 }) -> 0…1` (0 at and inside `far − fade`, 1 at `far` and beyond, smoothstep between), `spriteSize(r, dist, skyFar) -> px-free size` (the size at `skyFar` that keeps the angular size of radius `r` at `dist`), `pointsFor(places, cam) -> [{ id, dir: [x,y,z], size, color, k }]`. `createFarPlaces(scene, { places: [{ id, at, r, color, group }], skyFar }) -> { update(camera, dt, destinationId), dispose() }`: one `THREE.Points` with per-point size and colour, `depthTest: false`, drawn before the stars; a place’s `group.visible = blend < 1`, and the sprite’s alpha is `blend`.
 - Consumes: `layout.js`’s `POSITIONS`, `REACH`; `deep.js`’s `WONDERS`, `STARS`; `deepspace.js`’s `SKY_FAR`.
 
-- [ ] **Step 1: Write the failing tests:** `blend(21999)` is 0, `blend(24000)` is 1, `blend(23000)` is between 0.4 and 0.6; `spriteSize(100, 30000, 24000)` equals `spriteSize(80, 24000, 24000)` (same angle, same size); `pointsFor` gives one point per place with unit `dir`.
-- [ ] **Step 2: Run and see them fail.** **Step 3: Implement.** **Step 4: Run green; in the browser, from `overview` the far fandoms are specks with halos and the near ones are planets; fly toward one and watch the fade.** **Commit.**
+- [x] **Step 1: Write the failing tests:** `blend(21999)` is 0, `blend(24000)` is 1, `blend(23000)` is between 0.4 and 0.6; `spriteSize(100, 30000, 24000)` equals `spriteSize(80, 24000, 24000)` (same angle, same size); `pointsFor` gives one point per place with unit `dir`.
+- [x] **Step 2: Run and see them fail.** **Step 3: Implement.** **Step 4: Run green; in the browser, from `overview` the far fandoms are specks with halos and the near ones are planets; fly toward one and watch the fade.** **Commit.**
 
 ### Task 3: regions (`regions.js`)
 
