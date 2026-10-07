@@ -96,7 +96,7 @@ export function createNearMaps({ level = detailLevel(), small = false, load = lo
       if (gone || sets.get(p.id) !== s) return free(s);
       s.state = 'on';
       if (Object.keys(s.T2).length) p.swapMaps?.(s.T2);
-      p.nearGeometry?.(true);
+      p.nearGeometry?.(true, level);
     });
   };
 
