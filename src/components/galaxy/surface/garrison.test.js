@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FIGURES } from './figures';
 import { OWNERS } from '../warEffects';
-import { TROOP_NAMES, garrisonLife, troopKind } from './garrison';
+import { TROOP_NAMES, garrisonAt, garrisonLife, garrisonQuest, troopKind } from './garrison';
 
 describe('the garrison on the ground', () => {
   it('an Imperial trooper kind maps to the Rebellion’s on a Rebel world, and back', () => {
@@ -35,5 +35,39 @@ describe('the garrison on the ground', () => {
     expect(garrisonLife(life, 'stormtrooper')).toEqual(life);
     expect(garrisonLife(life, null)).toBe(life);
     expect(garrisonLife(undefined, 'rebel')).toBeUndefined();
+  });
+});
+
+describe('who meets you at the landing', () => {
+  const site = { id: 'yavin', land: { at: [10, -20] }, life: [] };
+  it('gives the holder’s troops round the landing, on paths and at posts, and a search party where the holder isn’t the world’s own', () => {
+    const own = garrisonAt(site, { owner: 'rebel', troops: 'rebel' }, 'rebel');
+    const count = (list) => list.reduce((n, a) => n + (a.n ?? 1), 0);
+    expect(count(own)).toBeGreaterThanOrEqual(6);
+    expect(count(own)).toBeLessThanOrEqual(10);
+    for (const a of own) {
+      expect(a.kind).toBe('rebel');
+      expect(a.garrison).toBe(true);
+      const at = a.at ?? a.path[0];
+      expect(Math.hypot(at[0] - 10, at[1] + 20)).toBeLessThan(80);
+    }
+    expect(own.some((a) => a.path)).toBe(true);
+    expect(own.some((a) => a.still)).toBe(true);
+    expect(own.some((a) => a.kind === 'probe')).toBe(false);
+    const taken = garrisonAt(site, { owner: 'empire', troops: 'stormtrooper' }, 'rebel');
+    expect(count(taken.filter((a) => a.kind === 'stormtrooper'))).toBeGreaterThanOrEqual(6);
+    expect(taken.filter((a) => a.kind === 'probe').length).toBe(1);
+  });
+  it('nobody without a holder, and nobody from the Hutts but their enforcers', () => {
+    expect(garrisonAt(site, null, 'rebel')).toEqual([]);
+    expect(garrisonAt(site, { owner: 'hutt', troops: 'mercenary' }, 'rebel').every((a) => a.kind === 'mercenary')).toBe(true);
+  });
+  it('a quest’s spawns are the holder’s troops too, the named and the rest untouched', () => {
+    const quest = { id: 'q', steps: [{ type: 'shoot', spawn: [{ kind: 'stormtrooper', n: 2, tag: 'x' }, { kind: 'vader', tag: 'v' }] }, { type: 'reach' }] };
+    const out = garrisonQuest(quest, 'rebel');
+    expect(out.steps[0].spawn.map((s) => s.kind)).toEqual(['rebel', 'vader']);
+    expect(out.steps[1]).toBe(quest.steps[1]);
+    expect(garrisonQuest(quest, null)).toBe(quest);
+    expect(garrisonQuest(null, 'rebel')).toBe(null);
   });
 });

@@ -31,7 +31,8 @@ import { SIDE_KEY, current as currentOath, readAllegiance, swear } from '../comp
 import { GCW, campaignAt } from '../components/galaxy/gcw';
 import { warOfSide } from '../components/galaxy/sides';
 import { effectsFor } from '../components/galaxy/warEffects';
-import { addPoints, addWin, warNow } from '../components/galaxy/warState';
+import { addPoints, addWin, mine, warNow } from '../components/galaxy/warState';
+import { RANKS, rankOf } from '../components/galaxy/ranks';
 import ModelCredits from '../components/ModelCredits';
 import { wornFiles } from '../components/rickmorty/wardrobe/looks';
 import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
@@ -105,7 +106,13 @@ export default function GalaxySurface() {
   // here is that war's, fought for one of its sides
   const [oathKept, setOathKept] = useState(() => readAllegiance(local.get(SIDE_KEY)));
   const oath = useMemo(() => currentOath(oathKept), [oathKept]);
-  const effects = useMemo(() => effectsFor(id, warNow(Date.now(), oath.war), oath), [id, oath]);
+  // (and, for the people's talk: the side you swore to, and your rank in it, as a step up its ladder)
+  const effects = useMemo(() => {
+    const e = effectsFor(id, warNow(Date.now(), oath.war), oath);
+    if (!e) return e;
+    const rank = oath.side ? rankOf(oath.side, mine(oath.war).points) : null;
+    return { ...e, side: oath.side ?? null, rank: rank ? (RANKS[oath.side]?.findIndex((r) => r.id === rank.id) ?? 0) : 0 };
+  }, [id, oath]);
   const assaultWar = mission?.kind === 'assault' ? warOfSide(warSideOf(mission, 'attack')) : null;
   const sworn = assaultWar ? sideFor(mission, oathKept.oaths[assaultWar]?.side ?? null) : null;
   const onAssaultSide = (k) => {

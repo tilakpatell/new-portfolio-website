@@ -74,3 +74,45 @@ describe('fighting back', () => {
     expect(f.on).toBe(false);
   });
 });
+
+describe('fast, or in big steps', () => {
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  const finite = (f) => {
+    for (const e of f.foes) for (const c of [...e.p, ...e.v]) expect(Number.isFinite(c)).toBe(true);
+    for (const b of f.bolts) for (const c of b.p) expect(Number.isFinite(c)).toBe(true);
+    expect(Number.isFinite(f.t) && Number.isFinite(f.hp) && Number.isFinite(f.cool)).toBe(true);
+  };
+  // a dozen out and about, round him and firing
+  const busy = () => {
+    let { f } = run(startInvasion(newFight()), far, 8);
+    ({ f } = run(f, hero([PORTAL.p[0], PORTAL.p[1] - 20, PORTAL.p[2] + 60]), 2));
+    return f;
+  };
+  it('a tab hidden for a minute comes back as one short step: no Flaxan jumps, nothing NaNs', () => {
+    const f = busy();
+    expect(f.foes.some((e) => e.state === 'fight')).toBe(true);
+    const { fight: after } = stepFight(f, hero([PORTAL.p[0], PORTAL.p[1] - 20, PORTAL.p[2] + 60]), idle, 60);
+    expect(after.t - f.t).toBeLessThanOrEqual(0.05 + 1e-9);
+    after.foes.forEach((e, i) => {
+      if (f.foes[i].state === 'fight' && e.state === 'fight') expect(dist(e.p, f.foes[i].p)).toBeLessThanOrEqual(FIGHT.speed * 0.05 + 1e-9);
+    });
+    finite(after);
+  });
+  it('a step of nothing, or of NaN, moves nothing and leaves everything a number', () => {
+    const f = busy();
+    for (const dt of [NaN, -1, 0, undefined]) {
+      const { fight: after } = stepFight(f, hero([PORTAL.p[0], PORTAL.p[1] - 20, PORTAL.p[2] + 60]), idle, dt);
+      expect(after.t).toBe(f.t);
+      after.foes.forEach((e, i) => expect(e.p).toEqual(f.foes[i].p));
+      finite(after);
+    }
+  });
+  it('flying into one fast knocks it out, even when a frame carries him right past it', () => {
+    // 260 m/s at 20 frames a second: 13 m a frame, never within reach of it on a frame
+    const f = startInvasion(newFight());
+    const e = { ...f.foes[0], state: 'fight', p: [0, 100, -3], v: [0, 0, 0], cool: 99 };
+    const one = { ...f, foes: [e, ...f.foes.slice(1).map((q) => ({ ...q, state: 'down' }))], spawned: FIGHT.count };
+    const { ev } = stepFight(one, hero([0, 99, -9.5], [0, 0, -260]), idle, 0.05);
+    expect(ev.some((x) => x.type === 'ko' && x.rammed)).toBe(true);
+  });
+});

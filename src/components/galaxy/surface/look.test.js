@@ -73,4 +73,12 @@ describe('a site’s look for the house', () => {
     expect(look.edge).toEqual([0.18, 0.85]);
     expect(hex(look.halo)).toBe('#fff0c0');
   });
+
+  it('gives Bespin its gold-hour look', () => {
+    const look = lookOf(siteOf('bespin'));
+    expect(hex(look.shadow)).toBe('#c07a8a');
+    expect(look.edge).toEqual([0.1, 0.78]);
+    expect(hex(look.halo)).toBe('#ffb070');
+    expect(look.fogBelow).toBe(0.95);
+  });
 });

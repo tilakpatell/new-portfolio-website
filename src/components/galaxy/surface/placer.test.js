@@ -26,6 +26,16 @@ describe('a built thing under a model', () => {
     expect(world.floors).toHaveLength(1);
   });
 
+  it('follows a floor that moves (a platform lowered): its height read live', () => {
+    const world = fakeWorld();
+    const f = { x: 0, z: 0, y: 1, r: 3, moves: true, tag: 'lift' };
+    applyBuilt({ object: new THREE.Group(), floors: [f] }, { scale: 2 }, [0, 10, 0], world, { updates: [], signals: [], object: true });
+    expect(world.floors[0].y).toBe(12);
+    f.y = -1;
+    expect(world.floors[0].y).toBe(8);
+    expect(world.floors[0].tag).toBe('lift');
+  });
+
   it('keeps the moving parts of one drawn as built', () => {
     const sinks = { updates: [], signals: [], object: true };
     applyBuilt(made(), {}, [0, 0, 0], fakeWorld(), sinks);
