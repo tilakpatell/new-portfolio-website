@@ -46,7 +46,7 @@ console.log(`${where}: ship up in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 await page.waitForTimeout(4000);
 const to = process.argv[3] ?? (where === 'galaxy' ? 'naboo' : await page.evaluate(() => window.__universeDebug.positions().find((id) => id !== window.__universe().at && id !== 'home') ?? 'starwars'));
 // (the page's clock stopped first: on a slow machine a round trip into the page is a good part of the jump)
-const pause = async () => page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000);
+const pause = async () => page.clock.pauseAt((await page.evaluate(() => Date.now())) + 4000); // (well ahead: the clock runs on while the call comes back)
 await pause();
 if (where === 'galaxy') {
   // (the galaxy comes round onto the course first: stepped through, the jump proper starts at its spool)
