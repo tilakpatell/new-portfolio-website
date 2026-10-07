@@ -109,6 +109,7 @@ export default function Galaxy() {
   const keepOath = useCallback((next) => {
     setOathKept(next);
     local.set(SIDE_KEY, next);
+    window.dispatchEvent(new Event('tp:oath')); // (your hello says it: useOnline.js)
   }, []);
   const onSwear = useCallback(
     (side) => {

@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { local } from '../../../lib/hooks';
 import { cleanName, randomCallsign } from './names';
 import { LOADOUT_KEY, STOCK_LOADOUT, readLoadouts } from '../outfit';
+import { useEconomy } from '../EconomyProvider';
 
 // Going online, for the whole site (OnlineProvider.jsx holds it, so the
 // link stays up from page to page): whether you are (asked once on the
@@ -22,6 +23,12 @@ import { LOADOUT_KEY, STOCK_LOADOUT, readLoadouts } from '../outfit';
 // remembered, and they're never drawn over a walkable world (enterWorld(),
 // from ../../middleearth/towns/useTravellers.js), where the others are
 // there in person.
+//
+// Your level and factions go in the hello too: the wallet's level and its
+// marks (your standing with each universe, your oath and rank in the
+// galaxy's wars), once a page has loaded it, read again whenever it
+// changes, a standing level turns (`tp:standing`, from the universe page)
+// or you swear (`tp:oath`, from the galaxy's).
 //
 // follow(id) is the roster's “Fly to” and “Go”: the pilot to fly to once
 // the ship is in, on the universe map or in a galaxy system. The flight
@@ -56,6 +63,18 @@ export function useOnlineState(where) {
     const on = (e) => setLooks(readLooks(e.detail));
     window.addEventListener('tp:looks', on);
     return () => window.removeEventListener('tp:looks', on);
+  }, []);
+  const { economy, version: wallet, marks } = useEconomy({ ask: false });
+  const level = economy?.level ?? 1;
+  const [marked, setMarked] = useState(0); // bumps when a standing or an oath changes
+  useEffect(() => {
+    const bump = () => setMarked((n) => n + 1);
+    window.addEventListener('tp:standing', bump);
+    window.addEventListener('tp:oath', bump);
+    return () => {
+      window.removeEventListener('tp:standing', bump);
+      window.removeEventListener('tp:oath', bump);
+    };
   }, []);
   const [client, setClient] = useState(null);
   const [room, setRoom] = useState(OFF);
@@ -152,9 +171,10 @@ export function useOnlineState(where) {
     };
   }, [on, attempt, away]);
 
+  // (marks() is read here, not each render: it counts up the war's points)
   useEffect(() => {
-    client?.setProfile({ name, kind, loadout, build, looks, where });
-  }, [client, name, kind, loadout, build, looks, where]);
+    client?.setProfile({ name, kind, loadout, build, looks, where, level, marks: marks() });
+  }, [client, name, kind, loadout, build, looks, where, level, marks, wallet, marked]);
 
   const keepName = (callsign) => {
     const next = cleanName(callsign) ?? name ?? randomCallsign();

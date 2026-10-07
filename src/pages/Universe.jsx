@@ -322,6 +322,8 @@ export default function Universe({ ask = false }) {
       pay(e.what, e.n, e.side);
       return;
     }
+    // (the hello says what you are to the others: useOnline.js reads it again)
+    if (e.type === 'event' && e.id === 'standing') window.dispatchEvent(new Event('tp:standing'));
     if (e.type === 'event' && e.id === 'standing' && goodStanding(e.sub) && stood.once(`${e.side}:${e.sub}`)) pay('standingUp', 1, e.side);
     // a trip to a pilot over (with them, gone, or the stick taken back): the follow's done
     if ((e.type === 'arrived' || e.type === 'jumped' || e.type === 'lost') && followRef.current && e.id === `pilot:${followRef.current}`) follow(null);

@@ -233,14 +233,14 @@ if (fake) {
     if (!galaxy) {
       // on the hyperdrive: out behind them as they are at the flash
       await page.waitForTimeout(11000); // (the hyperdrive charging since any jump before)
-      await place(300, 1);
+      await place(300, 0.15); // (slow, as above: the check reads it a while after the flash)
       await page.evaluate(() => (window.__hud = []));
       ok(await go('hyper'), 'a jump to Fakey');
       const jumped = await waitFor(async () => {
         const r = await look();
         return !r.jump && r.hud ? r : null;
       }, 120000, 'out of the jump').catch(async (e) => (ok(false, `${e.message}: ${JSON.stringify(await look())}`), null));
-      if (jumped) ok(jumped.dist !== null && jumped.dist < 8.5 && jumped.hud.includes('With Fakey'), `out of the jump ${jumped.dist?.toFixed(1)} from Fakey (they drift on at 1 a second), the HUD “${jumped.hud}”`);
+      if (jumped) ok(jumped.dist !== null && jumped.dist < 8.5 && jumped.hud.includes('With Fakey'), `out of the jump ${jumped.dist?.toFixed(1)} from Fakey (they drift on slowly), the HUD “${jumped.hud}”`);
 
       // in the other sector: by the portal, Fakey still the trip's end
       await place(0, 0, 0, -40000 - (await page.evaluate((d) => window[d].state.ship.z, DEBUG)) + 300);
