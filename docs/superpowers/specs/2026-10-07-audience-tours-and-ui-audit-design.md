@@ -14,7 +14,7 @@ The UI grew by accretion. The audits count, for one concept, twelve interact pro
 
 Goals:
 
-1. Three site-wide tours, each under eight minutes end to end, each resumable, each startable from a link the owner can send.
+1. Three site-wide tours, resumable, startable from a link the owner can send: the hiring tour under five minutes, the player's under eight, the whole tour under twelve, by the estimate in 3.8.
 2. A "Things to do" checklist in the guide, filtered by audience, with done-state, that the tours draw their stops from, so the two never disagree.
 3. A written house UI rule set, a glossary (one word per thing), and one component per concept, applied to the shell, the universe map and every world's HUD.
 4. Every rule testable: the pure parts under `vitest`, the walk-through under headless Chromium.
@@ -27,9 +27,9 @@ Non-goals: new worlds, new games, new content in `src/data/` (roles, projects, r
 
 | Audience | Who | What the tour shows | Length |
 | --- | --- | --- | --- |
-| `recruiter` | Here to hire | The work: pages, projects, the résumé, and the engineering under the site (the map, multiplayer, the autopilot, the terminal). Every stop is on a light route. | about 5 min, 8 chapters |
-| `player` | Here to play | The map and the ship, the galaxy, the worlds and what to do in each, the games, multiplayer, achievements, the checklist. | about 7 min, 10 chapters |
-| `mixed` | Both | The recruiter spine with the player's chapters folded in after the universe chapter. Not a third set of copy: a composition. | about 10 min |
+| `recruiter` (shown as **the hiring tour**) | I’m hiring | The work: pages, projects, the résumé, and the engineering under the site (the map, multiplayer, the autopilot, the terminal). Every stop is on a light route. | about 5 min, 8 chapters |
+| `player` (**the player’s tour**) | I’m here to play | The map and the ship, the galaxy, the worlds and what to do in each, the games, multiplayer, achievements, the checklist. | about 7 min, 10 chapters |
+| `mixed` (**the whole tour**) | Both | The recruiter spine with the player's chapters folded in after the universe chapter. Not a third set of copy: a composition. | about 10 min |
 
 The existing `universe` and `classic` tours stay as they are and become the first chapter ("The shell") of every audience tour, picked by the view the visitor is in when the tour starts.
 
@@ -37,8 +37,12 @@ The existing `universe` and `classic` tours stay as they are and become the firs
 
 A **tour** is an ordered list of **chapters**. A **chapter** is `{ id, title, path, stops }`: one route, and the stops on it. A **stop** keeps the shape it has today (`id`, `title`, `text` as a string or a function of `{ key }`, optional `at` naming a `data-tour` target, optional `keys`/`touch` rows) and gains:
 
-- `cta?: { label, to }`: a button on the card that leaves the tour for a place (a world, a mission, a game). The tour **never navigates into a world by itself**; it offers. Taking a `cta` ends the tour with the progress saved at that chapter, and the guide's tab offers "Carry on the tour" afterwards.
+- `actions?: [{ label, to?, href?, download?, tour? }]` (at most four, rendered as their own row above the buttons): `to` is a route, `href` an outside link or the PDF, `tour` an audience to start next. A `to` into a world or the galaxy **ends the tour** with the progress saved at that chapter (the tour never loads a world by itself; it offers). A `to` on a light route is an **excursion**: the tour goes there, drops its veil, and a notice says "Carry on the tour · chapter 5 of 8" with Carry on and Stop.
 - `todo?: string`: the id of the catalogue item this stop shows (section 4), so the card can show a tick when it is done and the checklist can start the tour at this stop.
+- `release?: ['?', 'palette']`: the keys the tour lets through at this stop so the visitor can try them (`keys` and `touch` stay the key-table rows).
+- `wait?: true`: the stop's target mounts late (a lazy section); the tour waits for it rather than dropping the stop.
+
+A chapter may also carry `brief: '/universe/fly'` (its stops are that brief's cards, and passing it marks the brief seen), `heavy: true` (on a coarse pointer the engine shows the chapter's `phone` version, a card, instead of navigating), and `path: null` (stay where the previous chapter was: the end cards).
 
 A chapter's `path` may only be a **light route**: a feed page (`/home`, `/experience`, `/projects`, `/resume`, `/contact`, `/travel`), a project page, `/terminal`, `/changes`, or `/universe` (never `/`, which may redirect or show the front door's choice). Worlds, the galaxy and the Death Star are reached by `cta` only. The data test enforces this.
 
@@ -100,11 +104,11 @@ Player chapters:
 9. **Colours and scripts** (`/universe`): company and fan themes, Aurebesh, Cybertronian, runes (`colours`).
 10. **That's the tour**: "Take the recruiter's tour", the checklist.
 
-Mixed: recruiter 1–7, then player 2–9 (skipping the shell), then a shared end card. Defined as `compose(['recruiter:1-7', 'player:2-9', 'end'])` in data, tested.
+Mixed: composed **by chapter id**, never by position: `compose(TOURS, [['recruiter', 'home', 'hood'], ['player', 'galaxy', 'colours'], END])`, where `END` is a chapter in `chapters/shared.js` with `path: null`; the player's Flying chapter is skipped because the hiring tour's "Under the hood" already toured the panel, the ship and the nav map. Stored chapter lists never include the shell; `planFor` prepends it for every audience. Test: ids unique, no `at` lit twice in one tour except `guide`.
 
 ### 3.7 Targets to add
 
-`data-tour` markers, each on the element the audit names as the page's own heading or control: `home-github`, `home-gameboy` (`src/pages/Home.jsx`), `experience-roles` (`src/pages/Experience.jsx`), `projects-cartridges`, `projects-table` (`src/pages/Projects.jsx`), `resume-skills`, `resume-pdf` (`src/pages/Resume.jsx`), `contact-form` (`src/pages/Contact.jsx`), `travel-globe` (`src/pages/Travel.jsx`), `changes-log` (`src/pages/Changes.jsx`), `terminal-input` (`src/pages/Terminal.jsx`), `online` (`src/components/universe/online/Online.jsx`'s button), `achievements` (the achievements button in the nav or panel). The existing test that every `at` is marked somewhere covers them.
+`data-tour` markers, each on the element itself (a heading, a control), never a wrapper the height of the viewport, and only ones a stop uses: `home-open` (the "open to" line), `home-gameboy` (`#gb-title`) in `src/pages/Home.jsx`; `home-github` on the heading in `src/components/online/FindMeOnline.jsx`; `experience-roles` (the hero title) and `experience-track` (the track `.seg`) in `src/pages/Experience.jsx`; `projects-featured` (the featured grid, `Projects.jsx:127`) and `projects-table`; `resume-skills`, `resume-pdf`; `contact-copy` (the copy button) and `contact-form` (the memo's head line); `changes-log`; `terminal-input`; `online` (`src/components/universe/online/Online.jsx`'s button); and `ships` also on the panel's flying block (`UniversePanel.jsx:220-249`) so the stop lights the ship you are in. No `achievements` target: there is no such control, and the spec adds none. The steps test checks both ways: every `at` is marked, and every page marker is used by a stop (allow-list for the shell's existing markers).
 
 ### 3.8 Tests
 
@@ -135,7 +139,7 @@ Mixed: recruiter 1–7, then player 2–9 (skipping the shell), then a shared en
 
 ### 4.3 The checklist
 
-A "Things to do" tab in the guide panel (`GuidePanel.jsx`), beside "This page" and "The site": a filter row (Hire, Play, Everything: a `.seg` control), "12 of 48 done", then the groups, each row a title, a one-line blurb, the time, a tick when done, and "Show me" (starts the tour at the stop that has this `todo`, or goes to `to` when no stop does). ⌘K gets "Things to do" opening the tab. The terminal gets `todo` listing it with ticks.
+A **"The checklist"** tab in the guide panel (`GuidePanel.jsx`), beside "On this page" and "The site" ("Things to do" stays the name of a world's own list under `M`; one word per thing): a filter row (Hire, Play, Everything: a `.seg` control), "12 of 48 done", then the groups, each row a title, a one-line blurb, the time, a tick when done, and "Show me" (starts the tour at the stop that has this `todo`, or goes to `to` when no stop does). ⌘K gets "Things to do" opening the tab. The terminal gets `todo` listing it with ticks.
 
 ## 5. One house UI
 
@@ -215,3 +219,51 @@ A, C and D start at once. B starts at once too, against the interfaces above, an
 - **The feed's address replace** on scroll is already ignored by `TourHost`; the tour never scrolls the feed on.
 - **Glossary churn in the worlds' fiction.** Crew lines and in-world signs keep their words; only system text changes. The retired-words test has an allow-list for them.
 - **Migrating fourteen HUDs.** One world a pull request, screenshots before and after, the kit skinned by variables so no world loses its face.
+
+## 8. Revision 2: amendments after review
+
+A three-lens review (engineering, a hiring manager, a player) found 62 defects, none refutable against the code. Each decision below is final and overrides the section it names. The letter says which stream does it.
+
+**Engine (A)**
+
+- A1. **`clear()`** replaces "busy() minus touring": none of `covered`, `intro`, `menu` on `html.dataset`, no `[aria-modal="true"]` other than `.tour-card`, no `.world-gate`. The tour's own card never blocks it. Test: a document whose only modal is the tour card is clear.
+- A2. **Two waits, not one.** At a chapter boundary the engine navigates and waits (8 s at most) for the router to have committed the path (`location.pathname` equals it, or for a feed page `categoryAt(pathname)?.to` equals it), `clear()`, and no `.feed-loading` inside the active `.feed-page` (Feed sets `data-ready` when its page has mounted). Then it runs `resolveChapter(stops, hasTarget)` against the DOM: stops whose target is absent are dropped as today (the shell's menu substitution included); only a stop with `wait: true` keeps waiting for its target, and a target inside `[aria-busy="true"]` or at computed opacity 0 does not count. A chapter's first stop centres only when the chapter itself timed out. `rendered()` and `data-fallback` are gone.
+- A3. **Ending.** An audience tour ends on POP (the browser's Back) or a PUSH outside the chapter; feed moves (`isFeedMove`) and address replaces within the chapter's feed page never end it. Section 7's sentence about the feed was wrong and is withdrawn.
+- A4. **Release stops.** At a stop with `release`, the tour sets `html[data-touring='release']`, hides its veil (`.tour[data-release] .tour-veil { display: none }`), lifts `inert` from the guide's button and the palette host, and lets the named keys through; `Guide.jsx` ignores `?` only when `dataset.touring === ''`. The card stays. The walker presses `?` and `Esc` at that stop. `isPaletteKey(e)` moves into `src/lib/palette.js` with a test and `App.jsx`'s palette host uses it too.
+- A5. **`ctx = { key, touch, ship }`** is passed to every stop's `text` function (and the steps test's ctx).
+- A6. **`openTour(detail = null)`** ignores a non-plain-object argument (`detail instanceof Event`), so existing `onClick={openTour}` callers stay right; the offer's buttons call `() => openTour({ audience })`. `parseTourLink` accepts `?tour=hiring` as an alias of `recruiter` and `all` as `mixed`; the owner's résumé link uses `hiring`.
+- A7. **Dots are chapters** on an audience tour (one per chapter, the current one wide) and the count reads "Chapter 4 of 10 · 3 of 13"; view tours and briefs keep dots per stop. Actions render as their own row above the buttons, wrapping, full width on a phone.
+- A8. **A chapter with `brief`** uses `BRIEFS[key]` as its stops; passing its last stop (or ending after it) writes the key with `sawBrief` into `tp-briefs`, so the basics never follow the tour.
+- A9. **The panel untucks** while a chapter at `/universe` runs (the panel reads `html[data-touring]`) and goes back after.
+- A10. **Excursions and carrying on.** `onAction` branches on `isLightRoute(to)`: light routes are excursions (3.2); a world or the galaxy ends the run. On the first arrival at a light route after a tour was left unfinished, a `<Notice>` once per visit (`tp-tour-nudged`, session) says "Carry on the player's tour · chapter 5 of 10" with Carry on and Not now. The guide's "The site" tab stays the second way back.
+- A11. **Toasts queue** while `html[data-touring]` is set and play after the run ends.
+- A12. **The scene pauses** under a centred card (no lit target) as it does under `data-covered`; a lit stop keeps drawing.
+- A13. **`SHELL_STOPS`**: `recruiter: { classic: ['pages', 'view', 'search', 'menu', 'guide', 'resume'], universe: ['panel', 'view', 'search', 'menu', 'guide', 'resume'] }`, `player: ['view', 'search', 'menu', 'resume']` (the map's own stops belong to Flying). `planFor` drops the view tour's `hello` and `done`; an audience `hello` in `chapters/shared.js` opens every audience tour ("Five minutes, eight chapters. Esc stops it; it remembers where you were.").
+- A14. **`addVisited(list, key)`** takes a key already normalised by the caller; `App.jsx` passes `guideKeyFor(pathname) ?? pathname`. `src/lib` imports nothing from `src/components`.
+- A15. **The catalogue's `done`** has a third kind, `{ key, is }` for the shell's own localStorage keys (checked against a `SHELL_KEYS` list in `src/lib/visited.js`), and `null` (no tick; Show me only). A `visited` route carries no hash. No row needs a password, a ROM, someone else online or a first-visit flag; the Minecraft and Mario rows are the tributes; nothing under `/dickansh`. The example row's done is `{ visited: '/projects/gameboy-emulator' }`; the `player` achievement belongs to the home Game Boy row.
+- A16. **`openGuide({ tab })`** dispatches a CustomEvent; `Guide` passes `initialTab` to the panel; the checklist tab is `'checklist'`; ⌘K "Open the checklist"; the terminal's `checklist`. Inside a world, "Show me" goes to `to` when it is in this world, else reads "Leave <world> and show me".
+- A17. **The site tab's "The worlds" list goes**; the checklist's world groups carry the links.
+- A18. **Heavy chapters.** `WORLD_MB['/universe']` is measured at phone size and added; on a coarse pointer a chapter with `heavy: true` shows its `phone` version.
+- A19. Route tests match `to` against `App.jsx`'s `path="…"` patterns with `matchPath` (after stripping `?` and `#`), never by string equality.
+
+**Content (B)**
+
+- B1. Player chapter 2 "Flying" is `{ id: 'flying', path: '/universe', brief: '/universe/fly' }`: no hand-written copy; the flying keys are written once.
+- B2. Chapter 3's subject is the galaxy and the Death Star; chapter 4 has one card per `WORLDS` entry except `/galaxy` and `/deathstar` (13 today; test: every `WORLDS.to` appears exactly once across chapters 3 and 4). A card's first sentence is `PAGES[key].about` for the world's guide key, and `briefs.js`'s `hello` reads the same constant; `pages.test.js` asserts every `BRIEFED` key has an `about` (B writes the missing ones once). On a coarse pointer a card says the size whenever `WORLD_MB[to] > 1` (text is a function of `ctx`).
+- B3. No achievements stop; chapter 7 folds into the checklist chapter: a card at `/universe` naming the count, with an action `{ label: 'See yours', to: '/terminal' }`.
+- B4. The hiring tour: home order is `home-open` → `home-gameboy` → `home-github`; experience is `experience-roles` (the title) → `experience-track`, no "own address" stop; projects is `projects-featured` (the four, "each opens with a live demo") → `projects-table`, the cartridges only with `wait: true` on `.cartridges[data-on]` and never on touch; contact is `contact-copy` → `contact-form`; chapter 7 "Under the hood" is `heavy: true` with a `phone` version told from `/changes` (`changes-log`) and `/terminal` (`terminal-input`) with an action "Open the universe map · N MB". The end card's actions: Download the PDF (primary), Email me, LinkedIn, "Take the player's tour" (`tour: 'player'`). `travel-globe` is not a target (no stop uses it).
+- B5. Budget: words ÷ 3 per second + 4 s a stop + 3 s a chapter change, on stored chapters plus a shell allowance (5 stops, 60 words); the test prints the total. Hiring under 5 min at about 16 stops of 12–30 words; player under 8 min with world cards under 25 words; whole under 12.
+- B6. End chapters carry `path: null`. The `ships` stop's text reads from `ctx.ship` ("Your ship" / "Pick a ship").
+
+**Shell and universe UI (C)**
+
+- C1. The `kbd-styles` metric walks `src/**/*.css` itself (the health context lists no CSS), excludes `src/runtime/hud/hud.css` until D's rule is deleted, and is budgeted only after both C's `.kbd` and D's deletion have merged.
+- C2. Glossary rows added: "The checklist" (the guide's site-wide tab) and "Things to do (`M`)" (a world's own list); and "The way out of a world" reads `viewOf(pathname, readStart())`: "Universe map" or "Classic site".
+- C3. The visitor-facing names: "the hiring tour", "the player's tour", "the whole tour"; the offer's buttons "I'm hiring", "I'm here to play", "Both".
+
+**World HUD kit (D)**
+
+- D1. Kit components take resolved props only: `Bubble({ voice, name, line })` (the town wrapper passes `personVoice(who)`), `PlayersChip({ count })`, `Menu` opens the guide through `openGuide` from `src/lib/palette.js`, never `GuideLink`. `src/runtime` imports nothing from `src/components`.
+- D2. `hud.js` keeps Invincible's signatures (`titleMode(t, movedAt, objectiveOn)`, `objectiveText(step, dist)`, `markerSize(dist, height)`) so its tests move verbatim.
+- D3. The Shire's file is `src/components/middleearth/shire/shire.css` (the hand sum at line 99).
+- D4. The Menu's way out reads the view (C2).
