@@ -56,7 +56,9 @@
 // onArrive(id, from) (a jump's come out at a system), onAt(goal id or null),
 // onBoard(path) (into the Death Star), onCrash(systemId) → bool (into the
 // planet: the page takes you down to its surface, or says no), onEvent(e) (for the comms and the
-// page; { type: 'aim', id } as the nose comes onto a star or off it).
+// page; { type: 'aim', id } as the nose comes onto a star or off it; and
+// { type: 'earn', what, n, side: 'galaxy' } for a kill that pays, the war
+// front's points and wins as well: universe/economy.js's EARN keys).
 
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -104,6 +106,7 @@ import { createWingmen } from '../universe/wingmen';
 import { createBolts, createFlashes } from './fx';
 import { buildSystem } from './world';
 import { AHEAD, FACTIONS, KINDS, NAMES } from './hunted';
+import { createPayLedger, hunterEarn } from '../universe/earnRules';
 import { createRoam } from './roam';
 import { pick as pickFaction } from '../universe/sides';
 import { createSkyStreaks } from './skyStreaks';
@@ -293,6 +296,10 @@ export async function create(canvas, ctx) {
   const size = { w: 1, h: 1 };
   const state = {
     sys: null, // the system you're in (systems.js's)
+    // the hunters you've helped another pilot with (owner:hunter), paid
+    // once each: down is only our guess, and a ghost of one can come back
+    // and go down again
+    helped: createPayLedger(),
     effects: null, // who holds it in the war, against your side (warEffects.js), or null
     world: null, // and what's built of it (world.js's)
     space: null, // space.js's, for flying in it
@@ -357,6 +364,11 @@ export async function create(canvas, ctx) {
   const pilots = createPilots(scene, { colors: BOLT_COLOR, here: () => (state.sys ? `/galaxy/${state.sys.id}` : '/galaxy'), fleet: reduced ? null : fleet, kinds: KINDS });
 
   const emit = (e) => props.onEvent?.(e);
+  // a kill worth paying for (economy.js's EARN): the page earns it into the
+  // wallet. (The war's fighters pay as the war's points: warfront.js.)
+  const pay = (what, n = 1) => {
+    if (what) emit({ type: 'earn', what, n, side: 'galaxy' });
+  };
   const controls = () => props.controls ?? CONTROL_DEFAULTS;
   const flying = () => Boolean(state.ship);
 
@@ -883,6 +895,7 @@ export async function create(canvas, ctx) {
         state.hitMark = 1;
         if (hh.down) {
           emit({ type: 'kill', kind: hh.kind });
+          pay(hunterEarn(FACTIONS, hh));
           state.heat += 1;
           if (!reduced) state.shake = Math.max(state.shake, 0.2);
         }
@@ -912,6 +925,7 @@ export async function create(canvas, ctx) {
           net?.hunterHit(ph.id, ph.hunter, d.punch ?? 1);
           if (ph.down) {
             emit({ type: 'kill', kind: ph.kind });
+            if (state.helped.once(`${ph.id}:${ph.hunter}`)) pay('hunterHelped'); // (one shot off someone else's tail)
             if (!reduced) state.shake = Math.max(state.shake, 0.2);
           }
         } else net?.hit(ph.id);
@@ -1716,6 +1730,7 @@ export async function create(canvas, ctx) {
       if (at) pops.hit({ point: at, normal: new THREE.Vector3(0, 1, 0), radius: 0.55 });
       if (e.by && e.by === net?.selfId) {
         emit({ type: 'kill', kind: 'pilot' });
+        pay('killPilot');
         if (!reduced) state.shake = Math.max(state.shake, 0.2);
       }
     }

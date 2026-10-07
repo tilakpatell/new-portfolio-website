@@ -16,6 +16,7 @@ import { POSES, figure, loadFigure } from '../../../lib/three/rig';
 import { CAST, asset } from '../cast';
 import { createGhosts } from '../../middleearth/towns/ghosts';
 import { createChallenges } from './challenges';
+import { DAD, newDad, stepDad } from './companions';
 import { buildCity } from './city';
 import { createFlaxans } from './flaxans';
 import { surfaceAt } from './flight';
@@ -175,8 +176,13 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   const spot = new THREE.SpotLight(SPOT.color, 0, SPOT.range, SPOT.angle, SPOT.penumbra, 2);
   spot.castShadow = false;
   scene.add(spot, spot.target);
-  // Omni-Man, over downtown, hands on his hips
-  const OMNI = { p: [40, 150, -60], yaw: Math.PI * 0.85 };
+  // Omni-Man: over downtown, hands on his hips, by day; behind his son at
+  // the rings; on the porch beside Debbie at dusk and night (./companions.js)
+  const home = world.houses.find((q) => q.home);
+  const side = home.yaw === 0 ? 1 : -1;
+  let dad = newDad({ watch: DAD.watch, porch: [home.x + 1.3, 0.3, home.z + side * (home.d / 2 + 1.4)] });
+  const porchYaw = side > 0 ? 0 : Math.PI;
+  let dadYaw = Math.PI * 0.85;
 
   // ── space: the Earth under him, the Moon, Mars, and who's waiting out there ──
   const space = await buildSpace(engine.renderer, { small });
@@ -609,7 +615,13 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     // what happened this frame (and what sends the people and the traffic running)
     const scare = [];
     // and what the townspeople make of it (./brains.js)
-    const crowd = { slam: null, hit: null, fight: Boolean(sim.fight?.on), won: false, time: timeName };
+    const crowd = { slam: null, hit: null, fight: Boolean(sim.fight?.on), won: false, time: timeName, lesson: sim.quests?.lesson ?? null, mission: sim.mission?.id ?? null };
+    // (Eve goes for the foes still standing)
+    crowd.talk = Boolean(sim.talkEve);
+    sim.talkEve = false;
+    crowd.foes = sim.fight?.on ? sim.fight.foes.filter((e) => e.state === 'fight').map((e) => ({ id: e.id, p: e.p })) : [];
+    // what Eve and Dad say and do this frame, for ./InvWorld.jsx
+    sim.companion ??= [];
     for (const e of sim.events) {
       if ((e.type === 'slam' || e.type === 'impact' || e.type === 'boom') && !crowd.slam) crowd.slam = [e.at[0], e.at[2]];
       else if ((e.type === 'ko' || e.type === 'down') && !crowd.hit) crowd.hit = [e.at[0], e.at[2]];
@@ -697,13 +709,25 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
 
     if (zone === 'city') {
       // his father, keeping an eye on things
-      const bob = Math.sin(t * 0.7) * 1.2;
-      carry(omni, [OMNI.p[0], OMNI.p[1] + bob, OMNI.p[2]], OMNI.yaw, [0, 0, 0], dt, { lean: 0 });
-      omni.act('hover') || omni.pose(POSES.proud(), dt, 6);
+      if (!sim.hold) {
+        const r = stepDad(dad, { hero: h.p, heroV: h.v, lesson: crowd.lesson, mission: crowd.mission, spar: sim.mission?.spar ?? null, time: timeName }, snap ? 1 : frameDt);
+        dad = r.dad;
+        sim.companion.push(...r.ev);
+      }
+      const onPorch = dad.state === 'home' && Math.hypot(dad.p[0] - dad.porch[0], dad.p[1] - dad.porch[1], dad.p[2] - dad.porch[2]) < 1;
+      const going = Math.hypot(dad.v[0], dad.v[2]);
+      if (onPorch) dadYaw = porchYaw;
+      else if (going > 2) dadYaw = Math.atan2(dad.v[0], dad.v[2]);
+      else if (dad.state === 'lesson') dadYaw = Math.atan2(h.p[0] - dad.p[0], h.p[2] - dad.p[2]);
+      const bob = onPorch ? 0 : Math.sin(t * 0.7) * 1.2;
+      carry(omni, [dad.p[0], dad.p[1] + bob, dad.p[2]], dadYaw, dad.v, dt, { lean: onPorch ? 0 : 1 });
+      if (onPorch) omni.act('idle') || omni.pose(POSES.stand, dt, 6);
+      else if (Math.hypot(...dad.v) > 20) omni.act('fly', { fade: 0.4 }) || omni.pose(POSES.fly(), dt, 9);
+      else omni.act('hover', { fade: 0.4 }) || omni.pose(POSES.proud(), dt, 6);
       omni.tick(dt);
       // (the QA scripts can hold everyone still, to frame them)
       if (!sim.hold) {
-        npcs.update(frameDt, t, h, crowd);
+        sim.companion.push(...npcs.update(frameDt, t, h, crowd));
         jet.update(frameDt, t);
       }
       if (sim.quests) challenges.update(sim.quests, frameDt, t);
@@ -749,8 +773,8 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
         .sort((a, b) => a.d - b.d);
     }
     const out = npcs.talkers(h);
-    const d = Math.hypot(h.p[0] - OMNI.p[0], h.p[1] - OMNI.p[1], h.p[2] - OMNI.p[2]);
-    if (d < 45) out.push({ id: 'omni', role: 'omni', name: 'Dad', lines: LINES.omni, head: [OMNI.p[0], OMNI.p[1] + 1.2, OMNI.p[2]], d });
+    const d = Math.hypot(h.p[0] - dad.p[0], h.p[1] - dad.p[1], h.p[2] - dad.p[2]);
+    if (d < 45) out.push({ id: 'omni', role: 'omni', name: 'Dad', lines: LINES.omni, head: [dad.p[0], dad.p[1] + 1.2, dad.p[2]], d });
     return out.sort((a, b) => a.d - b.d);
   };
   const tmpV = new THREE.Vector3();
@@ -769,7 +793,19 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     get zone() {
       return zone;
     },
-    debug: { npcs, jet, world, bodies: BODIES, allen: ALLEN, thragg: THRAGG },
+    debug: {
+      npcs,
+      jet,
+      world,
+      bodies: BODIES,
+      allen: ALLEN,
+      thragg: THRAGG,
+      // Dad's rules, and (given a place, and the way he's facing) Dad put there
+      dad: (p, dir) => {
+        if (p) dad = { ...dad, p: [...p], dir: dir ?? dad.dir };
+        return dad;
+      },
+    },
     resize: (w, hh) => engine.resize(w, hh),
     get lost() {
       return engine.lost;

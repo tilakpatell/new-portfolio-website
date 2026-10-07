@@ -10,6 +10,8 @@ import { useAchievements } from '../components/Achievements';
 import Comms from '../components/universe/Comms';
 import Online from '../components/universe/online/Online';
 import { useOnline } from '../components/universe/online/useOnline';
+import EarnNote from '../components/universe/EarnNote';
+import { useEarn } from '../components/universe/useEarn';
 import { FIRST, parseSystem, systemById } from '../components/galaxy/systems';
 import { canLand } from '../components/galaxy/surface/sites';
 import galaxyModule from '../components/galaxy/module';
@@ -64,6 +66,8 @@ export default function Galaxy() {
   const online = useOnline();
   const { setKind, setLoadout, setBuild: tellBuild } = online;
   useEffect(() => setKind(ship), [setKind, ship]);
+  // the wallet (economy.js): the war's points and wins pay into it, and an alliance made
+  const { pay, note: earned } = useEarn({ client: online.client });
   // the ship as it's fitted in the universe map's hangar: its paint and parts
   const { unlocked, unlock } = useAchievements();
   // the oath (allegiance.js): which war you fight in and the side you swore
@@ -251,6 +255,10 @@ export default function Galaxy() {
   // what the scene says: to the comms, and to the page
   const onEvent = useCallback(
     (e) => {
+      if (e.type === 'earn') {
+        pay(e.what, e.n, e.side ?? 'galaxy');
+        return;
+      }
       if (e.type === 'dove') {
         dove.current?.();
         dove.current = null;
@@ -320,7 +328,7 @@ export default function Galaxy() {
       }
       comms.current?.handle(e);
     },
-    [current, leave, navigate, land, unlock, crew],
+    [current, leave, navigate, land, unlock, crew, pay],
   );
   const onArrive = useCallback(
     (id) => {
@@ -384,6 +392,7 @@ export default function Galaxy() {
         oath={oath}
       />
       {crew && <Comms control={comms} crew={galaxyCrew(crew)} reduced={reduced} />}
+      <EarnNote note={earned} />
       {!leaving && <Online online={online} ship={ship} />}
       <GalaxyPanel
         system={sys}

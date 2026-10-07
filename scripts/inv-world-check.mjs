@@ -81,8 +81,10 @@ const SHOTS = {
   chase: { p: [320, 30, -120], mode: 'air', yaw: -Math.PI / 2, pitch: -0.3 }, // west along a downtown street
   seismic: { place: 'school', back: 30, up: 20, pitch: -0.3 }, // over the quad, the school ahead
   maulers: { p: [40, 3, 40], mode: 'air', yaw: Math.PI, pitch: -0.04 }, // the street past the bank, at its level
-  eveescort: { follow: 'eve', back: 6, side: 8, turn: 0 }, // she's off his left, as when she escorts him
-  dadlesson: { p: [-2033, 22, 255], mode: 'air', yaw: 1.96, pitch: 0.02 }, // behind the first ring, along the course (quests.js)
+  eveescort: { follow: 'eve', back: 10, side: 8, turn: 0 }, // she's off his left, as when she escorts him
+  // the rings under way, Dad 50 m behind him and 20 m up (the camera turned round to them both)
+  dadlesson: { p: [-2033, 22, 255], mode: 'air', yaw: 1.96, look: 1.96 + Math.PI, pitch: 0.3, dad: 'lesson' },
+  porchdusk: { place: 'home', back: 10, up: 1, side: 3, time: 'dusk', dad: 'porch' }, // Dad home, beside Mom
   gdasiege: { p: [1290, 90, -395], mode: 'air', yaw: 1.42, pitch: -0.22 }, // from over the east bank, the hangar left of him
   photo: { p: [24, 3, 27], mode: 'air', yaw: -2.4, pitch: 0.22 }, // the hall from the plaza's corner
 };
@@ -229,9 +231,16 @@ for (const [name, s] of Object.entries(SHOTS)) {
     } else if (s.p) {
       sim.hold = false;
       sim.h = { ...sim.h, p: [...s.p], v: s.v ?? [0, 0, 0], spd: Math.hypot(...(s.v ?? [0, 0, 0])), dir: s.v ? s.v.map((x) => x / Math.hypot(...s.v)) : [0, 0, 1], mode: s.mode, crouch: 0, stun: 0, face: s.yaw };
-      sim.yaw = s.yaw;
+      sim.yaw = s.look ?? s.yaw;
       sim.pitch = s.pitch;
       sim.dragAt = 1e9;
+    }
+    // Dad, put where the shot wants him (./companions.js takes him on from there)
+    if (s.dad === 'porch') api.debug.dad(api.debug.dad().porch);
+    else if (s.dad === 'lesson') {
+      const dir = [Math.sin(s.yaw), 0, Math.cos(s.yaw)];
+      sim.quests = { ...sim.quests, lesson: { ...sim.quests.lesson, on: true, next: 1, t: 3 } };
+      api.debug.dad([s.p[0] - dir[0] * 50, s.p[1] + 20, s.p[2] - dir[2] * 50], dir);
     }
     // (a jump isn't a flight: the rings and cards it crossed on the way don't count)
     sim.quests = { ...sim.quests, prev: null };
