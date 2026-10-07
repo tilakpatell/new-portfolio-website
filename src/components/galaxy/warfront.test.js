@@ -324,6 +324,76 @@ describe('the battle every pilot shares (the director)', () => {
     expect(late.front.info.shared.runners).toEqual(probe.front.info.shared.runners);
   });
 
+  it('fights the battle’s own plan: drawn for it from its kind’s menu, the same for every pilot', () => {
+    const a = at('rebel', MS);
+    const b = at('empire', MS);
+    expect(a.front.director.plan).toEqual(b.front.director.plan);
+    expect(a.front.director.plan.stages[0].objectives.length).toBeGreaterThan(0);
+    // (Coruscant's a siege: its first stage one of the siege's)
+    expect(['platforms', 'cannon', 'shield', 'battery', 'board']).toContain(a.front.director.plan.stages[0].id);
+  });
+
+  it('counts the seconds you hold a zone of the stage that’s open, for your side', () => {
+    const k = kit('rebel');
+    k.front.enter(systemById('hoth'), k.world);
+    k.front.update(1 / 30, 0, camera, null);
+    // (forced till a battle's drawn with a zone to hold: a data beacon, after Echo Base's cannon… or not)
+    let zone = null;
+    for (let n = 0; n < 40 && !zone; n++) {
+      k.at(MS + n * 1000);
+      k.front.force('empire', 'evacuation');
+      zone = k.front.battle.objectives.find((o) => o.zone);
+    }
+    expect(zone).toBeTruthy();
+    // (its stage open: what's before it down, its gate passed)
+    const before = k.front.director.plan.stages.slice(0, zone.phase - 1).flatMap((s) => s.objectives.map((o) => o.id));
+    k.front.onNet({ type: 'fight', from: 'p3', msg: { e: k.front.on.id, m: Object.fromEntries(before.map((id) => [id, 1e4])), t: {} } });
+    k.front.jump(k.front.director.plan.stages[zone.phase - 1].opensAt + 1);
+    k.front.update(1 / 30, 0, camera, null);
+    expect(k.front.battle.phase).toBe(zone.phase);
+    expect(k.front.battle.stageOpen).toBe(true);
+    for (let i = 0; i < 10; i++) k.front.update(0.5, 0, camera, { ...zone.pos });
+    // (the Rebels defend Hoth here: theirs is the defenders' side of it)
+    expect(k.sent.fight.at(-1).m[`${zone.key}:d`]).toBeGreaterThan(3);
+  });
+
+  it('a defender who brings down the attacker’s ace shores up the objective under attack five intercepts’ worth', () => {
+    const k = kit('empire');
+    k.front.enter(systemById('hoth'), k.world);
+    k.front.update(1 / 30, 0, camera, null);
+    k.front.force('rebel', 'assault');
+    const ace = k.front.director.plan.side.find((o) => o.type === 'ace' && o.team === 0);
+    expect(ace).toBeTruthy();
+    k.front.jump(ace.at + 1);
+    const p = k.front.info.laid.at;
+    k.front.update(1 / 30, 0, camera, { x: p[0], y: p[1], z: p[2] });
+    const target = k.front.info.shared.target;
+    const f = k.front.battle.fighters.find((x) => x.ace && x.team === 0);
+    expect(f.alive).toBe(true);
+    for (let i = 0; i < 400 && f.alive; i++) shoot(k.front, f.seen, 5);
+    k.front.update(1 / 30, 0, camera, null);
+    for (let i = 0; i < 3; i++) k.front.update(1, 0, camera, null);
+    const m = k.sent.fight.at(-1).m;
+    expect(m['ace:0']).toBeGreaterThan(0);
+    expect(m[`g:${target}`]).toBeGreaterThanOrEqual(5 - 1e-9);
+  });
+
+  it('says the crew’s line for the stage as it opens: the gravity wells at an interdiction', () => {
+    const k = kit('rebel');
+    k.front.enter(systemById('mandalore'), k.world);
+    k.front.update(1 / 30, 0, camera, null);
+    let wells = false;
+    for (let n = 0; n < 30 && !wells; n++) {
+      k.at(MS + n * 1000);
+      k.front.force('rebel', 'interdiction');
+      wells = k.front.director.plan.stages[0].id === 'wells';
+    }
+    expect(wells).toBe(true);
+    k.front.update(1 / 30, 0, camera, null);
+    expect(k.said.filter((e) => e.sub === 'interdictor').length).toBeGreaterThanOrEqual(1);
+    expect(k.front.interdicted).toBe(true);
+  });
+
   it('ends a battle only when the director says, not on the battle’s own clock', () => {
     const k = at('rebel', MS);
     k.front.battle.clock = 650;
