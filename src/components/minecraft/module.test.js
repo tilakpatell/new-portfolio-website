@@ -111,3 +111,28 @@ describe('Minecraft, worlds in the store', () => {
     expect(s.saves.mem.has(SAVE)).toBe(false);
   });
 });
+
+describe('Minecraft, when the store fails', () => {
+  const flaky = (store, failKeys) => ({ ...store, read: async (t, k) => (failKeys.has(k) ? { ok: false, value: null } : store.read(t, k)), set: async (t, k, v) => (failKeys.has(`set:${k}`) ? false : store.set(t, k, v)) });
+  const base = () => {
+    const store = createStore({ indexedDB: new IDBFactory() });
+    return { store, registry: createRegistry(store), saves: { get: (k, f = null) => (k === SAVE ? { v: 1, seed: 5, time: 3 } : f) } };
+  };
+
+  it('a save that could not be read is not written over: the world plays unsaved', async () => {
+    const b = base();
+    await b.store.set('saves', 'minecraft:9', { v: 1, seed: 9, time: 50 });
+    const w = await openWorld({ ...b, store: flaky(b.store, new Set(['minecraft:9'])), want: '9' });
+    expect(w).toEqual({ id: null, seed: 9, save: null });
+    expect((await b.store.get('saves', 'minecraft:9')).time).toBe(50);
+  });
+
+  it('a tp-mc copy that failed is tried again next time', async () => {
+    const b = base();
+    await openWorld({ ...b, store: flaky(b.store, new Set(['set:minecraft:5'])), random: () => 1 });
+    expect(await b.store.get('saves', 'minecraft:5')).toBeNull();
+    await openWorld({ ...b, random: () => 1 });
+    expect(await b.store.get('saves', 'minecraft:5')).toEqual({ v: 1, seed: 5, time: 3 });
+    expect((await b.registry.get('minecraft:5')).name).toBe(FIRST_NAME);
+  });
+});

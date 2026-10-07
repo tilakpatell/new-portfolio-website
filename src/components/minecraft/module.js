@@ -134,6 +134,7 @@ export default {
     let wantedCache = { at: '', keys: [], set: new Set() };
 
     let id = null; // the world's id in the store and the registry
+    let opened = 0; // the latest newWorld: an older one arriving late is dropped
     const persist = () => g && id && keepWorld({ store, registry, id, data: pack(g) }).catch(() => {});
 
     function begin(save, seed, worldId) {
@@ -152,7 +153,8 @@ export default {
     }
     const first = await opening;
     begin(first.save, first.seed, first.id);
-    // a reload or a closed tab: the store's write is asynchronous, so it starts as the page goes
+    // a reload or a closed tab: the write starts as the page goes (asynchronous,
+    // so best-effort; the five-second save is the floor)
     const onHide = () => persist();
     globalThis.addEventListener?.('pagehide', onHide);
     scene.setRenderDistance(distance);
@@ -570,8 +572,9 @@ export default {
       // { play: false } leaves it at the title (the page's ?world= changed)
       async newWorld(seed, { play = true } = {}) {
         persist();
+        const ask = ++opened;
         const w = await openWorld({ saves: rt.saves, store, registry, want: seed ?? randomSeed() });
-        if (gone) return;
+        if (gone || ask !== opened) return; // something newer was asked for
         begin(w.save, w.seed, w.id);
         mode = play ? 'play' : 'title';
       },

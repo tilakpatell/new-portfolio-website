@@ -6,6 +6,8 @@
 // openWorld({ saves, store, registry, want, random }) → { id, seed, save }:
 //   the world `want` names (?world=), else the one played last, else a new
 //   one; registered either way. `save` is what newGame takes back, or null.
+//   When the store could not read the world's save, `id` is null: the world
+//   plays but is not written, so a failed read never overwrites a real save.
 // keepWorld({ store, registry, id, data }): the save written, the row touched.
 
 import { hashSeed } from './rules/noise.js';
@@ -18,13 +20,16 @@ export const idOf = (seed) => `${KIND}:${hashSeed(seed)}`;
 export const randomSeed = () => Math.floor(Math.random() * 2 ** 31) - 2 ** 30;
 
 async function moveOld({ saves, store, registry }) {
-  if (await store.get('saves', MOVED)) return;
+  const moved = await store.read('saves', MOVED);
+  if (!moved.ok || moved.value) return;
   const old = saves?.get(SAVE, null);
   const r = restore(old);
   if (r) {
     const seed = hashSeed(r.seed);
     const id = idOf(seed);
-    if (!(await store.get('saves', id))) await store.set('saves', id, old);
+    const have = await store.read('saves', id);
+    if (!have.ok) return;
+    if (!have.value && !(await store.set('saves', id, old))) return; // not copied: tried again next time
     await registry.add({ kind: KIND, seed, name: FIRST_NAME });
   }
   await store.set('saves', MOVED, true);
@@ -43,7 +48,9 @@ export async function openWorld({ saves, store, registry, want = null, random = 
     seed = last ? hashSeed(last.seed) : hashSeed(random());
   }
   const id = idOf(seed);
-  const save = restore(await store.get('saves', id));
+  const got = await store.read('saves', id);
+  if (!got.ok) return { id: null, seed, save: null };
+  const save = restore(got.value);
   await registry.add({ kind: KIND, seed, name: `World ${seed}` });
   await registry.touch(id);
   return { id, seed, save };

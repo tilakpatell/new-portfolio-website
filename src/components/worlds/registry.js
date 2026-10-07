@@ -11,11 +11,21 @@
 //   exportWorld(id) → { world, save }, importWorld({ world, save }) }
 // worldUrl(world) → the address that opens it
 
+import { hashSeed } from '../minecraft/rules/noise.js';
+
 export const KINDS = ['minecraft', 'pocket', 'planet'];
 export const KIND_NAMES = { minecraft: 'Minecraft', pocket: 'Pocket universe', planet: 'Planet' };
 const NAME_MAX = 40;
 
 export const worldId = (kind, seed) => `${kind}:${seed}`;
+// the seed as the world keys it: Minecraft's words and numbers are its 32-bit hash
+export const seedOf = (kind, seed) => (kind === 'minecraft' ? hashSeed(seed) : seed);
+// the id an exported file would be imported as, or null for a file that is not a world
+export function fileId(file) {
+  const w = file?.world;
+  if (!w || !KINDS.includes(w.kind) || w.seed === '' || !['string', 'number'].includes(typeof w.seed)) return null;
+  return worldId(w.kind, seedOf(w.kind, w.seed));
+}
 
 export function worldUrl({ kind, seed }) {
   const s = encodeURIComponent(String(seed));
@@ -76,10 +86,10 @@ export function createRegistry(store, { now = Date.now } = {}) {
       return { world: { ...w, thumb: null }, save: await store.get('saves', id) };
     },
     async importWorld(file) {
-      const w = file?.world;
-      if (!w || !KINDS.includes(w.kind) || w.seed == null || w.seed === '' || !['string', 'number'].includes(typeof w.seed)) throw new Error('not a world file');
+      if (!fileId(file)) throw new Error('not a world file');
+      const w = file.world;
       const save = file.save ?? null;
-      const row = make({ kind: w.kind, seed: w.seed, name: w.name, size: sizeOf(save) });
+      const row = make({ kind: w.kind, seed: seedOf(w.kind, w.seed), name: w.name, size: sizeOf(save) });
       if (save != null) await store.set('saves', row.id, save);
       return put(row);
     },

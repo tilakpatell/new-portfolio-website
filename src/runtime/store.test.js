@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import { createStore } from './store';
 
@@ -52,7 +52,7 @@ describe('the store', () => {
     };
     const s = createStore({ indexedDB: broken });
     expect(await s.ready).toBe('memory');
-    await expect(s.set('saves', 'k', 1)).resolves.toBeUndefined();
+    await expect(s.set('saves', 'k', 1)).resolves.toBe(true);
     expect(await s.get('saves', 'k')).toBe(1);
   });
 
@@ -70,6 +70,21 @@ describe('the store', () => {
     expect(await createStore({ fallback }).get('saves', 'minecraft:7')).toBeNull();
   });
 
+  it('tells a failed read from an empty row', async () => {
+    const s = createStore({ indexedDB: new IDBFactory() });
+    expect(await s.read('saves', 'none')).toEqual({ ok: true, value: null });
+    await s.set('saves', 'k', 1);
+    expect(await s.read('saves', 'k')).toEqual({ ok: true, value: 1 });
+  });
+
+  it('is memory when the open never answers', async () => {
+    vi.useFakeTimers();
+    const s = createStore({ indexedDB: { open: () => ({}) } });
+    vi.advanceTimersByTime(6000);
+    vi.useRealTimers();
+    expect(await s.ready).toBe('memory');
+  });
+
   it('round-trips a value of 2 MB', async () => {
     const s = createStore({ indexedDB: new IDBFactory() });
     const big = 'x'.repeat(2 * 1024 * 1024);
@@ -79,7 +94,8 @@ describe('the store', () => {
 
   it('refuses an unknown table quietly', async () => {
     const s = createStore({ indexedDB: new IDBFactory() });
-    await expect(s.set('nope', 'k', 1)).resolves.toBeUndefined();
+    await expect(s.set('nope', 'k', 1)).resolves.toBe(false);
+    expect(await s.read('nope', 'k')).toEqual({ ok: false, value: null });
     expect(await s.get('nope', 'k')).toBeNull();
     expect(await s.list('nope')).toEqual([]);
   });

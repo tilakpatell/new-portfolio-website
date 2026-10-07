@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { KIND_NAMES, createRegistry } from './registry';
+import { KIND_NAMES, createRegistry, fileId } from './registry';
 import { exportFile, formatPlayed, formatSize, newWorldUrl, readImport } from './worldFiles';
 import { worldStore } from '../../runtime/local';
 import './myworlds.css';
@@ -124,12 +124,15 @@ export default function MyWorlds({ registry: given, initial = null, now: fixedNo
     if (!f) return;
     await act(async () => {
       try {
-        return await registry.importWorld(readImport(await f.text()));
+        const parsed = readImport(await f.text());
+        const have = fileId(parsed) && (await registry.get(fileId(parsed)));
+        if (have && !window.confirm(`Replace ${have.name} with the one in this file? Its save here goes; this can’t be undone.`)) return null;
+        return await registry.importWorld(parsed);
       } catch (err) {
         // the registry's own words are for code; say it plainly
         throw new Error(err?.message === 'not a world file' ? 'That file isn’t a world file.' : err?.message);
       }
-    }, (w) => `Imported ${w.name}.`);
+    }, (w) => (w ? `Imported ${w.name}.` : ''));
   };
 
   return (

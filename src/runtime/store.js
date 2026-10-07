@@ -7,12 +7,15 @@
 // there too. rt.saves stays for the small keys.
 //
 // createStore({ indexedDB, name, version, fallback }) → { ready →
-//   'idb' | 'memory', get(table, key) → value | null, set(table, key, value),
-//   remove(table, key), list(table, { prefix }) → [key, value][] by key }
+//   'idb' | 'memory', get(table, key) → value | null, read(table, key) →
+//   { ok, value } (ok false: the read failed, not an empty row), set(table,
+//   key, value) → true once written, remove(table, key), list(table,
+//   { prefix }) → [key, value][] by key }
 
 export const TABLES = ['saves', 'worlds', 'blobs'];
 const MIRRORED = { saves: 'tp-store:', worlds: 'tp-store:worlds:' };
 const INDEX = 'tp-store:keys';
+const OPEN_MS = 5000; // an open that neither succeeds nor fails by then is memory
 
 const done = (req) =>
   new Promise((ok, fail) => {
@@ -66,7 +69,11 @@ export function createStore({ indexedDB = null, name = 'tp-store', version = 1, 
   const ready = (async () => {
     try {
       if (!indexedDB) throw new Error('no IndexedDB');
-      db = await openDb(indexedDB, name, version);
+      let timer;
+      const late = new Promise((_, fail) => {
+        timer = setTimeout(() => fail(new Error('slow')), OPEN_MS);
+      });
+      db = await Promise.race([openDb(indexedDB, name, version), late]).finally(() => clearTimeout(timer));
       return 'idb';
     } catch {
       db = null;
@@ -83,29 +90,33 @@ export function createStore({ indexedDB = null, name = 'tp-store', version = 1, 
 
   return {
     ready,
-    async get(table, key) {
-      if (!known(table)) return null;
+    async read(table, key) {
+      if (!known(table)) return { ok: false, value: null };
       if ((await ready) === 'idb') {
         try {
-          return (await tx(table, 'readonly', (s) => s.get(key))) ?? null;
+          return { ok: true, value: (await tx(table, 'readonly', (s) => s.get(key))) ?? null };
         } catch {
-          return null;
+          return { ok: false, value: null };
         }
       }
-      return memory.get(table).get(key) ?? null;
+      return { ok: true, value: memory.get(table).get(key) ?? null };
+    },
+    async get(table, key) {
+      return (await this.read(table, key)).value;
     },
     async set(table, key, value) {
-      if (!known(table)) return;
+      if (!known(table)) return false;
       if ((await ready) === 'idb') {
         try {
           await tx(table, 'readwrite', (s) => s.put(value, key));
+          return true;
         } catch {
-          /* quota or a closed database: this write is lost, the next may land */
+          return false; // quota or a closed database: this write is lost, the next may land
         }
-        return;
       }
       memory.get(table).set(key, value);
       mirror(table, key, value);
+      return true;
     },
     async remove(table, key) {
       if (!known(table)) return;

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import { createStore } from '../../runtime/store';
-import { createRegistry, worldId, worldUrl } from './registry';
+import { hashSeed } from '../minecraft/rules/noise.js';
+import { createRegistry, fileId, worldId, worldUrl } from './registry';
 
 const make = () => {
   let t = 1000;
@@ -85,6 +86,15 @@ describe('the world registry', () => {
     const w = await reg.importWorld({ world: { id: 'minecraft:evil', kind: 'minecraft', seed: 3, name: 'x'.repeat(200) }, save: null });
     expect(w.id).toBe('minecraft:3');
     expect(w.name.length).toBeLessThanOrEqual(40);
+  });
+
+  it('a Minecraft world file with a word seed is kept under the seed the game makes from it', async () => {
+    const { reg, store } = make();
+    const w = await reg.importWorld({ world: { kind: 'minecraft', seed: 'hello', name: 'Hi' }, save: { v: 1, seed: 'hello' } });
+    expect(w.id).toBe(`minecraft:${hashSeed('hello')}`);
+    expect(await store.get('saves', w.id)).toEqual({ v: 1, seed: 'hello' });
+    expect(fileId({ world: { kind: 'minecraft', seed: '12' } })).toBe('minecraft:12');
+    expect(fileId({ world: { kind: 'tank', seed: 1 } })).toBeNull();
   });
 
   it('export of a world it does not have is null', async () => {
