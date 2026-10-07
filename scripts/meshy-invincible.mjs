@@ -77,10 +77,11 @@ export const ASSETS = {
       'A fit, athletic young man of about eighteen in a skin-tight superhero suit. A bright yellow cowl covers his head and the upper half of his face, with his short spiky black hair sticking up out of the top of it, and two large oval white goggle lenses over his eyes; his mouth and chin are bare. On his chest and stomach, a bright yellow panel shaped like a long downward-pointing shield, framed by a sky-blue yoke over both shoulders. The rest of the suit (arms, sides and legs) is very dark navy, almost black. Bright yellow gloves to the middle of the forearm, and sky-blue boots to just below the knee.',
   },
   omni: { out: 'omni-man.glb', as: 'Omni-Man', clips: 'hero', motions: ['hover', 'fly'], height: 1.95, tex: 2048, ref: 'Omni-ManProfile.png' },
-  // Meshy lightened his skin from the picture alone; the texture prompt holds it
-  thragg: { out: 'thragg.glb', as: 'Thragg', clips: 'hero', motions: ['hover', 'fly'], height: 2.05, tex: 2048, ref: 'GrandRegentThragg-render.png', texture: 'flat cel-shaded colours; very dark brown skin on the face and hands, short black hair and a black moustache; red armoured tunic, grey-mauve long robe, dark red cape, pale lilac fur collar' },
+  // (a texture prompt overrides the picture's own colours: on meshy-7.1 it
+  // turned his robe, fur and skin white, so neither he nor Cecil has one)
+  thragg: { out: 'thragg.glb', as: 'Thragg', clips: 'hero', motions: ['hover', 'fly'], height: 2.05, tex: 2048, ref: 'GrandRegentThragg-render.png' },
   eve: { out: 'eve.glb', as: 'Atom Eve', clips: 'hero', motions: ['hover', 'fly'], height: 1.7, tex: 2048, ref: 'Atom-EveProfile.png' },
-  cecil: { out: 'cecil.glb', as: 'Cecil Stedman', clips: 'person', height: 1.8, tex: 2048, ref: 'CecilProfile.png', texture: 'flat cel-shaded colours; an old bald man with warm pink-beige skin, a lined face with clear dark eyes and grey eyebrows; navy suit, white shirt, red tie, brown shoes' },
+  cecil: { out: 'cecil.glb', as: 'Cecil Stedman', clips: 'person', height: 1.8, tex: 2048, ref: 'CecilProfile.png' },
   debbie: { out: 'debbie.glb', as: 'Debbie Grayson', clips: 'person', height: 1.68, tex: 2048, ref: 'DebbieProfile.png' },
   allen: { out: 'allen.glb', as: 'Allen the Alien', clips: 'person', motions: ['hover'], height: 2.3, tex: 2048, ref: 'Allen.png' },
   // the wiki's picture is the twins side by side: the left half is one
