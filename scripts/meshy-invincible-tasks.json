@@ -82,7 +82,8 @@
   },
   "heli": {
     "acct": 2,
-    "image": "01a11403-c9e3-70e8-a8ad-c09ffe997acd"
+    "image": "01a11403-c9e3-70e8-a8ad-c09ffe997acd",
+    "model": "01a1140e-3c24-73ef-b04b-2d3d38a7a7bf"
   },
   "truck": {
     "acct": 2,
