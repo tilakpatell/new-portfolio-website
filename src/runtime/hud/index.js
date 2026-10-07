@@ -3,7 +3,7 @@
 // kit's tokens and looks (./hud.css) with it.
 import './hud.css';
 
-export { default as Hud } from './Hud';
+export { default as Hud } from './Hud.jsx'; // (named in full: ./hud.js is beside it)
 export { default as Menu, MenuItem } from './Menu';
 export { default as Prompt } from './Prompt';
 export { default as Exit } from './Exit';
