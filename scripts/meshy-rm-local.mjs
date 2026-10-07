@@ -193,6 +193,22 @@ const PHASE8 = {
   snakeastronaut: { rig: false, poly: 14000, prompt: `A snake astronaut from Rick and Morty's Snake Planet: a cartoon green snake wearing a tiny white spacesuit along its body with a round glass helmet over its head, small life-support pack, the body coiled upright. ${PROP}` },
   snakerocket: { rig: false, prompt: `The snakes' space rocket from Rick and Morty's Snake Planet: a small cartoon rocket, a slim silver and white body with red fins, a round porthole, a long pointed nose cone, standing upright on a launch pad of concrete with a few scaffold poles, no text. ${PROP}` },
 };
+// Phase 7, the second batch: Nuptia 4, St. Gloopy Noops, the Immortality
+// Field Resort and the Get Schwifty show.
+const PHASE9 = {
+  glexo: { height: 1.85, prompt: `Glexo Slim Slom from Rick and Morty's Nuptia 4: a tall slim alien counsellor with smooth pale lavender skin, a long oval head with no hair, large calm dark eyes, a small mouth, in a flowing white and gold robe with wide sleeves, sandals, hands folded. ${BODY}` },
+  nuptiamachine: { rig: false, prompt: `The couples' mind-reading machine from Rick and Morty's Nuptia 4: a futuristic white and gold therapy pod, two reclined seats side by side under a pair of domed helmets on arms, glowing teal panels, a slim console between the seats, no text. ${PROP}` },
+  mytholog: { rig: false, poly: 14000, prompt: `A mytholog from Rick and Morty's Nuptia 4: a monster made of a couple's resentment, a hulking hunched creature of pale translucent purple flesh with two half-formed faces on one head, long arms with clawed hands, no legs but a trailing body, glowing eyes. ${PROP}` },
+  glipglop: { height: 1.8, prompt: `Dr. Glip-Glop from Rick and Morty's St. Gloopy Noops hospital: an alien doctor with light green skin, a tall ridged head, a single wide mouth and two round eyes on short stalks, in a white doctor's coat over a teal scrub shirt and trousers, white shoes, a stethoscope round the neck. ${BODY}` },
+  shrimply: { rig: false, prompt: `Shrimply Pibbles from Rick and Morty: a civil-rights leader alien lying in a hospital bed, a big round pale pink body like a soft heart shape with a small wrinkled face, two thin arms, under a white sheet on a white hospital bed with chrome rails and a drip stand. ${PROP}` },
+  gloopnurse: { rig: false, poly: 14000, prompt: `An alien nurse from Rick and Morty's St. Gloopy Noops hospital: a short round alien with blue skin, three eyes in a row, no hair, in pink nurse's scrubs and a small white cap, white shoes, holding a clipboard. ${AT_EASE}` },
+  risotto: { height: 1.9, prompt: `Risotto Groupon from Rick and Morty's Immortality Field Resort: a tall broad alien former king with dark red skin, a heavy brow and a square jaw, small horns, in a dark grey resort manager's suit with a red tie and a name badge, black shoes, hands clasped. ${BODY}` },
+  'resortguest-a': { rig: false, poly: 14000, prompt: `A holidaying alien at a resort from Rick and Morty: a plump orange alien with a wide head and four eyes, in a loud Hawaiian shirt with blue flowers, white shorts, sandals and sunglasses pushed up on its head, holding a drink with a tiny umbrella. ${AT_EASE}` },
+  'resortguest-b': { rig: false, poly: 14000, prompt: `A holidaying alien at a resort from Rick and Morty: a thin tall grey alien with a long neck and a small head, in a green sun visor, a striped beach towel over one shoulder, a yellow swimsuit and flip-flops. ${AT_EASE}` },
+  dirlycar: { rig: false, prompt: `A car of the Whirly Dirly roller coaster from Rick and Morty: a small open two-seat coaster car in bright yellow and red with a chrome safety bar, a pointed nose, four small wheels on a short piece of blue steel track, no text. ${PROP}` },
+  watert: { hero: true, height: 1.9, prompt: `Water-T from Rick and Morty: a tall humanoid made of clear blue flowing water, a rounded head with a calm face, broad shoulders, in a baggy white t-shirt and dark jeans, white trainers, a thick gold chain. ${BODY}` },
+  icet: { rig: false, prompt: `Ice-T from Rick and Morty, in his true form: a large block of blue-white ice shaped like a tall rounded letter T, translucent with frost on its edges, a faint stern face in the ice, standing upright. ${PROP}` },
+};
 // The plan's Task 3.1: Mortytown's people and buildings, two Ricks for the
 // Citadel's crowd, the Citadel from space and the NX-5. The plan's prompts
 // were checked against the wiki on 6 October and put right where the show
@@ -274,6 +290,7 @@ for (const [phase, set] of [
   [6, PHASE6],
   [7, PHASE7],
   [8, PHASE8],
+  [9, PHASE9],
 ]) {
   for (const [n, a] of Object.entries(set)) ASSETS[n] = { phase, rig: !a.crowd, poly: a.crowd ? 9000 : a.hero ? 40000 : 30000, tex: a.crowd || SMALL.has(n) ? 1024 : 2048, ...a };
 }

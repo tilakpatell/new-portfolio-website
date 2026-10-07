@@ -231,7 +231,7 @@
       "Greg Zaal"
     ],
     "license": "CC0 1.0",
-    "size": "512 \u00d7 256"
+    "size": "512 × 256"
   },
   "hdri/mission": {
     "source": "https://polyhaven.com/a/modern_buildings_night",
@@ -241,7 +241,7 @@
       "Greg Zaal"
     ],
     "license": "CC0 1.0",
-    "size": "512 \u00d7 256"
+    "size": "512 × 256"
   },
   "hdri/kaon": {
     "source": "https://polyhaven.com/a/abandoned_tank_farm_05",
@@ -251,7 +251,7 @@
       "Sergej Majboroda"
     ],
     "license": "CC0 1.0",
-    "size": "512 \u00d7 256"
+    "size": "512 × 256"
   },
   "tex/desert-sand": {
     "source": "https://polyhaven.com/a/gravelly_sand",
@@ -272,7 +272,7 @@
       "Jarod Guest"
     ],
     "license": "CC0 1.0",
-    "size": "2048 \u00d7 576",
+    "size": "2048 × 576",
     "sun": {
       "u": 0.6077,
       "elevation": 8.17
@@ -287,7 +287,7 @@
       "Jarod Guest"
     ],
     "license": "CC0 1.0",
-    "size": "2048 \u00d7 576",
+    "size": "2048 × 576",
     "sun": {
       "u": 0.5999,
       "elevation": 38.06
@@ -302,7 +302,7 @@
       "Sergej Majboroda"
     ],
     "license": "CC0 1.0",
-    "size": "2048 \u00d7 576",
+    "size": "2048 × 576",
     "sun": {
       "u": 0.6018,
       "elevation": 4.13
@@ -1078,7 +1078,7 @@
   "cockpit/rv-wing": {
     "source": "https://www.meshy.ai",
     "id": "01a10935-f6d2-747b-a11b-8346128460b2",
-    "name": "the RV\u2019s wing, generated for this site with Meshy AI",
+    "name": "the RV’s wing, generated for this site with Meshy AI",
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],
@@ -1187,7 +1187,7 @@
       "Jarod Guest"
     ],
     "license": "CC0 1.0",
-    "size": "512 \u00d7 256"
+    "size": "512 × 256"
   },
   "meshy/music/sitar": {
     "source": "https://www.meshy.ai",
@@ -2656,7 +2656,7 @@
   "war/councildread": {
     "source": "https://www.meshy.ai",
     "id": "01a11388-ae48-7231-b635-f34bfb86d546",
-    "name": "the Council of Ricks\u2019 dreadnought, generated for this site with Meshy AI",
+    "name": "the Council of Ricks’ dreadnought, generated for this site with Meshy AI",
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],
@@ -2665,7 +2665,7 @@
   "war/fedbattleship": {
     "source": "https://www.meshy.ai",
     "id": "01a1138a-4688-7063-a551-a86f6b2cc42d",
-    "name": "the Galactic Federation\u2019s battleship, generated for this site with Meshy AI",
+    "name": "the Galactic Federation’s battleship, generated for this site with Meshy AI",
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],
@@ -2737,7 +2737,7 @@
   "war/superlab": {
     "source": "https://www.meshy.ai",
     "id": "01a113a7-902d-70b8-ab2c-882b130ea9ed",
-    "name": "Gus Fring\u2019s superlab barge, generated for this site with Meshy AI",
+    "name": "Gus Fring’s superlab barge, generated for this site with Meshy AI",
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],
@@ -2746,7 +2746,7 @@
   "war/hacienda": {
     "source": "https://www.meshy.ai",
     "id": "01a113a7-dbff-767c-be5e-82e4f7439af2",
-    "name": "Don Eladio\u2019s flying hacienda, generated for this site with Meshy AI",
+    "name": "Don Eladio’s flying hacienda, generated for this site with Meshy AI",
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],
@@ -2837,6 +2837,132 @@
     "source": "https://www.meshy.ai",
     "id": "01a113e6-7ad4-701a-9e1e-8ba8524e54f7",
     "name": "primedrone, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/tommy": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113f2-c037-75ab-bb96-6b2caa73b19a",
+    "name": "tommy, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/froopy-a": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113f2-c0a5-751d-bfef-7490be9c4538",
+    "name": "froopy-a, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/froopy-b": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113f2-c0ae-7103-8e16-9dfb2ce672ad",
+    "name": "froopy-b, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/nimbus": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113f2-c0a9-7303-b4c0-8e461b7c7fad",
+    "name": "nimbus, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/atlantean": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113f3-a315-77ef-93f1-bb74de370f2e",
+    "name": "atlantean, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/miles": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113f3-df2a-7309-a148-16b1d16367d8",
+    "name": "miles, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/heistotron": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113f4-2d9a-7575-85f7-16ade62a87fc",
+    "name": "heistotron, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/heister-a": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113f4-690d-716d-8841-f22ccfc37f6e",
+    "name": "heister-a, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/heister-b": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113f4-fa90-75e7-957b-cc36fd9cc34e",
+    "name": "heister-b, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/fart": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113f5-5dde-71b5-a318-2eee501852fa",
+    "name": "fart, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/snake-a": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113f5-8490-7752-a14d-9948999ce05a",
+    "name": "snake-a, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/snake-b": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113f5-c084-7798-968c-d3115c26bddc",
+    "name": "snake-b, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/snakeastronaut": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113f5-d926-71c7-a825-44abdf37284d",
+    "name": "snakeastronaut, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/snakerocket": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113f6-782c-71ac-a685-4f1beb0c639b",
+    "name": "snakerocket, generated for this site with Meshy AI",
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],

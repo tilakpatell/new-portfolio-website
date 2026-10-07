@@ -408,58 +408,106 @@
     "by": "local"
   },
   "tommy": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "froopy-a": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "froopy-b": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "nimbus": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "atlantean": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "miles": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "heistotron": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "heister-a": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "heister-b": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "fart": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "snake-a": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "snake-b": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "snakeastronaut": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "snakerocket": {
+    "status": "done",
+    "by": "local"
+  },
+  "glexo": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "nuptiamachine": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "mytholog": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "glipglop": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "shrimply": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "gloopnurse": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "risotto": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "resortguest-a": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "resortguest-b": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "dirlycar": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "watert": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "icet": {
     "status": "meshy",
     "by": "local"
   }
