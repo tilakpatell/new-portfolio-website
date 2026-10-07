@@ -54,6 +54,16 @@ function grown(w) {
   return w;
 }
 
+// beside the Rick and Morty planet: 2.5 of its reaches out, turned a way
+// round from the line in from home (so a ship flying in to land isn't
+// taken through), a little above its middle
+function besideRickAndMorty() {
+  const [x, y, z] = POSITIONS.rickmorty;
+  const a = Math.atan2(-z, -x) + 1.2;
+  const d = REACH.rickmorty * 2.5;
+  return [x + Math.cos(a) * d, y + 12, z + Math.sin(a) * d];
+}
+
 export const WONDERS = [
   { id: 'aurelia', kind: 'gas-giant', name: 'Aurelia', at: [-2230, 135, -2835], r: 140, ring: true, colors: ['#e9c592', '#b9814d', '#f5e6c8', '#8f5a35'] },
   { id: 'glacia', kind: 'ice-giant', name: 'Glacia', at: [3510, -235, 945], r: 80, colors: ['#8fd0ef', '#3f86c2', '#d8f2ff'] },
@@ -96,6 +106,11 @@ export const WONDERS = [
   // the Rick and Morty sector (layout.js's SECTORS): the Citadel at its middle, and its own sun off to one side, past its worlds
   { id: 'citadel', kind: 'citadel', name: 'The Citadel', sector: 'rickmorty', at: inSector('rickmorty', [0, 0, 0]), r: 60, crew: 'rickmorty', world: 'rickmorty', page: '/c-137/citadel' }, // (as big as the biggest world: scale.js)
   { id: 'curvesun', kind: 'star', name: 'The Curve’s Sun', sector: 'rickmorty', at: inSector('rickmorty', [-2200, 450, 2000]), r: 80, color: '#e4ffb0', planets: [] },
+  // the portals between the two (portals.js): one beside the Rick and Morty
+  // planet, off to the side of the way in from home, and its other end
+  // beside the Citadel. Not solid: flown into, they take the ship through
+  { id: 'rmportal', kind: 'portal', name: 'The Portal', at: besideRickAndMorty(), r: 10, color: '#7dff9a', solid: false, leadsTo: { sector: 'rickmorty', exit: 'rmportal-back' } },
+  { id: 'rmportal-back', kind: 'portal', name: 'The Portal Home', sector: 'rickmorty', at: inSector('rickmorty', [0, 20, 420]), r: 10, color: '#7dff9a', solid: false, leadsTo: { sector: 'main', exit: 'rmportal' } },
   { id: 'lantern', kind: 'pulsar', name: 'The Lantern', at: [-6200, 300, 2600], r: 12, color: '#bfe0ff' },
   { id: 'twins', kind: 'binary', name: 'The Twins', at: [6100, -220, -1500], r: 60, color: '#ffd27a', pair: { r: 42, color: '#f4f6ff', apart: 230, period: 300 } }, // (at: the point the two go round, once in period seconds)
   { id: 'wanderer', kind: 'rogue', name: 'The Wanderer', at: [-900, -700, -6600], r: 55, ring: true, color: '#7fd8c8', colors: ['#1a2238', '#3a4a70', '#7fd8c8'] }, // (color: its auroras, for the chart and its name; colors: its rock, its accent, its auroras)
