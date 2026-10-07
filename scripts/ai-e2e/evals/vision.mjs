@@ -34,27 +34,49 @@ export async function evaluate({ sheets = join(HERE, 'sheets'), picks = join(HER
   const vlm = await import('../../gen3d/vlm.mjs');
   const backend = vlm.which();
   if (!backend) throw new Error('no vision judge reachable here (scripts/gen3d/README.md: The model’s eyes)');
+  // the judge's server stopped however this ends: left running it holds the GPU
+  // (the first night's real run waited 20 minutes behind one, and gave up)
+  process.once('exit', () => vlm.stop());
+  try {
+    return await judgeAll(vlm, backend, sheets, picks);
+  } finally {
+    vlm.stop();
+  }
+}
+
+// a sheet or a pick the judge couldn't answer (a timeout, a reply with no
+// JSON) is wrong, with why, and the rest are still asked
+async function judgeAll(vlm, backend, sheets, picks) {
   const labels = JSON.parse(readFileSync(join(sheets, 'labels.json'), 'utf8'));
   const rows = [];
   for (const [sheet, l] of Object.entries(labels)) {
-    const v = await vlm.judge(l.what, join(sheets, sheet));
-    rows.push({ sheet, what: l.what, band: l.score, score: v.score, inBand: v.score >= l.score[0] && v.score <= l.score[1], problems: v.problems });
+    try {
+      const v = await vlm.judge(l.what, join(sheets, sheet));
+      rows.push({ sheet, what: l.what, band: l.score, score: v.score, inBand: v.score >= l.score[0] && v.score <= l.score[1], problems: v.problems });
+    } catch (e) {
+      rows.push({ sheet, what: l.what, band: l.score, score: null, inBand: false, error: String(e.message ?? e).slice(0, 300) });
+    }
   }
   const confusion = { good: { good: 0, bad: 0 }, bad: { good: 0, bad: 0 } };
-  for (const r of rows) {
+  const answered = rows.filter((r) => r.score != null);
+  for (const r of answered) {
     const k = kind(r.band);
     if (k !== 'either') confusion[k][r.score >= 7 ? 'good' : 'bad'] += 1;
   }
-  const judge = { n: rows.length, accuracy: rows.filter((r) => r.inBand).length / rows.length, mae: rows.reduce((s, r) => s + Math.abs(r.score - mid(r.band)), 0) / rows.length, confusion, rows };
+  // (the error over the sheets it answered; the ones it didn't are wrong in `accuracy` and counted in `unanswered`)
+  const judge = { n: rows.length, accuracy: rows.filter((r) => r.inBand).length / rows.length, mae: answered.length ? answered.reduce((s, r) => s + Math.abs(r.score - mid(r.band)), 0) / answered.length : null, unanswered: rows.length - answered.length, confusion, rows };
   const sets = existsSync(join(picks, 'labels.json')) ? JSON.parse(readFileSync(join(picks, 'labels.json'), 'utf8')) : {};
   const picked = [];
   for (const [set, l] of Object.entries(sets)) {
     const files = readdirSync(join(picks, set)).filter((f) => /\.(png|webp|jpe?g)$/i.test(f)).sort();
-    const p = await vlm.pick(l.what, files.map((f) => join(picks, set, f)));
-    picked.push({ set, what: l.what, chose: files[p.best], right: l.right, scores: p.scores.map((s) => s.score) });
+    try {
+      const p = await vlm.pick(l.what, files.map((f) => join(picks, set, f)));
+      picked.push({ set, what: l.what, chose: files[p.best], right: l.right, scores: p.scores.map((s) => s.score) });
+    } catch (e) {
+      picked.push({ set, what: l.what, chose: null, right: l.right, error: String(e.message ?? e).slice(0, 300) });
+    }
   }
   const right = picked.filter((p) => p.chose === p.right).length;
-  vlm.stop();
   return { backend, judge, pick: { n: picked.length, right, accuracy: picked.length ? right / picked.length : 1, rows: picked } };
 }
 
@@ -108,7 +130,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const file = join(resultsDir(), `${today()}-vision.json`);
   mkdirSync(resultsDir(), { recursive: true });
   writeFileSync(file, `${JSON.stringify({ tier: 'evals', name: 'vision', ok: short.length === 0, short, lines: LINES, results }, null, 1)}\n`);
-  for (const r of results) console.log(`${r.backend}: judge ${Math.round(r.judge.accuracy * 100)}% in band (MAE ${r.judge.mae.toFixed(2)}), pick ${r.pick.right}/${r.pick.n}`);
+  for (const r of results) console.log(`${r.backend}: judge ${Math.round(r.judge.accuracy * 100)}% in band (MAE ${r.judge.mae?.toFixed(2) ?? '-'}${r.judge.unanswered ? `, ${r.judge.unanswered} unanswered` : ''}), pick ${r.pick.right}/${r.pick.n}`);
   console.log(short.length ? `under the line: ${short.join('; ')}` : 'every judge above its line');
   console.log(file);
   process.exit(short.length ? 1 : 0);

@@ -42,6 +42,8 @@ function make(name, faces, o = {}) {
     tintTopOnly: o.tintTopOnly ?? false,
     solid: o.solid ?? !['cross', 'liquid', 'torch', 'none'].includes(shape),
     gravity: o.gravity ?? false,
+    // a slab-shaped block's height, in sixteenths
+    height: o.height ?? 16,
     // a cutout block hides its faces against its own kind (glass) or not (leaves)
     cullSelf: o.cullSelf ?? true,
     dropSelf: o.drops ?? null,
@@ -115,7 +117,7 @@ const LIST = [
   cube('mossy_cobblestone', 'mossy_cobblestone', { hardness: 2, ...pickaxe() }),
   cube('obsidian', 'obsidian', { hardness: 50, ...pickaxe(3) }),
   // a snow layer is a slab-like sliver the game walks through at one layer
-  cube('snow', 'snow', { shape: 'slab', solid: false, hardness: 0.1, tool: 'shovel', needs: true, sound: 'snow', drops: () => one('snowball') }),
+  cube('snow', 'snow', { shape: 'slab', height: 2, solid: false, hardness: 0.1, tool: 'shovel', needs: true, sound: 'snow', drops: () => one('snowball') }),
   cube('snow_block', 'snow', { hardness: 0.2, tool: 'shovel', needs: true, sound: 'snow', drops: () => [{ item: 'snowball', count: 4 }] }),
   cube('ice', 'ice', { shape: 'cutout', hardness: 0.5, tool: 'pickaxe', sound: 'glass', drops: none }),
   make('bookshelf', column('bookshelf', 'oak_planks'), { hardness: 1.5, ...axe, drops: () => [{ item: 'book', count: 3 }] }),
@@ -127,7 +129,7 @@ const LIST = [
   cube('ladder', 'ladder', { shape: 'ladder', solid: false, hardness: 0.4, ...axe }),
   make('oak_door', column('oak_door_bottom', 'oak_planks'), { shape: 'door', opaque: false, hardness: 3, ...axe }),
   cube('oak_fence', 'oak_planks', { shape: 'fence', opaque: false, hardness: 2, ...axe }),
-  cube('oak_slab', 'oak_planks', { shape: 'slab', opaque: false, hardness: 2, ...axe }),
+  cube('oak_slab', 'oak_planks', { shape: 'slab', height: 8, opaque: false, hardness: 2, ...axe }),
   cube('oak_stairs', 'oak_planks', { shape: 'stairs', opaque: false, hardness: 2, ...axe }),
   ...COLOURS.map((c) => cube(`${c}_wool`, `${c}_wool`, { hardness: 0.8, tool: 'shears', sound: 'cloth' })),
   cube('short_grass', 'short_grass', { ...plant, tint: 'grass', drops: (s, t, rand = Math.random) => (rand() < 1 / 8 ? one('wheat_seeds') : []) }),
@@ -146,7 +148,10 @@ const LIST = [
   make('farmland', column('dirt', 'farmland', 'dirt'), { hardness: 0.6, ...shovel, sound: 'gravel', drops: () => one('dirt') }),
   make('tnt', column('tnt_side', 'tnt_top', 'tnt_bottom'), { hardness: 0, sound: 'grass' }),
   cube('netherrack', 'netherrack', { hardness: 0.4, ...pickaxe() }),
-  make('red_bed', column('red_bed_side', 'red_bed_top', 'oak_planks'), { shape: 'slab', hardness: 0.2, sound: 'wood' }),
+  // a bed is two blocks, the foot and the head (state bit 8), facing by state & 3
+  make('red_bed', column('red_bed_side', 'red_bed_top', 'oak_planks'), { shape: 'slab', height: 9, opaque: false, hardness: 0.2, sound: 'wood' }),
+  // a furnace while it burns, as the game's own block: its front alight, glowing 13
+  make('lit_furnace', fronted('furnace_front_on', 'furnace_side', 'furnace_top'), { hardness: 3.5, ...pickaxe(), light: 13, drops: () => one('furnace') }),
 ];
 
 // What a block drops, by the game's rule: nothing when it needs a tool of a
@@ -172,6 +177,7 @@ export const block = (id) => BLOCKS[id] ?? BLOCKS[AIR];
 // furnace, the wheat's ages, wet farmland), or drawn over one (the cracks).
 export const EXTRA_TEXTURES = [
   'oak_door_top',
+  'red_bed_head_top',
   'furnace_front_on',
   'farmland_moist',
   'water_flow',

@@ -171,12 +171,12 @@ export const PAGES = {
       ['Play as', 'The button with your name on it, top right: pick who you play as (Luke, Leia, Han, Chewie, Ahsoka, Boba Fett); for a Jedi the blade’s colour, the hilt and the stance (single, double, dual, crossguard); for the rest the gun (the galaxy’s and others’) and two mods on it; and three perks for anyone, Battlefront’s star cards in spirit.'],
       ['The fight', 'Enemies show their health over their heads; the one you’re squared up to wears a ring and is named at the bottom, and your strokes step in to them. Blocking spends your guard: broken, you stagger. A duellist’s guard is the white line over his health: his blade turns your strokes until it breaks. Guns heat up; vent early or ride the lock.'],
       ['The places', 'The compass names the places from the films until you’ve found them, with what the crew have to say about each.'],
-      ['Galactic assault', 'On Hoth and Geonosis, a battle for the command posts (from the system’s mission page). Pick a side and a post to deploy at; stand in a post with more of yours than theirs and it turns; take every post of the phase and the next begins. Down, you deploy again for one of your side’s reinforcements.'],
+      ['Galactic assault', 'On Hoth, Geonosis, Scarif and Endor, a battle for the command posts (from the system’s mission page). Pick a side and a post to deploy at; stand in a post with more of yours than theirs and it turns; take every post of the phase and the next begins. Down, you deploy again for one of your side’s reinforcements.'],
       ['Leaving', 'Get back in the ship (E by it, or Back to orbit) to take off.'],
     ],
   },
   '/galaxy/mission': {
-    tips: [['The briefing', 'Each system’s mission opens with its own crawl. The trench run, boarding the Death Star, Endor’s chase, Lothal’s star map, Dagobah’s swamp and the battles of Hoth and Geonosis play now; the rest are games still being built.']],
+    tips: [['The briefing', 'Each system’s mission opens with its own crawl. The trench run, boarding the Death Star, Endor’s chase, Lothal’s star map, Dagobah’s swamp and the battles of Hoth, Geonosis, Scarif and Endor play now; the rest are games still being built.']],
   },
   '/deathstar': {
     keys: [
@@ -475,7 +475,11 @@ export const PAGES = {
           ['Space', 'Jump; swim up'],
           ['Shift', 'Sneak (you won’t walk off an edge)'],
           ['Ctrl / W twice', 'Sprint'],
+          ['Click (hold)', 'Dig the block under the crosshair'],
+          ['Right-click', 'Place the held block; open a crafting table'],
           ['1 – 9 / wheel', 'The hotbar'],
+          ['E', 'The inventory and its 2 × 2 crafting'],
+          ['Q', 'Drop one of what you hold (Ctrl Q: all)'],
           ['Esc', 'Pause'],
         ],
       },
@@ -483,8 +487,11 @@ export const PAGES = {
     touch: [{ rows: [['Stick', 'Walk'], ['Drag', 'Look'], ['Jump', 'Jump; swim up'], ['Sneak', 'Sneak']] }],
     tips: [
       ['The world', 'Endless, and made from its seed: the same seed is the same world. New world on the title starts another.'],
-      ['The textures', 'Pixel Perfection, a free resource pack by XSSheep and Nova_Wostra, close to the game’s own; Mojang’s may not be shared.'],
-      ['Coming', 'Digging and building, the night, caves and mobs come phase by phase.'],
+      ['The textures', 'The game’s own, from Minecraft 1.21.11, used with Mojang’s permission.'],
+      ['Crafting', 'A log makes four planks, two planks four sticks, four planks a crafting table. Right-click the table for its 3 × 3: three planks over two sticks is a pickaxe. In a screen, click picks up and puts down, right-click halves a stack or puts one, Shift-click sends it across.'],
+      ['Saving', 'What you dig and build is kept on this device, and the same world comes back next time.'],
+      ['The night', 'A day is twenty minutes. Torches (coal over a stick) and glowstone push the dark back; a bed (three wool over three planks) sleeps the night away and moves where you wake.'],
+      ['Coming', 'Caves, ores and mobs come phase by phase.'],
     ],
   },
   '/earth': {

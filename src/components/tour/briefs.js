@@ -615,7 +615,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Minecraft',
-      text: 'A fan tribute: an endless world of blocks made from a seed, drawn in Pixel Perfection, a free pack close to the game’s own.',
+      text: 'A fan tribute: an endless world of blocks made from a seed, drawn in the game’s own textures.',
     },
     {
       id: 'walk',
@@ -636,9 +636,24 @@ export const BRIEFS = {
       ],
     },
     {
+      id: 'build',
+      title: 'Digging and building',
+      text: 'Hold the button on a block to dig it, then pick up what it drops. Punch a tree for logs: they make planks, a crafting table and tools.',
+      keys: [
+        ['Click', 'Dig (hold)'],
+        ['Right-click', 'Place; open a crafting table'],
+        ['E', 'Inventory and crafting'],
+        ['1 – 9', 'The hotbar'],
+      ],
+      touch: [
+        ['Tap', 'Dig (hold)'],
+        ['Stick', 'Walk'],
+      ],
+    },
+    {
       id: 'goal',
       title: 'Coming',
-      text: 'Digging and building, the night, caves and mobs arrive a piece at a time. New world on the title gives another seed.',
+      text: 'Night falls after ten minutes: torches keep it back, and a bed sleeps it away. Caves and mobs arrive a piece at a time.',
     },
     help('the world'),
   ],

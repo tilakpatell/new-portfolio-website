@@ -106,6 +106,7 @@
 - [x] **8.3** `scripts/ai-e2e/report.mjs`: every `results/<date>-*.json` from the run → one Markdown table (tier, pass/fail, headline number, time) to stdout and `results/<date>-report.md`. Unit test on fixtures.
 - [x] **8.4** `ai-health.yml`: after the evals, `node scripts/ai-e2e/real/health.mjs`, `node scripts/ai-e2e/real/drift.mjs`, `node scripts/ai-e2e/report.mjs`; then one `ai-health`-labelled issue kept: green closes it if open, red opens it or comments the table (`gh` in the workflow, with `GITHUB_TOKEN`). `scripts/desktop/status.mjs` shows the last `ai-health` run’s conclusion and date.
 - [ ] **8.5** Run the workflow once by hand (`gh workflow run ai-health.yml`), wait for it, read the report, bless the first golden, commit it.
+  Run by hand three times on 2026-10-07 (the first cancelled, the second and third read). Not blessed: on both nights the gen3d real run found the GPU held for 20 minutes (the second night by the vision eval's own leaked llama-server, fixed in PR 10; the third by another session's long voices remake in WSL) and made nothing, and a golden is a good night. Bless the first night whose gen3d and voices are both green: `node scripts/ai-e2e/real/bless.mjs`.
 - [x] **8.6** Gate, PR, CI green, merge.
 
 ## PR 9: Tier 7, the agent and the jobs
@@ -119,7 +120,7 @@
 
 ## PR 10: The manual and the close
 
-- [ ] **10.1** `scripts/ai-e2e/README.md` complete: every tier, every command, every knob, how to add a sheet, a take, a scenario, a golden; what a red night means and what to do.
-- [ ] **10.2** `docs/architecture.md` Tests section rewritten: `npm test`, `npm run test:ai`, `npm run test:ai:render`, `npm run test:ai:gpu`, the nightly, the issue. `docs/desktop` and `docs/gen3d` READMEs point at the evals and the health run where they mention judging.
-- [ ] **10.3** `docs/autopilot/backlog.md`: the follow-ups found on the way (a brain whose promise was vague, an uncredited model, an orphan voice line), each one line.
-- [ ] **10.4** Gate, PR, CI green, merge. Report: what each tier found when first run against `main` (the allow-lists’ contents are the findings).
+- [x] **10.1** `scripts/ai-e2e/README.md` complete: every tier, every command, every knob, how to add a sheet, a take, a scenario, a golden; what a red night means and what to do.
+- [x] **10.2** `docs/architecture.md` Tests section rewritten: `npm test`, `npm run test:ai`, `npm run test:ai:render`, `npm run test:ai:gpu`, the nightly, the issue. `docs/desktop` and `docs/gen3d` READMEs point at the evals and the health run where they mention judging.
+- [x] **10.3** `docs/autopilot/backlog.md`: the follow-ups found on the way (a brain whose promise was vague, an uncredited model, an orphan voice line), each one line.
+- [x] **10.4** Gate, PR, CI green, merge. Report: what each tier found when first run against `main` (the allow-lists’ contents are the findings).

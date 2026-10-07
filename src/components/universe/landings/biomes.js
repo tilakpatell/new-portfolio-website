@@ -12,8 +12,9 @@
 //            0…360, s, l 0…1 }) and where it is ([lat, lon] degrees, or
 //            null); near: within deg of a place, whatever its colour (a
 //            town too small to see from orbit); sea: no landing there, so
-//            the spot moves on toward land (towardLand). Anything left out
-//            is the landing's own.
+//            the spot moves on toward land (towardLand), reach?: how many
+//            0.02 rad strides out it goes (24 if left out). Anything left
+//            out is the landing's own.
 
 import { facingAlong, rotate, vec } from '../foot';
 
@@ -94,11 +95,13 @@ export function biomeAt(landing, rgb, at = null) {
 // circle the way it was heading (`track`, any direction along the ground
 // there), and should that find none as soon, the other ways round too, a
 // `stride` (radians) at a time for `steps`; the first that isn't sea
-// (`isSea(sample(uv))`) wins, the way it was heading first at each reach.
-// Land already, or no land in reach: `n` as it was.
+// (`isSea(sample(uv), p)`) wins, the way it was heading first at each reach.
+// Land already, or no land in reach: `n` as it was. isSea gets the place
+// too (a unit vector in the body's frame), so a biome named by where it is
+// (Tortuga, whose cells read sea on the map's copy) is land whatever its colour.
 export function towardLand(n, sample, isSea, { track = null, steps = 24, stride = 0.02, ways = 8 } = {}) {
   const from = unit(n);
-  const seaAt = (p) => isSea(sample(uvOf(p)));
+  const seaAt = (p) => isSea(sample(uvOf(p)), p);
   if (!seaAt(from)) return n;
   const ahead = facingAlong(from, track ?? [0, 1, 0]);
   const dirs = [];
@@ -110,6 +113,14 @@ export function towardLand(n, sample, isSea, { track = null, steps = 24, stride 
     }
   }
   return n;
+}
+
+// The first of these textures whose picture a canvas can read back: one
+// holding an image, a bitmap or a canvas, not a GPU-compressed one (the
+// -xl KTX2 a strong card wears near: nearMaps.js) nor raw data. Null if
+// none can be.
+export function readableMap(...textures) {
+  return textures.find((t) => Boolean(t?.image) && !t.isCompressedTexture && !t.image.data) ?? null;
 }
 
 // The colour of an image at a uv, through a 256 × 128 copy made once per
@@ -127,6 +138,11 @@ export function sampleMap(image, [u, v], { flip = false } = {}) {
       canvas.width = 256;
       canvas.height = 128;
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      // (an area average past 2:1: the default, 'low', is bilinear with no
+      // mipmaps, two texels of every eight across from a 2048 map, so
+      // devices reading different sizes of the map would disagree more at
+      // the edges; at 2:1 the two are the same)
+      if (image.width > 512) ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(image, 0, 0, 256, 128);
       copy = ctx.getImageData(0, 0, 256, 128).data;
     } catch {

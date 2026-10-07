@@ -341,8 +341,84 @@ export const MOONS = [
     palette: { base: '#b88a3a', dark: '#6a4a2a', light: '#d8aa5a', glow: '#ffe0a0' },
     air: { colour: '#ffe0a0', density: 1.2, top: 1.05 },
   },
+  // and more from the dial, in the sector since: Pluto, the snakes' planet, Nuptia 4 and the resort
+  {
+    id: 'pluto',
+    label: 'Pluto',
+    kind: 'moon',
+    world: null,
+    place: 'Pluto',
+    go: 'Land on',
+    to: '/c-137',
+    crew: 'rickmorty',
+    swatch: '#a8b8d0',
+    accent: '#d8e4f4',
+    rim: '#e8f0ff',
+    size: 0.36 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#8a9ab0', dark: '#4a5468', light: '#c8d4e4', glow: '#e8f0ff' },
+    air: { colour: '#d8e6ff', density: 1.0, top: 1.04 },
+  },
+  {
+    id: 'snakeplanet',
+    label: 'Snake Planet',
+    kind: 'moon',
+    world: null,
+    place: 'Snake Planet',
+    go: 'Land on',
+    to: '/c-137',
+    crew: 'rickmorty',
+    swatch: '#7ab84a',
+    accent: '#c8f08a',
+    rim: '#d8f07a',
+    size: 0.4 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#5a8a3a', dark: '#2a4a1a', light: '#8ab85a', glow: '#d8f07a' },
+    air: { colour: '#c8f08a', density: 1.4, top: 1.06 },
+  },
+  {
+    id: 'nuptia',
+    label: 'Nuptia 4',
+    kind: 'moon',
+    world: null,
+    place: 'Nuptia 4',
+    go: 'Land on',
+    to: '/c-137',
+    crew: 'rickmorty',
+    swatch: '#e08ac0',
+    accent: '#ffc8e8',
+    rim: '#ffc8e8',
+    size: 0.38 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#b85a9a', dark: '#5a2a4a', light: '#e08ac0', glow: '#ffc8e8' },
+    air: { colour: '#ffc8e8', density: 1.3, top: 1.06 },
+  },
+  {
+    id: 'resort',
+    label: 'Immortality Field Resort',
+    kind: 'moon',
+    world: null,
+    place: 'the Immortality Field Resort',
+    go: 'Land at',
+    to: '/c-137',
+    crew: 'rickmorty',
+    swatch: '#4ac8c0',
+    accent: '#a8f0e8',
+    rim: '#fff0b0',
+    size: 0.4 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#3a9a9a', dark: '#1a4a5a', light: '#e8d8a0', glow: '#a8f0e8' },
+    air: { colour: '#c8f4ff', density: 1.3, top: 1.06 },
+  },
 ];
 export const MOON_IDS = MOONS.map((m) => m.id);
+
+// A Rick and Morty world's way in is C-137's page, Rick's garage, with the
+// portal gun dialled back to the world you came from (the C-137 game's own
+// places go by these ids; its dial's kept, as it is, under tp-rm-dial), so
+// one step through the garage's portal and you're on it on foot.
+export const RM_DIAL_KEY = 'tp-rm-dial';
+export const dialFor = (u) => (u?.kind === 'moon' && u.to === '/c-137' ? u.id : null);
 
 const BY_ID = new Map([...UNIVERSES, ...MOONS].map((u) => [u.id, u]));
 

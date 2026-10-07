@@ -13,6 +13,7 @@ import { parseSystem, systemById } from '../components/galaxy/systems';
 import { galaxyCrew } from '../components/galaxy/lines';
 import { LANDABLE, siteOf } from '../components/galaxy/surface/sites';
 import { surfaceUrl } from '../components/galaxy/surface/catalog';
+import { CREW, filesOf } from '../components/galaxy/surface/crewList';
 import { surfaceCrew } from '../components/galaxy/surface/lines';
 import { voiceFor } from '../components/galaxy/surface/voicelines';
 import { sayVoiced, stopVoiced } from '../lib/voiced';
@@ -31,7 +32,8 @@ import { SIDE_KEY, current as currentOath, readAllegiance, swear } from '../comp
 import { GCW, campaignAt } from '../components/galaxy/gcw';
 import { warOfSide } from '../components/galaxy/sides';
 import { effectsFor } from '../components/galaxy/warEffects';
-import { addPoints, addWin, warNow } from '../components/galaxy/warState';
+import { addPoints, addWin, mine, warNow } from '../components/galaxy/warState';
+import { RANKS, rankOf } from '../components/galaxy/ranks';
 import ModelCredits from '../components/ModelCredits';
 import { wornFiles } from '../components/rickmorty/wardrobe/looks';
 import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
@@ -105,7 +107,13 @@ export default function GalaxySurface() {
   // here is that war's, fought for one of its sides
   const [oathKept, setOathKept] = useState(() => readAllegiance(local.get(SIDE_KEY)));
   const oath = useMemo(() => currentOath(oathKept), [oathKept]);
-  const effects = useMemo(() => effectsFor(id, warNow(Date.now(), oath.war), oath), [id, oath]);
+  // (and, for the people's talk: the side you swore to, and your rank in it, as a step up its ladder)
+  const effects = useMemo(() => {
+    const e = effectsFor(id, warNow(Date.now(), oath.war), oath);
+    if (!e) return e;
+    const rank = oath.side ? rankOf(oath.side, mine(oath.war).points) : null;
+    return { ...e, side: oath.side ?? null, rank: rank ? (RANKS[oath.side]?.findIndex((r) => r.id === rank.id) ?? 0) : 0 };
+  }, [id, oath]);
   const assaultWar = mission?.kind === 'assault' ? warOfSide(warSideOf(mission, 'attack')) : null;
   const sworn = assaultWar ? sideFor(mission, oathKept.oaths[assaultWar]?.side ?? null) : null;
   const onAssaultSide = (k) => {
@@ -404,8 +412,9 @@ export default function GalaxySurface() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // the models on this world, for their credits, what the cruiser's crew carry out, and Luke, who walks out of the X-wing (kept, so the credits aren't drawn again with every change of the page)
-  const kinds = useMemo(() => (site ? [...[...site.things_all, ...site.scatter, ...site.life, ...site.rides].map((t) => surfaceUrl(t.kind)), ...(ship === 'cruiser' ? wornFiles(looks) : []), ...(ship === 'xwing' ? ['/models/galaxy/crew/luke.glb'] : []), ...(heroById(hero.id)?.src.url ? [heroById(hero.id).src.url] : [])] : []), [site, ship, looks, hero.id]);
+  // the models on this world, for their credits (a person's crew figure as
+  // well as its catalogue model: a duellist of the same kind uses the latter), what the cruiser's crew carry out, and Luke, who walks out of the X-wing (kept, so the credits aren't drawn again with every change of the page)
+  const kinds = useMemo(() => (site ? [...[...site.things_all, ...site.scatter, ...site.rides].map((t) => surfaceUrl(t.kind)), ...site.life.flatMap((t) => [surfaceUrl(t.kind), ...(CREW[t.kind] ? filesOf(CREW[t.kind]) : [])]), ...(ship === 'cruiser' ? wornFiles(looks) : []), ...(ship === 'xwing' ? ['/models/galaxy/crew/luke.glb'] : []), ...(heroById(hero.id)?.src.url ? [heroById(hero.id).src.url] : [])] : []), [site, ship, looks, hero.id]);
   if (!site) return <Navigate to={id ? `/galaxy/${id}` : '/galaxy'} replace />;
   const place = site.places.find((p) => p.id === here);
   const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };

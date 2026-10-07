@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { GCW, NEIGHBOURS, WAR_SYSTEMS, areaBonusOf, pressureOn, areaOf, battleAt, campaignAt, history, opening, pointsKey, readKey, supplyOf, warTable, warTables, winKey, worthOf } from './gcw';
+import { TALLY, createTally, readTally } from '../universe/tally';
+import { GCW, NEIGHBOURS, WAR_SYSTEMS, areaBonusOf, pressureOn, areaOf, battleAt, campaignAt, history, opening, pointsKey, readKey, seeded, supplyOf, warTable, warTables, winKey, worthOf } from './gcw';
 import { AREAS, WARS, WAR_IDS } from './sides';
 import { LANES, systemById } from './systems';
+import { CAP, KEYS } from './warState';
 
 const none = () => 0;
 const H = 3600e3;
@@ -248,6 +250,38 @@ describe('history', () => {
     for (let ms = fell.attack.from; ms < fell.attack.until; ms += GCW.step) steps.push(stepAt(ms));
     const saved = history('gcw', fell.n, fell.attack.until + 1, (k) => (steps.some((st) => k === pointsKey(fell.holder, fell.sys, st)) ? 30 : 0));
     expect(saved.owner[fell.sys]).toBe(fell.holder);
+  });
+  it('is the same for two pilots who’ve told each other a busy campaign, a message at a time, and counts its newest points', () => {
+    const ms = at(0, 36 * H);
+    const last = stepAt(ms);
+    const a = createTally('c0', { keys: KEYS, cap: CAP });
+    const b = createTally('c0', { keys: KEYS, cap: CAP });
+    // each fights somewhere every step: the Rebels' pilot and the Empire's
+    const rand = seeded('two pilots');
+    const somewhere = () => WAR_SYSTEMS[Math.floor(rand() * WAR_SYSTEMS.length)];
+    for (let k = 0; k < last; k++) {
+      a.add(pointsKey('rebel', somewhere(), k), 1 + Math.floor(rand() * 20));
+      b.add(pointsKey('empire', somewhere(), k), 1 + Math.floor(rand() * 20));
+      if (k % 5 === 0) a.add(winKey('rebel', somewhere(), k), 1);
+    }
+    expect(a.keys().length + b.keys().length).toBeGreaterThan(3 * TALLY.keys);
+    // and the newest: the Rebels' pilot hits the major order hard
+    const s0 = history('gcw', 0, ms, (k) => a.value(k) + b.value(k));
+    const f = s0.major;
+    a.add(pointsKey('rebel', f, last), CAP);
+    const talk = (rounds) => {
+      for (let r = 0; r < rounds; r++) {
+        const fromA = readTally(JSON.parse(JSON.stringify(a.message())));
+        const fromB = readTally(JSON.parse(JSON.stringify(b.message())));
+        b.receive('a', fromA);
+        a.receive('b', fromB);
+      }
+    };
+    talk(12);
+    const forA = history('gcw', 0, ms, (k) => a.value(k));
+    expect(history('gcw', 0, ms, (k) => b.value(k))).toEqual(forA);
+    expect(b.value(pointsKey('rebel', f, last))).toBe(CAP);
+    expect(forA.owner[f] !== s0.owner[f] || forA.control[f] < s0.control[f]).toBe(true);
   });
   it('ends a war early when one side holds every system', () => {
     const all = (k) => (k.startsWith('rep:') ? 100 : 0);

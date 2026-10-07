@@ -108,7 +108,7 @@ export const SITES = {
         },
         life: [
           { kind: 'hothtrooper', at: [0.9, 19], still: true, face: Math.PI, name: 'Rebel trooper', says: ['Stay clear of the hangar doors when they open. It’s minus sixty out there tonight.', 'Command centre’s left at the junction. Medical’s right.'] },
-          { kind: 'rebel', at: [-24, -2], still: true, face: -Math.PI / 2, name: 'General Rieekan', named: true, says: ['Our first catch of the day. An Imperial probe droid.', 'Prepare for ground assault. Send all troops in sector twelve to the south slope.', 'Commence the evacuation. The transports go first, one at a time, behind the ion cannon.'] },
+          { kind: 'rebel', at: [-21.8, -2], still: true, face: -Math.PI / 2, name: 'General Rieekan', named: true, says: ['Our first catch of the day. An Imperial probe droid.', 'Prepare for ground assault. Send all troops in sector twelve to the south slope.', 'Commence the evacuation. The transports go first, one at a time, behind the ion cannon.'] },
           { kind: 'rebel', at: [-30, 3.6], still: true, face: Math.PI, name: 'Toryn Farr', named: true, says: ['First transport is away.', 'Stand by, ion control. Fire!', 'Shield’s holding. For now.'] },
           { kind: 'rebel', at: [-21, -8.1], still: true, face: 0, name: 'Controller', says: ['(Eyes on the scope.) Something’s out there, past the north ridge.'] },
           { kind: 'c3po', at: [-27.6, -5], roam: 2, speed: 0.4, name: 'C-3PO', named: true, says: ['Sir, the odds of surviving a night on the surface are seven hundred and twenty-five to one.', 'Master Luke is still out there. Oh dear.'] },
@@ -341,7 +341,7 @@ export const SITES = {
       { kind: 'tauntaun', n: 2, at: [-22, 14], spread: 4, roam: 5, speed: 0.8, r: 0.8 },
       { kind: 'droid', n: 1, at: [12, 14], roam: 6, speed: 0.6, name: 'Astromech', says: ['(A shivering beep. It would like to go inside now.)'] },
       // the walkers, on their way in
-      { kind: 'atat', model: false, n: 4, path: loop([110, 480], [200, 60], 12), speed: 2.2, r: 2.2, name: 'AT-AT', says: ['(Twenty metres up, its head swivels round toward you. Somewhere inside, General Veers is not impressed.)', '(The ground shakes with every step.)'] },
+      { kind: 'atat', n: 4, path: loop([110, 480], [200, 60], 12), speed: 2.2, r: 2.2, name: 'AT-AT', says: ['(Twenty metres up, its head swivels round toward you. Somewhere inside, General Veers is not impressed.)', '(The ground shakes with every step.)'] },
       { kind: 'snowtrooper', n: 3, path: loop([250, 360], [50, 30], 8), speed: 1.3, name: 'Snowtrooper', says: ['Imperial troops have entered the base!', 'Keep moving. The walkers are almost at the generator.', 'Halt! Identify yourself.'] },
       { kind: 'snowtrooper', n: 2, at: [290, 322], spread: 3, still: true, face: 3.6, name: 'Snowtrooper', says: ['Get that E-Web set up!', 'Watch the trenches. Rebels everywhere.'] },
       { kind: 'vader', n: 1, at: [276, 296], still: true, face: 3.4, name: 'Darth Vader', named: true, says: ['(The breathing. Just the breathing.)', 'Admiral Ozzel came out of lightspeed too close to the system. He will not do so again.', 'There is no escape. Don’t make me destroy you.', 'Asteroids do not concern me. I want that ship.'] },

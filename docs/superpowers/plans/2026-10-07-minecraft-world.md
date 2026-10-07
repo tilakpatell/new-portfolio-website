@@ -302,6 +302,13 @@ Branch: `claude/minecraft-phase-1`.
 
 Branch `claude/minecraft-phase-2` from `origin/main`.
 
+**As built (Phase 2):**
+- *Break times (2.3)* are whole ticks, as the game counts them: stone with a wooden pickaxe is 23 ticks, 1.15 s (the task's 0.5625 contradicts its own formula, 1.125), obsidian with diamond 188 ticks, 9.4 s. Shears take leaves at once. Five ticks between breaks.
+- *Where the hands live:* `rules/build.js` (breaking, placing, falling blocks, dropped items, Q, using a crafting table), re-exported by `game.js`; `rules/breaking.js` the times. The cursor is recomputed from the eye every tick (`g.cursor`).
+- *State drawn now:* logs lie along their axis and furnaces, chests and jack o'lanterns face where they were set (the mesher reads `state`), not in Phase 4.
+- *Saves (2.5):* chunk jobs carry the player's edits for the chunk and its eight neighbours, so an edited chunk arrives meshed with them; `mesh` jobs with borders re-mesh what an edit touches, first in the queue; an edit on a chunk's edge dirties the neighbour too.
+- *The screens:* `rules/gui.js` is the containers' click logic (tested); `Minecraft.jsx` draws the inventory and the crafting table on the pack's own panels (`gui/container/inventory`, `crafting_table`, added to the sprites). Using a crafting table opens the 3 × 3 now (the plan put 3 × 3 recipes in Phase 4, but a pickaxe needs it, and Phase 2's "done" asks for one). Paper joined the items for the book.
+
 ### Task 2.1: The raycast and the cursor
 
 **Files:** `rules/raycast.js`, `rules/raycast.test.js`; `scene/cursor.js`.
@@ -335,6 +342,13 @@ Branch `claude/minecraft-phase-2` from `origin/main`.
 
 ## Phase 3: light and the day (PR 3)
 
+**As built (Phase 3):**
+- *Light (3.1)* is computed in the worker over the 3 × 3 chunks it already makes (a 14-block margin is exact for 15 levels; 7 ms a chunk), not by a main-thread `relight(world, x, y, z)`: an edit re-lights and re-meshes its chunk and the eight round it as chunk jobs carrying the edits, each ask numbered so a stale answer can't land as the newer one. Water, ice and leaves take 1 off (modern opacity).
+- *Smooth lighting:* each corner averages the four cells round it, a dark one counting as the face's own, as the game's `getAoBrightness` does.
+- *The lightmap (3.2):* not `max(sky × daylight, block)` but the game's sum (1.12's `updateLightmap`): the sky's light dimmed and blued by the sun's brightness (0.2 at night), the block's warm, added and clamped (`rules/time.js`'s `lightmap`, the shader the same). `daylight`/`skyDarken` (the game's 11 levels) are there for spawning.
+- *Torches* hang from the face they're put against (state = face) and draw as the game's post (2 × 10 sixteenths, leaning off walls); put on tall grass, one stands on the block under it. *Slabs* draw at their height (oak slab 8, bed 9, snow layer 2) with collision boxes.
+- *The bed* is two blocks (foot, and head with state bit 8, facing by state & 3), placed the way the player looks; breaking either half takes both. Sleeping (12541 to 23458) moves the clock to the next morning and the spawn beside the bed; by day, "You can only sleep at night".
+
 ### Task 3.1: Light
 **Files:** `rules/light.js`, `rules/light.test.js`, `worker.js` (lights a chunk after generating, before meshing), `rules/game.js` (relights on `set` and sends the affected sections to re-mesh).
 **Interfaces:** `lightChunk(chunk, neighbours)` (sky columns from the top, then the flood), `relight(world, x, y, z) → Set<sectionKey>` (the game's removal-then-spread with a queue; returns the sections touched for re-meshing).
@@ -350,6 +364,13 @@ Branch `claude/minecraft-phase-2` from `origin/main`.
 - Tests: `sleeping at night sets morning and the spawn`, `the bed refuses by day`. Browser: a night, a torch, the morning. Merge as PR 3.
 
 ## Phase 4: underground (PR 4)
+
+**As built (Phase 4):**
+- *Caves (4.1)*: spaghetti tunnels are `n1² + n2² < 0.0045` (the plan's `|n1 · n2| < 0.03` carves sheets, not tunnels); the density is sampled on a 4-block grid and interpolated, as the game's is. Veins stay inside their own chunk.
+- *Fluids (4.2)*: every `setBlock` wakes the cell and its six neighbours; a liquid then looks again after its own delay (water 5, lava 30), once however many changes ask. Lava reaches 3 (the plan's test said 4; the game's overworld lava flows 3).
+- *Liquids drawn (4.3)*: each corner's height is the game's `getFluidHeight` (a source or falling cell weighing 11 to a flowing one's 1, open cells counting as nothing, solids not at all), so a flow is one sloping surface; a sloping top wears `*_flow` turned downstream in quarter turns (the game turns it to any angle, but a 16-texel tile holds only the window a block shows: the middle 16 of the pack's 32-wide flow frames, `pack/atlas.js`). The animation frames go after every tile in the texture array; the manifest's `anim` gives each strip's frames and the `.mcmeta`'s timing (Pixel Perfection's still water turns over every 100 ticks, interpolated), and the shader takes the frame showing as a uniform each tick.
+- *Shapes (4.3)*: stairs face the way the player looks (state = facing); a door is two blocks (state & 3 facing, 4 open, 8 the upper half), placed the way the player looks with room above and a floor below, opened and shut together by use, broken together, one door dropped; a ladder is one face a sixteenth off its wall. The mover meets slabs, stairs and doors as their boxes (`mesher.js`'s `shapeBoxes`). Fences still mesh as cubes.
+- *Survival (4.4)*: the furnace is `TileEntityFurnace`'s (fuel only lit with something to cook and room for it; a half-cooked item cools 2 a tick), shown lit as the game's own `lit_furnace` block (light 13), appended last so no saved id moves. Hunger is 1.12's `FoodStats` whole: saturation (5 to start) goes before hunger, the fast heal when full and saturated (a sixth of a heart per point of saturation every 10 ticks), regen at 18, starving to 1 on normal; walking costs nothing, sprinting 0.1 a metre, a jump 0.05 (0.2 sprinting), a block broken 0.005, a hurt 0.1. The plan's test, *sprinting 40 m costs 1 hunger*, needs saturation spent first, as the game's does. Eating holds use for 32 ticks. Death throws the inventory round where the player stood (the game's scatter) and Respawn stands them beside the bed, or at the world's spawn with "Your home bed was missing or obstructed" if it's gone. The chest is one (27 slots); double chests wait.
 
 ### Task 4.1: Caves, ores and lava
 **Files:** `rules/worldgen.js` (extend), `rules/worldgen.test.js`.

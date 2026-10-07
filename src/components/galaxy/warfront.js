@@ -251,7 +251,10 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       fightSent = clock;
       fightDirty = false;
     }
-    if (warDirty ? clock - warSent > FRONT.warEvery : clock - warSent > FRONT.warAgain && warTally(now()).keys().length) {
+    // (the war goes a page at a time: soon again while someone's owed the
+    // rest of it; and once anyway, so the others know to tell you it)
+    const war = warTally(now());
+    if (warDirty || war.owing() ? clock - warSent > FRONT.warEvery : clock - warSent > FRONT.warAgain && (war.keys().length || warSent < 0)) {
       net.war?.(warMessage(now()));
       warSent = clock;
       warDirty = false;

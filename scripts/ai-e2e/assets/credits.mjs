@@ -10,7 +10,8 @@
 //   public/models/<dir>/credits.json "<name>": the cast's name for a model in that folder
 //                                     (civA → civ-a.glb, omni → omni-man.glb: src/components/invincible/cast.js)
 //
-// A model's cuts are credited with it: <name>.hq.glb and <name>.lo.glb, and
+// A model's cuts are credited with it: <name>.hq.glb, <name>.lo.glb and the
+// galaxy surfaces' far-off <name>.lod1.glb, and
 // the smaller copies in a lod/ or sm/ folder beside the original.
 
 import { execFileSync } from 'node:child_process';
@@ -20,7 +21,7 @@ import { join } from 'node:path';
 export const tracked = (root, dir = 'public') => String(execFileSync('git', ['-C', root, 'ls-files', dir], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 })).split('\n').filter(Boolean);
 
 // a file as its credit names it: no cut suffix, no extension
-const stem = (f) => f.replace(/\.(hq|lo)\.glb$/, '.glb').replace(/\.[^./]+$/, '');
+const stem = (f) => f.replace(/\.(hq|lo|lod1)\.glb$/, '.glb').replace(/\.[^./]+$/, '');
 // a smaller copy in lod/ or sm/ is credited as the original one folder up
 const original = (f) => f.replace(/\/(lod|sm)\/([^/]+)$/, '/$2');
 

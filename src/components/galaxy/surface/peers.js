@@ -80,7 +80,7 @@ export function createPeers({ parent, placer, getCast }) {
         if (w.gun && !own) {
           holder.updateMatrixWorld(true);
           w.gp = createGunplay(fig, fig.gun ?? w.gun, { unit: 1, who: fig.built ? 'built' : who });
-          if (w.gun === 'saber' && w.gp) w.saber = createSaber(w.gp, { color: arms?.color || spec.saber?.color || '#4aa8ff', hilt: HILTS.find((h) => h.id === spec.saber?.hilt?.id) ?? spec.saber?.hilt ?? null, stance: arms?.stance ?? spec.saber?.stance ?? 'single', parent: group });
+          if (w.gun === 'saber' && w.gp) w.saber = createSaber(w.gp, { color: arms?.color || spec.saber?.color || '#4aa8ff', hilt: HILTS.find((h) => h.id === spec.saber?.hilt?.id) ?? spec.saber?.hilt ?? null, stance: arms?.stance ?? spec.saber?.stance ?? 'single', parent: group, fig });
         }
       })();
     return w;
@@ -165,7 +165,9 @@ export function createPeers({ parent, placer, getCast }) {
           ease(wk.st, s, dt);
           wk.holder.position.set(wk.st.x, wk.st.y, wk.st.z);
           wk.holder.rotation.y = wk.st.yaw;
-          wk.fig?.update(dt, i === 0 && w.ride ? 0 : Math.min(1, Math.abs(wk.st.speed) / 7.4));
+          const going = i === 0 && w.ride ? 0 : Math.min(1, Math.abs(wk.st.speed) / 7.4);
+          wk.fig?.update(dt, going);
+          if (!(i === 0 && w.ride)) wk.saber?.stand(dt, now / 1000, going); // (the body under their blade)
           if (wk.gp) {
             const riding = i === 0 && Boolean(w.ride);
             wk.gp.gun.visible = !riding;

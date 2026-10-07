@@ -125,11 +125,11 @@ export const CRAWLS = {
   },
   scarif: {
     episode: 'A Star Wars Story',
-    title: 'Rogue One',
+    title: 'The Battle of Scarif',
     paragraphs: [
       'The Empire’s ultimate weapon is complete. The DEATH STAR has destroyed the holy city of Jedha, but its designer, Galen Erso, has hidden a fatal flaw deep inside it. His daughter, Jyn, has learned where its plans are kept.',
-      'The plans are kept in the Imperial Citadel on Scarif, a tropical world sealed beneath a planetary shield. Defying the Alliance’s council, a band of rebels calling themselves ROGUE ONE has flown a stolen Imperial shuttle through the shield gate and landed at the Citadel.',
-      'Now the Rebel fleet has come to their aid. Blue Squadron must fly through the shield gate before it closes, the rebels must hold the beaches against the walkers, and Jyn Erso must climb the Citadel tower to send the plans to the fleet before the Death Star fires…',
+      'The plans are kept in the Imperial Citadel on Scarif, a tropical world sealed beneath a planetary shield. A band of rebels calling themselves ROGUE ONE has landed inside the shield, and the PATHFINDERS of Blue Squadron are out of their U-wings and into the palms to draw the garrison away.',
+      'Now the beaches are a battlefield. The Pathfinders must take the beach and the bunker line, Landing Pad Nine and the master switch out in the open, while the shoretroopers and the death troopers of Director Krennic’s guard hold each one until the walkers come down the sand…',
     ],
   },
   nevarro: {

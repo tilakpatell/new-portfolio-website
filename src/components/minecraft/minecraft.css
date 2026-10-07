@@ -18,9 +18,16 @@
     --gui: 3;
   }
 }
+/* a phone on its side: the screens (166 high) must fit in what's left under the bar */
+@media (max-height: 420px) {
+  .mc {
+    --gui: 1.5;
+  }
+}
 .mc[data-mode='page'] {
   height: calc(100svh - var(--nav-h, 64px));
-  min-height: 420px;
+  /* (a phone on its side has under 320 to give) */
+  min-height: 280px;
 }
 .mc[data-mode='overlay'] {
   position: fixed;
@@ -189,18 +196,36 @@
   transform: translate(-50%, -50%);
   mix-blend-mode: difference;
 }
+/* the hotbar's box, 182 wide, with the bars above it at the game's heights */
 .mc-bar {
   position: absolute;
   left: 50%;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 2px);
   transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: calc(2px * var(--gui));
+  width: calc(182px * var(--gui));
+  height: calc(49px * var(--gui));
+}
+.mc-icon {
+  position: absolute;
+  left: calc(var(--x) * 1px * var(--gui));
+  bottom: calc(var(--b) * 1px * var(--gui));
+  width: calc(9px * var(--gui));
+  height: calc(9px * var(--gui));
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+}
+.mc-xp {
+  position: absolute;
+  left: 0;
+  bottom: calc(24px * var(--gui));
+  width: calc(182px * var(--gui));
+  height: calc(5px * var(--gui));
+  image-rendering: pixelated;
 }
 .mc-hotbar {
-  position: relative;
+  position: absolute;
+  left: 0;
+  bottom: 0;
   width: calc(182px * var(--gui));
   height: calc(22px * var(--gui));
   background-size: 100% 100%;
@@ -212,16 +237,6 @@
   left: calc((-1px + 20px * var(--slot)) * var(--gui));
   width: calc(24px * var(--gui));
   height: calc(23px * var(--gui));
-}
-.mc-air {
-  display: flex;
-  flex-direction: row-reverse;
-  width: calc(81px * var(--gui));
-}
-.mc-air img {
-  width: calc(9px * var(--gui));
-  height: calc(9px * var(--gui));
-  margin-left: calc(-1px * var(--gui));
 }
 
 /* ── the touch pad, Pocket Edition's ── */
@@ -277,4 +292,211 @@
   width: 44px;
   height: 44px;
   font-size: 12px;
+}
+
+/* ── stacks: the picture, the count, the wear ── */
+.mc-stack {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+.mc-stack img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.mc-stack b {
+  position: absolute;
+  right: calc(-1px * var(--gui));
+  bottom: calc(-2px * var(--gui));
+  font-weight: normal;
+  font-size: calc(8px * var(--gui));
+  line-height: 1;
+  color: #fff;
+  text-shadow: calc(1px * var(--gui)) calc(1px * var(--gui)) 0 #3f3f3f;
+}
+.mc-stack > i {
+  position: absolute;
+  left: calc(2px * var(--gui));
+  bottom: calc(1px * var(--gui));
+  width: calc(13px * var(--gui));
+  height: calc(2px * var(--gui));
+  background: #000;
+}
+.mc-stack > i > i {
+  display: block;
+  height: 50%;
+}
+.mc-hotslot {
+  position: absolute;
+  left: calc((3px + 20px * var(--slot)) * var(--gui));
+  top: calc(3px * var(--gui));
+  width: calc(16px * var(--gui));
+  height: calc(16px * var(--gui));
+}
+
+/* ── the screens, on the pack's own panels (176 × 166 of a 256 sheet) ── */
+.mc-panel {
+  position: relative;
+  width: calc(176px * var(--gui));
+  height: calc(var(--h) * 1px * var(--gui));
+  background-image: var(--bg);
+  background-size: calc(256px * var(--gui)) calc(256px * var(--gui));
+  background-position: 0 0;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+/* a chest's panel: the sheet's top three rows (71 pixels), then its inventory part from 126 down (GuiChest's) */
+.mc-panel-chest {
+  background-image: none;
+}
+.mc-part {
+  position: absolute;
+  left: 0;
+  top: calc(var(--top) * 1px * var(--gui));
+  width: 100%;
+  height: calc(var(--ph) * 1px * var(--gui));
+  background-image: var(--bg);
+  background-size: calc(256px * var(--gui)) calc(256px * var(--gui));
+  background-position: 0 calc(var(--from) * -1px * var(--gui));
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+.mc-label {
+  position: absolute;
+  left: calc(var(--x) * 1px * var(--gui));
+  top: calc(var(--y) * 1px * var(--gui));
+  font-size: calc(7px * var(--gui));
+  line-height: 1;
+  color: #404040;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.mc-label-centre {
+  left: 50%;
+  transform: translateX(-50%);
+}
+/* the furnace's flame (14 square, shown from the bottom by the fuel left) and arrow (24 × 16, by the cooking) */
+.mc-flame {
+  position: absolute;
+  left: calc(56px * var(--gui));
+  top: calc((36px + (12px - var(--k) * 1px)) * var(--gui));
+  width: calc(14px * var(--gui));
+  height: calc((var(--k) + 1) * 1px * var(--gui));
+  background-size: calc(14px * var(--gui)) calc(14px * var(--gui));
+  background-position: 0 100%;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.mc-arrow {
+  position: absolute;
+  left: calc(79px * var(--gui));
+  top: calc(34px * var(--gui));
+  width: calc((var(--l) + 1) * 1px * var(--gui));
+  height: calc(16px * var(--gui));
+  background-size: calc(24px * var(--gui)) calc(16px * var(--gui));
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+/* the death screen: the game's red wash, its big words and its yellow score */
+.mc-death {
+  z-index: 4;
+  background: linear-gradient(rgba(80, 0, 0, 0.38), rgba(128, 48, 48, 0.63));
+}
+.mc-died {
+  margin: 0 0 calc(10px * var(--gui));
+  font-size: calc(16px * var(--gui));
+  font-weight: 400;
+  color: #fff;
+  text-shadow: calc(2px * var(--gui)) calc(2px * var(--gui)) 0 #3f3f3f;
+}
+.mc-score {
+  color: #ffff55;
+}
+.mc-slot {
+  position: absolute;
+  left: calc(var(--x) * 1px * var(--gui));
+  top: calc(var(--y) * 1px * var(--gui));
+  width: calc(16px * var(--gui));
+  height: calc(16px * var(--gui));
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+  font: inherit;
+}
+.mc-slot:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+.mc-held {
+  position: absolute;
+  width: calc(16px * var(--gui));
+  height: calc(16px * var(--gui));
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2;
+}
+.mc-hotslot {
+  pointer-events: auto;
+}
+.mc-hud .mc-bar {
+  pointer-events: none;
+}
+.mc-inv-key {
+  position: fixed;
+  right: 10px;
+  /* under the pause button, clear of the jump key and the site's guide button */
+  top: calc(env(safe-area-inset-top, 0px) + 62px);
+  width: 44px;
+  height: 44px;
+}
+.mc-close-key {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  font: inherit;
+  color: #fff;
+  background: rgba(60, 60, 60, 0.7);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+@media (hover: hover) {
+  .mc-close-key {
+    display: none;
+  }
+}
+
+/* the game's line over the hotbar, and the night passing in a bed */
+.mc-say {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 2px + 60px * var(--gui));
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: calc(8px * var(--gui));
+  white-space: nowrap;
+  text-shadow: calc(1px * var(--gui)) calc(1px * var(--gui)) 0 #3f3f3f;
+}
+.mc-sleep {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #101020;
+  pointer-events: none;
+  animation: mc-sleep 2.4s ease-in-out forwards;
+}
+@keyframes mc-sleep {
+  0% {
+    opacity: 0;
+  }
+  40%,
+  60% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
 }

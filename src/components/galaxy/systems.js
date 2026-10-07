@@ -292,6 +292,8 @@ const AS_SET = [
       status: 'live',
       to: '/galaxy/endor/surface?mission=chase',
       go: 'Ride it now',
+      // (and the battle for the bunker, a galactic assault, beside it)
+      also: [{ id: 'assault', title: 'The Battle of Endor', text: 'The strike team and the Ewoks against the garrison, through the forest to the bunker and the shield generator, as a galactic assault. Fight for either side.', to: '/galaxy/endor/surface?mission=assault', go: 'Fight it now' }],
     },
   },
   {
@@ -335,6 +337,7 @@ const AS_SET = [
       how: 'Already flying: on the Death Star’s own page.',
       status: 'live',
       to: '/deathstar#trench',
+      also: [{ id: 'assault', title: 'The Battle of Yavin 4', text: 'A galactic assault on the moon: the Empire comes in across the landing field for the hangar and the temple steps, and the Rebellion holds each as long as it can. Fight for either side.', to: '/galaxy/yavin/surface?mission=assault', go: 'Fight it now' }],
     },
   },
   {
@@ -415,6 +418,7 @@ const AS_SET = [
       pitch: 'Get the Falcon off Cloud City and up through the clouds with TIEs on your tail, swing back for Luke under the city, and make the jump. If the hyperdrive works.',
       how: 'Through the cloud layers, under the city’s vane to catch Luke, then up and out to the jump point.',
       status: 'soon',
+      also: [{ id: 'assault', title: 'The Battle of Cloud City', text: 'A galactic assault on the decks: the Rebellion comes in over Platform 327 for the south walkway and the plaza, and the Empire holds the city as long as it can. Fight for either side.', to: '/galaxy/bespin/surface?mission=assault', go: 'Fight it now' }],
     },
   },
   {
@@ -551,6 +555,7 @@ const AS_SET = [
       pitch: 'An assassin just tried to kill Senator Amidala. Chase her airspeeder down through the traffic lanes and the canyons between the towers before she gets away.',
       how: 'Drop between the lanes, cut through the power couplings, and don’t lose her in the traffic. Pull up!',
       status: 'soon',
+      also: [{ id: 'assault', title: 'The Battle of the Temple', text: 'A galactic assault on the capital: the droids come up the Processional Way for the Temple’s doors, and the clones hold the steps as long as they can. Fight for either side.', to: '/galaxy/coruscant/surface?mission=assault', go: 'Fight it now' }],
     },
   },
   {
@@ -775,13 +780,15 @@ const AS_SET = [
     traffic: ['uwing', 'shuttle'],
     game: {
       id: 'scarif',
-      objectives: ['Get through the Shield Gate before it closes', 'Hold the beach against the AT-ACTs', 'Climb the Citadel tower and send the plans'],
-      title: 'Rogue One',
+      objectives: ['Take the beach and the bunker line', 'Take Landing Pad Nine', 'Take the master switch, out in the open, so the plans can go up to the fleet'],
+      title: 'The Battle of Scarif',
       film: 'rogue',
-      role: 'Blue Squadron, then Jyn Erso',
-      pitch: 'Through the shield gate before it closes, down to the beaches to hold off the walkers, then up the Citadel tower to send the plans to the fleet before the Death Star fires.',
-      how: 'Squadron flying above, AT-ACTs on the sand, and a climb against the clock at the end.',
-      status: 'soon',
+      role: 'A Pathfinder off the U-wings, or a shoretrooper holding the beach',
+      pitch: 'A galactic assault on the beaches of Scarif: the Pathfinders come out of the palms for the beach, the bunker line, Pad Nine and the master switch; the shoretroopers and Krennic’s death troopers hold each as long as they can. Fight for either side.',
+      how: 'Pick a side and a post to deploy at. Stand in a post with more of your side than theirs and it turns yours; every soldier down costs their side a reinforcement, and a side with none left and nobody standing has lost. The walkers on the beach are the Empire’s; keep out from under them.',
+      status: 'live',
+      to: '/galaxy/scarif/surface?mission=assault',
+      go: 'Fight it now',
     },
   },
   {

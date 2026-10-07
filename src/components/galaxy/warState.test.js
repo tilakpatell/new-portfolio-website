@@ -1,6 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { GCW, campaignAt, history, pointsKey, winKey } from './gcw';
-import { addPoints, addWin, mine, onWar, receiveWar, resetWar, warMessage, warNow, warTally } from './warState';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { TALLY, createTally, readTally } from '../universe/tally';
+import { GCW, WAR_SYSTEMS, campaignAt, history, pointsKey, winKey } from './gcw';
+import { CAP, addPoints, addWin, mine, onWar, receiveWar, resetWar, warMessage, warNow, warTally } from './warState';
 
 const NOW = GCW.start + 30 * 60e3;
 beforeEach(() => resetWar());
@@ -42,6 +43,52 @@ describe('the page’s war', () => {
   it('gives each war’s table, the Civil War’s by default', () => {
     expect(warNow(NOW).war).toBe('gcw');
     expect(warNow(NOW, 'clone').war).toBe('clone');
+  });
+  it('keeps counting in a busy campaign, past what a message holds, and tells it a message at a time', () => {
+    const ms = GCW.start + 24 * 3600e3;
+    const k = campaignAt(ms).step;
+    // a day of fighting: points somewhere in every step, the three wars over
+    const sides = ['rebel', 'empire', 'republic', 'separatists', 'newrepublic', 'remnant'];
+    for (let step = 0; step < k; step++) addPoints(sides[step % sides.length], WAR_SYSTEMS[step % WAR_SYSTEMS.length], step, 1, ms);
+    expect(warTally(ms).keys().length).toBeGreaterThan(TALLY.keys);
+    const before = warNow(ms);
+    const front = before.systems.find((s) => s.front && s.control > 0.5);
+    addPoints('rebel', front.id, k, 20, ms);
+    addWin('rebel', front.id, k, ms);
+    expect(warTally(ms).value(pointsKey('rebel', front.id, k))).toBe(20);
+    expect(warTally(ms).value(winKey('rebel', front.id, k))).toBe(1);
+    expect(warNow(ms).systems.find((s) => s.id === front.id).control).toBeLessThan(front.control);
+    const msg = readTally(JSON.parse(JSON.stringify(warMessage(ms))));
+    expect(msg.m[pointsKey('rebel', front.id, k)]).toBe(20);
+    expect(Object.keys(msg.t).length).toBeLessThanOrEqual(TALLY.keys);
+  });
+});
+
+describe('a reload', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+  it('comes back as the same pilot in the war, so a pilot who stayed online counts them once', () => {
+    vi.useFakeTimers();
+    const kept = new Map();
+    vi.stubGlobal('window', { localStorage: { getItem: (k) => kept.get(k) ?? null, setItem: (k, v) => kept.set(k, String(v)) } });
+    const wire = (msg) => readTally(JSON.parse(JSON.stringify(msg)));
+    addPoints('rebel', 'endor', 2, 3, NOW);
+    const before = wire(warMessage(NOW));
+    vi.advanceTimersByTime(2000); // (kept)
+    resetWar(); // the page reloaded: its tally back from tp-gcw, under a new peer id
+    expect(warTally(NOW).mine(pointsKey('rebel', 'endor', 2))).toBe(3);
+    const other = createTally('c0', { cap: CAP });
+    other.receive('peer-before', before);
+    other.receive('peer-after', wire(warMessage(NOW)));
+    expect(other.value(pointsKey('rebel', 'endor', 2))).toBe(3);
+    addPoints('rebel', 'endor', 2, 1, NOW);
+    other.receive('peer-after', wire(warMessage(NOW)));
+    expect(other.value(pointsKey('rebel', 'endor', 2))).toBe(4);
+    expect(warMessage(NOW).i).toBe(before.i);
+    // (and the next campaign, a pilot new to it)
+    expect(warMessage(NOW + GCW.campaign).i).not.toBe(before.i);
   });
 });
 

@@ -910,6 +910,59 @@ body:has(.universe-panel) .guide-btn { display: none; }
   .universe-arrive { animation: none; }
 }
 
+/* Rick's portal gun, in the cruiser (P): a lime pill with the swirl on it */
+.universe-portalgun {
+  position: absolute;
+  z-index: 1;
+  left: 172px;
+  bottom: 72px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.4rem 0.7rem 0.4rem 0.45rem;
+  border: 1px solid rgb(151 206 76 / 0.7);
+  border-radius: 999px;
+  background: rgb(6 14 6 / 0.78);
+  color: #c8f59a;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: none;
+  box-shadow: 0 0 14px rgb(125 255 154 / 0.25);
+  transition: box-shadow 0.2s, background 0.2s;
+}
+.universe-portalgun:hover { box-shadow: 0 0 22px rgb(125 255 154 / 0.5); }
+.universe-portalgun:active { background: rgb(60 140 40 / 0.5); }
+.universe-portalgun kbd {
+  padding: 0 0.35em;
+  border: 1px solid rgb(151 206 76 / 0.5);
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+.universe-portalgun-swirl {
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  background: radial-gradient(circle, #e9ffd0 0 12%, #4fbf3a 28%, transparent 30%), conic-gradient(#b5f36b, #2e8c2a, #9be65a, #1f6e22, #c8f59a, #3a9a30, #b5f36b);
+  box-shadow: 0 0 8px #7dff9a;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .universe-portalgun-swirl { animation: universe-portalgun-spin 2.4s linear infinite; }
+}
+@keyframes universe-portalgun-spin { to { rotate: -1turn; } }
+@media (pointer: coarse) {
+  .universe-portalgun { padding: 0.55rem 0.8rem 0.55rem 0.55rem; }
+  .universe-portalgun kbd { display: none; }
+}
+/* on a phone: a round button with the swirl, over the nose up and down ones */
+@media (max-width: 767px) {
+  .universe-portalgun { left: auto; right: 26px; bottom: calc(var(--sheet-h) + 232px); width: 56px; height: 56px; padding: 0; justify-content: center; border-radius: 50%; }
+  .universe-portalgun-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .universe-portalgun-swirl { width: 30px; height: 30px; }
+}
 .universe-hint {
   /* across the map's open part, clear of the buttons in its corners: it wraps
      rather than running off the left edge (it's longer than a laptop's map) */

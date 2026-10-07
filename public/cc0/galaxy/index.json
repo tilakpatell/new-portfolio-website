@@ -241,5 +241,30 @@
     "metres": 0.5,
     "mean": 0.8,
     "arm": true
+  },
+  "redrock": {
+    "source": "https://polyhaven.com/a/rock_boulder_cracked",
+    "id": "rock_boulder_cracked",
+    "name": "Rock Boulder Cracked",
+    "authors": [
+      "Dario Barresi",
+      "Dimitrios Savva"
+    ],
+    "license": "CC0 1.0",
+    "metres": 1.3899999856948853,
+    "mean": 0.78,
+    "arm": true
+  },
+  "mossrock": {
+    "source": "https://polyhaven.com/a/mossy_rock",
+    "id": "mossy_rock",
+    "name": "Mossy Rock",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "metres": 3,
+    "mean": 0.72,
+    "arm": true
   }
 }
