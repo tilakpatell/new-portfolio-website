@@ -89,8 +89,14 @@ Done in this branch (`claude/festive-meitner-ctyhqf`):
 - **Battles.** `surface/skirmish.js` (rules, 29 tests) and `surface/skirmishScene.js` (drawing) with `surface/soldier.js` (one soldier's figure, gun, aim and poses). Battles on **Kashyyyk** (the Republic holds the sandbar's barricades, the droids wade ashore from the north: the lagoon is north and east of the beach, not where the handoff guessed), **Geonosis** (the droids hold the landing ground's south edge, the clones come off the LAATs) and **Hoth** (the Rebels hold the trenches, the snowtroopers come off the north ridge). None runs during a mission.
 - **Allegiance** (the owner's follow-up: "if we choose the bad guys we can help the Separatists"): `galaxy/allegiance.js`, light or dark, kept in the browser. It's picked on the holotable, taken from the side chosen in a galactic assault, or switched in a battle's HUD (`SkirmishHud.jsx`), which puts you at your side's rally point. In space every pilot still flies for the Rebellion (`gcw.js`'s shared tally is unchanged).
 - **The assaults and the quests' enemies** use the same bodies: guns in hand, aimed, shots from the muzzle, flinches, death clips. Every hit goes through one router in `surface/scene.js`.
-- **Portal jump.** `lib/three/portalGate.js` (choreography tested), staged mode in `PortalJump.jsx` (`timing.js stagedAt`), on the universe map (`universe/scene.js`) and in the galaxy (`galaxy/scene.js`, which now uses the crew's own jump).
+- **Portal jump.** `lib/three/portalGate.js` (choreography tested), staged mode in `PortalJump.jsx` (`timing.js stagedAt`), on the universe map (`universe/scene.js`) and in the galaxy (`galaxy/scene.js`, which now uses the crew's own jump: the RV's Blue Sky too). The scene waits for the overlay to start drawing (`timeline.js markJumpStart`/`overlayFrom`), since a first jump's overlay loads late. Checked frame by frame in the browser on the universe map: the shot, the gate opening, the cruiser sinking into it, the pinch, the vortex, the hole opening onto it coming out of the exit gate, the camera back behind it.
 - Checks: `scripts/kashyyyk-check.mjs`, `scripts/portal-check.mjs` (steps the page's clock).
+
+### Known limits
+
+- A battle draws each soldier's gun as about fifteen small meshes (gunplay.js builds them in code): a full battle adds a few hundred draw calls. Merging each gun's geometry once a kind would cut that if a phone struggles.
+- Fighting for the Separatists, Commander Gree's beachhead quest can't be finished (it counts droids you bring down).
+- In space every pilot flies for the Rebellion; only the ground battles follow your allegiance.
 
 ### Other eras: models Meshy has to make first
 
