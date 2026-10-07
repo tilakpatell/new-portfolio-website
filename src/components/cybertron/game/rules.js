@@ -14,6 +14,8 @@ const TAU = Math.PI * 2;
 const SUB = 1 / 120; // the slice everything is worked out in, whatever the frame rate
 const MAX_DT = 0.05; // a frame longer than this (a tab come back) counts as this
 
+import { belief, createSenses, sense } from '../../../lib/ai/perception';
+
 export const ROBOT = { radius: 1.2, height: 9.5, walk: 7, run: 15, accel: 40, jump: 13, gravity: 32, step: 1.4, turn: 10, air: 0.35 };
 export const VEHICLE = { radius: 2.6, height: 4, length: 9, top: 40, boost: 62, accel: 16, brake: 34, reverse: 12, drag: 6, grip: 9, turn: 1.7, steerRate: 3.2, boostDrain: 0.35, boostFill: 0.12, step: 1.0 };
 export const TRANSFORM = { time: 0.9 };
@@ -568,15 +570,46 @@ export function hurtEnemy(e, amount) {
   return [{ type: 'kill', id: e.id, kind: e.kind }];
 }
 
-export function stepEnemies(enemies, player, dt, world, rand = Math.random) {
+// What a Decepticon knows of Optimus (lib/ai/perception): where he is while
+// it can see him (segmentClear, over the ground's cover), the truth a couple
+// of seconds after losing sight, then a guess that drifts the way he went
+// and fades; its guess gone, it holds where it is, scanning, until it sees
+// him again. It knows he's there when it comes (spawned on him).
+export const ENEMY_SENSES = createSenses({ sight: { range: 400, cone: -1, far: 0.3 }, hearing: { range: 200 }, memory: 7, intuition: 2.5 });
+
+// `tokens` (lib/ai/squad's createTokens, the sim's): so many fire at once
+// (a `shot` each, held a moment); the rest advance and strafe
+export function stepEnemies(enemies, player, dt, world, rand = Math.random, tokens = null) {
   const shots = [];
   const events = [];
   dt = Math.min(Math.max(dt, 0), MAX_DT);
+  tokens?.audit(dt, (id) => enemies.some((o) => o.id === id && !o.dead));
   for (const e of enemies) {
     if (e.dead) continue;
     const k = ENEMY_KINDS[e.kind];
-    const dx = player.x - e.x;
-    const dz = player.z - e.z;
+    // what it believes of him
+    if (!e.me) e.me = { pos: { x: e.x, y: e.y, z: e.z }, dir: null, beliefs: { you: { id: 'you', at: { x: player.x, y: player.y, z: player.z }, vel: { x: 0, y: 0, z: 0 }, seenAt: 0, heardAt: -Infinity, confidence: 1, visible: true, timer: 1, kind: null, hostile: true } }, now: 0 };
+    e.me.pos.x = e.x;
+    e.me.pos.y = e.y;
+    e.me.pos.z = e.z;
+    const eyeH = (e.h ?? k.h) * 0.75;
+    const hisH = player.mode === 'vehicle' ? 1.5 : ROBOT.height * 0.6;
+    sense(ENEMY_SENSES, e.me, { targets: [{ id: 'you', at: { x: player.x, y: player.y, z: player.z }, vel: { x: player.vx ?? 0, y: 0, z: player.vz ?? 0 }, hostile: true }] }, dt, { seesThrough: (a, b) => segmentClear(world, a.x, a.y + eyeH, a.z, b.x, b.y + hisH, b.z) });
+    const b = belief(e.me, 'you');
+    e.sees = Boolean(b?.visible);
+    const sure = Boolean(b && (b.visible || e.me.now - b.seenAt <= ENEMY_SENSES.intuition));
+    const est = b ? (sure ? player : b.at) : null;
+    if (!est) {
+      // lost him altogether: it holds where it is and looks about
+      e.state = 'hold';
+      e.t += dt;
+      e.yaw += Math.sin(e.t * 1.5) * dt * 1.2;
+      e.y = world.floorAt(e.x, e.z, e.y + 1, ROBOT.step);
+      continue;
+    }
+    e.guessed = !sure;
+    const dx = est.x - e.x;
+    const dz = est.z - e.z;
     const d = Math.hypot(dx, dz) || 1e-6;
     // changing from one form to the other: still, and holding fire
     if (e.shift > 0) {
@@ -599,7 +632,7 @@ export function stepEnemies(enemies, player, dt, world, rand = Math.random) {
       }
       if (!alt) e.ram = 0;
       else {
-        drive(e, F, player, dt, world, d, shots, events, rand);
+        drive(e, F, sure ? player : { ...player, x: est.x, z: est.z }, dt, world, d, shots, events, rand);
         continue;
       }
     }
@@ -627,14 +660,16 @@ export function stepEnemies(enemies, player, dt, world, rand = Math.random) {
     resolve(world, e, e.r, e.h, ROBOT.step);
     e.y = world.floorAt(e.x, e.z, e.y + 1, ROBOT.step);
     e.cooldown -= dt;
-    if (e.cooldown <= 0 && d < k.range && !player.dead) {
+    // (at what it believes: a guess goes where he isn't; and only with a
+    // shot token, where the sim hands them out)
+    if (e.cooldown <= 0 && d < k.range && !player.dead && (!tokens || tokens.claim('shot', e.id))) {
       const ex = e.x;
       const ey = e.y + e.h * 0.75;
       const ez = e.z;
-      const px = player.x;
-      const py = player.y + (player.mode === 'vehicle' ? 1.5 : ROBOT.height * 0.6);
-      const pz = player.z;
-      if (segmentClear(world, ex, ey, ez, px, py, pz)) {
+      const px = est.x;
+      const py = (sure ? player.y : est.y) + (player.mode === 'vehicle' ? 1.5 : ROBOT.height * 0.6);
+      const pz = est.z;
+      if (sure && segmentClear(world, ex, ey, ez, px, py, pz)) {
         const spread = ((rand() - 0.5) * 6 * Math.PI) / 180;
         const yaw = Math.atan2(px - ex, pz - ez) + spread;
         const flat = Math.hypot(px - ex, pz - ez);
