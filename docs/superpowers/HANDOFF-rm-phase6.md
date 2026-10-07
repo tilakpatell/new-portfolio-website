@@ -3,6 +3,11 @@
 Plan: `docs/superpowers/plans/2026-10-06-rick-and-morty-multiverse.md`.
 Branch: `claude/gifted-fermi-m29jzj` (merged to main as it went).
 
+The destinations' data is split for the health check's `big-files`:
+`dimensions/place.js` (the box, the headings and `place()`), `rows1.js`,
+`rows2.js`, `rows3.js` (the dial's rows in order), and `destinations.js`
+(joins them, the dial, `destinationById`, `linkTarget`, `validArrive`).
+
 The user's asks for this lane: finish the multiverse fully, make it large
 and performant with a lot to do; work directly (no subagents, no
 workflows); merge PRs regularly; never a figure or a prop drawn in code

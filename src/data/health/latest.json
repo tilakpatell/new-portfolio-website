@@ -1,6 +1,6 @@
 {
   "date": "2026-10-07",
-  "sha": "4e16e5d",
+  "sha": "e25c788c",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -65,23 +65,23 @@
         },
         {
           "file": "src/components/galaxy/surface/scene.js",
-          "n": 2666
+          "n": 2667
         },
         {
           "file": "src/components/middleearth/towns/weathertop/props.js",
           "n": 2640
         },
         {
+          "file": "src/components/galaxy/scene.js",
+          "n": 2324
+        },
+        {
           "file": "src/components/middleearth/towns/marshes/props.js",
           "n": 2315
         },
         {
-          "file": "src/components/galaxy/scene.js",
-          "n": 2285
-        },
-        {
           "file": "src/components/rickmorty/world/RmWorld.jsx",
-          "n": 2162
+          "n": 2164
         },
         {
           "file": "src/components/avengers/world/scene.js",
@@ -110,7 +110,7 @@
       ]
     },
     "boundary-breaks": {
-      "value": 289,
+      "value": 290,
       "unit": "imports",
       "label": "imports across a line docs/health/RULES.md draws",
       "detail": [
