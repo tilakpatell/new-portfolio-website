@@ -6,6 +6,8 @@ import '@fontsource/cinzel/600.css';
 import AutobotMark from './AutobotMark';
 import DecepticonMark from './DecepticonMark';
 import PortalSwirl from './rickmorty/PortalSwirl';
+import { PORTAL_QUOTES } from './rickmorty/themeQuotes';
+import { sayVoiced } from '../lib/voiced';
 import '../styles/lazy/themetransition.css';
 
 // each Transformer wears their faction's insignia
@@ -14,7 +16,8 @@ const AUTOBOTS = new Set(['optimus', 'bumblebee']);
 // The moment a theme is picked: a short scene in its own style, a line it's
 // known for and an original sound, while the new colours land underneath.
 // `clip` is a recording that plays in place of the sound (cut to its second
-// element, in seconds); `line` is the quote said aloud over the sound.
+// element, in seconds); `line` is the quote said aloud over the sound, or,
+// with no clip of it, `voice` says it (lib/voiced.js).
 // Click, tap or any key skips it. Reduced motion keeps the words, not the motion.
 
 const sfx = () => import('../lib/sfx');
@@ -38,9 +41,9 @@ const SCENES = {
   shockwave: { kind: 'transform', color: '#a855f7', quote: 'Logic dictates only one outcome.', by: 'Shockwave', sound: (s) => s.transform(), clip: ['transform'] },
   soundwave: { kind: 'transform', color: '#4fd8ff', quote: 'Soundwave superior. Autobots inferior.', by: 'Soundwave', sound: (s) => s.transform(), clip: ['transform'], line: 'soundwaveSuperior' },
   portal: { kind: 'portal', color: '#97ce4c', quote: 'Wubba lubba dub dub!', by: 'Rick Sanchez', cue: 'portalOpen', clip: ['wubba'] },
-  morty: { kind: 'portal', color: '#f3d84b', quote: 'Aw geez, Rick.', by: 'Morty Smith', cue: 'portalOpen' },
-  summer: { kind: 'portal', color: '#e2557f', quote: 'Keep Summer safe.', by: 'Rick’s car', cue: 'portalOpen' },
-  beth: { kind: 'portal', color: '#8e2b48', quote: 'I’m a horse surgeon.', by: 'Beth Smith', cue: 'portalOpen' },
+  morty: { kind: 'portal', color: '#f3d84b', ...PORTAL_QUOTES.morty, cue: 'portalOpen' },
+  summer: { kind: 'portal', color: '#e2557f', ...PORTAL_QUOTES.summer, cue: 'portalOpen' },
+  beth: { kind: 'portal', color: '#8e2b48', ...PORTAL_QUOTES.beth, cue: 'portalOpen' },
 };
 
 const LENGTH = { saber: 1700, hud: 1700, pixels: 1500, tiles: 1700, memo: 1800, ripple: 1800, transform: 1800, ring: 2400, portal: 1800, wipe: 1300 };
@@ -178,6 +181,7 @@ export default function ThemeTransition({ id, onDone }) {
       });
     else if (scene.sound || scene.cue) made();
     if (scene.line) import('../lib/clips').then((c) => c.playClip(scene.line, { when: 0.25, keep: true }));
+    else if (scene.voice) sayVoiced(scene.voice, scene.quote); // no clip of it: the speaker's voice, where it's been made
     else if (id === 'raga')
       import('./music/engine').then((m) => {
         m.pluck(1, { vel: 0.8 });
