@@ -78,16 +78,18 @@ export const slug = (s) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
-// An issue form's body ("### what\n\nan X-wing\n\n### faces\n\n_No response_")
-// as the plain "key: value" lines the runners read; any other body as it is.
+// An issue form's body ("### What it is\n\nan X-wing\n\n### Faces\n\n_No response_")
+// as the plain "key: value" lines the runners read, each keyed by its
+// heading's first word; anything before the first heading kept as it is.
 // A multi-line answer whose lines are themselves "key: value" (voices' lines)
 // stays as those lines.
 export function normaliseForm(body = '') {
   if (!/^###\s+\S/m.test(body)) return body;
-  const out = [];
-  for (const section of body.split(/^###\s+/m).slice(1)) {
+  const [before, ...sections] = body.split(/^###\s+/m);
+  const out = before.trim() ? [before.trim()] : [];
+  for (const section of sections) {
     const [head, ...rest] = section.split(/\r?\n/);
-    const key = head.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const key = head.trim().toLowerCase().match(/[a-z0-9]+/)?.[0] ?? '';
     const value = rest.join('\n').trim();
     if (!value || value === '_No response_') continue;
     const lines = value.split(/\r?\n/).filter((l) => l.trim());

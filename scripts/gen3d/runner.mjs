@@ -132,6 +132,15 @@ function serve(root) {
   return { ready, stop: () => p.kill() };
 }
 
+// In an Actions run, what to look at afterwards (the pictures in, the
+// sheet, the log, the outcome) goes where the workflow uploads it from.
+function keep(cache) {
+  if (!process.env.RUNNER_TEMP) return;
+  const to = join(process.env.RUNNER_TEMP, 'gen3d-artifacts');
+  mkdirSync(to, { recursive: true });
+  for (const f of ['sheet.png', 'result.json', 'make.log', 'concept.png', 'from-issue.png', 'given.png']) if (existsSync(join(cache, f))) copyFileSync(join(cache, f), join(to, f));
+}
+
 const stat = (r) =>
   [
     `engine: ${r.engine}, seed ${r.seed}`,
@@ -164,6 +173,7 @@ export async function make(job, root, { log = console.log } = {}) {
     });
   } finally {
     server?.stop();
+    keep(cache);
   }
   const result = existsSync(join(cache, 'result.json')) ? JSON.parse(readFileSync(join(cache, 'result.json'), 'utf8')) : {};
   const stats = stat(result) || readFileSync(join(cache, 'make.log'), 'utf8').trim();

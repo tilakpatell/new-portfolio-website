@@ -27,8 +27,12 @@ describe("an issue's fields", () => {
   it("keeps a form's who: text lines as lines", () => {
     expect(normaliseForm('### only\n\nrick, morty\n\n### lines\n\nrick: Wubba lubba.\nmorty: Aw geez.')).toBe('only: rick, morty\nrick: Wubba lubba.\nmorty: Aw geez.');
   });
-  it('leaves a plain body alone', () => {
+  it('leaves a plain body alone, and keeps what comes before a heading', () => {
     expect(normaliseForm('what: x\nfaces: 3')).toBe('what: x\nfaces: 3');
+    expect(fields('what: a TIE\nprompt: a TIE fighter\n\n### Notes\n\nfor the hangar', ['what', 'prompt'])).toEqual({ what: 'a TIE', prompt: 'a TIE fighter', notes: 'for the hangar' });
+  });
+  it("keys a form's readable headings by their first word", () => {
+    expect(normaliseForm('### What it is\n\na TIE\n\n### Image (a picture to follow)\n\nhttps://x.test/t.png')).toBe('what: a TIE\nimage: https://x.test/t.png');
   });
 });
 

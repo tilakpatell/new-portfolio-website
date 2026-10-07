@@ -46,7 +46,7 @@ export function parseIssue({ number, title, body = '' }) {
     if (!m) continue;
     const [, key, value] = m;
     if (key.toLowerCase() === 'only') only = value.split(/[,\s]+/).map((s) => s.toLowerCase()).filter(Boolean);
-    else if (['what', 'note', 'lines'].includes(key.toLowerCase())) continue;
+    else if (['what', 'note', 'notes', 'lines', 'name', 'why'].includes(key.toLowerCase())) continue;
     else lines.push({ who: key.toLowerCase(), text: value });
   }
   return { number, name, only, lines };

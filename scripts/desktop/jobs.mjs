@@ -12,6 +12,7 @@
 //
 //   node scripts/<p>/runner.mjs --issue N      one job (the Actions workflow, on an issue or a dispatch)
 //   node scripts/<p>/runner.mjs --sweep        every open job (the hourly workflow; --once is the same)
+//   node scripts/<p>/runner.mjs --auto         --issue $JOB_ISSUE when it's set, else --sweep (the workflows)
 //   node scripts/<p>/runner.mjs --watch [60]   sweep every 60 s (by hand; the workflows are the usual way)
 //   node scripts/<p>/runner.mjs --pending      how many jobs are waiting (prints the number)
 //   node scripts/<p>/runner.mjs --enqueue      an issue from the workflow's inputs (INPUT_* in the environment)
@@ -161,6 +162,8 @@ export async function cli(p, argv = process.argv.slice(2), { root: rootFor } = {
     return;
   }
   const root = rootFor();
+  // --auto: the issue the workflow was started for (JOB_ISSUE), else a sweep
+  if (has('--auto') && process.env.JOB_ISSUE) argv = [...argv, '--issue', process.env.JOB_ISSUE];
   if (has('--issue')) {
     const n = Number(val('--issue'));
     if (!n) throw new Error('--issue N');
