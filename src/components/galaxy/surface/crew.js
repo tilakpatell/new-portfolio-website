@@ -37,6 +37,22 @@ export const CREW = {
   shaak: { url: '/models/galaxy/crew/shaak.glb', tall: 1.88 },
   mando: { url: '/models/galaxy/crew/dindjarin.glb', tall: 1.85 },
   wookiee: { url: '/models/cockpit/chewie.glb', tall: 2.28 },
+  // the worlds' people made with Meshy from words (scripts/meshy-galaxy.mjs),
+  // in place of the built ones: Tatooine's Tuskens, Twi'leks, Bib Fortuna,
+  // the Aqualish and Wuher; Bespin's Lando, Lobot and Ugnaughts; the Rebel
+  // troops; Coruscant's Senate guards; the Neimoidians; Mustafar's miners
+  tusken: { url: '/models/galaxy/crew/tusken.glb', tall: 1.9 },
+  lando: { url: '/models/galaxy/crew/lando.glb', tall: 1.78 },
+  twilek: { url: '/models/galaxy/crew/twilek.glb', tall: 1.7 },
+  ugnaught: { url: '/models/galaxy/crew/ugnaught.glb', tall: 1.05 },
+  rebel: { url: '/models/galaxy/crew/rebel.glb', tall: 1.78 },
+  senateguard: { url: '/models/galaxy/crew/senateguard.glb', tall: 1.85 },
+  lobot: { url: '/models/galaxy/crew/lobot.glb', tall: 1.75 },
+  neimoidian: { url: '/models/galaxy/crew/neimoidian.glb', tall: 1.9 },
+  bibfortuna: { url: '/models/galaxy/crew/bibfortuna.glb', tall: 1.8 },
+  aqualish: { url: '/models/galaxy/crew/aqualish.glb', tall: 1.8 },
+  wuher: { url: '/models/galaxy/crew/wuher.glb', tall: 1.78 },
+  mustafarian: { url: '/models/galaxy/crew/mustafarian.glb', tall: 2.0 },
   // and the galaxy's who's who, for the worlds and heroes to come
   maul: { url: '/models/galaxy/crew/maul.glb', tall: 1.75 },
   palpatine: { url: '/models/galaxy/crew/palpatine.glb', tall: 1.73 },
@@ -49,6 +65,10 @@ export const CREW = {
   rodian: { url: '/models/galaxy/crew/rodian.glb', tall: 1.7 },
   inquisitor: { url: '/models/galaxy/crew/inquisitor.glb', tall: 1.85 },
   tiepilot: { url: '/models/galaxy/crew/tiepilot.glb', tall: 1.8 },
+  hondo: { url: '/models/galaxy/crew/hondo.glb', tall: 1.78 },
+  ackbar: { url: '/models/galaxy/crew/ackbar.glb', tall: 1.8 },
+  officer: { url: '/models/galaxy/crew/officer.glb', tall: 1.8 },
+  dooku: { url: '/models/galaxy/crew/dooku.glb', tall: 1.93 },
 };
 
 export async function crewFigure(kind) {
