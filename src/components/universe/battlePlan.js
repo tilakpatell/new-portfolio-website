@@ -13,6 +13,15 @@
 // PLAN.gates, so the shortest battle, however many pilots are in it, is
 // about five minutes.
 //
+// What's in each stage is drawn from a menu (galaxy/battlePlans.js: for each
+// kind of battle a few options a stage, and the films' own pinned where they
+// were), seeded by 'plan-' and the battle's id, so every pilot gets the
+// same plan and two battles of a kind needn't be alike; without a menu
+// it's the classic chain. A drawn plan has side objectives too (bomber
+// waves, aces) and a few of each side's escorts lost along the way, at
+// seeded times (never the ships the objectives are on, nor the films' named
+// ones: their set pieces have parts for them).
+//
 // The runners launch at fixed seconds of the battle (not when you arrive):
 // the last of them out by the clock, and the one that would decide it, if
 // none were lost, out no sooner than 7:30, so neither side's runners have
@@ -20,17 +29,25 @@
 // attacker's net has closed: the AI alone never finishes them (`safe`),
 // though a pilot can.
 //
-// planFor({ id, kind, attacker, objectivesOn, runners, length }) → { id,
-//   kind, length, attacker, defender, ai: { tAi }, stages: [{ id, type,
-//   need?, opensAt, shields?, why?, breaks?, objectives: [{ id, type, kind,
-//   hp, on }] }], runners, side: [], losses: [] }
+// planFor({ id, kind, attacker, objectivesOn, runners, length, … }, menus)
+//   → { id, kind, length, attacker, defender, ai: { tAi }, stages: [{ id,
+//   type, need?, opensAt, shields?, why?, breaks?, crew?, interdicts?,
+//   objectives: [{ id, type, kind, name, hp, on, … }] }], runners, side,
+//   losses: [{ team, index, at }], pinned }
 // (`shields`: the objective ship's shield stands while the stage does;
 // `why`: the battle's end, said, when the last stage goes; `breaks`: the
 // objective ship breaks up when it does; `on`: where the objective is, a
-// subsystem of the objective ship's ({ sub }))
+// subsystem of the objective ship's ({ sub }), one of a ship's batteries
+// ({ turret, ship }), a point by a ship ({ ship, at }: 'objective' or its
+// place in the defender's line, `at` in shares of its length), a point in
+// the battle ({ field: [toward the defender's line in its lines' lengths,
+// across, toward the planet] }), on the planet below ({ planet }) or a set
+// piece's own ({ piece }))
 // `runners`: layBattle's ({ team, kind, size, hp, count, need, speed,
 // route (its way, as points), from, to }), or null. runnerSchedule({ count, need, duration, length }) →
 // { startAt, every }.
+
+import { seededRand } from './battleKit';
 
 export const PLAN = {
   length: 600,
@@ -53,16 +70,35 @@ export function runnerSchedule({ count, need, duration, length = PLAN.length }) 
 }
 
 const stage = (id, type, opensAt, objectives, more = {}) => ({ id, type, opensAt, objectives, ...more });
-const sub = (id, kind, hp) => ({ id, type: 'destroy', kind, hp, on: { sub: id } });
+const sub = (id, kind, name, hp, type = 'destroy') => ({ id, type, kind, name, hp, on: { sub: id } });
 
 // the flagship's chain (or the Interdictor's)
 function chainOf(objectivesOn) {
   const [gens, bridge, reactor] = PLAN.stageHp;
   return [
-    stage('shield', 'group', PLAN.gates[0], [sub('gen-port', 'shieldgen', gens / 2), sub('gen-star', 'shieldgen', gens / 2)], { need: 2, shields: true }),
-    stage('bridge', 'destroy', PLAN.gates[1], [sub('bridge', 'bridge', bridge)]),
-    stage('reactor', 'destroy', PLAN.gates[2], [sub('reactor', 'reactor', reactor)], { why: objectivesOn === 'interdictor' ? 'interdictor' : 'flagship', breaks: true }),
+    stage('shield', 'group', PLAN.gates[0], [sub('gen-port', 'shieldgen', 'Shield generator', gens / 2, 'group'), sub('gen-star', 'shieldgen', 'Shield generator', gens / 2, 'group')], { need: 2, shields: true }),
+    stage('bridge', 'destroy', PLAN.gates[1], [sub('bridge', 'bridge', 'Bridge', bridge)]),
+    stage('reactor', 'destroy', PLAN.gates[2], [sub('reactor', 'reactor', 'Reactor', reactor)], { why: objectivesOn === 'interdictor' ? 'interdictor' : 'flagship', breaks: true }),
   ];
+}
+
+// a few of each side's escorts lost along the way, at seeded times: not the
+// ships the objectives are on, nor the ones with names (the films' ships:
+// their set pieces have parts for them)
+function lossesOf(c, stages, rand, length) {
+  const used = new Set();
+  for (const s of stages) for (const o of s.objectives) if (typeof o.on?.ship === 'number') used.add(o.on.ship);
+  const objective = c.objectivesOn === 'interdictor' ? c.capitals[c.defender].findIndex((x) => x.kind === 'interdictor') : 0;
+  const out = [];
+  for (const team of [0, 1]) {
+    const free = (c.capitals[team] ?? []).map((cap, i) => ({ cap, i })).filter(({ cap, i }) => cap.role === 'escort' && !cap.name && !(team === c.defender && (used.has(i) || i === objective)));
+    const n = Math.min(Math.max(0, free.length - 1), Math.floor(rand() * 3));
+    for (let k = 0; k < n; k++) {
+      const [{ i }] = free.splice(Math.floor(rand() * free.length), 1);
+      out.push({ team, index: i, at: Math.round(150 + rand() * (length - 160)) });
+    }
+  }
+  return out.sort((a, b) => a.at - b.at);
 }
 
 // how long a way of points is
@@ -73,21 +109,27 @@ function runnersOf(r, attacker, length) {
   const route = r.route ?? [r.from, r.to];
   const duration = lengthOf(route) / r.speed;
   const { startAt, every } = runnerSchedule({ count: r.count, need: r.need, duration, length });
-  return { team: r.team, kind: r.kind, size: r.size, hp: r.hp, count: r.count, need: r.need, speed: r.speed, route, duration, startAt, every, luck: PLAN.luck[r.team === attacker ? 'attacker' : 'defender'], safe: r.need - 1 };
+  // (as the attacker sees them: their own to escort, or the defender's to stop)
+  const type = r.team === attacker ? 'escort' : 'intercept';
+  return { type, team: r.team, kind: r.kind, size: r.size, hp: r.hp, count: r.count, need: r.need, speed: r.speed, route, duration, startAt, every, luck: PLAN.luck[r.team === attacker ? 'attacker' : 'defender'], safe: r.need - 1 };
 }
 
-export function planFor({ id, kind = 'assault', attacker = 0, objectivesOn = 'flagship', runners = null, length = PLAN.length }) {
+export function planFor(input, menus = null) {
+  const { id, kind = 'assault', attacker = 0, objectivesOn = 'flagship', runners = null, length = PLAN.length } = input;
   const run = runnersOf(runners, attacker, length);
-  return {
-    id,
-    kind,
-    length,
-    attacker,
-    defender: 1 - attacker,
-    ai: { tAi: run ? PLAN.tAiRunners : PLAN.tAi },
-    stages: chainOf(objectivesOn),
-    runners: run,
-    side: [],
-    losses: [],
-  };
+  const plan = { id, kind, length, attacker, defender: 1 - attacker, ai: { tAi: run ? PLAN.tAiRunners : PLAN.tAi }, stages: chainOf(objectivesOn), runners: run, side: [], losses: [], pinned: null };
+  if (!menus) return plan;
+  // drawn from the menu: a stage at a time, each from the options that fit
+  const rand = seededRand(`plan-${id}`);
+  const c = { ...input, attacker, defender: 1 - attacker, objectivesOn, length, rand };
+  const menu = menus.pinned?.(c) ?? menus[kind] ?? menus.assault;
+  plan.stages = menu.stages.map((options, index) => {
+    const at = { ...c, index, budget: PLAN.stageHp[index], opensAt: PLAN.gates[index] };
+    const fits = options.map((make) => make(at)).filter(Boolean);
+    return { ...fits[Math.floor(rand() * fits.length)], opensAt: PLAN.gates[index] };
+  });
+  plan.side = menus.side?.(c) ?? [];
+  plan.losses = menu.losses === false || !c.capitals ? [] : lossesOf(c, plan.stages, rand, length);
+  plan.pinned = menu.id ?? null;
+  return plan;
 }

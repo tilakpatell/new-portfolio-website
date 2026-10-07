@@ -188,6 +188,13 @@ const GCW_TEMPLATES = {
     fighters: { light: FIGHTERS.rebel, dark: FIGHTERS.empire },
     ace: { light: { kind: 'ghost', name: 'The Ghost (Hera Syndulla)', hp: 30 } },
   },
+  // where A New Hope opens: the Devastator runs down the Tantive IV over Tatooine
+  tatooine: {
+    name: 'The Battle of Tatooine',
+    light: { flagship: ship('moncal'), escorts: [ship('corvette', 'Tantive IV'), ship('corvette'), ship('nebulon'), ship('hammerhead')] },
+    dark: { flagship: ship('destroyer', 'Devastator'), escorts: [ship('lightcruiser'), ship('destroyer'), ship('gozanti'), ship('gozanti')] },
+    fighters: { light: FIGHTERS.rebel, dark: FIGHTERS.empire },
+  },
   coruscant: {
     name: 'The Battle of Coruscant',
     light: { flagship: ship('moncal', 'Home One', 26), escorts: [ship('moncal'), ship('moncal'), ship('nebulon'), ship('hammerhead'), ship('corvette'), ship('corvette')] },

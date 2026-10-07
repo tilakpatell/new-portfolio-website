@@ -240,6 +240,7 @@ export const FIGHTERS = {
   tiebomber: F({ size: 0.38, speed: 15, turn: 1.7, hp: 9, reload: 1.2 }),
   uwing: F({ size: 0.5, speed: 17, turn: 1.9, hp: 8 }),
   tieadvanced: F({ size: 0.32, speed: 23, turn: 3, hp: 8, burst: [0.1, 0.5] }),
+  tiedefender: F({ size: 0.34, speed: 26, turn: 3.1, hp: 10, burst: [0.09, 0.45] }), // (the Remnant's ace's: galaxy/battlePlans.js)
   // (and the galaxy's other wars': the Clone Wars' droids and clones, the
   // Hutts' Weequay skiffs, the Ghost with Hera at the controls)
   vulture: F({ size: 0.3, speed: 21, turn: 2.6, hp: 3, reload: 1.4 }),
@@ -275,6 +276,7 @@ export const NAMES = {
   tiebomber: 'TIE bomber',
   uwing: 'U-wing',
   tieadvanced: 'TIE Advanced',
+  tiedefender: 'TIE Defender',
   vulture: 'Vulture droid',
   trifighter: 'Droid tri-fighter',
   arc170: 'ARC-170',
