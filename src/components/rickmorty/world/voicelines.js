@@ -6,9 +6,9 @@
 // is made again.
 //
 // RmWorld shows a line with the speaker's name, not their voice, so it asks
-// lineVoice(text) whose voice a line is in; a line that isn't anybody's
-// (what Morty sees, a hiss, a gesture in brackets) has none, and stays a
-// caption.
+// lineSaid(text) whose voice a line is in, and what of it they say; a line
+// that isn't anybody's (what Morty sees, a hiss, a gesture in brackets) has
+// none, and stays a caption.
 
 import { spoken } from '../../../lib/voiced';
 import { DESTINATIONS } from './dimensions/destinations';
@@ -62,6 +62,8 @@ export const VOICE = {
   phoenixperson: 'birdperson',
   unity: 'unity',
   // Fantasy World, the Microverse, Anatomy Park, Needful Things, the Jerryboree, the Purge Planet
+  // (and the Zigerions' simulation: somebody above you, by the painted sun)
+  sun: 'zigerion',
   fmeeseeks: 'meeseeks',
   kingjellybean: 'kingjellybean',
   zeep: 'zeep',
@@ -140,6 +142,7 @@ export const VOICE = {
   goldenfold: 'goldenfold',
   scaryterry: 'scaryterry',
   dreambed: 'scaryterry',
+  dreamclock: 'scaryterry',
   jaguar: 'jaguar',
   picklerick: 'rick',
   pickle: 'rick',
@@ -149,6 +152,22 @@ export const VOICE = {
   vrick: 'rick',
   'vgromflomite-a': 'gromflomite',
   drick: 'rick',
+  // Mr. Frundles' Earth: the family, and Rick at the portal
+  frick: 'rick',
+  fsummer: 'summer',
+  fbeth: 'beth',
+  fjerry: 'jerry',
+};
+
+// A look that quotes two people says only one of them aloud, the one in this
+// voice: which of its quotes (0 the first) is theirs. Fart thanking Morty
+// (Krombopulos Michael's "Oh boy" is only read), the Cromulon's verdict
+// (Morty's singing is only read), and Rick at the bottom of the vat (the
+// Gromflomites' "gross" is only read).
+export const QUOTE_VOICE = {
+  fartcell: ['fart', 0],
+  mic: ['cromulon', 1],
+  vatrim: ['rick', 1],
 };
 
 // Whose voice a place's own lines are in, where someone says them aloud: its
@@ -159,6 +178,7 @@ export const PLACE_VOICE = {
   squanch: { caught: 'gromflomite' },
   simulation: { caught: 'zigerion' },
   fortress: { caught: 'rick' },
+  frundles: { caught: 'rick' },
   nimbus: { caught: 'atlantean' },
   gromflomites: { caught: 'gromflomite' },
   blooddome: { caught: 'deathstalker' },
@@ -169,13 +189,19 @@ export const PLACE_VOICE = {
 
 // narration says what's said in quotes (lib/voiced.js's spoken)
 const quoted = (text) => typeof text === 'string' && text.includes('“');
+// each of them, on its own
+const quotes = (text) => [...text.matchAll(/“([^”]+)”/g)].map((m) => m[1].trim());
 
 function lines() {
   const out = [];
-  // (a line that's all brackets, a gesture, says nothing)
-  const add = (who, text) => who && typeof text === 'string' && spoken(text) && out.push({ who, text });
+  // (`said`, what's said aloud of it, where that's one of its quotes, not all of them;
+  // a line that's all brackets, a gesture, says nothing)
+  const add = (who, text, said = text) => who && typeof text === 'string' && typeof said === 'string' && spoken(said) && out.push({ who, text, said });
   // what they say when he talks to them (what's only seen is nobody's, unless it quotes someone)
-  for (const [id, l] of Object.entries(SAY)) if (l.who || quoted(l.text)) add(VOICE[id], l.text);
+  for (const [id, l] of Object.entries(SAY)) {
+    if (QUOTE_VOICE[id]) add(QUOTE_VOICE[id][0], l.text, quotes(l.text)[QUOTE_VOICE[id][1]]);
+    else if (l.who || quoted(l.text)) add(VOICE[id], l.text);
+  }
   add('rick', ROOMS_SAY.won.text); // (a recording of him, drunk)
   // the street's walkers, and every place's people and crowd as he goes by
   for (const p of PEOPLE) for (const t of p.ai?.bark?.lines ?? []) add(VOICE[p.id], t);
@@ -196,9 +222,14 @@ function lines() {
 }
 
 const PEOPLES = lines();
-const BY_TEXT = new Map(PEOPLES.map((l) => [l.text, l.who]));
+const BY_TEXT = new Map(PEOPLES.map((l) => [l.text, l]));
 
 // whose voice a line shown in a toast is in, or null if it's nobody's
-export const lineVoice = (text) => BY_TEXT.get(text) ?? null;
+export const lineVoice = (text) => BY_TEXT.get(text)?.who ?? null;
+// and what of it they say, as it goes to sayVoiced: { who, text }, or null
+export const lineSaid = (text) => {
+  const l = BY_TEXT.get(text);
+  return l ? { who: l.who, text: l.said } : null;
+};
 
-export const VOICELINES = [...PEOPLES, ...Object.values(SHIP_LINES).flatMap((ls) => ls.map((text) => ({ who: SHIP_VOICE, text })))];
+export const VOICELINES = [...PEOPLES.map(({ who, said }) => ({ who, text: said })), ...Object.values(SHIP_LINES).flatMap((ls) => ls.map((text) => ({ who: SHIP_VOICE, text })))];

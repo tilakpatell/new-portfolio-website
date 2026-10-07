@@ -10,6 +10,8 @@ import { useAchievements } from '../components/Achievements';
 import Comms from '../components/universe/Comms';
 import Online from '../components/universe/online/Online';
 import { useOnline } from '../components/universe/online/useOnline';
+import EarnNote from '../components/universe/EarnNote';
+import { useEarn } from '../components/universe/useEarn';
 import { FIRST, parseSystem, systemById } from '../components/galaxy/systems';
 import { canLand } from '../components/galaxy/surface/sites';
 import galaxyModule from '../components/galaxy/module';
@@ -57,13 +59,46 @@ export default function Galaxy() {
   const sys = systemById(current);
   useDocumentTitle(`${sys.name} · A galaxy far, far away`);
   const reduced = useReducedMotion();
-  const view = useRef({ live: false, jump: () => false, goTo: () => false, escape: () => false, dive: () => false, host: () => null });
+  const view = useRef({ live: false, jump: () => false, goTo: () => false, flyTo: () => false, escape: () => false, dive: () => false, host: () => null });
   const comms = useRef(null);
   const [ship, setShip] = useState(() => parseShip(local.get(SHIP_KEY)));
   const crew = crewById(ship);
   const online = useOnline();
   const { setKind, setLoadout, setBuild: tellBuild } = online;
   useEffect(() => setKind(ship), [setKind, ship]);
+  // flying to another pilot in this system (the roster's “Fly to”, or its
+  // “Go” from another page: useOnline's follow): once the ship's in and
+  // they're flying here in sight, the autopilot takes it to them (the
+  // scene's flyTo). Tried till it goes; the trip's end, or the follow's
+  // own minute, forgets it. The HUD's line says how it ended: the name is
+  // React's text, never markup
+  const { followId, follow } = online;
+  const followRef = useRef(null); // the pilot whose trip is under way
+  const [pilotNote, setPilotNote] = useState(null);
+  const noteTimer = useRef(0);
+  useEffect(() => () => clearTimeout(noteTimer.current), []);
+  const notePilot = useCallback((text) => {
+    clearTimeout(noteTimer.current);
+    setPilotNote(text);
+    noteTimer.current = setTimeout(() => setPilotNote(null), 3500);
+  }, []);
+  useEffect(() => {
+    if (!followId || !ship) return undefined;
+    const go = () => {
+      if (followRef.current === followId) return true;
+      if (!view.current.live || !view.current.flyTo(followId)) return false;
+      followRef.current = followId;
+      return true;
+    };
+    if (go()) return undefined;
+    const t = setInterval(() => go() && clearInterval(t), 500);
+    return () => clearInterval(t);
+  }, [followId, ship]);
+  useEffect(() => {
+    if (!followId) followRef.current = null;
+  }, [followId]);
+  // the wallet (economy.js): the war's points and wins pay into it, and an alliance made
+  const { pay, note: earned } = useEarn({ client: online.client });
   // the ship as it's fitted in the universe map's hangar: its paint and parts
   const { unlocked, unlock } = useAchievements();
   // the oath (allegiance.js): which war you fight in and the side you swore
@@ -74,6 +109,7 @@ export default function Galaxy() {
   const keepOath = useCallback((next) => {
     setOathKept(next);
     local.set(SIDE_KEY, next);
+    window.dispatchEvent(new Event('tp:oath')); // (your hello says it: useOnline.js)
   }, []);
   const onSwear = useCallback(
     (side) => {
@@ -251,6 +287,17 @@ export default function Galaxy() {
   // what the scene says: to the comms, and to the page
   const onEvent = useCallback(
     (e) => {
+      if (e.type === 'earn') {
+        pay(e.what, e.n, e.side ?? 'galaxy');
+        return;
+      }
+      // a trip to a pilot over: with them, gone, or given up; the follow's done
+      if ((e.type === 'arrived' || e.type === 'lost') && typeof e.id === 'string' && e.id.startsWith('pilot:')) {
+        if (e.type === 'lost') notePilot(`${e.name ?? 'They'} ${e.name ? 'has' : 'have'} gone`);
+        else if (e.done) notePilot(`With ${e.name ?? 'them'}`);
+        if (followRef.current && e.id === `pilot:${followRef.current}`) follow(null);
+        return;
+      }
       if (e.type === 'dove') {
         dove.current?.();
         dove.current = null;
@@ -320,7 +367,7 @@ export default function Galaxy() {
       }
       comms.current?.handle(e);
     },
-    [current, leave, navigate, land, unlock, crew],
+    [current, leave, navigate, land, unlock, crew, pay, notePilot, follow],
   );
   const onArrive = useCallback(
     (id) => {
@@ -384,6 +431,12 @@ export default function Galaxy() {
         oath={oath}
       />
       {crew && <Comms control={comms} crew={galaxyCrew(crew)} reduced={reduced} />}
+      <EarnNote note={earned} />
+      {pilotNote && !leaving && (
+        <p className="universe-prompt galaxy-note" data-on="" data-plain="" role="status">
+          {pilotNote}
+        </p>
+      )}
       {!leaving && <Online online={online} ship={ship} />}
       <GalaxyPanel
         system={sys}

@@ -1427,7 +1427,7 @@ describe('C-137: the things to touch', () => {
   it('lets Morty walk from the way in to the way out of every room', () => {
     for (const id of ROOM_IDS) expect(canWalk(id, link(WAY_IN[id]).arrive, link(WAY_OUT[id]), link(WAY_OUT[id]).r), id).toBe(true);
     expect(canWalk('garage', link('annex-portal').arrive, link('garage-exit'), 0.9)).toBe(true);
-    expect(canWalk('garage', link('garage-door').arrive, link('garage-portal'), 1.4)).toBe(true);
+    expect(canWalk('garage', link('garage-door').arrive, link('garage-portal'), link('garage-portal').r)).toBe(true);
     // the garage's kitchen door, in from the kitchen and back
     expect(canWalk('garage', link('kitchen-garage').arrive, link('garage-exit'), 0.9)).toBe(true);
     expect(canWalk('garage', link('garage-door').arrive, link('garage-kitchen'), 0.9)).toBe(true);

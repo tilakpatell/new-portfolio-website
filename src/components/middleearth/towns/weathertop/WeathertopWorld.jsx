@@ -3,6 +3,7 @@ import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../../lib/voiced';
 import { readPad, typing } from '../../../games/pad';
 import { stepGaze } from '../../shire/rules';
 import { Bubble, Convo, QuestList, Stick, Travellers } from '../TownHud';
@@ -13,7 +14,7 @@ import { nearest } from '../story';
 import { newTalk, talkNode, talkOn } from '../talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { BED, COLLIDERS, DELL, GAPS, HILL, PATCHES, PLANTS, RUIN, SAM_START, SPOTS, START, STAIR, WALLS, WORLD, castFor, spot, validAt } from './layout';
-import { CONVOS, QUESTS, SEAL, SPEAKERS, weathertopProgress } from './story';
+import { CONVOS, QUESTS, SAYS, SEAL, SPEAKERS, weathertopProgress } from './story';
 import { ATHELAS, BRAND, FIRE, MARK, MARK_LINES, READINGS, RIDE, SIDE, newBrand, newFire, newHunt, newMark, newRide, pick, pickable, readMark, revealed, scrape, stamp, stampable, stepBrand, stepFire, stepHunt, stepRide, thrust } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
@@ -150,7 +151,12 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   const [list, setList] = useState(false);
   const lines = useRef({});
   const bubbleRef = useRef(null);
-  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  // a toast; and `who`, whose words are in it, says them (lib/voiced.js)
+  const say = useCallback((text, bad = false, who = null) => {
+    setToast({ text, bad, at: Date.now() });
+    if (who) sayVoiced(who, text);
+  }, []);
+  useEffect(() => stopVoiced, []);
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -390,7 +396,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       api.current?.fx('out');
       complete('supper');
       s.fire = null;
-      say('Out, every last ember. Pippin: “Oh, that’s nice! Ash on my tomatoes!”');
+      say(SAYS.tomatoes.text, false, SAYS.tomatoes.who);
       later(() => {
         shriek();
         say('A scream, out of the dark below. They’ve seen it. They’re coming up the hill! Get to the top, to the ruin!', true);
@@ -641,7 +647,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     if (s.hunt && s.mode === 'walk') {
       for (const e of stepHunt(s.hunt, dt)) {
         if (e.type === 'cold') {
-          say('Frodo’s gone so cold. Strider: “Sam! Quickly!” Start again, and hurry.', true);
+          say(SAYS.cold.text, true, SAYS.cold.who);
           s.hunt = newHunt();
           s.found = [];
         }

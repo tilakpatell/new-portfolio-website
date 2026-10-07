@@ -10,7 +10,8 @@ export const VOICELINES = [
   ...Object.values(BUTTER)
     .filter((s) => s.who)
     .map((s) => ({ who: s.who, text: s.line })),
-  ...[...MEESEEKS.stress, MEESEEKS.letGo].map((line) => ({ who: 'meeseeks', text: aloud(line) })),
+  // (a task done but turning the site green: that's the portal theme's to say)
+  ...[...MEESEEKS.stress, MEESEEKS.letGo, MEESEEKS.done.top, MEESEEKS.done.shake].map((line) => ({ who: 'meeseeks', text: aloud(line) })),
   ...CHANNELS.map((c) => ({ who: c.who, text: c.line })),
   ...Object.values(PORTAL_QUOTES).map((q) => ({ who: q.voice, text: q.quote })),
 ];

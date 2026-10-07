@@ -211,6 +211,58 @@ export const BRIEFS = {
     },
     help('the Death Star'),
   ],
+  '/deathstar/inside': [
+    {
+      id: 'hello',
+      title: 'Aboard the Death Star',
+      text: 'Both battle stations, walked room by room. Pick a station and a side: a Rebel in borrowed armour, or an Imperial serving aboard.',
+    },
+    {
+      id: 'walk',
+      title: 'Walking',
+      text: 'Click the station to take the pointer, and the mouse turns your head. Doors open as you come near.',
+      keys: [
+        ['W A S D / ← ↑ ↓ →', 'Walk'],
+        ['Shift', 'Run'],
+        ['Mouse', 'Look'],
+        ['E', 'Use: lifts, consoles, people'],
+        ['V', 'Third or first person'],
+      ],
+      touch: [
+        ['Stick', 'Walk'],
+        ['Drag', 'Look'],
+        ['Use', 'Lifts, consoles, people'],
+      ],
+    },
+    {
+      id: 'fight',
+      title: 'Blasters',
+      text: 'Bolts fly, and stop at walls. Your gun heats as you fire; let it get too hot and it vents, so vent it yourself first.',
+      keys: [
+        ['Click', 'Fire'],
+        ['Right-click', 'Aim'],
+        ['R', 'Vent the gun'],
+      ],
+      touch: [
+        ['Fire', 'Shoot'],
+        ['Aim', 'Hold to aim'],
+      ],
+    },
+    {
+      id: 'objective',
+      at: 'ds-objective',
+      title: 'What to do',
+      text: 'Your objective is up here. Follow the story, or roam the station free: the story waits for you.',
+    },
+    {
+      id: 'map',
+      at: 'ds-map',
+      title: 'The map',
+      text: 'The station’s blueprint, filled in as you see each room.',
+      keys: [['M / Tab', 'Open the map']],
+    },
+    help('the station'),
+  ],
   '/caribbean': [
     {
       id: 'hello',
@@ -485,7 +537,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Dimension C-137',
-      text: 'The Smiths’ street in 3D, as Morty, with Rick’s cruiser in the garage and a portal to everywhere.',
+      text: 'The Smiths’ street in 3D, as Morty, with Rick’s cruiser in the driveway and his portal gun on the garage bench.',
     },
     {
       id: 'walk',
@@ -508,7 +560,11 @@ export const BRIEFS = {
     {
       id: 'goal',
       title: 'Where to start',
-      text: 'Set the portal gun’s dial on Rick’s bench in the garage and the portal goes there: thirty-six places from the show. Or take the cruiser up (E by it).',
+      text: 'The portal gun’s on Rick’s bench in the garage: dial Blips and Chitz or one of twenty-six places from the show, then step through the portal on the west wall. Or take the cruiser up (E by it). The show’s planets are on the universe map: land on one and you’re in it.',
+      keys: [
+        ['E', 'The portal gun, at Rick’s bench'],
+        ['P', 'The portal gun, from anywhere'],
+      ],
     },
     help('C-137'),
   ],
@@ -615,7 +671,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Minecraft',
-      text: 'A fan tribute: an endless world of blocks made from a seed, drawn in the game’s own textures.',
+      text: 'Minecraft itself, 1.12.2 and 1.8.8, behind a password; and for everyone, a tribute built here: an endless world of blocks made from a seed.',
     },
     {
       id: 'walk',

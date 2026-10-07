@@ -119,9 +119,9 @@ Left for a later task:
 - In the city the HUD's Height counts from the river bed (`InvWorld.jsx:573`; `groundAt` is −8 there). `river` reads 33 m at y 25, which is 27.5 m over the water. It wants `Math.max(groundAt, WATER_Y)`, as `:56` has. Task 3.
 - Compass labels butt up against the cardinals (“Burger MartW”, “GDAN”), a label can sit up to 48 px off its dot (`porch`'s Graysons'), and a mark whose label won't fit is a bare dot (`rings`, `photo`). Task 3, `layoutCompass`'s second row.
 - The site's “Achievement unlocked” toast covers the HUD's bottom centre (`boost`). Task 3.
-- Bolts hit a point. They no longer tunnel through a hovering hero, but one meeting a hero flat out head-on can still pass through. Task 7, `foes.js`.
-- The Flaxan portal's swirl has a horizontal seam across its left half (`flaxans.js`, the `fight` shot). Task 7, `villains.js`.
-- The `fight` shot shows the portal and “12 left” but no Flaxans: with `dt` clamped, `sim.speedup` no longer fast-forwards them. Task 7's `fight` shot should wait on `sim.fight` (a foe in the `fight` state), not on 9 s.
+- Bolts hit a point. They no longer tunnel through a hovering hero, but one meeting a hero flat out head-on can still pass through. Done in Task 7, `foes.js`.
+- The Flaxan portal's swirl has a horizontal seam across its left half (`flaxans.js`, the `fight` shot). Done in Task 7, `villains.js`.
+- The `fight` shot shows the portal and “12 left” but no Flaxans: with `dt` clamped, `sim.speedup` no longer fast-forwards them. Done in Task 7: the shot waits on `sim.foes`.
 - The person he carries isn't drawn in space, because the whole challenges group is hidden there. Task 9, `challenges.js`.
 - Dad's “lesson lost” comes on Mark's first step back in the city, not as he leaves. Task 6.
 - `eve`: Mark is whole now, but Eve is behind a tower and only her balloon shows. Task 6, with its `eve` shot.
@@ -149,12 +149,113 @@ Eight new shots frame where Task 9's missions will be. Nothing is started yet. N
 
 `chase` is dark even at noon: it's a street between glass towers. Place shots now take `pitch`. Follow shots take `side` (how far he sits to the right of the target) and `turn` (added to the target's heading; 0.5 by default).
 
+### Task 2: seeing Mark and the city (2026-10-07)
+
+- `people.js` `castMaterial(root, { rim, floor })` gives every figure one finish: matte (roughness 0.78, no metal, env 0.2), the colour map's saturation lifted 10 %, and a cool Fresnel rim on a shared uniform (`setCastRim`, set by the scene's time of day: 0.35 noon, 0.7 dusk, 1.2 night). It chains onto any `onBeforeCompile` already on a material and keys its program cache. Mark's near-black texels are raised to a navy floor (`SUIT.floor` 0x2a3754), so his arms and legs stay on a dark street or at night.
+- A spotlight follows him from over the camera's shoulder (no shadow; 0 at noon, 20 at dusk, 45 at night). The camera hovering or standing sits 3.6 m back (it was 5.2 standing and 6.5 hovering), his feet about a third of the way up the frame; at speed the pull-back is as it was.
+- `LOOK.noon`: sun 4.2, fill 0.3, env 1.15. The fog's colour comes from the sky photo's horizon (`sky.js` `skyBands`, once per photo), which fixed the bleached hills: the house look had been fogging everything to a fixed cream.
+- Noon windows are a lighter, sky-reflecting pane above the lowest two storeys; dusk and night window light is up 20 %. Street lines widen with distance up to 2× so the grid reads from height; the river and the coast have a bright edge; the five places have a faint beacon by day, bright by night.
+
+Metrics (`--metrics`; targets: band 0.30–0.65 noon, 0.12–0.35 night; mark ≥ 0.18):
+
+| Shot | Band before | Band after | Mark before | Mark after |
+|---|---|---|---|---|
+| spawn | 0.498 | 0.618 | 0.167 | 0.199 |
+| street | 0.365 | 0.491 | 0.047 | 0.161 |
+| streetnight | 0.172 | 0.210 | 0.015 | 0.203 |
+| downtown | 0.316 | 0.521 | 0.044 | 0.025 |
+| high | 0.442 | 0.488 | 0.041 | 0.020 |
+| porch | 0.506 | 0.623 | 0.126 | 0.189 |
+
+Every band is in range, and Mark passes in spawn, streetnight and porch. He misses in street, downtown and high, where he hangs over towers and grid whose mean grey is close to his: the measure compares mean luminance only, and a yellow and blue figure on grey-blue towers averages out the same while reading plainly to the eye (he is about a third of the frame tall and clearly picked out in each of those shots). Not forced further: the suit would have to go pale. A colour-difference measure would judge these better.
+- Low tier, triangles: plaza 1.47 M, boost 1.33 M, dusk and night 1.33 M; within the 1.5 M budget.
+
+### Task 3: the HUD (2026-10-07)
+
+- `hud.js` (tested) decides where things go: `layoutCompass` (names at least 72 px apart, a second row under the dots for those that would touch, half a gap clear of the headings, none where the buttons overlap the strip's right end, off-strip marks clipped to a side), `titleMode` (the title becomes a chip 2.5 s after he first moves, or at once when there's an objective), `objectiveText` (metres under 1 km, then kilometres) and `markerSize` (for Task 9's 3D marker; never under 24 px).
+- `InvHud.jsx` holds the HUD's markup, out of `InvWorld.jsx`; the frame loop still writes into its elements directly through `hud`.
+- The four top buttons are now a time chip (the one place the time of day is read) and one Menu (time of day, controls, other players, Think, Mark!), which closes on a click elsewhere or Escape.
+- The objective line sits under the compass, centred. The gauge shows the zone (City under 300 m, Sky above, Space). The map is 200 px on desktop and 140 px on phones, where it sits under the objective line.
+- `--iw-under` (the bottom of the buttons, however they wrap) is now set on the stage, so the compass, the objective line and the phone's map all follow it.
+- Not done here: the 3D chevron over a target and the route on the map, which wait on missions (Task 9).
+
+### Task 5: the crowd's brains (2026-10-07)
+
+- `brains.js` (tested) gives each townsperson a brain. The states are idle, chat, wander, look, wave, gather, flee and cheer.
+  - wander: a few steps; a passer-by keeps to their pavement, within 20 m of home.
+  - look: when Mark is within 30 m.
+  - wave: when he hangs within 15 m (not again for 20 s).
+  - gather: when he lands within 25 m. They walk to 6 m from him, face him with phones up, and leave after 12 s or when he takes off.
+  - flee: from a slam, an impact, a low boom or a knock-out within 40 m. They run at 4 m/s for 6 s and stay frightened for 20 s, so they don't come and gawp.
+  - cheer: 4 s, when a fight within 80 m is won.
+  - Each step is at most 0.05 s, so a hidden tab is one short step.
+- `npcs.js` steps a brain for each person at Burger Mart, the school steps and the plaza (three groups), moves and turns them from it, and poses them from `poseOf` (their motion-captured clips). The manager keeps his arms folded when idle. Debbie and Cecil keep their own ways.
+- Who is out goes by the time of day (`crowdCount`): all at noon, 70 % at dusk, 35 % at night, and nobody on the school steps at night.
+- `scene.js` passes the crowd what happened in the frame (slam, knock-out, won, the time). Cars within 60 m of a fight's knock-outs and hits back away at 4 m/s for 3 s (`traffic.js`'s `reverse` scare, tested).
+- New shots: `plazanight`, `burgernight`, `schoolnight`.
+
+### Task 6: Eve and Dad (2026-10-07)
+
+- `companions.js` (tested) holds their rules. Each step is at most 0.05 s.
+  - Eve patrols her loop round downtown, over the towers on it (20 m above the highest roof within 30 m, a little before she gets there; she never flies into one).
+  - When Mark hangs still within 300 m of her for 4 s, she comes over to 6 m from him with a line. She waits 45 s at most, then flies on, and won't come again until he's been off past 300 m.
+  - When he flies off from beside her, she holds 8 m off his left for 40 s, then goes back to her loop.
+  - A foe still standing within 400 m: she goes for it and knocks one out every 8 s (`fight.js` takes her `eveHit` and knocks that foe out, `by: 'eve'`).
+  - E beside her: she stops, says a line and waits 5 s.
+  - Dad watches over downtown by day. At the rings he follows 50 m behind and 20 m above Mark, with a word at each of the first three rings (the first too, though the lesson starts once Mark is through it), and a hurry-up every 30 s past 90 s. At dusk and night he stands on the porch beside Debbie. In the last episode (`mission: 'ep7'`, Task 9) he leads the spar through his points, waiting at each until Mark is within 20 m.
+- `npcs.js` steps Eve from these rules; `scene.js` steps Dad and passes both the live foes, the lesson, the time and an E press for Eve. What they say and do goes in `sim.companion`; `InvWorld.jsx` speaks the lines (in their voices where a recording exists) and gives Eve's blow to the next fight step.
+- `api.debug.dad(p, dir)` reads Dad's rules, or puts him at `p`. New shot: `porchdusk`; `dadlesson` now starts the lesson and frames Dad behind Mark; `eveescort` frames Eve off his left.
+
+### Task 7: the villains (2026-10-07)
+
+- `fight.js` and `flaxans.js` are gone. `foes.js` (tested, 26 cases, the Flaxan tests moved as they were) holds every villain's rules, and `villains.js` draws them. The state is `newFoes(seed)`; `spawnFoes(state, kind, n, at)` adds some; `startInvasion` is the Flaxans' dozen through the portal as before; `stepFoes(state, hero, { punch, look, eveHit }, dt, { cars })` has `stepFight`'s shape (`push`, `stun`, and the events), so `InvWorld.jsx`'s handling of a knock and a stun is unchanged. `portalOpen`, `foeAt`, `standing` and `anyOf` read it.
+  - `flaxan` as before; `flaxanElite` takes two blows and fires three bolts at once, fanned, for 16.
+  - `mauler` (2.6 m, on the ground): runs at Mark at 8 m/s when he is on the ground or under 6 m up and stops 2 m short; within 3 m a swing every 1.4 s, a 0.4 s wind-up, 18 and a knock of 10 m; with Mark 6 m up and out of reach within 60 m, a car from the traffic within 30 m (held 0.6 s over his head, thrown at 35 m/s, 22 on a hit) or one off the street when none is near; a punch sends a car back, and a Mauler in its way takes the blow. Three blows knock one out, with a 0.8 s stagger at each before; a ram over 45 m/s too.
+  - `seismic` (Doc Seismic): drifts round a 30 m circle 20 m over his `at`, quakes every 6 s (a ring out along the ground at 30 m/s to 160 m, a `floored` knock-down for a hero standing on it, and a `shake` the camera takes by distance), blasts within 40 m for 14 and a knock of 15 m. Five blows; a ram or Eve only hits him.
+  - A blow's knock is sized from `flight.js`'s stop rate (`knock(m)`), so “10 m” is 10 m.
+  - Bolts now test their path each step, so one meeting him head-on flat out can't pass through.
+  - `clear` ends any fight; `won` still follows it for the Flaxans (their achievement and line).
+- `villains.js`: the portal (a new whirl shader, no seam), the Flaxans on the kit as before, the Maulers and Doc Seismic as the cast's figures on their own clips (`charge`, `swing`, `throw`, `hit`, `down`; `quake`, `blast`, `hover`), the thrown cars on `life.js`'s car geometry tumbling with a dust trail, and the quake rings along the ground with a skirt of dust. Flaxans vanish once down; the Maulers and Doc Seismic lie there till it's over. A cast model that didn't load gives a kit figure of its colour.
+- `scene.js` makes it with the `mauler` and `seismic` templates, passes the foes' events to it and to the camera (a knock-out's trauma by their size, a quake's by distance), gives Eve and the crowd whoever is still standing, and while a Mauler is about writes `sim.cars` (where the traffic's cars are) for him to take one: `traffic.js`'s `takeCar` (tested) puts a taken car back on the grid out of sight.
+- `InvWorld.jsx` steps `stepFoes` as it did `stepFight`; the objective line names who is about (“Flaxans over the river · 12 left”, “The Mauler twins · 2 standing”, “Doc Seismic over the school”) and the compass marks the portal while it is open and each Mauler and Doc Seismic. Sounds: a thud for a hit and a car sent back, a crumble for a car landing, a boom for a quake, the laser for a blast.
+- Shots: `fight` now waits on the state (four Flaxans through and two within 45 m of him), not on the clock, and shows them; `maulers` spawns the twins on the street past the bank, 14 m ahead; `seismic` spawns Doc Seismic over the school and frames him from 16 m. Shots take `foes: [kind, n, at]` (`at: 'place'` is the shot's place) and `at: 'foe'`. The dev hook has `api.spawn(kind, n, at)` and `api.debug.villains`.
+- Triangles on the low tier: fight 1.00 M, maulers 1.79 M, seismic 1.45 M. `maulers` is over the 1.5 M budget: that street already drew 1.76 M in the stub (the hall and the east block with the traffic); the two figures add about 30 k. Left for Task 11's pass over the budget.
+- Not in this task: missions start them (Task 9); for now only the Flaxans come on their own, and the dev hook spawns the rest.
+
+### Task 8: the missions' rules (2026-10-07)
+
+- `missions.js` (tested, 18 cases) is the season and the radio as rules only. `MISSIONS` has the seven episodes (`ep1`…`ep7`, in the spec's order, with their givers, start points, lines, steps and achievements) and the side calls (`side: true`): `chase`, `everace` and `photo1`…`photo5`. `STORY` is the episodes' ids; `missionOf(id)`, `nextStory(doneIds)`, `placeOf(id)`, `PHOTO_SPOTS`.
+- `startMission(id, now)` gives progress `{ id, step, count, t, stepT, hp, best, seen, away, done, fail }`; `stepOf(progress)` says what the step under way needs set up (`spawn`, `car`, `wave`, its text), and `feedMission(progress, event)` takes one event and gives `{ progress, out }`: `step` (the next one begun, with the same), `count`, `hp`, `done` (with the time and the achievement) or `fail` (why: `time`, `late`, `lost`, `left`, `abandoned`). Events: `at` each frame (his `p`, `mode`, `speed`, `face`, and `npcs` and `car` positions for the steps that want them), `tick`, `talk`, `caught`, `ko`, `ring`, `hurt`, `use`, `land` (with `body` for the Moon), `abandon`. A `tick` is at most 0.05 s.
+- Steps: `reach` (`y: null` is any height), `land` and `slam` (`at` a point, `{ car: true }` or `{ npc }`), `talk`, `catch`, `defeat` (`kind` one or a list, `n`), `race` (`gates` in order; `ring: true` takes `./quests.js`'s ring events for Dad's course, otherwise flying within `r`), `escort` (`npc`, `to`, `r`; failing after `grace` seconds more than `within` from them), `protect` (`what`, `hp`, `time`), `through` (`at`, `r`, `speed`), `use` (`id`; a photo also wants him within `r` of `at`, facing within `within` of `face`).
+- `markerOf(progress, scene)` is the step's marker: a point, the next gate, or what the scene says is there (`npcs[id]`, `car`, `foes[0]`, `faller`, `bodies.moon`); the last seen is kept in progress when the scene has none.
+- `loadStory(saved)` takes anything and keeps real episodes and times; `keepStory(story, id, time)` adds one done.
+- Places the map doesn't name: the bank at `[65, 0, 0]`, where the tower east of the plaza across the street stands (its door at `[50, 0, 0]` on the pavement, facing the hall; Task 9 puts the bank model there and takes the tower out), the hangar's door, the school's roof, Dad's four points for the talk (over downtown, the river, the school, then home), the three gates home from the Moon (space's frame), Eve's eight gates (each over a downtown crossing) and the five photo spots. The test checks every marker, gate and spawn point in the city is on open ground or in the air.
+- Not here: starting them in the world, the cards, the markers drawn, the getaway truck, the waves (Task 9); the radio's timing (Task 10).
+
+### Task 9: missions in the world (2026-10-07)
+
+- The season runs in the world. `InvWorld.jsx` holds the mission under way (`sim.mission`, `./missions.js`'s progress), feeds it what happens (`at` each frame, `tick`, Dad's `ring`s, a rescue's `caught`, a `ko`, a `land` or `slam`, `talk` beside Dad, Allen or Eve, the hangar's `hurt`, Think, Mark!'s `use`) and acts on what comes out: a step's `spawn` (through `spawnFoes`), its `car` (`./getaway.js`), its `wave` (more every so often), `count`, `hp`, `done` (the achievement, the story kept in `tp-inv-world-story`, the end card) and `fail` (why, with Again).
+- Starting one: E at the GDA opens Cecil's board (`MissionCard.jsx`, `kind: 'board'`): the episodes in order, done ones with their best time and Again, the next with Go, the rest locked. E beside Dad starts the first episode (if it's next) or the last (if it's next, at dusk or night, when he's on the porch); otherwise E beside him is the spar as before. Q asks before abandoning (Q again or the button); Escape closes any card. The title card is 2.5 s in the episode's colour with the camera's one swing round him (none under reduced motion).
+- Markers: `markerOf` each HUD tick, drawn as a 3D chevron over the target (`scene.js` `createMarker`, sized by `hud.js`'s `markerSize`, through anything in front), as a triangle on the compass and a dot on the map in the mission's colour; the objective line is the step's words, the distance, the count, the hangar's health and the clock, in the mission's colour.
+- `getaway.js` (tested, 3 cases): a car on the street grid, turning one in three at crossings or when the city ends, stopped where it is; episode 2's truck pulls out from the bank's door, the radio's chase from wherever he is. `scene.js` draws it as `CAST.truck` (a van from `life.js` if the model won't load), and the bank as `CAST.bank` on its block east of the plaza (`map.js` `blockKind` 'bank', landmark `bank` at `[68, 0, 0]`, 24 m square; the tower there is gone). A Mauler's swing within 32 m of the hangar takes 10 off it in episode 6. Doc Seismic's quakes in episode 3 put a student at the school roof's south edge (a `fall` rescue in `quests.js`, waving 7 s then over), one at a time, four in all.
+- Think, Mark!'s result comes back through a ref the page shares (`pages/Invincible.jsx`: `thinkMark`), as `use thinkmark`, won or lost; the last episode ends on it.
+- Achievements added: `maulers`, `seismic`, `gda`, `season`.
+- Dev hook: `api.mission(id)` starts one, `api.feed(event)` gives it an event, `api.story()` reads what's kept. Shots `bank chase seismic maulers gdasiege` start their mission, drive it to the step they frame (`drive`), hold the clock for the shot, then drive it to the end (`finish`) and print `done in … s`.
+- Not here: the radio's timing (`chase`, `everace`, the photos start only through the hook), Eve's ghost in her race, Allen racing home (Task 10); the sounds and the docs' shots (Task 11). Known: the Flaxans' portal closes as the last of the second wave goes down, before episode 5's last step (fly through where it was); the bank model's own lettering reads GDA.
+
+### Task 10: the radio (2026-10-07)
+
+- `missions.js`: `newRadio(seed)` and `nextRadioCall(radio, dt, { mission, zone, eve, done })` (tested, 3 more cases): every 60–120 s (`RADIO.every`) with no mission on and him in the city, one side call, never the same twice running: a chase, a photo spot not yet taken (then any), or Eve's race while she's flying beside him (`eve`, her `escort` state). Nothing while a story mission is on or out in space.
+- `InvWorld.jsx`: the call goes on the HUD's radio line (`InvHud.jsx`, `.iw-radio`: who, their first line, R) for `RADIO.offer` seconds, then drops; R or the line itself takes it (`startMission`). A photo: E in its spot, facing the right way, is `use photo` with his heading; when the step takes it the HUD hides for the frame (`data-shutter` on the stage) under a white flash (`.iw-shutter`). The scene draws a race's gates (`scene.js` `createCourse`: rings, the next bright, the ones through gone; Eve's eight and the three home from the Moon, in space's frame, which is the scene's) and a photo's frame (a yellow rectangle 9 m ahead of the spot, the way it faces, through anything).
+- Shots: `chase` (the car pulls out from under him, 26 m behind it), `photo` (the hall's frame from the plaza's corner), `everace` (the first gate over a downtown crossing); each driven to done.
+- Not here: Eve's ghost on the line at the best time, and Allen flying the race home (the gates are there; nobody races); the sounds the spec names (a stinger, the crackle, a shutter: `beeps` and `knock` stand in) and the docs' shots (Task 11).
+
 ## How to check
 
-- `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic and fight (51 tests at the space merge, 89 after Task 1).
+- `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic, hud, brains, companions and foes (51 tests at the space merge, 89 after Task 1, 168 after Task 7, 186 after Task 8, 189 after Task 9, 192 after Task 10).
 - With the dev server running, `OUT=/tmp/shots node scripts/inv-world-check.mjs [--metrics] [shot …]`.
   - Shots, in the order they run: `spawn street curb streetnight downtown high suburb river boost porch gda burger school plaza eve jet clouds rings card wallback rescue fight climb orbit orbitnight moon reentry allen mars thragg dusk night`.
-  - The mission stubs, which only frame the places for now: `bank chase seismic maulers eveescort dadlesson gdasiege photo`.
+  - The missions, started and driven to their end through the hook (Tasks 9 and 10): `bank chase seismic maulers gdasiege photo everace`; the stubs that only frame a place: `eveescort dadlesson porchdusk`.
   - A shot is at noon unless it names a time.
   - `--metrics` prints `name band=… mark=…` after each shot (see Task 1 above for how it measures). `BOX=1` with it also writes `inv-<name>.box.png`, the band, box and ring drawn on.
   - Each shot is roughly 10 s in SwiftShader at 960×540, low tier.
@@ -163,7 +264,8 @@ Eight new shots frame where Task 9's missions will be. Nothing is started yet. N
   - `sim.h` is the hero; `sim.yaw` and `sim.pitch` are the camera.
   - `sim.snap` puts the camera and the pose where they're going.
   - `sim.hold` freezes Eve and the jet.
-  - `api.zone` and `api.setZone` read and set the zone; `api.debug` holds `npcs`, `jet`, `world`, `bodies`, `allen` and `thragg`.
+  - `api.zone` and `api.setZone` read and set the zone; `api.debug` holds `npcs`, `jet`, `villains`, `world`, `bodies`, `allen`, `thragg` and `dad`.
+  - `api.spawn(kind, n, at)` calls villains; `api.mission(id)`, `api.feed(event)` and `api.story()` run the missions.
 
 ## Not done / next ideas
 

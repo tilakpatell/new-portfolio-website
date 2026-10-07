@@ -14,6 +14,18 @@ import * as THREE from 'three';
 // what a tower's walls are (its style's first number)
 export const SKIN = { glass: 0, stone: 1, brick: 2, concrete: 3 };
 
+// The windows. By day, above the street's `street` storeys, a lighter pane
+// (`tone`, toward which a glass tower's own tint goes by `tint`) with the
+// sky in it at `reflect`, coloured by a glass tower's glass by `sky` (or the
+// skyline goes one grey): the view off the glass, turned up if it points at
+// the ground, since from over the roofs it would find the photo's earth and
+// the windows went black holes again. The street's storeys keep their look,
+// and the bake's colour at their feet. At dusk and night (`light`) the lit
+// windows, the houses' too, as bright as they were times this.
+export const WINDOWS = { reflect: 0.25, tone: [0.24, 0.29, 0.35], tint: 0.4, sky: 0.5, street: 2, light: 1.2 };
+const num = (v) => Number(v).toFixed(3);
+const glslVec = (c) => `vec3(${c.map(num).join(', ')})`;
+
 export function towerMaterial(uniforms) {
   const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0 });
   m.onBeforeCompile = (shader) => {
@@ -93,6 +105,12 @@ export function towerMaterial(uniforms) {
         vec3 tint = glassK * srgb(pick4(k, vec3(0.2, 0.3, 0.42), vec3(0.12, 0.3, 0.32), vec3(0.32, 0.24, 0.14), vec3(0.1, 0.11, 0.13)))
           + (1.0 - glassK) * srgb(vec3(0.12, 0.15, 0.19));
         vec3 glass = tint * (0.75 + 0.5 * pane);
+        // (by day: 1 at noon, gone by dusk; never in the street's storeys)
+        float cityDay = (1.0 - smoothstep(0.0, 0.5, uNight)) * step(${num(WINDOWS.street)} * fh, vCity.y);
+        vec3 paneTone = srgb(${glslVec(WINDOWS.tone)});
+        vec3 dayPane = glassK * mix(tint, paneTone, ${num(WINDOWS.tint)}) + (1.0 - glassK) * paneTone;
+        glass = mix(glass, dayPane * (0.85 + 0.3 * pane), cityDay);
+        vec3 daySky = mix(vec3(1.0), dayPane / max(dot(dayPane, vec3(0.2126, 0.7152, 0.0722)), 1e-3), ${num(WINDOWS.sky)} * glassK);
         vec3 roofC = srgb(vec3(0.36, 0.36, 0.37)) * (0.8 + 0.35 * cityHash(floor(vCity.xz * 0.4)));
         diffuseColor.rgb = mix(mix(wall, glass, win), roofC, roof);
         float cityWin = win;`,
@@ -105,18 +123,31 @@ export function towerMaterial(uniforms) {
       .replace(
         '#include <metalnessmap_fragment>',
         `#include <metalnessmap_fragment>
-        metalnessFactor = mix(0.4 * glassK, 0.9, cityWin);`,
+        metalnessFactor = mix(0.4 * glassK, mix(0.9, 0.15, cityDay), cityWin);`,
       )
       .replace(
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
+        #if defined( USE_ENVMAP ) && defined( ENVMAP_TYPE_CUBE_UV )
+        {
+          // the sky in the day's panes (WINDOWS)
+          vec3 rv = transformDirectionByInverseViewMatrix(reflect(-normalize(vViewPosition), normal), viewMatrix);
+          rv.y = abs(rv.y);
+          vec3 skyIn = textureCubeUV(envMap, envMapRotation * normalize(rv), 0.2).rgb * envMapIntensity;
+          totalEmissiveRadiance += skyIn * daySky * ${num(WINDOWS.reflect)} * cityWin * cityDay;
+        }
+        #endif
         {
           // a lit window, here and there: whole floors of an office, a few flats
           float floorOn = step(0.55, cityHash(vec2(wid.y, seed * 9.0)));
-          float lit = step(mix(0.86, 0.55, floorOn), cityHash(wid * 1.7 + seed * 5.0)) * cityWin * uNight;
+          float lit = step(mix(0.86, 0.55, floorOn), cityHash(wid * 1.7 + seed * 5.0));
           vec3 warm = mix(vec3(1.0, 0.68, 0.36), vec3(0.72, 0.84, 1.0), step(0.72, cityHash(wid + seed)));
-          totalEmissiveRadiance += lit * warm * (0.22 + 0.4 * cityHash(wid * 3.1 + seed));
-          totalEmissiveRadiance += street * lobby * uNight * vec3(1.0, 0.85, 0.6) * 0.3;
+          vec3 glow = lit * warm * (0.22 + 0.4 * cityHash(wid * 3.1 + seed));
+          // (where windows are under a pixel, what a wall of them comes to, as
+          // by day: one window on or off a pixel at random is noise from the air)
+          glow = mix(glow, vec3(0.12, 0.094, 0.07), smoothstep(0.22, 0.6, max(fw.x, fw.y)));
+          totalEmissiveRadiance += glow * cityWin * uNight * ${num(WINDOWS.light)};
+          totalEmissiveRadiance += street * lobby * uNight * vec3(1.0, 0.85, 0.6) * ${num(0.3 * WINDOWS.light)};
           // the crown lit from below on the tall ones
           totalEmissiveRadiance += crown * step(90.0, top) * uNight * vec3(0.9, 0.85, 0.75) * 0.25;
           diffuseColor.rgb *= 1.0 - 0.5 * uNight * (1.0 - cityWin);

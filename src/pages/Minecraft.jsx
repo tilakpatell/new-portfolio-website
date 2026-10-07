@@ -1,24 +1,30 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import { use3D } from '../lib/gpu';
 import { useDocumentTitle } from '../lib/hooks';
 
 const Minecraft = lazy(() => import('../components/minecraft/Minecraft'));
+const Eaglercraft = lazy(() => import('../components/eagler/Eaglercraft'));
 
-// Minecraft at the giant crafting table on Dot Matrix island: a fan tribute,
-// an endless blocky world made from a seed, built in the browser
-// (../components/minecraft/). Reached from the island, the command palette,
-// or this address.
+// Minecraft at the giant crafting table on Dot Matrix island: the game itself
+// (Eaglercraft, ../components/eagler/) behind the site's password, and for
+// everyone else the fan tribute built here (../components/minecraft/).
+// Reached from the island, the command palette, or this address.
 export default function MinecraftPage() {
-  useDocumentTitle('Minecraft, a fan tribute');
+  useDocumentTitle('Minecraft');
   const navigate = useNavigate();
   const three = use3D();
+  const [tribute, setTribute] = useState(false);
   const back = () => navigate('/dot-matrix');
   return (
     <div className="relative">
       <div className="pt-[var(--nav-h)]">
-        {three.on ? (
+        {!tribute ? (
+          <Suspense fallback={<div style={{ height: 'calc(100svh - var(--nav-h, 64px))', background: '#000' }} aria-hidden="true" />}>
+            <Eaglercraft mode="page" onExit={back} onTribute={() => setTribute(true)} />
+          </Suspense>
+        ) : three.on ? (
           <Suspense fallback={<div style={{ height: 'calc(100svh - var(--nav-h, 64px))', background: '#78a7ff' }} aria-hidden="true" />}>
             <Minecraft mode="page" onExit={back} />
           </Suspense>
@@ -37,10 +43,10 @@ export default function MinecraftPage() {
       <section className="shell relative z-10 py-10 md:py-14" aria-label="About the game">
         <p className="eyebrow">Dot Matrix · Gaming</p>
         <p className="lead mt-3 max-w-[62ch]">
-          The giant crafting table on Dot Matrix island opens a Minecraft world: endless, made from a seed, with its hills, forests, deserts, snow and seas. Walk it, sprint, jump and swim by the game’s own numbers. Digging, building, the night, caves and mobs arrive a piece at a time.
+          The giant crafting table on Dot Matrix island opens Minecraft: the game itself, 1.12.2 and 1.8.8, running in the browser for those with the password, and for everyone else a fan tribute built here from scratch, an endless world made from a seed to walk, dig and build in.
         </p>
         <p className="mt-4 max-w-[62ch] text-sm text-muted">
-          A fan-made tribute, built for this site from scratch in Three.js. The textures are the game’s own, used with Mojang’s permission. Minecraft is Mojang’s and Microsoft’s. Not an official Minecraft product; not approved by or associated with Mojang or Microsoft.
+          The game files are sealed with the password and opened in your browser; worlds save on your device. The tribute is built in Three.js with the game’s own textures, used with Mojang’s permission. Minecraft is Mojang’s and Microsoft’s. Not an official Minecraft product; not approved by or associated with Mojang or Microsoft.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link to="/dot-matrix" className="btn btn-primary">

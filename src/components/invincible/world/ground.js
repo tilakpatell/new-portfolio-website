@@ -6,7 +6,9 @@
 // paving, the parks' paths, the suburbs' lawns and their streets, the
 // school's field, the beach, the river's embankments, the hills. At night
 // the street lamps leave pools of light on it. The river and the sea are
-// one sheet of water that reflects the sky.
+// one sheet of water that reflects the sky. From far off the streets are
+// drawn wider and their paint fades as it goes under a pixel, and the
+// water's edge is a line of light, so the city still reads from 2 km up.
 
 import * as THREE from 'three';
 import { noiseAtlas } from '../../../lib/texture';
@@ -16,19 +18,39 @@ export const LAND = 7000; // how far the river runs north, off the edge of the w
 export const LAND_FAR = 40000; // how far the land goes
 const KIND_CODE = { built: 1, park: 2, plaza: 3, lot: 4, gda: 5 };
 
+// From far off. The streets are drawn wider with the distance, from 1× at
+// `near` metres to `wide`× at `far`: a 14 m street is under two pixels at
+// 2 km, and the grid went to speckle. Where the river and the sea meet the
+// land, a line of light a pixel wide (`edge`, times `day` at noon and
+// `night` at night), faded in from `edgeFrom` metres off so it's an outline
+// from the air, not a stripe at his feet.
+export const FAR = { near: 300, far: 2000, wide: 2, edge: [0.78, 0.9, 1], day: 0.55, night: 0.3, edgeFrom: [60, 250] };
+const glslVec = (c) => `vec3(${c.map((v) => Number(v).toFixed(3)).join(', ')})`;
+
 // the land past the edge of the world: mountains, rising away from it
 const ridge = (x, z) => {
   const n = (a, b, s) => (Math.sin(a / s + Math.sin(b / (s * 1.7)) * 1.3) * Math.cos(b / (s * 0.8) - Math.sin(a / (s * 2.3))) + 1) / 2;
   return n(x, z, 520) * 0.6 + n(z + 900, x, 210) * 0.3 + n(x - z, x + z, 90) * 0.1;
+};
+// The mountains part for the river as far as its water runs (LAND), `GORGE`
+// metres from its banks, then close over it: it ran into a wall of them at
+// the world's north edge.
+const GORGE = 700;
+const smooth01 = (v) => {
+  const t = Math.max(0, Math.min(1, v));
+  return t * t * (3 - 2 * t);
 };
 export function landAt(x, z) {
   const g = groundAt(x, z);
   if (z > COAST - BEACH) return g;
   const out = Math.max(Math.abs(x) - WORLD.half, -z - WORLD.half, 0);
   if (out <= 0) return g;
+  const bank = Math.max(RIVER.x0 - x, x - RIVER.x1);
+  const past = Math.max(0, -LAND - z);
+  if (bank <= 0 && past <= 0) return g;
   const t = Math.min(1, out / 1800);
   const coast = Math.min(1, (COAST - BEACH - z) / 700);
-  return Math.max(g, (t * t * (3 - 2 * t)) * (350 + 650 * ridge(x, z)) * coast);
+  return Math.max(g, smooth01(t) * (350 + 650 * ridge(x, z)) * coast * smooth01((Math.max(0, bank) + past) / GORGE));
 }
 
 // which kind each town block is, as a texture the shader reads by block
@@ -106,6 +128,14 @@ const GLSL_CONST = `
   #define SCZ ${SUBURB.cz.toFixed(1)}
   #define SST ${SUBURB.street.toFixed(1)}
   #define WHALF ${WORLD.half.toFixed(1)}
+  #define WATERY ${WATER_Y.toFixed(2)}
+  #define FARNEAR ${FAR.near.toFixed(1)}
+  #define FARFAR ${FAR.far.toFixed(1)}
+  #define FARWIDE ${FAR.wide.toFixed(2)}
+  #define EDGEC ${glslVec(FAR.edge)}
+  #define EDGEDAY ${FAR.day.toFixed(3)}
+  #define EDGENIGHT ${FAR.night.toFixed(3)}
+  #define EDGEFROM vec2(${FAR.edgeFrom.map((v) => v.toFixed(1)).join(', ')})
 `;
 
 function landMaterial(kinds, subs, uniforms) {
@@ -134,6 +164,9 @@ function landMaterial(kinds, subs, uniforms) {
         // distance to the nearest of a set of lines every 'p' metres, offset 'o'
         float lineD(float v, float p, float o) { return (0.5 - abs(fract((v - o) / p) - 0.5)) * p; }
         float band(float d, float w) { return 1.0 - step(w, d); }
+        // how much of a painted line 'w' metres wide to draw where a pixel
+        // spans 'px' metres: all of it from a pixel and a half, none under half
+        float seen(float w, float px) { return smoothstep(0.5, 1.5, w / px); }
         float cityKind(vec2 p) {
           vec2 ij = floor(p / CELL + 0.5);
           vec2 uv = (ij - uKindsBox.xy + 0.5) / uKindsBox.zw;
@@ -154,6 +187,12 @@ function landMaterial(kinds, subs, uniforms) {
         '#include <color_fragment>',
         `#include <color_fragment>
         vec2 p = vW.xz;
+        // (how far off this is, how much wider the streets, how many metres a pixel spans)
+        float camD = length(cameraPosition - vW);
+        float wide = 1.0 + (FARWIDE - 1.0) * smoothstep(FARNEAR, FARFAR, camD);
+        float mpx = max(max(fwidth(p.x), fwidth(p.y)), 1e-3);
+        float wpx = max(fwidth(vW.y), 1e-4); // (outside the branches: a derivative inside one is undefined)
+        float shore = 0.0;
         vec4 nz = texture2D(uNoise, p / 37.0);
         vec4 nf = texture2D(uNoise, p / 4.3);
         float macro = texture2D(uNoise, p / 610.0).r;
@@ -167,6 +206,11 @@ function landMaterial(kinds, subs, uniforms) {
           float t = clamp((p.y - (COASTZ - BEACHW)) / BEACHW, 0.0, 1.0);
           col = mix(vec3(0.78, 0.7, 0.53), vec3(0.42, 0.37, 0.28), smoothstep(0.45, 0.7, t)) * (0.9 + 0.16 * nz.g + 0.08 * g);
           rough = mix(0.95, 0.5, smoothstep(0.45, 0.7, t));
+          // the waterline: the pixel of sand just above the sea, surf white
+          // (lit as well, as the sand round it is as bright: FAR)
+          float above = (vW.y - WATERY) / wpx;
+          shore = step(0.0, above) * (1.0 - smoothstep(1.0, 2.0, above)) * smoothstep(EDGEFROM.x, EDGEFROM.y, camD);
+          col = mix(col, vec3(0.95, 0.97, 1.0), shore);
         } else if (p.x > RX0 - 15.0 && p.x < RX1 + 15.0 && p.y > CZ0 - 120.0) {
           // the river: its bed, and the embankments' concrete
           float bank = step(p.x, RX0) + step(RX1, p.x);
@@ -191,14 +235,15 @@ function landMaterial(kinds, subs, uniforms) {
           float kind = subKind(p);
           vec3 lawn = grass(p, nz.r, g) * (0.94 + 0.08 * step(0.5, fract((p.x + p.y * 0.02) / 1.6)));
           col = lawn;
-          if (d < SST * 0.5 - 1.2) {
+          float road = (SST * 0.5 - 1.2) * wide;
+          if (d < road) {
             col = vec3(0.19, 0.19, 0.2) * (0.85 + 0.25 * nz.r + 0.1 * g);
             rough = 0.88;
             // a faint dashed line down the middle of the long streets
             float mid = (dz < dx) ? dz : dx;
             float along = (dz < dx) ? p.x : p.y;
-            col = mix(col, vec3(0.72, 0.62, 0.3), band(mid, 0.12) * step(0.55, fract(along / 8.0)) * step(SST * 0.5, max(dx, dz)));
-          } else if (d < SST * 0.5 + 2.0) {
+            col = mix(col, vec3(0.72, 0.62, 0.3), band(mid, 0.12) * step(0.55, fract(along / 8.0)) * step(SST * 0.5, max(dx, dz)) * seen(0.24, mpx));
+          } else if (d < road + 3.2) {
             col = vec3(0.6, 0.59, 0.56) * (0.9 + 0.15 * nz.r);
             rough = 0.9;
           } else if (kind > 0.5) {
@@ -206,7 +251,7 @@ function landMaterial(kinds, subs, uniforms) {
             if (kind < 1.5 || kind > 3.5) {
               // the strip and Burger Mart: car parks with their bays
               col = vec3(0.21, 0.21, 0.22) * (0.85 + 0.25 * nz.r);
-              float bay = band(lineD(p.y, 3.0, 0.0), 0.08) * step(SCX * 0.5 - 40.0, dx);
+              float bay = band(lineD(p.y, 3.0, 0.0), 0.08) * step(SCX * 0.5 - 40.0, dx) * seen(0.16, mpx);
               col = mix(col, vec3(0.85), bay * 0.8);
               rough = 0.85;
             } else if (kind < 2.5) {
@@ -214,7 +259,7 @@ function landMaterial(kinds, subs, uniforms) {
             } else {
               // the school's field: stripes and yard lines
               col = mix(vec3(0.2, 0.4, 0.14), vec3(0.24, 0.46, 0.17), step(0.5, fract(p.x / 6.0)));
-              col = mix(col, vec3(0.92), band(lineD(p.x, 9.0, 0.0), 0.12) * step(10.0, dz));
+              col = mix(col, vec3(0.92), band(lineD(p.x, 9.0, 0.0), 0.12) * step(10.0, dz) * seen(0.24, mpx));
               rough = 0.95;
             }
           }
@@ -226,27 +271,27 @@ function landMaterial(kinds, subs, uniforms) {
           float d = min(dx, dz);
           vec2 l = p - floor(p / CELL + 0.5) * CELL; // in the block, from its middle
           float kind = cityKind(p);
-          if (d < 7.0) {
+          if (d < 7.0 * wide) {
             vec3 asphalt = vec3(0.13, 0.13, 0.14) * (0.8 + 0.3 * nz.r + 0.12 * g);
             // the wheels' tracks, a little darker and smoother
             float lane = (dz < dx) ? dz : dx;
-            asphalt *= 1.0 - 0.12 * band(abs(fract(lane / 3.5) - 0.5), 0.18);
+            asphalt *= 1.0 - 0.12 * band(abs(fract(lane / 3.5) - 0.5), 0.18) * seen(1.26, mpx);
             col = asphalt;
             rough = 0.82;
             bool cross = dx < 10.0 && dz < 10.0;
             if (!cross) {
               float along = (dz < dx) ? p.x : p.y;
               // the double yellow, the lanes' dashes
-              col = mix(col, vec3(0.86, 0.68, 0.18), band(abs(lane - 0.22), 0.09));
-              col = mix(col, vec3(0.88), band(abs(lane - 3.5), 0.08) * step(0.55, fract(along / 9.0)));
+              col = mix(col, vec3(0.86, 0.68, 0.18), band(abs(lane - 0.22), 0.09) * seen(0.3, mpx));
+              col = mix(col, vec3(0.88), band(abs(lane - 3.5), 0.08) * step(0.55, fract(along / 9.0)) * seen(0.16, mpx));
               // the crossings and the stop lines, just short of the corner
               float o = (dz < dx) ? dx : dz;
-              col = mix(col, vec3(0.9), step(10.5, o) * step(o, 13.5) * step(0.5, fract(lane / 1.1)));
-              col = mix(col, vec3(0.9), step(14.0, o) * step(o, 14.5) * step(lane, 7.0) * step(0.3, lane));
+              col = mix(col, vec3(0.9), step(10.5, o) * step(o, 13.5) * step(0.5, fract(lane / 1.1)) * seen(0.55, mpx));
+              col = mix(col, vec3(0.9), step(14.0, o) * step(o, 14.5) * step(lane, 7.0) * step(0.3, lane) * seen(0.5, mpx));
             }
-          } else if (d < 10.0) {
+          } else if (d < 7.0 * wide + 3.0) {
             col = vec3(0.56, 0.55, 0.52) * (0.88 + 0.18 * nz.r);
-            col *= 1.0 - 0.1 * band(abs(fract((dz < dx ? p.x : p.y) / 1.8) - 0.5), 0.03);
+            col *= 1.0 - 0.1 * band(abs(fract((dz < dx ? p.x : p.y) / 1.8) - 0.5), 0.03) * seen(0.11, mpx);
             rough = 0.9;
           } else if (kind < 0.5) {
             col = grass(p, nz.r, g);
@@ -261,13 +306,13 @@ function landMaterial(kinds, subs, uniforms) {
           } else if (kind < 3.5) {
             // the plaza: pale paving in squares, a ring round the hall
             col = vec3(0.7, 0.68, 0.63) * (0.9 + 0.12 * nz.r);
-            col *= 1.0 - 0.12 * (band(abs(fract(l.x / 3.0) - 0.5), 0.03) + band(abs(fract(l.y / 3.0) - 0.5), 0.03));
+            col *= 1.0 - 0.12 * (band(abs(fract(l.x / 3.0) - 0.5), 0.03) + band(abs(fract(l.y / 3.0) - 0.5), 0.03)) * seen(0.18, mpx);
             col = mix(col, vec3(0.55, 0.42, 0.24), band(abs(length(l) - 24.0), 0.8));
             rough = 0.75;
           } else if (kind < 4.5) {
             // a car park
             col = vec3(0.17, 0.17, 0.18) * (0.85 + 0.25 * nz.r);
-            col = mix(col, vec3(0.86), band(abs(fract(l.x / 2.8) - 0.5) * 2.8, 0.07) * step(4.0, abs(abs(l.y) - 13.0)) * step(abs(l.y), 24.0));
+            col = mix(col, vec3(0.86), band(abs(fract(l.x / 2.8) - 0.5) * 2.8, 0.07) * step(4.0, abs(abs(l.y) - 13.0)) * step(abs(l.y), 24.0) * seen(0.14, mpx));
             rough = 0.85;
           } else {
             // the GDA: concrete, and a helipad
@@ -293,28 +338,32 @@ function landMaterial(kinds, subs, uniforms) {
         // (the colours above are as they'd be picked on a screen: into linear light)
         diffuseColor.rgb = pow(col, vec3(2.2));
         float landRough = rough;
-        float landLamp = lamp;`,
+        float landLamp = lamp;
+        float landShore = shore;`,
       )
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = landRough;')
       .replace(
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
-        totalEmissiveRadiance += vec3(1.0, 0.72, 0.42) * landLamp * uNight * 0.16;`,
+        totalEmissiveRadiance += vec3(1.0, 0.72, 0.42) * landLamp * uNight * 0.16;
+        totalEmissiveRadiance += EDGEC * landShore * mix(EDGEDAY, EDGENIGHT, uNight);`,
       );
   };
   m.customProgramCacheKey = () => 'inv-land';
   return m;
 }
 
-// The water: dark, smooth, catching the sky, its surface moving.
+// The water: dark, smooth, catching the sky, its surface moving; the
+// river's banks a line of light from far off (FAR).
 function waterMaterial(uniforms) {
   const m = new THREE.MeshStandardMaterial({ color: 0x0f2a35, roughness: 0.06, metalness: 0.1, envMapIntensity: 1.1 });
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uTime = uniforms.uTime;
+    sh.uniforms.uNight = uniforms.uNight;
     sh.uniforms.uNoise = { value: noiseTexture() };
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vW;').replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform float uTime;\nuniform sampler2D uNoise;\nvarying vec3 vW;')
+      .replace('#include <common>', `#include <common>\n${GLSL_CONST}\nuniform float uTime;\nuniform float uNight;\nuniform sampler2D uNoise;\nvarying vec3 vW;`)
       .replace(
         '#include <normal_fragment_maps>',
         `#include <normal_fragment_maps>
@@ -330,6 +379,16 @@ function waterMaterial(uniforms) {
           float far = 1.0 - smoothstep(200.0, 2500.0, length(cameraPosition - vW));
           vec3 wn = normalize(vec3(-(hx - h0) * 2.4 * far, 1.0, -(hz - h0) * 2.4 * far));
           normal = normalize((viewMatrix * vec4(wn, 0.0)).xyz);
+        }`,
+      )
+      .replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+        {
+          // the pixel of water along each bank, down to the beach
+          float e = min(abs(vW.x - RX0), abs(vW.x - RX1)) / max(fwidth(vW.x), 1e-4);
+          float edge = (1.0 - smoothstep(1.0, 2.0, e)) * step(vW.z, COASTZ - BEACHW) * smoothstep(EDGEFROM.x, EDGEFROM.y, length(cameraPosition - vW));
+          totalEmissiveRadiance += EDGEC * edge * mix(EDGEDAY, EDGENIGHT, uNight);
         }`,
       );
   };
