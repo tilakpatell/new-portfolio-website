@@ -160,7 +160,7 @@ Branch `claude/universe-lane-traffic` from `origin/main`.
 
 ### Task 5: evidence and the hand-off
 
-- [ ] `scripts/universe-check.mjs` at `far-rim`, `lane-ride`, `overview` on the three tiers, numbers in the PR against the budgets; a screenshot each. `docs/architecture.md`: a paragraph on `laneFlow.js`, `laneStreaks.js`, `laneRibbons.js`, `laneTraffic.js`. `HANDOFF-universe-scale.md` updated. Merge on green.
+- [x] `scripts/universe-check.mjs` at `far-rim`, `lane-ride`, `overview` on the three tiers, numbers in the PR against the budgets; a screenshot each. `docs/architecture.md`: a paragraph on `laneFlow.js`, `laneStreaks.js`, `laneRibbons.js`, `laneTraffic.js`. `HANDOFF-universe-scale.md` updated. Merge on green.
 
 ---
 
