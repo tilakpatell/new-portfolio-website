@@ -66,4 +66,11 @@ describe('a site’s look for the house', () => {
     expect(look.fogBelow).toBe(0.7);
     expect(hex(look.halo)).toBe('#ff9a50');
   });
+
+  it('gives Yavin 4 its jungle look', () => {
+    const look = lookOf(siteOf('yavin'));
+    expect(hex(look.shadow)).toBe('#3a4a3a');
+    expect(look.edge).toEqual([0.18, 0.85]);
+    expect(hex(look.halo)).toBe('#fff0c0');
+  });
 });

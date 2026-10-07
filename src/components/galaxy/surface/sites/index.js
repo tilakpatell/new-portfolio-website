@@ -57,11 +57,12 @@ import { SITES as ice } from './ice';
 import { SITES as forest } from './forest';
 import { SITES as core } from './core';
 import { SITE as coruscant } from './coruscant';
+import { SITE as yavin } from './yavin';
 import { SITES as edge } from './edge';
 import { SITES as outer } from './outer';
 import { EXTRA } from './quests';
 
-export const SITES = { ...desert, ...ice, ...forest, ...core, coruscant, ...edge, ...outer };
+export const SITES = { ...desert, ...ice, ...forest, yavin, ...core, coruscant, ...edge, ...outer };
 
 // the systems with somewhere to land, in the galaxy's own order
 export const LANDABLE = SYSTEMS.filter((s) => SITES[s.id]).map((s) => s.id);
