@@ -237,11 +237,12 @@ describe('the galactic assaults', () => {
         // (the posts alone as solids: the site's things are placed in the
         // browser; here the field is open, so the walk and the fight decide)
         const env = { solids: createSolids(), reach: site.reach };
+        // (the phases' top-ups off, so the pockets alone decide)
         for (const [tickets, won] of [
           [{ attack: 300, defend: 10 }, true],
           [{ attack: 10, defend: 300 }, false],
         ]) {
-          const b = newBattle({ ...m, tickets }, { n: 6, seed: 3 });
+          const b = newBattle({ ...m, tickets, phases: m.phases.map((ph) => ({ ...ph, tickets: 0 })) }, { n: 6, seed: 3 });
           chooseSide(b, 'attack');
           for (let t = 0; t < 900 && !b.result; t += 0.1) stepBattle(b, 0.1, null, env);
           expect(b.result?.won, `${JSON.stringify(tickets)}`).toBe(won);

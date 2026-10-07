@@ -52,7 +52,7 @@ describe('the battle, laid out', () => {
     expect(SOLDIERS.mid).toBeGreaterThan(SOLDIERS.low);
   });
 
-  it('chosen, it runs: the defenders inside the live posts, the attackers at their line', () => {
+  it('chosen, it runs: the defenders inside the live posts, the attackers on their staging line short of the front', () => {
     const b = newBattle(MAP, { n: 6, seed: 3 });
     chooseSide(b, 'attack');
     expect(b.phase).toBe('run');
@@ -60,7 +60,15 @@ describe('the battle, laid out', () => {
     expect(up(b, 'attack')).toHaveLength(6);
     expect(up(b, 'defend')).toHaveLength(6);
     for (const s of up(b, 'defend')) expect(['a', 'b'].some((id) => Math.hypot(s.x - post(b, id).at[0], s.z - post(b, id).at[1]) <= post(b, id).r)).toBe(true);
-    for (const s of up(b, 'attack')) expect(Math.hypot(s.x + 120, s.z)).toBeLessThanOrEqual(20);
+    // (RULES.firstWave times RULES.forward short of post A or B, or at their
+    // line at x = −120 where that's nearer: the first wave has further to
+    // come than the waves after it)
+    const lineToPost = Math.hypot(120, 30);
+    for (const s of up(b, 'attack')) {
+      const near = Math.min(Math.hypot(s.x, s.z - 30), Math.hypot(s.x, s.z + 30));
+      expect(near).toBeLessThan(lineToPost + 22);
+      expect(near).toBeGreaterThan(Math.min(RULES.forward * RULES.firstWave, lineToPost) - 24);
+    }
     // (no ticket spent on the first wave)
     expect(b.tickets).toEqual({ attack: 60, defend: 90 });
     // (a kind each, from the side's list)

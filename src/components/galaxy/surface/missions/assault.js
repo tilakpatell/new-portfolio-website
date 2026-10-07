@@ -54,6 +54,7 @@ export const RULES = {
   coverHold: 10, // seconds it stays behind it before looking about again
   coverHit: 0.5, // of a hit's chance, on a soldier in cover
   forward: 70, // metres short of their objective the attackers' reinforcements come onto the field (a staging line, just out of range)
+  firstWave: 2, // and their first wave this many times as far back: the battle opens with their advance
 };
 // soldiers a side, by the device's tier (lib/device)
 export const SOLDIERS = { high: 14, mid: 9, low: 6 };
@@ -141,12 +142,12 @@ function spawnPost(b, side) {
 // short of its objective along the way there from the post (never past the
 // post itself, and spread a little along the line). The defenders come back
 // inside their posts. Pure.
-export function forwardOf(b, p, objective, r = b.r) {
+export function forwardOf(b, p, objective, r = b.r, times = 1) {
   if (!objective) return spotIn(b, p);
   const dx = objective[0] - p.at[0];
   const dz = objective[1] - p.at[1];
   const d = Math.hypot(dx, dz);
-  const along = Math.max(0, d - RULES.forward);
+  const along = Math.max(0, d - RULES.forward * times);
   if (along <= p.r) return spotIn(b, p);
   const k = along / d;
   // (a few metres across the line, so a wave doesn't come back in a stack)
@@ -163,9 +164,9 @@ const spotIn = (b, p, k = 0.7, from = null, flank = 0) => {
   const d = (from ? 0.45 + 0.55 * Math.sqrt(b.r()) : Math.sqrt(b.r())) * p.r * k;
   return [p.at[0] + Math.cos(a) * d, p.at[1] + Math.sin(a) * d];
 };
-function place(b, s, p, { forward = false } = {}) {
+function place(b, s, p, { forward = 0 } = {}) {
   [s.x, s.z] = spotIn(b, p);
-  if (forward && s.side === 'attack') [s.x, s.z] = forwardOf(b, p, objectiveFor(b, 'attack', p.at[0], p.at[1]));
+  if (forward && s.side === 'attack') [s.x, s.z] = forwardOf(b, p, objectiveFor(b, 'attack', p.at[0], p.at[1]), b.r, forward);
   const o = objectiveFor(b, s.side, s.x, s.z);
   s.yaw = o ? Math.atan2(o[0] - s.x, o[1] - s.z) : 0;
   s.up = true;
@@ -196,7 +197,9 @@ export function objectiveFor(b, side, x, z) {
 }
 
 // A side picked: the battle's on, the defenders inside the live posts, the
-// attackers at theirs, nobody costing a ticket.
+// attackers on their staging line short of the front (their post may be a
+// long walk from it: Scarif's landing, Endor's village), nobody costing a
+// ticket.
 export function chooseSide(b, side) {
   b.you.side = side;
   b.phase = 'run';
@@ -204,7 +207,7 @@ export function chooseSide(b, side) {
   let i = 0;
   for (const s of b.soldiers) {
     if (s.side === 'defend') place(b, s, live[i++ % live.length]);
-    else place(b, s, spawnPost(b, 'attack'));
+    else place(b, s, spawnPost(b, 'attack'), { forward: RULES.firstWave });
   }
 }
 
@@ -375,7 +378,7 @@ function step(b, h, you, env, out) {
       s.down += h;
       if (s.down >= RULES.respawn && wave[s.side] && b.tickets[s.side] > 0) {
         b.tickets[s.side] -= 1;
-        place(b, s, spawnPost(b, s.side), { forward: true });
+        place(b, s, spawnPost(b, s.side), { forward: 1 });
         out.push({ type: 'spawn', id: s.id });
       }
       continue;
