@@ -35,7 +35,11 @@ const PhoneOverlay = lazy(() => import('../components/dickansh/PhoneOverlay'));
 const SAFFRON = '#ff9a2a';
 const PHONE_MS = 700;
 const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put away
-const JUMP_WAIT = 6000; // ms at most a jump out waits for the jump's dark before the page goes anyway
+// ms at most a jump out waits for the jump's dark before the page goes
+// anyway: long, since a jump slow to start (its first frame waits for its
+// shaders, after whatever the page was busy with) still says so well before
+// it; only a jump that never comes waits it out
+const JUMP_WAIT = 8000;
 
 // The galaxy's page and its scene, fetched once its gate is picked or
 // flown into, so the jump into it isn't waiting on them (App.jsx loads the
