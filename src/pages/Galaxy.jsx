@@ -156,8 +156,8 @@ export default function Galaxy() {
   useEffect(() => tellBuild?.(build), [tellBuild, build]);
   const [at, setAt] = useState(null); // what in the system you're at (its planet, the Death Star…)
   // the places found out in the open here (places.js; the scene keeps the store, and says when one's new)
-  const [findTick, setFindTick] = useState(0);
-  const found = useMemo(() => readFound(local.get(FOUND_KEY))[current] ?? [], [current, findTick]);
+  const [founds, setFounds] = useState(() => readFound(local.get(FOUND_KEY)));
+  const found = founds[current] ?? [];
   const [mapOpen, setMapOpen] = useState(false);
   const [jumping, setJumping] = useState(null); // { to, phase } while a jump's on
   const [held, setHeld] = useState(null); // { to } while an Interdictor's gravity well holds you (galaxy/interdiction.js)
@@ -340,7 +340,7 @@ export default function Galaxy() {
       }
       // clear of the Interdictor's well: the drive's back (a crash ends the hold too, but earns nothing)
       if (e.type === 'find') {
-        setFindTick((n) => n + 1);
+        setFounds(readFound(local.get(FOUND_KEY)));
         return;
       }
       if (e.type === 'wellclear') {
