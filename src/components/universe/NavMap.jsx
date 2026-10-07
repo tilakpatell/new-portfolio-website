@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiEyeLine, RiFlashlightFill, RiLinkM, RiRocket2Fill, RiRouteLine, RiSearchLine, RiSpeedUpFill } from 'react-icons/ri';
+import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiEyeLine, RiFlashlightFill, RiLinkM, RiRoadMapFill, RiRocket2Fill, RiRouteLine, RiSearchLine, RiSpeedUpFill } from 'react-icons/ri';
 import { CHART_VIEWS, DESTINATIONS, DRIVES, KINDS, chartAt, chartHeading, chartRadius, destinationById, distanceTo, driveById, findDestinations, formatDistance, formatTime, goalOf, onChart, portalBetween, speedWord, tripTime, viewFor } from './nav';
 import { BELT, HOME_RADIUS, SECTORS, SUN, sectorOf } from './layout';
 import { EDGE } from './ship';
@@ -35,7 +35,7 @@ import './navmap.css';
 // the scene's (scene.js), read a few times a second while it's open.
 
 const V = 1000; // the SVG's units across
-const ICONS = { hyper: RiFlashlightFill, super: RiSpeedUpFill, cruise: RiRocket2Fill };
+const ICONS = { lanes: RiRoadMapFill, hyper: RiFlashlightFill, super: RiSpeedUpFill, cruise: RiRocket2Fill };
 // names that'd sit on a neighbour's (on the universe chart): under their dot instead
 const UNDER = new Set(['maw', 'glacia']);
 const WHY = { interdicted: 'Interdicted: hunters are holding the drive down', charging: 'Charging' };
