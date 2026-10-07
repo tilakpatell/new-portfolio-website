@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GCW, warTable } from './gcw';
 import { WAR_IDS } from './sides';
-import { ago, areaLines, battleLine, eventLine, heldColour, oathOf, orderLine, phaseLine, progressOf, recordLine, resultLine, standing, strengthLine } from './warText';
+import { ago, areaLines, battleLine, campaignLine, eventLine, feedOf, heldColour, newsLine, nextOpLine, oathOf, orderLine, partLine, phaseLine, progressOf, recordLine, resultLine, soon, standing, strengthLine } from './warText';
 
 const NOW = 1_000_000;
 const row = (o) => ({ id: 'hoth', owner: 'empire', control: 0.75, front: false, attack: null, rate: null, ...o });
@@ -131,5 +131,56 @@ describe('the war’s news', () => {
     expect(resultLine({ campaign: 6, result: { winner: 'empire', vp: { rebel: 8, empire: 12, hutt: 3 }, decisive: 'coruscant', over: null } })).toBe('The Empire won campaign 7 · 12–8 on victory points · decisive at Coruscant');
     expect(resultLine({ campaign: 2, result: { winner: 'republic', vp: { republic: 23, separatists: 0, hutt: 0 }, decisive: 'geonosis', over: 'republic' } })).toBe('The Republic won campaign 3 outright: every system theirs · decisive at Geonosis');
     expect(resultLine({ campaign: 2, result: null })).toBeNull();
+  });
+});
+
+describe('the war on the holotable', () => {
+  const H = 3600e3;
+  const M = 60e3;
+  it('tells of a thing that happened without when, for the feed to put the time beside it', () => {
+    const e = { type: 'captured', sys: 'hoth', by: 'empire', from: 'rebel', at: NOW - 2 * H };
+    expect(newsLine(e)).toBe('Hoth fell to the Empire');
+    expect(eventLine(e, NOW)).toBe(`${newsLine(e)} · 2h ago`);
+  });
+  it('the feed: the newest first, a few of them, a capital’s fall told once', () => {
+    const events = [
+      { k: 1, at: 1, type: 'attack', sys: 'yavin', by: 'empire' },
+      { k: 4, at: 4, type: 'captured', sys: 'yavin', by: 'empire', from: 'rebel' },
+      { k: 4, at: 4, type: 'capital', sys: 'yavin', by: 'empire', from: 'rebel' },
+      { k: 5, at: 5, type: 'raid', sys: 'naboo', by: 'hutt' },
+      { k: 5, at: 5, type: 'captured', sys: 'naboo', by: 'hutt', from: 'empire' },
+    ];
+    expect(feedOf(events).map((e) => `${e.type}:${e.sys}`)).toEqual(['captured:naboo', 'raid:naboo', 'capital:yavin', 'attack:yavin']);
+    expect(feedOf(events, 2)).toHaveLength(2);
+    expect(feedOf([])).toEqual([]);
+    expect(feedOf(undefined)).toEqual([]);
+  });
+  it('how soon, to the minute', () => {
+    expect(soon(20e3)).toBe('under a minute');
+    expect(soon(47 * M)).toBe('47m');
+    expect(soon(46 * M + 10e3)).toBe('47m');
+    expect(soon(72 * M)).toBe('1h 12m');
+    expect(soon(51 * H)).toBe('2d 3h');
+  });
+  it('the campaign’s phase and its end, in a line (in the Climax, the end is the next thing)', () => {
+    const table = { ends: NOW + 51 * H, phase: { name: 'Escalation', until: NOW + 18 * H, next: 'Decisive' } };
+    expect(campaignLine(table, NOW)).toBe('Escalation · the decisive phase in 18h 0m · campaign ends in 2d 3h');
+    const climax = { ends: NOW + 2 * H, phase: { name: 'Climax', until: NOW + 2 * H, next: null } };
+    expect(campaignLine(climax, NOW)).toBe('Climax · 2h 0m to the end');
+  });
+  it('when the next offensive is due, and whose', () => {
+    expect(nextOpLine({ nextOp: { by: 'empire', at: NOW + 47 * M } }, NOW)).toBe('Next Imperial offensive in 47m');
+    expect(nextOpLine({ nextOp: { by: 'separatists', at: NOW + 2 * H } }, NOW)).toBe('Next Separatist offensive in 2h 0m');
+    expect(nextOpLine({ nextOp: { by: 'remnant', at: NOW + 5 * M } }, NOW)).toBe('Next Remnant offensive in 5m');
+    expect(nextOpLine({ nextOp: { by: 'hutt', at: NOW + 3 * H + 4 * M } }, NOW)).toBe('Next Hutt raid in 3h 4m');
+    expect(nextOpLine({ nextOp: { by: 'empire', at: NOW - 1 } }, NOW)).toBe('Next Imperial offensive any moment');
+    expect(nextOpLine({ nextOp: null }, NOW)).toBeNull();
+  });
+  it('your part: the system you moved most this campaign, and how many in all', () => {
+    expect(partLine({ systems: [{ id: 'hoth', wins: 1, losses: 0, moved: 0.142 }] })).toBe('You moved Hoth 14% this campaign');
+    expect(partLine({ systems: [{ id: 'bespin', moved: 0.05 }, { id: 'yavin', moved: 0.31 }, { id: 'endor', moved: 0 }] })).toBe('You moved Yavin 4 31% this campaign · 2 systems in all');
+    expect(partLine({ systems: [{ id: 'hoth', moved: 0.001 }] })).toBeNull();
+    expect(partLine({ systems: [] })).toBeNull();
+    expect(partLine(null)).toBeNull();
   });
 });

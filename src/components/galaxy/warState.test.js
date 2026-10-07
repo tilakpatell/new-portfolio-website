@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TALLY, createTally, readTally } from '../universe/tally';
 import * as gcw from './gcw';
 import { GCW, WAR_SYSTEMS, campaignAt, history, pointsKey, seeded, warTable, winKey } from './gcw';
+import { soft } from './gcwAI';
 import { CAP, addPoints, addWin, mine, onWar, receiveWar, resetWar, warMessage, warNow, warTally } from './warState';
 
 // (gcw.js as it is, but counting the campaigns worked through from the start)
@@ -154,10 +155,25 @@ describe('mine', () => {
     receiveWar('peer', { e: 'c0', m: { [winKey('empire', 'hoth', 3)]: 1 }, t: {} }, NOW);
     const m = mine('gcw', NOW);
     expect(m.wins).toBe(1);
+    // (each row carries how much of the system's hold you moved as well, for the holotable's
+    // "your part": Endor's 3 points and the win, Hoth's 1 point; the next test has the rule)
     expect(m.systems).toEqual([
-      { id: 'endor', wins: 1, losses: 0 },
-      { id: 'hoth', wins: 0, losses: 1 },
+      { id: 'endor', wins: 1, losses: 0, moved: 0.13 },
+      { id: 'hoth', wins: 0, losses: 1, moved: 0.01 },
     ]);
+  });
+  it('knows how much of each system’s hold you moved: your share of what your side did there, as the war counts it', () => {
+    addPoints('rebel', 'hoth', 3, 20, NOW);
+    addPoints('rebel', 'endor', 4, 40, NOW);
+    addWin('rebel', 'endor', 4, NOW);
+    const moved = () => Object.fromEntries(mine('gcw', NOW).systems.map((x) => [x.id, x.moved]));
+    expect(moved().hoth).toBeCloseTo(soft(0.2), 4);
+    // (a side's points and its win at a system in a step count softly: gcwAI.js's soft)
+    expect(moved().endor).toBeCloseTo(soft(0.4 + GCW.points.win / 100), 4);
+    expect(moved().endor).toBeLessThan(0.5);
+    // (another pilot's as many points there: half of what the side did is yours)
+    receiveWar('peer', { e: 'c0', m: { [pointsKey('rebel', 'hoth', 3)]: 20 }, t: {} }, NOW);
+    expect(moved().hoth).toBeCloseTo(soft(0.4) / 2, 4);
   });
   it('knows a win at the major order', () => {
     const ms = GCW.start + 30 * 60e3;

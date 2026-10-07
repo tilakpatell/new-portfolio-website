@@ -22,12 +22,14 @@
 // nobody's side, or the Hutts'); receiveWar(peer, msg) → whether it learnt
 // anything; warMessage(); onWar(fn) → off (told when it changes);
 // warNow(now, war) → gcw.js's warTable for now; mine(war, now) → { points,
-// wins, battles, systems: [{ id, wins, losses }], major }: your own record
-// in a war this campaign (ranks.js names you by its points), gone over once
-// for each change to the tally.
+// wins, battles, systems: [{ id, wins, losses, moved }], major }: your own
+// record in a war this campaign (ranks.js names you by its points; moved is
+// how much of a system's hold you moved), gone over once for each change to
+// the tally.
 
 import { TALLY, createTally } from '../universe/tally';
 import { GCW, campaignAt, campaignRun, pointsKey, readKey, runAt, tableOf, winKey } from './gcw';
+import { soft } from './gcwAI';
 import { DEFAULT_WAR, warOfSide } from './sides';
 
 const KEY = 'tp-gcw';
@@ -133,8 +135,10 @@ export function warNow(now = Date.now(), war = DEFAULT_WAR) {
 
 // your own record in a war this campaign: the points you scored (your share
 // of each key, not anyone else's), the battles you were in, those your side
-// won and those the other side did, and whether one you won was the major
-// order's (in the war as it went, players and all: its every step's major)
+// won and those the other side did, whether one you won was the major
+// order's (in the war as it went, players and all: its every step's major),
+// and how much of each system's hold you moved: your share of what your
+// side's points and win did there, as the war counts them (softly)
 let records = {}; // war → { n, version, record }
 export function mine(war, now = Date.now()) {
   const t = warTally(now);
@@ -159,15 +163,22 @@ export function mine(war, now = Date.now()) {
   let major = false;
   let majors = null;
   for (const [at, b] of fought) {
-    const row = bySys.get(b.sys) ?? { id: b.sys, wins: 0, losses: 0 };
+    const row = bySys.get(b.sys) ?? { id: b.sys, wins: 0, losses: 0, moved: 0 };
     bySys.set(b.sys, row);
+    // (what the side did there, and your part of it, in hundredths of the hold: its points, and its win counted once)
+    const pk = pointsKey(b.side, b.sys, b.step);
+    const wk = winKey(b.side, b.sys, b.step);
+    const win = t.value(wk) >= 1 ? GCW.points.win : 0;
+    const all = t.value(pk) + win;
+    const yours = t.mine(pk) + (win ? (win * t.mine(wk)) / t.value(wk) : 0);
+    if (all > 0) row.moved += (soft(all / 100) * yours) / all;
     if (won.has(at)) {
       row.wins += 1;
       majors ??= stateNow(war, now).majors;
       if (majors[b.step] === b.sys) major = true;
     } else if ([...(winners.get(at) ?? [])].some((side) => side !== b.side)) row.losses += 1;
   }
-  const systems = [...bySys.values()].sort((a, b) => a.id.localeCompare(b.id));
+  const systems = [...bySys.values()].map((x) => ({ ...x, moved: +x.moved.toFixed(4) })).sort((a, b) => a.id.localeCompare(b.id));
   const record = { points: +points.toFixed(2), wins: won.size, battles: fought.size, systems, major };
   records[war] = { n, version, record };
   return record;

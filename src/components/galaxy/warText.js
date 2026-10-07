@@ -9,10 +9,13 @@
 // record) → your rank and record (warState.js's mine) | null; oathOf(war,
 // current, suggested) → the war's two sides for the oath's buttons;
 // battleLine(row, now, side) → a system's battle, its kind for your part in it.
-// And the war's news, from the table (gcw.js's warTable): ago(ms); eventLine(e,
-// now) → one of its events; strengthLine(table, side) | null; phaseLine(table,
-// now); orderLine(order, now) | null; resultLine(table) → the campaign's
-// result | null.
+// And the war's news, from the table (gcw.js's warTable): ago(ms); newsLine(e)
+// → one of its events; eventLine(e, now) → and when; feedOf(events, n) → the
+// newest few, newest first; strengthLine(table, side) | null; phaseLine(table,
+// now); campaignLine(table, now) → its phase and its end; soon(ms);
+// nextOpLine(table, now) → the next offensive | null; orderLine(order, now) |
+// null; resultLine(table) → the campaign's result | null; partLine(record) →
+// your part in it (warState.js's mine) | null.
 
 import { BATTLE_KINDS } from './battles';
 import { rankOf } from './ranks';
@@ -95,7 +98,7 @@ export function ago(ms) {
   return h < 48 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
 }
 
-function news(e) {
+export function newsLine(e) {
   const from = e.origin ? ` from ${nameOf(e.origin)}` : '';
   if (e.type === 'captured') return `${nameOf(e.sys)} fell to ${the(e.by)}`;
   if (e.type === 'capital') return `${nameOf(e.sys)}, ${the(e.from)}’${the(e.from).endsWith('s') ? '' : 's'} capital, fell to ${the(e.by)}`;
@@ -107,7 +110,18 @@ function news(e) {
   if (e.type === 'phase') return e.phase === 'Climax' && e.sys ? `The climax: the decisive battle, at ${nameOf(e.sys)}` : (PHASE_NEWS[e.phase] ?? e.phase);
   return e.type;
 }
-export const eventLine = (e, now) => `${news(e)} · ${ago(now - e.at)}`;
+export const eventLine = (e, now) => `${newsLine(e)} · ${ago(now - e.at)}`;
+
+// the newest few things that happened, newest first (a capital's fall is told
+// once, as a capital's: gcw.js tells it as a capture too)
+export function feedOf(events, n = 6) {
+  const list = events ?? [];
+  const capitals = new Set(list.filter((e) => e.type === 'capital').map((e) => `${e.k}:${e.sys}`));
+  return list
+    .filter((e) => !(e.type === 'captured' && capitals.has(`${e.k}:${e.sys}`)))
+    .slice(-n)
+    .reverse();
+}
 
 export function strengthLine(table, side) {
   const r = table.strength?.[side];
@@ -118,6 +132,18 @@ export function strengthLine(table, side) {
 
 export const phaseLine = ({ phase }, now) => `${phase.name} · ${phase.next ? `${PHASE_NEXT[phase.next] ?? phase.next} in ${span(phase.until - now)}` : `${span(phase.until - now)} to the end`}`;
 
+export const campaignLine = (table, now) => (table.phase.next ? `${phaseLine(table, now)} · campaign ends in ${span(table.ends - now)}` : phaseLine(table, now));
+
+// how soon, to the minute: under a minute, 47m, 1h 12m, 2d 3h
+export const soon = (ms) => (ms < 60e3 ? 'under a minute' : ms < 3600e3 ? `${Math.ceil(ms / 60e3)}m` : span(ms));
+
+const OFFENSIVE = { republic: 'Republic', separatists: 'Separatist', rebel: 'Rebel', empire: 'Imperial', newrepublic: 'New Republic', remnant: 'Remnant' };
+export function nextOpLine({ nextOp }, now) {
+  if (!nextOp) return null;
+  const what = nextOp.by === 'hutt' ? 'Hutt raid' : `${OFFENSIVE[nextOp.by] ?? SIDES[nextOp.by].short} offensive`;
+  return `Next ${what} ${nextOp.at > now ? `in ${soon(nextOp.at - now)}` : 'any moment'}`;
+}
+
 export const orderLine = (order, now) => (order ? `${VERBS[order.verb] ?? order.verb} ${nameOf(order.sys)} · ${span(order.until - now)} left` : null);
 
 export function resultLine(table) {
@@ -127,4 +153,13 @@ export function resultLine(table) {
   if (r.over) return `${The(r.winner)} won campaign ${table.campaign + 1} outright: every system theirs${decisive}`;
   const second = Math.max(...Object.entries(r.vp).filter(([side]) => side !== r.winner).map(([, v]) => v));
   return `${The(r.winner)} won campaign ${table.campaign + 1} · ${r.vp[r.winner]}–${second} on victory points${decisive}`;
+}
+
+// your part in the war this campaign: the system you moved most (a share of
+// its hold, warState.js's `moved`), and how many you moved at all
+export function partLine(record) {
+  const moved = (record?.systems ?? []).filter((x) => Math.round((x.moved ?? 0) * 100) > 0).sort((a, b) => b.moved - a.moved);
+  if (!moved.length) return null;
+  const all = moved.length > 1 ? ` · ${moved.length} systems in all` : '';
+  return `You moved ${nameOf(moved[0].id)} ${pctOf(moved[0].moved)} this campaign${all}`;
 }
