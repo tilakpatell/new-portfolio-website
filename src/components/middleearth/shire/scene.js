@@ -20,7 +20,10 @@ import { createHouse } from '../../../lib/three/house';
 import { pose } from '../mapFigures';
 import { createShireKit } from './props';
 import { loadDoorLeaf } from './models';
-import { instances, makeFlowers, makeGrass, makeTerrain, makeWater, shireGroundMap, swaying } from './ground';
+import { instances, makeFlowers, makeTerrain, makeWater, shireGroundMap } from './ground';
+import { createGrass } from '../../../lib/three/grass';
+import { createWind } from '../../../lib/three/wind';
+import { floorShadow } from '../../../lib/three/grounding';
 import { FIGURE, groundTown } from '../towns/grounded';
 import { makeAtmosphere, makeSky } from './sky';
 import { createFx } from './fx';
@@ -119,8 +122,12 @@ export function createShireWorld(canvas, { onLost } = {}) {
   house.ground(groundMap);
   const terrain = makeTerrain(renderer, { seg: tier === 'high' ? 220 : tier === 'mid' ? 160 : 110, map: groundMap });
   outdoors.add(terrain);
-  const wind = { uWind: { value: 0 } };
-  outdoors.add(makeGrass(Math.round(21000 * many), wind));
+  // one wind for the grass, the flowers and the oaks' crowns (lib/three/wind),
+  // and Bruno's grass: a triangle a blade, the ground's own colour, in a
+  // patch that goes wherever you look (lib/three/grass)
+  const wind = createWind({ strength: 0.45, angle: 0.6 * Math.PI });
+  const grass = createGrass({ ground: groundMap, wind, side: tier === 'high' ? 280 : tier === 'mid' ? 200 : 120, size: 44 });
+  outdoors.add(grass.mesh);
 
   const kit = createShireKit(renderer);
   const mats = kit.mats ?? {};
@@ -222,7 +229,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     rim.push({ x, z, s: 0.9 + rand() * 0.8, kind: Math.floor(rand() * 3), turn: rand() * 6.28 });
     i += 1;
   }
-  if (mats.crown) swaying(mats.crown, wind, 0.004);
+  if (mats.crown) wind.sway(mats.crown, { strength: 0.5, height: 6 });
   oaks.forEach((oak, k) => {
     const list = TREES.filter((t) => t.kind % oaks.length === k).map((t) => ({ x: t.x, z: t.z, y: height(t.x, t.z) - 0.1, s: t.s, turn: t.turn }));
     if (!list.length) return;
@@ -460,7 +467,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     const dt = Math.min(0.05 * fast, ms / 1000);
     A.t += dt;
     const t = A.t;
-    wind.uWind.value = t;
+    wind.update(dt);
     water.material.uniforms.uTime.value = t;
     sky.uniforms.uTime.value = t;
 
@@ -763,6 +770,10 @@ export function createShireWorld(canvas, { onLost } = {}) {
     }
     camera.lookAt(A.cam.look);
     sky.dome.position.copy(camera.position);
+    // the grass's patch a little ahead of the eye, where the view lands
+    camera.getWorldDirection(tmp2).setY(0);
+    if (tmp2.lengthSq() < 1e-6) tmp2.set(0, 0, -1);
+    grass.update(tmp.copy(camera.position).addScaledVector(tmp2.normalize(), 13));
     // the sun's shadows follow where you are
     const focus = s.mode === 'inside' ? INSIDE : s.mode === 'show' ? tmp2.set(20, 0, -14) : frodo.group.position;
     sun.target.position.copy(focus);
@@ -843,7 +854,10 @@ export function createShireWorld(canvas, { onLost } = {}) {
 
   // ── the floor's light, baked when the Shire is first drawn outdoors ──
   // (its bounce off: the house look's, from the ground map, is the bounce)
-  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height: groundY, people: movers, skip: [sky.dome, ghosts.group, water.group], tier, radius: WORLD.radius + 10, shade: 0x2c3018, matcap: [rimTrees], bounce: false });
+  // (the grass out of the bake: drawn from above it would wrap round the
+  // bake's own camera; it reads the baked shade instead, as the floor does)
+  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height: groundY, people: movers, skip: [sky.dome, ghosts.group, water.group, grass.mesh], tier, radius: WORLD.radius + 10, shade: 0x2c3018, matcap: [rimTrees], bounce: false });
+  floorShadow(grass.material, ground.mask);
   // (last, over the floor light's own tints: one shadow colour everywhere)
   house.adopt(scene);
 
@@ -851,6 +865,8 @@ export function createShireWorld(canvas, { onLost } = {}) {
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     house: import.meta.env.DEV ? house : null, // for the QA scripts
+    grass: import.meta.env.DEV ? grass : null, // for the QA scripts
+    wind: import.meta.env.DEV ? wind : null, // for the QA scripts
     render,
     fx: fxEvent,
     aim,
@@ -867,6 +883,8 @@ export function createShireWorld(canvas, { onLost } = {}) {
     dispose() {
       gone = true;
       ground.dispose();
+      grass.dispose();
+      wind.dispose();
       groundMap.dispose();
       ghosts.dispose();
       stage.dispose();
