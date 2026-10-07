@@ -66,8 +66,18 @@ export async function buildFortress(kit) {
     const tube = new THREE.Mesh(tubeGeo, tubeMat);
     tube.position.set(x, 2, z);
     R.add(tube, { ink: false });
-    // the spare: a Rick, floating in it, asleep
-    S.figure('rick', { x, z, y: 0.55, h: 2.0, face: -Math.PI / 2, onPlace: (c) => ricks.push(c.group) });
+    // the spare: a Rick, floating in it, asleep (no flask to reach for in a tank)
+    S.figure('rick', {
+      x,
+      z,
+      y: 0.55,
+      h: 2.0,
+      face: -Math.PI / 2,
+      onPlace: (c) => {
+        c.anim?.idles(null);
+        ricks.push(c.group);
+      },
+    });
   }
 
   // the console at the far end, his, the screens green on black

@@ -49,6 +49,17 @@ export const MODELS = {
   senate: { made: 'meshy', lod: true, as: 'the Senate Building', metres: 190, along: 'x', hero: true },
   // Dagobah: Yoda's hut, the cluster of it
   yodahut: { made: 'meshy', as: "Yoda's hut", metres: 10, along: 'x' },
+  // The three worlds' lane (scripts/meshy-galaxy-three.mjs, each lifted out
+  // of a film still or the game's render of Cloud City's streets): Cloud
+  // City's towers (scattered round the deck in the built city's place) and
+  // its plaza terraces, Dex's diner and the Outlander club (their floors and
+  // doors stay the built ones'), 500 Republica
+  cloudtower: { made: 'meshy', as: 'a tower of Cloud City', metres: 60, along: 'y' },
+  cloudtower2: { made: 'meshy', as: 'a domed hall of Cloud City', metres: 40, along: 'y' },
+  cloudplaza: { made: 'meshy', as: "Cloud City's plaza terraces", metres: 48, along: 'x', hero: true },
+  dexdiner: { made: 'meshy', as: "Dex's Diner", metres: 22, along: 'x', solids: 'built' },
+  club: { made: 'meshy', as: 'the Outlander Club', metres: 24, along: 'x', solids: 'built' },
+  republica: { made: 'meshy', as: '500 Republica', metres: 330, along: 'y' },
   // Coruscant: a skyscraper of Galactic City
   corutower: { made: 'meshy', as: 'the towers of Galactic City', metres: 220, along: 'y' },
 };

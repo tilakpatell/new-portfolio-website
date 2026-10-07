@@ -19,12 +19,14 @@ import { canvasTexture, hot } from '../../../lib/stage3d';
 import { toon } from '../portal/toon';
 import { AREAS, FURNITURE } from './rules';
 import { at, batch, coloured, fitModel, glowMaterial, logoText, mergeParts, neonCopy, paint, rng } from './kit';
+import { createNpcs } from './npc';
 
 const A = AREAS.arcade;
 const CX = (A.x0 + A.x1) / 2; // the walkway's middle line, and the hall's
 const CZ = A.z0 - 10; // the hall's middle: 10 m past the end of the walkway
 const R_IN = 23; // the balconies' front edge
 const R_OUT = 30; // the outer wall
+const PLAY_R = 27.3; // where a regular stands to play a cabinet (theirs are at 28.6, round every level)
 const SOUTH = A.z1 + 0.3; // the entrance wall, behind the walkway
 const FLOOR = -4.2; // the hall's floor, a storey under the walkway
 const STOREY = 4.2;
@@ -805,21 +807,28 @@ export async function buildArcade(kit) {
   for (const g of cache.values()) g.dispose();
 
   // ── a few regulars, out over the hall ──
+  // Each goes from cabinet to cabinet round its own level (../npc.js's
+  // wander: a stop in front of each, turned to its screen), plays a while,
+  // and now and then cheers or gloats at how it went (`cheer`)
   const regulars = [];
+  const hall = createNpcs({ id: 'arcade', area: { x0: CX - R_OUT, x1: CX + R_OUT, z0: CZ - R_OUT, z1: CZ + R_OUT } });
   if (plan.regulars) {
-    await need(['gromflomite', 'gazorpian'], { clips: ['idle'] }).catch(() => {});
-    const place = (kind, rad, a, y, turn) => {
+    await need(['gromflomite', 'gazorpian'], { clips: ['idle', 'walk'] }).catch(() => {});
+    // a stop in front of the cabinet at angle `a`: where it stands, and which way it faces (out, at the screen)
+    const stop = (a) => [...P(PLAY_R, a), a - Math.PI / 2];
+    const place = (kind, y, a0, turns) => {
       const c = kit.cast.make(kind);
       if (!c) return;
-      const [x, z] = P(rad, a);
-      c.group.position.set(x, y, z);
-      c.group.rotation.y = turn;
+      const [x, z] = P(PLAY_R, a0);
       group.add(c.group);
-      regulars.push(c);
+      const n = hall.add(c, { x, z, y, face: a0 - Math.PI / 2, id: `${kind}-${regulars.length}`, ai: { wander: [a0, ...turns.map((d) => a0 + d)].map(stop), speed: 0.8, pause: 7, cheer: 0.45 } });
+      c.group.position.set(x, y, z);
+      c.group.rotation.y = a0;
+      regulars.push(n);
     };
-    place('gromflomite', 24.0, Math.PI + 0.5, DECKS[0], inward(Math.PI + 0.5));
-    place('gazorpian', 12.5, 2.25, FLOOR, inward(2.25) + 0.5);
-    place('gromflomite', 24.0, Math.PI - 0.8, DECKS[1], inward(Math.PI - 0.8));
+    place('gromflomite', DECKS[0], Math.PI + 0.5, [0.24, -0.2, 0.46, 0.1]);
+    place('gazorpian', FLOOR, 2.25, [-0.26, 0.2, -0.08]);
+    place('gromflomite', DECKS[1], Math.PI - 0.8, [-0.22, 0.3, 0.12, -0.4]);
   }
 
   const q = new THREE.Quaternion();
@@ -836,7 +845,7 @@ export async function buildArcade(kit) {
         boardTex.needsUpdate = true;
       },
     },
-    update(t) {
+    update(t, dt, state) {
       domeMat.uniforms.t.value = t;
       bulbMat.uniforms.t.value = t;
       screenMat.uniforms.t.value = t;
@@ -848,7 +857,7 @@ export async function buildArcade(kit) {
         spheres.setMatrixAt(i, tmp.compose(v, q, s.setScalar(o.size)));
       }
       spheres.instanceMatrix.needsUpdate = true;
-      for (let i = 0; i < regulars.length; i++) regulars[i].update?.(t, 0, 0);
+      for (let i = 0; i < regulars.length; i++) hall.step(regulars[i], t, dt, state);
     },
     dispose() {
       for (const o of owned) o.dispose?.();

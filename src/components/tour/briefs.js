@@ -615,7 +615,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Minecraft',
-      text: 'A fan tribute: an endless world of blocks made from a seed, drawn in the game’s own textures.',
+      text: 'Minecraft itself, 1.12.2 and 1.8.8, behind a password; and for everyone, a tribute built here: an endless world of blocks made from a seed.',
     },
     {
       id: 'walk',

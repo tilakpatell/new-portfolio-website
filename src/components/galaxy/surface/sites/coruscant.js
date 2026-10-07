@@ -149,7 +149,7 @@ export const SITE = {
       },
       things: [
         { kind: 'cplatform', at: [0, 0], abs: true, y: 0, opts: { r: 24, light: '#ff6ad0' } },
-        { kind: 'club', at: [0, 8], yaw: Math.PI + 0.6, abs: true, y: 0.3 },
+        { kind: 'club', at: [0, 8], yaw: Math.PI + 0.6, abs: true, y: 0 },
         { kind: 'airspeeder', at: [10, -10], yaw: -0.5, abs: true, y: 0.3, opts: { color: '#c8c8cc' } },
       ],
     },
@@ -229,10 +229,10 @@ export const SITE = {
     { kind: 'skyscraper', n: 40, within: [60, 620], scale: [0.7, 1.1], stretch: [0.6, 1.25], solid: false, opts: { style: 1, seed: 8 } },
     { kind: 'skyscraper', n: 40, within: [60, 620], scale: [0.7, 1.1], stretch: [0.6, 1.25], solid: false, opts: { style: 3, seed: 9 } },
   ],
-  // where the people go (needs.js): the commuters between the diner, the
-  // landing and the lanes
+  // where the people go (needs.js): the commuters between the diner (a drink
+  // out front), the landing and the lanes
   wants: [
-    { id: 'dexfront', kind: 'food', at: [-150, -262], pause: 10 },
+    { id: 'dexfront', kind: 'food', at: [-150, -262], slots: 3, clip: 'drink', pause: 10 },
     { id: 'landing', kind: 'transit', at: [26, -34], pause: 5 },
     { id: 'lane', kind: 'view', at: [0, 150], pause: 6 },
     { id: 'senatesteps', kind: 'view', at: [300, 40], pause: 8 },
@@ -273,7 +273,7 @@ export const SITE = {
         lamps: [[-3, 3.2, -1, '#ffb070', 30, 12], [3, 3.2, -1, '#ffb070', 30, 12], [0, 3.2, 3, '#ffd0a0', 18, 10], [6, 2.4, 0, '#ffb070', 14, 8]],
       },
       life: [
-        { kind: 'villager', id: 'dex', at: [0, -3.3], still: true, face: 0, scale: 1.45, r: 0.8, reach: 5, name: 'Dexter Jettster', named: true, quest: 'dart', says: { when: { side: 'republic' }, lines: ['Hey, old buddy! Take a seat, I’ll be right with you.', 'Those Kaminoans keep to themselves. They’re cloners. Damn good ones, too.', 'You’re with the Republic, huh? Then you’re paying. Jedi never do.'], else: { when: { side: 'separatists' }, lines: ['Hey, old buddy! Take a seat, I’ll be right with you.', 'Separatist, huh? I don’t care who you’re with, long as you tip.', 'Those Kaminoans keep to themselves. They’re cloners. Damn good ones, too.'], else: ['Hey, old buddy! Take a seat, I’ll be right with you.', 'Those Kaminoans keep to themselves. They’re cloners. Damn good ones, too.', 'I’d expect better from you Jedi. You oughta be able to tell the difference between knowledge and wisdom.'] } } },
+        { kind: 'dex', id: 'dex', at: [0, -3.3], still: true, face: 0, r: 0.8, reach: 5, name: 'Dexter Jettster', named: true, quest: 'dart', says: { when: { side: 'republic' }, lines: ['Hey, old buddy! Take a seat, I’ll be right with you.', 'Those Kaminoans keep to themselves. They’re cloners. Damn good ones, too.', 'You’re with the Republic, huh? Then you’re paying. Jedi never do.'], else: { when: { side: 'separatists' }, lines: ['Hey, old buddy! Take a seat, I’ll be right with you.', 'Separatist, huh? I don’t care who you’re with, long as you tip.', 'Those Kaminoans keep to themselves. They’re cloners. Damn good ones, too.'], else: ['Hey, old buddy! Take a seat, I’ll be right with you.', 'Those Kaminoans keep to themselves. They’re cloners. Damn good ones, too.', 'I’d expect better from you Jedi. You oughta be able to tell the difference between knowledge and wisdom.'] } } },
         { kind: 'wa7', path: [[-4.5, -3.3], [4.5, -3.3]], speed: 1.4, pause: 2, solid: false, name: 'WA-7', says: ['Whaddya want?', 'Dex says it’s on the house. Dex is lying.', '(She rolls off with a tray of jawa juice.)'] },
         { kind: 'villager', at: [6.4, -2.6], still: true, face: -Math.PI / 2, name: 'A diner', says: ['Nuna legs. Get the nuna legs.', 'Jedi come in here, you know. Dex knows everybody.'] },
         { kind: 'clone', at: [6.4, 3.7], still: true, face: -Math.PI / 2, name: 'An off-duty clone', says: ['Best caf in CoCo Town. Don’t tell the Commander.'] },

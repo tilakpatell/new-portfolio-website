@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en" style="width: 100%; height: 100%; background: #000">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Minecraft</title>
+    <style>
+      html, body { margin: 0; width: 100%; height: 100%; background: #000; color: #ccc; font: 14px system-ui, sans-serif; }
+      p { position: absolute; inset: auto 0 45%; text-align: center; margin: 0; }
+    </style>
+  </head>
+  <body>
+    <p id="say">Waiting for the site…</p>
+    <script type="module">
+      // Minecraft (Eaglercraft), the player: the page that runs the game, on an
+      // origin of its own (tilakpatell.github.io), so the game's code and its
+      // saves are walled off from tilakpatell.com and its storage. The site
+      // unlocks and sends this page only the key stretched from the password
+      // and the address of a sealed client; this page fetches it, opens it
+      // (the site's own crypt.js and load.js) and becomes the game. It answers
+      // only the site's origins, and fetches only from them.
+      //
+      // Its source is the site's public/eagler-player/index.html; published to
+      // the tilakpatell/minecraft-player repository by
+      // scripts/eagler-player-publish.mjs (which points the imports below at
+      // its own copies of crypt.js and load.js).
+      import { fromBase64, keysFromRaw } from '/src/components/eagler/crypt.js';
+      import { fetchSealed, unpack } from '/src/components/eagler/load.js';
+
+      const SITES = [/^https:\/\/(www\.)?tilakpatell\.com$/, /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/];
+      const allowed = (origin) => SITES.some((re) => re.test(origin));
+      const say = (t) => (document.getElementById('say').textContent = t);
+      let parentOrigin = null;
+      const tell = (msg) => parentOrigin && window.parent.postMessage(msg, parentOrigin);
+
+      window.addEventListener('message', async (e) => {
+        if (e.source !== window.parent || !allowed(e.origin) || e.data?.type !== 'tp-eagler-open') return;
+        parentOrigin = e.origin;
+        const { key, url, bytes } = e.data;
+        try {
+          if (!allowed(new URL(url).origin)) throw new Error('not one of the site’s files');
+          say('Opening the game…');
+          const sealed = await fetchSealed(url, bytes, (p) => tell({ type: 'tp-eagler-progress', p }));
+          tell({ type: 'tp-eagler-progress', p: 1 });
+          const html = await unpack(await keysFromRaw(fromBase64(key)), sealed);
+          tell({ type: 'tp-eagler-started' });
+          // the game, as this origin's own page (its storage is this origin's)
+          location.replace(URL.createObjectURL(new Blob([html], { type: 'text/html' })));
+        } catch (err) {
+          say('The game couldn’t be opened.');
+          tell({ type: 'tp-eagler-error', message: String(err?.message ?? err).slice(0, 120) });
+        }
+      });
+      // ready: the site may send the key now (to any of its origins; it answers only one)
+      window.parent.postMessage({ type: 'tp-eagler-ready' }, '*');
+    </script>
+  </body>
+</html>

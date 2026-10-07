@@ -340,6 +340,8 @@ export const SITE = {
     // the city: its deck, its tower, its towers, its bridges and platforms
     { kind: 'bespindeck', at: [0, 0], abs: true, y: 0, opts: { r: 170, gaps: [Math.PI, Math.PI / 2, -Math.PI / 2, 2.356] } },
     { kind: 'cloudcity', at: [0, 0], abs: true, y: 0, scale: 2.2, model: false },
+    // the plaza's terraces, north of the plaza before the tower (the Meshy model)
+    { kind: 'cloudplaza', at: [0, 72], abs: true, y: 0, yaw: Math.PI },
     { kind: 'bespinplatform', at: [0, -255], abs: true, y: 0, opts: { r: 28, gap: 0 } },
     { kind: 'bespinbridge', at: [0, -199], abs: true, y: 0, opts: { len: 62, w: 7 } },
     { kind: 'bespinplatform', at: [255, 0], abs: true, y: 0, opts: { r: 22, gap: -Math.PI / 2 } },
@@ -370,16 +372,20 @@ export const SITE = {
   ],
   scatter: [
     // the skyline: towers stood on the deck (lifted from the fall to it)
-    { kind: 'cloudcity', n: 46, within: [52, 158], scale: [0.45, 1.25], sink: -40, clear: 18 },
+    // Cloud City's towers and domed halls round the deck (the Meshy models;
+    // scripts/meshy-galaxy-three.mjs), sunk into it as the built city's were
+    { kind: 'cloudtower', n: 14, within: [52, 158], scale: [0.35, 0.8], sink: -30, clear: 24 },
+    { kind: 'cloudtower2', n: 10, within: [60, 158], scale: [0.4, 0.8], sink: -30, clear: 24 },
     { kind: 'cloudblock', n: 40, within: [36, 150], scale: [0.6, 1.3], sink: -40, clear: 12 },
     { kind: 'lamp', n: 50, within: [24, 160], scale: [1, 1], sink: -40, clear: 6, opts: { h: 4.5, light: '#ffe0b0', color: '#d8d0c4', radius: 0.2 } },
   ],
   // where the people go (needs.js): the Ugnaughts between the plaza, the
-  // chamber's door and the landing platform, the Wing Guard after them
+  // chamber's door (kneeling at its works, fixing them) and the landing
+  // platform (at its controls), the Wing Guard after them
   wants: [
     { id: 'plaza', kind: 'rest', at: [0, 20], pause: 6 },
-    { id: 'carbondoor', kind: 'work', at: [88, -78], pause: 9 },
-    { id: 'platform', kind: 'work', at: [0, -232], pause: 8 },
+    { id: 'carbondoor', kind: 'work', at: [88, -78], slots: 2, clip: 'kneel.fix', pause: 9 },
+    { id: 'platform', kind: 'work', at: [0, -232], slots: 2, clip: 'interact', pause: 8 },
   ],
   life: [
     { kind: 'lando', id: 'lando', quest: 'han', at: [2, -233], face: 3.1, still: true, name: 'Lando Calrissian', named: true, says: {
