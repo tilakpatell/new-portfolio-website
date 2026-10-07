@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { AREAS, FURNITURE, LINKS, PEOPLE } from '../rules';
 import { at, mergeParts } from '../kit';
 import { BALL8, BOX, CYL, TAU, ceilings, doorAt, fitText, lathe, makeRoom, tiledPaint, wallLine, win, windowView } from './shell';
-import { facingAhead, sitting, toonPerson } from './people';
+import { seat, toonPerson } from './people';
 
 const A = AREAS.diner;
 const H = 3.0;
@@ -155,9 +155,9 @@ function fan(R, x, z) {
   return g;
 }
 
-// The agent, sat: his Meshy figure in Rick's sat clip (turned to face ahead,
-// as Jerry sits on the couch), or in shapes, on the bench, facing the door
-const SIT = { back: 0.12, y: -0.45 };
+// The agent, sat on the bench facing the door: his Meshy figure in his own
+// sat clip (./people.js's seat, his hips where they always were), or in shapes
+const SIT = { back: 0.12, hips: 0.54 };
 async function seated(R, p) {
   const kit = R.kit;
   try {
@@ -166,24 +166,8 @@ async function seated(R, p) {
   } catch {
     /* in shapes */
   }
-  const clip = await sitting();
-  const c = clip ? (kit.cast?.make?.('fedagent') ?? null) : null;
-  if (c?.mixer) {
-    c.group.scale.setScalar(1.9 / c.height);
-    c.group.position.set(p.x, SIT.y, p.z - SIT.back);
-    c.group.rotation.y = p.face + Math.PI / 2;
-    R.group.add(c.group);
-    const sit = c.mixer.clipAction(facingAhead(c, clip));
-    sit.play();
-    for (const a of Object.values(c.act)) a.setEffectiveWeight(0);
-    sit.setEffectiveWeight(1);
-    let last = null;
-    R.tick((t) => {
-      c.mixer.update(last == null ? 0 : Math.min(0.1, t - last));
-      last = t;
-    });
-    return;
-  }
+  const c = kit.cast?.make?.('fedagent') ?? null;
+  if (await seat(R, c, { ...p, z: p.z - SIT.back }, { h: 1.9, seatY: SIT.hips })) return;
   const fig = toonPerson(R, AGENT, 1.9);
   fig.group.position.set(p.x, 0, p.z);
   fig.group.rotation.y = p.face + Math.PI / 2;

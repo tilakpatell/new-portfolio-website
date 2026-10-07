@@ -3,7 +3,8 @@ import { createSolids } from '../walker';
 import { ASSAULTS, sidesFor } from './assaults';
 import { REACH } from '../terrain';
 import { siteOf } from '../sites';
-import { RULES, SOLDIERS, TACTICS, battleView, canDeploy, chooseSide, coverFrom, deploy, endBattle, forwardOf, hitSoldier, newBattle, objectiveFor, sideFor, stepBattle, warSideOf, youDown } from './assault';
+import { BATTLE_BODY, RULES, SOLDIERS, TACTICS, battleView, canDeploy, chooseSide, coverFrom, deploy, endBattle, forwardOf, hitSoldier, newBattle, objectiveFor, sideFor, soldierBody, stepBattle, warSideOf, youDown } from './assault';
+import { bodyFrom } from '../../../../lib/ai/body';
 
 // a small map: the attackers come from the west, two posts to take, then a last one
 const MAP = {
@@ -694,5 +695,103 @@ describe('the three worlds’ battles', () => {
     expect(sidesFor('nope').attack.id).toBe('empire');
     expect(ASSAULTS.coruscant.sides.attack.id).toBe('separatists');
     expect(ASSAULTS.bespin.sides.attack.id).toBe('rebels');
+  });
+});
+
+describe('the soldiers’ bodies: what the drawing reads (soldierBody, BATTLE_BODY)', () => {
+  it('reads a soldier’s mode from what the rules have it doing, and aims at its target', () => {
+    const b = newBattle(MAP, { n: 2, seed: 3 });
+    chooseSide(b, 'attack');
+    const [a] = up(b, 'attack');
+    const [d] = up(b, 'defend');
+    Object.assign(a, { x: -10, z: 30, target: d.id, suppress: 0, inCover: false, fallback: null, hold: false, flankTo: null });
+    Object.assign(d, { x: 10, z: 30 });
+    expect(soldierBody(b, a)).toMatchObject({ x: -10, z: 30, mode: 'fight', aim: { x: 10, z: 30 } });
+    a.target = 'you';
+    Object.assign(b.you, { x: 3, z: 4 });
+    expect(soldierBody(b, a).aim).toEqual({ x: 3, z: 4 });
+    a.target = null;
+    expect(soldierBody(b, a)).toMatchObject({ mode: 'advance', aim: null });
+    a.flankTo = [0, 0];
+    expect(soldierBody(b, a).mode).toBe('flank');
+    a.hold = true;
+    expect(soldierBody(b, a).mode).toBe('covering');
+    a.fallback = [-30, 30];
+    expect(soldierBody(b, a).mode).toBe('retreat');
+    a.suppress = 1;
+    expect(soldierBody(b, a).mode).toBe('pinned');
+    a.inCover = true;
+    expect(soldierBody(b, a).mode).toBe('cover');
+    a.up = false;
+    expect(soldierBody(b, a)).toMatchObject({ mode: 'down', down: 1 });
+  });
+
+  it('comes up to fire a moment before its shot, and only with a target and a gun', () => {
+    const b = newBattle(MAP, { n: 1, seed: 3 });
+    chooseSide(b, 'attack');
+    const [a] = up(b, 'attack');
+    const [d] = up(b, 'defend');
+    Object.assign(a, { target: d.id, cool: 1 });
+    expect(soldierBody(b, a).fire).toBe(false);
+    a.cool = 0.1;
+    expect(soldierBody(b, a).fire).toBe(true);
+    a.unarmed = true;
+    expect(soldierBody(b, a).fire).toBe(false);
+    a.unarmed = false;
+    a.target = null;
+    expect(soldierBody(b, a).fire).toBe(false);
+  });
+
+  it('reads, never changes: a battle with its bodies read every step goes exactly as one without', () => {
+    const play = (read) => {
+      const b = newBattle(MAP, { n: 6, seed: 4 });
+      chooseSide(b, 'attack');
+      const out = [];
+      for (let i = 0; i < 400; i++) {
+        out.push(...stepBattle(b, 0.1, { x: -20, z: 30 }, env).map((e) => e.type));
+        if (read) for (const s of b.soldiers) soldierBody(b, s);
+      }
+      return { out, at: b.soldiers.map((s) => [s.x, s.z, s.hp, s.up, s.yaw]), tickets: b.tickets, posts: b.posts.map((p) => [p.owner, p.meter]) };
+    };
+    expect(play(true)).toEqual(play(false));
+  });
+
+  it('tells where a killing shot came from (a soldier’s place, or yours), and whom a soldier’s shot was at', () => {
+    const b = newBattle(MAP, { n: 4, seed: 9 });
+    chooseSide(b, 'attack');
+    for (const s of b.soldiers) Object.assign(s, { frozen: true, x: s.side === 'attack' ? -10 : 10, z: 30 + (s.id % 4) * 2 });
+    let downs = 0;
+    let shots = 0;
+    // (each step's events against where everyone is after it: the frozen don't move, the ones coming back are placed before they're shot at)
+    for (let i = 0; i < 300; i++)
+      for (const e of stepBattle(b, 0.1, null, env)) {
+        if (e.type === 'down') {
+          downs++;
+          const by = b.soldiers.find((s) => s.id === e.by);
+          expect(e.from).toEqual([by.x, by.z]);
+        } else if (e.type === 'shot' && !e.atYou) {
+          shots++;
+          const at = b.soldiers.find((s) => s.id === e.target);
+          expect(at.side).not.toBe(e.side);
+          expect(e.to).toEqual([at.x, at.z]);
+        }
+      }
+    expect(downs).toBeGreaterThan(0);
+    expect(shots).toBeGreaterThan(0);
+    Object.assign(b.you, { x: 50, z: -7 });
+    const d = b.soldiers.find((s) => s.side === 'defend' && s.up);
+    expect(hitSoldier(b, d.id, 999)).toMatchObject({ type: 'down', by: 'you', from: [50, -7] });
+  });
+
+  it('looks as the battle reads: crouched in cover and up to fire, the covering half on a knee, its head on its target', () => {
+    const at = { x: 0, z: 0, yaw: 0 };
+    const step = (mode, extra = {}) => bodyFrom(at, { ...at, mode, aim: { x: 0, z: 20 }, ...extra }, 0.1, { table: BATTLE_BODY });
+    expect(step('cover')).toMatchObject({ base: 'crouch', look: { x: 0, z: 20 } });
+    expect(step('cover', { fire: true }).base).toBeNull();
+    expect(step('covering').base).toBe('crouch');
+    for (const mode of ['fight', 'retreat', 'flank', 'pinned']) expect(step(mode)).toMatchObject({ base: null, look: { x: 0, z: 20 } });
+    expect(step('advance', { aim: null }).look).toBeNull();
+    // (and every mode soldierBody gives has a row)
+    for (const mode of ['down', 'cover', 'pinned', 'retreat', 'covering', 'flank', 'fight', 'advance']) expect(BATTLE_BODY[mode], mode).toBeTruthy();
   });
 });

@@ -59,6 +59,7 @@ import { KINDS as HUNTERS } from '../../galaxy/hunted';
 import { fromAngles, slerp, toAngles } from '../orient';
 import { cleanWhere } from './where';
 import { cleanName } from './names';
+import { motionPacket, readEmoteWire, readMotion } from '../../../lib/emote';
 
 export { NAME_MAX, cleanName, randomCallsign } from './names';
 
@@ -307,11 +308,14 @@ export function readFoot(data) {
 
 // ── Down on a world in the galaxy (galaxy/surface/scene.js) ──
 // where a pilot's crew are, in that world's own metres: { world, kind,
-// lead, mate, ride }, each walker [who, x, y, z, yaw, speed, aim, arms],
-// ride the kind they're on (or null); or null once they've taken off
-// again. `arms` (newer pilots; older readers stop before it) is what's in
-// the hand: [gun kind, lit (a saber: 0 | 1), blade colour (#rrggbb), stance,
-// swinging (0 | 1)]
+// lead, mate, ride }, each walker [who, x, y, z, yaw, speed, aim, arms,
+// emote, motion], ride the kind they're on (or null); or null once
+// they've taken off again. `arms` (newer pilots; older readers stop before
+// it) is what's in the hand: [gun kind, lit (a saber: 0 | 1), blade colour
+// (#rrggbb), stance, swinging (0 | 1)]; `emote` and `motion` (newer still,
+// and only when there's one: lib/emote.js's emotePacket and motionPacket)
+// what they're doing ([id, seconds on]) and how they're moving ([speed,
+// side, turn] in metres and radians a second), so their feet keep pace
 export const WALK_MS = 100;
 const RIDES_SEEN = ['landspeeder', 'speederbike', 'tauntaun', 'kaadu', 'bantha']; // galaxy/surface/rides.js's
 const r2 = (v) => Math.round((v || 0) * 100) / 100;
@@ -319,7 +323,16 @@ const r2 = (v) => Math.round((v || 0) * 100) / 100;
 export const ARMS_GUNS = ['blaster', 'laser', 'portal', 'revolver', 'pistol', 'bowcaster', 'rifle', 'coppistol', 'saber', 'a280', 'dlt19', 'ee3', 'westar', 'shotgun', 'sniper', 'smg']; // universe/gunplay.js's GUNS
 const STANCES_SEEN = ['single', 'double', 'dual', 'heavy']; // galaxy/surface/combatRules.js's
 const writeArms = (a) => (a && ARMS_GUNS.includes(a.gun) ? [a.gun, a.lit ? 1 : 0, typeof a.color === 'string' ? a.color.slice(0, 7) : '', STANCES_SEEN.includes(a.stance) ? a.stance : 'single', a.swing ? 1 : 0] : null);
-const writeStroller = (w) => (w ? [w.who, r2(w.x), r2(w.y), r2(w.z), r2(wrap(w.yaw || 0)), r2(w.speed), Math.round((w.aim || 0) * 100) / 100, ...(w.arms ? [writeArms(w.arms)] : [])] : null);
+const writeStroller = (w) => {
+  if (!w) return null;
+  const out = [w.who, r2(w.x), r2(w.y), r2(w.z), r2(wrap(w.yaw || 0)), r2(w.speed), Math.round((w.aim || 0) * 100) / 100];
+  // (what goes out checked as what comes in is; the arms' place kept, empty, ahead of them)
+  const e = readEmoteWire(w.emote);
+  const m = motionPacket(w.motion);
+  if (w.arms || e || m) out.push(writeArms(w.arms));
+  if (e || m) out.push(e ? [e.id, e.age] : null, m);
+  return out;
+};
 const readArms = (a) => {
   if (!Array.isArray(a) || !ARMS_GUNS.includes(a[0])) return null;
   return { gun: a[0], lit: a[1] === 1, color: typeof a[2] === 'string' && /^#[0-9a-fA-F]{6}$/.test(a[2]) ? a[2] : '#4aa8ff', stance: STANCES_SEEN.includes(a[3]) ? a[3] : 'single', swing: a[4] === 1 };
@@ -333,7 +346,9 @@ const readStroller = (data) => {
   const [x, y, z] = [num(data[1], -10000, 10000), num(data[2], -3000, 3000), num(data[3], -10000, 10000)];
   const yaw = num(data[4], -7, 7);
   if (x === null || y === null || z === null || yaw === null) return null;
-  return { who: data[0], x, y, z, yaw: wrap(yaw), speed: num(data[5], -80, 80) ?? 0, aim: num(data[6], 0, 1) ?? 0, arms: readArms(data[7]) };
+  const e = readEmoteWire(data[8]);
+  const m = readMotion(data[9]);
+  return { who: data[0], x, y, z, yaw: wrap(yaw), speed: num(data[5], -80, 80) ?? 0, aim: num(data[6], 0, 1) ?? 0, arms: readArms(data[7]), ...(e ? { emote: e } : {}), ...(m ? { motion: m } : {}) };
 };
 // a crew down on a world as it came in: { world, kind, lead, mate, ride },
 // { off: true } (back in their ship), or null if it isn't one
