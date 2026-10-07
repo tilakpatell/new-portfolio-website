@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { local } from '../../../lib/hooks';
 import { cleanName, randomCallsign } from './names';
 import { LOADOUT_KEY, STOCK_LOADOUT, readLoadouts } from '../outfit';
-import { useEconomyIfLoaded } from '../EconomyProvider';
+import { useEconomy } from '../EconomyProvider';
 
 // Going online, for the whole site (OnlineProvider.jsx holds it, so the
 // link stays up from page to page): whether you are (asked once on the
@@ -57,7 +57,7 @@ export function useOnlineState(where) {
     window.addEventListener('tp:looks', on);
     return () => window.removeEventListener('tp:looks', on);
   }, []);
-  const { economy, version: wallet, marks } = useEconomyIfLoaded();
+  const { economy, version: wallet, marks } = useEconomy({ ask: false });
   const level = economy?.level ?? 1;
   const [marked, setMarked] = useState(0); // bumps when a standing or an oath changes
   useEffect(() => {
