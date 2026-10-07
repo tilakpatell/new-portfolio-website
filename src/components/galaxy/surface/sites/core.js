@@ -564,7 +564,7 @@ export const SITES = {
     sky: {
       zenith: '#b77a62',
       horizon: '#f1c39a',
-      haze: 0.9,
+      haze: 0.75,
       hazeColor: '#f5c89c',
       suns: [{ az: 2.3, el: 0.32, color: '#fff0d6', size: 0.02, glow: 1.3 }],
       clouds: { cover: 0.12, color: '#fbe0c4', shade: '#c08a6a', scale: 0.5, speed: 0.003 },
@@ -573,8 +573,9 @@ export const SITES = {
         { az: -0.4, el: 0.36, size: 0.01, color: '#e0ccb4' },
       ],
     },
-    fog: { color: '#e6b48c', density: 0.0009 },
-    light: { sun: 3.0, sky: '#f0c8a8', ground: '#a0583a', ambient: 0.75 },
+    // (the dust in the air, but not a wall of it: the hives and the core ships read to the horizon)
+    fog: { color: '#e2ab84', density: 0.00055 },
+    light: { sun: 3.2, sky: '#f0c8a8', ground: '#a0583a', ambient: 0.7 },
     ground: { detail: 'redsoil', detailLook: { color: 0.75, normal: 0.8 },
       seed: 33,
       wind: 1.1,
@@ -650,7 +651,7 @@ export const SITES = {
           { kind: 'laat', at: [-20, -6], yaw: 2.6, y: 1.5 },
           { kind: 'laat', at: [14, 20], yaw: 2.9, y: 2.5 },
           { kind: 'laat', at: [24, -26], yaw: 2.3, y: 1.8 },
-          { kind: 'atte', at: [-30, 30], yaw: 2.4, model: false },
+          { kind: 'atte', at: [-30, 30], yaw: 2.4 },
           { kind: 'crates', at: [0, 4] },
           { kind: 'crates', at: [-8, 14] },
         ],
@@ -738,7 +739,8 @@ export const SITES = {
           rv: [['jesse', 'Yo, the giant balls are leaving.'], ['walt', 'Jesse.']],
         },
         things: [
-          { kind: 'coresphere', at: [240, 40], yaw: 0.2, model: false, solid: false },
+          // (the galaxy's own core ship model, set down on its legs; the built sphere if it won't load)
+          { kind: 'coresphere', url: '/models/galaxy/coreship.glb', metres: 240, at: [240, 40], yaw: 0.2, model: false, solid: false },
           { kind: 'coresphere', at: [160, -240], yaw: 1.1, model: false, solid: false, opts: { rise: 4 } },
           { kind: 'droideka', at: [-10, 6], yaw: -1.6 },
           { kind: 'droideka', at: [-14, -4], yaw: -1.5, opts: { shield: true } },
@@ -758,7 +760,7 @@ export const SITES = {
       { kind: 'homingspider', at: [62, -38], yaw: 2.6, roll: 0.4, sink: 0.5, solid: { r: 3 } },
       { kind: 'wrecksmoke', at: [62, -38], solid: false, opts: { h: 16, r: 1.2 } },
       // AT-TEs out on the plain, and a third gunship coming in
-      { kind: 'atte', at: [140, 60], yaw: 2.0, model: false },
+      { kind: 'atte', at: [140, 60], yaw: 2.0 },
       { kind: 'laat', at: [80, 140], yaw: 2.2, y: 24, solid: false },
       // the hives along the horizon (and three nearer), too big to scatter:
       // the hive model (a mesa with its spires), scaled to each one's height
@@ -773,10 +775,12 @@ export const SITES = {
       { kind: 'geohive', at: [-160, -60], yaw: 5.86, scale: 0.35, sink: 1.4 },
     ],
     scatter: [
-      { kind: 'spire', n: 90, within: [70, 900], scale: [0.35, 1.2], stretch: [0.7, 1.4] },
-      { kind: 'spire', n: 40, within: [70, 600], scale: [0.25, 0.6], opts: { seed: 5, color: '#9a5a38' } },
-      { kind: 'rock', n: 130, within: [20, 580], scale: [0.6, 3], opts: { color: '#94583a', sharp: 0.55 } },
-      { kind: 'stones', n: 240, within: [8, 420], scale: [0.25, 0.7], solid: false, opts: { color: '#a0623e' } },
+      { kind: 'spire', n: 110, within: [70, 900], scale: [0.35, 1.2], stretch: [0.7, 1.4] },
+      { kind: 'spire', n: 90, within: [50, 600], scale: [0.2, 0.6], opts: { seed: 5, color: '#9a5a38' } },
+      // (the plain's red boulders and stones, wearing the red rock scan)
+      { kind: 'rock', n: 240, within: [16, 580], scale: [0.6, 3], opts: { color: '#94583a', sharp: 0.55, to: 'redrock' } },
+      { kind: 'rock', n: 120, within: [12, 300], scale: [0.3, 1.1], opts: { seed: 9, color: '#a0623e', sharp: 0.4, to: 'redrock' } },
+      { kind: 'stones', n: 500, within: [6, 420], scale: [0.25, 0.7], solid: false, opts: { color: '#a0623e', to: 'redrock' } },
     ],
     life: [
       { kind: 'geonosian', n: 8, at: [-250, 190], spread: 30, roam: 16, speed: 1.2, name: 'Geonosian', says: ['(A dry, clicking chatter.)', '(It buzzes its wings and points you back toward the gate.)', '(Clicks, a hiss, and something like a laugh.)'] },
@@ -791,10 +795,10 @@ export const SITES = {
       { kind: 'battledroid', n: 4, at: [56, -20], spread: 10, roam: 8, speed: 1.2, name: 'Battle droid', says: ['Roger, roger.', 'The spider droid is… down. Uh-oh.', 'Fall back! Fall back!'] },
       { kind: 'clone', n: 10, at: [256, 176], spread: 36, roam: 14, speed: 1.6, name: 'Clone trooper', says: ['Move up! Move up!', 'Gunship coming in, keep your heads down!', 'Sir, the droids are pulling back to the core ships.', 'Watch the spider droids!'] },
       { kind: 'clone', n: 3, at: [120, 326], spread: 6, roam: 5, speed: 1, name: 'Clone commander', says: ['Master Yoda, all forward positions are advancing.', 'Target the core ships, sir?', 'Concentrate all fire on the nearest starship.'] },
-      { kind: 'yoda', n: 1, at: [116, 334], still: true, r: 0.3, name: 'Yoda', says: ['Concentrate all fire on the nearest starship.', 'Around the survivors a perimeter create.', 'Begun, the Clone War has.', 'Victory? Victory, you say? Not victory.'] },
+      { kind: 'yoda', n: 1, id: 'yoda', quest: 'coreships', at: [116, 334], still: true, r: 0.3, name: 'Yoda', says: ['Concentrate all fire on the nearest starship.', 'Around the survivors a perimeter create.', 'Begun, the Clone War has.', 'Victory? Victory, you say? Not victory.'] },
       { kind: 'battledroid', n: 10, path: [[420, -60], [380, -10], [330, 30], [380, -100], [440, -140]], speed: 1.4, name: 'Battle droid', says: ['Roger, roger.', 'Retreat! Retreat! To the core ships!', 'Uh-oh.'] },
       { kind: 'superdroid', n: 4, at: [430, -110], spread: 20, roam: 12, speed: 1.0, name: 'Super battle droid', says: ['(It raises a wrist blaster and stomps past.)', 'Halt. Identify.'] },
-      { kind: 'atte', n: 2, path: [[200, 260], [340, 120], [300, 40], [160, 180]], speed: 2.2, r: 5, model: false, solid: false },
+      { kind: 'atte', n: 2, path: [[200, 260], [340, 120], [300, 40], [160, 180]], speed: 2.2, r: 5, solid: false },
       { kind: 'dooku', n: 1, at: [306, -296], roam: 6, speed: 0.8, name: 'Count Dooku', says: ['Master Kenobi, you disappoint me. Yoda holds you in such high esteem.', 'I have become more powerful than any Jedi.', 'This is just the beginning.'] },
     ],
     rides: [
