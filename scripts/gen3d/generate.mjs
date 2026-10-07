@@ -54,7 +54,7 @@ export function hy3d21Ready() {
 
 export const pixal3dReady = () => existsSync(join(TRELLISCPP.models, 'pixal3d_shape_flow_1024.gguf'));
 
-export function command(engine, given, out, { seed = 42, res = 1024, faces, tex, faithful = false, fov, steps = 50, paint21 = hy3d21Ready() } = {}) {
+export function command(engine, given, out, { seed = 42, res = 1024, faces, tex, faithful = false, fov, steps = 50, asked, paint21 = engine === 'hunyuan' && hy3d21Ready() } = {}) {
   const v = views(given);
   const image = v.front ?? Object.values(v)[0];
   if (engine === 'trelliscpp') {
@@ -81,7 +81,10 @@ export function command(engine, given, out, { seed = 42, res = 1024, faces, tex,
     return ['wsl.exe', '-d', WSL.distro, '-e', 'bash', '-lc', run];
   }
   // the contract tests' stand-in (scripts/ai-e2e/fakes/engine.mjs): every picture it was given, so a test can see which went where
-  if (engine === 'fake') return [process.execPath, FAKE, image, out, '--seed', String(seed), ...VIEWS.filter((k) => k !== 'front' && v[k]).flatMap((k) => [`--${k}`, v[k]])];
+  if (engine === 'fake') {
+    const told = [['--res', res], ['--fov', fov], ['--asked', asked]].filter(([, x]) => x !== undefined).flat().map(String);
+    return [process.execPath, FAKE, image, out, '--seed', String(seed), ...VIEWS.filter((k) => k !== 'front' && v[k]).flatMap((k) => [`--${k}`, v[k]]), ...told, ...(faithful ? ['--faithful'] : [])];
+  }
   throw new Error(`no engine ${engine} (${ENGINES.join(', ')})`);
 }
 
@@ -89,6 +92,8 @@ const q = (s) => `'${s.replace(/'/g, `'\\''`)}'`;
 
 export async function generate(image, out, opts = {}) {
   // several views and no engine named: Hunyuan, the one that can use them
+  // GEN3D_ENGINE=fake wins over the engine an issue asks for: a test of that issue must not run the real one
+  if (process.env.GEN3D_ENGINE === 'fake') opts = { ...opts, engine: 'fake', asked: opts.engine };
   const engine = opts.engine ?? process.env.GEN3D_ENGINE ?? (Object.keys(views(image)).length > 1 ? 'hunyuan' : ENGINES.find((e) => command(e, image, out, opts))) ?? null;
   const cmd = engine && command(engine, image, out, opts);
   if (!cmd) throw new Error(`${opts.engine ?? 'no engine'} isn't set up here: see scripts/gen3d/README.md`);

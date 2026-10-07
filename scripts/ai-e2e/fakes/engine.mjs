@@ -8,7 +8,10 @@
 //
 // A box of 12 triangles with a 64² base-colour texture; --tris N (or
 // GEN3D_FAKE_TRIS) a grid of at least N triangles instead, for the budget
-// tests. common.mjs has the other knobs.
+// tests; GEN3D_FAKE_TEX=N an N² texture, for the texture cap; GEN3D_FAKE_NOISE
+// (below) a model too heavy to ship. common.mjs has the other knobs. The
+// flags generate.mjs passes for the tests to read back (--res, --fov,
+// --asked, --faithful) change nothing.
 
 import { Document, NodeIO } from '@gltf-transform/core';
 import { createHash } from 'node:crypto';
@@ -63,7 +66,7 @@ function grid(tris, scale) {
   return { pos, uv, idx };
 }
 
-export function model(pictures, { seed = 42, tris } = {}) {
+export function model(pictures, { seed = 42, tris, tex = 64, noise = 0 } = {}) {
   const h = createHash('sha1');
   for (const p of pictures) h.update(p).update('|');
   h.update(String(seed));
@@ -74,16 +77,28 @@ export function model(pictures, { seed = 42, tris } = {}) {
 
   const doc = new Document();
   const buffer = doc.createBuffer();
-  const texture = doc.createTexture('base').setMimeType('image/png').setImage(png(64, 64, (x, y) => ((x >> 3) + (y >> 3)) % 2 ? [...colour, 255] : [colour[0] >> 1, colour[1] >> 1, colour[2] >> 1, 255]));
-  const material = doc.createMaterial('fake').setBaseColorTexture(texture).setRoughnessFactor(0.6).setMetallicFactor(0.1);
-  const prim = doc
-    .createPrimitive()
-    .setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(new Float32Array(mesh.pos)).setBuffer(buffer))
-    .setAttribute('TEXCOORD_0', doc.createAccessor().setType('VEC2').setArray(new Float32Array(mesh.uv)).setBuffer(buffer))
-    .setIndices(doc.createAccessor().setType('SCALAR').setArray(new Uint32Array(mesh.idx)).setBuffer(buffer))
-    .setMaterial(material);
-  const node = doc.createNode('fake').setMesh(doc.createMesh('fake').addPrimitive(prim));
-  doc.createScene('scene').addChild(node);
+  const cell = Math.max(1, tex >> 3);
+  const checker = png(tex, tex, (x, y) => (Math.floor(x / cell) + Math.floor(y / cell)) % 2 ? [...colour, 255] : [colour[0] >> 1, colour[1] >> 1, colour[2] >> 1, 255]);
+  const mesh3d = doc.createMesh('fake');
+  const prim = (m, image) =>
+    doc
+      .createPrimitive()
+      .setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(new Float32Array(m.pos)).setBuffer(buffer))
+      .setAttribute('TEXCOORD_0', doc.createAccessor().setType('VEC2').setArray(new Float32Array(m.uv)).setBuffer(buffer))
+      .setIndices(doc.createAccessor().setType('SCALAR').setArray(new Uint32Array(m.idx)).setBuffer(buffer))
+      .setMaterial(doc.createMaterial('fake').setBaseColorTexture(doc.createTexture('base').setMimeType('image/png').setImage(image)).setRoughnessFactor(0.6).setMetallicFactor(0.1));
+  mesh3d.addPrimitive(prim(mesh, checker));
+  // GEN3D_FAKE_NOISE=K: K more boxes, each with a 2048² texture of noise, which
+  // no encoder can shrink: a model too heavy for its cut, for the budget tests
+  for (let k = 0; k < noise; k++) {
+    const bytes = Buffer.alloc(4);
+    const fill = png(2048, 2048, () => {
+      bytes.writeUInt32LE((rand() * 4294967296) >>> 0);
+      return [bytes[0], bytes[1], bytes[2], 255];
+    }, { level: 1 });
+    mesh3d.addPrimitive(prim(box([0.1, 0.1, 0.1]), fill));
+  }
+  doc.createScene('scene').addChild(doc.createNode('fake').setMesh(mesh3d));
   return doc;
 }
 
@@ -94,7 +109,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [image, out] = argv;
   const sides = ['left', 'back', 'right'].map((s) => flag(argv, s)).filter(Boolean);
   const pictures = [image, ...sides].map((f) => readFileSync(f));
-  const doc = model(pictures, { seed: Number(flag(argv, 'seed') ?? 42), tris: Number(flag(argv, 'tris', 'GEN3D_FAKE_TRIS') ?? 0) });
+  const doc = model(pictures, { seed: Number(flag(argv, 'seed') ?? 42), tris: Number(flag(argv, 'tris', 'GEN3D_FAKE_TRIS') ?? 0), tex: Number(process.env.GEN3D_FAKE_TEX ?? 64), noise: Number(process.env.GEN3D_FAKE_NOISE ?? 0) });
   const bytes = Buffer.from(await new NodeIO().writeBinary(doc));
   if (failing(argv, 'generate')) {
     writeFileSync(out, bytes.subarray(0, bytes.length >> 1)); // what a crash mid-write leaves
