@@ -35,7 +35,7 @@ const FOOD = {
   melon_slice: [2, 1.2],
   rotten_flesh: [4, 0.8],
 };
-const MATERIALS = ['stick', 'coal', 'charcoal', 'diamond', 'iron_ingot', 'gold_ingot', 'redstone', 'lapis_lazuli', 'flint', 'clay_ball', 'brick', 'snowball', 'book', 'glowstone_dust', 'wheat', 'wheat_seeds', 'string', 'feather', 'gunpowder', 'leather', 'bone', 'arrow', 'ender_pearl', 'egg'];
+const MATERIALS = ['stick', 'paper', 'coal', 'charcoal', 'diamond', 'iron_ingot', 'gold_ingot', 'redstone', 'lapis_lazuli', 'flint', 'clay_ball', 'brick', 'snowball', 'book', 'glowstone_dust', 'wheat', 'wheat_seeds', 'string', 'feather', 'gunpowder', 'leather', 'bone', 'arrow', 'ender_pearl', 'egg'];
 const SIXTEEN = new Set(['egg', 'snowball', 'ender_pearl']);
 // blocks a player never holds as themselves: liquids (buckets come later), the crop, farmland
 const NOT_ITEMS = new Set(['air', 'water', 'lava', 'wheat', 'farmland']);
