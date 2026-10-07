@@ -183,14 +183,14 @@
 - Test: `rules.test.js`, `sim.test.js`
 
 **Interfaces:**
-- Consumes: `createActor`, `goTo`, `spatial.candidates/pickPlace/cover/nearTo/awayFrom`, `utility.pick`, `createTokens` (`tokens.claim/release`), `segmentClear`.
-- Produces: `tactics.js`: `ACTIONS = { hold, advance, strafe, cover, flank, search, fire }` (each an `Action`), `OPTIONS` (utility options over the modes with considerations on distance, `b.visible`, `e.hp / k.hp`, `tokens.free('shot')`), `step(e, b, player, dt, world, rand, tokens, trace)` which picks every `RETHINK = 0.4` s, calls `e.actor.want`, steps the actor and writes `e.state` from `actor.current()` and `e.body` from the step's `body`.
+- Consumes: `createActor`, `goTo`, `spatial.candidates/pickPlace/cover/nearTo/awayFrom`, `utility.pick`, `createTokens` (`tokens.claim/release/count`), `segmentClear`.
+- Produces: `tactics.js`: `ACTIONS = { hold, advance, strafe, cover, flank, search, fire }` (each an `Action`), `OPTIONS` (utility options over the modes with considerations on distance, `b.visible`, `e.hp / k.hp`, `tokens.count('shot') < 3`), `step(e, b, player, dt, world, rand, tokens, trace)` which picks every `RETHINK = 0.4` s, calls `e.actor.want`, steps the actor and writes `e.state` from `actor.current()` and `e.body` from the step's `body`.
 
 - [ ] **Step 1: Failing tests** (`tactics.test.js`, a world from `buildWorld` with one solid between enemy and player):
   - `with no belief it holds and scans` (`e.state === 'hold'`, yaw changes).
   - `hurt below half with cover near, it takes cover behind the solid` (`state 'cover'`, the chosen point fails `segmentClear` to the player).
   - `sure and in range with a free token it fires once the line is clear`.
-  - `a blocked line releases the token` (`tokens.free('shot')` back to 3 after the step).
+  - `a blocked line releases the token` (`tokens.count('shot')` is 0 after the step).
   - `the token cap holds across five enemies` (at most 3 `enemyFire` events a step).
   - `a lost belief searches at the guess, then holds` (after `memory` seconds, `state 'hold'`).
   - `flank goes to the player's other side` (the chosen point's dot with the player's facing is negative).
