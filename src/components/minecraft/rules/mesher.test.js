@@ -203,6 +203,54 @@ describe('the mesher', () => {
     expect(v.find((p) => p.face === FACE.top).layer).toBe(textures.get('furnace_top'));
   });
 
+  it('a standing torch is the game’s post, two sixteenths square and ten high, cut from the middle of its picture', () => {
+    const c = makeChunk(0, 0);
+    set(c, 5, 5, 5, id('torch'), FACE.top);
+    const m = mesh(c);
+    expect(m.opaque).toBeNull();
+    const v = verts(m.cutout);
+    expect(v.length / 4).toBe(5); // four sides and the top
+    expect(Math.min(...v.map((p) => p.x)) - 80).toBe(7);
+    expect(Math.max(...v.map((p) => p.x)) - 80).toBe(9);
+    expect(Math.max(...v.map((p) => p.y)) - 80).toBe(10);
+    expect(v.every((p) => p.layer === textures.get('torch'))).toBe(true);
+    const top = v.filter((p) => p.face === FACE.top);
+    expect(top.map((p) => p.u).sort()).toEqual([7, 7, 9, 9]);
+    expect(top.map((p) => p.v).sort()).toEqual([6, 6, 8, 8]);
+  });
+
+  it('a torch on a wall leans out from it', () => {
+    const c = makeChunk(0, 0);
+    // hung on the east face of a block to its west: its foot at the west of the cell
+    set(c, 5, 5, 5, id('torch'), FACE.east);
+    const v = verts(mesh(c).cutout);
+    const foot = v.filter((p) => p.y === 80 + 3).map((p) => p.x - 80);
+    const head = v.filter((p) => p.y === 80 + 13).map((p) => p.x - 80);
+    expect(Math.min(...foot)).toBeLessThan(Math.min(...head));
+  });
+
+  it('a slab is half a block high, its sides cut from the lower half of the picture, hiding nothing beside it', () => {
+    const c = makeChunk(0, 0);
+    set(c, 5, 5, 5, id('oak_slab'));
+    set(c, 6, 5, 5, id('stone'));
+    const m = mesh(c);
+    const slab = verts(m.cutout);
+    expect(Math.max(...slab.map((p) => p.y)) - 80).toBe(8);
+    expect(slab.filter((p) => p.face === FACE.north && p.y === 88).every((p) => p.v === 8)).toBe(true);
+    // the stone keeps its face toward the slab
+    expect(verts(m.opaque).filter((p) => p.face === FACE.west)).toHaveLength(4);
+  });
+
+  it('a bed lies 9 high, the head’s blanket with its pillow', () => {
+    const c = makeChunk(0, 0);
+    set(c, 5, 5, 5, id('red_bed'), 0); // the foot
+    set(c, 5, 5, 4, id('red_bed'), 8); // the head (bit 8), north of it
+    const v = verts(mesh(c).cutout);
+    expect(Math.max(...v.map((p) => p.y)) - 80).toBe(9);
+    const tops = v.filter((p) => p.face === FACE.top);
+    expect(new Set(tops.map((p) => p.layer))).toEqual(new Set([textures.get('red_bed_top'), textures.get('red_bed_head_top')]));
+  });
+
   it('smooth light: a corner averages the four cells round it, a dark one taking the face’s own', () => {
     const c = makeChunk(0, 0);
     c.lit = true;

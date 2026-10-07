@@ -28,6 +28,13 @@ const COOLDOWN = 5;
 const PICKUP_DELAY = 10;
 const THROWN_WAIT = 40;
 const TABLE = byName.get('crafting_table').id;
+const BED = byName.get('red_bed').id;
+// the four sides as steps, by the facing number
+const STEP = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+const OPPOSITE = [1, 0, 3, 2];
+// the hours a bed lets you sleep, as the game's
+const SLEEP_FROM = 12541;
+const SLEEP_TO = 23458;
 const DESPAWN = 6000;
 const ITEM_BOX = 0.25;
 const id = (n) => byName.get(n).id;
@@ -47,10 +54,22 @@ export function setBlock(g, x, y, z, blockId, state = 0) {
   return true;
 }
 
+// a bed's other half: the head lies the way the bed faces from the foot
+function otherHalf(g, x, y, z) {
+  const st = g.world.getState(x, y, z);
+  const [dx, dz] = STEP[st & 3];
+  const sign = st & 8 ? -1 : 1;
+  return [x + dx * sign, y, z + dz * sign];
+}
+
 export function breakBlock(g, x, y, z) {
   const blockId = g.world.get(x, y, z);
   const b = BLOCKS[blockId];
   if (!blockId || b.hardness === Infinity) return false;
+  if (blockId === BED) {
+    const [ox, oy, oz] = otherHalf(g, x, y, z);
+    if (g.world.get(ox, oy, oz) === BED) setBlock(g, ox, oy, oz, AIR);
+  }
   const inv = g.inventory;
   const hand = held(inv);
   const tool = toolOf(hand);
@@ -87,24 +106,39 @@ export function placeBlock(g, hit, name = held(g.inventory)?.item) {
   if (it?.kind !== 'block') return false;
   const b = BLOCKS[it.block];
   const [nx, ny, nz] = normal(hit.face);
-  let [x, y, z] = REPLACEABLE.has(g.world.get(hit.x, hit.y, hit.z)) ? [hit.x, hit.y, hit.z] : [hit.x + nx, hit.y + ny, hit.z + nz];
+  const replacing = REPLACEABLE.has(g.world.get(hit.x, hit.y, hit.z));
+  let [x, y, z] = replacing ? [hit.x, hit.y, hit.z] : [hit.x + nx, hit.y + ny, hit.z + nz];
+  // what it rests on, and the face it's against: going into tall grass, the block under it, from above
+  const face = replacing ? 0 : hit.face;
+  const [sx, sy, sz] = replacing ? [x, y - 1, z] : [hit.x, hit.y, hit.z];
   if (y < 0 || y > 255 || !REPLACEABLE.has(g.world.get(x, y, z)) || !g.world.loaded(x, z)) return false;
   // never inside a body
-  if (b.solid) {
+  const inBody = (cx, cy, cz) => {
     const p = g.player;
-    if (x < p.x + p.w / 2 && x + 1 > p.x - p.w / 2 && z < p.z + p.w / 2 && z + 1 > p.z - p.w / 2 && y < p.y + p.h && y + 1 > p.y) return false;
+    return cx < p.x + p.w / 2 && cx + 1 > p.x - p.w / 2 && cz < p.z + p.w / 2 && cz + 1 > p.z - p.w / 2 && cy < p.y + p.h && cy + 1 > p.y;
+  };
+  if (b.solid && inBody(x, y, z)) return false;
+  // a bed needs its head's cell too, the way the player looks
+  let head = null;
+  if (b.id === BED) {
+    const facing = OPPOSITE[facingOf(g.player.yaw)];
+    const [dx, dz] = STEP[facing];
+    head = { x: x + dx, z: z + dz, state: facing | 8, foot: facing };
+    if (!REPLACEABLE.has(g.world.get(head.x, y, head.z)) || !g.world.loaded(head.x, head.z) || inBody(head.x, y, head.z) || !g.world.solid(head.x, y - 1, head.z)) return false;
   }
   // plants grow on soil; sugar cane and dead bushes on sand too, cactus on sand alone
   const below = g.world.get(x, y - 1, z);
   if (b.shape === 'cross' && !(SOIL.has(below) || ((b.name === 'sugar_cane' || b.name === 'dead_bush') && below === SAND))) return false;
   if (b.name === 'cactus' && below !== SAND) return false;
   // torches and ladders hang from a solid face, not under one
-  if ((b.shape === 'torch' || b.shape === 'ladder') && (!g.world.solid(hit.x, hit.y, hit.z) || hit.face === 1)) return false;
+  if ((b.shape === 'torch' || b.shape === 'ladder') && (!g.world.solid(sx, sy, sz) || face === 1)) return false;
   let state = 0;
-  if (LOGS.has(b.id)) state = ny ? 0 : nx ? 1 : 2;
+  if (head) state = head.foot;
+  else if (LOGS.has(b.id)) state = ny ? 0 : nx ? 1 : 2;
   else if (FRONTED.has(b.id)) state = facingOf(g.player.yaw);
-  else if (b.shape === 'torch' || b.shape === 'ladder') state = hit.face;
+  else if (b.shape === 'torch' || b.shape === 'ladder') state = face;
   if (!setBlock(g, x, y, z, b.id, state)) return false;
+  if (head) setBlock(g, head.x, y, head.z, b.id, head.state);
   const inv = g.inventory;
   const s = inv.slots[inv.selected];
   if (s?.item === name) {
@@ -138,8 +172,35 @@ export function stepHands(g, input, { onGround, inWater }) {
   if (input.use && hit) {
     // a crafting table opens on use; sneaking builds against it instead
     if (hit.id === TABLE && !input.sneak) g.events.push({ type: 'open', what: 'table', x: hit.x, y: hit.y, z: hit.z });
+    else if (hit.id === BED && !input.sneak) sleep(g, hit);
     else placeBlock(g, hit);
   }
+}
+
+// A bed at night: the night passes (one player, so no waiting for the others)
+// and the spawn moves beside the bed; by day it says no, as the game does.
+export function sleep(g, { x, y, z }) {
+  const hour = ((g.time % 24000) + 24000) % 24000;
+  if (hour < SLEEP_FROM || hour > SLEEP_TO) {
+    g.events.push({ type: 'no_sleep', x, y, z });
+    return false;
+  }
+  g.time = (Math.floor(g.time / 24000) + 1) * 24000;
+  // where to stand up: a free cell beside either half, on something solid
+  const halves = [[x, z], otherHalf(g, x, y, z).filter((_, i) => i !== 1)];
+  let spot = { x: x + 0.5, y: y + 1, z: z + 0.5 };
+  find: for (const [hx, hz] of halves)
+    for (const [dx, dz] of STEP) {
+      const sx = hx + dx;
+      const sz = hz + dz;
+      if (!g.world.solid(sx, y, sz) && !g.world.solid(sx, y + 1, sz) && g.world.solid(sx, y - 1, sz) && g.world.get(sx, y, sz) !== BED) {
+        spot = { x: sx + 0.5, y, z: sz + 0.5 };
+        break find;
+      }
+    }
+  g.spawn = spot;
+  g.events.push({ type: 'sleep', x, y, z });
+  return true;
 }
 
 // Q: one of what's held (or the stack) thrown the way the player looks,

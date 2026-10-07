@@ -89,10 +89,18 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
   const [hud, setHud] = useState(null);
   const [seed, setSeed] = useState('');
   const [props] = useState(() => ({}));
+  const [say, setSay] = useState(null);
+  const sayTimer = useRef(null);
   const onEvent = useCallback((e) => {
     if (e.type === 'ui') setUi(e);
     else if (e.type === 'hud') setHud(e);
+    else if (e.type === 'say') {
+      setSay({ text: e.text, sleep: Boolean(e.sleep), at: performance.now() });
+      clearTimeout(sayTimer.current);
+      sayTimer.current = setTimeout(() => setSay(null), 3000);
+    }
   }, []);
+  useEffect(() => () => clearTimeout(sayTimer.current), []);
   const { host, status, rt } = useWorld(module, { props, onEvent });
   const api = useCallback(() => (rt?.current?.module === module ? rt.current.world : null), [rt]);
   const playing = ui.mode === 'play';
@@ -283,6 +291,7 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
         {(playing || paused || screenOpen) && hud && (
           <div className="mc-hud" aria-hidden="true">
             {!screenOpen && <img className="mc-crosshair" src={sprite('crosshair')} alt="" />}
+            {say && <p className="mc-say">{say.text}</p>}
             <div className="mc-bar">
               {hud.air != null && (
                 <div className="mc-air">
@@ -306,6 +315,7 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
           </div>
         )}
 
+        {say?.sleep && <div className="mc-sleep" key={say.at} aria-hidden="true" />}
         {screenOpen && ui.screen && <Screen screen={ui.screen} api={api} />}
 
         {ui.mode === 'title' && status === 'on' && (

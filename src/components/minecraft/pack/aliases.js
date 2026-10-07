@@ -84,6 +84,7 @@ export const ALIASES = {
   // the bed lies 9 high: its blanket from the sheet's foot square, its side
   // the mattress's edge turned to lie flat over the legs' three
   red_bed_top: [{ from: 'entity/bed/red', parts: [{ x: 6, y: 28, w: 16, h: 16, dx: 0, dy: 0 }] }],
+  red_bed_head_top: [{ from: 'entity/bed/red', parts: [{ x: 6, y: 6, w: 16, h: 16, dx: 0, dy: 0 }] }],
   red_bed_side: [{ from: 'entity/bed/red', parts: [{ x: 22, y: 28, w: 6, h: 16, dx: 0, dy: 7, rot: true }] }],
 };
 

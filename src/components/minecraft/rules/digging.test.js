@@ -198,6 +198,24 @@ describe('building', () => {
     expect(g.world.get(0, 65, 3)).toBe(0);
   });
 
+  it('a torch put on tall grass stands on the block under it', () => {
+    const g = flat();
+    g.world.set(0, 64, 3, B('short_grass'));
+    g.inventory.slots[0] = { item: 'torch', count: 1, damage: 0 };
+    expect(placeBlock(g, { x: 0, y: 64, z: 3, face: FACE.north, t: 3 })).toBe(true);
+    expect(g.world.get(0, 64, 3)).toBe(B('torch'));
+    expect(g.world.getState(0, 64, 3)).toBe(FACE.top);
+  });
+
+  it('a torch hangs from the side of a block, and not from under one', () => {
+    const g = flat();
+    g.world.set(0, 65, 3, B('stone'));
+    g.inventory.slots[0] = { item: 'torch', count: 2, damage: 0 };
+    expect(placeBlock(g, { x: 0, y: 65, z: 3, face: FACE.north, t: 3 })).toBe(true);
+    expect(g.world.getState(0, 65, 2)).toBe(FACE.north);
+    expect(placeBlock(g, { x: 0, y: 65, z: 3, face: FACE.bottom, t: 3 })).toBe(false);
+  });
+
   it('logs take the axis of the face they’re put against', () => {
     const g = flat();
     g.inventory.slots[0] = { item: 'oak_log', count: 3, damage: 0 };
@@ -249,6 +267,63 @@ describe('using and dropping', () => {
     // and the player can't take it straight back
     hold(g, 20, idle);
     expect(g.drops.reduce((n, d) => n + d.count, 0)).toBe(3);
+  });
+});
+
+describe('the bed', () => {
+  const bed = (g) => {
+    g.inventory.slots[0] = { item: 'red_bed', count: 1, damage: 0 };
+    g.player.yaw = Math.PI; // facing south (+z)
+    expect(placeBlock(g, { x: 0, y: 63, z: 2, face: FACE.top, t: 2 })).toBe(true);
+  };
+
+  it('goes down as two blocks, the head the way the player faces', () => {
+    const g = flat();
+    bed(g);
+    expect(g.world.get(0, 64, 2)).toBe(B('red_bed'));
+    expect(g.world.get(0, 64, 3)).toBe(B('red_bed'));
+    expect(g.world.getState(0, 64, 2) & 8).toBe(0);
+    expect(g.world.getState(0, 64, 3) & 8).toBe(8);
+    expect(g.inventory.slots[0]).toBeNull();
+  });
+
+  it('needs room for its head', () => {
+    const g = flat();
+    g.world.set(0, 64, 3, B('stone'));
+    g.inventory.slots[0] = { item: 'red_bed', count: 1, damage: 0 };
+    g.player.yaw = Math.PI;
+    expect(placeBlock(g, { x: 0, y: 63, z: 2, face: FACE.top, t: 2 })).toBe(false);
+  });
+
+  it('breaking either half takes the bed, and drops one', () => {
+    const g = flat();
+    bed(g);
+    breakBlock(g, 0, 64, 3);
+    expect(g.world.get(0, 64, 2)).toBe(0);
+    expect(g.world.get(0, 64, 3)).toBe(0);
+    expect(g.drops.map((d) => d.item)).toEqual(['red_bed']);
+  });
+
+  it('sleeping at night sets morning and the spawn', () => {
+    const g = flat();
+    bed(g);
+    g.time = 24000 * 3 + 14000;
+    const events = tick(g, { ...idle, ...aim(g, 0, 64, 2), use: true });
+    expect(events).toContainEqual(expect.objectContaining({ type: 'sleep' }));
+    expect(g.time).toBe(24000 * 4);
+    expect(g.spawn).toMatchObject({ x: expect.any(Number), y: 64 });
+    expect(Math.abs(g.spawn.x - 0.5) + Math.abs(g.spawn.z - 2.5)).toBeLessThanOrEqual(2);
+  });
+
+  it('the bed refuses by day', () => {
+    const g = flat();
+    bed(g);
+    g.time = 6000;
+    const spawn = g.spawn;
+    const events = tick(g, { ...idle, ...aim(g, 0, 64, 2), use: true });
+    expect(events).toContainEqual(expect.objectContaining({ type: 'no_sleep' }));
+    expect(g.time).toBe(6001);
+    expect(g.spawn).toBe(spawn);
   });
 });
 

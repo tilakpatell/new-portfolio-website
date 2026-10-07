@@ -422,7 +422,12 @@ export default {
               touch.pressed.clear();
             }
           }
-          for (const e of drain(g)) if (e.type === 'open' && mode === 'play') openScreen(3);
+          for (const e of drain(g)) {
+            if (e.type === 'open' && mode === 'play') openScreen(3);
+            // the game's own words over the hotbar
+            else if (e.type === 'no_sleep') tell('say', { text: 'You can only sleep at night' });
+            else if (e.type === 'sleep') tell('say', { text: 'Respawn point set', sleep: true });
+          }
           remesh();
           saveAt += dt;
           if (saveAt > SAVE_EVERY) {
