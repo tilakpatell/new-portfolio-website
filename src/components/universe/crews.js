@@ -640,6 +640,22 @@ export const CREWS = [
         ['morty', 'Where are we, Rick? Where did it put us?'],
         ['rick', 'Somewhere else, Morty. That’s what rifts do. Check the map if you care.'],
       ],
+      // Rick's portal gun out of the cruiser (P: gunPortal.js), on his
+      // dimension from home or on home from there, and coming out of it
+      portalgun: {
+        out: [
+          ['morty', 'Rick, wh-why are you pointing the portal gun out the window? We’re driving!'],
+          ['rick', 'Scenic route, Morty. My dimension. Fly into the green thing before it closes.'],
+        ],
+        home: [['rick', 'Seen enough? Portal home, Morty. Fly through it, it doesn’t wait.']],
+      },
+      gunThrough: {
+        rickmorty: [
+          ['morty', 'Whoa… Rick, where are we? Is that planet moving?'],
+          ['rick', 'Everything here moves, Morty. The Central Finite Curve: every world where I’m the smartest man in it. That’s the Citadel past it. Don’t touch anything.'],
+        ],
+        main: [['morty', 'Oh, thank God. Home. Well, home-home. You know what I mean.']],
+      },
       leviathan: [
         ['comms', 'SHOW ME WHAT YOU GOT!'],
         ['morty', 'Oh no. Oh no, Rick, it’s a Cromulon!'],

@@ -290,6 +290,14 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <span className="universe-siege-state" />
               </div>
               <p ref={prompt} className="universe-prompt" aria-live="polite" />
+              {/* Rick's portal gun, in the cruiser: a portal ahead, to his dimension or home (gunPortal.js) */}
+              {!onFoot && ship === 'cruiser' && (
+                <button type="button" className="universe-portalgun" onPointerDown={(e) => (e.preventDefault(), view.current?.portalGun?.())} onContextMenu={(e) => e.preventDefault()} title="Rick’s portal gun: a portal ahead, to his dimension (or home)">
+                  <i className="universe-portalgun-swirl" aria-hidden="true" />
+                  <span className="universe-portalgun-label">Portal</span>
+                  <kbd aria-hidden="true">P</kbd>
+                </button>
+              )}
               {/* (hidden until the crew are down on a planet with a world: the scene says when, and what it's called) */}
               <button ref={enterBtn} type="button" className="universe-wayin" hidden onClick={() => view.current?.enter?.()}>
                 <span className="universe-wayin-label" />
@@ -368,7 +376,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {!flown && !onFoot && (
                 <p className="universe-hint universe-hint-fly">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer (loop right over), <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>R</kbd> weapons, <kbd>T</kbd> target, <kbd>V</kbd> cockpit, fly down into a planet’s air to land, <kbd>H</kbd> hangar, <kbd>O</kbd> settings
+                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer (loop right over), <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>R</kbd> weapons, <kbd>T</kbd> target,{ship === 'cruiser' && <> <kbd>P</kbd> portal gun,</>} <kbd>V</kbd> cockpit, fly down into a planet’s air to land, <kbd>H</kbd> hangar, <kbd>O</kbd> settings
                     <GuideCue />
                   </span>
                   <span className="universe-hint-touch">Drag anywhere to fly, the arrows to pull the nose up and down, hold Boost to go fast and Fire to shoot, View for the cockpit, and fly down into a planet’s air to land on it<GuideCue touch /></span>
