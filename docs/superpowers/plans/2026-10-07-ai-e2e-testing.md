@@ -59,12 +59,12 @@
 
 ## PR 3: Tier 1, voices from lines to manifest
 
-- [ ] **3.1** `scripts/voices/judge.py`: `VOICES_JUDGE=fake` makes `hear()` return the take’s own line (read from a sidecar `.txt` the fake worker writes), similarity 0.9, MOS 4.0, and `[bad]` in a line’s text gives similarity 0.3 and the words scrambled. `test_judge_fake.py`.
-- [ ] **3.2** `contract/fixtures/voices-src/`: a tiny `src/` tree with two `voicelines.js` (three lines each, two speakers, one speaker with no reference).
-- [ ] **3.3** `contract/voices.test.mjs` (“up to 10 s”): `export-lines.mjs` over the fixture tree → `lines.json` with six lines and the right `who`s; `generate.py` with the fake worker and judge into a temporary `public/audio/voiced` → five mp3s (the voiceless speaker skipped and named), a manifest whose ids equal `lineId()` from `src/lib/voiced.js` for each line (import it in the test: the JavaScript and Python hashes must agree); the `[bad]` line marked doubtful in the report. Skip with a clear message when `python` or the venv is absent, so CI without Python does not fail (CI installs Python 3.12 for this job).
-- [ ] **3.4** `contract/voices-runner.test.mjs`: `runner.mjs --issue` with an `only:` body through the fake `gh` → a PR whose body has the count and the voiceless speaker, as `summarise` gives it.
-- [ ] **3.5** `ci.yml`’s `ai` job: `actions/setup-python@v5` 3.12, `pip install numpy soundfile` (what the fakes need; the real engines are not installed).
-- [ ] **3.6** Gate, PR, CI green, merge.
+- [x] **3.1** `scripts/voices/judge.py`: `VOICES_JUDGE=fake` makes `hear()` return the take’s own line (read from a sidecar `.txt` the fake worker writes), similarity 0.9, MOS 4.0, and `[bad]` in a line’s text gives similarity 0.3 and the words scrambled. `test_judge_fake.py`.
+- [x] **3.2** `contract/fixtures/voices-src/`: a tiny `src/` tree with two `voicelines.js` (three lines each, two speakers, one speaker with no reference).
+- [x] **3.3** `contract/voices.test.mjs` (“up to 10 s”): `export-lines.mjs` over the fixture tree → `lines.json` with six lines and the right `who`s; `generate.py` with the fake worker and judge into a temporary `public/audio/voiced` → five mp3s (the voiceless speaker skipped and named), a manifest whose ids equal `lineId()` from `src/lib/voiced.js` for each line (import it in the test: the JavaScript and Python hashes must agree); the `[bad]` line marked doubtful in the report. Skip with a clear message when `python` or the venv is absent, so CI without Python does not fail (CI installs Python 3.12 for this job).
+- [x] **3.4** `contract/voices-runner.test.mjs`: `runner.mjs --issue` with an `only:` body through the fake `gh` → a PR whose body has the count and the voiceless speaker, as `summarise` gives it.
+- [x] **3.5** `ci.yml`’s `ai` job: `actions/setup-python@v5` 3.12, `pip install numpy soundfile` (what the fakes need; the real engines are not installed).
+- [x] **3.6** Gate, PR, CI green, merge.
 
 ## PR 4: Tier 2, the assets as shipped
 

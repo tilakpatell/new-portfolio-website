@@ -54,7 +54,9 @@ def available():
 def start(name, jobs, log):
     """The worker for `name` making the takes in the JOBS file `jobs`, its chatter going to `log`; read its stdout for "ok <file>" or "fail <file> <why>" (tab-separated)."""
     env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONWARNINGS": "ignore", "HF_HUB_DISABLE_SYMLINKS_WARNING": "1"}
-    if name in WSL:
+    if name == "fake":  # VOICES_ENGINE=fake: the contract tests' worker, with this Python
+        cmd = [sys.executable, str(HERE.parents[1] / "ai-e2e" / "fakes" / "voices_worker.py"), str(jobs)]
+    elif name in WSL:
         distro, where = wsl(name)
         script, jobs_there = shlex.quote(wsl_path(str(HERE / f"{name}.py"))), shlex.quote(wsl_path(str(jobs)))
         cmd = ["wsl.exe", "-d", distro, "-e", "bash", "-lc", f"cd {where} && PYTHONIOENCODING=utf-8 PYTHONWARNINGS=ignore exec .venv/bin/python {script} {jobs_there}"]

@@ -53,5 +53,14 @@ jobs:
           node-version: 22
           cache: npm
 
+      # the voices contract tests run the pipeline's Python with the fake
+      # worker and ears: numpy and soundfile are all those need (no torch, no
+      # engines), and ffmpeg publishes the mp3s
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy soundfile
+      - run: command -v ffmpeg || (sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends ffmpeg)
+
       - run: npm ci
       - run: npm run test:ai
