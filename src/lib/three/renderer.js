@@ -6,6 +6,8 @@
 
 import * as THREE from 'three';
 import { budget, pixelRatio } from '../device';
+import { guard as guardRenderer } from './frameGuard';
+import { compileSlices, fence, revealAll } from './gpuWork';
 
 // The sharpest a device starts at: lib/device's tier (phones and small
 // screens start lower), under the scene's own cap.
@@ -33,7 +35,12 @@ export function maxSide(renderer) {
 // A [r, g, b] (0-255, sRGB) from lib/three/theme as a THREE.Color.
 export const color = (rgb, target = new THREE.Color()) => target.setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, THREE.SRGBColorSpace);
 
-export function createRenderer(canvas, { alpha = true, antialias = true, ratio = 2, toneMapping = THREE.NoToneMapping, exposure = 1, onLost, onSlow } = {}) {
+// `guard`: hold back from each frame whatever isn't ready on the graphics
+// chip yet, and ready it behind the frame (lib/three/frameGuard): true, or
+// { invalidate } to be asked for a frame when something held back is ready
+// (for a scene that stops drawing once it's still). Off by default: a page
+// scene that draws once and rests would never show what was held back.
+export function createRenderer(canvas, { alpha = true, antialias = true, ratio = 2, toneMapping = THREE.NoToneMapping, exposure = 1, onLost, onSlow, guard = false } = {}) {
   // (in development, window.__tpKeepFrames keeps the last frame readable for
   // automated screenshots of scenes that have stopped drawing)
   const preserveDrawingBuffer = import.meta.env.DEV && typeof window !== 'undefined' && !!window.__tpKeepFrames;
@@ -47,6 +54,7 @@ export function createRenderer(canvas, { alpha = true, antialias = true, ratio =
   renderer.toneMappingExposure = exposure;
   quiet(renderer);
   if (alpha) renderer.setClearColor(0x000000, 0);
+  if (guard) guardRenderer(renderer, guard === true ? {} : guard);
 
   let pixelRatio = maxRatio(ratio);
   renderer.setPixelRatio(pixelRatio);
@@ -190,34 +198,8 @@ export function disposeTree(root) {
   });
 }
 
-// Everything under `roots` shown for one draw: what's hidden too, and
-// nothing culled for being off screen, so a scene drawn once this way (behind
-// something that covers it) has every texture and mesh on the graphics chip
-// and every shader made before the moment it's first seen (three.js sends
-// each the first time it's drawn, and that frame waits). Lights stay as they
-// were: a hidden one shown would make shaders of its own. Returns the undo.
-export function revealAll(...roots) {
-  const undo = [];
-  const set = (o, key, to) => {
-    if (o[key] === to) return;
-    undo.push([o, key, o[key]]);
-    o[key] = to;
-  };
-  const show = (o, hidden) => {
-    const was = hidden || !o.visible;
-    if (o.isLight) {
-      if (was) set(o, 'visible', false);
-      return;
-    }
-    set(o, 'visible', true);
-    if (o.isMesh || o.isPoints || o.isLine || o.isSprite) set(o, 'frustumCulled', false);
-    for (const child of o.children) show(child, was);
-  };
-  for (const root of roots) show(root, false);
-  return () => {
-    for (let i = undo.length - 1; i >= 0; i--) undo[i][0][undo[i][1]] = undo[i][2];
-  };
-}
+// (revealAll lives with the rest of the GPU work, lib/three/gpuWork)
+export { revealAll };
 
 // Every picture the meshes under `root` use (each once, and only those whose
 // image has arrived).
@@ -312,6 +294,16 @@ const CAP = 4000;
 let compiling = 0; // precompiles in flight, on any renderer (see releaseContext)
 
 export function precompile(renderer, root, camera, scene = null, target) {
+  // to the canvas: a slice at a time, a fence between (lib/three/gpuWork)
+  if (target === undefined) {
+    compiling += 1;
+    return compileSlices(renderer, [root], camera, scene ?? root, { cap: CAP })
+      .catch(() => {})
+      .then(() => {
+        compiling -= 1;
+        if (!compiling) flushLosses();
+      });
+  }
   let materials;
   const keep = target !== undefined ? renderer.getRenderTarget() : null;
   try {
@@ -415,7 +407,9 @@ function linked(renderer, materials) {
       if (!pending.length || performance.now() - t0 > CAP) done();
       else setTimeout(check, 16);
     };
-    check();
+    // (asked only once the chip has caught up with the compiles: asked
+    // sooner, the question waits for them all, the page with it)
+    fence(renderer).then(check);
   });
 }
 

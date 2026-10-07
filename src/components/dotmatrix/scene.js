@@ -1059,7 +1059,7 @@ function buildSkyClouds(rand) {
 
 export function createDotMatrix(canvas, { onLost } = {}) {
   const tier = device().tier;
-  const gl = createRenderer(canvas, { alpha: false, antialias: false, ratio: 1, onLost });
+  const gl = createRenderer(canvas, { alpha: false, antialias: false, ratio: 1, onLost, guard: true });
   const { renderer } = gl;
   renderer.setPixelRatio(1);
   renderer.shadowMap.enabled = tier !== 'low';

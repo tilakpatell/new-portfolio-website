@@ -1,0 +1,153 @@
+import * as THREE from 'three';
+import { describe, expect, it } from 'vitest';
+import { guard } from './frameGuard';
+import { fakeGl, fakeRenderer, now } from './gpuFake.fixture';
+
+const picture = () => {
+  const t = new THREE.Texture({ width: 64, height: 64 });
+  t.needsUpdate = true;
+  return t;
+};
+const camera = new THREE.PerspectiveCamera();
+// a frame: the draw, then the guard's work after it (a microtask), then
+// the fence's frame
+const frames = async (r, scene, n = 1) => {
+  for (let i = 0; i < n; i++) {
+    r.draws.length = 0;
+    r.render(scene, camera);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+};
+const setup = (opts = {}) => {
+  const r = fakeRenderer({ gl: fakeGl({ signalAfter: 1 }), ...opts });
+  const g = guard(r, { frame: now, ...opts.guard });
+  const scene = new THREE.Scene();
+  return { r, g, scene };
+};
+
+describe('frameGuard', () => {
+  it('leaves a never-compiled material out of the frame, and draws it once it has linked', async () => {
+    const { r, scene } = setup({ linkAfter: 1 });
+    const m = new THREE.MeshStandardMaterial();
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
+    await frames(r, scene);
+    expect(r.draws).toEqual([]);
+    expect(r.compiled).toEqual([m]); // compiled after the frame, not in it
+    await frames(r, scene, 3);
+    expect(r.draws).toEqual([m]);
+  });
+
+  it('draws at once what was readied before (a prepared world)', async () => {
+    const { r, scene } = setup();
+    const m = new THREE.MeshStandardMaterial({ map: picture() });
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), m);
+    scene.add(mesh);
+    r.compile(mesh);
+    r.initTexture(m.map);
+    await frames(r, scene);
+    expect(r.draws).toEqual([m]);
+  });
+
+  it('sends a new picture after the frame, then draws with it', async () => {
+    const { r, scene } = setup();
+    const m = new THREE.MeshStandardMaterial({ map: picture() });
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), m);
+    scene.add(mesh);
+    r.compile(mesh);
+    await frames(r, scene);
+    expect(r.draws).toEqual([]);
+    expect(r.uploads).toEqual([m.map]);
+    await frames(r, scene, 2);
+    expect(r.draws).toEqual([m]);
+  });
+
+  it("compiles for where the scene is drawn (a composer's buffer), then puts the target back", async () => {
+    const { r, scene } = setup();
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial()));
+    r.target = 'buffer';
+    r.render(scene, camera);
+    r.target = null;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(r.compiledInto).toEqual(['buffer']);
+    expect(r.target).toBe(null);
+  });
+
+  it('never gates the shadow pass', () => {
+    const { r, scene } = setup();
+    const m = new THREE.MeshStandardMaterial();
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
+    r.shadow(scene, camera);
+    expect(r.draws).toEqual([m]);
+  });
+
+  it('keeps drawing a material three bumps every frame (transparent, both sides)', async () => {
+    const { r, scene } = setup();
+    const m = new THREE.MeshStandardMaterial({ transparent: true, side: THREE.DoubleSide });
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
+    await frames(r, scene, 3);
+    for (let i = 0; i < 3; i++) {
+      m.needsUpdate = true;
+      await frames(r, scene);
+      expect(r.draws).toEqual([m]);
+    }
+  });
+
+  it('never holds back a picture redrawn every frame once it is up (a canvas)', async () => {
+    const { r, scene } = setup();
+    const m = new THREE.MeshBasicMaterial({ map: picture() });
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
+    await frames(r, scene, 3);
+    m.map.needsUpdate = true;
+    await frames(r, scene);
+    expect(r.draws).toEqual([m]);
+  });
+
+  it("puts a world's look on a late thing before compiling it", async () => {
+    const order = [];
+    const { r, g, scene } = setup();
+    const compile = r.compile;
+    r.compile = (root, ...rest) => {
+      order.push('compile');
+      return compile(root, ...rest);
+    };
+    g.adopt(scene, (object) => order.push(`adopt ${object.name}`));
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    mesh.name = 'hunter';
+    scene.add(mesh);
+    await frames(r, scene);
+    expect(order).toEqual(['adopt hunter', 'compile']);
+  });
+
+  it("doesn't hide a material forever when its compile throws", async () => {
+    const { r, scene } = setup();
+    r.compile = () => {
+      throw new Error('bad shader');
+    };
+    const m = new THREE.MeshStandardMaterial();
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
+    await frames(r, scene, 3);
+    expect(r.draws).toEqual([m]);
+  });
+
+  it("leaves a post pass's quad alone (it isn't a scene)", async () => {
+    const { r } = setup();
+    const m = new THREE.ShaderMaterial();
+    const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), m);
+    r.render(quad, camera);
+    expect(r.draws).toEqual([m]);
+  });
+
+  it('can be switched off', async () => {
+    const { r, g, scene } = setup();
+    g.enabled = false;
+    const m = new THREE.MeshStandardMaterial();
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
+    await frames(r, scene);
+    expect(r.draws).toEqual([m]);
+  });
+
+  it('is installed once per renderer', () => {
+    const { r, g } = setup();
+    expect(guard(r)).toBe(g);
+  });
+});

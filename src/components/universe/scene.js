@@ -511,7 +511,7 @@ export async function create(canvas, ctx) {
   // filling a retina screen at 2 is more than most graphics chips draw
   // smoothly while flying, and the names and the HUD are crisp DOM anyway;
   // and no antialiasing on the canvas: the post's target has its own, post.js)
-  const gl = createRenderer(canvas, { ratio: 1.5, antialias: false, onLost: ctx.onLost, onSlow: ctx.onSlow });
+  const gl = createRenderer(canvas, { ratio: 1.5, antialias: false, onLost: ctx.onLost, onSlow: ctx.onSlow, guard: { invalidate: ctx.invalidate } });
   const { renderer } = gl;
   renderer.info.autoReset = false;
   const scene = new THREE.Scene();
