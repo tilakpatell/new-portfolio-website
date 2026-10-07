@@ -310,8 +310,11 @@ export const PROPS = {
     return { object: k.build(parts, { name: 'royalship' }), solids: [{ box: [0, 0, 10, 30, 0] }, { box: [0, -14, 15, 8, 0] }] };
   },
 
-  // the Theed Royal Space Port's hangar: stone outside, its great door
-  // open, the floor polished, strip lights under the roof
+  // the Theed Hangar, on one side of the palace: stone outside, its great
+  // door open, the floor polished, strip lights under the roof. Wookieepedia:
+  // a heavy blast-proof door at its back to the city's plasma generator, a
+  // blast-proof roof, and over the hangar the air traffic controllers' room
+  // (its windows high on the back wall, a gallery in front of them)
   hangar(k, { w = 70, d = 48, h = 22 } = {}) {
     const parts = [];
     const fw = (w - 40) / 2;
@@ -325,10 +328,23 @@ export const PROPS = {
     parts.push(part(box(40, 6, 3.4), { at: [0, h - 6, d / 2 - 1.7], color: STONE, to: 'stone' }));
     parts.push(part(ring(20, 0.7, 40).rotateX(PI / 2), { at: [0, h - 6, d / 2 + 0.1], scale: [1, 0.3, 1], color: TRIM, to: 'stone' }));
     parts.push(part(box(w + 2, 1.4, d + 2), { at: [0, h, 0], color: TRIM, to: 'stone' }));
-    parts.push(part(box(w - 6, 0.12, d - 4), { at: [0, 0, 0], color: '#8a8478', to: 'metal' }));
+    parts.push(part(box(w - 6, 0.12, d - 4), { at: [0, 0, 0], color: '#b8b2a4', to: 'tiles' }));
     for (let i = 0; i < 5; i++) parts.push(part(box(w - 10, 0.2, 0.5), { at: [0, h - 0.4, -d / 2 + 6 + i * 9], color: lit('#fff2d0', 2.2), to: 'glow' }));
     // its floor markings, and the bay doors' tracks
     for (const x of [-12, 12]) parts.push(part(box(0.5, 0.02, d - 6), { at: [x, 0.13, 0], color: '#e8c838', to: 'paint' }));
+    // pilasters down the walls inside, green-capped
+    for (let z = -d / 2 + 6; z < d / 2 - 6; z += 8)
+      for (const sx of [-1, 1]) parts.push(part(box(1.2, h - 1, 0.9), { at: [sx * (w / 2 - 3.4), 0, z], color: COLUMN, to: 'stone' }), part(box(1.6, 0.8, 1.2), { at: [sx * (w / 2 - 3.4), h - 1.8, z], color: VERDIGRIS, to: 'paint' }));
+    // the blast door to the generator, shut: grey plate in bands, in a deep frame
+    const back = -d / 2 + 3;
+    parts.push(part(box(14, 11, 0.8), { at: [0, 0, back + 0.4], color: '#5a5e62', to: 'metal' }));
+    for (let i = 0; i < 6; i++) parts.push(part(box(13.4, 0.35, 0.2), { at: [0, 1 + i * 1.8, back + 0.9], color: '#44484c', to: 'metal' }));
+    parts.push(part(box(0.25, 10.6, 0.25), { at: [0, 0, back + 0.95], color: '#2a2c2e', to: 'dark' }));
+    for (const sx of [-1, 1]) parts.push(part(box(1.4, 12.2, 1.6), { at: [sx * 7.6, 0, back + 0.6], color: TRIM, to: 'stone' }));
+    parts.push(part(box(16.6, 1.4, 1.6), { at: [0, 11.2, back + 0.6], color: TRIM, to: 'stone' }));
+    // the controllers' room over it: a row of lit windows, the gallery
+    parts.push(part(box(30, 0.5, 2.6), { at: [0, 13.6, back + 1.3], color: '#d8ccb0', to: 'stone' }), part(box(30, 1.1, 0.12), { at: [0, 14.1, back + 2.55], color: '#b8c2c8', to: 'metal' }));
+    for (let i = 0; i < 6; i++) parts.push(part(box(3.6, 3.4, 0.12), { at: [-12.5 + i * 5, 15.4, back + 0.05], color: lit('#cfe6ff', 1.3), to: 'glow' }));
     return {
       object: k.build(parts, { name: 'hangar' }),
       solids: [{ box: [0, -d / 2 + 1.5, w / 2, 1.5, 0] }, { box: [-(w / 2 - 1.5), 0, 1.5, d / 2, 0] }, { box: [w / 2 - 1.5, 0, 1.5, d / 2, 0] }, { box: [-(w / 2 - fw / 2), d / 2 - 1.7, fw / 2, 1.7, 0] }, { box: [w / 2 - fw / 2, d / 2 - 1.7, fw / 2, 1.7, 0] }],
@@ -337,9 +353,12 @@ export const PROPS = {
 
   // a paved plaza, cream flagstones in a grid, a fountain in its middle
   plaza(k, { w = 60, d = 40, fountain = true } = {}) {
-    const parts = [part(box(w, 0.3, d), { color: '#ddd1b6', to: 'stone' })];
-    for (let x = -w / 2 + 5; x < w / 2; x += 5) parts.push(part(box(0.18, 0.02, d - 0.4), { at: [x, 0.3, 0], color: '#bfb194', to: 'stone' }));
-    for (let z = -d / 2 + 5; z < d / 2; z += 5) parts.push(part(box(w - 0.4, 0.02, 0.18), { at: [0, 0.3, z], color: '#bfb194', to: 'stone' }));
+    // (polished slabs, a metre each: the scan's own joints; a darker band
+    // every 6 m, and a kerb round the edge)
+    const parts = [part(box(w, 0.3, d), { color: '#e2d8c2', to: 'tiles' })];
+    for (let x = -w / 2 + 6; x < w / 2 - 1; x += 6) parts.push(part(box(0.3, 0.02, d - 0.4), { at: [x, 0.3, 0], color: '#bcae90', to: 'stone' }));
+    for (let z = -d / 2 + 6; z < d / 2 - 1; z += 6) parts.push(part(box(w - 0.4, 0.02, 0.3), { at: [0, 0.3, z], color: '#bcae90', to: 'stone' }));
+    for (const sx of [-1, 1]) parts.push(part(box(0.8, 0.45, d), { at: [sx * (w / 2 - 0.4), 0, 0], color: '#cfc2a2', to: 'stone' }), part(box(w, 0.45, 0.8), { at: [0, 0, sx * (d / 2 - 0.4)], color: '#cfc2a2', to: 'stone' }));
     const solids = [];
     if (fountain) {
       parts.push(part(cyl(5, 5, 0.9, 32), { at: [0, 0.3, 0], color: '#cfc2a2', to: 'stone' }), part(cyl(4.4, 4.4, 0.92, 32), { at: [0, 0.3, 0], color: '#5e9aa4', to: 'glass' }));

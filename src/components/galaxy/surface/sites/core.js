@@ -151,6 +151,11 @@ export const SITES = {
           { kind: 'n1fighter', at: [14, -8], yaw: -0.1 },
           { kind: 'n1fighter', at: [-22, 30], yaw: 0.5 },
           { kind: 'n1fighter', at: [24, 32], yaw: -0.4 },
+          // (Bravo Squadron's rows, further in: the hangar held at least twenty-seven)
+          { kind: 'n1fighter', at: [-21, -18], yaw: 0 },
+          { kind: 'n1fighter', at: [-7, -19], yaw: 0 },
+          { kind: 'n1fighter', at: [7, -19], yaw: 0 },
+          { kind: 'n1fighter', at: [21, -18], yaw: 0 },
           { kind: 'crates', at: [-26, 8] },
           { kind: 'crates', at: [27, 10] },
         ],
