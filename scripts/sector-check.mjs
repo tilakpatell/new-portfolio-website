@@ -1,12 +1,12 @@
-/* global window */
+/* global window, document */
 // A browser check of the Rick and Morty sector (universe/portals.js). With
 // the dev server up (npx vite --port 5173):
 //   OUT=/tmp/shots node scripts/sector-check.mjs [--ship cruiser]
-// It flies the ship from the home system into the portal by the Rick and
-// Morty planet on the autopilot, out by the Citadel in the sector, on to
-// Gazorpazorp on super speed, sets it down there, and back home through the
-// Citadel's portal, taking a screenshot at each and printing what failed and
-// any errors. Headless Chromium draws in software, slowly: the waits are long.
+// It looks at the portal by the Rick and Morty planet, has the autopilot fly
+// from the home system to Gazorpazorp (through the portal on the way, out by
+// the Citadel, on from there on super speed), opens the nav map there, sets
+// the ship down, flies to the Citadel, then home in one go back through the
+// Citadel's portal: a screenshot at each, what failed, and any errors. Headless Chromium draws in software, slowly: the waits are long.
 import { chromium } from 'playwright-core';
 
 const args = process.argv.slice(2);
@@ -54,19 +54,25 @@ await lookAt('rmportal');
 await page.waitForTimeout(4000);
 await shot('sector-0-portal');
 
-// 1. into the portal by the Rick and Morty planet, on the autopilot
-const went = await page.evaluate(() => window.__universeDebug.travel('rmportal', 'super'));
-say(went, 'autopilot to the portal');
-say(await until(() => window.__universeDebug.state.ship.z < -20000, null, 400), 'through the portal into the sector');
+// 1. from the home system to Gazorpazorp in one go: the autopilot takes the
+// portal on the way (nav.js legOf), and on from the Citadel's side
+say(await page.evaluate(() => window.__universeDebug.travel('gazorpazorp', 'super')), 'autopilot to Gazorpazorp, from home');
+say(await until(() => window.__universeDebug.state.ship.z < -20000, null, 400), 'through the portal into the sector on the way');
 let w = await where();
-console.log('     out at', w.x.toFixed(0), w.y.toFixed(0), w.z.toFixed(0), '·', w.note);
-await page.waitForTimeout(2500);
-await shot('sector-1-citadel');
-
-// 2. on to Gazorpazorp on super speed, and down onto it
-say(await page.evaluate(() => window.__universeDebug.travel('gazorpazorp', 'super')), 'autopilot to Gazorpazorp');
+console.log('     out at', w.x.toFixed(0), w.y.toFixed(0), w.z.toFixed(0), '·', w.note, '· going on to', w.auto);
+say(w.auto === 'gazorpazorp', 'going on to Gazorpazorp from the far side');
 say(await until(() => window.__universeDebug.state.at === 'gazorpazorp' && !window.__universeDebug.state.auto, null, 400), 'at Gazorpazorp');
 await shot('sector-2-gazorpazorp');
+
+// the nav map, in the sector: its own chart
+await page.keyboard.press('m');
+await page.waitForTimeout(2500);
+say(await page.evaluate(() => document.querySelector('.navmap-views [aria-pressed="true"]')?.textContent === 'The Curve'), 'the nav map opens on the sector’s chart');
+await shot('sector-2-navmap');
+await page.keyboard.press('Escape');
+await page.waitForTimeout(1000);
+
+// down onto Gazorpazorp
 const landed = await page.evaluate(() => window.__universeDebug.startFoot());
 say(landed, 'landing on Gazorpazorp');
 if (landed) {
@@ -78,15 +84,21 @@ if (landed) {
   await page.waitForTimeout(2000);
 }
 
-// 3. home through the Citadel's portal
+// 2. the Citadel, close
+say(await page.evaluate(() => window.__universeDebug.travel('citadel', 'super')), 'autopilot to the Citadel');
+say(await until(() => window.__universeDebug.state.at === 'citadel' && !window.__universeDebug.state.auto, null, 300), 'at the Citadel');
+await page.waitForTimeout(2000);
+await shot('sector-1-citadel');
+
+// 3. home in one go, back through the Citadel's portal
 await lookAt('rmportal-back');
 await page.waitForTimeout(4000);
 await shot('sector-3-portal-home');
-say(await page.evaluate(() => window.__universeDebug.travel('rmportal-back', 'super')), 'autopilot to the portal home');
+say(await page.evaluate(() => window.__universeDebug.travel('home', 'super')), 'autopilot home');
 say(await until(() => window.__universeDebug.state.ship.z > -20000, null, 400), 'back through into the main map');
 w = await where();
 console.log('     out at', w.x.toFixed(0), w.y.toFixed(0), w.z.toFixed(0), '·', w.note);
-await page.waitForTimeout(2500);
+say(await until(() => window.__universeDebug.state.at === 'home' && !window.__universeDebug.state.auto, null, 400), 'home');
 await shot('sector-4-home');
 
 console.log(errors.length ? `${errors.length} errors:\n${[...new Set(errors)].slice(0, 30).join('\n')}` : 'no errors');

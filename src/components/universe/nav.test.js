@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { CHART_VIEWS, DESTINATIONS, DRIVES, HYPER, KINDS, chartAt, tourIdsIn, chartHeading, destinationById, distanceTo, findDestinations, formatDistance, formatTime, hyperState, onChart, findDestination, goalOf, parkFor, parseDrive, riftExit, riftSpot, tourFrom, tripTime, TOUR_IDS } from './nav';
+import { CHART_VIEWS, DESTINATIONS, DRIVES, HYPER, KINDS, TRANSIT, chartAt, legOf, portalBetween, tourIdsIn, viewFor, chartHeading, destinationById, distanceTo, findDestinations, formatDistance, formatTime, hyperState, onChart, findDestination, goalOf, parkFor, parseDrive, riftExit, riftSpot, tourFrom, tripTime, TOUR_IDS } from './nav';
 import { GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, inTrench, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { ORDER, SECTORS, sectorOf } from './layout';
+import { portalHit, transit } from './portals';
 import { WONDERS } from './deep';
 import { MAW } from './maw';
 import { byId, MOONS } from './universes';
@@ -322,5 +323,68 @@ describe('coming out of a jump', () => {
       const k = parkFor(id, behind);
       expect((k.x - g.at[0]) * s[0] + (k.z - g.at[2]) * s[2], id).toBeGreaterThanOrEqual(-1e-6);
     }
+  });
+});
+
+describe('across the sectors', () => {
+  const home = () => spawn('home');
+  it('goes to a place in the other sector through the portal between them', () => {
+    expect(portalBetween('main', 'rickmorty').id).toBe('rmportal');
+    expect(portalBetween('rickmorty', 'main').id).toBe('rmportal-back');
+    expect(portalBetween('main', 'main')).toBeNull();
+    expect(legOf(home(), 'gazorpazorp')).toBe('rmportal');
+    expect(legOf(home(), 'citadel')).toBe('rmportal');
+    expect(legOf(home(), 'marvel')).toBe('marvel');
+    expect(legOf(home(), 'sys:hoth')).toBe('starwars'); // (a system: its gate, in this sector)
+    const there = startFor('gazorpazorp');
+    expect(legOf(there, 'gazorpazorp')).toBe('gazorpazorp');
+    expect(legOf(there, 'marvel')).toBe('rmportal-back');
+    expect(legOf(there, 'home')).toBe('rmportal-back');
+  });
+
+  it('counts the way through the portal in the distance and the trip time', () => {
+    for (const id of ['gazorpazorp', 'citadel', 'curvesun']) {
+      const d = distanceTo(home(), id);
+      expect(Number.isFinite(d), id).toBe(true);
+      expect(d, id).toBeLessThan(20000); // (nothing like the 40000 straight across)
+      for (const drive of ['hyper', 'super']) {
+        const t = tripTime(home(), id, drive);
+        expect(t, `${id} by ${drive}`).not.toBeNull();
+        expect(t, `${id} by ${drive}`).toBeGreaterThan(TRANSIT);
+      }
+    }
+    expect(tripTime(home(), 'gazorpazorp', 'super')).toBeLessThan(40);
+    expect(tripTime(startFor('gazorpazorp'), 'marvel', 'super')).not.toBeNull();
+  });
+
+  it('flies from the home system through the portal to Gazorpazorp, and lands there', () => {
+    let s = home();
+    const first = legOf(s, 'gazorpazorp');
+    let park = parkFor(first, [s.x, s.z]);
+    let through = null;
+    let t = 0;
+    for (; t < 60 && !through; t += 1 / 60) {
+      const next = step(s, autopilot(s, first, park, undefined, OVERDRIVE).input, 1 / 60).ship;
+      through = portalHit(s, next);
+      s = next;
+    }
+    expect(through).toBe('rmportal');
+    s = transit(s, through).ship;
+    expect(sectorOf(s.x, s.y, s.z)).toBe('rickmorty');
+    const r = fly(s, 'gazorpazorp', OVERDRIVE);
+    expect(r.done).toBe(true);
+    expect(r.hits).toBe(0);
+    expect(orbiting(r.s, null)).toBe('gazorpazorp');
+    expect(t + r.t).toBeLessThan(40);
+  });
+
+  it('charts the Rick and Morty sector round its own middle', () => {
+    expect(viewFor('main')).toBe('all');
+    expect(viewFor('rickmorty')).toBe('rickmorty');
+    const v = CHART_VIEWS.rickmorty;
+    expect(chartAt(...[SECTORS.rickmorty.origin[0], SECTORS.rickmorty.origin[2]], v)).toEqual([0.5, 0.5]);
+    for (const d of DESTINATIONS.filter((x) => x.sector === 'rickmorty')) expect(onChart(chartAt(d.at[0], d.at[2], v)), d.id).toBe(true);
+    // (the main map's places are far off it)
+    expect(onChart(chartAt(0, 0, v))).toBe(false);
   });
 });

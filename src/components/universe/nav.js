@@ -18,10 +18,10 @@
 // goes by the drive picked.
 
 import { EDGE, GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, forward, headingTo, parkAt, step } from './ship';
-import { portalById } from './portals';
+import { PORTALS, portalById, portalHit, transit } from './portals';
 import { MAW, parkNear } from './maw';
 import { WONDERS, reachOf } from './deep';
-import { HOME_RADIUS, ORDER, POSITIONS, REACH, sectorOf } from './layout';
+import { HOME_RADIUS, ORDER, POSITIONS, REACH, SECTORS, sectorOf } from './layout';
 import { MOONS, byId } from './universes';
 import { LENGTH } from './scale';
 import { SYSTEM_MARKS, SYSTEM_NAMES } from '../galaxy/names';
@@ -154,6 +154,24 @@ export const destinationById = (id) => BY_ID.get(id) ?? null;
 // the place on this map a trip to `id` really goes to: a system's gate, else itself
 export const goalOf = (id) => BY_ID.get(id)?.via ?? id;
 
+// The sectors (layout.js): a place in another sector than the ship's is
+// gone to through the portal between them (portals.js), then on from its far
+// end. portalBetween(from, to) → the portal in `from` that opens on `to`, or
+// null; legOf(ship, id) → where the trip to `id` goes first: that portal, or
+// the place itself (its gate, for a star system) when it's in the ship's sector
+export const sectorOfGoal = (id) => {
+  const g = GOALS[goalOf(id)];
+  return g ? sectorOf(...g.at) : null;
+};
+export const portalBetween = (from, to) => PORTALS.find((p) => sectorOf(...p.at) === from && p.leadsTo.sector === to) ?? null;
+export function legOf(ship, id) {
+  const goal = goalOf(id);
+  const there = sectorOfGoal(goal);
+  if (!ship || !there) return goal;
+  const here = sectorOf(ship.x, ship.y ?? 0, ship.z);
+  return here === there ? goal : (portalBetween(here, there)?.id ?? goal);
+}
+
 export const KINDS = [
   { id: 'all', name: 'Everywhere' },
   { id: 'station', name: 'Stations' },
@@ -251,9 +269,16 @@ export function riftSpot(ship, rand = Math.random) {
 
 // how far it is from (x, y, z) to a place: to its parking spot's side of
 // it, in map units (the edge of what's there, not its middle)
+// (in another sector: to the portal, and on from its far end)
 export function distanceTo(ship, id) {
   const d = destinationById(goalOf(id));
   if (!d || !ship) return null;
+  const leg = legOf(ship, id);
+  if (leg !== d.id) {
+    const p = portalById(leg);
+    const out = portalById(p.leadsTo.exit);
+    return Math.hypot(ship.x - p.at[0], (ship.y ?? 0) - p.at[1], ship.z - p.at[2]) + distanceTo({ x: out.at[0], y: out.at[1], z: out.at[2] }, id);
+  }
   const c = Math.hypot(ship.x - d.at[0], (ship.y ?? 0) - d.at[1], ship.z - d.at[2]);
   return Math.max(0, c - d.reach);
 }
@@ -261,9 +286,38 @@ export function distanceTo(ship, id) {
 // How long the trip takes on a drive, in seconds: the jump, or the
 // autopilot flown there on the ship's own physics (without hunters, who'd
 // slow it); null if it can't get there (or isn't somewhere to go)
+// (in another sector: into the portal, through, and on from the far end; a
+// jump goes to the portal, and the hyperdrive's charging by the far side, so
+// on from there at super speed)
+export const TRANSIT = 0.6; // seconds through a portal (the flash)
 export function tripTime(ship, id, drive = 'super', { limit = 150, dt = 1 / 30 } = {}) {
   id = goalOf(id);
   if (!ship || !GOALS[id]) return null;
+  const leg = legOf(ship, id);
+  if (leg !== id) {
+    let first;
+    let out;
+    if (drive === 'hyper') {
+      first = HYPER.length;
+      const p = portalById(leg);
+      out = transit({ ...ship, x: p.at[0], y: p.at[1], z: p.at[2], speed: 0 }, leg)?.ship;
+    } else {
+      const park = parkFor(leg, [ship.x, ship.z]);
+      const od = driveById(drive).od;
+      let s = { ...ship };
+      for (let t = 0; t < limit && !out; t += dt) {
+        const next = step(s, autopilot(s, leg, park, undefined, od).input, dt).ship;
+        if (portalHit(s, next) === leg) {
+          first = t + dt;
+          out = transit(next, leg).ship;
+        }
+        s = next;
+      }
+    }
+    if (!out) return null;
+    const rest = tripTime(out, id, drive === 'hyper' ? 'super' : drive, { limit, dt });
+    return rest === null ? null : first + TRANSIT + rest;
+  }
   if (drive === 'hyper') return HYPER.length;
   const park = parkFor(id, [ship.x, ship.z]);
   if (!park) return null;
@@ -300,16 +354,24 @@ export function formatDistance(units) {
 // out to the edge of the map, on a square-root scale (so the home system
 // opens up and the far worlds still fit), and the home system alone, to
 // scale. chartAt gives where (x, z) is on it, 0…1 across and down.
+// (and a third, the Rick and Morty sector, round its own middle: each view's
+// `sector`, and its `origin`, the point at its middle)
 export const CHART_VIEWS = {
-  all: { id: 'all', name: 'Universe', r: EDGE, scale: 'sqrt' },
-  home: { id: 'home', name: 'Home system', r: HOME_RADIUS * 1.15, scale: 'linear' },
+  all: { id: 'all', name: 'Universe', r: EDGE, scale: 'sqrt', sector: 'main', origin: [0, 0, 0] },
+  home: { id: 'home', name: 'Home system', r: HOME_RADIUS * 1.15, scale: 'linear', sector: 'main', origin: [0, 0, 0] },
+  rickmorty: { id: 'rickmorty', name: 'The Curve', r: SECTORS.rickmorty.edge, scale: 'sqrt', sector: 'rickmorty', origin: SECTORS.rickmorty.origin },
 };
+// the chart a sector opens on
+export const viewFor = (sector) => (sector === 'rickmorty' ? 'rickmorty' : 'all');
 const MARGIN = 0.47; // the chart's radius, of its width (a little room round the edge)
 export function chartRadius(r, view = CHART_VIEWS.all) {
   const k = Math.max(0, r) / view.r;
   return (view.scale === 'sqrt' ? Math.sqrt(k) : k) * MARGIN;
 }
 export function chartAt(x, z, view = CHART_VIEWS.all) {
+  const o = view.origin ?? [0, 0, 0];
+  x -= o[0];
+  z -= o[2];
   const r = Math.hypot(x, z);
   if (r < 1e-9) return [0.5, 0.5];
   const k = chartRadius(r, view) / r;
