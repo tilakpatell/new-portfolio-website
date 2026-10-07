@@ -68,8 +68,8 @@ Branch `claude/universe-scale-hyperlanes` (this one). One PR for Tasks 1 to 3, a
 - Produces: `LINK = 2600`, `HUB_LIFT = 90`, `REGIONS: [{ id, name, members: id[], hub: [x, y, z] }]` (`home` first, then by angle of the hub round the origin; `id` is the biggest member’s id, `name` “Near <Name>” or “The home system”), `regionAt(x, y, z) -> region | null`, `regionById(id)`.
 - Consumes: `layout.js`’s `POSITIONS`, `REACH`, `ORDER`, `HOME_RADIUS`; `deep.js`’s `PLACES`.
 
-- [ ] **Step 1: Write the failing tests:** between 6 and 10 regions; every planet and wonder of the main sector in exactly one; no hub within 1.5 × reach of any member or any solid (the “hub clear” test, Review Focus 2); `regionAt` of a member’s position is its region; `regionAt(0, 0, 20000)` is null if that point is more than `LINK` from everything (pick the test point from the data).
-- [ ] **Step 2: Run and fail.** **Step 3: Implement** single-linkage clustering (union-find over pairs within `LINK`), the reach-weighted centroid, the lift alternating up and down by index, and a push straight away from any solid the hub is inside until clear. **Step 4: Run green. Commit.**
+- [x] **Step 1: Write the failing tests:** between 6 and 10 regions; every planet and wonder of the main sector in exactly one; no hub within 1.5 × reach of any member or any solid (the “hub clear” test, Review Focus 2); `regionAt` of a member’s position is its region; `regionAt(0, 0, 20000)` is null if that point is more than `LINK` from everything (pick the test point from the data).
+- [x] **Step 2: Run and fail.** **Step 3: Implement** single-linkage clustering (union-find over pairs within `LINK`), the reach-weighted centroid, the lift alternating up and down by index, and a push straight away from any solid the hub is inside until clear. **Step 4: Run green. Commit.**
 
 ### Task 4: the lane graph (`hyperlanes.js`)
 
