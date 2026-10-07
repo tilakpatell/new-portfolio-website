@@ -16,7 +16,7 @@ A stop whose thing isn't on the screen is left out, so the same tour fits a phon
 ## How it starts
 
 - **On a first arrival**, once nothing is covering the page (the intro, the front door's choice, the phone menu, any dialog), a small card offers it: "Take the tour" or "Not now". It is offered once (`tp-tour` in localStorage), and only on the universe and the classic pages, never over a world, which has its own first hint and guide note.
-- **Any time after**: ⌘K's "Take the tour of the site", the guide's "The site" tab, and the terminal's `tour`.
+- **Any time after**: ⌘K's "Take the tour of the site", the guide's "The site" tab, the terminal's `tour`, and a link with `?tour=<mode>` (`#/?tour=classic`), which starts it once nothing's covering the page.
 - "Start over" forgets it with the rest of the visit, so a restart offers it again.
 
 Finishing it unlocks an achievement ("Shown around").
@@ -25,8 +25,11 @@ Finishing it unlocks an achievement ("Shown around").
 
 - `src/lib/tour.js` (pure, tested): which tour a path gets, the offer's rules, which stops survive on this screen, and where the card goes beside its target (`placeCard`: below, above, right, left, whichever fits, kept on screen).
 - `src/components/tour/steps.js` (data, tested): the two tours' stops, each naming the `data-tour` target it lights.
+- `src/components/tour/targets.js`: the first showing element marked for a name.
 - `src/components/tour/TourHost.jsx`: always in the shell, small. Listens for `tp:tour`, makes the first-arrival offer, and loads the tour.
-- `src/components/tour/Tour.jsx` and `tour.css`: the spotlight and the card, loaded the first time a tour starts.
+- `src/components/tour/TourRunner.jsx`: walks a script (legs of stops, each leg a page: `lib/tour.js`'s `legsFor`, `readyFor`, `onLeg`), going to each leg's page, waiting for it to be ready, and showing its stops one at a time; keeps the place of a tour across pages in `tp-tour-run`.
+- `src/components/tour/scripts/`: the tours by mode (`loadScript`, `loadBrief`): the shell's two and a world's basics as one-leg scripts run where you are, and the tours across pages (recruiter, player, mixed: [their design](2026-10-07-tour-modes-design.md)) each in a file of its own.
+- `src/components/tour/TourCard.jsx` and `tour.css`: the spotlight and the card, loaded the first time a tour starts. `pause` steps it aside (no dim, the page takes clicks) for a stop that says "try it" and the wait while a page loads.
 - Targets are marked in place with `data-tour="name"` (a space-separated list where one element is more than one stop). Where two elements carry a name (the guide's corner button and the universe panel's "?"), the first one showing wins.
 
 ## Behaviour

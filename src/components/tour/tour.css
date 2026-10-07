@@ -51,3 +51,17 @@ html[data-touring] .guide-btn[data-tucked] { transform: none; opacity: 1; }
   .tour-card { animation: none; }
 }
 @media print { .tour { display: none !important; } }
+
+/* a notice on a stop (the world's in its light version here) */
+.tour-notice { margin-top: 0.5rem; padding: 0.45rem 0.6rem; border-left: 2px solid var(--accent); color: var(--muted); font-size: 0.8125rem; line-height: 1.45; }
+.tour-skip-leg { margin-right: 0; }
+
+/* paused: the page is yours (try the thing, or answer a world's ask), the
+   card waits in a corner, and the thing stays ringed with no dim */
+.tour[data-pause] { pointer-events: none; }
+.tour[data-pause] .tour-veil { display: none; }
+.tour[data-pause] .tour-spot { box-shadow: 0 0 0 2px var(--accent); }
+.tour[data-pause] .tour-card { pointer-events: auto; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); left: auto; top: auto; }
+@media (max-width: 767px) {
+  .tour[data-pause] .tour-card { right: 16px; bottom: auto; top: calc(var(--nav-h) + 8px); }
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { litBox, offerHere, placeCard, resolveSteps, tourFor } from './tour';
+import { RUN_FOR, asScript, flatten, legsFor, litBox, markTour, offerHere, onLeg, placeCard, readRun, readyFor, resolveSteps, tourFor, tourInSearch, tourStatus } from './tour';
 
 describe('which tour a page gets', () => {
   it('gives the map the universe’s, at the front door and every place on it', () => {
@@ -100,5 +100,105 @@ describe('the lit box', () => {
 
   it('is nothing for a target off the screen', () => {
     expect(litBox({ left: 0, top: 900, right: 100, bottom: 940 }, view, 6)).toBe(null);
+  });
+});
+
+describe('a script across pages', () => {
+  const script = {
+    id: 'demo',
+    legs: [
+      { id: 'a', path: '/home', ready: 'feed', stops: [{ id: 'a1' }, { id: 'a2', at: 'x', only: 'desktop' }] },
+      { id: 'b', path: '/avengers', ready: 'world', only: 'touch', stops: [{ id: 'b1' }] },
+      { id: 'c', path: '/universe', ready: 'map', stops: [{ id: 'c1', at: 'panel' }] },
+    ],
+  };
+
+  it('keeps the legs and stops for this device', () => {
+    expect(legsFor(script, { touch: false }).map((l) => l.id)).toEqual(['a', 'c']);
+    expect(legsFor(script, { touch: false })[0].stops.map((s) => s.id)).toEqual(['a1', 'a2']);
+    expect(legsFor(script, { touch: true }).map((l) => l.id)).toEqual(['a', 'b', 'c']);
+    expect(legsFor(script, { touch: true })[0].stops.map((s) => s.id)).toEqual(['a1']);
+  });
+
+  it('drops a leg left with no stops', () => {
+    const only = { id: 'o', legs: [{ id: 'l', path: '/x', stops: [{ id: 's', only: () => false }] }] };
+    expect(legsFor(only, { touch: false })).toEqual([]);
+  });
+
+  it('lays the stops in a row, each knowing its leg', () => {
+    const flat = flatten(legsFor(script, { touch: false }));
+    expect(flat.map((s) => `${s.leg}:${s.id}`)).toEqual(['0:a1', '0:a2', '1:c1']);
+  });
+
+  it('wraps one page’s stops as a script run where you are', () => {
+    const s = asScript('classic', [{ id: 'hello' }], { title: 'Classic' });
+    expect(s.title).toBe('Classic');
+    expect(s.legs).toEqual([{ id: 'classic', path: null, ready: 'now', stops: [{ id: 'hello' }] }]);
+  });
+
+  it('knows whether the page is on a leg', () => {
+    expect(onLeg({ path: '/experience' }, '/experience/aws')).toBe(true);
+    expect(onLeg({ path: '/experience' }, '/experiences')).toBe(false);
+    expect(onLeg({ path: '/universe' }, '/')).toBe(true);
+    expect(onLeg({ path: '/universe/marvel' }, '/universe')).toBe(true);
+    expect(onLeg({ path: null }, '/anywhere')).toBe(true);
+  });
+
+  describe('when a leg’s page is ready', () => {
+    const probe = (over = {}) => ({ covered: false, gate: false, modal: false, has: () => true, ...over });
+
+    it('is at once for a stop where you are', () => {
+      expect(readyFor('now', probe({ covered: true, modal: true }))).toBe(true);
+    });
+
+    it('waits for the cover and any dialog', () => {
+      expect(readyFor('feed', probe({ covered: true }), 'career')).toBe(false);
+      expect(readyFor('map', probe({ modal: true }))).toBe(false);
+    });
+
+    it('waits for a world’s gate, then goes, 3D or light', () => {
+      expect(readyFor('world', probe({ gate: true }))).toBe(false);
+      expect(readyFor('world', probe({ has: () => false }))).toBe(true);
+    });
+
+    it('waits for the first stop’s target on a page, and the panel on the map', () => {
+      expect(readyFor('feed', probe({ has: (n) => n === 'career' }), 'career')).toBe(true);
+      expect(readyFor('feed', probe({ has: () => false }), 'career')).toBe(false);
+      expect(readyFor('feed', probe({ has: () => false }))).toBe(true);
+      expect(readyFor('map', probe({ has: (n) => n === 'panel' }))).toBe(true);
+    });
+
+    it('lets a leg decide for itself', () => {
+      expect(readyFor((p) => p.gate, probe({ gate: true }))).toBe(true);
+    });
+  });
+});
+
+describe('what’s remembered', () => {
+  it('reads the old string as the offer made, and the shell tour’s outcome', () => {
+    expect(tourStatus(null)).toEqual({});
+    expect(tourStatus('offered')).toEqual({ offered: true });
+    expect(tourStatus('done')).toEqual({ offered: true, shell: 'done' });
+    expect(tourStatus({ offered: true, recruiter: 'done' })).toEqual({ offered: true, recruiter: 'done' });
+  });
+
+  it('marks a mode’s outcome, keeping the others', () => {
+    expect(markTour('skipped', 'recruiter', 'done')).toEqual({ offered: true, shell: 'skipped', recruiter: 'done' });
+    expect(markTour(null, null, 'offered')).toEqual({ offered: true });
+  });
+
+  it('picks up a run from today, and not a broken or stale one', () => {
+    const now = 1_000_000_000;
+    expect(readRun({ mode: 'player', leg: 2, stop: 1, startedAt: now - 1000, path: '/avengers' }, now)).toEqual({ mode: 'player', leg: 2, stop: 1, startedAt: now - 1000, path: '/avengers' });
+    expect(readRun({ mode: 'player', leg: 2, stop: 1, startedAt: now - RUN_FOR - 1 }, now)).toBe(null);
+    expect(readRun({ mode: 'player', leg: -1, stop: 0, startedAt: now }, now)).toBe(null);
+    expect(readRun({ leg: 0, stop: 0, startedAt: now }, now)).toBe(null);
+    expect(readRun('player', now)).toBe(null);
+  });
+
+  it('reads the mode a link asks for', () => {
+    expect(tourInSearch('?tour=recruiter', ['recruiter', 'player'])).toBe('recruiter');
+    expect(tourInSearch('?tour=nope', ['recruiter'])).toBe(null);
+    expect(tourInSearch('', ['recruiter'])).toBe(null);
   });
 });
