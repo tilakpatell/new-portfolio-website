@@ -157,7 +157,7 @@ export const ASSETS = {
   // their sides: they stand still instead, galaxy/surface/catalog/library.js.)
   obiwan: { uid: '416a8f0c9c1742ee8fd71274d27bc305', height: 1.82, as: 'Obi-Wan Kenobi', sheet: true, tex: 2048 },
   jango: { uid: '4ce40f867ff84df6bab5a3e060cb5e69', height: 1.83, as: 'Jango Fett' },
-  shaak: { uid: '7af69133613e4035939b1bcc42a5d652', height: 1.88, as: 'Shaak Ti' },
+  shaakti: { uid: '7af69133613e4035939b1bcc42a5d652', height: 1.88, as: 'Shaak Ti' },
   // (the Meshy one, above, was turned down at the model step: this is
   // somebody's model of him instead)
   dindjarin: { uid: '65383411ba6f4a56aac823d5d014df20', height: 1.85, as: 'the Mandalorian' },
@@ -514,7 +514,8 @@ const steps = {
       await download(url, raw);
       const { tris, size, bones } = await squeeze(raw, out, a);
       if (!a.still && !bones) throw new Error(`${n}: no Hips bone`);
-      if (a.uid) credits[`crew-${n}`] = await credit(n, a);
+      // (a figure credited already keeps its entry: Luke's and Leia's were written by hand)
+      if (a.uid && !credits[`crew-${n}`]) credits[`crew-${n}`] = await credit(n, a);
       const mb = (await stat(out)).size / 1e6;
       console.log(`fetch    ${n.padEnd(10)} ${mb.toFixed(2)} MB, ${tris} triangles, ${size ? `${size.map((v) => v.toFixed(2)).join(' × ')} m` : `${a.height} m, rigged`}`);
     }

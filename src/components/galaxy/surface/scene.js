@@ -324,6 +324,17 @@ export async function create(canvas, ctx) {
           holder.add(fig.model);
           ridee.fig = fig;
         }
+        // its catalogue model in place of the build once it's here (the
+        // herd grazing round it is that model: the ridden one should match)
+        modelFigure(spec.figure)
+          .then((model) => {
+            if (!model || !holder.parent) return;
+            if (ridee.fig) holder.remove(ridee.fig.model);
+            ridee.fig?.dispose?.();
+            holder.add(model.model);
+            ridee.fig = model;
+          })
+          .catch(() => {});
       } else {
         // its model (or its build), held in the holder so it can bank
         const tmp = new THREE.Group();

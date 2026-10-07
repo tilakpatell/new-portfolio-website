@@ -34,7 +34,8 @@ export const CREW = {
   // catalog/library.js: their arms-down poses didn't rig)
   obiwan: { url: '/models/galaxy/crew/obiwan.glb', tall: 1.82 },
   jango: { url: '/models/galaxy/crew/jango.glb', tall: 1.83 },
-  shaak: { url: '/models/galaxy/crew/shaak.glb', tall: 1.88 },
+  // (not `shaak`: that kind is Naboo's grazing beasts)
+  shaakti: { url: '/models/galaxy/crew/shaakti.glb', tall: 1.88 },
   mando: { url: '/models/galaxy/crew/dindjarin.glb', tall: 1.85 },
   wookiee: { url: '/models/cockpit/chewie.glb', tall: 2.28 },
   // the worlds' people made with Meshy from words (scripts/meshy-galaxy.mjs),

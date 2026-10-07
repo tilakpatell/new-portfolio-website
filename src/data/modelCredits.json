@@ -322,7 +322,7 @@
     ],
     "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
   },
-  "crew-shaak": {
+  "crew-shaakti": {
     "title": "Shaak Ti",
     "author": "Luan.Pezzatti",
     "authorUrl": "https://sketchfab.com/Luan.Pezzatti",
@@ -331,7 +331,7 @@
     "source": "https://sketchfab.com/3d-models/shaak-ti-7af69133613e4035939b1bcc42a5d652",
     "where": "galaxy-surface",
     "as": "Shaak Ti, walking on the worlds",
-    "file": "/models/galaxy/crew/shaak.glb",
+    "file": "/models/galaxy/crew/shaakti.glb",
     "also": [
       "galaxy"
     ],
@@ -1035,20 +1035,6 @@
     "where": "galaxy",
     "as": "Bespin’s cloud cars",
     "file": "/models/galaxy/cloudcar.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "galaxy-cloudcity": {
-    "title": "Cloud City, Bespin - Low Poly",
-    "author": "mandartistry",
-    "authorUrl": "https://sketchfab.com/mandartistry",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/cloud-city-bespin-low-poly-8e708a2749484750ae9aeab27f579d37",
-    "where": "galaxy",
-    "as": "Cloud City from space",
-    "file": "/models/galaxy/cloudcity.glb",
     "also": [
       "galaxy"
     ]

@@ -76,10 +76,6 @@
     "source": "sketchfab:9340db8a8aab4091886d25a187b956fa",
     "rig": "01a11441-a67f-724b-9e20-4568c989f9fa"
   },
-  "shaak": {
-    "rig": "01a1142d-5a25-71c6-b478-4d1d72ac83fb",
-    "source": "sketchfab:7af69133613e4035939b1bcc42a5d652"
-  },
   "dindjarin": {
     "rig": "01a1142d-f682-77f2-8e97-e3671f7ee39a",
     "source": "sketchfab:65383411ba6f4a56aac823d5d014df20"
@@ -238,5 +234,9 @@
     "image": "01a114d8-b6c3-7499-9cdf-a7c1e047543f",
     "model": "01a114da-bfe0-729e-8d0b-a865aeccae0d",
     "rig": "01a114e7-7fa8-7204-bf48-dc8fa73d179a"
+  },
+  "shaakti": {
+    "rig": "01a1142d-5a25-71c6-b478-4d1d72ac83fb",
+    "source": "sketchfab:7af69133613e4035939b1bcc42a5d652"
   }
 }

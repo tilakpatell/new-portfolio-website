@@ -60,15 +60,14 @@ export const MODELS = {
   razorcrest: { url: '/models/galaxy/surface/razorcrest.glb', nose: 0 }, // (the one the surfaces fly)
   // the ones that were built in code till somebody's model was found
   // (scripts/sketchfab-galaxy.mjs): the YT-2400, the Xg-1, the GR-75,
-  // Bespin's cloud cars and city, the IG-2000, the Interdictor and the
-  // second Death Star
+  // Bespin's cloud cars, the IG-2000, the Interdictor and the second Death
+  // Star (Cloud City stays built: world.js's solids and landing fit its disc)
   freighter: { url: '/models/galaxy/freighter.glb', nose: 0 },
   gunboat: { url: '/models/galaxy/gunboat.glb', nose: 0 },
   transport: { url: '/models/galaxy/transport.glb', nose: 0 },
   cloudcar: { url: '/models/galaxy/cloudcar.glb', nose: -Math.PI / 2 },
   ig2000: { url: '/models/galaxy/ig2000.glb', nose: 0 },
   interdictor: { url: '/models/galaxy/interdictor.glb', nose: 0 },
-  cloudcity: { url: '/models/galaxy/cloudcity.glb', nose: 0 },
   deathstar2: { url: '/models/galaxy/deathstar2.glb', nose: 0 },
   // and the ones made with Meshy from Wookieepedia's picture of each
   // (scripts/meshy-galaxy-library.mjs), every one come nose to -x: the
