@@ -190,8 +190,10 @@ const bobomb = {
 };
 
 // ─── King Bob-omb ──────────────────────────────────────────────────────────
-// def: { arena: { x, y, z, r } (the summit), star (its index) }
+// def: { arena: { x, y, z, r } (the summit), star (its index), taunt (what he
+// says when Mario reaches him, if not KING_TAUNT) }
 const KING_HP = 3;
+export const KING_TAUNT = 'You dare climb MY mountain? Try to throw me down, if you can get behind me!';
 const onArena = (a) => {
   const ar = a.def.arena;
   return Math.abs(a.pos.y - ar.y) < 60 && Math.hypot(a.pos.x - ar.x, a.pos.z - ar.z) < ar.r;
@@ -271,7 +273,7 @@ const king = {
     if (a.state === 'wait') {
       if (distTo(a, m.pos.x, m.pos.z) < 1400 && Math.abs(m.pos.y - a.pos.y) < 300) {
         a.state = 'walk';
-        tell(g, 'dialog', { title: 'King Bob-omb', text: a.def.taunt ?? 'You dare climb MY mountain? Try to throw me down, if you can get behind me!' });
+        tell(g, 'dialog', { title: 'King Bob-omb', text: a.def.taunt ?? KING_TAUNT });
       }
       return;
     }

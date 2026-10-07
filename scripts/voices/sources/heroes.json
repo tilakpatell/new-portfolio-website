@@ -1,0 +1,302 @@
+{
+  "friday": {
+    "show": "mcu",
+    "clips": [],
+    "quotes": [
+      "Good evening, boss",
+      "Targeting system's knackered, boss",
+      "Boss, it's working. He's burning Ultron out of the nest",
+      "The vibranium core has got a magnetic field. That's what's keeping the rock together",
+      "Multiple contusions detected. We have some weapon systems offline",
+      "Heartbeat detected. Emergency medical is on its way",
+      "Boss, incoming call from Miss Potts"
+    ],
+    "search": [
+      "MCU F.R.I.D.A.Y. lines",
+      "Avengers Age of Ultron Sokovia is going for a ride scene",
+      "Avengers Age of Ultron battle of Sokovia Tony Stark Friday vibranium core scene",
+      "Captain America Civil War Rhodey falls Tony Stark heartbeat detected scene",
+      "Avengers Infinity War Iron Man Spider-Man ship boss we're losing her scene"
+    ],
+    "avoid": ["jarvis", "karen", "edith", "kerry condon", "better call saul", "banshees", "walking dead", "marvel's avengers", "what if", "animated"],
+    "urls": ["https://www.youtube.com/watch?v=ASbgIVNuAV0"]
+  },
+  "peter": {
+    "show": "mcu",
+    "clips": ["public/audio/clips/mr-stark-i-dont-feel-so-good.mp3"],
+    "quotes": [
+      "Mr. Stark, I don't feel so good",
+      "When you can do the things that I can, but you don't, and then the bad things happen, they happen because of you",
+      "It's like my senses have been dialed to eleven",
+      "There's way too much input, so they just kind of help me focus",
+      "I read books, I build computers",
+      "I can't go to Germany. I got homework"
+    ],
+    "search": [
+      "Captain America Civil War Tony Stark recruits Peter Parker bedroom scene",
+      "Spider-Man Homecoming Peter Parker video diary scene",
+      "Spider-Man Homecoming Peter Parker bodega Mr. Delmar scene",
+      "Spider-Man Homecoming Peter and Ned Lego Death Star scene",
+      "Spider-Man Far From Home Peter misses Tony Stark scene"
+    ],
+    "avoid": ["andrew garfield", "garfield", "tobey", "maguire", "amazing spider-man", "spider-verse", "miles morales", "insomniac", "ps4", "ps5", "gameplay", "yuri lowenthal", "animated", "cartoon", "ultimate spider-man", "lip sync", "tom holland interview"],
+    "urls": ["https://www.youtube.com/watch?v=AVlww2uJHAc", "https://www.youtube.com/watch?v=RTLyk448lE0"]
+  },
+  "banner": {
+    "show": "mcu",
+    "clips": [],
+    "quotes": [
+      "What does Fury want me to do, swallow it?",
+      "Avoiding stress isn't the secret",
+      "Are you here to kill me, Miss Romanoff? Because that's not gonna work out for everyone",
+      "So Fury isn't after the monster?",
+      "I put a bullet in my mouth and the other guy spit it out",
+      "Thanos is coming. He's coming"
+    ],
+    "search": [
+      "The Avengers 2012 Bruce Banner Natasha Kolkata what does Fury want me to do swallow it scene",
+      "The Avengers 2012 Bruce Banner Tony Stark lab what's your secret scene",
+      "Avengers Infinity War Bruce Banner tells Tony Stark about Thanos scene",
+      "Avengers Age of Ultron Bruce Banner Natasha bedroom scene",
+      "Thor Ragnarok Bruce Banner meets Loki scene"
+    ],
+    "avoid": ["smart hulk", "endgame", "she-hulk", "edward norton", "eric bana", "lou ferrigno", "incredible hulk", "hulk smash", "hulks out", "what if", "animated", "marvel's avengers"],
+    "urls": ["https://www.youtube.com/watch?v=vVIXTNqtZmc", "https://www.youtube.com/watch?v=C8C7N0HlDRM"]
+  },
+  "clint": {
+    "show": "mcu",
+    "clips": [],
+    "quotes": [
+      "The city is flying, we're fighting an army of robots, and I have a bow and arrow. None of this makes sense",
+      "If you step out that door, you are an Avenger",
+      "But I'm going back out there, 'cause it's my job",
+      "I see better from a distance",
+      "You and I remember Budapest very differently"
+    ],
+    "search": [
+      "Avengers Age of Ultron Hawkeye Wanda you're an Avenger scene",
+      "Avengers Age of Ultron Hawkeye's secret safehouse farmhouse scene",
+      "The Avengers 2012 Hawkeye Black Widow Budapest scene",
+      "Avengers Endgame Ronin and Black Widow scene",
+      "Hawkeye 2021 episode 6 Clint and Kate talk at the ambulance"
+    ],
+    "avoid": ["mission impossible", "bourne", "mayor of kingstown", "hurt locker", "rennervations", "snowplow", "snl", "marvel's avengers", "animated", "what if"],
+    "urls": ["https://www.youtube.com/watch?v=Nwb8k95l-h4", "https://www.youtube.com/watch?v=DIIIDF6bkqI"]
+  },
+  "optimus": {
+    "show": "transformers",
+    "clips": [
+      "public/audio/clips/autobots-roll-out.mp3",
+      "public/audio/clips/i-am-optimus-prime.mp3",
+      "public/audio/clips/my-name-is-optimus-prime.mp3",
+      "public/audio/clips/bumblebee-brave-soldier.mp3",
+      "public/audio/clips/more-than-meets-the-eye.mp3",
+      "public/audio/clips/we-are-here-we-are-waiting.mp3",
+      "public/audio/clips/autobots-relieve-them-of-their-weapons.mp3",
+      "public/audio/clips/one-shall-stand.mp3",
+      "public/audio/clips/its-you-and-me-megatron.mp3"
+    ],
+    "quotes": [
+      "I am Optimus Prime",
+      "We are autonomous robotic organisms from the planet Cybertron",
+      "Autobots, roll out",
+      "One shall stand, one shall fall",
+      "I hold no illusions about engaging your army, Megatron. But I might derail its objective by removing its head",
+      "I chose my side",
+      "We are here. We are waiting"
+    ],
+    "search": [
+      "Transformers Prime Optimus Prime we will defend our home",
+      "Transformers Prime Predacons Rising Optimus Prime for in my spark I know that this is not the end",
+      "Transformers Prime Optimus Prime leadership speech",
+      "Transformers Prime Darkness Rising Optimus Prime closing message",
+      "Transformers Prime Optimus Prime monologue"
+    ],
+    "avoid": ["animated", "cyberverse", "earthspark", "transformers one", "hemsworth", "armada", "energon", "beast wars", "siege", "earthrise", "kingdom", "netflix", "robots in disguise", "jake foushee", "david kaye", "garry chalk", "ds]", "pitch", "stop motion", "stop-motion", "toy", "review", "unboxing", "sfm"],
+    "urls": ["https://www.youtube.com/watch?v=XWM9f-S1ly8", "https://www.youtube.com/watch?v=XYyoyPM8r5g"]
+  },
+  "megatron": {
+    "show": "transformers",
+    "clips": [],
+    "quotes": [
+      "Decepticons! I have returned",
+      "Optimus Prime never disappoints. Unlike you, Starscream",
+      "Misdirection, Optimus. You would have made a fine Decepticon",
+      "You have ceased to be of use to me, Starscream, so you shall simply cease to be",
+      "No one rids me of Optimus Prime but me",
+      "I grow weary of your prattle",
+      "I will be quite surprised if we ever set eyes upon Dreadwing again"
+    ],
+    "search": [
+      "Megatron Being One of My Favorite Characters in TFP",
+      "Transformers Prime Megatron you've hit rock bottom",
+      "Transformers Prime Darkness Rising Megatron Decepticons I have returned",
+      "Transformers Prime Megatron Starscream you have ceased to be of use to me",
+      "Transformers Prime Beast Hunters Megatron defects from the Decepticons"
+    ],
+    "avoid": ["transformers one", "hugo weaving", "bayverse", "revenge of the fallen", "dark of the moon", "last knight", "age of extinction", "rise of the beasts", "animated", "corey burton", "cyberverse", "earthspark", "beast wars", "armada", "war for cybertron", "fall of cybertron", "dark spark", "tatasciore", "g1", "1986", "siege", "kingdom", "netflix", "comparison", "stop motion", "stop-motion", "toy", "review", "sfm"],
+    "urls": ["https://www.youtube.com/watch?v=AL7H7OuS3jk", "https://www.youtube.com/watch?v=-cP-T3EcK-E"]
+  },
+  "ratchet": {
+    "show": "transformers",
+    "clips": [],
+    "quotes": [
+      "Optimus, if you leave me stranded on a planet teeming with humans, I will never forgive you",
+      "They have no protective shell! If they get underfoot, they will go squish",
+      "Bulkhead, I needed that",
+      "My pistons may be rusty, but my hearing is sharp as ever",
+      "It's like a recurring nightmare"
+    ],
+    "search": [
+      "Transformers Prime Ratchet disputes against Optimus Prime about the protocol",
+      "TFP Ratchet quotes",
+      "TFP Ratchet needed that",
+      "Transformers Prime Ratchet and Megatron moment",
+      "Ratchet without context TFP"
+    ],
+    "avoid": ["war for cybertron", "fall of cybertron", "robots in disguise", "tfrid", "prime/rid", "bayverse", "revenge of the fallen", "dark of the moon", "age of extinction", "animated", "rescue bots", "cyberverse", "earthspark", "siege", "netflix", "stop motion", "toy", "review"],
+    "urls": ["https://www.youtube.com/watch?v=k-VIJ0FfvJQ", "https://www.youtube.com/watch?v=LFYKAQdarNI"]
+  },
+  "bulkhead": {
+    "show": "transformers",
+    "clips": [],
+    "quotes": [
+      "Team Prime knows when to use force, and how much to use",
+      "After a long road trip, feels good to get out of the car, stretch my legs, and kick some tailpipe",
+      "Yeah, I'm still picking shrapnel out of my backside",
+      "Sorry, Jackie. It's 'cause I love ya",
+      "This time, he's coming with us"
+    ],
+    "search": [
+      "Bulkhead TFP scene pack",
+      "Transformers Prime Bulkhead I gotta dig deep for the other bots for Miko",
+      "Transformers Prime Bulkhead and Wheeljack Loose Cannons scene",
+      "Transformers Prime Bulkhead vs Decepticon clip",
+      "Transformers Prime Bulkhead and Miko scene"
+    ],
+    "avoid": ["animated", "robots in disguise", "cyberverse", "earthspark", "rescue bots", "bayverse", "screams", "of art", "stop motion", "toy", "review"],
+    "urls": ["https://www.youtube.com/watch?v=KfuMunqGDDU", "https://www.youtube.com/watch?v=ADrTFnUSnNo"]
+  },
+  "arcee": {
+    "show": "transformers",
+    "clips": [],
+    "quotes": [
+      "Grab your helmet, it's go time",
+      "Winning isn't enough, Jack. You want to make him cry",
+      "I'm not surprised, given the size of your backside",
+      "You are the one. You extinguished Cliffjumper",
+      "Haven't you heard? Humans multiply",
+      "You can watch cartoons back at base with Bumblebee"
+    ],
+    "search": [
+      "TFP Arcee winning isn't enough Jack you wanna make him cry",
+      "Transformers Prime Arcee meet Jack clip",
+      "The Salt and Sass of Arcee best comebacks and oneliners",
+      "TFP this is for Cliffjumper",
+      "Arcee TFP scenepack"
+    ],
+    "avoid": ["rise of the beasts", "liza koshy", "revenge of the fallen", "bayverse", "war for cybertron", "fall of cybertron", "cyberverse", "earthspark", "animated", "robots in disguise", "siege", "netflix", "stop motion", "toy", "review"],
+    "urls": ["https://www.youtube.com/watch?v=G4ExnE0nKJ0", "https://www.youtube.com/watch?v=vdsWEm9I_Kg"]
+  },
+  "magnus": {
+    "show": "transformers",
+    "clips": [],
+    "quotes": [
+      "Does Wheeljack not comprehend the chain of command? I didn't authorize him to advance without proper cover",
+      "And what could have possibly compelled you to bring the native?",
+      "Are your circuits impaired, soldier?",
+      "It's an honor, sir",
+      "Blow these beasts back to the Rust Age",
+      "This isn't how the story's supposed to end"
+    ],
+    "search": [
+      "TFP Meet Ultra Magnus",
+      "TFP Ultra Magnus Optimus' key lieutenant",
+      "TFP Ultra Magnus no Optimus Prime",
+      "Transformers Prime Beast Hunters Chain of Command Ultra Magnus Wheeljack",
+      "TFP Reunited with or without Optimus Prime"
+    ],
+    "avoid": ["robert stack", "1986", "g1", "age of extinction", "bayverse", "animated", "jeff bennett", "robots in disguise", "cyberverse", "earthspark", "siege", "kingdom", "netflix", "idw", "takaratomy", "masterpiece", "stop motion", "toy", "review", "unboxing"],
+    "urls": ["https://www.youtube.com/watch?v=wG_EQLeOXZ4", "https://www.youtube.com/watch?v=Pf7kF9k5uqg", "https://www.youtube.com/watch?v=BrbBu_o_1AU"]
+  },
+  "zeta": {
+    "show": "transformers",
+    "clips": [],
+    "quotes": [
+      "Predictable as ever, right down to the empty words",
+      "The Omega Key is under my protection now, Megatron",
+      "So be it, Megatron. I leave you to your own futility",
+      "Come no further, Megatron. The sacred vaults are no place for your tainted spark",
+      "Here, I have limitless power",
+      "A noble sentiment, Optimus, but I'm afraid I'm dead already",
+      "Diplomacy should not be implemented with rockets"
+    ],
+    "search": [
+      "Zeta Prime scenes Transformers War for Cybertron 2010",
+      "Zeta Prime's death and Optimus becomes the last Prime War for Cybertron",
+      "Transformers War for Cybertron Iacon vaults Zeta Prime Megatron cutscene"
+    ],
+    "avoid": ["siege", "netflix", "trilogy", "earthrise", "kingdom", "cybertron ds", "sfm", "gameplay", "walkthrough", "transformation", "toy", "review"],
+    "urls": ["https://www.youtube.com/watch?v=844xGi0oawU", "https://www.youtube.com/watch?v=-2c4Z873PjQ"]
+  },
+  "jetfire": {
+    "show": "transformers",
+    "clips": [],
+    "quotes": [
+      "Optimus, the Decepticons have penetrated sectors 9 to 12",
+      "One thing is for sure, Megatron's timing is bad as usual",
+      "Strike the shield and the outer shell will shatter",
+      "Optimus, the bridge has been destroyed",
+      "Stay focused, soldier. We will get through this"
+    ],
+    "search": [
+      "Transformers Fall of Cybertron Jetfire voice lines",
+      "Transformers Fall of Cybertron Chapter 13 Till All Are One Jetfire",
+      "Transformers War for Cybertron Autobots side all cutscenes"
+    ],
+    "avoid": ["revenge of the fallen", "clive revill", "rotf", "transformers 3", "dark of the moon", "sentinel prime", "egypt", "cybertron ds", "bayverse", "siege", "netflix", "trilogy", "earthrise", "kingdom", "animated", "armada", "energon", "galaxy force", "sfm", "toy", "review"],
+    "urls": ["https://www.youtube.com/watch?v=sNdlNc5V8j0", "https://www.youtube.com/watch?v=jXkrT4RurJ0"],
+    "exclude": ["yt-swFrG2XDp40"]
+  },
+  "shockwave": {
+    "show": "transformers",
+    "clips": [],
+    "quotes": [
+      "As expected, you do not realize the true value of this tower. It is the key to opening a bridge across time and space itself",
+      "I built a replica of the tower I found in the Sea of Rust",
+      "This world is primitive but rich in raw energy",
+      "Welcome, Grimlock. Your attempt to save your friend was easily predictable",
+      "Honestly, I'm amazed at your ability to even speak",
+      "I will continue to monitor your progress very closely",
+      "I wouldn't create such a powerful weapon without a means to control it"
+    ],
+    "search": [
+      "Shockwave scenes Transformers Fall of Cybertron 2012",
+      "Transformers Fall of Cybertron Shockwave's terminal logs",
+      "Transformers Fall of Cybertron Grimlock meets Shockwave",
+      "Transformers Fall of Cybertron Grimlock vs Shockwave"
+    ],
+    "avoid": ["transformers prime", "tfp", "beast hunters", "predacons rising", "sobolov", "rise of the dark spark", "dark of the moon", "bayverse", "animated", "cyberverse", "earthspark", "siege", "netflix", "trilogy", "kingdom", "all cybertron games", "cybertron ds", "transformers one", "the touch", "trailer", "sfm", "stop motion", "toy", "review"],
+    "urls": ["https://www.youtube.com/watch?v=XbR7Uy874RQ", "https://www.youtube.com/watch?v=PIFHcQ1B3bQ", "https://www.youtube.com/watch?v=QHqEv-42kG8"]
+  },
+  "barricade": {
+    "show": "transformers",
+    "clips": [],
+    "quotes": [
+      "I hope this dark energon stuff is worth it, Megatron",
+      "This is almost too easy",
+      "Those Autobot cars make me laugh",
+      "Come out here, you cloaking heap of spare parts",
+      "If you're gonna do the job, do it right, I always say",
+      "I never thought Autobots needed heads anyway",
+      "Do I look like an Autobot to you?"
+    ],
+    "search": [
+      "All Barricade voice lines Transformers War for Cybertron",
+      "Transformers War for Cybertron Barricade gameplay",
+      "Transformers War for Cybertron Decepticon campaign Barricade Megatron Soundwave cutscene"
+    ],
+    "avoid": ["the game", "psp", "trilogy", "netflix", "siege", "dark of the moon", "dotm", "last knight", "bayverse", "revenge of the fallen", "transformers 5", "jess harnell", "stop-motion", "stop motion", "cybertron ds", "toy", "review"],
+    "urls": ["https://www.youtube.com/watch?v=a-9VnfJqhqc"]
+  }
+}

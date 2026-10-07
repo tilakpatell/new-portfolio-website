@@ -31,6 +31,7 @@ import {
   GAMEBOY,
   H,
   MAP,
+  CRAFT,
   N64,
   N64_CART,
   PIPES,
@@ -976,6 +977,31 @@ function buildN64() {
   };
 }
 
+// the giant crafting table east of it (Minecraft, ../minecraft/): a block
+// two across, its faces the pack's own tiles cut from the world's strip,
+// the front (the saw and the hammer) to the south and west, where it's
+// played from; grey until they come
+function buildCraft() {
+  const size = CRAFT.x1 - CRAFT.x0;
+  const blank = lambert(0.45);
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, CRAFT.top, size), [blank, blank, blank, blank, blank, blank]);
+  mesh.position.set((CRAFT.x0 + CRAFT.x1) / 2, CRAFT.top / 2, (CRAFT.z0 + CRAFT.z1) / 2);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  const base = `${import.meta.env?.BASE_URL ?? '/'}mc/`;
+  (async () => {
+    const manifest = await (await fetch(`${base}manifest.json`)).json();
+    const img = new Image();
+    img.src = `${base}blocks.webp`;
+    await img.decode();
+    const tile = (name) => pixels(16, (g) => g.drawImage(img, 0, manifest.blocks.indexOf(name) * 16, 16, 16, 0, 0, 16, 16));
+    // a box's faces go +x, −x, +y, −y, +z, −z
+    const faces = ['crafting_table_side', 'crafting_table_front', 'crafting_table_top', 'oak_planks', 'crafting_table_front', 'crafting_table_side'];
+    mesh.material = faces.map((f) => new THREE.MeshLambertMaterial({ map: tile(f) }));
+  })().catch(() => {});
+  return mesh;
+}
+
 // the cloud over the sea: flat on top, puffed out round the sides
 function buildCloud(rand) {
   const g = new THREE.Group();
@@ -1080,6 +1106,7 @@ export function createDotMatrix(canvas, { onLost } = {}) {
   scene.add(gameboy.group);
   const n64 = buildN64();
   scene.add(n64.group);
+  scene.add(buildCraft());
 
   // "?" blocks: a fresh face, and a spent one
   const qTex = blockFace(0.96, glyph(QUESTION, 5, 4, hex(0.1)));

@@ -13,6 +13,8 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
+import { createHouse } from '../../../../lib/three/house';
+import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
 import { fbm, makeNoise, smooth } from '../../../../lib/paint';
 import { pose } from '../../mapFigures';
@@ -78,6 +80,10 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
   const tier = dev.tier;
   const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 1400, bloom: { strength: 0.7, radius: 0.6, threshold: 0.8 }, onLost });
   const { scene, camera, renderer } = stage;
+  // the house look (lib/three/house): one shadow colour and the sky's fog
+  // on everything, under the house tone mapper; the moods move it
+  const houseLook = createHouse();
+  renderer.toneMapping = houseLook.toneMapping;
   renderer.info.autoReset = false;
   scene.fog = new THREE.Fog(0x4a525a, 20, 140);
   const many = tier === 'high' ? 1 : tier === 'mid' ? 0.6 : 0.35;
@@ -94,10 +100,13 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
   const sky = makeSky(1200);
   scene.add(sky.dome);
   const water = { uniforms: { uSky: { value: new THREE.Color() }, uDeep: { value: new THREE.Color() }, uSun: { value: V(0, 1, 0) }, uSunColor: { value: new THREE.Color() }, uGlints: { value: 1 } } };
-  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water, stage, moods: MOODS });
+  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water, stage, house: houseLook, moods: MOODS });
 
   const kit = createMarshesKit(renderer);
   const mats = kit.mats ?? {};
+  // the site's core kit of surfaces on its stone, wood, bark, plaster and
+  // iron (lib/three/core), by their names
+  dress(mats, rolesFor(mats), { strength: 0.3, normal: 0.6, keep: true });
   const zones = { emyn: new THREE.Group(), marsh: new THREE.Group(), gate: new THREE.Group() };
   for (const [k, g] of Object.entries(zones)) {
     g.position.copy(AT[k]);
@@ -839,6 +848,8 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
     groundTown({ renderer, scene, terrain: marshLand, outdoors: zones.marsh, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x22261e, clip: true }),
     groundTown({ renderer, scene, terrain: gateLand, outdoors: zones.gate, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x22261e, clip: true }),
   ];
+  // (last, over the floor light's own tints: one shadow colour everywhere)
+  houseLook.adopt(scene);
 
   return {
     ground: import.meta.env.DEV ? grounds[0] : null, // for the QA scripts

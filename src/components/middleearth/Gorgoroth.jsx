@@ -9,6 +9,7 @@ import Scene3D from './Scene3D';
 import '../../styles/lazy/middleearth.css';
 
 const sfx = () => import('../../lib/sfx');
+const clip = (id) => import('../../lib/clips').then((c) => c.playClip(id)).catch(() => null);
 const BEST = 'tp-gorgoroth-best';
 const typing = (t) => t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
 
@@ -72,7 +73,10 @@ export default function Gorgoroth({ onArrive }) {
         setSay('Orcs on the road ahead. Stand still under the cloaks when they pass.');
         sfx().then((x) => x.drum());
       } else if (e.type === 'passed') setSay('They march right past you.');
-      else if (e.type === 'carry') setSay('Sam: “I can’t carry it for you, but I can carry you!”');
+      else if (e.type === 'carry') {
+        setSay('Sam: “I can’t carry it for you, but I can carry you!”');
+        clip('carryYou'); // Sean Astin's own (lib/clips)
+      }
       else if (e.type === 'there') {
         setPhase('there');
         const secs = Math.round(s.t * 10) / 10;

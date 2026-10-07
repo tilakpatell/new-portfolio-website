@@ -29,6 +29,26 @@ const STRIKE_TEAM = { ...REBELS, kinds: [['rebel', 3], ['ewok', 1]] };
 const REPUBLIC = { id: 'republic', name: 'The Grand Army of the Republic', short: 'Republic', colour: '#9fd0ff', kinds: [['clone', 1]] };
 const SEPARATISTS = { id: 'separatists', name: 'The Separatist droid army', short: 'Separatists', colour: '#ffb060', kinds: [['battledroid', 3], ['superdroid', 1]] };
 
+// ── the three worlds' battles (docs/superpowers/specs/2026-10-07-three-worlds-design.md) ──
+const STORMTROOPERS = { id: 'empire', name: 'The Galactic Empire', short: 'Empire', colour: '#9fd0ff', kinds: [['stormtrooper', 1]] };
+const REBELTROOPERS = { id: 'rebels', name: 'The Rebel Alliance', short: 'Rebellion', colour: '#ff8a5a', kinds: [['rebel', 1]] };
+const NEWREPUBLIC = { id: 'newrepublic', name: 'The New Republic', short: 'New Republic', colour: '#ff8a5a', kinds: [['rebel', 1]] };
+const REMNANT = { id: 'remnant', name: 'The Imperial Remnant', short: 'Remnant', colour: '#9fd0ff', kinds: [['stormtrooper', 1]] };
+
+// the two sides of each war (sides.js's WARS), as the three worlds' maps
+// take them: the raider attacks, the liberator defends, except where a
+// map says the other way round
+export const WAR_SIDES = {
+  clone: { light: REPUBLIC, dark: SEPARATISTS },
+  gcw: { light: REBELTROOPERS, dark: STORMTROOPERS },
+  remnant: { light: NEWREPUBLIC, dark: REMNANT },
+};
+export const sidesFor = (war, { attack = 'dark' } = {}) => {
+  const w = WAR_SIDES[war] ?? WAR_SIDES.gcw;
+  return attack === 'light' ? { attack: w.light, defend: w.dark } : { attack: w.dark, defend: w.light };
+};
+
+
 export const ASSAULTS = {
   hoth: {
     id: 'assault',
@@ -260,6 +280,169 @@ export const ASSAULTS = {
     barks: {
       attack: [['Rebel commando', 'Move up! Get to the bunker!'], ['Rebel commando', 'Scouts on the ridge, keep your heads down!'], ['Ewok', 'Yub nub! Yub nub!'], ['Rebel commando', 'The generator’s behind the bunker. Keep going!']],
       defend: [['Stormtrooper', 'Rebels in the trees! Hold the bunker!'], ['Scout trooper', 'They’re coming through the camp. Fall back to the walkers.'], ['Stormtrooper', 'The shield must stay up. Lord Vader’s orders.'], ['Stormtrooper', 'Watch the ferns. The natives are in them.']],
+    },
+  },
+
+  coruscant: {
+    id: 'assault',
+    system: 'coruscant',
+    kind: 'assault',
+    name: 'The Battle of the Temple',
+    line: 'Droids on the landing platform and up the Processional Way, and the Temple’s doors held by the clones and the Jedi. The Republic’s own capital, fought for on its steps.',
+    ride: null,
+    start: [0, 60],
+    yaw: Math.PI,
+    stars: [360, 540],
+    achievement: 'galacticassault',
+    sides: sidesFor('clone'),
+    posts: [
+      { id: 'platform', name: 'The landing platform', at: [0, -6], r: 22, fixed: 'attack' },
+      { id: 'processional', name: 'The Processional Way', at: [0, 150], r: 12 },
+      { id: 'templedoor', name: 'The Temple’s doors', at: [0, 290], r: 22 },
+      { id: 'temple', name: 'The Temple steps', at: [0, 400], r: 24, fixed: 'defend' },
+    ],
+    phases: [
+      { name: 'The Processional Way', posts: ['processional'], tickets: 80 },
+      { name: 'The Temple’s doors', posts: ['templedoor'], tickets: 70 },
+    ],
+    tickets: { attack: 90, defend: 120 },
+    hideLife: ['clone', 'jedi', 'villager', 'senateguard'],
+    ends: {
+      won: 'The Temple holds',
+      lost: 'The Temple is lost',
+      why: { posts: 'The doors fell, and the Temple behind them.', tickets: 'Your side ran out of reinforcements.' },
+    },
+    lines: {
+      start: {
+        xwing: [['luke', 'Droids, on Coruscant. Ben never told me it got this far.'], ['r2', '(A grim, descending whistle.)']],
+        falcon: [['han', 'A thousand steps and every one of them a firing line. Terrific.'], ['chewie', '(A battle roar.)']],
+        cruiser: [['rick', 'It’s a staircase, Morty. The whole battle is a staircase.'], ['morty', 'Th-they’re coming up it, Rick!']],
+        rv: [['walt', 'High ground, Jesse. Take it and hold it.'], ['jesse', 'It’s a lot of stairs, Mr. White!']],
+      },
+      won: {
+        xwing: [['luke', 'The doors held.'], ['r2', '(A triumphant trill.)']],
+        falcon: [['han', 'Temple’s still standing. Don’t thank me.']],
+        cruiser: [['rick', 'Steps are ours, Morty. Nobody’s ever been so proud of stairs.']],
+        rv: [['walt', 'We held the high ground.'], ['jesse', 'Yeah, science!']],
+      },
+      lost: {
+        xwing: [['luke', 'They’re in. Fall back through the doors.']],
+        falcon: [['han', 'That’s it. Everybody out.']],
+        cruiser: [['morty', 'We lost the Temple, Rick.'], ['rick', 'It was always going to burn, Morty.']],
+        rv: [['walt', 'We lost the steps. Not the war.']],
+      },
+    },
+    barks: {
+      attack: [['Battle droid', 'Roger roger. Up the steps.'], ['Battle droid', 'Clones on the Processional, sir.'], ['Super battle droid', 'Take the doors.']],
+      defend: [['Clone trooper', 'Hold the doors! Nothing gets past the steps!'], ['Clone trooper', 'Droids on the platform, lots of them!'], ['Clone trooper', 'Where are the Jedi?']],
+    },
+  },
+  yavin: {
+    id: 'assault',
+    system: 'yavin',
+    kind: 'assault',
+    name: 'The Battle of Yavin 4',
+    line: 'The Empire comes in across the field for the hangar and the temple, and the Rebellion holds the steps as long as it can. The base, fought for on the ground.',
+    ride: null,
+    start: [0, -150],
+    yaw: Math.PI,
+    stars: [360, 540],
+    achievement: 'galacticassault',
+    sides: sidesFor('gcw'),
+    posts: [
+      { id: 'field', name: 'The landing field', at: [0, -112], r: 26, fixed: 'attack' },
+      { id: 'hangar', name: 'The hangar mouth', at: [0, -196], r: 20 },
+      { id: 'summit', name: 'The temple steps', at: [0, -240], r: 24 },
+      { id: 'throne', name: 'The throne room', at: [0, -256], r: 10, fixed: 'defend' },
+    ],
+    phases: [
+      { name: 'The hangar', posts: ['hangar'], tickets: 80 },
+      { name: 'The temple steps', posts: ['summit'], tickets: 70 },
+    ],
+    tickets: { attack: 90, defend: 120 },
+    hideLife: ['rebel', 'rebeltech', 'rebelpilot', 'pilot'],
+    ends: {
+      won: 'The temple holds',
+      lost: 'The temple is lost',
+      why: { posts: 'The steps fell, and the base behind them.', tickets: 'Your side ran out of reinforcements.' },
+    },
+    lines: {
+      start: {
+        xwing: [['luke', 'They found the base. Everyone to the hangar!'], ['r2', '(An alarmed whistle.)']],
+        falcon: [['han', 'Stormtroopers in the jungle. I told them to move the base.'], ['chewie', '(A battle roar.)']],
+        cruiser: [['rick', 'Pick a side, Morty. The pyramid’s gonna lose either way.'], ['morty', 'Rick, that’s not—']],
+        rv: [['walt', 'Hold the hangar, Jesse.'], ['jesse', 'With what, Mr. White?!']],
+      },
+      won: {
+        xwing: [['luke', 'We held the temple.'], ['r2', '(A tumbling trill.)']],
+        falcon: [['han', 'Would you look at that. The kid’s base is still standing.']],
+        cruiser: [['rick', 'Pyramid’s ours, Morty.']],
+        rv: [['walt', 'We held.'], ['jesse', 'Yeah!']],
+      },
+      lost: {
+        xwing: [['luke', 'Fall back to the transports. Go!']],
+        falcon: [['han', 'That’s it. Everybody out.']],
+        cruiser: [['morty', 'We lost, Rick.'], ['rick', 'Everybody loses a moon, Morty.']],
+        rv: [['walt', 'We lost the base. Not the war.']],
+      },
+    },
+    barks: {
+      attack: [['Stormtrooper', 'Forward! The hangar’s in range!'], ['Stormtrooper', 'Rebels on the steps, sir.'], ['Stormtrooper', 'Take the temple.']],
+      defend: [['Rebel trooper', 'Here they come! Hold the hangar!'], ['Rebel trooper', 'Don’t let them up the steps!'], ['Rebel trooper', 'Where are the fighters?']],
+    },
+  },
+  bespin: {
+    id: 'assault',
+    system: 'bespin',
+    kind: 'assault',
+    name: 'The Battle of Cloud City',
+    line: 'The Rebellion comes in over Platform 327 to take the city back, and the Empire holds the walkway, the plaza and the tower. Cloud City, fought for on its decks.',
+    ride: null,
+    start: [0, -200],
+    yaw: 0,
+    stars: [360, 540],
+    achievement: 'galacticassault',
+    sides: sidesFor('gcw', { attack: 'light' }),
+    posts: [
+      { id: 'platform327', name: 'Platform 327', at: [0, -236], r: 24, fixed: 'attack' },
+      { id: 'walkway', name: 'The south walkway', at: [0, -150], r: 16 },
+      { id: 'plaza', name: 'The plaza', at: [0, 20], r: 26 },
+      { id: 'tower', name: 'The tower’s foot', at: [0, 120], r: 22, fixed: 'defend' },
+    ],
+    phases: [
+      { name: 'The south walkway', posts: ['walkway'], tickets: 80 },
+      { name: 'The plaza', posts: ['plaza'], tickets: 70 },
+    ],
+    tickets: { attack: 90, defend: 120 },
+    hideLife: ['stormtrooper', 'wingguard', 'ugnaught', 'villager'],
+    ends: {
+      won: 'The city is ours',
+      lost: 'The city is lost',
+      why: { posts: 'The plaza fell, and the city with it.', tickets: 'Your side ran out of reinforcements.' },
+    },
+    lines: {
+      start: {
+        xwing: [['luke', 'Lando’s people are with us. Take the plaza.'], ['r2', '(A determined whistle.)']],
+        falcon: [['han', 'Taking Lando’s city back for him. He’d better be grateful.'], ['chewie', '(A battle roar.)']],
+        cruiser: [['rick', 'It’s a city on a stick, Morty. Don’t fall off.'], ['morty', 'Rick, there are no railings!']],
+        rv: [['walt', 'Mind the edge, Jesse.'], ['jesse', 'There’s nothing under us, Mr. White!']],
+      },
+      won: {
+        xwing: [['luke', 'The city’s free.'], ['r2', '(A triumphant trill.)']],
+        falcon: [['han', 'Lando owes me. Again.']],
+        cruiser: [['rick', 'City’s ours, Morty. Still on a stick.']],
+        rv: [['walt', 'We took it.'], ['jesse', 'Yeah, science!']],
+      },
+      lost: {
+        xwing: [['luke', 'Fall back to the platform. Go!']],
+        falcon: [['han', 'That’s it. Back to the Falcon.']],
+        cruiser: [['morty', 'We lost, Rick.'], ['rick', 'Clouds, Morty. Nobody holds clouds.']],
+        rv: [['walt', 'We lost the city. Not the war.']],
+      },
+    },
+    barks: {
+      attack: [['Rebel trooper', 'Forward! Take the walkway!'], ['Rebel trooper', 'Troopers on the plaza, sir.'], ['Rebel trooper', 'For Lando!']],
+      defend: [['Stormtrooper', 'Hold the walkway! Nothing reaches the plaza!'], ['Stormtrooper', 'Rebels on 327, lots of them!'], ['Stormtrooper', 'Lord Vader will hear of this.']],
     },
   },
 };

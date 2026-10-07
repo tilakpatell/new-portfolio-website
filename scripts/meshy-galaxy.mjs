@@ -113,6 +113,34 @@ export const ASSETS = {
     prompt:
       'An armoured bounty hunter in a dented olive-green full-face helmet with a T-shaped black visor and a small rangefinder stalk on one side, a grey flight suit, olive-green chest armour, a big dull red armour plate on the right shoulder (and plain olive-green forearm gauntlets), a small jetpack on the back, a ragged brown cape over one shoulder.',
   },
+  // the three worlds' people (docs/superpowers/specs/2026-10-07-three-worlds-design.md)
+  lando: {
+    height: 1.78,
+    prompt:
+      'A suave dark-skinned man in his thirties with short black curly hair and a neat moustache, a light sky-blue silk shirt with a wide collar, dark navy trousers with a thin gold stripe, a wide belt with a small holster, knee-high black boots, and a long flowing sky-blue cape lined in gold hanging from the shoulders.',
+  },
+  lobot: {
+    height: 1.8,
+    prompt:
+      'A bald pale-skinned man of middle age with a stern blank face, a slim metal cybernetic band wrapped round the back of his head from ear to ear with small blinking lights on it, a plain fitted grey-blue tunic with a high collar, matching grey-blue trousers, a wide black belt, black boots.',
+  },
+  ugnaught: {
+    height: 1.1,
+    prompt:
+      'A short stocky pig-faced humanoid worker about one metre tall, a wrinkled pinkish-tan face with a flat upturned snout, small eyes and tufts of white hair and whiskers, wearing a dark brown padded work jerkin, a dull red cloth cap, brown trousers, heavy boots and thick work gloves.',
+  },
+  wingguard: {
+    height: 1.8,
+    prompt:
+      'A city security guard in a smart dark navy-blue double-breasted uniform tunic with gold buttons, matching navy trousers with a thin stripe, a dark navy peaked cap, black boots, a wide black belt with a holster and a dark blue cape hanging from the shoulders.',
+  },
+  dex: {
+    height: 1.9,
+    long: 2.2,
+    still: true,
+    prompt:
+      'A huge fat four-armed alien diner cook, a bulky green-grey wrinkled body with a big belly, a wide toad-like face with a broad mouth, small eyes and a thick neck, four thick arms, a white cook\'s apron over a grubby white sleeveless shirt, standing behind a counter wiping it with a cloth.',
+  },
   bith: {
     height: 1.8,
     prompt:

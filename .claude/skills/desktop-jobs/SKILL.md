@@ -38,4 +38,6 @@ tail and hint).
 | waiting for the GPU | another job holds VRAM | wait for the hourly sweep |
 | failed | see the comment | fix the issue body, remove the `gen3d:failed`/`voices:failed` label |
 
+Desktop healthy? `gh workflow run desktop-doctor.yml`, then read that run's summary.
+
 Don't poll in a loop. Check once, and tell the user it's queued.

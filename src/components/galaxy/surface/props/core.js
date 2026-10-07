@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { box, cyl, dome, part, ring, rod, upright } from '../kit';
 import { canvasTexture, loft, trap8, turned } from '../../../universe/trafficKit';
 import { rng } from '../noise';
+import { litWindows } from './windows';
 import { canopy } from './forest';
 import { boltPath, strikeAt } from '../storm';
 
@@ -149,6 +150,16 @@ function n1Parts(H = 1.25) {
   }
   return parts;
 }
+
+// the towers' body: the kit's paint, with its windows lit in the shader
+// (windows.js), one material for every tower in the world
+const towerMat = (k) => {
+  if (!k.mats.tower) {
+    k.mats.tower = k.own(k.mats.paint.clone());
+    litWindows(k.mats.tower, { seed: 11, density: 0.55, cell: [3, 4] });
+  }
+  return 'tower';
+};
 
 export const PROPS = {
   // A Theed building, 40 m: cream stone, colonnades, a green dome. A hall,
@@ -728,6 +739,7 @@ export const PROPS = {
   skyscraper(k, { style = 0, h = 200, w = 24, seed = 1 } = {}) {
     const r = rng(seed + style * 31);
     const BODY = ['#8c8780', '#a09a8e', '#77767a', '#938a7e'][style % 4];
+    const TOWER = towerMat(k);
     const parts = [];
     const windows = (cx, cz, ww, dd, y0, y1, every = 7) => {
       for (let y = y0 + 4; y < y1 - 2; y += every) {
@@ -742,7 +754,7 @@ export const PROPS = {
       const tiers = [[w, h * 0.55], [w * 0.74, h * 0.28], [w * 0.5, h * 0.17]];
       let y = 0;
       for (const [tw, th] of tiers) {
-        parts.push(part(box(tw, th, tw), { at: [0, y, 0], color: BODY, to: 'paint' }));
+        parts.push(part(box(tw, th, tw), { at: [0, y, 0], color: BODY, to: TOWER }));
         parts.push(part(box(tw + 1.2, 1.2, tw + 1.2), { at: [0, y + th - 1.2, 0], color: '#5a5650', to: 'metal' }));
         windows(0, 0, tw, tw, y, y + th);
         y += th;
@@ -751,26 +763,31 @@ export const PROPS = {
       parts.push(part(cyl(1.2, 0.2, 24, 8), { at: [0, top, 0], color: '#6a6660', to: 'metal' }));
       top += 24;
     } else if (style === 1) {
-      parts.push(part(cyl(w * 0.5, w * 0.42, h * 0.9, 20), { color: BODY, to: 'paint' }));
+      parts.push(part(cyl(w * 0.5, w * 0.42, h * 0.9, 20), { color: BODY, to: TOWER }));
       for (let y = 10; y < h * 0.9; y += 9) parts.push(part(cyl(w * 0.5 + 0.4, w * 0.5 + 0.4, 1.2, 20), { at: [0, y, 0], color: r() < 0.7 ? lit('#ffd49a', 1.6 + r()) : '#5a5650', to: r() < 0.7 ? 'glow' : 'metal' }));
-      parts.push(part(cyl(w * 0.42, w * 0.95, h * 0.06, 24), { at: [0, h * 0.9, 0], color: BODY, to: 'paint' }));
+      parts.push(part(cyl(w * 0.42, w * 0.95, h * 0.06, 24), { at: [0, h * 0.9, 0], color: BODY, to: TOWER }));
       parts.push(part(cyl(w * 0.95, w * 0.8, h * 0.04, 24), { at: [0, h * 0.96, 0], color: '#6a6660', to: 'metal' }));
       top = h;
     } else if (style === 2) {
-      parts.push(part(box(w * 1.3, h, w * 0.5), { color: BODY, to: 'paint' }));
-      parts.push(part(box(w * 0.5, h * 0.12, w * 0.5), { at: [w * 0.4, h, 0], rot: [0, 0, 0.5], color: BODY, to: 'paint' }));
+      parts.push(part(box(w * 1.3, h, w * 0.5), { color: BODY, to: TOWER }));
+      parts.push(part(box(w * 0.5, h * 0.12, w * 0.5), { at: [w * 0.4, h, 0], rot: [0, 0, 0.5], color: BODY, to: TOWER }));
       windows(0, 0, w * 1.3, w * 0.5, 0, h, 6);
       for (const x of [-w * 0.66, w * 0.66]) parts.push(part(box(1.2, h, w * 0.56), { at: [x, 0, 0], color: '#5a5650', to: 'metal' }));
       top = h + h * 0.06;
     } else {
-      parts.push(part(cyl(w * 0.62, w * 0.42, h * 0.85, 8), { color: BODY, to: 'paint' }));
+      parts.push(part(cyl(w * 0.62, w * 0.42, h * 0.85, 8), { color: BODY, to: TOWER }));
       windows(0, 0, w * 0.75, w * 0.75, 0, h * 0.85, 8);
       parts.push(part(cyl(w * 0.42, w * 0.6, h * 0.05, 8), { at: [0, h * 0.85, 0], color: '#6a6660', to: 'metal' }));
-      parts.push(part(cyl(w * 0.5, w * 0.08, h * 0.15, 8), { at: [0, h * 0.9, 0], color: BODY, to: 'paint' }));
+      parts.push(part(cyl(w * 0.5, w * 0.08, h * 0.15, 8), { at: [0, h * 0.9, 0], color: BODY, to: TOWER }));
       top = h * 1.05;
     }
-    parts.push(part(new THREE.SphereGeometry(1, 8, 6), { at: [0, top + 1, 0], color: lit('#ff3a2a', 3), to: 'glow' }));
-    return { object: k.build(parts, { name: 'skyscraper', shadows: false }), solids: [{ circle: [0, 0, w * 0.55] }] };
+    const object = k.build(parts, { name: 'skyscraper', shadows: false });
+    // (the warning light at the top, blinking)
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(1.1, 8, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color('#ff3a2a').multiplyScalar(3), toneMapped: false }));
+    beacon.position.y = top + 1;
+    object.add(beacon);
+    const phase = r() * 6;
+    return { object, solids: [{ circle: [0, 0, w * 0.55] }], update: (t) => (beacon.visible = sin(t * 5.2 + phase) > 0.2) };
   },
 
   // the column of city under a platform or a plaza, `depth` down into the
@@ -1060,6 +1077,14 @@ export const PROPS = {
     lanes.forEach((l, i) => ships.setColorAt(i, c.set(COLORS[i % COLORS.length])));
     const object = new THREE.Group();
     object.add(ships, lights);
+    // (the lane itself, glowing: a ribbon a side, one tone each way, the
+    // skylanes of the film's sunsets seen from afar)
+    for (const [dx, tone] of [[-gap / 2, '#ffd9a0'], [gap / 2, '#8fd0ff']]) {
+      const ribbon = new THREE.Mesh(new THREE.PlaneGeometry(0.6, len).rotateX(-PI / 2), new THREE.MeshBasicMaterial({ color: new THREE.Color(tone).multiplyScalar(1.6), transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide }));
+      ribbon.position.set(dx, -1.2, 0);
+      ribbon.frustumCulled = false;
+      object.add(ribbon);
+    }
     const M = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const qBack = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), PI);

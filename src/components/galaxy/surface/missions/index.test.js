@@ -146,10 +146,12 @@ describe('missions played as quests', () => {
     for (const [system, list] of Object.entries(MISSIONS))
       for (const m of Object.values(list)) {
         const sys = SYSTEMS.find((s) => s.id === system);
-        expect(sys.game.status, `${system} ${m.id}`).toBe('live');
-        // (the briefing's own game, or another mission it carries beside it: game.also)
-        const links = [sys.game.to, ...(sys.game.also ?? []).map((a) => a.to)];
+        // (the briefing's own game, or another mission it carries beside it: game.also,
+        // which the briefing shows whether or not its own game is live yet)
+        const also = (sys.game.also ?? []).map((a) => a.to);
+        const links = [sys.game.to, ...also];
         expect(links, `${system} ${m.id}`).toContain(`/galaxy/${system}/surface?mission=${m.id}`);
+        if (!also.includes(`/galaxy/${system}/surface?mission=${m.id}`)) expect(sys.game.status, `${system} ${m.id}`).toBe('live');
         if (m.achievement) expect(ACHIEVEMENTS[m.achievement], `${m.id} achievement`).toBeTruthy();
       }
   });

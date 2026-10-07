@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
 import { useVoiced } from '../../../lib/useVoiced';
+import { personVoice } from './talk';
 import '../../../styles/lazy/middleearth.css';
 
 // The HUD parts a walkable town shares (the Shire's look: its shire-*
@@ -67,8 +68,10 @@ export function QuestList({ title, quests, next, onClose, onGo, canGo = () => fa
   );
 }
 
-// Who's talking, over their head.
-export const Bubble = forwardRef(function Bubble({ name, line }, ref) {
+// Who's talking, over their head, and in their own voice where it's been
+// made (`who`: their id in the town's CAST; ./voicelines.js).
+export const Bubble = forwardRef(function Bubble({ who = null, name, line }, ref) {
+  useVoiced(personVoice(who), line);
   return (
     <div ref={ref} className="shire-bubble" aria-live="polite">
       <div>

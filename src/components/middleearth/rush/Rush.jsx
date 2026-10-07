@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../lib/voiced';
 import { readPad, typing } from '../../games/pad';
 import { Stick } from '../towns/TownHud';
 import { keyDown, keyUp } from '../towns/keys';
@@ -11,6 +12,7 @@ import { cleanCode, makeCode } from './protocol';
 import { movePlayer, newPlayer, newRush, starsFor, starsOf, stepRush } from './rules';
 import { COLOURS, NAMES } from './cast';
 import { sound } from './sounds';
+import { HOST_VOICE } from './voicelines';
 import '../shire/shire.css';
 import './rush.css';
 import '../../../styles/lazy/middleearth.css';
@@ -131,7 +133,15 @@ function Kitchen({ level, live, invite }) {
   // out of any room when the kitchen goes
   useEffect(() => () => sim.current.sess?.leave(), []);
 
-  const say = useCallback((text) => setLine({ text, at: Date.now() }), []);
+  // the host's line, and in their own voice where it's been made (./voicelines.js)
+  const say = useCallback(
+    (text) => {
+      setLine({ text, at: Date.now() });
+      sayVoiced(HOST_VOICE[level.host], text);
+    },
+    [level],
+  );
+  useEffect(() => stopVoiced, []);
   useEffect(() => {
     if (!line) return undefined;
     const t = setTimeout(() => setLine(null), 3600);

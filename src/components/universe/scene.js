@@ -97,7 +97,7 @@ import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePa
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
-import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SUN } from './layout';
+import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SECTORS, SUN, sectorOf } from './layout';
 import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
@@ -105,17 +105,24 @@ import { aberrationFor, createPost, spaceEnvironment } from './post';
 import { grainFor } from '../../lib/three/noise';
 import { createFlare, flareWeight, occluded } from '../../lib/three/flare';
 import { exposureFor, sunShareOf } from '../../lib/three/exposure';
-import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, isGoal, isPlace, orbiting, parkAt, spawn, startAt, step } from './ship';
-import { HYPER, driveById, hyperState, parkFor, riftExit } from './nav';
+import { houseOn } from '../../lib/three/house';
+import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
+import { HYPER, driveById, hyperState, legOf, parkFor, riftExit } from './nav';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
-import { AHEAD_OF, factionsOf, kindsOf, pick as pickFaction, sideFor, sideOf, wingOf } from './sides';
+import { AHEAD_OF, crewAt, factionsOf, kindsOf, pick as pickFaction, sideAt, sideFor, sideOf, wingOf } from './sides';
 import { TROOPS } from './foot';
 import { GLB, createFleet } from './glbFleet';
-import { createDirector } from './director';
+import { createDirector, withWhere } from './director';
+import { ECLIPSE, bodyAt, canEclipse, eclipseAt, eclipsePlan } from './eclipse';
 import { createSetPieces } from './setpieces';
 import { createLeviathans } from './leviathans';
 import { createMeteors } from './meteors';
+import { createMines } from './mines';
+import { ESCORT, escortHull, escortPlan, escortTo } from './escort';
 import { DEBRIS_DRIFT, buildDeepSpace } from './deepspace';
+import { createSectorPortals } from './sectorPortals';
+import { createCurve } from './curve';
+import { portalById, portalHit, transit } from './portals';
 import { ROCK_RELIEF } from '../../lib/three/rock';
 import { ROCK_HIT, boxOf, nearBox, nearRing, rockDamage, rockGrid, sweep, toBelt } from './rockHits';
 import { createFront } from './front';
@@ -124,7 +131,7 @@ import { createTrench } from './trench';
 import { createBeacons } from './beacons';
 import { PHONE, createPhone } from './phone';
 import { SUPERNOVA_SITES, createSupernovae } from './supernova';
-import { DEEP, WONDERS, moveBinaries, nearestStar, openness, reachOf, wonderById } from './deep';
+import { DEEP, PLACES, WONDERS, moveBinaries, nearestStar, openness, reachOf, wonderById } from './deep';
 import { KEY as KEY_FULL, STARS as LIT_STARS, dayYaw, lightAt, sunFor } from './lighting';
 import { createCrash } from './crash';
 import { createExplosions } from '../../lib/three/explosions';
@@ -157,10 +164,14 @@ import { createCitadelSiege } from './citadelSiege';
 import { STALE_MS } from './online/protocol';
 import { createFoot } from './footScene';
 import { wayIn } from './landings/wayin';
+import { figureVoice } from './landings/voicelines';
+import { sayVoiced, stopVoiced } from '../../lib/voiced';
 import { ENTRY, LANDABLE, airTop, entering } from './entry';
+import { createNearMaps } from './nearMaps';
 import { poseFor } from './poses';
 import { REMOVER, hitRemover, hpLeft, landingOpen, newRemover, stepRemover } from './remover';
 import { NX5_LEN, createRemoverView } from './removerView';
+import { createSky } from './skyShader';
 
 const STARS = 1800; // the near ones, over the Milky Way's own
 const STARS_LOW = 700;
@@ -207,6 +218,7 @@ const FALL = { through: MAW.through, back: MAW.through + 0.3, done: MAW.through 
 // into a giant it's a dive down into the clouds
 const DIVE = { impact: 0.55, through: 1.7, back: 2.8, done: 3.4 };
 const INTERDICT = 40; // seconds, at most, that a pack holds the pulse drive down
+const INTERDICT_IN = 2; // seconds it takes them to hold it all the way down (eased in: a pull, not a wall)
 const STREAK_SPEED = 36; // the streaks' speed tops out here: faster they'd be a wall
 const TURN = 0.0042; // radians of map per px dragged
 const DRAG = 6; // px a press may move and still be a click
@@ -516,6 +528,12 @@ export async function create(canvas, ctx) {
   fill.position.set(0.7, -0.4, -0.3).multiplyScalar(50);
   const ambient = new THREE.AmbientLight('#b8c4ff', 0.4);
   scene.add(key, fill, ambient);
+  // the house look (lib/three/house) on the map's ships, stations and
+  // landmarks: their shade the colour of the space light, as in every world.
+  // (The post pass tone-maps the house's way itself, and space has no fog:
+  // both left as they are. The planets draw in shaders of their own.)
+  const house = houseOn({ renderer, scene, sun: key, ambient, toneMap: false, look: { fog: false } });
+  let houseFrames = 0;
   // the key's direction in world space, shared with every planet, which
   // puts its own sun in the key's place (planets.js's keyHook)
   const keyW = { value: LIGHT.clone() };
@@ -636,20 +654,18 @@ export async function create(canvas, ctx) {
   const T = await loadTextures({ small });
 
   // what metal reflects, and the passes after the scene (post.js)
-  let env = spaceEnvironment(renderer, T.sky);
+  let env = spaceEnvironment(renderer, T['sky-glow']);
   scene.environment = env.texture;
   const post = createPost(renderer, scene, camera, { small });
 
   // the sky: the Milky Way, all the way round, turning with the map and
-  // riding with the camera (so it's always as far off). It's always seen
-  // magnified, so it does without mipmaps (and their memory)
+  // riding with the camera (so it's always as far off), drawn sharp at the
+  // screen's own resolution (skyShader.js: the photo for its light, the
+  // stars and the fine detail drawn there); fewer layers of stars on a
+  // weaker device
   let sky = null;
-  if (T.sky) {
-    T.sky.generateMipmaps = false;
-    T.sky.minFilter = THREE.LinearFilter;
-    T.sky.anisotropy = 1;
-    sky = new THREE.Mesh(new THREE.SphereGeometry(27000, 64, 32), new THREE.MeshBasicMaterial({ map: T.sky, side: THREE.BackSide, depthWrite: false, toneMapped: false }));
-    sky.renderOrder = -10;
+  if (T['sky-glow']) {
+    sky = createSky(T['sky-glow'], { layers: tier === 'low' ? 1 : tier === 'high' ? 3 : 2 });
     map.add(sky);
   }
 
@@ -668,6 +684,10 @@ export async function create(canvas, ctx) {
   ];
   const smashed = new Map(rockFields.map((f) => [f.id, new Map()]));
   map.add(deep.group);
+  // the portals between the map's sectors (sectorPortals.js; flown through below: portalThrough)
+  const sectorPortals = createSectorPortals(map);
+  // and the Rick and Morty sector's edge, the Central Finite Curve (curve.js)
+  const curve = createCurve(map);
   const trenches = PLANETS.filter((p) => p.trench).map((p) => createTrench({ at: p.at, r: p.r, trench: p.trench }, { small }));
   for (const tr of trenches) map.add(tr.group);
   // and a beacon over each far world, so it reads as somewhere to go
@@ -699,6 +719,7 @@ export async function create(canvas, ctx) {
     return p;
   });
   const planetOf = Object.fromEntries(planets.map((p) => [p.id, p]));
+  const near = createNearMaps({ small }); // (the finer maps for the two planets nearest, nearMaps.js)
   const crashFx = createCrash(map);
   // out of the ship and on foot on a planet (footScene.js)
   const foot = createFoot({ map, emit: (e) => emit(e), reduced, small, planetOf, renderer, warm: (o) => warm(o) });
@@ -807,6 +828,10 @@ export async function create(canvas, ctx) {
   fleet.prepare = (o) => warm(o); // (the fleet's models too: none is made before the first frame)
   // who comes after you, what the director sets going, and its set pieces
   // (none of it with reduced motion)
+  // whose space the ship's in (sides.js sideAt): the Rick and Morty sector's
+  // hunters, traffic and goings-on are the Rick and Morty side's, whoever's
+  // flying; anywhere else the crew's own
+  const sideHere = () => sideAt(state.kind, state.ship ? sectorOf(state.ship.x, state.ship.y, state.ship.z) : 'main');
   const FACTIONS_ALL = factionsOf(null);
   const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: FACTIONS_ALL, kinds: kindsOf(null), engines }); // (every side's: another pilot's hunters, whoever they are)
   const wingmen = hunters ? createWingmen(map, { fleet, solids: SOLIDS }) : null; // (friends in a long fight)
@@ -880,6 +905,26 @@ export async function create(canvas, ctx) {
   };
   const leviathans = createLeviathans(map, { small }); // (purrgil, or a Cromulon)
   const meteors = createMeteors(map, { small, tier }); // (a stream of rocks across your path)
+  const mines = createMines(map, { small }); // (a minefield across your way)
+  // a ship you're seeing to the next place (escort.js): { plan, run (traffic's), t0, sent, hull, side }
+  let escort = null;
+  // an eclipse (eclipse.js): { plan, t0, star }, its moon (made when first
+  // wanted), how much of the sun it hides now (the key light and its glare
+  // dim by it), and the moon as something that hides a star from the lens
+  let eclipse = null;
+  let eclipseMoon = null;
+  let eclipseK = 0;
+  const eclipseSolid = { id: 'eclipse', at: [0, 0, 0], r: 0 };
+  const eclipseEye = new THREE.Vector3();
+  const dropEclipse = () => {
+    eclipse = null;
+    eclipseK = 0;
+    eclipseSolid.r = 0;
+    if (eclipseMoon) eclipseMoon.visible = false;
+  };
+  const dropEscort = () => {
+    escort = null;
+  };
   let leviathanSaidAt = -1e9; // the crew's last word about shooting one
   const later = []; // { at, run }: what the director set going, a moment on
   // the other pilots, once online (with reduced motion too: they're people)
@@ -906,6 +951,7 @@ export async function create(canvas, ctx) {
     yaw: 0,
     vel: 0, // radians per ms, after a flick
     sel: props.selected ?? null,
+    then: null, // a trip on from the far side of a portal: { id, drive } (travel, portalThrough)
     hover: null,
     drag: null,
     flight: null,
@@ -969,7 +1015,7 @@ export async function create(canvas, ctx) {
     npcAt: 70 + Math.random() * 50, // when the next character may come by (state.clock)
     npcLast: null, // who came by last (someone else next time)
     skirmishHelped: 0, // hunters you've hit in this one
-    saw: new Set(), // the wonders out in deep space you've come up on
+    saw: new Set(), // the wonders out in deep space you've come up on, and the places you've been
     phoneNear: false, // at the phone out past the belt (phone.js)
     phoneIn: false, // flown right into it (it asks once, until you back off)
     deepSaid: false,
@@ -1126,7 +1172,7 @@ export async function create(canvas, ctx) {
       .addScaledVector(camF, 0.4)
       .addScaledVector(camU, 0.06)
       .addScaledVector(camR, (s.lean || 0) * 0.45);
-    return { target, quat: camQ.clone().multiply(TILT), dist: 1.7 + Math.min(Math.abs(s.speed), 30) * 0.045 + state.streak * 0.7 };
+    return { target, quat: camQ.clone().multiply(TILT), dist: 1.7 + Math.min(Math.abs(s.speed) / SHIP.boost, 1.5) * 0.9 + state.streak * 0.7 };
   };
 
   // From the pilot's seat: the eye a little ahead of the ship's middle and
@@ -1441,6 +1487,7 @@ export async function create(canvas, ctx) {
   // the autopilot's trip dropped before it's done (the pilot, a rift, the
   // page): the page hears, so a tour or a trip on through the gate ends
   const dropAuto = () => {
+    state.then = null; // (and a trip on through a portal with it)
     if (!state.auto) return;
     const id = state.auto.id;
     state.auto = null;
@@ -1449,6 +1496,15 @@ export async function create(canvas, ctx) {
   const travel = (id, drive = props.drive) => {
     const s = state.ship;
     if (!s || state.crash || state.dive || state.jump || props.frozen || onFoot() || !(isGoal(id) || (id === 'front' && front))) return false;
+    // (somewhere in the other sector of the map: to the portal first, and on
+    // from its far end once through: portalThrough. nav.js legOf)
+    const leg = id === 'front' ? id : legOf(s, id);
+    if (leg !== id) {
+      if (!travel(leg, drive)) return false;
+      state.then = { id, drive };
+      return true;
+    }
+    state.then = null;
     // (the Maw's own spot is past its point of no return: to the edge of its pull instead; the
     // front's is just inside the fight, on your side of it)
     const park = id === 'front' ? frontPark([s.x, s.z]) : parkFor(id, [s.x, s.z]);
@@ -1464,7 +1520,7 @@ export async function create(canvas, ctx) {
       state.auto = null;
       arriveAt(park);
       ctx.invalidate();
-      setTimeout(() => emit({ type: 'arrived', id, done: true }), 0); // (there: the page's tour and a trip through the gate go on; after the page's own select)
+      if (!portalById(id)) setTimeout(() => emit({ type: 'arrived', id, done: true }), 0); // (there: the page's tour and a trip through the gate go on; after the page's own select. Through a portal, its trip ends at the far end: portalThrough)
       return true;
     }
     const hyper = drive === 'hyper' ? hyperState({ last: state.hyperAt, now: wall(), interdicted: state.interdicted }) : null;
@@ -1711,9 +1767,12 @@ export async function create(canvas, ctx) {
     state.kind = kind;
     setPlumes(kind, ENGINES[kind] ?? []);
     if (!same) {
-      traffic?.setCrew(kind);
+      traffic?.setCrew(crewAt(kind, sectorOf(state.ship?.x ?? 0, 0, state.ship?.z ?? 0)));
       hunters?.clear();
       meteors.clear();
+      mines.clear();
+      dropEscort();
+      dropEclipse();
       wingmen?.clear();
       skirmishes?.clear();
       npcs?.clear();
@@ -1803,7 +1862,7 @@ export async function create(canvas, ctx) {
   let warmed = false; // (none made ahead before the map's own shaders are)
   const stockUp = () => {
     if (reduced || !warmed) return;
-    const side = sideFor(state.kind);
+    const side = sideHere();
     if (!side || stockedFor.has(side.id)) return;
     stockedFor.add(side.id);
     const want = Object.entries(AHEAD_OF(side));
@@ -2135,7 +2194,7 @@ export async function create(canvas, ctx) {
         b.visible = false;
         leviathanShot();
       } else {
-        const mh = meteors.hit(shotFrom, b.position);
+        const mh = meteors.hit(shotFrom, b.position) ?? mines.hit(shotFrom, b.position);
         if (mh) {
           b.visible = false;
           pops.hit({ point: mh.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: mh.size * 1.6 });
@@ -2302,7 +2361,7 @@ export async function create(canvas, ctx) {
         boom(m, m.position.clone());
         leviathanShot();
       } else {
-        const mh = meteors.hit(shotFrom, to);
+        const mh = meteors.hit(shotFrom, to) ?? mines.hit(shotFrom, to);
         if (mh) boom(m, mh.at);
       }
     }
@@ -2588,6 +2647,9 @@ export async function create(canvas, ctx) {
       state.view = 'chase'; // (from outside, whichever seat you were in)
       hunters?.clear();
       meteors.clear();
+      mines.clear();
+      dropEscort();
+      dropEclipse();
       wingmen?.clear();
       skirmishes?.clear();
       npcs?.clear();
@@ -2626,6 +2688,9 @@ export async function create(canvas, ctx) {
     burst.clear();
     hunters?.clear();
     meteors.clear();
+    mines.clear();
+    dropEscort();
+    dropEclipse();
     wingmen?.clear();
     skirmishes?.clear();
     npcs?.clear();
@@ -2825,12 +2890,15 @@ export async function create(canvas, ctx) {
 
   // what the director sets going
   // on the way somewhere (out in the open at speed), a pack comes in ahead
-  // of you and interdicts you: an ambush
+  // of you and interdicts you: an ambush (laid where you'll be once they've
+  // pulled the drive down, not where you are: at the pulse drive's speed
+  // that's a few hundred units on)
   const travelling = (s) => openness(s.x, s.y, s.z) > 0.5 && Math.abs(s.speed) > 40;
+  const leadOf = (s) => holdReach(s, { ramp: INTERDICT_IN, solids: siegeSt.down ? SOLIDS_OPEN : SOLIDS });
   const happen = (id, ship) => {
-    const side = sideFor(state.kind);
+    const side = sideHere();
     if (!side) return;
-    const ambush = travelling(ship) ? { ahead: true, interdict: true } : {};
+    const ambush = travelling(ship) ? { ahead: true, interdict: true, lead: leadOf(ship) } : {};
     // (more of them, and the ace more often, the more trouble you've made; the first pack is a small one)
     const strength = { heat: state.heat, first: hunts === 0 };
     if (id === 'hunt' || id === 'council' || id === 'roadblock') hunts += 1;
@@ -2838,8 +2906,9 @@ export async function create(canvas, ctx) {
     else if (id === 'council') pieces.portals(hunters.pack(pickFaction(side, 'council'), ship, { ...ambush, ...strength }));
     else if (id === 'roadblock') {
       // the DEA across your bows: in ahead, and holding you there
-      hunters.pack('dea', ship, { ahead: true, interdict: true, ace: Math.random() < 0.5, ...strength });
-      pieces.roadblock(ship); // (and a helicopter over it, its searchlight on you)
+      const lead = ambush.lead ?? 0;
+      hunters.pack('dea', ship, { ahead: true, interdict: true, lead, ace: Math.random() < 0.5, ...strength });
+      pieces.roadblock(ship, lead); // (and a helicopter over it, its searchlight on you)
       emit({ type: 'event', id: 'roadblock' });
     } else if (id === 'destroyer') {
       if (!pieces.destroyer(ship, side.capitalShip)) return;
@@ -2909,6 +2978,39 @@ export async function create(canvas, ctx) {
       later.push({ at: state.clock + 3, run: () => emit({ type: 'event', id: 'leviathan', sub }) });
     } else if (id === 'meteors') {
       if (meteors.storm(ship)) emit({ type: 'event', id: 'meteors' });
+    } else if (id === 'eclipse') {
+      // a moon across the sun that lights you, from where you are
+      const star = litBy.key && LIT_STARS.find((st) => st.id === litBy.key.id);
+      if (!star || eclipse) return;
+      // (from the eye: the chase camera sits a few units off the ship, enough
+      // to put the moon off the sun's middle 70 units out)
+      camera.getWorldPosition(eclipseEye);
+      eclipse = { plan: eclipsePlan({ eye: map.worldToLocal(eclipseEye).toArray(), sun: star }), t0: state.clock, star };
+      if (!eclipseMoon) {
+        // (round, its night side to you: a dark disc on the sun)
+        eclipseMoon = new THREE.Mesh(new THREE.SphereGeometry(1, small ? 32 : 64, small ? 24 : 48), new THREE.MeshStandardMaterial({ color: '#3a3634', roughness: 0.95, metalness: 0 }));
+        eclipseMoon.name = 'eclipse moon';
+        map.add(eclipseMoon);
+      }
+      eclipseMoon.scale.setScalar(eclipse.plan.r);
+      eclipseMoon.visible = true;
+      emit({ type: 'event', id: 'eclipse' });
+    } else if (id === 'minefield') {
+      if (mines.lay(ship)) emit({ type: 'event', id: 'minefield' });
+    } else if (id === 'escort') {
+      // beside you and a little ahead, bound for the next place along
+      if (escort || !traffic) return;
+      const to = escortTo(ship, PLACES.map((p) => ({ id: p.id, at: p.at, r: p.reach })));
+      if (!to) return;
+      const [fx, fz] = forward(ship.heading);
+      const from = [ship.x + fx * 10 - fz * 6, ship.y + 1.5, ship.z + fz * 10 + fx * 6];
+      const plan = escortPlan({ from, to: to.at, reach: to.r });
+      if (plan.length < 40) return;
+      const run = traffic.escort(plan.path, ESCORT.speed, side);
+      if (!run) return;
+      escort = { plan, run, t0: state.clock, sent: 0, hull: 1, side, to: to.id };
+      if (side.id === 'rickmorty') pieces.portals([new THREE.Vector3(...from)]); // (Rick's universe goes by portal)
+      emit({ type: 'event', id: 'escort' });
     } else if (id === 'bounty') {
       // one hunter, tough and quick: Boba Fett in Slave I (its model, once it's
       // here: Vader stands in till then), Phoenixperson, or the Cousins
@@ -3016,7 +3118,7 @@ export async function create(canvas, ctx) {
   const STATIONS = PLANETS.map((p) => ({ id: p.id, at: { x: p.at[0], y: p.at[1], z: p.at[2] }, r: p.r }));
   const npcWorld = { you: null, hunters: [], stations: STATIONS, solids: SOLIDS, next: null, heat: 0, shield: 100, stims: [] }; // (stims: your shots this frame, heard by the characters, and dodged by a nemesis they're aimed at)
   const meet = (dt, t, live) => {
-    const side = sideFor(state.kind);
+    const side = sideHere();
     if (live && side && !npcs.count && state.clock > state.npcAt && !hunters.count && !skirmishes?.active && !pieces.destroyerHere && !leviathans.busy && state.view !== 'map') {
       state.npcAt = state.clock + NPC_EVERY[0] + Math.random() * (NPC_EVERY[1] - NPC_EVERY[0]);
       const who = visitorsOf(side.id).filter((c) => c.id !== state.npcLast);
@@ -3102,7 +3204,7 @@ export async function create(canvas, ctx) {
   const farFight = (dt, t, live) => {
     if (!skirmishes.active && live && state.clock > state.skirmishAt && !hunters.count && !pieces.destroyerHere && !leviathans.busy && !meteors.count && state.view !== 'map' && Math.abs(live.speed) < SHIP.pulse * 0.2) {
       state.skirmishAt = state.clock + SKIRMISH_EVERY[0] + Math.random() * (SKIRMISH_EVERY[1] - SKIRMISH_EVERY[0]);
-      const side = sideFor(state.kind);
+      const side = sideHere();
       const at = side && skirmishSpot(live);
       if (at && skirmishes.start({ at, heading: Math.random() * Math.PI * 2, ...side.skirmish })) {
         state.skirmishHelped = 0;
@@ -3134,7 +3236,7 @@ export async function create(canvas, ctx) {
   // you, its shield parts going, its bridge open, it running or going up
   let capFight = null; // { interdict, said, hurt } while one's here
   const capitalEvent = (e, live) => {
-    const side = sideFor(state.kind);
+    const side = sideHere();
     if (e.type === 'launch') {
       if (live && !state.crash && side) hunters.pack(pickFaction(side, 'capital') ?? 'empire', live, { from: new THREE.Vector3(...e.from), size: e.wave > 1 ? 4 : 3, ace: Math.random() < 0.35, interdict: Boolean(capFight?.interdict) });
       if (e.wave > 1) capitalSay('wave');
@@ -3230,13 +3332,71 @@ export async function create(canvas, ctx) {
         if (!reduced) state.shake = Math.max(state.shake, 0.5);
       }
     }
+    // the minefield: a mine set off (by you flying close, or a bolt) goes up,
+    // and its neighbours with it; what reaches you comes off the shields
+    if (mines.count) busy = true;
+    for (const e of mines.update(dt, live)) {
+      burn(e.at, e.size * 4);
+      pops.hit({ point: e.at, normal: popDir.set(0, 1, 0), radius: e.size * 3 }); // (and on a low tier, where a blast is only this)
+      if (e.damage > 0 && state.clock >= state.safeUntil) hurt(e.damage);
+      if (e.damage > 0 && !reduced) state.shake = Math.max(state.shake, 0.4 + e.damage / 60);
+    }
+    // the eclipse: the moon along its way, and how much of the sun it hides
+    // from the eye (the light and the lens's glare dim by it)
+    if (eclipse) {
+      busy = true;
+      const since = state.clock - eclipse.t0;
+      if (since > eclipse.plan.time) dropEclipse();
+      else {
+        camera.getWorldPosition(eclipseEye);
+        const eye = map.worldToLocal(eclipseEye).toArray();
+        const at = bodyAt(eclipse.plan, since, eye, eclipse.star);
+        eclipseMoon.position.set(at[0], at[1], at[2]);
+        eclipseMoon.rotation.y = since * 0.02;
+        eclipseSolid.at = at;
+        eclipseSolid.r = eclipse.plan.r;
+        eclipseK = eclipseAt({ eye, sun: eclipse.star, bodies: [eclipseSolid] })?.k ?? 0;
+      }
+    }
+    // the escort: the pirates when the plan says, its hull worn down by the
+    // ones on it, and how it ends (there, or lost)
+    if (escort) {
+      busy = true;
+      const e = escort;
+      const ship = e.run.ship;
+      const since = state.clock - e.t0;
+      while (live && ship.parent && e.sent < e.plan.pirates.length && since >= e.plan.pirates[e.sent].at) {
+        hunters?.pack(pickFaction(e.side, 'pirates'), live, { prey: ship, size: 2, ace: false });
+        if (e.sent === 0) emit({ type: 'event', id: 'escortPirates' });
+        e.sent += 1;
+      }
+      let on = 0;
+      if (ship.parent && hunters) for (const h of hunters.wire()) if (Math.hypot(h[2] - ship.position.x, h[3] - ship.position.y, h[4] - ship.position.z) < ESCORT.near) on += 1;
+      e.hull = escortHull(e.hull, on, dt);
+      if (e.hull <= 0 && ship.parent) {
+        const at = e.run.kill();
+        if (at) burn(at, 1.4);
+        emit({ type: 'event', id: 'escortLost' });
+        escort = null;
+      } else if (!ship.parent) {
+        if (e.run.arrived) {
+          if (e.side.id === 'rickmorty') pieces.portals([new THREE.Vector3(...e.plan.path[2])]);
+          deed('rescued');
+          emit({ type: 'event', id: 'escorted' });
+        } else emit({ type: 'event', id: 'escortLost' });
+        escort = null;
+      }
+    }
     if (live) {
       // shields come back once you've been out of trouble a while
       if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen);
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
-        const id = director.update(dt, { hurt: state.hurtNow ?? 0, side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.busy || meteors.count > 0 || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
+        // (where you are: a sun lighting you, at a station, in the gate)
+        const sunNow = litBy.key && litBy.key.strength > 1.2 ? LIT_STARS.find((st) => st.id === litBy.key.id) : null;
+        const where = { sun: Boolean(sunNow && canEclipse({ eye: [live.x, live.y, live.z], sun: sunNow })), station: Boolean(state.at && byId(state.at)?.kind === 'core'), gate: state.at === 'starwars' };
+        const id = director.update(dt, { hurt: state.hurtNow ?? 0, side: withWhere(sideHere(), where), heat: state.heat, busy: hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.holds(live) || meteors.count > 0 || mines.count > 0 || Boolean(escort) || Boolean(eclipse) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
         state.hurtNow = 0;
         if (id) happen(id, live);
         // the drive comes back once they're off you (or have had their go)
@@ -3456,7 +3616,7 @@ export async function create(canvas, ctx) {
   // out: parked there, the hunters left behind, a flash where it comes out)
   const riftThrough = () => {
     const s = state.ship;
-    const exit = riftExit(state.at, Math.random);
+    const exit = riftExit(state.at, Math.random, sectorOf(s.x, s.y, s.z), state.saw); // (out in the sector it opened in, somewhere you haven't been)
     const park = parkFor(exit, [s.x, s.z]);
     pieces.closeRift();
     if (!park) return;
@@ -3464,6 +3624,9 @@ export async function create(canvas, ctx) {
     arriveAt(park);
     hunters?.clear();
     meteors.clear();
+    mines.clear();
+    dropEscort();
+    dropEclipse();
     wingmen?.clear();
     skirmishes?.clear();
     npcs?.clear();
@@ -3480,6 +3643,41 @@ export async function create(canvas, ctx) {
     emit({ type: 'rifted', id: exit });
   };
 
+  // into a portal (portals.js): out by its far end, in the other sector,
+  // going on the way it went in at half the speed, a green flash where it
+  // comes out, the hunters and the traffic left behind. A trip to the portal
+  // is done there (the page takes a trip on through it on from here); a
+  // trip anywhere else that went through it is dropped
+  const portalThrough = (id) => {
+    const out = transit(state.ship, id);
+    if (!out) return;
+    const then = state.then;
+    state.then = null;
+    if (state.auto) {
+      const going = state.auto.id;
+      state.auto = null;
+      if (!(then && going === id)) emit({ type: 'arrived', id: going, done: going === id });
+    }
+    state.ship = out.ship;
+    hunters?.clear();
+    meteors.clear();
+    wingmen?.clear();
+    skirmishes?.clear();
+    npcs?.clear();
+    traffic?.clear();
+    traffic?.setCrew(crewAt(state.kind, out.sector)); // (the sector's own traffic: sides.js)
+    stockUp();
+    state.interdicted = false;
+    state.safeUntil = state.clock + SAFE;
+    state.flare = Math.max(state.flare, 2.4);
+    camQOn = false;
+    crashFx.arrive({ point: new THREE.Vector3(out.ship.x, out.ship.y, out.ship.z), kind: 'cruiser', heading: out.ship.heading }); // (a portal, whatever the ship)
+    state.note = { text: `Through the portal: ${SECTORS[out.sector].name}`, until: wall() + 3.5 };
+    emit({ type: 'sector', id: out.sector, through: id });
+    // (on to where the trip was going: the jump's charging now, so at super speed)
+    if (then) travel(then.id, then.drive === 'hyper' ? 'super' : then.drive);
+  };
+
   const fly = (dt, t) => {
     if (state.crash) return crashing(dt);
     let input;
@@ -3492,6 +3690,9 @@ export async function create(canvas, ctx) {
       arriveAt(j.park);
       hunters?.clear();
       meteors.clear();
+      mines.clear();
+      dropEscort();
+      dropEclipse();
       wingmen?.clear();
       skirmishes?.clear();
       npcs?.clear();
@@ -3504,7 +3705,9 @@ export async function create(canvas, ctx) {
     if (state.jump) input = { throttle: 1, boost: true }; // (spooling up: straight on, flat out)
     else if (state.auto) {
       const od = state.interdicted ? 1 : (state.auto.od ?? 1);
-      const a = autopilot(state.ship, state.auto.id, state.auto.park, state.auto.id === 'front' && front ? frontSpace() : undefined, od);
+      // (and the battle's hold on the drive, so it plans its stop for it: front.js holdAt, as it would be coming straight in)
+      const hold = front ? (x, y, z) => front.holdAt(x, y, z, null) : null;
+      const a = autopilot(state.ship, state.auto.id, state.auto.park, state.auto.id === 'front' && front ? frontSpace() : undefined, od, hold);
       input = a.input;
       if (a.done) {
         const id = state.auto.id;
@@ -3528,7 +3731,11 @@ export async function create(canvas, ctx) {
         input.climb = clamp(input.climb + n.climb, -1, 1);
       }
     }
-    input.interdicted = state.interdicted || Boolean(front?.inZone); // (the pulse drive's held down in a battle, as hunters hold it)
+    // the pulse drive held down: by hunters, pulled down over INTERDICT_IN;
+    // coming in to a battle, eased down the closer it is (front.js holdAt)
+    const pack = state.interdicted ? clamp((state.clock - state.interdictAt) / INTERDICT_IN, 0, 1) : 0;
+    const fight = front ? front.holdAt(state.ship.x, state.ship.y, state.ship.z, noseOf(state.ship)) : 0;
+    input.interdicted = Math.max(pack * pack * (3 - 2 * pack), fight);
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
     const before = state.ship;
     const { ship: stepped, events } = step(state.ship, input, dt, siegeSt.down ? SOLIDS_OPEN : SOLIDS);
@@ -3553,6 +3760,10 @@ export async function create(canvas, ctx) {
       else if (!state.crash) startCrash(e);
     }
     if (state.crash) return true;
+    if (!state.jump && !state.held) {
+      const into = portalHit(before, state.ship);
+      if (into) portalThrough(into);
+    }
     // into a planet's air (entry.js): at a speed it can land at, the way in
     // takes it on down onto the ground; any faster it's no landing (it goes
     // on into the ground, and that's the crash above, as ever), and the HUD
@@ -3614,6 +3825,7 @@ export async function create(canvas, ctx) {
           props.onPick?.(now);
         }
         emit({ type: 'arrive', id: now });
+        state.saw.add(now); // (been here: a rift takes you somewhere else)
         pulseAt = { id: now, age: 0 };
         cabLook.glanceAt = state.clock; // the crew have their say: a look over at them
       } else if (left && state.sel === left && !target) {
@@ -3628,7 +3840,7 @@ export async function create(canvas, ctx) {
     // that a shot bends onto it
     const siegeCands = [...siegeTargets(ship), ...removerTargets(ship)];
     // (the rocks only while nobody's after you: a hunter's the thing to lock on to)
-    const rocks = meteors.count && !hunters?.active ? meteors.targets : [];
+    const rocks = (meteors.count || mines.count) && !hunters?.active ? [...meteors.targets, ...mines.targets] : [];
     // (someone else's fight's hunters, while nothing's after you: yours come first)
     const farCands = [...(skirmishes?.active && !hunters?.active ? skirmishes.targets : []), ...(npcs?.targets ?? [])];
     const battleCands = front?.joined !== null && front?.joined !== undefined ? front.targets : []; // (the other side's, at the front)
@@ -3912,7 +4124,7 @@ export async function create(canvas, ctx) {
     const el = props.prompt?.current;
     if (!el) return;
     let text = '';
-    let say = false; // (a line someone says to you: nothing for G to do)
+    let say = null; // (a line someone says to you, { name, line }: nothing for G to do)
     let plain = false; // (a word on the HUD: nothing for G to do either)
     const info = onFoot() ? foot.info() : null;
     if (props.frozen) text = '';
@@ -3926,7 +4138,7 @@ export async function create(canvas, ctx) {
     else if (info && foot.phase === 'walk' && info.ship.near) text = `Get back in ${SHIP_NAMES[state.kind]?.replace(/^The /, 'the ') ?? 'the ship'}`;
     else if (info && foot.phase === 'walk' && info.near?.say) {
       text = `${info.near.say.name}: “${info.near.say.line}”`;
-      say = true;
+      say = info.near.say;
     }
     else if (!onFoot() && state.landable && !state.auto && Math.abs(state.ship?.speed ?? 0) < SHIP.boost && LANDABLE.some((p) => p.id === state.landable)) {
       // (no key for it: flying in is the way down)
@@ -3936,9 +4148,12 @@ export async function create(canvas, ctx) {
     else if (!onFoot() && state.phoneNear && !state.auto && !state.jump && flying()) text = 'Unlock the phone';
     if (text === promptWas) return;
     promptWas = text;
+    // what they say, in their own voice where it's been made (landings/voicelines.js); walking off stops it
+    if (say) sayVoiced(figureVoice(say), say.line);
+    else if (el.hasAttribute('data-say')) stopVoiced();
     el.textContent = text;
     el.toggleAttribute('data-on', Boolean(text));
-    el.toggleAttribute('data-say', say);
+    el.toggleAttribute('data-say', Boolean(say));
     el.toggleAttribute('data-plain', plain);
   };
 
@@ -3964,7 +4179,7 @@ export async function create(canvas, ctx) {
   // (what can hide each star: everything but the star itself, made once a star)
   const hiders = new Map();
   const hidersOf = (id) => {
-    if (!hiders.has(id)) hiders.set(id, [...SOLIDS.filter((o) => o.id !== id), shipSolid]);
+    if (!hiders.has(id)) hiders.set(id, [...SOLIDS.filter((o) => o.id !== id), shipSolid, eclipseSolid]);
     return hiders.get(id);
   };
   const starAt = new THREE.Vector3();
@@ -3997,6 +4212,7 @@ export async function create(canvas, ctx) {
           share += sunShareOf({ ndc, size }) * (1 - hidden) * k;
           // (half as strong over the map, which is a chart, not a place you're in)
           weight = post.flareOn ? flareWeight({ ndc, occluded: hidden, size }) * k * (flying() && state.view !== 'map' ? 1 : 0.5) : 0;
+          if (eclipse && star.id === eclipse.star.id) weight *= 1 - ECLIPSE.dim * eclipseK; // (the moon over it)
         }
       }
       flares[i]?.set({ ndc, weight, colour: star?.colour ?? null, camera });
@@ -4067,7 +4283,7 @@ export async function create(canvas, ctx) {
     // neighbourhood to another's): its glow where the star is, in its colour
     if (l.key.id !== envStar && !lightNow.first) {
       envStar = l.key.id;
-      const next = spaceEnvironment(renderer, T.sky, { light: lightTo.set(...l.key.dir).negate().applyAxisAngle(Y_AXIS, state.yaw), colour: l.key.colour });
+      const next = spaceEnvironment(renderer, T['sky-glow'], { light: lightTo.set(...l.key.dir).negate().applyAxisAngle(Y_AXIS, state.yaw), colour: l.key.colour });
       scene.environment = next.texture;
       env.dispose();
       env = next;
@@ -4082,7 +4298,9 @@ export async function create(canvas, ctx) {
     fill.position.copy(lightNow.fill).multiplyScalar(50);
     tint(key.color, lightColour.setRGB(...l.key.colour), k);
     tint(fill.color, lightColour.setRGB(...l.fill.colour), k);
-    key.intensity += Math.max(-k, Math.min(k, l.key.strength - key.intensity));
+    // (dimmed by a moon across it: the eclipse)
+    const covered = eclipse && l.key.id === eclipse.star.id ? 1 - ECLIPSE.dim * eclipseK : 1;
+    key.intensity += Math.max(-k, Math.min(k, l.key.strength * covered - key.intensity));
     fill.intensity += Math.max(-k, Math.min(k, l.fill.strength - fill.intensity));
     ambient.color.setRGB(...l.ambient);
     ambient.intensity = 1;
@@ -4312,6 +4530,7 @@ export async function create(canvas, ctx) {
       const px = d > placeBound.radius ? (placeBound.radius / (d * tanHalf)) * (size.h / 2) : Infinity;
       p.update(t, camera, px > 2 && viewFrustum.intersectsSphere(placeBound));
     }
+    near.update(camera.position, planets);
     locate();
     placeLabels();
     if (state.hitMark > 0) state.hitMark = Math.max(0, state.hitMark - dt * 4);
@@ -4337,7 +4556,11 @@ export async function create(canvas, ctx) {
     map.updateWorldMatrix(true, false);
     map.worldToLocal(camLocal.copy(camera.position));
     lights(dt);
+    // (the look follows the lights; what's come into the scene since is taken on every half second or so)
+    house.follow({ adopt: houseFrames++ % 30 === 0 });
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
+    sectorPortals.update(t, camera);
+    curve.update(t);
     // the Citadel's siege: rebuilt or patched up when it's time, what's left
     // of it drawn, and your word on it out to everyone (soon after a hit of
     // yours; every few seconds while there's anything to tell)
@@ -4779,6 +5002,9 @@ export async function create(canvas, ctx) {
     state.boosting = false;
     hunters?.clear();
     meteors.clear();
+    mines.clear();
+    dropEscort();
+    dropEclipse();
     burst.clear();
     const [x, y, z] = p.at;
     state.ship = { ...state.ship, x, y, z, heading: p.heading, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, edge: false };
@@ -4810,7 +5036,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), remover: () => remover, removerView };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -4833,6 +5059,7 @@ export async function create(canvas, ctx) {
       wing: wingmen?.live ?? [],
       skirmish: skirmishes?.info ?? null,
       lock: state.lock?.id ?? null,
+      near: near.resident(),
       manual: Boolean(state.lock?.manual),
       controls: controls(),
       loadout: { ...state.loadout },
@@ -5022,7 +5249,9 @@ export async function create(canvas, ctx) {
     // pilots online (null for the ship with none picked)
     where() {
       const s = state.ship;
-      const going = state.jump ? { id: state.jump.id, drive: 'hyper' } : state.auto ? { id: state.auto.id, drive: (state.auto.od ?? 1) > 1 ? 'super' : 'cruise' } : null;
+      const leg = state.jump ? { id: state.jump.id, drive: 'hyper' } : state.auto ? { id: state.auto.id, drive: (state.auto.od ?? 1) > 1 ? 'super' : 'cruise' } : null;
+      // (bound for the other sector: where it's going, and the portal it's going by)
+      const going = leg && state.then ? { ...leg, id: state.then.id, via: leg.id } : leg;
       return {
         ship: s ? { x: s.x, y: s.y, z: s.z, heading: s.heading, speed: s.speed } : null,
         at: state.at,
@@ -5056,12 +5285,14 @@ export async function create(canvas, ctx) {
     },
     dispose() {
       disposed = true;
+      stopVoiced(); // (anyone down on a planet, mid-line)
       window.removeEventListener('tp:looks', onLooks);
       engine?.stop();
       well?.stop();
       quietRoar();
       infall?.dispose();
       foot.dispose();
+      near.dispose();
       dropCab();
       roomEnv?.dispose();
       state.model?.dispose();
@@ -5096,8 +5327,13 @@ export async function create(canvas, ctx) {
       removerView.dispose();
       leviathans.dispose();
       meteors.dispose();
+      mines.dispose();
+      eclipseMoon?.geometry.dispose();
+      eclipseMoon?.material.dispose();
       fleet.dispose();
       deep.dispose();
+      sectorPortals.dispose();
+      curve.dispose();
       for (const tr of trenches) tr.dispose();
       beacons.dispose();
       phone.dispose();

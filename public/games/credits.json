@@ -3300,5 +3300,16 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "mc/pixel-perfection": {
+    "source": "https://modrinth.com/resourcepack/pixel-perfection-legacy",
+    "id": "pixel-perfection-legacy 25.4-75.1",
+    "name": "Pixel Perfection Legacy (resource pack)",
+    "authors": [
+      "XSSheep",
+      "Nova_Wostra"
+    ],
+    "license": "CC BY-SA 4.0",
+    "use": "The Minecraft tribute’s block tiles and mob skins, rebuilt into public/mc/ by scripts/mc-atlas.mjs; the built files are under the same licence"
   }
 }

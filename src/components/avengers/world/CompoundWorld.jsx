@@ -14,6 +14,7 @@ import './world.css';
 import '../../../styles/lazy/avengers.css';
 import GuideCue from '../../guide/GuideCue';
 import { useVoiced } from '../../../lib/useVoiced';
+import { sayVoiced } from '../../../lib/voiced';
 
 // The Avengers compound, the world: walk about the compound as Spider-Man,
 // and go into the buildings to play their games. Anyone else online here
@@ -435,6 +436,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       a.fx('pack', { id: pk.id });
       setFound(s.found.length);
       setPack({ n: s.found.length, ...pk });
+      sayVoiced('peter', pk.line); // what Peter says about it, in his own voice where it's been made (lib/voiced.js)
       if (s.found.length === PACKS.length) {
         sfx('fanfare');
         unlock('backpacks');

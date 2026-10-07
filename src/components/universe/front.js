@@ -16,7 +16,7 @@
 //   makeBattle, makeScene }) → null (the side has no war, or it isn't ready;
 //   `war` in place of the side's own, for the tests)
 //   or { update(dt, t, camera, camLocal, live) → { busy, hurt }, join(team),
-//   hit(from, to, damage), targets, inZone, near, joined, info, where(),
+//   hit(from, to, damage), targets, inZone, holdAt(x, y, z, f), near, joined, info, where(),
 //   goal(), win(team), dispose() }
 // Points are in `map`'s space.
 
@@ -25,7 +25,7 @@ import { createBattle, perSide } from './battle';
 import { createBattleScene } from './battleScene';
 import { contested, loadWar, newWar, owner, resolve, saveWar } from './war';
 import { warFor } from './wars';
-import { DEEP } from './deep';
+import { DEEP, easeOpen, gapAlong } from './deep';
 import { sharpen } from '../../lib/three/textures';
 
 export const ZONE = {
@@ -223,9 +223,17 @@ export function createFront(map, { side, war: given = null, models, small = fals
     get targets() {
       return battle && joined !== null && zone !== 'out' ? battle.targets : [];
     },
-    // in the fight (the pulse drive's held down, and the director waits)
+    // in the fight (the director waits)
     get inZone() {
       return zone === 'in';
+    },
+    // how far the pulse drive's held down at (x, y, z), going the way `f`
+    // points: all the way in the fight, and coming in to it eased down from
+    // where it's in sight (as the drive eases down coming up on a place, so
+    // the fight's edge isn't a wall), but not for a ship going past it or away
+    holdAt(x, y, z, f) {
+      const at = battle ? battleAt : sector().at;
+      return 1 - easeOpen(gapAlong(x, y, z, f, at, ZONE.in), ZONE.near - ZONE.in);
     },
     // within sight of it
     get near() {

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createSolids } from '../walker';
+import { ASSAULTS, sidesFor } from './assaults';
+import { REACH } from '../terrain';
+import { siteOf } from '../sites';
 import { RULES, SOLDIERS, TACTICS, battleView, canDeploy, chooseSide, coverFrom, deploy, endBattle, forwardOf, hitSoldier, newBattle, objectiveFor, sideFor, stepBattle, warSideOf, youDown } from './assault';
 
 // a small map: the attackers come from the west, two posts to take, then a last one
@@ -666,5 +669,30 @@ describe('the battle on the ground, in the galaxy’s war', () => {
     expect(warSideOf(MAP, 'defend')).toBe('rebel');
     expect(warSideOf(MAP, 'attack')).toBe('empire');
     expect(warSideOf(MAP, null)).toBeNull();
+  });
+});
+
+describe('the three worlds’ battles', () => {
+  it('every assault’s posts are on its site within reach, its start too, and its phases name its posts', () => {
+    for (const [id, m] of Object.entries(ASSAULTS)) {
+      const site = siteOf(id);
+      expect(site, id).toBeTruthy();
+      for (const p of m.posts) expect(Math.hypot(...p.at), `${id} ${p.id}`).toBeLessThan(REACH);
+      expect(Math.hypot(...m.start), `${id} start`).toBeLessThan(REACH);
+      const ids = new Set(m.posts.map((p) => p.id));
+      for (const ph of m.phases) for (const pid of ph.posts) expect(ids.has(pid), `${id} ${pid}`).toBe(true);
+      expect(m.posts.some((p) => p.fixed === 'attack')).toBe(true);
+      expect(m.posts.some((p) => p.fixed === 'defend')).toBe(true);
+    }
+  });
+  it('sidesFor gives the theatre’s two sides, the dark side attacking unless said', () => {
+    expect(sidesFor('clone').attack.id).toBe('separatists');
+    expect(sidesFor('clone').defend.id).toBe('republic');
+    expect(sidesFor('gcw').attack.id).toBe('empire');
+    expect(sidesFor('gcw', { attack: 'light' }).attack.id).toBe('rebels');
+    expect(sidesFor('remnant').defend.id).toBe('newrepublic');
+    expect(sidesFor('nope').attack.id).toBe('empire');
+    expect(ASSAULTS.coruscant.sides.attack.id).toBe('separatists');
+    expect(ASSAULTS.bespin.sides.attack.id).toBe('rebels');
   });
 });

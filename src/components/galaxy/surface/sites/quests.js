@@ -47,12 +47,6 @@ export const EXTRA = {
       { id: 'cave', name: 'The cave', giver: 'master', steps: [{ type: 'reach', at: [-70, -120], r: 10, text: 'Go into the cave' }, { type: 'shoot', tag: 'vision', n: 1, text: 'Face what’s inside', lines: [[null, '(A figure in black steps out of the dark.)']], spawn: { kind: 'vader', at: [-66, -114], hp: 4, leash: 14, roam: 2, tag: 'vision', hostile: { range: 14, chase: 1.8, melee: true, reach: 2.6, every: 1.6, damage: 14, delay: 1, parry: 0.75, guard: 3, blade: { color: '#ff3b3b' } } } }], done: [['Yoda', 'Your weapons… you will not need them.']] },
     ],
   },
-  yavin: {
-    life: [{ kind: 'rebel', id: 'dodonna', at: [10, -100], still: true, face: 3, name: 'General Dodonna', named: true, quest: 'remotes', says: ['The battle station will be in range in thirty minutes.'] }],
-    quests: [
-      { id: 'remotes', name: 'Blast shield down', giver: 'dodonna', intro: [['General Dodonna', 'Pilots warm up on the remotes by the lookout. Your turn.']], steps: [{ type: 'shoot', tag: 'remote', n: 6, text: 'Hit the training remotes', spawn: { kind: 'remote', n: 6, at: [-200, -120], spread: 8, roam: 6, speed: 2, hp: 1, tag: 'remote' } }, { type: 'reach', at: [0, -256], r: 5, text: 'Climb to the throne room for the ceremony' }], done: [[null, '(The doors open. The whole Rebellion is standing there, and they’re cheering for you.)']] },
-    ],
-  },
   naboo: {
     life: [
       { kind: 'gungan', id: 'tarpals', at: [250, -230], still: true, face: 2.5, name: 'Captain Tarpals', named: true, quest: 'grassfield', says: ['Wesa ready to do our-n part.'] },
@@ -61,16 +55,6 @@ export const EXTRA = {
     quests: [
       { id: 'grassfield', name: 'The Great Grass Plains', giver: 'tarpals', intro: [['Captain Tarpals', 'Da droids are coming! Hold da line!']], steps: [{ type: 'shoot', tag: 'droidarmy', n: 12, text: 'Hold the line against the droid army', spawn: [{ kind: 'battledroid', n: 10, at: [400, -380], spread: 25, roam: 10, hp: 1, tag: 'droidarmy', hostile: H(45, 2.6, 7) }, { kind: 'droideka', n: 2, at: [400, -380], spread: 12, roam: 5, hp: 2, tag: 'droidarmy', hostile: { ...H(40, 1.8, 7), shield: 3, burst: { n: 2, gap: 0.12 } } }] }], done: [['Captain Tarpals', 'Wesa free! Mesa tinks yousa savin’ da whole planet.']] },
       { id: 'kaadurace', name: 'Kaadu run', giver: 'herder', steps: [{ type: 'ride', kind: 'kaadu', text: 'Get on a kaadu' }, { type: 'race', ride: 'kaadu', gates: [[60, 60], [70, 120], [-40, 200], [-130, 290]], r: 12, time: 60, text: 'Race to the falls' }], done: [[null, '(The kaadu honks, very pleased with itself.)']] },
-    ],
-  },
-  coruscant: {
-    life: [
-      { kind: 'jedi', id: 'master', at: [10, 160], still: true, face: 3, name: 'A Jedi Master', quest: 'training', says: ['Stretch out with your feelings.'] },
-      { kind: 'villager', id: 'dex', at: [-142, -262], still: true, face: 2.4, name: 'Dexter Jettster', named: true, quest: 'dart', says: ['Hey, ol’ buddy!'] },
-    ],
-    quests: [
-      { id: 'training', name: 'Training remotes', giver: 'master', steps: [{ type: 'shoot', tag: 'remote', n: 8, text: 'Hit the training remotes', spawn: { kind: 'remote', n: 8, at: [0, 150], spread: 8, roam: 5, speed: 2.4, hp: 1, tag: 'remote' } }], done: [['A Jedi Master', 'Good. The Force is with you.']] },
-      { id: 'dart', name: 'The saberdart', giver: 'dex', intro: [['Dexter Jettster', 'A dart like that? Kamino. Bring me the one they found at the club and I’ll prove it.']], steps: [{ type: 'collect', item: 'dart', n: 1, spots: [[200, -290]], text: 'Find the saberdart at the club' }, { type: 'talk', actor: 'dex', text: 'Bring it to Dex' }], done: [['Dexter Jettster', 'Kamino saberdart. Those funny little cuts on the side give it away.']] },
     ],
   },
   kamino: {

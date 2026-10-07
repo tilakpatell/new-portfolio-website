@@ -16,6 +16,7 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree, hot } from '../../../../lib/stage3d';
+import { houseOn } from '../../../../lib/three/house';
 import { budget, device } from '../../../../lib/device';
 import { Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -2978,6 +2979,10 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
 
   // compile every stage's shaders now, so switching stages never stalls
   for (const k of VIGNETTES) V[k].group.visible = V[k].over.visible = true;
+  // the house look (lib/three/house), as in the rest of C-137: the shade one
+  // colour from each stage's sky light, under the Neutral exposure the
+  // stages were tuned under; their own fog kept
+  const house = houseOn({ renderer, scene, sun, hemi, keepExposure: true, look: { fog: false } });
   await stage.precompile();
   try {
     renderer.compile(over, camera);
@@ -3032,6 +3037,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     sc.updateProjectionMatrix();
     sky.dome.visible = Boolean(L.sky);
     if (L.sky) sky.setLook(L.sky);
+    house.follow();
     scene.background = L.sky ? null : background.set(L.bg ?? 0x101010);
     scene.fog.color.set(L.fog[0]);
     scene.fog.near = L.fog[1];

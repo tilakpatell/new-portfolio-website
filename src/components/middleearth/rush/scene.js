@@ -11,6 +11,7 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree, hot } from '../../../lib/stage3d';
+import { houseOn } from '../../../lib/three/house';
 import { pose } from '../mapFigures';
 import { makePerson } from '../shire/people';
 import { B, ball, createShireKit, parts } from '../shire/props';
@@ -337,6 +338,11 @@ export function createRushScene(canvas, level, { onLost } = {}) {
   };
 
   let last = 0;
+  // the house look (lib/three/house), as in Middle-earth's towns: the house
+  // tone mapper, the shade one colour from the kitchen's sky light; its own fog kept
+  const house = houseOn({ renderer, scene, sun: sun, hemi, look: { fog: false } });
+  let houseFrames = 0;
+
   const render = (view, ms = 16) => {
     const dt = Math.min(0.05, ms / 1000);
     const { s, players, me, t } = view;
@@ -505,6 +511,8 @@ export function createRushScene(canvas, level, { onLost } = {}) {
       sp.material.opacity = u.opacity * k;
       sp.scale.setScalar(u.size * (1.6 - k * 0.6));
     }
+    // (what's come in since, taken on now and then)
+    house.follow({ adopt: houseFrames++ % 60 === 0 });
     renderer.info.reset();
     stage.render(ms);
   };

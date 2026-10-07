@@ -11,7 +11,9 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = ROOT / "scripts" / "voices"
-OUT = ROOT / "public" / "audio" / "voiced"
+# VOICES_OUT: another folder for the mp3s and the manifest, so the nightly health run
+# (scripts/ai-e2e/real/health.mjs) never writes into the site's own
+OUT = Path(os.environ.get("VOICES_OUT", ROOT / "public" / "audio" / "voiced"))
 
 
 def unboxed(path):
@@ -37,6 +39,21 @@ VOICED = ["rick", "morty", "luke", "han", "walt", "jesse", "hank"]
 WORLD_VOICED = ["gandalf", "aragorn", "sam", "frodo", "galadriel", "boromir", "pippin", "gimli", "saruman", "gollum", "elrond", "merry", "butterbur", "theoden", "legolas", "arwen", "bilbo", "hama", "haldir", "denethor", "grima", "celeborn", "michael", "jim", "erin"]
 
 _ffmpeg = None
+
+
+def ears():
+    """The judge's ears: judge.py's models, or with VOICES_JUDGE=fake the contract tests' stand-in
+    (scripts/ai-e2e/fakes/voices_judge.py: no models, no torch), which hears what the fake worker said."""
+    if os.environ.get("VOICES_JUDGE") == "fake":
+        fakes = str(ROOT / "scripts" / "ai-e2e" / "fakes")
+        if fakes not in sys.path:
+            sys.path.insert(0, fakes)
+        import voices_judge
+
+        return voices_judge
+    import judge
+
+    return judge
 
 
 def ffmpeg(given=None):

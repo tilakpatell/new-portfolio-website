@@ -18,6 +18,7 @@ import { budget, device } from '../../../lib/device';
 import { antiTile } from '../../../lib/three/surface';
 import { createGhosts } from '../../middleearth/towns/ghosts';
 import { groundWorld } from '../../../lib/three/groundwork';
+import { houseOn } from '../../../lib/three/house';
 import { EYE, GADDI, INSTRUMENTS, LAMPS, PARAPET, PAVILION, POOL, RUG, TERRACE } from './layout';
 import { sharpen } from '../../../lib/three/textures';
 
@@ -201,6 +202,10 @@ export async function createMusicWorld(el, { onLost } = {}) {
   sun.position.copy(SUN_DIR).multiplyScalar(60);
   sun.target.position.set(0, 0, -3);
   scene.add(sun, sun.target);
+  // the house look (lib/three/house): one shadow colour from the dusk's sky
+  // light on everything, fog the colour of the dusk sky, the house tone mapper
+  const house = houseOn({ renderer, scene, sun, hemi });
+  house.sky({ low: SKY.horizon, high: SKY.mid, below: 1, sunDir: SUN_DIR });
   if (renderer.shadowMap.enabled) {
     sun.castShadow = true;
     sun.shadow.mapSize.set(fit.shadowMap, fit.shadowMap);
@@ -601,6 +606,7 @@ export async function createMusicWorld(el, { onLost } = {}) {
       height: groundAt,
       tier,
     });
+    house.follow({ adopt: true });
     await stage.precompile();
     if (!stage.disposed) ground.bake();
     return list.filter(([, m]) => m).map(([n]) => n);
@@ -714,6 +720,7 @@ export async function createMusicWorld(el, { onLost } = {}) {
   };
 
   // build the shaders of what's there now, before the first frame
+  house.follow({ adopt: true });
   await stage.precompile();
 
   return {

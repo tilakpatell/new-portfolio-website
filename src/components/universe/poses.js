@@ -26,6 +26,10 @@ export const POSES = {
   rickmorty: { planet: 'rickmorty', dist: 2.4, off: 0 },
   gaming: { planet: 'gaming', dist: 2.4, off: 0 },
   caribbean: { planet: 'caribbean', dist: 2.4, off: 0 },
+  // and the three whose maps were rebaked for parking distance (the near maps, nearMaps.js)
+  middleearth: { planet: 'middleearth', dist: 2.4, off: 0 },
+  breakingbad: { planet: 'breakingbad', dist: 2.4, off: 0 },
+  office: { planet: 'office', dist: 2.4, off: 0 },
   // in the belt, along it, rocks round the ship
   belt: { ring: (BELT.inner + BELT.outer) / 2, angle: 2.2, back: 1.6, rise: 0.35 },
   // as the README's hero: the Maw off to the right, outside its pull
