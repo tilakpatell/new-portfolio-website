@@ -1935,20 +1935,6 @@
       "galaxy"
     ]
   },
-  "surface-benhut": {
-    "title": "Poor Desert House",
-    "author": "Fjordreig",
-    "authorUrl": "https://sketchfab.com/Fjordreig",
-    "license": "CC-BY-NC-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
-    "source": "https://sketchfab.com/3d-models/poor-desert-house-64310fbd9b1640cdbf04f5f12ad58ba2",
-    "where": "galaxy-surface",
-    "as": "Ben Kenobi’s hut",
-    "file": "/models/galaxy/surface/benhut.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "surface-bevelcrate": {
     "title": "Star Wars Beveled Crate S",
     "author": "tegnemaskin",
@@ -3254,20 +3240,6 @@
     "where": "galaxy-surface",
     "as": "the market stalls",
     "file": "/models/galaxy/surface/stall.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "surface-stilthut": {
-    "title": "Thatched Hut on Stilts",
-    "author": "rajoelinirinanear",
-    "authorUrl": "https://sketchfab.com/rajoelinirinanear",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/thatched-hut-on-stilts-b73d5d61395d45a2bd65768223fb28de",
-    "where": "galaxy-surface",
-    "as": "the krill farmers’ huts",
-    "file": "/models/galaxy/surface/stilthut.glb",
     "also": [
       "galaxy"
     ]

@@ -670,7 +670,8 @@ export const SITES = {
           falcon: [['han', 'A tactical map. Nice. I never had one of those. Didn’t need one.']],
           cruiser: [['morty', 'That’s Yoda’s table, Rick!'], ['rick', 'Nine hundred years old and he fights a war off a hologram, Morty. Delegation.']],
         },
-        things: [{ kind: 'commandpost', at: [0, 0], yaw: 3.6 }],
+        // (the holotable 4 m in front of the hull)
+        things: [{ kind: 'commandpost', at: [0, 0], yaw: 3.6 }, { kind: 'holotable', at: [-3.5, -7.2], yaw: 3.6 }],
       },
       {
         id: 'foundry',
@@ -799,8 +800,8 @@ export const SITES = {
       { kind: 'dwarfspider', n: 2, path: [[40, 50], [70, 40], [84, 60], [60, 76]], speed: 0.9, r: 1.0, name: 'Dwarf spider droid', says: ['(It clicks. Its cannon finds you, then loses interest.)'] },
       { kind: 'battledroid', n: 4, at: [56, -20], spread: 10, roam: 8, speed: 1.2, name: 'Battle droid', says: ['Roger, roger.', 'The spider droid is… down. Uh-oh.', 'Fall back! Fall back!'] },
       { kind: 'clone', n: 10, at: [256, 176], spread: 36, roam: 14, speed: 1.6, name: 'Clone trooper', says: ['Move up! Move up!', 'Gunship coming in, keep your heads down!', 'Sir, the droids are pulling back to the core ships.', 'Watch the spider droids!'] },
-      { kind: 'clone', n: 3, at: [120, 326], spread: 6, roam: 5, speed: 1, name: 'Clone commander', says: ['Master Yoda, all forward positions are advancing.', 'Target the core ships, sir?', 'Concentrate all fire on the nearest starship.'] },
-      { kind: 'yoda', n: 1, id: 'yoda', quest: 'coreships', at: [116, 334], still: true, r: 0.3, name: 'Yoda', says: ['Concentrate all fire on the nearest starship.', 'Around the survivors a perimeter create.', 'Begun, the Clone War has.', 'Victory? Victory, you say? Not victory.'] },
+      { kind: 'clone', n: 3, at: [117.8, 319.9], spread: 4, roam: 3, speed: 1, name: 'Clone commander', says: ['Master Yoda, all forward positions are advancing.', 'Target the core ships, sir?', 'Concentrate all fire on the nearest starship.'] },
+      { kind: 'yoda', n: 1, id: 'yoda', quest: 'coreships', at: [113.6, 322.6], still: true, r: 0.3, name: 'Yoda', says: ['Concentrate all fire on the nearest starship.', 'Around the survivors a perimeter create.', 'Begun, the Clone War has.', 'Victory? Victory, you say? Not victory.'] },
       { kind: 'battledroid', n: 10, path: [[420, -60], [380, -10], [330, 30], [380, -100], [440, -140]], speed: 1.4, name: 'Battle droid', says: ['Roger, roger.', 'Retreat! Retreat! To the core ships!', 'Uh-oh.'] },
       { kind: 'superdroid', n: 4, at: [430, -110], spread: 20, roam: 12, speed: 1.0, name: 'Super battle droid', says: ['(It raises a wrist blaster and stomps past.)', 'Halt. Identify.'] },
       { kind: 'atte', n: 2, path: [[200, 260], [340, 120], [300, 40], [160, 180]], speed: 2.2, r: 5, solid: false },

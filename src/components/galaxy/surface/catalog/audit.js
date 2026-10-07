@@ -31,4 +31,21 @@ export const MODELS = {
   statue: { made: 'meshy', as: 'the Jedi statues', metres: 28, along: 'y', styles: ['jedi'] },
   // Mustafar: Vader's castle, the two black prongs on their buttressed base
   fortress: { made: 'meshy', as: "Vader's castle", metres: 120, along: 'y', hero: true, lod: true, detail: 'metal' },
+  // Geonosis: the forward command center, the long armoured hull in red and
+  // off-white with its sensor mast (its holotable is built, in front)
+  commandpost: { made: 'meshy', as: 'the forward command center', metres: 17, along: 'x', detail: 'metal' },
+  // Bespin: a tower of Cloud City, stepped white drums with rims and slot
+  // windows (the plaza's and the skyline's)
+  cloudcity: { made: 'meshy', as: 'Cloud City’s towers', metres: 60, along: 'y', detail: 'paint' },
+  // Nevarro: the domes of Nevarro City, a pale stone drum and dome with a cap
+  nevarrodome: { made: 'meshy', as: 'the domes of Nevarro City', metres: 11, along: 'x', detail: 'stone' },
+  // Lothal: the old Imperial tower Sabine Wren lives in, the stone shaft,
+  // the saucer cabin and its antenna arms (a kind of its own: Yavin keeps
+  // its lattice lookout)
+  lothtower: { made: 'meshy', as: 'the old Imperial tower', metres: 40, along: 'y', hero: true, detail: 'stone' },
+  // Sorgan: the krill farmers' round huts, plank and reed under a slatted
+  // roof that rises to a spire
+  stilthut: { made: 'meshy', as: 'the krill farmers’ huts', metres: 9, along: 'y', detail: 'wood' },
+  // Tatooine: Ben Kenobi's hut, the long low battered block with its dome
+  benhut: { made: 'meshy', as: 'Ben Kenobi’s hut', metres: 9, along: 'x', detail: 'adobe' },
 };

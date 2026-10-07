@@ -1687,6 +1687,28 @@ export const PROPS = {
     };
   },
 
+  // the command post's holotable on its own, the battle turning over it in
+  // blue light (in front of the audit lane's model of the command post,
+  // which has no table)
+  holotable(k) {
+    const parts = [
+      part(cyl(1.8, 2.0, 1.1, 18), { color: '#5a5c58', to: 'metal' }),
+      part(cyl(1.7, 1.7, 0.06, 18), { at: [0, 1.12, 0], color: lit('#6ac8ff', 2), to: 'glow' }),
+    ];
+    const object = k.build(parts, { name: 'holotable' });
+    const holo = new THREE.Mesh(k.own(new THREE.SphereGeometry(1.4, 14, 8, 0, PI * 2, 0, PI / 2)), k.own(new THREE.MeshBasicMaterial({ color: lit('#6ac8ff', 1.6), wireframe: true, transparent: true, opacity: 0.6, toneMapped: false })));
+    holo.position.set(0, 1.4, 0);
+    holo.scale.set(1, 0.6, 1);
+    object.add(holo);
+    return {
+      object,
+      solids: [{ circle: [0, 0, 2] }],
+      update(t) {
+        holo.rotation.y = t * 0.4;
+      },
+    };
+  },
+
   // Geonosis's ring, a pale band across the sky from one horizon to the
   // other (far off, past the fog)
   skyring(k, { az = 0.6, el = 0.62, width = 0.05, dist = 9000 } = {}) {

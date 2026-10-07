@@ -31,8 +31,6 @@ export const MODELS = {
   // the krayt dragon's bones, half in the sand (a museum's blue whale
   // skeleton: the long spine, the ribs, the great jaw)
   krayt: { uid: '018b2c21e4534f34aa9deb55141407b3', as: 'the krayt dragon’s bones', metres: 30, along: 'max', yaw: 0, tris: 6200, tex: 1024 },
-  // Ben Kenobi's hut: a domed hut of sand-scoured plaster, its door of planks
-  benhut: { uid: '64310fbd9b1640cdbf04f5f12ad58ba2', as: 'Ben Kenobi’s hut', metres: 7.5, along: 'max', yaw: 0, tris: 2100, tex: 1024, detail: 'adobe' },
   // a Jawa sandcrawler (flat-coloured as it comes: the metal scan laid over it)
   sandcrawler: { uid: 'af4b4facdc504e5fac8a96abf4bb770d', lod: true, as: 'the Jawa sandcrawler', metres: 36, along: 'max', yaw: -Math.PI / 2, tris: 30000, tex: 1024, detail: 'metal' },
   // the pieces of a Tatooine town (chuckcg's kitbash, each on its own): the

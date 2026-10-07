@@ -110,26 +110,31 @@
   "stall": {
     "lift": [
       "01a1189e-0351-7228-bfae-38c2f0a6211e"
-    ]
+    ],
+    "model": "01a1189f-7c29-7124-af98-d627cb8f2d18"
   },
   "wookieehouse": {
     "lift": [
       "01a1189e-377f-7002-a22b-d71da543db4c"
-    ]
+    ],
+    "model": "01a1189f-8192-760f-acfa-08ba47d771dd"
   },
   "droidplatform": {
     "lift": [
       "01a1189e-9549-70b9-9e1e-d28d6cb6a4d2"
-    ]
+    ],
+    "model": "01a1189f-8591-7514-aecc-70111e7e5eb1"
   },
   "tent": {
     "lift": [
       "01a1189e-de36-751e-9a16-06c21c7c1b47"
-    ]
+    ],
+    "model": "01a1189f-8924-7540-8aca-d2d6b5ca7708"
   },
   "mosspire": {
     "lift": [
       "01a1189f-1120-7742-96d2-2b8c3b136da3"
-    ]
+    ],
+    "model": "01a1189f-8c66-77c8-ad83-2b1edebc27b1"
   }
 }
