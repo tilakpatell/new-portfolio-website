@@ -163,7 +163,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 **Files:**
 - Create: `src/components/worlds/MyWorlds.jsx`, `myworlds.css`
 - Modify: `src/pages/Worlds.jsx` (1.5's page, or create it here if Phase 1 has not merged: the page is two lists, this one first)
-- Test: `src/components/worlds/MyWorlds.test.jsx`: lists registry rows with name, kind, played; New world → seed input (blank: random) and Create goes to `worldUrl`; Rename, Delete (confirm), Export (downloads JSON `tp-world-<id>.json`), Import (file input).
+- Test: `src/components/worlds/MyWorlds.test.jsx`: lists registry rows with name, kind, played; New world → seed input (blank: random) and Create goes to `worldUrl`; Rename, Delete (confirm), Export (downloads JSON `tp-world-<id>.json`, the id's `:` made `-`: `tp-world-minecraft-42.json`), Import (file input).
 
 - [ ] **Steps 1-4:** tests, FAIL, implement, PASS; smoke `/worlds`.
 - [ ] **Step 5: Commit** `feat(worlds): my worlds`. **Step 6:** PR `claude/infinite-worlds-p2`.
