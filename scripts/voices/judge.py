@@ -129,6 +129,47 @@ def naturalness(wav):
 
 
 @lru_cache(None)
+def _feeling():
+    # audeering's wav2vec2 fine-tuned on MSP-Podcast for arousal, dominance and valence (the model
+    # card's own head: mean of the last hidden states through a tanh layer)
+    from torch import nn
+    from transformers import Wav2Vec2FeatureExtractor, Wav2Vec2Model, Wav2Vec2PreTrainedModel
+
+    class Head(nn.Module):
+        def __init__(self, config):
+            super().__init__()
+            self.dense = nn.Linear(config.hidden_size, config.hidden_size)
+            self.dropout = nn.Dropout(config.final_dropout)
+            self.out_proj = nn.Linear(config.hidden_size, config.num_labels)
+
+        def forward(self, x):
+            return self.out_proj(self.dropout(torch.tanh(self.dense(self.dropout(x)))))
+
+    class Feeling(Wav2Vec2PreTrainedModel):
+        def __init__(self, config):
+            super().__init__(config)
+            self.wav2vec2 = Wav2Vec2Model(config)
+            self.classifier = Head(config)
+            self.post_init()
+
+        def forward(self, x):
+            return self.classifier(self.wav2vec2(x)[0].mean(dim=1))
+
+    name = "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim"
+    return Wav2Vec2FeatureExtractor.from_pretrained(name), Feeling.from_pretrained(name).to(DEVICE).eval()
+
+
+def feeling(wav):
+    """How the speech feels: (arousal, dominance, valence), each about 0 to 1: calm to agitated,
+    meek to forceful, unhappy to happy (audeering's MSP-Podcast model)."""
+    extract, model = _feeling()
+    x = extract(wav, sampling_rate=SR, return_tensors="pt").input_values.to(DEVICE)
+    with torch.inference_mode():
+        a, d, v = model(x)[0].float().cpu().tolist()
+    return round(a, 3), round(d, 3), round(v, 3)
+
+
+@lru_cache(None)
 def _vad():
     from silero_vad import load_silero_vad
 

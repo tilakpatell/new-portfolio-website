@@ -14,13 +14,14 @@ from .worker import wsl_path
 
 HERE = Path(__file__).resolve().parent
 # engine: the venv under ~/.venvs it runs in
-VENVS = {"voxcpm2": "voxcpm", "qwen": "qwen", "f5": "voices"}
+VENVS = {"voxcpm2": "voxcpm", "qwen": "qwen", "f5": "voices", "qwenft": "qwen"}
 # engine: (WSL distro, its checkout there, with its venv in .venv), for the ones only Linux runs;
 # $VOICES_WSL_<ENGINE> as "distro:path" puts it elsewhere
-WSL = {"fish": ("Ubuntu-24.04", "~/fish-speech")}
+WSL = {"fish": ("Ubuntu-24.04", "~/fish-speech"), "auk": ("Ubuntu-24.04", "~/auk"), "dots": ("Ubuntu-24.04", "~/dots-tts"), "longcat": ("Ubuntu-24.04", "~/longcat")}
 # the order to fall back in when a voice's engine isn't set up here: the bake-off's order on this
 # project (generate.py --bakeoff), Qwen3 best on every voice by the judge's score
-PREFERENCE = ["qwen", "fish", "voxcpm2", "f5"]
+PREFERENCE = ["qwen", "auk", "longcat", "dots", "fish", "voxcpm2", "f5"]
+# and the ones a voice only has once it's been made for them (qwenft: finetune.py), never fallen back on
 ENGINES = list(VENVS) + list(WSL)
 
 
@@ -59,7 +60,9 @@ def start(name, jobs, log):
     elif name in WSL:
         distro, where = wsl(name)
         script, jobs_there = shlex.quote(wsl_path(str(HERE / f"{name}.py"))), shlex.quote(wsl_path(str(jobs)))
-        cmd = ["wsl.exe", "-d", distro, "-e", "bash", "-lc", f"cd {where} && PYTHONIOENCODING=utf-8 PYTHONWARNINGS=ignore exec .venv/bin/python {script} {jobs_there}"]
+        # the engine's own settings (AUK_OFFLOAD=1, FISH_COMPILE=1, ...) don't cross into WSL by themselves
+        own = " ".join(f"{k}={shlex.quote(v)}" for k, v in os.environ.items() if k.startswith(f"{name.upper()}_"))
+        cmd = ["wsl.exe", "-d", distro, "-e", "bash", "-lc", f"cd {where} && {own} PYTHONIOENCODING=utf-8 PYTHONWARNINGS=ignore exec .venv/bin/python {script} {jobs_there}"]
     else:
         cmd = [python(name), str(HERE / f"{name}.py"), str(jobs)]
     return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=open(log, "a", encoding="utf-8"), text=True, encoding="utf-8", errors="replace", env=env, cwd=str(HERE))

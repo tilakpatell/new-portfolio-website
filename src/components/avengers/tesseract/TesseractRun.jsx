@@ -8,8 +8,10 @@ import { use3D } from '../../../lib/gpu';
 import { local, prefersReducedMotion, useFrameLoop } from '../../../lib/hooks';
 import { audioContext } from '../../../lib/audio';
 import { capturePointer } from '../../../lib/pointer';
+import { useSays } from '../hq/useSays';
 import { CASE, LEGS, PADS, STEP, caseHeight, groundAt, inHangar, newGame, setInput, startLeg, stepGame, windAt } from './rules';
 import { createHum } from './hum';
+import { BRIEF, SAYS, SPOKEN } from './lines';
 import './tesseract.css';
 import '../../../styles/lazy/avengers.css';
 
@@ -32,15 +34,9 @@ const fine = typeof window !== 'undefined' ? window.matchMedia?.('(hover: hover)
 const coarse = typeof window !== 'undefined' ? window.matchMedia?.('(pointer: coarse)') : null;
 const calm = typeof window !== 'undefined' && prefersReducedMotion();
 
-// F.R.I.D.A.Y., as each leg starts.
-const BRIEF = [
-  () => (fine?.matches ? 'I’m holding the hover until you take her. ↑ to lift the case, ← → to lean. Set it down on the pad, gently.' : 'I’m holding the hover until you take her. Hold THRUST to lift the case, lean with the arrows. Set it down on the pad, gently.'),
-  () => 'Trees all the way. Climb first: the case hangs nine metres under you.',
-  () => 'A headwind, gusting. Lean into it, and let the case stream back.',
-  () => 'The gantry. About five metres between its girder and the case’s clearance. Keep the tail down.',
-  () => 'The ridge. The wind pours over it and down the far side. Height first.',
-  () => 'The storm’s on us. Under the hangar’s roof, and down on the pad inside.',
-];
+// what F.R.I.D.A.Y. says (./lines.js) in her own voice, where it's been made
+// (lib/voiced.js): the lines that are the same every time
+const VOICED = new Set(SPOKEN);
 const INTO = { ground: 'the ground', tree: 'the trees', gantry: 'the gantry', hangar: 'the hangar', case: 'the case' };
 function crashLine(c) {
   if (!c) return '';
@@ -83,6 +79,7 @@ export default function TesseractRun({ fallback, onPortal }) {
   const [ui, setUi] = useState({ phase: 'ready', fuel: 1, t: 0, wind: 0, gust: 0, message: '', result: null, crash: null, won: false, stone: false });
   const [paused, setPaused] = useState(false);
   const playing = ui.phase === 'fly';
+  useSays('friday', ui.message, VOICED);
   const onPortalRef = useRef(onPortal);
   onPortalRef.current = onPortal;
 
@@ -112,7 +109,7 @@ export default function TesseractRun({ fallback, onPortal }) {
       setPaused(false);
       stage.view.current?.fx(ev, game.current);
       play('beeps');
-      sync({ message: BRIEF[n](), result: null, crash: null, won: false });
+      sync({ message: BRIEF[n](fine?.matches), result: null, crash: null, won: false });
       focus();
     },
     [focus, leg, stage.view, sync],
@@ -129,7 +126,7 @@ export default function TesseractRun({ fallback, onPortal }) {
           case 'controls':
             if (e.idle) {
               play('warn');
-              important = { message: 'Your controls now. Thrust, or she drops.' };
+              important = { message: SAYS.controls };
             } else important = { message: '' };
             break;
           case 'taut':
@@ -153,10 +150,10 @@ export default function TesseractRun({ fallback, onPortal }) {
             break;
           case 'fuel-low':
             play('alarm');
-            important = { message: 'Fuel’s low. Get it down.' };
+            important = { message: SAYS.fuel };
             break;
           case 'settling':
-            important = { message: 'Steady…' };
+            important = { message: SAYS.settling };
             break;
           case 'crash':
             play(e.what === 'case' ? 'shatter' : 'boom');

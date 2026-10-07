@@ -148,7 +148,8 @@ def take_score(wer, sim, utmos, wps):
     that isn't the speaker's (similarity to the reference under 0.3)."""
     if wer > 0.34 or not 0.8 <= wps <= 6.0 or sim < 0.3:
         return None
-    return sim + 0.15 * (utmos - 3) - 1.5 * wer
+    # sounding like them counts most: a natural take that isn't quite them is the wrong take
+    return 1.5 * sim + 0.1 * (utmos - 3) - 1.5 * wer
 
 
 def centre(prints):
@@ -230,3 +231,52 @@ def choose(segments, longest=LONGEST, enough=7.0, most=3):
                 if v > value:
                     best, value = list(group), v
     return sorted(best, key=lambda s: s["start"])
+
+
+# How each direction a line can be given (delivery.json) feels, as how far from the speaker's own
+# usual it sits in arousal, dominance and valence (judge.feeling), in spreads of theirs: a
+# shout is far more aroused and forceful than they usually are, a sad line quieter and unhappier.
+FEELINGS = {
+    "neutral": (0.0, 0.0, 0.0),
+    "warm": (-0.5, -0.2, 1.0),
+    "cheerful": (0.6, 0.2, 1.2),
+    "excited": (1.4, 0.6, 1.0),
+    "amused": (0.3, 0.2, 0.9),
+    "sarcastic": (0.0, 0.6, -0.3),
+    "smug": (-0.2, 0.9, 0.4),
+    "irritated": (0.7, 0.8, -0.9),
+    "angry": (1.3, 1.2, -1.3),
+    "urgent": (1.3, 0.8, -0.3),
+    "shouting": (1.8, 1.3, -0.3),
+    "scared": (1.2, -1.2, -1.2),
+    "nervous": (0.5, -1.0, -0.6),
+    "sad": (-0.9, -0.8, -1.3),
+    "weary": (-1.0, -0.5, -0.6),
+    "disgusted": (0.4, 0.6, -1.3),
+    "surprised": (1.2, 0.0, 0.2),
+    "whispered": (-1.5, -0.8, 0.0),
+    "commanding": (0.6, 1.5, -0.2),
+    "pleading": (0.6, -1.0, -0.8),
+}
+# how far each intensity (1 mild, 2 clear, 3 strong) takes it
+STRENGTH = {1: 0.6, 2: 1.0, 3: 1.5}
+
+
+def feel_target(emotion, intensity, mean, spread):
+    """The (arousal, dominance, valence) a line given `emotion` at `intensity` should come out
+    with, for a speaker who usually sounds `mean`, give or take `spread`; None for a direction
+    that isn't one of FEELINGS."""
+    if emotion not in FEELINGS:
+        return None
+    k = STRENGTH.get(int(intensity), 1.0)
+    return tuple(min(1.0, max(0.0, m + k * z * s)) for m, z, s in zip(mean, FEELINGS[emotion], spread))
+
+
+def feel_distance(avd, target, spread):
+    """How far a take's feeling is from where its line should be, in the speaker's spreads."""
+    return float(np.sqrt(sum(((a - t) / s) ** 2 for a, t, s in zip(avd, target, spread))))
+
+
+def closest_feeling(rows, target, spread):
+    """The row (each with its "avd") whose feeling is nearest `target`."""
+    return min(rows, key=lambda r: feel_distance(r["avd"], target, spread))

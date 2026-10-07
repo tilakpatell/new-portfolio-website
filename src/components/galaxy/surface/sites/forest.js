@@ -697,7 +697,7 @@ export const SITES = {
     life: [
       { kind: 'yoda', n: 1, at: [-86, 68], roam: 6, speed: 0.4, name: 'Yoda', says: ['Do. Or do not. There is no try.', 'Size matters not. Judge me by my size, do you?', 'Mudhole? Slimy? My home this is!', 'Away put your weapon. I mean you no harm.', 'Wars not make one great.', 'Luminous beings are we, not this crude matter.'] },
       { kind: 'droid', n: 1, at: [-22, -42], roam: 4, speed: 0.5, name: 'R2-D2', says: ['(An indignant whistle: he was nearly eaten, you know.)', '(He beeps, and shakes off a strand of swamp weed.)', '(A worried warble at the mist.)'] },
-      { kind: 'ghostben', n: 1, at: [96, -52], still: true, face: 2.6, name: 'Obi-Wan Kenobi', says: ['You will go to the Dagobah system. There you will learn from Yoda, the Jedi Master who instructed me.', 'If you choose the quick and easy path, as Vader did, you will become an agent of evil.', 'That boy is our last hope.', 'Use the Force.'] },
+      { kind: 'ghostben', n: 1, at: [96, -52], still: true, face: 2.6, name: 'Obi-Wan Kenobi', voice: 'ben', says: ['You will go to the Dagobah system. There you will learn from Yoda, the Jedi Master who instructed me.', 'If you choose the quick and easy path, as Vader did, you will become an agent of evil.', 'That boy is our last hope.', 'Use the Force.'] },
       { kind: 'bogwing', n: 8, at: [0, 0], spread: 160, roam: 40, speed: 3, y: 3.5, solid: false },
     ],
     rides: [],

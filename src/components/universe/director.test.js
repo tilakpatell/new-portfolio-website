@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EVENTS, INTENSITY, PACE, canHave, createDirector } from './director';
+import { EVENTS, INTENSITY, PACE, canHave, createDirector, withWhere } from './director';
 import { SIDES } from './sides';
 
 // a seeded random, so a run is the same every time
@@ -56,6 +56,22 @@ describe('the director', () => {
     expect(canHave({ has: () => false }, EVENTS.escort)).toBe(false);
     expect(canHave({ has: () => false }, EVENTS.minefield)).toBe(true);
     for (const side of Object.values(SIDES)) expect(canHave(side, EVENTS.escort), side.id).toBe(side.has('pirates'));
+  });
+
+  it('brings an eclipse only where there is a sun to cross: not at a station, not in the gate', () => {
+    for (const side of Object.values(SIDES)) {
+      // (a side alone has no sun: it's where you are that has one)
+      expect(canHave(side, EVENTS.eclipse), side.id).toBe(false);
+      expect(canHave(withWhere(side, { sun: true }), EVENTS.eclipse), side.id).toBe(true);
+      expect(canHave(withWhere(side, { sun: true, station: true }), EVENTS.eclipse), side.id).toBe(false);
+      expect(canHave(withWhere(side, { sun: true, gate: true }), EVENTS.eclipse), side.id).toBe(false);
+      expect(canHave(withWhere(side, { sun: false }), EVENTS.eclipse), side.id).toBe(false);
+      // (and everything else as the side has it)
+      expect(canHave(withWhere(side, { sun: true }), EVENTS.escort)).toBe(canHave(side, EVENTS.escort));
+    }
+    expect(withWhere(null, { sun: true })).toBeNull();
+    const got = run(createDirector({ rand: seeded(11) }), 6000, { side: withWhere(SIDES.starwars, { sun: true }) });
+    expect(got.some((g) => g.e === 'eclipse')).toBe(true);
   });
 
   it('holds off while something is going on, and comes sooner and angrier with heat', () => {

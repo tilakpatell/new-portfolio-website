@@ -4,8 +4,9 @@
 // page error outside the noise every software renderer makes. The PNGs go
 // to render/out/ for a person, or the nightly's artifacts, to look at.
 //
-// AI_RENDER_ALL=1 (the nightly) renders every GLB under public/models/,
-// in the plain look and the toon look the galaxy draws figures with.
+// AI_RENDER_ALL=1 (the nightly) renders every GLB under public/models/ in
+// the plain look, and the galaxy's again in the toon look it draws its
+// figures with (every model in both looks took the whole night).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -23,7 +24,7 @@ const H = 240;
 const OUT = join(REPO, 'scripts', 'ai-e2e', 'render', 'out');
 const ALL = process.env.AI_RENDER_ALL === '1';
 const MODELS = tracked(REPO, ALL ? 'public/models' : 'public/models/gen3d').filter((f) => f.endsWith('.glb'));
-const LOOKS = ALL ? ['', 'toon'] : [''];
+const looks = (file) => (ALL && file.startsWith('public/models/galaxy/') ? ['', 'toon'] : ['']);
 const CHROME = findChromium();
 // on CI the job installs Chromium, so a missing one is a failure there, never a quiet skip
 const why = !CHROME && !process.env.CI ? 'no Chromium (set CHROME, or npx playwright install chromium)' : null;
@@ -33,6 +34,16 @@ describe.skipIf(why)(`every model draws (a browser, up to 60 s each)${why ? `: s
   let browser;
   let shoot;
   const results = [];
+  // written after every model, so a night cut off by its time limit still says what it saw
+  const save = () => {
+    const json = `${JSON.stringify({ tier: 'render', coverage: COVERAGE, models: results }, null, 1)}\n`;
+    writeFileSync(join(OUT, 'results.json'), json);
+    // and where the nightly report reads every tier's results
+    if (process.env.AI_RESULTS) {
+      mkdirSync(process.env.AI_RESULTS, { recursive: true });
+      writeFileSync(join(process.env.AI_RESULTS, 'render.json'), json);
+    }
+  };
   beforeAll(async () => {
     server = await serve(REPO);
     process.env.BASE = server.base;
@@ -44,17 +55,23 @@ describe.skipIf(why)(`every model draws (a browser, up to 60 s each)${why ? `: s
   afterAll(async () => {
     await browser?.close();
     server?.stop();
-    writeFileSync(join(OUT, 'results.json'), `${JSON.stringify({ tier: 'render', coverage: COVERAGE, models: results }, null, 1)}\n`);
+    save();
   });
 
-  const cases = MODELS.flatMap((file) => LOOKS.map((look) => [`${file}${look ? ` (${look})` : ''}`, file, look]));
+  const cases = MODELS.flatMap((file) => looks(file).map((look) => [`${file}${look ? ` (${look})` : ''}`, file, look]));
   it.each(cases)('%s', async (_, file, look) => {
-    const [png] = await shoot(join(REPO, file), ['three'], { w: W, h: H, look: look || undefined, browser });
+    const [png] = await shoot(join(REPO, file), ['three'], { w: W, h: H, look: look || undefined, browser }).catch((e) => {
+      // a model that never loads is a finding too, written down like the rest
+      results.push({ file, look: look || 'plain', coverage: 0, errors: [String(e.message ?? e).slice(0, 300)] });
+      save();
+      throw e;
+    });
     const name = relative('public/models', file).replace(/[\\/]/g, '__').replace(/\.glb$/, look ? `.${look}.png` : '.png');
     writeFileSync(join(OUT, name), png);
     const share = await coverage(png);
     const errors = shoot.last.errors.filter((e) => !noisy(e));
     results.push({ file, look: look || 'plain', coverage: share, errors });
+    save();
     expect(errors, `${file}: errors`).toEqual([]);
     expect(share, `${file}: ${(share * 100).toFixed(1)}% of the frame drawn`).toBeGreaterThanOrEqual(COVERAGE);
   });

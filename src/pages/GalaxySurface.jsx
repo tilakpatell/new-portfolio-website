@@ -14,6 +14,8 @@ import { galaxyCrew } from '../components/galaxy/lines';
 import { LANDABLE, siteOf } from '../components/galaxy/surface/sites';
 import { surfaceUrl } from '../components/galaxy/surface/catalog';
 import { surfaceCrew } from '../components/galaxy/surface/lines';
+import { voiceFor } from '../components/galaxy/surface/voicelines';
+import { sayVoiced, stopVoiced } from '../lib/voiced';
 import SurfaceView from '../components/galaxy/surface/SurfaceView';
 import surfaceModule from '../components/galaxy/surface/module';
 import galaxyModule from '../components/galaxy/module';
@@ -134,7 +136,7 @@ export default function GalaxySurface() {
   const [phase, setPhase] = useState('landing');
   const [prompt, setPrompt] = useState(null);
   const [here, setHere] = useState(null);
-  const [talk, setTalk] = useState(null); // { who, text, n }
+  const [talk, setTalk] = useState(null); // { who, text, voice?, n }
   const [toast, setToast] = useState(null); // { title, text, n }
   const [leaving, setLeaving] = useState(false);
   const [done, setDone] = useState(() => readDone()[id] ?? []); // the quests done here
@@ -160,6 +162,29 @@ export default function GalaxySurface() {
     clearTimeout(timers.current[key]);
     timers.current[key] = setTimeout(fn, ms);
   };
+  // the line that's up goes (or the next comes) once it's been up long
+  // enough to read; said aloud, once it's been said too
+  const talkNext = useRef(null); // { at, fn }
+  const holdTalk = (ms, fn) => {
+    talkNext.current = { at: Date.now() + ms, fn };
+    clearTimeout(timers.current.talk);
+    timers.current.talk = setTimeout(fn, ms);
+  };
+  // each line in its speaker's own voice, where it's been made (lib/voiced.js;
+  // voicelines.js says who sounds like whom): a new line stops the last
+  useEffect(() => {
+    if (!talk) return undefined;
+    let on = true;
+    sayVoiced(talk.voice ?? voiceFor(talk.who), talk.text).then((h) => {
+      const t = talkNext.current;
+      const said = h && h.length * 1000 + 600;
+      if (on && said && t && Date.now() + said > t.at) holdTalk(said, t.fn);
+    });
+    return () => {
+      on = false;
+      stopVoiced();
+    };
+  }, [talk]);
   const [looks] = useLooks(); // (how the cruiser's Rick and Morty come out, for the credits)
   const talkCrew = useMemo(() => (crew && site ? surfaceCrew(galaxyCrew(crew), site) : null), [crew, site]);
 
@@ -236,8 +261,8 @@ export default function GalaxySurface() {
       } else if (e.type === 'prompt') setPrompt(e.text);
       else if (e.type === 'here') setHere(e.id);
       else if (e.type === 'talk') {
-        setTalk((t) => ({ who: e.who, text: e.text, n: (t?.n ?? 0) + 1 }));
-        later('talk', 3500 + e.text.length * 45, () => setTalk(null));
+        setTalk((t) => ({ who: e.who, text: e.text, voice: e.voice ?? null, n: (t?.n ?? 0) + 1 }));
+        holdTalk(3500 + e.text.length * 45, () => setTalk(null));
       } else if (e.type === 'found') {
         const place = site?.places.find((p) => p.id === e.id);
         if (!place) return;
@@ -268,7 +293,7 @@ export default function GalaxySurface() {
             return;
           }
           setTalk((t) => ({ who: l.who, text: l.text, n: (t?.n ?? 0) + 1 }));
-          later('talk', 2600 + l.text.length * 42, next);
+          holdTalk(2600 + l.text.length * 42, next);
         };
         if (wasEmpty) next();
       } else if (e.type === 'quest') setQuest(e.id ? e : null);

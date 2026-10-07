@@ -1,0 +1,130 @@
+{
+ "treebeard": {
+  "show": "lotr",
+  "clips": [],
+  "quotes": [
+   "I am no tree! I am an Ent.",
+   "I am on nobody's side, because nobody's on my side, little Orc.",
+   "Nobody cares for the woods anymore.",
+   "Now, don't be hasty, Master Meriadoc.",
+   "A wizard should know better!",
+   "There is no curse in Elvish, Entish or the tongues of Men for this treachery.",
+   "The Ents are going to war."
+  ],
+  "search": [
+   "The Two Towers Treebeard I am no tree I am an Ent scene",
+   "The Two Towers Treebeard carries Merry and Pippin through Fangorn scene",
+   "The Two Towers Entmoot don't be hasty Treebeard scene",
+   "The Two Towers Treebeard finds the felled trees a wizard should know better",
+   "The Two Towers last march of the Ents scene"
+  ],
+  "avoid": ["rings of power", "audiobook", "lotro", "battle for middle", "commentary", "differences", "ranked"]
+ },
+ "lindir": {
+  "show": "lotr",
+  "clips": [],
+  "quotes": [
+   "My Lord Elrond is not here.",
+   "Lady Arwen, we cannot delay."
+  ],
+  "search": [
+   "The Hobbit An Unexpected Journey arrival in Rivendell Lindir my Lord Elrond is not here",
+   "The Hobbit An Unexpected Journey Gandalf and the dwarves reach Rivendell scene",
+   "The Hobbit An Unexpected Journey extended Rivendell dinner Lindir Elrond",
+   "Return of the King Arwen leaves for the Grey Havens Lady Arwen we cannot delay"
+  ],
+  "avoid": ["conchords", "muppets", "song", "commentary", "audiobook", "rings of power"]
+ },
+ "balin": {
+  "show": "lotr",
+  "clips": [],
+  "quotes": [
+   "Balin, at your service.",
+   "You forget, the Front Gate is sealed. There is no way into the mountain.",
+   "The odds were always against us.",
+   "Merchants, miners, tinkers, toy-makers. Hardly the stuff of legend.",
+   "There are a few warriors amongst us. Old warriors.",
+   "Then we are with you, laddie. We will see it done.",
+   "There is one who I could follow. There is one I could call king."
+  ],
+  "search": [
+   "The Hobbit An Unexpected Journey Balin tells of Azog and the battle at Moria scene",
+   "The Hobbit An Unexpected Journey Balin there is one I could call king",
+   "The Hobbit An Unexpected Journey Balin and Thorin the odds were always against us",
+   "The Hobbit An Unexpected Journey dwarves arrive at Bag End Balin at your service",
+   "The Hobbit Battle of the Five Armies Balin talks to Bilbo about Thorin dragon sickness"
+  ],
+  "avoid": ["tomb", "fellowship of the ring", "1977", "rankin", "animated", "rings of power", "audiobook", "lotro", "commentary"]
+ },
+ "shagrat": {
+  "show": "lotr",
+  "clips": [],
+  "quotes": [
+   "Hands off! That shiny shirt, that's mine.",
+   "I don't take orders from stinking Morgul-rats!",
+   "The scum tried to knife me. Kill him!"
+  ],
+  "search": [
+   "Return of the King orcs fight over Frodo's mithril shirt Cirith Ungol scene",
+   "Return of the King Shagrat and Gorbag mithril shirt scene",
+   "Return of the King Sam rescues Frodo from the tower of Cirith Ungol",
+   "Return of the King extended Shagrat escapes with the mithril shirt"
+  ],
+  "avoid": ["shadow of mordor", "shadow of war", "battle for middle", "conquest", "rings of power", "lotro", "gameplay", "audiobook"]
+ },
+ "harry": {
+  "show": "lotr",
+  "clips": [],
+  "quotes": [
+   "Hobbits. Four Hobbits!",
+   "What business brings you to Bree?",
+   "All right, young sir. I meant no offense.",
+   "It's my job to ask questions after nightfall.",
+   "There's talk of strange folk abroad. Can't be too careful."
+  ],
+  "search": [
+   "Fellowship of the Ring hobbits arrive at the Bree gate gatekeeper scene",
+   "Fellowship of the Ring Bree gatekeeper four hobbits what business brings you to Bree",
+   "Fellowship of the Ring arriving in Bree in the rain gatekeeper Prancing Pony"
+  ],
+  "avoid": ["audiobook", "lotro", "rings of power", "commentary"]
+ },
+ "maggot": {
+  "show": "lotr",
+  "clips": [],
+  "quotes": [
+   "There's no Bagginses around here.",
+   "They're all up in Hobbiton. That way."
+  ],
+  "search": [
+   "Fellowship of the Ring Black Rider asks Farmer Maggot Shire Baggins scene",
+   "Fellowship of the Ring Nazgul at Farmer Maggot's farm no Bagginses around here",
+   "Fellowship of the Ring Ringwraith Farmer Maggot dogs scene"
+  ],
+  "avoid": ["audiobook", "lotro", "rings of power", "commentary", "bombadil"]
+ },
+ "lobelia": {
+  "show": "lotr",
+  "design": "An elderly English hobbit gentlewoman in her seventies: thin, sharp and slightly nasal, prim upper-class rural English accent, quick clipped delivery, sniffy, indignant and grasping."
+ },
+ "ferny": {
+  "show": "lotr",
+  "design": "A middle-aged man of Bree: low, nasal and sneering, rough rural English accent, slow insolent pace, sour and spiteful."
+ },
+ "rosie": {
+  "show": "lotr",
+  "design": "A young hobbit woman in her twenties: light, warm and bright, soft rural English accent, easy unhurried pace, friendly with a shy smile in it."
+ },
+ "gaffer": {
+  "show": "lotr",
+  "design": "An old hobbit gardener in his seventies: gravelly and slow, broad rural West Country English burr, grumbling and opinionated but fatherly."
+ },
+ "beregond": {
+  "show": "lotr",
+  "design": "A guardsman of Gondor in his forties: warm, steady baritone, measured and slightly formal English, unhurried, kindly but grave."
+ },
+ "breelander": {
+  "show": "lotr",
+  "design": "A middle-aged townsman of Bree: ruddy, gruff but friendly, broad rural northern English accent, medium pace, gossipy and a little wary of strangers."
+ }
+}

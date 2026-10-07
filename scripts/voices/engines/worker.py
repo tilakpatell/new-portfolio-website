@@ -31,7 +31,10 @@ def wsl_path(p):
 def serve(load, jobs_file=None, local=lambda p: p):
     """`load(jobs)` loads the model and returns say(voice, text, seed) -> (samples, rate).
     A model that's quicker in batches gives say.many(voice, texts, seeds) -> [(samples, rate), ...]
-    too, and say.batch, the most it takes at once: it then gets the takes a voice at a time, in order.
+    too, and say.batch, the most it takes at once: it then gets the takes a voice at a time, in order;
+    with say.mixed set too, many() gets a list of voices, one a take, and takes in any voices together.
+    One that can be told how to say a line sets say.styled, and gets say(voice, text, seed, style=...)
+    with the line's direction ("urgent: barked at Chewie"), or None.
     `local` turns the jobs' paths into this worker's own (wsl_path, for one running under WSL);
     what it reports back are the jobs' paths as given."""
     for s in (sys.stdout, sys.stderr):
@@ -44,16 +47,26 @@ def serve(load, jobs_file=None, local=lambda p: p):
         return
     say = load(jobs)
     size = getattr(say, "batch", 1) if hasattr(say, "many") else 1
+    # a model that can say a batch in several voices at once (say.mixed) gets any takes together;
+    # otherwise a batch is one voice's
+    mixed = getattr(say, "mixed", False)
     groups = []
     for it in todo:
-        if groups and len(groups[-1]) < size and groups[-1][0]["who"] == it["who"]:
+        if groups and len(groups[-1]) < size and (mixed or groups[-1][0]["who"] == it["who"]):
             groups[-1].append(it)
         else:
             groups.append([it])
     for group in groups:
         voice, texts, seeds = jobs["voices"][group[0]["who"]], [it["text"] for it in group], [int(it["seed"]) for it in group]
         try:
-            made = say.many(voice, texts, seeds) if size > 1 else [say(voice, texts[0], seeds[0])]
+            if size > 1 and mixed:
+                made = say.many([jobs["voices"][it["who"]] for it in group], texts, seeds)
+            elif size > 1:
+                made = say.many(voice, texts, seeds)
+            elif getattr(say, "styled", False):  # a model told how to say it: the line's direction
+                made = [say(voice, texts[0], seeds[0], style=group[0].get("style"))]
+            else:
+                made = [say(voice, texts[0], seeds[0])]
         except Exception as e:  # one bad line (or batch) shouldn't stop the rest
             traceback.print_exc(file=sys.stderr)
             for it in group:
