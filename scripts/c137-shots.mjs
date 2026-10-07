@@ -80,6 +80,7 @@ export const VIEWS = {
   gloopynoops: { area: 'gloopynoops', at: [-400, 3112.4, N], cam: [0, 0.3] },
   resort: { area: 'resort', at: [-400, 3218, N], cam: [0, 0.2] },
   schwifty: { area: 'schwifty', at: [-400, 3318, N], cam: [0, 0.2] },
+  evilrick: { area: 'evilrick', at: [-400, 3415.4, N], cam: [0, 0.3] },
 };
 
 const names = process.argv.slice(2);

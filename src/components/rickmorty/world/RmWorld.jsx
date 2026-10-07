@@ -274,6 +274,7 @@ const newSim = () => ({
   fading: false,
   events: [],
   emit: null,
+  duel: null, // a fight on (hearts in the HUD; F fires)
   frame: 0,
   padBefore: {},
   view: { link: null, hotspot: null },
@@ -495,7 +496,10 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     setList(false);
     if (inside) chip.current?.focus({ preventScroll: true });
   }, []);
-  const [fade, setFade] = useState(null); // null, or the kind of link being gone through
+  const [fade, setFade] = useState(null);
+  const [duel, setDuel] = useState(null); // the fight's hearts, for the HUD
+  const [clock, setClock] = useState(null); // a place left in a hurry: seconds left to the portal
+  const clockRef = useRef(null); // null, or the kind of link being gone through
   const [opening, setOpening] = useState(null); // the place a portal's waiting on while it loads
   const [shipLine, setShipLine] = useState(null); // what the cruiser last said, captioned
   const [memory, setMemory] = useState(null); // the memory playing in the Mind Blowers chair
@@ -814,6 +818,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       const early = e?.after && !s.used?.has(e.after);
       say({ kind: 'say', ...(early ? e.before : SAY[n.id]) });
       (s.used ??= new Set()).add(n.id);
+      if (!early && n.spot?.anim) api.current?.play(n.spot.anim, n.spot.anim === 'dance' ? { loop: false, hold: 0.2 } : {});
       if (!early && ACTS[n.id]) api.current?.act(...ACTS[n.id]);
       // the siren, the scanner, the toast: the clock starts for the portal home
       if (e && !early && !s.escape) {
@@ -829,7 +834,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         if (c.escape) {
           if (!s.escape) s.escape = { area: c.area, task: c.task, s: c.escape.s, at: s.t };
           sound('portalOpen');
-        } else later(() => complete(c.task), TALK_MS);
+        } else if (!c.start) later(() => complete(c.task), TALK_MS);
       }
       if (TALK_UNLOCK[n.id]) later(() => unlock(TALK_UNLOCK[n.id]), TALK_MS);
     }
@@ -846,24 +851,89 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         if (!d) return;
         say({ kind: 'say', who: SAY[e.who]?.who ?? e.who ?? null, text: e.text ?? d.caught ?? 'Caught.' });
         sound('ouch');
-        s.m = newMorty(d.arrive);
-        s.yaw = behindYaw(d.arrive.face);
-        s.pitch = PITCH;
-        s.dragAt = -1e9;
+        api.current?.play('scared', { hold: 0.4 });
+        // a blink, and he's back at the way in
+        s.fading = true;
         s.keys.clear();
-        s.used = new Set();
-        s.escape = null;
-        api.current?.act(e.area, 'calm');
+        setFade('door');
+        later(() => {
+          s.m = newMorty(d.arrive);
+          s.yaw = behindYaw(d.arrive.face);
+          s.pitch = PITCH;
+          s.dragAt = -1e9;
+          s.used = new Set();
+          s.escape = null;
+          s.fading = false;
+          api.current?.act(e.area, 'calm');
+          setFade(null);
+        }, FADE_MS);
       } else if (name === 'bark') {
         if (s.t - (s.barkAt ?? -1e9) < 6) return;
         s.barkAt = s.t;
         say({ kind: 'say', who: e.who, text: e.text });
       } else if (name === 'done') complete(e.task);
+      else if (name === 'duel') {
+        // the fight's on: the hearts show, and F fires
+        s.duel = { who: e.who, hp: e.hp, max: e.max, mortyHp: e.mortyHp, mortyMax: e.mortyMax };
+        setDuel({ ...s.duel });
+        sound('zap');
+      } else if (name === 'strike') {
+        s.duel = { who: e.who, hp: e.hp, max: e.max, mortyHp: e.mortyHp, mortyMax: e.mortyMax };
+        setDuel({ ...s.duel });
+        sound('ouch');
+        if (e.beaten) {
+          // beaten: he goes down, and comes round at the way in; the fight's off till the next try
+          api.current?.play('fall', { hold: 1.2 });
+          say({ kind: 'say', who: SAY[e.who]?.who ?? e.who ?? null, text: e.text ?? 'Beaten.' });
+          const d = destinationById(e.area);
+          s.fading = true;
+          s.keys.clear();
+          later(() => {
+            setFade('door');
+            later(() => {
+              if (d) {
+                s.m = newMorty(d.arrive);
+                s.yaw = behindYaw(d.arrive.face);
+                s.pitch = PITCH;
+                s.dragAt = -1e9;
+              }
+              s.used = new Set();
+              s.escape = null;
+              s.duel = null;
+              setDuel(null);
+              s.fading = false;
+              api.current?.act(e.area, 'calm');
+              setFade(null);
+            }, FADE_MS);
+          }, 1400);
+        } else api.current?.play('hit');
+      }
     },
-    [api, say, complete],
+    [api, say, complete, later],
   );
+  // Morty's shot in a duel (F): the place says whether it landed
+  const fire = useCallback(() => {
+    const s = sim.current;
+    if (!s?.duel || s.fading || s.t - (s.firedAt ?? -1e9) < 0.5) return;
+    s.firedAt = s.t;
+    api.current?.play('shoot', { hold: 0 });
+    sound('zap');
+    const r = api.current?.act(s.area, 'fire', { x: s.m.x, z: s.m.z, face: s.m.face });
+    if (!r) return;
+    s.duel = { ...s.duel, hp: r.hp, max: r.max };
+    setDuel({ ...s.duel });
+    if (r.down) {
+      sound('splat');
+      if (r.task) complete(r.task);
+      if (r.won) later(() => say({ kind: 'say', ...r.won }), 900);
+      later(() => {
+        s.duel = null;
+        setDuel(null);
+      }, 2500);
+    }
+  }, [api, complete, say, later]);
   const fns = useRef({});
-  fns.current = { act, go, shoot: shootRickall, stop: stopRickall, start: startRickall, end: endRickall, npc };
+  fns.current = { act, go, shoot: shootRickall, stop: stopRickall, start: startRickall, end: endRickall, npc, fire };
 
   // ── the world: made once, kept while something's open over it ──
   useEffect(() => {
@@ -1006,6 +1076,12 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         e.preventDefault();
         s.keys.clear();
         setWardrobe(true);
+        return;
+      }
+      // a duel (Evil Rick's lair): F fires
+      if (s.duel && !s.rickall && e.code === 'KeyF' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        if (!e.repeat) fns.current.fire();
         return;
       }
       // Total Rickall: F shoots; Esc stops it (once the list's shut)
@@ -1180,6 +1256,13 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     s.view.hotspot = s.near?.kind === 'spot' ? s.near.id : null;
     // the Federation's patrol ship, round its loop or on the cruiser's tail
     s.fed = stepFedShip(s.fed, s.c, s.flying, dt);
+    // the clock of a place left in a hurry, for the HUD (whole seconds, so it rarely redraws)
+    const left = s.escape && s.area === s.escape.area ? Math.max(0, Math.ceil(s.escape.s - (s.t - s.escape.at))) : null;
+    if (left !== clockRef.current) {
+      clockRef.current = left;
+      setClock(left);
+    }
+    if (s.escape && left === 0) s.escape = null;
     // what the cruiser was about to say when it'd only just spoken
     if (s.shipNext) {
       if (s.t > s.shipNext.until || s.area !== 'street') s.shipNext = null;
@@ -1414,6 +1497,36 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
               <span className="rm-swirl rm-swirl-sm" aria-hidden="true" />
               <span>{prog.objective}</span>
             </p>
+          )}
+          {duel && (
+            <div className="rm-fight" aria-live="polite">
+              <div className="rm-fight-row">
+                <b>{SAY[duel.who]?.who ?? 'Them'}</b>
+                <span className="rm-fight-hearts" aria-label={`${duel.hp} of ${duel.max}`}>
+                  {Array.from({ length: duel.max }, (_, i) => (
+                    <span key={i} data-off={i >= duel.hp || undefined}>
+                      ♥
+                    </span>
+                  ))}
+                </span>
+              </div>
+              <div className="rm-fight-row">
+                <b>Morty</b>
+                <span className="rm-fight-hearts" aria-label={`${duel.mortyHp} of ${duel.mortyMax}`}>
+                  {Array.from({ length: duel.mortyMax }, (_, i) => (
+                    <span key={i} data-off={i >= duel.mortyHp || undefined}>
+                      ♥
+                    </span>
+                  ))}
+                </span>
+              </div>
+              <span className="rm-fight-hint">F fires. Keep out of reach.</span>
+            </div>
+          )}
+          {clock != null && (
+            <div className="rm-clock" data-late={clock <= 10 || undefined} aria-live="polite">
+              Back through the portal: {clock} s
+            </div>
           )}
           {hud.flying && (
             <p className="rm-flightstats" aria-live="off">

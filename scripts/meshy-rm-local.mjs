@@ -795,8 +795,48 @@ const steps = {
     await save();
     console.log(`use      ${n.padEnd(18)} its model will be made from ${file}${how === 'flip' ? ', mirrored' : ''}`);
   },
+  // more clips from Meshy's animation library, on a rigged figure's own
+  // skeleton (3 credits each): `clips <clip> <name …>` makes one, kept in
+  // tasks[name].clips[clip]; `fetchclips <name …>` downloads every clip a
+  // figure has to public/games/meshy/<name>-<clip>.glb. The names needn't be
+  // this file's assets: Rick, Morty, Evil Rick and Evil Morty are
+  // scripts/meshy.mjs's, and their task ids are in the same file (on the
+  // account that made them).
+  async clips(names) {
+    const [clip, ...who] = names;
+    if (!CLIPS[clip]) throw new Error(`clip: ${Object.keys(CLIPS).join(' | ')}`);
+    await each(who, async (n) => {
+      if (!tasks[n]?.rig) throw new Error(`${n}: not rigged`);
+      tasks[n].clips ??= {};
+      if (!tasks[n].clips[clip]) {
+        const { result } = await api('POST', '/v1/animations', { rig_task_id: tasks[n].rig, action_id: CLIPS[clip], post_process: { operation_type: 'extract_armature' } });
+        tasks[n].clips[clip] = result;
+        await save();
+      }
+      const t = await wait('/v1/animations', tasks[n].clips[clip], `${n} ${clip}`);
+      console.log(`clip     ${n.padEnd(18)} ${clip} ${t.consumed_credits} credits`);
+    });
+  },
+  async fetchclips(names) {
+    const tmp = join(ROOT, 'node_modules', '.cache', 'meshy');
+    await mkdir(tmp, { recursive: true });
+    await mkdir(OUT, { recursive: true });
+    for (const n of names) {
+      const made = tasks[n]?.clips ?? {};
+      for (const [clip, id] of Object.entries(made)) {
+        const a = (await api('GET', `/v1/animations/${id}`)).result;
+        const raw = join(tmp, `${id}-${n}-${clip}.glb`);
+        if (!existsSync(raw)) await download(a.animation_glb_url, raw);
+        // (CLIP_PREFIX=clips: files named clips-<clip>.glb, shared by every figure through the cast's retargeting)
+        await squeeze(raw, join(OUT, `${process.env.CLIP_PREFIX ?? n}-${clip}.glb`), { tex: 0, clip: true });
+      }
+      console.log(`clips    ${n.padEnd(18)} ${Object.keys(made).join(', ') || 'none'}`);
+    }
+  },
   async balance() {},
 };
+// the library's actions used (node scripts/meshy-rm-local.mjs library lists more)
+const CLIPS = { drink: 342, cheer: 403, wave: 28, happy: 61, hit: 178, fall: 187, scared: 404, shoot: 232, dance: 64, punch: 198, taunt: 88, shot: 183, sitcross: 364 };
 
 async function main() {
   if (!key) throw new Error('Set MESHY_API_KEY in .env.local and run with node --env-file=.env.local.');
@@ -810,8 +850,10 @@ async function main() {
   }
   // a phase's name stands for its assets
   const names = (rest.length ? rest : Object.keys(ASSETS)).flatMap((n) => (/^phase\d$/.test(n) ? Object.keys(ASSETS).filter((k) => ASSETS[k].phase === Number(n.slice(5))) : [n]));
-  for (const n of names) if (!ASSETS[n]) throw new Error(`unknown asset ${n}`);
   tasks = await json(TASKS);
+  // (the clip steps take any rigged figure in the tasks file)
+  const own = step === 'clips' ? names.slice(1) : step === 'fetchclips' ? names : [];
+  for (const n of step === 'clips' ? names.slice(1) : names) if (!ASSETS[n] && !(own.includes(n) && tasks[n]?.rig)) throw new Error(`unknown asset ${n}`);
   if (forget) {
     const from = CHAIN.indexOf(LEAVES[forget]);
     if (from < 0 || !rest.length) throw new Error(`reroll <${Object.keys(LEAVES).join(' | ')}> <name …>`);

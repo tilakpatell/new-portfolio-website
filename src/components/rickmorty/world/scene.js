@@ -98,6 +98,7 @@ export const LAZY = {
   gloopynoops: () => import('./dimensions/gloopynoops').then((m) => m.buildGloopynoops),
   resort: () => import('./dimensions/resort').then((m) => m.buildResort),
   schwifty: () => import('./dimensions/schwifty').then((m) => m.buildSchwifty),
+  evilrick: () => import('./dimensions/evilrick').then((m) => m.buildEvilrick),
 };
 
 // The cruiser's headlights, which are its eyes (the saucer's, in the hull's
@@ -687,6 +688,8 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       if (TMP.z > 1) return null;
       return { x: ((TMP.x + 1) / 2) * stage.size.w, y: ((1 - TMP.y) / 2) * stage.size.h };
     },
+    // one of the shared clips on Morty (meshyCast.js's play): a cheer, a hit, a shot
+    play: (clip, opts) => morty.play?.(clip, opts) ?? Promise.resolve(false),
     // an area builder's own action, if it has one (the arcade's setBoard(best)); nothing otherwise
     act(area, name, ...args) {
       const actions = areas[area]?.actions;

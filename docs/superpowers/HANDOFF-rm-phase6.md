@@ -37,6 +37,29 @@ own); NPCs that do things, not just stand and talk.
   ('caught', 'bark', 'done'); `RmWorld.jsx`'s `npc()` handles them after
   each frame (`s.events`). Anyone who roams is marked `roams` and left out
   of the colliders (`rules.js`).
+- **Evil Rick's lair** (row 25, `evilrick.js`): the quest line the user asked
+  for. Free three Mortys from the dome (`collect` with `start: true`: the
+  place is told 'collected' and nothing is done yet), Evil Rick comes
+  (`hunt.duel`, `dimensions/duel.js`, tested: he strikes within reach every
+  1.3 s, Morty fires with F into a cone 8 m long; hearts in the HUD;
+  beaten, Morty falls and comes round at the door; Evil Rick at nought
+  falls and stays down, the task done), then Evil Morty (sitting with his
+  arms crossed, the `sitcross` clip) is spoken to and leaves through a
+  yellow portal.
+- **Clips** beyond idle, walk and run (`SHARED_CLIPS` in `meshyCast.js`,
+  `public/games/meshy/clips-<name>.glb`): drink, cheer, wave, happy, hit,
+  fall, scared, shoot, dance, punch, taunt, shot, sitcross. Made once on
+  Nimbus's rig with `scripts/meshy-rm-local.mjs clips <clip> nimbus` and
+  `CLIP_PREFIX=clips … fetchclips nimbus`, since every Meshy figure is on
+  the same 24-bone skeleton and `clips.js`'s `retarget` scales them to each
+  figure's hips. `cast.play(c, clip, { loop, hold })` and `c.play`/`c.stop`
+  play one over the idle/walk/run blend; `api.play` is Morty's. Rick's
+  `fidget: 'drink'` sips every so often. A hotspot's `anim` plays one when
+  it's used (the mic: dance); RmWorld plays `scared` when he's caught, `hit`
+  and `fall` in a duel, `shoot` when he fires. Rick's, Morty's and Evil
+  Rick's own rigs are on the first Meshy account (`MESHY_API_KEY`), which
+  another session ran down to 7 credits; the shared clips route needs no
+  credits there.
 - **Data for things to do**: a place's `collect: { task, spots, escape? }`
   (every spot used on a visit is the task done, or starts the escape clock
   and tells the builder `collected`), and `caught`.
@@ -64,6 +87,7 @@ own); NPCs that do things, not just stand and talk.
   game of its own), Mr. Frundles, and ten Interdimensional Cable crowd
   figures on the alien street.
 - The map's Birdperson is still the code-built one (`HANDOFF-rm-phase1.md`).
+- Morty's `cheer` clip isn't played anywhere yet (a thing done could play it).
 - Nothing on the dial has a sound of its own yet (the escape clock uses
   `portalOpen`; caught uses `ouch`).
 

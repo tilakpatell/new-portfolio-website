@@ -88,6 +88,8 @@ export const ACHIEVEMENTS = {
   gloopynoops: { name: 'Visiting hours', desc: 'Visited Shrimply Pibbles at St. Gloopy Noops' },
   resort: { name: 'Out of the field', desc: 'Rode the Whirly Dirly at the Immortality Field Resort' },
   schwifty: { name: 'I like what you got', desc: 'Took the mic at the Get Schwifty show' },
+  evilrick: { name: 'Close Rick-counters', desc: 'Freed the dome’s Mortys and beat Evil Rick in his lair' },
+  evilmorty: { name: 'The one behind him', desc: 'Spoke to the Morty with the eyepatch before his yellow portal took him' },
   collector: { name: 'Collector', desc: 'Found every hidden easter egg' },
   mellon: { name: 'Speak, friend', desc: 'Said the word that opens the Doors of Durin' },
   balrog: { name: 'You shall not pass', desc: 'Held the Bridge of Khazad-dûm' },

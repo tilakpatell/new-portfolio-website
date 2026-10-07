@@ -8,11 +8,11 @@ import { BALL, BOX, fitText } from '../interiors/shell';
 import { specks, stage } from './stage';
 
 const LIGHT = { sun: [0xffffff, 0.9], hemi: [0xf0fff8, 0x9aa8a0, 2.0], fog: null, background: 0x0a1a14 };
-const MINT = 0xc8f0e0;
+const MINT = 0xc8f0e0; // the counters
 const WHITE = 0xf6faf8;
 
 export async function buildGloopynoops(kit) {
-  const S = stage(kit, 'gloopynoops', { floor: specks('#e8f4ee', ['#dcebe4', '#f2f8f4'], 3, 600, 2), floorTile: 2.5, wall: WHITE, ceiling: 0xf2f8f4, skirt: 0x6ab8a0, dado: MINT });
+  const S = stage(kit, 'gloopynoops', { floor: specks('#e8f4ee', ['#dcebe4', '#f2f8f4'], 3, 600, 2), floorTile: 2.5, wall: WHITE, ceiling: 0xf2f8f4, skirt: 0x6ab8a0 });
   const { R, P, A } = S;
   const H = S.d.ceiling;
 

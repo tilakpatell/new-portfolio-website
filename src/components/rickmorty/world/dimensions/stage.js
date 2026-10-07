@@ -19,6 +19,7 @@ import { at, speckle } from '../kit';
 import { RIGGED } from '../../portal/meshyCast';
 import { destinationById } from './destinations';
 import { avoid, createContext, resolve, seek, separate } from '../../../../lib/ai/steer';
+import { STRIKE, fire as fireAt, newDuel, strike as strikeAt } from './duel';
 
 // a speckled paint for a floor or the ground
 export const specks = (base, specks, seed = 7, n = 1600, size = 2) => (g, w, h) => speckle(g, w, h, { base, specks, n, size, seed });
@@ -87,6 +88,12 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
   //         given up past `lose`; `always`: from the start), and tells RmWorld 'caught'
   //         (state.emit) within catchR, with `line` or the place's `caught`; `until`: a
   //         task that, done, ends it
+  //         duel: { hp, task, won? }: a fight instead of a catch (./duel.js): within reach he
+  //         strikes (the 'punch' clip; RmWorld's 'strike' takes a point off Morty), and
+  //         Morty's shots (the area's 'fire' action, F in RmWorld) take his; at nought he
+  //         falls (the 'fall' clip), stays down, and `task` is done ('done'), with `won`
+  //         said. The duel is told to RmWorld as 'duel' { hp, max } as it goes.
+  //   clip: a shared clip looped while standing (Evil Morty's crossed arms)
   //   home: kept where placed between behaviours; `calm` puts everyone back
   const npcs = [];
   let hunting = false;
@@ -154,12 +161,27 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
       if (!n.hunting && (hunting || h.always || (h.near != null && toM < h.near))) n.hunting = true;
       if (n.hunting && !hunting && h.lose != null && toM > h.lose) n.hunting = false;
     } else n.hunting = false;
-    if (n.hunting && m) {
+    if (n.dead) {
+      // down for the count: nothing more from him
+    } else if (n.hunting && m) {
+      if (h.duel && !n.duel) {
+        n.duel = newDuel({ hp: h.duel.hp ?? 6, mortyHp: h.duel.mortyHp ?? 3 });
+        state.emit?.('duel', { area: id, who: n.id, hp: n.duel.hp, max: n.duel.max, mortyHp: n.duel.mortyHp, mortyMax: n.duel.mortyMax });
+      }
       const face = headingTo(m.x - g.position.x, m.z - g.position.z);
-      if (toM > h.catchR) {
-        const went = steerTo(n, { x: m.x, z: m.z }, Math.min(h.speed, (toM - h.catchR * 0.8) / Math.max(dt, 1e-3)), dt);
+      const reach = h.duel ? STRIKE.reach : h.catchR;
+      if (toM > reach) {
+        const went = steerTo(n, { x: m.x, z: m.z }, Math.min(h.speed, (toM - reach * 0.8) / Math.max(dt, 1e-3)), dt);
         move = went == null ? 0 : Math.min(1, h.speed / 3);
         turnTo(c, went ?? face, dt);
+      } else if (h.duel) {
+        turnTo(c, face, dt);
+        if (!state.fading && t - (n.struckAt ?? -1e9) > STRIKE.every) {
+          n.struckAt = t;
+          n.duel = strikeAt(n.duel);
+          c.play?.('punch', { hold: 0.1 });
+          state.emit?.('strike', { area: id, who: n.id, hp: n.duel.hp, max: n.duel.max, mortyHp: n.duel.mortyHp, mortyMax: n.duel.mortyMax, beaten: n.duel.beaten, text: h.line ?? d.caught });
+        }
       } else {
         turnTo(c, face, dt);
         if (!state.fading && t - (n.caughtAt ?? -1e9) > 3) {
@@ -204,6 +226,12 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
     hunting = false;
     for (const n of npcs) {
       n.hunting = false;
+      // (a duel's hunter who's not been beaten gets up and goes home; one who has stays down)
+      if (!n.dead) {
+        n.duel = null;
+        if (n.ai.clip) n.c.play?.(n.ai.clip, { loop: true });
+        else n.c.stop?.();
+      }
       n.i = 0;
       n.waitTill = 0;
       n.y = n.y0;
@@ -225,6 +253,7 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
     R.group.add(c.group);
     const n = ai ? { c, ai, id, who, home: { x, z }, y, y0: y, face, i: 0, waitTill: 0, hunting: false } : null;
     if (n) npcs.push(n);
+    if (ai?.clip) c.play?.(ai.clip, { loop: true });
     R.tick((t, dt, state) => {
       const done = state?.done ?? [];
       c.group.visible = when ? when(state) : (!until || !done.includes(until)) && (!after || done.includes(after));
@@ -265,7 +294,26 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
     // (every place settles when Morty leaves it: its hunters go home. A
     // builder adds its own actions to these.)
     // (`npcs`: where everyone is, for the QA scripts)
-    area.actions = { calm: calmNpcs, npcs: () => npcs.map((n) => ({ id: n.id, x: +n.c.group.position.x.toFixed(1), z: +n.c.group.position.z.toFixed(1), hunting: n.hunting, visible: n.c.group.visible })) };
+    area.actions = {
+      calm: calmNpcs,
+      npcs: () => npcs.map((n) => ({ id: n.id, x: +n.c.group.position.x.toFixed(1), z: +n.c.group.position.z.toFixed(1), hunting: n.hunting, visible: n.c.group.visible, hp: n.duel?.hp ?? null, dead: Boolean(n.dead) })),
+      // Morty's shot, from where he stands facing `face`: at the duel's hunter, if he's in the cone
+      fire: ({ x, z, face }) => {
+        for (const n of npcs) {
+          if (!n.ai.hunt?.duel || !n.hunting || n.dead || !n.c.group.visible) continue;
+          n.duel ??= newDuel({ hp: n.ai.hunt.duel.hp ?? 6, mortyHp: n.ai.hunt.duel.mortyHp ?? 3 });
+          n.duel = fireAt(n.duel, { x, z }, face, { x: n.c.group.position.x, z: n.c.group.position.z });
+          if (n.duel.hit) n.c.play?.(n.duel.down ? 'fall' : 'hit', n.duel.down ? { hold: 1e9 } : { hold: 0 });
+          if (n.duel.down) {
+            n.dead = true;
+            n.hunting = false;
+            hunting = false;
+          }
+          return { hit: n.duel.hit, down: n.duel.down, hp: n.duel.hp, max: n.duel.max, who: n.id, task: n.ai.hunt.duel.task ?? null, won: n.ai.hunt.duel.won ?? null };
+        }
+        return null;
+      },
+    };
     return area;
   };
   // the place's hunters, after Morty (or not)

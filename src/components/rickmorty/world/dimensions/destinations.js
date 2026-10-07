@@ -34,7 +34,8 @@ export const GARAGE_BACK = { x: -301.2, z: 101.4, face: 0 };
 // no talk or escape says (the Vindicators' door to Rick's rooms).
 // `collect`: a task done once every one of its `spots` has been used on a
 // visit (the simulation's slips); with `escape: { s }`, the clock starts
-// then instead, and getting home inside it is the task done.
+// then instead, and getting home inside it is the task done; with `start`,
+// nothing is done yet: the place is only told ('collected': Evil Rick comes).
 // `caught`: what's said when one of the place's hunters catches Morty
 // (stage.js's NPC behaviour); he's put back at the way in.
 // A person or one of the crowd may carry `ai` (stage.js): `wander` points in
@@ -1066,7 +1067,7 @@ export const DESTINATIONS = [
     sky: { top: 0x2a8ad8, mid: 0x9ad8f8, low: 0xffe8c0, sun: 0xfff8e8, clouds: 1, moons: 0 },
     people: [{ id: 'risotto', dx: 0, dz: -8, face: S, ai: { wander: [[0, -8], [6, -6], [-6, -6]], speed: 0.6, pause: 6, watch: 9, bark: { r: 6, every: 16, lines: ['Welcome to the Immortality Field Resort. Inside the field, nothing can hurt you. Outside it, everything can.', 'Your grandfather took my kingdom. I don’t hold it against you. I hold it against him, quite hard.'] } } }],
     extras: [
-      { kind: 'resortguest-a', dx: -12, dz: 4, face: E, ai: { wander: [[-12, 4], [-6, 8], [-16, 10]], speed: 0.6, pause: 5 } },
+      { kind: 'resortguest-a', dx: -6, dz: 10, face: E, ai: { wander: [[-6, 10], [-2, 6], [-8, 14]], speed: 0.6, pause: 5 } },
       { kind: 'resortguest-b', dx: 10, dz: 6, face: W, ai: { wander: [[10, 6], [16, 10], [6, 12]], speed: 0.7, pause: 4 } },
       { kind: 'resortguest-a', dx: 18, dz: -2, face: W },
       { kind: 'resortguest-b', dx: -20, dz: -4, face: E },
@@ -1076,15 +1077,15 @@ export const DESTINATIONS = [
       { id: 'risotto', dx: 0, dz: -6.4, label: 'Risotto Groupon', verb: 'Talk' },
       { id: 'dirly', dx: 14, dz: -13.4, label: 'The Whirly Dirly', verb: 'Ride', r: 1.8 },
       { id: 'fieldpost', dx: -16, dz: -16, label: 'The field generator', verb: 'Look', r: 2 },
-      { id: 'poolbar', dx: -6, dz: 12, label: 'The pool bar', verb: 'Order', r: 2 },
+      { id: 'poolbar', dx: -14, dz: -1.6, label: 'The pool bar', verb: 'Order', r: 2 },
     ],
     solids: [
       { id: 'dirlycar', dx: 14, dz: -16, w: 3, d: 2 },
       { id: 'dirly-pylon-a', dx: 20, dz: -20, r: 0.6 },
       { id: 'dirly-pylon-b', dx: 8, dz: -22, r: 0.6 },
       { id: 'generator', dx: -16, dz: -18.4, r: 1.6 },
-      { id: 'pool', dx: -6, dz: 16, w: 12, d: 6 },
-      { id: 'bar', dx: -6, dz: 10.4, w: 5, d: 1.2 },
+      { id: 'pool', dx: -14, dz: 4, w: 12, d: 6 },
+      { id: 'bar', dx: -14, dz: -1.6, w: 5, d: 1.2 },
       { id: 'palm-a', dx: 22, dz: 8, r: 0.5 },
       { id: 'palm-b', dx: -26, dz: 2, r: 0.5 },
     ],
@@ -1139,6 +1140,59 @@ export const DESTINATIONS = [
     collect: { task: 'schwifty', spots: ['watert', 'mic'] },
     goal: 'watert',
     kinds: ['watert', 'cromulon', 'icet'],
+  }),
+  place(25, {
+    id: 'evilrick',
+    name: 'Evil Rick’s lair',
+    note: 'The dimension where a Rick with a scar wired up a dome of Mortys to hide his brainwaves. Somebody’s behind him.',
+    kind: 'room',
+    deep: 40,
+    wide: 44,
+    ceiling: 10,
+    people: [
+      // Evil Rick at his console till the Mortys are freed; then he comes for Morty, and the fight is the thing
+      { id: 'evilrick', dx: 0, dz: -12, face: S, ai: { watch: 12, bark: { r: 9, every: 14, lines: ['Another Morty. I’ve got hundreds. What’s one more?', 'Your Rick thinks he’s the smartest man in the universe. He isn’t even the smartest in this room.'] }, hunt: { speed: 2.4, catchR: 1.6, duel: { hp: 6, mortyHp: 3, task: 'evilrick', won: { who: 'Evil Rick', text: 'He goes down by his own console, and his eye flickers. A receiver, behind the ear. He was never the one in charge.' } }, line: 'Evil Rick’s fist finds your jaw. “Sit down, Morty. There’s a slot in the dome with your name on it.” You come round by the door.' } } },
+      // Evil Morty, sitting in his chair at the back with his arms crossed, till he's spoken to
+      { id: 'evilmorty', dx: 14, dz: -14, face: W, until: 'evilmorty', ai: { clip: 'sitcross', bark: { r: 6, every: 18, lines: ['(He watches you fight. He doesn’t get up.)', '(He says nothing. He’s counting something.)'] } } },
+    ],
+    // (the dome's Mortys in their pods are placed by the builder, which frees them one by one)
+    spots: [
+      { id: 'pod1', dx: -15.4, dz: -8, label: 'A Morty in a pod', verb: 'Free', r: 1.4 },
+      { id: 'pod2', dx: -15.4, dz: -2, label: 'A Morty in a pod', verb: 'Free', r: 1.4 },
+      { id: 'pod3', dx: -15.4, dz: 4, label: 'A Morty in a pod', verb: 'Free', r: 1.4 },
+      { id: 'evilrick', dx: 0, dz: -10.4, label: 'Evil Rick', verb: 'Face him', r: 1.6 },
+      { id: 'evilmorty', dx: 12.4, dz: -14, label: 'A Morty with an eyepatch', verb: 'Talk', r: 1.6, until: 'evilmorty' },
+      { id: 'domewall', dx: 0, dz: -16, label: 'The dome', verb: 'Look', r: 2.4 },
+      { id: 'scarconsole', dx: 4, dz: -12.4, label: 'His console', verb: 'Look', r: 1.6 },
+    ],
+    solids: [
+      { id: 'console', dx: 0, dz: -14, w: 7, d: 1.6 },
+      { id: 'chair', dx: 14.6, dz: -14, w: 1.2, d: 1.2 },
+      ...[-8, -2, 4].map((dz) => ({ id: `podw${dz}`, dx: -17.6, dz, w: 1.6, d: 2.4 })),
+      ...[2, 8].map((dz) => ({ id: `pode${dz}`, dx: 17.6, dz, w: 1.6, d: 2.4 })),
+      { id: 'crate-a', dx: -6, dz: 6, w: 2.4, d: 2.4 },
+      { id: 'crate-b', dx: 7, dz: 4, w: 2, d: 2 },
+    ],
+    tasks: [
+      { id: 'evilrick', name: 'Beat Evil Rick', hint: 'Dial Evil Rick’s lair on the portal gun, free three Mortys from the dome, and when he comes for you, fight: F fires, and he hits hard. Keep moving.' },
+      { id: 'evilmorty', name: 'Find out who was behind him', hint: 'Once Evil Rick is down, talk to the Morty with the eyepatch before he leaves.' },
+    ],
+    say: {
+      pod1: { who: null, text: 'You pull the plug and the Morty slumps out, blinking. “Th-thanks. Which one are you?” Behind you, Evil Rick looks up from the console.' },
+      pod2: { who: null, text: 'Another plug, another Morty. He hugs you and runs for the door. Evil Rick is standing now.' },
+      pod3: { who: null, text: 'The third plug. The dome goes dark, and a thousand Mortys sigh at once. Evil Rick says, quietly, “That was mine,” and starts towards you.' },
+      evilrick: { who: 'Evil Rick', text: '“Hundreds of Mortys. Every one of them a little bit of camouflage. You think you’re different, kid? You’re a slot in the wall.”' },
+      evilmorty: { who: 'The Morty with the eyepatch', text: 'He takes the eyepatch off. Behind it, a perfectly good eye. “He was a puppet. They all are.” A yellow portal opens behind him. “Tell your Rick I’m not done.” He steps through, and the chair is empty.' },
+      domewall: { who: null, text: 'The dome: hundreds of Mortys in pods, wired by the head, their brainwaves cancelling a Rick’s. Three pods have plugs you can reach.' },
+      scarconsole: { who: null, text: 'His console, keyed to his hand. A screen tracks every Rick in the Citadel. One Rick, C-137, is circled in red. Twice.' },
+    },
+    collect: { task: 'evilrick', spots: ['pod1', 'pod2', 'pod3'], start: true },
+    done: { evilmorty: 'evilmorty' },
+    unlock: {},
+    acts: { pod1: 'freed1', pod2: 'freed2', pod3: 'freed3', evilmorty: 'leave' },
+    goal: 'pod1',
+    caught: 'Evil Rick’s fist finds your jaw. You come round by the door, and he’s back at his console as if you’d never got up.',
+    kinds: ['evilrick', 'evilmorty', 'mortyclone'],
   }),
 ];
 
