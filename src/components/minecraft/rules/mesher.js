@@ -13,7 +13,9 @@
 // the shading from creasing, as the game does.
 //
 // A vertex is six 16-bit numbers (12 bytes):
-//   x, y, z     in sixteenths of a block within the section (0–256), so a
+//   x, y, z     in sixteenths of a block within the chunk (x, z 0–256; y
+//               0–4096, the height in the column, so a column’s sections
+//               join into one mesh by laying their arrays end to end), so a
 //               lowered water surface or a plant's inset sits exactly
 //   layer       the texture's layer in the block texture array
 //   face | ao << 3 | tint << 5 | light << 8
@@ -145,7 +147,7 @@ export function meshSection(chunk, sectionY, nb, { textures }) {
           const word = FACE.cross | (3 << 3) | (TINT[id] << 5) | (light[pad(x, y, z)] << 8);
           const layer = layerOf(b.faces.north);
           for (const quad of CROSS)
-            for (let k = 0; k < 4; k++) buf.push(x * 16 + quad[k][0], y * 16 + quad[k][1], z * 16 + quad[k][2], layer, word, CROSS_UV[k][0] | (CROSS_UV[k][1] << 5));
+            for (let k = 0; k < 4; k++) buf.push(x * 16 + quad[k][0], (y0 + y) * 16 + quad[k][1], z * 16 + quad[k][2], layer, word, CROSS_UV[k][0] | (CROSS_UV[k][1] << 5));
           continue;
         }
         // a liquid's surface sits at 14/16 unless more of it is above
@@ -180,7 +182,7 @@ export function meshSection(chunk, sectionY, nb, { textures }) {
             const corner = solidAt(ox + sx, oy + sy, oz + sz);
             ao[k] = kind === 4 ? 3 : s1 && s2 ? 0 : 3 - (s1 + s2 + corner);
             const top = cy === 1 ? 16 - lowered : 0;
-            px.push([x * 16 + cx * 16, y * 16 + top, z * 16 + cz * 16, face.uv[k][0] * 16, face.uv[k][1] * 16]);
+            px.push([x * 16 + cx * 16, (y0 + y) * 16 + top, z * 16 + cz * 16, face.uv[k][0] * 16, face.uv[k][1] * 16]);
           }
           // the side of a lowered liquid shows its texture cut, not squashed
           if (lowered && f >= 2) for (const p of px) if (p[4] === 0) p[4] = lowered;

@@ -11,7 +11,8 @@
 import * as THREE from 'three';
 import { byName } from './rules/blocks.js';
 import { EYE } from './rules/player.js';
-import { loadBlockArray, loadSprite } from './scene/atlasTexture.js';
+import { BIOME_CLIMATE, colormapAt } from './pack/colormap.js';
+import { MC, loadBlockArray, loadSprite, pixels } from './scene/atlasTexture.js';
 import { createChunks } from './scene/chunks.js';
 import { blockMaterial } from './scene/shaders.js';
 import { createSky } from './scene/sky.js';
@@ -29,8 +30,14 @@ export function createScene(renderer, rt, { manifest }) {
   let sky = null;
 
   const ready = (async () => {
-    const [array, sun, clouds] = await Promise.all([loadBlockArray(manifest), loadSprite('sun').catch(() => null), loadSprite('clouds').catch(() => null)]);
-    materials = { opaque: blockMaterial({ array, pass: 'opaque' }), cutout: blockMaterial({ array, pass: 'cutout' }), water: blockMaterial({ array, pass: 'water' }) };
+    const map = (name) => pixels(`${MC}sprites/${name}.webp`).catch(() => null);
+    const [array, sun, clouds, grassMap, foliageMap] = await Promise.all([loadBlockArray(manifest), loadSprite('sun').catch(() => null), loadSprite('clouds').catch(() => null), map('colormap_grass'), map('colormap_foliage')]);
+    // the pack's own greens, for plains until the biomes tint by place (Phase 6)
+    const climate = BIOME_CLIMATE.plains;
+    const colours = {};
+    if (grassMap) colours.grass = colormapAt(grassMap, ...climate);
+    if (foliageMap) colours.foliage = colormapAt(foliageMap, ...climate);
+    materials = { opaque: blockMaterial({ array, pass: 'opaque', colours }), cutout: blockMaterial({ array, pass: 'cutout', colours }), water: blockMaterial({ array, pass: 'water', colours }) };
     chunks = createChunks(scene, { materials });
     sky = createSky(scene, { sun, clouds });
     api.chunks = chunks;
@@ -75,6 +82,7 @@ export function createScene(renderer, rt, { manifest }) {
     sync,
     setRenderDistance,
     render() {
+      chunks?.flush();
       renderer.render(scene, camera);
     },
     resize(w, h) {

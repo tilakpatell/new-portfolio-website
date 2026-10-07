@@ -141,6 +141,8 @@ export default {
           c.generated = true;
           addChunk(g, c);
           for (let s = 0; s < 16; s++) scene.chunks.setMesh(cx, cz, s, msg.meshes[s]);
+          // the next one at once, not at the next frame (a slow or hidden page still fills in)
+          load();
         });
       }
       for (const k of dropFar(g)) {

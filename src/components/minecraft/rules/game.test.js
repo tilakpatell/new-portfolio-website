@@ -87,6 +87,8 @@ describe('the game', () => {
       expect(w.get(s.x, s.y - 1, s.z)).not.toBe(id('water'));
       expect(w.solid(s.x, s.y, s.z)).toBe(false);
       expect(w.solid(s.x, s.y + 1, s.z)).toBe(false);
+      // under the open sky, not in a wood's shade: nothing over the head
+      for (let y = s.y; y < 256; y++) expect(w.get(s.x, y, s.z), `${seed} at ${y}`).toBe(0);
     }
   });
 

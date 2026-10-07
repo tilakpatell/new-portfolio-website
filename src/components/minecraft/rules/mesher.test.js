@@ -116,6 +116,14 @@ describe('the mesher', () => {
     expect(verts(mesh(c, 0, { ...none, nx: w }).opaque).filter((p) => p.face === FACE.west)).toHaveLength(0);
   });
 
+  it('a vertex stands at its height in the column, so a column’s sections join into one mesh', () => {
+    const c = makeChunk(0, 0);
+    set(c, 3, 64, 3, id('stone'));
+    const ys = verts(mesh(c, 4).opaque).map((p) => p.y);
+    expect(Math.min(...ys)).toBe(64 * 16);
+    expect(Math.max(...ys)).toBe(65 * 16);
+  });
+
   it('a block on a section’s floor reads the section below', () => {
     const c = makeChunk(0, 0);
     set(c, 3, 16, 3, id('stone'));

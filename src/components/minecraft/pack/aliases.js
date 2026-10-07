@@ -94,7 +94,8 @@ export const SKINS = {
 
 // The sky's and the HUD's pictures, each kept at its own size: the sun and
 // the moon's eight phases, the cloud map (a texel a 12-block cell), the
-// hotbar, its selection frame, the crosshair, and the hearts, hunger and air.
+// hotbar, its selection frame, the crosshair, the hearts, hunger and air,
+// and the grass and foliage colormaps.
 export const SPRITES = {
   sun: ['environment/celestial/sun', 'environment/sun'],
   moon_phases: ['environment/celestial/moon_phases', 'environment/moon_phases'],
@@ -109,4 +110,7 @@ export const SPRITES = {
   food_half: ['gui/sprites/hud/food_half'],
   food_empty: ['gui/sprites/hud/food_empty'],
   air: ['gui/sprites/hud/air'],
+  // the biome tints, read by temperature and rainfall as the game reads them
+  colormap_grass: ['colormap/grass'],
+  colormap_foliage: ['colormap/foliage'],
 };

@@ -43,12 +43,13 @@ void main() {
 }
 `;
 const domeFragment = /* glsl */ `
+layout(location = 0) out highp vec4 outColour;
 uniform vec3 sky;
 uniform vec3 fog;
 in vec3 vDir;
 void main() {
   float t = smoothstep(-0.02, 0.32, vDir.y);
-  gl_FragColor = vec4(mix(fog, sky, t), 1.0);
+  outColour = vec4(mix(fog, sky, t), 1.0);
 }
 `;
 const cloudVertex = /* glsl */ `
@@ -63,6 +64,7 @@ void main() {
 }
 `;
 const cloudFragment = /* glsl */ `
+layout(location = 0) out highp vec4 outColour;
 uniform sampler2D map;
 uniform vec3 fog;
 uniform float far;
@@ -72,14 +74,15 @@ void main() {
   vec4 t = texture(map, fract(vCell / 256.0));
   if (t.a < 0.5) discard;
   float fade = 1.0 - smoothstep(far * 0.6, far, vDist);
-  gl_FragColor = vec4(mix(fog, vec3(1.0), fade), 0.8 * fade);
+  outColour = vec4(mix(fog, vec3(1.0), fade), 0.8 * fade);
 }
 `;
 const sunFragment = /* glsl */ `
+layout(location = 0) out highp vec4 outColour;
 uniform sampler2D map;
 in vec2 vUv;
 void main() {
-  gl_FragColor = vec4(texture(map, vec2(vUv.x, 1.0 - vUv.y)).rgb, 1.0);
+  outColour = vec4(texture(map, vec2(vUv.x, 1.0 - vUv.y)).rgb, 1.0);
 }
 `;
 const sunVertex = /* glsl */ `

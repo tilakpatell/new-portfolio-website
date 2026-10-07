@@ -14,7 +14,8 @@
 
 import * as THREE from 'three';
 
-// the game's colours for plains: grass, foliage, water, and birch's and spruce's fixed leaves
+// the game's colours for plains (grass and foliage from its own colormap,
+// stand-ins until the pack's is read), water, and birch's and spruce's fixed leaves
 export const TINT_COLOURS = {
   grass: [0x91, 0xbd, 0x59],
   foliage: [0x77, 0xab, 0x2f],
@@ -55,6 +56,7 @@ void main() {
 `;
 
 const fragment = /* glsl */ `
+layout(location = 0) out highp vec4 outColour;
 precision highp sampler2DArray;
 uniform sampler2DArray atlas;
 uniform vec3 fogColour;
@@ -72,15 +74,17 @@ void main() {
   vec3 c = t.rgb * vColour;
   float fog = smoothstep(fogNear, fogFar, vDist);
 #ifdef WATER
-  gl_FragColor = vec4(mix(c, fogColour, fog), t.a);
+  outColour = vec4(mix(c, fogColour, fog), t.a);
 #else
-  gl_FragColor = vec4(mix(c, fogColour, fog), 1.0);
+  outColour = vec4(mix(c, fogColour, fog), 1.0);
 #endif
 }
 `;
 
-export function blockMaterial({ array, pass }) {
-  const tints = [[255, 255, 255], TINT_COLOURS.grass, TINT_COLOURS.foliage, TINT_COLOURS.water, TINT_COLOURS.birch, TINT_COLOURS.spruce].map(v3);
+// `colours` overrides the grass and foliage (the pack's colormap, read for the biome)
+export function blockMaterial({ array, pass, colours = {} }) {
+  const c = { ...TINT_COLOURS, ...colours };
+  const tints = [[255, 255, 255], c.grass, c.foliage, c.water, c.birch, c.spruce].map(v3);
   const m = new THREE.ShaderMaterial({
     glslVersion: THREE.GLSL3,
     vertexShader: vertex,

@@ -169,7 +169,9 @@
     "food_full",
     "food_half",
     "food_empty",
-    "air"
+    "air",
+    "colormap_grass",
+    "colormap_foliage"
   ],
   "frames": {
     "lava_flow": 16,
