@@ -22,6 +22,12 @@ import { LOADOUT_KEY, STOCK_LOADOUT, readLoadouts } from '../outfit';
 // remembered, and they're never drawn over a walkable world (enterWorld(),
 // from ../../middleearth/towns/useTravellers.js), where the others are
 // there in person.
+//
+// follow(id) is the roster's “Fly to” and “Go”: the pilot to fly to once
+// the ship is in, on the universe map or in a galaxy system. The flight
+// page acts on followId and clears it when the trip ends; left alone, it's
+// forgotten after FOLLOW_MS (and on going offline), so a page opened much
+// later doesn't set off after someone.
 
 const ONLINE_KEY = 'tp-universe-online'; // 'on' once you've gone online
 const NAME_KEY = 'tp-universe-callsign';
@@ -30,6 +36,7 @@ const POINTERS_KEY = 'tp-universe-pointers'; // 'off' once you've turned pointer
 const AWAY_MS = 120000; // a tab hidden this long leaves the room till you're back
 const FEED_MS = 6000;
 const FEED_MAX = 4;
+const FOLLOW_MS = 60000; // a pilot to fly to, once the ship's in (follow): forgotten after this
 const OFF = { status: 'off', self: null, peers: [] };
 
 export const OnlineContext = createContext(null);
@@ -67,6 +74,16 @@ export function useOnlineState(where) {
       setWorlds((n) => n - 1);
     };
   }, []);
+  const [following, setFollowing] = useState(null); // { id, at }: a fresh object each time, so asking again starts the clock again
+  const follow = useCallback((id) => setFollowing(typeof id === 'string' && id ? { id, at: Date.now() } : null), []);
+  useEffect(() => {
+    if (!following) return undefined;
+    const t = setTimeout(() => setFollowing(null), FOLLOW_MS);
+    return () => clearTimeout(t);
+  }, [following]);
+  useEffect(() => {
+    if (!on) setFollowing(null);
+  }, [on]);
   const latest = useRef({ name, kind, loadout, build, looks, where });
   latest.current = { name, kind, loadout, build, looks, where };
 
@@ -175,6 +192,8 @@ export function useOnlineState(where) {
       setPointers(yes);
     },
     rename: keepName,
+    follow, // follow(id): fly to them once the ship's in; follow(null) to forget it
+    followId: following?.id ?? null,
     ally: (id, what) => client?.ally(id, what),
     block: (id, yes) => client?.block(id, yes),
   };

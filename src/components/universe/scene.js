@@ -109,6 +109,7 @@ import { exposureFor, sunShareOf } from '../../lib/three/exposure';
 import { houseOn } from '../../lib/three/house';
 import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, driveById, hyperState, legOf, parkFor, riftExit } from './nav';
+import { REAIM_MS, parkBehind, pilotId, pilotSpace, reached } from './pilotGoal';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
 import { AHEAD_OF, crewAt, factionsOf, kindsOf, pick as pickFaction, sideAt, sideFor, sideOf, wingOf } from './sides';
 import { TROOPS } from './foot';
@@ -981,7 +982,7 @@ export async function create(canvas, ctx) {
     yaw: 0,
     vel: 0, // radians per ms, after a flick
     sel: props.selected ?? null,
-    then: null, // a trip on from the far side of a portal: { id, drive } (travel, portalThrough)
+    then: null, // a trip on from the far side of a portal: { id, drive, name } (travel, portalThrough; name: a pilot's, flown to)
     hover: null,
     drag: null,
     flight: null,
@@ -1002,7 +1003,7 @@ export async function create(canvas, ctx) {
     view: 'chase', // the seat, or 'map' (the whole map, keeping the ship)
     cabK: 0, // how far into the cockpit view the camera is, 0 to 1, eased
     fovBase: FOV, // the lens, eased between the chase's and the cockpit's
-    auto: null, // { id, park, od } while it flies itself somewhere (od: super speed's overdrive, 1 cruising)
+    auto: null, // { id, park, od } while it flies itself somewhere (od: super speed's overdrive, 1 cruising); to another pilot, also { pilot (their id), name, drive, space, reaimAt } (pilotGoal.js)
     hotSaid: null, // the planet whose air it's going through too fast to land, said so on the HUD
     jump: null, // { id, park, at }: a jump to lightspeed under way (out at the place at `at`, wall()'s seconds)
     hyperAt: null, // when it last jumped, wall()'s seconds (the hyperdrive charges again: nav.js)
@@ -1531,19 +1532,23 @@ export async function create(canvas, ctx) {
   };
   const travel = (id, drive = props.drive) => {
     const s = state.ship;
-    if (!s || state.crash || state.dive || state.jump || props.frozen || onFoot() || !(isGoal(id) || (id === 'front' && front))) return false;
+    // (another pilot, `pilot:<id>`, is somewhere to go while they're flying
+    // here in sight: pilots.js's pose, and pilotGoal.js)
+    const pid = pilotId(id);
+    const pose = pid ? pilots.pose(pid) : null;
+    if (!s || state.crash || state.dive || state.jump || props.frozen || onFoot() || !(isGoal(id) || (id === 'front' && front) || pose)) return false;
     // (somewhere in the other sector of the map: to the portal first, and on
     // from its far end once through: portalThrough. nav.js legOf)
-    const leg = id === 'front' ? id : legOf(s, id);
+    const leg = id === 'front' ? id : legOf(s, id, pose);
     if (leg !== id) {
       if (!travel(leg, drive)) return false;
-      state.then = { id, drive };
+      state.then = { id, drive, name: pose?.name ?? null };
       return true;
     }
     state.then = null;
     // (the Maw's own spot is past its point of no return: to the edge of its pull instead; the
-    // front's is just inside the fight, on your side of it)
-    const park = id === 'front' ? frontPark([s.x, s.z]) : parkFor(id, [s.x, s.z]);
+    // front's is just inside the fight, on your side of it; a pilot's, behind them)
+    const park = id === 'front' ? frontPark([s.x, s.z]) : pose ? parkBehind(pose) : parkFor(id, [s.x, s.z]);
     if (!park) return false;
     heard();
     state.view = state.seat;
@@ -1555,6 +1560,7 @@ export async function create(canvas, ctx) {
     if (reduced) {
       state.auto = null;
       arriveAt(park);
+      if (pose) withPilot(pose.name);
       ctx.invalidate();
       if (!portalById(id)) setTimeout(() => emit({ type: 'arrived', id, done: true }), 0); // (there: the page's tour and a trip through the gate go on; after the page's own select. Through a portal, its trip ends at the far end: portalThrough)
       return true;
@@ -1564,7 +1570,7 @@ export async function create(canvas, ctx) {
       // the jump: the page plays the site's own over the map, and at its
       // flash the ship's out at the place (fly())
       state.auto = null;
-      state.jump = { id, park, at: wall() + HYPER.flash };
+      state.jump = { id, park, at: wall() + HYPER.flash, name: pose?.name ?? null };
       state.hyperAt = wall();
       emit({ type: 'jump', id });
     } else {
@@ -1574,6 +1580,8 @@ export async function create(canvas, ctx) {
         state.note = { text: hyper.why === 'interdicted' ? 'Interdicted: no jump till the hunters are gone' : `Hyperdrive charging (${Math.ceil(hyper.wait)} s): super speed instead`, until: wall() + 3.5 };
       }
       state.auto = { id, park, od: driveById(hyper ? 'super' : drive).od };
+      // (a pilot moves: where they'll be parked behind is worked out again every REAIM_MS, chasePilot)
+      if (pose) Object.assign(state.auto, { pilot: pid, name: pose.name, drive, space: pilotSpace(SPACE, pid, pose), reaimAt: performance.now() + REAIM_MS });
     }
     retarget(700);
     ctx.invalidate();
@@ -1598,6 +1606,54 @@ export async function create(canvas, ctx) {
     return { x: g.at[0] + (dx / l) * g.reach, y: g.at[1], z: g.at[2] + (dz / l) * g.reach, heading: headingTo(-dx / l, -dz / l) };
   };
   const frontSpace = () => ({ ...SPACE, goals: { ...SPACE.goals, front: front.goal() } });
+  // Flying to another pilot (travel's `pilot:<id>`): there once within reach
+  // of them, the HUD says who you're with; gone (offline, hidden, down on a
+  // planet, blocked, off to another page) and the trip ends, the autopilot
+  // off and their goal with it, and the HUD says so. Their name is only
+  // ever the note's text (placePrompt sets it as textContent)
+  const withPilot = (name) => {
+    state.note = { text: `With ${name ?? 'them'}`, until: wall() + 3.5 };
+  };
+  const pilotGone = (id, name) => {
+    state.note = { text: `${name ?? 'They'} ${name ? 'has' : 'have'} gone`, until: wall() + 3.5 };
+    emit({ type: 'lost', id, name: name ?? null });
+  };
+  // each frame of a trip to a pilot, before the autopilot flies it (or on
+  // the way to the portal, for one in the other sector): ended if they're
+  // gone or reached, else re-aimed at where they are every REAIM_MS
+  const chasePilot = () => {
+    const a = state.auto;
+    const then = !a?.pilot && state.then && pilotId(state.then.id) ? state.then : null;
+    if (!a || !(a.pilot || then)) return;
+    const id = a.pilot ? a.id : then.id;
+    const name = a.pilot ? a.name : then.name;
+    const pose = pilots.pose(pilotId(id));
+    const park = parkBehind(pose);
+    if (!park) {
+      // (dropAuto: the page hears the trip's off; then why)
+      dropAuto();
+      pilotGone(id, name);
+      return;
+    }
+    if (!a.pilot) return; // (on to the portal: the trip on to them is worked out at its far end)
+    if (reached(state.ship, pose)) {
+      state.auto = null;
+      withPilot(name);
+      emit({ type: 'arrived', id, done: true });
+      return;
+    }
+    const now = performance.now();
+    if (now < a.reaimAt) return;
+    // (gone through a portal ahead of you: after them, by it)
+    if (legOf(state.ship, id, pose) !== id) {
+      state.auto = null;
+      if (!travel(id, a.drive === 'hyper' ? 'super' : a.drive)) emit({ type: 'arrived', id, done: false });
+      return;
+    }
+    a.reaimAt = now + REAIM_MS;
+    a.park = park;
+    a.space = pilotSpace(SPACE, a.pilot, pose);
+  };
 
   // ── The ship ──
   const heard = () => {
@@ -2624,23 +2680,25 @@ export async function create(canvas, ctx) {
     const goal = on ? navGoal(s) : null;
     setOn(h, h.nav, Boolean(goal));
     if (goal) {
-      const place = isPlace(goal.id) ? byId(goal.id) : null;
+      // (another pilot: the diamond's on them, their name as its text)
+      const mate = pilotId(goal.id) ? pilots.pose(pilotId(goal.id)) : null;
+      const place = !mate && isPlace(goal.id) ? byId(goal.id) : null;
       // (the war's front is neither a place nor a wonder: its own goal, front.js's)
       const war = goal.id === 'front' ? front?.goal() : null;
-      const wd = place || war ? null : wonderById(goal.id);
-      const at = place ? POSITIONS[goal.id] : war ? war.at : wd?.at;
+      const wd = place || war || mate ? null : wonderById(goal.id);
+      const at = mate ? [mate.x, mate.y, mate.z] : place ? POSITIONS[goal.id] : war ? war.at : wd?.at;
       if (!at) {
         setOn(h, h.nav, false);
         return;
       }
       toScreen(at[0], at[1], at[2], hudAt);
       // (the Citadel gone, the diamond is round where its core was, not round the empty reach of its arms)
-      const reach = place ? REACH[goal.id] : war ? war.r : wd.id === 'citadel' && siegeSt.down && citadelGeo ? citadelGeo.core * 0.5 : reachOf(wd);
+      const reach = mate ? 0.5 : place ? REACH[goal.id] : war ? war.r : wd.id === 'citadel' && siegeSt.down && citadelGeo ? citadelGeo.core * 0.5 : reachOf(wd);
       const px = hudAt.z > 0 ? (reach / (hudAt.z * tanHalf)) * (size.h / 2) * 2.2 : 0;
       // no bigger than a quarter of the frame's height: close in, the place itself shows the way
       placeMark(h.nav, hudAt, clamp(px, 34, Math.min(260, size.h * 0.25)));
       h.nav.toggleAttribute('data-way', goal.way);
-      setText(h, h.navName, place ? place.label : war ? 'The front' : wd.name);
+      setText(h, h.navName, mate ? mate.name : place ? place.label : war ? 'The front' : wd.name);
       setText(h, h.navDist, range(apart(at[0], at[1], at[2], s.x, s.y, s.z)));
     }
   };
@@ -3722,7 +3780,7 @@ export async function create(canvas, ctx) {
     state.note = { text: `Through the portal: ${SECTORS[out.sector].name}`, until: wall() + 3.5 };
     emit({ type: 'sector', id: out.sector, through: id });
     // (on to where the trip was going: the jump's charging now, so at super speed)
-    if (then) travel(then.id, then.drive === 'hyper' ? 'super' : then.drive);
+    if (then && !travel(then.id, then.drive === 'hyper' ? 'super' : then.drive) && pilotId(then.id)) pilotGone(then.id, then.name); // (a pilot gone while it went through)
   };
 
   // Rick's portal gun (P, or the HUD's Portal button): in any ship, flying
@@ -3768,7 +3826,14 @@ export async function create(canvas, ctx) {
       // for the cruiser) where it comes out
       const j = state.jump;
       state.jump = null;
-      arriveAt(j.park);
+      // (to a pilot: parked behind them as they are now, at the flash; gone,
+      // and it comes out where they were when it jumped)
+      const pid = pilotId(j.id);
+      const pose = pid ? pilots.pose(pid) : null;
+      const park = parkBehind(pose) ?? j.park;
+      if (pid && pose) withPilot(pose.name);
+      else if (pid) pilotGone(j.id, j.name);
+      arriveAt(park);
       hunters?.clear();
       meteors.clear();
       mines.clear();
@@ -3779,16 +3844,17 @@ export async function create(canvas, ctx) {
       npcs?.clear();
       state.interdicted = false;
       state.safeUntil = state.clock + SAFE;
-      crashFx.arrive({ point: new THREE.Vector3(j.park.x, j.park.y, j.park.z), kind: state.kind, heading: j.park.heading });
+      crashFx.arrive({ point: new THREE.Vector3(park.x, park.y, park.z), kind: state.kind, heading: park.heading });
       emit({ type: 'jumped', id: j.id });
     }
     if (!state.jump && pieces.riftAt && pieces.riftInside(state.ship)) riftThrough();
+    if (!state.jump) chasePilot();
     if (state.jump) input = { throttle: 1, boost: true }; // (spooling up: straight on, flat out)
     else if (state.auto) {
       const od = state.interdicted ? 1 : (state.auto.od ?? 1);
       // (and the battle's hold on the drive, so it plans its stop for it: front.js holdAt, as it would be coming straight in)
       const hold = front ? (x, y, z) => front.holdAt(x, y, z, null) : null;
-      const a = autopilot(state.ship, state.auto.id, state.auto.park, state.auto.id === 'front' && front ? frontSpace() : undefined, od, hold);
+      const a = autopilot(state.ship, state.auto.id, state.auto.park, state.auto.space ?? (state.auto.id === 'front' && front ? frontSpace() : undefined), od, hold);
       input = a.input;
       if (a.done) {
         const id = state.auto.id;

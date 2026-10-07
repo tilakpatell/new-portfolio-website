@@ -23,7 +23,7 @@
 // createPilots(parent, { T, colors, here, fleet, kinds }) → { update(dt, now, client, view),
 //   hit(from, to, damage) → { id, at, size } (a pilot) or { id, hunter, kind,
 //   at, size, down } (one of the hunters after pilot `id`), targets, count,
-//   at(id), dispose() }
+//   at(id), pose(id), dispose() }
 // view: { project(x, y, z, out) (to the canvas: out.x, out.y in px and
 // out.z, the depth), tags (the element the tags go in), locked (the pilot
 // the guns are locked on, whose name the lock shows instead; footOn, the
@@ -164,7 +164,7 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
       tag.append(name, bar);
       tags.append(tag);
     }
-    return { kind, hull: hullKey(hull), loadout: STOCK_LOADOUT, model, tag, name: '', at: new THREE.Vector3(), prev: new THREE.Vector3(), vel: new THREE.Vector3(), shown: false, parked: false, under: null, ally: false, safe: false, threat: 0, tagOn: null, tagName: null };
+    return { kind, hull: hullKey(hull), loadout: STOCK_LOADOUT, model, tag, name: '', at: new THREE.Vector3(), prev: new THREE.Vector3(), vel: new THREE.Vector3(), shown: false, pose: null, parked: false, under: null, ally: false, safe: false, threat: 0, tagOn: null, tagName: null };
   };
 
   // bolts from the others' guns: only drawn (a hit is the shooter's to call)
@@ -255,6 +255,8 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
         const on = Boolean(s && !s.hidden) && !down;
         const was = sh.shown;
         sh.shown = on;
+        // (for flying to them: where they are now, while they're flying here and in sight)
+        sh.pose = on ? { x: s.x, y: s.y, z: s.z, heading: s.heading, name: p.name } : null;
         sh.name = p.name; // (for the lock's bracket, whether or not their tag's showing)
         sh.ally = p.ally === 'ally';
         sh.safe = on && Boolean(s.safe);
@@ -433,6 +435,14 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
     at(id) {
       const sh = ships.get(id);
       return sh?.shown ? sh.at.clone() : null;
+    },
+    // where a pilot is as of the last update, { x, y, z, heading, name }, or
+    // null for one who isn't flying here in sight (gone, hidden, stale, down
+    // on a planet, blocked): the autopilot's goal when you fly to them
+    // (pilotGoal.js). Only ever a pilot already in the room
+    pose(id) {
+      const sh = ships.get(id);
+      return sh?.pose ?? null;
     },
 
     dispose() {

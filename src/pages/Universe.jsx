@@ -156,6 +156,33 @@ export default function Universe({ ask = false }) {
   }, []);
   useEffect(() => () => clearTimeout(tour.current?.timer), []);
 
+  // flying to another pilot (the roster's “Fly to”, or its “Go” from
+  // another page: useOnline's follow): once the ship's in and they're
+  // flying here in sight, the autopilot takes it to them (scene.js's
+  // `pilot:<id>`, by the drive picked). Tried till it goes; the trip's end
+  // (there, gone, or the stick taken back) or the follow's own minute
+  // forgets it
+  const { followId, follow } = online;
+  const followRef = useRef(null); // the pilot whose trip is under way
+  useEffect(() => {
+    if (!followId || !ship) return undefined;
+    const go = () => {
+      if (followRef.current === followId) return true;
+      if (!map.current.live || !map.current.travel(`pilot:${followId}`, driveRef.current)) return false;
+      followRef.current = followId;
+      stopTour();
+      onward.current = null;
+      setCharting(false);
+      return true;
+    };
+    if (go()) return undefined;
+    const t = setInterval(() => go() && clearInterval(t), 500);
+    return () => clearInterval(t);
+  }, [followId, ship, stopTour]);
+  useEffect(() => {
+    if (!followId) followRef.current = null;
+  }, [followId]);
+
   // out of the cockpit's launch (App's intro, or ⌘K's replay): flying the
   // ship it was, with no question first. Sat down in the cockpit with no
   // ship yet (a first visit), that one's made under it as you sit there
@@ -284,6 +311,8 @@ export default function Universe({ ask = false }) {
       return;
     }
     if (e.type === 'event' && e.id === 'standing' && goodStanding(e.sub) && stood.once(`${e.side}:${e.sub}`)) pay('standingUp', 1, e.side);
+    // a trip to a pilot over (with them, gone, or the stick taken back): the follow's done
+    if ((e.type === 'arrived' || e.type === 'jumped' || e.type === 'lost') && followRef.current && e.id === `pilot:${followRef.current}`) follow(null);
     // a trip ended: on through the gate, or the tour's next leg
     if (e.type === 'arrived' || e.type === 'jumped') {
       const done = e.type === 'jumped' || e.done;

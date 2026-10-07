@@ -351,6 +351,19 @@ describe('across the sectors', () => {
     expect(legOf(there, 'home')).toBe('rmportal-back');
   });
 
+  it('a pilot goal in the other sector goes by the portal', () => {
+    // (where they are says which sector: their pose, not a place on the map)
+    const inCurve = { x: RM[0] + 300, y: 2, z: RM[2] + 120, heading: 0 };
+    const atHome = { x: 40, y: 2, z: 300, heading: 1 };
+    expect(legOf(home(), 'pilot:ab12', inCurve)).toBe('rmportal');
+    expect(legOf(home(), 'pilot:ab12', atHome)).toBe('pilot:ab12');
+    const there = startFor('gazorpazorp');
+    expect(legOf(there, 'pilot:ab12', atHome)).toBe('rmportal-back');
+    expect(legOf(there, 'pilot:ab12', inCurve)).toBe('pilot:ab12');
+    // with no pose, nowhere to route by: the goal as it is
+    expect(legOf(home(), 'pilot:ab12', null)).toBe('pilot:ab12');
+  });
+
   it('counts the way through the portal in the distance and the trip time', () => {
     for (const id of ['gazorpazorp', 'citadel', 'curvesun']) {
       const d = distanceTo(home(), id);

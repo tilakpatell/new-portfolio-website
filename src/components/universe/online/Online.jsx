@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RiCloseLine, RiGroupLine } from 'react-icons/ri';
 import { NAME_MAX } from './names';
-import { AWAY, UNIVERSE, placeName } from './where';
+import { AWAY, UNIVERSE, isFlight, placeName } from './where';
 import { crewById } from '../crews';
 import { paintById } from '../paint';
 import Face from '../Faces';
@@ -18,6 +18,11 @@ import './online.css';
 // show on pages. What's happening (who came online or came to your page,
 // alliances, who shot down whom) shows in a short feed above the button.
 // useOnline.js keeps the state.
+//
+// A pilot flying where you're flying, when you have a ship, has “Fly to”:
+// the autopilot takes you to them (online.follow, which the page acts on).
+// “Go” to another place you fly in follows them there, and the ship sets
+// off after them once it's in.
 
 const TONE = { join: 'join', ally: 'ally', kill: 'kill', info: 'info' };
 
@@ -160,7 +165,7 @@ function Roster({ online, ship, floating, onClose }) {
       ) : (
         <ul className="universe-online-list">
           {others.map((p) => (
-            <Pilot key={p.id} p={p} online={online} />
+            <Pilot key={p.id} p={p} online={online} ship={ship} />
           ))}
         </ul>
       )}
@@ -177,7 +182,7 @@ function Roster({ online, ship, floating, onClose }) {
   );
 }
 
-function Pilot({ p, online }) {
+function Pilot({ p, online, ship }) {
   const navigate = useNavigate();
   const crew = crewById(p.kind);
   const who = crew ? Object.keys(crew.speakers)[0] : null;
@@ -185,6 +190,12 @@ function Pilot({ p, online }) {
   const act = (what) => () => online.ally(p.id, what);
   const elsewhere = p.where && p.where !== online.where;
   const at = !p.where ? '' : elsewhere ? ` · ${placeName(p.where)}` : ' · here';
+  // (flying here too, in a ship: somewhere the autopilot can take you, on the universe map)
+  const flyTo = Boolean(ship && p.kind && p.where && !elsewhere && online.where === UNIVERSE);
+  const goTo = () => {
+    if (isFlight(p.where)) online.follow(p.id); // (and after them, once the ship's in there)
+    navigate(p.where === UNIVERSE ? '/universe' : p.where);
+  };
   return (
     <li className="universe-online-pilot" data-ally={p.ally === 'ally' || undefined} data-blocked={p.blocked || undefined}>
       {who ? <Face who={who} className="universe-online-face" /> : <span className="universe-online-face" aria-hidden="true" />}
@@ -205,8 +216,13 @@ function Pilot({ p, online }) {
         ) : (
           <>
             {elsewhere && p.where !== AWAY && (
-              <button type="button" className="universe-online-act" onClick={() => navigate(p.where === UNIVERSE ? '/universe' : p.where)} aria-label={`Go to ${placeName(p.where)}, where ${p.name} is`}>
+              <button type="button" className="universe-online-act" onClick={goTo} aria-label={`Go to ${placeName(p.where)}, where ${p.name} is`}>
                 Go
+              </button>
+            )}
+            {flyTo && (
+              <button type="button" className="universe-online-act" onClick={() => online.follow(p.id)} aria-label={`Fly to ${p.name}`}>
+                Fly to
               </button>
             )}
             {p.ally === 'none' && (
