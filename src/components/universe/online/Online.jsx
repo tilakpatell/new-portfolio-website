@@ -17,13 +17,23 @@ import './online.css';
 // decline or end an alliance, or block them, and whether live pointers
 // show on pages. What's happening (who came online or came to your page,
 // alliances, who shot down whom) shows in a short feed above the button.
-// useOnline.js keeps the state.
+// useOnline.js keeps the state. A click on a pilot's tag over the map (a
+// `tp:pilot` event, pilots.js) opens the list on them.
 
 const TONE = { join: 'join', ally: 'ally', kill: 'kill', info: 'info' };
 
 export default function Online({ online, ship = null, floating = false }) {
   const [open, setOpen] = useState(false);
+  const [focus, setFocus] = useState(null); // the pilot whose tag was clicked
   const { on, room, feed } = online;
+  useEffect(() => {
+    const show = (e) => {
+      setFocus(e.detail?.id ?? null);
+      setOpen(true);
+    };
+    window.addEventListener('tp:pilot', show);
+    return () => window.removeEventListener('tp:pilot', show);
+  }, []);
   const count = on ? room.peers.filter((p) => !p.blocked).length + 1 : 0;
   const here = room.peers.filter((p) => !p.blocked && p.where === online.where).length;
   const asks = room.peers.filter((p) => p.ally === 'got' && !p.blocked).length;
@@ -46,7 +56,7 @@ export default function Online({ online, ship = null, floating = false }) {
           </p>
         ))}
       </div>
-      {open && (on ? <Roster online={online} ship={ship} floating={floating} onClose={close} /> : <Join online={online} onClose={close} />)}
+      {open && (on ? <Roster online={online} ship={ship} floating={floating} focus={focus} onClose={close} /> : <Join online={online} onClose={close} />)}
       <button type="button" className="universe-online-pill" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className="universe-online-dot" data-status={on ? room.status : 'off'} aria-hidden="true" />
         <RiGroupLine className="h-4 w-4" aria-hidden="true" />
@@ -112,7 +122,7 @@ function Join({ online, onClose }) {
   );
 }
 
-function Roster({ online, ship, floating, onClose }) {
+function Roster({ online, ship, floating, focus, onClose }) {
   const { room } = online;
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(online.name ?? '');
@@ -160,7 +170,7 @@ function Roster({ online, ship, floating, onClose }) {
       ) : (
         <ul className="universe-online-list">
           {others.map((p) => (
-            <Pilot key={p.id} p={p} online={online} />
+            <Pilot key={p.id} p={p} online={online} focus={focus === p.id} />
           ))}
         </ul>
       )}
@@ -177,8 +187,12 @@ function Roster({ online, ship, floating, onClose }) {
   );
 }
 
-function Pilot({ p, online }) {
+function Pilot({ p, online, focus }) {
   const navigate = useNavigate();
+  const row = useRef(null);
+  useEffect(() => {
+    if (focus) row.current?.scrollIntoView({ block: 'nearest' });
+  }, [focus]);
   const crew = crewById(p.kind);
   const who = crew ? Object.keys(crew.speakers)[0] : null;
   const coat = paintById(p.loadout?.paint);
@@ -186,7 +200,7 @@ function Pilot({ p, online }) {
   const elsewhere = p.where && p.where !== online.where;
   const at = !p.where ? '' : elsewhere ? ` · ${placeName(p.where)}` : ' · here';
   return (
-    <li className="universe-online-pilot" data-ally={p.ally === 'ally' || undefined} data-blocked={p.blocked || undefined}>
+    <li ref={row} className="universe-online-pilot" data-focus={focus || undefined} data-ally={p.ally === 'ally' || undefined} data-blocked={p.blocked || undefined}>
       {who ? <Face who={who} className="universe-online-face" /> : <span className="universe-online-face" aria-hidden="true" />}
       <span className="universe-online-who">
         <b>{p.blocked ? 'Blocked pilot' : p.name}</b>

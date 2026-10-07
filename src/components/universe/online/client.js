@@ -24,7 +24,7 @@
 // told to you (hunterHit → a 'hunterHit' event, once it's checked: they'd
 // just fired, and were close to it), so a friend can shoot one off your tail.
 //
-// createClient({ name, kind, loadout, build, looks, where, level, marks }) → { selfId, on(fn) → off, snapshot(),
+// createClient({ name, kind, loadout, build, looks, where, level, marks }) → { selfId, factions, on(fn) → off, snapshot(),
 //   setProfile({ name, kind, loadout, build, looks, where, level, marks }) (level: the
 //   wallet's; marks: its marks(), your standing and oath, read into factions
 //   for the ship you fly: relations.js's factionsFrom), pose(ship, { hidden, boost, safe,
@@ -428,6 +428,10 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
   return {
     get selfId() {
       return self.id;
+    },
+    // yours, as the hello says them (for the tags' colours: pilots.js)
+    get factions() {
+      return self.factions;
     },
     peers,
     on(fn) {
