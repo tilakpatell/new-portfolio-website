@@ -800,6 +800,34 @@
       "galaxy"
     ]
   },
+  "galaxy-cloudcar": {
+    "title": "Star Wars Storm IV Twin-Pod Cloud Car",
+    "author": "OscarLomas3D",
+    "authorUrl": "https://sketchfab.com/OscarLomas3D",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-storm-iv-twin-pod-cloud-car-9bc20239f9c34ed1baacb9a49ba9377d",
+    "where": "galaxy",
+    "as": "Bespin’s cloud cars",
+    "file": "/models/galaxy/cloudcar.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-cloudcity": {
+    "title": "Cloud City, Bespin - Low Poly",
+    "author": "mandartistry",
+    "authorUrl": "https://sketchfab.com/mandartistry",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/cloud-city-bespin-low-poly-8e708a2749484750ae9aeab27f579d37",
+    "where": "galaxy",
+    "as": "Cloud City from space",
+    "file": "/models/galaxy/cloudcity.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "galaxy-coreship": {
     "title": "Star Wars Separatist Core Ship",
     "author": "ThrillDaWill",
@@ -810,6 +838,20 @@
     "where": "galaxy",
     "as": "the Separatist core ships",
     "file": "/models/galaxy/coreship.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-deathstar2": {
+    "title": "Death Star 2 (Remake)",
+    "author": "alfathwawaow",
+    "authorUrl": "https://sketchfab.com/alfathwawaow",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/death-star-2-remake-90cabd9887d748d49204f10ac3565d23",
+    "where": "galaxy",
+    "as": "the second Death Star",
+    "file": "/models/galaxy/deathstar2.glb",
     "also": [
       "galaxy"
     ]
@@ -856,6 +898,20 @@
       "galaxy"
     ]
   },
+  "galaxy-freighter": {
+    "title": "Star Wars: YT-2400 Light Freighter",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-yt-2400-light-freighter-ccd2749df33641fba7a5326500abdbfb",
+    "where": "galaxy",
+    "as": "the YT-2400 freighters",
+    "file": "/models/galaxy/freighter.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "galaxy-ghost": {
     "title": "Star Wars Rebels: Ghost: VCX-100 (8K Textures)",
     "author": "CGI Tutorials",
@@ -880,6 +936,48 @@
     "where": "galaxy",
     "as": "the Gozanti cruisers",
     "file": "/models/galaxy/gozanti.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-gunboat": {
+    "title": "Star Wars: Alpha-class Xg-1 Star Wing",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-alpha-class-xg-1-star-wing-b07306d348a44991ae7d0bbcff95fe90",
+    "where": "galaxy",
+    "as": "the Xg-1 assault gunboats",
+    "file": "/models/galaxy/gunboat.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-ig2000": {
+    "title": "IG-2000",
+    "author": "CorelliaStar Shipyards",
+    "authorUrl": "https://sketchfab.com/corelliastarshipyards",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/ig-2000-527958c20fdb4d4d9f3e858db62e6139",
+    "where": "galaxy",
+    "as": "IG-88’s IG-2000",
+    "file": "/models/galaxy/ig2000.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-interdictor": {
+    "title": "Interdictor Star Destroyer (Immobilizer 418)",
+    "author": "Kuat-Entralla 3D Engineering",
+    "authorUrl": "https://sketchfab.com/KuatEntralla3D",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/interdictor-star-destroyer-immobilizer-418-452cab004f024c01969b2111fbdd55b8",
+    "where": "galaxy",
+    "as": "the Interdictor cruisers",
+    "file": "/models/galaxy/interdictor.glb",
     "also": [
       "galaxy"
     ]
@@ -1062,6 +1160,20 @@
     "where": "galaxy",
     "as": "the TIE bombers",
     "file": "/models/galaxy/tiebomber.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-transport": {
+    "title": "Star Wars: GR-75 Medium Transport",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-gr-75-medium-transport-071b158d02c044ee9b431aeb28b85b6a",
+    "where": "galaxy",
+    "as": "the GR-75 transports",
+    "file": "/models/galaxy/transport.glb",
     "also": [
       "galaxy"
     ]

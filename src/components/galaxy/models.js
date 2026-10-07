@@ -58,6 +58,18 @@ export const MODELS = {
   n1: { url: '/models/galaxy/n1.glb', nose: 0 },
   nubian: { url: '/models/galaxy/nubian.glb', nose: 0 },
   razorcrest: { url: '/models/galaxy/surface/razorcrest.glb', nose: 0 }, // (the one the surfaces fly)
+  // the ones that were built in code till somebody's model was found
+  // (scripts/sketchfab-galaxy.mjs): the YT-2400, the Xg-1, the GR-75,
+  // Bespin's cloud cars and city, the IG-2000, the Interdictor and the
+  // second Death Star
+  freighter: { url: '/models/galaxy/freighter.glb', nose: 0 },
+  gunboat: { url: '/models/galaxy/gunboat.glb', nose: 0 },
+  transport: { url: '/models/galaxy/transport.glb', nose: 0 },
+  cloudcar: { url: '/models/galaxy/cloudcar.glb', nose: -Math.PI / 2 },
+  ig2000: { url: '/models/galaxy/ig2000.glb', nose: 0 },
+  interdictor: { url: '/models/galaxy/interdictor.glb', nose: 0 },
+  cloudcity: { url: '/models/galaxy/cloudcity.glb', nose: 0 },
+  deathstar2: { url: '/models/galaxy/deathstar2.glb', nose: 0 },
   // the universe map's wars' flagships (scripts/meshy-war.mjs: Rick and
   // Morty's from the show's own pictures, Breaking Bad's from words)
   councildread: { url: '/models/universe/war/councildread.glb', nose: Math.PI / 2 },

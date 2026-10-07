@@ -83,6 +83,19 @@ export const MODELS = {
   // (Home One's close-up cut was tried and left: the same model as moncal's, it
   // came out plainer than the 40k one in the battle, whose panel maps read better)
   nebulonhq: { uid: '19b1b0126f8248c28ce38863413c30b8', tris: 100000, tex: 2048, out: 'hq/nebulon', as: 'the Nebulon-B frigates, close up' },
+  // the ones still built in code (fleetRebels.js, fleetExtras.js and the
+  // universe's fleetStarwars.js) that somebody had already made: the
+  // Outrider's YT-2400, the Xg-1 gunboat and the GR-75 by Daniel Andersson
+  // again, Bespin's cloud cars and city, IG-88's ship, the Interdictor and
+  // the half-built second Death Star
+  freighter: { uid: 'ccd2749df33641fba7a5326500abdbfb', tris: 20000, tex: 1024, as: 'the YT-2400 freighters' },
+  gunboat: { uid: 'b07306d348a44991ae7d0bbcff95fe90', tris: 14000, tex: 1024, as: 'the Xg-1 assault gunboats' },
+  transport: { uid: '071b158d02c044ee9b431aeb28b85b6a', tris: 20000, tex: 1024, as: 'the GR-75 transports' },
+  cloudcar: { uid: '9bc20239f9c34ed1baacb9a49ba9377d', tris: 10000, tex: 512, as: 'Bespin’s cloud cars' },
+  ig2000: { uid: '527958c20fdb4d4d9f3e858db62e6139', tris: 14000, tex: 1024, as: 'IG-88’s IG-2000' },
+  interdictor: { uid: '452cab004f024c01969b2111fbdd55b8', tris: 40000, tex: 1024, as: 'the Interdictor cruisers' },
+  cloudcity: { uid: '8e708a2749484750ae9aeab27f579d37', tris: 12000, tex: 1024, as: 'Cloud City from space' },
+  deathstar2: { uid: '90cabd9887d748d49204f10ac3565d23', tris: 12000, tex: 2048, as: 'the second Death Star' },
 };
 
 const token = process.env.SKETCHFAB_API_TOKEN;
