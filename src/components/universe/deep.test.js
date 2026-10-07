@@ -39,11 +39,23 @@ describe('deep space', () => {
       [0, -15, 0],
     ])
       expect(solidAt(at(x, y, z)), `${x},${y},${z}`).toBe(true);
-    // between its arms, out past the great dome: open space
+    // the great dome itself, to its rim
+    for (const [x, y, z] of [
+      [0, 4, 0],
+      [11, 0.5, 0],
+      [0, 0.5, -11],
+      [0, -6, 0],
+    ])
+      expect(solidAt(at(x, y, z)), `${x},${y},${z}`).toBe(true);
+    // between its arms, out past the great dome, and just over and past the
+    // dome as it's drawn: open space (no wall of thin air round it)
     for (const [x, y, z] of [
       [17, 0, -17],
       [-17, 0, 17],
       [12, -24, 12],
+      [0, 8.5, 0],
+      [14.5, 0, -3],
+      [10, 4.5, 10],
     ])
       expect(solidAt(at(x, y, z)), `${x},${y},${z}`).toBe(false);
     // and crashing into any of it is crashing into the Citadel

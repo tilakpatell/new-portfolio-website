@@ -138,3 +138,22 @@ The plan: `docs/superpowers/plans/2026-10-07-heroes-from-everywhere.md`.
 - **Checked** in a headless browser on SwiftShader at `quality=mid` (`lab/heroes/check.mjs`, git-ignored): Rick leads off the cruiser with the portal gun and hops 7 m, Tab to Morty and his sprint, Walt's fulminate thrown and blown, Boba Fett up 3 m and more in 1.5 s, dry, down and refilled, the wrist rocket, Han with the DL-44 and the detonator, Chewie's roar, Rick with a DL-44.
 - **Not done:** the world still remounts on a hero change (the view's key); Rick's B gadget cycle from the universe map isn't on the surface (pick the freeze or shrink ray in the panel instead); no voice lines for the abilities.
 
+## The house look on the galaxy's worlds (7 October 2026, PR 1 of the three worlds)
+
+The plan: `docs/superpowers/plans/2026-10-07-three-worlds.md` (Tasks 1–6); the spec: `docs/superpowers/specs/2026-10-07-three-worlds-design.md`.
+
+### Done
+- **The look** (`look.js`, pure, tested): `lookOf(site)` is the house's look from the site's `look` (`{ shadow, edge, fogBelow, halo }`, '#rrggbb') and its sky; `scene.js` makes `createHouse(lookOf(site), { fog: false })` and adopts the scene after the floor light, everything that comes through `warm`, and the scene again every two seconds (so a late spawn or model is in the look). The post's own shoulder tone map stays: `exposureOf(site)` is the site's `exposure` (default 1) through `post.exposure`.
+- **The fog** stays `skyfog.js`'s (the dome's own colour); it takes the look's `halo` round the sun and, where the site says, `fogBelow` (the haze below the horizon as a share of the sky's colour there).
+- **The ground map** (`groundPaint.js`, pure, tested; `lib/three/groundmap.js`): painted once at landing over ±HALF (512² on a desktop, 256² small; about 0.2–0.35 s), with the trees' crowns (`SCATTER[kind].canopy`, a radius) darkening the ground and thinning the grass under them. The floor takes the map's colour inside the square under its own grain and scan, fading to its own rule toward the edge. `house.ground(map)` bounces it onto low downward faces. `groundPieces(site)`: a `noGround` world (Bespin, Coruscant, Kamino) gets no map, no grass, no bounce.
+- **Grass** is the lib's (Bruno's, `lib/three/grass.js`) on the map, where `site.grass` is; `grass.js` keeps only the cover rule (`coverAt`, `coverMap`). **One wind** (`lib/three/wind.js`) per world, from `ground.wind` and `grass.wind`; the kit's plants and cloth lean the same way.
+- **The core kit** (`kit.js`'s `KIT_ROLES`): every solid kit material wears its role's scan in the world (`lib/three/core.js`'s `wear`, at the scan's size) once the scans are in. Built things that move (rides without a model, prop figures, what you carry) wear twins dressed by their UVs (`kit.moving`), or the grain would slide over them. A thing's `wear: 'stone'` lays a scan over a loaded model (`placer.js`'s `wearModel`).
+- **`?debug`** (`tune.js`): the look (shadow, edge, mix, bounce, halo, haze below, exposure), the grass and the wind on sliders; the copy button prints the site's own `look`, `exposure` and `grass` blocks.
+
+### Left
+- Per-world looks beyond the defaults: Coruscant, Yavin 4 and Bespin come in their own PRs; the rest keep the sky-made default until someone tunes them in `?debug`.
+- The bounce (`house.ground`'s strength 0.5) tints legs on bright grass worlds strongly; tune per world if it reads wrong.
+
+### Checking it
+- `OUT=lab/shots node scripts/surface-shot.mjs <world> <x,z,dist,deg,label>` for pictures and `OUT=lab/check JSON=1 BUDGET=lab/baseline/surface-high.json node scripts/galaxy-check.mjs surface <ids>` for the counts against a baseline from main (both take `CHROME=` and `BASE=`). `?debug` on a world's address for the sliders.
+

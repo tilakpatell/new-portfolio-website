@@ -38,7 +38,7 @@ const LOCAL_HIGH = [21, 35]; // and the big ships
 const BIG = 35; // a place reaching further than this is a big one
 const FLYBY = { ahead: [20, 30], side: [0.9, 1.8] };
 const DOCK = { in: 1.06, lat: [0.5, 1.0], fade: 0.18 }; // where on the body a dock lane ends (of its radius; how high a latitude), and how much of the lane the ship shrinks over
-const DOCKABLE = new Set(['planet', 'station', 'gas-giant', 'ice-giant']); // (not the Citadel: its solid is far rounder than the station drawn, so a ship would land on air)
+const DOCKABLE = new Set(['planet', 'station', 'gas-giant', 'ice-giant']); // (not the Citadel: a dock lane ends on a round body, and the Citadel's a dome on arms)
 
 export function bezier([a, b, c], t, out = [0, 0, 0]) {
   const u = 1 - t;

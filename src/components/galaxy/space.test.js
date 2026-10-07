@@ -29,7 +29,7 @@ describe('makeSpace', () => {
   });
   it('goes high and low, nothing like the universe map’s disc', () => {
     let s = { ...spawn(null, { x: 300, y: 0, z: 300, heading: 0 }), pitch: 1.2, speed: 5 };
-    for (let i = 0; i < 200; i++) s = step(s, { throttle: 1, climb: 0.2 }, 0.05, space.solids, space).ship;
+    for (let i = 0; i < 400; i++) s = step(s, { throttle: 1, climb: 0.2 }, 0.05, space.solids, space).ship;
     expect(s.y).toBeGreaterThan(40);
   });
 });

@@ -59,7 +59,8 @@ export function blender() {
 export function command(raw, out, { faces = 24000, tex = 2048, where = blender() } = {}) {
   if (!where) return null;
   const args = ['--background', '--python', join(HERE, 'bake.py'), '--', raw, out, '--faces', String(faces), '--tex', String(tex)];
-  if (where.kind === 'windows') return [where.exe, ...args];
+  // a script standing in for Blender (scripts/ai-e2e/fakes/blender.mjs) runs under node
+  if (where.kind === 'windows') return /\.mjs$/i.test(where.exe) ? [process.execPath, where.exe, ...args] : [where.exe, ...args];
   const q = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
   const run = `export LD_LIBRARY_PATH=${WSL_LIBS}:$LD_LIBRARY_PATH; ${q(where.exe)} ${args.map((a) => q(/^[A-Za-z]:[\\/]/.test(a) ? wslPath(a) : a)).join(' ')}`;
   return ['wsl.exe', '-d', WSL.distro, '-e', 'bash', '-lc', run];
