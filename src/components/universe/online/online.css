@@ -9,6 +9,7 @@
 }
 .universe-page[data-leaving] .universe-tags { opacity: 0; transition: opacity 0.2s; }
 .universe-tag {
+  --relation: #ff9a85;
   position: absolute;
   left: 0;
   top: 0;
@@ -20,18 +21,38 @@
   padding: 2px 8px;
   border-radius: 999px;
   background: rgb(3 4 10 / 0.6);
-  color: #ff9a85;
+  color: var(--relation);
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  /* never under 12px on screen: --font grows as the tag shrinks (tagRules.js) */
+  font-size: max(0.8rem, var(--font, 12px));
   letter-spacing: 0.02em;
   white-space: nowrap;
+  opacity: var(--fade, 1);
+  pointer-events: auto;
+  cursor: pointer;
 }
 .universe-tag[data-on] { display: flex; }
-.universe-tag[data-ally] { color: #8dffad; }
+/* how they stand to you (relations.js) */
+.universe-tag[data-relation='ally'] { --relation: #8dffad; }
+.universe-tag[data-relation='friend'] { --relation: #8fc6ff; }
+.universe-tag[data-relation='foe'] { --relation: #ff6a5c; }
 /* just back from being shot down: can't be hit yet */
-.universe-tag[data-safe] { opacity: 0.55; }
-.universe-tag[data-safe] > b::after { content: ' · shielded'; font-weight: 400; }
-.universe-tag > b { font-weight: 500; }
+.universe-tag[data-safe] { opacity: calc(var(--fade, 1) * 0.55); }
+.universe-tag[data-safe] b::after { content: ' · shielded'; font-weight: 400; }
+.universe-tag-line { display: flex; align-items: baseline; gap: 0.45em; }
+.universe-tag b { font-weight: 500; }
+.universe-tag small { font-size: 1em; opacity: 0.8; }
+.universe-tag small:empty { display: none; }
+.universe-tag em {
+  padding: 0 0.35em;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.85em;
+  font-style: normal;
+  line-height: 1.3;
+}
+.universe-tag-rank { font-size: 0.85em; opacity: 0.8; }
+.universe-tag-rank:empty { display: none; }
 .universe-tag > i {
   display: none;
   width: 38px;
@@ -40,6 +61,11 @@
   background: linear-gradient(90deg, currentColor calc(var(--shield, 1) * 100%), rgb(255 255 255 / 0.15) 0);
 }
 .universe-tag[data-hurt] > i { display: block; }
+/* far off: the callsign and how far, nothing else */
+.universe-tag[data-mode='far'] { padding: 1px 7px; }
+.universe-tag[data-mode='far'] em,
+.universe-tag[data-mode='far'] .universe-tag-rank,
+.universe-tag[data-mode='far'] > i { display: none; }
 
 .universe-online {
   position: absolute;
@@ -174,11 +200,29 @@
   border-radius: 12px;
 }
 .universe-online-pilot[data-ally] { border-color: rgb(141 255 173 / 0.45); }
+/* how they stand to you, as their tag over the map says it (relations.js) */
+.universe-online-pilot[data-relation='friend'] { border-color: rgb(143 198 255 / 0.45); }
+.universe-online-pilot[data-relation='foe'] { border-color: rgb(255 106 92 / 0.5); }
 .universe-online-pilot[data-blocked] { opacity: 0.6; }
+.universe-online-pilot[data-focus] { background: rgb(255 255 255 / 0.05); }
 .universe-online-face { flex: none; width: 32px; height: 32px; border-radius: 50%; background: rgb(255 255 255 / 0.06); }
 .universe-online-who { display: grid; flex: 1; min-width: 0; }
+.universe-online-name { display: flex; align-items: baseline; gap: 0.4rem; min-width: 0; }
+.universe-online-lv {
+  flex: none;
+  padding: 0 0.4em;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-style: normal;
+}
+.universe-online-mine { display: flex; flex: none; gap: 0.6rem; }
 .universe-online-who b { overflow: hidden; color: var(--text); font-size: 0.86rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .universe-online-pilot[data-ally] .universe-online-who b { color: #8dffad; }
+.universe-online-pilot[data-relation='friend'] .universe-online-who b { color: #8fc6ff; }
+.universe-online-pilot[data-relation='foe'] .universe-online-who b { color: #ff6a5c; }
 .universe-online-who span { color: var(--muted); font-size: 0.72rem; line-height: 1.35; overflow-wrap: anywhere; }
 .universe-online-acts { display: flex; flex: none; align-items: center; gap: 0.4rem; }
 .universe-online-act {

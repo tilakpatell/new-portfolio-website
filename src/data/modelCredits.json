@@ -866,7 +866,10 @@
     "source": "https://sketchfab.com/3d-models/death-star-star-wars-423fb92f677f4448aef407112a1fc032",
     "where": "galaxy",
     "as": "the Death Star",
-    "file": "/models/universe/death-star.glb"
+    "file": "/models/universe/death-star.glb",
+    "also": [
+      "galaxy-surface"
+    ]
   },
   "dickansh-arch": {
     "title": "Temple arch-3DView",
@@ -1054,14 +1057,14 @@
     ]
   },
   "galaxy-deathstar2": {
-    "title": "Death Star 2 (Remake)",
-    "author": "alfathwawaow",
-    "authorUrl": "https://sketchfab.com/alfathwawaow",
+    "title": "Death Star II",
+    "author": "N8",
+    "authorUrl": "https://sketchfab.com/nathanmlange",
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/death-star-2-remake-90cabd9887d748d49204f10ac3565d23",
+    "source": "https://sketchfab.com/3d-models/death-star-ii-17ccca0dbb6b4e338fa999202f9e6685",
     "where": "galaxy",
-    "as": "the second Death Star",
+    "as": "the second Death Star, its hull’s gaps plated over",
     "file": "/models/galaxy/deathstar2.glb",
     "also": [
       "galaxy"
