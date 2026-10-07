@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { clamp01, createRenderer, disposeTree, easeOut, precompile } from '../../../lib/three/renderer';
+import { sharpen } from '../../../lib/three/textures';
 
 const W = 1;
 const H = 1.12;
@@ -64,8 +65,7 @@ function labelTexture(project, color, ratio) {
   g.font = '600 20px ui-monospace, "JetBrains Mono", monospace';
   g.fillText(project.stack.slice(0, 3).join(' · '), 32, h - 56);
   const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
+  sharpen(tex, { color: true });
   return tex;
 }
 

@@ -23,6 +23,7 @@ import { bake, canvasTexture, panelTexture, part, place, rod, between, compose, 
 import { rng } from './noise';
 import { faceless, wind, wrapLighting } from '../../../lib/three/foliage';
 import SCANS from '../../../../public/cc0/galaxy/index.json';
+import { sharpen } from '../../../lib/three/textures';
 
 export { part, place, rod, between, compose, mirror, ball, upright };
 
@@ -320,7 +321,7 @@ export function loadScan(role) {
     const get = (file, srgb) =>
       loader.loadAsync(`${SCAN_BASE}/${role}/${file}.webp`).then((t) => {
         t.wrapS = t.wrapT = THREE.RepeatWrapping;
-        t.anisotropy = 8;
+        sharpen(t);
         if (srgb) t.colorSpace = THREE.SRGBColorSpace;
         return t;
       });

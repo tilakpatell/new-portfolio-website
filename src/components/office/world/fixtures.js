@@ -13,6 +13,7 @@
 
 import * as THREE from 'three';
 import { CEILING, DOORS, P, ROOMS, SOLID, rect, roomAt } from './layout';
+import { sharpen } from '../../../lib/three/textures';
 
 export const TILE_X = 1.22; // the grid: 4 ft along x
 export const TILE_Z = 0.61; // 2 ft along z
@@ -83,8 +84,7 @@ const canvas = (w, h) => {
 };
 const tex = (c) => {
   const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
+  sharpen(t, { color: true });
   return t;
 };
 // a square supply diffuser: concentric louvres round a square centre
