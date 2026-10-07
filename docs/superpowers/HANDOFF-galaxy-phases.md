@@ -93,7 +93,7 @@ truth where this disagrees with it.
   stones, thicker dune grass; Endor mossy boulders, stones, bushes and
   toadstools under the ferns, more logs, and the stand close set (1,010
   redwoods and 160 spruces where there were 600 trees: the full redwoods
-  within 280 m, a ring of them thickest round the landing, the light
+  from 60 m (the glade you land in) to 280 m, thickest near, the light
   `lo` ones past the fog's reach to 640 m and beyond); Geonosis more
   spires and stones.
 - **Endor's ground folded**: the floor rises and falls now (swell 22 m,

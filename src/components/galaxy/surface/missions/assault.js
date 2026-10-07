@@ -69,7 +69,7 @@ export const RULES = {
   coverHit: 0.5, // of a hit's chance, on a soldier in cover
   dugIn: 0.65, // and on a defender standing its ground inside a post its side holds (walls, sandbags, the lie of the land: a post is held, not stood on)
   forward: 100, // metres short of their objective the attackers' reinforcements come onto the field (a staging line, just out of range)
-  firstWave: 2, // and their first wave this many times as far back: the battle opens with their advance
+  firstWave: 1.5, // and their first wave this many times as far back: the battle opens with their advance
 };
 // soldiers a side, by the device's tier (lib/device)
 export const SOLDIERS = { high: 14, mid: 9, low: 6 };

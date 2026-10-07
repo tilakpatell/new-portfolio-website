@@ -262,11 +262,13 @@ export const SITES = {
       // (the stand close set, as a redwood grove is: trunks in every
       // direction, the nearest ring thickest so the clearing you land in
       // reads as one, and the far ones carrying the forest to the hills)
-      // (the full trees where you walk; past the fog's reach, where a tree
-      // is a trunk in the mist, the light ones, as many again)
-      { kind: 'redwood', n: 320, within: [24, 280], scale: [0.75, 1.35], opts: { seed: 1, leaf: '#3a4626' } },
-      { kind: 'redwood', n: 150, within: [24, 280], scale: [0.6, 1.2], opts: { seed: 2, h: 58, r: 2.0, bark: '#7a4a32', leaf: '#3e4a28' } },
-      { kind: 'redwood', n: 100, within: [28, 200], scale: [0.7, 1.25], opts: { seed: 13, leaf: '#3c4828' } },
+      // (the full trees where you walk, from the edge of the glade you land
+      // in: 60 m out, so the sky and the Death Star show over the trunks
+      // from its middle; past the fog's reach, where a tree is a trunk in
+      // the mist, the light ones, as many again)
+      { kind: 'redwood', n: 320, within: [60, 280], scale: [0.75, 1.35], opts: { seed: 1, leaf: '#3a4626' } },
+      { kind: 'redwood', n: 150, within: [60, 280], scale: [0.6, 1.2], opts: { seed: 2, h: 58, r: 2.0, bark: '#7a4a32', leaf: '#3e4a28' } },
+      { kind: 'redwood', n: 100, within: [60, 200], scale: [0.7, 1.25], opts: { seed: 13, leaf: '#3c4828' } },
       { kind: 'redwood', n: 300, within: [280, 640], scale: [0.75, 1.35], opts: { seed: 14, lo: true, leaf: '#3a4626' } },
       { kind: 'redwood', n: 140, within: [280, 640], scale: [0.6, 1.2], opts: { seed: 15, lo: true, h: 58, r: 2.0, bark: '#7a4a32', leaf: '#3e4a28' } },
       { kind: 'redwood', n: 200, within: [600, 1300], scale: [1.0, 1.5], solid: false, opts: { seed: 3, lo: true, leaf: '#3a4626' } },
