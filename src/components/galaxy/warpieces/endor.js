@@ -16,6 +16,13 @@
 // on them (ctx.mineAs), and the station's fall ends the battle only when
 // it's the Empire the Rebellion's fighting there.
 //
+// In the battle every pilot shares (the Rebellion attacking: the films'
+// plan, pinned, galaxy/battlePlans.js), the generator and the reactor are
+// the plan's objectives: their hp, their fall and when the run opens (the
+// Executor's bridge down, its gate passed) are the director's
+// (ctx.objective), and so is the battle's end: the station going up is the
+// end the director's already called, not one of its own.
+//
 // createEndor(ctx) → { update(dt, t, live, events), hit, targets,
 //   markers(live), dispose() }
 
@@ -84,6 +91,12 @@ export function createEndor(ctx) {
   const rand = seeded(`${ctx.on.id}-endor`);
   // the shield held up till its generator's gone
   world?.war?.holdShield(true);
+  // (the plan's objectives, if it's the battle every pilot shares)
+  const planned = (id) => ctx.objective?.(id) ?? null;
+  const shared = Boolean(planned('moon-gen'));
+  const genLeft = () => (shared ? planned('moon-gen').hp : Math.max(0, GEN_HP - ctx.shared('moon-gen')));
+  const genMax = shared ? planned('moon-gen').hpMax : GEN_HP;
+  const genGone = () => (shared ? planned('moon-gen').down : ctx.shared('moon-gen') >= GEN_HP);
 
   // ── the shield generator, on the moon under the station ──
   const up = unit(v(D.x + moonR * 0.25, D.y, D.z - moonR * 0.15));
@@ -95,7 +108,7 @@ export function createEndor(ctx) {
   ctx.scene?.add(gen.group);
   let genDown = false;
   let flak = 0;
-  const genTgt = { id: 5.1e6, at: genTop, vel: ZERO, size: 1.8, kind: 'shieldgen', name: 'Shield generator', hp: GEN_HP, hpMax: GEN_HP, threat: 0 };
+  const genTgt = { id: 5.1e6, at: genTop, vel: ZERO, size: 1.8, kind: 'shieldgen', name: 'Shield generator', hp: genMax, hpMax: genMax, threat: 0 };
   const knockOut = (mine) => {
     if (genDown) return;
     genDown = true;
@@ -144,7 +157,8 @@ export function createEndor(ctx) {
     speed: 10,
     drawWithin: 500,
     markWithin: 600,
-    open: () => genDown,
+    open: () => (shared ? Boolean(planned('ds2-core')?.open) : genDown),
+    ...(shared ? { down: () => Boolean(planned('ds2-core')?.down), left: () => planned('ds2-core').hp / planned('ds2-core').hpMax } : {}),
     solidsOff: (off) => ctx.solid('deathstar2', !off),
     enter: () => ctx.event('gcw-run'),
     onBlown: (mine) => {
@@ -154,7 +168,7 @@ export function createEndor(ctx) {
       world?.war?.station('deathstar2', false);
       ctx.event('gcw-ds2');
       if (mine || ctx.tookPart()) ctx.points(GCW.points.objective * 3);
-      if (!battle.over && againstEmpire) battle.end(REBELS, 'deathstar');
+      if (!battle.over && againstEmpire && !shared) battle.end(REBELS, 'deathstar');
     },
   });
 
@@ -163,7 +177,7 @@ export function createEndor(ctx) {
     update(dt, t, live, events) {
       const res = {};
       // what's been done to the generator, here and by the pilots in the system
-      if (!genDown && ctx.shared('moon-gen') >= GEN_HP) knockOut(false);
+      if (!genDown && genGone()) knockOut(false);
       // its guns, at anyone who comes down to it
       if (!genDown && live) {
         const d = Math.hypot(live.x - genTop.x, live.y - genTop.y, live.z - genTop.z);
@@ -242,8 +256,8 @@ export function createEndor(ctx) {
     },
     hit(from, to, damage) {
       if (!genDown && sweptHit(from, to, genTop, genTop, 2) !== null) {
-        ctx.mineAs(REBELS, 'moon-gen', damage);
-        if (ctx.shared('moon-gen') >= GEN_HP) knockOut(true);
+        if (!shared || planned('moon-gen').open) ctx.mineAs(REBELS, 'moon-gen', damage);
+        if (genGone()) knockOut(true);
         return { id: genTgt.id, kind: 'shieldgen', at: { ...genTop }, size: 1, down: genDown, sub: 'moon-gen' };
       }
       return run.hit(from, to, damage);
@@ -251,14 +265,14 @@ export function createEndor(ctx) {
     get targets() {
       const list = run.targets;
       if (!genDown) {
-        genTgt.hp = Math.max(0, GEN_HP - ctx.shared('moon-gen'));
+        genTgt.hp = genLeft();
         list.push(genTgt);
       }
       return list;
     },
     markers(live) {
       const list = run.markers(live);
-      if (!genDown) list.push({ key: 'moon-gen', pos: genTop, title: 'Destroy: the shield generator', hp: Math.max(0, GEN_HP - ctx.shared('moon-gen')) / GEN_HP, colour: '#ffb347' });
+      if (!genDown) list.push({ key: 'moon-gen', pos: genTop, title: 'Destroy: the shield generator', hp: genLeft() / genMax, colour: '#ffb347' });
       return list;
     },
     dispose() {
