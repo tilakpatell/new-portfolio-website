@@ -275,7 +275,8 @@ function rigScene(model, clips, tall, { shared = false } = {}) {
       const ahead = headingOf(own.walk, up);
       if (ahead != null) for (const n of ['idle', 'run']) if (own[n]) faceForward(own[n], up, ahead);
     }
-    return rigged(model, own, tall, owned);
+    // (the hips' height at rest goes with it, for clips laid over these: galaxy/surface/saberBody.js)
+    return Object.assign(rigged(model, own, tall, owned), { hipsY: hips ? hipsY : null });
   }
 }
 
