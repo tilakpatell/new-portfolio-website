@@ -135,6 +135,45 @@ describe('buildSystem', () => {
     }
   });
 
+  it('parks only its holder’s fleet: a Rebel-held Mustafar shows no Imperial fleet, but a garrison of the Rebellion’s', () => {
+    const k = kit();
+    const sys = systemById('mustafar');
+    const w = buildSystem(sys, { ...k, small: false });
+    const fleet = w.solids.filter((o) => /^fleet-/.test(o.id));
+    const before = fleet.map((o) => o.r);
+    expect(fleet.length).toBeGreaterThan(0);
+    w.setEffects({ fleet: 'rebel', heat: 0 });
+    expect(fleet.every((o) => o.r === 0)).toBe(true);
+    const garrison = w.solids.filter((o) => /^garrison-/.test(o.id));
+    expect(garrison.length).toBeGreaterThan(0);
+    expect(w.garrison.map((g) => g.kind).sort()).toEqual(['corvette', 'nebulon']);
+    // the Empire's again: its own fleet back, the garrison gone
+    w.setEffects({ fleet: 'empire', heat: 0 });
+    expect(fleet.map((o) => o.r)).toEqual(before);
+    expect(w.solids.some((o) => /^garrison-/.test(o.id))).toBe(false);
+    expect(w.garrison).toEqual([]);
+    w.dispose();
+  });
+  it('shows its standing battle only while it’s fought over, and the war’s quiet still wins', () => {
+    const k = kit();
+    const w = buildSystem(systemById('endor'), { ...k, small: false });
+    const battle = w.solids.filter((o) => /^battle-/.test(o.id));
+    const before = battle.map((o) => o.r);
+    w.setEffects({ fleet: 'empire', heat: 0 });
+    expect(battle.every((o) => o.r === 0)).toBe(true);
+    k.bolts.fire.mockClear();
+    for (let i = 0; i < 20; i++) w.update(T0 + i, 1, camera, null);
+    expect(k.bolts.fire).not.toHaveBeenCalled();
+    w.setEffects({ fleet: 'empire', heat: 1 });
+    expect(battle.map((o) => o.r)).toEqual(before);
+    w.quiet(true);
+    expect(battle.every((o) => o.r === 0)).toBe(true);
+    w.quiet(false);
+    expect(battle.map((o) => o.r)).toEqual(before);
+    w.setEffects(null);
+    expect(battle.map((o) => o.r)).toEqual(before);
+    w.dispose();
+  });
   it('lets the war hold the second Death Star’s shield, blow a station, and drop Scarif’s shield, and puts it all back', () => {
     const endor = buildSystem(systemById('endor'), { ...kit(), small: false });
     const shell = endor.solids.find((o) => o.id === 'ds2-shield');

@@ -440,7 +440,7 @@ export const GANDALF_LINES = ['A wizard is never late, Frodo Baggins. Nor is he 
 // ── 1. Shortcut to mushrooms ──
 
 export const inField = (x, z, pad = 0) => x > FIELD.x0 - pad && x < FIELD.x1 + pad && z > FIELD.z0 - pad && z < FIELD.z1 + pad;
-export const HUNT = { mushrooms: 10, pick: 1.0, sight: 6.2, cone: 0.62, hear: 2.1, alert: 0.6, chase: 5.2, patrol: 1.7, giveUp: 6, catch: 0.85, look: 1.4 };
+export const HUNT = { mushrooms: 10, pick: 1.0, sight: 6.2, cone: 0.62, hear: 2.1, alert: 0.6, chase: 5.2, patrol: 1.7, giveUp: 6, catch: 0.85, look: 1.4, far: 1.2, search: 6 }; // (far, search: the dogs are quick to be sure, and sniff about a while)
 
 export const MUSHROOMS = (() => {
   const rand = seeded(91);

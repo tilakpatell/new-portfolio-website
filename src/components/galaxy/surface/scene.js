@@ -1164,6 +1164,7 @@ export async function create(canvas, ctx) {
       return;
     }
     const hit = blaster.fire(from, scatter(camDir, w), shootable(), boltOf(me()), w.range);
+    activity.heard({ x: from.x, z: from.z }, { x: from.x + camDir.x * 40, z: from.z + camDir.z * 40 }); // (the enemies hear it, and one it's aimed near knows)
     struck(hit, undefined, { how: w.kind, push: camDir });
     landed(hit, camDir);
     sounds.blast?.();
@@ -2193,7 +2194,7 @@ export async function create(canvas, ctx) {
           sounds.roar?.();
           hurt(s.damage);
         } else {
-          const b = blaster.enemy(s.from, new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, '#ff4a3d', s.damage);
+          const b = blaster.enemy(s.from, s.to ? new V(s.to[0], me().st.y + 1.1, s.to[1]) : new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, '#ff4a3d', s.damage); // (at what it believes: a guess goes wide)
           if (b && blade) b.deflect = true; // (it'll come off the blade, not land)
         }
       }

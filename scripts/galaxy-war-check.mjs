@@ -31,6 +31,7 @@ await ctx.addInitScript(() => {
   window.localStorage.setItem('tp-galaxy-panel', JSON.stringify('tucked'));
   window.localStorage.removeItem('tp-gcw');
   window.sessionStorage.setItem('tp-galaxy-intro', '1');
+  window.localStorage.setItem('tp-worlds', JSON.stringify('load')); // (the 3D, without the gate's asking)
 });
 const page = await ctx.newPage();
 const errors = [];

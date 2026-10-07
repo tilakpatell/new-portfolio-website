@@ -19,8 +19,13 @@
 // buildSystem(sys, { models, bolts, flashes, small, ratio }) → { group, solids,
 //   goals, body, shield, tractor, update(t, dt, camera, ship) → busy,
 //   setDetail(k), setRatio(r), events (drained by the scene), wake(ship),
-//   quiet(on), war: { holdShield(up), station(kind, shown), planetShield(on) },
-//   dispose() }
+//   quiet(on), setEffects(effects), garrison, war: { holdShield(up),
+//   station(kind, shown), planetShield(on) }, dispose() }
+// setEffects(effects): who holds the system in the galaxy's war
+// (warEffects.js): a fleet piece is drawn only for its holder, a standing
+// battle only while the system's fought over, and where the holder has no
+// fleet here, two of its ships stand in orbit (`garrison`); null puts it
+// back as the system's own.
 // quiet(on): the system's own fleets and battle (and Hoth's ion cannon) stand
 // aside, hidden and not in the way, while the war's battle is on there
 // (galaxy/warfront.js). war: the battle's set pieces' hold on the system
@@ -41,6 +46,7 @@ import { trenchBand } from '../universe/deep';
 import { DEATHSTAR_REACH, STATION_NAMES, TRACTOR_REACH, reachOf } from './systems';
 import { LASER } from './fx';
 import { HULLS } from '../universe/wars';
+import { garrisonFleet, piecesShown } from './warEffects';
 
 const TAU = Math.PI * 2;
 const SPIN = TAU / 900; // a planet turns once in fifteen minutes
@@ -97,7 +103,15 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
   const capitals = []; // the big ships, for the ion cannon and the battles: { slot, side, size }
   // what stands aside while the war's battle is on here: the holders, the solids, and whether it is
   const ambient = { holders: [], solids: [], on: false };
-  const aside = (fn) => (...a) => (ambient.on ? false : fn(...a));
+  // and what the war's holder doesn't have here (setEffects: another side's
+  // fleet, a standing battle nobody's fighting), by piece
+  const byPiece = []; // piece index → { holders, solids }
+  let hidden = []; // piece index → true while its holder's elsewhere
+  let building = -1; // (the piece being built)
+  const aside = (fn) => {
+    const i = building;
+    return (...a) => (ambient.on || hidden[i] ? false : fn(...a));
+  };
   // the war's hold on it: the Death Star's shield, the stations, Scarif's shield
   const hold = { shield: null };
   const stations = {}; // kind → { holder, solids: [{ o, r, reach }] }
@@ -782,7 +796,26 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
     },
 
   };
-  sys.pieces.forEach((p, i) => BUILD[p.type]?.(p, i));
+  sys.pieces.forEach((p, i) => {
+    building = i;
+    const h0 = ambient.holders.length;
+    const s0 = ambient.solids.length;
+    BUILD[p.type]?.(p, i);
+    byPiece[i] = { holders: ambient.holders.slice(h0), solids: ambient.solids.slice(s0) };
+  });
+  building = -1;
+  // what's shown: nothing of it while the war's battle is on here (quiet),
+  // and of the rest only what its holder has here (setEffects)
+  const garrison = { ships: [], slots: [], solids: [] };
+  const refresh = () => {
+    byPiece.forEach(({ holders, solids: own }, i) => {
+      const shown = !ambient.on && !hidden[i];
+      for (const h of holders) h.visible = shown;
+      for (const x of own) x.o.r = x.o.reach = shown ? x.r : 0;
+    });
+    for (const slot of garrison.slots) slot.holder.visible = !ambient.on;
+    for (const x of garrison.solids) x.o.r = x.o.reach = ambient.on ? 0 : x.r;
+  };
 
   out.update = (t, dt, camera, ship) => {
     camAt = camera ? cam.copy(camera.position) : null;
@@ -793,14 +826,44 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
   out.quiet = (on) => {
     if (on === ambient.on) return;
     ambient.on = on;
-    for (const h of ambient.holders) h.visible = !on;
-    for (const { o, r } of ambient.solids) o.r = o.reach = on ? 0 : r;
+    refresh();
     // (and the war's hold let go: everything as it was)
     if (!on) {
       out.war.holdShield(null);
       for (const kind of Object.keys(stations)) if (kind !== 'shield') out.war.station(kind, true);
       out.war.planetShield(true);
     }
+  };
+  // who holds the system in the war (warEffects.js's effects, or null for
+  // as it was): their fleet in orbit, or a garrison of theirs where the
+  // system has none, and its standing battle only while it's fought over
+  out.garrison = [];
+  out.setEffects = (effects) => {
+    hidden = piecesShown(sys, effects).map((shown) => !shown);
+    const want = effects ? garrisonFleet(sys, effects) : [];
+    const key = (list) => list.map((g) => `${g.kind}@${g.at}`).join('|');
+    if (key(want) !== key(garrison.ships)) {
+      for (const slot of garrison.slots) {
+        slot.holder.removeFromParent();
+        models.drop(slot);
+      }
+      for (const x of garrison.solids) solids.splice(solids.indexOf(x.o), 1);
+      garrison.slots = [];
+      garrison.solids = [];
+      garrison.ships = want;
+      want.forEach((g, j) => {
+        const slot = models.slot(g.kind, g.size);
+        slot.holder.position.set(...g.at);
+        slot.holder.rotation.set(0, g.yaw, 0, 'YXZ');
+        group.add(slot.holder);
+        garrison.slots.push(slot);
+        const before = solids.length;
+        hull(slot, `garrison-${g.kind}-${j}`);
+        for (const o of solids.slice(before)) garrison.solids.push({ o, r: o.r });
+      });
+      out.garrison = want;
+    }
+    refresh();
   };
   out.war = {
     holdShield(up) {
@@ -834,6 +897,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
   };
   out.dispose = () => {
     dead = true;
+    for (const slot of garrison.slots) models.drop(slot);
     for (const id of timers) clearTimeout(id);
     for (const d of disposers) d();
     group.removeFromParent();

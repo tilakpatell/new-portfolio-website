@@ -4,12 +4,16 @@
 // who flies; Debbie on the porch at home; Cecil Stedman of the GDA, in his
 // suit with an earpiece; Allen the Alien, one great eye and the Coalition's
 // suit; and the townspeople, in their own colours. Mark, his father and
-// Thragg are the page's HD figures (../cast.js), not these.
+// Thragg are the page's HD figures (../cast.js), not these; and where the
+// cast has a figure for one of these (Eve, Debbie, Cecil, Allen),
+// `personFor` stands it in, keeping the kit's person as the fallback.
 
 import * as THREE from 'three';
 import { buildHumanoid } from '../../avengers/hq/kit/humanoid';
 import { limb, rbox, taper } from '../../avengers/hq/kit/shapes';
 import { hot } from '../../avengers/hq/engine';
+import { POSES, figure, loadFigure } from '../../../lib/three/rig';
+import { CAST, asset } from '../cast';
 
 const ball = (r, w = 10, h = 8) => new THREE.SphereGeometry(r, Math.min(w, 12), Math.min(h, 9));
 
@@ -277,4 +281,51 @@ export function posePerson(person, { mode = 'idle', t = 0, phase = 0 } = {}) {
     set(b.shoulderR, -0.55, -0.5, -0.3);
     set(b.elbowR, -1.9, -0.2, 0);
   }
+}
+
+// ── the HD figures (../cast.js), standing in for the kit's people ──
+
+// The templates for `names`, each null when its model can't be had (so the
+// kit's person stands in): { [name]: template | null }.
+export async function loadCast(names) {
+  const got = await Promise.all(names.map((n) => loadFigure(asset(CAST[n].file)).catch(() => null)));
+  return Object.fromEntries(names.map((n, i) => [n, got[i]]));
+}
+
+// the bones a person's poses need
+const NEED = ['hips', 'armL', 'foreL', 'armR', 'foreR', 'thighL', 'calfL', 'thighR', 'calfR'];
+
+// A figure in the kit's modes, in the figure's frame (+x its left, +z ahead).
+function figurePose(mode, k) {
+  const s = Math.sin(k * 0.8);
+  const base = { ...POSES.stand, torso: { pitch: 0.02, yaw: Math.sin(k * 0.37) * 0.08, roll: s * 0.02 } };
+  if (mode === 'walk') return POSES.stride(k * 5.5 / (2 * Math.PI), 1, 0);
+  if (mode === 'hover') return POSES.hover(k);
+  if (mode === 'fly') return POSES.fly();
+  if (mode === 'wave') return { ...base, armR: [-0.75, 0.65, 0.1], foreR: [-0.15 + Math.sin(k * 9) * 0.35, 1, 0.1] };
+  if (mode === 'talk') return { ...base, armL: [0.25, -1, 0.25], foreL: [0.15, 0.1 + Math.sin(k * 3.1) * 0.25, 1], armR: [-0.25, -1, 0.2], foreR: [-0.15, 0.05 + Math.sin(k * 2.6) * 0.2, 1] };
+  if (mode === 'arms') return { ...base, armL: [0.35, -0.85, 0.45], foreL: [-1, 0.12, 0.3], armR: [-0.35, -0.85, 0.42], foreR: [1, 0.2, 0.32] };
+  return base;
+}
+
+// One of the town's people, as the world places and poses them, the HD
+// figure when there is one and it can be posed, else the kit's:
+// { root (its hips at its origin), hipY, height, pose({ mode, t, phase }, dt) }.
+export function personFor(kind, seed, template = null, spec = CAST[kind]) {
+  if (template && spec) {
+    try {
+      const f = figure(template, spec);
+      for (const b of NEED) if (!f.bones[b]) throw new Error(`${spec.file}: no bone ${b}`);
+      f.snap(figurePose('idle', 0));
+      return { root: f.holder, hipY: f.hipHeight, height: f.height, fig: f, pose: ({ mode = 'idle', t = 0, phase = 0 }, dt = 1 / 60) => f.pose(figurePose(mode, t + phase), dt, 10), dispose: () => f.dispose() };
+    } catch (e) {
+      if (import.meta.env?.DEV) console.warn(String(e.message ?? e)); // the kit's person stands in, not a T-pose
+    }
+  }
+  const p = buildPerson(kind, seed);
+  const hipY = p.h.rest.hips.y;
+  p.h.root.position.y = -hipY;
+  const root = new THREE.Group();
+  root.add(p.h.root);
+  return { root, hipY, height: p.height, kit: p, pose: (o) => posePerson(p, o), dispose: () => {} };
 }
