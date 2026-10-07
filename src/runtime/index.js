@@ -13,6 +13,7 @@ import { createSaves } from './saves';
 import { createAssets } from './assets';
 import { createAudioBus } from './audio';
 import { createRuntime } from './runtime';
+import { createWorkerPool, poolSize } from './workers';
 import { readOverride } from './backend';
 import './runtime.css';
 
@@ -58,6 +59,7 @@ export function runtime() {
     saves: createSaves({ local: store('localStorage'), session: store('sessionStorage'), win }),
     assets: createAssets({ loaders, forget }),
     audio: createAudioBus(),
+    workers: createWorkerPool({ size: poolSize(win?.navigator?.hardwareConcurrency) }),
     gpu: Boolean(win?.navigator?.gpu),
     override: readOverride(win?.location.search ?? '', win?.location.hash ?? '', stored),
     visible: () => !(typeof document !== 'undefined' && document.hidden) && !covered(),
