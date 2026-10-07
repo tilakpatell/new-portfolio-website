@@ -158,7 +158,11 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
     const h = ai.hunt;
     const huntOver = h?.until && done.includes(h.until);
     if (h && !huntOver) {
-      if (!n.hunting && (hunting || h.always || (h.near != null && toM < h.near))) n.hunting = true;
+      if (!n.hunting && (hunting || h.always || (h.near != null && toM < h.near))) {
+        n.hunting = true;
+        // (one who's spotted him on his own says so: RmWorld's word and sound)
+        if (!hunting && !h.always && !h.duel) state.emit?.('spotted', { area: id, who: n.id, text: h.spotted ?? d.spotted ?? 'They’ve seen you. Move.' });
+      }
       if (n.hunting && !hunting && h.lose != null && toM > h.lose) n.hunting = false;
     } else n.hunting = false;
     if (n.dead) {
