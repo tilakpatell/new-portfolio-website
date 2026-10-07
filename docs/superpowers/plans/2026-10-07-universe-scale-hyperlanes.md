@@ -227,17 +227,17 @@ Branch `claude/galaxy-routes` from `origin/main`.
 
 **Files:** Modify `galaxy/scene.js` (the jump’s `holdJump(jumpTime(route) * 1000)`; the tunnel’s `length` scaled by the time over 2.45), `galaxy/interdiction.js` (`INTERDICTION.jumps` window comes two jumps sooner when the last jump was off the lanes: `nextWindow(count, offLane)`), `interdiction.test.js`, `galaxy/HoloMap.jsx` (the course drawn along `routeBetween(...).pts` in place of the straight line; a “via the Corellian Run” caption from the lanes it uses), `galaxy/travel.js` if the jump’s timing lives there.
 
-- [ ] **Step 1: Write the failing test** in `interdiction.test.js`: `nextWindow(8, true)` bites where `nextWindow(10, false)` does. **Step 2: Fail. Step 3: Implement. Step 4:** browser: plot Coruscant → Tatooine, the holomap bends along the Run, the tunnel runs about 8 s; Dagobah → Hoth is longer and straight. **Commit.**
+- [x] **Step 1: Write the failing test** in `interdiction.test.js`: `nextWindow(8, true)` bites where `nextWindow(10, false)` does. **Step 2: Fail. Step 3: Implement. Step 4:** browser: plot Coruscant → Tatooine, the holomap bends along the Run, the tunnel runs about 8 s; Dagobah → Hoth is longer and straight. **Commit.**
 
 ### Task 3: open systems and hyperspace traffic in the sky
 
 **Files:** Modify `galaxy/space.js` (`EDGE = 2400`, `PULSE = 120`), `space.test.js`, `galaxy/world.js` if a set piece is placed by the edge, `galaxy/scene.js` (streaks: ships leaving and arriving along `courseTo` to each system the lanes join this one to: a `Points` of stretched sprites, `3 to 6` at a time, each a 2.5 s life from the planet’s far side out to the sky, or the reverse; `low` none), `galaxy/sky.js` only if the sky’s stars hide the streaks.
 
-- [ ] **Step 1:** `space.test.js` pins the new edge and pulse, and `openness` still 0 at the planet. **Step 2: Implement. Step 3:** `node scripts/galaxy-check.mjs` at Tatooine and Coruscant parked, numbers against `lab/galaxy/baseline/` within budget; screenshots in the PR. **Commit.**
+- [x] **Step 1:** `space.test.js` pins the new edge and pulse, and `openness` still 0 at the planet. **Step 2: Implement. Step 3:** `node scripts/galaxy-check.mjs` at Tatooine and Coruscant parked, numbers against `lab/galaxy/baseline/` within budget; screenshots in the PR. **Commit.**
 
 ### Task 4: the hand-off
 
-- [ ] `HANDOFF-galaxy-roam.md`: Phase 6 ticked for what landed, what’s left (journeys with deep-space stops). `docs/architecture.md`’s galaxy line: a sentence on `routes.js`. Merge on green.
+- [x] `HANDOFF-galaxy-roam.md`: Phase 6 ticked for what landed, what’s left (journeys with deep-space stops). `docs/architecture.md`’s galaxy line: a sentence on `routes.js`. Merge on green.
 
 ---
 
