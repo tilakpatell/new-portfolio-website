@@ -194,7 +194,7 @@ export async function bake() {
     clouds[o] = clouds[o + 1] = clouds[o + 2] = ck;
   });
 
-  await save(albedo, W, H, 3, 'breakingbad', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
+  await save(albedo, W, H, 3, 'breakingbad', [[4096, '-xl'], [2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
   await save(normalMap(height, W, H, 1), W, H, 3, 'breakingbad-normal', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 90 });
   await save(rough, W, H, 3, 'breakingbad-rough', [[1024, '']], { quality: 84 });
   // (the lights, and a few soft clouds: 1024 holds them)
