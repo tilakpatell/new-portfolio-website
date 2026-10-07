@@ -20,6 +20,7 @@ export const GUIDES = {
   '/galaxy/surface': { title: 'Down on the surface', nudge: true },
   '/galaxy/mission': { title: 'Mission briefing' },
   '/deathstar': { title: 'The Death Star', nudge: true },
+  '/deathstar/inside': { title: 'Aboard the Death Star', nudge: true },
   '/caribbean': { title: 'The Caribbean', nudge: true },
   '/invincible': { title: 'Invincible', nudge: true },
   '/middle-earth': { title: 'Middle-earth' },

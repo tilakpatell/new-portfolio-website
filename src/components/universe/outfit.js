@@ -37,7 +37,9 @@ export const PLANT = { xwing: 7, falcon: 9, cruiser: 8, rv: 5 };
 // shots, multiplied), punch (hits on a hunter each bolt is worth), bolt
 // (how big the bolt is drawn), armor (damage taken, multiplied), regen (how
 // fast shields come back, multiplied), delay (seconds after a hit before
-// they start).
+// they start). A part with a `look` is drawn as that part of its slot is
+// (modules.js): one that's new in the numbers, with no model of its own.
+// What a part costs, and any lock beyond an achievement, is catalog.js's.
 const part = (slot, id, name, blurb, { mass = 0, power = 0, achievement = null, hint = null, ...does } = {}) => ({ id, slot, name, blurb, mass, power, achievement, hint, ...does });
 
 export const PARTS = [
@@ -87,6 +89,14 @@ export const PARTS = [
     achievement: 'grounded',
     hint: 'Bring Starscream down over Jasper in Roll out',
   }),
+  part('thrusters', 'vamonos', 'Vamonos Pest exhausts', 'The pest van’s pipes, tented and tuned: a quicker cruise for a quiet getaway.', {
+    mass: 1,
+    power: 1,
+    cruise: 0.1,
+    accel: 0.15,
+    agility: 0.05,
+    look: 'racing',
+  }),
   // guns
   part('guns', STOCK, 'Stock', 'The guns it came with.'),
   part('guns', 'twin', 'Twin-linked cannons', 'A second barrel, fired in turn with the first. Quicker shots.', { mass: 1, power: 1, cadence: 0.8 }),
@@ -98,6 +108,14 @@ export const PARTS = [
     bolt: 2,
     achievement: 'onestand',
     hint: 'Beat Megatron in Kaon in Roll out',
+  }),
+  part('guns', 'incom', 'Incom targeting computer', 'An X-wing’s own fire control, wired to twin barrels: quicker shots than a second barrel alone.', {
+    mass: 1,
+    power: 2,
+    cadence: 0.7,
+    achievement: 'rebels',
+    hint: 'Save Yavin 4 in the Battle of Yavin',
+    look: 'twin',
   }),
   // shields
   part('shields', STOCK, 'Stock', 'The shields it came with.'),
@@ -120,6 +138,13 @@ export const PARTS = [
   // fins
   part('fins', STOCK, 'None', 'As it came.'),
   part('fins', 'fins', 'Stabiliser fins', 'A pair of tail fins: rolls back upright quicker, turns a touch tighter.', { mass: 0.5, level: 0.4, agility: 0.05 }),
+  part('fins', 'council', 'Council of Ricks fins', 'The Council’s own tail fins, with a powered trim: upright quicker still, and tighter in a turn.', {
+    mass: 0.5,
+    power: 1,
+    level: 0.5,
+    agility: 0.1,
+    look: 'fins',
+  }),
 ];
 
 const BY_SLOT = Object.fromEntries(SLOTS.map((slot) => [slot, new Map()]));

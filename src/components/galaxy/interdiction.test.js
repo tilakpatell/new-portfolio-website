@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EDGE } from './space';
-import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, interdictorPlace, pickDue, readCount } from './interdiction';
+import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, interdictorPlace, nextWindow, pickDue, readCount } from './interdiction';
 
 // a store over a string, as sessionStorage is
 const memory = (s = null) => {
@@ -62,6 +62,23 @@ describe('the Empire’s count of your jumps', () => {
     };
     const i = createInterdiction({ rand: always(0), store: broken });
     expect(i.jumped()).toEqual({ n: 1, due: 10, interdicted: false });
+  });
+
+  it('brings the window on two jumps sooner after a jump off the lanes', () => {
+    expect(INTERDICTION.offLane).toBe(2);
+    expect(nextWindow(8, true)).toBe(nextWindow(10, false));
+    expect(nextWindow(10, false)).toBe(10);
+    expect(nextWindow(7)).toBe(7);
+    // a cycle due on the tenth: the eighth jump bites off the lanes, not on them
+    const on = createInterdiction({ rand: always(0) });
+    const off = createInterdiction({ rand: always(0) });
+    for (let n = 1; n < 8; n++) {
+      on.jumped(false);
+      off.jumped();
+    }
+    expect(on.jumped(false)).toEqual({ n: 8, due: 10, interdicted: false });
+    expect(off.jumped(true)).toEqual({ n: 8, due: 10, interdicted: true });
+    expect(off.jumps).toBe(0);
   });
 
   it('can be made to bite on the next jump, for checking in a browser', () => {

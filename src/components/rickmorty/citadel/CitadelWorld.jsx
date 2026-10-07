@@ -20,6 +20,7 @@ import { BLOCKS as TOWN_BLOCKS, CAST as TOWN_CAST, COLLIDERS as TOWN_COLLIDERS, 
 import { LINE, dropLayer, newLine, stepLine } from './wafers';
 import { voiceFor } from './voicelines';
 import { sayVoiced } from '../../../lib/voiced';
+import { EMOTES, createEmoteWheel, emotePacket, keepEmote, wheelAngle } from '../../../lib/emote';
 import '../../middleearth/shire/shire.css';
 import '../../middleearth/towns/bree/bree.css';
 import Wardrobe from '../wardrobe/Wardrobe';
@@ -71,6 +72,11 @@ const TOWN_PEOPLE = [...TOWN_CAST, ...TOWN_WALKS];
 const LOCO_NAMES = { 'loco-a': 'The Loco with the face tattoo', 'loco-b': 'The Loco in the white T-shirt', 'loco-c': 'The Loco in the vest' };
 // the Locos are out once their quest's open, and until it's done
 const huntOpen = (p) => p.quests.some((q) => q.id === 'locos' && q.open && !q.done);
+// Rick's emotes (lib/emote.js): hold B for the wheel, point and let go; tap it for the last again
+const EMOTE_KEY = 'KeyB';
+const isEmoteKey = (e) => e.code === EMOTE_KEY || (!e.code && (e.key === 'b' || e.key === 'B'));
+const EMOTE_NAMES = { wave: 'Wave', cheer: 'Cheer', dance: 'Dance', taunt: 'Taunt', sit: 'Sit' };
+const WHEEL_R = 112; // the wheel's reach on screen (px): the pointer this far out is a whole slice
 
 // A line in its speaker's voice while it's up (lib/voiced.js), as useVoiced
 // says it, except that its going stops only its own line: the bubbles and
@@ -131,7 +137,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     // (left in Mortytown: back by the lift, and down it once the world's up)
     const down = saved?.where === 'mortytown' && moodOf(done) !== 'red';
     const h = newWalker(down ? LIFT_AT : validAt(saved, done));
-    sim.current = { where: 'concourse', autoDown: down, townAt: down ? saved : null, hunt: newHunt(1), townSeen: false, h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.32, dragAt: -1e9, mode: 'walk', room: null, beat: null, talking: null, talk: null, herd: calmHerd(), line: newLine(), laid: null, watchers: newWatchers(ROUNDS), chased: false, near: null, person: null, canvassed: new Set(), escapeT: null, frame: 0, moved: false, t: 0, air: null, siren: null, padBefore: null, edgeAt: -9, fresh: !saved && done.length === 0, seed: 2 };
+    sim.current = { where: 'concourse', autoDown: down, townAt: down ? saved : null, hunt: newHunt(1), townSeen: false, h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.32, dragAt: -1e9, mode: 'walk', room: null, beat: null, talking: null, talk: null, herd: calmHerd(), line: newLine(), laid: null, watchers: newWatchers(ROUNDS), chased: false, near: null, person: null, canvassed: new Set(), escapeT: null, frame: 0, moved: false, t: 0, air: null, siren: null, padBefore: null, edgeAt: -9, fresh: !saved && done.length === 0, seed: 2, emote: null, wheel: createEmoteWheel(), acted: false, cues: [], saying: null, lastFace: null };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -142,6 +148,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   const [toast, setToast] = useState(null);
   const [bubble, setBubble] = useState(null);
   const [list, setList] = useState(false);
+  // the emote wheel, as it's shown: open, and the slice pointed at
+  const [wheel, setWheel] = useState({ open: false, hover: null });
+  const wheelKey = useRef('');
   // the wardrobe: how Rick looks here (and Morty, wherever he turns up)
   const [looks, setLook] = useLooks();
   const looksRef = useRef(looks);
@@ -201,7 +210,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         }
         api.current = a;
         a.setLooks?.(looksRef.current); // (a look picked while it loaded)
-        if (import.meta.env.DEV) window.__CITADEL__ = { api: a, sim: sim.current, complete, down: () => liftRef.current?.down(true), up: () => liftRef.current?.up() }; // for the QA scripts
+        // (cue: something for the people to react to, as the world would say it: { type: 'seen', id } …)
+        if (import.meta.env.DEV) window.__CITADEL__ = { api: a, sim: sim.current, complete, down: () => liftRef.current?.down(true), up: () => liftRef.current?.up(), cue: (c) => sim.current?.cues.push(c), emote: (id) => sim.current && (sim.current.emote = { id, at: sim.current.t }) }; // for the QA scripts
         fit();
         setGl('on');
         // left in Mortytown last time: back down the lift
@@ -358,6 +368,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       const has = (q) => doneRef.current.includes(q);
       audioContext();
       setList(false);
+      s.acted = true; // (whatever he was striking, he's doing this now)
       if (id === 'mortytown') return goDown();
       if (id === 'up') return goUp();
       if (id === 'portal' || id === 'leave') {
@@ -368,6 +379,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       if (id === 'daycare') {
         s.herd = newHerd(s.seed++);
         api.current?.fx('scatter');
+        s.cues.push({ type: 'scatter' });
         sounds().then((x) => x.blip());
         say('The gate’s been left open, and six Mortys are loose. Walk at them and they run from you: herd them back through the gate.');
       } else if (id === 'factory') {
@@ -391,6 +403,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         s.mode = 'talk';
         s.talking = 'ballot';
         s.talk = newTalk(CONVOS.ballot);
+        s.cues.push({ type: 'beat' }); // (“Vote Morty!”: the rally cheers him)
         // facing the booth, the camera over his shoulder
         s.h = { ...s.h, face: Math.atan2(-(BOOTH.z - s.h.z), BOOTH.x - s.h.x) };
         s.yaw = behindYaw(s.h.face);
@@ -427,7 +440,10 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       const node = talkNode(convo, s.talk);
       if (node?.choices && choice == null) return;
       s.talk = talkOn(convo, s.talk, choice);
+      s.acted = true;
       if (!s.talk.end) {
+        // the count's in: the rally goes up
+        if (s.talking === 'ballot' && s.talk.at === 'count') s.cues.push({ type: 'beat' });
         if (s.talking === 'council' && CONTEMPT.has(s.talk.at)) {
           api.current?.fx('contempt');
           sounds().then((x) => x.gavel());
@@ -503,6 +519,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         say('Too thin. That one’s for the reject bin.', true);
       } else if (e.type === 'good') {
         api.current?.fx('good');
+        s.cues.push({ type: 'good' }); // (the line's workers cheer it)
         sounds().then((x) => x.blip());
         const left = LINE.need - s.line.good;
         if (left > 0) say(`A good wafer. ${left} more.`);
@@ -540,6 +557,68 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       s.keys.clear();
     };
   }, [live]);
+
+  // the emote key: hold B for the wheel and let go over what you want, or
+  // tap it to strike the last again; 1 to 5 pick one while it's open, Esc
+  // shuts it. Any other key he presses (but the walking keys) ends one.
+  const pickEmote = useCallback((id) => {
+    const s = sim.current;
+    if (!id || s.mode !== 'walk') return;
+    audioContext();
+    s.emote = { id, at: s.t };
+  }, []);
+  useEffect(() => {
+    if (!live) return undefined;
+    const s = sim.current;
+    const down = (e) => {
+      if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey || wardrobeRef.current) return;
+      if (isEmoteKey(e)) {
+        e.preventDefault();
+        if (!e.repeat && s.mode === 'walk') s.wheel.down(s.t);
+        return;
+      }
+      if (s.wheel.open) {
+        if (/^[1-5]$/.test(e.key)) {
+          e.preventDefault();
+          pickEmote(s.wheel.choose(Number(e.key) - 1));
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          s.wheel.cancel();
+        }
+        return;
+      }
+      // (the emote button's own Enter or Space strikes one, rather than ending it)
+      if (!moveOf(e) && !e.target?.closest?.('.citadel-emote-chip, .citadel-wheel')) s.acted = true;
+    };
+    const up = (e) => {
+      if (isEmoteKey(e)) pickEmote(s.wheel.up(s.t));
+    };
+    // pointing at a slice: from the middle of the view, where the wheel is
+    const aim = (e) => {
+      const r = s.wheel.open ? canvas.current?.getBoundingClientRect() : null;
+      if (r) s.wheel.aim((e.clientX - (r.left + r.width / 2)) / WHEEL_R, (e.clientY - (r.top + r.height / 2)) / WHEEL_R);
+    };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('pointermove', aim);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('pointermove', aim);
+      s.wheel.cancel();
+    };
+  }, [live, pickEmote]);
+  // the HUD's emote button: a tap strikes the last again; held, the wheel opens and stays for a pick
+  const emoteDown = (e) => {
+    e.preventDefault();
+    const s = sim.current;
+    if (s.wheel.open) s.wheel.cancel();
+    else if (s.mode === 'walk') s.wheel.down(s.t);
+  };
+  const emoteUp = () => {
+    const s = sim.current;
+    if (!s.wheel.open) pickEmote(s.wheel.up(s.t));
+  };
 
   // keys
   const near = hud.near;
@@ -654,6 +733,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       if (e.type === 'penned') {
         const m = s.herd.mortys[e.id];
         a.fx('penned', { x: m.x, y: 1.6, z: m.z });
+        s.cues.push({ type: 'penned', id: e.id });
         sounds().then((x) => x.blip());
         const n = s.herd.mortys.filter((mm) => mm.penned).length;
         if (n < HERD.count) say(`${n} of ${HERD.count} Mortys back in.`);
@@ -661,10 +741,12 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         complete('daycare');
         sounds().then((x) => x.jingle());
         say(SHOUTS.daycareDone);
+        s.cues.push({ type: 'herdwon' }, { type: 'won' });
       } else if (e.type === 'out' && stillHerding(s.h, s.mode === 'inside')) {
         say(SHOUTS.daycare, true);
         s.herd = newHerd(s.seed++);
         a.fx('scatter');
+        s.cues.push({ type: 'herdout' }, { type: 'scatter' });
       } else if (e.type === 'out') {
         // left to it: the Day Care Rick calls them in and shuts the gate
         s.herd = calmHerd();
@@ -685,9 +767,11 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         if (e.type === 'seen') {
           a.fx('seen');
           say([SHOUTS.copSeen, SHOUTS.copFreeze, SHOUTS.copGot][e.id % 3], true);
+          s.cues.push({ type: 'seen', id: e.id });
         } else if (e.type === 'caught') {
           a.fx('caught');
           say(SHOUTS.copGrab, true);
+          s.cues.push({ type: 'caught', id: e.id });
           s.h = newWalker(ESCAPE_START);
           s.yaw = behindYaw(s.h.face);
           s.watchers = newWatchers(ROUNDS);
@@ -717,6 +801,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           a.fx('locos');
           sounds().then((x) => x.jingle());
           complete('locos');
+          s.cues.push({ type: 'won' });
           say('All three Locos handed over. Cop Morty says Morty Mart’s safe. For tonight.');
         }
       }
@@ -758,6 +843,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         lines.current[person] = n + 1;
         const line = c.lines[n % c.lines.length];
         setBubble({ id: person, name: c.name, line, who: voiceFor(c, line) });
+        s.saying = { id: person, line }; // (its speaker talks with his hands while it's up)
       } else if (person) {
         const c = CAST.find((x) => x.id === person);
         let line;
@@ -773,8 +859,36 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           line = c.lines[n % c.lines.length];
         }
         setBubble({ id: person, name: c.name, line, who: voiceFor(c, line) });
-      } else setBubble(null);
+        s.saying = { id: person, line };
+      } else {
+        setBubble(null);
+        s.saying = null;
+      }
     }
+
+    // Rick's emote: struck off the wheel (open when B's held), and over once
+    // he moves (but for a wave, which he can walk on with) or does anything else
+    if (s.mode !== 'walk' && s.wheel.open) s.wheel.cancel();
+    const wh = s.wheel.tick(s.t);
+    const wk = `${wh.open}|${wh.hover}`;
+    if (wk !== wheelKey.current) {
+      wheelKey.current = wk;
+      setWheel({ open: wh.open, hover: wh.hover });
+    }
+    if (s.mode !== 'walk') s.acted = true;
+    s.emote = keepEmote(s.emote, s.t, { moving: s.h.speed > 0.4, acted: s.acted });
+    s.acted = false;
+    // how he moves, for the others online (metres and radians a second)
+    const turned = s.lastFace == null ? 0 : Math.atan2(Math.sin(s.h.face - s.lastFace), Math.cos(s.h.face - s.lastFace));
+    s.lastFace = s.h.face;
+    const fx = Math.cos(s.h.face);
+    const fz = -Math.sin(s.h.face);
+    const vx = s.h.vx ?? fx * s.h.speed;
+    const vz = s.h.vz ?? fz * s.h.speed;
+    const move = { speed: vx * fx + vz * fz, side: vx * -fz + vz * fx, turn: dt > 0 ? turned / dt : 0 };
+    // the Council's line, or the ballot's: who says it
+    const node = s.talk && s.talking ? talkNode(CONVOS[s.talking], s.talk) : null;
+    const speech = node ? { who: node.who, at: s.talk.at ?? CONVOS[s.talking].start, line: node.say } : null;
 
     // the markers: where to go next
     const has = (q) => doneRef.current.includes(q);
@@ -799,7 +913,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
 
     // others online: where you are to them (out on the concourse), and where they are
     const tv = trav.ref.current;
-    tv?.pose(s.h, { inside: s.mode === 'inside' || s.mode === 'escape' || s.mode === 'lift' || s.where === 'mortytown' });
+    tv?.pose(s.h, { inside: s.mode === 'inside' || s.mode === 'escape' || s.mode === 'lift' || s.where === 'mortytown', emote: emotePacket(s.emote, s.t), move });
 
     try {
       a.render(
@@ -824,10 +938,18 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           hangarOpen: s.mode === 'escape',
           escapeT: s.escapeT,
           debugCam: s.debugCam,
+          // what the people show: who's talking to Rick, the line up, the
+          // Council's or the ballot's speaker, Rick's emote, what's just happened
+          person: s.person,
+          saying: s.saying,
+          speech,
+          emote: s.emote ? { id: s.emote.id, at: s.emote.at, t: s.t - s.emote.at } : null,
+          cues: s.cues,
         },
         ms * fast,
         fast,
       );
+      s.cues = [];
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
       a.dispose();
@@ -952,6 +1074,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
             <button type="button" className="shire-chip" onClick={() => setWardrobe(true)} aria-haspopup="dialog">
               Wardrobe {!touch && <kbd>C</kbd>}
             </button>
+            <button type="button" className="shire-chip citadel-emote-chip" onPointerDown={emoteDown} onPointerUp={emoteUp} onClick={(e) => e.detail === 0 && pickEmote(sim.current.wheel.choose(sim.current.wheel.last))} aria-haspopup="menu" aria-expanded={wheel.open} title={touch ? 'Tap to emote again; hold for the wheel' : 'Tap B to emote again; hold it for the wheel'}>
+              Emote {!touch && <kbd>B</kbd>}
+            </button>
             <OtherRicks trav={trav} />
             {herding && (
               <div className="shire-meter" role="meter" aria-label="Mortys back in the pen" aria-valuemin={0} aria-valuemax={HERD.count} aria-valuenow={hud.herd.penned}>
@@ -987,6 +1112,19 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
 
       {bubble && walking && <Bubble ref={bubbleRef} name={bubble.name} line={bubble.line} />}
 
+      {walking && wheel.open && (
+        <div className="citadel-wheel" role="menu" aria-label="Emotes">
+          {EMOTES.map((id, i) => {
+            const a = wheelAngle(i);
+            return (
+              <button key={id} type="button" role="menuitem" className="citadel-wheel-slice" data-hover={wheel.hover === id || undefined} style={{ transform: `translate(calc(${Math.round(Math.sin(a) * WHEEL_R)}px - 50%), calc(${Math.round(-Math.cos(a) * WHEEL_R)}px - 50%))` }} onPointerUp={(e) => e.stopPropagation()} onClick={() => pickEmote(sim.current.wheel.choose(id))}>
+                {EMOTE_NAMES[id]} {!touch && <kbd>{i + 1}</kbd>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {here && walking && (
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
@@ -996,7 +1134,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         </div>
       )}
 
-      {gl === 'on' && walking && !hud.moved && !here && <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}<GuideCue touch={touch} /></p>}
+      {gl === 'on' && walking && !hud.moved && !here && <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list, B to emote.'}<GuideCue touch={touch} /></p>}
 
       {node && (mode === 'talk' || inside) && <Convo title={hud.talking === 'council' ? 'Before the Council of Ricks' : 'At Candidate Morty’s booth'} name={SPEAKERS[node.who] ?? ''} node={node} touch={touch} onPick={(i) => talkOnward(i)} onNext={() => talkOnward()} onLeave={hud.talking === 'council' && hud.beat === 'hearing' ? leaveHearing : null} />}
 

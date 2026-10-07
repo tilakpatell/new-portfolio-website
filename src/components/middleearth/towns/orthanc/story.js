@@ -143,21 +143,21 @@ export const CONVOS = {
     start: 'trees',
     nodes: {
       trees: { who: 'narrator', say: 'Through the slit of the window, far below: the ring of Isengard. There were gardens in it once, and trees. They are being cut down, and dragged to the fires.', next: 'voice' },
-      voice: { who: 'voice', say: '“The old world will burn in the fires of industry. Forests will fall. A new order will rise.”', end: 'won' },
+      voice: { who: 'voice', voice: 'saruman', say: '“The old world will burn in the fires of industry. Forests will fall. A new order will rise.”', end: 'won' },
     },
   },
   pits: {
     start: 'fires',
     nodes: {
       fires: { who: 'narrator', say: 'The pits glow red. Smoke goes up from a hundred shafts, and under the ground, hammers, and the roar of furnaces.', next: 'voice' },
-      voice: { who: 'voice', say: '“We will drive the machine of war with the sword and the spear and the iron fists of the orc.”', end: 'won' },
+      voice: { who: 'voice', voice: 'saruman', say: '“We will drive the machine of war with the sword and the spear and the iron fists of the orc.”', end: 'won' },
     },
   },
   host: {
     start: 'ranks',
     nodes: {
       ranks: { who: 'narrator', say: 'In the shadow of the wall, ranks of tall orcs in black mail, the White Hand on their shields, waiting for their master’s word.', next: 'voice' },
-      voice: { who: 'voice', say: 'Soft, and very reasonable: “Tell me where the Ring is, old friend, and you shall have your staff again, and your freedom. Think on it.”', end: 'won' },
+      voice: { who: 'voice', voice: 'saruman', say: 'Soft, and very reasonable: “Tell me where the Ring is, old friend, and you shall have your staff again, and your freedom. Think on it.”', end: 'won' },
     },
   },
   // at the top
@@ -192,6 +192,11 @@ export const CONVOS = {
       pipe: { who: 'narrator', say: 'You fill your pipe from it. It would be a shame to let it go to waste.', end: 'won' },
     },
   },
+};
+
+// the toasts someone speaks in (../voice.js)
+export const SAYS = {
+  waiting: { who: 'saruman', text: 'Saruman, without looking up: “Read first, Gandalf. Then we will talk.”' },
 };
 
 export const SPEAKERS = { saruman: 'Saruman', gandalf: 'Gandalf', voice: 'The Voice of Saruman', narrator: '' };

@@ -27,15 +27,17 @@ export function officeProgress(done) {
 }
 
 // ── the calls at reception: who does each caller want? ──
+// (a caller with a name is in their own voice, `who`; the rest have none)
 const CALLS = [
   { say: 'Hi! I’m after the salesman who’s also a volunteer sheriff’s deputy. And owns a beet farm?', right: 'dwight', wrong: ['stanley', 'andy', 'creed'] },
-  { say: 'Bob Vance, Vance Refrigeration. Put me through to my wife, would you?', right: 'phyllis', wrong: ['angela', 'kelly', 'meredith'] },
+  { who: 'bobvance', say: 'Bob Vance, Vance Refrigeration. Put me through to my wife, would you?', right: 'phyllis', wrong: ['angela', 'kelly', 'meredith'] },
   { say: 'This is the vet’s office. It’s about one of the cats. Again. Which one? All of them, really.', right: 'angela', wrong: ['oscar', 'phyllis', 'toby'] },
   { say: 'Cornell alumni office, about the a cappella reunion. He told us to ask for “the Nard Dog”?', right: 'andy', wrong: ['ryan', 'kevin', 'darryl'] },
   { say: 'Hello, I’d like to make a complaint. To HR. About the regional manager. Again.', right: 'toby', wrong: ['michael', 'oscar', 'creed'] },
 ];
 const PEOPLE = { dwight: 'Dwight', stanley: 'Stanley', andy: 'Andy', creed: 'Creed', phyllis: 'Phyllis', angela: 'Angela', kelly: 'Kelly', meredith: 'Meredith', oscar: 'Oscar', toby: 'Toby', ryan: 'Ryan', kevin: 'Kevin', darryl: 'Darryl', michael: 'Michael' };
-// what happens when it goes to the wrong desk
+// what happens when it goes to the wrong desk: told, not said, but what's in
+// quotes is theirs, in their own voice (lib/voiced.js's spoken)
 const MISSED = {
   stanley: 'Stanley picks up, listens, and puts the phone down without a word. It rings again.',
   andy: '“Andy Bernard, Nard Dog!” A pause. “That’s… not me. I’ll transfer you back.” It rings again.',
@@ -62,9 +64,10 @@ function phonesConvo() {
     start: { who: 'erin', say: 'Thank you thank you thank you. Just put them through to whoever they want. The transfer button is the one with the arrow. I think.', next: 'c0' },
   };
   CALLS.forEach((c, k) => {
-    nodes[`c${k}`] = { who: 'caller', say: c.say, choices: order(c, k).map((id) => ({ text: `Put it through to ${PEOPLE[id]}`, to: id === c.right ? (k === CALLS.length - 1 ? 'done' : `ok${k}`) : `miss${k}-${id}` })) };
+    nodes[`c${k}`] = { who: c.who ?? 'caller', say: c.say, choices: order(c, k).map((id) => ({ text: `Put it through to ${PEOPLE[id]}`, to: id === c.right ? (k === CALLS.length - 1 ? 'done' : `ok${k}`) : `miss${k}-${id}` })) };
     if (k < CALLS.length - 1) nodes[`ok${k}`] = { who: 'jim', say: ['Transferring you now.', 'Putting you through.', 'One moment, please.', 'Connecting you.'][k % 4], next: `c${k + 1}` };
-    for (const id of c.wrong) nodes[`miss${k}-${id}`] = { who: 'narrator', say: MISSED[id], next: `c${k}` };
+    // (`told`: no name over it, whoever's voice is in it)
+    for (const id of c.wrong) nodes[`miss${k}-${id}`] = { who: MISSED[id].includes('“') ? id : 'narrator', told: true, say: MISSED[id], next: `c${k}` };
   });
   nodes.done = { who: 'erin', say: 'I’m back! Did anything happen? You look like you did the phones really well. Like, really well.', end: 'won' };
   return { start: 'start', nodes };
@@ -94,7 +97,7 @@ const DUNDIES = {
 };
 
 export const CONVOS = { phones: phonesConvo(), dundies: DUNDIES };
-export const SPEAKERS = { erin: 'Erin', caller: 'On line one', jim: 'You', narrator: '', michael: 'Michael' };
+export const SPEAKERS = { erin: 'Erin', caller: 'On line one', bobvance: 'On line one', jim: 'You', narrator: '', michael: 'Michael' };
 export const CALL_COUNT = CALLS.length;
 // which call a talk is on (for the HUD)
 export const callOf = (at) => {

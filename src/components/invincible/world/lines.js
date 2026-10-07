@@ -13,6 +13,20 @@ export const LINES = {
   fan: ['Is that Invincible?', 'Can I get a picture?', 'My cousin says you can’t even lift a bus.', 'Do you know Omni-Man?', 'You flew over my car. It’s fine. It’s fine.'],
 };
 
+// What Eve and Dad say as they go about with him (./companions.js): Eve
+// coming up to him, flying with him, wading into a fight; Dad at Dad's
+// rings (the first three rings, then once he's taken too long), on the
+// porch, and leading the way over the city.
+export const COMPANION = {
+  eveMeet: ['Hey. You’ve been hanging there a while. Everything OK?', 'Patrol’s quiet. Want company?', 'You look like you’re thinking too hard. Fly with me.'],
+  eveEscort: ['I’ll take your left.', 'Try to keep it under Mach one over the houses.', 'Right behind you. Well, beside you.'],
+  eveFight: ['Got this one!', 'Duck!', 'That’s two you owe me.'],
+  dadRing: ['Good. Now the next.', 'Straighter. Don’t drift.', 'Better. Keep the speed up.'],
+  dadSlow: ['You’re thinking about it. Don’t. Fly.', 'Mark. We don’t have all day.', 'Faster. You’re not a plane.'],
+  dadHome: ['Long day, son?', 'Your mother made dinner. Sit with us a while.'],
+  dadSpar: ['Follow me. Keep up.', 'Again. Closer this time.', 'Faster, Mark.', 'Last one. Show me.'],
+};
+
 // And what's said in passing, over the HUD (./InvWorld.jsx's say): who says
 // it (one of the people above) and the line as it's shown.
 export const CALLS = {
@@ -20,3 +34,7 @@ export const CALLS = {
   spar: { who: 'omni', text: '“Think, Mark!” Down the page, over the city.' },
   mimic: { who: 'omni', text: 'Dad, in your ear: “Look what they need to mimic a fraction of our power.”' },
 };
+
+// What Dad says when his rings are done, quoted after the lap's time (which
+// changes, so only his words are said aloud).
+export const RINGS_DONE = { who: 'omni', text: 'Not bad. For a start.' };

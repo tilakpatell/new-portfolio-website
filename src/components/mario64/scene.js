@@ -10,6 +10,11 @@
 //
 // Mario, the cast and the props are the models of ./models/catalog.js, loaded
 // before the first area is built, or the code-made ones where they can't be.
+// Mario's body comes through ./motion.js (his actions eased one into the
+// next, his stride paced to the ground, his head turning to what's near);
+// the cast are turned at their own rates and handed the frame's time, how
+// long they've been at what they're doing and how fast they're going, so
+// their feet and bobs keep to the ground and their reactions run on time.
 //
 // createScene(renderer, { small }) → { setArea(id) → Promise, sync(g, alpha),
 //   render(), resize(w, h), setLook(name), fx(type, at), dispose() }
@@ -22,7 +27,7 @@ import { hdTemplate, loadHd } from './models/hd';
 import { makeActor, makeMario, makeProp } from './models/index';
 import { makeHdMario } from './models/mario-hd';
 import { canvasTexture } from './models/common';
-import { poseFor } from './pose';
+import { createMarioBody, easeFace, faceFor, lookFor } from './motion';
 import { MATS } from './textures';
 
 export const S = 0.01;
@@ -256,7 +261,7 @@ export function createScene(renderer, { small = false } = {}) {
   const models = new Map(); // actor id → { model, blob }
   let water = [];
   let areaId = null;
-  let phase = 0;
+  let body = createMarioBody({ leg: mario.leg });
   let lastT = 0;
   const pulses = [];
 
@@ -282,6 +287,7 @@ export function createScene(renderer, { small = false } = {}) {
       scene.remove(mario.root);
       mario = makeHdMario(hdTemplate('mario'));
       scene.add(mario.root);
+      body = createMarioBody({ leg: mario.leg });
     }
     const { built } = buildArea(id);
     const meshes = [];
@@ -362,8 +368,9 @@ export function createScene(renderer, { small = false } = {}) {
     const x = lerp(l.x, m.pos.x, alpha) * S, y = lerp(l.y, m.pos.y, alpha) * S, z = lerp(l.z, m.pos.z, alpha) * S;
     mario.root.position.set(x, y, z);
     mario.root.rotation.y = lerpAngle(l.yaw, m.yaw, alpha);
-    phase += (Math.abs(m.fwd) / 32) * dt * 0.42;
-    mario.apply(poseFor(m.action, m.t, { fwd: m.fwd, phase, arg: m.arg, pitch: m.pitch ?? 0, vy: m.vel.y }));
+    // (his action's time runs on between the rules' steps while they step him)
+    const stepping = g.mode === 'play' || g.mode === 'starget';
+    mario.apply(body.pose(m, { dt, alpha, live: stepping, look: stepping ? lookFor(m, g.actors) : null }));
     mario.setVisible(!(m.invuln > 0 && m.action !== 'dead' && Math.floor(t / 2) % 2 === 0));
     // his blob shadow on the floor under him, fainter the higher he is
     const above = Math.max(0, m.pos.y - m.floorY);
@@ -392,8 +399,17 @@ export function createScene(renderer, { small = false } = {}) {
       const al = a.last ?? { x: a.pos.x, y: a.pos.y, z: a.pos.z, yaw: a.yaw };
       const ax = lerp(al.x, a.pos.x, alpha) * S, ay = lerp(al.y, a.pos.y, alpha) * S, az = lerp(al.z, a.pos.z, alpha) * S;
       entry.model.root.position.set(ax, ay, az);
-      entry.model.root.rotation.y = lerpAngle(al.yaw ?? a.yaw, a.yaw, alpha);
-      entry.model.update(a, t, g);
+      // turned at its own rate toward where the rules point it, never snapped
+      entry.yaw = easeFace(entry.yaw, a, faceFor(a, m, lerpAngle(al.yaw ?? a.yaw, a.yaw, alpha)), dt);
+      entry.model.root.rotation.y = entry.yaw;
+      // how long it's been at what it's doing (drawn time), and how fast it goes (metres a second)
+      if (entry.state !== a.state) {
+        entry.prev = entry.state ?? null;
+        entry.state = a.state;
+        entry.at = t;
+      }
+      const speed = Math.hypot(a.pos.x - al.x, a.pos.z - al.z) * 30 * S;
+      entry.model.update(a, t, g, { dt, since: t - entry.at, prev: entry.prev, speed });
       if (entry.blob) {
         entry.blob.visible = a.alive && a.state !== 'gone';
         entry.blob.position.set(ax, ((a.floorY ?? a.pos.y) + 2) * S, az);

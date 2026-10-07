@@ -68,11 +68,11 @@ export const CONVOS = {
   smeagol: {
     start: 'caught',
     nodes: {
-      caught: { who: 'narrator', say: 'You’re on him, the two of you, and Sting is at his throat. He writhes and spits. “It burns! It burns us!”', next: 'thief' },
+      caught: { who: 'narrator', voice: 'gollum', say: 'You’re on him, the two of you, and Sting is at his throat. He writhes and spits. “It burns! It burns us!”', next: 'thief' },
       thief: { who: 'gollum', say: '“Thief! Thief! Baggins! We hates it! We hates it forever!”', next: 'sam' },
       sam: { who: 'sam', say: 'Sam knots the elven rope round his ankle, and he screams. “Mr. Frodo, he’ll strangle us in our sleep, he will!”', next: 'pity' },
       pity: { who: 'frodo', say: 'Gandalf’s voice, in the Mines: “Many that live deserve death, and some that die deserve life. Can you give it to them, Frodo?”', choices: [{ text: 'Untie him. He can show us the way.', to: 'way' }, { text: '“It’s a pity Bilbo didn’t kill him.”', to: 'bilbo' }] },
-      bilbo: { who: 'narrator', say: 'And you hear the rest: “Pity? It was pity that stayed his hand.” You look at him, at what the Ring has made of him.', next: 'way' },
+      bilbo: { who: 'narrator', voice: 'gandalf', say: 'And you hear the rest: “Pity? It was pity that stayed his hand.” You look at him, at what the Ring has made of him.', next: 'way' },
       way: { who: 'frodo', say: '“You know the way to Mordor?” He nods, eager, wretched. “You’ve been there before.”', next: 'swear' },
       swear: { who: 'gollum', say: '“Sméagol will swear on… on the precious. Sméagol will swear on the precious.” You hold the Ring out. “Sméagol will help the master.”', end: 'won' },
     },
@@ -128,8 +128,16 @@ export const WAY_SAYS = {
   lit: '“Don’t follow the lights! Stupid, stupid… careful, master!” He drags you out by the collar.',
   sank: '“No, no, not that one!” A thin hand drags you out, dripping, onto the bank.',
   again: '“Master forgets. Watch again. Sméagol shows once more, only once more.”',
-  won: (slips) => (slips === 0 ? '“Master remembers! Clever master. Sméagol is pleased, yes, pleased.”' : `“Across! Wet, but across.” He counts on his fingers. “Fell in ${slips === 1 ? 'once' : slips === 2 ? 'twice' : `${slips} times`}, master did. Gollum.”`),
+  clean: '“Master remembers! Clever master. Sméagol is pleased, yes, pleased.”',
+  won: (slips) => (slips === 0 ? WAY_SAYS.clean : `“Across! Wet, but across.” He counts on his fingers. “Fell in ${slips === 1 ? 'once' : slips === 2 ? 'twice' : `${slips} times`}, master did. Gollum.”`),
   best: (slips) => (slips === 0 ? 'Your best: across without a slip.' : `Your best: across with ${slips} ${slips === 1 ? 'slip' : 'slips'}.`),
+};
+
+// the toasts someone speaks in (../voice.js)
+export const SAYS = {
+  fell: { who: 'sam', text: 'Your hands open, and you fall, and land in a heap on a ledge. Sam: “Mr. Frodo!” Up you climb again… Swing clear of the rock this time.' },
+  hurry: { who: 'gollum', text: 'Gollum looks back. “Hurry, hobbitses! Follow Sméagol!”' },
+  lights: { who: 'gollum', text: 'Into the water again, among the faces, and Gollum drags you out. “Don’t follow the lights!”' },
 };
 
 export const SPEAKERS = { gollum: 'Gollum', sam: 'Samwise Gamgee', frodo: 'Frodo', narrator: '' };

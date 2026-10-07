@@ -3,6 +3,7 @@ import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../../lib/voiced';
 import { readPad, typing } from '../../../games/pad';
 import { Convo, QuestList, Stick, Travellers } from '../TownHud';
 import { keyDown, keyUp, moveOf, ownButton } from '../keys';
@@ -10,7 +11,7 @@ import { newTalk, talkNode, talkOn } from '../talk';
 import { useTravellers } from '../useTravellers';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { HALL_COLLIDERS, HALL_IN, HALL_WALLS, LEAF, LECTERN, LIB, MOTH_AT, PALANTIR, PIN, PIN_IN, SARUMAN_AT, STAIR_LEN, WINDOWS, WINDOW_SIGHTS, validAt } from './layout';
-import { CONVOS, FOUND, QUESTS, SEAL, SPEAKERS, orthancProgress } from './story';
+import { CONVOS, FOUND, QUESTS, SAYS, SEAL, SPEAKERS, orthancProgress } from './story';
 import { DUEL, MOTH, block, blockable, lapOf, leap, newDuel, newGaze, newLeap, newMoth, newStair, push, stepDuel, stepGaze, stepLeap, stepMoth, stepStair } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
@@ -101,7 +102,12 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
   const hudKey = useRef('');
   const [toast, setToast] = useState(null);
   const [list, setList] = useState(false);
-  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  // a toast; and `who`, whose words are in it, says them (lib/voiced.js)
+  const say = useCallback((text, bad = false, who = null) => {
+    setToast({ text, bad, at: Date.now() });
+    if (who) sayVoiced(who, text);
+  }, []);
+  useEffect(() => stopVoiced, []);
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -246,7 +252,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
         sounds().then((x) => x.boom());
         api.current?.fx('boom');
         startTalk('greet');
-      } else if (id === 'waiting') say('Saruman, without looking up: “Read first, Gandalf. Then we will talk.”');
+      } else if (id === 'waiting') say(SAYS.waiting.text, false, SAYS.waiting.who);
       else if (id === 'lectern') {
         sounds().then((x) => x.pages());
         startTalk('lore');

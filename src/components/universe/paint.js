@@ -6,8 +6,11 @@
 // FAN_THEMES). A paint is one slot of a ship's loadout (outfit.js): picked
 // for each ship on its own, kept between visits, and the other pilots see
 // it (online/protocol.js sends its id, and only ids from here are believed).
+// The earned paints belong to a universe and are open to anyone here: what
+// locks them is the catalogue's (catalog.js), a rank, a standing or a level
+// bought with credits, not an achievement.
 //
-// A paint is { id, name, group ('stock' | 'company' | 'fan'), hull, trim,
+// A paint is { id, name, group ('stock' | 'company' | 'fan' | 'earned'), hull, trim,
 // glow, bolt, achievement, hint }: the hull's colour, the trim the ship's
 // markings take, the engines' glow and exhaust, and its lasers. Pure data,
 // so it's tested in Node; livery.js puts it on a ship and Hangar.jsx
@@ -50,6 +53,13 @@ const COATS = {
   morty: ['#f3d84b', '#3b65b8', '#f3d84b', '#f3d84b'], // the yellow shirt, the blue jeans
   summer: ['#e2557f', '#f6eef1', '#ff8fb1', '#ff8fb1'],
   beth: ['#8e2b48', '#f1cf6a', '#f1cf6a', '#f1cf6a'], // wine, and gold
+  // the earned ones
+  rebel: ['#e4dfd3', '#c8331f', '#ff6b4a', '#ff3b2f'], // a weathered white, the Alliance's orange-red
+  imperial: ['#8d939a', '#2b2f35', '#9fd8ff', '#3dff6a'], // fleet grey, and a TIE's green bolts
+  redsquadron: ['#f1efe9', '#b3261e', '#ffb08a', '#ff2b2b'], // white with the red stripes at Yavin
+  citadel: ['#d7dde3', '#2f6fb8', '#7ee8ff', '#97ce4c'], // the Citadel's clean white and its blue
+  pollos: ['#f5efe0', '#d42a1f', '#ffc23d', '#ffc23d'], // the restaurant's red on white, and its yellow
+  huttgold: ['#b8892b', '#5b3a1a', '#ffd36b', '#ffcf4a'], // Jabba's gold, and the brown of his palace
 };
 
 const coat = (id) => {
@@ -64,6 +74,14 @@ export const PAINTS = [
   { id: STOCK, name: 'Factory', group: 'stock', hull: null, trim: null, glow: null, bolt: null, achievement: null, hint: null },
   ...THEME_ORDER.map((id) => ({ id, name: THEMES[id].label, group: 'company', ...coat(id), ...COMPANY })),
   ...FAN_THEMES.map((f) => ({ id: f.id, name: THEMES[f.id].label, group: 'fan', ...coat(f.id), achievement: f.achievement, hint: f.hint })),
+  ...[
+    ['rebel', 'Rebel Alliance'],
+    ['imperial', 'Imperial grey'],
+    ['redsquadron', 'Red Squadron'],
+    ['citadel', 'Citadel issue'],
+    ['pollos', 'Los Pollos'],
+    ['huttgold', 'Hutt gold'],
+  ].map(([id, name]) => ({ id, name, group: 'earned', ...coat(id), achievement: null, hint: null })),
 ];
 
 const BY_ID = new Map(PAINTS.map((p) => [p.id, p]));

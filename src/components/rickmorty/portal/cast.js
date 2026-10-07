@@ -1,11 +1,17 @@
 // Portal panic's cast, built from simple shapes in flat colour, the way the
 // show draws them: big round eyes with dot pupils, a unibrow, Rick's spiky
 // blue-grey hair and lab coat, Morty's yellow shirt. Each figure faces +z;
-// animate() swings the legs and arms as it moves, bobs it, and squashes it
-// when it's hit. Shapes and materials are shared between every copy.
+// animate() swings the legs and arms in step with the ground it covers
+// (gait.js: a stride's worth of ground a swing, so the feet don't skate and
+// one standing still doesn't march), bobs it, squashes it when it's hit,
+// leans it back when it's hurt and crumples it when it goes down. Shapes
+// and materials are shared between every copy. These are what's drawn when
+// a modelled figure (./meshyCast.js) won't load, so they answer the same
+// calls (play, stop, base, look, react), each doing nothing.
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { createGait, sway } from '../../../lib/three/gait';
 import { toon } from './toon';
 
 const G = {};
@@ -70,11 +76,13 @@ function limb(parent, r, len, hex, at, end = null, endHex = null) {
   return j;
 }
 
+// (leg: hip to sole, for the ground a swing covers; strideLen: that ground
+// for a figure that hops or rolls instead)
 function rig(kind) {
   const group = new THREE.Group();
   const body = new THREE.Group();
   group.add(body);
-  return { kind, group, body, legs: null, arms: null, bodyY: 0, stride: 10, gun: null };
+  return { kind, group, body, legs: null, arms: null, bodyY: 0, leg: 0, strideLen: 0, gun: null };
 }
 
 const SKIN = 0xf2d3b8;
@@ -115,6 +123,7 @@ function rick({ coat = 0xf4f3ee, shirt = 0x8fd2e7, pants = 0x7c5a3f, hair = 0xa9
   c.head = head;
   c.gun = gun(c.arms[1]);
   c.bodyY = 0;
+  c.leg = 0.82;
   c.height = 2;
   return c;
 }
@@ -155,6 +164,7 @@ function morty({ shirt = 0xf3d84b, pants = 0x3b65b8, hair = 0x6a3d1f, patch = fa
   c.head = head;
   c.gun = gun(c.arms[1]);
   c.gun.position.y = -0.44;
+  c.leg = 0.58;
   c.height = 1.6;
   return c;
 }
@@ -177,6 +187,7 @@ function pickle() {
   part(pk, 'box', 0x3e5e22, [0.26, 0.03, 0.04], [0, 0.32, 0.22]);
   part(pk, 'box', 0x3e2a22, [0.12, 0.02, 0.03], [0, 0.08, 0.25], [0, 0, 0.1]);
   c.pickle = pk;
+  c.strideLen = 2.6; // (a hop each way of a long one)
   c.height = 1.3;
   return c;
 }
@@ -204,6 +215,7 @@ function meeseeks(small = false) {
   eye(head, 0.08, 0.06, 0.16, 0.07, { pupil: 0.45 });
   part(head, 'sphere', 0x2a1a2a, [0.08, 0.07, 0.04], [0, -0.1, 0.19]);
   c.head = head;
+  c.leg = 0.78;
   c.height = 1.85;
   if (small) c.group.scale.setScalar(0.75);
   return c;
@@ -231,6 +243,7 @@ function gromflomite() {
   c.head = head;
   c.gun = gun(c.arms[1]);
   c.gun.position.y = -0.5;
+  c.leg = 0.68;
   c.height = 1.85;
   return c;
 }
@@ -255,7 +268,7 @@ function cronenberg(scale = 1, eyes = 4) {
     return a;
   });
   c.blob = blob;
-  c.stride = 6;
+  c.leg = 0.32;
   c.group.scale.setScalar(scale);
   c.height = 1.3 * scale;
   return c;
@@ -268,7 +281,7 @@ function blob() {
   eye(b, -0.12, 0.42, 0.28, 0.08);
   eye(b, 0.13, 0.38, 0.29, 0.06);
   part(b, 'sphere', 0x8a2a3a, [0.1, 0.05, 0.04], [0, 0.22, 0.34]);
-  c.stride = 14;
+  c.strideLen = 2.1; // (a roll, a bounce each half)
   c.height = 0.7;
   return c;
 }
@@ -291,7 +304,7 @@ function gazorpian() {
   eye(head, 0.09, 0.07, 0.19, 0.05, { pupil: 0.4, lid: hide });
   for (const s of [-1, 1]) part(head, 'cone', 0x4a2418, [0.05, 0.22, 0.05], [s * 0.16, 0.2, -0.05], [-0.4, 0, -s * 0.5]);
   c.head = head;
-  c.stride = 6.5;
+  c.leg = 0.82;
   c.height = 2.4;
   return c;
 }
@@ -342,7 +355,7 @@ function snowball() {
   // the helmet's glass
   part(head, 'sphere', 0xbfe8ff, [0.55, 0.55, 0.55], [0, 0, 0.05], [0, 0, 0], { opacity: 0.25 });
   c.head = head;
-  c.stride = 5;
+  c.leg = 1.4;
   c.height = 3.2;
   c.group.scale.setScalar(1.15);
   return c;
@@ -458,8 +471,23 @@ function bake(c) {
   return c;
 }
 
+// The calls a modelled figure answers (./meshyCast.js's), which a figure of
+// shapes has no clips for: each does nothing, as a modelled figure without a
+// skeleton's do, so whoever drives one needn't ask which it has
+const NO_CALLS = {
+  play: () => Promise.resolve(false),
+  stop() {},
+  base: () => Promise.resolve('cut'),
+  look() {},
+  react: () => null,
+};
+
+let made = 0; // (each figure's place in its stride, so copies don't step together)
 export function makeCast(kind, variant = 0) {
-  return bake(makeRaw(kind, variant));
+  const c = bake(makeRaw(kind, variant));
+  c.seed = Math.imul(made++ + 1, 0x9e3779b1) ^ variant;
+  c.anim = null;
+  return Object.assign(c, NO_CALLS);
 }
 
 function makeRaw(kind, variant) {
@@ -483,12 +511,28 @@ function makeRaw(kind, variant) {
   return meeseeks();
 }
 
-// Moving: legs and arms swing with `move` (0..1), the body bobs; `hit`
-// (0..1) squashes it; `t` is its own clock.
-export function animate(c, t, move = 0, hit = 0) {
-  if (c.update) return c.update(t, move, hit); // a Meshy figure (./meshyCast.js)
-  const ph = t * c.stride;
-  const sw = Math.sin(ph) * 0.75 * move;
+const SWING = 0.75; // how far a leg swings either way (rad)
+const smooth = (k) => (k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k));
+
+// Moving: the legs and arms swing in step with the ground it covers (the
+// motion's speed and side, locomotion.js's, in the world's units a second;
+// else what `move`, 0…1, says), and the body rises over each foot; `hit`
+// (0…1) squashes it; the motion's `hurt` (0…1) throws it back; `down`
+// (0…1) crumples it, sat down then over onto its back, the arms thrown up.
+// `t` is its own clock (its breath, a Meeseeks' waving), `dt` the frame's
+// (else the time since the last). A modelled figure (./meshyCast.js) is
+// handed the lot: animate(c, t, move, hit, { dt, motion, frame, down }).
+export function animate(c, t, move = 0, hit = 0, opts = {}) {
+  if (c.update) return c.update(t, move, hit, opts); // a Meshy figure (./meshyCast.js)
+  const { motion = null, down = 0 } = opts;
+  const dt = Math.min(0.1, Math.max(0, opts.dt ?? (c.last == null ? 0 : t - c.last)));
+  c.last = t;
+  // a swing's worth of ground a swing, in its own units (it may be scaled)
+  const ground = motion ? Math.hypot(motion.speed ?? 0, motion.side ?? 0) * ((motion.speed ?? 0) < 0 ? -1 : 1) : move * c.height * 2.5;
+  c.gait ??= createGait({ stride: c.strideLen || (c.leg > 0 ? 4 * c.leg * Math.sin(SWING) : c.height), cadence: [0.9, 2], seed: c.seed ?? 0 });
+  const step = c.gait.step(dt, ground / (c.group.scale.x || 1));
+  const ph = step.phase;
+  const sw = Math.sin(ph) * SWING * step.amount;
   if (c.legs) {
     c.legs[0].rotation.x = sw;
     c.legs[1].rotation.x = -sw;
@@ -508,14 +552,25 @@ export function animate(c, t, move = 0, hit = 0) {
     }
   }
   if (c.gun) c.arms[1].rotation.x = -1.25; // the gun arm points ahead
-  const bob = Math.abs(Math.sin(ph)) * 0.07 * move + Math.sin(t * 2.2) * 0.012;
+  // highest with the legs together, lowest with them apart; a breath besides
+  const bob = sway(ph, step.amount).bob * 0.07 + Math.sin(t * 2.2) * 0.012;
   c.body.position.y = c.bodyY + bob;
   if (c.pickle) {
-    // Pickle Rick hops
-    c.body.position.y = Math.abs(Math.sin(t * 9)) * 0.28 * move;
-    c.pickle.rotation.z = Math.sin(t * 9) * 0.25 * move;
+    // Pickle Rick hops, a hop each half stride
+    c.body.position.y = Math.abs(Math.sin(ph)) * 0.28 * step.amount;
+    c.pickle.rotation.z = Math.sin(ph) * 0.25 * step.amount;
   }
   if (c.blob) c.blob.scale.set(0.7 + Math.sin(t * 5) * 0.03, 0.55 + Math.cos(t * 5) * 0.03, 0.62);
+  // going down: sat down first (the thighs up, the body dropped), then over
+  // onto its back, the arms flung up
+  const sit = smooth(down / 0.45);
+  const over = smooth((down - 0.3) / 0.7);
+  if (sit > 0) {
+    for (const l of c.legs ?? []) l.rotation.x += (-1.4 - l.rotation.x) * sit;
+    for (const a of c.arms ?? []) a.rotation.x += (-2.8 - a.rotation.x) * over;
+    c.body.position.y -= (c.leg || c.height * 0.3) * 0.75 * sit;
+  }
+  c.body.rotation.x = -0.3 * Math.min(1, motion?.hurt ?? 0) - 1.45 * over;
   const sq = hit;
   c.body.scale.set(1 + sq * 0.2, 1 - sq * 0.22, 1 + sq * 0.2);
   if (c.head) c.head.rotation.z = Math.sin(t * 1.3) * 0.04;

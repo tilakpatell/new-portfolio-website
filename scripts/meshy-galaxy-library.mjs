@@ -94,10 +94,16 @@ export const BUILDINGS = {
     tris: 12000,
     tex: 1024,
   },
-  // (the TIE Striker's picture on the wiki turned out to be a plain TIE, and
-  // its model with it: left out. The dragonsnake, from words, came out an
-  // Earth crocodile: left out, the built one stays.)
+  // Dagobah's dragonsnake: only its head and neck, reared up out of the pool
+  // (the built coils stay, circling under it). The first, from words, came
+  // out an Earth crocodile; this one is lifted from a painting of it.
+  dragonsnake: beast('File:Dragonsnake SM.png', 'the dark scaly swamp serpent\'s head and long neck, its jaws gaping full of long teeth, the ragged fins along its neck, without the water, the trees or the fliers', 4.5, 'h', {
+    crop: [0.42, 0.24, 0.45, 0.76],
+    shot: 'Only the head and the long curved neck, rearing upright as from water, cut off cleanly at the bottom; three-quarter view from the side, isolated on a plain light grey background, no water, no splash, no other creatures, no text.',
+  }),
   // ── the ships the galaxy built in code ──
+  // (a second take, lifted harder for crisp edges, came out with a fin
+  // floating loose off the hull and a boat's stern: dropped, this one stays)
   houndstooth: ship('File:HoundsTooth_3quarters_view-SWE.png', 'the bulky ochre boxy freighter with its long swept-back wing'),
   punishingone: ship('File:JM-5K.png', 'the crescent-shaped bounty hunter ship with its long central fuselage'),
   hammerhead: ship('File:Hammerhead_Corvette_USWNE.png', 'the long corvette with its tall hammer-shaped bridge at the front'),
@@ -105,6 +111,8 @@ export const BUILDINGS = {
   // ── and the films' and shows' others ──
   twilight: ship('File:Twilight-BMF66.png', 'the battered freighter with its curved wing and big rear engines'),
   scimitar: ship('File:Scimitar-USC.png', 'the sleek dark grey dagger-shaped ship with its curved fins'),
+  // (the first take's picture was a plain TIE; this one's the Striker itself)
+  tiestriker: ship('File:TIE-Striker-SWCT.png', 'the grey atmospheric TIE fighter with its long flat cockpit pod and two angled tapering wings bent down at the middle'),
   tiedefender: ship('File:TIE_Defender.png', 'the TIE fighter with three triangular wings set round its cockpit ball'),
   vwing: ship('File:V-wing_BF2.png', 'the slim grey and red fighter with its tall folded wings'),
   eta2: ship('File:Eta-2JediInterceptor-USC.png', 'the small white and red delta interceptor with its wing-flaps up'),

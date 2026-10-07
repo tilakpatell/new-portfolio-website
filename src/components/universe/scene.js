@@ -87,6 +87,7 @@
 // `page`, where a wonder with a page of its own goes instead).
 
 import * as THREE from 'three';
+import { EMOTES } from '../../lib/emote';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { capturePointer } from '../../lib/pointer';
 import { local as remembered } from '../../lib/hooks';
@@ -109,6 +110,7 @@ import { exposureFor, sunShareOf } from '../../lib/three/exposure';
 import { houseOn } from '../../lib/three/house';
 import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, driveById, hyperState, legOf, parkFor, riftExit } from './nav';
+import { laneAim, laneFrame, lanePlan, rideLine } from './lanePilot';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
 import { AHEAD_OF, crewAt, factionsOf, kindsOf, pick as pickFaction, sideAt, sideFor, sideOf, wingOf } from './sides';
 import { TROOPS } from './foot';
@@ -120,7 +122,8 @@ import { createLeviathans } from './leviathans';
 import { createMeteors } from './meteors';
 import { createMines } from './mines';
 import { ESCORT, escortHull, escortPlan, escortTo } from './escort';
-import { DEBRIS_DRIFT, buildDeepSpace } from './deepspace';
+import { DEBRIS_DRIFT, SKY_FAR, buildDeepSpace } from './deepspace';
+import { FAR_PLACES, createFarPlaces } from './farPlaces';
 import { createSectorPortals } from './sectorPortals';
 import { GUN, gunHit, gunTransit } from './gunPortal';
 import { createGunPortal } from './gunPortalFx';
@@ -176,6 +179,8 @@ import { poseFor } from './poses';
 import { REMOVER, hitRemover, hpLeft, landingOpen, newRemover, stepRemover } from './remover';
 import { NX5_LEN, createRemoverView } from './removerView';
 import { createSky } from './skyShader';
+import { deedToEarn } from './economy';
+import { createPayLedger, hunterEarn } from './earnRules';
 
 const STARS = 1800; // the near ones, over the Milky Way's own
 const STARS_LOW = 700;
@@ -738,6 +743,8 @@ export async function create(canvas, ctx) {
     return p;
   });
   const planetOf = Object.fromEntries(planets.map((p) => [p.id, p]));
+  // and every place past FAR_REAL drawn as a point of light instead (farPlaces.js)
+  const farPlaces = createFarPlaces(map, { places: FAR_PLACES.map((p) => ({ ...p, group: planetOf[p.id]?.group ?? deep.groupOf(p.id) ?? (p.id === 'sun' ? sun.group : null) })), skyFar: SKY_FAR });
   const near = createNearMaps({ small }); // (the finer maps for the two planets nearest, nearMaps.js)
   const crashFx = createCrash(map);
   // out of the ship and on foot on a planet (footScene.js)
@@ -865,15 +872,23 @@ export async function create(canvas, ctx) {
   // lost: nothing said)
   const stood = (e) => {
     if (!e.level) return;
-    emit({ type: 'event', id: 'standing', sub: e.level });
     const side = sideFor(state.kind);
+    emit({ type: 'event', id: 'standing', sub: e.level, side: side?.id ?? null }); // (whose: a good level pays, for that universe)
     const who = { law: LAW_NAME[side?.law] ?? 'The law', civil: 'The ordinary ships', outlaw: 'The pirates' }[e.axis];
     const word = { wanted: 'have you marked: wanted', suspect: 'are watching you', trusted: 'trust you', feared: 'fear you', hero: 'call you a hero', friend: 'call you a friend' }[e.level];
     if (word) state.note = { text: `${who} ${word}`, until: wall() + 5 };
   };
-  // something you did: noted, and if it changed what you are, said
-  const deed = (what, n = 1) => {
+  // something worth paying for (economy.js's EARN): the page earns it into
+  // the wallet, for the universe you're in
+  const pay = (what, n = 1) => {
+    if (what) emit({ type: 'earn', what, n, side: sideHere()?.id ?? null });
+  };
+  // something you did: noted, and if it changed what you are, said; and
+  // paid for, if it pays (`as`: what it pays as, when it's more than the
+  // deed says, an ace for a hunter)
+  const deed = (what, n = 1, as = deedToEarn(what)) => {
     for (const e of standing.note(what, n)) stood(e);
+    pay(as, n);
   };
   const npcs = hunters ? createNpcs(map, { fleet, memory: npcMemory }) : null; // (the named characters: npcRules.js's brains)
   // the crew's war (front.js): its front out in deep space, a battle there
@@ -984,6 +999,7 @@ export async function create(canvas, ctx) {
     rect: cover({ w: 1, h: 1 }),
     overview: null,
     pose: null,
+    ride: null, // on a hyperlane: ride.js's ride (lanePilot.js's laneFrame keeps it)
     tLow: 0, // where the orbits stopped when quality went down
     yawTo: null, // where the map is turning to bring the picked place round to the front
     // flying
@@ -1038,6 +1054,10 @@ export async function create(canvas, ctx) {
     npcLast: null, // who came by last (someone else next time)
     skirmishHelped: 0, // hunters you've hit in this one
     saw: new Set(), // the wonders out in deep space you've come up on, and the places you've been
+    // the hunters you've helped another pilot with (owner:hunter), paid
+    // once each: down is only our guess, and a ghost of one can come back
+    // and go down again
+    helped: createPayLedger(),
     phoneNear: false, // at the phone out past the belt (phone.js)
     phoneIn: false, // flown right into it (it asks once, until you back off)
     deepSaid: false,
@@ -1582,7 +1602,8 @@ export async function create(canvas, ctx) {
         emit({ type: 'hyper', why: hyper.why, wait: hyper.wait });
         state.note = { text: hyper.why === 'interdicted' ? 'Interdicted: no jump till the hunters are gone' : `Hyperdrive charging (${Math.ceil(hyper.wait)} s): super speed instead`, until: wall() + 3.5 };
       }
-      state.auto = { id, park, od: driveById(hyper ? 'super' : drive).od };
+      state.ride = null; // (off any lane it's on: the trip starts from here)
+      state.auto = (drive === 'lanes' && lanePlan(s, id, park)) || { id, park, od: driveById(hyper ? 'super' : drive).od };
     }
     retarget(700);
     ctx.invalidate();
@@ -2126,7 +2147,9 @@ export async function create(canvas, ctx) {
       pops.hit({ point: siegePoint, normal: popDir.copy(siegePoint).sub(citadelMid).normalize(), radius: 0.3 });
       emit({ type: 'siege', what: 'deflected' });
     } else {
-      // it took it: tell everyone soon, and the Council of Ricks takes notice
+      // it took it: tell everyone soon, and the Council of Ricks takes notice.
+      // Only your own strike pays (here, a generator or the core): another
+      // pilot's arrives through the net and pays them.
       if (!siegeMine) {
         siegeMine = true;
         state.heat += 2;
@@ -2139,7 +2162,11 @@ export async function create(canvas, ctx) {
         pops.hit({ point: new THREE.Vector3(...citadelGeo.gens[ev.part]), normal: popDir.copy(siegePoint).sub(citadelMid).normalize(), radius: citadelGeo.gen * 1.2 });
         if (!reduced) state.shake = Math.max(state.shake, 0.5);
         emit({ type: 'siege', what: 'gen', left: ev.left, near: true });
-      } else if (ev.type === 'down') siegeDown(true);
+        pay('siegePart');
+      } else if (ev.type === 'down') {
+        siegeDown(true);
+        pay('siegePart'); // (the core is the siege's last part, and pays like one)
+      }
       else pops.hit({ point: siegePoint, normal: popDir.copy(siegePoint).sub(citadelMid).normalize(), radius: heavy ? 0.8 : 0.2 });
     }
     return siegePoint;
@@ -2202,6 +2229,7 @@ export async function create(canvas, ctx) {
           net?.hunterHit(ph.id, ph.hunter, d.punch ?? 1);
           if (ph.down) {
             emit({ type: 'kill', kind: ph.kind, hunter: true });
+            if (state.helped.once(`${ph.id}:${ph.hunter}`)) pay('hunterHelped'); // (one shot off someone else's tail)
             if (!reduced) state.shake = Math.max(state.shake, 0.2);
           }
         } else net?.hit(ph.id, d.damage);
@@ -2279,8 +2307,9 @@ export async function create(canvas, ctx) {
   // a pirate on someone else, or a character who turned on you)
   const killed = (hh) => {
     if (!hh.faction) return;
-    if (FACTIONS_ALL[hh.faction]?.role === 'pirates' || hh.prey) deed('killPirate');
-    else deed('killHunter');
+    const pays = hunterEarn(FACTIONS_ALL, hh); // (its faction's ace pays more)
+    if (FACTIONS_ALL[hh.faction]?.role === 'pirates' || hh.prey) deed('killPirate', 1, pays);
+    else deed('killHunter', 1, pays);
   };
 
   // a shot into the director's capital ship (setpieces.js, capitalRules.js):
@@ -2368,7 +2397,10 @@ export async function create(canvas, ctx) {
         if (ph.hunter) {
           // one of the hunters after another pilot: theirs to take down
           net?.hunterHit(ph.id, ph.hunter, d.punch);
-          if (ph.down) emit({ type: 'kill', kind: ph.kind, hunter: true });
+          if (ph.down) {
+            emit({ type: 'kill', kind: ph.kind, hunter: true });
+            if (state.helped.once(`${ph.id}:${ph.hunter}`)) pay('hunterHelped');
+          }
         } else net?.hit(ph.id, d.damage);
         boom(m, ph.at, Boolean(ph.down));
         if (ph.down) burn(ph.at, ph.size);
@@ -2869,6 +2901,7 @@ export async function create(canvas, ctx) {
       if (at) pops.hit({ point: at, normal: new THREE.Vector3(0, 1, 0), radius: 0.55 });
       if (e.by && e.by === net?.selfId) {
         emit({ type: 'kill', kind: 'pilot' });
+        pay('killPilot');
         if (!reduced) state.shake = Math.max(state.shake, 0.2);
       }
     }
@@ -3748,6 +3781,22 @@ export async function create(canvas, ctx) {
     emit({ type: 'event', id: 'gunThrough', sub: out.sector });
   };
 
+  // a frame of the lanes taken in: the ride and the autopilot as they are
+  // now, the hunters left behind getting on (they can't follow onto a
+  // lane), and the HUD's lane line (on and off, and twice a second between)
+  const rode = (lane) => {
+    state.ride = lane.ride;
+    state.auto = lane.auto;
+    if (lane.on && hunters?.active) emit({ type: 'escaped', why: 'lane' });
+    if (lane.on) {
+      hunters?.clear();
+      state.interdicted = false;
+    }
+    if (lane.on || lane.out || state.clock - (state.rideSaid ?? 0) > 0.5) {
+      state.rideSaid = state.clock;
+      emit({ type: 'ride', on: Boolean(state.ride), line: state.ride && rideLine(state.ride) });
+    }
+  };
   const fly = (dt, t) => {
     if (state.crash) return crashing(dt);
     // out of the cockpit through Rick's portal: the cruiser comes out in
@@ -3781,13 +3830,14 @@ export async function create(canvas, ctx) {
     }
     if (!state.jump && pieces.riftAt && pieces.riftInside(state.ship)) riftThrough();
     if (state.jump) input = { throttle: 1, boost: true }; // (spooling up: straight on, flat out)
-    else if (state.auto) {
+    else if (state.auto && !state.ride) {
       const od = state.interdicted ? 1 : (state.auto.od ?? 1);
       // (and the battle's hold on the drive, so it plans its stop for it: front.js holdAt, as it would be coming straight in)
       const hold = front ? (x, y, z) => front.holdAt(x, y, z, null) : null;
-      const a = autopilot(state.ship, state.auto.id, state.auto.park, state.auto.id === 'front' && front ? frontSpace() : undefined, od, hold);
+      const aim = laneAim(state.auto); // (on the lanes: to the next ramp's ring, lanePilot.js)
+      const a = autopilot(state.ship, aim?.id ?? state.auto.id, aim?.park ?? state.auto.park, aim?.space ?? (state.auto.id === 'front' && front ? frontSpace() : undefined), aim ? 1 : od, hold);
       input = a.input;
-      if (a.done) {
+      if (a.done && !aim) {
         const id = state.auto.id;
         state.auto = null;
         emit({ type: 'arrived', id, done: true }); // (the page's tour, and a trip on through the gate, go on from here)
@@ -3816,7 +3866,10 @@ export async function create(canvas, ctx) {
     input.interdicted = Math.max(pack * pack * (3 - 2 * pack), fight);
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
     const before = state.ship;
-    const { ship: stepped, events } = step(state.ship, input, dt, siegeSt.down ? SOLIDS_OPEN : SOLIDS);
+    // on a hyperlane, or getting on or off one (lanePilot.js): the ride poses the ship in place of ship.js's step
+    const lane = state.held || state.jump ? null : laneFrame(state, input, dt, { canEnter: !state.auto || Boolean(state.auto.route) });
+    if (lane) rode(lane);
+    const { ship: stepped, events } = lane?.ship ? { ship: lane.ship, events: [] } : step(state.ship, input, dt, siegeSt.down ? SOLIDS_OPEN : SOLIDS);
     // the Maw's pull (maw.js): drawn in, and carried round with its disk
     const g = pullAt(stepped.x, stepped.y, stepped.z);
     const ship = g ? { ...stepped, x: stepped.x + g.v[0] * dt, y: stepped.y + g.v[1] * dt, z: stepped.z + g.v[2] * dt } : stepped;
@@ -4209,6 +4262,12 @@ export async function create(canvas, ctx) {
     if (props.frozen) text = '';
     else if (state.note && wall() < state.note.until && !onFoot()) {
       text = state.note.text;
+      plain = true;
+    } else if (info && foot.phase === 'walk' && info.emote?.open) {
+      text = EMOTES.map((id, i) => `${i + 1} ${id}`).join(' · ');
+      plain = true;
+    } else if (info && foot.phase === 'walk' && info.emote?.fresh && info.emote.on) {
+      text = `${info.emote.on[0].toUpperCase()}${info.emote.on.slice(1)} · Z again, hold Z for more`;
       plain = true;
     } else if (info && foot.phase === 'walk' && info.gadget?.fresh) {
       text = `${info.gadget.name} · B for the next`;
@@ -4639,6 +4698,7 @@ export async function create(canvas, ctx) {
     // (the look follows the lights; what's come into the scene since is taken on every half second or so)
     house.follow({ adopt: houseFrames++ % 30 === 0 });
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
+    farPlaces.update(camera, dt, state.auto?.id ?? state.jump?.id ?? null);
     sectorPortals.update(t, camera);
     curve.update(t, sectorOf(camLocal.x, camLocal.y, camLocal.z) === 'rickmorty');
     sectorFleet.update(t, Boolean(state.ship) && sectorOf(state.ship.x, state.ship.y, state.ship.z) === 'rickmorty');
@@ -4809,9 +4869,20 @@ export async function create(canvas, ctx) {
   };
   // the keys on foot: walking (W A S D, Q E to step sideways), Shift to
   // run, Space to jump, F to fire, T the next trooper, X to play the other
-  // one, B Rick's next gadget, V out of your own eyes, Enter into the
-  // planet's world (wayin.js)
+  // one, B Rick's next gadget, Z an emote (held, the wheel of five), V out
+  // of your own eyes, Enter into the planet's world (wayin.js)
   const footKey = (e, key, onControl) => {
+    // Z held: the emote wheel; 1 to 5 picks one while it's open (lib/emote.js's five)
+    if (key === 'z') {
+      e.preventDefault();
+      if (!e.repeat) foot.emote('down');
+      return;
+    }
+    if (foot.info()?.emote?.open && /^[1-5]$/.test(key)) {
+      e.preventDefault();
+      foot.emote('pick', Number(key));
+      return;
+    }
     if (key === 'b') {
       e.preventDefault();
       const gun = foot.gadget();
@@ -4867,6 +4938,8 @@ export async function create(canvas, ctx) {
   const onKeyUp = (e) => {
     const key = e.key.toLowerCase();
     held.delete(key);
+    // (Z let go on foot: the emote pointed at, or a tap's last)
+    if (key === 'z' && onFoot() && foot.emote('up')) ctx.invalidate();
     const now = onFoot() ? FOOT_KEYS : KEYS;
     for (const map of [KEYS, FOOT_KEYS]) {
       const k = map[key];
@@ -5165,6 +5238,8 @@ export async function create(canvas, ctx) {
       last,
       held: state.held?.name ?? null,
       pose: holdPose,
+      ride: () => state.ride && { lane: state.ride.lane.id, way: state.ride.way, s: state.ride.s, speed: state.ride.speed, off: state.ride.off }, // (on a hyperlane: the checks)
+      lanes: () => state.auto?.route && { leg: state.auto.leg, legs: state.auto.route.legs.map((l) => l.kind) },
       frames, // (resolves after n more frames, each one drawn)
       // a blast `ahead` units in front of your ship, `size` across (to see one at a pose)
       blast: (size = 0.6, ahead = 1.5) => {
@@ -5344,7 +5419,7 @@ export async function create(canvas, ctx) {
     // pilots online (null for the ship with none picked)
     where() {
       const s = state.ship;
-      const leg = state.jump ? { id: state.jump.id, drive: 'hyper' } : state.auto ? { id: state.auto.id, drive: (state.auto.od ?? 1) > 1 ? 'super' : 'cruise' } : null;
+      const leg = state.jump ? { id: state.jump.id, drive: 'hyper' } : state.auto ? { id: state.auto.id, drive: state.auto.route ? 'lanes' : (state.auto.od ?? 1) > 1 ? 'super' : 'cruise' } : null;
       // (bound for the other sector: where it's going, and the portal it's going by)
       const going = leg && state.then ? { ...leg, id: state.then.id, via: leg.id } : leg;
       return {
@@ -5428,6 +5503,7 @@ export async function create(canvas, ctx) {
       eclipseMoon?.material.dispose();
       fleet.dispose();
       deep.dispose();
+      farPlaces.dispose();
       sectorPortals.dispose();
       gunPortal.dispose();
       curve.dispose();
