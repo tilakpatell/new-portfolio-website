@@ -75,6 +75,7 @@
 // the one's number (its id on the guns).
 
 import { clearOf, turnToward, blocked } from './hunterRules';
+import { PACE } from './ship';
 import { belief, createSenses, sense } from '../../lib/ai/perception';
 import { SENSES } from './npcs/index';
 import { NPC, add, apart, nearest, sub, unit, velocityOf } from './npcs/brains/common';
@@ -100,7 +101,7 @@ const sideOf = (me, you) => (you ? ((me.pos.x - you.x) * Math.cos(you.heading ??
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const between = (rand, [a, b]) => a + rand() * (b - a);
 // how much of a shot at you is dodged, 0…NPC.dodge: turning, pitching, boosting
-export const dodge = (you) => (you ? clamp(Math.abs(you.rate ?? 0) / 2.2 + Math.abs(you.tipRate ?? 0) / 2.2 + (Math.abs(you.speed ?? 0) > 15 ? 0.3 : 0), 0, NPC.dodge) : 0);
+export const dodge = (you) => (you ? clamp(Math.abs(you.rate ?? 0) / 2.2 + Math.abs(you.tipRate ?? 0) / 2.2 + (Math.abs(you.speed ?? 0) > 15 * PACE ? 0.3 : 0), 0, NPC.dodge) : 0);
 // you, as a character that can't see you believes you to be: at its guess,
 // going the way it last saw you go (heading 0 is −z, as ship.js has it)
 const guessed = (b) => ({ x: b.at.x, y: b.at.y, z: b.at.z, heading: Math.atan2(-b.vel.x, -b.vel.z), speed: Math.hypot(b.vel.x, b.vel.z), rate: 0, tipRate: 0, guessed: true });

@@ -414,7 +414,7 @@ describe('a wing', () => {
 
   it('knows every kind it can send', () => {
     for (const k of Object.values(WING_KINDS)) {
-      expect(k.speed).toBeGreaterThan(20); // (a boost's speed and more: they can catch you up)
+      expect(k.speed).toBeGreaterThan(SHIP.boost); // (a boost's speed and more: they can catch you up)
       expect(k.fire[0]).toBeLessThan(k.fire[1]);
     }
   });

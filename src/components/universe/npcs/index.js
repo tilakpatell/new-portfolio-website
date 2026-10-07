@@ -18,6 +18,8 @@
 // (a ship has sensors, not a windscreen), out to a good way across the map,
 // a second to be sure at the edge of that, hearing a shot from further than
 // it sees, and a memory of where you were going for a while after
+import { paced } from '../ship';
+
 export const SENSES = { sight: { range: 220, cone: -1, far: 1 }, hearing: { range: 160 }, memory: 8, intuition: 2.5 };
 const sensesOf = (over = {}) => ({ ...SENSES, ...over, sight: { ...SENSES.sight, ...(over.sight ?? {}) }, hearing: { ...SENSES.hearing, ...(over.hearing ?? {}) } });
 
@@ -30,7 +32,7 @@ const row = (id, name, side, role, ship, brain, { faction = null, fears = [], hu
   brain,
   faction,
   relations: { fears, hunts },
-  stats: { speed: 16, accel: 14, turn: 2.4, hp: 4, fire: [0.8, 1.4], damage: 6, ...stats },
+  stats: paced({ speed: 16, accel: 14, turn: 2.4, hp: 4, fire: [0.8, 1.4], damage: 6, ...stats }), // (at the ship's pace)
   size,
   bolt,
   senses: sensesOf(senses),
