@@ -95,9 +95,19 @@ export function jumpStarted() {
   for (const fn of [...starts]) fn();
 }
 
-// A running jump's start, so a frame that comes late moves its clock on by
-// `most` ms at most: starved of frames (the page busy building what comes
+// A running jump's start, so a stall (a frame more than STALL ms after the
+// last, where lib/three/pace stops judging frames too) moves its clock on
+// by `most` ms only: starved of frames (the page busy building what comes
 // next), a jump on the wall's clock skipped its tunnel and cleared out at
-// once; this way it waits where it was. (Its sound is on the wall's clock,
-// so a long stall can put the boom a little off the flash.)
-export const clampStart = (start, lastNow, now, most = 50) => start + Math.max(0, now - lastNow - most);
+// once; this way it waits where it was. Slower frames than that keep the
+// wall's time: clamped at 50 ms, every jump below 20 frames a second
+// played in slow motion, and its sound, on the wall's clock, landed its
+// boom well before the flash. (A long stall can still put it a little off.)
+export const STALL = 250;
+export const clampStart = (start, lastNow, now, most = 50) => (now - lastNow > STALL ? start + (now - lastNow - most) : start);
+
+// Whether a jump is at its peak, t ms in: under its flash, or anywhere in
+// its tunnel after that (where a held jump waits), so a clock moving on
+// whole frames up to a stall can't step over it. Not at the tunnel's end,
+// where the intro skips to.
+export const atPeak = (t) => t >= T.jump + 20 && t < T.tunnel;
