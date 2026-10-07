@@ -4,6 +4,7 @@ import { ThemeProvider } from './theme/ThemeProvider';
 import { AchievementProvider, useAchievements } from './components/Achievements';
 import { FunProvider } from './fun/FunProvider';
 import OnlineProvider from './components/universe/online/OnlineProvider';
+import EconomyProvider from './components/universe/EconomyProvider';
 import ErrorBoundary from './components/ErrorBoundary';
 import Nav from './components/Nav';
 import Footer from './components/Footer';
@@ -31,6 +32,7 @@ const Caribbean = lazy(() => import('./pages/Caribbean'));
 const Invincible = lazy(() => import('./pages/Invincible'));
 const Terminal = lazy(() => import('./pages/Terminal'));
 const DeathStar = lazy(() => import('./pages/DeathStar'));
+const DeathStarInside = lazy(() => import('./pages/DeathStarInside'));
 const Galaxy = lazy(() => import('./pages/Galaxy'));
 const GalaxyMission = lazy(() => import('./pages/GalaxyMission'));
 const GalaxySurface = lazy(() => import('./pages/GalaxySurface'));
@@ -42,6 +44,7 @@ const Cybertron = lazy(() => import('./pages/Cybertron'));
 const Albuquerque = lazy(() => import('./pages/Albuquerque'));
 const RickMorty = lazy(() => import('./pages/RickMorty'));
 const Citadel = lazy(() => import('./pages/Citadel'));
+const RmPlanet = lazy(() => import('./pages/RmPlanet'));
 const DotMatrix = lazy(() => import('./pages/DotMatrix'));
 const Mario64 = lazy(() => import('./pages/Mario64'));
 const Minecraft = lazy(() => import('./pages/Minecraft'));
@@ -325,6 +328,8 @@ function Shell() {
   }, []);
 
   return (
+    // (the wallet outside the link to the other pilots: the roster reads it too)
+    <EconomyProvider>
     <OnlineProvider>
       <div className="backdrop" aria-hidden="true" />
       <Ambience />
@@ -351,6 +356,7 @@ function Shell() {
                 <Route path="/invincible" element={<Invincible />} />
                 <Route path="/terminal" element={<Terminal />} />
                 <Route path="/deathstar" element={<DeathStar />} />
+                <Route path="/deathstar/inside" element={<DeathStarInside />} />
                 <Route path="/galaxy/:system?" element={<Galaxy />} />
                 <Route path="/galaxy/:system/mission" element={<GalaxyMission />} />
                 <Route path="/galaxy/:system/surface" element={<GalaxySurface />} />
@@ -362,6 +368,7 @@ function Shell() {
                 <Route path="/albuquerque" element={<Albuquerque />} />
                 <Route path="/c-137" element={<RickMorty />} />
                 <Route path="/c-137/citadel" element={<Citadel />} />
+                <Route path="/c-137/:planet" element={<RmPlanet />} />
                 <Route path="/dot-matrix" element={<DotMatrix />} />
                 <Route path="/dot-matrix/64" element={<Mario64 />} />
                 <Route path="/dot-matrix/minecraft" element={<Minecraft />} />
@@ -376,7 +383,7 @@ function Shell() {
           </Suspense>
         </ErrorBoundary>
       </main>
-      {pathname !== '/terminal' && pathname !== '/deathstar' && page !== '/universe' && page !== '/galaxy' && !pathname.endsWith('/surface') && <Footer />}
+      {pathname !== '/terminal' && pathname !== '/deathstar' && pathname !== '/deathstar/inside' && page !== '/universe' && page !== '/galaxy' && !pathname.endsWith('/surface') && <Footer />}
       <ScrollSaber />
       <Guide />
       <TourHost />
@@ -386,6 +393,7 @@ function Shell() {
         <IntroJump />
       </ErrorBoundary>
     </OnlineProvider>
+    </EconomyProvider>
   );
 }
 

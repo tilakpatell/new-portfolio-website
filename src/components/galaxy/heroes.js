@@ -10,6 +10,9 @@
 //   HERO_KEY                 the localStorage key
 //   readHero(raw, ship)      the choice, made good: { id, color, hilt, stance, gun, mods, perks } (the ship's own lead when nothing's kept or it's nonsense; the stance is combatRules.js's, the gun and mods weaponRules.js's)
 //   heroSpec(hero, ship)     the party spec for them (universe/footScene.js's PARTY shape), the saber (with its stance) on it where they carry one, else the gun they picked with its mods
+//   partyFor(spec, crew)     the two who walk: the hero, and the ship's crewmate who isn't them (the crew as it is with no hero)
+//   loadoutLine(hero)        the choice in a line: a Jedi's blade, hilt and stance, or the gun and its mods; the perks counted
+//   refitOf(was, next)       what a figure needs for a change of spec: 'same', 'arms' (another gun, blade or mods in the same hands) or 'body' (another person)
 //   defaultHeroId(ship)      who flies that ship
 //   leanText(lean)           a hero's lean, for their card (or null)
 
@@ -98,4 +101,29 @@ export function heroSpec(hero) {
   // (a gun from elsewhere fires yellow; the galaxy's keep the hero's own colour)
   const bolt = saber ? saber.color : WEAPONS[gun]?.side === 'elsewhere' ? '#ffd36b' : h.bolt;
   return { id: h.id, name: h.name.split(' ')[0], tall: h.tall, src: h.src, gun, bolt, saber, abilities: h.abilities, mods: saber ? [] : (hero.mods ?? []).filter((m) => MODS[m]).slice(0, MAX_MODS), perks: readPerks(hero.perks), hero: true };
+}
+
+// the two who walk down here: the hero in the lead, and the ship's
+// crewmate who isn't them (its second, or its first when the hero is the second)
+export const partyFor = (spec, crew) => (spec ? [spec, crew[1].id === spec.id ? crew[0] : crew[1]] : crew);
+
+// what a change of choice asks of a figure already walking (surface/scene.js
+// swaps it there and then): another person is a new body; another gun, its
+// mods or the blade (colour, hilt, stance) is new arms in the same hands;
+// anything else (perks, abilities) is only numbers
+const armsOf = (s) => JSON.stringify([s.gun ?? null, s.saber ? [s.saber.color, s.saber.hilt?.id ?? null, s.saber.stance] : null, s.mods ?? []]);
+export function refitOf(was, next) {
+  if (!was || was.id !== next.id || JSON.stringify(was.src) !== JSON.stringify(next.src)) return 'body';
+  return armsOf(was) === armsOf(next) ? 'same' : 'arms';
+}
+
+// the choice in a line, for the panel's summary and the note as it goes on
+export function loadoutLine(hero) {
+  const h = BY_ID[hero.id] ?? BY_ID.luke;
+  const parts =
+    h.weapon === 'saber'
+      ? [`${SABER_COLORS.find((c) => c.id === hero.color)?.name ?? 'Blue'} blade`, `${HILTS.find((x) => x.id === hero.hilt)?.name ?? HILTS[0].name} hilt`, STANCES[hero.stance]?.name ?? STANCES.single.name]
+      : [[WEAPONS[hero.gun]?.name ?? WEAPONS[h.weapon]?.name, (hero.mods ?? []).filter((m) => MODS[m]).map((m) => MODS[m].name).join(', ')].filter(Boolean).join(' · ')];
+  const n = (hero.perks ?? []).length;
+  return [...parts, ...(n ? [`${n} perk${n === 1 ? '' : 's'}`] : [])].join(' · ');
 }

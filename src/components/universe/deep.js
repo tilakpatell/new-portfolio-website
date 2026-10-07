@@ -18,7 +18,7 @@
 
 import { BODIES, HOME_RADIUS, POSITIONS, REACH, SECTORS, SUN, inSector } from './layout';
 import { byId } from './universes';
-import { HOLE_SCALE, STAR_SCALE } from './scale';
+import { HOLE_SCALE, SPREAD, STAR_SCALE } from './scale';
 
 export const DEEP = {
   system: HOME_RADIUS + 40, // inside this is the home system: the ceiling is SHIP.ceiling (and the drive opens only between its stations: ship.js driveAt)
@@ -63,6 +63,13 @@ function besideRickAndMorty() {
   const d = REACH.rickmorty * 2.5;
   return [x + Math.cos(a) * d, y + 12, z + Math.sin(a) * d];
 }
+
+// (the main sector's wonders spread out with the planets, by scale.js's
+// SPREAD, across the disc only: their heights stay, under the ceiling. The
+// numbers below are where they were before the spread; their own sizes and
+// reaches stay. The Rick and Morty sector's keep their own layout, and the
+// portal sits by its planet, already spread.)
+const spread = (w) => (w.sector || w.kind === 'portal' ? w : { ...w, at: [w.at[0] * SPREAD, w.at[1], w.at[2] * SPREAD] });
 
 export const WONDERS = [
   { id: 'aurelia', kind: 'gas-giant', name: 'Aurelia', at: [-2230, 135, -2835], r: 140, ring: true, colors: ['#e9c592', '#b9814d', '#f5e6c8', '#8f5a35'] },
@@ -115,7 +122,7 @@ export const WONDERS = [
   { id: 'twins', kind: 'binary', name: 'The Twins', at: [6100, -220, -1500], r: 60, color: '#ffd27a', pair: { r: 42, color: '#f4f6ff', apart: 230, period: 300 } }, // (at: the point the two go round, once in period seconds)
   { id: 'wanderer', kind: 'rogue', name: 'The Wanderer', at: [-900, -700, -6600], r: 55, ring: true, color: '#7fd8c8', colors: ['#1a2238', '#3a4a70', '#7fd8c8'] }, // (color: its auroras, for the chart and its name; colors: its rock, its accent, its auroras)
   { id: 'graveyard', kind: 'graveyard', name: 'The Graveyard', at: [-6400, 160, -1600], r: 14, color: '#dfe8ff', field: 190 },
-].map(grown);
+].map(spread).map(grown);
 
 // The trench run model (public/models/universe/trench.glb), as measured:
 // its trench runs along x, 24.71 long, 6.6 wide (z −15…−8.4) and 7.1 deep

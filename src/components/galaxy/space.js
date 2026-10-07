@@ -5,22 +5,32 @@
 // A system is free all the way round: no disc to keep to, so the ceiling and
 // the floor are a long way off (CEILING), and it ends at EDGE, where the ship
 // is turned back (beyond it there's only hyperspace: the way to the next
-// system is a jump, not a flight). Near the planet and the big things round
-// it the boost is the boost; out in the open between them it opens up into
-// the sublight drive (up to PULSE), so crossing the system doesn't drag, and
-// drops back as you come up on anything (so you never arrive at it flat out).
+// system is a jump, not a flight). Out in the open it opens up into the
+// sublight drive (up to PULSE), so crossing the system doesn't drag, and it
+// drops back to the boost as you come up on the planet or anything big round
+// it (so you never arrive at it flat out). It goes by where the ship's
+// heading, as the universe map's does (deep.js's gapAlong): flying past one,
+// wide of it, or away from it, it stays open, so there's no wall round the
+// planet or a battle's capital ships to crawl through.
 //
-// makeSpace(solids) → { edge, ceilingAt, openness, driveAt, homeAt, boostAt, brakeAt, coastAt, solids, goals }
+// EDGE, CEILING, PULSE; FAR (the camera's far plane, for all of it in view)
+// makeSpace(solids) → { edge, ceilingAt, openness, driveAt, driveAlong, homeAt, boostAt, brakeAt, coastAt, solids, goals }
 // solids: [{ id, at: [x, y, z], r, reach, band?, swallow? }]: what the ship
 // bumps into (the planet, its moons, the Death Star, the big rocks…); the
 // ones with `goal` are somewhere the autopilot can take you.
 
 import { SHIP, headingTo } from '../universe/ship';
+import { gapAlong } from '../universe/deep';
 import { conj, fromAngles, rotate } from '../universe/orient';
 
-export const EDGE = 900;
+export const EDGE = 2400;
 export const CEILING = 420;
-export const PULSE = 62;
+export const PULSE = 120;
+// how far the camera sees: the gas giant a system orbits is out at up to
+// fit.js's FIT.farthest (7,600) and over 900 across, so from the edge on the
+// far side of the planet it's 10,000 off; the sky's drawn on the far plane
+// whatever its distance, so seeing further costs nothing
+export const FAR = 12000;
 const NEAR = 26; // past a thing's reach: closer than this, the drive's down
 const RAMP = 90; // and over this much further it opens all the way
 const PARK = 6; // how far past a goal's reach the autopilot stops
@@ -33,22 +43,20 @@ export function makeSpace(solids, { edge = EDGE, ceiling = CEILING } = {}) {
   // the big things only count for how open it is (a pebble in a rock field
   // shouldn't cut the drive)
   const big = solids.filter((o) => o.r >= 1.5 || o.goal);
-  const openness = (x, y, z) => {
+  // how open it is at (x, y, z) going the way `f` points (a unit vector;
+  // none: as it would be going straight at the nearest thing)
+  const driveAlong = (x, y, z, f = null) => {
     let gap = Infinity;
-    for (const o of big) {
-      const dx = x - o.at[0];
-      const dy = y - o.at[1];
-      const dz = z - o.at[2];
-      const d = Math.sqrt(dx * dx + dy * dy + dz * dz) - (o.reach ?? o.r);
-      if (d < gap) gap = d;
-    }
+    for (const o of big) gap = Math.min(gap, gapAlong(x, y, z, f, o.at, o.reach ?? o.r));
     return smooth(clamp((gap - NEAR) / RAMP, 0, 1));
   };
+  const openness = (x, y, z) => driveAlong(x, y, z);
   return {
     edge,
     ceilingAt: () => ceiling,
     openness,
     driveAt: openness, // (how far the sublight drive's open: all of how open it is)
+    driveAlong, // (and the way the ship's going: step() and the autopilot use it)
     homeAt: () => 0, // (none of the universe map's home-system handling)
     // (`open`, how open the drive is, if ship.js knows it already: less, held down by hunters)
     boostAt: (x, y, z, boost = SHIP.boost, open = openness(x, y, z)) => boost + (PULSE - boost) * open,

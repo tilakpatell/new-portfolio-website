@@ -82,6 +82,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
       live: on,
       jump: (id) => view.current?.jump?.(id) ?? false,
       goTo: (id) => view.current?.goTo?.(id) ?? false,
+      flyTo: (id) => view.current?.flyTo?.(id) ?? false, // (another pilot here: the roster's “Fly to”)
       escape: () => view.current?.escape?.() ?? false,
       dive: () => view.current?.dive?.() ?? false,
       host: () => host.current,
@@ -186,6 +187,18 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
                 <span className="universe-threat" />
                 <span className="universe-threat" />
                 <span className="universe-threat" />
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
                 <span className="universe-lead" />
                 <span className="universe-nav">
                   <i />

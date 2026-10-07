@@ -91,7 +91,7 @@ export const ROWS = [
       { id: 'table', dx: 16, dz: -3.4, w: 5, d: 1.2 },
       { id: 'suckulents', dx: -19, dz: 11, r: 1.4 },
     ],
-    tasks: [{ id: 'squanch', name: 'Survive Birdperson’s wedding', hint: 'Dial Planet Squanch on the portal gun, raise a glass at the wedding, and get back through the portal when the Federation arrives.' }],
+    tasks: [{ id: 'squanch', name: 'Survive Birdperson’s wedding', hint: 'Land on Planet Squanch in the Rick and Morty sector, raise a glass at the wedding, and get back through the portal when the Federation arrives.' }],
     say: {
       squanchy: { who: 'Squanchy', text: 'You squanch what you squanch, Morty. Birdperson’s getting squanched today. Married. Same thing.' },
       sbirdperson: { who: 'Birdperson', text: 'Morty. I am glad you came. Tammy and I are to be joined. It will be a day to remember.' },
@@ -134,7 +134,7 @@ export const ROWS = [
       { id: 'rock-b', dx: -18, dz: 2, r: 3 },
       { id: 'rock-c', dx: 24, dz: 10, r: 2.2 },
     ],
-    tasks: [{ id: 'gazorp', name: 'Visit the women of Gazorpazorp', hint: 'Dial Gazorpazorp on the portal gun, and knock at the gate of the women’s city. Keep clear of the men.' }],
+    tasks: [{ id: 'gazorp', name: 'Visit the women of Gazorpazorp', hint: 'Land on Gazorpazorp in the Rick and Morty sector, and knock at the gate of the women’s city. Keep clear of the men.' }],
     caught: 'A Gazorpian picks you up by the shirt, roars, and throws you back to where you came in.',
     say: {
       marsha: { who: 'Mar-Sha', text: 'Welcome, Morty. The men stay outside. You may come in. You seem harmless.' },
@@ -174,7 +174,7 @@ export const ROWS = [
       { id: 'tree-b', dx: 18, dz: 6, r: 1.2 },
       { id: 'crystals', dx: -12, dz: 6, r: 1.2 },
     ],
-    tasks: [{ id: 'birdworld', name: 'Visit Birdperson at home', hint: 'Dial Bird World on the portal gun, and knock at Birdperson’s door.' }],
+    tasks: [{ id: 'birdworld', name: 'Visit Birdperson at home', hint: 'Land on Bird World in the Rick and Morty sector, and knock at Birdperson’s door.' }],
     say: {
       bbirdperson: { who: 'Birdperson', text: 'Morty. In my culture, this is the time of greeting. Welcome to my home.' },
       phoenixperson: { who: 'Phoenixperson', text: 'Birdperson is gone. There is only Phoenixperson now.' },
@@ -419,7 +419,7 @@ export const ROWS = [
       { id: 'cottage-d', dx: 22, dz: 6, w: 7, d: 6 },
       { id: 'barn', dx: 0, dz: -19, w: 10, d: 7 },
     ],
-    tasks: [{ id: 'purge', name: 'Get out before the purge', hint: 'Dial the Purge Planet on the portal gun, pull the siren, and get back through the portal within a minute.' }],
+    tasks: [{ id: 'purge', name: 'Get out before the purge', hint: 'Land on the Purge Planet in the Rick and Morty sector, pull the siren, and get back through the portal within a minute.' }],
     say: {
       arthricia: { who: 'Arthricia', text: 'You’re not from here. Tonight’s the purge, and anything goes. If the siren goes off, run for your portal.' },
       siren: { who: null, text: 'The siren howls over the village. The purge has begun. Run for the portal.' },
@@ -461,7 +461,7 @@ export const ROWS = [
       { id: 'house-b', dx: -22, dz: 7, r: 3 },
       { id: 'house-c', dx: 21, dz: 8, r: 3 },
     ],
-    tasks: [{ id: 'pluto', name: 'Tell Pluto it’s a planet', hint: 'Dial Pluto on the portal gun, and step up to the king’s podium.' }],
+    tasks: [{ id: 'pluto', name: 'Tell Pluto it’s a planet', hint: 'Land on Pluto in the Rick and Morty sector, and step up to the king’s podium.' }],
     say: {
       flippynips: { who: 'King Flippy Nips', text: 'Pluto is a planet! The scientists say so. The scientists who work for me say so.' },
       podium: { who: null, text: 'You step up to the podium. “Pluto is a planet.” They cheer for a long, long time.' },
@@ -498,7 +498,7 @@ export const ROWS = [
       { id: 'tower-c', dx: 23, dz: 7, r: 4 },
       { id: 'tower-d', dx: -23, dz: 8, r: 4 },
     ],
-    tasks: [{ id: 'gearworld', name: 'Visit Gearhead', hint: 'Dial Gear World on the portal gun, and say hello to Gearhead at his shop.' }],
+    tasks: [{ id: 'gearworld', name: 'Visit Gearhead', hint: 'Land on Gear World in the Rick and Morty sector, and say hello to Gearhead at his shop.' }],
     say: {
       gearhead: { who: 'Gearhead', text: 'Morty! Rick’s my best friend. Rick’s everyone’s best friend. That’s the problem with Rick.' },
       cogs: { who: null, text: 'The whole city turns. If one gear stops, everyone hears about it.' },
