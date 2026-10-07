@@ -16,7 +16,6 @@ describe("a surface's amounts by level", () => {
       depthN: 512,
       relief: 0,
       splat: false,
-      lod1: true,
       clouds: 0,
     });
   });
@@ -42,7 +41,6 @@ describe("a surface's amounts by level", () => {
     expect(a.depthN).toBe(1024);
     expect(a.relief).toBe(1);
     expect(a.splat).toBe(true);
-    expect(a.lod1).toBe(false);
     expect(a.clouds).toBe(1);
     expect(verts(discRings(a.rings)) / verts(discRings({}))).toBeGreaterThan(1.7);
   });

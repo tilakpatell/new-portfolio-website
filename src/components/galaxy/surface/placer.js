@@ -10,9 +10,8 @@
 // items, opts), update(t, dt, you), signal(name, on) (to the built things that
 // move when something happens: a trapdoor, a gate), setZone(inZone), ready (a
 // promise: everything asked for so far is in), dispose() }
-//   lod1: false (ultra: lib/budgets) puts each model whole at every distance,
-//   never its light copy. Whatever stands on the ground is seated on the
-//   lowest ground under its footprint (seat.js), so it never floats on a slope.
+//   Whatever stands on the ground is seated on the lowest ground under its
+//   footprint (seat.js), so it never floats on a slope.
 //   Given `shadowOnly` (near.js's createShadowPhase(…).only), scattered
 //   things don't cast shadows themselves: a stand-in for each part, drawn
 //   only into the sun's shadow, holds just the instances near `you`
@@ -156,7 +155,7 @@ export async function wearModel(object, role, { wear = wearCore, load = loadScan
   return seen.size;
 }
 
-export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve(o), shadowOnly = null, lod1 = true }) {
+export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve(o), shadowOnly = null }) {
   const group = new THREE.Group();
   group.name = 'things';
   parent.add(group);
@@ -303,7 +302,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             const worn = spec.wear ? wearModel(o, spec.wear) : Promise.resolve();
             // (a tower: its windows lit in the shader, props/windows.js)
             if (spec.windows) o.traverse((m) => m.isMesh && [].concat(m.material).forEach((mat) => mat.isMeshStandardMaterial && litWindows(mat, { seed: 5, density: 0.5, cell: [4, 5] })));
-            if (!entry.lod || !lod1) return worn.then(() => warm(o)).then(() => o);
+            if (!entry.lod) return worn.then(() => warm(o)).then(() => o);
             // far off, its light model (fetched after the full one: the
             // first view doesn't wait for it)
             const lod = withLod(o, null, radiusOf(gltf) * (spec.scale ?? 1));
@@ -381,7 +380,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
           const full = instance(parts, typeof solid === 'number' ? solid : Math.min(size.x, size.z) * 0.35, Math.min(size.x, size.z) * 0.45);
           // far off, its light copy: the items past lodDistance drawn with it
           // instead (split again as you walk, with the shadow stand-ins)
-          if (SURFACE_MODELS[kind].lod && lod1)
+          if (SURFACE_MODELS[kind].lod)
             loadModel(kind, surfaceLodUrl(kind)).then((lowGltf) => {
               if (dead || !lowGltf) return;
               const lowRoot = prepared(lowGltf);

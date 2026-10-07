@@ -32,7 +32,7 @@
 
 **Files:** Create `src/lib/budgets.js`, `src/lib/budgets.test.js`
 
-**Produces:** `BUDGETS` and `budget(level) → { triangles: number|null, props, lod1: boolean, grass, terrain, water }` (unknown level → high's row).
+**Produces:** `BUDGETS` and `budget(level)`, Lane A's file taken verbatim once their branch was up (`tris`, `calls`, `modelsMB`, `props`, `lod1`, `grass`, `terrain`, `cut`, `water`) (unknown level → high's row).
 
 - [ ] Test: every level has every column; `budget('ultra').triangles === null`; `budget('high').triangles === 3e6`; props/grass/terrain/water rise low→ultra; `lod1` false only at ultra.
 - [ ] Implement; run `npx vitest run src/lib/budgets.test.js`; commit.
@@ -41,9 +41,9 @@
 
 **Files:** Create `src/components/galaxy/surface/amounts.js`, `amounts.test.js`
 
-**Produces:** `amountsFor({ level, small }) → { grid: { n, grow }, scatter, grass: { side, size } , map, marks, rings: { around, step, near, grow }, depthN, relief, splat, lod1, clouds, skySeg }`.
+**Produces:** `amountsFor({ level, small }) → { grid: { n, grow }, scatter, grass: { side, size }, map, marks, rings: { small?, scale }, depthN, relief, splat, clouds }`.
 
-- [ ] Test: `amountsFor({ level: 'high', small: false })` equals today's numbers (grid 256 / 1.08, scatter 1, grass 280 × 44 m, map 512, marks 512, rings [160, 1.25, 48, 1.05], depth 512, relief 0, splat false, lod1 true, clouds 0); small keeps today's phone numbers (160/1.13, 0.6, 120, 256, 256, rings [96, 2.5, 40, 1.09], 256); ultra: grid 512, scatter 1.5, grass blades ×2 (side ≈ 396, size ≈ 55 m), rings with twice the vertices, depth 1024, relief 1, splat true, lod1 false, clouds 1.
+- [ ] Test: `amountsFor({ level: 'high', small: false })` equals today's numbers (grid 256 / 1.08, scatter 1, grass 280 × 44 m, map 512, marks 512, rings [160, 1.25, 48, 1.05], depth 512, relief 0, splat false, clouds 0); small keeps today's phone numbers (160/1.13, 0.6, 120, 256, 256, rings [96, 2.5, 40, 1.09], 256); ultra: grid 512, scatter 1.5, grass blades ×2 (side ≈ 396, size ≈ 55 m), rings with twice the vertices, depth 1024, relief 1, splat true, clouds 1. (LOD1 off at ultra is Lane A's, in the placer's `wantsLod`.)
 - [ ] Implement from `budget(level)`; commit.
 
 ### Task 3: Terrain at ultra
@@ -77,7 +77,7 @@
 **Produces:** `seatY(heightAt, x, z, r) → number` (the lowest of the centre and eight points at r).
 
 - [ ] Tests: flat ground → centre height; a 1-in-2 slope with r 2 → centre − 1; r 0 → centre.
-- [ ] Scatter items seated by their model's footprint radius before instancing; models put without `y`/`abs` seated by their box. LOD1 loaded only when `amounts.lod1`. Commit.
+- [ ] Scatter items seated by their model's footprint radius before instancing; models put without `y`/`abs` seated by their box. Commit.
 
 ### Task 7: Water at ultra
 

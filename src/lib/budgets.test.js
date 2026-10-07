@@ -1,30 +1,43 @@
 import { describe, expect, it } from 'vitest';
-import { BUDGETS, budget } from './budgets';
+import { BUDGET_ROWS, COLUMNS, budget } from './budgets';
+import { LEVELS } from './device';
 
-const LEVELS = ['low', 'mid', 'high', 'ultra'];
-const COLUMNS = ['triangles', 'props', 'lod1', 'grass', 'terrain', 'water'];
-
-describe('the budget table', () => {
-  it('has every column at every level', () => {
-    for (const l of LEVELS) for (const c of COLUMNS) expect(BUDGETS[l]).toHaveProperty(c);
+describe('how much each quality level draws', () => {
+  it('has a row for every level, and every column in each', () => {
+    expect(Object.keys(BUDGET_ROWS)).toEqual(LEVELS);
+    for (const level of LEVELS) for (const col of COLUMNS) expect(BUDGET_ROWS[level], `${level}.${col}`).toHaveProperty(col);
   });
 
-  it('holds high to 3M triangles and ultra to none', () => {
-    expect(budget('high').triangles).toBe(3e6);
-    expect(budget('ultra').triangles).toBeNull();
-    expect(budget('low').triangles).toBe(0.8e6);
-  });
-
-  it('rises from low to ultra', () => {
-    for (const c of ['props', 'grass', 'terrain', 'water'])
-      for (let i = 1; i < LEVELS.length; i++) expect(budget(LEVELS[i])[c]).toBeGreaterThan(budget(LEVELS[i - 1])[c]);
-  });
-
-  it('keeps the light copies everywhere but ultra', () => {
+  it('holds the spec’s numbers', () => {
+    expect(LEVELS.map((l) => budget(l).tris)).toEqual([0.8e6, 1.5e6, 3e6, Infinity]);
+    expect(LEVELS.map((l) => budget(l).calls)).toEqual([350, 500, 700, 1500]);
+    expect(LEVELS.map((l) => budget(l).modelsMB)).toEqual([20, 40, 60, 240]);
+    expect(LEVELS.map((l) => budget(l).props)).toEqual([0.5, 0.75, 1, 1.5]);
     expect(LEVELS.map((l) => budget(l).lod1)).toEqual([true, true, true, false]);
+    expect(LEVELS.map((l) => budget(l).grass)).toEqual([0.25, 0.5, 1, 2]);
+    expect(LEVELS.map((l) => budget(l).terrain)).toEqual([0.5, 0.75, 1, 2]);
+    expect(LEVELS.map((l) => budget(l).cut)).toEqual(['.lo', '', '.hq', '.ultra']);
+    expect(LEVELS.map((l) => budget(l).water)).toEqual([0.5, 0.75, 1, 2]);
   });
 
-  it("reads high's row for a level it doesn't know", () => {
-    expect(budget('nonsense')).toBe(BUDGETS.high);
+  it('puts no triangle ceiling on ultra', () => {
+    expect(budget('ultra').tris).toBe(Infinity);
+  });
+
+  it('rises from low to ultra in every number', () => {
+    for (const col of COLUMNS) {
+      const values = LEVELS.map((l) => budget(l)[col]);
+      if (typeof values[0] !== 'number') continue;
+      for (let i = 1; i < values.length; i++) expect(values[i], `${col} at ${LEVELS[i]}`).toBeGreaterThan(values[i - 1]);
+    }
+  });
+
+  it('reads an unknown level as high', () => {
+    expect(budget('max')).toBe(BUDGET_ROWS.high);
+    expect(budget()).toBe(BUDGET_ROWS.high);
+  });
+
+  it('keeps its rows from being changed by a reader', () => {
+    expect(Object.isFrozen(budget('high'))).toBe(true);
   });
 });

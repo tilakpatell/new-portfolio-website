@@ -11,8 +11,9 @@
 //     size } (lib/three/grass), map, marks (the ground map's and the marks'
 //     texels a side), rings (ocean.js's discRings), depthN (the water's
 //     depth bake), relief (terrain.js's fine relief, 0…1), splat (the
-//     layered ground: ground.js), lod1 (load models' light copies), clouds
-//     (sky.js's finer clouds, 0 or 1) }
+//     layered ground: ground.js), clouds (sky.js's finer clouds, 0 or 1) }
+// (whether a model's light copy stands in far off is the placer's, from
+// the same row: catalog's wantsLod)
 
 import { budget } from '../../../lib/budgets';
 
@@ -40,7 +41,6 @@ export function amountsFor({ level = 'high', small = false } = {}) {
       depthN: SMALL.depth,
       relief: 0,
       splat: false,
-      lod1: true,
       clouds: 0,
     };
   return {
@@ -54,7 +54,6 @@ export function amountsFor({ level = 'high', small = false } = {}) {
     depthN: pow2(HIGH.depth * b.water),
     relief: ultra ? 1 : 0,
     splat: ultra,
-    lod1: b.lod1,
     clouds: ultra ? 1 : 0,
   };
 }

@@ -1,27 +1,32 @@
-// How much each detail level (lib/detail's 'low' | 'mid' | 'high' |
-// 'ultra') may draw: one row a level, the numbers every scene reads about
-// *how much* to put on the screen (docs/superpowers/specs/2026-10-07-
-// quality-modes-design.md §2). Pure, no three.js, so the check scripts and
-// tests read the same table.
+// How much each quality level draws: one row a level, and every number a
+// scene reads about *how much* (triangles, draw calls, props, grass, terrain,
+// water, which cut of a made model) comes from here through `budget(level)`.
+// lib/device decides the level (Auto, or the visitor's pick in the settings
+// panel); lib/detail still decides how *fine* (texture sizes, segments).
+// Pure and free of three.js, so the QA scripts read the same table in Node
+// (scripts/galaxy-check.mjs holds every world to its level's row).
 //
-//   level   triangles  props  LOD1  grass  terrain  water
-//   low     0.8M       0.5    yes   0.25   0.5      0.5
-//   mid     1.5M       0.75   yes   0.5    0.75     0.75
-//   high    3M         1      yes   1      1        1
-//   ultra   none       1.5    no    2      2        2
+//   level  triangles  calls  models MB  props  LOD1  grass  terrain  gen3d cut  water
+//   low    0.8M       350    20         0.5    yes   0.25   0.5      .lo        0.5
+//   mid    1.5M       500    40         0.75   yes   0.5    0.75     (plain)    0.75
+//   high   3M         700    60         1      yes   1      1        .hq        1
+//   ultra  none       1500   240        1.5    no    2      2        .ultra     2
 //
-// props: how many of the scattered things a world places; lod1: whether a
-// model's light copy stands in for it far off; grass, terrain, water: the
-// grass's blades, the ground's mesh and the water's mesh and maps, against
-// high's.
-//
-//   budget(level) → that level's row (high's for a level it doesn't know)
+// Ultra has no triangle ceiling (Infinity) and keeps the full model at every
+// distance (no LOD1 swap); its gate is the draw calls, the download and, on
+// a real graphics chip, the frame time. The design:
+// docs/superpowers/specs/2026-10-07-quality-modes-design.md §2.
 
-export const BUDGETS = {
-  low: { triangles: 0.8e6, props: 0.5, lod1: true, grass: 0.25, terrain: 0.5, water: 0.5 },
-  mid: { triangles: 1.5e6, props: 0.75, lod1: true, grass: 0.5, terrain: 0.75, water: 0.75 },
-  high: { triangles: 3e6, props: 1, lod1: true, grass: 1, terrain: 1, water: 1 },
-  ultra: { triangles: null, props: 1.5, lod1: false, grass: 2, terrain: 2, water: 2 },
-};
+export const COLUMNS = ['tris', 'calls', 'modelsMB', 'props', 'lod1', 'grass', 'terrain', 'cut', 'water'];
 
-export const budget = (level) => BUDGETS[level] ?? BUDGETS.high;
+const row = (tris, calls, modelsMB, props, lod1, grass, terrain, cut, water) => Object.freeze({ tris, calls, modelsMB, props, lod1, grass, terrain, cut, water });
+
+export const BUDGET_ROWS = Object.freeze({
+  low: row(0.8e6, 350, 20, 0.5, true, 0.25, 0.5, '.lo', 0.5),
+  mid: row(1.5e6, 500, 40, 0.75, true, 0.5, 0.75, '', 0.75),
+  high: row(3e6, 700, 60, 1, true, 1, 1, '.hq', 1),
+  ultra: row(Infinity, 1500, 240, 1.5, false, 2, 2, '.ultra', 2),
+});
+
+// A level's row; anything else (a typo, nothing) reads as high's.
+export const budget = (level) => BUDGET_ROWS[level] ?? BUDGET_ROWS.high;
