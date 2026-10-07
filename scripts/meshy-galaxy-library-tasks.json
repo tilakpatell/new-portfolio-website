@@ -72,8 +72,10 @@
     "model": "01a114d2-f9a9-76b1-aa34-840f376af307"
   },
   "dragonsnake": {
-    "image": "01a114d6-4a79-7603-9587-b65c1ad3ec4b",
-    "model": "01a114e3-9c5f-73d0-a16a-de97b0c8bab0"
+    "lift": [
+      "01a116ce-63c5-727b-9557-127d89f51165"
+    ],
+    "model": "01a116d3-1410-7648-a9fc-78068bb09a43"
   },
   "swoop": {
     "image": "01a114d6-8e1e-72bc-8742-a5b3823ca7ab",
@@ -225,9 +227,9 @@
   },
   "tiestriker": {
     "lift": [
-      "01a114e3-652e-76ef-82bd-cba8f3c5283d"
+      "01a116cf-7ab6-71b1-8149-701d9da94f46"
     ],
-    "model": "01a114e3-f5e7-71d0-9e05-ddf2063a8c19"
+    "model": "01a116d3-18e1-704c-af5c-58f1425187ca"
   },
   "varykino": {
     "lift": [

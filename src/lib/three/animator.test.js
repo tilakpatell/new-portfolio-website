@@ -1,7 +1,14 @@
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MESHY_MASKS, createAnimator } from './animator';
+import { forFigure } from './clipLibrary';
 import { RIGHT_ANGLE, meshyRig, swingClip } from './meshyRig.fixture';
+
+// (the library's copies as they are, unless a test makes them slow)
+vi.mock('./clipLibrary', async (orig) => {
+  const lib = await orig();
+  return { ...lib, forFigure: vi.fn(lib.forFigure) };
+});
 
 const V = THREE.Vector3;
 const DT = 1 / 60;
@@ -62,7 +69,10 @@ const yawOf = (a, b) => {
 };
 const DEG = Math.PI / 180;
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.mocked(forFigure).mockReset();
+});
 
 describe('the base: locomotion, base states and full-body one-shots on the mixer', () => {
   it('names the bones each layer may move', () => {
@@ -238,6 +248,53 @@ describe('the base: locomotion, base states and full-body one-shots on the mixer
     expect(await there).toBe('done');
   });
 
+  it('a base whose clips are still coming is done only once they’ve come and it’s faded in', async () => {
+    const { anim } = make({ drop: ['sit.enter', 'sit.idle', 'sit.exit'] });
+    const made = extras(meshyRig());
+    // the library slow: each clip handed over only when the test says
+    const waiting = new Map();
+    vi.mocked(forFigure).mockImplementation((name) => new Promise((resolve) => waiting.set(name, () => resolve(made[name] ?? null))));
+    let result = null;
+    anim.base('sit.idle').then((r) => (result = r));
+    run(anim, 1);
+    await flush();
+    expect(result).toBe(null); // (still fetching: nowhere near sat)
+    expect([...waiting.keys()].sort()).toEqual(['sit.enter', 'sit.idle']);
+    expect(anim.actions.idle.getEffectiveWeight()).toBeCloseTo(1, 6);
+    for (const give of waiting.values()) give();
+    await flush();
+    run(anim, 0.3);
+    await flush();
+    expect(result).toBe(null); // (on its way in through sit.enter)
+    expect(anim.actions['sit.enter'].getEffectiveWeight()).toBeGreaterThan(0);
+    run(anim, 1.5);
+    await flush();
+    expect(result).toBe('done');
+    expect(anim.actions['sit.idle'].getEffectiveWeight()).toBeCloseTo(1, 6);
+  });
+
+  it('a clip added by hand is played as its own, never fetched', async () => {
+    const { anim, clips } = make();
+    const rig = meshyRig();
+    const salute = swingClip(rig, 'salute', 0.8, (n, t) => (n === 'RightArm' ? -1.5 * Math.sin((Math.PI * t) / 0.8) : 0));
+    expect(anim.add('salute', salute)).toBe(true);
+    const p = anim.play('salute', { layer: 'upper' });
+    expect(anim.playing('upper')).toBe('salute'); // (at once: nothing to wait for)
+    run(anim, 1);
+    expect(await p).toBe('done');
+    // one it already has stays its own; nothing's no clip at all
+    expect(anim.add('wave', salute)).toBe(false);
+    anim.play('wave');
+    expect(anim.actions.wave.getClip()).toBe(clips.wave);
+    expect(anim.add('nothing', null)).toBe(false);
+    // a base state from one, no way in or out of its own
+    expect(anim.add('perch.idle', clips['sit.idle'])).toBe(true);
+    const there = anim.base('perch.idle');
+    run(anim, 0.5);
+    expect(await there).toBe('done');
+    expect(forFigure).not.toHaveBeenCalled();
+  });
+
   it('a base asked for again before it’s there cuts the first ask', async () => {
     const { anim } = make();
     const down = anim.base('sit.idle');
@@ -368,6 +425,23 @@ describe('the layers, the look, the idles and the queue', () => {
         anim.after(DT, STILL, FRAME);
       }
     expect(Math.abs(yawOf(A.rig.bones.Head, B.rig.bones.Head))).toBeLessThan(0.5 * DEG);
+  });
+
+  it('a figure never asked to look skips the head’s sums, frame after frame', () => {
+    const { anim, rig } = make();
+    const spy = vi.spyOn(rig.model, 'getWorldQuaternion');
+    anim.play('flex', { layer: 'upper' });
+    run(anim, 0.5, { motion: WALK });
+    expect(spy).not.toHaveBeenCalled();
+    // asked, it turns; let go and eased back, it stops working it out again
+    anim.look(new V(3, 1.5, 3));
+    run(anim, 0.1);
+    expect(spy).toHaveBeenCalled();
+    anim.look(null);
+    run(anim, 6);
+    spy.mockClear();
+    run(anim, 0.5);
+    expect(spy).not.toHaveBeenCalled();
   });
 
   it('look eases at its rate', () => {

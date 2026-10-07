@@ -56,6 +56,8 @@ const PLANETS = {
   snakeplanet: () => import('./rmmoons.js'),
   nuptia: () => import('./rmmoons.js'),
   resort: () => import('./rmmoons.js'),
+  cronenberg: () => import('./rmmoons.js'),
+  purge: () => import('./rmmoons.js'),
 };
 export const furnished = (id) => Boolean(PLANETS[id]);
 // (a thing that won't build is just missing; in development, say so)
