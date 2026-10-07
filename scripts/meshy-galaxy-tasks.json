@@ -252,5 +252,10 @@
   "dex": {
     "image": "01a1169e-f1f2-72d3-bb45-806acf5047a9",
     "model": "01a116a0-3c15-7510-9c68-545c9c09927c"
+  },
+  "jedi3": {
+    "image": "01a116cb-ca09-712d-88c0-3ac289be230d",
+    "model": "01a116cd-57ef-7515-9ca6-c1cac31fe20b",
+    "rig": "01a116d3-12ce-77e9-8980-b3c45000b94e"
   }
 }

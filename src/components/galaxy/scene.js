@@ -56,7 +56,9 @@
 // onArrive(id, from) (a jump's come out at a system), onAt(goal id or null),
 // onBoard(path) (into the Death Star), onCrash(systemId) → bool (into the
 // planet: the page takes you down to its surface, or says no), onEvent(e) (for the comms and the
-// page; { type: 'aim', id } as the nose comes onto a star or off it).
+// page; { type: 'aim', id } as the nose comes onto a star or off it; and
+// { type: 'earn', what, n, side: 'galaxy' } for a kill that pays, the war
+// front's points and wins as well: universe/economy.js's EARN keys).
 
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -104,10 +106,14 @@ import { createWingmen } from '../universe/wingmen';
 import { createBolts, createFlashes } from './fx';
 import { buildSystem } from './world';
 import { AHEAD, FACTIONS, KINDS, NAMES } from './hunted';
+import { createPayLedger, hunterEarn } from '../universe/earnRules';
 import { createRoam } from './roam';
 import { pick as pickFaction } from '../universe/sides';
-import { aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
+import { createSkyStreaks } from './skyStreaks';
+import { laneLinks } from './skyTraffic';
+import { FAR, aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
 import { asking } from './asking';
+import { jumpTime, routeBetween } from './routes';
 import { arrival, courseTo, jumpSeconds, kindsIn, lightYears, starAhead, systemById, wantsDeathStar } from './systems';
 
 const BOLTS = 16;
@@ -200,7 +206,7 @@ export async function create(canvas, ctx) {
   const autoReset = renderer.info.autoReset;
   renderer.info.autoReset = false;
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.05, 9000);
+  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.05, FAR);
   scene.add(camera);
   canvas.setAttribute('aria-hidden', 'true');
   canvas.style.cursor = 'crosshair';
@@ -229,6 +235,9 @@ export async function create(canvas, ctx) {
 
   const sky = createSky({ small, renderer });
   scene.add(sky.group);
+  // ships jumping in and out along the lanes, streaks in the sky (skyStreaks.js): none on a low tier, nor with reduced motion
+  const skyStreaks = tier === 'low' || reduced ? null : createSkyStreaks({ renderer });
+  if (skyStreaks) scene.add(skyStreaks.group);
   const speedLines = createSpeedLines({ small });
   camera.add(speedLines.group);
   const dust = createDust({ small });
@@ -287,6 +296,10 @@ export async function create(canvas, ctx) {
   const size = { w: 1, h: 1 };
   const state = {
     sys: null, // the system you're in (systems.js's)
+    // the hunters you've helped another pilot with (owner:hunter), paid
+    // once each: down is only our guess, and a ghost of one can come back
+    // and go down again
+    helped: createPayLedger(),
     effects: null, // who holds it in the war, against your side (warEffects.js), or null
     world: null, // and what's built of it (world.js's)
     space: null, // space.js's, for flying in it
@@ -351,6 +364,11 @@ export async function create(canvas, ctx) {
   const pilots = createPilots(scene, { colors: BOLT_COLOR, here: () => (state.sys ? `/galaxy/${state.sys.id}` : '/galaxy'), fleet: reduced ? null : fleet, kinds: KINDS });
 
   const emit = (e) => props.onEvent?.(e);
+  // a kill worth paying for (economy.js's EARN): the page earns it into the
+  // wallet. (The war's fighters pay as the war's points: warfront.js.)
+  const pay = (what, n = 1) => {
+    if (what) emit({ type: 'earn', what, n, side: 'galaxy' });
+  };
   const controls = () => props.controls ?? CONTROL_DEFAULTS;
   const flying = () => Boolean(state.ship);
 
@@ -384,6 +402,7 @@ export async function create(canvas, ctx) {
     world.setDetail(detail);
     scene.add(world.group);
     state.world = world;
+    skyStreaks?.setSystem(laneLinks(sys.id), Math.max(world.solids.find((o) => o.id === 'planet').r, 20));
     war?.enter(sys, world);
     effectsNow(true);
     wingmen?.clear();
@@ -876,6 +895,7 @@ export async function create(canvas, ctx) {
         state.hitMark = 1;
         if (hh.down) {
           emit({ type: 'kill', kind: hh.kind });
+          pay(hunterEarn(FACTIONS, hh));
           state.heat += 1;
           if (!reduced) state.shake = Math.max(state.shake, 0.2);
         }
@@ -905,6 +925,7 @@ export async function create(canvas, ctx) {
           net?.hunterHit(ph.id, ph.hunter, d.punch ?? 1);
           if (ph.down) {
             emit({ type: 'kill', kind: ph.kind });
+            if (state.helped.once(`${ph.id}:${ph.hunter}`)) pay('hunterHelped'); // (one shot off someone else's tail)
             if (!reduced) state.shake = Math.max(state.shake, 0.2);
           }
         } else net?.hit(ph.id);
@@ -1110,14 +1131,17 @@ export async function create(canvas, ctx) {
     const dir = courseTo(state.sys, to);
     jumpDir.set(...dir);
     state.auto = null;
-    state.jump = { to, from: state.sys, phase: state.ship ? 'align' : 'spool', age: 0, dir, dur: jumpSeconds(state.sys, to), built: false, dressed: false, why };
+    // the jump's time by its route along the lanes (routes.js), slower off them
+    const route = routeBetween(state.sys.id, to.id);
+    const dur = route ? jumpTime(route) : jumpSeconds(state.sys, to);
+    state.jump = { to, from: state.sys, phase: state.ship ? 'align' : 'spool', age: 0, dir, dur, route, built: false, dressed: false, why };
     if (state.view === 'map') state.view = state.seat;
     // its ships' models loading and its built ones made, in the seconds before the tunnel
     const kinds = kindsIn(to);
     models.want(kinds);
     models.prebuild(kinds);
     longest = 0;
-    emit({ type: 'jump', phase: 'align', to: to.id, ly: lightYears(state.sys, to) });
+    emit({ type: 'jump', phase: 'align', to: to.id, ly: lightYears(state.sys, to), seconds: dur, onLane: Boolean(route?.onLane) });
     heard();
     ctx.invalidate();
     return true;
@@ -1160,8 +1184,9 @@ export async function create(canvas, ctx) {
     if (j.phase === 'spool') {
       if (!j.counted) {
         // a jump that's spooling up is one the Empire counts: the one that's due is cut short
+        // (and off the lanes it's due sooner)
         j.counted = true;
-        const verdict = interdiction.jumped();
+        const verdict = interdiction.jumped(Boolean(j.route && !j.route.onLane));
         if (verdict.interdicted && interdictor) {
           j.interdicted = true;
           j.cut = cutAt(j.dur);
@@ -1705,6 +1730,7 @@ export async function create(canvas, ctx) {
       if (at) pops.hit({ point: at, normal: new THREE.Vector3(0, 1, 0), radius: 0.55 });
       if (e.by && e.by === net?.selfId) {
         emit({ type: 'kill', kind: 'pilot' });
+        pay('killPilot');
         if (!reduced) state.shake = Math.max(state.shake, 0.2);
       }
     }
@@ -1868,6 +1894,10 @@ export async function create(canvas, ctx) {
     if (state.aim && (!flying() || state.crash || state.jump || props.frozen)) aimAt(null);
     sky.focus(state.jump?.phase === 'align' ? state.jump.to.id : (state.aim?.id ?? null));
     sky.update(camera, t);
+    if (skyStreaks) {
+      skyStreaks.group.visible = !inTunnel;
+      skyStreaks.update(dt);
+    }
     models.update(t);
     bolts.update(dt);
     flashes.update(dt);
@@ -2185,7 +2215,7 @@ export async function create(canvas, ctx) {
       state.shake = 0;
       ctx.invalidate();
     };
-    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, pin, interdiction, interdictor, war, wingmen, effects: () => state.effects, happen: (id) => state.ship && happen(id, state.ship) };
+    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, pin, interdiction, interdictor, war, wingmen, effects: () => state.effects, skyStreaks: () => skyStreaks, happen: (id) => state.ship && happen(id, state.ship) };
     window.__gltfStats = gltfStats; // { requests, parses }: the models asked for, and the files fetched and parsed for them
   }
 
@@ -2322,6 +2352,7 @@ export async function create(canvas, ctx) {
       flashes.dispose();
       speedLines.dispose();
       sky.dispose();
+      skyStreaks?.dispose();
       for (const pl of plumes) pl.trail.dispose();
       boltGeo.dispose();
       boltMat.dispose();

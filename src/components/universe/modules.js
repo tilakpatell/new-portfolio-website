@@ -21,6 +21,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { turned } from './hulls';
+import { partById } from './outfit';
 
 // Each ship's hardpoints (one side's, +x; the other is its mirror): pod
 // (a booster's middle, its length and radius), corner (the thruster blocks,
@@ -133,6 +134,8 @@ const tube = (r, len, seg = 32) => new THREE.CylinderGeometry(r, r, len, seg); /
 const LAY = [Math.PI / 2, 0, 0]; // (a CylinderGeometry laid along z, its top toward +z)
 
 export function buildModules(kind, loadout = {}, engines = [], { fresh = [], mounts = null } = {}) {
+  // a part with no model of its own is drawn as the one it borrows the look of (outfit.js's `look`)
+  const looks = (slot) => partById(slot, loadout[slot])?.look ?? loadout[slot];
   const at = mounts ?? MOUNTS[kind] ?? MOUNTS.falcon; // (a garage build brings its hull's own)
   const group = new THREE.Group();
   group.name = 'modules';
@@ -175,7 +178,7 @@ export function buildModules(kind, loadout = {}, engines = [], { fresh = [], mou
 
   // Boosters
   begin('booster');
-  const booster = loadout.booster;
+  const booster = looks('booster');
   if (booster === 'srb') {
     // a white rocket either side: an ogive nose, the body, a skirt, the bell
     const L = plen;
@@ -285,7 +288,7 @@ export function buildModules(kind, loadout = {}, engines = [], { fresh = [], mou
 
   // Thrusters
   begin('thrusters');
-  const thrusters = loadout.thrusters;
+  const thrusters = looks('thrusters');
   if (thrusters === 'rcs') {
     // a rounded block at each corner, a little bell out of each face
     const blocks = [];
@@ -337,7 +340,7 @@ export function buildModules(kind, loadout = {}, engines = [], { fresh = [], mou
 
   // Guns
   begin('guns');
-  const guns = loadout.guns;
+  const guns = looks('guns');
   if (guns === 'twin') {
     // a barrel either side under the nose: a rounded breech, the barrel, a slotted muzzle
     const [x, y, z] = at.gun;
@@ -382,7 +385,7 @@ export function buildModules(kind, loadout = {}, engines = [], { fresh = [], mou
 
   // Shields
   begin('shields');
-  const shields = loadout.shields;
+  const shields = looks('shields');
   if (shields === 'reinforced') {
     if (at.belt) {
       // a round ship's: an armour belt round its rim either side, in plates, with the trim's band along it
@@ -463,7 +466,7 @@ export function buildModules(kind, loadout = {}, engines = [], { fresh = [], mou
 
   // Fins
   begin('fins');
-  if (loadout.fins === 'fins') {
+  if (looks('fins') === 'fins') {
     // a swept fin either side of the tail, its leading edge curved, its edges bevelled, canted out
     const [x, y, z] = at.fin;
     const shape = new THREE.Shape();

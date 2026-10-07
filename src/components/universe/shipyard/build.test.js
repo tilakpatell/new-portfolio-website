@@ -33,6 +33,33 @@ describe('a build', () => {
     for (const m of MODULES) expect(seen.has(`${m.slot}:${m.id}`), `${m.slot}:${m.id}`).toBe(true);
   });
 
+  it('a roll picks only owned modules', () => {
+    // one bought module a slot, besides what every ship has free
+    const owned = ['hauler', 'canopy', 'delta', 'quad', 'twinfin', 'lights'];
+    const free = (slot, id) => id === STOCK_BUILD[slot] || id === 'none';
+    const seen = new Set();
+    for (let s = 1; s <= 300; s++) {
+      const b = rollBuild(s, ALL, owned);
+      for (const slot of BUILD_SLOTS) {
+        expect(owned.includes(b[slot]) || free(slot, b[slot]), `${s} ${slot}:${b[slot]}`).toBe(true);
+        seen.add(b[slot]);
+      }
+    }
+    for (const id of owned) expect(seen.has(id), id).toBe(true);
+    // a Set does as well as a list
+    expect(rollBuild(7, ALL, new Set(owned))).toEqual(rollBuild(7, ALL, owned));
+  });
+
+  it('a roll with nothing bought is a whole ship from stock', () => {
+    for (let s = 1; s <= 100; s++) {
+      const b = rollBuild(s, ALL, []);
+      expect(readBuild(b)).toEqual(b);
+      for (const slot of BUILD_SLOTS) expect([STOCK_BUILD[slot], 'none']).toContain(b[slot]);
+    }
+    // (and an owned module still needs its achievement)
+    for (let s = 1; s <= 100; s++) expect(rollBuild(s, [], ['saucer']).hull).not.toBe('saucer');
+  });
+
   it('shares as a short code and reads back from it', () => {
     for (let s = 1; s <= 50; s++) {
       const b = rollBuild(s * 7919, ALL);

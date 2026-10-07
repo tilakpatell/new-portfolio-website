@@ -73,8 +73,8 @@ export const MODELS = {
   // (scripts/meshy-galaxy-library.mjs), every one come nose to -x: the
   // Hound's Tooth, the Punishing One, the Hammerhead and the Gauntlet,
   // which were built in code; and the Twilight, the Scimitar, the TIE
-  // Defender, the V-wing, the Eta-2, the Hyena, the Sentinel, the Zeta, the
-  // Fang and the Naboo yacht, for the systems to fly
+  // Defender, the TIE Striker, the V-wing, the Eta-2, the Hyena, the
+  // Sentinel, the Zeta, the Fang and the Naboo yacht, for the systems to fly
   houndstooth: { url: '/models/galaxy/houndstooth.glb', nose: Math.PI / 2 },
   punishingone: { url: '/models/galaxy/punishingone.glb', nose: Math.PI / 2 },
   hammerhead: { url: '/models/galaxy/hammerhead.glb', nose: Math.PI / 2 },
@@ -82,6 +82,7 @@ export const MODELS = {
   twilight: { url: '/models/galaxy/twilight.glb', nose: Math.PI / 2 },
   scimitar: { url: '/models/galaxy/scimitar.glb', nose: Math.PI / 2 },
   tiedefender: { url: '/models/galaxy/tiedefender.glb', nose: Math.PI / 2 },
+  tiestriker: { url: '/models/galaxy/tiestriker.glb', nose: Math.PI / 2 },
   vwing: { url: '/models/galaxy/vwing.glb', nose: Math.PI / 2 },
   eta2: { url: '/models/galaxy/eta2.glb', nose: Math.PI / 2 },
   hyena: { url: '/models/galaxy/hyena.glb', nose: Math.PI / 2 },
@@ -148,6 +149,7 @@ export const STAND_IN = {
   twilight: 'freighter',
   scimitar: 'shuttle',
   tiedefender: 'tie',
+  tiestriker: 'tie',
   vwing: 'delta7',
   eta2: 'delta7',
   hyena: 'vulture',

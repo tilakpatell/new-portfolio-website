@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { PANIC, aimAt, choose, dash, newGame, spawnEnemy, spawnBoss, step } from './rules';
 import { autopilot } from './pilot';
+import { LIE, createRoster } from './Portal3D';
+import { animate, makeCast } from './cast';
 
 const DT = PANIC.step;
 // run the game for `secs`, setting input each step (fn may return early)
@@ -334,6 +336,187 @@ describe('Portal panic: waves, upgrades and dimensions', () => {
       });
       expect(threats, id).toBeGreaterThan(0);
     }
+  });
+});
+
+// every event of a run, kept (the host drains them; a test reads them all)
+function heard(g, secs, fn) {
+  const all = [];
+  run(g, secs, (gg, i) => {
+    const r = fn?.(gg, i);
+    all.push(...gg.events);
+    gg.events.length = 0;
+    return r;
+  });
+  return all;
+}
+
+describe('Portal panic: the events say whose they are', () => {
+  it('a kill and every hit before it carry the enemy’s id', () => {
+    const g = quiet();
+    const e = spawnEnemy(g, 'gromflomite', 0, -5);
+    e.speed = 0;
+    e.cool = 1e9;
+    const all = heard(g, 2, (gg) => Object.assign(gg.input, { ax: 0, ay: -1, aiming: true, fire: true }));
+    const hits = all.filter((x) => x.type === 'hit');
+    expect(hits.length).toBeGreaterThan(1);
+    for (const h of hits) expect(h.id).toBe(e.id);
+    expect(all.find((x) => x.type === 'kill')).toMatchObject({ id: e.id, kind: 'gromflomite' });
+  });
+
+  it('a bolt says who fired it, a Gazorpian’s windup is its own, and one walking into you says so', () => {
+    const g = quiet();
+    g.p.inv = 1e9;
+    const gun = spawnEnemy(g, 'gromflomite', 8, 0);
+    const big = spawnEnemy(g, 'gazorpian', -9, 0);
+    const all = heard(g, 5, still);
+    const bolts = all.filter((x) => x.type === 'bolt');
+    expect(bolts.length).toBeGreaterThan(0);
+    for (const b of bolts) expect(b.id).toBe(gun.id);
+    expect(all.find((x) => x.type === 'windup')?.id).toBe(big.id);
+    const q = quiet();
+    const rusher = spawnEnemy(q, 'meeseeks', 3, 0);
+    expect(heard(q, 2, still).find((x) => x.type === 'hurt')).toMatchObject({ id: rusher.id, from: 'meeseeks' });
+  });
+
+  it('a boss’s bolts say they’re the boss’s', () => {
+    const g = quiet();
+    g.p.inv = 1e9;
+    spawnBoss(g, 'evilmorty');
+    const bolts = heard(g, 8, still).filter((x) => x.type === 'bolt');
+    expect(bolts.length).toBeGreaterThan(0);
+    for (const b of bolts) expect(b).toMatchObject({ boss: true });
+  });
+
+  it('a Meeseeks from the box stops to punch, says whom and which it is, then poofs', () => {
+    const g = quiet();
+    g.ups.meeseeks = 1;
+    g.p.inv = 1e9;
+    g.allyT = 99;
+    const e = spawnEnemy(g, 'cronenberg', 4, 0);
+    e.speed = 0;
+    e.hp = 1e9;
+    let stood = false;
+    const all = heard(g, 9, (gg) => {
+      still(gg);
+      const a = gg.allies[0];
+      if (a && Math.hypot(a.x - e.x, a.y - e.y) <= e.r + 0.6) stood ||= a.vx === 0 && a.vy === 0;
+    });
+    expect(all.find((x) => x.type === 'meeseeks')).toMatchObject({ ally: 0 });
+    const punches = all.filter((x) => x.type === 'punch');
+    expect(punches.length).toBeGreaterThan(0);
+    for (const p of punches) expect(p).toMatchObject({ id: e.id, ally: 0 });
+    expect(stood).toBe(true);
+    expect(all.find((x) => x.type === 'poof')).toMatchObject({ ally: 0 });
+  });
+});
+
+// the drawing's enemies by id (./Portal3D.js): fakes for the pool's figures
+describe('Portal panic: a dying enemy’s figure', () => {
+  const pool = () => {
+    const out = { taken: [], freed: [] };
+    out.take = (kind, id) => {
+      const c = { kind, id };
+      out.taken.push(c);
+      return c;
+    };
+    out.free = (c) => out.freed.push(c);
+    return out;
+  };
+  const alive = (...list) => list.map(([id, kind = 'meeseeks']) => ({ id, kind, alive: true }));
+
+  it('is kept until its fall ends and it has lain a moment, then goes back', () => {
+    const p = pool();
+    const r = createRoster({ take: p.take, free: p.free, lie: LIE });
+    r.sync(alive([1], [2]));
+    const [one, two] = p.taken;
+    expect(r.figure(1)).toBe(one);
+    r.sync(alive([2]), new Map([[1, 2.2]]));
+    expect(r.figure(1)).toBe(null);
+    expect(p.freed).toEqual([]);
+    expect(r.dying.map((d) => d.c)).toEqual([one]);
+    for (let t = 0; t < 2.2 + LIE - 0.05; t += 0.05) r.step(0.05);
+    expect(p.freed).toEqual([]);
+    for (let t = 0; t < 1; t += 0.05) r.step(0.05);
+    expect(p.freed).toEqual([one]);
+    expect(r.dying).toEqual([]);
+    expect(r.figure(2)).toBe(two);
+  });
+
+  it('goes at once when it can’t fall, or went without a kill', () => {
+    const p = pool();
+    const r = createRoster({ take: p.take, free: p.free });
+    r.sync(alive([1], [2]));
+    r.sync([], new Map([[1, 0]]));
+    expect(p.freed.map((c) => c.id).sort()).toEqual([1, 2]);
+    expect(r.dying).toEqual([]);
+  });
+
+  it('a new kind under the same id gets a figure of its own; clearing frees the living and the dying', () => {
+    const p = pool();
+    const r = createRoster({ take: p.take, free: p.free });
+    r.sync(alive([1, 'meeseeks'], [2]));
+    r.sync(alive([1, 'cop'], [2]));
+    expect(r.figure(1).kind).toBe('cop');
+    expect(p.freed.map((c) => c.kind)).toEqual(['meeseeks']);
+    r.sync(alive([1, 'cop']), new Map([[2, 3]]));
+    r.clear();
+    expect(p.freed.length).toBe(3);
+    expect(r.figure(1)).toBe(null);
+    expect(r.dying).toEqual([]);
+  });
+});
+
+// the shapes drawn when a model won't load (./cast.js)
+describe('Portal panic: a figure of shapes', () => {
+  const leg = (c) => c.legs[0].rotation.x;
+  const walk = (c, speed, secs) => {
+    for (let i = 0; i < Math.round(secs * 60); i++) animate(c, i / 60, 1, 0, { dt: 1 / 60, motion: { speed, side: 0, turn: 0 } });
+  };
+
+  it('answers a model’s calls, doing nothing', async () => {
+    const c = makeCast('gromflomite');
+    expect(c.anim).toBe(null);
+    expect(c.react('hit', {})).toBe(null);
+    expect(c.react('down', {})).toBe(null);
+    await expect(c.play('cheer')).resolves.toBe(false);
+    expect(() => {
+      c.stop(0.2, 'upper');
+      c.look({ x: 1, z: 2 });
+      c.base('sit');
+    }).not.toThrow();
+  });
+
+  // (`move` says 1 throughout: the ground covered is what counts)
+  it('swings its legs with the ground it covers, not the clock: standing, it doesn’t march', () => {
+    const c = makeCast('rick');
+    walk(c, 0, 2);
+    expect(Math.abs(leg(c))).toBeLessThan(1e-6);
+    const swings = new Set();
+    for (let i = 0; i < 60; i++) {
+      animate(c, i / 60, 1, 0, { dt: 1 / 60, motion: { speed: 4, side: 0, turn: 0 } });
+      swings.add(Math.sign(Math.round(leg(c) * 100)));
+    }
+    expect(swings.has(1) && swings.has(-1)).toBe(true);
+    // twice the pace, twice the strides: the same ground, the same place in the stride
+    const a = makeCast('rick');
+    const b = makeCast('rick');
+    a.seed = b.seed = 7;
+    walk(a, 2, 1);
+    walk(b, 4, 0.5);
+    expect(leg(a)).toBeCloseTo(leg(b), 4);
+  });
+
+  it('flinches back when hurt, and goes down sat first, then onto its back', () => {
+    const c = makeCast('morty');
+    animate(c, 0, 0, 0, { dt: 1 / 60, motion: { speed: 0, side: 0, turn: 0, hurt: 1 } });
+    expect(c.body.rotation.x).toBeLessThan(-0.2);
+    animate(c, 0.1, 0, 0, { dt: 1 / 60, motion: { speed: 0, side: 0, turn: 0 }, down: 0.4 });
+    expect(c.body.position.y).toBeLessThan(-0.2);
+    expect(c.body.rotation.x).toBeGreaterThan(-0.5);
+    animate(c, 0.2, 0, 0, { dt: 1 / 60, motion: { speed: 0, side: 0, turn: 0 }, down: 1 });
+    expect(c.body.rotation.x).toBeLessThan(-1.3);
+    expect(c.arms[0].rotation.x).toBeLessThan(-2.5);
   });
 });
 

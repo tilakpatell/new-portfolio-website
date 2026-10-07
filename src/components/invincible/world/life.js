@@ -28,8 +28,8 @@ const TYRE = 0x111112;
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 const wheel = () => new THREE.CylinderGeometry(0.34, 0.34, 0.24, 8);
 
-// one kind of car, front toward +z: [geometry, its length]
-function carGeometry(kind) {
+// one kind of car, front toward +z (./villains.js throws them)
+export function carGeometry(kind) {
   const parts = [];
   const wheels = (wid, len, y = 0.34) => {
     for (const [x, z] of [

@@ -6,7 +6,12 @@
 // from the home system to Gazorpazorp (through the portal on the way, out by
 // the Citadel, on from there on super speed), opens the nav map there, sets
 // the ship down, flies to the Citadel, then home in one go back through the
-// Citadel's portal: a screenshot at each, what failed, and any errors. Headless Chromium draws in software, slowly: the waits are long.
+// Citadel's portal: a screenshot at each (in OUT, else a folder of its own
+// in the system's temp, never the checkout), what failed, and any errors.
+// Headless Chromium draws in software, slowly: the waits are long.
+import { mkdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { chromium } from 'playwright-core';
 
 const args = process.argv.slice(2);
@@ -15,7 +20,9 @@ const flag = (name, dflt) => {
   return i >= 0 ? args.splice(i, 2)[1] : dflt;
 };
 const ship = flag('--ship', 'cruiser');
-const out = process.env.OUT ?? '.';
+const out = process.env.OUT ?? join(tmpdir(), 'sector-check');
+mkdirSync(out, { recursive: true });
+console.log('shots in', out);
 const URL = 'http://localhost:5173/?quality=low#/universe';
 const browser = await chromium.launch({ executablePath: process.env.CHROME ?? '/opt/pw-browsers/chromium', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
 const errors = [];

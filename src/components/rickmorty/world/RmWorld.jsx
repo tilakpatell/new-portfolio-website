@@ -1,7 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link as RouterLink } from 'react-router-dom';
-import { RiArrowDownLine, RiArrowLeftLine, RiArrowUpLine, RiCheckLine, RiCloseLine, RiListCheck2, RiShirtLine } from 'react-icons/ri';
+import { RiArrowDownLine, RiArrowLeftLine, RiArrowUpLine, RiCheckLine, RiCloseLine, RiEmotionLaughLine, RiListCheck2, RiShirtLine } from 'react-icons/ri';
 import '@fontsource/luckiest-guy/400.css';
 import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
@@ -35,6 +35,7 @@ import {
   MEMORIES,
   MEMORY_COLORS,
   NEIGHBOURS,
+  PEOPLE,
   PLAN,
   RINGS,
   ROAD,
@@ -71,6 +72,8 @@ import { useLooks } from '../wardrobe/useLooks';
 import './world.css';
 import GuideCue from '../../guide/GuideCue';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
+import { EMOTES, createEmoteWheel, emotePacket, keepEmote, readEmote, wheelAngle } from '../../../lib/emote';
+import { lineHold } from './living';
 
 // Dimension C-137, the world: walk about the Smiths' street as Morty, go into
 // the house, Rick's garage and Harry Herpson High, fly Rick's space cruiser
@@ -82,7 +85,10 @@ import { useTravellers } from '../../middleearth/towns/useTravellers';
 // cards that open the same things. The egg on the living room's bookcase
 // starts Total Rickall there (./interiors/rickall.js, loaded then): Morty
 // kept in the room with the crowd, a crosshair, E for a memory of whoever's
-// in it, F or a click to shoot them, and a card for how it ended.
+// in it, F or a click to shoot them, and a card for how it ended. B (held)
+// is a wheel of emotes for Morty (lib/emote.js: wave, cheer, dance, taunt,
+// sit; tap it for the last again), seen by the others online; anything he
+// does, or walking off, ends one.
 
 const Roy = lazy(() => import('./roy/Roy').catch(() => ({ default: RoyDown })));
 const Sewer = lazy(() => import('./sewer/Sewer').catch(() => ({ default: RoyDown })));
@@ -147,6 +153,8 @@ const AREA_NAME = {
 const inLine = (name) => name.replace(/^The /, 'the ');
 // what talking to someone does, beyond what they say: a thing to do, done
 const TALK_DONE = { president: 'president', dineragent: 'diner', therapy: 'wong', ...Object.assign({}, ...DESTINATIONS.map((d) => d.done)) };
+// whom a talk is to, where its hotspot isn't named for them (rules.js's PEOPLE)
+const TALK_TO = { therapy: 'drwong' };
 // and the achievements a talk earns
 const TALK_UNLOCK = { therapy: 'wong', ...Object.assign({}, ...DESTINATIONS.map((d) => d.unlock)) };
 // the places left in a hurry (./dimensions/destinations.js's `escape`), by
@@ -178,6 +186,10 @@ const PROMPT = {
   land: { kind: 'land', id: 'land', name: 'Open ground', verb: 'Land' },
 };
 const BOARD_R = 2.7; // how near the cruiser's middle Morty can get in from
+// the emote wheel: how far the mouse goes from the view's middle to point at
+// one (px), and what each is called
+const WHEEL_R = 110;
+const EMOTE_NAME = { wave: 'Wave', cheer: 'Cheer', dance: 'Dance', taunt: 'Taunt', sit: 'Sit' };
 
 // Where the next thing to do is, for the map's marker: the area and the spot
 // in it, and from anywhere else, the way towards it.
@@ -259,6 +271,14 @@ const newSim = () => ({
   // someone), end (how it ended), crowd (who's standing, for Morty to walk
   // round) }
   rickall: null,
+  // Morty's word to someone, while it plays ({ id, n, hold, x, z, at }: n a
+  // new number for each, so they know it's a new one), how many he's said,
+  // the emote he's struck ({ id, at }), and whether he's done something
+  // since the last frame (which ends it)
+  talk: null,
+  talkN: 0,
+  emote: null,
+  acted: false,
 });
 
 export default function RmWorld() {
@@ -303,8 +323,8 @@ export default function RmWorld() {
       setDone(next);
       api.current?.fx('done', { id });
       sound('gadget');
-      // (and Morty's pleased with himself)
-      api.current?.play('cheer', { hold: 0.2 });
+      // (and Morty's pleased with himself: on his upper half if he's walking)
+      api.current?.play('cheer', { hold: 0.2, layer: 'auto' });
       if (openRef.current) pending.current.push(id);
       else tellDone([id]);
     },
@@ -423,6 +443,21 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
   doneRef.current = done;
   const [hud, setHud] = useState({ area: START.area, room: null, flying: false, landing: false, near: null, moved: false, alt: 0, kmh: 0 });
   const hudKey = useRef('');
+  // the emote wheel (B, held; on a touch screen its button): what it shows
+  const wheel = useRef(null);
+  wheel.current ??= createEmoteWheel();
+  const [wheelUi, setWheelUi] = useState(null); // { hover } while B holds it open
+  const [touchWheel, setTouchWheel] = useState(false);
+  const wheelKey = useRef('');
+  // an emote struck: on Morty from this frame (scene.js plays it), and on the wire
+  const strike = useCallback((id) => {
+    const s = sim.current;
+    setTouchWheel(false);
+    if (!id || s.flying || s.fading || s.rickall) return;
+    audioContext();
+    s.emote = { id, at: s.t };
+    s.acted = false;
+  }, []);
   const [list, setList] = useState(false);
   const listRef = useRef(list);
   listRef.current = list;
@@ -637,6 +672,9 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     if (run?.phase !== 'on') return;
     audioContext();
     sound('zap');
+    // (Morty's arm comes up with the shot, his feet left as they are)
+    sim.current.acted = true;
+    api.current?.play('shoot', { layer: 'upper' });
     const p = run.aim && run.game.people.find((o) => o.id === run.aim);
     const hit = p ? rkRules.current.shoot(run.game, p.id) : null;
     if (!hit) return;
@@ -649,6 +687,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
   const tellRickall = useCallback(() => {
     const run = sim.current.rickall;
     if (run?.phase !== 'on' || !run.aim) return;
+    sim.current.acted = true;
     const r = rkRules.current.tell(run.game, run.aim);
     if (!r) return;
     const p = run.game.people.find((o) => o.id === run.aim);
@@ -758,6 +797,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     const s = sim.current;
     if (!api.current || s.fading || s.landing) return;
     audioContext();
+    s.acted = true; // (an emote's over: he's doing something)
     // (in Total Rickall, E is a memory of whoever's in the sights)
     if (s.rickall) {
       tellRickall();
@@ -808,8 +848,18 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       // scanner finds nothing on him till he's taken the seeds)
       const e = ESCAPES[n.id];
       const early = e?.after && !s.used?.has(e.after);
-      say({ kind: 'say', ...(early ? e.before : SAY[n.id]) });
+      const line = early ? e.before : SAY[n.id];
+      say({ kind: 'say', ...line });
       (s.used ??= new Set()).add(n.id);
+      // someone to talk to: their head turns to him and their hands go while
+      // the line plays (state.talk), his head on them; a wave from him first,
+      // unless they're after him
+      const who = PEOPLE.find((p) => p.id === (TALK_TO[n.id] ?? n.id) && p.area === s.area);
+      if (who) {
+        s.talkN += 1;
+        s.talk = { id: who.id, n: s.talkN, hold: lineHold(line?.text), x: who.x, z: who.z, at: s.t, area: s.area };
+        if (!who.ai?.hunt && !n.spot?.anim) api.current?.play('wave', { layer: 'upper' });
+      }
       if (!early && n.spot?.anim) api.current?.play(n.spot.anim, n.spot.anim === 'dance' ? { loop: false, hold: 0.2 } : {});
       if (!early && ACTS[n.id]) api.current?.act(...ACTS[n.id]);
       // the siren, the scanner, the toast: the clock starts for the portal home
@@ -843,7 +893,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         if (!d) return;
         say({ kind: 'say', who: SAY[e.who]?.who ?? e.who ?? null, text: e.text ?? d.caught ?? 'Caught.' });
         sound('grab');
-        api.current?.play('scared', { hold: 0.4 });
+        api.current?.play('scared', { hold: 0.4, layer: 'auto' });
         // a blink, and he's back at the way in
         s.fading = true;
         s.keys.clear();
@@ -904,7 +954,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
               setFade(null);
             }, FADE_MS);
           }, 1400);
-        } else api.current?.play('hit');
+        } else api.current?.play('hit', { layer: 'auto' });
       }
     },
     [api, say, complete, later],
@@ -914,7 +964,9 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     const s = sim.current;
     if (!s?.duel || s.fading || s.t - (s.firedAt ?? -1e9) < 0.5) return;
     s.firedAt = s.t;
-    api.current?.play('shoot', { hold: 0 });
+    s.acted = true;
+    // (his arm comes up with the shot; his feet keep doing what they were)
+    api.current?.play('shoot', { hold: 0, layer: 'upper' });
     sound('zap');
     const r = api.current?.act(s.area, 'fire', { x: s.m.x, z: s.m.z, face: s.m.face });
     if (!r) return;
@@ -1076,6 +1128,26 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         setWardrobe(true);
         return;
       }
+      // B, held: the emote wheel (let go over one to strike it; a tap, the last again)
+      if (e.code === 'KeyB' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        if (!e.repeat && !s.flying && !s.rickall) wheel.current.down(s.t);
+        return;
+      }
+      // (the wheel open: 1 to 5 strike one, Esc puts it away)
+      if (wheel.current.open && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const i = /^Digit[1-5]$/.test(e.code) ? Number(e.code.slice(5)) - 1 : -1;
+        if (i >= 0) {
+          e.preventDefault();
+          strike(wheel.current.choose(i));
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          wheel.current.cancel();
+          return;
+        }
+      }
       // a duel (Evil Rick's lair): F fires
       if (s.duel && !s.rickall && e.code === 'KeyF' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
@@ -1116,10 +1188,21 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       } else if (e.key === 'Escape' && listRef.current) closeList();
     };
     const up = (e) => {
+      if (e.code === 'KeyB') strike(wheel.current.up(s.t));
       keyUp(s.keys, e);
       if (FLY_KEYS[e.code]) s.keys.delete(FLY_KEYS[e.code]);
     };
-    const blur = () => s.keys.clear();
+    const blur = () => {
+      s.keys.clear();
+      wheel.current.cancel();
+    };
+    // the mouse, while the wheel's open: which one it's over (from the middle of the view)
+    const aim = (e) => {
+      if (!wheel.current.open) return;
+      const r = canvas.current?.getBoundingClientRect();
+      if (r) wheel.current.aim((e.clientX - (r.left + r.width / 2)) / WHEEL_R, (e.clientY - (r.top + r.height / 2)) / WHEEL_R);
+    };
+    window.addEventListener('pointermove', aim);
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     window.addEventListener('blur', blur);
@@ -1127,9 +1210,11 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', blur);
+      window.removeEventListener('pointermove', aim);
+      wheel.current.cancel();
       s.keys.clear();
     };
-  }, [live, closeList]);
+  }, [live, closeList, strike]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
@@ -1151,6 +1236,17 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       if (listRef.current) closeList();
       else setList(true);
     }
+
+    // the emote wheel's look, when it changes; Morty's emote, over once its
+    // clip is, once he walks off (but for a wave), or once he does anything
+    const wq = wheel.current.tick(s.t);
+    const wk = wq.open ? `open|${wq.hover}` : '';
+    if (wk !== wheelKey.current) {
+      wheelKey.current = wk;
+      setWheelUi(wq.open ? { hover: wq.hover } : null);
+    }
+    s.emote = keepEmote(s.emote, s.t, { moving: (s.m.speed ?? 0) > 0.4, acted: s.acted || s.jump || s.flying || s.fading });
+    s.acted = false;
 
     if (s.flying) {
       let throttle = (k.has('up') ? 1 : 0) - (k.has('down') ? 1 : 0) - s.stick.y;
@@ -1272,7 +1368,10 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     // others online: where you are to them (on foot, in the street or a room:
     // only those in the same one see you), and where they are
     const tv = trav.ref.current;
-    tv?.pose(s.m, { inside: Boolean(s.flying), area: s.area });
+    // (and what he's doing: his emote, and how he moves, for their figure of him)
+    const turn = s.lastFace == null ? 0 : Math.atan2(Math.sin(s.m.face - s.lastFace), Math.cos(s.m.face - s.lastFace)) / Math.max(dt, 1e-3);
+    s.lastFace = s.m.face;
+    tv?.pose(s.m, { inside: Boolean(s.flying), area: s.area, emote: s.flying ? null : emotePacket(s.emote, s.t), move: s.flying ? null : { speed: s.m.speed ?? 0, side: 0, turn } });
 
     // Total Rickall: off, if he's somehow out of the house; the clock; the
     // line the camera's put on, how far back along it, and who's too close
@@ -1309,6 +1408,9 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
           rickall: run?.game ? { game: run.game, aim: run.aim, hide: run.hide } : null,
           fading: s.fading,
           emit: s.emit,
+          // (Morty's word to someone, while it plays, in the area he said it in; his emote)
+          talk: s.talk && s.talk.area === s.area && s.t - s.talk.at < s.talk.hold ? s.talk : null,
+          emote: readEmote(s, s.t),
         },
         ms,
       );
@@ -1642,9 +1744,20 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         </p>
       )}
       {gl === 'on' && game?.end && <Ending end={game.end} onAgain={() => startRickall()} onLeave={stopRickall} />}
+      {gl === 'on' && (wheelUi || touchWheel) && !hud.flying && (
+        <EmoteWheel
+          hover={wheelUi?.hover ?? null}
+          touch={touch}
+          onPick={(id) => strike(wheel.current.choose(id))}
+          onClose={() => {
+            wheel.current.cancel();
+            setTouchWheel(false);
+          }}
+        />
+      )}
 
       {gl === 'on' && !here && !game && !hud.flying && !hud.moved && (
-        <p className="rm-hint">{touch ? 'Drag the stick to walk; push it all the way to run; the arrow jumps, the star fires in a fight. Swipe sideways to look round.' : 'W A S D or the arrows to walk, Shift to run, Space to jump. Drag to look round. E uses things, F fires in a fight, M lists what to do.'}<GuideCue touch={touch} /></p>
+        <p className="rm-hint">{touch ? 'Drag the stick to walk; push it all the way to run; the arrow jumps, the star fires in a fight. Swipe sideways to look round.' : 'W A S D or the arrows to walk, Shift to run, Space to jump. Drag to look round. E uses things, F fires in a fight, M lists what to do, hold B to emote.'}<GuideCue touch={touch} /></p>
       )}
       {gl === 'on' && hud.flying && !here && (
         <p className="rm-hint rm-keys">
@@ -1686,6 +1799,11 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
                   <button type="button" aria-label="Jump" onPointerDown={onJump} onContextMenu={(e) => e.preventDefault()}>
                     <RiArrowUpLine aria-hidden="true" />
                   </button>
+                  {!game && (
+                    <button type="button" className="rm-emote-btn" aria-label="Emote" aria-haspopup="menu" aria-expanded={touchWheel} onClick={() => setTouchWheel((v) => !v)} onContextMenu={(e) => e.preventDefault()}>
+                      <RiEmotionLaughLine aria-hidden="true" />
+                    </button>
+                  )}
                   {duel && (
                     <button
                       type="button"
@@ -1736,6 +1854,25 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       </div>
 
       {list && <ThingsToDo box={listBox} prog={prog} done={done} onClose={closeList} />}
+    </div>
+  );
+}
+
+// The emote wheel: the five round the middle of the view, the one the
+// mouse is over lit (B held: let go to strike it), each a button to click
+// or tap, with its number key; Esc or the middle puts it away.
+function EmoteWheel({ hover, touch, onPick, onClose }) {
+  return (
+    <div className="rm-wheel" role="menu" aria-label="Emotes">
+      <button type="button" className="rm-wheel-mid" onClick={onClose} aria-label="Put the emotes away">
+        {touch ? 'Pick one' : 'Let go of B over one'}
+      </button>
+      {EMOTES.map((id, i) => (
+        <button key={id} type="button" role="menuitem" className="rm-wheel-item" data-on={hover === id || undefined} style={{ '--x': `${(Math.sin(wheelAngle(i)) * 118).toFixed(1)}px`, '--y': `${(-Math.cos(wheelAngle(i)) * 118).toFixed(1)}px` }} onClick={() => onPick(id)}>
+          <span>{EMOTE_NAME[id]}</span>
+          {!touch && <kbd>{i + 1}</kbd>}
+        </button>
+      ))}
     </div>
   );
 }

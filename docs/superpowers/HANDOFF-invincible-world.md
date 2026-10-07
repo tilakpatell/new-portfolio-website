@@ -119,9 +119,9 @@ Left for a later task:
 - In the city the HUD's Height counts from the river bed (`InvWorld.jsx:573`; `groundAt` is −8 there). `river` reads 33 m at y 25, which is 27.5 m over the water. It wants `Math.max(groundAt, WATER_Y)`, as `:56` has. Task 3.
 - Compass labels butt up against the cardinals (“Burger MartW”, “GDAN”), a label can sit up to 48 px off its dot (`porch`'s Graysons'), and a mark whose label won't fit is a bare dot (`rings`, `photo`). Task 3, `layoutCompass`'s second row.
 - The site's “Achievement unlocked” toast covers the HUD's bottom centre (`boost`). Task 3.
-- Bolts hit a point. They no longer tunnel through a hovering hero, but one meeting a hero flat out head-on can still pass through. Task 7, `foes.js`.
-- The Flaxan portal's swirl has a horizontal seam across its left half (`flaxans.js`, the `fight` shot). Task 7, `villains.js`.
-- The `fight` shot shows the portal and “12 left” but no Flaxans: with `dt` clamped, `sim.speedup` no longer fast-forwards them. Task 7's `fight` shot should wait on `sim.fight` (a foe in the `fight` state), not on 9 s.
+- Bolts hit a point. They no longer tunnel through a hovering hero, but one meeting a hero flat out head-on can still pass through. Done in Task 7, `foes.js`.
+- The Flaxan portal's swirl has a horizontal seam across its left half (`flaxans.js`, the `fight` shot). Done in Task 7, `villains.js`.
+- The `fight` shot shows the portal and “12 left” but no Flaxans: with `dt` clamped, `sim.speedup` no longer fast-forwards them. Done in Task 7: the shot waits on `sim.foes`.
 - The person he carries isn't drawn in space, because the whole challenges group is hidden there. Task 9, `challenges.js`.
 - Dad's “lesson lost” comes on Mark's first step back in the city, not as he leaves. Task 6.
 - `eve`: Mark is whole now, but Eve is behind a tower and only her balloon shows. Task 6, with its `eve` shot.
@@ -194,9 +194,37 @@ Every band is in range, and Mark passes in spawn, streetnight and porch. He miss
 - `scene.js` passes the crowd what happened in the frame (slam, knock-out, won, the time). Cars within 60 m of a fight's knock-outs and hits back away at 4 m/s for 3 s (`traffic.js`'s `reverse` scare, tested).
 - New shots: `plazanight`, `burgernight`, `schoolnight`.
 
+### Task 6: Eve and Dad (2026-10-07)
+
+- `companions.js` (tested) holds their rules. Each step is at most 0.05 s.
+  - Eve patrols her loop round downtown, over the towers on it (20 m above the highest roof within 30 m, a little before she gets there; she never flies into one).
+  - When Mark hangs still within 300 m of her for 4 s, she comes over to 6 m from him with a line. She waits 45 s at most, then flies on, and won't come again until he's been off past 300 m.
+  - When he flies off from beside her, she holds 8 m off his left for 40 s, then goes back to her loop.
+  - A foe still standing within 400 m: she goes for it and knocks one out every 8 s (`fight.js` takes her `eveHit` and knocks that foe out, `by: 'eve'`).
+  - E beside her: she stops, says a line and waits 5 s.
+  - Dad watches over downtown by day. At the rings he follows 50 m behind and 20 m above Mark, with a word at each of the first three rings (the first too, though the lesson starts once Mark is through it), and a hurry-up every 30 s past 90 s. At dusk and night he stands on the porch beside Debbie. In the last episode (`mission: 'ep7'`, Task 9) he leads the spar through his points, waiting at each until Mark is within 20 m.
+- `npcs.js` steps Eve from these rules; `scene.js` steps Dad and passes both the live foes, the lesson, the time and an E press for Eve. What they say and do goes in `sim.companion`; `InvWorld.jsx` speaks the lines (in their voices where a recording exists) and gives Eve's blow to the next fight step.
+- `api.debug.dad(p, dir)` reads Dad's rules, or puts him at `p`. New shot: `porchdusk`; `dadlesson` now starts the lesson and frames Dad behind Mark; `eveescort` frames Eve off his left.
+
+### Task 7: the villains (2026-10-07)
+
+- `fight.js` and `flaxans.js` are gone. `foes.js` (tested, 26 cases, the Flaxan tests moved as they were) holds every villain's rules, and `villains.js` draws them. The state is `newFoes(seed)`; `spawnFoes(state, kind, n, at)` adds some; `startInvasion` is the Flaxans' dozen through the portal as before; `stepFoes(state, hero, { punch, look, eveHit }, dt, { cars })` has `stepFight`'s shape (`push`, `stun`, and the events), so `InvWorld.jsx`'s handling of a knock and a stun is unchanged. `portalOpen`, `foeAt`, `standing` and `anyOf` read it.
+  - `flaxan` as before; `flaxanElite` takes two blows and fires three bolts at once, fanned, for 16.
+  - `mauler` (2.6 m, on the ground): runs at Mark at 8 m/s when he is on the ground or under 6 m up and stops 2 m short; within 3 m a swing every 1.4 s, a 0.4 s wind-up, 18 and a knock of 10 m; with Mark 6 m up and out of reach within 60 m, a car from the traffic within 30 m (held 0.6 s over his head, thrown at 35 m/s, 22 on a hit) or one off the street when none is near; a punch sends a car back, and a Mauler in its way takes the blow. Three blows knock one out, with a 0.8 s stagger at each before; a ram over 45 m/s too.
+  - `seismic` (Doc Seismic): drifts round a 30 m circle 20 m over his `at`, quakes every 6 s (a ring out along the ground at 30 m/s to 160 m, a `floored` knock-down for a hero standing on it, and a `shake` the camera takes by distance), blasts within 40 m for 14 and a knock of 15 m. Five blows; a ram or Eve only hits him.
+  - A blow's knock is sized from `flight.js`'s stop rate (`knock(m)`), so “10 m” is 10 m.
+  - Bolts now test their path each step, so one meeting him head-on flat out can't pass through.
+  - `clear` ends any fight; `won` still follows it for the Flaxans (their achievement and line).
+- `villains.js`: the portal (a new whirl shader, no seam), the Flaxans on the kit as before, the Maulers and Doc Seismic as the cast's figures on their own clips (`charge`, `swing`, `throw`, `hit`, `down`; `quake`, `blast`, `hover`), the thrown cars on `life.js`'s car geometry tumbling with a dust trail, and the quake rings along the ground with a skirt of dust. Flaxans vanish once down; the Maulers and Doc Seismic lie there till it's over. A cast model that didn't load gives a kit figure of its colour.
+- `scene.js` makes it with the `mauler` and `seismic` templates, passes the foes' events to it and to the camera (a knock-out's trauma by their size, a quake's by distance), gives Eve and the crowd whoever is still standing, and while a Mauler is about writes `sim.cars` (where the traffic's cars are) for him to take one: `traffic.js`'s `takeCar` (tested) puts a taken car back on the grid out of sight.
+- `InvWorld.jsx` steps `stepFoes` as it did `stepFight`; the objective line names who is about (“Flaxans over the river · 12 left”, “The Mauler twins · 2 standing”, “Doc Seismic over the school”) and the compass marks the portal while it is open and each Mauler and Doc Seismic. Sounds: a thud for a hit and a car sent back, a crumble for a car landing, a boom for a quake, the laser for a blast.
+- Shots: `fight` now waits on the state (four Flaxans through and two within 45 m of him), not on the clock, and shows them; `maulers` spawns the twins on the street past the bank, 14 m ahead; `seismic` spawns Doc Seismic over the school and frames him from 16 m. Shots take `foes: [kind, n, at]` (`at: 'place'` is the shot's place) and `at: 'foe'`. The dev hook has `api.spawn(kind, n, at)` and `api.debug.villains`.
+- Triangles on the low tier: fight 1.00 M, maulers 1.79 M, seismic 1.45 M. `maulers` is over the 1.5 M budget: that street already drew 1.76 M in the stub (the hall and the east block with the traffic); the two figures add about 30 k. Left for Task 11's pass over the budget.
+- Not in this task: missions start them (Task 9); for now only the Flaxans come on their own, and the dev hook spawns the rest.
+
 ## How to check
 
-- `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic and fight (51 tests at the space merge, 89 after Task 1).
+- `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic, hud, brains, companions and foes (51 tests at the space merge, 89 after Task 1, 168 after Task 7).
 - With the dev server running, `OUT=/tmp/shots node scripts/inv-world-check.mjs [--metrics] [shot …]`.
   - Shots, in the order they run: `spawn street curb streetnight downtown high suburb river boost porch gda burger school plaza eve jet clouds rings card wallback rescue fight climb orbit orbitnight moon reentry allen mars thragg dusk night`.
   - The mission stubs, which only frame the places for now: `bank chase seismic maulers eveescort dadlesson gdasiege photo`.
@@ -208,7 +236,7 @@ Every band is in range, and Mark passes in spawn, streetnight and porch. He miss
   - `sim.h` is the hero; `sim.yaw` and `sim.pitch` are the camera.
   - `sim.snap` puts the camera and the pose where they're going.
   - `sim.hold` freezes Eve and the jet.
-  - `api.zone` and `api.setZone` read and set the zone; `api.debug` holds `npcs`, `jet`, `world`, `bodies`, `allen` and `thragg`.
+  - `api.zone` and `api.setZone` read and set the zone; `api.debug` holds `npcs`, `jet`, `world`, `bodies`, `allen`, `thragg` and `dad`.
 
 ## Not done / next ideas
 

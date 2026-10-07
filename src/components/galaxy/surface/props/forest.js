@@ -1687,7 +1687,9 @@ const DAGOBAH = {
     };
   },
 
-  // a dragonsnake, its coils breaking the black water as it circles
+  // a dragonsnake, its coils breaking the black water as it circles; now and
+  // then its head rears up out of it (a cone, till its model is here: the
+  // Meshy head and neck, worn by `wear`, rising higher)
   dragonsnake(k, { r = 7 } = {}) {
     const mat = k.own(new THREE.MeshStandardMaterial({ color: '#3a4430', roughness: 0.4 }));
     const hump = k.own(new THREE.TorusGeometry(0.9, 0.32, 8, 12, PI));
@@ -1699,10 +1701,24 @@ const DAGOBAH = {
       object.add(m);
       humps.push(m);
     }
-    const head = new THREE.Mesh(k.own(new THREE.ConeGeometry(0.35, 1.4, 8).rotateX(PI / 2)), mat);
+    const head = new THREE.Group();
+    const cone = new THREE.Mesh(k.own(new THREE.ConeGeometry(0.35, 1.4, 8).rotateX(PI / 2)), mat);
+    head.add(cone);
     object.add(head);
+    let neck = null;
     return {
       object,
+      // (its 4.5 m model, shrunk to the coils: 3.6 m, of which 2.6 m clears
+      // the water at the top of a rear and none at the bottom)
+      wear: {
+        url: '/models/galaxy/surface/dragonsnake.glb',
+        on(o) {
+          o.scale.setScalar(0.8);
+          head.add(o);
+          cone.visible = false;
+          neck = o;
+        },
+      },
       update(t) {
         const s = t * 0.18;
         humps.forEach((m, i) => {
@@ -1712,8 +1728,13 @@ const DAGOBAH = {
         });
         const up = Math.max(0, sin(t * 0.35)) ** 3;
         const a = s + 0.3;
-        head.position.set(cos(a) * r, -0.6 + up * 1.4, sin(a) * r);
-        head.rotation.set(-up * 0.6, -a + PI, 0);
+        if (neck) {
+          head.position.set(cos(a) * r, -3.7 + up * 2.7, sin(a) * r);
+          head.rotation.set(0, -a + PI, 0);
+        } else {
+          head.position.set(cos(a) * r, -0.6 + up * 1.4, sin(a) * r);
+          head.rotation.set(-up * 0.6, -a + PI, 0);
+        }
       },
     };
   },
