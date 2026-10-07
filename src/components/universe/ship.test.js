@@ -736,6 +736,10 @@ describe('where a new ship starts', () => {
   });
 });
 
+// (the autopilot's trips are minutes of flight since the spread, scale.js's
+// SPREAD, flown at 60 steps a second: more than vitest's 5 s under load)
+const LONG = 20000;
+
 describe('autopilot', () => {
   it('flies from the edge to every universe without hitting anything', () => {
     for (const id of ORDER) {
@@ -754,7 +758,7 @@ describe('autopilot', () => {
       expect(bumps, id).toBe(0);
       expect(orbiting(s, null), id).toBe(id);
     }
-  });
+  }, LONG);
 
   it('flies down (or up) to a universe from high above (or below) the map, level with it', () => {
     for (const id of ORDER) {
@@ -773,7 +777,7 @@ describe('autopilot', () => {
         expect(orbiting(s, null), id).toBe(id);
       }
     }
-  });
+  }, LONG);
 
   it('flies out from the home system to every wonder in deep space, and back, without hitting anything', () => {
     const trip = (from, id, limit) => {
@@ -812,7 +816,7 @@ describe('autopilot', () => {
     const there = { ...spawn(null), ...parkAt(far.id), speed: 0 };
     const back = trip(there, ORDER[0], 135);
     expect(orbiting(back.s, null)).toBe(ORDER[0]);
-  });
+  }, LONG);
 
   it('takes over from upside down and nose down, and parks the right way up', () => {
     for (const id of [ORDER[0], ORDER.at(-1)]) {
@@ -830,12 +834,12 @@ describe('autopilot', () => {
       expect(Math.abs(s.bank), id).toBeLessThan(0.1);
       expect(orbiting(s, null), id).toBe(id);
     }
-  });
+  }, LONG);
 
   it('has nowhere to go for anything that is not a place', () => {
     expect(parkAt('nope')).toBeNull();
     expect(autopilot(spawn(null), 'nope').done).toBe(true);
-  });
+  }, LONG);
 
   it('flies from one universe to the next all the way round', () => {
     let s = spawn(ORDER[0]);
@@ -852,5 +856,5 @@ describe('autopilot', () => {
       }
       expect(done, id).toBe(true);
     }
-  });
+  }, LONG);
 });
