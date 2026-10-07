@@ -6,7 +6,7 @@
 // neighbours. The scene plays each blast (and takes what reaches the ship
 // off its shields).
 //
-// createMines(parent, { small, tier }) → { lay(ship, rand) → boolean,
+// createMines(parent, { small, tier }) → { lay(ship, rand) → boolean, across(pts, s, r, rand) → boolean (a lane jam),
 //   update(dt, ship) → events, hit(from, to) → { at, size } | null, targets,
 //   count, clear(), dispose() }
 // Events: { type: 'mine', at, size, damage } (damage: what reached the ship).
@@ -14,7 +14,9 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { MINE, chainFrom, layMines, mineBlast, mineHit, minefieldLane } from './minefield';
+import { MINE, bandAcross, chainFrom, layMines, mineBlast, mineHit, minefieldLane } from './minefield';
+import { SOLIDS } from './ship';
+import { R } from './hyperlanes';
 
 const LIFE = 75; // seconds a field stays, unless you're long past it
 const GONE = 260; // or once you're this far from it
@@ -105,20 +107,31 @@ export function createMines(parent, { small = false } = {}) {
     for (let k = live.length - 1; k >= 0; k--) if (live[k].gone) live.splice(k, 1);
   };
 
+  // the mines laid, live, and drawn
+  const place = (list, rand) => {
+    live.length = 0;
+    middle.set(0, 0, 0);
+    for (const m of list) {
+      made += 1;
+      live.push({ id: `mine-${made}`, at: new THREE.Vector3(...m.at), vel: new THREE.Vector3(), size: m.r, spin: [rand() * 0.6 - 0.3, rand() * 0.8 - 0.4, rand() * 0.6 - 0.3], phase: rand(), hp: 1, hpMax: 1, kind: 'mine', faction: 'mines', threat: 0, gone: false });
+      middle.add(live[live.length - 1].at);
+    }
+    if (live.length) middle.divideScalar(live.length);
+    age = 0;
+    draw();
+    return live.length > 0;
+  };
+
   return {
     // a field across the ship's way ahead, if there's room for one
     lay(ship, rand = Math.random) {
       const lane = minefieldLane(ship, rand);
       if (!lane) return false;
-      live.length = 0;
-      for (const m of layMines({ lane, seed: Math.floor(rand() * 1e9) })) {
-        made += 1;
-        live.push({ id: `mine-${made}`, at: new THREE.Vector3(...m.at), vel: new THREE.Vector3(), size: m.r, spin: [rand() * 0.6 - 0.3, rand() * 0.8 - 0.4, rand() * 0.6 - 0.3], phase: rand(), hp: 1, hpMax: 1, kind: 'mine', faction: 'mines', threat: 0, gone: false });
-      }
-      middle.set((lane[0][0] + lane[1][0]) / 2, (lane[0][1] + lane[1][1]) / 2, (lane[0][2] + lane[1][2]) / 2);
-      age = 0;
-      draw();
-      return live.length > 0;
+      return place(layMines({ lane, seed: Math.floor(rand() * 1e9) }), rand);
+    },
+    // a lane jam: a band across a hyperlane's carriageway (its points) at s
+    across(pts, s, r = R, rand = Math.random) {
+      return place(bandAcross(pts, s, r, { seed: Math.floor(rand() * 1e9), solids: SOLIDS }), rand);
     },
 
     update(dt, ship) {
