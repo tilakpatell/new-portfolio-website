@@ -16,3 +16,6 @@
   .todo-row { grid-template-columns: 1.25rem 1fr; }
   .todo-go { grid-column: 2; flex-direction: row; align-items: center; justify-content: space-between; }
 }
+/* a world's group heading is its way in */
+.todo-world { color: inherit; text-underline-offset: 2px; }
+.todo-world:hover { color: var(--text); text-decoration: underline; }

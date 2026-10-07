@@ -18,7 +18,7 @@ import { local, useDocumentTitle } from '../lib/hooks';
 import { restartSite } from '../lib/restart';
 import { TOUR_NAMES, openTour } from '../lib/tour';
 import { THINGS_TO_DO, isDone } from '../data/todo';
-import { VISITED_KEY } from '../lib/visited';
+import { VISITED_KEY, storedKey } from '../lib/visited';
 
 // The Imperial terminal — the one place on the site that stays fully in character.
 // `hang` is how far a wrapped line indents (it defaults to the line's own
@@ -91,8 +91,8 @@ const HELP = [
   L('  achievements     what you have unlocked', 'out', 19),
   L('  clear            clear the screen', 'out', 19),
   BLANK,
-  L('  tour [who]       a tour of the site: tour recruiter, tour player, tour all (or just tour, a quick look round)', 'out', 19),
-  L('  todo             the things to do here, ticked off as you do them', 'out', 19),
+  L('  tour [who]       a tour of the site: tour hiring, tour player, tour all (or just tour, a quick look round)', 'out', 19),
+  L('  checklist        the things to do here, ticked off as you do them', 'out', 19),
   BLANK,
   L('  Also: whoami · date · ls · cat · echo · history · neofetch · restart (the site, from the beginning) · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
@@ -521,19 +521,19 @@ export default function Terminal() {
         return [L('  Closing channel.', 'sys')];
       },
       tour: (arg) => {
-        const audience = { recruiter: 'recruiter', hire: 'recruiter', player: 'player', play: 'player', all: 'mixed', whole: 'mixed' }[arg];
-        if (arg && !audience) return [L(`  tour: ${arg}: no such tour. Try: tour recruiter, tour player, tour all`, 'err')];
+        const audience = { hiring: 'recruiter', recruiter: 'recruiter', hire: 'recruiter', player: 'player', play: 'player', all: 'mixed', whole: 'mixed' }[arg];
+        if (arg && !audience) return [L(`  tour: ${arg}: no such tour. Try: tour hiring, tour player, tour all`, 'err')];
         setTimeout(() => openTour(audience ? { audience } : undefined), 500);
         return [L(audience ? `  ${TOUR_NAMES[audience]}. Showing you round…` : '  Showing you round…', 'ok')];
       },
-      todo: () => {
+      checklist: () => {
         const visited = local.get(VISITED_KEY, []);
-        const ticked = THINGS_TO_DO.filter((t) => isDone(t, { unlocked, visited })).length;
+        const ticked = THINGS_TO_DO.filter((t) => isDone(t, { unlocked, visited, stored: storedKey })).length;
         return [
-          L(`  THINGS TO DO: ${ticked}/${THINGS_TO_DO.length}`, 'head'),
-          ...THINGS_TO_DO.map((t) => (isDone(t, { unlocked, visited }) ? L(`  ■ ${t.title}`) : L(`  □ ${t.title}`, 'dim'))),
+          L(`  THE CHECKLIST: ${ticked}/${THINGS_TO_DO.length} done`, 'head'),
+          ...THINGS_TO_DO.map((t) => (isDone(t, { unlocked, visited, stored: storedKey }) ? L(`  ■ ${t.title}`) : L(`  □ ${t.title}`, 'dim'))),
           BLANK,
-          L('  The guide’s “Things to do” tab (press ?) shows you any of them.', 'dim'),
+          L('  The guide’s checklist (press ?) shows you any of them.', 'dim'),
         ];
       },
       restart: () => {
@@ -556,7 +556,8 @@ export default function Terminal() {
       setHistory((h) => [...h, text]);
       setCursor(-1);
       const [name, ...args] = text.split(/\s+/);
-      const cmd = name.toLowerCase();
+      // (todo was the checklist's first name)
+      const cmd = name.toLowerCase() === 'todo' ? 'checklist' : name.toLowerCase();
       const arg = args.join(' ').toLowerCase();
 
       if (cmd === 'clear') return setLines([]);

@@ -40,8 +40,18 @@
 .tour-keys { margin-top: 0.7rem; font-size: 0.8125rem; }
 .tour-keys th { width: 46%; padding: 0.35rem 0.6rem 0.35rem 0; }
 .tour-keys td { padding: 0.4rem 0; }
-/* a stop's way out of the tour, to a place (a world, a game) */
-.tour-cta { margin-top: 0.8rem; }
+/* a stop's actions: a row of their own above the buttons, wrapping; on a
+   phone each as wide as the card */
+.tour-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.8rem; }
+@media (max-width: 479px) { .tour-actions > * { flex: 1 1 100%; justify-content: center; } }
+/* a stop that asks you to try ? or the palette: the veil down so what they
+   open shows; while it's open the card steps under it (the guide's panel
+   and the palette sit at 80) */
+.tour[data-release] { pointer-events: none; }
+.tour[data-release] .tour-card { pointer-events: auto; }
+.tour[data-release] .tour-veil { display: none; }
+.tour[data-release] .tour-spot { box-shadow: 0 0 0 2px var(--accent); }
+.tour[data-over] { z-index: 79; }
 /* on the way to a stop's page: the card in the middle, the page under it dimmed */
 .tour[data-waiting] .tour-text { color: var(--muted); }
 @keyframes tour-in { from { opacity: 0; transform: translateY(6px); } }

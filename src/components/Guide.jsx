@@ -178,7 +178,7 @@ export default function Guide() {
       )}
       {open && (
         <Suspense fallback={null}>
-          <GuidePanel key={tab ?? 'page'} pathname={pathname} tab={tab} close={close} onLeave={() => setOpen(false)} />
+          <GuidePanel key={tab ?? 'page'} pathname={pathname} initialTab={tab} close={close} onLeave={() => setOpen(false)} />
         </Suspense>
       )}
     </>

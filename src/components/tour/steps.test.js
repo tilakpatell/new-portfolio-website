@@ -18,7 +18,7 @@ const marked = () => {
 };
 
 describe('the tours’ stops', () => {
-  const ctx = { key: '⌘K' };
+  const ctx = { key: '⌘K', touch: false, ship: null };
 
   it('has one for each view of the site, and only the audiences’ besides', () => {
     expect(Object.keys(TOURS)).toEqual(expect.arrayContaining(['classic', 'universe']));

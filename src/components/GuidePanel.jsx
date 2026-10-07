@@ -1,8 +1,6 @@
 import { Fragment, lazy, Suspense, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
 import { RiCloseLine, RiCompass3Line, RiKeyboardLine, RiPlayCircleLine, RiRefreshLine, RiSmartphoneLine } from 'react-icons/ri';
-import { WORLDS } from './worlds/worlds';
 import { SHORTCUTS, SITE, guideFor } from './guide/pages';
 import { KeyTable, Keys } from './guide/KeyTable';
 import { shortcutLabel } from '../lib/palette';
@@ -16,8 +14,8 @@ import './guide/tours.css';
 const TodoList = lazy(() => import('./guide/TodoList'));
 
 // The guide's panel: the page's controls (keyboard or touch) as a table of
-// keys, then its tips; the site as a whole, with its tours; and the things
-// to do, as a checklist. Loaded the first time the guide opens
+// keys, then its tips; the site as a whole, with its tours; and the
+// checklist of things to do. Loaded the first time the guide opens
 // (components/Guide.jsx), not before, and mounted each time it opens, so it
 // starts on this page's tab (or the one it was opened on).
 
@@ -150,23 +148,13 @@ function SiteGuide({ pathname, onGo }) {
       <section className="mt-6">
         <Tips tips={SITE} />
       </section>
-      <p className="label mt-6">The worlds</p>
-      <ul className="mt-2 flex flex-wrap gap-2">
-        {WORLDS.map((w) => (
-          <li key={w.to}>
-            <Link to={w.to} className="world-link" onClick={onGo}>
-              {w.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
     </>
   );
 }
 
-export default function GuidePanel({ pathname, tab: asked, close, onLeave }) {
+export default function GuidePanel({ pathname, initialTab, close, onLeave }) {
   const page = guideFor(pathname);
-  const [tab, setTab] = useState(asked === 'todo' || asked === 'site' ? asked : page ? 'page' : 'site');
+  const [tab, setTab] = useState(initialTab === 'checklist' || initialTab === 'site' ? initialTab : page ? 'page' : 'site');
   const panel = useRef(null);
   const ids = useId();
   useEffect(() => {
@@ -174,7 +162,7 @@ export default function GuidePanel({ pathname, tab: asked, close, onLeave }) {
   }, []);
 
   // tabs: arrow keys move between them, as tabs do
-  const tabs = page ? ['page', 'site', 'todo'] : ['site', 'todo'];
+  const tabs = page ? ['page', 'site', 'checklist'] : ['site', 'checklist'];
   const onTabKey = (e) => {
     const at = tabs.indexOf(tab);
     const next = e.key === 'ArrowRight' ? tabs[(at + 1) % tabs.length] : e.key === 'ArrowLeft' ? tabs[(at - 1 + tabs.length) % tabs.length] : null;
@@ -201,16 +189,16 @@ export default function GuidePanel({ pathname, tab: asked, close, onLeave }) {
         <div className="guide-tabs" role="tablist" aria-label="Guide">
           {page && <button {...tabProps('page', 'On this page')} />}
           <button {...tabProps('site', 'The site')} />
-          <button {...tabProps('todo', 'Things to do')} />
+          <button {...tabProps('checklist', 'The checklist')} />
         </div>
         <button type="button" className="guide-close" onClick={close} aria-label="Close the guide">
           <RiCloseLine className="h-5 w-5" aria-hidden="true" />
         </button>
       </div>
       <div id={`${ids}-panel`} role="tabpanel" aria-labelledby={`${ids}-${tab}`} className="guide-body">
-        {tab === 'todo' ? (
+        {tab === 'checklist' ? (
           <Suspense fallback={null}>
-            <TodoList onGo={onLeave} />
+            <TodoList pathname={pathname} onGo={onLeave} />
           </Suspense>
         ) : tab === 'page' && page ? <PageGuide page={page} basics={
               briefKeyFor(pathname)

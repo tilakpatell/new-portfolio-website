@@ -3,7 +3,7 @@ import { isMapPath } from './view';
 // The tour of the site (components/tour): which one a page gets, when a
 // first arrival is offered it, which of its stops show on this screen, and
 // where its card goes beside the thing it's pointing at; and the audience
-// tours (the recruiter's, the player's, the whole one) that cross pages:
+// tours (the hiring tour, the player's, the whole one) that cross pages:
 // their plan, what they remember, the link that starts one, and when a stop
 // on a page just opened is ready to show. See
 // docs/superpowers/specs/2026-10-07-site-tour-design.md and
@@ -13,13 +13,19 @@ export const TOUR_KEY = 'tp-tour'; // what readProgress reads; unset until the o
 export const TOUR_EVENT = 'tp:tour';
 export const AUDIENCES = ['recruiter', 'player', 'mixed'];
 // what each is called wherever it's offered, and how long it takes (spec 3.1)
-export const TOUR_NAMES = { recruiter: 'The recruiter’s tour', player: 'The player’s tour', mixed: 'The whole tour' };
-export const TOUR_TIMES = { recruiter: 'About 5 minutes', player: 'About 7 minutes', mixed: 'About 10 minutes' };
+export const TOUR_NAMES = { recruiter: 'The hiring tour', player: 'The player’s tour', mixed: 'The whole tour' };
+export const TOUR_TIMES = { recruiter: 'About 5 minutes', player: 'About 8 minutes', mixed: 'About 12 minutes' };
 
 // Starts a tour from anywhere: ⌘K, the guide, the terminal, the offer, the
 // checklist. With no detail, the tour of the view you're in, as before; with
-// { audience, chapter?, stop?, todo? }, that audience's, from there.
-export const openTour = (detail) => window.dispatchEvent(new CustomEvent(TOUR_EVENT, detail ? { detail } : undefined));
+// { audience, chapter?, stop?, todo?, to?, only? }, that audience's, from
+// there. Anything but a plain object is no detail: openTour is handed
+// straight to onClick, which passes it the click.
+export const plainDetail = (detail) => (detail && Object.getPrototypeOf(detail) === Object.prototype ? detail : null);
+export const openTour = (detail = null) => {
+  const d = plainDetail(detail);
+  window.dispatchEvent(new CustomEvent(TOUR_EVENT, d ? { detail: d } : undefined));
+};
 
 // What tp-tour holds: { offered, audience?, chapter?, stop?, done: [...] },
 // where to carry on from and the tours finished ('view' for the old one).
@@ -56,9 +62,10 @@ export function writeProgress(prev, patch) {
 // finished once before.)
 export const unfinished = (p) => (p?.audience && p.chapter ? { audience: p.audience, chapter: p.chapter } : null);
 
-// ?tour=recruiter|player|all[&chapter=id] on any page: the owner's links. A
-// visitor never types "mixed", so the link says "all".
-const LINKED = { recruiter: 'recruiter', player: 'player', all: 'mixed' };
+// ?tour=hiring|player|all[&chapter=id] on any page: the owner's links (the
+// résumé's says hiring). A visitor never types "mixed", so the link says
+// "all"; "recruiter" still reads.
+const LINKED = { hiring: 'recruiter', recruiter: 'recruiter', player: 'player', all: 'mixed' };
 export function parseTourLink(search) {
   const q = new URLSearchParams(search ?? '');
   const audience = LINKED[q.get('tour')];
@@ -94,74 +101,93 @@ const FEED = /^\/(home|experience(\/[^/]+)?|projects|resume|contact|travel)$/;
 export const offerHere = (pathname, progress) => progress == null && (isMapPath(pathname) || FEED.test(pathname));
 
 // The shell's stops an audience tour opens with (the view's tour, cut down):
-// a recruiter's way round, and a player's. Not the view tour's own hello and
-// goodbye, which say "under a minute". The nav's stops and the menu's stand
-// in for each other by screen width, so whichever isn't showing is skipped.
+// the hiring tour's way round each view, and the player's (whose map stops,
+// the panel, the ships and the nav map, belong to its Flying chapter). Not
+// the view tour's own hello and goodbye, which say "under a minute": an
+// audience opens with its own hello. The nav's stops and the menu's stand in
+// for each other by screen width; whichever isn't showing is dropped.
 export const SHELL_STOPS = {
-  recruiter: ['panel', 'pages', 'view', 'search', 'menu', 'guide', 'resume'],
-  player: ['panel', 'ships', 'navmap', 'view', 'search', 'menu', 'guide'],
+  recruiter: { classic: ['pages', 'view', 'search', 'menu', 'guide', 'resume'], universe: ['panel', 'view', 'search', 'menu', 'guide', 'resume'] },
+  player: ['view', 'search', 'menu', 'resume'],
 };
-SHELL_STOPS.mixed = SHELL_STOPS.recruiter;
+export const shellStopsFor = (audience, view) => {
+  const keep = SHELL_STOPS[audience] ?? SHELL_STOPS.recruiter;
+  return Array.isArray(keep) ? keep : keep[view] ?? keep.classic;
+};
 
 // A tour's chapters: the shell of the view you're in first, then the
 // audience's own. The shell's page is the map in the universe; in the
-// classic site, the page you're on if a tour may stand on it, else Home.
-export function planFor(tours, audience, view, here) {
+// classic site, the page you're on if a tour may stand on it, else Home. A
+// chapter with no page (an end card) stays on the one before; a heavy one
+// (the map, on a phone) is its `phone` version on a coarse pointer.
+export function planFor(tours, audience, view, here, { coarse = false } = {}) {
   const own = tours[audience];
   if (!own?.length) return [];
-  const keep = SHELL_STOPS[audience] ?? SHELL_STOPS.recruiter;
+  const keep = shellStopsFor(audience, view);
   const universe = view === 'universe';
   const path = universe ? '/universe' : isLightRoute(here) && here !== '/universe' ? here : '/home';
-  const stops = (tours[universe ? 'universe' : 'classic'] ?? []).filter((s) => keep.includes(s.id)).map((s) => ({ ...s, optional: true }));
-  return [{ id: 'shell', title: 'Getting about', path, stops }, ...own];
-}
-
-// A tour made of others' chapters: [name, from, to] takes chapters from to
-// to (the spec's numbers, where 1 is the shell, which planFor adds), and a
-// name ('end') takes the chapter of that name from `named`.
-export function compose(tours, recipe, named = {}) {
-  return recipe.flatMap((item) => {
-    if (typeof item === 'string') {
-      if (!named[item]) throw new Error(`compose: no chapter named “${item}”`);
-      return [named[item]];
-    }
-    const [name, from, to] = item;
-    if (!tours[name]) throw new Error(`compose: no tour “${name}”`);
-    return tours[name].slice(Math.max(from - 2, 0), to - 1);
+  const stops = (tours[universe ? 'universe' : 'classic'] ?? []).filter((s) => keep.includes(s.id));
+  let at = path;
+  return [{ id: 'shell', title: 'Getting about', path, stops }, ...own].map((c) => {
+    const ch = c.heavy && coarse && c.phone ? { ...c, ...c.phone, heavy: false } : c;
+    at = ch.path ?? at;
+    return ch.path === at ? ch : { ...ch, path: at };
   });
 }
 
-// The chapters as one run of stops, each carrying its chapter's id, title
-// and page, and a key unique in the run.
-export const flatten = (chapters) =>
-  chapters.flatMap((c) => c.stops.map((s) => ({ ...s, chapter: c.id, chapterTitle: c.title, path: c.path, key: `${c.id}/${s.id}` })));
-
-export const nextIndex = (stops, i, dir) => Math.max(0, Math.min(i + dir, stops.length - 1));
-
-// Where a tour starts: a chapter's first stop, a stop by id (in a chapter,
-// if named), or the stop showing a thing to do; the start with nothing
-// asked; -1 when what's asked isn't in it.
-export function stopIndexFor(stops, { chapter, stop, todo } = {}) {
-  if (todo) return stops.findIndex((s) => s.todo === todo);
-  if (stop) return stops.findIndex((s) => s.id === stop && (!chapter || s.chapter === chapter));
-  if (chapter) return stops.findIndex((s) => s.chapter === chapter);
-  return 0;
+// A tour made of others' chapters, by id, never by place: [name, from, to]
+// takes that tour's chapters from the one called `from` to the one called
+// `to`; a chapter itself (the shared end card) goes in as it is. Stored
+// lists never hold the shell: planFor adds it to every tour.
+export function compose(tours, recipe) {
+  return recipe.flatMap((item) => {
+    if (!Array.isArray(item)) return [item];
+    const [name, from, to] = item;
+    const list = tours[name];
+    if (!list) throw new Error(`compose: no tour “${name}”`);
+    const a = list.findIndex((c) => c.id === from);
+    const b = list.findIndex((c) => c.id === to);
+    if (a < 0 || b < a) throw new Error(`compose: “${name}” has no chapters from “${from}” to “${to}”`);
+    return list.slice(a, b + 1);
+  });
 }
 
-// A stop on a page just opened shows once nothing covers the page, the page
-// has drawn (its code arrives on its own), and its target is there; eight
-// seconds at most, then its card in the middle, so a tour never hangs. A
-// shell stop whose target isn't on this screen (the nav's links on a phone)
-// is skipped once the page has been ready a moment without it.
+// Where a tour starts: a chapter (and a stop in it, by id), the chapter
+// whose stop shows a thing to do, or the start with nothing asked; null when
+// what's asked isn't in it.
+export function startAt(chapters, { chapter, stop, todo } = {}) {
+  if (todo) {
+    const c = chapters.findIndex((ch) => ch.stops?.some((s) => s.todo === todo));
+    return c < 0 ? null : { c, stop: chapters[c].stops.find((s) => s.todo === todo).id };
+  }
+  if (!chapter) return { c: 0 };
+  const c = chapters.findIndex((ch) => ch.id === chapter);
+  return c < 0 ? null : { c, stop };
+}
+
+// Nothing over the page but the tour itself: not the intro, the cockpit or
+// the phone menu (html's dataset), no dialog but the tour's own card (the
+// card is a modal dialog too, and mustn't hold up its own tour), and no
+// world asking before it downloads. `modals` says, for each modal open,
+// whether it's the tour's card.
+export const clearOf = ({ dataset = {}, modals = [], gate = false }) => !['covered', 'intro', 'menu'].some((k) => k in dataset) && modals.every(Boolean) && !gate;
+
+// A chapter's page is ready once the router has it (the feed's own page for
+// a feed path: the feed may have moved the address on as it settled),
+// nothing's over it, and the feed's page has its code.
+export const chapterReady = ({ pathname, path, feedTo, clear, loading }) => (pathname === path || (feedTo != null && feedTo === path)) && clear && !loading;
+
+// A chapter's stops once its page is ready: those whose target isn't on
+// this screen dropped (the nav's on a phone, where the menu's stands in), as
+// the view's tour always has; a stop marked `wait` kept, to wait for a target
+// that mounts late. A world's basics (`keep`, and a chapter that is one)
+// keep every stop, in the middle where its target isn't showing.
+export const resolveChapter = (stops, has, keep = false) =>
+  keep ? stops.map((s) => (!s.at || has(s.at) ? s : { ...s, at: undefined })) : stops.filter((s) => !s.at || s.wait || has(s.at));
+
+// Eight seconds at most for a page, or a late target: then the card in the
+// middle, so a tour never hangs.
 export const WAIT_MS = 8000;
-export const SKIP_MS = 1500;
-export const readyFor = (stop, { busy, hasTarget, rendered }) => !busy() && rendered() && (!stop.at || hasTarget(stop.at));
-
-export function stepState(stop, page, waited) {
-  if (readyFor(stop, page)) return 'ready';
-  if (stop.optional && waited >= SKIP_MS && !page.busy() && page.rendered()) return 'skip';
-  return waited >= WAIT_MS ? 'timeout' : 'wait';
-}
 
 // Asks `check` each tick until it answers, `timeout` passes, or the wait is
 // called off. The clock and the ticks come in, so a test needs none.

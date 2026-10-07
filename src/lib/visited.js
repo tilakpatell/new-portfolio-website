@@ -14,9 +14,11 @@ const norm = (pathname) => {
   return path.length > 1 ? path.replace(/\/+$/, '') : path;
 };
 
-export function addVisited(list, pathname) {
+// `key` is the page as the caller names it (App.jsx: the path, and its
+// guide's key); lib knows nothing of the guide
+export function addVisited(list, key) {
   const was = Array.isArray(list) ? list.filter((p) => typeof p === 'string') : [];
-  const path = norm(pathname);
+  const path = norm(key);
   if (!path) return was;
   return [...was.filter((p) => p !== path), path].slice(-VISITED_CAP);
 }
@@ -30,3 +32,22 @@ export const hasVisited = (list, to) => Array.isArray(list) && list.some((p) => 
 // light or dark, turned the sound on, or picked a front door. A world's keys
 // stay the world's (the island rule): its row ticks by its achievement.
 export const SHELL_KEYS = ['tp-universe-ship', 'tp-theme-pin', 'tp-custom-color', 'tp-scripts-read', 'tp-eggs', 'tp-mode', 'tp-sound', 'tp-start'];
+
+// What a shell key holds, for a thing to do's tick: kept across visits, or
+// (the pinned colour) for this one. Unreadable is nothing.
+export function storedKey(key) {
+  for (const where of ['localStorage', 'sessionStorage']) {
+    try {
+      const v = window[where].getItem(key);
+      if (v == null) continue;
+      try {
+        return JSON.parse(v);
+      } catch {
+        return v;
+      }
+    } catch {
+      /* storage unavailable */
+    }
+  }
+  return null;
+}

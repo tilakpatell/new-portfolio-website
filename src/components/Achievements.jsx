@@ -5,6 +5,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { FAN_THEMES, THEMES, THEME_ORDER } from '../theme/themes';
 import { partsUnlockedBy } from './universe/outfit';
 import { paintsFor } from './universe/paint';
+import { useTouring } from './tour/useTouring';
 import Gif from './Gif';
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -321,7 +322,9 @@ export function AchievementProvider({ children }) {
     if (THEME_ORDER.every((t) => seen.has(t))) unlock('cartographer');
   }, [seen, unlock]);
 
-  const toast = queue[0];
+  // (a toast waits while a tour runs: it'd sit over the tour's card)
+  const touring = useTouring();
+  const toast = touring ? null : queue[0];
   useEffect(() => {
     if (!toast) return undefined;
     const t = setTimeout(() => setQueue((q) => q.slice(1)), toast.gif ? 7000 : 3800);

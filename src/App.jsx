@@ -15,6 +15,8 @@ import './components/hyperspace3d/load';
 import { audioContext } from './lib/audio';
 import { local, prefersReducedMotion } from './lib/hooks';
 import { VISITED_KEY, addVisited } from './lib/visited';
+import { isPaletteKey } from './lib/palette';
+import { guideKeyFor } from './components/guide/routes';
 import { introPlaying } from './lib/stale';
 import { jumpStyle } from './components/jumps/styles';
 import WorldGate from './components/worlds/WorldGate';
@@ -78,9 +80,14 @@ function ScrollToTop() {
   useEffect(() => {
     if (!now.current.feed) import('./lib/clips').then((c) => c.stopPageClips());
   }, [pathname]);
-  // every page shown, the feed's included, for the guide's "Things to do"
+  // every page shown, the feed's included, for the guide's checklist: the
+  // page, and its guide's key when that's another (a place in a world ticks
+  // the world's things; a project still ticks its own)
   useEffect(() => {
-    local.set(VISITED_KEY, addVisited(local.get(VISITED_KEY, []), pathname));
+    const key = guideKeyFor(pathname);
+    let list = addVisited(local.get(VISITED_KEY, []), pathname);
+    if (key && key !== pathname) list = addVisited(list, key);
+    local.set(VISITED_KEY, list);
   }, [pathname]);
   return null;
 }
@@ -251,7 +258,7 @@ function PaletteHost() {
   const close = useCallback(() => setOpen(false), []);
   useEffect(() => {
     const onKey = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      if (isPaletteKey(e)) {
         e.preventDefault();
         setOpen((o) => !o);
       }

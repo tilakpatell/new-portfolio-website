@@ -3,21 +3,22 @@ import {
   AUDIENCES,
   SHELL_STOPS,
   WAIT_MS,
+  chapterReady,
+  clearOf,
   compose,
-  flatten,
   isLightRoute,
   litBox,
-  nextIndex,
   offerHere,
   parseTourLink,
   placeCard,
+  plainDetail,
   planFor,
   readProgress,
-  readyFor,
-  samePage,
+  resolveChapter,
   resolveSteps,
-  stepState,
-  stopIndexFor,
+  samePage,
+  shellStopsFor,
+  startAt,
   tourFor,
   unfinished,
   waitUntil,
@@ -188,6 +189,7 @@ describe('what the tour remembers', () => {
 describe('a link that starts a tour', () => {
   it('reads the audience, with all meaning the whole tour', () => {
     expect(parseTourLink('?tour=recruiter')).toEqual({ audience: 'recruiter' });
+    expect(parseTourLink('?tour=hiring')).toEqual({ audience: 'recruiter' });
     expect(parseTourLink('?tour=player')).toEqual({ audience: 'player' });
     expect(parseTourLink('?tour=all&chapter=worlds')).toEqual({ audience: 'mixed', chapter: 'worlds' });
     expect(parseTourLink('?place=hoth&tour=recruiter&chapter=resume')).toEqual({ audience: 'recruiter', chapter: 'resume' });
@@ -212,6 +214,13 @@ describe('the pages a tour may take you to', () => {
   });
 });
 
+describe('what starts a tour', () => {
+  it('takes a plain object as where to start, and anything else (a click) as nothing', () => {
+    expect(plainDetail({ audience: 'player' })).toEqual({ audience: 'player' });
+    for (const d of [null, undefined, new Event('click'), 'player', 3, []]) expect(plainDetail(d), String(d)).toBeNull();
+  });
+});
+
 // two small audience tours, as steps.js gives them (the shell's not in them)
 const fixture = () => ({
   universe: [{ id: 'hello' }, { id: 'panel', at: 'panel' }, { id: 'ships', at: 'ships' }, { id: 'view', at: 'view' }, { id: 'search', at: 'search' }, { id: 'menu', at: 'menu' }, { id: 'guide', at: 'guide' }, { id: 'resume', at: 'resume' }, { id: 'done' }],
@@ -219,111 +228,116 @@ const fixture = () => ({
   recruiter: [
     { id: 'home', title: 'Home', path: '/home', stops: [{ id: 'github', at: 'home-github', todo: 'github' }, { id: 'gameboy' }] },
     { id: 'projects', title: 'Projects', path: '/projects', stops: [{ id: 'cartridges', todo: 'gameboy-emulator' }] },
-    { id: 'end', title: 'That’s the tour', path: '/home', stops: [{ id: 'bye' }] },
+    { id: 'hood', title: 'Under the hood', path: '/universe', heavy: true, phone: { path: '/changes', stops: [{ id: 'log', at: 'changes-log' }] }, stops: [{ id: 'panel' }] },
+    { id: 'end', title: 'That’s the tour', path: null, stops: [{ id: 'bye' }] },
   ],
   player: [
-    { id: 'flying', title: 'Flying', path: '/universe', stops: [{ id: 'stick' }] },
+    { id: 'flying', title: 'Flying', path: '/universe', brief: '/universe/fly', stops: [] },
+    { id: 'galaxy', title: 'The galaxy', path: '/universe', stops: [{ id: 'gal' }] },
     { id: 'worlds', title: 'The worlds', path: '/universe', stops: [{ id: 'c137', todo: 'c137' }, { id: 'scranton' }] },
-    { id: 'end', title: 'That’s the tour', path: '/universe', stops: [{ id: 'bye' }] },
+    { id: 'colours', title: 'Colours', path: '/universe', stops: [{ id: 'col' }] },
+    { id: 'end', title: 'That’s the tour', path: null, stops: [{ id: 'bye' }] },
   ],
 });
 
 describe('a tour’s plan', () => {
-  it('opens on the shell of the view you’re in, cut to the stops for this audience', () => {
+  it('opens on the shell of the view you’re in, cut to this audience’s stops', () => {
     const tours = fixture();
     const u = planFor(tours, 'recruiter', 'universe', '/universe/marvel');
-    expect(u[0].id).toBe('shell');
-    expect(u[0].path).toBe('/universe');
-    expect(u[0].stops.map((s) => s.id)).toEqual(tours.universe.map((s) => s.id).filter((id) => SHELL_STOPS.recruiter.includes(id)));
-    expect(u[0].stops.every((s) => s.optional)).toBe(true);
-    expect(u.slice(1).map((c) => c.id)).toEqual(['home', 'projects', 'end']);
+    expect(u[0]).toMatchObject({ id: 'shell', path: '/universe' });
+    expect(u[0].stops.map((s) => s.id)).toEqual(['panel', 'view', 'search', 'menu', 'guide', 'resume']);
+    expect(u.slice(1).map((c) => c.id)).toEqual(['home', 'projects', 'hood', 'end']);
     const c = planFor(tours, 'recruiter', 'classic', '/resume');
     expect(c[0].path).toBe('/resume');
-    expect(c[0].stops.map((s) => s.id)).toContain('pages');
-    expect(planFor(tours, 'player', 'classic', '/c-137')[0].path).toBe('/home');
+    expect(c[0].stops.map((s) => s.id)).toEqual(['pages', 'view', 'search', 'menu', 'guide', 'resume']);
+    expect(planFor(tours, 'player', 'classic', '/c-137')[0]).toMatchObject({ path: '/home' });
+    expect(planFor(tours, 'player', 'universe', '/universe')[0].stops.map((s) => s.id)).toEqual(['view', 'search', 'menu', 'resume']);
   });
 
-  it('never opens or closes on the shell’s own hello and goodbye', () => {
-    for (const a of ['recruiter', 'player']) expect(SHELL_STOPS[a]).not.toContain('hello'), expect(SHELL_STOPS[a]).not.toContain('done');
+  it('takes the shell’s stops the spec gives each audience', () => {
+    expect(SHELL_STOPS.player).toEqual(['view', 'search', 'menu', 'resume']);
+    expect(shellStopsFor('recruiter', 'universe')).toContain('panel');
+    expect(shellStopsFor('recruiter', 'classic')).toContain('pages');
+    expect(shellStopsFor('mixed', 'classic')).toEqual(shellStopsFor('recruiter', 'classic'));
+    for (const a of ['recruiter', 'player', 'mixed']) for (const v of ['universe', 'classic']) expect(shellStopsFor(a, v)).not.toContain('hello'), expect(shellStopsFor(a, v)).not.toContain('done');
   });
 
-  it('folds two tours together by chapter number, the shell counting as one', () => {
+  it('keeps an end card on the page before it', () => {
+    const plan = planFor(fixture(), 'recruiter', 'classic', '/home');
+    expect(plan.at(-1)).toMatchObject({ id: 'end', path: '/universe' });
+  });
+
+  it('shows a heavy chapter’s phone version on a coarse pointer, and only there', () => {
     const tours = fixture();
-    const end = { id: 'end', title: 'That’s the tour', path: '/universe', stops: [{ id: 'both' }] };
-    const mixed = compose(tours, [['recruiter', 1, 3], ['player', 2, 3], 'end'], { end });
-    expect(mixed.map((c) => c.id)).toEqual(['home', 'projects', 'flying', 'worlds', 'end']);
+    expect(planFor(tours, 'recruiter', 'classic', '/home').find((c) => c.id === 'hood')).toMatchObject({ path: '/universe' });
+    const phone = planFor(tours, 'recruiter', 'classic', '/home', { coarse: true });
+    expect(phone.find((c) => c.id === 'hood')).toMatchObject({ path: '/changes', heavy: false });
+    expect(phone.find((c) => c.id === 'hood').stops.map((s) => s.id)).toEqual(['log']);
+    expect(phone.at(-1).path).toBe('/changes');
+  });
+
+  it('folds two tours together by chapter id, the shared end card as it is', () => {
+    const tours = fixture();
+    const end = { id: 'end', title: 'That’s the tour', path: null, stops: [{ id: 'both' }] };
+    const mixed = compose(tours, [['recruiter', 'home', 'hood'], ['player', 'galaxy', 'colours'], end]);
+    expect(mixed.map((c) => c.id)).toEqual(['home', 'projects', 'hood', 'galaxy', 'worlds', 'colours', 'end']);
     expect(mixed.at(-1)).toBe(end);
     expect(new Set(mixed.map((c) => c.id)).size).toBe(mixed.length);
     tours.mixed = mixed;
-    expect(planFor(tours, 'mixed', 'universe', '/universe').map((c) => c.id)).toEqual(['shell', 'home', 'projects', 'flying', 'worlds', 'end']);
+    expect(planFor(tours, 'mixed', 'universe', '/universe').map((c) => c.id)).toEqual(['shell', ...mixed.map((c) => c.id)]);
   });
 
   it('says plainly when a recipe names something it hasn’t got', () => {
-    expect(() => compose(fixture(), ['end'])).toThrow(/end/);
-    expect(() => compose(fixture(), [['pirate', 1, 2]])).toThrow(/pirate/);
+    expect(() => compose(fixture(), [['pirate', 'a', 'b']])).toThrow(/pirate/);
+    expect(() => compose(fixture(), [['player', 'galaxy', 'nowhere']])).toThrow(/nowhere/);
+    expect(() => compose(fixture(), [['player', 'colours', 'galaxy']])).toThrow(/colours/);
   });
 
   it('gives no plan for a tour that isn’t there', () => {
     expect(planFor(fixture(), 'mixed', 'universe', '/universe')).toEqual([]);
   });
 
-  it('lays the chapters out as one run of stops, each knowing its chapter and page', () => {
-    const stops = flatten(planFor(fixture(), 'recruiter', 'classic', '/home'));
-    expect(stops.at(-1)).toMatchObject({ id: 'bye', chapter: 'end', path: '/home' });
-    const github = stops.find((s) => s.id === 'github');
-    expect(github).toMatchObject({ chapter: 'home', path: '/home', at: 'home-github' });
-    expect(github.chapterTitle).toBe('Home');
-    expect(new Set(stops.map((s) => s.key)).size).toBe(stops.length);
-  });
-
-  it('steps on and back within the run', () => {
-    const stops = [1, 2, 3];
-    expect(nextIndex(stops, 0, 1)).toBe(1);
-    expect(nextIndex(stops, 2, 1)).toBe(2);
-    expect(nextIndex(stops, 0, -1)).toBe(0);
-    expect(nextIndex(stops, 2, -1)).toBe(1);
-  });
-
   it('finds where a link, a chapter or a thing to do starts it', () => {
-    const stops = flatten(planFor(fixture(), 'recruiter', 'classic', '/home'));
-    const at = (id) => stops.findIndex((s) => s.id === id);
-    expect(stopIndexFor(stops, {})).toBe(0);
-    expect(stopIndexFor(stops, { chapter: 'projects' })).toBe(at('cartridges'));
-    expect(stopIndexFor(stops, { chapter: 'home', stop: 'gameboy' })).toBe(at('gameboy'));
-    expect(stopIndexFor(stops, { stop: 'gameboy' })).toBe(at('gameboy'));
-    expect(stopIndexFor(stops, { todo: 'gameboy-emulator' })).toBe(at('cartridges'));
-    expect(stopIndexFor(stops, { chapter: 'nowhere' })).toBe(-1);
-    expect(stopIndexFor(stops, { todo: 'nothing' })).toBe(-1);
-    expect(stopIndexFor(stops, { chapter: 'home', stop: 'cartridges' })).toBe(-1);
+    const plan = planFor(fixture(), 'recruiter', 'classic', '/home');
+    expect(startAt(plan, {})).toEqual({ c: 0 });
+    expect(startAt(plan, { chapter: 'projects' })).toEqual({ c: 2, stop: undefined });
+    expect(startAt(plan, { chapter: 'home', stop: 'gameboy' })).toEqual({ c: 1, stop: 'gameboy' });
+    expect(startAt(plan, { todo: 'gameboy-emulator' })).toEqual({ c: 2, stop: 'cartridges' });
+    expect(startAt(plan, { chapter: 'nowhere' })).toBeNull();
+    expect(startAt(plan, { todo: 'nothing' })).toBeNull();
   });
 });
 
-describe('when a stop is ready to show', () => {
-  const page = (o = {}) => ({ busy: () => false, rendered: () => true, hasTarget: () => true, ...o });
-
-  it('is ready when nothing covers the page, it’s drawn, and its target is there', () => {
-    expect(readyFor({ at: 'x' }, page())).toBe(true);
-    expect(readyFor({ at: 'x' }, page({ busy: () => true }))).toBe(false);
-    expect(readyFor({ at: 'x' }, page({ rendered: () => false }))).toBe(false);
-    expect(readyFor({ at: 'x' }, page({ hasTarget: () => false }))).toBe(false);
+describe('when a chapter’s page is ready', () => {
+  it('is clear with nothing over the page, or only the tour’s own card', () => {
+    expect(clearOf({})).toBe(true);
+    expect(clearOf({ dataset: { touring: '' }, modals: [true] })).toBe(true);
+    for (const k of ['covered', 'intro', 'menu']) expect(clearOf({ dataset: { [k]: '' } }), k).toBe(false);
+    expect(clearOf({ modals: [true, false] })).toBe(false);
+    expect(clearOf({ gate: true })).toBe(false);
   });
 
-  it('doesn’t look for a target a stop hasn’t got', () => {
-    const hasTarget = () => {
-      throw new Error('asked');
-    };
-    expect(readyFor({}, page({ hasTarget }))).toBe(true);
+  it('waits for the router to have the page, or the feed to have it under a neighbour’s address', () => {
+    const base = { clear: true, loading: false };
+    expect(chapterReady({ ...base, pathname: '/projects', path: '/projects' })).toBe(true);
+    expect(chapterReady({ ...base, pathname: '/home', path: '/projects', feedTo: '/home' })).toBe(false);
+    expect(chapterReady({ ...base, pathname: '/experience/aws', path: '/experience', feedTo: '/experience' })).toBe(true);
+    expect(chapterReady({ ...base, pathname: '/projects', path: '/projects', loading: true })).toBe(false);
+    expect(chapterReady({ ...base, pathname: '/projects', path: '/projects', clear: false })).toBe(false);
   });
 
-  it('waits, then shows the card in the middle after eight seconds; skips a shell stop not on this screen', () => {
+  it('drops the stops whose target isn’t on this screen, but keeps one told to wait', () => {
+    const stops = [{ id: 'hello' }, { id: 'search', at: 'search' }, { id: 'menu', at: 'menu' }, { id: 'late', at: 'cartridges', wait: true }];
+    expect(resolveChapter(stops, (at) => at === 'menu').map((s) => s.id)).toEqual(['hello', 'menu', 'late']);
+  });
+
+  it('keeps every stop of a world’s basics, in the middle where its target isn’t showing', () => {
+    const kept = resolveChapter([{ id: 'a', at: 'x' }, { id: 'b', at: 'y' }], (at) => at === 'y', true);
+    expect(kept.map((s) => s.at)).toEqual([undefined, 'y']);
+  });
+
+  it('gives up after eight seconds', () => {
     expect(WAIT_MS).toBe(8000);
-    const gone = page({ hasTarget: () => false });
-    expect(stepState({ at: 'x' }, gone, 100)).toBe('wait');
-    expect(stepState({ at: 'x' }, gone, WAIT_MS)).toBe('timeout');
-    expect(stepState({ at: 'x', optional: true }, gone, 100)).toBe('wait');
-    expect(stepState({ at: 'x', optional: true }, gone, 1500)).toBe('skip');
-    expect(stepState({ at: 'x', optional: true }, page({ busy: () => true, hasTarget: () => false }), 5000)).toBe('wait');
-    expect(stepState({ at: 'x' }, page(), 0)).toBe('ready');
   });
 
   it('resolves on the tick that passes, or times out, with no real clock', async () => {

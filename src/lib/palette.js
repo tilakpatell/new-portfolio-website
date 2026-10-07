@@ -2,9 +2,18 @@
 export const openPalette = () => window.dispatchEvent(new Event('tp:palette'));
 
 // Opens the guide (the ? button's panel) from anywhere: a page's own Controls
-// button, or on a tab ('todo': ⌘K's "Things to do"). (A button's click event
-// isn't a tab: openGuide is handed straight to onClick.)
-export const openGuide = (tab) => window.dispatchEvent(new CustomEvent('tp:guide', { detail: typeof tab === 'string' ? { tab } : undefined }));
+// button, or on a tab ({ tab: 'checklist' }: ⌘K's "Open the checklist"). A
+// button's click isn't a tab: openGuide is handed straight to onClick.
+export const guideDetail = (opts) => (opts && Object.getPrototypeOf(opts) === Object.prototype && typeof opts.tab === 'string' ? { tab: opts.tab } : null);
+export const openGuide = (opts) => {
+  const detail = guideDetail(opts);
+  window.dispatchEvent(new CustomEvent('tp:guide', detail ? { detail } : undefined));
+};
+
+// ⌘K on a Mac, Ctrl K elsewhere (either works anywhere): the palette's key,
+// for its host (App.jsx) and the tour, which lets it through where a stop
+// asks you to try it.
+export const isPaletteKey = (e) => Boolean(e && (e.metaKey || e.ctrlKey) && !e.altKey && typeof e.key === 'string' && e.key.toLowerCase() === 'k');
 
 export const shortcutLabel = () =>
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? '⌘K' : 'Ctrl K';
