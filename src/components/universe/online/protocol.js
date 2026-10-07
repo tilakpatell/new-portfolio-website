@@ -251,7 +251,9 @@ export function hunterHitCounts(peer, at, now) {
 export const FOOT_MS = 100; // how often it goes out, while they're down
 export const WALKERS = ['rick', 'morty', 'walt', 'jesse', 'chewie', 'han', 'luke', 'artoo', 'leia', 'ahsoka', 'bobafett']; // footScene.js's PARTY, and galaxy/heroes.js's heroes
 const r5 = (v) => Math.round((v || 0) * 1e5) / 1e5;
-const writeWalker = (w) => (w ? [w.who, ...w.n.map(r5), ...w.f.map(r5), r5(w.h), r5(w.speed), r5(w.side), Math.round((w.aim || 0) * 100) / 100] : null);
+// (then what the body's doing, which an older reader stops before: the
+// emote [id, seconds on] or 0, the flinch and the fall, 0…1: footLife.js's)
+const writeWalker = (w) => (w ? [w.who, ...w.n.map(r5), ...w.f.map(r5), r5(w.h), r5(w.speed), r5(w.side), Math.round((w.aim || 0) * 100) / 100, Array.isArray(w.e) ? [String(w.e[0]).slice(0, 16), r2(w.e[1])] : 0, r2(w.hurt || 0), r2(w.down || 0)] : null);
 
 // what goes out while down: { planet, kind, ship: { n, f }, lead, mate }
 // (each walker { who, n, f, h, speed, side, aim }), or null once back in
@@ -287,6 +289,10 @@ const readWalker = (data) => {
     speed: num(data[8], -FOOT.run * 1.5, FOOT.run * 1.5) ?? 0,
     side: num(data[9], -FOOT.side * 1.5, FOOT.side * 1.5) ?? 0,
     aim: num(data[10], 0, 1) ?? 0,
+    // (an older client's packet stops at the aim: none of these)
+    e: Array.isArray(data[11]) && typeof data[11][0] === 'string' && num(data[11][1], 0, 600) != null ? [data[11][0], num(data[11][1], 0, 600)] : null,
+    hurt: num(data[12], 0, 1) ?? 0,
+    down: num(data[13], 0, 1) ?? 0,
   };
 };
 
