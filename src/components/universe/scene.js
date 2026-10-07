@@ -97,7 +97,7 @@ import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePa
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
-import { BELT, ORDER, POSITIONS, REACH, RIM, RING, SUN } from './layout';
+import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SUN } from './layout';
 import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
@@ -691,8 +691,8 @@ export async function create(canvas, ctx) {
 
   // each planet lit from its own star (lighting.js's sunFor, in the map's
   // axes; turned with the map into the world's each frame: lights())
-  const sunInMap = Object.fromEntries(ORDER.map((id) => [id, sunFor(id)]));
-  const planets = ORDER.map((id) => {
+  const sunInMap = Object.fromEntries(BODIES.map((id) => [id, sunFor(id)]));
+  const planets = BODIES.map((id) => {
     const p = buildPlanet(byId(id), T, { sun: new THREE.Vector3(...sunInMap[id]), tier, key: keyW });
     p.group.position.set(...POSITIONS[id]);
     map.add(p.group);
