@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createBattle } from '../universe/battle';
 import { createDirector } from '../universe/battleDirector';
 import { TYPES } from '../universe/battleObjectives';
 import { PLAN } from '../universe/battlePlan';
@@ -173,4 +174,78 @@ describe('planOf', () => {
     }
     expect(lost).toBeGreaterThan(10);
   });
+});
+
+describe('every objective a plan lays out', () => {
+  // a director that has the battle at stage `at.si`, open, nothing down yet
+  const opened = (plan, at) => ({
+    state: () => ({
+      t: 0,
+      stage: at.si,
+      open: true,
+      opensIn: 0,
+      shield: false,
+      target: null,
+      stages: plan.stages.map((st, i) => ({ id: st.id, opensAt: st.opensAt, open: i === at.si, done: i < at.si })),
+      objectives: plan.stages.flatMap((st, i) => st.objectives.map((o) => ({ id: o.id, stage: i, kind: o.kind, type: o.type, hp: o.hp, hpMax: o.hp, down: false }))),
+      runners: null,
+      waves: [],
+      aces: [],
+      losses: [],
+      winner: null,
+      why: null,
+      endsAt: null,
+    }),
+  });
+  // (as battles.test.js has the flagships' subsystems: a fair share of the
+  // bolts from round its outer side that meet anything near it meet it)
+  const reached = (b, o) => {
+    const from = o.cap ? o.cap.pos : b.planet && o.kind === 'cannon' ? { x: 0, y: 0, z: 0 } : null;
+    const out = from ? { x: o.pos.x - from.x, y: o.pos.y - from.y, z: o.pos.z - from.z } : null;
+    let hit = 0;
+    let stopped = 0;
+    let seed = 11;
+    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let n = 0; n < 40; n++) {
+      let d;
+      do d = { x: rand() * 2 - 1, y: rand() * 2 - 1, z: rand() * 2 - 1 };
+      while (Math.hypot(d.x, d.y, d.z) > 1 || (out && d.x * out.x + d.y * out.y + d.z * out.z <= 0));
+      const l = Math.hypot(d.x, d.y, d.z);
+      let p = { x: o.pos.x + (d.x / l) * 40, y: o.pos.y + (d.y / l) * 40, z: o.pos.z + (d.z / l) * 40 };
+      let h = null;
+      for (let f = 0; f < 30 && !h; f++) {
+        const q = { x: p.x - (d.x / l) * 2, y: p.y - (d.y / l) * 2, z: p.z - (d.z / l) * 2 };
+        h = b.hit(p, q, 0);
+        p = q;
+      }
+      if (h?.sub === o.key) hit += 1;
+      else if (h) stopped += 1;
+    }
+    return hit / Math.max(1, hit + stopped);
+  };
+  it('can be shot from outside, and a zone flown into: none buried in a hull or the planet', () => {
+    const seen = new Set();
+    let n = 0;
+    for (const { plan, laid, war, kind, att } of everyBattle(4)) {
+      const objectives = plan.stages.flatMap((st, si) => st.objectives.map((o) => ({ o, si })));
+      for (const { o, si } of objectives) {
+        if (o.on.piece) continue;
+        const key = `${o.kind}:${o.on.sub ?? ''}:${JSON.stringify(o.on.at ?? o.on.field ?? o.on.planet ?? o.on.turret)}:${laid.war.sides[plan.defender].capitals[o.on.ship === undefined || o.on.ship === 'objective' ? 0 : o.on.ship]?.kind}:${laid.objectivesOn}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const at = { si };
+        const b = createBattle({ ...laid, perSide: 0, plan, director: opened(plan, at) });
+        b.setYou(plan.attacker);
+        b.update(0.05, null);
+        const it = b.objectives.find((x) => x.key === o.id);
+        expect(it, `${war} ${kind} ${att} ${o.id}`).toBeTruthy();
+        if (it.zone) {
+          for (const c of b.capitals) for (const sp of c.spheres) expect(Math.hypot(it.pos.x - sp.c.x, it.pos.y - sp.c.y, it.pos.z - sp.c.z), `${war} ${kind} ${o.id} in ${c.kind}`).toBeGreaterThan(sp.r);
+        } else expect(reached(b, it), `${war} ${kind} ${att} ${o.id} (${o.kind})`).toBeGreaterThan(0.25);
+        for (const a of laid.avoid) expect(Math.hypot(it.pos.x - a.c.x, it.pos.y - a.c.y, it.pos.z - a.c.z), `${war} ${kind} ${o.id} in the planet`).toBeGreaterThan(it.kind === 'cannon' ? laid.planet.r : a.r);
+        n += 1;
+      }
+    }
+    expect(n).toBeGreaterThan(20);
+  }, 20000);
 });

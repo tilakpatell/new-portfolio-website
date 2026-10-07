@@ -211,7 +211,7 @@ describe('the battle’s modules', () => {
   // stays under the health check's warning line, scripts/health/big-files.mjs)
   it('each stay under 800 lines', () => {
     // (and the galaxy's shared battle beside them: its director, its plan, its stages in the sim)
-    for (const file of ['battle.js', 'battleKit.js', 'battleAi.js', 'battleCapitals.js', 'battleRunners.js', 'battleDirector.js', 'battlePlan.js', 'battleStages.js']) {
+    for (const file of ['battle.js', 'battleKit.js', 'battleAi.js', 'battleCapitals.js', 'battleRunners.js', 'battleDirector.js', 'battlePlan.js', 'battleStages.js', 'battleObjectives.js', 'battleProps.js', 'battleScene.js', 'battleFx.js']) {
       const lines = readFileSync(new URL(`./${file}`, import.meta.url), 'utf8').split('\n').length;
       expect(lines, file).toBeLessThan(800);
     }
