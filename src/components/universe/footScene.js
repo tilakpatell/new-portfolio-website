@@ -66,7 +66,7 @@ import { TRENCH_MODEL, trenchOf } from './deep';
 import { POSITIONS } from './layout';
 import { byId } from './universes';
 import { landingOf } from './landings/landings';
-import { biomeAt, fromLatLon, latLonOf, sampleMap, towardLand, uvOf } from './landings/biomes';
+import { biomeAt, fromLatLon, latLonOf, readableMap, sampleMap, towardLand, uvOf } from './landings/biomes';
 import { styleOf } from './landings/ground';
 import { createSky } from './landings/sky';
 import { furnish, furnished } from './landings/furnish';
@@ -1671,12 +1671,18 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   };
   const turned = (m3, v) => arr(new V(...v).applyMatrix3(m3));
   // the colour of a planet's own map at a uv ([r, g, b], or null): from the
-  // map it's drawn with, else (a compressed one, which can't be read back)
-  // its -sm file, fetched the first time and read from the next landing on
+  // map it was built with (planetMaps.js's far file, a webp at every level),
+  // kept here before nearMaps.js can swap its near set in (on ultra the -xl
+  // KTX2, which can't be read back), so a landing reads the same file
+  // whether or not the near set has arrived (createFoot comes after the
+  // planets are built and before the first near.update: scene.js); else
+  // the map it's drawn with; else its -sm file, fetched the first time and
+  // read from the next landing on
+  const farMap = Object.fromEntries(Object.entries(planetOf ?? {}).map(([id, p]) => [id, readableMap(p.body?.material?.map)]));
   const spare = {};
   const lookOf = (planet, id) => {
-    const tex = planet.body?.material?.map;
-    if (tex?.image && !tex.isCompressedTexture) {
+    for (const tex of [farMap[id], readableMap(planet.body?.material?.map)]) {
+      if (!tex) continue;
       const look = (uv) => sampleMap(tex.image, uv, { flip: tex.flipY === false });
       if (look([0.5, 0.5])) return look;
     }
@@ -1805,8 +1811,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       const look = lookOf(planet, id);
       if (look) {
         let nb = turned(toBody, (near ?? S.spot).n);
-        if (!near && !forced && own.biomes.some((b) => b.sea)) {
-          const moved = towardLand(nb, look, (rgb) => !rgb || biomeAt(own, rgb).sea, { track: turned(toBody, S.spot.f) });
+        // (isSea by colour and by place: Tortuga reads sea on the map's
+        // copy but is land; and the walk goes as far out as the planet's
+        // sea says, the Caribbean's being mostly open water)
+        const sea = own.biomes.find((b) => b.sea);
+        if (!near && !forced && sea) {
+          const moved = towardLand(nb, look, (rgb, p) => !rgb || biomeAt(own, rgb, latLonOf(p)).sea, { track: turned(toBody, S.spot.f), steps: sea.reach });
           if (moved !== nb) {
             nb = moved;
             const mn = turned(fromBody, moved);
