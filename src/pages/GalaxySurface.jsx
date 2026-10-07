@@ -25,7 +25,7 @@ import { runtime } from '../runtime';
 import ChaseHud from '../components/galaxy/surface/ChaseHud';
 import AssaultHud from '../components/galaxy/surface/AssaultHud';
 import HeroPanel from '../components/galaxy/surface/HeroPanel';
-import { HERO_KEY, heroById, heroSpec, readHero, writeHero } from '../components/galaxy/heroes';
+import { HERO_KEY, heroById, heroSpec, loadoutLine, readHero, writeHero } from '../components/galaxy/heroes';
 import { missionOf } from '../components/galaxy/surface/missions';
 import { sideFor, warSideOf } from '../components/galaxy/surface/missions/assault';
 import { SIDE_KEY, current as currentOath, readAllegiance, swear } from '../components/galaxy/allegiance';
@@ -102,6 +102,11 @@ export default function GalaxySurface() {
   // who you play as down here (heroes.js), kept across worlds
   const [hero, setHero] = useState(() => readHero(local.get(HERO_KEY), parseShip(local.get(SHIP_KEY)) ?? 'xwing'));
   const [picking, setPicking] = useState(false);
+  // (what's on in the world: the scene says so as a pick goes on, its
+  // 'hero' event; a pick whose figure wouldn't load goes back to this)
+  const heroNow = useRef(hero);
+  heroNow.current = hero;
+  const worn = useRef(hero);
   const pickHero = (next) => {
     setHero(next);
     local.set(HERO_KEY, writeHero(next));
@@ -426,6 +431,18 @@ export default function GalaxySurface() {
           setToast((t) => ({ title: 'Thrown off', text: 'Back on the bike in a moment. The trees don’t move.', n: (t?.n ?? 0) + 1 }));
           later('toast', 2500, () => setToast(null));
         }
+      } else if (e.type === 'hero') {
+        // a pick on in the world, or one that wouldn't load (back to what was on)
+        const now = heroNow.current;
+        if (e.ok && writeHero(now) === writeHero(worn.current)) return; // (what was on, back on)
+        if (e.ok) worn.current = now;
+        else {
+          setHero(worn.current);
+          local.set(HERO_KEY, writeHero(worn.current));
+        }
+        const name = (h) => heroById(h.id)?.name ?? '';
+        setToast((t) => (e.ok ? { title: name(now), text: loadoutLine(now), kind: 'equipped', n: (t?.n ?? 0) + 1 } : { title: name(now), text: `Didn’t load. Still ${name(worn.current)}: try again in a moment.`, kind: 'failed', n: (t?.n ?? 0) + 1 }));
+        later('toast', 3200, () => setToast(null));
       }
     },
     [site, id, unlock, mission, missionKey, flyOut, goUp, navigate, pay, payOnce, warCarry],
@@ -466,7 +483,7 @@ export default function GalaxySurface() {
       <h1 className="sr-only">
         {sys.name}: {site.place}
       </h1>
-      <SurfaceView key={`${mission?.id ?? 'explore'}:${hero.id}:${hero.color}:${hero.hilt}:${hero.stance}:${hero.gun}:${(hero.mods ?? []).join()}:${(hero.perks ?? []).join()}`} system={id} mission={mission?.id ?? null} ship={ship} hero={hero} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} effects={effects} />
+      <SurfaceView system={id} mission={mission?.id ?? null} ship={ship} hero={hero} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} effects={effects} />
 
       {/* where you are, and how much of it you've found */}
       <div className="surface-where">
@@ -635,7 +652,7 @@ export default function GalaxySurface() {
       )}
       <EarnNote note={earned} />
       {toast && (
-        <div key={`toast-${toast.n}`} className="surface-toast" data-done={toast.done ? '' : undefined} role="status">
+        <div key={`toast-${toast.n}`} className="surface-toast" data-done={toast.done ? '' : undefined} data-kind={toast.kind} role="status">
           <p className="surface-toast-title">{toast.title}</p>
           <p className="surface-toast-text">{toast.text}</p>
         </div>
@@ -653,7 +670,10 @@ export default function GalaxySurface() {
         <button type="button" className="surface-help-btn" onClick={openGuide} aria-keyshortcuts="H">
           Controls
         </button>
-        <button type="button" className="surface-help-btn" onClick={() => setPicking((p) => !p)} aria-expanded={picking} title="Who you play as, and your lightsaber">
+        <button type="button" className="surface-help-btn" onClick={() => setPicking((p) => !p)} aria-expanded={picking} aria-haspopup="dialog" aria-label={`Loadout: ${heroById(hero.id)?.name ?? heroSpec(hero).name}`} title="Who you play as, and what's in your hand">
+          <span className="surface-help-k" aria-hidden="true">
+            Loadout
+          </span>
           {heroSpec(hero).name}
         </button>
         <button type="button" className="surface-help-btn" onClick={takeOff}>
