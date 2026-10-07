@@ -97,3 +97,5 @@ A few more models are other people's, from Sketchfab under Creative Commons attr
 ## Tests
 
 Tests: `npm test` runs the games' rules (Vitest); they run before every deploy.
+
+The AI and the models (the gen3d and voices pipelines, their judges, the shipped models and voice lines, the desktop jobs, the NPC brains, the autopilot) have a run of their own, `npm run test:ai`, with fake engines behind the pipelines' own seams; CI runs it beside the other checks. `scripts/ai-e2e/README.md` has every tier, its command and how to add a case.
