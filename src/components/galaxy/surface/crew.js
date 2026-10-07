@@ -20,15 +20,20 @@
 //   all stand on); on Jabba they do nothing.
 
 import * as THREE from 'three';
-import { loadPartyFigure } from '../../universe/footScene';
+import { loadPartyFigure, loadSharedFigure } from '../../universe/footScene';
 import { METRE } from '../../universe/foot';
 import { breathe } from '../../../lib/three/gait';
+import { NO_CALLS, seedOf } from '../../../lib/three/figureCalls';
+import { EVERYONE } from '../../rickmorty/wardrobe/looks';
 import { CREW, faceOf, fileOf } from './crewList';
 import { cloneModel, loadGlb } from './placer';
-import { NO_CALLS, seedOf } from '../../rickmorty/portal/meshyCast';
 
 // (the list itself is crewList.js, plain data a page can read)
 export { CREW, fileOf };
+
+// (the wardrobe's people come dressed as kept, each their own figure;
+// anyone else is a copy of their file's one: a battle's troopers share theirs)
+const DRESSED = new Set(EVERYONE);
 
 const UP = new THREE.Vector3(0, 1, 0);
 const _q = new THREE.Quaternion();
@@ -58,7 +63,9 @@ export async function crewFigure(kind, i = 0) {
       dispose() {},
     };
   }
-  const fig = await loadPartyFigure({ id: kind, name: kind, tall: c.tall, src: { url: fileOf(c) } }, null).catch(() => null);
+  const fig = DRESSED.has(kind)
+    ? await loadPartyFigure({ id: kind, name: kind, tall: c.tall, src: { url: fileOf(c) } }, null).catch(() => null)
+    : await loadSharedFigure(fileOf(c), c.tall, { seed }).catch(() => null);
   if (!fig) return null;
   const model = new THREE.Group();
   model.scale.setScalar(1 / METRE);

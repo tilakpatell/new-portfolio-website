@@ -23,10 +23,14 @@
 //   mixer, actions ({ name: AnimationAction }), loco (locomotion.js's)
 //   locomote(m): the motion for locomotion (its update's m); a caller that
 //     knows only `move` gives { move }
+//   add(name, clip) → bool: a clip the caller already has, the figure's
+//     own from now on (played and based on as `clips`' are, never fetched);
+//     false, and nothing changed, when it has one by that name already
 //   base(name | null, { fade }) → Promise<'done' | 'cut'>: a looping base
 //     state in place of locomotion (null: back to it). Into a group's state
 //     ('sit.idle', 'sit.talk') through its `.enter` clip when it has one,
-//     out through its `.exit`; resolves once it's there, cut by another ask
+//     out through its `.exit`; resolves once it's there (its clips come and
+//     it faded all the way in), cut by another ask
 //   play(name, { layer = 'full' | 'upper' | 'lower', loop, hold, fade, speed,
 //     at }) → Promise<'done' | 'cut'>: a clip on a layer, each layer one
 //     slot. The clip already in its slot restarts in place (its weight
@@ -155,13 +159,15 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
         name,
         forFigure(name, { hipsY, up, key, ahead }).then(
           (c) => {
+            // (one added by hand while it came stays: the figure's own)
+            if (got.has(name)) return got.get(name);
             if (c) got.set(name, c);
             else loading.delete(name);
             return c;
           },
           () => {
             loading.delete(name);
-            return null;
+            return got.get(name) ?? null;
           },
         ),
       );
@@ -292,7 +298,8 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
         }
       }
     }
-    if (!st.path.length && now.w >= 1 && bs.length === 1) settle(st.baseWait, 'done');
+    // (there once it's the one asked for: not while its clips are still coming)
+    if (!st.path.length && now.w >= 1 && bs.length === 1 && now.id === st.want) settle(st.baseWait, 'done');
   }
 
   // ── the slots ──
@@ -497,7 +504,8 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
 
   // ── the look, after the layers ──
   function stepLook(step, frame) {
-    if (!head) return;
+    // (nothing to look at and nothing left of the last look: no turn, so no sums)
+    if (!head || (!lk.on && Math.abs(lk.y) + Math.abs(lk.p) + Math.abs(lk.c) < 1e-6)) return;
     model.getWorldQuaternion(_mq);
     const forward = (frame?.forward ? _f.copy(frame.forward) : _f.set(0, 0, 1).applyQuaternion(_mq)).normalize();
     const upw = (frame?.up ? _u.copy(frame.up) : _u.set(0, 1, 0).applyQuaternion(_mq)).normalize();
@@ -540,6 +548,11 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
     loco,
     locomote(m) {
       st.motion = m ?? {};
+    },
+    add(name, clip) {
+      if (st.disposed || typeof name !== 'string' || !Array.isArray(clip?.tracks) || got.has(name)) return false;
+      got.set(name, clip);
+      return true;
     },
     base(name = null, opts = {}) {
       if (st.queue?.layers.has('base')) cutQueue();
