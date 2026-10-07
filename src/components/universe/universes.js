@@ -32,6 +32,9 @@
 // if they differ. The Star Wars gate keeps its own size (GATE): it's a
 // gate, not a world, and the galaxy behind it is sized to it.
 const STATION = 7 * 3;
+// and scale.js's SPREAD, the same way: how much further apart the places are
+// than they were (layout.js and deep.js space them by it)
+export const SPREAD = 4;
 const PLANET = 28 * 3;
 const GATE = 28;
 
@@ -111,12 +114,16 @@ const FANDOMS = [
     // a universe of its own: not a planet but the way into one, the galaxy
     // itself in miniature behind a hyperspace gate (galaxy/gateway.js); fly
     // into the gate, or pick it and go, and you jump to lightspeed into the
-    // whole galaxy (galaxy/), the Death Star a page of its own inside it
+    // whole galaxy (galaxy/), the Death Star a page of its own inside it,
+    // and aboard it (deathstar/inside) another, walked room by room
     world: 'A galaxy far, far away',
     place: 'a galaxy far, far away',
     go: 'Jump to', // (not somewhere to land on)
     to: '/galaxy',
-    pages: [{ to: '/deathstar', world: 'Death Star' }],
+    pages: [
+      { to: '/deathstar', world: 'Death Star' },
+      { to: '/deathstar/inside', world: 'Aboard the Death Star' },
+    ],
     portal: true, // (flown into, it's through, not a crash: universe/scene.js)
     swatch: '#ffe81f',
     accent: '#ffe81f',
@@ -458,7 +465,7 @@ const BY_ID = new Map([...UNIVERSES, ...MOONS].map((u) => [u.id, u]));
 
 export const byId = (id) => BY_ID.get(id);
 
-// The universe a page belongs to: '/galaxy' and '/deathstar' → starwars, '/universe/x' → none.
+// The universe a page belongs to: '/galaxy', '/deathstar' and '/deathstar/inside' → starwars, '/universe/x' → none.
 export const byPath = (pathname) => UNIVERSES.find((u) => u.to === pathname || u.pages?.some((p) => p.to === pathname));
 
 // WCAG contrast ratio between two '#rrggbb' colours.

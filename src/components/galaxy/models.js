@@ -68,7 +68,7 @@ export const MODELS = {
   cloudcar: { url: '/models/galaxy/cloudcar.glb', nose: -Math.PI / 2 },
   ig2000: { url: '/models/galaxy/ig2000.glb', nose: 0 },
   interdictor: { url: '/models/galaxy/interdictor.glb', nose: 0 },
-  deathstar2: { url: '/models/galaxy/deathstar2.glb', nose: 0 },
+  deathstar2: { url: '/models/galaxy/deathstar2.glb', nose: 0 }, // (N8's since, scripts/deathstar-hd.mjs: dish to +z)
   // and the ones made with Meshy from Wookieepedia's picture of each
   // (scripts/meshy-galaxy-library.mjs), every one come nose to -x: the
   // Hound's Tooth, the Punishing One, the Hammerhead and the Gauntlet,
@@ -115,10 +115,21 @@ export const HQ = {
   destroyer: { url: '/models/galaxy/hq/destroyer.glb', nose: 0 },
   nebulon: { url: '/models/galaxy/hq/nebulon.glb', nose: 0 },
 };
+// And the Death Stars' 4096-pixel maps (scripts/deathstar-hd.mjs), loaded on
+// the same desktops: the same hulls as the 2048 cuts, so each keeps its own
+// far-off copy (and the first Death Star none: the world draws its sphere).
+export const HD_MAPS = {
+  deathstar: '/models/universe/death-star.hq.glb',
+  deathstar2: '/models/galaxy/deathstar2.hq.glb',
+};
 const HQ_DETAILS = new Set(['high', 'ultra']);
 export const withHq = (models, detail) =>
   HQ_DETAILS.has(detail)
-    ? { ...models, ...Object.fromEntries(Object.entries(HQ).filter(([k]) => models[k]).map(([k, d]) => [k, { url: d.url, nose: d.nose, hq: true }])) }
+    ? {
+        ...models,
+        ...Object.fromEntries(Object.entries(HQ).filter(([k]) => models[k]).map(([k, d]) => [k, { url: d.url, nose: d.nose, hq: true }])),
+        ...Object.fromEntries(Object.entries(HD_MAPS).filter(([k]) => models[k]).map(([k, url]) => [k, { ...models[k], url }])),
+      }
     : models;
 Object.assign(MODELS, withHq(MODELS, device().detail));
 
