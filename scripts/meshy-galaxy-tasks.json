@@ -183,11 +183,13 @@
   },
   "aqualish": {
     "image": "01a114d5-1b9c-70b3-95c9-7c9b26cb5ff4",
-    "model": "01a114da-a981-772b-a8ed-67ef16dabc87"
+    "model": "01a114da-a981-772b-a8ed-67ef16dabc87",
+    "rig": "01a114e6-2679-75d3-adec-9f0837612280"
   },
   "wuher": {
     "image": "01a114d5-b91e-771e-b33b-aa6d1f0fa3f8",
-    "model": "01a114da-ac83-77ba-8202-e990a20c1a01"
+    "model": "01a114da-ac83-77ba-8202-e990a20c1a01",
+    "rig": "01a114e6-5fc4-7691-9ad0-e42f124dce1c"
   },
   "mustafarian": {
     "image": "01a114d6-15d0-74be-aeb7-22eac5333df2",
