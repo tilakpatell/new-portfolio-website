@@ -52,10 +52,18 @@
 // when you loop. Shoot them down, or outrun them: far enough away for long
 // enough and they give up and peel away.
 //
+// The crews' ship powers (shipPowers.js) reach them here: a ship handed to
+// update as a `ghost` (Han's corkscrew, Rick mid-portal) isn't hit, the
+// lasers flying on past; one with a `magnet` ({ x, y, z }: the RV's) drags
+// the ones it holds (pull) toward it, their guns jammed; breakOff sends the
+// ones on a run or your tail back out (Han's corkscrew, overshot); swallow
+// puts out the lasers at a portal's mouth.
+//
 // createHunt({ rand, factions, kinds, solids, lasers, nerve }) → { pack(faction, ship, opts) → hunters,
 //   update(dt, ship) → events, hit(from, to, damage) → hit or null,
-//   damage(id, n) → hit or null, clear(), live, lasers, targets, count,
-//   active, packs, wire() }
+//   damage(id, n) → hit or null, pull(at, r, speed, secs, daze) → how many,
+//   breakOff() → how many, swallow(at, r) → how many, clear(), live,
+//   lasers, targets, count, active, packs, wire() }
 // A hunter is { id, kind, type, pack, pos, vel, prev, hp, mode, bank, grow,
 // alive, view (the drawing's to use) }; pos, vel and prev are { x, y, z }.
 // `solids` is ship.js's ([{ at: [x, y, z], r }]) or a function giving them.
@@ -526,6 +534,57 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
     }
   };
 
+  // never on top of another of them, whatever it wanted
+  const keepApart = (h) => {
+    const { pos, type } = h;
+    for (const o of live) {
+      if (o === h) continue;
+      const rx = pos.x - o.pos.x;
+      const ry = pos.y - o.pos.y;
+      const rz = pos.z - o.pos.z;
+      const d2 = rx * rx + ry * ry + rz * rz;
+      const r = (type.size + o.type.size) * 0.75;
+      if (d2 >= r * r) continue;
+      const d = Math.sqrt(d2);
+      const k = d > 1e-4 ? (r - d) / d : 0;
+      pos.x += rx * k;
+      pos.y += d > 1e-4 ? ry * k : h.id > o.id ? r : -r;
+      pos.z += rz * k;
+    }
+  };
+
+  // one held in a magnet, this frame: dragged toward it (no faster than the
+  // magnet pulls, never past it), tumbling; not flown, so not steered
+  const drag = (h, at, dt) => {
+    const { pos, vel } = h;
+    const dx = at.x - pos.x;
+    const dy = at.y - pos.y;
+    const dz = at.z - pos.z;
+    const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const k = d < 1e-6 ? 0 : Math.min(1, (h.pullSpeed * dt) / d);
+    if (dt > 0) {
+      vel.x = (dx * k) / dt;
+      vel.y = (dy * k) / dt;
+      vel.z = (dz * k) / dt;
+    }
+    pos.x += dx * k;
+    pos.y += dy * k;
+    pos.z += dz * k;
+    keepApart(h);
+    clearOf(pos, cover, h.type.size * 0.5);
+    h.bank += dt * 3;
+    h.grow = Math.min(1, h.grow + dt * 2.2);
+  };
+  // the magnet lets go: a moment dazed, then out to swing round again
+  const letGo = (h) => {
+    h.held = 0;
+    h.daze = h.dazeFor;
+    h.cool = Math.max(h.cool, h.dazeFor);
+    release(h);
+    h.side = -h.side;
+    restation(h, yourNose);
+  };
+
   const fire = (h, target, targetVel, toPrey) => {
     const { pos, vel, type } = h;
     const bomb = type.trait === 'bomber';
@@ -603,6 +662,8 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
           cool: between(rand, 1.2, 2.4), // a moment before the first shot
           bank: 0,
           hidden: 0, // seconds it's gone from sight (a flicker, hit)
+          held: 0, // seconds it's still held in a magnet (pull), dragged and its guns jammed
+          daze: 0, // seconds, once let go, before it fires again
           lit: false, // has pinned you with its spotlight, this run
           bombed: false, // has dropped its bomb, this run
           grow: f.portal ? 0 : 1,
@@ -710,6 +771,15 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
         h.prev.x = pos.x;
         h.prev.y = pos.y;
         h.prev.z = pos.z;
+        // held in a magnet (and let go of when you stop flying, or the pack gives up)
+        if (h.held > 0 && (!ship || pack.gone)) h.held = 0;
+        if (h.held > 0) {
+          drag(h, ship.magnet ?? h.heldAt, dt);
+          h.held -= dt;
+          if (h.held <= 0) letGo(h);
+          continue;
+        }
+        if (h.daze > 0) h.daze = Math.max(0, h.daze - dt);
         const gone = pack.gone;
         const onPrey = !gone && pack.prey && !pack.angry;
         // what it knows of you this frame: the truth while it sees you (or
@@ -892,21 +962,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
         pos.x += vel.x * dt;
         pos.y += vel.y * dt;
         pos.z += vel.z * dt;
-        // never on top of another of them, whatever it wanted
-        for (const o of live) {
-          if (o === h) continue;
-          const rx = pos.x - o.pos.x;
-          const ry = pos.y - o.pos.y;
-          const rz = pos.z - o.pos.z;
-          const d2 = rx * rx + ry * ry + rz * rz;
-          const r = (type.size + o.type.size) * 0.75;
-          if (d2 >= r * r) continue;
-          const d = Math.sqrt(d2);
-          const k = d > 1e-4 ? (r - d) / d : 0;
-          pos.x += rx * k;
-          pos.y += d > 1e-4 ? ry * k : (h.id > o.id ? r : -r);
-          pos.z += rz * k;
-        }
+        keepApart(h);
         // and never inside anything solid
         clearOf(pos, cover, type.size * 0.5);
         // banking into the turn
@@ -924,7 +980,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
         // firing: on a run (or on your tail, or at their prey), with the
         // target in its sights, in range and nothing solid in the way
         h.cool -= dt;
-        const quiet = (trait === 'quietUntilFired' && !pack.provoked) || h.hidden > 0;
+        const quiet = (trait === 'quietUntilFired' && !pack.provoked) || h.hidden > 0 || h.daze > 0;
         if (c && h.cool <= 0 && !quiet && (onPrey || h.mode !== 'set')) {
           // (from where it is now, having moved: the same at any frame rate)
           const ax = c.x - pos.x;
@@ -962,7 +1018,8 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
           m.on = false;
           continue;
         }
-        if (ship && m.at === 'you' && sweptHit(aim, m, youPrev, you, m.r ?? SHIP_R) !== null) {
+        // (a ghost isn't there to hit: the laser flies on past)
+        if (ship && !ship.ghost && m.at === 'you' && sweptHit(aim, m, youPrev, you, m.r ?? SHIP_R) !== null) {
           m.on = false;
           events.push({ type: 'laser', damage: m.damage ?? LASER.damage, from: { x: m.x, y: m.y, z: m.z }, bomb: m.bomb, by: m.by });
         }
@@ -999,6 +1056,63 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
       return wound(h, n);
     },
 
+    // the RV's magnet: every one still in the fight within `r` of `at` is
+    // held `secs`, dragged toward the magnet (the `magnet` on the ship update
+    // is handed, else `at`) at up to `speed`, its guns jammed and no threat;
+    // let go, it's dazed `daze` seconds more before it fires again. Returns
+    // how many it caught
+    pull(at, r, speed, secs, daze = 1) {
+      let n = 0;
+      for (const h of live) {
+        if (!h.alive || h.pack.gone || h.hidden > 0) continue;
+        const dx = h.pos.x - at.x;
+        const dy = h.pos.y - at.y;
+        const dz = h.pos.z - at.z;
+        if (dx * dx + dy * dy + dz * dz > r * r) continue;
+        release(h);
+        h.mode = 'set';
+        h.clock = 0;
+        h.held = secs;
+        h.daze = 0;
+        h.dazeFor = daze;
+        h.pullSpeed = speed;
+        h.heldAt = { x: at.x, y: at.y, z: at.z };
+        n += 1;
+      }
+      return n;
+    },
+
+    // Han's corkscrew: every one on a run at you or on your tail breaks off
+    // (it overshoots) to swing round again, holding its fire as it goes.
+    // Returns how many
+    breakOff() {
+      let n = 0;
+      for (const h of live) {
+        if (!h.alive || h.pack.gone || h.mode === 'set') continue;
+        release(h);
+        h.side = -h.side;
+        restation(h, yourNose);
+        h.cool = Math.max(h.cool, 0.6);
+        n += 1;
+      }
+      return n;
+    },
+
+    // a portal's mouth: the lasers within `r` of `at` go into it. Returns how many
+    swallow(at, r) {
+      let n = 0;
+      for (const m of lasers) {
+        if (!m.on) continue;
+        const dx = m.x - at.x;
+        const dy = m.y - at.y;
+        const dz = m.z - at.z;
+        if (dx * dx + dy * dy + dz * dz > r * r) continue;
+        m.on = false;
+        n += 1;
+      }
+      return n;
+    },
+
     // every pack gives up and flies off (what they were after is gone), each
     // one removed once it's well away from `ship` as update is given it
     leave() {
@@ -1030,7 +1144,8 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
       for (const h of live) {
         if (!h.alive || h.pack.gone || h.hidden > 0) continue;
         h.target.prey = Boolean(h.pack.prey && !h.pack.angry); // (after someone else, not you)
-        h.target.threat = h.mode !== 'set' && !h.target.prey ? 1 : 0;
+        h.target.held = h.held > 0;
+        h.target.threat = h.mode !== 'set' && !h.target.prey && !h.target.held ? 1 : 0;
         targets.push(h.target);
       }
       return targets;
@@ -1041,7 +1156,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
     },
     // for checking from a browser
     get packs() {
-      return packs.map((p) => ({ faction: p.faction, gone: Boolean(p.gone), prey: Boolean(p.prey), attacking: p.tokens.count('run'), nerve: p.nerve, alive: p.members.filter((h) => h.alive).map((h) => h.kind), modes: p.members.filter((h) => h.alive).map((h) => h.mode), roles: p.members.filter((h) => h.alive).map((h) => h.role), sees: p.members.filter((h) => h.alive).map((h) => h.seesYou) }));
+      return packs.map((p) => ({ faction: p.faction, gone: Boolean(p.gone), prey: Boolean(p.prey), attacking: p.tokens.count('run'), nerve: p.nerve, alive: p.members.filter((h) => h.alive).map((h) => h.kind), modes: p.members.filter((h) => h.alive).map((h) => h.mode), roles: p.members.filter((h) => h.alive).map((h) => h.role), sees: p.members.filter((h) => h.alive).map((h) => h.seesYou), held: p.members.filter((h) => h.alive).map((h) => h.held > 0) }));
     },
     // the ones still in the fight, for the other pilots to see (and help
     // with): [id, kind, x, y, z, vx, vy, vz, hits left] each (protocol.js's

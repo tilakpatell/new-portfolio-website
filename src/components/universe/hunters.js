@@ -24,7 +24,10 @@
 // createHunters(parent, { small, fleet, factions, kinds, solids, engines }) → { pack(faction, ship, { prey, size, ace, from, ahead, interdict, heat, first }) → points,
 //   update(dt, t, ship) → events,
 //   hit(from, to, damage) → hit or null, damage(id, n) → hit or null (a hit
-//   another pilot's shot made, told to you), clear(), dispose(), count,
+//   another pilot's shot made, told to you), pull(at, r, speed, secs, daze),
+//   breakOff() and swallow(at, r) (the crews' ship powers: hunterRules.js's,
+//   as they are; a ship handed to update may be a `ghost`, or carry a
+//   `magnet`), clear(), dispose(), count,
 //   active, wire() (the ones in the fight, for the other pilots to see),
 //   targets: the ones still after you (or their prey), for the guns to lock
 //   on to: [{ id, at, vel, size, kind, hp, hpMax, faction, threat }] (targeting.js;
@@ -170,6 +173,11 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
     hit: (from, to, damage = 1) => answer(hunt.hit(from, to, damage)),
     // the same for a hit told to you (another pilot's shot at one of yours)
     damage: (id, n = 1) => answer(hunt.damage(id, n)),
+    // the crews' ship powers (shipPowers.js): the RV's magnet, Han's
+    // corkscrew, a portal's mouth (each says how many it had)
+    pull: (at, r, speed, secs, daze) => hunt.pull(at, r, speed, secs, daze),
+    breakOff: () => hunt.breakOff(),
+    swallow: (at, r) => hunt.swallow(at, r),
 
     // everyone gone at once (you were shot down, or changed ship)
     clear() {
