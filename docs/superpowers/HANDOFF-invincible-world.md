@@ -243,12 +243,19 @@ Every band is in range, and Mark passes in spawn, streetnight and porch. He miss
 - Dev hook: `api.mission(id)` starts one, `api.feed(event)` gives it an event, `api.story()` reads what's kept. Shots `bank chase seismic maulers gdasiege` start their mission, drive it to the step they frame (`drive`), hold the clock for the shot, then drive it to the end (`finish`) and print `done in … s`.
 - Not here: the radio's timing (`chase`, `everace`, the photos start only through the hook), Eve's ghost in her race, Allen racing home (Task 10); the sounds and the docs' shots (Task 11). Known: the Flaxans' portal closes as the last of the second wave goes down, before episode 5's last step (fly through where it was); the bank model's own lettering reads GDA.
 
+### Task 10: the radio (2026-10-07)
+
+- `missions.js`: `newRadio(seed)` and `nextRadioCall(radio, dt, { mission, zone, eve, done })` (tested, 3 more cases): every 60–120 s (`RADIO.every`) with no mission on and him in the city, one side call, never the same twice running: a chase, a photo spot not yet taken (then any), or Eve's race while she's flying beside him (`eve`, her `escort` state). Nothing while a story mission is on or out in space.
+- `InvWorld.jsx`: the call goes on the HUD's radio line (`InvHud.jsx`, `.iw-radio`: who, their first line, R) for `RADIO.offer` seconds, then drops; R or the line itself takes it (`startMission`). A photo: E in its spot, facing the right way, is `use photo` with his heading; when the step takes it the HUD hides for the frame (`data-shutter` on the stage) under a white flash (`.iw-shutter`). The scene draws a race's gates (`scene.js` `createCourse`: rings, the next bright, the ones through gone; Eve's eight and the three home from the Moon, in space's frame, which is the scene's) and a photo's frame (a yellow rectangle 9 m ahead of the spot, the way it faces, through anything).
+- Shots: `chase` (the car pulls out from under him, 26 m behind it), `photo` (the hall's frame from the plaza's corner), `everace` (the first gate over a downtown crossing); each driven to done.
+- Not here: Eve's ghost on the line at the best time, and Allen flying the race home (the gates are there; nobody races); the sounds the spec names (a stinger, the crackle, a shutter: `beeps` and `knock` stand in) and the docs' shots (Task 11).
+
 ## How to check
 
-- `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic, hud, brains, companions and foes (51 tests at the space merge, 89 after Task 1, 168 after Task 7, 186 after Task 8, 189 after Task 9).
+- `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic, hud, brains, companions and foes (51 tests at the space merge, 89 after Task 1, 168 after Task 7, 186 after Task 8, 189 after Task 9, 192 after Task 10).
 - With the dev server running, `OUT=/tmp/shots node scripts/inv-world-check.mjs [--metrics] [shot …]`.
   - Shots, in the order they run: `spawn street curb streetnight downtown high suburb river boost porch gda burger school plaza eve jet clouds rings card wallback rescue fight climb orbit orbitnight moon reentry allen mars thragg dusk night`.
-  - The missions, started and driven to their end through the hook (Task 9): `bank chase seismic maulers gdasiege`; the stubs that only frame a place: `eveescort dadlesson porchdusk photo`.
+  - The missions, started and driven to their end through the hook (Tasks 9 and 10): `bank chase seismic maulers gdasiege photo everace`; the stubs that only frame a place: `eveescort dadlesson porchdusk`.
   - A shot is at noon unless it names a time.
   - `--metrics` prints `name band=… mark=…` after each shot (see Task 1 above for how it measures). `BOX=1` with it also writes `inv-<name>.box.png`, the band, box and ring drawn on.
   - Each shot is roughly 10 s in SwiftShader at 960×540, low tier.

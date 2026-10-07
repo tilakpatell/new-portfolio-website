@@ -247,8 +247,15 @@ export function makeTreebeard() {
 }
 
 // Poses one figure for this frame. `wave` (0..1) raises the right arm and
-// waves it; `talk` bobs the head; moving swings the legs and arms.
+// waves it; `talk` bobs the head; moving swings the legs and arms. A figure
+// on the cast (cast3d.js) only notes the wave and the talk: its feet go by
+// the ground it really covers, and its body is drawn once a frame by
+// tickCast; the toy is posed until its cast model's here.
 export function pose(f, t, { moving = false, wave = 0, talk = 0, speed = 1 } = {}) {
+  if (f.cast) {
+    f.cast.pose({ wave, talk });
+    if (f.cast.ready) return;
+  }
   const k = f.slow ? 0.4 : 1;
   const sw = moving ? Math.sin(t * 13 * speed * k) : 0;
   if (!f.robe) {

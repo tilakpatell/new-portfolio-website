@@ -30,6 +30,7 @@ import { makeFolk } from '../bree/props';
 import { createMarshesKit } from './props';
 import { BED, BOULDERS, EMYN, GATE_AT, ISLAND, LIGHTS, LOOKOUT, MARSH_PATH, MARSH_Y, POOL as SAFE, POOL_BANK, ROAD, SNAGS, SPIKES, emynHeight, marshHeight, slopeHeight, toPath, tussockAt } from './layout';
 import { CREEP, FELL, ROPE, WAY } from './rules';
+import { castDo, castPlay, drawWatcher, releaseCast, tickCast, upgrade } from '../../cast3d';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -343,6 +344,10 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
     const e = kit.easterling(i + 1);
     e.group.visible = false;
     zones.gate.add(e.group);
+    // on the cast once its model's here (../../cast3d.js): the Easterling, as
+    // tall as this one, its own body hidden (and kept, should it not come)
+    const tall = new THREE.Box3().setFromObject(e.group).getSize(V()).y * 0.95;
+    upgrade(e, 'easterling', { role: 'folk', hide: [...e.group.children], top: tall, seed: i + 1 });
     return e;
   });
   const cloak = kit.elvenCloak();
@@ -443,6 +448,9 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
     frodo.group.visible = true;
     sam.group.visible = false;
     cloak.group.visible = false;
+    // (on the cast: what each does here is set below, frame by frame)
+    castDo(frodo, { base: null, upper: null, air: 0, look: null });
+    castDo(sam, { upper: null });
     if (zone === 'emyn' && s.mode === 'rope') {
       // on the rope, down the face
       const d = s.descent;
@@ -457,7 +465,9 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
       sam.group.visible = true;
       wpos('emyn', 0.8, cliffFoot + EMYN.top, EMYN.cliff - 0.8, sam.group.position);
       sam.group.rotation.y = -Math.PI / 2;
-      pose(sam, t, { moving: false, wave: 0.3 });
+      // (on the cast: paying the rope out, hand over hand)
+      castDo(sam, { upper: 'push' });
+      pose(sam, t, { moving: false, wave: sam.cast?.ready ? 0 : 0.3 });
       fy = frodo.group.position.y;
     } else if (zone === 'emyn' && s.mode === 'walk' && s.next === 'rope') {
       // at the top, looking down it, Sam with the rope
@@ -473,7 +483,9 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
     } else if (zone === 'emyn' && s.mode === 'creep') {
       // lying by Sam, pretending to sleep
       wpos('emyn', BED.x - 0.9, emynHeight(BED.x, BED.z) + 0.15, BED.z, frodo.group.position);
-      frodo.group.rotation.set(0, BED.face, Math.PI / 2 - 0.15);
+      // (on the cast: lying by his own pose, not a toy tipped over)
+      frodo.group.rotation.set(0, BED.face, frodo.cast?.ready ? 0 : Math.PI / 2 - 0.15);
+      castDo(frodo, { base: 'sleep' });
       pose(frodo, t, { moving: false });
       rope.set?.([ropeTop, V(0, cliffFoot + 0.3, EMYN.cliff + 0.6)]);
       fy = frodo.group.position.y;
@@ -485,6 +497,8 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
       frodo.group.rotation.set(0, Math.PI - 0.1, 0);
       pose(frodo, t, { moving: false });
       if (frodo.arms?.[1]) frodo.arms[1].rotation.x = -1.2;
+      // (on the cast: Sting held out at him)
+      castDo(frodo, { upper: 'aim.pistol', look: gollum.group });
       sam.group.visible = true;
       const sx = BED.x - 2.2;
       const sz = BED.z + 0.7;
@@ -504,16 +518,20 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
       wpos('marsh', f.x + (to.x - f.x) * k, y, f.z + (to.z - f.z) * k, frodo.group.position);
       frodo.group.rotation.set(0, Math.PI / 2, 0);
       frodo.group.visible = !(w.phase === 'sunk' && w.t > 0.9);
-      pose(frodo, t, { moving: k < 1, speed: 1.2, wave: w.phase === 'sunk' ? 1 : w.phase === 'across' ? 0.7 : 0 });
+      // (on the cast: knees up over the water, a cry for help going under, a cheer across)
+      castDo(frodo, { air: Math.sin(k * Math.PI) * 0.55, upper: w.phase === 'sunk' ? 'wave.help' : null });
+      if (w.phase === 'across' && A.across !== w) castPlay(frodo, 'cheer.one', { layer: 'upper' });
+      A.across = w.phase === 'across' ? w : null;
+      pose(frodo, t, { moving: k < 1, speed: 1.2, wave: frodo.cast?.ready ? 0 : w.phase === 'sunk' ? 1 : w.phase === 'across' ? 0.7 : 0 });
       fy = frodo.group.position.y;
     } else {
       wpos(zone, h.x, fy, h.z, frodo.group.position);
       frodo.group.rotation.set(0, h.face, 0);
       pose(frodo, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1 });
       if (s.hiding) {
-        // down in the reeds, or under the cloak
+        // down in the reeds, or under the cloak (on the cast: sat low on the ground)
         frodo.group.position.y -= 0.35;
-        sit(frodo, true);
+        sit(frodo, true, 'floor');
         if (zone === 'gate') {
           cloak.group.visible = true;
           cloak.group.position.copy(frodo.group.position);
@@ -542,7 +560,7 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
         pose(sam, t + 1, { moving: h.speed > 0.3 });
         if (s.hiding) {
           sam.group.position.y = AT[zone].y + ground(sx, sz) - 0.35;
-          sit(sam, true);
+          sit(sam, true, 'floor');
           sam.group.visible = zone !== 'gate';
         } else sit(sam, false);
       }
@@ -551,7 +569,9 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
     samSleep.group.visible = zone === 'emyn' && s.next === 'smeagol' && s.mode !== 'talk';
     if (samSleep.group.visible) {
       samSleep.group.position.set(BED.x + 0.5, emynHeight(BED.x, BED.z) + 0.15, BED.z + 0.4);
-      samSleep.group.rotation.set(0, BED.face, Math.PI / 2 - 0.1);
+      // (on the cast: asleep by his own pose)
+      samSleep.group.rotation.set(0, BED.face, samSleep.cast?.ready ? 0 : Math.PI / 2 - 0.1);
+      castDo(samSleep, { base: 'sleep' });
     }
     ghosts.update(zone === 'emyn' ? (s.travellers ?? []) : [], t, dt, { ringOn: false });
 
@@ -715,8 +735,9 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
         e.group.visible = Boolean(w);
         if (!w) return;
         e.group.position.set(w.x, slopeHeight(w.x, w.z), w.z);
-        turnTo(e, w.face + (w.look ?? 0), dt, 8);
-        e.animate?.(t + i, { marching: w.mode === 'chase' || w.mode === 'back' || (w.mode === 'patrol' && w.wait <= 0), alert: w.mode === 'alert' || w.mode === 'chase' ? 1 : 0 });
+        // (on the cast its head does the looking about; the toy turned its whole self)
+        turnTo(e, w.face + (e.cast?.ready ? 0 : (w.look ?? 0)), dt, 8);
+        if (!drawWatcher(e, w, dt, { you: frodo })) e.animate?.(t + i, { marching: w.mode === 'chase' || w.mode === 'back' || (w.mode === 'patrol' && w.wait <= 0), alert: w.mode === 'alert' || w.mode === 'chase' ? 1 : 0 });
       });
       // the fires of Mordor, glowing behind the Gate
       lights.push([wpos('gate', GATE_AT.x, 40, GATE_AT.z + 30), fireCol, 30, 300]);
@@ -822,6 +843,8 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
     sun.target.position.copy(camera.position);
     for (const g of grounds) g.update();
+    // the people on the cast (../../cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -872,6 +895,7 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
       for (const g of grounds) g.dispose();
       ghosts.dispose();
       disposeTree(scene);
+      releaseCast(scene);
       stage.dispose();
     },
   };
