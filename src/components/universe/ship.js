@@ -355,6 +355,22 @@ export function spawn(id, start = HOME_EDGE) {
 // (the galaxy's star systems: galaxy/space.js), to step() and autopilot().
 export const SPACE = { edge: EDGE, ceilingAt, openness, driveAt, driveAlong, homeAt, boostAt, brakeAt, coastAt, approachAt, solids: SOLIDS, goals: GOALS };
 
+// How far the ship carries on, boosting straight on, while hunters pull the
+// pulse drive down over `ramp` seconds (eased in, as the scene does it), till
+// it's down to the boost: where an ambush laid ahead of it has to be to
+// still be ahead of it then (hunterRules.js's entryPoint, `lead`)
+export function holdReach(s, { ramp = 2, solids = SOLIDS, space = SPACE, dt = 1 / 30 } = {}) {
+  let ship = s;
+  let gone = 0;
+  for (let t = 0; t < ramp + 1; t += dt) {
+    const p = Math.min(1, t / ramp);
+    ship = step(ship, { throttle: 1, boost: true, interdicted: p * p * (3 - 2 * p) }, dt, solids, space).ship;
+    gone += Math.abs(ship.speed) * dt;
+    if (p >= 1 && ship.speed <= SHIP.boost * 1.6 + 0.5) break;
+  }
+  return gone;
+}
+
 // One step of `dt` seconds. Returns the new ship and what happened on the
 // way: { type: 'bump', id, hard }, { type: 'crash', id, at: [x, y, z],
 // normal: [x, y, z], speed, swallowed? } (into something too fast, or into
