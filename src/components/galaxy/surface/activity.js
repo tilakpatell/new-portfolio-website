@@ -17,7 +17,10 @@
 // blade ({ color, hilt? }: a lit saber in its hand, swung with its swipes), guard (strokes it turns before its guard breaks and it reels),
 // delay (before its first shot), chase (m/s: it comes for you), melee,
 // reach (how close it has to be to hit), cone, far, smell, memory (what it
-// perceives: hostiles.js's sensesFor) } }
+// perceives: hostiles.js's sensesFor), force ({ every, push }: a duellist's
+// shove at you, every so often, close to) }, side ('yours': it fights beside
+// you, at the nearest hostile, and the hostiles fire at it; a shot's `at`
+// and `victim` say so) }
 //
 // Every figure has a head (hostiles.js's hostileStep, on lib/ai): it
 // knows you only as it perceives you (the world's solids are its line of
@@ -39,6 +42,42 @@ import { PROPS } from './props';
 import { groundAt, turnToward } from './walker';
 import { stepTarget } from './quests';
 import { rng } from './noise';
+
+// ── the pure parts ──
+// a duellist's Force: its push falls due every `force.every` seconds while
+// you're within 8 m of it (t.forceAt: when it last pushed)
+export const nextForce = (t, h, dYou, time) => Boolean(h?.force) && dYou <= 8 && time - (t.forceAt ?? -99) >= (h.force.every ?? 7);
+// one on your side (spec.side: 'yours') fights the nearest hostile that's
+// up, never you and never its own side
+export function friendlyAim(t, targets) {
+  if (t.spec?.side !== 'yours') return null;
+  let best = null;
+  let bd = Infinity;
+  for (const o of targets) {
+    if (o === t || o.down || !o.hostile || o.spec?.side === 'yours') continue;
+    const d = Math.hypot(o.b.x - t.b.x, o.b.z - t.b.z);
+    if (d < bd) {
+      bd = d;
+      best = o;
+    }
+  }
+  return best;
+}
+// a hostile's mark: you, or a friend of yours nearer to it than you are
+// ({ x, z, victim }: the friend, or null when it's you; null with nobody)
+export function hostileAim(t, you, targets) {
+  let best = you ? { x: you.x, z: you.z, victim: null } : null;
+  let bd = you ? Math.hypot(you.x - t.b.x, you.z - t.b.z) : Infinity;
+  for (const o of targets) {
+    if (o === t || o.down || o.spec?.side !== 'yours') continue;
+    const d = Math.hypot(o.b.x - t.b.x, o.b.z - t.b.z);
+    if (d < bd) {
+      bd = d;
+      best = { x: o.b.x, z: o.b.z, victim: o };
+    }
+  }
+  return best;
+}
 import { absorb, hostileStep, startBurst, stepBurst } from './hostiles';
 import { lineClear } from './walker';
 import { createTokens } from '../../../lib/ai/squad';
@@ -358,7 +397,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     },
     // what the blaster can hit
     get targets() {
-      return targets.filter((t) => !t.down && t.fig);
+      return targets.filter((t) => !t.down && t.fig && t.spec.side !== 'yours');
     },
     // `how`: the gun (a kill by one of SHOW_KILLS plays its show), `push` the way the shot went
     hit(t, damage = 1, { breaks = false, how = null, push = null } = {}) {
@@ -519,8 +558,13 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         } else {
           // its head: what it knows of you, and what it does about it (hostiles.js)
           const tag = t.tag ?? '';
-          const allies = targets.filter((o) => o !== t && !o.down && o.tag === t.tag).map((o) => ({ x: o.b.x, z: o.b.z }));
-          const step = hostileStep(t, { you: you ? { x: you.x, z: you.z, vel: Number.isFinite(you.vx) ? { x: you.vx, z: you.vz } : null } : null, allies, seesThrough, tokens: t.hostile ? tokens : null, who: t, search: t.hostile ? searchFor(tag) : null, stims }, dt, r);
+          const allies = targets.filter((o) => o !== t && !o.down && (o.tag === t.tag || (t.spec.side === 'yours' && o.spec.side === 'yours'))).map((o) => ({ x: o.b.x, z: o.b.z }));
+          // (its mark: a friend of yours fights the nearest hostile; a hostile, you or a friend of yours nearer to it)
+          const mark = t.spec.side === 'yours' ? friendlyAim(t, targets) : null;
+          const aim = t.hostile ? (mark ? { x: mark.b.x, z: mark.b.z, victim: mark } : hostileAim(t, you, targets)) : you && { x: you.x, z: you.z, victim: null };
+          t.victim = t.hostile && aim?.victim ? aim.victim : null;
+          const seen = t.victim ? { x: aim.x, z: aim.z } : you ? { x: you.x, z: you.z, vel: Number.isFinite(you.vx) ? { x: you.vx, z: you.vz } : null } : null;
+          const step = hostileStep(t, { you: t.spec.side === 'yours' && !mark ? null : seen, allies, seesThrough, tokens: t.hostile ? tokens : null, who: t, search: t.hostile ? searchFor(tag) : null, stims }, dt, r);
           b.x = step.x;
           b.z = step.z;
           b.yaw = step.yaw;
@@ -596,11 +640,19 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         if (t.down || !t.hostile || !t.fig || !you || t.stagger > 0 || t.knock) continue;
         const at = t.aim;
         const d = at ? Math.hypot(at.x - t.b.x, at.z - t.b.z) : Infinity;
+        // a duellist's Force: a shove at you, every so often, when you're close
+        const dYou = Math.hypot(you.x - t.b.x, you.z - t.b.z);
+        if (nextForce(t, t.hostile, dYou, time) && t.spec.side !== 'yours') {
+          t.forceAt = time;
+          out.push({ force: true, push: t.hostile.force.push ?? 9, from: [t.b.x, t.holder.position.y, t.b.z], who: t });
+          continue;
+        }
         if (!at || d > (t.hostile.melee ? t.hostile.reach ?? 2 : t.hostile.range)) {
           if (t.hostile.melee) t.cool = Math.max(t.cool, 0.4);
           continue;
         }
-        const shot = () => ({ from: [t.b.x, t.holder.position.y + 1.4, t.b.z], to: [at.x, at.z], guessed: Boolean(t.guessed), spread: t.hostile.spread ?? 0.06, damage: t.hostile.damage ?? 8, who: t });
+        const v = t.victim && !t.victim.down ? t.victim : null;
+        const shot = () => ({ from: [t.b.x, t.holder.position.y + 1.4, t.b.z], to: [at.x, at.z], guessed: Boolean(t.guessed), spread: t.hostile.spread ?? 0.06, damage: t.hostile.damage ?? 8, who: t, at: v ? [v.b.x, v.holder.position.y + 1.1, v.b.z] : null, victim: v });
         // the rest of a burst, as its shots fall due
         if (t.burst) {
           for (let i = stepBurst(t.burst, dt, t.hostile.burst.gap); i > 0; i--) out.push(shot());
@@ -614,7 +666,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         // in arm's reach, a swipe (a rancor's, a blade's), or a shot from where it stands
         if (t.hostile.melee) {
           if (t.saber) t.swingAt = time;
-          out.push({ melee: true, damage: t.hostile.damage ?? 25, from: [t.b.x, t.holder.position.y, t.b.z], who: t, blade: Boolean(t.saber) });
+          out.push({ melee: true, damage: t.hostile.damage ?? 25, from: [t.b.x, t.holder.position.y, t.b.z], who: t, blade: Boolean(t.saber), at: v ? [v.b.x, v.holder.position.y + 1.1, v.b.z] : null, victim: v });
         }
         else if (t.hostile.burst) {
           t.burst = startBurst(t.hostile);
@@ -625,6 +677,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       return out;
     },
     clear: clearStep,
+    // (for tests: who's out, and what each is at)
+    debug: () => targets.map((t) => ({ tag: t.tag, side: t.spec.side ?? null, hp: t.hp, down: t.down > 0, fig: Boolean(t.fig), aim: Boolean(t.aim), victim: t.victim?.tag ?? null, mode: t.mind?.mode ?? null, at: [+t.b.x.toFixed(1), +t.b.z.toFixed(1)] })),
     // your shot, for the enemies to hear (lib/ai/perception's stims): from where, aimed where
     heard(from, aim) {
       stims.push({ type: 'shot', at: { x: from.x, y: 0, z: from.z }, aim: { x: aim.x, y: 0, z: aim.z }, radius: 60, from: 'you', loudness: 1 });

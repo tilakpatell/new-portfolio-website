@@ -2227,6 +2227,25 @@ export async function create(canvas, ctx) {
     for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: actorAt, door: doorFor })) questEvent(ev);
     if (state.phase === 'walk' || state.phase === 'ride')
       for (const s of activity.shooters(dt, me().st, state.t)) {
+        // a duellist's Force: you're shoved away from it, off your feet
+        if (s.force) {
+          const p = me().st;
+          const v = pushVelocity({ x: s.from[0], z: s.from[2] }, { x: p.x, z: p.z }, 1, 'push', { ...FORCE.push, force: s.push });
+          p.vx += v.vx;
+          p.vz += v.vz;
+          p.vy = Math.max(p.vy, v.vy);
+          p.grounded = false;
+          state.shake = Math.min(1, state.shake + 0.5);
+          sounds.combat?.('force');
+          fx.sparks(new V(p.x, p.y + 1, p.z), UP, '#d8d0ff', 14);
+          continue;
+        }
+        // at a friend of yours (or by one, at a hostile): a bolt between them, and whoever's hit, hit
+        if (s.at && s.victim) {
+          if (!s.melee) blaster.tracer(s.from, s.at, s.who?.spec?.side === 'yours' ? '#ffb070' : '#ff4a3d');
+          if (Math.random() < (s.melee ? 0.8 : 0.45)) activity.hit(s.victim, s.damage);
+          continue;
+        }
         const blade = me().saber?.deflecting(s.from) ?? false;
         if (state.safe) continue; // (through the dodge's first moments nothing lands)
         if (s.melee && blade && parried(state.blockAt, state.t, PARRY.window * perks.parry)) {
@@ -2646,6 +2665,18 @@ export async function create(canvas, ctx) {
         ctx.invalidate();
         return run;
       }
+      // (a site's own quest, outside any mission: 'skip' the step you're on)
+      if (how === 'skip' && state.quest) {
+        const q = questOf(state.quest.id);
+        const step = q?.steps[state.quest.step];
+        if (step?.type === 'race') for (const g of step.gates.slice(state.quest.count)) questEvent({ type: 'at', x: g[0], z: g[1], riding: step.ride });
+        else if (step?.type === 'use') questEvent({ type: 'use', id: step.id });
+        else if (step?.type === 'reach') questEvent({ type: 'at', x: step.at[0], z: step.at[1], riding: state.riding?.kind ?? null });
+        else if (step?.type === 'enter') questEvent({ type: 'enter', zone: step.zone });
+        else if (step?.type === 'shoot') activity.kill(step.tag);
+        ctx.invalidate();
+        return state.quest;
+      }
       if (how === 'near' && state.riding) {
         const b = chase?.behind();
         if (b) {
@@ -2689,7 +2720,7 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name } : null, guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint }),
+    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name } : null, guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug() }),
     dispose() {
       disposed = true;
       lit?.dispose();
