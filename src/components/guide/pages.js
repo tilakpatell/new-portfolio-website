@@ -227,7 +227,7 @@ export const PAGES = {
           ['G', 'Roar (as Chewbacca)'],
           ['M / Tab', 'The station’s map'],
           ['1 – 4', 'Choose what to say in a conversation'],
-          ['Esc', 'Pause'],
+          ['Esc / P', 'Pause'],
         ],
       },
     ],

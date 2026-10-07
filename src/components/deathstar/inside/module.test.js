@@ -5,6 +5,7 @@ import { WORLD_MB, worldAt } from '../../worlds/worlds';
 import { byPath } from '../../universe/universes';
 import { placeName } from '../../universe/online/where';
 import { guideFor } from '../../guide/pages';
+import { keyTokens } from '../../guide/keys';
 import { briefKeyFor } from '../../tour/brief';
 import { ACHIEVEMENTS } from '../../Achievements';
 import inside, { KEYS } from './module';
@@ -47,6 +48,12 @@ describe('aboard the Death Star, on the site', () => {
     expect(guideFor(PATH).key).toBe(PATH);
     expect(guideFor(PATH).title).toBe('Aboard the Death Star');
     expect(briefKeyFor(PATH)).toBe(PATH);
+  });
+
+  it('tells both pause keys in the guide, P for while the pointer is held', () => {
+    // (Esc first lets go of a held pointer, so P is the key that pauses then)
+    const pause = guideFor(PATH).keys.flatMap((g) => g.rows).find(([, what]) => what === 'Pause');
+    expect(keyTokens(pause[0]).map((t) => t.key).filter(Boolean)).toEqual(['Esc', 'P']);
   });
 
   it('has an achievement for coming aboard, earned on arrival', () => {
