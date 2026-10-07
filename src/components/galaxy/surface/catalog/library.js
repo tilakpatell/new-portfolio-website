@@ -58,7 +58,7 @@ export const MODELS = {
   // (the cantina and the stone heads remade by the audit lane,
   // scripts/meshy-galaxy-audit.mjs, from a render of the set and the
   // production maquette)
-  cantina: { made: 'meshy', as: 'the cantina', metres: 22, along: 'x', hero: true, solids: 'built', detail: 'adobe' },
+  cantina: { made: 'meshy', as: 'the cantina', metres: 22, along: 'x', hero: true, lod: true, solids: 'built', detail: 'adobe' },
   varykino: { made: 'meshy', as: 'the lake retreat at Varykino', metres: 28, along: 'y', solids: 'built', hero: true, lod: true, detail: 'stone' },
   shieldgen: { made: 'meshy', as: 'the shield generator', metres: 70, along: 'y', solids: 'built' },
   stonehead: { made: 'meshy', as: 'the Gungans’ stone heads', metres: 7.5, along: 'y', hero: true, detail: 'stone' },

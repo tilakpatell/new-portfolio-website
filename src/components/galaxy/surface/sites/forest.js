@@ -386,8 +386,8 @@ export const SITES = {
         id: 'kachirho',
         name: 'Kachirho',
         at: [-140, -30],
-        r: 60,
-        flat: { r: 46 },
+        r: 100,
+        flat: { r: 83 },
         about: 'The Wookiee city on the lagoon: a single wroshyr tree, its trunk ringed with decks and houses, its crown lost in the sky. Clones and Wookiees held its shore together against the droid army.',
         lines: {
           xwing: [['luke', 'A whole city in one tree.'], ['r2', '(A long, impressed whistle.)']],
@@ -396,12 +396,12 @@ export const SITES = {
           rv: [['walt', 'A single structure, housing thousands. Built entirely by hand.'], ['jesse', 'Treehouse goals, man.']],
         },
         things: [
-          // (the tree is the Meshy model, leaning out over the lagoon; its
-          // bottom deck, pods and stair stay built round its foot)
-          { kind: 'kachirho', at: [0, 0], yaw: 2.4, opts: { style: 'tree' }, sink: 2, solid: { r: 24 } },
-          { kind: 'kachirho', at: [0, 0], yaw: 0.15, opts: { style: 'deck', R: 34 } },
-          { kind: 'fire', at: [14, 38] },
-          { kind: 'crates', at: [-16, 40] },
+          // (the tree is the Meshy model, re-centred on its foot, its root mass
+          // about 75 m across with the houses built over it, leaning away from
+          // the landing; the fire and the crates stand at the roots' edge)
+          { kind: 'kachirho', at: [0, 0], yaw: Math.PI, opts: { style: 'tree' }, sink: 2, solid: { r: 34 } },
+          { kind: 'fire', at: [14, 84] },
+          { kind: 'crates', at: [-16, 86] },
         ],
       },
       {
@@ -546,7 +546,7 @@ export const SITES = {
       { kind: 'wookiee', n: 1, at: [-116, -376], still: true, face: 3.5, name: 'Chewbacca', says: ['(Chewbacca throws back his head and roars.)', '(He points at the pod, then at the sky: away.)'] },
       { kind: 'wookiee', n: 1, at: [-125, -374], still: true, face: 3.0, scale: 1.08, name: 'Tarfful', says: ['(Tarfful rumbles a greeting, deep as a drum.)', '(He looks back the way you came, listening for clones.)'] },
       { kind: 'wookiee', n: 5, at: [-370, -170], spread: 12, roam: 10, speed: 0.9, name: 'Wookiee', says: ['(A friendly, gargling growl.)', '(It offers you a bowl of something. It is moving.)', '(It ruffles your hair. Hard.)'] },
-      { kind: 'wookiee', n: 4, at: [-136, 14], spread: 6, roam: 6, speed: 1.0, name: 'Wookiee', says: ['(It waves you up the steps to the city.)', '(A long, musical howl, answered from far up the tree.)'] },
+      { kind: 'wookiee', n: 4, at: [-136, 56], spread: 6, roam: 6, speed: 1.0, name: 'Wookiee', says: ['(It waves you up the steps to the city.)', '(A long, musical howl, answered from far up the tree.)'] },
     ],
     rides: [{ kind: 'speederbike', at: [22, -30], yaw: 0.6 }],
     flyovers: [

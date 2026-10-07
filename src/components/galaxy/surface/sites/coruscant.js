@@ -118,8 +118,8 @@ export const SITE = {
       // crown, stood behind it on a built shaft)
       things: [
         { kind: 'republica', at: [-22, 4.6], yaw: 1.78, abs: true, y: 0, model: false, opts: { tower: false } },
-        { kind: 'republica', at: [-48, 10], yaw: 1.78, abs: true, y: -100, solid: false, windows: true },
-        { kind: 'plinth', at: [-48, 10], abs: true, y: -100, solid: false, opts: { w: 90, round: true, depth: 230 } },
+        { kind: 'republica', at: [-55, 11.6], yaw: 1.78, abs: true, y: -100, solid: false, windows: true },
+        { kind: 'plinth', at: [-55, 11.6], abs: true, y: -100, solid: false, opts: { w: 90, round: true, depth: 230 } },
       ],
     },
     {

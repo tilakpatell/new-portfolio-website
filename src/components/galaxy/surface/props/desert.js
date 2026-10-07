@@ -237,7 +237,9 @@ export const PROPS = {
       // the vaporator-like tower on its roof
       part(cyl(0.5, 0.35, 3, 10), { at: [-2.5, 6.5, -2], color: '#8a8478', to: 'metal' }),
     ];
-    return { object: k.build(parts, { name: 'cantina' }), solids: [{ circle: [0, 0, 7] }, { circle: [7.5, -2, 3.8] }, { box: [0, 7.2, 2, 2, 0] }] };
+    // (the Meshy model's walls: its dome, its front wall and its left wing;
+    // the door is at the arch, right of the middle of the front)
+    return { object: k.build(parts, { name: 'cantina' }), solids: [{ circle: [1, 2, 8.5] }, { box: [0, 8.6, 10, 1.4, 0] }, { box: [-8, 1, 3, 7, 0] }] };
   },
 
   // a market stall: an awning on poles over a counter
@@ -307,7 +309,9 @@ export const PROPS = {
     // west; the gate is palacegate, in front of the keep)
     return {
       object: k.build(parts, { name: 'palace', shadows: false }),
-      solids: [{ circle: [1.5, -7.4, 27] }, { circle: [53, 13, 8] }, { circle: [30, 22, 8] }, { box: [-38, -2, 14, 26, 0] }],
+      // (the Meshy model's: the keep's drum, the capped tower and the domed
+      // annex beside it; the rocks are walked over)
+      solids: [{ circle: [-7.5, 1, 23.5] }, { circle: [24, 2.5, 6] }, { circle: [32, 6, 6.5] }],
     };
   },
   // Jabba's gate: the great door in its block, the ribs over it and the

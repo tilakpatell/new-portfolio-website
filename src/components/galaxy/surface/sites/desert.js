@@ -253,7 +253,8 @@ export const SITES = {
           cruiser: [['rick', 'A slug with a palace, Morty. That’s the dream.'], ['morty', 'Th-there’s a monster in the basement, Rick! Everybody knows that!']],
         },
         things: [
-          { kind: 'palace', at: [0, 0] },
+          // (set so the keep's front stands just behind the gate)
+          { kind: 'palace', at: [8, -5] },
           // (the gate in front of the keep)
           { kind: 'palacegate', at: [0, 22] },
         ],
@@ -373,8 +374,9 @@ export const SITES = {
         id: 'cantina',
         name: 'the cantina',
         music: 'cantina',
-        door: { at: from(CANTINA, [0, 9.9]), r: 2.6, prompt: 'Go into the cantina' },
-        back: from(CANTINA, [0, 12.5]),
+        // (at the model's arched entrance, right of the middle of its front)
+        door: { at: from(CANTINA, [2.5, 10.8]), r: 2.6, prompt: 'Go into the cantina' },
+        back: from(CANTINA, [2.5, 13.4]),
         inside: {
           build: 'cantinainside',
           spawn: [0, 14.6],

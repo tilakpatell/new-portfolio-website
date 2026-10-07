@@ -40,6 +40,6 @@ export const MODELS = {
   // The audit lane's (scripts/meshy-galaxy-audit.mjs, each from a screen
   // still): Lothal's old Imperial tower (Sabine's; Yavin's lookout stays
   // built) and the krill farmers' round huts on Sorgan
-  lothtower: { made: 'meshy', as: 'the old Imperial tower', metres: 40, along: 'y', hero: true, lod: true, detail: 'stone' },
+  lothtower: { made: 'meshy', as: 'the old Imperial tower', metres: 40, along: 'y', hero: true, detail: 'stone' },
   stilthut: { made: 'meshy', as: 'the krill farmers’ huts', metres: 9, along: 'y', detail: 'wood' },
 };

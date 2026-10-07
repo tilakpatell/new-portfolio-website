@@ -84,7 +84,7 @@ export const MODELS = {
   // Geonosis: Yoda's forward command center (its holotable is built beside it)
   commandpost: { made: 'meshy', as: 'the forward command center', metres: 17, along: 'x', detail: 'metal' },
   // Bespin: a tower of Cloud City, stepped, with its rims and slot windows
-  cloudcity: { made: 'meshy', lod: true, as: 'Cloud City’s towers', metres: 60, along: 'y', detail: 'paint' },
+  cloudcity: { made: 'meshy', as: 'Cloud City’s towers', metres: 60, along: 'y', detail: 'paint' },
   // Tatooine: Ben Kenobi's hut, the market stalls, the Tuskens' huts, the spires of Mos Eisley
   benhut: { made: 'meshy', as: 'Ben Kenobi’s hut', metres: 9, along: 'x', detail: 'adobe' },
   stall: { made: 'meshy', as: 'the market stalls', metres: 3.6, along: 'x' },

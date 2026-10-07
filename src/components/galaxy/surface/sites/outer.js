@@ -53,7 +53,7 @@ export const SITES = {
         id: 'cantina',
         name: 'Greef Karga’s cantina',
         music: 'cantina',
-        door: { at: [143, -80.4], r: 2.6, prompt: 'Go into the cantina' },
+        door: { at: [145.6, -80.4], r: 2.6, prompt: 'Go into the cantina' },
         back: [143.7, -78],
         inside: { build: 'cantinainside', spawn: [0, 14.6], yaw: Math.PI, exit: { at: [0, 16], r: 1.5 }, bounds: [11.5, 17, 6.6], rooms: [[0, 13.6, 1.6, 3.1, 0, 3.2], [0, 0, 11, 11, 0, 6.6, 'round']], light: { sky: '#8a7a6a', ground: '#201814', ambient: 0.6, fog: '#14100c', density: 0.018 }, lamps: [[0, 3.6, -1, '#ffb070', 34, 16], [0, 3, -8.2, '#9a7dff', 20, 10], [-7, 2.6, 3, '#ff9a50', 16, 12], [7, 2.6, 3, '#ff9a50', 16, 12]] },
         life: [
