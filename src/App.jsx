@@ -19,6 +19,7 @@ import { jumpStyle } from './components/jumps/styles';
 import WorldGate from './components/worlds/WorldGate';
 import Ambience from './components/ambience/Ambience';
 import { categoryAt, isFeedMove } from './components/feed/feed';
+import SettingsHost from './components/settings/SettingsHost';
 
 // Feed.jsx, named in full: feed.js sits beside it, and a case-blind disk
 // (Windows, macOS) would pick that
@@ -370,6 +371,7 @@ function Shell() {
       <TourHost />
       <Lightspeed />
       <PaletteHost />
+      <SettingsHost />
       <ErrorBoundary fallback={<IntroGone />}>
         <IntroJump />
       </ErrorBoundary>

@@ -98,3 +98,14 @@ describe('the site’s settings', () => {
     expect(fn).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('the motion setting on the page', () => {
+  it('marks the page reduced, and takes the mark off for Auto', async () => {
+    const { applyMotion } = await import('./settings');
+    const doc = { documentElement: { dataset: {} } };
+    applyMotion('reduced', doc);
+    expect(doc.documentElement.dataset.motion).toBe('reduced');
+    applyMotion('auto', doc);
+    expect(doc.documentElement.dataset.motion).toBeUndefined();
+  });
+});

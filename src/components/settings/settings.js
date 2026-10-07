@@ -124,3 +124,11 @@ export function write(patch, store = pageStore()) {
   for (const fn of listeners) fn(next, patch);
   return next;
 }
+
+// The motion setting on the page: html[data-motion='reduced'] calms the
+// site's CSS animations (index.css); Auto leaves the system's own setting.
+export function applyMotion(motion, doc = typeof document !== 'undefined' ? document : null) {
+  if (!doc) return;
+  if (motion === 'reduced') doc.documentElement.dataset.motion = 'reduced';
+  else delete doc.documentElement.dataset.motion;
+}

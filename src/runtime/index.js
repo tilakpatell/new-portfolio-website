@@ -28,6 +28,10 @@ const covered = () => typeof document !== 'undefined' && 'covered' in document.d
 
 let instance = null;
 
+// The runtime if a world has made it, without making one (the settings
+// panel's readout reads its renderer's counts).
+export const peekRuntime = () => instance;
+
 export function runtime() {
   if (instance) return instance;
   const win = typeof window !== 'undefined' ? window : null;
