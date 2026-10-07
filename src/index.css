@@ -833,6 +833,12 @@ html[data-mode='dark'] .aws-logo .aws-letters { fill: #ffffff; }
    for as long as the page is open (here, the whole page). */
 .page-enter { animation: page-in 0.2s ease-out backwards; }
 @keyframes page-in { from { opacity: 0; } to { opacity: 1; } }
+/* A world's page (one with a world on the runtime, or the universe map)
+   comes in at once: faded in from nothing over a light page's body, it
+   washed white for a moment between the jump's dark and the world's own,
+   and longer when the browser was busy as it came in. The jump, or the
+   world's own fade-in, covers the change instead. */
+.page-enter:has(.world-host, .universe-page) { animation: none; }
 
 .toast { animation: toast-in 3.6s var(--ease-smooth) both; }
 @keyframes toast-in {
