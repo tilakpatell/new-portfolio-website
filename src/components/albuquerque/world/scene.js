@@ -70,6 +70,7 @@ import { createFleet, footprint, paintFor } from './vehicles';
 import { gltfLoader } from '../../../lib/three/gltf';
 import { bounce, createBlobShadows, floorShadow, loadFloorShadow, setFloorTime } from '../../../lib/three/grounding';
 import { createHouse, shadowFor } from '../../../lib/three/house';
+import { coreOf, loadCore, wear } from '../../../lib/three/core';
 import { sharpen } from '../../../lib/three/textures';
 
 // Models from Sketchfab (CC Attribution, credited in public/cc0/README.md; scripts/sketchfab-import.mjs
@@ -640,11 +641,18 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   cloud = cloudTex;
   if (cloud) for (const d of dust) d.s.material.map = cloud;
   // (`floor`: the height it stands on, for the bounce off it)
+  // the core kit's stucco (lib/three/core) on the town's own buildings, at
+  // its real size: up close a wall shows the grain of real plaster instead
+  // of its one stretched picture (the cars wear nothing)
+  const STUCCO = coreOf('adobe');
+  const stucco = dev.tier === 'low' ? Promise.resolve(null) : loadCore('adobe');
   const dressModel = (o, name, floor = GRID.kerb) => {
     const own3 = !SKETCHFAB[name]; // the site's own Meshy models are matte; a Sketchfab one keeps the materials it came with
+    const building = own3 && !['aztek', 'suv'].includes(name);
     o.traverse((m) => {
       if (!m.isMesh) return;
       if (m.material.map) m.material.map.anisotropy = aniso;
+      if (building) stucco.then((scan) => scan && wear(m.material, scan, { metres: STUCCO.metres, mean: STUCCO.mean, strength: 0.3, normal: 0.6 }));
       if (own3) {
         m.material.roughness = 0.85;
         m.material.metalness = 0;
