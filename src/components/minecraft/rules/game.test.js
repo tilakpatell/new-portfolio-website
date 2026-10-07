@@ -29,6 +29,17 @@ describe('the world', () => {
     expect(w.set(500, 70, 500, id('stone'))).toBe(false);
   });
 
+  it('an edit on a chunk’s edge dirties the neighbour’s section too, whose face it shows', () => {
+    const w = makeWorld();
+    for (const [x, z] of [[0, 0], [-1, 0], [0, 1]]) w.chunks.set(key(x, z), makeChunk(x, z));
+    w.set(0, 40, 15, id('stone'));
+    expect([...w.chunkAt(0, 0).dirty]).toEqual([2]);
+    expect([...w.chunkAt(-1, 0).dirty]).toEqual([2]);
+    expect([...w.chunkAt(0, 1).dirty]).toEqual([2]);
+    w.set(5, 40, 5, id('stone'));
+    expect(w.chunkAt(-1, 0).dirty.size).toBe(1);
+  });
+
   it('finds a chunk’s four neighbours', () => {
     const w = makeWorld();
     for (const [x, z] of [[0, 0], [-1, 0], [1, 0], [0, -1]]) w.chunks.set(key(x, z), makeChunk(x, z));

@@ -15,7 +15,7 @@
 
 import { seeded } from '../../../lib/seeded.js';
 import { stepDrops, stepHands, stepUpdates } from './build.js';
-import { chunkOf, key, makeChunk } from './chunk.js';
+import { applyEdits, chunkOf, key, makeChunk, packEdits } from './chunk.js';
 import { makeInventory } from './inventory.js';
 import { hashSeed } from './noise.js';
 import { inWater } from './physics.js';
@@ -61,6 +61,13 @@ export function newGame({ seed = Date.now(), save = null } = {}) {
   const player = makePlayer(at);
   player.yaw = save?.player?.yaw ?? 0;
   player.pitch = save?.player?.pitch ?? 0;
+  player.health = save?.player?.health ?? player.health;
+  player.hunger = save?.player?.hunger ?? player.hunger;
+  const inventory = makeInventory();
+  if (save?.inventory) {
+    save.inventory.slots.forEach((st, i) => (inventory.slots[i] = st ? { ...st } : null));
+    inventory.selected = save.inventory.selected ?? 0;
+  }
   return {
     seed: s,
     gen,
@@ -72,7 +79,10 @@ export function newGame({ seed = Date.now(), save = null } = {}) {
     renderDistance: 10,
     maxChunks: 1000,
     events: [],
-    inventory: makeInventory(),
+    inventory,
+    // the edits of chunks not loaded now, packed, by chunk key (rules/save.js)
+    edits: { ...(save?.edits ?? {}) },
+    chests: { ...(save?.chests ?? {}) },
     cursor: null,
     breaking: null,
     cooldown: 0,
@@ -100,11 +110,25 @@ export function wantedChunks(g) {
   return out.slice(0, g.maxChunks).map(([dx, dz]) => key(pcx + dx, pcz + dz));
 }
 
+// A chunk in, with the player's edits to it put back (the worker has
+// meshed it with them already, so nothing is left to re-mesh).
 export function addChunk(g, chunk) {
-  g.world.chunks.set(key(chunk.cx, chunk.cz), chunk);
+  const k = key(chunk.cx, chunk.cz);
+  if (g.edits[k]) {
+    applyEdits(chunk, g.edits[k]);
+    delete g.edits[k];
+    chunk.dirty.clear();
+  }
+  g.world.chunks.set(k, chunk);
+}
+
+// a chunk let go of keeps its edits for when it comes back
+function keepEdits(g, k, c) {
+  if (c?.edits?.size) g.edits[k] = packEdits(c);
 }
 
 export function dropChunk(g, k) {
+  keepEdits(g, k, g.world.chunks.get(k));
   g.world.chunks.delete(k);
 }
 
@@ -116,6 +140,7 @@ export function dropFar(g) {
   const gone = [];
   for (const [k, c] of g.world.chunks) {
     if (Math.max(Math.abs(c.cx - pcx), Math.abs(c.cz - pcz)) > far) {
+      keepEdits(g, k, c);
       g.world.chunks.delete(k);
       gone.push(k);
     }

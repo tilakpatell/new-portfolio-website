@@ -9,7 +9,9 @@
 // that arrives for one anyway is dropped by the client.
 //
 // Messages, page to worker:
-//   { type: 'chunk', key, seed, cx, cz, priority }
+//   { type: 'chunk', key, seed, cx, cz, priority, edits: { [chunkKey]: packed } }
+//     (the player's edits to the chunk and to any of its eight neighbours,
+//     put into copies of the made terrain before meshing)
 //   { type: 'mesh', key, cx, cz, sections, priority, chunk: { ids, state, light, lit }, borders }
 //   { type: 'cancel', key }
 // and back:
@@ -17,7 +19,7 @@
 //   { type: 'mesh', key, cx, cz, sections, meshes }
 // Arrays travel as transferables.
 
-import { key, makeChunk } from './chunk.js';
+import { applyEdits, key, makeChunk } from './chunk.js';
 import { meshSection } from './mesher.js';
 import { makeGenerator } from './worldgen.js';
 
@@ -179,13 +181,23 @@ export function makeCore({ textures, cacheSize = 300 }) {
 
   function work(job) {
     if (job.type === 'chunk') {
-      const c = made(job.seed, job.cx, job.cz);
+      // the made terrain, or a copy of it with the player's edits in
+      const edited = (cx, cz) => {
+        const base = made(job.seed, cx, cz);
+        const packed = job.edits?.[key(cx, cz)];
+        if (!packed) return base;
+        const c = makeChunk(cx, cz);
+        c.ids.set(base.ids);
+        applyEdits(c, packed);
+        return c;
+      };
+      const c = edited(job.cx, job.cz);
       const nb = {};
-      for (const [side, dx, dz] of NEIGHBOURS) nb[side] = made(job.seed, job.cx + dx, job.cz + dz);
+      for (const [side, dx, dz] of NEIGHBOURS) nb[side] = edited(job.cx + dx, job.cz + dz);
       const meshes = [];
       for (let s = 0; s < 16; s++) meshes.push(meshSection(c, s, nb, { textures }));
       const ids = c.ids.slice();
-      const state = new Uint8Array(ids.length);
+      const state = c.state ? c.state.slice() : new Uint8Array(ids.length);
       const light = new Uint8Array(ids.length);
       return { msg: { type: 'chunk', key: job.key, cx: job.cx, cz: job.cz, ids, state, light, meshes }, transfer: [ids.buffer, state.buffer, light.buffer, ...meshesOut(meshes)] };
     }

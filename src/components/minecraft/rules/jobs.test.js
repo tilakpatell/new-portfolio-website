@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TEXTURES, byName } from './blocks';
-import { makeChunk, set } from './chunk';
+import { makeChunk, packEdits, set } from './chunk';
 import { borders, chunkKey, makeClient, makeCore, makeQueue, meshKey } from './jobs';
 import { meshSection } from './mesher';
 import { makeGenerator } from './worldgen';
@@ -89,6 +89,40 @@ describe('the worker’s core', () => {
     const here = meshSection(want, s, nb, { textures });
     expect(msg.meshes[s].opaque?.count ?? 0).toBe(here.opaque?.count ?? 0);
     expect(msg.meshes[s].opaque?.data).toEqual(here.opaque?.data);
+  });
+
+  it('a chunk job carries the player’s edits: in the terrain it returns, and seen across a border', () => {
+    const core = makeCore({ textures });
+    const mine = makeChunk(0, 0);
+    set(mine, 2, 120, 2, byName.get('glass').id);
+    const west = makeChunk(-1, 0);
+    set(west, 15, 121, 7, byName.get('stone').id);
+    set(west, 15, 122, 7, byName.get('stone').id);
+    core.handle({ type: 'chunk', key: chunkKey(0, 0), seed: 1, cx: 0, cz: 0, priority: 0, edits: { [chunkKey(0, 0)]: packEdits(mine), [chunkKey(-1, 0)]: packEdits(west) } });
+    const [{ msg }] = core.run();
+    expect(msg.ids[(120 * 16 + 2) * 16 + 2]).toBe(byName.get('glass').id);
+    expect(msg.state).toBeInstanceOf(Uint8Array);
+    // the stone on the far side of the border hides nothing here, but its faces are its own chunk’s;
+    // the glass is drawn in this chunk’s section 7
+    expect(msg.meshes[7].cutout.count).toBe(24);
+    // and the worker’s own copy of the terrain is left as the seed made it
+    core.handle({ type: 'chunk', key: chunkKey(0, 0), seed: 1, cx: 0, cz: 0, priority: 0 });
+    const [{ msg: plain }] = core.run();
+    expect(plain.ids[(120 * 16 + 2) * 16 + 2]).toBe(0);
+  });
+
+  it('a neighbour’s edit at the border hides this chunk’s face', () => {
+    const core = makeCore({ textures });
+    const mine = makeChunk(0, 0);
+    set(mine, 0, 120, 7, byName.get('stone').id);
+    const west = makeChunk(-1, 0);
+    set(west, 15, 120, 7, byName.get('stone').id);
+    core.handle({ type: 'chunk', key: chunkKey(0, 0), seed: 1, cx: 0, cz: 0, priority: 0, edits: { [chunkKey(0, 0)]: packEdits(mine) } });
+    const [{ msg: alone }] = core.run();
+    core.handle({ type: 'chunk', key: chunkKey(0, 0), seed: 1, cx: 0, cz: 0, priority: 0, edits: { [chunkKey(0, 0)]: packEdits(mine), [chunkKey(-1, 0)]: packEdits(west) } });
+    const [{ msg: beside }] = core.run();
+    expect(alone.meshes[7].opaque.count / 4).toBe(6);
+    expect(beside.meshes[7].opaque.count / 4).toBe(5);
   });
 
   it('a cancelled job is never run', () => {
