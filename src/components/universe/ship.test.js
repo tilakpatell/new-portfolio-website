@@ -235,7 +235,9 @@ describe('up and down, and all the way round', () => {
       const frames = path(s, { throttle: 1, boost: true }, long);
       const ys = frames.map((f) => side * f.y);
       expect(Math.max(...ys)).toBeLessThan(SHIP.ceiling + 1);
-      expect(ys.at(-1)).toBeGreaterThan(SHIP.ceiling - 2.5);
+      // (up under it: the drive opens on the way up and stays open as the
+      // nose comes round, so it rounds out a little lower, still flying)
+      expect(ys.at(-1)).toBeGreaterThan(SHIP.ceiling * 0.7);
       expect(Math.abs(way(frames.at(-1), NOSE)[1])).toBeLessThan(0.1);
       expect(fly(s, { throttle: 1, boost: true }, long, []).events.filter((e) => e.type === 'edge')).toHaveLength(0);
     }
@@ -269,6 +271,57 @@ describe('up and down, and all the way round', () => {
     expect(events.filter((e) => e.type === 'edge')).toHaveLength(1);
     const [fx, fz] = forward(ship.heading);
     expect((-fx * ship.x - fz * ship.z) / Math.hypot(ship.x, ship.z)).toBeGreaterThan(0.5); // nose back toward the middle
+  });
+});
+
+// Flat out on the pulse drive (nothing solid in the way) from `s`, for
+// `seconds` or until `until(ship)`: the slowest it went, and the hardest it
+// slowed (map units a second, a second)
+const pulseRun = (s, seconds, until = () => false) => {
+  let ship = s;
+  let slowest = Infinity;
+  let hardest = 0;
+  for (let t = 0; t < seconds && !until(ship); t += 1 / 60) {
+    const next = step(ship, { throttle: 1, boost: true }, 1 / 60, []).ship;
+    hardest = Math.max(hardest, (ship.speed - next.speed) * 60);
+    ship = next;
+    slowest = Math.min(slowest, ship.speed);
+  }
+  return { ship, slowest, hardest };
+};
+
+describe('the pulse drive near a place: no wall to hit', () => {
+  it('keeps its speed flying past a world, wide of it', () => {
+    for (const id of ['marvel', 'starwars', 'middleearth']) {
+      const p = PLANETS.find((o) => o.id === id);
+      // level with it, 100 out past its reach to one side, flying by
+      const s = { ...spawn(null), x: p.at[0] + p.reach + 100, y: p.at[1], z: p.at[2] + 900, heading: 0, speed: SHIP.pulse };
+      expect(pulseRun(s, 1800 / SHIP.pulse).slowest, id).toBeGreaterThan(SHIP.pulse * 0.85);
+    }
+  });
+
+  it('slows smoothly coming straight at one, and gets there at the boost', () => {
+    for (const id of ['marvel', 'starwars', 'middleearth']) {
+      const p = PLANETS.find((o) => o.id === id);
+      const s = { ...spawn(null), x: p.at[0], y: p.at[1], z: p.at[2] + p.reach + 900, heading: 0, speed: SHIP.pulse };
+      const run = pulseRun(s, 30, (o) => Math.hypot(o.x - p.at[0], o.y - p.at[1], o.z - p.at[2]) < p.reach);
+      expect(run.hardest, id).toBeLessThan(260); // (it used to brake at SHIP.drop, 470, from where the drive started closing)
+      expect(run.ship.speed, id).toBeLessThanOrEqual(SHIP.boost + 1);
+    }
+  });
+
+  it('flies straight through a nebula on the drive', () => {
+    const w = WONDERS.find((o) => o.id === 'veil');
+    const s = { ...spawn(null), x: w.at[0], y: w.at[1], z: w.at[2] + w.r + 300, heading: 0, speed: SHIP.pulse };
+    expect(pulseRun(s, (w.r * 2 + 300) / SHIP.pulse).slowest).toBeGreaterThan(SHIP.pulse * 0.9);
+  });
+
+  it('opens between a sun and its planets, and is down by each of them', () => {
+    const w = WONDERS.find((o) => o.id === 'ember');
+    // well clear of its sun and of both its planets, inside the system
+    const at = [w.at[0] + Math.cos(2) * (w.r + 220), w.at[1], w.at[2] + Math.sin(2) * (w.r + 220)];
+    expect(boostAt(...at)).toBeGreaterThan(SHIP.boost * 3);
+    expect(boostAt(w.at[0] + w.r * 1.4 + 5, w.at[1], w.at[2])).toBe(SHIP.boost);
   });
 });
 
@@ -356,6 +409,13 @@ describe('deep space', () => {
     }
   });
 
+  it('is held part way down while a battle holds it part way', () => {
+    const pulsing = fly(open, { throttle: 1, boost: true }, 6, []).ship;
+    const half = fly(pulsing, { throttle: 1, boost: true, interdicted: 0.5 }, 4, []).ship;
+    expect(half.speed).toBeGreaterThan(SHIP.boost * 2);
+    expect(half.speed).toBeLessThan(SHIP.pulse * 0.6);
+  });
+
   it('is cut back to the boost while hunters have it interdicted', () => {
     const pulsing = fly(open, { throttle: 1, boost: true }, 6, []).ship;
     expect(pulsing.speed).toBeGreaterThan(SHIP.pulse - 2);
@@ -415,7 +475,8 @@ describe('deep space', () => {
       const s = { ...spawn(null), x: w.at[0], y: w.at[1], z: w.at[2] + w.r + 120, heading: 0, speed: SHIP.pulse };
       const { ship, events } = fly(s, { throttle: 1, boost: true }, 9);
       expect(inside(ship), w.id).toBe(false);
-      expect(events.some((e) => e.type === 'crash' && e.id === w.id), w.id).toBe(true);
+      // (or a part of it: the Citadel's rim, say, which is the Citadel)
+      expect(events.some((e) => e.type === 'crash' && e.id.split('-')[0] === w.id), w.id).toBe(true);
     }
   });
 
