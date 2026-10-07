@@ -48,7 +48,7 @@ import { createFleet } from './glbFleet';
 import { bezier, convoyLane, dockScale, dockable, flybyLane, laneDepart, laneDock, laneLength, laneLocal, laneNear, tangent } from './lanes';
 import { DEEP, PLACES, nearestPlace, openness } from './deep';
 import { HOME_RADIUS } from './layout';
-import { SOLIDS } from './ship';
+import { SOLIDS, pacedAll, PACE } from './ship';
 import { SIDES, sideFor } from './sides';
 
 // size: its biggest dimension in map units (a TIE's height, Birdperson's
@@ -56,7 +56,7 @@ import { SIDES, sideFor } from './sides';
 // fly together; weight: how often it comes up; big: high over the map, one
 // at a time; flyby: whether it comes to you; civil: an ordinary ship (a
 // convoy's, or one in distress)
-export const TYPES = {
+export const TYPES = pacedAll({
   freighter: { size: 0.7, speed: 7.5, crew: [1, 2], weight: 3, flyby: true, civil: true },
   transport: { size: 1.8, speed: 4.2, crew: [1, 2], weight: 2, civil: true },
   corvette: { size: 3.2, speed: 5, crew: [1, 1], weight: 1.2, civil: true },
@@ -93,7 +93,7 @@ export const TYPES = {
   mortyfighter: { size: 0.28, speed: 10, crew: [3, 5], weight: 1.4, flyby: true },
   squanchship: { size: 0.36, speed: 8, crew: [1, 1], weight: 0.8, flyby: true },
   poopyship: { size: 0.3, speed: 9, crew: [1, 1], weight: 0.6, flyby: true },
-};
+}); // (at the ship's pace: ship.js's PACE)
 // whose traffic each crew meets (sides.js: the side's everyday ships and
 // its civilians, who guards a convoy, who calls for help); with no ship
 // picked, every side's
@@ -461,7 +461,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet(), en
       // (a long one has an escort in the middle too)
       if (n >= 6) freight.splice(3, 0, side.convoy.escort);
       const kinds = [side.convoy.escort, ...freight, side.convoy.escort];
-      spawn(kinds[1], pts, true, { kinds, column: true, speed: 3.6, event: 'convoy' });
+      spawn(kinds[1], pts, true, { kinds, column: true, speed: 3.6 * PACE, event: 'convoy' });
       return true;
     },
 
@@ -470,7 +470,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet(), en
     distress(ship, side = sideFor(crew)) {
       const pts = side && ship && (laneNear(ship, rand) ?? flybyLane(ship, rand, { cross: true }));
       if (!pts) return null;
-      const g = spawn(side.distress.civil, pts, true, { kinds: [side.distress.civil], speed: 2.6, event: 'distress' });
+      const g = spawn(side.distress.civil, pts, true, { kinds: [side.distress.civil], speed: 2.6 * PACE, event: 'distress' });
       return g.members[0].model.group;
     },
 

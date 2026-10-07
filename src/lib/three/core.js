@@ -143,7 +143,8 @@ export function wear(material, scan, { metres = 2, strength = 0.55, normal = 0.8
     // (the map is read decoded to linear: its sRGB mean, linear)
     uCoreMean: { value: mean ** 2.2 },
   };
-  material.userData.core = uniforms;
+  // (a mark a copy doesn't take: Material.copy copies userData through JSON)
+  Object.defineProperty(material.userData, 'core', { value: uniforms, enumerable: false, configurable: true });
   const withNormal = Boolean(scan.normalMap);
   const before = material.onBeforeCompile;
   material.onBeforeCompile = (sh, r) => {

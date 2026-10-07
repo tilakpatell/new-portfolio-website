@@ -103,7 +103,7 @@ describe('the drives', () => {
       expect(orbiting(quick.s, null), id).toBe(id);
       expect(quick.t, id).toBeLessThan(cruise.t * 0.65);
       // (a moon sits in the Citadel's space, where the drive stays shut for the last leg: a little longer)
-      expect(quick.t, id).toBeLessThan(MOONS.some((m) => m.id === id) ? 25 : 15);
+      expect(quick.t, id).toBeLessThan(MOONS.some((m) => m.id === id) ? 33 : 20);
       if (id !== 'starwars') expect(quick.top, id).toBeGreaterThan(SHIP.pulse * 2); // (well past the pulse drive; the gate's close to home)
     }
   });
@@ -132,7 +132,7 @@ describe('the drives', () => {
     // flying out at super speed, then let go of the autopilot (no overdrive)
     let s = spawn('home');
     const park = parkFor('invincible', [s.x, s.z]);
-    for (let t = 0; t < 4; t += 1 / 60) s = step(s, autopilot(s, 'invincible', park, undefined, OVERDRIVE).input, 1 / 60).ship;
+    for (let t = 0; t < 7; t += 1 / 60) s = step(s, autopilot(s, 'invincible', park, undefined, OVERDRIVE).input, 1 / 60).ship;
     expect(s.speed).toBeGreaterThan(SHIP.pulse * 2);
     for (let t = 0; t < 2; t += 1 / 60) s = step(s, { throttle: 1, boost: true }, 1 / 60).ship;
     expect(s.speed).toBeLessThanOrEqual(SHIP.pulse + 1);

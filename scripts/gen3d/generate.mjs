@@ -23,6 +23,8 @@ export const ENGINES = ['trelliscpp', 'trellis2', 'hunyuan'];
 // the Hunyuan3D-2 multi-view engine's conda env, in the same distro
 export const HY3D = { env: 'hy3d', repo: '~/Hunyuan3D-2', paintEnv: 'hy3d21', paintRepo: '~/Hunyuan3D-2.1' };
 export const VIEWS = ['front', 'left', 'back', 'right'];
+// GEN3D_ENGINE=fake (or --engine fake): a tiny GLB in under a second, for the contract tests; never chosen on its own
+const FAKE = join(HERE, '..', 'ai-e2e', 'fakes', 'engine.mjs');
 
 // Pictures of one thing from several sides, { front, left, back, right } (any one
 // or more), or one picture (the front). TRELLIS.2 takes the front; Hunyuan takes
@@ -78,6 +80,8 @@ export function command(engine, given, out, { seed = 42, res = 1024, faces, tex,
       : shape;
     return ['wsl.exe', '-d', WSL.distro, '-e', 'bash', '-lc', run];
   }
+  // the contract tests' stand-in (scripts/ai-e2e/fakes/engine.mjs): every picture it was given, so a test can see which went where
+  if (engine === 'fake') return [process.execPath, FAKE, image, out, '--seed', String(seed), ...VIEWS.filter((k) => k !== 'front' && v[k]).flatMap((k) => [`--${k}`, v[k]])];
   throw new Error(`no engine ${engine} (${ENGINES.join(', ')})`);
 }
 
@@ -85,7 +89,7 @@ const q = (s) => `'${s.replace(/'/g, `'\\''`)}'`;
 
 export async function generate(image, out, opts = {}) {
   // several views and no engine named: Hunyuan, the one that can use them
-  const engine = opts.engine ?? (Object.keys(views(image)).length > 1 ? 'hunyuan' : ENGINES.find((e) => command(e, image, out, opts))) ?? null;
+  const engine = opts.engine ?? process.env.GEN3D_ENGINE ?? (Object.keys(views(image)).length > 1 ? 'hunyuan' : ENGINES.find((e) => command(e, image, out, opts))) ?? null;
   const cmd = engine && command(engine, image, out, opts);
   if (!cmd) throw new Error(`${opts.engine ?? 'no engine'} isn't set up here: see scripts/gen3d/README.md`);
   const started = Date.now();

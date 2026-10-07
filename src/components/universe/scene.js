@@ -1135,7 +1135,7 @@ export async function create(canvas, ctx) {
       .addScaledVector(camF, 0.4)
       .addScaledVector(camU, 0.06)
       .addScaledVector(camR, (s.lean || 0) * 0.45);
-    return { target, quat: camQ.clone().multiply(TILT), dist: 1.7 + Math.min(Math.abs(s.speed), 30) * 0.045 + state.streak * 0.7 };
+    return { target, quat: camQ.clone().multiply(TILT), dist: 1.7 + Math.min(Math.abs(s.speed) / SHIP.boost, 1.5) * 0.9 + state.streak * 0.7 };
   };
 
   // From the pilot's seat: the eye a little ahead of the ship's middle and

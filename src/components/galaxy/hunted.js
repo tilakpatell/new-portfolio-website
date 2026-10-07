@@ -17,6 +17,7 @@
 // the targeting bracket.
 
 import { FACTIONS as HOME, HUNTER_KINDS, NAMES as HOME_NAMES } from '../universe/hunterRules';
+import { pacedAll } from '../universe/ship';
 
 export const FACTIONS = {
   empire: HOME.empire,
@@ -37,13 +38,16 @@ export const FACTIONS = {
 
 export const KINDS = {
   ...HUNTER_KINDS,
-  vulture: { size: 0.28, speed: 20, accel: 19, hp: 1, fire: [0.7, 1.4] },
-  trifighter: { size: 0.32, speed: 25, accel: 22, hp: 3, fire: [0.5, 0.95], tail: 0.3 },
-  xwing: { size: 0.36, speed: 21, accel: 18, hp: 3, fire: [0.8, 1.5] },
-  awing: { size: 0.3, speed: 26, accel: 23, hp: 2, fire: [0.6, 1.1], tail: 0.3 },
+  // (at the ship's pace, as the universe map's are: ship.js's PACE)
+  ...pacedAll({
+    vulture: { size: 0.28, speed: 20, accel: 19, hp: 1, fire: [0.7, 1.4] },
+    trifighter: { size: 0.32, speed: 25, accel: 22, hp: 3, fire: [0.5, 0.95], tail: 0.3 },
+    xwing: { size: 0.36, speed: 21, accel: 18, hp: 3, fire: [0.8, 1.5] },
+    awing: { size: 0.3, speed: 26, accel: 23, hp: 2, fire: [0.6, 1.1], tail: 0.3 },
+    arc170: { size: 0.46, speed: 19, accel: 16, hp: 4, fire: [0.7, 1.3] },
+    delta7: { size: 0.3, speed: 26, accel: 23, hp: 3, fire: [0.5, 0.9], tail: 0.35 },
+  }),
   ywing: { ...HUNTER_KINDS.tiebomber, size: 0.42 },
-  arc170: { size: 0.46, speed: 19, accel: 16, hp: 4, fire: [0.7, 1.3] },
-  delta7: { size: 0.3, speed: 26, accel: 23, hp: 3, fire: [0.5, 0.9], tail: 0.35 },
   redleader: { ...HUNTER_KINDS.tieadvanced, size: 0.36 }, // (Wedge, with the TIE Advanced's numbers)
 };
 

@@ -61,9 +61,16 @@ import { createWater } from './water';
 import { floatPose } from './floats';
 import { createWeather } from './weather';
 import { createKit } from './kit';
-import { createGrass } from './grass';
+import { createHouse } from '../../../lib/three/house';
+import { adoptLater, exposureOf, groundPieces, lookOf } from './look';
+import { surfaceTuning, siteCode } from './tune';
+import { debugOn, debugPanel } from '../../../lib/debugPanel';
+import { createGrass } from '../../../lib/three/grass';
+import { createWind } from '../../../lib/three/wind';
+import { createGroundMap } from '../../../lib/three/groundmap';
+import { groundPainter, mapAreaOf } from './groundPaint';
 import { floorShadow } from '../../../lib/three/grounding';
-import { PROPS } from './props';
+import { PROPS, SCATTER } from './props';
 import { createPlacer } from './placer';
 import { createActors, modelFigure } from './actors';
 import { RIDES } from './rides';
@@ -88,7 +95,6 @@ import { createChaseMission } from './missions/chaseScene';
 import { createAssaultMission } from './missions/assaultScene';
 import { RULES as ASSAULT } from './missions/assault';
 import { groundWorld } from '../../../lib/three/groundwork';
-import { createHouse, shadowFor } from '../../../lib/three/house';
 import { garrisonLife } from './garrison';
 
 const V = THREE.Vector3;
@@ -138,16 +144,28 @@ export async function create(canvas, ctx) {
   scene.add(camera);
   canvas.setAttribute('aria-hidden', 'true');
   const post = createPost(renderer, scene, camera, { small });
-  // (fogged in the sky's colour before its shaders are made, so they're made once)
+  // the house look (lib/three/house: shade is a colour, never grey) over
+  // everything lit, from the site's look (look.js); the fog stays the
+  // surface's own (skyfog.js: the dome's very colour), so the house leaves
+  // three's fog line be. The post tone-maps with its own shoulder, so the
+  // exposure is the site's, through it.
+  const siteLook = lookOf(site);
+  const house = createHouse({ ...siteLook, fog: false });
+  post.exposure(exposureOf(site));
+  // (fogged in the sky's colour and in the look before its shaders are
+  // made, so they're made once)
   const warm = (root) => {
     skyFog.scene(root);
-    house.adopt(root);
+    adoptLater(house, root);
     return precompile(renderer, singlePass(root), camera, scene, post.on ? post.composer.readBuffer : undefined);
   };
 
   const sky = createSky(site);
   // (the fog the sky's colour that way: everything fogged with it, as it's put in the world)
   const skyFog = createSkyFog(sky, THREE.ShaderChunk);
+  // (the look's halo round the sun, and its haze below the horizon where the
+  // site says: the fog is the surface's, so they go on it)
+  skyFog.look({ halo: siteLook.halo, below: typeof site.look?.fogBelow === 'number' ? siteLook.fogBelow : null });
   scene.add(sky.mesh);
   const sunDir = sky.sunDirs[0] ?? new V(0.3, 0.8, 0.4).normalize();
   const sun = new THREE.DirectionalLight(site.sky.suns?.[0]?.color ?? '#ffffff', site.light.sun ?? 3);
@@ -177,12 +195,10 @@ export async function create(canvas, ctx) {
   }
   const hemi = new THREE.HemisphereLight(site.light.sky ?? '#bcd0ee', site.light.ground ?? '#8a7a66', site.light.ambient ?? 0.9);
   scene.add(hemi);
-  // the house look (lib/three/house): shade the colour of the sky light, on
-  // everything (the fog is already the sky's, its own way: left as it is;
-  // the post's tone map is the house's Neutral shoulder already)
-  const house = createHouse({ fog: false });
-  const shadeOf = { hex: -1, k: -1 };
   scene.fog = new THREE.FogExp2(site.fog.color, site.fog.density);
+  // (the look's sky is the dome's: its horizon and zenith, the sun's way)
+  house.sky({ low: sky.uniforms.uHorizon.value, high: sky.uniforms.uZenith.value, sunDir });
+  house.light({ sun, hemi });
   // what shiny things reflect: the sky
   const pmrem = new THREE.PMREMGenerator(renderer);
   const envSky = sky.envScene();
@@ -195,7 +211,45 @@ export async function create(canvas, ctx) {
   // ── The land ──
   const height = makeHeight(site.ground);
   const grid = heightGrid(height, { n: small ? 160 : 256, grow: small ? 1.13 : 1.08 });
-  const gmat = groundMaterial(site, { small });
+  // (water you wade in: not lava, not cloud, and not a sea far under a
+  // platform with nothing else under it, which you'd fall into)
+  const wade = site.water && !site.noGround && site.water.kind !== 'clouds' && site.water.kind !== 'lava' ? site.water.level : null;
+  // where the scattered things go (worked out before anything's placed: the
+  // ground map is painted with the trees' crowns over it)
+  const r = rng(site.ground.seed ?? 1);
+  const avoid = [...site.places.map((p) => ({ at: p.at, r: p.flat?.r ?? p.r * 0.6 })), { at: site.land.at, r: 30 }];
+  const scattered = site.scatter.map((s) => {
+    const items = [];
+    const [r0, r1] = s.within ?? [20, site.reach];
+    let tries = 0;
+    while (items.length < Math.round(s.n * (small ? 0.6 : 1)) && tries++ < s.n * 20) {
+      const a = r() * Math.PI * 2;
+      const d = Math.sqrt(r0 * r0 + r() * (r1 * r1 - r0 * r0));
+      const x = Math.cos(a) * d;
+      const z = Math.sin(a) * d;
+      if (avoid.some((v) => Math.hypot(x - v.at[0], z - v.at[1]) < v.r + (s.clear ?? 4))) continue;
+      if (s.flat && grid.normalAt(x, z)[1] < s.flat) continue;
+      if (wade != null && s.dry !== false && grid.heightAt(x, z) < wade + (s.above ?? 0.2)) continue;
+      const [lo, hi] = s.scale ?? [1, 1];
+      items.push({ at: [x, z], yaw: r() * Math.PI * 2, scale: lo + (hi - lo) * r() ** 1.6, sink: s.sink ?? 0.1, stretch: s.stretch ? s.stretch[0] + r() * (s.stretch[1] - s.stretch[0]) : 1 });
+    }
+    return { s, items };
+  });
+  // the ground as data (lib/three/groundmap): its colour and its grass
+  // painted once over the walkable square (groundPaint.js), darker and
+  // thinner under the trees' crowns; the floor and the grass read it, and
+  // the house bounces it up onto everything low. None where there's no
+  // ground (look.js's groundPieces).
+  const pieces = groundPieces(site);
+  let groundMap = null;
+  if (pieces.map) {
+    const shade = scattered.flatMap(({ s, items }) => (SCATTER[s.kind]?.canopy ? items.map((it) => ({ at: it.at, r: SCATTER[s.kind].canopy * it.scale })) : []));
+    const painter = groundPainter(site, grid, { shade });
+    const mapSize = small ? 256 : 512;
+    groundMap = createGroundMap({ area: mapAreaOf(), size: mapSize, heightSize: mapSize / 2, paint: painter.paint, height: painter.height });
+    if (pieces.bounce) house.ground(groundMap);
+  }
+  const gmat = groundMaterial(site, { small, map: groundMap });
   const marks = createMarks(small ? 256 : 512);
   gmat.uniforms.uMarks.value = marks.texture;
   const ground = groundMesh(grid, gmat.material);
@@ -212,15 +266,17 @@ export async function create(canvas, ctx) {
     solids: createSolids(),
     floors: [...(site.floors ?? [])],
     reach: site.reach,
-    // (water you wade in: not lava, not cloud, and not a sea far under a
-    // platform with nothing else under it, which you'd fall into)
-    water: site.water && !site.noGround && site.water.kind !== 'clouds' && site.water.kind !== 'lava' ? site.water.level : null,
+    water: wade,
   };
   const weather = reduced ? null : createWeather(site, { small });
   if (weather) scene.add(weather.group);
 
   // ── What's on it ──
-  const kit = createKit({ seed: 31 });
+  // one wind for the world (lib/three/wind): the grass's, and the way the
+  // kit's plants and cloth lean
+  const windAngle = site.ground.wind ?? 0;
+  const wind = createWind({ strength: site.grass?.wind ?? 0.4, angle: windAngle });
+  const kit = createKit({ seed: 31, wind: { angle: windAngle } });
   // (the scatter casts its shadow only near you: near.js)
   const shadowPhase = sun.castShadow ? createShadowPhase(scene, sun) : null;
   const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null });
@@ -230,27 +286,17 @@ export async function create(canvas, ctx) {
     const put = placer.put(t);
     if (t.float && water?.height) put.then((o) => o && floaters.push({ o, x: o.position.x, z: o.position.z, yaw: t.yaw ?? 0, float: t.float }));
   }
-  const r = rng(site.ground.seed ?? 1);
-  const avoid = [...site.places.map((p) => ({ at: p.at, r: p.flat?.r ?? p.r * 0.6 })), { at: site.land.at, r: 30 }];
-  for (const s of site.scatter) {
-    const items = [];
-    const [r0, r1] = s.within ?? [20, site.reach];
-    let tries = 0;
-    while (items.length < Math.round(s.n * (small ? 0.6 : 1)) && tries++ < s.n * 20) {
-      const a = r() * Math.PI * 2;
-      const d = Math.sqrt(r0 * r0 + r() * (r1 * r1 - r0 * r0));
-      const x = Math.cos(a) * d;
-      const z = Math.sin(a) * d;
-      if (avoid.some((v) => Math.hypot(x - v.at[0], z - v.at[1]) < v.r + (s.clear ?? 4))) continue;
-      if (s.flat && grid.normalAt(x, z)[1] < s.flat) continue;
-      if (world.water != null && s.dry !== false && grid.heightAt(x, z) < world.water + (s.above ?? 0.2)) continue;
-      const [lo, hi] = s.scale ?? [1, 1];
-      items.push({ at: [x, z], yaw: r() * Math.PI * 2, scale: lo + (hi - lo) * r() ** 1.6, sink: s.sink ?? 0.1, stretch: s.stretch ? s.stretch[0] + r() * (s.stretch[1] - s.stretch[0]) : 1 });
-    }
-    placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true });
-  }
-  // (the grass round you: blades on the land, where the site grows it)
-  const grass = site.grass && !site.noGround ? createGrass(scene, { grid, site, small, time: kit.wind }) : null;
+  for (const { s, items } of scattered) placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true });
+  // the grass round you (lib/three/grass, Bruno's: a triangle a blade, one
+  // draw, the patch going with you), standing on the ground map and its
+  // colour, where the site grows it
+  const grass = pieces.grass
+    ? createGrass({ ground: groundMap, wind, side: tier === 'high' && !small ? 280 : small ? 120 : 200, size: 44, height: site.grass.h?.[1] ?? 0.5, width: site.grass.w ?? 0.05, root: 0.35 })
+    : null;
+  if (grass) scene.add(grass.mesh);
+  // ?debug: the look, the grass and the wind on sliders, copied out as the
+  // site's own blocks (lib/debugPanel, tune.js)
+  const panel = debugOn() ? debugPanel({ title: site.id, groups: surfaceTuning({ house, skyFog, post, exposure: exposureOf(site), grass, wind }), code: siteCode }) : null;
   const life = createActors({ parent: scene, world, life: garrisonLife(site.life, ctx.effects?.troops), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
 
   // ── The places you go into (zones): built high over the world, out of
@@ -339,6 +385,8 @@ export async function create(canvas, ctx) {
           .put({ kind: x.kind, at: [0, 0], abs: true, solid: false })
           .then((o) => {
             if (!o || disposed) return;
+            // (it moves: a built one's scans go with it, kit.js's twins)
+            kit.moving(o);
             tmp.add(o);
             o.position.set(0, 0, 0);
             o.rotation.set(0, 0, 0);
@@ -847,6 +895,8 @@ export async function create(canvas, ctx) {
     if (!kind || !PROPS[kind]) return;
     if (!carriable.has(kind)) {
       const o = PROPS[kind](kit, {}).object;
+      // (carried about: its scans go with it, kit.js's twins)
+      kit.moving(o);
       o.position.set(0, 1.0, -0.3);
       carriable.set(kind, o);
     }
@@ -2244,9 +2294,18 @@ export async function create(canvas, ctx) {
     life.update(dt, state.phase === 'walk' ? me().st : null, state.phase === 'walk' || state.phase === 'ride' ? me().st : camera.position);
     placer.update(t, dt, me().st);
     if (!reduced) kit.tick(dt);
-    grass?.update(me().st.x, me().st.z, me().st.x, me().st.z);
+    grass?.update(me().st);
+    wind.update(dt);
     stepDust(dt);
     storm(dt);
+    // (the look's full light follows the lamps and the storms; anything that
+    // came into the world without passing through warm is taken on now and
+    // then)
+    house.light({ sun, hemi });
+    if ((state.sweep = (state.sweep ?? 0) + dt) > 2) {
+      state.sweep = 0;
+      house.adopt(scene);
+    }
     online(dt);
     sounds.update(dt, { riding: state.phase === 'ride' ? Math.abs(state.riding.state.speed) + 1 : 0 });
     marks.flush();
@@ -2319,15 +2378,6 @@ export async function create(canvas, ctx) {
     sky.update(camera, t, flash.k);
     // (whatever's come into the world since, fogged in the sky's colour before it's drawn)
     skyFog.scene(scene);
-    // (and in the house look, its full light and shade following the sky light: a storm's flashes, a hall)
-    house.light({ sun, hemi });
-    const hex = hemi.color.getHex();
-    if (hex !== shadeOf.hex || hemi.intensity !== shadeOf.k) {
-      shadeOf.hex = hex;
-      shadeOf.k = hemi.intensity;
-      house.set({ shadow: shadowFor({ hemiSky: hex, hemi: hemi.intensity }) });
-    }
-    house.adopt(scene);
     water?.update(t, camera);
     for (const f of floaters) {
       if (Math.hypot(camera.position.x - f.x, camera.position.z - f.z) > 400) continue;
@@ -2384,8 +2434,11 @@ export async function create(canvas, ctx) {
         auto: true,
       });
       // (the grass in the floor's shadows: read where each blade stands)
-      if (grass) floorShadow(grass.mesh.material, lit.mask);
+      if (grass) floorShadow(grass.material, lit.mask);
     }
+    // (the look over everything, after the floor's light: its shade then
+    // replaces the floor's own tint, and one shadow colour reaches it all)
+    if (!disposed) house.adopt(scene);
     // (the scouts' way is planned round the trees, so once they're down)
     if (!disposed) chase?.begin();
     if (!disposed && assault) {
@@ -2656,6 +2709,9 @@ export async function create(canvas, ctx) {
       life.dispose();
       placer.dispose();
       grass?.dispose();
+      wind.dispose();
+      panel?.dispose();
+      groundMap?.dispose();
       shadowPhase?.dispose();
       for (const p of people) {
         p.gp?.dispose();
