@@ -1497,12 +1497,12 @@
     ]
   },
   "surface-atte": {
-    "title": "AT-TE Walker",
-    "author": "HarukaS",
-    "authorUrl": "https://sketchfab.com/Haruka_S",
-    "license": "CC-BY-NC-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
-    "source": "https://sketchfab.com/3d-models/at-te-walker-93890aa7a2c84102a4a28af05bd07c9b",
+    "title": "AT-TE Walker (Animated)",
+    "author": "R3negadeAidan",
+    "authorUrl": "https://sketchfab.com/R3negadeAidan",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/at-te-walker-animated-81ef81cf6c554055b741b43a1a08d69f",
     "where": "galaxy-surface",
     "as": "the AT-TE walkers",
     "file": "/models/galaxy/surface/atte.glb",

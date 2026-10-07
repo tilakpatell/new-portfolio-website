@@ -101,6 +101,16 @@ truth where this disagrees with it.
   (through the droidekas to a red-bladed duellist at his hangar) and *The
   nearest starship* (Yoda's beacon on a core ship). All in
   `sites/quests.js`, their givers in the sites' life.
+- **The walkers and the arena, re-imported** (`scripts/sketchfab-surface.mjs`):
+  the AT-AT kept rigged with its `Walk` clip at 2K maps (Quiznos323's), so
+  the walkers on Hoth's plain and Scarif's beach are the model walking its
+  own walk, not the built one (Scarif's cargo walkers are its taller
+  cousins; the model stands in, named *Imperial walker*); the AT-TE is
+  R3negadeAidan's rigged one with its `Action` walk, and Geonosis's
+  walking AT-TEs wear it; the arena came in at 256-pixel maps and is at 2K
+  now, 60k triangles, with a lighter light copy (its maps 512); the LAAT at
+  2K. `rig: true` models have no light copy (the LOD script doesn't keep a
+  skin), so `atat.lod1.glb` and `atte.lod1.glb` are gone.
 - **The war**: `HANDOFF-galactic-assault.md` (Scarif's and Endor's
   battles, squads, cover, suppression, waves).
 

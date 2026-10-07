@@ -536,8 +536,9 @@ export const SITES = {
       { kind: 'sorganfern', n: 340, within: [20, 560], scale: [1, 2.2], solid: false, above: 1.2 },
     ],
     life: [
-      { kind: 'atact', n: 1, model: false, path: [[-250, -60], [-330, -260], [-180, -330], [-120, -200]], speed: 2.4, r: 4.5, scale: 1 },
-      { kind: 'atact', n: 1, model: false, path: [[-120, -200], [-250, -60], [-330, -260], [-180, -330]], speed: 2.4, r: 4.5, scale: 1 },
+      // (the Empire's walkers on the beach: the rigged AT-AT model, walking its own walk; the film's cargo walkers are its taller cousins)
+      { kind: 'atat', n: 1, path: [[-250, -60], [-330, -260], [-180, -330], [-120, -200]], speed: 2.4, r: 4.5, scale: 1, name: 'Imperial walker', says: ['(The walker’s head swings your way, and its chin guns with it.)'] },
+      { kind: 'atat', n: 1, path: [[-120, -200], [-250, -60], [-330, -260], [-180, -330]], speed: 2.4, r: 4.5, scale: 1, name: 'Imperial walker', says: ['(It stalks on down the beach, the sand shaking under each foot.)'] },
       { kind: 'shoretrooper', n: 4, path: [[-90, 70], [-130, 70], [-130, 110], [-90, 110]], speed: 1.4, name: 'Shoretrooper', says: ['Halt. This pad is restricted.', 'Your shuttle’s clearance code is… in order. Proceed.', 'Rebels on the beach! Get to the walkers!', 'Keep your eyes on the tree line.'] },
       { kind: 'shoretrooper', n: 3, at: [140, 150], spread: 16, roam: 18, speed: 1.2, name: 'Shoretrooper', says: ['Stay away from the switch!', 'Who’s that? The blind one? Shoot him!', 'Squad, form up on the pad!'] },
       { kind: 'deathtrooper', n: 2, at: [90, 520], spread: 6, roam: 6, speed: 1, name: 'Death trooper', says: ['(A burst of distorted, unintelligible comms chatter.)', '(It turns its head to follow you. It says nothing at all.)'] },

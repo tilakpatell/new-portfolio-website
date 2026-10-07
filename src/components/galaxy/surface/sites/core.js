@@ -880,7 +880,7 @@ export const SITES = {
           { kind: 'laat', at: [-20, -6], yaw: 2.6, y: 1.5 },
           { kind: 'laat', at: [14, 20], yaw: 2.9, y: 2.5 },
           { kind: 'laat', at: [24, -26], yaw: 2.3, y: 1.8 },
-          { kind: 'atte', at: [-30, 30], yaw: 2.4, model: false },
+          { kind: 'atte', at: [-30, 30], yaw: 2.4 },
           { kind: 'crates', at: [0, 4] },
           { kind: 'crates', at: [-8, 14] },
         ],
@@ -968,7 +968,8 @@ export const SITES = {
           rv: [['jesse', 'Yo, the giant balls are leaving.'], ['walt', 'Jesse.']],
         },
         things: [
-          { kind: 'coresphere', at: [240, 40], yaw: 0.2, model: false, solid: false },
+          // (the galaxy's own core ship model, set down on its legs; the built sphere if it won't load)
+          { kind: 'coresphere', url: '/models/galaxy/coreship.glb', metres: 240, at: [240, 40], yaw: 0.2, model: false, solid: false },
           { kind: 'coresphere', at: [160, -240], yaw: 1.1, model: false, solid: false, opts: { rise: 4 } },
           { kind: 'droideka', at: [-10, 6], yaw: -1.6 },
           { kind: 'droideka', at: [-14, -4], yaw: -1.5, opts: { shield: true } },
@@ -988,7 +989,7 @@ export const SITES = {
       { kind: 'homingspider', at: [62, -38], yaw: 2.6, roll: 0.4, sink: 0.5, solid: { r: 3 } },
       { kind: 'wrecksmoke', at: [62, -38], solid: false, opts: { h: 16, r: 1.2 } },
       // AT-TEs out on the plain, and a third gunship coming in
-      { kind: 'atte', at: [140, 60], yaw: 2.0, model: false },
+      { kind: 'atte', at: [140, 60], yaw: 2.0 },
       { kind: 'laat', at: [80, 140], yaw: 2.2, y: 24, solid: false },
       // the hives along the horizon (and three nearer), too big to scatter:
       // the hive model (a mesa with its spires), scaled to each one's height
@@ -1026,7 +1027,7 @@ export const SITES = {
       { kind: 'jedi', n: 1, id: 'yoda', quest: 'coreships', at: [116, 334], still: true, scale: 0.38, r: 0.3, name: 'Yoda', says: ['Concentrate all fire on the nearest starship.', 'Around the survivors a perimeter create.', 'Begun, the Clone War has.', 'Victory? Victory, you say? Not victory.'] },
       { kind: 'battledroid', n: 10, path: [[420, -60], [380, -10], [330, 30], [380, -100], [440, -140]], speed: 1.4, name: 'Battle droid', says: ['Roger, roger.', 'Retreat! Retreat! To the core ships!', 'Uh-oh.'] },
       { kind: 'superdroid', n: 4, at: [430, -110], spread: 20, roam: 12, speed: 1.0, name: 'Super battle droid', says: ['(It raises a wrist blaster and stomps past.)', 'Halt. Identify.'] },
-      { kind: 'atte', n: 2, path: [[200, 260], [340, 120], [300, 40], [160, 180]], speed: 2.2, r: 5, model: false, solid: false },
+      { kind: 'atte', n: 2, path: [[200, 260], [340, 120], [300, 40], [160, 180]], speed: 2.2, r: 5, solid: false },
       { kind: 'jedi', n: 1, at: [306, -296], roam: 6, speed: 0.8, name: 'Count Dooku', says: ['Master Kenobi, you disappoint me. Yoda holds you in such high esteem.', 'I have become more powerful than any Jedi.', 'This is just the beginning.'] },
     ],
     rides: [
