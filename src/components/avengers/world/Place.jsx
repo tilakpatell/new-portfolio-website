@@ -9,7 +9,9 @@ import HulkLab from '../HulkLab';
 import WebShooter from '../WebShooter';
 import { STONES } from '../../interests/stones';
 import { audioContext } from '../../../lib/audio';
+import { sayVoiced, stopVoiced } from '../../../lib/voiced';
 import { hasEarned } from '../hq/stones';
+import { REACTOR } from './reactor';
 import { placeById } from './rules';
 import '../../../styles/lazy/avengers.css';
 
@@ -29,25 +31,25 @@ const TesseractRun = lazy(() => import('../tesseract/TesseractRun'));
 
 const sfx = () => import('../../../lib/sfx');
 
-const FRIDAY = [
-  'Reactor on standby, boss.',
-  'Reactor online. All systems green.',
-  'Output at 200 percent. The suit’s ready when you are.',
-  'Output at 400 percent. I’d advise against going any higher, boss.',
-];
-
-// Tony's workshop without 3D: the arc reactor, to power up and fire.
+// Tony's workshop without 3D: the arc reactor, to power up and fire, and
+// F.R.I.D.A.Y. on each setting (in her own voice where it's been made: lib/voiced.js).
 function ReactorToy() {
   const [power, setPower] = useState(0);
   const [blast, setBlast] = useState(0);
+  useEffect(() => stopVoiced, []);
   const powerUp = () => {
     audioContext(); // in the click, so the reactor can be heard
     sfx().then((s) => s.repulsor());
-    setPower((p) => (p + 1) % 4);
+    const next = (power + 1) % 4;
+    setPower(next);
+    sayVoiced('friday', REACTOR[next]);
   };
   const fire = () => {
     audioContext();
-    if (!power) setPower(1);
+    if (!power) {
+      setPower(1);
+      sayVoiced('friday', REACTOR[1]);
+    }
     sfx().then((s) => s.repulsor());
     setBlast((n) => n + 1);
   };
@@ -66,7 +68,7 @@ function ReactorToy() {
           </button>
         </div>
         <p className="mono mt-5 min-h-[1.5em] text-sm text-accent" role="status">
-          F.R.I.D.A.Y.: {FRIDAY[power]}
+          F.R.I.D.A.Y.: {REACTOR[power]}
         </p>
       </div>
     </div>

@@ -8,8 +8,10 @@ import { use3D } from '../../../lib/gpu';
 import { local, prefersReducedMotion, useFrameLoop } from '../../../lib/hooks';
 import { audioContext } from '../../../lib/audio';
 import { capturePointer } from '../../../lib/pointer';
+import { useSays } from '../hq/useSays';
 import { BOW, EYE, ROUNDS, STONE_SCORE, draw, drawCap, letDown, newRange, nockTrick, pathAt, shakeOf, speedFor, startRound, stepRange, targetAt, toggleLob } from './rules';
 import { TRICK_COLORS } from './models';
+import { INTROS } from './lines';
 import './trickshot.css';
 import '../../../styles/lazy/avengers.css';
 
@@ -29,12 +31,8 @@ const PITCH = -0.03;
 const hex = (c) => `#${c.toString(16).padStart(6, '0')}`;
 const TRICK_NAMES = { explosive: 'Explosive', emp: 'EMP', split: 'Split' };
 
-// What Clint says at the start of each round.
-const INTROS = [
-  'Three boards at 18, 30 and 45 metres. Put the sight’s pin for the distance on the gold.',
-  'One slides, one swings, and clays come out of the traps. Lead them.',
-  'A board hides behind the hay: press F for a half draw and arc one over. Drones up top.',
-];
+// what Clint says at the start of each round (./lines.js), in his own voice where it's been made (lib/voiced.js)
+const VOICED = new Set(INTROS);
 
 const dirOf = (yaw, pitch) => ({ x: Math.sin(yaw) * Math.cos(pitch), y: Math.sin(pitch), z: -Math.cos(yaw) * Math.cos(pitch) });
 
@@ -51,6 +49,7 @@ export default function TrickShot({ fallback }) {
   const [ui, setUi] = useState({ phase: 'ready', round: 1, time: ROUNDS[0].time, arrows: ROUNDS[0].arrows, score: 0, total: 0, streak: 0, tricks: [], nocked: null, lob: false, wind: 0, drawing: false, message: '', roundScores: [], result: null });
   const [paused, setPaused] = useState(false);
   const live = ui.phase === 'live';
+  useSays('clint', ui.message, VOICED);
 
   const sync = useCallback((extra = {}) => {
     const g = game.current;

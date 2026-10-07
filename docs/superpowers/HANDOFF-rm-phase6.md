@@ -122,9 +122,11 @@ own); NPCs that do things, not just stand and talk.
 
 ## Not done
 
-- Mr. Frundles. (The cable figures went to a studio of their own rather
-  than the alien street, which has no NPC layer.) Jaguar is at the agency,
-  and the Pickle Rick sewer run is `world/sewer/` (below).
+- (The cable figures went to a studio of their own rather than the alien
+  street, which has no NPC layer.) Jaguar is at the agency, the Pickle Rick
+  sewer run is `world/sewer/` (below), and Mr. Frundles' Earth is row 35
+  (`PHASE12`'s models: him, a man and a dog he bit, a house with his face;
+  a collect-then-escape with everything fuzzy hunting).
 - The map's Birdperson is still the code-built one (`HANDOFF-rm-phase1.md`).
 - Nothing on the dial has a sound of its own yet (the escape clock uses
   `portalOpen`; caught uses `ouch`).
