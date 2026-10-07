@@ -164,4 +164,34 @@ export const CONVOS = {
 };
 
 // Who says what in a conversation's bubble
+// The argument at the Council, line by line, as it rises: who it is, and
+// the voice they say it in (none for what's only told, nor for the Ring's
+// voice under the voices).
+export const ARGUMENT = [
+  { name: 'Boromir', voice: 'boromir', line: '“And if we fail, what then? What happens when Sauron takes back what is his?”' },
+  { name: 'Gimli', voice: 'gimli', line: '“I will be dead before I see the Ring in the hands of an Elf!”' },
+  { name: 'Legolas', voice: null, line: 'The Elves are on their feet, shouting back in Elvish.' },
+  { name: 'Gimli', voice: 'gimli', line: '“Never trust an Elf!”' },
+  { name: 'Gandalf', voice: 'gandalf', line: '“Do you not understand that while we bicker amongst ourselves, Sauron’s power grows? None can escape it!”' },
+  { name: 'The Ring', voice: null, line: 'In the Ring on its plinth, fire. A voice under the voices: Ash nazg durbatulûk…' },
+];
+
+// the toasts someone speaks in (../voice.js)
+export const SAYS = {
+  unheard: { who: 'frodo', text: '“I will take it!” No one hears you over the shouting. Again, louder!' },
+  heard: { who: 'frodo', text: '“I will take it! I will take it.” The court goes silent, every face turned to you. “I will take the Ring to Mordor. Though… I do not know the way.”' },
+  narsil: { who: 'aragorn', text: 'Laid back as they were. Aragorn sets the hilt down gently. “The Council meets at the court, over the gorge.”' },
+  early: { who: 'bilbo', text: 'You snatch it away, and Bilbo flinches as if you’d struck him. “I only wanted to hold it…” Wait for the moment.' },
+};
+// and Bilbo at his fire, playing riddles (./rules.js RIDDLES): before the
+// first, to an answer that's right, when the candle goes out, and when one
+// of you has won. (He reads each riddle out after, while it's up.)
+export const RIDDLE_SAYS = {
+  start: 'Bilbo lights a fresh candle. “Riddles, my lad! Answer before it burns down, mind.”',
+  right: ['“Right you are!”', '“Hm! Quite right.”', '“Bless me, you know that one.”', '“Right again!”', '“Right!”'],
+  out: 'The candle gutters out. “Time’s up!” says Bilbo, and lights another.',
+  beaten: '“Well! You’d have beaten Gollum in half the time,” says Bilbo, and laughs till he coughs. “Don’t tell him I said so.”',
+  mine: '“Ha! Two against you, and the game’s mine,” says Bilbo. “Another candle?”',
+};
+
 export const SPEAKERS = { frodo: 'Frodo', gandalf: 'Gandalf', sam: 'Samwise Gamgee', elrond: 'Elrond', boromir: 'Boromir', aragorn: 'Aragorn', legolas: 'Legolas', gimli: 'Gimli', merry: 'Merry Brandybuck', pippin: 'Pippin Took', bilbo: 'Bilbo Baggins', narrator: '' };
