@@ -215,7 +215,9 @@ export default function TourHost() {
   };
   const onNavigate = (path) => {
     expected.current = path;
-    navigate(path);
+    // (the address moves at once, the page a moment later: asked twice
+    // before it's drawn, it's one page, not two in the history)
+    if (window.location.hash.replace(/^#/, '').split('?')[0] !== path) navigate(path);
   };
   const onCta = (to) => {
     end('cta');

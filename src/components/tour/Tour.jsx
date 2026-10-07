@@ -53,7 +53,8 @@ function inertBehind() {
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const under = (pathname, path) => pathname === path || pathname.startsWith(`${path}/`);
-// the feed's pages are one page: moving between them is the feed's own
+// the feed's pages are one page: once the tour has opened one, the feed may
+// move the address to its neighbour as it settles, and that's still there
 const FEED = /^\/(home|experience|projects|resume|contact|travel)(\/[^/]+)?$/;
 const onPage = (pathname, path) => under(pathname, path) || (FEED.test(pathname) && FEED.test(path) && !path.startsWith('/projects/') && !pathname.startsWith('/projects/'));
 
@@ -139,9 +140,8 @@ export default function Tour({ list, kind = 'tour', start = 0, pathname, onEnd, 
     const onKey = (e) => {
       // a stop that asks you to try ? or the palette: the key goes through
       // to open it, and the tour ends (the guide offers to carry on); the
-      // flag comes off now, so the guide, listening next, takes the key
+      // guide, which hears it first, knows by html[data-touring="release"]
       if (act.current.release && released(e)) {
-        delete document.documentElement.dataset.touring;
         act.current.pause();
         return;
       }
@@ -183,7 +183,7 @@ export default function Tour({ list, kind = 'tour', start = 0, pathname, onEnd, 
     const step = steps[i];
     onProgress?.(step);
     setWaiting(true);
-    if (!onPage(here.current, step.path)) onNavigate(step.path);
+    if (!under(here.current, step.path)) onNavigate(step.path);
     let off = false;
     const page = { busy: covered, rendered: () => drawn() && onPage(here.current, step.path), hasTarget: (at) => Boolean(targetOf(at)) };
     const check = (waited) => {
@@ -230,6 +230,13 @@ export default function Tour({ list, kind = 'tour', start = 0, pathname, onEnd, 
     measure();
     return () => cancelAnimationFrame(frame);
   }, [step, waiting]);
+
+  // the guide's ? goes through at a stop that asks you to try it
+  const release = step.keys === 'release' && !waiting;
+  useEffect(() => {
+    const html = document.documentElement;
+    if ('touring' in html.dataset) html.dataset.touring = release ? 'release' : '';
+  }, [release]);
 
   const text = waiting ? 'One moment…' : textOf(step, ctx);
   // (keys: 'release' says which keys go through, not which to show)

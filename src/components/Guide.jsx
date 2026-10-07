@@ -48,8 +48,10 @@ export default function Guide() {
 
   useEffect(() => {
     const onKey = (e) => {
-      // (the tour, running, has the keys: components/tour)
-      if (typing(e.target) || 'touring' in document.documentElement.dataset) return;
+      // (the tour, running, has the keys: components/tour; but a stop that
+      // says "press ?" lets it through, and ends itself as it does)
+      const touring = document.documentElement.dataset.touring;
+      if (typing(e.target) || (touring != null && touring !== 'release')) return;
       if (e.key === '?') {
         e.preventDefault();
         setOpen((o) => !o);
