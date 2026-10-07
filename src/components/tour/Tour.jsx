@@ -11,6 +11,7 @@ import { chapterReady, clearOf, litBox, placeCard, resolveChapter, resolveSteps,
 import { isPaletteKey, shortcutLabel } from '../../lib/palette';
 import { local, prefersReducedMotion } from '../../lib/hooks';
 import { VISITED_KEY, storedKey } from '../../lib/visited';
+import { WORLD_MB } from '../worlds/worlds';
 import './tour.css';
 
 // The tour itself: the page dimmed, one thing lit at a time (a box over its
@@ -120,11 +121,9 @@ export default function Tour({ list, chapters, start, kind = 'tour', pathname, o
   const step = ch ? stops[Math.min(s, stops.length - 1)] : null;
   const lastChapter = !crosses || want.c === chapters.length - 1;
   const last = Boolean(ch) && lastChapter && s === stops.length - 1;
-  const ctx = {
-    key: shortcutLabel(),
-    touch,
-    ship: local.get('tp-universe-ship', null),
-  };
+  // what a stop's words may turn on: this device's palette key, a touch
+  // screen, the ship you fly, what a place downloads
+  const ctx = { key: shortcutLabel(), touch, ship: local.get('tp-universe-ship', null), mb: WORLD_MB };
   const release = Boolean(step?.release?.length) && !waiting;
 
   const seenBrief = () => chapter?.brief && onBriefSeen(chapter.brief);
@@ -404,17 +403,20 @@ export default function Tour({ list, chapters, start, kind = 'tour', pathname, o
         {rows && <KeyTable rows={rows} className="guide-keys tour-keys" />}
         {actions.length > 0 && (
           <div className="tour-actions">
-            {actions.map((a) =>
-              a.href ? (
-                <a key={a.label} className="btn btn-ghost btn-sm" href={a.href} download={a.download || undefined} target={a.download ? undefined : '_blank'} rel={a.download ? undefined : 'noopener noreferrer'}>
-                  {a.label}
+            {actions.map((a) => {
+              // (a label may say a size: a function of ctx, as a stop's text may be)
+              const label = typeof a.label === 'function' ? a.label(ctx) : a.label;
+              const cls = `btn ${a.primary ? 'btn-primary' : 'btn-ghost'} btn-sm`;
+              return a.href ? (
+                <a key={label} className={cls} href={a.href} download={a.download || undefined} target={a.download ? undefined : '_blank'} rel={a.download ? undefined : 'noopener noreferrer'}>
+                  {label}
                 </a>
               ) : (
-                <button key={a.label} type="button" className="btn btn-ghost btn-sm" onClick={() => onAction(a, { last })}>
-                  {a.label}
+                <button key={label} type="button" className={cls} onClick={() => onAction(a, { last })}>
+                  {label}
                 </button>
-              ),
-            )}
+              );
+            })}
           </div>
         )}
         <ol className="tour-dots" aria-hidden="true">

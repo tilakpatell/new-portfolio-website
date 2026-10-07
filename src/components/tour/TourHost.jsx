@@ -27,10 +27,12 @@ const Tour = lazy(loadTour);
 const coarse = () => window.matchMedia?.('(pointer: coarse)').matches ?? false;
 
 // An audience's chapters for the view and page you're in, a chapter that's a
-// world's basics given its cards. Empty when they aren't written yet.
+// world's basics given its cards. Empty when they aren't written yet. The
+// shell's stops and each audience's hello come from steps.js too, when it
+// gives them (chapters/shared.js).
 async function chaptersFor(audience, view, here) {
-  const { TOURS } = await import('./steps');
-  const plan = planFor(TOURS, audience, view, here, { coarse: coarse() });
+  const { TOURS, SHELL_STOPS, HELLO } = await import('./steps');
+  const plan = planFor(TOURS, audience, view, here, { coarse: coarse(), shell: SHELL_STOPS, hello: HELLO });
   if (!plan.some((c) => c.brief)) return plan;
   const { BRIEFS } = await import('./briefs');
   return plan.map((c) => (c.brief ? { ...c, stops: BRIEFS[c.brief] ?? [] } : c));

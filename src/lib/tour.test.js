@@ -228,7 +228,17 @@ const fixture = () => ({
   recruiter: [
     { id: 'home', title: 'Home', path: '/home', stops: [{ id: 'github', at: 'home-github', todo: 'github' }, { id: 'gameboy' }] },
     { id: 'projects', title: 'Projects', path: '/projects', stops: [{ id: 'cartridges', todo: 'gameboy-emulator' }] },
-    { id: 'hood', title: 'Under the hood', path: '/universe', heavy: true, phone: { path: '/changes', stops: [{ id: 'log', at: 'changes-log' }] }, stops: [{ id: 'panel' }] },
+    {
+      id: 'hood',
+      title: 'Under the hood',
+      path: '/universe',
+      heavy: true,
+      phone: [
+        { id: 'hood-log', title: 'The ship’s log', path: '/changes', stops: [{ id: 'log', at: 'changes-log' }] },
+        { id: 'hood-term', title: 'The terminal', path: '/terminal', stops: [{ id: 'term', at: 'terminal-input' }] },
+      ],
+      stops: [{ id: 'panel' }],
+    },
     { id: 'end', title: 'That’s the tour', path: null, stops: [{ id: 'bye' }] },
   ],
   player: [
@@ -262,6 +272,14 @@ describe('a tour’s plan', () => {
     for (const a of ['recruiter', 'player', 'mixed']) for (const v of ['universe', 'classic']) expect(shellStopsFor(a, v)).not.toContain('hello'), expect(shellStopsFor(a, v)).not.toContain('done');
   });
 
+  it('opens on the audience’s hello, and takes the shell’s stops steps.js gives', () => {
+    const hello = { recruiter: { id: 'hi', title: 'Hello' } };
+    const plan = planFor(fixture(), 'recruiter', 'classic', '/home', { hello, shell: { recruiter: ['view', 'resume'] } });
+    expect(plan[0].stops.map((s) => s.id)).toEqual(['hi', 'view', 'resume']);
+    expect(planFor(fixture(), 'mixed', 'classic', '/home', { hello })).toEqual([]);
+    expect(shellStopsFor('player', 'universe', { player: { universe: ['ships'], classic: ['pages'] } })).toEqual(['ships']);
+  });
+
   it('keeps an end card on the page before it', () => {
     const plan = planFor(fixture(), 'recruiter', 'classic', '/home');
     expect(plan.at(-1)).toMatchObject({ id: 'end', path: '/universe' });
@@ -271,9 +289,8 @@ describe('a tour’s plan', () => {
     const tours = fixture();
     expect(planFor(tours, 'recruiter', 'classic', '/home').find((c) => c.id === 'hood')).toMatchObject({ path: '/universe' });
     const phone = planFor(tours, 'recruiter', 'classic', '/home', { coarse: true });
-    expect(phone.find((c) => c.id === 'hood')).toMatchObject({ path: '/changes', heavy: false });
-    expect(phone.find((c) => c.id === 'hood').stops.map((s) => s.id)).toEqual(['log']);
-    expect(phone.at(-1).path).toBe('/changes');
+    expect(phone.map((c) => c.id)).toEqual(['shell', 'home', 'projects', 'hood-log', 'hood-term', 'end']);
+    expect(phone.at(-1).path).toBe('/terminal');
   });
 
   it('folds two tours together by chapter id, the shared end card as it is', () => {

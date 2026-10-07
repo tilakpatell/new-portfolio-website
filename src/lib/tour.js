@@ -110,29 +110,34 @@ export const SHELL_STOPS = {
   recruiter: { classic: ['pages', 'view', 'search', 'menu', 'guide', 'resume'], universe: ['panel', 'view', 'search', 'menu', 'guide', 'resume'] },
   player: ['view', 'search', 'menu', 'resume'],
 };
-export const shellStopsFor = (audience, view) => {
-  const keep = SHELL_STOPS[audience] ?? SHELL_STOPS.recruiter;
-  return Array.isArray(keep) ? keep : keep[view] ?? keep.classic;
+// (`shell`: the audience's shell stops if steps.js gives its own, as
+// chapters/shared.js does; this file's otherwise)
+export const shellStopsFor = (audience, view, shell = SHELL_STOPS) => {
+  const keep = shell[audience] ?? shell.recruiter ?? SHELL_STOPS.recruiter;
+  return Array.isArray(keep) ? keep : (keep[view] ?? keep.classic);
 };
 
-// A tour's chapters: the shell of the view you're in first, then the
-// audience's own. The shell's page is the map in the universe; in the
-// classic site, the page you're on if a tour may stand on it, else Home. A
-// chapter with no page (an end card) stays on the one before; a heavy one
-// (the map, on a phone) is its `phone` version on a coarse pointer.
-export function planFor(tours, audience, view, here, { coarse = false } = {}) {
+// A tour's chapters: the shell of the view you're in first, opening on the
+// audience's hello if there is one, then the audience's own. The shell's
+// page is the map in the universe; in the classic site, the page you're on
+// if a tour may stand on it, else Home. A chapter with no page (an end
+// card) stays on the one before; a heavy one (the map, on a phone) gives way
+// on a coarse pointer to its `phone` chapters, each on a page of its own.
+export function planFor(tours, audience, view, here, { coarse = false, shell, hello } = {}) {
   const own = tours[audience];
   if (!own?.length) return [];
-  const keep = shellStopsFor(audience, view);
+  const keep = shellStopsFor(audience, view, shell);
   const universe = view === 'universe';
   const path = universe ? '/universe' : isLightRoute(here) && here !== '/universe' ? here : '/home';
   const stops = (tours[universe ? 'universe' : 'classic'] ?? []).filter((s) => keep.includes(s.id));
+  const first = hello?.[audience] ?? hello?.recruiter;
   let at = path;
-  return [{ id: 'shell', title: 'Getting about', path, stops }, ...own].map((c) => {
-    const ch = c.heavy && coarse && c.phone ? { ...c, ...c.phone, heavy: false } : c;
-    at = ch.path ?? at;
-    return ch.path === at ? ch : { ...ch, path: at };
-  });
+  return [{ id: 'shell', title: 'Getting about', path, stops: first ? [first, ...stops] : stops }, ...own]
+    .flatMap((c) => (c.heavy && coarse && Array.isArray(c.phone) ? c.phone : [c]))
+    .map((c) => {
+      at = c.path ?? at;
+      return c.path === at ? c : { ...c, path: at };
+    });
 }
 
 // A tour made of others' chapters, by id, never by place: [name, from, to]
