@@ -35,7 +35,8 @@ const solidAt = (id) => DEEP_SOLIDS.find((o) => o.id === id)?.at;
 // lie 2000 to 5700 out from the home sun, the deep stars among them)
 export const STARS = [
   { id: 'sun', at: SUN.at, r: SUN.r, colour: '#ffd6a8', strength: 1, reach: 9000 },
-  ...WONDERS.filter((w) => w.kind === 'star').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: w.color, strength: 0.8, reach: 7000 })),
+  // (a star can light further, as the home sun does, `light` says: the Rick and Morty sector's sun lights all of its sector, deep.js)
+  ...WONDERS.filter((w) => w.kind === 'star').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: w.color, strength: w.light?.strength ?? 0.8, reach: w.light?.reach ?? 7000 })),
   ...WONDERS.filter((w) => w.kind === 'binary').flatMap((w) => [
     { id: w.id, at: solidAt(w.id) ?? w.at, r: w.r, colour: w.color, strength: 0.5, reach: 7000 },
     { id: `${w.id}-2`, at: solidAt(`${w.id}-2`) ?? w.at, r: w.pair.r, colour: w.pair.color, strength: 0.5, reach: 7000 },

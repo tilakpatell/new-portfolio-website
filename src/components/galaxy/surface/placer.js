@@ -20,7 +20,11 @@
 //   side), scale, y (over the ground), sink (into it), abs (y is the height
 //   itself, not over the ground), solid (false: walk through it; or { r } /
 //   { box: [hw, hd] } in place of its own), model (false: its build, even
-//   where there's a model), opts (for a built one), zone (it's a room's) }
+//   where there's a model), opts (for a built one), zone (it's a room's),
+//   url (a model from elsewhere on the site, in place of the kind's: the
+//   universe's Death Star over Scarif's sea; scaled to `metres` along its
+//   longest side), fog (false: drawn clear of the fog, for something hung
+//   in the sky far past where the fog would hide it) }
 
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
@@ -232,6 +236,33 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
       const cluster = !spec.zone && spec.model !== false && SURFACE_MODELS[spec.kind]?.cluster;
       if (cluster) return Promise.all(clusterSpecs(spec, cluster).map((m) => this.put(m))).then(() => null);
       const at = spot(spec);
+      // (a model from elsewhere on the site, by its url: stood at `at`, its
+      // longest side `metres`; its build if it won't load)
+      if (spec.url) {
+        const p = loadGlb(spec.url)
+          .then((gltf) => {
+            if (dead) return null;
+            if (!gltf) return build(spec, at);
+            const o = cloneModel(gltf);
+            const box = new THREE.Box3().setFromObject(o);
+            const size = box.getSize(new THREE.Vector3());
+            const k = (spec.metres ?? Math.max(size.x, size.y, size.z)) / Math.max(size.x, size.y, size.z);
+            const c = box.getCenter(new THREE.Vector3());
+            const inner = new THREE.Group();
+            inner.add(o);
+            o.position.set(-c.x * k, (spec.centred ? -c.y : -box.min.y) * k, -c.z * k);
+            o.scale.setScalar(k);
+            inner.position.set(...at);
+            inner.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
+            (spec.zone ? rooms : group).add(inner);
+            if (spec.fog === false) unfogged(inner);
+            if (spec.solid !== false) footprint(inner, spec, at);
+            return warm(inner).then(() => inner);
+          })
+          .catch(() => null);
+        pending.push(p);
+        return p;
+      }
       if (usesModel(spec)) {
         const p = loadModel(spec.kind)
           .then((gltf) => {
@@ -243,6 +274,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             o.scale.setScalar(spec.scale ?? 1);
             const holder = spec.zone ? rooms : group;
             holder.add(o);
+            if (spec.fog === false) unfogged(o);
             const entry = SURFACE_MODELS[spec.kind];
             if (entry.solids === 'built') builtSolids(spec, at);
             else footprint(o, spec, at);
@@ -400,6 +432,22 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     for (const f of sp.full) copyInstances(f.mesh, f.src, near);
     for (const l of sp.low) copyInstances(l.mesh, l.src, far);
   }
+}
+
+// something hung in the sky, far past where the fog would swallow it: its
+// materials drawn clear of it (the copies share a model's materials, so
+// every copy of that model on this page is; only sky things are placed so)
+function unfogged(o) {
+  o.traverse((m) => {
+    if (!m.isMesh) return;
+    for (const mat of Array.isArray(m.material) ? m.material : [m.material]) {
+      if (!mat.fog) continue;
+      mat.fog = false;
+      mat.needsUpdate = true;
+    }
+    m.castShadow = false;
+    m.receiveShadow = false;
+  });
 }
 
 // A cluster's members (a catalogue entry's `cluster`: [kind, x, z, yaw, y]

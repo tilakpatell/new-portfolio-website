@@ -39,8 +39,9 @@
 //                                                       totals you know, when it went up, the last hit
 //   war   { e, m, t, i }                               the galaxy's war (galaxy/gcw.js, a tally.js
 //                                                       message): the campaign, your points and the
-//                                                       totals you know, now and then from anywhere;
-//                                                       your tally id, the same through a reload
+//                                                       totals you know, a page of TALLY.keys at a
+//                                                       time, now and then from anywhere; your
+//                                                       tally id, the same through a reload
 //   fight { e, m, t }                                  the battle where you are (galaxy/warfront.js):
 //                                                       its id, your damage on its objectives, the totals
 //   cur   [x, y, touch]                                  off the universe map: your pointer

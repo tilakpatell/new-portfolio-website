@@ -105,7 +105,7 @@ export const WONDERS = [
   { id: 'cradle', kind: 'nebula', name: 'The Cradle', at: [4995, -505, 2230], r: 600, colors: ['#2f9e6b', '#c9d14f', '#2f6e9e'], solid: false },
   // the Rick and Morty sector (layout.js's SECTORS): the Citadel at its middle, and its own sun off to one side, past its worlds
   { id: 'citadel', kind: 'citadel', name: 'The Citadel', sector: 'rickmorty', at: inSector('rickmorty', [0, 0, 0]), r: 60, crew: 'rickmorty', world: 'rickmorty', page: '/c-137/citadel' }, // (as big as the biggest world: scale.js)
-  { id: 'curvesun', kind: 'star', name: 'The Curve’s Sun', sector: 'rickmorty', at: inSector('rickmorty', [-2200, 450, 2000]), r: 80, color: '#e4ffb0', planets: [] },
+  { id: 'curvesun', kind: 'star', name: 'The Curve’s Sun', sector: 'rickmorty', at: inSector('rickmorty', [-2200, 450, 2000]), r: 80, color: '#e4ffb0', planets: [], light: { strength: 1.6, reach: 9000 } }, // (it lights the whole sector, out to its furthest world: lighting.js)
   // the portals between the two (portals.js): one beside the Rick and Morty
   // planet, off to the side of the way in from home, and its other end
   // beside the Citadel. Not solid: flown into, they take the ship through

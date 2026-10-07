@@ -2719,7 +2719,7 @@ export async function create(canvas, ctx) {
       if (z) enterZone(z);
       else leaveZone();
     },
-    teleport(x, z, yaw = null, y = null) {
+    teleport(x, z, yaw = null, y = null, pitch = null) {
       if (!import.meta.env.DEV) return;
       const p = me().st;
       p.x = x;
@@ -2731,6 +2731,8 @@ export async function create(canvas, ctx) {
         p.yaw = yaw;
         state.cam.yaw = yaw;
       }
+      // (a look up or down, for the shots of what's in the sky)
+      if (pitch != null) state.cam.pitch = clamp(pitch, CAM.pitch[0], CAM.pitch[1]);
       camInit = false;
       ctx.invalidate();
     },

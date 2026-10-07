@@ -761,6 +761,27 @@ export const LANDINGS = {
     ],
     scatter: [{ kind: 'rock', n: 30, from: 30, to: 110, scale: range(1), opts: { color: '#8a5a7a' } }],
   },
+  resort: {
+    title: 'Immortality Field Resort',
+    sub: 'Rick and Morty · inside the field nothing can hurt you; the Whirly Dirly goes outside it',
+    ground: { style: 'sand', colors: ['#e8d8a0', '#f4e8c0', '#b8a070'] },
+    sky: { zenith: '#3a9ad8', horizon: '#e0f8ff', sun: '#fffbe8' },
+    models: {
+      guest: { url: '/models/c137/rm/resortguest-a.glb', tall: 1.7 },
+      guest2: { url: '/models/c137/rm/resortguest-b.glb', tall: 1.95 },
+      dirly: { url: '/models/c137/rm/dirlycar.glb', tall: 2.2 },
+    },
+    things: [
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137', reach: 3 } },
+      { kind: 'figure', at: [0, 40], r: 0.4, say: { name: 'Risotto Groupon', line: 'Welcome to the Immortality Field Resort. Inside the field, nothing can hurt you. Outside it, everything can.' }, opts: { meshy: 'risotto', tall: 1.9 } },
+      { kind: 'dirly', at: [16, 50], r: 2.4 },
+      { kind: 'guest', at: [-8, 34], r: 0.4 },
+      { kind: 'guest2', at: [10, 32], r: 0.4 },
+      { kind: 'guest', at: [-18, 44], r: 0.4 },
+      { kind: 'guest2', at: [24, 38], r: 0.4 },
+    ],
+    scatter: [{ kind: 'rock', n: 24, from: 34, to: 110, scale: range(1), opts: { color: '#b8a070' } }],
+  },
 };
 
 export const landingOf = (id) => LANDINGS[id] ?? null;

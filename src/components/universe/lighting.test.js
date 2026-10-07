@@ -108,7 +108,8 @@ describe('the worlds in their stars’ light', () => {
     for (const [id, at] of Object.entries(POSITIONS)) expect(lightAt(at).key.strength, id).toBeCloseTo(2.35, 2);
   });
   it('far out past the stars the light falls toward its floor', () => {
-    const l = lightAt([0, 0, -30000]);
+    // (half way between the main map and the Rick and Morty sector, layout.js: past both their suns)
+    const l = lightAt([0, 0, -20000]);
     expect(l.key.strength).toBeLessThan(1.5);
     expect(l.key.strength).toBeGreaterThanOrEqual(0.9);
   });

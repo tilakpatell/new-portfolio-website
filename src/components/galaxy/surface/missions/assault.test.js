@@ -3,7 +3,7 @@ import { createSolids } from '../walker';
 import { ASSAULTS, sidesFor } from './assaults';
 import { REACH } from '../terrain';
 import { siteOf } from '../sites';
-import { RULES, SOLDIERS, TACTICS, battleView, canDeploy, chooseSide, deploy, endBattle, hitSoldier, newBattle, objectiveFor, sideFor, stepBattle, warSideOf, youDown } from './assault';
+import { RULES, SOLDIERS, TACTICS, battleView, canDeploy, chooseSide, coverFrom, deploy, endBattle, forwardOf, hitSoldier, newBattle, objectiveFor, sideFor, stepBattle, warSideOf, youDown } from './assault';
 
 // a small map: the attackers come from the west, two posts to take, then a last one
 const MAP = {
@@ -55,7 +55,7 @@ describe('the battle, laid out', () => {
     expect(SOLDIERS.mid).toBeGreaterThan(SOLDIERS.low);
   });
 
-  it('chosen, it runs: the defenders inside the live posts, the attackers at their line', () => {
+  it('chosen, it runs: the defenders inside the live posts, the attackers on their staging line short of the front', () => {
     const b = newBattle(MAP, { n: 6, seed: 3 });
     chooseSide(b, 'attack');
     expect(b.phase).toBe('run');
@@ -63,7 +63,15 @@ describe('the battle, laid out', () => {
     expect(up(b, 'attack')).toHaveLength(6);
     expect(up(b, 'defend')).toHaveLength(6);
     for (const s of up(b, 'defend')) expect(['a', 'b'].some((id) => Math.hypot(s.x - post(b, id).at[0], s.z - post(b, id).at[1]) <= post(b, id).r)).toBe(true);
-    for (const s of up(b, 'attack')) expect(Math.hypot(s.x + 120, s.z)).toBeLessThanOrEqual(20);
+    // (RULES.firstWave times RULES.forward short of post A or B, or at their
+    // line at x = −120 where that's nearer: the first wave has further to
+    // come than the waves after it)
+    const lineToPost = Math.hypot(120, 30);
+    for (const s of up(b, 'attack')) {
+      const near = Math.min(Math.hypot(s.x, s.z - 30), Math.hypot(s.x, s.z + 30));
+      expect(near).toBeLessThan(lineToPost + 22);
+      expect(near).toBeGreaterThan(Math.min(RULES.forward * RULES.firstWave, lineToPost) - 24);
+    }
     // (no ticket spent on the first wave)
     expect(b.tickets).toEqual({ attack: 60, defend: 90 });
     // (a kind each, from the side's list)
@@ -183,7 +191,7 @@ describe('the soldiers', () => {
     expect(b.you.kills).toBe(1);
   });
 
-  it('come back at a post of theirs after a while, for a ticket, and stay down without one', () => {
+  it('come back at a post of theirs after a while, with the next wave, for a ticket, and stay down without one', () => {
     const b = newBattle(MAP, { n: 1, seed: 7 });
     chooseSide(b, 'attack');
     const d = up(b, 'defend')[0];
@@ -191,15 +199,47 @@ describe('the soldiers', () => {
     const before = b.tickets.defend;
     run(b, RULES.respawn - 0.5);
     expect(d.up).toBe(false);
-    const ev = run(b, 1);
+    const ev = run(b, RULES.waveDefend + 1);
     expect(d.up).toBe(true);
     expect(ev.some((e) => e.type === 'spawn' && e.id === d.id)).toBe(true);
     expect(b.tickets.defend).toBe(before - 1);
     expect(['a', 'b', 'base'].some((id) => Math.hypot(d.x - post(b, id).at[0], d.z - post(b, id).at[1]) <= post(b, id).r)).toBe(true);
     b.tickets.defend = 0;
     for (let i = 0; i < 4; i++) hitSoldier(b, d.id);
-    run(b, RULES.respawn + 2);
+    run(b, RULES.respawn + RULES.waveDefend + 2);
     expect(d.up).toBe(false);
+  });
+
+  it('come back in waves, together, and the attackers on a staging line short of their objective', () => {
+    const b = newBattle(MAP, { n: 8, seed: 17 });
+    chooseSide(b, 'attack');
+    for (const s of b.soldiers) Object.assign(s, { frozen: true, unarmed: true });
+    const attackers = up(b, 'attack');
+    // four of them down at once
+    run(b, 0.3);
+    for (let i = 0; i < 4; i++) for (let k = 0; k < 4; k++) hitSoldier(b, attackers[i].id);
+    const spawns = [];
+    for (let t = 0; t < RULES.respawn + RULES.wave + 1; t += 0.1) for (const e of stepBattle(b, 0.1, null, env)) if (e.type === 'spawn') spawns.push(+b.t.toFixed(1));
+    expect(spawns).toHaveLength(4);
+    expect(new Set(spawns).size).toBe(1); // (one wave)
+    // on the staging line: RULES.forward short of post A or B (at x = 0), not back at the line (x = −120)
+    for (const s of attackers.slice(0, 4)) {
+      expect(s.x).toBeGreaterThan(-120 + 20);
+      const toA = Math.hypot(s.x, s.z - 30);
+      const toB = Math.hypot(s.x, s.z + 30);
+      expect(Math.min(toA, toB)).toBeLessThan(RULES.forward + 12);
+    }
+  });
+
+  it('comes back inside the post itself when the objective is nearer than the staging line', () => {
+    const b = newBattle(MAP, { n: 1, seed: 18 });
+    chooseSide(b, 'attack');
+    expect(forwardOf(b, post(b, 'line'), [-100, 0])).toEqual(expect.any(Array));
+    const near = forwardOf(b, post(b, 'line'), [-100, 0]);
+    expect(Math.hypot(near[0] + 120, near[1])).toBeLessThanOrEqual(20);
+    // (an objective well past the line: the spot is RULES.forward short of it, on the way from the post)
+    const far = forwardOf(b, post(b, 'line'), [120, 0]);
+    expect(far[0]).toBeCloseTo(-120 + (240 - RULES.forward), 0);
   });
 
   it('shoot at an enemy in range, and at most three of them at you', () => {
@@ -236,6 +276,118 @@ describe('the soldiers', () => {
     expect(shots.some((e) => e.hit)).toBe(true);
     expect(ev.some((e) => e.type === 'down' && e.by !== 'you')).toBe(true);
     expect(ev.some((e) => e.type === 'kill')).toBe(true);
+  });
+});
+
+describe('fire, nerve and cover', () => {
+  it('suppresses whoever a bolt is fired at, and the nerve comes back', () => {
+    const b = newBattle(MAP, { n: 1, seed: 13 });
+    chooseSide(b, 'attack');
+    for (const s of b.soldiers) Object.assign(s, { frozen: true, x: s.side === 'attack' ? -10 : 10, z: 30 });
+    const d = up(b, 'defend')[0];
+    run(b, 4);
+    expect(d.suppress).toBeGreaterThan(0);
+    for (const s of b.soldiers) s.unarmed = true;
+    run(b, 1 / RULES.suppressFade + 1);
+    expect(d.suppress).toBe(0);
+  });
+
+  it('shoots worse with its head down', () => {
+    const shots = (suppress) => {
+      const b = newBattle(MAP, { n: 1, seed: 14 });
+      chooseSide(b, 'attack');
+      for (const s of b.soldiers) Object.assign(s, { frozen: true, x: s.side === 'attack' ? -5 : 5, z: 30 });
+      const a = up(b, 'attack')[0];
+      const d = up(b, 'defend')[0];
+      d.unarmed = true;
+      let hits = 0;
+      let fired = 0;
+      for (let t = 0; t < 200; t += 0.1) {
+        a.suppress = suppress;
+        d.hp = RULES.hp;
+        for (const e of stepBattle(b, 0.1, null, env))
+          if (e.type === 'shot') {
+            fired++;
+            if (e.hit) hits++;
+          }
+      }
+      return hits / fired;
+    };
+    expect(shots(1)).toBeLessThan(shots(0) * 0.75);
+  });
+
+  it('finds cover on the far side of the nearest rock from the shooter, and nothing too small or too big', () => {
+    const solids = createSolids();
+    solids.circle(10, 0, 1); // a rock, between them and off to the side
+    solids.circle(-3, 0, 0.2); // a stone: no cover
+    solids.box(0, 20, 30, 30); // a hall: too big to get round
+    const me = { x: 0, z: 0 };
+    const c = coverFrom(solids, me, 40, 0);
+    expect(c).toBeTruthy();
+    // (behind the rock, on the side away from the shooter at +x: so at x < 10)
+    expect(c[0]).toBeCloseTo(10 - 1.9, 5);
+    expect(c[1]).toBeCloseTo(0, 5);
+    expect(coverFrom(createSolids(), me, 40, 0)).toBeNull();
+  });
+
+  it('takes cover under fire, and a bolt finds it there less often', () => {
+    const solids = createSolids();
+    solids.circle(14, 30, 1.2); // a rock by the defender, between it and the attackers
+    const b = newBattle(MAP, { n: 1, seed: 15 });
+    chooseSide(b, 'attack');
+    const a = up(b, 'attack')[0];
+    const d = up(b, 'defend')[0];
+    Object.assign(a, { frozen: true, x: 30, z: 30 });
+    Object.assign(d, { x: 10, z: 30, spot: [10, 30], post: 'a', wait: 99, unarmed: true });
+    let took = null;
+    for (let t = 0; t < 30 && !took; t += 0.1) {
+      stepBattle(b, 0.1, null, { solids, reach: 600 });
+      d.hp = RULES.hp;
+      if (d.inCover) took = t;
+    }
+    expect(took).not.toBeNull();
+    // (behind the rock: on the far side from the attacker at +x)
+    expect(d.x).toBeLessThan(14);
+    // (its cover point is a step out from the rock, and it stops a pace short of that)
+    expect(Math.hypot(d.x - 14, d.z - 30)).toBeLessThan(1.2 + 0.9 + 1.6);
+    // and hits land at half the rate on a soldier in cover
+    const rate = (inCover) => {
+      let hits = 0;
+      let fired = 0;
+      for (let t = 0; t < 150; t += 0.1) {
+        d.inCover = inCover;
+        d.cover = inCover ? [d.x, d.z] : null;
+        d.coverAt = b.t;
+        d.hp = RULES.hp;
+        for (const e of stepBattle(b, 0.1, null, { solids, reach: 600 }))
+          if (e.type === 'shot') {
+            fired++;
+            if (e.hit) hits++;
+          }
+      }
+      return hits / fired;
+    };
+    a.suppress = 0;
+    const open = rate(false);
+    a.suppress = 0;
+    const covered = rate(true);
+    expect(covered).toBeLessThan(open * 0.75);
+  });
+
+  it('moves at a crouch with its head down', () => {
+    const b = newBattle(MAP, { n: 1, seed: 16 });
+    chooseSide(b, 'defend');
+    for (const s of up(b, 'defend')) Object.assign(s, { x: 500, z: 0, frozen: true, unarmed: true });
+    const a = up(b, 'attack')[0];
+    a.target = null;
+    const walk = (suppress) => {
+      Object.assign(a, { x: -120, z: 0, suppress, cover: null });
+      run(b, 2);
+      return Math.hypot(a.x + 120, a.z);
+    };
+    const upright = walk(0);
+    const crouched = walk(1);
+    expect(crouched).toBeLessThan(upright * 0.7);
   });
 });
 
