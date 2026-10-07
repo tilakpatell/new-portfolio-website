@@ -17,7 +17,12 @@
       "Rick and Morty Jerry Smith best moments season 1",
       "Rick and Morty Big Trouble in Little Sanchez Jerry and Beth couples therapy scene"
     ],
-    "avoid": ["snl", "saturday night live", "archer", "30 rock"]
+    "avoid": [
+      "snl",
+      "saturday night live",
+      "archer",
+      "30 rock"
+    ]
   },
   "beth": {
     "show": "rick-and-morty",
@@ -37,7 +42,11 @@
       "Rick and Morty Beth horse surgeon scene",
       "Rick and Morty Beth Smith best moments season 2"
     ],
-    "avoid": ["scrubs", "how i met your mother", "space beth vs"]
+    "avoid": [
+      "scrubs",
+      "how i met your mother",
+      "space beth vs"
+    ]
   },
   "summer": {
     "show": "rick-and-morty",
@@ -57,11 +66,16 @@
       "Rick and Morty Summer Smith best moments season 3",
       "Rick and Morty Something Ricked This Way Comes Summer works at Needful Things"
     ],
-    "avoid": ["greek", "casey cartwright"]
+    "avoid": [
+      "greek",
+      "casey cartwright"
+    ]
   },
   "birdperson": {
     "show": "rick-and-morty",
-    "clips": ["public/audio/clips/bird-culture.mp3"],
+    "clips": [
+      "public/audio/clips/bird-culture.mp3"
+    ],
     "quotes": [
       "In bird culture, this is considered a dick move",
       "You appear to be dying. I will make efforts to prevent this, but can promise nothing",
@@ -76,7 +90,11 @@
       "Rick and Morty The Wedding Squanchers Birdperson wedding scene",
       "Rick and Morty Birdperson best moments"
     ],
-    "avoid": ["harmontown", "community", "phoenixperson vs"]
+    "avoid": [
+      "harmontown",
+      "community",
+      "phoenixperson vs"
+    ]
   },
   "squanchy": {
     "show": "rick-and-morty",
@@ -93,7 +111,10 @@
       "Rick and Morty The Wedding Squanchers Squanchy scene",
       "Rick and Morty Squanchy best moments"
     ],
-    "avoid": ["spongebob", "adventure time"]
+    "avoid": [
+      "spongebob",
+      "adventure time"
+    ]
   },
   "tammy": {
     "show": "rick-and-morty",
@@ -110,11 +131,15 @@
       "Rick and Morty Tammy reveals she is a Federation agent scene",
       "Rick and Morty Ricksy Business Tammy Gueterman party scene"
     ],
-    "avoid": ["degrassi"]
+    "avoid": [
+      "degrassi"
+    ]
   },
   "krombopulos": {
     "show": "rick-and-morty",
-    "clips": ["public/audio/clips/here-i-go-killing-again.mp3"],
+    "clips": [
+      "public/audio/clips/here-i-go-killing-again.mp3"
+    ],
     "quotes": [
       "Oh boy, here I go killin' again",
       "I'm Krombopulos Michael! I'm an assassin. I buy guns from your grandpa",
@@ -128,11 +153,16 @@
       "Rick and Morty Krombopulos Michael oh boy here I go killing again",
       "Rick and Morty Krombopulos Michael scene"
     ],
-    "avoid": ["review with forrest", "andy daly"]
+    "avoid": [
+      "review with forrest",
+      "andy daly"
+    ]
   },
   "poopybutthole": {
     "show": "rick-and-morty",
-    "clips": ["public/audio/clips/ooo-wee.mp3"],
+    "clips": [
+      "public/audio/clips/ooo-wee.mp3"
+    ],
     "quotes": [
       "Ooh wee, whatever you want Rick! We're here to help!",
       "I've always been here for you guys, and I always will be",
@@ -147,11 +177,19 @@
       "Rick and Morty The Rickchurian Mortydate Mr. Poopybutthole post credits",
       "Rick and Morty Mr. Poopybutthole ooh wee"
     ],
-    "avoid": ["season 7", "season 8", "jon allen"]
+    "avoid": [
+      "season 7",
+      "season 8",
+      "jon allen"
+    ]
   },
   "meeseeks": {
     "show": "rick-and-morty",
-    "clips": ["public/audio/clips/im-mr-meeseeks.mp3", "public/audio/clips/can-do.mp3", "public/audio/clips/cant-take-it-anymore.mp3"],
+    "clips": [
+      "public/audio/clips/im-mr-meeseeks.mp3",
+      "public/audio/clips/can-do.mp3",
+      "public/audio/clips/cant-take-it-anymore.mp3"
+    ],
     "quotes": [
       "I'm Mr. Meeseeks! Look at me!",
       "Ooh, yeah! Can do!",
@@ -165,11 +203,18 @@
       "Rick and Morty Mr. Meeseeks Jerry golf two strokes off scene",
       "Rick and Morty existence is pain to a Meeseeks scene"
     ],
-    "avoid": ["season 7", "season 8"]
+    "avoid": [
+      "season 7",
+      "season 8"
+    ]
   },
   "janitor": {
     "show": "rick-and-morty",
-    "clips": ["public/audio/clips/im-mr-meeseeks.mp3", "public/audio/clips/can-do.mp3", "public/audio/clips/cant-take-it-anymore.mp3"],
+    "clips": [
+      "public/audio/clips/im-mr-meeseeks.mp3",
+      "public/audio/clips/can-do.mp3",
+      "public/audio/clips/cant-take-it-anymore.mp3"
+    ],
     "quotes": [
       "I'm Mr. Meeseeks! Look at me!",
       "Ooh, yeah! Can do!",
@@ -182,7 +227,10 @@
       "Rick and Morty Mr. Meeseeks Jerry golf two strokes off scene",
       "Rick and Morty existence is pain to a Meeseeks scene"
     ],
-    "avoid": ["season 7", "season 8"]
+    "avoid": [
+      "season 7",
+      "season 8"
+    ]
   },
   "uspresident": {
     "show": "rick-and-morty",
@@ -201,7 +249,12 @@
       "Rick and Morty Get Schwifty President and General Nathan scene",
       "Rick and Morty President Curtis best moments"
     ],
-    "avoid": ["president morty", "evil morty", "gargoyles", "goliath"]
+    "avoid": [
+      "president morty",
+      "evil morty",
+      "gargoyles",
+      "goliath"
+    ]
   },
   "secretservice": {
     "design": "Adult American man, flat Midwestern baritone, a Secret Service agent's bored courtesy: firm, clipped, level and quick, no warmth."
@@ -220,7 +273,10 @@
       "Rick and Morty Mortynight Run Galactic Federation Gromflomite police scene",
       "Rick and Morty The Rickshank Rickdemption Galactic Federation headquarters Gromflomite"
     ],
-    "avoid": ["season 7", "season 8"]
+    "avoid": [
+      "season 7",
+      "season 8"
+    ]
   },
   "zigerion": {
     "show": "rick-and-morty",
@@ -254,7 +310,11 @@
       "Rick and Morty Get Schwifty Pentagon nuclear option General Nathan",
       "Rick and Morty General Nathan versus the President scene"
     ],
-    "avoid": ["that 70s show", "red forman", "robocop"]
+    "avoid": [
+      "that 70s show",
+      "red forman",
+      "robocop"
+    ]
   },
   "principalvagina": {
     "show": "rick-and-morty",
@@ -272,7 +332,9 @@
       "Rick and Morty Get Schwifty Principal Vagina head priest scene",
       "Rick and Morty Principal Vagina best moments"
     ],
-    "avoid": ["phil hendrie show"]
+    "avoid": [
+      "phil hendrie show"
+    ]
   },
   "jessica": {
     "show": "rick-and-morty",
@@ -290,7 +352,9 @@
       "Rick and Morty Rick Potion 9 Jessica and Morty flu season dance",
       "Rick and Morty Big Trouble in Little Sanchez Jessica and Morty scene"
     ],
-    "avoid": ["keep summer safe"]
+    "avoid": [
+      "keep summer safe"
+    ]
   },
   "brad": {
     "show": "rick-and-morty",
@@ -306,7 +370,11 @@
       "Rick and Morty Rick Potion 9 Brad and Morty scene",
       "Rick and Morty Ricksy Business Brad at the party scene"
     ],
-    "avoid": ["arrow", "curtis holt", "brad anderson"]
+    "avoid": [
+      "arrow",
+      "curtis holt",
+      "brad anderson"
+    ]
   },
   "ethan": {
     "show": "rick-and-morty",
@@ -322,7 +390,10 @@
       "Rick and Morty Ethan Summer's boyfriend scene",
       "Rick and Morty The Whirly Dirly Conspiracy Summer and Ethan scene"
     ],
-    "avoid": ["h3h3", "ethan klein"]
+    "avoid": [
+      "h3h3",
+      "ethan klein"
+    ]
   },
   "tricia": {
     "show": "rick-and-morty",
@@ -338,7 +409,9 @@
       "Rick and Morty Rest and Ricklaxation Jessica and Tricia scene",
       "Rick and Morty The Whirly Dirly Conspiracy Summer and Tricia scene"
     ],
-    "avoid": ["degrassi"]
+    "avoid": [
+      "degrassi"
+    ]
   },
   "nancy": {
     "show": "rick-and-morty",
@@ -353,7 +426,9 @@
       "Rick and Morty Ricksy Business Summer's party Nancy scene",
       "Rick and Morty Ricksy Business Nancy and Abradolf Lincler"
     ],
-    "avoid": ["degrassi"]
+    "avoid": [
+      "degrassi"
+    ]
   },
   "drwong": {
     "show": "rick-and-morty",
@@ -371,7 +446,11 @@
       "Rick and Morty Pickle Rick Dr. Wong speech to Rick",
       "Rick and Morty Analyze Piss Dr. Wong and Rick scene"
     ],
-    "avoid": ["thelma", "rocky horror", "dead man walking"]
+    "avoid": [
+      "thelma",
+      "rocky horror",
+      "dead man walking"
+    ]
   },
   "marsha": {
     "show": "rick-and-morty",
@@ -384,7 +463,12 @@
       "Rick and Morty Raising Gazorpazorp Mar-Sha women of Gazorpazorp scene",
       "Rick and Morty Raising Gazorpazorp Summer and Rick on Gazorpazorp"
     ],
-    "avoid": ["farscape", "uncharted", "dragon age", "ventriloquiver"]
+    "avoid": [
+      "farscape",
+      "uncharted",
+      "dragon age",
+      "ventriloquiver"
+    ]
   },
   "mortyjr": {
     "show": "rick-and-morty",
@@ -401,7 +485,10 @@
       "Rick and Morty Morty Jr grows up conquer the planet scene",
       "Rick and Morty Morty Jr My Horrible Father book interview scene"
     ],
-    "avoid": ["futurama", "pinky and the brain"]
+    "avoid": [
+      "futurama",
+      "pinky and the brain"
+    ]
   },
   "unity": {
     "show": "rick-and-morty",
@@ -418,11 +505,17 @@
       "Rick and Morty Auto Erotic Assimilation Unity talks to Summer and Morty",
       "Rick and Morty Air Force Wong Unity and Rick scene"
     ],
-    "avoid": ["mad men", "good girls", "joan holloway"]
+    "avoid": [
+      "mad men",
+      "good girls",
+      "joan holloway"
+    ]
   },
   "scaryterry": {
     "show": "rick-and-morty",
-    "clips": ["public/audio/clips/scary-terry.mp3"],
+    "clips": [
+      "public/audio/clips/scary-terry.mp3"
+    ],
     "quotes": [
       "Welcome to your nightmare, bitch!",
       "You can run, but you can't hide, bitch!",
@@ -436,7 +529,10 @@
       "Rick and Morty Scary Terry welcome to your nightmare bitch",
       "Rick and Morty Lawnmower Dog Scary Terry at home with Melissa"
     ],
-    "avoid": ["freddy krueger", "nightmare on elm street"]
+    "avoid": [
+      "freddy krueger",
+      "nightmare on elm street"
+    ]
   },
   "noobnoob": {
     "show": "rick-and-morty",
@@ -449,7 +545,10 @@
       "Rick and Morty Vindicators 3 Noob-Noob scene",
       "Rick and Morty Vindicators 3 ending Rick and Noob-Noob party"
     ],
-    "avoid": ["season 7", "season 8"]
+    "avoid": [
+      "season 7",
+      "season 8"
+    ]
   },
   "kingjellybean": {
     "show": "rick-and-morty",
@@ -465,7 +564,10 @@
       "Rick and Morty Meeseeks and Destroy Mr. Jelly Bean bathroom scene",
       "Rick and Morty King Jellybean scene"
     ],
-    "avoid": ["spongebob", "adventure time"]
+    "avoid": [
+      "spongebob",
+      "adventure time"
+    ]
   },
   "zeep": {
     "show": "rick-and-morty",
@@ -482,7 +584,11 @@
       "Rick and Morty The Ricks Must Be Crazy Zeep and Rick fight in the miniverse",
       "Rick and Morty Zeep Xanflorp miniverse explained by Zeep"
     ],
-    "avoid": ["late show", "colbert report", "daily show"]
+    "avoid": [
+      "late show",
+      "colbert report",
+      "daily show"
+    ]
   },
   "kyle": {
     "show": "rick-and-morty",
@@ -496,7 +602,10 @@
       "Rick and Morty The Ricks Must Be Crazy Kyle teenyverse scene",
       "Rick and Morty Kyle teenyverse scientist Nathan Fielder scene"
     ],
-    "avoid": ["nathan for you", "the rehearsal"]
+    "avoid": [
+      "nathan for you",
+      "the rehearsal"
+    ]
   },
   "xenonbloom": {
     "show": "rick-and-morty",
@@ -514,7 +623,9 @@
       "Rick and Morty Anatomy Park Xenon Bloom explains the park to Morty",
       "Rick and Morty Anatomy Park Pirates of the Pancreas scene"
     ],
-    "avoid": ["last week tonight"]
+    "avoid": [
+      "last week tonight"
+    ]
   },
   "poncho": {
     "show": "rick-and-morty",
@@ -530,7 +641,10 @@
       "Rick and Morty Anatomy Park Poncho scene",
       "Rick and Morty Anatomy Park Poncho betrays the group scene"
     ],
-    "avoid": ["boondocks", "uncle ruckus"]
+    "avoid": [
+      "boondocks",
+      "uncle ruckus"
+    ]
   },
   "annie": {
     "show": "rick-and-morty",
@@ -564,7 +678,11 @@
       "Rick and Morty Something Ricked This Way Comes Rick versus the Devil Needful Things",
       "Rick and Morty Mr. Needful and Summer scene"
     ],
-    "avoid": ["spider-man", "doctor octopus", "frida"]
+    "avoid": [
+      "spider-man",
+      "doctor octopus",
+      "frida"
+    ]
   },
   "arthricia": {
     "show": "rick-and-morty",
@@ -580,7 +698,9 @@
       "Rick and Morty Look Who's Purging Now Arthricia scene",
       "Rick and Morty Look Who's Purging Now purge planet cat girl Arthricia"
     ],
-    "avoid": ["baby daddy"]
+    "avoid": [
+      "baby daddy"
+    ]
   },
   "flippynips": {
     "show": "rick-and-morty",
@@ -596,7 +716,10 @@
       "Rick and Morty Something Ricked This Way Comes Jerry on Pluto scene",
       "Rick and Morty King Flippy Nips Pluto is a planet scene"
     ],
-    "avoid": ["mighty boosh", "bob fossil"]
+    "avoid": [
+      "mighty boosh",
+      "bob fossil"
+    ]
   },
   "scroopy": {
     "show": "rick-and-morty",
@@ -612,7 +735,11 @@
       "Rick and Morty Something Ricked This Way Comes Scroopy Noopers scene",
       "Rick and Morty Pluto is shrinking Scroopy Noopers and Morty"
     ],
-    "avoid": ["uncharted", "nathan drake", "deadpool"]
+    "avoid": [
+      "uncharted",
+      "nathan drake",
+      "deadpool"
+    ]
   },
   "gearhead": {
     "show": "rick-and-morty",
@@ -645,7 +772,11 @@
       "Rick and Morty Vindicators 3 Vance Maximus scene",
       "Rick and Morty Vindicators 3 the Vindicators assemble Vance Maximus arrives"
     ],
-    "avoid": ["mr. robot", "heathers", "true romance"]
+    "avoid": [
+      "mr. robot",
+      "heathers",
+      "true romance"
+    ]
   },
   "supernova": {
     "show": "rick-and-morty",
@@ -662,7 +793,11 @@
       "Rick and Morty Vindicators 3 Supernova briefing scene",
       "Rick and Morty Vindicators 3 Supernova betrayal scene"
     ],
-    "avoid": ["community", "britta", "love netflix"]
+    "avoid": [
+      "community",
+      "britta",
+      "love netflix"
+    ]
   },
   "alanrails": {
     "show": "rick-and-morty",
@@ -678,7 +813,13 @@
       "Rick and Morty Vindicators 3 Alan Rails ghost train scene",
       "Rick and Morty Vindicators 3 Alan Rails and Supernova argue"
     ],
-    "avoid": ["the wire", "john wick", "fringe", "destiny", "horizon"]
+    "avoid": [
+      "the wire",
+      "john wick",
+      "fringe",
+      "destiny",
+      "horizon"
+    ]
   },
   "millionants": {
     "show": "rick-and-morty",
@@ -694,7 +835,9 @@
       "Rick and Morty Vindicators 3 Million Ants scene",
       "Rick and Morty Vindicators 3 Million Ants and Morty"
     ],
-    "avoid": ["spongebob"]
+    "avoid": [
+      "spongebob"
+    ]
   },
   "crocubot": {
     "show": "rick-and-morty",
@@ -709,7 +852,10 @@
       "Rick and Morty Vindicators 3 Crocubot scene",
       "Rick and Morty Vindicators 3 Crocubot riddle answer"
     ],
-    "avoid": ["futurama", "pinky and the brain"]
+    "avoid": [
+      "futurama",
+      "pinky and the brain"
+    ]
   },
   "nebulon": {
     "show": "rick-and-morty",
@@ -727,7 +873,10 @@
       "Rick and Morty concentrated dark matter recipe Zigerion scene",
       "Rick and Morty M. Night Shaym-Aliens Prince Nebulon is scammed"
     ],
-    "avoid": ["arrested development", "mr. show"]
+    "avoid": [
+      "arrested development",
+      "mr. show"
+    ]
   },
   "poptart": {
     "design": "A tiny chipper cartoon pop-tart: bright, squeaky, sing-song boyish voice, sunny and oblivious, quick and bouncy, like a breakfast mascot."
@@ -748,17 +897,26 @@
       "Rick and Morty Never Ricking Morty Story Lord fight on the story train",
       "Rick and Morty Full Meta Jackrick Story Lord scene"
     ],
-    "avoid": ["billions", "sideways", "john adams"]
+    "avoid": [
+      "billions",
+      "sideways",
+      "john adams"
+    ]
   },
   "ticketsguy": {
     "show": "rick-and-morty",
     "clips": [],
-    "quotes": ["Tickets please"],
+    "quotes": [
+      "Tickets please"
+    ],
     "search": [
       "Rick and Morty Never Ricking Morty tickets please guy scene",
       "Rick and Morty tickets please guy Blips and Chitz"
     ],
-    "avoid": ["harmontown", "community"]
+    "avoid": [
+      "harmontown",
+      "community"
+    ]
   },
   "tommy": {
     "show": "rick-and-morty",
@@ -775,7 +933,10 @@
       "Rick and Morty The ABC's of Beth Tommy in Froopyland scene",
       "Rick and Morty King Tommy Froopyland scene"
     ],
-    "avoid": ["silicon valley", "richard hendricks"]
+    "avoid": [
+      "silicon valley",
+      "richard hendricks"
+    ]
   },
   "nimbus": {
     "show": "rick-and-morty",
@@ -793,7 +954,10 @@
       "Rick and Morty Mr. Nimbus I control the police",
       "Rick and Morty Mort Dinner Rick Andre Mr. Nimbus dinner with Rick"
     ],
-    "avoid": ["harmontown", "community"]
+    "avoid": [
+      "harmontown",
+      "community"
+    ]
   },
   "fart": {
     "show": "rick-and-morty",
@@ -811,7 +975,11 @@
       "Rick and Morty Mortynight Run Morty frees Fart scene",
       "Rick and Morty Fart telepathic gas being Mortynight Run"
     ],
-    "avoid": ["flight of the conchords", "what we do in the shadows", "goodbye moonmen"]
+    "avoid": [
+      "flight of the conchords",
+      "what we do in the shadows",
+      "goodbye moonmen"
+    ]
   },
   "miles": {
     "show": "rick-and-morty",
@@ -822,7 +990,10 @@
       "Rick and Morty Heist-Con Miles Knightly heist-off challenge scene",
       "Rick and Morty One Crew Over the Crewcoo's Morty Miles Knightly and Rick"
     ],
-    "avoid": ["the leftovers", "mulholland"]
+    "avoid": [
+      "the leftovers",
+      "mulholland"
+    ]
   },
   "heister": {
     "design": "Burly adult man, slow low gravel, a dim but friendly hired muscle at a heist convention, deadpan and unhurried."
@@ -845,7 +1016,10 @@
       "Rick and Morty Big Trouble in Little Sanchez Nuptia 4 couples counselor scene",
       "Rick and Morty Big Trouble in Little Sanchez Beth and Jerry mythologues scene"
     ],
-    "avoid": ["community", "dean pelton"]
+    "avoid": [
+      "community",
+      "dean pelton"
+    ]
   },
   "glipglop": {
     "show": "rick-and-morty",
@@ -860,7 +1034,10 @@
       "Rick and Morty Interdimensional Cable 2 Jerry alien hospital doctor scene",
       "Rick and Morty Interdimensional Cable 2 Shrimply Pibbles hospital scene"
     ],
-    "avoid": ["harmontown", "community"]
+    "avoid": [
+      "harmontown",
+      "community"
+    ]
   },
   "shrimply": {
     "show": "rick-and-morty",
@@ -873,7 +1050,12 @@
       "Rick and Morty Interdimensional Cable 2 Shrimply Pibbles speech",
       "Rick and Morty Shrimply Pibbles Werner Herzog scene"
     ],
-    "avoid": ["grizzly man", "mandalorian", "the client", "documentary"]
+    "avoid": [
+      "grizzly man",
+      "mandalorian",
+      "the client",
+      "documentary"
+    ]
   },
   "receptionist": {
     "design": "Alien hospital receptionist, middle-aged woman, nasal and flat, tired rapid monotone, never looking up from her screen."
@@ -893,7 +1075,12 @@
       "Rick and Morty The Whirly Dirly Conspiracy Risotto Groupon and Jerry scene",
       "Rick and Morty The Whirly Dirly Conspiracy Risotto Groupon plot to kill Rick"
     ],
-    "avoid": ["spongebob", "mr. krabs", "shawshank", "highlander"]
+    "avoid": [
+      "spongebob",
+      "mr. krabs",
+      "shawshank",
+      "highlander"
+    ]
   },
   "bartender": {
     "design": "Resort bartender, adult man, smooth upbeat lounge-host baritone, relaxed and amused, in no hurry."
@@ -914,11 +1101,19 @@
       "Rick and Morty Get Schwifty Ice-T becomes Water-T scene",
       "Rick and Morty Get Schwifty Ice-T in the garage scene"
     ],
-    "avoid": ["law and order", "svu", "body count"]
+    "avoid": [
+      "law and order",
+      "svu",
+      "body count"
+    ]
   },
   "cromulon": {
     "show": "rick-and-morty",
-    "clips": ["public/audio/clips/show-me-what-you-got.mp3", "public/audio/clips/i-like-what-you-got.mp3", "public/audio/clips/disqualified.mp3"],
+    "clips": [
+      "public/audio/clips/show-me-what-you-got.mp3",
+      "public/audio/clips/i-like-what-you-got.mp3",
+      "public/audio/clips/disqualified.mp3"
+    ],
     "quotes": [
       "Show me what you got",
       "I like what you got. Good job",
@@ -932,7 +1127,12 @@
       "Rick and Morty Get Schwifty Planet Music Cromulon announcer",
       "Rick and Morty Cromulon I like what you got"
     ],
-    "avoid": ["get schwifty song", "lyrics", "season 7", "season 8"]
+    "avoid": [
+      "get schwifty song",
+      "lyrics",
+      "season 7",
+      "season 8"
+    ]
   },
   "hemorrhage": {
     "show": "rick-and-morty",
@@ -950,7 +1150,11 @@
       "Rick and Morty Rickmancing the Stone Hemorrhage and Summer scene",
       "Rick and Morty Rickmancing the Stone Hemorrhage Blood Dome"
     ],
-    "avoid": ["community", "the soup", "jeff winger"]
+    "avoid": [
+      "community",
+      "the soup",
+      "jeff winger"
+    ]
   },
   "deathstalker": {
     "design": "Adult man, deep gravelly raider's bark, a post-apocalyptic wasteland brute: short, guttural and contemptuous."
@@ -973,7 +1177,12 @@
       "Rick and Morty The Rickshank Rickdemption Cornvelious Daniel brainalyzer scene",
       "Rick and Morty The Rickshank Rickdemption Szechuan sauce memory scene"
     ],
-    "avoid": ["firefly", "castle", "the rookie", "serenity"]
+    "avoid": [
+      "firefly",
+      "castle",
+      "the rookie",
+      "serenity"
+    ]
   },
   "antsjohnson": {
     "show": "rick-and-morty",
@@ -989,7 +1198,10 @@
       "Rick and Morty Rixty Minutes Ants in my Eyes Johnson commercial",
       "Rick and Morty interdimensional cable Ants in my Eyes Johnson electronics"
     ],
-    "avoid": ["season 7", "season 8"]
+    "avoid": [
+      "season 7",
+      "season 8"
+    ]
   },
   "babylegs": {
     "show": "rick-and-morty",
@@ -1005,7 +1217,10 @@
       "Rick and Morty Rixty Minutes Baby Legs detective show",
       "Rick and Morty interdimensional cable Baby Legs and Regular Legs"
     ],
-    "avoid": ["season 7", "season 8"]
+    "avoid": [
+      "season 7",
+      "season 8"
+    ]
   },
   "regularlegs": {
     "show": "rick-and-morty",
@@ -1019,17 +1234,25 @@
       "Rick and Morty Rixty Minutes Baby Legs detective show",
       "Rick and Morty interdimensional cable Baby Legs and Regular Legs"
     ],
-    "avoid": ["season 7", "season 8"]
+    "avoid": [
+      "season 7",
+      "season 8"
+    ]
   },
   "mrsneezy": {
     "show": "rick-and-morty",
     "clips": [],
-    "quotes": ["Oh, I'm Mr. Sneezy! Achoo!"],
+    "quotes": [
+      "Oh, I'm Mr. Sneezy! Achoo!"
+    ],
     "search": [
       "Rick and Morty Rixty Minutes interdimensional cable Mr. Sneezy",
       "Rick and Morty Rixty Minutes interdimensional cable channel surfing"
     ],
-    "avoid": ["season 7", "season 8"]
+    "avoid": [
+      "season 7",
+      "season 8"
+    ]
   },
   "gazorpazorpfield": {
     "show": "rick-and-morty",
@@ -1044,17 +1267,26 @@
       "Rick and Morty Rixty Minutes Gazorpazorpfield cartoon",
       "Rick and Morty interdimensional cable Gazorpazorpfield I hate Mondays"
     ],
-    "avoid": ["garfield movie", "season 7", "season 8"]
+    "avoid": [
+      "garfield movie",
+      "season 7",
+      "season 8"
+    ]
   },
   "shmlonathan": {
     "show": "rick-and-morty",
     "clips": [],
-    "quotes": ["Schmlove, Schmlandula, Schmlonathan"],
+    "quotes": [
+      "Schmlove, Schmlandula, Schmlonathan"
+    ],
     "search": [
       "Rick and Morty Rixty Minutes interdimensional cable Shmlonathan",
       "Rick and Morty Rixty Minutes interdimensional cable channel surfing"
     ],
-    "avoid": ["season 7", "season 8"]
+    "avoid": [
+      "season 7",
+      "season 8"
+    ]
   },
   "lilbits": {
     "show": "rick-and-morty",
@@ -1067,7 +1299,10 @@
       "Rick and Morty interdimensional cable Lil' Bits commercial",
       "Rick and Morty Lil Bits tiny food commercial"
     ],
-    "avoid": ["season 7", "season 8"]
+    "avoid": [
+      "season 7",
+      "season 8"
+    ]
   },
   "realfakedoors": {
     "show": "rick-and-morty",
@@ -1083,7 +1318,10 @@
       "Rick and Morty Rixty Minutes Real Fake Doors commercial",
       "Rick and Morty interdimensional cable Real Fake Doors salesman"
     ],
-    "avoid": ["season 7", "season 8"]
+    "avoid": [
+      "season 7",
+      "season 8"
+    ]
   },
   "mrspancakes": {
     "show": "rick-and-morty",
@@ -1135,7 +1373,12 @@
       "Rick and Morty Pickle Rick Jaguar and Pickle Rick fight",
       "Rick and Morty Pickle Rick Jaguar daughter speech"
     ],
-    "avoid": ["machete", "spy kids", "breaking bad", "danny trejo"]
+    "avoid": [
+      "machete",
+      "spy kids",
+      "breaking bad",
+      "danny trejo"
+    ]
   },
   "ship": {
     "show": "rick-and-morty",
@@ -1153,11 +1396,16 @@
       "Rick and Morty The Ricks Must Be Crazy ship psychological option scene",
       "Rick and Morty Rick's ship talks to Summer scene"
     ],
-    "avoid": ["season 7", "season 8"]
+    "avoid": [
+      "season 7",
+      "season 8"
+    ]
   },
   "butterrobot": {
     "show": "rick-and-morty",
-    "clips": ["public/audio/clips/what-is-my-purpose.mp3"],
+    "clips": [
+      "public/audio/clips/what-is-my-purpose.mp3"
+    ],
     "quotes": [
       "What is my purpose?",
       "Oh my god",
@@ -1167,6 +1415,21 @@
       "Rick and Morty Something Ricked This Way Comes butter robot what is my purpose",
       "Rick and Morty butter robot scene"
     ],
-    "avoid": ["season 7", "season 8"]
+    "avoid": [
+      "season 7",
+      "season 8"
+    ]
+  },
+  "fedofficer": {
+    "show": "rick-and-morty",
+    "design": "a Galactic Federation customs officer, nasal bureaucratic monotone, officious and suspicious, buzzing slightly insectile"
+  },
+  "cableannouncer": {
+    "show": "rick-and-morty",
+    "design": "a cheesy late-night infomercial announcer, booming and over-excited, fast and salesy, a little unhinged"
+  },
+  "roy": {
+    "show": "rick-and-morty",
+    "design": "an ordinary middle-aged American man, worn out and frightened, quiet raspy voice, close to tears"
   }
 }

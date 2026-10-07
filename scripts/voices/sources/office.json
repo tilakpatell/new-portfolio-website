@@ -1,0 +1,87 @@
+{
+  "dwight": {
+    "show": "office",
+    "clips": ["public/audio/clips/bears-beets-battlestar-galactica.mp3", "public/audio/clips/identity-theft.mp3"],
+    "quotes": ["Bears. Beets. Battlestar Galactica.", "Identity theft is not a joke, Jim!", "Question.", "False."],
+    "search": ["The Office Dwight Schrute talking head compilation", "The Office Dwight fire drill scene", "The Office Dwight Schrute farms scene", "The Office Dwight assistant regional manager scene", "The Office Dwight karate scene"],
+    "avoid": ["interview", "podcast", "rainn wilson reacts", "cast reunion"]
+  },
+  "pam": {
+    "show": "office",
+    "quotes": ["Dunder Mifflin, this is Pam.", "I feel God in this Chili's tonight."],
+    "search": ["The Office Pam Beesly talking head compilation", "The Office Pam coal walk speech scene", "The Office Pam reception scene season 2"],
+    "avoid": ["interview", "podcast", "office ladies", "jenna fischer reacts"]
+  },
+  "andy": {
+    "show": "office",
+    "quotes": ["I'm gonna be the best Andy I can be.", "Rit dit dit di doo"],
+    "search": ["The Office Andy Bernard talking head compilation", "The Office Andy Bernard Cornell scene", "The Office Andy anger management scene"],
+    "avoid": ["interview", "podcast", "ed helms reacts"]
+  },
+  "kevin": {
+    "show": "office",
+    "quotes": ["Why waste time say lot word when few word do trick?", "Me think, why waste time"],
+    "search": ["The Office Kevin Malone talking head compilation", "The Office Kevin chili scene", "The Office Kevin few words scene"],
+    "avoid": ["interview", "podcast", "brian baumgartner reacts"]
+  },
+  "darryl": {
+    "show": "office",
+    "quotes": ["Mike Testwhiskers", "Dinkin' flicka"],
+    "search": ["The Office Darryl Philbin talking head compilation", "The Office Darryl warehouse scene", "The Office Darryl teaches Michael scene"],
+    "avoid": ["interview", "podcast"]
+  },
+  "phyllis": {
+    "show": "office",
+    "quotes": ["Close your mouth, sweetie. You look like a trout."],
+    "search": ["The Office Phyllis Vance talking head compilation", "The Office Phyllis wedding scene", "The Office Phyllis Bob Vance scene"],
+    "avoid": ["interview", "podcast"]
+  },
+  "stanley": {
+    "show": "office",
+    "quotes": ["Did I stutter?", "Boy, have you lost your mind?"],
+    "search": ["The Office Stanley Hudson did I stutter scene", "The Office Stanley pretzel day scene", "The Office Stanley best moments compilation"],
+    "avoid": ["interview", "podcast"]
+  },
+  "angela": {
+    "show": "office",
+    "quotes": ["I don't have a lot of experience with vampires.", "Sprinkles"],
+    "search": ["The Office Angela Martin talking head compilation", "The Office Angela party planning committee scene", "The Office Angela cats scene"],
+    "avoid": ["interview", "podcast", "office ladies"]
+  },
+  "creed": {
+    "show": "office",
+    "quotes": ["I've been involved in a number of cults", "Nobody steals from Creed Bratton"],
+    "search": ["The Office Creed Bratton talking head compilation", "The Office Creed best lines", "The Office Creed quality assurance scene"],
+    "avoid": ["interview", "podcast", "concert", "song", "guitar"]
+  },
+  "oscar": {
+    "show": "office",
+    "quotes": ["Actually", "It's called a surplus"],
+    "search": ["The Office Oscar Martinez talking head compilation", "The Office Oscar surplus scene", "The Office Oscar actually compilation"],
+    "avoid": ["interview", "podcast"]
+  },
+  "meredith": {
+    "show": "office",
+    "quotes": ["I'm a mother", "Hey, I'm not easy"],
+    "search": ["The Office Meredith Palmer talking head compilation", "The Office Meredith best moments"],
+    "avoid": ["interview", "podcast"]
+  },
+  "ryan": {
+    "show": "office",
+    "quotes": ["I'm a temp", "WUPHF"],
+    "search": ["The Office Ryan Howard talking head compilation", "The Office Ryan WUPHF pitch scene", "The Office Ryan temp scene season 1"],
+    "avoid": ["interview", "podcast", "bj novak reacts"]
+  },
+  "toby": {
+    "show": "office",
+    "quotes": ["I'm in human resources", "Costa Rica"],
+    "search": ["The Office Toby Flenderson talking head compilation", "The Office Toby leaving for Costa Rica scene", "The Office Toby best moments"],
+    "avoid": ["interview", "podcast"]
+  },
+  "kelly": {
+    "show": "office",
+    "quotes": ["I talk a lot, so I've learned to just tune myself out", "Ryan"],
+    "search": ["The Office Kelly Kapoor talking head compilation", "The Office Kelly business school scene", "The Office Kelly Ryan scene"],
+    "avoid": ["interview", "podcast", "mindy kaling interview"]
+  }
+}
