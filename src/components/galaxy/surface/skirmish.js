@@ -23,12 +23,13 @@
 // shot pushed it (the clip: thrown back, pitched forward, blown off its
 // feet), and comes back: the side holding the front one at a time at its
 // spawn, the side coming at it (a side with a `wave`) together in waves.
-// You fight for either (`spec.you`; galaxy/allegiance.js says which): the
+// You fight for either (`spec.you`: yourSide says which, by your oath): the
 // other side shoots at you (three at most at once; the scene's bolts decide
 // whether they hit) and your bolts bring them down (hitUnit). Pure and
 // seeded, so it's tested; skirmishScene.js draws it.
 //
-// spec: { sides: { id: { kinds: [[kind, n]…], spawn: { at, spread },
+// spec: { sides: { id: { side (galaxy/sides.js: the war's side it is),
+//   kinds: [[kind, n]…], spawn: { at, spread },
 //   respawn (seconds) | wave (seconds between waves) } }, hold (the side
 //   that holds the front: the first, if not said), you (your side: the
 //   holders, if not said), front: [x, z], field: { min, max } }
@@ -41,9 +42,15 @@
 // hitUnit(b, id, damage, push: [dx, dz], by = 'you', { blown }) → events
 // lineOfSight(solids, a: [x, y, z], b, ground?) → clear?
 // coverSpots(solids, field, ground?) → [{ x, z, n: [nx, nz], low, solid, by }]
+// battleWar(sides) → the war (galaxy/sides.js) a battle's sides fight
+// yourSide(sides, oath, suggested?) → the id of your side in it, by your oath
+//   (galaxy/allegiance.js; an assault's sides too: 'attack' | 'defend')
+// swearHere(oath, side, now) → the oath sworn to `side` in a battle
 
 import { pushOut, turnToward } from './walker';
 import { rng } from './noise';
+import { SIDES, WARS, warOfSide } from '../sides';
+import { setTheatre, swear } from '../allegiance';
 
 // heights above the ground (metres): the eyes a shot leaves from, the chest it's aimed at
 export const EYE = { stand: 1.55, kneel: 0.95 };
@@ -855,8 +862,40 @@ export function stepSkirmish(b, dt, you = null) {
 }
 
 // how it stands, for the page
+// ── whose side you're on ──
+// A battle's sides each say which of the war's they are (`side`: sides.js),
+// so a battle is one war's: Kashyyyk's and Geonosis's the Clone Wars',
+// Hoth's the Civil War's.
+export const battleWar = (sides) => Object.values(sides ?? {}).map((s) => warOfSide(s?.side)).find(Boolean) ?? null;
+
+// Your side in a battle, by your oath (allegiance.js's { war, oaths }): the
+// one you swore to in its war; unsworn there, the one leaning the way your
+// other oath does (sworn to the Empire, you're with the droids in the Clone
+// Wars); sworn to nothing, the one your crew would choose (`suggested`,
+// allegiance.js's suggestSide), else the war's liberators. Never an oath.
+export function yourSide(sides, oath = null, suggested = null) {
+  const ids = Object.keys(sides ?? {});
+  const war = WARS[battleWar(sides)];
+  const of = (side) => (side ? ids.find((id) => sides[id].side === side) : undefined);
+  const oaths = oath?.oaths ?? {};
+  const other = oaths[oath?.war]?.side ?? Object.values(oaths).find((o) => o?.side)?.side;
+  const lean = SIDES[other]?.stance;
+  const leaning = lean === 'light' ? war?.liberator : lean === 'dark' ? war?.raider : null;
+  return of(oaths[war?.id]?.side) ?? of(leaning) ?? of(suggested) ?? of(war?.liberator) ?? ids[0] ?? null;
+}
+
+// An oath sworn down in a battle (its HUD's switch, an assault's choose
+// card): allegiance.js's swear, a turncoat's if you swore the other way in
+// that war this campaign, but the war you fly in (its theatre) as it was
+export function swearHere(oath, side, now = Date.now()) {
+  const next = swear(oath, side, now);
+  if (next === oath) return oath;
+  const kept = setTheatre(next, oath.war);
+  return kept.oaths === oath.oaths && kept.since === oath.since ? oath : kept;
+}
+
 export function skirmishView(b) {
-  const up = { rep: 0, sep: 0 };
+  const up = Object.fromEntries(Object.keys(b.spec.sides).map((id) => [id, 0]));
   for (const u of b.units) if (u.up) up[u.side] += 1;
   return { t: b.t, up, kills: b.you.kills, wave: Math.max(0, b.waveIn), atYou: b.units.filter((u) => u.up && u.target === 'you').length };
 }

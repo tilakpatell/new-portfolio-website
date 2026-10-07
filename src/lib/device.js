@@ -48,11 +48,13 @@ const MOBILE_UA = /Android|iPhone|iPad|iPod|Mobile|Silk|Kindle/i;
 // Each row says which tier it is (ultra's is high: it's the high tier with
 // a strong graphics card), so a check of `budget().tier` reads true.
 // `minRatio` draws sharper than the screen where the screen's own pixels are
-// coarser: a plain 1440p monitor gets one and a half pixels drawn for each,
-// smoothing every edge and every highlight, as long as the frames keep up.
+// coarser: a plain 1440p monitor gets one and a half pixels drawn for each at
+// ultra, and a quarter more at high (Active Theory's `getDPR` does the same,
+// max(1.25, dpr) on most desktops), smoothing every edge and every highlight,
+// as long as the frames keep up: each renderer's watchdog drops it when not.
 export const BUDGETS = {
   ultra: { tier: 'high', ratio: 2, minRatio: 1.5, antialias: true, samples: 8, shadows: true, shadowMap: 4096, bloom: 1, aniso: 16, stars: 1 },
-  high: { tier: 'high', ratio: 2, antialias: true, samples: 4, shadows: true, shadowMap: 2048, bloom: 1, aniso: 16, stars: 1 },
+  high: { tier: 'high', ratio: 2, minRatio: 1.25, antialias: true, samples: 4, shadows: true, shadowMap: 2048, bloom: 1, aniso: 16, stars: 1 },
   mid: { tier: 'mid', ratio: 1.5, antialias: true, samples: 2, shadows: true, shadowMap: 1024, bloom: 0.5, aniso: 4, stars: 0.6 },
   low: { tier: 'low', ratio: 1, antialias: false, samples: 0, shadows: false, shadowMap: 512, bloom: 0, aniso: 1, stars: 0.35 },
 };
@@ -177,8 +179,8 @@ export const budget = (tier) => {
 };
 
 // The sharpest pixel ratio worth drawing at: the tier's, under the scene's
-// own cap, never above the screen's (except at ultra, which draws at least
-// `minRatio` pixels per screen pixel: supersampling, for clean edges).
+// own cap, never above the screen's (except at high and ultra, which draw at
+// least `minRatio` pixels per screen pixel: supersampling, for clean edges).
 export function pixelRatio(cap = 2, tier) {
   const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
   const b = budget(tier);

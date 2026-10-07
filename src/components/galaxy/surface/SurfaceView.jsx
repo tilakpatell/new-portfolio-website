@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from '../../../lib/hooks';
 import { WorldHost, useWorld } from '../../../runtime';
 import surfaceModule from './module';
-import { heroById } from '../heroes';
+import { heroById, heroSpec } from '../heroes';
+import { ABILITIES, abilitiesOf } from './abilityRules';
+
+// (shorter names for the thumbs)
+const TOUCH = { detonator: 'Bomb', overcharge: 'Charge', fulminate: 'Bomb', rocket: 'Rocket', jetpack: 'Jet', medpack: 'Heal', hop: 'Hop' };
 
 // A world's 3D (scene.js, a world module on the world runtime:
 // ./module.js) and the controls over it on a
@@ -11,14 +15,16 @@ import { heroById } from '../heroes';
 // whatever's to hand (E on a keyboard). While the 3D loads the box says
 // so; without 3D, a note that the world needs it.
 
-export default function SurfaceView({ system, mission = null, ship, hero = null, loadout, build = null, allegiance = 'light', found, done, compass, net = null, handle, onEvent }) {
+export default function SurfaceView({ system, mission = null, ship, hero = null, loadout, build = null, oath = null, found, done, compass, net = null, handle, onEvent }) {
   const saber = Boolean(hero && heroById(hero.id)?.weapon === 'saber');
+  // (the hero's own two abilities, on the buttons: abilityRules.js)
+  const powers = abilitiesOf(hero ? heroSpec(hero) : null);
   const events = useRef(onEvent);
   events.current = onEvent;
   const [coarse] = useState(() => (typeof window !== 'undefined' ? (window.matchMedia?.('(pointer: coarse)').matches ?? false) : false));
   const reduced = useReducedMotion();
   const { host, on, meant, rt } = useWorld(surfaceModule, {
-    props: { system, mission, ship, hero, loadout, build, allegiance, found, done, compass, net, reduced },
+    props: { system, mission, ship, hero, loadout, build, oath, found, done, compass, net, reduced },
     onEvent: (e) => events.current?.(e),
   });
   // the scene itself, while it's the world on the runtime
@@ -127,11 +133,11 @@ export default function SurfaceView({ system, mission = null, ship, hero = null,
                 Aim
               </button>
             )}
-            <button type="button" className="surface-btn surface-btn-power" onPointerDown={press('power')} onContextMenu={(e) => e.preventDefault()}>
-              {saber ? 'Push' : 'Bomb'}
+            <button type="button" className="surface-btn surface-btn-power" onPointerDown={press('power')} onPointerUp={release('power')} onPointerCancel={release('power')} onPointerLeave={release('power')} onContextMenu={(e) => e.preventDefault()}>
+              {TOUCH[powers.power] ?? ABILITIES[powers.power].name}
             </button>
             <button type="button" className="surface-btn surface-btn-power" onPointerDown={press('second')} onContextMenu={(e) => e.preventDefault()}>
-              {saber ? 'Pull' : 'Charge'}
+              {TOUCH[powers.second] ?? ABILITIES[powers.second].name}
             </button>
             <button type="button" className="surface-btn surface-btn-dodge" onPointerDown={press('dodge')} onContextMenu={(e) => e.preventDefault()}>
               Dodge

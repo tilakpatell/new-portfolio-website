@@ -21,6 +21,8 @@ import GalaxyView from '../components/galaxy/GalaxyView';
 import GalaxyPanel from '../components/galaxy/GalaxyPanel';
 import { holdJump } from '../components/hyperspace3d/timeline';
 import HoloMap from '../components/galaxy/HoloMap';
+import { current as oathNow, suggestSide } from '../components/galaxy/allegiance';
+import { useOath } from '../components/galaxy/useOath';
 import GalaxyIntro from '../components/galaxy/GalaxyIntro';
 import '../components/galaxy/galaxy.css';
 
@@ -55,6 +57,10 @@ export default function Galaxy() {
   const comms = useRef(null);
   const [ship, setShip] = useState(() => parseShip(local.get(SHIP_KEY)));
   const crew = crewById(ship);
+  // your oath in the galaxy's wars (galaxy/allegiance.js): sworn on the holotable, kept in the browser;
+  // the sky's battles put you on your side (warfront.js), and the worlds' battles too (surface/skirmish.js)
+  const [oath, swearTo] = useOath();
+  const allegiance = useMemo(() => oathNow(oath), [oath]);
   const online = useOnline();
   const { setKind, setLoadout, setBuild: tellBuild } = online;
   useEffect(() => setKind(ship), [setKind, ship]);
@@ -315,6 +321,7 @@ export default function Galaxy() {
         ship={ship}
         loadout={loadout}
         build={build}
+        allegiance={allegiance}
         net={online.client}
         frozen={Boolean(leaving) || intro}
         onEvent={onEvent}
@@ -342,7 +349,7 @@ export default function Galaxy() {
         held={held}
         balked={balked}
       />
-      {mapOpen && <HoloMap current={current} online={online} onJump={jumpTo} onClose={() => setMapOpen(false)} onLeave={() => leave('/universe/starwars', { jump: true })} />}
+      {mapOpen && <HoloMap current={current} online={online} oath={oath} suggested={suggestSide({ crew: ship })} onSwear={swearTo} onJump={jumpTo} onClose={() => setMapOpen(false)} onLeave={() => leave('/universe/starwars', { jump: true })} />}
       {intro && (
         <GalaxyIntro
           onDone={() => {

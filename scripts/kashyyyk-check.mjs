@@ -1,11 +1,12 @@
 /* global window */
 // A browser check of a world's battle (surface/skirmish.js): loads the
-// world's surface (Kashyyyk unless named), your allegiance as asked, puts
+// world's surface (Kashyyyk unless named), sworn to a side as asked (an oath
+// in its war: galaxy/allegiance.js; none, and the battle picks), puts
 // you at each of a few stops (or switches you to the other side), lets the
 // battle run, and takes a few frames at each (soldiers taking cover,
 // firing, falling), reading the battle's state back each time.
 // With the dev server up (npx vite --port 5188):
-//   OUT=/tmp/shots node scripts/kashyyyk-check.mjs [world] [light|dark]
+//   OUT=/tmp/shots node scripts/kashyyyk-check.mjs [world] [republic|separatists|rebel|empire]
 //   STOPS='x,z,yaw;x,z,yaw,side' (where you stand, or the side you switch to)
 //   FRAMES=2 GAP=700 (frames at each stop, ms apart)
 // Exit code 1 on a page error or a console error that isn't noise.
@@ -13,7 +14,7 @@ import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
 
 const world = process.argv[2] ?? 'kashyyyk';
-const side = process.argv[3] ?? 'light';
+const side = process.argv[3] ?? null;
 const out = process.env.OUT ?? '.';
 const base = process.env.BASE ?? 'http://127.0.0.1:5188';
 const chrome = process.env.CHROME ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
@@ -28,7 +29,11 @@ await ctx.addInitScript((a) => {
   window.localStorage.setItem('tp-intro', '1');
   window.localStorage.setItem('tp-start', '"universe"');
   window.localStorage.setItem('tp-universe-ship', JSON.stringify('falcon'));
-  window.localStorage.setItem('tp-galaxy-allegiance', JSON.stringify(a));
+  window.localStorage.setItem('tp-worlds', JSON.stringify('load')); // (the 3D, without the gate's asking)
+  // the oath: this campaign's (gcw.js's campaignAt: three days a campaign from 1 October 2026), or it's forgotten
+  const war = { republic: 'clone', separatists: 'clone', rebel: 'gcw', empire: 'gcw' }[a];
+  const since = Math.max(0, Math.floor((Date.now() - Date.UTC(2026, 9, 1)) / (3 * 24 * 3600e3)));
+  if (war) window.localStorage.setItem('tp-gcw-side', JSON.stringify({ since, war, oaths: { [war]: { side: a, sworn: 1, turncoat: false } } }));
   window.sessionStorage.setItem('tp-galaxy-intro', '1');
 }, side);
 const page = await ctx.newPage();

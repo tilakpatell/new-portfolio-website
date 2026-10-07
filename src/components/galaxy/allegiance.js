@@ -1,33 +1,84 @@
-// Which side you fight for down on the galaxy's worlds: the light (the
-// Republic, and after it the Rebellion) or the dark (the Separatists, and
-// after them the Empire). Kept in the browser across worlds. A battle on a
-// world (surface/skirmish.js, a galactic assault) puts you on its era's
-// side of yours: with the dark side on Kashyyyk you come out of the lagoon
-// with the droids; on Hoth you march with the snowtroopers. Picked on the
-// holotable (HoloMap.jsx), by the side you take in a galactic assault, or
-// switched in a battle (SkirmishHud.jsx). Pure, so it's tested in Node.
+// The oath: which side of the galaxy's wars a pilot flies for (sides.js), as
+// plain rules. Pure, tested; the page keeps it (localStorage SIDE_KEY, through
+// lib/hooks' `local`), the holotable and the panel ask for it, warfront.js
+// reads it for the team you're on. The design:
+// docs/superpowers/specs/2026-10-07-gcw-allegiance-design.md (revision 3a).
 //
-//   ALLEGIANCE_KEY                  the localStorage key
-//   ALLEGIANCES                     { light, dark }: { id, name, short }
-//   readAllegiance(raw)             'light' | 'dark' (light for anything else)
-//   otherAllegiance(a)              the other one
-//   sideFor(sides, allegiance)      the id of the side in `sides` ({ id: { allegiance } })
-//                                   that's yours, else the first's
-//   allegianceOf(side)              a side's ('light' unless it says)
+// A pilot swears once a campaign in each war (an oath from a past campaign is
+// forgotten, the war you fight in isn't), and may swear again to the other
+// side: a turncoat, till the campaign's over. Nobody swears to the Hutts.
+//
+// { since: campaign, war: the war you fight in (your theatre), oaths: { war:
+//   { side, sworn, turncoat } } }
+// readAllegiance(raw, { now }) → a good one (raw a JSON string, an object or
+//   nothing); writeAllegiance(a) → string; current(a) → { war, side, sworn,
+//   turncoat }; swear(a, side, now) → a' (and its war the theatre);
+//   setTheatre(a, war) → a'; suggestSide({ crew, hero }, war) → side | null;
+//   teamFor(side, battle) → 0 | 1 | null.
 
-export const ALLEGIANCE_KEY = 'tp-galaxy-allegiance';
+import { campaignAt } from './gcw';
+import { heroById } from './heroes';
+import { DEFAULT_WAR, SIDES, WARS, warOfSide } from './sides';
 
-export const ALLEGIANCES = {
-  light: { id: 'light', name: 'The Republic and the Rebellion', short: 'Republic & Rebellion' },
-  dark: { id: 'dark', name: 'The Separatists and the Empire', short: 'Separatists & Empire' },
-};
+export const SIDE_KEY = 'tp-gcw-side';
 
-export const readAllegiance = (raw) => (raw === 'dark' ? 'dark' : 'light');
-export const otherAllegiance = (a) => (readAllegiance(a) === 'dark' ? 'light' : 'dark');
-export const allegianceOf = (side) => (side?.allegiance === 'dark' ? 'dark' : 'light');
+const unsworn = (war) => ({ war, side: null, sworn: 0, turncoat: false });
 
-export function sideFor(sides, allegiance) {
-  const ids = Object.keys(sides ?? {});
-  const want = readAllegiance(allegiance);
-  return ids.find((id) => allegianceOf(sides[id]) === want) ?? ids[0] ?? null;
+export function readAllegiance(raw, { now = Date.now() } = {}) {
+  let v = raw;
+  if (typeof raw === 'string') {
+    try {
+      v = JSON.parse(raw);
+    } catch {
+      v = null;
+    }
+  }
+  const n = campaignAt(now).n;
+  const ok = v && typeof v === 'object' && !Array.isArray(v);
+  const war = ok && WARS[v.war] ? v.war : DEFAULT_WAR;
+  const oaths = {};
+  if (ok && v.since === n && v.oaths && typeof v.oaths === 'object')
+    for (const [w, o] of Object.entries(v.oaths)) {
+      if (!WARS[w] || !o || warOfSide(o.side) !== w) continue;
+      const sworn = Number.isInteger(o.sworn) && o.sworn > 0 ? o.sworn : 1;
+      oaths[w] = { side: o.side, sworn, turncoat: o.turncoat === true };
+    }
+  return { since: n, war, oaths };
+}
+
+export const writeAllegiance = (a) => JSON.stringify(a);
+
+export const current = (a) => ({ ...unsworn(a.war), ...(a.oaths[a.war] ?? {}), war: a.war });
+
+export function swear(a, side, now = Date.now()) {
+  const war = warOfSide(side);
+  if (!war) return a;
+  const base = a.since === campaignAt(now).n ? a : { ...a, since: campaignAt(now).n, oaths: {} };
+  const was = base.oaths[war];
+  if (was?.side === side) return base.war === war ? base : { ...base, war };
+  const oath = was ? { side, sworn: was.sworn + 1, turncoat: true } : { side, sworn: 1, turncoat: false };
+  return { ...base, war, oaths: { ...base.oaths, [war]: oath } };
+}
+
+export const setTheatre = (a, war) => (WARS[war] && a.war !== war ? { ...a, war } : a);
+
+// what the crew you fly with, or the hero you play as, would choose (shown,
+// never chosen for you): the X-wing and the Falcon the war's light side, a
+// hero by their own lean (an id in heroes.js, or an object with `lean`:
+// a hero's `stance` there is how they hold a saber)
+const CREW_LEAN = { xwing: 'light', falcon: 'light' };
+export function suggestSide({ crew, hero } = {}, war = DEFAULT_WAR) {
+  const w = WARS[war];
+  if (!w) return null;
+  const h = typeof hero === 'string' ? heroById(hero) : hero;
+  const lean = h?.lean ?? CREW_LEAN[crew] ?? null;
+  return lean === 'light' ? w.liberator : lean === 'dark' ? w.raider : null;
+}
+
+// the battle's team you're on: your side's place in gcw.js's battleAt `sides`
+// (the light side 0, the dark 1, the Hutts in the other's place)
+export function teamFor(side, battle) {
+  if (!side || !SIDES[side] || !battle?.sides) return null;
+  const i = battle.sides.indexOf(side);
+  return i < 0 ? null : i;
 }

@@ -30,13 +30,13 @@ const hot = (c, k = 2) => new THREE.Color(c).multiplyScalar(k);
 // a material of the props' own, made once per kit: ice (a little glossy),
 // snow (soft and matte)
 const mat = (k, key, make) => (k[key] ??= k.own(make()));
-const iceMat = (k) => mat(k, '_ice', () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.06 }));
+export const iceMat = (k) => mat(k, '_ice', () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.06 }));
 const snowMat = (k) => mat(k, '_snow', () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 }));
 
 // parts baked into one mesh with a material of the props' own; `shade`
 // (x, y, z) → [r, g, b] multipliers tints it vertex by vertex (blue in the
 // ice's depths, darker inside a cave)
-function meshOf(k, parts, material, { shadows = true, density = 0.18, shade = null } = {}) {
+export function meshOf(k, parts, material, { shadows = true, density = 0.18, shade = null } = {}) {
   const geo = bake(parts, density);
   if (shade) {
     const p = geo.attributes.position;
@@ -54,7 +54,7 @@ function meshOf(k, parts, material, { shadows = true, density = 0.18, shade = nu
 
 // a geometry made rough, as ice and rock are: each vertex pushed about by
 // noise of where it is (so pieces that meet stay met), pinned at the base
-function roughen(g, { amp = 1.5, scale = 9, seed = 1, base = true, fine = 0.35 } = {}) {
+export function roughen(g, { amp = 1.5, scale = 9, seed = 1, base = true, fine = 0.35 } = {}) {
   const p = g.attributes.position;
   const n = (a, b, s) => noise2(a / scale, b / scale, s) + noise2(a / (scale * 0.3), b / (scale * 0.3), s + 3) * fine;
   for (let i = 0; i < p.count; i++) {
@@ -76,7 +76,7 @@ function roughBox(w, h, d, at, o = {}) {
 }
 // ice's own variation: bluer in streaks and lower down, whiter on top;
 // `inside` (x, y, z) → true where it's a cave's or a hangar's inside
-const iceShade = (inside = null) => (x, y, z) => {
+export const iceShade = (inside = null) => (x, y, z) => {
   const n = noise2(x / 9 + y / 14, z / 9 - y / 11, 5) * 0.5 + noise2(x / 3, z / 3 + y / 4, 6) * 0.2;
   const deep = Math.max(0, Math.min(1, 0.5 - n)) * 0.22 + (inside?.(x, y, z) ? 0.3 : 0);
   return [1 - deep * 1.4, 1 - deep * 0.8, 1 - deep * 0.25];
@@ -330,38 +330,49 @@ export const PROPS = {
     return { object: k.build(parts, { name: 'shieldgen' }), solids };
   },
 
-  // the v-150 Planet Defender: an ion cannon, a great ball on its cone in
-  // a round emplacement, its barrel to the sky (30 m); every so often it
-  // fires, to cover a transport getting away
-  ioncannon(k) {
-    const grey = '#c9ced4';
-    const dark = '#464c54';
-    const tilt = 0.75;
+  // the v-150 Planet Defender, as The Empire Strikes Back has it: a great
+  // weathered sphere sunk deep in the snow under an ice cliff, its plates'
+  // seams round it, scuffed and scorched, the split in its top where the
+  // emitter opens; it fires up and away (the transports' cover). Where the
+  // Meshy model stands in (`v150`, catalog/made.js), this is only its shot
+  // (`shell: false`), from its middle `centre` up, `tilt` above level, out
+  // of the emitter `muzzle` metres off
+  ioncannon(k, { shell = true, tilt = 0.75, centre = 8, muzzle = 16.5 } = {}) {
+    const grey = '#c4c8cc';
+    const seam = '#7e848a';
+    const dark = '#3c4248';
+    const R = 13;
     const d = [0, sin(tilt), cos(tilt)];
-    const c = [0, 19.5, 0];
+    const c = [0, centre, 0]; // (its middle: a third of it under the snow)
     const along = (s) => c.map((v, i) => v + d[i] * s);
-    const parts = [
-      part(cyl(18, 17, 2.4, 48), { color: '#8a9098', to: 'stone' }),
-      part(cyl(13, 8.5, 7.4, 40), { at: [0, 2.4, 0], color: '#a8aeb6', to: 'paint' }),
-      part(cyl(8.6, 8.6, 2.4, 40), { at: [0, 9.4, 0], color: dark, to: 'metal' }),
-      part(new THREE.SphereGeometry(10.5, 40, 28), { at: c, color: grey, to: 'paint' }),
-      part(new THREE.TorusGeometry(10.55, 0.55, 8, 56), { at: c, rot: [PI / 2, 0, 0], color: dark, to: 'metal' }),
-      part(new THREE.TorusGeometry(10.55, 0.45, 8, 56), { at: c, rot: [0, PI / 2, 0], color: dark, to: 'metal' }),
-      // the barrel, its housing and its muzzle
-      rod(along(6), along(12.5), 2.6, 2.3, { color: dark, to: 'metal' }, 20),
-      rod(along(12.5), along(22), 1.5, 1.3, { color: '#9aa0a8', to: 'metal' }, 18),
-      rod(along(21.4), along(23.4), 1.9, 1.9, { color: dark, to: 'metal' }, 18),
-      // a door in its foot, lights round the emplacement
-      part(box(2.6, 3.2, 0.4), { at: [0, 2.4, -11.6], rot: [0.5, 0, 0], color: '#1e2226', to: 'dark' }),
-    ];
-    for (let s = 14; s < 21; s += 1.6) parts.push(rod(along(s), along(s + 0.4), 1.65, 1.65, { color: dark, to: 'metal' }, 18));
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * PI * 2;
-      parts.push(part(new THREE.SphereGeometry(0.25, 8, 6), { at: [cos(a) * 17.6, 2.5, sin(a) * 17.6], color: hot('#ffcf8a', 2.4), to: 'glow' }));
+    const parts = [part(new THREE.SphereGeometry(R, 48, 32), { at: c, color: grey, to: 'paint' })];
+    // the plates' seams: rings of latitude, and meridians from the top
+    for (const y of [-0.15, 0.25, 0.6, 0.85]) {
+      const r = R * Math.sqrt(1 - y * y);
+      parts.push(part(new THREE.TorusGeometry(r + 0.04, 0.09, 6, 64), { at: [c[0], c[1] + y * R, c[2]], rot: [PI / 2, 0, 0], color: seam, to: 'metal' }));
     }
-    // a bank of snow round the emplacement
-    parts.push(part(new THREE.TorusGeometry(18.5, 2.2, 6, 40), { rot: [PI / 2, 0, 0], scale: [1, 1, 0.6], color: SNOW, to: 'stone' }));
-    const object = k.build(parts, { name: 'ioncannon' });
+    for (let i = 0; i < 6; i++) parts.push(part(new THREE.TorusGeometry(R + 0.04, 0.08, 6, 64, PI * 0.62), { at: c, rot: [0, (i / 6) * PI, PI / 2], color: seam, to: 'metal' }));
+    // scuffs and scorch down its face (blaster fire, and its own exhaust)
+    const rnd = k.rand;
+    for (let i = 0; i < 14; i++) {
+      const a = rnd() * PI * 2;
+      const e = -0.1 + rnd() * 0.9;
+      const n = [Math.cos(e) * Math.sin(a), Math.sin(e), Math.cos(e) * Math.cos(a)];
+      const at = c.map((v, j) => v + n[j] * (R + 0.02));
+      parts.push(part(new THREE.CircleGeometry(0.6 + rnd() * 1.6, 7).lookAt(new THREE.Vector3(...n)), { at, color: i % 3 ? '#8e9296' : '#4a4e52', to: 'paint' }));
+    }
+    // the emitter: the split in the top, its jaws open, the struts in it
+    const top = along(R - 0.6);
+    parts.push(part(box(6.4, 1.6, 9), { at: top, rot: [-tilt, 0, 0], color: dark, to: 'dark' }));
+    for (const sx of [-1, 1]) {
+      parts.push(rod(along(R - 1), [top[0] + sx * 1.6, top[1] + 3.8, top[2] + 2.2], 0.55, 0.35, { color: '#8a9096', to: 'metal' }, 8));
+      parts.push(part(box(1.2, 4.2, 1.6), { at: [top[0] + sx * 2.6, top[1] - 0.6, top[2] - 0.4], rot: [0.5, 0, sx * 0.35], color: '#9aa0a6', to: 'metal' }));
+    }
+    parts.push(rod(along(R - 2), along(R + 3.4), 0.9, 0.7, { color: '#6a7076', to: 'metal' }, 12));
+    // the snow heaped against it, drifted up its sides
+    parts.push(part(new THREE.TorusGeometry(R * 0.95, 3.4, 8, 48), { at: [0, 0.6, 0], rot: [PI / 2, 0, 0], scale: [1, 1, 0.55], color: SNOW, to: 'stone' }));
+    for (const [x, z, sx, sy, sz] of [[-10, 8, 9, 4, 7], [11, 6, 8, 3, 7], [3, -12, 10, 3.5, 6], [-12, -6, 7, 3, 6]]) parts.push(blob(70 + x, [x, -0.5, z], [sx, sy, sz], { smooth: true, flat: 0.45, sharp: 0.3 }));
+    const object = shell ? k.build(parts, { name: 'ioncannon' }) : Object.assign(new THREE.Group(), { name: 'ioncannon' });
     // the shot: a bolt of red light, up and away (and a flash at the muzzle)
     const aim = new THREE.Group();
     aim.position.set(...c);
@@ -379,14 +390,14 @@ export const PROPS = {
     bolt.visible = false;
     aim.add(bolt);
     const flash = new THREE.Mesh(ball, haloMat);
-    flash.position.z = 24;
+    flash.position.z = muzzle;
     flash.visible = false;
     aim.add(flash);
     let shift = k.rand() * 5;
     let kick = false;
     return {
       object,
-      solids: [{ circle: [0, 0, 18] }],
+      solids: [{ circle: [0, 0, 13] }],
       // (a quest's `fire` signal: it fires now)
       signal(name) {
         if (name === 'fire') kick = true;
@@ -398,7 +409,7 @@ export const PROPS = {
         }
         const age = (t + shift) % 11;
         bolt.visible = age < 3.2;
-        bolt.position.z = 26 + age * 650;
+        bolt.position.z = muzzle + 1.5 + age * 650;
         flash.visible = age < 0.35;
         flash.scale.setScalar(4 + age * 22);
       },
@@ -407,6 +418,13 @@ export const PROPS = {
 
   shieldgen(k) {
     return PROPS.hothgenerator(k);
+  },
+
+  // the v-150 itself, where its model (catalog/made.js) won't load: the
+  // built sphere, without its shot (the ion cannon beside it fires)
+  v150(k) {
+    const { object, solids } = PROPS.ioncannon(k);
+    return { object, solids };
   },
 
   // a Rebel DF.9 / trench gun: a squat round tower, its armoured top, a

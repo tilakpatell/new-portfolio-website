@@ -41,10 +41,20 @@
 // more), its batteries are targets of their own (a run down its hull shoots
 // them out), a capital ship can be moved and turned (a Hammerhead's ram:
 // moveCapital, turnCapital), and runners fly for the jump through the battle
-// (addRunner: Hoth's transports, gone after by the other side).
+// (addRunner: gone after by the other side, and by you).
+//
+// The galaxy's kinds of battle (galaxy/battles.js) ask for three more: the
+// defender's objectives on an Interdictor among its escorts instead of its
+// flagship (`objectivesOn: 'interdictor'`: its fall wins the battle, the
+// flagship keeps its hull), an ace on either side (`ace: { [team]: { kind,
+// name, hp } }`: one fighter flown as that kind, named on its bracket, gone
+// for good once down), and runners that decide the battle (`runners`: an
+// evacuation's or a blockade's, launched through it, `need` of them out
+// winning it for their side, all of them down losing it).
 //
 // createBattle({ war, attacker, at, axis, perSide, rand, lines, radius,
-//   avoid, clock, elapsed, shared, onMine, tickets }) → battle (with
+//   avoid, clock, elapsed, shared, onMine, tickets, objectivesOn, ace,
+//   runners }) → battle (with
 //   runners, disable(id, s), wreck(id), moveCapital(cap, d), turnCapital(cap, axis, a),
 //   addRunner({ team, kind, size, hp, from, to, speed })):
 //   { teams, capitals, fighters, bolts, phase, clock, over, you, defender, lines, radius, length,
@@ -52,13 +62,13 @@
 //   damage) → hit | null, fire(team, from, dir, kind, target), targets,
 //   info, end(winner) }
 // `you`: { x, y, z, alive } (the ship, as the scene has it), or null.
-// Events: { type: 'down', team, kind, at, mine }, { type: 'hurt', damage,
+// Events: { type: 'down', team, kind, role, at, mine, ace? }, { type: 'hurt', damage,
 // kind }, { type: 'sub', sub, kind, phase, at, mine }, { type: 'phase',
 // phase }, { type: 'shield', down: true }, { type: 'capital', id, kind,
 // team, at }, { type: 'arrive', team, kind, at }, { type: 'impact', at,
 // size, shield }, { type: 'over', winner, why }, { type: 'turret', id, cap,
 // at, mine }, { type: 'disabled', id, at, size }, { type: 'escaped', id,
-// team, kind, at }, { type: 'runner', id, team, kind, at } (one shot down).
+// team, kind, at }, { type: 'runner', id, team, kind, at, mine? } (one shot down).
 
 import { sweptHit } from './targeting';
 import { FIGHTERS, HULLS, NAMES, SUBSYSTEMS, TURRETS } from './wars';
@@ -90,7 +100,7 @@ export const BATTLE = {
 };
 
 // how wide each capital ship is, as a share of its length (for laying a line out)
-export const WIDTH = { destroyer: 0.58, executor: 0.26, interdictor: 0.58, moncal: 0.32, nebulon: 0.28, corvette: 0.3, hammerhead: 0.3, lightcruiser: 0.36, gozanti: 0.62, transport: 0.32, councildread: 0.36, fedbattleship: 0.8, gearship: 0.5, saucer: 1, federation: 0.4, hauler: 0.5, superlab: 0.45, madrigal: 0.5, pestvan: 0.5, hacienda: 0.5, pollostruck: 0.5, pickup: 0.5 };
+export const WIDTH = { venator: 0.45, acclamator: 0.55, munificent: 0.3, providence: 0.32, lucrehulk: 0.95, destroyer: 0.58, executor: 0.26, interdictor: 0.58, moncal: 0.32, nebulon: 0.28, corvette: 0.3, hammerhead: 0.3, lightcruiser: 0.36, gozanti: 0.62, transport: 0.32, councildread: 0.36, fedbattleship: 0.8, gearship: 0.5, saucer: 1, federation: 0.4, hauler: 0.5, superlab: 0.28, madrigal: 0.5, pestvan: 0.5, hacienda: 1, pollostruck: 0.5, pickup: 0.5 };
 const widthOf = (c) => (WIDTH[c.kind] ?? 0.4) * c.size;
 
 const TIERS = { high: 32, mid: 20, low: 10 };
@@ -141,7 +151,7 @@ const pick = (list, rand) => {
   return list[list.length - 1];
 };
 
-export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0], perSide: n = 20, rand = Math.random, lines = BATTLE.lines, radius = BATTLE.radius, avoid = [], clock = BATTLE.clock, elapsed = 0, shared = null, onMine = null, tickets = true }) {
+export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0], perSide: n = 20, rand = Math.random, lines = BATTLE.lines, radius = BATTLE.radius, avoid = [], clock = BATTLE.clock, elapsed = 0, shared = null, onMine = null, tickets = true, objectivesOn = 'flagship', ace = {}, runners = null }) {
   const defender = 1 - attacker;
   const C = v3(...at);
   const A = norm(v3(axis[0], 0, axis[1])); // from the first side's line to the second's
@@ -173,6 +183,10 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   const place = (cap, l, o = v3()) => set(o, cap.pos.x + (cap.right.x * l[0] + cap.up.x * l[1] + cap.fwd.x * l[2]) * cap.size, cap.pos.y + (cap.right.y * l[0] + cap.up.y * l[1] + cap.fwd.y * l[2]) * cap.size, cap.pos.z + (cap.right.z * l[0] + cap.up.z * l[1] + cap.fwd.z * l[2]) * cap.size);
   b.teams.forEach(({ side }, team) => {
     const dir = team === 0 ? 1 : -1; // the way to the other side
+    // the ship the defender's objectives are on: its flagship, or (an
+    // interdiction) the first Interdictor among its escorts, if it has one
+    const inter = objectivesOn === 'interdictor' ? side.capitals.findIndex((c) => c.kind === 'interdictor') : -1;
+    const objective = team === defender ? (inter >= 0 ? inter : 0) : -1;
     const line = v3(C.x - A.x * lines * dir, C.y, C.z - A.z * lines * dir);
     let flank = 0;
     // how far out each side of the line is taken, so far (the flagship's half, and a gap)
@@ -204,7 +218,8 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
         alive: true,
         dying: 0,
         disabled: 0, // seconds left of an ion cannon's hit
-        tracked: !(flag && team === defender), // (the defender's flagship falls by its objectives, not its hull)
+        objective: i === objective,
+        tracked: i !== objective, // (the ship with the defender's objectives falls by them, not its hull)
         subs: [],
         spheres: [],
         turrets: [],
@@ -212,12 +227,13 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       cap.spheres = (HULLS[c.kind] ?? [[0, 0.1]]).map(([z, r]) => ({ c: place(cap, [0, 0, z]), r: r * c.size }));
       cap.reach = c.size * 0.55;
       cap.turrets = (TURRETS[c.kind] ?? []).map((l) => ({ num: nextId++, at: place(cap, l), r: Math.max(0.35, 0.012 * c.size), turbo: between([0.5, 3.5]), flak: between([0, 0.6]), hp: BATTLE.turretHp, alive: true, cap }));
-      if (flag && team === defender)
+      if (i === objective)
         cap.subs = (SUBSYSTEMS[c.kind] ?? []).map((s, k) => ({ id: s.id, num: 3e6 + k, kind: s.kind, phase: s.phase, pos: place(cap, s.at), r: Math.max(0.6, s.r * c.size), hp: s.hp, hpMax: s.hp, dealt: 0, alive: true, cap }));
       b.capitals.push(cap);
     });
   });
   const flagOf = (team) => b.capitals.find((c) => c.team === team && c.role === 'flagship');
+  const objOf = () => b.capitals.find((c) => c.objective);
 
   // ── the fighters ──
   const kinds = b.teams.map(({ side }) => side.fighters);
@@ -259,6 +275,19 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     return f;
   };
   for (const team of [0, 1]) for (let i = 0; i < n; i++) b.fighters.push(makeFighter(team));
+  // an ace: one of its side's, flown as its own kind, named, with its own hull
+  for (const team of [0, 1]) {
+    const a = ace?.[team];
+    if (!a || !FIGHTERS[a.kind]) continue;
+    let f = b.fighters.find((o) => o.team === team);
+    if (!f) b.fighters.push((f = makeFighter(team)));
+    f.kind = a.kind;
+    f.type = { ...FIGHTERS[a.kind], hp: a.hp };
+    f.size = f.type.size;
+    f.hp = a.hp;
+    f.ace = true;
+    Object.assign(f.tgt, { kind: a.kind, name: a.name, size: f.size, hpMax: a.hp });
+  }
 
   // ── the bolts ──
   let cursor = 0;
@@ -291,12 +320,13 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   const kill = (f, mine) => {
     f.alive = false;
     const t = b.teams[f.team];
-    if (t.tickets > 0) {
+    if (f.ace) f.respawn = Infinity; // (an ace down is gone for the battle)
+    else if (t.tickets > 0) {
       t.tickets -= 1;
       f.respawn = between(BATTLE.respawn);
     } else f.respawn = Infinity;
     if (b.you.on && f.target === b.you) b.you.on -= 1;
-    return { type: 'down', team: f.team, kind: f.kind, at: copy(v3(), f.pos), mine };
+    return { type: 'down', team: f.team, kind: f.kind, role: f.role, at: copy(v3(), f.pos), mine, ...(f.ace ? { ace: true } : {}) };
   };
   const subDown = (s, mine) => {
     s.alive = false;
@@ -312,7 +342,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       out.push({ type: 'impact', at: copy(v3(), cap.pos), size: cap.size * 0.3, shield: false });
     }
   };
-  const shielded = (cap) => cap.team === defender && cap.role === 'flagship' && b.phase === 1;
+  const shielded = (cap) => cap.objective && b.phase === 1;
 
   // the first of the other side's capital ships (its objectives, then its
   // hull) a segment from p0 to p1 meets: { cap, sub, k, at } or null
@@ -372,7 +402,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     const runs = b.runners.filter((r) => r.alive && r.team === enemy);
     if (runs.length && rand() < 0.5) return runs[Math.floor(rand() * runs.length)];
     if (f.team === attacker) {
-      const flag = flagOf(defender);
+      const flag = objOf();
       const subs = flag?.alive ? flag.subs.filter((s) => s.alive && s.phase === b.phase) : [];
       if (subs.length) return subs[Math.floor(rand() * subs.length)];
     }
@@ -681,7 +711,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
 
   // ── the phases and the end ──
   const checkPhase = (out) => {
-    const flag = flagOf(defender);
+    const flag = objOf();
     if (!flag) return;
     // (other pilots may have taken more than one phase's down since the last frame)
     while (b.phase <= 3 && !flag.subs.some((s) => s.phase === b.phase && s.alive)) {
@@ -704,11 +734,33 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       cap.dying = 0;
       cap.alive = false;
       out.push({ type: 'capital', id: cap.id, kind: cap.kind, team: cap.team, at: copy(v3(), cap.pos) });
-      if (cap.role === 'flagship') finish(cap.team === defender ? attacker : defender, 'flagship', out);
+      if (cap.objective && cap.role !== 'flagship') finish(attacker, cap.kind, out);
+      else if (cap.role === 'flagship') finish(cap.team === defender ? attacker : defender, 'flagship', out);
     }
   };
 
   // ── runners for the jump ──
+  // (a battle's own: `runners` { team, kind, size, hp, count, need, speed,
+  // every, from, to, spread }: one launched every `every` seconds from about
+  // `from` for about `to`; `need` of them out wins it for their side, all of
+  // them down with fewer out loses it)
+  const run = runners ? { ...runners, launched: 0, out: 0, wait: 0 } : null;
+  const launchRunners = (dt) => {
+    if (!run || b.over || run.launched >= run.count) return;
+    run.wait -= dt;
+    if (run.wait > 0) return;
+    run.wait = run.every;
+    const sp = run.spread ?? 6;
+    const jitter = (p) => ({ x: p[0] + (rand() - 0.5) * sp, y: p[1] + (rand() - 0.5) * sp * 0.4, z: p[2] + (rand() - 0.5) * sp });
+    b.addRunner({ team: run.team, kind: run.kind, size: run.size, hp: run.hp, from: jitter(run.from), to: jitter(run.to), speed: run.speed });
+    run.launched += 1;
+  };
+  const judgeRunners = (out, from) => {
+    if (!run || b.over) return;
+    for (let i = from; i < out.length; i++) if (out[i].type === 'escaped' && out[i].team === run.team) run.out += 1;
+    if (run.out >= run.need) finish(run.team, 'runners', out);
+    else if (run.launched >= run.count && !b.runners.some((r) => r.alive && r.team === run.team)) finish(1 - run.team, 'runners', out);
+  };
   const flyRunners = (dt, out) => {
     for (const r of b.runners) {
       if (!r.alive) continue;
@@ -804,7 +856,10 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       }
     }
     for (const cap of b.capitals) if (cap.disabled > 0) cap.disabled = Math.max(0, cap.disabled - dt);
+    launchRunners(dt);
+    const before = out.length;
     flyRunners(dt, out);
+    judgeRunners(out, before);
     if (!b.over) for (const cap of b.capitals) fireBatteries(cap, dt);
     moveBolts(dt, out);
     if (!b.over) sharedSubs(out);
@@ -832,6 +887,17 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
         hitF = f;
       }
     }
+    // (or a runner of the other side's, nearer)
+    let hitR = null;
+    for (const r of b.runners) {
+      if (!r.alive || r.team === b.you.team) continue;
+      const k = sweptHit(from, to, r.prev, r.pos, Math.max(0.5, r.size * 0.5));
+      if (k !== null && k < first) {
+        first = k;
+        hitR = r;
+        hitF = null;
+      }
+    }
     const h = capitalHit(from, to, b.you.team);
     // a battery on one of the other side's capital ships, if it's nearer than either
     let tu = null;
@@ -856,6 +922,16 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
         pending.push({ type: 'turret', id: tu.num, cap: tu.cap.id, at: copy(v3(), tu.at), mine: true });
       }
       return { id: tu.num, kind: 'turret', at: copy(v3(), tu.at), size: tu.r, down, turret: true };
+    }
+    if (hitR && (!h || first <= h.k)) {
+      hitR.hp -= damage;
+      hitR.hitBy += 1;
+      const down = hitR.hp <= 0;
+      if (down) {
+        hitR.alive = false;
+        pending.push({ type: 'runner', id: hitR.id, team: hitR.team, kind: hitR.kind, at: copy(v3(), hitR.pos), mine: true });
+      }
+      return { id: hitR.id, kind: hitR.kind, at: copy(v3(), hitR.pos), size: hitR.size, down };
     }
     if (hitF && (!h || first <= h.k)) {
       hitF.hp -= damage;
@@ -907,7 +983,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
         }
       }
       if (b.you.team === attacker) {
-        const flag = flagOf(defender);
+        const flag = objOf();
         for (const s of flag?.subs ?? []) {
           if (!s.alive || s.hidden || s.phase !== b.phase) continue;
           s.tgt ??= { id: s.num, at: s.pos, vel: ZERO, size: s.r, kind: 'subsystem', name: NAMES[s.kind], sub: s.id, threat: 0, hp: 0, hpMax: s.hpMax };
@@ -922,7 +998,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   // for the HUD and for checking from a browser
   Object.defineProperty(b, 'info', {
     get() {
-      const flag = flagOf(defender);
+      const flag = objOf();
       const own = flagOf(attacker);
       return {
         phase: b.phase,

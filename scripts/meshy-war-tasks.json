@@ -20,11 +20,25 @@
     "model": "01a1138a-4688-7063-a551-a86f6b2cc42d"
   },
   "superlab": {
-    "image": "01a1137b-9498-72ca-95ee-c9d607b0d69f",
-    "model": "01a11380-9849-74c2-b67e-af451cd8c9ea"
+    "tried": [
+      {
+        "image": "01a1137b-9498-72ca-95ee-c9d607b0d69f",
+        "model": "01a11380-9849-74c2-b67e-af451cd8c9ea",
+        "account": "another Meshy account"
+      }
+    ],
+    "image": "01a113a6-b269-7298-bccf-be6a99a758c9",
+    "model": "01a113a7-902d-70b8-ab2c-882b130ea9ed"
   },
   "hacienda": {
-    "image": "01a1137c-034d-73c5-9dcd-c25f7a8509e5",
-    "model": "01a11382-ad31-7624-a583-c9a2eef5fdbf"
+    "tried": [
+      {
+        "image": "01a1137c-034d-73c5-9dcd-c25f7a8509e5",
+        "model": "01a11382-ad31-7624-a583-c9a2eef5fdbf",
+        "account": "another Meshy account"
+      }
+    ],
+    "image": "01a113a7-1a10-7667-9541-210a085f91f7",
+    "model": "01a113a7-dbff-767c-be5e-82e4f7439af2"
   }
 }

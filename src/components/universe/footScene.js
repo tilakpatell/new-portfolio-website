@@ -1426,6 +1426,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     x.fillStyle = g;
     x.fillRect(0, 0, 64, 64);
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   })();
@@ -2034,6 +2035,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     x.textBaseline = 'middle';
     x.fillText(text, 384, 49, 740);
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   };

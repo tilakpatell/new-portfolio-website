@@ -15,7 +15,7 @@
 .abq-icon { display: block; width: 46px; height: 46px; color: var(--accent-text); }
 .abq-icon svg { width: 100%; height: 100%; }
 .abq-said { min-height: 1.4em; margin-top: 0.6rem; font-weight: 700; font-size: 0.9rem; color: var(--text); }
-.abq-person[data-said] .abq-said { animation: said 0.5s cubic-bezier(0.3, 1.5, 0.5, 1); }
+.abq-person[data-said] .abq-said { animation: said 0.5s var(--ease-spring); }
 .pollos-board { padding: 1.25rem; border-radius: calc(var(--r-card) - 6px); background: linear-gradient(#1f3b27, #142a1b); color: #f6efd9; }
 .pollos-name { font: 700 1.5rem/1.1 Georgia, 'Times New Roman', serif; letter-spacing: 0.02em; color: #f2c14e; }
 .pollos-sub { margin-top: 0.25rem; font-size: 0.8rem; color: #d6ceb3; }

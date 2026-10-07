@@ -53,7 +53,7 @@ export const SKIRMISH = {
 const between = (rand, [a, b]) => a + rand() * (b - a);
 
 export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds = HUNTER_KINDS, solids = [] } = {}) {
-  const hunt = createHunt({ rand, factions, kinds, solids, lasers: 20, firstId: 1e6 }); // (numbered apart from your own hunters: the lock follows a number)
+  const hunt = createHunt({ rand, factions, kinds, solids, lasers: 20, firstId: 1e6, nerve: false }); // (numbered apart from your own hunters: the lock follows a number; and fought to the end: the freighter is their quarry, not you)
   const wing = createWing({ rand, bolts: 12, solids });
   const shots = Array.from({ length: 10 }, () => ({ on: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, faction: null }));
   // the freighter, as the hunt sees "you": where it is and the way it goes

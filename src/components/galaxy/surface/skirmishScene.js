@@ -4,7 +4,7 @@
 // what it's firing at, kneeling behind cover, falling the way it was shot;
 // their shots at each other as bolts through the surface's blaster, and
 // the ones at you as its enemy bolts, which hit if they pass through you.
-// You fight for one side (galaxy/allegiance.js picks it); a small chevron
+// You fight for one side (by your oath: skirmish.js's yourSide); a small chevron
 // in your side's colour marks the soldiers on yours. The scene calls
 // update each frame, and hands your hits on to hit().
 //
@@ -18,6 +18,7 @@ import { groundAt } from './walker';
 import { CHEST, EYE, RULES, SIZE, hitUnit, lineOfSight, newSkirmish, skirmishView, stepSkirmish } from './skirmish';
 import { createSoldier, gunOf } from './soldier';
 import { GUNS } from '../../universe/gunplay';
+import { sharpen } from '../../../lib/three/textures';
 
 const DRAW = 170; // metres: soldiers further off than this aren't drawn
 const NEAR = 70; // metres: further off, a soldier's moved three frames at a time
@@ -43,6 +44,7 @@ function chevron(colour) {
   g.fill();
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
+  sharpen(t);
   return new THREE.SpriteMaterial({ map: t, sizeAttenuation: false, depthTest: false, depthWrite: false, transparent: true, opacity: 0.8 });
 }
 
@@ -211,7 +213,7 @@ export function createSkirmishScene({ parent, world, blaster, spec, side, say = 
       tally(hitUnit(b, target.id, points * RULES.yours, p, 'you', { blown: breaks }), kills);
       return kills;
     },
-    view: () => ({ ...skirmishView(b), near, side: you, comes: b.spec.comes, name: spec.name, sides: Object.fromEntries(Object.entries(spec.sides).map(([id, s]) => [id, { name: s.name, short: s.short, colour: s.colour, allegiance: s.allegiance }])) }),
+    view: () => ({ ...skirmishView(b), near, side: you, comes: b.spec.comes, name: spec.name, sides: Object.fromEntries(Object.entries(spec.sides).map(([id, s]) => [id, { name: s.name, short: s.short, colour: s.colour, side: s.side }])) }),
     // (for tests)
     battle: () => b,
     dispose() {

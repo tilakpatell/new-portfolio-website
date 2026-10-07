@@ -18,6 +18,7 @@ import { loadKit, merge } from './kit';
 import { loadPeople } from './people';
 import { createStage, lightOffice } from './stage3d';
 import { TOSS, predict } from './toss';
+import { sharpen } from '../../lib/three/textures';
 
 const H = 2.7; // the drop ceiling
 const BACK = -1.6; // the wall behind Jim
@@ -103,6 +104,7 @@ export async function createToss3D(canvas, { onLost, onSlow } = {}) {
         x.fillRect(0, y, 8, 3);
       }
       const t = new THREE.CanvasTexture(c);
+      sharpen(t);
       t.wrapS = t.wrapT = THREE.RepeatWrapping;
       t.repeat.set(1, 9);
       return t;
@@ -181,6 +183,7 @@ export async function createToss3D(canvas, { onLost, onSlow } = {}) {
         x.fillRect(i, 0, 5, 8);
       }
       const t = new THREE.CanvasTexture(c);
+      sharpen(t);
       t.wrapS = t.wrapT = THREE.RepeatWrapping;
       return t;
     })();

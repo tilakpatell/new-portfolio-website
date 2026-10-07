@@ -51,16 +51,70 @@ truth where this disagrees with it.
 - Not done: the final whole-branch review (the owner ran out of usage).
   Read the diff once.
 
+## Done: Phase 1 polish
+
+- `surface/floats.js` (pure, tested): `floatPose` (a boat's height, pitch
+  and roll from the water under its bow, stern and sides), `diveAt` (an
+  aiwha's glide and its dive through the surface once a cycle), `sprayAt`
+  (how much spray a wave throws off a leg).
+- `water.js`: spray off `site.water.legs` (Kamino: the pad's column and
+  20 stilts), `splash(x, z, k)`, one Points draw; `far`, `farMix` and
+  `sky` per sea keep Scarif turquoise to the horizon.
+- Kamino's aiwhas dive into the sea and out (`dive` on a life spec),
+  splashing each way. The bongo on Lake Paonga rides the swell (`float`
+  on a thing). The camera stays 0.6 m over the wave under it.
+- Checked in Chromium on SwiftShader (so no frame times): Scarif's far
+  water stays turquoise; Kamino's spray pool fills (260 drops on the
+  small tier); the bongo rolls; no page errors.
+
+## Phase 2, bases: under way
+
+The plan is `docs/superpowers/plans/2026-10-07-galaxy-phase2-bases.md`.
+
+- Done, Task 1: the scanned roles `tiles` (Poly Haven
+  `large_floor_tiles_02`, 1 m slabs) and `deck` (`metal_plate`, a tread
+  plate).
+- Done, Task 2: `surface/decals.js`, with insignia (Rebel, Imperial,
+  Republic) and scorches as flat geometry.
+- Done, Task 3: Echo Base's corridors, a zone behind the hangar's
+  back-left door. The rooms are in `sites/echoLayout.js` (pure, tested);
+  `props/echo.js` draws them:
+  - ice walls with steel arches every 4 m;
+  - the command centre: the holo-table, the tactical screen under the
+    starbird, Rieekan and Toryn Farr;
+  - the medical centre's bacta tank;
+  - the cavern, with tauntauns.
+  Dev: `__surfaceDo('zone', 'echo')`.
+- Done, Task 4: the Theed Hangar's blast door to the generator, the
+  controllers' room over it, pilasters, a polished floor and four more
+  N-1s; the plaza in polished slabs.
+- Done, Task 5: Kamino's static discharge towers. Two stand on the pad's
+  rim and four out among the domes; lightning strikes them about every
+  8–13 s (`surface/storm.js`, pure and tested). The pads' decks are in
+  tread plate.
+- Done, Task 6: Scarif's Pad 9 has its number painted on, and Yavin's
+  hangar has its own floor, `hangarfloor`, laid 0.57 m over the ground,
+  just above the temple model's own floor (measured by a ray in the page).
+  The bunkers and the temple are models, so a decal on their code builds
+  never shows.
+- Done, Task 7: the owner said to use Meshy where needed, so the v-150 is a
+  Meshy model, `v150`, lifted out of a still of it firing, 33 credits
+  (`scripts/meshy-galaxy-buildings-bases.mjs`). It is sunk and tipped
+  toward its aim; the built `ioncannon` (`shell: false`) is only its shot.
+- Left:
+  - spray seen from Kamino's deck;
+  - a Citadel vault door;
+  - Echo Base's trench lines. The lane file
+    (`scripts/meshy-galaxy-buildings-bases.mjs`) takes more kinds.
+- Checking, without walking: render from a free camera through the page's
+  renderer (`window.__surfaceScene`), offset from a named object. The
+  session's `.probe-cam.mjs` did this; `scripts/sea-shot.mjs` is the
+  committed one for seas.
+
 ## Next, in order (the spec's phases)
 
-1. **Phase 1 polish:**
-   - Kamino's deck is high, so its storm reads mostly from afar. Add spray
-     at the platform legs.
-   - Scarif's turquoise could be more saturated far out (the Fresnel takes
-     the pale horizon).
-   - Float things on `water.height`: Kamino's aiwhas surfacing, a bongo on
-     Lake Paonga.
-   - Keep the camera out of the water.
+1. **Phase 1 polish:** done (see below). Left: a bongo that dives to
+   Otoh Gunga, and spray seen from the deck (the pad hides its own column).
 2. **Phase 2, bases:**
    - Echo Base: its glacier mouth, its ice corridors with supports, Outpost
      Beta's ion cannon.

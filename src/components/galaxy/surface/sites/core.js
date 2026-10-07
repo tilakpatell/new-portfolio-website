@@ -151,6 +151,11 @@ export const SITES = {
           { kind: 'n1fighter', at: [14, -8], yaw: -0.1 },
           { kind: 'n1fighter', at: [-22, 30], yaw: 0.5 },
           { kind: 'n1fighter', at: [24, 32], yaw: -0.4 },
+          // (Bravo Squadron's rows, further in: the hangar held at least twenty-seven)
+          { kind: 'n1fighter', at: [-21, -18], yaw: 0 },
+          { kind: 'n1fighter', at: [-7, -19], yaw: 0 },
+          { kind: 'n1fighter', at: [7, -19], yaw: 0 },
+          { kind: 'n1fighter', at: [21, -18], yaw: 0 },
           { kind: 'crates', at: [-26, 8] },
           { kind: 'crates', at: [27, 10] },
         ],
@@ -169,7 +174,7 @@ export const SITES = {
         },
         things: [
           { kind: 'otohgunga', at: [40, 110], abs: true, y: 0, solid: false },
-          { kind: 'bongo', at: [-6, 24], yaw: 2.8, abs: true, y: -0.9 },
+          { kind: 'bongo', at: [-6, 24], yaw: 2.8, abs: true, y: -0.9, float: { len: 13, beam: 6, draft: 0.9 } },
         ],
       },
       {
@@ -596,7 +601,16 @@ export const SITES = {
       layers: [{ type: 'level', height: -40 }, { type: 'island', at: [0, 0], r: 14, height: 45, core: 0.85, ragged: 0 }],
       palette: { low: '#2a343c', high: '#2a343c', rock: '#22282e', hLow: -50, hHigh: -30, grain: 0.2 },
     },
-    water: { level: 0, color: '#3e525c', deep: '#16262e', kind: 'sea', foam: 0.7, waves: 1.4 },
+    water: {
+      level: 0,
+      color: '#3e525c',
+      deep: '#16262e',
+      kind: 'sea',
+      foam: 0.7,
+      waves: 1.4,
+      // (where the storm breaks on the city, [x, z, r]: the pad's column, the domes' and towers' stilts)
+      legs: [[0, 0, 12], [-130, 270, 12], [130, 330, 15.6], [-320, 240, 12], [-330, -210, 14.4], [340, -120, 12], [-80, -330, 12], [390, 160, 16.8], [-430, 40, 12], [210, -390, 12], [20, 470, 19.2], [520, -320, 12], [-520, 380, 15.6], [640, 60, 12], [-640, -260, 18], [300, 520, 12], [-240, -520, 12], [-180, 420, 8], [420, -40, 8], [-420, -120, 8]],
+    },
     weather: [{ kind: 'rain', count: 4200, speed: 1.3 }, { kind: 'spray', count: 900 }],
     lightning: { every: 9, strength: 3.2 },
     fall: 12,
@@ -727,6 +741,14 @@ export const SITES = {
       span([-170, -50], [-200, 110], 28, 16, 5, 'kamino', 22),
       span([0, 0], [70, -230], 30, 22, 5, 'kamino', 22),
       span([200, 50], [230, 220], 40, 18, 5, 'kamino', 22),
+      // the static discharge towers, taking the storm's lightning: two on the
+      // pad's rim, the rest on their own stilts out among the domes
+      { kind: 'kdischarge', at: [24, -14], abs: true, y: 22, opts: { h: 16, seed: 1, every: 9 } },
+      { kind: 'kdischarge', at: [-20, -20], abs: true, y: 22, opts: { h: 16, seed: 2, every: 13 } },
+      { kind: 'kdischarge', at: [-100, 300], abs: true, y: 0, solid: false, opts: { h: 64, seed: 3, every: 10 } },
+      { kind: 'kdischarge', at: [170, 290], abs: true, y: 0, solid: false, opts: { h: 70, seed: 4, every: 12 } },
+      { kind: 'kdischarge', at: [370, -160], abs: true, y: 0, solid: false, opts: { h: 60, seed: 5, every: 8 } },
+      { kind: 'kdischarge', at: [-360, -170], abs: true, y: 0, solid: false, opts: { h: 66, seed: 6, every: 11 } },
       // the rest of the city, out in the storm
       { kind: 'tipocadome', at: [-130, 270], yaw: 0.5, abs: true, y: 0, solid: false },
       { kind: 'tipocadome', at: [130, 330], yaw: 2.1, abs: true, y: 0, solid: false, scale: 1.3 },
@@ -767,8 +789,9 @@ export const SITES = {
       { kind: 'kaminoan', n: 1, at: [228, 216], still: true, scale: 1.08, name: 'Lama Su', says: ['I trust you are going to stay for a while?', 'You will be delighted to hear we are on schedule. Two hundred thousand units are ready, with a million more well on the way.', 'Magnificent, aren’t they?'] },
       { kind: 'jango', n: 1, at: [-164, -44], roam: 6, speed: 0.9, name: 'Jango Fett', says: ['I’m just a simple man, trying to make my way in the universe.', 'Ever make your way as far into the interior as Coruscant?', 'Boba, pack your things. We’re leaving.'] },
       { kind: 'villager', n: 1, at: [-198, 108], roam: 4, speed: 1.0, scale: 0.68, name: 'Boba Fett', says: ['My dad’s the best bounty hunter in the galaxy.', 'Dad! There’s a Jedi on the landing platform!', 'Get him, Dad! Get him!'] },
-      { kind: 'aiwha', n: 2, path: [[300, -150], [430, -260], [300, -400], [170, -300]], y: 72, speed: 9, solid: false },
-      { kind: 'aiwha', n: 2, path: [[-300, -140], [-440, -40], [-380, 180], [-260, 40]], y: 66, speed: 8, solid: false },
+      // (gliding over the storm, and now and then down into the sea and out)
+      { kind: 'aiwha', n: 2, path: [[300, -150], [430, -260], [300, -400], [170, -300]], y: 72, speed: 9, solid: false, dive: { high: 32, low: -4, every: 46 } },
+      { kind: 'aiwha', n: 2, path: [[-300, -140], [-440, -40], [-380, 180], [-260, 40]], y: 66, speed: 8, solid: false, dive: { high: 26, low: -4, every: 38 } },
     ],
     flyovers: [
       { kind: 'delta7', n: 1, metres: 8, alt: 80, speed: 120, every: 60 },
@@ -1024,13 +1047,14 @@ export const SITES = {
     ],
     // the first battle (skirmish.js): the droid army holds the south edge of
     // the gunships' landing ground, the clones come off the LAATs in waves,
-    // and you fight for whichever side your allegiance is (galaxy/allegiance.js)
+    // and you fight for the side you swore to in the Clone Wars (galaxy/allegiance.js:
+    // skirmish.js's yourSide)
     skirmish: {
       name: 'The First Battle of Geonosis',
       hold: 'sep',
       sides: {
-        rep: { name: 'The Grand Army of the Republic', short: 'Republic', allegiance: 'light', colour: '#7fc4ff', kinds: [['clone', 10]], spawn: { at: [262, 182], spread: 14 }, wave: 18, youAt: [258, 166], youYaw: Math.PI },
-        sep: { name: 'The Separatist droid army', short: 'Separatists', allegiance: 'dark', colour: '#ff9a5a', kinds: [['battledroid', 8], ['superdroid', 3]], spawn: { at: [264, 94], spread: 10 }, respawn: 9, youAt: [262, 104], youYaw: 0 },
+        rep: { name: 'The Grand Army of the Republic', short: 'Republic', side: 'republic', colour: '#7fc4ff', kinds: [['clone', 10]], spawn: { at: [262, 182], spread: 14 }, wave: 18, youAt: [258, 166], youYaw: Math.PI },
+        sep: { name: 'The Separatist droid army', short: 'Separatists', side: 'separatists', colour: '#ff9a5a', kinds: [['battledroid', 8], ['superdroid', 3]], spawn: { at: [264, 94], spread: 10 }, respawn: 9, youAt: [262, 104], youYaw: 0 },
       },
       front: [262, 124],
       field: { min: [204, 76], max: [326, 204] },

@@ -21,6 +21,7 @@ import { precompile, precompilePasses, quiet } from '../../lib/three/renderer';
 import { paintGasGiant, paintPlating, starSprite } from './plating';
 import { pixelRatio } from '../../lib/device';
 import { gltfLoader } from '../../lib/three/gltf';
+import { sharpen } from '../../lib/three/textures';
 
 const LENGTH = 340; // how much station to build, in units
 const SHIP_AHEAD = 0.55; // the X-wing sits this far ahead of the simulation's z
@@ -194,6 +195,7 @@ function tieParts() {
       x.stroke();
     }
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   })();
@@ -437,6 +439,7 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
     const sprite = new THREE.CanvasTexture(starSprite());
+    sharpen(sprite);
     sprite.colorSpace = THREE.SRGBColorSpace;
     const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: 2.4, sizeAttenuation: false, vertexColors: true, fog: false, depthWrite: false, map: sprite, transparent: true, alphaTest: 0.02 }));
     scene.add(pts);
@@ -447,6 +450,7 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   const sky = new THREE.Group();
   {
     const giantTex = new THREE.CanvasTexture(paintGasGiant({ w: big ? 1024 : 512, h: big ? 512 : 256 }));
+    sharpen(giantTex);
     giantTex.colorSpace = THREE.SRGBColorSpace;
     const giant = new THREE.Mesh(new THREE.SphereGeometry(26, 48, 32), new THREE.MeshLambertMaterial({ map: giantTex, fog: false }));
     giant.rotation.z = 0.3;
@@ -530,6 +534,7 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
     x.fillStyle = gr;
     x.fillRect(0, 0, 128, 128);
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   })();
@@ -574,6 +579,7 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
       x.stroke();
     }
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   })();

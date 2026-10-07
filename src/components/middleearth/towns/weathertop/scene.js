@@ -30,6 +30,7 @@ import { createWraithKit } from '../wraiths';
 import { createWeathertopKit } from './props';
 import { ARWEN_AT, BED, CAST, COLLIDERS, CRAGS, DELL, FIRE_AT, GAPS, HILL, PATCHES, PLANTS, ROCKS, RUIN, SPOTS, STAIR, STAIR_W, STAND, TREES, TROLLS, WALLS, WORLD, WOUNDED, height, pathAmount, stairNear } from './layout';
 import { BRAND, MARK_LINES, OBSTACLES, RIDE, glowOf, roadBend, roadTurn } from './rules';
+import { sharpen } from '../../../../lib/three/textures';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -185,6 +186,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
       }
     }
     const tex = new THREE.CanvasTexture(c);
+    sharpen(tex);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
   })();

@@ -22,7 +22,9 @@ import { runtime } from '../runtime';
 import ChaseHud from '../components/galaxy/surface/ChaseHud';
 import AssaultHud from '../components/galaxy/surface/AssaultHud';
 import SkirmishHud from '../components/galaxy/surface/SkirmishHud';
-import { ALLEGIANCE_KEY, allegianceOf, readAllegiance } from '../components/galaxy/allegiance';
+import { SIDE_KEY, current as oathNow, readAllegiance, suggestSide } from '../components/galaxy/allegiance';
+import { useOath } from '../components/galaxy/useOath';
+import { battleWar, swearHere, yourSide } from '../components/galaxy/surface/skirmish';
 import HeroPanel from '../components/galaxy/surface/HeroPanel';
 import { HERO_KEY, heroById, heroSpec, readHero, writeHero } from '../components/galaxy/heroes';
 import { missionOf } from '../components/galaxy/surface/missions';
@@ -87,13 +89,11 @@ export default function GalaxySurface() {
   // who you play as down here (heroes.js), kept across worlds
   const [hero, setHero] = useState(() => readHero(local.get(HERO_KEY), parseShip(local.get(SHIP_KEY)) ?? 'xwing'));
   const [picking, setPicking] = useState(false);
-  // which side you fight for in the worlds' battles (galaxy/allegiance.js), kept across worlds
-  const [allegiance, setAllegiance] = useState(() => readAllegiance(local.get(ALLEGIANCE_KEY)));
-  const keepAllegiance = (side) => {
-    const a = allegianceOf(side);
-    setAllegiance(a);
-    local.set(ALLEGIANCE_KEY, a);
-  };
+  // your oath in the galaxy's wars (galaxy/allegiance.js: sworn on the
+  // holotable, kept in the browser): the worlds' battles put you on your side
+  // (skirmish.js's yourSide), and taking the other one down here is an oath to it
+  const [oath, swearTo] = useOath(swearHere);
+  const swornIn = (sides) => oath.oaths[battleWar(sides)]?.side ?? null;
   const [skirmish, setSkirmish] = useState(null); // the world's battle, as its HUD shows it
   const skirmishShown = useRef('');
   const pickHero = (next) => {
@@ -178,7 +178,8 @@ export default function GalaxySurface() {
     leavingRef.current = 'fly';
     setLeaving('fly');
     markLaunch();
-    const props = { system: id, reduced, ship, loadout, build, controls: readControls(local.get(CONTROLS_KEY)), net: online.client, frozen: false };
+    // (your oath with it: the sky's war puts you on your side from its first frame)
+    const props = { system: id, reduced, ship, loadout, build, allegiance: oathNow(readAllegiance(local.get(SIDE_KEY))), controls: readControls(local.get(CONTROLS_KEY)), net: online.client, frozen: false };
     const climb = new Promise((r) => later('climb', reduced ? 300 : CLIMB, r));
     runtime()
       .handover(galaxyModule, props, host, { fade: 1000, held: true, after: climb })
@@ -367,7 +368,7 @@ export default function GalaxySurface() {
       <h1 className="sr-only">
         {sys.name}: {site.place}
       </h1>
-      <SurfaceView key={`${mission?.id ?? 'explore'}:${hero.id}:${hero.color}:${hero.hilt}:${hero.stance}:${hero.gun}:${(hero.mods ?? []).join()}:${(hero.perks ?? []).join()}`} system={id} mission={mission?.id ?? null} ship={ship} hero={hero} loadout={loadout} build={build} allegiance={allegiance} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
+      <SurfaceView key={`${mission?.id ?? 'explore'}:${hero.id}:${hero.color}:${hero.hilt}:${hero.stance}:${hero.gun}:${(hero.mods ?? []).join()}:${(hero.perks ?? []).join()}`} system={id} mission={mission?.id ?? null} ship={ship} hero={hero} loadout={loadout} build={build} oath={oath} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
 
       {/* where you are, and how much of it you've found */}
       <div className="surface-where">
@@ -409,8 +410,8 @@ export default function GalaxySurface() {
 
       {/* the quest you're on, and the things to do here */}
       {mission && mission.kind !== 'assault' && <ChaseHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onAgain={() => view.current?.input?.('restart')} onBack={takeOff} />}
-      {!mission && site.skirmish && phase !== 'landing' && <SkirmishHud view={skirmish} onSide={(id) => (view.current?.input?.('side', id), keepAllegiance(site.skirmish.sides[id]))} />}
-      {mission?.kind === 'assault' && <AssaultHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onSide={(id) => (view.current?.input?.('side', id), keepAllegiance(mission.sides[id]))} onDeploy={(id) => view.current?.input?.('deploy', id)} onAgain={() => view.current?.input?.('restart')} onBack={goUp} />}
+      {!mission && site.skirmish && phase !== 'landing' && <SkirmishHud view={skirmish} sworn={swornIn(site.skirmish.sides)} onSide={(id) => (view.current?.input?.('side', id), swearTo(site.skirmish.sides[id].side))} />}
+      {mission?.kind === 'assault' && <AssaultHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} yours={yourSide(mission.sides, oath, suggestSide({ crew: ship, hero: hero.id }, battleWar(mission.sides) ?? undefined))} sworn={swornIn(mission.sides)} onSide={(id) => (view.current?.input?.('side', id), swearTo(mission.sides[id].side))} onDeploy={(id) => view.current?.input?.('deploy', id)} onAgain={() => view.current?.input?.('restart')} onBack={goUp} />}
 
       {phase !== 'landing' && site.quests.length > 0 && !((mission?.kind === 'chase' || mission?.kind === 'assault') && chase && !chase.result) && (
         <div className={quest ? 'surface-quest surface-quest-on' : 'surface-quest'}>
@@ -481,8 +482,8 @@ export default function GalaxySurface() {
           )}
           <ul className="surface-powers">
             {[
-              ['G', combat.saber ? 'Push' : 'Detonator', 'power'],
-              ['V', combat.saber ? 'Pull' : 'Overcharge', 'second'],
+              ['G', combat.powers?.power ?? (combat.saber ? 'Push' : 'Detonator'), 'power'],
+              ['V', combat.powers?.second ?? (combat.saber ? 'Pull' : 'Overcharge'), 'second'],
               ['X', 'Dodge', 'dodge'],
             ].map(([key, name, slot]) => {
               const left = combat.cool?.[slot] ?? 0;
@@ -491,7 +492,7 @@ export default function GalaxySurface() {
                 <li key={slot} className={left > 0 ? 'surface-power is-cooling' : 'surface-power'} style={{ '--k': left > 0 ? left / full : 0 }}>
                   <kbd>{key}</kbd>
                   <span>{name}</span>
-                  {left > 0.05 && <small>{left.toFixed(left < 10 ? 1 : 0)}</small>}
+                  {left > 0.05 && !(slot === 'power' && combat.powers?.hold) && <small>{left.toFixed(left < 10 ? 1 : 0)}</small>}
                 </li>
               );
             })}

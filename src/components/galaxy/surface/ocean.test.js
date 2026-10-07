@@ -43,6 +43,13 @@ describe('the seas', () => {
     expect(peak(SEAS.naboo)).toBeGreaterThan(peak(SEAS.swamp));
     expect(peak(SEAS.kamino)).toBeLessThan(5); // (no wave over Tipoca's deck at 12 m)
   });
+
+  it('keep Scarif turquoise to the horizon: a far colour, and less of the pale sky in it', () => {
+    expect(SEAS.scarif.far).toMatch(/^#[0-9a-f]{6}$/);
+    expect(SEAS.scarif.farMix).toBeGreaterThan(0);
+    expect(SEAS.scarif.sky).toBeLessThan(1);
+    for (const [id, sea] of Object.entries(SEAS)) expect(sea.sky ?? 1, id).toBeGreaterThan(0);
+  });
 });
 
 describe('the water’s height', () => {

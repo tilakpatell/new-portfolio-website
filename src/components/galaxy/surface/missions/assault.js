@@ -9,10 +9,27 @@
 // tested; the drawing is assaultScene.js and the surface scene runs it.
 //
 // Design: docs/superpowers/specs/2026-10-06-galactic-assault-design.md
+//
+// The armies fight by squads (lib/ai/squad, the NPC intelligence design):
+// each side's soldiers up are grouped by reach every TACTICS.every seconds;
+// a squad's confidence (what's left of it against what's facing it, its
+// side's recent losses counted) sets its posture: holding, a defending
+// squad keeps behind its frontline (TACTICS.buffer short of the nearest
+// enemy, so the two armies don't melt into one melee and you can read
+// who's where; the attackers' job is to go in, and they do);
+// worried, it falls back in halves (the half nearest the enemy goes
+// TACTICS.back metres rearward, a defender's to the rear of the post it
+// holds, while the rest hold and cover, then the other half); confident,
+// it presses, and the soldiers at its lane ends
+// go round the enemy's flank. The post each soldier wants stays the
+// objective under it (pickPost). The shots at you are tokens
+// (RULES.atYouMax at once, each held a shot's time, so they take turns).
+// Events: { type: 'posture', side, squad, posture } when a squad's changes.
 
 import { pushOut, turnToward } from '../walker';
 import { rng } from '../noise';
 import { starsFor } from './chase';
+import { advance, confidence, createSquads, createTokens, flankers, frontline, posture, withdraw } from '../../../../lib/ai/squad';
 
 export const RULES = {
   capture: 0.08, // a post's meter, a second, for each soldier of advantage
@@ -35,8 +52,17 @@ export const RULES = {
 };
 // soldiers a side, by the device's tier (lib/device)
 export const SOLDIERS = { high: 14, mid: 9, low: 6 };
+export const TACTICS = {
+  every: 1.5, // seconds between a side's squads being read
+  reach: 24, // metres: soldiers within this of one another are a squad
+  buffer: 4, // metres a holding squad keeps short of the nearest enemy
+  back: 14, // metres a falling-back half goes
+  recent: 25, // seconds a loss counts against a side's nerve
+  you: 2.5, // what you're worth to the other side's nerve, in soldiers
+};
 
 const other = (side) => (side === 'attack' ? 'defend' : 'attack');
+const byId = (b, id) => b.soldiers.find((s) => s.id === id);
 const dist = (ax, az, bx, bz) => Math.hypot(ax - bx, az - bz);
 const inPost = (p, x, z) => dist(p.at[0], p.at[1], x, z) <= p.r;
 const livePosts = (b) => b.mission.phases[b.phaseIndex].posts.map((id) => b.posts.find((p) => p.id === id));
@@ -70,7 +96,7 @@ export function newBattle(mission, { n = SOLDIERS.high, seed = 1 } = {}) {
   const soldiers = [];
   for (const side of ['attack', 'defend'])
     for (let i = 0; i < n; i++) soldiers.push({ id: soldiers.length, side, kind: pickKind(mission.sides[side].kinds, kr), x: 0, z: 0, yaw: 0, hp: RULES.hp, up: false, down: 0, post: null, spot: null, cool: 1 + r() * 2, wait: 0, target: null, move: 0, detour: 0 });
-  return { mission, r, t: 0, phase: 'choose', phaseIndex: 0, result: null, posts, soldiers, tickets: { ...mission.tickets }, you: { side: null, up: false, x: 0, z: 0, kills: 0, captures: 0, deaths: 0, in: null, state: null }, feed: [] };
+  return { mission, r, t: 0, phase: 'choose', phaseIndex: 0, result: null, posts, soldiers, tickets: { ...mission.tickets }, you: { side: null, up: false, x: 0, z: 0, kills: 0, captures: 0, deaths: 0, in: null, state: null }, feed: [], squads: { attack: createSquads({ reach: TACTICS.reach }), defend: createSquads({ reach: TACTICS.reach }) }, tactics: { attack: {}, defend: {} }, losses: { attack: [], defend: [] }, tacticsAt: 0, tokens: createTokens({ pools: { shot: RULES.atYouMax }, timeout: RULES.every }) };
 }
 
 const feed = (b, kind, text) => {
@@ -186,6 +212,10 @@ function hurt(b, s, damage, by, out) {
   s.up = false;
   s.down = 0;
   s.target = null;
+  s.fallback = null;
+  s.flankTo = null;
+  s.hold = false;
+  b.losses[s.side].push(b.t);
   const ev = { type: 'down', id: s.id, by: by === 'you' ? 'you' : by.id };
   out.push(ev);
   out.push({ type: 'kill', victim: s.id, side: s.side, by: ev.by });
@@ -208,6 +238,73 @@ export function endBattle(b, won, why) {
   if (b.result) return;
   b.result = { won, why, t: b.t, stars: won ? starsFor(b.mission, b.t) : 0, kills: b.you.kills, captures: b.you.captures, side: b.you.side };
   b.phase = 'end';
+}
+
+// Each side's soldiers up, grouped into squads by reach; each squad's
+// nerve against what's facing it, and its posture from that: told to
+// fall back in halves, to press and flank, or to hold behind its line
+function tactics(b, youOn, out) {
+  for (const side of ['attack', 'defend']) {
+    const opp = other(side);
+    b.losses[side] = b.losses[side].filter((t) => b.t - t < TACTICS.recent);
+    const mine = b.soldiers.filter((s) => s.side === side && s.up).map((s) => ({ id: s.id, at: { x: s.x, y: 0, z: s.z }, side, alive: true, hp: s.hp / RULES.hp, level: s.level ?? 'neutral' }));
+    const foes = b.soldiers.filter((s) => s.side === opp && s.up).map((s) => ({ id: s.id, at: { x: s.x, y: 0, z: s.z }, side: opp, alive: true, hp: s.hp / RULES.hp, level: s.level ?? 'neutral' }));
+    if (youOn && b.you.side === opp) foes.push({ id: 'you', at: { x: b.you.x, y: 0, z: b.you.z }, side: opp, alive: true, hp: TACTICS.you, level: 'confident' });
+    const squads = b.squads[side].update(mine);
+    const fresh = {};
+    for (const q of squads) {
+      // its enemies: the other side within sight of it (twice its reach), or, with none near, nobody to fear
+      const near = foes.filter((e) => dist(e.at.x, e.at.z, q.centre.x, q.centre.z) < RULES.range * 1.5);
+      const { level } = confidence(q, mine, near, { value: (u) => u.hp, losses: Math.min(b.losses[side].length, mine.length) * 0.5 });
+      const was = b.tactics[side][q.id];
+      const stance = near.length ? posture(level) : 'hold';
+      const front = near.length ? frontline(q, mine, near, { buffer: TACTICS.buffer, minWidth: RULES.spacing * 2 }) : null;
+      const tac = { posture: stance, level, front, members: q.members, phase: was?.posture === stance ? (was.phase ?? 0) + 1 : 0 };
+      fresh[q.id] = tac;
+      for (const id of q.members) {
+        const s = byId(b, id);
+        s.squad = q.id;
+        s.level = level;
+      }
+      if (was?.posture !== stance) out.push({ type: 'posture', side, squad: q.id, posture: stance });
+      // orders, by posture (the halves alternate each reading)
+      const members = mine.filter((m) => q.members.includes(m.id));
+      if (stance === 'retreat' && front) {
+        const { move, cover } = withdraw(q, members, front);
+        const goers = tac.phase % 2 === 0 ? move : cover;
+        const stayers = tac.phase % 2 === 0 ? cover : move;
+        for (const id of goers) {
+          const s = byId(b, id);
+          s.hold = false;
+          // (a defender falls back to the rear of the post it's holding, never off it: the post is the point)
+          const p = side === 'defend' && s.post ? b.posts.find((o) => o.id === s.post) : null;
+          s.fallback = p ? [p.at[0] - front.dir.x * p.r * 0.7, p.at[1] - front.dir.z * p.r * 0.7] : [s.x - front.dir.x * TACTICS.back, s.z - front.dir.z * TACTICS.back];
+          s.flankTo = null;
+        }
+        for (const id of stayers) {
+          const s = byId(b, id);
+          s.hold = true;
+          s.fallback = null;
+        }
+      } else if (stance === 'press' && front) {
+        const { move, cover } = advance(q, members, front);
+        for (const id of [...move, ...cover]) {
+          const s = byId(b, id);
+          s.hold = false;
+          s.fallback = null;
+        }
+        for (const f of flankers(q, members, front, near)) byId(b, f.id).flankTo = [f.at.x, f.at.z];
+      } else {
+        for (const id of q.members) {
+          const s = byId(b, id);
+          s.hold = false;
+          s.fallback = null;
+          s.flankTo = null;
+        }
+      }
+    }
+    b.tactics[side] = fresh;
+  }
 }
 
 function step(b, h, you, env, out) {
@@ -273,8 +370,18 @@ function step(b, h, you, env, out) {
     out.push({ type: 'phase', phase: b.phaseIndex, name: ph.name });
     feed(b, 'phase', ph.name);
   }
-  // ── who may fire at you: the nearest few ──
-  const atYou = youOn ? b.soldiers.filter((s) => s.up && s.side !== b.you.side && dist(s.x, s.z, b.you.x, b.you.z) <= RULES.range).sort((p, q) => dist(p.x, p.z, b.you.x, b.you.z) - dist(q.x, q.z, b.you.x, b.you.z)).slice(0, RULES.atYouMax) : [];
+  // ── the squads: who's with whom, their nerve, their posture ──
+  b.tacticsAt -= h;
+  if (b.tacticsAt <= 0) {
+    b.tacticsAt = TACTICS.every;
+    tactics(b, youOn, out);
+  }
+  // ── who may fire at you: the nearest few, each for a shot's time (tokens) ──
+  b.tokens.audit(h, (id) => Boolean(byId(b, id)?.up));
+  const atYou = [];
+  if (youOn)
+    for (const s of b.soldiers.filter((s) => s.up && s.side !== b.you.side && (s.turnAt ?? 0) <= b.t && dist(s.x, s.z, b.you.x, b.you.z) <= RULES.range).sort((p, q) => dist(p.x, p.z, b.you.x, b.you.z) - dist(q.x, q.z, b.you.x, b.you.z)))
+      if (b.tokens.held('shot', s.id) || b.tokens.claim('shot', s.id)) atYou.push(s);
   // ── the soldiers ──
   for (const s of b.soldiers) {
     if (!s.up) {
@@ -286,9 +393,12 @@ function step(b, h, you, env, out) {
       }
       continue;
     }
-    // where it's going
+    // where it's going: its post (or, under its squad's orders, back a way, or round the flank)
     s.wait -= h;
     if (!s.frozen && (s.wait <= 0 || !s.post || !isLive(b, s.post))) pickPost(b, s);
+    if (s.fallback && dist(s.x, s.z, s.fallback[0], s.fallback[1]) < 1.5) s.fallback = null;
+    if (s.flankTo && dist(s.x, s.z, s.flankTo[0], s.flankTo[1]) < 1.5) s.flankTo = null;
+    const goal = s.fallback ?? s.flankTo ?? s.spot;
     // the enemy it fires at: you, if it's one of the few allowed, else the nearest soldier in range
     let target = null;
     if (atYou.includes(s)) target = { you: true, x: b.you.x, z: b.you.z };
@@ -304,17 +414,30 @@ function step(b, h, you, env, out) {
       }
     }
     s.target = target ? (target.you ? 'you' : target.id) : null;
-    // on toward its spot, turned to its target if it has one
-    if (!s.frozen && s.spot) {
-      const d = dist(s.x, s.z, s.spot[0], s.spot[1]);
-      const want = target ? Math.atan2(target.x - s.x, target.z - s.z) : Math.atan2(s.spot[0] - s.x, s.spot[1] - s.z);
+    // on toward its goal, turned to its target if it has one (one told to
+    // hold and cover stands where it is, firing)
+    if (!s.frozen && goal) {
+      const d = dist(s.x, s.z, goal[0], goal[1]);
+      const want = target ? Math.atan2(target.x - s.x, target.z - s.z) : Math.atan2(goal[0] - s.x, goal[1] - s.z);
       s.yaw = turnToward(s.yaw, want, RULES.turn * h);
       let nx = s.x;
       let nz = s.z;
-      if (d > 1.2) {
+      if (d > 1.2 && !s.hold) {
         const speed = RULES.walk * (target ? RULES.engaged : 1) * h;
-        const ux = (s.spot[0] - s.x) / d;
-        const uz = (s.spot[1] - s.z) / d;
+        let ux = (goal[0] - s.x) / d;
+        let uz = (goal[1] - s.z) / d;
+        // (holding its ground, a defending squad keeps behind its frontline:
+        // no step past it toward the enemy; the attackers' job is to go in)
+        const f = b.tactics[s.side][s.squad]?.front;
+        if (f && s.side === 'defend' && b.tactics[s.side][s.squad].posture === 'hold' && !s.flankTo) {
+          const past = (s.x + ux * speed - f.line.x) * f.dir.x + (s.z + uz * speed - f.line.z) * f.dir.z;
+          if (past > 0) {
+            // along the line instead
+            const along = ux * f.right.x + uz * f.right.z;
+            ux = f.right.x * along;
+            uz = f.right.z * along;
+          }
+        }
         nx += ux * speed;
         nz += uz * speed;
         s.move = target ? 0.65 : 1;
@@ -378,7 +501,12 @@ function step(b, h, you, env, out) {
     if (target && s.cool <= 0 && !s.unarmed) {
       s.cool = RULES.every * (0.7 + 0.6 * b.r());
       const d = dist(s.x, s.z, target.x, target.z);
-      if (target.you) out.push({ type: 'shot', id: s.id, side: s.side, from: [s.x, s.z], to: [target.x, target.z], atYou: true, hit: null });
+      if (target.you) {
+        out.push({ type: 'shot', id: s.id, side: s.side, from: [s.x, s.z], to: [target.x, target.z], atYou: true, hit: null });
+        // (its turn taken: the token goes back for another to have)
+        b.tokens.release('shot', s.id);
+        s.turnAt = b.t + RULES.every * 0.6;
+      }
       else {
         const [a0, a1] = RULES.accuracy;
         const hit = b.r() < a0 + (a1 - a0) * Math.min(1, d / RULES.range);

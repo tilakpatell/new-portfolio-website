@@ -2,8 +2,8 @@
 // world: the two sides, the command posts on its flats, the attackers' way
 // in by phases, and the words. Merged into MISSIONS by ./index.js.
 //
-//   sides      { attack, defend }: { id, name, short, colour, allegiance
-//              ('light' | 'dark': galaxy/allegiance.js), kinds
+//   sides      { attack, defend }: { id, name, short, colour, side
+//              (galaxy/sides.js: the war's side it is), kinds
 //              ([[kind, weight]…]: what their soldiers are) }
 //   posts      [{ id, name, at: [x, z], r, fixed? ('attack' | 'defend': a
 //              side's own, never taken, where it falls back to) }]
@@ -16,11 +16,11 @@
 //   barks      what the two sides shout, now and then: { attack, defend }
 //   ends       the card: won, lost, why: { posts, tickets }
 
-// (allegiance: which of galaxy/allegiance.js's sides each is: the side you take here is kept as yours)
-const EMPIRE = { id: 'empire', name: 'The Galactic Empire', short: 'Empire', colour: '#9fd0ff', allegiance: 'dark', kinds: [['snowtrooper', 1]] };
-const REBELS = { id: 'rebels', name: 'The Rebel Alliance', short: 'Rebellion', colour: '#ff8a5a', allegiance: 'light', kinds: [['hothtrooper', 1]] };
-const REPUBLIC = { id: 'republic', name: 'The Grand Army of the Republic', short: 'Republic', colour: '#9fd0ff', allegiance: 'light', kinds: [['clone', 1]] };
-const SEPARATISTS = { id: 'separatists', name: 'The Separatist droid army', short: 'Separatists', colour: '#ffb060', allegiance: 'dark', kinds: [['battledroid', 3], ['superdroid', 1]] };
+// (side: which of the war's sides each is, in galaxy/sides.js: the side you take here is your oath, galaxy/allegiance.js)
+const EMPIRE = { id: 'empire', name: 'The Galactic Empire', short: 'Empire', colour: '#9fd0ff', side: 'empire', kinds: [['snowtrooper', 1]] };
+const REBELS = { id: 'rebels', name: 'The Rebel Alliance', short: 'Rebellion', colour: '#ff8a5a', side: 'rebel', kinds: [['hothtrooper', 1]] };
+const REPUBLIC = { id: 'republic', name: 'The Grand Army of the Republic', short: 'Republic', colour: '#9fd0ff', side: 'republic', kinds: [['clone', 1]] };
+const SEPARATISTS = { id: 'separatists', name: 'The Separatist droid army', short: 'Separatists', colour: '#ffb060', side: 'separatists', kinds: [['battledroid', 3], ['superdroid', 1]] };
 
 export const ASSAULTS = {
   hoth: {

@@ -23,6 +23,7 @@ import { bake, canvasTexture, panelTexture, part, place, rod, between, compose, 
 import { rng } from './noise';
 import { faceless, wind, wrapLighting } from '../../../lib/three/foliage';
 import SCANS from '../../../../public/cc0/galaxy/index.json';
+import { loadCore as loadScan } from '../../../lib/three/core';
 
 export { part, place, rod, between, compose, mirror, ball, upright };
 
@@ -309,30 +310,9 @@ function keepCoverage(t, cut = 0.3) {
   return t;
 }
 
-// The scanned surfaces, each loaded once for the page (every world's kit
-// shares them; a new renderer uploads them again by itself): role →
-// { map, normalMap, arm } textures, or a promise of them
-const scanned = new Map();
-const SCAN_BASE = '/cc0/galaxy';
-export function loadScan(role) {
-  if (!scanned.has(role)) {
-    const loader = new THREE.TextureLoader();
-    const get = (file, srgb) =>
-      loader.loadAsync(`${SCAN_BASE}/${role}/${file}.webp`).then((t) => {
-        t.wrapS = t.wrapT = THREE.RepeatWrapping;
-        t.anisotropy = 8;
-        if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-        return t;
-      });
-    scanned.set(
-      role,
-      Promise.all([get('color', true), get('normal', false), SCANS[role]?.arm ? get('arm', false) : null])
-        .then(([map, normalMap, arm]) => ({ map, normalMap, arm }))
-        .catch(() => null),
-    );
-  }
-  return scanned.get(role);
-}
+// The scanned surfaces, each loaded once for the page: the site's one core
+// kit (lib/three/core), which every world shares.
+export { loadScan };
 
 // How each solid role wears its scan: how far it repeats (a metre of
 // texture is a metre of wall: SCANS' sizes), how rough it is over the
@@ -347,6 +327,9 @@ const LOOKS = {
   bark: { roughness: 1, metalness: 0, normal: 1.4 },
   wood: { roughness: 1, metalness: 0, normal: 1 },
   concrete: { roughness: 1, metalness: 0, normal: 0.7 },
+  // (the bases' floors: Theed's polished slabs, a tread plate)
+  tiles: { roughness: 0.6, metalness: 0, normal: 0.8 },
+  deck: { roughness: 0.8, metalness: 0.6, scanMetal: true, normal: 1 },
 };
 // a role's repeats a metre (the scan's real size; the stand-in's own where
 // there's no scan)
@@ -381,6 +364,8 @@ export function createKit({ seed = 11, scans = true } = {}) {
     adobe: std({ roughness: 0.98, map: grime }, 0.12, 'adobe'),
     wood: std({ roughness: 0.9, map: grime }, 0.5, 'wood'),
     concrete: std({ roughness: 0.9, map: grime }, 0.3, 'concrete'),
+    tiles: std({ roughness: 0.6, map: grime }, 0.33, 'tiles'),
+    deck: std({ roughness: 0.5, metalness: 0.55, map: grime }, 2, 'deck'),
     cloth: std({ roughness: 1, side: THREE.DoubleSide }, 0.5),
     bark: std({ roughness: 0.95, map: grime }, 0.6, 'bark'),
     leaf: std({ roughness: 0.82, side: THREE.DoubleSide }, 0.5),

@@ -13,6 +13,7 @@
 import * as THREE from 'three';
 import { APRON } from '../compound/plan';
 import { BUILDINGS, CRATER, LAWN_W, PLANTERS, ROADS_W, ROAD_HALF, S } from './rules';
+import { sharpen } from '../../../lib/three/textures';
 
 // the bare ground, painted in plan units [x0, y0, x1, y1]: the helipad, the
 // track, the range, the car park (the scene paints them)
@@ -78,6 +79,7 @@ function lawnMask(px = 1024) {
     g.fill();
   }
   const texture = new THREE.CanvasTexture(c);
+  sharpen(texture);
   texture.flipY = false; // (row 0 is the lawn's north edge, as the shader reads it)
   texture.generateMipmaps = false;
   texture.minFilter = THREE.LinearFilter;

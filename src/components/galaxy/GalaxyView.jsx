@@ -19,7 +19,7 @@ import GuideCue from '../guide/GuideCue';
 // fly until you do. While the 3D loads the box says so; without 3D, a note
 // that the galaxy needs it, and the panel and the map still work.
 
-export default function GalaxyView({ system, here, handle, ship, loadout, build = null, net = null, frozen, onEvent, onArrive, onAt, onBoard, onCrash, onMap }) {
+export default function GalaxyView({ system, here, handle, ship, loadout, build = null, allegiance = null, net = null, frozen, onEvent, onArrive, onAt, onBoard, onCrash, onMap }) {
   const labels = useRef({});
   const stars = useRef({});
   const [aim, setAim] = useState(null); // the star the nose is on
@@ -46,6 +46,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
       ship,
       loadout,
       build,
+      allegiance,
       controls,
       labels,
       stars,

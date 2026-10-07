@@ -3,7 +3,7 @@
 
 .galaxy-page[data-leaving='fade'] .universe-fade { opacity: 1; transition: opacity 0.6s ease-in; }
 /* flown into the planet: the crash, then the screen washes out in the system's colour on the way down to its surface */
-.galaxy-page[data-leaving='crash'] .universe-fade { opacity: 1; transition: opacity 0.6s cubic-bezier(0.55, 0, 1, 0.45); }
+.galaxy-page[data-leaving='crash'] .universe-fade { opacity: 1; transition: opacity 0.6s var(--ease-in); }
 .galaxy-page:is([data-jumping='spool'], [data-jumping='tunnel']) .universe-labels { opacity: 0; transition-duration: 0.2s; }
 
 /* the galaxy on the world runtime: its box, and the one canvas moved into it */
@@ -571,10 +571,11 @@
   .holomap-systems li[data-attack] .holomap-dot { animation: none; }
 }
 
-/* which side you fight for on the ground (HoloMap.jsx, galaxy/allegiance.js) */
-.holomap-allegiance { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.6rem; }
-.holomap-allegiance .holomap-kicker { flex-basis: 100%; margin: 0; }
-.holomap-allegiance button { padding: 0.3rem 0.6rem; border-radius: 6px; background: rgb(255 255 255 / 0.04); box-shadow: inset 0 0 0 1px rgb(217 243 255 / 0.25); color: rgb(217 243 255 / 0.8); font-size: 0.74rem; }
-.holomap-allegiance button[aria-checked='true'][data-side='light'] { background: rgb(255 107 74 / 0.16); box-shadow: inset 0 0 0 1px rgb(255 107 74 / 0.8); color: #fff; }
-.holomap-allegiance button[aria-checked='true'][data-side='dark'] { background: rgb(159 208 255 / 0.14); box-shadow: inset 0 0 0 1px rgb(159 208 255 / 0.8); color: #fff; }
-.holomap-allegiance button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+/* your oath on the war card (HoloMap.jsx, galaxy/allegiance.js): each side in its own colour */
+.holomap-oath { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.6rem; }
+.holomap-oath .holomap-kicker,
+.holomap-oath .holomap-meta { flex-basis: 100%; margin: 0; }
+.holomap-oath button { padding: 0.3rem 0.6rem; border-radius: 6px; background: rgb(255 255 255 / 0.04); box-shadow: inset 0 0 0 1px rgb(217 243 255 / 0.25); color: rgb(217 243 255 / 0.8); font-size: 0.74rem; }
+.holomap-oath button[data-suggested] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--side) 60%, transparent); }
+.holomap-oath button[aria-pressed='true'] { background: color-mix(in srgb, var(--side) 16%, transparent); box-shadow: inset 0 0 0 1px var(--side); color: #fff; }
+.holomap-oath button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }

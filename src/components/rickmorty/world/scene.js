@@ -86,6 +86,28 @@ export const LAZY = {
   pluto: () => import('./dimensions/pluto').then((m) => m.buildPluto),
   gearworld: () => import('./dimensions/gearworld').then((m) => m.buildGearworld),
   vindicators: () => import('./dimensions/vindicators').then((m) => m.buildVindicators),
+  simulation: () => import('./dimensions/simulation').then((m) => m.buildSimulation),
+  storytrain: () => import('./dimensions/storytrain').then((m) => m.buildStorytrain),
+  fortress: () => import('./dimensions/fortress').then((m) => m.buildFortress),
+  froopyland: () => import('./dimensions/froopyland').then((m) => m.buildFroopyland),
+  nimbus: () => import('./dimensions/nimbus').then((m) => m.buildNimbus),
+  gromflomites: () => import('./dimensions/gromflomites').then((m) => m.buildGromflomites),
+  heistcon: () => import('./dimensions/heistcon').then((m) => m.buildHeistcon),
+  snakeplanet: () => import('./dimensions/snakeplanet').then((m) => m.buildSnakeplanet),
+  nuptia: () => import('./dimensions/nuptia').then((m) => m.buildNuptia),
+  gloopynoops: () => import('./dimensions/gloopynoops').then((m) => m.buildGloopynoops),
+  resort: () => import('./dimensions/resort').then((m) => m.buildResort),
+  schwifty: () => import('./dimensions/schwifty').then((m) => m.buildSchwifty),
+  evilrick: () => import('./dimensions/evilrick').then((m) => m.buildEvilrick),
+  cronenberg: () => import('./dimensions/cronenberg').then((m) => m.buildCronenberg),
+  blooddome: () => import('./dimensions/blooddome').then((m) => m.buildBlooddome),
+  prison: () => import('./dimensions/prison').then((m) => m.buildPrison),
+  cablestudio: () => import('./dimensions/cable').then((m) => m.buildCable),
+  dream: () => import('./dimensions/dream').then((m) => m.buildDream),
+  agency: () => import('./dimensions/agency').then((m) => m.buildAgency),
+  meeseeksgolf: () => import('./dimensions/meeseeks').then((m) => m.buildMeeseeks),
+  vat: () => import('./dimensions/vat').then((m) => m.buildVat),
+  dim35c: () => import('./dimensions/dim35c').then((m) => m.buildDim35c),
 };
 
 // The cruiser's headlights, which are its eyes (the saucer's, in the hull's
@@ -675,6 +697,8 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       if (TMP.z > 1) return null;
       return { x: ((TMP.x + 1) / 2) * stage.size.w, y: ((1 - TMP.y) / 2) * stage.size.h };
     },
+    // one of the shared clips on Morty (meshyCast.js's play): a cheer, a hit, a shot
+    play: (clip, opts) => morty.play?.(clip, opts) ?? Promise.resolve(false),
     // an area builder's own action, if it has one (the arcade's setBoard(best)); nothing otherwise
     act(area, name, ...args) {
       const actions = areas[area]?.actions;

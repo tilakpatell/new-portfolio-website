@@ -58,6 +58,7 @@ import { createMarks, groundMaterial, groundMesh } from './ground';
 import { createSky } from './sky';
 import { createSkyFog } from './skyfog';
 import { createWater } from './water';
+import { floatPose } from './floats';
 import { createWeather } from './weather';
 import { createKit } from './kit';
 import { createGrass } from './grass';
@@ -75,8 +76,9 @@ import { createBlaster } from './blaster';
 import { createSaber } from './saber';
 import { DODGE, FORCE, GUARD, HEAVY, PARRY, dodgeStep, forceAt, guardHit, guardStep, hitStop, lungeTo, parried, pushVelocity } from './combatRules';
 import { heatShot, heatStep, spreadAt, vent, ventSpot, withMods } from './weaponRules';
-import { heroSpec } from '../heroes';
+import { heroById, heroSpec } from '../heroes';
 import { perkEffects } from '../perks';
+import { ABILITIES, JET, abilitiesOf, jetStep, newJet } from './abilityRules';
 import { feed, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, ride, rider, turnToward, walk, walker } from './walker';
@@ -86,7 +88,8 @@ import { createChaseMission } from './missions/chaseScene';
 import { createAssaultMission } from './missions/assaultScene';
 import { RULES as ASSAULT } from './missions/assault';
 import { createSkirmishScene } from './skirmishScene';
-import { sideFor } from '../allegiance';
+import { suggestSide } from '../allegiance';
+import { battleWar, yourSide } from './skirmish';
 import { groundWorld } from '../../../lib/three/groundwork';
 
 const V = THREE.Vector3;
@@ -106,10 +109,9 @@ const REACH = 3.2; // metres: close enough to use something
 const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', ' ': 'jump', e: 'act', enter: 'act', f: 'fire', r: 'throw', c: 'block', x: 'dodge', g: 'power', v: 'second' };
 const FIRE_EVERY = 0.24; // seconds between shots
 const SABER_IDLE = 8; // seconds without a stroke before the blade goes out
-const DETONATOR = { cool: 8, fuse: 2.2, speed: 15, lift: 5.5, radius: 4.5, damage: 3 }; // a gun hero's thermal detonator (G)
-const OVERCHARGE = { cool: 20, dur: 5 }; // a gun hero's second ability (V): no heat and a harder shot for a while
 const LOCK = { range: 14, cone: 0.9 }; // metres and radians: what a stroke homes on
 const HUD_EVERY = 0.1; // seconds between the combat HUD's updates
+const HOLD_FULL = 1; // (a held ability's tank, on the HUD, as a cooldown of one second)
 const BIKE_FIRE_EVERY = 0.3; // (a bike's cannon: a touch slower)
 
 export async function create(canvas, ctx) {
@@ -197,6 +199,7 @@ export async function create(canvas, ctx) {
   if (water) {
     scene.add(water.mesh);
     if (water.glow) scene.add(water.glow);
+    if (water.spray) scene.add(water.spray);
   }
   const world = {
     heightAt: site.noGround ? () => site.fall ?? -1000 : grid.heightAt,
@@ -216,7 +219,12 @@ export async function create(canvas, ctx) {
   // (the scatter casts its shadow only near you: near.js)
   const shadowPhase = sun.castShadow ? createShadowPhase(scene, sun) : null;
   const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null });
-  for (const t of site.things_all) placer.put(t);
+  // (things that float, a bongo on Lake Paonga, ride the waves: floats.js)
+  const floaters = [];
+  for (const t of site.things_all) {
+    const put = placer.put(t);
+    if (t.float && water?.height) put.then((o) => o && floaters.push({ o, x: o.position.x, z: o.position.z, yaw: t.yaw ?? 0, float: t.float }));
+  }
   const r = rng(site.ground.seed ?? 1);
   const avoid = [...site.places.map((p) => ({ at: p.at, r: p.flat?.r ?? p.r * 0.6 })), { at: site.land.at, r: 30 }];
   for (const s of site.scatter) {
@@ -238,7 +246,7 @@ export async function create(canvas, ctx) {
   }
   // (the grass round you: blades on the land, where the site grows it)
   const grass = site.grass && !site.noGround ? createGrass(scene, { grid, site, small, time: kit.wind }) : null;
-  const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density });
+  const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
 
   // ── The places you go into (zones): built high over the world, out of
   // sight, each with its own lamps ──
@@ -450,7 +458,9 @@ export async function create(canvas, ctx) {
   const hero = ctx.hero ? heroSpec(ctx.hero) : null;
   const perks = perkEffects(hero?.perks ?? []); // (galaxy/perks.js: the multipliers the hero's perks give)
   const guardMax = GUARD.max * perks.guard;
-  const party = hero ? [hero, crewOf[0].id === hero.id ? crewOf[1] : crewOf[1].id === hero.id ? crewOf[0] : crewOf[1]] : crewOf;
+  // (your mate carries their own two abilities too, where they're on the roster)
+  const withAbilities = (s) => (s.abilities || !heroById(s.id)?.abilities ? s : { ...s, abilities: heroById(s.id).abilities });
+  const party = (hero ? [hero, crewOf[0].id === hero.id ? crewOf[1] : crewOf[1].id === hero.id ? crewOf[0] : crewOf[1]] : crewOf).map(withAbilities);
   const out = new V(Math.cos(site.land.yaw), 0, -Math.sin(site.land.yaw)); // the ship's right
   // (a mission on foot starts you at its start, facing its way)
   const onFoot = Boolean(mission && !mission.ride);
@@ -554,13 +564,15 @@ export async function create(canvas, ctx) {
     lock: null, // the enemy a stroke homes on
     cool: { power: -99, second: -99 }, // when each ability is ready again
     overcharge: -99, // until when the gun runs hot-free
+    sprint: -99, // until when you're sprinting (abilityRules.js's sprint)
+    jet: newJet(), // the jetpack's tank, for a hero with one
     heat: { value: 0, locked: false, lockedAt: null },
     burst: null, // { left, next }: the rest of a burst
     ads: false, // down the sights (right button, or the Aim button)
     adsK: 0,
     hitstop: 0, // seconds the frame holds after a hit
     hudAt: -99,
-    bombs: [], // thermal detonators in the air: { m, v, t0 }
+    bombs: [], // thermal detonators (and the like) in the air: { m, v, t0, spec }
     cam: { yaw: mission ? mission.yaw : you.yaw, pitch: 0.2, dist: mission?.ride ? RIDES[mission.ride].cam[0] : CAM.dist, drag: -10 },
     riding: mission?.ride ? rides[rides.length - 1] : null,
     prompt: null,
@@ -966,6 +978,7 @@ export async function create(canvas, ctx) {
     sky.mesh.visible = !z;
     if (weather) weather.group.visible = !z;
     if (water) water.mesh.visible = !z;
+    if (water?.spray) water.spray.visible = !z;
     // (inside, the world outside isn't drawn, and outside, no room is)
     ground.visible = !z;
     if (water?.glow) water.glow.visible = !z;
@@ -1037,10 +1050,12 @@ export async function create(canvas, ctx) {
   const assault = mission?.kind === 'assault' ? createAssaultMission({ parent: scene, world, blaster, mission, emit, say, sounds, kit, warm, tier: small ? 'mid' : tier, reduced }) : null;
   const assaultOn = () => Boolean(assault?.running());
   // ── The world's own battle (a site's skirmish: skirmish.js), fought round
-  // you while you're down here on no mission, you on your allegiance's side
-  // (galaxy/allegiance.js; the HUD switches it) ──
+  // you while you're down here on no mission, you on the side you swore to
+  // in its war (galaxy/allegiance.js's oath, ctx.oath: skirmish.js's
+  // yourSide; the HUD swears you to the other) ──
   const skirmishSpec = !mission && site.skirmish ? site.skirmish : null;
-  const skirmish = skirmishSpec ? createSkirmishScene({ parent: scene, world, blaster, spec: skirmishSpec, side: sideFor(skirmishSpec.sides, ctx.allegiance), say, sounds, kit, warm, tier: small ? 'mid' : tier }) : null;
+  const yours = skirmishSpec ? yourSide(skirmishSpec.sides, ctx.oath, suggestSide({ crew: ctx.ship, hero: ctx.hero?.id }, battleWar(skirmishSpec.sides) ?? undefined)) : null;
+  const skirmish = skirmishSpec ? createSkirmishScene({ parent: scene, world, blaster, spec: skirmishSpec, side: yours, say, sounds, kit, warm, tier: small ? 'mid' : tier }) : null;
   let skirmishViewAt = -1;
   // (the world's own soldiers of the battle's kinds who'd only stand about in its field: gone while it's fought)
   if (skirmishSpec?.hideLife) {
@@ -1051,8 +1066,8 @@ export async function create(canvas, ctx) {
   const countKills = (kills) => {
     for (const k of kills ?? []) if (skirmishSpec?.quest && k.side === skirmishSpec.quest.side && skirmish.side !== k.side) questEvent({ type: 'kill', tag: skirmishSpec.quest.tag });
   };
-  // the world's battle fought for the other side now (the page keeps it as
-  // your allegiance), you put down at that side's rally point if it has one
+  // the world's battle fought for the other side now (the page swears you
+  // to it), you put down at that side's rally point if it has one
   const switchSide = (id) => {
     if (!skirmish || !skirmishSpec.sides[id] || id === skirmish.side) return;
     skirmish.setSide(id);
@@ -1071,8 +1086,13 @@ export async function create(canvas, ctx) {
   // a hit, a shove, a stagger or a parry on one of them, whichever's it is:
   // the world's battle's soldiers (a hit's all they take), or the quest's
   const hitOn = (t, damage, opts = {}) => (t.skirmish ? countKills(skirmish.hit(t, damage, opts.push ?? null, opts)) : activity.hit(t, damage, opts));
-  const knockOn = (t, v) => (t.skirmish ? null : activity.knock(t, v));
-  const staggerOn = (t, secs) => (t.skirmish ? null : activity.stagger(t, secs));
+  // (a battle's soldier isn't thrown or stunned: a shove or a roar's a hit
+  // that does no harm, shaking it, and you the one it's after)
+  const knockOn = (t, v) => (t.skirmish ? skirmish.hit(t, 0, { x: v.vx, z: v.vz }) : activity.knock(t, v));
+  const staggerOn = (t, secs) => (t.skirmish ? skirmish.hit(t, 0) : activity.stagger(t, secs));
+  // who a blast can reach: everyone of them, whether you can see them or not
+  // (a grenade over a barricade gets the ones crouched behind it)
+  const inBlast = () => (assaultOn() ? assault.targets : skirmish ? [...activity.targets, ...skirmish.targets(null)] : activity.targets);
   const parryOn = (t, o) => (t.skirmish ? { parried: false, broke: false } : activity.parry(t, o));
   // a shot that found someone: the weapon's damage (a shield breaks to a
   // blast), the hit marker, the moment's hold on a kill
@@ -1190,6 +1210,7 @@ export async function create(canvas, ctx) {
       return;
     }
     const hit = blaster.fire(from, scatter(camDir, w), shootable(), boltOf(me()), w.range);
+    activity.heard({ x: from.x, z: from.z }, { x: from.x + camDir.x * 40, z: from.z + camDir.z * 40 }); // (the enemies hear it, and one it's aimed near knows)
     struck(hit, undefined, { how: w.kind, push: camDir });
     landed(hit, camDir);
     sounds.blast?.();
@@ -1325,61 +1346,126 @@ export async function create(canvas, ctx) {
       emit({ type: 'lock', name: best ? best.spec.kind : null });
     }
   }
-  // the Force (G push, V pull) for a Jedi; a thermal detonator (G) and an
-  // overcharge (V) for a gun hero: each on its own cooldown
+  // the two abilities (G and V) the hero carries (abilityRules.js, named on
+  // heroes.js): the Force for a Jedi, a detonator and the overcharge for most
+  // with a gun, and each hero's own besides. Each on its own cooldown; the
+  // jetpack's held instead (stepJet)
+  const myAbility = (slot) => abilitiesOf(me().spec)[slot];
   function power(slot) {
     if (state.phase !== 'walk' || state.off) return;
     const p = me();
-    const ready = state.t >= state.cool[slot];
-    if (!ready) return;
+    const kind = myAbility(slot);
+    const a = ABILITIES[kind];
+    if (a.hold || state.t < state.cool[slot]) return;
     camera.getWorldDirection(camDir);
     p.st.yaw = Math.atan2(camDir.x, camDir.z);
-    if (p.saber) {
-      const kind = slot === 'power' ? 'push' : 'pull';
-      const f = FORCE[kind];
-      state.cool[slot] = state.t + f.cool * perks.cooldown;
-      state.saberAt = state.t;
+    state.cool[slot] = state.t + a.cool * perks.cooldown;
+    if (kind === 'push' || kind === 'pull' || kind === 'roar') {
+      // the Force, or a roar: everyone in the cone shoved (or drawn in)
+      const f = kind === 'roar' ? a : FORCE[kind];
+      const way = kind === 'pull' ? 'pull' : 'push';
+      if (p.saber) state.saberAt = state.t;
       state.aim = 1;
       state.aimDir.copy(camDir);
       let any = 0;
       for (const t of shootable()) {
         const q = t.holder.position;
-        const at = forceAt(p.st, { x: q.x, z: q.z }, kind);
+        const at = forceAt(p.st, { x: q.x, z: q.z }, way, f);
         if (!at.hit) continue;
         any++;
-        knockOn(t, pushVelocity(p.st, { x: q.x, z: q.z }, at.k, kind));
+        knockOn(t, pushVelocity(p.st, { x: q.x, z: q.z }, at.k, way, f));
         if (f.damage) hitOn(t, f.damage, { push: new V(q.x - p.st.x, 0, q.z - p.st.z) });
         if (kind === 'pull') staggerOn(t, 1.2);
+        if (a.stagger) staggerOn(t, a.stagger);
       }
       // a rush of dust out from you (or in, for a pull)
       const from = new V(p.st.x, p.st.y + 1, p.st.z);
       for (let i = 0; i < 10; i++) {
-        const a = p.st.yaw + (Math.random() - 0.5) * f.cone * 2;
-        fx.sparks(from.clone().addScaledVector(new V(Math.sin(a), 0, Math.cos(a)), kind === 'push' ? 1.5 + Math.random() * 4 : 3 + Math.random() * 6), new V(Math.sin(a) * (kind === 'push' ? 1 : -1), 0.3, Math.cos(a) * (kind === 'push' ? 1 : -1)), '#c8d8ff', 4);
+        const an = p.st.yaw + (Math.random() - 0.5) * f.cone * 2;
+        fx.sparks(from.clone().addScaledVector(new V(Math.sin(an), 0, Math.cos(an)), way === 'push' ? 1.5 + Math.random() * 4 : 3 + Math.random() * 6), new V(Math.sin(an) * (way === 'push' ? 1 : -1), 0.3, Math.cos(an) * (way === 'push' ? 1 : -1)), kind === 'roar' ? '#ffd0a0' : '#c8d8ff', 4);
       }
-      sounds.combat?.('force');
+      sounds.combat?.(kind === 'roar' ? 'boom' : 'force');
       state.shake = Math.min(1, state.shake + 0.25);
       if (any) state.hitstop = Math.max(state.hitstop, 0.05);
       emit({ type: 'fire' });
       return;
     }
-    if (slot === 'power') {
-      // the detonator: thrown in an arc, blowing after its fuse (or when it lands)
-      state.cool.power = state.t + DETONATOR.cool * perks.cooldown;
+    if (a.radius != null) {
+      // something thrown: in an arc (or flat, a rocket), blowing after its fuse or when it lands
       const m = new THREE.Mesh(bombGeo, bombMat);
       m.position.set(p.st.x, p.st.y + 1.4, p.st.z).addScaledVector(camDir, 0.6);
       scene.add(m);
-      state.bombs.push({ m, v: camDir.clone().multiplyScalar(DETONATOR.speed).add(new V(0, DETONATOR.lift, 0)), t0: state.t });
+      state.bombs.push({ m, v: camDir.clone().multiplyScalar(a.speed).add(new V(0, a.lift, 0)), t0: state.t, spec: a });
       state.aim = 1;
       state.aimDir.copy(camDir);
       emit({ type: 'fire' });
       return;
     }
-    // the overcharge: no heat, white bolts, a harder hit for a while
-    state.cool.second = state.t + OVERCHARGE.cool * perks.cooldown;
-    state.overcharge = state.t + OVERCHARGE.dur;
-    state.heat = { value: 0, locked: false, lockedAt: null };
-    sounds.combat?.('perfect');
+    if (kind === 'overcharge') {
+      // no heat, white bolts, a harder hit for a while
+      state.overcharge = state.t + a.dur;
+      state.heat = { value: 0, locked: false, lockedAt: null };
+      sounds.combat?.('perfect');
+      return;
+    }
+    if (kind === 'medpack') {
+      state.health = Math.min(100, state.health + a.heal);
+      emit({ type: 'health', value: state.health });
+      fx.flash(new V(p.st.x, p.st.y + 1, p.st.z), UP, { color: '#8dff9a', size: 0.9 });
+      sounds.combat?.('perfect');
+      return;
+    }
+    if (kind === 'sprint') {
+      state.sprint = state.t + a.dur;
+      sounds.combat?.('perfect');
+      return;
+    }
+    if (kind === 'hop') {
+      // a portal a few metres on, and out of it: never past the world's edge
+      const to = new V(p.st.x, 0, p.st.z).addScaledVector(new V(camDir.x, 0, camDir.z).normalize(), a.reach);
+      if (Math.hypot(to.x, to.z) > world.reach - 1) {
+        state.cool[slot] = state.t;
+        return;
+      }
+      const here = new V(p.st.x, p.st.y + 1, p.st.z);
+      fx.flash(here, UP, { color: '#8dff5a', size: 1.4 });
+      for (let k = 0; k < 8; k++) fx.sparks(here, new V((Math.random() - 0.5) * 2, 1, (Math.random() - 0.5) * 2).normalize(), '#8dff5a', 6);
+      p.st.x = to.x;
+      p.st.z = to.z;
+      p.st.y = groundAt(world, to.x, to.z, p.st.y + 2);
+      p.st.vy = 0;
+      p.st.grounded = true;
+      const there = new V(p.st.x, p.st.y + 1, p.st.z);
+      fx.flash(there, UP, { color: '#8dff5a', size: 1.4 });
+      for (let k = 0; k < 8; k++) fx.sparks(there, new V((Math.random() - 0.5) * 2, 1, (Math.random() - 0.5) * 2).normalize(), '#8dff5a', 6);
+      sounds.combat?.('force');
+      state.shake = Math.min(1, state.shake + 0.2);
+      emit({ type: 'fire' });
+    }
+  }
+  // the jetpack (held G, for a hero with one): thrust while there's fuel, the
+  // tank refilled on the ground; a plume out of the back
+  function stepJet(dt) {
+    const p = me();
+    const a = ABILITIES[myAbility('power')];
+    if (!a?.hold || state.phase !== 'walk' || state.off) {
+      state.jet.on = false;
+      return;
+    }
+    const hold = Boolean(state.keys.power || state.buttons.power) && !state.dodge;
+    jetStep(state.jet, { hold, grounded: p.st.grounded, dt });
+    if (!state.jet.on) return;
+    p.st.vy = Math.min(JET.lift, p.st.vy + (WALK.gravity + JET.thrust) * dt);
+    if (p.st.grounded) {
+      p.st.grounded = false;
+      p.st.y += 0.05;
+    }
+    p.st.air = 0; // (no fall to land from)
+    if (Math.random() < dt * 40) {
+      const back = new V(-Math.sin(p.st.yaw), 0, -Math.cos(p.st.yaw));
+      fx.sparks(new V(p.st.x, p.st.y + 1.2, p.st.z).addScaledVector(back, 0.3), new V(back.x * 0.3, -1, back.z * 0.3), Math.random() < 0.5 ? '#ffd36b' : '#ff8a3d', 2);
+    }
+    state.aim = Math.max(state.aim, 0.4);
   }
   const bombGeo = new THREE.SphereGeometry(0.09, 10, 8);
   const bombMat = new THREE.MeshStandardMaterial({ color: '#8a9aa8', emissive: new THREE.Color('#ff3b30'), emissiveIntensity: 1.2, metalness: 0.7, roughness: 0.3 });
@@ -1392,25 +1478,26 @@ export async function create(canvas, ctx) {
       const g = groundAt(world, b.m.position.x, b.m.position.z, b.m.position.y + 0.5);
       const age = state.t - b.t0;
       bombMat.emissiveIntensity = 1 + Math.sin(age * 20) * 0.8;
-      if (b.m.position.y > g + 0.1 && age < DETONATOR.fuse) continue;
+      const spec = b.spec ?? ABILITIES.detonator;
+      if (b.m.position.y > g + 0.1 && age < spec.fuse) continue;
       // the blast: everyone within its radius hurt by how close they are, shoved off their feet
       const at = b.m.position.clone();
       at.y = Math.max(at.y, g + 0.3);
       scene.remove(b.m);
       state.bombs.splice(i, 1);
-      for (const t of shootable()) {
+      for (const t of inBlast()) {
         const q = t.holder.position;
         const d = Math.hypot(q.x - at.x, q.z - at.z);
-        if (d > DETONATOR.radius) continue;
-        const k = 1 - d / DETONATOR.radius;
+        if (d > spec.radius) continue;
+        const k = 1 - d / spec.radius;
         const was = t.hp;
-        hitOn(t, Math.max(1, Math.round(DETONATOR.damage * (0.4 + 0.6 * k))), { breaks: true, push: new V(q.x - at.x, 0, q.z - at.z) });
+        hitOn(t, Math.max(1, Math.round(spec.damage * (0.4 + 0.6 * k))), { breaks: true, push: new V(q.x - at.x, 0, q.z - at.z) });
         knockOn(t, { vx: ((q.x - at.x) / Math.max(0.3, d)) * 8 * k, vz: ((q.z - at.z) / Math.max(0.3, d)) * 8 * k, vy: 4 * k });
         emit({ type: 'hit', kill: was > 0 && t.hp <= 0 });
       }
       const you = me().st;
       const dYou = Math.hypot(you.x - at.x, you.z - at.z);
-      if (dYou < DETONATOR.radius * 0.8 && !state.dodge) hurt(Math.round(30 * (1 - dYou / DETONATOR.radius)));
+      if (dYou < spec.radius * 0.8 && !state.dodge) hurt(Math.round(30 * (1 - dYou / spec.radius)));
       for (let k = 0; k < 6; k++) fx.sparks(at, new V((Math.random() - 0.5) * 2, 1, (Math.random() - 0.5) * 2).normalize(), k % 2 ? '#ffd36b' : '#ff6a3d', 14);
       fx.flash(at, UP, { color: '#ffb060', size: 1.6 });
       fx.scorch(at, UP);
@@ -1516,6 +1603,7 @@ export async function create(canvas, ctx) {
     state.hudAt = state.t;
     const p = me();
     const w = p.saber ? null : weapon();
+    const ab = abilitiesOf(p.spec);
     const lock = state.lock && !state.lock.down ? state.lock : null;
     emit({
       type: 'combat',
@@ -1528,8 +1616,10 @@ export async function create(canvas, ctx) {
       locked: state.heat.locked,
       vent: w ? ventSpot(state.heat, state.t) : null,
       hot: state.t < state.overcharge,
-      cool: { power: Math.max(0, state.cool.power - state.t), second: Math.max(0, state.cool.second - state.t), dodge: Math.max(0, state.dodgedAt + DODGE.cool * perks.dodge - state.t) },
-      cools: { power: (p.saber ? FORCE.push.cool : DETONATOR.cool) * perks.cooldown, second: (p.saber ? FORCE.pull.cool : OVERCHARGE.cool) * perks.cooldown, dodge: DODGE.cool * perks.dodge },
+      // (the abilities: named, their cooldowns, and a held one's tank as how much is spent)
+      powers: { power: ABILITIES[ab.power].name, second: ABILITIES[ab.second].name, hold: Boolean(ABILITIES[ab.power].hold) },
+      cool: { power: ABILITIES[ab.power].hold ? (1 - state.jet.fuel / JET.tank) * HOLD_FULL : Math.max(0, state.cool.power - state.t), second: Math.max(0, state.cool.second - state.t), dodge: Math.max(0, state.dodgedAt + DODGE.cool * perks.dodge - state.t) },
+      cools: { power: ABILITIES[ab.power].hold ? HOLD_FULL : ABILITIES[ab.power].cool * perks.cooldown, second: ABILITIES[ab.second].cool * perks.cooldown, dodge: DODGE.cool * perks.dodge },
       lock: lock ? { name: lock.spec.kind, hp: Math.max(0, lock.hp), max: lock.spec.hp ?? 1, shield: lock.shield } : null,
       ads: state.ads,
     });
@@ -1703,7 +1793,10 @@ export async function create(canvas, ctx) {
     const p = me().st;
     const safe = stepDodge();
     state.safe = safe;
-    const o = walk(p, state.dodge ? { x: 0, y: 0, run: false, heading: inp.heading, jump: false } : { ...inp, jump: state.jumpQueued }, dt, world);
+    // (a sprint: abilityRules.js's, the walk and the run both quicker)
+    const rules = state.t < state.sprint ? { ...WALK, walk: WALK.walk * ABILITIES.sprint.speed, run: WALK.run * ABILITIES.sprint.speed } : WALK;
+    const o = walk(p, state.dodge ? { x: 0, y: 0, run: false, heading: inp.heading, jump: false } : { ...inp, jump: state.jumpQueued }, dt, world, rules);
+    stepJet(dt);
     life.shove(p, WALK.radius);
     // (and out of whatever's parked: a speeder, a tauntaun)
     for (const x of rides) {
@@ -1871,6 +1964,8 @@ export async function create(canvas, ctx) {
     // never under the ground
     const floor = (state.zone ? groundAt(world, want.x, want.z, p.y + 0.6, 0) : groundAt(world, want.x, want.z, want.y + 2, 4)) + 0.5;
     if (want.y < floor) want.y = floor;
+    // (nor under the sea: over the wave that's there)
+    if (!state.zone && water?.height) want.y = Math.max(want.y, water.height(want.x, want.z) + 0.6);
     if (!camInit) {
       camPos.copy(want);
       camLook.copy(focus);
@@ -2163,7 +2258,7 @@ export async function create(canvas, ctx) {
           sounds.roar?.();
           hurt(s.damage);
         } else {
-          const b = blaster.enemy(s.from, new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, '#ff4a3d', s.damage);
+          const b = blaster.enemy(s.from, s.to ? new V(s.to[0], me().st.y + 1.1, s.to[1]) : new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, '#ff4a3d', s.damage); // (at what it believes: a guess goes wide)
           if (b && blade) b.deflect = true; // (it'll come off the blade, not land)
         }
       }
@@ -2281,6 +2376,12 @@ export async function create(canvas, ctx) {
     // (whatever's come into the world since, fogged in the sky's colour before it's drawn)
     skyFog.scene(scene);
     water?.update(t, camera);
+    for (const f of floaters) {
+      if (Math.hypot(camera.position.x - f.x, camera.position.z - f.z) > 400) continue;
+      const pose = floatPose(water.height, f.x, f.z, f.yaw, t, f.float);
+      f.o.position.y = pose.y;
+      f.o.rotation.set(pose.pitch, f.yaw, pose.roll, 'YXZ');
+    }
     weather?.update(t, camera, world.heightAt, size.h);
     compass();
     lit?.update();
@@ -2322,7 +2423,7 @@ export async function create(canvas, ctx) {
         area: { x0: landAt[0] - R, z0: landAt[1] - R, w: R * 2, d: R * 2 },
         sun,
         // (what moves isn't baked: the folk and beasts about, the speeders)
-        skip: [sky.mesh, water?.mesh, water?.glow, weather?.group, weather?.mesh, camera, life.group, grass?.mesh, ...rides.map((x) => x.holder)].filter(Boolean),
+        skip: [sky.mesh, water?.mesh, water?.glow, water?.spray, weather?.group, weather?.mesh, camera, life.group, grass?.mesh, ...rides.map((x) => x.holder)].filter(Boolean),
         movers: [...people.map((p) => ({ object: p.holder, size: [0.8, 0.8] })), ...life.actors.filter((a) => a.holder).map((a) => ({ object: a.holder, size: [1, 1] })), ...rides.map((x) => ({ object: x.holder, size: [1.4, 2.6] }))],
         shade: site.light.shade ?? site.light.ground ?? '#3a3028',
         height: world.heightAt,
@@ -2385,8 +2486,8 @@ export async function create(canvas, ctx) {
     // from the page's touch controls
     input: {
       // a side: a galactic assault's (as its choose card picks it), or the
-      // world's battle's, fought for now (the page keeps it as your
-      // allegiance), you put down at that side's rally point if it has one
+      // world's battle's, fought for now (the page swears you to it), you
+      // put down at that side's rally point if it has one
       side(id) {
         if (assault) chooseSide(id);
         else switchSide(id);
@@ -2410,7 +2511,10 @@ export async function create(canvas, ctx) {
         }
         if (name === 'throw') state.throwQueued = true;
         if (name === 'dodge') state.dodgeQueued = true;
-        if (name === 'power') state.powerQueued = true;
+        if (name === 'power') {
+          state.powerQueued = true;
+          state.buttons.power = true;
+        }
         if (name === 'second') state.secondQueued = true;
         if (name === 'aim') state.ads = !state.ads;
         if (name === 'fire' && me().saber) state.touchPress = true;
@@ -2421,6 +2525,7 @@ export async function create(canvas, ctx) {
         if (name === 'run') state.buttons.run = false;
         if (name === 'fire') state.buttons.fire = false;
         if (name === 'block') state.buttons.block = false;
+        if (name === 'power') state.buttons.power = false;
       },
       // the quest list: follow one (its giver on the compass; one with
       // nobody to give it starts), or drop the one you're on
@@ -2585,7 +2690,7 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name } : null, guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length }),
+    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name } : null, guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint }),
     dispose() {
       disposed = true;
       lit?.dispose();

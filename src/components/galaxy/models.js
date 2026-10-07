@@ -58,9 +58,12 @@ export const MODELS = {
   n1: { url: '/models/galaxy/n1.glb', nose: 0 },
   nubian: { url: '/models/galaxy/nubian.glb', nose: 0 },
   razorcrest: { url: '/models/galaxy/surface/razorcrest.glb', nose: 0 }, // (the one the surfaces fly)
-  // the universe map's wars' flagships (scripts/meshy-war.mjs, from the shows' own pictures)
+  // the universe map's wars' flagships (scripts/meshy-war.mjs: Rick and
+  // Morty's from the show's own pictures, Breaking Bad's from words)
   councildread: { url: '/models/universe/war/councildread.glb', nose: Math.PI / 2 },
   fedbattleship: { url: '/models/universe/war/fedbattleship.glb', nose: 0 },
+  superlab: { url: '/models/universe/war/superlab.glb', nose: Math.PI / 2 },
+  hacienda: { url: '/models/universe/war/hacienda.glb', nose: 0 }, // (its thrusters either side)
 };
 // the ones made again here at full quality (scripts/gen3d, remade from these
 // models' own renders): kind → the made model's name, loaded in this device's cut
@@ -94,7 +97,8 @@ const BUILT = new Set([...BUILT_KINDS, ...GALAXY_KINDS]);
 // Venator as a Star Destroyer, Slave I and the Falcon as a freighter, the TIE
 // bomber as a TIE, Gideon's cruiser as a Star Destroyer, the Gozanti and the
 // Ghost as freighters, the Invisible Hand as a Munificent, the wars'
-// flagships as a cruiser of their side. The Death Star has
+// flagships as a ship of their side (the superlab as a Madrigal freighter,
+// the hacienda as the cartel's lowrider). The Death Star has
 // none here: the world puts a sphere of its own in its place.
 export const STAND_IN = {
   venator: 'destroyer',
@@ -107,6 +111,8 @@ export const STAND_IN = {
   ghost: 'freighter',
   councildread: 'councilship',
   fedbattleship: 'fedcruiser',
+  superlab: 'madrigal',
+  hacienda: 'lowrider',
 };
 
 // Far off, a ship is its LOD (scripts/galaxy-lod.mjs: one mesh of a few
@@ -128,6 +134,10 @@ export const lodLevels = (size) => [
 export const HUNTER_GLB = {
   ...GLB,
   ...Object.fromEntries(['vulture', 'trifighter', 'tie', 'tieadvanced'].map((k) => [k, { ...MODELS[k], built: true }])),
+  // (the war's other hunters and what their capital ships drop in: the
+  // Republic's fighters, Wedge in an X-wing, a Mon Calamari cruiser, a Venator)
+  ...Object.fromEntries(['arc170', 'delta7', 'moncal', 'venator'].map((k) => [k, { ...MODELS[k], built: false }])),
+  redleader: { ...GLB.xwing, built: false },
 };
 
 // a model's materials tuned to the scene's light: engines and lights hot

@@ -516,14 +516,14 @@ export const SITES = {
     ],
     // the battle on the beach (skirmish.js): the Republic holds the barricades
     // on the sandbar, the droid army wades ashore out of the lagoon to the
-    // north in waves, and you fight for whichever side your allegiance is
-    // (galaxy/allegiance.js)
+    // north in waves, and you fight for the side you swore to in the Clone
+    // Wars (galaxy/allegiance.js: skirmish.js's yourSide)
     skirmish: {
       name: 'The Battle of Kashyyyk',
       hold: 'rep',
       sides: {
-        rep: { name: 'The Grand Army of the Republic and the Wookiees', short: 'Republic', allegiance: 'light', colour: '#7fc4ff', kinds: [['clone', 5], ['wookiee', 3]], spawn: { at: [42, 34], spread: 7 }, respawn: 10, youAt: [42, 40], youYaw: 0 },
-        sep: { name: 'The Separatist droid army', short: 'Separatists', allegiance: 'dark', colour: '#ff9a5a', kinds: [['battledroid', 10], ['superdroid', 3]], spawn: { at: [42, 102], spread: 14 }, wave: 16, youAt: [36, 75], youYaw: Math.PI },
+        rep: { name: 'The Grand Army of the Republic and the Wookiees', short: 'Republic', side: 'republic', colour: '#7fc4ff', kinds: [['clone', 5], ['wookiee', 3]], spawn: { at: [42, 34], spread: 7 }, respawn: 10, youAt: [42, 40], youYaw: 0 },
+        sep: { name: 'The Separatist droid army', short: 'Separatists', side: 'separatists', colour: '#ff9a5a', kinds: [['battledroid', 10], ['superdroid', 3]], spawn: { at: [42, 102], spread: 14 }, wave: 16, youAt: [36, 75], youYaw: Math.PI },
       },
       front: [42, 57],
       field: { min: [2, 20], max: [80, 118] },
@@ -812,6 +812,7 @@ export const SITES = {
           cruiser: [['rick', 'One-man fighters versus a planet-killer. Bold strategy, Morty.'], ['morty', 'It worked though, didn’t it?']],
         },
         things: [
+          { kind: 'hangarfloor', at: [0, 0], y: 0.57, solid: false }, // (just over the temple model's own floor)
           { kind: 'parked', at: [-9, -2], yaw: 0.15, opts: { kind: 'xwing', metres: 12.5 } },
           { kind: 'parked', at: [9, -4], yaw: -0.1, opts: { kind: 'xwing', metres: 12.5 } },
           { kind: 'ywing', at: [0, 12], yaw: 0.05 },

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DIVE, FOUND_KEY, QUESTS_KEY, diveAt, planDive, surfaceProps } from './travel';
 import { forward } from '../universe/ship';
+import { SIDE_KEY, readAllegiance, swear } from './allegiance';
 
 describe('the dive on a planet', () => {
   const ship = { x: 300, y: 40, z: -120 };
@@ -55,5 +56,11 @@ describe('the surface made from the galaxy', () => {
     expect(p).toMatchObject({ system: 'hoth', mission: null, ship: 'xwing', found: ['base'], done: ['tauntaun'], build: null, net: null, reduced: false });
     expect(p.compass).toEqual({ current: null });
     expect(surfaceProps('tatooine', { ship: 'xwing' }).found).toEqual([]);
+  });
+
+  it('carries your oath, so a world’s battle made before its page is up puts you on your side', () => {
+    expect(surfaceProps('kashyyyk', { ship: 'xwing' }).oath.oaths).toEqual({});
+    window.localStorage.setItem(SIDE_KEY, JSON.stringify(swear(readAllegiance(null), 'separatists')));
+    expect(surfaceProps('kashyyyk', { ship: 'xwing' }).oath.oaths.clone.side).toBe('separatists');
   });
 });

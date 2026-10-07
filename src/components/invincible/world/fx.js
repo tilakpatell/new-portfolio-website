@@ -7,6 +7,7 @@
 
 import * as THREE from 'three';
 import { createVfx } from '../../avengers/hq/vfx';
+import { sharpen } from '../../../lib/three/textures';
 
 const Y = new THREE.Vector3(0, 1, 0);
 const V = (a) => new THREE.Vector3(a[0], a[1], a[2]);
@@ -57,6 +58,7 @@ function crackTexture() {
     }
   }
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

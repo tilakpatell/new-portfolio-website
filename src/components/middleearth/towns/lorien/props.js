@@ -21,6 +21,7 @@ import { canvasTexture, hot } from '../../../../lib/stage3d';
 import { clamp01, fbm, makeCanvas, makeCells, makeNoise, mix, normalFromField, paintPixels, smooth } from '../../../../lib/paint';
 import { stoneTextures } from '../../kit';
 import { ball, blob, boxUV, createShireKit, cyl, lathe, parts, rng, roundBox, tf, tube } from '../../shire/props';
+import { sharpen } from '../../../../lib/three/textures';
 
 const TAU = Math.PI * 2;
 const UP = new THREE.Vector3(0, 1, 0);
@@ -2677,6 +2678,7 @@ export function createLorienKit(renderer) {
   const stone = weatheredCanvas(S, 11);
   // the wood's light, for silver to show
   const sky = new THREE.CanvasTexture(skyCanvas());
+  sharpen(sky);
   sky.mapping = THREE.EquirectangularReflectionMapping;
   sky.colorSpace = THREE.SRGBColorSpace;
   const tex = {

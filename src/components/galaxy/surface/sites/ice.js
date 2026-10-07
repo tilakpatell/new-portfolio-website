@@ -1,5 +1,7 @@
 // Hoth, from the ground. (sites/index.js has what a site is.)
 
+import { ECHO_BASE, zoneRooms } from './echoLayout';
+
 // a walkers' beat: a loop of points round an ellipse
 const loop = ([cx, cz], [rx, rz], n = 10) =>
   Array.from({ length: n }, (_, i) => {
@@ -80,6 +82,43 @@ export const SITES = {
         rv: [['jesse', 'Yo, it is mad cold out here, Mr. White.'], ['walt', 'Then we work fast.']],
       },
     },
+    // inside Echo Base: in through the hangar's back-left door (the hangar
+    // stands 30 m into the place, its back wall 59 m into the hangar)
+    zones: [
+      {
+        id: 'echo',
+        name: 'Echo Base',
+        door: { at: echo([-12, -28.2]), r: 2.4, prompt: 'Go into the base' },
+        back: echo([-12, -24]),
+        inside: {
+          build: 'echoinside',
+          spawn: ECHO_BASE.spawn,
+          yaw: ECHO_BASE.yaw,
+          exit: ECHO_BASE.exit,
+          bounds: ECHO_BASE.bounds,
+          rooms: zoneRooms(ECHO_BASE.rooms),
+          light: { sky: '#b8cde4', ground: '#3a4a5c', ambient: 0.8, fog: '#9fb4ca', density: 0.012 },
+          lamps: [
+            [0, 3.2, 12, '#e6f0ff', 14, 16],
+            [0, 3.6, -2, '#e6f0ff', 12, 12],
+            [-26, 4.8, -2, '#9fc8ff', 26, 18],
+            [23, 3.6, -2, '#cfeee6', 14, 12],
+            [0, 6, -24, '#ffe2b0', 22, 18],
+          ],
+        },
+        life: [
+          { kind: 'hothtrooper', at: [0.9, 19], still: true, face: Math.PI, name: 'Rebel trooper', says: ['Stay clear of the hangar doors when they open. It’s minus sixty out there tonight.', 'Command centre’s left at the junction. Medical’s right.'] },
+          { kind: 'rebel', at: [-24, -2], still: true, face: -Math.PI / 2, name: 'General Rieekan', named: true, says: ['Our first catch of the day. An Imperial probe droid.', 'Prepare for ground assault. Send all troops in sector twelve to the south slope.', 'Commence the evacuation. The transports go first, one at a time, behind the ion cannon.'] },
+          { kind: 'rebel', at: [-30, 3.6], still: true, face: Math.PI, name: 'Toryn Farr', named: true, says: ['First transport is away.', 'Stand by, ion control. Fire!', 'Shield’s holding. For now.'] },
+          { kind: 'rebel', at: [-21, -8.1], still: true, face: 0, name: 'Controller', says: ['(Eyes on the scope.) Something’s out there, past the north ridge.'] },
+          { kind: 'c3po', at: [-27.6, -5], roam: 2, speed: 0.4, name: 'C-3PO', named: true, says: ['Sir, the odds of surviving a night on the surface are seven hundred and twenty-five to one.', 'Master Luke is still out there. Oh dear.'] },
+          { kind: 'droid', at: [-25, 0.8], roam: 2, speed: 0.5, name: 'R2-D2', named: true, says: ['(A long, worried whistle at the doors.)'] },
+          { kind: 'rebel', at: [21.5, -3.6], still: true, face: 1.2, name: 'Medic', says: ['He’s in the bacta tank. Give it a few hours. He’ll be fine.', 'Frostbite, mostly. And a wampa. Mostly the wampa.'] },
+          { kind: 'tauntaun', n: 2, at: [-3, -26], spread: 2, roam: 3, speed: 0.6, name: 'Tauntaun', says: ['(It snorts, and steams.)'] },
+          { kind: 'hothtrooper', at: [3, -20], roam: 4, speed: 0.8, name: 'Tauntaun handler', says: ['They don’t like the cold any more than we do. Worse at night.'] },
+        ],
+      },
+    ],
     places: [
       {
         id: 'echobase',
@@ -129,7 +168,11 @@ export const SITES = {
           rv: [['jesse', 'It shoots, like, a big red ball of nope.'], ['walt', 'An electromagnetic pulse. Elegant.']],
         },
         things: [
-          { kind: 'ioncannon', at: [0, 0], yaw: 0.4 },
+          // the sphere (Meshy, from a still of it firing), tipped half a
+          // radian toward its aim and sunk to a third of it in the snow, set
+          // back so its middle stands over the place's; the shot from it
+          { kind: 'v150', at: [-2.43, -5.74], yaw: 0.4, pitch: 0.5, sink: 6.4, solid: false },
+          { kind: 'ioncannon', at: [0, 0], yaw: 0.4, opts: { shell: false, tilt: 1.07, centre: 5, muzzle: 18 } },
           { kind: 'hothconsole', at: [0, -21], yaw: Math.PI },
         ],
       },
@@ -400,14 +443,15 @@ export const SITES = {
     ],
     // the battle at the trenches (skirmish.js): the Rebels hold the trench
     // line, the Empire's snowtroopers come down off the north ridge behind
-    // the walkers in waves, and you fight for whichever side your
-    // allegiance is (galaxy/allegiance.js); not while the galactic assault's on
+    // the walkers in waves, and you fight for the side you swore to in the
+    // Civil War (galaxy/allegiance.js: skirmish.js's yourSide); not while the
+    // galactic assault's on
     skirmish: {
       name: 'The Battle of Hoth',
       hold: 'rebels',
       sides: {
-        rebels: { name: 'The Rebel Alliance', short: 'Rebellion', allegiance: 'light', colour: '#ff8a5a', kinds: [['hothtrooper', 9]], spawn: { at: [100, 346], spread: 10 }, respawn: 10, youAt: [100, 360], youYaw: 0 },
-        empire: { name: 'The Galactic Empire', short: 'Empire', allegiance: 'dark', colour: '#9fd0ff', kinds: [['snowtrooper', 11]], spawn: { at: [112, 474], spread: 20 }, wave: 18, youAt: [106, 440], youYaw: Math.PI },
+        rebels: { name: 'The Rebel Alliance', short: 'Rebellion', side: 'rebel', colour: '#ff8a5a', kinds: [['hothtrooper', 9]], spawn: { at: [100, 346], spread: 10 }, respawn: 10, youAt: [100, 360], youYaw: 0 },
+        empire: { name: 'The Galactic Empire', short: 'Empire', side: 'empire', colour: '#9fd0ff', kinds: [['snowtrooper', 11]], spawn: { at: [112, 474], spread: 20 }, wave: 18, youAt: [106, 440], youYaw: Math.PI },
       },
       front: [100, 372],
       field: { min: [36, 330], max: [176, 500] },

@@ -40,7 +40,7 @@
 .pixel-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; max-width: 220px; }
 .pixel-row span { width: 10px; height: 10px; background: #243020; }
 .pixel-row span[data-on] { background: #8bc11a; box-shadow: 0 0 6px rgba(139, 193, 26, 0.6); }
-.ig-stone[data-on] { filter: drop-shadow(0 0 4px var(--glow)) drop-shadow(0 0 9px var(--glow)); animation: stone-set 0.45s cubic-bezier(0.16, 1, 0.3, 1); transform-box: fill-box; transform-origin: center; }
+.ig-stone[data-on] { filter: drop-shadow(0 0 4px var(--glow)) drop-shadow(0 0 9px var(--glow)); animation: stone-set 0.45s var(--ease-out); transform-box: fill-box; transform-origin: center; }
 @keyframes stone-set { from { transform: scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
 
 /* The Office: a sheet of Dunder Mifflin paper */

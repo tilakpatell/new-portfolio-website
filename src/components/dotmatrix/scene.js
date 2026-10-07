@@ -21,6 +21,7 @@ import { device } from '../../lib/device';
 import { H as SCREEN_H, W as SCREEN_W } from '../../stages/gb/font';
 import { newConsole, renderConsole, stepConsole } from '../../stages/gb/console';
 import { createDither, shadeValue } from './dither';
+import { sharpen } from '../../lib/three/textures';
 import {
   BLOCKS,
   BLOCK_LO,
@@ -71,6 +72,7 @@ function pixels(size, draw) {
   const g = c.getContext('2d');
   draw(g, size);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   t.magFilter = THREE.NearestFilter;
   t.minFilter = THREE.NearestFilter;
@@ -815,6 +817,7 @@ function buildGameBoy() {
   canvas.height = SCREEN_H;
   const ctx = canvas.getContext('2d');
   const tex = new THREE.CanvasTexture(canvas);
+  sharpen(tex);
   tex.colorSpace = THREE.NoColorSpace;
   tex.magFilter = tex.minFilter = THREE.NearestFilter;
   tex.generateMipmaps = false;

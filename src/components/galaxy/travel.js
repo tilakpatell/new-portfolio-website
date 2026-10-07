@@ -7,6 +7,7 @@
 // the galaxy page can make the surface's world before its page is up.
 
 import { local } from '../../lib/hooks';
+import { SIDE_KEY, readAllegiance } from './allegiance';
 
 export const FOUND_KEY = 'tp-galaxy-found'; // { [system]: [place ids] }: what you've found on each world
 export const QUESTS_KEY = 'tp-galaxy-quests'; // { [system]: [quest ids] }: what you've done on each world
@@ -20,7 +21,8 @@ export const readFound = () => readAll(FOUND_KEY);
 export const readDone = () => readAll(QUESTS_KEY);
 
 // what the surface module is made with when the galaxy hands over to it
-// (its page's own props replace these once it's up: the compass is its)
+// (its page's own props replace these once it's up: the compass is its;
+// your oath here, since a world's battle takes your side when it's made)
 export function surfaceProps(system, { ship, loadout, build = null, net = null, reduced = false }) {
   const found = readFound()[system];
   const done = readDone()[system];
@@ -30,6 +32,7 @@ export function surfaceProps(system, { ship, loadout, build = null, net = null, 
     ship,
     loadout,
     build,
+    oath: readAllegiance(local.get(SIDE_KEY)),
     found: Array.isArray(found) ? found : [],
     done: Array.isArray(done) ? done : [],
     compass: { current: null },

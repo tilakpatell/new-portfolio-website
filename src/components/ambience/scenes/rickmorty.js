@@ -10,6 +10,7 @@
 
 import { ambience, backdrop, bursts, field, lift, rand } from '../kit';
 import { mix } from '../../../lib/three/theme';
+import { sharpen } from '../../../lib/three/textures';
 
 // each theme's own colour, a second one the junk is painted in, and the
 // colour it glows in the dark (Beth's wine is too deep to glow as it is)
@@ -489,6 +490,7 @@ export function create(canvas, ctx) {
     sheet.height = CELL * 2;
     const g2 = sheet.getContext('2d');
     const tex = new THREE.CanvasTexture(sheet);
+    sharpen(tex);
     tex.colorSpace = THREE.SRGBColorSpace;
     const quads = KINDS.map((kind, i) => {
       const geo = new THREE.PlaneGeometry(1, 1);

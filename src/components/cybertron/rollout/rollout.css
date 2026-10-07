@@ -13,7 +13,7 @@
 .ro-hud-centre { display: grid; gap: 0.35rem; justify-items: center; text-align: center; }
 .ro-hud-right { display: grid; justify-items: end; margin-right: 5.2rem; }
 .ro-shields { display: flex; gap: 0.3rem; }
-.ro-shields span { display: grid; place-items: center; width: clamp(20px, 1.2rem + 0.6vw, 28px); height: clamp(20px, 1.2rem + 0.6vw, 28px); color: rgba(255, 255, 255, 0.18); filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6)); transition: color 0.2s ease, transform 0.25s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.ro-shields span { display: grid; place-items: center; width: clamp(20px, 1.2rem + 0.6vw, 28px); height: clamp(20px, 1.2rem + 0.6vw, 28px); color: rgba(255, 255, 255, 0.18); filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6)); transition: color 0.2s ease, transform 0.25s var(--ease-spring); }
 .ro-shields span[data-on] { color: #ff3b4e; }
 .ro-shields svg { width: 100%; height: 100%; }
 .ro-energon { display: grid; gap: 0.2rem; width: clamp(120px, 6rem + 8vw, 220px); font-size: 0.62rem; text-transform: uppercase; color: #ffc4ea; }

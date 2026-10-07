@@ -15,7 +15,7 @@
   border-radius: clamp(2px, calc(var(--r-chip) * 0.6), 10px);
   background: var(--surface);
   text-align: left;
-  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.2s var(--ease-out);
 }
 .ptile:hover { border-color: var(--accent); transform: translateY(-2px); }
 .ptile[aria-pressed='true'] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }

@@ -174,7 +174,7 @@
   border-radius: 8px;
   background: var(--glass);
   backdrop-filter: blur(10px);
-  animation: surface-found 0.5s cubic-bezier(0.2, 0.9, 0.2, 1);
+  animation: surface-found 0.5s var(--ease-smooth);
 }
 .surface-toast-title { margin: 0; font-size: 1.02rem; font-weight: 650; }
 .surface-toast-title::before { content: 'Found · '; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); vertical-align: 0.12em; }
@@ -236,7 +236,7 @@
     radial-gradient(ellipse 60% 45% at 50% 50%, rgb(255 246 230 / 0.95), transparent 70%),
     radial-gradient(ellipse 120% 90% at 50% 55%, rgb(255 140 60 / 0.8), rgb(255 80 30 / 0.4) 45%, transparent 75%),
     #fff6e8;
-  animation: surface-entry 1.6s cubic-bezier(0.2, 0.6, 0.3, 1) forwards;
+  animation: surface-entry 1.6s var(--ease-smooth) forwards;
 }
 @keyframes surface-entry {
   0% { opacity: 1; }
@@ -536,7 +536,7 @@
   background: var(--glass);
   backdrop-filter: blur(14px);
   text-align: center;
-  animation: surface-found 0.5s cubic-bezier(0.2, 0.9, 0.2, 1);
+  animation: surface-found 0.5s var(--ease-smooth);
 }
 .chase-result[data-won] { border-top-color: var(--accent); }
 .chase-result-kicker { margin: 0; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
@@ -571,7 +571,7 @@
   background: var(--glass);
   backdrop-filter: blur(14px);
   text-align: center;
-  animation: surface-found 0.5s cubic-bezier(0.2, 0.9, 0.2, 1);
+  animation: surface-found 0.5s var(--ease-smooth);
 }
 .assault-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem; }
 .assault-side {
@@ -588,6 +588,7 @@
   transition: background 0.15s, transform 0.15s;
 }
 .assault-side:hover, .assault-side:focus-visible { background: color-mix(in srgb, var(--side) 22%, rgba(0, 0, 0, 0.35)); transform: translateY(-2px); }
+.assault-side[data-yours] { box-shadow: inset 0 0 0 1px var(--side); } /* (the side your oath puts you on) */
 .assault-side b { font-size: 1rem; font-weight: 650; line-height: 1.25; }
 .assault-side span { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--side); }
 .assault-posts { display: grid; gap: 0.5rem; margin: 1rem 0 0; padding: 0; list-style: none; text-align: left; }

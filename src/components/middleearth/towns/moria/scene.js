@@ -32,6 +32,7 @@ import { makeFolk } from '../bree/props';
 import { createMoriaKit } from './props';
 import { CAST, CHAMBER, COMPANY, FLIGHT, FORK, GATE, GATE_ROCKS, HALL, HALL_COLLIDERS, HALL_WALLS, LAKE_Y, PASSAGE, SHAFT, TOMB, WELL, gateHeight, hallHeight } from './layout';
 import { PLANK, TUMBLE } from './rules';
+import { sharpen } from '../../../../lib/three/textures';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -276,6 +277,7 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
     x.fillStyle = grad;
     x.fillRect(0, 0, 64, 64);
     const tex = new THREE.CanvasTexture(c);
+    sharpen(tex);
     const list = [];
     for (let i = 0; i < Math.round(18 * Math.max(0.5, many)); i++) {
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: 0x9aaccc, transparent: true, opacity: 0.12 + (i % 4) * 0.03, depthWrite: false, fog: true }));

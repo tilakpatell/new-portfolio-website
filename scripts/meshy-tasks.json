@@ -994,7 +994,9 @@
   },
   "nebulon": {
     "image": "01a11389-a0b9-7220-900e-d06a5aacc9d4",
-    "model": "01a1138c-5903-744b-b5ed-660261d17b02"
+    "model": "01a1138c-5903-744b-b5ed-660261d17b02",
+    "rig": "01a113ce-1afe-71f2-8ca7-d905fa517c6c",
+    "idle": "01a113ce-6794-725c-82d1-8407d8891c4c"
   },
   "zigerion-b": {
     "image": "01a11389-a0d0-704d-800b-471b62159821",
@@ -1006,10 +1008,261 @@
   },
   "storylord": {
     "image": "01a11389-a0d7-7211-b90e-f470df56b325",
-    "model": "01a1138c-5889-7392-bfa4-40674c836b2d"
+    "model": "01a1138c-5889-7392-bfa4-40674c836b2d",
+    "rig": "01a113ce-1ae4-75c4-adda-ea5af013bd1e",
+    "idle": "01a113ce-6792-757a-b6e5-a2ba196731e0"
   },
   "ticketsguy": {
     "image": "01a1138a-05a7-7219-85b9-407b9c95c789",
-    "model": "01a1138d-61f9-70be-9c26-f015a76ba424"
+    "model": "01a1138d-61f9-70be-9c26-f015a76ba424",
+    "rig": "01a113ce-1b25-728b-99a3-b7a8b66c1c8b",
+    "idle": "01a113ce-6799-7117-8816-e223d0ec68bf"
+  },
+  "simman": {
+    "image": "01a113e4-7a1d-7598-8df0-60abbb8e1ce6",
+    "model": "01a113e5-5c91-70af-b425-badc264c0ca2"
+  },
+  "poptart": {
+    "image": "01a113e4-7a2b-70a8-a6cf-7fe5f79bc1e1",
+    "model": "01a113e5-5c9b-7776-888b-266aaf9a68c5"
+  },
+  "toasterhouse": {
+    "image": "01a113e4-7a23-777e-9d56-1e1622beb8f9",
+    "model": "01a113e5-5c9d-7169-96fc-a770fd9bded2"
+  },
+  "omegadevice": {
+    "image": "01a113e4-7a2f-74e4-8e88-0b441304e03d",
+    "model": "01a113e5-5c96-7491-9ed0-884de0bd78dd"
+  },
+  "primedrone": {
+    "image": "01a113e4-cdca-7633-a3d0-ad43fe0f96c6",
+    "model": "01a113e6-7ad4-701a-9e1e-8ba8524e54f7"
+  },
+  "tommy": {
+    "image": "01a113f0-208c-759f-bb8f-eecd6893dcd6",
+    "model": "01a113f2-c037-75ab-bb96-6b2caa73b19a",
+    "rig": "01a113fe-307a-71f1-8e28-3f6eb2ac1319",
+    "idle": "01a113ff-ef64-7428-9a54-f59eed70ddac"
+  },
+  "froopy-a": {
+    "image": "01a113f0-2097-7666-971d-e8128f6909d8",
+    "model": "01a113f2-c0a5-751d-bfef-7490be9c4538"
+  },
+  "froopy-b": {
+    "image": "01a113f0-2084-72bb-afc2-5254c5d2a900",
+    "model": "01a113f2-c0ae-7103-8e16-9dfb2ce672ad"
+  },
+  "nimbus": {
+    "image": "01a113f0-2086-70e1-9e4b-99e520913f23",
+    "model": "01a113f2-c0a9-7303-b4c0-8e461b7c7fad",
+    "rig": "01a113fe-307c-7051-ac20-42e88b53b227",
+    "idle": "01a113ff-efd8-7035-b13f-0351b43dfda5",
+    "clips": {
+      "drink": "01a1140c-72db-725c-9ab6-dbe3065ba888",
+      "cheer": "01a1140c-9ecf-72da-9d42-c7a57e562438",
+      "wave": "01a1140c-cb7e-76da-9bd4-124ab82162fb",
+      "happy": "01a1140c-f84e-7678-bb9b-df895720306c",
+      "hit": "01a1140d-2489-72eb-856f-ec4b98445680",
+      "fall": "01a1140d-3d53-735e-99f1-c702db84d71b",
+      "scared": "01a1140d-6925-70fa-a95b-f9fce5b0f3bf",
+      "shoot": "01a1140d-95c2-7030-a001-bae3ffd54875",
+      "dance": "01a1140d-c1a9-724d-a2e1-d170ed1e52ba",
+      "punch": "01a1140d-ee40-7771-bc07-2c516bd0a9ba",
+      "taunt": "01a1140e-1a7e-70c4-a884-e70f596696fd",
+      "shot": "01a1140e-4675-77dc-af5f-a8cd54cb5ddb",
+      "sitcross": "01a1140e-7282-714f-849e-b1e8e71890fa"
+    }
+  },
+  "atlantean": {
+    "image": "01a113f0-86b5-7616-9f3e-147aafdb15d2",
+    "model": "01a113f3-a315-77ef-93f1-bb74de370f2e",
+    "rig": "01a113fe-3075-709e-afe7-b88869a98c48",
+    "idle": "01a113ff-ef6b-75cc-bb5b-9811c819f20f"
+  },
+  "miles": {
+    "image": "01a113f0-878a-70c6-bf91-63d475fdd69d",
+    "model": "01a113f3-df2a-7309-a148-16b1d16367d8",
+    "rig": "01a113fe-309b-719f-8b13-659d6db504a7",
+    "idle": "01a113ff-efd6-726e-8dba-b059116ddd37"
+  },
+  "heistotron": {
+    "image": "01a113f0-af10-723f-a9b1-f479c455366a",
+    "model": "01a113f4-2d9a-7575-85f7-16ade62a87fc"
+  },
+  "heister-a": {
+    "image": "01a113f0-d683-72b1-8b38-697df83a8e51",
+    "model": "01a113f4-690d-716d-8841-f22ccfc37f6e"
+  },
+  "heister-b": {
+    "image": "01a113f0-eda8-7606-b0c8-c189186c4def",
+    "model": "01a113f4-fa90-75e7-957b-cc36fd9cc34e"
+  },
+  "fart": {
+    "image": "01a113f1-010e-76a1-8909-12e21f3e4d97",
+    "model": "01a113f5-5dde-71b5-a318-2eee501852fa"
+  },
+  "snake-a": {
+    "image": "01a113f1-1469-72d2-bf8b-af6561dd916d",
+    "model": "01a113f5-8490-7752-a14d-9948999ce05a"
+  },
+  "snake-b": {
+    "image": "01a113f1-673f-7149-9be5-87a9c0b5e241",
+    "model": "01a113f5-c084-7798-968c-d3115c26bddc"
+  },
+  "snakeastronaut": {
+    "image": "01a113f1-7b76-71cb-b40b-c94d6f9a3eb8",
+    "model": "01a113f5-d926-71c7-a825-44abdf37284d"
+  },
+  "snakerocket": {
+    "image": "01a113f1-7b95-7129-98bd-203c6ee74682",
+    "model": "01a113f6-782c-71ac-a685-4f1beb0c639b"
+  },
+  "glexo": {
+    "image": "01a11402-4f76-737a-8d5a-fb44bb91184b",
+    "model": "01a11404-84d7-70df-adfc-82cd5c181089",
+    "rig": "01a1140a-d45b-7178-8c31-03888a5a031b",
+    "idle": "01a1140b-1fcf-7689-a15b-6bba1081a67d"
+  },
+  "nuptiamachine": {
+    "image": "01a11402-4f78-73eb-a3c1-c506ad39c7d1",
+    "model": "01a11404-846e-72f4-99a7-c27e5c97d764"
+  },
+  "mytholog": {
+    "image": "01a11402-4f7f-7157-b1a2-4ef12707d3e5",
+    "model": "01a11404-84cd-759f-a828-0d425b2d51f2"
+  },
+  "glipglop": {
+    "image": "01a11402-4f85-76cc-8c36-a5bec037665c",
+    "model": "01a11404-846a-745e-b057-cd710a4599b7",
+    "rig": "01a1140a-d45f-76b7-acac-5678025b5653",
+    "idle": "01a1140b-1fd3-73c6-b6d6-3178e278bc6c"
+  },
+  "shrimply": {
+    "image": "01a11402-4fd8-7014-a908-b94c11d365a8",
+    "model": "01a11406-253d-7332-94a3-82a1eb749330"
+  },
+  "gloopnurse": {
+    "image": "01a11402-a2a5-7274-bf9e-c5a97523f360",
+    "model": "01a11406-7438-7673-8fd5-c85555bb2ade"
+  },
+  "risotto": {
+    "image": "01a11402-b678-77ce-93db-808a90f82bff",
+    "model": "01a11406-8831-77ed-b510-07b360f2de2d",
+    "rig": "01a1140a-d4c7-7630-8b89-cf79ddb3240b",
+    "idle": "01a1140b-1fed-7693-9a7d-deb9da19b8ec"
+  },
+  "resortguest-a": {
+    "image": "01a11403-07cf-71f5-83d0-f17b31e8f610",
+    "model": "01a11407-b9a1-776d-b057-85f293af534b"
+  },
+  "resortguest-b": {
+    "image": "01a11403-6995-7721-8455-774e94aedf35",
+    "model": "01a11407-cd22-76e7-8785-db02014dea9c"
+  },
+  "dirlycar": {
+    "image": "01a11403-80b7-7144-8948-e002a8dbff00",
+    "model": "01a11407-f548-7308-b07c-aa2c38a8bf2a"
+  },
+  "watert": {
+    "image": "01a11403-e5b2-77ec-9275-99c3936a6b7c",
+    "model": "01a11409-3781-7401-a7df-8c6ccad413ce",
+    "rig": "01a1140a-f249-7342-96b7-df61f474096b",
+    "idle": "01a1140b-3b9d-7000-a45e-5b279e12b436"
+  },
+  "icet": {
+    "image": "01a11403-f7a7-7305-9459-1c389e0ccb69",
+    "model": "01a11409-2ba2-769a-82e0-5f29f2f98162"
+  },
+  "hemorrhage": {
+    "image": "01a1141d-7d2e-7416-8c6b-ac518a58cb6d",
+    "model": "01a11420-4498-761a-9cc1-6cb8c7574937",
+    "rig": "01a11426-8395-735a-8e9b-f10044ebc982",
+    "idle": "01a11426-d02a-7304-9b65-bb59786d5955"
+  },
+  "deathstalker-a": {
+    "image": "01a1141d-7d49-76fa-89e8-443196876475",
+    "model": "01a11420-449b-7266-bfc3-a2753b359e9e"
+  },
+  "deathstalker-b": {
+    "image": "01a1141d-7d50-77ec-96b1-491d841d4b48",
+    "model": "01a11420-44a0-741d-b1b3-e37915bbd68f"
+  },
+  "armothy": {
+    "image": "01a1141d-7d4b-7413-9926-943bb5e6b883",
+    "model": "01a11420-44a2-77ae-b18e-d667d197e7d9"
+  },
+  "cornvelious": {
+    "image": "01a1141d-e466-73ff-9a1c-e83a25127ec6",
+    "model": "01a11421-4f5d-70cd-860c-696351565643",
+    "rig": "01a11426-832b-729f-89c5-7cd16bb2f09c",
+    "idle": "01a11426-d00a-7469-b4ec-27b976884d10"
+  },
+  "brainalyzer": {
+    "image": "01a1141d-f808-748a-b50e-d84c89d6f6f9",
+    "model": "01a11421-62d4-76d6-a579-c62818c2f52b"
+  },
+  "antsjohnson": {
+    "image": "01a1141e-6e95-779d-984e-4af8e4183656",
+    "model": "01a11421-7612-7210-ba27-d0b1a33fb562"
+  },
+  "babylegs": {
+    "image": "01a1141e-6f7d-77e4-bfb6-e05a268e882d",
+    "model": "01a11422-b723-7099-9204-1bdd57ddc700"
+  },
+  "regularlegs": {
+    "image": "01a1141e-705b-76e3-967a-b5d5f0bd91c2",
+    "model": "01a11422-e027-75de-bde3-b422402d0b79"
+  },
+  "mrsneezy": {
+    "image": "01a1141e-ea21-73bc-9112-b4acc65fdd05",
+    "model": "01a11422-f604-71e5-a499-08401ef2e744"
+  },
+  "gazorpazorpfield": {
+    "image": "01a1141e-fda2-777b-b5b3-db7fb212c513",
+    "model": "01a11423-16fd-74b1-b56e-cf7d9a1078b9"
+  },
+  "shmlo": {
+    "image": "01a1141f-76d0-71f3-b75a-e9717c21b70d",
+    "model": "01a11423-e74a-7080-997e-d45b042f1439"
+  },
+  "trunkperson": {
+    "image": "01a1141f-7747-70b9-b0d1-974114d9ca9a",
+    "model": "01a11423-fa79-70de-9410-274cd01795b8"
+  },
+  "lilbits": {
+    "image": "01a1141f-8ad2-740d-a83f-23160dc94312",
+    "model": "01a11424-23a3-7621-b5d6-7a20349fedba"
+  },
+  "tophatjones": {
+    "image": "01a1141f-dc64-764a-ade7-5db9812dfff4",
+    "model": "01a11424-6c7d-7022-8d06-e1c0f912eda0"
+  },
+  "realfakedoors": {
+    "image": "01a1141f-f061-7173-9f73-46f60f90944a",
+    "model": "01a11425-3c2c-774d-a636-14ad5690e6c0"
+  },
+  "scaryterry": {
+    "image": "01a11428-654b-71ee-afc6-e428829962fc",
+    "model": "01a1142a-9ea0-7059-a817-f3177b8d7c69",
+    "rig": "01a1142b-f9db-7386-9934-dabebaa511b9",
+    "idle": "01a1142c-4420-73b0-8030-92e0499eeaac"
+  },
+  "mrspancakes": {
+    "image": "01a11428-6544-7489-90ff-ba0c064cae0d",
+    "model": "01a1142a-9ea1-75a0-b024-6631b1143a4b"
+  },
+  "jaguar": {
+    "image": "01a1142e-50ff-74e6-a577-e5402c71f608",
+    "model": "01a1142e-d114-7787-b398-6f686e104c26",
+    "rig": "01a11430-5793-7100-b26c-196fed1f109b",
+    "idle": "01a11430-ac45-73bb-863b-0a0816a471d1"
+  },
+  "agencyguard": {
+    "image": "01a11428-6550-743a-bebc-87ed4578ab5e",
+    "model": "01a1142a-9f1b-72fe-a944-f9b8c850cb02"
+  },
+  "sewerrat": {
+    "image": "01a11428-cc43-71bc-9773-9b79b0f18e95",
+    "model": "01a1142a-9f5a-746d-bfbb-b7deca715e00"
   }
 }
