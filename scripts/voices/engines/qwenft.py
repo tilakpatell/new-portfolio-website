@@ -19,7 +19,7 @@ def load(jobs):
     import torch
     from qwen_tts import Qwen3TTSModel
 
-    whose = {v["wav"]: w for w, v in jobs["voices"].items()}
+    whose = {v["wav"]: w.split("~")[0] for w, v in jobs["voices"].items()}  # "han~12" is one of Han's own lines
     current = {"who": None, "model": None}
 
     def model(who):

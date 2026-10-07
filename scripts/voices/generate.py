@@ -37,6 +37,54 @@ from common import CACHE, HERE, OUT, REFS, ROOT, console, ffmpeg, read, run, spe
 
 TAKES = CACHE / "takes"
 ROUNDS = 2  # a line with no passing take gets another round, with twice the takes
+BANK = CACHE / "bank"
+# how much a take loses for each of the speaker's spreads its feeling is off its line's direction
+FEEL_WEIGHT = 0.1
+# the feeling spread taken for a voice with no bank to measure theirs from
+SPREAD = (0.14, 0.12, 0.14)
+# a bank line good enough to clone a line from: long enough to carry the voice, surely them
+REF_SECONDS, REF_SIM = (2.5, 11.5), 0.65
+
+
+class Feels:
+    """How each line should feel and what to clone it from. delivery.json gives each line a direction
+    (an emotion and how strong); the speaker's bank (bank.py) says how they usually sound and how
+    each real line of theirs feels. A line is cloned from the two real lines of theirs whose feeling
+    is nearest where it should be (takes alternate between them), and the judge holds every take to
+    that direction: so an angry line comes from an angry scene, and comes out angry."""
+
+    def __init__(self, voices, judge):
+        f = HERE / "delivery.json"
+        self.delivery = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+        self.voices = dict(voices)
+        self.usual, self.refs = {}, {}
+        for who, v in voices.items():
+            feel = BANK / who / "feel.json"
+            rows = BANK / who / "bank.jsonl"
+            if feel.exists():
+                self.usual[who] = json.loads(feel.read_text(encoding="utf-8"))
+            mine = [{"key": who, "avd": judge.j.feeling(read(v["wav"]))}]  # their reference, first
+            if rows.exists():
+                for n, r in enumerate(json.loads(l) for l in rows.read_text(encoding="utf-8").splitlines() if l.strip()):
+                    if r.get("avd") and REF_SECONDS[0] <= r["seconds"] <= REF_SECONDS[1] and r["sim"] >= REF_SIM:
+                        key = f"{who}~{n}"
+                        self.voices[key] = {"wav": r["audio"], "text": r["text"], "speed": v.get("speed", 1.0)}
+                        mine.append({"key": key, "avd": tuple(r["avd"])})
+            self.refs[who] = mine
+
+    def direct(self, line):
+        """Give the line its feeling to come out with ("feel", "spread") and what to clone it from ("voices")."""
+        who, d = line["who"], self.delivery.get(line["id"])
+        usual = self.usual.get(who) or {"mean": self.refs[who][0]["avd"], "spread": SPREAD}
+        target = pick.feel_target(d["emotion"], d.get("intensity", 2), usual["mean"], usual["spread"]) if d else None
+        line["voices"] = [who]
+        if target is None:
+            return line
+        line["feel"], line["spread"] = target, tuple(usual["spread"])
+        line["style"] = f"{d['emotion']}: {d['note']}" if d.get("note") else d["emotion"]
+        ranked = sorted(self.refs[who], key=lambda r: pick.feel_distance(r["avd"], target, line["spread"]))
+        line["voices"] = [r["key"] for r in ranked[:2]]
+        return line
 
 
 def references(cfg, only, speakers=()):
@@ -137,7 +185,18 @@ class Judge:
     def forget(self, take):
         self.known.pop(str(Path(take).relative_to(TAKES)), None)
 
-    def __call__(self, who, text, take):
+    def __call__(self, who, text, take, feel=None, spread=SPREAD):
+        """A take's scores, its score held to the line's feeling when it has one."""
+        d = self.scored(who, text, take)
+        if feel is None or d["score"] is None or not d.get("heard"):
+            return d
+        if d.get("avd") is None:
+            d["avd"] = self.j.feeling(read(TAKES / d["take"]))
+            self.keep(d)
+        off = pick.feel_distance(d["avd"], feel, spread)
+        return {**d, "feel": round(off, 2), "score": d["score"] - FEEL_WEIGHT * off}
+
+    def scored(self, who, text, take):
         key = str(Path(take).relative_to(TAKES))
         if key in self.known:
             d = self.known[key]
@@ -152,7 +211,7 @@ class Judge:
             spans = self.j.speech(wav)
             talk = spans[-1][1] - spans[0][0] if spans else len(wav) / self.j.SR
             vp = self.j.voiceprint(wav)
-            d = {"take": key, "heard": heard, "wer": round(self.j.wer(text, heard), 3), "sim": round(float(vp @ self.prints[who]), 3), "csim": round(float(vp @ self.cents[who]), 3) if who in self.cents else None, "utmos": self.j.naturalness(wav), "wps": round(len(pick.normal(text).split()) / max(talk, 0.1), 2), "speech": [spans[0][0], spans[-1][1]] if spans else None}
+            d = {"take": key, "heard": heard, "wer": round(self.j.wer(text, heard), 3), "sim": round(float(vp @ self.prints[who]), 3), "csim": round(float(vp @ self.cents[who]), 3) if who in self.cents else None, "utmos": self.j.naturalness(wav), "avd": self.j.feeling(wav), "wps": round(len(pick.normal(text).split()) / max(talk, 0.1), 2), "speech": [spans[0][0], spans[-1][1]] if spans else None}
             d["score"] = pick.take_score(d["wer"], likeness(d), d["utmos"], d["wps"])
         self.known[key] = d
         self.keep(d)
@@ -172,6 +231,16 @@ def best(scores):
     return (min(scores, key=lambda d: (d["wer"], -d["sim"])) if scores else None), False
 
 
+def voice_of(line, k):
+    """The reference a line's k-th take is cloned from (Feels.direct): its voices in turn."""
+    mine = line.get("voices") or [line["who"]]
+    return mine[k % len(mine)]
+
+
+def hear(judge, line, take):
+    return judge(line["who"], speakable(line["text"]), take, line.get("feel"), line.get("spread", SPREAD))
+
+
 def make(engine, lines, voices, judge, takes, done):
     """Every line through `engine`, `takes` takes each (and a second round for the ones that don't pass);
     done(line, score, passed) as each line is decided, while the worker goes on with the rest."""
@@ -182,7 +251,7 @@ def make(engine, lines, voices, judge, takes, done):
         ks = range(first, first + count)
         first += count
         mine = {lid: [take_path(engine, l, k) for k in range(first)] for lid, l in pending.items()}
-        items = [{"who": l["who"], "text": speakable(l["text"]), "out": str(take_path(engine, l, k)), "seed": seed(l, k)} for l in pending.values() for k in ks]
+        items = [{"who": voice_of(l, k), "text": speakable(l["text"]), "out": str(take_path(engine, l, k)), "seed": seed(l, k), **({"style": l["style"]} if l.get("style") else {})} for l in pending.values() for k in ks]
         if not items:
             return
         got = {lid: {} for lid in pending}  # take -> score, or None when the engine failed it
@@ -199,7 +268,7 @@ def make(engine, lines, voices, judge, takes, done):
 
         for path, l in list(owner.items()):
             if Path(path).exists():
-                arrive(path, judge(l["who"], speakable(l["text"]), path))
+                arrive(path, hear(judge, l, path))
         need = [it for it in items if not Path(it["out"]).exists()]
         if need:
             TAKES.mkdir(parents=True, exist_ok=True)
@@ -209,7 +278,7 @@ def make(engine, lines, voices, judge, takes, done):
             for out in worker.stdout:
                 status, path, why = (out.rstrip("\n").split("\t") + ["", ""])[:3]
                 if status == "ok" and path in owner:
-                    arrive(path, judge(owner[path]["who"], speakable(owner[path]["text"]), path))
+                    arrive(path, hear(judge, owner[path], path))
                 elif status == "fail" and path in owner:
                     print(f"  ({engine} couldn't make {Path(path).name}: {why})")
                     arrive(path, None)
@@ -292,8 +361,12 @@ def main():
         return
 
     judge = Judge(voices)
+    feels = Feels(voices, judge)
+    lines = [feels.direct(l) if l["who"] in voices else l for l in lines]
+    directed = sum(1 for l in lines if l.get("feel"))
+    print(f"{directed} of {len(lines)} lines directed (delivery.json), cloned from the real lines of theirs that feel most like it")
     if args.bakeoff:
-        return bakeoff(lines, voices, judge, args.bakeoff, args.takes)
+        return bakeoff(lines, feels.voices, judge, args.bakeoff, args.takes)
 
     def mp3(l):
         return OUT / l["who"] / f"{l['id']}.mp3"
@@ -330,12 +403,12 @@ def main():
         if not ok:
             doubtful.append((l, d))
         left = (time.time() - started) / len(made) * (len(todo) - len(made))
-        said = f"sim {d['sim']:.2f} wer {d['wer']:.2f} mos {d['utmos']:.1f}" if d else "no take"
+        said = f"sim {d['sim']:.2f} wer {d['wer']:.2f} mos {d['utmos']:.1f}" + (f" feel {d['feel']:.1f} off" if d.get("feel") is not None else "") if d else "no take"
         print(f"[{len(made)}/{len(todo)}, ~{left / 60:.0f} min left] {l['who']}: {l['text']}  ({said}{'' if ok else ', DOUBTFUL'})")
         if len(made) % 20 == 0:
             write_manifest()
 
-    make_all(todo, engines_of, voices, judge, args.takes, done)
+    make_all(todo, engines_of, feels.voices, judge, args.takes, done)
     write_manifest()
     report = ["# Lines whose best take didn't pass", "", "Listen, then delete the mp3 and run again (it makes new takes), or fix the line.", "", "| who | line | heard | wer | sim |", "|---|---|---|---|---|"]
     report += [f"| {l['who']} | {l['text']} | {d['heard'] if d else '-'} | {d['wer'] if d else '-'} | {d['sim'] if d else '-'} |" for l, d in doubtful]

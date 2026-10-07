@@ -6,7 +6,8 @@ clean it sounds (cache/grab/segments/), and each voice's voiceprint centroid
 (cache/grab/centroids.json). A reference uses a few seconds of that; the bank keeps all of it
 that is the speaker: like their centroid, more like them than like any other voice by a clear
 margin, one speaker throughout, not clipped. It's what finetune.py teaches a model the voice
-from, and what the judge holds a take up against (judge.Judge's centroid).
+from, and, with how each line feels (judge.feeling), what generate.py clones an angry line from
+an angry scene of theirs with.
 
     python scripts/voices/bank.py                 every voice with a centroid
     python scripts/voices/bank.py --only han      just these
@@ -27,6 +28,8 @@ from common import CACHE, console, read, write
 GRAB = CACHE / "grab"
 BANK = CACHE / "bank"
 RATE = 24000
+# the least spread of feeling a voice is taken to have (a small bank can look narrower than they are)
+SPREAD_FLOOR = (0.1, 0.09, 0.1)
 
 
 def chosen(segments, who, cents, least_sim=0.6, least_margin=0.15, shortest=1.2, longest=15.0):
@@ -90,6 +93,13 @@ def main():
             write(f, piece, RATE)
             rows.append({"n": n, "audio": str(f), "text": g["text"], "source": sid, "start": g["start"], "seconds": round(g["end"] - g["start"], 2), "sim": round(sim, 3), "margin": round(margin, 3), "utmos": g.get("utmos"), "ovrl": g.get("ovrl")})
         rows.sort(key=lambda r: r.pop("n"))
+        if rows:  # how each line feels, for generate.py to clone each line from one that feels like it should
+            import judge
+
+            for r in rows:
+                r["avd"] = judge.feeling(read(r["audio"]))
+            avd = np.array([r["avd"] for r in rows])
+            (out / "feel.json").write_text(json.dumps({"mean": avd.mean(0).round(3).tolist(), "spread": np.maximum(avd.std(0), SPREAD_FLOOR).round(3).tolist(), "lines": len(rows)}), encoding="utf-8")
         (out / "bank.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
         minutes = sum(r["seconds"] for r in rows) / 60
         print(f"{who}: {len(rows)} lines, {minutes:.1f} min from {len({r['source'] for r in rows})} sources")
