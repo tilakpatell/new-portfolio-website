@@ -30,6 +30,10 @@
 //   drops out of warp over the planet you're at and charges its cannon:
 //   knock it out before it fires, or the planet's gone for a minute
 //   (remover.js)
+// - minefield: a band of mines across your way ahead (minefield.js): shoot
+//   a way through or weave between them
+// - escort: an ordinary ship asks to be seen to the next place, and pirates
+//   come for it twice on the way (escort.js)
 // Nothing happens in the first while, or while something else is going on;
 // then one comes along every minute or two, sooner the more trouble you've
 // been making (heat: what you've shot down lately, and `wanted`: the law
@@ -63,6 +67,8 @@ export const EVENTS = {
   meteors: { needs: null, weight: 1.2, heat: 0 },
   bounty: { needs: 'bounty', weight: 1.0, heat: 0.8 },
   remover: { needs: 'remover', weight: 1.1, heat: 0.5 },
+  minefield: { needs: null, weight: 1.0, heat: 0.3 },
+  escort: { needs: 'pirates', weight: 1.1, heat: 0.4 },
 };
 // whether a side can have an event
 export const canHave = (side, e) => Boolean(side) && (e.needs === null || side.has(e.needs));

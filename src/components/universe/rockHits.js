@@ -21,10 +21,10 @@
 // near a ring at all
 
 export const ROCK_HIT = {
-  fast: 23, // past this (the boost, 20, and a little), a rock does damage
+  fast: 14, // past this (the boost, 12, and a little), a rock does damage
   base: 6, // shields a hit takes, at least
   perSize: 7, // and for each unit of the rock's size
-  perSpeed: 0.035, // and for each unit a second past `fast`
+  perSpeed: 0.05, // and for each unit a second past `fast` (a rock at the pulse drive's 300 is as bad as ever)
   most: 45, // at most, a hit
   cool: 0.35, // seconds after a hit before another counts
   gone: 60, // seconds a smashed rock is gone for

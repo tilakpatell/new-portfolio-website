@@ -297,3 +297,56 @@ describe('a world seen from across the map', () => {
     expect(shader.fragmentShader).toMatch(/uKeySunW/);
   });
 });
+
+describe('a planet’s near maps', () => {
+  it('knows its own maps by name', async () => {
+    const { mapsOf } = await import('./planets');
+    const me = mapsOf('middleearth');
+    expect(me).toEqual(expect.arrayContaining(['middleearth', 'middleearth-normal', 'middleearth-clouds']));
+    expect(me).not.toContain('marvel');
+    // (Earth's world is 'travel'; its maps are 'earth')
+    expect(mapsOf('travel')).toEqual(expect.arrayContaining(['earth', 'earth-clouds']));
+    expect(mapsOf('home')).toEqual([]);
+  });
+  it('near, a desktop gets the -hq copies of what has one, and only those', async () => {
+    const { nearSet } = await import('./planets');
+    const set = nearSet('middleearth', 'high');
+    expect(set.map((m) => m.file).sort()).toEqual(['middleearth-clouds-hq.webp', 'middleearth-hq.webp', 'middleearth-normal-hq.webp']);
+    expect(set.find((m) => m.name === 'middleearth')).toMatchObject({ colour: true });
+    expect(set.find((m) => m.name === 'middleearth-normal')).toMatchObject({ colour: false });
+    // a weak card's desktop: the standard file over its -sm
+    expect(nearSet('middleearth', 'mid').map((m) => m.file)).toContain('middleearth.webp');
+    // (Cybertron has nothing finer than what it wears)
+    expect(nearSet('transformers', 'high')).toEqual([]);
+    expect(nearSet('middleearth', 'low')).toEqual([]);
+  });
+  it('swaps a built planet’s maps in place and puts them back', async () => {
+    const gradient = { addColorStop() {} };
+    const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+    const THREE = await import('three');
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    const T = { middleearth: new THREE.Texture(), 'middleearth-normal': new THREE.Texture(), 'middleearth-clouds': new THREE.Texture(), 'middleearth-rough': new THREE.Texture() };
+    T.middleearth.anisotropy = 16;
+    T.middleearth.colorSpace = THREE.SRGBColorSpace;
+    const p = buildPlanet(byId('middleearth'), T);
+    const clouds = [];
+    p.group.traverse((o) => o.isMesh && o.material?.map === T['middleearth-clouds'] && clouds.push(o));
+    const T2 = { middleearth: new THREE.Texture(), 'middleearth-clouds': new THREE.Texture() };
+    p.swapMaps(T2);
+    expect(p.body.material.map).toBe(T2.middleearth);
+    expect(T2.middleearth.anisotropy).toBe(16);
+    expect(T2.middleearth.colorSpace).toBe(THREE.SRGBColorSpace);
+    // (what has no near copy keeps its own)
+    expect(p.body.material.normalMap).toBe(T['middleearth-normal']);
+    expect(clouds[0].material.map).toBe(T2['middleearth-clouds']);
+    // the clouds' shadows on the ground read the near copy too
+    expect(p.body.material.userData.ground.uClouds.value).toBe(T2['middleearth-clouds']);
+    p.swapMaps(null);
+    expect(p.body.material.map).toBe(T.middleearth);
+    expect(clouds[0].material.map).toBe(T['middleearth-clouds']);
+    expect(p.body.material.userData.ground.uClouds.value).toBe(T['middleearth-clouds']);
+    vi.unstubAllGlobals();
+  });
+});

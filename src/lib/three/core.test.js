@@ -49,6 +49,15 @@ describe('the core surfaces every world wears', () => {
     wear(basic, scan);
     expect(basic.userData.core).toBeUndefined();
   });
+
+  it('goes on a copy of a worn material made later (the copy isn’t marked as worn)', () => {
+    const m = new THREE.MeshStandardMaterial();
+    wear(m, scan, { metres: 3 });
+    const copy = m.clone();
+    expect(copy.userData.core).toBeUndefined();
+    wear(copy, scan, { metres: 3 });
+    expect(copy.userData.core.uCoreScale.value).toBeCloseTo(1 / 3);
+  });
 });
 
 describe('a world dressed in the core kit', () => {

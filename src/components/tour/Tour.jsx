@@ -1,7 +1,9 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { RiArrowLeftLine, RiArrowRightLine, RiCheckLine } from 'react-icons/ri';
-import { TOURS, textOf } from './steps';
+import { textOf } from './steps';
+import { rowsFor } from './briefs';
+import { KeyTable } from '../guide/KeyTable';
 import { litBox, placeCard, resolveSteps } from '../../lib/tour';
 import { shortcutLabel } from '../../lib/palette';
 import { prefersReducedMotion } from '../../lib/hooks';
@@ -12,7 +14,8 @@ import './tour.css';
 // is. Back, Next and Skip, or ← → Enter and Esc. It's a modal dialog: focus
 // stays in the card, the page under it takes no clicks or keys (the universe
 // doesn't fly), and focus goes back where it was at the end. Loaded the first
-// time a tour starts (TourHost); the stops are in steps.js.
+// time a tour starts (TourHost); the stops are in steps.js, and a world's
+// basics (kind 'brief', the same cards with its keys on them) in briefs.js.
 
 const PAD = 6; // round the lit box's target
 
@@ -40,9 +43,17 @@ function inertBehind() {
 }
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const coarse = () => window.matchMedia?.('(pointer: coarse)').matches ?? false;
 
-export default function Tour({ name, onEnd }) {
-  const [steps] = useState(() => resolveSteps(TOURS[name] ?? TOURS.classic, (at) => Boolean(targetOf(at))));
+const WORDS = {
+  tour: { count: 'Tour', skip: 'Skip the tour', done: 'Done' },
+  brief: { count: 'The basics', skip: 'Skip the basics', done: 'Let’s go' },
+};
+
+export default function Tour({ list, kind = 'tour', onEnd }) {
+  const [steps] = useState(() => resolveSteps(list, (at) => Boolean(targetOf(at)), kind === 'brief'));
+  const [touch] = useState(coarse);
+  const words = WORDS[kind] ?? WORDS.tour;
   const [i, setI] = useState(0);
   const [box, setBox] = useState(null); // the lit box, or null for a card in the middle
   const [pos, setPos] = useState(null); // the card's { side, top, left }
@@ -135,8 +146,9 @@ export default function Tour({ name, onEnd }) {
   }, [step]);
 
   const text = textOf(step, ctx);
+  const rows = rowsFor(step, touch);
   return createPortal(
-    <div className="tour" data-lit={box ? '' : undefined}>
+    <div className="tour" data-kind={kind} data-lit={box ? '' : undefined}>
       {/* the clicks on the page under it stop here */}
       <div className="tour-veil" aria-hidden="true" />
       {box && <div className="tour-spot" aria-hidden="true" style={box} />}
@@ -151,7 +163,7 @@ export default function Tour({ name, onEnd }) {
         style={pos ? { top: pos.top, left: pos.left } : { visibility: 'hidden' }}
       >
         <p className="tour-count">
-          Tour · {i + 1} of {steps.length}
+          {words.count} · {i + 1} of {steps.length}
         </p>
         <h2 id={`${ids}-title`} className="tour-title">
           {step.title}
@@ -159,6 +171,7 @@ export default function Tour({ name, onEnd }) {
         <p id={`${ids}-text`} className="tour-text">
           {text}
         </p>
+        {rows && <KeyTable rows={rows} className="guide-keys tour-keys" />}
         <ol className="tour-dots" aria-hidden="true">
           {steps.map((s, n) => (
             <li key={s.id} data-on={n === i ? '' : undefined} data-past={n < i ? '' : undefined} />
@@ -167,7 +180,7 @@ export default function Tour({ name, onEnd }) {
         <div className="tour-buttons">
           {!last && (
             <button type="button" className="tour-skip" onClick={() => onEnd('skipped')}>
-              Skip the tour
+              {words.skip}
             </button>
           )}
           {i > 0 && (
@@ -178,7 +191,7 @@ export default function Tour({ name, onEnd }) {
           <button ref={next} type="button" className="btn btn-primary btn-sm" onClick={forward}>
             {last ? (
               <>
-                <RiCheckLine className="h-4 w-4" aria-hidden="true" /> Done
+                <RiCheckLine className="h-4 w-4" aria-hidden="true" /> {words.done}
               </>
             ) : (
               <>

@@ -2,6 +2,8 @@
 // plain vector sums on { x, y, z }. Pure, so the brains and npcRules.js
 // (which runs them) are tested in Node.
 
+import { PACE } from '../../ship';
+
 export const NPC = {
   seen: 40, // map units: inside this, the first time, it says it's seen you
   park: 3, // past a station's surface, where a merchant parks
@@ -20,12 +22,14 @@ export const NPC = {
   forget: 10, // …for this long, and it's let go of
   leaveFar: 90, // one leaving is gone once this far from you
   leaveFor: 14, // or after this long
-  hold: 3, // under this speed you've cut your engines (an inspector's or a trickster's ask)
+  hold: 3 * PACE, // under this speed you've cut your engines (an inspector's or a trickster's ask)
   scan: 5, // seconds held still before an inspector has scanned you (or a trickster has looked you over)
   patience: 14, // seconds an inspector waits for you to stop before it comes after you
   toll: 10, // and a trickster
   ignore: 40, // further off than this from one waiting on you, and you've run
-  run: 12, // or faster than this for a moment (the boost, and more)
+  run: 12 * PACE, // or faster than this for a moment (well past cruise: boosting)
+  overtake: 6 * PACE, // how much faster than you one keeping up with you goes, to get alongside
+  headOff: 8 * PACE, // and one cutting in ahead of you
   wanted: 2.5, // heat (what you've shot down lately) at which an inspector's scan finds you wanted
   pass: 5, // seconds between a nemesis's passes
   jink: 1.4, // seconds in front of your nose before a nemesis jinks away
