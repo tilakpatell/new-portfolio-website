@@ -15,6 +15,7 @@ export const ACHIEVEMENTS = {
   konami: { name: 'Cheat code', desc: 'Entered the Konami code' },
   tour: { name: 'Shown around', desc: 'Took the tour of the site' },
   deathstar: { name: 'Fully operational', desc: 'Found the Death Star plans' },
+  'ds-aboard': { name: 'Boarding party', desc: 'Came aboard the Death Star' },
   trench: { name: 'Use the Force', desc: 'Hit the exhaust port in the trench run' },
   rebels: { name: 'Medal of Yavin', desc: 'Saved Yavin 4 in the Battle of Yavin' },
   empire: { name: 'Fear will keep them in line', desc: 'Let the Empire win at Yavin' },
@@ -312,6 +313,7 @@ export function AchievementProvider({ children }) {
     }
     if (pathname === '/terminal') unlock('hacker');
     if (pathname === '/deathstar') unlock('deathstar');
+    if (pathname === '/deathstar/inside') unlock('ds-aboard');
     if (pathname === '/resume') unlock('resume');
   }, [pathname, unlock]);
 
