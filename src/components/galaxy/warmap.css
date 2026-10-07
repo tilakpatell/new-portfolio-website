@@ -43,8 +43,8 @@
   position: absolute;
   display: grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   translate: -50% -50%;
   border-radius: 50%;
   background: rgb(2 6 16 / 0.9);
@@ -52,13 +52,15 @@
   color: var(--by);
   transition: left 1s linear, top 1s linear;
 }
-.holomap-fleets .holomap-emblem { width: 12px; height: 12px; }
-.holomap-fleets > li[data-kind='decisive'] { width: 24px; height: 24px; box-shadow: 0 0 0 1.5px var(--by), 0 0 0 3.5px #020611, 0 0 0 5px var(--by), 0 0 14px color-mix(in srgb, var(--by) 60%, transparent); }
-.holomap-fleets > li[data-kind='decisive'] .holomap-emblem { width: 14px; height: 14px; }
+.holomap-fleets .holomap-emblem { width: 11px; height: 11px; }
+.holomap-fleets > li[data-kind='decisive'] { width: 22px; height: 22px; box-shadow: 0 0 0 1.5px var(--by), 0 0 0 3.5px #020611, 0 0 0 5px var(--by), 0 0 14px color-mix(in srgb, var(--by) 60%, transparent); }
+.holomap-fleets > li[data-kind='decisive'] .holomap-emblem { width: 13px; height: 13px; }
 
 /* ── The systems: a ring in the holder's colour; fought over, the ring is
    the attacker's share (from the top, clockwise) and the holder's, with a +
-   for a front and a − for an attack, opposite the name ── */
+   for a front or a − for an attack on a badge under it (under, not beside
+   the dot: beside, Bespin's sat on Hoth's dot), and a dot over it where you
+   fought ── */
 .holomap-dot { position: relative; }
 .holomap-systems li[data-held] .holomap-dot { box-shadow: 0 0 0 2px #020611, 0 0 0 4px var(--held); }
 .holomap-systems li:is([data-front], [data-attack]) .holomap-dot { box-shadow: none; animation: holomap-contest 1.6s ease-in-out infinite; }
@@ -77,18 +79,27 @@
 .holomap-key-ring::after {
   content: '+';
   position: absolute;
-  top: -14px;
-  left: -11px;
+  left: 50%;
+  top: calc(100% + 1px);
+  width: 11px;
+  height: 11px;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: #020611;
+  box-shadow: 0 0 0 1px var(--by);
   color: var(--by);
-  font: 800 12px/1 var(--font-mono);
-  text-shadow: 0 0 3px #020611, 0 0 2px #020611, 0 0 1px #020611;
+  font: 800 10px/11px var(--font-mono);
+  text-align: center;
 }
 .holomap-systems li[data-attack] .holomap-dot::after { content: '−'; }
-.holomap-systems li[data-side='left'] .holomap-dot::after { left: auto; right: -12px; }
+/* (where it's crowded under a ring, over it, or beside it away from the name: warMap.js's badgeOf) */
+.holomap-systems li[data-badge='above'] .holomap-dot::after { top: auto; bottom: calc(100% + 1px); }
+.holomap-systems li[data-badge='side'] .holomap-dot::after { top: 50%; left: auto; right: calc(100% + 1px); translate: 0 -50%; }
+.holomap-systems li[data-badge='side'][data-side='left'] .holomap-dot::after { right: auto; left: calc(100% + 1px); }
 @keyframes holomap-contest { 50% { box-shadow: 0 0 10px 4px color-mix(in srgb, var(--by) 50%, transparent); } }
 .holomap-systems li[data-decisive] .holomap-dot { outline: 1.5px solid var(--by); outline-offset: 9px; }
-/* (where you fought: a dot under it) */
-.holomap-you { position: absolute; left: 50%; bottom: -10px; width: 5px; height: 5px; translate: -50% 0; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px #020611; }
+.holomap-you { position: absolute; left: 50%; top: -11px; width: 5px; height: 5px; translate: -50% 0; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px #020611; }
+.holomap-systems li[data-badge='above'] .holomap-you { top: auto; bottom: -11px; }
 .holomap-star { margin-left: 0.25rem; color: #ffd36a; font-weight: 700; text-shadow: 0 0 6px #000; }
 .holomap-fight { margin-left: 0.2rem; color: #ffb347; font-weight: 700; text-shadow: 0 0 6px #000; }
 
@@ -126,8 +137,8 @@
 .holomap-key-mark { width: 28px; height: 14px; }
 .holomap-key-fleet { display: grid; place-items: center; width: 18px; height: 18px; margin-left: 5px; border-radius: 50%; background: #020611; box-shadow: 0 0 0 1.5px var(--by); color: var(--by); }
 .holomap-key-fleet .holomap-emblem { width: 11px; height: 11px; }
-.holomap-key-ring { position: relative; width: 12px; height: 12px; margin: 4px 0 2px 9px; border-radius: 50%; background: radial-gradient(circle, #bfeaff 0 2.5px, transparent 3.5px); }
-.holomap-key-ring::after { content: attr(data-glyph); top: -5px; left: auto; right: -14px; }
+.holomap-key-ring { position: relative; width: 12px; height: 12px; margin: 2px 0 12px 9px; border-radius: 50%; background: radial-gradient(circle, #bfeaff 0 2.5px, transparent 3.5px); }
+.holomap-key-ring::after { content: attr(data-glyph); }
 .holomap-key-glyphs { white-space: nowrap; font-size: 0.8rem; }
 .holomap-key-glyphs b { margin: 0; }
 .holomap-key-you { display: inline-block; width: 5px; height: 5px; margin-left: 3px; border-radius: 50%; background: #fff; vertical-align: middle; }
@@ -144,10 +155,10 @@
   .holomap-strip-n { font-size: 0.7rem; }
   .holomap-legend { left: 8px; bottom: 8px; }
   .holomap-legend-panel { max-height: calc(100cqw - 56px); }
-  .holomap-fleets > li { width: 16px; height: 16px; }
-  .holomap-fleets .holomap-emblem { width: 10px; height: 10px; }
-  .holomap-fleets > li[data-kind='decisive'] { width: 19px; height: 19px; }
-  .holomap-fleets > li[data-kind='decisive'] .holomap-emblem { width: 11px; height: 11px; }
+  .holomap-fleets > li { width: 13px; height: 13px; }
+  .holomap-fleets .holomap-emblem { width: 8px; height: 8px; }
+  .holomap-fleets > li[data-kind='decisive'] { width: 16px; height: 16px; }
+  .holomap-fleets > li[data-kind='decisive'] .holomap-emblem { width: 9px; height: 9px; }
 }
 
 /* ── The war card, in the side panel ── */
