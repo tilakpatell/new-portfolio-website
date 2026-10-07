@@ -13,6 +13,11 @@ describe('speakerFor', () => {
     expect(speakerFor(['comms', 'Hi.'], crew)).toBe(COMMS);
     expect(speakerFor(['comms', 'Hi.', undefined, { name: 'Admiral Ackbar', color: '#ff8844' }], crew)).toEqual({ ...COMMS, name: 'Admiral Ackbar', color: '#ff8844' });
   });
+  it('a named comms line with a voice on it is made in that voice, with the name and colour as they were', () => {
+    const speaker = speakerFor(['comms', 'Hi.', undefined, { name: 'Admiral Piett', color: '#8899aa', voiced: 'piett' }], crew);
+    expect(speaker).toEqual({ ...COMMS, name: 'Admiral Piett', color: '#8899aa', voiced: 'piett' });
+    expect(speaker.voice).toBeNull(); // (no blips: the radio's)
+  });
   it('a known caller’s comms line has their name on it and their voice to be made in, and no blips', () => {
     const cruiser = crewById('cruiser');
     const [hello] = linesFor(cruiser, 'npc', 'jerry', 'hello');
