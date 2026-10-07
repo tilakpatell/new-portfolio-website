@@ -277,7 +277,8 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
       </aside>
     );
   }
-  const Card = CARDS[universe.id] ?? STATION_CARDS[universe.id];
+  // (a moon of the Rick and Morty system shows its crew's card: it's a place from that show)
+  const Card = CARDS[universe.id] ?? STATION_CARDS[universe.id] ?? (universe.kind === 'moon' ? CARDS[universe.crew] : null) ?? null;
   const core = universe.kind === 'core';
   const before = byId(prev(universe.id));
   const after = byId(next(universe.id));
@@ -308,9 +309,11 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
       <button type="button" className="btn btn-primary universe-enter mt-4" onClick={onEnter} disabled={leaving}>
         {crew ? (universe.go ?? (core ? 'Dock at' : 'Land on')) : 'Go to'} {universe.place} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
       </button>
-      <ul className="universe-card mt-4" key={universe.id}>
-        <Card />
-      </ul>
+      {Card && (
+        <ul className="universe-card mt-4" key={universe.id}>
+          <Card />
+        </ul>
+      )}
       <Exits onClassic={onClassic} />
     </aside>
   );
