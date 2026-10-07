@@ -388,6 +388,8 @@ export function layBattle(sys, battle, { now = battle.start, tier = 'high' } = {
     elapsed: Math.max(0, Math.round((now - battle.start) / 1000)),
     perSide: kind.line ? perSide(tier) : Math.round(perSide(tier) * 1.5),
     seed: battle.seed,
+    // (the planet, for what a plan puts on it: an ion cannon)
+    planet: { at: [0, 0, 0], r: R },
     objectivesOn,
     ace,
     runners,

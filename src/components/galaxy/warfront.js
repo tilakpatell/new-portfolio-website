@@ -51,13 +51,14 @@
 
 import { createBattle } from '../universe/battle';
 import { createDirector } from '../universe/battleDirector';
-import { planFor } from '../universe/battlePlan';
+import { TYPES } from '../universe/battleObjectives';
 import { createBattleScene } from '../universe/battleScene';
 import { createTally } from '../universe/tally';
 import { GCW, battleAt, campaignAt, history, seeded, teamsOf } from './gcw';
 import { teamFor } from './allegiance';
 import { DEFAULT_WAR, WARS, otherSide, warOfSide } from './sides';
 import { layBattle } from './battles';
+import { planOf } from './battlePlans';
 import { piecesFor } from './warpieces';
 import { addPoints, addWin, receiveWar, warMessage, warTally, warVersion } from './warState';
 
@@ -86,6 +87,9 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
   let sharedKey = '';
   const here = new Set(); // the sides you've counted yourself in on, this battle
   let saidRunners = false; // (the runners' line, said once a battle)
+  let saidStage = -1; // the last stage whose line's been said (as it opened)
+  const saidSide = new Set(); // and the side objectives' (a wave in, an ace up)
+  let planned = new Set(); // the tally keys the battle's plan reads (yours on them count for less the more of you)
   let shown = false;
   let joined = false; // in among it (said once a battle)
   let tookPart = false; // you were in it at some point (a win's yours too)
@@ -160,10 +164,18 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     // side's to take whoever attacks: an enemy Star Destroyer's reactor,
     // Endor's generator)
     mine: (key, damage) => {
-      if (attacking()) addFight(key, damage);
+      if (attacking()) addFight(key, planned.has(key) ? damage / scale() : damage);
     },
     mineAs: (theirs, key, damage) => {
-      if (team !== null && team === theirs) addFight(key, damage);
+      if (team !== null && team === theirs) addFight(key, planned.has(key) ? damage / scale() : damage);
+    },
+    // one of the battle's plan's objectives a set piece holds (Endor's
+    // generator and reactor, Scarif's gate, Hoth's cannon), as the director
+    // has it: its hp, whether it's down, whether its stage is open, and the one on now
+    objective: (id) => {
+      const st = shared();
+      const o = st?.objectives.find((x) => x.id === id);
+      return o ? { ...o, open: Boolean(st.stages[o.stage]?.open), active: st.stage === o.stage } : null;
     },
     event: (id) => sayEvent(id),
     points: (n) => score(n),
@@ -248,6 +260,9 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     skew = 0;
     here.clear();
     saidRunners = false;
+    saidStage = -1;
+    saidSide.clear();
+    planned = new Set();
     joined = false;
     tookPart = false;
     ended = false;
@@ -265,17 +280,21 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     fight.reset(b.id);
     version += 1;
     on = b;
-    director = createDirector({ plan: planFor({ id: b.id, kind: laid.kind, attacker: laid.attacker, objectivesOn: laid.objectivesOn, runners: laid.runners, length: laid.clock }), seed: b.id });
+    director = createDirector({ plan: planOf(sys, b, laid), seed: b.id });
+    planned = new Set(director.keys());
+    const aces = director.plan.side.filter((o) => o.type === 'ace');
     battle = createBattle({
       ...laid,
       rand: seeded(b.id),
       plan: director.plan,
       director: { state: shared },
-      // your shot on an objective (the attacker's to take) or on one of the
-      // other side's runners (whoever's they are), each pilot's worth less
-      // the more of them there are
+      // (the plan's aces, launched at their time: battleStages.js)
+      ace: Object.fromEntries(aces.map((a) => [a.team, { kind: a.kind, name: a.name, hp: a.hp }])),
+      // your shot on an objective (the attacker's to take), on one of the
+      // other side's runners or on their ace (whoever's they are), each
+      // pilot's worth less the more of them there are
       onMine: (id, damage) => {
-        if (attacking() || id.startsWith('r:')) addFight(id, damage / scale());
+        if (attacking() || id.startsWith('r:') || id.startsWith('ace:')) addFight(id, damage / scale());
       },
     });
     team = teamFor(side(), b);
@@ -388,18 +407,41 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
         saidRunners = true;
         say(laid.kind === 'blockade' ? 'blockade' : 'runners');
       }
+      // each stage's line as it opens (the gravity wells, a zone to hold, a ship to board…), and a wave's and an ace's as they come
+      const stage = director.plan.stages[st.stage];
+      if (stage && st.open && st.stage > saidStage && !battle.over && team !== null) {
+        saidStage = st.stage;
+        const key = stage.crew ?? TYPES[stage.type]?.crew;
+        if (key) say(key);
+      }
+      director.plan.side.forEach((o, i) => {
+        const up = o.type === 'wave' ? st.waves.find((w) => w.id === o.id)?.launched && !st.waves.find((w) => w.id === o.id)?.arrived : st.aces.find((a) => a.id === o.id)?.launched;
+        if (!up || saidSide.has(i) || battle.over || team === null) return;
+        saidSide.add(i);
+        say(TYPES[o.type].crew);
+      });
+      // a zone of the stage that's open, held: the seconds you're in it, for your side
+      if (live && team !== null && !battle.over)
+        for (const o of battle.objectives ?? []) {
+          if (!o.zone || !o.alive || !battle.isOpen?.(o)) continue;
+          if (Math.hypot(live.x - o.pos.x, live.y - o.pos.y, live.z - o.pos.z) < o.zone) addFight(`${o.key}:${attacking() ? 'a' : 'd'}`, dt / scale());
+        }
       for (const e of events) {
         if (e.type === 'hurt') hurt += e.damage;
         else if (e.type === 'down' && e.mine && team !== null && e.team !== team) {
           if (e.ace) {
             score(GCW.points.ace, ms);
             say('ace');
+            // (the attacker's ace brought down by a defender: five intercepts' worth on the objective under attack)
+            const target = shared()?.target;
+            if (!attacking() && target && !battle.over) addFight(`g:${target}`, 5 / scale());
           } else if (e.role === 'bomber' && !attacking()) {
             score(GCW.points.intercept, ms);
             say('intercept');
-            // (and the objective the attacker's AI is on, shored up)
+            // (and the objective the attacker's AI is on, shored up; a wave's, one fewer of it to strike)
             const target = shared()?.target;
             if (target && !battle.over) addFight(`g:${target}`, 1 / scale());
+            if (e.wave && !battle.over) addFight(e.wave, 1 / scale());
           } else score(GCW.points.kill, ms);
           // (and one of your side's runners near it, covered)
           const r = !battle.over && battle.runners.find((x) => x.shared && x.alive && x.team === team && Math.hypot(x.pos.x - e.at.x, x.pos.y - e.at.y, x.pos.z - e.at.z) < FRONT.cover);
@@ -464,6 +506,10 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     },
     get director() {
       return director;
+    },
+    // (an Interdictor's gravity wells standing: nobody's boosting out of this one)
+    get interdicted() {
+      return Boolean(battle?.interdicted && !battle.over);
     },
     get on() {
       return on;

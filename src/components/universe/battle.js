@@ -148,6 +148,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   muster(k, n, ace);
   holdCapitals(k);
   const stages = decides ? null : createStages(k, plan, director);
+  if (stages) b.isOpen = stages.open; // (whether a plan's objective is open to be taken now: warfront.js's zones)
   const runs = createRunners(k, runners, stages && plan.runners ? { plan: plan.runners, state: director.state } : null);
 
   // ── the bolts ──

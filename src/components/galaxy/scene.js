@@ -1265,8 +1265,8 @@ export async function create(canvas, ctx) {
       }
     }
     if (state.keys.fire || state.fireBtn) fire();
-    // (under the Interdictor's hold the sublight drive stays shut: the boost is the boost)
-    const { ship: stepped, events } = step(state.ship, state.held ? { ...input, interdicted: true } : input, dt, state.space.solids, state.space);
+    // (under the Interdictor's hold, or a battle's gravity wells still up, the sublight drive stays shut: the boost is the boost)
+    const { ship: stepped, events } = step(state.ship, state.held || war?.interdicted ? { ...input, interdicted: true } : input, dt, state.space.solids, state.space);
     let ship = stepped;
     // the tractor beam (Alderaan's Death Star): drawn in, and harder the nearer
     const tr = state.world.tractor;
