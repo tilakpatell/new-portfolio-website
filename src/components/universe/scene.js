@@ -106,7 +106,7 @@ import { grainFor } from '../../lib/three/noise';
 import { createFlare, flareWeight, occluded } from '../../lib/three/flare';
 import { exposureFor, sunShareOf } from '../../lib/three/exposure';
 import { houseOn } from '../../lib/three/house';
-import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
+import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, driveById, hyperState, parkFor, riftExit } from './nav';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
 import { AHEAD_OF, factionsOf, kindsOf, pick as pickFaction, sideFor, sideOf, wingOf } from './sides';
@@ -2832,12 +2832,15 @@ export async function create(canvas, ctx) {
 
   // what the director sets going
   // on the way somewhere (out in the open at speed), a pack comes in ahead
-  // of you and interdicts you: an ambush
+  // of you and interdicts you: an ambush (laid where you'll be once they've
+  // pulled the drive down, not where you are: at the pulse drive's speed
+  // that's a few hundred units on)
   const travelling = (s) => openness(s.x, s.y, s.z) > 0.5 && Math.abs(s.speed) > 40;
+  const leadOf = (s) => holdReach(s, { ramp: INTERDICT_IN, solids: siegeSt.down ? SOLIDS_OPEN : SOLIDS });
   const happen = (id, ship) => {
     const side = sideFor(state.kind);
     if (!side) return;
-    const ambush = travelling(ship) ? { ahead: true, interdict: true } : {};
+    const ambush = travelling(ship) ? { ahead: true, interdict: true, lead: leadOf(ship) } : {};
     // (more of them, and the ace more often, the more trouble you've made; the first pack is a small one)
     const strength = { heat: state.heat, first: hunts === 0 };
     if (id === 'hunt' || id === 'council' || id === 'roadblock') hunts += 1;
@@ -2845,8 +2848,9 @@ export async function create(canvas, ctx) {
     else if (id === 'council') pieces.portals(hunters.pack(pickFaction(side, 'council'), ship, { ...ambush, ...strength }));
     else if (id === 'roadblock') {
       // the DEA across your bows: in ahead, and holding you there
-      hunters.pack('dea', ship, { ahead: true, interdict: true, ace: Math.random() < 0.5, ...strength });
-      pieces.roadblock(ship); // (and a helicopter over it, its searchlight on you)
+      const lead = ambush.lead ?? 0;
+      hunters.pack('dea', ship, { ahead: true, interdict: true, lead, ace: Math.random() < 0.5, ...strength });
+      pieces.roadblock(ship, lead); // (and a helicopter over it, its searchlight on you)
       emit({ type: 'event', id: 'roadblock' });
     } else if (id === 'destroyer') {
       if (!pieces.destroyer(ship, side.capitalShip)) return;
