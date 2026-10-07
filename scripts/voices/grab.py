@@ -27,6 +27,7 @@ unless you pass --refresh.
 """
 
 import argparse
+from functools import lru_cache
 import hashlib
 import json
 import logging
@@ -190,9 +191,16 @@ def analyse(src, vocals):
     return segs
 
 
+@lru_cache(32)
+def heard(path):
+    """A source's vocals at the judge's rate, kept for the next candidate from the same scene
+    (each voice checks dozens, mostly from a few scenes, and decoding a whole scene is slow)."""
+    return read(path, SR)
+
+
 def stretched(c, vocals):
     """A candidate's audio in overlapping stretches of a second and a half (pick.stretches)."""
-    wav = read(vocals[c["source"]], SR)[int(c["start"] * SR) : int(c["end"] * SR)]
+    wav = heard(str(vocals[c["source"]]))[int(c["start"] * SR) : int(c["end"] * SR)]
     return [wav[int(a * SR) : int(b * SR)] for a, b in pick.stretches(len(wav) / SR)]
 
 
