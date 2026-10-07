@@ -267,6 +267,9 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     quality.reset?.();
     quality.hold?.(WARM_UP);
     made.setRatio?.(ratioFor(module));
+    // (a handover's old world still drawing in the canvas: drawn again at
+    // the new size before the browser next paints, not shown cleared)
+    if (current) loop.kick();
     rt.host = host;
     assets.owner?.(module.id);
     let world = validateWorld(await module.create(rt, props));

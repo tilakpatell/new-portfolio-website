@@ -17,13 +17,15 @@ const fakeBackend = () => ({
 const fakeLoop = () => {
   let fn = null;
   let can = () => true;
+  const ctl = { kick: vi.fn(), stop: vi.fn() };
   return {
     create: (step, opts) => {
       fn = step;
       can = opts?.can ?? can;
-      return { kick: vi.fn(), stop: vi.fn() };
+      return ctl;
     },
     tick: (now) => (can() ? fn(now) : false),
+    ctl,
   };
 };
 const fakeHost = () => ({ prepend: vi.fn(), getBoundingClientRect: () => ({ width: 640, height: 360 }), appendChild: vi.fn() });
@@ -515,6 +517,25 @@ describe('createRuntime', () => {
     const { rt } = make({ quality, makeBackend: () => gfx });
     await rt.mount({ id: 'galaxy', ratio: 1.5, create: () => fakeWorld() }, {}, fakeHost());
     expect(order).toEqual(['reset', 'hold 3000', 'setRatio 1.5']);
+  });
+
+  it('a handover whose new ratio resizes the canvas under the old world asks for a frame, so the old world is drawn again before the next paint', async () => {
+    const order = [];
+    const quality = fakeQuality();
+    let scale = 0.72;
+    quality.ratioUnder = (cap) => Math.min(cap ?? Infinity, 2) * scale;
+    quality.reset = () => (scale = 1);
+    const gfx = fakeBackend();
+    gfx.setRatio = vi.fn((r) => order.push(`setRatio ${r}`));
+    const { rt, loop } = make({ quality, makeBackend: () => gfx });
+    await rt.mount({ id: 'surface', ratio: 1.5, create: () => fakeWorld({ wants: () => true }) }, {}, fakeHost());
+    loop.tick(0);
+    scale = 0.72; // (it struggled: softened)
+    loop.ctl.kick.mockImplementation(() => order.push('kick'));
+    order.length = 0;
+    rt.handover({ id: 'galaxy', ratio: 1.5, create: () => fakeWorld({ wants: () => true, ready: new Promise(() => {}) }) }, {}, fakeHost());
+    await flush();
+    expect(order.slice(0, 2)).toEqual(['setRatio 1.5', 'kick']);
   });
 
   it("the governor isn't fed the old world's frames while the next world is made", async () => {
