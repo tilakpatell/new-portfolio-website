@@ -157,7 +157,8 @@ describe('a script across pages', () => {
       expect(readyFor('now', probe({ covered: true, modal: true }))).toBe(true);
     });
 
-    it('waits for the cover and any dialog', () => {
+    it('waits for the page itself, the cover and any dialog', () => {
+      expect(readyFor('world', probe({ loading: true }))).toBe(false);
       expect(readyFor('feed', probe({ covered: true }), 'career')).toBe(false);
       expect(readyFor('map', probe({ modal: true }))).toBe(false);
     });
@@ -165,6 +166,8 @@ describe('a script across pages', () => {
     it('waits for a world’s gate, then goes, 3D or light', () => {
       expect(readyFor('world', probe({ gate: true }))).toBe(false);
       expect(readyFor('world', probe({ has: () => false }))).toBe(true);
+      expect(readyFor('world', probe({ has: () => false }), 'hud')).toBe(false);
+      expect(readyFor('world', probe({ has: (n) => n === 'hud' }), 'hud')).toBe(true);
     });
 
     it('waits for the first stop’s target on a page, and the panel on the map', () => {

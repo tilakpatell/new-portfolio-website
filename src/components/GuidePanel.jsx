@@ -104,6 +104,26 @@ function SiteGuide({ onGo }) {
         >
           For recruiters
         </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => {
+            onGo();
+            openTour('player');
+          }}
+        >
+          For players
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => {
+            onGo();
+            openTour('mixed');
+          }}
+        >
+          Both
+        </button>
       </div>
       <section className="mt-4" aria-label="Shortcuts">
         <KeyTable rows={[[shortcutLabel().replace(' ', '+'), 'Search and go anywhere (the command palette)'], ...SHORTCUTS]} />

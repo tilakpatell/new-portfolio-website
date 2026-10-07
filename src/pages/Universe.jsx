@@ -186,7 +186,23 @@ export default function Universe({ ask = false }) {
     };
   }, []);
 
-  const select = useCallback((id) => navigate(id ? `/universe/${id}` : '/universe', { replace: true }), [navigate]);
+  // (not once the page is on its way out: the scene's last word as it's torn
+  // down, or a key pressed on the way, mustn't pull the address back to the
+  // map from the page it's leaving for)
+  const gone = useRef(false);
+  useEffect(() => {
+    gone.current = false;
+    return () => {
+      gone.current = true;
+    };
+  }, []);
+  const select = useCallback(
+    (id) => {
+      if (gone.current) return;
+      navigate(id ? `/universe/${id}` : '/universe', { replace: true });
+    },
+    [navigate],
+  );
 
   const pickShip = (id) => {
     audioContext(); // inside the press, so the engine can start

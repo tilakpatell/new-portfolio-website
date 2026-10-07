@@ -122,17 +122,18 @@ export function onLeg(leg, pathname) {
 export const nearLeg = (leg, pathname) => onLeg(leg, pathname) || (Boolean(leg?.path) && FEED.test(leg.path) && FEED.test(pathname));
 
 // Whether a leg's page is ready for its first stop, from what the runner
-// sees: `probe` is { covered (the intro's cover), gate (a world asking before
+// sees: `probe` is { loading (the page itself still on its way), covered
+// (the intro's cover), gate (a world asking before
 // it downloads), modal (a dialog up), has(name) (a data-tour target showing) }.
-// 'now' is at once; 'feed' and 'map' wait for the page's own targets and for
-// the cover to lift; 'world' waits for the gate's answer and the cover; a
-// function decides for itself; anything else waits for the first target.
+// 'now' is at once; a function decides for itself; the rest wait for the
+// cover to lift and the first stop's target to show, 'map' for the panel
+// too, and 'world' for the gate's answer (3D or light, either way).
 export function readyFor(ready, probe, firstAt) {
   if (ready === 'now') return true;
   if (typeof ready === 'function') return Boolean(ready(probe));
-  if (probe.modal || probe.covered) return false;
-  if (ready === 'world') return !probe.gate;
-  if (ready === 'map') return probe.has('panel');
+  if (probe.loading || probe.modal || probe.covered) return false;
+  if (ready === 'world' && probe.gate) return false;
+  if (ready === 'map' && !probe.has('panel')) return false;
   return !firstAt || probe.has(firstAt);
 }
 

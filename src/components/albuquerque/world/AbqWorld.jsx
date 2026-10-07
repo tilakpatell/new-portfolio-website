@@ -570,7 +570,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
       <canvas ref={canvas} className="abq-world-canvas" data-on={gl === 'on' || undefined} aria-label="Albuquerque from above Walt’s Aztek: the desert, the Sandias, and the roads into town" role="img" />
       {gl === 'loading' && <p className="abq-world-loading">Driving into Albuquerque…</p>}
 
-      <div className="abq-hud abq-hud-top">
+      <div className="abq-hud abq-hud-top" data-tour="hud">
         <div className="abq-hud-brand">
           <Title />
           <p className="abq-hud-objective" aria-live="polite">

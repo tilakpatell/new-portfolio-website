@@ -19,9 +19,10 @@ const PATIENCE = 6000; // after which a leg goes on with what's there
 const coarse = () => window.matchMedia?.('(pointer: coarse)').matches ?? false;
 
 // what the page's state looks like to lib/tour's readyFor
-const probe = () => {
+const probe = (loading = false) => {
   const html = document.documentElement;
   return {
+    loading, // the page itself is still on its way (the router's behind the address)
     covered: 'covered' in html.dataset || 'intro' in html.dataset,
     gate: Boolean(document.querySelector('.world-gate')),
     modal: Boolean(document.querySelector('[aria-modal="true"]:not(.tour-card)')),
@@ -37,14 +38,26 @@ const fire = (what) => {
 export default function TourRunner({ script, kind = 'tour', from = null, onEnd }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  // (through a ref: react-router hands out a new navigate on every change of
+  // address, and a world moving its own address mustn't restart the leg)
+  const nav = useRef(navigate);
+  nav.current = navigate;
+  const way = useRef(kind);
+  way.current = kind;
   const [legs] = useState(() => legsFor(script, { touch: coarse() }));
   const [leg, setLeg] = useState(() => Math.min(from?.leg ?? 0, Math.max(legs.length - 1, 0)));
   const [i, setI] = useState(from?.stop ?? 0);
   const [list, setList] = useState(null); // { leg, stops }: the leg's stops showing here, once its page is ready
   const [waiting, setWaiting] = useState(false); // the page's taking a moment (a world downloading)
   const [light, setLight] = useState(false); // the world's in its light version (a phone kept it)
+  // Where the page is, read off the address bar: the router's location
+  // lags it while the next page is still loading (a suspended transition),
+  // and can show the one before for a moment on the way
+  const here = () => window.location.hash.replace(/^#/, '').split('?')[0] || '/';
   const where = useRef(pathname);
-  where.current = pathname;
+  where.current = here();
+  const routed = useRef(pathname); // where the router has got to
+  routed.current = pathname;
   const end = useRef(onEnd);
   end.current = onEnd;
   const atEnd = useRef(false); // entering a leg from the one after: land on its last stop
@@ -61,21 +74,25 @@ export default function TourRunner({ script, kind = 'tour', from = null, onEnd }
     }
     setList(null);
     setWaiting(false);
-    if (cur.path && !onLeg(cur, where.current)) navigate(cur.path);
+    if (cur.path && !onLeg(cur, here())) nav.current(cur.path);
     const since = Date.now();
     let timer = 0;
     const look = () => {
       const waited = Date.now() - since;
-      const here = onLeg(cur, where.current);
+      const on = onLeg(cur, here());
       const first = cur.stops.find((s) => s.at)?.at;
-      if (!here && waited >= PATIENCE) {
+      if (!on && waited >= PATIENCE) {
         // the page went somewhere else on the way (a redirect, a world's
         // own door): the run ends here, keeping its place
         end.current('left');
         return;
       }
-      if (!here || (!readyFor(cur.ready, probe(), first) && waited < PATIENCE)) {
-        setWaiting(here && waited >= 600);
+      // a world asking whether to download its 3D waits for the answer, as
+      // long as it takes (a phone's wait is still the full tour)
+      const seen = probe(!onLeg(cur, routed.current));
+      const asking = cur.ready === 'world' && seen.gate;
+      if (!on || (!readyFor(cur.ready, seen, first) && (waited < PATIENCE || asking))) {
+        setWaiting(on && waited >= 600);
         timer = setTimeout(look, TICK);
         return;
       }
@@ -84,21 +101,33 @@ export default function TourRunner({ script, kind = 'tour', from = null, onEnd }
       // a world's basics say everything at every stop; a page's own tour
       // drops a stop whose target isn't here, unless the page never came
       // ready (then every card, in the middle, so the script reads whole)
-      const keep = kind === 'brief' || waited >= PATIENCE;
-      const stops = resolveSteps(cur.stops, (at) => Boolean(targetOf(at)), keep);
+      const keep = way.current === 'brief' || waited >= PATIENCE;
+      const some = resolveSteps(cur.stops, (at) => Boolean(targetOf(at)), keep);
+      const stops = some.length ? some : resolveSteps(cur.stops, () => false, true); // (never a leg with nothing to say)
       setI((n) => (atEnd.current ? stops.length - 1 : Math.min(n, stops.length - 1)));
       atEnd.current = false;
       setList({ leg, stops });
+      // a world's gate can come up a moment after its page (its checks are
+      // async): then the cards step aside till it's answered
+      if (cur.ready === 'world') timer = setTimeout(watch, TICK);
+    };
+    const watch = () => {
+      if (!document.querySelector('.world-gate')) {
+        timer = setTimeout(watch, TICK);
+        return;
+      }
+      setList(null);
+      look();
     };
     look();
     return () => clearTimeout(timer);
-  }, [leg, cur, kind, navigate]);
+  }, [leg, cur]);
 
   // Leaving the leg's page another way (the nav, back, a planet) ends the
   // run (once the leg's stops are showing: on the way in, the page is still
   // the last leg's)
   useEffect(() => {
-    if (list?.leg === leg && cur?.path && !nearLeg(cur, pathname)) end.current('left');
+    if (list?.leg === leg && cur?.path && !nearLeg(cur, here())) end.current('left');
   }, [pathname, list, leg, cur]);
 
   // Where you are, for next time (a tour across pages only)

@@ -89,7 +89,7 @@ const HELP = [
   L('  achievements     what you have unlocked', 'out', 19),
   L('  clear            clear the screen', 'out', 19),
   BLANK,
-  L('  Also: whoami · date · ls · cat · echo · history · neofetch · tour (a look round the site; tour recruiter for the short version) · restart (the site, from the beginning) · exit', 'dim'),
+  L('  Also: whoami · date · ls · cat · echo · history · neofetch · tour (a look round the site; tour recruiter, tour player or tour both for one of them) · restart (the site, from the beginning) · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
   L('  Worlds: worlds · galaxy · deathstar · moria · avengers · scranton · cybertron · albuquerque · c137 · dotmatrix · earth · music', 'dim'),
   L('  Languages: language · aurebesh · cybertronian · runes · english (back to English)', 'dim'),
@@ -516,9 +516,9 @@ export default function Terminal() {
         return [L('  Closing channel.', 'sys')];
       },
       tour: (arg) => {
-        const mode = arg === 'recruiter' ? 'recruiter' : null;
+        const mode = arg === 'both' || arg === 'mixed' ? 'mixed' : arg === 'recruiter' || arg === 'player' ? arg : null;
         setTimeout(() => openTour(mode), 500);
-        return [L(mode ? '  The short version…' : '  Showing you round…', 'ok')];
+        return [L(mode === 'recruiter' ? '  The short version…' : mode === 'player' ? '  The grand tour…' : mode === 'mixed' ? '  Both sides…' : '  Showing you round…', 'ok')];
       },
       restart: () => {
         setTimeout(restartSite, 700);
@@ -657,7 +657,7 @@ export default function Terminal() {
               </p>
             ),
           )}
-          <div className="mt-1 flex items-center gap-2">
+          <div className="mt-1 flex items-center gap-2" data-tour="prompt">
             <label htmlFor="term-input" className="flex-none text-accent">
               {busy ? '…' : PROMPT}
             </label>

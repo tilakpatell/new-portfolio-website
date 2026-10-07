@@ -1147,7 +1147,7 @@ function Cards({ prog, enter, three, gl, retry }) {
       )}
       <div className="cw-cards-grid mt-8">
         <figure className="m-0">
-          <div className="hq-hud">
+          <div className="hq-hud" data-tour="hud">
             <Suspense fallback={<div className="hq-map" aria-hidden="true" />}>
               <CompoundMap spots={ids} titles={prog.places.map((p, i) => `${i + 1}. ${p.name}`)} stones={prog.places.map((p) => (p.done ? stoneFor(p)?.color ?? null : null))} onPick={enter} className="hq-hero-map" />
             </Suspense>

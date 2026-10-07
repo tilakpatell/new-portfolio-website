@@ -5,6 +5,8 @@ import { legsFor, flatten } from '../../../lib/tour';
 import { textOf } from '../steps';
 import { MODES, loadScript } from './index';
 import { RECRUITER } from './recruiter';
+import { PLAYER } from './player';
+import { MIXED } from './mixed';
 
 // every data-tour="…" name marked in the components and pages
 const marked = () => {
@@ -20,7 +22,7 @@ const marked = () => {
   return names;
 };
 
-const SCRIPTS = { recruiter: RECRUITER };
+const SCRIPTS = { recruiter: RECRUITER, player: PLAYER, mixed: MIXED };
 
 describe('the tours across pages', () => {
   const ctx = { key: '⌘K', touch: false };
@@ -66,6 +68,20 @@ describe('the tours across pages', () => {
   it('point only at things marked in a page for them', () => {
     const names = marked();
     for (const script of Object.values(SCRIPTS)) for (const leg of script.legs) for (const s of leg.stops) if (s.at) expect(names.has(s.at), `data-tour="${s.at}"`).toBe(true);
+  });
+
+  it('let every world be skipped', () => {
+    for (const leg of PLAYER.legs) if (leg.ready === 'world') expect(leg.skippable, leg.id).toBe(true);
+  });
+
+  it('mix the recruiter’s spine with a taste of the player’s side', () => {
+    const ids = flatten(legsFor(MIXED, { touch: false })).map((s) => s.id);
+    const work = flatten(legsFor(RECRUITER, { touch: false })).filter((s) => s.id !== 'map' && s.id !== 'done').map((s) => s.id);
+    expect(ids.slice(0, work.length)).toEqual(work);
+    const play = flatten(legsFor(PLAYER, { touch: false })).filter((s) => s.tags?.includes('taste')).map((s) => `play-${s.id}`);
+    expect(ids.filter((id) => play.includes(id))).toEqual(play);
+    expect(ids).toContain('play-map');
+    for (const leg of MIXED.legs) if (leg.ready === 'world') expect(leg.skippable, leg.id).toBe(true);
   });
 
   it('run in under the time they promise, at a stop every ten seconds or so', () => {

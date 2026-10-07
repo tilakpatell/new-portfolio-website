@@ -15,6 +15,8 @@ export const ACHIEVEMENTS = {
   konami: { name: 'Cheat code', desc: 'Entered the Konami code' },
   tour: { name: 'Shown around', desc: 'Took the tour of the site' },
   'tour-recruiter': { name: 'The short version', desc: 'Took the recruiter’s tour' },
+  'tour-player': { name: 'The grand tour', desc: 'Took the player’s tour of the worlds' },
+  'tour-mixed': { name: 'Both sides', desc: 'Took the mixed tour, the work and a taste of the worlds' },
   deathstar: { name: 'Fully operational', desc: 'Found the Death Star plans' },
   trench: { name: 'Use the Force', desc: 'Hit the exhaust port in the trench run' },
   rebels: { name: 'Medal of Yavin', desc: 'Saved Yavin 4 in the Battle of Yavin' },
