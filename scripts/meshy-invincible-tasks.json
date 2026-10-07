@@ -94,7 +94,10 @@
     "acct": 2,
     "image": "01a11402-b5c2-7398-a1af-1b6dab6a9ab9",
     "model": "01a1143a-5ef7-716b-a656-2048d38fdd21",
-    "rig": "01a11444-c7d3-73d9-99b1-038f16dc9f32"
+    "rig": "01a11444-c7d3-73d9-99b1-038f16dc9f32",
+    "anims": {
+      "lib": "01a11449-e37b-73e8-9220-bc69b3fe6f88"
+    }
   },
   "civC": {
     "acct": 2,
