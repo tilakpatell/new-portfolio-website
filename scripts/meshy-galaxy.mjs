@@ -148,6 +148,8 @@ export const ASSETS = {
   // (jedi and quigon: the first concepts were turned down at the model step
   // as too like the films' own, so softer, as Mando and Old Ben were)
   jedi: { soft: true, height: 1.75, prompt: 'An older knight-monk woman with dark brown skin and close-cropped grey hair, a calm lined face, layered cream tunics under a long open dark brown hooded robe with the hood down, a brown leather belt with pouches and a silver cylindrical hilt hanging at the hip, tall brown boots.' },
+  // (a second face for the temple's knights, who were all the first)
+  jedi2: { soft: true, height: 1.8, prompt: 'A young knight-monk man in his twenties with light olive skin, short dark curly hair and a short trimmed dark beard, a thin braid behind one ear, layered pale grey and off-white tunics under a long open charcoal-brown hooded robe with the hood down, a dark brown leather belt with pouches and a silver cylindrical hilt hanging at the hip, tall dark boots.' },
   senateguard: { height: 1.85, prompt: 'A ceremonial palace guard in long flowing deep royal-blue robes with a stiff high collar, a smooth glossy blue helmet with a narrow dark visor slit and a tall crest ridge on top, a long blue cape, blue gloves.' },
   lobot: { height: 1.75, prompt: 'A bald man with pale skin, a slim curved silver cybernetic band wrapped round the back of his head from ear to ear with small lights on it, a grey-blue high-collared tunic with a dark belt, grey trousers, black boots.' },
   neimoidian: { height: 1.9, prompt: 'A tall alien trade official with mottled grey-green skin, large red-orange eyes, a flat noseless face with a wide thin mouth, an ornate tall mitre-shaped headdress, long layered maroon and dark brown embroidered robes to the floor.' },
