@@ -1,6 +1,6 @@
 {
   "date": "2026-10-07",
-  "sha": "46c8605",
+  "sha": "e46aa8f",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -17,7 +17,7 @@
         },
         {
           "file": "src/components/middleearth/towns/rivendell/props.js",
-          "n": 3861
+          "n": 3863
         },
         {
           "file": "src/components/middleearth/towns/doom/props.js",
@@ -37,7 +37,7 @@
         },
         {
           "file": "src/components/rickmorty/world/roy/scene.js",
-          "n": 3154
+          "n": 3157
         },
         {
           "file": "src/components/middleearth/towns/minastirith/props.js",
@@ -53,7 +53,7 @@
         },
         {
           "file": "src/components/universe/footScene.js",
-          "n": 2961
+          "n": 2963
         },
         {
           "file": "src/components/universe/crews.js",
@@ -61,15 +61,15 @@
         },
         {
           "file": "src/components/middleearth/towns/lorien/props.js",
-          "n": 2765
+          "n": 2767
+        },
+        {
+          "file": "src/components/galaxy/surface/scene.js",
+          "n": 2666
         },
         {
           "file": "src/components/middleearth/towns/weathertop/props.js",
           "n": 2640
-        },
-        {
-          "file": "src/components/galaxy/surface/scene.js",
-          "n": 2586
         },
         {
           "file": "src/components/middleearth/towns/marshes/props.js",
@@ -93,7 +93,7 @@
         },
         {
           "file": "src/components/galaxy/surface/props/forest.js",
-          "n": 1898
+          "n": 1916
         },
         {
           "file": "src/components/middleearth/towns/edoras/folk.js",
@@ -101,7 +101,7 @@
         },
         {
           "file": "src/components/galaxy/surface/props/core.js",
-          "n": 1705
+          "n": 1762
         },
         {
           "file": "src/lib/sfx.js",
