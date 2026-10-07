@@ -42,7 +42,7 @@ deathstar/inside/
   voicelines.js               VOICELINES for the voices pipeline
   rules/
     stations/ds1.js, ds2.js   the room graph of each station (data)
-    layout.js                 graph → walls, floors, doors, lifts, ledges, nav grid, camera rooms; validates
+    layout.js                 graph → walls, floors, doors, lifts, ledges, camera rooms; validates
     walker.js                 capsule against wall segments and boxes on stacked floors; steps, ledges, falls
     nav.js                    A* over doors and lifts, straight inside a room, round its furniture
     doors.js                  door and blast-door states; who may open; lockdown
