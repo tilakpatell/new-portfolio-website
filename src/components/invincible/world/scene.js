@@ -27,7 +27,7 @@ import { buildClouds } from './sky';
 import { createTraffic, stepTraffic } from './traffic';
 import { CITY, WATER_Y, WORLD, buildWorld, groundAt, near } from './map';
 import { BODIES, altitudeOf } from './orbit';
-import { buildPerson, posePerson } from './people';
+import { loadCast, personFor } from './people';
 import { buildSpace } from './space';
 import { groundWorld } from '../../../lib/three/groundwork';
 
@@ -91,7 +91,9 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   const landmarks = await buildLandmarks(world, city.uniforms);
   scene.add(ground.group, city.group, landmarks.group);
   // who's about, the clouds, and the airliner going round
-  const npcs = createNpcs(scene, world);
+  // (the HD figures for those the cast has; the kit's people for the rest)
+  const people = await loadCast(['eve', 'debbie', 'cecil', 'allen']);
+  const npcs = createNpcs(scene, world, people);
   const clouds = buildClouds({ small });
   scene.add(clouds.mesh);
   const jet = buildJet();
@@ -151,10 +153,9 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   const mars = BODIES.find((b) => b.id === 'mars');
   const ALLEN = moon.c.map((v, i) => v + toEarth(moon.c)[i] * (moon.r + 30));
   const THRAGG = mars.c.map((v, i) => v + toEarth(mars.c)[i] * (mars.r + 45));
-  const allen = buildPerson('allen', 9);
+  const allen = personFor('allen', 9, people.allen);
   const allenHolder = new THREE.Group();
-  allen.h.root.position.y = -allen.h.rest.hips.y;
-  allenHolder.add(allen.h.root);
+  allenHolder.add(allen.root);
   allenHolder.position.set(...ALLEN);
   allenHolder.rotation.y = Math.atan2(-ALLEN[0], -ALLEN[2]);
   space.group.add(allenHolder);
@@ -468,7 +469,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       clouds.update(t, scene.fog);
     } else {
       // Allen, waiting by the Moon; Thragg over Mars
-      posePerson(allen, { mode: 'hover', t });
+      allen.pose({ mode: 'hover', t }, dt);
       carry(thragg, [THRAGG[0], THRAGG[1] + Math.sin(t * 0.6), THRAGG[2]], Math.atan2(-THRAGG[0], -THRAGG[2]), [0, 0, 0], dt, { lean: 0 });
       thragg.pose(POSES.proud(), dt, 6);
     }

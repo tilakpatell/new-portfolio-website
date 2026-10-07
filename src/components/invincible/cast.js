@@ -1,13 +1,21 @@
-// The Invincible page's people, as HD models: Invincible made for this
-// page with Meshy (scripts/meshy-invincible.mjs), Omni-Man and Thragg from
-// Sketchfab under CC BY (scripts/sketchfab-characters.mjs, credited in
-// src/data/modelCredits.json). Each with how tall it stands and what of it
-// came unskinned and rides on the chest (Omni-Man's cape).
+// The Invincible page's people and props, as HD models, one cast on one
+// pipeline: made for this site with Meshy (scripts/meshy-invincible.mjs),
+// the characters from the show's own art on the Invincible wiki, the crowd
+// and the props from words in the same style. Each with how tall it stands
+// (figures, rigged on Meshy's humanoid skeleton) or how big it is (props),
+// and what of it came unskinned and rides on the chest. Their credits are
+// in public/models/invincible/credits.json under the same names.
 
 export const CAST = {
-  mark: { file: '/models/invincible/mark.glb', h: 1.78 },
-  omni: { file: '/models/invincible/omni-man.glb', h: 1.95, attach: /cape/i },
-  thragg: { file: '/models/invincible/thragg.glb', h: 2.05 },
+  mark: { file: '/models/invincible/mark.glb', h: 1.78, rig: true },
+  omni: { file: '/models/invincible/omni-man.glb', h: 1.95, rig: true, attach: /cape/i },
+  thragg: { file: '/models/invincible/thragg.glb', h: 2.05, rig: true },
+  eve: { file: '/models/invincible/eve.glb', h: 1.7, rig: true },
+  cecil: { file: '/models/invincible/cecil.glb', h: 1.8, rig: true },
+  debbie: { file: '/models/invincible/debbie.glb', h: 1.68, rig: true },
+  allen: { file: '/models/invincible/allen.glb', h: 2.3, rig: true },
+  mauler: { file: '/models/invincible/mauler.glb', h: 2.6, rig: true },
+  seismic: { file: '/models/invincible/seismic.glb', h: 1.8, rig: true },
 };
 
 // a file under public/, wherever the site is served from
