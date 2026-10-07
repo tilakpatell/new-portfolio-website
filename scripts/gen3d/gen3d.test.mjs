@@ -25,6 +25,12 @@ describe('engines', () => {
     expect(cmd.slice(0, 5)).toEqual(['wsl.exe', '-d', 'Ubuntu-24.04', '-e', 'bash']);
     expect(cmd.at(-1)).toContain("'/mnt/c/in/drone.png' '/mnt/c/out/drone.glb' --seed 7");
   });
+  it('run the contract tests’ fake engine with node, every side it was given in turn', () => {
+    const cmd = command('fake', { front: 'f.png', back: 'b.png', left: 'l.png' }, 'o.glb', { seed: 3 });
+    expect(cmd[0]).toBe(process.execPath);
+    expect(cmd[1]).toMatch(/ai-e2e[\\/]fakes[\\/]engine\.mjs$/);
+    expect(cmd.slice(2)).toEqual(['f.png', 'o.glb', '--seed', '3', '--left', 'l.png', '--back', 'b.png', '--res', '1024']);
+  });
   it('refuse an engine it does not know', () => {
     expect(() => command('meshy', 'a.png', 'b.glb')).toThrow(/no engine meshy/);
   });
@@ -128,6 +134,66 @@ describe('the runner, jobs from GitHub issues', () => {
   });
 });
 
+describe('the runner, reading what people and sessions actually write', () => {
+  it('reads two fields on one line, and an image field holding a bare link', async () => {
+    const { parseIssue, makeArgs } = await import('./runner.mjs');
+    const body = 'what: Grand Regent Thragg, full body, A-pose\nimage: https://static.wikia.nocookie.net/amazon-invincible/images/b/be/Thragg.png/revision/latest\nfaces: 30000  tex: 2048\n\nMeshy got his skin wrong twice.';
+    const job = parseIssue({ number: 441, title: 'thragg', body });
+    expect(job).toMatchObject({ name: 'thragg', faces: 30000, tex: 2048, faithful: true, image: 'https://static.wikia.nocookie.net/amazon-invincible/images/b/be/Thragg.png/revision/latest' });
+    expect(job.error).toBeUndefined();
+    expect(makeArgs(job, 'C:/c/from-issue.png')).toEqual(['thragg', '--image', 'C:/c/from-issue.png', '--what', 'Grand Regent Thragg, full body, A-pose', '--faces', '30000', '--tex', '2048', '--faithful']);
+  });
+  it('reads an issue form, and says what is wrong with a bad field', async () => {
+    const { parseIssue } = await import('./runner.mjs');
+    const form = '### what\n\na mossy boulder\n\n### image\n\n![rock](https://github.com/user-attachments/assets/r.png)\n\n### faces\n\n4k\n\n### more\n\nengine: meshy';
+    const job = parseIssue({ number: 5, title: 'galaxy-mossrock', body: form });
+    expect(job).toMatchObject({ what: 'a mossy boulder', image: 'https://github.com/user-attachments/assets/r.png', faces: 4000 });
+    expect(job.error).toMatch(/engine: "meshy"/);
+    expect(parseIssue({ number: 6, title: 'x', body: 'what: x\nfaces: lots' }).error).toMatch(/faces: "lots"/);
+  });
+  it('turns a form into an issue, refusing one with nothing to make', async () => {
+    const { request } = await import('./runner.mjs');
+    expect(request({ name: 'Cecil Stedman', what: 'Cecil', image: 'https://x.test/c.png', faces: '30000', options: 'tex: 2048  seed: 7' })).toEqual({ title: 'cecil-stedman', body: 'what: Cecil\nimage: https://x.test/c.png\nfaces: 30000\ntex: 2048\nseed: 7' });
+    expect(request({ name: 'crest', what: 'the Razor Crest', image: 'https://x.test/f.png, https://x.test/l.png' }).body).toBe('what: the Razor Crest\nfront: https://x.test/f.png\nleft: https://x.test/l.png');
+    expect(() => request({ name: 'x' })).toThrow(/at least one of what, prompt or image/);
+    expect(() => request({ what: 'x' })).toThrow(/name/);
+    expect(() => request({ name: 'x', what: 'x', faces: 'many' })).toThrow(/faces/);
+  });
+});
+
+describe('the three cuts of a smaller model', () => {
+  it('scale with the faces asked for, the texture no bigger than asked', async () => {
+    const { cutsFor, TIERS } = await import('./budget.mjs');
+    expect(cutsFor()).toEqual(TIERS);
+    const rock = cutsFor(4000, 1024);
+    expect([rock.hq.faces, rock.mid.faces, rock.lo.faces]).toEqual([4000, 2000, 667]);
+    expect([rock.hq.tex, rock.mid.tex, rock.lo.tex]).toEqual([1024, 1024, 1024]);
+    expect(cutsFor(30000, 2048).hq).toMatchObject({ faces: 30000, tex: 2048, suffix: '.hq' });
+  });
+});
+
+describe('a step made again only when its inputs change', () => {
+  it('reuses the last output for the same key', async () => {
+    const { once, digest } = await import('./steps.mjs');
+    const { mkdtempSync, writeFileSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const file = join(mkdtempSync(join(tmpdir(), 'once-')), 'raw.glb');
+    let runs = 0;
+    const make = async () => {
+      runs++;
+      writeFileSync(file, 'x');
+      return { seconds: 1 };
+    };
+    expect((await once(file, digest('a', 1), make)).reused).toBe(false);
+    expect((await once(file, digest('a', 1), make)).reused).toBe(true);
+    expect((await once(file, digest('a', 2), make)).reused).toBe(false);
+    expect((await once(file, digest('a', 2), make, { fresh: true })).reused).toBe(false);
+    expect(runs).toBe(3);
+    expect(digest(Buffer.from('ab'), 'c')).not.toBe(digest('a', 'bc'));
+  });
+});
+
 // an engine's script as WSL is handed it, wherever this checkout is (on a
 // Windows drive, /mnt/c/…; on Linux, CI's or a cloud box's, its own path)
 const engine = (file) => wslPath(fileURLToPath(new URL(`./engines/${file}`, import.meta.url)));
@@ -169,5 +235,98 @@ describe("the model's eyes", () => {
     const { parseJson } = await import('./vlm.mjs');
     expect(parseJson('Sure. ```json\n{"score": 7, "problems": ["the wings are too short"]}\n```')).toEqual({ score: 7, problems: ['the wings are too short'] });
     expect(() => parseJson('no idea')).toThrow(/no JSON/);
+  });
+});
+
+describe('every field an issue can give, read back', () => {
+  const read = async (body, title = 'x-wing') => (await import('./runner.mjs')).parseIssue({ number: 1, title, body });
+  const URL1 = 'https://x.test/front.png';
+  it('reads each field into the job, or the job’s own name for it', async () => {
+    const { KEYS } = await import('./runner.mjs');
+    const cases = {
+      what: ['an X-wing', { what: 'an X-wing' }],
+      prompt: ['an X-wing, grey', { prompt: 'an X-wing, grey' }],
+      image: [URL1, { image: URL1 }],
+      front: [URL1, { image: URL1 }],
+      left: [URL1, { views: { left: URL1 } }],
+      back: [URL1, { views: { back: URL1 } }],
+      right: [URL1, { views: { right: URL1 } }],
+      faces: ['8000', { faces: 8000 }],
+      tex: ['1024', { tex: 1024 }],
+      seed: ['7', { seed: 7 }],
+      res: ['512', { res: 512 }],
+      fov: ['49', { fov: 49 }],
+      engine: ['Hunyuan', { engine: 'hunyuan' }],
+      faithful: ['no', { faithful: false }],
+      bake: ['no', { noBake: true }],
+      fresh: ['yes', { fresh: true }],
+    };
+    // `more` is the issue form's catch-all section, whose lines are the other fields
+    expect(KEYS.filter((k) => k !== 'more').sort()).toEqual(Object.keys(cases).sort());
+    for (const [key, [value, want]] of Object.entries(cases)) {
+      // a side alone is one view, so give it a front to stand beside
+      // (a prompt only counts with no picture to follow)
+      const given = { what: 'a thing', ...(key === 'prompt' ? {} : { image: URL1 }), ...(['left', 'back', 'right'].includes(key) ? { front: URL1 } : {}), [key]: value };
+      const job = await read(Object.entries(given).map(([k, v]) => `${k}: ${v}`).join('\n'));
+      expect(job.error, key).toBeUndefined();
+      expect(job, key).toMatchObject(want);
+    }
+  });
+  it('takes every spelling of yes and no', async () => {
+    for (const yes of ['yes', 'Yes', 'true', 'on', '1']) expect((await read(`what: a\nfresh: ${yes}`)).fresh, yes).toBe(true);
+    for (const no of ['no', 'NO', 'false', 'off', '0']) {
+      const job = await read(`what: a\nimage: ${URL1}\nfaithful: ${no}\nbake: ${no}`);
+      expect([job.faithful, job.noBake], no).toEqual([false, true]);
+    }
+    expect((await read('what: a\nfresh: maybe')).fresh).toBe(false);
+  });
+  it('reads 24k as 24000, and commas and spaces in a number', async () => {
+    expect((await read('what: a\nfaces: 24k')).faces).toBe(24000);
+    expect((await read('what: a\nfaces: 24,000')).faces).toBe(24000);
+    expect((await read('what: a\nfaces: 24 000')).faces).toBe(24000);
+  });
+  it('finds the link in an image field however it is written', async () => {
+    expect((await read(`image: ${URL1}`)).image).toBe(URL1);
+    expect((await read(`image: ![a picture](${URL1})`)).image).toBe(URL1);
+    expect((await read(`image: <img width="300" src="${URL1}">`)).image).toBe(URL1);
+    expect((await read('image: a picture I took')).error).toMatch(/image: "a picture I took" has no link in it/);
+  });
+  it('takes attached pictures as front, left, back and right, in that order', async () => {
+    const body = ['a', 'b', 'c', 'd', 'e'].map((n) => `![${n}](https://x.test/${n}.png)`).join('\n');
+    const job = await read(`what: a thing\n${body}`);
+    expect(job.views).toEqual({ front: 'https://x.test/a.png', left: 'https://x.test/b.png', back: 'https://x.test/c.png', right: 'https://x.test/d.png' });
+    expect(job.image).toBe('https://x.test/a.png');
+  });
+});
+
+describe('what the runner hands make.mjs', () => {
+  it('turns Pixal3D off when the issue says faithful: no', async () => {
+    const { makeArgs, parseIssue } = await import('./runner.mjs');
+    const job = parseIssue({ number: 1, title: 'x', body: 'image: https://x.test/a.png\nfaithful: no' });
+    expect(makeArgs(job, 'a.png')).toContain('--no-faithful');
+    expect(makeArgs({ ...job, faithful: true }, 'a.png')).not.toContain('--no-faithful');
+  });
+  it('looks for a job’s sheet and outcome where make.mjs put them, GEN3D_CACHE or not', async () => {
+    const { cacheOf } = await import('./runner.mjs');
+    const saved = process.env.GEN3D_CACHE;
+    delete process.env.GEN3D_CACHE;
+    expect(cacheOf('/r', 'xw').split(/[\\/]/).slice(-5)).toEqual(['r', 'scripts', 'gen3d', 'cache', 'xw']);
+    process.env.GEN3D_CACHE = '/elsewhere';
+    expect(cacheOf('/r', 'xw').split(/[\\/]/).slice(-2)).toEqual(['elsewhere', 'xw']);
+    if (saved === undefined) delete process.env.GEN3D_CACHE;
+    else process.env.GEN3D_CACHE = saved;
+  });
+});
+
+describe('the budget a shipped model was cut to', () => {
+  it('is the smallest ask its three cuts all fit', async () => {
+    const { cutsFor, inferFaces } = await import('./budget.mjs');
+    // cut at the defaults: 120000 / 60000 / 20000
+    expect(inferFaces({ hq: 119000, mid: 60000, lo: 20500 })).toBe(Math.ceil(20500 * 6 / 1.05));
+    // a rock asked for at 4000 faces: 4000 / 2000 / 667
+    const rock = cutsFor(4000);
+    expect(inferFaces({ hq: rock.hq.faces, mid: rock.mid.faces, lo: rock.lo.faces })).toBeLessThanOrEqual(4000);
+    // never more than the top cut's own budget
+    expect(inferFaces({ hq: 500000, mid: 1, lo: 1 })).toBe(120000);
   });
 });

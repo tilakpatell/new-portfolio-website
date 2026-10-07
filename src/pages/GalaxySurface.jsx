@@ -14,6 +14,8 @@ import { galaxyCrew } from '../components/galaxy/lines';
 import { LANDABLE, siteOf } from '../components/galaxy/surface/sites';
 import { surfaceUrl } from '../components/galaxy/surface/catalog';
 import { surfaceCrew } from '../components/galaxy/surface/lines';
+import { voiceFor } from '../components/galaxy/surface/voicelines';
+import { sayVoiced, stopVoiced } from '../lib/voiced';
 import SurfaceView from '../components/galaxy/surface/SurfaceView';
 import surfaceModule from '../components/galaxy/surface/module';
 import galaxyModule from '../components/galaxy/module';
@@ -24,6 +26,13 @@ import AssaultHud from '../components/galaxy/surface/AssaultHud';
 import HeroPanel from '../components/galaxy/surface/HeroPanel';
 import { HERO_KEY, heroById, heroSpec, readHero, writeHero } from '../components/galaxy/heroes';
 import { missionOf } from '../components/galaxy/surface/missions';
+import { sideFor, warSideOf } from '../components/galaxy/surface/missions/assault';
+import { SIDE_KEY, current as currentOath, readAllegiance, swear } from '../components/galaxy/allegiance';
+import { GCW, campaignAt } from '../components/galaxy/gcw';
+import { warOfSide } from '../components/galaxy/sides';
+import { effectsFor } from '../components/galaxy/warEffects';
+import { addPoints, addWin, mine, warNow } from '../components/galaxy/warState';
+import { RANKS, rankOf } from '../components/galaxy/ranks';
 import ModelCredits from '../components/ModelCredits';
 import { wornFiles } from '../components/rickmorty/wardrobe/looks';
 import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
@@ -92,6 +101,36 @@ export default function GalaxySurface() {
   };
   const crew = crewById(ship);
   const { unlocked, unlock } = useAchievements();
+  // the galaxy's war (allegiance.js): the side you swore to, and who holds
+  // this world (warEffects.js: the troopers you meet are theirs); an assault
+  // here is that war's, fought for one of its sides
+  const [oathKept, setOathKept] = useState(() => readAllegiance(local.get(SIDE_KEY)));
+  const oath = useMemo(() => currentOath(oathKept), [oathKept]);
+  // (and, for the people's talk: the side you swore to, and your rank in it, as a step up its ladder)
+  const effects = useMemo(() => {
+    const e = effectsFor(id, warNow(Date.now(), oath.war), oath);
+    if (!e) return e;
+    const rank = oath.side ? rankOf(oath.side, mine(oath.war).points) : null;
+    return { ...e, side: oath.side ?? null, rank: rank ? (RANKS[oath.side]?.findIndex((r) => r.id === rank.id) ?? 0) : 0 };
+  }, [id, oath]);
+  const assaultWar = mission?.kind === 'assault' ? warOfSide(warSideOf(mission, 'attack')) : null;
+  const sworn = assaultWar ? sideFor(mission, oathKept.oaths[assaultWar]?.side ?? null) : null;
+  const onAssaultSide = (k) => {
+    const side = warSideOf(mission, k);
+    if (warOfSide(side)) {
+      const next = swear(oathKept, side);
+      if (next !== oathKept) {
+        setOathKept(next);
+        local.set(SIDE_KEY, next);
+        unlock('gcwSworn');
+        if (currentOath(next).turncoat) unlock('gcwTurncoat');
+      }
+    }
+    view.current?.input?.('side', k);
+  };
+  // the ground battle's result, counted in the war once: the posts your side
+  // took while you were up, and the battle if you won it
+  const posted = useRef(false);
   const build = useMemo(() => (ship && readHulls(local.get(HULL_KEY), CREWS.map((c) => c.id))[ship]) || null, [ship]);
   const loadout = useMemo(() => loadoutOf(readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)), ship, unlocked, build), [ship, unlocked, build]);
   // online: the other pilots down here with you
@@ -104,7 +143,7 @@ export default function GalaxySurface() {
   const [phase, setPhase] = useState('landing');
   const [prompt, setPrompt] = useState(null);
   const [here, setHere] = useState(null);
-  const [talk, setTalk] = useState(null); // { who, text, n }
+  const [talk, setTalk] = useState(null); // { who, text, voice?, n }
   const [toast, setToast] = useState(null); // { title, text, n }
   const [leaving, setLeaving] = useState(false);
   const [done, setDone] = useState(() => readDone()[id] ?? []); // the quests done here
@@ -130,6 +169,29 @@ export default function GalaxySurface() {
     clearTimeout(timers.current[key]);
     timers.current[key] = setTimeout(fn, ms);
   };
+  // the line that's up goes (or the next comes) once it's been up long
+  // enough to read; said aloud, once it's been said too
+  const talkNext = useRef(null); // { at, fn }
+  const holdTalk = (ms, fn) => {
+    talkNext.current = { at: Date.now() + ms, fn };
+    clearTimeout(timers.current.talk);
+    timers.current.talk = setTimeout(fn, ms);
+  };
+  // each line in its speaker's own voice, where it's been made (lib/voiced.js;
+  // voicelines.js says who sounds like whom): a new line stops the last
+  useEffect(() => {
+    if (!talk) return undefined;
+    let on = true;
+    sayVoiced(talk.voice ?? voiceFor(talk.who), talk.text).then((h) => {
+      const t = talkNext.current;
+      const said = h && h.length * 1000 + 600;
+      if (on && said && t && Date.now() + said > t.at) holdTalk(said, t.fn);
+    });
+    return () => {
+      on = false;
+      stopVoiced();
+    };
+  }, [talk]);
   const [looks] = useLooks(); // (how the cruiser's Rick and Morty come out, for the credits)
   const talkCrew = useMemo(() => (crew && site ? surfaceCrew(galaxyCrew(crew), site) : null), [crew, site]);
 
@@ -206,8 +268,8 @@ export default function GalaxySurface() {
       } else if (e.type === 'prompt') setPrompt(e.text);
       else if (e.type === 'here') setHere(e.id);
       else if (e.type === 'talk') {
-        setTalk((t) => ({ who: e.who, text: e.text, n: (t?.n ?? 0) + 1 }));
-        later('talk', 3500 + e.text.length * 45, () => setTalk(null));
+        setTalk((t) => ({ who: e.who, text: e.text, voice: e.voice ?? null, n: (t?.n ?? 0) + 1 }));
+        holdTalk(3500 + e.text.length * 45, () => setTalk(null));
       } else if (e.type === 'found') {
         const place = site?.places.find((p) => p.id === e.id);
         if (!place) return;
@@ -238,7 +300,7 @@ export default function GalaxySurface() {
             return;
           }
           setTalk((t) => ({ who: l.who, text: l.text, n: (t?.n ?? 0) + 1 }));
-          later('talk', 2600 + l.text.length * 42, next);
+          holdTalk(2600 + l.text.length * 42, next);
         };
         if (wasEmpty) next();
       } else if (e.type === 'quest') setQuest(e.id ? e : null);
@@ -291,6 +353,7 @@ export default function GalaxySurface() {
         setAiming(true);
         later('aim', 3000, () => setAiming(false));
       } else if (e.type === 'leave') goUp();
+      else if (e.type === 'go') navigate(e.to);
       else if (e.type === 'bump') comms.current?.handle({ type: 'bump', hard: e.hard });
       else if (e.type === 'mission') {
         for (const f of chaseFeed.current) f(e.view);
@@ -301,6 +364,16 @@ export default function GalaxySurface() {
           setChase(v);
         }
         const ev = e.event;
+        if (mission?.kind === 'assault' && v?.result && !posted.current) {
+          posted.current = true;
+          const side = warSideOf(mission, v.result.side);
+          if (warOfSide(side)) {
+            const now = Date.now();
+            const step = campaignAt(now).step;
+            addPoints(side, id, step, (v.result.posts?.[v.result.side] ?? 0) * GCW.points.objective, now);
+            if (v.result.won) addWin(side, id, step, now);
+          }
+        } else if (mission?.kind === 'assault' && v && !v.result) posted.current = false;
         if (ev?.type === 'won' && mission && v?.result) {
           const run = { t: v.result.t, stars: v.result.stars };
           const was = bestRef.current;
@@ -317,7 +390,7 @@ export default function GalaxySurface() {
         }
       }
     },
-    [site, id, unlock, mission, missionKey, flyOut, goUp],
+    [site, id, unlock, mission, missionKey, flyOut, goUp, navigate],
   );
   const track = (qid) => {
     view.current?.input?.('track', qid);
@@ -349,7 +422,7 @@ export default function GalaxySurface() {
       <h1 className="sr-only">
         {sys.name}: {site.place}
       </h1>
-      <SurfaceView key={`${mission?.id ?? 'explore'}:${hero.id}:${hero.color}:${hero.hilt}:${hero.stance}:${hero.gun}:${(hero.mods ?? []).join()}:${(hero.perks ?? []).join()}`} system={id} mission={mission?.id ?? null} ship={ship} hero={hero} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
+      <SurfaceView key={`${mission?.id ?? 'explore'}:${hero.id}:${hero.color}:${hero.hilt}:${hero.stance}:${hero.gun}:${(hero.mods ?? []).join()}:${(hero.perks ?? []).join()}`} system={id} mission={mission?.id ?? null} ship={ship} hero={hero} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} effects={effects} />
 
       {/* where you are, and how much of it you've found */}
       <div className="surface-where">
@@ -391,7 +464,7 @@ export default function GalaxySurface() {
 
       {/* the quest you're on, and the things to do here */}
       {mission && mission.kind !== 'assault' && <ChaseHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onAgain={() => view.current?.input?.('restart')} onBack={takeOff} />}
-      {mission?.kind === 'assault' && <AssaultHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onSide={(id) => view.current?.input?.('side', id)} onDeploy={(id) => view.current?.input?.('deploy', id)} onAgain={() => view.current?.input?.('restart')} onBack={goUp} />}
+      {mission?.kind === 'assault' && <AssaultHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onSide={onAssaultSide} sworn={sworn} onDeploy={(id) => view.current?.input?.('deploy', id)} onAgain={() => view.current?.input?.('restart')} onBack={goUp} />}
 
       {phase !== 'landing' && site.quests.length > 0 && !((mission?.kind === 'chase' || mission?.kind === 'assault') && chase && !chase.result) && (
         <div className={quest ? 'surface-quest surface-quest-on' : 'surface-quest'}>

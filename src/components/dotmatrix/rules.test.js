@@ -11,6 +11,7 @@ import {
   HEART_EVERY,
   HERO,
   MAP,
+  CRAFT,
   N64,
   N64_CART,
   PEN,
@@ -73,7 +74,7 @@ describe('Dot Matrix: the island', () => {
     for (const row of MAP) expect(row).toHaveLength(W);
     expect(H).toBe(MAP.length);
     for (const row of MAP) for (const c of row) expect(legend(c), c).toBe(legend(c)); // (and no unknown letters:)
-    const known = new Set([...'~,."=:!%TYoO#HGNPBsLM']);
+    const known = new Set([...'~,."=:!%TYoO#HGNCPBsLM']);
     for (const row of MAP) for (const c of row) expect(known.has(c), c).toBe(true);
   });
 
@@ -459,6 +460,20 @@ describe('Dot Matrix: the B button', () => {
     const g = newGame();
     g.hero = at(25, 0, 15);
     expect(nearAction(g)).toEqual({ kind: 'gameboy', id: 'gameboy' });
+  });
+
+  it('plays Minecraft at the crafting table, from in front of it, and the table is a block too high to jump', () => {
+    const g = newGame();
+    g.hero = at((CRAFT.x0 + CRAFT.x1) / 2, 0, CRAFT.z1 + 0.5);
+    expect(nearAction(g)).toEqual({ kind: 'craft', id: 'craft' });
+    // two across and two high, as a block is as tall as it is wide
+    expect([CRAFT.x1 - CRAFT.x0, CRAFT.z1 - CRAFT.z0, CRAFT.top]).toEqual([2, 2, 2]);
+    expect(floorAt(CRAFT.x0 + 0.5, CRAFT.z0 + 0.5)).toBe(CRAFT.top);
+    expect(CRAFT.top).toBeGreaterThan((HERO.jump * HERO.jump) / (2 * HERO.gravity));
+    expect(MAP.join('').split('C')).toHaveLength(1 + 4);
+    // and nothing from behind it
+    g.hero = at((CRAFT.x0 + CRAFT.x1) / 2, 0, CRAFT.z0 - 0.6);
+    expect(nearAction(g)?.kind).not.toBe('craft');
   });
 
   it('plays the N64 from in front of it, and you can climb it and its cartridge', () => {

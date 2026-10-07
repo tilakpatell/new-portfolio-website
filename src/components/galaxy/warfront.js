@@ -84,7 +84,9 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
   let clock = 0;
 
   const side = () => allegiance()?.side ?? null;
-  const say = (sub) => emit({ type: 'event', id: 'battle', sub, side: side(), war: on?.war ?? allegiance()?.war ?? DEFAULT_WAR, sys: sys?.id ?? null });
+  // (with the side the battle's against, from yours: the other of its two, or its defender while you're nobody's)
+  const against = () => (!on ? null : side() ? (on.sides?.find((x) => x !== side()) ?? null) : (on.defender ?? null));
+  const say = (sub) => emit({ type: 'event', id: 'battle', sub, side: side(), against: against(), war: on?.war ?? allegiance()?.war ?? DEFAULT_WAR, sys: sys?.id ?? null });
   // the attacker's objectives count only when you're the attacker
   const attacking = () => team !== null && team === on?.attackerTeam;
   const score = (n, ms = now()) => {

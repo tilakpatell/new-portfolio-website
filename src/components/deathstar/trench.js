@@ -157,6 +157,21 @@ export function newRun({ seed = 1, level = 'red5' } = {}) {
   };
 }
 
+// The radio, by when it comes: who's talking, before what they say (./voicelines.js
+// has their voices; the films' own recordings, where the site has them, are
+// ./TrenchRun.jsx's SAID). And the last word, with the computer on or off.
+export const RADIO = {
+  start: 'Red Leader: “This is it, boys. Stay tight, the TIEs are coming in.”',
+  dive: 'Luke: “Red Five, going in.”',
+  trench: 'Gold Five: “Stay on target.”',
+  range: 'In range. Torpedoes on F or Enter.',
+  ties: 'Biggs: “TIE fighters, dead ahead!”',
+  vader: 'Vader: “The Force is strong with this one.”',
+  han: 'Han: “You’re all clear, kid. Now blow this thing.”',
+  r2: 'Luke: “I’m hit, but not bad. R2, see what you can do with it.” Shields up.',
+};
+export const WON = { computer: 'Great shot, kid. That was one in a million.', force: 'The Force is strong with this one. Great shot.' };
+
 const emit = (g, type, extra = {}) => g.events.push({ type, ...extra });
 const say = (g, key, text) => {
   if (g.said[key]) return;
@@ -345,7 +360,7 @@ function stepOnce(g, dt) {
     }
     if (win.t >= 2.5) {
       g.status = 'won';
-      emit(g, 'won', { text: g.computer ? 'Great shot, kid. That was one in a million.' : 'The Force is strong with this one. Great shot.' });
+      emit(g, 'won', { text: g.computer ? WON.computer : WON.force });
     }
     return;
   }
@@ -366,10 +381,10 @@ function stepOnce(g, dt) {
   const zone = zoneAt(g.z);
 
   // the radio
-  if (g.t > 0.4) say(g, 'start', 'Red Leader: “This is it, boys. Stay tight, the TIEs are coming in.”');
-  if (zone === 'dive') say(g, 'dive', 'Luke: “Red Five, going in.”');
-  if (zone === 'trench' && g.z > trenchStart() + 6) say(g, 'trench', 'Gold Five: “Stay on target.”');
-  if (portZ() - g.z < TRENCH.torpedoRange) say(g, 'range', 'In range. Torpedoes on F or Enter.');
+  if (g.t > 0.4) say(g, 'start', RADIO.start);
+  if (zone === 'dive') say(g, 'dive', RADIO.dive);
+  if (zone === 'trench' && g.z > trenchStart() + 6) say(g, 'trench', RADIO.trench);
+  if (portZ() - g.z < TRENCH.torpedoRange) say(g, 'range', RADIO.range);
 
   // lasers: held fire, two cannons at a time
   g.laserCool -= dt;
@@ -386,7 +401,7 @@ function stepOnce(g, dt) {
     g.tieAt.shift();
     const x0 = g.rand() * 3.4 - 1.7;
     g.ties.push({ x: x0, x0, y: 1.55 + g.rand() * 0.85, z: g.z + TRENCH.tie.start, phase: g.rand() * 6, fire: 1.2 + g.rand() * g.L.tieFire, alive: true });
-    say(g, 'ties', 'Biggs: “TIE fighters, dead ahead!”');
+    say(g, 'ties', RADIO.ties);
   }
   for (const t of g.ties) {
     if (!t.alive) continue;
@@ -519,7 +534,7 @@ function stepOnce(g, dt) {
   const v = g.vader;
   if (!v.on && !v.gone && toPort < TRENCH.vaderAt) {
     v.on = true;
-    emit(g, 'vader', { text: 'Vader: “The Force is strong with this one.”' });
+    emit(g, 'vader', { text: RADIO.vader });
   }
   if (v.on && !v.gone) {
     v.cooldown -= dt;
@@ -531,7 +546,7 @@ function stepOnce(g, dt) {
       v.gone = true;
       v.on = false;
       v.away = 1;
-      emit(g, 'han', { text: 'Han: “You’re all clear, kid. Now blow this thing.”' });
+      emit(g, 'han', { text: RADIO.han });
     }
   }
   if (v.gone && v.away > 0) {
@@ -552,7 +567,7 @@ function stepOnce(g, dt) {
     g.r2.used = true;
     if (g.shields < g.maxShields && g.shields > 0) {
       g.shields += 1;
-      emit(g, 'r2', { text: 'Luke: “I’m hit, but not bad. R2, see what you can do with it.” Shields up.' });
+      emit(g, 'r2', { text: RADIO.r2 });
     }
   }
 

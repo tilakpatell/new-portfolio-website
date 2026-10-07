@@ -14,6 +14,22 @@ export const TIERS = {
 };
 export const MAX_BYTES = TIERS.mid.bytes;
 
+// The three cuts for a model asked to be smaller than the default top cut
+// (a rock at 4000 faces, a character at 30000): each tier scaled by the same
+// share, its texture no bigger than asked. The default asks give TIERS.
+export function cutsFor(faces = TIERS.hq.faces, tex = TIERS.hq.tex) {
+  const share = Math.min(1, faces / TIERS.hq.faces);
+  return Object.fromEntries(Object.entries(TIERS).map(([t, c]) => [t, { ...c, faces: Math.max(300, Math.round(c.faces * share)), tex: Math.min(c.tex, tex) }]));
+}
+
+// The --faces a shipped model was asked for, as near as its cuts tell: the
+// smallest ask whose three budgets (cutsFor) all fit, never more than the
+// top cut's own. The asset tests hold each cut to the budget this gives.
+export function inferFaces(tris) {
+  const need = Object.entries(TIERS).map(([t, c]) => Math.ceil(((tris[t] ?? 0) / 1.05) * (TIERS.hq.faces / c.faces)));
+  return Math.min(TIERS.hq.faces, Math.max(300, ...need));
+}
+
 export const triangles = (doc) => doc.getRoot().listMeshes().reduce((n, m) => n + m.listPrimitives().reduce((k, p) => k + (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3, 0), 0);
 
 // The problems with a result, as sentences; none means it may ship.

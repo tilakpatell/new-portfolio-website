@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createSolids } from '../walker';
-import { RULES, SOLDIERS, TACTICS, battleView, canDeploy, chooseSide, deploy, endBattle, hitSoldier, newBattle, objectiveFor, stepBattle, youDown } from './assault';
+import { ASSAULTS, sidesFor } from './assaults';
+import { REACH } from '../terrain';
+import { siteOf } from '../sites';
+import { RULES, SOLDIERS, TACTICS, battleView, canDeploy, chooseSide, deploy, endBattle, hitSoldier, newBattle, objectiveFor, sideFor, stepBattle, warSideOf, youDown } from './assault';
 
 // a small map: the attackers come from the west, two posts to take, then a last one
 const MAP = {
@@ -470,5 +473,74 @@ describe('the squads', () => {
       for (const id of shooters) who.add(id);
     }
     expect(who.size).toBeGreaterThan(RULES.atYouMax);
+  });
+});
+
+describe('the battle on the ground, in the galaxy’s war', () => {
+  it('the result counts each post once for the side that took it while you were up', () => {
+    const b = empty('attack');
+    b.you.up = true;
+    const you = { x: 0, z: 30 }; // inside post A
+    const T = 1 / RULES.capture;
+    run(b, 2 * T + 1, you);
+    expect(post(b, 'a').owner).toBe('attack');
+    // taken back and forth again: still the one post
+    post(b, 'a').owner = 'defend';
+    post(b, 'a').meter = 1;
+    run(b, 2 * T + 1, you);
+    expect(post(b, 'a').owner).toBe('attack');
+    endBattle(b, true, 'forced');
+    expect(b.result.posts).toEqual({ attack: 1, defend: 0 });
+  });
+  it('a post taken while you were down isn’t yours to count', () => {
+    const b = newBattle(MAP, { n: 1, seed: 3 });
+    chooseSide(b, 'attack');
+    const T = 1 / RULES.capture;
+    const s = b.soldiers.find((o) => o.side === 'attack');
+    for (const o of b.soldiers) if (o !== s) (o.up = false), (o.down = 1e9);
+    s.up = true;
+    // (held there: told to stand in post B)
+    for (let t = 0; t < 2 * T + 1; t += 0.1) {
+      s.x = 0;
+      s.z = -30;
+      stepBattle(b, 0.1, null, env);
+    }
+    expect(post(b, 'b').owner).toBe('attack');
+    endBattle(b, true, 'forced');
+    expect(b.result.posts).toEqual({ attack: 0, defend: 0 });
+  });
+  it('sideFor maps the war’s side to the map’s, and warSideOf back', () => {
+    expect(sideFor(MAP, 'empire')).toBe('attack');
+    expect(sideFor(MAP, 'rebel')).toBe('defend');
+    expect(sideFor(MAP, 'republic')).toBeNull();
+    expect(sideFor(MAP, null)).toBeNull();
+    expect(warSideOf(MAP, 'defend')).toBe('rebel');
+    expect(warSideOf(MAP, 'attack')).toBe('empire');
+    expect(warSideOf(MAP, null)).toBeNull();
+  });
+});
+
+describe('the three worlds’ battles', () => {
+  it('every assault’s posts are on its site within reach, its start too, and its phases name its posts', () => {
+    for (const [id, m] of Object.entries(ASSAULTS)) {
+      const site = siteOf(id);
+      expect(site, id).toBeTruthy();
+      for (const p of m.posts) expect(Math.hypot(...p.at), `${id} ${p.id}`).toBeLessThan(REACH);
+      expect(Math.hypot(...m.start), `${id} start`).toBeLessThan(REACH);
+      const ids = new Set(m.posts.map((p) => p.id));
+      for (const ph of m.phases) for (const pid of ph.posts) expect(ids.has(pid), `${id} ${pid}`).toBe(true);
+      expect(m.posts.some((p) => p.fixed === 'attack')).toBe(true);
+      expect(m.posts.some((p) => p.fixed === 'defend')).toBe(true);
+    }
+  });
+  it('sidesFor gives the theatre’s two sides, the dark side attacking unless said', () => {
+    expect(sidesFor('clone').attack.id).toBe('separatists');
+    expect(sidesFor('clone').defend.id).toBe('republic');
+    expect(sidesFor('gcw').attack.id).toBe('empire');
+    expect(sidesFor('gcw', { attack: 'light' }).attack.id).toBe('rebels');
+    expect(sidesFor('remnant').defend.id).toBe('newrepublic');
+    expect(sidesFor('nope').attack.id).toBe('empire');
+    expect(ASSAULTS.coruscant.sides.attack.id).toBe('separatists');
+    expect(ASSAULTS.bespin.sides.attack.id).toBe('rebels');
   });
 });

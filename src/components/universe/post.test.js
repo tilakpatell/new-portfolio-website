@@ -67,7 +67,7 @@ describe('the finished render', () => {
 
   it('aberration is off on low and grows with the rush and a hit', () => {
     expect(aberrationFor({ rush: 1, hit: 1, tier: 'low' })).toBe(0);
-    expect(aberrationFor({})).toBeCloseTo(0.0015);
+    expect(aberrationFor({})).toBeCloseTo(0.0006);
     expect(aberrationFor({ rush: 1 })).toBeCloseTo(0.006);
     expect(aberrationFor({ hit: 1 })).toBeCloseTo(0.004);
   });

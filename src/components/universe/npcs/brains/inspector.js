@@ -24,7 +24,7 @@ const SCRIPT = sequence(
     const { npc, me, you } = bb.ctx;
     const spot = spotBy(you);
     if (apart(me.pos, spot) > 3) {
-      bb.out = { to: spot, match: velocityOf(you), speed: Math.max(npc.stats.speed, (you.speed ?? 0) + 8) };
+      bb.out = { to: spot, match: velocityOf(you), speed: Math.max(npc.stats.speed, (you.speed ?? 0) + NPC.headOff) };
       return RUNNING;
     }
     return DONE;

@@ -14,6 +14,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { paintStation } from './plating';
 import { paintGiant, paintPlanet } from './planetPaint';
 import { pixelRatio } from '../../lib/device';
+import { houseOn } from '../../lib/three/house';
 import { precompile, precompilePasses, quiet, releaseContext } from '../../lib/three/renderer';
 import { sharpen } from '../../lib/three/textures';
 
@@ -110,7 +111,8 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
   const rim = new THREE.DirectionalLight(0x9cc4ff, 0.7);
   rim.position.set(900, -200, -900);
   scene.add(rim);
-  scene.add(new THREE.HemisphereLight(0x9aa6b8, 0x06070a, 0.1));
+  const dsHemi = new THREE.HemisphereLight(0x9aa6b8, 0x06070a, 0.1);
+  scene.add(dsHemi);
 
   // ── the station ──
   const station = new THREE.Group();
@@ -716,6 +718,10 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
 
   // every shader (the scene's, into the composer's buffer, and the passes')
   // linked in the background: the hero waits for this before its first frame
+  // the house look (lib/three/house): the shade one colour from the light
+  // out here, under the house tone mapper (its exposure lifted from ACES;
+  // the fog left as it is), on everything, before the shaders are linked
+  houseOn({ renderer, scene, sun, hemi: dsHemi, look: { fog: false } });
   const ready = Promise.all([precompile(renderer, scene, camera, scene, composer.readBuffer), precompilePasses(renderer, composer, camera)]);
   return { update, render, resize, dispose, ready, get lost() { return lost; } };
 }

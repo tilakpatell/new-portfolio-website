@@ -7,7 +7,9 @@ import { use3D } from '../../../lib/gpu';
 import { local, prefersReducedMotion, useFrameLoop } from '../../../lib/hooks';
 import { audioContext } from '../../../lib/audio';
 import { capturePointer } from '../../../lib/pointer';
+import { useVoiced } from '../../../lib/useVoiced';
 import { CHAPTERS, DIFFICULTY, MARK, WAVES, bossTell, cycle, dodge, lockTarget, newGame, pilot, punch, setInput, startChapter, step } from './rules';
+import { VOICE } from './voicelines';
 import './thinkmark.css';
 
 const load = () => import('./scene');
@@ -63,6 +65,7 @@ export default function ThinkMark({ fallback }) {
   const slow = useRef(0);
   const fxState = useRef({ popups: [], hurt: 0, said: 0, lastUi: 0 });
   const [ui, setUi] = useState({ phase: 'title', chapter: 0, hp: MARK.hp, boss: null, objective: '', line: null, combo: 0, score: 0, result: null, loading: false });
+  useVoiced(VOICE[ui.line?.who], ui.line?.text); // in their own voices, where they've been made (lib/voiced.js)
   const [paused, setPaused] = useState(false);
   const playing = ui.phase === 'play';
 

@@ -15,12 +15,14 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
+import { createHouse } from '../../../../lib/three/house';
+import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
 import { fbm, makeNoise, smooth } from '../../../../lib/paint';
 import { pose } from '../../mapFigures';
 import { SMOKE, createParticles } from '../../kit';
 import { LOOKS, makePerson, sit } from '../../shire/people';
-import { makeSky } from '../../shire/sky';
+import { lookFrom, makeSky } from '../../shire/sky';
 import { createFx } from '../../shire/fx';
 import { makeTerrain } from '../ground';
 import { FIGURE, groundTown } from '../grounded';
@@ -95,6 +97,10 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
   const tier = dev.tier;
   const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.05, far: 3200, bloom: { strength: 0.85, radius: 0.55, threshold: 0.82 }, onLost });
   const { scene, camera, renderer } = stage;
+  // the house look (lib/three/house): one shadow colour and the sky's fog
+  // on everything, under the house tone mapper; it follows the moods below
+  const houseLook = createHouse();
+  renderer.toneMapping = houseLook.toneMapping;
   renderer.info.autoReset = false;
   scene.fog = new THREE.Fog(0x040506, 24, 90);
   const many = tier === 'high' ? 1 : tier === 'mid' ? 0.6 : 0.35;
@@ -112,6 +118,9 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
   scene.add(sky.dome);
 
   const kit = createOrthancKit(renderer);
+  // the site's core kit of surfaces on its stone, wood, bark, plaster and
+  // iron (lib/three/core), by their names
+  dress(kit.mats ?? {}, rolesFor(kit.mats ?? {}), { strength: 0.3, normal: 0.6, keep: true });
   const mats = kit.mats;
   const zones = { hall: new THREE.Group(), tower: new THREE.Group(), vision: new THREE.Group() };
   for (const [k, g] of Object.entries(zones)) {
@@ -458,7 +467,7 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
     scene.fog.color.copy(cur.fog);
     scene.fog.near = cur.fogNear;
     scene.fog.far = cur.fogFar;
-    renderer.toneMappingExposure = cur.exposure;
+    lookFrom(houseLook, { sky, sun, hemi, fog: scene.fog, renderer, exposure: cur.exposure });
 
     // everyone hidden, then placed by the place and what's happening
     gandalf.group.visible = false;
@@ -988,6 +997,8 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
   const grounds = [
     groundTown({ renderer, scene, terrain: isenLand, outdoors: zones.tower, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x2a2a26, clip: true }),
   ];
+  // (last, over the floor light's own tints: one shadow colour everywhere)
+  houseLook.adopt(scene);
 
   return {
     ground: import.meta.env.DEV ? grounds[0] : null, // for the QA scripts

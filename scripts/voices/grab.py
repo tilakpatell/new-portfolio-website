@@ -49,6 +49,18 @@ ANALYSIS = 2  # bump when the per-segment numbers change, to work them out again
 CHECKED = 40  # candidates a voice checks a stretch at a time, best first
 
 
+def configs():
+    """Every voice's sources: sources.json's, and each world's own in sources/<world>.json."""
+    cfgs = json.loads((HERE / "sources.json").read_text(encoding="utf-8"))
+    for f in sorted((HERE / "sources").glob("*.json")):
+        for who, cfg in json.loads(f.read_text(encoding="utf-8")).items():
+            if who in cfgs:
+                print(f"{who}: in sources.json and {f.name}; using sources.json's")
+                continue
+            cfgs[who] = cfg
+    return cfgs
+
+
 def ytdlp(*args):
     return subprocess.run([sys.executable, "-m", "yt_dlp", "--js-runtimes", "node", "--no-warnings", *args], capture_output=True, text=True, encoding="utf-8", errors="replace")
 
@@ -82,7 +94,7 @@ def sources(who, cfg, per_query):
     out = [c for c in out if c["file"].exists()]
     found = [{"id": pick.video_id(u), "seconds": None, "title": u} for u in cfg.get("urls", []) if pick.video_id(u)]
     for q in cfg.get("search", []):
-        found += search(q, per_query)
+        found += search(q, cfg.get("per_query", per_query))  # a voice can ask for more of each search's results
     seen = set()
     for v in found:
         if v["id"] in seen or pick.excluded(v["id"], 0, [r for r in cfg.get("exclude", []) if "@" not in r]):
@@ -228,10 +240,10 @@ def main():
     ap.add_argument("--fetch-only", action="store_true", help="just search and download the sources (no GPU), to process them later")
     args = ap.parse_args()
 
-    cfgs = json.loads((HERE / "sources.json").read_text(encoding="utf-8"))
+    cfgs = configs()
     only = set(args.only.split(",")) if args.only else None
     picks = {w: v.split(",") for w, _, v in (p.partition("=") for p in args.pick)}
-    wanted = [w for w in cfgs if not only or w in only]
+    wanted = [w for w in cfgs if (not only or w in only) and not cfgs[w].get("design")]  # design.py makes those
     for w in list(wanted):
         own = REFS / f"{w}.wav"
         if own.exists() and not (REFS / f"{w}.json").exists() and not args.refresh:
@@ -240,8 +252,8 @@ def main():
     if not wanted:
         return
     # the other voices of the same shows come too: they're who each voice is told apart from
-    shows = {cfgs[w]["show"] for w in wanted}
-    voices = [w for w in cfgs if cfgs[w]["show"] in shows]
+    shows = {cfgs[w].get("show") for w in wanted}
+    voices = [w for w in cfgs if cfgs[w].get("show") in shows and not cfgs[w].get("design")]
 
     print("Finding sources")
     srcs, every = {}, {}
@@ -273,7 +285,7 @@ def main():
     # everything heard in a show's sources is a candidate for each of its voices
     pool, seeds, seeded = {}, {}, {}
     for w in voices:
-        show_srcs = {s["id"]: s for v in voices if cfgs[v]["show"] == cfgs[w]["show"] for s in srcs[v] if s["id"] in segments}
+        show_srcs = {s["id"]: s for v in voices if cfgs[v].get("show") == cfgs[w].get("show") for s in srcs[v] if s["id"] in segments}
         rules = cfgs[w].get("exclude", [])
         pool[w] = [(s, g) for s in show_srcs.values() for g in segments[s["id"]] if not pick.excluded(s["id"], g["start"], rules)]
         seeded[w] = []
@@ -366,7 +378,7 @@ def main():
             "",
         ]
     (GRAB / "report.md").write_text("\n".join(report), encoding="utf-8")
-    print(f"\nReport: {(GRAB / 'report.md').relative_to(ROOT)}")
+    print(f"\nReport: {GRAB / 'report.md'}")
 
 
 if __name__ == "__main__":

@@ -3,7 +3,9 @@ import { clockOf } from './missions/chase';
 
 // What's over a galactic assault (missions/assault.js): first the choose
 // card (which side you fight for), then the deploy card (which of your
-// side's posts you come onto the field at, now and whenever you're down);
+// side's posts you come onto the field at, now and whenever you're down;
+// the side you swore to in the galaxy's war marked, `sworn`, and picking
+// the other the same oath as in the sky);
 // on the field, the phase and its posts as chips filling with their
 // meters, the reinforcements both sides have left, what's happening at the
 // post you're in, the last few things that happened and your kills; at the
@@ -14,7 +16,7 @@ import { clockOf } from './missions/chase';
 const ROLE = { attack: 'Attack', defend: 'Defend' };
 const STATE = { taking: 'Taking', holding: 'Holding', losing: 'Losing', contested: 'Contested' };
 
-export default function AssaultHud({ view, feed, mission, best, fresh, onSide, onDeploy, onAgain, onBack }) {
+export default function AssaultHud({ view, feed, mission, best, fresh, onSide, onDeploy, onAgain, onBack, sworn = null }) {
   const [shut, setShut] = useState(false);
   const [live, setLive] = useState(null);
   const first = useRef(null);
@@ -53,9 +55,9 @@ export default function AssaultHud({ view, feed, mission, best, fresh, onSide, o
           <p className="chase-result-text">{mission.line}</p>
           <div className="assault-sides">
             {['attack', 'defend'].map((side, i) => (
-              <button key={side} ref={i === 0 ? first : null} type="button" className="assault-side" style={{ '--side': sides[side].colour }} onClick={() => onSide(side)}>
+              <button key={side} ref={(sworn ? side === sworn : i === 0) ? first : null} type="button" className="assault-side" data-sworn={side === sworn ? '' : undefined} style={{ '--side': sides[side].colour }} onClick={() => onSide(side)}>
                 <b>{sides[side].name}</b>
-                <span>{ROLE[side]}</span>
+                <span>{side === sworn ? `${ROLE[side]} · the side you swore to` : sworn ? `${ROLE[side]} · a turncoat’s oath` : ROLE[side]}</span>
               </button>
             ))}
           </div>
