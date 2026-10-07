@@ -43,7 +43,9 @@ const id = (n) => byName.get(n).id;
 const REPLACEABLE = new Set(['air', 'water', 'lava', 'short_grass', 'fern', 'dead_bush', 'snow'].map(id));
 const SOIL = new Set(['grass_block', 'dirt', 'podzol', 'farmland'].map(id));
 const SAND = id('sand');
-const FRONTED = new Set(['furnace', 'chest', 'pumpkin', 'jack_o_lantern', 'oak_stairs'].map(id));
+const FRONTED = new Set(['furnace', 'chest', 'pumpkin', 'jack_o_lantern'].map(id));
+const STAIRS = id('oak_stairs');
+const DOOR = id('oak_door');
 const LOGS = new Set(BLOCKS.filter((b) => b.name.endsWith('_log')).map((b) => b.id));
 
 const toolOf = (s) => (s ? ITEMS[s.item]?.tool ?? null : null);
@@ -82,6 +84,10 @@ export function breakBlock(g, x, y, z) {
   if (blockId === BED) {
     const [ox, oy, oz] = otherHalf(g, x, y, z);
     if (g.world.get(ox, oy, oz) === BED) setBlock(g, ox, oy, oz, AIR);
+  }
+  if (blockId === DOOR) {
+    const oy = g.world.getState(x, y, z) & 8 ? y - 1 : y + 1;
+    if (g.world.get(x, oy, z) === DOOR) setBlock(g, x, oy, z, AIR);
   }
   const inv = g.inventory;
   const hand = held(inv);
@@ -131,6 +137,12 @@ export function placeBlock(g, hit, name = held(g.inventory)?.item) {
     return cx < p.x + p.w / 2 && cx + 1 > p.x - p.w / 2 && cz < p.z + p.w / 2 && cz + 1 > p.z - p.w / 2 && cy < p.y + p.h && cy + 1 > p.y;
   };
   if (b.solid && inBody(x, y, z)) return false;
+  // a door needs the cell above for its upper half, and a floor
+  let upper = null;
+  if (b.id === DOOR) {
+    upper = { state: OPPOSITE[facingOf(g.player.yaw)] };
+    if (y >= 255 || !REPLACEABLE.has(g.world.get(x, y + 1, z)) || inBody(x, y + 1, z) || !g.world.solid(x, y - 1, z)) return false;
+  }
   // a bed needs its head's cell too, the way the player looks
   let head = null;
   if (b.id === BED) {
@@ -147,11 +159,14 @@ export function placeBlock(g, hit, name = held(g.inventory)?.item) {
   if ((b.shape === 'torch' || b.shape === 'ladder') && (!g.world.solid(sx, sy, sz) || face === 1)) return false;
   let state = 0;
   if (head) state = head.foot;
+  else if (upper) state = upper.state;
+  else if (b.id === STAIRS) state = OPPOSITE[facingOf(g.player.yaw)];
   else if (LOGS.has(b.id)) state = ny ? 0 : nx ? 1 : 2;
   else if (FRONTED.has(b.id)) state = facingOf(g.player.yaw);
   else if (b.shape === 'torch' || b.shape === 'ladder') state = face;
   if (!setBlock(g, x, y, z, b.id, state)) return false;
   if (head) setBlock(g, head.x, y, head.z, b.id, head.state);
+  if (upper) setBlock(g, x, y + 1, z, b.id, upper.state | 8);
   const inv = g.inventory;
   const s = inv.slots[inv.selected];
   if (s?.item === name) {
@@ -186,6 +201,7 @@ export function stepHands(g, input, { onGround, inWater }) {
     // a crafting table opens on use; sneaking builds against it instead
     if (hit.id === TABLE && !input.sneak) g.events.push({ type: 'open', what: 'table', x: hit.x, y: hit.y, z: hit.z });
     else if (hit.id === BED && !input.sneak) sleep(g, hit);
+    else if (hit.id === DOOR && !input.sneak) swing(g, hit);
     else placeBlock(g, hit);
   }
 }
@@ -214,6 +230,18 @@ export function sleep(g, { x, y, z }) {
   g.spawn = spot;
   g.events.push({ type: 'sleep', x, y, z });
   return true;
+}
+
+// a door opens or shuts, both halves together
+function swing(g, { x, y, z }) {
+  const st = g.world.getState(x, y, z);
+  const lower = st & 8 ? y - 1 : y;
+  const open = !(st & 4);
+  for (const yy of [lower, lower + 1]) {
+    const s = g.world.getState(x, yy, z);
+    if (g.world.get(x, yy, z) === DOOR) setBlock(g, x, yy, z, DOOR, open ? s | 4 : s & ~4);
+  }
+  g.events.push({ type: 'door', open, x, y: lower, z });
 }
 
 // Q: one of what's held (or the stack) thrown the way the player looks,

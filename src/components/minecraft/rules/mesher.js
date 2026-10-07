@@ -62,7 +62,7 @@ const TOP_ONLY = new Uint8Array(256);
 for (let i = 0; i < N; i++) {
   const b = BLOCKS[i];
   OPAQUE[i] = b.opaque ? 1 : 0;
-  KIND[i] = b.shape === 'none' ? 0 : b.shape === 'cross' ? 3 : b.shape === 'liquid' ? 4 : b.shape === 'cube' ? 1 : b.shape === 'torch' ? 5 : b.shape === 'slab' ? 6 : 2;
+  KIND[i] = b.shape === 'none' ? 0 : b.shape === 'cross' ? 3 : b.shape === 'liquid' ? 4 : b.shape === 'cube' ? 1 : b.shape === 'torch' ? 5 : b.shape === 'slab' ? 6 : b.shape === 'ladder' ? 7 : b.shape === 'stairs' ? 8 : b.shape === 'door' ? 9 : 2;
   PASS[i] = b.shape === 'liquid' ? (b.name === 'water' ? 2 : 0) : b.shape === 'cube' && b.opaque ? 0 : 1;
   CULL_SELF[i] = b.cullSelf ? 1 : 0;
   TINT[i] = Math.max(0, TINTS.indexOf(b.tint));
@@ -132,6 +132,29 @@ function torchBox(state) {
   return { box: [7, 0, 7, 9, 10, 9], lean: null };
 }
 const BED = byName.get('red_bed')?.id;
+
+// the boxes of a block that isn't a whole cell, by its state, in sixteenths
+// (the mover's are these over 16: rules/world.js reads shapeBoxes too)
+const STAIR_TOP = [
+  [0, 8, 0, 16, 16, 8],
+  [0, 8, 8, 16, 16, 16],
+  [0, 8, 0, 8, 16, 16],
+  [8, 8, 0, 16, 16, 16],
+];
+// a door's plate: shut on the side it faces; open, swung round onto the next side
+const DOOR_SHUT = [
+  [0, 0, 0, 16, 16, 3],
+  [0, 0, 13, 16, 16, 16],
+  [0, 0, 0, 3, 16, 16],
+  [13, 0, 0, 16, 16, 16],
+];
+const DOOR_OPEN = [DOOR_SHUT[2], DOOR_SHUT[3], DOOR_SHUT[1], DOOR_SHUT[0]];
+export function shapeBoxes(shape, state, height = 16) {
+  if (shape === 'slab') return [[0, 0, 0, 16, height, 16]];
+  if (shape === 'stairs') return [[0, 0, 0, 16, 8, 16], STAIR_TOP[state & 3]];
+  if (shape === 'door') return [(state & 4 ? DOOR_OPEN : DOOR_SHUT)[state & 3]];
+  return null;
+}
 
 // A growing list of vertices for one pass.
 function buffer() {
@@ -214,7 +237,7 @@ export function meshSection(chunk, sectionY, nb, { textures }) {
             for (let k = 0; k < 4; k++) buf.push(x * 16 + quad[k][0], (y0 + y) * 16 + quad[k][1], z * 16 + quad[k][2], layer, word, CROSS_UV[k][0] | (CROSS_UV[k][1] << 5));
           continue;
         }
-        if (kind === 5 || kind === 6) {
+        if (kind >= 5) {
           // the shapes that aren't whole cells: lit by their own cell, no corner shading
           const own = light[pad(x, y, z)];
           const st = chunk.state?.[base + z * 16 + x] ?? 0;
@@ -225,6 +248,28 @@ export function meshSection(chunk, sectionY, nb, { textures }) {
             const layer = layerOf(b.faces.north);
             // the post's top is the picture's cut at rows 6 to 8, as the game's model has it
             emitBox(push, t.box, SIDES4, { layer: () => layer, word, lean: t.lean, uv: (f, k) => (f === FACE.top ? [CUBE[f].c[k][0] ? 9 : 7, CUBE[f].c[k][2] ? 8 : 6] : null) });
+          } else if (kind === 7) {
+            // a ladder: one face a sixteenth off the wall it hangs on
+            const layer = layerOf(b.faces.north);
+            const LADDER = { [FACE.east]: [[1, 0, 0, 1, 16, 16], FACE.east], [FACE.west]: [[15, 0, 0, 15, 16, 16], FACE.west], [FACE.south]: [[0, 0, 1, 16, 16, 1], FACE.south], [FACE.north]: [[0, 0, 15, 16, 16, 15], FACE.north] };
+            const [box, face] = LADDER[st] ?? LADDER[FACE.north];
+            emitBox(push, box, [face], { layer: () => layer, word });
+          } else if (kind === 8 || kind === 9) {
+            // stairs and doors: their boxes, a face drawn where it isn't against something solid
+            const head = kind === 9 && st & 8;
+            const layer = (f) => layerOf(kind === 9 ? (head ? 'oak_door_top' : b.faces.north) : b.faces[NAMES[f]]);
+            for (const box of shapeBoxes(b.shape, st)) {
+              const faces = [];
+              for (let f = 0; f < 6; f++) {
+                const [dx, dy, dz] = CUBE[f].d;
+                const onEdge = (dx > 0 && box[3] === 16) || (dx < 0 && box[0] === 0) || (dy > 0 && box[4] === 16) || (dy < 0 && box[1] === 0) || (dz > 0 && box[5] === 16) || (dz < 0 && box[2] === 0);
+                // (a stair's upper box sits on its lower: no face underneath)
+                if (kind === 8 && dy < 0 && box[1] > 0) continue;
+                if (onEdge && OPAQUE[ids[pad(x + dx, y + dy, z + dz)]]) continue;
+                faces.push(f);
+              }
+              emitBox(push, box, faces, { layer, word });
+            }
           } else {
             const h = b.height;
             const faces = [];

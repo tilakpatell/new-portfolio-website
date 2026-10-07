@@ -258,6 +258,42 @@ describe('the mesher', () => {
     expect(new Set(tops.map((p) => p.layer))).toEqual(new Set([textures.get('red_bed_top'), textures.get('red_bed_head_top')]));
   });
 
+  it('a ladder is one thin face on its wall, seen from both sides', () => {
+    const c = makeChunk(0, 0);
+    set(c, 5, 5, 5, id('ladder'), FACE.east); // hung on the east face of the block to its west
+    const v = verts(mesh(c).cutout);
+    expect(v).toHaveLength(4);
+    expect(v.every((p) => p.x === 80 + 1)).toBe(true);
+  });
+
+  it('stairs face by state: the step rises toward the way they face', () => {
+    const c = makeChunk(0, 0);
+    set(c, 5, 5, 5, id('oak_stairs'), 0); // facing north: the tall half on the north
+    const v = verts(mesh(c).cutout);
+    const tall = v.filter((p) => p.y === 96);
+    expect(tall.length).toBeGreaterThan(0);
+    expect(tall.every((p) => p.z <= 88)).toBe(true);
+    const d = makeChunk(0, 0);
+    set(d, 5, 5, 5, id('oak_stairs'), 3); // east
+    expect(verts(mesh(d).cutout).filter((p) => p.y === 96).every((p) => p.x >= 88)).toBe(true);
+  });
+
+  it('a door is a thin plate, its lower half and upper half their own pictures, and it swings', () => {
+    const c = makeChunk(0, 0);
+    set(c, 5, 5, 5, id('oak_door'), 0); // facing north, shut
+    set(c, 5, 6, 5, id('oak_door'), 8); // its upper half
+    const v = verts(mesh(c).cutout);
+    const zs = new Set(v.map((p) => p.z - 80));
+    expect([...zs].sort((a, b) => a - b)).toEqual([0, 3]);
+    expect(new Set(v.filter((p) => p.face === FACE.north && p.y > 96).map((p) => p.layer))).toEqual(new Set([textures.get('oak_door_top')]));
+    expect(new Set(v.filter((p) => p.face === FACE.north && p.y < 96).map((p) => p.layer))).toEqual(new Set([textures.get('oak_door_bottom')]));
+    const d = makeChunk(0, 0);
+    set(d, 5, 5, 5, id('oak_door'), 4); // open: swung to lie along its side
+    const xs = new Set(verts(mesh(d).cutout).map((p) => p.x - 80));
+    expect(xs.size).toBe(2);
+    expect(Math.max(...xs) - Math.min(...xs)).toBe(3);
+  });
+
   it('smooth light: a corner averages the four cells round it, a dark one taking the face’s own', () => {
     const c = makeChunk(0, 0);
     c.lit = true;
