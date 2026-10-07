@@ -78,12 +78,13 @@ describe('battleLines', () => {
     const raw = (ex) => ex.map(([w, t]) => [w, t]);
     expect(raw(battleLines(crew, { key: 'front', side: 'republic', war: 'clone', sys: 'hoth', against: 'separatists' }))).toEqual(raw(fill(b.battleWar.clone.front.light, { side: 'republic', against: 'separatists', sys: 'hoth' })));
   });
-  it('prefers the place’s line, then the war’s, then the Hutts’, then the side’s', () => {
+  it('prefers the Hutts’ against the Hutts, else the place’s, then the war’s, then the side’s', () => {
     const b = BATTLE_LINES[crew];
     const raw = (ex) => ex.map(([w, t]) => [w, t]);
     expect(raw(battleLines(crew, { key: 'front', side: 'rebel', war: 'gcw', sys: 'hoth', against: 'empire' }))).toEqual(raw(fill(b.battleAt.hoth.front.light, { side: 'rebel', against: 'empire', sys: 'hoth' })));
     expect(raw(battleLines(crew, { key: 'front', side: 'rebel', war: 'gcw', sys: 'kamino', against: 'empire' }))).toEqual(raw(fill(b.battleWar.gcw.front.light, { side: 'rebel', against: 'empire', sys: 'kamino' })));
     expect(raw(battleLines(crew, { key: 'won', side: 'separatists', war: 'clone', sys: 'tatooine', against: 'hutt' }))).toEqual(raw(fill(b.battle.won.hutt, { side: 'separatists', against: 'hutt', sys: 'tatooine' })));
+    expect(raw(battleLines(crew, { key: 'front', side: 'rebel', war: 'gcw', sys: 'hoth', against: 'hutt' }))).toEqual(raw(fill(b.battle.front.hutt, { side: 'rebel', against: 'hutt', sys: 'hoth' })));
     expect(raw(battleLines(crew, { key: 'gens', side: 'empire', war: 'gcw', sys: 'kamino', against: 'rebel' }))).toEqual(raw(fill(b.battle.gens.dark, { side: 'empire', against: 'rebel', sys: 'kamino' })));
   });
   it('asks either way, and has nothing for nobody', () => {
