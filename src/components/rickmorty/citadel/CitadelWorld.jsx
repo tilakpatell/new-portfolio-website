@@ -92,7 +92,8 @@ function useSaid(who, text) {
   }, [who, text]);
 }
 
-export default function CitadelWorld({ onLeave }) {
+// (`leaveLabel`: what the hangar's way out says; the page knows where it goes)
+export default function CitadelWorld({ onLeave, leaveLabel = 'Back to C-137' }) {
   const three = use3D();
   const [done, setDone] = useState(() => {
     const d = local.get(DONE, []);
@@ -116,7 +117,7 @@ export default function CitadelWorld({ onLeave }) {
   const world = three.on && gl !== 'failed' && gl !== 'lost';
   return (
     <section className="shire-world citadel-world" aria-labelledby="citadel-title" data-mode={world ? '3d' : 'cards'}>
-      {world ? <World prog={prog} done={done} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
+      {world ? <World prog={prog} done={done} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} leaveLabel={leaveLabel} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
     </section>
   );
 }
@@ -124,7 +125,7 @@ export default function CitadelWorld({ onLeave }) {
 // others online on the concourse (middleearth/towns/useTravellers), as Ricks from other dimensions
 const ROOM = { bound: 160, motion: true };
 
-function World({ prog, done, complete, gl, setGl, onLeave }) {
+function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const trav = useTravellers('citadel', gl === 'on', ROOM);
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
@@ -1039,7 +1040,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     setList(false);
   };
 
-  const here = hud.near ? PROMPT[hud.near] : null;
+  const here = hud.near === 'leave' ? { ...PROMPT.leave, act: leaveLabel } : hud.near ? PROMPT[hud.near] : null;
   const mode = hud.mode;
   const walking = mode === 'walk';
   const inside = mode === 'inside';

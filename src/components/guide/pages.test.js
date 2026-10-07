@@ -25,6 +25,13 @@ describe('which guide a page gets', () => {
     expect(guideFor('/middle-earth/moria').key).toBe('/middle-earth/place');
   });
 
+  it('gives a Rick and Morty planet its own, not C-137’s, and leaves the Citadel its', () => {
+    for (const p of ['/c-137/squanch', '/c-137/purge', '/c-137/gazorpazorp']) expect(guideFor(p).key, p).toBe('/c-137/planet');
+    expect(guideFor('/c-137').key).toBe('/c-137');
+    expect(guideFor('/c-137/citadel').key).toBe('/c-137/citadel');
+    expect(guideFor('/c-137/squanch/deeper')).toBe(null);
+  });
+
   it('has none for a page it doesn’t know', () => {
     expect(guideFor('/nowhere')).toBe(null);
     expect(guideFor('/galaxy/hoth/surface/deeper')).toBe(null);
