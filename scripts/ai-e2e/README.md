@@ -127,6 +127,30 @@ longer says) and `allow-voiceless.json` hold what was wrong when the tests
 were first run. They only shrink: an entry fixed since fails the test
 until it is taken off.
 
+## Tier 3: every model draws
+
+`npm run test:ai:render` (`vitest.render.config.js`, every
+`*.render.test.mjs`): each gen3d cut rendered the way the judge renders it
+(`scripts/glb-shot.mjs`: headless Chromium, SwiftShader, a dev server on a
+free port, `render/server.mjs`), the three-quarter view at 320×240. Each
+must leave no page or console error outside `scripts/lib/noise.mjs`'s
+`NOISE` (what every software renderer says) and cover at least 4% of the
+frame (`render/coverage.mjs`: pixels farther than a few levels from the
+corner's colour). A framed model covers far more (the X-wing, all wings
+and gaps, about 10%; a TIE about 30%); a blank canvas, or a model loaded
+as a speck, covers less. The PNGs and `results.json` go to `render/out/`
+(git-ignored; CI uploads them as the `renders` artifact).
+
+`AI_RENDER_ALL=1` (the nightly) renders every GLB under `public/models/`,
+in the plain look and the toon look the galaxy draws figures with.
+
+The browser: `CHROME`, else the Chromium `npx playwright install chromium`
+installs, else Edge on Windows. Without one the tier skips and says so,
+except on CI. CI's AI job runs it only when the pull request touches
+`public/models/`, `src/lib/three/`, `glb-shot` or the tier itself
+(`render/changed.mjs`), installing the Chromium for the locked
+`playwright-core` version, cached on that version.
+
 ## Adding a case
 
 A contract test is a vitest file under `scripts/ai-e2e/<tier>/`, its

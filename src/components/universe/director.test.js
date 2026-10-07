@@ -39,7 +39,7 @@ describe('the director', () => {
       for (const { e } of got) expect(canHave(side, EVENTS[e]), `${side.id} ${e}`).toBe(true);
       for (let i = 1; i < got.length; i++) expect(got[i].e).not.toBe(got[i - 1].e);
       const kinds = new Set(got.map((g) => g.e));
-      for (const id of ['hunt', 'distress', 'convoy', 'bounty', 'leviathan']) expect(kinds.has(id), `${side.id} ${id}`).toBe(true);
+      for (const id of ['hunt', 'distress', 'convoy', 'bounty', 'leviathan', 'minefield', 'escort']) expect(kinds.has(id), `${side.id} ${id}`).toBe(true);
       // (every side has a capital ship now: a Star Destroyer, a Federation cruiser, a Madrigal freighter)
       expect(kinds.has('destroyer'), side.id).toBe(true);
       // (and the Federation's NX-5 Planet Remover, Rick's universe's alone)
@@ -48,6 +48,14 @@ describe('the director', () => {
       else if (side.id === 'rickmorty') expect(kinds.has('council') && !kinds.has('roadblock')).toBe(true);
       else expect(kinds.has('roadblock') && !kinds.has('council')).toBe(true);
     }
+  });
+
+  it('lays a minefield for any side, and brings an escort where there are pirates to come for it', () => {
+    for (const side of Object.values(SIDES)) expect(canHave(side, EVENTS.minefield), side.id).toBe(true);
+    expect(EVENTS.escort.needs).toBe('pirates');
+    expect(canHave({ has: () => false }, EVENTS.escort)).toBe(false);
+    expect(canHave({ has: () => false }, EVENTS.minefield)).toBe(true);
+    for (const side of Object.values(SIDES)) expect(canHave(side, EVENTS.escort), side.id).toBe(side.has('pirates'));
   });
 
   it('holds off while something is going on, and comes sooner and angrier with heat', () => {
