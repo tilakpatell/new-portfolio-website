@@ -40,39 +40,39 @@
 - `farCopies(level) → boolean` (level !== 'ultra')
 - `surfaceUltraUrl(kind) → '/models/galaxy/surface/<kind>.ultra.glb'`
 
-- [ ] Tests: `usesUltra({ultra:{tris:1,tex:1}}, 'ultra') === true`, `false` at 'high' and for an entry without `ultra`; `farCopies('ultra') === false`, `true` for low/mid/high; `ultraCut({tris: 20000})` → `{ tris: 80000, tex: 8192 }`.
-- [ ] catalog.test: each entry with `ultra` has its file, under `ULTRA.bytes`, `ultra.tris ≤ 4 × tris` where `tris` is set, `ultra.tex ≤ 8192`; every `*.ultra.glb` in the folder has an entry with `ultra`.
-- [ ] Implement, run `npx vitest run src/components/galaxy/surface/catalog`, commit.
+- [x] Tests: `usesUltra({ultra:{tris:1,tex:1}}, 'ultra') === true`, `false` at 'high' and for an entry without `ultra`; `farCopies('ultra') === false`, `true` for low/mid/high; `ultraCut({tris: 20000})` → `{ tris: 80000, tex: 8192 }`.
+- [x] catalog.test: each entry with `ultra` has its file, under `ULTRA.bytes`, `ultra.tris ≤ 4 × tris` where `tris` is set, `ultra.tex ≤ 8192`; every `*.ultra.glb` in the folder has an entry with `ultra`.
+- [x] Implement, run `npx vitest run src/components/galaxy/surface/catalog`, commit.
 
 ### Task 2: The placer at ultra
 
 **Files:** Modify `src/components/galaxy/surface/placer.js`; test `placer.test.js`.
 
-- [ ] Export `modelUrl(kind, level = detailLevel())` → ultra url when `usesUltra`, else `surfaceUrl(kind)`; `loadModel(kind, url)` falls back to the plain url when an ultra url loads null.
-- [ ] `put` and `scatter` skip the LOD1 when `!farCopies(detailLevel())`.
-- [ ] Tests for `modelUrl` at ultra/high with and without an entry's `ultra`.
-- [ ] Run placer tests, commit.
+- [x] Export `modelUrl(kind, level = detailLevel())` → ultra url when `usesUltra`, else `surfaceUrl(kind)`; `loadModel(kind, url)` falls back to the plain url when an ultra url loads null.
+- [x] `put` and `scatter` skip the LOD1 when `!farCopies(detailLevel())`.
+- [x] Tests for `modelUrl` at ultra/high with and without an entry's `ultra`.
+- [x] Run placer tests, commit.
 
 ### Task 3: gen3d's ultra tier
 
 **Files:** `scripts/gen3d/budget.mjs`, `web.mjs`, `make.mjs`, `runner.mjs`, `src/lib/three/gen3d.js`, tests in `scripts/gen3d/gen3d.test.mjs`, `scripts/ai-e2e/assets/gen3d.test.mjs`, `src/lib/three/gen3d.test.js`, `scripts/ai-e2e/assets/credits.mjs` (stem strips `.ultra`).
 
-- [ ] `ULTRA = { suffix: '.ultra', faces: 300000, tex: 8192, bytes: 24 MB, detail: ['ultra'] }`; `TIERS` stays the three cuts made for every model (hq's detail becomes `['high']`); `cutsFor(faces, tex, { ultra })` adds `ultra` scaled by the same share; `fileFor(name, 'ultra', { ultra })`.
-- [ ] `publish(…, { ultra })`, `make(…, { ultra })` bakes at the ultra cut's faces and maps; `make.mjs --ultra`; the runner reads `ultra: yes` and passes `--ultra`, and commits the `.ultra` cut.
-- [ ] `CUTS.ultra = '.ultra'`, with `ULTRA_CUTS` (a set of names that have one) and `.hq` for the rest.
-- [ ] Tests, commit.
+- [x] `ULTRA = { suffix: '.ultra', faces: 300000, tex: 8192, bytes: 24 MB, detail: ['ultra'] }`; `TIERS` stays the three cuts made for every model (hq's detail becomes `['high']`); `cutsFor(faces, tex, { ultra })` adds `ultra` scaled by the same share; `fileFor(name, 'ultra', { ultra })`.
+- [x] `publish(…, { ultra })`, `make(…, { ultra })` bakes at the ultra cut's faces and maps; `make.mjs --ultra`; the runner reads `ultra: yes` and passes `--ultra`, and commits the `.ultra` cut.
+- [x] `CUTS.ultra = '.ultra'`, with `ULTRA_CUTS` (a set of names that have one) and `.hq` for the rest.
+- [x] Tests, commit.
 
 ### Task 4: Meshy and Sketchfab `--ultra`
 
 **Files:** `scripts/meshy-galaxy-buildings.mjs` (models: target_polycount 300000 under `s[n].ultra`; fetch: `raw/<n>.ultra.glb` → `<kind>.ultra.glb`, 4× tris, 8192, ≤ 24 MB, no LOD), `scripts/meshy-galaxy-library.mjs` (runnable, forwarding with its tasks file), `scripts/meshy-import.mjs` (`--ultra`), `scripts/sketchfab-surface.mjs` (`--ultra`), `scripts/galaxy-surface-lod.mjs` (skip `.ultra`).
 
-- [ ] Pure `ultraArgs(argv)` / `ultraSpec(a)` with tests in `scripts/ultra/ultra.test.mjs`; commit.
+- [x] Pure `takeUltra(argv)` / `ultraSpec(a)` / `checkUltra` with tests in `scripts/ultra/cut.test.mjs`; commit.
 
 ### Task 5: The picks, the requests, the sheets, the evidence
 
-- [ ] `scripts/ultra/counts.mjs` (placements), `scripts/ultra/kinds.mjs` (the twenty, with source), `scripts/ultra/commands.mjs` (the owner's commands).
-- [ ] `docs/superpowers/evidence/ultra-models/plan.md`: the counts, the twenty, sources, commands, desktop issue links.
-- [ ] Judge sheets `docs/gen3d/ultra-<kind>.webp` (four views; the reference tile where `lab/refs/<kind>.jpg` exists).
-- [ ] Desktop gen3d issues for the remakes (one per model, not polled).
-- [ ] galaxy-check screenshots at QUALITY=ultra and high, small webp.
+- [x] `scripts/ultra/counts.mjs` (placements), `scripts/ultra/kinds.mjs` (the twenty, with source and the owner's command for each; `commands.mjs` folded into it).
+- [x] `docs/superpowers/evidence/ultra-models/plan.md`: the counts, the twenty, sources, commands, desktop issue links.
+- [x] Judge sheets `docs/gen3d/ultra/<kind>.webp` (four views of the plain model; no reference tile: `lab/refs/` is empty here and Wookieepedia is denied by the network policy, so the comparison is the Meshy lane's `sheet --ultra` on the owner's machine).
+- [x] Desktop gen3d issues for the remakes (one per model, not polled): none of the twenty is gen3d-made; the galaxy's X-wing (#552) and TIE interceptor (#553) were asked for.
+- [x] galaxy-check screenshots at QUALITY=ultra and high, small webp.
 - [ ] lint, test, push, PR.
