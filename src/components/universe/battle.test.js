@@ -24,6 +24,51 @@ const flagOf = (b, team) => b.capitals.find((c) => c.team === team && c.role ===
 // a shot from 2 units off straight through a point
 const shotAt = (b, p, damage = 1) => b.hit({ x: p.x, y: p.y + 2, z: p.z }, { x: p.x, y: p.y - 0.01, z: p.z }, damage);
 
+describe('the flagships’ objectives', () => {
+  // A shot stops at the first thing it meets, and a hull's spheres are among
+  // them, so an objective buried in one can't be hit. Bolts at each from all
+  // round its outer side, a frame's flight at a time (a bolt's 60 a second
+  // and the ship's own, at 60 frames a second), through your guns' own hit():
+  // a fair share of those that meet the flagship itself must meet the
+  // objective (Home One's reactor, reached mostly from astern, is the least).
+  it('can each be shot from outside: a fair share of bolts that meet the flagship from round an objective’s outer side meet it', () => {
+    for (const w of Object.values(WARS))
+      for (const attacker of [0, 1]) {
+        const b = createBattle({ war: w, attacker, at: [0, 0, 0], axis: [1, 0], perSide: 4, rand: seeded() });
+        b.setYou(attacker);
+        const flag = flagOf(b, b.defender);
+        const rand = seeded(11);
+        for (const phase of [1, 2, 3]) {
+          for (const s of flag.subs.filter((o) => o.phase === phase)) {
+            const out = { x: s.pos.x - flag.pos.x, y: s.pos.y - flag.pos.y, z: s.pos.z - flag.pos.z };
+            let reached = 0;
+            let stopped = 0;
+            for (let n = 0; n < 80; n++) {
+              let d;
+              do d = { x: rand() * 2 - 1, y: rand() * 2 - 1, z: rand() * 2 - 1 };
+              while (Math.hypot(d.x, d.y, d.z) > 1 || d.x * out.x + d.y * out.y + d.z * out.z <= 0);
+              const l = Math.hypot(d.x, d.y, d.z);
+              let p = { x: s.pos.x + (d.x / l) * 40, y: s.pos.y + (d.y / l) * 40, z: s.pos.z + (d.z / l) * 40 };
+              let hit = null;
+              for (let f = 0; f < 30 && !hit; f++) {
+                const q = { x: p.x - (d.x / l) * 2, y: p.y - (d.y / l) * 2, z: p.z - (d.z / l) * 2 };
+                hit = b.hit(p, q, 0);
+                p = q;
+              }
+              if (hit?.sub === s.id) reached++;
+              else if ((hit?.shield || hit?.capital) && hit.id === flag.id) stopped++; // (its own hull, not an escort in the way)
+            }
+            expect(reached / (reached + stopped), `${w.id}: ${flag.kind} ${s.id}`).toBeGreaterThan(0.25);
+          }
+          // (then on to the next phase: each taken out point-blank, whatever's round it)
+          for (const s of flag.subs.filter((o) => o.phase === phase)) for (let i = 0; i < 400 && s.alive; i++) b.hit(s.pos, { x: s.pos.x, y: s.pos.y - 0.01, z: s.pos.z }, 5);
+          run(b, 0.1);
+          expect(b.phase, `${w.id}: ${flag.kind} past phase ${phase}`).toBe(phase + 1);
+        }
+      }
+  });
+});
+
 describe('perSide', () => {
   it('is 32 a side on a strong desktop, 20 on a middling one, 10 on a phone', () => {
     expect(perSide('high')).toBe(32);
