@@ -47,6 +47,28 @@ place reaches every world. Each world supplies only a small **look**.
    bound to the look, the wind and the grass, with a button that copies the values as code.
    The Shire's walking camera narrows from 50° to 38° and pulls back to keep Frodo's size.
 
+## The core kit, then the universe and the big three
+
+Asked for after the first steps: every world wears **shared core textures**, so the worlds read
+as one place, with better models; then the universe map's models; then the three larger
+universes' models (Rick and Morty, Star Wars, Breaking Bad).
+
+- **Core kit** (`src/lib/three/core.js`): the 20 CC0 Poly Haven scans in `public/cc0/galaxy/`
+  (stone, wood, bark, adobe, metal, concrete, rock, grass, sand, mud and the rest), already
+  made into detail maps centred on one brightness, become the site's one kit. `wear()` lays a
+  scan over any lit material in world space (triplanar) at the scan's real size, so the grain
+  is the same density in every world whatever the UVs. `dress(materials, roles)` maps a
+  world's named materials onto roles, folding each one's own painted picture into its colour.
+  The galaxy's `withDetail` and `loadScan` are now re-exports of it.
+- **Models**: `scripts/flatten-glb.mjs` repaints a Meshy atlas in texture space: smoothed of
+  the generator's mush, enlarged, and posterised to a few flat colours (optionally pulled to a
+  palette). Windows, brick and trim stay as clean flat shapes; the core kit's grain goes on top
+  at runtime. Per-vertex flattening (`--vertex`) is kept for dense meshes but loses painted
+  detail on coarse ones (the Smith house's walls), so it is not the default.
+- **Order**: the Shire, then each world onto the house look and the core kit (one pull request
+  a world, before and after screenshots), then the universe map, then the Rick and Morty,
+  Star Wars and Breaking Bad models.
+
 ## Rules
 
 - `house.adopt()` goes after `groundTown()` (so its shade replaces the floor's own tint and

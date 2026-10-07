@@ -309,30 +309,11 @@ function keepCoverage(t, cut = 0.3) {
   return t;
 }
 
-// The scanned surfaces, each loaded once for the page (every world's kit
-// shares them; a new renderer uploads them again by itself): role →
-// { map, normalMap, arm } textures, or a promise of them
-const scanned = new Map();
-const SCAN_BASE = '/cc0/galaxy';
-export function loadScan(role) {
-  if (!scanned.has(role)) {
-    const loader = new THREE.TextureLoader();
-    const get = (file, srgb) =>
-      loader.loadAsync(`${SCAN_BASE}/${role}/${file}.webp`).then((t) => {
-        t.wrapS = t.wrapT = THREE.RepeatWrapping;
-        t.anisotropy = 8;
-        if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-        return t;
-      });
-    scanned.set(
-      role,
-      Promise.all([get('color', true), get('normal', false), SCANS[role]?.arm ? get('arm', false) : null])
-        .then(([map, normalMap, arm]) => ({ map, normalMap, arm }))
-        .catch(() => null),
-    );
-  }
-  return scanned.get(role);
-}
+// The scanned surfaces, each loaded once for the page: the site's one core
+// kit (lib/three/core), which every world shares.
+import { loadCore as loadScan } from '../../../lib/three/core';
+
+export { loadScan };
 
 // How each solid role wears its scan: how far it repeats (a metre of
 // texture is a metre of wall: SCANS' sizes), how rough it is over the
