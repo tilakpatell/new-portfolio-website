@@ -12,7 +12,7 @@ import { PORTAL, newFoes, portalOpen, spawnFoes, standing, startInvasion, stepFo
 import { FLY, newHero, stepHero } from './flight';
 import { getawayAt, newGetaway, stepGetaway, stopGetaway } from './getaway';
 import { CALLS, RINGS_DONE } from './lines';
-import { feedMission, keepStory, loadStory, markerOf, missionOf, nextStory, placeOf as missionPlace, startMission as beginMission, stepOf } from './missions';
+import { RADIO, feedMission, keepStory, loadStory, markerOf, missionOf, newRadio, nextRadioCall, nextStory, placeOf as missionPlace, startMission as beginMission, stepOf } from './missions';
 import { BODIES, SPACE, intoSpace, outOfSpace, stepSpace } from './orbit';
 import { CARDS, RINGS, keepQuests, newQuests, stepQuests } from './quests';
 import { CITY, COAST, BEACH, HILLS, PLACES, RIVER, SPAWN, SUBURB, WATER_Y, WORLD, groundAt, isSafeStart } from './map';
@@ -167,6 +167,9 @@ function World({ gl, setGl, thinkMark }) {
   const [found, setFound] = useState(() => keptQuests().cards.length);
   // a mission's card over the city (./MissionCard.jsx), and the same for the key handler
   const [mcard, setMcard] = useState(null);
+  // the radio's call, on the HUD's line until it's taken or dropped; the shutter, for a photo
+  const [radio, setRadio] = useState(null);
+  const [shutter, setShutter] = useState(null);
   const cardRef = useRef(null);
   cardRef.current = mcard;
   const cardT = useRef(null);
@@ -178,7 +181,7 @@ function World({ gl, setGl, thinkMark }) {
   if (!sim.current) {
     // (he's put on the lawn for now: where he really starts waits on the
     // world, which the scene makes, and nothing moves before it's there)
-    sim.current = { intro: false, kept: local.get(AT, null), quests: keptQuests(), foes: newFoes(), cars: null, mission: null, story: keptStory(), getaway: null, wave: null, swing: null, marker: null, hangarHp: 100, punch: false, punchT: 0, invadeAt: 240, h: newHero(SPAWN), keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], companion: [], eveHit: null, frame: 0, padBefore: null, moved: false, world: null };
+    sim.current = { intro: false, kept: local.get(AT, null), quests: keptQuests(), foes: newFoes(), cars: null, mission: null, story: keptStory(), getaway: null, wave: null, swing: null, marker: null, gates: null, photo: null, hangarHp: 100, radio: newRadio(), call: null, punch: false, punchT: 0, invadeAt: 240, h: newHero(SPAWN), keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], companion: [], eveHit: null, frame: 0, padBefore: null, moved: false, world: null };
   }
 
   // (`who`, for a line someone says: in their own voice where it's been made;
@@ -441,6 +444,28 @@ function World({ gl, setGl, thinkMark }) {
     [clear, speak, setup, openCard],
   );
   const abandon = useCallback(() => feed({ type: 'abandon' }), [feed]);
+  // the radio's call taken (R, or the line itself)
+  const take = useCallback(() => {
+    const s = sim.current;
+    if (!s.call || s.mission) return;
+    const id = s.call.id;
+    s.call = null;
+    setRadio(null);
+    startMission(id);
+  }, [startMission]);
+  // a photo: E in its spot, facing the right way (./missions.js says); the
+  // shutter, the HUD gone for the frame
+  const snap = useCallback(() => {
+    const s = sim.current;
+    const step = s.mission ? missionOf(s.mission.id)?.steps[s.mission.step] : null;
+    if (!step || step.type !== 'use' || step.id !== 'photo') return false;
+    const before = s.mission;
+    feed({ type: 'use', id: 'photo', face: s.h.face });
+    if (s.mission === before) return false;
+    sfx('knock');
+    setShutter(Math.random());
+    return true;
+  }, [feed]);
   missionApi.current = { start: startMission, feed };
   // Think, Mark!'s result (the page's ref): the last episode's last step
   useEffect(() => {
@@ -460,6 +485,8 @@ function World({ gl, setGl, thinkMark }) {
 
   const act = useCallback(() => {
     const s = sim.current;
+    // in a photo's spot: the picture
+    if (snap()) return;
     // next to Dad: his episodes (the first; the last, from the porch at dusk
     // or night once the rest are done), or spar with him (Think, Mark!, down the page)
     if (s.talking?.id === 'omni') {
@@ -500,7 +527,7 @@ function World({ gl, setGl, thinkMark }) {
     }
     sfx('ding');
     say(`${p.name}: ${p.line}`, 3200);
-  }, [say, feed, startMission, openCard]);
+  }, [say, feed, startMission, openCard, snap]);
 
   // Everything held, let go: the keys, the stick, the touch buttons and a
   // drag. A blur or a hidden tab (another app, a call) can swallow the
@@ -540,6 +567,7 @@ function World({ gl, setGl, thinkMark }) {
         if (!(e.target instanceof HTMLButtonElement)) act();
       } else if (e.code === 'KeyT') cycleTime();
       else if (e.code === 'KeyH' || e.key === '?') setHelp((v) => !v);
+      else if (e.code === 'KeyR' && !e.repeat) take();
       else if (e.code === 'KeyQ' && !e.repeat) {
         // a mission called off: asked first, on its card
         if (cardRef.current?.kind === 'abandon') abandon();
@@ -566,7 +594,7 @@ function World({ gl, setGl, thinkMark }) {
       document.removeEventListener('visibilitychange', hidden);
       release();
     };
-  }, [live, act, cycleTime, startSound, release, abandon, openCard, closeCard]);
+  }, [live, act, cycleTime, startSound, release, abandon, openCard, closeCard, take]);
 
   // The wind falls quiet while nobody's flying: the frame loop that keeps
   // it in step with him stops when the tab's hidden or the world's
@@ -840,6 +868,21 @@ function World({ gl, setGl, thinkMark }) {
       tv.pose(me, { area });
     }
     s.travellers = tv ? tv.list().map(placeOf) : null;
+    // the radio (./missions.js nextRadioCall): a side call now and then, on the HUD's line for a while
+    if (!s.call) {
+      const eve = a.debug.npcs?.eve?.rules?.state === 'escort';
+      const r = nextRadioCall(s.radio, dt, { mission: s.mission?.id ?? null, zone: inSpace ? 'space' : 'city', eve, done: s.story.done });
+      s.radio = r.radio;
+      if (r.call) {
+        const m = missionOf(r.call);
+        s.call = { id: r.call, until: s.t + RADIO.offer };
+        sfx('beeps');
+        setRadio({ id: r.call, who: m.intro[0][0], text: m.intro[0][1] });
+      }
+    } else if (s.t > s.call.until || s.mission) {
+      s.call = null;
+      setRadio(null);
+    }
     // the mission under way: where he is, and where what its step cares about is; then the clock
     if (s.mission) {
       const dadP = a.debug.dad().p;
@@ -902,7 +945,14 @@ function World({ gl, setGl, thinkMark }) {
           mdist = Math.hypot(mk[0] - h.p[0], mk[1] - h.p[1], mk[2] - h.p[2]);
           if (!inSpace) marks.push({ x: mk[0], z: mk[2], color: m.colour, name: 'Mission' });
         }
-      } else s.marker = null;
+        // the race's gates, and a photo's frame, for the scene to draw
+        s.gates = stepDef.type === 'race' && !stepDef.ring ? { list: stepDef.gates, next: s.mission.count, r: stepDef.r } : null;
+        s.photo = stepDef.type === 'use' && stepDef.id === 'photo' ? { p: stepDef.at, face: stepDef.face, r: stepDef.r } : null;
+      } else {
+        s.marker = null;
+        s.gates = null;
+        s.photo = null;
+      }
       s.marks = marks;
       if (H.compass && H.compassBox && !inSpace) drawCompass(H.compass, H.compassBox, s.yaw, h, s.world.places, marks);
       if (H.goal) {
@@ -1006,7 +1056,7 @@ function World({ gl, setGl, thinkMark }) {
   });
 
   return (
-    <div className="iw-stage" ref={box} data-zone={zone}>
+    <div className="iw-stage" ref={box} data-zone={zone} data-shutter={shutter ? '1' : undefined}>
       <canvas ref={canvas} className="iw-canvas" data-on={gl === 'on' || undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onContextMenu={(e) => e.preventDefault()} aria-label="The city, from the air. Fly with W, A, S and D; Space to go up, C to go down, Shift to go flat out." />
       <div className="iw-lines" ref={(el) => (hud.current.lines = el)} aria-hidden="true" />
       {flash && <div className="iw-flash" data-kind={flash.kind} key={flash.key} aria-hidden="true" onAnimationEnd={() => setFlash(null)} />}
@@ -1026,7 +1076,8 @@ function World({ gl, setGl, thinkMark }) {
       {gl === 'loading' && <p className="iw-loading">Over the city…</p>}
       <MissionCard card={mcard} story={sim.current.story} onClose={closeCard} onAgain={() => startMission(mcard?.id)} onStart={startMission} onAbandon={abandon} />
 
-      <InvHud hud={hud} mapRef={mapRef} time={time} cycleTime={cycleTime} help={help} setHelp={setHelp} chip={chip} trav={trav} found={found} cards={CARDS.length} near={near} act={act} toast={toast} />
+      <InvHud hud={hud} mapRef={mapRef} time={time} cycleTime={cycleTime} help={help} setHelp={setHelp} chip={chip} trav={trav} found={found} cards={CARDS.length} near={near} act={act} toast={toast} radio={radio} take={take} />
+      {shutter && <div className="iw-shutter" key={shutter} aria-hidden="true" onAnimationEnd={() => setShutter(null)} />}
 
       {touch && (
         <div className="iw-touch">
