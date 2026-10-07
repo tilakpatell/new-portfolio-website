@@ -46,7 +46,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      # two deep: the render step diffs the merge commit against main
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
 
       - uses: actions/setup-node@v7
         with:
@@ -64,3 +67,26 @@ jobs:
 
       - run: npm ci
       - run: npm run test:ai
+
+      # tier 3, every model draws: only when the pull request touches a model
+      # or the code that draws one (render/changed.mjs), as it needs a browser
+      - id: changed
+        run: node scripts/ai-e2e/render/changed.mjs
+      - id: playwright
+        if: steps.changed.outputs.render == 'true'
+        run: echo "version=$(node -p "require('playwright-core/package.json').version")" >> "$GITHUB_OUTPUT"
+      - if: steps.changed.outputs.render == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ steps.playwright.outputs.version }}
+      - if: steps.changed.outputs.render == 'true'
+        run: npx --yes playwright@${{ steps.playwright.outputs.version }} install --with-deps chromium
+      - if: steps.changed.outputs.render == 'true'
+        run: npm run test:ai:render
+      - if: always() && steps.changed.outputs.render == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: renders
+          path: scripts/ai-e2e/render/out/
+          if-no-files-found: ignore

@@ -57,7 +57,7 @@ describe('the near maps, loaded and swapped', () => {
     await flush();
     expect(a.swapMaps).toHaveBeenCalledTimes(1);
     expect(a.swapMaps.mock.calls[0][0].a.url).toBe('/textures/universe/a-hq.webp');
-    expect(a.nearGeometry).toHaveBeenCalledWith(true);
+    expect(a.nearGeometry).toHaveBeenCalledWith(true, 'high');
     expect(near.resident()).toEqual(['a']);
   });
 
@@ -71,7 +71,7 @@ describe('the near maps, loaded and swapped', () => {
     calls[0].resolve();
     await flush();
     expect(a.swapMaps).not.toHaveBeenCalled();
-    expect(a.nearGeometry).not.toHaveBeenCalledWith(true);
+    expect(a.nearGeometry).not.toHaveBeenCalledWith(true, 'high');
     const t = await load.mock.results[0].value;
     expect(t.disposed).toBe(true);
     expect(forget).toHaveBeenCalledWith('/textures/universe/a-hq.webp');

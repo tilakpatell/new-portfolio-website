@@ -103,8 +103,13 @@ export const mb = (n) => `${(n / 1048576).toFixed(1)} MB`;
 
 // ── encoding ──
 
+// One image to KTX2 (also the planet bakers', scripts/planets/sphere.mjs).
+// `flipY` stores it bottom row first: a KTX2 can't be flipped as it's
+// uploaded, so a map drawn on three's UVs (v up, as a WebP is flipped to)
+// is flipped here instead. (basisu's output isn't the same bytes run to
+// run, even on one thread: a rebake of the same picture differs a little.)
 let BASISU = null;
-async function encodeImage(buffer, { role, etc1s, level, rdo, quality }) {
+export async function encodeImage(buffer, { role, etc1s, level, rdo, quality, flipY = false }) {
   BASISU ??= basisuPath();
   const tmp = await mkdtemp(join(tmpdir(), 'ktx2-'));
   try {
@@ -113,7 +118,7 @@ async function encodeImage(buffer, { role, etc1s, level, rdo, quality }) {
     const img = sharp(buffer);
     const meta = await img.metadata();
     await img.png().toFile(png);
-    execFileSync(BASISU, [...encodeArgs({ role, etc1s, level, rdo, quality }), '-file', png, '-output_file', out], { stdio: 'ignore' });
+    execFileSync(BASISU, [...encodeArgs({ role, etc1s, level, rdo, quality }), ...(flipY ? ['-y_flip'] : []), '-file', png, '-output_file', out], { stdio: 'ignore' });
     return { ktx2: await readFile(out), width: meta.width, height: meta.height };
   } finally {
     await rm(tmp, { recursive: true, force: true });

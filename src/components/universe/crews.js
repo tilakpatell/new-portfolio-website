@@ -672,6 +672,14 @@ export const CREWS = [
         ['morty', 'The Citadel of Ricks!'],
         ['rick', 'A whole city of me, Morty. Worst place in the multiverse.'],
       ],
+      rmportal: [
+        ['morty', 'Rick, there’s a portal just… hanging out here in space!'],
+        ['rick', 'That’s the back door to the Curve, Morty. Fly in, we come out at the Citadel. Try not to make eye contact with anyone who looks like me.'],
+      ],
+      'rmportal-back': [
+        ['morty', 'Is that the way home?'],
+        ['rick', 'Home-ish, Morty. Our dimension’s side of the map. Close enough.'],
+      ],
       curvesun: [
         ['morty', 'Rick, wh-why does this sun look kinda green?'],
         ['rick', 'Everything in the Curve’s a little off, Morty. We built it that way. Well, they did. Me. Other me.'],
@@ -1363,6 +1371,14 @@ export const CREWS = [
         ['luke', 'A whole city out here, full of… the same old man?'],
         ['r2', '[a confused warble]'],
       ],
+      rmportal: [
+        ['luke', 'A green whirlpool, just hanging in space. Artoo, is that a hyperspace lane?'],
+        ['r2', '[a doubtful warble]'],
+      ],
+      'rmportal-back': [
+        ['luke', 'The green swirl again. That should take us back the way we came.'],
+        ['r2', '[a hopeful whistle]'],
+      ],
       curvesun: [
         ['luke', 'This star’s light is… greener than Tatooine’s twins.'],
         ['r2', '[an unimpressed beep]'],
@@ -2022,6 +2038,8 @@ export const CREWS = [
         ['han', 'Yeah. I see them. Ships don’t end up like that by accident, Chewie.'],
       ],
       citadel: [['han', 'A station full of the same crazy old guy. I’ve seen worse cantinas.']],
+      rmportal: [['han', 'Green swirly thing. I’ve flown through worse. Probably.']],
+      'rmportal-back': [['han', 'There’s our way out. Chewie, punch it.']],
       curvesun: [['han', 'Green sun. Whatever this place is, it isn’t on any of my charts.']],
       maw: [['han', 'Black hole. Even the Falcon can’t outrun that.']],
       aurelia: [['han', 'Big planet. Probably full of smugglers.']],
@@ -2760,6 +2778,14 @@ export const CREWS = [
       citadel: [
         ['jesse', 'A whole city of the same old dude?'],
         ['walt', 'Imagine their supply chain.'],
+      ],
+      rmportal: [
+        ['jesse', 'Mr. White, there’s a big green hole in the sky.'],
+        ['walt', 'Then we go through it, Jesse. Carefully.'],
+      ],
+      'rmportal-back': [
+        ['jesse', 'Is that the green hole home?'],
+        ['walt', 'Back to our side of things. Yes.'],
       ],
       curvesun: [
         ['jesse', 'Yo, the sun is green. Like, actually green.'],

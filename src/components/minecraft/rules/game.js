@@ -1,0 +1,117 @@
+// Minecraft, the sim: the loaded chunks, the player and the clock, stepped
+// at the game's 20 ticks a second from the page's input. It doesn't make
+// chunks itself: it says which columns it wants (`wantedChunks`, nearest
+// first), the module has the worker make and mesh them, and `addChunk`
+// takes them in; `dropFar` lets go of the ones left behind. Until the chunk
+// under the player has come, the player is held where they are, as the game
+// holds a player in an unloaded chunk.
+//
+// Events (a landing, a step, a hurt) collect on the game for the module to
+// `drain` once a frame: sounds, the HUD.
+
+import { chunkOf, key, makeChunk } from './chunk.js';
+import { hashSeed } from './noise.js';
+import { makePlayer, stepPlayer } from './player.js';
+import { makeWorld } from './world.js';
+import { SEA, makeGenerator } from './worldgen.js';
+
+export const NOON = 6000;
+const GRASSY = new Set(['plains', 'forest', 'birch_forest', 'taiga']);
+
+// Where a new world starts: the first grassy column scanning out from
+// (0, 0) in rings, standing on its surface with room for a body.
+export function spawnPoint(gen) {
+  const fits = (x, z) => {
+    const c = makeChunk(chunkOf(x), chunkOf(z));
+    gen.generate(c);
+    const lx = x - c.cx * 16;
+    const lz = z - c.cz * 16;
+    const h = gen.height(x, z);
+    const at = (y) => c.ids[(y * 16 + lz) * 16 + lx];
+    return at(h + 1) === 0 && at(h + 2) === 0 && at(h) !== 0 ? h : null;
+  };
+  for (const strict of [true, false])
+    for (let r = 0; r < 4000; r += 8)
+      for (let a = 0; a < Math.max(1, Math.round((2 * Math.PI * r) / 8)); a++) {
+        const t = r ? (a / Math.round((2 * Math.PI * r) / 8)) * 2 * Math.PI : 0;
+        const x = Math.round(Math.cos(t) * r);
+        const z = Math.round(Math.sin(t) * r);
+        const h = gen.height(x, z);
+        if (h <= SEA || (strict && !GRASSY.has(gen.biome(x, z, h)))) continue;
+        const ok = fits(x, z);
+        if (ok !== null) return { x: x + 0.5, y: ok + 1, z: z + 0.5 };
+      }
+  return { x: 0.5, y: 120, z: 0.5 };
+}
+
+export function newGame({ seed = Date.now(), save = null } = {}) {
+  const s = hashSeed(save?.seed ?? seed);
+  const gen = makeGenerator(s);
+  const spawn = save?.player?.spawn ?? spawnPoint(gen);
+  const at = save?.player ?? spawn;
+  const player = makePlayer(at);
+  player.yaw = save?.player?.yaw ?? 0;
+  player.pitch = save?.player?.pitch ?? 0;
+  return {
+    seed: s,
+    gen,
+    world: makeWorld(),
+    player,
+    spawn,
+    time: save?.time ?? NOON,
+    ticks: 0,
+    renderDistance: 10,
+    maxChunks: 1000,
+    events: [],
+  };
+}
+
+// The columns in reach, nearest first: a square of the render distance
+// round the player's chunk, as the game loads.
+export function wantedChunks(g) {
+  const pcx = chunkOf(Math.floor(g.player.x));
+  const pcz = chunkOf(Math.floor(g.player.z));
+  const r = g.renderDistance;
+  const out = [];
+  for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) out.push([dx, dz, dx * dx + dz * dz]);
+  out.sort((a, b) => a[2] - b[2] || Math.atan2(a[1], a[0]) - Math.atan2(b[1], b[0]));
+  return out.slice(0, g.maxChunks).map(([dx, dz]) => key(pcx + dx, pcz + dz));
+}
+
+export function addChunk(g, chunk) {
+  g.world.chunks.set(key(chunk.cx, chunk.cz), chunk);
+}
+
+export function dropChunk(g, k) {
+  g.world.chunks.delete(k);
+}
+
+// Lets go of the chunks more than two past the render distance; says which.
+export function dropFar(g) {
+  const pcx = chunkOf(Math.floor(g.player.x));
+  const pcz = chunkOf(Math.floor(g.player.z));
+  const far = g.renderDistance + 2;
+  const gone = [];
+  for (const [k, c] of g.world.chunks) {
+    if (Math.max(Math.abs(c.cx - pcx), Math.abs(c.cz - pcz)) > far) {
+      g.world.chunks.delete(k);
+      gone.push(k);
+    }
+  }
+  return gone;
+}
+
+export function tick(g, input) {
+  g.ticks++;
+  g.time++;
+  const p = g.player;
+  const events = g.world.loaded(p.x, p.z) ? stepPlayer(g.world, p, input) : [];
+  g.events.push(...events);
+  return events;
+}
+
+export function drain(g) {
+  const out = g.events;
+  g.events = [];
+  return out;
+}

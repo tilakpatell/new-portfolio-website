@@ -76,19 +76,19 @@
 
 ## PR 5: Tier 3, every model draws
 
-- [ ] **5.1** `scripts/glb-shot.mjs`: `shoot()` returns the console errors and page errors it saw (`shoot.last.errors`) so a test can assert on them; `W`/`H` overridable (already `w`, `h`). A dev server helper `scripts/ai-e2e/render/server.mjs` starts vite on a free port and stops it (reuse `autopilot-check.mjs`’s port-finding).
-- [ ] **5.2** `render/coverage.mjs`: `coverage(png, bg)` → fraction of pixels farther than a tolerance from the background colour (`sharp` raw pixels). Test on a blank and a drawn fixture.
-- [ ] **5.3** `render/gen3d.test.mjs` (“up to 60 s, needs Chromium”): for each cut, the `three` view at 320×240 → coverage ≥ 0.04, no error outside `NOISE` (export `NOISE` from `autopilot-check.mjs` into `scripts/lib/noise.mjs` and import it in both). Skips with a clear reason when `CHROME` is unset and no Chromium is found; writes each PNG to `scripts/ai-e2e/render/out/` (git-ignored).
-- [ ] **5.4** `ci.yml`: the `ai` job gets a step that runs tier 3 only when `public/models/**` or `src/lib/three/**` changed (`dorny/paths-filter` or a `git diff --name-only origin/main...` check in a script), after `npx playwright@<pinned> install --with-deps chromium` cached on the version. The render folder is excluded from the plain `test:ai` run and run by `test:ai:render`.
-- [ ] **5.5** Gate, PR, CI green, merge.
+- [x] **5.1** `scripts/glb-shot.mjs`: `shoot()` returns the console errors and page errors it saw (`shoot.last.errors`) so a test can assert on them; `W`/`H` overridable (already `w`, `h`). A dev server helper `scripts/ai-e2e/render/server.mjs` starts vite on a free port and stops it (reuse `autopilot-check.mjs`’s port-finding).
+- [x] **5.2** `render/coverage.mjs`: `coverage(png, bg)` → fraction of pixels farther than a tolerance from the background colour (`sharp` raw pixels). Test on a blank and a drawn fixture.
+- [x] **5.3** `render/gen3d.test.mjs` (“up to 60 s, needs Chromium”): for each cut, the `three` view at 320×240 → coverage ≥ 0.04, no error outside `NOISE` (export `NOISE` from `autopilot-check.mjs` into `scripts/lib/noise.mjs` and import it in both). Skips with a clear reason when `CHROME` is unset and no Chromium is found; writes each PNG to `scripts/ai-e2e/render/out/` (git-ignored).
+- [x] **5.4** `ci.yml`: the `ai` job gets a step that runs tier 3 only when `public/models/**` or `src/lib/three/**` changed (`dorny/paths-filter` or a `git diff --name-only origin/main...` check in a script), after `npx playwright@<pinned> install --with-deps chromium` cached on the version. The render folder is excluded from the plain `test:ai` run and run by `test:ai:render`.
+- [x] **5.5** Gate, PR, CI green, merge.
 
 ## PR 6: Tier 4, the brains scripted and fuzzed
 
-- [ ] **6.1** `src/components/universe/npcs/brains/harness.js`: `meet()` and its helpers lifted from `nemesis.test.js` (seeded random, `fly`, `you`, `foe(brainName)`, frame-by-frame capture, modes seen, a `trace` of events for determinism). `nemesis.test.js` imports it and passes unchanged. Exports `simulate(rules, script)` for the worlds’ `rules.js` files.
-- [ ] **6.2** One `<brain>.scenario.test.js` per brain in `brains/` (inspector, merchant, wingman, bounty, rival, trickster, tagalong, informant), each scenario and assertion taken from the brain’s header comment and the spec’s table. Where a brain’s promise is not in its header, read the brain, write the promise into the header, then the test.
-- [ ] **6.3** `brains/all.scenario.test.js`: over every brain and 200 seeds: no NaN or infinity in any intent or event; speed and turn within `stats`; determinism (same seed, same script → identical trace); liveness (no mode held with the same target over 60 s unless the brain’s header names it terminal).
-- [ ] **6.4** `src/lib/ai/*.fuzz.test.js`: `steer` output length ≤ limit over random fields; `search` finds a path when flood fill does and not otherwise; `spatial.pick` returns only candidates passing every filter; `squad` gives every member exactly one role; `perception` memory decays monotonically with no sightings; `utility.pick` returns an option with the highest score, ties broken by the given `rand`.
-- [ ] **6.5** Gate, PR, CI green, merge.
+- [x] **6.1** `src/components/universe/npcs/brains/harness.js`: `meet()` and its helpers lifted from `nemesis.test.js` (seeded random, `fly`, `you`, `foe(brainName)`, frame-by-frame capture, modes seen, a `trace` of events for determinism). `nemesis.test.js` imports it and passes unchanged. Exports `simulate(rules, script)` for the worlds’ `rules.js` files.
+- [x] **6.2** One `<brain>.scenario.test.js` per brain in `brains/` (inspector, merchant, wingman, bounty, rival, trickster, tagalong, informant), each scenario and assertion taken from the brain’s header comment and the spec’s table. Where a brain’s promise is not in its header, read the brain, write the promise into the header, then the test.
+- [x] **6.3** `brains/all.scenario.test.js`: over every brain and 200 seeds: no NaN or infinity in any intent or event; speed and turn within `stats`; determinism (same seed, same script → identical trace); liveness (no mode held with the same target over 60 s unless the brain’s header names it terminal).
+- [x] **6.4** `src/lib/ai/*.fuzz.test.js`: `steer` output length ≤ limit over random fields; `search` finds a path when flood fill does and not otherwise; `spatial.pick` returns only candidates passing every filter; `squad` gives every member exactly one role; `perception` memory decays monotonically with no sightings; `utility.pick` returns an option with the highest score, ties broken by the given `rand`.
+- [x] **6.5** Gate, PR, CI green, merge.
 
 ## PR 7: Tier 5, the judges, and the nightly workflow
 

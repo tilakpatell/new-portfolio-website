@@ -97,7 +97,7 @@ import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePa
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
-import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SUN } from './layout';
+import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SECTORS, SUN, sectorOf } from './layout';
 import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
@@ -120,6 +120,8 @@ import { createMeteors } from './meteors';
 import { createMines } from './mines';
 import { ESCORT, escortHull, escortPlan, escortTo } from './escort';
 import { DEBRIS_DRIFT, buildDeepSpace } from './deepspace';
+import { createSectorPortals } from './sectorPortals';
+import { portalHit, transit } from './portals';
 import { ROCK_RELIEF } from '../../lib/three/rock';
 import { ROCK_HIT, boxOf, nearBox, nearRing, rockDamage, rockGrid, sweep, toBelt } from './rockHits';
 import { createFront } from './front';
@@ -679,6 +681,8 @@ export async function create(canvas, ctx) {
   ];
   const smashed = new Map(rockFields.map((f) => [f.id, new Map()]));
   map.add(deep.group);
+  // the portals between the map's sectors (sectorPortals.js; flown through below: portalThrough)
+  const sectorPortals = createSectorPortals(map);
   const trenches = PLANETS.filter((p) => p.trench).map((p) => createTrench({ at: p.at, r: p.r, trench: p.trench }, { small }));
   for (const tr of trenches) map.add(tr.group);
   // and a beacon over each far world, so it reads as somewhere to go
@@ -3592,7 +3596,7 @@ export async function create(canvas, ctx) {
   // out: parked there, the hunters left behind, a flash where it comes out)
   const riftThrough = () => {
     const s = state.ship;
-    const exit = riftExit(state.at, state.saw, Math.random);
+    const exit = riftExit(state.at, Math.random, sectorOf(s.x, s.y, s.z), state.saw); // (out in the sector it opened in, somewhere you haven't been)
     const park = parkFor(exit, [s.x, s.z]);
     pieces.closeRift();
     if (!park) return;
@@ -3617,6 +3621,35 @@ export async function create(canvas, ctx) {
     }
     emit({ type: 'event', id: 'rifted' });
     emit({ type: 'rifted', id: exit });
+  };
+
+  // into a portal (portals.js): out by its far end, in the other sector,
+  // going on the way it went in at half the speed, a green flash where it
+  // comes out, the hunters and the traffic left behind. A trip to the portal
+  // is done there (the page takes a trip on through it on from here); a
+  // trip anywhere else that went through it is dropped
+  const portalThrough = (id) => {
+    const out = transit(state.ship, id);
+    if (!out) return;
+    if (state.auto) {
+      const going = state.auto.id;
+      state.auto = null;
+      emit({ type: 'arrived', id: going, done: going === id });
+    }
+    state.ship = out.ship;
+    hunters?.clear();
+    meteors.clear();
+    wingmen?.clear();
+    skirmishes?.clear();
+    npcs?.clear();
+    traffic?.clear();
+    state.interdicted = false;
+    state.safeUntil = state.clock + SAFE;
+    state.flare = Math.max(state.flare, 2.4);
+    camQOn = false;
+    crashFx.arrive({ point: new THREE.Vector3(out.ship.x, out.ship.y, out.ship.z), kind: 'cruiser', heading: out.ship.heading }); // (a portal, whatever the ship)
+    state.note = { text: `Through the portal: ${SECTORS[out.sector].name}`, until: wall() + 3.5 };
+    emit({ type: 'sector', id: out.sector, through: id });
   };
 
   const fly = (dt, t) => {
@@ -3701,6 +3734,10 @@ export async function create(canvas, ctx) {
       else if (!state.crash) startCrash(e);
     }
     if (state.crash) return true;
+    if (!state.jump && !state.held) {
+      const into = portalHit(before, state.ship);
+      if (into) portalThrough(into);
+    }
     // into a planet's air (entry.js): at a speed it can land at, the way in
     // takes it on down onto the ground; any faster it's no landing (it goes
     // on into the ground, and that's the crash above, as ever), and the HUD
@@ -4493,6 +4530,7 @@ export async function create(canvas, ctx) {
     // (the look follows the lights; what's come into the scene since is taken on every half second or so)
     house.follow({ adopt: houseFrames++ % 30 === 0 });
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
+    sectorPortals.update(t, camera);
     // the Citadel's siege: rebuilt or patched up when it's time, what's left
     // of it drawn, and your word on it out to everyone (soon after a hit of
     // yours; every few seconds while there's anything to tell)
@@ -4968,7 +5006,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -5261,6 +5299,7 @@ export async function create(canvas, ctx) {
       eclipseMoon?.material.dispose();
       fleet.dispose();
       deep.dispose();
+      sectorPortals.dispose();
       for (const tr of trenches) tr.dispose();
       beacons.dispose();
       phone.dispose();

@@ -611,6 +611,37 @@ export const BRIEFS = {
     },
     help('the castle'),
   ],
+  '/dot-matrix/minecraft': [
+    {
+      id: 'hello',
+      title: 'Minecraft',
+      text: 'A fan tribute: an endless world of blocks made from a seed, drawn in Pixel Perfection, a free pack close to the game’s own.',
+    },
+    {
+      id: 'walk',
+      title: 'Walking',
+      text: 'Click the world to take the pointer, and the mouse turns your head. You walk, jump and swim by the game’s own numbers.',
+      keys: [
+        ['W A S D / ← ↑ ↓ →', 'Walk'],
+        ['Mouse', 'Look'],
+        ['Space', 'Jump; swim up'],
+        ['Shift', 'Sneak, and stay on the edge'],
+        ['W twice', 'Sprint'],
+      ],
+      touch: [
+        ['Stick', 'Walk'],
+        ['Drag', 'Look'],
+        ['⇧', 'Jump; swim up'],
+        ['⇩', 'Sneak'],
+      ],
+    },
+    {
+      id: 'goal',
+      title: 'Coming',
+      text: 'Digging and building, the night, caves and mobs arrive a piece at a time. New world on the title gives another seed.',
+    },
+    help('the world'),
+  ],
   '/earth': [
     {
       id: 'hello',
