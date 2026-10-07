@@ -438,7 +438,8 @@ export function step(s, input, dt, solids = SOLIDS, space = SPACE) {
     const over = Math.max(0, s.speed - limit);
     const past = Math.max(1, s.speed / SHIP.pulse) ** 2;
     const closing = dt > 0 ? Math.max(0, limit - next) / dt : 0;
-    const drive = over > 0 || want >= next ? Math.min(SHIP.drop * past, over * SHIP.settle * past + 20) + closing : 0;
+    // (another map's space can pull back less hard: the galaxy's speeds are a fifth of these)
+    const drive = over > 0 || want >= next ? Math.min((space.drop ?? SHIP.drop) * past, over * SHIP.settle * past + 20) + closing : 0;
     const own = want >= next ? 0 : (throttle === 0 ? space.coastAt(s.x, s.y, s.z, open) : space.brakeAt(s.x, s.y, s.z, open)) * odK;
     accel = Math.max(drive, own);
   }

@@ -10,7 +10,23 @@
 // the sublight drive (up to PULSE), so crossing the system doesn't drag, and
 // drops back as you come up on anything (so you never arrive at it flat out).
 //
-// makeSpace(solids) → { edge, ceilingAt, openness, driveAt, homeAt, boostAt, brakeAt, coastAt, solids, goals }
+// How open it is goes by what's ahead, the way the universe map's deep space
+// does it (deep.js's gapAlong): something off to the side counts as DRIVE.wide
+// times further than it is, and something behind you all of it, so flying past
+// a moon, round the planet or out of a battle keeps the drive open, and only
+// what the nose is on closes it. It used to count everything round you, in
+// every direction, from anything a rock's size up: a moon passed 20 units off
+// pinned the ship at the boost (12, from 62) for a hundred units either side
+// of it, and a battle's hulls held a whole stretch of the system down, which
+// flew like glue. And it closes at a steady rate (DRIVE.decel: the speed the
+// drive allows at a gap is what braking that hard from there would leave),
+// not the old smoothstep, whose middle braked twice as hard as its ends.
+// A planet counts from just over its surface (DRIVE.air), not from its reach:
+// the worlds are grown (fit.js), so Hoth's reach is 150 units of air over its
+// ground, and the drive shut all through it took twelve seconds at the boost
+// to climb out of.
+//
+// makeSpace(solids) → { edge, ceilingAt, openness, driveAt, driveAlong, homeAt, boostAt, brakeAt, coastAt, drop, solids, goals }
 // solids: [{ id, at: [x, y, z], r, reach, band?, swallow? }]: what the ship
 // bumps into (the planet, its moons, the Death Star, the big rocks…); the
 // ones with `goal` are somewhere the autopilot can take you.
@@ -21,39 +37,67 @@ import { conj, fromAngles, rotate } from '../universe/orient';
 export const EDGE = 900;
 export const CEILING = 420;
 export const PULSE = 62;
-const NEAR = 26; // past a thing's reach: closer than this, the drive's down
-const RAMP = 90; // and over this much further it opens all the way
+export const DRIVE = {
+  near: 16, // past a thing's reach: closer than this (the way you're going), the drive's down to the boost
+  decel: 16, // map units a second, a second: how hard it slows you coming up on something, all the way in
+  wide: 6, // something off the nose counts this many times as far as it's off to the side
+  big: 3, // what's smaller than this (its reach) never closes the drive: you bump off a rock, it doesn't hold you
+  drop: 120, // the hardest it pulls you back to what it allows (the universe map's SHIP.drop, 340, is a wall at these speeds)
+  air: 0.15, // a planet's, of its radius over its surface: where its drive's down
+};
 const PARK = 6; // how far past a goal's reach the autopilot stops
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
-const smooth = (k) => k * k * (3 - 2 * k);
+
+// how far it is to `o` going the way `f` points (a unit vector; null, every way alike)
+function gapAlong(x, y, z, f, o) {
+  const reach = o.planet ? o.r * (1 + DRIVE.air) : (o.reach ?? o.r);
+  const cx = o.at[0] - x;
+  const cy = o.at[1] - y;
+  const cz = o.at[2] - z;
+  const d = Math.sqrt(cx * cx + cy * cy + cz * cz);
+  if (!f) return d - reach;
+  const along = cx * f[0] + cy * f[1] + cz * f[2];
+  const miss = along > 0 ? Math.sqrt(Math.max(0, d * d - along * along)) : d; // (going away: all of it)
+  return d - reach + DRIVE.wide * Math.max(0, miss - reach);
+}
+
+// how open the drive is `gap` out: the speed braking at DRIVE.decel from
+// there would still have at DRIVE.near, as a share of the way from the boost
+// to PULSE
+export function openAt(gap) {
+  const b = SHIP.boost;
+  const v = Math.sqrt(b * b + 2 * DRIVE.decel * Math.max(0, gap - DRIVE.near));
+  return clamp((v - b) / (PULSE - b), 0, 1);
+}
 
 export function makeSpace(solids, { edge = EDGE, ceiling = CEILING } = {}) {
   const goals = Object.fromEntries(solids.filter((o) => o.goal).map((o) => [o.id, o]));
-  // the big things only count for how open it is (a pebble in a rock field
-  // shouldn't cut the drive)
-  const big = solids.filter((o) => o.r >= 1.5 || o.goal);
-  const openness = (x, y, z) => {
+  // what can close the drive: the planet, its moons, the places to go, and
+  // anything else big (a capital ship's hull, a boulder, a shield)
+  const big = solids.filter((o) => o.goal || o.planet || o.id?.startsWith('moon-') || Math.max(o.sr ?? 0, o.reach ?? o.r) >= DRIVE.big);
+  const driveAlong = (x, y, z, f = null) => {
     let gap = Infinity;
     for (const o of big) {
-      const dx = x - o.at[0];
-      const dy = y - o.at[1];
-      const dz = z - o.at[2];
-      const d = Math.sqrt(dx * dx + dy * dy + dz * dz) - (o.reach ?? o.r);
-      if (d < gap) gap = d;
+      if (!((o.reach ?? o.r) > 0)) continue; // (gone: a wreck, a shield that's down)
+      const g = gapAlong(x, y, z, f, o);
+      if (g < gap) gap = g;
     }
-    return smooth(clamp((gap - NEAR) / RAMP, 0, 1));
+    return openAt(gap);
   };
+  const openness = (x, y, z) => driveAlong(x, y, z, null);
   return {
     edge,
     ceilingAt: () => ceiling,
     openness,
     driveAt: openness, // (how far the sublight drive's open: all of how open it is)
+    driveAlong, // (and the way the nose points: what ship.js flies by)
     homeAt: () => 0, // (none of the universe map's home-system handling)
     // (`open`, how open the drive is, if ship.js knows it already: less, held down by hunters)
     boostAt: (x, y, z, boost = SHIP.boost, open = openness(x, y, z)) => boost + (PULSE - boost) * open,
     brakeAt: (x, y, z, open = openness(x, y, z)) => SHIP.brake * (1 + 2.5 * open),
     coastAt: (x, y, z, open = openness(x, y, z)) => SHIP.coast * (1 + 3.5 * open),
+    drop: DRIVE.drop,
     solids,
     goals,
   };
