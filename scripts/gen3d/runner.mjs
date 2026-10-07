@@ -33,7 +33,8 @@ const SIDES = ['front', 'left', 'back', 'right'];
 export const KEYS = ['what', 'prompt', 'image', ...SIDES, 'faces', 'tex', 'seed', 'res', 'fov', 'engine', 'faithful', 'bake', 'fresh', 'more'];
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const PORT = 5298;
-const prefix = /^\s*(gen3d|3d|model)\s*[:-]\s*/i;
+// (a prefix written as one, as lib.mjs's slug has it: not "model-627"'s own first word)
+const prefix = /^\s*(gen3d|3d|model)(\s*:\s*|\s+-\s+)/i;
 
 // An issue → a job for make.mjs, or null when it says nothing to make.
 // A job that can't be made says why in `error`.
