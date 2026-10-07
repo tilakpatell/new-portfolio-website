@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { GUIDES } from '../components/guide/routes';
-import { AUDIENCES_TODO, TODO, isDone, todoFor } from './todo';
+import { THING_AUDIENCES, THINGS_TO_DO, isDone, todoFor } from './todo';
 
 const src = join(import.meta.dirname, '..');
 
@@ -26,29 +26,29 @@ const KINDS = ['page', 'section', 'world', 'game', 'mission', 'mini-game', 'mult
 
 describe('the things to do', () => {
   it('has about sixty, each with an id of its own', () => {
-    expect(TODO.length).toBeGreaterThanOrEqual(50);
-    expect(TODO.length).toBeLessThanOrEqual(75);
-    expect(new Set(TODO.map((t) => t.id)).size).toBe(TODO.length);
+    expect(THINGS_TO_DO.length).toBeGreaterThanOrEqual(50);
+    expect(THINGS_TO_DO.length).toBeLessThanOrEqual(75);
+    expect(new Set(THINGS_TO_DO.map((t) => t.id)).size).toBe(THINGS_TO_DO.length);
   });
 
   it('goes somewhere the site has a route for', () => {
     const rs = routes();
     expect(rs.length).toBeGreaterThan(20);
-    for (const t of TODO) {
+    for (const t of THINGS_TO_DO) {
       const path = t.to.split(/[?#]/)[0];
       expect(rs.some((r) => r.test(path)), `${t.id}: ${t.to}`).toBe(true);
     }
   });
 
   it('groups under one of the guide’s pages', () => {
-    for (const t of TODO) expect(GUIDES[t.area], `${t.id}: ${t.area}`).toBeTruthy();
+    for (const t of THINGS_TO_DO) expect(GUIDES[t.area], `${t.id}: ${t.area}`).toBeTruthy();
   });
 
   it('is ticked by a real achievement or a route', () => {
     const ids = achievementIds();
     expect(ids.size).toBeGreaterThan(200);
     const rs = routes();
-    for (const t of TODO) {
+    for (const t of THINGS_TO_DO) {
       const keys = Object.keys(t.done);
       expect(keys.length, t.id).toBe(1);
       if (t.done.achievement) expect(ids.has(t.done.achievement), `${t.id}: ${t.done.achievement}`).toBe(true);
@@ -57,8 +57,8 @@ describe('the things to do', () => {
   });
 
   it('says who it’s for, what it is, how long it takes and whether a phone will do', () => {
-    for (const t of TODO) {
-      expect(AUDIENCES_TODO, t.id).toContain(t.audience);
+    for (const t of THINGS_TO_DO) {
+      expect(THING_AUDIENCES, t.id).toContain(t.audience);
       expect(KINDS, t.id).toContain(t.kind);
       expect(typeof t.seconds === 'number' && t.seconds > 0, t.id).toBe(true);
       expect(typeof t.phone, t.id).toBe('boolean');
@@ -67,7 +67,7 @@ describe('the things to do', () => {
   });
 
   it('keeps its copy short and its quotes curly', () => {
-    for (const t of TODO) {
+    for (const t of THINGS_TO_DO) {
       expect(t.blurb.length, t.id).toBeLessThan(140);
       for (const s of [t.title, t.blurb]) expect(s, t.id).not.toMatch(/['"]/);
     }
@@ -83,8 +83,8 @@ describe('todoFor', () => {
   });
 
   it('gives everything to a mixed audience, or one it doesn’t know', () => {
-    expect(todoFor('mixed')).toEqual(TODO);
-    expect(todoFor('nobody')).toEqual(TODO);
+    expect(todoFor('mixed')).toEqual(THINGS_TO_DO);
+    expect(todoFor('nobody')).toEqual(THINGS_TO_DO);
   });
 });
 

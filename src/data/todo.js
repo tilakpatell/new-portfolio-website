@@ -12,9 +12,9 @@
 // true when it works on one, touch controls included. Within an area, the
 // most showable comes first.
 
-export const AUDIENCES_TODO = ['recruiter', 'player', 'both'];
+export const THING_AUDIENCES = ['recruiter', 'player', 'both'];
 
-export const TODO = [
+export const THINGS_TO_DO = [
   // the shell and the home page
   {
     id: 'view-switch',
@@ -821,8 +821,8 @@ export const TODO = [
 // The rows for a tour's audience: a recruiter's and a player's lists share
 // the rows for both; anything else (the mixed tour) gets the lot.
 export function todoFor(audience) {
-  if (audience === 'recruiter' || audience === 'player') return TODO.filter((t) => t.audience === audience || t.audience === 'both');
-  return TODO;
+  if (audience === 'recruiter' || audience === 'player') return THINGS_TO_DO.filter((t) => t.audience === audience || t.audience === 'both');
+  return THINGS_TO_DO;
 }
 
 // Whether a row is ticked, from the unlocked achievements and the routes

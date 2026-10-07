@@ -17,7 +17,7 @@ import { projects } from '../data/projects';
 import { local, useDocumentTitle } from '../lib/hooks';
 import { restartSite } from '../lib/restart';
 import { TOUR_NAMES, openTour } from '../lib/tour';
-import { TODO, isDone } from '../data/todo';
+import { THINGS_TO_DO, isDone } from '../data/todo';
 import { VISITED_KEY } from '../lib/visited';
 
 // The Imperial terminal — the one place on the site that stays fully in character.
@@ -528,10 +528,10 @@ export default function Terminal() {
       },
       todo: () => {
         const visited = local.get(VISITED_KEY, []);
-        const ticked = TODO.filter((t) => isDone(t, { unlocked, visited })).length;
+        const ticked = THINGS_TO_DO.filter((t) => isDone(t, { unlocked, visited })).length;
         return [
-          L(`  THINGS TO DO: ${ticked}/${TODO.length}`, 'head'),
-          ...TODO.map((t) => (isDone(t, { unlocked, visited }) ? L(`  ■ ${t.title}`) : L(`  □ ${t.title}`, 'dim'))),
+          L(`  THINGS TO DO: ${ticked}/${THINGS_TO_DO.length}`, 'head'),
+          ...THINGS_TO_DO.map((t) => (isDone(t, { unlocked, visited }) ? L(`  ■ ${t.title}`) : L(`  □ ${t.title}`, 'dim'))),
           BLANK,
           L('  The guide’s “Things to do” tab (press ?) shows you any of them.', 'dim'),
         ];

@@ -10,6 +10,17 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-07-audience-tours-and-ui-audit-design.md`, sections 3.2–3.5, 3.8 and 4. Read `docs/research/2026-10-07-tours-and-ui-audit/tour-system.md` sections 8 and 11 first: they list what breaks on a route change.
 
+## Interface changes made while building (stream B: follow these)
+
+- `compose(tours, recipe, named = {})`: `[name, from, to]` are the spec's chapter numbers, where 1 is the shell, which `planFor` adds itself, so a list in `steps.js` starts at chapter 2 (`tours.recruiter[0]` is chapter 2). A string item names a chapter in `named`: `TOURS.mixed = compose(TOURS, [['recruiter', 1, 7], ['player', 2, 9], 'end'], { end: shared.end })`. A name not there throws.
+- `planFor(tours, audience, view, here)`: the shell chapter is `{ id: 'shell', title: 'Getting about', path }` with the view tour's stops whose ids are in `SHELL_STOPS[audience]` (no `hello`, no `done`), each marked `optional: true`. An audience list therefore starts with its own first chapter; give it an opening card if it wants one.
+- `optional: true` on any stop: if the page is ready and its target is absent for `SKIP_MS` (1.5 s), the stop is skipped rather than shown centred after 8 s. Use it for stops that only exist at some widths.
+- The catalogue's export is `THINGS_TO_DO` (not `TODO`: the health check counts the uppercase word as a TODO note), with `todoFor(audience)` and `isDone(row, { unlocked, visited })`; a stop's `todo` is a row's `id`.
+- `keys: 'release'` on a stop: pressing `?` or ⌘K / Ctrl K there opens the guide or the palette and ends the tour with progress kept (the guide then offers "Carry on…"). `keys` as an array is still the key-table rows; the two do not mix on one stop.
+- `openTour({ audience, chapter?, stop?, todo?, to? })`; `to` is where "Show me" goes when no stop has that `todo`. An audience with no chapters yet falls back to the view's tour.
+- `tourRecruiter` and `tourPlayer` are in `ACHIEVEMENTS` already (B's Task 4 is done).
+- `steps.test.js`'s key test now accepts any of the five names and requires the two view tours; B's chapter lists will need the other `steps.test.js` cases (first/last stop, text length, `marked()`) to read chapter lists.
+
 ## Global Constraints
 
 - Tests beside files, Node only, under a second, no network (`docs/health/RULES.md`). Never skip or quieten a test.
