@@ -72,6 +72,7 @@ import { gltfStats } from '../../lib/three/gltfCache';
 import { STEPS } from '../../lib/three/pace';
 import { FOV } from '../universe/flight';
 import { createPost } from '../universe/post';
+import { followRatio } from './drawnAt';
 import { houseOn } from '../../lib/three/house';
 import { SHIP, autopilot, forward, spawn, step } from '../universe/ship';
 import { createHunters } from '../universe/hunters';
@@ -355,7 +356,7 @@ export async function create(canvas, ctx) {
   const flying = () => Boolean(state.ship);
 
   // ── The system you're in ──
-  let ratioSeen = renderer.getPixelRatio(); // the pixel ratio the sky and the skylanes were last sized for
+  const followDrawn = followRatio(post, (r) => (sky.setRatio(r), state.world?.setRatio(r))); // (the ratio the points are sized by: ./drawnAt.js)
   let detail = 1; // how finely the planets are drawn (0…1), as the world was last told
   let capDetail = false; // set when the scene is told to give up quality: the planets at their coarsest
   let env = null;
@@ -380,7 +381,7 @@ export async function create(canvas, ctx) {
     state.world = null;
     state.sys = sys;
     sky.setSystem(sys);
-    const world = buildSystem(sys, { models, bolts, flashes, small, ratio: ratioSeen });
+    const world = buildSystem(sys, { models, bolts, flashes, small, ratio: post.ratio });
     world.setDetail(detail);
     scene.add(world.group);
     state.world = world;
@@ -1750,14 +1751,10 @@ export async function create(canvas, ctx) {
       if (lastNow) longest = Math.max(longest, now - lastNow);
       lastNow = now;
     }
-    // what's sized by the pixel ratio (the runtime's quality changes it) follows it,
-    // and the planets' detail follows the sharpness
-    const ratio = gfx.ratio;
-    if (ratio !== ratioSeen) {
-      ratioSeen = ratio;
-      sky.setRatio(ratio);
-      state.world?.setRatio(ratio);
-    }
+    // what's sized in screen pixels follows the ratio the scene is drawn at
+    // (the runtime's quality softens it: ./drawnAt.js), and the planets'
+    // detail follows the sharpness
+    followDrawn();
     const wanted = capDetail ? 0 : post.sharpness;
     if (Math.abs(wanted - detail) >= 0.05) {
       detail = wanted;
@@ -1878,7 +1875,7 @@ export async function create(canvas, ctx) {
     // the speed: dust streaming past, the picture rushing out from the ship
     const dustWant = !reduced && flying() && !inTunnel ? 0.35 + 0.65 * clamp01(Math.abs(state.ship.speed) / SHIP.cruise) : 0;
     dustAmount += (dustWant - dustAmount) * clamp01(dt * 3);
-    dust.update(camera.position, dustAmount, gfx.ratio);
+    dust.update(camera.position, dustAmount, post.ratio);
     if (!reduced && flying() && (state.streak > 0.001 || spool)) {
       const k = Math.max(state.streak, state.jump?.phase === 'spool' ? clamp01(state.jump.age / JUMP.spool) : 0);
       if (state.view === 'cockpit') post.rush(k * 0.8, 0.5, 0.5);
@@ -2194,7 +2191,7 @@ export async function create(canvas, ctx) {
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);
-      sky.setRatio(gfx.ratio);
+      followDrawn();
       measure();
     },
     render,
@@ -2231,7 +2228,7 @@ export async function create(canvas, ctx) {
     // (past its last step), the glow and the grade go
     lowerQuality(level = STEPS.length) {
       post.sharpness = STEPS[Math.min(level, STEPS.length - 1)];
-      sky.setRatio(gfx.ratio);
+      followDrawn();
       if (level < STEPS.length) return;
       post.lite();
       capDetail = true;

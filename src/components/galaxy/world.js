@@ -35,7 +35,7 @@
 // solids: ship.js's ({ id, at, r, reach, band?, goal?, name? }), some
 // moving (their `at` is updated in place); goals: the solids the autopilot
 // can take you to, with their names. setDetail(k): how finely to draw the
-// planets (0…1, bodies.js); setRatio(r): the renderer's pixel ratio, for the
+// planets (0…1, bodies.js); setRatio(r): the pixel ratio it's drawn at, for the
 // ships of the skylanes (the size of a point is in pixels).
 
 import * as THREE from 'three';
