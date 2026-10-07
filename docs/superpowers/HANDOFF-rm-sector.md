@@ -45,10 +45,19 @@ as one PR per step of the plan's section 5, from the branch
 6. **Docs**: README (the map paragraph and the C-137 row), and
    `architecture.md` (the sectors bullet).
 
+The PRs: #485 (sectors), #494 (portals), #500 (nav map and routing),
+#512 (whose space, the Curve), #521 (more worlds), and this one (docs).
+
 Check: `node scripts/sector-check.mjs` with the dev server on port 5173. It
 looks at the portal, flies home → Gazorpazorp in one trip (through the
 portal on the way), opens the nav map there, lands, goes to the Citadel,
-and flies home in one trip. Its shots go to `$OUT`.
+and flies home in one trip. Its shots go to `$OUT`. In headless Chromium
+(software GL) the whole run takes about 25 minutes, and every step passes.
+The new worlds' landings were checked with `scripts/landing-check.mjs pluto
+snakeplanet nuptia`: each lands and shows its title card. That script's
+120 s wait for the crew is too short in software GL, on every planet.
+Don't edit `src/` while a check runs against the dev server: the hot
+reload resets the page under it.
 
 ## Not done, or left as is
 
@@ -66,5 +75,3 @@ and flies home in one trip. Its shots go to `$OUT`.
   picked before, even if it's in the other sector.
 - No crew lines were added for arriving at the new worlds. Crews have no
   per-moon `arrive` lines, the same as before.
-- The **AI** CI check was red on `main` from #497, which left a dead
-  `mc/pixel-perfection` credit. Details are in the comment on #494.
