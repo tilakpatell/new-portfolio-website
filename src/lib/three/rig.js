@@ -8,7 +8,9 @@
 // a limb's rest pose doesn't matter.
 //
 // loadFigure(url) → a figure template; figure(template, { h }) → a copy to
-// place, with pose(targets, dt) to move it there smoothly.
+// place, with pose(targets, dt) to move it there smoothly. A figure whose
+// file has clips (motion-captured: Meshy's library) can play them instead:
+// act(name) crossfades to one and tick(dt) runs them; a pose() stops them.
 
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
@@ -193,6 +195,17 @@ export function figure(template, { h = 1.8, attach = null, bones: named = {} } =
   const torsoE = new THREE.Euler();
   const torso = { pitch: 0, yaw: 0, roll: 0 };
   const ok = SEGMENTS.filter(([a, b]) => bones[a] && bones[b]);
+  // its clips, by name, on this copy's bones
+  const clips = template.clips ?? [];
+  const mixer = clips.length ? new THREE.AnimationMixer(model) : null;
+  const actions = new Map(clips.map((c) => [c.name, mixer.clipAction(c)]));
+  let playing = null;
+  const halt = () => {
+    if (!playing) return;
+    mixer.stopAllAction();
+    playing = null;
+    for (const key of Object.keys(dirs)) delete dirs[key]; // (a pose starts afresh from rest)
+  };
 
   return {
     holder,
@@ -203,9 +216,39 @@ export function figure(template, { h = 1.8, attach = null, bones: named = {} } =
     materials,
     hipHeight,
     height: h,
+    // the names of its clips (none for a figure without)
+    clips: [...actions.keys()],
+    // Play a clip, crossfading from the one before over `fade` seconds;
+    // false when it has none by that name (so the caller poses it instead).
+    // `once`: play it through and hold its last frame; `at`: where in it to
+    // start, a fraction (so a crowd isn't one breath).
+    act(name, { fade = 0.3, speed = 1, once = false, at = 0 } = {}) {
+      const next = actions.get(name);
+      if (!next) return false;
+      next.timeScale = speed;
+      if (next === playing) return true;
+      next.reset();
+      next.time = (at % 1) * next.getClip().duration;
+      next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+      next.clampWhenFinished = once;
+      next.play();
+      if (playing) playing.crossFadeTo(next, fade, false);
+      else next.fadeIn(fade);
+      playing = next;
+      return true;
+    },
+    // the clip playing, or null
+    get acting() {
+      return playing ? playing.getClip().name : null;
+    },
+    // the clips' time; once a frame, after act()
+    tick(dt) {
+      if (playing) mixer.update(dt);
+    },
     // targets: { armL: [x, y, z], …, torso: { pitch, yaw, roll } } in the
     // figure's frame; `rate` how quickly it gets there (per second; Infinity: at once)
     pose(targets, dt = 1, rate = 12) {
+      halt();
       const k = rate === Infinity ? 1 : 1 - Math.exp(-rate * dt);
       for (const b of all) b.quaternion.copy(rest.get(b));
       // the torso: bent and twisted across the spine
@@ -244,6 +287,10 @@ export function figure(template, { h = 1.8, attach = null, bones: named = {} } =
       }
     },
     dispose() {
+      if (mixer) {
+        mixer.stopAllAction();
+        mixer.uncacheRoot(model);
+      }
       model.traverse((o) => {
         if (!o.isMesh) return;
         for (const m of Array.isArray(o.material) ? o.material : [o.material]) m.dispose();

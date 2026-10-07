@@ -344,6 +344,97 @@ export const LANDINGS = {
       { kind: 'glass', n: 120, from: 3, to: 50, scale: range(1), solid: false },
     ],
   },
+  // ── the Rick and Morty system's moons, round the Citadel (universes.js's MOONS; ./rmmoons.js) ──
+  gazorpazorp: {
+    title: 'Gazorpazorp',
+    sub: 'Rick and Morty · the men’s desert, the women’s gate',
+    ground: { style: 'sand', colors: ['#c85a3a', '#e08a5a', '#8a3a2a'] },
+    sky: { zenith: '#4a1a4a', horizon: '#f2b070', sun: '#ffd8a0' },
+    things: [
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137', reach: 3 } },
+      { kind: 'gate', at: [0, 52], r: 6, face: false },
+      { kind: 'figure', at: [0, 44], r: 0.4, say: { name: 'Mar-Sha', line: 'A boy. From the sky. We make an exception for a Morty.' }, opts: { meshy: 'marsha', tall: 2.3 } },
+      { kind: 'figure', at: [22, 30], r: 0.5, say: { name: 'A Gazorpian', line: 'RAAARGH. (He throws a rock at a rock.)' }, opts: { meshy: 'gazorpian', tall: 2.8 } },
+      { kind: 'figure', at: [26, 26], r: 0.5, opts: { meshy: 'gazorpian', tall: 2.8 } },
+      { kind: 'figure', at: [-14, 34], r: 0.4, say: { name: 'Morty Jr.', line: 'Dad? You’re back? I wrote a book about you. It isn’t kind.' }, opts: { meshy: 'mortyjr', tall: 2.0 } },
+      { kind: 'rock', at: [16, 44], r: 2.6, face: false, opts: { seed: 3, size: 2.4 } },
+      { kind: 'rock', at: [-26, 24], r: 3, face: false, opts: { seed: 7, size: 3 } },
+    ],
+    scatter: [
+      { kind: 'rock', n: 60, from: 24, to: 110, scale: range(1), opts: { color: '#8a3a2a' } },
+      { kind: 'bone', n: 30, from: 20, to: 80, scale: range(1), solid: false },
+    ],
+  },
+  squanch: {
+    title: 'Planet Squanch',
+    sub: 'Rick and Morty · Squanchy’s planet, red grass and cat trees',
+    ground: { style: 'grass', colors: ['#b83a3a', '#d85a4a', '#7a2a2a'] },
+    sky: { zenith: '#2a8a9a', horizon: '#f2d8b8', sun: '#fff0d8' },
+    models: {
+      house: { url: '/models/c137/rm/squanchy-house.glb', tall: 9 },
+      guest: { url: '/models/c137/rm/magdalian-a.glb', tall: 1.55 },
+      guest2: { url: '/models/c137/rm/magdalian-c.glb', tall: 1.6 },
+    },
+    things: [
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137', reach: 3 } },
+      { kind: 'house', at: [-16, 50], r: 4 },
+      { kind: 'figure', at: [-8, 36], r: 0.4, say: { name: 'Squanchy', line: 'You squanch what you squanch, Morty. Welcome to my squanch.' }, opts: { meshy: 'squanchy', tall: 1.15 } },
+      { kind: 'figure', at: [10, 40], r: 0.4, say: { name: 'Birdperson', line: 'Morty. You have come a long way. It is good to see a friend.' }, opts: { meshy: 'birdperson', tall: 2.0 } },
+      { kind: 'guest', at: [4, 30], r: 0.4 },
+      { kind: 'guest2', at: [16, 32], r: 0.4 },
+      { kind: 'suckulent', at: [24, 44], r: 1.6, face: false },
+      { kind: 'suckulent', at: [-28, 30], r: 1.6, face: false, opts: { seed: 5 } },
+    ],
+    scatter: [
+      { kind: 'cattree', n: 10, from: 40, to: 120, scale: range(1) },
+      { kind: 'suckulent', n: 24, from: 26, to: 100, scale: range(0.8) },
+    ],
+  },
+  birdworld: {
+    title: 'Bird World',
+    sub: 'Rick and Morty · Birdperson’s home, the nest on the rocks',
+    ground: { style: 'grass', colors: ['#4a8a3a', '#6aa84a', '#8a6a3a'] },
+    sky: { zenith: '#3a7ad8', horizon: '#d8f0f8', sun: '#fff8e8' },
+    models: {
+      nest: { url: '/models/c137/rm/birdperson-house.glb', tall: 14 },
+    },
+    things: [
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137', reach: 3 } },
+      { kind: 'nest', at: [0, 56], r: 7 },
+      { kind: 'figure', at: [-4, 40], r: 0.4, say: { name: 'Phoenixperson', line: '(A hum of servos. He looks at you for a long time, and does not fire.)' }, opts: { meshy: 'phoenixperson', tall: 2.05 } },
+      { kind: 'figure', at: [12, 36], r: 0.4, say: { name: 'Unity', line: 'We are all of us. Welcome to Bird World, Morty. The locals are a little quiet.' }, opts: { meshy: 'unity', tall: 1.75 } },
+      { kind: 'perch', at: [20, 46], r: 0.6, face: false },
+      { kind: 'perch', at: [-22, 44], r: 0.6, face: false, opts: { h: 7 } },
+      { kind: 'rock', at: [26, 30], r: 3, face: false, opts: { seed: 11, size: 3, color: '#6a6a60' } },
+    ],
+    scatter: [
+      { kind: 'rock', n: 40, from: 26, to: 110, scale: range(1), opts: { color: '#6a6a60' } },
+      { kind: 'feather', n: 50, from: 10, to: 70, scale: range(1), solid: false },
+    ],
+  },
+  gearworld: {
+    title: 'Gear World',
+    sub: 'Rick and Morty · everything here is a gear, and so is everyone',
+    ground: { style: 'plating', colors: ['#b88a3a', '#d8aa5a', '#6a4a2a'] },
+    sky: { zenith: '#5a4a2a', horizon: '#d8b070', sun: '#ffe8b0' },
+    models: {
+      gearperson: { url: '/models/c137/rm/gearperson-a.glb', tall: 1.8 },
+      gearperson2: { url: '/models/c137/rm/gearperson-b.glb', tall: 1.8 },
+    },
+    things: [
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137', reach: 3 } },
+      { kind: 'figure', at: [2, 38], r: 0.4, say: { name: 'Gearhead', line: 'Rick! Oh. Not Rick. Everyone’s best friend, Gearhead. Welcome to Gear World.' }, opts: { meshy: 'gearhead', tall: 1.8 } },
+      { kind: 'gearperson', at: [-12, 34], r: 0.4 },
+      { kind: 'gearperson2', at: [14, 30], r: 0.4 },
+      { kind: 'bigcog', at: [0, 56], r: 8, face: false },
+      { kind: 'cog', at: [24, 40], r: 3, face: false, opts: { r: 2.6 } },
+      { kind: 'cog', at: [-26, 28], r: 2.4, face: false, opts: { r: 2, seed: 2 } },
+    ],
+    scatter: [
+      { kind: 'cog', n: 40, from: 24, to: 110, scale: range(1) },
+      { kind: 'bolt', n: 60, from: 10, to: 80, scale: range(1), solid: false },
+    ],
+  },
 };
 
 export const landingOf = (id) => LANDINGS[id] ?? null;

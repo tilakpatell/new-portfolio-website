@@ -39,10 +39,11 @@ TAKES = CACHE / "takes"
 ROUNDS = 2  # a line with no passing take gets another round, with twice the takes
 
 
-def references(cfg, only):
-    """{who: {"wav", "text", "speed"}} for each voice with a reference: grab.py's, or your own refs/<who>.wav."""
+def references(cfg, only, speakers=()):
+    """{who: {"wav", "text", "speed"}} for each voice (refs.json's, and whoever says a line) with a
+    reference: grab.py's, or your own refs/<who>.wav."""
     found = {}
-    for who in sorted(cfg):
+    for who in sorted(set(cfg) | set(speakers)):
         if only and who not in only:
             continue
         wav, txt = REFS / f"{who}.wav", REFS / f"{who}.txt"
@@ -53,7 +54,7 @@ def references(cfg, only):
             import judge
 
             txt.write_text(judge.hear(read(wav)) + "\n", encoding="utf-8")
-        found[who] = {"wav": str(wav), "text": txt.read_text(encoding="utf-8").strip(), "speed": float(cfg[who].get("speed", 1.0))}
+        found[who] = {"wav": str(wav), "text": txt.read_text(encoding="utf-8").strip(), "speed": float(cfg.get(who, {}).get("speed", 1.0))}
     return found
 
 
@@ -180,7 +181,7 @@ def make(engine, lines, voices, judge, takes, done):
                     print(f"  ({engine} couldn't make {Path(path).name}: {why})")
                     arrive(path, None)
             if worker.wait():
-                print(f"  ({engine} stopped early, exit {worker.returncode}: see {(TAKES / f'{engine}.log').relative_to(ROOT)})")
+                print(f"  ({engine} stopped early, exit {worker.returncode}: see {TAKES / f'{engine}.log'})")
         for lid, l in list(pending.items()):  # whatever the worker never made counts as failed
             for path in mine[lid]:
                 if str(path) not in got[lid]:
@@ -247,7 +248,7 @@ def main():
     lines = json.loads(lines_file.read_text(encoding="utf-8"))
     cfg = json.loads((HERE / "refs.json").read_text(encoding="utf-8"))
     only = set(args.only.split(",")) if args.only else None
-    voices = references(cfg, only)
+    voices = references(cfg, only, {l["who"] for l in lines})
     if not voices:
         return
     engines_of = {who: engines_for(who, cfg, args.engine) for who in voices}

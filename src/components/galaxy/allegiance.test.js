@@ -68,6 +68,10 @@ describe('suggestSide', () => {
     expect(suggestSide({ crew: 'cruiser' }, 'gcw')).toBeNull();
     expect(suggestSide({ crew: 'xwing', hero: { lean: 'dark' } }, 'remnant')).toBe('remnant');
     expect(suggestSide({}, 'gcw')).toBeNull();
+    // (a hero by id, heroes.js's lean: Fett over the X-wing)
+    expect(suggestSide({ crew: 'xwing', hero: 'bobafett' }, 'gcw')).toBe('empire');
+    expect(suggestSide({ crew: 'cruiser', hero: 'leia' }, 'clone')).toBe('republic');
+    expect(suggestSide({ crew: 'xwing', hero: 'rick' }, 'gcw')).toBe('rebel');
   });
 });
 

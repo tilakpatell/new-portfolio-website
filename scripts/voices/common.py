@@ -12,10 +12,24 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[2]
 HERE = ROOT / "scripts" / "voices"
 OUT = ROOT / "public" / "audio" / "voiced"
+
+
+def unboxed(path):
+    """Where a path really is. Processes started from a packaged (MSIX) app, such as the Claude
+    desktop app, have the files they make under %LOCALAPPDATA% put in the package's own
+    Packages/<family>/LocalCache/Local instead, and only they see them in the usual place; WSL (the
+    fish engine) and processes started from anywhere else see the real disk. Resolving the path
+    names the package's copy, so everyone finds the same files."""
+    try:
+        return Path(path).resolve()
+    except OSError:
+        return Path(path)
+
+
 # the references and the cache can live outside the checkout (the voices runner's checkout is
 # made fresh beside the repository, and the references are not committed): VOICES_REFS, VOICES_CACHE
-CACHE = Path(os.environ.get("VOICES_CACHE", HERE / "cache"))
-REFS = Path(os.environ.get("VOICES_REFS", HERE / "refs"))
+CACHE = unboxed(os.environ.get("VOICES_CACHE", HERE / "cache"))
+REFS = unboxed(os.environ.get("VOICES_REFS", HERE / "refs"))
 AUDIO = {".wav", ".mp3", ".m4a", ".flac", ".ogg", ".opus", ".webm", ".aac"}
 # who has a voice to make (scripts/voices/export-lines.mjs keeps the same list)
 VOICED = ["rick", "morty", "luke", "han", "walt", "jesse", "hank"]

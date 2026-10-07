@@ -4,6 +4,7 @@ import {
   RiArrowRightLine,
   RiBriefcaseLine,
   RiCodeBoxLine,
+  RiCompass3Line,
   RiContrast2Line,
   RiFileCopyLine,
   RiFileTextLine,
@@ -35,6 +36,7 @@ import { audioContext, setSound, soundOn } from '../lib/audio';
 import { useView } from './ViewSwitch';
 import { restartSite } from '../lib/restart';
 import { openGuide } from '../lib/palette';
+import { openTour } from '../lib/tour';
 import { DESTINATIONS } from './universe/nav';
 import { byId as universeById } from './universe/universes';
 import '../styles/lazy/commandpalette.css';
@@ -87,6 +89,7 @@ export default function CommandPalette({ onClose }) {
         ? { id: 's-uni', group: 'Actions', label: 'Switch to the universe', hint: 'and open there next time', keywords: 'view mode 3d map front door start page landing universe fly', icon: RiRocket2Line, run: () => switchTo('universe') }
         : { id: 's-home', group: 'Actions', label: 'Switch to the classic site', hint: 'and open there next time', keywords: 'view mode plain pages front door start page landing home classic simple 2d', icon: RiLayoutGridLine, run: () => switchTo('classic') },
       { id: 'a-guide', group: 'Actions', label: 'Guide: the controls and tips for this page', hint: '?', keywords: 'help controls keys keyboard shortcuts how to play tips instructions question', icon: RiQuestionLine, run: openGuide },
+      { id: 'a-tour', group: 'Actions', label: 'Take the tour of the site', hint: 'Under a minute', keywords: 'tour help onboarding walkthrough new here first time show around how to get about start', icon: RiCompass3Line, run: openTour },
       { id: 's-again', group: 'Actions', label: 'Restart the site from the beginning', keywords: 'restart start over again reset replay intro welcome crawl cockpit first visit beginning reboot', icon: RiRestartLine, run: restartSite },
       { id: 'w-uni', group: 'Go to', label: 'The universe map', keywords: 'universe map planets worlds fandoms space ship fly x-wing falcon cruiser rick morty rv walt jesse breaking bad', icon: RiGlobalLine, run: go('/universe') },
       { id: 'p-exp', group: 'Go to', label: 'Experience', icon: RiBriefcaseLine, run: go('/experience') },

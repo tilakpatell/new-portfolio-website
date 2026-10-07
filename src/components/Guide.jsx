@@ -47,7 +47,8 @@ export default function Guide() {
 
   useEffect(() => {
     const onKey = (e) => {
-      if (typing(e.target)) return;
+      // (the tour, running, has the keys: components/tour)
+      if (typing(e.target) || 'touring' in document.documentElement.dataset) return;
       if (e.key === '?') {
         e.preventDefault();
         setOpen((o) => !o);
@@ -136,6 +137,7 @@ export default function Guide() {
         ref={button}
         type="button"
         className="guide-btn"
+        data-tour="guide"
         data-tucked={(tucked && !open) || undefined}
         data-nudge={nudge || undefined}
         onClick={() => setOpen((o) => !o)}

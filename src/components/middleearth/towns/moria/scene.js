@@ -16,6 +16,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
+import { createHouse } from '../../../../lib/three/house';
+import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
 import { fbm, makeNoise, smooth } from '../../../../lib/paint';
 import { pose } from '../../mapFigures';
@@ -89,6 +91,10 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
   const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 520, bloom: { strength: 0.85, radius: 0.6, threshold: 0.78 }, onLost });
   stage.grade({ contrast: 0.16, saturation: 0.8, vignette: 0.38, grain: 0.02, shadow: [0.0, 0.01, 0.03], high: [0.02, 0.01, 0.0] });
   const { scene, camera, renderer } = stage;
+  // the house look (lib/three/house): one shadow colour and the sky's fog
+  // on everything, under the house tone mapper; the moods move it
+  const houseLook = createHouse();
+  renderer.toneMapping = houseLook.toneMapping;
   renderer.info.autoReset = false;
   scene.fog = new THREE.Fog(0x0a0e18, 30, 160);
   const many = tier === 'high' ? 1 : tier === 'mid' ? 0.6 : 0.3;
@@ -105,10 +111,13 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
   const sky = makeSky(480);
   scene.add(sky.dome);
   const water = { uniforms: { uSky: { value: new THREE.Color() }, uDeep: { value: new THREE.Color() }, uSun: { value: V(0, 1, 0) }, uSunColor: { value: new THREE.Color() }, uGlints: { value: 1 } } };
-  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water, stage, moods: MOODS });
+  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water, stage, house: houseLook, moods: MOODS });
 
   const kit = createMoriaKit(renderer);
   const mats = kit.mats;
+  // the site's core kit of surfaces on its stone, wood, bark, plaster and
+  // iron (lib/three/core), by their names
+  dress(mats, rolesFor(mats), { strength: 0.3, normal: 0.6, keep: true });
   const zones = { gate: new THREE.Group(), halls: new THREE.Group(), flight: new THREE.Group() };
   for (const [k, g] of Object.entries(zones)) {
     g.position.copy(AT[k]);
@@ -510,6 +519,8 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
 
     // ── the place's light ──
     sky.dome.visible = zone === 'gate';
+    // (under the mountain the fog is the dark's own, not the sky's)
+    houseLook.set({ fogMix: zone === 'gate' ? 1 : 0 });
     if (zone === 'gate') {
       scene.background = null;
     } else {
@@ -523,7 +534,9 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       // grey light from high shafts, once he's risked it
       sun.color.set(0x9aaabb);
       sun.intensity = zone === 'halls' ? A.lit * 0.55 : 0;
-      renderer.toneMappingExposure = 1.4;
+      renderer.toneMappingExposure = 1.4 * houseLook.exposure;
+      // (full light under the mountain is these lights', not the day's)
+      houseLook.light({ sun, hemi });
     }
     A.lit += ((s.lit ? 1 : 0) - A.lit) * Math.min(1, dt * (s.revealing ? 0.6 : 2));
     hall.lightFrom?.(A.lit);
@@ -806,6 +819,8 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
   const grounds = [
     groundTown({ renderer, scene, terrain: gateLand, outdoors: zones.gate, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x1e2026, clip: true }),
   ];
+  // (last, over the floor light's own tints: one shadow colour everywhere)
+  houseLook.adopt(scene);
 
   return {
     ground: import.meta.env.DEV ? grounds[0] : null, // for the QA scripts

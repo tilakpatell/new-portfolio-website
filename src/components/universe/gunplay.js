@@ -8,8 +8,10 @@
 //   worked out once from the hand's own vertices (which way the palm faces,
 //   where the fingers run), so it sits in the palm and points past the
 //   knuckles on every model, with a table of fixes for the few that fool it;
-// - lowered, the hand is turned to carry it muzzle down along the forearm
-//   while the clip swings the arm; brought up (`aim` 0…1), the right arm
+// - lowered, a pistol's hand is turned to carry it muzzle down and a
+//   little ahead while the clip swings the arm, and a long gun is held
+//   across the body in both hands at the low ready; the arms the clip
+//   has are let down nearer the body than the borrowed clips carry them; brought up (`aim` 0…1), the right arm
 //   reaches to put the gun on the line of fire with the elbow bent, the
 //   other hand takes the foregrip of a long gun (or cups the gun hand on a
 //   pistol), the spine twists toward the target and the head turns to it;
@@ -21,7 +23,9 @@
 // buildGun(kind, owned) → Group, with 'muzzle', 'foregrip' and 'eject' points.
 // createGunplay(fig, kind, { unit, who }) → { gun, set(dt, pose), fire() →
 //   { muzzle, dir, eject, gun }, aim (0…1 as shown), drop() → the gun to
-//   throw (once), dispose() } or null
+//   throw (once), holdLeft(anchor, fingers, axis, pole, w) (a blade's other
+//   hand on its hilt, after set), twist(rad) (the chest turned that much
+//   more from the next set: a stroke), dispose() } or null
 //   for a figure with no right hand. `fig`: { model, bones? }; `unit`:
 //   world units to the metre where the figure stands (METRE on the
 //   universe map, 1 on the galaxy's worlds).
@@ -662,7 +666,8 @@ export const GUNS = {
   // 'metal', 'trim', 'emitter-*') after it's built
   saber: {
     blade: true, // (not a gun: it stands along +y, and nothing comes out of it)
-    hands: 1,
+    hands: 2, // (the other hand on the hilt below the first, as a Jedi holds one: surface/saber.js puts it there with holdLeft)
+    fore: { r: 0.017 }, // (what that hand closes round: the hilt)
     support: false,
     stock: false,
     pitch: 0,
@@ -825,16 +830,54 @@ const EASE = { chest: 0.3, head: 0.45 }; // radians from the facing, at the most
 const CUP = 0.04; // metres from a pistol's grip to the other hand's fingers cupping the gun hand's
 const LOOSE = 0.3; // how far a hand with nothing in it closes
 const FREE = { r: 0.03, at: 0.5 }; // the free hand of a one-handed gun: loosely closed, as a hand at rest is
+// a long gun lowered: held at the low ready, never let dangle (radians the
+// muzzle drops below level and turns across the body to the left; where
+// the fore-end is, from the middle of the shoulders in arm lengths, so the
+// other hand has it: the trigger hand's back up the gun from there)
+export const READY = { down: 0.55, across: 0.42, fwd: 0.5, up: -0.75, side: 0.05 };
+// a pistol lowered: the muzzle down and ahead of the hand, not back along the forearm
+const LOW = { ahead: 0.55 };
+// an arm the clip has: no further out from the side than `out` (radians)
+// and no more bent at the elbow than `bend`, past which only `keep` of
+// what the clip has is kept
+const SETTLE = { out: 0.16, bend: 0.3, keep: 0.4 };
 const _a = new V();
 const _b = new V();
 const _c = new V();
 const _d = new V();
 const _e = new V();
+const _f = new V();
+const _g = new V();
 const _q = new Q();
 const _q2 = new Q();
 
 const signedAngle = (from, to, axis) => Math.atan2(_c.crossVectors(from, to).dot(axis), from.dot(to));
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+
+// An arm (`upper` → `fore` → `hand`) let down toward the body's side and
+// straightened at the elbow past SETTLE, `w` of the way: `out` is the way
+// away from the body on that side (world), `up` the figure's up.
+const _sa = new V();
+const _sb = new V();
+const _sc = new V();
+const _sd = new V();
+const _se = new V();
+function settle(upper, fore, hand, out, up, w) {
+  if (w <= 0.002) return;
+  upper.updateWorldMatrix(true, false);
+  const S = upper.getWorldPosition(_sa);
+  const E = fore.getWorldPosition(_sb);
+  const u = _sc.copy(E).sub(S).normalize();
+  const abd = Math.atan2(u.dot(out), Math.max(1e-4, -u.dot(up)));
+  if (abd > SETTLE.out) rotateWorld(upper, _sd.crossVectors(out, u).normalize(), (abd - SETTLE.out) * (1 - SETTLE.keep) * w, 1);
+  upper.updateWorldMatrix(false, true);
+  const S2 = upper.getWorldPosition(_sa);
+  const E2 = fore.getWorldPosition(_sb);
+  const f = hand.getWorldPosition(_se).sub(E2).normalize();
+  const u2 = _sc.copy(E2).sub(S2).normalize();
+  const bend = u2.angleTo(f);
+  if (bend > SETTLE.bend) rotateWorld(fore, _sd.crossVectors(f, u2).normalize(), (bend - SETTLE.bend) * (1 - SETTLE.keep) * w, 1);
+}
 
 // Put a figure's skeleton in the pose it was bound in (Meshy's A-pose,
 // facing +z) for `fn`, then back as it was: what's measured about the
@@ -998,6 +1041,7 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
   // where the other hand's grip is, in its own space: what it closes round goes there
   const leftAt = m.L ? (curl?.shape.L?.centre.clone() ?? m.L.mean.clone().addScaledVector(m.L.normal, m.L.toLocal(0.012 + (spec.fore?.r ?? CUP)))) : null;
   const gripInv = gripQ.clone().invert();
+  const gripInHand = (gripBox?.position.clone() ?? new V()).multiplyScalar(gun.scale.x).applyQuaternion(gun.quaternion).add(gun.position); // (the grip's middle, in the hand's space)
   const leftInv = m.L ? frameFrom(m.L.along, m.L.thumb).invert() : null;
   const muzzle = gun.getObjectByName('muzzle');
   const fore = gun.getObjectByName('fore');
@@ -1039,6 +1083,9 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
     up: { x: 0, v: 0 },
     curlR: 0, // how closed each hand is (0 as sculpted, 1 round its grip)
     curlL: 0,
+    heldL: 0, // (a blade: how far holdLeft had the other hand on the hilt, this frame)
+    heldWas: 0, // (and last frame)
+    twist: 0, // radians more the chest turns (a blade's stroke: twist())
   };
 
   const set = (dt, pose) => {
@@ -1074,7 +1121,7 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
     const twist = Math.max(aim, st.look * 0.45);
     if (look) {
       const now = facing(look, forward, up).yaw;
-      const want = clamp(now, -EASE.chest, EASE.chest) * (1 - twist) + clamp(yaw, -TWIST_MAX, TWIST_MAX) * 0.75 * twist;
+      const want = clamp(now, -EASE.chest, EASE.chest) * (1 - twist) + clamp(yaw, -TWIST_MAX, TWIST_MAX) * 0.75 * twist + st.twist;
       const turn = want - now;
       if (Math.abs(turn) > 1e-4) spine.forEach((b, i) => b && rotateWorld(b, up, turn * SPINE_SHARE[i], 1));
     }
@@ -1095,30 +1142,61 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
       rotateWorld(bones.Head, right, bones.neck ? dp * 0.6 : dp, 1);
     }
 
-    // lowered: carried muzzle down beside the thigh, the hand turned to hold it so
+    // the arms as the clip has them (as much of them as the hold below
+    // leaves it): let down nearer the body and the elbows straighter than
+    // the borrowed clips carry them, which stand everyone in a gunslinger's
+    // crouch, elbows out
+    const ready = spec.stock && left;
+    const w = ready ? 1 : aim;
+    settle(bones.RightArm, bones.RightForeArm, hand, right, up, 1 - w);
+    if (bones.LeftArm && bones.LeftForeArm && bones.LeftHand) settle(bones.LeftArm, bones.LeftForeArm, bones.LeftHand, _g.copy(right).negate(), up, !left ? 1 : spec.blade ? 1 - st.heldWas : 1 - w);
+
+    // lowered: a pistol carried muzzle down and a little ahead beside the
+    // thigh, the hand turned to hold it so (a long gun's lowered below)
     bones.RightForeArm.updateWorldMatrix(true, false);
     const E = bones.RightForeArm.getWorldPosition(_c);
     const H = hand.getWorldPosition(_d);
-    const carry = H.sub(E).normalize().addScaledVector(forward, 0.1).addScaledVector(up, -0.4);
+    const carry = H.sub(E).normalize().addScaledVector(forward, spec.blade ? 0.1 : LOW.ahead).addScaledVector(up, -0.4);
     carry.addScaledVector(right, -carry.dot(right)).normalize();
     frameFrom(carry, forward, _q); // (the sights forward)
     _q.multiply(gripInv);
     setWorldQuaternion(hand, _q, 1);
 
-    // up: the arm reaches to put the gun on the line of fire, the gun pointed along it
-    if (aim > 0.002) {
+    // up: the arm reaches to put the gun on the line of fire, the gun
+    // pointed along it. A long gun is held this way lowered too, at the low
+    // ready: the line dropped and turned across the body, the trigger hand
+    // down by the hip, the other hand still on the fore-end.
+    if (w > 0.002) {
       bones.RightArm.updateWorldMatrix(true, false);
       const S = bones.RightArm.getWorldPosition(new V());
-      const { hand: target, pole } = stance(spec, S, dir, up, armLen);
-      target.addScaledVector(dir, -st.back.x * unit); // the kick, back along the barrel
-      reach(bones.RightArm, bones.RightForeArm, hand, target, pole, aim);
-      frameFrom(dir, up, _q);
-      _q2.setFromAxisAngle(_b.crossVectors(dir, up).normalize(), st.up.x); // and the muzzle up
+      const line = _f.copy(dir);
+      if (ready && aim < 0.999) {
+        _g.copy(forward).multiplyScalar(Math.cos(READY.down)).addScaledVector(up, -Math.sin(READY.down)).applyAxisAngle(up, READY.across);
+        line.lerp(_g, 1 - aim).normalize();
+      }
+      const { hand: target, pole } = stance(spec, S, line, up, armLen);
+      if (ready && fore && aim < 0.999) {
+        const C = bones.LeftArm.getWorldPosition(new V()).add(S).multiplyScalar(0.5);
+        const low = C.addScaledVector(forward, READY.fwd * armLen).addScaledVector(up, READY.up * armLen).addScaledVector(right, READY.side * armLen);
+        // (back from the fore-end to the grip, along the gun as it'll lie)
+        const sights = _g.copy(up).addScaledVector(line, -up.dot(line)).normalize();
+        const d = fore.position.clone().sub(gripBox?.position ?? new V());
+        low.addScaledVector(line, -d.z * unit).addScaledVector(sights, -d.y * unit);
+        // (and from the grip to the wrist, the hand turned as it'll be)
+        frameFrom(line, up, _q).multiply(gripInv);
+        low.sub(_e.copy(gripInHand).multiplyScalar(hand.getWorldScale(_s).x).applyQuaternion(_q));
+        target.lerp(low, 1 - aim);
+      }
+      target.addScaledVector(line, -st.back.x * unit); // the kick, back along the barrel
+      reach(bones.RightArm, bones.RightForeArm, hand, target, pole, w);
+      frameFrom(line, up, _q);
+      _q2.setFromAxisAngle(_b.crossVectors(line, up).normalize(), st.up.x); // and the muzzle up
       _q.premultiply(_q2).multiply(gripInv);
-      setWorldQuaternion(hand, _q, aim);
-      if (left) {
+      setWorldQuaternion(hand, _q, w);
+      // (a blade's other hand is surface/saber.js's to place, with holdLeft)
+      if (left && !spec.blade) {
         gun.updateWorldMatrix(true, true);
-        const across = _b.crossVectors(dir, up).normalize(); // the gun's right
+        const across = _b.crossVectors(line, up).normalize(); // the gun's right
         // the other hand, closed round what it holds: a long gun's fore-end
         // (under a stock, palm up and the fingers round to the right; an
         // upright foregrip, the palm on its left and the fingers round its
@@ -1133,35 +1211,47 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
           fore.getWorldPosition(anchor);
           if (spec.fore.axis === 'up') {
             axis = _d.set(0, 1, 0).transformDirection(gun.matrixWorld);
-            fingers = new V().copy(dir).addScaledVector(across, 0.15).normalize();
+            fingers = new V().copy(line).addScaledVector(across, 0.15).normalize();
           } else {
-            axis = _d.copy(dir);
+            axis = _d.copy(line);
             fingers = new V().copy(across).addScaledVector(up, 0.3).normalize();
           }
         } else {
           (gripBox ?? gun).getWorldPosition(anchor);
           axis = _d.set(0, 1, 0).transformDirection((gripBox ?? gun).matrixWorld);
-          fingers = new V().copy(dir).addScaledVector(up, -0.35).addScaledVector(across, 0.2).normalize();
+          fingers = new V().copy(line).addScaledVector(up, -0.35).addScaledVector(across, 0.2).normalize();
         }
-        frameFrom(fingers, axis, _q);
-        _q.multiply(leftInv);
-        const wrist = _e.copy(leftAt).multiplyScalar(bones.LeftHand.getWorldScale(_s).x).applyQuaternion(_q).negate().add(anchor);
-        const poleL = new V().addScaledVector(up, -1).addScaledVector(across, -0.6).addScaledVector(dir, -0.1).normalize();
-        reach(bones.LeftArm, bones.LeftForeArm, bones.LeftHand, wrist, poleL, aim);
-        leftMiss = bones.LeftHand.getWorldPosition(_t).distanceTo(wrist) / unit;
-        setWorldQuaternion(bones.LeftHand, _q, aim);
+        const poleL = new V().addScaledVector(up, -1).addScaledVector(across, -0.6).addScaledVector(line, -0.1).normalize();
+        placeLeft(anchor, fingers, axis, poleL, w);
       }
     }
     // the fingers: the gun hand's closed on the grip while it has it, the
-    // other's closing on its hold as the gun comes up
+    // other's closing on its hold as the gun comes up (or, on a blade, as
+    // much as holdLeft last had it on the hilt)
     if (curl) {
       const k = 1 - Math.exp(-dt * 18);
       st.curlR += ((gun.parent === hand ? 1 : LOOSE) - st.curlR) * k;
-      st.curlL += ((left ? LOOSE + (1 - LOOSE) * aim : FREE.at) - st.curlL) * k;
+      const wantL = !left ? FREE.at : spec.blade ? LOOSE + (1 - LOOSE) * st.heldL : LOOSE + (1 - LOOSE) * w;
+      st.curlL += (wantL - st.curlL) * k;
       curl.set({ R: st.curlR, L: st.curlL });
     }
+    st.heldWas = st.heldL;
+    st.heldL = 0;
     gun.updateWorldMatrix(true, true);
     remember();
+  };
+
+  // the other hand closed round `anchor` (world): the fingers along
+  // `fingers`, the thumb toward `axis`, the elbow toward `pole`, `w` of the
+  // way. Its turn first, then the wrist where that puts the grip's middle
+  // on the anchor.
+  const placeLeft = (anchor, fingers, axis, pole, w) => {
+    frameFrom(fingers, axis, _q);
+    _q.multiply(leftInv);
+    const wrist = _e.copy(leftAt).multiplyScalar(bones.LeftHand.getWorldScale(_s).x).applyQuaternion(_q).negate().add(anchor);
+    reach(bones.LeftArm, bones.LeftForeArm, bones.LeftHand, wrist, pole, w);
+    leftMiss = bones.LeftHand.getWorldPosition(_t).distanceTo(wrist) / unit;
+    setWorldQuaternion(bones.LeftHand, _q, w);
   };
 
   // (for checking: where the chest and head face, and how far the other hand is from where it's going)
@@ -1185,6 +1275,16 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
       return st.aim;
     },
     set,
+    // (a blade, after set: the other hand closed round the hilt at `anchor`, as placeLeft)
+    holdLeft(anchor, fingers, axis, pole, w = 1) {
+      if (!left || w <= 0) return;
+      st.heldL = Math.max(st.heldL, Math.min(1, w));
+      if (anchor) placeLeft(anchor, fingers, axis, pole, w);
+    },
+    // the chest turned this much more from the next set on (a stroke put into the body)
+    twist(rad) {
+      st.twist = clamp(rad, -TWIST_MAX, TWIST_MAX);
+    },
     // a shot: the kick, and where it leaves from (world)
     fire() {
       st.back.v += spec.kick.back;

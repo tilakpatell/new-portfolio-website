@@ -128,6 +128,66 @@ describe('the runner, jobs from GitHub issues', () => {
   });
 });
 
+describe('the runner, reading what people and sessions actually write', () => {
+  it('reads two fields on one line, and an image field holding a bare link', async () => {
+    const { parseIssue, makeArgs } = await import('./runner.mjs');
+    const body = 'what: Grand Regent Thragg, full body, A-pose\nimage: https://static.wikia.nocookie.net/amazon-invincible/images/b/be/Thragg.png/revision/latest\nfaces: 30000  tex: 2048\n\nMeshy got his skin wrong twice.';
+    const job = parseIssue({ number: 441, title: 'thragg', body });
+    expect(job).toMatchObject({ name: 'thragg', faces: 30000, tex: 2048, faithful: true, image: 'https://static.wikia.nocookie.net/amazon-invincible/images/b/be/Thragg.png/revision/latest' });
+    expect(job.error).toBeUndefined();
+    expect(makeArgs(job, 'C:/c/from-issue.png')).toEqual(['thragg', '--image', 'C:/c/from-issue.png', '--what', 'Grand Regent Thragg, full body, A-pose', '--faces', '30000', '--tex', '2048', '--faithful']);
+  });
+  it('reads an issue form, and says what is wrong with a bad field', async () => {
+    const { parseIssue } = await import('./runner.mjs');
+    const form = '### what\n\na mossy boulder\n\n### image\n\n![rock](https://github.com/user-attachments/assets/r.png)\n\n### faces\n\n4k\n\n### more\n\nengine: meshy';
+    const job = parseIssue({ number: 5, title: 'galaxy-mossrock', body: form });
+    expect(job).toMatchObject({ what: 'a mossy boulder', image: 'https://github.com/user-attachments/assets/r.png', faces: 4000 });
+    expect(job.error).toMatch(/engine: "meshy"/);
+    expect(parseIssue({ number: 6, title: 'x', body: 'what: x\nfaces: lots' }).error).toMatch(/faces: "lots"/);
+  });
+  it('turns a form into an issue, refusing one with nothing to make', async () => {
+    const { request } = await import('./runner.mjs');
+    expect(request({ name: 'Cecil Stedman', what: 'Cecil', image: 'https://x.test/c.png', faces: '30000', options: 'tex: 2048  seed: 7' })).toEqual({ title: 'cecil-stedman', body: 'what: Cecil\nimage: https://x.test/c.png\nfaces: 30000\ntex: 2048\nseed: 7' });
+    expect(request({ name: 'crest', what: 'the Razor Crest', image: 'https://x.test/f.png, https://x.test/l.png' }).body).toBe('what: the Razor Crest\nfront: https://x.test/f.png\nleft: https://x.test/l.png');
+    expect(() => request({ name: 'x' })).toThrow(/at least one of what, prompt or image/);
+    expect(() => request({ what: 'x' })).toThrow(/name/);
+    expect(() => request({ name: 'x', what: 'x', faces: 'many' })).toThrow(/faces/);
+  });
+});
+
+describe('the three cuts of a smaller model', () => {
+  it('scale with the faces asked for, the texture no bigger than asked', async () => {
+    const { cutsFor, TIERS } = await import('./budget.mjs');
+    expect(cutsFor()).toEqual(TIERS);
+    const rock = cutsFor(4000, 1024);
+    expect([rock.hq.faces, rock.mid.faces, rock.lo.faces]).toEqual([4000, 2000, 667]);
+    expect([rock.hq.tex, rock.mid.tex, rock.lo.tex]).toEqual([1024, 1024, 1024]);
+    expect(cutsFor(30000, 2048).hq).toMatchObject({ faces: 30000, tex: 2048, suffix: '.hq' });
+  });
+});
+
+describe('a step made again only when its inputs change', () => {
+  it('reuses the last output for the same key', async () => {
+    const { once, digest } = await import('./steps.mjs');
+    const { mkdtempSync, writeFileSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const file = join(mkdtempSync(join(tmpdir(), 'once-')), 'raw.glb');
+    let runs = 0;
+    const make = async () => {
+      runs++;
+      writeFileSync(file, 'x');
+      return { seconds: 1 };
+    };
+    expect((await once(file, digest('a', 1), make)).reused).toBe(false);
+    expect((await once(file, digest('a', 1), make)).reused).toBe(true);
+    expect((await once(file, digest('a', 2), make)).reused).toBe(false);
+    expect((await once(file, digest('a', 2), make, { fresh: true })).reused).toBe(false);
+    expect(runs).toBe(3);
+    expect(digest(Buffer.from('ab'), 'c')).not.toBe(digest('a', 'bc'));
+  });
+});
+
 // an engine's script as WSL is handed it, wherever this checkout is (on a
 // Windows drive, /mnt/c/…; on Linux, CI's or a cloud box's, its own path)
 const engine = (file) => wslPath(fileURLToPath(new URL(`./engines/${file}`, import.meta.url)));

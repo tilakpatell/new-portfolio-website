@@ -15,6 +15,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { createStage } from '../../office/stage3d';
+import { houseOn } from '../../../lib/three/house';
 import { loadPeople } from '../../office/people';
 import { loadPbr, loadTexture } from '../../../lib/hdri';
 import { ABQ } from '../wardrobe';
@@ -126,7 +127,8 @@ export async function createCasa3D(canvas, { onLost, onSlow } = {}) {
   camera.lookAt(CAMERA.look);
 
   // ── light: the afternoon through the window, a ceiling light, the room's bounce ──
-  scene.add(new THREE.HemisphereLight(0xfff6e8, 0x7a6e60, 0.7));
+  const hemi = new THREE.HemisphereLight(0xfff6e8, 0x7a6e60, 0.7);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffe0b0, 2.4);
   sun.position.set(WINDOW.x - 1.2, 4.2, ROOM.z0 - 3.5);
   sun.target.position.set(0.2, 0, 0.6);
@@ -373,6 +375,9 @@ export async function createCasa3D(canvas, { onLost, onSlow } = {}) {
   nurse.group.add(board);
   scene.add(hector.group, nurse.group, gus.group);
   for (const p of [hector, nurse, gus]) p.group.traverse((o) => o.isMesh && (o.castShadow = true));
+  // the house look (lib/three/house): the room's shade one colour, from the
+  // afternoon's light, as in every world
+  houseOn({ renderer, scene, sun, hemi, look: { fog: false } });
   const wallBase = wallMat.color.clone();
   const floorBase = floorMat.color.clone();
   const scorched = new THREE.Color(0x4a3f36);
