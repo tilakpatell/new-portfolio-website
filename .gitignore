@@ -50,3 +50,6 @@ scripts/voices/**/__pycache__/
 
 # what scripts/gen3d makes along the way (raw GLBs, concept images, renders)
 scripts/gen3d/cache/
+# what the AI tests leave to look at: the render tier's PNGs, the nightly's results (CI keeps them as artifacts)
+scripts/ai-e2e/render/out/
+scripts/ai-e2e/results/

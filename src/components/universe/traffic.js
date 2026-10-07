@@ -474,6 +474,31 @@ export function createTraffic(parent, { small = false, fleet = createFleet(), en
       return g.members[0].model.group;
     },
 
+    // one of your universe's ordinary ships to see to the next place
+    // (escort.js): on `path` from where it drops in to where it jumps, no
+    // run in or out, at `speed` (quicker running from a fight, as any).
+    // { ship: what the pirates are after, arrived (it got to the end),
+    // kill() → where it went up, or null }; or null
+    escort(path, speed, side = sideFor(crew)) {
+      if (!side) return null;
+      const g = spawn(side.distress.civil, path, false, { kinds: [side.distress.civil], speed, event: 'escort' });
+      Object.assign(g, { runIn: 0, runOut: 0, total: g.len, fadeIn: false, fadeOut: false });
+      const m = g.members[0];
+      return {
+        ship: m.model.group,
+        get arrived() {
+          return g.t >= 1 && m.alive;
+        },
+        kill() {
+          if (!m.alive || !m.model.group.parent) return null;
+          const at = m.model.group.position.clone();
+          m.alive = false;
+          give(m.kind, m.model);
+          return at;
+        },
+      };
+    },
+
     clear() {
       while (live.length) end(live[0]);
     },

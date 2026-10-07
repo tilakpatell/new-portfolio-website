@@ -116,6 +116,8 @@ import { createDirector } from './director';
 import { createSetPieces } from './setpieces';
 import { createLeviathans } from './leviathans';
 import { createMeteors } from './meteors';
+import { createMines } from './mines';
+import { ESCORT, escortHull, escortPlan, escortTo } from './escort';
 import { DEBRIS_DRIFT, buildDeepSpace } from './deepspace';
 import { createSectorPortals } from './sectorPortals';
 import { portalHit, transit } from './portals';
@@ -127,7 +129,7 @@ import { createTrench } from './trench';
 import { createBeacons } from './beacons';
 import { PHONE, createPhone } from './phone';
 import { SUPERNOVA_SITES, createSupernovae } from './supernova';
-import { DEEP, WONDERS, moveBinaries, nearestStar, openness, reachOf, wonderById } from './deep';
+import { DEEP, PLACES, WONDERS, moveBinaries, nearestStar, openness, reachOf, wonderById } from './deep';
 import { KEY as KEY_FULL, STARS as LIT_STARS, dayYaw, lightAt, sunFor } from './lighting';
 import { createCrash } from './crash';
 import { createExplosions } from '../../lib/three/explosions';
@@ -893,6 +895,12 @@ export async function create(canvas, ctx) {
   };
   const leviathans = createLeviathans(map, { small }); // (purrgil, or a Cromulon)
   const meteors = createMeteors(map, { small, tier }); // (a stream of rocks across your path)
+  const mines = createMines(map, { small }); // (a minefield across your way)
+  // a ship you're seeing to the next place (escort.js): { plan, run (traffic's), t0, sent, hull, side }
+  let escort = null;
+  const dropEscort = () => {
+    escort = null;
+  };
   let leviathanSaidAt = -1e9; // the crew's last word about shooting one
   const later = []; // { at, run }: what the director set going, a moment on
   // the other pilots, once online (with reduced motion too: they're people)
@@ -1727,6 +1735,8 @@ export async function create(canvas, ctx) {
       traffic?.setCrew(kind);
       hunters?.clear();
       meteors.clear();
+      mines.clear();
+      dropEscort();
       wingmen?.clear();
       skirmishes?.clear();
       npcs?.clear();
@@ -2148,7 +2158,7 @@ export async function create(canvas, ctx) {
         b.visible = false;
         leviathanShot();
       } else {
-        const mh = meteors.hit(shotFrom, b.position);
+        const mh = meteors.hit(shotFrom, b.position) ?? mines.hit(shotFrom, b.position);
         if (mh) {
           b.visible = false;
           pops.hit({ point: mh.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: mh.size * 1.6 });
@@ -2315,7 +2325,7 @@ export async function create(canvas, ctx) {
         boom(m, m.position.clone());
         leviathanShot();
       } else {
-        const mh = meteors.hit(shotFrom, to);
+        const mh = meteors.hit(shotFrom, to) ?? mines.hit(shotFrom, to);
         if (mh) boom(m, mh.at);
       }
     }
@@ -2601,6 +2611,8 @@ export async function create(canvas, ctx) {
       state.view = 'chase'; // (from outside, whichever seat you were in)
       hunters?.clear();
       meteors.clear();
+      mines.clear();
+      dropEscort();
       wingmen?.clear();
       skirmishes?.clear();
       npcs?.clear();
@@ -2639,6 +2651,8 @@ export async function create(canvas, ctx) {
     burst.clear();
     hunters?.clear();
     meteors.clear();
+    mines.clear();
+    dropEscort();
     wingmen?.clear();
     skirmishes?.clear();
     npcs?.clear();
@@ -2926,6 +2940,22 @@ export async function create(canvas, ctx) {
       later.push({ at: state.clock + 3, run: () => emit({ type: 'event', id: 'leviathan', sub }) });
     } else if (id === 'meteors') {
       if (meteors.storm(ship)) emit({ type: 'event', id: 'meteors' });
+    } else if (id === 'minefield') {
+      if (mines.lay(ship)) emit({ type: 'event', id: 'minefield' });
+    } else if (id === 'escort') {
+      // beside you and a little ahead, bound for the next place along
+      if (escort || !traffic) return;
+      const to = escortTo(ship, PLACES.map((p) => ({ id: p.id, at: p.at, r: p.reach })));
+      if (!to) return;
+      const [fx, fz] = forward(ship.heading);
+      const from = [ship.x + fx * 10 - fz * 6, ship.y + 1.5, ship.z + fz * 10 + fx * 6];
+      const plan = escortPlan({ from, to: to.at, reach: to.r });
+      if (plan.length < 40) return;
+      const run = traffic.escort(plan.path, ESCORT.speed, side);
+      if (!run) return;
+      escort = { plan, run, t0: state.clock, sent: 0, hull: 1, side, to: to.id };
+      if (side.id === 'rickmorty') pieces.portals([new THREE.Vector3(...from)]); // (Rick's universe goes by portal)
+      emit({ type: 'event', id: 'escort' });
     } else if (id === 'bounty') {
       // one hunter, tough and quick: Boba Fett in Slave I (its model, once it's
       // here: Vader stands in till then), Phoenixperson, or the Cousins
@@ -3247,13 +3277,51 @@ export async function create(canvas, ctx) {
         if (!reduced) state.shake = Math.max(state.shake, 0.5);
       }
     }
+    // the minefield: a mine set off (by you flying close, or a bolt) goes up,
+    // and its neighbours with it; what reaches you comes off the shields
+    if (mines.count) busy = true;
+    for (const e of mines.update(dt, live)) {
+      burn(e.at, e.size * 4);
+      pops.hit({ point: e.at, normal: popDir.set(0, 1, 0), radius: e.size * 3 }); // (and on a low tier, where a blast is only this)
+      if (e.damage > 0 && state.clock >= state.safeUntil) hurt(e.damage);
+      if (e.damage > 0 && !reduced) state.shake = Math.max(state.shake, 0.4 + e.damage / 60);
+    }
+    // the escort: the pirates when the plan says, its hull worn down by the
+    // ones on it, and how it ends (there, or lost)
+    if (escort) {
+      busy = true;
+      const e = escort;
+      const ship = e.run.ship;
+      const since = state.clock - e.t0;
+      while (live && ship.parent && e.sent < e.plan.pirates.length && since >= e.plan.pirates[e.sent].at) {
+        hunters?.pack(pickFaction(e.side, 'pirates'), live, { prey: ship, size: 2, ace: false });
+        if (e.sent === 0) emit({ type: 'event', id: 'escortPirates' });
+        e.sent += 1;
+      }
+      let on = 0;
+      if (ship.parent && hunters) for (const h of hunters.wire()) if (Math.hypot(h[2] - ship.position.x, h[3] - ship.position.y, h[4] - ship.position.z) < ESCORT.near) on += 1;
+      e.hull = escortHull(e.hull, on, dt);
+      if (e.hull <= 0 && ship.parent) {
+        const at = e.run.kill();
+        if (at) burn(at, 1.4);
+        emit({ type: 'event', id: 'escortLost' });
+        escort = null;
+      } else if (!ship.parent) {
+        if (e.run.arrived) {
+          if (e.side.id === 'rickmorty') pieces.portals([new THREE.Vector3(...e.plan.path[2])]);
+          deed('rescued');
+          emit({ type: 'event', id: 'escorted' });
+        } else emit({ type: 'event', id: 'escortLost' });
+        escort = null;
+      }
+    }
     if (live) {
       // shields come back once you've been out of trouble a while
       if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen);
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
-        const id = director.update(dt, { hurt: state.hurtNow ?? 0, side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.busy || meteors.count > 0 || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
+        const id = director.update(dt, { hurt: state.hurtNow ?? 0, side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.busy || meteors.count > 0 || mines.count > 0 || Boolean(escort) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
         state.hurtNow = 0;
         if (id) happen(id, live);
         // the drive comes back once they're off you (or have had their go)
@@ -3481,6 +3549,8 @@ export async function create(canvas, ctx) {
     arriveAt(park);
     hunters?.clear();
     meteors.clear();
+    mines.clear();
+    dropEscort();
     wingmen?.clear();
     skirmishes?.clear();
     npcs?.clear();
@@ -3538,6 +3608,8 @@ export async function create(canvas, ctx) {
       arriveAt(j.park);
       hunters?.clear();
       meteors.clear();
+      mines.clear();
+      dropEscort();
       wingmen?.clear();
       skirmishes?.clear();
       npcs?.clear();
@@ -3684,7 +3756,7 @@ export async function create(canvas, ctx) {
     // that a shot bends onto it
     const siegeCands = [...siegeTargets(ship), ...removerTargets(ship)];
     // (the rocks only while nobody's after you: a hunter's the thing to lock on to)
-    const rocks = meteors.count && !hunters?.active ? meteors.targets : [];
+    const rocks = (meteors.count || mines.count) && !hunters?.active ? [...meteors.targets, ...mines.targets] : [];
     // (someone else's fight's hunters, while nothing's after you: yours come first)
     const farCands = [...(skirmishes?.active && !hunters?.active ? skirmishes.targets : []), ...(npcs?.targets ?? [])];
     const battleCands = front?.joined !== null && front?.joined !== undefined ? front.targets : []; // (the other side's, at the front)
@@ -4839,6 +4911,8 @@ export async function create(canvas, ctx) {
     state.boosting = false;
     hunters?.clear();
     meteors.clear();
+    mines.clear();
+    dropEscort();
     burst.clear();
     const [x, y, z] = p.at;
     state.ship = { ...state.ship, x, y, z, heading: p.heading, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, edge: false };
@@ -4870,7 +4944,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), remover: () => remover, removerView };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, remover: () => remover, removerView };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -5158,6 +5232,7 @@ export async function create(canvas, ctx) {
       removerView.dispose();
       leviathans.dispose();
       meteors.dispose();
+      mines.dispose();
       fleet.dispose();
       deep.dispose();
       sectorPortals.dispose();
