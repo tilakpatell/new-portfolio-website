@@ -337,7 +337,7 @@ export const densityOf = (role, fallback) => (SCANS[role]?.metres ? 1 / SCANS[ro
 // a role's scan's size in metres, and the brightness its detail map is centred on
 export const scanOf = (role) => SCANS[role] ?? null;
 
-export function createKit({ seed = 11, scans = true } = {}) {
+export function createKit({ seed = 11, scans = true, wind: blow = null } = {}) {
   const owned = [];
   const own = (x) => {
     owned.push(x);
@@ -391,6 +391,9 @@ export function createKit({ seed = 11, scans = true } = {}) {
   // the plants lit as foliage and moving in the wind, all by one clock (the
   // shared leaf material is the creatures' skin too: it stays as it is)
   const windTime = { value: 0 };
+  // (the way it blows: the world's own, as the site says, so the grass in
+  // lib/three/wind and the kit's plants lean the same way)
+  const windDir = blow?.angle != null ? new THREE.Vector2(Math.cos(blow.angle), Math.sin(blow.angle)) : undefined;
   for (const [name, kind] of [
     ['needles', 'tree'],
     ['foliage', 'tree'],
@@ -399,10 +402,13 @@ export function createKit({ seed = 11, scans = true } = {}) {
     ['broadleaf', 'shrub'],
     ['strands', 'shrub'],
     ['blades', 'shrub'],
+    ['cloth', 'shrub'],
   ]) {
-    wrapLighting(mats[name], { wrap: 0.45, backScatter: 0.35 });
-    if (mats[name].side === THREE.DoubleSide) faceless(mats[name]);
-    wind(mats[name], { kind, time: windTime, ...(kind === 'tree' ? { strength: 0.12 } : {}) });
+    if (name !== 'cloth') {
+      wrapLighting(mats[name], { wrap: 0.45, backScatter: 0.35 });
+      if (mats[name].side === THREE.DoubleSide) faceless(mats[name]);
+    }
+    wind(mats[name], { kind, time: windTime, ...(windDir ? { dir: windDir } : {}), ...(kind === 'tree' ? { strength: 0.12 } : {}), ...(name === 'cloth' ? { strength: 0.08 } : {}) });
   }
 
   // the scans on every material that wears one: the role's own, and the

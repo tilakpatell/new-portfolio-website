@@ -62,10 +62,13 @@ import { floatPose } from './floats';
 import { createWeather } from './weather';
 import { createKit } from './kit';
 import { createHouse } from '../../../lib/three/house';
-import { adoptLater, exposureOf, lookOf } from './look';
-import { createGrass } from './grass';
+import { adoptLater, exposureOf, groundPieces, lookOf } from './look';
+import { createGrass } from '../../../lib/three/grass';
+import { createWind } from '../../../lib/three/wind';
+import { createGroundMap } from '../../../lib/three/groundmap';
+import { groundPainter, mapAreaOf } from './groundPaint';
 import { floorShadow } from '../../../lib/three/grounding';
-import { PROPS } from './props';
+import { PROPS, SCATTER } from './props';
 import { createPlacer } from './placer';
 import { createActors, modelFigure } from './actors';
 import { RIDES } from './rides';
@@ -226,19 +229,20 @@ export async function create(canvas, ctx) {
   if (weather) scene.add(weather.group);
 
   // ── What's on it ──
-  const kit = createKit({ seed: 31 });
+  // one wind for the world (lib/three/wind): the grass's, and the way the
+  // kit's plants and cloth lean
+  const windAngle = site.ground.wind ?? 0;
+  const wind = createWind({ strength: site.grass?.wind ?? 0.4, angle: windAngle });
+  const kit = createKit({ seed: 31, wind: { angle: windAngle } });
   // (the scatter casts its shadow only near you: near.js)
   const shadowPhase = sun.castShadow ? createShadowPhase(scene, sun) : null;
   const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null });
-  // (things that float, a bongo on Lake Paonga, ride the waves: floats.js)
-  const floaters = [];
-  for (const t of site.things_all) {
-    const put = placer.put(t);
-    if (t.float && water?.height) put.then((o) => o && floaters.push({ o, x: o.position.x, z: o.position.z, yaw: t.yaw ?? 0, float: t.float }));
-  }
+  // where the scattered things go (worked out first: the ground map wants
+  // the trees' crowns before anything is placed, so every material it
+  // bounces light onto compiles once)
   const r = rng(site.ground.seed ?? 1);
   const avoid = [...site.places.map((p) => ({ at: p.at, r: p.flat?.r ?? p.r * 0.6 })), { at: site.land.at, r: 30 }];
-  for (const s of site.scatter) {
+  const scattered = site.scatter.map((s) => {
     const items = [];
     const [r0, r1] = s.within ?? [20, site.reach];
     let tries = 0;
@@ -253,10 +257,34 @@ export async function create(canvas, ctx) {
       const [lo, hi] = s.scale ?? [1, 1];
       items.push({ at: [x, z], yaw: r() * Math.PI * 2, scale: lo + (hi - lo) * r() ** 1.6, sink: s.sink ?? 0.1, stretch: s.stretch ? s.stretch[0] + r() * (s.stretch[1] - s.stretch[0]) : 1 });
     }
-    placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true });
+    return { s, items };
+  });
+  // ── The ground as data (lib/three/groundmap): its colour and its grass
+  // painted once over the walkable square (groundPaint.js), darker and
+  // thinner under the trees' crowns; the grass stands on it and takes its
+  // colour, and the house bounces it up onto everything low ──
+  const pieces = groundPieces(site);
+  let groundMap = null;
+  if (pieces.map) {
+    const shade = scattered.flatMap(({ s, items }) => (SCATTER[s.kind]?.canopy ? items.map((it) => ({ at: it.at, r: SCATTER[s.kind].canopy * it.scale })) : []));
+    const painter = groundPainter(site, grid, { shade });
+    const mapSize = small ? 256 : 512;
+    groundMap = createGroundMap({ area: mapAreaOf(), size: mapSize, heightSize: mapSize, paint: painter.paint, height: painter.height });
+    if (pieces.bounce) house.ground(groundMap);
   }
-  // (the grass round you: blades on the land, where the site grows it)
-  const grass = site.grass && !site.noGround ? createGrass(scene, { grid, site, small, time: kit.wind }) : null;
+  // (things that float, a bongo on Lake Paonga, ride the waves: floats.js)
+  const floaters = [];
+  for (const t of site.things_all) {
+    const put = placer.put(t);
+    if (t.float && water?.height) put.then((o) => o && floaters.push({ o, x: o.position.x, z: o.position.z, yaw: t.yaw ?? 0, float: t.float }));
+  }
+  for (const { s, items } of scattered) placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true });
+  // the grass round you (lib/three/grass, Bruno's: a triangle a blade, one
+  // draw, the patch going with you), where the site grows it
+  const grass = pieces.grass
+    ? createGrass({ ground: groundMap, wind, side: tier === 'high' && !small ? 280 : tier === 'mid' ? 200 : 120, size: 44, height: site.grass.h?.[1] ?? 0.5, width: site.grass.w ?? 0.05, root: 0.35 })
+    : null;
+  if (grass) scene.add(grass.mesh);
   const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
 
   // ── The places you go into (zones): built high over the world, out of
@@ -2249,7 +2277,8 @@ export async function create(canvas, ctx) {
     life.update(dt, state.phase === 'walk' ? me().st : null, state.phase === 'walk' || state.phase === 'ride' ? me().st : camera.position);
     placer.update(t, dt, me().st);
     if (!reduced) kit.tick(dt);
-    grass?.update(me().st.x, me().st.z, me().st.x, me().st.z);
+    grass?.update(me().st);
+    wind.update(dt);
     stepDust(dt);
     storm(dt);
     // (the look's full light follows the lamps and the storms; anything that
@@ -2388,7 +2417,7 @@ export async function create(canvas, ctx) {
         auto: true,
       });
       // (the grass in the floor's shadows: read where each blade stands)
-      if (grass) floorShadow(grass.mesh.material, lit.mask);
+      if (grass) floorShadow(grass.material, lit.mask);
     }
     // (the look over everything, after the floor's light: its shade then
     // replaces the floor's own tint, and one shadow colour reaches it all)
@@ -2663,6 +2692,8 @@ export async function create(canvas, ctx) {
       life.dispose();
       placer.dispose();
       grass?.dispose();
+      wind.dispose();
+      groundMap?.dispose();
       shadowPhase?.dispose();
       for (const p of people) {
         p.gp?.dispose();

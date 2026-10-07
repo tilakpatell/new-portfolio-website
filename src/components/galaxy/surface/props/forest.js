@@ -1912,4 +1912,7 @@ const YAVIN = {
   },
 };
 
+// (the crowns the ground map shades under: a kind's crown radius at scale 1)
+for (const [kind, crown] of [['redwood', 9], ['wroshyr', 10], ['gnarltree', 6], ['jungletree', 7], ['spruce', 4]]) if (SCATTER[kind]) SCATTER[kind].canopy = crown;
+
 export const PROPS = { ...TREES, ...ENDOR, ...KASHYYYK, ...DAGOBAH, ...YAVIN };
