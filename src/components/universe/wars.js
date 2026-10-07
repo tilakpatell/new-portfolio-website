@@ -334,15 +334,15 @@ export const SUBSYSTEMS = {
     [0, -0.14, -0.38],
   ),
   // the Federation's battleship, as the show drew it: its shield generators
-  // in the engine pods either side, the bridge behind the glass up front, the
-  // reactor in the great dome at its back
+  // in the engine pods either side, the bridge at the glass along the top up
+  // front, the reactor atop the great dome at its back
   fedbattleship: flagship(
     [
       [-0.31, -0.05, 0.14],
       [0.31, -0.05, 0.14],
     ],
-    [0, 0.08, 0.22],
-    [0, 0.12, -0.3],
+    [0, 0.19, 0.17],
+    [0, 0.28, -0.3],
   ),
   // Gus's superlab barge (scripts/meshy-war.mjs): its shield generators the
   // two domes on the deckhouse's roof, fore and aft, the bridge at the
@@ -412,7 +412,7 @@ export const HULLS = {
   lightcruiser: [[-0.36, 0.1], [-0.12, 0.09], [0.12, 0.07], [0.36, 0.05]],
   gozanti: [[-0.36, 0.12], [-0.12, 0.13], [0.12, 0.12], [0.36, 0.1]],
   councildread: [[-0.38, 0.12], [-0.15, 0.13], [0.1, 0.08], [0.32, 0.04]],
-  fedbattleship: [[-0.28, 0.3], [0, 0.3], [0.24, 0.22], [0.42, 0.08]],
+  fedbattleship: [[-0.27, 0.26], [0.02, 0.2], [0.22, 0.18], [0.42, 0.07]],
   gearship: [[-0.3, 0.16], [0, 0.18], [0.3, 0.16]],
   saucer: [[-0.2, 0.3], [0.2, 0.3]],
   federation: [[-0.36, 0.12], [-0.12, 0.12], [0.12, 0.11], [0.36, 0.08]],
