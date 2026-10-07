@@ -15,6 +15,8 @@ import { BODIES, SPACE, intoSpace, outOfSpace, stepSpace } from './orbit';
 import { CARDS, RINGS, keepQuests, newQuests, stepQuests } from './quests';
 import { CITY, COAST, BEACH, HILLS, PLACES, RIVER, SPAWN, SUBURB, WATER_Y, WORLD, groundAt, isSafeStart } from './map';
 import { VOICE } from './voicelines';
+import InvHud from './InvHud';
+import { COMPASS, layoutCompass, titleMode } from './hud';
 import './world.css';
 
 // The Graysons' city, the world: fly about it as Invincible. The rules are
@@ -31,7 +33,6 @@ const QUESTS = 'tp-inv-world-quests';
 const clock = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`;
 const WHAT = { fall: 'Someone’s slipping off a roof', heli: 'A news helicopter’s lost its tail rotor' };
 const TIMES = ['noon', 'dusk', 'night'];
-const TIME_NAME = { noon: 'Noon', dusk: 'Dusk', night: 'Night' };
 const MACH = 343;
 // the keys, by where they are on the keyboard
 const CODES = { KeyW: 'fwd', KeyS: 'back', KeyA: 'left', KeyD: 'right', Space: 'up', KeyC: 'down', KeyZ: 'down', ShiftLeft: 'boost', ShiftRight: 'boost', ArrowLeft: 'lookL', ArrowRight: 'lookR', ArrowUp: 'lookU', ArrowDown: 'lookD' };
@@ -130,6 +131,8 @@ function World({ gl, setGl }) {
   // given it (below), and the dev hook sets it, so they can't disagree.
   const [time, setTimeName] = useState(keptTime);
   const [help, setHelp] = useState(false);
+  // the title: FLY, MARK. until he's flying, then a chip (./hud.js titleMode)
+  const [chip, setChip] = useState(false);
   const [toast, setToast] = useState(null);
   const [near, setNear] = useState(null);
   const [bubble, setBubble] = useState(null);
@@ -599,6 +602,9 @@ function World({ gl, setGl }) {
       const far = (b) => Math.round((Math.hypot(h.p[0] - b.c[0], h.p[1] - b.c[1], h.p[2] - b.c[2]) - b.r) / 1000);
       if (H.mach) H.mach.textContent = inSpace ? (h.mode === 'perch' ? `On ${h.perch.body === 'moon' ? 'the Moon' : 'Mars'}` : BODIES.map((b) => `${b.id === 'moon' ? 'Moon' : 'Mars'} ${far(b)} km`).join(' · ')) : speed > 60 ? `Mach ${(speed / MACH).toFixed(2)}` : h.mode === 'ground' ? (speed > 5 ? 'Running' : speed > 0.5 ? 'Walking' : 'Standing') : speed < 1 ? 'Hovering' : 'Flying';
       if (H.alt) H.alt.textContent = alt > 20000 ? `${Math.round(alt / 1000)} km` : `${Math.max(0, Math.round(alt))} m`;
+      // where he is, for the gauge: the streets, the sky over them, or out of the air
+      const zoneName = inSpace ? 'Space' : alt > 300 ? 'Sky' : 'City';
+      if (H.zone && H.zone.textContent !== zoneName) H.zone.textContent = zoneName;
       if (H.bar) H.bar.style.transform = `scaleX(${Math.min(1, inSpace ? Math.log10(1 + speed) / Math.log10(6001) : speed / FLY.top)})`;
       if (H.lines) H.lines.style.opacity = String(clamp((speed - 70) / 160, 0, 0.85));
       const marks = [];
@@ -619,6 +625,12 @@ function World({ gl, setGl }) {
         H.goal.dataset.on = text ? '1' : '';
         H.goal.dataset.red = q.rescue && !s.fight.on ? '1' : '';
         H.goal.dataset.purple = s.fight.on ? '1' : '';
+      }
+      // the title goes to a chip 2.5 s after he first moves, or at once when there's something to do (./hud.js)
+      if (!s.movedAt && (s.moved || speed > 2)) s.movedAt = s.t;
+      if (!s.chip && titleMode(s.t, s.movedAt ?? null, Boolean(H.goal?.dataset.on)) === 'chip') {
+        s.chip = true;
+        setChip(true);
       }
     }
     if (s.frame % 4 === 0 && mapRef.current && H.mapBox && !inSpace) drawMap(mapRef.current, H.mapBox, h, s.yaw, alt, s.world, s.marks);
@@ -709,86 +721,7 @@ function World({ gl, setGl }) {
       )}
       {gl === 'loading' && <p className="iw-loading">Over the city…</p>}
 
-      <div className="iw-hud iw-hud-top">
-        <div className="iw-brand" ref={(el) => (hud.current.brand = el)}>
-          <p className="iw-eyebrow">Invincible · the Graysons’ city</p>
-          <h2 id="iw-title" className="iw-title">
-            Fly, Mark.
-          </h2>
-          <p className="iw-goal" ref={(el) => (hud.current.goal = el)} aria-live="polite" />
-        </div>
-        <div className="iw-tools" ref={(el) => (hud.current.tools = el)}>
-          <button type="button" className="iw-btn" onClick={cycleTime} aria-label={`Time of day: ${TIME_NAME[time]}. Change it.`}>
-            {TIME_NAME[time]}
-          </button>
-          <button type="button" className="iw-btn" onClick={() => setHelp((v) => !v)} aria-expanded={help}>
-            Controls
-          </button>
-          <Players trav={trav} />
-          <a className="iw-btn" href="#inv-game">
-            Think, Mark!
-          </a>
-        </div>
-      </div>
-      <canvas className="iw-compass" ref={(el) => (hud.current.compass = el)} aria-hidden="true" />
-
-      {help && (
-        <div className="iw-help" role="dialog" aria-label="Controls">
-          <dl>
-            <dt>W A S D</dt>
-            <dd>Fly the way you’re looking (walk, on the ground)</dd>
-            <dt>Space · C</dt>
-            <dd>Up (take off) · down (land)</dd>
-            <dt>Shift</dt>
-            <dd>Flat out. Past Mach 0.35 the air breaks</dd>
-            <dt>Drag · arrows</dt>
-            <dd>Look round</dd>
-            <dt>J · F · click</dt>
-            <dd>Punch (a little way off, he lunges)</dd>
-            <dt>E</dt>
-            <dd>At a place: go in (Cecil, at the GDA, has a job)</dd>
-            <dt>T</dt>
-            <dd>Noon, dusk, night</dd>
-            <dt>Up, up</dt>
-            <dd>Past 9 km you’re out of the air: the Moon and Mars are out there</dd>
-          </dl>
-          <p>A pad works: left stick flies, right stick looks, A up, B down, RT flat out, X punches, Y goes in.</p>
-          <p>
-            Things to do: Dad’s rings start over the street outside the house; {found} of {CARDS.length} title cards found; rescues come in on their own.
-          </p>
-        </div>
-      )}
-
-      <div className="iw-hud iw-hud-bottom">
-        <div className="iw-gauge" aria-hidden="true">
-          <p className="iw-speed">
-            <span ref={(el) => (hud.current.speed = el)}>0</span>
-            <small>km/h</small>
-          </p>
-          <div className="iw-bar">
-            <i ref={(el) => (hud.current.bar = el)} />
-          </div>
-          <p className="iw-mach" ref={(el) => (hud.current.mach = el)}>
-            Standing
-          </p>
-          <p className="iw-alt">
-            <span>Height</span> <b ref={(el) => (hud.current.alt = el)}>0 m</b>
-          </p>
-        </div>
-        <div className="iw-mid">
-          {near && (
-            <button type="button" className="iw-prompt" onClick={act}>
-              <kbd>E</kbd> {near.name}
-            </button>
-          )}
-          {toast && (
-            <p className="iw-toast" key={toast.key} role="status">
-              {toast.text}
-            </p>
-          )}
-        </div>
-      </div>
-      <canvas className="iw-map" ref={mapRef} aria-hidden="true" />
+      <InvHud hud={hud} mapRef={mapRef} time={time} cycleTime={cycleTime} help={help} setHelp={setHelp} chip={chip} trav={trav} found={found} cards={CARDS.length} near={near} act={act} toast={toast} />
 
       {touch && (
         <div className="iw-touch">
@@ -812,23 +745,6 @@ function World({ gl, setGl }) {
         </div>
       )}
     </div>
-  );
-}
-
-// Other players online here: how many, or a way to see them (going online
-// is the site's own switch, with your callsign, as the universe's map has it).
-function Players({ trav }) {
-  if (!trav.available) return null;
-  if (!trav.on)
-    return (
-      <button type="button" className="iw-btn" onClick={trav.join} title="Go online, and see everyone else flying the city as a pale Mark with their name over him">
-        See other players
-      </button>
-    );
-  return (
-    <span className="iw-btn iw-players" data-on title="Everyone else online here shows as a pale Mark: nothing passes between you but where each of you is">
-      <b>{trav.count}</b> {trav.count === 1 ? 'player' : 'players'} here
-    </span>
   );
 }
 
@@ -856,7 +772,7 @@ function fitHud(H, map) {
     // under the buttons, however many rows they wrap to (world.css)
     const stage = H.compass.parentElement?.getBoundingClientRect();
     const tools = H.tools?.getBoundingClientRect();
-    if (stage && tools?.height) H.compass.style.setProperty('--iw-under', `${Math.round(tools.bottom - stage.top + 6)}px`);
+    if (stage && tools?.height) H.compass.parentElement.style.setProperty('--iw-under', `${Math.round(tools.bottom - stage.top + 6)}px`);
     // where the HUD's other things still sit over the strip (the title, the
     // goal): nothing of the compass is drawn there (by more than a sliver:
     // the title's box runs a little below its letters)
@@ -880,51 +796,53 @@ const DIRS = [
 function drawCompass(c, box, yaw, h, places, marks = []) {
   const x = c.getContext('2d');
   const { w: W, h: H } = box;
-  const u = H / 44; // (laid out for a strip 44 high)
+  const u = H / 60; // (laid out for a strip 60 high: names, headings, ticks, dots, a second row of names)
   x.setTransform(box.s, 0, 0, box.s, 0, 0);
   x.clearRect(0, 0, W, H);
-  const span = Math.PI * 0.9; // what the strip shows
+  const span = COMPASS.span; // what the strip shows
   const at = (a) => W / 2 + (wrap(yaw - a) / span) * W; // (yaw grows to the left)
-  // what's written on it so far, left to right: a name only goes where it fits
-  const taken = [...box.block];
-  const free = (a, b) => a >= 0 && b <= W && !taken.some(([p, q]) => b > p && a < q);
   x.font = `700 ${20 * u}px system-ui, sans-serif`;
   x.textAlign = 'center';
   x.fillStyle = 'rgba(255,255,255,0.9)';
+  const headings = [];
   for (const [a, n] of DIRS) {
     const px = at(a);
     if (px < 10 * u || px > W - 10 * u) continue;
     x.fillText(n, px, 19 * u);
-    taken.push([px - 9 * u, px + 9 * u]);
+    headings.push(px);
   }
   x.fillStyle = 'rgba(255,255,255,0.35)';
   for (let k = 0; k < 24; k++) {
     const px = at((k / 24) * Math.PI * 2);
     if (px > 0 && px < W) x.fillRect(px - 0.5, 24 * u, 1, (k % 6 === 0 ? 8 : 5) * u);
   }
-  // the places: a dot each, and the nearest's names first
-  const named = [];
+  // the places: a dot each
+  const near = [];
   x.fillStyle = '#ffd23a';
   for (const p of places) {
-    const px = at(Math.atan2(p.x - h.p[0], p.z - h.p[2]));
-    if (px < 8 * u || px > W - 8 * u) continue;
-    x.beginPath();
-    x.arc(px, 36 * u, 4 * u, 0, Math.PI * 2);
-    x.fill();
+    const a = Math.atan2(p.x - h.p[0], p.z - h.p[2]);
+    const px = at(a);
     const d = Math.hypot(p.x - h.p[0], p.z - h.p[2]);
-    if (d < 1800) named.push({ px, d, name: p.name.replace(/^The /, '') });
+    if (px >= 8 * u && px <= W - 8 * u) {
+      x.beginPath();
+      x.arc(px, 36 * u, 4 * u, 0, Math.PI * 2);
+      x.fill();
+    }
+    if (d < 1800) near.push({ id: p.id, label: p.name.replace(/^The /, ''), bearing: wrap(yaw - a), d });
   }
+  // and the nearest's names, laid out by ./hud.js: clear of the headings
+  // and of each other (a second row under the dots for the ones that would
+  // touch), none under the buttons where they overlap the strip's end
+  const end = box.block.filter(([, q]) => q >= W - 8).reduce((m, [p]) => Math.min(m, p), W);
+  const laid = layoutCompass(near.sort((a, b) => a.d - b.d), W, { span, gap: COMPASS.gap, reserve: W - end, taken: headings });
   x.font = `600 ${14 * u}px system-ui, sans-serif`;
-  for (const n of named.sort((a, b) => a.d - b.d)) {
-    const half = x.measureText(n.name).width / 2 + 3 * u;
-    // over its dot, kept whole at the ends; or, if that's taken, slid just
-    // clear of what's there, if that's still near its dot
-    const tries = [clamp(n.px, half, W - half)];
-    for (const [p, q] of taken) tries.push(p - half, q + half);
-    const lx = tries.filter((c) => Math.abs(c - n.px) < 64 * u && free(c - half, c + half)).sort((a, b) => Math.abs(a - n.px) - Math.abs(b - n.px))[0];
-    if (lx === undefined) continue;
-    taken.push([lx - half, lx + half]);
-    x.fillText(n.name, lx, 12 * u);
+  for (const n of laid) {
+    if (n.clipped) continue;
+    const half = x.measureText(n.label).width / 2 + 3 * u;
+    const lx = clamp(n.x, half, W - half);
+    // (and not under anything else of the HUD's over the strip: the title, the goal)
+    if (box.block.some(([p, q]) => lx + half > p && lx - half < q)) continue;
+    x.fillText(n.label, lx, n.row === 0 ? 12 * u : 54 * u);
   }
   for (const m of marks) {
     const px = at(Math.atan2(m.x - h.p[0], m.z - h.p[2]));
