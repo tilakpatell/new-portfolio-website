@@ -1,0 +1,22 @@
+{
+  "id": 3,
+  "date": "2026-10-07",
+  "title": "Anisotropy follows the device’s tier instead of a number in each file",
+  "kind": "graphics",
+  "summary": "Thirteen textures (the Dickansh posters, the office’s windows, the project cartridges, Mario’s painted maps, the galaxy surfaces’ scans) each picked their own anisotropy. They now take the device’s: 16 on a desktop, 4 on a phone, 1 on a weak one, so a floor seen at a slant stays sharp a few metres out. Nothing to see in these software-rendered pictures; the difference shows on a real graphics chip.",
+  "routes": [
+    "/scranton",
+    "/projects"
+  ],
+  "pr": 426,
+  "shots": [
+    "/changes/0003-a.webp",
+    "/changes/0003-b.webp"
+  ],
+  "measured": {
+    "js": 11939114,
+    "note": "Hardcoded anisotropy sites 15 → 2 (the two deliberate skies). Bundle unchanged."
+  },
+  "session": "session_016pYnq331w6Gi6gHxQ3fbS5",
+  "reverted": null
+}

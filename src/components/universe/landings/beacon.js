@@ -8,6 +8,7 @@
 // createBeacon({ label, color, tall, small, reduced }) → { object, update(t) }
 
 import * as THREE from 'three';
+import { sharpen } from '../../../lib/three/textures';
 
 // the column fades out going up, and is brightest down its middle (the
 // view's angle to it: a soft edge, not a cylinder's hard one)
@@ -64,8 +65,7 @@ function labelTexture(text, color) {
   ctx.textBaseline = 'middle';
   ctx.fillText(text, 80, h / 2 + 2);
   const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
+  sharpen(tex, { color: true });
   return { tex, aspect: w / h };
 }
 

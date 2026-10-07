@@ -10,6 +10,7 @@
 
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { sharpen } from '../../lib/three/textures';
 
 const W = 1;
 const H = 2.126;
@@ -107,8 +108,7 @@ function lockScreen() {
   };
   draw();
   const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
+  sharpen(tex, { color: true });
   return { tex, redraw: () => (draw(), (tex.needsUpdate = true)) };
 }
 
@@ -119,8 +119,7 @@ function backPrint() {
   const g = c.getContext('2d');
   drawBrand(g, 256, 240, 1.3, '#d8d2c4');
   const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
+  sharpen(tex, { color: true });
   return tex;
 }
 

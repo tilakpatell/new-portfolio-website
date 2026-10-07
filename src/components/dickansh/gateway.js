@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { loadGltf } from '../../lib/three/gltf';
 import { courtyardTexture, flameTexture, glowTexture, rng } from './textures';
+import { sharpen } from '../../lib/three/textures';
 
 export const ARCH = { halfWidth: 2.1, lintel: 3.5, notchHalf: 1.3, top: 4.6 }; // the doorway, in metres
 const MODELS = {
@@ -248,8 +249,7 @@ export function build({ renderer, still }) {
     const w = c.h * (2 / 3);
     const g = new THREE.Group();
     const tex = keep(loader.load(c.src));
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 8;
+    sharpen(tex, { color: true });
     const mat = keep(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.75, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.08 }));
     posters.push(mat);
     const board = new THREE.Mesh(keep(new THREE.PlaneGeometry(w, c.h)), mat);
