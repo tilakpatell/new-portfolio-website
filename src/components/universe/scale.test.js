@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { HOME_SCALE, HOME_SPREAD, LENGTH, WORLD_SCALE } from './scale';
+import { HOME_SCALE, HOME_SPREAD, LENGTH, SPREAD, WORLD_SCALE } from './scale';
 import { LENGTH as SHIP_MODEL_LENGTH } from './shipModels';
 import { POSITIONS, SUN } from './layout';
 import { PLANETS, SHIP } from './ship';
 import { TYPES } from './traffic';
 import { STAR_DESTROYER } from './setpieces';
 import { poseFor } from './poses';
-import { UNIVERSES, byId } from './universes';
+import { SPREAD as SPREAD_WRITTEN, UNIVERSES, byId } from './universes';
 import { WONDERS, reachOf } from './deep';
 import { PHONE } from './phone';
 
@@ -122,5 +122,12 @@ describe('the home system against the ships (scale.js)', () => {
     const smallest = Math.min(...stations.map((s) => 2 * s.r));
     for (const [kind, t] of Object.entries(TYPES)) expect(t.size, kind).toBeLessThan(smallest);
     expect(STAR_DESTROYER).toBeLessThan(smallest);
+  });
+});
+
+describe('the gaps between the places (scale.js’s SPREAD)', () => {
+  it('spreads the map four times, and universes.js writes the same number out', () => {
+    expect(SPREAD).toBe(4);
+    expect(SPREAD_WRITTEN).toBe(SPREAD);
   });
 });

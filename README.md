@@ -125,6 +125,8 @@ All of the content (roles, projects, skills, education) lives in [`src/data/`](s
 
 The front door (`/`) is a map of the whole site as places in space: the portfolio's pages are stations round a sun, and each fandom is a planet out in the dark. A first visit opens with a crawl, then puts you in a cockpit (the Millennium Falcon, an X-wing, Rick's space cruiser or Walt and Jesse's RV) and launches you into the map. Fly to a planet to open its page.
 
+The places are a long way apart, the far ones only specks of light until you come near, and a web of hyperlanes runs between them in three tiers: local lanes round each neighbourhood, trunk routes between them and an express out to the gates. Fly into a lane’s ring, or merge into it at speed, and you ride it at hyperspeed with the traffic; hold S to pull out anywhere, or pick a place on the nav map and the autopilot takes the lanes for you.
+
 <table>
 <tr>
 <td width="50%" valign="top"><img src="docs/readme/welcome.webp" alt="Han's seat in the Millennium Falcon's cockpit, Chewie beside it, with a choice of ship and a Punch it button"><p><b>The welcome.</b> A first visit puts you in the pilot's seat (Han's, with Chewie beside you), then you punch it.</p></td>

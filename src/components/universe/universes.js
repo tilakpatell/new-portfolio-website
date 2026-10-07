@@ -32,6 +32,9 @@
 // if they differ. The Star Wars gate keeps its own size (GATE): it's a
 // gate, not a world, and the galaxy behind it is sized to it.
 const STATION = 7 * 3;
+// and scale.js's SPREAD, the same way: how much further apart the places are
+// than they were (layout.js and deep.js space them by it)
+export const SPREAD = 4;
 const PLANET = 28 * 3;
 const GATE = 28;
 
