@@ -428,7 +428,6 @@ export const CREWS = [
       ['rick', 'That’s what you get for messing with the smartest man in the universe!'],
       ['morty', 'I did most of the shooting, Rick.'],
     ],
-    // the director's set pieces (director.js), and going out into deep space
     // the ship's powers (shipPowers.js): using each, the big one charged
     // and a big haul from it, and why a portal won't go
     powers: {
@@ -448,6 +447,7 @@ export const CREWS = [
         big: [['rick', 'Riggity riggity wrecked, son!', 'riggity']],
       },
     },
+    // the director's set pieces (director.js), and going out into deep space
     events: {
       // friends on your wing in a long fight (wingmen.js), and going again: by who came
       wingmen: {

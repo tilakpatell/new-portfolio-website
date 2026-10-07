@@ -1579,7 +1579,7 @@ export async function create(canvas, ctx) {
     }
     post.hit(state.hurt);
     placeShield();
-    powers.place(props.powers?.current ?? null, flying() && !state.crash && !props.frozen && !(state.jump && state.jump.phase !== 'align'));
+    powers.place(props.powers?.current ?? null, flying() && !state.crash && !state.dive && !props.frozen && !(state.jump && state.jump.phase !== 'align'));
     return busy || Boolean(hunters?.count);
   };
 
@@ -2287,6 +2287,7 @@ export async function create(canvas, ctx) {
       const s = state.ship;
       const r = state.sys?.body?.r;
       if (!s || !r || state.dive || state.crash || state.jump) return false;
+      powers.cancel(); // (the ship's going down to the planet: no portal hop out of the dive)
       state.dive = planDive(s, r);
       aimAt(null);
       ctx.invalidate();
