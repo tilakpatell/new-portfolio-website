@@ -1,28 +1,30 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 
-// the party's loader faked: a figure that keeps a note of what it's asked
+// the party's loaders faked: a figure that keeps a note of what it's asked
+// (and which loader made it: the wardrobe's people their own, anyone else
+// a copy of their file's one)
 const made = [];
-vi.mock('../../universe/footScene', () => ({
-  loadPartyFigure: async () => {
-    const calls = [];
-    const fig = {
-      model: new THREE.Group(),
-      anim: { name: 'animator' },
-      calls,
-      update: (...a) => calls.push(['update', ...a]),
-      after: (...a) => calls.push(['after', ...a]),
-      play: (...a) => (calls.push(['play', ...a]), Promise.resolve(true)),
-      stop: (...a) => calls.push(['stop', ...a]),
-      base: (...a) => (calls.push(['base', ...a]), Promise.resolve('done')),
-      look: (...a) => calls.push(['look', ...a]),
-      react: (...a) => (calls.push(['react', ...a]), { clip: a[0] }),
-      dispose: () => calls.push(['dispose']),
-    };
-    made.push(fig);
-    return fig;
-  },
-}));
+const fake = (how) => async () => {
+  const calls = [];
+  const fig = {
+    model: new THREE.Group(),
+    anim: { name: 'animator' },
+    calls,
+    how,
+    update: (...a) => calls.push(['update', ...a]),
+    after: (...a) => calls.push(['after', ...a]),
+    play: (...a) => (calls.push(['play', ...a]), Promise.resolve(true)),
+    stop: (...a) => calls.push(['stop', ...a]),
+    base: (...a) => (calls.push(['base', ...a]), Promise.resolve('done')),
+    look: (...a) => calls.push(['look', ...a]),
+    react: (...a) => (calls.push(['react', ...a]), { clip: a[0] }),
+    dispose: () => calls.push(['dispose']),
+  };
+  made.push(fig);
+  return fig;
+};
+vi.mock('../../universe/footScene', () => ({ loadPartyFigure: fake('own'), loadSharedFigure: fake('shared') }));
 // Jabba's file: a box
 vi.mock('./placer', () => ({
   loadGlb: async () => ({ scene: new THREE.Group() }),
@@ -37,6 +39,13 @@ const { crewFigure } = await import('./crew');
 const { METRE } = await import('../../universe/foot');
 
 describe('a crew figure out on a world', () => {
+  it("is a copy of its file's one figure, so a battle's troopers share theirs", async () => {
+    await crewFigure('stormtrooper', 0);
+    expect(made.at(-1).how).toBe('shared');
+    await crewFigure('tusken', 0);
+    expect(made.at(-1).how).toBe('shared');
+  });
+
   it('reads its motion in metres, as the figure under it wants it, and lays its bones on facing where it’s turned', async () => {
     const fig = await crewFigure('tusken', 0);
     const inner = made.at(-1);

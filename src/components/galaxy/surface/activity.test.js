@@ -74,6 +74,10 @@ describe('what a hostile carries', () => {
     // (anyone else with a gun: a blaster; a spawn may say its own)
     expect(armsOf({ kind: 'someone', hostile: { range: 20 } })).toBe('blaster');
     expect(armsOf({ kind: 'tusken', gun: 'a280', hostile: { range: 20 } })).toBe('a280');
+    // (the soldiers their own: the troopers' E-11, the clones' DC-15A, the B1s' E-5)
+    for (const kind of ['stormtrooper', 'sandtrooper', 'snowtrooper', 'shoretrooper', 'deathtrooper']) expect(armsOf({ kind, hostile: { range: 30 } }), kind).toBe('e11');
+    expect(armsOf({ kind: 'clone', hostile: { range: 30 } })).toBe('dc15');
+    expect(armsOf({ kind: 'battledroid', hostile: { range: 30 } })).toBe('e5');
     for (const g of Object.values(ARMS)) expect(GUNS[g]).toBeDefined();
   });
 });
