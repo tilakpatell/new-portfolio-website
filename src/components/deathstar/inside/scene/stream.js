@@ -16,8 +16,11 @@
 // number of lights in the scene changes, so the stream keeps a fixed
 // pool of point lights, as many as the tier can afford (high 12, mid 8,
 // low 4), dark while unused, and hands them each frame to the lamps of
-// the shown rooms nearest the eye, easing each one up and down so a lamp
-// swapped for a nearer one never blinks.
+// the shown rooms nearest the eye, easing each one up and down. A lamp
+// left behind goes out at that pace before its light passes to a nearer
+// one, so it never blinks out; and a lit lamp keeps its light until
+// another is nearer by a clear margin, so an eye swaying about the point
+// halfway between two lamps doesn’t trade them back and forth.
 //
 //   plan(layout, here, open: (doorId) → bool, built?) → { build, show, free }   pure: Sets of room ids
 //     open: whether a doorway can be seen through at all (a leaf open the least bit, not yet
@@ -47,6 +50,8 @@ const NEAR = 2; // a room this many doors away or fewer is built
 const FAR = 4; // a built room more doors away than this is freed
 const LAMPS = { ultra: 12, high: 12, mid: 8, low: 4 }; // point lights a tier can afford at once
 const FADE = 0.3; // seconds for a lamp to come up, or go down
+const KEEP = 1; // metres nearer than a lit lamp another must be to take its light…
+const KEEP_SHARE = 0.1; // …or this share of the lit lamp’s distance, if more: a far pair is told apart less finely
 const EYE = 1.6; // how high the eye is taken to be when the caller doesn’t say
 const TOUCH = 0.01; // walls nearer than this stand back to back (as kit.js’ windowsOf has it)
 
@@ -149,11 +154,14 @@ export function createStream(kit, layout, scene, { renderer = null, tier = kit?.
   let at = null; // the room you were last in
   let disposed = false;
 
+  // each light: the lamp it shows, how far up it is, and the lamp waiting
+  // for it to go dark (a nearer one, when no light was idle)
   const pool = Array.from({ length: LAMPS[tier] ?? LAMPS.high }, () => {
     const light = new THREE.PointLight(0xffffff, 0, 0, 2);
     scene.add(light);
-    return { light, lamp: null, glow: 0 };
+    return { light, lamp: null, glow: 0, next: null };
   });
+  let held = new Set(); // the lamps wanted last frame
 
   function standIn(room) {
     const group = new THREE.Group();
@@ -199,23 +207,41 @@ export function createStream(kit, layout, scene, { renderer = null, tier = kit?.
   function light(show, eye, dt) {
     const lamps = [];
     for (const id of show) for (const lamp of built.get(id)?.lamps ?? []) lamps.push(lamp);
-    const far = (l) => (l.x - eye.x) ** 2 + (l.y - eye.y) ** 2 + (l.z - eye.z) ** 2;
-    lamps.sort((a, b) => far(a) - far(b));
+    // A lamp wanted last frame counts as nearer than it is, so it gives way
+    // only to one clearly nearer, not each time the eye sways past halfway.
+    const rank = new Map();
+    for (const l of lamps) {
+      const d = Math.hypot(l.x - eye.x, l.y - eye.y, l.z - eye.z);
+      rank.set(l, held.has(l) ? d - Math.max(KEEP, d * KEEP_SHARE) : d);
+    }
+    lamps.sort((a, b) => rank.get(a) - rank.get(b));
     const wanted = new Set(lamps.slice(0, pool.length));
+    held = wanted;
+    // a light whose own lamp is wanted again comes back up from where it
+    // was, and one whose waiting lamp is no longer wanted keeps no place for it
+    for (const s of pool) if (s.next && (wanted.has(s.lamp) || !wanted.has(s.next))) s.next = null;
     for (const lamp of wanted) {
-      if (pool.some((s) => s.lamp === lamp)) continue;
-      // an idle light, or else the dimmest of those going out (there is
-      // always one: fewer lamps are wanted than there are lights)
+      if (pool.some((s) => s.lamp === lamp || s.next === lamp)) continue;
+      const idle = pool.find((s) => s.lamp === null);
+      if (idle) {
+        idle.lamp = lamp;
+        continue;
+      }
+      // else the dimmest of those going out with no lamp waiting yet, which
+      // it takes once dark (there is always one: fewer lamps are wanted than
+      // there are lights, and a waiting lamp is wanted)
       let slot = null;
-      for (const s of pool) if (!wanted.has(s.lamp) && (!slot || s.glow < slot.glow)) slot = s;
-      slot.lamp = lamp;
-      slot.glow = 0;
+      for (const s of pool) if (!wanted.has(s.lamp) && !s.next && (!slot || s.glow < slot.glow)) slot = s;
+      slot.next = lamp;
     }
     const step = dt / FADE;
     for (const s of pool) {
       const on = s.lamp !== null && wanted.has(s.lamp);
       s.glow = on ? Math.min(1, s.glow + step) : Math.max(0, s.glow - step);
-      if (!on && s.glow === 0) s.lamp = null;
+      if (!on && s.glow === 0) {
+        s.lamp = s.next;
+        s.next = null;
+      }
       if (s.lamp) {
         s.light.position.set(s.lamp.x, s.lamp.y, s.lamp.z);
         s.light.color.set(s.lamp.color);

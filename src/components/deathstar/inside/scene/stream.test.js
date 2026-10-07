@@ -230,6 +230,100 @@ describe('streaming the rooms into the scene', () => {
     expect(numeric(lit(scene).map((l) => l.x))).toEqual([-30, -2, 3, 29]);
   });
 
+  describe('with every light in use', () => {
+    const FADE = 0.3; // seconds stream.js takes to bring a lamp up or down
+    const DT = 1 / 60;
+    const STEP = (10 * DT) / FADE; // the most a lamp of intensity 10 may fall in a frame
+    // low’s four lights for five lamps in a row, 4 m apart: there is always one too many
+    const row = (xs = [-8, -4, 0, 4, 8]) => xs.map((x) => ({ x, y: 3, z: 0, color: '#ffffff', intensity: 10, distance: 12 }));
+    const byX = (a, b) => a[0] - b[0];
+    const shining = (scene) => lit(scene).map((l) => [l.x, l.intensity]).sort(byX);
+
+    function pool(lampsOf = {}, xs = undefined) {
+      const { builders } = fakeBuilders({ bay327: row(xs), ...lampsOf });
+      const scene = new THREE.Scene();
+      const stream = createStream({}, ds1, scene, { builders, tier: 'low' });
+      return { scene, stream };
+    }
+
+    // A frame for each x the eye stands at in turn, along the row; gives the
+    // most any one of the scene’s lights fell in a single frame.
+    function look(stream, scene, xs, open = shut) {
+      const lights = lightsIn(scene);
+      let worst = 0;
+      for (const x of xs) {
+        const before = lights.map((l) => l.intensity);
+        stream.update('bay327', open, 0, DT, { eye: { x, y: 1.6, z: 0 } });
+        lights.forEach((l, i) => (worst = Math.max(worst, before[i] - l.intensity)));
+      }
+      return worst;
+    }
+    const still = (x, n) => Array(n).fill(x);
+    const sway = (n) => Array.from({ length: n }, (_, k) => (k % 2 ? -0.5 : 0.5));
+
+    it('lets a lamp left behind go out at its own pace before its light goes to a nearer one', () => {
+      const { scene, stream } = pool();
+      look(stream, scene, still(-0.5, 30));
+      expect(shining(scene)).toEqual([[-8, 10], [-4, 10], [0, 10], [4, 10]]);
+      // walking east past the middle of the row and on: the lamp at −8 gives way to the one at +8
+      const walk = Array.from({ length: 30 }, (_, k) => -0.5 + (3.5 * (k + 1)) / 30);
+      expect(look(stream, scene, [...walk, ...still(3, 30)])).toBeLessThanOrEqual(STEP + 1e-9);
+      expect(shining(scene)).toEqual([[-4, 10], [0, 10], [4, 10], [8, 10]]);
+    });
+
+    it('keeps its four lamps as they are while the eye sways across the point halfway between two', () => {
+      const { scene, stream } = pool();
+      look(stream, scene, still(-0.5, 30));
+      for (const x of sway(60)) {
+        look(stream, scene, [x]);
+        expect(shining(scene)).toEqual([[-8, 10], [-4, 10], [0, 10], [4, 10]]);
+      }
+      // and once past the margin the other way, the same sway keeps the new four
+      look(stream, scene, still(3, 60));
+      for (const x of sway(60)) {
+        look(stream, scene, [x]);
+        expect(shining(scene)).toEqual([[-4, 10], [0, 10], [4, 10], [8, 10]]);
+      }
+    });
+
+    it('holds a far lamp’s light against a sway of up to a tenth of its distance', () => {
+      // the fourth light goes to one of two lamps 20 m off either side; a sway of ±0.9 m puts one 1.8 m nearer
+      const { scene, stream } = pool({}, [-20, -4, 0, 4, 20]);
+      look(stream, scene, still(-0.9, 30));
+      for (const x of Array.from({ length: 60 }, (_, k) => (k % 2 ? -0.9 : 0.9))) {
+        look(stream, scene, [x]);
+        expect(shining(scene)).toEqual([[-20, 10], [-4, 10], [0, 10], [4, 10]]);
+      }
+    });
+
+    it('brings a lamp on its way out back up from where it was when the eye turns back', () => {
+      const { scene, stream } = pool();
+      look(stream, scene, still(-0.5, 30));
+      expect(look(stream, scene, still(3, 6))).toBeLessThanOrEqual(STEP + 1e-9);
+      const going = lightsIn(scene).find((l) => l.position.x === -8);
+      const was = going.intensity;
+      expect(was).toBeGreaterThan(0);
+      expect(was).toBeLessThan(10);
+      look(stream, scene, [-3]);
+      expect(going.position.x).toBe(-8);
+      expect(going.intensity).toBeCloseTo(was + STEP, 6);
+      expect(look(stream, scene, still(-3, 30))).toBeLessThanOrEqual(STEP + 1e-9);
+      expect(shining(scene)).toEqual([[-8, 10], [-4, 10], [0, 10], [4, 10]]);
+    });
+
+    it('finds a lamp another light when the one it waited on is wanted again', () => {
+      // a lamp in the access corridor, lit only while its door is open
+      const { scene, stream } = pool({ corr327: [{ x: 0, y: 3, z: 1, color: '#ffffff', intensity: 10, distance: 12 }] });
+      const door = only('bay327-corr');
+      look(stream, scene, still(-0.5, 30), door);
+      // east past the margin: the lamp at −4 starts to go out, the one at +8 waiting for its light
+      look(stream, scene, still(3, 6), door);
+      // the door shuts: the corridor’s lamp goes, so −4 is wanted again and +8 must wait on the corridor’s light
+      expect(look(stream, scene, still(3, 60))).toBeLessThanOrEqual(STEP + 1e-9);
+      expect(shining(scene)).toEqual([[-4, 10], [0, 10], [4, 10], [8, 10]]);
+    });
+  });
+
   it.each([
     ['ultra', 12],
     ['high', 12],
