@@ -15,13 +15,20 @@
 // name card's height and `halo` the size of the ring of light, in the
 // scene's units, and `snap` how far behind it can be before it's put
 // straight there (further for a car). A traveller who jumps (`y`, from a
-// world that sends it) leaves the ground.
+// world that sends it) leaves the ground. One whose world says what
+// they're doing and how they move (travellers.js's `emote` and `motion`)
+// comes to `animate` with them: `p.emote` as lib/emote.js's readEmote
+// gives it ({ id, at, t }, timed on their own clock from when it was
+// heard, or null once it's over: the world plays it with applyEmote), and
+// `p.motion` ({ speed, side, turn }) as it came. An older traveller's
+// message, without them, comes as it always did.
 
 import * as THREE from 'three';
 import { pose } from '../mapFigures';
 import { makePerson } from '../shire/people';
 import { sharpen } from '../../../lib/three/textures';
 import { seeded } from '../../../lib/seeded';
+import { heardEmote, readEmote } from '../../../lib/emote';
 
 // a traveller's id as a number, so each starts their stride somewhere of
 // their own (and the same somewhere every visit)
@@ -162,7 +169,14 @@ export function createGhosts({ height = () => 0, make: build = () => makePerson(
         // their own clock, run by the frame (an offset by where they stand ran
         // it backwards for anyone walking west)
         g.clock += dt;
-        animate(g.f, g.clock, p, dt);
+        // an emote they've struck: timed from when its message came in (each
+        // message is a new one), the same one kept as it comes again
+        if (p.emote !== g.heard) {
+          g.heard = p.emote;
+          g.emote = heardEmote(p.emote ?? null, g.clock, g.emote);
+        }
+        const emote = readEmote(g, g.clock);
+        animate(g.f, g.clock, emote || p.emote ? { ...p, emote } : p, dt);
         const shimmer = 0.85 + Math.sin(t * 2.6 + g.x) * 0.08 + Math.sin(t * 7.1 + g.z) * 0.04;
         g.mat.opacity = 0.42 * g.fade * shimmer;
         g.halo.material.opacity = 0.5 * g.fade * (0.7 + Math.sin(t * 3 + g.z) * 0.3);

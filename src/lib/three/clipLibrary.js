@@ -109,6 +109,124 @@ export const CLIPS = {
   drive: { url: `${BASE}/ual-drive.glb`, loop: true }, // Driving_Loop
   'idle.calm': { url: `${BASE}/ual-idle.calm.glb`, loop: true }, // Idle_Loop
   // ── end of the UAL's ──
+  // ── Meshy's animation library, the rest of it (scripts/meshy-actions.mjs):
+  // walking backward and sideways, talking, phoning, looking round, sitting
+  // to drink or doze, sleeping, picking up, blocks, dodges, kicks, the gym,
+  // dances; made once on Luke's rig, as the UAL's are baked onto him ──
+  'walk.back': { url: `${BASE}/act-walk.back.glb`, loop: true }, // Walk_Backward
+  'walk.back.gun': { url: `${BASE}/act-walk.back.gun.glb`, loop: true }, // Walk_Backward_with_Gun
+  'walk.left.gun': { url: `${BASE}/act-walk.left.gun.glb`, loop: true }, // Walk_Left_with_Gun
+  'walk.fight': { url: `${BASE}/act-walk.fight.glb`, loop: true }, // Walk_Fight_Forward
+  'walk.fight.back': { url: `${BASE}/act-walk.fight.back.glb`, loop: true }, // Walk_Fight_Back
+  'run.left': { url: `${BASE}/act-run.left.glb`, loop: true }, // ForwardLeft_Run_Fight
+  'run.right': { url: `${BASE}/act-run.right.glb`, loop: true }, // ForwardRight_Run_Fight
+  'run.back.left': { url: `${BASE}/act-run.back.left.glb`, loop: true }, // BackLeft_run
+  'run.back.right': { url: `${BASE}/act-run.back.right.glb`, loop: true }, // BackRight_Run
+  'crouch.back': { url: `${BASE}/act-crouch.back.glb`, loop: true }, // Cautious_Crouch_Walk_Backward
+  'crouch.left': { url: `${BASE}/act-crouch.left.glb`, loop: true }, // Cautious_Crouch_Walk_Left
+  'crouch.right': { url: `${BASE}/act-crouch.right.glb`, loop: true }, // Cautious_Crouch_Walk_Right
+  'turn.left': { url: `${BASE}/act-turn.left.glb` }, // Idle_Turn_Left
+  'turn.right': { url: `${BASE}/act-turn.right.glb` }, // Idle_Turn_Right
+  'walk.sneak': { url: `${BASE}/act-walk.sneak.glb`, loop: true }, // Sneaky_Walk
+  'walk.injured': { url: `${BASE}/act-walk.injured.glb`, loop: true }, // Injured_Walk
+  'walk.limp': { url: `${BASE}/act-walk.limp.glb`, loop: true }, // Limping_Walk
+  'walk.phone': { url: `${BASE}/act-walk.phone.glb`, loop: true }, // Walking_with_Phone
+  'walk.text': { url: `${BASE}/act-walk.text.glb`, loop: true }, // Texting_Walk
+  'walk.talk': { url: `${BASE}/act-walk.talk.glb`, loop: true }, // Discuss_While_Moving
+  'walk.search': { url: `${BASE}/act-walk.search.glb`, loop: true }, // Walk_Slowly_and_Look_Around
+  'walk.scan': { url: `${BASE}/act-walk.scan.glb`, loop: true }, // Walking_Scan_with_Sudden_Look_Back
+  'walk.carry': { url: `${BASE}/act-walk.carry.glb`, loop: true }, // Carry_Heavy_Object_Walk
+  'walk.casual': { url: `${BASE}/act-walk.casual.glb`, loop: true }, // Casual_Walk
+  'walk.proud': { url: `${BASE}/act-walk.proud.glb`, loop: true }, // Proud_Strut
+  'walk.shoot': { url: `${BASE}/act-walk.shoot.glb`, loop: true }, // Walk_Forward_While_Shooting
+  'walk.back.shoot': { url: `${BASE}/act-walk.back.shoot.glb`, loop: true }, // Walk_Backward_While_Shooting
+  'run.shoot': { url: `${BASE}/act-run.shoot.glb`, loop: true }, // Run_and_Shoot
+  charge: { url: `${BASE}/act-charge.glb`, loop: true }, // Rifle_Charge
+  'talk.passion': { url: `${BASE}/act-talk.passion.glb`, loop: true }, // Talk_Passionately
+  'talk.open': { url: `${BASE}/act-talk.open.glb`, loop: true }, // Talk_with_Hands_Open
+  'talk.hip': { url: `${BASE}/act-talk.hip.glb`, loop: true }, // Talk_with_Left_Hand_on_Hip
+  'talk.raised': { url: `${BASE}/act-talk.raised.glb`, loop: true }, // Talk_with_Left_Hand_Raised
+  'talk.right': { url: `${BASE}/act-talk.right.glb`, loop: true }, // Talk_with_Right_Hand_Open
+  'talk.angry': { url: `${BASE}/act-talk.angry.glb`, loop: true }, // Stand_Talking_Angry
+  chat: { url: `${BASE}/act-chat.glb`, loop: true }, // Stand_and_Chat
+  listen: { url: `${BASE}/act-listen.glb`, loop: true }, // Listening_Gesture
+  agree: { url: `${BASE}/act-agree.glb` }, // Agree_Gesture
+  phone: { url: `${BASE}/act-phone.glb`, loop: true }, // Phone_Conversation
+  call: { url: `${BASE}/act-call.glb` }, // Phone_Call_Gesture
+  beckon: { url: `${BASE}/act-beckon.glb` }, // Call_Gesture
+  shrug: { url: `${BASE}/act-shrug.glb` }, // Shrug
+  bow: { url: `${BASE}/act-bow.glb` }, // Formal_Bow
+  'bow.gent': { url: `${BASE}/act-bow.gent.glb` }, // Gentlemans_Bow
+  shout: { url: `${BASE}/act-shout.glb` }, // Shouting_Angrily
+  stomp: { url: `${BASE}/act-stomp.glb` }, // Angry_Stomp
+  confused: { url: `${BASE}/act-confused.glb` }, // Confused_Scratch
+  scheme: { url: `${BASE}/act-scheme.glb` }, // Scheming_Hand_Rub
+  headache: { url: `${BASE}/act-headache.glb` }, // Headache_Relief
+  hip: { url: `${BASE}/act-hip.glb` }, // Hand_on_Hip_Gesture
+  nope: { url: `${BASE}/act-nope.glb` }, // Finger_Wag_No
+  sway: { url: `${BASE}/act-sway.glb`, loop: true }, // Happy_Sway_Standing
+  'look.around': { url: `${BASE}/act-look.around.glb`, loop: true }, // Long_Breathe_and_Look_Around
+  'look.short': { url: `${BASE}/act-look.short.glb`, loop: true }, // Short_Breathe_and_Look_Around
+  'look.dumb': { url: `${BASE}/act-look.dumb.glb` }, // Look_Around_Dumbfounded
+  alert: { url: `${BASE}/act-alert.glb` }, // Alert
+  'cheer.up': { url: `${BASE}/act-cheer.up.glb` }, // Cheer_with_Both_Hands_Up
+  'cheer.one': { url: `${BASE}/act-cheer.one.glb` }, // Cheer_with_One_Hand_Up
+  victory: { url: `${BASE}/act-victory.glb` }, // Victory_Cheer
+  'fist.pump': { url: `${BASE}/act-fist.pump.glb` }, // Victory_Fist_Pump
+  'jump.happy': { url: `${BASE}/act-jump.happy.glb` }, // happy_jump_m
+  'wave.one': { url: `${BASE}/act-wave.one.glb` }, // Wave_One_Hand
+  'wave.help': { url: `${BASE}/act-wave.help.glb` }, // Wave_for_Help
+  'sit.down': { url: `${BASE}/act-sit.down.glb` }, // Stand_to_Sit_Transition_M
+  'sit.up': { url: `${BASE}/act-sit.up.glb` }, // Sit_to_Stand_Transition_M
+  'sit.drink': { url: `${BASE}/act-sit.drink.glb` }, // Sit_and_Drink
+  'sit.clap': { url: `${BASE}/act-sit.clap.glb` }, // Sitting_Clap
+  'sit.cheer': { url: `${BASE}/act-sit.cheer.glb` }, // Seated_Fist_Pump
+  'sit.answer': { url: `${BASE}/act-sit.answer.glb`, loop: true }, // Sitting_Answering_Questions
+  'sit.doze': { url: `${BASE}/act-sit.doze.glb`, loop: true }, // Sit_and_Doze_Off
+  'sit.thumbs': { url: `${BASE}/act-sit.thumbs.glb` }, // Sit_Thumbs_Up_Right
+  'sit.nope': { url: `${BASE}/act-sit.nope.glb` }, // Sit_Finger_Wag_No
+  'sit.lean': { url: `${BASE}/act-sit.lean.glb` }, // Sit_Hands_on_Head_Lean_Back
+  'sit.floor': { url: `${BASE}/act-sit.floor.glb`, loop: true }, // Sit_Cross_Legged_on_Floor
+  sleep: { url: `${BASE}/act-sleep.glb`, loop: true }, // Sleep_Normally
+  'sleep.desk': { url: `${BASE}/act-sleep.desk.glb`, loop: true }, // Sleep_on_Desk
+  lie: { url: `${BASE}/act-lie.glb`, loop: true }, // Lie_Down_Hands_Spread
+  wake: { url: `${BASE}/act-wake.glb` }, // Wake_Up_and_Look_Up
+  'pickup.bend': { url: `${BASE}/act-pickup.bend.glb` }, // Male_Bend_Over_Pick_Up
+  collect: { url: `${BASE}/act-collect.glb` }, // Collect_Object
+  door: { url: `${BASE}/act-door.glb` }, // open_door
+  'push.walk': { url: `${BASE}/act-push.walk.glb`, loop: true }, // Push_and_Walk_Forward
+  stance: { url: `${BASE}/act-stance.glb`, loop: true }, // Combat_Stance
+  block: { url: `${BASE}/act-block.glb` }, // Block1
+  parry: { url: `${BASE}/act-parry.glb` }, // Sword_Parry
+  dodge: { url: `${BASE}/act-dodge.glb` }, // Stand_Dodge
+  'dodge.roll': { url: `${BASE}/act-dodge.roll.glb` }, // Roll_Dodge
+  kick: { url: `${BASE}/act-kick.glb` }, // Simple_Kick
+  'kick.round': { url: `${BASE}/act-kick.round.glb` }, // Roundhouse_Kick
+  uppercut: { url: `${BASE}/act-uppercut.glb` }, // Right_Uppercut_from_Guard
+  'jab.guard': { url: `${BASE}/act-jab.guard.glb` }, // Left_Jab_from_Guard
+  boxing: { url: `${BASE}/act-boxing.glb`, loop: true }, // Boxing_Practice
+  'reload.stand': { url: `${BASE}/act-reload.stand.glb` }, // Standing_Reload
+  'draw.shoot': { url: `${BASE}/act-draw.shoot.glb` }, // Draw_and_Shoot_Left
+  'roll.cover': { url: `${BASE}/act-roll.cover.glb` }, // Roll_Behind_Cover
+  'hit.face': { url: `${BASE}/act-hit.face.glb` }, // Face_Punch_Reaction
+  'hit.waist': { url: `${BASE}/act-hit.waist.glb` }, // Hit_Reaction_to_Waist
+  electrocuted: { url: `${BASE}/act-electrocuted.glb` }, // Electrocution_Reaction
+  knockdown: { url: `${BASE}/act-knockdown.glb` }, // Knock_Down
+  'die.slow': { url: `${BASE}/act-die.slow.glb` }, // Shot_and_Slow_Fall_Backward
+  'die.back.shot': { url: `${BASE}/act-die.back.shot.glb` }, // Shot_in_the_Back_and_Fall
+  'die.gut': { url: `${BASE}/act-die.gut.glb` }, // Fall_Dead_from_Abdominal_Injury
+  arise: { url: `${BASE}/act-arise.glb` }, // Arise
+  'stand.up': { url: `${BASE}/act-stand.up.glb` }, // Stand_Up1
+  pushup: { url: `${BASE}/act-pushup.glb`, loop: true }, // push_up
+  situps: { url: `${BASE}/act-situps.glb`, loop: true }, // situps
+  jacks: { url: `${BASE}/act-jacks.glb`, loop: true }, // jumping_jacks
+  curl: { url: `${BASE}/act-curl.glb`, loop: true }, // bicep_curl
+  squat: { url: `${BASE}/act-squat.glb`, loop: true }, // air_squat
+  'dance.funny': { url: `${BASE}/act-dance.funny.glb`, loop: true }, // FunnyDancing_01
+  'dance.gangnam': { url: `${BASE}/act-dance.gangnam.glb`, loop: true }, // Gangnam_Groove
+  'dance.joy': { url: `${BASE}/act-dance.joy.glb`, loop: true }, // Joyful_Dance_with_Hand_Sway
+  'dance.hiphop': { url: `${BASE}/act-dance.hiphop.glb`, loop: true }, // Step_Hip_Hop_Dance
+  // ── end of Meshy's ──
 };
 
 // Each file fetched once for everyone, its clips and the hips' height its

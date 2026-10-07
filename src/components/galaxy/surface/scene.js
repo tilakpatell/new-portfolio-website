@@ -9,7 +9,17 @@
 // take off, back up to the system. Each world has its places to find (the
 // Lars homestead, Echo Base, the Ewok village…), each named on the compass
 // till you've been; its people and creatures about their business; ships
-// going over; the weather.
+// going over; the weather. Hold B for a wheel of emotes (wave, cheer,
+// dance, taunt, sit: lib/emote.js), point at one and let go; tap it to do
+// the last again.
+//
+// The two of you are bodies on the animation library (lib/three/animator.js,
+// through footScene's figures): you flinch when you're hit and go down
+// by the way the shot came, cheer a quest done or a post taken, tuck into a
+// roll, sit what you ride; each short and cut by whatever you do next, so
+// control never waits on a clip. Your mate looks where you look, fires at
+// what you're fighting (gunplay.js's arms, from the muzzle), takes the
+// bolts that come its way, and goes down and gets up again.
 //
 // What's built, from the site (sites/*.js): the land (terrain.js, ground.js)
 // under its sky (sky.js) with its water (water.js) and its weather
@@ -30,7 +40,9 @@
 // { type: 'prompt', text } (what E does, or null), { type: 'found', id },
 // { type: 'here', id } (the place you're in, or null), { type: 'talk',
 // who, text }, { type: 'edge' }, { type: 'fell' }, { type: 'leave' } (the
-// ship's away: back to space).
+// ship's away: back to space), { type: 'emote', open, hover, last, on }
+// (the wheel: whether it's open, the one pointed at, the one a tap does,
+// and the emote you're doing, for a page that draws it).
 
 import { PLACES } from '../battleLines';
 import { systemById } from '../systems';
@@ -82,15 +94,18 @@ import { createActivity } from './activity';
 import { snapToTexel } from './shadow';
 import { createShadowPhase } from './near';
 import { createBlaster } from './blaster';
+import { applyEmote, createEmoteWheel, emotePacket, keepEmote, readEmote } from '../../../lib/emote';
+import { preload } from '../../../lib/three/clipLibrary';
+import { fallTurn } from '../../../lib/three/locomotion';
 import { createSaber } from './saber';
 import { DODGE, FORCE, GUARD, HEAVY, PARRY, dodgeStep, forceAt, guardHit, guardStep, hitStop, lungeTo, parried, pushVelocity } from './combatRules';
 import { heatShot, heatStep, spreadAt, vent, ventSpot, withMods } from './weaponRules';
-import { heroById, heroSpec } from '../heroes';
+import { heroById, heroSpec, partyFor, refitOf, writeHero } from '../heroes';
 import { perkEffects } from '../perks';
 import { ABILITIES, JET, abilitiesOf, jetStep, newJet } from './abilityRules';
 import { feed, isOffered, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
-import { WALK, createSolids, groundAt, ride, rider, turnToward, walk, walker } from './walker';
+import { WALK, createSolids, groundAt, lineClear, ride, rider, turnToward, walk, walker } from './walker';
 import { rng } from './noise';
 import { endRun, missionOf, newRun, tickRun } from './missions';
 import { createChaseMission } from './missions/chaseScene';
@@ -114,13 +129,29 @@ const LEAVE = { lift: 3.2, away: 3.4 };
 const CAM = { dist: 4.8, up: 1.55, pitch: [-0.45, 1.15], far: 14, near: 2.2 };
 const REACH = 3.2; // metres: close enough to use something
 const ROLL_PIVOT = 0.55; // metres up from the feet: where a dodge's roll turns about (a tucked body's middle)
-const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', ' ': 'jump', e: 'act', enter: 'act', f: 'fire', r: 'throw', c: 'block', x: 'dodge', g: 'power', v: 'second' };
+const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', ' ': 'jump', e: 'act', enter: 'act', f: 'fire', r: 'throw', c: 'block', x: 'dodge', g: 'power', v: 'second', b: 'emote' };
 const FIRE_EVERY = 0.24; // seconds between shots
 const SABER_IDLE = 8; // seconds without a stroke before the blade goes out
 const LOCK = { range: 14, cone: 0.9 }; // metres and radians: what a stroke homes on
 const HUD_EVERY = 0.1; // seconds between the combat HUD's updates
 const HOLD_FULL = 1; // (a held ability's tank, on the HUD, as a cooldown of one second)
 const BIKE_FIRE_EVERY = 0.3; // (a bike's cannon: a touch slower)
+// your mate in a fight: how far it'll shoot (m), the seconds between its
+// shots, the share that land (a hit is one), how long after your last shot
+// it keeps on at what you were shooting, its health, how long it lies when
+// it's down (s), and how close a bolt of theirs has to pass to hit it (m)
+const MATE = { range: 26, every: [0.8, 1.6], land: 0.35, keen: 6, hp: 100, down: 6, girth: 0.45, lookEvery: 0.2 };
+const AWAY = 1.2; // radians (about 70°): what the mate's looking at, this far off its facing, turns its body too
+// your roll's clip (the library's `roll`, 1.47 s), started this far in and
+// paced to the dodge, and a little over, for it to stand back up
+const ROLL = { at: 0.12, length: 1.467, over: 0.08 };
+// you, sat on what you ride: your hips this far over its seat (m), and
+// what you sit in on it (a vehicle's controls, a creature's back)
+const SEAT = { pad: 0.08, low: 0.55 };
+const STILL = Object.freeze({ speed: 0, side: 0, turn: 0, air: 0 });
+const BACK = new THREE.Vector3(0, 0, -1); // (a figure's own back, falling over it)
+const AHEAD = new THREE.Vector3(0, 0, 1);
+const WHEEL_PX = 90; // the pointer this far from where it was when the wheel opened is all the way out
 
 export async function create(canvas, ctx) {
   const { reduced, rt } = ctx;
@@ -346,6 +377,11 @@ export async function create(canvas, ctx) {
   });
   const fwdV = new V();
   const rightV = new V();
+  // (scratch for the bodies: a fall's turn, the mate's aim, a sitter's hips)
+  const _fall = new THREE.Quaternion();
+  const _mateDir = new V();
+  const _mateFrom = new V();
+  const _hips = new V();
   // (a quest mission's quest is the mission's own, not one of the world's)
   // (a quest's troopers are the holder's too: garrison.js)
   const questOf = (id) => garrisonQuest(site.quests.find((q) => q.id === id) ?? (mission?.quest?.id === id ? mission.quest : null), ctx.effects?.troops);
@@ -524,14 +560,16 @@ export async function create(canvas, ctx) {
 
   // ── You, and your crewmate ──
   // (the hero you've picked to play as (heroes.js) walks in the lead; the
-  // ship's own crew otherwise, and the one of them you aren't stays your mate)
+  // ship's own crew otherwise, and the one of them you aren't stays your mate.
+  // A hero, gun, blade or perk picked down here goes on there and then: setHero)
   const crewOf = PARTY[shipKind] ?? PARTY.xwing;
-  const hero = ctx.hero ? heroSpec(ctx.hero) : null;
-  const perks = perkEffects(hero?.perks ?? []); // (galaxy/perks.js: the multipliers the hero's perks give)
-  const guardMax = GUARD.max * perks.guard;
+  let picked = ctx.hero ? writeHero(ctx.hero) : null; // (the choice as kept, to know a new one)
+  let hero = ctx.hero ? heroSpec(ctx.hero) : null;
+  let perks = perkEffects(hero?.perks ?? []); // (galaxy/perks.js: the multipliers the hero's perks give)
+  let guardMax = GUARD.max * perks.guard;
   // (your mate carries their own two abilities too, where they're on the roster)
   const withAbilities = (s) => (s.abilities || !heroById(s.id)?.abilities ? s : { ...s, abilities: heroById(s.id).abilities });
-  const party = (hero ? [hero, crewOf[0].id === hero.id ? crewOf[1] : crewOf[1].id === hero.id ? crewOf[0] : crewOf[1]] : crewOf).map(withAbilities);
+  const party = partyFor(hero, crewOf).map(withAbilities);
   const out = new V(Math.cos(site.land.yaw), 0, -Math.sin(site.land.yaw)); // the ship's right
   // (a mission on foot starts you at its start, facing its way)
   const onFoot = Boolean(mission && !mission.ride);
@@ -540,8 +578,8 @@ export async function create(canvas, ctx) {
   const mateAt = [spawnAt[0] + out.x * 1.6, spawnAt[1] + out.z * 1.6];
   const mate = walker(mateAt[0], mateAt[1], groundAt(world, ...mateAt), you.yaw);
   const people = [
-    { spec: party[0], st: you, holder: new THREE.Group(), fig: null },
-    { spec: party[1], st: mate, holder: new THREE.Group(), fig: null },
+    { spec: party[0], st: you, holder: new THREE.Group(), fig: null, fitting: 0 },
+    { spec: party[1], st: mate, holder: new THREE.Group(), fig: null, fitting: 0 },
   ];
   let lead = 0; // which of them you are
   let cast = null;
@@ -549,46 +587,132 @@ export async function create(canvas, ctx) {
     p.holder.visible = false;
     scene.add(p.holder);
   }
-  (async () => {
-    if (people.some((p) => p.spec.src.meshy)) {
-      cast = createMeshyCast(withWardrobe());
-      await cast
-        .load(
-          null,
-          people.filter((p) => p.spec.src.meshy).map((p) => p.spec.src.meshy),
-        )
-        .catch(() => {});
+  // the gun's numbers (weaponRules.js), with the mods they picked and the hero's perks
+  const weaponOf = (spec, fig) => {
+    const w = withMods(fig.gun ?? spec.gun, spec.mods ?? []);
+    w.heat *= perks.heat;
+    w.cool *= perks.cool;
+    w.every *= perks.cycle;
+    return w;
+  };
+  // what's in a figure's hand for `spec`: the gun (universe/gunplay.js; the
+  // world here is in metres) and a lightsaber on it (surface/saber.js: lit,
+  // swung, held up and thrown from here)
+  const armsFor = (spec, fig, own) => {
+    if (!spec.gun || own) return { gp: null, saber: null, weapon: null };
+    const gp = createGunplay(fig, fig.gun ?? spec.gun, { unit: 1, who: fig.built ? 'built' : spec.id });
+    const saber = spec.saber && gp ? createSaber(gp, { color: spec.saber.color, hilt: spec.saber.hilt, stance: spec.saber.stance, parent: scene, sound: (what) => sounds.saber?.(what) ?? sounds.combat?.(what), fig }) : null;
+    return { gp, saber, weapon: weaponOf(spec, fig) };
+  };
+  const unarm = (a) => {
+    a.saber?.dispose();
+    a.gp?.dispose();
+  };
+  // a person's body and what's in their hand, for `spec`: made and warmed
+  // apart from them, so it goes on in one frame (wear) and nobody's ever missing
+  async function kitOut(spec) {
+    if (spec.src.meshy) {
+      cast ??= createMeshyCast(withWardrobe());
+      await cast.load(null, [spec.src.meshy]).catch(() => {});
     }
-    await Promise.all(
-      people.map(async (p) => {
-        // (one of the crew with a model of their own here: that, in metres)
-        const own = CREW_MODELS[p.spec.id] ? await modelFigure(CREW_MODELS[p.spec.id]).catch(() => null) : null;
-        const fig = own ?? (await loadPartyFigure(p.spec, cast).catch(() => null));
-        if (!fig || disposed) return;
-        const inner = new THREE.Group();
-        if (!own) inner.scale.setScalar(1 / METRE);
-        inner.add(fig.model);
-        fig.model.traverse((o) => {
-          if (o.isMesh) o.castShadow = true;
-        });
-        p.holder.add(inner);
-        p.fig = fig;
-        // the gun they carry, in the hand (universe/gunplay.js; the world here is in metres)
-        if (p.spec.gun && !own) {
-          p.holder.updateMatrixWorld(true);
-          p.gp = createGunplay(fig, fig.gun ?? p.spec.gun, { unit: 1, who: fig.built ? 'built' : p.spec.id });
-          // a lightsaber (surface/saber.js): lit, swung, held up and thrown from here
-          if (p.spec.saber && p.gp) p.saber = createSaber(p.gp, { color: p.spec.saber.color, hilt: p.spec.saber.hilt, stance: p.spec.saber.stance, parent: scene, sound: (what) => sounds.saber?.(what) ?? sounds.combat?.(what), fig });
-          // the gun's numbers (weaponRules.js), with the mods they picked
-          p.weapon = withMods(fig.gun ?? p.spec.gun, p.spec.mods ?? []);
-          p.weapon.heat *= perks.heat;
-          p.weapon.cool *= perks.cool;
-          p.weapon.every *= perks.cycle;
-        }
-        await warm(p.holder);
-      }),
-    );
+    // (one of the crew with a model of their own here: that, in metres)
+    const own = CREW_MODELS[spec.id] ? await modelFigure(CREW_MODELS[spec.id]).catch(() => null) : null;
+    const fig = own ?? (await loadPartyFigure(spec, cast).catch(() => null));
+    if (!fig) return null;
+    const inner = new THREE.Group();
+    if (!own) inner.scale.setScalar(1 / METRE);
+    inner.add(fig.model);
+    fig.model.traverse((o) => {
+      if (o.isMesh) o.castShadow = true;
+    });
+    inner.updateMatrixWorld(true);
+    // (a model of their own reads its motion in metres a second, as the
+    // world's people do; a party figure in the map's units)
+    const body = { spec, fig, inner, own: Boolean(own), ...armsFor(spec, fig, own) };
+    if (!disposed) await warm(inner).catch(() => {});
+    return body;
+  }
+  // what a person had on, gone (each figure frees what's its own: a cast's
+  // meshes are the cast's)
+  function shed(p) {
+    if (!p.fig) return;
+    if (emoteFig === p.fig) endEmote();
+    unarm(p);
+    p.fig.dispose?.();
+    p.inner?.removeFromParent();
+  }
+  function wear(p, body) {
+    shed(p);
+    p.holder.add(body.inner);
+    // (a seat, a fall and a turn are the old body's: the new one takes them up afresh)
+    Object.assign(p, { spec: body.spec, fig: body.fig, inner: body.inner, own: body.own, gp: body.gp, saber: body.saber, weapon: body.weapon, seat: null, downed: null, prevYaw: null });
+  }
+  const dropBody = (body) => {
+    if (!body) return;
+    unarm(body);
+    body.fig.dispose?.();
+  };
+  // a person in `spec`: the numbers at once; new arms in the same hands at
+  // once; a new body when it's made (the last asked for wins). True once
+  // it's on them.
+  async function fit(p, spec) {
+    const how = p.fig ? refitOf(p.spec, spec) : 'body';
+    const token = ++p.fitting;
+    if (how === 'same') {
+      p.spec = spec;
+      if (p.gp) p.weapon = weaponOf(spec, p.fig);
+      return true;
+    }
+    if (how === 'arms') {
+      if (emoteFig === p.fig) endEmote();
+      unarm(p);
+      Object.assign(p, { spec, ...armsFor(spec, p.fig, p.own) });
+      warm(p.holder).catch(() => {});
+      ctx.invalidate();
+      return true;
+    }
+    const body = await kitOut(spec);
+    if (disposed || token !== p.fitting) {
+      dropBody(body);
+      return false;
+    }
+    if (!body) return false;
+    wear(p, body);
+    ctx.invalidate();
+    return true;
+  }
+  (async () => {
+    await Promise.all(people.map((p) => fit(p, p.spec)));
+    // (the clips the two of you react with, fetched now, so a roll or a
+    // flinch starts on the frame it's asked for, not a fetch later)
+    if (!disposed && people.some((p) => p.fig?.anim)) preload(['roll', 'hit.chest', 'hit.head', ...(mission?.kind === 'assault' ? ['die.fwd', 'die.back', 'die.blown'] : [])]).catch(() => {});
   })();
+  // another hero picked (the page's HeroPanel): who you are now walks where
+  // you were, and your mate is whoever of the crew isn't them; the guard as
+  // full as it was, of the new perks' most (a swap mid-fight refills
+  // nothing); a mission, your health and where you are kept
+  function setHero(choice) {
+    const kept = writeHero(choice);
+    if (kept === picked) return;
+    picked = kept;
+    hero = heroSpec(choice);
+    perks = perkEffects(hero.perks ?? []);
+    const share = state.guard.value / guardMax;
+    guardMax = GUARD.max * perks.guard;
+    state.guard = { ...state.guard, value: share * guardMax };
+    const [lead1, mate1] = partyFor(hero, crewOf).map(withAbilities);
+    // (the page hears once they're on: `ok` false when the body wouldn't load)
+    const was = picked;
+    fit(me(), lead1).then((ok) => {
+      if (!disposed && picked === was) emit({ type: 'hero', who: lead1.id, ok });
+    });
+    fit(other(), mate1);
+    ctx.invalidate();
+  }
+  // ── Your mate, in a fight (MATE): its health, how long it's been down,
+  // what it's shooting at and when it can next, how far its gun's up, the
+  // bolts on their way to it, and when it last looked ──
+  const mateFight = { hp: MATE.hp, down: 0, foe: null, cool: 0, aim: 0, shoot: false, hurtAt: -10, hitFrom: null, hits: [], lookAt: -1, gaze: new V(), turning: false };
 
   // ── Sound: the air, your steps, a speeder's whine (once you've touched
   // something: browsers only let sound start then) ──
@@ -668,6 +792,12 @@ export async function create(canvas, ctx) {
     // ('choose') or you're down ('down'), and how long you've been down
     off: mission?.kind === 'assault' ? 'choose' : null,
     fallen: 0,
+    // ── your body (lib/three/animator.js through your figure) ──
+    emote: null, // { id, at }: what you're doing off the wheel (lib/emote.js)
+    wheelKeys: false, // the keys (or the stick) that pointed at a slice, still down
+    reacting: null, // { who, clip, layer, until }: a reaction of yours playing, for the next input to cut
+    hitFrom: null, // { x, z }: where the last thing to hurt you came from (the way you fall)
+    tg: null, // what E does here, as the last frame had it (what your mate looks at)
   };
   const camPos = new V();
   const camLook = new V();
@@ -747,6 +877,10 @@ export async function create(canvas, ctx) {
   };
 
   // ── Input ──
+  // (the emote wheel, B: lib/emote.js's; the pointer's where it is, and
+  // where it was when the wheel opened, to point at a slice by)
+  const emotes = createEmoteWheel();
+  const pointer = { x: 0, y: 0, x0: 0, y0: 0, id: null };
   const onKey = (down) => (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const tag = e.target?.tagName;
@@ -771,7 +905,9 @@ export async function create(canvas, ctx) {
       if (k === 'second') state.secondQueued = true;
       if (k === 'block') state.blockAt = state.t;
       if (k === 'fire' && me().saber) state.pressAt = state.t;
+      if (k === 'emote') emoteDown();
     }
+    if (!down && k === 'emote') emoteUp();
     if (!down && k === 'fire' && state.pressAt != null) {
       // a saber's F let go: a stroke, or the heavy one if it was held
       state.swingQueued = state.t - state.pressAt >= HEAVY.hold ? 'heavy' : 'light';
@@ -784,7 +920,10 @@ export async function create(canvas, ctx) {
   const keyUp = onKey(false);
   window.addEventListener('keydown', keyDown);
   window.addEventListener('keyup', keyUp);
-  const blur = () => (state.keys = {});
+  const blur = () => {
+    state.keys = {};
+    emotes.cancel();
+  };
   window.addEventListener('blur', blur);
   // a drag looks round
   let dragging = null;
@@ -803,6 +942,12 @@ export async function create(canvas, ctx) {
     if (state.phase === 'landing') skipLanding();
   };
   const move = (e) => {
+    // (the wheel's pointed at by the pointer that last went down: on a
+    // phone the thumb on the Emote button, not one on the stick or the pad)
+    if (pointer.id == null || e.pointerId === pointer.id || e.pointerType === 'mouse') {
+      pointer.x = e.clientX;
+      pointer.y = e.clientY;
+    }
     if (!dragging || e.pointerId !== dragging.id) return;
     look(e.clientX - dragging.x, e.clientY - dragging.y);
     dragging.x = e.clientX;
@@ -812,6 +957,15 @@ export async function create(canvas, ctx) {
     if (dragging && e.pointerId === dragging.id) dragging = null;
     if (e.button === 2) state.ads = false;
   };
+  // where a pointer goes down, anywhere on the page (ahead of what it lands
+  // on): a thumb that holds the Emote button and slides off it points at a
+  // slice from where it went down
+  const spot = (e) => {
+    pointer.id = e.pointerId;
+    pointer.x = e.clientX;
+    pointer.y = e.clientY;
+  };
+  window.addEventListener('pointerdown', spot, true);
   const noMenu = (e) => e.preventDefault();
   canvas.addEventListener('contextmenu', noMenu);
   const wheel = (e) => {
@@ -837,6 +991,12 @@ export async function create(canvas, ctx) {
   }
   function swap() {
     if (state.phase !== 'walk') return;
+    // (what you were doing stops with you; a mate who's down gets up to be
+    // you, and the one you were starts as your mate afresh)
+    endEmote();
+    mateUp();
+    mateFight.foe = null;
+    mateFight.aim = 0;
     lead = 1 - lead;
     const a = people[lead].st;
     state.cam.yaw = a.yaw;
@@ -844,6 +1004,259 @@ export async function create(canvas, ctx) {
   }
   const me = () => people[lead];
   const other = () => people[1 - lead];
+
+  // ── Your body: reactions and emotes ──
+  // A reaction of yours (react.js's table, through your figure: a flinch,
+  // a cheer), noted so the next thing you do cuts it
+  const LASTS = { hit: 0.6, win: 5 }; // seconds: the longest each can be before nothing's left to cut
+  function reactYou(event, opts = {}) {
+    const p = me();
+    const r = p.fig?.react?.(event, { yaw: p.st.yaw, ...opts }) ?? null;
+    if (r) state.reacting = { who: p, clip: r.clip, layer: r.layer, until: state.t + (LASTS[event] ?? 2) };
+    return r;
+  }
+  // cut it, if it's still the clip playing (what came after is left be)
+  function cutReaction() {
+    const c = state.reacting;
+    state.reacting = null;
+    const a = c?.who.fig?.anim;
+    if (!a || state.t > c.until) return;
+    if (!a.playing || a.playing(c.layer) === c.clip) c.who.fig.stop?.(0.15, c.layer);
+  }
+  // both of you, on something won (a quest done, a post taken): yours cut
+  // by input as ever; nobody who's down
+  function cheer() {
+    if (!(state.fallen > 0)) reactYou('win');
+    if (mateFight.down <= 0) other().fig?.react?.('win', { yaw: other().st.yaw });
+  }
+  // the wheel: B down, held, let go (or the page's buttons)
+  let wheelSaid = { open: false, hover: null, last: emotes.last, on: null }; // (what the page was last told)
+  function emoteDown() {
+    if (state.phase !== 'walk' || state.off) return;
+    pointer.x0 = pointer.x;
+    pointer.y0 = pointer.y;
+    emotes.down(state.t);
+  }
+  function emoteUp() {
+    const id = emotes.up(state.t);
+    if (id) startEmote(id);
+  }
+  function startEmote(id) {
+    if (state.phase !== 'walk' || state.off || state.dodge || state.fallen > 0) return;
+    cutReaction();
+    state.emote = { id, at: state.t };
+  }
+  let emoteShown = null;
+  let emoteFig = null; // (whose figure it's on: a swap leaves it with them)
+  function endEmote() {
+    state.emote = null;
+    emoteShown = applyEmote(emoteFig, null, emoteShown);
+  }
+  // each frame, before the figures update: the wheel pointed at (by the
+  // pointer, or the keys or the stick while it's open), your emote kept or
+  // cut, a reaction cut by what you do (anything pressed; one on the whole
+  // body by going anywhere too, since it holds the legs; held fire never,
+  // since the gun's arms are over it: a flinch still shows in a firefight)
+  function stepBody(moving, pressed, held) {
+    const acted = pressed || held;
+    const k = state.keys;
+    const kx = (k.right ? 1 : 0) - (k.left ? 1 : 0) + state.stick.x;
+    const ky = (k.down ? 1 : 0) - (k.up ? 1 : 0) - state.stick.y; // (down the screen)
+    const steering = Math.hypot(kx, ky) > 0.4;
+    if (emotes.open || k.emote || state.buttons.emote) {
+      emotes.tick(state.t);
+      if (emotes.open) {
+        const px = (pointer.x - pointer.x0) / WHEEL_PX;
+        const py = (pointer.y - pointer.y0) / WHEEL_PX;
+        if (steering) emotes.aim(kx, ky);
+        else if (Math.hypot(px, py) > 0.4) emotes.aim(px, py);
+      }
+    }
+    // (the keys that pointed at a slice don't walk you off till they're let go)
+    if (emotes.open && steering) state.wheelKeys = true;
+    else if (!steering) state.wheelKeys = false;
+    const r = state.reacting;
+    if (r && (pressed || (r.layer === 'full' && moving) || state.t > r.until)) cutReaction();
+    const walking = state.phase === 'walk' && !state.off && !state.dodge && !(state.fallen > 0);
+    state.emote = walking ? keepEmote(state.emote, state.t, { moving, acted }) : null;
+    if (emoteFig !== me().fig && emoteShown) endEmote();
+    emoteFig = me().fig;
+    emoteShown = applyEmote(emoteFig, state.emote ? readEmote({ emote: state.emote }, state.t) : null, emoteShown);
+    const on = state.emote?.id ?? null;
+    const w = wheelSaid;
+    if (w.open !== emotes.open || w.hover !== emotes.hover || w.last !== emotes.last || w.on !== on) {
+      wheelSaid = { open: emotes.open, hover: emotes.hover, last: emotes.last, on };
+      emit({ type: 'emote', ...wheelSaid });
+    }
+  }
+
+  // ── Your mate's body, and its part in a fight (MATE) ──
+  // hit: hurt, and a flinch (the chest or the head); out of health, down
+  // (place() plays the fall by the way the hit went, and stands it up again)
+  function mateHit(n, from = null) {
+    if (mateFight.down > 0) return;
+    const q = other();
+    mateFight.hp -= n;
+    mateFight.hurtAt = state.t;
+    mateFight.hitFrom = from;
+    if (mateFight.hp <= 0) {
+      mateFight.hp = 0;
+      mateFight.down = 0.001;
+      mateFight.foe = null;
+      return;
+    }
+    q.fig?.react?.('hit', { where: Math.random() < 0.3 ? 'head' : 'chest', yaw: q.st.yaw, ...(from ? { dir: { x: q.st.x - from.x, z: q.st.z - from.z } } : {}) });
+  }
+  function mateUp() {
+    mateFight.down = 0;
+    mateFight.hp = MATE.hp;
+    mateFight.hits.length = 0;
+  }
+  // a bolt of theirs (blaster.enemy's) that passes through your mate on
+  // its way to you: it's hit as the bolt gets there (and the bolt flies on,
+  // so what comes your way is as it was)
+  function grazes(b) {
+    if (!b?.v || mateFight.down > 0 || state.phase !== 'walk') return;
+    const q = other().st;
+    const o = b.m.position;
+    const vv = b.v.lengthSq();
+    if (vv < 1e-6) return;
+    const cx = q.x - o.x;
+    const cy = q.y + 1 - o.y;
+    const cz = q.z - o.z;
+    const tc = (cx * b.v.x + cy * b.v.y + cz * b.v.z) / vv; // (seconds till it's nearest)
+    if (tc <= 0 || tc > b.life) return;
+    const mx = o.x + b.v.x * tc - q.x;
+    const mz = o.z + b.v.z * tc - q.z;
+    const my = o.y + b.v.y * tc - (q.y + 1);
+    if (mx * mx + mz * mz > MATE.girth * MATE.girth || Math.abs(my) > 0.9) return;
+    // (not one that reaches you first: that's yours, as it always was)
+    const p = me().st;
+    const tp = ((p.x - o.x) * b.v.x + (p.y + 1 - o.y) * b.v.y + (p.z - o.z) * b.v.z) / vv;
+    if (tp > 0 && tp < tc && Math.hypot(o.x + b.v.x * tp - p.x, o.z + b.v.z * tp - p.z) < 0.55) return;
+    mateFight.hits.push({ at: state.t + tc, damage: b.damage ?? 8, from: { x: o.x, z: o.z } });
+  }
+  // a swipe at you (a rancor's, a blade's) that reaches your mate too
+  function swiped(s) {
+    const q = other().st;
+    const reach = (s.who?.hostile?.reach ?? 2) + 0.4;
+    if (Math.hypot(q.x - s.from[0], q.z - s.from[2]) < reach) mateHit(s.damage ?? 25, { x: s.from[0], z: s.from[2] });
+  }
+  // what it fights: what you're squared up to, else what you last hit,
+  // while you're at it; else (out of a battle) the nearest hostile that's
+  // after the two of you. Only a mate with a gun, up, out on foot
+  let struckLast = null; // { target, at }: what your last shot hit
+  function mateFoe() {
+    const q = other();
+    if (!q.gp || q.saber || mateFight.down > 0 || state.phase !== 'walk' || state.off) return null;
+    const st = q.st;
+    const near = (t) => Boolean(t) && !t.down && t.holder && Math.hypot(t.holder.position.x - st.x, t.holder.position.z - st.z) < MATE.range;
+    const keen = state.t - state.firedAt < MATE.keen;
+    // (never the first shot: only at what you're shooting, or what's shooting at you)
+    if (near(state.lock) && (keen || (state.lock.hostile && state.lock.aim))) return state.lock;
+    if (struckLast && keen && near(struckLast.target) && state.t - struckLast.at < MATE.keen) return struckLast.target;
+    if (assaultOn()) return null;
+    let best = null;
+    let bd = MATE.range;
+    for (const t of activity.targets) {
+      if (!t.hostile || !t.aim || t.spec?.side === 'yours') continue;
+      const d = Math.hypot(t.holder.position.x - st.x, t.holder.position.z - st.z);
+      if (d < bd) {
+        best = t;
+        bd = d;
+      }
+    }
+    return best;
+  }
+  // where a figure's chest is (a target's, the soldiers' in a battle)
+  const chestOf = (t, out = new V()) => {
+    out.copy(t.holder.position);
+    out.y += (t.fig?.tall ?? 1.6) * (t.spec?.scale ?? 1) * 0.55;
+    return out;
+  };
+  // each frame of a walk: the foe, the gun up toward it, a shot when it's
+  // due; what it looks at; the bolts reaching it; down and up again
+  function stepMate(dt) {
+    const q = other();
+    // the bolts that pass through it, as each gets there
+    for (let i = mateFight.hits.length - 1; i >= 0; i--) {
+      const h = mateFight.hits[i];
+      if (state.t < h.at) continue;
+      mateFight.hits.splice(i, 1);
+      mateHit(h.damage, h.from);
+    }
+    if (mateFight.down > 0) {
+      mateFight.down += dt;
+      mateFight.aim = Math.max(0, mateFight.aim - dt * 3);
+      mateFight.shoot = false;
+      if (mateFight.down > MATE.down) mateUp();
+      return;
+    }
+    if (mateFight.hp < MATE.hp && state.t - mateFight.hurtAt > 4) mateFight.hp = Math.min(MATE.hp, mateFight.hp + dt * 12);
+    mateFight.foe = mateFoe();
+    const foe = mateFight.foe;
+    mateFight.aim = foe ? Math.min(1, mateFight.aim + dt * 4) : Math.max(0, mateFight.aim - dt / 2.5);
+    mateFight.cool -= dt;
+    mateFight.shoot = Boolean(foe) && mateFight.aim > 0.85 && mateFight.cool <= 0;
+    // (not through a wall: it waits for a clear line, looking again in a moment)
+    if (mateFight.shoot && !lineClear(world.solids, q.st, foe.holder.position)) {
+      mateFight.shoot = false;
+      mateFight.cool = 0.3;
+    }
+    if (mateFight.shoot) mateFight.cool = MATE.every[0] + Math.random() * (MATE.every[1] - MATE.every[0]);
+    // its head: on what it fights, else on what you're about to talk to,
+    // else out along where you're looking
+    if (state.t - mateFight.lookAt >= MATE.lookEvery) {
+      mateFight.lookAt = state.t;
+      const g = mateFight.gaze;
+      const a = state.tg?.kind === 'talk' ? state.tg.actor : null;
+      if (foe) chestOf(foe, g);
+      else if (a?.holder) g.set(a.b?.x ?? a.holder.position.x, a.holder.position.y + (a.fig?.tall ?? 1.6) * (a.spec?.scale ?? 1) * 0.9, a.b?.z ?? a.holder.position.z);
+      else {
+        camera.getWorldDirection(g);
+        g.multiplyScalar(20).add(camera.position);
+        g.y = Math.max(g.y, q.st.y + 0.5);
+      }
+      q.fig?.look?.(g);
+    }
+  }
+  // its shot, once its gun's been posed this frame (place()): from the
+  // muzzle at the foe's chest, a little off; in a battle a bolt between
+  // them that the battle's own count decides (as every soldier's is)
+  function mateShot(q) {
+    const foe = mateFight.foe;
+    mateFight.shoot = false;
+    if (!foe || !q.gp) return;
+    const r = q.gp.fire();
+    const to = chestOf(foe);
+    const dir = to.clone().sub(r.muzzle).normalize();
+    const w = q.weapon ?? withMods(q.spec.gun ?? 'blaster', q.spec.mods ?? []);
+    const bolt = GUNS[w.kind]?.bolt ?? q.spec.bolt ?? '#ff3b30';
+    fx.flash(r.muzzle, dir, q.gp.spec.flash);
+    gunSound(q.spec.gun, { soft: true });
+    heardBy(r.muzzle, to);
+    if (assaultOn()) {
+      blaster.tracer(r.muzzle.toArray(), to.toArray(), bolt);
+      return;
+    }
+    // (whether it lands is rolled first: one that does goes in at its
+    // weapon's scatter, one that doesn't wide past them, so what's seen is
+    // what happened)
+    const lands = Math.random() < MATE.land;
+    const sp = spreadAt(w, false) * 2;
+    const aim = dir.clone().add(new V((Math.random() - 0.5) * sp, (Math.random() - 0.5) * sp, (Math.random() - 0.5) * sp));
+    if (!lands) aim.add(new V(-dir.z, 0, dir.x).multiplyScalar((Math.random() < 0.5 ? -1 : 1) * (0.06 + Math.random() * 0.06))).add(new V(0, (Math.random() - 0.3) * 0.05, 0));
+    aim.normalize();
+    const hit = blaster.fire(r.muzzle, aim, lands ? [foe] : [], bolt, w.range);
+    if (lands && hit.target) activity.hit(hit.target, 1, { push: aim, at: hit.at });
+  }
+  // your shots and blasts (and your mate's, and the hostiles' fire), for the
+  // people about to hear them: actors.js's `hear` (they startle and run from it), a blast twice
+  // as loud as a shot. `aim`: where it went (for a hearer that wants it)
+  function heardBy(from, aim = null, kind = 'shot') {
+    if (typeof life.hear !== 'function') return;
+    life.hear({ at: { x: from.x, z: from.z }, loudness: kind === 'boom' ? 2 : 1, t: state.t, ...(aim ? { aim: { x: aim.x, z: aim.z } } : {}) });
+  }
 
   // what E does here, now
   const target = () => {
@@ -974,6 +1387,7 @@ export async function create(canvas, ctx) {
         state.done.add(q.id);
         say(q.done);
         emit({ type: 'questDone', id: q.id, achievement: q.achievement ?? null });
+        cheer(); // (the two of you, glad of it)
         if (q === mission?.quest) endMission('won');
       }
       if (o.type === 'fail') {
@@ -1122,7 +1536,14 @@ export async function create(canvas, ctx) {
   let chaseViewAt = -1;
 
   // ── A battle (missions/assault.js): two armies and the posts, drawn and run here ──
-  const assault = mission?.kind === 'assault' ? createAssaultMission({ parent: scene, world, blaster, mission, emit, say, sounds, kit, warm, tier: small ? 'mid' : tier, reduced }) : null;
+  // (what it tells the page goes on as it was; a post your side takes, or
+  // the battle won, and the two of you cheer)
+  const battleSaid = (e) => {
+    emit(e);
+    const ev = e?.type === 'mission' ? e.event : null;
+    if ((ev?.type === 'capture' && ev.you) || ev?.type === 'won') cheer();
+  };
+  const assault = mission?.kind === 'assault' ? createAssaultMission({ parent: scene, world, blaster, mission, emit: battleSaid, say, sounds, kit, warm, tier: small ? 'mid' : tier, reduced }) : null;
   const assaultOn = () => Boolean(assault?.running());
   // what your blaster can hit, and what a hit does: the battle's soldiers while it's on, the quests' targets otherwise
   const shootable = () => (assaultOn() ? assault.targets : activity.targets);
@@ -1130,11 +1551,12 @@ export async function create(canvas, ctx) {
   // blast), the hit marker, the moment's hold on a kill
   const struck = (hit, damage = me().weapon?.damage ?? 1, { breaks = false, how = null, push = null } = {}) => {
     if (!hit.target) return;
+    struckLast = { target: hit.target, at: state.t }; // (your mate's foe, while you're at it)
     if (assaultOn()) assault.hit(hit.target, ASSAULT.yours);
     else {
       const t = hit.target;
       const was = t.hp;
-      activity.hit(t, dealt(damage), { breaks, how, push });
+      activity.hit(t, dealt(damage), { breaks, how, push, at: hit.at }); // (`at`: where it landed, the head or the chest, for its flinch)
       const killed = was > 0 && t.hp <= 0;
       emit({ type: 'hit', kill: killed });
       sounds.combat?.(killed ? 'kill' : 'hit');
@@ -1208,6 +1630,7 @@ export async function create(canvas, ctx) {
       camera.getWorldDirection(camDir);
       const b = state.riding.state;
       chase.fire(new V(b.x + Math.sin(b.yaw) * 1.8, b.y + 0.7, b.z + Math.cos(b.yaw) * 1.8), camDir, me().spec.bolt ?? '#ff3b30');
+      heardBy(b, { x: b.x + camDir.x * 40, z: b.z + camDir.z * 40 });
       emit({ type: 'fire' });
       return;
     }
@@ -1243,6 +1666,7 @@ export async function create(canvas, ctx) {
     }
     const hit = blaster.fire(from, scatter(camDir, w), shootable(), boltOf(me()), w.range);
     activity.heard({ x: from.x, z: from.z }, { x: from.x + camDir.x * 40, z: from.z + camDir.z * 40 }); // (the enemies hear it, and one it's aimed near knows)
+    heardBy(from, { x: from.x + camDir.x * 40, z: from.z + camDir.z * 40 }); // (and the people about: actors.js's)
     struck(hit, undefined, { how: w.kind, push: camDir });
     landed(hit, camDir);
     sounds.blast?.();
@@ -1310,10 +1734,26 @@ export async function create(canvas, ctx) {
       dz = -Math.cos(p.yaw);
     }
     const m = Math.hypot(dx, dz);
-    state.dodge = { t0: state.t, dx: dx / m, dz: dz / m, d: 0 };
+    const d = { t0: state.t, dx: dx / m, dz: dz / m, d: 0 };
+    state.dodge = d;
     state.dodgedAt = state.t;
     me().saber?.block(false);
     sounds.combat?.('dodge');
+    // a body on the library rolls by its clip (the library's `roll`, paced
+    // to the dodge, over the dodge's own way across the ground), turned to
+    // the way it goes, and the holder stays upright; going back (or a body
+    // that can't have it) tumbles as it always has
+    const fig = me().fig;
+    if (fig?.anim && fig.play && d.dx * Math.sin(p.yaw) + d.dz * Math.cos(p.yaw) > -0.5) {
+      cutReaction();
+      p.yaw = Math.atan2(d.dx, d.dz);
+      d.clip = true;
+      fig
+        .play('roll', { layer: 'full', at: ROLL.at, speed: (ROLL.length - ROLL.at) / (DODGE.dur + ROLL.over) })
+        .then((ok) => {
+          if (!ok) d.clip = false;
+        }, () => (d.clip = false));
+    }
   }
   function stepDodge() {
     const d = state.dodge;
@@ -1530,7 +1970,12 @@ export async function create(canvas, ctx) {
       }
       const you = me().st;
       const dYou = Math.hypot(you.x - at.x, you.z - at.z);
-      if (dYou < spec.radius * 0.8 && !state.dodge) hurt(Math.round(30 * (1 - dYou / spec.radius)));
+      if (dYou < spec.radius * 0.8 && !state.dodge) hurt(Math.round(30 * (1 - dYou / spec.radius)), { x: at.x, z: at.z });
+      // (your mate too, if it's close: as hard, by how close)
+      const mt = other().st;
+      const dMate = Math.hypot(mt.x - at.x, mt.z - at.z);
+      if (dMate < spec.radius * 0.8) mateHit(Math.round(30 * (1 - dMate / spec.radius)), { x: at.x, z: at.z });
+      heardBy(at, null, 'boom');
       for (let k = 0; k < 6; k++) fx.sparks(at, new V((Math.random() - 0.5) * 2, 1, (Math.random() - 0.5) * 2).normalize(), k % 2 ? '#ffd36b' : '#ff6a3d', 14);
       fx.flash(at, UP, { color: '#ffb060', size: 1.6 });
       fx.scorch(at, UP);
@@ -1581,7 +2026,7 @@ export async function create(canvas, ctx) {
       return;
     }
     const was = t.hp;
-    activity.hit(t, dealt(damage), { breaks: heavy });
+    activity.hit(t, dealt(damage), { breaks: heavy, at });
     if (heavy) activity.stagger(t, 1.2);
     const killed = was > 0 && t.hp <= 0;
     emit({ type: 'hit', kill: killed });
@@ -1675,6 +2120,7 @@ export async function create(canvas, ctx) {
       hit ??= h;
     }
     activity.heard({ x: o.from.x, z: o.from.z }, { x: o.from.x + o.dir.x * 40, z: o.from.z + o.dir.z * 40 }); // (as for an unrigged shot in fire())
+    heardBy(o.from, { x: o.from.x + o.dir.x * 40, z: o.from.z + o.dir.z * 40 });
     const spec = p.gp.spec;
     const out = hit.at.clone().sub(r.muzzle).normalize();
     fx.flash(r.muzzle, out, spec.flash);
@@ -1708,11 +2154,18 @@ export async function create(canvas, ctx) {
       } else fx.sparks(o.at, o.dir.clone().negate(), me().spec.bolt ?? '#ffd0a0', 9);
     }
   }
-  function hurt(n) {
+  // `from`: where it came from ({ x, z }), for the way you flinch and fall
+  // (else the last shot's at you)
+  function hurt(n, from = null) {
     state.health = Math.max(0, state.health - n * perks.hurt);
     state.hurtAt = state.t;
     state.shake = Math.min(1, state.shake + 0.3);
+    if (from) state.hitFrom = from;
     emit({ type: 'health', value: state.health });
+    // (a flinch, the chest or the head: on the upper layer while you move,
+    // cut by what you do next; an emote's over)
+    if (state.emote) endEmote();
+    if (state.health > 0 && !state.dodge) reactYou('hit', { where: Math.random() < 0.3 ? 'head' : 'chest' });
     if (state.health > 0) return;
     // in a battle: down where you fell, and the HUD asks where to deploy
     if (assaultOn() && !state.off) {
@@ -1757,7 +2210,9 @@ export async function create(canvas, ctx) {
 
   function input() {
     const k = state.keys;
-    if (state.off) return { x: 0, y: 0, run: false, heading: state.cam.yaw };
+    // (down, or choosing off the emote wheel: the keys and the stick point at
+    // its slices, and go on doing nothing till they're let go)
+    if (state.off || emotes.open || state.wheelKeys) return { x: 0, y: 0, run: false, heading: state.cam.yaw };
     let x = (k.right ? 1 : 0) - (k.left ? 1 : 0) + state.stick.x;
     let y = (k.up ? 1 : 0) - (k.down ? 1 : 0) + state.stick.y;
     const m = Math.hypot(x, y);
@@ -1852,21 +2307,40 @@ export async function create(canvas, ctx) {
       if (z) p.yaw = z.inside.yaw ?? 0;
       emit({ type: 'fell' });
     }
-    // your crewmate keeps up: a step behind, beside you
+    // your crewmate keeps up: a step behind, beside you (or lies where it
+    // went down, a while)
+    stepMate(dt);
     const q = other().st;
     const behind = new V(-Math.sin(p.yaw), 0, -Math.cos(p.yaw));
     const side = new V(Math.cos(p.yaw), 0, -Math.sin(p.yaw));
     const goal = [p.x + behind.x * 1.1 + side.x * 1.7, p.z + behind.z * 1.1 + side.z * 1.7];
     const gd = Math.hypot(goal[0] - q.x, goal[1] - q.z);
-    if (gd > 40) {
+    const lying = mateFight.down > 0;
+    if (gd > 40 && !lying) {
       q.x = goal[0];
       q.z = goal[1];
       q.y = groundAt(world, q.x, q.z);
     }
     const toward = gd > 0.8 ? Math.atan2(goal[0] - q.x, goal[1] - q.z) : q.yaw;
-    const mag = gd > 0.8 ? clamp((gd - 0.6) / 2, 0, 1) : 0;
+    const mag = gd > 0.8 && !lying ? clamp((gd - 0.6) / 2, 0, 1) : 0;
+    const wasYaw = q.yaw;
     walk(q, { x: 0, y: mag, heading: toward, run: gd > 7, jump: false }, dt, world);
-    if (mag === 0) q.yaw = turnToward(q.yaw, p.yaw, dt * 2);
+    // its body to what it's doing, never your yaw: square to what it
+    // fights (stepping sideways or back to keep up, short of a run); stood
+    // still, round to what it's looking at once that's well off its facing
+    // (its head takes the rest)
+    const foe = mateFight.foe;
+    if (lying) q.yaw = wasYaw;
+    else if (foe && gd <= 7) q.yaw = turnToward(wasYaw, Math.atan2(foe.holder.position.x - q.x, foe.holder.position.z - q.z), dt * 5);
+    else if (mag === 0) {
+      const g = mateFight.gaze;
+      const want = Math.atan2(g.x - q.x, g.z - q.z);
+      const off = Math.abs(wrap(want - q.yaw));
+      // (once it's turning, all the way round, not to the edge of AWAY and stuck there)
+      if (Math.hypot(g.x - q.x, g.z - q.z) < 0.5 || off < 0.15) mateFight.turning = false;
+      else if (off > AWAY) mateFight.turning = true;
+      if (mateFight.turning) q.yaw = turnToward(q.yaw, want, dt * 2);
+    } else mateFight.turning = false;
     // footprints and marks, and footsteps
     if (p.grounded && p.speed > 0.5 && site.ground.palette.mark && r() < dt * 6) marks.dab(p.x, p.z, 0.7, 0.18);
     if (p.grounded) {
@@ -1901,33 +2375,101 @@ export async function create(canvas, ctx) {
     if (fast > 6 && x.spec.hover > 0 && r() < dt * fast * 0.6) kick(x.state.x, groundAt(world, x.state.x, x.state.z), x.state.z, 3, 1.4);
     if (x.spec.trail && fast > 2) marks.dab(x.state.x, x.state.z, 2.4, Math.min(0.5, fast / 40));
     // your crewmate waits where you got on
+    stepMate(dt);
     const q = other().st;
     walk(q, { x: 0, y: 0, heading: q.yaw }, dt, world);
+  }
+
+  // Sat on (or got off) what you ride: a vehicle's driving seat (the
+  // library's `drive`, the hands on its controls), a creature's back (`sit`,
+  // the figure's own or the UAL's); a figure with neither keeps the old
+  // stand-in, stood in the seat
+  function seatOn(pp, ride) {
+    const was = pp.seat;
+    pp.seat = null;
+    if (!ride) {
+      if (was) pp.fig.base?.(null)?.catch?.(() => {});
+      return;
+    }
+    const seat = { lift: null, base: ride.spec.hover > 0 || ride.spec.fly ? 'drive' : 'sit' };
+    pp.seat = seat;
+    const sat = (name) =>
+      pp.fig.base?.(name)?.then?.((r) => {
+        // (no driving clip for it: sat on it as on anything else)
+        if (r === 'cut' && pp.seat === seat && name === 'drive' && pp.fig.anim) sat('sit');
+      }, () => {});
+    sat(seat.base);
+  }
+  // where its hips are over its feet as it sits (eased: they settle as the
+  // clip comes in), so they're put on the seat whatever the clip's height
+  function seatLift(pp, dt) {
+    const hips = pp.fig?.bones?.Hips;
+    if (!hips || !pp.seat) return;
+    const up = hips.getWorldPosition(_hips).y - pp.holder.position.y;
+    if (!Number.isFinite(up)) return;
+    const want = clamp(up, 0.25, 1.1);
+    pp.seat.lift = pp.seat.lift == null ? SEAT.low + SEAT.pad : pp.seat.lift + (want - pp.seat.lift) * Math.min(1, dt * 10);
+  }
+  // Down: the fall by the hit's way (react.js's `down`: die.fwd, die.back,
+  // die.blown, else a fall, held where it ends), or with no clip for it,
+  // over about the feet (place()). `from`: where the hit came from
+  function fallOver(pp, from) {
+    const st = pp.st;
+    const dir = from ? { x: st.x - from.x, z: st.z - from.z } : null; // (the way the hit went)
+    if (pp === me()) cutReaction();
+    const r = pp.fig?.react?.('down', { yaw: st.yaw, force: 0.5, ...(dir ? { dir } : {}) }) ?? null;
+    const ahead = dir ? dir.x * Math.sin(st.yaw) + dir.z * Math.cos(st.yaw) : -1;
+    return { clip: Boolean(r), way: ahead >= 0 ? 1 : -1 };
   }
 
   function place(dt) {
     // the people
     people.forEach((pp, i) => {
       const st = pp.st;
+      const mine = i === lead;
       pp.holder.position.set(st.x, st.y, st.z);
       pp.holder.rotation.y = st.yaw;
-      if (state.phase === 'ride' && i === lead) {
+      // sat on what you ride, or stood off it (the figure's base state:
+      // a vehicle's controls, a creature's back)
+      const riding = state.phase === 'ride' && mine;
+      if (pp.fig && Boolean(pp.seat) !== riding) seatOn(pp, riding ? state.riding : null);
+      // down (you in a battle, your mate shot down) or up again
+      const fallen = mine ? state.fallen : mateFight.down;
+      if (fallen > 0 && !riding && !pp.downed) pp.downed = fallOver(pp, mine ? state.hitFrom : mateFight.hitFrom);
+      else if (!(fallen > 0) && pp.downed) {
+        // (up off the ground over a moment, not snapped upright)
+        if (pp.downed.clip) pp.fig?.stop?.(0.6, 'full');
+        pp.downed = null;
+      }
+      const lying = Boolean(pp.downed?.clip);
+      if (riding) {
         const x = state.riding;
         const seat = x.spec.seat;
         const yaw = x.state.yaw;
-        pp.holder.position.set(x.state.x + seat[0] * Math.cos(yaw) + seat[2] * Math.sin(yaw), x.state.y + seat[1] - 0.55, x.state.z - seat[0] * Math.sin(yaw) + seat[2] * Math.cos(yaw));
+        // (on an animator, the hips put on the seat as the clip has them; else the old stand-in)
+        const low = pp.seat?.lift != null ? pp.seat.lift - SEAT.pad : SEAT.low;
+        pp.holder.position.set(x.state.x + seat[0] * Math.cos(yaw) + seat[2] * Math.sin(yaw), x.state.y + seat[1] - low, x.state.z - seat[0] * Math.sin(yaw) + seat[2] * Math.cos(yaw));
         pp.holder.rotation.set(x.state.pitch * -1, yaw, x.state.bank, 'YXZ');
         pp.fig?.update(dt, 0);
+        pp.motion = null;
+        if (pp.fig?.anim) {
+          pp.holder.updateMatrixWorld(true);
+          pp.fig.after?.(dt, STILL);
+          seatLift(pp, dt);
+        }
       } else {
         // (yaw first, so a tip or a roll goes about the body's own side, whichever way it faces)
         pp.holder.rotation.set(0, st.yaw, 0, 'YXZ');
-        // (down in a battle: tipped over where you fell)
-        if (i === lead && state.fallen > 0) {
-          state.fallen += dt;
-          pp.holder.rotation.x = -Math.min(Math.PI / 2, state.fallen * 5);
-        } else if (i === lead && state.dodge?.roll) {
-          // rolling (X): over and over about the waist, not the feet, so the
-          // head doesn't go through the ground
+        if (mine && state.fallen > 0) state.fallen += dt;
+        const rolling = mine && state.dodge?.roll != null && !state.dodge.clip;
+        if (pp.downed && !lying) {
+          // down with no clip to fall by: over about the feet, the knees first
+          // (locomotion.js's fallTurn), the way the hit sent it
+          fallTurn(Math.min(1, fallen / 0.9), pp.downed.way > 0 ? AHEAD : BACK, UP, _fall);
+          pp.holder.quaternion.multiply(_fall);
+        } else if (rolling) {
+          // rolling (X) with no roll of its own: over and over about the
+          // waist, not the feet, so the head doesn't go through the ground
           const r = state.dodge.roll;
           pp.holder.rotation.x = r;
           pp.holder.position.x -= ROLL_PIVOT * Math.sin(r) * Math.sin(st.yaw);
@@ -1940,13 +2482,25 @@ export async function create(canvas, ctx) {
         rightV.set(-Math.cos(st.yaw), 0, Math.sin(st.yaw));
         const turn = pp.prevYaw == null || dt <= 0 ? 0 : wrap(st.yaw - pp.prevYaw) / dt;
         pp.prevYaw = st.yaw;
-        // (tucked up through a roll, knees in as in a jump)
-        const air = i === lead && state.dodge ? 0.5 : st.grounded ? 0 : Math.max(0, st.y - groundAt(world, st.x, st.z, st.y));
-        const mine = i === lead;
-        const motion = { speed: (st.vx * fwdV.x + st.vz * fwdV.z) * METRE, side: (st.vx * rightV.x + st.vz * rightV.z) * METRE, turn, air, hurt: mine ? Math.max(0, 1 - (state.t - state.hurtAt) / 0.35) : 0, knock: 0.5 };
+        // (tucked up through a roll with no clip, knees in as in a jump)
+        const air = rolling ? 0.5 : mine && state.dodge ? 0 : st.grounded ? 0 : Math.max(0, st.y - groundAt(world, st.x, st.z, st.y));
+        const speed = st.vx * fwdV.x + st.vz * fwdV.z;
+        const side = st.vx * rightV.x + st.vz * rightV.z;
+        const hurtAt = mine ? state.hurtAt : mateFight.hurtAt;
+        // (down with no clip: the knees going, under the turn over)
+        const down = pp.downed && !lying ? Math.min(1, fallen / 0.9) : 0;
+        const motion = { speed: speed * METRE, side: side * METRE, turn, air, hurt: Math.max(0, 1 - (state.t - hurtAt) / 0.35), knock: 0.5, down };
+        // (in metres a second: what goes out online)
+        const out = (pp.motion ??= { speed: 0, side: 0, turn: 0 });
+        out.speed = speed;
+        out.side = side;
+        out.turn = turn;
         const going = clamp(st.speed / WALK.run, 0, 1);
-        pp.fig?.update(dt, going, motion);
-        pp.saber?.stand(dt, state.t, going); // (the body under a lit blade, over the clips)
+        // (R2's own model: the same, in metres a second)
+        pp.fig?.update(dt, going, pp.own ? { ...motion, speed, side } : motion);
+        // (the body under a lit blade, over the clips; not over a fall, a roll or an emote of its own)
+        const own = lying || (mine && (state.dodge?.clip || emoteShown));
+        if (!own) pp.saber?.stand(dt, state.t, going);
         pp.holder.updateMatrixWorld(true);
         pp.fig?.after?.(dt, motion, { forward: fwdV, up: UP });
         const drop = pp.fig?.loco?.drop ?? 0;
@@ -1955,14 +2509,17 @@ export async function create(canvas, ctx) {
           pp.holder.updateMatrixWorld(true);
         }
       }
-      // the gun: up along your aim while there's shooting, carried otherwise; put away to ride
+      // the gun: up along your aim while there's shooting (your mate's at
+      // what it fights), carried otherwise; put away to ride; left in the
+      // hand as it is through a fall or an emote
       if (pp.gp) {
-        const riding = state.phase === 'ride' && i === lead;
         pp.gp.gun.visible = !riding;
         if (!riding) {
-          const aimK = i === lead ? (pp.saber?.lit ? Math.max(state.aim, 0.75) : state.aim) : 0;
-          pp.gp.set(dt, { aim: aimK, look: i === lead ? state.aim : 0, dir: i === lead && state.aim > 0 ? state.aimDir : null, forward: fwdV.set(Math.sin(st.yaw), 0, Math.cos(st.yaw)), up: UP });
-          pp.saber?.update(dt, state.t, { forward: fwdV, up: UP, me: st, targets: i === lead ? activity.targets : [], hit: saberHit });
+          const dir = mine ? (state.aim > 0 ? state.aimDir : null) : mateFight.foe && mateFight.aim > 0 ? chestOf(mateFight.foe, _mateDir).sub(_mateFrom.set(st.x, st.y + 1.35, st.z)).normalize() : null;
+          const aimK = mine ? (pp.saber?.lit ? Math.max(state.aim, 0.75) : state.aim) : mateFight.aim;
+          if (!lying && !(mine && emoteShown)) pp.gp.set(dt, { aim: aimK, look: mine ? state.aim : mateFight.aim, dir, forward: fwdV.set(Math.sin(st.yaw), 0, Math.cos(st.yaw)), up: UP });
+          pp.saber?.update(dt, state.t, { forward: fwdV.set(Math.sin(st.yaw), 0, Math.cos(st.yaw)), up: UP, me: st, targets: mine ? activity.targets : [], hit: saberHit });
+          if (!mine && mateFight.shoot && !lying) mateShot(pp);
         }
       }
     });
@@ -2168,6 +2725,14 @@ export async function create(canvas, ctx) {
     }
     state.t += dt;
     const t = state.t;
+    // what you're doing this frame, for your body: going somewhere, or
+    // anything else (either cuts a reaction of yours, and most emotes)
+    // (pressed this frame, or held: firing on, a block up, down the sights)
+    const steer = input();
+    const moving = Math.hypot(steer.x, steer.y) > 0.1;
+    const pressed = Boolean(state.jumpQueued || state.actQueued || state.fireQueued || state.dodgeQueued || state.powerQueued || state.secondQueued || state.throwQueued || state.swingQueued);
+    const held = Boolean(state.keys.fire || state.buttons.fire || state.keys.block || state.buttons.block || state.keys.power || state.buttons.power || state.ads);
+    stepBody(moving, pressed, held);
 
     if (state.phase === 'landing') {
       stepLanding(dt);
@@ -2188,6 +2753,7 @@ export async function create(canvas, ctx) {
       follow(dt);
       if (state.phase === 'walk' || state.phase === 'ride') {
         const tg = target();
+        state.tg = tg;
         const text = tg?.text ?? null;
         if (text !== state.prompt) {
           state.prompt = text;
@@ -2233,7 +2799,11 @@ export async function create(canvas, ctx) {
     // the battle: on with it, and their bolts at you
     if (assault && state.phase === 'walk') {
       const { atYou } = assault.update(dt, state.off ? null : me().st);
-      for (const s of atYou) blaster.enemy(s.from, new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, s.color, s.damage);
+      for (const s of atYou) {
+        // (and where it came from, for the way you fall; one through your mate on the way hits it)
+        grazes(blaster.enemy(s.from, new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, s.color, s.damage));
+        state.hitFrom = { x: s.from[0], z: s.from[2] };
+      }
       if (state.t - chaseViewAt > 0.1) {
         chaseViewAt = state.t;
         emit({ type: 'mission', view: assault.view() });
@@ -2269,6 +2839,9 @@ export async function create(canvas, ctx) {
           fx.sparks(new V(p.x, p.y + 1, p.z), UP, '#d8d0ff', 14);
           continue;
         }
+        // (a blaster's shot, heard by the people about as yours are: the
+        // townsfolk scatter from it, a trooper stops and looks)
+        if (!s.melee) heardBy({ x: s.from[0], z: s.from[2] });
         // at a friend of yours (or by one, at a hostile): a bolt between them, and whoever's hit, hit
         if (s.at && s.victim) {
           if (!s.melee) blaster.tracer(s.from, s.at, s.who?.spec?.side === 'yours' ? '#ffb070' : '#ff4a3d');
@@ -2309,10 +2882,13 @@ export async function create(canvas, ctx) {
           p.grounded = false;
           state.shake = 1;
           sounds.roar?.();
-          hurt(s.damage);
+          hurt(s.damage, { x: s.from[0], z: s.from[2] });
+          swiped(s); // (and your mate, if it's in reach of it too)
         } else {
           const b = blaster.enemy(s.from, s.to ? new V(s.to[0], me().st.y + 1.1, s.to[1]) : new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, '#ff4a3d', s.damage); // (at what it believes: a guess goes wide)
           if (b && blade) b.deflect = true; // (it'll come off the blade, not land)
+          grazes(b);
+          state.hitFrom = { x: s.from[0], z: s.from[2] };
         }
       }
     const hit = blaster.update(dt, (state.phase === 'walk' || state.phase === 'ride') && !state.off && !state.safe ? me().st : null, (at) => {
@@ -2396,12 +2972,14 @@ export async function create(canvas, ctx) {
   }
 
   // what goes out to the others online: your two, where they are (or
-  // nothing, while the ship's coming down or going)
+  // nothing, while the ship's coming down or going), how each is moving
+  // (metres and radians a second, so their feet keep pace on the others'
+  // screens: peers.js) and what you're doing off the wheel
   function online(dt) {
     const net = props.net;
     if (!net) return;
     const out = state.phase === 'walk' || state.phase === 'ride' || state.phase === 'out';
-    const w = (p) => ({ who: p.spec.id, x: p.st.x, y: p.st.y, z: p.st.z, yaw: p.st.yaw, speed: state.phase === 'ride' && p === me() ? state.riding.state.speed : p.st.speed, aim: p === me() ? state.aim : 0, arms: p.spec.gun ? { gun: p.spec.gun, lit: Boolean(p.saber?.lit), color: p.spec.saber?.color ?? '', stance: p.spec.saber?.stance ?? 'single', swing: Boolean(p.saber?.swinging) } : null });
+    const w = (p) => ({ who: p.spec.id, x: p.st.x, y: p.st.y, z: p.st.z, yaw: p.st.yaw, speed: state.phase === 'ride' && p === me() ? state.riding.state.speed : p.st.speed, aim: p === me() ? state.aim : 0, arms: p.spec.gun ? { gun: p.spec.gun, lit: Boolean(p.saber?.lit), color: p.spec.saber?.color ?? '', stance: p.spec.saber?.stance ?? 'single', swing: Boolean(p.saber?.swinging) } : null, emote: p === me() ? emotePacket(state.emote, state.t) : null, motion: p.motion ?? null });
     net.walk?.(out ? { world: site.id, kind: shipKind, lead: w(me()), mate: w(other()), ride: state.riding?.kind ?? null } : null);
     peers.update(net, site.id, dt);
   }
@@ -2457,6 +3035,8 @@ export async function create(canvas, ctx) {
       scene,
       post,
       renderer,
+      // (the world's people, for the QA scripts: actors.js's, with debug, find and hear)
+      life,
       // (for the QA scripts: the land's light, once its things are down)
       api: {
         get ground() {
@@ -2537,6 +3117,7 @@ export async function create(canvas, ctx) {
       props = next;
       for (const id of next.found ?? []) state.found.add(id);
       for (const id of next.done ?? []) state.done.add(id);
+      if (next.hero) setHero(next.hero);
     },
     setVisible(on) {
       shown = on;
@@ -2577,6 +3158,10 @@ export async function create(canvas, ctx) {
         if (name === 'aim') state.ads = !state.ads;
         if (name === 'fire' && me().saber) state.touchPress = true;
         if (name === 'swap') swap();
+        if (name === 'emote') {
+          state.buttons.emote = true;
+          emoteDown();
+        }
         ctx.invalidate();
       },
       release(name) {
@@ -2584,6 +3169,17 @@ export async function create(canvas, ctx) {
         if (name === 'fire') state.buttons.fire = false;
         if (name === 'block') state.buttons.block = false;
         if (name === 'power') state.buttons.power = false;
+        if (name === 'emote') {
+          state.buttons.emote = false;
+          emoteUp();
+        }
+      },
+      // an emote by name or its place on the wheel (lib/emote.js's EMOTES),
+      // from the page's own wheel
+      emote(id) {
+        const got = emotes.choose(id);
+        if (got) startEmote(got);
+        ctx.invalidate();
       },
       // the quest list: follow one (its giver on the compass; one with
       // nobody to give it starts), or drop the one you're on
@@ -2719,6 +3315,33 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
       return null;
     },
+    // (dev: the bodies, to see each without a fight: 'emote' (arg: wave,
+    // cheer, dance, taunt, sit), 'hit', 'win', 'roll' (arg 'back': the
+    // tumble back, else ahead, on the clip) for you; 'mateHit', 'mateDown'
+    // for your mate; returns what each of you is doing)
+    party(how, arg) {
+      if (!import.meta.env.DEV) return null;
+      // (from ten metres ahead of whoever's hit)
+      const ahead = (st) => ({ x: st.x + Math.sin(st.yaw) * 10, z: st.z + Math.cos(st.yaw) * 10 });
+      if (how === 'emote') startEmote(arg ?? emotes.last);
+      else if (how === 'hit') hurt(arg ?? 10, ahead(me().st));
+      else if (how === 'win') cheer();
+      else if (how === 'roll') {
+        const was = state.stick.y;
+        state.stick.y = arg === 'back' ? 0 : 1;
+        dodge();
+        state.stick.y = was;
+      }
+      else if (how === 'mateHit') mateHit(arg ?? 20, ahead(other().st));
+      else if (how === 'mateDown') mateHit(MATE.hp * 2, ahead(other().st));
+      ctx.invalidate();
+      const a = (p) => p.fig?.anim;
+      return {
+        emote: state.emote?.id ?? null,
+        you: { full: a(me())?.playing?.('full') ?? null, upper: a(me())?.playing?.('upper') ?? null, seat: me().seat?.base ?? null },
+        mate: { full: a(other())?.playing?.('full') ?? null, upper: a(other())?.playing?.('upper') ?? null, hp: Math.round(mateFight.hp), down: mateFight.down > 0, foe: Boolean(mateFight.foe), aim: +mateFight.aim.toFixed(2) },
+      };
+    },
     // (for tests: pretend others are down here: [{ id, name, walk }])
     fakePeers(list) {
       if (!import.meta.env.DEV) return;
@@ -2751,7 +3374,7 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name } : null, guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug() }),
+    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name, color: me().spec.saber?.color ?? null } : null, mate: other().spec.id, mods: me().spec.mods ?? [], guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug() }),
     dispose() {
       disposed = true;
       lit?.dispose();
@@ -2768,6 +3391,7 @@ export async function create(canvas, ctx) {
       window.removeEventListener('blur', blur);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointerdown', spot, true);
       canvas.removeEventListener('pointerdown', down);
       canvas.removeEventListener('wheel', wheel);
       canvas.removeEventListener('contextmenu', noMenu);
@@ -2789,6 +3413,7 @@ export async function create(canvas, ctx) {
       groundMap?.dispose();
       shadowPhase?.dispose();
       for (const p of people) {
+        p.fitting += 1; // (a body still on its way is let go as it comes)
         p.gp?.dispose();
         p.fig?.dispose?.();
       }

@@ -59,6 +59,7 @@ import { MAW } from './maw';
 import { NOSE, UP, axisAngle, conj, fromAngles, mul, normalize, rotate, toAngles, turnToward } from './orient';
 import { byId } from './universes';
 import { sunFor } from './lighting';
+import { REGIONS } from './regions';
 
 // (the speeds as they were till October 2026, cruise 5.5, boost 20 and the
 // pulse drive 420, got there in under a second and felt far too fast for a
@@ -306,6 +307,10 @@ export const STARTS = [
   ...PLANETS.filter((p) => byId(p.id).kind !== 'core' && sectorOf(...p.at) === 'main').map((p) => ({ id: p.id, at: p.at, y: p.at[1] + SHIP.height, d: startOff(p.reach, p.r) })),
   // (off a wonder: clear of its solid, which can reach past the wonder's own radius: a pulsar's glare)
   ...WONDERS.filter((w) => w.id !== MAW.id && w.kind !== 'portal' && sectorOf(...w.at) === 'main').map((w) => ({ id: w.id, at: w.at, y: w.at[1], d: startOff(reachOf(w), w.solid === false ? 0 : (DEEP_SOLIDS.find((o) => o.id === w.id)?.r ?? w.r)) })),
+  // (and 60 off each region's beacon, regions.js, out where the lanes meet:
+  // since the spread the places are a long way apart, and a new pilot starts
+  // where the lanes are, so the universe is peopled, not crowded)
+  ...REGIONS.slice(1).map((r) => ({ id: `beacon:${r.id}`, at: r.hub, y: r.hub[1], d: 60 })),
 ];
 // the near edge of the home system, facing its middle: where a ship starts
 // unless told otherwise

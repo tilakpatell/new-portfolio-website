@@ -1402,6 +1402,48 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-hangar-bar[data-down] > b { z-index: 1; background: var(--engine, #e8eefc); }
 .universe-hangar-bar[data-down] > i { background: #ff7a6b; }
 .universe-hangar-change { color: var(--muted); font-family: var(--font-mono); font-size: 0.7rem; font-variant-numeric: tabular-nums; text-align: right; }
+/* the shop: the wallet in the header, the Record button, and a price pill on
+   each row (Owned, Buy · 400 ¢, the price dimmed and how short you are, or
+   the lock's sentence) */
+.universe-hangar-wallet { color: var(--engine, #e8eefc); font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.universe-hangar-head-tools { display: flex; align-items: center; gap: 0.5rem; flex: none; }
+.universe-hangar-record { min-height: 32px; padding: 0 0.75rem; border: 1px solid rgb(255 255 255 / 0.24); border-radius: 999px; color: var(--text); font-size: 0.76rem; font-weight: 600; transition: border-color 0.15s, background-color 0.15s; }
+.universe-hangar-record:hover,
+.universe-hangar-record[aria-pressed='true'] { border-color: var(--engine, #e8eefc); background: color-mix(in srgb, var(--engine, #e8eefc) 16%, transparent); }
+.universe-hangar-record:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
+.universe-price { display: inline-flex; align-items: center; justify-self: start; gap: 0.35rem; max-width: 100%; padding: 0.1rem 0.5rem; border: 1px solid rgb(255 255 255 / 0.16); border-radius: 999px; color: var(--muted); font-size: 0.68rem; line-height: 1.4; font-variant-numeric: tabular-nums; }
+.universe-price[data-kind='owned'] { border-color: rgb(110 231 160 / 0.4); color: #6ee7a0; }
+.universe-price[data-kind='buy'] { border-color: var(--engine, #e8eefc); color: var(--text); background: color-mix(in srgb, var(--engine, #e8eefc) 14%, transparent); font-weight: 600; }
+.universe-price[data-kind='short'] { color: #ffb35c; }
+.universe-price-was { color: var(--muted); opacity: 0.6; }
+.universe-yard-mod .universe-price { padding: 0 0.4rem; font-size: 0.62rem; }
+.universe-yard-mod[data-kind='short'],
+.universe-yard-mod[data-kind='locked'] { opacity: 0.6; }
+/* (a paint you've yet to buy: a small coin on its swatch) */
+.universe-hangar-paint { position: relative; }
+.universe-hangar-paint:is([data-kind='buy'], [data-kind='short'])::after { content: '¢'; position: absolute; right: -2px; bottom: -2px; display: grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: rgb(6 8 16); color: var(--engine, #e8eefc); font-size: 0.6rem; font-weight: 700; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.25); }
+.universe-hangar-paint[data-kind='short']::after { color: #ffb35c; }
+/* the flight record, in the hangar's place */
+.universe-record { display: grid; gap: 0.6rem; }
+.universe-record-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.universe-record-head h3 { margin: 0; color: var(--muted); font-family: var(--font-mono); font-size: 0.7rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+.universe-record-back { min-height: 32px; padding: 0 0.75rem; border: 1px solid rgb(255 255 255 / 0.24); border-radius: 999px; color: var(--text); font-size: 0.76rem; }
+.universe-record-back:hover { border-color: rgb(255 255 255 / 0.45); }
+.universe-record-back:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
+.universe-record-level { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+.universe-record-level p { margin: 0; font-size: 0.9rem; }
+.universe-record-credits { color: var(--engine, #e8eefc); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.universe-record-bar { height: 6px; border-radius: 3px; background: rgb(255 255 255 / 0.12); overflow: hidden; }
+.universe-record-bar > i { display: block; width: calc(var(--to, 0) * 100%); height: 100%; border-radius: 3px; background: var(--engine, #e8eefc); }
+.universe-record-note { margin: 0; color: var(--muted); font-size: 0.72rem; line-height: 1.35; }
+.universe-record-tally { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; margin: 0; }
+.universe-record-tally > div { display: grid; gap: 0.1rem; padding: 0.4rem 0.5rem; border: 1px solid rgb(255 255 255 / 0.12); border-radius: 8px; }
+.universe-record-tally dt { color: var(--muted); font-size: 0.66rem; }
+.universe-record-tally dd { margin: 0; font-family: var(--font-mono); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.universe-record-sides { display: grid; gap: 0.45rem; margin: 0; padding: 0; list-style: none; }
+.universe-record-sides li { display: grid; gap: 0.1rem; font-size: 0.74rem; line-height: 1.35; }
+.universe-record-sides b { font-weight: 600; }
+.universe-record-sides span { color: var(--muted); }
 .universe-hangar-change[data-up] { color: #6ee7a0; }
 .universe-hangar-change[data-down] { color: #ff7a6b; }
 
@@ -1452,6 +1494,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
   .universe-navmap-btn[data-ship] { left: 112px; }
   .universe-hangar { left: 12px; bottom: calc(var(--sheet-h) + 120px); width: calc(100% - 24px); max-height: calc(100% - var(--sheet-h) - var(--nav-h, 68px) - 136px); }
   .universe-hangar-stat { grid-template-columns: 7rem 1fr; }
+  .universe-record-tally { grid-template-columns: repeat(2, 1fr); }
   .universe-comms { right: 16px; left: 16px; }
   /* the bar keeps clear of the guide's button in the corner */
   .universe-panel[data-tucked] { padding-bottom: env(safe-area-inset-bottom, 0px); }
@@ -1497,3 +1540,35 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .start-remember { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 1.1rem; color: var(--muted); font-size: 0.82rem; cursor: pointer; }
 .start-remember input { width: 16px; height: 16px; accent-color: var(--accent-text); }
 .start-note { margin-top: 0.85rem; color: var(--muted); font-size: 0.78rem; line-height: 1.5; }
+
+/* on a hyperlane (lanePilot.js's rideLine): a plain line over the arms */
+.universe-lane { position: absolute; left: 50%; bottom: 5.5rem; transform: translateX(-50%); margin: 0; padding: 0.35rem 0.8rem; border-radius: 999px; background: rgb(6 10 20 / 0.6); color: #dbe9ff; font-size: 0.8rem; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.universe-lane-tier { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.7rem; color: #9fd8ff; }
+.universe-lane kbd { font: inherit; padding: 0 0.3rem; border: 1px solid rgb(255 255 255 / 0.35); border-radius: 4px; }
+
+/* what you've just earned (EarnNote.jsx): a moment over the HUD's own note
+   (.universe-prompt), in the same pill; a level reached in the engine's colour */
+.universe-earn {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: 112px;
+  translate: calc(-50% - (var(--panel-w, 0px) + 24px) / 2) 0;
+  margin: 0;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  background: rgb(3 4 10 / 0.72);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.universe-earn[data-on] { opacity: 1; }
+.universe-earn[data-level] { color: var(--engine, #ffd166); box-shadow: 0 0 0 1px currentColor; }
+@media (max-width: 767px) {
+  .universe-earn { bottom: calc(var(--sheet-h, 0px) + 104px); translate: -50% 0; max-width: calc(100% - 32px); }
+}

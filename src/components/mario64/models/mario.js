@@ -151,6 +151,7 @@ export function makeMario() {
   return {
     root,
     joints: J,
+    leg: HIP_Y - 0.06, // from the hip joint to the ground (for ../motion.js's stride)
     hands: [J.foreL, J.foreR],
     // pose.js's pose onto the joints
     apply(p) {

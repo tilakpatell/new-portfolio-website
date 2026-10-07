@@ -9,7 +9,11 @@
 // The arena is a disc of radius PANIC.arena on the ground plane: x to the
 // right, y toward the camera. Everything is seeded and runs in fixed steps,
 // so a seed and a list of inputs always play out the same; the host drains
-// g.events for sounds and callouts.
+// g.events for sounds and callouts, and the drawing for the bodies: an
+// event about an enemy carries its `id` (kill, hit, windup, a bolt it
+// fired, a punch it took, a hurt it gave), one about a Meeseeks from the
+// box its `ally` (its index in g.allies as it happened), and a boss's says
+// `boss`.
 
 export const PANIC = {
   step: 1 / 120,
@@ -304,13 +308,14 @@ function offer(g) {
   emit(g, 'offer', { ids: [...pick] });
 }
 
-function hurt(g, n = 1, from = null) {
+// (id: the enemy that walked into you, when one did)
+function hurt(g, n = 1, from = null, id = null) {
   const p = g.p;
   if (p.inv > 0 || p.dashT > 0 || g.status !== 'play') return false;
   p.hp -= n;
   p.inv = PANIC.hitInv;
   g.combo = 0;
-  emit(g, 'hurt', { hp: p.hp, x: p.x, y: p.y, from });
+  emit(g, 'hurt', { hp: p.hp, x: p.x, y: p.y, from, ...(id != null ? { id } : {}) });
   if (p.hp <= 0) {
     p.hp = 0;
     g.status = 'lost';
@@ -319,11 +324,13 @@ function hurt(g, n = 1, from = null) {
   return true;
 }
 
-function bolt(g, x, y, ax, ay, speed, r = 0.24) {
+// (by: who fired it, for its event: { id } an enemy's, BOSS the boss's)
+const BOSS = { boss: true };
+function bolt(g, x, y, ax, ay, speed, r = 0.24, by = null) {
   const l = Math.max(1e-6, len(ax, ay));
   const s = speed * lv(g).bolt;
   g.bolts.push({ x, y, vx: (ax / l) * s, vy: (ay / l) * s, r, life: 3.2, dmg: 1 });
-  emit(g, 'bolt', { x, y });
+  emit(g, 'bolt', { x, y, ...by });
 }
 
 function kill(g, e, how = 'shot') {
@@ -335,7 +342,7 @@ function kill(g, e, how = 'shot') {
   g.comboT = 2.2;
   const mult = 1 + Math.min(4, Math.floor(g.combo / 6));
   g.points += k.score * mult;
-  emit(g, 'kill', { kind: e.kind, x: e.x, y: e.y, how, mult });
+  emit(g, 'kill', { id: e.id, kind: e.kind, x: e.x, y: e.y, how, mult });
   if (g.combo > 0 && g.combo % 12 === 0) emit(g, 'combo', { n: g.combo, mult });
   for (let i = 0; i < k.seeds; i++) if (i === 0 || g.rand() < 0.6) g.pickups.push({ kind: 'seed', x: e.x + (g.rand() - 0.5) * 0.8, y: e.y + (g.rand() - 0.5) * 0.8, t: 0 });
   if (g.p.hp < g.p.max && g.rand() < 0.045) g.pickups.push({ kind: 'sauce', x: e.x, y: e.y, t: 0 });
@@ -454,7 +461,7 @@ function stepEnemy(g, e, dt) {
       const n = k.burst ?? 1;
       for (let i = 0; i < n; i++) {
         const a = Math.atan2(dy, dx) + (i - (n - 1) / 2) * 0.22;
-        bolt(g, e.x, e.y, Math.cos(a), Math.sin(a), k.bolt);
+        bolt(g, e.x, e.y, Math.cos(a), Math.sin(a), k.bolt, undefined, { id: e.id });
       }
     }
     if (g.rand() < dt * 0.3) e.strafe = -e.strafe;
@@ -469,7 +476,7 @@ function stepEnemy(g, e, dt) {
         e.st = 0;
         e.cx = dx / d;
         e.cy = dy / d;
-        emit(g, 'windup', { x: e.x, y: e.y });
+        emit(g, 'windup', { id: e.id, x: e.x, y: e.y });
       }
     } else if (e.state === 'windup') {
       e.vx *= 0.8;
@@ -505,7 +512,7 @@ function stepEnemy(g, e, dt) {
   settle(g, e, e.r);
   // touching you hurts
   if (len(p.x - e.x, p.y - e.y) < e.r + p.r) {
-    if (hurt(g, 1, e.kind)) {
+    if (hurt(g, 1, e.kind, e.id)) {
       e.vx -= (dx / d) * 6;
       e.vy -= (dy / d) * 6;
       if (e.state === 'charge') e.state = 'walk';
@@ -631,7 +638,7 @@ function stepBoss(g, b, dt) {
       const n = b.phase === 2 ? 7 : 5;
       for (let i = 0; i < n; i++) {
         const a = b.aim + (i - (n - 1) / 2) * 0.16;
-        bolt(g, b.x + Math.cos(a) * b.r, b.y + Math.sin(a) * b.r, Math.cos(a), Math.sin(a), 9.5, 0.32);
+        bolt(g, b.x + Math.cos(a) * b.r, b.y + Math.sin(a) * b.r, Math.cos(a), Math.sin(a), 9.5, 0.32, BOSS);
       }
       b.state = 'idle';
       b.cool = 2.2;
@@ -649,7 +656,7 @@ function stepBoss(g, b, dt) {
         const off = g.rand() * Math.PI;
         for (let i = 0; i < n; i++) {
           const a = off + (i / n) * Math.PI * 2;
-          bolt(g, b.x + Math.cos(a) * b.r, b.y + Math.sin(a) * b.r, Math.cos(a), Math.sin(a), 7.5, 0.34);
+          bolt(g, b.x + Math.cos(a) * b.r, b.y + Math.sin(a) * b.r, Math.cos(a), Math.sin(a), 7.5, 0.34, BOSS);
         }
         emit(g, 'spit', { x: b.x, y: b.y });
       } else {
@@ -710,10 +717,10 @@ function stepBoss(g, b, dt) {
       b.state = 'idle';
       b.cool = 3.2;
       const aim = Math.atan2(p.y - b.y, p.x - b.x);
-      for (let i = -1; i <= 1; i++) bolt(g, b.x, b.y, Math.cos(aim + i * 0.18), Math.sin(aim + i * 0.18), 11);
+      for (let i = -1; i <= 1; i++) bolt(g, b.x, b.y, Math.cos(aim + i * 0.18), Math.sin(aim + i * 0.18), 11, undefined, BOSS);
       if (b.phase === 2) {
         const n = 12;
-        for (let i = 0; i < n; i++) bolt(g, b.x, b.y, Math.cos((i / n) * Math.PI * 2), Math.sin((i / n) * Math.PI * 2), 6.5);
+        for (let i = 0; i < n; i++) bolt(g, b.x, b.y, Math.cos((i / n) * Math.PI * 2), Math.sin((i / n) * Math.PI * 2), 6.5, undefined, BOSS);
         if (g.enemies.filter((e) => e.alive && e.kind === 'morty').length < 4) for (let i = 0; i < 2; i++) spawnEnemy(g, 'morty', b.x + (i ? 1 : -1), b.y);
       }
     }
@@ -823,7 +830,7 @@ function stepShots(g, dt) {
       if (len(s.x - e.x, s.y - e.y) < e.r + r) {
         s.hit.push(e.id);
         damage(g, e, s.dmg, slow);
-        emit(g, 'hit', { x: s.x, y: s.y });
+        emit(g, 'hit', { id: e.id, x: s.x, y: s.y });
         if (s.pierce-- <= 0) s.life = 0;
       }
     }
@@ -877,10 +884,10 @@ function stepAllies(g, dt) {
     if (g.allyT >= every) {
       g.allyT = 0;
       g.allies.push({ x: g.p.x + 1, y: g.p.y, t: 0, life: 8, cool: 0, vx: 0, vy: 0 });
-      emit(g, 'meeseeks', {});
+      emit(g, 'meeseeks', { ally: g.allies.length - 1 });
     }
   }
-  for (const a of g.allies) {
+  for (const [i, a] of g.allies.entries()) {
     a.t += dt;
     a.cool -= dt;
     let best = null;
@@ -890,20 +897,23 @@ function stepAllies(g, dt) {
       const d = len(e.x - a.x, e.y - a.y);
       if (d < bd) [best, bd] = [e, d];
     }
-    if (best) {
-      if (bd > best.r + 0.6) {
-        a.vx = ((best.x - a.x) / bd) * 5.2;
-        a.vy = ((best.y - a.y) / bd) * 5.2;
-        a.x += a.vx * dt;
-        a.y += a.vy * dt;
-      } else if (a.cool <= 0) {
+    if (best && bd > best.r + 0.6) {
+      a.vx = ((best.x - a.x) / bd) * 5.2;
+      a.vy = ((best.y - a.y) / bd) * 5.2;
+      a.x += a.vx * dt;
+      a.y += a.vy * dt;
+    } else {
+      // stood still: punching, or nothing left to punch
+      a.vx = 0;
+      a.vy = 0;
+      if (best && a.cool <= 0) {
         a.cool = 0.45;
         damage(g, best, 1.5);
-        emit(g, 'punch', { x: best.x, y: best.y });
+        emit(g, 'punch', { id: best.id, ally: i, x: best.x, y: best.y });
       }
     }
     settle(g, a, 0.4);
-    if (a.t >= a.life) emit(g, 'poof', { x: a.x, y: a.y });
+    if (a.t >= a.life) emit(g, 'poof', { ally: i, x: a.x, y: a.y });
   }
   g.allies = g.allies.filter((a) => a.t < a.life);
 }

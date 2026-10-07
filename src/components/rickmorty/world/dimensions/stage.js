@@ -19,6 +19,7 @@ import { at, speckle } from '../kit';
 import { RIGGED } from '../../portal/meshyCast';
 import { destinationById } from './destinations';
 import { createNpcs } from '../npc';
+import { attend } from '../living';
 
 // a speckled paint for a floor or the ground
 export const specks = (base, specks, seed = 7, n = 1600, size = 2) => (g, w, h) => speckle(g, w, h, { base, specks, n, size, seed });
@@ -84,8 +85,10 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
   // one of the cast at (x, z) facing `face`, `h` tall (its own height if not
   // given), gone once `until` is done and till `after` is (`when(state)`, if
   // given, says instead); with `ai`, someone who does something (above);
-  // null if it won't load
-  const make = (kind, { x, z, face = 0, h = null, y = 0, until = null, after = null, when = null, onPlace = null, ai = null, id = kind, who = null }) => {
+  // `person`: one of the place's people, who turns their head to Morty as he
+  // comes up and talks with their hands when he talks to them (../living.js's
+  // attend); null if it won't load
+  const make = (kind, { x, z, face = 0, h = null, y = 0, until = null, after = null, when = null, onPlace = null, ai = null, id = kind, who = null, person = false }) => {
     const c = kit.cast?.make?.(kind);
     if (!c) return null;
     if (h) c.group.scale.setScalar(h / c.height);
@@ -93,12 +96,16 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
     c.group.rotation.y = face + Math.PI / 2;
     R.group.add(c.group);
     const n = ai ? N.add(c, { x, z, y, face, ai, id, who }) : null;
+    const b = person ? {} : null;
     R.tick((t, dt, state) => {
       const done = state?.done ?? [];
       c.group.visible = when ? when(state) : (!until || !done.includes(until)) && (!after || done.includes(after));
       if (!c.group.visible) return;
       if (n) N.step(n, t, dt, state);
-      else c.update?.(t, 0, 0);
+      else {
+        c.update?.(t, 0, 0, { dt });
+        if (b) attend(c, b, id, t, state, { y, near: 3 });
+      }
     });
     onPlace?.(c);
     return c;
@@ -110,7 +117,7 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
   // what the crowd stands with, as `when` for a crowd that runs off; `who`:
   // more for a person by id, say a `when` of their own)
   const people = ({ extras = {}, who = {} } = {}) => {
-    for (const p of d.people) figure(p.who ?? p.id, { x: p.x, z: p.z, y: p.y ?? 0, face: p.face, until: p.until, after: p.after, ai: p.ai ?? null, id: p.id, who: d.say[p.id]?.who ?? null, ...(who[p.id] ?? {}) });
+    for (const p of d.people) figure(p.who ?? p.id, { x: p.x, z: p.z, y: p.y ?? 0, face: p.face, until: p.until, after: p.after, ai: p.ai ?? null, id: p.id, who: d.say[p.id]?.who ?? null, person: true, ...(who[p.id] ?? {}) });
     for (const [i, e] of d.extras.entries()) figure(e.kind, { x: e.x, z: e.z, y: e.y ?? 0, face: e.face, h: e.h ?? null, ai: e.ai ?? null, id: `${e.kind}-${i}`, ...extras });
   };
 

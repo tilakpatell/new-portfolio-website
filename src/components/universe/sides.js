@@ -83,9 +83,12 @@ const STARWARS = {
   capital: 'navy', // what the Star Destroyer launches
   capitalShip: 'destroyer', // (the model the director's capital ship jumps in as)
   leviathan: 'purrgil',
-  // the Empire on the ground: stormtroopers, scout troopers, and a probe
-  // droid that hangs back and calls more in (built: footScene.js's LOOKS)
-  troops: { stormtrooper: { gun: 'rifle', figure: { built: 'stormtrooper' } }, scout: { gun: 'blaster', figure: { built: 'scout' } }, probe: { gun: null, figure: { built: 'probe' } } },
+  // the Empire on the ground: stormtroopers and scout troopers (the
+  // galaxy's rigged figures, public/models/galaxy/troops: on the shared
+  // skeleton, so they walk on the borrowed clips and react on the library's,
+  // as Albuquerque's do), and a probe droid that hangs back and calls more
+  // in (built: footScene.js's LOOKS)
+  troops: { stormtrooper: { gun: 'rifle', figure: { url: '/models/galaxy/troops/stormtrooper.glb' } }, scout: { gun: 'blaster', figure: { url: '/models/galaxy/troops/scouttrooper.glb' } }, probe: { gun: null, figure: { built: 'probe' } } },
   squads: (n) => (n < 1 ? ['stormtrooper', 'stormtrooper', 'probe'] : n < 3 ? ['stormtrooper', 'stormtrooper', 'scout'] : ['stormtrooper', 'scout', 'scout', 'probe']),
   ahead: { tie: 3, tieadvanced: 1, tiebomber: 1, gunboat: 1 },
 };

@@ -264,8 +264,12 @@ describe('createClient', () => {
     b.ally('A', 'accept');
     expect(a.peers.get('B').ally).toBe('ally');
     expect(b.peers.get('A').ally).toBe('ally');
+    // each side is told it's made, with who it's with (the wallet pays for it)
+    expect(seen.a.filter((e) => e.type === 'allied')).toEqual([{ type: 'allied', id: 'B' }]);
+    expect(seen.b.filter((e) => e.type === 'allied')).toEqual([{ type: 'allied', id: 'A' }]);
     b.ally('A', 'end');
     expect(a.peers.get('B').ally).toBe('none');
+    expect(seen.a.filter((e) => e.type === 'allied')).toHaveLength(1);
   });
 
   it('a hit counts after a shot, and not between allies', async () => {

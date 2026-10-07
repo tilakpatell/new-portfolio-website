@@ -448,3 +448,13 @@
   color: #fff;
   font-size: 22px;
 }
+
+/* the emote wheel (B held, or its button on a touch screen): five round the middle of the view */
+.rm-wheel { position: absolute; left: 50%; top: 50%; z-index: 5; width: 0; height: 0; }
+.rm-wheel-mid { position: absolute; left: 0; top: 0; display: grid; place-items: center; width: 92px; height: 92px; padding: 0.4rem; border: 2px solid var(--rm-ink); border-radius: 50%; background: var(--rm-glass); color: rgba(255, 255, 255, 0.78); font: 600 0.7rem/1.25 var(--font-sans); text-align: center; box-shadow: 0 3px 0 rgba(27, 20, 36, 0.6); transform: translate(-50%, -50%); cursor: pointer; animation: rm-wheel-in 0.14s ease-out both; }
+.rm-wheel-item { position: absolute; left: 0; top: 0; display: inline-flex; align-items: center; gap: 0.4rem; min-height: 44px; padding: 0 0.85rem; border: 2px solid var(--rm-ink); border-radius: 999px; background: var(--rm-paper); color: var(--rm-ink); font: 400 1rem/1 'Luckiest Guy', var(--font-sans); letter-spacing: 0.03em; white-space: nowrap; box-shadow: 0 3px 0 var(--rm-ink); transform: translate(-50%, -50%) translate(var(--x), var(--y)); cursor: pointer; transition: background-color 0.1s ease, transform 0.1s ease; animation: rm-wheel-in 0.14s ease-out both; }
+.rm-wheel-item kbd { padding: 0.1rem 0.32rem; border: 1.5px solid var(--rm-ink); border-radius: 5px; font: 700 0.7rem/1 var(--font-mono); }
+.rm-wheel-item[data-on], .rm-wheel-item:hover { background: var(--rm-lime); }
+.rm-wheel-item:focus-visible, .rm-wheel-mid:focus-visible { outline: 3px solid var(--rm-gold); outline-offset: 2px; }
+@keyframes rm-wheel-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .rm-wheel-item, .rm-wheel-mid { animation: none; transition: none; } }

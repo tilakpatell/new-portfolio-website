@@ -147,6 +147,19 @@ describe('crews on foot', () => {
     expect(f.lead.aim).toBe(1);
     expect(f.mate.who).toBe('jesse');
   });
+  it('carries what the body is doing beside where it is, and reads an older packet as doing nothing', () => {
+    const f = readFoot(JSON.parse(JSON.stringify(writeFoot({ ...crew, lead: walker('walt', { e: ['wave', 1.234], hurt: 0.5, down: 1 }) }))));
+    expect(f.lead.e).toEqual(['wave', 1.23]);
+    expect(f.lead.hurt).toBe(0.5);
+    expect(f.lead.down).toBe(1);
+    expect(f.mate.e).toBeNull();
+    expect(f.mate.hurt).toBe(0);
+    expect(f.mate.down).toBe(0);
+    const old = readFoot({ ...writeFoot(crew), a: ['walt', 0.6, 0.8, 0, 0, 0, 1, 0, 0, 0, 1] });
+    expect(old.lead.e).toBeNull();
+    expect(old.lead.down).toBe(0);
+    expect(readFoot({ ...writeFoot(crew), a: ['walt', 0.6, 0.8, 0, 0, 0, 1, 0, 0, 0, 1, ['wave', 'x'], 9, -1] }).lead).toMatchObject({ e: null, hurt: 1, down: 0 });
+  });
   it('says when the crew are back in, and takes a ship just landing with nobody out', () => {
     expect(readFoot(writeFoot(null))).toEqual({ off: true });
     const landing = readFoot(writeFoot({ ...crew, lead: null, mate: null }));
@@ -432,6 +445,31 @@ describe('down on a world in the galaxy', () => {
     expect(readWalk({ w: 'hoth', a: ['han', 1, 2, 3, 0, 0, 0] }).lead.arms).toBeNull(); // (an older pilot)
     expect(readWalk({ w: 'hoth', a: ['han', 1, 2, 3, 0, 0, 0, ['rocket', 1]] }).lead.arms).toBeNull(); // (no such gun)
     expect(readWalk({ w: 'hoth', a: ['leia', 1, 2, 3, 0, 0, 0, ['saber', 1, 'javascript:', 'nope', 1]] }).lead.arms).toEqual({ gun: 'saber', lit: true, color: '#4aa8ff', stance: 'single', swing: true });
+  });
+
+  it('says the lead’s emote and how each moves, and an older pilot’s message (without them) reads as none', async () => {
+    const { readWalk, writeWalk } = await import('./protocol');
+    const sent = writeWalk({ world: 'hoth', kind: 'xwing', lead: { who: 'luke', x: 1, y: 2, z: 3, yaw: 0, speed: 3, emote: ['wave', 1.3], motion: { speed: 3.04, side: -0.26, turn: 1.23 } }, mate: { who: 'han', x: 1, y: 2, z: 3, yaw: 0, speed: 0, motion: { speed: 0, side: 0, turn: 0 } } });
+    const got = readWalk(JSON.parse(JSON.stringify(sent)));
+    expect(got.lead.emote).toEqual({ id: 'wave', age: 1.3 });
+    expect(got.lead.motion).toEqual({ speed: 3, side: -0.3, turn: 1.2 });
+    expect(got.lead.arms).toBeNull();
+    expect(got.mate.motion).toEqual({ speed: 0, side: 0, turn: 0 });
+    expect(got.mate).not.toHaveProperty('emote');
+    // the arms still read beside them
+    const armed = readWalk(JSON.parse(JSON.stringify(writeWalk({ world: 'hoth', kind: 'xwing', lead: { who: 'han', x: 1, y: 2, z: 3, yaw: 0, speed: 0, arms: { gun: 'shotgun' }, emote: ['cheer', 0] } }))));
+    expect(armed.lead.arms.gun).toBe('shotgun');
+    expect(armed.lead.emote).toEqual({ id: 'cheer', age: 0 });
+    // without them, the message is as it was
+    expect(writeWalk({ world: 'hoth', kind: 'xwing', lead: { who: 'han', x: 1, y: 2, z: 3, yaw: 0, speed: 0 } }).a).toHaveLength(7);
+    const old = readWalk({ w: 'hoth', a: ['han', 1, 2, 3, 0, 0, 0] }).lead;
+    expect(old).not.toHaveProperty('emote');
+    expect(old).not.toHaveProperty('motion');
+    // and what isn't one is dropped
+    const bad = readWalk({ w: 'hoth', a: ['han', 1, 2, 3, 0, 0, 0, null, ['moonwalk', 1], ['fast', 0, 0]] }).lead;
+    expect(bad).not.toHaveProperty('emote');
+    expect(bad).not.toHaveProperty('motion');
+    expect(writeWalk({ world: 'hoth', kind: 'xwing', lead: { who: 'han', x: 1, y: 2, z: 3, yaw: 0, speed: 0, emote: ['moonwalk', 1] } }).a).toHaveLength(7);
   });
 
   it('turns away what isn’t a crew on a world', async () => {

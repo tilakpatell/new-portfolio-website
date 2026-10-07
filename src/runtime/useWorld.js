@@ -1,6 +1,8 @@
 // A page puts a world module on the runtime: useWorld(module, { props,
-// enabled, onEvent, attempt }) → { host, status, on, meant, world, rt }
-// (`attempt` bumped mounts it again after a failure). `host` is
+// enabled, onEvent, attempt, rebuild }) → { host, status, on, meant, world, rt }
+// (`attempt` bumped mounts it again after a failure; `rebuild` is what the
+// world is made for, and a change of it makes the world again: a mission
+// the page changes to, say). `host` is
 // the ref for the box (WorldHost renders it); the module is mounted while
 // `enabled` and 3D is on (lib/gpu, which a phone's download gate holds);
 // its size and whether it's on screen follow the box; `props` reach the
@@ -8,7 +10,9 @@
 // ...data })`, and the world hears it's being listened to (attached()).
 // A module the page handed over to already (rt.handover before the route
 // changed) is adopted, not made again: its canvas and the handover's cover
-// move into this box before the first paint (rt.adopt). The world goes
+// move into this box before the first paint (rt.adopt). One a page made for
+// another `rebuild` isn't (adoptable): a page mounting again for a new one
+// would otherwise show the old world, unchanged until a reload. The world goes
 // (rt.unmount) a tick after the last page holding its module lets go, so
 // a handover's page can leave first and React's second run of an effect
 // in development keeps what the first one had.
@@ -20,8 +24,12 @@ import { runtime } from './index';
 const useBeforePaint = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 const holders = new Map(); // module → how many mounted pages hold it
 const hold = (module, by) => holders.set(module, Math.max(0, (holders.get(module) ?? 0) + by));
+// what each world a page made or adopted was for (its `rebuild`); a world
+// handed over by a page that's going has none, and is adopted whatever's asked
+export const madeFor = new WeakMap();
+export const adoptable = (current, module, rebuild) => Boolean(current && current.module === module && (!madeFor.has(current.world) || madeFor.get(current.world) === rebuild));
 
-export function useWorld(module, { props, enabled = true, onEvent = null, attempt = 0 } = {}) {
+export function useWorld(module, { props, enabled = true, onEvent = null, attempt = 0, rebuild = null } = {}) {
   const host = useRef(null);
   const world = useRef(null);
   const three = use3D();
@@ -38,8 +46,8 @@ export function useWorld(module, { props, enabled = true, onEvent = null, attemp
     const el = host.current;
     if (!on || !el) return;
     const rt = runtime();
-    if (rt.current?.module === module) rt.adopt(module, el);
-  }, [on, module]);
+    if (adoptable(rt.current, module, rebuild)) rt.adopt(module, el);
+  }, [on, module, rebuild]);
 
   useEffect(() => {
     const el = host.current;
@@ -53,15 +61,18 @@ export function useWorld(module, { props, enabled = true, onEvent = null, attemp
     });
     const adopt = () => {
       world.current = rt.current?.module === module ? rt.current.world : null;
+      if (world.current) madeFor.set(world.current, rebuild);
       world.current?.attached?.();
     };
-    if (rt.current?.module === module) {
+    if (adoptable(rt.current, module, rebuild)) {
       // handed over before this page mounted (or kept through React's second run): it's ours now
       rt.adopt(module, el);
       setStatus(rt.status);
       adopt();
     } else {
-      rt.mount(module, propsRef.current, el).then(() => {
+      // (none, another module's, or ours made for something else: made afresh, the old one let go)
+      rt.mount(module, propsRef.current, el).then((shown) => {
+        if (shown && rt.current?.module === module) madeFor.set(rt.current.world, rebuild);
         if (!dead) adopt();
       });
     }
@@ -94,7 +105,7 @@ export function useWorld(module, { props, enabled = true, onEvent = null, attemp
         else if (rt.loading === module) rt.unmount();
       }, 0);
     };
-  }, [on, module, attempt]);
+  }, [on, module, attempt, rebuild]);
 
   // the page's props, without re-rendering anything
   useEffect(() => {

@@ -68,13 +68,13 @@ export const MODELS = {
   cloudcar: { url: '/models/galaxy/cloudcar.glb', nose: -Math.PI / 2 },
   ig2000: { url: '/models/galaxy/ig2000.glb', nose: 0 },
   interdictor: { url: '/models/galaxy/interdictor.glb', nose: 0 },
-  deathstar2: { url: '/models/galaxy/deathstar2.glb', nose: 0 },
+  deathstar2: { url: '/models/galaxy/deathstar2.glb', nose: 0 }, // (N8's since, scripts/deathstar-hd.mjs: dish to +z)
   // and the ones made with Meshy from Wookieepedia's picture of each
   // (scripts/meshy-galaxy-library.mjs), every one come nose to -x: the
   // Hound's Tooth, the Punishing One, the Hammerhead and the Gauntlet,
   // which were built in code; and the Twilight, the Scimitar, the TIE
-  // Defender, the V-wing, the Eta-2, the Hyena, the Sentinel, the Zeta, the
-  // Fang and the Naboo yacht, for the systems to fly
+  // Defender, the TIE Striker, the V-wing, the Eta-2, the Hyena, the
+  // Sentinel, the Zeta, the Fang and the Naboo yacht, for the systems to fly
   houndstooth: { url: '/models/galaxy/houndstooth.glb', nose: Math.PI / 2 },
   punishingone: { url: '/models/galaxy/punishingone.glb', nose: Math.PI / 2 },
   hammerhead: { url: '/models/galaxy/hammerhead.glb', nose: Math.PI / 2 },
@@ -82,6 +82,7 @@ export const MODELS = {
   twilight: { url: '/models/galaxy/twilight.glb', nose: Math.PI / 2 },
   scimitar: { url: '/models/galaxy/scimitar.glb', nose: Math.PI / 2 },
   tiedefender: { url: '/models/galaxy/tiedefender.glb', nose: Math.PI / 2 },
+  tiestriker: { url: '/models/galaxy/tiestriker.glb', nose: Math.PI / 2 },
   vwing: { url: '/models/galaxy/vwing.glb', nose: Math.PI / 2 },
   eta2: { url: '/models/galaxy/eta2.glb', nose: Math.PI / 2 },
   hyena: { url: '/models/galaxy/hyena.glb', nose: Math.PI / 2 },
@@ -114,10 +115,21 @@ export const HQ = {
   destroyer: { url: '/models/galaxy/hq/destroyer.glb', nose: 0 },
   nebulon: { url: '/models/galaxy/hq/nebulon.glb', nose: 0 },
 };
+// And the Death Stars' 4096-pixel maps (scripts/deathstar-hd.mjs), loaded on
+// the same desktops: the same hulls as the 2048 cuts, so each keeps its own
+// far-off copy (and the first Death Star none: the world draws its sphere).
+export const HD_MAPS = {
+  deathstar: '/models/universe/death-star.hq.glb',
+  deathstar2: '/models/galaxy/deathstar2.hq.glb',
+};
 const HQ_DETAILS = new Set(['high', 'ultra']);
 export const withHq = (models, detail) =>
   HQ_DETAILS.has(detail)
-    ? { ...models, ...Object.fromEntries(Object.entries(HQ).filter(([k]) => models[k]).map(([k, d]) => [k, { url: d.url, nose: d.nose, hq: true }])) }
+    ? {
+        ...models,
+        ...Object.fromEntries(Object.entries(HQ).filter(([k]) => models[k]).map(([k, d]) => [k, { url: d.url, nose: d.nose, hq: true }])),
+        ...Object.fromEntries(Object.entries(HD_MAPS).filter(([k]) => models[k]).map(([k, url]) => [k, { ...models[k], url }])),
+      }
     : models;
 Object.assign(MODELS, withHq(MODELS, device().detail));
 
@@ -148,6 +160,7 @@ export const STAND_IN = {
   twilight: 'freighter',
   scimitar: 'shuttle',
   tiedefender: 'tie',
+  tiestriker: 'tie',
   vwing: 'delta7',
   eta2: 'delta7',
   hyena: 'vulture',

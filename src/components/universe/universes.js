@@ -32,6 +32,9 @@
 // if they differ. The Star Wars gate keeps its own size (GATE): it's a
 // gate, not a world, and the galaxy behind it is sized to it.
 const STATION = 7 * 3;
+// and scale.js's SPREAD, the same way: how much further apart the places are
+// than they were (layout.js and deep.js space them by it)
+export const SPREAD = 4;
 const PLANET = 28 * 3;
 const GATE = 28;
 
@@ -111,12 +114,16 @@ const FANDOMS = [
     // a universe of its own: not a planet but the way into one, the galaxy
     // itself in miniature behind a hyperspace gate (galaxy/gateway.js); fly
     // into the gate, or pick it and go, and you jump to lightspeed into the
-    // whole galaxy (galaxy/), the Death Star a page of its own inside it
+    // whole galaxy (galaxy/), the Death Star a page of its own inside it,
+    // and aboard it (deathstar/inside) another, walked room by room
     world: 'A galaxy far, far away',
     place: 'a galaxy far, far away',
     go: 'Jump to', // (not somewhere to land on)
     to: '/galaxy',
-    pages: [{ to: '/deathstar', world: 'Death Star' }],
+    pages: [
+      { to: '/deathstar', world: 'Death Star' },
+      { to: '/deathstar/inside', world: 'Aboard the Death Star' },
+    ],
     portal: true, // (flown into, it's through, not a crash: universe/scene.js)
     swatch: '#ffe81f',
     accent: '#ffe81f',
@@ -341,7 +348,7 @@ export const MOONS = [
     palette: { base: '#b88a3a', dark: '#6a4a2a', light: '#d8aa5a', glow: '#ffe0a0' },
     air: { colour: '#ffe0a0', density: 1.2, top: 1.05 },
   },
-  // and more from the dial, in the sector since: Pluto, the snakes' planet, Nuptia 4 and the resort
+  // and more from the dial, in the sector since: Pluto, the snakes' planet, Nuptia 4, the resort, Cronenberg World and the Purge Planet
   {
     id: 'pluto',
     label: 'Pluto',
@@ -410,6 +417,40 @@ export const MOONS = [
     palette: { base: '#3a9a9a', dark: '#1a4a5a', light: '#e8d8a0', glow: '#a8f0e8' },
     air: { colour: '#c8f4ff', density: 1.3, top: 1.06 },
   },
+  {
+    id: 'cronenberg',
+    label: 'Cronenberg World',
+    kind: 'moon',
+    world: null,
+    place: 'Cronenberg World',
+    go: 'Land on',
+    to: '/c-137',
+    crew: 'rickmorty',
+    swatch: '#c88a6a',
+    accent: '#ffc8a0',
+    rim: '#d8e07a',
+    size: 0.44 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#8a6a4a', dark: '#4a3a2a', light: '#c8a07a', glow: '#d8e07a' },
+    air: { colour: '#e0b898', density: 1.5, top: 1.06 },
+  },
+  {
+    id: 'purge',
+    label: 'The Purge Planet',
+    kind: 'moon',
+    world: null,
+    place: 'the Purge Planet',
+    go: 'Land on',
+    to: '/c-137',
+    crew: 'rickmorty',
+    swatch: '#d8a060',
+    accent: '#ffd2a0',
+    rim: '#f2a070',
+    size: 0.4 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#a8804a', dark: '#5a3a2a', light: '#d8b878', glow: '#f2a070' },
+    air: { colour: '#f2b890', density: 1.3, top: 1.06 },
+  },
 ];
 export const MOON_IDS = MOONS.map((m) => m.id);
 
@@ -424,7 +465,7 @@ const BY_ID = new Map([...UNIVERSES, ...MOONS].map((u) => [u.id, u]));
 
 export const byId = (id) => BY_ID.get(id);
 
-// The universe a page belongs to: '/galaxy' and '/deathstar' → starwars, '/universe/x' → none.
+// The universe a page belongs to: '/galaxy', '/deathstar' and '/deathstar/inside' → starwars, '/universe/x' → none.
 export const byPath = (pathname) => UNIVERSES.find((u) => u.to === pathname || u.pages?.some((p) => p.to === pathname));
 
 // WCAG contrast ratio between two '#rrggbb' colours.

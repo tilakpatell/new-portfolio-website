@@ -17,6 +17,7 @@ import { hot } from '../../../lib/stage3d';
 import { ARCADE, AREAS, LINKS } from './rules';
 import { at, batch, coloured, fitModel, glowMaterial, logoText, neonCopy, paint, rng, speckle } from './kit';
 import { ANNEX_LIGHT, ANNEX_SKY, makeSky } from './sky';
+import { attend } from './living';
 
 const A = AREAS.annex;
 const MX = (A.x0 + A.x1) / 2; // 400
@@ -751,6 +752,7 @@ export async function buildAnnex(kit) {
       locals.push(c);
     }
   }
+  const heads = locals.map(() => ({}));
 
   const tmp = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -790,7 +792,11 @@ export async function buildAnnex(kit) {
       flyerBody.instanceMatrix.needsUpdate = true;
       flyerGlow.instanceMatrix.needsUpdate = true;
       ball.rotation.y = t * 0.5;
-      for (let i = 0; i < locals.length; i++) locals[i].update?.(t, 0, 0);
+      // (each in their own time, their heads turning to Morty as he passes)
+      for (let i = 0; i < locals.length; i++) {
+        locals[i].update?.(t, 0, 0, { dt });
+        attend(locals[i], heads[i], null, t, state, { near: 4.5 });
+      }
     },
     dispose() {
       for (const o of owned) o.dispose?.();

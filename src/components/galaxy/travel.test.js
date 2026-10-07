@@ -59,4 +59,10 @@ describe('the surface made from the galaxy', () => {
     expect(surfaceProps('hoth', { ship: 'xwing', effects: { troops: 'rebel' } }).effects).toEqual({ troops: 'rebel' });
     expect(surfaceProps('hoth', { ship: 'xwing' }).effects).toBeNull();
   });
+  it('carries who you picked to play as, so a flown landing walks them out (the ship’s lead with no pick)', () => {
+    window.localStorage.setItem('tp-galaxy-hero', JSON.stringify({ id: 'han', gun: 'ee3' }));
+    expect(surfaceProps('hoth', { ship: 'xwing' }).hero).toMatchObject({ id: 'han', gun: 'ee3' });
+    window.localStorage.setItem('tp-galaxy-hero', 'nonsense');
+    expect(surfaceProps('hoth', { ship: 'falcon' }).hero).toMatchObject({ id: 'han', gun: 'blaster' });
+  });
 });
