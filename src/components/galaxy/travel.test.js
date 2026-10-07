@@ -55,5 +55,8 @@ describe('the surface made from the galaxy', () => {
     expect(p).toMatchObject({ system: 'hoth', mission: null, ship: 'xwing', found: ['base'], done: ['tauntaun'], build: null, net: null, reduced: false });
     expect(p.compass).toEqual({ current: null });
     expect(surfaceProps('tatooine', { ship: 'xwing' }).found).toEqual([]);
+    // (and who holds it in the war, for its garrison on the ground)
+    expect(surfaceProps('hoth', { ship: 'xwing', effects: { troops: 'rebel' } }).effects).toEqual({ troops: 'rebel' });
+    expect(surfaceProps('hoth', { ship: 'xwing' }).effects).toBeNull();
   });
 });

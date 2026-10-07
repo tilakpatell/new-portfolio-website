@@ -40,8 +40,8 @@ export const OWNERS = {
   republic: { garrison: 'republic', capital: 'venator', traffic: ['arc170', 'acclamator', 'shuttle'], troops: 'clone', escorts: ['acclamator', 'corvette'] },
   separatists: { garrison: 'separatists', capital: null, traffic: ['vulture', 'munificent'], troops: 'battledroid', escorts: ['munificent', 'munificent'] },
   newrepublic: { garrison: 'newrepublic', capital: 'moncal', traffic: ['xwing', 'awing', 'shuttle'], troops: 'rebel', escorts: ['nebulon', 'corvette'] },
-  remnant: { garrison: 'remnant', capital: 'destroyer', traffic: ['tie', 'gozanti'], troops: 'remnant', escorts: ['lightcruiser', 'gozanti'] },
-  hutt: { garrison: 'hutt', capital: null, traffic: ['freighter', 'skiff', 'gozanti'], troops: 'weequay', escorts: ['gozanti', 'corvette'] },
+  remnant: { garrison: 'remnant', capital: 'destroyer', traffic: ['tie', 'gozanti'], troops: 'stormtrooper', escorts: ['lightcruiser', 'gozanti'] },
+  hutt: { garrison: 'hutt', capital: null, traffic: ['freighter', 'skiff', 'gozanti'], troops: 'mercenary', escorts: ['gozanti', 'corvette'] },
 };
 // the kinds a system's own traffic list may name that are warships (the
 // owner's fly by in their place)
