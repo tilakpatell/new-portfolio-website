@@ -226,6 +226,7 @@ export const ACHIEVEMENTS = {
   womprats: { name: 'Bullseye', desc: 'Bullseyed womp rats in Beggar’s Canyon' },
   canyon: { name: 'Canyon run', desc: 'Ran Beggar’s Canyon in a landspeeder against the clock' },
   speederchase: { name: 'Fast and low', desc: 'Caught every scout trooper before the bunker on Endor' },
+  coruscantrace: { name: 'I hate flying', desc: 'Chased the assassin’s speeder through Coruscant’s skylanes to the Senate' },
   starmapride: { name: 'The way to Ezra', desc: 'Raced the spires to the old tower on Lothal and kept the star map' },
   dagobahraise: { name: 'Size matters not', desc: 'Ran Dagobah’s swamp with Yoda on your back, faced the cave and raised the X-wing' },
   galacticassault: { name: 'Galactic assault', desc: 'Won a battle for the command posts on Hoth or Geonosis' },

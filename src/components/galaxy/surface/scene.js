@@ -301,7 +301,10 @@ export async function create(canvas, ctx) {
 
   // ── The places you go into (zones): built high over the world, out of
   // sight, each with its own lamps ──
-  for (const z of site.zones) placer.put({ kind: z.inside.build, at: [z.origin[0], z.origin[2]], y: z.origin[1], abs: true, model: false, opts: z.inside.opts, zone: true });
+  for (const z of site.zones) {
+    placer.put({ kind: z.inside.build, at: [z.origin[0], z.origin[2]], y: z.origin[1], abs: true, model: false, opts: z.inside.opts, zone: true });
+    for (const t of z.things) placer.put(t);
+  }
   // (hidden outdoors: a light with nothing to light still costs every pixel of
   // every lit thing, and four of them a good deal; the warm-up compiles both ways)
   const lamps = Array.from({ length: 4 }, () => {
@@ -1856,7 +1859,8 @@ export async function create(canvas, ctx) {
   function stepRide(dt) {
     const x = state.riding;
     const inp = chase?.stalled() ? { x: 0, y: 0, run: false } : input();
-    const o = ride(x.state, { ...inp, x: inp.x, y: inp.y, jump: state.jumpQueued }, dt, world, x.spec);
+    // (a flyer climbs while jump is held, not only on the press)
+    const o = ride(x.state, { ...inp, x: inp.x, y: inp.y, jump: state.jumpQueued || (Boolean(x.spec.fly) && Boolean(state.keys.jump)) }, dt, world, x.spec);
     if (o.hit > 20 && chaseOn()) chase.knocked();
     if (o.hit > 6) {
       state.shake = Math.min(1, o.hit / 20);
@@ -2676,7 +2680,7 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name } : null, guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint }),
+    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name } : null, guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint }),
     dispose() {
       disposed = true;
       lit?.dispose();
