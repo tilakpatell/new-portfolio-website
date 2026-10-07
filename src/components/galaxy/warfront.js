@@ -142,8 +142,8 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       fight.add(key, damage);
       fightDirty = true;
     },
-    mineAs: (side, key, damage) => {
-      if (team === null || team !== side) return;
+    mineAs: (theirs, key, damage) => {
+      if (team === null || team !== theirs) return;
       fight.add(key, damage);
       fightDirty = true;
     },
