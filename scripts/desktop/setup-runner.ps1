@@ -140,8 +140,12 @@ try {
   Write-Host "scheduled task ${task}: at logon and every 5 minutes"
 } catch {
   # a logon trigger can need an administrator; every five minutes covers a logon too
-  Register-ScheduledTask -TaskName $task -Action $action -Trigger $every -Settings $settings -Principal $principal -Description $description -Force -ErrorAction Stop | Out-Null
-  Write-Host "scheduled task ${task}: every 5 minutes (a logon trigger needs an administrator here)"
+  try {
+    Register-ScheduledTask -TaskName $task -Action $action -Trigger $every -Settings $settings -Principal $principal -Description $description -Force -ErrorAction Stop | Out-Null
+    Write-Host "scheduled task ${task}: every 5 minutes (a logon trigger needs an administrator here)"
+  } catch {
+    Write-Host "!! couldn't add the scheduled task ($($_.Exception.Message)): the runner starts now, but not again after a restart. Run this script as an administrator once, or start $Dir\run.cmd yourself." -ForegroundColor Yellow
+  }
 }
 
 Say 'The old Startup-folder pollers'
