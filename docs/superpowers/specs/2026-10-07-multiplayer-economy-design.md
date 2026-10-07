@@ -145,7 +145,7 @@ builders):
   Federation), “Council of Ricks” fins (level 5).
 - Breaking Bad: “Los Pollos” paint (standing `hero` with the civilians),
   “Vamonos Pest” thrusters (level 3).
-- Galaxy: “Hutt gold” paint (rank Captain in any war).
+- Galaxy: “Hutt gold” paint (level 8: a rank names one side, so “Captain in any war” can’t be asked).
 
 ### Part 3: earning in the scenes
 
