@@ -8,7 +8,7 @@
 
 import * as THREE from 'three';
 import { createRenderer, precompile } from '../../lib/three/renderer';
-import { T, clamp, clampStart, darkAt, ease, exposureAt, flashAt, holdStart, jumpStarted, speedAt } from './timeline';
+import { T, atPeak, clamp, clampStart, darkAt, ease, exposureAt, flashAt, holdStart, jumpStarted, speedAt } from './timeline';
 
 const SEG = 10; // segments along a streak, so the swirl can bend it
 const DEPTH = 80; // how deep the field is (world units)
@@ -311,7 +311,7 @@ export function run(canvas, { entry = false, onPeak, onDone, onFail, uncover }) 
       start = now - (entry ? T.drift : 0);
       jumpStarted();
     }
-    // (and a frame that came late moves it on 50 ms at most: starved, it waits where it was, timeline.js)
+    // (and a stall moves it on 50 ms only: starved, it waits where it was, timeline.js)
     else start = clampStart(start, last, now);
     start = holdStart(now, start); // (held in the tunnel while the galaxy builds its next system: timeline.js)
     const t = now - start;
@@ -336,7 +336,7 @@ export function run(canvas, { entry = false, onPeak, onDone, onFail, uncover }) 
       covered = false;
       uncover?.();
     }
-    if (t >= T.jump + 20 && t < T.flash + 60) peak();
+    if (atPeak(t)) peak();
 
     if (t < T.end) raf = requestAnimationFrame(frame);
     else {

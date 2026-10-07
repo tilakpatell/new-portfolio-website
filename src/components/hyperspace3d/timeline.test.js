@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { HOLD_AT, T, clampStart, handJump, holdJump, holdStart, jumpHeld, jumpStarted, letHandedGo, onJumpStart } from './timeline';
+import { HOLD_AT, STALL, T, atPeak, clampStart, handJump, holdJump, holdStart, jumpHeld, jumpStarted, letHandedGo, onJumpStart } from './timeline';
 
 describe('a jump held in its tunnel', () => {
   afterEach(() => vi.useRealTimers());
@@ -102,9 +102,36 @@ describe("a jump's clock, starved of frames", () => {
     expect(clampStart(1000, 5000, 5050)).toBe(1000);
   });
 
-  it('moves on at most 50 ms for a frame that came late, so a stall pauses the jump instead of skipping it', () => {
+  // (it used to move on 50 ms at most for any frame later than that, so
+  // below 20 frames a second every jump played in slow motion, and its
+  // sound, on the wall's clock, came apart from its flash: deliberately
+  // changed to the stalls alone)
+  it('keeps the wall’s time at an ordinary low frame rate, so its sound stays on its flash', () => {
+    expect(clampStart(1000, 5000, 5100)).toBe(1000); // (10 a second)
+    expect(clampStart(1000, 5000, 5000 + STALL)).toBe(1000);
+  });
+
+  it('moves on 50 ms for a stall (a frame over 250 ms late, where the pace stops judging too), so the jump pauses instead of skipping its middle', () => {
+    expect(STALL).toBe(250);
     const start = clampStart(1000, 5000, 7000); // (two seconds without a frame)
     expect(7000 - start - (5000 - 1000)).toBe(50);
+    expect(clampStart(1000, 5000, 5251)).toBe(1201);
     expect(clampStart(1000, 5000, 5300, 100)).toBe(1200);
+  });
+});
+
+describe("a jump's peak", () => {
+  it('comes after its flash begins and before its tunnel ends, where a held jump waits', () => {
+    expect(atPeak(T.jump + 19)).toBe(false);
+    expect(atPeak(T.jump + 20)).toBe(true);
+    expect(atPeak(HOLD_AT)).toBe(true);
+    expect(atPeak(T.tunnel)).toBe(false); // (an intro skipped to its exit doesn't peak there)
+  });
+
+  it('is never stepped over by a clock that moves on whole frames up to a stall', () => {
+    for (let t = 0; t < T.jump + 20; t += 7) {
+      const next = t + STALL;
+      if (next >= T.jump + 20) expect(atPeak(next)).toBe(true);
+    }
   });
 });

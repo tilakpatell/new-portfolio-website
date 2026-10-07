@@ -113,8 +113,8 @@ export default function JumpCanvas({ frag, uniforms, fallback, onPeak, onDone })
       cbs.current.onDone?.();
     };
     // timed from the first frame actually drawn, so a slow start skips
-    // nothing, and a frame that came late moves it on 50 ms at most, so a
-    // stall pauses it rather than skip its middle (timeline.js's clampStart)
+    // nothing, and a stall moves it on 50 ms only, so it pauses rather than
+    // skip its middle (timeline.js's clampStart)
     let start = 0;
     let t0 = 0;
     let last = 0;

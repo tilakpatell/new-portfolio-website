@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { prefersReducedMotion } from '../lib/hooks';
 import { use3D } from '../lib/gpu';
-import { T, clampStart, holdStart, jumpHeld, jumpStarted } from './hyperspace3d/timeline';
+import { T, atPeak, clampStart, holdStart, jumpHeld, jumpStarted } from './hyperspace3d/timeline';
 import { jumpFailed, jumpScene, preloadJump } from './hyperspace3d/load';
 import Hyperspace3D from './hyperspace3d/Hyperspace3D';
 
@@ -185,7 +185,7 @@ function Hyperspace2D({ onPeak, onDone, entry }) {
     };
 
     const frame = (now) => {
-      if (start) start = clampStart(start, last, now); // (a frame that came late: the jump waits where it was)
+      if (start) start = clampStart(start, last, now); // (a stall: the jump waits where it was)
       else {
         start = now - (entry ? T.drift : 0);
         jumpStarted(); // (a page waiting on its dark times its fallback from here)
@@ -258,8 +258,8 @@ function Hyperspace2D({ onPeak, onDone, entry }) {
         const f = t < T.jump + 40 ? clamp((t - (T.jump - 60)) / 100) : 1 - ease(clamp((t - (T.jump + 40)) / (T.flash + 60 - (T.jump + 40))));
         ctx.fillStyle = `rgba(235,244,255,${0.92 * f})`;
         ctx.fillRect(0, 0, W, H);
-        if (t >= T.jump + 20) peak();
       }
+      if (atPeak(t)) peak();
 
       if (t < T.end) raf = requestAnimationFrame(frame);
       else {
