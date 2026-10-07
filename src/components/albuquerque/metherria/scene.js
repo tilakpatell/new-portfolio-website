@@ -24,6 +24,7 @@ import { paintDial, paintFloor, paintHazard, paintLabel, paintPollosBox, paintSt
 import { pixelRatio } from '../../../lib/device';
 import { precompile, quiet, releaseContext } from '../../../lib/three/renderer';
 import { sharpen } from '../../../lib/three/textures';
+import { houseOn } from '../../../lib/three/house';
 
 export const STATIONS = { order: -4.4, serve: -4.4, idle: -4.4, build: -1.7, cook: 0.7, break: 3.0, pack: 5.3 };
 const BENCH_Y = 0.92;
@@ -97,7 +98,8 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   camera.position.set(STATIONS.order, 1.55, 2.4);
 
   // light: a warm fill, tube lights down the room, a key that casts shadows
-  scene.add(new THREE.HemisphereLight(0xfff4e6, 0x2a2420, 0.55));
+  const hemi = new THREE.HemisphereLight(0xfff4e6, 0x2a2420, 0.55);
+  scene.add(hemi);
   const key = new THREE.DirectionalLight(0xfff1dc, 1.6);
   key.position.set(1, 5, 3.5);
   key.castShadow = true;
@@ -130,6 +132,10 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   }
   const burnerLight = new THREE.PointLight(0xff7a2a, 0, 2, 2);
   scene.add(burnerLight);
+  // the house look (lib/three/house): one shadow colour, measured off the
+  // room's light and its HDRI (the room keeps its own dark, no fog)
+  const house = houseOn({ renderer, scene, sun: key, hemi, env: { get texture() { return scene.environment; }, intensity: () => scene.environmentIntensity }, look: { fog: false } });
+  let houseFrames = 0;
 
   // ── the room: two looks, the RV and the superlab ──
   // Photo-scanned CC0 materials (Poly Haven, ambientCG; see public/cc0),
@@ -296,6 +302,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
     for (const w of wallParts) w.material = L.wall;
     bench.material = L.bench;
     hazard.visible = p === 'superlab';
+    house.adopt(scene);
   };
 
   const shadowy = (o) => {
@@ -1094,6 +1101,8 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
     coins.instanceMatrix.needsUpdate = true;
 
     renderer.shadowMap.enabled = shadows;
+    // (and whatever's come in since: the people, the props)
+    house.follow({ adopt: houseFrames++ % 60 === 0 });
     renderer.render(scene, camera);
     watch();
   }
@@ -1206,7 +1215,11 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   const whenReady = () => {
     const look = lookFor(place ?? 'rv');
     const wait = new Promise((r) => setTimeout(r, 6000));
-    return Promise.race([Promise.all([look.ready, hdriFor(place ?? 'rv')]), wait]).then(() => (disposed || lost ? null : precompile(renderer, scene, camera)));
+    return Promise.race([Promise.all([look.ready, hdriFor(place ?? 'rv')]), wait]).then(() => {
+      if (disposed || lost) return null;
+      house.adopt(scene);
+      return precompile(renderer, scene, camera);
+    });
   };
 
   return { render, resize, dispose, project, standeeAnchors, diagnostics, whenReady, get lost() { return lost; } };

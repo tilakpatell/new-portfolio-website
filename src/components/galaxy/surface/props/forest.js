@@ -1912,4 +1912,14 @@ const YAVIN = {
   },
 };
 
+// (the crowns the ground map shades under, groundPaint.js: a kind's crown
+// radius in metres at scale 1)
+for (const [kind, crown] of [
+  ['jungletree', 10],
+  ['redwood', 7],
+  ['wroshyr', 10],
+  ['gnarltree', 6],
+])
+  SCATTER[kind].canopy = crown;
+
 export const PROPS = { ...TREES, ...ENDOR, ...KASHYYYK, ...DAGOBAH, ...YAVIN };

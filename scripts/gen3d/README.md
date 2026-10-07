@@ -35,30 +35,61 @@ the seams let it (~25k triangles).
 triangle budget, WebP textures, meshopt: the same steps as
 `scripts/meshy-import.mjs`) and credits it in `public/games/credits.json`.
 It refuses a model over its budget or over 4 MB. Everything else lands in
-`scripts/gen3d/cache/` (git-ignored).
+`scripts/gen3d/cache/` (git-ignored; `GEN3D_CACHE` for elsewhere).
 
-## From your phone
+Three cuts are made of every model (`.hq`, plain, `.lo`: `budget.mjs`), and
+`--faces`/`--tex` scale all three: `--faces 4000` for a rock gives
+4000/2000/667, not three copies of one cut.
 
-`runner.mjs` watches the repository's GitHub issues: one labelled **`gen3d`**
-is a job. The title is the model's name; the body says what, one field a
-line, all optional but one of `prompt`/`what`/`image`:
+**A failed run picks up where it stopped.** Each step's output keeps a key of
+what it was made from (`raw.glb.key`: the pictures, seed, res, engine), and a
+step whose inputs haven't changed is reused, so a job that died at the bake
+or the cut doesn't spend the GPU on the raw model again. `--fresh` makes all
+of it again. A run's own lines are in `cache/<name>/make.log`, its outcome in
+`result.json`. Every engine, the concept picture and the bake are stopped if
+they hang (`GEN3D_ENGINE_MINUTES` 45, `GEN3D_PICTURE_MINUTES` 10,
+`GEN3D_BAKE_MINUTES` 20).
+
+**Where the tools are.** Installed from inside the Claude desktop app (an
+MSIX package), `%LOCALAPPDATA%\trellis-studio`, `sdcpp`, `llamacpp` and
+`blender` really live in the app's boxed copy
+(`%LOCALAPPDATA%\Packages\Claude_…\LocalCache\Local\…`), which a process
+started outside the app (the Actions runner, a scheduled task) can't see at
+the usual path. `localDir()` (scripts/desktop/lib.mjs) looks in both.
+
+## From anywhere: the gen3d workflow
+
+A model can be asked for from a phone, a laptop or a cloud session. The
+desktop makes it when it's awake. `scripts/desktop/README.md` has the
+whole picture. In short:
 
 ```
-what: a TIE fighter                 (for the credit; the prompt if there is none)
+node scripts/desktop/ask.mjs gen3d tie-fighter --what "a TIE fighter" --image https://…/tie.png --faces 30000
+```
+
+or Actions → *gen3d* → *Run workflow*, or a new issue from the *3D model*
+form. Each one is an issue labelled **`gen3d`**: the title is the model's
+name, and the body says what, one field a line (or several to a line, two
+spaces apart), all optional but one of `prompt`/`what`/`image`:
+
+```
+what: a TIE fighter                 (for the credit and the judge; the prompt if there is none)
 prompt: a TIE fighter, grey, …      (FLUX draws the concept picture)
 image: (attach a picture, or a URL) (the picture to follow; Pixal3D unless faithful: no)
-faces: 60000  tex: 2048  seed: 42  res: 1024  fov: 49  engine: trelliscpp|trellis2
-faithful: no  bake: no
+faces: 30000  tex: 2048  seed: 42  res: 1024  fov: 49  engine: trelliscpp|trellis2|hunyuan
+faithful: no  bake: no  fresh: yes
 ```
 
-On the desktop, `node scripts/gen3d/runner.mjs --watch` polls every minute;
-`--once` makes one pass. Each job runs in the runner's own checkout beside
-the repository (`<repo>-gen3d`, made on first run, `node_modules` shared) on
-a branch `gen3d/<name>` from `origin/main`, then pushes, opens a pull request
-with the judging sheet (committed under `docs/gen3d/`) and comments on the
-issue, which it closes. A failure is commented and labelled `gen3d:failed`;
-fix the issue and remove the label to try again. Wiring the model into a
-scene is a separate change.
+The self-hosted runner on the desktop runs `runner.mjs --issue N` in the
+pipeline's own checkout beside the repository (`<repo>-gen3d`), on a branch
+`gen3d/<name>` from `origin/main`. It waits for the GPU if something else
+holds it. It pushes, opens a pull request with the judging sheet
+(committed under `docs/gen3d/`) and comments on the issue, which it closes.
+A failure is commented with the log's tail and labelled `gen3d:failed`:
+fix the issue, then remove the label to try again (it resumes at the step
+that failed). Wiring the model into a scene is a separate change.
+`node scripts/desktop/status.mjs` says what's queued and whether the
+desktop is up.
 
 **Several pictures beat one.** Attach the front, left, back (and right) of
 the thing, in that order (or name them: `front: URL`), and the job goes
@@ -75,17 +106,14 @@ that only helps when the old shape was right.
 
 ### Keeping it running on the desktop
 
-It's registered to start at logon through the Startup folder (a scheduled
-task needs an administrator; this doesn't):
-`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\gen3d-runner.vbs`
-runs `%LOCALAPPDATA%\gen3d\runner.cmd` hidden, which sets
-`GEN3D_RUNNER_ROOT` to the runner's checkout (`<repo>-gen3d`, its own
-`node_modules` from `npm ci --ignore-scripts`) and `CHROME` to Edge, and
-restarts the runner if it ever stops; its log is
-`%LOCALAPPDATA%\gen3d\runner.log`. The runner takes each job on a fresh
-`origin/main`, so a merged change to these scripts is picked up by the next
-job. To stop it: end the `node` process from `runner.cmd`, or delete the
-`.vbs`.
+The GitHub Actions runner in `~\actions-runner` takes the jobs, kept going
+by the `desktop-jobs-runner` scheduled task (`scripts/desktop/setup-runner.ps1`
+sets both up, once, from a normal PowerShell window). Each job runs on a
+fresh `origin/main`, so a merged change to these scripts is picked up by
+the next job. The old Startup-folder poller (`gen3d-runner.vbs` running
+`%LOCALAPPDATA%\gen3d\runner.cmd`) never survived a reboot: that file was
+written from inside the Claude app, whose AppData is boxed, so at logon it
+wasn't there. The setup moves it aside.
 
 ## The engines
 

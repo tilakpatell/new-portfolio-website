@@ -17,6 +17,7 @@ import { allOrUndo } from '../../../lib/settle';
 import { createFx } from '../../middleearth/shire/fx';
 import { createGhosts } from '../../middleearth/towns/ghosts';
 import { groundWorld } from '../../../lib/three/groundwork';
+import { houseOn } from '../../../lib/three/house';
 import { createMeshyCast } from '../portal/meshyCast';
 import { InkPass } from '../portal/toon';
 import { EDGE_BUILDINGS, buildConcourse } from './concourse';
@@ -176,6 +177,8 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
   // under everything else and shown only while Rick's there ──
   let town = null;
   let townJob = null;
+  // the house look (lib/three/house), on once the city's built
+  let house = null;
   const enterTown = () => {
     if (town) return Promise.resolve(true);
     if (!townJob) {
@@ -197,6 +200,7 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
           const lights = district.lights.map(([x, y, z, c]) => [x + TOWN.x, y + TOWN.y, z + TOWN.z, c]);
           const tracked = [...(folk?.movers ?? []), people.rick].filter((f) => f?.group).map(walker);
           const ground = groundWorld({ renderer, scene, floor: [district.floor], sun: key, casters: [district.group], skip: [fxRoot, ...district.hide], movers: tracked, shade: 0x2a2418, blobOpacity: 0.6, tier, auto: true, clip: true });
+          house?.adopt(district.group);
           await stage.precompile(district.group);
           district.group.visible = false;
           town = { district, folk, ground, lights };
@@ -305,6 +309,9 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
         return undefined;
       });
     }
+
+    // (the shade follows the dome's light, its colour and how much of it there is)
+    house?.follow();
 
     // ── the people ──
     ghosts.update(s.travellers ?? [], t, dt);
@@ -469,6 +476,8 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
     }
   };
 
+  // the house look: one shadow colour from the dome's light; the city keeps its own haze
+  house = houseOn({ renderer, scene, sun: key, hemi, look: { fog: false } });
   await stage.precompile();
 
   return {

@@ -38,6 +38,11 @@ const segmentDistance = (a, b, c) => {
   return a.clone().addScaledVector(ab, t).distanceTo(c);
 };
 
+// whether something going along `dir` (a unit vector) is `margin` past the
+// ship yet, at `at`: past it, it's going away (holds lets the director go on)
+export const pastShip = (at, dir, ship, margin = 0) => (at[0] - ship.x) * dir[0] + (at[1] - ship.y) * dir[1] + (at[2] - ship.z) * dir[2] > margin;
+const PAST = 10; // map units past you a pod's lead (or the bear) is gone by
+
 export function createLeviathans(parent, { small = false } = {}) {
   const made = [];
   const keep = (x) => (made.push(x), x);
@@ -192,6 +197,7 @@ export function createLeviathans(parent, { small = false } = {}) {
         bear.pts = pts;
         bear.len = laneLength(pts);
         bear.t = 0;
+        bear.lead = null;
         bear.spin.set(0.08 + rand() * 0.1, 0.15 + rand() * 0.1, 0.04);
         bear.group.scale.setScalar(BEAR_SIZE);
         bear.group.rotation.set(rand() * PI, rand() * PI, 0);
@@ -206,6 +212,7 @@ export function createLeviathans(parent, { small = false } = {}) {
         pod.pts = pts;
         pod.len = laneLength(pts);
         pod.t = 0;
+        pod.lead = null;
         pod.n = 3 + Math.floor(rand() * 3);
         let behind = 0;
         pod.members.forEach((m, i) => {
@@ -243,6 +250,14 @@ export function createLeviathans(parent, { small = false } = {}) {
     get busy() {
       return pod.on || cromulon.on || bear.on;
     },
+    // what holds the director off (scene.js): a pass until its lead's gone
+    // by you (a pod's lane is long, and the rest of it is only a sight going
+    // away), the Cromulon while it's here
+    holds(ship) {
+      if (cromulon.on) return true;
+      const going = (o) => o.on && !(ship && o.lead && pastShip(o.lead.at, o.lead.dir, ship, PAST));
+      return going(pod) || going(bear);
+    },
 
     update(dt, t) {
       let busy = false;
@@ -273,6 +288,7 @@ export function createLeviathans(parent, { small = false } = {}) {
           const w = t * 0.9 + m.phase;
           pos.addScaledVector(up, sin(w) * 0.6);
           m.group.position.copy(pos);
+          if (i === 0) pod.lead = { at: pos.toArray(), dir: dir.toArray() };
           m.group.lookAt(a3.copy(pos).addScaledVector(dir, -1)); // (lookAt points +z at the target: the nose is −z)
           m.group.rotateX(sin(w) * 0.08);
           m.group.rotateZ(sin(w * 0.7) * 0.06);
@@ -296,7 +312,9 @@ export function createLeviathans(parent, { small = false } = {}) {
         } else {
           bear.group.visible = true;
           bezier(bear.pts, bear.t, p);
+          tangent(bear.pts, bear.t, d);
           bear.group.position.set(p[0], p[1] + sin(t * 0.4) * 0.8, p[2]);
+          bear.lead = { at: [p[0], p[1], p[2]], dir: dir.set(d[0], d[1], d[2]).normalize().toArray() };
           bear.group.rotation.x += dt * bear.spin.x;
           bear.group.rotation.y += dt * bear.spin.y;
           bear.group.rotation.z += dt * bear.spin.z;

@@ -5,7 +5,8 @@
 // landing), his father keeping an eye on the city from over downtown, and
 // what flying leaves behind (./fx.js). The rules (./flight.js) say where
 // he is; this draws it, with a camera behind him that pulls back and
-// widens with speed and never ends up inside a building.
+// widens with speed and never ends up inside a building (nor, with a wall
+// right behind him, inside him: it swings off the wall instead).
 
 import * as THREE from 'three';
 import { createEngine } from '../../avengers/hq/engine';
@@ -22,7 +23,8 @@ import { buildGround } from './ground';
 import { buildJet } from './jet';
 import { buildLandmarks } from './landmarks';
 import { buildLife } from './life';
-import { LINES, createNpcs } from './npcs';
+import { LINES } from './lines';
+import { createNpcs } from './npcs';
 import { buildClouds } from './sky';
 import { createTraffic, stepTraffic } from './traffic';
 import { CITY, WATER_Y, WORLD, buildWorld, groundAt, near } from './map';
@@ -35,6 +37,7 @@ const FOV = 64;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const damp = (v, to, rate, dt) => v + (to - v) * (1 - Math.exp(-rate * dt));
 const Y = new THREE.Vector3(0, 1, 0);
+const Z = new THREE.Vector3(0, 0, 1);
 
 // the times of day: the sky, how it sits, the light, the haze, the night
 export const TIMES = ['noon', 'dusk', 'night'];
@@ -177,14 +180,39 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   let timeName = 'noon';
   let zone = 'city';
   const fogBase = new THREE.Color();
-  async function setTime(name) {
-    const L = LOOK[name] ?? LOOK.noon;
-    timeName = name;
-    space.setTime(name);
-    if (look === L || zone === 'space') return;
+  // The sky loads before it's put up, so the times are put up one at a time,
+  // in the order asked: two quick changes can't land the wrong way round,
+  // one time's sky over the other's streets. Each resolves once its time is
+  // up (or, if another was asked for meanwhile, once it's been passed over),
+  // and fails if its sky won't load, without stopping the ones after it.
+  let timeQueue = Promise.resolve();
+  function setTime(name) {
+    timeName = LOOK[name] ? name : 'noon';
+    space.setTime(timeName);
+    const turn = timeQueue.then(putUpTime);
+    timeQueue = turn.catch(() => {
+      look = null; // (so the next one puts it up again)
+    });
+    return turn;
+  }
+  async function putUpTime() {
+    const L = LOOK[timeName];
+    if (zone === 'space') {
+      // out there the sun is the only light, and it moves with the time (as
+      // it does on the Earth, the Moon and Mars); the city's sky waits till he's back
+      engine.sun.userData.dir = space.sun.clone();
+      return;
+    }
+    if (look === L) return;
     look = L;
     scene.fog = null;
     await engine.setSky(L.sky, { rotate: L.rotate, envIntensity: L.env, bgIntensity: L.bg, sunIntensity: L.sun, sunColor: L.sunColor, sunDir: L.sunDir, fill: L.fill, fog: L.fog });
+    if (zone === 'space') {
+      // he went up while it loaded: the sky's light is the city's, not space's
+      look = null;
+      spaceLook();
+      return;
+    }
     engine.renderer.toneMappingExposure = L.exposure;
     ground.setNight(L.night);
     city.setNight(L.night);
@@ -197,6 +225,17 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
 
   // ── the city or space: one or the other is drawn ──
   const cityOnly = [ground.group, city.group, landmarks.group, clouds.mesh, jet.group, life.group, challenges.group, flaxans.group, omni.holder];
+  function spaceLook() {
+    scene.background = new THREE.Color(0, 0, 0.004);
+    scene.fog = null;
+    scene.environmentIntensity = 0.08;
+    engine.sun.color.setRGB(1, 0.97, 0.92);
+    engine.sun.intensity = 3.4;
+    engine.hemi.intensity = 0.04;
+    engine.sun.userData.dir = space.sun.clone();
+    space.stars.visible = true;
+    space.stars.material.color.setScalar(1);
+  }
   async function setZone(z) {
     if (z === zone) return;
     zone = z;
@@ -204,15 +243,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     for (const n of npcs.all) n.holder.visible = z === 'city';
     space.group.visible = z === 'space';
     if (z === 'space') {
-      scene.background = new THREE.Color(0, 0, 0.004);
-      scene.fog = null;
-      scene.environmentIntensity = 0.08;
-      engine.sun.color.setRGB(1, 0.97, 0.92);
-      engine.sun.intensity = 3.4;
-      engine.hemi.intensity = 0.04;
-      engine.sun.userData.dir = space.sun.clone();
-      space.stars.visible = true;
-      space.stars.material.color.setScalar(1);
+      spaceLook();
       camera.far = 1300000;
     } else {
       camera.far = 26000;
@@ -226,16 +257,18 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   const qTmp = new THREE.Quaternion();
   const qYaw = new THREE.Quaternion();
   const vTmp = new THREE.Vector3();
-  function carry(f, p, yaw, v, dt, { lean = 1, roll = 0, lift = 0 } = {}) {
+  // `ahead`: the figure lies along its flight itself (a flying clip, its head
+  // ahead), so its front, not its crown, is turned along the flight
+  function carry(f, p, yaw, v, dt, { lean = 1, roll = 0, lift = 0, ahead = false } = {}) {
     f.holder.position.set(p[0], p[1] + f.hipHeight + lift, p[2]);
     f.holder.rotation.set(0, yaw, 0);
     const speed = Math.hypot(v[0], v[1], v[2]);
     const k = clamp((speed - 8) / 30, 0, 1) * lean;
-    const dir = speed > 0.1 ? vTmp.set(v[0], v[1], v[2]).divideScalar(speed) : vTmp.copy(Y);
-    dir.lerpVectors(Y, dir, k).normalize();
+    const axis = ahead ? Z : Y;
     qYaw.setFromAxisAngle(Y, -yaw);
-    dir.applyQuaternion(qYaw); // into his own frame
-    qTmp.setFromUnitVectors(Y, dir);
+    const dir = speed > 0.1 ? vTmp.set(v[0], v[1], v[2]).divideScalar(speed).applyQuaternion(qYaw) : vTmp.copy(axis); // (in his own frame)
+    dir.lerpVectors(axis, dir, k).normalize();
+    qTmp.setFromUnitVectors(axis, dir);
     if (roll) qTmp.multiply(new THREE.Quaternion().setFromAxisAngle(Y, roll));
     f.lean.slerp(qTmp, dt === 0 ? 1 : 1 - Math.exp(-8 * dt));
     f.body.quaternion.copy(f.lean);
@@ -243,8 +276,63 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   }
 
   // ── the camera: behind him, pulled back and widened with speed ──
-  const cam = { dist: 6, fov: FOV, pos: new THREE.Vector3(), at: new THREE.Vector3(), ready: false, near: 0.3 };
+  const cam = { dist: 6, fov: FOV, pos: new THREE.Vector3(), at: new THREE.Vector3(), ready: false, near: 0.3, swing: 0 };
   const list = [];
+  // how far (0…1) along `back` from `anchor` the camera can go before a wall
+  // (`list`: the buildings round him, each kept 0.4 m off). One he's hugging
+  // is kept off only as far as leaves 0.15 m round the anchor: he hovers as
+  // near as FLY.R (0.45 m) to a face (./flight.js's collide), and from
+  // there, with a whole 0.4 m kept off, every way out but straight along
+  // the wall would end a few centimetres from him. So the camera can still
+  // go along a wall or away from it, and never nearer its face than 0.3 m.
+  function clear(anchor, back) {
+    let t = 1;
+    for (const b of list) {
+      const out = Math.hypot(Math.max(b.x0 - anchor[0], 0, anchor[0] - b.x1), Math.max(b.y0 - anchor[1], 0, anchor[1] - b.y1), Math.max(b.z0 - anchor[2], 0, anchor[2] - b.z1));
+      const m = clamp(out - 0.15, 0, 0.4);
+      t = Math.min(t, rayBox(anchor, back, { x0: b.x0 - m, x1: b.x1 + m, y0: b.y0 - m, y1: b.y1 + m, z0: b.z0 - m, z1: b.z1 + m }));
+    }
+    return t;
+  }
+  // Where it goes when a wall's right behind him (hovering against a tower,
+  // or by one on a roof): round him to one side or the other, or up over
+  // him, whichever gets furthest from him for the least turn, rather than
+  // closing in until it's inside his head. The last two go square to his
+  // back, along the wall: with his back flat to it, every other way runs
+  // into its face within a few centimetres. [turn about the up axis, rise, cost in metres]
+  const SWINGS = [
+    [0.5, 0, 0.8],
+    [-0.5, 0, 0.8],
+    [1, 0, 1.6],
+    [-1, 0, 1.6],
+    [0, 0.85, 1.4],
+    [1.5, 0, 2.6],
+    [-1.5, 0, 2.6],
+    [0, 1.4, 2.4],
+    [Math.PI / 2, 0, 3],
+    [-Math.PI / 2, 0, 3],
+  ];
+  const TIGHT = 2.6; // (metres: closer than this, the camera swings; it comes back once the line behind him is clear to 3.6)
+  const swung = [0, 0, 0];
+  function swing(back, [turn, rise], up) {
+    // (round the up axis, then lifted toward it, kept the same length)
+    const c = Math.cos(turn);
+    const s = Math.sin(turn);
+    const l = Math.hypot(...back);
+    let x = back[0] * c + back[2] * s;
+    let y = back[1];
+    let z = -back[0] * s + back[2] * c;
+    if (rise) {
+      x = x * (1 - rise * 0.6) + up.x * l * rise;
+      y = y * (1 - rise * 0.6) + up.y * l * rise;
+      z = z * (1 - rise * 0.6) + up.z * l * rise;
+    }
+    const k = l / (Math.hypot(x, y, z) || 1);
+    swung[0] = x * k;
+    swung[1] = y * k;
+    swung[2] = z * k;
+    return swung;
+  }
   function placeCamera(h, yaw, pitch, speed, dt) {
     const fly = h.mode === 'air';
     const k = clamp(speed / 260, 0, 1);
@@ -259,15 +347,29 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     const anchor = [h.p[0] + lift.x, h.p[1] + lift.y, h.p[2] + lift.z];
     // (higher over him the faster he goes, so flat out you see his back, not his boots)
     const over = upV.clone().multiplyScalar(fly ? 0.9 + k * 2.6 : 0.7);
-    const back = [-fwd[0] * cam.dist + over.x, -fwd[1] * cam.dist + over.y, -fwd[2] * cam.dist + over.z];
-    // never inside a building: stop short of the first wall behind him
+    let back = [-fwd[0] * cam.dist + over.x, -fwd[1] * cam.dist + over.y, -fwd[2] * cam.dist + over.z];
+    // never inside a building: stop short of the first wall behind him, or,
+    // with one right behind him, swing off it (and stay swung until the line
+    // behind him is clear again, so it doesn't flick between the two)
     let t = 1;
-    const reach = cam.dist + 2;
-    if (zone === 'city')
-      for (const b of near(world, anchor[0], anchor[2], reach, list)) {
-        const g = { x0: b.x0 - 0.4, x1: b.x1 + 0.4, y0: b.y0 - 0.4, y1: b.y1 + 0.4, z0: b.z0 - 0.4, z1: b.z1 + 0.4 };
-        t = Math.min(t, rayBox(anchor, back, g));
-      }
+    if (zone === 'city') {
+      near(world, anchor[0], anchor[2], cam.dist + 3, list);
+      const len = Math.hypot(...back);
+      t = clear(anchor, back);
+      if (t * len < (cam.swing ? TIGHT + 1 : TIGHT)) {
+        let best = { i: -1, t, score: t * len };
+        SWINGS.forEach((s, i) => {
+          const tt = clear(anchor, swing(back, s, upV));
+          const score = tt * len - s[2] + (i === cam.swing - 1 ? 0.8 : 0);
+          if (score > best.score) best = { i, t: tt, score };
+        });
+        cam.swing = best.i + 1;
+        if (best.i >= 0) {
+          back = [...swing(back, SWINGS[best.i], upV)];
+          t = best.t;
+        }
+      } else cam.swing = 0;
+    } else cam.swing = 0;
     t = Math.max(0.08, t);
     const pos = new THREE.Vector3(anchor[0] + back[0] * t, anchor[1] + back[1] * t, anchor[2] + back[2] * t);
     if (zone === 'city') pos.y = Math.max(pos.y, groundAt(pos.x, pos.z) + 0.5, -2);
@@ -291,9 +393,12 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     camera.position.copy(cam.pos);
     camera.up.lerp(upV, dt === 0 ? 1 : 1 - Math.exp(-4 * dt)).normalize();
     camera.lookAt(cam.at);
-    // the near plane moves out as he climbs (the depth buffer goes further)
+    // the near plane moves out as he climbs (the depth buffer goes further),
+    // but never out to him: his height is over the street, and on a roof or
+    // by a tower the camera can be nearer him than that would allow
     const alt = zone === 'space' ? altitudeOf(h) : h.p[1] - groundAt(h.p[0], h.p[2]);
-    const nearWant = zone === 'space' ? 2 : clamp(alt * 0.004, 0.25, 3);
+    const gap = Math.hypot(cam.pos.x - anchor[0], cam.pos.y - anchor[1], cam.pos.z - anchor[2]);
+    const nearWant = Math.min(zone === 'space' ? 2 : clamp(alt * 0.004, 0.25, 3), Math.max(0.1, gap * 0.3));
     // (and the far plane, so from high up the land runs on to the horizon)
     const farWant = zone === 'space' ? 1300000 : clamp(26000 + alt * 3, 26000, 60000);
     if (Math.abs(nearWant - cam.near) > 0.02 || Math.abs(farWant - camera.far) > 500) {
@@ -364,11 +469,17 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       gAt.lerpVectors(Y, gAt, k).normalize().applyQuaternion(gYaw);
       fig.body.quaternion.slerp(gQ.setFromUnitVectors(Y, gAt), 1 - Math.exp(-8 * gdt));
       fig.holder.quaternion.setFromUnitVectors(Y, gUp).premultiply(gYaw).multiply(gYaw.invert());
-      if (air) fig.pose(k > 0.45 ? POSES.fly() : POSES.hover(gt), gdt, 9);
-      else {
+      // (Mark's clips where they fit; flat out, posed, as the lean above wants)
+      if (air) {
+        if (k > 0.45) fig.pose(POSES.fly(), gdt, 9);
+        else fig.act('hover', { fade: 0.4 }) || fig.pose(POSES.hover(gt), gdt, 9);
+      } else {
         f.gait += speed * gdt * 1.55;
-        fig.pose(speed > 0.3 ? POSES.stride(f.gait, clamp(speed / 2, 0, 1), clamp((speed - 4) / 5, 0, 1)) : POSES.stand, gdt, 14);
+        if (speed > 4.5) fig.act('run', { speed: clamp(speed / 5.5, 0.7, 1.6) }) || fig.pose(POSES.stride(f.gait, 1, clamp((speed - 4) / 5, 0, 1)), gdt, 14);
+        else if (speed > 0.3) fig.act('walk', { speed: clamp(speed / 1.4, 0.6, 2.2) }) || fig.pose(POSES.stride(f.gait, clamp(speed / 2, 0, 1), 0), gdt, 14);
+        else fig.act('idle') || fig.pose(POSES.stand, gdt, 14);
       }
+      fig.tick(gdt);
     },
     tag: 0.5,
     halo: 1.3,
@@ -379,6 +490,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   // ── every frame ──
   let t = 0;
   let stride = 0;
+  const splashed = { t: -1, speed: 0 }; // (the last splash drawn)
   function frame(sim, frameDt) {
     // (the QA scripts' `snap`: the camera and his pose straight to where they're going)
     const snap = Boolean(sim.snap);
@@ -390,6 +502,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     const scare = [];
     for (const e of sim.events) {
       if (e.type === 'slam') scare.push({ x: e.at[0], z: e.at[2], r: 25 + e.speed * 0.25 });
+      else if (e.type === 'splash' && e.speed > 40) scare.push({ x: e.at[0], z: e.at[2], r: 15 + e.speed * 0.15 });
       else if (e.type === 'impact') scare.push({ x: e.at[0], z: e.at[2], r: 35 });
       else if (e.type === 'boom' && e.at[1] - groundAt(e.at[0], e.at[2]) < 90) scare.push({ x: e.at[0], z: e.at[2], r: 60 });
       if (e.type === 'boom') {
@@ -402,8 +515,17 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       } else if (e.type === 'impact') {
         fx.impact(e.at, e.n, e.speed);
         feel.trauma(clamp(e.speed / 120, 0.4, 1));
-      } else if (e.type === 'splash') fx.splash(e.at, e.speed);
-      else if (e.type === 'takeoff') fx.takeoff(e.at);
+      } else if (e.type === 'splash') {
+        // down onto the water: spray where a slam would crack the street (no
+        // crater), and a lighter knock than the street's. A dip and back down
+        // straight after (bobbing at the surface) doesn't throw up another.
+        if (!(t - splashed.t < 0.3 && e.speed <= splashed.speed)) {
+          fx.splash(e.at, e.speed);
+          feel.trauma(clamp(e.speed / 260, 0.15, 0.7));
+          splashed.t = t;
+          splashed.speed = e.speed;
+        }
+      } else if (e.type === 'takeoff') fx.takeoff(e.at);
       else if (e.type === 'spawn' || e.type === 'ko' || e.type === 'down' || e.type === 'hurt' || e.type === 'won') {
         // the Flaxans: coming through, knocked out, hitting him
         flaxans.fx(e);
@@ -431,29 +553,39 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       mark.holder.quaternion.setFromUnitVectors(Y, n).multiply(new THREE.Quaternion().setFromAxisAngle(Y, h.face));
       mark.lean.identity();
       mark.body.quaternion.identity();
-      mark.pose(POSES.proud(), dt, 6);
+      mark.act('idle') || mark.pose(POSES.proud(), dt, 6);
     } else if (h.mode === 'ground') {
+      // his motion-captured clips where he has them (walking at the pace he
+      // goes: the clip's own pace is about 1.4 m/s, a run's about 5.5);
+      // the landing crouch and a punch are posed, aimed where they go
       const flat = Math.hypot(h.v[0], h.v[2]);
       stride += flat * frameDt * 1.55;
       carry(mark, h.p, h.face, [0, 0, 0], dt, { lean: 0, lift: h.crouch > 0 ? -mark.hipHeight * 0.42 : 0 });
       if (h.crouch > 0) mark.pose(LAND, dt, 18);
-      else if (flat > 0.3) mark.pose(POSES.stride(stride, clamp(flat / 2, 0, 1), clamp((flat - 4) / 5, 0, 1)), dt, 14);
-      else mark.pose(POSES.stand, dt, 8);
+      else if (sim.punchT > 0) mark.pose(POSES.punch([0, 0.1, 1]), dt, 30);
+      else if (flat > 4.5) mark.act('run', { speed: clamp(flat / 5.5, 0.7, 1.6) }) || mark.pose(POSES.stride(stride, 1, clamp((flat - 4) / 5, 0, 1)), dt, 14);
+      else if (flat > 0.3) mark.act('walk', { speed: clamp(flat / 1.4, 0.6, 2.2) }) || mark.pose(POSES.stride(stride, clamp(flat / 2, 0, 1), 0), dt, 14);
+      else mark.act('idle') || mark.pose(POSES.stand, dt, 8);
     } else if (h.stun > 0) {
       carry(mark, h.p, h.face, h.v, dt, { lean: 0.4, roll: t * 9 });
-      mark.pose(POSES.hurt(), dt, 14);
+      mark.act('hit', { once: true, fade: 0.1 }) || mark.pose(POSES.hurt(), dt, 14);
     } else {
-      const k = carry(mark, h.p, h.face, h.v, dt, { lean: 1 });
+      // flat out, the fly clip lies along his flight itself
+      const fast = clamp((Math.hypot(...h.v) - 8) / 30, 0, 1) > 0.45 && mark.clips.includes('fly');
+      const k = carry(mark, h.p, h.face, h.v, dt, { lean: 1, ahead: fast });
       // a punch thrown hanging in the air (flat out, the fly pose's fist is already ahead)
-      mark.pose(k > 0.45 ? POSES.fly() : sim.punchT > 0 ? POSES.punch([0, 0.1, 1]) : POSES.hover(t), dt, sim.punchT > 0 ? 30 : 9);
+      if (sim.punchT > 0 && !fast) mark.pose(POSES.punch([0, 0.1, 1]), dt, 30);
+      else if (k > 0.45) mark.act('fly', { fade: 0.4 }) || mark.pose(POSES.fly(), dt, 9);
+      else mark.act('hover', { fade: 0.4 }) || mark.pose(POSES.hover(t), dt, 9);
     }
-    if (h.mode === 'ground' && sim.punchT > 0 && h.crouch <= 0) mark.pose(POSES.punch([0, 0.1, 1]), dt, 30);
+    mark.tick(dt);
 
     if (zone === 'city') {
       // his father, keeping an eye on things
       const bob = Math.sin(t * 0.7) * 1.2;
       carry(omni, [OMNI.p[0], OMNI.p[1] + bob, OMNI.p[2]], OMNI.yaw, [0, 0, 0], dt, { lean: 0 });
-      omni.pose(POSES.proud(), dt, 6);
+      omni.act('hover') || omni.pose(POSES.proud(), dt, 6);
+      omni.tick(dt);
       // (the QA scripts can hold everyone still, to frame them)
       if (!sim.hold) {
         npcs.update(frameDt, t, h);
@@ -471,7 +603,8 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       // Allen, waiting by the Moon; Thragg over Mars
       allen.pose({ mode: 'hover', t }, dt);
       carry(thragg, [THRAGG[0], THRAGG[1] + Math.sin(t * 0.6), THRAGG[2]], Math.atan2(-THRAGG[0], -THRAGG[2]), [0, 0, 0], dt, { lean: 0 });
-      thragg.pose(POSES.proud(), dt, 6);
+      thragg.act('hover') || thragg.pose(POSES.proud(), dt, 6);
+      thragg.tick(dt);
     }
     space.update(t, camera);
     // other players online: in the city, or out here with him

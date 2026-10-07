@@ -3,14 +3,18 @@ import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, prefersReducedMotion, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
 import { settle } from '../../../lib/settle';
+import { useVoiced } from '../../../lib/useVoiced';
+import { sayVoiced } from '../../../lib/voiced';
 import { readPad, typing } from '../../games/pad';
 import { useAchievements } from '../../Achievements';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { FIGHT, PORTAL, newFight, startInvasion, stepFight } from './fight';
 import { FLY, newHero, stepHero } from './flight';
-import { BODIES, SPACE, altitudeOf, intoSpace, outOfSpace, stepSpace } from './orbit';
+import { CALLS } from './lines';
+import { BODIES, SPACE, intoSpace, outOfSpace, stepSpace } from './orbit';
 import { CARDS, RINGS, keepQuests, newQuests, stepQuests } from './quests';
-import { CITY, COAST, BEACH, HILLS, PLACES, RIVER, SPAWN, SUBURB, WATER_Y, WORLD, groundAt, waterAt } from './map';
+import { CITY, COAST, BEACH, HILLS, PLACES, RIVER, SPAWN, SUBURB, WATER_Y, WORLD, groundAt, isSafeStart } from './map';
+import { VOICE } from './voicelines';
 import './world.css';
 
 // The Graysons' city, the world: fly about it as Invincible. The rules are
@@ -20,6 +24,7 @@ import './world.css';
 // the places as cards.
 
 const sfx = (name) => import('../../../lib/sfx').then((s) => s[name]?.()).catch(() => null);
+const sound = (name, ...args) => import('./sounds').then((m) => m[name]?.(...args)).catch(() => null);
 const AT = 'tp-inv-world-at';
 const TIME = 'tp-inv-world-time';
 const QUESTS = 'tp-inv-world-quests';
@@ -49,10 +54,11 @@ const DEEP = SPACE.bound * 2; // (as far over any of them as he gets)
 const upY = (y, top) => (80 * Math.log1p(Math.max(0, y) / 20)) / Math.log1p(top / 20);
 const downY = (v, top) => 20 * Math.expm1((v * Math.log1p(top / 20)) / 80);
 const over = (p, b) => Math.hypot(p[0] - b.c[0], p[1] - b.c[1], p[2] - b.c[2]) - b.r;
+const nearest = (p) => ROUND.reduce((a, q) => (over(p, q) < over(p, a) ? q : a));
 function seenAs(h, speed) {
   const face = wrap(h.face);
   if (h.zone !== 'space') return [{ x: h.p[0], z: h.p[2], face, speed, y: upY(h.p[1] - Math.max(groundAt(h.p[0], h.p[2]), WATER_Y), WORLD.ceiling) }, 'city'];
-  const b = ROUND.reduce((a, q) => (over(h.p, q) < over(h.p, a) ? q : a));
+  const b = nearest(h.p);
   const d = h.p.map((v, i) => v - b.c[i]);
   const r = Math.hypot(...d) || 1;
   return [{ x: Math.atan2(d[0], d[2]) * 1000, z: Math.asin(clamp(d[1] / r, -1, 1)) * 1000, face, speed, y: upY(r - b.r, DEEP) }, `space-${b.id}`];
@@ -66,6 +72,37 @@ function placeOf(p) {
   const up = [Math.cos(lat) * Math.sin(lon), Math.sin(lat), Math.cos(lat) * Math.cos(lon)];
   const high = downY(p.y ?? 0, DEEP);
   return { ...p, x: b.c[0] + up[0] * (b.r + high), y: b.c[1] + up[1] * (b.r + high), z: b.c[2] + up[2] * (b.r + high), up, over: high };
+}
+
+// What was kept from last time, read so that nothing kept can break the
+// world (an old version's shape, a hand-edited value, a half-written one):
+// a time of day that isn't one is noon, and quests that can't be read are
+// none found.
+function keptTime() {
+  const t = local.get(TIME, 'noon');
+  return TIMES.includes(t) ? t : 'noon';
+}
+function keptQuests() {
+  try {
+    return newQuests(local.get(QUESTS, {}));
+  } catch {
+    return newQuests();
+  }
+}
+
+// Where he starts, once there's a world to check it against: where he was
+// left standing, if that's still open ground (map.js's isSafeStart: not in
+// a tower, under the land, over the water or above the sky); otherwise, as
+// a first time, he comes down out of the sky onto the lawn.
+function placeHero(s, world) {
+  const ok = isSafeStart(world, s.kept);
+  const at = ok ? s.kept : SPAWN;
+  const face = ok && Number.isFinite(at.face) ? at.face : SPAWN.face;
+  const drop = !ok && !prefersReducedMotion();
+  const h = newHero({ x: at.x, y: at.y, z: at.z, face });
+  s.h = drop ? { ...h, p: [at.x, 420, at.z], mode: 'air', v: [0, -60, 0], spd: 60, dir: [0, -1, 0] } : h;
+  s.intro = drop;
+  s.yaw = face;
 }
 
 export default function InvWorld() {
@@ -89,38 +126,72 @@ function World({ gl, setGl }) {
   const api = useRef(null);
   const sim = useRef(null);
   const wind = useRef(null);
-  const [time, setTimeName] = useState(() => (TIMES.includes(local.get(TIME, 'noon')) ? local.get(TIME, 'noon') : 'noon'));
+  // The time of day: one clock. The HUD's button reads it, the scene is
+  // given it (below), and the dev hook sets it, so they can't disagree.
+  const [time, setTimeName] = useState(keptTime);
   const [help, setHelp] = useState(false);
   const [toast, setToast] = useState(null);
   const [near, setNear] = useState(null);
   const [bubble, setBubble] = useState(null);
+  // what they say, in their own voice where it's been made (lib/voiced.js)
+  useVoiced(VOICE[bubble?.who], bubble?.text);
   const [zone, setZoneUi] = useState('city');
   const [flash, setFlash] = useState(null);
   const [card, setCard] = useState(() => !prefersReducedMotion());
   const { unlock } = useAchievements();
-  const [found, setFound] = useState(() => newQuests(local.get(QUESTS, {})).cards.length);
+  const [found, setFound] = useState(() => keptQuests().cards.length);
   const bubbleRef = useRef(null);
   const hud = useRef({});
   if (!sim.current) {
-    const kept = local.get(AT, null);
-    const ok = kept && [kept.x, kept.y, kept.z].every(Number.isFinite) && Math.abs(kept.x) < WORLD.half && Math.abs(kept.z) < WORLD.half && !waterAt(kept.x, kept.z);
-    const at = ok ? kept : SPAWN;
-    // a first time here, he comes down out of the sky onto the lawn
-    const drop = !ok && !prefersReducedMotion();
-    const h = drop ? { ...newHero(at), p: [at.x, 420, at.z], mode: 'air', v: [0, -60, 0], spd: 60, dir: [0, -1, 0] } : newHero(at);
-    sim.current = { intro: drop, quests: newQuests(local.get(QUESTS, {})), fight: newFight(), punch: false, punchT: 0, invadeAt: 240, h, keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: at.face ?? SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], frame: 0, padBefore: null, moved: false, world: null };
+    // (he's put on the lawn for now: where he really starts waits on the
+    // world, which the scene makes, and nothing moves before it's there)
+    sim.current = { intro: false, kept: local.get(AT, null), quests: keptQuests(), fight: newFight(), punch: false, punchT: 0, invadeAt: 240, h: newHero(SPAWN), keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], frame: 0, padBefore: null, moved: false, world: null };
   }
 
-  const say = useCallback((text, ms = 2400) => {
+  // (`who`, for a line someone says: in their own voice where it's been made)
+  const say = useCallback((text, ms = 2400, who = null) => {
     setToast({ text, key: Math.random() });
     clearTimeout(say.t);
     say.t = setTimeout(() => setToast(null), ms);
+    if (who) sayVoiced(VOICE[who], text);
   }, []);
+
+  // The scene's time of day follows `time`. Its setTime waits on the sky's
+  // pictures, so the calls go one at a time, each giving the scene the
+  // latest time asked for: two quick presses can't finish the wrong way
+  // round, and one made while the city is still loading isn't lost (the
+  // loader asks again once there's a scene). Resolves once the scene has it.
+  const timeRef = useRef(time);
+  const timeJob = useRef(Promise.resolve());
+  const shown = useRef(null); // (which scene has which time: a hot reload makes a new one)
+  const syncTime = useCallback(() => {
+    timeJob.current = timeJob.current
+      .then(async () => {
+        const a = api.current;
+        const want = timeRef.current;
+        if (!a || a.lost || (shown.current?.a === a && shown.current.time === want)) return;
+        await a.setTime(want);
+        shown.current = { a, time: want };
+      })
+      .catch((e) => {
+        if (import.meta.env.DEV) console.error(e);
+      });
+    return timeJob.current;
+  }, []);
+  useEffect(() => {
+    timeRef.current = time;
+    local.set(TIME, time);
+    syncTime();
+  }, [time, syncTime]);
 
   // the world: made once
   useEffect(() => {
     let dead = false;
+    const H = hud.current;
+    // the canvas, and the HUD's own canvases, at the size they're shown and
+    // the screen's density
     const fit = () => {
+      fitHud(H, mapRef.current);
       const c = canvas.current;
       if (!c || !api.current) return;
       const r = c.getBoundingClientRect();
@@ -135,38 +206,60 @@ function World({ gl, setGl }) {
           return;
         }
         api.current = a;
+        // (once: a scene made again, by a hot reload, takes over where he is)
+        if (!sim.current.world) placeHero(sim.current, a.world);
         sim.current.world = a.world;
         fit();
-        await a.setTime(time);
+        await syncTime();
         await settle(a.engine.precompile(), 4000);
         if (dead || a.lost) return;
-        if (import.meta.env.DEV) window.__INVWORLD__ = { api: a, sim: sim.current };
+        if (import.meta.env.DEV) {
+          // (the QA scripts' handle: the scene's api, but its setTime is the
+          // HUD's, through the one clock, and resolves once the scene has it)
+          const hook = Object.create(a);
+          hook.setTime = (name) => {
+            timeRef.current = TIMES.includes(name) ? name : 'noon';
+            setTimeName(timeRef.current);
+            return syncTime();
+          };
+          window.__INVWORLD__ = { api: hook, sim: sim.current };
+        }
         setGl('on');
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
         if (!dead) setGl('failed');
       });
+    // a new size, of the stage or of anything the compass has to keep clear of
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
-    if (canvas.current) ro?.observe(canvas.current);
+    for (const el of [canvas.current, H.compass, mapRef.current, H.tools, ...(H.brand?.children ?? [])]) if (el) ro?.observe(el);
+    // a new screen density alone (the window moved to another monitor, the
+    // page zoomed) isn't a new size the observer sees
+    let dpr = null;
+    const onDpr = () => {
+      dpr?.removeEventListener?.('change', onDpr);
+      fit();
+      dpr = window.matchMedia?.(`(resolution: ${window.devicePixelRatio || 1}dppx)`) ?? null;
+      dpr?.addEventListener?.('change', onDpr);
+    };
+    onDpr();
     const s = sim.current;
     return () => {
       dead = true;
       ro?.disconnect();
-      if (s.h.zone !== 'space' && s.h.mode === 'ground' && !waterAt(s.h.p[0], s.h.p[2])) local.set(AT, { x: s.h.p[0], y: s.h.p[1], z: s.h.p[2], face: s.h.face });
+      dpr?.removeEventListener?.('change', onDpr);
+      // (where he's standing, for next time: only once he's been placed, and
+      // only somewhere placeHero will take back, so a place it would turn
+      // down never overwrites one it wouldn't)
+      const keep = { x: s.h.p[0], y: s.h.p[1], z: s.h.p[2], face: s.h.face };
+      if (s.world && s.h.zone !== 'space' && s.h.mode === 'ground' && Number.isFinite(keep.face) && isSafeStart(s.world, keep)) local.set(AT, keep);
       wind.current?.stop();
       wind.current = null;
       api.current?.dispose();
       api.current = null;
+      if (import.meta.env.DEV && window.__INVWORLD__?.sim === s) delete window.__INVWORLD__;
     };
-    // (made once; the time of day is set below when it changes)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setGl]);
-
-  useEffect(() => {
-    local.set(TIME, time);
-    api.current?.setTime(time);
-  }, [time]);
+  }, [setGl, syncTime]);
 
   const live = gl === 'on' && inView;
   const cycleTime = useCallback(() => setTimeName((t) => TIMES[(TIMES.indexOf(t) + 1) % TIMES.length]), []);
@@ -183,7 +276,8 @@ function World({ gl, setGl }) {
       s.fight = startInvasion(s.fight);
       s.invaded = true;
       sfx('alarm');
-      say(why === 'cecil' ? 'Cecil: “Portal over the river. Flaxans again. Go.”' : 'Something’s coming through over the river. Purple. Lots of it.', 4600);
+      if (why === 'cecil') say(CALLS.portal.text, 4600, CALLS.portal.who);
+      else say('Something’s coming through over the river. Purple. Lots of it.', 4600);
     },
     [say],
   );
@@ -192,7 +286,7 @@ function World({ gl, setGl }) {
     // next to Dad over downtown: spar with him (Think, Mark!, down the page)
     if (sim.current.talking?.id === 'omni') {
       sfx('drum');
-      say('“Think, Mark!” Down the page, over the city.');
+      say(CALLS.spar.text, 2400, CALLS.spar.who);
       document.getElementById('inv-game')?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
       return;
     }
@@ -205,6 +299,22 @@ function World({ gl, setGl }) {
     sfx('ding');
     say(`${p.name}: ${p.line}`, 3200);
   }, [say, invade]);
+
+  // Everything held, let go: the keys, the stick, the touch buttons and a
+  // drag. A blur or a hidden tab (another app, a call) can swallow the
+  // key-up or the lifted finger, and he'd fly on by himself.
+  const stickRef = useRef(null);
+  const stickDrag = useRef(null);
+  const drag = useRef(null);
+  const release = useCallback(() => {
+    const s = sim.current;
+    s.keys.clear();
+    s.stick = { x: 0, y: 0 };
+    s.touchUp = s.touchDown = s.touchBoost = false;
+    stickDrag.current = null;
+    drag.current = null;
+    if (stickRef.current) stickRef.current.style.transform = '';
+  }, []);
 
   // the keys
   useEffect(() => {
@@ -235,20 +345,31 @@ function World({ gl, setGl }) {
       if (k) s.keys.delete(k);
       if (!e.shiftKey) s.keys.delete('boost');
     };
-    const blur = () => s.keys.clear();
+    const hidden = () => document.hidden && release();
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
-    window.addEventListener('blur', blur);
+    window.addEventListener('blur', release);
+    document.addEventListener('visibilitychange', hidden);
     return () => {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
-      window.removeEventListener('blur', blur);
-      s.keys.clear();
+      window.removeEventListener('blur', release);
+      document.removeEventListener('visibilitychange', hidden);
+      release();
     };
-  }, [live, act, cycleTime, startSound]);
+  }, [live, act, cycleTime, startSound, release]);
+
+  // The wind falls quiet while nobody's flying: the frame loop that keeps
+  // it in step with him stops when the tab's hidden or the world's
+  // scrolled away (Think, Mark! is under it), and would leave it rushing.
+  useEffect(() => {
+    const hush = () => wind.current?.hush(!live || document.hidden);
+    hush();
+    document.addEventListener('visibilitychange', hush);
+    return () => document.removeEventListener('visibilitychange', hush);
+  }, [live]);
 
   // looking round: drag on the canvas
-  const drag = useRef(null);
   const onPointerDown = (e) => {
     if (e.pointerType === 'touch' && e.clientX < (canvas.current?.getBoundingClientRect().left ?? 0) + (canvas.current?.clientWidth ?? 0) * 0.4) return; // the left of a phone's screen is the stick
     startSound();
@@ -347,9 +468,9 @@ function World({ gl, setGl }) {
       s.yaw += wrap(vy - s.yaw) * (1 - Math.exp(-r * dt));
       s.pitch += (clamp(vp * 0.85 - 0.08, -1.2, 1.1) - s.pitch) * (1 - Math.exp(-r * 0.8 * dt));
     }
-    // the things to do: the rings, the cards, the rescues (in the city)
-    if (!inSpace) s.quests = stepQuests(s.quests, h, dt, s.world);
-    else s.quests = { ...s.quests, ev: [] };
+    // the things to do: the rings, the cards, the rescues (and while he's out
+    // in space the city goes on without him: ./quests.js knows he's away)
+    s.quests = stepQuests(s.quests, h, dt, s.world);
     for (const e of s.quests.ev) {
       if (e.type === 'lesson-start') {
         sfx('ding');
@@ -386,7 +507,13 @@ function World({ gl, setGl }) {
     s.punchT = Math.max(0, s.punchT - dt);
     if (!inSpace) {
       if (!s.invaded && s.t > s.invadeAt) invade('auto');
-      const r = stepFight(s.fight, h, { punch: s.punch, look }, dt);
+      // (in the rules' own steps: stepFight takes at most 0.05 s a step, so the
+      // dev clock's speed-up runs it several times; the punch counts once)
+      let r = { fight: s.fight, ev: [], push: null, stun: 0 };
+      for (let left = dt, first = true; left > 1e-6; left -= 0.05, first = false) {
+        const q = stepFight(r.fight, h, { punch: first && s.punch, look }, Math.min(0.05, left));
+        r = { fight: q.fight, ev: [...r.ev, ...q.ev], push: q.push ?? r.push, stun: Math.max(r.stun ?? 0, q.stun ?? 0) };
+      }
       s.fight = r.fight;
       if (r.push) {
         const l = Math.hypot(...r.push) || 1;
@@ -427,12 +554,21 @@ function World({ gl, setGl }) {
         if (e.speed > 80) sfx('boom');
       } else if (e.type === 'impact') sfx('crumble');
       else if (e.type === 'takeoff') sfx('zip');
-      else if (e.type === 'splash') sfx('knock');
-      else if (e.type === 'land') {
-        // on the Moon, or Mars
+      else if (e.type === 'splash') {
+        // a slam's sound, lighter (water gives): spray, and a thud under it
+        // when he hit it hard; one at a time, however often he skims it
+        if (s.t - (s.splashAt ?? -1) >= 0.4) {
+          s.splashAt = s.t;
+          sound('splashSound', e.speed);
+          if (e.speed > 80) sfx('thunk');
+        }
+      } else if (e.type === 'land') {
         sfx(e.speed > 300 ? 'crumble' : 'thunk');
-        unlock(e.body === 'moon' ? 'moonwalk' : 'redplanet');
-        say(e.body === 'moon' ? 'The Moon. Neil Armstrong, eat your heart out. (Space or W to go.)' : 'Mars. A long way from home. (Space to go.)', 4200);
+        // on the Moon, or Mars (./orbit.js names which; a soft landing in the city names none)
+        if (e.body) {
+          unlock(e.body === 'moon' ? 'moonwalk' : 'redplanet');
+          say(e.body === 'moon' ? 'The Moon. Neil Armstrong, eat your heart out. (Space or W to go.)' : 'Mars. A long way from home. (Space to go.)', 4200);
+        }
       }
     }
     // other players: where you are to them, and where they are (in the city,
@@ -446,8 +582,10 @@ function World({ gl, setGl }) {
     a.frame(s, dt);
     s.frame++;
 
-    // what's near: a place's door, on the ground or just over it
-    const alt = inSpace ? altitudeOf(h) : h.p[1] - groundAt(h.p[0], h.p[2]);
+    // what's near: a place's door, on the ground or just over it (and in
+    // space, his height is over whichever of the Earth, the Moon and Mars
+    // he's nearest: on the Moon, it's the Moon's ground under him)
+    const alt = inSpace ? over(h.p, nearest(h.p)) : h.p[1] - groundAt(h.p[0], h.p[2]);
     let nearP = null;
     if (alt < 12 && !inSpace) for (const p of s.world.places) if (Math.hypot(h.p[0] - p.door[0], h.p[2] - p.door[1]) < p.r + 6) nearP = p;
     if (nearP !== s.near) {
@@ -469,19 +607,21 @@ function World({ gl, setGl }) {
       if (q.rescue && !q.rescue.carried) marks.push({ x: q.rescue.p[0], z: q.rescue.p[2], color: '#ff3b30', name: 'Help' });
       if (q.lesson.on) marks.push({ x: RINGS[q.lesson.next].p[0], z: RINGS[q.lesson.next].p[2], color: '#ffd23a', name: `Ring ${q.lesson.next + 1}` });
       s.marks = marks;
-      if (H.compass) drawCompass(H.compass, s.yaw, h, s.world.places, marks);
+      if (H.compass && H.compassBox && !inSpace) drawCompass(H.compass, H.compassBox, s.yaw, h, s.world.places, marks);
       if (H.goal) {
+        // (in space, the city's distances mean nothing: he's a world away)
         const d = q.rescue ? Math.round(Math.hypot(q.rescue.p[0] - h.p[0], q.rescue.p[1] - h.p[1], q.rescue.p[2] - h.p[2])) : 0;
         const left = s.fight.on ? FIGHT.count - s.fight.foes.filter((e) => e.state === 'ko' || e.state === 'down').length : 0;
         const fightText = s.fight.on ? `Flaxans over the river · ${left} left · you ${Math.max(0, Math.round(s.fight.hp))}%` : '';
-        const text = fightText || (q.rescue ? (q.rescue.carried ? 'Set them down: land anywhere' : `${WHAT[q.rescue.kind]} · ${d} m`) : q.lesson.on ? `Dad’s rings · ${q.lesson.next + 1} of ${RINGS.length} · ${clock(q.lesson.t)}` : '');
+        const rescueText = q.rescue && (q.rescue.carried ? (inSpace ? 'Set them down: back in the city' : 'Set them down: land anywhere') : `${WHAT[q.rescue.kind]} · ${inSpace ? 'down in the city' : `${d} m`}`);
+        const text = fightText || rescueText || (q.lesson.on ? `Dad’s rings · ${q.lesson.next + 1} of ${RINGS.length} · ${clock(q.lesson.t)}` : '');
         if (H.goal.textContent !== text) H.goal.textContent = text;
         H.goal.dataset.on = text ? '1' : '';
         H.goal.dataset.red = q.rescue && !s.fight.on ? '1' : '';
         H.goal.dataset.purple = s.fight.on ? '1' : '';
       }
     }
-    if (s.frame % 4 === 0 && mapRef.current) drawMap(mapRef.current, h, s.yaw, alt, s.world, s.marks);
+    if (s.frame % 4 === 0 && mapRef.current && H.mapBox && !inSpace) drawMap(mapRef.current, H.mapBox, h, s.yaw, alt, s.world, s.marks);
     // who's talking to him: a bubble over the nearest, a new line every few seconds
     if (s.frame % 3 === 0) {
       const t = a.talkers(h)[0] ?? null;
@@ -491,12 +631,12 @@ function World({ gl, setGl }) {
         if (t) {
           said[t.id] = ((said[t.id] ?? -1) + 1) % t.lines.length;
           s.talkAt = s.t;
-          setBubble({ name: t.name, text: t.lines[said[t.id]] });
+          setBubble({ name: t.name, who: t.role ?? t.id, text: t.lines[said[t.id]] });
         } else setBubble(null);
       } else if (t && s.t - s.talkAt > 5) {
         said[t.id] = (said[t.id] + 1) % t.lines.length;
         s.talkAt = s.t;
-        setBubble({ name: t.name, text: t.lines[said[t.id]] });
+        setBubble({ name: t.name, who: t.role ?? t.id, text: t.lines[said[t.id]] });
       }
       s.talking = t ?? null;
     }
@@ -510,15 +650,16 @@ function World({ gl, setGl }) {
       s.mimicSaid = true;
       sfx('flyby');
       unlock('mimic');
-      say('Dad, in your ear: “Look what they need to mimic a fraction of our power.”', 4200);
+      say(CALLS.mimic.text, 4200, CALLS.mimic.who);
     }
-    wind.current?.set({ speed, alt });
+    // (the city's hum is the city's: not over the Moon)
+    wind.current?.set({ speed, alt: inSpace ? Infinity : alt });
   }, live);
 
-  // the stick, on a phone
-  const stickRef = useRef(null);
-  const stickDrag = useRef(null);
+  // the stick, on a phone: one finger at a time (a second finger landing on
+  // it, or lifting off it, leaves the first in charge)
   const stickDown = (e) => {
+    if (stickDrag.current) return;
     startSound();
     stickDrag.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -531,7 +672,8 @@ function World({ gl, setGl }) {
     sim.current.stick = { x: dx, y: dy };
     if (stickRef.current) stickRef.current.style.transform = `translate(${dx * 26}px, ${dy * 26}px)`;
   };
-  const stickUp = () => {
+  const stickUp = (e) => {
+    if (stickDrag.current?.id !== e.pointerId) return;
     stickDrag.current = null;
     sim.current.stick = { x: 0, y: 0 };
     if (stickRef.current) stickRef.current.style.transform = '';
@@ -568,14 +710,14 @@ function World({ gl, setGl }) {
       {gl === 'loading' && <p className="iw-loading">Over the city…</p>}
 
       <div className="iw-hud iw-hud-top">
-        <div className="iw-brand">
+        <div className="iw-brand" ref={(el) => (hud.current.brand = el)}>
           <p className="iw-eyebrow">Invincible · the Graysons’ city</p>
           <h2 id="iw-title" className="iw-title">
             Fly, Mark.
           </h2>
           <p className="iw-goal" ref={(el) => (hud.current.goal = el)} aria-live="polite" />
         </div>
-        <div className="iw-tools">
+        <div className="iw-tools" ref={(el) => (hud.current.tools = el)}>
           <button type="button" className="iw-btn" onClick={cycleTime} aria-label={`Time of day: ${TIME_NAME[time]}. Change it.`}>
             {TIME_NAME[time]}
           </button>
@@ -588,7 +730,7 @@ function World({ gl, setGl }) {
           </a>
         </div>
       </div>
-      <canvas className="iw-compass" ref={(el) => (hud.current.compass = el)} width="560" height="44" aria-hidden="true" />
+      <canvas className="iw-compass" ref={(el) => (hud.current.compass = el)} aria-hidden="true" />
 
       {help && (
         <div className="iw-help" role="dialog" aria-label="Controls">
@@ -646,11 +788,11 @@ function World({ gl, setGl }) {
           )}
         </div>
       </div>
-      <canvas className="iw-map" ref={mapRef} width="180" height="180" aria-hidden="true" />
+      <canvas className="iw-map" ref={mapRef} aria-hidden="true" />
 
       {touch && (
         <div className="iw-touch">
-          <div className="iw-stick" onPointerDown={stickDown} onPointerMove={stickMove} onPointerUp={stickUp} onPointerCancel={stickUp}>
+          <div className="iw-stick" onPointerDown={stickDown} onPointerMove={stickMove} onPointerUp={stickUp} onPointerCancel={stickUp} onLostPointerCapture={stickUp}>
             <span ref={stickRef} />
           </div>
           <div className="iw-buttons">
@@ -690,6 +832,44 @@ function Players({ trav }) {
   );
 }
 
+// ── the HUD's canvases: as many pixels as the screen has under them (sharp
+// on a 2× screen); the compass drawn in CSS pixels, so its type is the size
+// it says on a phone too, and the map in 180ths of its width, its look at
+// any size ──
+function fitCanvas(c, unit) {
+  const w = c?.clientWidth;
+  const hh = c?.clientHeight;
+  if (!w || !hh) return null; // (hidden: in space)
+  const k = Math.min(3, window.devicePixelRatio || 1);
+  const bw = Math.round(w * k);
+  const bh = Math.round(hh * k);
+  if (c.width !== bw || c.height !== bh) {
+    c.width = bw;
+    c.height = bh;
+  }
+  return unit ? { w: unit, h: (hh * unit) / w, s: bw / unit } : { w, h: hh, s: bw / w };
+}
+function fitHud(H, map) {
+  H.mapBox = fitCanvas(map, 180);
+  const box = fitCanvas(H.compass);
+  if (box) {
+    // under the buttons, however many rows they wrap to (world.css)
+    const stage = H.compass.parentElement?.getBoundingClientRect();
+    const tools = H.tools?.getBoundingClientRect();
+    if (stage && tools?.height) H.compass.style.setProperty('--iw-under', `${Math.round(tools.bottom - stage.top + 6)}px`);
+    // where the HUD's other things still sit over the strip (the title, the
+    // goal): nothing of the compass is drawn there (by more than a sliver:
+    // the title's box runs a little below its letters)
+    const r = H.compass.getBoundingClientRect();
+    box.block = [];
+    for (const el of [H.tools, ...(H.brand?.children ?? [])]) {
+      const b = el?.getBoundingClientRect();
+      if (b?.width && Math.min(b.bottom, r.bottom) - Math.max(b.top, r.top) > 6 && b.right > r.left && b.left < r.right) box.block.push([b.left - r.left - 6, b.right - r.left + 6]);
+    }
+  }
+  H.compassBox = box;
+}
+
 // ── the compass: a strip of headings, the places marked on it ──
 const DIRS = [
   [0, 'S'],
@@ -697,52 +877,69 @@ const DIRS = [
   [Math.PI, 'N'],
   [-Math.PI / 2, 'W'],
 ];
-function drawCompass(c, yaw, h, places, marks = []) {
+function drawCompass(c, box, yaw, h, places, marks = []) {
   const x = c.getContext('2d');
-  const W = c.width;
-  const H = c.height;
+  const { w: W, h: H } = box;
+  const u = H / 44; // (laid out for a strip 44 high)
+  x.setTransform(box.s, 0, 0, box.s, 0, 0);
   x.clearRect(0, 0, W, H);
   const span = Math.PI * 0.9; // what the strip shows
   const at = (a) => W / 2 + (wrap(yaw - a) / span) * W; // (yaw grows to the left)
-  x.font = '700 20px system-ui, sans-serif';
+  // what's written on it so far, left to right: a name only goes where it fits
+  const taken = [...box.block];
+  const free = (a, b) => a >= 0 && b <= W && !taken.some(([p, q]) => b > p && a < q);
+  x.font = `700 ${20 * u}px system-ui, sans-serif`;
   x.textAlign = 'center';
   x.fillStyle = 'rgba(255,255,255,0.9)';
   for (const [a, n] of DIRS) {
     const px = at(a);
-    if (px > 10 && px < W - 10) x.fillText(n, px, 19);
+    if (px < 10 * u || px > W - 10 * u) continue;
+    x.fillText(n, px, 19 * u);
+    taken.push([px - 9 * u, px + 9 * u]);
   }
   x.fillStyle = 'rgba(255,255,255,0.35)';
   for (let k = 0; k < 24; k++) {
     const px = at((k / 24) * Math.PI * 2);
-    if (px > 0 && px < W) x.fillRect(px - 0.5, 24, 1, k % 6 === 0 ? 8 : 5);
+    if (px > 0 && px < W) x.fillRect(px - 0.5, 24 * u, 1, (k % 6 === 0 ? 8 : 5) * u);
   }
+  // the places: a dot each, and the nearest's names first
+  const named = [];
+  x.fillStyle = '#ffd23a';
   for (const p of places) {
-    const a = Math.atan2(p.x - h.p[0], p.z - h.p[2]);
-    const px = at(a);
-    if (px < 8 || px > W - 8) continue;
-    const d = Math.hypot(p.x - h.p[0], p.z - h.p[2]);
-    x.fillStyle = '#ffd23a';
+    const px = at(Math.atan2(p.x - h.p[0], p.z - h.p[2]));
+    if (px < 8 * u || px > W - 8 * u) continue;
     x.beginPath();
-    x.arc(px, 36, 4, 0, Math.PI * 2);
+    x.arc(px, 36 * u, 4 * u, 0, Math.PI * 2);
     x.fill();
-    if (d < 1800) {
-      x.font = '600 14px system-ui, sans-serif';
-      x.fillText(p.name.replace(/^The /, ''), px, 12);
-    }
+    const d = Math.hypot(p.x - h.p[0], p.z - h.p[2]);
+    if (d < 1800) named.push({ px, d, name: p.name.replace(/^The /, '') });
+  }
+  x.font = `600 ${14 * u}px system-ui, sans-serif`;
+  for (const n of named.sort((a, b) => a.d - b.d)) {
+    const half = x.measureText(n.name).width / 2 + 3 * u;
+    // over its dot, kept whole at the ends; or, if that's taken, slid just
+    // clear of what's there, if that's still near its dot
+    const tries = [clamp(n.px, half, W - half)];
+    for (const [p, q] of taken) tries.push(p - half, q + half);
+    const lx = tries.filter((c) => Math.abs(c - n.px) < 64 * u && free(c - half, c + half)).sort((a, b) => Math.abs(a - n.px) - Math.abs(b - n.px))[0];
+    if (lx === undefined) continue;
+    taken.push([lx - half, lx + half]);
+    x.fillText(n.name, lx, 12 * u);
   }
   for (const m of marks) {
     const px = at(Math.atan2(m.x - h.p[0], m.z - h.p[2]));
-    const cx = Math.max(10, Math.min(W - 10, px));
+    const cx = Math.max(10 * u, Math.min(W - 10 * u, px));
     x.fillStyle = m.color;
     x.beginPath();
-    x.moveTo(cx, 26);
-    x.lineTo(cx + 7, 40);
-    x.lineTo(cx - 7, 40);
+    x.moveTo(cx, 26 * u);
+    x.lineTo(cx + 7 * u, 40 * u);
+    x.lineTo(cx - 7 * u, 40 * u);
     x.closePath();
     x.fill();
   }
   x.fillStyle = '#ffd23a';
-  x.fillRect(W / 2 - 1, 22, 2, 18);
+  x.fillRect(W / 2 - u, 22 * u, 2 * u, 18 * u);
+  for (const [p, q] of box.block) x.clearRect(p, 0, q - p, H);
 }
 
 // ── the map: north up, round him, further out the higher he is ──
@@ -773,9 +970,10 @@ function mapBase() {
   base = { c, k, P };
   return base;
 }
-function drawMap(c, h, yaw, alt, world, marks = []) {
+function drawMap(c, box, h, yaw, alt, world, marks = []) {
   const x = c.getContext('2d');
-  const W = c.width;
+  const W = box.w;
+  x.setTransform(box.s, 0, 0, box.s, 0, 0);
   const b = mapBase();
   if (!b.towers) {
     // the towers and houses, once

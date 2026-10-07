@@ -87,4 +87,7 @@ export const HOBBIT_LINES = {
   frodo: ['I will take the Ring, though I do not know the way.', 'I wish the Ring had never come to me.', 'It’s gone. It’s done.'],
   sam: ['I can’t carry it for you, but I can carry you!', 'There’s some good in this world, Mr. Frodo, and it’s worth fighting for.', 'Po-tay-toes! Boil ’em, mash ’em, stick ’em in a stew.'],
 };
+// the lines the site has the films' own recordings of (lib/clips); the rest
+// are said in the speaker's made voice, where it's been made (./voicelines.js)
+export const SPOKEN = { 'Fly, you fools!': 'flyYouFools', 'I can’t carry it for you, but I can carry you!': 'carryYou', 'My precious…': 'myPrecious' };
 export const NAMES = { frodo: 'Frodo Baggins', sam: 'Samwise Gamgee', ...Object.fromEntries(CAST.map((c) => [c.id, c.name])) };

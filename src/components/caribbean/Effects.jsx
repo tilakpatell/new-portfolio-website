@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { audioContext } from '../../lib/audio';
+import { sayVoiced, stopVoiced } from '../../lib/voiced';
+import { JAR, JAR_HEART } from './lines';
 
 const sound = (name) => {
   audioContext(); // inside the press, so the sound may play
@@ -52,18 +54,31 @@ export function Rum({ onGone }) {
 }
 
 // The jar of dirt. Each press says a little more about what's in it.
-const JAR = ['Press the jar.', 'I’ve got a jar of dirt!', 'I’ve got a jar of dirt, and guess what’s inside it?', 'Something that beats. Don’t tell the captain of the Dutchman.'];
-
 export function Jar() {
   const [step, setStep] = useState(0);
   const [shake, setShake] = useState(0);
+  const clip = useRef(null); // his recording of the next two lines, playing
+  const turn = useRef(0); // (a lid put back, or the jar gone, and what's inside goes unsaid)
+  useEffect(() => () => void (turn.current += 1), []);
   const press = () => {
     setShake((n) => n + 1);
-    const next = Math.min(JAR.length - 1, step + 1);
+    const next = Math.min(JAR_HEART, step + 1);
     setStep(next);
-    if (next === JAR.length - 1) sound('heart');
+    if (next === JAR_HEART) sound('heart');
     else sound('glug');
-    if (step === 0) say('jarOfDirt'); // he says the next two himself
+    if (step === 0) clip.current = say('jarOfDirt'); // he says the next two himself
+    if (next === JAR_HEART && step !== JAR_HEART) {
+      // and what's inside, in his voice where it's been made (lib/voiced.js), once he's said those
+      const mine = ++turn.current;
+      Promise.resolve(clip.current)
+        .then((h) => h?.ended)
+        .then(() => mine === turn.current && sayVoiced('jack', JAR[JAR_HEART]));
+    }
+  };
+  const close = () => {
+    turn.current += 1;
+    stopVoiced();
+    setStep(0);
   };
   return (
     <div className="cb-toy card">
@@ -80,8 +95,8 @@ export function Jar() {
       <p className="cb-toy-line" aria-live="polite">
         {JAR[step]}
       </p>
-      {step === JAR.length - 1 && (
-        <button type="button" className="btn btn-ghost btn-sm mt-auto self-start" onClick={() => setStep(0)}>
+      {step === JAR_HEART && (
+        <button type="button" className="btn btn-ghost btn-sm mt-auto self-start" onClick={close}>
           Put the lid back on
         </button>
       )}

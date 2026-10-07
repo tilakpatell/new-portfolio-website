@@ -1,0 +1,24 @@
+name: Voice lines
+description: Lines made in the speakers' cloned voices on the owner's desktop GPU, as a pull request with the recordings.
+title: "voices: what for"
+labels: [voices]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Leave everything empty to make every line the site says that has no recording yet.
+        A speaker with no reference voice is reported back, not made. More: `scripts/voices/README.md`.
+  - type: input
+    id: only
+    attributes:
+      label: Only these speakers
+      description: Comma-separated (empty for everyone with a voice).
+      placeholder: rick, morty
+  - type: textarea
+    id: lines
+    attributes:
+      label: Lines to make ahead
+      description: For code not on main yet. One a line, as who - text.
+      placeholder: |
+        rick: Wubba lubba dub dub.
+        morty: Aw geez, Rick.

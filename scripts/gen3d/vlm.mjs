@@ -10,15 +10,16 @@
 //   pick(what, candidates) → { best: index, scores: [...] }   judge(what, sheet) → { score, problems, ok }
 
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { localDir } from '../desktop/lib.mjs';
 
-const LOCAL = process.env.LOCALAPPDATA ?? join(process.env.USERPROFILE ?? '', 'AppData', 'Local');
+const LLAMACPP = localDir('llamacpp'); // %LOCALAPPDATA%\llamacpp, or the Claude app's boxed copy (scripts/desktop/lib.mjs)
 export const LLAMA = {
-  exe: join(LOCAL, 'llamacpp', 'bin', 'llama-server.exe'),
-  model: join(LOCAL, 'llamacpp', 'models', 'Qwen3-VL-8B-Instruct-Q8_0.gguf'),
-  mmproj: join(LOCAL, 'llamacpp', 'models', 'mmproj-F16.gguf'),
+  exe: join(LLAMACPP, 'bin', 'llama-server.exe'),
+  model: join(LLAMACPP, 'models', 'Qwen3-VL-8B-Instruct-Q8_0.gguf'),
+  mmproj: join(LLAMACPP, 'models', 'mmproj-F16.gguf'),
   port: Number(process.env.VLM_PORT ?? 5355),
 };
 const qwenReady = () => existsSync(LLAMA.exe) && existsSync(LLAMA.model) && existsSync(LLAMA.mmproj);
@@ -28,7 +29,7 @@ let cli;
 export function claudeCode() {
   if (cli !== undefined) return cli;
   cli = null;
-  if (process.env.GEN3D_JUDGE === 'qwen') return null;
+  if (process.env.GEN3D_JUDGE === 'qwen' || process.env.GEN3D_JUDGE === 'fake') return null;
   try {
     const lines = execFileSync(process.platform === 'win32' ? 'where' : 'which', ['claude'], { encoding: 'utf8', timeout: 10000 }).split(/\r?\n/).map((l) => l.trim());
     // `where` lists npm's extensionless sh shim first: the .cmd or .exe is the one that runs here
@@ -58,7 +59,30 @@ export function claudeCode() {
   }
   return cli;
 }
-export const which = () => (claudeCode() ? 'claude' : qwenReady() ? 'qwen' : null);
+export const which = () => (process.env.GEN3D_JUDGE === 'fake' ? 'fake' : claudeCode() ? 'claude' : qwenReady() ? 'qwen' : null);
+
+// GEN3D_JUDGE=fake: the contract tests' judge, answering from a script
+// (GEN3D_JUDGE_SCRIPT, a JSON array of { match, reply }): the first entry
+// whose match is in the prompt or an image's path answers; a list of replies
+// is given in turn across calls, even across processes, the last one held.
+// Every call is written to calls.json beside the script, so a test can say
+// how often the judge was asked and about what.
+export function askFake(prompt, images) {
+  const file = process.env.GEN3D_JUDGE_SCRIPT;
+  if (!file) throw new Error('GEN3D_JUDGE=fake needs GEN3D_JUDGE_SCRIPT');
+  const script = JSON.parse(readFileSync(file, 'utf8'));
+  const log = join(dirname(file), 'calls.json');
+  const calls = existsSync(log) ? JSON.parse(readFileSync(log, 'utf8')) : [];
+  const said = [prompt, ...images].join('\n');
+  const entry = script.findIndex((e) => said.includes(e.match));
+  calls.push({ prompt, images, entry });
+  writeFileSync(log, JSON.stringify(calls, null, 1));
+  if (entry < 0) throw new Error(`no scripted reply for "${prompt.slice(0, 80)}"`);
+  const { reply } = script[entry];
+  if (!Array.isArray(reply)) return reply;
+  const before = calls.filter((c) => c.entry === entry).length - 1;
+  return reply[Math.min(before, reply.length - 1)];
+}
 export const ready = () => which() !== null;
 
 let server = null;
@@ -106,6 +130,7 @@ const runClaude = (cli, args, timeout) => {
 };
 
 export async function ask(prompt, images = [], { maxTokens = 600 } = {}) {
+  if (which() === 'fake') return askFake(prompt, images);
   if (which() === 'claude') return askClaudeCode(prompt, images);
   await start();
   const content = [...images.map((f) => ({ type: 'image_url', image_url: { url: dataUrl(f) } })), { type: 'text', text: prompt }];

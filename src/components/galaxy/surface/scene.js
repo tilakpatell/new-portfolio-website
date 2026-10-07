@@ -32,6 +32,8 @@
 // who, text }, { type: 'edge' }, { type: 'fell' }, { type: 'leave' } (the
 // ship's away: back to space).
 
+import { PLACES } from '../battleLines';
+import { systemById } from '../systems';
 import { readBuildWire, writeBuild } from '../../universe/shipyard/build';
 import * as THREE from 'three';
 import { disposeTree, precompile, singlePass } from '../../../lib/three/renderer';
@@ -61,9 +63,16 @@ import { createWater } from './water';
 import { floatPose } from './floats';
 import { createWeather } from './weather';
 import { createKit } from './kit';
-import { createGrass } from './grass';
+import { createHouse } from '../../../lib/three/house';
+import { adoptLater, exposureOf, groundPieces, lookOf } from './look';
+import { surfaceTuning, siteCode } from './tune';
+import { debugOn, debugPanel } from '../../../lib/debugPanel';
+import { createGrass } from '../../../lib/three/grass';
+import { createWind } from '../../../lib/three/wind';
+import { createGroundMap } from '../../../lib/three/groundmap';
+import { groundPainter, mapAreaOf } from './groundPaint';
 import { floorShadow } from '../../../lib/three/grounding';
-import { PROPS } from './props';
+import { PROPS, SCATTER } from './props';
 import { createPlacer } from './placer';
 import { createActors, modelFigure } from './actors';
 import { RIDES } from './rides';
@@ -79,7 +88,7 @@ import { heatShot, heatStep, spreadAt, vent, ventSpot, withMods } from './weapon
 import { heroById, heroSpec } from '../heroes';
 import { perkEffects } from '../perks';
 import { ABILITIES, JET, abilitiesOf, jetStep, newJet } from './abilityRules';
-import { feed, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
+import { feed, isOffered, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, ride, rider, turnToward, walk, walker } from './walker';
 import { rng } from './noise';
@@ -88,6 +97,7 @@ import { createChaseMission } from './missions/chaseScene';
 import { createAssaultMission } from './missions/assaultScene';
 import { RULES as ASSAULT } from './missions/assault';
 import { groundWorld } from '../../../lib/three/groundwork';
+import { garrisonAt, garrisonLife, garrisonQuest } from './garrison';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -136,15 +146,28 @@ export async function create(canvas, ctx) {
   scene.add(camera);
   canvas.setAttribute('aria-hidden', 'true');
   const post = createPost(renderer, scene, camera, { small });
-  // (fogged in the sky's colour before its shaders are made, so they're made once)
+  // the house look (lib/three/house: shade is a colour, never grey) over
+  // everything lit, from the site's look (look.js); the fog stays the
+  // surface's own (skyfog.js: the dome's very colour), so the house leaves
+  // three's fog line be. The post tone-maps with its own shoulder, so the
+  // exposure is the site's, through it.
+  const siteLook = lookOf(site);
+  const house = createHouse({ ...siteLook, fog: false });
+  post.exposure(exposureOf(site));
+  // (fogged in the sky's colour and in the look before its shaders are
+  // made, so they're made once)
   const warm = (root) => {
     skyFog.scene(root);
+    adoptLater(house, root);
     return precompile(renderer, singlePass(root), camera, scene, post.on ? post.composer.readBuffer : undefined);
   };
 
   const sky = createSky(site);
   // (the fog the sky's colour that way: everything fogged with it, as it's put in the world)
   const skyFog = createSkyFog(sky, THREE.ShaderChunk);
+  // (the look's halo round the sun, and its haze below the horizon where the
+  // site says: the fog is the surface's, so they go on it)
+  skyFog.look({ halo: siteLook.halo, below: typeof site.look?.fogBelow === 'number' ? siteLook.fogBelow : null });
   scene.add(sky.mesh);
   const sunDir = sky.sunDirs[0] ?? new V(0.3, 0.8, 0.4).normalize();
   const sun = new THREE.DirectionalLight(site.sky.suns?.[0]?.color ?? '#ffffff', site.light.sun ?? 3);
@@ -175,6 +198,9 @@ export async function create(canvas, ctx) {
   const hemi = new THREE.HemisphereLight(site.light.sky ?? '#bcd0ee', site.light.ground ?? '#8a7a66', site.light.ambient ?? 0.9);
   scene.add(hemi);
   scene.fog = new THREE.FogExp2(site.fog.color, site.fog.density);
+  // (the look's sky is the dome's: its horizon and zenith, the sun's way)
+  house.sky({ low: sky.uniforms.uHorizon.value, high: sky.uniforms.uZenith.value, sunDir });
+  house.light({ sun, hemi });
   // what shiny things reflect: the sky
   const pmrem = new THREE.PMREMGenerator(renderer);
   const envSky = sky.envScene();
@@ -187,7 +213,45 @@ export async function create(canvas, ctx) {
   // ── The land ──
   const height = makeHeight(site.ground);
   const grid = heightGrid(height, { n: small ? 160 : 256, grow: small ? 1.13 : 1.08 });
-  const gmat = groundMaterial(site, { small });
+  // (water you wade in: not lava, not cloud, and not a sea far under a
+  // platform with nothing else under it, which you'd fall into)
+  const wade = site.water && !site.noGround && site.water.kind !== 'clouds' && site.water.kind !== 'lava' ? site.water.level : null;
+  // where the scattered things go (worked out before anything's placed: the
+  // ground map is painted with the trees' crowns over it)
+  const r = rng(site.ground.seed ?? 1);
+  const avoid = [...site.places.map((p) => ({ at: p.at, r: p.flat?.r ?? p.r * 0.6 })), { at: site.land.at, r: 30 }];
+  const scattered = site.scatter.map((s) => {
+    const items = [];
+    const [r0, r1] = s.within ?? [20, site.reach];
+    let tries = 0;
+    while (items.length < Math.round(s.n * (small ? 0.6 : 1)) && tries++ < s.n * 20) {
+      const a = r() * Math.PI * 2;
+      const d = Math.sqrt(r0 * r0 + r() * (r1 * r1 - r0 * r0));
+      const x = Math.cos(a) * d;
+      const z = Math.sin(a) * d;
+      if (avoid.some((v) => Math.hypot(x - v.at[0], z - v.at[1]) < v.r + (s.clear ?? 4))) continue;
+      if (s.flat && grid.normalAt(x, z)[1] < s.flat) continue;
+      if (wade != null && s.dry !== false && grid.heightAt(x, z) < wade + (s.above ?? 0.2)) continue;
+      const [lo, hi] = s.scale ?? [1, 1];
+      items.push({ at: [x, z], yaw: r() * Math.PI * 2, scale: lo + (hi - lo) * r() ** 1.6, sink: s.sink ?? 0.1, stretch: s.stretch ? s.stretch[0] + r() * (s.stretch[1] - s.stretch[0]) : 1 });
+    }
+    return { s, items };
+  });
+  // the ground as data (lib/three/groundmap): its colour and its grass
+  // painted once over the walkable square (groundPaint.js), darker and
+  // thinner under the trees' crowns; the floor and the grass read it, and
+  // the house bounces it up onto everything low. None where there's no
+  // ground (look.js's groundPieces).
+  const pieces = groundPieces(site);
+  let groundMap = null;
+  if (pieces.map) {
+    const shade = scattered.flatMap(({ s, items }) => (SCATTER[s.kind]?.canopy ? items.map((it) => ({ at: it.at, r: SCATTER[s.kind].canopy * it.scale })) : []));
+    const painter = groundPainter(site, grid, { shade });
+    const mapSize = small ? 256 : 512;
+    groundMap = createGroundMap({ area: mapAreaOf(), size: mapSize, heightSize: mapSize / 2, paint: painter.paint, height: painter.height });
+    if (pieces.bounce) house.ground(groundMap);
+  }
+  const gmat = groundMaterial(site, { small, map: groundMap });
   const marks = createMarks(small ? 256 : 512);
   gmat.uniforms.uMarks.value = marks.texture;
   const ground = groundMesh(grid, gmat.material);
@@ -204,15 +268,17 @@ export async function create(canvas, ctx) {
     solids: createSolids(),
     floors: [...(site.floors ?? [])],
     reach: site.reach,
-    // (water you wade in: not lava, not cloud, and not a sea far under a
-    // platform with nothing else under it, which you'd fall into)
-    water: site.water && !site.noGround && site.water.kind !== 'clouds' && site.water.kind !== 'lava' ? site.water.level : null,
+    water: wade,
   };
   const weather = reduced ? null : createWeather(site, { small });
   if (weather) scene.add(weather.group);
 
   // ── What's on it ──
-  const kit = createKit({ seed: 31 });
+  // one wind for the world (lib/three/wind): the grass's, and the way the
+  // kit's plants and cloth lean
+  const windAngle = site.ground.wind ?? 0;
+  const wind = createWind({ strength: site.grass?.wind ?? 0.4, angle: windAngle });
+  const kit = createKit({ seed: 31, wind: { angle: windAngle } });
   // (the scatter casts its shadow only near you: near.js)
   const shadowPhase = sun.castShadow ? createShadowPhase(scene, sun) : null;
   const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null });
@@ -222,32 +288,25 @@ export async function create(canvas, ctx) {
     const put = placer.put(t);
     if (t.float && water?.height) put.then((o) => o && floaters.push({ o, x: o.position.x, z: o.position.z, yaw: t.yaw ?? 0, float: t.float }));
   }
-  const r = rng(site.ground.seed ?? 1);
-  const avoid = [...site.places.map((p) => ({ at: p.at, r: p.flat?.r ?? p.r * 0.6 })), { at: site.land.at, r: 30 }];
-  for (const s of site.scatter) {
-    const items = [];
-    const [r0, r1] = s.within ?? [20, site.reach];
-    let tries = 0;
-    while (items.length < Math.round(s.n * (small ? 0.6 : 1)) && tries++ < s.n * 20) {
-      const a = r() * Math.PI * 2;
-      const d = Math.sqrt(r0 * r0 + r() * (r1 * r1 - r0 * r0));
-      const x = Math.cos(a) * d;
-      const z = Math.sin(a) * d;
-      if (avoid.some((v) => Math.hypot(x - v.at[0], z - v.at[1]) < v.r + (s.clear ?? 4))) continue;
-      if (s.flat && grid.normalAt(x, z)[1] < s.flat) continue;
-      if (world.water != null && s.dry !== false && grid.heightAt(x, z) < world.water + (s.above ?? 0.2)) continue;
-      const [lo, hi] = s.scale ?? [1, 1];
-      items.push({ at: [x, z], yaw: r() * Math.PI * 2, scale: lo + (hi - lo) * r() ** 1.6, sink: s.sink ?? 0.1, stretch: s.stretch ? s.stretch[0] + r() * (s.stretch[1] - s.stretch[0]) : 1 });
-    }
-    placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true });
-  }
-  // (the grass round you: blades on the land, where the site grows it)
-  const grass = site.grass && !site.noGround ? createGrass(scene, { grid, site, small, time: kit.wind }) : null;
-  const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
+  for (const { s, items } of scattered) placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true });
+  // the grass round you (lib/three/grass, Bruno's: a triangle a blade, one
+  // draw, the patch going with you), standing on the ground map and its
+  // colour, where the site grows it
+  const grass = pieces.grass
+    ? createGrass({ ground: groundMap, wind, side: tier === 'high' && !small ? 280 : small ? 120 : 200, size: 44, height: site.grass.h?.[1] ?? 0.5, width: site.grass.w ?? 0.05, root: 0.35 })
+    : null;
+  if (grass) scene.add(grass.mesh);
+  // ?debug: the look, the grass and the wind on sliders, copied out as the
+  // site's own blocks (lib/debugPanel, tune.js)
+  const panel = debugOn() ? debugPanel({ title: site.id, groups: surfaceTuning({ house, skyFog, post, exposure: exposureOf(site), grass, wind }), code: siteCode }) : null;
+  const life = createActors({ parent: scene, world, life: [...garrisonLife(site.life, ctx.effects?.troops), ...garrisonAt(site, ctx.effects, systemById(site.id)?.faction ?? null)], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
 
   // ── The places you go into (zones): built high over the world, out of
   // sight, each with its own lamps ──
-  for (const z of site.zones) placer.put({ kind: z.inside.build, at: [z.origin[0], z.origin[2]], y: z.origin[1], abs: true, model: false, opts: z.inside.opts, zone: true });
+  for (const z of site.zones) {
+    placer.put({ kind: z.inside.build, at: [z.origin[0], z.origin[2]], y: z.origin[1], abs: true, model: false, opts: z.inside.opts, zone: true });
+    for (const t of z.things) placer.put(t);
+  }
   // (hidden outdoors: a light with nothing to light still costs every pixel of
   // every lit thing, and four of them a good deal; the warm-up compiles both ways)
   const lamps = Array.from({ length: 4 }, () => {
@@ -287,7 +346,8 @@ export async function create(canvas, ctx) {
   const fwdV = new V();
   const rightV = new V();
   // (a quest mission's quest is the mission's own, not one of the world's)
-  const questOf = (id) => site.quests.find((q) => q.id === id) ?? (mission?.quest?.id === id ? mission.quest : null);
+  // (a quest's troopers are the holder's too: garrison.js)
+  const questOf = (id) => garrisonQuest(site.quests.find((q) => q.id === id) ?? (mission?.quest?.id === id ? mission.quest : null), ctx.effects?.troops);
   // who gives each quest, with a mark over them till it's done
   const givers = [];
   const markMat = new THREE.SpriteMaterial({ map: (() => {
@@ -331,6 +391,8 @@ export async function create(canvas, ctx) {
           .put({ kind: x.kind, at: [0, 0], abs: true, solid: false })
           .then((o) => {
             if (!o || disposed) return;
+            // (it moves: a built one's scans go with it, kit.js's twins)
+            kit.moving(o);
             tmp.add(o);
             o.position.set(0, 0, 0);
             o.rotation.set(0, 0, 0);
@@ -839,6 +901,8 @@ export async function create(canvas, ctx) {
     if (!kind || !PROPS[kind]) return;
     if (!carriable.has(kind)) {
       const o = PROPS[kind](kit, {}).object;
+      // (carried about: its scans go with it, kit.js's twins)
+      kit.moving(o);
       o.position.set(0, 1.0, -0.3);
       carriable.set(kind, o);
     }
@@ -866,6 +930,8 @@ export async function create(canvas, ctx) {
         putAt(p, e.to[0], e.to[1], e.yaw);
         camInit = false;
       }
+      // (somewhere else on the site: the page goes there)
+      if (e.go) emit({ type: 'go', to: e.go });
     }
   }
   function beginQuest(q) {
@@ -911,7 +977,7 @@ export async function create(canvas, ctx) {
     if (tg.kind === 'talk') {
       const spec = tg.actor.spec;
       // (what they offer now: their next quest not done, or their last, done)
-      const offered = nextQuest(spec, state.done) ?? questsOf(spec).at(-1);
+      const offered = nextQuest(spec, state.done, questOf) ?? questsOf(spec).filter((id) => isOffered(questOf(id), state.done)).at(-1) ?? null;
       const q = offered && questOf(offered);
       const step = state.quest && questOf(state.quest.id)?.steps[state.quest.step];
       if (q && !state.done.has(q.id) && !state.quest) beginQuest(q);
@@ -919,7 +985,7 @@ export async function create(canvas, ctx) {
       else {
         const line = life.say(tg.actor);
         if (line) emit({ type: 'talk', ...line });
-        else if (q && state.done.has(q.id)) say(q.after ?? [[spec.name, 'Thanks again.']]);
+        else if (q && state.done.has(q.id)) say(q.again ?? [[spec.name, 'Thanks again.']]);
       }
     } else if (tg.kind === 'use') questEvent({ type: 'use', id: tg.id });
     else if (tg.kind === 'enter') enterZone(tg.zone);
@@ -1595,6 +1661,7 @@ export async function create(canvas, ctx) {
       struck(h, Math.max(1, Math.round((w.damage + (hot ? 1 : 0)) / (n > 1 ? 2 : 1))), { how: w.kind, push: o.dir });
       hit ??= h;
     }
+    activity.heard({ x: o.from.x, z: o.from.z }, { x: o.from.x + o.dir.x * 40, z: o.from.z + o.dir.z * 40 }); // (as for an unrigged shot in fire())
     const spec = p.gp.spec;
     const out = hit.at.clone().sub(r.muzzle).normalize();
     fx.flash(r.muzzle, out, spec.flash);
@@ -1759,12 +1826,17 @@ export async function create(canvas, ctx) {
       state.edgeAt = state.t;
       emit({ type: 'edge' });
     }
-    if (site.fall != null && p.y < site.fall) {
-      // over the edge: back where you landed
-      p.x = spawnAt[0];
-      p.z = spawnAt[1];
-      p.y = groundAt(world, ...spawnAt);
+    // over the edge: back where you landed (in a place with a drop in it,
+    // a zone with `fall`, back at its respawn, or where you came in)
+    const z = state.zone;
+    const fallAt = z?.inside.fall != null ? z.origin[1] + z.inside.fall : z ? null : site.fall;
+    if (fallAt != null && p.y < fallAt) {
+      const [bx, bz] = z ? [z.origin[0] + (z.inside.respawn ?? z.inside.spawn ?? [0, 0])[0], z.origin[2] + (z.inside.respawn ?? z.inside.spawn ?? [0, 0])[1]] : spawnAt;
+      p.x = bx;
+      p.z = bz;
+      p.y = z ? groundAt(world, bx, bz, z.origin[1] + (z.inside.bounds?.[2] ?? 30), 0) : groundAt(world, bx, bz);
       p.vy = 0;
+      if (z) p.yaw = z.inside.yaw ?? 0;
       emit({ type: 'fell' });
     }
     // your crewmate keeps up: a step behind, beside you
@@ -1798,7 +1870,8 @@ export async function create(canvas, ctx) {
   function stepRide(dt) {
     const x = state.riding;
     const inp = chase?.stalled() ? { x: 0, y: 0, run: false } : input();
-    const o = ride(x.state, { ...inp, x: inp.x, y: inp.y, jump: state.jumpQueued }, dt, world, x.spec);
+    // (a flyer climbs while jump is held, not only on the press)
+    const o = ride(x.state, { ...inp, x: inp.x, y: inp.y, jump: state.jumpQueued || (Boolean(x.spec.fly) && Boolean(state.keys.jump)) }, dt, world, x.spec);
     if (o.hit > 20 && chaseOn()) chase.knocked();
     if (o.hit > 6) {
       state.shake = Math.min(1, o.hit / 20);
@@ -2158,6 +2231,25 @@ export async function create(canvas, ctx) {
     for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: actorAt, door: doorFor })) questEvent(ev);
     if (state.phase === 'walk' || state.phase === 'ride')
       for (const s of activity.shooters(dt, me().st, state.t)) {
+        // a duellist's Force: you're shoved away from it, off your feet
+        if (s.force) {
+          const p = me().st;
+          const v = pushVelocity({ x: s.from[0], z: s.from[2] }, { x: p.x, z: p.z }, 1, 'push', { ...FORCE.push, force: s.push });
+          p.vx += v.vx;
+          p.vz += v.vz;
+          p.vy = Math.max(p.vy, v.vy);
+          p.grounded = false;
+          state.shake = Math.min(1, state.shake + 0.5);
+          sounds.combat?.('force');
+          fx.sparks(new V(p.x, p.y + 1, p.z), UP, '#d8d0ff', 14);
+          continue;
+        }
+        // at a friend of yours (or by one, at a hostile): a bolt between them, and whoever's hit, hit
+        if (s.at && s.victim) {
+          if (!s.melee) blaster.tracer(s.from, s.at, s.who?.spec?.side === 'yours' ? '#ffb070' : '#ff4a3d');
+          if (Math.random() < (s.melee ? 0.8 : 0.45)) activity.hit(s.victim, s.damage);
+          continue;
+        }
         const blade = me().saber?.deflecting(s.from) ?? false;
         if (state.safe) continue; // (through the dodge's first moments nothing lands)
         if (s.melee && blade && parried(state.blockAt, state.t, PARRY.window * perks.parry)) {
@@ -2236,9 +2328,18 @@ export async function create(canvas, ctx) {
     life.update(dt, state.phase === 'walk' ? me().st : null, state.phase === 'walk' || state.phase === 'ride' ? me().st : camera.position);
     placer.update(t, dt, me().st);
     if (!reduced) kit.tick(dt);
-    grass?.update(me().st.x, me().st.z, me().st.x, me().st.z);
+    grass?.update(me().st);
+    wind.update(dt);
     stepDust(dt);
     storm(dt);
+    // (the look's full light follows the lamps and the storms; anything that
+    // came into the world without passing through warm is taken on now and
+    // then)
+    house.light({ sun, hemi });
+    if ((state.sweep = (state.sweep ?? 0) + dt) > 2) {
+      state.sweep = 0;
+      house.adopt(scene);
+    }
     online(dt);
     sounds.update(dt, { riding: state.phase === 'ride' ? Math.abs(state.riding.state.speed) + 1 : 0 });
     marks.flush();
@@ -2367,8 +2468,11 @@ export async function create(canvas, ctx) {
         auto: true,
       });
       // (the grass in the floor's shadows: read where each blade stands)
-      if (grass) floorShadow(grass.mesh.material, lit.mask);
+      if (grass) floorShadow(grass.material, lit.mask);
     }
+    // (the look over everything, after the floor's light: its shade then
+    // replaces the floor's own tint, and one shadow colour reaches it all)
+    if (!disposed) house.adopt(scene);
     // (the scouts' way is planned round the trees, so once they're down)
     if (!disposed) chase?.begin();
     if (!disposed && assault) {
@@ -2565,6 +2669,18 @@ export async function create(canvas, ctx) {
         ctx.invalidate();
         return run;
       }
+      // (a site's own quest, outside any mission: 'skip' the step you're on)
+      if (how === 'skip' && state.quest) {
+        const q = questOf(state.quest.id);
+        const step = q?.steps[state.quest.step];
+        if (step?.type === 'race') for (const g of step.gates.slice(state.quest.count)) questEvent({ type: 'at', x: g[0], z: g[1], riding: step.ride });
+        else if (step?.type === 'use') questEvent({ type: 'use', id: step.id });
+        else if (step?.type === 'reach') questEvent({ type: 'at', x: step.at[0], z: step.at[1], riding: state.riding?.kind ?? null });
+        else if (step?.type === 'enter') questEvent({ type: 'enter', zone: step.zone });
+        else if (step?.type === 'shoot') activity.kill(step.tag);
+        ctx.invalidate();
+        return state.quest;
+      }
       if (how === 'near' && state.riding) {
         const b = chase?.behind();
         if (b) {
@@ -2592,12 +2708,14 @@ export async function create(canvas, ctx) {
       if (z) enterZone(z);
       else leaveZone();
     },
-    teleport(x, z, yaw = null) {
+    teleport(x, z, yaw = null, y = null) {
       if (!import.meta.env.DEV) return;
       const p = me().st;
       p.x = x;
       p.z = z;
-      p.y = groundAt(world, x, z, 1e4, 1e4);
+      // (the highest floor there, or the one nearest a height given: the
+      // hangar's floor under the temple's roof)
+      p.y = y == null ? groundAt(world, x, z, 1e4, 1e4) : groundAt(world, x, z, y, 2);
       if (yaw != null) {
         p.yaw = yaw;
         state.cam.yaw = yaw;
@@ -2606,7 +2724,7 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name } : null, guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint }),
+    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name } : null, guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug() }),
     dispose() {
       disposed = true;
       lit?.dispose();
@@ -2639,6 +2757,9 @@ export async function create(canvas, ctx) {
       life.dispose();
       placer.dispose();
       grass?.dispose();
+      wind.dispose();
+      panel?.dispose();
+      groundMap?.dispose();
       shadowPhase?.dispose();
       for (const p of people) {
         p.gp?.dispose();

@@ -3,7 +3,8 @@
 // (/galaxy/:id/surface?mission=assault): loads the page fresh, waits for the
 // scene, then plays the battle through its dev hooks the way the HUD would:
 // the choose card, a side, the deploy card, a post, a minute of the fight
-// advanced without drawing, then the end both ways (win, then Again,
+// advanced without drawing, then the end both ways (win, its win key in
+// the galaxy war's tally, then Again,
 // then lose), a screenshot at each step, and the view at each read back to
 // make sure the rules moved. With the dev server up (npx vite --port 5188)
 // and Chromium where Playwright keeps it:
@@ -119,6 +120,12 @@ for (const id of list.split(',')) {
   if (!v.result?.won) fail(id, 'win did not end it');
   await shot('4-won');
   if (!(await page.getByRole('dialog', { name: /won/i }).count())) fail(id, 'no result card after the win');
+  // and the win's the galaxy's war's: a win key in the tally, for the side fought for
+  const tally = await page.evaluate(() => window.localStorage.getItem('tp-gcw') ?? '');
+  await page.waitForTimeout(1800); // (the tally's kept a moment after it changes)
+  const kept = await page.evaluate(() => window.localStorage.getItem('tp-gcw') ?? '');
+  if (!/"win:[a-z]+:/.test(kept || tally)) fail(id, `the win didn't reach the war's tally: ${(kept || tally).slice(0, 120)}`);
+  else console.log(`${id}: the win is in the war's tally`);
   await page.getByRole('button', { name: 'Again' }).click();
   await page.waitForTimeout(1500);
   v = await view();

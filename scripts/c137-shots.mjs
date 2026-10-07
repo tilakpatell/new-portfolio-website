@@ -90,6 +90,7 @@ export const VIEWS = {
   meeseeksgolf: { area: 'meeseeksgolf', at: [-400, 4118, N], cam: [0, 0.2] },
   vat: { area: 'vat', at: [-400, 4207.4, N], cam: [0, 0.3] },
   dim35c: { area: 'dim35c', at: [-400, 4318, N], cam: [0, 0.2] },
+  frundles: { area: 'frundles', at: [-400, 4418, N], cam: [0, 0.2] },
 };
 
 const names = process.argv.slice(2);

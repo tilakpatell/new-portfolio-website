@@ -69,6 +69,8 @@ import { createMountains, groundMaterial } from './terrain';
 import { createFleet, footprint, paintFor } from './vehicles';
 import { gltfLoader } from '../../../lib/three/gltf';
 import { bounce, createBlobShadows, floorShadow, loadFloorShadow, setFloorTime } from '../../../lib/three/grounding';
+import { createHouse, shadowFor } from '../../../lib/three/house';
+import { coreOf, loadCore, wear } from '../../../lib/three/core';
 import { sharpen } from '../../../lib/three/textures';
 
 // Models from Sketchfab (CC Attribution, credited in public/cc0/README.md; scripts/sketchfab-import.mjs
@@ -254,6 +256,11 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   const { renderer, scene, camera } = stage;
   // (no shadow pass: the floor's shadows are baked, see the top)
   renderer.shadowMap.enabled = false;
+  // the house look (lib/three/house): one shadow colour on everything, from
+  // the hour's sky light, fog the sky's colour, under the house tone mapper
+  // (its exposure on top of the hour's, which were set under ACES)
+  const house = createHouse();
+  renderer.toneMapping = house.toneMapping;
   // what's drawn in a frame, every pass of it counted (api.info), not just the last
   renderer.info.autoReset = false;
   // far enough for the sky dome and the Sandias
@@ -634,11 +641,18 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   cloud = cloudTex;
   if (cloud) for (const d of dust) d.s.material.map = cloud;
   // (`floor`: the height it stands on, for the bounce off it)
+  // the core kit's stucco (lib/three/core) on the town's own buildings, at
+  // its real size: up close a wall shows the grain of real plaster instead
+  // of its one stretched picture (the cars wear nothing)
+  const STUCCO = coreOf('adobe');
+  const stucco = dev.tier === 'low' ? Promise.resolve(null) : loadCore('adobe');
   const dressModel = (o, name, floor = GRID.kerb) => {
     const own3 = !SKETCHFAB[name]; // the site's own Meshy models are matte; a Sketchfab one keeps the materials it came with
+    const building = own3 && !['aztek', 'suv'].includes(name);
     o.traverse((m) => {
       if (!m.isMesh) return;
       if (m.material.map) m.material.map.anisotropy = aniso;
+      if (building) stucco.then((scan) => scan && wear(m.material, scan, { metres: STUCCO.metres, mean: STUCCO.mean, strength: 0.3, normal: 0.6 }));
       if (own3) {
         m.material.roughness = 0.85;
         m.material.metalness = 0;
@@ -969,7 +983,10 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     hemi.intensity = L.hemiIntensity;
     scene.fog.color.copy(L.fog);
     scene.environmentIntensity = L.env;
-    renderer.toneMappingExposure = L.exposure;
+    renderer.toneMappingExposure = L.exposure * house.exposure;
+    house.light({ sun, hemi });
+    house.set({ shadow: shadowFor({ hemiSky: hemi.color.getHex(), hemi: hemi.intensity }) });
+    house.sky({ low: L.fog, high: L.hemiSky, below: 1, sunDir: L.key });
     const dark = L.night;
     night.update(dark);
     fleet.update(dark);
@@ -1249,6 +1266,8 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   // the shaders of what only shows later (the night's lamps and pools, a
   // delivery's drop, the unlock beam, the car wash's water) built now, while
   // the page is still loading, not as a stall the first time dark falls
+  // (everything built so far in the house look, before the shaders are)
+  house.adopt(scene);
   {
     const later = [night.object, drop, beamMesh, water];
     const was = later.map((o) => o.visible);

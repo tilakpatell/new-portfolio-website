@@ -35,6 +35,12 @@ describe('the stops that show on this screen', () => {
   it('swaps the nav’s stops for the menu’s on a phone', () => {
     expect(resolveSteps(steps, (at) => at === 'menu').map((s) => s.id)).toEqual(['hello', 'menu', 'bye']);
   });
+
+  it('keeps every stop of a world’s basics, in the middle where its target isn’t showing', () => {
+    const kept = resolveSteps(steps, (at) => at === 'menu', true);
+    expect(kept.map((s) => s.id)).toEqual(['hello', 'search', 'menu', 'bye']);
+    expect(kept.map((s) => s.at)).toEqual([undefined, undefined, 'menu', undefined]);
+  });
 });
 
 describe('where the card goes', () => {

@@ -53,7 +53,7 @@ class Make(unittest.TestCase):
     def judge(self, passing):
         """A judge passing take k of a line when k is in passing[line id] (scoring higher k higher)."""
 
-        def score(who, text, path):
+        def score(who, text, path, feel=None, spread=None):
             lid, k = Path(path).stem.split(".")
             k = int(k)
             ok = k in passing.get(lid, ())
@@ -110,7 +110,7 @@ class Make(unittest.TestCase):
         line = {"id": "00000010", "who": "walt", "text": "Say my name."}
         base = self.judge({"00000010": {0, 1}})
 
-        def judge(who, text, path):  # engine "b" sounds better
+        def judge(who, text, path, feel=None, spread=None):  # engine "b" sounds better
             d = dict(base(who, text, path))
             d["score"] = d["score"] + (10 if Path(path).parts[-3] == "b" else 0)
             return d
@@ -123,7 +123,7 @@ class Make(unittest.TestCase):
         line = {"id": "00000011", "who": "walt", "text": "Jesse."}
         a = self.judge({"00000011": {1}})
 
-        def judge(who, text, path):  # engine "b" never passes
+        def judge(who, text, path, feel=None, spread=None):  # engine "b" never passes
             return a(who, text, path) if Path(path).parts[-3] == "a" else {**a(who, text, path), "score": None, "wer": 0.9}
 
         done = []
