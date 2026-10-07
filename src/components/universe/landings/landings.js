@@ -31,6 +31,11 @@
 //   scatter     [{ kind, n, from, to, scale: [a, b], opts?, solid? }]: many
 //               of a kind, drawn instanced, `from` to `to` metres out, clear
 //               of the things and the ship (solid: false to walk through)
+//   biomes      the parts of the planet you can come down on, read off the
+//               colour of its map under the spot (./biomes.js): each its
+//               own name, ground, sky (haze: the air along its horizon),
+//               things and scatter, the planet's own where it leaves one
+//               out; the last is the fallback, the landing as above
 //
 // A kind is one of `models`, or a builder in the planet's file (its PROPS
 // for things, SCATTER or PROPS for scatter).
@@ -43,6 +48,8 @@ export const SCATTER_MAX = 900;
 
 const sz = 0.6; // (a scatter scale range's spread, as a share of its base)
 const range = (k) => [k * (1 - sz / 2), k * (1 + sz / 2)];
+// (a biome's test on its map colour, biomes.js's classify: h degrees, s and l 0…1)
+const hue = (c, a, b) => c.h >= a && c.h <= b;
 
 export const LANDINGS = {
   middleearth: {
@@ -78,6 +85,78 @@ export const LANDINGS = {
       { kind: 'flowers', n: 260, from: 5, to: 80, scale: range(1), solid: false },
       { kind: 'mushroom', n: 26, from: 6, to: 60, scale: range(1), solid: false },
       { kind: 'tufts', n: 320, from: 3, to: 70, scale: range(1), solid: false },
+    ],
+    // Tolkien's map (scripts/planets/middleearth.mjs): the Belegaer and the
+    // inland seas; Mordor's black plain; Mirkwood's, Fangorn's and the Old
+    // Forest's dark woods; the Misty, White and Grey Mountains, rock and
+    // snow; Harad's sands; and the green of Eriador, Rohan and Gondor, the
+    // Shire's
+    biomes: [
+      { id: 'sea', sea: true, match: (c) => hue(c, 185, 255) && c.s > 0.25 && c.l < 0.6 },
+      {
+        id: 'mordor',
+        match: (c) => c.l < 0.3 && (c.s < 0.12 || c.h < 60 || c.h > 300),
+        title: 'Mordor',
+        sub: 'Middle-earth · the plateau of Gorgoroth, under Orodruin',
+        ground: { style: 'sand', colors: ['#3a3330', '#4a403a', '#241e1c'] },
+        sky: { zenith: '#3a2420', horizon: '#8a3a20', sun: '#ff6a30', haze: '#a8401c' },
+        things: [
+          { kind: 'orodruin', at: [-80, 320], r: 90, face: false, solid: false },
+          { kind: 'baradDur', at: [230, 330], r: 26, face: false, yaw: -0.9, solid: false },
+          { kind: 'fissure', at: [-26, 24], r: 3, face: false, yaw: 0.4 },
+          { kind: 'fissure', at: [32, -20], r: 3, face: false, yaw: 2.2, opts: { seed: 5 } },
+        ],
+        scatter: [
+          { kind: 'rock', n: 60, from: 24, to: 110, scale: range(2.2), opts: { color: '#2c2522', sharp: 0.8, seed: 4 } },
+          { kind: 'stones', n: 200, from: 4, to: 80, scale: range(0.6), solid: false, opts: { color: '#3a302c' } },
+          { kind: 'embers', n: 60, from: 6, to: 90, scale: range(1), solid: false },
+        ],
+      },
+      {
+        id: 'forest',
+        match: (c) => (c.l < 0.26 && hue(c, 95, 170)) || (c.l < 0.22 && hue(c, 60, 170)),
+        title: 'The old forest',
+        sub: 'Middle-earth · under the eaves, where the trees are older than the Shire',
+        ground: { style: 'grass', colors: ['#26381c', '#34481f', '#4a3a26'] },
+        sky: { zenith: '#557a8a', horizon: '#a8b49a', sun: '#f0e6c0' },
+        things: [],
+        scatter: [
+          { kind: 'oak', n: 30, from: 24, to: 110, scale: range(1.2), opts: { which: 0 } },
+          { kind: 'oak', n: 30, from: 24, to: 110, scale: range(1.2), opts: { which: 1 } },
+          { kind: 'oak', n: 30, from: 26, to: 110, scale: range(1.2), opts: { which: 2 } },
+          { kind: 'mushroom', n: 60, from: 4, to: 70, scale: range(1), solid: false },
+          { kind: 'tufts', n: 160, from: 3, to: 70, scale: range(0.8), solid: false },
+        ],
+      },
+      {
+        id: 'mountains',
+        match: (c) => (c.s < 0.15 && c.l >= 0.35 && !(hue(c, 90, 170) && c.s > 0.08)) || c.l > 0.8,
+        title: 'The mountains',
+        sub: 'Middle-earth · high on a pass, the snow above',
+        ground: { style: 'sand', colors: ['#7c7872', '#8e8a84', '#eef0f2'] },
+        sky: { zenith: '#3f72c0', horizon: '#dfe6ee', sun: '#fff8ea' },
+        things: [],
+        scatter: [
+          { kind: 'rock', n: 70, from: 24, to: 110, scale: range(2.4), opts: { color: '#7a766f', sharp: 0.7, seed: 6 } },
+          { kind: 'rock', n: 40, from: 24, to: 110, scale: range(1.4), opts: { color: '#e8ecf0', sharp: 0.3, seed: 8 } },
+          { kind: 'stones', n: 160, from: 4, to: 80, scale: range(0.6), solid: false, opts: { color: '#6e6a64' } },
+        ],
+      },
+      {
+        id: 'harad',
+        match: (c, at) => hue(c, 20, 60) && c.s > 0.15 && c.l > 0.42 && (!at || (at[0] < 10 && at[1] > -20 && at[1] < 90)),
+        title: 'Harad',
+        sub: 'Middle-earth · the sands of the Haradrim, far south of Gondor',
+        ground: { style: 'sand', colors: ['#d8b880', '#c8a468', '#9a7848'] },
+        sky: { zenith: '#3f78c8', horizon: '#f2dcb0', sun: '#fff2d0' },
+        things: [],
+        scatter: [
+          { kind: 'rock', n: 30, from: 24, to: 110, scale: range(1.6), opts: { color: '#a88a60', seed: 3 } },
+          { kind: 'stones', n: 140, from: 4, to: 80, scale: range(0.5), solid: false, opts: { color: '#8a6e4c' } },
+          { kind: 'scrub', n: 60, from: 5, to: 90, scale: range(0.8), solid: false },
+        ],
+      },
+      { id: 'shire' },
     ],
   },
 
@@ -117,6 +196,87 @@ export const LANDINGS = {
       { kind: 'stones', n: 160, from: 4, to: 70, scale: range(0.5), solid: false, opts: { color: '#8a6a4e' } },
       { kind: 'scrub', n: 120, from: 5, to: 90, scale: range(1), solid: false },
     ],
+    // New Mexico (scripts/planets/breakingbad.mjs): Albuquerque where the
+    // bake puts it (35° N on the face shown first, its CITY's 0.045 rad
+    // round), White Sands' gypsum in the southern basins, the malpais' black
+    // lava, the ranges' granite, juniper and pine, and the high desert
+    biomes: [
+      {
+        id: 'city',
+        near: [35, 0, 2.6],
+        title: 'Albuquerque',
+        sub: 'Breaking Bad · a lot off Central Avenue, by Los Pollos Hermanos',
+        ground: { style: 'asphalt', colors: ['#5a5a58', '#6a6966', '#e8e2c8'] },
+        sky: { zenith: '#2f74cc', horizon: '#f0dcbc', sun: '#fff6dc' },
+        models: {
+          pollos: { url: '/models/albuquerque/world/pollos.glb', wide: 22 },
+          carwash: { url: '/models/albuquerque/world/carwash.glb', wide: 20 },
+          suv: { url: '/models/albuquerque/world/suv.glb', long: 5 },
+        },
+        things: [
+          { kind: 'pollos', at: [0, 52], r: 14, door: { label: 'Los Pollos Hermanos', reach: 9 } },
+          { kind: 'carwash', at: [-48, 26], r: 13, yaw: 0.3 },
+          { kind: 'figure', at: [6, 34], r: 0.4, say: { name: 'Gus', line: 'I hide in plain sight, same as you.' }, opts: { url: '/models/albuquerque/gus.glb', tall: 1.85 } },
+          { kind: 'car', at: [24, 30], r: 2.6, face: false, yaw: 1.6 },
+          { kind: 'suv', at: [30, 22], r: 2.6, face: false, yaw: 1.5 },
+        ],
+        scatter: [{ kind: 'stones', n: 60, from: 4, to: 60, scale: range(0.4), solid: false, opts: { color: '#8a8478' } }],
+      },
+      {
+        id: 'sands',
+        match: (c, at) => c.l > 0.84 && c.s < 0.4 && (!at || at[0] < 34),
+        title: 'White Sands',
+        sub: 'Breaking Bad · the gypsum dunes, south toward Alamogordo',
+        ground: { style: 'sand', colors: ['#f4f1ea', '#e6e0d2', '#cfc4ae'] },
+        sky: { zenith: '#2466cc', horizon: '#e6eef6', sun: '#ffffff' },
+        things: [
+          { kind: 'rv', at: [-28, 16], r: 5, face: false, yaw: -1.2, door: { label: 'the RV', reach: 7 } },
+          { kind: 'figure', at: [-34, 24], r: 0.4, say: { name: 'Jesse', line: 'Yeah, science!' }, opts: { url: '/models/albuquerque/jesse.glb', tall: 1.75 } },
+        ],
+        scatter: [
+          { kind: 'dune', n: 26, from: 30, to: 110, scale: range(1), solid: false },
+          { kind: 'scrub', n: 40, from: 5, to: 90, scale: range(0.8), solid: false },
+          { kind: 'tumbleweed', n: 6, from: 10, to: 60, scale: range(1), solid: false },
+        ],
+      },
+      {
+        id: 'malpais',
+        match: (c) => c.l < 0.3 && c.s < 0.18,
+        title: 'The malpais',
+        sub: 'Breaking Bad · the black lava flows, out past Carrizozo',
+        ground: { style: 'sand', colors: ['#3b3430', '#524640', '#5a2e22'] },
+        sky: { zenith: '#2a6ccc', horizon: '#ecdcc4', sun: '#fff4d8' },
+        things: [
+          { kind: 'rv', at: [-28, 16], r: 5, face: false, yaw: -1.2, door: { label: 'the RV', reach: 7 } },
+          { kind: 'cook', at: [-22, 22.5], r: 1.6 },
+        ],
+        scatter: [
+          { kind: 'rock', n: 90, from: 24, to: 110, scale: range(1.8), opts: { color: '#3b3430', sharp: 0.9, seed: 9 } },
+          { kind: 'stones', n: 200, from: 4, to: 80, scale: range(0.6), solid: false, opts: { color: '#2e2826' } },
+          { kind: 'scrub', n: 50, from: 5, to: 90, scale: range(0.8), solid: false },
+        ],
+      },
+      {
+        id: 'mountains',
+        match: (c) => c.l < 0.45 && c.s < 0.4,
+        title: 'The mountains',
+        sub: 'Breaking Bad · up among the juniper and the granite, the valley far below',
+        ground: { style: 'sand', colors: ['#8a7a68', '#74675a', '#b8a890'] },
+        sky: { zenith: '#2a6ccc', horizon: '#e6dccb', sun: '#fff6dc' },
+        things: [
+          { kind: 'car', at: [-26, 22], r: 2.6, face: false, yaw: 0.9, door: { label: 'the Aztek, back down to the city', reach: 4 } },
+          { kind: 'mesa', at: [-10, 90], r: 22, face: false, opts: { seed: 9, h: 40, r: 22 } },
+          { kind: 'mesa', at: [80, 40], r: 20, face: false, yaw: 1.1, opts: { seed: 3, h: 34, r: 20 } },
+        ],
+        scatter: [
+          { kind: 'rock', n: 80, from: 24, to: 110, scale: range(2), opts: { color: '#7a6a5a', sharp: 0.7, seed: 5 } },
+          { kind: 'juniper', n: 40, from: 24, to: 110, scale: range(1) },
+          { kind: 'stones', n: 160, from: 4, to: 70, scale: range(0.5), solid: false, opts: { color: '#6a5c4e' } },
+          { kind: 'scrub', n: 60, from: 5, to: 90, scale: range(1), solid: false },
+        ],
+      },
+      { id: 'desert' },
+    ],
   },
 
   rickmorty: {
@@ -150,6 +310,27 @@ export const LANDINGS = {
       { kind: 'tree', n: 18, from: 30, to: 100, scale: range(1) },
       { kind: 'bush', n: 40, from: 22, to: 90, scale: range(1) },
       { kind: 'plumbus', n: 4, from: 12, to: 40, scale: range(1), solid: false },
+    ],
+    // the show's world (scripts/planets/rickmorty.mjs): its purple and pink
+    // hills, out past town; the rest is the Smiths' street
+    biomes: [
+      {
+        id: 'hills',
+        match: (c) => hue(c, 250, 350) && c.s > 0.25,
+        title: 'The purple hills',
+        sub: 'Rick and Morty · out past town, where the portal came out',
+        ground: { style: 'grass', colors: ['#7a4aa8', '#9a6ac8', '#e88ac0'] },
+        sky: { zenith: '#3f9be0', horizon: '#e8d8fb', sun: '#fff6d8' },
+        things: [
+          { kind: 'portal', at: [-20, 14], r: 1.6, door: { label: 'the portal', reach: 3 } },
+          { kind: 'figure', at: [-14, 22], r: 0.4, say: { name: 'Rick', line: 'Wubba lubba dub dub!' }, opts: { meshy: 'rick', tall: 1.85 } },
+        ],
+        scatter: [
+          { kind: 'bush', n: 50, from: 22, to: 100, scale: range(1.2), opts: { color: '#c86ab8' } },
+          { kind: 'plumbus', n: 6, from: 12, to: 50, scale: range(1), solid: false },
+        ],
+      },
+      { id: 'street' },
     ],
   },
 
@@ -299,6 +480,21 @@ export const LANDINGS = {
       { kind: 'tree', n: 24, from: 26, to: 110, scale: range(1) },
       { kind: 'flowers', n: 300, from: 3, to: 80, scale: range(1), solid: false },
     ],
+    // Earth: the sea (on to the nearest land), the ice caps, and land
+    biomes: [
+      { id: 'sea', sea: true, match: (c) => hue(c, 200, 250) && c.s > 0.3 && c.l < 0.5 },
+      {
+        id: 'ice',
+        match: (c) => c.l > 0.78 && (c.s < 0.15 || (hue(c, 180, 260) && c.s < 0.5)),
+        title: 'The ice',
+        sub: 'Travel · as far as anyone goes, and not been yet',
+        ground: { style: 'sand', colors: ['#eef2f6', '#dfe6ee', '#b8c4d0'] },
+        sky: { zenith: '#3a6cb8', horizon: '#e8f0f8', sun: '#fffaf0' },
+        things: [{ kind: 'signpost', at: [-14, 20], r: 0.6 }],
+        scatter: [],
+      },
+      { id: 'land' },
+    ],
   },
   caribbean: {
     title: 'A Caribbean island',
@@ -325,6 +521,51 @@ export const LANDINGS = {
       { kind: 'palm', n: 14, from: 24, to: 90, scale: range(1) },
       { kind: 'shells', n: 120, from: 3, to: 34, scale: range(1), solid: false },
     ],
+    // the Caribbean (scripts/planets/caribbean.mjs): Tortuga where the bake
+    // put it (its frame(20, π + 0.08)), the deep sea (on to the nearest
+    // island), the banks' turquoise shallows, and an island's beach
+    biomes: [
+      {
+        id: 'tortuga',
+        near: [20, 4.6, 3],
+        title: 'Tortuga',
+        sub: 'Pirates of the Caribbean · the port, the Faithful Bride’s lamps lit',
+        ground: { style: 'sand', colors: ['#b49a70', '#9a8260', '#6a5640'] },
+        models: { port: { url: '/games/caribbean/port.glb', wide: 44 } },
+        things: [
+          { kind: 'sea', at: [0, 109], r: 0, face: false, strip: [130, 75], opts: { shore: -75, deep: 150 } },
+          { kind: 'pearl', at: [-30, 92], r: 0, face: false, yaw: 1.2, solid: false },
+          { kind: 'port', at: [34, 52], r: 22, yaw: -0.5 },
+          { kind: 'rowboat', at: [-16, 26], r: 2.2, face: false, yaw: 0.3, door: { label: 'the rowboat, out to the Pearl', reach: 4 } },
+          { kind: 'figure', at: [-8, 24], r: 0.4, say: { name: 'Jack', line: 'If every town in the world were like this one, no man would ever feel unwanted.' }, opts: { url: '/games/caribbean/jack.glb', tall: 1.78 } },
+          { kind: 'cargo', at: [-30, 30], r: 1.6, opts: { seed: 3 } },
+          { kind: 'cargo', at: [12, 24], r: 1.6, opts: { seed: 7 } },
+          { kind: 'fire', at: [-26, 6], r: 1 },
+        ],
+        scatter: [{ kind: 'shells', n: 40, from: 3, to: 30, scale: range(1), solid: false }],
+      },
+      { id: 'sea', sea: true, match: (c) => hue(c, 195, 240) && c.l < 0.42 },
+      {
+        id: 'reef',
+        match: (c) => hue(c, 155, 200) && c.l >= 0.4,
+        title: 'A reef flat',
+        sub: 'Pirates of the Caribbean · the shallows at low tide, the Pearl standing off',
+        ground: { style: 'sand', colors: ['#e0d4a8', '#d0c294', '#5fbcb4'] },
+        sky: { zenith: '#2a8ad8', horizon: '#d2f4f4', sun: '#fff8e0' },
+        things: [
+          { kind: 'sea', at: [0, 90], r: 0, face: false, strip: [130, 60], opts: { shore: -60, deep: 120 } },
+          { kind: 'pearl', at: [-14, 82], r: 0, face: false, yaw: 1.2, solid: false },
+          { kind: 'rowboat', at: [-16, 26], r: 2.2, face: false, yaw: 0.3, door: { label: 'the rowboat, out to the Pearl', reach: 4 } },
+          { kind: 'figure', at: [-10, 22], r: 0.4, say: { name: 'Jack', line: 'Not all treasure is silver and gold, mate.' }, opts: { url: '/games/caribbean/jack.glb', tall: 1.78 } },
+          { kind: 'chest', at: [18, 20], r: 0.8 },
+        ],
+        scatter: [
+          { kind: 'shells', n: 260, from: 3, to: 60, scale: range(1), solid: false },
+          { kind: 'coral', n: 90, from: 6, to: 60, scale: range(1), solid: false },
+        ],
+      },
+      { id: 'beach' },
+    ],
   },
   invincible: {
     title: 'The Graysons’ city',
@@ -342,6 +583,29 @@ export const LANDINGS = {
     scatter: [
       { kind: 'rubble', n: 160, from: 4, to: 60, scale: range(1.2), solid: false },
       { kind: 'glass', n: 120, from: 3, to: 50, scale: range(1), solid: false },
+    ],
+    // the war-worn world (scripts/build-invincible-planet.mjs): its pale
+    // rust plateaus, out of town; the dark old sea beds, the city
+    biomes: [
+      {
+        id: 'badlands',
+        match: (c) => c.l > 0.55,
+        title: 'The badlands',
+        sub: 'Invincible · miles out of town, where the fight threw them',
+        ground: { style: 'sand', colors: ['#c8865a', '#b07048', '#6a3a2a'] },
+        sky: { zenith: '#3a5fa0', horizon: '#f0b07a', sun: '#ffd8a8' },
+        things: [
+          { kind: 'crater', at: [-8, 36], r: 11, door: { label: 'the city', reach: 13 } },
+          { kind: 'figure', at: [6, 30], r: 0.4, say: { name: 'Mark', line: 'I’d still have you, Dad.' }, opts: { url: '/models/invincible/mark.glb', tall: 1.78 } },
+          { kind: 'crater', at: [44, 60], r: 14, opts: { r: 12, seed: 8 } },
+          { kind: 'wreck', at: [20, 24], r: 2.4, face: false, yaw: 0.7 },
+        ],
+        scatter: [
+          { kind: 'rubble', n: 120, from: 4, to: 80, scale: range(1.4), solid: false },
+          { kind: 'rock', n: 50, from: 24, to: 110, scale: range(1.8), opts: { color: '#8a4a30', sharp: 0.6, seed: 2 } },
+        ],
+      },
+      { id: 'city' },
     ],
   },
   // ── the Rick and Morty system's moons, round the Citadel (universes.js's MOONS; ./rmmoons.js) ──
