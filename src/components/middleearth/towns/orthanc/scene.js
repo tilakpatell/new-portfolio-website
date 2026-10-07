@@ -31,6 +31,7 @@ import { createGhosts } from '../ghosts';
 import { makeRain } from '../rain';
 import { createOrthancKit, insideTop } from './props';
 import { DUEL_AT, HOST, LEAF, LECTERN, MOTH_AT, PALANTIR, PITS, PIN, PIN_IN, RING, SARUMAN_AT, STAIR, STAIR_LEN, TOWER_H, clearView, indoors, stairAngle, stairAt, stairFace } from './layout';
+import { attend, castDo, castPlay, releaseCast, tickCast } from '../../cast3d';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -138,6 +139,10 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
   stone.group.position.set(PALANTIR.x, 0, PALANTIR.z);
   zones.hall.add(stone.group);
   const stoneAt = wpos('hall', PALANTIR.x, 1.62, PALANTIR.z);
+  // where the cast's eyes go: into the stone, down at the book, at the jar
+  const PALANTIR_EYE = stoneAt.clone();
+  const LECTERN_EYE = wpos('hall', LECTERN.x, 1.15, LECTERN.z);
+  const LEAF_EYE = wpos('hall', LEAF.jar[0], 0.9, LEAF.jar[1]);
   const throneLamp = hall.lamp.clone().add(AT.hall);
   // the light from the windows, falling in shafts
   // (each its own material, so one the camera is in can fade on its own)
@@ -409,6 +414,8 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
     f.body.rotation.z = 0;
     sit(f, false);
     if (f.blob) f.blob.visible = true;
+    // (on the cast: what each does here is set after, frame by frame)
+    castDo(f, { base: null, upper: null, look: null, crouch: false, air: 0, full: null, down: false });
   };
   const faceTo = (ax, az, bx, bz) => Math.atan2(-(bz - az), bx - ax);
   // where a staff's light is, in the world
@@ -541,6 +548,21 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
         const ph = duel?.phase ?? 'idle';
         pose(gandalf, t, { moving: false, talk: s.speaker === 'gandalf' ? 1 : 0 });
         pose(saruman, t + 1, { moving: ph === 'idle' && Boolean(duel), speed: 0.4, talk: s.speaker === 'saruman' ? 1 : 0 });
+        // on the cast (../../cast3d.js): each with his eyes on the other; Saruman
+        // raises his staff in the tell and looses the spell in the cast, reels
+        // when he's open; Gandalf goes down by his own fall and gets up again
+        castDo(gandalf, { look: saruman, down: A.down > 0, flinch: null, fall: 'knockdown', rise: 'arise' });
+        castDo(saruman, { look: gandalf, upper: ph === 'tell' ? 'cast.idle' : null });
+        // (driven back, he laughs, and takes your staff from you)
+        const laughing = s.talking === 'staff' && s.line === 'laugh';
+        if (laughing && !A.laughed) castPlay(saruman, 'taunt', { layer: 'full', fade: 0.15 });
+        A.laughed = laughing;
+        if (ph !== A.sPh) {
+          if (ph === 'tell') castPlay(saruman, 'cast.enter', { layer: 'full', fade: 0.15 });
+          else if (ph === 'cast') castPlay(saruman, 'cast', { layer: 'full', fade: 0.08 });
+          else if (ph === 'open') castPlay(saruman, 'hit.head', { layer: 'full', fade: 0.08 });
+          A.sPh = ph;
+        }
         // Gandalf's staff: raised across to block, thrust to push
         if (s.staff) gandalf.arms[1].rotation.x = -1.2 * A.block - 0.4 * A.push;
         gandalf.arms[1].rotation.z = 1.2 * A.push + 0.3;
@@ -587,8 +609,14 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
         if (A.block > 0 || A.push > 0) lights.unshift([tipOf(gOrb, V()), paleCol, (A.block + A.push) * 9, 12]);
       } else {
         stand(saruman, 'hall', SARUMAN_AT.x, 0, SARUMAN_AT.z, SARUMAN_AT.face);
+        A.sPh = null;
         if (s.mode === 'talk' && s.talking && s.talking !== 'lore' && s.talking !== 'leaf') turnTo(saruman, faceTo(SARUMAN_AT.x, SARUMAN_AT.z, h.x, h.z), dt, 6);
-        else saruman.group.rotation.y = s.talking ? faceTo(SARUMAN_AT.x, SARUMAN_AT.z, h.x, h.z) : SARUMAN_AT.face;
+        else if (saruman.cast?.ready) {
+          // (on the cast: by the stone, his eyes on you as you go about his hall, his body turned only as he must)
+          if (s.talking) turnTo(saruman, faceTo(SARUMAN_AT.x, SARUMAN_AT.z, h.x, h.z), dt, 6);
+          else attend(saruman, h, SARUMAN_AT.face, dt, { who: gandalf, near: 9, greet: false });
+        } else saruman.group.rotation.y = s.talking ? faceTo(SARUMAN_AT.x, SARUMAN_AT.z, h.x, h.z) : SARUMAN_AT.face;
+        if (s.talking) castDo(saruman, { look: gandalf });
         pose(saruman, t + 1, { moving: false, talk: s.speaker === 'saruman' ? 1 : 0 });
         if (s.mode === 'gaze') {
           // before the stone, bent to it
@@ -598,17 +626,21 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
           pose(gandalf, t, { moving: false });
           gandalf.body.rotation.z = -0.22 - (looking ? 0.1 : 0);
           gandalf.arms[0].rotation.z = 0.9;
+          // (on the cast: his hands to the stone, his eyes in it)
+          castDo(gandalf, { upper: 'pickup', look: PALANTIR_EYE });
           if (gz?.phase === 'turn' && looking) A.shake = Math.max(A.shake, 0.05);
         } else if (s.talking === 'lore') {
           // reading, at the lectern
           stand(gandalf, 'hall', LECTERN.x - 0.95, 0, LECTERN.z, 0);
           pose(gandalf, t, { moving: false, talk: s.speaker === 'gandalf' ? 1 : 0 });
           gandalf.head.rotation.z = -0.25;
+          castDo(gandalf, { look: LECTERN_EYE }); // (on the cast: reading)
         } else if (s.talking === 'leaf') {
           // crouched by the case, the jar in his hand
           stand(gandalf, 'hall', LEAF.x + 0.1, 0, LEAF.z + 0.8, faceTo(LEAF.x + 0.1, LEAF.z + 0.8, LEAF.jar[0], LEAF.jar[1]));
           pose(gandalf, t, { moving: false, talk: s.speaker === 'gandalf' ? 1 : 0 });
           gandalf.body.rotation.z = -0.2;
+          castDo(gandalf, { crouch: true, look: LEAF_EYE }); // (on the cast: down by the case, the jar in view)
         } else {
           stand(gandalf, 'hall', h.x, 0, h.z, h.face);
           pose(gandalf, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1, talk: s.speaker === 'gandalf' ? 1 : 0 });
@@ -697,6 +729,8 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
               gandalf.arms[1].rotation.z = 1.5;
               gandalf.arms[1].rotation.x = -0.25;
             }
+            // (on the cast: his hand out to the moth)
+            castDo(gandalf, { upper: s.mode !== 'leap' ? 'aim.pistol' : null });
           } else {
             stand(gandalf, 'tower', h.x, TOWER_H, h.z, h.face);
             pose(gandalf, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1, talk: s.speaker === 'gandalf' ? 1 : 0 });
@@ -960,6 +994,8 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
       high: [0, 0, 0],
     });
     for (const g of grounds) g.update();
+    // the people on the cast (../../cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -971,15 +1007,20 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
     else if (type === 'cast') A.cast = 1;
     else if (type === 'block') {
       A.block = 1;
+      castPlay(gandalf, 'block', { layer: 'upper', fade: 0.06 }); // (on the cast: the staff across)
       A.cast = Math.min(A.cast, 0.4);
       const p = tipOf(gOrb, V());
       for (let i = 0; i < 40 * Math.max(0.5, many); i++) sparks.emit(p.x, p.y, p.z, R(4), R(4), R(4), 0.6 + Math.random() * 0.4, 0.16, 0.02, 1);
     } else if (type === 'push') {
       A.push = 1;
       A.ring = 0;
+      // (on the cast: Gandalf's staff thrust, and Saruman driven back a step, staggering)
+      castPlay(gandalf, 'cast', { layer: 'upper', fade: 0.06 });
+      castPlay(saruman, 'hit.chest', { layer: 'full', fade: 0.06 });
       A.shake = Math.max(A.shake, 0.1);
     } else if (type === 'hit') {
       A.hit = 1;
+      castPlay(gandalf, 'hit.chest', { layer: 'full', fade: 0.06 }); // (on the cast: struck, and back a step)
       A.shake = Math.max(A.shake, 0.3);
     } else if (type === 'down') A.down = 1.6;
     else if (type === 'fumble') A.block = Math.max(A.block, 0.3);
@@ -1019,6 +1060,7 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
       manyColours.dispose();
       ghosts.dispose();
       disposeTree(scene);
+      releaseCast(scene);
       stage.dispose();
     },
   };

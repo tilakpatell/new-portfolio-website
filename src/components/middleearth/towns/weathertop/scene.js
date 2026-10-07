@@ -33,6 +33,7 @@ import { createWeathertopKit } from './props';
 import { ARWEN_AT, BED, CAST, COLLIDERS, CRAGS, DELL, FIRE_AT, GAPS, HILL, PATCHES, PLANTS, ROCKS, RUIN, SPOTS, STAIR, STAIR_W, STAND, TREES, TROLLS, WALLS, WORLD, WOUNDED, height, pathAmount, stairNear } from './layout';
 import { BRAND, MARK_LINES, OBSTACLES, RIDE, glowOf, roadBend, roadTurn } from './rules';
 import { sharpen } from '../../../../lib/three/textures';
+import { attend, castDo, castPlay, releaseCast, tickCast } from '../../cast3d';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -307,6 +308,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
     lantern.position.set(0.08, -0.34, 0);
   }
   sam.arms[1].add(lantern);
+  // (on the cast, ../../cast3d.js, the brand and the lantern go to their hands, as all a toy holds does)
   const people = {};
   for (const c of CAST) {
     if (!c.look) continue;
@@ -322,6 +324,12 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
   const lying = new THREE.Group();
   wounded.group.rotation.z = Math.PI / 2;
   wounded.group.position.y = 0.2;
+  // (on the cast he lies by his own pose, not a toy tipped over)
+  wounded.cast?.onReady(() => {
+    wounded.group.rotation.z = 0;
+    wounded.group.position.y = 0;
+    castDo(wounded, { base: 'sleep' });
+  });
   lying.add(wounded.group);
   lying.position.set(WOUNDED.x, height(WOUNDED.x, WOUNDED.z), WOUNDED.z);
   lying.rotation.y = WOUNDED.face;
@@ -553,12 +561,18 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
   const qWant = new THREE.Quaternion();
   const UP = V(0, 1, 0);
   const lean = V();
+  const qGroup = new THREE.Quaternion();
   const upright = (obj, f, arm, k) => {
-    qArm.copy(f.body.quaternion).multiply(f.arms[arm].quaternion).invert();
     qWant.setFromUnitVectors(UP, lean.set(Math.sin(k), Math.cos(k), 0));
+    if (obj.parent?.isBone) {
+      // in the cast's hand: upright in the figure's own frame, whatever the hand's doing
+      obj.parent.getWorldQuaternion(qArm).invert().multiply(f.group.getWorldQuaternion(qGroup));
+      obj.quaternion.copy(qArm.multiply(qWant));
+      return;
+    }
+    qArm.copy(f.body.quaternion).multiply(f.arms[arm].quaternion).invert();
     obj.quaternion.copy(qArm.multiply(qWant));
   };
-  const gallopLegs = (legs, t, k = 1) => legs.forEach((leg, j) => (leg.rotation.z = Math.sin(t * 11 + j * (j < 2 ? 0.6 : 2.2)) * 0.7 * k));
 
   const render = (s, ms, fast = 1) => {
     const dt = Math.min(0.05 * fast, ms / 1000);
@@ -619,6 +633,10 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
         const jab = s.brand?.cool > BRAND.thrustCool - 0.2 ? 1 : 0;
         frodo.arms[1].rotation.z = 1.5 - jab * 0.35;
         frodo.arms[1].rotation.x = -0.6;
+        // (on the cast: held out at arm's length, a jab with each thrust)
+        castDo(frodo, { upper: 'aim.pistol', base: null });
+        if (jab && !A.jabbed) castPlay(frodo, 'jab', { layer: 'upper', fade: 0.06 });
+        A.jabbed = Boolean(jab);
         // the brand kept upright in his fist, leaning forward (more so in a
         // jab), whatever his arm's doing: turned in the arm's own frame
         upright(brand.group, frodo, 1, 0.45 + jab * 0.6);
@@ -630,10 +648,15 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
         if (s.stamping > 0) walker.legs[0].rotation.z = -0.9 * s.stamping;
         // at the stone, his hand on it, scraping at the lichen
         if (s.mode === 'mark') walker.arms[1].rotation.z = 1.15 + Math.sin(t * 13) * 0.12;
-        // asleep in the dell, before the smell of bacon wakes him
+        // on the cast: a stamp on the flames, scraping at the stone, the lantern held up
+        if (s.stamping > 0 && !A.stamped) castPlay(walker, 'stomp', { layer: 'full', fade: 0.08 });
+        A.stamped = s.stamping > 0;
+        castDo(walker, { upper: s.mode === 'mark' ? 'interact' : null });
+        // asleep in the dell, before the smell of bacon wakes him (on the cast: lying, by his own pose)
+        castDo(frodo, { base: s.mode === 'sleep' ? 'sleep' : null });
         if (s.mode === 'sleep') {
           frodo.group.position.set(BED.x, height(BED.x, BED.z) + 0.15, BED.z);
-          frodo.group.rotation.set(0, BED.face, Math.PI / 2);
+          frodo.group.rotation.set(0, BED.face, frodo.cast?.ready ? 0 : Math.PI / 2);
         } else frodo.group.rotation.set(0, frodo.group.rotation.y, 0);
       }
       brand.group.visible = s.mode === 'brand';
@@ -662,11 +685,8 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
       const on = !riding && s.cast?.includes(c.id) && s.mode !== 'brand';
       p.group.visible = Boolean(on);
       if (!on) continue;
-      const near = Math.hypot(h.x - c.x, h.z - c.z) < 5;
-      const want = near ? Math.atan2(-(h.z - c.z), h.x - c.x) : c.face;
-      let d = want - p.group.rotation.y;
-      d = Math.atan2(Math.sin(d), Math.cos(d));
-      p.group.rotation.y += d * Math.min(1, dt * 4);
+      // they turn to Frodo as he comes by: on the cast the head first, a greeting the first time
+      attend(p, h, c.face, dt, { who: walker });
       pose(p, t + c.x, { moving: false, wave: 0, talk: s.talk === c.id || s.speaker === c.id ? 1 : 0 });
     }
     lying.visible = !riding && Boolean(s.cast?.includes('strider-foot'));
@@ -732,7 +752,8 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
         const z = STAND.z + Math.sin(w.a) * r;
         placeWraith(n, x, z, Math.PI - w.a);
         n.group.visible = fled < 0.95;
-        wraiths.animate(n, t + i, { moving: w.mode === 'creep' || w.mode === 'back', hunt: w.mode === 'wait' ? 0 : 1 });
+        // driven back by the brand it rears from it; held at its edge, it flinches
+        wraiths.animate(n, t + i, { moving: w.mode === 'creep' || w.mode === 'back', hunt: w.mode === 'wait' ? 0 : 1, recoil: w.mode === 'back' ? 1 : w.mode === 'held' ? 0.4 : 0 });
         return;
       }
       if (climbing) {
@@ -760,6 +781,8 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
       striderFire.group.position.set(x, height(x, z), z);
       striderFire.group.rotation.y = Math.PI - a;
       pose(striderFire, t, { moving: k < 1 });
+      // (on the cast: the fire swung at them in both hands)
+      castDo(striderFire, { upper: 'walk.fight' });
       striderFire.arms[0].rotation.z = 1.4 + Math.sin(t * 4) * 0.4;
       striderFire.arms[1].rotation.z = 1.1 - Math.sin(t * 4) * 0.4;
       torches.forEach((tc, i) => upright(tc.group, striderFire, i, 0.3));
@@ -810,10 +833,8 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
       onRoad(r.group, along, lat + swept);
       r.group.position.y -= Math.min(2.5, swept * 0.15);
       r.group.visible = swept < 30;
-      const moving = s.mode === 'ride' || (s.flood ?? 0) > 0;
-      if (moving) gallopLegs(r.horse.legs, t + i, s.mode === 'ride' ? 1 : 0.6);
-      else r.horse.legs.forEach((leg) => (leg.rotation.z = 0));
-      r.horse.neck.rotation.z = -0.1 + Math.sin(t * (moving ? 5.5 : 0.9) + i) * (moving ? 0.12 : 0.05);
+      // a walk into a gallop at the pace they're put down the road at; stood, shifting (../../shire/props.js)
+      r.animate?.(t + i);
     });
     const flood = s.flood ?? 0;
     if (riding) {
@@ -966,6 +987,8 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
     sun.target.position.copy(camera.position);
     floorLight.update();
+    // the people on the cast (../../cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -1039,6 +1062,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
       floorLight.dispose();
       ghosts.dispose();
       disposeTree(scene);
+      releaseCast(scene);
       stage.dispose();
     },
   };

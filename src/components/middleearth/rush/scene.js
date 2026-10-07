@@ -21,6 +21,8 @@ import { COLOURS, HOBBITS } from './cast';
 import { facingTile, KINDS, ovenFor, recipesOf } from './rules';
 import { STATIONS, TOP, V, crate, innCounter, innPot, shelf, stream } from './themes/common';
 import { themeOf } from './themes';
+import { castDo, castPlay, releaseCast, tickCast } from '../cast3d';
+import { turn as easeYaw } from '../../../lib/three/gait';
 
 const SCALE = 0.92; // the hobbits, to the tiles
 const BIG = 1.7; // things, chunky enough to read from up here
@@ -227,8 +229,11 @@ export function createRushScene(canvas, level, { onLost } = {}) {
   const thiefStep = (dt, t) => {
     const g = thief.model;
     if (!g) return;
+    const shown = g.group.visible;
     g.group.visible = Boolean(thief.mode);
     if (!thief.mode) return;
+    // (just come up to a counter: put there, facing it)
+    const arrived = !shown || (thief.mode === 'creep' && thief.t0 == null);
     thief.t0 ??= t;
     const u = t - thief.t0;
     if (thief.mode !== 'creep') {
@@ -238,7 +243,8 @@ export function createRushScene(canvas, level, { onLost } = {}) {
       if (Math.abs(thief.x) > W / 2 + 2) thief.mode = null;
     }
     g.group.position.set(thief.x, 0, thief.z);
-    g.group.rotation.y = thief.face;
+    // he turns to go as a thing on all fours turns, not on the spot (put facing the counter as he appears)
+    g.group.rotation.y = arrived ? thief.face : easeYaw(g.group.rotation.y, thief.face, dt, 9);
     g.animate?.(t, { pose: thief.mode === 'creep' ? 'crouch' : 'crawl', speed: thief.mode === 'creep' ? 0 : 1, look: Math.sin(t * 5) * 0.3, reach: thief.mode === 'creep' ? Math.min(1, u / (level.thief.warn * 0.8)) : 0 });
   };
 
@@ -446,8 +452,11 @@ export function createRushScene(canvas, level, { onLost } = {}) {
       h.g.visible = Boolean(p);
       if (!p) return;
       h.g.position.set(X(p.x), 0, Z(p.z));
-      h.f.group.rotation.y = p.face;
+      // (turned over a moment, not snapped)
+      h.f.group.rotation.y = easeYaw(h.f.group.rotation.y, p.face, dt, 16);
       pose(h.f, t + slot, { moving: p.moving, speed: 1.1 });
+      // on the cast (../cast3d.js): arms out under what he carries, at work at a station
+      castDo(h.f, { upper: p.held ? 'walk.carry' : p.work ? 'interact' : null });
       const arms = h.f.arms;
       if (p.held) {
         arms[0].rotation.z = -1.25;
@@ -513,6 +522,8 @@ export function createRushScene(canvas, level, { onLost } = {}) {
     }
     // (what's come in since, taken on now and then)
     house.follow({ adopt: houseFrames++ % 60 === 0 });
+    // the people on the cast (../cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     renderer.info.reset();
     stage.render(ms);
   };
@@ -523,6 +534,12 @@ export function createRushScene(canvas, level, { onLost } = {}) {
     if (e.type === 'sneak' || e.type === 'shooed' || e.type === 'stolen') thiefAt(e);
     const x = X(e.at[0] + 0.5);
     const z = Z(e.at[1] + 0.5);
+    // on the cast: the hobbit nearest it cheers a dish served, starts at a spill, wags a finger at a no
+    const react = { served: 'cheer.one', spilt: 'scared', nope: 'nope' }[e.type];
+    if (react) {
+      const near = figures.filter((h) => h.g.visible).sort((a, b) => Math.hypot(a.g.position.x - x, a.g.position.z - z) - Math.hypot(b.g.position.x - x, b.g.position.z - z))[0];
+      if (near) castPlay(near.f, react, { layer: 'upper' });
+    }
     if (e.type === 'served') for (let k = 0; k < 10; k++) puff(x, TOP + 0.4, z, { color: 0xffd060, size: 0.16, life: 0.9, v: [(Math.random() - 0.5) * 1.6, 1.2 + Math.random(), (Math.random() - 0.5) * 1.6], opacity: 1 });
     else if (e.type === 'spilt') for (let k = 0; k < 8; k++) puff(x, TOP + 0.1, z + 0.4, { color: 0xd09030, size: 0.14, life: 0.8, v: [(Math.random() - 0.5) * 1.2, 0.8, 0.6 + Math.random() * 0.6], opacity: 0.9 });
     else if (e.type === 'chopped' || e.type === 'washed') for (let k = 0; k < 5; k++) puff(x, TOP + 0.2, z, { color: e.type === 'washed' ? 0xeaf6ff : 0xffffff, size: 0.12, life: 0.5, v: [(Math.random() - 0.5), 1, (Math.random() - 0.5)], opacity: 0.9 });
@@ -562,6 +579,7 @@ export function createRushScene(canvas, level, { onLost } = {}) {
       ringGeo.dispose();
       for (const sp of puffs) sp.material.dispose();
       disposeTree(room);
+      releaseCast(scene);
       stage.dispose();
     },
   };
