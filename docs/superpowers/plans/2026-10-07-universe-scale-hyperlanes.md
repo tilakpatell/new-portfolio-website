@@ -110,11 +110,11 @@ Branch `claude/universe-scale-hyperlanes` (this one). One PR for Tasks 1 to 3, a
 
 ### Task 7: the architecture notes and the hand-off
 
-- [ ] `docs/architecture.md`: a paragraph after `layout.js`’s on `scale.js`’s `SPREAD`, `farPlaces.js`, `regions.js`, `hyperlanes.js`, `ride.js` and the `lanes` drive, in the file’s voice. `README.md`’s universe section: two sentences on the lanes. `docs/superpowers/HANDOFF-universe-scale.md`: what landed, how to check it, what Lanes B and C take from here. **Commit.**
+- [x] `docs/architecture.md`: a paragraph after `layout.js`’s on `scale.js`’s `SPREAD`, `farPlaces.js`, `regions.js`, `hyperlanes.js`, `ride.js` and the `lanes` drive, in the file’s voice. `README.md`’s universe section: two sentences on the lanes. `docs/superpowers/HANDOFF-universe-scale.md`: what landed, how to check it, what Lanes B and C take from here. **Commit.**
 
 ### Task 8: evidence
 
-- [ ] `poses.js` gains `'far-rim'` (the ship at home’s edge looking out at the furthest fandom: the impostors) and `'lane-ride'` (the ship held mid-way on the home–Middle-earth trunk, heading along it). `scripts/universe-check.mjs` takes them; run the three tiers against `lab/universe/baseline/` and put the numbers (draw calls, triangles, frame time) in the PR against the budgets. `node scripts/navmap-check.mjs` for the chart. Screenshots of `overview`, `far-rim`, `lane-ride` and the chart in the PR. Merge on green.
+- [x] `poses.js` gains `'far-rim'` (the ship at home’s edge looking out at the furthest fandom: the impostors) and `'lane-ride'` (the ship held mid-way on the home–Middle-earth trunk, heading along it). `scripts/universe-check.mjs` takes them; run the three tiers against `lab/universe/baseline/` and put the numbers (draw calls, triangles, frame time) in the PR against the budgets. `node scripts/navmap-check.mjs` for the chart. Screenshots of `overview`, `far-rim`, `lane-ride` and the chart in the PR. Merge on green.
 
 ---
 
