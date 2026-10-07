@@ -61,7 +61,7 @@ own); NPCs that do things, not just stand and talk.
   play one over the idle/walk/run blend; `api.play` is Morty's. Rick's
   `fidget: 'drink'` sips every so often. A hotspot's `anim` plays one when
   it's used (the mic: dance); RmWorld plays `scared` when he's caught, `hit`
-  and `fall` in a duel, `shoot` when he fires. Rick's, Morty's and Evil
+  and `fall` in a duel, `shoot` when he fires, `cheer` when a thing's done. Rick's, Morty's and Evil
   Rick's own rigs are on the first Meshy account (`MESHY_API_KEY`), which
   another session ran down to 7 credits; the shared clips route needs no
   credits there.
@@ -94,7 +94,6 @@ own); NPCs that do things, not just stand and talk.
   game of its own), and Mr. Frundles. (The cable figures went to a studio
   of their own rather than the alien street, which has no NPC layer.)
 - The map's Birdperson is still the code-built one (`HANDOFF-rm-phase1.md`).
-- Morty's `cheer` clip isn't played anywhere yet (a thing done could play it).
 - Nothing on the dial has a sound of its own yet (the escape clock uses
   `portalOpen`; caught uses `ouch`).
 

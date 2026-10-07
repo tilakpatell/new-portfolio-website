@@ -1175,7 +1175,9 @@
   },
   "hemorrhage": {
     "image": "01a1141d-7d2e-7416-8c6b-ac518a58cb6d",
-    "model": "01a11420-4498-761a-9cc1-6cb8c7574937"
+    "model": "01a11420-4498-761a-9cc1-6cb8c7574937",
+    "rig": "01a11426-8395-735a-8e9b-f10044ebc982",
+    "idle": "01a11426-d02a-7304-9b65-bb59786d5955"
   },
   "deathstalker-a": {
     "image": "01a1141d-7d49-76fa-89e8-443196876475",
@@ -1191,7 +1193,9 @@
   },
   "cornvelious": {
     "image": "01a1141d-e466-73ff-9a1c-e83a25127ec6",
-    "model": "01a11421-4f5d-70cd-860c-696351565643"
+    "model": "01a11421-4f5d-70cd-860c-696351565643",
+    "rig": "01a11426-832b-729f-89c5-7cd16bb2f09c",
+    "idle": "01a11426-d00a-7469-b4ec-27b976884d10"
   },
   "brainalyzer": {
     "image": "01a1141d-f808-748a-b50e-d84c89d6f6f9",
@@ -1202,30 +1206,39 @@
     "model": "01a11421-7612-7210-ba27-d0b1a33fb562"
   },
   "babylegs": {
-    "image": "01a1141e-6f7d-77e4-bfb6-e05a268e882d"
+    "image": "01a1141e-6f7d-77e4-bfb6-e05a268e882d",
+    "model": "01a11422-b723-7099-9204-1bdd57ddc700"
   },
   "regularlegs": {
-    "image": "01a1141e-705b-76e3-967a-b5d5f0bd91c2"
+    "image": "01a1141e-705b-76e3-967a-b5d5f0bd91c2",
+    "model": "01a11422-e027-75de-bde3-b422402d0b79"
   },
   "mrsneezy": {
-    "image": "01a1141e-ea21-73bc-9112-b4acc65fdd05"
+    "image": "01a1141e-ea21-73bc-9112-b4acc65fdd05",
+    "model": "01a11422-f604-71e5-a499-08401ef2e744"
   },
   "gazorpazorpfield": {
-    "image": "01a1141e-fda2-777b-b5b3-db7fb212c513"
+    "image": "01a1141e-fda2-777b-b5b3-db7fb212c513",
+    "model": "01a11423-16fd-74b1-b56e-cf7d9a1078b9"
   },
   "shmlo": {
-    "image": "01a1141f-76d0-71f3-b75a-e9717c21b70d"
+    "image": "01a1141f-76d0-71f3-b75a-e9717c21b70d",
+    "model": "01a11423-e74a-7080-997e-d45b042f1439"
   },
   "trunkperson": {
-    "image": "01a1141f-7747-70b9-b0d1-974114d9ca9a"
+    "image": "01a1141f-7747-70b9-b0d1-974114d9ca9a",
+    "model": "01a11423-fa79-70de-9410-274cd01795b8"
   },
   "lilbits": {
-    "image": "01a1141f-8ad2-740d-a83f-23160dc94312"
+    "image": "01a1141f-8ad2-740d-a83f-23160dc94312",
+    "model": "01a11424-23a3-7621-b5d6-7a20349fedba"
   },
   "tophatjones": {
-    "image": "01a1141f-dc64-764a-ade7-5db9812dfff4"
+    "image": "01a1141f-dc64-764a-ade7-5db9812dfff4",
+    "model": "01a11424-6c7d-7022-8d06-e1c0f912eda0"
   },
   "realfakedoors": {
-    "image": "01a1141f-f061-7173-9f73-46f60f90944a"
+    "image": "01a1141f-f061-7173-9f73-46f60f90944a",
+    "model": "01a11425-3c2c-774d-a636-14ad5690e6c0"
   }
 }

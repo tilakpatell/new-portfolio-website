@@ -325,6 +325,8 @@ export default function RmWorld() {
       setDone(next);
       api.current?.fx('done', { id });
       sound('gadget');
+      // (and Morty's pleased with himself)
+      api.current?.play('cheer', { hold: 0.2 });
       if (openRef.current) pending.current.push(id);
       else tellDone([id]);
     },
