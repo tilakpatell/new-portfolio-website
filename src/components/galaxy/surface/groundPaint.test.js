@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { groundPainter } from './groundPaint';
+import { HALF } from './terrain';
+import { groundPainter, mapAreaOf } from './groundPaint';
 
 const flat = (h = 5, n = [0, 1, 0]) => ({ heightAt: () => h, normalAt: () => n });
 const palette = { low: '#804020', high: '#20a040', rock: '#808080', deep: '#102030', hLow: 0, hHigh: 10, rockAt: 0.42, accentCover: 0, grain: 0 };
@@ -63,6 +64,20 @@ describe('the ground painted as one function', () => {
     const { out, grass } = paintAt(p, 300, 300);
     expect(grass).toBe(0);
     expect(out.some((v) => v > 0)).toBe(true);
+  });
+
+  it('covers the walkable square, as the terrain grid lies', () => {
+    expect(mapAreaOf()).toEqual({ x0: -HALF, z0: -HALF, w: 2 * HALF, d: 2 * HALF });
+  });
+
+  it('finds a shade among hundreds by its cell, not by looking at them all', () => {
+    const shade = Array.from({ length: 600 }, (_, i) => ({ at: [((i * 37) % 800) - 600, ((i * 91) % 1200) - 600], r: 8 }));
+    shade.push({ at: [300, 300], r: 20 });
+    const p = groundPainter(site(), flat(5), { shade });
+    expect(paintAt(p, 300, 300).grass).toBeCloseTo(paintAt(groundPainter(site(), flat(5)), 300, 300).grass * 0.4, 2);
+    const t0 = performance.now();
+    for (let i = 0; i < 20000; i++) paintAt(p, (i % 200) * 6 - 600, Math.floor(i / 200) * 6 - 600);
+    expect(performance.now() - t0).toBeLessThan(1500);
   });
 
   it('reads the height from the grid', () => {

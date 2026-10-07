@@ -29,6 +29,7 @@ import { noiseTexture } from './noiseTex';
 import { loadScan, scanOf } from './kit';
 import { detailLevel } from '../../../lib/detail';
 import { sharpen } from '../../../lib/three/textures';
+import { GROUND_GLSL } from '../../../lib/three/groundmap';
 
 // (noise read from noiseTex.js's tile, at a few scales, rather than worked out)
 const NOISE = `
@@ -37,7 +38,7 @@ float gHash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32
 vec4 gTex(vec2 p) { return texture2D(uNoise, p); }
 `;
 
-export function groundMaterial(site, { small = false } = {}) {
+export function groundMaterial(site, { small = false, map = null } = {}) {
   const g = site.ground;
   const p = g.palette;
   const col = (c, fallback) => new THREE.Color(c ?? fallback);
@@ -77,8 +78,17 @@ export function groundMaterial(site, { small = false } = {}) {
     });
   }
   const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: p.roughness ?? 0.94, metalness: 0 });
+  // (the ground map, lib/three/groundmap: inside the walkable square the
+  // floor takes its colour, the same rule painted once with the trees'
+  // shade in it, so the floor, the grass and the bounce agree; fading to the
+  // shader's own toward the square's edge and beyond)
+  const fromMap = map
+    ? `
+  vec2 mq = abs(xz) / uHalf;
+  c = mix(c, groundColour(xz), 1.0 - smoothstep(0.88, 1.0, max(mq.x, mq.y)));`
+    : '';
   mat.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, uniforms);
+    Object.assign(shader.uniforms, uniforms, map?.uniforms ?? {});
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vGround;\nvarying vec3 vGroundN;')
       .replace('#include <project_vertex>', '#include <project_vertex>\nvGround = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvGroundN = normalize(mat3(modelMatrix) * objectNormal);');
@@ -93,6 +103,7 @@ uniform vec4 uHeights, uRipple, uWet, uScanK;
 uniform vec2 uScanFade;
 uniform sampler2D uMarks, uScan, uScanN;
 uniform float uHalf;
+${map ? GROUND_GLSL : ''}
 ${NOISE}`,
       )
       .replace(
@@ -115,7 +126,7 @@ ${NOISE}`,
   vec3 rockC = uRock * (0.78 + 0.4 * gTex(vec2(xz.x * 0.004 + xz.y * 0.003, vGround.y * 0.035)).b); // strata
   c = mix(c, rockC, rock);
   // darker toward the water's edge
-  c = mix(c, uWetColor, (1.0 - smoothstep(uWet.x, uWet.x + uWet.y, vGround.y)) * 0.75 * step(-9999.0, uWet.x));
+  c = mix(c, uWetColor, (1.0 - smoothstep(uWet.x, uWet.x + uWet.y, vGround.y)) * 0.75 * step(-9999.0, uWet.x));${fromMap}
   // grain close up, fading out before it shimmers
   float near = 1.0 - smoothstep(30.0, 160.0, dist);
   c *= 1.0 + ((nFine - 0.5) * 0.12 + (nMid - 0.5) * 0.16) * uGrain.x * mix(0.5, 1.0, near);
@@ -176,7 +187,7 @@ ${NOISE}`,
 }`,
       );
   };
-  mat.customProgramCacheKey = () => 'galaxy-ground';
+  mat.customProgramCacheKey = () => `galaxy-ground${map ? ':map' : ''}`;
   return { material: mat, uniforms };
 }
 
