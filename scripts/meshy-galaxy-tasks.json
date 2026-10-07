@@ -51,5 +51,29 @@
   "leia": {
     "rig": "01a10e7a-1f00-7687-a85e-4f9f528ae872",
     "source": "sketchfab:e5efdd35a5e4462cbc013db44e80d31e"
+  },
+  "lando": {
+    "image": "01a1169c-af2b-74e2-a47d-c6525f46c201",
+    "model": "01a116a0-2f3f-73ef-8d67-54fa837401dd",
+    "rig": "01a116a3-aae3-7171-a074-415ca34154b6"
+  },
+  "lobot": {
+    "image": "01a1169d-84d1-70ca-88ed-e914d1ac4869",
+    "model": "01a116a0-32ed-7710-a08d-1f08eef8976d",
+    "rig": "01a116a3-e5f4-7549-ace7-c1beeeef21cb"
+  },
+  "ugnaught": {
+    "image": "01a1169e-0687-76bc-99f6-ff91561a68c3",
+    "model": "01a116a0-363e-7090-b0ba-b33c4e3490ee",
+    "rig": "01a116a4-21b5-72c2-9db8-f9bd02590c13"
+  },
+  "wingguard": {
+    "image": "01a1169e-7ad8-773f-b533-2a06db1754ad",
+    "model": "01a116a0-3967-7310-9a60-cd46e71d4fd5",
+    "rig": "01a116a4-5e79-726e-b616-5eb3107093aa"
+  },
+  "dex": {
+    "image": "01a1169e-f1f2-72d3-bb45-806acf5047a9",
+    "model": "01a116a0-3c15-7510-9c68-545c9c09927c"
   }
 }

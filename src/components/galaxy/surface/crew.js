@@ -27,6 +27,12 @@ export const CREW = {
   bith: { name: 'bith', tall: 1.8 },
   ahsoka: { name: 'ahsoka', tall: 1.85 },
   hutt: { name: 'jabba', tall: 1.8, still: true },
+  // the three worlds' people (scripts/meshy-galaxy.mjs: Meshy, from a concept each)
+  lando: { name: 'lando', tall: 1.78 },
+  lobot: { name: 'lobot', tall: 1.8 },
+  ugnaught: { name: 'ugnaught', tall: 1.1 },
+  wingguard: { name: 'wingguard', tall: 1.8 },
+  dex: { name: 'dex', tall: 1.9, still: true }, // (behind his counter, which comes with him)
 };
 
 export async function crewFigure(kind) {
