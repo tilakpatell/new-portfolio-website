@@ -93,7 +93,7 @@ export function newGame({ seed = Date.now(), save = null } = {}) {
   };
 }
 
-export { FACING, breakBlock, placeBlock, setBlock } from './build.js';
+export { FACING, breakBlock, dropHeld, placeBlock, setBlock, spawnDrop } from './build.js';
 
 // the way the eyes look, from the yaw and pitch
 export const lookDir = (yaw, pitch) => ({ x: -Math.sin(yaw) * Math.cos(pitch), y: Math.sin(pitch), z: -Math.cos(yaw) * Math.cos(pitch) });

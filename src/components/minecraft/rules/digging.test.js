@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { byName } from './blocks';
 import { makeChunk } from './chunk';
-import { FACING, addChunk, breakBlock, drain, newGame, placeBlock, tick } from './game';
+import { FACING, addChunk, breakBlock, drain, dropHeld, newGame, placeBlock, tick } from './game';
 import { FACE } from './mesher';
 
 const idle = { forward: 0, strafe: 0, jump: false, sneak: false, sprint: false, yaw: 0, pitch: 0 };
@@ -219,6 +219,36 @@ describe('building', () => {
     g.player.yaw = Math.PI / 2; // looking west: it faces east
     placeBlock(g, { x: -3, y: 63, z: 0, face: FACE.top, t: 3 });
     expect(g.world.getState(-3, 64, 0)).toBe(FACING.east);
+  });
+});
+
+describe('using and dropping', () => {
+  it('using a crafting table opens it rather than building on it; sneaking builds', () => {
+    const g = flat();
+    g.world.set(0, 64, 2, B('crafting_table'));
+    g.inventory.slots[0] = { item: 'dirt', count: 3, damage: 0 };
+    const events = tick(g, { ...idle, ...aim(g, 0, 64, 2), use: true });
+    expect(events).toContainEqual({ type: 'open', what: 'table', x: 0, y: 64, z: 2 });
+    expect(g.inventory.slots[0].count).toBe(3);
+    tick(g, { ...idle, ...aim(g, 0, 64, 2), use: true, sneak: true });
+    expect(g.inventory.slots[0].count).toBe(2);
+  });
+
+  it('Q drops one of what’s held, thrown the way the player looks; with all, the stack', () => {
+    const g = flat();
+    g.inventory.slots[0] = { item: 'dirt', count: 3, damage: 0 };
+    g.player.yaw = 0;
+    dropHeld(g);
+    expect(g.inventory.slots[0].count).toBe(2);
+    expect(g.drops).toHaveLength(1);
+    expect(g.drops[0]).toMatchObject({ item: 'dirt', count: 1 });
+    expect(g.drops[0].vz).toBeLessThan(0);
+    dropHeld(g, true);
+    expect(g.inventory.slots[0]).toBeNull();
+    expect(g.drops[1].count).toBe(2);
+    // and the player can't take it straight back
+    hold(g, 20, idle);
+    expect(g.drops.reduce((n, d) => n + d.count, 0)).toBe(3);
   });
 });
 

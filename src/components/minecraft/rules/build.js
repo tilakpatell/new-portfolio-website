@@ -26,6 +26,8 @@ export const FACING = { north: 0, south: 1, west: 2, east: 3 };
 const AIR = 0;
 const COOLDOWN = 5;
 const PICKUP_DELAY = 10;
+const THROWN_WAIT = 40;
+const TABLE = byName.get('crafting_table').id;
 const DESPAWN = 6000;
 const ITEM_BOX = 0.25;
 const id = (n) => byName.get(n).id;
@@ -133,7 +135,29 @@ export function stepHands(g, input, { onGround, inWater }) {
       }
     }
   }
-  if (input.use && hit) placeBlock(g, hit);
+  if (input.use && hit) {
+    // a crafting table opens on use; sneaking builds against it instead
+    if (hit.id === TABLE && !input.sneak) g.events.push({ type: 'open', what: 'table', x: hit.x, y: hit.y, z: hit.z });
+    else placeBlock(g, hit);
+  }
+}
+
+// Q: one of what's held (or the stack) thrown the way the player looks,
+// not to be picked up again for two seconds, as the game throws it
+export function dropHeld(g, all = false) {
+  const inv = g.inventory;
+  const s = inv.slots[inv.selected];
+  if (!s) return false;
+  const n = all ? s.count : 1;
+  s.count -= n;
+  if (!s.count) inv.slots[inv.selected] = null;
+  const p = g.player;
+  const fx = -Math.sin(p.yaw) * Math.cos(p.pitch);
+  const fy = Math.sin(p.pitch);
+  const fz = -Math.cos(p.yaw) * Math.cos(p.pitch);
+  g.drops.push({ item: s.item, count: n, damage: s.damage, x: p.x, y: p.y + 1.32, z: p.z, vx: fx * 0.3, vy: fy * 0.3 + 0.1, vz: fz * 0.3, age: 0, wait: THROWN_WAIT });
+  g.events.push({ type: 'throw', item: s.item });
+  return true;
 }
 
 // the scheduled looks: sand and gravel over nothing drop a cell
@@ -169,7 +193,7 @@ export function stepDrops(g) {
     const slip = r.onGround ? 0.6 * 0.98 : 0.98;
     d.vx *= slip;
     d.vz *= slip;
-    if (d.age >= PICKUP_DELAY && d.x > reach.x0 && d.x < reach.x1 && d.y + ITEM_BOX > reach.y0 && d.y < reach.y1 && d.z > reach.z0 && d.z < reach.z1) {
+    if (d.age >= (d.wait ?? PICKUP_DELAY) && d.x > reach.x0 && d.x < reach.x1 && d.y + ITEM_BOX > reach.y0 && d.y < reach.y1 && d.z > reach.z0 && d.z < reach.z1) {
       const left = give(g.inventory, d.item, d.count, d.damage);
       if (left < d.count) g.events.push({ type: 'pickup', item: d.item, count: d.count - left });
       d.count = left;
