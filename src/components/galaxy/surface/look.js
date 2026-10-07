@@ -4,9 +4,15 @@
 //
 //   lookOf(site) → { shadow, edge, mix, fogLow, fogHigh, fogBelow, halo,
 //     fogMix, exposure } (the house's LOOK shape, colours as ints)
-//   exposureOf(site) → the renderer's exposure: the site's own (1 unless it
-//     says) times the house's (Neutral against the ACES the worlds were
-//     tuned under)
+//   exposureOf(site, base = 1) → the exposure: the site's own (1 unless it
+//     says) times `base` (1: the surface's post does its own tone map, the
+//     shoulder in universe/post.js, so the house's ACES-to-Neutral lift
+//     isn't wanted here)
+//   groundPieces(site) → { map, grass, bounce }: which of the ground pieces
+//     a world gets (none with no ground under it; grass only where the site
+//     grows some)
+//   adoptLater(house, object) → how many lit materials of something added
+//     after the scene was adopted the house took on (0 for nothing)
 //
 // A site's `look`: { shadow, edge: [from, to], fogBelow, halo, exposure }
 // (colours as '#rrggbb', as the sites write them); left out, the shadow is the sky a third
@@ -37,8 +43,15 @@ export function lookOf(site) {
     fogHigh: zenith.getHex(),
     fogBelow: isUnit(own.fogBelow) ? own.fogBelow : LOOK.fogBelow,
     halo: isColour(own.halo) ? toInt(own.halo) : LOOK.halo,
-    exposure: exposureOf(site),
+    exposure: exposureOf(site, LOOK.exposure),
   };
 }
 
-export const exposureOf = (site) => (isUnit(site?.exposure) && site.exposure > 0 ? site.exposure : 1) * LOOK.exposure;
+export const exposureOf = (site, base = 1) => (isUnit(site?.exposure) && site.exposure > 0 ? site.exposure : 1) * base;
+
+export function groundPieces(site) {
+  if (site?.noGround) return { map: false, grass: false, bounce: false };
+  return { map: true, grass: Boolean(site?.grass), bounce: true };
+}
+
+export const adoptLater = (house, object) => (object ? house.adopt(object) : 0);

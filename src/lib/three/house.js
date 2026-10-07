@@ -23,7 +23,8 @@
 //     under them into their albedo, by how near it they are, so nothing
 //     floats over it (Bruno's light bounce, 1.5 m deep).
 //
-//   createHouse(look) → { uniforms, toneMapping, exposure, material(opts), adopt(root),
+//   createHouse(look, { fog }) → { uniforms, toneMapping, exposure, material(opts), adopt(root),
+//     (fog: false leaves three's fog line to a world that colours its own fog)
 //     set(look), light({ sun, hemi }), sky({ low, high, below, sunDir, halo }),
 //     ground(map, { height, strength, offset }) }
 //   houseShader(shader, { fog, ground }, chunks) → { vertexShader, fragmentShader, swapped }
@@ -143,7 +144,7 @@ export function houseShader({ vertexShader, fragmentShader }, { fog = true, grou
 const LIT = (m) => Boolean(m && (m.isMeshStandardMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial || m.isMeshToonMaterial));
 const colour = (v, out) => (v?.isColor ? out.copy(v) : out.set(v));
 
-export function createHouse(look = {}) {
+export function createHouse(look = {}, { fog = true } = {}) {
   const uniforms = {
     uLookRef: { value: new THREE.Color(1, 1, 1) },
     uLookShadow: { value: new THREE.Color() },
@@ -180,7 +181,7 @@ export function createHouse(look = {}) {
     m.onBeforeCompile = (sh, r) => {
       before?.call(m, sh, r);
       Object.assign(sh.uniforms, uniforms);
-      const out = houseShader(sh, { ground: grounded });
+      const out = houseShader(sh, { fog, ground: grounded });
       sh.vertexShader = out.vertexShader;
       sh.fragmentShader = out.fragmentShader;
     };

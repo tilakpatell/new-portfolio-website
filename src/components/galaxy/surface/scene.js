@@ -61,6 +61,8 @@ import { createWater } from './water';
 import { floatPose } from './floats';
 import { createWeather } from './weather';
 import { createKit } from './kit';
+import { createHouse } from '../../../lib/three/house';
+import { adoptLater, exposureOf, lookOf } from './look';
 import { createGrass } from './grass';
 import { floorShadow } from '../../../lib/three/grounding';
 import { PROPS } from './props';
@@ -136,9 +138,18 @@ export async function create(canvas, ctx) {
   scene.add(camera);
   canvas.setAttribute('aria-hidden', 'true');
   const post = createPost(renderer, scene, camera, { small });
-  // (fogged in the sky's colour before its shaders are made, so they're made once)
+  // the house look (lib/three/house: shade is a colour, never grey) over
+  // everything lit, from the site's look (look.js); the fog stays the
+  // surface's own (skyfog.js: the dome's very colour), so the house leaves
+  // three's fog line be. The post tone-maps with its own shoulder, so the
+  // exposure is the site's through it.
+  const house = createHouse(lookOf(site), { fog: false });
+  post.exposure(exposureOf(site));
+  // (fogged in the sky's colour and in the look before its shaders are
+  // made, so they're made once)
   const warm = (root) => {
     skyFog.scene(root);
+    adoptLater(house, root);
     return precompile(renderer, singlePass(root), camera, scene, post.on ? post.composer.readBuffer : undefined);
   };
 
@@ -175,6 +186,9 @@ export async function create(canvas, ctx) {
   const hemi = new THREE.HemisphereLight(site.light.sky ?? '#bcd0ee', site.light.ground ?? '#8a7a66', site.light.ambient ?? 0.9);
   scene.add(hemi);
   scene.fog = new THREE.FogExp2(site.fog.color, site.fog.density);
+  // (the look's sky is the dome's: its horizon and zenith, the sun's way)
+  house.sky({ low: sky.uniforms.uHorizon.value, high: sky.uniforms.uZenith.value, sunDir });
+  house.light({ sun, hemi });
   // what shiny things reflect: the sky
   const pmrem = new THREE.PMREMGenerator(renderer);
   const envSky = sky.envScene();
@@ -2238,6 +2252,14 @@ export async function create(canvas, ctx) {
     grass?.update(me().st.x, me().st.z, me().st.x, me().st.z);
     stepDust(dt);
     storm(dt);
+    // (the look's full light follows the lamps and the storms; anything that
+    // came into the world without passing through warm is taken on now and
+    // then)
+    house.light({ sun, hemi });
+    if ((state.sweep = (state.sweep ?? 0) + dt) > 2) {
+      state.sweep = 0;
+      house.adopt(scene);
+    }
     online(dt);
     sounds.update(dt, { riding: state.phase === 'ride' ? Math.abs(state.riding.state.speed) + 1 : 0 });
     marks.flush();
@@ -2368,6 +2390,9 @@ export async function create(canvas, ctx) {
       // (the grass in the floor's shadows: read where each blade stands)
       if (grass) floorShadow(grass.mesh.material, lit.mask);
     }
+    // (the look over everything, after the floor's light: its shade then
+    // replaces the floor's own tint, and one shadow colour reaches it all)
+    if (!disposed) house.adopt(scene);
     // (the scouts' way is planned round the trees, so once they're down)
     if (!disposed) chase?.begin();
     if (!disposed && assault) {
