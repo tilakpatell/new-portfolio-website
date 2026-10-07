@@ -64,6 +64,7 @@ async function visitor(name, ship, viewport) {
       window.localStorage.setItem('tp-universe-callsign', JSON.stringify(n));
       window.localStorage.setItem('tp-universe-ship', JSON.stringify(s));
       window.localStorage.setItem('tp-universe-drive', JSON.stringify('super'));
+      window.localStorage.setItem('tp-worlds', JSON.stringify('load')); // (the 3D without the gate's asking: software GL is slow)
       window.sessionStorage.setItem('tp-gl-anyway', 'true');
       window.sessionStorage.setItem('tp-galaxy-intro', '1'); // (the galaxy's “long time ago” seen)
       // every line the HUD shows, kept (a note is up for a few seconds of the wall's time)
@@ -192,7 +193,9 @@ if (fake) {
         },
         [DEBUG, ahead, v, dx, dz],
       );
-    const go = (drive) => page.evaluate(([d, drive, galaxy]) => (galaxy ? window[d].flyTo('fake') : window[d].travel('pilot:fake', drive)), [DEBUG, drive, galaxy]);
+    // (asked till it goes: a ship just out of hyperspace into the system can't set off yet)
+    const go = (drive) =>
+      waitFor(() => page.evaluate(([d, drive, galaxy]) => (galaxy ? window[d].flyTo('fake') : window[d].travel('pilot:fake', drive)), [DEBUG, drive, galaxy]), 60000, 'the trip to go').catch(() => false);
     const look = () =>
       page.evaluate((d) => {
         const g = window[d];
@@ -211,7 +214,7 @@ if (fake) {
       }, DEBUG);
 
     // the trip: re-aimed as Fakey drifts, and over within 8 of them
-    await place(galaxy ? 45 : 60);
+    await place(galaxy ? 45 : 60, galaxy ? 0.15 : 0.4); // (slower in a system: its frames come slower still, and the scene's clock goes by them)
     ok(await go('super'), 'the scene takes a trip to pilot:fake');
     const first = await look();
     ok(first.pilot === 'fake' && first.goal, `state.auto is { id: ${first.auto}, pilot: ${first.pilot} } with their goal in its space`);

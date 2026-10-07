@@ -190,8 +190,9 @@ function Pilot({ p, online, ship }) {
   const act = (what) => () => online.ally(p.id, what);
   const elsewhere = p.where && p.where !== online.where;
   const at = !p.where ? '' : elsewhere ? ` · ${placeName(p.where)}` : ' · here';
-  // (flying here too, in a ship: somewhere the autopilot can take you, on the universe map)
-  const flyTo = Boolean(ship && p.kind && p.where && !elsewhere && online.where === UNIVERSE);
+  // (flying here too, in a ship: somewhere the autopilot can take you, on
+  // the universe map or in the same galaxy system)
+  const flyTo = Boolean(ship && p.kind && p.where && !elsewhere && isFlight(online.where));
   const goTo = () => {
     if (isFlight(p.where)) online.follow(p.id); // (and after them, once the ship's in there)
     navigate(p.where === UNIVERSE ? '/universe' : p.where);
