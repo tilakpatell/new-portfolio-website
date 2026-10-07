@@ -82,19 +82,24 @@ export const SITES = {
       palette: {
         // (the redwood floor as filmed: cinnamon duff and needles, the
         // fern beds darker olive, rust where the bark's fallen)
+        // (the floor itself part green: moss and sorrel in patches over
+        // the duff, as the redwood floor is where the light gets down)
         low: '#5e4630',
-        high: '#45442a',
+        high: '#4a5030',
         rock: '#5a5040',
-        accent: '#7a5634',
+        accent: '#4a5a2c',
         deep: '#2a1f14',
         hLow: -8,
         hHigh: 12,
         rockAt: 0.48,
-        accentCover: 0.5,
+        accentCover: 0.62,
         grain: 0.9,
         patch: 0.8,
       },
     },
+    // (the floor's low growth, as the film's: short grass and sorrel in
+    // drifts between the fern beds, soft green over the dirt, not a lawn)
+    grass: { h: [0.12, 0.36], w: 0.035, root: '#3a4a26', mid: '#52703a', tip: '#8fae62', dry: '#8c8050', cover: 0.62, scale: 45, above: 0, wind: 0.35 },
     weather: [{ kind: 'motes', count: 700 }],
     land: { at: [0, 0], yaw: 0.6 },
     lines: {
@@ -283,8 +288,12 @@ export const SITES = {
       // (the floor's boulders mossy, as the film's are; scrub and toadstools under the ferns)
       { kind: 'rock', n: 110, within: [14, 560], scale: [0.6, 2.4], opts: { color: '#6e7460', sharp: 0.4, to: 'mossrock' } },
       { kind: 'stones', n: 320, within: [6, 300], scale: [0.25, 0.7], solid: false, opts: { color: '#6a6e5a', to: 'mossrock' } },
-      { kind: 'bush', n: 260, within: [10, 420], scale: [0.7, 1.5], solid: false, clear: -8, opts: { seed: 14, s: 1.8, color: '#3e4e2a' } },
-      { kind: 'fungus', n: 180, within: [6, 200], scale: [0.8, 1.6], solid: false, clear: -12, opts: { seed: 8 } },
+      // (the shrub layer thick, two greens of it, and broad-leaved plants
+      // in the fern beds: the floor reads as growth, not dirt with ferns on)
+      { kind: 'bush', n: 380, within: [10, 420], scale: [0.7, 1.5], solid: false, clear: -8, opts: { seed: 14, s: 1.8, color: '#3e4e2a' } },
+      { kind: 'bush', n: 260, within: [8, 300], scale: [0.5, 1.1], solid: false, clear: -10, opts: { seed: 17, s: 1.3, color: '#4c6232' } },
+      { kind: 'plant', n: 320, within: [6, 260], scale: [0.7, 1.5], solid: false, clear: -10, opts: { seed: 18, color: '#44622c', n: 7, len: 1.5 } },
+      { kind: 'fungus', n: 240, within: [6, 200], scale: [0.8, 1.6], solid: false, clear: -12, opts: { seed: 8 } },
     ],
     life: [
       { kind: 'ewok', n: 7, at: V, spread: 6, roam: 6, speed: 0.9, name: 'Ewok', says: ['Yub nub!', 'Ee chee wa maa!', '(It dances round the fire, banging a stick on a helmet.)', '(It looks at you, then at the fire, then back at you. Thoughtfully.)', 'Gunda!'] },
