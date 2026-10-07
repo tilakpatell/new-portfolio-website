@@ -1,11 +1,12 @@
 // Bob-omb Ridge's cast. Goombas wander and chase what they can see (a
 // Goomba that loses Mario round a wall keeps after him a moment, goes to
 // look where it last saw him, and wanders on: lib/ai/perception), and are
-// squashed by a stomp. Bob-ombs light their fuse when Mario comes near and chase him for
-// 4 seconds before they blow; he can pick one up and throw it. King Bob-omb
+// squashed by a stomp. Bob-ombs light their fuse when they see Mario near
+// (the Goombas' eyes) and chase him for 4 seconds before they blow; he can pick one up and throw it. King Bob-omb
 // walks at Mario on the summit, turning slowly enough to be got behind;
 // picked up from behind and thrown down onto the summit three times, he
-// gives up a star. The Chain Chomp lunges at the end of its chain; three
+// gives up a star. The Chain Chomp lunges at the end of its chain (rearing
+// back first, when Mario's been near while it waited); three
 // ground pounds sink its post, and free it bounds off to smash the gate
 // round a star. Iron balls roll down the mountain path.
 
@@ -158,7 +159,8 @@ const bobomb = {
     if (!a.alive) return;
     const d = distTo(a, m.pos.x, m.pos.z);
     if (a.state === 'walk') {
-      if (d < 500 && Math.abs(m.pos.y - a.pos.y) < 300) {
+      // the sight of him lights it (a Goomba's eyes: not through a wall or a hill)
+      if (d < 500 && spot(a, g, 500)?.visible) {
         a.state = 'lit';
         a.fuse = 0;
         tell(g, 'fuse');
@@ -305,6 +307,7 @@ const king = {
 
 // ─── The Chain Chomp, its post and the gate ────────────────────────────────
 const CHAIN = 900;
+export const CHOMP_TELL = 14; // frames it rears back before it lunges
 const post = {
   r: 0,
   h: 0,
@@ -336,6 +339,7 @@ const chomp = {
   make(a) {
     a.state = 'idle';
     a.next = 60;
+    a.tell = 0;
   },
   step(a, g) {
     const m = g.mario;
@@ -367,7 +371,13 @@ const chomp = {
     const near = Math.hypot(m.pos.x - px, m.pos.z - pz) < CHAIN + 600;
     if (a.state === 'idle') {
       if (a.grounded && a.t % 20 === 0) a.vel.y = 18;
-      if (--a.next <= 0 && near) {
+      // the countdown to a bite; in its last moments, with Mario near, how far
+      // it's reared back to go (a.tell, 0 to 1: for the drawing, which shows
+      // the bite coming; the bite comes when it always did)
+      a.next--;
+      a.tell = near && a.next > 0 && a.next < CHOMP_TELL ? 1 - a.next / CHOMP_TELL : 0;
+      if (a.next <= 0 && near) {
+        a.tell = 0;
         a.state = 'lunge';
         a.since = a.t;
         a.yaw = toward(a, m.pos.x, m.pos.z);
