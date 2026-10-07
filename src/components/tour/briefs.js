@@ -615,7 +615,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Minecraft',
-      text: 'A fan tribute: an endless world of blocks made from a seed, drawn in Pixel Perfection, a free pack close to the game’s own.',
+      text: 'A fan tribute: an endless world of blocks made from a seed, drawn in the game’s own textures.',
     },
     {
       id: 'walk',

@@ -244,6 +244,7 @@ export default function Comms({ crew, reduced, control }) {
           if (e.id === 'destroyer') jumpSound();
           else if (e.id === 'flare') flareSound();
           else if (e.id === 'rift') riftSound();
+          else if (e.id === 'portalgun') fireSound('cruiser'); // (Rick's portal gun, the real one: gunPortal.js)
           if (e.id === 'leave') jumpSound(true);
           else say(linesFor(crew, 'event', e.id, e.sub), { urgent: e.id !== 'convoy' && e.id !== 'comet' });
         } else if (e.type === 'foot') {
