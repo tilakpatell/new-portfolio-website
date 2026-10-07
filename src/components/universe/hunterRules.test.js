@@ -949,3 +949,67 @@ describe('a pack on the toolkit', () => {
     expect(typeof by).toBe('number');
   });
 });
+
+describe('on the schedule, seeded', () => {
+  it('a hunter not due keeps its steer', () => {
+    const hunt = createHunt({ rand: seeded(5) });
+    let s = start({ speed: 10 });
+    hunt.pack('empire', s, { size: 3, ace: false });
+    for (let t = 0; t < 2; t += DT) {
+      s = move(s);
+      hunt.update(DT, s);
+    }
+    const h = hunt.live[0];
+    const steer = [...h.steer];
+    const now = h.me.now;
+    const clock = h.clock;
+    const mode = h.mode;
+    const at = { ...h.pos };
+    s = move(s);
+    hunt.update(DT, s, { due: new Set() });
+    // nothing sensed, nothing chosen, the same way wanted: and still flying
+    expect([...h.steer]).toEqual(steer);
+    expect(h.me.now).toBe(now);
+    expect(h.clock).toBe(clock);
+    expect(h.mode).toBe(mode);
+    expect(Math.hypot(h.pos.x - at.x, h.pos.y - at.y, h.pos.z - at.z)).toBeGreaterThan(0);
+    // due again, it senses with all the time it missed
+    s = move(s);
+    hunt.update(DT, s, { due: new Set([h.id]) });
+    expect(h.me.now).toBeCloseTo(now + 2 * DT, 9);
+  });
+
+  it('createHunt with a seeded rand is reproducible', () => {
+    const run = () => {
+      const hunt = createHunt({ rand: seeded(11) });
+      let s = start({ speed: 10 });
+      hunt.pack('empire', s, { size: 4 });
+      for (let i = 0; i < 200; i++) {
+        s = move({ ...s, heading: s.heading + (i > 100 ? 0.02 : 0) });
+        hunt.update(DT, s);
+      }
+      return hunt.live.map((h) => [h.id, h.kind, h.pos.x, h.pos.y, h.pos.z]);
+    };
+    const a = run();
+    expect(a.length).toBeGreaterThan(0);
+    expect(run()).toEqual(a);
+  });
+
+  it('a seeded hunt on a schedule thinks at the schedule’s rate and stays reproducible', () => {
+    const run = () => {
+      const hunt = createHunt({ rand: seeded(11) });
+      let s = start({ speed: 10 });
+      hunt.pack('empire', s, { size: 4 });
+      let i = 0;
+      for (; i < 200; i++) {
+        s = move(s);
+        // every other hunter on every other frame
+        hunt.update(DT, s, { due: new Set(hunt.live.filter((h) => (h.id + i) % 2).map((h) => h.id)) });
+      }
+      return hunt.live.map((h) => [h.pos.x, h.pos.y, h.pos.z]);
+    };
+    const a = run();
+    for (const p of a) for (const v of p) expect(Number.isFinite(v)).toBe(true);
+    expect(run()).toEqual(a);
+  });
+});

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BRAINS, NPC, createBrains, dodge } from './npcRules';
 import { SENSES } from './npcs/index';
+import { createTrace } from '../../lib/ai/trace';
 
 // a seeded random, so a meeting is the same every time
 const seeded = (seed = 7) => () => {
@@ -188,7 +189,9 @@ describe('a rival', () => {
     });
     expect(near / frames).toBeGreaterThan(0.7);
     const atYou = seen.shots.filter((e) => e.at === 'you');
-    expect(atYou.length).toBeGreaterThan(8);
+    // (circling you, it fires as its nose comes round onto you: NPC.cone,
+    // backlog 41; before the cone it fired 26 times here, from anywhere)
+    expect(atYou.length).toBeGreaterThan(5);
     const hits = atYou.filter((e) => e.hit).length;
     expect(hits).toBeGreaterThan(0);
     expect(hits / atYou.length).toBeLessThan(0.5);
@@ -646,5 +649,107 @@ describe('what a character knows of you', () => {
     });
     expect(known).toBe(false);
     expect(heard).toBe(true);
+  });
+});
+
+describe('on the schedule, and traced', () => {
+  const nemesis = (over = {}) => spec('nemesis', { role: 'enemy', ship: 'tieadvanced', faction: 'empire', stats: { speed: 26, accel: 22, turn: 3, hp: 10, fire: [0.45, 0.8], damage: 8 }, ...over });
+  // a brain that counts how often it's asked, flying the nemesis's way
+  const counted = () => {
+    const calls = { n: 0 };
+    const brain = (...a) => {
+      calls.n += 1;
+      return BRAINS.nemesis(...a);
+    };
+    return { calls, brains: { ...BRAINS, nemesis: brain } };
+  };
+
+  it('a brain not due keeps its intent and still moves', () => {
+    const trace = createTrace();
+    const { calls, brains: table } = counted();
+    const brains = createBrains({ rand: seeded(3), trace, brains: table });
+    const n = brains.add(nemesis(), { x: 0, y: 0, z: -30 });
+    let s = you({ speed: 10 });
+    for (let t = 0; t < 1; t += DT) {
+      s = fly(s);
+      brains.update(DT, { you: s, hunters: [], stations: [], t });
+    }
+    const me = brains.live[0];
+    const notes = trace.history(n, 600).length;
+    const asked = calls.n;
+    const now = me.now;
+    expect(notes).toBeGreaterThan(0);
+    const at = { ...me.pos };
+    const vel = { ...me.vel };
+    s = fly(s);
+    brains.update(DT, { you: s, hunters: [], stations: [], t: 1 }, { due: new Set() });
+    // not asked, not noted, nothing sensed: and still flying, along the way it was going
+    expect(calls.n).toBe(asked);
+    expect(trace.history(n, 600).length).toBe(notes);
+    expect(me.now).toBe(now);
+    const moved = { x: me.pos.x - at.x, y: me.pos.y - at.y, z: me.pos.z - at.z };
+    expect(Math.hypot(moved.x, moved.y, moved.z)).toBeGreaterThan(0);
+    expect((moved.x * vel.x + moved.y * vel.y + moved.z * vel.z) / (Math.hypot(moved.x, moved.y, moved.z) * Math.hypot(vel.x, vel.y, vel.z))).toBeGreaterThan(0.9);
+    // and due again, it thinks with all the time it missed
+    s = fly(s);
+    brains.update(DT, { you: s, hunters: [], stations: [], t: 1 + DT }, { due: new Set([n]) });
+    expect(calls.n).toBe(asked + 1);
+    expect(me.now).toBeCloseTo(now + 2 * DT, 9);
+  });
+
+  it('a due brain notes its scores and mode', () => {
+    const trace = createTrace();
+    const brains = createBrains({ rand: seeded(3), trace });
+    const n = brains.add(nemesis(), { x: 0, y: 0, z: -30 });
+    let s = you({ speed: 10 });
+    for (let t = 0; t < 2; t += DT) {
+      s = fly(s);
+      brains.update(DT, { you: s, hunters: [], stations: [], t });
+    }
+    const last = trace.last(n);
+    expect(Object.keys(last.scores).sort()).toEqual(['bait', 'fallback', 'jink', 'orbit', 'pass']);
+    expect(typeof last.mode).toBe('string');
+    expect(last.belief).toMatchObject({ visible: true });
+    expect(last.belief.confidence).toBeGreaterThan(0);
+    expect(last.t).toBeGreaterThan(1.9);
+  });
+
+  it('senses only, when only its senses are due', () => {
+    const trace = createTrace();
+    const { calls, brains: table } = counted();
+    const brains = createBrains({ rand: seeded(3), trace, brains: table });
+    const n = brains.add(nemesis(), { x: 0, y: 0, z: -30 });
+    brains.update(DT, { you: you(), hunters: [], stations: [], t: 0 });
+    const me = brains.live[0];
+    const asked = calls.n;
+    brains.update(DT, { you: you(), hunters: [], stations: [], t: DT }, { due: new Map([[n, { sense: true, think: false, dt: DT }]]) });
+    expect(calls.n).toBe(asked);
+    expect(me.now).toBeCloseTo(2 * DT, 9);
+  });
+});
+
+describe('the fire cone', () => {
+  // a brain flying slowly along +z, firing at you whenever it may
+  const gunner = { gunner: (npc, me) => ({ to: { x: me.pos.x, y: me.pos.y, z: me.pos.z + 50 }, speed: 1, fire: 'you' }) };
+  const flown = (place) => {
+    const brains = createBrains({ rand: seeded(4), brains: gunner });
+    brains.add(spec('gunner', { role: 'enemy' }), { x: 0, y: 0, z: 0 });
+    const shots = [];
+    for (let t = 0; t < 4; t += DT) {
+      const me = brains.live[0];
+      const out = brains.update(DT, { you: you(place(me)), hunters: [], stations: [], t });
+      for (const e of out.events) if (e.type === 'shot') shots.push(e);
+    }
+    return shots;
+  };
+
+  it('a brain fires only inside its forward cone', () => {
+    expect(NPC.cone).toBe(0.5);
+    // abeam: never
+    expect(flown((me) => ({ x: 8, z: me.pos.z }))).toEqual([]);
+    // ahead: it does
+    expect(flown((me) => ({ x: 0, z: me.pos.z + 8 })).length).toBeGreaterThan(0);
+    // behind: never
+    expect(flown((me) => ({ x: 0, z: me.pos.z - 8 }))).toEqual([]);
   });
 });
