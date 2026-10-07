@@ -428,7 +428,7 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                   </button>
                 </li>
               )}
-              {/* the far fights' names: to the right of their bursts */}
+              {/* the far fights' names: under their bursts (a fight at a ramp sits by its place, whose name is to the right) */}
               {fightsOn(now, sector, P).map((f) => (
                 <li key={f.id} style={{ ...pct(f.xy), '--c': '#ff8a5c' }} data-kind="fight">
                   <span className="navmap-place navmap-fightname">

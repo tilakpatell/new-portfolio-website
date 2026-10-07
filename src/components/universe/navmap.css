@@ -322,4 +322,4 @@
 /* a far fight (farFights.js): someone's fight out on the lanes, a burst and its region's name */
 .navmap-fight { stroke: #ff8a5c; stroke-width: 2; stroke-linecap: round; fill: none; }
 .navmap-fight-ring { stroke-width: 1.5; stroke-dasharray: 3 3; opacity: 0.7; }
-.navmap-places > li[data-kind='fight'] .navmap-place { translate: 12px -50%; pointer-events: none; color: #ff8a5c; font-size: 0.62rem; }
+.navmap-places > li[data-kind='fight'] .navmap-place { translate: -50% 12px; white-space: nowrap; pointer-events: none; color: #ff8a5c; font-size: 0.62rem; }

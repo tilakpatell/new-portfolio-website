@@ -36,6 +36,8 @@ const SPREAD = [30, 260]; // how far its points are spread (map units), least an
 const FLASHES = 10; // the bolt flashes a fight has going, each on for a moment
 const POOL = 4; // far fights drawn at once, at most (the front and a skirmish or two)
 const PX = 2.2; // a point’s size on screen (CSS px)
+export const SKY = 24000; // past this a fight is drawn on the sky, this far out along its line (the camera sees to 30,000)
+export const MIN_ANGLE = 0.008; // and never spread over less than this much of the view (radians, about 10 px), or from across the map it’s a speck
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const xyz = (p) => (Array.isArray(p) ? p : [p.x, p.y, p.z]);
@@ -44,6 +46,16 @@ const xyz = (p) => (Array.isArray(p) ? p : [p.x, p.y, p.z]);
 export function isFar(at, cam, far = FAR) {
   const [x, y, z] = xyz(at);
   return Math.hypot(x - cam.x, y - cam.y, z - cam.z) > far;
+}
+
+// where a fight's light goes and how wide it's spread, seen from `cam`: past
+// SKY, brought in to SKY along the same line and shrunk with it (the same to
+// the eye); and never narrower than MIN_ANGLE of the view
+export function skyPlace(at, cam, spread, sky = SKY) {
+  const [x, y, z] = xyz(at);
+  const d = Math.hypot(x - cam.x, y - cam.y, z - cam.z);
+  const k = d > sky ? sky / d : 1;
+  return { at: k === 1 ? [x, y, z] : [cam.x + (x - cam.x) * k, cam.y + (y - cam.y) * k, cam.z + (z - cam.z) * k], spread: Math.max(spread, d * MIN_ANGLE) * k };
 }
 
 // a fight as light: more points the more ships in it, and flickering faster
@@ -204,9 +216,9 @@ export function createFarFights(parent) {
         s.id = f.id;
         s.used = true;
         const p = s.points;
-        const [x, y, z] = xyz(f.at);
-        p.position.set(x, y, z);
-        p.scale.setScalar(look.spread);
+        const sky = skyPlace(f.at, cam, look.spread);
+        p.position.set(...sky.at);
+        p.scale.setScalar(sky.spread);
         p.geometry.setDrawRange(0, FLASHES + look.points);
         p.userData.flicker += (look.flicker - p.userData.flicker) * ease;
         p.userData.hot += (hot - p.userData.hot) * ease;

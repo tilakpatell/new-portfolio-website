@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { FAR, createFarFights, fightLabel, impostorFor, isFar, pickFightNode } from './farFights';
+import { FAR, MIN_ANGLE, SKY, createFarFights, fightLabel, impostorFor, isFar, pickFightNode, skyPlace } from './farFights';
 import { NODES } from './hyperlanes';
 import { REGIONS, regionAt } from './regions';
 import { POSITIONS } from './layout';
@@ -51,6 +51,30 @@ describe('far fights', () => {
     const voidAt = [0, 0, 200000];
     expect(regionAt(...voidAt)).toBeNull();
     expect(fightLabel(voidAt)).toBe('Fighting in the void');
+  });
+});
+
+describe('skyPlace', () => {
+  const cam = { x: 100, y: 0, z: -200 };
+  it('leaves a fight inside the sky where it is, at least a few pixels across', () => {
+    const near = skyPlace([100, 0, 2800], cam, 40);
+    expect(near.at).toEqual([100, 0, 2800]);
+    expect(near.spread).toBe(40);
+    const far = skyPlace([100, 0, 19800], cam, 40);
+    expect(far.at).toEqual([100, 0, 19800]);
+    expect(far.spread).toBeCloseTo(20000 * MIN_ANGLE, 6);
+  });
+
+  it('brings one past the sky in to it along the same line, the same size to the eye', () => {
+    const at = [30100, 4000, 39800];
+    const d = Math.hypot(30000, 4000, 40000);
+    const p = skyPlace(at, cam, 40);
+    expect(Math.hypot(p.at[0] - cam.x, p.at[1] - cam.y, p.at[2] - cam.z)).toBeCloseTo(SKY, 4);
+    // (the same direction, and the same angle across)
+    expect((p.at[0] - cam.x) / SKY).toBeCloseTo(30000 / d, 6);
+    expect((p.at[2] - cam.z) / SKY).toBeCloseTo(40000 / d, 6);
+    expect(p.spread / SKY).toBeCloseTo(MIN_ANGLE, 6);
+    expect(SKY).toBeLessThan(30000); // (inside the camera's far plane)
   });
 });
 
