@@ -4,20 +4,22 @@
 // white light grids, light strips, consoles and their Aurebesh screens),
 // each made once and shared; the panel maths that lays a wall out in rib
 // bays round its doors and windows; the door frames and light grids; a
-// room's plain shell straight from the layout; and the merge that turns a
-// room's hundreds of parts into one mesh a material. Plating is painted at
-// start by ../../plating.js at the device's detail (lib/detail), so there is
+// room’s plain shell straight from the layout; and the merge that turns a
+// room’s hundreds of parts into one mesh a material. Plating is painted at
+// start by ../../plating.js at the device’s detail (lib/detail), so there is
 // nothing to download.
 //
 // Pure (Node-tested, kit.test.js):
+//   GRID: { w, h, y }   a wall light grid’s width, height and the height of its foot
 //   panelLayout(w, h, { bay, rib, lights, every, holes, … }) → { bays, ribs, panels, lights }
 //   solidRects(w, h, holes) → the rects of a w × h wall left round its holes
-//   gridCells(w, h, cell) → { cols, rows }   a light grid's whole squares
-//   roomWalls(layout, roomId, openings) → [run]   a room's walls side by side, holed by its doors
-//     (and by `openings`, world rects such as windowsOf's); run: { x0, z0, x1, z1, len, y0, y1,
-//     angle, n, off, holes: [{ x0, x1, y0, y1, door? }] } in the run's own metres from its start
-//   windowsOf(room, layout) → [{ x0, z0, x1, z1, y0, y1 }]   a control room's windows onto its bay
-//   flights(room) → [[floor]]   a room's raised floors, joined into flights of steps
+//   gridCells(w, h, cell) → { cols, rows }   a light grid’s whole squares
+//   roomWalls(layout, roomId, openings) → [run]   a room’s walls side by side, holed by its doors
+//     (and by `openings`, world rects such as windowsOf’s, framed as windows unless `frame: 'door'`);
+//     run: { x0, z0, x1, z1, len, y0, y1,
+//     angle, n, off, holes: [{ x0, x1, y0, y1, door? }] } in the run’s own metres from its start
+//   windowsOf(room, layout) → [{ x0, z0, x1, z1, y0, y1 }]   a control room’s windows onto its bay
+//   flights(room) → [[floor]]   a room’s raised floors, joined into flights of steps
 //   groupByMaterial(parts) → Map<material, [part]>;  mergeParts(parts, resolve) → Group
 //
 // createKit(renderer, { tier, small }) → kit
@@ -27,8 +29,10 @@
 //   kit.lightGrid(w, h) → parts          centred on the origin, facing +z
 //   kit.doorFrame(w, h, { kind }) → parts   the opening centred on x 0, standing on y 0
 //   kit.shell(room, layout, opts) → parts   floor, ceiling, walls and door frames, in world space
-//   kit.box(w, h, d, x, y, z, role), kit.plate(w, h, x, y, z, role, face), kit.place(parts, matrix)
-//   kit.merge(parts) → Group (one mesh a material);  kit.update(t) (the screens);  kit.dispose()
+//   kit.box(w, h, d, x, y, z, role), kit.plate(w, h, x, y, z, role, face), kit.beam(a, b, w, h, role),
+//   kit.post(r, x, y0, y1, z, role), kit.place(parts, matrix), kit.at(x, y, z, turn) → Matrix4
+//   kit.merge(parts) → Group (one mesh a material);  kit.free(group) (its geometry)
+//   kit.update(t) (the screens);  kit.dispose()
 // A part is { geo, mat }: a BufferGeometry and a role or a material.
 
 import * as THREE from 'three';
@@ -47,7 +51,7 @@ export const GRID = { w: 1.1, h: 1.5, y: 0.7 };
 const nonEmpty = (r) => r.x1 - r.x0 > EPS && r.y1 - r.y0 > EPS;
 const hits = (a, b) => a.x0 < b.x1 - EPS && b.x0 < a.x1 - EPS && a.y0 < b.y1 - EPS && b.y0 < a.y1 - EPS;
 
-// A rect less the holes in it, as rects (kept with the rect's other fields),
+// A rect less the holes in it, as rects (kept with the rect’s other fields),
 // cut into columns at the holes' edges and joined again where neighbours
 // span the same heights.
 function subtract(rect, holes) {
@@ -79,7 +83,7 @@ export const solidRects = (w, h, holes = []) => subtract({ x0: 0, x1: w, y0: 0, 
 
 export const gridCells = (w, h, cell = 0.16) => ({ cols: Math.max(1, Math.round(w / cell)), rows: Math.max(1, Math.round(h / cell)) });
 
-// A wall's bays, the ribs between them and the panels in each: a kick
+// A wall’s bays, the ribs between them and the panels in each: a kick
 // plate at the foot, a band at the head, and between them panels stacked no
 // taller than `tall`. A lit wall has a light grid every `every` metres,
 // centred on the wall so that facing walls light alike, each in a bay of its
@@ -161,7 +165,7 @@ export function panelLayout(w, h, { bay = 2, rib = 0.28, gap = 0.05, kick = 0.32
 
 // ── the layout, side by side ──
 
-// A room's wall pieces joined into runs, one a straight stretch of wall,
+// A room’s wall pieces joined into runs, one a straight stretch of wall,
 // with each doorway (and every opening given) as a hole in its run.
 export function roomWalls(layout, id, openings = []) {
   const runs = [];
@@ -179,7 +183,7 @@ export function roomWalls(layout, id, openings = []) {
   }
   const out = [];
   for (const run of runs) {
-    // a line may hold stretches that don't meet: each is a run of its own
+    // a line may hold stretches that don’t meet: each is a run of its own
     const pieces = run.pieces.sort((a, b) => a.t0 - b.t0);
     const groups = [];
     for (const p of pieces) {
@@ -201,7 +205,7 @@ export function roomWalls(layout, id, openings = []) {
         if (!on(o.x0, o.z0) || !on(o.x1, o.z1)) continue;
         const ta = (o.x0 - a.x) * run.d.x + (o.z0 - a.z) * run.d.z;
         const tb = (o.x1 - a.x) * run.d.x + (o.z1 - a.z) * run.d.z;
-        const hole = { x0: Math.max(0, Math.min(ta, tb)), x1: Math.min(len, Math.max(ta, tb)), y0: o.y0 - y0, y1: o.y1 - y0 };
+        const hole = { x0: Math.max(0, Math.min(ta, tb)), x1: Math.min(len, Math.max(ta, tb)), y0: o.y0 - y0, y1: o.y1 - y0, ...(o.frame ? { frame: o.frame } : {}) };
         if (hole.x1 - hole.x0 > EPS) holes.push(hole);
       }
       out.push({ x0: a.x, z0: a.z, x1: b.x, z1: b.z, len, y0, y1, angle: Math.atan2(-run.d.z, run.d.x), n: run.n, off: run.off, holes });
@@ -210,7 +214,7 @@ export function roomWalls(layout, id, openings = []) {
   return out;
 }
 
-// A control room's windows: along each of its walls that a bay's wall
+// A control room’s windows: along each of its walls that a bay’s wall
 // backs onto, either side of the doors there, sill to head. Both rooms cut
 // them (roomWalls' openings), so the office glows over the bay.
 export function windowsOf(room, layout, { sill = 1, head = 0.45, clear = 0.45, min = 1.2 } = {}) {
@@ -253,9 +257,9 @@ const touch = (a, b) => {
   return (Math.abs(xs) < 1e-3 && zs > 1e-3) || (Math.abs(zs) < 1e-3 && xs > 1e-3);
 };
 
-// The floors raised off a room's deck (its biggest floor), joined where one
+// The floors raised off a room’s deck (its biggest floor), joined where one
 // touches the next within a step: each group a flight (a stair with its
-// landing, a ramp), in the room's own order.
+// landing, a ramp), in the room’s own order.
 export function flights(room, { step = 0.41 } = {}) {
   if (!room?.floors?.length) return [];
   const deck = room.floors.reduce((a, f) => (areaOf(f) > areaOf(a) ? f : a));
@@ -303,8 +307,8 @@ function worldUV(g, tile) {
   g.attributes.uv.needsUpdate = true;
 }
 
-// One mesh a material: every part's geometry brought to position, normal
-// and uv (all indexed, or none where any isn't), world uvs where the
+// One mesh a material: every part’s geometry brought to position, normal
+// and uv (all indexed, or none where any isn’t), world uvs where the
 // material tiles, then merged. The parts' geometries are used up.
 export function mergeParts(parts, resolve = (m) => m) {
   const group = new THREE.Group();
@@ -350,7 +354,7 @@ function paintCell(level) {
   return canvas;
 }
 
-// A console's face: rows of small buttons, some lit red, green, amber, white or blue.
+// A console’s face: rows of small buttons, some lit red, green, amber, white or blue.
 function paintButtons(level, max) {
   const { canvas, ctx } = detailCanvas(256, 128, { level, max });
   const rand = seeded(31);
@@ -366,7 +370,7 @@ function paintButtons(level, max) {
   return canvas;
 }
 
-// A walkway grating's see-through squares, as an alpha map.
+// A walkway grating’s see-through squares, as an alpha map.
 function paintGrate(level) {
   const { canvas, ctx } = detailCanvas(64, 64, { level });
   ctx.fillStyle = '#000';
@@ -437,11 +441,11 @@ function drawScreen(ctx, w, h, t, glyphs) {
 
 // ── the kit ──
 
-// how far each kind of door's frame stands out from its wall: [width, depth]
+// how far each kind of door’s frame stands out from its wall: [width, depth]
 const FRAME = { slide: [0.22, 0.14], blast: [0.42, 0.28], hatch: [0.18, 0.12], arch: [1.2, 1.4] };
 
 export function createKit(renderer, { tier = 'high', small = false } = {}) {
-  // (the device's own detail on a high tier, which may be ultra; the tier's otherwise)
+  // (the device’s own detail on a high tier, which may be ultra; the tier’s otherwise)
   const level = tier === 'high' ? detailLevel() : tier;
   const max = small ? 512 : Infinity;
   const size = (design) => Math.round(design * texScale(design, { level, max }));
@@ -451,7 +455,7 @@ export function createKit(renderer, { tier = 'high', small = false } = {}) {
     textures.push(t);
     return t;
   };
-  // the walls' plating (big plates, no pipes); the ceiling's (pipe runs, as conduits overhead)
+  // the walls' plating (big plates, no pipes); the ceiling’s (pipe runs, as conduits overhead)
   const wallP = paintPlating({ seed: 11, size: size(1024), kind: 'surface' });
   const ceilP = paintPlating({ seed: 29, size: size(512), kind: 'wall' });
   const plating = { map: tex(wallP.color, true), normal: tex(wallP.normal, false), rough: tex(wallP.rough, false) };
@@ -463,7 +467,7 @@ export function createKit(renderer, { tier = 'high', small = false } = {}) {
 
   const made = new Map();
   // `tile`: metres to a repeat of its map, laid by where it is (merge);
-  // `reflect`: takes its room's reflection probe (probe.js)
+  // `reflect`: takes its room’s reflection probe (probe.js)
   const std = (role, opts, data = {}) => {
     const m = new THREE.MeshStandardMaterial(opts);
     m.name = `ds-${role}`;
@@ -472,8 +476,10 @@ export function createKit(renderer, { tier = 'high', small = false } = {}) {
   };
   // the deck: near black and glossy, its seams only in the normal and the roughness
   std('floor', { color: 0x07080a, roughness: 0.2, roughnessMap: plating.rough, metalness: 0.3, normalMap: plating.normal, normalScale: new THREE.Vector2(0.3, 0.3) }, { tile: 8, reflect: true });
-  // (a colour over one: the painted plating is dark, and the walls are mid-grey)
-  std('wall', { color: new THREE.Color(1.25, 1.27, 1.3), map: plating.map, normalMap: plating.normal, roughnessMap: plating.rough, roughness: 0.8, metalness: 0.35, envMapIntensity: 0.6 }, { tile: 3, reflect: true });
+  // a colour over one, since the painted plating is dark and the walls are
+  // mid-grey; a 6 m repeat, since any finer and the plating’s own seams
+  // fight the wall’s panels
+  std('wall', { color: new THREE.Color(1.5, 1.5, 1.5), map: plating.map, normalMap: plating.normal, roughnessMap: plating.rough, roughness: 0.8, metalness: 0.35, envMapIntensity: 0.6 }, { tile: 6, reflect: true });
   std('trim', { color: 0x2b2f35, roughness: 0.36, metalness: 0.6, envMapIntensity: 0.6 }, { reflect: true });
   std('grid', { color: 0x0b0c0f, roughness: 0.3, metalness: 0, emissive: 0xe2ecff, emissiveIntensity: 2.6, emissiveMap: tex(paintCell(level), true) });
   std('strip', { color: 0x101114, roughness: 0.3, metalness: 0, emissive: 0xe8f1ff, emissiveIntensity: 3.4 });
@@ -509,6 +515,19 @@ export function createKit(renderer, { tier = 'high', small = false } = {}) {
     return parts;
   };
   const at = (x, y, z, turn = 0) => new THREE.Matrix4().makeTranslation(x, y, z).multiply(new THREE.Matrix4().makeRotationY(turn));
+  // a bar from a to b ({ x, y, z }), w across and h deep, kept as upright as
+  // it can be: stringers, rails, braces, a ramp
+  const beam = (a, b, w, h, role) => {
+    const dir = new THREE.Vector3(b.x - a.x, b.y - a.y, b.z - a.z);
+    const len = dir.length();
+    dir.divideScalar(len || 1);
+    const up = Math.abs(dir.y) > 0.99 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+    const y = up.sub(dir.clone().multiplyScalar(up.dot(dir))).normalize();
+    const m = new THREE.Matrix4().makeBasis(dir, y, new THREE.Vector3().crossVectors(dir, y)).setPosition((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+    return { geo: new THREE.BoxGeometry(len, h, w).applyMatrix4(m), mat: role };
+  };
+  // an upright round post, r across, from y0 to y1
+  const post = (r, x, y0, y1, z, role, sides = 12) => ({ geo: new THREE.CylinderGeometry(r, r, y1 - y0, sides).translate(x, (y0 + y1) / 2, z), mat: role });
 
   // the squares in their recessed frame, standing just proud of the wall
   const lightGrid = (w, h) => {
@@ -526,7 +545,7 @@ export function createKit(renderer, { tier = 'high', small = false } = {}) {
     ];
   };
 
-  // The wall's seams and recesses are its black back; the ribs stand
+  // The wall’s seams and recesses are its black back; the ribs stand
   // `ribDepth` proud with a groove down each, the panels a little, a few
   // sunk for variety, the kick plate and head band more.
   const panelWall = (w, h, { seed = 1, ribDepth = 0.14, ...opts } = {}) => {
@@ -541,15 +560,15 @@ export function createKit(renderer, { tier = 'high', small = false } = {}) {
     for (const p of lay.panels) {
       if (p.kind === 'kick') parts.push(rect(p, 0, 0.07, 'trim'));
       else if (p.kind === 'band') parts.push(rect(p, 0, 0.09, 'trim'));
-      else if (rand() < 0.22) parts.push(rect(p, 0, 0.015, 'trim'));
+      else if (rand() < 0.12) parts.push(rect(p, 0, 0.015, 'trim'));
       else parts.push(rect(p, 0, 0.035, 'wall'));
     }
     for (const l of lay.lights) parts.push(...place(lightGrid(l.w, l.h), at(l.x, l.y + l.h / 2, 0)));
     return parts;
   };
 
-  // jambs, lintel and sill on this side of the doorway; a blast door's
-  // warning light over it; the bay's mouth lit down its edges
+  // jambs, lintel and sill on this side of the doorway; a blast door’s
+  // warning light over it; the bay’s mouth lit down its edges
   const doorFrame = (w, h, { kind = 'slide' } = {}) => {
     const [fw, fd] = FRAME[kind] ?? FRAME.slide;
     const parts = [
@@ -574,18 +593,25 @@ export function createKit(renderer, { tier = 'high', small = false } = {}) {
     ];
   };
 
-  // A room's plain shell from the layout: its floors, its ceiling, every
-  // wall laid out in bays round its doorways (framed) and openings
-  // (framed as windows). The rest of the room is its builder's.
+  // A room’s plain shell from the layout: its floors, its ceiling, every
+  // wall laid out in bays round its doorways (framed) and openings (framed
+  // as windows, or as doors where they say so). The rest is its builder’s.
   const shell = (room, layout, { floor = true, ceiling: lid = true, openings = [], seed = 1, ...wall } = {}) => {
     const parts = [];
     if (floor) for (const f of room.floors) parts.push(plate(f.x1 - f.x0, f.z1 - f.z0, (f.x0 + f.x1) / 2, f.y, (f.z0 + f.z1) / 2, 'floor', 'up'));
     if (lid) parts.push(plate(room.box.x1 - room.box.x0, room.box.z1 - room.box.z0, room.x, room.y + room.h, room.z, 'ceiling', 'down'));
     roomWalls(layout, room.id, openings).forEach((run, i) => {
-      const local = panelWall(run.len, run.y1 - run.y0, { ...wall, holes: run.holes, seed: seed * 31 + i });
+      // the bays keep clear of each frame, not just of its opening
+      const clear = run.holes.map((h) => {
+        const kind = h.door ? layout.doors.get(h.door)?.kind : h.frame === 'door' ? 'slide' : null;
+        const f = kind ? (FRAME[kind] ?? FRAME.slide)[0] : 0.1;
+        return { ...h, x0: h.x0 - f, x1: h.x1 + f, y0: kind ? h.y0 : h.y0 - f, y1: h.y1 + f };
+      });
+      const local = panelWall(run.len, run.y1 - run.y0, { ...wall, holes: clear, seed: seed * 31 + i });
       for (const h of run.holes) {
         const door = h.door ? layout.doors.get(h.door) : null;
-        const frame = door ? doorFrame(h.x1 - h.x0, h.y1 - h.y0, { kind: door.kind }) : windowFrame(h.x1 - h.x0, h.y1 - h.y0);
+        const kind = door?.kind ?? (h.frame === 'door' ? 'slide' : null);
+        const frame = kind ? doorFrame(h.x1 - h.x0, h.y1 - h.y0, { kind }) : windowFrame(h.x1 - h.x0, h.y1 - h.y0);
         local.push(...place(frame, at((h.x0 + h.x1) / 2, h.y0, 0)));
       }
       parts.push(...place(local, at(run.x0, run.y0, run.z0, run.angle)));
@@ -603,12 +629,16 @@ export function createKit(renderer, { tier = 'high', small = false } = {}) {
     plate,
     place,
     at,
+    beam,
+    post,
     lightGrid,
     panelWall,
     doorFrame,
     windowFrame,
     shell,
     merge: (parts) => mergeParts(parts.map((p) => (p ? { geo: p.geo, mat: mat(p.mat) } : p))),
+    // a merged room’s geometry freed (the kit’s materials stay, shared)
+    free: (root) => root?.traverse((o) => o.geometry?.dispose()),
     // the screens' log moves on a line at a time, however many rooms ask
     update(t) {
       if (t - drawn < 0.3 && t >= drawn) return;
