@@ -1551,6 +1551,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     mateKnock: null, // which way the last shot that hit the mate was going
     follow: {}, // the mate's pace toward you (footLife.js's followMove)
     emote: null, // { id, at }: what you're doing off the wheel (lib/emote.js)
+    wheelHeld: false, // Z down
     emoteAt: null, // when the wheel last did something, for the HUD's word
     acted: false, // something you did this frame (a shot, a gadget), which cuts an emote
     aim: 0, // the gun up, 1 fading to 0 after a shot
@@ -2463,7 +2464,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const moving = Math.abs(input.move ?? 0) > 0.1 || Math.abs(input.strafe ?? 0) > 0.1 || Boolean(input.jump);
     const acted = S.acted;
     S.acted = false;
-    if (emotes.open) emotes.tick(S.clock);
+    if (S.wheelHeld || emotes.open) emotes.tick(S.clock);
     const r = S.reacting;
     if (r && (acted || (r.layer === 'full' && moving) || S.clock > r.until)) cutReaction();
     S.emote = keepEmote(S.emote, S.clock, { moving, acted });
@@ -3040,8 +3041,13 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // at, or a tap's last), or a pick by its number while it's open (1 to 5)
     emote(what, n = null) {
       if (S.phase !== 'walk') return false;
-      if (what === 'down') emotes.down(S.clock);
-      else if (what === 'up') return startEmote(emotes.up(S.clock));
+      if (what === 'down') {
+        S.wheelHeld = true;
+        emotes.down(S.clock);
+      } else if (what === 'up') {
+        S.wheelHeld = false;
+        return startEmote(emotes.up(S.clock));
+      }
       else if (what === 'pick') return startEmote(emotes.choose(typeof n === 'number' ? n - 1 : n));
       return false;
     },
