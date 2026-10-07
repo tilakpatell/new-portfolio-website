@@ -122,7 +122,8 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 **Files:**
 - Create: `src/runtime/store.js`, `src/runtime/store.test.js` (uses `fake-indexeddb` as a devDependency; add it)
-- Modify: `src/runtime/index.js`, `browser.js` (make the store with `indexedDB` when present)
+- Create: `src/runtime/local.js` (the page visit's one `rt.saves` and one store, made with `indexedDB` when present, so `/worlds` reads them without a runtime; `browser.js` is the lazy three.js half and does not hold it)
+- Modify: `src/runtime/index.js`, `runtime.js` (`rt.store`)
 
 **Interfaces:**
 - `createStore({ indexedDB, name = 'tp-store', version = 1, fallback }) → { get(table, key) → Promise<any>, set(table, key, value) → Promise<void>, remove(table, key), list(table, { prefix }) → Promise<[key, value][]>, ready → Promise<'idb' | 'memory'> }`. Tables: `saves`, `worlds`, `blobs`. No call ever throws: on a failed open it resolves `'memory'` and keeps a `Map`; `fallback` (an `rt.saves`-like `{get,set}`) mirrors `saves` rows under `tp-store:<key>` when in memory mode so a seed survives a reload.
