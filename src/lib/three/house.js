@@ -266,3 +266,33 @@ export function shadowFor(mood) {
   if (l > 0) c.multiplyScalar(want / l);
   return c.getHex();
 }
+
+// A world put on the house look in one call: the house tone mapper (its
+// exposure lifted to keep the world's brightness from its ACES days, unless
+// `keepExposure`: a world tuned under Neutral already), everything in the
+// scene adopted, and follow(): the look's full light from the world's sun
+// (and sky light, if any) and its shadow colour from the sky light,
+// recomputed when the sky light changes; `{ adopt: true }` also takes on
+// whatever has come into the scene since. Call follow() after the world
+// sets its lights (once a frame, or when they change).
+export function houseOn({ renderer, scene, sun = null, hemi = null, keepExposure = false, look = {} }) {
+  const house = createHouse(look);
+  renderer.toneMapping = house.toneMapping;
+  if (!keepExposure) renderer.toneMappingExposure *= house.exposure;
+  house.adopt(scene);
+  const seen = { hex: -1, k: -1 };
+  house.follow = ({ adopt = false } = {}) => {
+    house.light({ sun, hemi });
+    if (hemi) {
+      const hex = hemi.color.getHex();
+      if (hex !== seen.hex || hemi.intensity !== seen.k) {
+        seen.hex = hex;
+        seen.k = hemi.intensity;
+        house.set({ shadow: shadowFor({ hemiSky: hex, hemi: hemi.intensity }) });
+      }
+    }
+    if (adopt) house.adopt(scene);
+  };
+  house.follow();
+  return house;
+}

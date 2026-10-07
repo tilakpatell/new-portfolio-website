@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { LOOK, createHouse, houseShader } from './house';
+import { LOOK, createHouse, houseOn, houseShader, shadowFor } from './house';
 import { createGroundMap } from './groundmap';
 
 // three's chunks as this version has them (the lines the rewrite looks for)
@@ -231,5 +231,46 @@ describe('the light the ground bounces up', () => {
     expect(sh.fragmentShader).toContain('groundColour(vLookPos.xz)');
     expect(sh.uniforms.uGroundRect).toBe(map.uniforms.uGroundRect);
     map.dispose();
+  });
+});
+
+describe('a world put on the house look in one call', () => {
+  const world = () => {
+    const scene = new THREE.Scene();
+    const sun = new THREE.DirectionalLight(0xffffff, 2);
+    const hemi = new THREE.HemisphereLight(0x88aaff, 0x443322, 1);
+    const m = new THREE.MeshStandardMaterial();
+    scene.add(sun, hemi, new THREE.Mesh(new THREE.BoxGeometry(), m));
+    return { scene, sun, hemi, m, renderer: { toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.2 } };
+  };
+
+  it('sets the tone mapper, lifts the exposure, and adopts what is there', () => {
+    const w = world();
+    const house = houseOn(w);
+    expect(w.renderer.toneMapping).toBe(THREE.NeutralToneMapping);
+    expect(w.renderer.toneMappingExposure).toBeCloseTo(1.2 * LOOK.exposure, 6);
+    expect(w.m.userData.house).toBe(house.uniforms);
+  });
+
+  it('keeps a world’s exposure where it was tuned under Neutral already', () => {
+    const w = world();
+    houseOn({ ...w, keepExposure: true });
+    expect(w.renderer.toneMappingExposure).toBe(1.2);
+  });
+
+  it('follows the world’s light: full light, and a shadow from the sky light', () => {
+    const w = world();
+    const house = houseOn(w);
+    w.hemi.color.set(0x112244);
+    w.hemi.intensity = 0.5;
+    house.follow();
+    expect(house.uniforms.uLookShadow.value.getHex()).toBe(shadowFor({ hemiSky: 0x112244, hemi: 0.5 }));
+    // (a white sun of 2 and the sky light's red at 0.5, over pi)
+    expect(house.uniforms.uLookRef.value.r).toBeCloseTo((2 + new THREE.Color(0x112244).r * 0.5) / Math.PI, 5);
+    // (anything new in the scene adopted when asked)
+    const late = new THREE.MeshLambertMaterial();
+    w.scene.add(new THREE.Mesh(new THREE.BoxGeometry(), late));
+    house.follow({ adopt: true });
+    expect(late.userData.house).toBe(house.uniforms);
   });
 });
