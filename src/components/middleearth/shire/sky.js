@@ -229,3 +229,22 @@ export function makeAtmosphere({ sky, sun, hemi, fog, water, stage, house = null
     return sunDir;
   };
 }
+
+// The house look (lib/three/house) following a town that blends its own
+// moods (Doom, Edoras, Minas Tirith, Orthanc, Cirith Ungol): once a frame,
+// after the town has set its lights, its sky and its exposure, the look
+// takes its full light from those lights, its shadow from the sky light
+// (shadowFor), and its fog from the sky; the town's other fog becomes the
+// haze under the horizon, so the two agree. With the sky put away (a hall,
+// a lair, the dark under a mountain) the fog stays the town's own.
+const haloOf = new THREE.Color();
+export function lookFrom(house, { sky, sun, hemi, fog, renderer, exposure = 1 }) {
+  const u = sky.uniforms;
+  const out = sky.dome.visible !== false;
+  house.set({ shadow: shadowFor({ hemiSky: hemi.color.getHex(), hemi: hemi.intensity }), fogMix: out ? 1 : 0 });
+  house.light({ sun, hemi });
+  haloOf.copy(u.uSunColour.value).multiplyScalar(0.35 * (1 - (u.uMoon?.value ?? 0)));
+  house.sky({ low: u.uHorizon.value, high: u.uTop.value, below: 0.92, sunDir: u.uSunDir.value, halo: haloOf });
+  if (out) fog.color.copy(u.uHorizon.value).multiplyScalar(0.92);
+  renderer.toneMappingExposure = exposure * house.exposure;
+}

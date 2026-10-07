@@ -105,3 +105,10 @@ describe('which core surface a world’s material wears, by its name', () => {
     expect(rolesFor({ stone: glowing, wall: glass, rock: basic })).toEqual({});
   });
 });
+
+describe('what keeps its own picture', () => {
+  it('a material lit from within by a map (lit windows) wears nothing', () => {
+    const house = new THREE.MeshStandardMaterial({ emissiveMap: new THREE.Texture(), emissiveIntensity: 0 });
+    expect(rolesFor({ house })).toEqual({});
+  });
+});
