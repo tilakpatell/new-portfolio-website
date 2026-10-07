@@ -89,6 +89,7 @@ doctor. Running it again is safe. `-Remove` undoes it.
 
 ```
 node scripts/desktop/doctor.mjs          # everything a job needs on this machine, each with its fix
+gh workflow run desktop-doctor.yml       # the same, on the runner itself, from anywhere (Actions tab: desktop doctor)
 ```
 
 Why "not from the Claude app": the Claude desktop app is an MSIX package,
