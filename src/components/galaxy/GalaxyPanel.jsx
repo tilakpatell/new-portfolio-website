@@ -9,6 +9,8 @@ import Face from '../universe/Faces';
 import ModelCredits from '../ModelCredits';
 import GuideLink from '../guide/GuideLink';
 import { FILMS, eraById, eraOf, filmLabel, filmsOf, goalsOf, systemById, yearLabel } from './systems';
+import { Oath, SystemWar } from './WarCard';
+import { useWar } from './useWar';
 
 // Beside the galaxy (a bottom sheet on a phone): the system you're in, as
 // its card: where it is in the galaxy, its era and the films it's in, the
@@ -78,7 +80,23 @@ function Mission({ system }) {
   );
 }
 
-export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onLeave, onBoard, onLand, tucked, onTuck, jumping, held = null, balked = false }) {
+// the system's place in the war you fight in, and the oath when you're
+// nobody's and there's a battle on (WarCard.jsx)
+function SystemWarCard({ sys, oath, suggested, onSwear }) {
+  const { now, table } = useWar(oath.war);
+  const row = table.systems.find((r) => r.id === sys);
+  if (!row) return null;
+  return (
+    <div className="galaxy-war">
+      <dl className="holomap-stats">
+        <SystemWar row={row} war={oath.war} now={now} side={oath.side} />
+      </dl>
+      {row.battle && !oath.side && <Oath oath={oath} suggested={suggested} onSwear={onSwear} compact />}
+    </div>
+  );
+}
+
+export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onLeave, onBoard, onLand, tucked, onTuck, jumping, held = null, balked = false, oath = null, suggested = null, onSwear }) {
   const crew = crewById(ship);
   const panel = useRef(null);
   const refocus = useRef(false);
@@ -150,6 +168,8 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
           </span>
         ))}
       </div>
+
+      {oath && <SystemWarCard sys={system.id} oath={oath} suggested={suggested} onSwear={onSwear} />}
 
       <div className="mt-4 flex flex-wrap gap-2">
         {crew && onLand && (

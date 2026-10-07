@@ -571,11 +571,21 @@
   .holomap-systems li[data-attack] .holomap-dot { animation: none; }
 }
 
-/* your oath on the war card (HoloMap.jsx, galaxy/allegiance.js): each side in its own colour */
-.holomap-oath { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.6rem; }
-.holomap-oath .holomap-kicker,
-.holomap-oath .holomap-meta { flex-basis: 100%; margin: 0; }
-.holomap-oath button { padding: 0.3rem 0.6rem; border-radius: 6px; background: rgb(255 255 255 / 0.04); box-shadow: inset 0 0 0 1px rgb(217 243 255 / 0.25); color: rgb(217 243 255 / 0.8); font-size: 0.74rem; }
-.holomap-oath button[data-suggested] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--side) 60%, transparent); }
-.holomap-oath button[aria-pressed='true'] { background: color-mix(in srgb, var(--side) 16%, transparent); box-shadow: inset 0 0 0 1px var(--side); color: #fff; }
-.holomap-oath button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+/* the galaxy's wars: the war you fight in, the oath, the areas (WarCard.jsx), and the battle on in a line (WarHud.jsx) */
+.galaxy-oath { display: grid; gap: 0.45rem; }
+.galaxy-oath-wars,
+.galaxy-oath-sides { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.galaxy-oath-wars button,
+.galaxy-oath-sides button { padding: 0.32rem 0.6rem; border-radius: 999px; border: 1px solid rgb(217 243 255 / 0.22); background: rgb(255 255 255 / 0.04); color: #d9f3ff; font-size: 0.74rem; }
+.galaxy-oath-wars button[aria-pressed='true'] { border-color: #ffb347; background: rgb(255 179 71 / 0.16); color: #fff; }
+.galaxy-oath-sides button { border-color: color-mix(in srgb, var(--side, #7fd6ff) 45%, transparent); }
+.galaxy-oath-sides button[data-suggested] { box-shadow: 0 0 0 1px var(--side, #7fd6ff); }
+.galaxy-oath-sides button[aria-pressed='true'] { background: color-mix(in srgb, var(--side, #7fd6ff) 26%, transparent); color: #fff; font-weight: 600; }
+.galaxy-oath-wars button:focus-visible,
+.galaxy-oath-sides button:focus-visible { outline: 2px solid #7fd6ff; outline-offset: 2px; }
+.galaxy-oath-n { margin: 0; color: rgb(217 243 255 / 0.7); font-size: 0.72rem; }
+.galaxy-areas { display: grid; gap: 0.2rem; margin: 0; padding: 0; list-style: none; font-size: 0.72rem; color: rgb(217 243 255 / 0.7); }
+.galaxy-areas li { display: flex; justify-content: space-between; gap: 0.5rem; }
+.galaxy-areas li[data-yours] { color: #fff; }
+.galaxy-war { display: grid; gap: 0.5rem; margin-top: 0.9rem; }
+.galaxy-warhud { position: absolute; top: 4.6rem; left: 50%; z-index: 3; max-width: calc(100% - 2rem); margin: 0; padding: 0.3rem 0.8rem; transform: translateX(-50%); border-radius: 999px; border: 1px solid color-mix(in srgb, var(--side) 55%, transparent); background: rgb(2 6 16 / 0.72); color: #fff; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }

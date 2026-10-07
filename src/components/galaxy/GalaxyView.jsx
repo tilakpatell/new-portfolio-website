@@ -7,6 +7,7 @@ import FlightSettings from '../universe/FlightSettings';
 import { SYSTEMS, goalsOf, lightYears, systemById } from './systems';
 import '../universe/universe.css';
 import GuideCue from '../guide/GuideCue';
+import WarHud from './WarHud';
 
 // The galaxy's 3D view (scene.js, a world module on the world runtime:
 // ./module.js) and everything over it:
@@ -16,10 +17,11 @@ import GuideCue from '../guide/GuideCue';
 // jump to it, the other pilots' callsigns, the targeting HUD and the stick ring
 // (the universe map's own, UniverseMap.jsx's classes, the scene moves them),
 // your shields, the touch buttons, the flight settings and a line on how to
-// fly until you do. While the 3D loads the box says so; without 3D, a note
+// fly until you do, and the war's battle on here in a line (WarHud.jsx).
+// While the 3D loads the box says so; without 3D, a note
 // that the galaxy needs it, and the panel and the map still work.
 
-export default function GalaxyView({ system, here, handle, ship, loadout, build = null, allegiance = null, net = null, frozen, onEvent, onArrive, onAt, onBoard, onCrash, onMap }) {
+export default function GalaxyView({ system, here, handle, ship, loadout, build = null, net = null, frozen, onEvent, onArrive, onAt, onBoard, onCrash, onMap, oath = null }) {
   const labels = useRef({});
   const stars = useRef({});
   const [aim, setAim] = useState(null); // the star the nose is on
@@ -46,7 +48,6 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
       ship,
       loadout,
       build,
-      allegiance,
       controls,
       labels,
       stars,
@@ -56,6 +57,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
       net,
       tags,
       frozen,
+      allegiance: oath,
       onArrive,
       onAt,
       onBoard,
@@ -114,6 +116,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
               Plotting a course to a galaxy far, far away…
             </p>
           )}
+          {on && oath && <WarHud sys={here} oath={oath} />}
           <ul className="universe-labels galaxy-labels" aria-label="In this system">
             {goals.map((g) => (
               <li key={g.id}>

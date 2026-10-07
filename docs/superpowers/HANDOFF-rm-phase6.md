@@ -25,8 +25,11 @@ own); NPCs that do things, not just stand and talk.
   Get Schwifty show (`froopyland.js`, `nimbus.js`, `gromflomites.js`,
   `heistcon.js`, `snakeplanet.js`, `nuptia.js`, `gloopynoops.js`,
   `resort.js`, `schwifty.js`).
-- **NPC behaviour** for every destination (`dimensions/stage.js`, on the
-  AI toolkit's context steering, `src/lib/ai/steer.js`). A person or one of
+- **NPC behaviour** for every destination, in `world/npc.js` (on the AI
+  toolkit's context steering, `src/lib/ai/steer.js`), which `dimensions/stage.js`
+  and the street's `visitors.js` share: the street has four walkers
+  (Jessica, Brad, Mr. Goldenfold, Ethan; `rules.js`'s street PEOPLE with `ai`
+  and `roams`). A person or one of
   the crowd carries `ai` in `destinations.js`:
   - `wander: [[dx, dz], …]`, `speed`, `pause`: walks the points in turn,
     steered round the place's solids and the others;
@@ -42,6 +45,20 @@ own); NPCs that do things, not just stand and talk.
   ('caught', 'bark', 'done'); `RmWorld.jsx`'s `npc()` handles them after
   each frame (`s.events`). Anyone who roams is marked `roams` and left out
   of the colliders (`rules.js`).
+- **Task 6.5, the Rick and Morty system on the map**: four small planets
+  round the Citadel, `universes.js`'s `MOONS` (kind `moon`, found by `byId`
+  but not in `UNIVERSES`, so not in the map's order, the mini-map or the
+  pages' links). `layout.js` places them at their `at` and lists them with
+  the order in `BODIES`; `ship.js`'s `PLANETS`, the scene's planets,
+  `deep.js`'s `PLACES` and `nav.js`'s `DESTINATIONS` read `BODIES`/`MOONS`,
+  so they're solid, lit, drawn (plain spheres in their palette and air),
+  closed to the drive, and the autopilot goes to them. Landed on like a
+  fandom's planet: `landings/landings.js` entries and `landings/rmmoons.js`
+  (the C-137 landing's portal, the women's gate, suckulents and cat trees,
+  perches, cogs; the houses and the people are models). Tests in
+  `deep.test.js` (clear of the Citadel's parts, each other, the fandoms and
+  the wars), `landings.test.js`, `nav.test.js` (a moon's last leg to the
+  autopilot is slower, inside the Citadel's space). Not on the mini-map yet.
 - **Rows 30–34**: Mr. Goldenfold's dream (`dream.js`, Scary Terry hunts
   from the start, `lose` lets a hider shake him), the agency (`agency.js`,
   id `agency`, Jaguar's cell door swings on 'unlocked'), the Meeseeks' golf
@@ -94,20 +111,26 @@ own); NPCs that do things, not just stand and talk.
   destination's model file (or a rigged one's idle and walk clips) is
   missing from `public/`.
 - README's C-137 row lists every place.
+- The Pickle Rick sewer run, `world/sewer/`: a lane runner opened from the
+  agency's hole in the floor (hotspot `sewer`, a `PLACES` entry in
+  `RmWorld.jsx` like Roy's, behind `GpuGate`). `rules.js` is the pure game
+  (`newRun`, `stepRun`, `progress`: three lanes, hops, rats to squash or
+  zap, grates to hop, screws for the laser, three hearts, won at `goal`;
+  tested), `scene.js` draws it (the drain's segments recycled, the pickle
+  and the rats from the Meshy cast), `Sewer.jsx` is the frame (keys, pad,
+  HUD, cards, `onLeave(won)`; won completes the `sewer` task).
 
 ## Not done
 
-- **Task 6.5**, the Rick and Morty system on the universe map. The map
-  lands only on the fandoms' planets (`universes.js`, `landings/`), so four
-  landable planets round the Citadel need a new kind of wonder in
-  `deep.js`, drawn by `deepspace.js` and landed on by `footScene.js`
-  (`planetOf`), plus `landings/` entries. Scoped but not started.
-- The rest of the plan's Phase 7: Jaguar and the Pickle Rick sewer run (a
-  game of its own), and Mr. Frundles. (The cable figures went to a studio
-  of their own rather than the alien street, which has no NPC layer.)
+- (The cable figures went to a studio of their own rather than the alien
+  street, which has no NPC layer.) Jaguar is at the agency, the Pickle Rick
+  sewer run is `world/sewer/` (below), and Mr. Frundles' Earth is row 35
+  (`PHASE12`'s models: him, a man and a dog he bit, a house with his face;
+  a collect-then-escape with everything fuzzy hunting).
 - The map's Birdperson is still the code-built one (`HANDOFF-rm-phase1.md`).
-- Nothing on the dial has a sound of its own yet (the escape clock uses
-  `portalOpen`; caught uses `ouch`).
+- The dial's sounds are `games/gameAudio.js`'s synthesized ones (`alarm`
+  when seen, `siren` as the clock starts, `tick`/`timeUp` for its last ten
+  seconds, `thud` for a blow in a duel, `grab` when caught): no samples yet.
 
 ## How to check
 

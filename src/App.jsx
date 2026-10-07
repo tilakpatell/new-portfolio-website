@@ -9,6 +9,7 @@ import Nav from './components/Nav';
 import Footer from './components/Footer';
 import ScrollSaber from './components/ScrollSaber';
 import Guide from './components/Guide';
+import TourHost from './components/tour/TourHost';
 // fetches the 3D jump ahead of time (the intro's, and three.js once a page has it)
 import './components/hyperspace3d/load';
 import { audioContext } from './lib/audio';
@@ -366,6 +367,7 @@ function Shell() {
       {pathname !== '/terminal' && pathname !== '/deathstar' && page !== '/universe' && page !== '/galaxy' && !pathname.endsWith('/surface') && <Footer />}
       <ScrollSaber />
       <Guide />
+      <TourHost />
       <Lightspeed />
       <PaletteHost />
       <ErrorBoundary fallback={<IntroGone />}>

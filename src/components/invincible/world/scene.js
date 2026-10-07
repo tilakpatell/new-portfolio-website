@@ -35,6 +35,7 @@ const FOV = 64;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const damp = (v, to, rate, dt) => v + (to - v) * (1 - Math.exp(-rate * dt));
 const Y = new THREE.Vector3(0, 1, 0);
+const Z = new THREE.Vector3(0, 0, 1);
 
 // the times of day: the sky, how it sits, the light, the haze, the night
 export const TIMES = ['noon', 'dusk', 'night'];
@@ -226,16 +227,18 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   const qTmp = new THREE.Quaternion();
   const qYaw = new THREE.Quaternion();
   const vTmp = new THREE.Vector3();
-  function carry(f, p, yaw, v, dt, { lean = 1, roll = 0, lift = 0 } = {}) {
+  // `ahead`: the figure lies along its flight itself (a flying clip, its head
+  // ahead), so its front, not its crown, is turned along the flight
+  function carry(f, p, yaw, v, dt, { lean = 1, roll = 0, lift = 0, ahead = false } = {}) {
     f.holder.position.set(p[0], p[1] + f.hipHeight + lift, p[2]);
     f.holder.rotation.set(0, yaw, 0);
     const speed = Math.hypot(v[0], v[1], v[2]);
     const k = clamp((speed - 8) / 30, 0, 1) * lean;
-    const dir = speed > 0.1 ? vTmp.set(v[0], v[1], v[2]).divideScalar(speed) : vTmp.copy(Y);
-    dir.lerpVectors(Y, dir, k).normalize();
+    const axis = ahead ? Z : Y;
     qYaw.setFromAxisAngle(Y, -yaw);
-    dir.applyQuaternion(qYaw); // into his own frame
-    qTmp.setFromUnitVectors(Y, dir);
+    const dir = speed > 0.1 ? vTmp.set(v[0], v[1], v[2]).divideScalar(speed).applyQuaternion(qYaw) : vTmp.copy(axis); // (in his own frame)
+    dir.lerpVectors(axis, dir, k).normalize();
+    qTmp.setFromUnitVectors(axis, dir);
     if (roll) qTmp.multiply(new THREE.Quaternion().setFromAxisAngle(Y, roll));
     f.lean.slerp(qTmp, dt === 0 ? 1 : 1 - Math.exp(-8 * dt));
     f.body.quaternion.copy(f.lean);
@@ -364,11 +367,17 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       gAt.lerpVectors(Y, gAt, k).normalize().applyQuaternion(gYaw);
       fig.body.quaternion.slerp(gQ.setFromUnitVectors(Y, gAt), 1 - Math.exp(-8 * gdt));
       fig.holder.quaternion.setFromUnitVectors(Y, gUp).premultiply(gYaw).multiply(gYaw.invert());
-      if (air) fig.pose(k > 0.45 ? POSES.fly() : POSES.hover(gt), gdt, 9);
-      else {
+      // (Mark's clips where they fit; flat out, posed, as the lean above wants)
+      if (air) {
+        if (k > 0.45) fig.pose(POSES.fly(), gdt, 9);
+        else fig.act('hover', { fade: 0.4 }) || fig.pose(POSES.hover(gt), gdt, 9);
+      } else {
         f.gait += speed * gdt * 1.55;
-        fig.pose(speed > 0.3 ? POSES.stride(f.gait, clamp(speed / 2, 0, 1), clamp((speed - 4) / 5, 0, 1)) : POSES.stand, gdt, 14);
+        if (speed > 4.5) fig.act('run', { speed: clamp(speed / 5.5, 0.7, 1.6) }) || fig.pose(POSES.stride(f.gait, 1, clamp((speed - 4) / 5, 0, 1)), gdt, 14);
+        else if (speed > 0.3) fig.act('walk', { speed: clamp(speed / 1.4, 0.6, 2.2) }) || fig.pose(POSES.stride(f.gait, clamp(speed / 2, 0, 1), 0), gdt, 14);
+        else fig.act('idle') || fig.pose(POSES.stand, gdt, 14);
       }
+      fig.tick(gdt);
     },
     tag: 0.5,
     halo: 1.3,
@@ -431,29 +440,39 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       mark.holder.quaternion.setFromUnitVectors(Y, n).multiply(new THREE.Quaternion().setFromAxisAngle(Y, h.face));
       mark.lean.identity();
       mark.body.quaternion.identity();
-      mark.pose(POSES.proud(), dt, 6);
+      mark.act('idle') || mark.pose(POSES.proud(), dt, 6);
     } else if (h.mode === 'ground') {
+      // his motion-captured clips where he has them (walking at the pace he
+      // goes: the clip's own pace is about 1.4 m/s, a run's about 5.5);
+      // the landing crouch and a punch are posed, aimed where they go
       const flat = Math.hypot(h.v[0], h.v[2]);
       stride += flat * frameDt * 1.55;
       carry(mark, h.p, h.face, [0, 0, 0], dt, { lean: 0, lift: h.crouch > 0 ? -mark.hipHeight * 0.42 : 0 });
       if (h.crouch > 0) mark.pose(LAND, dt, 18);
-      else if (flat > 0.3) mark.pose(POSES.stride(stride, clamp(flat / 2, 0, 1), clamp((flat - 4) / 5, 0, 1)), dt, 14);
-      else mark.pose(POSES.stand, dt, 8);
+      else if (sim.punchT > 0) mark.pose(POSES.punch([0, 0.1, 1]), dt, 30);
+      else if (flat > 4.5) mark.act('run', { speed: clamp(flat / 5.5, 0.7, 1.6) }) || mark.pose(POSES.stride(stride, 1, clamp((flat - 4) / 5, 0, 1)), dt, 14);
+      else if (flat > 0.3) mark.act('walk', { speed: clamp(flat / 1.4, 0.6, 2.2) }) || mark.pose(POSES.stride(stride, clamp(flat / 2, 0, 1), 0), dt, 14);
+      else mark.act('idle') || mark.pose(POSES.stand, dt, 8);
     } else if (h.stun > 0) {
       carry(mark, h.p, h.face, h.v, dt, { lean: 0.4, roll: t * 9 });
-      mark.pose(POSES.hurt(), dt, 14);
+      mark.act('hit', { once: true, fade: 0.1 }) || mark.pose(POSES.hurt(), dt, 14);
     } else {
-      const k = carry(mark, h.p, h.face, h.v, dt, { lean: 1 });
+      // flat out, the fly clip lies along his flight itself
+      const fast = clamp((Math.hypot(...h.v) - 8) / 30, 0, 1) > 0.45 && mark.clips.includes('fly');
+      const k = carry(mark, h.p, h.face, h.v, dt, { lean: 1, ahead: fast });
       // a punch thrown hanging in the air (flat out, the fly pose's fist is already ahead)
-      mark.pose(k > 0.45 ? POSES.fly() : sim.punchT > 0 ? POSES.punch([0, 0.1, 1]) : POSES.hover(t), dt, sim.punchT > 0 ? 30 : 9);
+      if (sim.punchT > 0 && !fast) mark.pose(POSES.punch([0, 0.1, 1]), dt, 30);
+      else if (k > 0.45) mark.act('fly', { fade: 0.4 }) || mark.pose(POSES.fly(), dt, 9);
+      else mark.act('hover', { fade: 0.4 }) || mark.pose(POSES.hover(t), dt, 9);
     }
-    if (h.mode === 'ground' && sim.punchT > 0 && h.crouch <= 0) mark.pose(POSES.punch([0, 0.1, 1]), dt, 30);
+    mark.tick(dt);
 
     if (zone === 'city') {
       // his father, keeping an eye on things
       const bob = Math.sin(t * 0.7) * 1.2;
       carry(omni, [OMNI.p[0], OMNI.p[1] + bob, OMNI.p[2]], OMNI.yaw, [0, 0, 0], dt, { lean: 0 });
-      omni.pose(POSES.proud(), dt, 6);
+      omni.act('hover') || omni.pose(POSES.proud(), dt, 6);
+      omni.tick(dt);
       // (the QA scripts can hold everyone still, to frame them)
       if (!sim.hold) {
         npcs.update(frameDt, t, h);
@@ -471,7 +490,8 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       // Allen, waiting by the Moon; Thragg over Mars
       allen.pose({ mode: 'hover', t }, dt);
       carry(thragg, [THRAGG[0], THRAGG[1] + Math.sin(t * 0.6), THRAGG[2]], Math.atan2(-THRAGG[0], -THRAGG[2]), [0, 0, 0], dt, { lean: 0 });
-      thragg.pose(POSES.proud(), dt, 6);
+      thragg.act('hover') || thragg.pose(POSES.proud(), dt, 6);
+      thragg.tick(dt);
     }
     space.update(t, camera);
     // other players online: in the city, or out here with him

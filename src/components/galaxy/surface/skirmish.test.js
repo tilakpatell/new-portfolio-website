@@ -4,11 +4,10 @@ import { SITES } from './sites';
 import { CREW } from './crew';
 import { gunOf } from './soldier';
 import { GUNS } from '../../universe/gunplay';
-import { ASSAULTS } from './missions/assaults';
 import { GCW } from '../gcw';
 import { WARS } from '../sides';
 import { readAllegiance, swear } from '../allegiance';
-import { CHEST, EYE, UNITS, battleWar, coverSpots, hitChance, hitUnit, lineOfSight, newSkirmish, placeUnit, skirmishView, stepSkirmish, swearHere, yourSide } from './skirmish';
+import { CHEST, EYE, UNITS, battleWar, coverSpots, hitChance, hitUnit, lineOfSight, newSkirmish, placeUnit, skirmishView, stepSkirmish, yourSide } from './skirmish';
 
 // a beach: the Republic dug in behind a low wall at z = 12, the droids coming from z = 60
 const SPEC = {
@@ -454,8 +453,8 @@ describe('your side, by your oath (galaxy/allegiance.js)', () => {
   const oath = (...sides) => sides.reduce((a, side) => swear(a, side, NOW), readAllegiance(null, { now: NOW }));
   const battle = (id) => SITES[id].skirmish.sides;
 
-  it('each battle, on a world or an assault, is one war’s: its two sides that war’s two', () => {
-    const all = [...Object.entries(SITES).filter(([, s]) => s.skirmish).map(([id, s]) => [id, s.skirmish.sides]), ...Object.entries(ASSAULTS).map(([id, m]) => [`assault ${id}`, m.sides])];
+  it('each battle on a world is one war’s: its two sides that war’s two', () => {
+    const all = Object.entries(SITES).filter(([, s]) => s.skirmish).map(([id, s]) => [id, s.skirmish.sides]);
     for (const [id, sides] of all) {
       const war = battleWar(sides);
       expect(war, id).toBeTruthy();
@@ -497,28 +496,5 @@ describe('your side, by your oath (galaxy/allegiance.js)', () => {
     const a = oath('rebel', 'empire');
     expect(a.oaths.gcw.turncoat).toBe(true);
     expect(yourSide(battle('hoth'), a)).toBe('empire');
-  });
-
-  it('on an assault’s choose card, the side to take: attack or defend', () => {
-    expect(yourSide(ASSAULTS.hoth.sides, oath('rebel'))).toBe('defend');
-    expect(yourSide(ASSAULTS.hoth.sides, oath('empire'))).toBe('attack');
-    expect(yourSide(ASSAULTS.geonosis.sides, oath('separatists'))).toBe('defend');
-    expect(yourSide(ASSAULTS.geonosis.sides, oath('empire'))).toBe('defend');
-  });
-
-  it('an oath sworn in a battle is in its war, and leaves the war you fly in as it was', () => {
-    let a = oath('rebel');
-    a = swearHere(a, 'separatists', NOW);
-    expect(a.oaths.clone).toMatchObject({ side: 'separatists', turncoat: false });
-    expect(a.oaths.gcw.side).toBe('rebel');
-    expect(a.war).toBe('gcw');
-    // the other side there: a turncoat's
-    a = swearHere(a, 'republic', NOW);
-    expect(a.oaths.clone).toMatchObject({ side: 'republic', turncoat: true });
-    expect(a.war).toBe('gcw');
-    // the same again, or nobody's: nothing
-    expect(swearHere(a, 'republic', NOW)).toBe(a);
-    expect(swearHere(a, undefined, NOW)).toBe(a);
-    expect(swearHere(a, 'hutt', NOW)).toBe(a);
   });
 });

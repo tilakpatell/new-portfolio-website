@@ -21,7 +21,7 @@ import { EDGE, GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, forward, parkAt, step 
 import { MAW, parkNear } from './maw';
 import { WONDERS, reachOf } from './deep';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
-import { byId } from './universes';
+import { MOONS, byId } from './universes';
 import { LENGTH } from './scale';
 import { SYSTEM_MARKS, SYSTEM_NAMES } from '../galaxy/names';
 
@@ -109,6 +109,18 @@ export const DESTINATIONS = [
       to: u.to,
     };
   }),
+  // the Rick and Morty system's moons, round the Citadel
+  ...MOONS.map((m) => ({
+    id: m.id,
+    name: m.label,
+    kind: 'world',
+    type: 'Rick and Morty',
+    at: m.at,
+    reach: REACH[m.id],
+    color: m.swatch,
+    about: `${m.label}, a planet from Rick and Morty, in the Citadel's system. The portal gun on the C-137 page dials it too.`,
+    to: m.to,
+  })),
   ...WONDERS.map((w) => ({
     id: w.id,
     name: w.name,

@@ -587,8 +587,8 @@
   text-align: left;
   transition: background 0.15s, transform 0.15s;
 }
+.assault-side[data-sworn] { box-shadow: 0 0 0 2px var(--side); }
 .assault-side:hover, .assault-side:focus-visible { background: color-mix(in srgb, var(--side) 22%, rgba(0, 0, 0, 0.35)); transform: translateY(-2px); }
-.assault-side[data-yours] { box-shadow: inset 0 0 0 1px var(--side); } /* (the side your oath puts you on) */
 .assault-side b { font-size: 1rem; font-weight: 650; line-height: 1.25; }
 .assault-side span { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--side); }
 .assault-posts { display: grid; gap: 0.5rem; margin: 1rem 0 0; padding: 0; list-style: none; text-align: left; }

@@ -44,13 +44,11 @@
 // coverSpots(solids, field, ground?) → [{ x, z, n: [nx, nz], low, solid, by }]
 // battleWar(sides) → the war (galaxy/sides.js) a battle's sides fight
 // yourSide(sides, oath, suggested?) → the id of your side in it, by your oath
-//   (galaxy/allegiance.js; an assault's sides too: 'attack' | 'defend')
-// swearHere(oath, side, now) → the oath sworn to `side` in a battle
+//   (galaxy/allegiance.js's { war, oaths })
 
 import { pushOut, turnToward } from './walker';
 import { rng } from './noise';
 import { SIDES, WARS, warOfSide } from '../sides';
-import { setTheatre, swear } from '../allegiance';
 
 // heights above the ground (metres): the eyes a shot leaves from, the chest it's aimed at
 export const EYE = { stand: 1.55, kneel: 0.95 };
@@ -882,16 +880,6 @@ export function yourSide(sides, oath = null, suggested = null) {
   const lean = SIDES[other]?.stance;
   const leaning = lean === 'light' ? war?.liberator : lean === 'dark' ? war?.raider : null;
   return of(oaths[war?.id]?.side) ?? of(leaning) ?? of(suggested) ?? of(war?.liberator) ?? ids[0] ?? null;
-}
-
-// An oath sworn down in a battle (its HUD's switch, an assault's choose
-// card): allegiance.js's swear, a turncoat's if you swore the other way in
-// that war this campaign, but the war you fly in (its theatre) as it was
-export function swearHere(oath, side, now = Date.now()) {
-  const next = swear(oath, side, now);
-  if (next === oath) return oath;
-  const kept = setTheatre(next, oath.war);
-  return kept.oaths === oath.oaths && kept.since === oath.since ? oath : kept;
 }
 
 export function skirmishView(b) {

@@ -91,6 +91,7 @@ import { createSkirmishScene } from './skirmishScene';
 import { suggestSide } from '../allegiance';
 import { battleWar, yourSide } from './skirmish';
 import { groundWorld } from '../../../lib/three/groundwork';
+import { garrisonLife } from './garrison';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -246,7 +247,7 @@ export async function create(canvas, ctx) {
   }
   // (the grass round you: blades on the land, where the site grows it)
   const grass = site.grass && !site.noGround ? createGrass(scene, { grid, site, small, time: kit.wind }) : null;
-  const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
+  const life = createActors({ parent: scene, world, life: garrisonLife(site.life, ctx.effects?.troops), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
 
   // ── The places you go into (zones): built high over the world, out of
   // sight, each with its own lamps ──

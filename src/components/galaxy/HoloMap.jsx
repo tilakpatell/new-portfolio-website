@@ -2,10 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { RiCloseLine, RiRocket2Fill, RiArrowGoBackLine } from 'react-icons/ri';
-import { heldColour, progressOf, span, standing } from './warText';
-import { onWar, warNow } from './warState';
-import { templateFor } from './battles';
-import { DEFAULT_WAR, SIDES, WARS } from './sides';
+import { heldColour, progressOf, standing } from './warText';
+import WarCard, { SystemWar } from './WarCard';
+import { SIDES, WARS } from './sides';
+import { mine, onWar, warNow } from './warState';
 import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKNOWN, edgeAt, eraById, eraOf, erasOf, filmLabel, filmShort, gridAt, jumpSeconds, lightYears, systemById, yearLabel } from './systems';
 
 // The galaxy map, the way a holotable shows it: the galaxy's disc (its
@@ -25,9 +25,6 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 // rate), a system under attack pulsing, its battle on now marked, the major
 // order starred; the war's own card when nothing's picked (the major order,
 // the battles on now, a button to each), and the war's part of a system's card.
-// On the card, your oath (galaxy/allegiance.js, kept by the page: `oath`,
-// `onSwear(side)`): the war's two sides to swear to, the one your crew would
-// choose (`suggested`) outlined, never chosen for you.
 //
 // Drawn once into a canvas (the stars of the disc), with an SVG over it for
 // the lines and the names, and buttons over that for the systems (so the
@@ -36,13 +33,6 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 // is its own stacking context).
 
 const SIZE = 21; // the map is GRID squares across, in its own units
-// what a system's battle is doing now
-const battleLine = (row, now) => {
-  const b = row.battle;
-  if (!b) return null;
-  const name = templateFor(row.id, b.war).name;
-  return b.fighting ? `${name}: ${span(b.fightEnd - now)} left` : `${name}: regrouping, the next in ${span(b.end - now)}`;
-};
 // names that go on the left of their dot (a neighbour's on the right, or the map's edge)
 const LEFT = new Set(['mustafar', 'hoth', 'geonosis', 'nevarro', 'mandalore', 'lothal']);
 const TAU = Math.PI * 2;
@@ -124,7 +114,7 @@ const unknown = (() => {
   return pts.map(([x, z], i) => `${i ? 'L' : 'M'}${x.toFixed(3)} ${z.toFixed(3)}`).join(' ') + 'Z';
 })();
 
-export default function HoloMap({ current, online, oath = null, suggested = null, onSwear = null, onJump, onClose, onLeave }) {
+export default function HoloMap({ current, online, onJump, onClose, onLeave, oath = { war: 'gcw', side: null, sworn: 0, turncoat: false }, suggested = null, onSwear, onTheatre }) {
   const here = systemById(current);
   const [pick, setPick] = useState(null);
   const [era, setEra] = useState('all');
@@ -141,15 +131,11 @@ export default function HoloMap({ current, online, oath = null, suggested = null
     return () => (clearInterval(id), off());
   }, []);
   const war = useMemo(() => {
-    const table = warNow(now);
+    const table = warNow(now, oath.war);
     return { ...table, byId: Object.fromEntries(table.systems.map((r) => [r.id, r])) };
-  }, [now]);
-  const battles = war.systems.filter((r) => r.battle).sort((a, b) => (b.major ? 1 : 0) - (a.major ? 1 : 0) || (a.attack ? -1 : 0) - (b.attack ? -1 : 0));
-  const major = war.major ? war.byId[war.major] : null;
+  }, [now, oath.war]);
+  const record = useMemo(() => mine(oath.war, now), [oath.war, now]);
   const pickedWar = picked ? war.byId[picked.id] : null;
-  // your oath in the war the card shows
-  const cardWar = WARS[DEFAULT_WAR];
-  const sworn = oath?.oaths?.[cardWar.id] ?? null;
 
   useEffect(() => {
     const c = canvas.current;
@@ -277,7 +263,7 @@ export default function HoloMap({ current, online, oath = null, suggested = null
             </div>
             {/* the war's key */}
             <p className="holomap-war">
-              The Galactic Civil War: <i style={{ '--held': heldColour('rebel') }} /> the Rebellion <i style={{ '--held': heldColour('empire') }} /> the Empire <i style={{ '--held': heldColour('hutt') }} /> Hutt space <b aria-hidden="true">⚔</b> a battle on <b aria-hidden="true">★</b> the major order
+              {WARS[oath.war].name}: <i style={{ '--held': heldColour(WARS[oath.war].liberator) }} /> the {SIDES[WARS[oath.war].liberator].short} <i style={{ '--held': heldColour(WARS[oath.war].raider) }} /> the {SIDES[WARS[oath.war].raider].short} <i style={{ '--held': heldColour('hutt') }} /> Hutt space <b aria-hidden="true">⚔</b> a battle on <b aria-hidden="true">★</b> the major order
             </p>
             {/* the systems */}
             <ul className="holomap-systems" aria-label="Star systems">
@@ -336,18 +322,7 @@ export default function HoloMap({ current, online, oath = null, suggested = null
                       {picked.game.title} {picked.game.status === 'live' ? '(play now)' : '(coming soon)'}
                     </dd>
                   </div>
-                  {pickedWar && (
-                    <div>
-                      <dt>The war</dt>
-                      <dd>{standing(pickedWar, now)}</dd>
-                    </div>
-                  )}
-                  {pickedWar?.battle && (
-                    <div>
-                      <dt>{pickedWar.attack ? 'The defence' : 'The battle'}</dt>
-                      <dd>{battleLine(pickedWar, now)}</dd>
-                    </div>
-                  )}
+                  <SystemWar row={pickedWar} war={oath.war} now={now} side={oath.side} />
                   {pilots[picked.id] > 0 && (
                     <div>
                       <dt>Online</dt>
@@ -373,45 +348,8 @@ export default function HoloMap({ current, online, oath = null, suggested = null
                 <p className="holomap-meta">
                   {here.region} · Grid {here.grid ?? gridAt(here.pos)}
                 </p>
-                {/* the war's own card: the major order, the battles on now */}
-                <section className="holomap-warcard" aria-label="The Galactic Civil War">
-                  <p className="holomap-kicker">The Galactic Civil War · campaign {war.campaign + 1} · {span(war.ends - now)} left</p>
-                  {major && (
-                    <button type="button" className="holomap-order" onClick={() => setPick(major.id === current ? null : major.id)} style={{ '--control': progressOf(major) }}>
-                      <span className="holomap-order-k">★ Major order</span>
-                      <span className="holomap-order-t">Liberate {major.name}</span>
-                      <span className="holomap-order-bar" aria-hidden="true">
-                        <span />
-                      </span>
-                      <span className="holomap-order-n">{standing(major, now)}</span>
-                    </button>
-                  )}
-                  {battles.length > 0 && (
-                    <ul className="holomap-battles" aria-label="The battles on now">
-                      {battles.map((row) => (
-                        <li key={row.id} data-attack={row.attack ? '' : undefined}>
-                          <button type="button" onClick={() => (row.id === current ? onClose() : onJump(row.id))}>
-                            <span className="holomap-battles-t">{row.attack ? `${row.attack.by === 'hutt' ? 'Hutt raid on' : 'Defend'} ${row.name}` : `Liberate ${row.name}`}</span>
-                            <span className="holomap-battles-n">{battleLine(row, now)}</span>
-                            <span className="holomap-battles-n">{standing(row, now)}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <p className="holomap-meta">What you do in a battle counts for the side you swore to, here, for everyone online.</p>
-                  {onSwear && (
-                    <div className="holomap-oath" role="group" aria-label={`Your side in ${cardWar.name}`}>
-                      <p className="holomap-kicker">{sworn ? `Sworn to the ${SIDES[sworn.side].short}${sworn.turncoat ? ', a turncoat this campaign' : ''}` : 'Swear to a side'}</p>
-                      {[cardWar.liberator, cardWar.raider].map((id) => (
-                        <button key={id} type="button" aria-pressed={sworn?.side === id} data-suggested={!sworn && suggested === id ? '' : undefined} style={{ '--side': SIDES[id].colour }} onClick={() => onSwear(id)}>
-                          {SIDES[id].short}
-                        </button>
-                      ))}
-                      <p className="holomap-meta">The battles on the worlds put you with your side, or with its kind in another war: sworn to the Empire, on Kashyyyk you wade in with the droids. Change sides and you’re a turncoat till the campaign’s over.</p>
-                    </div>
-                  )}
-                </section>
+                {/* the war's own card: the oath, the major order, the battles on now, the areas */}
+                <WarCard table={war} now={now} oath={oath} suggested={suggested} record={record} onSwear={onSwear} onTheatre={onTheatre} onPick={(id) => setPick(id === current ? null : id)} onGo={(id) => (id === current ? onClose() : onJump(id))} current={current} />
                 <p className="mt-3 text-sm leading-relaxed text-body">Pick a system to plot a course, then jump. Or skip the map: every system’s star is out there in the sky, so point your nose at one and press J. Filter by era or film to see the galaxy as it was then.</p>
                 <p className="mt-3 text-xs leading-relaxed text-muted">The grid squares and regions are the films’ own atlas, where it gives them; the Unknown Regions are, well, unknown.</p>
               </>
