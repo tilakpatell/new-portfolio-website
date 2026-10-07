@@ -317,3 +317,16 @@ describe('what the runner hands make.mjs', () => {
     else process.env.GEN3D_CACHE = saved;
   });
 });
+
+describe('the budget a shipped model was cut to', () => {
+  it('is the smallest ask its three cuts all fit', async () => {
+    const { cutsFor, inferFaces } = await import('./budget.mjs');
+    // cut at the defaults: 120000 / 60000 / 20000
+    expect(inferFaces({ hq: 119000, mid: 60000, lo: 20500 })).toBe(Math.ceil(20500 * 6 / 1.05));
+    // a rock asked for at 4000 faces: 4000 / 2000 / 667
+    const rock = cutsFor(4000);
+    expect(inferFaces({ hq: rock.hq.faces, mid: rock.mid.faces, lo: rock.lo.faces })).toBeLessThanOrEqual(4000);
+    // never more than the top cut's own budget
+    expect(inferFaces({ hq: 500000, mid: 1, lo: 1 })).toBe(120000);
+  });
+});
