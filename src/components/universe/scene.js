@@ -157,6 +157,8 @@ import { createCitadelSiege } from './citadelSiege';
 import { STALE_MS } from './online/protocol';
 import { createFoot } from './footScene';
 import { wayIn } from './landings/wayin';
+import { figureVoice } from './landings/voicelines';
+import { sayVoiced, stopVoiced } from '../../lib/voiced';
 import { ENTRY, LANDABLE, airTop, entering } from './entry';
 import { poseFor } from './poses';
 import { REMOVER, hitRemover, hpLeft, landingOpen, newRemover, stepRemover } from './remover';
@@ -3912,7 +3914,7 @@ export async function create(canvas, ctx) {
     const el = props.prompt?.current;
     if (!el) return;
     let text = '';
-    let say = false; // (a line someone says to you: nothing for G to do)
+    let say = null; // (a line someone says to you, { name, line }: nothing for G to do)
     let plain = false; // (a word on the HUD: nothing for G to do either)
     const info = onFoot() ? foot.info() : null;
     if (props.frozen) text = '';
@@ -3926,7 +3928,7 @@ export async function create(canvas, ctx) {
     else if (info && foot.phase === 'walk' && info.ship.near) text = `Get back in ${SHIP_NAMES[state.kind]?.replace(/^The /, 'the ') ?? 'the ship'}`;
     else if (info && foot.phase === 'walk' && info.near?.say) {
       text = `${info.near.say.name}: “${info.near.say.line}”`;
-      say = true;
+      say = info.near.say;
     }
     else if (!onFoot() && state.landable && !state.auto && Math.abs(state.ship?.speed ?? 0) < SHIP.boost && LANDABLE.some((p) => p.id === state.landable)) {
       // (no key for it: flying in is the way down)
@@ -3936,9 +3938,12 @@ export async function create(canvas, ctx) {
     else if (!onFoot() && state.phoneNear && !state.auto && !state.jump && flying()) text = 'Unlock the phone';
     if (text === promptWas) return;
     promptWas = text;
+    // what they say, in their own voice where it's been made (landings/voicelines.js); walking off stops it
+    if (say) sayVoiced(figureVoice(say), say.line);
+    else if (el.hasAttribute('data-say')) stopVoiced();
     el.textContent = text;
     el.toggleAttribute('data-on', Boolean(text));
-    el.toggleAttribute('data-say', say);
+    el.toggleAttribute('data-say', Boolean(say));
     el.toggleAttribute('data-plain', plain);
   };
 
@@ -5056,6 +5061,7 @@ export async function create(canvas, ctx) {
     },
     dispose() {
       disposed = true;
+      stopVoiced(); // (anyone down on a planet, mid-line)
       window.removeEventListener('tp:looks', onLooks);
       engine?.stop();
       well?.stop();
