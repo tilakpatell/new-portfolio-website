@@ -32,6 +32,7 @@ import { withDetail } from './detail';
 import { LOOKS, loadScan, scanOf } from './kit';
 import { wear as wearCore } from '../../../lib/three/core';
 import { PROPS, SCATTER } from './props';
+import { litWindows } from './props/windows';
 import { nearInstances, splitNear, zoneVisibility } from './near';
 
 const NEAR = { r: 70, max: 512, step: 8 }; // metres (the shadow box's corner, ±42 m, and the shadows long trees throw into it); instances; metres walked before they're found again
@@ -247,6 +248,8 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             else footprint(o, spec, at);
             // (worn before its shaders are made, so they're made once)
             const worn = spec.wear ? wearModel(o, spec.wear) : Promise.resolve();
+            // (a tower: its windows lit in the shader, props/windows.js)
+            if (spec.windows) o.traverse((m) => m.isMesh && [].concat(m.material).forEach((mat) => mat.isMeshStandardMaterial && litWindows(mat, { seed: 5, density: 0.5, cell: [4, 5] })));
             if (!entry.lod) return worn.then(() => warm(o)).then(() => o);
             // far off, its light model (fetched after the full one: the
             // first view doesn't wait for it)
@@ -456,7 +459,11 @@ export function applyBuilt(made, spec, at, world, { updates, signals, object }) 
   const c = Math.cos(yaw);
   const sn = Math.sin(yaw);
   for (const f of made.floors ?? []) {
-    world.floors.push({ ...f, x: at[0] + (f.x * c + f.z * sn) * k, z: at[2] + (-f.x * sn + f.z * c) * k, y: at[1] + f.y * k, r: f.r != null ? f.r * k : undefined, hw: f.hw != null ? f.hw * k : undefined, hd: f.hd != null ? f.hd * k : undefined, yaw: f.r != null ? undefined : (f.yaw ?? 0) + yaw });
+    const placed = { ...f, x: at[0] + (f.x * c + f.z * sn) * k, z: at[2] + (-f.x * sn + f.z * c) * k, y: at[1] + f.y * k, r: f.r != null ? f.r * k : undefined, hw: f.hw != null ? f.hw * k : undefined, hd: f.hd != null ? f.hd * k : undefined, yaw: f.r != null ? undefined : (f.yaw ?? 0) + yaw };
+    // (one that `moves`, a platform the builder lowers in its update: its
+    // height read from the builder's own floor, live)
+    if (f.moves) Object.defineProperty(placed, 'y', { get: () => at[1] + f.y * k, enumerable: true });
+    world.floors.push(placed);
   }
   if (!object) return;
   if (made.update) updates.push(made.update);

@@ -91,12 +91,14 @@ if (vanilla) {
   const copies = [];
   let most = 0;
   const T = 16 * 16 * 4;
-  TEXTURES.forEach((t, i) => {
-    if (game.missing.includes(`block/${t}`)) return;
-    const s = same(atlas.blocks.data.subarray(i * T, (i + 1) * T), game.blocks.data.subarray(i * T, (i + 1) * T));
-    most = Math.max(most, s);
-    if (s >= 0.9) copies.push(`block/${t} (${Math.round(s * 100)}%)`);
-  });
+  for (const [kind, list] of [['blocks', TEXTURES], ['items', ITEM_TEXTURES]])
+    list.forEach((t, i) => {
+      const where = `${kind === 'blocks' ? 'block' : 'item'}/${t}`;
+      if (game.missing.includes(where)) return;
+      const s = same(atlas[kind].data.subarray(i * T, (i + 1) * T), game[kind].data.subarray(i * T, (i + 1) * T));
+      most = Math.max(most, s);
+      if (s >= 0.9) copies.push(`${where} (${Math.round(s * 100)}%)`);
+    });
   for (const kind of ['skins', 'sprites'])
     for (const k of Object.keys(atlas[kind])) {
       const s = same(atlas[kind][k].data, game[kind][k]?.data);

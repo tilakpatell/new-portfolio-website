@@ -23,16 +23,19 @@ Read `docs/superpowers/HANDOFF-*.md` only for the area you pick.
 
 ## 2. Budget: may this run do anything?
 
-Stop, with nothing changed and a one-line report, when any of these holds:
+Call `mcp__claude-code-remote__get_session` with no arguments and read `external_metadata.rate_limit_info`, then ask the guard, passing its figures (leave `AUTOPILOT_UTILIZATION` out when there's no `utilization` field):
+
+```bash
+AUTOPILOT_UTILIZATION=<utilization> AUTOPILOT_STATUS=<status> AUTOPILOT_OVERAGE=<isUsingOverage> node scripts/autopilot-budget.mjs
+```
+
+It prints `go`, or `stop: <why>` and exits 1, when any of these holds (scripts/ai-e2e/agent/budget.test.mjs tests each):
 
 - `docs/autopilot/budget.json` has `"paused": true`.
-- Today already has `runsPerDay` entries in `src/data/changes/` (count the files whose `date` is today).
-- The plan is most of the way used. Call `mcp__claude-code-remote__get_session` with no arguments and read `external_metadata.rate_limit_info`:
-  - `utilization` present and `>= stopAtUtilization` (0.8) → stop.
-  - `status` not `allowed` (`allowed_warning`, `rejected`, …) → stop.
-  - `isUsingOverage` true → stop.
-  - No `utilization` field (a promotional or unmetered limit) and `status` `allowed` → go on.
-- `main` is red in a way you can't fix in this run (say which check and why).
+- Today already has `runsPerDay` entries in `src/data/changes/`.
+- `utilization` present and `>= stopAtUtilization` (0.8); `status` not `allowed` (`allowed_warning`, `rejected`, …); or `isUsingOverage` true. No `utilization` field (a promotional or unmetered limit) and `status` `allowed` goes on.
+
+Stop on its `stop`, with nothing changed and its reason as the one-line report. Stop too when `main` is red in a way you can't fix in this run (say which check and why).
 
 When you stop for the budget, say so in the report and do nothing else: no commit, no PR, no backlog edit.
 

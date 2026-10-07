@@ -18,26 +18,100 @@ import './minecraft.css';
 
 const sprite = (name) => `${MC}sprites/${name}.webp`;
 
+// where a screen's slots sit on the pack's panel, in its pixels (the game's own layout)
+const GRID = {
+  2: { x: 98, y: 18, result: [154, 28] },
+  3: { x: 30, y: 17, result: [124, 35] },
+};
+const slotAt = (i) => (i < 9 ? [8 + i * 18, 142] : [8 + ((i - 9) % 9) * 18, 84 + Math.floor((i - 9) / 9) * 18]);
+
+// a stack as the game draws it: its picture, its count bottom right, a tool's wear under it
+function Stack({ s, api }) {
+  if (!s) return null;
+  return (
+    <span className="mc-stack">
+      <img src={api()?.icon(s.item) ?? ''} alt="" />
+      {s.count > 1 && <b>{s.count}</b>}
+      {s.wear != null && (
+        <i>
+          <i style={{ width: `${Math.round(s.wear * 100)}%`, background: `hsl(${Math.round(s.wear * 120)} 100% 50%)` }} />
+        </i>
+      )}
+    </span>
+  );
+}
+
+// the inventory (2 × 2) or the crafting table (3 × 3), on the pack's panel
+function Screen({ screen, api }) {
+  const [at, setAt] = useState(null);
+  const panel = useRef(null);
+  const grid = GRID[screen.size];
+  const press = (area, index) => (e) => {
+    e.preventDefault();
+    api()?.click({ area, index, button: e.button === 2 ? 'right' : 'left', shift: e.shiftKey });
+  };
+  const slot = (area, index, [x, y], s) => (
+    <button key={`${area}${index}`} type="button" className="mc-slot" style={{ '--x': x, '--y': y }} onMouseDown={press(area, index)} onContextMenu={(e) => e.preventDefault()} aria-label={s ? `${s.count} ${s.item.replace(/_/g, ' ')}` : 'Empty'}>
+      <Stack s={s} api={api} />
+    </button>
+  );
+  return (
+    <div
+      className="mc-screen mc-dim"
+      role="dialog"
+      aria-label={screen.size === 3 ? 'Crafting table' : 'Inventory'}
+      onMouseMove={(e) => {
+        const r = panel.current?.getBoundingClientRect();
+        if (r) setAt({ x: e.clientX - r.left, y: e.clientY - r.top });
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <button type="button" className="mc-key mc-close-key" aria-label="Close" onClick={() => api()?.press('inventory', true) || api()?.press('inventory', false)}>
+        ×
+      </button>
+      <div ref={panel} className="mc-panel" style={{ backgroundImage: `url(${sprite(screen.size === 3 ? 'crafting_table' : 'inventory')})` }}>
+        {screen.grid.map((s, i) => slot('grid', i, [grid.x + (i % screen.size) * 18, grid.y + Math.floor(i / screen.size) * 18], s))}
+        {slot('result', 0, grid.result, screen.result && { ...screen.result, wear: null })}
+        {screen.slots.map((s, i) => slot('inv', i, slotAt(i), s))}
+        {screen.cursor && at && (
+          <span className="mc-held" style={{ left: at.x, top: at.y }}>
+            <Stack s={screen.cursor} api={api} />
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Minecraft({ mode = 'page', onExit = null }) {
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [ui, setUi] = useState({ mode: 'loading' });
   const [hud, setHud] = useState(null);
   const [seed, setSeed] = useState('');
   const [props] = useState(() => ({}));
+  const [say, setSay] = useState(null);
+  const sayTimer = useRef(null);
   const onEvent = useCallback((e) => {
     if (e.type === 'ui') setUi(e);
     else if (e.type === 'hud') setHud(e);
+    else if (e.type === 'say') {
+      setSay({ text: e.text, sleep: Boolean(e.sleep), at: performance.now() });
+      clearTimeout(sayTimer.current);
+      sayTimer.current = setTimeout(() => setSay(null), 3000);
+    }
   }, []);
+  useEffect(() => () => clearTimeout(sayTimer.current), []);
   const { host, status, rt } = useWorld(module, { props, onEvent });
   const api = useCallback(() => (rt?.current?.module === module ? rt.current.world : null), [rt]);
   const playing = ui.mode === 'play';
   const paused = ui.mode === 'pause';
+  const screenOpen = ui.mode === 'inventory' || ui.mode === 'table';
 
   // ── the pointer held while playing: its moves turn the head ──
-  const lock = () => {
+  const lock = useCallback(() => {
     const el = host.current;
     if (!touch && el && document.pointerLockElement !== el) el.requestPointerLock?.()?.catch?.(() => {});
-  };
+  }, [touch, host]);
   useEffect(() => {
     const el = host.current;
     const onMove = (e) => {
@@ -47,23 +121,45 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
     const onChange = () => {
       if (!document.pointerLockElement) api()?.pause(true);
     };
+    // the buttons, while the pointer is held: left digs, right builds and uses
+    const button = (down) => (e) => {
+      if (document.pointerLockElement !== host.current) return;
+      const name = e.button === 0 ? 'attack' : e.button === 2 ? 'use' : null;
+      if (name) api()?.press(name, down);
+    };
+    const onDown = button(true);
+    const onUp = button(false);
     document.addEventListener('mousemove', onMove);
     document.addEventListener('pointerlockchange', onChange);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('mouseup', onUp);
     return () => {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('pointerlockchange', onChange);
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('mouseup', onUp);
       if (el && document.pointerLockElement === el) document.exitPointerLock?.();
     };
   }, [api, host]);
 
-  // Esc at the title leaves
+  // a screen frees the pointer, and lets go of the buttons
+  useEffect(() => {
+    if (!screenOpen) return;
+    api()?.press('attack', false);
+    api()?.press('use', false);
+    if (document.pointerLockElement) document.exitPointerLock?.();
+  }, [screenOpen, api]);
+
+  // Esc at the title leaves; E or Esc on a screen takes the pointer back as the world closes it
   useEffect(() => {
     const onKey = (e) => {
       if (e.code === 'Escape' && ui.mode === 'title' && onExit) onExit();
+      // (the world closes the screen on the same key; the pointer can only be taken back from here)
+      if ((e.code === 'KeyE' || e.code === 'Escape') && (ui.mode === 'inventory' || ui.mode === 'table')) lock();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ui.mode, onExit]);
+  }, [ui.mode, onExit, lock]);
 
   const play = () => {
     api()?.start();
@@ -112,18 +208,39 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
     setKnob({ x: 0, y: 0 });
     api()?.stick(0, 0);
   };
+  // Pocket Edition's touch: drag to look; hold still to dig; a quick tap places or uses
+  const gesture = useRef(null);
   const lookDown = (e) => {
     if (!touch || !playing || lookId.current !== null) return;
     lookId.current = e.pointerId;
     lookAt.current = { x: e.clientX, y: e.clientY };
+    const g = { at: performance.now(), x: e.clientX, y: e.clientY, moved: false, digging: false };
+    g.timer = setTimeout(() => {
+      if (g.moved) return;
+      g.digging = true;
+      api()?.press('attack', true);
+    }, 280);
+    gesture.current = g;
   };
   const lookMove = (e) => {
     if (e.pointerId !== lookId.current) return;
     api()?.look((e.clientX - lookAt.current.x) * 1.6, (e.clientY - lookAt.current.y) * 1.6);
     lookAt.current = { x: e.clientX, y: e.clientY };
+    const g = gesture.current;
+    if (g && !g.digging && Math.hypot(e.clientX - g.x, e.clientY - g.y) > 10) g.moved = true;
   };
   const lookUp = (e) => {
-    if (e.pointerId === lookId.current) lookId.current = null;
+    if (e.pointerId !== lookId.current) return;
+    lookId.current = null;
+    const g = gesture.current;
+    gesture.current = null;
+    if (!g) return;
+    clearTimeout(g.timer);
+    if (g.digging) api()?.press('attack', false);
+    else if (!g.moved && performance.now() - g.at < 280) {
+      api()?.press('use', true);
+      setTimeout(() => api()?.press('use', false), 60);
+    }
   };
   const button = (name) => ({
     onPointerDown: (e) => {
@@ -171,9 +288,10 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
           </div>
         )}
 
-        {(playing || paused) && hud && (
+        {(playing || paused || screenOpen) && hud && (
           <div className="mc-hud" aria-hidden="true">
-            <img className="mc-crosshair" src={sprite('crosshair')} alt="" />
+            {!screenOpen && <img className="mc-crosshair" src={sprite('crosshair')} alt="" />}
+            {say && <p className="mc-say">{say.text}</p>}
             <div className="mc-bar">
               {hud.air != null && (
                 <div className="mc-air">
@@ -183,11 +301,22 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
                 </div>
               )}
               <div className="mc-hotbar" style={{ backgroundImage: `url(${sprite('hotbar')})` }}>
+                {hud.hotbar?.map((s, i) => (
+                  <span key={i} className="mc-hotslot" style={{ '--slot': i }} onPointerDown={(e) => {
+                    e.stopPropagation();
+                    api()?.select(i);
+                  }}>
+                    <Stack s={s} api={api} />
+                  </span>
+                ))}
                 <img className="mc-selection" src={sprite('hotbar_selection')} alt="" style={{ '--slot': hud.selected }} />
               </div>
             </div>
           </div>
         )}
+
+        {say?.sleep && <div className="mc-sleep" key={say.at} aria-hidden="true" />}
+        {screenOpen && ui.screen && <Screen screen={ui.screen} api={api} />}
 
         {ui.mode === 'title' && status === 'on' && (
           <div className="mc-screen mc-title">
@@ -252,6 +381,9 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
                 ⇧
               </button>
             </div>
+            <button type="button" className="mc-key mc-inv-key" aria-label="Inventory" {...button('inventory')}>
+              ⋯
+            </button>
             <button type="button" className="mc-key mc-pause-key" aria-label="Pause" onPointerDown={(e) => e.stopPropagation()} onClick={() => api()?.pause(true)}>
               ❚❚
             </button>

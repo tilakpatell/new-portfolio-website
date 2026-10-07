@@ -48,10 +48,12 @@ describe.skipIf(why)(`voices from lines to manifest (subprocesses, up to 10 s)${
     expect(report).toMatch(/\| han \| Han mumbles something about the Kessel Run\. \|/);
     expect(report.match(/^\| (rick|han) \|/gm)).toHaveLength(1);
   });
+});
 
-  it('runs the Python side’s own tests of the fakes', async () => {
-    const r = await run(python(), ['-m', 'unittest', 'discover', '-s', join(REPO, 'scripts', 'voices'), '-p', 'test_judge_fake.py'], { cwd: REPO });
+describe.skipIf(why)(`the Python side’s own tests (a unittest suite, a worker process a take: up to 60 s)${why ? `: skipped, ${why}` : ''}`, () => {
+  it('pass for the fakes and for the hearing eval', async () => {
+    const r = await run(python(), ['-m', 'unittest', 'discover', '-s', join(REPO, 'scripts', 'voices'), '-p', 'test_*judge*.py'], { cwd: REPO });
     expect(r.status, r.err).toBe(0);
     expect(r.err).toMatch(/Ran \d+ tests[\s\S]*OK/);
-  });
+  }, 60000);
 });

@@ -556,7 +556,7 @@ const BUILDERS = {
     // grazing light (the creases toward the terminator)
     p.body.material = new THREE.MeshPhysicalMaterial({
       map: T.office ?? null,
-      color: T.office ? '#f2eee4' : u.palette.base, // paper, not snow: a little warm and a little grey
+      color: T.office ? '#ffffff' : u.palette.base, // (the map's own paper, #f1ead8: warm, not snow)
       normalMap: T['office-normal'] ?? tiled(T['paper-normal'], 4, 2),
       normalScale: new THREE.Vector2(1, 1),
       roughnessMap: T['office-rough'] ?? null,
@@ -565,17 +565,17 @@ const BUILDERS = {
       sheenColor: '#f3ecd8',
       sheenRoughness: 0.8,
     });
-    // and its outline a crumpled ball's: the sphere cut by a scatter of flat
-    // planes a little inside it, so it has facets and corners (never out
-    // past the sphere, which the halo and a crash's shockwave are sized to)
+    // and its outline a crumpled ball's: the sphere cut by a few big flat
+    // planes a little inside it, so it has broad facets and corners (never
+    // out past the sphere, which the halo and a crash's shockwave are sized to)
     const [ws, hs] = T.small ? [64, 44] : [112, 72];
     const geo = new THREE.SphereGeometry(r, ws, hs);
     const rand = rng('crumple');
-    const cuts = Array.from({ length: 90 }, () => {
+    const cuts = Array.from({ length: 12 }, () => {
       const z = rand() * 2 - 1;
       const a = rand() * Math.PI * 2;
       const s = Math.sqrt(1 - z * z);
-      return [Math.cos(a) * s, z, Math.sin(a) * s, 0.955 + rand() * 0.04];
+      return [Math.cos(a) * s, z, Math.sin(a) * s, 0.915 + rand() * 0.045];
     });
     const pos = geo.attributes.position;
     const d = new THREE.Vector3();

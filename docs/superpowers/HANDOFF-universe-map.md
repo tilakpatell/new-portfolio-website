@@ -29,3 +29,5 @@ Branch `claude/elegant-lovelace-o6lpb0` (it carries `claude/universe` and `main`
 - `vitest --root /` hangs; put any throwaway test inside `src/`.
 - Headless Chromium draws in software here at about 5 fps, so flights look slow in tests. The physics steps are capped at 50 ms.
 - Wikimedia rate-limits; the texture build caches its downloads in `node_modules/.cache/universe`.
+
+- The Rick and Morty worlds and the Citadel are in a sector of their own now, through a portal: see [HANDOFF-rm-sector.md](HANDOFF-rm-sector.md).

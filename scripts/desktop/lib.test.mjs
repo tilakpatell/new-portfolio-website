@@ -103,3 +103,19 @@ describe('the plumbing', () => {
     expect(localDir('nothing', base)).toBe(join(base, 'nothing'));
   });
 });
+
+describe('a job’s name', () => {
+  it('drops a pipeline’s prefix written as one (gen3d: …, 3D - …)', async () => {
+    const { slug } = await import('./lib.mjs');
+    expect(slug('gen3d: TIE Fighter')).toBe('tie-fighter');
+    expect(slug('3D - a cactus')).toBe('a-cactus');
+    expect(slug('voices: Citadel cops')).toBe('citadel-cops');
+  });
+  it('keeps a name that only starts with such a word, and reads its own output back the same', async () => {
+    const { slug } = await import('./lib.mjs');
+    expect(slug('model-627')).toBe('model-627');
+    expect(slug('3d-printer')).toBe('3d-printer');
+    expect(slug('Voice Box')).toBe('voice-box');
+    for (const name of ['Model 627', '3d printer', 'Audio Desk', 'gen3d: X-wing']) expect(slug(slug(name)), name).toBe(slug(name));
+  });
+});

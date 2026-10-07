@@ -19,6 +19,15 @@ const Y = new THREE.Vector3(0, 1, 0);
 const Z = new THREE.Vector3(0, 0, 1);
 const angle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
+// Eve stops for him when he catches her up (within `stop` metres) and waits
+// while he's about (within `go`: the gap between the two is so that hanging
+// at the edge doesn't stop and start her). She waits `patience` seconds with
+// him by her, `aloof` hanging back out of talking range; then she flies on,
+// and doesn't stop for him again until he's been off past `go`, so he can't
+// keep her in the air for ever, parked on a roof under her loop or hovering
+// just outside it.
+export const EVE = { stop: 55, go: 75, patience: 45, aloof: 6 };
+
 // a person stood somewhere: a holder at their hips, so they can lean and fly
 // (`cast`: the HD figures' templates by kind, ./people.js's loadCast)
 function stand(scene, cast, kind, seed, { x, z, y = 0, face = 0, mode = 'idle', role = kind, r = 9 }) {
@@ -78,6 +87,9 @@ export function createNpcs(scene, world, cast = {}) {
   eve.p = new THREE.Vector3();
   eve.v = new THREE.Vector3();
   eve.lean = new THREE.Quaternion();
+  eve.wait = false; // (stopped for him)
+  eve.patience = 0;
+  eve.done = false; // (she's flown on from him, until he's been off past EVE.go)
   all.push(eve);
 
   const tmpQ = new THREE.Quaternion();
@@ -85,7 +97,9 @@ export function createNpcs(scene, world, cast = {}) {
   const dir = new THREE.Vector3();
   const want = new THREE.Vector3();
 
-  function update(dt, t, hero) {
+  function update(frameDt, t, hero) {
+    // (a tab hidden a minute and back is one short step, as the rules' are)
+    const dt = Math.min(frameDt, 0.05);
     const hp = hero.p;
     for (const n of all) {
       if (n.flying) continue;
@@ -104,9 +118,25 @@ export function createNpcs(scene, world, cast = {}) {
     }
 
     // Eve: round the loop, unless Mark's caught her up, when she stops to talk
+    // (he's only ever here in the city: out in space this isn't run, and he
+    // comes back from it 8 km up, well clear of her)
     const e = eve;
-    const close = Math.hypot(hp[0] - e.p.x, hp[1] - e.p.y, hp[2] - e.p.z) < 55;
-    const speed = close ? 0 : e.path.speed;
+    const d = Math.hypot(hp[0] - e.p.x, hp[1] - e.p.y, hp[2] - e.p.z);
+    if (!(d <= EVE.go)) {
+      e.wait = false;
+      e.done = false;
+    } else if (!e.wait && !e.done && d < EVE.stop) {
+      e.wait = true;
+      e.patience = EVE.patience;
+    }
+    if (e.wait) {
+      e.patience -= d < e.r ? dt : (dt * EVE.patience) / EVE.aloof;
+      if (e.patience <= 0) {
+        e.wait = false;
+        e.done = true;
+      }
+    }
+    const speed = e.wait ? 0 : e.path.speed;
     e.path.s += (speed / e.path.rad) * dt;
     const a = e.path.s;
     want.set(e.path.cx + Math.cos(a) * e.path.rad, e.path.y + Math.sin(a * 3) * 25, e.path.cz + Math.sin(a) * e.path.rad * 0.7);

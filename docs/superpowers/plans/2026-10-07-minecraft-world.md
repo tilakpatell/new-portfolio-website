@@ -302,6 +302,13 @@ Branch: `claude/minecraft-phase-1`.
 
 Branch `claude/minecraft-phase-2` from `origin/main`.
 
+**As built (Phase 2):**
+- *Break times (2.3)* are whole ticks, as the game counts them: stone with a wooden pickaxe is 23 ticks, 1.15 s (the task's 0.5625 contradicts its own formula, 1.125), obsidian with diamond 188 ticks, 9.4 s. Shears take leaves at once. Five ticks between breaks.
+- *Where the hands live:* `rules/build.js` (breaking, placing, falling blocks, dropped items, Q, using a crafting table), re-exported by `game.js`; `rules/breaking.js` the times. The cursor is recomputed from the eye every tick (`g.cursor`).
+- *State drawn now:* logs lie along their axis and furnaces, chests and jack o'lanterns face where they were set (the mesher reads `state`), not in Phase 4.
+- *Saves (2.5):* chunk jobs carry the player's edits for the chunk and its eight neighbours, so an edited chunk arrives meshed with them; `mesh` jobs with borders re-mesh what an edit touches, first in the queue; an edit on a chunk's edge dirties the neighbour too.
+- *The screens:* `rules/gui.js` is the containers' click logic (tested); `Minecraft.jsx` draws the inventory and the crafting table on the pack's own panels (`gui/container/inventory`, `crafting_table`, added to the sprites). Using a crafting table opens the 3 × 3 now (the plan put 3 × 3 recipes in Phase 4, but a pickaxe needs it, and Phase 2's "done" asks for one). Paper joined the items for the book.
+
 ### Task 2.1: The raycast and the cursor
 
 **Files:** `rules/raycast.js`, `rules/raycast.test.js`; `scene/cursor.js`.
@@ -334,6 +341,13 @@ Branch `claude/minecraft-phase-2` from `origin/main`.
 - Browser check: cut a tree, planks, table, pickaxe; build; reload; it is there. Screenshot. Merge as PR 2.
 
 ## Phase 3: light and the day (PR 3)
+
+**As built (Phase 3):**
+- *Light (3.1)* is computed in the worker over the 3 × 3 chunks it already makes (a 14-block margin is exact for 15 levels; 7 ms a chunk), not by a main-thread `relight(world, x, y, z)`: an edit re-lights and re-meshes its chunk and the eight round it as chunk jobs carrying the edits, each ask numbered so a stale answer can't land as the newer one. Water, ice and leaves take 1 off (modern opacity).
+- *Smooth lighting:* each corner averages the four cells round it, a dark one counting as the face's own, as the game's `getAoBrightness` does.
+- *The lightmap (3.2):* not `max(sky × daylight, block)` but the game's sum (1.12's `updateLightmap`): the sky's light dimmed and blued by the sun's brightness (0.2 at night), the block's warm, added and clamped (`rules/time.js`'s `lightmap`, the shader the same). `daylight`/`skyDarken` (the game's 11 levels) are there for spawning.
+- *Torches* hang from the face they're put against (state = face) and draw as the game's post (2 × 10 sixteenths, leaning off walls); put on tall grass, one stands on the block under it. *Slabs* draw at their height (oak slab 8, bed 9, snow layer 2) with collision boxes.
+- *The bed* is two blocks (foot, and head with state bit 8, facing by state & 3), placed the way the player looks; breaking either half takes both. Sleeping (12541 to 23458) moves the clock to the next morning and the spawn beside the bed; by day, "You can only sleep at night".
 
 ### Task 3.1: Light
 **Files:** `rules/light.js`, `rules/light.test.js`, `worker.js` (lights a chunk after generating, before meshing), `rules/game.js` (relights on `set` and sends the affected sections to re-mesh).
