@@ -1,6 +1,6 @@
 {
   "date": "2026-10-07",
-  "sha": "43294f51",
+  "sha": "10eeac89",
   "metrics": {
     "big-files": {
       "value": 29,
@@ -9,7 +9,7 @@
       "detail": [
         {
           "file": "src/components/universe/scene.js",
-          "n": 5386
+          "n": 5451
         },
         {
           "file": "src/components/middleearth/towns/moria/props.js",
@@ -52,12 +52,12 @@
           "n": 3051
         },
         {
-          "file": "src/components/cockpit/vehicles/rv.js",
-          "n": 3000
+          "file": "src/components/universe/crews.js",
+          "n": 3013
         },
         {
-          "file": "src/components/universe/crews.js",
-          "n": 2949
+          "file": "src/components/cockpit/vehicles/rv.js",
+          "n": 3000
         },
         {
           "file": "src/components/galaxy/surface/scene.js",
@@ -110,7 +110,7 @@
       ]
     },
     "boundary-breaks": {
-      "value": 311,
+      "value": 312,
       "unit": "imports",
       "label": "imports across a line docs/health/RULES.md draws",
       "detail": [
