@@ -81,6 +81,31 @@ export function peopleLines(sources, { lineId, voiceOf, spoken }, voices) {
   return [...found.values()];
 }
 
+// Each world's own list of what its people say aloud, kept beside the world's data in a
+// voicelines.js that exports VOICELINES: [{ who, text }], `who` the speaker as the site passes it to
+// useVoiced or sayVoiced (voiceOf makes it a voice) and `text` the line as it does. A world wired
+// this way needs nothing here: every voicelines.js under src/ is read, and every voice in them made.
+export function worldLines(lists, { lineId, voiceOf, spoken }) {
+  const found = new Map();
+  for (const list of lists) {
+    for (const { who, text } of list ?? []) {
+      const voice = voiceOf(who);
+      const said = typeof text === 'string' ? spoken(text) : '';
+      if (voice && said) found.set(lineId(voice, text), { id: lineId(voice, text), who: voice, text: said });
+    }
+  }
+  return [...found.values()];
+}
+
+// the voicelines.js files under a folder, as paths from `root`
+export function voicelineFiles(root, dir = 'src') {
+  return readdirSync(join(root, dir), { withFileTypes: true }).flatMap((d) => {
+    const path = `${dir}/${d.name}`;
+    if (d.isDirectory()) return voicelineFiles(root, path);
+    return d.name === 'voicelines.js' ? [path] : [];
+  });
+}
+
 const here = dirname(fileURLToPath(import.meta.url));
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { runnerImport } = await import('vite');
@@ -111,7 +136,10 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     load('src/components/albuquerque/metherria/rules.js'),
   ]);
   const people = peopleLines([CAST, Object.values(AREAS).map((a) => a.people ?? []), CYBERTRON, CUSTOMERS], voiced, [...VOICED, ...WORLD_VOICED]);
+  const own = await Promise.all(voicelineFiles(root).map(load));
   const lines = [...unrecorded([CREWS, GALAXY_LINES, VEHICLES.map((v) => v.lines), ...surface], lineId), ...conversationLines(worlds, voiced, [...VOICED, ...WORLD_VOICED]), ...people];
+  const listed = new Set(lines.map((l) => l.id));
+  lines.push(...worldLines(own.map((m) => m.VOICELINES), voiced).filter((l) => !listed.has(l.id)));
   // --extra FILE: lines asked for ahead of the code that will say them ({ who, text } each; scripts/voices/runner.mjs)
   const extraAt = process.argv.indexOf('--extra');
   if (extraAt > 0) {
