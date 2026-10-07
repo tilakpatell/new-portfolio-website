@@ -44,6 +44,7 @@ import { recolorDoc } from './recolor.mjs';
 import { BUILDINGS as BACK_LANE } from './meshy-galaxy-buildings-back.mjs';
 import { BUILDINGS as FILL_LANE } from './meshy-galaxy-buildings-fill.mjs';
 import { BUILDINGS as BASES_LANE } from './meshy-galaxy-buildings-bases.mjs';
+import { BUILDINGS as THREE_LANE } from './meshy-galaxy-three.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'models', 'galaxy', 'surface');
@@ -107,6 +108,8 @@ Object.assign(BUILDINGS, BACK_LANE);
 Object.assign(BUILDINGS, FILL_LANE);
 // and the bases' (Phase 2: scripts/meshy-galaxy-buildings-bases.mjs)
 Object.assign(BUILDINGS, BASES_LANE);
+// the three worlds' lane (scripts/meshy-galaxy-three.mjs)
+Object.assign(BUILDINGS, THREE_LANE);
 
 async function api(method, path, body) {
   const r = await fetch(`${API}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });

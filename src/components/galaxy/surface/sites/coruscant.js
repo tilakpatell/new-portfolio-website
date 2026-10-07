@@ -91,6 +91,10 @@ export const SITE = {
         { kind: 'deck', at: [-60, 0], abs: true, y: 0, opts: { hw: 50, hd: 40 } },
         { kind: 'senate', at: [70, 0], abs: true, y: 0, solid: { r: 56 } },
         { kind: 'plinth', at: [70, 0], abs: true, y: 0, solid: false, opts: { w: 112, round: true } },
+        // repulsorpods parked by the plaza, as senators leave them
+        { kind: 'senatepod', at: [-20, -30], abs: true, y: 0.6, yaw: 0.4 },
+        { kind: 'senatepod', at: [-8, -34], abs: true, y: 0.6, yaw: -0.3 },
+        { kind: 'senatepod', at: [4, -29], abs: true, y: 0.6, yaw: 0.9 },
         { kind: 'statue', at: [-96, 34], abs: true, y: 0, yaw: Math.PI },
         { kind: 'statue', at: [-66, 34], abs: true, y: 0, yaw: Math.PI },
         { kind: 'statue', at: [-36, 34], abs: true, y: 0, yaw: Math.PI },
