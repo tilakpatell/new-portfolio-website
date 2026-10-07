@@ -43,7 +43,9 @@
 // by whoever made the brains, for the visit: by character id, { met: how
 // many times it's come, shot: how often you've hit it, grudge: how often
 // it's had cause (it had to run from you, or call for help), downed: how
-// often you've shot it down }). A brain reads `me.memory` and does with it
+// often you've shot it down, last: { how: 'retreat' | 'downed' | 'draw' |
+// 'fled', from: 'left' | 'right' } (how the last meeting ended, and which
+// side of you it was on: a nemesis opens from the other) }). A brain reads `me.memory` and does with it
 // what it will: a nemesis comes back tougher and brings friends, a
 // merchant you shot has nothing for you, an inspector who had to call for
 // help finds you wanted on sight.
@@ -91,7 +93,9 @@ export const BRAINS = { wingman, bounty, merchant, informant, rival, inspector, 
 // the brains that have word of what's coming (the scene asks the director while one's about)
 export const tells = (brain) => Boolean(BRAINS[brain]?.tells);
 // a fresh memory of a character (createBrains keeps one per character id in `memory`)
-export const remember = (memory, id) => (memory[id] ??= { met: 0, shot: 0, grudge: 0, downed: 0 });
+export const remember = (memory, id) => (memory[id] ??= { met: 0, shot: 0, grudge: 0, downed: 0, last: null });
+// which side of you a character is on (your right is heading + π/2 round)
+const sideOf = (me, you) => (you ? ((me.pos.x - you.x) * Math.cos(you.heading ?? 0) - (me.pos.z - you.z) * Math.sin(you.heading ?? 0) > 0 ? 'right' : 'left') : 'left');
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const between = (rand, [a, b]) => a + rand() * (b - a);
@@ -183,6 +187,7 @@ export function createBrains({ rand = Math.random, firstId = 900001, brains = BR
           const { it: dread } = nearest(me.hunters, me.pos, (h) => npc.relations?.fears?.includes(h.faction));
           if (dread && apart(dread.at, me.pos) < NPC.fear) {
             events.push({ type: 'fled', n: me.n, faction: dread.faction });
+            me.memory.last = { how: 'fled', from: sideOf(me, you) };
             leave(events, me);
           }
         }
@@ -215,6 +220,7 @@ export function createBrains({ rand = Math.random, firstId = 900001, brains = BR
         if (intent.say) say(events, me, intent.say);
         if (intent.event) events.push({ ...intent.event, n: me.n });
         if (intent.leave) {
+          if (intent.event?.type === 'draw') me.memory.last = { how: 'draw', from: sideOf(me, you) };
           leave(events, me);
           intent = { to: null };
         }
@@ -299,6 +305,7 @@ export function createBrains({ rand = Math.random, firstId = 900001, brains = BR
       const out = { id: me.n, kind: me.npc.ship, at: { ...me.pos }, size: me.npc.size ?? 0.4, down: me.hp <= 0 };
       if (out.down) {
         me.memory.downed += 1;
+        me.memory.last = { how: 'downed', from: me.memory.last?.from ?? 'left' };
         take(me);
         later.push({ type: 'downed', n: me.n });
       } else if (!me.said.has('hit')) {

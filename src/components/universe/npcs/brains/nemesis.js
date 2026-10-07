@@ -67,7 +67,8 @@ export default function nemesis(npc, me, world, dt, rand) {
     const k = 1 + 0.25 * Math.min(4, (mem.met ?? 1) - 1);
     me.hpMax = Math.round(me.hpMax * k);
     me.hp = me.hpMax;
-    m.side = me.n % 2 ? 1 : -1;
+    // (the side it circles on: the other to the one it left by last time)
+    m.side = mem.last?.from === 'right' ? -1 : mem.last?.from === 'left' ? 1 : me.n % 2 ? 1 : -1;
     m.a = 0;
     m.mode = 'orbit';
     m.phase = 1;

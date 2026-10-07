@@ -35,10 +35,15 @@
 // been making (heat: what you've shot down lately, and `wanted`: the law
 // has you marked, standing.js: twice the hunts), and never the same thing
 // twice running. While your shields are low (`calm`), nobody new comes
-// after you: what happens then is one of the sights.
+// after you: what happens then is one of the sights. And it paces the
+// drama as Left 4 Dead's director does: an intensity that rises with the
+// hits you take (`hurt`: damage this frame) and the kills you make (heat
+// going up) and fades with time; past its peak nothing new comes, and once
+// it has fallen back there's a breather (INTENSITY.relax seconds) before
+// the next thing, so a fight is followed by a lull and not another fight.
 //
-// createDirector({ rand, events }) → { update(dt, { side, heat, busy, travelling, calm, wanted }) → event id or null, soon(id),
-//   foretell(side) → { id, in } | null (what's next, and in how long: then that's what comes) }
+// createDirector({ rand, events }) → { update(dt, { side, heat, busy, travelling, calm, wanted, hurt }) → event id or null, soon(id),
+//   foretell(side) → { id, in } | null (what's next, and in how long: then that's what comes), intensity }
 // `side` is sides.js's (`has(need)` says what it can bring), or null.
 // `events` is the table it picks from: EVENTS, unless a map brings only some
 // of them (the galaxy's roam.js opts in to what its scene can play)
@@ -62,6 +67,14 @@ export const EVENTS = {
 // whether a side can have an event
 export const canHave = (side, e) => Boolean(side) && (e.needs === null || side.has(e.needs));
 export const PACE = { first: [30, 50], gap: [45, 85] }; // seconds before the first, and between the rest
+export const INTENSITY = {
+  hurt: 0.005, // a point of damage taken is worth this much
+  kill: 0.15, // and a kill
+  decay: 0.08, // a second, falling
+  peak: 0.75, // over this, nothing new comes…
+  low: 0.35, // …until it has fallen under this, and then
+  relax: 20, // seconds of breather
+};
 
 export function createDirector({ rand = Math.random, events = EVENTS } = {}) {
   const between = ([a, b]) => a + rand() * (b - a);
@@ -70,6 +83,10 @@ export function createDirector({ rand = Math.random, events = EVENTS } = {}) {
   let last = null;
   let forced = null;
   let told = null; // what's been foretold (an informant's word: foretell)
+  let intensity = 0;
+  let lastHeat = 0;
+  let peaked = false;
+  let relaxUntil = -Infinity;
   // the next event, picked by weight (more hunts the more trouble you've
   // made, and on the way somewhere), never the last one again
   const choose = (side, { heat = 0, travelling = false, calm = false, wanted = false } = {}) => {
@@ -87,10 +104,18 @@ export function createDirector({ rand = Math.random, events = EVENTS } = {}) {
     // speed, between places, where things come sooner and more of them are
     // hunters (an ambush on the way); calm: your shields are low, so
     // nothing that comes after you (the hunts wait till they're back)
-    update(dt, { side, heat = 0, busy = false, travelling = false, calm = false, wanted = false }) {
+    update(dt, { side, heat = 0, busy = false, travelling = false, calm = false, wanted = false, hurt = 0 }) {
       if (!side) return null;
       clock += dt;
-      if (busy) {
+      // the drama's intensity: up with what you take and what you shoot down, fading with time
+      intensity = Math.max(0, intensity + hurt * INTENSITY.hurt + (heat > lastHeat + 0.5 ? INTENSITY.kill : 0) - INTENSITY.decay * dt);
+      lastHeat = heat;
+      if (intensity > INTENSITY.peak) peaked = true;
+      else if (peaked && intensity < INTENSITY.low) {
+        peaked = false;
+        relaxUntil = clock + INTENSITY.relax;
+      }
+      if (busy || intensity > INTENSITY.peak || clock < relaxUntil) {
         nextAt = Math.max(nextAt, clock + 12); // and a breather after it
         return null;
       }
@@ -116,6 +141,10 @@ export function createDirector({ rand = Math.random, events = EVENTS } = {}) {
     // bring an event on next (for checking from a browser)
     soon(id) {
       forced = id;
+    },
+    // how hot the drama is, 0 and up (for the HUD, and checking)
+    get intensity() {
+      return intensity;
     },
     // what comes next, and in how many seconds (an informant tells you):
     // picked now, so it's what comes; null without a side
