@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAchievements } from '../components/Achievements';
 import { useTheme } from '../theme/ThemeProvider';
 import { local, prefersReducedMotion } from '../lib/hooks';
+import { sayVoiced } from '../lib/voiced';
+import { SAID } from './said';
 import { BACK, SCRIPTS, scriptFor } from './scripts';
 
 // The easter eggs that reach across the whole site: language mode (Aurebesh,
@@ -180,8 +182,9 @@ export function FunProvider({ children }) {
       c.playClip('snap', { keep: true });
       c.playClip('mrStark', { when: 1.4, keep: true }); // as the page turns to dust
     });
+    sayVoiced(SAID.snap.who, SAID.snap.text); // Thanos, where his voice has been made (lib/voiced.js)
     unlock('snap');
-    notify('Perfectly balanced.', 'As all things should be. Everything comes back in a few seconds.', 'note', 'snap');
+    notify(SAID.snap.text, 'As all things should be. Everything comes back in a few seconds.', 'note', 'snap');
   }, [notify, unlock]);
 
   // `withGif` false when the clip is already showing somewhere else (the card).
