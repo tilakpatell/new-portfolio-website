@@ -28,6 +28,14 @@
 // twice (delete a kind's entry to make it again). MESHY_API_KEY comes from
 // the environment and is never printed. Prompts never name the films (Meshy
 // turns the names down; a refused task costs nothing).
+//
+// --ultra (models and fetch, scripts/ultra/cut.mjs): the ultra level's cut.
+// `models --ultra` asks Meshy again from the same input at its most polygons
+// (300k) and its finest texture (MESHY_ULTRA_TEXTURE, 4k unless set), kept
+// as the kind's `ultra` task so the plain one is untouched; `fetch --ultra`
+// makes <kind>.ultra.glb from it, up to four times the kind's tris with
+// 8192 maps, under 24 MB, no light copy (ultra draws the whole model at
+// every distance), and prints the catalogue's `ultra` line for it.
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -41,6 +49,7 @@ import { fileURLToPath } from 'node:url';
 import { REFS, fetchRef } from './galaxy-refs.mjs';
 import { makeLod } from './galaxy-surface-lod.mjs';
 import { recolorDoc } from './recolor.mjs';
+import { MESHY_MAX_POLYCOUNT, checkUltra, takeUltra, ultraName, ultraSpec } from './ultra/cut.mjs';
 import { BUILDINGS as BACK_LANE } from './meshy-galaxy-buildings-back.mjs';
 import { BUILDINGS as FILL_LANE } from './meshy-galaxy-buildings-fill.mjs';
 import { BUILDINGS as BASES_LANE } from './meshy-galaxy-buildings-bases.mjs';
@@ -270,15 +279,17 @@ const steps = {
       console.log(`image    ${n.padEnd(13)} ${t.consumed_credits} credits`);
     }
   },
-  async models(names, s) {
+  async models(names, s, { ultra = false } = {}) {
     names = [...prompted(names), ...pictured(names)];
+    // (the ultra task is kept apart from the plain one: `ultra`, `ultraMulti`)
+    const [task, multiKey] = ultra ? ['ultra', 'ultraMulti'] : ['model', 'multi'];
     const { balance } = await api('GET', '/v1/balance');
-    const todo = names.filter((n) => !s[n]?.model);
+    const todo = names.filter((n) => !s[n]?.[task]);
     console.log(`models: ${todo.length} to make (${todo.length * 30} credits), balance ${balance}`);
     if (todo.length * 30 > balance) throw new Error('not enough credits');
     for (const n of names) {
       if (BUILDINGS[n].prompt && !s[n]?.image) throw new Error(`${n}: no image yet`);
-      if (!s[n].model) {
+      if (!s[n][task]) {
         const from = BUILDINGS[n].prompt ? null : await inputs(n);
         const multi = from && from.length > 1;
         const { result } = await api('POST', multi ? '/v1/multi-image-to-3d' : '/v1/image-to-3d', {
@@ -288,20 +299,20 @@ const steps = {
           enable_pbr: true,
           should_remesh: true,
           topology: 'triangle',
-          target_polycount: BUILDINGS[n].tris,
-          texture_resolution: '2k',
+          target_polycount: ultra ? MESHY_MAX_POLYCOUNT : BUILDINGS[n].tris,
+          texture_resolution: ultra ? (process.env.MESHY_ULTRA_TEXTURE ?? '4k') : '2k',
           target_formats: ['glb'],
           enable_thumbnail: true,
         });
-        s[n].model = result;
-        s[n].multi = multi || undefined;
+        s[n][task] = result;
+        s[n][multiKey] = multi || undefined;
         await save(s);
       }
     }
     for (const n of names) {
       try {
-        const t = await wait(s[n].multi ? '/v1/multi-image-to-3d' : '/v1/image-to-3d', s[n].model, `${n} model`);
-        if (t.thumbnail_url) await download(t.thumbnail_url, join(REVIEW, `${n}-model.png`));
+        const t = await wait(s[n][multiKey] ? '/v1/multi-image-to-3d' : '/v1/image-to-3d', s[n][task], `${n} model`);
+        if (t.thumbnail_url) await download(t.thumbnail_url, join(REVIEW, `${n}-model${ultra ? '-ultra' : ''}.png`));
         console.log(`model    ${n.padEnd(13)} ${t.consumed_credits} credits`);
       } catch (e) {
         console.log(`model    ${n.padEnd(13)} ${e.message}`);
@@ -321,7 +332,8 @@ const steps = {
       console.log(`retexture ${n.padEnd(12)} ${t.consumed_credits} credits`);
     }
   },
-  async fetch(names, s) {
+  async fetch(names, s, { ultra = false } = {}) {
+    if (ultra) return fetchUltra(names, s);
     for (const n of names) {
       const a = { ...BUILDINGS[n], kind: n };
       const [path, id] = a.from ? ['/v1/retexture', s[n]?.retexture] : [s[n]?.multi ? '/v1/multi-image-to-3d' : '/v1/image-to-3d', s[n]?.model];
@@ -339,16 +351,17 @@ const steps = {
     }
   },
   // the picture, the lift and the model, side by side, for judging
-  async sheet(names) {
+  async sheet(names, s, { ultra = false } = {}) {
     const { shoot } = await import('./glb-shot.mjs');
     for (const n of names) {
       const tiles = [];
       const tile = (buf) => sharp(buf).resize(640, 480, { fit: 'contain', background: '#202020' }).jpeg().toBuffer();
       if (BUILDINGS[n].ref) for (const buf of await pictures(n)) tiles.push(await tile(buf));
       for (const f of [`${n}-lift.png`, `${n}.png`]) if (existsSync(join(REVIEW, f))) tiles.push(await tile(await readFile(join(REVIEW, f))));
-      for (const view of await shoot(join(BUILDINGS[n].galaxy ? GALAXY : OUT, `${n}.glb`), ['three', 'close'])) tiles.push(await tile(view));
+      // (with --ultra, the ultra cut's views beside the plain one's)
+      for (const file of ultra ? [`${n}.glb`, ultraName(n)] : [`${n}.glb`]) for (const view of await shoot(join(BUILDINGS[n].galaxy ? GALAXY : OUT, file), ['three', 'close'])) tiles.push(await tile(view));
       const cols = Math.min(3, tiles.length);
-      const out = join(REVIEW, `${n}-gate.jpg`);
+      const out = join(REVIEW, `${n}-gate${ultra ? '-ultra' : ''}.jpg`);
       await sharp({ create: { width: 640 * cols, height: 480 * Math.ceil(tiles.length / cols), channels: 3, background: '#111' } })
         .composite(tiles.map((input, i) => ({ input, left: (i % cols) * 640, top: Math.floor(i / cols) * 480 })))
         .jpeg({ quality: 85 })
@@ -358,13 +371,36 @@ const steps = {
   },
 };
 
+// the ultra cut of each kind, from its `ultra` task (models --ultra): beside
+// the plain file, no light copy, and the catalogue line to add for it
+async function fetchUltra(names, s) {
+  for (const n of names) {
+    const a = ultraSpec({ ...BUILDINGS[n], kind: n });
+    if (a.from) throw new Error(`${n}: a retextured model of the owner's has no ultra task (its mesh is the owner's own)`);
+    const id = s[n]?.ultra;
+    if (!id) throw new Error(`${n}: no ultra model yet (models --ultra ${n})`);
+    const t = await wait(s[n].ultraMulti ? '/v1/multi-image-to-3d' : '/v1/image-to-3d', id, `${n} ultra`);
+    const raw = join(REVIEW, 'raw', ultraName(n));
+    if (!existsSync(raw)) await download(t.model_urls.glb, raw);
+    const to = join(a.galaxy ? GALAXY : OUT, ultraName(n));
+    const { tris, size } = await squeeze(raw, to, a);
+    const bytes = (await stat(to)).size;
+    const problems = checkUltra({ tris: a.tris, after: tris, bytes });
+    if (problems.length) throw new Error(`${n} (ultra): ${problems.join('; ')}`);
+    console.log(`fetch    ${n.padEnd(13)} ultra ${tris} triangles, ${size.join(' × ')} m, ${(bytes / 1024 / 1024).toFixed(1)} MB`);
+    console.log(`         ${''.padEnd(13)} catalogue: ultra: { tris: ${Math.round(tris)}, tex: ${a.tex} }`);
+  }
+}
+
 async function main() {
-  const [step, ...only] = process.argv.slice(2);
+  const { ultra, args } = takeUltra(process.argv.slice(2));
+  const [step, ...only] = args;
   if (!steps[step]) throw new Error(`steps: ${Object.keys(steps).join(', ')}`);
   if (!key && step !== 'fetch' && step !== 'sheet') throw new Error('MESHY_API_KEY is not set');
   const names = only.length ? only : Object.keys(BUILDINGS);
   for (const n of names) if (!BUILDINGS[n]) throw new Error(`no building ${n}`);
-  await steps[step](names, await load());
+  if (ultra && !['models', 'fetch', 'sheet'].includes(step)) throw new Error('--ultra goes with models, fetch or sheet');
+  await steps[step](names, await load(), { ultra });
 }
 
 main().catch((e) => {
