@@ -1660,6 +1660,101 @@ export const buzz = once('buzz', buzzRaw);
 export const decode = once('decode', decodeRaw);
 export const ghanta = once('ghanta', ghantaRaw);
 // these two fire faster than once()'s quarter second allows
+// ── a mission's stinger: two low brass notes, the second a fourth up, over a
+// timpani thud (the Invincible world: an episode starts, or ends) ──
+function stingerRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.4, 0.8);
+  const timp = ac.createOscillator();
+  env(timp.frequency, t, [[0, 92], [0.35, 70]]);
+  const timpG = ac.createGain();
+  env(timpG.gain, t, [[0, 0.0001], [0.008, 0.6, 'lin'], [1.1, 0.0001]]);
+  timp.connect(timpG).connect(out);
+  timp.start(t);
+  timp.stop(t + 1.2);
+  for (const [at, hz, len] of [[t, 87.31, 0.42], [t + 0.38, 116.54, 1.3]]) {
+    const f = ac.createBiquadFilter();
+    f.type = 'lowpass';
+    f.Q.value = 1.1;
+    env(f.frequency, at, [[0, 300], [0.25, 1800], [len, 400]]);
+    const g = ac.createGain();
+    env(g.gain, at, [[0, 0.0001], [0.06, 0.3, 'lin'], [len * 0.7, 0.26, 'lin'], [len, 0.0001]]);
+    f.connect(g).connect(out);
+    for (const det of [-7, 0, 7]) {
+      const o = ac.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = hz;
+      o.detune.value = det;
+      o.connect(f);
+      o.start(at);
+      o.stop(at + len + 0.05);
+    }
+  }
+  return 1.8;
+}
+// ── the radio's crackle before a call: a few bursts of band-passed static,
+// then a short tone ──
+function crackleRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.1, 0.5);
+  let at = t;
+  for (let i = 0; i < 4; i++) {
+    const len = 0.04 + Math.random() * 0.08;
+    const n = noiseSource(ac, 'white', 1);
+    const f = ac.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.value = 1400 + Math.random() * 1200;
+    f.Q.value = 2.5;
+    const g = ac.createGain();
+    env(g.gain, at, [[0, 0.0001], [0.004, 0.35, 'lin'], [len, 0.0001]]);
+    n.connect(f).connect(g).connect(out);
+    n.start(at);
+    n.stop(at + len + 0.01);
+    at += len + 0.03 + Math.random() * 0.06;
+  }
+  const o = ac.createOscillator();
+  o.frequency.value = 1760;
+  const og = ac.createGain();
+  env(og.gain, at, [[0, 0.0001], [0.005, 0.18, 'lin'], [0.12, 0.0001]]);
+  o.connect(og).connect(out);
+  o.start(at);
+  o.stop(at + 0.15);
+  return at + 0.15 - t;
+}
+// ── a camera's shutter: a click, the blades, a second click ──
+function shutterRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.05, 0.6);
+  for (const [at, hz, lvl] of [[t, 3200, 0.5], [t + 0.07, 2100, 0.35]]) {
+    const n = noiseSource(ac, 'white', 1);
+    const f = ac.createBiquadFilter();
+    f.type = 'highpass';
+    f.frequency.value = hz;
+    const g = ac.createGain();
+    env(g.gain, at, [[0, 0.0001], [0.002, lvl, 'lin'], [0.03, 0.0001]]);
+    n.connect(f).connect(g).connect(out);
+    n.start(at);
+    n.stop(at + 0.04);
+  }
+  const w = noiseSource(ac, 'white', 1);
+  const wf = ac.createBiquadFilter();
+  wf.type = 'bandpass';
+  wf.frequency.value = 900;
+  wf.Q.value = 4;
+  const wg = ac.createGain();
+  env(wg.gain, t + 0.01, [[0, 0.0001], [0.01, 0.12, 'lin'], [0.06, 0.0001]]);
+  w.connect(wf).connect(wg).connect(out);
+  w.start(t + 0.01);
+  w.stop(t + 0.08);
+  return 0.15;
+}
+
 const every = (ms, fn) => {
   let last = -1e9;
   return (ac, ...rest) => {
@@ -1670,6 +1765,9 @@ const every = (ms, fn) => {
   };
 };
 export const laser = every(70, laserRaw);
+export const stinger = once('stinger', stingerRaw);
+export const crackle = once('crackle', crackleRaw);
+export const shutter = once('shutter', shutterRaw);
 export const pop = every(60, popRaw);
 export const repulse = every(75, repulseRaw);
 export const blast = every(90, blastRaw);

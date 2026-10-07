@@ -250,6 +250,27 @@ Every band is in range, and Mark passes in spawn, streetnight and porch. He miss
 - Shots: `chase` (the car pulls out from under him, 26 m behind it), `photo` (the hall's frame from the plaza's corner), `everace` (the first gate over a downtown crossing); each driven to done.
 - Not here: Eve's ghost on the line at the best time, and Allen flying the race home (the gates are there; nobody races); the sounds the spec names (a stinger, the crackle, a shutter: `beeps` and `knock` stand in) and the docs' shots (Task 11).
 
+### Task 11: feel, docs and the hand-off (2026-10-07)
+
+- Sounds (`src/lib/sfx.js`): `stinger` (two low brass notes over a timpani thud) as an episode starts; `crackle` (bursts of static, then a tone) before the radio's call; `shutter` for a photo. The end keeps `fanfare`.
+- Feel (`scene.js`): a punch that lands stops the game 70 ms (a Mauler's knock shakes the camera harder), a knock-out likewise; neither under reduced motion (`calm`), which already kept the camera still and skips the cards' swing.
+- Docs: `docs/architecture.md`'s Invincible section names part 2's modules; the README's row names the season and the radio. Shots in `docs/superpowers/shots/2026-10-07-inv-*.webp`: the street at noon and at night, and each mission as the check script frames it; the cast sheet is `docs/gen3d/invincible/cast-sheet.webp`.
+
+METRICS_HERE
+
+## Part 2, closed (2026-10-07)
+
+Eleven tasks, one pull request each, all merged: the sweep and the metrics (Task 1), seeing Mark and the city (2), the HUD (3), the cast (4), the crowd's brains (5), Eve and Dad (6, [#549](https://github.com/tilakpatell/new-portfolio-website/pull/549)), the villains (7, [#555](https://github.com/tilakpatell/new-portfolio-website/pull/555)), the missions' rules (8, [#571](https://github.com/tilakpatell/new-portfolio-website/pull/571)), the missions in the world (9, [#578](https://github.com/tilakpatell/new-portfolio-website/pull/578)), the radio (10, [#582](https://github.com/tilakpatell/new-portfolio-website/pull/582)) and this one.
+
+- Credits spent on Meshy: about 1,350 over the two accounts (328 for the first cast, about 1,020 for the sharper one with its clips; see the cast sections above). Nothing was bought on Sketchfab.
+- Tests: `npx vitest run src/components/invincible` runs 192 in 14 files (109 after Task 1).
+- Left for a part 3:
+  - Eve's ghost on the line at her best time, and Allen flying the race home (the gates are drawn; nobody races).
+  - The Flaxans' portal closes as the second wave goes down, before episode 5's last step; it should stay open until he flies through it.
+  - The bank model's own lettering reads GDA.
+  - Interiors, the online ghosts' rooms, and the runtime move (the plan's Task 11 notes), as the earlier list below has them.
+  - Phone frame rate on hardware.
+
 ## How to check
 
 - `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic, hud, brains, companions and foes (51 tests at the space merge, 89 after Task 1, 168 after Task 7, 186 after Task 8, 189 after Task 9, 192 after Task 10).
