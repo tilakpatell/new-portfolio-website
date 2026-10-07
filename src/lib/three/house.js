@@ -269,26 +269,32 @@ export function shadowFor(mood) {
 
 // A world put on the house look in one call: the house tone mapper (its
 // exposure lifted to keep the world's brightness from its ACES days, unless
-// `keepExposure`: a world tuned under Neutral already), everything in the
+// `keepExposure`: a world tuned under Neutral already; `toneMap: false`: a
+// world whose post pass tone-maps the house's way itself), everything in the
 // scene adopted, and follow(): the look's full light from the world's sun
-// (and sky light, if any) and its shadow colour from the sky light,
+// (and sky light or ambient, if any) and its shadow colour from the sky
+// light (or the ambient where there's no sky),
 // recomputed when the sky light changes; `{ adopt: true }` also takes on
 // whatever has come into the scene since. Call follow() after the world
 // sets its lights (once a frame, or when they change).
-export function houseOn({ renderer, scene, sun = null, hemi = null, keepExposure = false, look = {} }) {
+export function houseOn({ renderer, scene, sun = null, hemi = null, ambient = null, keepExposure = false, toneMap = true, look = {} }) {
   const house = createHouse(look);
-  renderer.toneMapping = house.toneMapping;
-  if (!keepExposure) renderer.toneMappingExposure *= house.exposure;
+  if (toneMap) {
+    renderer.toneMapping = house.toneMapping;
+    if (!keepExposure) renderer.toneMappingExposure *= house.exposure;
+  }
+  // (the shade's colour from the sky light, or from an ambient light where there's no sky)
+  const sky = hemi ?? ambient;
   house.adopt(scene);
   const seen = { hex: -1, k: -1 };
   house.follow = ({ adopt = false } = {}) => {
-    house.light({ sun, hemi });
-    if (hemi) {
-      const hex = hemi.color.getHex();
-      if (hex !== seen.hex || hemi.intensity !== seen.k) {
+    house.light({ sun, hemi, ambient });
+    if (sky) {
+      const hex = sky.color.getHex();
+      if (hex !== seen.hex || sky.intensity !== seen.k) {
         seen.hex = hex;
-        seen.k = hemi.intensity;
-        house.set({ shadow: shadowFor({ hemiSky: hex, hemi: hemi.intensity }) });
+        seen.k = sky.intensity;
+        house.set({ shadow: shadowFor({ hemiSky: hex, hemi: sky.intensity }) });
       }
     }
     if (adopt) house.adopt(scene);

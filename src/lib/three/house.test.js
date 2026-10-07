@@ -274,3 +274,19 @@ describe('a world put on the house look in one call', () => {
     expect(late.userData.house).toBe(house.uniforms);
   });
 });
+
+describe('a world with its own tone map and an ambient light (the universe map)', () => {
+  it('leaves the tone mapping alone, and takes its shade from the ambient light', () => {
+    const scene = new THREE.Scene();
+    const key = new THREE.DirectionalLight(0xffffff, 2);
+    const ambient = new THREE.AmbientLight(0xb8c4ff, 0.4);
+    scene.add(key, ambient, new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial()));
+    const renderer = { toneMapping: THREE.NoToneMapping, toneMappingExposure: 1 };
+    const house = houseOn({ renderer, scene, sun: key, ambient, toneMap: false, look: { fog: false } });
+    expect(renderer.toneMapping).toBe(THREE.NoToneMapping);
+    expect(renderer.toneMappingExposure).toBe(1);
+    expect(house.uniforms.uLookShadow.value.getHex()).toBe(shadowFor({ hemiSky: 0xb8c4ff, hemi: 0.4 }));
+    // (full light: the key and the ambient, over pi)
+    expect(house.uniforms.uLookRef.value.g).toBeCloseTo((2 + new THREE.Color(0xb8c4ff).g * 0.4) / Math.PI, 5);
+  });
+});
